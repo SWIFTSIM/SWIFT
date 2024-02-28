@@ -19,9 +19,9 @@
 #ifndef SWIFT_ZOOM_MAKETASKS_H
 #define SWIFT_ZOOM_MAKETASKS_H
 
-void engine_make_self_gravity_tasks_mapper_natural_cells(void *map_data,
-                                                         int num_elements,
-                                                         void *extra_data);
+void engine_make_self_gravity_tasks_mapper_bkg_cells(void *map_data,
+                                                     int num_elements,
+                                                     void *extra_data);
 void engine_make_self_gravity_tasks_mapper_buffer_cells(void *map_data,
                                                         int num_elements,
                                                         void *extra_data);

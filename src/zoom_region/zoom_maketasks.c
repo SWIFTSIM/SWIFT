@@ -26,6 +26,7 @@
 #include "gravity_properties.h"
 #include "multipole.h"
 #include "space.h"
+#include "zoom_region/zoom_maketasks.h"
 
 #include <float.h>
 #include <math.h>
@@ -38,9 +39,9 @@
  * - All pairs within range according to the multipole acceptance
  *   criterion get a pair task.
  */
-void engine_make_self_gravity_tasks_mapper_natural_cells(void *map_data,
-                                                         int num_elements,
-                                                         void *extra_data) {
+void engine_make_self_gravity_tasks_mapper_bkg_cells(void *map_data,
+                                                     int num_elements,
+                                                     void *extra_data) {
 
   struct engine *e = (struct engine *)extra_data;
   struct space *s = e->s;
@@ -135,7 +136,8 @@ void engine_make_self_gravity_tasks_mapper_natural_cells(void *map_data,
           const int kkk = (kk + cdim[2]) % cdim[2];
 
           /* Get the second cell */
-          const int cjd = cell_getid(cdim, iii, jjj, kkk) + bkg_cell_offset;
+          const int cjd =
+              cell_getid_offset(cdim, bkg_cell_offset, iii, jjj, kkk);
           struct cell *cj = &cells[cjd];
 
           /* Avoid duplicates, empty cells and completely foreign pairs */
@@ -320,7 +322,7 @@ void engine_make_self_gravity_tasks_mapper_buffer_cells(void *map_data,
           if (kk < 0 || kk >= cdim[2]) continue;
 
           /* Get the second cell */
-          const int cjd = cell_getid(cdim, ii, jj, kk) + buffer_offset;
+          const int cjd = cell_getid_offset(cdim, buffer_offset, ii, jj, kk);
           struct cell *cj = &cells[cjd];
 
           /* Avoid duplicates, empty cells and completely foreign pairs */
