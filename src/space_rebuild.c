@@ -560,7 +560,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   /* Assign each received part to its cell. */
   for (size_t k = nr_parts; k < s->nr_parts; k++) {
     const struct part *const p = &s->parts[k];
-    h_index[k] = cell_getid_pos(s, p->x[0], p->x[1], p->x[2]);
+    h_index[k] = cell_getid_from_pos(s, p->x[0], p->x[1], p->x[2]);
     cell_part_counts[h_index[k]]++;
 #ifdef SWIFT_DEBUG_CHECKS
     if (cells_top[h_index[k]].nodeID != local_nodeID)
@@ -573,7 +573,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   /* Assign each received spart to its cell. */
   for (size_t k = nr_sparts; k < s->nr_sparts; k++) {
     const struct spart *const sp = &s->sparts[k];
-    s_index[k] = cell_getid_pos(s, sp->x[0], sp->x[1], sp->x[2]);
+    s_index[k] = cell_getid_from_pos(s, sp->x[0], sp->x[1], sp->x[2]);
     cell_spart_counts[s_index[k]]++;
 #ifdef SWIFT_DEBUG_CHECKS
     if (cells_top[s_index[k]].nodeID != local_nodeID)
@@ -586,7 +586,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   /* Assign each received bpart to its cell. */
   for (size_t k = nr_bparts; k < s->nr_bparts; k++) {
     const struct bpart *const bp = &s->bparts[k];
-    b_index[k] = cell_getid_pos(s, bp->x[0], bp->x[1], bp->x[2]);
+    b_index[k] = cell_getid_from_pos(s, bp->x[0], bp->x[1], bp->x[2]);
     cell_bpart_counts[b_index[k]]++;
 #ifdef SWIFT_DEBUG_CHECKS
     if (cells_top[b_index[k]].nodeID != local_nodeID)
@@ -620,7 +620,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
       error("Inhibited particle sorted into a cell!");
 
     /* New cell index */
-    const int new_ind = cell_getid_pos(s, p->x[0], p->x[1], p->x[2]);
+    const int new_ind = cell_getid_from_pos(s, p->x[0], p->x[1], p->x[2]);
 
     /* New cell of this part */
     const struct cell *c = &s->cells_top[new_ind];
@@ -648,7 +648,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
       error("Inhibited particle sorted into a cell!");
 
     /* New cell index */
-    const int new_sind = cell_getid_pos(s, sp->x[0], sp->x[1], sp->x[2]);
+    const int new_sind = cell_getid_from_pos(s, sp->x[0], sp->x[1], sp->x[2]);
 
     /* New cell of this spart */
     const struct cell *c = &s->cells_top[new_sind];
@@ -676,7 +676,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
       error("Inhibited particle sorted into a cell!");
 
     /* New cell index */
-    const int new_bind = cell_getid_pos(s, bp->x[0], bp->x[1], bp->x[2]);
+    const int new_bind = cell_getid_from_pos(s, bp->x[0], bp->x[1], bp->x[2]);
 
     /* New cell of this bpart */
     const struct cell *c = &s->cells_top[new_bind];
@@ -704,7 +704,8 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
       error("Inhibited particle sorted into a cell!");
 
     /* New cell index */
-    const int new_bind = cell_getid_pos(s, sink->x[0], sink->x[1], sink->x[2]);
+    const int new_bind =
+        cell_getid_from_pos(s, sink->x[0], sink->x[1], sink->x[2]);
 
     /* New cell of this sink */
     const struct cell *c = &s->cells_top[new_bind];
@@ -796,7 +797,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   /* Assign each received gpart to its cell. */
   for (size_t k = nr_gparts; k < s->nr_gparts; k++) {
     const struct gpart *const p = &s->gparts[k];
-    g_index[k] = cell_getid_pos(s, p->x[0], p->x[1], p->x[2]);
+    g_index[k] = cell_getid_from_pos(s, p->x[0], p->x[1], p->x[2]);
     cell_gpart_counts[g_index[k]]++;
 #ifdef SWIFT_DEBUG_CHECKS
     if (cells_top[g_index[k]].nodeID != s->e->nodeID)
@@ -834,7 +835,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
       error("Inhibited particle sorted into a cell!");
 
     /* New cell index */
-    const int new_gind = cell_getid_pos(s, gp->x[0], gp->x[1], gp->x[2]);
+    const int new_gind = cell_getid_from_pos(s, gp->x[0], gp->x[1], gp->x[2]);
 
     /* New cell of this gpart */
     const struct cell *c = &s->cells_top[new_gind];
@@ -845,7 +846,11 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
     if (gp->x[0] < c->loc[0] || gp->x[0] > c->loc[0] + c->width[0] ||
         gp->x[1] < c->loc[1] || gp->x[1] > c->loc[1] + c->width[1] ||
         gp->x[2] < c->loc[2] || gp->x[2] > c->loc[2] + c->width[2])
-      error("gpart not sorted into the right top-level cell!");
+      error(
+          "gpart not sorted into the right top-level cell! "
+          "(gp->x=[%f, %f, %f] c->loc=[%f, %f, %f] c->width[%f, %f, %f])",
+          gp->x[0], gp->x[1], gp->x[2], c->loc[0], c->loc[1], c->loc[2],
+          c->width[0], c->width[1], c->width[2]);
   }
 #endif /* SWIFT_DEBUG_CHECKS */
 
@@ -874,6 +879,11 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
                       verbose);
 #endif
 
+  /* Define variables to count particles in cell types */
+  int bkg_cell_particles = 0;
+  int buffer_cell_particles = 0;
+  int zoom_cell_particles = 0;
+
   /* Hook the cells up to the parts. Make list of local and non-empty cells */
   const ticks tic3 = getticks();
   struct part *finger = s->parts;
@@ -885,6 +895,14 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   s->nr_cells_with_particles = 0;
   s->nr_local_cells_with_particles = 0;
   s->nr_local_cells = 0;
+  if (s->with_zoom_region) {
+    s->zoom_props->nr_local_zoom_cells = 0;
+    s->zoom_props->nr_local_bkg_cells = 0;
+    s->zoom_props->nr_local_buffer_cells = 0;
+    s->zoom_props->nr_local_zoom_cells_with_particles = 0;
+    s->zoom_props->nr_local_bkg_cells_with_particles = 0;
+    s->zoom_props->nr_local_buffer_cells_with_particles = 0;
+  }
 
   for (int k = 0; k < s->nr_cells; k++) {
     struct cell *restrict c = &cells_top[k];
@@ -896,7 +914,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
     c->black_holes.ti_old_part = ti_current;
 
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
-    cell_assign_top_level_cell_index(c, s->cdim, s->dim, s->iwidth);
+    cell_assign_top_level_cell_index(c, s);
 #endif
 
     const int is_local = (c->nodeID == engine_rank);
@@ -922,6 +940,28 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
       c->sinks.count_total = c->sinks.count + space_extra_sinks;
       c->black_holes.count_total = c->black_holes.count + space_extra_bparts;
 
+      /* Add the number of particles to the correct cell counter. */
+      if (s->with_zoom_region) {
+        if (c->type == zoom) {
+          zoom_cell_particles +=
+              (c->hydro.count + c->grav.count + c->stars.count +
+               c->sinks.count + c->black_holes.count);
+        } else if (c->type == buffer) {
+          buffer_cell_particles +=
+              (c->hydro.count + c->grav.count + c->stars.count +
+               c->sinks.count + c->black_holes.count);
+        } else if (c->type == bkg) {
+          bkg_cell_particles +=
+              (c->hydro.count + c->grav.count + c->stars.count +
+               c->sinks.count + c->black_holes.count);
+        } else {
+          error(
+              "When running with a zoom region, all cells should be of type "
+              "Zoom, Buffer or Background, not %s",
+              cellID_names[c->type]);
+        }
+      }
+
       finger = &finger[c->hydro.count_total];
       xfinger = &xfinger[c->hydro.count_total];
       gfinger = &gfinger[c->grav.count_total];
@@ -932,6 +972,22 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
       /* Add this cell to the list of local cells */
       s->local_cells_top[s->nr_local_cells] = k;
       s->nr_local_cells++;
+      if (s->with_zoom_region) {
+        if (c->type == zoom) {
+          s->zoom_props
+              ->local_zoom_cells_top[s->zoom_props->nr_local_zoom_cells] = k;
+          s->zoom_props->nr_local_zoom_cells++;
+        } else if (c->type == buffer) {
+          s->zoom_props
+              ->local_buffer_cells_top[s->zoom_props->nr_local_buffer_cells] =
+              k;
+          s->zoom_props->nr_local_buffer_cells++;
+        } else {
+          s->zoom_props
+              ->local_bkg_cells_top[s->zoom_props->nr_local_bkg_cells] = k;
+          s->zoom_props->nr_local_bkg_cells++;
+        }
+      }
     }
 
     if (is_local && has_particles) {
@@ -939,6 +995,21 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
       /* Add this cell to the list of non-empty cells */
       s->local_cells_with_particles_top[s->nr_local_cells_with_particles] = k;
       s->nr_local_cells_with_particles++;
+      if (s->with_zoom_region) {
+        if (c->type == zoom) {
+          s->zoom_props->local_zoom_cells_with_particles_top
+              [s->zoom_props->nr_local_zoom_cells_with_particles] = k;
+          s->zoom_props->nr_local_zoom_cells_with_particles++;
+        } else if (c->type == buffer) {
+          s->zoom_props->local_buffer_cells_with_particles_top
+              [s->zoom_props->nr_local_buffer_cells_with_particles] = k;
+          s->zoom_props->nr_local_buffer_cells_with_particles++;
+        } else {
+          s->zoom_props->local_bkg_cells_with_particles_top
+              [s->zoom_props->nr_local_bkg_cells_with_particles] = k;
+          s->zoom_props->nr_local_bkg_cells_with_particles++;
+        }
+      }
     }
   }
 
@@ -949,6 +1020,20 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
             s->nr_cells);
     message("hooking up cells took %.3f %s.",
             clocks_from_ticks(getticks() - tic3), clocks_getunit());
+    if (s->with_zoom_region) {
+      message("Have %d local particles in background cells",
+              bkg_cell_particles);
+      message("Have %d local particles in buffer cells", buffer_cell_particles);
+      message("Have %d local particles in zoom cells", zoom_cell_particles);
+      s->zoom_props->nr_bkg_cell_particles = bkg_cell_particles;
+      s->zoom_props->nr_zoom_cell_particles = zoom_cell_particles;
+
+      /* Lets report how many wanderers (baryons leaving the zoom region) have
+       * been converted to dark matter. */
+      if (s->with_hydro && s->zoom_props->nr_wanderers > 0)
+        message("Converted %zu wandering particles to dark matter thus far",
+                s->zoom_props->nr_wanderers);
+    }
   }
 
   /* Re-order the extra particles such that they are at the end of their cell's

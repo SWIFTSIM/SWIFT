@@ -200,6 +200,9 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->sinks.ti_end_min = -1;
     c->stars.ti_end_min = -1;
     c->black_holes.ti_end_min = -1;
+    c->void_parent = NULL;
+    c->type = c->type;       /* Type needs to be maintained on recycle. */
+    c->subtype = c->subtype; /* Subtype needs to be maintained on recycle. */
     c->rt.rt_in = NULL;
     c->rt.rt_ghost1 = NULL;
     c->rt.rt_gradient = NULL;

@@ -46,15 +46,23 @@
  */
 void zoom_space_regrid(struct space *s, int verbose) {
 
+  const ticks tic = getticks();
+
   const size_t nr_parts = s->nr_parts;
   const size_t nr_sparts = s->nr_sparts;
   const size_t nr_bparts = s->nr_bparts;
   const size_t nr_sinks = s->nr_sinks;
-  const ticks tic = getticks();
   const integertime_t ti_current = (s->e != NULL) ? s->e->ti_current : 0;
 
   /* Extract the zoom properties. */
   struct zoom_region_properties *zoom_props = s->zoom_props;
+
+  /* If we don't have cells yet then we need to initialise the zoom
+   * region properties (if we do have cells and the cdim needs to be changed
+   * this is called below to modify the zoom region). */
+  if (s->cells_top == NULL) {
+    zoom_region_init(s, verbose);
+  }
 
   /* Run through the zoom cells and get the current h_max. */
   const double zoom_cell_min = zoom_props->cell_min;
@@ -265,29 +273,19 @@ void zoom_space_regrid(struct space *s, int verbose) {
                  s->local_cells_with_particles_top);
       swift_free("cells_top", s->cells_top);
       swift_free("multipoles_top", s->multipoles_top);
-    }
 
-    /* Firstly calculate the region geometry. */
-    zoom_region_init(s, verbose);
+      /* Setting the new zoom cdim. */
+      for (int ijk = 0; ijk < 3; ijk++) {
+        s->zoom_props->cdim[ijk] = zoom_cdim[ijk];
+      }
+
+      /* Calculate the region geometry. */
+      zoom_region_init(s, verbose);
+    }
 
     /* Also free the task arrays, these will be regenerated and we can use the
      * memory while copying the particle arrays. */
     if (s->e != NULL) scheduler_free_tasks(&s->e->sched);
-
-    /* Setting the new zoom cdim. */
-    for (int ijk = 0; ijk < 3; ijk++) {
-      s->zoom_props->cdim[ijk] = zoom_cdim[ijk];
-    }
-
-    /* NOTE: strictly we could call all the machinery to redefine the bounds
-     * of the zoom region based on the current particle distribution. This
-     * would involve splitting off the param file parsing from the grid
-     * propertiy calculation in zoom_init.c. Not a big ask but this can be
-     * done in a future when all the ground work is in place to be able to
-     * effectively test the benefit of redefining the zoom region as a whole.
-     * It would also be nice to derive a cheap check for whether the shape of
-     * the particle region itself is enough to require a regrid down the
-     * line. */
 
     /* Allocate the highest level of cells. */
     s->tot_cells = s->nr_cells =

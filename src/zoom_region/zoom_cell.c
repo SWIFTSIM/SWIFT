@@ -25,6 +25,7 @@
 
 /* Local includes */
 #include "cell.h"
+#include "multipole.h"
 #include "space.h"
 #include "zoom_cell.h"
 
@@ -345,25 +346,41 @@ static void debug_cell_type(struct space *s) {
 
     /* Loop over natural cells and ensure the cell boundaries and buffer
      * boundaries line up. */
-    int found_i = 0;
-    int found_j = 0;
-    int found_k = 0;
+    int found_i_low = 0;
+    int found_j_low = 0;
+    int found_k_low = 0;
+    int found_i_up = 0;
+    int found_j_up = 0;
+    int found_k_up = 0;
     for (int i = 0; i < s->cdim[0]; i++) {
       for (int j = 0; j < s->cdim[1]; j++) {
         for (int k = 0; k < s->cdim[2]; k++) {
           const size_t cid = cell_getid(s->cdim, i, j, k) + bkg_cell_offset;
 
-          if (cells[cid].loc[0] == s->zoom_props->buffer_bounds[0]) found_i = 1;
+          if (cells[cid].loc[0] == s->zoom_props->buffer_lower_bounds[0])
+            found_i_low = 1;
 
-          if (cells[cid].loc[1] == s->zoom_props->buffer_bounds[2]) found_j = 1;
+          if (cells[cid].loc[1] == s->zoom_props->buffer_lower_bounds[1])
+            found_j_low = 1;
 
-          if (cells[cid].loc[2] == s->zoom_props->buffer_bounds[4]) found_k = 1;
+          if (cells[cid].loc[2] == s->zoom_props->buffer_lower_bounds[2])
+            found_k_low = 1;
+
+          if (cells[cid].loc[0] == s->zoom_props->buffer_upper_bounds[0])
+            found_i_up = 1;
+
+          if (cells[cid].loc[1] == s->zoom_props->buffer_upper_bounds[1])
+            found_j_up = 1;
+
+          if (cells[cid].loc[2] == s->zoom_props->buffer_upper_bounds[2])
+            found_k_up = 1;
         }
       }
     }
 
     /* Report if we didn't find matching boundaries. */
-    if (!found_i || !found_j || !found_k)
+    if (!found_i_low || !found_j_low || !found_k_low || !found_i_up ||
+        !found_j_up || !found_k_up)
       error("The background cell and buffer region edges don't match!");
   }
 }
@@ -387,6 +404,8 @@ static void debug_cell_type(struct space *s) {
  */
 void zoom_construct_tl_cells(struct space *s, const integertime_t ti_current,
                              int verbose) {
+
+  const ticks tic = getticks();
 
   /* Get the zoom properties */
   struct zoom_region_properties *zoom_props = s->zoom_props;
@@ -594,4 +613,157 @@ void zoom_construct_tl_cells(struct space *s, const integertime_t ti_current,
   /* Lets check all the cells are in the right place with the correct widths */
   debug_cell_type(s);
 #endif
+
+  if (verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
+}
+
+/**
+ * @brief Link the zoom cells to the void cells.
+ *
+ * The leaves of the void cell hierarchy are the zoom cells. This function
+ * sets the progeny of the highest res void cell to be the zoom cells it
+ * contains.
+ *
+ * NOTE: The void cells with zoom progeny are not treated as split cells
+ * since they are linked into the top level "progeny". We don't want to
+ * accidentally treat them as split cells and recurse from void cells straight
+ * through to the zoom cells unless explictly desired.
+ *
+ * @param s The space.
+ * @param c The void cell progeny to link
+ */
+void link_zoom_to_void(struct space *s, struct cell *c) {
+
+  /* We need to ensure this bottom level isn't treated like a
+   * normal split cell since it's linked into top level "progeny". */
+  c->split = 0;
+
+  /* Loop over the 8 progeny cells which are now the zoom cells. */
+  for (int k = 0; k < 8; k++) {
+
+    /* Establish the location of the fake progeny cell. */
+    double zoom_loc[3] = {c->loc[0] + s->zoom_props->width[0] / 2,
+                          c->loc[1] + s->zoom_props->width[1] / 2,
+                          c->loc[2] + s->zoom_props->width[2] / 2};
+    if (k & 4) zoom_loc[0] += s->zoom_props->width[0];
+    if (k & 2) zoom_loc[1] += s->zoom_props->width[1];
+    if (k & 1) zoom_loc[2] += s->zoom_props->width[2];
+
+    /* Which zoom cell are we in? */
+    int cid = cell_getid_from_pos(s, zoom_loc[0], zoom_loc[1], zoom_loc[2]);
+
+    /* Get the zoom cell. */
+    struct cell *zoom_cell = &s->cells_top[cid];
+
+    /* Link this zoom cell into the void cell hierarchy. */
+    c->progeny[k] = zoom_cell;
+
+    /* Flag this void cell "progeny" as the zoom cell's void cell parent. */
+    zoom_cell->void_parent = c;
+  }
+
+  /* Interact the zoom cell multipoles with this cell. */
+  if (s->with_self_gravity) {
+
+    /* Reset everything */
+    gravity_reset(c->grav.multipole);
+
+    /* Compute CoM and bulk velocity from all progenies */
+    double CoM[3] = {0., 0., 0.};
+    double vel[3] = {0., 0., 0.};
+    float max_delta_vel[3] = {0.f, 0.f, 0.f};
+    float min_delta_vel[3] = {0.f, 0.f, 0.f};
+    double mass = 0.;
+
+    for (int k = 0; k < 8; ++k) {
+      if (c->progeny[k] != NULL) {
+        const struct gravity_tensors *m = c->progeny[k]->grav.multipole;
+
+        mass += m->m_pole.M_000;
+
+        CoM[0] += m->CoM[0] * m->m_pole.M_000;
+        CoM[1] += m->CoM[1] * m->m_pole.M_000;
+        CoM[2] += m->CoM[2] * m->m_pole.M_000;
+
+        vel[0] += m->m_pole.vel[0] * m->m_pole.M_000;
+        vel[1] += m->m_pole.vel[1] * m->m_pole.M_000;
+        vel[2] += m->m_pole.vel[2] * m->m_pole.M_000;
+
+        max_delta_vel[0] = max(m->m_pole.max_delta_vel[0], max_delta_vel[0]);
+        max_delta_vel[1] = max(m->m_pole.max_delta_vel[1], max_delta_vel[1]);
+        max_delta_vel[2] = max(m->m_pole.max_delta_vel[2], max_delta_vel[2]);
+
+        min_delta_vel[0] = min(m->m_pole.min_delta_vel[0], min_delta_vel[0]);
+        min_delta_vel[1] = min(m->m_pole.min_delta_vel[1], min_delta_vel[1]);
+        min_delta_vel[2] = min(m->m_pole.min_delta_vel[2], min_delta_vel[2]);
+      }
+    }
+
+    /* Final operation on the CoM and bulk velocity */
+    const double inv_mass = 1. / mass;
+    c->grav.multipole->CoM[0] = CoM[0] * inv_mass;
+    c->grav.multipole->CoM[1] = CoM[1] * inv_mass;
+    c->grav.multipole->CoM[2] = CoM[2] * inv_mass;
+    c->grav.multipole->m_pole.vel[0] = vel[0] * inv_mass;
+    c->grav.multipole->m_pole.vel[1] = vel[1] * inv_mass;
+    c->grav.multipole->m_pole.vel[2] = vel[2] * inv_mass;
+
+    /* Min max velocity along each axis */
+    c->grav.multipole->m_pole.max_delta_vel[0] = max_delta_vel[0];
+    c->grav.multipole->m_pole.max_delta_vel[1] = max_delta_vel[1];
+    c->grav.multipole->m_pole.max_delta_vel[2] = max_delta_vel[2];
+    c->grav.multipole->m_pole.min_delta_vel[0] = min_delta_vel[0];
+    c->grav.multipole->m_pole.min_delta_vel[1] = min_delta_vel[1];
+    c->grav.multipole->m_pole.min_delta_vel[2] = min_delta_vel[2];
+
+    /* Now shift progeny multipoles and add them up */
+    struct multipole temp;
+    double r_max = 0.;
+    for (int k = 0; k < 8; ++k) {
+      if (c->progeny[k] != NULL) {
+        const struct cell *cp = c->progeny[k];
+        const struct multipole *m = &cp->grav.multipole->m_pole;
+
+        /* Contribution to multipole */
+        gravity_M2M(&temp, m, c->grav.multipole->CoM, cp->grav.multipole->CoM);
+        gravity_multipole_add(&c->grav.multipole->m_pole, &temp);
+
+        /* Upper limit of max CoM<->gpart distance */
+        const double dx =
+            c->grav.multipole->CoM[0] - cp->grav.multipole->CoM[0];
+        const double dy =
+            c->grav.multipole->CoM[1] - cp->grav.multipole->CoM[1];
+        const double dz =
+            c->grav.multipole->CoM[2] - cp->grav.multipole->CoM[2];
+        const double r2 = dx * dx + dy * dy + dz * dz;
+        r_max = max(r_max, cp->grav.multipole->r_max + sqrt(r2));
+      }
+    }
+
+    /* Alternative upper limit of max CoM<->gpart distance */
+    const double dx = c->grav.multipole->CoM[0] > c->loc[0] + c->width[0] / 2.
+                          ? c->grav.multipole->CoM[0] - c->loc[0]
+                          : c->loc[0] + c->width[0] - c->grav.multipole->CoM[0];
+    const double dy = c->grav.multipole->CoM[1] > c->loc[1] + c->width[1] / 2.
+                          ? c->grav.multipole->CoM[1] - c->loc[1]
+                          : c->loc[1] + c->width[1] - c->grav.multipole->CoM[1];
+    const double dz = c->grav.multipole->CoM[2] > c->loc[2] + c->width[2] / 2.
+                          ? c->grav.multipole->CoM[2] - c->loc[2]
+                          : c->loc[2] + c->width[2] - c->grav.multipole->CoM[2];
+
+    /* Take minimum of both limits */
+    c->grav.multipole->r_max = min(r_max, sqrt(dx * dx + dy * dy + dz * dz));
+
+    /* Store the value at rebuild time */
+    c->grav.multipole->r_max_rebuild = c->grav.multipole->r_max;
+    c->grav.multipole->CoM_rebuild[0] = c->grav.multipole->CoM[0];
+    c->grav.multipole->CoM_rebuild[1] = c->grav.multipole->CoM[1];
+    c->grav.multipole->CoM_rebuild[2] = c->grav.multipole->CoM[2];
+
+    /* Compute the multipole power */
+    gravity_multipole_compute_power(&c->grav.multipole->m_pole);
+
+  } /* Deal with gravity */
 }

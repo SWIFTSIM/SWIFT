@@ -21,11 +21,15 @@
 #define SWIFT_ZOOM_CELL_H
 
 /* Local includes */
+#include "cell.h"
 #include "space.h"
 #include "timeline.h"
 
 /* Zoom specific cell_getid to handle different levels. */
 void zoom_construct_tl_cells(struct space *s, const integertime_t ti_current,
                              int verbose);
+
+/* Link zoom leaves into void hierarchy. */
+void link_zoom_to_void(struct space *s, struct cell *c);
 
 #endif /* SWIFT_ZOOM_CELL_H */
