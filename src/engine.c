@@ -545,6 +545,12 @@ void engine_exchange_top_multipoles(struct engine *e) {
 
   /* Let's check that what we received makes sense */
   for (int i = 0; i < e->s->nr_cells; ++i) {
+
+    /* Skip the void cells if running with a zoom region, avoids double
+     * counting zoom cells. */
+    if (e->s->with_zoom_region)
+      if (e->s->cells_top[i].subtype == void_cell) continue;
+
     const struct gravity_tensors *m = &e->s->multipoles_top[i];
     counter += m->m_pole.num_gpart;
     if (m->m_pole.num_gpart < 0) {
@@ -1329,6 +1335,12 @@ void engine_rebuild(struct engine *e, const int repartitioned,
     long long counter = 0;
 
     for (int i = 0; i < e->s->nr_cells; ++i) {
+
+      /* Skip the void cells if running with a zoom region, avoids double
+       * counting zoom cells. */
+      if (e->s->with_zoom_region)
+        if (e->s->cells_top[i].subtype == void_cell) continue;
+
       const struct gravity_tensors *m = &e->s->multipoles_top[i];
       counter += m->m_pole.num_gpart;
     }
