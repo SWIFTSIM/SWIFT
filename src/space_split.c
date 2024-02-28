@@ -331,9 +331,11 @@ void space_split_recursive(struct space *s, struct cell *c,
         c->progeny[k] = NULL;
 
       } else if (cp->subtype == void_cell &&
-                 (cp->width[0] / 2) == s->zoom_props->width[0]) {
+                 cp->depth == s->zoom_props->zoom_cell_depth - 1) {
 
-        /* The progeny of this progeny are the zoom cells. */
+        /* (When running with a zoom region only) We have a void cell
+         * at the level above the zoom cells. We now need to link the
+         * zoom cells into the hierarchy. */
         link_zoom_to_void(s, cp);
 
       } else {
@@ -490,10 +492,16 @@ void space_split_recursive(struct space *s, struct cell *c,
       /* Compute the multipole power */
       gravity_multipole_compute_power(&c->grav.multipole->m_pole);
 
+#ifdef SWIFT_DEBUG_CHECKS
+      /* Double check we have correctly assigned the multipole */
+      if (c->grav.multipole->m_pole.num_gpart == 0 && c->grav.count > 0)
+        error("We have a multipole with no particles but the cell does!!");
+#endif
+
     } /* Deal with gravity */
   }   /* Split or let it be? */
 
-  /* Otherwise, collect the data from the particles this cell. */
+  /* Otherwise, collect the data from the particles in this cell. */
   else {
 
     /* Clear the progeny. */
