@@ -940,6 +940,8 @@ __attribute__((always_inline)) INLINE static int cell_is_empty(
  * @param cj The second #cell.
  * @param periodic Are we using periodic BCs?
  * @param dim The dimensions of the simulation volume
+ *
+ * @return The square of the minimal distance between the two cells.
  */
 __attribute__((always_inline)) INLINE static double cell_min_dist2_same_size(
     const struct cell *restrict ci, const struct cell *restrict cj,
@@ -994,6 +996,93 @@ __attribute__((always_inline)) INLINE static double cell_min_dist2_same_size(
                            fabs(ciz_max - cjz_min), fabs(ciz_max - cjz_max));
 
     return dx * dx + dy * dy + dz * dz;
+  }
+}
+
+/**
+ * @brief Minimum distance between two cells with different sizes.
+ *
+ * @param ci The first #cell.
+ * @param cj The second #cell.
+ * @param periodic Account for periodicity?
+ * @param dim The boxsize.
+ *
+ * @return The square of the minimal distance between the two cells.
+ */
+__attribute__((always_inline)) INLINE static double cell_min_dist2_diff_size(
+    const struct cell *restrict ci, const struct cell *restrict cj,
+    int periodic, const double dim[3]) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (ci->width[0] == cj->width[0]) error("x cells of same size!");
+  if (ci->width[1] == cj->width[1]) error("y cells of same size!");
+  if (ci->width[2] == cj->width[2]) error("z cells of same size!");
+#endif
+
+  /* We need to check if we need to consider periodicity since only
+   * background cells are periodic. */
+  if (ci->type == bkg || cj->type == bkg) {
+    periodic = periodic;
+  } else {
+    periodic = 0;
+  }
+
+  /* Get the cell centres and diagonals. */
+  const double cix = ci->loc[0] + ci->width[0] / 2.;
+  const double ciy = ci->loc[1] + ci->width[1] / 2.;
+  const double ciz = ci->loc[2] + ci->width[2] / 2.;
+  const double cjx = cj->loc[0] + cj->width[0] / 2.;
+  const double cjy = cj->loc[1] + cj->width[1] / 2.;
+  const double cjz = cj->loc[2] + cj->width[2] / 2.;
+  const double diag_ci2 = ci->width[0] * ci->width[0] +
+                          ci->width[1] * ci->width[1] +
+                          ci->width[2] * ci->width[2];
+  const double diag_cj2 = cj->width[0] * cj->width[0] +
+                          cj->width[1] * cj->width[1] +
+                          cj->width[2] * cj->width[2];
+
+  /* Get the distance between the cells */
+  double dx = cix - cjx;
+  double dy = ciy - cjy;
+  double dz = ciz - cjz;
+
+  /* Apply BC */
+  if (periodic) {
+    dx = nearest(dx, dim[0]);
+    dy = nearest(dy, dim[1]);
+    dz = nearest(dz, dim[2]);
+  }
+
+  /* Compute distance without diagonals. */
+  const double r2 = dx * dx + dy * dy + dz * dz;
+
+  /* Return the minimal distance between any 2 particles in the two cells by
+   * including the diagonals. */
+  return r2 - (diag_ci2 / 2. + diag_cj2 / 2.);
+}
+
+/**
+ * @brief Minimum distance between two cells.
+ *
+ * Generic wrapper, used when we don't know if the TL cells are the same size
+ * or not at time of calling.
+ *
+ * @param ci The first #cell.
+ * @param cj The second #cell.
+ * @param periodic Account for periodicity?
+ * @param dim The boxsize.
+ *
+ * @return The square of the minimal distance between the two cells.
+ */
+__attribute__((always_inline)) INLINE static double cell_min_dist2(
+    const struct cell *restrict ci, const struct cell *restrict cj,
+    int periodic, const double dim[3]) {
+
+  /* Decide which distance function we should call based on widths. */
+  if (ci->width[0] == cj->width[0]) {
+    return cell_min_dist2_same_size(ci, cj, periodic, dim);
+  } else {
+    return cell_min_dist2_diff_size(ci, cj, periodic, dim);
   }
 }
 
