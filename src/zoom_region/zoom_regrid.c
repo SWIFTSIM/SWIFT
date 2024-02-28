@@ -46,15 +46,23 @@
  */
 void zoom_space_regrid(struct space *s, int verbose) {
 
+  const ticks tic = getticks();
+
   const size_t nr_parts = s->nr_parts;
   const size_t nr_sparts = s->nr_sparts;
   const size_t nr_bparts = s->nr_bparts;
   const size_t nr_sinks = s->nr_sinks;
-  const ticks tic = getticks();
   const integertime_t ti_current = (s->e != NULL) ? s->e->ti_current : 0;
 
   /* Extract the zoom properties. */
   struct zoom_region_properties *zoom_props = s->zoom_props;
+
+  /* If we don't have cells yet then we need to initialise the zoom
+   * region properties (if we do have cells and the cdim needs to be changed
+   * this is called below to modify the zoom region). */
+  if (s->cells_top == NULL) {
+    zoom_region_init(s, verbose);
+  }
 
   /* Run through the zoom cells and get the current h_max. */
   const double zoom_cell_min = zoom_props->cell_min;
@@ -270,10 +278,10 @@ void zoom_space_regrid(struct space *s, int verbose) {
       for (int ijk = 0; ijk < 3; ijk++) {
         s->zoom_props->cdim[ijk] = zoom_cdim[ijk];
       }
-    }
 
-    /* Calculate the region geometry. */
-    zoom_region_init(s, verbose);
+      /* Calculate the region geometry. */
+      zoom_region_init(s, verbose);
+    }
 
     /* Also free the task arrays, these will be regenerated and we can use the
      * memory while copying the particle arrays. */
