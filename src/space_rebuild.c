@@ -850,7 +850,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
           "gpart not sorted into the right top-level cell! "
           "(gp->x=[%f, %f, %f] c->loc=[%f, %f, %f] c->width[%f, %f, %f])",
           gp->x[0], gp->x[1], gp->x[2], c->loc[0], c->loc[1], c->loc[2],
-          c->width[0], c->width[1], c->width[2]);)");
+          c->width[0], c->width[1], c->width[2]);
   }
 #endif /* SWIFT_DEBUG_CHECKS */
 
