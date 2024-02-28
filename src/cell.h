@@ -847,7 +847,8 @@ __attribute__((always_inline)) INLINE int zoom_cell_getid(const struct space *s,
   const int bkg_k = z * s->iwidth[2];
 
   /* Which background cell is this? */
-  int cell_id = cell_getid(s->cdim, bkg_i, bkg_j, bkg_k) + bkg_cell_offset;
+  int cell_id =
+      cell_getid_offset(s->cdim, bkg_cell_offset, bkg_i, bkg_j, bkg_k);
 
   /* If this is a void cell we are in the zoom region. */
   if (s->cells_top[cell_id].subtype == void_cell) {
