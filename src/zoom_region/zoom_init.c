@@ -259,6 +259,9 @@ double zoom_get_cell_props_large_region(struct space *s, double ini_max_dim) {
     s->zoom_props->buffer_iwidth[i] = 0;
   }
 
+  /* Calculate the depth of a zoom cell in a void cell. */
+  s->zoom_props->zoom_cell_depth = log2(s->width[0] / s->zoom_props->width[0]);
+
   return max_dim;
 }
 
@@ -356,6 +359,10 @@ int zoom_get_cell_props_with_buffer_cells(struct space *s, double *max_dim,
     s->zoom_props->buffer_iwidth[i] = 1.0 / s->zoom_props->buffer_width[i];
   }
 
+  /* Calculate the depth of a zoom cell in a void cell. */
+  s->zoom_props->zoom_cell_depth =
+      log2(s->zoom_props->buffer_width[0] / s->zoom_props->width[0]);
+
   return ((*max_dim) < ini_dim);
 }
 
@@ -397,6 +404,9 @@ double zoom_get_cell_props_no_buffer_cells(struct space *s,
     s->zoom_props->buffer_width[i] = 0;
     s->zoom_props->buffer_iwidth[i] = 0;
   }
+
+  /* Calculate the depth of a zoom cell in a void cell. */
+  s->zoom_props->zoom_cell_depth = log2(s->width[0] / s->zoom_props->width[0]);
 
   return max_dim;
 }

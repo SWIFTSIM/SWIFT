@@ -419,6 +419,9 @@ struct zoom_region_properties {
   /*! Vector outlining the neighbour region lower boundaries. */
   double buffer_lower_bounds[3];
 
+  /*! The depth of the zoom cells within a void cell tree. */
+  int zoom_cell_depth;
+
   /*! Offset in the top level cell list background/natural cells start from. */
   int bkg_cell_offset;
 
