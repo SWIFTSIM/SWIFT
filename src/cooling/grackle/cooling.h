@@ -87,8 +87,9 @@ void cooling_post_init_part(const struct phys_const* phys_const,
  */
 INLINE static float cooling_get_subgrid_temperature(const struct part* p,
                                                     const struct xpart* xp) {
-  error("This cooling model does not use subgrid quantities!");
-  return -1.f;
+  return 1.e4;
+  // error("This cooling model does not use subgrid quantities!");
+  // return -1.f;
 }
 
 /**
@@ -101,8 +102,9 @@ INLINE static float cooling_get_subgrid_temperature(const struct part* p,
  */
 INLINE static float cooling_get_subgrid_density(const struct part* p,
                                                 const struct xpart* xp) {
-  error("This cooling model does not use subgrid quantities!");
-  return -1.f;
+  return p->rho;
+  // error("This cooling model does not use subgrid quantities!");
+  // return -1.f;
 }
 
 float cooling_get_radiated_energy(const struct xpart* restrict xp);

@@ -17,6 +17,8 @@ swift
 swift_mpi
 fof
 fof_mpi
+LOG
+github_token
 
 src/version_string.h
 swift*.tar.gz
@@ -406,3 +408,4 @@ black_formatting_env
 
 # vscode
 *.json
+doconfig.sh

@@ -31,6 +31,10 @@
 #include "./feedback/EAGLE_kinetic/feedback_debug.h"
 #elif defined(FEEDBACK_GEAR)
 #include "./feedback/GEAR/feedback_debug.h"
+#elif defined(FEEDBACK_SIMBA)
+#include "./feedback/SIMBA/feedback_debug.h"
+#elif defined(FEEDBACK_KIARA)
+#include "./feedback/KIARA/feedback_debug.h"
 #elif defined(FEEDBACK_AGORA)
 #include "./feedback/AGORA/feedback_debug.h"
 #else

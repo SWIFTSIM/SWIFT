@@ -274,11 +274,11 @@ __attribute__((always_inline)) INLINE static void hydro_get_drifted_velocities(
     const struct part *restrict p, const struct xpart *xp, float dt_kick_hydro,
     float dt_kick_grav, float v[3]) {
 
-  v[0] = xp->v_full[0] + p->a_hydro[0] * dt_kick_hydro +
+  v[0] = p->v_full[0] + p->a_hydro[0] * dt_kick_hydro +
          xp->a_grav[0] * dt_kick_grav;
-  v[1] = xp->v_full[1] + p->a_hydro[1] * dt_kick_hydro +
+  v[1] = p->v_full[1] + p->a_hydro[1] * dt_kick_hydro +
          xp->a_grav[1] * dt_kick_grav;
-  v[2] = xp->v_full[2] + p->a_hydro[2] * dt_kick_hydro +
+  v[2] = p->v_full[2] + p->a_hydro[2] * dt_kick_hydro +
          xp->a_grav[2] * dt_kick_grav;
 }
 
@@ -706,14 +706,23 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
     struct part *restrict p, struct xpart *restrict xp) {
 
   p->time_bin = 0;
-  xp->v_full[0] = p->v[0];
-  xp->v_full[1] = p->v[1];
-  xp->v_full[2] = p->v[2];
+  p->v_full[0] = p->v[0];
+  p->v_full[1] = p->v[1];
+  p->v_full[2] = p->v[2];
   xp->a_grav[0] = 0.f;
   xp->a_grav[1] = 0.f;
   xp->a_grav[2] = 0.f;
 
   hydro_init_part(p, NULL);
+
+  p->feedback_data.decoupling_delay_time = 0.f;
+  p->feedback_data.number_of_times_decoupled = 0;
+  p->feedback_data.cooling_shutoff_delay_time = 0.f;
+
+#ifdef WITH_FOF_GALAXIES
+  p->group_data.mass = 0.f;
+  p->group_data.stellar_mass = 0.f;
+#endif
 }
 
 /**

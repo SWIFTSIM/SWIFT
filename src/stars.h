@@ -35,6 +35,9 @@
 #elif defined(STARS_GEAR)
 #include "./stars/GEAR/stars.h"
 #include "./stars/GEAR/stars_iact.h"
+#elif defined(STARS_SIMBA)
+#include "./stars/SIMBA/stars.h"
+#include "./stars/SIMBA/stars_iact.h"
 #else
 #error "Invalid choice of star model"
 #endif

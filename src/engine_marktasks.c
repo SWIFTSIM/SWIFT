@@ -110,6 +110,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           scheduler_activate(s, t);
           cell_activate_drift_part(ci, s);
           if (with_timestep_limiter) cell_activate_limiter(ci, s);
+          /* Rennehan */
+          if (with_timestep_sync) cell_activate_sync_part(ci, s);
         }
       }
 
@@ -118,8 +120,12 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
                t_subtype == task_subtype_density) {
         if (ci_active_hydro) {
           scheduler_activate(s, t);
-          cell_activate_subcell_hydro_tasks(ci, NULL, s, with_timestep_limiter);
+          /* Rennehan */
+          cell_activate_subcell_hydro_tasks(ci, NULL, s, with_timestep_limiter, 
+                                            with_timestep_sync);
           if (with_timestep_limiter) cell_activate_limiter(ci, s);
+          /* Rennehan */
+          if (with_timestep_sync) cell_activate_sync_part(ci, s);
         }
       }
 
@@ -435,6 +441,13 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           if (cj_nodeID == nodeID && with_timestep_limiter)
             cell_activate_limiter(cj, s);
 
+          /* Rennehan */
+          /* And the sync */
+          if (ci_nodeID == nodeID && with_timestep_sync)
+            cell_activate_sync_part(ci, s);
+          if (cj_nodeID == nodeID && with_timestep_sync)
+            cell_activate_sync_part(cj, s);
+
           /* Check the sorts and activate them if needed. */
           cell_activate_hydro_sorts(ci, t->flags, s);
           cell_activate_hydro_sorts(cj, t->flags, s);
@@ -444,8 +457,10 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         /* Store current values of dx_max and h_max. */
         else if (t_type == task_type_sub_pair &&
                  t_subtype == task_subtype_density) {
+          /* Rennehan */
           cell_activate_subcell_hydro_tasks(t->ci, t->cj, s,
-                                            with_timestep_limiter);
+                                            with_timestep_limiter,
+                                            with_timestep_sync);
         }
       }
 

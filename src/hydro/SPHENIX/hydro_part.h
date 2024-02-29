@@ -111,6 +111,9 @@ struct part {
   /*! Particle predicted velocity. */
   float v[3];
 
+  /*! Particle velocity for drift */
+  float v_full[3];
+
   /*! Particle acceleration. */
   float a_hydro[3];
 
@@ -135,6 +138,9 @@ struct part {
   /*! Particle density. */
   float rho;
 
+  /*! Particle density gradient */
+  float rho_gradient[3];
+  
   /* Store viscosity information in a separate struct. */
   struct {
 
@@ -234,9 +240,17 @@ struct part {
   /*! Additional data used by the feedback */
   struct feedback_part_data feedback_data;
 
+#ifdef WITH_FOF_GALAXIES
+  /*! Additional data used by the FoF */
+  struct group_data group_data;
+#endif
+
   /*! Black holes information (e.g. swallowing ID) */
   struct black_holes_part_data black_holes_data;
 
+  /* Additional data used by the SF routines */
+  struct star_formation_part_data sf_data;
+  
   /*! Sink information (e.g. swallowing ID) */
   struct sink_part_data sink_data;
 

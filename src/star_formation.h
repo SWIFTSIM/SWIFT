@@ -43,6 +43,12 @@
 #elif defined(STAR_FORMATION_GEAR)
 #define swift_star_formation_model_creates_stars 1
 #include "./star_formation/GEAR/star_formation.h"
+#elif defined(STAR_FORMATION_SIMBA)
+#define swift_star_formation_model_creates_stars 1
+#include "./star_formation/SIMBA/star_formation.h"
+#elif defined(STAR_FORMATION_KIARA)
+#define swift_star_formation_model_creates_stars 1
+#include "./star_formation/KIARA/star_formation.h"
 #else
 #error "Invalid choice of star formation law"
 #endif

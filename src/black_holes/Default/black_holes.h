@@ -56,6 +56,11 @@ __attribute__((always_inline)) INLINE static void black_holes_first_init_bpart(
     struct bpart* bp, const struct black_holes_props* props) {
 
   bp->time_bin = 0;
+
+#ifdef WITH_FOF_GALAXIES
+  bp->group_data.mass = 0.f;
+  bp->group_data.stellar_mass = 0.f;
+#endif
 }
 
 /**
@@ -346,6 +351,17 @@ INLINE static void black_holes_create_from_gas(
 
   /* First initialisation */
   black_holes_init_bpart(bp);
+}
+
+/**
+ * @brief Should this bh particle be doing any stars looping?
+ *
+ * @param bp The #bpart.
+ * @param e The #engine.
+ */
+__attribute__((always_inline)) INLINE static int bh_stars_loop_is_active(
+    const struct bpart* bp, const struct engine* e) {
+  return 0;
 }
 
 #endif /* SWIFT_DEFAULT_BLACK_HOLES_H */

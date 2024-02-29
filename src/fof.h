@@ -25,6 +25,7 @@
 /* Local headers */
 #include "align.h"
 #include "parser.h"
+#include "hydro.h"
 #include "part_type.h"
 
 /* Avoid cyclic inclusions */
@@ -35,12 +36,27 @@ struct engine;
 struct unit_system;
 struct phys_const;
 struct black_holes_props;
+struct hydro_props;
 struct cosmology;
 
 struct fof_props {
 
   /*! Whether we're doing periodic FoF calls to seed black holes. */
   int seed_black_holes_enabled;
+
+#ifdef WITH_FOF_GALAXIES
+  /*! Conversion between internal energy and temperature */
+  float u_to_temp_factor;
+
+  /*! Conversion between internal rho and n_H in H/cc units */
+  float rho_to_n_cgs;
+
+  /*! The temperature threshold for cold gas */
+  float cold_gas_temperature_threshold;
+
+  /*! The density threshold for cold gas in H/cc units */
+  float cold_gas_n_H_threshold_cgs;
+#endif
 
   /* ----------- Parameters of the FOF search ------- */
 
@@ -54,8 +70,8 @@ struct fof_props {
   /*! The square of the linking length. */
   double l_x2;
 
-  /*! The minimum halo mass for black hole seeding. */
-  double seed_halo_mass;
+  /*! The minimum host mass for black hole seeding. */
+  double seed_host_mass;
 
   /*! Minimal number of particles in a group */
   size_t min_group_size;
@@ -104,6 +120,14 @@ struct fof_props {
 
   /*! Mass of the group a given gpart belongs to. */
   double *group_mass;
+
+#ifdef WITH_FOF_GALAXIES
+  /*! Stellar mass of the group a given gpart belongs to. */
+  double *group_stellar_mass;
+
+  /*! Total star formation rate of the group a given gpart belongs to. */
+  double *group_sfr;
+#endif
 
   /*! Centre of mass of the group a given gpart belongs to. */
   double *group_centre_of_mass;
@@ -166,6 +190,10 @@ struct fof_final_index {
 struct fof_final_mass {
   size_t global_root;
   double group_mass;
+#ifdef WITH_FOF_GALAXIES
+  double group_stellar_mass;
+  double group_sfr;
+#endif
   long long final_group_size;
   double first_position[3];
   double centre_of_mass[3];
@@ -189,7 +217,7 @@ struct cell_pair_indices {
 /* Function prototypes. */
 void fof_init(struct fof_props *props, struct swift_params *params,
               const struct phys_const *phys_const, const struct unit_system *us,
-              const int stand_alone_fof);
+              const int stand_alone_fof, const struct hydro_props *hydro_props);
 void fof_create_mpi_types(void);
 void fof_allocate(const struct space *s, struct fof_props *props);
 void fof_compute_local_sizes(struct fof_props *props, struct space *s);
@@ -225,6 +253,21 @@ void rec_fof_attach_pair(const struct fof_props *props, const double dim[3],
                          const int cj_local);
 void fof_struct_dump(const struct fof_props *props, FILE *stream);
 void fof_struct_restore(struct fof_props *props, FILE *stream);
+#ifdef WITH_FOF_GALAXIES
+void fof_mark_part_as_grouppable(const struct part *p, 
+                                 const struct xpart *xp, 
+                                 const struct engine *e, 
+                                 const struct cosmology *cosmo,
+                                 const struct hydro_props *hydro_props,
+                                 const struct entropy_floor_properties 
+                                    *entropy_floor);
+void fof_mark_spart_as_grouppable(const struct spart *sp);
+int fof_gpart_is_grouppable(const struct gpart* gpart,
+                            const struct fof_props *props);
+void fof_store_group_info_in_bpart(struct bpart* bp, const struct gpart* gp);
+void fof_store_group_info_in_part(struct part* p, const struct gpart* gp);
+void fof_store_group_info_in_spart(struct spart* sp, const struct gpart* gp);
+#endif
 
 #ifdef WITH_MPI
 /* MPI data type for the particle transfers */

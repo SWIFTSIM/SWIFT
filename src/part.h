@@ -52,18 +52,23 @@ struct threadpool;
 #elif defined(MINIMAL_SPH)
 #include "./hydro/Minimal/hydro_part.h"
 #define hydro_need_extra_init_loop 0
+#define EXTRA_HYDRO_LOOP
 #elif defined(GADGET2_SPH)
 #include "./hydro/Gadget2/hydro_part.h"
 #define hydro_need_extra_init_loop 0
+#define EXTRA_HYDRO_LOOP
 #elif defined(HOPKINS_PE_SPH)
 #include "./hydro/PressureEntropy/hydro_part.h"
 #define hydro_need_extra_init_loop 1
+#define EXTRA_HYDRO_LOOP
 #elif defined(HOPKINS_PU_SPH)
 #include "./hydro/PressureEnergy/hydro_part.h"
 #define hydro_need_extra_init_loop 0
+#define EXTRA_HYDRO_LOOP
 #elif defined(HOPKINS_PU_SPH_MONAGHAN)
 #include "./hydro/PressureEnergyMorrisMonaghanAV/hydro_part.h"
 #define hydro_need_extra_init_loop 0
+#define EXTRA_HYDRO_LOOP
 #elif defined(PHANTOM_SPH)
 #include "./hydro/Phantom/hydro_part.h"
 #define EXTRA_HYDRO_LOOP
@@ -114,6 +119,8 @@ struct threadpool;
 #include "./stars/EAGLE/stars_part.h"
 #elif defined(STARS_GEAR)
 #include "./stars/GEAR/stars_part.h"
+#elif defined(STARS_SIMBA)
+#include "./stars/SIMBA/stars_part.h"
 #else
 #error "Invalid choice of star particle"
 #endif
@@ -123,6 +130,8 @@ struct threadpool;
 #include "./black_holes/Default/black_holes_part.h"
 #elif defined(BLACK_HOLES_EAGLE)
 #include "./black_holes/EAGLE/black_holes_part.h"
+#elif defined(BLACK_HOLES_SIMBA)
+#include "./black_holes/SIMBA/black_holes_part.h"
 #elif defined(BLACK_HOLES_SPIN_JET)
 #include "./black_holes/SPIN_JET/black_holes_part.h"
 #else

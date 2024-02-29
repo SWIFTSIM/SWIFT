@@ -52,7 +52,7 @@ __attribute__((always_inline)) INLINE static int star_formation_write_particles(
     struct io_props* list) {
 
   list[0] = io_make_output_field(
-      "StarFormationRates", FLOAT, 1, UNIT_CONV_SFR, 0.f, xparts, sf_data.SFR,
+      "StarFormationRates", FLOAT, 1, UNIT_CONV_SFR, 0.f, parts, sf_data.SFR,
       "If positive, star formation rates of the particles. If negative, stores "
       "the last time/scale-factor at which the gas particle was star-forming. "
       "If zero, the particle was never star-forming.");

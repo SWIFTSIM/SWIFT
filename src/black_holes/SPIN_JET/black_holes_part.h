@@ -25,6 +25,9 @@
 
 #include "black_holes_struct.h"
 #include "chemistry_struct.h"
+#ifdef WITH_FOF_GALAXIES
+#include "fof_struct.h"
+#endif
 #include "particle_splitting_struct.h"
 #include "rays_struct.h"
 #include "timeline.h"
@@ -344,6 +347,11 @@ struct bpart {
 
   /*! Black holes merger information (e.g. merging ID) */
   struct black_holes_bpart_data merger_data;
+
+#ifdef WITH_FOF_GALAXIES
+  /*! Additional data used by the FoF */
+  struct group_data group_data;
+#endif
 
   /*! Isotropic AGN feedback information */
   struct ray_data rays[spinjet_blackhole_number_of_rays];

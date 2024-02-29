@@ -53,9 +53,15 @@ void DOSELF1_BH(struct runner *r, struct cell *c, int timer) {
 
   const int bcount = c->black_holes.count;
   const int count = c->hydro.count;
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
+  const int scount = c->stars.count;
+#endif
   struct bpart *restrict bparts = c->black_holes.parts;
   struct part *restrict parts = c->hydro.parts;
   struct xpart *restrict xparts = c->hydro.xparts;
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
+  struct spart *restrict sparts = c->stars.parts;
+#endif
 
   /* Do we actually have any gas neighbours? */
   if (c->hydro.count != 0) {
@@ -74,6 +80,51 @@ void DOSELF1_BH(struct runner *r, struct cell *c, int timer) {
       const float bix[3] = {(float)(bi->x[0] - c->loc[0]),
                             (float)(bi->x[1] - c->loc[1]),
                             (float)(bi->x[2] - c->loc[2])};
+
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
+      /* Only do bh-stars loop if necessary for the model. */
+      if (bh_stars_loop_is_active(bi, e)) {
+        for (int sjd = 0; sjd < scount; sjd++) {
+          struct spart *restrict sj = &sparts[sjd];
+
+          /* Compute the pairwise distance. */
+          const float sjx[3] = {(float)(sj->x[0] - c->loc[0]),
+                                (float)(sj->x[1] - c->loc[1]),
+                                (float)(sj->x[2] - c->loc[2])};
+          const float dx[3] = {bix[0] - sjx[0], bix[1] - sjx[1],
+                               bix[2] - sjx[2]};
+          const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+
+          /* Star is within smoothing length of black hole */
+          if (r2 < hig2) {
+            runner_iact_nonsym_bh_stars_density(r2, dx, bi, sj);
+          }
+        }
+        /* TODO: One possible speed-up is just to flag the BH id
+         * that each star is associated with in the previous loop,
+         * and then just use that to loop instead of doing the distance
+         * calculation everytime.
+         */
+
+        /* Now that we have the angular momentum, find the bulge mass */
+        for (int sjd = 0; sjd < scount; sjd++) {
+          struct spart *restrict sj = &sparts[sjd];
+
+          /* Compute the pairwise distance. */
+          const float sjx[3] = {(float)(sj->x[0] - c->loc[0]),
+                                (float)(sj->x[1] - c->loc[1]),
+                                (float)(sj->x[2] - c->loc[2])};
+          const float dx[3] = {bix[0] - sjx[0], bix[1] - sjx[1],
+                               bix[2] - sjx[2]};
+          const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+
+          /* Star is within smoothing length of black hole */
+          if (r2 < hig2) {
+            runner_iact_nonsym_bh_stars_bulge(r2, dx, bi, sj);
+          }
+        }
+      }
+#endif
 
       /* Loop over the parts in cj. */
       for (int pjd = 0; pjd < count; pjd++) {
@@ -104,14 +155,14 @@ void DOSELF1_BH(struct runner *r, struct cell *c, int timer) {
         if (r2 < hig2) {
           IACT_BH_GAS(r2, dx, hi, hj, bi, pj, xpj, with_cosmology, cosmo,
                       e->gravity_properties, e->black_holes_properties,
-                      e->entropy_floor, ti_current, e->time);
+                      e->entropy_floor, ti_current, e->time, e->time_base);
 
           if (bi_is_local) {
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_SWALLOW)
             runner_iact_nonsym_bh_gas_repos(
                 r2, dx, hi, pj->h, bi, pj, xpj, with_cosmology, cosmo,
                 e->gravity_properties, e->black_holes_properties,
-                e->entropy_floor, ti_current, e->time);
+                e->entropy_floor, ti_current, e->time, e->time_base);
 #endif
           }
         }
@@ -214,9 +265,15 @@ void DO_NONSYM_PAIR1_BH_NAIVE(struct runner *r, struct cell *restrict ci,
 
   const int bcount_i = ci->black_holes.count;
   const int count_j = cj->hydro.count;
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
+  const int scount_j = cj->stars.count;
+#endif
   struct bpart *restrict bparts_i = ci->black_holes.parts;
   struct part *restrict parts_j = cj->hydro.parts;
   struct xpart *restrict xparts_j = cj->hydro.xparts;
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
+  struct spart *restrict sparts_j = cj->stars.parts;
+#endif
 
   /* Get the relative distance between the pairs, wrapping. */
   double shift[3] = {0.0, 0.0, 0.0};
@@ -244,6 +301,51 @@ void DO_NONSYM_PAIR1_BH_NAIVE(struct runner *r, struct cell *restrict ci,
       const float bix[3] = {(float)(bi->x[0] - (cj->loc[0] + shift[0])),
                             (float)(bi->x[1] - (cj->loc[1] + shift[1])),
                             (float)(bi->x[2] - (cj->loc[2] + shift[2]))};
+
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
+      /* Only do bh-stars loop if necessary for the model. */
+      if (bh_stars_loop_is_active(bi, e)) {
+        for (int sjd = 0; sjd < scount_j; sjd++) {
+          struct spart *restrict sj = &sparts_j[sjd];
+
+          /* Compute the pairwise distance. */
+          const float sjx[3] = {(float)(sj->x[0] - cj->loc[0]),
+                                (float)(sj->x[1] - cj->loc[1]),
+                                (float)(sj->x[2] - cj->loc[2])};
+          const float dx[3] = {bix[0] - sjx[0], bix[1] - sjx[1],
+                               bix[2] - sjx[2]};
+          const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+
+          /* Star is within smoothing length of black hole */
+          if (r2 < hig2) {
+            runner_iact_nonsym_bh_stars_density(r2, dx, bi, sj);
+          }
+        }
+        /* TODO: One possible speed-up is just to flag the BH id
+         * that each star is associated with in the previous loop,
+         * and then just use that to loop instead of doing the distance
+         * calculation everytime.
+         */
+
+        /* Now that we have the angular momentum, find the bulge mass */
+        for (int sjd = 0; sjd < scount_j; sjd++) {
+          struct spart *restrict sj = &sparts_j[sjd];
+
+          /* Compute the pairwise distance. */
+          const float sjx[3] = {(float)(sj->x[0] - cj->loc[0]),
+                                (float)(sj->x[1] - cj->loc[1]),
+                                (float)(sj->x[2] - cj->loc[2])};
+          const float dx[3] = {bix[0] - sjx[0], bix[1] - sjx[1],
+                               bix[2] - sjx[2]};
+          const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+
+          /* Star is within smoothing length of black hole */
+          if (r2 < hig2) {
+            runner_iact_nonsym_bh_stars_bulge(r2, dx, bi, sj);
+          }
+        }
+      }
+#endif
 
       /* Loop over the parts in cj. */
       for (int pjd = 0; pjd < count_j; pjd++) {
@@ -274,14 +376,14 @@ void DO_NONSYM_PAIR1_BH_NAIVE(struct runner *r, struct cell *restrict ci,
         if (r2 < hig2) {
           IACT_BH_GAS(r2, dx, hi, hj, bi, pj, xpj, with_cosmology, cosmo,
                       e->gravity_properties, e->black_holes_properties,
-                      e->entropy_floor, ti_current, e->time);
+                      e->entropy_floor, ti_current, e->time, e->time_base);
 
           if (bi_is_local) {
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_SWALLOW)
             runner_iact_nonsym_bh_gas_repos(
                 r2, dx, hi, hj, bi, pj, xpj, with_cosmology, cosmo,
                 e->gravity_properties, e->black_holes_properties,
-                e->entropy_floor, ti_current, e->time);
+                e->entropy_floor, ti_current, e->time, e->time_base);
 #endif
           }
         }
@@ -406,8 +508,14 @@ void DOPAIR1_SUBSET_BH_NAIVE(struct runner *r, struct cell *restrict ci,
   const int bi_is_local = ci->nodeID == e->nodeID;
 
   const int count_j = cj->hydro.count;
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
+  const int scount_j = cj->stars.count;
+#endif
   struct part *restrict parts_j = cj->hydro.parts;
   struct xpart *restrict xparts_j = cj->hydro.xparts;
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
+  struct spart *restrict sparts_j = cj->stars.parts;
+#endif
 
   /* Early abort? */
   if (count_j == 0) return;
@@ -427,6 +535,56 @@ void DOPAIR1_SUBSET_BH_NAIVE(struct runner *r, struct cell *restrict ci,
 #ifdef SWIFT_DEBUG_CHECKS
     if (!bpart_is_active(bi, e))
       error("Trying to correct smoothing length of inactive particle !");
+#endif
+
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
+    /* Only do bh-stars loop if necessary for the model. */
+    if (bh_stars_loop_is_active(bi, e)) {
+      for (int sjd = 0; sjd < scount_j; sjd++) {
+        struct spart *restrict sj = &sparts_j[sjd];
+
+        /* Compute the pairwise distance. */
+        const double sjx = sj->x[0];
+        const double sjy = sj->x[1];
+        const double sjz = sj->x[2];
+
+        /* Compute the pairwise distance. */
+        const float dx[3] = {(float)(bix - sjx), (float)(biy - sjy),
+                             (float)(biz - sjz)};
+        const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+
+        /* Star is within smoothing length of black hole */
+        if (r2 < hig2) {
+          runner_iact_nonsym_bh_stars_density(r2, dx, bi, sj);
+        }
+      }
+
+      /* TODO: One possible speed-up is just to flag the BH id
+       * that each star is associated with in the previous loop,
+       * and then just use that to loop instead of doing the distance
+       * calculation everytime.
+       */
+
+      /* Now that we have the angular momentum, find the bulge mass */
+      for (int sjd = 0; sjd < scount_j; sjd++) {
+        struct spart *restrict sj = &sparts_j[sjd];
+
+        /* Compute the pairwise distance. */
+        const double sjx = sj->x[0];
+        const double sjy = sj->x[1];
+        const double sjz = sj->x[2];
+
+        /* Compute the pairwise distance. */
+        const float dx[3] = {(float)(bix - sjx), (float)(biy - sjy),
+                             (float)(biz - sjz)};
+        const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+
+        /* Star is within smoothing length of black hole */
+        if (r2 < hig2) {
+          runner_iact_nonsym_bh_stars_bulge(r2, dx, bi, sj);
+        }
+      }
+    }
 #endif
 
     /* Loop over the parts in cj. */
@@ -458,13 +616,13 @@ void DOPAIR1_SUBSET_BH_NAIVE(struct runner *r, struct cell *restrict ci,
       if (r2 < hig2) {
         IACT_BH_GAS(r2, dx, hi, hj, bi, pj, xpj, with_cosmology, cosmo,
                     e->gravity_properties, e->black_holes_properties,
-                    e->entropy_floor, ti_current, e->time);
+                    e->entropy_floor, ti_current, e->time, e->time_base);
         if (bi_is_local) {
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_SWALLOW)
           runner_iact_nonsym_bh_gas_repos(
               r2, dx, hi, hj, bi, pj, xpj, with_cosmology, cosmo,
               e->gravity_properties, e->black_holes_properties,
-              e->entropy_floor, ti_current, e->time);
+              e->entropy_floor, ti_current, e->time, e->time_base);
 #endif
         }
       }
@@ -499,6 +657,10 @@ void DOSELF1_SUBSET_BH(struct runner *r, struct cell *restrict ci,
   const int count_i = ci->hydro.count;
   struct part *restrict parts_j = ci->hydro.parts;
   struct xpart *restrict xparts_j = ci->hydro.xparts;
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
+  const int scount_i = ci->stars.count;
+  struct spart *restrict sparts_j = ci->stars.parts;
+#endif
 
   /* Early abort? */
   if (count_i == 0) return;
@@ -516,6 +678,49 @@ void DOSELF1_SUBSET_BH(struct runner *r, struct cell *restrict ci,
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (!bpart_is_active(bi, e)) error("Inactive particle in subset function!");
+#endif
+
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
+    /* Only do bh-stars loop if necessary for the model. */
+    if (bh_stars_loop_is_active(bi, e)) {
+      for (int sjd = 0; sjd < scount_i; sjd++) {
+        struct spart *restrict sj = &sparts_j[sjd];
+
+        /* Compute the pairwise distance. */
+        const float sjx[3] = {(float)(sj->x[0] - ci->loc[0]),
+                              (float)(sj->x[1] - ci->loc[1]),
+                              (float)(sj->x[2] - ci->loc[2])};
+        const float dx[3] = {bix[0] - sjx[0], bix[1] - sjx[1], bix[2] - sjx[2]};
+        const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+
+        /* Star is within smoothing length of black hole */
+        if (r2 < hig2) {
+          runner_iact_nonsym_bh_stars_density(r2, dx, bi, sj);
+        }
+      }
+      /* TODO: One possible speed-up is just to flag the BH id
+       * that each star is associated with in the previous loop,
+       * and then just use that to loop instead of doing the distance
+       * calculation everytime.
+       */
+
+      /* Now that we have the angular momentum, find the bulge mass */
+      for (int sjd = 0; sjd < scount_i; sjd++) {
+        struct spart *restrict sj = &sparts_j[sjd];
+
+        /* Compute the pairwise distance. */
+        const float sjx[3] = {(float)(sj->x[0] - ci->loc[0]),
+                              (float)(sj->x[1] - ci->loc[1]),
+                              (float)(sj->x[2] - ci->loc[2])};
+        const float dx[3] = {bix[0] - sjx[0], bix[1] - sjx[1], bix[2] - sjx[2]};
+        const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+
+        /* Star is within smoothing length of black hole */
+        if (r2 < hig2) {
+          runner_iact_nonsym_bh_stars_bulge(r2, dx, bi, sj);
+        }
+      }
+    }
 #endif
 
     /* Loop over the parts in cj. */
@@ -545,14 +750,14 @@ void DOSELF1_SUBSET_BH(struct runner *r, struct cell *restrict ci,
       if (r2 < hig2) {
         IACT_BH_GAS(r2, dx, hi, pj->h, bi, pj, xpj, with_cosmology, cosmo,
                     e->gravity_properties, e->black_holes_properties,
-                    e->entropy_floor, ti_current, e->time);
+                    e->entropy_floor, ti_current, e->time, e->time_base);
 
         if (bi_is_local) {
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_SWALLOW)
           runner_iact_nonsym_bh_gas_repos(
               r2, dx, hi, pj->h, bi, pj, xpj, with_cosmology, cosmo,
               e->gravity_properties, e->black_holes_properties,
-              e->entropy_floor, ti_current, e->time);
+              e->entropy_floor, ti_current, e->time, e->time_base);
 #endif
         }
       }

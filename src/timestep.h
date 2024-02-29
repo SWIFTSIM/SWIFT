@@ -144,8 +144,11 @@ __attribute__((always_inline)) INLINE static integertime_t get_part_timestep(
     const struct engine *restrict e, const integertime_t new_dti_rt) {
 
   /* Compute the next timestep (hydro condition) */
-  const float new_dt_hydro =
+  float new_dt_hydro =
       hydro_compute_timestep(p, xp, e->hydro_properties, e->cosmology);
+
+  /* If decoupled, particle will not experience hydro force, so don't limit */
+  if (p->feedback_data.decoupling_delay_time > 0.f) new_dt_hydro = FLT_MAX;
 
   /* Compute the next timestep (MHD condition) */
   const float new_dt_mhd =

@@ -173,6 +173,11 @@ __attribute__((always_inline)) INLINE static void black_holes_first_init_bpart(
   bp->jet_direction[1] = bp->angular_momentum_direction[1];
   bp->jet_direction[2] = bp->angular_momentum_direction[2];
 
+#ifdef WITH_FOF_GALAXIES
+  bp->group_data.mass = 0.f;
+  bp->group_data.stellar_mass = 0.f;
+#endif
+
   black_holes_mark_bpart_as_not_swallowed(&bp->merger_data);
 }
 

@@ -67,7 +67,12 @@ __attribute__((always_inline)) INLINE static float stars_compute_age(
  */
 __attribute__((always_inline)) INLINE static void stars_first_init_spart(
     struct spart* sp, const struct stars_props* stars_properties,
-    const int with_cosmology, const double scale_factor, const double time) {}
+    const int with_cosmology, const double scale_factor, const double time) {
+#ifdef WITH_FOF_GALAXIES
+  sp->group_data.mass = 0.f;
+  sp->group_data.stellar_mass = 0.f;
+#endif
+}
 
 /**
  * @brief Prepares a s-particle for its interactions

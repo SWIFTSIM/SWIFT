@@ -35,10 +35,23 @@
  * @param p The #part to consider.
  * @param xp The #xpart to consider.
  * @param cosmo The #cosmology.
+ * @param with_cosmology Is this a cosmological simulation?
  */
 __attribute__((always_inline)) INLINE static void feedback_update_part(
     struct part* restrict p, struct xpart* restrict xp,
-    const struct engine* restrict e) {}
+    const struct engine* restrict e, const int with_cosmology) {}
+
+/**
+ * @brief Recouple wind particles.
+ *
+ * @param p The #part to consider.
+ * @param xp The #xpart to consider.
+ * @param e The #engine.
+ * @param with_cosmology Is this a cosmological simulation?
+ */
+__attribute__((always_inline)) INLINE static void feedback_recouple_part(
+    struct part* p, struct xpart* xp, const struct engine* e,
+    const int with_cosmology) {}
 
 /**
  * @brief Reset the gas particle-carried fields related to feedback at the
@@ -85,6 +98,18 @@ __attribute__((always_inline)) INLINE static int feedback_is_active(
     const struct spart* sp, const struct engine* e) {
 
   return 1;
+}
+
+/**
+ * @brief Should this particle be doing any DM looping?
+ *
+ * @param sp The #spart.
+ * @param e The #engine.
+ */
+__attribute__((always_inline)) INLINE static int stars_dm_loop_is_active(
+    const struct spart* sp, const struct engine* e) {
+  /* No */
+  return 0;
 }
 
 /**

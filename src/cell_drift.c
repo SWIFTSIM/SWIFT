@@ -251,7 +251,7 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force,
       /* Apply the effects of feedback on this particle
        * (Note: Only used in schemes that have a delayed feedback mechanism
        * otherwise just an empty function) */
-      feedback_update_part(p, xp, e);
+      feedback_update_part(p, xp, e, with_cosmology);
 
       /* Drift... */
       drift_part(p, xp, dt_drift, dt_kick_hydro, dt_kick_grav, dt_therm,
@@ -264,13 +264,13 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force,
 
 #ifdef SWIFT_DEBUG_CHECKS
       /* Make sure the particle does not drift by more than a box length. */
-      if (fabs(xp->v_full[0] * dt_drift) > e->s->dim[0] ||
-          fabs(xp->v_full[1] * dt_drift) > e->s->dim[1] ||
-          fabs(xp->v_full[2] * dt_drift) > e->s->dim[2]) {
+      if (fabs(p->v_full[0] * dt_drift) > e->s->dim[0] ||
+          fabs(p->v_full[1] * dt_drift) > e->s->dim[1] ||
+          fabs(p->v_full[2] * dt_drift) > e->s->dim[2]) {
         error(
-            "Particle drifts by more than a box length! id %llu xp->v_full "
+            "Particle drifts by more than a box length! id %llu p->v_full "
             "%.5e %.5e %.5e p->v %.5e %.5e %.5e",
-            p->id, xp->v_full[0], xp->v_full[1], xp->v_full[2], p->v[0],
+            p->id, p->v_full[0], p->v_full[1], p->v_full[2], p->v[0],
             p->v[1], p->v[2]);
       }
 #endif

@@ -580,12 +580,12 @@ void runner_do_black_holes_density_ghost(struct runner *r, struct cell *c,
   struct bpart *restrict bparts = c->black_holes.parts;
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
-  const float black_holes_h_max = e->hydro_properties->h_max;
-  const float black_holes_h_min = e->hydro_properties->h_min;
+  const float black_holes_h_max = e->black_holes_properties->h_max;
+  const float black_holes_h_min = e->black_holes_properties->h_min;
   const float eps = e->black_holes_properties->h_tolerance;
   const float black_holes_eta_dim =
       pow_dimension(e->black_holes_properties->eta_neighbours);
-  const int max_smoothing_iter = e->hydro_properties->max_smoothing_iterations;
+  const int max_smoothing_iter = e->black_holes_properties->max_smoothing_iterations;
   int redo = 0, bcount = 0;
 
   /* Running value of the maximal smoothing length */

@@ -29,8 +29,35 @@
 
 #include <strings.h>
 
+double feedback_wind_probability(struct part* p, struct xpart* xp, const struct engine* e, 
+                                 const struct cosmology* cosmo,
+                                 const struct feedback_props* fb_props, 
+                                 const integertime_t ti_current, 
+                                 const double dt_part,
+                                 double *rand_for_sf_wind,
+                                 double *wind_mass);
+void feedback_kick_and_decouple_part(struct part* p, struct xpart* xp, 
+                                     const struct engine* e, 
+                                     const struct cosmology* cosmo,
+                                     const struct feedback_props* fb_props, 
+                                     const integertime_t ti_current,
+                                     const int with_cosmology,
+                                     const double dt_part,
+                                     const double wind_mass);
 void feedback_update_part(struct part* p, struct xpart* xp,
-                          const struct engine* e);
+                          const struct engine* e, const int with_cosmology);
+
+/**
+ * @brief Recouple wind particles.
+ *
+ * @param p The #part to consider.
+ * @param xp The #xpart to consider.
+ * @param e The #engine.
+ * @param with_cosmology Is this a cosmological simulation?
+ */
+__attribute__((always_inline)) INLINE static void feedback_recouple_part(
+    struct part* p, struct xpart* xp, const struct engine* e,
+    const int with_cosmology) {}
 
 void feedback_reset_part(struct part* p, struct xpart* xp);
 
@@ -41,6 +68,18 @@ void feedback_will_do_feedback(
     const integertime_t ti_current, const double time_base);
 
 int feedback_is_active(const struct spart* sp, const struct engine* e);
+
+/**
+ * @brief Should this particle be doing any DM looping?
+ *
+ * @param sp The #spart.
+ * @param e The #engine.
+ */
+__attribute__((always_inline)) INLINE static int stars_dm_loop_is_active(
+    const struct spart* sp, const struct engine* e) {
+  /* No */
+  return 0;
+}
 
 double feedback_get_enrichment_timestep(const struct spart* sp,
                                         const int with_cosmology,
