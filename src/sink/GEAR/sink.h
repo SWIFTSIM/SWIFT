@@ -617,10 +617,10 @@ INLINE static void sink_copy_properties_to_star(
   sp->mass = sink->target_mass * phys_const->const_solar_mass;
 
   /* set feedback type */
-  sp->feedback_data.type = sink->target_type;
+  sp->feedback_data.star_type = sink->target_type;
 
   /* Initialize the feedback */
-  if (sp->feedback_data.type == 1)
+  if (sp->feedback_data.star_type == single_star)
     feedback_init_after_star_formation(sp, e->feedback_props);
 
   /* sph smoothing */

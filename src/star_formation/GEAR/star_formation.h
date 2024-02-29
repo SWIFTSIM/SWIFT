@@ -369,7 +369,7 @@ INLINE static void star_formation_copy_properties(
   sp->sf_data.progenitor_id = p->id;
 
   /* Feedback type */
-  sp->feedback_data.type = 2;
+  sp->feedback_data.star_type = star_population;
 }
 
 /**

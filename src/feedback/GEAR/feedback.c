@@ -239,14 +239,14 @@ void feedback_will_do_feedback(
     const integertime_t ti_current, const double time_base) {
 
   /* quit if the particle contains no SNII */
-  if (sp->feedback_data.type == 0) {
+  if (sp->feedback_data.star_type == star_population_no_SNII) {
     sp->feedback_data.energy_ejected = 0;
     sp->feedback_data.will_do_feedback = 0;
     return;
   }
 
   /* a single star */
-  if (sp->feedback_data.type == 1) {
+  if (sp->feedback_data.star_type == single_star) {
     feedback_will_do_feedback_individual_star(
         sp, feedback_props, with_cosmology, cosmo, time, us, phys_const,
         ti_current, time_base);
