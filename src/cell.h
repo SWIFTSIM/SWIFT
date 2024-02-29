@@ -770,13 +770,15 @@ __attribute__((always_inline)) INLINE int cell_getid_offset(const int cdim[3],
 }
 
 /**
- * @brief For a given location, what TL cell does it belong in nested grid?
+ * @brief For a given location, what TL cell does it belong to in one of the
+ * cell grids below the background level?
  *
  * NOTE: This function is only applicable when running with a zoom region.
  *
- * It finds the cell ID in a nested region using the lower boundary of the
- * nested region to offset the input coordinates before multiplying by the
- * inverse width of a cell to get the integer cell coordinates.
+ * It finds the cell ID in a region below the background level (zoom/buffer)
+ * using the lower boundary of the nested region to offset the input coordinates
+ * before multiplying by the inverse width of a cell to get the integer cell
+ * coordinates.
  *
  * This function is mainly just a convenience wrapper around cell_getid_offset
  * to remove some boilerplate when applying the bounds.
@@ -789,7 +791,7 @@ __attribute__((always_inline)) INLINE int cell_getid_offset(const int cdim[3],
  *
  * @return The cell id.
  */
-__attribute__((always_inline)) INLINE int cell_getid_nested_region(
+__attribute__((always_inline)) INLINE int cell_getid_below_bkg(
     const int cdim[3], const double bounds[3], const double x, const double y,
     const double z, const double iwidth[3], const int offset) {
 
@@ -850,9 +852,9 @@ __attribute__((always_inline)) INLINE int zoom_cell_getid(const struct space *s,
   if (s->cells_top[cell_id].subtype == cell_subtype_void) {
 
     /* Which zoom TL cell are we in? */
-    cell_id = cell_getid_nested_region(s->zoom_props->cdim, zoom_lower_bounds,
-                                       x, y, z, s->zoom_props->iwidth,
-                                       /*offset*/ 0);
+    cell_id = cell_getid_below_bkg(s->zoom_props->cdim, zoom_lower_bounds, x, y,
+                                   z, s->zoom_props->iwidth,
+                                   /*offset*/ 0);
 
   }
 
@@ -861,7 +863,7 @@ __attribute__((always_inline)) INLINE int zoom_cell_getid(const struct space *s,
   else if (s->cells_top[cell_id].subtype == cell_subtype_empty) {
 
     /* Which buffer TL cell are we in? */
-    cell_id = cell_getid_nested_region(
+    cell_id = cell_getid_below_bkg(
         s->zoom_props->buffer_cdim, buffer_lower_bounds, x, y, z,
         s->zoom_props->buffer_iwidth, buffer_cell_offset);
 
@@ -870,9 +872,9 @@ __attribute__((always_inline)) INLINE int zoom_cell_getid(const struct space *s,
     if (s->cells_top[cell_id].subtype == cell_subtype_void) {
 
       /* Which zoom TL cell are we in? */
-      cell_id = cell_getid_nested_region(s->zoom_props->cdim, zoom_lower_bounds,
-                                         x, y, z, s->zoom_props->iwidth,
-                                         /*offset*/ 0);
+      cell_id = cell_getid_below_bkg(s->zoom_props->cdim, zoom_lower_bounds, x,
+                                     y, z, s->zoom_props->iwidth,
+                                     /*offset*/ 0);
     }
   }
 
