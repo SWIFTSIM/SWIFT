@@ -31,9 +31,11 @@
 #include "cooling_struct.h"
 #include "csds.h"
 #include "feedback_struct.h"
+/*
 #ifdef WITH_FOF_GALAXIES
 #include "fof_struct.h"
 #endif
+*/
 #include "mhd_struct.h"
 #include "particle_splitting_struct.h"
 #include "pressure_floor_struct.h"
