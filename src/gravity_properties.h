@@ -109,6 +109,12 @@ struct gravity_props {
    * co-moving softening length of the low-res. particles (DM + baryons) */
   float mean_inter_particle_fraction_high_res;
 
+  /*! Maximal comoving softening in the case of adaptive softening for gas */
+  float max_adaptive_softening;
+
+  /*! Minimal comoving softening in the case of adaptive softening for gas */
+  float min_adaptive_softening;
+
   /* ------------- Properties of the time integration  ----------------- */
 
   /*! Frequency of tree-rebuild in units of #gpart updates. */
