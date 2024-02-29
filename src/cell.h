@@ -375,7 +375,7 @@ extern const char *subcellID_names[];
  * - Zoom cells are the high resolution cells that cover the zoom region
  *   (nested inside the central background/buffer cell/s).
  */
-__attribute__((__packed__)) enum cell_types {
+enum __attribute__((__packed__)) cell_types {
   cell_type_regular, /* A standard top level cell (for non-zoom boxes). */
   cell_type_bkg,     /* A background cell (only applicable for zooms). */
   cell_type_zoom,    /* A zoom cell (only applicable for zooms). */
@@ -409,7 +409,7 @@ __attribute__((__packed__)) enum cell_types {
  * Empty cells do not contain anything, they should not feature in any
  * calculation and only exist to ensure the cell grids are maintained.
  */
-__attribute__((__packed__)) enum cell_subtypes {
+enum __attribute__((__packed__)) cell_subtypes {
   cell_subtype_regular,   /* A normal cell. */
   cell_subtype_neighbour, /* A cell within the gravity criterion of the zoom
                              region. */
