@@ -897,6 +897,88 @@ void engine_make_self_gravity_tasks_mapper_buffer_bkg(void *map_data,
 }
 
 /**
+ * @brief Constructs the top-level tasks for the short-range gravity
+ * and long-range gravity interactions for all combinations of cell types.
+ *
+ * - All top level cells get a self task.
+ * - All pairs within range according to the multipole acceptance
+ *   criterion get a pair task.
+ *
+ * This is a wrapper around the various mappers defined above for all the
+ * possible combinations of cell types including:
+ * - zoom->zoom
+ * - bkg->bkg
+ * - buffer->buffer (if buffer cells are used)
+ * - zoom->buffer (if buffer cells are used)
+ * - buffer->bkg (if buffer cells are used)
+ * - zoom->bkg (if buffer cells are not used)
+ *
+ * This replaces the function in engine_maketasks when running with a zoom
+ * region.
+ *
+ * @param s The #space.
+ * @param e The #engine.
+ */
+void zoom_engine_make_self_gravity_tasks(struct space *s, struct engine *e) {
+
+  const ticks tic = getticks();
+
+  threadpool_map(
+      &e->threadpool, engine_make_self_gravity_tasks_mapper_zoom_cells, NULL,
+      s->zoom_props->nr_zoom_cells, 1, threadpool_auto_chunk_size, e);
+
+  if (e->verbose)
+    message("Making zoom->zoom gravity tasks took %.3f %s.",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
+
+  tic = getticks();
+
+  threadpool_map(&e->threadpool,
+                 engine_make_self_gravity_tasks_mapper_natural_cells, NULL,
+                 s->zoom_props->nr_bkg_cells, 1, threadpool_auto_chunk_size, e);
+
+  if (e->verbose)
+    message("Making bkg->bkg gravity tasks took %.3f %s.",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
+
+  if (s->zoom_props->with_buffer_cells) {
+
+    tic = getticks();
+
+    threadpool_map(
+        &e->threadpool, engine_make_self_gravity_tasks_mapper_buffer_cells,
+        NULL, s->zoom_props->nr_buffer_cells, 1, threadpool_auto_chunk_size, e);
+
+    if (e->verbose)
+      message("Making buffer->buffer gravity tasks took %.3f %s.",
+              clocks_from_ticks(getticks() - tic), clocks_getunit());
+  }
+
+  tic = getticks();
+
+  threadpool_map(&e->threadpool, engine_make_self_gravity_tasks_mapper_zoom_bkg,
+                 NULL, s->zoom_props->nr_zoom_cells, 1,
+                 threadpool_auto_chunk_size, e);
+
+  if (e->verbose)
+    message("Making zoom->buffer gravity tasks took %.3f %s.",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
+
+  if (s->zoom_props->with_buffer_cells) {
+
+    tic = getticks();
+
+    threadpool_map(
+        &e->threadpool, engine_make_self_gravity_tasks_mapper_buffer_bkg, NULL,
+        s->zoom_props->nr_buffer_cells, 1, threadpool_auto_chunk_size, e);
+
+    if (e->verbose)
+      message("Making buffer->bkg gravity tasks took %.3f %s.",
+              clocks_from_ticks(getticks() - tic), clocks_getunit());
+  }
+}
+
+/**
  * @brief Constructs the top-level pair tasks for the first hydro loop over
  * neighbours
  *
