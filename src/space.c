@@ -583,15 +583,11 @@ void space_synchronize_part_positions_mapper(void *map_data, int nr_parts,
                                              void *extra_data) {
   /* Unpack the data */
   const struct part *parts = (struct part *)map_data;
-  struct space *s = (struct space *)extra_data;
-  const ptrdiff_t offset = parts - s->parts;
-  const struct xpart *xparts = s->xparts + offset;
 
   for (int k = 0; k < nr_parts; k++) {
 
     /* Get the particle */
     const struct part *p = &parts[k];
-    const struct xpart *xp = &xparts[k];
 
     /* Skip unimportant particles */
     if (p->time_bin == time_bin_not_created ||
@@ -610,9 +606,9 @@ void space_synchronize_part_positions_mapper(void *map_data, int nr_parts,
     gp->x[1] = p->x[1];
     gp->x[2] = p->x[2];
 
-    gp->v_full[0] = xp->v_full[0];
-    gp->v_full[1] = xp->v_full[1];
-    gp->v_full[2] = xp->v_full[2];
+    gp->v_full[0] = p->v_full[0];
+    gp->v_full[1] = p->v_full[1];
+    gp->v_full[2] = p->v_full[2];
 
     gp->mass = hydro_get_mass(p);
   }

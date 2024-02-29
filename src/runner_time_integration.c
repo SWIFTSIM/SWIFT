@@ -1411,10 +1411,12 @@ void runner_do_limiter(struct runner *r, struct cell *c, int force,
       if (p->limiter_data.wakeup != time_bin_not_awake) {
 
         if (!part_is_active(p, e) && p->limiter_data.to_be_synchronized) {
+#ifdef SWIFT_DEBUG_CHECKS
           warning(
               "Not limiting particle with id %lld because it needs to be "
               "synced.",
               p->id);
+#endif
           continue;
         }
 

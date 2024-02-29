@@ -194,6 +194,8 @@ int main(int argc, char *argv[]) {
   int with_qla = 0;
   int with_eagle = 0;
   int with_gear = 0;
+  int with_simba = 0;
+  int with_kiara = 0;
   int with_agora = 0;
   int with_line_of_sight = 0;
   int with_rt = 0;
@@ -287,6 +289,18 @@ int main(int argc, char *argv[]) {
       OPT_BOOLEAN(
           0, "gear", &with_gear,
           "Run with all the options needed for the GEAR model. This is "
+          "equivalent to --hydro --limiter --sync --self-gravity --stars "
+          "--star-formation --cooling --feedback.",
+          NULL, 0, 0),
+      OPT_BOOLEAN(
+          0, "simba", &with_simba,
+          "Run with all the options needed for the SIMBA model. This is "
+          "equivalent to --hydro --limiter --sync --self-gravity --stars "
+          "--star-formation --cooling --feedback.",
+          NULL, 0, 0),
+      OPT_BOOLEAN(
+          0, "kiara", &with_kiara,
+          "Run with all the options needed for the KIARA model. This is "
           "equivalent to --hydro --limiter --sync --self-gravity --stars "
           "--star-formation --cooling --feedback.",
           NULL, 0, 0),
@@ -399,6 +413,30 @@ int main(int argc, char *argv[]) {
     with_cooling = 1;
     with_feedback = 1;
   }
+  if (with_simba) {
+    with_hydro = 1;
+    with_timestep_limiter = 1;
+    with_timestep_sync = 1;
+    with_self_gravity = 1;
+    with_stars = 1;
+    with_star_formation = 1;
+    with_cooling = 1;
+    with_feedback = 1;
+    with_black_holes = 1;
+    with_fof = 1;
+  }
+  if (with_kiara) {
+    with_hydro = 1;
+    with_timestep_limiter = 1;
+    with_timestep_sync = 1;
+    with_self_gravity = 1;
+    with_stars = 1;
+    with_star_formation = 1;
+    with_cooling = 1;
+    with_feedback = 1;
+    with_black_holes = 1;
+    with_fof = 1;
+  }
   if (with_agora) {
     with_hydro = 1;
     with_timestep_limiter = 1;
@@ -408,6 +446,8 @@ int main(int argc, char *argv[]) {
     with_star_formation = 1;
     with_cooling = 1;
     with_feedback = 1;
+    with_black_holes = 1;
+    with_fof = 1;
   }
 
   /* Deal with thread numbers */
@@ -1198,7 +1238,8 @@ int main(int argc, char *argv[]) {
     bzero(&fof_properties, sizeof(struct fof_props));
 #ifdef WITH_FOF
     if (with_fof) {
-      fof_init(&fof_properties, params, &prog_const, &us, /*stand-alone=*/0);
+      fof_init(&fof_properties, params, &prog_const, &us, /*stand-alone=*/0,
+               &hydro_properties);
       if (fof_properties.seed_black_holes_enabled && !with_black_holes) {
         if (myrank == 0)
           printf(

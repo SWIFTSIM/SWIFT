@@ -450,7 +450,8 @@ int main(int argc, char *argv[]) {
 
   /* Initialise the FOF properties */
   bzero(&fof_properties, sizeof(struct fof_props));
-  fof_init(&fof_properties, params, &prog_const, &us, /*stand-alone=*/1);
+  fof_init(&fof_properties, params, &prog_const, &us, /*stand-alone=*/1,
+           &hydro_properties);
 
   /* Be verbose about what happens next */
   if (myrank == 0) message("Reading ICs from file '%s'", ICfileName);
@@ -705,7 +706,7 @@ int main(int argc, char *argv[]) {
 #endif
 
   /* Perform the FOF search */
-  engine_fof(&e, /*dump_results=*/1, /*dump_debug=*/0, /*seed_black_holes=*/0,
+  engine_fof(&e, /*dump_results=*/1, /*dump_debug=*/1, /*seed_black_holes=*/0,
              /*buffers allocated=*/1);
 
   /* Update the policies to make sure the particles are written

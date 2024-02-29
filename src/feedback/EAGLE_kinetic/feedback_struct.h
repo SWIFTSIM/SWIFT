@@ -32,6 +32,11 @@ struct feedback_part_data {
 
   /* The largest id of the star that wants to kick the gas particle */
   long long SNII_star_largest_id;
+  /*! remaining time left for decoupling */
+  float decoupling_delay_time;
+
+  /*! The time to shut off cooling for this particle */
+  float cooling_shutoff_delay_time;
 };
 
 /**

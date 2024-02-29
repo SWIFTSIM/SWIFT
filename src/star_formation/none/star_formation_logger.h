@@ -121,7 +121,10 @@ INLINE static void star_formation_logger_init_log_file(
  */
 INLINE static void star_formation_logger_log_active_part(
     const struct part *p, const struct xpart *xp,
-    struct star_formation_history *sf, const double dt_star) {}
+    struct star_formation_history *sf, const double dt_star) {
+  /* No SFR logging for wind particles. */
+  if (p->feedback_data.decoupling_delay_time > 0.f) return;    
+}
 
 /**
  * @brief Add the SFR tracer to the total inactive SFR of this cell as long as
@@ -133,6 +136,9 @@ INLINE static void star_formation_logger_log_active_part(
  */
 INLINE static void star_formation_logger_log_inactive_part(
     const struct part *p, const struct xpart *xp,
-    struct star_formation_history *sf) {}
+    struct star_formation_history *sf) {
+  /* No SFR logging for wind particles. */
+  if (p->feedback_data.decoupling_delay_time > 0.f) return;
+}
 
 #endif /* SWIFT_NONE_STARFORMATION_LOGGER_H */

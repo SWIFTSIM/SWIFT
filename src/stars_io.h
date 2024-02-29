@@ -30,6 +30,8 @@
 #include "./stars/EAGLE/stars_io.h"
 #elif defined(STARS_GEAR)
 #include "./stars/GEAR/stars_io.h"
+#elif defined(STARS_SIMBA)
+#include "./stars/SIMBA/stars_io.h"
 #else
 #error "Invalid choice of star model"
 #endif

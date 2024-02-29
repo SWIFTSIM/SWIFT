@@ -1051,15 +1051,15 @@ runner_iact_nonsym_bh_gas_feedback(
 
       /* Calculate final velocity by adding delta_v in the direction of the kick
        */
-      xpj->v_full[0] += delta_v * vel_kick_direction[0];
-      xpj->v_full[1] += delta_v * vel_kick_direction[1];
-      xpj->v_full[2] += delta_v * vel_kick_direction[2];
+      pj->v_full[0] += delta_v * vel_kick_direction[0];
+      pj->v_full[1] += delta_v * vel_kick_direction[1];
+      pj->v_full[2] += delta_v * vel_kick_direction[2];
 
 #ifdef SWIFT_DEBUG_CHECKS
       message(
           "Black hole with id %lld kicked particle with id %lld , with a final "
           "velocity of (%f, %f, %f).",
-          bi->id, pj->id, xpj->v_full[0], xpj->v_full[1], xpj->v_full[2]);
+          bi->id, pj->id, pj->v_full[0], pj->v_full[1], pj->v_full[2]);
 #endif
 
       /* Store the jet energy */

@@ -19,6 +19,10 @@
 #ifndef SWIFT_NONE_STAR_PART_H
 #define SWIFT_NONE_STAR_PART_H
 
+#ifdef WITH_FOF_GALAXIES
+#include "fof_struct.h"
+#endif
+
 struct spart {
 
   /*! Particle ID. */
@@ -63,6 +67,11 @@ struct spart {
 
   /*! Splitting structure */
   struct particle_splitting_data split_data;
+
+#ifdef WITH_FOF_GALAXIES
+  /*! Additional data used by the FoF */
+  struct group_data group_data;
+#endif
 
 #ifdef SWIFT_DEBUG_CHECKS
 

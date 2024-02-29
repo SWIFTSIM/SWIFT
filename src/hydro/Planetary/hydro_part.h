@@ -38,6 +38,9 @@
 #include "cooling_struct.h"
 #include "equation_of_state.h"  // For enum material_id
 #include "feedback_struct.h"
+#ifdef WITH_FOF_GALAXIES
+#include "fof_struct.h"
+#endif
 #include "mhd_struct.h"
 #include "particle_splitting_struct.h"
 #include "rt_struct.h"
@@ -110,6 +113,9 @@ struct part {
 
   /*! Particle predicted velocity. */
   float v[3];
+
+  /*! Particle velocity for drift */
+  float v_full[3];
 
   /*! Particle acceleration. */
   float a_hydro[3];
@@ -199,6 +205,14 @@ struct part {
 
   /*! Black holes information (e.g. swallowing ID) */
   struct black_holes_part_data black_holes_data;
+
+  /* Additional data used by the SF routines */
+  struct star_formation_part_data sf_data;
+  
+#ifdef WITH_FOF_GALAXIES
+  /*! Additional data used by the FoF */
+  struct group_data group_data;
+#endif
 
   /*! Sink information (e.g. swallowing ID) */
   struct sink_part_data sink_data;

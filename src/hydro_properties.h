@@ -112,6 +112,22 @@ struct hydro_props {
   /*! Mean molecular weight above hydrogen ionization temperature */
   float mu_ionised;
 
+  /* ------ Gas definitions ------------------------ */
+
+#ifdef WITH_FOF_GALAXIES
+  /*! Conversion between internal energy and temperature */
+  float u_to_temp_factor;
+
+  /*! Conversion between internal rho and n_H in H/cc units */
+  float rho_to_n_cgs;
+
+  /*! The temperature threshold for cold gas */
+  float cold_gas_temperature_threshold;
+
+  /*! The density threshold for cold gas in H/cc units */
+  float cold_gas_n_H_threshold_cgs;
+#endif
+
   /* ------ Particle splitting parameters ---------- */
 
   /*! Is particle splitting activated? */
@@ -135,6 +151,7 @@ struct hydro_props {
 
   /*! MHD parameters */
   struct mhd_global_data mhd;
+
 };
 
 void hydro_props_print(const struct hydro_props *p);

@@ -38,6 +38,10 @@
 #include "./cooling/Compton/cooling_struct.h"
 #elif defined(COOLING_GRACKLE)
 #include "./cooling/grackle/cooling_struct.h"
+#elif defined(COOLING_SIMBA)
+#include "./cooling/SIMBA/cooling_struct.h"
+#elif defined(COOLING_KIARA)
+#include "./cooling/KIARA/cooling_struct.h"
 #elif defined(COOLING_QLA)
 #include "./cooling/QLA/cooling_struct.h"
 #elif defined(COOLING_QLA_EAGLE)

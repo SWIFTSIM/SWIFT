@@ -25,6 +25,9 @@
 /* Read additional subgrid models */
 #include "chemistry_struct.h"
 #include "feedback_struct.h"
+#ifdef WITH_FOF_GALAXIES
+#include "fof_struct.h"
+#endif
 #include "particle_splitting_struct.h"
 #include "rt_struct.h"
 #include "star_formation_struct.h"
@@ -86,6 +89,11 @@ struct spart {
 
   /*! Feedback structure */
   struct feedback_spart_data feedback_data;
+
+#ifdef WITH_FOF_GALAXIES
+  /*! Additional data used by the FoF */
+  struct group_data group_data;
+#endif
 
   /*! Tracer structure */
   struct tracers_spart_data tracers_data;

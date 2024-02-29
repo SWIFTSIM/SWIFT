@@ -742,7 +742,12 @@ void cooling_cool_part(const struct phys_const *phys_const,
                        struct part *p, struct xpart *xp, const float dt,
                        const float dt_therm, const double time) {
 
-  /* No cooling happens over zero time */
+  if (p->feedback_data.decoupling_delay_time > 0.f
+        || p->feedback_data.cooling_shutoff_delay_time > 0.f) {
+    return;
+  }
+
+  /* No cooling happens over zero time or if the wind is decoupled */
   if (dt == 0.) {
 
     /* But we still set the subgrid properties to a valid state */
@@ -1534,7 +1539,7 @@ void cooling_init_backend(struct swift_params *parameter_file,
   /* Get the minimal temperature allowed */
   cooling->Tmin = hydro_props->minimal_temperature;
   if (cooling->Tmin < 10.)
-    error("PS2020 cooling cannot handle a minimal temperature below 10 K");
+    error("PS2020 cooling cannot handle a minimal temperature below 10 K (Tmin=%g)",hydro_props->minimal_temperature);
 
   /* Recover the minimal energy allowed (in internal units) */
   const double u_min = hydro_props->minimal_internal_energy;

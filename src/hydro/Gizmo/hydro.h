@@ -174,6 +174,15 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
      is to have a way of remembering that we need more neighbours for this
      particle */
   p->geometry.wcorr = 1.0f;
+
+  p->feedback_data.decoupling_delay_time = 0.f;
+  p->feedback_data.number_of_times_decoupled = 0;
+  p->feedback_data.cooling_shutoff_delay_time = 0.f;
+  
+#ifdef WITH_FOF_GALAXIES
+  p->group_data.mass = 0.f;
+  p->group_data.stellar_mass = 0.f;
+#endif
 }
 
 /**
@@ -626,7 +635,7 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
 
   /* add the gravitational contribution to the fluid velocity drift */
   /* (MFV only) */
-  hydro_gizmo_mfv_extra_velocity_drift(p->v, p->fluid_v, xp->v_full, xp->a_grav,
+  hydro_gizmo_mfv_extra_velocity_drift(p->v, p->fluid_v, p->v_full, p->a_grav,
                                        dt_kick_grav);
 
   gizmo_check_physical_quantities("density", "pressure", W[0], W[1], W[2], W[3],

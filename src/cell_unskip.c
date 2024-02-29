@@ -802,7 +802,9 @@ void cell_activate_stars_sorts(struct cell *c, int sid, struct scheduler *s) {
  */
 void cell_activate_subcell_hydro_tasks(struct cell *ci, struct cell *cj,
                                        struct scheduler *s,
-                                       const int with_timestep_limiter) {
+                                       const int with_timestep_limiter,
+                                       /* Rennehan */
+                                       const int with_timestep_sync) {
   const struct engine *e = s->space->e;
 
   /* Store the current dx_max and h_max values. */
@@ -824,18 +826,24 @@ void cell_activate_subcell_hydro_tasks(struct cell *ci, struct cell *cj,
       /* Loop over all progenies and pairs of progenies */
       for (int j = 0; j < 8; j++) {
         if (ci->progeny[j] != NULL) {
+          /* Rennehan */
           cell_activate_subcell_hydro_tasks(ci->progeny[j], NULL, s,
-                                            with_timestep_limiter);
+                                            with_timestep_limiter,
+                                            with_timestep_sync);
           for (int k = j + 1; k < 8; k++)
             if (ci->progeny[k] != NULL)
+              /* Rennehan */
               cell_activate_subcell_hydro_tasks(ci->progeny[j], ci->progeny[k],
-                                                s, with_timestep_limiter);
+                                                s, with_timestep_limiter,
+                                                with_timestep_sync);
         }
       }
     } else {
       /* We have reached the bottom of the tree: activate drift */
       cell_activate_drift_part(ci, s);
       if (with_timestep_limiter) cell_activate_limiter(ci, s);
+      /* Rennehan */
+      if (with_timestep_sync) cell_activate_sync_part(ci, s);
     }
   }
 
@@ -857,8 +865,10 @@ void cell_activate_subcell_hydro_tasks(struct cell *ci, struct cell *cj,
         const int pid = csp->pairs[k].pid;
         const int pjd = csp->pairs[k].pjd;
         if (ci->progeny[pid] != NULL && cj->progeny[pjd] != NULL)
+          /* Rennehan */
           cell_activate_subcell_hydro_tasks(ci->progeny[pid], cj->progeny[pjd],
-                                            s, with_timestep_limiter);
+                                            s, with_timestep_limiter,
+                                            with_timestep_sync);
       }
     }
 
@@ -879,6 +889,13 @@ void cell_activate_subcell_hydro_tasks(struct cell *ci, struct cell *cj,
         cell_activate_limiter(ci, s);
       if (cj->nodeID == engine_rank && with_timestep_limiter)
         cell_activate_limiter(cj, s);
+
+      /* Rennehan */
+      /* Also activate the time-step sync */
+      if (ci->nodeID == engine_rank && with_timestep_sync)
+        cell_activate_sync_part(ci, s);
+      if (cj->nodeID == engine_rank && with_timestep_sync)
+        cell_activate_sync_part(cj, s);
 
       /* Do we need to sort the cells? */
       cell_activate_hydro_sorts(ci, sid, s);
@@ -1625,6 +1642,8 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
   const int with_feedback = e->policy & engine_policy_feedback;
   const int with_timestep_limiter =
       (e->policy & engine_policy_timestep_limiter);
+  const int with_timestep_sync = 
+      (e->policy & engine_policy_timestep_sync);
   const int with_sinks = e->policy & engine_policy_sinks;
 
 #ifdef WITH_MPI
@@ -1658,6 +1677,9 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
         if (ci_nodeID == nodeID) cell_activate_drift_part(ci, s);
         if (ci_nodeID == nodeID && with_timestep_limiter)
           cell_activate_limiter(ci, s);
+        /* Rennehan */
+        if (ci_nodeID == nodeID && with_timestep_sync)
+          cell_activate_sync_part(ci, s);
       }
 
       /* Set the correct sorting flags and activate hydro drifts */
@@ -1678,6 +1700,13 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
         if (cj_nodeID == nodeID && with_timestep_limiter)
           cell_activate_limiter(cj, s);
 
+        /* Rennehan */
+        /* Activate the limiter tasks. */
+        if (ci_nodeID == nodeID && with_timestep_sync)
+          cell_activate_sync_part(ci, s);
+        if (cj_nodeID == nodeID && with_timestep_sync)
+          cell_activate_sync_part(cj, s);
+
         /* Check the sorts and activate them if needed. */
         cell_activate_hydro_sorts(ci, t->flags, s);
         cell_activate_hydro_sorts(cj, t->flags, s);
@@ -1685,12 +1714,16 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
 
       /* Store current values of dx_max and h_max. */
       else if (t->type == task_type_sub_self) {
-        cell_activate_subcell_hydro_tasks(ci, NULL, s, with_timestep_limiter);
+        /* Rennehan */
+        cell_activate_subcell_hydro_tasks(ci, NULL, s, with_timestep_limiter,
+                                          with_timestep_sync);
       }
 
       /* Store current values of dx_max and h_max. */
       else if (t->type == task_type_sub_pair) {
-        cell_activate_subcell_hydro_tasks(ci, cj, s, with_timestep_limiter);
+        /* Rennehan */
+        cell_activate_subcell_hydro_tasks(ci, cj, s, with_timestep_limiter,
+                                          with_timestep_sync);
       }
     }
 
@@ -1751,6 +1784,8 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
              particles will be drifted, only those that are needed. */
           cell_activate_drift_part(cj, s);
           if (with_timestep_limiter) cell_activate_limiter(cj, s);
+          /* Rennehan */
+          if (with_timestep_sync) cell_activate_sync_part(cj, s);
 
           /* If the local cell is also active, more stuff will be needed. */
           if (cj_active) {
@@ -1844,6 +1879,8 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
              particles will be drifted, only those that are needed. */
           cell_activate_drift_part(ci, s);
           if (with_timestep_limiter) cell_activate_limiter(ci, s);
+          /* Rennehan */
+          if (with_timestep_sync) cell_activate_sync_part(ci, s);
 
           /* If the local cell is also active, more stuff will be needed. */
           if (ci_active) {

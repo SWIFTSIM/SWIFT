@@ -39,6 +39,8 @@
 #error TODO
 #elif defined(CHEMISTRY_EAGLE)
 #error TODO
+#elif defined(CHEMISTRY_SIMBA)
+#error TODO
 #else
 #error "Invalid choice of chemistry function."
 #endif

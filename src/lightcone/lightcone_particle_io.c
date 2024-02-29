@@ -400,9 +400,9 @@ int lightcone_store_gas(const struct engine *e, struct lightcone_props *props,
   data->x[1] = x_cross[1];
   data->x[2] = x_cross[2];
   data->vel[0] =
-      xp->v_full[0] / a_cross;  // TODO: extrapolate velocities to a_cross?
-  data->vel[1] = xp->v_full[1] / a_cross;
-  data->vel[2] = xp->v_full[2] / a_cross;
+      p->v_full[0] / a_cross;  // TODO: extrapolate velocities to a_cross?
+  data->vel[1] = p->v_full[1] / a_cross;
+  data->vel[2] = p->v_full[2] / a_cross;
   data->mass = hydro_get_mass(p);
   data->a = a_cross;
   data->h = p->h;
@@ -438,7 +438,7 @@ int lightcone_store_gas(const struct engine *e, struct lightcone_props *props,
 #endif
 
 #ifdef STAR_FORMATION_EAGLE
-  data->sfr = xp->sf_data.SFR;
+  data->sfr = p->sf_data.SFR;
 #endif
 
   return 1;

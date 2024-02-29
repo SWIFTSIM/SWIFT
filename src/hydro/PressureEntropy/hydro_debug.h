@@ -47,8 +47,8 @@ __attribute__((always_inline)) INLINE static void hydro_debug_particle(
       p->time_bin, p->limiter_data.wakeup);
   if (xp != NULL) {
     warning("[PID%lld] xpart:", p->id);
-    warning("[PID%lld] v_full=[%.3e,%.3e,%.3e]", p->id, xp->v_full[0],
-            xp->v_full[1], xp->v_full[2]);
+    warning("[PID%lld] v_full=[%.3e,%.3e,%.3e]", p->id, p->v_full[0],
+            p->v_full[1], p->v_full[2]);
   }
 }
 

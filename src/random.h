@@ -57,6 +57,7 @@ enum random_number_type {
   random_number_isotropic_AGN_feedback_ray_theta = 8899891613LL,
   random_number_isotropic_AGN_feedback_ray_phi = 10594523341LL,
   random_number_stellar_enrichment = 2936881973LL,
+  random_number_stellar_feedback = 3947008991LL,
   random_number_BH_feedback = 1640531371LL,
   random_number_BH_swallow = 4947009007LL,
   random_number_BH_reposition = 59969537LL,
