@@ -65,9 +65,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
 
   pi->rho += mj * wi;
   pi->density.rho_dh -= mj * (hydro_dimension * wi + ui * wi_dx);
-
   pi->density.wcount += wi;
   pi->density.wcount_dh -= (hydro_dimension * wi + ui * wi_dx);
+
+  gearrt_density_accumulate_geometry_and_matrix(pi, wi, dx);
 
   /* Compute density of pj. */
   const float hj_inv = 1.f / hj;
@@ -78,6 +79,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   pj->density.rho_dh -= mi * (hydro_dimension * wj + uj * wj_dx);
   pj->density.wcount += wj;
   pj->density.wcount_dh -= (hydro_dimension * wj + uj * wj_dx);
+
+  gearrt_density_accumulate_geometry_and_matrix(pj, wj, dx);
 
   /* Now we need to compute the div terms */
   const float r_inv = r ? 1.0f / r : 0.0f;
@@ -150,6 +153,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
 
   pi->density.wcount += wi;
   pi->density.wcount_dh -= (hydro_dimension * wi + ui * wi_dx);
+
+  gearrt_density_accumulate_geometry_and_matrix(pi, wi, dx);
 
   const float r_inv = r ? 1.0f / r : 0.0f;
   const float faci = mj * wi_dx * r_inv;

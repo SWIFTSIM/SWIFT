@@ -36,6 +36,7 @@
 #include "hydro_parameters.h"
 #include "hydro_properties.h"
 #include "hydro_space.h"
+#include "hydro_sph_additions_for_GEARRT.h"
 #include "kernel_hydro.h"
 #include "minmax.h"
 #include "pressure_floor.h"
@@ -364,6 +365,16 @@ hydro_set_physical_internal_energy(struct part *p, struct xpart *xp,
   xp->u_full = u / cosmo->a_factor_internal_energy;
 }
 
+__attribute__((always_inline)) INLINE static void
+hydro_set_physical_internal_energy_TESTING_SPH_RT(struct part *p,
+                                                  const struct cosmology *cosmo,
+                                                  const float u) {
+
+  // TODO: This might be a problem. Hacky version to get code to compile.
+  // TODO: Cosmology might need attention
+  p->u = u / cosmo->a_factor_internal_energy;
+}
+
 /**
  * @brief Sets the drifted physical internal energy of a particle
  *
@@ -602,6 +613,8 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->inhibited_exact = 0;
   p->limited_part = 0;
 #endif
+
+  gearrt_geometry_init(p);
 }
 
 /**
@@ -649,6 +662,8 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   /* Finish calculation of the velocity divergence */
   p->viscosity.div_v *= h_inv_dim_plus_one * rho_inv * a_inv2;
   p->viscosity.div_v += cosmo->H * hydro_dimension;
+
+  gearrt_compute_volume_and_matrix(p, h_inv_dim);
 
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
   p->n_density += kernel_root;
@@ -1056,6 +1071,14 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
     p->h *= approx_expf(w1); /* 4th order expansion of exp(w) */
   else
     p->h *= expf(w1);
+
+  // TODO: WE NEED TO CHECK WHETHER WE NEED THIS FOR SPH + RT.
+  // GIZMO DOES THIS. SPH DOESN'T.
+  /* Limit the smoothing length correction (and make sure it is always
+     positive). */
+  /* if (h_corr < 2.0f && h_corr > 0.0f) { */
+  /*   p->h *= h_corr; */
+  /* } */
 
   /* Predict density and weighted pressure */
   const float w2 = -hydro_dimension * w1;

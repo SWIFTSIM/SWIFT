@@ -19,6 +19,8 @@
 #ifndef SWIFT_RT_STRUCT_GEAR_H
 #define SWIFT_RT_STRUCT_GEAR_H
 
+#include "rt_species.h"
+
 /**
  * @file src/rt/GEAR/rt_struct.h
  * @brief Main header file for the GEAR M1 Closure radiative transfer struct.
@@ -65,14 +67,10 @@ struct rt_part_data {
 
   /* Data for thermochemistry */
   struct {
-    float mass_fraction_HI;         /* mass fraction taken by HI */
-    float mass_fraction_HII;        /* mass fraction taken by HII */
-    float mass_fraction_HeI;        /* mass fraction taken by HeI */
-    float mass_fraction_HeII;       /* mass fraction taken by HeII */
-    float mass_fraction_HeIII;      /* mass fraction taken by HeIII */
-    float number_density_electrons; /* number density of electrons */
+    float mass_fraction[rt_species_count];
   } tchem;
 
+#ifdef GIZMO_MFV_SPH
   /* Keep track of the actual mass fluxes of the gas species */
   struct {
     float HI;    /* mass fraction taken by HI */
@@ -81,6 +79,7 @@ struct rt_part_data {
     float HeII;  /* mass fraction taken by HeII */
     float HeIII; /* mass fraction taken by HeIII */
   } mass_flux;
+#endif
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
   /* debugging data to store during entire run */

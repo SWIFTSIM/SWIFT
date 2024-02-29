@@ -3174,7 +3174,7 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s,
             scheduler_activate_recv(s, ci->mpi.recv, task_subtype_rt_transport);
           }
         } else if (ci_active) {
-#ifdef MPI_SYMMETRIC_FORCE_INTERACTION
+#ifdef MPI_SYMMETRIC_FORCE_INTERACTION_RT
           /* If the local cell is inactive and the remote cell is active, we
            * still need to receive stuff to be able to do the force interaction
            * on this node as well.
@@ -3198,7 +3198,7 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s,
                                     ci_nodeID);
           }
         } else if (cj_active) {
-#ifdef MPI_SYMMETRIC_FORCE_INTERACTION
+#ifdef MPI_SYMMETRIC_FORCE_INTERACTION_RT
           /* If the foreign cell is inactive, but the local cell is active,
            * we still need to send stuff to be able to do the force interaction
            * on both nodes.
@@ -3227,7 +3227,7 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s,
             scheduler_activate_recv(s, cj->mpi.recv, task_subtype_rt_transport);
           }
         } else if (cj_active) {
-#ifdef MPI_SYMMETRIC_FORCE_INTERACTION
+#ifdef MPI_SYMMETRIC_FORCE_INTERACTION_RT
           /* If the local cell is inactive and the remote cell is active, we
            * still need to receive stuff to be able to do the force interaction
            * on this node as well.
@@ -3251,7 +3251,7 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s,
                                     cj_nodeID);
           }
         } else if (ci_active) {
-#ifdef MPI_SYMMETRIC_FORCE_INTERACTION
+#ifdef MPI_SYMMETRIC_FORCE_INTERACTION_RT
           /* If the foreign cell is inactive, but the local cell is active,
            * we still need to send stuff to be able to do the force interaction
            * on both nodes
@@ -3312,7 +3312,7 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s,
       if (c->rt.rt_tchem != NULL) scheduler_activate(s, c->rt.rt_tchem);
       if (c->rt.rt_out != NULL) scheduler_activate(s, c->rt.rt_out);
     } else {
-#if defined(MPI_SYMMETRIC_FORCE_INTERACTION) && defined(WITH_MPI)
+#if defined(MPI_SYMMETRIC_FORCE_INTERACTION_RT) && defined(WITH_MPI)
       /* Additionally unskip force interactions between inactive local cell and
        * active remote cell. (The cell unskip will only be called for active
        * cells, so, we have to do this now, from the active remote cell). */

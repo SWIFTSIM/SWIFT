@@ -111,22 +111,18 @@ __attribute__((always_inline)) INLINE static float rt_tchem_internal_energy_dT(
  **/
 __attribute__((always_inline)) INLINE static void
 rt_tchem_get_species_densities(const struct part* restrict p, gr_float rho,
-                               gr_float species_densities[6]) {
+                               gr_float species_densities[RT_N_SPECIES]) {
 
-  species_densities[0] = p->rt_data.tchem.mass_fraction_HI * rho;
-  species_densities[1] = p->rt_data.tchem.mass_fraction_HII * rho;
-  species_densities[2] = p->rt_data.tchem.mass_fraction_HeI * rho;
-  species_densities[3] = p->rt_data.tchem.mass_fraction_HeII * rho;
-  species_densities[4] = p->rt_data.tchem.mass_fraction_HeIII * rho;
+    /* nHII = rho_HII / m_p
+     * nHeII = rho_HeII / 4 m_p
+     * nHeIII = rho_HeIII / 4 m_p
+     * ne = nHII + nHeII + 2 * nHeIII
+     * But: it is grackle convention to use rho_e = n_e * m_p */
+  
+  for (enum rt_species species = 0; species < rt_species_count; species++){
+	species_densities[species] = p->rt_data.tchem.mass_fraction[species] * rho;
+  }
 
-  /* nHII = rho_HII / m_p
-   * nHeII = rho_HeII / 4 m_p
-   * nHeIII = rho_HeIII / 4 m_p
-   * ne = nHII + nHeII + 2 * nHeIII
-   * But: it is grackle convention to use rho_e = n_e * m_p */
-  const gr_float rho_e = species_densities[1] + 0.25 * species_densities[3] +
-                         0.5 * species_densities[4];
-  species_densities[5] = rho_e;
 }
 
 /**
@@ -170,11 +166,11 @@ rt_tchem_get_gas_temperature(const struct part* restrict p,
   const double kB = phys_const->const_boltzmann_k;
   const double mp = phys_const->const_proton_mass;
 
-  const float XHI = p->rt_data.tchem.mass_fraction_HI;
-  const float XHII = p->rt_data.tchem.mass_fraction_HII;
-  const float XHeI = p->rt_data.tchem.mass_fraction_HeI;
-  const float XHeII = p->rt_data.tchem.mass_fraction_HeII;
-  const float XHeIII = p->rt_data.tchem.mass_fraction_HeIII;
+  const float XHI = p->rt_data.tchem.mass_fraction[rt_species_HI];
+  const float XHII = p->rt_data.tchem.mass_fraction[rt_species_HII];
+  const float XHeI = p->rt_data.tchem.mass_fraction[rt_species_HeI];
+  const float XHeII = p->rt_data.tchem.mass_fraction[rt_species_HeII];
+  const float XHeIII = p->rt_data.tchem.mass_fraction[rt_species_HeIII];
 
   const double mu =
       rt_tchem_get_mean_molecular_weight(XHI, XHII, XHeI, XHeII, XHeIII);
@@ -192,33 +188,38 @@ rt_tchem_get_gas_temperature(const struct part* restrict p,
  * tests, like the Iliev+06 tests, where we require fixed densities and
  * temperatures.
  **/
-__attribute__((always_inline)) INLINE static void
-rt_tchem_set_particle_quantities_for_test(struct part* restrict p) {
-
-  /* Set the values that you actually want. Needs to be in internal units.*/
-  /* 1 hydrogen_atom_mass / cm^3 / (1.98848e18 g/IMU * 3.0857e15cm/ILU^3) */
-  /* float density = 2.471e+04; */
-
-  /* Set the values that you actually want. Needs to be in internal units.*/
-  /* 10^-3 hydrogen_atom_mass / cm^3 / (1.98848e18 g/IMU * 3.0857e15cm/ILU^3) */
-  float density = 2.471e+01;
-
-  /* 100 K  */
-  float internal_energy = 1.23816f;
-
-  /* 10000 K with xHII = 1e-3 for Iliev Test 1 */
-  /* float internal_energy = 124.8416491f; */
-
-  /* Be vocal, just in case somebody forgets you exist. */
-  if (p->id == 1) message("Setting density from %.3e to %.3e", p->rho, density);
-
-  float mass_corr = density / p->rho;
-  p->rho = density;
-  p->conserved.mass *= mass_corr;
-  /* This assumes zero velocity */
-  p->conserved.energy = p->conserved.mass * internal_energy;
-  hydro_set_internal_energy(p, internal_energy);
-}
+/* __attribute__((always_inline)) INLINE static void */
+/* rt_tchem_set_particle_quantities_for_test(struct part* restrict p) { */
+/*  */
+/*   [> Set the values that you actually want. Needs to be in internal units.<]
+ */
+/*   [> 1 hydrogen_atom_mass / cm^3 / (1.98848e18 g/IMU * 3.0857e15cm/ILU^3) <]
+ */
+/*   [> float density = 2.471e+04; <] */
+/*  */
+/*   [> Set the values that you actually want. Needs to be in internal units.<]
+ */
+/*   [> 10^-3 hydrogen_atom_mass / cm^3 / (1.98848e18 g/IMU * 3.0857e15cm/ILU^3)
+ * <] */
+/*   float density = 2.471e+01; */
+/*  */
+/*   [> 100 K  <] */
+/*   float internal_energy = 1.23816f; */
+/*  */
+/*   [> 10000 K with xHII = 1e-3 for Iliev Test 1 <] */
+/*   [> float internal_energy = 124.8416491f; <] */
+/*  */
+/*   [> Be vocal, just in case somebody forgets you exist. <] */
+/*   if (p->id == 1) message("Setting density from %.3e to %.3e", p->rho,
+ * density); */
+/*  */
+/*   float mass_corr = density / p->rho; */
+/*   p->rho = density; */
+/*   p->conserved.mass *= mass_corr; */
+/*   [> This assumes zero velocity <] */
+/*   p->conserved.energy = p->conserved.mass * internal_energy; */
+/*   hydro_set_internal_energy(p, internal_energy); */
+/* } */
 
 /**
  * @brief Set a particle's radiation field given a photon flux.
