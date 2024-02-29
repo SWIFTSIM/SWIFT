@@ -311,7 +311,7 @@ static void debug_cell_type(struct space *s) {
           "c->type=%s, "
           "s->zoom_props->bkg_cell_offset=%d)",
           cid, cellID_names[cells[cid].type], bkg_cell_offset);
-    if (cid >= bkg_cell_offset && cells[cid].type == zoom)
+    if (cid >= bkg_cell_offset && cells[cid].type == cell_type_zoom)
       error(
           "Cell has the wrong cell type for it's array position (cid=%d, "
           "c->type=%s, "
