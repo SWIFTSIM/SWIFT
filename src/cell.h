@@ -799,9 +799,7 @@ __attribute__((always_inline)) INLINE int cell_getid_nested_region(
   const int k = (z - bounds[2]) * iwidth[2];
 
   /* Which zoom TL cell are we in? */
-  const int cell_id = cell_getid_offset(cdim, offset, i, j, k);
-
-  return cell_id;
+  return cell_getid_offset(cdim, offset, i, j, k);
 }
 
 /**
