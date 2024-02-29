@@ -21,6 +21,20 @@
 
 #include "chemistry_struct.h"
 
+
+/**
+ * @brief The stellar feedback type for each star type. Now, star particles can
+ * represent a single star ("single_star"), a stellar population without SNII
+ * feedback ("star_population_no_SNII") or a stellar population with SNII
+ * feedback ("stellar population").
+ */
+typedef enum star_feedback_modes {
+  single_star, /* particle representing a single star */
+  star_population_no_SNII, /* particle representing a population without SNII */
+  star_population /* particle representing a population (with SNII) */
+} star_feedback_type;
+
+
 /**
  * @brief Feedback fields carried by each hydro particles
  */
@@ -66,8 +80,8 @@ struct feedback_spart_data {
   /*! Does the particle needs the feedback loop? */
   char will_do_feedback;
 
-  /*! Feedback type 0=stellar part. without SNII 1=single star 2=normal */
-  char type;
+  /* Feedback type in function of the star particle type */
+  star_feedback_type star_type;
 };
 
 #endif /* SWIFT_FEEDBACK_STRUCT_GEAR_H */
