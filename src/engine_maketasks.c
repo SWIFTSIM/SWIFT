@@ -23,6 +23,8 @@
  ******************************************************************************/
 
 /* Config parameters. */
+#include "zoom_region/zoom_maketasks.h"
+
 #include <config.h>
 
 /* Some standard headers. */
@@ -54,6 +56,7 @@
 #include "proxy.h"
 #include "rt_properties.h"
 #include "timers.h"
+#include "zoom_region/zoom_maketasks.h"
 
 extern int engine_max_parts_per_ghost;
 extern int engine_max_sparts_per_ghost;
@@ -4616,9 +4619,13 @@ void engine_maketasks(struct engine *e) {
   tic2 = getticks();
 
   /* Add the self gravity tasks. */
-  if (e->policy & engine_policy_self_gravity) {
+  if (e->policy & engine_policy_self_gravity && !s->with_zoom_region) {
     threadpool_map(&e->threadpool, engine_make_self_gravity_tasks_mapper, NULL,
                    s->nr_cells, 1, threadpool_auto_chunk_size, e);
+  } else if (e->policy & engine_policy_self_gravity && s->with_zoom_region) {
+    /* Call the zoom region specific wrapper. This handles the pair tasks
+     * between each cell grid explicitly. */
+    zoom_engine_make_self_gravity_tasks(s, e);
   }
 
   if (e->verbose)
