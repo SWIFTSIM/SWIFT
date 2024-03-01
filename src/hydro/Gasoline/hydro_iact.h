@@ -26,6 +26,7 @@
  *        with added Gasoline physics (Wadsley+ 2017) (interaction routines)
  */
 
+#include "adaptive_softening_iact.h"
 #include "adiabatic_index.h"
 #include "hydro_parameters.h"
 #include "minmax.h"
@@ -67,6 +68,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   pi->density.wcount += wi;
   pi->density.wcount_dh -= (hydro_dimension * wi + ui * wi_dx);
 
+  adaptive_softening_add_correction_term(pi, ui, hi_inv, mj);
+
   /* Compute density of pj. */
   const float hj_inv = 1.f / hj;
   const float uj = r * hj_inv;
@@ -77,6 +80,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
 
   pj->density.wcount += wj;
   pj->density.wcount_dh -= (hydro_dimension * wj + uj * wj_dx);
+
+  adaptive_softening_add_correction_term(pj, uj, hj_inv, mi);
 
   /* Now we need to compute the div terms */
   const float r_inv = r ? 1.0f / r : 0.0f;
@@ -146,6 +151,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
 
   pi->density.wcount += wi;
   pi->density.wcount_dh -= (hydro_dimension * wi + ui * wi_dx);
+
+  adaptive_softening_add_correction_term(pi, ui, h_inv, mj);
 
   const float r_inv = r ? 1.0f / r : 0.0f;
   const float faci = mj * wi_dx * r_inv;
@@ -427,8 +434,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float sph_acc_term =
       (pressurei + pressurej) * r_inv * kernel_gradient / (pi->rho * pj->rho);
 
+  /* Adaptive softening acceleration term */
+  const float adapt_soft_acc_term = adaptive_softening_get_acc_term(
+      pi, pj, wi_dr, wj_dr, pi->force.f, pj->force.f, r_inv);
+
   /* Assemble the acceleration */
-  const float acc = sph_acc_term + visc_acc_term;
+  const float acc = sph_acc_term + visc_acc_term + adapt_soft_acc_term;
 
   if (pi->feedback_data.decoupling_delay_time == 0.f &&
       pj->feedback_data.decoupling_delay_time == 0.f) {
@@ -553,8 +564,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float sph_acc_term =
       (pressurei + pressurej) * r_inv * kernel_gradient / (pi->rho * pj->rho);
 
+  /* Adaptive softening acceleration term */
+  const float adapt_soft_acc_term = adaptive_softening_get_acc_term(
+      pi, pj, wi_dr, wj_dr, pi->force.f, pj->force.f, r_inv);
+
   /* Assemble the acceleration */
-  const float acc = sph_acc_term + visc_acc_term;
+  const float acc = sph_acc_term + visc_acc_term + adapt_soft_acc_term;
 
   /* Skip wind particles for force calculations */
   if (pi->feedback_data.decoupling_delay_time == 0.f &&

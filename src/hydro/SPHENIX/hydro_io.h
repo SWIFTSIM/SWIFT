@@ -158,6 +158,16 @@ INLINE static void convert_part_potential(const struct engine* e,
     ret[0] = 0.f;
 }
 
+INLINE static void convert_part_softening(const struct engine* e,
+                                          const struct part* p,
+                                          const struct xpart* xp, float* ret) {
+  if (p->gpart != NULL)
+    ret[0] = kernel_gravity_softening_plummer_equivalent_inv *
+             gravity_get_softening(p->gpart, e->gravity_properties);
+  else
+    ret[0] = 0.f;
+}
+
 INLINE static void convert_viscosity(const struct engine* e,
                                      const struct part* p,
                                      const struct xpart* xp, float* ret) {
@@ -182,7 +192,7 @@ INLINE static void hydro_write_particles(const struct part* parts,
                                          struct io_props* list,
                                          int* num_fields) {
 
-  *num_fields = 16;
+  *num_fields = 17;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_part(
@@ -260,7 +270,12 @@ INLINE static void hydro_write_particles(const struct part* parts,
       convert_part_potential,
       "Co-moving gravitational potential at position of the particles");
 
-  list[15] = io_make_output_field(
+  list[15] = io_make_output_field_convert_part(
+      "Softenings", FLOAT, 1, UNIT_CONV_LENGTH, 1.f, parts, xparts,
+      convert_part_softening,
+      "Co-moving gravitational Plummer-equivalent softenings of the particles");
+
+  list[16] = io_make_output_field(
       "NumberOfTimesDecoupled", INT, 1, UNIT_CONV_NO_UNITS, 0.f, parts,
       feedback_data.number_of_times_decoupled,
       "The integer number of times a particle was decoupled from "
