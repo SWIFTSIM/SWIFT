@@ -1212,7 +1212,10 @@ void space_init(struct space *s, struct swift_params *params,
   int maxtcells =
       parser_get_opt_param_int(params, "Scheduler:max_top_level_cells",
                                space_max_top_level_cells_default);
-  s->cell_min = 0.99 * dmax / maxtcells;
+  /* We're at risk of rounding errors if tol ~ 1 - 1/maxtcells. */
+  /* Make sure it's (much) closer to 1.0 than this. */
+  const float tol = 1.0 - 1.0 / maxtcells / maxtcells;
+  s->cell_min = tol * dmax / maxtcells;
 
   /* Check that it is big enough. */
   const double dmin = min3(s->dim[0], s->dim[1], s->dim[2]);
