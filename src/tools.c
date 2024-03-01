@@ -164,6 +164,7 @@ void pairs_single_density(double *dim, long long int pid,
   printf("pairs_single: part[%i].id == %lli.\n", k, pid);
 
   hydro_init_part(&p, NULL);
+  adaptive_softening_init_part(&p);
   mhd_init_part(&p);
 
   /* Loop over all particle pairs. */
