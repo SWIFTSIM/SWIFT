@@ -36,11 +36,11 @@
 
 /* Type of flow */
 enum flow {
- Brandenburg_flow,
- Roberts_flow_1,
- Roberts_flow_2,
- Roberts_flow_3,
- Roberts_flow_4
+  Brandenburg_flow,
+  Roberts_flow_1,
+  Roberts_flow_2,
+  Roberts_flow_3,
+  Roberts_flow_4
 };
 
 /**
@@ -62,7 +62,6 @@ struct forcing_terms {
 
   /*! Wavenumber of the flow*/
   float kv;
-
 };
 
 /**
@@ -97,17 +96,17 @@ __attribute__((always_inline)) INLINE static void forcing_terms_apply(
   double v_Rob[3];
   double Psi;
 
-    switch (Flow_kind) {
+  switch (Flow_kind) {
 
     case Brandenburg_flow:
       /* Eq. 8 of Tilgner & Brandenburg, 2008, MNRAS, 391, 1477 */
       // Psi = (u0 / k0) * cos(k0 * p->x[0]) * cos(k0 * p->x[1]);
-      
+
       /* Eq. 7 of Tilgner & Brandenburg, 2008, MNRAS, 391, 1477 */
       // v_Rob[0] = u0 * cos(k0 * p->x[0]) * sin(k0 * p->x[1]);
       // v_Rob[1] = -u0 * sin(k0 * p->x[0]) * cos(k0 * p->x[1]);
       // v_Rob[2] = kf * Psi;
-      
+
       // Velocity used to compare with A.B. runs (from overleaf)
       Psi = (u0 / k0) * sin(k0 * p->x[0]) * sin(k0 * p->x[1]);
       v_Rob[0] = u0 * sin(k0 * p->x[0]) * cos(k0 * p->x[1]);
@@ -140,7 +139,6 @@ __attribute__((always_inline)) INLINE static void forcing_terms_apply(
       v_Rob[2] = u0 * 2 * cos(k0 * p->x[0]) * cos(k0 * p->x[1]);
       break;
 
-
     case Roberts_flow_4:
       /* Eq. 6.3 of Roberts, Feb. 3, 1972, Vol. 271, No. 1216 (Feb. 3, 1972),
        * pp. 411-454.*/
@@ -155,7 +153,6 @@ __attribute__((always_inline)) INLINE static void forcing_terms_apply(
       v_Rob[1] = 0.f;
       v_Rob[2] = 0.f;
   }
-
 
   /* Eq. 6 of Tilgner & Brandenburg, 2008, MNRAS, 391, 1477 */
   const double f[3] = {nu * kf * kf * v_Rob[0], nu * kf * kf * v_Rob[1],
@@ -228,7 +225,7 @@ static INLINE void forcing_terms_init(struct swift_params* parameter_file,
   if (terms->Flow_kind > 4 || terms->Flow_kind < 0)
     error(
         "Error: Flow_kind variable can take integer values from [0,4] "
-	"interval.");
+        "interval.");
 }
 
 #endif /* SWIFT_FORCING_ROBERTS_FLOW_ACCELERATION_H */
