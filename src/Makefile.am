@@ -75,6 +75,7 @@ include_HEADERS += lightcone/lightcone.h lightcone/lightcone_particle_io.h light
 include_HEADERS += lightcone/lightcone_crossing.h lightcone/lightcone_array.h lightcone/lightcone_map.h
 include_HEADERS += lightcone/lightcone_map_types.h lightcone/projected_kernel.h lightcone/lightcone_shell.h
 include_HEADERS += lightcone/healpix_util.h lightcone/pixel_index.h
+include_HEADERS += adaptive_softening.h adaptive_softening_iact.h adaptive_softening_struct.h
 include_HEADERS += forcing.h
 include_HEADERS += power_spectrum.h
 include_HEADERS += forcing.h

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 ###############################################################################
 # This file is part of SWIFT.
-# Copyright (c) 2023 Yolan Uyttenhove (yolan.uyttenhove@ugent.be)
+# Copyright (c) 2024 Yolan Uyttenhove (yolan.uyttenhove@ugent.be)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as published
@@ -31,47 +31,40 @@ GAMMA = 5 / 3
 RHO = 1
 P = 1
 VELOCITY = 2.5
-ELEMENT_COUNT = 9
+# Set ELEMENT_COUNT to 2 for AGORA runs, or for GEAR compile swift with `--with-chemistry=GEAR_X` with X equal to
+# ELEMENT_COUNT.
+ELEMENT_COUNT = 4
 
 outputfilename = "advect_metals.hdf5"
 
 
-def get_masks(boxsize, pos):
-    masks = dict()
+def get_mask(boxsize, pos, element_idx):
     x = boxsize[0]
-    y = boxsize[1]
+    right_half_mask = pos[:, 0] > x / 3
 
-    right_half_mask = pos[:, 0] > x / 2
-    masks["TotalMetallicity"] = right_half_mask
-    masks["He"] = pos[:, 0] * 2 % x > x / 2
-    masks["C"] = right_half_mask & (pos[:, 0] < 0.75 * x)
-    masks["N"] = right_half_mask & (pos[:, 0] > 0.75 * x)
-    masks["O"] = right_half_mask & (pos[:, 1] > 0.5 * y)
-    masks["Ne"] = right_half_mask & (pos[:, 1] < 0.5 * y)
-    masks["Mg"] = right_half_mask & (pos[:, 0] < 0.75 * x) & (pos[:, 1] > 0.5 * y)
-    masks["Si"] = right_half_mask & (pos[:, 0] > 0.75 * x) & (pos[:, 1] > 0.5 * y)
-    masks["Fe"] = right_half_mask & (pos[:, 0] < 0.75 * x) & (pos[:, 1] < 0.5 * y)
+    if element_idx == ELEMENT_COUNT - 1:
+        return right_half_mask
+    else:
+        periods = 2 * (element_idx + 2)
+        periods_mask = (pos[:, 0] * periods // x) % 2 == 0
+        return right_half_mask & periods_mask
 
-    return masks
+
+def get_abundance(element_idx):
+    if element_idx == ELEMENT_COUNT - 1:
+        return 0.2
+    else:
+        return 0.1 * 0.5 ** element_idx
 
 
 def get_element_abundances_metallicity(pos, boxsize):
-    elements = ["He", "C", "N", "O", "Ne", "Mg", "Si", "Fe"]
-    abundances = [0.2, 0.2, 0.2, 0.2, 0.2, 0.1, 0.1, 0.1]
+    element_abundances = []
+    for i in range(ELEMENT_COUNT):
+        element_abundances.append(
+            np.where(get_mask(boxsize, pos, i), get_abundance(i), 0)
+        )
 
-    masks = get_masks(boxsize, pos)
-    total_metallicity = np.where(masks["TotalMetallicity"], 0.7, 0.1)
-    element_abundances = [
-        np.where(masks[k], v, 0) for k, v in zip(elements, abundances)
-    ]
-
-    # Finally add H so that H + He + TotalMetallicity = 1
-    return (
-        np.stack(
-            [1 - element_abundances[0] - total_metallicity] + element_abundances, axis=1
-        ),
-        total_metallicity,
-    )
+    return np.stack(element_abundances, axis=1)
 
 
 if __name__ == "__main__":
@@ -97,7 +90,7 @@ if __name__ == "__main__":
     internal_energy = P / (rho * (GAMMA - 1))
 
     # Setup metallicities
-    element_abundances, metallicities = get_element_abundances_metallicity(pos, boxsize)
+    metallicities = get_element_abundances_metallicity(pos, boxsize)
 
     # Now open the file and write the data.
     file = h5py.File(outputfilename, "w")
@@ -130,10 +123,18 @@ if __name__ == "__main__":
     grp.create_dataset("SmoothingLength", data=h, dtype="f")
     grp.create_dataset("InternalEnergy", data=internal_energy, dtype="f")
     grp.create_dataset("ParticleIDs", data=ids, dtype="L")
-    grp.create_dataset("Metallicity", data=metallicities, dtype="f")
-    grp.create_dataset("ElementAbundance", data=element_abundances, dtype="f")
+    grp.create_dataset("MetalMassFraction", data=metallicities, dtype="f")
 
     file.close()
 
     # close up, and we're done!
     file.close()
+
+    if ELEMENT_COUNT == 2:
+        print(
+            f"Make sure swift was compiled with `--with-chemistry=GEAR_2` or `--with-chemistry=AGORA`"
+        )
+    else:
+        print(
+            f"Make sure swift was compiled with `--with-chemistry=GEAR_{ELEMENT_COUNT}`"
+        )
