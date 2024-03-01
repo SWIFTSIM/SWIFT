@@ -129,13 +129,11 @@ struct io_props {
   enum lossy_compression_schemes lossy_compression;
 
   /* Pointer to the start of the temporary buffer used in i/o */
-  union {
-    char *start_temp_c;
-    int *start_temp_i;
-    float *start_temp_f;
-    double *start_temp_d;
-    long long *start_temp_l;
-  };
+  char *start_temp_c;
+  int *start_temp_i;
+  float *start_temp_f;
+  double *start_temp_d;
+  long long *start_temp_l;
 
   /* Pointer to the engine */
   const struct engine *e;
@@ -154,37 +152,35 @@ struct io_props {
   /* Are we converting? */
   int conversion;
 
-  union {
-    /* Conversion function for part */
-    conversion_func_part_float convert_part_f;
-    conversion_func_part_int convert_part_i;
-    conversion_func_part_double convert_part_d;
-    conversion_func_part_long_long convert_part_l;
+  /* Conversion function for part */
+  conversion_func_part_float convert_part_f;
+  conversion_func_part_int convert_part_i;
+  conversion_func_part_double convert_part_d;
+  conversion_func_part_long_long convert_part_l;
 
-    /* Conversion function for gpart */
-    conversion_func_gpart_float convert_gpart_f;
-    conversion_func_gpart_int convert_gpart_i;
-    conversion_func_gpart_double convert_gpart_d;
-    conversion_func_gpart_long_long convert_gpart_l;
+  /* Conversion function for gpart */
+  conversion_func_gpart_float convert_gpart_f;
+  conversion_func_gpart_int convert_gpart_i;
+  conversion_func_gpart_double convert_gpart_d;
+  conversion_func_gpart_long_long convert_gpart_l;
 
-    /* Conversion function for spart */
-    conversion_func_spart_float convert_spart_f;
-    conversion_func_spart_int convert_spart_i;
-    conversion_func_spart_double convert_spart_d;
-    conversion_func_spart_long_long convert_spart_l;
+  /* Conversion function for spart */
+  conversion_func_spart_float convert_spart_f;
+  conversion_func_spart_int convert_spart_i;
+  conversion_func_spart_double convert_spart_d;
+  conversion_func_spart_long_long convert_spart_l;
 
-    /* Conversion function for bpart */
-    conversion_func_bpart_float convert_bpart_f;
-    conversion_func_bpart_int convert_bpart_i;
-    conversion_func_bpart_double convert_bpart_d;
-    conversion_func_bpart_long_long convert_bpart_l;
+  /* Conversion function for bpart */
+  conversion_func_bpart_float convert_bpart_f;
+  conversion_func_bpart_int convert_bpart_i;
+  conversion_func_bpart_double convert_bpart_d;
+  conversion_func_bpart_long_long convert_bpart_l;
 
-    /* Conversion function for sink */
-    conversion_func_sink_float convert_sink_f;
-    conversion_func_sink_int convert_sink_i;
-    conversion_func_sink_double convert_sink_d;
-    conversion_func_sink_long_long convert_sink_l;
-  };
+  /* Conversion function for sink */
+  conversion_func_sink_float convert_sink_f;
+  conversion_func_sink_int convert_sink_i;
+  conversion_func_sink_double convert_sink_d;
+  conversion_func_sink_long_long convert_sink_l;
 };
 
 /**
