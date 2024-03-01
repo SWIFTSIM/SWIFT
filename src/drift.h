@@ -23,6 +23,7 @@
 #include <config.h>
 
 /* Local headers. */
+#include "adaptive_softening.h"
 #include "black_holes.h"
 #include "const.h"
 #include "debug.h"
@@ -205,6 +206,7 @@ __attribute__((always_inline)) INLINE static void drift_part(
   mhd_predict_extra(p, xp, dt_drift, dt_therm, cosmo, hydro_props,
                     entropy_floor);
   rt_predict_extra(p, xp, dt_drift);
+  if (p->gpart) gravity_update_softening(p->gpart, p, e->gravity_properties);
 
   /* Compute offsets since last cell construction */
   for (int k = 0; k < 3; k++) {
