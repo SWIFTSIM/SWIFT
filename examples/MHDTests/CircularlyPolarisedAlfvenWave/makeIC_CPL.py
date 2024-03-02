@@ -4,77 +4,76 @@
 #############################
 
 import h5py
+import argparse as ap
 import numpy as np
 import matplotlib.pyplot as plt
 
-# Parameters
+parser = ap.ArgumentParser()
 
+parser.add_argument(
+    "-p",
+    "--positionsFile",
+    help="File with partcile positions to generate Circularly Polarised Alfven Wave Test ICs",
+    ddefault="CPLglassCube_32x_16y_16z.hdf5",
+    type=str,
+)
+
+args = parser.parse_args()
+
+# Parameters
 rho = 1.0
 P = 0.1
 gamma = 5.0 / 3.0
 
 v0 = 0.1
 B0 = 0.1
-
-wavelen = 1.0
+wavelen = 1.0 
 wavenum = 2.0 * np.pi / wavelen
 
 fileOutputName = "CircularlyPolarisedAlfvenWave.hdf5"
 
-###---------------------------###
+# Retrieve positions file
+glass = h5py.File(args.positionsFile, "r")
 
-glass = h5py.File("BCCglassCube_32.hdf5", "r")
+pos = glass["/PartType0/Coordinates"][:, :]
+h   = glass["/PartType0/SmoothingLength"][:]
+N = len(h)
 
-unit_cell = glass["/PartType0/Coordinates"][:, :]
-h_unit_cell = glass["/PartType0/SmoothingLength"][:]
+posFileBoxSize = glass["/Header"].attrs["BoxSize"]
 
-N_unit_cell = len(h_unit_cell)
-times = 2
+print("The positions' file box size is : ", posFileBoxSize)
+print("The shape of the positions array is : ", pos.shape) 
 
-###---------------------------###
+# Rescale positions and smoothing lenths to desired scale
+Lx = 2.0                # 2.0 / np.sqrt(3.0)        # 3.0
+Ly = 0.5 * np.sqrt(3.0) # 2.0                       # scaling * posFileBoxSize[1]
+Lz = np.sqrt(2.0/3.0)   # 2.0 * np.sqrt(2.0) / 3.0  # scaling * posFileBoxSize[2]
 
-cx = times
-cy = 1
-cz = 1
+scaling = [Lx / posFileBoxSize[0], Ly / posFileBoxSize[1], Lz / posFileBoxSize[2]]
 
-Lx = 3.0
-Ly = 0.5 * Lx
-Lz = 0.5 * Lx
+print("The scaling is : ", scaling)
 
-N = int(N_unit_cell * cx * cy * cz)
+pos[:,0] *= scaling[0]
+pos[:,1] *= scaling[1]
+pos[:,2] *= scaling[2]
 
-pos = np.zeros((N, 3))
-h = np.zeros(N)
-
-c0 = 0
-c1 = N_unit_cell
-
-for i in range(0, cx):
-    for j in range(0, cy):
-        for k in range(0, cz):
-            pos[c0:c1, 0] = unit_cell[:, 0] + i
-            pos[c0:c1, 1] = unit_cell[:, 1] + j
-            pos[c0:c1, 2] = unit_cell[:, 2] + k
-            h[c0:c1] = h_unit_cell[:]
-            c0 = c0 + N_unit_cell
-            c1 = c1 + N_unit_cell
-
-pos[:, 0] = pos[:, 0] * Lx / cx
-pos[:, 1] = pos[:, 1] * Ly / cy
-pos[:, 2] = pos[:, 2] * Lz / cz
-h = h * Lx / cx
+h *= scaling[0]
 
 vol = Lx * Ly * Lz
 
-###---------------------------###
+print("The box size is : ", Lx, Ly, Lz)
 
-sina = 2.0 / 3.0
+# Initialise and instantiate additional arrays
+
+sina = 0.0 
 cosa = np.sqrt(1 - sina ** 2)
 
-sinb = 2.0 / np.sqrt(5)
+sinb = 0.0 # 0.5
 cosb = np.sqrt(1 - sinb ** 2)
 
-Rotation = np.array(
+print("sina and sinb are : ", sina, sinb)
+
+Rot_inv = np.array(
     [
         [cosa * cosb, -sinb, -sina * cosb],
         [cosa * sinb, cosb, -sina * sinb],
@@ -82,10 +81,14 @@ Rotation = np.array(
     ]
 )
 
-# Rotationinv = np.linalg.inv(Rotation)
+Rot = Rot_inv.T
 
-# x = np.matmul(Rotationinv, pos.T)
-x1 = (pos[:, 0] + 2 * pos[:, 1] + 2 * pos[:, 2]) / 3
+#x1 = (pos[:, 0] + 2 * pos[:, 1] + 2 * pos[:, 2]) / 3
+x1 = np.dot(Rot, pos.T)[0,:]
+
+print("The max (x,y,z) is : ", max(pos[:,0]), max(pos[:,1]), max(pos[:,2]))
+print("The max x1 is : ", max(x1))
+
 v = np.zeros((3, N))
 B = np.zeros((3, N))
 A = np.zeros((3, N))
@@ -104,15 +107,13 @@ B[2, :] = B0 * np.cos(wavenum * x1)
 A[1, :] = B0 / wavenum * np.sin(wavenum * x1)
 A[2, :] = B0 / wavenum * np.cos(wavenum * x1)
 
-v = np.matmul(Rotation, v)
-B = np.matmul(Rotation, B)
-A = np.matmul(Rotation, A)
+v = np.dot(Rot_inv, v)
+B = np.dot(Rot_inv, B)
+A = np.dot(Rot_inv, A)
 
 v = v.T
 B = B.T
 A = A.T
-
-###---------------------------###
 
 # File
 fileOutput = h5py.File(fileOutputName, "w")
