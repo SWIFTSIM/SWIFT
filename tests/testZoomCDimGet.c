@@ -17,9 +17,6 @@
  *
  ******************************************************************************/
 
-/* Config parameters. */
-#include <config.h>
-
 /* Standard headers. */
 #include <assert.h>
 #include <stdlib.h>
@@ -29,7 +26,6 @@
 #include "cell.h"
 #include "parser.h"
 #include "space.h"
-#include "zoom_region/zoom_cell.h"
 #include "zoom_region/zoom_init.h"
 
 void make_mock_space(struct space *s) {
