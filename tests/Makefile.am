@@ -35,7 +35,7 @@ TESTS = testGreetings testMaths testReading.sh testKernel testKernelLongGrav \
 	testCbrt testCosmology testRandomCone testOutputList testFormat.sh \
 	test27cellsStars.sh test27cellsStarsPerturbed.sh testHydroMPIrules \
         testAtomic testGravitySpeed testNeutrinoCosmology.sh testNeutrinoFermiDirac \
-	testLog testDistance testTimeline testZoomInit.sh
+	testLog testDistance testTimeline testZoomInit.sh testZoomCDimGet.sh
 
 # List of test programs to compile
 check_PROGRAMS = testGreetings testReading testTimeIntegration testKernelLongGrav \
@@ -49,7 +49,7 @@ check_PROGRAMS = testGreetings testReading testTimeIntegration testKernelLongGra
 		 testSelectOutput testCbrt testCosmology testOutputList test27cellsStars \
 		 test27cellsStars_subset testCooling testComovingCooling testFeedback testHashmap \
                  testAtomic testHydroMPIrules testGravitySpeed testNeutrinoCosmology \
-		 testNeutrinoFermiDirac testLog testTimeline testZoomInit
+		 testNeutrinoFermiDirac testLog testTimeline testZoomInit testZoomCDimGet
 
 # Rebuild tests when SWIFT is updated.
 $(check_PROGRAMS): ../src/.libs/libswiftsim.a
@@ -172,6 +172,8 @@ testHydroMPIrules = testHydroMPIrules.c
 
 testZoomInit_SOURCES = testZoomInit.c
 
+testZoomCDimGet_SOURCES = testZoomCDimGet.c
+
 # Files necessary for distribution
 EXTRA_DIST = testReading.sh makeInput.py testActivePair.sh \
 	     test27cells.sh test27cellsPerturbed.sh testParser.sh testPeriodicBC.sh \
@@ -186,4 +188,4 @@ EXTRA_DIST = testReading.sh makeInput.py testActivePair.sh \
 	     test27cellsStars.sh test27cellsStarsPerturbed.sh star_tolerance_27_normal.dat \
 	     star_tolerance_27_perturbed.dat star_tolerance_27_perturbed_h.dat star_tolerance_27_perturbed_h2.dat \
 	     testNeutrinoCosmology.dat testNeutrinoCosmology.sh testZoomInit.sh zoom_params.yml \
-		 zoom_params_small.yml zoom_params_large.yml
+		 zoom_params_small.yml zoom_params_large.yml testZoomCDimGet.sh
