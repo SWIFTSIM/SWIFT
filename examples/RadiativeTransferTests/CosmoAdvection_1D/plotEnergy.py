@@ -117,17 +117,17 @@ def plot_param_over_time(snapshot_list, param="energy density", redshift_domain=
                         * physical_energy_density.sum()
                         / physical_energy_density.shape[0]
                     )
-                    analytic_exponent[1] = -1.0
+                    analytic_exponent[1] = -2.0
                 elif param == "total energy":
                     plot_param[1].append(1 * physical_energy.sum())
-                    analytic_exponent[1] = 0.0
+                    analytic_exponent[1] = -1.0
 
             if param == "energy density":
                 plot_param[0].append(1 * energy_density.sum() / energy_density.shape[0])
-                analytic_exponent[0] = 0.0
+                analytic_exponent[0] = -1.0
             elif param == "total energy":
                 plot_param[0].append(1 * energy.sum())
-                analytic_exponent[0] = 0.0
+                analytic_exponent[0] = -1.0
 
             scale_factor.append(meta.scale_factor)
 

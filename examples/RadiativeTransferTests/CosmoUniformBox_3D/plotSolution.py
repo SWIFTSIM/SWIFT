@@ -63,13 +63,13 @@ def plot_param_over_time(snapshot_list, param="energy density"):
         meta = data.metadata
 
         # Read comoving quantities
-        energy_density = data.gas.photon_energy_densities
+        energy = getattr(data.gas.photon_energies, "group1")
         mass = data.gas.masses
         rho = data.gas.densities
         vol = mass / rho
 
         energy_snapshot = data.gas.photon_energies.group1
-        energy = energy_density * vol
+        energy_density = energy / vol
 
         if plot_physical_quantities:
             physical_energy_density = energy_density.to_physical()
@@ -82,26 +82,26 @@ def plot_param_over_time(snapshot_list, param="energy density"):
                     * np.sum(physical_energy_density)
                     / physical_energy_density.shape[0]
                 )
-                analytic_exponent[1] = -3.0
+                analytic_exponent[1] = -4.0
             elif param == "volume":
                 plot_param[1].append(1 * np.sum(physical_vol) / physical_vol.shape[0])
                 analytic_exponent[1] = 3.0
             elif param == "total energy":
                 plot_param[1].append(1 * np.sum(physical_energy))
-                analytic_exponent[1] = 0.0
+                analytic_exponent[1] = -1.0
             elif param == "mass":
                 plot_param[1].append(1 * np.sum(physical_mass))
                 analytic_exponent[1] = 0.0
 
         if param == "energy density":
             plot_param[0].append(1 * np.sum(energy_density) / energy_density.shape[0])
-            analytic_exponent[0] = 0.0
+            analytic_exponent[0] = -1.0
         elif param == "volume":
             plot_param[0].append(1 * np.sum(vol) / vol.shape[0])
             analytic_exponent[0] = 0.0
         elif param == "total energy":
             plot_param[0].append(1 * np.sum(energy))
-            analytic_exponent[0] = 0.0
+            analytic_exponent[0] = -1.0
         elif param == "mass":
             plot_param[0].append(1 * np.sum(mass))
             analytic_exponent[0] = 0.0
@@ -193,8 +193,7 @@ if __name__ in ("__main__"):
         print("Redshift domain not recognised!")
         sys.exit(1)
 
-    snaplist = get_snapshot_list(snapshot_base)
-
+    snaplist = get_snapshot_list(snapshot_base + f"_{redshift_domain}")
     if len(snaplist) < 1:
         print("No snapshots found!")
         exit(1)
