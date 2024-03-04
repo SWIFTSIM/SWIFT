@@ -172,7 +172,7 @@ void make_mock_cells(struct space *s) {
         (mid[1] < s->zoom_props->region_upper_bounds[1]) &&
         (mid[2] > s->zoom_props->region_lower_bounds[2]) &&
         (mid[2] < s->zoom_props->region_upper_bounds[2])) {
-      c->subtype = cell_type_void;
+      c->subtype = cell_subtype_void;
     }
   }
 
@@ -195,7 +195,7 @@ void make_mock_cells(struct space *s) {
         (mid[1] < s->zoom_props->buffer_upper_bounds[1]) &&
         (mid[2] > s->zoom_props->buffer_lower_bounds[2]) &&
         (mid[2] < s->zoom_props->buffer_upper_bounds[2])) {
-      c->subtype = cell_type_empty;
+      c->subtype = cell_subtype_empty;
     }
   }
 }
