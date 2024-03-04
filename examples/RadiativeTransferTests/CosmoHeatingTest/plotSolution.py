@@ -30,6 +30,7 @@ import numpy as np
 import swiftsimio
 import unyt
 from matplotlib import pyplot as plt
+from matplotlib import ticker as mticker
 
 # arguments for plots of results
 plotkwargs = {"alpha": 0.5}
@@ -176,15 +177,24 @@ def get_snapshot_data(snaplist):
 
         data = swiftsimio.load(snap)
         gamma = data.gas.metadata.gas_gamma[0]
-        time = data.metadata.time.copy() - time_first
+        time = data.metadata.time.copy()
         gas = data.gas
 
         u = gas.internal_energies.to(energy_units / mass_units)
+        u.convert_to_physical()
+        u_phys_cgs = u.to(unyt.erg/unyt.g)
         masses = gas.masses.to(mass_units)
         imf = get_ion_mass_fractions(data)
         mu = mean_molecular_weight(imf.HI, imf.HII, imf.HeI, imf.HeII, imf.HeIII)
-        T = gas_temperature(u, mu, gamma).to("K")
+        mu.convert_to_physical()
+        T = gas_temperature(u_phys_cgs, mu, gamma).to("K")
         um = u.to(energy_units / mass_units) * masses
+
+        if i == 0:
+            print("mu", mu[:1])
+            print("u_phys_cgs", u_phys_cgs[:1])
+            print("u", u[:1])
+            print("T", T[:1])
 
         times[i] = time.to("Myr")
         temperatures[i] = np.mean(T)
@@ -227,7 +237,7 @@ if __name__ == "__main__":
     ax2 = fig.add_subplot(2, 2, 2)
     ax3 = fig.add_subplot(2, 2, 3)
     ax4 = fig.add_subplot(2, 2, 4)
-
+    
     ax1.semilogy(t, T, label="obtained results")
     ax1.set_xlabel("time [Myr]")
     ax1.set_ylabel("gas temperature [K]")
@@ -274,6 +284,7 @@ if __name__ == "__main__":
 
     for ax in fig.axes:
         ax.set_xscale("log")
+        ax.xaxis.set_minor_formatter(mticker.ScalarFormatter())
 
     plt.tight_layout()
     plt.savefig("heating_test.png")
