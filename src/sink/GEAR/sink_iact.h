@@ -238,9 +238,9 @@ runner_iact_nonsym_sinks_gas_swallow(const float r2, const float dx[3],
     if (pj->sink_data.swallow_id < si->id) {
       pj->sink_data.swallow_id = si->id;
     }
-  } else if ((r >= f_acc_r_acc) &&
-             (r <
-              ri)) /* f_acc*r_acc <= r <= r_acc, we perform other checks */ {
+
+  /* f_acc*r_acc <= r <= r_acc, we perform other checks */
+  } else if ((r >= f_acc_r_acc) && (r < ri))  {
 
     /* Compute the physical relative velocity between the particles */
     const float dv[3] = {(pj->v[0] - si->v[0]) * cosmo->a_inv,
