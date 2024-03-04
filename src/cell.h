@@ -1020,7 +1020,7 @@ __attribute__((always_inline)) INLINE static double cell_min_dist2_diff_size(
 
   /* We need to check if we need to consider periodicity since only
    * background cells are periodic. */
-  if (ci->type == bkg || cj->type == bkg) {
+  if (ci->type == cell_type_bkg || cj->type == cell_type_bkg) {
     periodic = periodic;
   } else {
     periodic = 0;
