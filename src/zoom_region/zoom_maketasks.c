@@ -20,16 +20,17 @@
 /* Config parameters. */
 #include "../config.h"
 
+#include <float.h>
+#include <math.h>
+
 /* Local includes */
 #include "cell.h"
 #include "engine.h"
 #include "gravity_properties.h"
 #include "multipole.h"
+#include "proxy.h"
 #include "space.h"
 #include "zoom_region/zoom_maketasks.h"
-
-#include <float.h>
-#include <math.h>
 
 /**
  * @brief Constructs the top-level tasks for the short-range gravity
@@ -934,7 +935,7 @@ void zoom_engine_make_self_gravity_tasks(struct space *s, struct engine *e) {
   tic = getticks();
 
   threadpool_map(&e->threadpool,
-                 engine_make_self_gravity_tasks_mapper_natural_cells, NULL,
+                 engine_make_self_gravity_tasks_mapper_bkg_cells, NULL,
                  s->zoom_props->nr_bkg_cells, 1, threadpool_auto_chunk_size, e);
 
   if (e->verbose)
