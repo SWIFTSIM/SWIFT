@@ -398,6 +398,8 @@ struct part {
     
     float drho_sphgrad[3];
     
+    float dh_sphgrad[3];
+    
     
     float div_v_sphgrad;
     
@@ -409,6 +411,15 @@ struct part {
     float testing_output;
     
     float m0_density_loop;
+    
+    float grad_m0_density_loop[3];
+    
+        
+    float grad_m0_gradhterm[3];
+
+    float grad_m1_term1_gradhterm[3][3];
+
+    float grad_m2_term1_gradhterm[3][3][3];
     
     
 } SWIFT_STRUCT_ALIGN;
