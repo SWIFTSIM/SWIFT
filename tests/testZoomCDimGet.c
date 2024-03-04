@@ -102,6 +102,13 @@ void make_mock_cells(struct space *s) {
       for (int k = 0; k < zoom_props->cdim[2]; k++) {
         const size_t cid = cell_getid(zoom_props->cdim, i, j, k);
         struct cell *c = &s->cells_top[cid];
+        c->loc[0] = (i * zoom_props->width[0]) + zoom_bounds[0];
+        c->loc[1] = (j * zoom_props->width[1]) + zoom_bounds[1];
+        c->loc[2] = (k * zoom_props->width[2]) + zoom_bounds[2];
+        c->width[0] = zoom_props->width[0];
+        c->width[1] = zoom_props->width[1];
+        c->width[2] = zoom_props->width[2];
+
         c->type = cell_type_zoom;
         c->subtype = cell_subtype_regular;
       }
@@ -114,6 +121,12 @@ void make_mock_cells(struct space *s) {
       for (int k = 0; k < s->cdim[2]; k++) {
         const size_t cid = cell_getid_offset(s->cdim, bkg_cell_offset, i, j, k);
         struct cell *c = &s->cells_top[cid];
+        c->loc[0] = i * s->width[0];
+        c->loc[1] = j * s->width[1];
+        c->loc[2] = k * s->width[2];
+        c->width[0] = s->width[0];
+        c->width[1] = s->width[1];
+        c->width[2] = s->width[2];
         c->type = cell_type_bkg;
         c->subtype = cell_subtype_regular;
       }
@@ -127,6 +140,12 @@ void make_mock_cells(struct space *s) {
         const size_t cid =
             cell_getid_offset(zoom_props->buffer_cdim, buffer_offset, i, j, k);
         struct cell *c = &s->cells_top[cid];
+        c->loc[0] = (i * zoom_props->buffer_width[0]) + buffer_bounds[0];
+        c->loc[1] = (j * zoom_props->buffer_width[1]) + buffer_bounds[1];
+        c->loc[2] = (k * zoom_props->buffer_width[2]) + buffer_bounds[2];
+        c->width[0] = zoom_props->buffer_width[0];
+        c->width[1] = zoom_props->buffer_width[1];
+        c->width[2] = zoom_props->buffer_width[2];
         c->type = cell_type_buffer;
         c->subtype = cell_subtype_regular;
       }
@@ -141,8 +160,18 @@ void make_mock_cells(struct space *s) {
     /* Get the cell */
     struct cell *c = &cells[cid];
 
+    /* Get the middle of the cell. */
+    double mid[3] = {c->loc[0] + 0.5 * c->width[0],
+                     c->loc[1] + 0.5 * c->width[1],
+                     c->loc[2] + 0.5 * c->width[2]};
+
     /* Label this cell if it contains the zoom region. */
-    if (cell_inside_zoom_region(c, s)) {
+    if ((mid[0] > s->zoom_props->region_lower_bounds[0]) &&
+        (mid[0] < s->zoom_props->region_upper_bounds[0]) &&
+        (mid[1] > s->zoom_props->region_lower_bounds[1]) &&
+        (mid[1] < s->zoom_props->region_upper_bounds[1]) &&
+        (mid[2] > s->zoom_props->region_lower_bounds[2]) &&
+        (mid[2] < s->zoom_props->region_upper_bounds[2])) {
       c->subtype = void_cell;
     }
   }
@@ -154,8 +183,18 @@ void make_mock_cells(struct space *s) {
     /* Get this cell. */
     struct cell *c = &cells[cid];
 
+    /* Get the middle of the cell. */
+    double mid[3] = {c->loc[0] + 0.5 * c->width[0],
+                     c->loc[1] + 0.5 * c->width[1],
+                     c->loc[2] + 0.5 * c->width[2]};
+
     /* Assign the cell type. */
-    if (cell_inside_buffer_region(c, s)) {
+    if ((mid[0] > s->zoom_props->buffer_lower_bounds[0]) &&
+        (mid[0] < s->zoom_props->buffer_upper_bounds[0]) &&
+        (mid[1] > s->zoom_props->buffer_lower_bounds[1]) &&
+        (mid[1] < s->zoom_props->buffer_upper_bounds[1]) &&
+        (mid[2] > s->zoom_props->buffer_lower_bounds[2]) &&
+        (mid[2] < s->zoom_props->buffer_upper_bounds[2])) {
       c->subtype = empty;
     }
   }
