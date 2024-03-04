@@ -18,7 +18,6 @@
  ******************************************************************************/
 
 /* Standard headers. */
-#include <assert.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -36,6 +35,14 @@ void make_mock_space(struct space *s) {
   s->dim[2] = 1000;
   s->nr_gparts = 18;
 
+  /* Allocate memory for the gparts. */
+  struct gpart *gparts =
+      (struct gpart *)malloc(s->nr_gparts * sizeof(struct gpart));
+  if (gparts == NULL) {
+    error("Failed to allocate memory for gparts");
+  }
+  bzero(gparts, s->nr_gparts * sizeof(struct gpart));
+
   /* We need the engine to be NULL for the logic. */
   s->e = NULL;
 
@@ -43,6 +50,29 @@ void make_mock_space(struct space *s) {
   double cube_corners[8][3] = {
       {590, 590, 590}, {590, 515, 590}, {515, 590, 590}, {515, 515, 590},
       {590, 590, 515}, {590, 515, 515}, {515, 590, 515}, {515, 515, 515}};
+
+  /* Loop over the gparts and set up baxckground and zoom particles. */
+  for (size_t i = 0; i < s->nr_gparts; i++) {
+    gparts[i].mass = 1.0;
+
+    /* Handle background and zoom region particles differently. */
+    if (i < 10) {
+      /* Set background particles to be evenly spaced. */
+      gparts[i].x[0] = s->dim[0] / s->nr_gparts * i;
+      gparts[i].x[1] = s->dim[1] / s->nr_gparts * i;
+      gparts[i].x[2] = s->dim[2] / s->nr_gparts * i;
+      gparts[i].type = swift_type_dark_matter_background;
+
+    } else {
+      /* Set zoom region particles to be at the corners of the region. */
+      gparts[i].x[0] = cube_corners[i - 10][0];
+      gparts[i].x[1] = cube_corners[i - 10][1];
+      gparts[i].x[2] = cube_corners[i - 10][2];
+      gparts[i].type = swift_type_dark_matter;
+    }
+
+    s->gparts = gparts;
+  }
 }
 
 void make_mock_cells(struct space *s) {
@@ -66,14 +96,12 @@ void make_mock_cells(struct space *s) {
                                    zoom_props->buffer_lower_bounds[1],
                                    zoom_props->buffer_lower_bounds[2]};
 
-  struct cell *restrict c;
-
   /* Loop over zoom cells and set locations and initial values */
   for (int i = 0; i < zoom_props->cdim[0]; i++) {
     for (int j = 0; j < zoom_props->cdim[1]; j++) {
       for (int k = 0; k < zoom_props->cdim[2]; k++) {
         const size_t cid = cell_getid(zoom_props->cdim, i, j, k);
-        c = &s->cells_top[cid];
+        struct cell *c = &s->cells_top[cid];
         c->type = cell_type_zoom;
         c->subtype = cell_subtype_regular;
       }
@@ -85,6 +113,7 @@ void make_mock_cells(struct space *s) {
     for (int j = 0; j < s->cdim[1]; j++) {
       for (int k = 0; k < s->cdim[2]; k++) {
         const size_t cid = cell_getid_offset(s->cdim, bkg_cell_offset, i, j, k);
+        struct cell *c = &s->cells_top[cid];
         c->type = cell_type_bkg;
         c->subtype = cell_subtype_regular;
       }
@@ -97,6 +126,7 @@ void make_mock_cells(struct space *s) {
       for (int k = 0; k < zoom_props->buffer_cdim[2]; k++) {
         const size_t cid =
             cell_getid_offset(zoom_props->buffer_cdim, buffer_offset, i, j, k);
+        struct cell *c = &s->cells_top[cid];
         c->type = cell_type_buffer;
         c->subtype = cell_subtype_regular;
       }
