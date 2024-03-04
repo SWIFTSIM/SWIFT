@@ -80,10 +80,16 @@ float initial_mass_function_sample(const struct initial_mass_function *imf,
   for (int i = 0; i < imf->n_parts; i++)
     if (f < imf->mass_fraction[i + 1]) {
       float pmin = pow(imf->mass_limits[i], imf->exp[i]);
-      return pow(imf->N_tot * imf->exp[i] / imf->coef[i] *
-                         (f - imf->mass_fraction[i]) +
-                     pmin,
-                 1. / imf->exp[i]);
+      float exponent = 1. / imf->exp[i];
+      float base_part_1 = imf->N_tot * imf->exp[i] / imf->coef[i];
+      base_part_1 *= (f - imf->mass_fraction[i]);
+      float base = base_part_1 +  pmin;
+
+      /* The mathematical expression is:
+           (N_tot * exp_{imf, i} / coeff_{imf, i} * (f - mass_fraction_{imf, i})
+	     + pmin)**(1/exp_{imf, i})
+      */
+      return pow(base, exponent);
     }
 
   return -1;
