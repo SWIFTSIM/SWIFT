@@ -105,7 +105,7 @@ void engine_make_self_gravity_tasks_mapper_bkg_cells(void *map_data,
     if (ci->grav.count == 0) continue;
 
     /* Ensure we haven't found a void cell with particles */
-    if (ci->subtype == void_cell | ci->subtype == empty)
+    if (ci->subtype == cell_subtype_void | ci->subtype == cell_subtype_empty)
       error("A void/empty cell (cid=%d) has got particles!", cid);
 
     /* If the cell is local build a self-interaction */
@@ -173,7 +173,7 @@ void engine_make_self_gravity_tasks_mapper_bkg_cells(void *map_data,
 
 #ifdef SWIFT_DEBUG_CHECKS
             /* Ensure both cells are background cells */
-            if (ci->type == zoom || cj->type == zoom) {
+            if (ci->type == cell_type_zoom || cj->type == cell_type_zoom) {
               error(
                   "Cell %d and cell %d are not background cells! "
                   "(ci->type=%d, cj->type=%d)",
@@ -296,7 +296,7 @@ void engine_make_self_gravity_tasks_mapper_buffer_cells(void *map_data,
     if (ci->grav.count == 0) continue;
 
     /* Ensure we haven't found a void cell with particles */
-    if (ci->subtype == void_cell)
+    if (ci->subtype == cell_subtype_void)
       error("A void cell (cid=%d) has got particles!", cid);
 
     /* If the cell is local build a self-interaction */
@@ -358,7 +358,7 @@ void engine_make_self_gravity_tasks_mapper_buffer_cells(void *map_data,
 
 #ifdef SWIFT_DEBUG_CHECKS
             /* Ensure both cells are background cells */
-            if (ci->type == zoom || cj->type == zoom) {
+            if (ci->type == cell_type_zoom || cj->type == cell_type_zoom) {
               error(
                   "Cell %d and cell %d are not background cells! "
                   "(ci->type=%d, cj->type=%d)",
@@ -534,7 +534,7 @@ void engine_make_self_gravity_tasks_mapper_zoom_cells(void *map_data,
 
 #ifdef SWIFT_DEBUG_CHECKS
             /* Ensure both cells are zoom cells */
-            if (ci->type != zoom || cj->type != zoom) {
+            if (ci->type != cell_type_zoom || cj->type != cell_type_zoom) {
               error(
                   "Cell %d and cell %d are not zoom cells! "
                   "(ci->type=%d, cj->type=%d)",
