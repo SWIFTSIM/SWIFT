@@ -834,7 +834,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
     balsara = 0.f;
   } else {
     balsara = fabsf(p->div_v_sphgrad) /
-              (fabsf(p->div_v_sphgrad) + 0.5f * curl_v_with_gradh +
+              (fabsf(p->div_v_sphgrad) + curl_v_with_gradh +
                0.0001f * fac_Balsara_eps * soundspeed / p->h);
   }
     

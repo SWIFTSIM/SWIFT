@@ -244,6 +244,7 @@ hydro_prepare_gradient_extra_viscosity(struct part *restrict p) {
     
     p->du_sphgrad[i] = 0.f;
     p->drho_sphgrad[i] = 0.f;
+    p->dh_sphgrad[i] = 0.f;
   
     for (j = 0; j < 3; ++j) {
       p->dv_no_C[i][j] = 0.f;
@@ -278,7 +279,8 @@ hydro_runner_iact_gradient_extra_viscosity(struct part *restrict pi,
     
   float sph_volume_i = pi->mass / pi->sph_rho;
   float sph_volume_j = pj->mass / pj->sph_rho;
-
+  float volume_i = pi->mass / pi->rho_evolved;
+  float volume_j = pj->mass / pj->rho_evolved;
   //planetary_smoothing_correction_tweak_volume(&volume_i, pi);
   //planetary_smoothing_correction_tweak_volume(&volume_j, pj);
 
@@ -301,20 +303,28 @@ hydro_runner_iact_gradient_extra_viscosity(struct part *restrict pi,
     
     float wi_dx_term[3], wj_dx_term[3];
     for (i = 0; i < 3; ++i) {
-        wi_dx_term[i] = dx[i] * r_inv * wi_dx * hi_inv_dim_plus_one - (hydro_dimension * wi + (r / hi) * wi_dx) * hi_inv_dim_plus_one * pi->grad_h[i];  
-      wj_dx_term[i] = -dx[i] * r_inv * wj_dx * hj_inv_dim_plus_one - (hydro_dimension * wj + (r / hj) * wj_dx) * hj_inv_dim_plus_one * pj->grad_h[i];
+        wi_dx_term[i] = dx[i] * r_inv * wi_dx * hi_inv_dim_plus_one;// - (hydro_dimension * wi + (r / hi) * wi_dx) * hi_inv_dim_plus_one * pi->grad_h[i];  
+      wj_dx_term[i] = -dx[i] * r_inv * wj_dx * hj_inv_dim_plus_one;// - (hydro_dimension * wj + (r / hj) * wj_dx) * hj_inv_dim_plus_one * pj->grad_h[i];
+        
+        wi_dx_term[i] *= (1.f / pi->m0_density_loop);  
+      wj_dx_term[i] *= (1.f / pj->m0_density_loop);  
+        
+        
+      wi_dx_term[i] += -wi * hi_inv_dim * pi->grad_m0_density_loop[i] / (pi->m0_density_loop * pi->m0_density_loop);
+      wj_dx_term[i] += -wj * hj_inv_dim * pj->grad_m0_density_loop[i] / (pj->m0_density_loop * pj->m0_density_loop);
+        
         
     }
     
     
-    pi->curl_v_sphgrad[0] += ((pj->v[1] - pi->v[1]) * wi_dx_term[2] - (pj->v[2] - pi->v[2]) * wi_dx_term[1]) * sph_volume_j;
-    pi->curl_v_sphgrad[1] += ((pj->v[2] - pi->v[2]) * wi_dx_term[0] - (pj->v[0] - pi->v[0]) * wi_dx_term[2]) * sph_volume_j;
-    pi->curl_v_sphgrad[2] += ((pj->v[0] - pi->v[0]) * wi_dx_term[1] - (pj->v[1] - pi->v[1]) * wi_dx_term[0]) * sph_volume_j;
+    pi->curl_v_sphgrad[0] += ((pj->v[1] - pi->v[1]) * wi_dx_term[2] - (pj->v[2] - pi->v[2]) * wi_dx_term[1]) * volume_j;
+    pi->curl_v_sphgrad[1] += ((pj->v[2] - pi->v[2]) * wi_dx_term[0] - (pj->v[0] - pi->v[0]) * wi_dx_term[2]) * volume_j;
+    pi->curl_v_sphgrad[2] += ((pj->v[0] - pi->v[0]) * wi_dx_term[1] - (pj->v[1] - pi->v[1]) * wi_dx_term[0]) * volume_j;
     
     
-    pj->curl_v_sphgrad[0] += ((pi->v[1] - pj->v[1]) * wj_dx_term[2] - (pi->v[2] - pj->v[2]) * wj_dx_term[1]) * sph_volume_i;
-    pj->curl_v_sphgrad[1] += ((pi->v[2] - pj->v[2]) * wj_dx_term[0] - (pi->v[0] - pj->v[0]) * wj_dx_term[2]) * sph_volume_i;
-    pj->curl_v_sphgrad[2] += ((pi->v[0] - pj->v[0]) * wj_dx_term[1] - (pi->v[1] - pj->v[1]) * wj_dx_term[0]) * sph_volume_i;
+    pj->curl_v_sphgrad[0] += ((pi->v[1] - pj->v[1]) * wj_dx_term[2] - (pi->v[2] - pj->v[2]) * wj_dx_term[1]) * volume_i;
+    pj->curl_v_sphgrad[1] += ((pi->v[2] - pj->v[2]) * wj_dx_term[0] - (pi->v[0] - pj->v[0]) * wj_dx_term[2]) * volume_i;
+    pj->curl_v_sphgrad[2] += ((pi->v[0] - pj->v[0]) * wj_dx_term[1] - (pi->v[1] - pj->v[1]) * wj_dx_term[0]) * volume_i;
     
 
    
@@ -323,16 +333,23 @@ hydro_runner_iact_gradient_extra_viscosity(struct part *restrict pi,
       
       
     
-      pi->div_v_sphgrad += (pj->v[i] - pi->v[i]) * wi_dx_term[i]  * sph_volume_j;
-      pj->div_v_sphgrad += (pi->v[i] - pj->v[i]) * wj_dx_term[i]  * sph_volume_i;
+      pi->div_v_sphgrad += (pj->v[i] - pi->v[i]) * wi_dx_term[i]  * volume_j;
+      pj->div_v_sphgrad += (pi->v[i] - pj->v[i]) * wj_dx_term[i]  * volume_i;
+      
+        pi->dh_sphgrad[i] += (pj->h - pi->h) * wi_dx_term[i] * volume_j;
+      pj->dh_sphgrad[i] += (pi->h - pj->h) * wj_dx_term[i] * volume_i;
+      
+
+      
+      
       
     if (pi->mat_id == pj->mat_id){    
         
-            pi->du_sphgrad[i] += (pj->u - pi->u) * wi_dx_term[i] * sph_volume_j;
-          pj->du_sphgrad[i] += (pi->u - pj->u) * wj_dx_term[i] * sph_volume_i;
+            pi->du_sphgrad[i] += (pj->u - pi->u) * wi_dx_term[i] * volume_j;
+          pj->du_sphgrad[i] += (pi->u - pj->u) * wj_dx_term[i] * volume_i;
           
-        pi->drho_sphgrad[i] += (pj->rho_evolved - pi->rho_evolved) * wi_dx_term[i] * sph_volume_j;
-      pj->drho_sphgrad[i] += (pi->rho_evolved - pj->rho_evolved) * wj_dx_term[i] * sph_volume_i;
+        pi->drho_sphgrad[i] += (pj->rho_evolved - pi->rho_evolved) * wi_dx_term[i] * volume_j;
+      pj->drho_sphgrad[i] += (pi->rho_evolved - pj->rho_evolved) * wj_dx_term[i] * volume_i;
         
         pi->du_no_C[i] += (pi->u - pj->u) * dx[i] * wi * sph_volume_j;
         pj->du_no_C[i] += (pi->u - pj->u) * dx[i] * wj * sph_volume_i;
@@ -345,8 +362,8 @@ hydro_runner_iact_gradient_extra_viscosity(struct part *restrict pi,
       pj->dv_no_C[i][j] += (pi->v[i] - pj->v[i]) * dx[j] * wj * sph_volume_i;
         
     
-    pi->dv_sphgrad[i][j] += (pj->v[j] - pi->v[j]) * wi_dx_term[i] * sph_volume_j;
-    pj->dv_sphgrad[i][j] +=  (pi->v[j] - pj->v[j]) * wj_dx_term[i] * sph_volume_i;
+    pi->dv_sphgrad[i][j] += (pj->v[j] - pi->v[j]) * wi_dx_term[i] * volume_j;
+    pj->dv_sphgrad[i][j] +=  (pi->v[j] - pj->v[j]) * wj_dx_term[i] * volume_i;
 
      // for (k = 0; k < 3; ++k) {
         /* Gradients from eq 18 in Rosswog 2020 (without C multiplied). Note
@@ -378,7 +395,9 @@ hydro_runner_iact_nonsym_gradient_extra_viscosity(
     int i, j;//, k; 
     
   float sph_volume_j = pj->mass / pj->sph_rho;
+    float volume_j = pj->mass / pj->rho_evolved;
 
+ 
   //planetary_smoothing_correction_tweak_volume(&volume_j, pj);
 
       const float r = sqrtf(dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]);
@@ -393,27 +412,35 @@ hydro_runner_iact_nonsym_gradient_extra_viscosity(
     
     float wi_dx_term[3];
     for (i = 0; i < 3; ++i) {
-        wi_dx_term[i] = dx[i] * r_inv * wi_dx * hi_inv_dim_plus_one - (hydro_dimension * wi + (r / hi) * wi_dx) * hi_inv_dim_plus_one * pi->grad_h[i];  
+        wi_dx_term[i] = dx[i] * r_inv * wi_dx * hi_inv_dim_plus_one;// - (hydro_dimension * wi + (r / hi) * wi_dx) * hi_inv_dim_plus_one * pi->grad_h[i];  
+        
+     wi_dx_term[i] *= (1.f / pi->m0_density_loop);  
+        
+        
+      wi_dx_term[i] += -wi * hi_inv_dim * pi->grad_m0_density_loop[i] / (pi->m0_density_loop * pi->m0_density_loop);
+        
         
     }
     
-    pi->curl_v_sphgrad[0] += ((pj->v[1] - pi->v[1]) * wi_dx_term[2] - (pj->v[2] - pi->v[2]) * wi_dx_term[1]) * sph_volume_j;
-    pi->curl_v_sphgrad[1] += ((pj->v[2] - pi->v[2]) * wi_dx_term[0] - (pj->v[0] - pi->v[0]) * wi_dx_term[2]) * sph_volume_j;
-    pi->curl_v_sphgrad[2] += ((pj->v[0] - pi->v[0]) * wi_dx_term[1] - (pj->v[1] - pi->v[1]) * wi_dx_term[0]) * sph_volume_j;
+    pi->curl_v_sphgrad[0] += ((pj->v[1] - pi->v[1]) * wi_dx_term[2] - (pj->v[2] - pi->v[2]) * wi_dx_term[1]) * volume_j;
+    pi->curl_v_sphgrad[1] += ((pj->v[2] - pi->v[2]) * wi_dx_term[0] - (pj->v[0] - pi->v[0]) * wi_dx_term[2]) * volume_j;
+    pi->curl_v_sphgrad[2] += ((pj->v[0] - pi->v[0]) * wi_dx_term[1] - (pj->v[1] - pi->v[1]) * wi_dx_term[0]) * volume_j;
 
    
   /* Set velocity derivative elements */
   for (i = 0; i < 3; ++i) {
       
       
-      pi->div_v_sphgrad += (pj->v[i] - pi->v[i]) * wi_dx_term[i]  * sph_volume_j;
+      pi->div_v_sphgrad += (pj->v[i] - pi->v[i]) * wi_dx_term[i]  * volume_j;
+      
+      pi->dh_sphgrad[i] += (pj->h - pi->h) * wi_dx_term[i] * volume_j;
 
       
     if (pi->mat_id == pj->mat_id){    
         
               
-          pi->du_sphgrad[i] += (pj->u - pi->u) * wi_dx_term[i] * sph_volume_j;
-    pi->drho_sphgrad[i] += (pj->rho_evolved - pi->rho_evolved) * wi_dx_term[i] * sph_volume_j;
+          pi->du_sphgrad[i] += (pj->u - pi->u) * wi_dx_term[i] * volume_j;
+    pi->drho_sphgrad[i] += (pj->rho_evolved - pi->rho_evolved) * wi_dx_term[i] * volume_j;
         
         pi->du_no_C[i] += (pi->u - pj->u) * dx[i] * wi * sph_volume_j;
         pi->drho_no_C[i] += (pi->rho_evolved - pj->rho_evolved) * dx[i] * wi * sph_volume_j;
@@ -423,7 +450,7 @@ hydro_runner_iact_nonsym_gradient_extra_viscosity(
       pi->dv_no_C[i][j] += (pi->v[i] - pj->v[i]) * dx[j] * wi * sph_volume_j;
         
 
-    pi->dv_sphgrad[i][j] += (pj->v[j] - pi->v[j]) * wi_dx_term[i] * sph_volume_j;
+    pi->dv_sphgrad[i][j] += (pj->v[j] - pi->v[j]) * wi_dx_term[i] * volume_j;
 
     //  for (k = 0; k < 3; ++k) {
         /* Gradients from eq 18 in Rosswog 2020 (without C multiplied). Note
@@ -533,8 +560,8 @@ __attribute__((always_inline)) INLINE static void hydro_set_Qi_Qj(
   float vtilde_i[3], vtilde_j[3];
 
   /* Some parameters for artificial visc. Taken from Rosswog 2020 */
-  const float alpha = planetary_quad_visc_alpha;
-  const float beta = planetary_quad_visc_beta;
+  const float alpha = 1.5f;//planetary_quad_visc_alpha;
+  const float beta = 3.f;//planetary_quad_visc_beta;
   const float epsilon = planetary_quad_visc_epsilon;
 
   /* Square of eta (eq 16 in Rosswog 2020) */
@@ -614,8 +641,8 @@ __attribute__((always_inline)) INLINE static void hydro_set_Qi_Qj(
 
     for (int i = 0; i < 3; ++i) {
       /* Assemble the reconstructed velocity (eq 17 in Rosswog 2020) */
-      vtilde_i[i] = pi->v[i] + phi_i_v * v_quad_i[i];
-      vtilde_j[i] = pj->v[i] + phi_j_v * v_quad_j[i];
+      vtilde_i[i] = pi->v[i] + (1.f - pi->force.balsara) * phi_i_v * v_quad_i[i];
+      vtilde_j[i] = pj->v[i] + (1.f - pj->force.balsara) * phi_j_v * v_quad_j[i];
     }
   } else {
     for (int i = 0; i < 3; ++i) {
@@ -634,60 +661,32 @@ __attribute__((always_inline)) INLINE static void hydro_set_Qi_Qj(
                          (vtilde_i[1] - vtilde_j[1]) * dx[1] +
                          (vtilde_i[2] - vtilde_j[2]) * dx[2]) *
                             hj_inv / (eta_j_2 + epsilon * epsilon));
-
+    
   const float ci = pi->force.soundspeed;
   const float cj = pj->force.soundspeed;
+
     
-    float balsara_i = 0.5f * (pi->force.balsara + pj->force.balsara);
-    float balsara_j = 0.5f * (pi->force.balsara + pj->force.balsara);
-    
-      
+float balsara_i = pi->force.balsara / 3.f + 2.f / 3.f;
+  float balsara_j = pj->force.balsara / 3.f + 2.f / 3.f;
+  
   /* Get viscous pressure terms (eq 14 in Rosswog 2020) */
-  *Qi = balsara_i * pi->rho * (-alpha * ci * 2.f * mu_i + beta * 2.f * mu_i * 2.f * mu_i);//pi->force.balsara * 0.5f * pi->rho * (-alpha * ci * mu_i + beta * mu_i * mu_i);
-  *Qj = balsara_j * pj->rho * (-alpha * cj * 2.f * mu_j + beta * 2.f * mu_j * 2.f * mu_j);//pj->force.balsara * 0.5f * pj->rho * (-alpha * cj * mu_j + beta * mu_j * mu_j);
-    
-      
-    
-    
+  *Qi =  balsara_i * 0.5f * pi->rho * (-alpha * ci * mu_i + beta * mu_i * mu_i);//pi->force.balsara * 0.5f * pi->rho * (-alpha * ci * mu_i + beta * mu_i * mu_i);
+  *Qj = balsara_j * 0.5f * pj->rho * (-alpha * cj * mu_j + beta * mu_j * mu_j);//pj->force.balsara * 0.5f * pj->rho * (-alpha * cj * mu_j + beta * mu_j * mu_j);
       
     float different_form_beta =  2.f * beta / alpha;
-    *visc_signal_velocity  = ci + cj - different_form_beta * 2.f * min(mu_i, mu_j);//ci + cj - different_form_beta * 0.5f *(2.f * mu_i + 2.f * mu_j);
+    *visc_signal_velocity  = ci + cj - different_form_beta * min(mu_i, mu_j);//ci + cj - different_form_beta * 0.5f *(2.f * mu_i + 2.f * mu_j);
    
     
-    
-    balsara_i = 0.95f * balsara_i + 0.05f;
-    balsara_j = 0.95f * balsara_j + 0.05f;
-
-      
-    
-    *cond_signal_velocity =  0.5f * (2.f * 2.f * balsara_i * fabs(mu_i) + 2.f * 2.f * balsara_j * fabs(mu_j));
-     
-    
-    
- //   float mean_balsara = 0.5f * (balsara_i + balsara_j);
-
-
+      float mean_balsara = 0.5f * (pi->force.balsara + pj->force.balsara);//0.5f * (balsara_i + balsara_j);//
   
-//*cond_signal_velocity =  2.f * mean_balsara * sqrtf((vtilde_i[0] - vtilde_j[0]) * (vtilde_i[0] - vtilde_j[0]) +
-  //                       (vtilde_i[1] - vtilde_j[1]) * (vtilde_i[1] - vtilde_j[1]) +
-    //                     (vtilde_i[2] - vtilde_j[2]) * (vtilde_i[2] - vtilde_j[2])); 
-                        
-    
-    
-    /*
-    *cond_signal_velocity =  sqrtf((vtilde_i[0] - vtilde_j[0]) * (vtilde_i[0] - vtilde_j[0]) +
+ 
+*cond_signal_velocity =  (0.95f * mean_balsara + 0.05f) * sqrtf((vtilde_i[0] - vtilde_j[0]) * (vtilde_i[0] - vtilde_j[0]) +
                          (vtilde_i[1] - vtilde_j[1]) * (vtilde_i[1] - vtilde_j[1]) +
                          (vtilde_i[2] - vtilde_j[2]) * (vtilde_i[2] - vtilde_j[2])); 
-     
-    */
-  
-  /* 
-  const float r_inv = r ? 1.0f / r : 0.0f;                        
-  *cond_signal_velocity = r_inv * fabs((vtilde_i[0] - vtilde_j[0]) * dx[0] +
-                         (vtilde_i[1] - vtilde_j[1]) * dx[1] +
-                         (vtilde_i[2] - vtilde_j[2]) * dx[2]);   
-                         
-    */
+    
+   // *cond_signal_velocity = (0.95f * mean_balsara + 0.05f) * sqrtf((pi->v[0] - pj->v[0]) * (pi->v[0] - pj->v[0]) +
+     //                    (pi->v[1] - pj->v[1]) * (pi->v[1] - pj->v[1]) +
+       //                  (pi->v[2] - pj->v[2]) * (pi->v[2] - pj->v[2])); 
 
 #else /* !PLANETARY_QUAD_VISC */
 

@@ -45,6 +45,11 @@ __attribute__((always_inline)) INLINE static void hydro_init_part_extra_kernel(
     
     p->m0_density_loop = 0.f;
     
+    
+    p->grad_m0_density_loop[0] = 0.f;
+  p->grad_m0_density_loop[1] = 0.f; 
+  p->grad_m0_density_loop[2] = 0.f;   
+    
 }
 
 /**
@@ -75,6 +80,10 @@ hydro_runner_iact_density_extra_kernel(struct part *restrict pi,
     pi->m0_density_loop += pj->mass * wi / pj->rho_evolved;
     pj->m0_density_loop += pi->mass * wj / pi->rho_evolved;
     
+    for (int i = 0; i < 3; i++) {
+      pi->grad_m0_density_loop[i] += (pj->mass / pj->rho_evolved) * dx[i] * wi_dx * r_inv;
+      pj->grad_m0_density_loop[i] += (pi->mass / pi->rho_evolved) * (-dx[i] * wj_dx * r_inv);
+    }
 }
 
 /**
@@ -98,6 +107,10 @@ hydro_runner_iact_nonsym_density_extra_kernel(struct part *restrict pi,
     
     
     pi->m0_density_loop += pj->mass * wi / pj->rho_evolved;
+    
+        for (int i = 0; i < 3; i++) {
+      pi->grad_m0_density_loop[i] += (pj->mass / pj->rho_evolved) * dx[i] * wi_dx * r_inv;
+    }
     
 }
 
@@ -146,6 +159,9 @@ hydro_end_density_extra_kernel(struct part *restrict p) {
   p->m0_density_loop += p->mass * kernel_root / p->rho_evolved;
   p->m0_density_loop *= h_inv_dim;
   
+   for (int i = 0; i < 3; i++) {
+      p->grad_m0_density_loop[i] *= h_inv_dim_plus_one;
+    }
 }
 
 
@@ -172,12 +188,15 @@ hydro_prepare_gradient_extra_kernel(struct part *restrict p) {
     for (int i = 0; i < 3; i++) {
       p->m1[i] = 0.f;
       p->grad_m0[i] = 0.f;
+      p->grad_m0_gradhterm[i] = 0.f;
       for (int j = 0; j < 3; j++) {
         p->m2[i][j] = 0.f;
         p->grad_m1_term1[i][j] = 0.f;
+        p->grad_m1_term1_gradhterm[i][j] = 0.f;
         p->grad_m1_term2[i][j] = 0.f;
         for (int k = 0; k < 3; k++) {
             p->grad_m2_term1[i][j][k] = 0.f;
+            p->grad_m2_term1_gradhterm[i][j][k] = 0.f;
             p->grad_m2_term2[i][j][k] = 0.f;
         }
       }
@@ -243,10 +262,10 @@ for (int i = 0; i < 3; i++) {
 }
     
     // h term
-
+float wi_dx_gradhterm[3], wj_dx_gradhterm[3];
   for (int i = 0; i < 3; i++) {   
-    wi_dx_term[i] += -0.5f *(hydro_dimension * wi + (r / hi) * wi_dx) * hi_inv_dim_plus_one * pi->grad_h[i]; 
-    wj_dx_term[i] += -0.5f *(hydro_dimension * wj + (r / hj) * wj_dx) * hj_inv_dim_plus_one * pj->grad_h[i];  
+    wi_dx_gradhterm[i] = -0.5f *(hydro_dimension * wi + (r / hi) * wi_dx) * hi_inv_dim_plus_one; 
+    wj_dx_gradhterm[i] = -0.5f *(hydro_dimension * wj + (r / hj) * wj_dx) * hj_inv_dim_plus_one;  
 }      
 
     
@@ -258,12 +277,18 @@ for (int i = 0; i < 3; i++) {
 
   pi->grad_m0[i] += volume_j * wi_dx_term[i];
   pj->grad_m0[i] += volume_i * wj_dx_term[i];
+    
+    pi->grad_m0_gradhterm[i] += volume_j * wi_dx_gradhterm[i];
+  pj->grad_m0_gradhterm[i] += volume_i * wj_dx_gradhterm[i];
   for (int j = 0; j < 3; j++) {
     pi->m2[i][j] += dx[i] * dx[j] * volume_j * wi_term;
     pj->m2[i][j] += dx[i] * dx[j] * volume_i * wj_term;
 
     pi->grad_m1_term1[i][j] += volume_j * dx[j] * wi_dx_term[i];
     pj->grad_m1_term1[i][j] += -volume_i * dx[j] * wj_dx_term[i];
+      
+      pi->grad_m1_term1_gradhterm[i][j] += volume_j * dx[j] * wi_dx_gradhterm[i];
+    pj->grad_m1_term1_gradhterm[i][j] += -volume_i * dx[j] * wj_dx_gradhterm[i];
     if (i == j){
       pi->grad_m1_term2[i][j] += volume_j * wi_term;
       pj->grad_m1_term2[i][j] += volume_i * wj_term;
@@ -272,6 +297,9 @@ for (int i = 0; i < 3; i++) {
     for (int k = 0; k < 3; k++) {
         pi->grad_m2_term1[i][j][k] += volume_j * dx[k] * dx[j] * wi_dx_term[i];
         pj->grad_m2_term1[i][j][k] += volume_i * dx[k] * dx[j] * wj_dx_term[i];
+        
+        pi->grad_m2_term1_gradhterm[i][j][k] += volume_j * dx[k] * dx[j] * wi_dx_gradhterm[i];
+        pj->grad_m2_term1_gradhterm[i][j][k] += volume_i * dx[k] * dx[j] * wj_dx_gradhterm[i];
 
         if (i == j){
           pi->grad_m2_term2[i][j][k] += volume_j * dx[k] * wi_term;
@@ -338,9 +366,11 @@ for (int i = 0; i < 3; i++) {
 }
  
 
-for (int i = 0; i < 3; i++) {   
-    wi_dx_term[i] += -0.5f *(hydro_dimension * wi + (r / hi) * wi_dx) * hi_inv_dim_plus_one * pi->grad_h[i]; 
-}  
+    // h term
+float wi_dx_gradhterm[3];
+  for (int i = 0; i < 3; i++) {   
+    wi_dx_gradhterm[i] = -0.5f *(hydro_dimension * wi + (r / hi) * wi_dx) * hi_inv_dim_plus_one; 
+}      
 
 
 pi->m0 += volume_j * wi_term;
@@ -348,16 +378,22 @@ for (int i = 0; i < 3; i++) {
   pi->m1[i] += dx[i] * volume_j * wi_term;
 
   pi->grad_m0[i] += volume_j * wi_dx_term[i];
+    
+     pi->grad_m0_gradhterm[i] += volume_j * wi_dx_gradhterm[i];
   for (int j = 0; j < 3; j++) {
     pi->m2[i][j] += dx[i] * dx[j] * volume_j * wi_term;
 
     pi->grad_m1_term1[i][j] += volume_j * dx[j] * wi_dx_term[i];
+      
+    pi->grad_m1_term1_gradhterm[i][j] += volume_j * dx[j] * wi_dx_gradhterm[i];  
     if (i == j){
       pi->grad_m1_term2[i][j] += volume_j * wi_term;
     }
 
     for (int k = 0; k < 3; k++) {
         pi->grad_m2_term1[i][j][k] += volume_j * dx[k] * dx[j] * wi_dx_term[i];
+        
+        pi->grad_m2_term1_gradhterm[i][j][k] += volume_j * dx[k] * dx[j] * wi_dx_gradhterm[i];
 
         if (i == j){
           pi->grad_m2_term2[i][j][k] += volume_j * dx[k] * wi_term;
@@ -447,9 +483,23 @@ p->grad_m1_term2[1][1] += volume * kernel_root * h_inv_dim;
 p->grad_m1_term2[2][2] += volume * kernel_root * h_inv_dim;
 
 const float h_inv_dim_plus_one = h_inv_dim * h_inv; 
-p->grad_m0[0] -= 0.5f * volume * hydro_dimension * kernel_root * h_inv_dim_plus_one * p->grad_h[0];
-p->grad_m0[1] -= 0.5f * volume * hydro_dimension * kernel_root * h_inv_dim_plus_one * p->grad_h[1];
-p->grad_m0[2] -= 0.5f * volume * hydro_dimension * kernel_root * h_inv_dim_plus_one * p->grad_h[2];
+p->grad_m0_gradhterm[0] -= 0.5f * volume * hydro_dimension * kernel_root * h_inv_dim_plus_one;
+p->grad_m0_gradhterm[1] -= 0.5f * volume * hydro_dimension * kernel_root * h_inv_dim_plus_one;
+p->grad_m0_gradhterm[2] -= 0.5f * volume * hydro_dimension * kernel_root * h_inv_dim_plus_one;
+
+
+for (i = 0; i < 3; i++) {
+    p->grad_m0_gradhterm[i] *= p->dh_sphgrad[i];
+    p->grad_m0[i] += p->grad_m0_gradhterm[i];
+  for (j = 0; j < 3; j++) {
+    p->grad_m1_term1_gradhterm[i][j] *= p->dh_sphgrad[i];
+    p->grad_m1_term1[i][j] += p->grad_m1_term1_gradhterm[i][j];
+    for (k = 0; k < 3; k++) {
+        p->grad_m2_term1_gradhterm[i][j][k] *= p->dh_sphgrad[i];
+        p->grad_m2_term1[i][j][k] += p->grad_m2_term1_gradhterm[i][j][k];
+    }
+  }
+}
 
 
 // Combine terms to get final m expressions
@@ -621,8 +671,8 @@ __attribute__((always_inline)) INLINE static void hydro_set_Gi_Gj_forceloop(
         // h term
 
       for (i = 0; i < 3; i++) {   
-        wi_dx_term[i] +=-0.5f *(hydro_dimension * wi + (r / pi->h) * wi_dx) * hid_inv * pi->grad_h[i];
-        wj_dx_term[i] += -0.5f *(hydro_dimension * wj + (r / pj->h) * wj_dx) * hjd_inv * pj->grad_h[i];
+        wi_dx_term[i] +=-0.5f *(hydro_dimension * wi + (r / pi->h) * wi_dx) * hid_inv * pi->dh_sphgrad[i];
+        wj_dx_term[i] += -0.5f *(hydro_dimension * wj + (r / pj->h) * wj_dx) * hjd_inv * pj->dh_sphgrad[i];
     }  
     
 
@@ -659,8 +709,8 @@ __attribute__((always_inline)) INLINE static void hydro_set_Gi_Gj_forceloop(
 
         // h term
       for (i = 0; i < 3; i++) {   
-        wi_dx_term_vac[i] += -(hydro_dimension * wi + (r / pi->h) * wi_dx) * hid_inv * pi->grad_h[i];
-        wj_dx_term_vac[i] += -(hydro_dimension * wj + (r / pj->h) * wj_dx) * hjd_inv * pj->grad_h[i];
+        wi_dx_term_vac[i] += -(hydro_dimension * wi + (r / pi->h) * wi_dx) * hid_inv * pi->dh_sphgrad[i];
+        wj_dx_term_vac[i] += -(hydro_dimension * wj + (r / pj->h) * wj_dx) * hjd_inv * pj->dh_sphgrad[i];
     }  
        
         for (i = 0; i < 3; i++) {
