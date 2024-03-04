@@ -124,7 +124,7 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
 
 #ifdef SWIFT_DEBUG_CHECKS
     /* For the debugging check we need the cdim, but only need to care about
-     * the periodic case. The zoom code has its own checks and balances to
+     * the non-zoom case. The zoom code has its own checks and balances to
      * ensure a returned index is sensible. */
     const int *cdim = s->cdim;
     if (!s->with_zoom_region &&
@@ -250,7 +250,7 @@ void space_gparts_get_cell_index_mapper(void *map_data, int nr_gparts,
 
 #ifdef SWIFT_DEBUG_CHECKS
     /* For the debugging check we need the cdim, but only need to care about
-     * the periodic case. The zoom code has its own checks and balances to
+     * the non-zoom case. The zoom code has its own checks and balances to
      * ensure a returned index is sensible. */
     const int *cdim = s->cdim;
     if (!s->with_zoom_region &&

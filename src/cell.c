@@ -1003,7 +1003,8 @@ void cell_check_multipole(struct cell *c,
 
   /* If the cell is a void or empty cell, exit immediately. (These only appear
    * when running with a zoom region). */
-  if (c->subtype == void_cell || c->subtype == empty) return;
+  if (c->subtype == cell_subtype_void || c->subtype == cell_subtype_empty)
+    return;
 
   /* First recurse */
   if (c->split)
