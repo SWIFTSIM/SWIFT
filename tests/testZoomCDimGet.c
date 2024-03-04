@@ -79,6 +79,13 @@ void make_mock_cells(struct space *s) {
   /* Get the zoom properties */
   struct zoom_region_properties *zoom_props = s->zoom_props;
 
+  /* Calculate the number of cells. */
+  s->nr_cells =
+      s->cdim[0] * s->cdim[1] * s->cdim[2] +
+      zoom_props->cdim[0] * zoom_props->cdim[1] * zoom_props->cdim[2] +
+      zoom_props->buffer_cdim[0] * zoom_props->buffer_cdim[1] *
+          zoom_props->buffer_cdim[2];
+
   /* Allocate cells. */
   s->cells_top = (struct cell *)malloc(s->nr_cells * sizeof(struct cell));
   if (s->cells_top == NULL) {
