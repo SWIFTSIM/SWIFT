@@ -359,9 +359,9 @@ extern const char *subcellID_names[];
 /**
  * @brief What type of top level cell is this cell?
  *
- * All cells are regular when running a periodic box. The other types
- * are never used in a periodic box and conversely, regular cells are never
- * used when running with a zoom region.
+ * All cells are cell_type_regular when running a periodic box. The other types
+ * are never used in a periodic box and conversely, cell_type_regular cells are
+ * never used when running with a zoom region.
  *
  * When running with a zoom region:
  *
@@ -376,11 +376,11 @@ extern const char *subcellID_names[];
  *   (nested inside the central background/buffer cell/s).
  */
 enum cell_types {
-  regular, /* A bog standard top level cell (for normal periodic boxes). */
-  bkg,     /* A background cell (only applicable for zooms). */
-  zoom,    /* A zoom cell (only applicable for zooms). */
-  buffer   /* A buffer cell (only applicable for zooms). */
-};
+  cell_type_regular, /* A standard top level cell (for non-zoom boxes). */
+  cell_type_bkg,     /* A background cell (only applicable for zooms). */
+  cell_type_zoom,    /* A zoom cell (only applicable for zooms). */
+  cell_type_buffer   /* A buffer cell (only applicable for zooms). */
+} __attribute__((__packed__));
 
 /**
  * @brief What subtype of top level cell is this cell?
@@ -389,18 +389,19 @@ enum cell_types {
  *
  * When running with a zoom region:
  *
- * - Zoom cells can only be regular_sub.
+ * - Zoom cells can only be cell_subtype_regular.
  * - Buffer cells (if turned on) can be neighbours if they are within the
  *   gravity criterion of the zoom region or void cells if they contain the
- *   zoom region. Otherwise, they are regular_sub.
+ *   zoom region. Otherwise, they are cell_subtype_regular.
  * - Like buffer cells, background cells can be neighbours if they are within
  *   the gravity criterion of the zoom region or void cells if they contain the
  *   zoom region, but only if buffer cells are not turned on. If buffer cells
- *   are turned on, a background cell can be empty if it contains nested buffer
- *   cells (only background cells can be empty). Otherwise, they are
- *   regular_sub.
+ *   are turned on, a background cell can be cell_subtype_empty if it contains
+ *   nested buffer cells (only background cells can be empty). Otherwise, they
+ *   are cell_subtype_regular.
  *
- * All cell types serve a function but only neighbour and regular can get tasks.
+ * All cell types serve a function but only cell_subtype_neighbour and
+ * cell_subtype_regular can get tasks.
  *
  * Void cells do not contain any pointers to particles but carry multipoles and
  * particle counts based on the nested zoom cells.
@@ -409,11 +410,13 @@ enum cell_types {
  * calculation and only exist to ensure the cell grids are maintained.
  */
 enum cell_subtypes {
-  regular_sub, /* A normal cell. */
-  neighbour,   /* A cell within the gravity criterion of the zoom region. */
-  void_cell,   /* A cell containing the zoom region (void cell). */
-  empty        /* An empty cell (background cells containing buffer cells). */
-};
+  cell_subtype_regular,   /* A normal cell. */
+  cell_subtype_neighbour, /* A cell within the gravity criterion of the zoom
+                             region. */
+  cell_subtype_void,      /* A cell containing the zoom region (void cell). */
+  cell_subtype_empty      /* An empty cell (background cells containing buffer
+                             cells). */
+} __attribute__((__packed__));
 
 /**
  * @brief Cell within the tree structure.
@@ -771,13 +774,15 @@ __attribute__((always_inline)) INLINE int cell_getid_offset(const int cdim[3],
 }
 
 /**
- * @brief For a given location, what TL cell does it belong in nested grid?
+ * @brief For a given location, what TL cell does it belong to in one of the
+ * cell grids below the background level?
  *
  * NOTE: This function is only applicable when running with a zoom region.
  *
- * It finds the cell ID in a nested region using the lower boundary of the
- * nested region to offset the input coordinates before multiplying by the
- * inverse width of a cell to get the integer cell coordinates.
+ * It finds the cell ID in a region below the background level (zoom/buffer)
+ * using the lower boundary of the nested region to offset the input coordinates
+ * before multiplying by the inverse width of a cell to get the integer cell
+ * coordinates.
  *
  * This function is mainly just a convenience wrapper around cell_getid_offset
  * to remove some boilerplate when applying the bounds.
@@ -790,7 +795,7 @@ __attribute__((always_inline)) INLINE int cell_getid_offset(const int cdim[3],
  *
  * @return The cell id.
  */
-__attribute__((always_inline)) INLINE int cell_getid_nested_region(
+__attribute__((always_inline)) INLINE int cell_getid_below_bkg(
     const int cdim[3], const double bounds[3], const double x, const double y,
     const double z, const double iwidth[3], const int offset) {
 
@@ -800,9 +805,7 @@ __attribute__((always_inline)) INLINE int cell_getid_nested_region(
   const int k = (z - bounds[2]) * iwidth[2];
 
   /* Which zoom TL cell are we in? */
-  const int cell_id = cell_getid_offset(cdim, offset, i, j, k);
-
-  return cell_id;
+  return cell_getid_offset(cdim, offset, i, j, k);
 }
 
 /**
@@ -840,46 +843,42 @@ __attribute__((always_inline)) INLINE int zoom_cell_getid(const struct space *s,
                                          zoom_props->buffer_lower_bounds[1],
                                          zoom_props->buffer_lower_bounds[2]};
 
-  /* Here we go down the heirarchy to get the cell_id, it's marginally slower
-   * than using logic to identify the region the position lies in since we have
-   * to check each level (for a zoom cell means getting 3 cellids) but is much
-   * safer and readable. */
-
   /* Get the background cell ijk coordinates. */
   const int bkg_i = x * s->iwidth[0];
   const int bkg_j = y * s->iwidth[1];
   const int bkg_k = z * s->iwidth[2];
 
   /* Which background cell is this? */
-  int cell_id = cell_getid(s->cdim, bkg_i, bkg_j, bkg_k) + bkg_cell_offset;
+  int cell_id =
+      cell_getid_offset(s->cdim, bkg_cell_offset, bkg_i, bkg_j, bkg_k);
 
   /* If this is a void cell we are in the zoom region. */
-  if (s->cells_top[cell_id].subtype == void_cell) {
+  if (s->cells_top[cell_id].subtype == cell_subtype_void) {
 
     /* Which zoom TL cell are we in? */
-    cell_id = cell_getid_nested_region(s->zoom_props->cdim, zoom_lower_bounds,
-                                       x, y, z, s->zoom_props->iwidth,
-                                       /*offset*/ 0);
+    cell_id = cell_getid_below_bkg(s->zoom_props->cdim, zoom_lower_bounds, x, y,
+                                   z, s->zoom_props->iwidth,
+                                   /*offset*/ 0);
 
   }
 
   /* If this is an empty cell we are in the buffer cells.
    * Otherwise, It's a legitimate background cell, and we'll return it. */
-  else if (s->cells_top[cell_id].subtype == empty) {
+  else if (s->cells_top[cell_id].subtype == cell_subtype_empty) {
 
     /* Which buffer TL cell are we in? */
-    cell_id = cell_getid_nested_region(
+    cell_id = cell_getid_below_bkg(
         s->zoom_props->buffer_cdim, buffer_lower_bounds, x, y, z,
         s->zoom_props->buffer_iwidth, buffer_cell_offset);
 
     /* Here we need to check if this is the void buffer cell.
      * Otherwise, It's a legitimate buffer cell, and we'll return it. */
-    if (s->cells_top[cell_id].subtype == void_cell) {
+    if (s->cells_top[cell_id].subtype == cell_subtype_void) {
 
       /* Which zoom TL cell are we in? */
-      cell_id = cell_getid_nested_region(s->zoom_props->cdim, zoom_lower_bounds,
-                                         x, y, z, s->zoom_props->iwidth,
-                                         /*offset*/ 0);
+      cell_id = cell_getid_below_bkg(s->zoom_props->cdim, zoom_lower_bounds, x,
+                                     y, z, s->zoom_props->iwidth,
+                                     /*offset*/ 0);
     }
   }
 

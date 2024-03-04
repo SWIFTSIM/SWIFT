@@ -57,7 +57,7 @@ Cell graph
 ----------
 
 An interactive graph of the cells is available with the configuration option ``--enable-cell-graph``. During a
-run, SWIFT will generate a ``cell_hierarchy_**.csv`` file per MPI rank at the frequency given by the parameter
+run, SWIFT will generate a ``cell_hierarchy_*.csv`` file per MPI rank at the frequency given by the parameter
 ``--cell-dumps=n``. The script ``tools/make_cell_hierarchy.py`` can be used to collate the files produced by
 different MPI ranks and convert them into a web page that shows an interactive cell hierarchy. The script
 takes the names of all the files you want to include as input, and requires an output prefix that will be used

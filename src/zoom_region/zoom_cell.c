@@ -88,7 +88,7 @@ void find_void_cells(struct space *s, const int verbose) {
 
     /* Label this cell if it contains the zoom region. */
     if (cell_inside_zoom_region(c, s)) {
-      c->subtype = void_cell;
+      c->subtype = cell_subtype_void;
       zoom_props->void_cells_top[zoom_props->nr_void_cells++] = cid;
     }
   }
@@ -129,7 +129,7 @@ void find_empty_cells(struct space *s, const int verbose) {
 
     /* Assign the cell type. */
     if (cell_inside_buffer_region(c, s)) {
-      c->subtype = empty;
+      c->subtype = cell_subtype_empty;
       zoom_props->nr_empty_cells++;
     }
   }
@@ -243,7 +243,7 @@ void find_neighbouring_cells(struct space *s, const int verbose) {
         struct cell *ci = &cells[cid];
 
         /* Skip non-void cells, we only want to walk out. */
-        if (ci->subtype != void_cell) continue;
+        if (ci->subtype != cell_subtype_void) continue;
 
         /* Loop over every other cell within (Manhattan) range delta */
         for (int ii = i - delta_m; ii <= i + delta_p; ii++) {
@@ -267,10 +267,11 @@ void find_neighbouring_cells(struct space *s, const int verbose) {
 
               /* Ensure this neighbour isn't a void cell or an already
                * counted neighbour. */
-              if (cj->subtype != void_cell && cj->subtype != neighbour) {
+              if (cj->subtype != cell_subtype_void &&
+                  cj->subtype != cell_subtype_neighbour) {
 
                 /* Record that we've found a neighbour. */
-                cj->subtype = neighbour;
+                cj->subtype = cell_subtype_neighbour;
                 neighbour_cells_top[zoom_props->nr_neighbour_cells++] = cjd;
               }
             } /* neighbour k loop */
@@ -305,83 +306,154 @@ static void debug_cell_type(struct space *s) {
   for (int cid = 0; cid < s->nr_cells; cid++) {
 
     /* Check cell type */
-    if (cid < bkg_cell_offset && cells[cid].type != zoom)
+    if (cid < bkg_cell_offset && cells[cid].type != cell_type_zoom)
       error(
           "Cell has the wrong cell type for it's array position (cid=%d, "
-          "c->type=%d, "
+          "c->type=%s, "
           "s->zoom_props->bkg_cell_offset=%d)",
-          cid, cells[cid].type, bkg_cell_offset);
-    if (cid >= bkg_cell_offset && cells[cid].type == zoom)
+          cid, cellID_names[cells[cid].type], bkg_cell_offset);
+    if (cid >= bkg_cell_offset && cells[cid].type == cell_type_zoom)
       error(
           "Cell has the wrong cell type for it's array position (cid=%d, "
-          "c->type=%d, "
+          "c->type=%s, "
           "s->zoom_props->bkg_cell_offset=%d)",
-          cid, cells[cid].type, bkg_cell_offset);
+          cid, cellID_names[cells[cid].type], bkg_cell_offset);
 
     /* Check cell widths */
     for (int ijk = 0; ijk < 3; ijk++) {
       if (cid < bkg_cell_offset && cells[cid].width[ijk] != zoom_width[ijk])
         error(
             "Cell has the wrong cell width for it's array position (cid=%d, "
-            "c->type=%d, "
+            "c->type=%s, "
             "s->zoom_props->bkg_cell_offset=%d, c->width=[%f %f %f], "
             "s->zoom_props->width=[%f %f %f])",
-            cid, cells[cid].type, bkg_cell_offset, cells[cid].width[0],
-            cells[cid].width[1], cells[cid].width[2], s->zoom_props->width[0],
-            s->zoom_props->width[1], s->zoom_props->width[2]);
+            cid, cellID_names[cells[cid].type], bkg_cell_offset,
+            cells[cid].width[0], cells[cid].width[1], cells[cid].width[2],
+            s->zoom_props->width[0], s->zoom_props->width[1],
+            s->zoom_props->width[2]);
       if ((cid >= bkg_cell_offset && cid < buffer_offset) &&
           cells[cid].width[ijk] != width[ijk])
         error(
             "Cell has the wrong cell width for it's array position (cid=%d, "
-            "c->type=%d, "
+            "c->type=%s, "
             "s->zoom_props->bkg_cell_offset=%d, c->width=[%f %f %f], "
             "s->zoom_props->width=[%f %f %f])",
-            cid, cells[cid].type, bkg_cell_offset, cells[cid].width[0],
-            cells[cid].width[1], cells[cid].width[2], s->zoom_props->width[0],
-            s->zoom_props->width[1], s->zoom_props->width[2]);
+            cid, cellID_names[cells[cid].type], bkg_cell_offset,
+            cells[cid].width[0], cells[cid].width[1], cells[cid].width[2],
+            s->zoom_props->width[0], s->zoom_props->width[1],
+            s->zoom_props->width[2]);
     }
   }
 
+  /* Ensure the cell and region boundaries align. */
   if (s->zoom_props->with_buffer_cells) {
-
-    /* Loop over natural cells and ensure the cell boundaries and buffer
-     * boundaries line up. */
-    int found_i_low = 0;
-    int found_j_low = 0;
-    int found_k_low = 0;
-    int found_i_up = 0;
-    int found_j_up = 0;
-    int found_k_up = 0;
+    int found_bkg_bufferi_low = 0;
+    int found_bkg_bufferj_low = 0;
+    int found_bkg_bufferk_low = 0;
+    int found_bkg_bufferi_up = 0;
+    int found_bkg_bufferj_up = 0;
+    int found_bkg_bufferk_up = 0;
     for (int i = 0; i < s->cdim[0]; i++) {
       for (int j = 0; j < s->cdim[1]; j++) {
         for (int k = 0; k < s->cdim[2]; k++) {
-          const size_t cid = cell_getid(s->cdim, i, j, k) + bkg_cell_offset;
 
-          if (cells[cid].loc[0] == s->zoom_props->buffer_lower_bounds[0])
-            found_i_low = 1;
+          if (s->width[0] * i == s->zoom_props->buffer_lower_bounds[0])
+            found_bkg_bufferi_low = 1;
+          if (s->width[1] * j == s->zoom_props->buffer_lower_bounds[1])
+            found_bkg_bufferj_low = 1;
+          if (s->width[2] * k == s->zoom_props->buffer_lower_bounds[2])
+            found_bkg_bufferk_low = 1;
 
-          if (cells[cid].loc[1] == s->zoom_props->buffer_lower_bounds[1])
-            found_j_low = 1;
-
-          if (cells[cid].loc[2] == s->zoom_props->buffer_lower_bounds[2])
-            found_k_low = 1;
-
-          if (cells[cid].loc[0] == s->zoom_props->buffer_upper_bounds[0])
-            found_i_up = 1;
-
-          if (cells[cid].loc[1] == s->zoom_props->buffer_upper_bounds[1])
-            found_j_up = 1;
-
-          if (cells[cid].loc[2] == s->zoom_props->buffer_upper_bounds[2])
-            found_k_up = 1;
+          if (s->width[0] * i == s->zoom_props->buffer_upper_bounds[0])
+            found_bkg_bufferi_up = 1;
+          if (s->width[1] * j == s->zoom_props->buffer_upper_bounds[1])
+            found_bkg_bufferj_up = 1;
+          if (s->width[2] * k == s->zoom_props->buffer_upper_bounds[2])
+            found_bkg_bufferk_up = 1;
         }
       }
     }
-
-    /* Report if we didn't find matching boundaries. */
-    if (!found_i_low || !found_j_low || !found_k_low || !found_i_up ||
-        !found_j_up || !found_k_up)
+    /* Did we find the boundaries?. */
+    if (!found_bkg_bufferi_low || !found_bkg_bufferj_low ||
+        !found_bkg_bufferk_low || !found_bkg_bufferi_up ||
+        !found_bkg_bufferj_up || !found_bkg_bufferk_up)
       error("The background cell and buffer region edges don't match!");
+
+    /* And for the zoom cells. */
+    int found_buffer_zoomi_low = 0;
+    int found_buffer_zoomj_low = 0;
+    int found_buffer_zoomk_low = 0;
+    int found_buffer_zoomi_up = 0;
+    int found_buffer_zoomj_up = 0;
+    int found_buffer_zoomk_up = 0;
+    for (int i = 0; i < s->zoom_props->buffer_cdim[0]; i++) {
+      for (int j = 0; j < s->zoom_props->buffer_cdim[1]; j++) {
+        for (int k = 0; k < s->zoom_props->buffer_cdim[2]; k++) {
+          if (s->zoom_props->buffer_lower_bounds[0] +
+                  s->zoom_props->buffer_width[0] * i ==
+              s->zoom_props->region_lower_bounds[0])
+            found_buffer_zoomi_low = 1;
+          if (s->zoom_props->buffer_lower_bounds[0] +
+                  s->zoom_props->buffer_width[1] * j ==
+              s->zoom_props->region_lower_bounds[1])
+            found_buffer_zoomj_low = 1;
+          if (s->zoom_props->buffer_lower_bounds[0] +
+                  s->zoom_props->buffer_width[2] * k ==
+              s->zoom_props->region_lower_bounds[2])
+            found_buffer_zoomk_low = 1;
+
+          if (s->zoom_props->buffer_lower_bounds[0] +
+                  s->zoom_props->buffer_width[0] * i ==
+              s->zoom_props->region_upper_bounds[0])
+            found_buffer_zoomi_up = 1;
+          if (s->zoom_props->buffer_lower_bounds[0] +
+                  s->zoom_props->buffer_width[1] * j ==
+              s->zoom_props->region_upper_bounds[1])
+            found_buffer_zoomj_up = 1;
+          if (s->zoom_props->buffer_lower_bounds[0] +
+                  s->zoom_props->buffer_width[2] * k ==
+              s->zoom_props->region_upper_bounds[2])
+            found_buffer_zoomk_up = 1;
+        }
+      }
+    }
+    /* Did we find the boundaries?. */
+    if (!found_buffer_zoomi_low || !found_buffer_zoomj_low ||
+        !found_buffer_zoomk_low || !found_buffer_zoomi_up ||
+        !found_buffer_zoomj_up || !found_buffer_zoomk_up)
+      error("The buffer cell and zoom region edges don't match!");
+  } else {
+
+    /* Check the background and zoom cells align. */
+    int found_bkg_zoomi_low = 0;
+    int found_bkg_zoomj_low = 0;
+    int found_bkg_zoomk_low = 0;
+    int found_bkg_zoomi_up = 0;
+    int found_bkg_zoomj_up = 0;
+    int found_bkg_zoomk_up = 0;
+    for (int i = 0; i < s->cdim[0]; i++) {
+      for (int j = 0; j < s->cdim[1]; j++) {
+        for (int k = 0; k < s->cdim[2]; k++) {
+          if (s->width[0] * i == s->zoom_props->region_lower_bounds[0])
+            found_bkg_zoomi_low = 1;
+          if (s->width[1] * j == s->zoom_props->region_lower_bounds[1])
+            found_bkg_zoomj_low = 1;
+          if (s->width[2] * k == s->zoom_props->region_lower_bounds[2])
+            found_bkg_zoomk_low = 1;
+
+          if (s->width[0] * i == s->zoom_props->region_upper_bounds[0])
+            found_bkg_zoomi_up = 1;
+          if (s->width[1] * j == s->zoom_props->region_upper_bounds[1])
+            found_bkg_zoomj_up = 1;
+          if (s->width[2] * k == s->zoom_props->region_upper_bounds[2])
+            found_bkg_zoomk_up = 1;
+        }
+      }
+    }
+    /* Did we find the boundaries?. */
+    if (!found_bkg_zoomi_low || !found_bkg_zoomj_low || !found_bkg_zoomk_low ||
+        !found_bkg_zoomi_up || !found_bkg_zoomj_up || !found_bkg_zoomk_up)
+      error("The background cell and zoom region edges don't match!");
   }
 }
 #endif
@@ -435,8 +507,8 @@ void zoom_construct_tl_cells(struct space *s, const integertime_t ti_current,
         c->width[1] = zoom_props->width[1];
         c->width[2] = zoom_props->width[2];
         if (s->with_self_gravity) c->grav.multipole = &s->multipoles_top[cid];
-        c->type = zoom;
-        c->subtype = regular_sub;
+        c->type = cell_type_zoom;
+        c->subtype = cell_subtype_regular;
         c->dmin = dmin_zoom;
         c->depth = 0;
         c->split = 0;
@@ -488,8 +560,8 @@ void zoom_construct_tl_cells(struct space *s, const integertime_t ti_current,
         c->width[2] = s->width[2];
         c->dmin = dmin;
         if (s->with_self_gravity) c->grav.multipole = &s->multipoles_top[cid];
-        c->type = bkg;
-        c->subtype = regular_sub;
+        c->type = cell_type_bkg;
+        c->subtype = cell_subtype_regular;
         c->depth = 0;
         c->split = 0;
         c->hydro.count = 0;
@@ -550,8 +622,8 @@ void zoom_construct_tl_cells(struct space *s, const integertime_t ti_current,
           c->width[2] = zoom_props->buffer_width[2];
           c->dmin = dmin_buffer;
           if (s->with_self_gravity) c->grav.multipole = &s->multipoles_top[cid];
-          c->type = buffer;
-          c->subtype = regular_sub;
+          c->type = cell_type_buffer;
+          c->subtype = cell_subtype_regular;
           c->depth = 0;
           c->split = 0;
           c->hydro.count = 0;
