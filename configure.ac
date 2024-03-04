@@ -2418,6 +2418,34 @@ case "$with_gamma" in
    ;;
 esac
 
+# Adaptive softening
+AC_ARG_WITH([adaptive-softening],
+   [AS_HELP_STRING([--with-adaptive-softening=<yes/no>],
+      [Adaptive softening @<:@no, yes, default: no@:>@]
+   )],
+   [with_adaptive_softening="$withval"],
+   [with_adaptive_softening="no"]
+)
+case "$with_adaptive_softening" in
+   no)
+      AC_DEFINE([FIXED_SOFTENING], [1], [No adaptive softening])
+   ;;
+   yes)
+      AC_DEFINE([ADAPTIVE_SOFTENING], [1], [Adaptive softening])
+   ;;
+   *)
+      AC_MSG_ERROR([Unknown adaptive softening: $with_adaptive_softening])
+   ;;
+esac
+# Verify that the configuration is allowed
+if test "x$with_adaptive_softening" = "xyes" -a "$with_kernel" != "wendland-C2"; then
+  AC_MSG_ERROR([Adaptive softening scheme requires the usage of the Wendland-C2 kernel!])
+fi
+if test "x$with_adaptive_softening" = "xyes" -a "$with_gravity" != "with-multi-softening"; then
+  AC_MSG_ERROR([Adaptive softening scheme requires the usage of the multi-softening gravity scheme!])
+fi
+
+
 #  Riemann solver
 AC_ARG_WITH([riemann-solver],
    [AS_HELP_STRING([--with-riemann-solver=<solver>],
@@ -3345,6 +3373,7 @@ AC_MSG_RESULT([
    Adiabatic index    : $with_gamma
    Riemann solver     : $with_riemann
    SPMHD scheme       : $with_spmhd
+   Adaptive softening : $with_adaptive_softening
 
    Gravity scheme      : $with_gravity
    Multipole order     : $with_multipole_order

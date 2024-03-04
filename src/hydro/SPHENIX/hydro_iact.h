@@ -26,6 +26,7 @@
  *        with added SPHENIX physics (Borrow 2020) (interaction routines)
  */
 
+#include "adaptive_softening_iact.h"
 #include "adiabatic_index.h"
 #include "hydro_parameters.h"
 #include "minmax.h"
@@ -67,6 +68,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   pi->density.rho_dh -= mj * (hydro_dimension * wi + ui * wi_dx);
   pi->density.wcount += wi;
   pi->density.wcount_dh -= (hydro_dimension * wi + ui * wi_dx);
+  adaptive_softening_add_correction_term(pi, ui, hi_inv, mj);
 
   gearrt_density_accumulate_geometry_and_matrix(pi, wi, dx);
 
@@ -79,6 +81,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   pj->density.rho_dh -= mi * (hydro_dimension * wj + uj * wj_dx);
   pj->density.wcount += wj;
   pj->density.wcount_dh -= (hydro_dimension * wj + uj * wj_dx);
+  adaptive_softening_add_correction_term(pj, uj, hj_inv, mi);
 
   gearrt_density_accumulate_geometry_and_matrix(pj, wj, dx);
 
@@ -150,9 +153,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
 
   pi->rho += mj * wi;
   pi->density.rho_dh -= mj * (hydro_dimension * wi + ui * wi_dx);
-
   pi->density.wcount += wi;
   pi->density.wcount_dh -= (hydro_dimension * wi + ui * wi_dx);
+  adaptive_softening_add_correction_term(pi, ui, h_inv, mj);
 
   gearrt_density_accumulate_geometry_and_matrix(pi, wi, dx);
 
@@ -443,8 +446,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float sph_acc_term =
       (P_over_rho2_i * wi_dr + P_over_rho2_j * wj_dr) * r_inv;
 
+  /* Adaptive softening acceleration term */
+  const float adapt_soft_acc_term =
+      adaptive_softening_get_acc_term(pi, pj, wi_dr, wj_dr, f_ij, f_ji, r_inv);
+
   /* Assemble the acceleration */
-  const float acc = sph_acc_term + visc_acc_term;
+  const float acc = sph_acc_term + visc_acc_term + adapt_soft_acc_term;
 
   /* Skip wind particles for force calculations */
   if (pi->feedback_data.decoupling_delay_time == 0.f &&
@@ -595,8 +602,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float sph_acc_term =
       (P_over_rho2_i * wi_dr + P_over_rho2_j * wj_dr) * r_inv;
 
+  /* Adaptive softening acceleration term */
+  const float adapt_soft_acc_term =
+      adaptive_softening_get_acc_term(pi, pj, wi_dr, wj_dr, f_ij, f_ji, r_inv);
+
   /* Assemble the acceleration */
-  const float acc = sph_acc_term + visc_acc_term;
+  const float acc = sph_acc_term + visc_acc_term + adapt_soft_acc_term;
 
   /* Skip wind particles for force calculations */
   if (pi->feedback_data.decoupling_delay_time == 0.f &&
