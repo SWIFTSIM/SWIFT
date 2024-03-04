@@ -105,7 +105,7 @@ void engine_make_self_gravity_tasks_mapper_bkg_cells(void *map_data,
     if (ci->grav.count == 0) continue;
 
     /* Ensure we haven't found a void cell with particles */
-    if (ci->subtype == cell_subtype_void | ci->subtype == cell_subtype_empty)
+    if (ci->subtype == cell_subtype_void || ci->subtype == cell_subtype_empty)
       error("A void/empty cell (cid=%d) has got particles!", cid);
 
     /* If the cell is local build a self-interaction */
