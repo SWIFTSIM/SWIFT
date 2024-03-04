@@ -20,7 +20,7 @@
 #define SWIFT_RT_GRACKLE_UTILS_H
 
 /* skip deprecation warnings. I cleaned old API calls. */
-#define OMIT_LEGACY_INTERNAL_GRACKLE_FUNC
+//#define OMIT_LEGACY_INTERNAL_GRACKLE_FUNC
 
 /* need hydro gamma */
 #include "hydro.h"
@@ -119,6 +119,46 @@ __attribute__((always_inline)) INLINE static void rt_init_grackle(
   grackle_chemistry_data->HydrogenFractionByMass = hydrogen_mass_fraction;
   /* Use case B recombination? (On-the-spot approximation) */
   grackle_chemistry_data->CaseBRecombination = case_B_recombination;
+
+  /* Add dust model */
+  grackle_chemistry_data->use_dust_evol = 1;
+
+  /*! Dust parameters; hard code for now */
+  double dust_destruction_eff = 0.3;
+  double dust_sne_coeff = 1.0;
+  double dust_sne_shockspeed = 100.0;
+  double dust_grainsize = 0.1;
+  double dust_growth_densref = 2.3e-20;
+  double dust_growth_tauref = 1.0;
+
+  /* Load dust evolution parameters */
+  if (grackle_chemistry_data->use_dust_evol == 1) {
+    grackle_chemistry_data->dust_destruction_eff = dust_destruction_eff;
+    grackle_chemistry_data->sne_coeff = dust_sne_coeff;
+    grackle_chemistry_data->sne_shockspeed = dust_sne_shockspeed;
+    grackle_chemistry_data->dust_grainsize = dust_grainsize;
+    grackle_chemistry_data->dust_growth_densref = dust_growth_densref;
+    grackle_chemistry_data->dust_growth_tauref = dust_growth_tauref;
+    // Enable dust temperature calculation using ISRF
+    grackle_chemistry_data->metal_cooling = 1;
+    grackle_chemistry_data->dust_chemistry = 1;
+    grackle_chemistry_data->h2_on_dust = 1;
+    grackle_chemistry_data->use_isrf_field = 1;
+    grackle_chemistry_data->H2_self_shielding = 3;
+    // Solar abundances to pass to Grackle
+    grackle_chemistry_data->SolarAbundances[0]=0.2485;  // He  (10.93 in units where log[H]=12, so photospheric mass fraction -> Y=0.2485 [Hydrogen X=0.7381]; Anders+Grevesse Y=0.2485, X=0.7314)
+    grackle_chemistry_data->SolarAbundances[1]=2.38e-3; // C   (8.43 -> 2.38e-3, AG=3.18e-3)
+    grackle_chemistry_data->SolarAbundances[2]=0.70e-3; // N   (7.83 -> 0.70e-3, AG=1.15e-3)
+    grackle_chemistry_data->SolarAbundances[3]=5.79e-3; // O   (8.69 -> 5.79e-3, AG=9.97e-3)
+    grackle_chemistry_data->SolarAbundances[4]=1.26e-3; // Ne  (7.93 -> 1.26e-3, AG=1.72e-3)
+    grackle_chemistry_data->SolarAbundances[5]=7.14e-4; // Mg  (7.60 -> 7.14e-4, AG=6.75e-4)
+    grackle_chemistry_data->SolarAbundances[6]=6.71e-3; // Si  (7.51 -> 6.71e-4, AG=7.30e-4)
+    grackle_chemistry_data->SolarAbundances[7]=3.12e-4; // S   (7.12 -> 3.12e-4, AG=3.80e-4)
+    grackle_chemistry_data->SolarAbundances[8]=0.65e-4; // Ca  (6.34 -> 0.65e-4, AG=0.67e-4)
+    grackle_chemistry_data->SolarAbundances[9]=1.31e-3; // Fe (7.50 -> 1.31e-3, AG=1.92e-3)
+  } else {
+    grackle_chemistry_data->use_dust_evol = 0;
+  }
 
   if (local_initialize_chemistry_data(grackle_chemistry_data,
                                       grackle_chemistry_rates,
