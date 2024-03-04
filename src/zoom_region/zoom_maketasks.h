@@ -19,6 +19,10 @@
 #ifndef SWIFT_ZOOM_MAKETASKS_H
 #define SWIFT_ZOOM_MAKETASKS_H
 
+/* Local includes */
+#include "engine.h"
+#include "space.h"
+
 void zoom_engine_make_self_gravity_tasks(struct space *s, struct engine *e);
 void engine_make_hydroloop_tasks_mapper_with_zoom(void *map_data,
                                                   int num_elements,
