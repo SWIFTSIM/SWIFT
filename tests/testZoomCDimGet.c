@@ -158,7 +158,7 @@ void make_mock_cells(struct space *s) {
        cid++) {
 
     /* Get the cell */
-    struct cell *c = &cells[cid];
+    struct cell *c = &s->cells_top[cid];
 
     /* Get the middle of the cell. */
     double mid[3] = {c->loc[0] + 0.5 * c->width[0],
@@ -181,7 +181,7 @@ void make_mock_cells(struct space *s) {
        cid < zoom_props->bkg_cell_offset + zoom_props->nr_bkg_cells; cid++) {
 
     /* Get this cell. */
-    struct cell *c = &cells[cid];
+    struct cell *c = &s->cells_top[cid];
 
     /* Get the middle of the cell. */
     double mid[3] = {c->loc[0] + 0.5 * c->width[0],
