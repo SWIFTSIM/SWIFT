@@ -2,7 +2,7 @@
 ###############################################################################
 # This file is part of SWIFT.
 # Copyright (c) 2022 Mladen Ivkovic (mladen.ivkovic@hotmail.com)
-#
+#               2024 Stan Verhoeve (s06verhoeve@gmail.com)
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as published
 # by the Free Software Foundation, either version 3 of the License, or
@@ -20,8 +20,8 @@
 
 
 # -----------------------------------------------------------
-# Use 20 particles in to generate a uniform box with
-# a fixed amount of radiation.
+# Use 10 particles in each dimension to generate a uniform box 
+# with a fixed amount of radiation.
 # -----------------------------------------------------------
 
 from swiftsimio import Writer
@@ -30,10 +30,16 @@ from swiftsimio.units import cosmo_units
 import unyt
 import numpy as np
 import h5py
+import yaml
 
-# Scale factor at start of run
-a_start = 0.00990099
-a_start = 1
+# Grab scale factor at start of run
+with open(r"rt_heating_test.yml") as paramfile:
+    params = yaml.load(paramfile, Loader=yaml.FullLoader)
+    a_begin = params["Cosmology"]["a_begin"]
+    a_begin = float(a_begin)
+
+# Reduced speed of light
+f_reduce_speed_of_light = 1.e-6
 
 # number of particles in each dimension
 n_p = 10
@@ -52,7 +58,7 @@ boxsize = 1 * unyt.kpc
 # initial gas temperature
 initial_temperature = 1e3 * unyt.K
 # particle mass
-pmass = (unyt.atomic_mass_unit / unyt.cm ** 3) * (boxsize ** 3 / nparts) * a_start**3
+pmass = (unyt.atomic_mass_unit / unyt.cm ** 3) * (boxsize ** 3 / nparts) * a_begin**3
 pmass = pmass.to("Msun")
 
 # -----------------------------------------------
@@ -164,8 +170,8 @@ nPhotonGroups = 3
 # Fluxes from the Iliev Test0 part3
 fluxes_iliev = np.array([1.350e1, 2.779e1, 6.152e0]) * unyt.erg / unyt.s / unyt.cm ** 2
 energy_density = fluxes_iliev / unyt.c
-photon_energy = energy_density * boxsize ** 3 / nparts
-photon_energy = photon_energy * 0.00001
+photon_energy = energy_density * boxsize ** 3 / nparts * a_begin**3
+photon_energy = photon_energy * f_reduce_speed_of_light
 
 photon_energy.convert_to_units(cosmo_units["energy"])
 photon_fluxes = 0.333333 * unyt.c * photon_energy
@@ -180,7 +186,7 @@ for grp in range(nPhotonGroups):
     parts.create_dataset(dsetname, data=energydata)
 
     dsetname = "PhotonFluxesGroup{0:d}".format(grp + 1)
-    fluxdata = np.ones((nparts, 3), dtype=np.float32)
+    fluxdata = np.zeros((nparts, 3), dtype=np.float32)
     fluxdata[:, 0] = photon_fluxes[grp]
     parts.create_dataset(dsetname, data=fluxdata)
 
