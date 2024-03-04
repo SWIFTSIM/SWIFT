@@ -67,7 +67,20 @@ r^{-2} & \mbox{if} & r \geq H.
 The softened density profile, its corresponding potential and
 resulting forces are shown on Fig. \ref{fig:fmm:softening} (for more
 details about how these are constructed see section 2
-of~\cite{Price2007}). For comparison purposes, we also implemented the
+of~\cite{Price2007}). Finally, we also compute the change in potential
+due to a change in softening length:
+\begin{align}
+\frac{\partial}{\partial H}\varphi(r,H) = 
+\left\lbrace\begin{array}{rcl}
+k(\frac{r}{H}) \times H^{-2} & \mbox{if} & r < H,\\
+0 & \mbox{if} & r \geq H.
+\end{array}
+\right.
+\label{eq:fmm:potential_h_derivative}
+\end{align}
+where $k(u)=-24u^7+105u^6-168u^5+105u^4-21u^2$. This term enters the
+equation of motion when adaptive softening is used for SPH
+\citep[e.g.][]{Price2007}. For comparison purposes, we also implemented the
 more traditional spline-kernel softening in \swift.
 \begin{figure}
 \includegraphics[width=\columnwidth]{potential.pdf}
