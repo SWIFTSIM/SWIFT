@@ -656,6 +656,7 @@ INLINE static void sink_copy_properties_to_star(
 
   /* set the mass */
   sp->mass = sink->target_mass * phys_const->const_solar_mass;
+  sp->gpart->mass = sp->mass;
 
   /* set feedback type */
   sp->feedback_data.star_type = (star_feedback_type)sink->target_type;
