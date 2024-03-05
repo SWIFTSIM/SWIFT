@@ -152,6 +152,7 @@ void pairs_single_density(double *dim, long long int pid,
                           struct part *restrict parts, int N, int periodic) {
   const float a = 1.f;
   const float H = 0.f;
+  const float mu_0 = 1.f;
 
   /* Find "our" part. */
   int k;
@@ -734,6 +735,7 @@ void engine_single_density(const double dim[3], const long long int pid,
                            const struct gravity_props *grav_props) {
   const float a = 1.f;
   const float H = 0.f;
+  const float mu_0 = 1.f;
 
   /* Find "our" part. */
   int k;
