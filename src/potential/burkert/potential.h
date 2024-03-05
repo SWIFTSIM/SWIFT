@@ -230,7 +230,7 @@ static INLINE void potential_init_backend(
 
   /* Compute the central potential (We do not multiply with G yet). */
   potential->central_potential =
-      -M_PI_2 * potential->central_density * potential->r0_2;
+      -M_PI * M_PI * potential->central_density * potential->r0_2;
 }
 
 /**
