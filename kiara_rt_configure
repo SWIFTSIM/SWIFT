@@ -1,0 +1,1 @@
+./configure --with-hydro=sphenix --disable-hand-vec --with-kernel=quartic-spline --disable-mpi --with-hydro-dimension=3 --with-rt=GEAR_3 --with-rt-riemann-solver=GLF --with-grackle=/home/zxiang/codes/grackle/local/ --with-hdf5=/home/zxiang/local/hdf5-1.12.2/hdf5/bin/h5cc --with-gearrt-grackle-mode=2 --with-subgrid=KIARA
