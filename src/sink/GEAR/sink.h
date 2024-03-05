@@ -26,6 +26,7 @@
 #include "chemistry.h"
 #include "cooling.h"
 #include "feedback.h"
+#include "feedback/GEAR/feedback_struct.h"
 #include "minmax.h"
 #include "random.h"
 #include "sink_part.h"
@@ -657,7 +658,7 @@ INLINE static void sink_copy_properties_to_star(
   sp->mass = sink->target_mass * phys_const->const_solar_mass;
 
   /* set feedback type */
-  sp->feedback_data.star_type = sink->target_type;
+  sp->feedback_data.star_type = (star_feedback_type)sink->target_type;
 
   /* Initialize the feedback */
   if (sp->feedback_data.star_type == single_star)
