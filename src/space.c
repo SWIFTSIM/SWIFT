@@ -1214,7 +1214,8 @@ void space_init(struct space *s, struct swift_params *params,
                                space_max_top_level_cells_default);
   /* We're at risk of rounding errors if tol ~ 1 - 1/maxtcells. */
   /* Make sure it's (much) closer to 1.0 than this. */
-  const float tol = 1.0 - 1.0 / (maxtcells * maxtcells);
+  /* But also ensure it's not so small that we round in the other direction */
+  const float tol = max(1.0 - 1.0 / (maxtcells * maxtcells), 0.99);
   s->cell_min = tol * dmax / maxtcells;
 
   /* Check that it is big enough. */
