@@ -208,6 +208,46 @@ __attribute__((always_inline)) INLINE static void sink_reset_predicted_values(
 __attribute__((always_inline)) INLINE static void sink_kick_extra(
     struct sink* sp, float dt) {}
 
+
+/**
+ * @brief Retrieve the physical velocity divergence from the gas particle.
+ *
+ * @param p the gas particles.
+ *
+ */
+INLINE static float sink_get_physical_div_v_from_part(const struct part* restrict p){
+
+  float div_v = 0.0;
+
+  /* The implementation of div_v depends on the Hydro scheme. Furthermore, some
+     add a Hubble flow term, some do not. We need to take care of this */
+#ifdef SPHENIX_SPH
+  /* SPHENIX is already including the Hubble flow. */
+  div_v = hydro_get_div_v(p);
+#elif GADGET2_SPH
+  div_v = p->density.div_v;
+
+  /* Add the missing term */
+  div_v += hydro_dimension * cosmo->H;
+#elif MINIMAL_SPH
+  div_v = hydro_get_div_v(p);
+
+  /* Add the missing term */
+  div_v += hydro_dimension * cosmo->H;
+#elif GASOLINE_SPH
+  /* Copy the velocity divergence */
+  div_v = (1. / 3.) * (p->viscosity.velocity_gradient[0][0] +
+		       p->viscosity.velocity_gradient[1][1] +
+		       p->viscosity.velocity_gradient[2][2]);
+#elif HOPKINS_PU_SPH
+  div_v = p->density.div_v;
+#else
+#error \
+    "This scheme is not implemented. Note that Different scheme apply the Hubble flow in different places. Be careful about it."
+#endif
+  return div_v;
+}
+
 /**
  * @brief Calculate if the gas has the potential of becoming
  * a sink.
@@ -246,7 +286,7 @@ INLINE static int sink_is_forming(
   const float density_threshold = sink_props->density_threshold;
   const float density = hydro_get_physical_density(p, cosmo);
 
-  const float div_v = hydro_get_div_v(p);
+  const float div_v = sink_get_physical_div_v_from_part(p);
 
   const float h = p->h;
   const float sink_cut_off_radius = sink_props->cut_off_radius;
