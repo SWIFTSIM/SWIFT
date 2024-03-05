@@ -234,14 +234,14 @@ rt_get_grackle_particle_fields(grackle_field_data *grackle_fields,
   grackle_fields->DII_density = NULL;
   grackle_fields->HDI_density = NULL;
   /* for metal_cooling = 1 */
-  grackle_fields->metal_density = NULL;
+  grackle_fields->metal_density = malloc(FIELD_SIZE * sizeof(gr_float));
   /* for use_dust_density_field = 1 */
-  grackle_fields->dust_density = NULL;
+  grackle_fields->dust_density = malloc(FIELD_SIZE * sizeof(gr_float));
 
   /* volumetric heating rate (provide in units [erg s^-1 cm^-3]) */
   grackle_fields->volumetric_heating_rate = NULL;
   /* specific heating rate (provide in units [egs s^-1 g^-1] */
-  grackle_fields->specific_heating_rate = NULL;
+  grackle_fields->specific_heating_rate = malloc(FIELD_SIZE * sizeof(gr_float));
 
   /* radiative transfer ionization / dissociation rate fields (provide in units
    * [1/s]) */
@@ -258,7 +258,34 @@ rt_get_grackle_particle_fields(grackle_field_data *grackle_fields,
 
   grackle_fields->H2_self_shielding_length = NULL;
   grackle_fields->H2_custom_shielding_factor = NULL;
-  grackle_fields->isrf_habing = NULL;
+
+  /* interstellar radiation field strength */
+  grackle_fields->isrf_habing = malloc(FIELD_SIZE * sizeof(gr_float));
+  grackle_fields->SNe_ThisTimeStep = malloc(FIELD_SIZE * sizeof(gr_float));
+
+  /* metal densities in gas phase */
+  grackle_fields->He_gas_metalDensity = malloc(FIELD_SIZE * sizeof(gr_float));
+  grackle_fields->C_gas_metalDensity = malloc(FIELD_SIZE * sizeof(gr_float));
+  grackle_fields->N_gas_metalDensity = malloc(FIELD_SIZE * sizeof(gr_float));
+  grackle_fields->O_gas_metalDensity = malloc(FIELD_SIZE * sizeof(gr_float));
+  grackle_fields->Ne_gas_metalDensity = malloc(FIELD_SIZE * sizeof(gr_float));
+  grackle_fields->Mg_gas_metalDensity = malloc(FIELD_SIZE * sizeof(gr_float));
+  grackle_fields->Si_gas_metalDensity = malloc(FIELD_SIZE * sizeof(gr_float));
+  grackle_fields->S_gas_metalDensity = malloc(FIELD_SIZE * sizeof(gr_float));
+  grackle_fields->Ca_gas_metalDensity = malloc(FIELD_SIZE * sizeof(gr_float));
+  grackle_fields->Fe_gas_metalDensity = malloc(FIELD_SIZE * sizeof(gr_float));
+
+  /* metal densities in dust phase */
+  grackle_fields->He_dust_metalDensity = malloc(FIELD_SIZE * sizeof(gr_float));
+  grackle_fields->C_dust_metalDensity = malloc(FIELD_SIZE * sizeof(gr_float));
+  grackle_fields->N_dust_metalDensity = malloc(FIELD_SIZE * sizeof(gr_float));
+  grackle_fields->O_dust_metalDensity = malloc(FIELD_SIZE * sizeof(gr_float));
+  grackle_fields->Ne_dust_metalDensity = malloc(FIELD_SIZE * sizeof(gr_float));
+  grackle_fields->Mg_dust_metalDensity = malloc(FIELD_SIZE * sizeof(gr_float));
+  grackle_fields->Si_dust_metalDensity = malloc(FIELD_SIZE * sizeof(gr_float));
+  grackle_fields->S_dust_metalDensity = malloc(FIELD_SIZE * sizeof(gr_float));
+  grackle_fields->Ca_dust_metalDensity = malloc(FIELD_SIZE * sizeof(gr_float));
+  grackle_fields->Fe_dust_metalDensity = malloc(FIELD_SIZE * sizeof(gr_float));
 
   for (int i = 0; i < FIELD_SIZE; i++) {
 
@@ -285,7 +312,9 @@ rt_get_grackle_particle_fields(grackle_field_data *grackle_fields,
     /* grackle_fields->DII_density[i] = species_densities[10]; */
     /* grackle_fields->HDI_density[i] = species_densities[11]; */
 
-    /* grackle_fields->metal_density[i] = 0.0; */
+    grackle_fields->metal_density[i] = 0.0;
+    grackle_fields->dust_density[i] = 0.0;
+
     /* solar metallicity */
     /* grackle_chemistry_data.SolarMetalFractionByMass *
      * grackle_fields->density[i]; */
@@ -295,7 +324,7 @@ rt_get_grackle_particle_fields(grackle_field_data *grackle_fields,
     /* grackle_fields->z_velocity[i] = 0.0; */
 
     /* grackle_fields->volumetric_heating_rate[i] = 0.0; */
-    /* grackle_fields->specific_heating_rate[i] = 0.0; */
+    grackle_fields->specific_heating_rate[i] = 0.0;
 
     grackle_fields->RT_heating_rate[i] = iact_rates[0];
     grackle_fields->RT_HI_ionization_rate[i] = iact_rates[1];
@@ -348,13 +377,13 @@ __attribute__((always_inline)) INLINE static void rt_clean_grackle_fields(
   /* free(grackle_fields->HDI_density); */
 
   /* for metal_cooling = 1 */
-  /* free(grackle_fields->metal_density); */
+  free(grackle_fields->metal_density);
 
   /* for use_dust_density_field = 1 */
-  /* free(grackle_fields->dust_density); */
+  free(grackle_fields->dust_density);
 
   /* free(grackle_fields->volumetric_heating_rate); */
-  /* free(grackle_fields->specific_heating_rate); */
+  free(grackle_fields->specific_heating_rate);
 
   free(grackle_fields->RT_HI_ionization_rate);
   free(grackle_fields->RT_HeI_ionization_rate);
