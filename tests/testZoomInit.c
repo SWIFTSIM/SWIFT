@@ -21,13 +21,14 @@
 #include <config.h>
 
 /* Standard headers. */
-#include <assert.h>
+#include <fenv.h>
 #include <stdlib.h>
 #include <string.h>
 
 /* Local headers. */
 #include "parser.h"
 #include "space.h"
+#include "swift.h"
 #include "zoom_region/zoom_init.h"
 
 void make_mock_space(struct space *s, const double zoom_width) {
