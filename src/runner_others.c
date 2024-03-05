@@ -279,6 +279,9 @@ void runner_do_star_formation_sink(struct runner *r, struct cell *c,
           // s->target_mass*phys_const->const_solar_mass);
           s->mass = s->mass - s->target_mass * phys_const->const_solar_mass;
 
+	  /* Bug fix: Do not forget to update the sink gpart's mass. */
+	  s->gpart->mass = s->mass; 
+
           /* Sample the IMF to the get next target mass */
           sink_update_target_mass(s, sink_props, e, loop);
           // message("new target mass
