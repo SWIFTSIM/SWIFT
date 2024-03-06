@@ -55,9 +55,9 @@ struct sink_part_data {
    * sink_cut_off_radius) */
   double E_mag_neighbours;
 
-  /* Total rotational energy of the neigbouring gas particles (i.e. inside
-   * sink_cut_off_radius) */
-  double E_rot_neighbours;
+  /* Total rotational energy per component (x, y and z) of the neigbouring gas
+   * particles  (i.e. inside sink_cut_off_radius) */
+  double E_rot_neighbours[3];
 
   /* Potential of the particle copied from the #gpart */
   float potential;
