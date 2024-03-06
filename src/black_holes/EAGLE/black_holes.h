@@ -23,6 +23,7 @@
 #include "black_holes_properties.h"
 #include "black_holes_struct.h"
 #include "cooling.h"
+#include "cooling/PS2020/cooling_tables.h"
 #include "cosmology.h"
 #include "dimension.h"
 #include "exp10.h"
