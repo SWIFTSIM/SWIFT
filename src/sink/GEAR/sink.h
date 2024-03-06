@@ -738,6 +738,12 @@ INLINE static void sink_prepare_part_sink_formation_gas_criteria(struct engine* 
 								 const struct cosmology* cosmo,
 								 const struct sink_props* sink_props) {
 
+  /* If for some reason the particle has been flagged to not form sink,
+     do not continue and save some computationnal ressources. */
+  if (!p->sink_data.can_form_sink) {
+    return;
+  }
+  
   const int with_self_grav = (e->policy & engine_policy_self_gravity);
 
   /* Physical accretion radius of part p */
@@ -840,6 +846,11 @@ INLINE static void sink_prepare_part_sink_formation_sink_criteria(struct engine*
 								 struct sink* restrict si,
 								 const struct cosmology* cosmo,
 								 const struct sink_props* sink_props) {
+  /* Do not continue if the gas cannot form sink for any reason */
+  if (!p->sink_data.can_form_sink) {
+    return;
+  }
+
   /* Physical accretion radius of part p */
   const float r_acc_p = sink_props->cut_off_radius * cosmo->a;
 

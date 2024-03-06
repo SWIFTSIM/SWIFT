@@ -956,12 +956,6 @@ void runner_do_prepare_part_sink_formation(struct runner* r,
     struct part* restrict pi = &parts[i];
     struct xpart* restrict xpi = &xparts[i];
 
-    /* If for some reason the particle has been flagged to not form sink,
-       do not continue and save some computationnal ressources. */
-    if (!p->sink_data.can_form_sink) {
-      break;
-    }
-
     /* Compute the quantities required to later decide to form a sink or not. */
     sink_prepare_part_sink_formation_gas_criteria(e, c, p, xp, pi, xpi, cosmo, sink_props) ;
   } /* End of gas neighbour loop */
@@ -977,12 +971,7 @@ void runner_do_prepare_part_sink_formation(struct runner* r,
 
   for (int i = 0; i < scount; i++) {
 
-    /* Do not continue if the gas cannot form sink for any reason */
-    if (!p->sink_data.can_form_sink) {
-      break;
-    }
-
-    /* Get a hold of the ith sinks in ci. */
+     /* Get a hold of the ith sinks in ci. */
     struct sink* restrict si = &sinks[i];
 
     /* Compute the quantities required to later decide to form a sink or not. */
