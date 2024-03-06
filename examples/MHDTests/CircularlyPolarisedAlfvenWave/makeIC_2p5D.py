@@ -102,7 +102,7 @@ grp.attrs["Time"] = 0.0
 grp.attrs["NumFileOutputsPerSnapshot"] = 1
 grp.attrs["MassTable"] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 grp.attrs["Flag_Entropy_ICs"] = [0, 0, 0, 0, 0, 0]
-grp.attrs["Dimension"] = 3
+grp.attrs["Dimension"] = 2
 
 # Units
 grp = fileOutput.create_group("/Units")
