@@ -451,17 +451,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
                          dv[1] * pj->mhd_data.APred[1] +
                          dv[2] * pj->mhd_data.APred[2];
 
-  const float SourceAi =
-      -(dA[0] * pi->v[0] + dA[1] * pi->v[1] + dA[2] * pi->v[2]);
-  const float SourceAj =
-      -(dA[0] * pj->v[0] + dA[1] * pj->v[1] + dA[2] * pj->v[2]);
-  float SAi = (SourceAi + sourceAi) / 2.f;
-  float SAj = (SourceAj + sourceAj) / 2.f;
-
-  SAi = SourceAi + a * a * (pi->mhd_data.Gau - pj->mhd_data.Gau);
-  SAj = SourceAj + a * a * (pi->mhd_data.Gau - pj->mhd_data.Gau);
-  // SAi += a * a * (pi->mhd_data.Gau - pj->mhd_data.Gau);
-  // SAj += a * a * (pi->mhd_data.Gau - pj->mhd_data.Gau);
+  float SAi = sourceAi + a * a * (pi->mhd_data.Gau - pj->mhd_data.Gau);
+  float SAj = sourceAj + a * a * (pi->mhd_data.Gau - pj->mhd_data.Gau);
 
   for (int i = 0; i < 3; i++) {
     pi->mhd_data.dAdt[i] += mj * mag_VPIndi * SAi * dx[i];
@@ -593,14 +584,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
                          dv[1] * pi->mhd_data.APred[1] +
                          dv[2] * pi->mhd_data.APred[2];
 
-  const float SourceAi =
-      -(dA[0] * pi->v[0] + dA[1] * pi->v[1] + dA[2] * pi->v[2]);
 
-  // float SAi = SourceAi + sourceAi;
-  float SAi = (SourceAi + sourceAi) / 2.f;
 
-  SAi = SourceAi + a * a * (pi->mhd_data.Gau - pj->mhd_data.Gau);
-  // SAi += a * a * (pi->mhd_data.Gau - pj->mhd_data.Gau);
+  float SAi = sourceAi + a * a * (pi->mhd_data.Gau - pj->mhd_data.Gau);
   for (int i = 0; i < 3; i++)
     pi->mhd_data.dAdt[i] += mj * mag_VPIndi * SAi * dx[i];
   /// DISSSIPATION
