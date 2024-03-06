@@ -26,7 +26,7 @@
 #include "chemistry.h"
 #include "cooling.h"
 #include "feedback.h"
-#include "feedback/GEAR/feedback_struct.h"
+/* #include "feedback/GEAR/feedback_struct.h" */
 #include "minmax.h"
 #include "random.h"
 #include "sink_part.h"
