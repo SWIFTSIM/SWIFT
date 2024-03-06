@@ -262,19 +262,38 @@ INLINE static void sink_copy_properties_to_star(
 __attribute__((always_inline)) INLINE static void sink_store_potential_in_part(
     struct sink_part_data* p_data, const struct gpart* gp) {}
 
+
 /**
- * @brief Compute the energies (kinetic, potential, etc ) of the gas particle
- * and all quantities required for the formation of a sink.
+ * @brief Compute all quantities required for the formation of a sink such as
+ * kinetic energy, potential energy, etc. This function works on the
+ * neighbouring gas particles.
  *
  * @param e The #engine.
  * @param c The #cell.
- * @param p The #part.
+ * @param p The #part for which we compute the quantities.
  * @param xp The #xpart data of the particle #p.
+ * @param pi A neighbouring #part of #p.
+ * @param xpi The #xpart data of the particle #pi.
  */
-INLINE static void sink_prepare_part_sink_formation(struct engine* e,
-                                                    struct cell* c,
-                                                    struct part* restrict p,
-                                                    struct xpart* restrict xp) {
-}
+INLINE static void sink_prepare_part_sink_formation_gas_criteria(
+    struct engine* e, struct cell* c, struct part* restrict p,
+    struct xpart* restrict xp, struct part* restrict pi,
+    struct xpart* restrict xpi, const struct cosmology* cosmo,
+    const struct sink_props* sink_props) {}
+
+/**
+ * @brief Compute all quantities required for the formation of a sink. This
+ * function works on the neighbouring sink particles.
+ *
+ * @param e The #engine.
+ * @param c The #cell.
+ * @param p The #part for which we compute the quantities.
+ * @param xp The #xpart data of the particle #p.
+ * @param si A neighbouring #sink of #p.
+ */
+INLINE static void sink_prepare_part_sink_formation_sink_criteria(
+    struct engine* e, struct cell* c, struct part* restrict p,
+    struct xpart* restrict xp, struct sink* restrict si,
+    const struct cosmology* cosmo, const struct sink_props* sink_props) {}
 
 #endif /* SWIFT_DEFAULT_SINK_H */
