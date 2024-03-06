@@ -248,15 +248,48 @@ int main(int argc, char *argv[]) {
   /* Make the cells. */
   make_mock_cells(s);
 
-  /* Get a zoom, buffer and background cell using cell_getid functions. */
-  const size_t zoom_cell_id = cell_getid_from_pos(s, 500.0, 500.0, 500.0);
-  const size_t buffer_cell_id = cell_getid_from_pos(s, 450.0, 550., 450.0);
-  const size_t bkg_cell_id = cell_getid_from_pos(s, 10.0, 990.0, 800.0);
+  /* Define coordinates to test. */
+  const double zoom_coords[3] = {500.0, 500.0, 500.0};
+  const double buffer_coords[3] = {450.0, 550.0, 450.0};
+  const double bkg_coords[3] = {10.0, 990.0, 800.0};
 
-  /* Test that the write type of cell was returned. */
-  assert(s->cells_top[zoom_cell_id].type == cell_type_zoom);
-  assert(s->cells_top[buffer_cell_id].type == cell_type_buffer);
-  assert(s->cells_top[bkg_cell_id].type == cell_type_bkg);
+  /* Get a zoom, buffer and background cell using cell_getid functions. */
+  const size_t zoom_cell_id =
+      cell_getid_from_pos(s, zoom_coords[0], zoom_coords[1], zoom_coords[2]);
+  const size_t buffer_cell_id = cell_getid_from_pos(
+      s, buffer_coords[0], buffer_coords[1], buffer_coords[2]);
+  const size_t bkg_cell_id =
+      cell_getid_from_pos(s, bkg_coords[0], bkg_coords[1], bkg_coords[2]);
+
+  /* Get the cells. */
+  const struct cell *zoom_cell = &s->cells_top[zoom_cell_id];
+  const struct cell *buffer_cell = &s->cells_top[buffer_cell_id];
+  const struct cell *bkg_cell = &s->cells_top[bkg_cell_id];
+
+  /* Test that the right type of cell was returned. */
+  assert(zoom_cell->type == cell_type_zoom);
+  assert(buffer_cell->type == cell_type_buffer);
+  assert(bkg_cell->type == cell_type_bkg);
+
+  /* Test that the coordinate is actually inside the returned cell. */
+  assert(zoom_coords[0] > zoom_cell->loc[0] &&
+         zoom_coords[0] < zoom_cell->loc[0] + zoom_cell->width[0]);
+  assert(zoom_coords[1] > zoom_cell->loc[1] &&
+         zoom_coords[1] < zoom_cell->loc[1] + zoom_cell->width[1]);
+  assert(zoom_coords[2] > zoom_cell->loc[2] &&
+         zoom_coords[2] < zoom_cell->loc[2] + zoom_cell->width[2]);
+  assert(buffer_coords[0] > buffer_cell->loc[0] &&
+         buffer_coords[0] < buffer_cell->loc[0] + buffer_cell->width[0]);
+  assert(buffer_coords[1] > buffer_cell->loc[1] &&
+         buffer_coords[1] < buffer_cell->loc[1] + buffer_cell->width[1]);
+  assert(buffer_coords[2] > buffer_cell->loc[2] &&
+         buffer_coords[2] < buffer_cell->loc[2] + buffer_cell->width[2]);
+  assert(bkg_coords[0] > bkg_cell->loc[0] &&
+         bkg_coords[0] < bkg_cell->loc[0] + bkg_cell->width[0]);
+  assert(bkg_coords[1] > bkg_cell->loc[1] &&
+         bkg_coords[1] < bkg_cell->loc[1] + bkg_cell->width[1]);
+  assert(bkg_coords[2] > bkg_cell->loc[2] &&
+         bkg_coords[2] < bkg_cell->loc[2] + bkg_cell->width[2]);
 
   free(s->cells_top);
   free(s->zoom_props);
