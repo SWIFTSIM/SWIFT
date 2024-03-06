@@ -718,8 +718,9 @@ __attribute__((always_inline)) INLINE static void sink_store_potential_in_part(
 }
 
 /**
- * @brief Compute the energies (kinetic, potential, etc ) of the gas particle
- * and all quantities required for the formation of a sink.
+ * @brief Compute all quantities required for the formation of a sink such as
+ * kinetic energy, potential energy, etc. This function works on the
+ * neighbouring gas particles.
  *
  * @param e The #engine.
  * @param c The #cell.
@@ -728,14 +729,14 @@ __attribute__((always_inline)) INLINE static void sink_store_potential_in_part(
  * @param pi A neighbouring #part of #p.
  * @param xpi The #xpart data of the particle #pi.
  */
-INLINE static void sink_prepare_part_sink_formation(struct engine* e,
-						    struct cell* c,
-                                                    struct part* restrict p,
-                                                    struct xpart* restrict xp,
-						    struct part* restrict pi,
-                                                    struct xpart* restrict xpi,
-						    const struct cosmology* cosmo,
-						    const struct sink_props* sink_props) {
+INLINE static void sink_prepare_part_sink_formation_gas_criteria(struct engine* e,
+								 struct cell* c,
+								 struct part* restrict p,
+								 struct xpart* restrict xp,
+								 struct part* restrict pi,
+								 struct xpart* restrict xpi,
+								 const struct cosmology* cosmo,
+								 const struct sink_props* sink_props) {
 
   const int with_self_grav = (e->policy & engine_policy_self_gravity);
 
@@ -820,6 +821,52 @@ INLINE static void sink_prepare_part_sink_formation(struct engine* e,
   p->sink_data.E_rot_neighbours[2] += 0.5 * mi * specific_angular_momentum[2]
     * specific_angular_momentum[2]
     / sqrtf(dx[0] * dx[0] + dx[1] * dx[1]);
+}
+
+/**
+ * @brief Compute all quantities required for the formation of a sink. This
+ * function works on the neighbouring sink particles.
+ *
+ * @param e The #engine.
+ * @param c The #cell.
+ * @param p The #part for which we compute the quantities.
+ * @param xp The #xpart data of the particle #p.
+ * @param si A neighbouring #sink of #p.
+ */
+INLINE static void sink_prepare_part_sink_formation_sink_criteria(struct engine* e,
+								 struct cell* c,
+								 struct part* restrict p,
+								 struct xpart* restrict xp,
+								 struct sink* restrict si,
+								 const struct cosmology* cosmo,
+								 const struct sink_props* sink_props) {
+  /* Physical accretion radius of part p */
+  const float r_acc_p = sink_props->cut_off_radius * cosmo->a;
+
+  /* Physical accretion radius of sink si */
+  const float r_acc_si = si->r_cut * cosmo->a;
+
+  /* Comoving distance of particl p */
+  const float px[3] = {(float)(p->x[0] - c->loc[0]),
+                       (float)(p->x[1] - c->loc[1]),
+                       (float)(p->x[2] - c->loc[2])};
+
+  /* Compute the pairwise physical distance */
+  const float six[3] = {(float)(si->x[0] - c->loc[0]),
+                        (float)(si->x[1] - c->loc[1]),
+                        (float)(si->x[2] - c->loc[2])};
+
+  const float dx[3] = {(px[0] - six[0]) * cosmo->a,
+                       (px[1] - six[1]) * cosmo->a,
+                       (px[2] - six[2]) * cosmo->a};
+  const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+
+  /* If forming a sink from this particle will create a sink overlapping an
+     existing sink's accretion radius, do not form a sink. This criterion can
+     be disabled. */
+  if (r2 < (r_acc_si + r_acc_p) * (r_acc_si + r_acc_p)) {
+    p->sink_data.is_overlapping_sink = 1;
+  }
 }
 
 #endif /* SWIFT_GEAR_SINK_H */

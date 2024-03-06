@@ -962,7 +962,8 @@ void runner_do_prepare_part_sink_formation(struct runner* r,
       break;
     }
 
-    sink_prepare_part_sink_formation(e, c, p, xp, pi, xpi, cosmo, sink_props) ;
+    /* Compute the quantities required to later decide to form a sink or not. */
+    sink_prepare_part_sink_formation_gas_criteria(e, c, p, xp, pi, xpi, cosmo, sink_props) ;
   } /* End of gas neighbour loop */
 
   /* Shall we reset the values of the energies for the next timestep? No, it is
@@ -982,22 +983,10 @@ void runner_do_prepare_part_sink_formation(struct runner* r,
     }
 
     /* Get a hold of the ith sinks in ci. */
-    /* struct sink* restrict si = &sinks[i]; */
-    /* float r_acc_si = */
-    /*     si->r_cut * cosmo->a; /\* Physical accretion radius of sink si *\/ */
+    struct sink* restrict si = &sinks[i];
 
-    /* /\* Compute the pairwise physical distance *\/ */
-    /* const float six[3] = {(float)(si->x[0] - c->loc[0]), */
-    /*                       (float)(si->x[1] - c->loc[1]), */
-    /*                       (float)(si->x[2] - c->loc[2])}; */
+    /* Compute the quantities required to later decide to form a sink or not. */
+    sink_prepare_part_sink_formation_sink_criteria(e, c, p, xp, si, cosmo, sink_props);
 
-    /* const float dx[3] = {(px[0] - six[0]) * cosmo->a, */
-    /*                      (px[1] - six[1]) * cosmo->a, */
-    /*                      (px[2] - six[2]) * cosmo->a}; */
-    /* const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]; */
-
-    /* if (r2 < (r_acc_si + r_acc_p) * (r_acc_si + r_acc_p)) { */
-    /*   p->sink_data.is_overlapping_sink = 1; */
-    /* } */
   } /* End of sink neighbour loop */
 }
