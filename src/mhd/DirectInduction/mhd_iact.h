@@ -35,7 +35,23 @@
 __attribute__((always_inline)) INLINE static void runner_iact_mhd_density(
     const float r2, const float dx[3], const float hi, const float hj,
     struct part *restrict pi, struct part *restrict pj, const double mu_0,
-    const float a, const float H) {}
+    const float a, const float H) {
+
+  const float r = sqrtf(r2);
+  const float r_inv = r ? 1.0f / r : 0.0f;
+
+  float dv[3];
+  dv[0] = pi->v[0] - pj->v[0];
+  dv[1] = pi->v[1] - pj->v[1];
+  dv[2] = pi->v[2] - pj->v[2];
+  
+  float dv_dot_dx;
+  dv_dot_dx = dv[0] * dx[0] + dv[1] * dx[0] + dv[2] * dx[2];
+  dv_dot_dx *= r_inv;
+  pi->mhd_data.dv_dot_dr = fmaxf(fabsf(dv_dot_dx), pi->mhd_data.dv_dot_dr); 
+  pj->mhd_data.dv_dot_dr = fmaxf(fabsf(dv_dot_dx), pj->mhd_data.dv_dot_dr); 
+
+}
 
 /**
  * @brief MHD-Density interaction between two particles. (non-symmetric)
@@ -56,7 +72,22 @@ runner_iact_nonsym_mhd_density(const float r2, const float dx[3],
                                struct part *restrict pi,
                                const struct part *restrict pj,
                                const double mu_0, const float a,
-                               const float H) {}
+                               const float H) {
+
+  const float r = sqrtf(r2);
+  const float r_inv = r ? 1.0f / r : 0.0f;
+
+  float dv[3];
+  dv[0] = pi->v[0] - pj->v[0];
+  dv[1] = pi->v[1] - pj->v[1];
+  dv[2] = pi->v[2] - pj->v[2];
+  
+  float dv_dot_dx;
+  dv_dot_dx = dv[0] * dx[0] + dv[1] * dx[0] + dv[2] * dx[2];
+  dv_dot_dx *= r_inv;
+  pi->mhd_data.dv_dot_dr = fmaxf(fabsf(dv_dot_dx), pi->mhd_data.dv_dot_dr); 
+
+}
 
 /**
  * @brief Calculate the MHD-gradient interaction between particle i and particle
@@ -439,6 +470,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
 
   const float tensile_correction_scale_i = fmax(0.0f, fmin(scale_i, 1.0f));
   const float tensile_correction_scale_j = fmax(0.0f, fmin(scale_j, 1.0f));
+  
+  /*
+  const float scale_i = 2.0f - plasma_beta_i;
+  const float scale_j = 2.0f - plasma_beta_j;
+
+  const float tensile_correction_scale_i = fmax(0.0f, fmin(scale_i, 1.0f));
+  const float tensile_correction_scale_j = fmax(0.0f, fmin(scale_j, 1.0f));
+  */
 
   sph_acc_term_i[0] += monopole_beta * over_rho2_i * wi_dr * permeability_inv *
                        Bri * r_inv * Bi[0] * tensile_correction_scale_i;
@@ -613,8 +652,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   // const float vsig_Dedner_i = pi->viscosity.v_sig;
   // const float vsig_Dedner_j = pj->viscosity.v_sig;
 
-  const float vsig_Dedner_i = mhd_get_magnetosonic_speed(pi, a, mu_0);
-  const float vsig_Dedner_j = mhd_get_magnetosonic_speed(pj, a, mu_0);
+  const float vsig_Dedner_i = pi->mhd_data.dv_dot_dr; // mhd_get_magnetosonic_speed(pi, a, mu_0);
+  const float vsig_Dedner_j = pj->mhd_data.dv_dot_dr; // mhd_get_magnetosonic_speed(pj, a, mu_0);
 
   float grad_psi_i =
       over_rho2_i * psi_over_ch_i * vsig_Dedner_i * wi_dr * r_inv;
@@ -792,8 +831,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   const float monopole_beta = pi->mhd_data.monopole_beta;
 
   const float plasma_beta_i = 2.0f * mu_0 * Pi / B2i;
+  
   const float scale_i = 0.125f * (10.0f - plasma_beta_i);
   const float tensile_correction_scale_i = fmax(0.0f, fmin(scale_i, 1.0f));
+  
+  /*
+  const float scale_i = 2.0f - plasma_beta_i;
+  const float tensile_correction_scale_i = fmax(0.0f, fmin(scale_i, 1.0f));
+  */
 
   sph_acc_term_i[0] += monopole_beta * over_rho2_i * wi_dr * permeability_inv *
                        Bri * r_inv * Bi[0] * tensile_correction_scale_i;
@@ -912,8 +957,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   // const float vsig_Dedner_i = pi->viscosity.v_sig;
   // const float vsig_Dedner_j = pj->viscosity.v_sig;
 
-  const float vsig_Dedner_i = mhd_get_magnetosonic_speed(pi, a, mu_0);
-  const float vsig_Dedner_j = mhd_get_magnetosonic_speed(pj, a, mu_0);
+  const float vsig_Dedner_i = pi->mhd_data.dv_dot_dr; //mhd_get_magnetosonic_speed(pi, a, mu_0);
+  const float vsig_Dedner_j = pj->mhd_data.dv_dot_dr; //mhd_get_magnetosonic_speed(pj, a, mu_0);
 
   float grad_psi_i =
       over_rho2_i * psi_over_ch_i * vsig_Dedner_i * wi_dr * r_inv;
