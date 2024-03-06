@@ -272,23 +272,23 @@ int main(int argc, char *argv[]) {
   assert(bkg_cell->type == cell_type_bkg);
 
   /* Test that the coordinate is actually inside the returned cell. */
-  assert(zoom_coords[0] > zoom_cell->loc[0] &&
+  assert(zoom_coords[0] >= zoom_cell->loc[0] &&
          zoom_coords[0] < zoom_cell->loc[0] + zoom_cell->width[0]);
-  assert(zoom_coords[1] > zoom_cell->loc[1] &&
+  assert(zoom_coords[1] >= zoom_cell->loc[1] &&
          zoom_coords[1] < zoom_cell->loc[1] + zoom_cell->width[1]);
-  assert(zoom_coords[2] > zoom_cell->loc[2] &&
+  assert(zoom_coords[2] >= zoom_cell->loc[2] &&
          zoom_coords[2] < zoom_cell->loc[2] + zoom_cell->width[2]);
-  assert(buffer_coords[0] > buffer_cell->loc[0] &&
+  assert(buffer_coords[0] >= buffer_cell->loc[0] &&
          buffer_coords[0] < buffer_cell->loc[0] + buffer_cell->width[0]);
-  assert(buffer_coords[1] > buffer_cell->loc[1] &&
+  assert(buffer_coords[1] >= buffer_cell->loc[1] &&
          buffer_coords[1] < buffer_cell->loc[1] + buffer_cell->width[1]);
-  assert(buffer_coords[2] > buffer_cell->loc[2] &&
+  assert(buffer_coords[2] >= buffer_cell->loc[2] &&
          buffer_coords[2] < buffer_cell->loc[2] + buffer_cell->width[2]);
-  assert(bkg_coords[0] > bkg_cell->loc[0] &&
+  assert(bkg_coords[0] >= bkg_cell->loc[0] &&
          bkg_coords[0] < bkg_cell->loc[0] + bkg_cell->width[0]);
-  assert(bkg_coords[1] > bkg_cell->loc[1] &&
+  assert(bkg_coords[1] >= bkg_cell->loc[1] &&
          bkg_coords[1] < bkg_cell->loc[1] + bkg_cell->width[1]);
-  assert(bkg_coords[2] > bkg_cell->loc[2] &&
+  assert(bkg_coords[2] >= bkg_cell->loc[2] &&
          bkg_coords[2] < bkg_cell->loc[2] + bkg_cell->width[2]);
 
   free(s->cells_top);
