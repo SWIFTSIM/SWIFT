@@ -347,6 +347,78 @@ enum cell_flags {
 };
 
 /**
+ * @brief Names of the cell types.
+ */
+extern const char *cellID_names[];
+
+/**
+ * @brief Names of the cell sub-types.
+ */
+extern const char *subcellID_names[];
+
+/**
+ * @brief What type of top level cell is this cell?
+ *
+ * All cells are cell_type_regular when running a periodic box. The other types
+ * are never used in a periodic box and conversely, cell_type_regular cells are
+ * never used when running with a zoom region.
+ *
+ * When running with a zoom region:
+ *
+ * - Background cells are low resolution cells covering the majority of
+ *   the volume. The zoom region fills a number of these cells in the centre
+ *   of the volume (when buffer cells are not used, see below).
+ * - Buffer cells are only used when explicitly turned on by the user. These
+ *   are a high resolution type of background cell (but are lower resolution
+ *   than zoom cells) that are used to pad the volume between the zoom region
+ *   and the background cells containing the zoom region.
+ * - Zoom cells are the high resolution cells that cover the zoom region
+ *   (nested inside the central background/buffer cell/s).
+ */
+enum cell_types {
+  cell_type_regular, /* A standard top level cell (for non-zoom boxes). */
+  cell_type_bkg,     /* A background cell (only applicable for zooms). */
+  cell_type_zoom,    /* A zoom cell (only applicable for zooms). */
+  cell_type_buffer   /* A buffer cell (only applicable for zooms). */
+} __attribute__((__packed__));
+
+/**
+ * @brief What subtype of top level cell is this cell?
+ *
+ * When running a periodic box, cells can only have regular_sub type.
+ *
+ * When running with a zoom region:
+ *
+ * - Zoom cells can only be cell_subtype_regular.
+ * - Buffer cells (if turned on) can be neighbours if they are within the
+ *   gravity criterion of the zoom region or void cells if they contain the
+ *   zoom region. Otherwise, they are cell_subtype_regular.
+ * - Like buffer cells, background cells can be neighbours if they are within
+ *   the gravity criterion of the zoom region or void cells if they contain the
+ *   zoom region, but only if buffer cells are not turned on. If buffer cells
+ *   are turned on, a background cell can be cell_subtype_empty if it contains
+ *   nested buffer cells (only background cells can be empty). Otherwise, they
+ *   are cell_subtype_regular.
+ *
+ * All cell types serve a function but only cell_subtype_neighbour and
+ * cell_subtype_regular can get tasks.
+ *
+ * Void cells do not contain any pointers to particles but carry multipoles and
+ * particle counts based on the nested zoom cells.
+ *
+ * Empty cells do not contain anything, they should not feature in any
+ * calculation and only exist to ensure the cell grids are maintained.
+ */
+enum cell_subtypes {
+  cell_subtype_regular,   /* A normal cell. */
+  cell_subtype_neighbour, /* A cell within the gravity criterion of the zoom
+                             region. */
+  cell_subtype_void,      /* A cell containing the zoom region (void cell). */
+  cell_subtype_empty      /* An empty cell (background cells containing buffer
+                             cells). */
+} __attribute__((__packed__));
+
+/**
  * @brief Cell within the tree structure.
  *
  * Contains particles, links to tasks, a multipole object and counters.
@@ -480,6 +552,12 @@ struct cell {
 
   /*! The maximal depth of this cell and its progenies */
   char maxdepth;
+
+  /*! What type of cell is this? */
+  enum cell_types type;
+
+  /*! What subtype of cell is this? */
+  enum cell_subtypes subtype;
 
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
   /* Cell ID (for debugging) */
@@ -671,6 +749,180 @@ void cell_reorder_extra_sinks(struct cell *c, const ptrdiff_t sinks_offset);
 int cell_can_use_pair_mm(const struct cell *ci, const struct cell *cj,
                          const struct engine *e, const struct space *s,
                          const int use_rebuild_data, const int is_tree_walk);
+
+/***
+ * @brief Get the cell ID of a cell including an offset.
+ *
+ * NOTE: This function is only used in the zoom code.
+ *
+ * @param cdim The dimensions of the cell grid.
+ * @param offset The offset to add to the cell ID.
+ * @param i, j, k The cell ijk coordinates.
+ *
+ * @return The cell id.
+ * */
+__attribute__((always_inline)) INLINE int cell_getid_offset(const int cdim[3],
+                                                            const int offset,
+                                                            const int i,
+                                                            const int j,
+                                                            const int k) {
+  return cell_getid(cdim, i, j, k) + offset;
+}
+
+/**
+ * @brief For a given location, what TL cell does it belong to in one of the
+ * cell grids below the background level?
+ *
+ * NOTE: This function is only applicable when running with a zoom region.
+ *
+ * It finds the cell ID in a region below the background level (zoom/buffer)
+ * using the lower boundary of the nested region to offset the input coordinates
+ * before multiplying by the inverse width of a cell to get the integer cell
+ * coordinates.
+ *
+ * This function is mainly just a convenience wrapper around cell_getid_offset
+ * to remove some boilerplate when applying the bounds.
+ *
+ * @param cdim The cell grid dimensions.
+ * @param bounds The edges of this nested region.
+ * @param x, y, z Location of particle within buffer or zoom region.
+ * @param iwidth The width of a cell in this grid.
+ * @param offset The offset of this cell type in cells_top.
+ *
+ * @return The cell id.
+ */
+__attribute__((always_inline)) INLINE int cell_getid_below_bkg(
+    const int cdim[3], const double bounds[3], const double x, const double y,
+    const double z, const double iwidth[3], const int offset) {
+
+  /* Get the cell ijk coordinates in this grid. */
+  const int i = (x - bounds[0]) * iwidth[0];
+  const int j = (y - bounds[1]) * iwidth[1];
+  const int k = (z - bounds[2]) * iwidth[2];
+
+  /* Which zoom TL cell are we in? */
+  return cell_getid_offset(cdim, offset, i, j, k);
+}
+
+/**
+ * @brief For a given particle location, what TL cell does it belong to?
+ *
+ * Any calls to cell_getid_from_pos will be redirected to this function when
+ * running with a zoom region. This function will then identify which level of
+ * top level (TL) cell should be returned, either background, buffer (if used),
+ * or zoom.
+ *
+ * The cell hierarchy is structured with background cells at the top (largest),
+ * followed by buffer cells (intermediate), and finally zoom cells (smallest).
+ * When running without buffer cells the hierarchy is bkg -> zoom.
+ *
+ * We do this by testing each level from the top down. First we see what
+ * background cell the position is in. If it's a void cell, we then get the
+ * zoom cell (in the no buffer cell case). If it's an empty cell (buffer cell
+ * case), we then get the buffer cell. If it's then a void buffer cell, we
+ * then get the zoom region.
+ *
+ * Cells are not stored in their hierarchy order in s->cells_top. Instead,
+ * zoom cells are first, followed by background cells, and finally buffer cells.
+ * This is a bit strange but puts the zoom cells as the primary cell type and
+ * means we can simplify the code surrounding hydro operations which are
+ * isolated to the zoom region.
+ *
+ * @param s The space.
+ * @param x, y, z Location to get the cell ID for.
+ *
+ * @return The cell id.
+ */
+__attribute__((always_inline)) INLINE int zoom_cell_getid(const struct space *s,
+                                                          const double x,
+                                                          const double y,
+                                                          const double z) {
+
+  /* Lets get some properties of the zoom region. */
+  const struct zoom_region_properties *zoom_props = s->zoom_props;
+  const int bkg_cell_offset = zoom_props->bkg_cell_offset;
+  const double zoom_lower_bounds[3] = {zoom_props->region_lower_bounds[0],
+                                       zoom_props->region_lower_bounds[1],
+                                       zoom_props->region_lower_bounds[2]};
+  const int buffer_cell_offset = zoom_props->buffer_cell_offset;
+  const double buffer_lower_bounds[3] = {zoom_props->buffer_lower_bounds[0],
+                                         zoom_props->buffer_lower_bounds[1],
+                                         zoom_props->buffer_lower_bounds[2]};
+
+  /* Get the background cell ijk coordinates. */
+  const int bkg_i = x * s->iwidth[0];
+  const int bkg_j = y * s->iwidth[1];
+  const int bkg_k = z * s->iwidth[2];
+
+  /* Which background cell is this? */
+  int cell_id =
+      cell_getid_offset(s->cdim, bkg_cell_offset, bkg_i, bkg_j, bkg_k);
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (cell_id < 0 || cell_id >= s->nr_cells)
+    error("cell_id out of range: %i (%f %f %f)", cell_id, x, y, z);
+#endif
+
+  /* If this is a void cell we are in the zoom region. */
+  if (s->cells_top[cell_id].subtype == cell_subtype_void) {
+
+    /* Which zoom TL cell are we in? */
+    return cell_getid_below_bkg(s->zoom_props->cdim, zoom_lower_bounds, x, y, z,
+                                s->zoom_props->iwidth,
+                                /*offset*/ 0);
+
+  }
+
+  /* If this is an empty cell we are in the buffer cells.
+   * Otherwise, It's a legitimate background cell, and we'll return it. */
+  else if (s->cells_top[cell_id].subtype == cell_subtype_empty) {
+
+    /* Which buffer TL cell are we in? */
+    cell_id = cell_getid_below_bkg(
+        s->zoom_props->buffer_cdim, buffer_lower_bounds, x, y, z,
+        s->zoom_props->buffer_iwidth, buffer_cell_offset);
+
+    /* Here we need to check if this is the void buffer cell.
+     * Otherwise, It's a legitimate buffer cell, and we'll return it. */
+    if (s->cells_top[cell_id].subtype == cell_subtype_void) {
+
+      /* Which zoom TL cell are we in? */
+      return cell_getid_below_bkg(s->zoom_props->cdim, zoom_lower_bounds, x, y,
+                                  z, s->zoom_props->iwidth,
+                                  /*offset*/ 0);
+    }
+  }
+
+  return cell_id;
+}
+
+/**
+ * @brief Convert a coordinate to the cell ID containing it.
+ *
+ * @param s The space.
+ * @param x, y, z Coordinates of particle/cell.
+ *
+ * @return The cell id.
+ */
+__attribute__((always_inline)) INLINE int cell_getid_from_pos(
+    const struct space *s, const double x, const double y, const double z) {
+
+  /* When running with a zoom region we need to account for the nested
+   * cell grids, so call the zoom specific version. */
+  if (s->with_zoom_region) {
+
+    /* Use the version that accounts for the zoom region */
+    return zoom_cell_getid(s, x, y, z);
+
+  } else {
+
+    /* Zoom region isn't enabled so we can use the simple version */
+    const int i = x * s->iwidth[0];
+    const int j = y * s->iwidth[1];
+    const int k = z * s->iwidth[2];
+    return cell_getid(s->cdim, i, j, k);
+  }
+}
 
 /**
  * @brief Does a #cell contain no particle at all.
@@ -1361,36 +1613,84 @@ __attribute__((always_inline)) INLINE static struct task *cell_get_recv(
  * to be unique and reproducible between two runs, but only unique.
  *
  * @param c #cell to work with
- * @param cdim number of cells in each dimension
- * @param dim spatial extent.
- * @param iwidth inverse of top cell width
+ * @param s The #space
  */
 __attribute__((always_inline)) INLINE void cell_assign_top_level_cell_index(
-    struct cell *c, int cdim[3], double dim[3], double iwidth[3]) {
+    struct cell *c, struct space *s) {
 
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
   if (c->depth != 0) {
     error("assigning top level cell index to cell with depth > 0");
   } else {
-    if (cdim[0] * cdim[1] * cdim[2] > 32 * 32 * 32) {
-      /* print warning only once */
-      if (last_cell_id == 1ULL) {
-        message(
-            "WARNING: Got %d x %d x %d top level cells. "
-            "Cell IDs are only guaranteed to be "
-            "reproduceably unique if count is < 32^3",
-            cdim[0], cdim[1], cdim[2]);
+
+    if (!s->with_zoom_region) {
+
+      /* Unpack properties we'll need */
+      const int *cdim = s->cdim;
+      const double *iwidth = s->iwidth;
+
+      if (cdim[0] * cdim[1] * cdim[2] > 32 * 32 * 32) {
+        /* print warning only once */
+        if (last_cell_id == 1ULL) {
+          message(
+              "WARNING: Got %d x %d x %d top level cells. "
+              "Cell IDs are only guaranteed to be "
+              "reproduceably unique if count is < 32^3",
+              cdim[0], cdim[1], cdim[2]);
+        }
+        /* Do this in same line. Otherwise, bad things happen. */
+        c->cellID = atomic_inc(&last_cell_id);
+      } else {
+        int i = (int)(c->loc[0] * iwidth[0] + 0.5);
+        int j = (int)(c->loc[1] * iwidth[1] + 0.5);
+        int k = (int)(c->loc[2] * iwidth[2] + 0.5);
+        c->cellID = (unsigned long long)(cell_getid(cdim, i, j, k) + 1);
       }
-      /* Do this in same line. Otherwise, bad things happen. */
-      c->cellID = atomic_inc(&last_cell_id);
+      /* in both cases, keep track of first prodigy index */
+      atomic_inc(&last_leaf_cell_id);
     } else {
-      int i = (int)(c->loc[0] * iwidth[0] + 0.5);
-      int j = (int)(c->loc[1] * iwidth[1] + 0.5);
-      int k = (int)(c->loc[2] * iwidth[2] + 0.5);
-      c->cellID = (unsigned long long)(cell_getid(cdim, i, j, k) + 1);
+
+      /* In the zoom case we assign 2 or 3 separate cell grids (3 when buffer
+       * cells have been turned on, 2 otherwise). These are all stored in
+       * s->cells_top with zoom cells first, followed by background cells, and
+       * finally buffer cells (if used).
+       *
+       * Therefore: zoom_cell_ids < background_cell_ids < buffer_cell_ids
+       *
+       * The offsets of each cell grid are stored for accessing the cells, but
+       * this means cell ids are only reproducable if the total number of all
+       * cells is less than 32^3. */
+
+      /* Get the cdims */
+      const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
+      const int zoom_cdim[3] = {s->zoom_props->cdim[0], s->zoom_props->cdim[1],
+                                s->zoom_props->cdim[2]};
+      const int buffer_cdim[3] = {s->zoom_props->buffer_cdim[0],
+                                  s->zoom_props->buffer_cdim[1],
+                                  s->zoom_props->buffer_cdim[2]};
+
+      if (((cdim[0] * cdim[1] * cdim[2]) +
+           (zoom_cdim[0] * zoom_cdim[1] * zoom_cdim[2]) +
+           (buffer_cdim[0] * buffer_cdim[1] * buffer_cdim[2])) > 32 * 32 * 32) {
+        /* print warning only once */
+        if (last_cell_id == 1ULL) {
+          message(
+              "WARNING: Got (%d x %d x %d + %d x %d x %d + %d x %d x %d) top "
+              "level cells. "
+              "Cell IDs are only guaranteed to be "
+              "reproduceably unique if count is < 32^3",
+              cdim[0], cdim[1], cdim[2], zoom_cdim[0], zoom_cdim[1],
+              zoom_cdim[2], buffer_cdim[0], buffer_cdim[1], buffer_cdim[2]);
+        }
+        /* Do this in same line. Otherwise, bad things happen. */
+        c->cellID = atomic_inc(&last_cell_id);
+      } else {
+        c->cellID = (unsigned long long)(cell_getid_from_pos(
+            s, c->loc[0], c->loc[1], c->loc[2]));
+      }
+      /* in both cases, keep track of first prodigy index */
+      atomic_inc(&last_leaf_cell_id);
     }
-    /* in both cases, keep track of first prodigy index */
-    atomic_inc(&last_leaf_cell_id);
   }
 #endif
 }
