@@ -1,0 +1,3 @@
+#!/bin/bash
+
+./testZoomCDimGet @srcdir@/zoom_params.yml

@@ -199,6 +199,7 @@ tests/testLog
 tests/testTimeline
 tests/testZoomInit
 tests/testZoomInit.sh
+tests/testGetZoomIJKFunc.sh
 tests/*.png
 tests/*.txt
 
