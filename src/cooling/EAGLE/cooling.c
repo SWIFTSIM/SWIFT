@@ -717,7 +717,6 @@ double cooling_get_electron_density(const struct phys_const *phys_const,
   return 0.;
 }
 
-
 /**
  * @brief Compute the electron pressure of a #part based on the cooling
  * function.
