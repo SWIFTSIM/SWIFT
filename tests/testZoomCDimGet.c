@@ -17,7 +17,11 @@
  *
  ******************************************************************************/
 
+/* Config parameters. */
+#include <config.h>
+
 /* Standard headers. */
+#include <fenv.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -25,6 +29,7 @@
 #include "cell.h"
 #include "parser.h"
 #include "space.h"
+#include "swift.h"
 #include "zoom_region/zoom_init.h"
 
 void make_mock_space(struct space *s) {
@@ -208,6 +213,15 @@ void make_mock_cells(struct space *s) {
 }
 
 int main(int argc, char *argv[]) {
+
+  /* Initialise CPU frequency, this also starts time. */
+  unsigned long cpu_freq = 0;
+  clocks_set_cpufreq(cpu_freq);
+
+  /* Choke on FPEs */
+#ifdef HAVE_FE_ENABLE_EXCEPT
+  feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW);
+#endif
 
   const char *input_file = argv[1];
 
