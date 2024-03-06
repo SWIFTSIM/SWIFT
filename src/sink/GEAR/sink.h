@@ -703,14 +703,109 @@ __attribute__((always_inline)) INLINE static void sink_store_potential_in_part(
  *
  * @param e The #engine.
  * @param c The #cell.
- * @param p The #part.
+ * @param p The #part for which we compute the quantities.
  * @param xp The #xpart data of the particle #p.
+ * @param pi A neighbouring #part of #p.
+ * @param xpi The #xpart data of the particle #pi.
  */
 INLINE static void sink_prepare_part_sink_formation(struct engine* e,
-                                                    struct cell* c,
+						    struct cell* c,
                                                     struct part* restrict p,
-                                                    struct xpart* restrict xp) {
+                                                    struct xpart* restrict xp,
+						    struct part* restrict pi,
+                                                    struct xpart* restrict xpi,
+						    const struct cosmology* cosmo,
+						    const struct sink_props* sink_props) {
+
+  const int with_self_grav = (e->policy & engine_policy_self_gravity);
   
+  const float r_acc_p = sink_props->cut_off_radius *
+                        cosmo->a; /* Physical accretion radius of part p */
+  /* Add pi and xpi as fct arguments, as well as p and xp and the cel->loc*/
+
+
+  const float px[3] = {(float)(p->x[0] - c->loc[0]),
+                       (float)(p->x[1] - c->loc[1]),
+                       (float)(p->x[2] - c->loc[2])};
+
+  /* Compute the physical velocity */
+  const float v[3] = {(p->v[0]) * cosmo->a_inv, (p->v[1]) * cosmo->a_inv,
+                      (p->v[2]) * cosmo->a_inv};
+
+  float E_rot_x = 0;
+  float E_rot_y = 0;
+  float E_rot_z = 0;
+
+  /* No need to check if the particle has been flagged to form a sink or
+     not. This is done in runner_prepare_part_sink_formation(). */
+ 
+
+    /* Compute the pairwise physical distance */
+    const float pix[3] = {(float)(pi->x[0] - c->loc[0]),
+                          (float)(pi->x[1] - c->loc[1]),
+                          (float)(pi->x[2] - c->loc[2])};
+
+    const float dx[3] = {(px[0] - pix[0]) * cosmo->a,
+                         (px[1] - pix[1]) * cosmo->a,
+                         (px[2] - pix[2]) * cosmo->a};
+    const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+
+    /* Checks that this part is a neighbour */
+    if ((r2 > r_acc_p * r_acc_p) || (r2 == 0.0)) {
+      return;
+    }
+
+    /* Do not form sinks if some neighbours are not active */
+    if (!part_is_active(pi, e)) {
+      p->sink_data.can_form_sink = 0;
+      return;
+    }
+
+    const float mi = hydro_get_mass(p);
+    const float u_inter_i =
+        hydro_get_drifted_physical_internal_energy(p, cosmo);
+
+    /* Compute the relative physical velocity between p and pi */
+    const float vi[3] = {(pi->v[0]) * cosmo->a_inv, (pi->v[1]) * cosmo->a_inv,
+                         (pi->v[2]) * cosmo->a_inv};
+    const float dv[3] = {vi[0] - v[0], vi[1] - v[1], vi[2] - v[2]};
+    const float dv_squared = dv[0]*dv[0] + dv[1]*dv[1] + dv[2]*dv[2] ;
+
+    /* Compute specific angular momentum between pk and pi */
+    const float specific_angular_momentum[3] = {dx[1] * dv[2] - dx[2] * dv[1],
+                                                dx[2] * dv[0] - dx[0] * dv[2],
+                                                dx[0] * dv[1] - dx[1] * dv[0]};
+
+    /* Updates the energies */
+    p->sink_data.E_kin_neighbours += 0.5f * mi * dv_squared ;
+    p->sink_data.E_int_neighbours += mi * u_inter_i;
+    p->sink_data.E_rad_neighbours += cooling_get_radiated_energy(xpi);
+
+    /* Notice that we skip the potential of the current particle here
+       instead of subtracting it later */
+    if ((with_self_grav) && (pi != p))
+      p->sink_data.E_pot_self_neighbours +=
+          0.5 * mi * pi->sink_data.potential * cosmo->a_inv;
+
+    /* No external potential for now */
+    /* if (gpi != NULL && with_ext_grav)	 */
+    /* p->sink_data.E_pot_ext_neighbours +=  mi *
+     * external_gravity_get_potential_energy( */
+    /* time, potential, phys_const, gpi); */
+
+    /* Need to include mhd header */
+    /* p->sink_data.E_mag_neighbours += mhd_get_magnetic_energy(p, xpi); */
+
+    /* Compute rotation energies */
+    E_rot_x += 0.5 * mi * specific_angular_momentum[0] *
+               specific_angular_momentum[0] /
+               sqrtf(dx[1] * dx[1] + dx[2] * dx[2]);
+    E_rot_y += 0.5 * mi * specific_angular_momentum[1] *
+               specific_angular_momentum[1] /
+               sqrtf(dx[0] * dx[0] + dx[2] * dx[2]);
+    E_rot_z += 0.5 * mi * specific_angular_momentum[2] *
+               specific_angular_momentum[2] /
+               sqrtf(dx[0] * dx[0] + dx[1] * dx[1]);
 }
 
 #endif /* SWIFT_GEAR_SINK_H */
