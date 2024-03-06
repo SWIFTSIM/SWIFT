@@ -29,37 +29,40 @@ v_par = 0
 B_par = 1
 v0 = 0.1
 B0 = 0.1
-
 theta = 30 # degrees
+Nside = 32
 
 fileOutputName = "CircularlyPolarisedAlfvenWave.hdf5"
 
-# Retrieve positions file
-glass = h5py.File("glassPlane_32.hdf5", "r")
-glassBoxSize = glass["/Header"].attrs["BoxSize"]
-pos = glass["/PartType0/Coordinates"][:, :]
-h   = glass["/PartType0/SmoothingLength"][:]
+# Generate square grid
+N = Nside * Nside
+grid_x = np.linspace(0, 1 - 1./Nside, Nside)
+grid_y = np.linspace(0, 1 - 1./Nside, Nside)
+xv, yv = np.meshgrid(grid_x, grid_y)
+pos = np.array((xv.flatten(), yv.flatten(), np.zeros(N))).T
+h = np.ones(N) *  1.2 * (1. / Nside)
+glassBoxSize = np.array([1, 1, 0])
 
 # Duplicate along y
 shifted = pos + np.array([0, 1, 0])
 pos = np.append(pos, shifted, axis=0)
 h = np.append(h, h)
-glassBoxSize[1] *= 2.                
+glassBoxSize[1] *= 2.
+N *= 2
 
-# Get the final number of particles
-N = len(h)
+print(pos)
 
 # Expected dimensions
-Lx = 1. / np.cos(30 * np.pi / 180.)
-Ly = 1. / np.sin(30 * np.pi / 180.)
+Lx = 1. / np.cos(theta * np.pi / 180.)
+Ly = 1. / np.sin(theta * np.pi / 180.)
 
 # Scaling factors
 scaling = [Lx / glassBoxSize[0], Ly / glassBoxSize[1]]
 
 print("The scaling is : ", scaling)
 
-pos[:,0] *= scaling[0]
-pos[:,1] *= scaling[1]
+pos[:, 0] *= scaling[0]
+pos[:, 1] *= scaling[1]
 h *= np.sqrt(scaling[0]**2 + scaling[1]**2)
 
 # Info about volume
@@ -73,21 +76,21 @@ ids = np.linspace(1, N, N)
 u = np.ones(N) * P / (rho * (gamma - 1))
 
 # Set the v and B fields
-v = np.zeros((3, N))
-B = np.zeros((3, N))
+v = np.zeros((N, 3))
+B = np.zeros((N, 3))
 
 r_par = pos[:,0] * np.cos(theta * np.pi / 180.) + pos[:,1] * np.sin(theta * np.pi / 180.)
 
 v_per = v0 * np.sin(2. * np.pi * r_par)
 B_per = B0 * np.sin(2. * np.pi * r_par)
 
-v[0, :] = v_par * np.cos(theta * np.pi / 180.) - v_per * np.sin(theta * np.pi / 180.)
-v[1, :] = v_par * np.sin(theta * np.pi / 180.) + v_per * np.cos(theta * np.pi / 180.)
-v[2, :] = v0 * np.cos(2. * np.pi * r_par)
+v[:, 0] = v_par * np.cos(theta * np.pi / 180.) - v_per * np.sin(theta * np.pi / 180.)
+v[:, 1] = v_par * np.sin(theta * np.pi / 180.) + v_per * np.cos(theta * np.pi / 180.)
+v[:, 2] = v0 * np.cos(2. * np.pi * r_par)
 
-B[0, :] = B_par * np.cos(theta * np.pi / 180.) - B_per * np.sin(theta * np.pi / 180.)
-B[1, :] = B_par * np.sin(theta * np.pi / 180.) + B_per * np.cos(theta * np.pi / 180.)
-B[2, :] = B0 * np.cos(2. * np.pi * r_par)
+B[:, 0] = B_par * np.cos(theta * np.pi / 180.) - B_per * np.sin(theta * np.pi / 180.)
+B[:, 1] = B_par * np.sin(theta * np.pi / 180.) + B_per * np.cos(theta * np.pi / 180.)
+B[:, 2] = B0 * np.cos(2. * np.pi * r_par)
 
 # File
 fileOutput = h5py.File(fileOutputName, "w")
