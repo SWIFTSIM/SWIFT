@@ -150,7 +150,9 @@ __attribute__((always_inline)) INLINE static void sink_init_part(
   cpd->E_pot_self_neighbours = 0.f;
   cpd->E_pot_ext_neighbours = 0.f;
   cpd->E_mag_neighbours = 0.f;
-  cpd->E_rot_neighbours = 0.f;
+  cpd->E_rot_neighbours[0] = 0.f;
+  cpd->E_rot_neighbours[1] = 0.f;
+  cpd->E_rot_neighbours[2] = 0.f;
   cpd->potential = 0.f;
   cpd->E_mec_bound = 0.f; /* Gravitationally bound particles will have
                              E_mec_bound < 0. This is checked before comparing
@@ -208,6 +210,25 @@ __attribute__((always_inline)) INLINE static void sink_reset_predicted_values(
  */
 __attribute__((always_inline)) INLINE static void sink_kick_extra(
     struct sink* sp, float dt) {}
+
+
+/**
+ * @brief Compute the rotational energy of the neighbouring gas particles.
+ *
+ * Note: This function must be used after having computed the rotational energy
+ * per components, i.e. after sink_prepare_part_sink_formation().
+ *
+ * @param p the gas particle.
+ *
+ */
+INLINE static double sink_compute_neighbour_rotation_energy_magnitude(const struct part* restrict p) {
+  double E_rot_x = p->sink_data.E_rot_neighbours[0];
+  double E_rot_y = p->sink_data.E_rot_neighbours[1];
+  double E_rot_z = p->sink_data.E_rot_neighbours[2];
+  double E_rot = 
+      sqrtf(E_rot_x * E_rot_x + E_rot_y * E_rot_y + E_rot_z * E_rot_z);
+  return E_rot;
+}
 
 
 /**
@@ -293,6 +314,7 @@ INLINE static int sink_is_forming(
   const float sink_cut_off_radius = sink_props->cut_off_radius;
 
   double E_grav = sink_data->E_pot_self_neighbours;
+  double E_rot_neighbours = sink_compute_neighbour_rotation_energy_magnitude(p);
   double E_tot = sink_data->E_kin_neighbours + sink_data->E_int_neighbours +
                  E_grav + sink_data->E_mag_neighbours;
 
@@ -323,8 +345,7 @@ INLINE static int sink_is_forming(
   }
 
   if ((sink_props->sink_formation_jeans_instability_criterion) &&
-      (sink_data->E_int_neighbours + sink_data->E_rot_neighbours >=
-       fabs(E_grav))) {
+      (sink_data->E_int_neighbours + E_rot_neighbours >= fabs(E_grav))) {
     return 0;
   }
 
@@ -732,9 +753,9 @@ INLINE static void sink_prepare_part_sink_formation(struct engine* e,
   const float v[3] = {(p->v[0]) * cosmo->a_inv, (p->v[1]) * cosmo->a_inv,
                       (p->v[2]) * cosmo->a_inv};
 
-  float E_rot_x = 0;
-  float E_rot_y = 0;
-  float E_rot_z = 0;
+  /* float E_rot_x = 0; */
+  /* float E_rot_y = 0; */
+  /* float E_rot_z = 0; */
 
   /* No need to check if the particle has been flagged to form a sink or
      not. This is done in runner_prepare_part_sink_formation(). */
@@ -796,16 +817,16 @@ INLINE static void sink_prepare_part_sink_formation(struct engine* e,
     /* Need to include mhd header */
     /* p->sink_data.E_mag_neighbours += mhd_get_magnetic_energy(p, xpi); */
 
-    /* Compute rotation energies */
-    E_rot_x += 0.5 * mi * specific_angular_momentum[0] *
-               specific_angular_momentum[0] /
-               sqrtf(dx[1] * dx[1] + dx[2] * dx[2]);
-    E_rot_y += 0.5 * mi * specific_angular_momentum[1] *
-               specific_angular_momentum[1] /
-               sqrtf(dx[0] * dx[0] + dx[2] * dx[2]);
-    E_rot_z += 0.5 * mi * specific_angular_momentum[2] *
-               specific_angular_momentum[2] /
-               sqrtf(dx[0] * dx[0] + dx[1] * dx[1]);
+    /* Compute rotation energies per component */
+    p->sink_data.E_rot_neighbours[0] += 0.5 * mi * specific_angular_momentum[0]
+                                        * specific_angular_momentum[0]
+                                        / sqrtf(dx[1] * dx[1] + dx[2] * dx[2]);
+    p->sink_data.E_rot_neighbours[1] += 0.5 * mi * specific_angular_momentum[1]
+                                        * specific_angular_momentum[1]
+                                        / sqrtf(dx[0] * dx[0] + dx[2] * dx[2]);
+    p->sink_data.E_rot_neighbours[2] += 0.5 * mi * specific_angular_momentum[2]
+                                        * specific_angular_momentum[2]
+                                        / sqrtf(dx[0] * dx[0] + dx[1] * dx[1]);
 }
 
 #endif /* SWIFT_GEAR_SINK_H */
