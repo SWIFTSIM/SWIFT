@@ -23,6 +23,7 @@
 #include "cooling.h"
 #include "engine.h"
 #include "star_formation.h"
+#include "cooling/PS2020/cooling_tables.h"
 
 #define xray_table_date_string 20230110
 
