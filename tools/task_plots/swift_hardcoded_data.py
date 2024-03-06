@@ -27,6 +27,8 @@ TASKTYPES = [
     "drift_sink",
     "drift_bpart",
     "drift_gpart",
+    "drift_gpart_buffer",
+    "drift_gpart_bkg",
     "drift_gpart_out",
     "hydro_end_force",
     "kick1",
@@ -40,6 +42,8 @@ TASKTYPES = [
     "pack",
     "unpack",
     "grav_long_range",
+    "grav_long_range_buffer",
+    "grav_long_range_bkg",
     "grav_mm",
     "grav_down_in",
     "grav_down",
@@ -94,6 +98,11 @@ SUBTYPES = [
     "force",
     "limiter",
     "grav",
+    "grav_buffer",
+    "grav_bkg",
+    "grav_zoombuff",
+    "grav_zoombkg",
+    "grav_buffbkg",
     "external_grav",
     "tend",
     "xv",
@@ -129,7 +138,9 @@ SUBTYPES = [
 import os
 
 if os.path.exists("task_labels_task_types.txt"):
-    print("SWIFT task label file 'task_labels_task_types.txt' found, reading it.")
+    print(
+        "SWIFT task label file 'task_labels_task_types.txt' found, reading it."
+    )
     with open("task_labels_task_types.txt", "r") as file:
         NEW_TASKTYPES = []
         for line in file.readlines()[1:]:
@@ -151,7 +162,9 @@ if os.path.exists("task_labels_task_types.txt"):
                 )
     TASKTYPES = NEW_TASKTYPES
 if os.path.exists("task_labels_task_subtypes.txt"):
-    print("SWIFT task label file 'task_labels_task_subtypes.txt' found, reading it.")
+    print(
+        "SWIFT task label file 'task_labels_task_subtypes.txt' found, reading it."
+    )
     with open("task_labels_task_subtypes.txt", "r") as file:
         NEW_SUBTYPES = []
         for line in file.readlines()[1:]:
