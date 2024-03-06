@@ -58,6 +58,7 @@
 #include "star_formation.h"
 #include "star_formation_logger.h"
 #include "stars.h"
+#include "runner_doiact_sinks.h"
 #include "timers.h"
 #include "timestep_limiter.h"
 #include "tracers.h"
@@ -598,7 +599,7 @@ void runner_do_sink_formation(struct runner *r, struct cell *c) {
 
         /* Loop over all particles to find the neighbours within r_acc. Then, */
         /* compute all quantities you need to decide to form a sink or not. */
-        sink_prepare_part_sink_formation(e, c, p, xp);
+	runner_do_prepare_part_sink_formation(r, c, p, xp);
 
         /* Is this particle star forming? */
         if (sink_is_forming(p, xp, sink_props, phys_const, cosmo, hydro_props,

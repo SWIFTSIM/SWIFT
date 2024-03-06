@@ -928,7 +928,7 @@ void runner_do_sinks_sink_swallow_pair(struct runner *r, struct cell *ci,
 
 /**
  * @brief Compute the energies (kinetic, potential, etc ) of the gas particle
- * and all quantities required for the formation of a sink.
+ * #p and all quantities required for the formation of a sink.
  *
  * Note: This function iterates over gas particles and sink particles. 
  *
@@ -937,10 +937,11 @@ void runner_do_sinks_sink_swallow_pair(struct runner *r, struct cell *ci,
  * @param p The #part.
  * @param xp The #xpart data of the particle #p.
  */
-void runner_prepare_part_sink_formation(struct engine* e,
+void runner_do_prepare_part_sink_formation(struct runner* r,
 					struct cell* c,
 					struct part* restrict p,
 					struct xpart* restrict xp) {
+  struct engine *e = r->e;
   const struct cosmology* cosmo = e->cosmology;
   const struct sink_props* sink_props = e->sink_properties;
   const int count = c->hydro.count;
