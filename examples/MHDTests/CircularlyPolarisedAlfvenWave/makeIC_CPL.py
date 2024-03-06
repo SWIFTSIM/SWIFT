@@ -14,7 +14,7 @@ parser.add_argument(
     "-p",
     "--positionsFile",
     help="File with partcile positions to generate Circularly Polarised Alfven Wave Test ICs",
-    ddefault="CPLglassCube_32x_16y_16z.hdf5",
+    default="CPLglassCube_32x_16y_16z.hdf5",
     type=str,
 )
 

@@ -68,7 +68,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "-n",
         "--numparts",
-        help="Number of particles on a side. Default: 64",
+        help="Number of particles on a side. Default: 32",
         default=32,
         type=int,
     )
