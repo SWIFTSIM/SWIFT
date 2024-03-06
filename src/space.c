@@ -1147,9 +1147,9 @@ void space_init(struct space *s, struct swift_params *params,
   s->nr_queues = 1; /* Temporary value until engine construction */
 
   /* do a quick check that the box size has valid values */
-#if defined HYDRO_DIMENSION_1D
+#if defined(HYDRO_DIMENSION_1D)
   if (dim[0] <= 0.) error("Invalid box size: [%f]", dim[0]);
-#elif defined HYDRO_DIMENSION_2D
+#elif defined(HYDRO_DIMENSION_2D) || defined(HYDRO_DIMENSION_2p5D)
   if (dim[0] <= 0. || dim[1] <= 0.)
     error("Invalid box size: [%f, %f]", dim[0], dim[1]);
 #else

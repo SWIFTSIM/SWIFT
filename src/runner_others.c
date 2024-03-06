@@ -669,6 +669,9 @@ void runner_do_end_hydro_force(struct runner *r, struct cell *c, int timer) {
         forcing_terms_apply(e->time, e->forcing_terms, e->s,
                             e->physical_constants, p, xp);
 
+#ifdef HYDRO_DIMENSION_2p5D
+        p->a_hydro[2] = 0.f;
+#endif
 #ifdef HYDRO_DIMENSION_2D
         p->a_hydro[2] = 0.f;
 #endif

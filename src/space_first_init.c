@@ -88,6 +88,10 @@ void space_first_init_parts_mapper(void *restrict map_data, int count,
     p[k].v[1] *= a_factor_vel;
     p[k].v[2] *= a_factor_vel;
 
+#ifdef HYDRO_DIMENSION_2p5D
+    p[k].x[2] = 0.f;
+#endif
+
 #ifdef HYDRO_DIMENSION_2D
     p[k].x[2] = 0.f;
     p[k].v[2] = 0.f;
