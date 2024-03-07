@@ -9,7 +9,7 @@ InternalUnitSystem:
 # Parameters governing the time integration
 TimeIntegration:
   time_begin: 0.    # The starting time of the simulation (in internal units).
-  time_end:   50.0   # The end time of the simulation (in internal units).
+  time_end:   5.0   # The end time of the simulation (in internal units).
   dt_min:     1e-7  # The minimal time-step size of the simulation (in internal units).
   dt_max:     1e-2  # The maximal time-step size of the simulation (in internal units).
 
@@ -17,7 +17,7 @@ TimeIntegration:
 Snapshots:
   basename:            CircularlyPolarisedAlfvenWave   # Common part of the name of output files
   time_first:          0.                              # Time of the first output (in internal units)
-  delta_time:          5.0                             # Time difference between consecutive outputs (in internal units)
+  delta_time:          0.1                             # Time difference between consecutive outputs (in internal units)
   compression:         1
 
 # Parameters governing the conserved quantities statistics
@@ -28,6 +28,13 @@ Statistics:
 SPH:
   resolution_eta:        1.2      # Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel$
   CFL_condition:         0.075    # Courant-Friedrich-Levy condition for time integration.
+  viscosity_alpha: 0.
+  viscosity_alpha_max: 0
+  viscosity_alpha_min: 0
+  diffusion_alpha_max: 0
+  diffusion_alpha_min: 0
+  diffusion_alpha: 0
+  diffusion_beta: 0
 
 # Parameters for MHD schemes
 MHD:
