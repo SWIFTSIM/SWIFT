@@ -785,7 +785,7 @@ __attribute__((always_inline)) INLINE int cell_getid_offset(const int cdim[3],
  *
  * @param cdim The cell grid dimensions.
  * @param bounds The edges of this nested region.
- * @param x, y, z Location of particle.
+ * @param x, y, z Location of particle within buffer or zoom region.
  * @param iwidth The width of a cell in this grid.
  * @param offset The offset of this cell type in cells_top.
  *
@@ -812,11 +812,21 @@ __attribute__((always_inline)) INLINE int cell_getid_below_bkg(
  * top level (TL) cell should be returned, either background, buffer (if used),
  * or zoom.
  *
+ * The cell hierarchy is structured with background cells at the top (largest),
+ * followed by buffer cells (intermediate), and finally zoom cells (smallest).
+ * When running without buffer cells the hierarchy is bkg -> zoom.
+ *
  * We do this by testing each level from the top down. First we see what
  * background cell the position is in. If it's a void cell, we then get the
  * zoom cell (in the no buffer cell case). If it's an empty cell (buffer cell
  * case), we then get the buffer cell. If it's then a void buffer cell, we
  * then get the zoom region.
+ *
+ * Cells are not stored in their hierarchy order in s->cells_top. Instead,
+ * zoom cells are first, followed by background cells, and finally buffer cells.
+ * This is a bit strange but puts the zoom cells as the primary cell type and
+ * means we can simplify the code surrounding hydro operations which are
+ * isolated to the zoom region.
  *
  * @param s The space.
  * @param x, y, z Location to get the cell ID for.
@@ -848,13 +858,18 @@ __attribute__((always_inline)) INLINE int zoom_cell_getid(const struct space *s,
   int cell_id =
       cell_getid_offset(s->cdim, bkg_cell_offset, bkg_i, bkg_j, bkg_k);
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (cell_id < 0 || cell_id >= s->nr_cells)
+    error("cell_id out of range: %i (%f %f %f)", cell_id, x, y, z);
+#endif
+
   /* If this is a void cell we are in the zoom region. */
   if (s->cells_top[cell_id].subtype == cell_subtype_void) {
 
     /* Which zoom TL cell are we in? */
-    cell_id = cell_getid_below_bkg(s->zoom_props->cdim, zoom_lower_bounds, x, y,
-                                   z, s->zoom_props->iwidth,
-                                   /*offset*/ 0);
+    return cell_getid_below_bkg(s->zoom_props->cdim, zoom_lower_bounds, x, y, z,
+                                s->zoom_props->iwidth,
+                                /*offset*/ 0);
 
   }
 
@@ -872,16 +887,11 @@ __attribute__((always_inline)) INLINE int zoom_cell_getid(const struct space *s,
     if (s->cells_top[cell_id].subtype == cell_subtype_void) {
 
       /* Which zoom TL cell are we in? */
-      cell_id = cell_getid_below_bkg(s->zoom_props->cdim, zoom_lower_bounds, x,
-                                     y, z, s->zoom_props->iwidth,
-                                     /*offset*/ 0);
+      return cell_getid_below_bkg(s->zoom_props->cdim, zoom_lower_bounds, x, y,
+                                  z, s->zoom_props->iwidth,
+                                  /*offset*/ 0);
     }
   }
-
-#ifdef SWIFT_DEBUG_CHECKS
-  if (cell_id < 0 || cell_id >= s->nr_cells)
-    error("cell_id out of range: %i (%f %f %f)", cell_id, x, y, z);
-#endif
 
   return cell_id;
 }

@@ -25,6 +25,7 @@ import swiftsimio
 
 from makeIC import ELEMENT_COUNT
 
+
 def test(name):
     def test_decorator(test_func):
         def test_runner(*args, **kwargs):
@@ -50,17 +51,26 @@ def test_total_metal_mass_conservation(data_start, data_end):
     def metal_mass(data):
         columns = getattr(data.gas.metal_mass_fractions, "named_columns", None)
         if columns is not None:
-            return sum(data.gas.masses * getattr(data.gas.metal_mass_fractions, c) for c in columns)
+            return sum(
+                data.gas.masses * getattr(data.gas.metal_mass_fractions, c)
+                for c in columns
+            )
         else:
-            return data.gas.masses.reshape(-1, 1) * data.gas.metal_mass_fractions
+            return (
+                data.gas.masses.reshape(-1, 1) * data.gas.metal_mass_fractions
+            )
 
-    assert approx_equal(np.sum(metal_mass(data_start)), np.sum(metal_mass(data_end)))
+    assert approx_equal(
+        np.sum(metal_mass(data_start)), np.sum(metal_mass(data_end))
+    )
 
 
 def element_mass(data, element_idx):
     columns = getattr(data.gas.metal_mass_fractions, "named_columns", None)
     if columns is not None:
-        return data.gas.masses * getattr(data.gas.metal_mass_fractions, columns[element_idx])
+        return data.gas.masses * getattr(
+            data.gas.metal_mass_fractions, columns[element_idx]
+        )
     else:
         return data.gas.masses * data.gas.metal_mass_fractions[:, element_idx]
 
@@ -70,7 +80,7 @@ def test_element_wise_mass_conservation(data_start, data_end):
     for i in range(ELEMENT_COUNT):
         assert approx_equal(
             np.sum(element_mass(data_start, i)),
-            np.sum(element_mass(data_end, i))
+            np.sum(element_mass(data_end, i)),
         )
 
 

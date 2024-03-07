@@ -48,9 +48,15 @@ def get_masks(boxsize, pos):
     masks["N"] = right_half_mask & (pos[:, 0] > 0.75 * x)
     masks["O"] = right_half_mask & (pos[:, 1] > 0.5 * y)
     masks["Ne"] = right_half_mask & (pos[:, 1] < 0.5 * y)
-    masks["Mg"] = right_half_mask & (pos[:, 0] < 0.75 * x) & (pos[:, 1] > 0.5 * y)
-    masks["Si"] = right_half_mask & (pos[:, 0] > 0.75 * x) & (pos[:, 1] > 0.5 * y)
-    masks["Fe"] = right_half_mask & (pos[:, 0] < 0.75 * x) & (pos[:, 1] < 0.5 * y)
+    masks["Mg"] = (
+        right_half_mask & (pos[:, 0] < 0.75 * x) & (pos[:, 1] > 0.5 * y)
+    )
+    masks["Si"] = (
+        right_half_mask & (pos[:, 0] > 0.75 * x) & (pos[:, 1] > 0.5 * y)
+    )
+    masks["Fe"] = (
+        right_half_mask & (pos[:, 0] < 0.75 * x) & (pos[:, 1] < 0.5 * y)
+    )
 
     return masks
 
@@ -61,10 +67,19 @@ def get_element_abundances_metallicity(pos, boxsize):
 
     masks = get_masks(boxsize, pos)
     total_metallicity = np.where(masks["TotalMetallicity"], 0.7, 0.1)
-    element_abundances = [np.where(masks[k], v, 0) for k, v in zip(elements, abundances)]
+    element_abundances = [
+        np.where(masks[k], v, 0) for k, v in zip(elements, abundances)
+    ]
 
     # Finally add H so that H + He + TotalMetallicity = 1
-    return np.stack([1 - element_abundances[0] - total_metallicity, ] + element_abundances, axis=1), total_metallicity
+    return (
+        np.stack(
+            [1 - element_abundances[0] - total_metallicity]
+            + element_abundances,
+            axis=1,
+        ),
+        total_metallicity,
+    )
 
 
 if __name__ == "__main__":
@@ -86,11 +101,15 @@ if __name__ == "__main__":
     rho[pos[:, 1] < 0.5 * boxsize[1]] *= 0.5
     masses = rho * np.prod(boxsize) / n_part
     velocities = np.zeros((n_part, 3))
-    velocities[:, :] = 0.5 * math.sqrt(2) * VELOCITY * np.array([1., 1., 0.])
+    velocities[:, :] = (
+        0.5 * math.sqrt(2) * VELOCITY * np.array([1.0, 1.0, 0.0])
+    )
     internal_energy = P / (rho * (GAMMA - 1))
 
     # Setup metallicities
-    element_abundances, metallicities = get_element_abundances_metallicity(pos, boxsize)
+    element_abundances, metallicities = get_element_abundances_metallicity(
+        pos, boxsize
+    )
 
     # Now open the file and write the data.
     file = h5py.File(outputfilename, "w")
