@@ -590,10 +590,7 @@ void task_unlock(struct task *t) {
     case task_type_self:
     case task_type_sub_self:
       if (subtype == task_subtype_grav || subtype == task_subtype_grav_buff ||
-          subtype == task_subtype_grav_bkg ||
-          subtype == task_subtype_grav_zoombuff ||
-          subtype == task_subtype_grav_zoombkg ||
-          subtype == task_subtype_grav_buffbkg) {
+          subtype == task_subtype_grav_bkg) {
 #ifdef SWIFT_TASKS_WITHOUT_ATOMICS
         cell_gunlocktree(ci);
         cell_munlocktree(ci);
@@ -840,10 +837,7 @@ int task_lock(struct task *t) {
     case task_type_self:
     case task_type_sub_self:
       if (subtype == task_subtype_grav || subtype == task_subtype_grav_buff ||
-          subtype == task_subtype_grav_bkg ||
-          subtype == task_subtype_grav_zoombuff ||
-          subtype == task_subtype_grav_zoombkg ||
-          subtype == task_subtype_grav_buffbkg) {
+          subtype == task_subtype_grav_bkg) {
 #ifdef SWIFT_TASKS_WITHOUT_ATOMICS
         /* Lock the gparts and the m-pole */
         if (ci->grav.phold || ci->grav.mhold) return 0;
