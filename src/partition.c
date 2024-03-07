@@ -54,6 +54,7 @@
 #endif
 
 /* Local headers. */
+#include "cell.h"
 #include "debug.h"
 #include "engine.h"
 #include "error.h"
@@ -342,10 +343,8 @@ struct counts_mapper_data {
     struct TYPE *parts = (struct TYPE *)map_data;                              \
     struct counts_mapper_data *mydata =                                        \
         (struct counts_mapper_data *)extra_data;                               \
+    struct space *s = mydata->s;                                               \
     double size = mydata->size;                                                \
-    int *cdim = mydata->s->cdim;                                               \
-    double iwidth[3] = {mydata->s->iwidth[0], mydata->s->iwidth[1],            \
-                        mydata->s->iwidth[2]};                                 \
     double dim[3] = {mydata->s->dim[0], mydata->s->dim[1], mydata->s->dim[2]}; \
     double *lcounts = NULL;                                                    \
     int lcid = mydata->s->nr_cells;                                            \
