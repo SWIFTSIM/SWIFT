@@ -665,9 +665,6 @@ INLINE static void sink_star_formation_separate_particles(
   double new_pos[3] = {r*sin_theta*cos(phi), r*sin_theta*sin(phi), r*cos_theta};
 
   /* Assign this new position to the star and its gpart */
-  /* sp->x[0] = new_pos[0] + Delta_r[0]; */
-  /* sp->x[1] = new_pos[1] + Delta_r[1]; */
-  /* sp->x[2] = new_pos[2] + Delta_r[2]; */
   sp->x[0] += new_pos[0];
   sp->x[1] += new_pos[1];
   sp->x[2] += new_pos[2];
