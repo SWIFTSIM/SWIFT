@@ -1642,7 +1642,12 @@ void scheduler_splittasks_mapper(void *map_data, int num_elements,
       scheduler_splittask_hydro(t, s);
     } else if (t->subtype == task_subtype_external_grav) {
       scheduler_splittask_gravity(t, s);
-    } else if (t->subtype == task_subtype_grav) {
+    } else if (t->subtype == task_subtype_grav ||
+               t->subtype == task_subtype_grav_buff ||
+               t->subtype == task_subtype_grav_bkg ||
+               t->subtype == task_subtype_grav_zoombuff ||
+               t->subtype == task_subtype_grav_zoombkg ||
+               t->subtype == task_subtype_grav_buffbkg) {
       scheduler_splittask_gravity(t, s);
     } else {
 #ifdef SWIFT_DEBUG_CHECKS
@@ -1992,7 +1997,9 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         break;
 
       case task_type_self:
-        if (t->subtype == task_subtype_grav) {
+        if (t->subtype == task_subtype_grav ||
+            t->subtype == task_subtype_grav_buff ||
+            t->subtype == task_subtype_grav_bkg) {
           cost = 1.f * (wscale * gcount_i) * gcount_i;
         } else if (t->subtype == task_subtype_external_grav)
           cost = 1.f * wscale * gcount_i;
@@ -2029,7 +2036,12 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         break;
 
       case task_type_pair:
-        if (t->subtype == task_subtype_grav) {
+        if (t->subtype == task_subtype_grav ||
+            t->subtype == task_subtype_grav_buff ||
+            t->subtype == task_subtype_grav_bkg ||
+            t->subtype == task_subtype_grav_zoombuff ||
+            t->subtype == task_subtype_grav_zoombkg ||
+            t->subtype == task_subtype_grav_buffbkg) {
           if (t->ci->nodeID != nodeID || t->cj->nodeID != nodeID)
             cost = 3.f * (wscale * gcount_i) * gcount_j;
           else
@@ -2238,6 +2250,8 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         cost = wscale * count_i;
         break;
       case task_type_drift_gpart:
+      case task_type_drift_gpart_buff:
+      case task_type_drift_gpart_bkg:
         cost = wscale * gcount_i;
         break;
       case task_type_drift_spart:
@@ -2256,6 +2270,8 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         cost = wscale * gcount_i;
         break;
       case task_type_grav_long_range:
+      case task_type_grav_long_range_buff:
+      case task_type_grav_long_range_bkg:
         cost = wscale * gcount_i;
         break;
       case task_type_grav_mm:
@@ -2473,6 +2489,8 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
       case task_type_self:
       case task_type_sub_self:
         if (t->subtype == task_subtype_grav ||
+            t->subtype == task_subtype_grav_buff ||
+            t->subtype == task_subtype_grav_bkg ||
             t->subtype == task_subtype_external_grav) {
           qid = t->ci->grav.super->owner;
           owner = &t->ci->grav.super->owner;
@@ -2488,6 +2506,8 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         owner = &t->ci->hydro.super->owner;
         break;
       case task_type_drift_gpart:
+      case task_type_drift_gpart_buff:
+      case task_type_drift_gpart_bkg:
         qid = t->ci->grav.super->owner;
         owner = &t->ci->grav.super->owner;
         break;

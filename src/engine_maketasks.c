@@ -23,6 +23,8 @@
  ******************************************************************************/
 
 /* Config parameters. */
+#include "task.h"
+
 #include <config.h>
 
 /* Some standard headers. */
@@ -2102,7 +2104,9 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
 
       if (t_subtype == task_subtype_density) {
         engine_addlink(e, &ci->hydro.density, t);
-      } else if (t_subtype == task_subtype_grav) {
+      } else if (t_subtype == task_subtype_grav ||
+                 t_subtype == task_subtype_grav_buff ||
+                 t_subtype == task_subtype_grav_bkg) {
         engine_addlink(e, &ci->grav.grav, t);
       } else if (t_subtype == task_subtype_external_grav) {
         engine_addlink(e, &ci->grav.grav, t);
@@ -2116,7 +2120,12 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
       if (t_subtype == task_subtype_density) {
         engine_addlink(e, &ci->hydro.density, t);
         engine_addlink(e, &cj->hydro.density, t);
-      } else if (t_subtype == task_subtype_grav) {
+      } else if (t_subtype == task_subtype_grav ||
+                 t_subtype == task_subtype_grav_buff ||
+                 t_subtype == task_subtype_grav_bkg ||
+                 t_subtype == task_subtype_grav_zoombuff ||
+                 t_subtype == task_subtype_grav_zoombkg ||
+                 t_subtype == task_subtype_grav_buffbkg) {
         engine_addlink(e, &ci->grav.grav, t);
         engine_addlink(e, &cj->grav.grav, t);
       }
@@ -2132,7 +2141,9 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
 
       if (t_subtype == task_subtype_density) {
         engine_addlink(e, &ci->hydro.density, t);
-      } else if (t_subtype == task_subtype_grav) {
+      } else if (t_subtype == task_subtype_grav ||
+                 t_subtype == task_subtype_grav_buff ||
+                 t_subtype == task_subtype_grav_bkg) {
         engine_addlink(e, &ci->grav.grav, t);
       } else if (t_subtype == task_subtype_external_grav) {
         engine_addlink(e, &ci->grav.grav, t);
@@ -2146,7 +2157,12 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
       if (t_subtype == task_subtype_density) {
         engine_addlink(e, &ci->hydro.density, t);
         engine_addlink(e, &cj->hydro.density, t);
-      } else if (t_subtype == task_subtype_grav) {
+      } else if (t_subtype == task_subtype_grav ||
+                 t_subtype == task_subtype_grav_buff ||
+                 t_subtype == task_subtype_grav_bkg ||
+                 t_subtype == task_subtype_grav_zoombuff ||
+                 t_subtype == task_subtype_grav_zoombkg ||
+                 t_subtype == task_subtype_grav_buffbkg) {
         engine_addlink(e, &ci->grav.grav, t);
         engine_addlink(e, &cj->grav.grav, t);
       }
@@ -2215,7 +2231,9 @@ void engine_link_gravity_tasks(struct engine *e) {
 #endif
 
     /* Self-interaction for self-gravity? */
-    if (t_type == task_type_self && t_subtype == task_subtype_grav) {
+    if (t_type == task_type_self && (t_subtype == task_subtype_grav ||
+                                     t_subtype == task_subtype_grav_buff ||
+                                     t_subtype == task_subtype_grav_bkg)) {
 
 #ifdef SWIFT_DEBUG_CHECKS
       if (ci_nodeID != nodeID) error("Non-local self task");
@@ -2241,7 +2259,13 @@ void engine_link_gravity_tasks(struct engine *e) {
     }
 
     /* Otherwise, pair interaction? */
-    else if (t_type == task_type_pair && t_subtype == task_subtype_grav) {
+    else if (t_type == task_type_pair &&
+             (t_subtype == task_subtype_grav ||
+              t_subtype == task_subtype_grav_buff ||
+              t_subtype == task_subtype_grav_bkg ||
+              t_subtype == task_subtype_grav_zoombuff ||
+              t_subtype == task_subtype_grav_zoombkg ||
+              t_subtype == task_subtype_grav_buffbkg)) {
 
       if (ci_nodeID == nodeID) {
 
@@ -2264,7 +2288,10 @@ void engine_link_gravity_tasks(struct engine *e) {
     }
 
     /* Otherwise, sub-self interaction? */
-    else if (t_type == task_type_sub_self && t_subtype == task_subtype_grav) {
+    else if (t_type == task_type_sub_self &&
+             (t_subtype == task_subtype_grav ||
+              t_subtype == task_subtype_grav_buff ||
+              t_subtype == task_subtype_grav_bkg)) {
 
 #ifdef SWIFT_DEBUG_CHECKS
       if (ci_nodeID != nodeID) error("Non-local sub-self task");
@@ -2290,8 +2317,13 @@ void engine_link_gravity_tasks(struct engine *e) {
     }
 
     /* Otherwise, sub-pair interaction? */
-    else if (t_type == task_type_sub_pair && t_subtype == task_subtype_grav) {
-
+    else if (t_type == task_type_sub_pair &&
+             (t_subtype == task_subtype_grav ||
+              t_subtype == task_subtype_grav_buff ||
+              t_subtype == task_subtype_grav_bkg ||
+              t_subtype == task_subtype_grav_zoombuff ||
+              t_subtype == task_subtype_grav_zoombkg ||
+              t_subtype == task_subtype_grav_buffbkg)) {
       if (ci_nodeID == nodeID) {
 
         /* drift ---+-> gravity --> grav_down */
@@ -2315,7 +2347,6 @@ void engine_link_gravity_tasks(struct engine *e) {
 
     /* Otherwise M-M interaction? */
     else if (t_type == task_type_grav_mm) {
-
       if (ci_nodeID == nodeID) {
 
         /* init -----> gravity --> grav_down */

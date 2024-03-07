@@ -1433,13 +1433,18 @@ void partition_gather_weights(void *map_data, int num_elements,
         t->type == task_type_extra_ghost || t->type == task_type_drift_part ||
         t->type == task_type_drift_spart || t->type == task_type_drift_sink ||
         t->type == task_type_drift_bpart || t->type == task_type_drift_gpart ||
+        t->type == task_type_drift_gpart_buff ||
+        t->type == task_type_drift_gpart_bkg ||
         t->type == task_type_end_hydro_force || t->type == task_type_kick1 ||
         t->type == task_type_kick2 || t->type == task_type_timestep ||
         t->type == task_type_timestep_limiter ||
         t->type == task_type_timestep_sync ||
-        t->type == task_type_grav_long_range || t->type == task_type_grav_mm ||
-        t->type == task_type_grav_down || t->type == task_type_end_grav_force ||
-        t->type == task_type_cooling || t->type == task_type_star_formation ||
+        t->type == task_type_grav_long_range ||
+        t->type == task_type_grav_long_range_buff ||
+        t->type == task_type_grav_long_range_bkg ||
+        t->type == task_type_grav_mm || t->type == task_type_grav_down ||
+        t->type == task_type_end_grav_force || t->type == task_type_cooling ||
+        t->type == task_type_star_formation ||
         t->type == task_type_stars_ghost ||
         t->type == task_type_bh_density_ghost ||
         t->type == task_type_bh_swallow_ghost2 ||
@@ -2380,13 +2385,18 @@ static void check_weights(struct task *tasks, int nr_tasks,
         t->type == task_type_extra_ghost || t->type == task_type_drift_part ||
         t->type == task_type_drift_spart || t->type == task_type_drift_sink ||
         t->type == task_type_drift_bpart || t->type == task_type_drift_gpart ||
+        t->type == task_type_drift_gpart_buff ||
+        t->type == task_type_drift_gpart_bkg ||
         t->type == task_type_end_hydro_force || t->type == task_type_kick1 ||
         t->type == task_type_kick2 || t->type == task_type_timestep ||
         t->type == task_type_timestep_limiter ||
         t->type == task_type_timestep_sync ||
-        t->type == task_type_grav_long_range || t->type == task_type_grav_mm ||
-        t->type == task_type_grav_down || t->type == task_type_end_grav_force ||
-        t->type == task_type_cooling || t->type == task_type_star_formation ||
+        t->type == task_type_grav_long_range ||
+        t->type == task_type_grav_long_range_buff ||
+        t->type == task_type_grav_long_range_bkg ||
+        t->type == task_type_grav_mm || t->type == task_type_grav_down ||
+        t->type == task_type_end_grav_force || t->type == task_type_cooling ||
+        t->type == task_type_star_formation ||
         t->type == task_type_stars_ghost ||
         t->type == task_type_bh_density_ghost ||
         t->type == task_type_bh_swallow_ghost2 ||

@@ -2028,7 +2028,10 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
       if (t->type == task_type_self &&
           t->subtype == task_subtype_external_grav) {
         cell_activate_subcell_external_grav_tasks(ci, s);
-      } else if (t->type == task_type_self && t->subtype == task_subtype_grav) {
+      } else if (t->type == task_type_self &&
+                 (t->subtype == task_subtype_grav ||
+                  t->subtype == task_subtype_grav_buff ||
+                  t->subtype == task_subtype_grav_bkg)) {
         cell_activate_subcell_grav_tasks(ci, NULL, s);
       } else if (t->type == task_type_pair) {
         cell_activate_subcell_grav_tasks(ci, cj, s);
