@@ -671,6 +671,7 @@ void runner_do_end_hydro_force(struct runner *r, struct cell *c, int timer) {
 
 #ifdef HYDRO_DIMENSION_2p5D
         p->a_hydro[2] = 0.f;
+        p->mhd_data.B_over_rho_dt[2] = 0.f;
 #endif
 #ifdef HYDRO_DIMENSION_2D
         p->a_hydro[2] = 0.f;
