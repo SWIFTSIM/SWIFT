@@ -498,7 +498,7 @@ __attribute__((always_inline)) INLINE static void sink_swallow_part(
   sp->number_of_gas_swallows++;
   sp->number_of_direct_gas_swallows++;
 
-#ifdef SWIFT_DEBUG_CHECKS
+/* #ifdef SWIFT_DEBUG_CHECKS */
   const float dr = sqrt(dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]);
   message(
       "sink %lld swallow gas particle %lld. "
@@ -508,7 +508,7 @@ __attribute__((always_inline)) INLINE static void sink_swallow_part(
       "Delta_v_rad = %f)",
       sp->id, p->id, sp->mass, -dv[0], -dv[1], -dv[2], -dx[0], -dx[1], -dx[2],
       (dv[0] * dx[0] + dv[1] * dx[1] + dv[2] * dx[2]) / dr);
-#endif
+/* #endif */
 }
 
 /**
@@ -562,10 +562,10 @@ __attribute__((always_inline)) INLINE static void sink_swallow_sink(
   spi->number_of_sink_swallows += spj->number_of_sink_swallows;
   spi->number_of_gas_swallows += spj->number_of_gas_swallows;
 
-#ifdef SWIFT_DEBUG_CHECKS
+/* #ifdef SWIFT_DEBUG_CHECKS */
   message("sink %lld swallow sink particle %lld. New mass: %e.", spi->id,
           spj->id, spi->mass);
-#endif
+/* #endif */
 }
 
 /**

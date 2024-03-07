@@ -291,12 +291,12 @@ void runner_do_star_formation_sink(struct runner *r, struct cell *c,
           /* increase loop counter */
           loop++;
 
-#ifdef SWIFT_DEBUG_CHECKS
+/* #ifdef SWIFT_DEBUG_CHECKS */
           message(
               "%010lld spawn a star (%010lld) with mass %8.2f Msol type=%d  "
               "loop=%03d. Sink remaining mass: %e.",
               s->id, sp->id, s->target_mass, s->target_type, loop, s->mass);
-#endif
+/* #endif */
         }
       }
     } /* Loop over the particles */
