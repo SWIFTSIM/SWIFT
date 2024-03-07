@@ -24,6 +24,17 @@
 #define sink_need_unique_id 1
 
 /**
+ * @brief The star type that sink particle will sample/spawn. We can sample a
+ * star particle representing single star ("sink_single_star") or a star
+ * particle representing a stellar population ("sink_star_population").
+ */
+typedef enum sink_star_modes {
+  sink_single_star, /* particle representing a single star (discrete sampling of IMF)*/
+  sink_star_population /* particle representing a population (continuous sampling of
+		     IMF) */
+} sink_star_type;
+
+/**
  * @brief Particle fields for the sink particles.
  *
  * All quantities related to gravity are stored in the associate #gpart.
@@ -53,6 +64,9 @@ struct sink {
 
   /*! Sink target mass */
   float target_mass;
+
+  /*! Sink target stellar type */
+  sink_star_type target_type;
 
   /*! Particle time bin */
   timebin_t time_bin;
