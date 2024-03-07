@@ -4,21 +4,8 @@
 #############################
 
 import h5py
-import argparse as ap
 import numpy as np
 import matplotlib.pyplot as plt
-
-parser = ap.ArgumentParser()
-
-parser.add_argument(
-    "-p",
-    "--positionsFile",
-    help="File with partcile positions to generate Circularly Polarised Alfven Wave Test ICs",
-    default="CPLglassCube_32x_16y_16z.hdf5",
-    type=str,
-)
-
-args = parser.parse_args()
 
 # Parameters
 rho = 1.0
@@ -35,12 +22,31 @@ Nside = 32
 fileOutputName = "CircularlyPolarisedAlfvenWave.hdf5"
 
 # Generate square grid
+#N = Nside * Nside
+#grid_x = np.linspace(0, 1 - 1./Nside, Nside)
+#grid_y = np.linspace(0, 1 - 1./Nside, Nside)
+#xv, yv = np.meshgrid(grid_x, grid_y)
+#pos = np.array((xv.flatten(), yv.flatten(), np.zeros(N))).T
+#h = np.ones(N) *  1.2 * (1. / Nside)
+#glassBoxSize = np.array([1, 1, 0])
+
 N = Nside * Nside
-grid_x = np.linspace(0, 1 - 1./Nside, Nside)
-grid_y = np.linspace(0, 1 - 1./Nside, Nside)
+grid_x = np.linspace(1./(2 * Nside), 1 - 1./(2 * Nside), Nside)
+grid_y = np.linspace(1./(2 * Nside), 1 - 1./(2 * Nside), Nside)
 xv, yv = np.meshgrid(grid_x, grid_y)
 pos = np.array((xv.flatten(), yv.flatten(), np.zeros(N))).T
-h = np.ones(N) *  1.2 * (1. / Nside)
+
+# Shift every second row
+mask = pos[:,1] % (2. / Nside) == (3. / (2 * Nside))
+pos[mask, 0] += 1. / (2 * Nside)
+
+# Shift everything to avoid particles on the very edge
+pos[:, 0] -= 1. / (4 * Nside)
+
+# Compute sensible values for h
+h = np.ones(N) * (1. / (2 * Nside))
+
+# Simulation volume
 glassBoxSize = np.array([1, 1, 0])
 
 # Duplicate along y
