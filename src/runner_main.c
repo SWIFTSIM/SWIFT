@@ -204,7 +204,9 @@ void *runner_main(void *data) {
             runner_doself2_branch_force(r, ci);
           else if (t->subtype == task_subtype_limiter)
             runner_doself1_branch_limiter(r, ci);
-          else if (t->subtype == task_subtype_grav)
+          else if (t->subtype == task_subtype_grav ||
+                   t->subtype == task_subtype_grav_buff ||
+                   t->subtype == task_subtype_grav_bkg)
             runner_doself_recursive_grav(r, ci, 1);
           else if (t->subtype == task_subtype_external_grav)
             runner_do_grav_external(r, ci, 1);
@@ -254,7 +256,12 @@ void *runner_main(void *data) {
             runner_dopair2_branch_force(r, ci, cj);
           else if (t->subtype == task_subtype_limiter)
             runner_dopair1_branch_limiter(r, ci, cj);
-          else if (t->subtype == task_subtype_grav)
+          else if (t->subtype == task_subtype_grav ||
+                   t->subtype == task_subtype_grav_buff ||
+                   t->subtype == task_subtype_grav_bkg ||
+                   t->subtype == task_subtype_grav_zoombuff ||
+                   t->subtype == task_subtype_grav_zoombkg ||
+                   t->subtype == task_subtype_grav_buffbkg)
             runner_dopair_recursive_grav(r, ci, cj, 1);
           else if (t->subtype == task_subtype_stars_density)
             runner_dopair_branch_stars_density(r, ci, cj);
@@ -444,6 +451,8 @@ void *runner_main(void *data) {
           runner_do_drift_bpart(r, ci, 1);
           break;
         case task_type_drift_gpart:
+        case task_type_drift_gpart_buff:
+        case task_type_drift_gpart_bkg:
           runner_do_drift_gpart(r, ci, 1);
           break;
         case task_type_kick1:
@@ -547,6 +556,8 @@ void *runner_main(void *data) {
           runner_do_grav_down(r, t->ci, 1);
           break;
         case task_type_grav_long_range:
+        case task_type_grav_long_range_buff:
+        case task_type_grav_long_range_bkg:
           runner_do_grav_long_range(r, t->ci, 1);
           break;
         case task_type_grav_mm:
