@@ -254,6 +254,8 @@ void runner_do_star_formation_sink(struct runner *r, struct cell *c,
          * (sink_copy_properties) */
         int loop = 1;
 
+	double sink_mass_tot_before_spawning = s->mass;
+
         /* Spawn as many sink as necessary */
         while (sink_spawn_star(s, e, sink_props, cosmo, with_cosmology,
                                phys_const, us)) {
@@ -266,7 +268,8 @@ void runner_do_star_formation_sink(struct runner *r, struct cell *c,
 
           /* Copy the properties to the star particle */
           sink_copy_properties_to_star(s, sp, e, sink_props, cosmo,
-                                       with_cosmology, phys_const, us);
+                                       with_cosmology, phys_const, us,
+				       sink_mass_tot_before_spawning);
 
           /* Update the h_max */
           c->stars.h_max = max(c->stars.h_max, sp->h);

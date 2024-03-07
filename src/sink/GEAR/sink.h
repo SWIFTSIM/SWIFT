@@ -683,85 +683,45 @@ INLINE static void sink_star_formation_separate_particles(
  * @param si The #sink generating a star.
  * @param sp The new #spart.
  */
-INLINE static void sink_star_formation_give_new_velocity(
-    const struct engine* e, struct sink* si, struct spart* sp) {
+INLINE static void sink_star_formation_give_new_velocity(const struct engine* e,
+     struct sink* si, struct spart* sp, double sink_mass_tot_before_spawning) {
 
-  /* We want to conserve both momentum and angular momentum at first. Using
-     this hypothesis, we can find the momenta of the sink and the star after
-     the star has been spawned. */
+  /* Méthode numéro deux : prendre du moment cinétique du réservoir du sink et
+     le donner aux étoiles */
 
-  /* Final means after having spawned the star and initial before [...]. */
+  /* Compute the sink swallowed momentum */
+  double x_sink[3] = {si->x[0], si->x[1], si->x[2]};
+  double b[3] = {si->swallowed_angular_momentum[0],
+		 si->swallowed_angular_momentum[1],
+		 si->swallowed_angular_momentum[2]}; 
+  double p_swallowed[3] = {0.0, 0.0, 0.0} ;
+  double long_sum = b[0]/x_sink[1] + (x_sink[2]*b[2])/(x_sink[0]*x_sink[1]) - b[1]/x_sink[0] ;
+  p_swallowed[0] = - b[0]/x_sink[2] + x_sink[1]/(2.0*x_sink[2])*long_sum;
+  p_swallowed[1] = - b[1]/x_sink[2] + x_sink[0]/(2.0*x_sink[2])*long_sum;
+  p_swallowed[2] = 0.5*long_sum;
 
-  double x_sink_initial[3] = {si->x[0], si->x[1], si->x[2]};
-  double x_star[3] = {sp->x[0], sp->x[1], sp->x[2]};
-
-  /* Here, be careful: the sink and the star must not be at the same location. */
-  double Delta_r[3] = {x_sink_initial[0] - x_star[0], x_sink_initial[1] - x_star[1],
-                       x_sink_initial[2] - x_star[2]} ;
-
-  /* Here we need to be careful. The sink mass is changed after the function
-  sink_copy_properties_to_star(). The latter is called before updating the sink
-  mass in runner_others.c:runner_do_star_formation_sink().
-  So, the sink initial mass is still si->mass.
-
-  Same remark for the stars, we need to be careful about where the star gets
-  its mass. It gets its mass in sink_copy_properties_to_star(). The latter thus
-  must call the present function after having updated the star's mass. 
-  */
-  double M_s_initial = si->mass;  
-  double M_sink_final = si->mass - sp->mass;
-
-  /* Sink initial momentum */
-  double p_sink_initial[3] = {M_s_initial*si->v[0], M_s_initial*si->v[1], M_s_initial*si->v[2]} ;
-
-  /* This vector corresponds to \Delta r \cross p_sink_initial. */
-  double b[3] = {Delta_r[1]*p_sink_initial[2] - Delta_r[2]*p_sink_initial[1],
-                 Delta_r[2]*p_sink_initial[0] - Delta_r[0]*p_sink_initial[2],
-		 Delta_r[0]*p_sink_initial[1] - Delta_r[1]*p_sink_initial[0]} ;
-  
-  /* Compute the sink final momentum */
-  double p_sink_final[3] = {0.0, 0.0, 0.0} ;
-  double long_sum = b[0]/Delta_r[1] + (Delta_r[2]*b[2])/(Delta_r[0]*Delta_r[1]) - b[1]/Delta_r[0] ;
-  p_sink_final[0] = - b[0]/Delta_r[2] + Delta_r[1]/(2.0*Delta_r[2])*long_sum;
-  p_sink_final[1] = - b[1]/Delta_r[2] + Delta_r[0]/(2.0*Delta_r[2])*long_sum;
-  p_sink_final[2] = 0.5*long_sum;
-
-  /* Compute the star (final) momentum */
-  double p_star[3] = {p_sink_initial[0] - p_sink_final[0],
-		      p_sink_initial[0] - p_sink_final[0],
-		      p_sink_initial[0] - p_sink_final[0]} ;
-
-  /* Update the sink velocity. Do not forget to upadte the gpart velocity. */
-  message("Old sink velocity: v = (%lf %lf %lf)", si->v[0], si->v[1], si->v[2]);
-  si->v[0] = p_sink_final[0]/M_sink_final;
-  si->v[1] = p_sink_final[1]/M_sink_final;
-  si->v[2] = p_sink_final[2]/M_sink_final;
-  si->gpart->v_full[0] = si->v[0];
-  si->gpart->v_full[1] = si->v[1];
-  si->gpart->v_full[2] = si->v[2];
-  message("New sink velocity: v = (%lf %lf %lf)", si->v[0], si->v[1], si->v[2]);
-
-  /* Update the sink swallowed angular momentum */
-  /* Technically, the sink angular momentum may not be equal to the sink
-  swallowed momentum because the latter is decoupled from the motion of the
-  sink. An idea could be to give some part of this swallowed momentum either
-  to stars or to the surrounding gas. */
-  /* Another idea would be to draw a random number, to decide if the swallowed
-     angular momentum should be given to the stars. Finally, give some part of
-     it to the star. Maybe draw another random number to do it. */
-  
   /* Update the star velocity. Do not forget to update the gart velocity */
-  sp->v[0] = p_star[0]/sp->mass;
-  sp->v[1] = p_star[1]/sp->mass;
-  sp->v[2] = p_star[2]/sp->mass;
+  sp->v[0] = p_swallowed[0]/sp->mass;
+  sp->v[1] = p_swallowed[1]/sp->mass;
+  sp->v[2] = p_swallowed[2]/sp->mass;
   sp->gpart->v_full[0] = sp->v[0];
   sp->gpart->v_full[1] = sp->v[1];
   sp->gpart->v_full[2] = sp->v[2];
 
+  /* Update the star velocity. Do not forget to update the gart velocity */
+  double fraction = sp->mass / sink_mass_tot_before_spawning;
+  sp->v[0] = fraction*p_swallowed[0]/sp->mass;
+  sp->v[1] = fraction*p_swallowed[1]/sp->mass;
+  sp->v[2] = fraction*p_swallowed[2]/sp->mass;
+  sp->gpart->v_full[0] = sp->v[0];
+  sp->gpart->v_full[1] = sp->v[1];
+  sp->gpart->v_full[2] = sp->v[2];
   message("New star velocity: v = (%lf %lf %lf)", sp->v[0], sp->v[1], sp->v[2]);
 
-  double dp[3] = {p_sink_initial[0] + p_star[0] - p_sink_final[0], p_sink_initial[1] + p_star[1] - p_sink_final[1], p_sink_initial[2] + p_star[2] - p_sink_final[2]}; 
-  message("p_sink_i + p_star - p_sink_f = (%lf %lf %lf) (should be zero)", dp[0], dp[1], dp[2]);
+  /* Update the swallowed momentum to subtract what was given to the star */
+  p_swallowed[0] -= fraction*p_swallowed[0];
+  p_swallowed[1] -= fraction*p_swallowed[1];
+  p_swallowed[2] -= fraction*p_swallowed[2];
 }
 
 /**
@@ -781,7 +741,7 @@ INLINE static void sink_copy_properties_to_star(
     struct sink* sink, struct spart* sp, const struct engine* e,
     const struct sink_props* sink_props, const struct cosmology* cosmo,
     const int with_cosmology, const struct phys_const* phys_const,
-    const struct unit_system* restrict us) {
+    const struct unit_system* restrict us, double sink_mass_tot_before_spawning) {
 
   sink_star_formation_separate_particles(e, sink, sp);
 
@@ -790,7 +750,7 @@ INLINE static void sink_copy_properties_to_star(
   sp->gpart->mass = sp->mass;
 
   /* Give a new velocity to the stars */
-  sink_star_formation_give_new_velocity(e, sink, sp);
+  sink_star_formation_give_new_velocity(e, sink, sp, sink_mass_tot_before_spawning);
 
   /* set feedback type */
   sp->feedback_data.star_type = (star_feedback_type)sink->target_type;
