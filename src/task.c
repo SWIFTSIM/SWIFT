@@ -354,10 +354,14 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
     case task_type_init_grav:
     case task_type_grav_mm:
     case task_type_grav_long_range:
+    case task_type_grav_long_range_buff:
+    case task_type_grav_long_range_bkg:
       return task_action_multipole;
       break;
 
     case task_type_drift_gpart:
+    case task_type_drift_gpart_buff:
+    case task_type_drift_gpart_bkg:
     case task_type_grav_down:
     case task_type_end_grav_force:
       return task_action_gpart;
@@ -563,6 +567,8 @@ void task_unlock(struct task *t) {
       break;
 
     case task_type_drift_gpart:
+    case task_type_drift_gpart_buff:
+    case task_type_drift_gpart_bkg:
     case task_type_end_grav_force:
       cell_gunlocktree(ci);
       break;
@@ -680,6 +686,8 @@ void task_unlock(struct task *t) {
       break;
 
     case task_type_grav_long_range:
+    case task_type_grav_long_range_buff:
+    case task_type_grav_long_range_bkg:
 #ifdef SWIFT_TASKS_WITHOUT_ATOMICS
       cell_munlocktree(ci);
 #endif
@@ -804,6 +812,8 @@ int task_lock(struct task *t) {
       break;
 
     case task_type_drift_gpart:
+    case task_type_drift_gpart_buff:
+    case task_type_drift_gpart_bkg:
     case task_type_end_grav_force:
       if (ci->grav.phold) return 0;
       if (cell_glocktree(ci) != 0) return 0;
@@ -1077,6 +1087,8 @@ int task_lock(struct task *t) {
       break;
 
     case task_type_grav_long_range:
+    case task_type_grav_long_range_buff:
+    case task_type_grav_long_range_bkg:
 #ifdef SWIFT_TASKS_WITHOUT_ATOMICS
       /* Lock the m-poles */
       if (ci->grav.mhold) return 0;
@@ -1208,7 +1220,9 @@ void task_print(const struct task *t) {
  */
 void task_get_group_name(int type, int subtype, char *cluster) {
 
-  if (type == task_type_grav_long_range || type == task_type_grav_mm) {
+  if (type == task_type_grav_long_range ||
+      type == task_type_grav_long_range_buff ||
+      type == task_type_grav_long_range_bkg || type == task_type_grav_mm) {
 
     strcpy(cluster, "Gravity");
     return;
@@ -1765,6 +1779,8 @@ enum task_categories task_get_category(const struct task *t) {
     case task_type_drift_sink:
     case task_type_drift_bpart:
     case task_type_drift_gpart:
+    case task_type_drift_gpart_buff:
+    case task_type_drift_gpart_bkg:
       return task_category_drift;
 
     case task_type_sort:
@@ -1811,6 +1827,8 @@ enum task_categories task_get_category(const struct task *t) {
 
     case task_type_init_grav:
     case task_type_grav_long_range:
+    case task_type_grav_long_range_buff:
+    case task_type_grav_long_range_bkg:
     case task_type_grav_mm:
     case task_type_grav_down:
     case task_type_end_grav_force:
