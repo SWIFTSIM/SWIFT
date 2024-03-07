@@ -924,9 +924,13 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
 
   /* This also enforces alpha_diff < alpha_diff_max */
 
+  const float ratio =
+      hydro_props->diffusion.alpha_max > 0.f
+          ? p->force.alpha_visc_max_ngb / hydro_props->viscosity.alpha_max
+          : 0.f;
+
   const float viscous_diffusion_limit =
-      hydro_props->diffusion.alpha_max *
-      (1.f - p->force.alpha_visc_max_ngb / hydro_props->viscosity.alpha_max);
+      hydro_props->diffusion.alpha_max * (1.f - ratio);
 
   new_diffusion_alpha = min(new_diffusion_alpha, viscous_diffusion_limit);
 
