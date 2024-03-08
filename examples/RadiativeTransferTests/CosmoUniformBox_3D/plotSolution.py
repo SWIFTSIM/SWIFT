@@ -46,7 +46,9 @@ def get_snapshot_list(snapshot_basename="output"):
     return snaplist
 
 
-def plot_param_over_time(snapshot_list, param="energy density"):
+def plot_param_over_time(
+    snapshot_list, param="energy density", redshift_domain="high_redshift"
+):
     print(f"Now plotting {param} over time")
 
     # Arrays to keep track of plot_param and scale factor
@@ -63,13 +65,12 @@ def plot_param_over_time(snapshot_list, param="energy density"):
         meta = data.metadata
 
         # Read comoving quantities
-        energy_density = data.gas.photon_energy_densities
+        energy = getattr(data.gas.photon_energies, "group1")
         mass = data.gas.masses
         rho = data.gas.densities
         vol = mass / rho
 
-        energy_snapshot = data.gas.photon_energies.group1
-        energy = energy_density * vol
+        energy_density = energy / vol
 
         if plot_physical_quantities:
             physical_energy_density = energy_density.to_physical()
@@ -111,14 +112,6 @@ def plot_param_over_time(snapshot_list, param="energy density"):
     fig = plt.figure(figsize=(5.05 * (1 + plot_physical_quantities), 5.4), dpi=200)
 
     x = np.linspace(min(scale_factor), max(scale_factor), 1000)
-
-    redshifts = a2z(np.array(scale_factor))
-    if np.any(redshifts < 5):
-        redshift_domain = "low_redshift"
-    elif np.any(redshifts < 12):
-        redshift_domain = "medium_redshift"
-    elif np.any(redshifts > 12):
-        redshift_domain = "high_redshift"
 
     if param == "energy density":
         titles = ["Comoving energy density", "Physical energy density"]
@@ -193,11 +186,11 @@ if __name__ in ("__main__"):
         print("Redshift domain not recognised!")
         sys.exit(1)
 
-    snaplist = get_snapshot_list(snapshot_base)
+    snaplist = get_snapshot_list(snapshot_base + f"_{redshift_domain}")
 
     if len(snaplist) < 1:
         print("No snapshots found!")
         exit(1)
 
     for param in ["energy density", "volume", "total energy", "mass"]:
-        plot_param_over_time(snaplist, param)
+        plot_param_over_time(snaplist, param, redshift_domain)

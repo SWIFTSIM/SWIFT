@@ -200,15 +200,21 @@ void clean_up(struct cell *ci) {
 void zero_particle_fields(struct cell *c) {
   for (int pid = 0; pid < c->hydro.count; pid++) {
     hydro_init_part(&c->hydro.parts[pid], NULL);
+    adaptive_softening_init_part(&c->hydro.parts[pid]);
+    mhd_init_part(&c->hydro.parts[pid]);
   }
 }
 
 /**
  * @brief Ends the loop by adding the appropriate coefficients
  */
-void end_calculation(struct cell *c, const struct cosmology *cosmo) {
+void end_calculation(struct cell *c, const struct cosmology *cosmo,
+                     const struct gravity_props *gravity_props) {
+
   for (int pid = 0; pid < c->hydro.count; pid++) {
     hydro_end_density(&c->hydro.parts[pid], cosmo);
+    adaptive_softening_end_density(&c->hydro.parts[pid], gravity_props);
+    mhd_end_density(&c->hydro.parts[pid], cosmo);
   }
 }
 
@@ -336,7 +342,8 @@ void test_boundary_conditions(struct cell **cells, struct runner *runner,
   DOSELF1(runner, main_cell);
 
   /* Let's get physical ! */
-  end_calculation(main_cell, runner->e->cosmology);
+  end_calculation(main_cell, runner->e->cosmology,
+                  runner->e->gravity_properties);
 
   /* Dump particles from the main cell. */
   dump_particle_fields(swiftOutputFileName, main_cell, loc_i, loc_j, loc_k);
@@ -370,7 +377,8 @@ void test_boundary_conditions(struct cell **cells, struct runner *runner,
   self_all_density(runner, main_cell);
 
   /* Let's get physical ! */
-  end_calculation(main_cell, runner->e->cosmology);
+  end_calculation(main_cell, runner->e->cosmology,
+                  runner->e->gravity_properties);
 
   /* Dump */
   dump_particle_fields(bruteForceOutputFileName, main_cell, loc_i, loc_j,
@@ -511,6 +519,11 @@ int main(int argc, char *argv[]) {
 
   struct pressure_floor_props pressure_floor;
   engine.pressure_floor_props = &pressure_floor;
+
+  struct gravity_props gravity_props;
+  bzero(&gravity_props, sizeof(struct gravity_props));
+  gravity_props.G_Newton = 1.f;
+  engine.gravity_properties = &gravity_props;
 
   /* Construct some cells */
   struct cell *cells[dim * dim * dim];

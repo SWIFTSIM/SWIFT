@@ -47,6 +47,7 @@ boxsize = boxsize.to(unitsystem["length"])
 
 reduced_speed_of_light_fraction = 1.0
 
+
 # number of photon groups
 nPhotonGroups = 3
 
@@ -90,7 +91,6 @@ def initial_condition(x, unitsystem):
     if x[0] < 0.33 * boxsize:
         E = 0.0 * unit_energy
     elif x[0] < 0.66 * boxsize:
-        # E = (1.0e50 * unyt.erg).to(unit_energy)
         E = 1.0 * unit_energy
     else:
         E = 0.0 * unit_energy

@@ -21,6 +21,7 @@
 
 #include "chemistry.h"
 #include "cooling.h"
+#include "cooling/PS2020/cooling_tables.h"
 #include "engine.h"
 #include "star_formation.h"
 
