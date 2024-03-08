@@ -431,14 +431,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   // const float monopole_beta = hydro_props->mhd.monopole_subtraction;
   const float monopole_beta = pi->mhd_data.monopole_beta;
 
-  const float plasma_beta_i = 2.0f * mu_0 * Pi / B2i;
-  const float plasma_beta_j = 2.0f * mu_0 * Pj / B2j;
+  const float plasma_beta_i = B2i != 0.0f ? 2.0f * mu_0 * Pi / B2i : FLT_MAX;
+  const float plasma_beta_j = B2j != 0.0f ? 2.0f * mu_0 * Pj / B2j : FLT_MAX;
 
   const float scale_i = 0.125f * (10.0f - plasma_beta_i);
   const float scale_j = 0.125f * (10.0f - plasma_beta_j);
 
-  const float tensile_correction_scale_i = fmax(0.0f, fmin(scale_i, 1.0f));
-  const float tensile_correction_scale_j = fmax(0.0f, fmin(scale_j, 1.0f));
+  const float tensile_correction_scale_i = fmaxf(0.0f, fminf(scale_i, 1.0f));
+  const float tensile_correction_scale_j = fmaxf(0.0f, fminf(scale_j, 1.0f));
 
   sph_acc_term_i[0] += monopole_beta * over_rho2_i * wi_dr * permeability_inv *
                        Bri * r_inv * Bi[0] * tensile_correction_scale_i;
@@ -791,9 +791,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   // const float monopole_beta = hydro_props->mhd.monopole_subtraction;
   const float monopole_beta = pi->mhd_data.monopole_beta;
 
-  const float plasma_beta_i = 2.0f * mu_0 * Pi / B2i;
+  const float plasma_beta_i = B2i != 0.0f ? 2.0f * mu_0 * Pi / B2i : FLT_MAX;
   const float scale_i = 0.125f * (10.0f - plasma_beta_i);
-  const float tensile_correction_scale_i = fmax(0.0f, fmin(scale_i, 1.0f));
+  const float tensile_correction_scale_i = fmaxf(0.0f, fminf(scale_i, 1.0f));
 
   sph_acc_term_i[0] += monopole_beta * over_rho2_i * wi_dr * permeability_inv *
                        Bri * r_inv * Bi[0] * tensile_correction_scale_i;
