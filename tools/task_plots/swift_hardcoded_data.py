@@ -138,9 +138,7 @@ SUBTYPES = [
 import os
 
 if os.path.exists("task_labels_task_types.txt"):
-    print(
-        "SWIFT task label file 'task_labels_task_types.txt' found, reading it."
-    )
+    print("SWIFT task label file 'task_labels_task_types.txt' found, reading it.")
     with open("task_labels_task_types.txt", "r") as file:
         NEW_TASKTYPES = []
         for line in file.readlines()[1:]:
@@ -162,9 +160,7 @@ if os.path.exists("task_labels_task_types.txt"):
                 )
     TASKTYPES = NEW_TASKTYPES
 if os.path.exists("task_labels_task_subtypes.txt"):
-    print(
-        "SWIFT task label file 'task_labels_task_subtypes.txt' found, reading it."
-    )
+    print("SWIFT task label file 'task_labels_task_subtypes.txt' found, reading it.")
     with open("task_labels_task_subtypes.txt", "r") as file:
         NEW_SUBTYPES = []
         for line in file.readlines()[1:]:
