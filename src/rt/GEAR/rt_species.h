@@ -19,6 +19,8 @@
 #ifndef SWIFT_RT_GEAR_SPECIES_H
 #define SWIFT_RT_GEAR_SPECIES_H
 
+#define SWIFT_RT_GRACKLE_DUST
+
 /**
  * @file src/rt/GEAR/rt_species.h
  * @brief header file concerning (ionizing) species.
@@ -50,6 +52,31 @@ enum rt_species {
   rt_species_HM,
   rt_species_H2I,
   rt_species_H2II,
+  #ifdef SWIFT_RT_GRACKLE_DUST
+    rt_species_dust,
+    rt_species_SNe_ThisTimeStep,
+    rt_species_isrf_habing,
+    rt_species_He_gas,
+    rt_species_C_gas,
+    rt_species_N_gas,
+    rt_species_O_gas,
+    rt_species_Ne_gas,
+    rt_species_Mg_gas,
+    rt_species_Si_gas,
+    rt_species_S_gas,
+    rt_species_Ca_gas,
+    rt_species_Fe_gas,
+    rt_species_He_dust,
+    rt_species_C_dust,
+    rt_species_N_dust,
+    rt_species_O_dust,
+    rt_species_Ne_dust,
+    rt_species_Mg_dust,
+    rt_species_Si_dust,
+    rt_species_S_dust,
+    rt_species_Ca_dust,
+    rt_species_Fe_dust,
+  #endif
 #endif
   rt_species_count
 };
