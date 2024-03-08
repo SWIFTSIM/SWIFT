@@ -1820,23 +1820,6 @@ void engine_run_rt_sub_cycles(struct engine *e) {
   /* Get some time variables for printouts. Don't update the ones in the
    * engine like in the regular step, or the outputs in the regular steps
    * will be wrong. */
-  /* think cosmology one day: needs adapting here */
-  /* Also needs adapting further below - we print out current values of a
-   * and z. They need to be updated in the engine. */
-  if (e->policy & engine_policy_cosmology) {
-    /* engine_run_rt_sub_cycle is ran after physical values are set in engine_step
-     * Therefore, these will overwrite those values. Will that be problematic
-     * in the future? 
-     * TODO: Add rt_props_update() for cosmological thermochemistry */
-    //error("Can't run RT subcycling with cosmology yet");
-    e->time_old = e->time;  // Set old time to time before update
-    cosmology_update(e->cosmology, e->physical_constants, e->ti_current);  // Update cosmological parameters
-    e->time = e->cosmology->time;  // Grab new cosmology time
-    e->time_step = e->time - e->time_old;  // dt is then difference in time
-  } else {
-    e->time = e->ti_current_subcycle * e->time_base + e->time_begin;
-    e->time_step = rt_step_size * e->time_base;
-  }
   const double dt_subcycle = e->time_step;
   double time = e->time;
 
@@ -1898,19 +1881,13 @@ void engine_run_rt_sub_cycles(struct engine *e) {
     e->max_active_bin_subcycle = get_max_active_bin(e->ti_current_subcycle);
     e->min_active_bin_subcycle =
         get_min_active_bin(e->ti_current_subcycle, ti_subcycle_old);
-    /* think cosmology one day: needs adapting here */
     /* TODO: add rt_props_update() for cosmological thermochemistry*/
     if (e->policy & engine_policy_cosmology) {
-      // error("Can't run RT subcycling with cosmology yet");
-      e->time_old = e->time;  // Set old time to time before update
       cosmology_update(e->cosmology, e->physical_constants, e->ti_current_subcycle);  // Update cosmological parameters
-      e->time = e->cosmology->time;  // Grab new cosmology time
-      e->time_step = e->time - e->time_old;  // dt is then difference in time
+      time = e->cosmology->time;  // Grab new cosmology time
     } else {
-      e->time = e->ti_current_subcycle * e->time_base + e->time_begin;
-      e->time_step = rt_step_size * e->time_base;
+      time = e->ti_current_subcycle * e->time_base + e->time_begin;
     }
-    time = e->time;
 
     /* Do the actual work now. */
     engine_unskip_rt_sub_cycle(e);
