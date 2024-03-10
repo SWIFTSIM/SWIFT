@@ -668,8 +668,8 @@ INLINE static void sink_star_formation_separate_particles(
   sp->x[0] += new_pos[0];
   sp->x[1] += new_pos[1];
   sp->x[2] += new_pos[2];
-  message("dx = (%lf %lf %lf)", Delta_r[0], Delta_r[1], Delta_r[2]);
-  message("New star position: x = (%lf %lf %lf)", sp->x[0], sp->x[1], sp->x[2]);
+  message("Random numbers: (r, phi, cos_theta) = (%lf %lf %lf)", r, phi, cos_theta);
+  message("New star position (tot): x = (%lf %lf %lf)", sp->x[0], sp->x[1], sp->x[2]);
   sp->gpart->x[0] = sp->x[0];
   sp->gpart->x[1] = sp->x[1];
   sp->gpart->x[2] = sp->x[2];
