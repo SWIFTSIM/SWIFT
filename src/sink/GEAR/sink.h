@@ -654,9 +654,9 @@ INLINE static void sink_star_formation_separate_particles(
 
 
   /* Put the star randomly within the accretion radius of the sink */
-  const double phi = 2*M_PI*random_unit_interval(si->id, e->ti_current, (enum random_number_type)3);
-  const double r = si->r_cut*random_unit_interval(si->id, e->ti_current, (enum random_number_type)4);
-  const double cos_theta = 1.0 -2.0*random_unit_interval(si->id, e->ti_current, (enum random_number_type)5);
+  const double phi = 2*M_PI*random_unit_interval(sp->id, e->ti_current, (enum random_number_type)3);
+  const double r = si->r_cut*random_unit_interval(sp->id, e->ti_current, (enum random_number_type)4);
+  const double cos_theta = 1.0 -2.0*random_unit_interval(sp->id, e->ti_current, (enum random_number_type)5);
   const double sin_theta = sqrt(1.0 - cos_theta*cos_theta);
 
   double Delta_r[3] = {delta_x * max_displacement * si->r_cut,
