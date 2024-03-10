@@ -50,8 +50,8 @@ IA_dict = {
     "s112": "stacked_112.hdf5",
     "s120": "stacked_120.hdf5",
     "s128": "stacked_128.hdf5",
-    "fcc32": "FCC_32.hdf5",
-    "fcc64": "FCC_64.hdf5",
+    "c32": "c32.hdf5",
+    "c64": "c64.hdf5",
 }
 
 # full names of forcing types
