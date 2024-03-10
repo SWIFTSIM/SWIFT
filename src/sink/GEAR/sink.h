@@ -696,8 +696,8 @@ INLINE static void sink_star_formation_give_new_velocity(const struct engine* e,
 		 si->swallowed_angular_momentum[2]}; 
   double p_swallowed[3] = {0.0, 0.0, 0.0} ;
   double long_sum = b[0]/x_sink[1] + (x_sink[2]*b[2])/(x_sink[0]*x_sink[1]) - b[1]/x_sink[0] ;
-  p_swallowed[0] = - b[0]/x_sink[2] + x_sink[1]/(2.0*x_sink[2])*long_sum;
-  p_swallowed[1] = - b[1]/x_sink[2] + x_sink[0]/(2.0*x_sink[2])*long_sum;
+  p_swallowed[0] = - b[1]/x_sink[2] + x_sink[0]/(2.0*x_sink[2])*long_sum;
+  p_swallowed[1] = - b[0]/x_sink[2] + x_sink[1]/(2.0*x_sink[2])*long_sum;
   p_swallowed[2] = 0.5*long_sum;
 
   /* Update the star velocity. Do not forget to update the gart velocity */
