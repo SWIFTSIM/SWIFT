@@ -120,9 +120,9 @@ INLINE static void rt_do_thermochemistry(
 
   /* initialize data so it'll be in scope */
   grackle_field_data particle_grackle_data;
-
+  
   gr_float density = hydro_get_physical_density(p, cosmo);
-
+  parttrace(p, "Physical density %f", density);
   /* In rare cases, unphysical solutions can arise with negative densities
    * which won't be fixed in the hydro part until further down the dependency
    * graph. Also, we can have vacuum, in which case we have nothing to do here.
@@ -133,7 +133,7 @@ INLINE static void rt_do_thermochemistry(
   gr_float internal_energy =
       max(hydro_get_physical_internal_energy(p, xp, cosmo), u_minimal);
   const float u_old = internal_energy;
-
+  parttrace(p, "Physical internal energy %f", u_old);
   gr_float species_densities[6];
   rt_tchem_get_species_densities(p, density, species_densities);
 

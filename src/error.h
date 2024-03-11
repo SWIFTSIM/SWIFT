@@ -238,7 +238,7 @@ extern int engine_rank;
 #endif /* SWIFT_DEBUG_CHECKS */
 
 /* Define which particles you'd like to trace. */
-#define PROBLEMPART1 -1
+#define PROBLEMPART1 208
 #define PROBLEMPART2 -1
 
 /**
