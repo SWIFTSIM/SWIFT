@@ -398,10 +398,12 @@ static void debug_cell_type(struct space *s) {
         for (int k = 0; k < s->zoom_props->buffer_cdim[2]; k++) {
 
           /* Define the cell position. */
-          const double pos[3] = {
-              s->buffer_lower_bounds[0] + s->zoom_props->buffer_width[0] * i,
-              s->buffer_lower_bounds[1] + s->zoom_props->buffer_width[1] * j,
-              s->buffer_lower_bounds[2] + s->zoom_props->buffer_width[2] * k};
+          const double pos[3] = {s->zoom_props->buffer_lower_bounds[0] +
+                                     s->zoom_props->buffer_width[0] * i,
+                                 s->zoom_props->buffer_lower_bounds[1] +
+                                     s->zoom_props->buffer_width[1] * j,
+                                 s->zoom_props->buffer_lower_bounds[2] +
+                                     s->zoom_props->buffer_width[2] * k};
 
           /* Test the lower boundary. */
           if (abs(pos[0] - s->zoom_props->region_lower_bounds[0]) < tol)
