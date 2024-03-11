@@ -68,7 +68,26 @@ struct rt_part_data {
   /* Data for thermochemistry */
   struct {
     float mass_fraction[rt_species_count];
+
   } tchem;
+
+  /* Data for grackle cooling stored in #part data */
+  struct {
+
+  /*! Subgrid temperature */
+  float subgrid_temp;
+
+  /*! Subgrid density (internal units, physical frame) */
+  float subgrid_dens;
+
+#if  GEARRT_GRACKLE_MODE >= 2
+  /* Dust stuff, when use_grackle_dust_evol=1 */
+  float dust_mass;  // total mass in dust
+  float dust_mass_fraction[chemistry_element_count];  // fraction of each metal in dust
+  float dust_temperature;  // T of subgrid ISM
+#endif
+}cooling;
+
 
 #ifdef GIZMO_MFV_SPH
   /* Keep track of the actual mass fluxes of the gas species */
