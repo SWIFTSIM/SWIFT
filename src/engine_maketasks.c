@@ -43,6 +43,7 @@
 #include "engine.h"
 
 /* Local headers. */
+#include "adaptive_softening.h"
 #include "atomic.h"
 #include "cell.h"
 #include "clocks.h"
@@ -102,6 +103,9 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
 
       /* Drift before you send */
       scheduler_addunlock(s, ci->grav.super->grav.drift, t_grav);
+
+      if (gravity_after_hydro_density)
+        scheduler_addunlock(s, ci->grav.super->grav.init_out, t_grav);
     }
 
     /* Add them to the local cell. */
@@ -1378,6 +1382,11 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
         scheduler_addunlock(s, c->grav.init, c->grav.long_range);
         scheduler_addunlock(s, c->grav.long_range, c->grav.down);
         scheduler_addunlock(s, c->grav.down, c->grav.super->grav.end_force);
+
+        /* With adaptive softening, force the hydro density to complete first */
+        if (gravity_after_hydro_density && c->hydro.super == c) {
+          scheduler_addunlock(s, c->hydro.ghost_out, c->grav.init_out);
+        }
 
         /* Link in the implicit tasks */
         scheduler_addunlock(s, c->grav.init, c->grav.init_out);
