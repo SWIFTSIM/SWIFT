@@ -54,6 +54,12 @@ void zoom_space_regrid(struct space *s, int verbose) {
   const size_t nr_sinks = s->nr_sinks;
   const integertime_t ti_current = (s->e != NULL) ? s->e->ti_current : 0;
 
+  /* If this is our first regrid then we need to get the zoom region
+   * geometry before moving on. */
+  if (s->cells_top == NULL) {
+    zoom_region_init(s, verbose);
+  }
+
   /* Extract the zoom properties. */
   struct zoom_region_properties *zoom_props = s->zoom_props;
 
