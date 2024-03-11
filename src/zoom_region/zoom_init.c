@@ -517,6 +517,10 @@ void zoom_props_init(struct swift_params *params, struct space *s,
 
   /* Parse the parameter file and populate the properties struct. */
   zoom_parse_params(params, s->zoom_props);
+
+  /* The first time through we also want to calculate the geometry of the zoom
+   * region. */
+  zoom_region_init(s, verbose);
 }
 
 /**

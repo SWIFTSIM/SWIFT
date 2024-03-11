@@ -57,13 +57,6 @@ void zoom_space_regrid(struct space *s, int verbose) {
   /* Extract the zoom properties. */
   struct zoom_region_properties *zoom_props = s->zoom_props;
 
-  /* If we don't have cells yet then we need to initialise the zoom
-   * region properties (if we do have cells and the cdim needs to be changed
-   * this is called below to modify the zoom region). */
-  if (s->cells_top == NULL) {
-    zoom_region_init(s, verbose);
-  }
-
   /* Run through the zoom cells and get the current h_max. */
   const double zoom_cell_min = zoom_props->cell_min;
   float h_max = zoom_cell_min / kernel_gamma / space_stretch;
