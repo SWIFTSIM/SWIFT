@@ -56,13 +56,9 @@ def test_total_metal_mass_conservation(data_start, data_end):
                 for c in columns
             )
         else:
-            return (
-                data.gas.masses.reshape(-1, 1) * data.gas.metal_mass_fractions
-            )
+            return data.gas.masses.reshape(-1, 1) * data.gas.metal_mass_fractions
 
-    assert approx_equal(
-        np.sum(metal_mass(data_start)), np.sum(metal_mass(data_end))
-    )
+    assert approx_equal(np.sum(metal_mass(data_start)), np.sum(metal_mass(data_end)))
 
 
 def element_mass(data, element_idx):
@@ -79,8 +75,7 @@ def element_mass(data, element_idx):
 def test_element_wise_mass_conservation(data_start, data_end):
     for i in range(ELEMENT_COUNT):
         assert approx_equal(
-            np.sum(element_mass(data_start, i)),
-            np.sum(element_mass(data_end, i)),
+            np.sum(element_mass(data_start, i)), np.sum(element_mass(data_end, i))
         )
 
 

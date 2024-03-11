@@ -54,7 +54,7 @@ def get_abundance(element_idx):
     if element_idx == ELEMENT_COUNT - 1:
         return 0.2
     else:
-        return 0.1 * 0.5**element_idx
+        return 0.1 * 0.5 ** element_idx
 
 
 def get_element_abundances_metallicity(pos, boxsize):
@@ -86,9 +86,7 @@ if __name__ == "__main__":
     rho[pos[:, 1] < 0.5 * boxsize[1]] *= 0.5
     masses = rho * np.prod(boxsize) / n_part
     velocities = np.zeros((n_part, 3))
-    velocities[:, :] = (
-        0.5 * math.sqrt(2) * VELOCITY * np.array([1.0, 1.0, 0.0])
-    )
+    velocities[:, :] = 0.5 * math.sqrt(2) * VELOCITY * np.array([1.0, 1.0, 0.0])
     internal_energy = P / (rho * (GAMMA - 1))
 
     # Setup metallicities

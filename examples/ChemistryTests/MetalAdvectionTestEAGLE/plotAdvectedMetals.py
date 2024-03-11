@@ -33,15 +33,9 @@ from pathlib import Path
 from makeIC import VELOCITY
 
 
-def plot_single(
-    ax_mass, ax_fraction, name, title, data, mass_map, kwargs_inner
-):
-    mass_weighted_map = project_gas(
-        data, project=name, **kwargs_inner["projection"]
-    )
-    ax_mass.imshow(
-        mass_weighted_map.in_cgs().value.T, **kwargs_inner["imshow_mass"]
-    )
+def plot_single(ax_mass, ax_fraction, name, title, data, mass_map, kwargs_inner):
+    mass_weighted_map = project_gas(data, project=name, **kwargs_inner["projection"])
+    ax_mass.imshow(mass_weighted_map.in_cgs().value.T, **kwargs_inner["imshow_mass"])
     ax_mass.set_title(title)
     ax_fraction.imshow(
         (mass_weighted_map / mass_map).T, **kwargs_inner["imshow_fraction"]
@@ -55,9 +49,7 @@ def plot_all(fname, savename):
     data = swiftsimio.load(fname)
 
     # Shift coordinates to starting position
-    velocity = (
-        0.5 * math.sqrt(2) * VELOCITY * np.array([1, 1, 0]) * unyt.cm / unyt.s
-    )
+    velocity = 0.5 * math.sqrt(2) * VELOCITY * np.array([1, 1, 0]) * unyt.cm / unyt.s
     data.gas.coordinates -= data.metadata.time * velocity
 
     # Add mass weighted element mass fractions to gas dataset
@@ -185,20 +177,12 @@ def plot_all(fname, savename):
 
     # Add Colorbars
     cb_masses = fig_masses.colorbar(
-        ScalarMappable(**imshow_mass_kwargs),
-        shrink=0.75,
-        pad=0.01,
-        ax=axes_masses,
+        ScalarMappable(**imshow_mass_kwargs), shrink=0.75, pad=0.01, ax=axes_masses
     )
     cb_ratios = fig_ratios.colorbar(
-        ScalarMappable(**imshow_fraction_kwargs),
-        shrink=0.75,
-        pad=0.01,
-        ax=axes_ratios,
+        ScalarMappable(**imshow_fraction_kwargs), shrink=0.75, pad=0.01, ax=axes_ratios
     )
-    cb_masses.ax.set_ylabel(
-        "Surface density (g/cm^2)", rotation=270, labelpad=15
-    )
+    cb_masses.ax.set_ylabel("Surface density (g/cm^2)", rotation=270, labelpad=15)
     cb_ratios.ax.set_ylabel("Mass ratio", rotation=270, labelpad=15)
 
     # Save output
@@ -208,11 +192,7 @@ def plot_all(fname, savename):
 if __name__ == "__main__":
     cwd = Path(__file__).parent
     print("Plotting metals for output_0000.hdf5...")
-    plot_all(
-        cwd / "output_0000.hdf5", savename=cwd / "metal_advection_0000.png"
-    )
+    plot_all(cwd / "output_0000.hdf5", savename=cwd / "metal_advection_0000.png")
     print("Plotting metals for output_0001.hdf5...")
-    plot_all(
-        cwd / "output_0001.hdf5", savename=cwd / "metal_advection_0001.png"
-    )
+    plot_all(cwd / "output_0001.hdf5", savename=cwd / "metal_advection_0001.png")
     print("Done!")

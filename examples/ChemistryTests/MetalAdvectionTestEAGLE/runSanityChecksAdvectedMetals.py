@@ -59,15 +59,11 @@ def test_total_metal_mass_conservation(data_start, data_end):
     def metal_mass(data):
         return data.gas.masses * data.gas.metal_mass_fractions
 
-    assert approx_equal(
-        np.sum(metal_mass(data_start)), np.sum(metal_mass(data_end))
-    )
+    assert approx_equal(np.sum(metal_mass(data_start)), np.sum(metal_mass(data_end)))
 
 
 def element_mass(data, element_name):
-    return data.gas.masses * getattr(
-        data.gas.element_mass_fractions, element_name
-    )
+    return data.gas.masses * getattr(data.gas.element_mass_fractions, element_name)
 
 
 @test("hydrogen mass conservation")
@@ -113,8 +109,7 @@ def test_o_mass_conservation(data_start, data_end):
 @test("neon mass conservation")
 def test_ne_mass_conservation(data_start, data_end):
     assert approx_equal(
-        np.sum(element_mass(data_start, "neon")),
-        np.sum(element_mass(data_end, "neon")),
+        np.sum(element_mass(data_start, "neon")), np.sum(element_mass(data_end, "neon"))
     )
 
 
@@ -137,8 +132,7 @@ def test_si_mass_conservation(data_start, data_end):
 @test("iron mass conservation")
 def test_fe_mass_conservation(data_start, data_end):
     assert approx_equal(
-        np.sum(element_mass(data_start, "iron")),
-        np.sum(element_mass(data_end, "iron")),
+        np.sum(element_mass(data_start, "iron")), np.sum(element_mass(data_end, "iron"))
     )
 
 
