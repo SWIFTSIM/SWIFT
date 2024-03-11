@@ -281,8 +281,7 @@ void zoom_get_cell_props_large_region(struct space *s, double ini_max_dim) {
  * changed to ensure the background, buffer and zoom cells align.
  * @param params The SWIFT parameter structure.
  */
-void zoom_get_cell_props_with_buffer_cells(struct space *s, double max_dim,
-                                           struct swift_params *params) {
+void zoom_get_cell_props_with_buffer_cells(struct space *s, double max_dim) {
 
   /* Set the initial zoom_region boundaries with boost factor.
    * The zoom region is already centred on the middle of the box */
@@ -616,7 +615,7 @@ void zoom_region_init(struct space *s, const int verbose) {
   else if (s->zoom_props->region_buffer_ratio > 0) {
 
     /* Compute the cell grid properties. */
-    zoom_get_cell_props_with_buffer_cells(s, max_dim, params);
+    zoom_get_cell_props_with_buffer_cells(s, max_dim);
 
   }
 
