@@ -18,9 +18,10 @@
  *
  ******************************************************************************/
 
+/* Config header */
 #include "../config.h"
 
-/* Includes */
+/* Standard includes */
 #include <float.h>
 
 /* Local includes */
