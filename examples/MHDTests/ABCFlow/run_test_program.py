@@ -302,7 +302,7 @@ def run_simulation(phys_parameters, threads):
     set_all_par = set_timeI_par + set_forcing_par + set_MHD_par # + set_sph_par 
 
     # path to parameter file
-    parameter_file = " ./RobertsFlow.yml"
+    parameter_file = " ./ABCFlow.yml"
 
     # where to write output
     write_output_file = " | tee output_log.txt"

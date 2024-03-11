@@ -1,2 +1,9 @@
 Run #	v0	A	B	C	Vz_factor	eta	kv	kb	Lbox	Scheme	IAfile	monopole_subtraction	artificial_diffusion	hyperbolic_dedner	hyperbolic_dedner_divv	parabolic_dedner	tau_max	min_steps	Forcing_kind	Status	Comment
-example_run	1	1	1	1	1	0.1	1	1	6.2831853	FDI	g32			1	0.5	1	30	200	v	done	Example run. Fill the table with parameters and run run_test_program.py script. The runs with Status = done will be ignored.
+mid_res_test_run	1	1	1	1	1	0.01	1	1	6.2831853	FDI	g32			1	0.5	1	30	200	v		Example run. Fill the table with parameters and run run_test_program.py script. The runs with Status = done will be ignored.
+mid_res_1	1	1	1	1	1	0.125	1	1	6.2831853	FDI	g32			1	0.5	1	30	200	v		
+mid_res_2	1	1	1	1	1	0.105	1	1	6.2831853	FDI	g32			1	0.5	1	30	200	v		
+mid_res_3	1	1	1	1	1	0.087	1	1	6.2831853	FDI	g32			1	0.5	1	30	200	v		
+mid_res_4	1	1	1	1	1	0.072	1	1	6.2831853	FDI	g32			1	0.5	1	30	200	v		
+mid_res_5	1	1	1	1	1	0.061	1	1	6.2831853	FDI	g32			1	0.5	1	30	200	v		
+mid_res_6	1	1	1	1	1	0.051	1	1	6.2831853	FDI	g32			1	0.5	1	30	200	v		
+mid_res_7	1	1	1	1	1	0.042	1	1	6.2831853	FDI	g32			1	0.5	1	30	200	v		
