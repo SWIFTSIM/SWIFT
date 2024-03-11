@@ -1,0 +1,6 @@
+A simple box with static particles on a grid, and uniform radiation energy density everywhere. 
+Test that total radiation energy and radiation energy density dilute with the correct scale-factor relation.
+
+The ICs are created to be compatible with GEAR_RT. Recommended configuration:
+    --with-rt=GEAR_1 --with-rt-riemann-solver=GLF --with-hydro-dimension=3 --with-hydro=gizmo-mfv \
+     --with-riemann-solver=hllc --with-stars=GEAR --with-feedback=none --with-grackle=$GRACKLE_ROOT
