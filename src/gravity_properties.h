@@ -20,8 +20,6 @@
 #define SWIFT_GRAVITY_PROPERTIES
 
 /* Config parameters. */
-#include "space.h"
-
 #include <config.h>
 
 #if defined(HAVE_HDF5)
