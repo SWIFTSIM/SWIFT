@@ -147,7 +147,8 @@ INLINE static void rt_do_thermochemistry(
   const float u_old = internal_energy;
 
   gr_float species_densities[RT_N_SPECIES];
-  rt_tchem_get_species_densities(p, density, species_densities);
+  gr_float species_extra[rt_species_extra_count] = {0};
+  rt_tchem_get_species_densities(p, density, species_densities, species_extra, rt_props);
 
   float radiation_energy_density[RT_NGROUPS];
   rt_part_get_radiation_energy_density(p, radiation_energy_density);
@@ -159,9 +160,8 @@ INLINE static void rt_do_thermochemistry(
       rt_props->number_weighted_cross_sections, phys_const, us);
 
   /* Put all the data into a grackle field struct */
-  rt_get_grackle_particle_fields(&particle_grackle_data, density,
-                                 internal_energy, species_densities,
-                                 iact_rates);
+  rt_get_grackle_particle_fields(&particle_grackle_data, density, 
+		  internal_energy, species_densities, species_extra, iact_rates);
 
   /* solve chemistry */
   /* Note: `grackle_rates` is a global variable defined by grackle itself.
@@ -297,7 +297,8 @@ __attribute__((always_inline)) INLINE static float rt_tchem_get_tchem_time(
       max(hydro_get_physical_internal_energy(p, xp, cosmo), u_minimal);
 
   gr_float species_densities[RT_N_SPECIES];
-  rt_tchem_get_species_densities(p, density, species_densities);
+  gr_float species_extra[rt_species_extra_count] = {0};
+  rt_tchem_get_species_densities(p, density, species_densities, species_extra, rt_props);
 
   float radiation_energy_density[RT_NGROUPS];
   rt_part_get_radiation_energy_density(p, radiation_energy_density);
@@ -310,7 +311,7 @@ __attribute__((always_inline)) INLINE static float rt_tchem_get_tchem_time(
 
   rt_get_grackle_particle_fields(&particle_grackle_data, density,
                                  internal_energy, species_densities,
-                                 iact_rates);
+                                 species_extra, iact_rates);
 
   /* Compute 'cooling' time */
   /* Note: grackle_rates is a global variable defined by grackle itself.

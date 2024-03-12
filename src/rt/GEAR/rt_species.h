@@ -58,14 +58,13 @@ enum rt_species {
 
 /**
  * @file src/rt/GEAR/rt_species.h
- * @brief header file concerning extra species which needed in kiara cooling
- * especially dust model.
+ * @brief header file concerning species.
  **/
 
 enum rt_species_extra {
 #if GEARRT_GRACKLE_MODE >= 2
   #ifdef SWIFT_RT_GRACKLE_DUST
-    rt_species_dust = rt_species_count, /* can continue counting the rt species*/
+    rt_species_dust = 0,
     rt_species_SNe_ThisTimeStep,
     rt_species_isrf_habing,
     rt_species_He_gas,
@@ -90,7 +89,7 @@ enum rt_species_extra {
     rt_species_Fe_dust,
   #endif
 #endif
-  rt_species_densities_count
+  rt_species_extra_count
 };
 
 /**

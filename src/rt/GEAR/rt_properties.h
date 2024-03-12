@@ -124,6 +124,13 @@ struct rt_props {
   /*! make grackle talkative? */
   int grackle_verbose;
 
+  /*! For Grackle subgrid model, choose way to determine G0: 1=Local SFR density; 2=Global sSFR */
+  int G0_computation_method;
+
+  /*! G0 conversion factors, scales to MW value based on local/global galaxy props */
+  double G0_factor1;
+  double G0_factor2;
+
 #ifdef SWIFT_RT_DEBUG_CHECKS
   /* radiation emitted by stars this step. This is not really a property,
    * but a placeholder to sum up a global variable. It's being reset
@@ -460,6 +467,10 @@ __attribute__((always_inline)) INLINE static void rt_props_init(
   rtp->energy_weighted_cross_sections = NULL;
   rtp->number_weighted_cross_sections = NULL;
   rt_cross_sections_init(rtp, phys_const, us);
+
+  rtp->G0_computation_method = 0;
+  rtp->G0_factor1 = 0;
+  rtp->G0_factor2 = 0;
 
   /* Finishers */
   /* --------- */

@@ -25,6 +25,8 @@
  * */
 
 #include "rt_species.h"
+#include "rt_properties.h"
+#include "chemistry.h"
 
 /**
  * @brief compute the mean molecular weight mu for given
@@ -103,6 +105,39 @@ __attribute__((always_inline)) INLINE static float rt_tchem_internal_energy_dT(
 }
 
 /**
+ * @brief Returns the value of G0 for given particle p
+ *
+ * @param p Pointer to the particle data.
+ * @param cooling The properties of the cooling function.
+ *
+ */
+__attribute__((always_inline)) INLINE float grackle_compute_G0(
+		const struct part *restrict p,
+		const struct rt_props* rt_props) {
+
+      float G0 = 0.f;
+      /* Determine ISRF in Habing units based on chosen method */
+      if (rt_props->G0_computation_method==0) {
+          G0 = 0.f;
+      }
+      else if (rt_props->G0_computation_method==1) {
+          G0 = p->chemistry_data.local_sfr_density * rt_props->G0_factor1;
+      }
+      else if (rt_props->G0_computation_method==2) {
+          G0 = p->group_data.ssfr * rt_props->G0_factor2;
+      }
+      else if (rt_props->G0_computation_method==3) {
+	  if (p->group_data.ssfr > 0.) {
+              G0 = p->group_data.ssfr * rt_props->G0_factor2;
+	  }
+	  else {
+              G0 = p->chemistry_data.local_sfr_density * rt_props->G0_factor1;
+	  }
+      }
+      return G0;
+}
+
+/**
  * @brief get the densities of all species and electrons.
  *
  * @param p particle to use
@@ -111,7 +146,9 @@ __attribute__((always_inline)) INLINE static float rt_tchem_internal_energy_dT(
  **/
 __attribute__((always_inline)) INLINE static void
 rt_tchem_get_species_densities(const struct part* restrict p, gr_float rho,
-                               gr_float species_densities[RT_N_SPECIES]) {
+                               gr_float species_densities[RT_N_SPECIES],
+			       gr_float species_extra[rt_species_extra_count],
+			       const struct rt_props* rt_props) {
 
     /* nHII = rho_HII / m_p
      * nHeII = rho_HeII / 4 m_p
@@ -122,6 +159,35 @@ rt_tchem_get_species_densities(const struct part* restrict p, gr_float rho,
   for (enum rt_species species = 0; species < rt_species_count; species++){
 	species_densities[species] = p->rt_data.tchem.mass_fraction[species] * rho;
   }
+
+#ifdef SWIFT_RT_GRACKLE_DUST
+  /* Load dust and metal info */
+  species_extra[rt_species_dust] = p->rt_data.cooling.dust_mass / p->mass * rho;
+  species_extra[rt_species_SNe_ThisTimeStep] = p->feedback_data.SNe_ThisTimeStep;
+  //if( chemistry_get_total_metal_mass_fraction_for_cooling(p)>0.f) message("Zsm= %g Zp= %g Z= %g Zd= %g",chemistry_get_total_metal_mass_fraction_for_cooling(p), p->chemistry_data.metal_mass_fraction_total, species_densities[19], species_densities[20]);
+
+  /* Determine ISRF in Habing units based on chosen method */
+  species_extra[rt_species_isrf_habing] = grackle_compute_G0(p, rt_props);
+
+  /* Load gas metallicities NEED TO CHANGE TO RIGHT COUNT  */
+  for (int i=0; i<chemistry_element_count; i++) {
+        species_densities[23+i] = p->chemistry_data.metal_mass_fraction[i] * species_densities[12];
+        species_densities[23+chemistry_element_count+i] = p->cooling_data.dust_mass_fraction[i] * species_densities[12];
+      }
+  for (enum rt_species_extra species = rt_species_He_gas; species < rt_species_He_dust; species++){
+	int i = 0;
+        species_extra[species] = p->chemistry_data.metal_mass_fraction[i] * rho;
+	i++;
+  }
+
+  for (enum rt_species_extra species = rt_species_He_dust; species < rt_species_extra_count; species++){
+        int i = 0;
+        species_extra[species] = p->rt_data.cooling.dust_mass_fraction[i] * rho;
+        i++;
+  }
+
+
+#endif
 
 }
 

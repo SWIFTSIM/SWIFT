@@ -186,6 +186,7 @@ __attribute__((always_inline)) INLINE static void
 rt_get_grackle_particle_fields(grackle_field_data *grackle_fields,
                                gr_float density, gr_float internal_energy,
                                gr_float species_densities[RT_N_SPECIES],
+			       gr_float species_extra[rt_species_extra_count],
                                gr_float iact_rates[5]) {
 
   int *dimension = malloc(3 * sizeof(int));
@@ -314,35 +315,35 @@ rt_get_grackle_particle_fields(grackle_field_data *grackle_fields,
       grackle_fields->H2II_density[i] = species_densities[rt_species_H2II];
 
       #ifdef SWIFT_RT_GRACKLE_DUST
-      grackle_fields->dust_density[i] = species_densities[rt_species_dust];
+      grackle_fields->dust_density[i] = species_extra[rt_species_dust];
 
       /* interstellar radiation field strength */
-      grackle_fields->SNe_ThisTimeStep[i] = species_densities[rt_species_SNe_ThisTimeStep];
-      grackle_fields->isrf_habing[i] = species_densities[rt_species_isrf_habing];
+      grackle_fields->SNe_ThisTimeStep[i] = species_extra[rt_species_SNe_ThisTimeStep];
+      grackle_fields->isrf_habing[i] = species_extra[rt_species_isrf_habing];
 
       /* metal densities in gas phase */
-      grackle_fields->He_gas_metalDensity[i] = species_densities[rt_species_He_gas];
-      grackle_fields->C_gas_metalDensity[i] = species_densities[rt_species_C_gas];
-      grackle_fields->N_gas_metalDensity[i] = species_densities[rt_species_N_gas];
-      grackle_fields->O_gas_metalDensity[i] = species_densities[rt_species_O_gas];
-      grackle_fields->Ne_gas_metalDensity[i] = species_densities[rt_species_Ne_gas];
-      grackle_fields->Mg_gas_metalDensity[i] = species_densities[rt_species_Mg_gas];
-      grackle_fields->Si_gas_metalDensity[i] = species_densities[rt_species_Si_gas];
-      grackle_fields->S_gas_metalDensity[i] = species_densities[rt_species_S_gas];
-      grackle_fields->Ca_gas_metalDensity[i] = species_densities[rt_species_Ca_gas];
-      grackle_fields->Fe_gas_metalDensity[i] = species_densities[rt_species_Fe_gas];
+      grackle_fields->He_gas_metalDensity[i] = species_extra[rt_species_He_gas];
+      grackle_fields->C_gas_metalDensity[i] = species_extra[rt_species_C_gas];
+      grackle_fields->N_gas_metalDensity[i] = species_extra[rt_species_N_gas];
+      grackle_fields->O_gas_metalDensity[i] = species_extra[rt_species_O_gas];
+      grackle_fields->Ne_gas_metalDensity[i] = species_extra[rt_species_Ne_gas];
+      grackle_fields->Mg_gas_metalDensity[i] = species_extra[rt_species_Mg_gas];
+      grackle_fields->Si_gas_metalDensity[i] = species_extra[rt_species_Si_gas];
+      grackle_fields->S_gas_metalDensity[i] = species_extra[rt_species_S_gas];
+      grackle_fields->Ca_gas_metalDensity[i] = species_extra[rt_species_Ca_gas];
+      grackle_fields->Fe_gas_metalDensity[i] = species_extra[rt_species_Fe_gas];
 
       /* metal densities in dust phase */
-      grackle_fields->He_dust_metalDensity[i] = species_densities[rt_species_He_dust];
-      grackle_fields->C_dust_metalDensity[i] = species_densities[rt_species_C_dust];
-      grackle_fields->N_dust_metalDensity[i] = species_densities[rt_species_N_dust];
-      grackle_fields->O_dust_metalDensity[i] = species_densities[rt_species_O_dust];
-      grackle_fields->Ne_dust_metalDensity[i] = species_densities[rt_species_Ne_dust];
-      grackle_fields->Mg_dust_metalDensity[i] = species_densities[rt_species_Mg_dust];
-      grackle_fields->Si_dust_metalDensity[i] = species_densities[rt_species_Si_dust];
-      grackle_fields->S_dust_metalDensity[i] = species_densities[rt_species_S_dust];
-      grackle_fields->Ca_dust_metalDensity[i] = species_densities[rt_species_Ca_dust];
-      grackle_fields->Fe_dust_metalDensity[i] = species_densities[rt_species_Fe_dust];
+      grackle_fields->He_dust_metalDensity[i] = species_extra[rt_species_He_dust];
+      grackle_fields->C_dust_metalDensity[i] = species_extra[rt_species_C_dust];
+      grackle_fields->N_dust_metalDensity[i] = species_extra[rt_species_N_dust];
+      grackle_fields->O_dust_metalDensity[i] = species_extra[rt_species_O_dust];
+      grackle_fields->Ne_dust_metalDensity[i] = species_extra[rt_species_Ne_dust];
+      grackle_fields->Mg_dust_metalDensity[i] = species_extra[rt_species_Mg_dust];
+      grackle_fields->Si_dust_metalDensity[i] = species_extra[rt_species_Si_dust];
+      grackle_fields->S_dust_metalDensity[i] = species_extra[rt_species_S_dust];
+      grackle_fields->Ca_dust_metalDensity[i] = species_extra[rt_species_Ca_dust];
+      grackle_fields->Fe_dust_metalDensity[i] = species_extra[rt_species_Fe_dust];
       #endif //for dust model
     #endif //for grackle mode 2
 
