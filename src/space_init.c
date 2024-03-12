@@ -26,6 +26,7 @@
 #include "space.h"
 
 /* Local headers. */
+#include "adaptive_softening.h"
 #include "black_holes.h"
 #include "chemistry.h"
 #include "engine.h"
@@ -51,6 +52,7 @@ void space_init_parts_mapper(void *restrict map_data, int count,
 
   for (int k = 0; k < count; k++) {
     hydro_init_part(&parts[k], hs);
+    adaptive_softening_init_part(&parts[k]);
     mhd_init_part(&parts[k]);
     black_holes_init_potential(&parts[k].black_holes_data);
     chemistry_init_part(&parts[k], e->chemistry);

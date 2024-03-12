@@ -60,6 +60,14 @@ float cooling_timestep(const struct cooling_function_data *cooling,
                        const struct hydro_props *hydro_props,
                        const struct part *p, const struct xpart *xp);
 
+double cooling_get_electron_density(const struct phys_const *phys_const,
+                                    const struct hydro_props *hydro_props,
+                                    const struct unit_system *us,
+                                    const struct cosmology *cosmo,
+                                    const struct cooling_function_data *cooling,
+                                    const struct part *p,
+                                    const struct xpart *xp);
+
 double cooling_get_electron_pressure(
     const struct phys_const *phys_const, const struct hydro_props *hydro_props,
     const struct unit_system *us, const struct cosmology *cosmo,
@@ -169,8 +177,5 @@ void cooling_init_backend(struct swift_params *parameter_file,
 void cooling_print_backend(const struct cooling_function_data *cooling);
 
 void cooling_clean(struct cooling_function_data *data);
-
-/*! Stub defined to let the BH model compile */
-#define colibre_cooling_N_elementtypes 1
 
 #endif /* SWIFT_COOLING_EAGLE_H */

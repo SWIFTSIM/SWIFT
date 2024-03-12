@@ -20,8 +20,6 @@
 #define SWIFT_GRAVITY_PROPERTIES
 
 /* Config parameters. */
-#include "space.h"
-
 #include <config.h>
 
 #if defined(HAVE_HDF5)
@@ -110,6 +108,12 @@ struct gravity_props {
   /*! Fraction of the mean inter particle separation corresponding to the
    * co-moving softening length of the low-res. particles (DM + baryons) */
   float mean_inter_particle_fraction_high_res;
+
+  /*! Maximal comoving softening in the case of adaptive softening for gas */
+  float max_adaptive_softening;
+
+  /*! Minimal comoving softening in the case of adaptive softening for gas */
+  float min_adaptive_softening;
 
   /* ------------- Properties of the time integration  ----------------- */
 

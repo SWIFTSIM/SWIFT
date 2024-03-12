@@ -60,7 +60,9 @@ def get_abundance(element_idx):
 def get_element_abundances_metallicity(pos, boxsize):
     element_abundances = []
     for i in range(ELEMENT_COUNT):
-        element_abundances.append(np.where(get_mask(boxsize, pos, i), get_abundance(i), 0))
+        element_abundances.append(
+            np.where(get_mask(boxsize, pos, i), get_abundance(i), 0)
+        )
 
     return np.stack(element_abundances, axis=1)
 
@@ -84,7 +86,7 @@ if __name__ == "__main__":
     rho[pos[:, 1] < 0.5 * boxsize[1]] *= 0.5
     masses = rho * np.prod(boxsize) / n_part
     velocities = np.zeros((n_part, 3))
-    velocities[:, :] = 0.5 * math.sqrt(2) * VELOCITY * np.array([1., 1., 0.])
+    velocities[:, :] = 0.5 * math.sqrt(2) * VELOCITY * np.array([1.0, 1.0, 0.0])
     internal_energy = P / (rho * (GAMMA - 1))
 
     # Setup metallicities
@@ -129,6 +131,10 @@ if __name__ == "__main__":
     file.close()
 
     if ELEMENT_COUNT == 2:
-        print(f"Make sure swift was compiled with `--with-chemistry=GEAR_2` or `--with-chemistry=AGORA`")
+        print(
+            f"Make sure swift was compiled with `--with-chemistry=GEAR_2` or `--with-chemistry=AGORA`"
+        )
     else:
-        print(f"Make sure swift was compiled with `--with-chemistry=GEAR_{ELEMENT_COUNT}`")
+        print(
+            f"Make sure swift was compiled with `--with-chemistry=GEAR_{ELEMENT_COUNT}`"
+        )
