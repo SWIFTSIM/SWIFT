@@ -51,8 +51,8 @@ void gravity_props_init(struct gravity_props *p, struct swift_params *params,
                         const int with_external_potential,
                         const int has_baryons, const int has_DM,
                         const int has_neutrinos, const int is_zoom_simulation,
-                        const int periodic, const double *dim, const int *cdim,
-                        const double *zoom_width) {
+                        const int periodic, const double dim[3],
+                        const int cdim[3], const double zoom_width[3]) {
 
   /* Tree updates */
   p->rebuild_frequency =
