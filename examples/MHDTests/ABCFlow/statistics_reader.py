@@ -4,6 +4,8 @@ import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
 
+take_last = int(10 / (5e-2))
+
 def find_growth_rate(the_time, B_field, nlast=take_last):
     l = len(B_field)
     B_field_cut = B_field[l - 1 - nlast : -1]
@@ -19,7 +21,7 @@ B = np.array(the_statistics[34])
 B = B/B[0]
 divB = np.abs(np.array(the_statistics[35]))
 
-print('The growth rate is: '+str(find_growth_rate(the_time, B, nlast=10/5e-3)))
+print('The growth rate is: '+str(find_growth_rate(the_time, B)))
 
 fig, ax = plt.subplots(1, 2, sharex=True, figsize=(10, 5))
 ax[0].plot(Time, B)
