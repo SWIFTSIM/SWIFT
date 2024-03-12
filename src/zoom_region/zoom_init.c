@@ -135,7 +135,9 @@ double zoom_get_region_dim_and_shift(struct space *s) {
       continue;
     }
 
-    /* Shift initial positions by IC shift. */
+    /* Unpack the particle positions.
+     * NOTE: these will have already been shifted by the user requested amount
+     * in space_init if shift in the parameter file is non-zero. */
     const double x = s->gparts[k].x[0];
     const double y = s->gparts[k].x[1];
     const double z = s->gparts[k].x[2];
