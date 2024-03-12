@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 
 results_directory_name = "test_results/"
 tau_max = 60
-take_last = int(0.5 / (5e-2))
+take_last = int(10 / (5e-2))
 
 
 def load_test_run_parameters():
@@ -102,8 +102,8 @@ def plot_info(run_data, the_key):
         Mh = Mh[mask]
         divB = divB[mask]
 
-        # growth_rate = find_growth_rate(Time, np.log(B))
-        saturated_v = np.mean(vrms[-take_last:])
+        growth_rate = find_growth_rate(Time, np.log(B))
+        #saturated_v = np.mean(vrms[-take_last:])
         the_name = (
             "#"
             + str(run_data_slice["Run #"].values[0])
@@ -115,8 +115,8 @@ def plot_info(run_data, the_key):
             + str(v0)
             + "_$\eta$="
             + str(run_data_slice["eta"].values[0])
-            + "_<v>="
-            + str(saturated_v)
+            + "_<s>="
+            + str(round(growth_rate,4))
         )
         ax[0].plot(Time, B)
         ax[2].plot(Time, divB, label=the_name)

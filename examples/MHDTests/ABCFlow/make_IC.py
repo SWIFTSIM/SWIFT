@@ -53,16 +53,16 @@ def add_other_particle_properties(pos,h,a,b,c,V0,kb,kv,Vz_factor,L):
     v*=V0 * Norm
 
     # setting the initial magnetic field
-    # main mode for A.B.
+    # main mode for A.B. formula 6 from 1206.5186
 
-    B[:, 0] = -(np.sin(kb0 * pos[:, 2]) + np.sin(kb0 * pos[:, 1]))
+    B[:, 0] = -(np.sin(kb0 * pos[:, 2]) - np.cos(kb0 * pos[:, 1]))
     B[:, 1] = -(np.cos(kb0 * pos[:, 0]) - np.cos(kb0 * pos[:, 2]))
-    B[:, 2] = -(np.cos(kb0 * pos[:, 1]) + np.sin(kb0 * pos[:, 0]))
+    B[:, 2] = -(np.cos(kb0 * pos[:, 1]) - np.cos(kb0 * pos[:, 0]))
     B *= B0
 
-    A[:, 0] = np.sin(kb0 * pos[:, 2]) + np.sin(kb0 * pos[:, 1])
-    A[:, 1] = np.cos(kb0 * pos[:, 0]) - np.cos(kb0 * pos[:, 2])
-    A[:, 2] = np.cos(kb0 * pos[:, 1]) + np.sin(kb0 * pos[:, 0])
+    A[:, 0] = np.sin(kb0 * pos[:, 2]) - np.cos(kb0 * pos[:, 1])
+    A[:, 1] = np.sin(kb0 * pos[:, 0]) - np.cos(kb0 * pos[:, 2])
+    A[:, 2] = np.sin(kb0 * pos[:, 1]) - np.cos(kb0 * pos[:, 0])
     A0 = B0 / kb0
     A *= A0
     
