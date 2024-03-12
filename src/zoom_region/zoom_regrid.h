@@ -20,7 +20,6 @@
 #define SWIFT_ZOOM_REGRID_H
 
 /* Local includes */
-#include "gravity_properties.h"
 #include "space.h"
 
 void zoom_space_regrid(struct space *s, int verbose);
