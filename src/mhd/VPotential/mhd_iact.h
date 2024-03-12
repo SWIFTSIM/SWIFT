@@ -584,8 +584,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
                          dv[1] * pi->mhd_data.APred[1] +
                          dv[2] * pi->mhd_data.APred[2];
 
-
-
   float SAi = sourceAi + a * a * (pi->mhd_data.Gau - pj->mhd_data.Gau);
   for (int i = 0; i < 3; i++)
     pi->mhd_data.dAdt[i] += mj * mag_VPIndi * SAi * dx[i];

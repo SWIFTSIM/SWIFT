@@ -324,4 +324,3 @@ void entropy_floor_struct_restore(struct entropy_floor_properties *props,
   restart_read_blocks((void *)props, sizeof(struct entropy_floor_properties), 1,
                       stream, NULL, "entropy floor properties");
 }
-

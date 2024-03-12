@@ -158,7 +158,8 @@ __attribute__((always_inline)) INLINE static float mhd_get_magnetosonic_speed(
   /* Compute effective sound speeds */
   const float cs = p->force.soundspeed;
   const float cs2 = cs * cs;
-  const float afact_ratio = pow(a, (2.f * mhd_comoving_factor + 3.f * hydro_gamma));
+  const float afact_ratio =
+      pow(a, (2.f * mhd_comoving_factor + 3.f * hydro_gamma));
   const float v_A2 = afact_ratio * permeability_inv * B2 / rho;
   const float c_ms2 = cs2 + v_A2;
 
@@ -285,8 +286,7 @@ __attribute__((always_inline)) INLINE static float hydro_get_dGau_dt(
   /* Cosmological term */
   const float Hubble_Term = (2.f + mhd_comoving_factor) * c->H * Gauge;
 
-  return (- Source_Term - Damping_Term - DivV_Term - Hubble_Term)
-  	* c->a * c->a;
+  return (-Source_Term - Damping_Term - DivV_Term - Hubble_Term) * c->a * c->a;
 }
 
 /**
@@ -584,7 +584,7 @@ __attribute__((always_inline)) INLINE static void mhd_kick_extra(
 __attribute__((always_inline)) INLINE static void mhd_convert_quantities(
     struct part *p, struct xpart *xp, const struct cosmology *cosmo,
     const struct hydro_props *hydro_props) {
-  
+
   const float a_fact = pow(cosmo->a, -mhd_comoving_factor - 1.f);
   /* Set Restitivity Eta */
   p->mhd_data.resistive_eta = hydro_props->mhd.mhd_eta;
