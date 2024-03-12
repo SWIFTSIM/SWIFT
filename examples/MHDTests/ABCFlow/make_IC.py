@@ -17,13 +17,26 @@ Bi_fraction = 1e-3
 # output file
 fileOutputName = "ABCFlow.hdf5"
 
+
+def generate_random_vectors(N_of_vectors, randomize_length=True):
+    RVF=[]
+    for i in range(N_of_vectors):
+        r = np.random.rand(3)
+        r = r-0.5*np.array([1,1,1])
+        r = r/np.linalg.norm(r)
+        if randomize_length:
+            r*=np.random.rand()
+        RVF+=[r]
+    return np.array(RVF)
+        
+
 def open_IAfile(path_to_file):
     IAfile = h5py.File(path_to_file, "r")
     pos = IAfile["/PartType0/Coordinates"][:, :]
     h = IAfile["/PartType0/SmoothingLength"][:]
     return pos, h
 
-def add_other_particle_properties(pos,h,a,b,c,V0,kb,kv,Vz_factor,L):
+def add_other_particle_properties(pos,h,a,b,c,V0,kb,kv,Vz_factor,L,field_type):
     vol = L ** 3 
     N = len(h)
 
@@ -53,19 +66,25 @@ def add_other_particle_properties(pos,h,a,b,c,V0,kb,kv,Vz_factor,L):
     v*=V0 * Norm
 
     # setting the initial magnetic field
-    # main mode for A.B. formula 6 from 1206.5186
 
-    B[:, 0] = -(np.sin(kb0 * pos[:, 2]) - np.cos(kb0 * pos[:, 1]))
-    B[:, 1] = -(np.cos(kb0 * pos[:, 0]) - np.cos(kb0 * pos[:, 2]))
-    B[:, 2] = -(np.cos(kb0 * pos[:, 1]) - np.cos(kb0 * pos[:, 0]))
-    B *= B0
+    if field_type=='one_mode':
+        B[:, 0] = -(np.sin(kb0 * pos[:, 2]) - np.cos(kb0 * pos[:, 1]))
+        B[:, 1] = -(np.cos(kb0 * pos[:, 0]) - np.cos(kb0 * pos[:, 2]))
+        B[:, 2] = -(np.cos(kb0 * pos[:, 1]) - np.cos(kb0 * pos[:, 0]))
+        B *= B0
 
-    A[:, 0] = np.sin(kb0 * pos[:, 2]) - np.cos(kb0 * pos[:, 1])
-    A[:, 1] = np.sin(kb0 * pos[:, 0]) - np.cos(kb0 * pos[:, 2])
-    A[:, 2] = np.sin(kb0 * pos[:, 1]) - np.cos(kb0 * pos[:, 0])
-    A0 = B0 / kb0
-    A *= A0
-    
+        A[:, 0] = np.sin(kb0 * pos[:, 2]) - np.cos(kb0 * pos[:, 1])
+        A[:, 1] = np.sin(kb0 * pos[:, 0]) - np.cos(kb0 * pos[:, 2])
+        A[:, 2] = np.sin(kb0 * pos[:, 1]) - np.cos(kb0 * pos[:, 0])
+        A0 = B0 / kb0
+        A *= A0
+    elif field_type=='random':
+        B = generate_random_vectors(N, randomize_length=True)
+        B *= B0
+        A = B
+    else:
+        print('Error: wrong field type. Should be one_mode or random')
+ 
     return v,B,A,ids,m,u
 
 
@@ -138,10 +157,17 @@ if __name__ == "__main__":
         default=1.0,
         type=float,
     )
+    parser.add_argument(
+        "-ft",
+        "--field_type",
+        help="How to generate a field: one_mode, several_modes or random",
+        default='random',
+        type=str,
+    )
 
     args = parser.parse_args()
     pos,h = open_IAfile(args.IA_path)
-    v,B,A,ids,m,u = add_other_particle_properties(pos,h,args.A,args.B,args.C,args.rms_velocity,args.magnetic_wavevector,args.velocity_wavevector,args.Vz_factor,args.boxsize)
+    v,B,A,ids,m,u = add_other_particle_properties(pos,h,args.A,args.B,args.C,args.rms_velocity,args.magnetic_wavevector,args.velocity_wavevector,args.Vz_factor,args.boxsize,args.field_type)
     L=args.boxsize
     N = len(h)
     # File
