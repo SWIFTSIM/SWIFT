@@ -111,7 +111,7 @@ void gravity_props_init(struct gravity_props *p, struct swift_params *params,
 
     /* If we have a zoom region we need to check we have a big enough
      * mesh for the zoom cells. */
-    if (zoom_width != NULL && dim[0] / p->mesh_size > zoom_width[0]) {
+    if (zoom_width[0] > 0.0 && dim[0] / p->mesh_size > zoom_width[0]) {
       error(
           "Mesh too small given the size of top-level zoom cells (width= "
           "%.2f). Should be at least %d cells wide (Currently: %d).",
