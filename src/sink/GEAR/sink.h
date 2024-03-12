@@ -659,17 +659,12 @@ INLINE static void sink_star_formation_separate_particles(
   const double cos_theta = 1.0 -2.0*random_unit_interval(sp->id, e->ti_current, (enum random_number_type)5);
   const double sin_theta = sqrt(1.0 - cos_theta*cos_theta);
 
-  double Delta_r[3] = {delta_x * max_displacement * si->r_cut,
-		       delta_y * max_displacement * si->r_cut,
-		       delta_z * max_displacement * si->r_cut};
   double new_pos[3] = {r*sin_theta*cos(phi), r*sin_theta*sin(phi), r*cos_theta};
 
   /* Assign this new position to the star and its gpart */
   sp->x[0] += new_pos[0];
   sp->x[1] += new_pos[1];
   sp->x[2] += new_pos[2];
-  message("Random numbers: (r, phi, cos_theta) = (%lf %lf %lf)", r, phi, cos_theta);
-  message("New star position (tot): x = (%lf %lf %lf)", sp->x[0], sp->x[1], sp->x[2]);
   sp->gpart->x[0] = sp->x[0];
   sp->gpart->x[1] = sp->x[1];
   sp->gpart->x[2] = sp->x[2];
