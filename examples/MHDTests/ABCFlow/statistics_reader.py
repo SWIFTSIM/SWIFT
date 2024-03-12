@@ -7,11 +7,17 @@ import matplotlib.pyplot as plt
 the_statistics=np.transpose(np.loadtxt("statistics.txt"))
 
 Time = the_statistics[1]
-E_mag = the_statistics[34]
+B = np.array(the_statistics[34])
+B = B/B[0]
+divB = np.abs(np.array(the_statistics[35]))
 
-fig, ax = plt.subplots(1, 1, sharex=True, figsize=(10, 5))
-ax.plot(Time, E_mag/E_mag[0])
-ax.set_xlabel("Time [s]")
-ax.set_ylabel("$E_{mag}$/ $E_{mag}(t=0)$")
-ax.set_yscale('log')
-plt.savefig("E_change.png", dpi=100)
+fig, ax = plt.subplots(1, 2, sharex=True, figsize=(10, 5))
+ax[0].plot(Time, B)
+ax[1].plot(Time, divB)
+ax[0].set_xlabel("Time [s]")
+ax[0].set_xlabel("Time [s]")
+ax[0].set_ylabel("$B$/ $B(t=0)$")
+ax[0].set_yscale('log')
+ax[1].set_ylabel("divB*h/B")
+ax[1].set_yscale('log')
+plt.savefig("B_divB_vs_t.png", dpi=100)
