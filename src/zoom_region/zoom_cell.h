@@ -21,6 +21,7 @@
 #define SWIFT_ZOOM_CELL_H
 
 /* Local includes */
+#include "cell.h"
 #include "space.h"
 #include "timeline.h"
 
