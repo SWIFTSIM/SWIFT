@@ -117,28 +117,34 @@ INLINE static void rt_do_thermochemistry(
 
   /* This is where the fun begins */
   /* ---------------------------- */
-
+  
+  /* Update Grackle units */
+  update_grackle_units_cosmo(&rt_props->grackle_units, us, cosmo);
+  
   /* initialize data so it'll be in scope */
   grackle_field_data particle_grackle_data;
   
-  gr_float density = hydro_get_physical_density(p, cosmo);
-  parttrace(p, "Physical density %f", density);
+  gr_float density = hydro_get_comoving_density(p/*, cosmo*/);
+  parttrace(p, "Comoving density %.10e", density);
+  parttrace(p, "Physical density %f", density * cosmo->a3_inv);
   /* In rare cases, unphysical solutions can arise with negative densities
    * which won't be fixed in the hydro part until further down the dependency
    * graph. Also, we can have vacuum, in which case we have nothing to do here.
    * So exit early if that is the case. */
   if (density <= 0.) return;
-
   const float u_minimal = hydro_props->minimal_internal_energy;
   gr_float internal_energy =
-      max(hydro_get_physical_internal_energy(p, xp, cosmo), u_minimal);
+      max(hydro_get_comoving_internal_energy(p, xp/*, cosmo*/), u_minimal);
   const float u_old = internal_energy;
-  parttrace(p, "Physical internal energy %f", u_old);
+  parttrace(p, "Comoving internal energy %f", u_old);
+  parttrace(p, "Physical internal energy %f", u_old * cosmo->a2_inv);
+
   gr_float species_densities[6];
   rt_tchem_get_species_densities(p, density, species_densities);
 
   float radiation_energy_density[RT_NGROUPS];
-  rt_part_get_physical_radiation_energy_density(p, radiation_energy_density, cosmo);
+  //rt_part_get_physical_radiation_energy_density(p, radiation_energy_density, cosmo);
+  rt_part_get_comoving_radiation_energy_density(p, radiation_energy_density);
 
   gr_float iact_rates[5];
   rt_get_interaction_rates_for_grackle(
@@ -155,6 +161,9 @@ INLINE static void rt_do_thermochemistry(
   /* Note: `grackle_rates` is a global variable defined by grackle itself.
    * Using a manually allocd and initialized variable here fails with MPI
    * for some reason. */
+  
+  parttrace(p, "Grackle density unit %.10e", rt_props->grackle_units.density_units);
+  parttrace(p, "Grackle a_value %f", rt_props->grackle_units.a_value);
   if (local_solve_chemistry(
           &rt_props->grackle_chemistry_data, &rt_props->grackle_chemistry_rates,
           &rt_props->grackle_units, &particle_grackle_data, dt) == 0)
@@ -180,7 +189,8 @@ INLINE static void rt_do_thermochemistry(
   }
 
   /* If we're good, update the particle data from grackle results */
-  hydro_set_physical_internal_energy(p, xp, cosmo, u_new);
+  //hydro_set_physical_internal_energy(p, xp, cosmo, u_new);
+  hydro_set_comoving_internal_energy(p, u_new);
 
   /* Update mass fractions */
   const gr_float one_over_rho = 1. / density;
@@ -256,20 +266,24 @@ __attribute__((always_inline)) INLINE static float rt_tchem_get_tchem_time(
     const struct unit_system* restrict us) {
   /* Note: Can't pass rt_props as const struct because of grackle
    * accessinging its properties there */
-
+  
+  /* Update Grackle units */
+  update_grackle_units_cosmo(&rt_props->grackle_units, us, cosmo);	
+  
   /* initialize data so it'll be in scope */
   grackle_field_data particle_grackle_data;
 
-  gr_float density = hydro_get_physical_density(p, cosmo);
+  //gr_float density = hydro_get_physical_density(p, cosmo);
+  gr_float density = hydro_get_comoving_density(p);
   const float u_minimal = hydro_props->minimal_internal_energy;
   gr_float internal_energy =
-      max(hydro_get_physical_internal_energy(p, xp, cosmo), u_minimal);
+      max(hydro_get_comoving_internal_energy(p, xp/*, cosmo*/), u_minimal);
 
   gr_float species_densities[6];
   rt_tchem_get_species_densities(p, density, species_densities);
 
   float radiation_energy_density[RT_NGROUPS];
-  rt_part_get_physical_radiation_energy_density(p, radiation_energy_density, cosmo);
+  rt_part_get_comoving_radiation_energy_density(p, radiation_energy_density/*, cosmo*/);
 
   gr_float iact_rates[5];
   rt_get_interaction_rates_for_grackle(

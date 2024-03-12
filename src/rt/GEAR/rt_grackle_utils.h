@@ -35,6 +35,20 @@
  * @brief Utility and helper functions related to using grackle.
  */
 
+__attribute__((always_inline)) INLINE void update_grackle_units_cosmo(code_units *grackle_units,
+				const struct unit_system *us,
+				const struct cosmology* restrict cosmo) {
+  
+  /* Update grackle units. The units must convert from code units in the comoving frame
+   * to CGS in the proper frame. More info at
+   * https://grackle.readthedocs.io/en/grackle-3.2.1/Integration.html#comoving-coordinates
+   */
+  grackle_units->density_units = units_cgs_conversion_factor(us, UNIT_CONV_DENSITY) * cosmo->a3_inv;
+  grackle_units->length_units = units_cgs_conversion_factor(us, UNIT_CONV_LENGTH) * cosmo->a;
+
+  grackle_units->a_value = cosmo->a;
+}
+
 /**
  * @brief initialize grackle during rt_props_init
  *
@@ -50,7 +64,8 @@ __attribute__((always_inline)) INLINE static void rt_init_grackle(
     code_units *grackle_units, chemistry_data *grackle_chemistry_data,
     chemistry_data_storage *grackle_chemistry_rates,
     float hydrogen_mass_fraction, const int grackle_verb,
-    const int case_B_recombination, const struct unit_system *us) {
+    const int case_B_recombination, const struct unit_system *us,
+    const struct cosmology* restrict cosmo) {
 
   grackle_verbose = grackle_verb;
 
@@ -58,12 +73,12 @@ __attribute__((always_inline)) INLINE static void rt_init_grackle(
   /* ---------------- */
   /* we assume all quantities to be physical, not comoving */
   grackle_units->a_units = 1.0;
-  grackle_units->a_value = 1.0;
-  grackle_units->comoving_coordinates = 0;
+  grackle_units->a_value = cosmo->a;
+  grackle_units->comoving_coordinates = 1;
   grackle_units->density_units =
-      units_cgs_conversion_factor(us, UNIT_CONV_DENSITY);
+      units_cgs_conversion_factor(us, UNIT_CONV_DENSITY) * cosmo->a3_inv; // Convert to proper units
   grackle_units->length_units =
-      units_cgs_conversion_factor(us, UNIT_CONV_LENGTH);
+      units_cgs_conversion_factor(us, UNIT_CONV_LENGTH) * cosmo->a; // Convert to proper units
   grackle_units->time_units = units_cgs_conversion_factor(us, UNIT_CONV_TIME);
   /* Set velocity units */
   set_velocity_units(grackle_units);
