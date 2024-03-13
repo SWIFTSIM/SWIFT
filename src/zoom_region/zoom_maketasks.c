@@ -111,7 +111,7 @@ void engine_make_self_gravity_tasks_mapper_bkg_cells(void *map_data,
 
     /* If the cell is local build a self-interaction */
     if (ci->nodeID == nodeID) {
-      scheduler_addtask(sched, task_type_self, task_subtype_grav_bkg, 0, 0, ci,
+      scheduler_addtask(sched, task_type_self, task_subtype_grav, 0, 0, ci,
                         NULL);
     }
 
@@ -302,7 +302,7 @@ void engine_make_self_gravity_tasks_mapper_buffer_cells(void *map_data,
 
     /* If the cell is local build a self-interaction */
     if (ci->nodeID == nodeID) {
-      scheduler_addtask(sched, task_type_self, task_subtype_grav_bkg, 0, 0, ci,
+      scheduler_addtask(sched, task_type_self, task_subtype_grav, 0, 0, ci,
                         NULL);
     }
 
@@ -636,14 +636,6 @@ void engine_make_self_gravity_tasks_mapper_zoom_bkg(void *map_data,
   const int nr_neighbours = s->zoom_props->nr_neighbour_cells;
   const int *neighbour_cells = s->zoom_props->neighbour_cells_top;
 
-  /* Get the correct task label. */
-  enum task_subtypes subtype;
-  if (s->zoom_props->with_buffer_cells) {
-    subtype = task_subtype_grav_zoombuff;
-  } else {
-    subtype = task_subtype_grav_zoombkg;
-  }
-
   /* Loop through the elements, which are just byte offsets from NULL. */
   for (int ind = 0; ind < num_elements; ind++) {
 
@@ -702,7 +694,8 @@ void engine_make_self_gravity_tasks_mapper_zoom_bkg(void *map_data,
                                 /*is_tree_walk=*/0)) {
 
         /* Ok, we need to add a direct pair calculation */
-        scheduler_addtask(sched, task_type_pair, subtype, 0, 0, ci, cj);
+        scheduler_addtask(sched, task_type_pair, task_subtype_grav, 0, 0, ci,
+                          cj);
 
 #ifdef SWIFT_DEBUG_CHECKS
 #ifdef WITH_MPI
@@ -842,8 +835,8 @@ void engine_make_self_gravity_tasks_mapper_buffer_bkg(void *map_data,
                                 /*is_tree_walk=*/0)) {
 
         /* Ok, we need to add a direct pair calculation */
-        scheduler_addtask(sched, task_type_pair, task_subtype_grav_buffbkg, 0,
-                          0, ci, cj);
+        scheduler_addtask(sched, task_type_pair, task_subtype_grav, 0, 0, ci,
+                          cj);
 
 #ifdef SWIFT_DEBUG_CHECKS
 #ifdef WITH_MPI
