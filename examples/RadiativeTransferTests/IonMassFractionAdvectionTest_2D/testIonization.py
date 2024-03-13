@@ -25,11 +25,19 @@
 # ----------------------------------------------------
 
 import os
+import sys
 
 import swiftsimio
 from matplotlib import pyplot as plt
+import argparse
 
-snapshot_base = "output"
+
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-b", "--basename", help="Snapshot basename", default="output")
+
+    args = parser.parse_args()
+    return args
 
 
 def get_snapshot_list(snapshot_basename="output"):
@@ -46,6 +54,9 @@ def get_snapshot_list(snapshot_basename="output"):
             snaplist.append(f)
 
     snaplist = sorted(snaplist)
+    if len(snaplist) == 0:
+        print(f"No snapshots with base '{snapshot_basename}' found")
+        sys.exit(1)
 
     return snaplist
 
@@ -60,6 +71,11 @@ def compare_data(snaplist):
     HeI = []
     HeII = []
     HeIII = []
+
+    if "cosmo" in snaplist[0]:
+        savename = "total_abundancies_cosmo.png"
+    else:
+        savename = "total_abundancies.png"
 
     for filename in snaplist:
         data = swiftsimio.load(filename)
@@ -86,12 +102,15 @@ def compare_data(snaplist):
 
     #  plt.show()
     plt.tight_layout()
-    plt.savefig("total_abundancies.png", dpi=200)
+    plt.savefig(savename, dpi=200)
 
     return
 
 
 if __name__ == "__main__":
+    # Get command line arguments
+    args = parse_args()
 
+    snapshot_base = args.basename
     snaplist = get_snapshot_list(snapshot_base)
     compare_data(snaplist)
