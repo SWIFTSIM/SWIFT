@@ -102,6 +102,18 @@ void find_void_cells(struct space *s, const int verbose) {
 
   if (verbose)
     message("%i void cells contain the zoom region", zoom_props->nr_void_cells);
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Check the void cells are in the right place. */
+  for (int i = 0; i < zoom_props->nr_void_cells; i++) {
+    const int cid = zoom_props->void_cells_top[i];
+    if (cid < offset || cid >= offset + ncells)
+      error("Void cell index is out of range (cid=%d, offset=%d, ncells=%d)",
+            cid, offset, ncells);
+    if (cell_inside_zoom_region(&cells[cid], s) == 0)
+      error("Void cell is not inside the zoom region (cid=%d)", cid);
+  }
+#endif
 }
 
 /**
