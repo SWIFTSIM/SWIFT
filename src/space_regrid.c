@@ -39,12 +39,6 @@
  */
 void space_regrid_uniform_box(struct space *s, int verbose) {
 
-  /* If we are running with a zoom region call the zoom alternative. */
-  if (s->with_zoom_region) {
-    zoom_space_regrid(s, verbose);
-    return;
-  }
-
   const size_t nr_parts = s->nr_parts;
   const size_t nr_sparts = s->nr_sparts;
   const size_t nr_bparts = s->nr_bparts;
