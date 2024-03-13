@@ -762,15 +762,26 @@ void link_zoom_to_void(struct space *s, struct cell *c) {
   for (int k = 0; k < 8; k++) {
 
     /* Establish the location of the fake progeny cell. */
-    double zoom_loc[3] = {c->loc[0] + (s->zoom_props->width[0]),
-                          c->loc[1] + (s->zoom_props->width[1]),
-                          c->loc[2] + (s->zoom_props->width[2])};
+    double zoom_loc[3] = {c->loc[0] + (s->zoom_props->width[0] / 2),
+                          c->loc[1] + (s->zoom_props->width[1] / 2),
+                          c->loc[2] + (s->zoom_props->width[2] / 2)};
     if (k & 4) zoom_loc[0] += s->zoom_props->width[0];
     if (k & 2) zoom_loc[1] += s->zoom_props->width[1];
     if (k & 1) zoom_loc[2] += s->zoom_props->width[2];
 
     /* Which zoom cell are we in? */
     int cid = cell_getid_from_pos(s, zoom_loc[0], zoom_loc[1], zoom_loc[2]);
+
+#ifdef SWIFT_DEBUG_CHECKS
+    /* Ensure we're in the right cell. */
+    if (cid >= s->zoom_props->nr_zoom_cells || cid < 0)
+      error(
+          "Void progeny isn't in the right place! (zoom_loc=[%f %f %f] -> "
+          "cid=%d,"
+          "s->zoom_props->nr_zoom_cells=%d)",
+          zoom_loc[0], zoom_loc[1], zoom_loc[2], cid,
+          s->zoom_props->nr_zoom_cells);
+#endif
 
     /* Get the zoom cell. */
     struct cell *zoom_cell = &s->cells_top[cid];
@@ -779,7 +790,7 @@ void link_zoom_to_void(struct space *s, struct cell *c) {
     /* Ensure the zoom cell we've got is actually a void cell. */
     if (zoom_cell->type != cell_type_zoom)
       error(
-          "Zoom cell isn't a zoom cell! (zoom_loc=[%f %f %f] -> cid=%d,"
+          "Void progeny isn't a zoom cell! (zoom_loc=[%f %f %f] -> cid=%d,"
           "c->type=%s, c->subtype=%s, c->loc=[%f %f %f])",
           zoom_loc[0], zoom_loc[1], zoom_loc[2], cid,
           cellID_names[zoom_cell->type], subcellID_names[zoom_cell->subtype],
