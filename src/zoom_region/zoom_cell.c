@@ -153,6 +153,22 @@ void find_empty_cells(struct space *s, const int verbose) {
   if (verbose)
     message("%i background cells contain the buffer region",
             zoom_props->nr_empty_cells);
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Ensure the empty cells in the zoom region are correctly labelled */
+  for (int cid = offset; cid < offset + ncells; cid++) {
+    if (cell_inside_buffer_region(&cells[cid], s) &&
+        cells[cid].subtype != cell_subtype_empty)
+      error("Empty cell is not correctly labelled (cid=%d, c->subtype=%s)", cid,
+            cellID_names[cells[cid].subtype]);
+    if (cell_inside_zoom_region(&cells[cid], s) &&
+        cells[cid].subtype != cell_subtype_empty)
+      error(
+          "Background cell above the zoom region isn't correctly labelled "
+          "empty (cid=%d, c->subtype=%s)",
+          cid, cellID_names[cells[cid].subtype]);
+  }
+#endif
 }
 
 /**
@@ -495,8 +511,8 @@ static void debug_cell_type(struct space *s) {
  * structure with the dimensions of each cell structure being the same (with
  * differing widths).
  *
- * Therefore the new TL cell structure is 2*cdim**3, with the "natural" TL cells
- * occupying the first half of the TL cell list, and the "zoom" TL cells
+ * Therefore the new TL cell structure is 2*cdim**3, with the "natural" TL
+ * cells occupying the first half of the TL cell list, and the "zoom" TL cells
  * ocupying the second half.
  *
  * @param s The space.
@@ -699,7 +715,8 @@ void zoom_construct_tl_cells(struct space *s, const integertime_t ti_current,
   /* NOTE: The below code relies on functions that will be implemented down
    * the line in later partition focuses PRs but keeping this here as a
    * reminder */
-  /* #if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS)) */
+  /* #if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
+   */
 
   /*   /\* Find the number of edges we will need for the domain decomp. *\/ */
   /*   find_vertex_edges(s, verbose); */
@@ -710,7 +727,8 @@ void zoom_construct_tl_cells(struct space *s, const integertime_t ti_current,
   /* #endif */
 
 #ifdef SWIFT_DEBUG_CHECKS
-  /* Lets check all the cells are in the right place with the correct widths */
+  /* Lets check all the cells are in the right place with the correct widths
+   */
   debug_cell_type(s);
 #endif
 
@@ -892,7 +910,8 @@ void link_zoom_to_void(struct space *s, struct cell *c) {
 
   if (nr_gparts_in_zoom != nr_gparts_in_void) {
     error(
-        "Zoom cell and void cell multipole don't agree! (nr_gparts_in_zoom=%d "
+        "Zoom cell and void cell multipole don't agree! "
+        "(nr_gparts_in_zoom=%d "
         "nr_gparts_in_void=%d)",
         nr_gparts_in_zoom, nr_gparts_in_void);
   }
