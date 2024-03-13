@@ -293,7 +293,7 @@ void find_neighbouring_cells(struct space *s, const int verbose) {
  *
  * @param s The space.
  */
-static void debug_cell_type(struct space *s) {
+static void verify_cell_type(struct space *s) {
 
   /* Get the cells array and cell properties */
   struct cell *cells = s->cells_top;
@@ -698,7 +698,7 @@ void zoom_construct_tl_cells(struct space *s, const integertime_t ti_current,
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Lets check all the cells are in the right place with the correct widths */
-  debug_cell_type(s);
+  verify_cell_type(s);
 #endif
 
   if (verbose)
