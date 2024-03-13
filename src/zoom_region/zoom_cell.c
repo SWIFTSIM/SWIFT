@@ -19,7 +19,7 @@
  ******************************************************************************/
 
 /* Config header */
-#include "../config.h"
+#include "../../config.h"
 
 /* Standard includes */
 #include <float.h>
