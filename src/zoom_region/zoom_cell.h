@@ -77,6 +77,5 @@ __attribute__((always_inline)) INLINE static int cell_inside_zoom_region(
           (mid[2] > s->zoom_props->region_lower_bounds[2]) &&
           (mid[2] < s->zoom_props->region_upper_bounds[2]));
 }
->>>>>>> zoom_regrid
 
 #endif /* SWIFT_ZOOM_CELL_H */
