@@ -749,11 +749,11 @@ void link_zoom_to_void(struct space *s, struct cell *c) {
     /* Ensure the zoom cell we've got is actually a void cell. */
     if (zoom_cell->type != cell_type_zoom)
       error(
-          "Zoom cell isn't a zoom cell! (zoom_loc=[%f %f %f] -> "
+          "Zoom cell isn't a zoom cell! (zoom_loc=[%f %f %f] -> cid=%d,"
           "c->type=%s, c->subtype=%s, c->loc=[%f %f %f])",
-          zoom_loc[0], zoom_loc[1], zoom_loc[2], cellID_names[zoom_cell->type],
-          subcellID_names[zoom_cell->subtype], zoom_cell->loc[0],
-          zoom_cell->loc[1], zoom_cell->loc[2]);
+          zoom_loc[0], zoom_loc[1], zoom_loc[2], cid,
+          cellID_names[zoom_cell->type], subcellID_names[zoom_cell->subtype],
+          zoom_cell->loc[0], zoom_cell->loc[1], zoom_cell->loc[2]);
 #endif
 
     /* Link this zoom cell into the void cell hierarchy. */
