@@ -647,10 +647,10 @@ void zoom_region_init(struct space *s, const int verbose) {
   /* Calculate the depth of the zoom cells in the void cell hierarchy. */
   if (s->zoom_props->with_buffer_cells) {
     s->zoom_props->zoom_cell_depth =
-        log2(s->zoom_props->buffer_width[0] / s->zoom_props->width[0]);
+        log2(s->zoom_props->buffer_width[0] / s->zoom_props->width[0]) + 1;
   } else {
     s->zoom_props->zoom_cell_depth =
-        log2(s->width[0] / s->zoom_props->width[0]);
+        log2(s->width[0] / s->zoom_props->width[0]) + 1;
   }
   /* Set the minimum allowed zoom cell width. */
   const double zoom_dmax =
