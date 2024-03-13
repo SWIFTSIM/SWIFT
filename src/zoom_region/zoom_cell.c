@@ -121,7 +121,7 @@ void find_empty_cells(struct space *s, const int verbose) {
   const int offset = zoom_props->bkg_cell_offset;
   const int ncells = zoom_props->nr_bkg_cells;
 
-  /* Loop over natural cells and find cells containing the zoom region. */
+  /* Loop over background cells and find cells containing the zoom region. */
   for (int cid = offset; cid < offset + ncells; cid++) {
 
     /* Get this cell. */
@@ -215,7 +215,8 @@ void find_neighbouring_cells(struct space *s, const int verbose) {
   /* Let's be verbose about this choice */
   if (verbose)
     message(
-        "Looking for neighbouring natural cells up to %d natural top-level "
+        "Looking for neighbouring background cells up to %d background "
+        "top-level "
         "cells away from the zoom region (delta_m=%d "
         "delta_p=%d)",
         delta_cells, delta_m, delta_p);
@@ -482,8 +483,8 @@ static void verify_cell_type(struct space *s) {
  * structure with the dimensions of each cell structure being the same (with
  * differing widths).
  *
- * Therefore the new TL cell structure is 2*cdim**3, with the "natural" TL cells
- * occupying the first half of the TL cell list, and the "zoom" TL cells
+ * Therefore the new TL cell structure is 2*cdim**3, with the "background" TL
+ * cells occupying the first half of the TL cell list, and the "zoom" TL cells
  * ocupying the second half.
  *
  * @param s The space.
@@ -559,13 +560,13 @@ void zoom_construct_tl_cells(struct space *s, const integertime_t ti_current,
   /* Get the minimum cell size. */
   const double dmin = min3(s->width[0], s->width[1], s->width[2]);
 
-  /* Loop over natural cells and set locations and initial values */
+  /* Loop over background cells and set locations and initial values */
   for (int i = 0; i < s->cdim[0]; i++) {
     for (int j = 0; j < s->cdim[1]; j++) {
       for (int k = 0; k < s->cdim[2]; k++) {
         const size_t cid = cell_getid_offset(s->cdim, bkg_cell_offset, i, j, k);
 
-        /* Natural top level cells. */
+        /* Background top level cells. */
         c = &s->cells_top[cid];
         c->loc[0] = i * s->width[0];
         c->loc[1] = j * s->width[1];
