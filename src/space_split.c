@@ -338,7 +338,7 @@ void space_split_recursive(struct space *s, struct cell *c,
 
 #ifdef SWIFT_DEBUG_CHECKS
         /* Check that the widths are right. */
-        if ((cp->width[0] / 2) - s->zoom_props->width[0] >
+        if (abs((cp->width[0] / 2) - s->zoom_props->width[0]) >
             (0.001 * s->zoom_props->width[0]))
           error(
               "The width of the zoom cell is not half the width of the void "
