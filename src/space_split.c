@@ -343,7 +343,7 @@ void space_split_recursive(struct space *s, struct cell *c,
               "The width of the zoom cell is not half the width of the void "
               "cell were about to link to! (cp->width[0]=%f, "
               "s->zoom_props->width[0]=%f)",
-              cp->width[0], s->zoom_props->width[0]);
+              cp->width[0] / 2, s->zoom_props->width[0]);
 #endif
 
         link_zoom_to_void(s, cp);
