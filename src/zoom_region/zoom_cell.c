@@ -118,8 +118,8 @@ void find_empty_cells(struct space *s, const int verbose) {
   struct cell *cells = s->cells_top;
 
   /* Get the offset and the number of cells we're dealing with. */
-  int offset = zoom_props->bkg_cell_offset;
-  int ncells = zoom_props->nr_bkg_cells;
+  const int offset = zoom_props->bkg_cell_offset;
+  const int ncells = zoom_props->nr_bkg_cells;
 
   /* Loop over natural cells and find cells containing the zoom region. */
   for (int cid = offset; cid < offset + ncells; cid++) {
