@@ -468,10 +468,6 @@ __attribute__((always_inline)) INLINE static void rt_props_init(
   rtp->number_weighted_cross_sections = NULL;
   rt_cross_sections_init(rtp, phys_const, us);
 
-  rtp->G0_computation_method = 0;
-  rtp->G0_factor1 = 0;
-  rtp->G0_factor2 = 0;
-
   /* Finishers */
   /* --------- */
 }
