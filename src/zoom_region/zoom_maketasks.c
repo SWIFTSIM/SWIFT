@@ -169,8 +169,8 @@ void engine_make_self_gravity_tasks_mapper_bkg_cells(void *map_data,
                                     /*is_tree_walk=*/0)) {
 
             /* Ok, we need to add a direct pair calculation */
-            scheduler_addtask(sched, task_type_pair, task_subtype_grav_bkg, 0,
-                              0, ci, cj);
+            scheduler_addtask(sched, task_type_pair, task_subtype_grav, 0, 0,
+                              ci, cj);
 
 #ifdef SWIFT_DEBUG_CHECKS
             /* Ensure both cells are background cells */
@@ -354,8 +354,8 @@ void engine_make_self_gravity_tasks_mapper_buffer_cells(void *map_data,
                                     /*is_tree_walk=*/0)) {
 
             /* Ok, we need to add a direct pair calculation */
-            scheduler_addtask(sched, task_type_pair, task_subtype_grav_bkg, 0,
-                              0, ci, cj);
+            scheduler_addtask(sched, task_type_pair, task_subtype_grav, 0, 0,
+                              ci, cj);
 
 #ifdef SWIFT_DEBUG_CHECKS
             /* Ensure both cells are background cells */
