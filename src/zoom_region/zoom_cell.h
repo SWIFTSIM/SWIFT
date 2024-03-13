@@ -43,9 +43,9 @@ __attribute__((always_inline)) INLINE static int cell_inside_buffer_region(
 
   /* Get the middle of the cell (since the cell grids align this eliminates
    * any issues from rounding). */
-  const double mid[3] = {c->loc[0] + 0.5 * c->width[0],
-                         c->loc[1] + 0.5 * c->width[1],
-                         c->loc[2] + 0.5 * c->width[2]};
+  const double mid[3] = {c->loc[0] + (0.5 * c->width[0]),
+                         c->loc[1] + (0.5 * c->width[1]),
+                         c->loc[2] + (0.5 * c->width[2])};
 
   return ((mid[0] > s->zoom_props->buffer_lower_bounds[0]) &&
           (mid[0] < s->zoom_props->buffer_upper_bounds[0]) &&
@@ -66,9 +66,9 @@ __attribute__((always_inline)) INLINE static int cell_inside_zoom_region(
 
   /* Get the middle of the cell (since the cell grids align this eliminates
    * any issues from rounding). */
-  const double mid[3] = {c->loc[0] + 0.5 * c->width[0],
-                         c->loc[1] + 0.5 * c->width[1],
-                         c->loc[2] + 0.5 * c->width[2]};
+  const double mid[3] = {c->loc[0] + (0.5 * c->width[0]),
+                         c->loc[1] + (0.5 * c->width[1]),
+                         c->loc[2] + (0.5 * c->width[2])};
 
   return ((mid[0] > s->zoom_props->region_lower_bounds[0]) &&
           (mid[0] < s->zoom_props->region_upper_bounds[0]) &&
