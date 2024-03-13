@@ -181,6 +181,8 @@ void zoom_space_regrid(struct space *s, int verbose) {
       swift_free("cells_with_particles_top", s->cells_with_particles_top);
       swift_free("local_cells_with_particles_top",
                  s->local_cells_with_particles_top);
+      swift_free("void_cells_top", s->zoom_props->void_cells_top);
+      swift_free("neighbour_cells_top", s->zoom_props->neighbour_cells_top);
       swift_free("cells_top", s->cells_top);
       swift_free("multipoles_top", s->multipoles_top);
 
