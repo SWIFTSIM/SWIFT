@@ -2484,6 +2484,9 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
     /* Skip empty cells */
     if (multi_j->m_pole.M_000 == 0.f) continue;
 
+    /* Skip void cells. */
+    if (cj->subtype == cell_subtype_void) continue;
+
     /* Can we escape early in the periodic BC case? */
     if (periodic) {
 
