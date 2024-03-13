@@ -748,7 +748,11 @@ void link_zoom_to_void(struct space *s, struct cell *c) {
 #ifdef SWIFT_DEBUG_CHECKS
     /* Ensure the zoom cell we've got is actually a void cell. */
     if (zoom_cell->type != cell_type_zoom)
-      error("Zoom cell isn't a zoom cell!");
+      error(
+          "Zoom cell isn't a zoom cell! (zoom_loc=[%f %f %f] -> "
+          "c->type=%s, c->subtype=%s)",
+          zoom_loc[0], zoom_loc[1], zoom_loc[2], cellID_names[zoom_cell->type],
+          cellID_names[zoom_cell->subtype]);
 #endif
 
     /* Link this zoom cell into the void cell hierarchy. */
