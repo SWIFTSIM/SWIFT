@@ -363,19 +363,19 @@ static void debug_cell_type(struct space *s) {
                                  s->width[2] * k};
 
           /* Test the lower boundary. */
-          if (abs(pos[0] - s->zoom_props->buffer_lower_bounds[0]) < tol)
+          if (fabs(pos[0] - s->zoom_props->buffer_lower_bounds[0]) < tol)
             found_bkg_bufferi_low = 1;
-          if (abs(pos[1] - s->zoom_props->buffer_lower_bounds[1]) < tol)
+          if (fabs(pos[1] - s->zoom_props->buffer_lower_bounds[1]) < tol)
             found_bkg_bufferj_low = 1;
-          if (abs(pos[2] - s->zoom_props->buffer_lower_bounds[2]) < tol)
+          if (fabs(pos[2] - s->zoom_props->buffer_lower_bounds[2]) < tol)
             found_bkg_bufferk_low = 1;
 
           /* Test the upper boundary. */
-          if (abs(pos[0] - s->zoom_props->buffer_upper_bounds[0]) < tol)
+          if (fabs(pos[0] - s->zoom_props->buffer_upper_bounds[0]) < tol)
             found_bkg_bufferi_up = 1;
-          if (abs(pos[1] - s->zoom_props->buffer_upper_bounds[1]) < tol)
+          if (fabs(pos[1] - s->zoom_props->buffer_upper_bounds[1]) < tol)
             found_bkg_bufferj_up = 1;
-          if (abs(pos[2] - s->zoom_props->buffer_upper_bounds[2]) < tol)
+          if (fabs(pos[2] - s->zoom_props->buffer_upper_bounds[2]) < tol)
             found_bkg_bufferk_up = 1;
         }
       }
@@ -407,19 +407,19 @@ static void debug_cell_type(struct space *s) {
                                      s->zoom_props->buffer_width[2] * k};
 
           /* Test the lower boundary. */
-          if (abs(pos[0] - s->zoom_props->region_lower_bounds[0]) < tol)
+          if (fabs(pos[0] - s->zoom_props->region_lower_bounds[0]) < tol)
             found_buffer_zoomi_low = 1;
-          if (abs(pos[1] - s->zoom_props->region_lower_bounds[1]) < tol)
+          if (fabs(pos[1] - s->zoom_props->region_lower_bounds[1]) < tol)
             found_buffer_zoomj_low = 1;
-          if (abs(pos[2] - s->zoom_props->region_lower_bounds[2]) < tol)
+          if (fabs(pos[2] - s->zoom_props->region_lower_bounds[2]) < tol)
             found_buffer_zoomk_low = 1;
 
           /* Test the upper boundary. */
-          if (abs(pos[0] - s->zoom_props->region_upper_bounds[0]) < tol)
+          if (fabs(pos[0] - s->zoom_props->region_upper_bounds[0]) < tol)
             found_buffer_zoomi_up = 1;
-          if (abs(pos[1] - s->zoom_props->region_upper_bounds[1]) < tol)
+          if (fabs(pos[1] - s->zoom_props->region_upper_bounds[1]) < tol)
             found_buffer_zoomj_up = 1;
-          if (abs(pos[2] - s->zoom_props->region_upper_bounds[2]) < tol)
+          if (fabs(pos[2] - s->zoom_props->region_upper_bounds[2]) < tol)
             found_buffer_zoomk_up = 1;
         }
       }
@@ -448,19 +448,19 @@ static void debug_cell_type(struct space *s) {
                                  s->width[2] * k};
 
           /* Test the lower boundary. */
-          if (abs(pos[0] - s->zoom_props->region_lower_bounds[0]) < tol)
+          if (fabs(pos[0] - s->zoom_props->region_lower_bounds[0]) < tol)
             found_bkg_zoomi_low = 1;
-          if (abs(pos[1] - s->zoom_props->region_lower_bounds[1]) < tol)
+          if (fabs(pos[1] - s->zoom_props->region_lower_bounds[1]) < tol)
             found_bkg_zoomj_low = 1;
-          if (abs(pos[2] - s->zoom_props->region_lower_bounds[2]) < tol)
+          if (fabs(pos[2] - s->zoom_props->region_lower_bounds[2]) < tol)
             found_bkg_zoomk_low = 1;
 
           /* Test the upper boundary. */
-          if (abs(pos[0] - s->zoom_props->region_upper_bounds[0]) < tol)
+          if (fabs(pos[0] - s->zoom_props->region_upper_bounds[0]) < tol)
             found_bkg_zoomi_up = 1;
-          if (abs(pos[1] - s->zoom_props->region_upper_bounds[1]) < tol)
+          if (fabs(pos[1] - s->zoom_props->region_upper_bounds[1]) < tol)
             found_bkg_zoomj_up = 1;
-          if (abs(pos[2] - s->zoom_props->region_upper_bounds[2]) < tol)
+          if (fabs(pos[2] - s->zoom_props->region_upper_bounds[2]) < tol)
             found_bkg_zoomk_up = 1;
         }
       }
