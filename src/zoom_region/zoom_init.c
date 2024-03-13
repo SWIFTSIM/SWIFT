@@ -135,7 +135,9 @@ double zoom_get_region_dim_and_shift(struct space *s) {
       continue;
     }
 
-    /* Shift initial positions by IC shift. */
+    /* Unpack the particle positions.
+     * NOTE: these will have already been shifted by the user requested amount
+     * in space_init if shift in the parameter file is non-zero. */
     const double x = s->gparts[k].x[0];
     const double y = s->gparts[k].x[1];
     const double z = s->gparts[k].x[2];
@@ -279,7 +281,6 @@ void zoom_get_cell_props_large_region(struct space *s, double ini_max_dim) {
  * @param s The space
  * @param max_dim The dim of the zoom region including padding. This will be
  * changed to ensure the background, buffer and zoom cells align.
- * @param params The SWIFT parameter structure.
  */
 void zoom_get_cell_props_with_buffer_cells(struct space *s, double max_dim) {
 
@@ -467,10 +468,11 @@ void zoom_report_cell_properties(const struct space *s) {
 }
 
 /**
- * @brief Initialise the zoom region.
+ * @brief Parse and set the zoom region properties.
  *
- * This will compute the cell grid properties ready for cell
- * cosntruction when space_regrid is called.
+ * This function allocates the zoom region properties struct and populates it.
+ *
+ * If we're not running a zoom this function will do nothing.
  *
  * @param params Swift parameter structure.
  * @param s The space
@@ -512,7 +514,7 @@ void zoom_props_init(struct swift_params *params, struct space *s,
 }
 
 /**
- * @brief Initialise the zoom region.
+ * @brief Initialise the zoom region geometry.
  *
  * This will compute the cell grid properties ready for cell
  * cosntruction when space_regrid is called.
