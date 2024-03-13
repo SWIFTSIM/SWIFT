@@ -1001,6 +1001,8 @@ void void_space_split(struct space *s, int verbose) {
   if (notlinked > 0)
     error("%d zoom cells are not linked into a void cell tree!", notlinked);
 
+  /* Check all void cells have void children. */
+
   /* Compare the number of particles in the void multipole and zoom cells. */
   int nr_gparts_in_void = 0;
   for (int i = 0; i < nr_void_cells; i++)

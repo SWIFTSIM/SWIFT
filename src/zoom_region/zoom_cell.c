@@ -745,6 +745,12 @@ void link_zoom_to_void(struct space *s, struct cell *c) {
     /* Get the zoom cell. */
     struct cell *zoom_cell = &s->cells_top[cid];
 
+#ifdef SWIFT_DEBUG_CHECKS
+    /* Ensure the zoom cell we've got is actually a void cell. */
+    if (zoom_cell->type != cell_type_zoom)
+      error("Zoom cell isn't a zoom cell!");
+#endif
+
     /* Link this zoom cell into the void cell hierarchy. */
     c->progeny[k] = zoom_cell;
 
@@ -854,4 +860,24 @@ void link_zoom_to_void(struct space *s, struct cell *c) {
     gravity_multipole_compute_power(&c->grav.multipole->m_pole);
 
   } /* Deal with gravity */
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Ensure the void multipole agrees with the nested zoom cells. */
+  int nr_gparts_in_zoom = 0;
+  int nr_gparts_in_void = c->grav.multipole->m_pole.num_gpart;
+  for (int k = 0; k < 8; k++) {
+    /* All progeny should exist */
+    if (c->progeny[k] == NULL) {
+      error("Zoom cell has no progeny!");
+    }
+    nr_gparts_in_zoom += c->progeny[k]->grav.multipole->m_pole.num_gpart;
+  }
+
+  if (nr_gparts_in_zoom != nr_gparts_in_void) {
+    error(
+        "Zoom cell and void cell multipole don't agree! (nr_gparts_in_zoom=%d "
+        "nr_gparts_in_void=%d)",
+        nr_gparts_in_zoom, nr_gparts_in_void);
+  }
+#endif
 }
