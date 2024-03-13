@@ -13,21 +13,21 @@ InternalUnitSystem:
 TimeIntegration:
   max_nr_rt_subcycles: 1
   time_begin: 0.    # The starting time of the simulation (in internal units).
-  time_end:   1   # end time: radiation reaches edge of box
+  time_end:   0.01   # end time: radiation reaches edge of box
   dt_min:     1.e-12 # The minimal time-step size of the simulation (in internal units).
   dt_max:     1.e-03  # The maximal time-step size of the simulation (in internal units).
 
 
 # Parameters governing the snapshots
 Snapshots:
-  basename:            output # Common part of the name of output files
-  time_first:          0.     # Time of the first output (in internal units)
-  delta_time:          0.1 # Time between snapshots
+  basename:            cosmo_output # Common part of the name of output files
+  output_list_on:      1
+  output_list:         snapshot_times_high_redshift
 
 # Parameters governing the conserved quantities statistics
 Statistics:
-  time_first:          0.
-  delta_time:          5e-4 # Time between statistics output
+  time_first:          0.00990099
+  delta_time:          1.06 # Time between statistics output
 
 # Parameters for the hydrodynamics scheme
 SPH:
@@ -54,3 +54,10 @@ GEARRT:
   stellar_spectrum_blackbody_temperature_K: 1.e5    # (Conditional) if stellar_spectrum_type=1, use this temperature (in K) for the blackbody spectrum.
   skip_thermochemistry: 1
 
+Cosmology:        # Planck13 (EAGLE flavour)
+  a_begin:        0.00990099  # z~100
+  a_end:          0.01408451  # z~70
+  h:              0.6777
+  Omega_cdm:      0.2587481
+  Omega_lambda:   0.693
+  Omega_b:        0.0482519
