@@ -999,7 +999,8 @@ void void_space_split(struct space *s, int verbose) {
   if (nr_gparts_in_void != nr_gparts_in_zoom)
     error(
         "Number of gparts is in consistent between zoom cells and "
-        "void multipole");
+        "void multipole (nr_gparts_in_void=%d, nr_gparts_in_zoom=%d)",
+        nr_gparts_in_void, nr_gparts_in_zoom);
 
 #endif
 }
