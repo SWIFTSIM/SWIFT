@@ -652,7 +652,6 @@ INLINE static void sink_star_formation_separate_particles(
   si->gpart->x[1] = si->x[1];
   si->gpart->x[2] = si->x[2];
 
-
   /* Put the star randomly within the accretion radius of the sink */
   const double phi = 2*M_PI*random_unit_interval(sp->id, e->ti_current, (enum random_number_type)3);
   const double r = si->r_cut*random_unit_interval(sp->id, e->ti_current, (enum random_number_type)4);
@@ -681,8 +680,7 @@ INLINE static void sink_star_formation_separate_particles(
 INLINE static void sink_star_formation_give_new_velocity(const struct engine* e,
      struct sink* si, struct spart* sp, double sink_mass_tot_before_spawning) {
 
-  /* Méthode numéro deux : prendre du moment cinétique du réservoir du sink et
-     le donner aux étoiles */
+  /* We give the stars some fraction of momentum taken from the sink swallowed momentum. */
 
   /* Compute the sink swallowed momentum */
   double x_sink[3] = {si->x[0], si->x[1], si->x[2]};
@@ -705,9 +703,9 @@ INLINE static void sink_star_formation_give_new_velocity(const struct engine* e,
 
   /* Update the star velocity. Do not forget to update the gart velocity */
   double fraction = sp->mass / sink_mass_tot_before_spawning;
-  sp->v[0] = fraction*p_swallowed[0]/sp->mass;
-  sp->v[1] = fraction*p_swallowed[1]/sp->mass;
-  sp->v[2] = fraction*p_swallowed[2]/sp->mass;
+  sp->v[0] += fraction*p_swallowed[0]/sp->mass;
+  sp->v[1] += fraction*p_swallowed[1]/sp->mass;
+  sp->v[2] += fraction*p_swallowed[2]/sp->mass;
   sp->gpart->v_full[0] = sp->v[0];
   sp->gpart->v_full[1] = sp->v[1];
   sp->gpart->v_full[2] = sp->v[2];
