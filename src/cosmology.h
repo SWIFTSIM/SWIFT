@@ -172,6 +172,12 @@ struct cosmology {
   /*! The initial decaying dark matter density (computed) */
   double Omega_dcdm_ini;
 
+  /*! The current decaying dark matter density (computed) */
+  double Omega_dcdm;
+
+  /*! The current dark radiation density (computed) */
+  double Omega_dr;
+
   /*! Ultra-relativistic species (e.g. massless neutrinos) density parameter */
   double Omega_ur;
 

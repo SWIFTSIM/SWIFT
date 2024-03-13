@@ -260,11 +260,13 @@ void cosmology_update(struct cosmology *c, const struct phys_const *phys_const,
   /* Update the neutrino density */
   c->Omega_nu = cosmology_get_neutrino_density(c, a);
 
+  /* Update the decaying dark matter and dark radiation densities */
+  c->Omega_dcdm = cosmology_get_dcdm_density(c, a);
+  c->Omega_dr = cosmology_get_dr_density(c, a);
+
   /* E(z) */
-  const double Omega_dcdm = cosmology_get_dcdm_density(c, a);
-  const double Omega_dr = cosmology_get_dr_density(c, a);
-  const double Omega_r = c->Omega_r + c->Omega_nu + Omega_dr;
-  const double Omega_m = c->Omega_cdm + c->Omega_b + Omega_dcdm;
+  const double Omega_r = c->Omega_r + c->Omega_nu + c->Omega_dr;
+  const double Omega_m = c->Omega_cdm + c->Omega_b + c->Omega_dcdm;
   const double Omega_k = c->Omega_k;
   const double Omega_l = c->Omega_lambda;
   const double w0 = c->w_0;
@@ -1256,6 +1258,8 @@ void cosmology_init_no_cosmo(struct cosmology *c) {
 
   c->Omega_dcdmdr_0 = 0.;
   c->Gamma_dcdm = 0.;
+  c->Omega_dcdm = 0.;
+  c->Omega_dr = 0.;
 
   c->Omega_ur = 0.;
   c->Omega_g = 0.;
@@ -1789,7 +1793,7 @@ void cosmology_write_model(hid_t h_grp, const struct cosmology *c) {
   io_write_attribute_d(h_grp, "H0 [internal units]", c->H0);
   io_write_attribute_d(h_grp, "H [internal units]", c->H);
   io_write_attribute_d(h_grp, "Hubble time [internal units]", c->Hubble_time);
-  io_write_attribute_d(h_grp, "Omega_m", c->Omega_cdm + c->Omega_b);
+  io_write_attribute_d(h_grp, "Omega_m", c->Omega_cdm + c->Omega_b + c->Omega_dcdm);
   io_write_attribute_d(h_grp, "Omega_r", c->Omega_r);
   io_write_attribute_d(h_grp, "Omega_b", c->Omega_b);
   io_write_attribute_d(h_grp, "Omega_k", c->Omega_k);
@@ -1798,6 +1802,8 @@ void cosmology_write_model(hid_t h_grp, const struct cosmology *c) {
   io_write_attribute_d(h_grp, "Omega_nu_0", c->Omega_nu_0);
   io_write_attribute_d(h_grp, "Omega_ur", c->Omega_ur);
   io_write_attribute_d(h_grp, "Omega_cdm", c->Omega_cdm);
+  io_write_attribute_d(h_grp, "Omega_dcdm", c->Omega_dcdm);
+  io_write_attribute_d(h_grp, "Omega_dr", c->Omega_dr);
   io_write_attribute_d(h_grp, "Omega_g", c->Omega_g);
   io_write_attribute_d(h_grp, "T_nu_0 [internal units]", c->T_nu_0);
   io_write_attribute_d(h_grp, "T_nu_0 [eV]", c->T_nu_0_eV);
