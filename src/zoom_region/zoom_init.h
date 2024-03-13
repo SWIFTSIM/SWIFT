@@ -21,7 +21,6 @@
 #define SWIFT_ZOOM_INIT_H
 
 /* Local includes */
-#include "gravity_properties.h"
 #include "space.h"
 
 /* Zoom region and cell grid initialisation */

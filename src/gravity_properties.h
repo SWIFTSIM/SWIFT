@@ -20,8 +20,6 @@
 #define SWIFT_GRAVITY_PROPERTIES
 
 /* Config parameters. */
-#include "space.h"
-
 #include <config.h>
 
 #if defined(HAVE_HDF5)
@@ -111,6 +109,12 @@ struct gravity_props {
    * co-moving softening length of the low-res. particles (DM + baryons) */
   float mean_inter_particle_fraction_high_res;
 
+  /*! Maximal comoving softening in the case of adaptive softening for gas */
+  float max_adaptive_softening;
+
+  /*! Minimal comoving softening in the case of adaptive softening for gas */
+  float min_adaptive_softening;
+
   /* ------------- Properties of the time integration  ----------------- */
 
   /*! Frequency of tree-rebuild in units of #gpart updates. */
@@ -165,8 +169,8 @@ void gravity_props_init(struct gravity_props *p, struct swift_params *params,
                         const int with_external_potential,
                         const int has_baryons, const int has_DM,
                         const int has_neutrinos, const int is_zoom_simulation,
-                        const int periodic, const double *dim, const int *cdim,
-                        const double *zoom_width);
+                        const int periodic, const double dim[3],
+                        const int cdim[3], const double zoom_width[3]);
 void gravity_props_update(struct gravity_props *p,
                           const struct cosmology *cosmo);
 void gravity_props_update_MAC_choice(struct gravity_props *p);

@@ -941,25 +941,22 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
       c->black_holes.count_total = c->black_holes.count + space_extra_bparts;
 
       /* Add the number of particles to the correct cell counter. */
-      if (s->with_zoom_region) {
-        if (c->type == cell_type_zoom) {
-          zoom_cell_particles +=
-              (c->hydro.count + c->grav.count + c->stars.count +
-               c->sinks.count + c->black_holes.count);
-        } else if (c->type == cell_type_buffer) {
-          buffer_cell_particles +=
-              (c->hydro.count + c->grav.count + c->stars.count +
-               c->sinks.count + c->black_holes.count);
-        } else if (c->type == cell_type_bkg) {
-          bkg_cell_particles +=
-              (c->hydro.count + c->grav.count + c->stars.count +
-               c->sinks.count + c->black_holes.count);
-        } else {
-          error(
-              "When running with a zoom region, all cells should be of type "
-              "Zoom, Buffer or Background, not %s",
-              cellID_names[c->type]);
-        }
+      if (c->type == cell_type_zoom) {
+        zoom_cell_particles +=
+            (c->hydro.count + c->grav.count + c->stars.count + c->sinks.count +
+             c->black_holes.count);
+      } else if (c->type == cell_type_buffer) {
+        buffer_cell_particles +=
+            (c->hydro.count + c->grav.count + c->stars.count + c->sinks.count +
+             c->black_holes.count);
+      } else if (c->type == cell_type_bkg) {
+        bkg_cell_particles += (c->hydro.count + c->grav.count + c->stars.count +
+                               c->sinks.count + c->black_holes.count);
+      } else if (c->type == cell_type_regular && s->with_zoom_region) {
+        error(
+            "When running with a zoom region, all cells should be of type "
+            "Zoom, Buffer or Background, not %s",
+            cellID_names[c->type]);
       }
 
       finger = &finger[c->hydro.count_total];

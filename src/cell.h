@@ -789,7 +789,7 @@ __attribute__((always_inline)) INLINE int cell_getid_offset(const int cdim[3],
  *
  * @param cdim The cell grid dimensions.
  * @param bounds The edges of this nested region.
- * @param x, y, z Location of particle.
+ * @param x, y, z Location of particle within buffer or zoom region.
  * @param iwidth The width of a cell in this grid.
  * @param offset The offset of this cell type in cells_top.
  *
@@ -816,11 +816,21 @@ __attribute__((always_inline)) INLINE int cell_getid_below_bkg(
  * top level (TL) cell should be returned, either background, buffer (if used),
  * or zoom.
  *
+ * The cell hierarchy is structured with background cells at the top (largest),
+ * followed by buffer cells (intermediate), and finally zoom cells (smallest).
+ * When running without buffer cells the hierarchy is bkg -> zoom.
+ *
  * We do this by testing each level from the top down. First we see what
  * background cell the position is in. If it's a void cell, we then get the
  * zoom cell (in the no buffer cell case). If it's an empty cell (buffer cell
  * case), we then get the buffer cell. If it's then a void buffer cell, we
  * then get the zoom region.
+ *
+ * Cells are not stored in their hierarchy order in s->cells_top. Instead,
+ * zoom cells are first, followed by background cells, and finally buffer cells.
+ * This is a bit strange but puts the zoom cells as the primary cell type and
+ * means we can simplify the code surrounding hydro operations which are
+ * isolated to the zoom region.
  *
  * @param s The space.
  * @param x, y, z Location to get the cell ID for.
@@ -852,13 +862,18 @@ __attribute__((always_inline)) INLINE int zoom_cell_getid(const struct space *s,
   int cell_id =
       cell_getid_offset(s->cdim, bkg_cell_offset, bkg_i, bkg_j, bkg_k);
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (cell_id < 0 || cell_id >= s->nr_cells)
+    error("cell_id out of range: %i (%f %f %f)", cell_id, x, y, z);
+#endif
+
   /* If this is a void cell we are in the zoom region. */
   if (s->cells_top[cell_id].subtype == cell_subtype_void) {
 
     /* Which zoom TL cell are we in? */
-    cell_id = cell_getid_below_bkg(s->zoom_props->cdim, zoom_lower_bounds, x, y,
-                                   z, s->zoom_props->iwidth,
-                                   /*offset*/ 0);
+    return cell_getid_below_bkg(s->zoom_props->cdim, zoom_lower_bounds, x, y, z,
+                                s->zoom_props->iwidth,
+                                /*offset*/ 0);
 
   }
 
@@ -876,17 +891,11 @@ __attribute__((always_inline)) INLINE int zoom_cell_getid(const struct space *s,
     if (s->cells_top[cell_id].subtype == cell_subtype_void) {
 
       /* Which zoom TL cell are we in? */
-      cell_id = cell_getid_below_bkg(s->zoom_props->cdim, zoom_lower_bounds, x,
-                                     y, z, s->zoom_props->iwidth,
-                                     /*offset*/ 0);
+      return cell_getid_below_bkg(s->zoom_props->cdim, zoom_lower_bounds, x, y,
+                                  z, s->zoom_props->iwidth,
+                                  /*offset*/ 0);
     }
   }
-
-#ifdef SWIFT_DEBUG_CHECKS
-  if (cell_id < 0 || cell_id >= s->nr_cells)
-    error("cell_id out of range: %i (s->nr_cells=%i) (pos=(%f %f %f))", cell_id,
-          s->nr_cells, x, y, z);
-#endif
 
   return cell_id;
 }
@@ -1001,6 +1010,9 @@ __attribute__((always_inline)) INLINE static double cell_min_dist2_same_size(
 /**
  * @brief Minimum distance between two cells with different sizes.
  *
+ * If running with a zoom region then only background cells will be
+ * considered periodic.
+ *
  * @param ci The first #cell.
  * @param cj The second #cell.
  * @param periodic Account for periodicity?
@@ -1019,7 +1031,7 @@ __attribute__((always_inline)) INLINE static double cell_min_dist2_diff_size(
 #endif
 
   /* We need to check if we need to consider periodicity since only
-   * background cells are periodic. */
+   * background cells are periodic when running with a zoom region. */
   if (ci->type == cell_type_bkg || cj->type == cell_type_bkg) {
     periodic = periodic;
   } else {
@@ -1083,50 +1095,6 @@ __attribute__((always_inline)) INLINE static double cell_min_dist2(
   } else {
     return cell_min_dist2_diff_size(ci, cj, periodic, dim);
   }
-}
-
-/**
- * @brief Is this cell within the buffer region?
- *
- * @param c The #cell.
- * @param s The #space.
- */
-__attribute__((always_inline)) INLINE static int cell_inside_buffer_region(
-    const struct cell *c, const struct space *s) {
-
-  /* Get the middle of the cell (since the cell grids align this eliminates
-   * any issues from rounding). */
-  double mid[3] = {c->loc[0] + 0.5 * c->width[0], c->loc[1] + 0.5 * c->width[1],
-                   c->loc[2] + 0.5 * c->width[2]};
-
-  return ((mid[0] > s->zoom_props->buffer_lower_bounds[0]) &&
-          (mid[0] < s->zoom_props->buffer_upper_bounds[0]) &&
-          (mid[1] > s->zoom_props->buffer_lower_bounds[1]) &&
-          (mid[1] < s->zoom_props->buffer_upper_bounds[1]) &&
-          (mid[2] > s->zoom_props->buffer_lower_bounds[2]) &&
-          (mid[2] < s->zoom_props->buffer_upper_bounds[2]));
-}
-
-/**
- * @brief Is this cell within the zoom region?
- *
- * @param c The #cell.
- * @param s The #space.
- */
-__attribute__((always_inline)) INLINE static int cell_inside_zoom_region(
-    const struct cell *c, const struct space *s) {
-
-  /* Get the middle of the cell (since the cell grids align this eliminates
-   * any issues from rounding). */
-  double mid[3] = {c->loc[0] + 0.5 * c->width[0], c->loc[1] + 0.5 * c->width[1],
-                   c->loc[2] + 0.5 * c->width[2]};
-
-  return ((mid[0] > s->zoom_props->region_lower_bounds[0]) &&
-          (mid[0] < s->zoom_props->region_upper_bounds[0]) &&
-          (mid[1] > s->zoom_props->region_lower_bounds[1]) &&
-          (mid[1] < s->zoom_props->region_upper_bounds[1]) &&
-          (mid[2] > s->zoom_props->region_lower_bounds[2]) &&
-          (mid[2] < s->zoom_props->region_upper_bounds[2]));
 }
 
 /* Inlined functions (for speed). */

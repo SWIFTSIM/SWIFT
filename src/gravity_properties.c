@@ -42,6 +42,8 @@
 #define gravity_props_default_rebuild_frequency 0.01f
 #define gravity_props_default_rebuild_active_fraction 1.01f  // > 1 means never
 #define gravity_props_default_distributed_mesh 0
+#define gravity_props_default_max_adaptive_softening FLT_MAX
+#define gravity_props_default_min_adaptive_softening 0.f
 
 void gravity_props_init(struct gravity_props *p, struct swift_params *params,
                         const struct phys_const *phys_const,
@@ -49,8 +51,8 @@ void gravity_props_init(struct gravity_props *p, struct swift_params *params,
                         const int with_external_potential,
                         const int has_baryons, const int has_DM,
                         const int has_neutrinos, const int is_zoom_simulation,
-                        const int periodic, const double *dim, const int *cdim,
-                        const double *zoom_width) {
+                        const int periodic, const double dim[3],
+                        const int cdim[3], const double zoom_width[3]) {
 
   /* Tree updates */
   p->rebuild_frequency =
@@ -109,7 +111,7 @@ void gravity_props_init(struct gravity_props *p, struct swift_params *params,
 
     /* If we have a zoom region we need to check we have a big enough
      * mesh for the zoom cells. */
-    if (zoom_width != NULL && dim[0] / p->mesh_size > zoom_width[0]) {
+    if (zoom_width[0] > 0.0 && dim[0] / p->mesh_size > zoom_width[0]) {
       error(
           "Mesh too small given the size of top-level zoom cells (width= "
           "%.2f). Should be at least %d cells wide (Currently: %d).",
@@ -252,6 +254,18 @@ void gravity_props_init(struct gravity_props *p, struct swift_params *params,
     p->epsilon_DM_comoving = p->epsilon_DM_max_physical;
     p->epsilon_baryon_comoving = p->epsilon_baryon_max_physical;
   }
+
+  /* Adaptive softening properties */
+  p->max_adaptive_softening = parser_get_opt_param_float(
+      params, "Gravity:max_adaptive_softening",
+      gravity_props_default_max_adaptive_softening /
+          kernel_gravity_softening_plummer_equivalent);
+  p->min_adaptive_softening =
+      parser_get_opt_param_float(params, "Gravity:min_adaptive_softening",
+                                 gravity_props_default_min_adaptive_softening);
+
+  p->max_adaptive_softening *= kernel_gravity_softening_plummer_equivalent;
+  p->min_adaptive_softening *= kernel_gravity_softening_plummer_equivalent;
 
   /* Copy over the gravitational constant */
   p->G_Newton = phys_const->const_newton_G;

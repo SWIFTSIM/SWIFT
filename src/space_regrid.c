@@ -32,12 +32,12 @@
 #include "zoom_region/zoom_regrid.h"
 
 /**
- * @brief Re-build the top-level cell grid.
+ * @brief Re-build the top-level cell grid in a uniform box.
  *
  * @param s The #space.
  * @param verbose Print messages to stdout or not.
  */
-void space_regrid(struct space *s, int verbose) {
+void space_regrid_uniform_box(struct space *s, int verbose) {
 
   /* If we are running with a zoom region call the zoom alternative. */
   if (s->with_zoom_region) {
@@ -405,4 +405,22 @@ void space_regrid(struct space *s, int verbose) {
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
+}
+
+/**
+ * @brief Re-build the top-level cell grid.
+ *
+ * @param s The #space.
+ * @param verbose Print messages to stdout or not.
+ */
+void space_regrid(struct space *s, int verbose) {
+
+  /* Call the appropriate regriding algorithm. */
+  if (!s->with_zoom_region) {
+    /* The normal case for a uniform box. */
+    space_regrid_uniform_box(s, verbose);
+  } else {
+    /* The zoom case where we have a nested high resolution region. */
+    zoom_space_regrid(s, verbose);
+  }
 }

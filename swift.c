@@ -673,9 +673,6 @@ int main(int argc, char *argv[]) {
   if (with_rt && with_cooling) {
     error("Error: Cannot use radiative transfer and cooling simultaneously.");
   }
-  if (with_rt && with_cosmology) {
-    error("Error: Cannot use run radiative transfer with cosmology (yet).");
-  }
 #endif /* idfef RT_NONE */
 
 #ifdef SINK_NONE
@@ -1402,12 +1399,14 @@ int main(int argc, char *argv[]) {
 
     /* Initialise the gravity properties */
     bzero(&gravity_properties, sizeof(struct gravity_props));
-    if (with_self_gravity)
+    if (with_self_gravity) {
+      double non_zoom_width[3] = {0.0, 0.0, 0.0};
       gravity_props_init(
           &gravity_properties, params, &prog_const, &cosmo, with_cosmology,
           with_external_gravity, with_baryon_particles, with_DM_particles,
           with_neutrinos, with_DM_background_particles, periodic, s.dim, s.cdim,
-          with_zoom_region ? s.zoom_props->width : NULL);
+          with_zoom_region ? s.zoom_props->width : non_zoom_width);
+    }
 
     /* Initialize the neutrino response if used */
     bzero(&neutrino_response, sizeof(struct neutrino_response));

@@ -149,6 +149,7 @@ int main(int argc, char *argv[]) {
   int with_stars = 0;
   int with_black_holes = 0;
   int with_hydro = 0;
+  int with_zoom_region = 0;
   int verbose = 0;
   int nr_threads = 1;
   char *output_parameters_filename = NULL;
@@ -175,6 +176,8 @@ int main(int argc, char *argv[]) {
                   0),
       OPT_BOOLEAN(0, "black-holes", &with_black_holes,
                   "Read black holes from the ICs.", NULL, 0, 0),
+      OPT_BOOLEAN('z', "zoom", &with_zoom_region, "Run with a zoom region.",
+                  NULL, 0, 0),
 
       OPT_GROUP("  Control options:\n"),
       OPT_BOOLEAN('a', "pin", &with_aff,
@@ -219,6 +222,13 @@ int main(int argc, char *argv[]) {
     return 1;
   }
   param_filename = argv[0];
+
+  /* For now throw an error if we are running the FOF with a zoom region. */
+  if (with_zoom_region) {
+    pretime_message(
+        "Error: the FOF does not currently support zoom regions.\n");
+    return 1;
+  }
 
   /* Checks of options. */
 #if !defined(HAVE_SETAFFINITY) || !defined(HAVE_LIBNUMA)
@@ -573,7 +583,7 @@ int main(int argc, char *argv[]) {
              /*generate_gas_in_ics=*/0, /*hydro=*/N_total[0] > 0, /*gravity=*/1,
              /*with_star_formation=*/0, /*sink=*/N_total[swift_type_sink],
              with_DM_particles, with_DM_background_particles, with_neutrinos,
-             talking, /*dry_run=*/0, nr_nodes);
+             with_zoom_region, talking, /*dry_run=*/0, nr_nodes);
 
   if (myrank == 0) {
     clocks_gettime(&toc);

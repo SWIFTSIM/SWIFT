@@ -32,4 +32,50 @@ void zoom_construct_tl_cells(struct space *s, const integertime_t ti_current,
 /* Link zoom leaves into void hierarchy. */
 void link_zoom_to_void(struct space *s, struct cell *c);
 
+/**
+ * @brief Is this cell within the buffer region?
+ *
+ * @param c The #cell.
+ * @param s The #space.
+ */
+__attribute__((always_inline)) INLINE static int cell_inside_buffer_region(
+    const struct cell *c, const struct space *s) {
+
+  /* Get the middle of the cell (since the cell grids align this eliminates
+   * any issues from rounding). */
+  const double mid[3] = {c->loc[0] + 0.5 * c->width[0],
+                         c->loc[1] + 0.5 * c->width[1],
+                         c->loc[2] + 0.5 * c->width[2]};
+
+  return ((mid[0] > s->zoom_props->buffer_lower_bounds[0]) &&
+          (mid[0] < s->zoom_props->buffer_upper_bounds[0]) &&
+          (mid[1] > s->zoom_props->buffer_lower_bounds[1]) &&
+          (mid[1] < s->zoom_props->buffer_upper_bounds[1]) &&
+          (mid[2] > s->zoom_props->buffer_lower_bounds[2]) &&
+          (mid[2] < s->zoom_props->buffer_upper_bounds[2]));
+}
+
+/**
+ * @brief Is this cell within the zoom region?
+ *
+ * @param c The #cell.
+ * @param s The #space.
+ */
+__attribute__((always_inline)) INLINE static int cell_inside_zoom_region(
+    const struct cell *c, const struct space *s) {
+
+  /* Get the middle of the cell (since the cell grids align this eliminates
+   * any issues from rounding). */
+  const double mid[3] = {c->loc[0] + 0.5 * c->width[0],
+                         c->loc[1] + 0.5 * c->width[1],
+                         c->loc[2] + 0.5 * c->width[2]};
+
+  return ((mid[0] > s->zoom_props->region_lower_bounds[0]) &&
+          (mid[0] < s->zoom_props->region_upper_bounds[0]) &&
+          (mid[1] > s->zoom_props->region_lower_bounds[1]) &&
+          (mid[1] < s->zoom_props->region_upper_bounds[1]) &&
+          (mid[2] > s->zoom_props->region_lower_bounds[2]) &&
+          (mid[2] < s->zoom_props->region_upper_bounds[2]));
+}
+
 #endif /* SWIFT_ZOOM_CELL_H */

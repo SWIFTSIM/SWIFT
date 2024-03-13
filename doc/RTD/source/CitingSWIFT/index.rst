@@ -101,5 +101,4 @@ code. This corresponds to the following bibtex citation block:
 When using models or parts of the code whose details were introduced in other
 papers, we kindly ask that the relevant work is properly acknowledge and
 cited. This includes the :ref:`subgrid`, the :ref:`planetary` extensions, the
-hydrodynamics and radiative transfer implementations, or the particle-based
-:ref:`neutrinos`.
+:ref:`hydro` and :ref:`rt`, or the particle-based :ref:`neutrinos`.

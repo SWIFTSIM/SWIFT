@@ -32,6 +32,7 @@
  * Physics, 2012, Volume 231, Issue 3, pp. 759-794.
  */
 
+#include "adaptive_softening_iact.h"
 #include "adiabatic_index.h"
 #include "hydro_parameters.h"
 #include "minmax.h"
@@ -80,6 +81,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   pi->density.rho_dh -= mj * (hydro_dimension * wi + ui * wi_dx);
   pi->density.wcount += wi;
   pi->density.wcount_dh -= (hydro_dimension * wi + ui * wi_dx);
+  adaptive_softening_add_correction_term(pi, ui, hi_inv, mj);
 
   /* Compute density of pj. */
   const float hj_inv = 1.f / hj;
@@ -90,6 +92,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   pj->density.rho_dh -= mi * (hydro_dimension * wj + uj * wj_dx);
   pj->density.wcount += wj;
   pj->density.wcount_dh -= (hydro_dimension * wj + uj * wj_dx);
+  adaptive_softening_add_correction_term(pj, uj, hj_inv, mi);
 
   /* Compute dv dot r */
   float dv[3], curlvr[3];
@@ -160,6 +163,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   pi->density.rho_dh -= mj * (hydro_dimension * wi + ui * wi_dx);
   pi->density.wcount += wi;
   pi->density.wcount_dh -= (hydro_dimension * wi + ui * wi_dx);
+  adaptive_softening_add_correction_term(pi, ui, h_inv, mj);
 
   /* Compute dv dot r */
   float dv[3], curlvr[3];
@@ -319,8 +323,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float sph_acc_term =
       (P_over_rho2_i * wi_dr + P_over_rho2_j * wj_dr) * r_inv;
 
+  /* Adaptive softening acceleration term */
+  const float adapt_soft_acc_term =
+      adaptive_softening_get_acc_term(pi, pj, wi_dr, wj_dr, f_ij, f_ji, r_inv);
+
   /* Assemble the acceleration */
-  const float acc = sph_acc_term + visc_acc_term;
+  const float acc = sph_acc_term + visc_acc_term + adapt_soft_acc_term;
 
   /* Use the force Luke ! */
   pi->a_hydro[0] -= mj * acc * dx[0];
@@ -450,8 +458,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float sph_acc_term =
       (P_over_rho2_i * wi_dr + P_over_rho2_j * wj_dr) * r_inv;
 
+  /* Adaptive softening acceleration term */
+  const float adapt_soft_acc_term =
+      adaptive_softening_get_acc_term(pi, pj, wi_dr, wj_dr, f_ij, f_ji, r_inv);
+
   /* Assemble the acceleration */
-  const float acc = sph_acc_term + visc_acc_term;
+  const float acc = sph_acc_term + visc_acc_term + adapt_soft_acc_term;
 
   /* Use the force Luke ! */
   pi->a_hydro[0] -= mj * acc * dx[0];
