@@ -336,6 +336,16 @@ void space_split_recursive(struct space *s, struct cell *c,
       } else if (cp->subtype == cell_subtype_void &&
                  cp->depth + 1 == s->zoom_props->zoom_cell_depth) {
 
+#ifdef SWIFT_DEBUG_CHECKS
+        /* Check that the widths are right. */
+        if (cp->width[0] / 2 != s->zoom_props->width[0])
+          error(
+              "The width of the zoom cell is not half the width of the void "
+              "cell were about to link to! (cp->width[0]=%f, "
+              "s->zoom_props->width[0]=%f)",
+              cp->width[0], s->zoom_props->width[0]);
+#endif
+
         link_zoom_to_void(s, cp);
 
       } else {
