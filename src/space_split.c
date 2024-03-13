@@ -334,7 +334,7 @@ void space_split_recursive(struct space *s, struct cell *c,
         /* If the next level progeny is at the zoom level then we need to
          * link the zoom cells in as the progeny of the void sub-cell. */
       } else if (cp->subtype == cell_subtype_void &&
-                 cp->depth == s->zoom_props->zoom_cell_depth) {
+                 cp->depth == s->zoom_props->zoom_cell_depth - 1) {
 
 #ifdef SWIFT_DEBUG_CHECKS
         /* Check that the widths are right. */
