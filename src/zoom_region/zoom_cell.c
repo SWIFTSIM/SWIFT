@@ -493,6 +493,7 @@ static void zoom_verify_cell_type(struct space *s) {
  * ocupying the second half.
  *
  * @param s The space.
+ * @param ti_current The current time.
  * @param verbose Are we talking?
  */
 void zoom_construct_tl_cells(struct space *s, const integertime_t ti_current,
