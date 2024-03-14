@@ -411,7 +411,7 @@ INLINE static int sink_should_convert_to_sink(
  * @param with_cosmology if we run with cosmology.
  */
 INLINE static void sink_copy_properties(
-    struct part* p, const struct xpart* xp, struct sink* sink,
+    const struct part* p, const struct xpart* xp, struct sink* sink,
     const struct engine* e, const struct sink_props* sink_props,
     const struct cosmology* cosmo, const int with_cosmology,
     const struct phys_const* phys_const,
