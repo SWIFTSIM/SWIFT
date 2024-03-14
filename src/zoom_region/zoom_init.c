@@ -515,7 +515,7 @@ void zoom_props_init(struct swift_params *params, struct space *s,
  * @brief Initialise the zoom region geometry.
  *
  * This will compute the cell grid properties ready for cell
- * cosntruction when space_regrid is called.
+ * cosntruction when zoom_construct_tl_cells.
  *
  * @param s The space.
  * @param verbose Are we talking?
