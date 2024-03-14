@@ -119,6 +119,107 @@ float space_get_current_hmax(struct space *s,
 }
 
 /**
+ * @brief Prepare and allocate the top-level cell and pointer arrays.
+ *
+ * This function also frees the task arrays, sets the new cell dimensions and
+ * cell counts on the space, and allocates the top level cells, multipoles and
+ * indices of local cells.
+ *
+ * @param s The #space.
+ * @param cdim The new cell dimensions.
+ */
+void space_prepare_cells(struct space *s, const int cdim[3]) {
+
+  /* Also free the task arrays, these will be regenerated and we can use the
+   * memory while copying the particle arrays. */
+  if (s->e != NULL) scheduler_free_tasks(&s->e->sched);
+
+  /* Set the new cell dimensions only if smaller. */
+  for (int k = 0; k < 3; k++) {
+    s->cdim[k] = cdim[k];
+    s->width[k] = s->dim[k] / cdim[k];
+    s->iwidth[k] = 1.0 / s->width[k];
+  }
+
+  /* Allocate the highest level of cells. */
+  if (!s->with_zoom_region) {
+    s->tot_cells = s->nr_cells = cdim[0] * cdim[1] * cdim[2];
+  } else {
+    s->tot_cells = s->nr_cells =
+        (s->cdim[0] * s->cdim[1] * s->cdim[2]) +
+        (s->zoom_props->cdim[0] * s->zoom_props->cdim[1] *
+         s->zoom_props->cdim[2]) +
+        (s->zoom_props->buffer_cdim[0] * s->zoom_props->buffer_cdim[1] *
+         s->zoom_props->buffer_cdim[2]);
+  }
+
+  if (swift_memalign("cells_top", (void **)&s->cells_top, cell_align,
+                     s->nr_cells * sizeof(struct cell)) != 0)
+    error("Failed to allocate top-level cells.");
+  bzero(s->cells_top, s->nr_cells * sizeof(struct cell));
+
+  /* Allocate the multipoles for the top-level cells. */
+  if (s->with_self_gravity) {
+    if (swift_memalign("multipoles_top", (void **)&s->multipoles_top,
+                       multipole_align,
+                       s->nr_cells * sizeof(struct gravity_tensors)) != 0)
+      error("Failed to allocate top-level multipoles.");
+    bzero(s->multipoles_top, s->nr_cells * sizeof(struct gravity_tensors));
+  }
+
+  /* Allocate the indices of local cells */
+  if (swift_memalign("local_cells_top", (void **)&s->local_cells_top,
+                     SWIFT_STRUCT_ALIGNMENT, s->nr_cells * sizeof(int)) != 0)
+    error("Failed to allocate indices of local top-level cells.");
+  bzero(s->local_cells_top, s->nr_cells * sizeof(int));
+
+  /* Allocate the indices of local cells with tasks */
+  if (swift_memalign("local_cells_with_tasks_top",
+                     (void **)&s->local_cells_with_tasks_top,
+                     SWIFT_STRUCT_ALIGNMENT, s->nr_cells * sizeof(int)) != 0)
+    error("Failed to allocate indices of local top-level cells with tasks.");
+  bzero(s->local_cells_with_tasks_top, s->nr_cells * sizeof(int));
+
+  /* Allocate the indices of cells with particles */
+  if (swift_memalign("cells_with_particles_top",
+                     (void **)&s->cells_with_particles_top,
+                     SWIFT_STRUCT_ALIGNMENT, s->nr_cells * sizeof(int)) != 0)
+    error("Failed to allocate indices of top-level cells with particles.");
+  bzero(s->cells_with_particles_top, s->nr_cells * sizeof(int));
+
+  /* Allocate the indices of local cells with particles */
+  if (swift_memalign("local_cells_with_particles_top",
+                     (void **)&s->local_cells_with_particles_top,
+                     SWIFT_STRUCT_ALIGNMENT, s->nr_cells * sizeof(int)) != 0)
+    error(
+        "Failed to allocate indices of local top-level cells with "
+        "particles.");
+  bzero(s->local_cells_with_particles_top, s->nr_cells * sizeof(int));
+
+  /* Set the cells' locks */
+  for (int k = 0; k < s->nr_cells; k++) {
+    if (lock_init(&s->cells_top[k].hydro.lock) != 0)
+      error("Failed to init spinlock for hydro.");
+    if (lock_init(&s->cells_top[k].grav.plock) != 0)
+      error("Failed to init spinlock for gravity.");
+    if (lock_init(&s->cells_top[k].grav.mlock) != 0)
+      error("Failed to init spinlock for multipoles.");
+    if (lock_init(&s->cells_top[k].grav.star_formation_lock) != 0)
+      error("Failed to init spinlock for star formation (gpart).");
+    if (lock_init(&s->cells_top[k].stars.lock) != 0)
+      error("Failed to init spinlock for stars.");
+    if (lock_init(&s->cells_top[k].sinks.lock) != 0)
+      error("Failed to init spinlock for sinks.");
+    if (lock_init(&s->cells_top[k].sinks.sink_formation_lock) != 0)
+      error("Failed to init spinlock for sink formation.");
+    if (lock_init(&s->cells_top[k].black_holes.lock) != 0)
+      error("Failed to init spinlock for black holes.");
+    if (lock_init(&s->cells_top[k].stars.star_formation_lock) != 0)
+      error("Failed to init spinlock for star formation (spart).");
+  }
+}
+
+/**
  * @brief Re-build the top-level cell grid in a uniform box.
  *
  * @param s The #space.
@@ -240,85 +341,12 @@ void space_regrid_uniform_box(struct space *s, int verbose) {
       swift_free("multipoles_top", s->multipoles_top);
     }
 
-    /* Also free the task arrays, these will be regenerated and we can use the
-     * memory while copying the particle arrays. */
-    if (s->e != NULL) scheduler_free_tasks(&s->e->sched);
+    /* Prepare the cell and pointer arrays. This will also free tasks and set
+     * the cdim, width, iwidth and cell counts on the space. */
+    space_prepare_cells(s, cdim);
 
-    /* Set the new cell dimensions only if smaller. */
-    for (int k = 0; k < 3; k++) {
-      s->cdim[k] = cdim[k];
-      s->width[k] = s->dim[k] / cdim[k];
-      s->iwidth[k] = 1.0 / s->width[k];
-    }
+    /* Get the minimum cell size. */
     const float dmin = min3(s->width[0], s->width[1], s->width[2]);
-
-    /* Allocate the highest level of cells. */
-    s->tot_cells = s->nr_cells = cdim[0] * cdim[1] * cdim[2];
-
-    if (swift_memalign("cells_top", (void **)&s->cells_top, cell_align,
-                       s->nr_cells * sizeof(struct cell)) != 0)
-      error("Failed to allocate top-level cells.");
-    bzero(s->cells_top, s->nr_cells * sizeof(struct cell));
-
-    /* Allocate the multipoles for the top-level cells. */
-    if (s->with_self_gravity) {
-      if (swift_memalign("multipoles_top", (void **)&s->multipoles_top,
-                         multipole_align,
-                         s->nr_cells * sizeof(struct gravity_tensors)) != 0)
-        error("Failed to allocate top-level multipoles.");
-      bzero(s->multipoles_top, s->nr_cells * sizeof(struct gravity_tensors));
-    }
-
-    /* Allocate the indices of local cells */
-    if (swift_memalign("local_cells_top", (void **)&s->local_cells_top,
-                       SWIFT_STRUCT_ALIGNMENT, s->nr_cells * sizeof(int)) != 0)
-      error("Failed to allocate indices of local top-level cells.");
-    bzero(s->local_cells_top, s->nr_cells * sizeof(int));
-
-    /* Allocate the indices of local cells with tasks */
-    if (swift_memalign("local_cells_with_tasks_top",
-                       (void **)&s->local_cells_with_tasks_top,
-                       SWIFT_STRUCT_ALIGNMENT, s->nr_cells * sizeof(int)) != 0)
-      error("Failed to allocate indices of local top-level cells with tasks.");
-    bzero(s->local_cells_with_tasks_top, s->nr_cells * sizeof(int));
-
-    /* Allocate the indices of cells with particles */
-    if (swift_memalign("cells_with_particles_top",
-                       (void **)&s->cells_with_particles_top,
-                       SWIFT_STRUCT_ALIGNMENT, s->nr_cells * sizeof(int)) != 0)
-      error("Failed to allocate indices of top-level cells with particles.");
-    bzero(s->cells_with_particles_top, s->nr_cells * sizeof(int));
-
-    /* Allocate the indices of local cells with particles */
-    if (swift_memalign("local_cells_with_particles_top",
-                       (void **)&s->local_cells_with_particles_top,
-                       SWIFT_STRUCT_ALIGNMENT, s->nr_cells * sizeof(int)) != 0)
-      error(
-          "Failed to allocate indices of local top-level cells with "
-          "particles.");
-    bzero(s->local_cells_with_particles_top, s->nr_cells * sizeof(int));
-
-    /* Set the cells' locks */
-    for (int k = 0; k < s->nr_cells; k++) {
-      if (lock_init(&s->cells_top[k].hydro.lock) != 0)
-        error("Failed to init spinlock for hydro.");
-      if (lock_init(&s->cells_top[k].grav.plock) != 0)
-        error("Failed to init spinlock for gravity.");
-      if (lock_init(&s->cells_top[k].grav.mlock) != 0)
-        error("Failed to init spinlock for multipoles.");
-      if (lock_init(&s->cells_top[k].grav.star_formation_lock) != 0)
-        error("Failed to init spinlock for star formation (gpart).");
-      if (lock_init(&s->cells_top[k].stars.lock) != 0)
-        error("Failed to init spinlock for stars.");
-      if (lock_init(&s->cells_top[k].sinks.lock) != 0)
-        error("Failed to init spinlock for sinks.");
-      if (lock_init(&s->cells_top[k].sinks.sink_formation_lock) != 0)
-        error("Failed to init spinlock for sink formation.");
-      if (lock_init(&s->cells_top[k].black_holes.lock) != 0)
-        error("Failed to init spinlock for black holes.");
-      if (lock_init(&s->cells_top[k].stars.star_formation_lock) != 0)
-        error("Failed to init spinlock for star formation (spart).");
-    }
 
     /* Set the cell location and sizes. */
     for (int i = 0; i < cdim[0]; i++)
