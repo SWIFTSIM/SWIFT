@@ -880,9 +880,9 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 #endif
 
   /* Define variables to count particles in cell types */
-  int bkg_cell_particles = 0;
-  int buffer_cell_particles = 0;
-  int zoom_cell_particles = 0;
+  size_t bkg_cell_particles = 0;
+  size_t buffer_cell_particles = 0;
+  size_t zoom_cell_particles = 0;
 
   /* Hook the cells up to the parts. Make list of local and non-empty cells */
   const ticks tic3 = getticks();
