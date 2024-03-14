@@ -506,8 +506,6 @@ void zoom_construct_tl_cells(struct space *s, const integertime_t ti_current,
                                  zoom_props->region_lower_bounds[1],
                                  zoom_props->region_lower_bounds[2]};
 
-  struct cell *restrict c;
-
   /* Loop over zoom cells and set locations and initial values */
   for (int i = 0; i < zoom_props->cdim[0]; i++) {
     for (int j = 0; j < zoom_props->cdim[1]; j++) {
@@ -515,7 +513,7 @@ void zoom_construct_tl_cells(struct space *s, const integertime_t ti_current,
         const size_t cid = cell_getid(zoom_props->cdim, i, j, k);
 
         /* Create the zoom cell and it's multipoles */
-        c = &s->cells_top[cid];
+        struct cell *restrict c = &s->cells_top[cid];
         c->loc[0] = (i * zoom_props->width[0]) + zoom_bounds[0];
         c->loc[1] = (j * zoom_props->width[1]) + zoom_bounds[1];
         c->loc[2] = (k * zoom_props->width[2]) + zoom_bounds[2];
@@ -567,7 +565,7 @@ void zoom_construct_tl_cells(struct space *s, const integertime_t ti_current,
         const size_t cid = cell_getid_offset(s->cdim, bkg_cell_offset, i, j, k);
 
         /* Background top level cells. */
-        c = &s->cells_top[cid];
+        struct cell *restrict c = &s->cells_top[cid];
         c->loc[0] = i * s->width[0];
         c->loc[1] = j * s->width[1];
         c->loc[2] = k * s->width[2];
@@ -629,7 +627,8 @@ void zoom_construct_tl_cells(struct space *s, const integertime_t ti_current,
                                                buffer_offset, i, j, k);
 
           /* Buffer top level cells. */
-          c = &s->cells_top[cid];
+
+          struct cell *restrict c = &s->cells_top[cid];
           c->loc[0] = (i * zoom_props->buffer_width[0]) + buffer_bounds[0];
           c->loc[1] = (j * zoom_props->buffer_width[1]) + buffer_bounds[1];
           c->loc[2] = (k * zoom_props->buffer_width[2]) + buffer_bounds[2];
