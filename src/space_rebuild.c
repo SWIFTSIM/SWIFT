@@ -940,7 +940,8 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
       c->sinks.count_total = c->sinks.count + space_extra_sinks;
       c->black_holes.count_total = c->black_holes.count + space_extra_bparts;
 
-      /* Add the number of particles to the correct cell counter. */
+      /* Add the number of particles to the correct cell counter for
+       * reporting to the user. */
       if (c->type == cell_type_zoom) {
         zoom_cell_particles +=
             (c->hydro.count + c->grav.count + c->stars.count + c->sinks.count +
