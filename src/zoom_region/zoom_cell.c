@@ -32,9 +32,12 @@
 /**
  * @brief Find what background or buffer cells contain the zoom region.
  *
- * A void cell is a cell that contains the zoom region. If there is no buffer
- * cell grid, then the void cells are the background cells. If there is a
- * buffer cell grid, then the void cells are the buffer cells.
+ * A void cell is a low resolution cell above the zoom region (or part
+ * of it).
+ *
+ * A void cell is always in the cell grid directly above the zoom cells, i.e. if
+ * there are buffer cells, the void cells are the buffer cells, if there are no
+ * buffer cells, the void cells are the background cells.
  *
  * @param s The space.
  * @param verbose Are we talking?
