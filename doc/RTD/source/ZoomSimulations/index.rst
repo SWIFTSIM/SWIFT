@@ -14,6 +14,7 @@ To get started running a zoom simulation see the :doc:`general <../GettingStarte
    :maxdepth: 2
    :caption: Contents:
 
+   terminology
    cell_structures
    running_a_zoom
    zoom_hydrodynamics
