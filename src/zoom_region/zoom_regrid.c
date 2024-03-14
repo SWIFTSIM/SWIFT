@@ -296,12 +296,12 @@ void zoom_space_regrid(struct space *s, int verbose) {
    * means this error could be triggered after everything is set up instead of
    * during set up at the beginning of a run. */
   if (s->e != NULL &&
-      s->dim[0] / s->e->gravity_props->mesh_size > zoom_props->width[0]) {
+      s->dim[0] / s->e->gravity_properties->mesh_size > zoom_props->width[0]) {
     error(
         "Mesh too small given the size of top-level zoom cells (width= "
         "%.2f). Should be at least %d cells wide (Currently: %d).",
-        zoom_props->width[0], (int)(dim[0] / zoom_props->width[0]),
-        s->e->gravity_props->mesh_size);
+        zoom_props->width[0], (int)(s->dim[0] / zoom_props->width[0]),
+        s->e->gravity_properties->mesh_size);
   }
 
   if (verbose)
