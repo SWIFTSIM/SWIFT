@@ -296,7 +296,7 @@ void zoom_find_neighbouring_cells(struct space *s, const int verbose) {
  *
  * @param s The space.
  */
-static void zoom_verify_cell_type(struct space *s) {
+void zoom_verify_cell_type(struct space *s) {
 #ifdef SWIFT_DEBUG_CHECKS
 
   /* Get the cells array and cell properties */
