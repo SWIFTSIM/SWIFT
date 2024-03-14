@@ -56,6 +56,21 @@ void zoom_space_regrid(struct space *s, int verbose) {
   /* Extract the zoom properties. */
   struct zoom_region_properties *zoom_props = s->zoom_props;
 
+  /* We need to check we have a big enough mesh for the zoom cells.
+   * Sadly we have to wait to do this until the engine is attached to the space
+   * before we can make this check without breaking the initialisation order,
+   * or passing around extra information. Although annoying this just means
+   * this error could be triggered after everything is set up instead of
+   * during set up. */
+  if (s->e != NULL &&
+      s->dim[0] / s->e->grav_props->mesh_size > zoom_props->width[0]) {
+    error(
+        "Mesh too small given the size of top-level zoom cells (width= "
+        "%.2f). Should be at least %d cells wide (Currently: %d).",
+        zoom_props->width[0], (int)(dim[0] / zoom_props->width[0]),
+        s->e->grav_props->mesh_size);
+  }
+
   /* Get the current h_max. */
   double zoom_cell_min = zoom_props->cell_min;
   float h_max =
