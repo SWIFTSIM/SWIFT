@@ -35,7 +35,7 @@ void zoom_construct_tl_cells(struct space *s, const integertime_t ti_current,
  * @param c The #cell.
  * @param s The #space.
  */
-__attribute__((always_inline)) INLINE static int cell_inside_buffer_region(
+__attribute__((always_inline)) INLINE static int zoom_cell_inside_buffer_region(
     const struct cell *c, const struct space *s) {
 
   /* Get the middle of the cell (since the cell grids align this eliminates
@@ -58,7 +58,7 @@ __attribute__((always_inline)) INLINE static int cell_inside_buffer_region(
  * @param c The #cell.
  * @param s The #space.
  */
-__attribute__((always_inline)) INLINE static int cell_inside_zoom_region(
+__attribute__((always_inline)) INLINE static int zoom_cell_inside_zoom_region(
     const struct cell *c, const struct space *s) {
 
   /* Get the middle of the cell (since the cell grids align this eliminates

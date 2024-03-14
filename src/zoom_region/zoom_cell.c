@@ -42,7 +42,7 @@
  * @param s The space.
  * @param verbose Are we talking?
  */
-void find_void_cells(struct space *s, const int verbose) {
+void zoom_find_void_cells(struct space *s, const int verbose) {
 
   /* Get the zoom properties */
   struct zoom_region_properties *zoom_props = s->zoom_props;
@@ -90,7 +90,7 @@ void find_void_cells(struct space *s, const int verbose) {
     struct cell *c = &cells[cid];
 
     /* Label this cell if it contains the zoom region. */
-    if (cell_inside_zoom_region(c, s)) {
+    if (zoom_cell_inside_zoom_region(c, s)) {
       c->subtype = cell_subtype_void;
       zoom_props->void_cells_top[zoom_props->nr_void_cells++] = cid;
     }
@@ -112,7 +112,7 @@ void find_void_cells(struct space *s, const int verbose) {
  * @param s The space.
  * @param verbose Are we talking?
  */
-void find_empty_cells(struct space *s, const int verbose) {
+void zoom_find_empty_cells(struct space *s, const int verbose) {
 
   /* Get the zoom properties */
   struct zoom_region_properties *zoom_props = s->zoom_props;
@@ -131,7 +131,7 @@ void find_empty_cells(struct space *s, const int verbose) {
     struct cell *c = &cells[cid];
 
     /* Assign the cell type. */
-    if (cell_inside_buffer_region(c, s)) {
+    if (zoom_cell_inside_buffer_region(c, s)) {
       c->subtype = cell_subtype_empty;
       zoom_props->nr_empty_cells++;
     }
@@ -156,7 +156,7 @@ void find_empty_cells(struct space *s, const int verbose) {
  * @param s The space.
  * @param verbose Are we talking?
  */
-void find_neighbouring_cells(struct space *s, const int verbose) {
+void zoom_find_neighbouring_cells(struct space *s, const int verbose) {
 
   /* Get the zoom properties */
   struct zoom_region_properties *zoom_props = s->zoom_props;
@@ -297,7 +297,7 @@ void find_neighbouring_cells(struct space *s, const int verbose) {
  *
  * @param s The space.
  */
-static void verify_cell_type(struct space *s) {
+static void zoom_verify_cell_type(struct space *s) {
 
   /* Get the cells array and cell properties */
   struct cell *cells = s->cells_top;
@@ -675,33 +675,20 @@ void zoom_construct_tl_cells(struct space *s, const integertime_t ti_current,
   }
 
   /* Now find and label what cells contain the zoom region. */
-  find_void_cells(s, verbose);
+  zoom_find_void_cells(s, verbose);
 
   /* If we have a buffer region then find and label the empty cells. */
   if (zoom_props->with_buffer_cells) {
-    find_empty_cells(s, verbose);
+    zoom_find_empty_cells(s, verbose);
   }
 
   /* Find neighbours of the zoom region (cells within the distance past which
    * the gravity mesh takes over). */
-  find_neighbouring_cells(s, verbose);
-
-  /* NOTE: The below code relies on functions that will be implemented down
-   * the line in later partition focuses PRs but keeping this here as a
-   * reminder */
-  /* #if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS)) */
-
-  /*   /\* Find the number of edges we will need for the domain decomp. *\/ */
-  /*   find_vertex_edges(s, verbose); */
-
-  /*   if (verbose) */
-  /*     message("%i vertex 'edges' found in total", zoom_props->nr_edges); */
-
-  /* #endif */
+  zoom_find_neighbouring_cells(s, verbose);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Lets check all the cells are in the right place with the correct widths */
-  verify_cell_type(s);
+  zoom_verify_cell_type(s);
 #endif
 
   if (verbose)
