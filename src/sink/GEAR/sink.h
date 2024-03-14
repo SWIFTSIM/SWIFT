@@ -461,23 +461,35 @@ __attribute__((always_inline)) INLINE static void sink_swallow_part(
   sp->mass += gas_mass;
   sp->gpart->mass += gas_mass;
 
-  /* Physical velocity difference between the particles */
-  const float dv[3] = {(sp->v[0] - p->v[0]) * cosmo->a_inv,
-                       (sp->v[1] - p->v[1]) * cosmo->a_inv,
-                       (sp->v[2] - p->v[2]) * cosmo->a_inv};
+  /* Comoving and physical distance between the particles */
+  const float dx[3] = {sp->x[0] - p->x[0], sp->x[1] - p->x[1], sp->x[2] - p->x[2]};
+  const float dx_physical[3] = {dx[0] * cosmo->a, dx[1] * cosmo->a,
+				dx[2] * cosmo->a};
 
-  /* Physical distance between the particles */
-  const float dx[3] = {(sp->x[0] - p->x[0]) * cosmo->a,
-                       (sp->x[1] - p->x[1]) * cosmo->a,
-                       (sp->x[2] - p->x[2]) * cosmo->a};
+  /* Relative velocity between the sink and the part */
+  const float dv[3] = {sp->v[0] - p->v[0],  sp->v[1] - p->v[1],
+                       sp->v[2] - p->v[2]};
+
+  const float a = cosmo->a;
+  const float H = cosmo->H;
+  const float a2H = a * a * H;
+
+  /* Calculate the velocity with the Hubble flow */
+  const float v_plus_H_flow[3] = {a2H * dx[0] + dv[0], a2H * dx[1] + dv[1],
+                                  a2H * dx[2] + dv[2]};
+
+  /* Compute the physical relative velocity between the particles */
+  const float dv_physical[3] = {v_plus_H_flow[0] * cosmo->a_inv,
+				v_plus_H_flow[1] * cosmo->a_inv,
+				v_plus_H_flow[2] * cosmo->a_inv};
 
   /* Collect the swallowed angular momentum */
   sp->swallowed_angular_momentum[0] +=
-      gas_mass * (dx[1] * dv[2] - dx[2] * dv[1]);
+      gas_mass * (dx_physical[1] * dv_physical[2] - dx_physical[2] * dv_physical[1]);
   sp->swallowed_angular_momentum[1] +=
-      gas_mass * (dx[2] * dv[0] - dx[0] * dv[2]);
+      gas_mass * (dx_physical[2] * dv_physical[0] - dx_physical[0] * dv_physical[2]);
   sp->swallowed_angular_momentum[2] +=
-      gas_mass * (dx[0] * dv[1] - dx[1] * dv[0]);
+      gas_mass * (dx_physical[0] * dv_physical[1] - dx_physical[1] * dv_physical[0]);
 
   /* Update the sink momentum */
   const float sink_mom[3] = {sink_mass * sp->v[0] + gas_mass * p->v[0],
