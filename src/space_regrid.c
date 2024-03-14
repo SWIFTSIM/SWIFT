@@ -32,30 +32,39 @@
 #include "zoom_region/zoom_regrid.h"
 
 /**
- * @brief Re-build the top-level cell grid in a uniform box.
+ * @brief Get the current h_max.
+ *
+ * If local_cells_with_particles_top is not NULL, then we use the list of local
+ * non-empty top-level cells. If local_cells_with_particles_top is NULL, then we
+ * use all the top-level cells. If the top-level cells are not allocated, then
+ * we run through the particles.
  *
  * @param s The #space.
- * @param verbose Print messages to stdout or not.
+ * @param local_cells_with_particles_top Indices of local non-empty TL cells.
+ * @param nr_local_cells_with_particles Number of local non-empty TL cells.
+ * @param nr_cells Number of TL cells to run over.
+ * @param cell_min The minimum cell size.
+ *
+ * @return The current h_max.
+ *
  */
-void space_regrid_uniform_box(struct space *s, int verbose) {
+float get_current_hmax(struct space *s, int *local_cells_with_particles_top,
+                       int nr_local_cells_with_particles, int nr_cells,
+                       double cell_min) {
 
   const size_t nr_parts = s->nr_parts;
   const size_t nr_sparts = s->nr_sparts;
   const size_t nr_bparts = s->nr_bparts;
   const size_t nr_sinks = s->nr_sinks;
-  const ticks tic = getticks();
-  const integertime_t ti_current = (s->e != NULL) ? s->e->ti_current : 0;
 
   /* Run through the cells and get the current h_max. */
-  // tic = getticks();
-  float h_max = s->cell_min / kernel_gamma / space_stretch;
+  float h_max = cell_min / kernel_gamma / space_stretch;
   if (nr_parts > 0) {
 
     /* Can we use the list of local non-empty top-level cells? */
-    if (s->local_cells_with_particles_top != NULL) {
-      for (int k = 0; k < s->nr_local_cells_with_particles; ++k) {
-        const struct cell *c =
-            &s->cells_top[s->local_cells_with_particles_top[k]];
+    if (local_cells_with_particles_top != NULL) {
+      for (int k = 0; k < nr_local_cells_with_particles; ++k) {
+        const struct cell *c = &s->cells_top[local_cells_with_particles_top[k]];
         if (c->hydro.h_max > h_max) {
           h_max = c->hydro.h_max;
         }
@@ -72,7 +81,7 @@ void space_regrid_uniform_box(struct space *s, int verbose) {
 
       /* Can we instead use all the top-level cells? */
     } else if (s->cells_top != NULL) {
-      for (int k = 0; k < s->nr_cells; k++) {
+      for (int k = 0; k < nr_cells; k++) {
         const struct cell *c = &s->cells_top[k];
         if (c->nodeID == engine_rank && c->hydro.h_max > h_max) {
           h_max = c->hydro.h_max;
@@ -104,6 +113,29 @@ void space_regrid_uniform_box(struct space *s, int verbose) {
       }
     }
   }
+
+  return h_max;
+}
+
+/**
+ * @brief Re-build the top-level cell grid in a uniform box.
+ *
+ * @param s The #space.
+ * @param verbose Print messages to stdout or not.
+ */
+void space_regrid_uniform_box(struct space *s, int verbose) {
+
+  const size_t nr_parts = s->nr_parts;
+  const size_t nr_sparts = s->nr_sparts;
+  const size_t nr_bparts = s->nr_bparts;
+  const size_t nr_sinks = s->nr_sinks;
+  const ticks tic = getticks();
+  const integertime_t ti_current = (s->e != NULL) ? s->e->ti_current : 0;
+
+  /* Get the current h_max. */
+  float h_max = get_current_hmax(s, s->local_cells_with_particles_top,
+                                 s->nr_local_cells_with_particles, s->nr_cells,
+                                 s->cell_min);
 
 /* If we are running in parallel, make sure everybody agrees on
    how large the largest cell should be. */
@@ -389,7 +421,7 @@ void space_regrid_uniform_box(struct space *s, int verbose) {
     // message( "rebuilding upper-level cells took %.3f %s." ,
     // clocks_from_ticks(double)(getticks() - tic), clocks_getunit());
 
-  }      /* re-build upper-level cells? */
+  } /* re-build upper-level cells? */
   else { /* Otherwise, just clean up the cells. */
 
     /* Free the old cells, if they were allocated. */

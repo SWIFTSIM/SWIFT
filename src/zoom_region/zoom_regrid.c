@@ -23,14 +23,12 @@
 /* Config parameters. */
 #include <config.h>
 
-/* This object's header. */
-#include "space.h"
-
 /* Local headers. */
 #include "cell.h"
 #include "engine.h"
 #include "gravity_properties.h"
 #include "scheduler.h"
+#include "space.h"
 #include "zoom_cell.h"
 #include "zoom_init.h"
 #include "zoom_regrid.h"
@@ -63,67 +61,12 @@ void zoom_space_regrid(struct space *s, int verbose) {
   /* Extract the zoom properties. */
   struct zoom_region_properties *zoom_props = s->zoom_props;
 
-  /* Run through the zoom cells and get the current h_max. */
-  const double zoom_cell_min = zoom_props->cell_min;
-  float h_max = zoom_cell_min / kernel_gamma / space_stretch;
-  if (nr_parts > 0) {
-
-    /* Can we use the list of local non-empty top-level cells? */
-    if (zoom_props->local_zoom_cells_with_particles_top != NULL) {
-      for (int k = 0; k < zoom_props->nr_local_zoom_cells_with_particles; ++k) {
-        const struct cell *c =
-            &s->cells_top[zoom_props->local_zoom_cells_with_particles_top[k]];
-
-        if (c->hydro.h_max > h_max) {
-          h_max = c->hydro.h_max;
-        }
-        if (c->stars.h_max > h_max) {
-          h_max = c->stars.h_max;
-        }
-        if (c->black_holes.h_max > h_max) {
-          h_max = c->black_holes.h_max;
-        }
-        if (c->sinks.r_cut_max > h_max) {
-          h_max = c->sinks.r_cut_max / kernel_gamma;
-        }
-      }
-
-      /* Can we instead use all the top-level cells? */
-    } else if (s->cells_top != NULL) {
-      /* Only zoom cells have hydro particles so limit the search to them. */
-      for (int k = zoom_props->nr_zoom_cells; k < s->nr_cells; k++) {
-        const struct cell *c = &s->cells_top[k];
-
-        if (c->nodeID == engine_rank && c->hydro.h_max > h_max) {
-          h_max = c->hydro.h_max;
-        }
-        if (c->nodeID == engine_rank && c->stars.h_max > h_max) {
-          h_max = c->stars.h_max;
-        }
-        if (c->nodeID == engine_rank && c->black_holes.h_max > h_max) {
-          h_max = c->black_holes.h_max;
-        }
-        if (c->nodeID == engine_rank && c->sinks.r_cut_max > h_max) {
-          h_max = c->sinks.r_cut_max / kernel_gamma;
-        }
-      }
-
-      /* Last option: run through the particles */
-    } else {
-      for (size_t k = 0; k < nr_parts; k++) {
-        if (s->parts[k].h > h_max) h_max = s->parts[k].h;
-      }
-      for (size_t k = 0; k < nr_sparts; k++) {
-        if (s->sparts[k].h > h_max) h_max = s->sparts[k].h;
-      }
-      for (size_t k = 0; k < nr_bparts; k++) {
-        if (s->bparts[k].h > h_max) h_max = s->bparts[k].h;
-      }
-      for (size_t k = 0; k < nr_sinks; k++) {
-        if (s->sinks[k].r_cut > h_max) h_max = s->sinks[k].r_cut / kernel_gamma;
-      }
-    }
-  }
+  /* Get the current h_max. */
+  double zoom_cell_min = zoom_props->cell_min;
+  float h_max =
+      get_current_hmax(s, zoom_props->local_zoom_cells_with_particles_top,
+                       zoom_props->nr_local_zoom_cells_with_particles,
+                       zoom_props->nr_zoom_cells, zoom_cell_min);
 
 /* If we are running in parallel, make sure everybody agrees on
    how large the largest cell should be. */
