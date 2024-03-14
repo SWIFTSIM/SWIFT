@@ -840,12 +840,11 @@ INLINE static void sink_prepare_part_sink_formation_gas_criteria(struct engine* 
  * @param si A neighbouring #sink of #p.
  */
 INLINE static void sink_prepare_part_sink_formation_sink_criteria(struct engine* e,
-								 struct cell* c,
-								 struct part* restrict p,
-								 struct xpart* restrict xp,
-								 struct sink* restrict si,
-								 const struct cosmology* cosmo,
-								 const struct sink_props* sink_props) {
+								  struct part* restrict p,
+								  struct xpart* restrict xp,
+								  struct sink* restrict si,
+								  const struct cosmology* cosmo,
+								  const struct sink_props* sink_props) {
   /* Do not continue if the gas cannot form sink for any reason */
   if (!p->sink_data.can_form_sink) {
     return;
@@ -858,14 +857,14 @@ INLINE static void sink_prepare_part_sink_formation_sink_criteria(struct engine*
   const float r_acc_si = si->r_cut * cosmo->a;
 
   /* Comoving distance of particl p */
-  const float px[3] = {(float)(p->x[0] - c->loc[0]),
-                       (float)(p->x[1] - c->loc[1]),
-                       (float)(p->x[2] - c->loc[2])};
+  const float px[3] = {(float)(p->x[0]),
+                       (float)(p->x[1]),
+                       (float)(p->x[2]};
 
   /* Compute the pairwise physical distance */
-  const float six[3] = {(float)(si->x[0] - c->loc[0]),
-                        (float)(si->x[1] - c->loc[1]),
-                        (float)(si->x[2] - c->loc[2])};
+  const float six[3] = {(float)(si->x[0]),
+                        (float)(si->x[1]),
+                        (float)(si->x[2])};
 
   const float dx[3] = {(px[0] - six[0]) * cosmo->a,
                        (px[1] - six[1]) * cosmo->a,
