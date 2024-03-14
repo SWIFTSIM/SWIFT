@@ -858,7 +858,7 @@ INLINE static void sink_prepare_part_sink_formation_sink_criteria(struct engine*
   /* Comoving distance of particl p */
   const float px[3] = {(float)(p->x[0]),
                        (float)(p->x[1]),
-                       (float)(p->x[2]};
+                       (float)(p->x[2])};
 
   /* Compute the pairwise physical distance */
   const float six[3] = {(float)(si->x[0]),
