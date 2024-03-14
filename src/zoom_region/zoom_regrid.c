@@ -133,9 +133,9 @@ void zoom_space_regrid(struct space *s, int verbose) {
       zoom_region_init(s, verbose);
     }
 
-    /* Prepare the uniform box cell and pointer arrays, we'll do the zoom
-     * specific ones below. This will also free tasks and set the cdim, width,
-     * iwidth and cell counts on the space. */
+    /* Prepare the non-zoom specific cell and pointer arrays, we'll do the zoom
+     * specific ones below. This will also free tasks, prepare cell locks and
+     * set the background cdim, width, iwidth and cell counts on the space. */
     space_prepare_cells(s, s->cdim);
 
     /* Allocate the indices of local zoom cells */
