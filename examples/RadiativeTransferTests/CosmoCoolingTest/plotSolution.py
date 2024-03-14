@@ -203,7 +203,7 @@ def get_snapshot_data(snaplist):
 
         data = swiftsimio.load(snap)
         gamma = data.gas.metadata.gas_gamma[0]
-        time = data.metadata.time.copy() - firstdata.metadata.time.copy()
+        time = data.metadata.time.copy() # - firstdata.metadata.time.copy()
         gas = data.gas
         u = gas.internal_energies[:].to(energy_units / mass_units)
         u.convert_to_physical()
@@ -273,6 +273,7 @@ if __name__ == "__main__":
     rhoHeIII_ref = refdata[:, 12]
     rhoe_ref = refdata[:, 13]
     t_ref *= 1e-6  # turn to Myrs
+    t_ref += t[0].value
     mass_fraction_ref = np.empty((t_ref.shape[0], 5))
     mass_fraction_ref[:, 0] = rhoHI_ref / rho_ref
     mass_fraction_ref[:, 1] = rhoHII_ref / rho_ref
@@ -287,16 +288,12 @@ if __name__ == "__main__":
     ax4 = fig.add_subplot(2, 2, 4)
     
     # ax1.set_xscale("log")
-    # ax2.set_xscale("log")
-    # ax3.set_xscale("log")
-    # ax4.set_xscale("log")
     
     # ax1.set_xlim(10, max(t))
     # ax2.set_xlim(10, max(t))
     # ax3.set_xlim(10, max(t))
     # ax4.set_xlim(10, max(t))
-
-    ax1.semilogy(t_ref[1:], T_ref[1:], label="reference", **referenceplotkwargs)
+    ax1.semilogy(t_ref, T_ref, label="reference", **referenceplotkwargs)
     ax1.semilogy(t, T, label="obtained results")
     
     # ax1.scatter(t, T, label="obtained results")

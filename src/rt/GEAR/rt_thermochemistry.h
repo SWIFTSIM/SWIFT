@@ -125,19 +125,23 @@ INLINE static void rt_do_thermochemistry(
   grackle_field_data particle_grackle_data;
   
   gr_float density = hydro_get_comoving_density(p/*, cosmo*/);
-  parttrace(p, "Comoving density %.10e", density);
-  parttrace(p, "Physical density %f", density * cosmo->a3_inv);
+  parttrace(p, "Comoving density %.15e", density);
+  parttrace(p, "Physical density %.15e", density * cosmo->a3_inv);
   /* In rare cases, unphysical solutions can arise with negative densities
    * which won't be fixed in the hydro part until further down the dependency
    * graph. Also, we can have vacuum, in which case we have nothing to do here.
    * So exit early if that is the case. */
   if (density <= 0.) return;
   const float u_minimal = hydro_props->minimal_internal_energy;
-  gr_float internal_energy =
-      max(hydro_get_comoving_internal_energy(p, xp/*, cosmo*/), u_minimal);
-  const float u_old = internal_energy;
-  parttrace(p, "Comoving internal energy %f", u_old);
-  parttrace(p, "Physical internal energy %f", u_old * cosmo->a2_inv);
+
+  /* Physical internal energy */
+  gr_float internal_energy_phys = hydro_get_physical_internal_energy(p, xp, cosmo);
+
+  /* Grackle expects comoving internal energy defined through u' = u / a2 */
+  gr_float internal_energy = max(internal_energy_phys * cosmo->a2_inv, u_minimal);
+  const float u_old = internal_energy_phys;
+  parttrace(p, "Comoving internal energy %.15e", u_old);
+  parttrace(p, "Physical internal energy %.15e", u_old * cosmo->a * cosmo->a);
 
   gr_float species_densities[6];
   rt_tchem_get_species_densities(p, density, species_densities);
@@ -162,8 +166,6 @@ INLINE static void rt_do_thermochemistry(
    * Using a manually allocd and initialized variable here fails with MPI
    * for some reason. */
   
-  parttrace(p, "Grackle density unit %.10e", rt_props->grackle_units.density_units);
-  parttrace(p, "Grackle a_value %f", rt_props->grackle_units.a_value);
   if (local_solve_chemistry(
           &rt_props->grackle_chemistry_data, &rt_props->grackle_chemistry_rates,
           &rt_props->grackle_units, &particle_grackle_data, dt) == 0)
@@ -171,8 +173,9 @@ INLINE static void rt_do_thermochemistry(
 
   /* copy updated grackle data to particle */
   /* update particle internal energy. Grackle had access by reference
-   * to internal_energy */
-  internal_energy = particle_grackle_data.internal_energy[0];
+   * to internal_energy
+   * Convert Grackle comoving internal energy back to physical: u = u' * a2 */
+  internal_energy = particle_grackle_data.internal_energy[0] * cosmo->a * cosmo->a;
   const float u_new = max(internal_energy, u_minimal);
 
   /* Re-do thermochemistry? */
@@ -189,8 +192,7 @@ INLINE static void rt_do_thermochemistry(
   }
 
   /* If we're good, update the particle data from grackle results */
-  //hydro_set_physical_internal_energy(p, xp, cosmo, u_new);
-  hydro_set_comoving_internal_energy(p, u_new);
+  hydro_set_physical_internal_energy(p, xp, cosmo, u_new);
 
   /* Update mass fractions */
   const gr_float one_over_rho = 1. / density;
@@ -276,8 +278,12 @@ __attribute__((always_inline)) INLINE static float rt_tchem_get_tchem_time(
   //gr_float density = hydro_get_physical_density(p, cosmo);
   gr_float density = hydro_get_comoving_density(p);
   const float u_minimal = hydro_props->minimal_internal_energy;
-  gr_float internal_energy =
-      max(hydro_get_comoving_internal_energy(p, xp/*, cosmo*/), u_minimal);
+  
+  /* Physical internal energy */
+  gr_float internal_energy_phys = hydro_get_physical_internal_energy(p, xp, cosmo);
+
+  /* Grackle expects comoving internal energy defined through u' = u / a2 */
+  gr_float internal_energy = max(internal_energy_phys * cosmo->a2_inv, u_minimal);
 
   gr_float species_densities[6];
   rt_tchem_get_species_densities(p, density, species_densities);
