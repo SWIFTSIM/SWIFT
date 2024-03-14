@@ -188,8 +188,6 @@ runner_iact_nonsym_sinks_sink_swallow(const float r2, const float dx[3],
     if ((sj->merger_data.swallow_mass < si->mass) ||
         (sj->merger_data.swallow_mass == si->mass &&
          sj->merger_data.swallow_id < si->id)) {
-      // message("sink %lld wants to swallow sink particle %lld", si->id,
-      // sj->id);
       sj->merger_data.swallow_id = si->id;
       sj->merger_data.swallow_mass = si->mass;
     }
@@ -224,8 +222,6 @@ runner_iact_nonsym_sinks_gas_swallow(const float r2, const float dx[3],
                                      const struct cosmology *cosmo,
                                      const struct gravity_props *grav_props,
                                      const struct sink_props *sink_properties) {
-
-  // message("sink %lld wants to swallow gas particle %lld", si->id, pj->id);
 
   const float r = sqrtf(r2);
   const float f_acc_r_acc = sink_properties->f_acc * ri;
