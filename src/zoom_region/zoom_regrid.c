@@ -57,7 +57,7 @@ void zoom_space_regrid(struct space *s, int verbose) {
   struct zoom_region_properties *zoom_props = s->zoom_props;
 
   /* Get the current h_max. */
-  double zoom_cell_min = zoom_props->cell_min;
+  const double zoom_cell_min = zoom_props->cell_min;
   float h_max =
       space_get_current_hmax(s, zoom_props->local_zoom_cells_with_particles_top,
                              zoom_props->nr_local_zoom_cells_with_particles,
