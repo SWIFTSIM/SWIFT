@@ -290,7 +290,6 @@ void zoom_find_neighbouring_cells(struct space *s, const int verbose) {
             zoom_props->nr_neighbour_cells);
 }
 
-#ifdef SWIFT_DEBUG_CHECKS
 /**
  * @brief Run through all cells and ensure they have the correct cell type and
  * width for their position in s->cells_top.
@@ -298,6 +297,7 @@ void zoom_find_neighbouring_cells(struct space *s, const int verbose) {
  * @param s The space.
  */
 static void zoom_verify_cell_type(struct space *s) {
+#ifdef SWIFT_DEBUG_CHECKS
 
   /* Get the cells array and cell properties */
   struct cell *cells = s->cells_top;
@@ -474,8 +474,10 @@ static void zoom_verify_cell_type(struct space *s) {
         !found_bkg_zoomi_up || !found_bkg_zoomj_up || !found_bkg_zoomk_up)
       error("The background cell and zoom region edges don't match!");
   }
-}
+#else
+  error("zoom_verify_cell_type() called without SWIFT_DEBUG_CHECKS defined");
 #endif
+}
 
 /**
  * @brief Build the TL cells, with a zoom region.
