@@ -1045,10 +1045,11 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
     message("hooking up cells took %.3f %s.",
             clocks_from_ticks(getticks() - tic3), clocks_getunit());
     if (s->with_zoom_region) {
-      message("Have %d local particles in background cells",
+      message("Have %zd local particles in background cells",
               bkg_cell_particles);
-      message("Have %d local particles in buffer cells", buffer_cell_particles);
-      message("Have %d local particles in zoom cells", zoom_cell_particles);
+      message("Have %zd local particles in buffer cells",
+              buffer_cell_particles);
+      message("Have %zd local particles in zoom cells", zoom_cell_particles);
       s->zoom_props->nr_bkg_cell_particles = bkg_cell_particles;
       s->zoom_props->nr_zoom_cell_particles = zoom_cell_particles;
 
