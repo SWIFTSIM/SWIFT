@@ -242,10 +242,26 @@ runner_iact_nonsym_sinks_gas_swallow(const float r2, const float dx[3],
   /* f_acc*r_acc <= r <= r_acc, we perform other checks */
   } else if ((r >= f_acc_r_acc) && (r < ri))  {
 
+     /* Relative velocity between th sinks */
+    const float dv[3] = {pj->v[0] - si->v[0],  pj->v[1] - si->v[1],
+			 pj->v[2] - si->v[2]};
+
+    const float a = cosmo->a;
+    const float H = cosmo->H;
+    const float a2H = a * a * H;
+
+    /* Calculate the velocity with the Hubble flow */
+    const float v_plus_H_flow[3] = {a2H * dx[0] + dv[0], a2H * dx[1] + dv[1],
+				    a2H * dx[2] + dv[2]};
+
     /* Compute the physical relative velocity between the particles */
-    const float dv[3] = {(pj->v[0] - si->v[0]) * cosmo->a_inv,
-                         (pj->v[1] - si->v[1]) * cosmo->a_inv,
-                         (pj->v[2] - si->v[2]) * cosmo->a_inv};
+    const float dv_physical[3] = {v_plus_H_flow[0] * cosmo->a_inv,
+				  v_plus_H_flow[1] * cosmo->a_inv,
+				  v_plus_H_flow[2] * cosmo->a_inv};
+
+    const float dv_physical_squared =  dv_physical[0] * dv_physical[0]
+      + dv_physical[1] * dv_physical[1]
+      + dv_physical[2] * dv_physical[2];
 
     /* Compute the physical distance between the particles */
     const float dx_physical[3] = {dx[0] * cosmo->a, dx[1] * cosmo->a,
@@ -255,9 +271,9 @@ runner_iact_nonsym_sinks_gas_swallow(const float r2, const float dx[3],
     /* Momentum check */
     /* Relative momentum of the gas */
     const float specific_angular_momentum_gas[3] = {
-        dx_physical[1] * dv[2] - dx_physical[2] * dv[1],
-        dx_physical[2] * dv[0] - dx_physical[0] * dv[2],
-        dx_physical[0] * dv[1] - dx_physical[1] * dv[0]};
+        dx_physical[1] * dv_physical[2] - dx_physical[2] * dv_physical[1],
+        dx_physical[2] * dv_physical[0] - dx_physical[0] * dv_physical[2],
+        dx_physical[0] * dv_physical[1] - dx_physical[1] * dv_physical[0]};
     const float L2_gas =
         specific_angular_momentum_gas[0] * specific_angular_momentum_gas[0] +
         specific_angular_momentum_gas[1] * specific_angular_momentum_gas[1] +
@@ -280,7 +296,7 @@ runner_iact_nonsym_sinks_gas_swallow(const float r2, const float dx[3],
     /* Energy check */
     /* Kinetic energy of the gas */
     float E_kin_relative_gas =
-        0.5f * (dv[0] * dv[0] + dv[1] * dv[1] + dv[2] * dv[2]);
+        0.5f * dv_physical_squared;
 
     /* Compute the Newtonian or truncated potential the sink exherts onto the
        gas particle */
