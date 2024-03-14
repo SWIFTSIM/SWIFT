@@ -14,8 +14,8 @@ To simply get started running a zoom simulation see the :doc:`general <../Gettin
    :maxdepth: 2
    :caption: Contents:
 
-   running_a_zoom
    cell_structures
+   running_a_zoom
    zoom_hydrodynamics
    zoom_partitioning
    zoom_snapshots
