@@ -125,10 +125,6 @@ float get_current_hmax(struct space *s, int *local_cells_with_particles_top,
  */
 void space_regrid_uniform_box(struct space *s, int verbose) {
 
-  const size_t nr_parts = s->nr_parts;
-  const size_t nr_sparts = s->nr_sparts;
-  const size_t nr_bparts = s->nr_bparts;
-  const size_t nr_sinks = s->nr_sinks;
   const ticks tic = getticks();
   const integertime_t ti_current = (s->e != NULL) ? s->e->ti_current : 0;
 
