@@ -59,9 +59,9 @@ void zoom_space_regrid(struct space *s, int verbose) {
   /* Get the current h_max. */
   double zoom_cell_min = zoom_props->cell_min;
   float h_max =
-      get_current_hmax(s, zoom_props->local_zoom_cells_with_particles_top,
-                       zoom_props->nr_local_zoom_cells_with_particles,
-                       zoom_props->nr_zoom_cells, zoom_cell_min);
+      space_get_current_hmax(s, zoom_props->local_zoom_cells_with_particles_top,
+                             zoom_props->nr_local_zoom_cells_with_particles,
+                             zoom_props->nr_zoom_cells, zoom_cell_min);
 
 /* If we are running in parallel, make sure everybody agrees on
    how large the largest cell should be. */

@@ -48,9 +48,10 @@
  * @return The current h_max.
  *
  */
-float get_current_hmax(struct space *s, int *local_cells_with_particles_top,
-                       int nr_local_cells_with_particles, int nr_cells,
-                       double cell_min) {
+float space_get_current_hmax(struct space *s,
+                             int *local_cells_with_particles_top,
+                             int nr_local_cells_with_particles, int nr_cells,
+                             double cell_min) {
 
   const size_t nr_parts = s->nr_parts;
   const size_t nr_sparts = s->nr_sparts;
@@ -129,9 +130,9 @@ void space_regrid_uniform_box(struct space *s, int verbose) {
   const integertime_t ti_current = (s->e != NULL) ? s->e->ti_current : 0;
 
   /* Get the current h_max. */
-  float h_max = get_current_hmax(s, s->local_cells_with_particles_top,
-                                 s->nr_local_cells_with_particles, s->nr_cells,
-                                 s->cell_min);
+  float h_max = space_get_current_hmax(s, s->local_cells_with_particles_top,
+                                       s->nr_local_cells_with_particles,
+                                       s->nr_cells, s->cell_min);
 
 /* If we are running in parallel, make sure everybody agrees on
    how large the largest cell should be. */
