@@ -19,7 +19,7 @@
  ******************************************************************************/
 
 /* Config header */
-#include "../../config.h"
+#include <config.h>
 
 /* Standard includes */
 #include <float.h>
@@ -276,11 +276,11 @@ void find_neighbouring_cells(struct space *s, const int verbose) {
                 neighbour_cells_top[zoom_props->nr_neighbour_cells++] = cjd;
               }
             } /* neighbour k loop */
-          }   /* neighbour j loop */
-        }     /* neighbour i loop */
-      }       /* k loop */
-    }         /* j loop */
-  }           /* i loop */
+          } /* neighbour j loop */
+        } /* neighbour i loop */
+      } /* k loop */
+    } /* j loop */
+  } /* i loop */
 
   if (verbose)
     message("%i cells neighbour the zoom region",
