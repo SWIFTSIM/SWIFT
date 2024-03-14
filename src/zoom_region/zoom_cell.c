@@ -482,15 +482,12 @@ static void zoom_verify_cell_type(struct space *s) {
 /**
  * @brief Build the TL cells, with a zoom region.
  *
- * This replaces the loop in space_regrid when running with a zoom region.
+ * This replaces the loop in space_regrid when running with a zoom region. It
+ * constructs all zoom, background and buffer cells (if required) and sets their
+ * initial values.
  *
- * Construct an additional set of TL "zoom" cells embedded within the TL cell
- * structure with the dimensions of each cell structure being the same (with
- * differing widths).
- *
- * Therefore the new TL cell structure is 2*cdim**3, with the "background" TL
- * cells occupying the first half of the TL cell list, and the "zoom" TL cells
- * ocupying the second half.
+ * Zoom cells occupy the first cells in the cells array, followed by background
+ * cells and then buffer cells (if required).
  *
  * @param s The space.
  * @param ti_current The current time.
