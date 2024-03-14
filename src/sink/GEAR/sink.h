@@ -730,7 +730,6 @@ __attribute__((always_inline)) INLINE static void sink_store_potential_in_part(
  * @param xpi The #xpart data of the particle #pi.
  */
 INLINE static void sink_prepare_part_sink_formation_gas_criteria(struct engine* e,
-								 struct cell* c,
 								 struct part* restrict p,
 								 struct xpart* restrict xp,
 								 struct part* restrict pi,
@@ -750,9 +749,9 @@ INLINE static void sink_prepare_part_sink_formation_gas_criteria(struct engine* 
   const float r_acc_p = sink_props->cut_off_radius * cosmo->a; 
 
   /* Comoving distance of particl p */
-  const float px[3] = {(float)(p->x[0] - c->loc[0]),
-                       (float)(p->x[1] - c->loc[1]),
-                       (float)(p->x[2] - c->loc[2])};
+  const float px[3] = {(float)(p->x[0]),
+                       (float)(p->x[1]),
+                       (float)(p->x[2])};
 
   /* Compute the physical velocity */
   const float v[3] = {(p->v[0]) * cosmo->a_inv, (p->v[1]) * cosmo->a_inv,
@@ -762,9 +761,9 @@ INLINE static void sink_prepare_part_sink_formation_gas_criteria(struct engine* 
      not. This is done in runner_prepare_part_sink_formation(). */
  
   /* Compute the pairwise physical distance */
-  const float pix[3] = {(float)(pi->x[0] - c->loc[0]),
-			(float)(pi->x[1] - c->loc[1]),
-			(float)(pi->x[2] - c->loc[2])};
+  const float pix[3] = {(float)(pi->x[0]),
+			(float)(pi->x[1]),
+			(float)(pi->x[2])};
 
   const float dx[3] = {(px[0] - pix[0]) * cosmo->a,
 		       (px[1] - pix[1]) * cosmo->a,
