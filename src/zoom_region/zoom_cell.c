@@ -159,7 +159,7 @@ void zoom_find_void_cells(struct space *s, const int verbose) {
     if (cid < offset || cid >= offset + ncells)
       error("Void cell index is out of range (cid=%d, offset=%d, ncells=%d)",
             cid, offset, ncells);
-    if (cell_inside_zoom_region(&cells[cid], s) == 0)
+    if (zoom_cell_inside_zoom_region(&cells[cid], s) == 0)
       error("Void cell is not inside the zoom region (cid=%d)", cid);
   }
 #endif
@@ -206,11 +206,11 @@ void zoom_find_empty_cells(struct space *s, const int verbose) {
 #ifdef SWIFT_DEBUG_CHECKS
   /* Ensure the empty cells in the zoom region are correctly labelled */
   for (int cid = offset; cid < offset + ncells; cid++) {
-    if (cell_inside_buffer_region(&cells[cid], s) &&
+    if (zoom_cell_inside_buffer_region(&cells[cid], s) &&
         cells[cid].subtype != cell_subtype_empty)
       error("Empty cell is not correctly labelled (cid=%d, c->subtype=%s)", cid,
             cellID_names[cells[cid].subtype]);
-    if (cell_inside_zoom_region(&cells[cid], s) &&
+    if (zoom_cell_inside_zoom_region(&cells[cid], s) &&
         cells[cid].subtype != cell_subtype_empty)
       error(
           "Background cell above the zoom region isn't correctly labelled "
