@@ -26,7 +26,6 @@
 
 #include "rt_species.h"
 #include "rt_properties.h"
-#include "chemistry.h"
 
 /**
  * @brief compute the mean molecular weight mu for given
