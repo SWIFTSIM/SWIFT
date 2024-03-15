@@ -37,9 +37,6 @@
  * @brief Re-build the top-level cell grid with a zoom region.
  *
  * @param s The #space.
- * @param gravity_properties The properties of gravity, used to calculate
- *                           neighbouring cells.
- * @param nr_nodes The number of MPI ranks.
  * @param verbose Print messages to stdout or not.
  */
 void zoom_space_regrid(struct space *s, int verbose) {
