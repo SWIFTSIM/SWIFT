@@ -97,7 +97,7 @@ __attribute__((always_inline)) INLINE static float j_BH(
 
   const float J_BH =
       fabs(bp->subgrid_mass * bp->subgrid_mass * bp->spin *
-            constants->const_newton_G / constants->const_speed_light_c);
+           constants->const_newton_G / constants->const_speed_light_c);
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (J_BH <= 0.) {
@@ -1279,10 +1279,10 @@ __attribute__((always_inline)) INLINE static float merger_spin_evolve(
      this total angular momentum. Hence here we compute the direction. */
   const float j_BH_1 =
       fabs(bpi->subgrid_mass * bpi->subgrid_mass * bpi->spin *
-            constants->const_newton_G / constants->const_speed_light_c);
+           constants->const_newton_G / constants->const_speed_light_c);
   const float j_BH_2 =
       fabs(bpj->subgrid_mass * bpj->subgrid_mass * bpj->spin *
-            constants->const_newton_G / constants->const_speed_light_c);
+           constants->const_newton_G / constants->const_speed_light_c);
   float total_angular_momentum_direction[3] = {
       j_BH_1 * spin_vec1[0] + j_BH_2 * spin_vec2[0] +
           orbital_angular_momentum[0],
