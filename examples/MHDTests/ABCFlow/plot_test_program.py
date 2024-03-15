@@ -3,10 +3,12 @@ import os
 from glob import glob
 import numpy as np
 import matplotlib.pyplot as plt
+from scipy.signal import find_peaks
+
 
 results_directory_name = "test_results/"
-tau_max = 60
-take_last = int(10 / (5e-2))
+tau_max = 200
+take_last = int(100 / (5e-2))
 
 
 def load_test_run_parameters():
@@ -42,6 +44,7 @@ def select_runs_to_plot(run_data, the_key):
 
 
 def find_growth_rate(the_time, B_field, nlast=take_last):
+    B_field = np.log(B_field)
     l = len(B_field)
     B_field_cut = B_field[l - 1 - nlast : -1]
     time_cut = the_time[l - 1 - nlast : -1]
@@ -49,6 +52,25 @@ def find_growth_rate(the_time, B_field, nlast=take_last):
     res = np.polyfit(time_cut, B_field_cut, 1)[0]
     return np.round(res, 3)
 
+def find_frequency(the_time, B_field, nlast=take_last):
+    growth_rate = find_growth_rate(the_time, B_field, nlast=take_last)
+    # get oscillation
+    B_field *= np.exp(-growth_rate*the_time)
+    l = len(B_field)
+    B_field_cut = B_field[l - 1 - nlast : -1]
+    time_cut = the_time[l - 1 - nlast : -1]
+    peaks, _ = find_peaks(B_field_cut, height=0,width = 10)
+    if len(peaks>3):
+        peak_times = np.array([time_cut[peaks[i]] for i in range(len(peaks))])
+        peak_Amps = np.array([B_field_cut[peaks[i]] for i in range(len(peaks))])
+        peak_time_diff = np.diff(peak_times)
+        omega = 2*np.pi/peak_time_diff
+        mean_omega = np.mean(omega)
+        sigma_omega = np.std(omega)
+    else:
+        mean_omega = -1
+        sigma_omega = -1
+    return round(mean_omega,4), round(sigma_omega,4)
 
 def plot_info(run_data, the_key):
     fig, ax = plt.subplots(1, 3, sharex=True, figsize=(15, 5))
@@ -102,7 +124,8 @@ def plot_info(run_data, the_key):
         Mh = Mh[mask]
         divB = divB[mask]
 
-        growth_rate = find_growth_rate(Time, np.log(B))
+        growth_rate = find_growth_rate(Time, B)
+        frequency,_ = find_frequency(Time, B, nlast=take_last)
         #saturated_v = np.mean(vrms[-take_last:])
         the_name = (
             "#"
@@ -117,6 +140,8 @@ def plot_info(run_data, the_key):
             + str(run_data_slice["eta"].values[0])
             + "_<s>="
             + str(round(growth_rate,4))
+            + "_$\omega$="
+            + str(round(frequency,4))
         )
         ax[0].plot(Time, B)
         ax[2].plot(Time, divB, label=the_name)
