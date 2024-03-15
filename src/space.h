@@ -575,6 +575,11 @@ void space_recycle_list(struct space *s, struct cell *cell_list_begin,
                         struct cell *cell_list_end,
                         struct gravity_tensors *multipole_list_begin,
                         struct gravity_tensors *multipole_list_end);
+float space_get_current_hmax(struct space *s,
+                             int *local_cells_with_particles_top,
+                             int nr_local_cells_with_particles, int nr_cells,
+                             double cell_min);
+void space_prepare_cells(struct space *s, const int cdim[3]);
 void space_regrid(struct space *s, int verbose);
 void space_allocate_extras(struct space *s, int verbose);
 void space_split(struct space *s, int verbose);

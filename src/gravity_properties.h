@@ -170,7 +170,7 @@ void gravity_props_init(struct gravity_props *p, struct swift_params *params,
                         const int has_baryons, const int has_DM,
                         const int has_neutrinos, const int is_zoom_simulation,
                         const int periodic, const double dim[3],
-                        const int cdim[3], const double zoom_width[3]);
+                        const int cdim[3]);
 void gravity_props_update(struct gravity_props *p,
                           const struct cosmology *cosmo);
 void gravity_props_update_MAC_choice(struct gravity_props *p);
