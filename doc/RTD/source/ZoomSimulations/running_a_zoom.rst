@@ -4,7 +4,7 @@
 Running a Zoom Simulation
 =========================
 
-To run a zoom simulation all you need is the command line option, a set of zoom initial conditions, and the ``ZoomRegion`` parameter file block. Each of these if described below.
+To run a zoom simulation all you need is the command line option, a set of zoom initial conditions, and the ``ZoomRegion`` parameter file block. Each of these is described below.
 
 Command Line Option
 -------------------
