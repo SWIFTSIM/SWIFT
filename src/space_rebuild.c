@@ -880,9 +880,9 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 #endif
 
   /* Define variables to count particles in cell types */
-  int bkg_cell_particles = 0;
-  int buffer_cell_particles = 0;
-  int zoom_cell_particles = 0;
+  size_t bkg_cell_particles = 0;
+  size_t buffer_cell_particles = 0;
+  size_t zoom_cell_particles = 0;
 
   /* Hook the cells up to the parts. Make list of local and non-empty cells */
   const ticks tic3 = getticks();
@@ -940,23 +940,36 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
       c->sinks.count_total = c->sinks.count + space_extra_sinks;
       c->black_holes.count_total = c->black_holes.count + space_extra_bparts;
 
-      /* Add the number of particles to the correct cell counter. */
-      if (c->type == cell_type_zoom) {
-        zoom_cell_particles +=
-            (c->hydro.count + c->grav.count + c->stars.count + c->sinks.count +
-             c->black_holes.count);
-      } else if (c->type == cell_type_buffer) {
-        buffer_cell_particles +=
-            (c->hydro.count + c->grav.count + c->stars.count + c->sinks.count +
-             c->black_holes.count);
-      } else if (c->type == cell_type_bkg) {
-        bkg_cell_particles += (c->hydro.count + c->grav.count + c->stars.count +
-                               c->sinks.count + c->black_holes.count);
-      } else if (c->type == cell_type_regular && s->with_zoom_region) {
-        error(
-            "When running with a zoom region, all cells should be of type "
-            "Zoom, Buffer or Background, not %s",
-            cellID_names[c->type]);
+      /* Add the number of particles to the correct cell counter for
+       * reporting to the user. */
+      switch (c->type) {
+        case cell_type_zoom:
+          zoom_cell_particles +=
+              (c->hydro.count + c->grav.count + c->stars.count +
+               c->sinks.count + c->black_holes.count);
+          break;
+        case cell_type_buffer:
+          buffer_cell_particles +=
+              (c->hydro.count + c->grav.count + c->stars.count +
+               c->sinks.count + c->black_holes.count);
+          break;
+        case cell_type_bkg:
+          bkg_cell_particles +=
+              (c->hydro.count + c->grav.count + c->stars.count +
+               c->sinks.count + c->black_holes.count);
+          break;
+        case cell_type_regular:
+          /* Only check this case when debugging. With a zoom region we
+           * shouldn't get any regular cells. */
+          if (s->with_zoom_region) {
+            error(
+                "When running with a zoom region, all cells should be of type "
+                "Zoom, Buffer or Background, not %s",
+                cellID_names[c->type]);
+          }
+          break;
+        default:
+          error("Unknown cell type %d", c->type);
       }
 
       finger = &finger[c->hydro.count_total];
@@ -970,19 +983,25 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
       s->local_cells_top[s->nr_local_cells] = k;
       s->nr_local_cells++;
       if (s->with_zoom_region) {
-        if (c->type == cell_type_zoom) {
-          s->zoom_props
-              ->local_zoom_cells_top[s->zoom_props->nr_local_zoom_cells] = k;
-          s->zoom_props->nr_local_zoom_cells++;
-        } else if (c->type == cell_type_buffer) {
-          s->zoom_props
-              ->local_buffer_cells_top[s->zoom_props->nr_local_buffer_cells] =
-              k;
-          s->zoom_props->nr_local_buffer_cells++;
-        } else {
-          s->zoom_props
-              ->local_bkg_cells_top[s->zoom_props->nr_local_bkg_cells] = k;
-          s->zoom_props->nr_local_bkg_cells++;
+        switch (c->type) {
+          case cell_type_zoom:
+            s->zoom_props
+                ->local_zoom_cells_top[s->zoom_props->nr_local_zoom_cells] = k;
+            s->zoom_props->nr_local_zoom_cells++;
+            break;
+          case cell_type_buffer:
+            s->zoom_props
+                ->local_buffer_cells_top[s->zoom_props->nr_local_buffer_cells] =
+                k;
+            s->zoom_props->nr_local_buffer_cells++;
+            break;
+          case cell_type_bkg:
+            s->zoom_props
+                ->local_bkg_cells_top[s->zoom_props->nr_local_bkg_cells] = k;
+            s->zoom_props->nr_local_bkg_cells++;
+            break;
+          default:
+            error("Unknown cell type %d", c->type);
         }
       }
     }
@@ -993,18 +1012,24 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
       s->local_cells_with_particles_top[s->nr_local_cells_with_particles] = k;
       s->nr_local_cells_with_particles++;
       if (s->with_zoom_region) {
-        if (c->type == cell_type_zoom) {
-          s->zoom_props->local_zoom_cells_with_particles_top
-              [s->zoom_props->nr_local_zoom_cells_with_particles] = k;
-          s->zoom_props->nr_local_zoom_cells_with_particles++;
-        } else if (c->type == cell_type_buffer) {
-          s->zoom_props->local_buffer_cells_with_particles_top
-              [s->zoom_props->nr_local_buffer_cells_with_particles] = k;
-          s->zoom_props->nr_local_buffer_cells_with_particles++;
-        } else {
-          s->zoom_props->local_bkg_cells_with_particles_top
-              [s->zoom_props->nr_local_bkg_cells_with_particles] = k;
-          s->zoom_props->nr_local_bkg_cells_with_particles++;
+        switch (c->type) {
+          case cell_type_zoom:
+            s->zoom_props->local_zoom_cells_with_particles_top
+                [s->zoom_props->nr_local_zoom_cells_with_particles] = k;
+            s->zoom_props->nr_local_zoom_cells_with_particles++;
+            break;
+          case cell_type_buffer:
+            s->zoom_props->local_buffer_cells_with_particles_top
+                [s->zoom_props->nr_local_buffer_cells_with_particles] = k;
+            s->zoom_props->nr_local_buffer_cells_with_particles++;
+            break;
+          case cell_type_bkg:
+            s->zoom_props->local_bkg_cells_with_particles_top
+                [s->zoom_props->nr_local_bkg_cells_with_particles] = k;
+            s->zoom_props->nr_local_bkg_cells_with_particles++;
+            break;
+          default:
+            error("Unknown cell type %d", c->type);
         }
       }
     }
@@ -1018,10 +1043,11 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
     message("hooking up cells took %.3f %s.",
             clocks_from_ticks(getticks() - tic3), clocks_getunit());
     if (s->with_zoom_region) {
-      message("Have %d local particles in background cells",
+      message("Have %zd local particles in background cells",
               bkg_cell_particles);
-      message("Have %d local particles in buffer cells", buffer_cell_particles);
-      message("Have %d local particles in zoom cells", zoom_cell_particles);
+      message("Have %zd local particles in buffer cells",
+              buffer_cell_particles);
+      message("Have %zd local particles in zoom cells", zoom_cell_particles);
       s->zoom_props->nr_bkg_cell_particles = bkg_cell_particles;
       s->zoom_props->nr_zoom_cell_particles = zoom_cell_particles;
 
