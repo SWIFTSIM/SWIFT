@@ -958,7 +958,6 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
               (c->hydro.count + c->grav.count + c->stars.count +
                c->sinks.count + c->black_holes.count);
           break;
-#ifdef SWIFT_DEBUG_CHECKS
         case cell_type_regular:
           /* Only check this case when debugging. With a zoom region we
            * shouldn't get any regular cells. */
@@ -969,7 +968,6 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
                 cellID_names[c->type]);
           }
           break;
-#endif
         default:
           error("Unknown cell type %d", c->type);
       }
