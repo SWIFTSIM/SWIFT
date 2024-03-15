@@ -31,4 +31,5 @@ void zoom_construct_tl_cells(struct space *s, const integertime_t ti_current,
 
 /* Linking zoom cells to void leaves. */
 void link_zoom_to_void(struct space *s, struct cell *c);
+
 #endif /* SWIFT_ZOOM_CELL_H */
