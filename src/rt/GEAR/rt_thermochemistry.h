@@ -76,7 +76,13 @@ __attribute__((always_inline)) INLINE static void rt_tchem_first_init_part(
       p->rt_data.tchem.mass_fraction[rt_species_HM] = zero;
       p->rt_data.tchem.mass_fraction[rt_species_H2I] = zero;
       p->rt_data.tchem.mass_fraction[rt_species_H2II] = zero;
-  #endif
+
+  #ifdef SWIFT_RT_GRACKLE_DUST
+     p->rt_data.cooling.dust_mass = 0.f;
+     for (int i=0; i<chemistry_element_count; i++) p->rt_data.cooling.dust_mass_fraction[i] = 0.f;
+     p->rt_data.cooling.dust_temperature = 0.f;
+  #endif /* For dust model. */
+  #endif /* For grackle mode 2*/
 
   /* pretend you have nonzero density so the check doesn't reset the mass
    * fractions */
@@ -148,7 +154,7 @@ INLINE static void rt_do_thermochemistry(
   const float u_old = internal_energy;
 
   gr_float species_densities[RT_N_SPECIES];
-  gr_float species_extra[rt_species_extra_count] = {0};
+  gr_float species_extra[rt_species_extra_count];
   rt_tchem_get_species_densities(p, density, species_densities, species_extra, rt_props);
 
   float radiation_energy_density[RT_NGROUPS];

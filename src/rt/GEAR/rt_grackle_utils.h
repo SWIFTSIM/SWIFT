@@ -36,10 +36,8 @@
   #define RT_N_SPECIES 6
 #elif GEARRT_GRACKLE_MODE == 2
   #define RT_N_SPECIES 9
-  #ifdef SWIFT_RT_GRACKLE_DUST
-    #undef RT_N_SPECIES
-    #define RT_N_SPECIES 46
-  #endif
+#elif GEARRT_GRACKLE_MODE == 3
+  #define RT_N_SPECIES 12
 #else
   #define RT_N_SPECIES 0
 #endif
