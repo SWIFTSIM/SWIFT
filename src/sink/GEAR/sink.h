@@ -693,23 +693,17 @@ INLINE static void sink_star_formation_give_new_velocity(const struct engine* e,
   p_swallowed[1] = - b[0]/x_sink[2] + x_sink[1]/(2.0*x_sink[2])*long_sum;
   p_swallowed[2] = 0.5*long_sum;
 
-  /* Update the star velocity. Do not forget to update the gart velocity */
-  sp->v[0] = p_swallowed[0]/sp->mass;
-  sp->v[1] = p_swallowed[1]/sp->mass;
-  sp->v[2] = p_swallowed[2]/sp->mass;
-  sp->gpart->v_full[0] = sp->v[0];
-  sp->gpart->v_full[1] = sp->v[1];
-  sp->gpart->v_full[2] = sp->v[2];
 
   /* Update the star velocity. Do not forget to update the gart velocity */
   double fraction = sp->mass / sink_mass_tot_before_spawning;
-  sp->v[0] += fraction*p_swallowed[0]/sp->mass;
-  sp->v[1] += fraction*p_swallowed[1]/sp->mass;
-  sp->v[2] += fraction*p_swallowed[2]/sp->mass;
+  sp->v[0] = si->v[0] + fraction*p_swallowed[0]/sp->mass;
+  sp->v[1] = si->v[1] + fraction*p_swallowed[1]/sp->mass;
+  sp->v[2] = si->v[2] + fraction*p_swallowed[2]/sp->mass;
   sp->gpart->v_full[0] = sp->v[0];
   sp->gpart->v_full[1] = sp->v[1];
   sp->gpart->v_full[2] = sp->v[2];
   message("New star velocity: v = (%lf %lf %lf)", sp->v[0], sp->v[1], sp->v[2]);
+  message("Sink velocity: v = (%lf %lf %lf)", si->v[0], si->v[1], si->v[2]);
 
   /* Update the swallowed momentum to subtract what was given to the star */
   p_swallowed[0] -= fraction*p_swallowed[0];
