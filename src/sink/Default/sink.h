@@ -276,7 +276,7 @@ __attribute__((always_inline)) INLINE static void sink_store_potential_in_part(
  * @param xpi The #xpart data of the particle #pi.
  */
 INLINE static void sink_prepare_part_sink_formation_gas_criteria(
-    struct engine* e, struct cell* c, struct part* restrict p,
+    struct engine* e, struct part* restrict p,
     struct xpart* restrict xp, struct part* restrict pi,
     struct xpart* restrict xpi, const struct cosmology* cosmo,
     const struct sink_props* sink_props) {}
@@ -292,7 +292,7 @@ INLINE static void sink_prepare_part_sink_formation_gas_criteria(
  * @param si A neighbouring #sink of #p.
  */
 INLINE static void sink_prepare_part_sink_formation_sink_criteria(
-    struct engine* e, struct cell* c, struct part* restrict p,
+    struct engine* e, struct part* restrict p,
     struct xpart* restrict xp, struct sink* restrict si,
     const struct cosmology* cosmo, const struct sink_props* sink_props) {}
 

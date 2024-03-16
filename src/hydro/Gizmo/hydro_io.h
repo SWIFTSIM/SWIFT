@@ -207,7 +207,7 @@ INLINE static void hydro_write_particles(const struct part* parts,
       "co-moving positions of the particles");
 
   list[2] =
-      io_make_output_field("Masses", FLOAT, 1, UNIT_CONV_MASS, 1.f, parts,
+      io_make_output_field("Masses", FLOAT, 1, UNIT_CONV_MASS, 0.f, parts,
                            conserved.mass, "Co-moving masses of the particles");
 
   list[3] = io_make_output_field(

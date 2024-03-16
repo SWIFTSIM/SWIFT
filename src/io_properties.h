@@ -107,6 +107,9 @@ struct io_props {
   /* Dimension (1D, 3D, ...) */
   int dimension;
 
+  /* Has this entry been filled */
+  int is_used;
+
   /* Is it compulsory ? (input only) */
   enum DATA_IMPORTANCE importance;
 
@@ -250,6 +253,7 @@ INLINE static struct io_props io_make_input_field_(
 
   safe_strcpy(r.name, name, FIELD_BUFFER_SIZE);
   r.type = type;
+  r.is_used = 1;
   r.dimension = dimension;
   r.importance = importance;
   r.units = units;
@@ -303,6 +307,7 @@ INLINE static struct io_props io_make_output_field_(
     safe_strcpy(r.description, description, DESCRIPTION_BUFFER_SIZE);
   }
   r.type = type;
+  r.is_used = 1;
   r.dimension = dimension;
   r.importance = UNUSED;
   r.units = units;
@@ -355,6 +360,7 @@ INLINE static struct io_props io_make_output_field_convert_part_INT(
     safe_strcpy(r.description, description, DESCRIPTION_BUFFER_SIZE);
   }
   r.type = type;
+  r.is_used = 1;
   r.dimension = dimension;
   r.importance = UNUSED;
   r.units = units;
@@ -400,6 +406,7 @@ INLINE static struct io_props io_make_output_field_convert_part_FLOAT(
     safe_strcpy(r.description, description, DESCRIPTION_BUFFER_SIZE);
   }
   r.type = type;
+  r.is_used = 1;
   r.dimension = dimension;
   r.importance = UNUSED;
   r.units = units;
@@ -445,6 +452,7 @@ INLINE static struct io_props io_make_output_field_convert_part_DOUBLE(
     safe_strcpy(r.description, description, DESCRIPTION_BUFFER_SIZE);
   }
   r.type = type;
+  r.is_used = 1;
   r.dimension = dimension;
   r.importance = UNUSED;
   r.units = units;
@@ -490,6 +498,7 @@ INLINE static struct io_props io_make_output_field_convert_part_LONGLONG(
     safe_strcpy(r.description, description, DESCRIPTION_BUFFER_SIZE);
   }
   r.type = type;
+  r.is_used = 1;
   r.dimension = dimension;
   r.importance = UNUSED;
   r.units = units;
@@ -543,6 +552,7 @@ INLINE static struct io_props io_make_output_field_convert_gpart_INT(
     safe_strcpy(r.description, description, DESCRIPTION_BUFFER_SIZE);
   }
   r.type = type;
+  r.is_used = 1;
   r.dimension = dimension;
   r.importance = UNUSED;
   r.units = units;
@@ -586,6 +596,7 @@ INLINE static struct io_props io_make_output_field_convert_gpart_FLOAT(
     safe_strcpy(r.description, description, DESCRIPTION_BUFFER_SIZE);
   }
   r.type = type;
+  r.is_used = 1;
   r.dimension = dimension;
   r.importance = UNUSED;
   r.units = units;
@@ -629,6 +640,7 @@ INLINE static struct io_props io_make_output_field_convert_gpart_DOUBLE(
     safe_strcpy(r.description, description, DESCRIPTION_BUFFER_SIZE);
   }
   r.type = type;
+  r.is_used = 1;
   r.dimension = dimension;
   r.importance = UNUSED;
   r.units = units;
@@ -672,6 +684,7 @@ INLINE static struct io_props io_make_output_field_convert_gpart_LONGLONG(
     safe_strcpy(r.description, description, DESCRIPTION_BUFFER_SIZE);
   }
   r.type = type;
+  r.is_used = 1;
   r.dimension = dimension;
   r.importance = UNUSED;
   r.units = units;
@@ -724,6 +737,7 @@ INLINE static struct io_props io_make_output_field_convert_spart_INT(
     safe_strcpy(r.description, description, DESCRIPTION_BUFFER_SIZE);
   }
   r.type = type;
+  r.is_used = 1;
   r.dimension = dimension;
   r.importance = UNUSED;
   r.units = units;
@@ -767,6 +781,7 @@ INLINE static struct io_props io_make_output_field_convert_spart_FLOAT(
     safe_strcpy(r.description, description, DESCRIPTION_BUFFER_SIZE);
   }
   r.type = type;
+  r.is_used = 1;
   r.dimension = dimension;
   r.importance = UNUSED;
   r.units = units;
@@ -810,6 +825,7 @@ INLINE static struct io_props io_make_output_field_convert_spart_DOUBLE(
     safe_strcpy(r.description, description, DESCRIPTION_BUFFER_SIZE);
   }
   r.type = type;
+  r.is_used = 1;
   r.dimension = dimension;
   r.importance = UNUSED;
   r.units = units;
@@ -853,6 +869,7 @@ INLINE static struct io_props io_make_output_field_convert_spart_LONGLONG(
     safe_strcpy(r.description, description, DESCRIPTION_BUFFER_SIZE);
   }
   r.type = type;
+  r.is_used = 1;
   r.dimension = dimension;
   r.importance = UNUSED;
   r.units = units;
@@ -905,6 +922,7 @@ INLINE static struct io_props io_make_output_field_convert_bpart_INT(
     safe_strcpy(r.description, description, DESCRIPTION_BUFFER_SIZE);
   }
   r.type = type;
+  r.is_used = 1;
   r.dimension = dimension;
   r.importance = UNUSED;
   r.units = units;
@@ -948,6 +966,7 @@ INLINE static struct io_props io_make_output_field_convert_bpart_FLOAT(
     safe_strcpy(r.description, description, DESCRIPTION_BUFFER_SIZE);
   }
   r.type = type;
+  r.is_used = 1;
   r.dimension = dimension;
   r.importance = UNUSED;
   r.units = units;
@@ -991,6 +1010,7 @@ INLINE static struct io_props io_make_output_field_convert_bpart_DOUBLE(
     safe_strcpy(r.description, description, DESCRIPTION_BUFFER_SIZE);
   }
   r.type = type;
+  r.is_used = 1;
   r.dimension = dimension;
   r.importance = UNUSED;
   r.units = units;
@@ -1034,6 +1054,7 @@ INLINE static struct io_props io_make_output_field_convert_bpart_LONGLONG(
     safe_strcpy(r.description, description, DESCRIPTION_BUFFER_SIZE);
   }
   r.type = type;
+  r.is_used = 1;
   r.dimension = dimension;
   r.importance = UNUSED;
   r.units = units;
@@ -1086,6 +1107,7 @@ INLINE static struct io_props io_make_output_field_convert_sink_INT(
     safe_strcpy(r.description, description, DESCRIPTION_BUFFER_SIZE);
   }
   r.type = type;
+  r.is_used = 1;
   r.dimension = dimension;
   r.importance = UNUSED;
   r.units = units;
@@ -1129,6 +1151,7 @@ INLINE static struct io_props io_make_output_field_convert_sink_FLOAT(
     safe_strcpy(r.description, description, DESCRIPTION_BUFFER_SIZE);
   }
   r.type = type;
+  r.is_used = 1;
   r.dimension = dimension;
   r.importance = UNUSED;
   r.units = units;
@@ -1172,6 +1195,7 @@ INLINE static struct io_props io_make_output_field_convert_sink_DOUBLE(
     safe_strcpy(r.description, description, DESCRIPTION_BUFFER_SIZE);
   }
   r.type = type;
+  r.is_used = 1;
   r.dimension = dimension;
   r.importance = UNUSED;
   r.units = units;
@@ -1215,6 +1239,7 @@ INLINE static struct io_props io_make_output_field_convert_sink_LONGLONG(
     safe_strcpy(r.description, description, DESCRIPTION_BUFFER_SIZE);
   }
   r.type = type;
+  r.is_used = 1;
   r.dimension = dimension;
   r.importance = UNUSED;
   r.units = units;

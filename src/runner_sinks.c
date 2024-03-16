@@ -957,7 +957,7 @@ void runner_do_prepare_part_sink_formation(struct runner* r,
     struct xpart* restrict xpi = &xparts[i];
 
     /* Compute the quantities required to later decide to form a sink or not. */
-    sink_prepare_part_sink_formation_gas_criteria(e, c, p, xp, pi, xpi, cosmo, sink_props) ;
+    sink_prepare_part_sink_formation_gas_criteria(e, p, xp, pi, xpi, cosmo, sink_props) ;
   } /* End of gas neighbour loop */
 
   /* Shall we reset the values of the energies for the next timestep? No, it is
@@ -975,7 +975,7 @@ void runner_do_prepare_part_sink_formation(struct runner* r,
     struct sink* restrict si = &sinks[i];
 
     /* Compute the quantities required to later decide to form a sink or not. */
-    sink_prepare_part_sink_formation_sink_criteria(e, c, p, xp, si, cosmo, sink_props);
+    sink_prepare_part_sink_formation_sink_criteria(e, p, xp, si, cosmo, sink_props);
 
   } /* End of sink neighbour loop */
 }
