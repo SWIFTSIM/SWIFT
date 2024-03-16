@@ -206,7 +206,7 @@ void zoom_space_regrid(struct space *s, int verbose) {
     /* Construct the cell grids. */
     zoom_construct_tl_cells(s, ti_current, verbose);
 
-  } /* re-build upper-level cells? */
+  }      /* re-build upper-level cells? */
   else { /* Otherwise, just clean up the cells. */
 
     /* Free the old cells, if they were allocated. */
