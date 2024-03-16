@@ -623,46 +623,46 @@ INLINE static void sink_star_formation_separate_particles(
   }
 #endif
 
-  /* Move a bit the particle in order to avoid
-     division by 0.
-  */
-  const float max_displacement = 0.1;
-  const double delta_x =
-      2.f * random_unit_interval(si->id, e->ti_current,
-                                 (enum random_number_type)0) -
-      1.f;
-  const double delta_y =
-      2.f * random_unit_interval(si->id, e->ti_current,
-                                 (enum random_number_type)1) -
-      1.f;
-  const double delta_z =
-      2.f * random_unit_interval(si->id, e->ti_current,
-                                 (enum random_number_type)2) -
-      1.f;
+  /* /\* Move a bit the particle in order to avoid */
+  /*    division by 0. */
+  /* *\/ */
+  /* const float max_displacement = 0.1; */
+  /* const double delta_x = */
+  /*     2.f * random_unit_interval(si->id, e->ti_current, */
+  /*                                (enum random_number_type)0) - */
+  /*     1.f; */
+  /* const double delta_y = */
+  /*     2.f * random_unit_interval(si->id, e->ti_current, */
+  /*                                (enum random_number_type)1) - */
+  /*     1.f; */
+  /* const double delta_z = */
+  /*     2.f * random_unit_interval(si->id, e->ti_current, */
+  /*                                (enum random_number_type)2) - */
+  /*     1.f; */
 
-  sp->x[0] += delta_x * max_displacement * si->r_cut;
-  sp->x[1] += delta_y * max_displacement * si->r_cut;
-  sp->x[2] += delta_z * max_displacement * si->r_cut;
+  /* sp->x[0] += delta_x * max_displacement * si->r_cut; */
+  /* sp->x[1] += delta_y * max_displacement * si->r_cut; */
+  /* sp->x[2] += delta_z * max_displacement * si->r_cut; */
 
-  /* Copy the position to the gpart */
-  sp->gpart->x[0] = sp->x[0];
-  sp->gpart->x[1] = sp->x[1];
-  sp->gpart->x[2] = sp->x[2];
+  /* /\* Copy the position to the gpart *\/ */
+  /* sp->gpart->x[0] = sp->x[0]; */
+  /* sp->gpart->x[1] = sp->x[1]; */
+  /* sp->gpart->x[2] = sp->x[2]; */
 
-  /* Do the sink particle. */
-  const double mass_ratio = sp->mass / si->mass;
-  const double dx[3] = {mass_ratio * delta_x * max_displacement * si->r_cut,
-                        mass_ratio * delta_y * max_displacement * si->r_cut,
-                        mass_ratio * delta_z * max_displacement * si->r_cut};
+  /* /\* Do the sink particle. *\/ */
+  /* const double mass_ratio = sp->mass / si->mass; */
+  /* const double dx[3] = {mass_ratio * delta_x * max_displacement * si->r_cut, */
+  /*                       mass_ratio * delta_y * max_displacement * si->r_cut, */
+  /*                       mass_ratio * delta_z * max_displacement * si->r_cut}; */
 
-  si->x[0] -= dx[0];
-  si->x[1] -= dx[1];
-  si->x[2] -= dx[2];
+  /* si->x[0] -= dx[0]; */
+  /* si->x[1] -= dx[1]; */
+  /* si->x[2] -= dx[2]; */
 
-  /* Copy the position to the gpart */
-  si->gpart->x[0] = si->x[0];
-  si->gpart->x[1] = si->x[1];
-  si->gpart->x[2] = si->x[2];
+  /* /\* Copy the position to the gpart *\/ */
+  /* si->gpart->x[0] = si->x[0]; */
+  /* si->gpart->x[1] = si->x[1]; */
+  /* si->gpart->x[2] = si->x[2]; */
 
   /* Put the star randomly within the accretion radius of the sink */
   const double phi = 2*M_PI*random_unit_interval(sp->id, e->ti_current, (enum random_number_type)3);
@@ -694,33 +694,52 @@ INLINE static void sink_star_formation_give_new_velocity(const struct engine* e,
 
   /* We give the stars some fraction of momentum taken from the sink swallowed momentum. */
 
-  /* Compute the sink swallowed momentum */
-  double x_sink[3] = {si->x[0], si->x[1], si->x[2]};
+  const struct cosmology* cosmo = e->cosmology;
+  const float a = cosmo->a;
+  const float H = cosmo->H;
+  const float a2H = a * a * H;
+
+  /* Physical sink distance */
+  double dx[3] = {sp->x[0] - si->x[0], sp->x[1] - si->x[1], sp->x[2] - si->x[2]};
+  double dx_ph[3] = {dx[0]*a, dx[1]*a, dx[2]*a};
+
+  /* Recall that the swallowed momentum is physical. Also, this is NOT a
+     specific angular momentum. */
   double b[3] = {si->swallowed_angular_momentum[0],
 		 si->swallowed_angular_momentum[1],
-		 si->swallowed_angular_momentum[2]}; 
-  double p_swallowed[3] = {0.0, 0.0, 0.0} ;
-  double long_sum = b[0]/x_sink[1] + (x_sink[2]*b[2])/(x_sink[0]*x_sink[1]) - b[1]/x_sink[0] ;
-  p_swallowed[0] = - b[1]/x_sink[2] + x_sink[0]/(2.0*x_sink[2])*long_sum;
-  p_swallowed[1] = - b[0]/x_sink[2] + x_sink[1]/(2.0*x_sink[2])*long_sum;
-  p_swallowed[2] = 0.5*long_sum;
+		 si->swallowed_angular_momentum[2]};
 
+  /* Compute the sink swallowed momentum */
+  double p_swallowed_ph[3] = {0.0, 0.0, 0.0} ;
+  double long_sum = b[0]/dx_ph[1] + (dx_ph[2]*b[2])/(dx_ph[0]*dx_ph[1]) - b[1]/dx_ph[0] ;
+  p_swallowed_ph[0] = - b[1]/dx_ph[2] + dx_ph[0]/(2.0*dx_ph[2])*long_sum;
+  p_swallowed_ph[1] = - b[0]/dx_ph[2] + dx_ph[1]/(2.0*dx_ph[2])*long_sum;
+  p_swallowed_ph[2] = 0.5*long_sum;
+
+  /* Compute the comoving swallowed velocity */
+  double fraction = sp->mass / sink_mass_tot_before_spawning;
+  double v_swallowed_ph[3] = {p_swallowed_ph[0]/sp->mass,
+			      p_swallowed_ph[1]/sp->mass,
+			      p_swallowed_ph[2]/sp->mass};
+  double v_swallowed[3] = {v_swallowed_ph[0]*a - a2H*dx[0],
+			   v_swallowed_ph[1]*a - a2H*dx[1],
+			   v_swallowed_ph[2]*a - a2H*dx[2]};
 
   /* Update the star velocity. Do not forget to update the gart velocity */
-  double fraction = sp->mass / sink_mass_tot_before_spawning;
-  sp->v[0] = si->v[0] + fraction*p_swallowed[0]/sp->mass;
-  sp->v[1] = si->v[1] + fraction*p_swallowed[1]/sp->mass;
-  sp->v[2] = si->v[2] + fraction*p_swallowed[2]/sp->mass;
+  sp->v[0] = si->v[0] + fraction*v_swallowed[0];
+  sp->v[1] = si->v[1] + fraction*v_swallowed[1];
+  sp->v[2] = si->v[2] + fraction*v_swallowed[2];
   sp->gpart->v_full[0] = sp->v[0];
   sp->gpart->v_full[1] = sp->v[1];
   sp->gpart->v_full[2] = sp->v[2];
   message("New star velocity: v = (%lf %lf %lf)", sp->v[0], sp->v[1], sp->v[2]);
   message("Sink velocity: v = (%lf %lf %lf)", si->v[0], si->v[1], si->v[2]);
 
-  /* Update the swallowed momentum to subtract what was given to the star */
-  p_swallowed[0] -= fraction*p_swallowed[0];
-  p_swallowed[1] -= fraction*p_swallowed[1];
-  p_swallowed[2] -= fraction*p_swallowed[2];
+  /* Update the swallowed angular momentum to subtract what was given to the star. */
+  /* Still worth to recall that this quantity is physical. */
+  si->swallowed_angular_momentum[0] -= fraction*(dx_ph[1]*p_swallowed_ph[2] - dx_ph[2]*p_swallowed_ph[1]);
+  si->swallowed_angular_momentum[1] -= fraction*(dx_ph[2]*p_swallowed_ph[0] - dx_ph[0]*p_swallowed_ph[2]);
+  si->swallowed_angular_momentum[2] -= fraction*(dx_ph[0]*p_swallowed_ph[1] - dx_ph[1]*p_swallowed_ph[0]);
 }
 
 /**
