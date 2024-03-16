@@ -370,8 +370,8 @@ void zoom_verify_cell_type(struct space *s) {
           cid, cellID_names[cells[cid].type], bkg_cell_offset);
 
     /* Check cell widths */
-    for (int ijk = 0; ijk < 3; ijk++) {
-      if (cid < bkg_cell_offset && cells[cid].width[ijk] != zoom_width[ijk])
+    for (int i = 0; i < 3; i++) {
+      if (cid < bkg_cell_offset && cells[cid].width[i] != zoom_width[i])
         error(
             "Cell has the wrong cell width for it's array position (cid=%d, "
             "c->type=%s, "
@@ -382,7 +382,7 @@ void zoom_verify_cell_type(struct space *s) {
             s->zoom_props->width[0], s->zoom_props->width[1],
             s->zoom_props->width[2]);
       if ((cid >= bkg_cell_offset && cid < buffer_offset) &&
-          cells[cid].width[ijk] != width[ijk])
+          cells[cid].width[i] != width[i])
         error(
             "Cell has the wrong cell width for it's array position (cid=%d, "
             "c->type=%s, "

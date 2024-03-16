@@ -122,8 +122,8 @@ void zoom_space_regrid(struct space *s, int verbose) {
       swift_free("multipoles_top", s->multipoles_top);
 
       /* Setting the new zoom cdim. */
-      for (int ijk = 0; ijk < 3; ijk++) {
-        s->zoom_props->cdim[ijk] = zoom_cdim[ijk];
+      for (int i = 0; i < 3; i++) {
+        s->zoom_props->cdim[i] = zoom_cdim[i];
       }
 
       /* Calculate the region geometry. */
