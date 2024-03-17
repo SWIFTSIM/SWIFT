@@ -354,11 +354,11 @@ void zoom_find_neighbouring_cells(struct space *s, const int verbose) {
                 neighbour_cells_top[zoom_props->nr_neighbour_cells++] = cjd;
               }
             } /* neighbour k loop */
-          }   /* neighbour j loop */
-        }     /* neighbour i loop */
-      }       /* k loop */
-    }         /* j loop */
-  }           /* i loop */
+          } /* neighbour j loop */
+        } /* neighbour i loop */
+      } /* k loop */
+    } /* j loop */
+  } /* i loop */
 
   if (verbose)
     message("%i cells neighbour the zoom region",
@@ -786,7 +786,7 @@ void zoom_construct_tl_cells(struct space *s, const integertime_t ti_current,
  * @param s The space.
  * @param c The void cell progeny to link
  */
-void link_zoom_to_void(struct space *s, struct cell *c) {
+void zoom_link_void_leaves(struct space *s, struct cell *c) {
 
   /* We need to ensure this bottom level isn't treated like a
    * normal split cell since it's linked into top level "progeny". */

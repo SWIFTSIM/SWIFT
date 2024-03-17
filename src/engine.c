@@ -1325,7 +1325,7 @@ void engine_rebuild(struct engine *e, const int repartitioned,
 
   if (e->s->with_zoom_region) {
     /* Construct the void cell tree. */
-    void_space_split(e->s, e->verbose);
+    zoom_void_space_split(e->s, e->verbose);
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -3025,8 +3025,7 @@ void engine_pin(void) {
   threadpool_set_affinity_mask(entry_affinity);
 
   int pin;
-  for (pin = 0; pin < CPU_SETSIZE && !CPU_ISSET(pin, entry_affinity); ++pin)
-    ;
+  for (pin = 0; pin < CPU_SETSIZE && !CPU_ISSET(pin, entry_affinity); ++pin);
 
   cpu_set_t affinity;
   CPU_ZERO(&affinity);

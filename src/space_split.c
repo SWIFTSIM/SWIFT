@@ -347,7 +347,7 @@ void space_split_recursive(struct space *s, struct cell *c,
               cp->width[0] / 2, s->zoom_props->width[0]);
 #endif
 
-        link_zoom_to_void(s, cp);
+        zoom_link_void_leaves(s, cp);
 
       } else {
 
@@ -510,7 +510,7 @@ void space_split_recursive(struct space *s, struct cell *c,
 #endif
 
     } /* Deal with gravity */
-  }   /* Split or let it be? */
+  } /* Split or let it be? */
 
   /* Otherwise, collect the data from the particles in this cell. */
   else {
@@ -842,7 +842,8 @@ void space_split_mapper(void *map_data, int num_cells, void *extra_data) {
  * @param num_cells The number of cells to treat.
  * @param extra_data Pointers to the #space.
  */
-void bkg_space_split_mapper(void *map_data, int num_cells, void *extra_data) {
+static void bkg_space_split_mapper(void *map_data, int num_cells,
+                                   void *extra_data) {
   space_split_mapper(map_data, num_cells, extra_data);
 }
 
@@ -857,8 +858,8 @@ void bkg_space_split_mapper(void *map_data, int num_cells, void *extra_data) {
  * @param num_cells The number of cells to treat.
  * @param extra_data Pointers to the #space.
  */
-void buffer_space_split_mapper(void *map_data, int num_cells,
-                               void *extra_data) {
+static void buffer_space_split_mapper(void *map_data, int num_cells,
+                                      void *extra_data) {
   space_split_mapper(map_data, num_cells, extra_data);
 }
 
@@ -873,7 +874,8 @@ void buffer_space_split_mapper(void *map_data, int num_cells,
  * @param num_cells The number of cells to treat.
  * @param extra_data Pointers to the #space.
  */
-void zoom_space_split_mapper(void *map_data, int num_cells, void *extra_data) {
+static void zoom_space_split_mapper(void *map_data, int num_cells,
+                                    void *extra_data) {
   space_split_mapper(map_data, num_cells, extra_data);
 }
 
@@ -961,12 +963,12 @@ void space_split(struct space *s, int verbose) {
  * @param s The #space.
  * @param verbose Are we talkative?
  */
-void void_space_split(struct space *s, int verbose) {
+void zoom_void_space_split(struct space *s, int verbose) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* We should never get here when not running with a zoom region. */
   if (!s->with_zoom_region) {
-    error("void_space_split called when running without a zoom region.");
+    error("zoom_void_space_split called when running without a zoom region.");
   }
 #endif
 
