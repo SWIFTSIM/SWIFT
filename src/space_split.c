@@ -334,7 +334,18 @@ void space_split_recursive(struct space *s, struct cell *c,
         /* If the next level progeny is at the zoom level then we need to
          * link the zoom cells in as the progeny of the void sub-cell. */
       } else if (cp->subtype == cell_subtype_void &&
-                 cp->depth + 1 == s->zoom_props->zoom_cell_depth) {
+                 cp->depth == s->zoom_props->zoom_cell_depth - 1) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+        /* Check that the widths are right. */
+        if (fabs((cp->width[0] / 2) - s->zoom_props->width[0]) >
+            (0.001 * s->zoom_props->width[0]))
+          error(
+              "The width of the zoom cell is not half the width of the void "
+              "cell were about to link to! (cp->width[0]=%f, "
+              "s->zoom_props->width[0]=%f)",
+              cp->width[0] / 2, s->zoom_props->width[0]);
+#endif
 
         link_zoom_to_void(s, cp);
 
@@ -990,6 +1001,8 @@ void void_space_split(struct space *s, int verbose) {
   if (notlinked > 0)
     error("%d zoom cells are not linked into a void cell tree!", notlinked);
 
+  /* Check all void cells have void children. */
+
   /* Compare the number of particles in the void multipole and zoom cells. */
   int nr_gparts_in_void = 0;
   for (int i = 0; i < nr_void_cells; i++)
@@ -999,7 +1012,8 @@ void void_space_split(struct space *s, int verbose) {
   if (nr_gparts_in_void != nr_gparts_in_zoom)
     error(
         "Number of gparts is in consistent between zoom cells and "
-        "void multipole");
+        "void multipole (nr_gparts_in_void=%d, nr_gparts_in_zoom=%d)",
+        nr_gparts_in_void, nr_gparts_in_zoom);
 
 #endif
 }
