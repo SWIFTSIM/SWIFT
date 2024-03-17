@@ -1881,11 +1881,12 @@ int engine_gravity_test_cell_pair(struct engine *e, struct cell *ci,
   struct space *s = e->s;
   const int periodic = s->periodic;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
-  const int nodeID = e->nodeID;
   const double max_distance = e->mesh->r_cut_max;
   const double max_distance2 = max_distance * max_distance;
 
 #ifdef WITH_MPI
+  const int nodeID = e->nodeID;
+
   /* Recover the multipole information */
   const struct gravity_tensors *multi_i = ci->grav.multipole;
   const struct gravity_tensors *multi_j = cj->grav.multipole;
@@ -1904,7 +1905,7 @@ int engine_gravity_test_cell_pair(struct engine *e, struct cell *ci,
 
   /* Are the cells too close for a MM interaction ? */
   return (!cell_can_use_pair_mm(ci, cj, e, e->s, /*use_rebuild_data=*/1,
-                                /*is_tree_walk=*/0))
+                                /*is_tree_walk=*/0));
 }
 
 /**
@@ -1987,7 +1988,6 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
   struct engine *e = (struct engine *)extra_data;
   struct space *s = e->s;
   struct scheduler *sched = &e->sched;
-  const int nodeID = e->nodeID;
   const int periodic = s->periodic;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
