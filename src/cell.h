@@ -1022,21 +1022,13 @@ __attribute__((always_inline)) INLINE static double cell_min_dist2_same_size(
  */
 __attribute__((always_inline)) INLINE static double cell_min_dist2_diff_size(
     const struct cell *restrict ci, const struct cell *restrict cj,
-    int periodic, const double dim[3]) {
+    const int periodic, const double dim[3]) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (ci->width[0] == cj->width[0]) error("x cells of same size!");
   if (ci->width[1] == cj->width[1]) error("y cells of same size!");
   if (ci->width[2] == cj->width[2]) error("z cells of same size!");
 #endif
-
-  /* We need to check if we need to consider periodicity since only
-   * background cells are periodic when running with a zoom region. */
-  if (ci->type == cell_type_bkg || cj->type == cell_type_bkg) {
-    periodic = periodic;
-  } else {
-    periodic = 0;
-  }
 
   /* Get the cell centres and diagonals. */
   const double cix = ci->loc[0] + ci->width[0] / 2.;
@@ -1088,6 +1080,13 @@ __attribute__((always_inline)) INLINE static double cell_min_dist2_diff_size(
 __attribute__((always_inline)) INLINE static double cell_min_dist2(
     const struct cell *restrict ci, const struct cell *restrict cj,
     int periodic, const double dim[3]) {
+
+  /* In zoom land we need to check if we need to consider periodicity since only
+   * background cells are periodic. */
+  if (s->with_zoom_region &&
+      (ci->type != cell_type_bkg && cj->type != cell_type_bkg)) {
+    periodic = 0;
+  }
 
   /* Decide which distance function we should call based on widths. */
   if (ci->width[0] == cj->width[0]) {
