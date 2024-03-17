@@ -835,8 +835,9 @@ void space_split_mapper(void *map_data, int num_cells, void *extra_data) {
  * @brief A wrapper for #threadpool mapper function to split background cells if
  * they contain too many particles.
  *
- * This exists purely to label the threadpool calls correctly when threadpool
- * debugging is enabled.
+ * The threadpools are split to ensure efficient parallelisation over each cell
+ * grid. This wrapper enables better labelling of these split threadpools when
+ * threadpool debugging is enabled.
  *
  * @param map_data Pointer towards the top-cells.
  * @param num_cells The number of cells to treat.
@@ -851,8 +852,9 @@ static void bkg_space_split_mapper(void *map_data, int num_cells,
  * @brief A wrapper for #threadpool mapper function to split background cells if
  * they contain too many particles.
  *
- * This exists purely to label the threadpool calls correctly when threadpool
- * debugging is enabled.
+ * The threadpools are split to ensure efficient parallelisation over each cell
+ * grid. This wrapper enables better labelling of these split threadpools when
+ * threadpool debugging is enabled.
  *
  * @param map_data Pointer towards the top-cells.
  * @param num_cells The number of cells to treat.
@@ -867,8 +869,9 @@ static void buffer_space_split_mapper(void *map_data, int num_cells,
  * @brief A wrapper for #threadpool mapper function to split zoom cells if they
  * contain too many particles.
  *
- * This exists purely to label the threadpool calls correctly when threadpool
- * debugging is enabled.
+ * The threadpools are split to ensure efficient parallelisation over each cell
+ * grid. This wrapper enables better labelling of these split threadpools when
+ * threadpool debugging is enabled.
  *
  * @param map_data Pointer towards the top-cells.
  * @param num_cells The number of cells to treat.
