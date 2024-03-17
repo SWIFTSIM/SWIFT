@@ -59,8 +59,6 @@ void engine_make_self_gravity_tasks_mapper_bkg_cells(void *map_data,
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
   struct cell *cells = s->cells_top;
-  const double max_distance = e->mesh->r_cut_max;
-  const double max_distance2 = max_distance * max_distance;
 
   /* Some info about the zoom domain */
   const int bkg_cell_offset = s->zoom_props->bkg_cell_offset;
@@ -164,8 +162,7 @@ void engine_make_self_gravity_tasks_mapper_bkg_cells(void *map_data,
             continue;
 
           /* Do we need a pair interaction for these cells? */
-          if (engine_gravity_test_cell_pair(e, ci, cj, periodic, dim,
-                                            max_distance2, nodeID)) {
+          if (engine_gravity_test_cell_pair(e, ci, cj)) {
 
             /* Ok, we need to add a direct pair calculation */
             engine_make_pair_gravity_task(e, sched, ci, cj, nodeID);
@@ -204,8 +201,6 @@ void engine_make_self_gravity_tasks_mapper_buffer_cells(void *map_data,
                        s->zoom_props->buffer_cdim[1],
                        s->zoom_props->buffer_cdim[2]};
   struct cell *cells = s->cells_top;
-  const double max_distance = e->mesh->r_cut_max;
-  const double max_distance2 = max_distance * max_distance;
 
   /* Some info about the zoom domain */
   const int buffer_offset = s->zoom_props->buffer_cell_offset;
@@ -292,8 +287,7 @@ void engine_make_self_gravity_tasks_mapper_buffer_cells(void *map_data,
             continue;
 
           /* Do we need a pair interaction for these cells? */
-          if (engine_gravity_test_cell_pair(e, ci, cj, periodic, dim,
-                                            max_distance2, nodeID)) {
+          if (engine_gravity_test_cell_pair(e, ci, cj)) {
 
             /* Ok, we need to add a direct pair calculation */
             engine_make_pair_gravity_task(e, sched, ci, cj, nodeID);
@@ -331,8 +325,6 @@ void engine_make_self_gravity_tasks_mapper_zoom_cells(void *map_data,
   const int cdim[3] = {s->zoom_props->cdim[0], s->zoom_props->cdim[1],
                        s->zoom_props->cdim[2]};
   struct cell *cells = s->cells_top;
-  const double max_distance = e->mesh->r_cut_max;
-  const double max_distance2 = max_distance * max_distance;
 
   /* Compute maximal distance where we can expect a direct interaction */
   const float distance = gravity_M2L_min_accept_distance(
@@ -411,8 +403,7 @@ void engine_make_self_gravity_tasks_mapper_zoom_cells(void *map_data,
             continue;
 
           /* Do we need a pair interaction for these cells? */
-          if (engine_gravity_test_cell_pair(e, ci, cj, periodic, dim,
-                                            max_distance2, nodeID)) {
+          if (engine_gravity_test_cell_pair(e, ci, cj)) {
 
             /* Ok, we need to add a direct pair calculation */
             engine_make_pair_gravity_task(e, sched, ci, cj, nodeID);
@@ -460,10 +451,6 @@ void engine_make_self_gravity_tasks_mapper_zoom_bkg(void *map_data,
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   int periodic = s->periodic;
 
-  /* Get some info about the physics */
-  const double max_mesh_dist = e->mesh->r_cut_max;
-  const double max_mesh_dist2 = max_mesh_dist * max_mesh_dist;
-
   /* Get the neighbouring background cells. */
   const int nr_neighbours = s->zoom_props->nr_neighbour_cells;
   const int *neighbour_cells = s->zoom_props->neighbour_cells_top;
@@ -504,8 +491,7 @@ void engine_make_self_gravity_tasks_mapper_zoom_bkg(void *map_data,
 #endif
 
       /* Do we need a pair interaction for these cells? */
-      if (engine_gravity_test_cell_pair(e, ci, cj, periodic, dim, max_distance2,
-                                        nodeID)) {
+      if (engine_gravity_test_cell_pair(e, ci, cj)) {
 
         /* Ok, we need to add a direct pair calculation */
         engine_make_pair_gravity_task(e, sched, ci, cj, nodeID);
@@ -552,10 +538,6 @@ void engine_make_self_gravity_tasks_mapper_buffer_bkg(void *map_data,
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   int periodic = s->periodic;
 
-  /* Get some info about the physics */
-  const double max_mesh_dist = e->mesh->r_cut_max;
-  const double max_mesh_dist2 = max_mesh_dist * max_mesh_dist;
-
   /* Loop through the elements, which are just byte offsets from NULL. */
   for (int ind = 0; ind < num_elements; ind++) {
 
@@ -579,8 +561,7 @@ void engine_make_self_gravity_tasks_mapper_buffer_bkg(void *map_data,
         continue;
 
       /* Do we need a pair interaction for these cells? */
-      if (engine_gravity_test_cell_pair(e, ci, cj, periodic, dim, max_distance2,
-                                        nodeID)) {
+      if (engine_gravity_test_cell_pair(e, ci, cj)) {
 
         /* Ok, we need to add a direct pair calculation */
         engine_make_pair_gravity_task(e, sched, ci, cj, nodeID);

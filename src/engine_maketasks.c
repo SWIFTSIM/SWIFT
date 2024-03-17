@@ -1876,10 +1876,14 @@ void engine_make_hierarchical_tasks_mapper(void *map_data, int num_elements,
  * @return 1 if a pair gravity task is needed, 0 otherwise.
  */
 int engine_gravity_test_cell_pair(struct engine *e, struct cell *ci,
-                                  struct cell *cj, const int periodic,
-                                  const double dim[3],
-                                  const double max_distance2,
-                                  const int nodeID) {
+                                  struct cell *cj) {
+
+  struct space *s = e->s;
+  const int periodic = s->periodic;
+  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
+  const int nodeID = e->nodeID;
+  const double max_distance = e->mesh->r_cut_max;
+  const double max_distance2 = max_distance * max_distance;
 
 #ifdef WITH_MPI
   /* Recover the multipole information */
@@ -1893,7 +1897,7 @@ int engine_gravity_test_cell_pair(struct engine *e, struct cell *ci,
 #endif
 
   /* Minimal distance between any pair of particles */
-  const double min_radius2 = cell_min_dist2_same_size(ci, cj, periodic, dim);
+  const double min_radius2 = cell_min_dist2(ci, cj, periodic, dim);
 
   /* Are we beyond the distance where the truncated forces are 0 ?*/
   if (periodic && min_radius2 > max_distance2) return 0;
@@ -1988,8 +1992,6 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
   struct cell *cells = s->cells_top;
-  const double max_distance = e->mesh->r_cut_max;
-  const double max_distance2 = max_distance * max_distance;
 
   /* Compute maximal distance where we can expect a direct interaction */
   const float distance = gravity_M2L_min_accept_distance(
@@ -2074,8 +2076,7 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
             continue;
 
           /* Do we need a pair interaction for these cells? */
-          if (engine_gravity_test_cell_pair(e, ci, cj, periodic, dim,
-                                            max_distance2, nodeID)) {
+          if (engine_gravity_test_cell_pair(e, ci, cj)) {
 
             /* Ok, we need to add a direct pair calculation */
             engine_make_pair_gravity_task(e, sched, ci, cj, nodeID);
