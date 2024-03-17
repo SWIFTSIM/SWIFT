@@ -51,7 +51,8 @@
 float space_get_current_hmax(struct space *s,
                              const int *const local_cells_with_particles_top,
                              const int nr_local_cells_with_particles,
-                             const int nr_cells, const double cell_min) {
+                             const int nr_cells, const double cell_min,
+                             const int verbose) {
 
   const size_t nr_parts = s->nr_parts;
   const size_t nr_sparts = s->nr_sparts;
@@ -115,6 +116,19 @@ float space_get_current_hmax(struct space *s,
     }
   }
 
+/* If we are running in parallel, make sure everybody agrees on
+   how large the largest cell should be. */
+#ifdef WITH_MPI
+  {
+    float buff;
+    if (MPI_Allreduce(&h_max, &buff, 1, MPI_FLOAT, MPI_MAX, MPI_COMM_WORLD) !=
+        MPI_SUCCESS)
+      error("Failed to aggregate the rebuild flag across nodes.");
+    h_max = buff;
+  }
+#endif
+  if (verbose) message("h_max is %.3e (cell_min=%.3e).", h_max, s->cell_min);
+
   return h_max;
 }
 
@@ -129,6 +143,18 @@ float space_get_current_hmax(struct space *s,
  * @param cdim The new cell dimensions.
  */
 void space_prepare_cells(struct space *s, const int cdim[3]) {
+
+  /* Free the old cells, if they were allocated. */
+  if (s->cells_top != NULL) {
+    space_free_cells(s);
+    swift_free("local_cells_with_tasks_top", s->local_cells_with_tasks_top);
+    swift_free("local_cells_top", s->local_cells_top);
+    swift_free("cells_with_particles_top", s->cells_with_particles_top);
+    swift_free("local_cells_with_particles_top",
+               s->local_cells_with_particles_top);
+    swift_free("cells_top", s->cells_top);
+    swift_free("multipoles_top", s->multipoles_top);
+  }
 
   /* Also free the task arrays, these will be regenerated and we can use the
    * memory while copying the particle arrays. */
@@ -233,20 +259,7 @@ void space_regrid_uniform_box(struct space *s, int verbose) {
   /* Get the current h_max. */
   float h_max = space_get_current_hmax(s, s->local_cells_with_particles_top,
                                        s->nr_local_cells_with_particles,
-                                       s->nr_cells, s->cell_min);
-
-/* If we are running in parallel, make sure everybody agrees on
-   how large the largest cell should be. */
-#ifdef WITH_MPI
-  {
-    float buff;
-    if (MPI_Allreduce(&h_max, &buff, 1, MPI_FLOAT, MPI_MAX, MPI_COMM_WORLD) !=
-        MPI_SUCCESS)
-      error("Failed to aggregate the rebuild flag across nodes.");
-    h_max = buff;
-  }
-#endif
-  if (verbose) message("h_max is %.3e (cell_min=%.3e).", h_max, s->cell_min);
+                                       s->nr_cells, s->cell_min, verbose);
 
   /* Get the new putative cell dimensions. */
   const int cdim[3] = {
@@ -328,18 +341,6 @@ void space_regrid_uniform_box(struct space *s, int verbose) {
     message("(re)griding space cdim=(%d %d %d)", cdim[0], cdim[1], cdim[2]);
     fflush(stdout);
 #endif
-
-    /* Free the old cells, if they were allocated. */
-    if (s->cells_top != NULL) {
-      space_free_cells(s);
-      swift_free("local_cells_with_tasks_top", s->local_cells_with_tasks_top);
-      swift_free("local_cells_top", s->local_cells_top);
-      swift_free("cells_with_particles_top", s->cells_with_particles_top);
-      swift_free("local_cells_with_particles_top",
-                 s->local_cells_with_particles_top);
-      swift_free("cells_top", s->cells_top);
-      swift_free("multipoles_top", s->multipoles_top);
-    }
 
     /* Prepare the cell and pointer arrays. This will also free tasks and set
      * the cdim, width, iwidth and cell counts on the space. */
