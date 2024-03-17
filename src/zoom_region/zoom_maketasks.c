@@ -56,7 +56,6 @@ void engine_make_self_gravity_tasks_mapper_bkg_cells(void *map_data,
   struct scheduler *sched = &e->sched;
   const int nodeID = e->nodeID;
   const int periodic = s->periodic;
-  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
   struct cell *cells = s->cells_top;
 
@@ -196,7 +195,6 @@ void engine_make_self_gravity_tasks_mapper_buffer_cells(void *map_data,
   struct scheduler *sched = &e->sched;
   const int nodeID = e->nodeID;
   const int periodic = s->periodic;
-  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const int cdim[3] = {s->zoom_props->buffer_cdim[0],
                        s->zoom_props->buffer_cdim[1],
                        s->zoom_props->buffer_cdim[2]};
@@ -321,7 +319,6 @@ void engine_make_self_gravity_tasks_mapper_zoom_cells(void *map_data,
   struct scheduler *sched = &e->sched;
   const int nodeID = e->nodeID;
   const int periodic = s->periodic;
-  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const int cdim[3] = {s->zoom_props->cdim[0], s->zoom_props->cdim[1],
                        s->zoom_props->cdim[2]};
   struct cell *cells = s->cells_top;
@@ -447,10 +444,6 @@ void engine_make_self_gravity_tasks_mapper_zoom_bkg(void *map_data,
   /* Handle on the cells and proxies */
   struct cell *cells = s->cells_top;
 
-  /* Some info about the domain */
-  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
-  int periodic = s->periodic;
-
   /* Get the neighbouring background cells. */
   const int nr_neighbours = s->zoom_props->nr_neighbour_cells;
   const int *neighbour_cells = s->zoom_props->neighbour_cells_top;
@@ -533,10 +526,6 @@ void engine_make_self_gravity_tasks_mapper_buffer_bkg(void *map_data,
 
   /* Handle on the cells and proxies */
   struct cell *cells = s->cells_top;
-
-  /* Some info about the domain */
-  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
-  int periodic = s->periodic;
 
   /* Loop through the elements, which are just byte offsets from NULL. */
   for (int ind = 0; ind < num_elements; ind++) {
