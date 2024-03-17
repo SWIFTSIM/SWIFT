@@ -482,8 +482,9 @@ void engine_make_self_gravity_tasks_mapper_zoom_cells(void *map_data,
  * and long-range gravity interactions between zoom cells
  * and background cells.
  *
- * This mapper only considers interactions between zoom cells and the cells
- * above them in hierarchy. When buffer cells are present, interactions between
+ * This mapper only considers interactions between zoom cells and their
+ * neighbours (i.e. the cells within the gravity criterion distance
+ * above them in hierarchy). When buffer cells are present, interactions between
  * zoom cells and buffer cells are considered, otherwise only interactions
  * between zoom cells and background cells are considered.
  *
