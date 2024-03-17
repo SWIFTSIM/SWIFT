@@ -144,6 +144,18 @@ float space_get_current_hmax(struct space *s,
  */
 void space_prepare_cells(struct space *s, const int cdim[3]) {
 
+  /* Free the old cells, if they were allocated. */
+  if (s->cells_top != NULL) {
+    space_free_cells(s);
+    swift_free("local_cells_with_tasks_top", s->local_cells_with_tasks_top);
+    swift_free("local_cells_top", s->local_cells_top);
+    swift_free("cells_with_particles_top", s->cells_with_particles_top);
+    swift_free("local_cells_with_particles_top",
+               s->local_cells_with_particles_top);
+    swift_free("cells_top", s->cells_top);
+    swift_free("multipoles_top", s->multipoles_top);
+  }
+
   /* Also free the task arrays, these will be regenerated and we can use the
    * memory while copying the particle arrays. */
   if (s->e != NULL) scheduler_free_tasks(&s->e->sched);
@@ -329,18 +341,6 @@ void space_regrid_uniform_box(struct space *s, int verbose) {
     message("(re)griding space cdim=(%d %d %d)", cdim[0], cdim[1], cdim[2]);
     fflush(stdout);
 #endif
-
-    /* Free the old cells, if they were allocated. */
-    if (s->cells_top != NULL) {
-      space_free_cells(s);
-      swift_free("local_cells_with_tasks_top", s->local_cells_with_tasks_top);
-      swift_free("local_cells_top", s->local_cells_top);
-      swift_free("cells_with_particles_top", s->cells_with_particles_top);
-      swift_free("local_cells_with_particles_top",
-                 s->local_cells_with_particles_top);
-      swift_free("cells_top", s->cells_top);
-      swift_free("multipoles_top", s->multipoles_top);
-    }
 
     /* Prepare the cell and pointer arrays. This will also free tasks and set
      * the cdim, width, iwidth and cell counts on the space. */

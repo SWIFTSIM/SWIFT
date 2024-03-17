@@ -58,21 +58,7 @@ void zoom_space_regrid(struct space *s, int verbose) {
   float h_max =
       space_get_current_hmax(s, zoom_props->local_zoom_cells_with_particles_top,
                              zoom_props->nr_local_zoom_cells_with_particles,
-                             zoom_props->nr_zoom_cells, zoom_cell_min);
-
-/* If we are running in parallel, make sure everybody agrees on
-   how large the largest cell should be. */
-#ifdef WITH_MPI
-  {
-    float buff;
-    if (MPI_Allreduce(&h_max, &buff, 1, MPI_FLOAT, MPI_MAX, MPI_COMM_WORLD) !=
-        MPI_SUCCESS)
-      error("Failed to aggregate the rebuild flag across nodes.");
-    h_max = buff;
-  }
-#endif
-  if (verbose)
-    message("h_max is %.3e (zoom_cell_min=%.3e).", h_max, zoom_cell_min);
+                             zoom_props->nr_zoom_cells, zoom_cell_min, verbose);
 
   /* Get the new putative zoom cell dimensions. */
   const double dmax =
@@ -100,11 +86,15 @@ void zoom_space_regrid(struct space *s, int verbose) {
       zoom_cdim[1] < s->zoom_props->cdim[1] ||
       zoom_cdim[2] < s->zoom_props->cdim[2]) {
 
-    /* Free the old cells, if they were allocated. */
+/* Be verbose about this. */
+#ifdef SWIFT_DEBUG_CHECKS
+    message("(re)griding space zoom_cdim=(%d %d %d)", zoom_cdim[0],
+            zoom_cdim[1], zoom_cdim[2]);
+    fflush(stdout);
+#endif
+
+    /* Free the old zoom specific cells, if they were allocated. */
     if (s->cells_top != NULL) {
-      space_free_cells(s);
-      swift_free("local_cells_with_tasks_top", s->local_cells_with_tasks_top);
-      swift_free("local_cells_top", s->local_cells_top);
       swift_free("local_zoom_cells_top", s->zoom_props->local_zoom_cells_top);
       swift_free("local_bkg_cells_top", s->zoom_props->local_bkg_cells_top);
       swift_free("local_zoom_cells_with_particles_top",
@@ -113,15 +103,11 @@ void zoom_space_regrid(struct space *s, int verbose) {
                  s->zoom_props->local_bkg_cells_with_particles_top);
       swift_free("local_buffer_cell_with_particless_top",
                  s->zoom_props->local_buffer_cells_with_particles_top);
-      swift_free("cells_with_particles_top", s->cells_with_particles_top);
-      swift_free("local_cells_with_particles_top",
-                 s->local_cells_with_particles_top);
       swift_free("void_cells_top", s->zoom_props->void_cells_top);
       swift_free("neighbour_cells_top", s->zoom_props->neighbour_cells_top);
-      swift_free("cells_top", s->cells_top);
-      swift_free("multipoles_top", s->multipoles_top);
 
-      /* Setting the new zoom cdim. */
+      /* Setting the new zoom cdim (this is the only property that isn't
+       * explicitly calculated in zoom_region_init). */
       for (int i = 0; i < 3; i++) {
         s->zoom_props->cdim[i] = zoom_cdim[i];
       }
@@ -206,7 +192,7 @@ void zoom_space_regrid(struct space *s, int verbose) {
     /* Construct the cell grids. */
     zoom_construct_tl_cells(s, ti_current, verbose);
 
-  }      /* re-build upper-level cells? */
+  } /* re-build upper-level cells? */
   else { /* Otherwise, just clean up the cells. */
 
     /* Free the old cells, if they were allocated. */
