@@ -23,8 +23,6 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "zoom_region/zoom_maketasks.h"
-
 #include <config.h>
 
 /* Some standard headers. */
