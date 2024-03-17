@@ -769,12 +769,16 @@ void engine_activate_fof_attach_tasks(struct engine *e);
 
 /* Function prototypes, engine_maketasks.c. */
 void engine_maketasks(struct engine *e);
-engine_make_pair_gravity_task(struct engine *e, struct scheduler *sched,
-                              struct cell *ci, struct cell *cj,
-                              const int nodeID)
+int engine_gravity_test_cell_pair(struct engine *e, struct cell *ci,
+                                  struct cell *cj, const int periodic,
+                                  const double dim[3],
+                                  const double max_distance2, const int nodeID);
+void engine_make_pair_gravity_task(struct engine *e, struct scheduler *sched,
+                                   struct cell *ci, struct cell *cj,
+                                   const int nodeID);
 
-    /* Function prototypes, engine_maketasks.c. */
-    void engine_make_fof_tasks(struct engine *e);
+/* Function prototypes, engine_maketasks.c. */
+void engine_make_fof_tasks(struct engine *e);
 
 /* Function prototypes, engine_marktasks.c. */
 int engine_marktasks(struct engine *e);
