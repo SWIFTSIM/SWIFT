@@ -163,27 +163,9 @@ void engine_make_self_gravity_tasks_mapper_bkg_cells(void *map_data,
               (ci->nodeID != nodeID && cj->nodeID != nodeID))
             continue;
 
-#ifdef WITH_MPI
-          /* Recover the multipole information */
-          const struct gravity_tensors *multi_i = ci->grav.multipole;
-          const struct gravity_tensors *multi_j = cj->grav.multipole;
-
-          if (multi_i == NULL && ci->nodeID != nodeID)
-            error("Multipole of ci was not exchanged properly via the proxies");
-          if (multi_j == NULL && cj->nodeID != nodeID)
-            error("Multipole of cj was not exchanged properly via the proxies");
-#endif
-
-          /* Minimal distance between any pair of particles */
-          const double min_radius2 =
-              cell_min_dist2_same_size(ci, cj, periodic, dim);
-
-          /* Are we beyond the distance where the truncated forces are 0 ?*/
-          if (periodic && min_radius2 > max_distance2) continue;
-
-          /* Are the cells too close for a MM interaction ? */
-          if (!cell_can_use_pair_mm(ci, cj, e, s, /*use_rebuild_data=*/1,
-                                    /*is_tree_walk=*/0)) {
+          /* Do we need a pair interaction for these cells? */
+          if (engine_gravity_test_cell_pair(e, ci, cj, periodic, dim,
+                                            max_distance2, nodeID)) {
 
             /* Ok, we need to add a direct pair calculation */
             engine_make_pair_gravity_task(e, sched, ci, cj, nodeID);
@@ -309,27 +291,9 @@ void engine_make_self_gravity_tasks_mapper_buffer_cells(void *map_data,
               (ci->nodeID != nodeID && cj->nodeID != nodeID))
             continue;
 
-#ifdef WITH_MPI
-          /* Recover the multipole information */
-          const struct gravity_tensors *multi_i = ci->grav.multipole;
-          const struct gravity_tensors *multi_j = cj->grav.multipole;
-
-          if (multi_i == NULL && ci->nodeID != nodeID)
-            error("Multipole of ci was not exchanged properly via the proxies");
-          if (multi_j == NULL && cj->nodeID != nodeID)
-            error("Multipole of cj was not exchanged properly via the proxies");
-#endif
-
-          /* Minimal distance between any pair of particles */
-          const double min_radius2 =
-              cell_min_dist2_same_size(ci, cj, periodic, dim);
-
-          /* Are we beyond the distance where the truncated forces are 0 ?*/
-          if (periodic && min_radius2 > max_distance2) continue;
-
-          /* Are the cells too close for a MM interaction ? */
-          if (!cell_can_use_pair_mm(ci, cj, e, s, /*use_rebuild_data=*/1,
-                                    /*is_tree_walk=*/0)) {
+          /* Do we need a pair interaction for these cells? */
+          if (engine_gravity_test_cell_pair(e, ci, cj, periodic, dim,
+                                            max_distance2, nodeID)) {
 
             /* Ok, we need to add a direct pair calculation */
             engine_make_pair_gravity_task(e, sched, ci, cj, nodeID);
@@ -446,27 +410,9 @@ void engine_make_self_gravity_tasks_mapper_zoom_cells(void *map_data,
               (ci->nodeID != nodeID && cj->nodeID != nodeID))
             continue;
 
-#ifdef WITH_MPI
-          /* Recover the multipole information */
-          const struct gravity_tensors *multi_i = ci->grav.multipole;
-          const struct gravity_tensors *multi_j = cj->grav.multipole;
-
-          if (multi_i == NULL && ci->nodeID != nodeID)
-            error("Multipole of ci was not exchanged properly via the proxies");
-          if (multi_j == NULL && cj->nodeID != nodeID)
-            error("Multipole of cj was not exchanged properly via the proxies");
-#endif
-
-          /* Minimal distance between any pair of particles */
-          const double min_radius2 =
-              cell_min_dist2_same_size(ci, cj, periodic, dim);
-
-          /* Are we beyond the distance where the truncated forces are 0? */
-          if (periodic && min_radius2 > max_distance2) continue;
-
-          /* Are the cells too close for a MM interaction ? */
-          if (!cell_can_use_pair_mm(ci, cj, e, s, /*use_rebuild_data=*/1,
-                                    /*is_tree_walk=*/0)) {
+          /* Do we need a pair interaction for these cells? */
+          if (engine_gravity_test_cell_pair(e, ci, cj, periodic, dim,
+                                            max_distance2, nodeID)) {
 
             /* Ok, we need to add a direct pair calculation */
             engine_make_pair_gravity_task(e, sched, ci, cj, nodeID);
@@ -557,27 +503,9 @@ void engine_make_self_gravity_tasks_mapper_zoom_bkg(void *map_data,
       }
 #endif
 
-#ifdef WITH_MPI
-      /* Recover the multipole information */
-      const struct gravity_tensors *multi_i = ci->grav.multipole;
-      const struct gravity_tensors *multi_j = cj->grav.multipole;
-
-      if (multi_i == NULL && ci->nodeID != nodeID)
-        error("Multipole of ci was not exchanged properly via the proxies");
-      if (multi_j == NULL && cj->nodeID != nodeID)
-        error("Multipole of cj was not exchanged properly via the proxies");
-#endif
-
-      /* Minimal distance between any pair of particles */
-      const double min_radius2 =
-          cell_min_dist2_diff_size(ci, cj, periodic, dim);
-
-      /* Are we beyond the distance where the truncated forces are 0 ?*/
-      if (periodic && min_radius2 > max_mesh_dist2) continue;
-
-      /* Are the cells too close for a MM interaction ? */
-      if (!cell_can_use_pair_mm(ci, cj, e, s, /*use_rebuild_data=*/1,
-                                /*is_tree_walk=*/0)) {
+      /* Do we need a pair interaction for these cells? */
+      if (engine_gravity_test_cell_pair(e, ci, cj, periodic, dim, max_distance2,
+                                        nodeID)) {
 
         /* Ok, we need to add a direct pair calculation */
         engine_make_pair_gravity_task(e, sched, ci, cj, nodeID);
@@ -650,26 +578,9 @@ void engine_make_self_gravity_tasks_mapper_buffer_bkg(void *map_data,
       if (cj->grav.count == 0 || (ci->nodeID != nodeID && cj->nodeID != nodeID))
         continue;
 
-#ifdef WITH_MPI
-      /* Recover the multipole information */
-      const struct gravity_tensors *multi_i = ci->grav.multipole;
-      const struct gravity_tensors *multi_j = cj->grav.multipole;
-
-      if (multi_i == NULL && ci->nodeID != nodeID)
-        error("Multipole of ci was not exchanged properly via the proxies");
-      if (multi_j == NULL && cj->nodeID != nodeID)
-        error("Multipole of cj was not exchanged properly via the proxies");
-#endif
-
-      /* Minimal distance between any pair of particles */
-      const double min_radius2 = cell_min_dist2(ci, cj, periodic, dim);
-
-      /* Are we beyond the distance where the truncated forces are 0 ?*/
-      if (periodic && min_radius2 > max_mesh_dist2) continue;
-
-      /* Are the cells too close for a MM interaction ? */
-      if (!cell_can_use_pair_mm(ci, cj, e, s, /*use_rebuild_data=*/1,
-                                /*is_tree_walk=*/0)) {
+      /* Do we need a pair interaction for these cells? */
+      if (engine_gravity_test_cell_pair(e, ci, cj, periodic, dim, max_distance2,
+                                        nodeID)) {
 
         /* Ok, we need to add a direct pair calculation */
         engine_make_pair_gravity_task(e, sched, ci, cj, nodeID);

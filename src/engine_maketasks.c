@@ -1857,6 +1857,53 @@ void engine_make_hierarchical_tasks_mapper(void *map_data, int num_elements,
 }
 
 /**
+ * @brief Test whether two cells need a pair gravity task.
+ *
+ * This function will test if the two cells are far enough apart to let
+ * the mesh handle the interaction or if the cells are too close for a
+ * multipole-multipole (long range) interaction. If neither of these are
+ * true then we need a pair task.
+ *
+ * @param e The #engine.
+ * @param ci The first #cell.
+ * @param cj The second #cell.
+ * @param periodic Whether the domain is periodic.
+ * @param dim The dimensions of the domain.
+ * @param max_distance2 The square of the maximal distance for a direct
+ *                      interaction.
+ * @param nodeID The nodeID of the current node.
+ *
+ * @return 1 if a pair gravity task is needed, 0 otherwise.
+ */
+int engine_gravity_test_cell_pair(struct engine *e, struct cell *ci,
+                                  struct cell *cj, const int periodic,
+                                  const double dim[3],
+                                  const double max_distance2,
+                                  const int nodeID) {
+
+#ifdef WITH_MPI
+  /* Recover the multipole information */
+  const struct gravity_tensors *multi_i = ci->grav.multipole;
+  const struct gravity_tensors *multi_j = cj->grav.multipole;
+
+  if (multi_i == NULL && ci->nodeID != nodeID)
+    error("Multipole of ci was not exchanged properly via the proxies");
+  if (multi_j == NULL && cj->nodeID != nodeID)
+    error("Multipole of cj was not exchanged properly via the proxies");
+#endif
+
+  /* Minimal distance between any pair of particles */
+  const double min_radius2 = cell_min_dist2_same_size(ci, cj, periodic, dim);
+
+  /* Are we beyond the distance where the truncated forces are 0 ?*/
+  if (periodic && min_radius2 > max_distance2) return 0;
+
+  /* Are the cells too close for a MM interaction ? */
+  return (!cell_can_use_pair_mm(ci, cj, e, e->s, /*use_rebuild_data=*/1,
+                                /*is_tree_walk=*/0))
+}
+
+/**
  * @brief Constructs a top-level pair gravity task between two cells.
  *
  * This will also check and ensure we have the proxy for the foreign cell.
@@ -2026,27 +2073,9 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
               (ci->nodeID != nodeID && cj->nodeID != nodeID))
             continue;
 
-#ifdef WITH_MPI
-          /* Recover the multipole information */
-          const struct gravity_tensors *multi_i = ci->grav.multipole;
-          const struct gravity_tensors *multi_j = cj->grav.multipole;
-
-          if (multi_i == NULL && ci->nodeID != nodeID)
-            error("Multipole of ci was not exchanged properly via the proxies");
-          if (multi_j == NULL && cj->nodeID != nodeID)
-            error("Multipole of cj was not exchanged properly via the proxies");
-#endif
-
-          /* Minimal distance between any pair of particles */
-          const double min_radius2 =
-              cell_min_dist2_same_size(ci, cj, periodic, dim);
-
-          /* Are we beyond the distance where the truncated forces are 0 ?*/
-          if (periodic && min_radius2 > max_distance2) continue;
-
-          /* Are the cells too close for a MM interaction ? */
-          if (!cell_can_use_pair_mm(ci, cj, e, s, /*use_rebuild_data=*/1,
-                                    /*is_tree_walk=*/0)) {
+          /* Do we need a pair interaction for these cells? */
+          if (engine_gravity_test_cell_pair(e, ci, cj, periodic, dim,
+                                            max_distance2, nodeID)) {
 
             /* Ok, we need to add a direct pair calculation */
             engine_make_pair_gravity_task(e, sched, ci, cj, nodeID);
@@ -2921,7 +2950,8 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       engine_addlink(e, &cj->hydro.gradient, t_gradient);
 
       /* Now, build all the dependencies for the hydro for the cells */
-      /* that are local and are not descendant of the same super_hydro-cells */
+      /* that are local and are not descendant of the same super_hydro-cells
+       */
       if (ci->nodeID == nodeID) {
         engine_make_hydro_loops_dependencies(sched, t, t_gradient, t_force,
                                              t_limiter, ci, with_cooling,
@@ -2935,7 +2965,8 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 #else
 
       /* Now, build all the dependencies for the hydro for the cells */
-      /* that are local and are not descendant of the same super_hydro-cells */
+      /* that are local and are not descendant of the same super_hydro-cells
+       */
       if (ci->nodeID == nodeID) {
         engine_make_hydro_loops_dependencies(sched, t, t_force, t_limiter, ci,
                                              with_cooling,
@@ -3412,14 +3443,16 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       engine_addlink(e, &ci->hydro.gradient, t_gradient);
 
       /* Now, build all the dependencies for the hydro for the cells */
-      /* that are local and are not descendant of the same super_hydro-cells */
+      /* that are local and are not descendant of the same super_hydro-cells
+       */
       engine_make_hydro_loops_dependencies(sched, t, t_gradient, t_force,
                                            t_limiter, ci, with_cooling,
                                            with_timestep_limiter);
 #else
 
       /* Now, build all the dependencies for the hydro for the cells */
-      /* that are local and are not descendant of the same super_hydro-cells */
+      /* that are local and are not descendant of the same super_hydro-cells
+       */
       engine_make_hydro_loops_dependencies(sched, t, t_force, t_limiter, ci,
                                            with_cooling, with_timestep_limiter);
 #endif
@@ -3751,7 +3784,8 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       engine_addlink(e, &cj->hydro.gradient, t_gradient);
 
       /* Now, build all the dependencies for the hydro for the cells */
-      /* that are local and are not descendant of the same super_hydro-cells */
+      /* that are local and are not descendant of the same super_hydro-cells
+       */
       if (ci->nodeID == nodeID) {
         engine_make_hydro_loops_dependencies(sched, t, t_gradient, t_force,
                                              t_limiter, ci, with_cooling,
@@ -3765,7 +3799,8 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 #else
 
       /* Now, build all the dependencies for the hydro for the cells */
-      /* that are local and are not descendant of the same super_hydro-cells */
+      /* that are local and are not descendant of the same super_hydro-cells
+       */
       if (ci->nodeID == nodeID) {
         engine_make_hydro_loops_dependencies(sched, t, t_force, t_limiter, ci,
                                              with_cooling,
@@ -4190,7 +4225,8 @@ void engine_make_hydroloop_tasks_mapper(void *map_data, int num_elements,
           const int cjd = cell_getid(cdim, iii, jjj, kkk);
           struct cell *cj = &cells[cjd];
 
-          /* Is that neighbour local and does it have gas or star particles ? */
+          /* Is that neighbour local and does it have gas or star particles ?
+           */
           if ((cid >= cjd) ||
               ((cj->hydro.count == 0) &&
                (!with_feedback || cj->stars.count == 0) &&
@@ -4286,8 +4322,8 @@ void engine_addunlock_rt_advance_cell_time_tend(struct cell *c,
   if (cell_is_empty(c)) return;
 
   if (c->super == c) {
-    /* Found the super level cell. Add dependency from rt_advance_cell_time, if
-     * it exists. */
+    /* Found the super level cell. Add dependency from rt_advance_cell_time,
+     * if it exists. */
     if (c->super->rt.rt_advance_cell_time != NULL) {
       scheduler_addunlock(&e->sched, c->super->rt.rt_advance_cell_time, tend);
     }
@@ -4432,10 +4468,11 @@ void engine_addtasks_recv_mapper(void *map_data, int num_elements,
          * run at the same time. rt_collect_times runs in sub-cycles,
          * tend runs on normal steps. */
 
-        /* Make sure the timestep task replacements, i.e. rt_advance_cell_time,
-         * exists on the super levels regardless of proxy type.
-         * This needs to be done before engine_addtasks_recv_hydro so we
-         * can set appropriate unlocks there without re-creating tasks. */
+        /* Make sure the timestep task replacements, i.e.
+         * rt_advance_cell_time, exists on the super levels regardless of
+         * proxy type. This needs to be done before engine_addtasks_recv_hydro
+         * so we can set appropriate unlocks there without re-creating tasks.
+         */
         engine_addtasks_recv_rt_advance_cell_time(e, ci, tend);
       }
     }
@@ -4550,7 +4587,8 @@ void engine_make_fofloop_tasks_mapper(void *map_data, int num_elements,
             scheduler_addtask(sched, task_type_fof_pair, task_subtype_none, 0,
                               0, ci, cj);
 
-          /* Construct the pair search task for pairs overlapping with the node
+          /* Construct the pair search task for pairs overlapping with the
+           * node
            */
           if (ci->nodeID == nodeID || cj->nodeID == nodeID)
             scheduler_addtask(sched, task_type_fof_attach_pair,
@@ -4740,9 +4778,10 @@ void engine_maketasks(struct engine *e) {
      * We call the mapper function directly as if there was only 1 thread
      * in the pool. */
     engine_make_extra_hydroloop_tasks_mapper(sched->tasks, sched->nr_tasks, e);
-    /* threadpool_map(&e->threadpool, engine_make_extra_hydroloop_tasks_mapper,
-     *                sched->tasks, sched->nr_tasks, sizeof(struct task),
-     *                threadpool_auto_chunk_size, e); */
+    /* threadpool_map(&e->threadpool,
+     * engine_make_extra_hydroloop_tasks_mapper, sched->tasks,
+     * sched->nr_tasks, sizeof(struct task), threadpool_auto_chunk_size, e);
+     */
   }
 
   if (e->verbose)
@@ -4812,8 +4851,8 @@ void engine_maketasks(struct engine *e) {
 
     tic2 = getticks();
 
-    /* Loop over the proxies and add the recv tasks, which relies on having the
-     * cell tags. */
+    /* Loop over the proxies and add the recv tasks, which relies on having
+     * the cell tags. */
     int max_num_recv_cells = 0;
     for (int pid = 0; pid < e->nr_proxies; pid++)
       max_num_recv_cells += e->proxies[pid].nr_cells_in;
@@ -4858,7 +4897,8 @@ void engine_maketasks(struct engine *e) {
   /* Report the number of links we actually used */
   if (e->verbose)
     message(
-        "Nr. of links: %zd allocated links: %zd ratio: %f memory use: %zd MB.",
+        "Nr. of links: %zd allocated links: %zd ratio: %f memory use: %zd "
+        "MB.",
         e->nr_links, e->size_links, (float)e->nr_links / (float)e->size_links,
         e->size_links * sizeof(struct link) / (1024 * 1024));
 
