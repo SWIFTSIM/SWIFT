@@ -49,9 +49,9 @@
  *
  */
 float space_get_current_hmax(struct space *s,
-                             int *local_cells_with_particles_top,
-                             int nr_local_cells_with_particles, int nr_cells,
-                             double cell_min) {
+                             const int *const local_cells_with_particles_top,
+                             const int nr_local_cells_with_particles,
+                             const int nr_cells, const double cell_min) {
 
   const size_t nr_parts = s->nr_parts;
   const size_t nr_sparts = s->nr_sparts;
