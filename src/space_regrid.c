@@ -51,7 +51,8 @@
 float space_get_current_hmax(struct space *s,
                              const int *const local_cells_with_particles_top,
                              const int nr_local_cells_with_particles,
-                             const int nr_cells, const double cell_min) {
+                             const int nr_cells, const double cell_min,
+                             const int verbose) {
 
   const size_t nr_parts = s->nr_parts;
   const size_t nr_sparts = s->nr_sparts;
@@ -114,6 +115,19 @@ float space_get_current_hmax(struct space *s,
       }
     }
   }
+
+/* If we are running in parallel, make sure everybody agrees on
+   how large the largest cell should be. */
+#ifdef WITH_MPI
+  {
+    float buff;
+    if (MPI_Allreduce(&h_max, &buff, 1, MPI_FLOAT, MPI_MAX, MPI_COMM_WORLD) !=
+        MPI_SUCCESS)
+      error("Failed to aggregate the rebuild flag across nodes.");
+    h_max = buff;
+  }
+#endif
+  if (verbose) message("h_max is %.3e (cell_min=%.3e).", h_max, s->cell_min);
 
   return h_max;
 }
@@ -233,20 +247,7 @@ void space_regrid_uniform_box(struct space *s, int verbose) {
   /* Get the current h_max. */
   float h_max = space_get_current_hmax(s, s->local_cells_with_particles_top,
                                        s->nr_local_cells_with_particles,
-                                       s->nr_cells, s->cell_min);
-
-/* If we are running in parallel, make sure everybody agrees on
-   how large the largest cell should be. */
-#ifdef WITH_MPI
-  {
-    float buff;
-    if (MPI_Allreduce(&h_max, &buff, 1, MPI_FLOAT, MPI_MAX, MPI_COMM_WORLD) !=
-        MPI_SUCCESS)
-      error("Failed to aggregate the rebuild flag across nodes.");
-    h_max = buff;
-  }
-#endif
-  if (verbose) message("h_max is %.3e (cell_min=%.3e).", h_max, s->cell_min);
+                                       s->nr_cells, s->cell_min, verbose);
 
   /* Get the new putative cell dimensions. */
   const int cdim[3] = {
