@@ -151,6 +151,18 @@ void zoom_find_void_cells(struct space *s, const int verbose) {
 
   if (verbose)
     message("%i void cells contain the zoom region", zoom_props->nr_void_cells);
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Check the void cells are in the right place. */
+  for (int i = 0; i < zoom_props->nr_void_cells; i++) {
+    const int cid = zoom_props->void_cells_top[i];
+    if (cid < offset || cid >= offset + ncells)
+      error("Void cell index is out of range (cid=%d, offset=%d, ncells=%d)",
+            cid, offset, ncells);
+    if (zoom_cell_inside_zoom_region(&cells[cid], s) == 0)
+      error("Void cell is not inside the zoom region (cid=%d)", cid);
+  }
+#endif
 }
 
 /**
@@ -190,6 +202,22 @@ void zoom_find_empty_cells(struct space *s, const int verbose) {
   if (verbose)
     message("%i background cells contain the buffer region",
             zoom_props->nr_empty_cells);
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Ensure the empty cells in the zoom region are correctly labelled */
+  for (int cid = offset; cid < offset + ncells; cid++) {
+    if (zoom_cell_inside_buffer_region(&cells[cid], s) &&
+        cells[cid].subtype != cell_subtype_empty)
+      error("Empty cell is not correctly labelled (cid=%d, c->subtype=%s)", cid,
+            cellID_names[cells[cid].subtype]);
+    if (zoom_cell_inside_zoom_region(&cells[cid], s) &&
+        cells[cid].subtype != cell_subtype_empty)
+      error(
+          "Background cell above the zoom region isn't correctly labelled "
+          "empty (cid=%d, c->subtype=%s)",
+          cid, cellID_names[cells[cid].subtype]);
+  }
+#endif
 }
 
 /**
@@ -768,9 +796,9 @@ void link_zoom_to_void(struct space *s, struct cell *c) {
   for (int k = 0; k < 8; k++) {
 
     /* Establish the location of the fake progeny cell. */
-    double zoom_loc[3] = {c->loc[0] + s->zoom_props->width[0] / 2,
-                          c->loc[1] + s->zoom_props->width[1] / 2,
-                          c->loc[2] + s->zoom_props->width[2] / 2};
+    double zoom_loc[3] = {c->loc[0] + (s->zoom_props->width[0] / 2),
+                          c->loc[1] + (s->zoom_props->width[1] / 2),
+                          c->loc[2] + (s->zoom_props->width[2] / 2)};
     if (k & 4) zoom_loc[0] += s->zoom_props->width[0];
     if (k & 2) zoom_loc[1] += s->zoom_props->width[1];
     if (k & 1) zoom_loc[2] += s->zoom_props->width[2];
@@ -778,8 +806,30 @@ void link_zoom_to_void(struct space *s, struct cell *c) {
     /* Which zoom cell are we in? */
     int cid = cell_getid_from_pos(s, zoom_loc[0], zoom_loc[1], zoom_loc[2]);
 
+#ifdef SWIFT_DEBUG_CHECKS
+    /* Ensure we're in the right cell. */
+    if (cid >= s->zoom_props->nr_zoom_cells || cid < 0)
+      error(
+          "Void progeny isn't in the right place! (zoom_loc=[%f %f %f] -> "
+          "cid=%d,"
+          "s->zoom_props->nr_zoom_cells=%d)",
+          zoom_loc[0], zoom_loc[1], zoom_loc[2], cid,
+          s->zoom_props->nr_zoom_cells);
+#endif
+
     /* Get the zoom cell. */
     struct cell *zoom_cell = &s->cells_top[cid];
+
+#ifdef SWIFT_DEBUG_CHECKS
+    /* Ensure the zoom cell we've got is actually a void cell. */
+    if (zoom_cell->type != cell_type_zoom)
+      error(
+          "Void progeny isn't a zoom cell! (zoom_loc=[%f %f %f] -> cid=%d,"
+          "c->type=%s, c->subtype=%s, c->loc=[%f %f %f])",
+          zoom_loc[0], zoom_loc[1], zoom_loc[2], cid,
+          cellID_names[zoom_cell->type], subcellID_names[zoom_cell->subtype],
+          zoom_cell->loc[0], zoom_cell->loc[1], zoom_cell->loc[2]);
+#endif
 
     /* Link this zoom cell into the void cell hierarchy. */
     c->progeny[k] = zoom_cell;
@@ -890,4 +940,25 @@ void link_zoom_to_void(struct space *s, struct cell *c) {
     gravity_multipole_compute_power(&c->grav.multipole->m_pole);
 
   } /* Deal with gravity */
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Ensure the void multipole agrees with the nested zoom cells. */
+  int nr_gparts_in_zoom = 0;
+  int nr_gparts_in_void = c->grav.multipole->m_pole.num_gpart;
+  for (int k = 0; k < 8; k++) {
+    /* All progeny should exist */
+    if (c->progeny[k] == NULL) {
+      error("Zoom cell has no progeny!");
+    }
+    nr_gparts_in_zoom += c->progeny[k]->grav.multipole->m_pole.num_gpart;
+  }
+
+  if (nr_gparts_in_zoom != nr_gparts_in_void) {
+    error(
+        "Zoom cell and void cell multipole don't agree! "
+        "(nr_gparts_in_zoom=%d "
+        "nr_gparts_in_void=%d)",
+        nr_gparts_in_zoom, nr_gparts_in_void);
+  }
+#endif
 }
