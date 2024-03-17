@@ -49,9 +49,9 @@
  *
  */
 float space_get_current_hmax(struct space *s,
-                             int *local_cells_with_particles_top,
-                             int nr_local_cells_with_particles, int nr_cells,
-                             double cell_min) {
+                             const int *const local_cells_with_particles_top,
+                             const int nr_local_cells_with_particles,
+                             const int nr_cells, const double cell_min) {
 
   const size_t nr_parts = s->nr_parts;
   const size_t nr_sparts = s->nr_sparts;
@@ -446,7 +446,7 @@ void space_regrid_uniform_box(struct space *s, int verbose) {
     // message( "rebuilding upper-level cells took %.3f %s." ,
     // clocks_from_ticks(double)(getticks() - tic), clocks_getunit());
 
-  }      /* re-build upper-level cells? */
+  } /* re-build upper-level cells? */
   else { /* Otherwise, just clean up the cells. */
 
     /* Free the old cells, if they were allocated. */
