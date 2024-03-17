@@ -650,9 +650,9 @@ void zoom_engine_make_self_gravity_tasks(struct space *s, struct engine *e) {
  * Additional loop over neighbours can later be added by simply duplicating
  * all the tasks created by this function.
  *
- * This replaces the function in engine_maketasks but simply removes
- * periodicity (the zoom level never has periodicity), otherwise the function
- * is identical.
+ * This replaces the function in engine_maketasks but removes
+ * periodicity (the zoom level never has periodicity), and uses zoom
+ * region properties instead of the uniform box ones stored in the space.
  *
  * @param map_data Offset of first two indices disguised as a pointer.
  * @param num_elements Number of cells to traverse.
@@ -792,9 +792,9 @@ void engine_make_hydroloop_tasks_mapper_with_zoom(void *map_data,
  * Additional loop over neighbours can later be added by simply duplicating
  * all the tasks created by this function.
  *
- * This replaces the function in engine_maketasks but simply removes
- * periodicity (the zoom level never has periodicity), otherwise the function
- * is identical.
+ * This replaces the function in engine_maketasks but removes
+ * periodicity (the zoom level never has periodicity), and uses zoom
+ * region properties instead of the uniform box ones stored in the space.
  *
  * @param map_data Offset of first two indices disguised as a pointer.
  * @param num_elements Number of cells to traverse.

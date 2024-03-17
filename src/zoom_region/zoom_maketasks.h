@@ -27,5 +27,8 @@ void zoom_engine_make_self_gravity_tasks(struct space *s, struct engine *e);
 void engine_make_hydroloop_tasks_mapper_with_zoom(void *map_data,
                                                   int num_elements,
                                                   void *extra_data);
+void engine_make_fofloop_tasks_mapper_with_zoom(void *map_data,
+                                                int num_elements,
+                                                void *extra_data);
 
 #endif /* SWIFT_ZOOM_MAKETASKS_H */

@@ -4614,9 +4614,15 @@ void engine_make_fof_tasks(struct engine *e) {
   if (e->restarting) error("Running FOF on a restart step!");
 
   /* Construct a FOF loop over neighbours */
-  if (e->policy & engine_policy_fof)
+  if (e->policy & engine_policy_fof && !s->with_zoom_region) {
     threadpool_map(&e->threadpool, engine_make_fofloop_tasks_mapper, NULL,
                    s->nr_cells, 1, threadpool_auto_chunk_size, e);
+  } else {
+    /* Call the zoom version that only uses zoom cells. */
+    threadpool_map(&e->threadpool, engine_make_fofloop_tasks_mapper_with_zoom,
+                   NULL, s->zoom_props->nr_zoom_cells, 1,
+                   threadpool_auto_chunk_size, e);
+  }
 
   if (e->verbose)
     message("Making FOF tasks took %.3f %s.",
@@ -4671,9 +4677,15 @@ void engine_maketasks(struct engine *e) {
   ticks tic2 = getticks();
 
   /* Construct the first hydro loop over neighbours */
-  if (e->policy & engine_policy_hydro)
+  if (e->policy & engine_policy_hydro && !s->with_zoom_region) {
     threadpool_map(&e->threadpool, engine_make_hydroloop_tasks_mapper, NULL,
                    s->nr_cells, 1, threadpool_auto_chunk_size, e);
+  } else if (e->policy & engine_policy_hydro && s->with_zoom_region) {
+    /* Call the zoom version that only uses zoom cells. */
+    threadpool_map(&e->threadpool, engine_make_hydroloop_tasks_mapper_with_zoom,
+                   NULL, s->zoom_props->nr_zoom_cells, 1,
+                   threadpool_auto_chunk_size, e);
+  }
 
   if (e->verbose)
     message("Making hydro tasks took %.3f %s.",
@@ -4748,8 +4760,8 @@ void engine_maketasks(struct engine *e) {
 
   tic2 = getticks();
 
-  /* Re-set the tag counter. MPI tags are defined for top-level cells in
-   * cell_set_super_mapper. */
+/* Re-set the tag counter. MPI tags are defined for top-level cells in
+ * cell_set_super_mapper. */
 #ifdef WITH_MPI
   cell_next_tag = 0;
 #endif
