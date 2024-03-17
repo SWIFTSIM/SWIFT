@@ -784,7 +784,8 @@ void space_split_recursive(struct space *s, struct cell *c,
  * @param num_cells The number of cells to treat.
  * @param extra_data Pointers to the #space.
  */
-void space_split_mapper(void *map_data, int num_cells, void *extra_data) {
+staitc void space_split_mapper(void *map_data, int num_cells,
+                               void *extra_data) {
 
   /* Unpack the inputs. */
   struct space *s = (struct space *)extra_data;
