@@ -347,7 +347,7 @@ void space_split_recursive(struct space *s, struct cell *c,
               cp->width[0] / 2, s->zoom_props->width[0]);
 #endif
 
-        link_zoom_to_void(s, cp);
+        zoom_link_void_leaves(s, cp);
 
       } else {
 
@@ -510,7 +510,7 @@ void space_split_recursive(struct space *s, struct cell *c,
 #endif
 
     } /* Deal with gravity */
-  }   /* Split or let it be? */
+  } /* Split or let it be? */
 
   /* Otherwise, collect the data from the particles in this cell. */
   else {
