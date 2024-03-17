@@ -34,6 +34,7 @@
 
 /* Includes. */
 #include "barrier.h"
+#include "cell.h"
 #include "clocks.h"
 #include "collectgroup.h"
 #include "ic_info.h"
@@ -768,9 +769,12 @@ void engine_activate_fof_attach_tasks(struct engine *e);
 
 /* Function prototypes, engine_maketasks.c. */
 void engine_maketasks(struct engine *e);
+engine_make_pair_gravity_task(struct engine *e, struct scheduler *sched,
+                              struct cell *ci, struct cell *cj,
+                              const int nodeID)
 
-/* Function prototypes, engine_maketasks.c. */
-void engine_make_fof_tasks(struct engine *e);
+    /* Function prototypes, engine_maketasks.c. */
+    void engine_make_fof_tasks(struct engine *e);
 
 /* Function prototypes, engine_marktasks.c. */
 int engine_marktasks(struct engine *e);

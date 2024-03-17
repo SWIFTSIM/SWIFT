@@ -1857,6 +1857,72 @@ void engine_make_hierarchical_tasks_mapper(void *map_data, int num_elements,
 }
 
 /**
+ * @brief Constructs a top-level pair gravity task between two cells.
+ *
+ * This will also check and ensure we have the proxy for the foreign cell.
+ *
+ * @param e The #engine.
+ * @param sched The #scheduler.
+ * @param ci The first #cell.
+ * @param cj The second #cell.
+ * @param nodeID The nodeID of the current node.
+ */
+void engine_make_pair_gravity_task(struct engine *e, struct scheduler *sched,
+                                   struct cell *ci, struct cell *cj,
+                                   const int nodeID) {
+  /* Add a pair task. */
+  scheduler_addtask(sched, task_type_pair, task_subtype_grav, 0, 0, ci, cj);
+
+#ifdef SWIFT_DEBUG_CHECKS
+#ifdef WITH_MPI
+
+  /* Let's cross-check that we had a proxy for that cell */
+  if (ci->nodeID == nodeID && cj->nodeID != engine_rank) {
+
+    /* Find the proxy for this node */
+    const int proxy_id = e->proxy_ind[cj->nodeID];
+    if (proxy_id < 0)
+      error("No proxy exists for that foreign node %d!", cj->nodeID);
+
+    const struct proxy *p = &e->proxies[proxy_id];
+
+    /* Check whether the cell exists in the proxy */
+    int n = 0;
+    for (; n < p->nr_cells_in; n++)
+      if (p->cells_in[n] == cj) {
+        break;
+      }
+    if (n == p->nr_cells_in)
+      error(
+          "Cell %d not found in the proxy but trying to construct "
+          "grav task!",
+          cjd);
+  } else if (cj->nodeID == nodeID && ci->nodeID != engine_rank) {
+
+    /* Find the proxy for this node */
+    const int proxy_id = e->proxy_ind[ci->nodeID];
+    if (proxy_id < 0)
+      error("No proxy exists for that foreign node %d!", ci->nodeID);
+
+    const struct proxy *p = &e->proxies[proxy_id];
+
+    /* Check whether the cell exists in the proxy */
+    int n = 0;
+    for (; n < p->nr_cells_in; n++)
+      if (p->cells_in[n] == ci) {
+        break;
+      }
+    if (n == p->nr_cells_in)
+      error(
+          "Cell %d not found in the proxy but trying to construct "
+          "grav task!",
+          cid);
+  }
+#endif /* WITH_MPI */
+#endif /* SWIFT_DEBUG_CHECKS */
+}
+
+/**
  * @brief Constructs the top-level tasks for the short-range gravity
  * and long-range gravity interactions.
  *
@@ -1983,56 +2049,7 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
                                     /*is_tree_walk=*/0)) {
 
             /* Ok, we need to add a direct pair calculation */
-            scheduler_addtask(sched, task_type_pair, task_subtype_grav, 0, 0,
-                              ci, cj);
-
-#ifdef SWIFT_DEBUG_CHECKS
-#ifdef WITH_MPI
-
-            /* Let's cross-check that we had a proxy for that cell */
-            if (ci->nodeID == nodeID && cj->nodeID != engine_rank) {
-
-              /* Find the proxy for this node */
-              const int proxy_id = e->proxy_ind[cj->nodeID];
-              if (proxy_id < 0)
-                error("No proxy exists for that foreign node %d!", cj->nodeID);
-
-              const struct proxy *p = &e->proxies[proxy_id];
-
-              /* Check whether the cell exists in the proxy */
-              int n = 0;
-              for (; n < p->nr_cells_in; n++)
-                if (p->cells_in[n] == cj) {
-                  break;
-                }
-              if (n == p->nr_cells_in)
-                error(
-                    "Cell %d not found in the proxy but trying to construct "
-                    "grav task!",
-                    cjd);
-            } else if (cj->nodeID == nodeID && ci->nodeID != engine_rank) {
-
-              /* Find the proxy for this node */
-              const int proxy_id = e->proxy_ind[ci->nodeID];
-              if (proxy_id < 0)
-                error("No proxy exists for that foreign node %d!", ci->nodeID);
-
-              const struct proxy *p = &e->proxies[proxy_id];
-
-              /* Check whether the cell exists in the proxy */
-              int n = 0;
-              for (; n < p->nr_cells_in; n++)
-                if (p->cells_in[n] == ci) {
-                  break;
-                }
-              if (n == p->nr_cells_in)
-                error(
-                    "Cell %d not found in the proxy but trying to construct "
-                    "grav task!",
-                    cid);
-            }
-#endif /* WITH_MPI */
-#endif /* SWIFT_DEBUG_CHECKS */
+            engine_make_pair_gravity_task(e, sched, ci, cj, nodeID);
           }
         }
       }
