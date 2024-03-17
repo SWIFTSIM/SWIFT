@@ -1083,8 +1083,8 @@ __attribute__((always_inline)) INLINE static double cell_min_dist2(
 
   /* In zoom land we need to check if we need to consider periodicity since only
    * background cells are periodic. */
-  if (s->with_zoom_region &&
-      (ci->type != cell_type_bkg && cj->type != cell_type_bkg)) {
+  if (ci->type != cell_type_regular && cj->type != cell_type_regular &&
+      ci->type != cell_type_bkg && cj->type != cell_type_bkg) {
     periodic = 0;
   }
 
