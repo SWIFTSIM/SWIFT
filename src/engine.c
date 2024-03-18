@@ -1820,7 +1820,12 @@ void engine_run_rt_sub_cycles(struct engine *e) {
   /* Get some time variables for printouts. Don't update the ones in the
    * engine like in the regular step, or the outputs in the regular steps
    * will be wrong. */
-  const double dt_subcycle = e->time_step;
+  double dt_subcycle;
+  if (e->policy & engine_policy_cosmology) {
+    dt_subcycle = cosmology_get_delta_time(e->cosmology, e->ti_current, e->ti_rt_end_min);
+  } else {
+    dt_subcycle = rt_step_size * e->time_base;
+  }
   double time = e->time;
 
   /* Keep track and accumulate the deadtime over all sub-cycles. */
@@ -1883,8 +1888,10 @@ void engine_run_rt_sub_cycles(struct engine *e) {
         get_min_active_bin(e->ti_current_subcycle, ti_subcycle_old);
     /* TODO: add rt_props_update() for cosmological thermochemistry*/
     if (e->policy & engine_policy_cosmology) {
+      double time_old = time;
       cosmology_update(e->cosmology, e->physical_constants, e->ti_current_subcycle);  // Update cosmological parameters
       time = e->cosmology->time;  // Grab new cosmology time
+      dt_subcycle = time - time_old;
     } else {
       time = e->ti_current_subcycle * e->time_base + e->time_begin;
     }
