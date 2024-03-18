@@ -3235,6 +3235,9 @@ AM_CONDITIONAL([HAVESIMBACOOLING], [test "$with_cooling" = "SIMBA"])
 # check if using grackle cooling
 AM_CONDITIONAL([HAVEKIARACOOLING], [test "$with_cooling" = "KIARA"])
 
+# check if using EAGLE floor
+AM_CONDITIONAL([HAVEEAGLEFLOOR], [test "$with_entropy_floor" = "EAGLE"])
+
 # check if using gear feedback
 AM_CONDITIONAL([HAVEGEARFEEDBACK], [test "$with_feedback" = "GEAR"])
 
