@@ -1424,9 +1424,14 @@ void task_dump_all(struct engine *e, int step) {
               (e->sched.tasks[l].cj != NULL) ? e->sched.tasks[l].cj->grav.count
                                              : 0,
               e->sched.tasks[l].flags, e->sched.tasks[l].sid,
-              e->sched.tasks[l].ci->type, e->sched.tasks[l].cj->type,
-              e->sched.tasks[l].ci->subtype, e->sched.tasks[l].cj->subtype,
-              e->sched.tasks[l].ci->depth, e->sched.tasks[l].cj->depth);
+              (e->sched.tasks[l].ci != NULL) ? e->sched.tasks[l].ci->type : 0,
+              (e->sched.tasks[l].cj != NULL) ? e->sched.tasks[l].cj->type : 0,
+              (e->sched.tasks[l].ci != NULL) ? e->sched.tasks[l].ci->subtype
+                                             : 0,
+              (e->sched.tasks[l].cj != NULL) ? e->sched.tasks[l].cj->subtype
+                                             : 0,
+              (e->sched.tasks[l].ci != NULL) ? e->sched.tasks[l].ci->depth : 0,
+              (e->sched.tasks[l].cj != NULL) ? e->sched.tasks[l].cj->depth : 0);
         }
         count++;
       }
@@ -1466,10 +1471,13 @@ void task_dump_all(struct engine *e, int step) {
                                          : e->sched.tasks[l].cj->hydro.count,
           (e->sched.tasks[l].ci == NULL) ? 0 : e->sched.tasks[l].ci->grav.count,
           (e->sched.tasks[l].cj == NULL) ? 0 : e->sched.tasks[l].cj->grav.count,
-          e->sched.tasks[l].sid, e->sched.tasks[l].ci->type,
-          e->sched.tasks[l].cj->type, e->sched.tasks[l].ci->subtype,
-          e->sched.tasks[l].cj->subtype.e->sched.tasks[l].ci->depth,
-          e->sched.tasks[l].cj->depth);
+          e->sched.tasks[l].sid,
+          (e->sched.tasks[l].ci != NULL) ? e->sched.tasks[l].ci->type : 0,
+          (e->sched.tasks[l].cj != NULL) ? e->sched.tasks[l].cj->type : 0,
+          (e->sched.tasks[l].ci != NULL) ? e->sched.tasks[l].ci->subtype : 0,
+          (e->sched.tasks[l].cj != NULL) ? e->sched.tasks[l].cj->subtype : 0,
+          (e->sched.tasks[l].ci != NULL) ? e->sched.tasks[l].ci->depth : 0,
+          (e->sched.tasks[l].cj != NULL) ? e->sched.tasks[l].cj->depth : 0);
     }
   }
   fclose(file_thread);
