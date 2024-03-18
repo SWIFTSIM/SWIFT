@@ -676,7 +676,10 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     float dt_grav_mesh, float dt_hydro, float dt_kick_corr,
     const struct cosmology* cosmo, const struct hydro_props* hydro_props,
     const struct entropy_floor_properties* floor_props) {
-
+  
+  dt_therm = 0.f;
+  dt_grav = 0.f;
+  dt_kick_corr = 0.f;
   /* Add gravity. We only do this if we have gravity activated. */
   if (p->gpart) {
     /* Retrieve the current value of the gravitational acceleration from the
