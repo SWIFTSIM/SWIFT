@@ -540,12 +540,14 @@ for rank in ranks:
         ax.set_ylim(0.5, nethread + 1.0)
         for i in range(nethread):
             #  Collect ranges and colours into arrays.
-            # tictocs = []
-            # colours = []
+            tictocs = []
+            colours = []
+            hatches = []
             j = 0
             for task in tasks[i]:
-                # tictocs.append((task["tic"], task["toc"] - task["tic"]))
-                # colours.append(task["colour"])
+                tictocs.append((task["tic"], task["toc"] - task["tic"]))
+                colours.append(task["colour"])
+                hatches.append(task["hatch"])
 
                 #  Legend support, collections don't add to this.
                 if task["subtype"] != "none":
@@ -557,19 +559,10 @@ for rank in ranks:
                     pl.plot([], [], color=task["colour"], label=qtask)
                     typesseen.append(qtask)
 
-                ax.barh(
-                    bottom=i + 0.55,
-                    height=0.9,
-                    left=task["tic"],
-                    width=task["toc"] - task["tic"],
-                    facecolor=task["colour"],
-                    hatch=task["hatch"],
-                )
-
-            # #  Now plot.
-            # ax.broken_barh(
-            #     tictocs, [i + 0.55, 0.9], facecolors=colours, linewidth=0
-            # )
+            #  Now plot.
+            ax.broken_barh(
+                tictocs, [i + 0.55, 0.9], facecolors=colours, linewidth=0
+            )
 
     #  Legend and room for it.
     nrow = len(typesseen) / 8
