@@ -253,56 +253,14 @@ CELLSUBTYPES = [
     "Empty",  # This should never ever appear but good to see incase it does.
 ]
 
-#  A number of colours for the various types. Recycled when there are
-#  more task types than colours...
-colours = [
-    "cyan",
-    "lightgray",
-    "darkblue",
-    "yellow",
-    "tan",
-    "dodgerblue",
-    "sienna",
-    "aquamarine",
-    "bisque",
-    "blue",
-    "green",
-    "lightgreen",
-    "brown",
-    "purple",
-    "moccasin",
-    "olivedrab",
-    "chartreuse",
-    "olive",
-    "darkgreen",
-    "green",
-    "mediumseagreen",
-    "mediumaquamarine",
-    "darkslategrey",
-    "mediumturquoise",
-    "black",
-    "cadetblue",
-    "skyblue",
-    "red",
-    "slategray",
-    "gold",
-    "slateblue",
-    "blueviolet",
-    "mediumorchid",
-    "firebrick",
-    "magenta",
-    "hotpink",
-    "pink",
-    "orange",
-    "lightgreen",
-]
-maxcolours = len(colours)
-
 # Set the seed
 pl.seed(42)
 
 
 def generate_random_hex_color():
+    """
+    Generate a random colour in hex format.
+    """
     # Divide the hue space into equal parts
     hue = pl.randn()
     # Convert HSL to RGB
@@ -321,46 +279,34 @@ ncolours = 0
 if not args.use_celltype:
     for task in TASKTYPES:
         TASKCOLOURS[task] = generate_random_hex_color()
-        ncolours = (ncolours + 1) % maxcolours
 else:
     for task in TASKTYPES:
         for cell in CELLTYPES:
             TASKCOLOURS[cell + "/" + task] = generate_random_hex_color()
-            ncolours = (ncolours + 1) % maxcolours
 
 SUBCOLOURS = {}
 if not args.use_celltype:
     for task in FULLTYPES:
         SUBCOLOURS[task] = generate_random_hex_color()
-        ncolours = (ncolours + 1) % maxcolours
 
     for task in SUBTYPES:
         SUBCOLOURS[task] = generate_random_hex_color()
-        ncolours = (ncolours + 1) % maxcolours
 else:
     for task in FULLTYPES:
         for cell in CELLTYPES:
             SUBCOLOURS[cell + "/" + task] = generate_random_hex_color()
-            ncolours = (ncolours + 1) % maxcolours
             if "pair" in task:
                 SUBCOLOURS["Zoom->Bkg/" + task] = generate_random_hex_color()
-                ncolours = (ncolours + 1) % maxcolours
                 SUBCOLOURS["Zoom->Buff/" + task] = generate_random_hex_color()
-                ncolours = (ncolours + 1) % maxcolours
                 SUBCOLOURS["Buff->Bkg/" + task] = generate_random_hex_color()
-                ncolours = (ncolours + 1) % maxcolours
 
         for task in SUBTYPES:
             for cell in CELLTYPES:
                 SUBCOLOURS[cell + "/" + task] = generate_random_hex_color()
-                ncolours = (ncolours + 1) % maxcolours
             if "pair" in task:
                 SUBCOLOURS["Zoom->Bkg/" + task] = generate_random_hex_color()
-                ncolours = (ncolours + 1) % maxcolours
                 SUBCOLOURS["Zoom->Buff/" + task] = generate_random_hex_color()
-                ncolours = (ncolours + 1) % maxcolours
                 SUBCOLOURS["Buff->Bkg/" + task] = generate_random_hex_color()
-                ncolours = (ncolours + 1) % maxcolours
 
 #  For fiddling with colours...
 if args.verbose:
