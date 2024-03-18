@@ -302,21 +302,6 @@ maxcolours = len(colours)
 pl.seed(0)
 
 
-<<<<<<< HEAD
-if not args.use_celltype:
-    colours = generate_unique_hex_colors(
-        len(TASKTYPES) + len(FULLTYPES) + len(SUBTYPES)
-    )
-else:
-    # This already holds more than enough colours without accounting for the
-    # pairs since many won't appear
-    colours = generate_unique_hex_colors(
-        len(TASKTYPES) * len(CELLTYPES)
-        + len(FULLTYPES) * len(CELLTYPES)
-        + len(SUBTYPES) * len(CELLTYPES)
-    )
-maxcolours = len(colours)
-=======
 def generate_unique_hex_color():
     # Divide the hue space into equal parts
     hue = pl.random.randn()
@@ -328,7 +313,6 @@ def generate_unique_hex_color():
         int(rgb[1] * 255),
         int(rgb[2] * 255),
     )
->>>>>>> zoom_analysis_tools
 
 
 #  Set colours of task/subtype.
