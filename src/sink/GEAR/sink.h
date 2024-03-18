@@ -623,47 +623,6 @@ INLINE static void sink_star_formation_separate_particles(
   }
 #endif
 
-  /* /\* Move a bit the particle in order to avoid */
-  /*    division by 0. */
-  /* *\/ */
-  /* const float max_displacement = 0.1; */
-  /* const double delta_x = */
-  /*     2.f * random_unit_interval(si->id, e->ti_current, */
-  /*                                (enum random_number_type)0) - */
-  /*     1.f; */
-  /* const double delta_y = */
-  /*     2.f * random_unit_interval(si->id, e->ti_current, */
-  /*                                (enum random_number_type)1) - */
-  /*     1.f; */
-  /* const double delta_z = */
-  /*     2.f * random_unit_interval(si->id, e->ti_current, */
-  /*                                (enum random_number_type)2) - */
-  /*     1.f; */
-
-  /* sp->x[0] += delta_x * max_displacement * si->r_cut; */
-  /* sp->x[1] += delta_y * max_displacement * si->r_cut; */
-  /* sp->x[2] += delta_z * max_displacement * si->r_cut; */
-
-  /* /\* Copy the position to the gpart *\/ */
-  /* sp->gpart->x[0] = sp->x[0]; */
-  /* sp->gpart->x[1] = sp->x[1]; */
-  /* sp->gpart->x[2] = sp->x[2]; */
-
-  /* /\* Do the sink particle. *\/ */
-  /* const double mass_ratio = sp->mass / si->mass; */
-  /* const double dx[3] = {mass_ratio * delta_x * max_displacement * si->r_cut, */
-  /*                       mass_ratio * delta_y * max_displacement * si->r_cut, */
-  /*                       mass_ratio * delta_z * max_displacement * si->r_cut}; */
-
-  /* si->x[0] -= dx[0]; */
-  /* si->x[1] -= dx[1]; */
-  /* si->x[2] -= dx[2]; */
-
-  /* /\* Copy the position to the gpart *\/ */
-  /* si->gpart->x[0] = si->x[0]; */
-  /* si->gpart->x[1] = si->x[1]; */
-  /* si->gpart->x[2] = si->x[2]; */
-
   /* Put the star randomly within the accretion radius of the sink */
   const double phi = 2*M_PI*random_unit_interval(sp->id, e->ti_current, (enum random_number_type)3);
   const double r = si->r_cut*random_unit_interval(sp->id, e->ti_current, (enum random_number_type)4);
