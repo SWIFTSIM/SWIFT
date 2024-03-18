@@ -302,7 +302,7 @@ maxcolours = len(colours)
 pl.seed(42)
 
 
-def generate_unique_hex_color():
+def generate_random_hex_color():
     # Divide the hue space into equal parts
     hue = pl.randn()
     # Convert HSL to RGB
@@ -320,46 +320,46 @@ TASKCOLOURS = {}
 ncolours = 0
 if not args.use_celltype:
     for task in TASKTYPES:
-        TASKCOLOURS[task] = generate_unique_hex_color()
+        TASKCOLOURS[task] = generate_random_hex_color()
         ncolours = (ncolours + 1) % maxcolours
 else:
     for task in TASKTYPES:
         for cell in CELLTYPES:
-            TASKCOLOURS[cell + "/" + task] = generate_unique_hex_color()
+            TASKCOLOURS[cell + "/" + task] = generate_random_hex_color()
             ncolours = (ncolours + 1) % maxcolours
 
 SUBCOLOURS = {}
 if not args.use_celltype:
     for task in FULLTYPES:
-        SUBCOLOURS[task] = generate_unique_hex_color()
+        SUBCOLOURS[task] = generate_random_hex_color()
         ncolours = (ncolours + 1) % maxcolours
 
     for task in SUBTYPES:
-        SUBCOLOURS[task] = generate_unique_hex_color()
+        SUBCOLOURS[task] = generate_random_hex_color()
         ncolours = (ncolours + 1) % maxcolours
 else:
     for task in FULLTYPES:
         for cell in CELLTYPES:
-            SUBCOLOURS[cell + "/" + task] = generate_unique_hex_color()
+            SUBCOLOURS[cell + "/" + task] = generate_random_hex_color()
             ncolours = (ncolours + 1) % maxcolours
             if "pair" in task:
-                SUBCOLOURS["Zoom->Bkg/" + task] = generate_unique_hex_color()
+                SUBCOLOURS["Zoom->Bkg/" + task] = generate_random_hex_color()
                 ncolours = (ncolours + 1) % maxcolours
-                SUBCOLOURS["Zoom->Buff/" + task] = generate_unique_hex_color()
+                SUBCOLOURS["Zoom->Buff/" + task] = generate_random_hex_color()
                 ncolours = (ncolours + 1) % maxcolours
-                SUBCOLOURS["Buff->Bkg/" + task] = generate_unique_hex_color()
+                SUBCOLOURS["Buff->Bkg/" + task] = generate_random_hex_color()
                 ncolours = (ncolours + 1) % maxcolours
 
         for task in SUBTYPES:
             for cell in CELLTYPES:
-                SUBCOLOURS[cell + "/" + task] = generate_unique_hex_color()
+                SUBCOLOURS[cell + "/" + task] = generate_random_hex_color()
                 ncolours = (ncolours + 1) % maxcolours
             if "pair" in task:
-                SUBCOLOURS["Zoom->Bkg/" + task] = generate_unique_hex_color()
+                SUBCOLOURS["Zoom->Bkg/" + task] = generate_random_hex_color()
                 ncolours = (ncolours + 1) % maxcolours
-                SUBCOLOURS["Zoom->Buff/" + task] = generate_unique_hex_color()
+                SUBCOLOURS["Zoom->Buff/" + task] = generate_random_hex_color()
                 ncolours = (ncolours + 1) % maxcolours
-                SUBCOLOURS["Buff->Bkg/" + task] = generate_unique_hex_color()
+                SUBCOLOURS["Buff->Bkg/" + task] = generate_random_hex_color()
                 ncolours = (ncolours + 1) % maxcolours
 
 #  For fiddling with colours...
