@@ -299,7 +299,7 @@ colours = [
 maxcolours = len(colours)
 
 # Set the seed
-pl.seed(0)
+pl.seed(42)
 
 
 def generate_unique_hex_color():
