@@ -300,32 +300,49 @@ maxcolours = len(colours)
 #  Set colours of task/subtype.
 TASKCOLOURS = {}
 ncolours = 0
-for task in TASKTYPES:
-    TASKCOLOURS[task] = colours[ncolours]
-    ncolours = (ncolours + 1) % maxcolours
+if not args.use_celltype:
+    for task in TASKTYPES:
+        TASKCOLOURS[task] = colours[ncolours]
+        ncolours = (ncolours + 1) % maxcolours
+else:
+    for task in TASKTYPES:
+        for cell in CELLTYPES:
+            TASKCOLOURS[cell + "/" + task] = colours[ncolours]
+            ncolours = (ncolours + 1) % maxcolours
 
 SUBCOLOURS = {}
-for task in FULLTYPES:
-    SUBCOLOURS[task] = colours[ncolours]
-    ncolours = (ncolours + 1) % maxcolours
+if not args.use_celltype:
+    for task in FULLTYPES:
+        SUBCOLOURS[task] = colours[ncolours]
+        ncolours = (ncolours + 1) % maxcolours
 
-for task in SUBTYPES:
-    SUBCOLOURS[task] = colours[ncolours]
-    ncolours = (ncolours + 1) % maxcolours
+    for task in SUBTYPES:
+        SUBCOLOURS[task] = colours[ncolours]
+        ncolours = (ncolours + 1) % maxcolours
+else:
+    for task in FULLTYPES:
+        for cell in CELLTYPES:
+            SUBCOLOURS[cell + "/" + task] = colours[ncolours]
+            ncolours = (ncolours + 1) % maxcolours
+            if "pair" in task:
+                SUBCOLOURS["Zoom->Bkg/" + task] = colours[ncolours]
+                ncolours = (ncolours + 1) % maxcolours
+                SUBCOLOURS["Zoom->Buff/" + task] = colours[ncolours]
+                ncolours = (ncolours + 1) % maxcolours
+                SUBCOLOURS["Buff->Bkg/" + task] = colours[ncolours]
+                ncolours = (ncolours + 1) % maxcolours
 
-# Set up cell types hatches
-HATCHES = {
-    "Regular": "",
-    "Bkg": "/",
-    "Buff": "x",
-    "Zoom": "+",
-    "Zoom->Bkg": "X",
-    "Bkg->Zoom": "X",
-    "Zoom->Buff": "o",
-    "Buff->Zoom": "o",
-    "Buff->Bkg": "|",
-    "Bkg->Buff": "|",
-}
+        for task in SUBTYPES:
+            for cell in CELLTYPES:
+                SUBCOLOURS[cell + "/" + task] = colours[ncolours]
+                ncolours = (ncolours + 1) % maxcolours
+            if "pair" in task:
+                SUBCOLOURS["Zoom->Bkg/" + task] = colours[ncolours]
+                ncolours = (ncolours + 1) % maxcolours
+                SUBCOLOURS["Zoom->Buff/" + task] = colours[ncolours]
+                ncolours = (ncolours + 1) % maxcolours
+                SUBCOLOURS["Buff->Bkg/" + task] = colours[ncolours]
+                ncolours = (ncolours + 1) % maxcolours
 
 #  For fiddling with colours...
 if args.verbose:
@@ -466,13 +483,41 @@ for rank in ranks:
             thread = ethread
 
             # Get the cell types involved
-            ci_type = data[line, ci_type_col]
-            cj_type = data[line, cj_type_col]
+            ci_type = int(data[line, ci_type_col])
+            cj_type = int(data[line, cj_type_col])
 
             tasks[thread].append({})
             tasktype = TASKTYPES[int(data[line, taskcol])]
             subtype = SUBTYPES[int(data[line, subtaskcol])]
 
+            # Have we been told to add a qualifier based on cell type?
+            if use_celltype and (ci_type > 0 or cj_type > 0):
+                if ci_type == cj_type:
+                    tasktype = CELLTYPES[ci_type] + "/" + tasktype
+                elif ci_type > 0 and cj_type > 0:
+                    if ci_type > cj_type:
+                        tasktype = (
+                            CELLTYPES[cj_type]
+                            + "->"
+                            + CELLTYPES[ci_type]
+                            + "/"
+                            + tasktype
+                        )
+                    else:
+                        tasktype = (
+                            CELLTYPES[ci_type]
+                            + "->"
+                            + CELLTYPES[cj_type]
+                            + "/"
+                            + tasktype
+                        )
+                elif ci_type < 0:
+                    tasktype = CELLTYPES[cj_type] + "/" + tasktype
+                elif cj_type < 0:
+                    tasktype = CELLTYPES[ci_type] + "/" + tasktype
+
+            tasks[thread][-1]["type"] = tasktype
+            tasks[thread][-1]["subtype"] = subtype
             tic = int(data[line, ticcol]) / CPU_CLOCK
             toc = int(data[line, toccol]) / CPU_CLOCK
             tasks[thread][-1]["tic"] = tic
@@ -493,43 +538,6 @@ for rank in ranks:
             else:
                 tasks[thread][-1]["colour"] = TASKCOLOURS[tasktype]
 
-            # Have we been told to add a qualifier based on cell type?
-            if use_celltype and (ci_type > 0 or cj_type > 0):
-                if ci_type == cj_type:
-                    tasktype = CELLTYPES[int(ci_type)] + "/" + tasktype
-                    tasks[thread][-1]["hatch"] = HATCHES[
-                        CELLTYPES[int(ci_type)]
-                    ]
-                elif ci_type > 0 and cj_type > 0:
-                    tasktype = (
-                        CELLTYPES[int(ci_type)]
-                        + "->"
-                        + CELLTYPES[int(cj_type)]
-                        + "/"
-                        + tasktype
-                    )
-                    tasks[thread][-1]["hatch"] = HATCHES[
-                        CELLTYPES[int(ci_type)]
-                        + "->"
-                        + CELLTYPES[int(cj_type)]
-                    ]
-                elif ci_type < 0:
-                    tasktype = CELLTYPES[int(cj_type)] + "/" + tasktype
-                    tasks[thread][-1]["hatch"] = HATCHES[
-                        CELLTYPES[int(cj_type)]
-                    ]
-                elif cj_type < 0:
-                    tasktype = CELLTYPES[int(ci_type)] + "/" + tasktype
-                    tasks[thread][-1]["hatch"] = HATCHES[
-                        CELLTYPES[int(ci_type)]
-                    ]
-
-            else:
-                tasks[thread][-1]["hatch"] = ""
-
-            tasks[thread][-1]["type"] = tasktype
-            tasks[thread][-1]["subtype"] = subtype
-
         # Use expanded threads from now on.
         nethread = nthread * expand
 
@@ -542,12 +550,10 @@ for rank in ranks:
             #  Collect ranges and colours into arrays.
             tictocs = []
             colours = []
-            hatches = []
             j = 0
             for task in tasks[i]:
                 tictocs.append((task["tic"], task["toc"] - task["tic"]))
                 colours.append(task["colour"])
-                hatches.append(task["hatch"])
 
                 #  Legend support, collections don't add to this.
                 if task["subtype"] != "none":
@@ -565,7 +571,6 @@ for rank in ranks:
                 [i + 0.55, 0.9],
                 facecolors=colours,
                 linewidth=0,
-                hatch=hatches,
             )
 
     #  Legend and room for it.
