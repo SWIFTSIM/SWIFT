@@ -317,13 +317,13 @@ def generate_unique_hex_colors(num_colors):
 
 
 if not args.use_celltype:
-    colors = generate_unique_hex_colors(
+    colours = generate_unique_hex_colors(
         len(TASKTYPES) + len(FULLTYPES) + len(SUBTYPES)
     )
 else:
     # This already holds more than enough colours without accounting for the
     # pairs since many won't appear
-    colors = generate_unique_hex_colors(
+    colours = generate_unique_hex_colors(
         len(TASKTYPES) * len(CELLTYPES)
         + len(FULLTYPES) * len(CELLTYPES)
         + len(SUBTYPES) * len(CELLTYPES)
