@@ -100,7 +100,7 @@ rt_grackle_cooling_get_species_densities(const struct part* restrict p, gr_float
         i++;
   }
   
-  int i = 0;
+  i = 0;
   for (enum rt_species_extra species = rt_species_He_dust; species < rt_species_extra_count; species++){
         species_extra[species] = p->rt_data.cooling.dust_mass_fraction[i] * rho;
         i++;

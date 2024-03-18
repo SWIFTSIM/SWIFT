@@ -206,7 +206,7 @@ INLINE static void rt_do_thermochemistry(
 #endif
 
   /* Update mass fractions */
-  rt_tchem_copy_from_grackle(p, density, &particle_grackle_data); 
+  rt_grackle_cooling_copy_from_grackle(p, density, &particle_grackle_data); 
 
   /* !!! need to write this check later */
   //rt_check_unphysical_mass_fractions(p);
