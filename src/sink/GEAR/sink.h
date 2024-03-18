@@ -369,9 +369,10 @@ INLINE static int sink_is_forming(
     return 0;
   }
 
-#ifdef SWIFT_DEBUG_CHECKS
+/* #ifdef SWIFT_DEBUG_CHECKS */
   message("Gas particle %lld can form a sink !", p->id);
-#endif
+  message("Gas velocity: v= (%lf, %lf, %lf).", p->v[0], p->v[1], p->v[2]);
+/* #endif */
   return 1;
 }
 
@@ -525,6 +526,7 @@ __attribute__((always_inline)) INLINE static void sink_swallow_part(
       "Delta_v_rad = %f)",
       sp->id, p->id, sp->mass, -dv[0], -dv[1], -dv[2], -dx[0], -dx[1], -dx[2],
       (dv[0] * dx[0] + dv[1] * dx[1] + dv[2] * dx[2]) / dr);
+  message("Sink new velocity: v= (%lf, %lf, %lf).", sp->v[0], sp->v[1], sp->v[2]);
 /* #endif */
 }
 
