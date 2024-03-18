@@ -120,45 +120,45 @@ __attribute__((always_inline)) INLINE static void rt_init_grackle(
   /* Use case B recombination? (On-the-spot approximation) */
   grackle_chemistry_data->CaseBRecombination = case_B_recombination;
   
-  #ifdef SWIFT_RT_GRACKLE_DUST
-    /* Add dust model */
-    grackle_chemistry_data->use_dust_evol = 1;
+#ifdef SWIFT_RT_GRACKLE_DUST
+  /* Add dust model */
+  grackle_chemistry_data->use_dust_evol = 1;
 
-    /*! Dust parameters; hard code for now */
-    double dust_destruction_eff = 0.3;
-    double dust_sne_coeff = 1.0;
-    double dust_sne_shockspeed = 100.0;
-    double dust_grainsize = 0.1;
-    double dust_growth_densref = 2.3e-20;
-    double dust_growth_tauref = 1.0;
+  /*! Dust parameters; hard code for now */
+  double dust_destruction_eff = 0.3;
+  double dust_sne_coeff = 1.0;
+  double dust_sne_shockspeed = 100.0;
+  double dust_grainsize = 0.1;
+  double dust_growth_densref = 2.3e-20;
+  double dust_growth_tauref = 1.0;
 
-    /* Load dust evolution parameters */
-    grackle_chemistry_data->dust_destruction_eff = dust_destruction_eff;
-    grackle_chemistry_data->sne_coeff = dust_sne_coeff;
-    grackle_chemistry_data->sne_shockspeed = dust_sne_shockspeed;
-    grackle_chemistry_data->dust_grainsize = dust_grainsize;
-    grackle_chemistry_data->dust_growth_densref = dust_growth_densref;
-    grackle_chemistry_data->dust_growth_tauref = dust_growth_tauref;
-    // Enable dust temperature calculation using ISRF
-    grackle_chemistry_data->metal_cooling = 1;
-    grackle_chemistry_data->dust_chemistry = 1;
-    grackle_chemistry_data->h2_on_dust = 1;
-    grackle_chemistry_data->use_isrf_field = 1;
-    grackle_chemistry_data->H2_self_shielding = 3;
-    // Solar abundances to pass to Grackle
-    grackle_chemistry_data->SolarAbundances[0]=0.2485;  // He  (10.93 in units where log[H]=12, so photospheric mass fraction -> Y=0.2485 [Hydrogen X=0.7381]; Anders+Grevesse Y=0.2485, X=0.7314)
-    grackle_chemistry_data->SolarAbundances[1]=2.38e-3; // C   (8.43 -> 2.38e-3, AG=3.18e-3)
-    grackle_chemistry_data->SolarAbundances[2]=0.70e-3; // N   (7.83 -> 0.70e-3, AG=1.15e-3)
-    grackle_chemistry_data->SolarAbundances[3]=5.79e-3; // O   (8.69 -> 5.79e-3, AG=9.97e-3)
-    grackle_chemistry_data->SolarAbundances[4]=1.26e-3; // Ne  (7.93 -> 1.26e-3, AG=1.72e-3)
-    grackle_chemistry_data->SolarAbundances[5]=7.14e-4; // Mg  (7.60 -> 7.14e-4, AG=6.75e-4)
-    grackle_chemistry_data->SolarAbundances[6]=6.71e-3; // Si  (7.51 -> 6.71e-4, AG=7.30e-4)
-    grackle_chemistry_data->SolarAbundances[7]=3.12e-4; // S   (7.12 -> 3.12e-4, AG=3.80e-4)
-    grackle_chemistry_data->SolarAbundances[8]=0.65e-4; // Ca  (6.34 -> 0.65e-4, AG=0.67e-4)
-    grackle_chemistry_data->SolarAbundances[9]=1.31e-3; // Fe (7.50 -> 1.31e-3, AG=1.92e-3)
-  #else
-    grackle_chemistry_data->use_dust_evol = 0;
-  #endif
+  /* Load dust evolution parameters */
+  grackle_chemistry_data->dust_destruction_eff = dust_destruction_eff;
+  grackle_chemistry_data->sne_coeff = dust_sne_coeff;
+  grackle_chemistry_data->sne_shockspeed = dust_sne_shockspeed;
+  grackle_chemistry_data->dust_grainsize = dust_grainsize;
+  grackle_chemistry_data->dust_growth_densref = dust_growth_densref;
+  grackle_chemistry_data->dust_growth_tauref = dust_growth_tauref;
+  // Enable dust temperature calculation using ISRF
+  grackle_chemistry_data->metal_cooling = 1;
+  grackle_chemistry_data->dust_chemistry = 1;
+  grackle_chemistry_data->h2_on_dust = 1;
+  grackle_chemistry_data->use_isrf_field = 1;
+  grackle_chemistry_data->H2_self_shielding = 3;
+  // Solar abundances to pass to Grackle
+  grackle_chemistry_data->SolarAbundances[0]=0.2485;  // He  (10.93 in units where log[H]=12, so photospheric mass fraction -> Y=0.2485 [Hydrogen X=0.7381]; Anders+Grevesse Y=0.2485, X=0.7314)
+  grackle_chemistry_data->SolarAbundances[1]=2.38e-3; // C   (8.43 -> 2.38e-3, AG=3.18e-3)
+  grackle_chemistry_data->SolarAbundances[2]=0.70e-3; // N   (7.83 -> 0.70e-3, AG=1.15e-3)
+  grackle_chemistry_data->SolarAbundances[3]=5.79e-3; // O   (8.69 -> 5.79e-3, AG=9.97e-3)
+  grackle_chemistry_data->SolarAbundances[4]=1.26e-3; // Ne  (7.93 -> 1.26e-3, AG=1.72e-3)
+  grackle_chemistry_data->SolarAbundances[5]=7.14e-4; // Mg  (7.60 -> 7.14e-4, AG=6.75e-4)
+  grackle_chemistry_data->SolarAbundances[6]=6.71e-3; // Si  (7.51 -> 6.71e-4, AG=7.30e-4)
+  grackle_chemistry_data->SolarAbundances[7]=3.12e-4; // S   (7.12 -> 3.12e-4, AG=3.80e-4)
+  grackle_chemistry_data->SolarAbundances[8]=0.65e-4; // Ca  (6.34 -> 0.65e-4, AG=0.67e-4)
+  grackle_chemistry_data->SolarAbundances[9]=1.31e-3; // Fe (7.50 -> 1.31e-3, AG=1.92e-3)
+#else
+  grackle_chemistry_data->use_dust_evol = 0;
+#endif
 
   if (local_initialize_chemistry_data(grackle_chemistry_data,
                                       grackle_chemistry_rates,
@@ -214,55 +214,55 @@ rt_get_grackle_particle_fields(grackle_field_data *grackle_fields,
   grackle_fields->y_velocity = NULL;
   grackle_fields->z_velocity = NULL;
   /* for primordial_chemistry >= 1 */
-  #if GEARRT_GRACKLE_MODE >= 1
-    grackle_fields->HI_density = malloc(FIELD_SIZE * sizeof(gr_float));
-    grackle_fields->HII_density = malloc(FIELD_SIZE * sizeof(gr_float));
-    grackle_fields->HeI_density = malloc(FIELD_SIZE * sizeof(gr_float));
-    grackle_fields->HeII_density = malloc(FIELD_SIZE * sizeof(gr_float));
-    grackle_fields->HeIII_density = malloc(FIELD_SIZE * sizeof(gr_float));
-    grackle_fields->e_density = malloc(FIELD_SIZE * sizeof(gr_float));
-  #endif
+#if GEARRT_GRACKLE_MODE >= 1
+  grackle_fields->HI_density = malloc(FIELD_SIZE * sizeof(gr_float));
+  grackle_fields->HII_density = malloc(FIELD_SIZE * sizeof(gr_float));
+  grackle_fields->HeI_density = malloc(FIELD_SIZE * sizeof(gr_float));
+  grackle_fields->HeII_density = malloc(FIELD_SIZE * sizeof(gr_float));
+  grackle_fields->HeIII_density = malloc(FIELD_SIZE * sizeof(gr_float));
+  grackle_fields->e_density = malloc(FIELD_SIZE * sizeof(gr_float));
+#endif
 
   /* for primordial_chemistry >= 2 */
-  #if GEARRT_GRACKLE_MODE >=2  
-    grackle_fields->HM_density = malloc(FIELD_SIZE * sizeof(gr_float));
-    grackle_fields->H2I_density = malloc(FIELD_SIZE * sizeof(gr_float));
-    grackle_fields->H2II_density = malloc(FIELD_SIZE * sizeof(gr_float));
+#if GEARRT_GRACKLE_MODE >=2  
+  grackle_fields->HM_density = malloc(FIELD_SIZE * sizeof(gr_float));
+  grackle_fields->H2I_density = malloc(FIELD_SIZE * sizeof(gr_float));
+  grackle_fields->H2II_density = malloc(FIELD_SIZE * sizeof(gr_float));
 
-    /* dust model */
-    /* for use_dust_density_field = 1 */
-    #ifdef SWIFT_RT_GRACKLE_DUST
-      grackle_fields->dust_density = malloc(FIELD_SIZE * sizeof(gr_float));
+  /* dust model */
+  /* for use_dust_density_field = 1 */
+#ifdef SWIFT_RT_GRACKLE_DUST
+  grackle_fields->dust_density = malloc(FIELD_SIZE * sizeof(gr_float));
 
-      /* interstellar radiation field strength */
-      grackle_fields->isrf_habing = malloc(FIELD_SIZE * sizeof(gr_float));
-      grackle_fields->SNe_ThisTimeStep = malloc(FIELD_SIZE * sizeof(gr_float));
+  /* interstellar radiation field strength */
+  grackle_fields->isrf_habing = malloc(FIELD_SIZE * sizeof(gr_float));
+  grackle_fields->SNe_ThisTimeStep = malloc(FIELD_SIZE * sizeof(gr_float));
 
-      /* metal densities in gas phase */
-      grackle_fields->He_gas_metalDensity = malloc(FIELD_SIZE * sizeof(gr_float));
-      grackle_fields->C_gas_metalDensity = malloc(FIELD_SIZE * sizeof(gr_float));
-      grackle_fields->N_gas_metalDensity = malloc(FIELD_SIZE * sizeof(gr_float));
-      grackle_fields->O_gas_metalDensity = malloc(FIELD_SIZE * sizeof(gr_float));
-      grackle_fields->Ne_gas_metalDensity = malloc(FIELD_SIZE * sizeof(gr_float));
-      grackle_fields->Mg_gas_metalDensity = malloc(FIELD_SIZE * sizeof(gr_float));
-      grackle_fields->Si_gas_metalDensity = malloc(FIELD_SIZE * sizeof(gr_float));
-      grackle_fields->S_gas_metalDensity = malloc(FIELD_SIZE * sizeof(gr_float));
-      grackle_fields->Ca_gas_metalDensity = malloc(FIELD_SIZE * sizeof(gr_float));
-      grackle_fields->Fe_gas_metalDensity = malloc(FIELD_SIZE * sizeof(gr_float));
+  /* metal densities in gas phase */
+  grackle_fields->He_gas_metalDensity = malloc(FIELD_SIZE * sizeof(gr_float));
+  grackle_fields->C_gas_metalDensity = malloc(FIELD_SIZE * sizeof(gr_float));
+  grackle_fields->N_gas_metalDensity = malloc(FIELD_SIZE * sizeof(gr_float));
+  grackle_fields->O_gas_metalDensity = malloc(FIELD_SIZE * sizeof(gr_float));
+  grackle_fields->Ne_gas_metalDensity = malloc(FIELD_SIZE * sizeof(gr_float));
+  grackle_fields->Mg_gas_metalDensity = malloc(FIELD_SIZE * sizeof(gr_float));
+  grackle_fields->Si_gas_metalDensity = malloc(FIELD_SIZE * sizeof(gr_float));
+  grackle_fields->S_gas_metalDensity = malloc(FIELD_SIZE * sizeof(gr_float));
+  grackle_fields->Ca_gas_metalDensity = malloc(FIELD_SIZE * sizeof(gr_float));
+  grackle_fields->Fe_gas_metalDensity = malloc(FIELD_SIZE * sizeof(gr_float));
 
-      /* metal densities in dust phase */
-      grackle_fields->He_dust_metalDensity = malloc(FIELD_SIZE * sizeof(gr_float));
-      grackle_fields->C_dust_metalDensity = malloc(FIELD_SIZE * sizeof(gr_float));
-      grackle_fields->N_dust_metalDensity = malloc(FIELD_SIZE * sizeof(gr_float));
-      grackle_fields->O_dust_metalDensity = malloc(FIELD_SIZE * sizeof(gr_float));
-      grackle_fields->Ne_dust_metalDensity = malloc(FIELD_SIZE * sizeof(gr_float));
-      grackle_fields->Mg_dust_metalDensity = malloc(FIELD_SIZE * sizeof(gr_float));
-      grackle_fields->Si_dust_metalDensity = malloc(FIELD_SIZE * sizeof(gr_float));
-      grackle_fields->S_dust_metalDensity = malloc(FIELD_SIZE * sizeof(gr_float));
-      grackle_fields->Ca_dust_metalDensity = malloc(FIELD_SIZE * sizeof(gr_float));
-      grackle_fields->Fe_dust_metalDensity = malloc(FIELD_SIZE * sizeof(gr_float));
-    #endif //for dust model
-  #endif // for grackle mode 2
+  /* metal densities in dust phase */
+  grackle_fields->He_dust_metalDensity = malloc(FIELD_SIZE * sizeof(gr_float));
+  grackle_fields->C_dust_metalDensity = malloc(FIELD_SIZE * sizeof(gr_float));
+  grackle_fields->N_dust_metalDensity = malloc(FIELD_SIZE * sizeof(gr_float));
+  grackle_fields->O_dust_metalDensity = malloc(FIELD_SIZE * sizeof(gr_float));
+  grackle_fields->Ne_dust_metalDensity = malloc(FIELD_SIZE * sizeof(gr_float));
+  grackle_fields->Mg_dust_metalDensity = malloc(FIELD_SIZE * sizeof(gr_float));
+  grackle_fields->Si_dust_metalDensity = malloc(FIELD_SIZE * sizeof(gr_float));
+  grackle_fields->S_dust_metalDensity = malloc(FIELD_SIZE * sizeof(gr_float));
+  grackle_fields->Ca_dust_metalDensity = malloc(FIELD_SIZE * sizeof(gr_float));
+  grackle_fields->Fe_dust_metalDensity = malloc(FIELD_SIZE * sizeof(gr_float));
+#endif //for dust model
+#endif // for grackle mode 2
 
   /* for primordial_chemistry >= 3 */
   grackle_fields->DI_density = NULL;
@@ -297,53 +297,53 @@ rt_get_grackle_particle_fields(grackle_field_data *grackle_fields,
     grackle_fields->density[i] = density;
     grackle_fields->internal_energy[i] = internal_energy;
     
-    #if GEARRT_GRACKLE_MODE >= 1
-      grackle_fields->HI_density[i] = species_densities[rt_species_HI];
-      grackle_fields->HII_density[i] = species_densities[rt_species_HII];
-      grackle_fields->HeI_density[i] = species_densities[rt_species_HeI];
-      grackle_fields->HeII_density[i] = species_densities[rt_species_HeII];
-      grackle_fields->HeIII_density[i] = species_densities[rt_species_HeIII];
-      /* e_density = electron density*mh/me = n_e * m_h */
-      grackle_fields->e_density[i] = species_densities[rt_species_e];
-    #endif
+#if GEARRT_GRACKLE_MODE >= 1
+    grackle_fields->HI_density[i] = species_densities[rt_species_HI];
+    grackle_fields->HII_density[i] = species_densities[rt_species_HII];
+    grackle_fields->HeI_density[i] = species_densities[rt_species_HeI];
+    grackle_fields->HeII_density[i] = species_densities[rt_species_HeII];
+    grackle_fields->HeIII_density[i] = species_densities[rt_species_HeIII];
+    /* e_density = electron density*mh/me = n_e * m_h */
+    grackle_fields->e_density[i] = species_densities[rt_species_e];
+#endif
 
-    #if GEARRT_GRACKLE_MODE >= 2
-      grackle_fields->HM_density[i] = species_densities[rt_species_HM]; 
-      grackle_fields->H2I_density[i] = species_densities[rt_species_H2I];
-      grackle_fields->H2II_density[i] = species_densities[rt_species_H2II];
+#if GEARRT_GRACKLE_MODE >= 2
+    grackle_fields->HM_density[i] = species_densities[rt_species_HM]; 
+    grackle_fields->H2I_density[i] = species_densities[rt_species_H2I];
+    grackle_fields->H2II_density[i] = species_densities[rt_species_H2II];
 
-      #ifdef SWIFT_RT_GRACKLE_DUST
-      grackle_fields->dust_density[i] = species_extra[rt_species_dust];
+#ifdef SWIFT_RT_GRACKLE_DUST
+    grackle_fields->dust_density[i] = species_extra[rt_species_dust];
 
-      /* interstellar radiation field strength */
-      grackle_fields->SNe_ThisTimeStep[i] = species_extra[rt_species_SNe_ThisTimeStep];
-      grackle_fields->isrf_habing[i] = species_extra[rt_species_isrf_habing];
+    /* interstellar radiation field strength */
+    grackle_fields->SNe_ThisTimeStep[i] = species_extra[rt_species_SNe_ThisTimeStep];
+    grackle_fields->isrf_habing[i] = species_extra[rt_species_isrf_habing];
 
-      /* metal densities in gas phase */
-      grackle_fields->He_gas_metalDensity[i] = species_extra[rt_species_He_gas];
-      grackle_fields->C_gas_metalDensity[i] = species_extra[rt_species_C_gas];
-      grackle_fields->N_gas_metalDensity[i] = species_extra[rt_species_N_gas];
-      grackle_fields->O_gas_metalDensity[i] = species_extra[rt_species_O_gas];
-      grackle_fields->Ne_gas_metalDensity[i] = species_extra[rt_species_Ne_gas];
-      grackle_fields->Mg_gas_metalDensity[i] = species_extra[rt_species_Mg_gas];
-      grackle_fields->Si_gas_metalDensity[i] = species_extra[rt_species_Si_gas];
-      grackle_fields->S_gas_metalDensity[i] = species_extra[rt_species_S_gas];
-      grackle_fields->Ca_gas_metalDensity[i] = species_extra[rt_species_Ca_gas];
-      grackle_fields->Fe_gas_metalDensity[i] = species_extra[rt_species_Fe_gas];
+    /* metal densities in gas phase */
+    grackle_fields->He_gas_metalDensity[i] = species_extra[rt_species_He_gas];
+    grackle_fields->C_gas_metalDensity[i] = species_extra[rt_species_C_gas];
+    grackle_fields->N_gas_metalDensity[i] = species_extra[rt_species_N_gas];
+    grackle_fields->O_gas_metalDensity[i] = species_extra[rt_species_O_gas];
+    grackle_fields->Ne_gas_metalDensity[i] = species_extra[rt_species_Ne_gas];
+    grackle_fields->Mg_gas_metalDensity[i] = species_extra[rt_species_Mg_gas];
+    grackle_fields->Si_gas_metalDensity[i] = species_extra[rt_species_Si_gas];
+    grackle_fields->S_gas_metalDensity[i] = species_extra[rt_species_S_gas];
+    grackle_fields->Ca_gas_metalDensity[i] = species_extra[rt_species_Ca_gas];
+    grackle_fields->Fe_gas_metalDensity[i] = species_extra[rt_species_Fe_gas];
 
-      /* metal densities in dust phase */
-      grackle_fields->He_dust_metalDensity[i] = species_extra[rt_species_He_dust];
-      grackle_fields->C_dust_metalDensity[i] = species_extra[rt_species_C_dust];
-      grackle_fields->N_dust_metalDensity[i] = species_extra[rt_species_N_dust];
-      grackle_fields->O_dust_metalDensity[i] = species_extra[rt_species_O_dust];
-      grackle_fields->Ne_dust_metalDensity[i] = species_extra[rt_species_Ne_dust];
-      grackle_fields->Mg_dust_metalDensity[i] = species_extra[rt_species_Mg_dust];
-      grackle_fields->Si_dust_metalDensity[i] = species_extra[rt_species_Si_dust];
-      grackle_fields->S_dust_metalDensity[i] = species_extra[rt_species_S_dust];
-      grackle_fields->Ca_dust_metalDensity[i] = species_extra[rt_species_Ca_dust];
-      grackle_fields->Fe_dust_metalDensity[i] = species_extra[rt_species_Fe_dust];
-      #endif //for dust model
-    #endif //for grackle mode 2
+    /* metal densities in dust phase */
+    grackle_fields->He_dust_metalDensity[i] = species_extra[rt_species_He_dust];
+    grackle_fields->C_dust_metalDensity[i] = species_extra[rt_species_C_dust];
+    grackle_fields->N_dust_metalDensity[i] = species_extra[rt_species_N_dust];
+    grackle_fields->O_dust_metalDensity[i] = species_extra[rt_species_O_dust];
+    grackle_fields->Ne_dust_metalDensity[i] = species_extra[rt_species_Ne_dust];
+    grackle_fields->Mg_dust_metalDensity[i] = species_extra[rt_species_Mg_dust];
+    grackle_fields->Si_dust_metalDensity[i] = species_extra[rt_species_Si_dust];
+    grackle_fields->S_dust_metalDensity[i] = species_extra[rt_species_S_dust];
+    grackle_fields->Ca_dust_metalDensity[i] = species_extra[rt_species_Ca_dust];
+    grackle_fields->Fe_dust_metalDensity[i] = species_extra[rt_species_Fe_dust];
+#endif //for dust model
+#endif //for grackle mode 2
 
     /* grackle_fields->DI_density[i] = species_densities[9]; */
     /* grackle_fields->DII_density[i] = species_densities[10]; */
@@ -391,53 +391,53 @@ __attribute__((always_inline)) INLINE static void rt_clean_grackle_fields(
   /* free(grackle_fields->z_velocity); */
 
   /* for primordial_chemistry >= 1 */
-  #if GEARRT_GRACKLE_MODE >= 1
-    free(grackle_fields->HI_density);
-    free(grackle_fields->HII_density);
-    free(grackle_fields->HeI_density);
-    free(grackle_fields->HeII_density);
-    free(grackle_fields->HeIII_density);
-    free(grackle_fields->e_density);
-  #endif
+#if GEARRT_GRACKLE_MODE >= 1
+  free(grackle_fields->HI_density);
+  free(grackle_fields->HII_density);
+  free(grackle_fields->HeI_density);
+  free(grackle_fields->HeII_density);
+  free(grackle_fields->HeIII_density);
+  free(grackle_fields->e_density);
+#endif
     
   /* for primordial_chemistry >= 2 */
-  #if GEARRT_GRACKLE_MODE >= 2  
-    free(grackle_fields->HM_density); 
-    free(grackle_fields->H2I_density);
-    free(grackle_fields->H2II_density); 
+#if GEARRT_GRACKLE_MODE >= 2  
+  free(grackle_fields->HM_density); 
+  free(grackle_fields->H2I_density);
+  free(grackle_fields->H2II_density); 
 
-    #ifdef SWIFT_RT_GRACKLE_DUST
-      free(grackle_fields->dust_density);
+#ifdef SWIFT_RT_GRACKLE_DUST
+  free(grackle_fields->dust_density);
 
-      /* interstellar radiation field strength */
-      free(grackle_fields->isrf_habing);
-      free(grackle_fields->SNe_ThisTimeStep);
+  /* interstellar radiation field strength */
+  free(grackle_fields->isrf_habing);
+  free(grackle_fields->SNe_ThisTimeStep);
 
-      /* metal densities in gas phase */
-      free(grackle_fields->He_gas_metalDensity);
-      free(grackle_fields->C_gas_metalDensity);
-      free(grackle_fields->N_gas_metalDensity);
-      free(grackle_fields->O_gas_metalDensity);
-      free(grackle_fields->Ne_gas_metalDensity);
-      free(grackle_fields->Mg_gas_metalDensity);
-      free(grackle_fields->Si_gas_metalDensity);
-      free(grackle_fields->S_gas_metalDensity);
-      free(grackle_fields->Ca_gas_metalDensity);
-      free(grackle_fields->Fe_gas_metalDensity);
+  /* metal densities in gas phase */
+  free(grackle_fields->He_gas_metalDensity);
+  free(grackle_fields->C_gas_metalDensity);
+  free(grackle_fields->N_gas_metalDensity);
+  free(grackle_fields->O_gas_metalDensity);
+  free(grackle_fields->Ne_gas_metalDensity);
+  free(grackle_fields->Mg_gas_metalDensity);
+  free(grackle_fields->Si_gas_metalDensity);
+  free(grackle_fields->S_gas_metalDensity);
+  free(grackle_fields->Ca_gas_metalDensity);
+  free(grackle_fields->Fe_gas_metalDensity);
 
-      /* metal densities in dust phase */
-      free(grackle_fields->He_dust_metalDensity);
-      free(grackle_fields->C_dust_metalDensity);
-      free(grackle_fields->N_dust_metalDensity);
-      free(grackle_fields->O_dust_metalDensity);
-      free(grackle_fields->Ne_dust_metalDensity);
-      free(grackle_fields->Mg_dust_metalDensity);
-      free(grackle_fields->Si_dust_metalDensity);
-      free(grackle_fields->S_dust_metalDensity);
-      free(grackle_fields->Ca_dust_metalDensity);
-      free(grackle_fields->Fe_dust_metalDensity);
-    #endif //for dust model
-  #endif //for mode 2
+  /* metal densities in dust phase */
+  free(grackle_fields->He_dust_metalDensity);
+  free(grackle_fields->C_dust_metalDensity);
+  free(grackle_fields->N_dust_metalDensity);
+  free(grackle_fields->O_dust_metalDensity);
+  free(grackle_fields->Ne_dust_metalDensity);
+  free(grackle_fields->Mg_dust_metalDensity);
+  free(grackle_fields->Si_dust_metalDensity);
+  free(grackle_fields->S_dust_metalDensity);
+  free(grackle_fields->Ca_dust_metalDensity);
+  free(grackle_fields->Fe_dust_metalDensity);
+#endif //for dust model
+#endif //for mode 2
 
   /* for primordial_chemistry >= 3 */
   /* free(grackle_fields->DI_density); */

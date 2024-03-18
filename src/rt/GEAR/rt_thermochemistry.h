@@ -48,7 +48,7 @@ __attribute__((always_inline)) INLINE static void rt_tchem_first_init_part(
     const struct unit_system* restrict us,
     const struct cosmology* restrict cosmo) {
   /* for primordial_chemistry >= 1 */
-  #if GEARRT_GRACKLE_MODE >= 1
+#if GEARRT_GRACKLE_MODE >= 1
     if (rt_props->set_equilibrium_initial_ionization_mass_fractions) {
       float XHI, XHII, XHeI, XHeII, XHeIII;
       rt_ion_equil_get_mass_fractions(&XHI, &XHII, &XHeI, &XHeII, &XHeIII, p,
@@ -68,21 +68,21 @@ __attribute__((always_inline)) INLINE static void rt_tchem_first_init_part(
     }
 
     p->rt_data.tchem.mass_fraction[rt_species_e] = p->rt_data.tchem.mass_fraction[rt_species_HII] + 0.25 * p->rt_data.tchem.mass_fraction[rt_species_HeII] + 0.5 * p->rt_data.tchem.mass_fraction[rt_species_HeIII];
-  #endif
+#endif
   
   /* for primordial_chemistry >= 2 */
-  #if GEARRT_GRACKLE_MODE >= 2
-      const float zero = 0.f;
-      p->rt_data.tchem.mass_fraction[rt_species_HM] = zero;
-      p->rt_data.tchem.mass_fraction[rt_species_H2I] = zero;
-      p->rt_data.tchem.mass_fraction[rt_species_H2II] = zero;
+#if GEARRT_GRACKLE_MODE >= 2
+    const float zero = 0.f;
+    p->rt_data.tchem.mass_fraction[rt_species_HM] = zero;
+    p->rt_data.tchem.mass_fraction[rt_species_H2I] = zero;
+    p->rt_data.tchem.mass_fraction[rt_species_H2II] = zero;
 
-  #ifdef SWIFT_RT_GRACKLE_DUST
-     p->rt_data.cooling.dust_mass = 0.f;
-     for (int i=0; i<chemistry_element_count; i++) p->rt_data.cooling.dust_mass_fraction[i] = 0.f;
-     p->rt_data.cooling.dust_temperature = 0.f;
-  #endif /* For dust model. */
-  #endif /* For grackle mode 2*/
+#ifdef SWIFT_RT_GRACKLE_DUST
+   p->rt_data.cooling.dust_mass = 0.f;
+   for (int i=0; i<chemistry_element_count; i++) p->rt_data.cooling.dust_mass_fraction[i] = 0.f;
+   p->rt_data.cooling.dust_temperature = 0.f;
+#endif /* For dust model. */
+#endif /* For grackle mode 2*/
 
   /* pretend you have nonzero density so the check doesn't reset the mass
    * fractions */
