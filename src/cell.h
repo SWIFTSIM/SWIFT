@@ -377,9 +377,9 @@ extern const char *subcellID_names[];
  */
 enum cell_types {
   cell_type_regular, /* A standard top level cell (for non-zoom boxes). */
-  cell_type_bkg,     /* A background cell (only applicable for zooms). */
   cell_type_zoom,    /* A zoom cell (only applicable for zooms). */
-  cell_type_buffer   /* A buffer cell (only applicable for zooms). */
+  cell_type_buffer,  /* A buffer cell (only applicable for zooms). */
+  cell_type_bkg,     /* A background cell (only applicable for zooms). */
 } __attribute__((__packed__));
 
 /**
