@@ -304,7 +304,7 @@ pl.seed(0)
 
 def generate_unique_hex_color():
     # Divide the hue space into equal parts
-    hue = pl.random.randn()
+    hue = pl.randn()
     # Convert HSL to RGB
     rgb = colorsys.hls_to_rgb(hue, 0.5, 1)
     # Convert RGB to Hex
