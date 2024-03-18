@@ -473,6 +473,26 @@ for rank in ranks:
             tasktype = TASKTYPES[int(data[line, taskcol])]
             subtype = SUBTYPES[int(data[line, subtaskcol])]
 
+            tic = int(data[line, ticcol]) / CPU_CLOCK
+            toc = int(data[line, toccol]) / CPU_CLOCK
+            tasks[thread][-1]["tic"] = tic
+            tasks[thread][-1]["toc"] = toc
+            if "fof" in tasktype:
+                tasks[thread][-1]["colour"] = TASKCOLOURS[tasktype]
+            elif (
+                "self" in tasktype
+                or "pair" in tasktype
+                or "recv" in tasktype
+                or "send" in tasktype
+            ):
+                fulltype = tasktype + "/" + subtype
+                if fulltype in SUBCOLOURS:
+                    tasks[thread][-1]["colour"] = SUBCOLOURS[fulltype]
+                else:
+                    tasks[thread][-1]["colour"] = SUBCOLOURS[subtype]
+            else:
+                tasks[thread][-1]["colour"] = TASKCOLOURS[tasktype]
+
             # Have we been told to add a qualifier based on cell type?
             if use_celltype and (ci_type > 0 or cj_type > 0):
                 if ci_type == cj_type:
@@ -509,25 +529,6 @@ for rank in ranks:
 
             tasks[thread][-1]["type"] = tasktype
             tasks[thread][-1]["subtype"] = subtype
-            tic = int(data[line, ticcol]) / CPU_CLOCK
-            toc = int(data[line, toccol]) / CPU_CLOCK
-            tasks[thread][-1]["tic"] = tic
-            tasks[thread][-1]["toc"] = toc
-            if "fof" in tasktype:
-                tasks[thread][-1]["colour"] = TASKCOLOURS[tasktype]
-            elif (
-                "self" in tasktype
-                or "pair" in tasktype
-                or "recv" in tasktype
-                or "send" in tasktype
-            ):
-                fulltype = tasktype + "/" + subtype
-                if fulltype in SUBCOLOURS:
-                    tasks[thread][-1]["colour"] = SUBCOLOURS[fulltype]
-                else:
-                    tasks[thread][-1]["colour"] = SUBCOLOURS[subtype]
-            else:
-                tasks[thread][-1]["colour"] = TASKCOLOURS[tasktype]
 
         # Use expanded threads from now on.
         nethread = nthread * expand
