@@ -561,7 +561,11 @@ for rank in ranks:
 
             #  Now plot.
             ax.broken_barh(
-                tictocs, [i + 0.55, 0.9], facecolors=colours, linewidth=0
+                tictocs,
+                [i + 0.55, 0.9],
+                facecolors=colours,
+                linewidth=0,
+                hatch=hatches,
             )
 
     #  Legend and room for it.
