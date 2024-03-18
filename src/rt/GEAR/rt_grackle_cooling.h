@@ -34,7 +34,7 @@
  * @param cooling The properties of the cooling function.
  *
  */
-__attribute__((always_inline)) INLINE float cooling_compute_G0(
+__attribute__((always_inline)) INLINE float rt_grackle_cooling_compute_G0(
                 const struct part *restrict p,
                 const struct rt_props* rt_props) {
 
@@ -69,7 +69,7 @@ __attribute__((always_inline)) INLINE float cooling_compute_G0(
  *
  **/
 __attribute__((always_inline)) INLINE static void
-rt_tchem_get_species_densities(const struct part* restrict p, gr_float rho,
+rt_grackle_cooling_get_species_densities(const struct part* restrict p, gr_float rho,
                                gr_float species_densities[RT_N_SPECIES],
                                gr_float species_extra[rt_species_extra_count],
                                const struct rt_props* rt_props) {
@@ -91,7 +91,7 @@ rt_tchem_get_species_densities(const struct part* restrict p, gr_float rho,
   //if( chemistry_get_total_metal_mass_fraction_for_cooling(p)>0.f) message("Zsm= %g Zp= %g Z= %g Zd= %g",chemistry_get_total_metal_mass_fraction_for_cooling(p), p->chemistry_data.metal_mass_fraction_total, species_densities[19], species_densities[20]);
   
   /* Determine ISRF in Habing units based on chosen method */
-  species_extra[rt_species_isrf_habing] = cooling_compute_G0(p, rt_props);
+  species_extra[rt_species_isrf_habing] = rt_grackle_cooling_compute_G0(p, rt_props);
   
   /* Load gas metallicities NEED TO CHANGE TO RIGHT COUNT  */
   int i = 0;
@@ -119,7 +119,7 @@ rt_tchem_get_species_densities(const struct part* restrict p, gr_float rho,
  * @param particle_grackle_data The grackle_field_data structure from grackle.
  **/
 __attribute__((always_inline)) INLINE static void
-rt_tchem_copy_from_grackle1(struct part* p, gr_float rho,
+rt_grackle_cooling_copy_from_grackle1(struct part* p, gr_float rho,
                                grackle_field_data* data) {
   
   const gr_float one_over_rho = 1. / rho;
@@ -153,7 +153,7 @@ rt_tchem_copy_from_grackle1(struct part* p, gr_float rho,
  * @param particle_grackle_data The grackle_field_data structure from grackle.
  **/
 __attribute__((always_inline)) INLINE static void
-rt_tchem_copy_from_grackle2(struct part* p, gr_float rho,
+rt_grackle_cooling_copy_from_grackle2(struct part* p, gr_float rho,
                                grackle_field_data* data) {
  
   const gr_float one_over_rho = 1. / rho;
@@ -210,17 +210,17 @@ rt_tchem_copy_from_grackle2(struct part* p, gr_float rho,
  * @param particle_grackle_data The grackle_field_data structure from grackle.
  **/
 __attribute__((always_inline)) INLINE static void
-rt_tchem_copy_from_grackle(struct part* p, gr_float rho,
+rt_grackle_cooling_copy_from_grackle(struct part* p, gr_float rho,
                                grackle_field_data* data) {
   
   /* for primordial_chemistry >= 1 */
 #if GEARRT_GRACKLE_MODE >= 1
-  rt_tchem_copy_from_grackle1(p, rho, data);
+  rt_grackle_cooling_copy_from_grackle1(p, rho, data);
 #endif 
 
   /* for primordial_chemistry >= 2 */
 #if GEARRT_GRACKLE_MODE >= 2
-  rt_tchem_copy_from_grackle2(p, rho, data);
+  rt_grackle_cooling_copy_from_grackle2(p, rho, data);
 #endif /* For mode 2. */
 
 }

@@ -155,7 +155,7 @@ INLINE static void rt_do_thermochemistry(
 
   gr_float species_densities[RT_N_SPECIES];
   gr_float species_extra[rt_species_extra_count];
-  rt_tchem_get_species_densities(p, density, species_densities, species_extra, rt_props);
+  rt_grackle_cooling_get_species_densities(p, density, species_densities, species_extra, rt_props);
 
   float radiation_energy_density[RT_NGROUPS];
   rt_part_get_radiation_energy_density(p, radiation_energy_density);
@@ -281,7 +281,7 @@ __attribute__((always_inline)) INLINE static float rt_tchem_get_tchem_time(
 
   gr_float species_densities[RT_N_SPECIES];
   gr_float species_extra[rt_species_extra_count] = {0};
-  rt_tchem_get_species_densities(p, density, species_densities, species_extra, rt_props);
+  rt_grackle_cooling_get_species_densities(p, density, species_densities, species_extra, rt_props);
 
   float radiation_energy_density[RT_NGROUPS];
   rt_part_get_radiation_energy_density(p, radiation_energy_density);
