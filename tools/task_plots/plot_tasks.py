@@ -39,6 +39,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU Lesser General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
+import colorsys
 
 import matplotlib
 
@@ -296,6 +297,39 @@ colours = [
     "lightgreen",
 ]
 maxcolours = len(colours)
+
+
+def generate_unique_hex_colors(num_colors):
+    colors = []
+    for i in range(num_colors):
+        # Divide the hue space into equal parts
+        hue = i / num_colors
+        # Convert HSL to RGB
+        rgb = colorsys.hls_to_rgb(hue, 0.5, 1)
+        # Convert RGB to Hex
+        hex_color = "#%02x%02x%02x" % (
+            int(rgb[0] * 255),
+            int(rgb[1] * 255),
+            int(rgb[2] * 255),
+        )
+        colors.append(hex_color)
+    return colors
+
+
+if not args.use_celltype:
+    colors = generate_unique_hex_colors(
+        len(TASKTYPES) + len(FULLTYPES) + len(SUBTYPES)
+    )
+else:
+    # This already holds more than enough colours without accounting for the
+    # pairs since many won't appear
+    colors = generate_unique_hex_colors(
+        len(TASKTYPES) * len(CELLTYPES)
+        + len(FULLTYPES) * len(CELLTYPES)
+        + len(SUBTYPES) * len(CELLTYPES)
+    )
+maxcolours = len(colours)
+
 
 #  Set colours of task/subtype.
 TASKCOLOURS = {}
