@@ -1438,9 +1438,8 @@ void task_dump_all(struct engine *e, int step) {
       }
       fclose(file_thread);
     }
-    * /
-        /* And we wait for all to synchronize. */
-        MPI_Barrier(MPI_COMM_WORLD);
+    /* And we wait for all to synchronize. */
+    MPI_Barrier(MPI_COMM_WORLD);
   }
 
 #else
