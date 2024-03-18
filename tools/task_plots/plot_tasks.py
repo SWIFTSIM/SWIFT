@@ -298,37 +298,21 @@ colours = [
 ]
 maxcolours = len(colours)
 
-
-def generate_unique_hex_colors(num_colors):
-    colors = []
-    for i in range(num_colors):
-        # Divide the hue space into equal parts
-        hue = i / num_colors
-        # Convert HSL to RGB
-        rgb = colorsys.hls_to_rgb(hue, 0.5, 1)
-        # Convert RGB to Hex
-        hex_color = "#%02x%02x%02x" % (
-            int(rgb[0] * 255),
-            int(rgb[1] * 255),
-            int(rgb[2] * 255),
-        )
-        colors.append(hex_color)
-    return colors
+# Set the seed
+pl.seed(0)
 
 
-if not args.use_celltype:
-    colours = generate_unique_hex_colors(
-        len(TASKTYPES) + len(FULLTYPES) + len(SUBTYPES)
+def generate_unique_hex_color():
+    # Divide the hue space into equal parts
+    hue = pl.random.randn()
+    # Convert HSL to RGB
+    rgb = colorsys.hls_to_rgb(hue, 0.5, 1)
+    # Convert RGB to Hex
+    return "#%02x%02x%02x" % (
+        int(rgb[0] * 255),
+        int(rgb[1] * 255),
+        int(rgb[2] * 255),
     )
-else:
-    # This already holds more than enough colours without accounting for the
-    # pairs since many won't appear
-    colours = generate_unique_hex_colors(
-        len(TASKTYPES) * len(CELLTYPES)
-        + len(FULLTYPES) * len(CELLTYPES)
-        + len(SUBTYPES) * len(CELLTYPES)
-    )
-maxcolours = len(colours)
 
 
 #  Set colours of task/subtype.
@@ -336,46 +320,46 @@ TASKCOLOURS = {}
 ncolours = 0
 if not args.use_celltype:
     for task in TASKTYPES:
-        TASKCOLOURS[task] = colours[ncolours]
+        TASKCOLOURS[task] = generate_unique_hex_color()
         ncolours = (ncolours + 1) % maxcolours
 else:
     for task in TASKTYPES:
         for cell in CELLTYPES:
-            TASKCOLOURS[cell + "/" + task] = colours[ncolours]
+            TASKCOLOURS[cell + "/" + task] = generate_unique_hex_color()
             ncolours = (ncolours + 1) % maxcolours
 
 SUBCOLOURS = {}
 if not args.use_celltype:
     for task in FULLTYPES:
-        SUBCOLOURS[task] = colours[ncolours]
+        SUBCOLOURS[task] = generate_unique_hex_color()
         ncolours = (ncolours + 1) % maxcolours
 
     for task in SUBTYPES:
-        SUBCOLOURS[task] = colours[ncolours]
+        SUBCOLOURS[task] = generate_unique_hex_color()
         ncolours = (ncolours + 1) % maxcolours
 else:
     for task in FULLTYPES:
         for cell in CELLTYPES:
-            SUBCOLOURS[cell + "/" + task] = colours[ncolours]
+            SUBCOLOURS[cell + "/" + task] = generate_unique_hex_color()
             ncolours = (ncolours + 1) % maxcolours
             if "pair" in task:
-                SUBCOLOURS["Zoom->Bkg/" + task] = colours[ncolours]
+                SUBCOLOURS["Zoom->Bkg/" + task] = generate_unique_hex_color()
                 ncolours = (ncolours + 1) % maxcolours
-                SUBCOLOURS["Zoom->Buff/" + task] = colours[ncolours]
+                SUBCOLOURS["Zoom->Buff/" + task] = generate_unique_hex_color()
                 ncolours = (ncolours + 1) % maxcolours
-                SUBCOLOURS["Buff->Bkg/" + task] = colours[ncolours]
+                SUBCOLOURS["Buff->Bkg/" + task] = generate_unique_hex_color()
                 ncolours = (ncolours + 1) % maxcolours
 
         for task in SUBTYPES:
             for cell in CELLTYPES:
-                SUBCOLOURS[cell + "/" + task] = colours[ncolours]
+                SUBCOLOURS[cell + "/" + task] = generate_unique_hex_color()
                 ncolours = (ncolours + 1) % maxcolours
             if "pair" in task:
-                SUBCOLOURS["Zoom->Bkg/" + task] = colours[ncolours]
+                SUBCOLOURS["Zoom->Bkg/" + task] = generate_unique_hex_color()
                 ncolours = (ncolours + 1) % maxcolours
-                SUBCOLOURS["Zoom->Buff/" + task] = colours[ncolours]
+                SUBCOLOURS["Zoom->Buff/" + task] = generate_unique_hex_color()
                 ncolours = (ncolours + 1) % maxcolours
-                SUBCOLOURS["Buff->Bkg/" + task] = colours[ncolours]
+                SUBCOLOURS["Buff->Bkg/" + task] = generate_unique_hex_color()
                 ncolours = (ncolours + 1) % maxcolours
 
 #  For fiddling with colours...
