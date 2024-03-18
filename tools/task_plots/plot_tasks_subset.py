@@ -164,13 +164,6 @@ if celltype >= 0 and cellsubtype >= 0:
     print("Setting both cell type and subtype is not supported")
     sys.exit(1)
 
-# Add the subset to the outbase
-if celltype >= 0:
-    outbase += "_Type{0}".format(celltype)
-if cellsubtype >= 0:
-    outbase += "_Subtype{0}".format(cellsubtype)
-if mindepth > 0:
-    outbase += "_MinDepth{0}".format(mindepth)
 
 #  Basic plot configuration.
 PLOT_PARAMS = {
@@ -285,6 +278,15 @@ CELLSUBTYPES = [
     "Void",
     # Empty will never appear
 ]
+
+# Add the subset to the outbase
+if celltype >= 0:
+    outbase += "_Type{0}".format(CELLTYPES[celltype])
+if cellsubtype >= 0:
+    outbase += "_Subtype{0}".format(CELLSUBTYPES[cellsubtype])
+if mindepth > 0:
+    outbase += "_MinDepth{0}".format(mindepth)
+
 
 # Set the seed
 pl.seed(42)
