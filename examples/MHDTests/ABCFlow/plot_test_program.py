@@ -42,35 +42,32 @@ def select_runs_to_plot(run_data, the_key):
         run_data = run_data[mask]
     return run_data
 
-
-def find_growth_rate(the_time, B_field, nlast=take_last):
-    B_field = np.log(B_field)
-    l = len(B_field)
-    B_field_cut = B_field[l - 1 - nlast : -1]
-    time_cut = the_time[l - 1 - nlast : -1]
-    # print(time_cut,B_field_cut)
-    res = np.polyfit(time_cut, B_field_cut, 1)[0]
-    return np.round(res, 3)
-
-def find_frequency(the_time, B_field, nlast=take_last):
-    growth_rate = find_growth_rate(the_time, B_field, nlast=take_last)
-    # get oscillation
-    B_field *= np.exp(-growth_rate*the_time)
-    l = len(B_field)
-    B_field_cut = B_field[l - 1 - nlast : -1]
-    time_cut = the_time[l - 1 - nlast : -1]
-    peaks, _ = find_peaks(B_field_cut, height=0,width = 10)
-    if len(peaks>3):
-        peak_times = np.array([time_cut[peaks[i]] for i in range(len(peaks))])
-        peak_Amps = np.array([B_field_cut[peaks[i]] for i in range(len(peaks))])
-        peak_time_diff = np.diff(peak_times)
-        omega = 2*np.pi/peak_time_diff
-        mean_omega = np.mean(omega)
-        sigma_omega = np.std(omega)
-    else:
-        mean_omega = -1
-        sigma_omega = -1
-    return round(mean_omega,4), round(sigma_omega,4)
+def find_growth_rate(the_time, the_B_field):
+   B_field_log = np.log(the_B_field)
+   res = np.polyfit(the_time, B_field_log, 1)[0]
+   return res
+def find_complex_growth_rate(the_time, B_field, nlast=take_last):
+   # growth_rate = find_growth_rate(the_time, B_field, nlast=take_last)
+   # get oscillation
+   B_field_new = B_field.copy()
+   #B_field_new *= np.exp(-growth_rate*the_time)
+   l = len(B_field)
+   B_field_cut = B_field_new[l - 1 - nlast : -1]
+   time_cut = the_time[l - 1 - nlast : -1]
+   peaks, _ = find_peaks(B_field_cut, height=0,width = 10)
+   if len(peaks)>2:
+       peak_times = np.array([time_cut[peaks[i]] for i in range(len(peaks))])
+       peak_Amps = np.array([B_field_cut[peaks[i]] for i in range(len(peaks))])
+       peak_time_diff = np.diff(peak_times)
+       omega = 2*np.pi/peak_time_diff
+       mean_omega = np.mean(omega)
+       sigma_omega = np.std(omega)
+       growth_rate = find_growth_rate(peak_times, peak_Amps)
+   else:
+       mean_omega = -1
+       sigma_omega = -1
+       growth_rate = find_growth_rate(time_cut, B_field_cut)
+   return round(growth_rate,4), round(mean_omega,4)
 
 def plot_info(run_data, the_key):
     fig, ax = plt.subplots(1, 3, sharex=True, figsize=(15, 5))
@@ -124,8 +121,7 @@ def plot_info(run_data, the_key):
         Mh = Mh[mask]
         divB = divB[mask]
 
-        growth_rate = find_growth_rate(Time, B)
-        frequency,_ = find_frequency(Time, B, nlast=take_last)
+        growth_rate, frequency = find_complex_growth_rate(Time, B, nlast=take_last)
         #saturated_v = np.mean(vrms[-take_last:])
         the_name = (
             "#"
