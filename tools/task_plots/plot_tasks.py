@@ -24,6 +24,7 @@ Copyright (C) 2015 Pedro Gonnet (pedro.gonnet@durham.ac.uk),
                    Bert Vandenbroucke (bert.vandenbroucke@ugent.be)
                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
           (C) 2017 Peter W. Draper (p.w.draper@durham.ac.uk)
+          (C) 2024 Will Roper (w.roper@sussex.ac.uk)
 All Rights Reserved.
 
 This program is free software: you can redistribute it and/or modify
