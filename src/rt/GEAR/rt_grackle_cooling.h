@@ -94,14 +94,14 @@ rt_tchem_get_species_densities(const struct part* restrict p, gr_float rho,
   species_extra[rt_species_isrf_habing] = cooling_compute_G0(p, rt_props);
   
   /* Load gas metallicities NEED TO CHANGE TO RIGHT COUNT  */
+  int i = 0;
   for (enum rt_species_extra species = rt_species_He_gas; species < rt_species_He_dust; species++){
-        int i = 0;
         species_extra[species] = p->chemistry_data.metal_mass_fraction[i] * rho;
         i++;
   }
-
+  
+  int i = 0;
   for (enum rt_species_extra species = rt_species_He_dust; species < rt_species_extra_count; species++){
-        int i = 0;
         species_extra[species] = p->rt_data.cooling.dust_mass_fraction[i] * rho;
         i++;
   }
