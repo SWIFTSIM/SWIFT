@@ -1822,7 +1822,8 @@ void engine_run_rt_sub_cycles(struct engine *e) {
    * will be wrong. */
   double dt_subcycle;
   if (e->policy & engine_policy_cosmology) {
-    dt_subcycle = cosmology_get_delta_time(e->cosmology, e->ti_current, e->ti_rt_end_min);
+    dt_subcycle =
+        cosmology_get_delta_time(e->cosmology, e->ti_current, e->ti_rt_end_min);
   } else {
     dt_subcycle = rt_step_size * e->time_base;
   }
@@ -1889,8 +1890,10 @@ void engine_run_rt_sub_cycles(struct engine *e) {
     /* TODO: add rt_props_update() for cosmological thermochemistry*/
     if (e->policy & engine_policy_cosmology) {
       double time_old = time;
-      cosmology_update(e->cosmology, e->physical_constants, e->ti_current_subcycle);  // Update cosmological parameters
-      time = e->cosmology->time;  // Grab new cosmology time
+      cosmology_update(
+          e->cosmology, e->physical_constants,
+          e->ti_current_subcycle);  // Update cosmological parameters
+      time = e->cosmology->time;    // Grab new cosmology time
       dt_subcycle = time - time_old;
     } else {
       time = e->ti_current_subcycle * e->time_base + e->time_begin;
