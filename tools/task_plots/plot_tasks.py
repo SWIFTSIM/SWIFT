@@ -319,12 +319,12 @@ HATCHES = {
     "Bkg": "/",
     "Buff": "x",
     "Zoom": "+",
-    "Zoom->Bkg": "///",
-    "Bkg->Zoom": "///",
-    "Zoom->Buff": "///",
-    "Buff->Zoom": "///",
-    "Buff->Bkg": "+++",
-    "Bkg->Buff": "+++",
+    "Zoom->Bkg": "X",
+    "Bkg->Zoom": "X",
+    "Zoom->Buff": "o",
+    "Buff->Zoom": "o",
+    "Buff->Bkg": "|",
+    "Bkg->Buff": "|",
 }
 
 #  For fiddling with colours...
