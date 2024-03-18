@@ -67,6 +67,14 @@ def find_complex_growth_rate(the_time, B_field, nlast=take_last):
        mean_omega = -1
        sigma_omega = -1
        growth_rate = find_growth_rate(time_cut, B_field_cut)
+       peaks, _ = find_peaks(B_field_cut*np.exp(-growth_rate*time_cut), height=0, width = 10)
+       if len(peaks)>2:
+            peak_times = np.array([time_cut[peaks[i]] for i in range(len(peaks))])
+            peak_Amps = np.array([B_field_cut[peaks[i]] for i in range(len(peaks))])
+            peak_time_diff = np.diff(peak_times)
+            omega = 2*np.pi/peak_time_diff
+            mean_omega = np.mean(omega)
+            sigma_omega = np.std(omega)
    return round(growth_rate,4), round(mean_omega,4)
 
 def plot_info(run_data, the_key):
