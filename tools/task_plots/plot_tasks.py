@@ -245,14 +245,6 @@ CELLTYPES = [
     "Bkg",
 ]
 
-# Cell subtypes
-CELLSUBTYPES = [
-    "Regular",
-    "Neighbour",
-    "Void",
-    "Empty",  # This should never ever appear but good to see incase it does.
-]
-
 # Set the seed
 pl.seed(42)
 
