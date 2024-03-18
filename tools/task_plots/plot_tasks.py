@@ -118,6 +118,13 @@ parser.add_argument(
     default=-1,
     type=int,
 )
+parser.add_argument(
+    "--celltype",
+    dest="use_celltype",
+    help="Add cell type to task type (def: False)",
+    default=False,
+    action="store_true",
+)
 
 args = parser.parse_args()
 infile = args.input
@@ -125,6 +132,7 @@ outbase = args.outbase
 delta_t = args.limit
 expand = args.expand
 mintic = args.mintic
+use_celltype = args.use_celltype
 if args.ranks != None:
     ranks = [int(item) for item in args.ranks.split(",")]
 else:
@@ -228,6 +236,22 @@ FULLTYPES = [
     "sub_pair/bh_feedback",
 ]
 
+# Cell types.
+CELLTYPES = [
+    "Regular",
+    "Bkg",
+    "Buff",
+    "Zoom",
+]
+
+# Cell subtypes
+CELLSUBTYPES = [
+    "Regular",
+    "Neighbour",
+    "Void",
+    "Empty",  # This should never ever appear but good to see incase it does.
+]
+
 #  A number of colours for the various types. Recycled when there are
 #  more task types than colours...
 colours = [
@@ -289,6 +313,20 @@ for task in SUBTYPES:
     SUBCOLOURS[task] = colours[ncolours]
     ncolours = (ncolours + 1) % maxcolours
 
+# Set up cell types hatches
+HATCHES = {
+    "Regular": "",
+    "Bkg": "/",
+    "Buff": "x",
+    "Zoom": "+",
+    "Zoom->Bkg": "///",
+    "Bkg->Zoom": "///",
+    "Zoom->Buff": "///",
+    "Buff->Zoom": "///",
+    "Buff->Bkg": "+++",
+    "Bkg->Buff": "+++",
+}
+
 #  For fiddling with colours...
 if args.verbose:
     print("#Selected colours:")
@@ -302,7 +340,7 @@ data = pl.loadtxt(infile)
 
 #  Do we have an MPI file?
 full_step = data[0, :]
-if full_step.size == 13:
+if full_step.size == 19:
     print("# MPI mode")
     mpimode = True
     if ranks == None:
@@ -314,6 +352,10 @@ if full_step.size == 13:
     subtaskcol = 3
     ticcol = 5
     toccol = 6
+    ci_type_col = 13
+    cj_type_col = 14
+    ci_subtype_col = 15
+    cj_subtype_col = 16
 else:
     print("# non MPI mode")
     ranks = [0]
@@ -324,6 +366,10 @@ else:
     subtaskcol = 2
     ticcol = 4
     toccol = 5
+    ci_type_col = 11
+    cj_type_col = 12
+    ci_subtype_col = 13
+    cj_subtype_col = 14
 
 #  Get CPU_CLOCK to convert ticks into milliseconds.
 CPU_CLOCK = float(full_step[-1]) / 1000.0
@@ -392,7 +438,6 @@ for rank in ranks:
             start_t = mintic
         end_t = (toc_step - start_t) / CPU_CLOCK
     else:
-
         if mintic < 0:
             start_t = float(tic_step)
         else:
@@ -420,9 +465,48 @@ for rank in ranks:
             ecounter[thread] = ecounter[thread] + 1
             thread = ethread
 
+            # Get the cell types involved
+            ci_type = data[line, ci_type_col]
+            cj_type = data[line, cj_type_col]
+
             tasks[thread].append({})
             tasktype = TASKTYPES[int(data[line, taskcol])]
             subtype = SUBTYPES[int(data[line, subtaskcol])]
+
+            # Have we been told to add a qualifier based on cell type?
+            if use_celltype and (ci_type > 0 or cj_type > 0):
+                if ci_type == cj_type:
+                    tasktype = CELLTYPES[int(ci_type)] + "/" + tasktype
+                    tasks[thread][-1]["hatch"] = HATCHES[
+                        CELLTYPES[int(ci_type)]
+                    ]
+                elif ci_type > 0 and cj_type > 0:
+                    tasktype = (
+                        CELLTYPES[int(ci_type)]
+                        + "->"
+                        + CELLTYPES[int(cj_type)]
+                        + "/"
+                        + tasktype
+                    )
+                    tasks[thread][-1]["hatch"] = HATCHES[
+                        CELLTYPES[int(ci_type)]
+                        + "->"
+                        + CELLTYPES[int(cj_type)]
+                    ]
+                elif ci_type < 0:
+                    tasktype = CELLTYPES[int(cj_type)] + "/" + tasktype
+                    tasks[thread][-1]["hatch"] = HATCHES[
+                        CELLTYPES[int(cj_type)]
+                    ]
+                elif cj_type < 0:
+                    tasktype = CELLTYPES[int(ci_type)] + "/" + tasktype
+                    tasks[thread][-1]["hatch"] = HATCHES[
+                        CELLTYPES[int(ci_type)]
+                    ]
+
+            else:
+                tasks[thread][-1]["hatch"] = ""
+
             tasks[thread][-1]["type"] = tasktype
             tasks[thread][-1]["subtype"] = subtype
             tic = int(data[line, ticcol]) / CPU_CLOCK
@@ -454,14 +538,13 @@ for rank in ranks:
         ax.set_xlim(-delta_t * 0.01 / CPU_CLOCK, delta_t * 1.01 / CPU_CLOCK)
         ax.set_ylim(0.5, nethread + 1.0)
         for i in range(nethread):
-
             #  Collect ranges and colours into arrays.
-            tictocs = []
-            colours = []
+            # tictocs = []
+            # colours = []
             j = 0
             for task in tasks[i]:
-                tictocs.append((task["tic"], task["toc"] - task["tic"]))
-                colours.append(task["colour"])
+                # tictocs.append((task["tic"], task["toc"] - task["tic"]))
+                # colours.append(task["colour"])
 
                 #  Legend support, collections don't add to this.
                 if task["subtype"] != "none":
@@ -473,8 +556,19 @@ for rank in ranks:
                     pl.plot([], [], color=task["colour"], label=qtask)
                     typesseen.append(qtask)
 
-            #  Now plot.
-            ax.broken_barh(tictocs, [i + 0.55, 0.9], facecolors=colours, linewidth=0)
+                ax.barh(
+                    bottom=i + 0.55,
+                    height=0.9,
+                    left=task["tic"],
+                    width=task["toc"] - task["tic"],
+                    facecolor=task["colour"],
+                    hatch=task["hatch"],
+                )
+
+            # #  Now plot.
+            # ax.broken_barh(
+            #     tictocs, [i + 0.55, 0.9], facecolors=colours, linewidth=0
+            # )
 
     #  Legend and room for it.
     nrow = len(typesseen) / 8
@@ -494,7 +588,12 @@ for rank in ranks:
         ax.plot([0, 0], [0, nethread + nrow + 1], "k--", linewidth=1)
     else:
         real_start = tic_step - mintic
-        ax.plot([real_start, real_start], [0, nethread + nrow + 1], "k--", linewidth=1)
+        ax.plot(
+            [real_start, real_start],
+            [0, nethread + nrow + 1],
+            "k--",
+            linewidth=1,
+        )
     ax.plot([end_t, end_t], [0, nethread + nrow + 1], "k--", linewidth=1)
 
     ax.set_xlabel("Wall clock time [ms]")
