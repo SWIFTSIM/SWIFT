@@ -239,9 +239,9 @@ FULLTYPES = [
 # Cell types.
 CELLTYPES = [
     "Regular",
-    "Bkg",
-    "Buff",
     "Zoom",
+    "Buff",
+    "Bkg",
 ]
 
 # Cell subtypes
