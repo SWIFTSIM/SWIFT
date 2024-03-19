@@ -581,12 +581,12 @@ zeroed, which can cause issues depending on the type of run performed.
 Sinks
 -----
 
-Currently, there are two models for the sink particles, the Default model and the GEAR one. Their parameters are described below. 
-
-Default Model
-~~~~~~~~~~~~~
+Currently, there are two models for the sink particles, the Default model and the GEAR one. Their parameters are described below. To choose a model, configure the code with ``--with-sink=<model>``, where ``<model>`` can be ``none`` or ``GEAR``. To run with sink particles, add the option ``--sinks``.
+Below you will find the description of the ``none`` which is the default model. For ``GEAR`` model, please refer to :ref:`sink_GEAR_model`.
 
 By default, the code is configured with ``--with-sink=none``. Then, the ``DefaultSink`` section is used to set parameters that describe the sinks in this model. The unique parameter is the sink accretion radius (also called cut-off radius): ``cut_off_radius``.
+
+Note that this model does not create sink particles or accrete gas. 
 
 The full section is:
 
@@ -594,71 +594,6 @@ The full section is:
 
   DefaultSink:
     cut_off_radius:        1e-3       # Cut off radius of the sink particles (in internal units). This parameter should be adapted with the resolution..
-
-
-GEAR Model
-~~~~~~~~~~
-
-To enable this model, the code must be configured with ``--with-sink=GEAR``. Then, the ``GEARSink`` section is used to set the parameters that describe the sinks in this model. Details of the model are provided in the GEAR part of the documentation.
-
-The first two parameters are:
-
-* The sink cut-off radius for gas and sink accretion: ``cut_off_radius``,
-* The sink inner accretion radius fraction in terms of the cut-off radius: ``f_acc``.
-
-The ``f_acc`` parameter is optional. Its default value is :math:`0.8`. Its value must respect :math:`0 \leq f_\text{acc} \leq 1` . It describes the inner radius :math:`f_{\text{acc}} \cdot r_{\text{cut-off}}` in which gas particles are swallowed without any further checks, as explained below. 
-
-The next two mandatory parameters are:
-
-* the gas maximal temperature to form a sink:``maximal_temperature``,
-* the gas threshold density to form a sink:``density_threshold``.
-
-These two parameters govern the first two criteria of the sink formation scheme. If these criteria are not passed, sink particles are not created. If they are passed, the code performs further checks to form sink particles. Some of those criteria checks can be disabled, as explained below.
-
-The next set of parameters deals with the sampling of the IMF and the representation of star particles:
-
-* size of the calibration sample used to determine the probabilities to form stellar particles with mass ``stellar_particle_mass``: ``size_of_calibration_sample``,
-* minimal mass of stars represented by discrete particles: ``minimal_discrete_mass``,
-* mass of the stellar particle representing the continuous part of the IMF: ``stellar_particle_mass``,
-* minimal mass of the first stars represented by discrete particles: ``minimal_discrete_mass_first_stars``,
-* mass of the stellar particle (first stars) representing the continuous part of the IMF:: ``stellar_particle_mass_first_stars``.
-
-With sink particles, star particles can represent either a single star or a population of stars in the low mass part of the IMF (continuous IMF sampling). The stars in the continuous part of the IMF are put together in a particle of mass ``stellar_particle_mass`` or ``stellar_particle_mass_first_stars``, while individual stars in the discrete part have their mass sampled from the IMF. The limit between the continuous and discrete sampling of the IMF is controlled by  ``minimal_discrete_mass`` and ``minimal_discrete_mass_first_stars``.
-
-The next set of parameters controls the sink formation scheme. More details are provided in the GEAR documentation. Here is a brief overview:
-
-* whether or not the gas must be contracting: ``sink_formation_contracting_gas_criterion`` (default: 1), 
-* whether or not the gas smoothing length must be small enough: ``sink_formation_smoothing_length_criterion`` (default: 1),
-* whether or not the gas must be in a Jeans unstable state: ``sink_formation_jeans_instability_criterion`` (default: 1),
-* whether or not the gas must be in a bound state: ``sink_formation_bound_state_criterion`` (default: 1),
-* whether or not a new sink can be formed in a region where its ``cut_off_radius`` and the one of an existing sink overlap: ``sink_formation_overlapping_sink_criterion`` (default: 1).
-
-Those criteria are checked if the density and temperature criteria are successfully passed. They control the behaviour of the sink formation scheme. By default, they are all activated and set to ``1``.
-
-The last parameter is ``disable_sink_formation`` (default: 0). It controls whether sinks are formed or not in the simulation. The main purpose is when sinks are put in initial conditions and sinks are not wanted to be added during the run. This parameter is set to ``0`` by default, i.e. sink formation is *enabled*. 
-
-The full section is:
-
-.. code:: YAML
-	  
-   GEARSink:
-     cut_off_radius:        1e-3                 # Cut off radius of the sink particles (in internal units).
-     f_acc: 0.8                                  # (Optional) Fraction of the cut_off_radius that determines if a gas particle should be swallowed wihtout additional check. (Default: 0.8)
-     maximal_temperature:        3e10            # Maximal gas temperature for forming a star (in K)
-     density_threshold:          1.67e-23        # Minimal gas density for forming a star (in g/cm3 (1.67e-24 =1acc))
-     size_of_calibration_sample: 100000          # Size of the calibration sample used to determine the probabilities to form stellar particles with mass stellar_particle_mass
-     stellar_particle_mass:      20              # Mass of the stellar particle representing the low mass stars (continuous IMF sampling) (in solar mass)
-     minimal_discrete_mass:      8               # Minimal mass of stars represented by discrete particles (in solar mass)
-     stellar_particle_mass_first_stars: 20       # Mass of the stellar particle representing the low mass stars (continuous IMF sampling) (in solar mass). First stars
-     minimal_discrete_mass_first_stars: 8        # Minimal mass of stars represented by discrete particles (in solar mass). First stars
-     sink_formation_contracting_gas_criterion: 1     # (Optional) Activate the contracting gas criterion for sink formation. (Default: 1)
-     sink_formation_smoothing_length_criterion: 1    # (Optional) Activate the smoothing length criterion for sink formation. (Default: 1)
-     sink_formation_jeans_instability_criterion: 1   # (Optional) Activate the two Jeans instability criteria for sink formation. (Default: 1)
-     sink_formation_bound_state_criterion: 1         # (Optional) Activate the bound state criterion for sink formation. (Default: 1)
-     sink_formation_overlapping_sink_criterion: 1    # (Optional) Activate the overlapping sink criterion for sink formation. (Default: 1)
-     disable_sink_formation: 0                   # (Optional) Disable sink formation. (Default: 0)
-
-
 
 
 .. _Parameters_time_integration:

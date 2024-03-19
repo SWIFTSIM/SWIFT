@@ -147,6 +147,17 @@ Implementing the other hydro schemes is not complicated but requires some carefu
     n_stars_per_particle: 4           # Number of stars that an hydro particle can generate
     min_mass_frac: 0.5                # Minimal mass for a stellar particle as a fraction of the average mass for the stellar particles.
 
+Sink particles
+~~~~~~~~~~~~~~
+
+GEAR now implements sink particles for star formation. Instead of stochastically transforming gas particles into stars as is done in the star formation scheme above when some criteria are met, we transform a gas into a sink particle. The main property of the sink particle is its accretion radius. When gas particles within this accretion radius are eligible to be swallowed by the sink, we remove them and transfer their mass, momentum, angular momentum, chemistry properties, etc to the sink particle.
+
+With the sink particles, the IMF splits into two parts: the continuous part and the discrete part. Those parts will correspond to two kinds of stars. Particles in the discrete part of the IMF represent individual stars. It means that discrete IMF-sampled stars have different masses. Particles in the continuous part represent a population of stars, all with the same mass.
+
+The sink particle will randomly choose a target mass, accrete gas until it reaches this target mass and finally spawn a star. Then, the sink chooses a new target mass and repeats the same procedure. 
+
+This was a brief overview of the model. More details can be found in :ref:`sink_GEAR_model` pages. Please refer to these for configuration, compilations and details of the model. 
+
 
 Chemistry
 ~~~~~~~~~

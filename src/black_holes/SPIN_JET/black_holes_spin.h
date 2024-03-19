@@ -96,8 +96,8 @@ __attribute__((always_inline)) INLINE static float j_BH(
     struct bpart* bp, const struct phys_const* constants) {
 
   const float J_BH =
-      fabsf(bp->subgrid_mass * bp->subgrid_mass * bp->spin *
-            constants->const_newton_G / constants->const_speed_light_c);
+      fabs(bp->subgrid_mass * bp->subgrid_mass * bp->spin *
+           constants->const_newton_G / constants->const_speed_light_c);
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (J_BH <= 0.) {
@@ -1278,11 +1278,11 @@ __attribute__((always_inline)) INLINE static float merger_spin_evolve(
      is needed since the final spin is assumed to be along the direction of
      this total angular momentum. Hence here we compute the direction. */
   const float j_BH_1 =
-      fabsf(bpi->subgrid_mass * bpi->subgrid_mass * bpi->spin *
-            constants->const_newton_G / constants->const_speed_light_c);
+      fabs(bpi->subgrid_mass * bpi->subgrid_mass * bpi->spin *
+           constants->const_newton_G / constants->const_speed_light_c);
   const float j_BH_2 =
-      fabsf(bpj->subgrid_mass * bpj->subgrid_mass * bpj->spin *
-            constants->const_newton_G / constants->const_speed_light_c);
+      fabs(bpj->subgrid_mass * bpj->subgrid_mass * bpj->spin *
+           constants->const_newton_G / constants->const_speed_light_c);
   float total_angular_momentum_direction[3] = {
       j_BH_1 * spin_vec1[0] + j_BH_2 * spin_vec2[0] +
           orbital_angular_momentum[0],

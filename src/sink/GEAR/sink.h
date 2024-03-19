@@ -82,7 +82,7 @@ INLINE static void sink_update_target_mass(struct sink* sink,
   if (random_number < imf->sink_Pc) {
     // we are dealing with the continous part of the IMF
     sink->target_mass = imf->sink_stellar_particle_mass;
-    sink->target_type = sink_star_population;
+    sink->target_type = star_population_no_SNII;
   } else {
     // we are dealing with the discrete part of the IMF
     random_number = random_unit_interval_part_ID_and_index(
@@ -91,7 +91,7 @@ INLINE static void sink_update_target_mass(struct sink* sink,
         initial_mass_function_sample_power_law(minimal_discrete_mass, imf->mass_max,
                                 imf->exp[imf->n_parts - 1], random_number);
     sink->target_mass = m;
-    sink->target_type = sink_single_star;
+    sink->target_type = single_star;
   }
 }
 
@@ -461,23 +461,35 @@ __attribute__((always_inline)) INLINE static void sink_swallow_part(
   sp->mass += gas_mass;
   sp->gpart->mass += gas_mass;
 
-  /* Physical velocity difference between the particles */
-  const float dv[3] = {(sp->v[0] - p->v[0]) * cosmo->a_inv,
-                       (sp->v[1] - p->v[1]) * cosmo->a_inv,
-                       (sp->v[2] - p->v[2]) * cosmo->a_inv};
+  /* Comoving and physical distance between the particles */
+  const float dx[3] = {sp->x[0] - p->x[0], sp->x[1] - p->x[1], sp->x[2] - p->x[2]};
+  const float dx_physical[3] = {dx[0] * cosmo->a, dx[1] * cosmo->a,
+				dx[2] * cosmo->a};
 
-  /* Physical distance between the particles */
-  const float dx[3] = {(sp->x[0] - p->x[0]) * cosmo->a,
-                       (sp->x[1] - p->x[1]) * cosmo->a,
-                       (sp->x[2] - p->x[2]) * cosmo->a};
+  /* Relative velocity between the sink and the part */
+  const float dv[3] = {sp->v[0] - p->v[0],  sp->v[1] - p->v[1],
+                       sp->v[2] - p->v[2]};
+
+  const float a = cosmo->a;
+  const float H = cosmo->H;
+  const float a2H = a * a * H;
+
+  /* Calculate the velocity with the Hubble flow */
+  const float v_plus_H_flow[3] = {a2H * dx[0] + dv[0], a2H * dx[1] + dv[1],
+                                  a2H * dx[2] + dv[2]};
+
+  /* Compute the physical relative velocity between the particles */
+  const float dv_physical[3] = {v_plus_H_flow[0] * cosmo->a_inv,
+				v_plus_H_flow[1] * cosmo->a_inv,
+				v_plus_H_flow[2] * cosmo->a_inv};
 
   /* Collect the swallowed angular momentum */
   sp->swallowed_angular_momentum[0] +=
-      gas_mass * (dx[1] * dv[2] - dx[2] * dv[1]);
+      gas_mass * (dx_physical[1] * dv_physical[2] - dx_physical[2] * dv_physical[1]);
   sp->swallowed_angular_momentum[1] +=
-      gas_mass * (dx[2] * dv[0] - dx[0] * dv[2]);
+      gas_mass * (dx_physical[2] * dv_physical[0] - dx_physical[0] * dv_physical[2]);
   sp->swallowed_angular_momentum[2] +=
-      gas_mass * (dx[0] * dv[1] - dx[1] * dv[0]);
+      gas_mass * (dx_physical[0] * dv_physical[1] - dx_physical[1] * dv_physical[0]);
 
   /* Update the sink momentum */
   const float sink_mom[3] = {sink_mass * sp->v[0] + gas_mass * p->v[0],
@@ -753,10 +765,6 @@ INLINE static void sink_prepare_part_sink_formation_gas_criteria(struct engine* 
                        (float)(p->x[1]),
                        (float)(p->x[2])};
 
-  /* Compute the physical velocity */
-  const float v[3] = {(p->v[0]) * cosmo->a_inv, (p->v[1]) * cosmo->a_inv,
-                      (p->v[2]) * cosmo->a_inv};
-
   /* No need to check if the particle has been flagged to form a sink or
      not. This is done in runner_prepare_part_sink_formation(). */
  
@@ -765,13 +773,16 @@ INLINE static void sink_prepare_part_sink_formation_gas_criteria(struct engine* 
 			(float)(pi->x[1]),
 			(float)(pi->x[2])};
 
-  const float dx[3] = {(px[0] - pix[0]) * cosmo->a,
-		       (px[1] - pix[1]) * cosmo->a,
-		       (px[2] - pix[2]) * cosmo->a};
-  const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+  const float dx[3] = {px[0] - pix[0], px[1] - pix[1], px[2] - pix[2]};
+  const float dx_physical[3] = {dx[0] * cosmo->a,
+				dx[1] * cosmo->a,
+				dx[2] * cosmo->a};
+  const float r2_physical = dx_physical[0] * dx_physical[0]
+                          + dx_physical[1] * dx_physical[1]
+                          + dx_physical[2] * dx_physical[2];
 
   /* Checks that this part is a neighbour */
-  if ((r2 > r_acc_p * r_acc_p) || (r2 == 0.0)) {
+  if ((r2_physical > r_acc_p * r_acc_p) || (r2_physical == 0.0)) {
     return;
   }
 
@@ -785,19 +796,34 @@ INLINE static void sink_prepare_part_sink_formation_gas_criteria(struct engine* 
   const float u_inter_i =
     hydro_get_drifted_physical_internal_energy(p, cosmo);
 
-  /* Compute the relative physical velocity between p and pi */
-  const float vi[3] = {(pi->v[0]) * cosmo->a_inv, (pi->v[1]) * cosmo->a_inv,
-		       (pi->v[2]) * cosmo->a_inv};
-  const float dv[3] = {vi[0] - v[0], vi[1] - v[1], vi[2] - v[2]};
-  const float dv_squared = dv[0]*dv[0] + dv[1]*dv[1] + dv[2]*dv[2] ;
+  /* Compute the relative comoving velocity between p and pi */
+  const float dv[3] = {pi->v[0] - p->v[0],  pi->v[1] - p->v[1],
+                       pi->v[2] - p->v[2]};
 
-  /* Compute specific angular momentum between pk and pi */
-  const float specific_angular_momentum[3] = {dx[1] * dv[2] - dx[2] * dv[1],
-					      dx[2] * dv[0] - dx[0] * dv[2],
-					      dx[0] * dv[1] - dx[1] * dv[0]};
+  const float a = cosmo->a;
+  const float H = cosmo->H;
+  const float a2H = a * a * H;
+
+  /* Calculate the velocity with the Hubble flow */
+  const float v_plus_H_flow[3] = {a2H * dx[0] + dv[0], a2H * dx[1] + dv[1],
+                                  a2H * dx[2] + dv[2]};
+
+  /* Compute the physical relative velocity between the particles */
+  const float dv_physical[3] = {v_plus_H_flow[0] * cosmo->a_inv,
+				v_plus_H_flow[1] * cosmo->a_inv,
+				v_plus_H_flow[2] * cosmo->a_inv};
+
+  const float dv_physical_squared =  dv_physical[0] * dv_physical[0]
+                                   + dv_physical[1] * dv_physical[1]
+                                   + dv_physical[2] * dv_physical[2];
+
+  /* Compute specific physical angular momentum between pk and pi */
+  const float specific_angular_momentum[3] = {dx_physical[1] * dv_physical[2] - dx_physical[2] * dv_physical[1],
+					      dx_physical[2] * dv_physical[0] - dx_physical[0] * dv_physical[2],
+					      dx_physical[0] * dv_physical[1] - dx_physical[1] * dv_physical[0]};
 
   /* Updates the energies */
-  p->sink_data.E_kin_neighbours += 0.5f * mi * dv_squared ;
+  p->sink_data.E_kin_neighbours += 0.5f * mi * dv_physical_squared ;
   p->sink_data.E_int_neighbours += mi * u_inter_i;
   p->sink_data.E_rad_neighbours += cooling_get_radiated_energy(xpi);
 
@@ -819,13 +845,13 @@ INLINE static void sink_prepare_part_sink_formation_gas_criteria(struct engine* 
   /* Compute rotation energies per component */
   p->sink_data.E_rot_neighbours[0] += 0.5 * mi * specific_angular_momentum[0]
     * specific_angular_momentum[0]
-    / sqrtf(dx[1] * dx[1] + dx[2] * dx[2]);
+    / sqrtf(dx_physical[1] * dx_physical[1] + dx_physical[2] * dx_physical[2]);
   p->sink_data.E_rot_neighbours[1] += 0.5 * mi * specific_angular_momentum[1]
     * specific_angular_momentum[1]
-    / sqrtf(dx[0] * dx[0] + dx[2] * dx[2]);
+    / sqrtf(dx_physical[0] * dx_physical[0] + dx_physical[2] * dx_physical[2]);
   p->sink_data.E_rot_neighbours[2] += 0.5 * mi * specific_angular_momentum[2]
     * specific_angular_momentum[2]
-    / sqrtf(dx[0] * dx[0] + dx[1] * dx[1]);
+    / sqrtf(dx_physical[0] * dx_physical[0] + dx_physical[1] * dx_physical[1]);
 }
 
 /**
