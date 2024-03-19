@@ -299,18 +299,26 @@ static void space_prepare_cells(struct space *s, const int cdim[3]) {
     s->iwidth[k] = 1.0 / s->width[k];
   }
 
-  /* Allocate the highest level of cells. */
+  /* Count the number of top level cells. (In the zoom case this is
+   * calculated separately)*/
   if (!s->with_zoom_region) {
     s->tot_cells = s->nr_cells = cdim[0] * cdim[1] * cdim[2];
-  } else {
-    s->tot_cells = s->nr_cells =
-        (s->cdim[0] * s->cdim[1] * s->cdim[2]) +
-        (s->zoom_props->cdim[0] * s->zoom_props->cdim[1] *
-         s->zoom_props->cdim[2]) +
-        (s->zoom_props->buffer_cdim[0] * s->zoom_props->buffer_cdim[1] *
-         s->zoom_props->buffer_cdim[2]);
   }
+}
 
+/**
+ * @brief Allocate the top-level cells.
+ *
+ * This function also allocates the top-level cells, their multipoles, the
+ * indices of local cells, the indices of local cells with tasks, the indices of
+ * cells with particles, and the indices of local cells with particles. It also
+ * sets the cells' locks after allocation.
+ *
+ * @param s The #space.
+ */
+void space_allocate_cells(struct space *s) {
+
+  /* Allocate the top level cells array. */
   if (swift_memalign("cells_top", (void **)&s->cells_top, cell_align,
                      s->nr_cells * sizeof(struct cell)) != 0)
     error("Failed to allocate top-level cells.");
@@ -536,6 +544,12 @@ void space_regrid(struct space *s, int verbose) {
                                        s->nr_local_cells_with_particles,
                                        s->nr_cells, s->cell_min, verbose);
 
+  /* When running a zoom region if this is our first regrid then we need to get
+   * the zoom region geometry before moving on. */
+  if (s->with_zoom_region && s->cells_top == NULL) {
+    zoom_region_init(s, verbose);
+  }
+
   /* Get the new putative cell dimensions. */
   int cdim[3];
   space_new_cdim_from_hmax(s, h_max, cdim);
@@ -569,6 +583,21 @@ void space_regrid(struct space *s, int verbose) {
      * the cdim, width, iwidth and cell counts on the space. */
     space_prepare_cells(s, cdim);
 
+    /* If running a zoom reigon we need to prepare the zoom region and
+     * all the cell grids beyond the unform case. */
+    if (s->with_zoom_region) {
+      zoom_prepare_cells(s, cdim, verbose);
+    }
+
+    /* Allocate the cells. */
+    space_allocate_cells(s);
+
+    /* If running a zoom region we need to allocate the zoom specific arrays
+     * too. */
+    if (s->with_zoom_region) {
+      zoom_allocate_cells(s);
+    }
+
     /* Construct the top-level cells. */
     space_construct_tl_cells(s, ti_current, verbose);
 
@@ -587,6 +616,23 @@ void space_regrid(struct space *s, int verbose) {
 
     /* Free the old cells, if they were allocated. */
     space_free_cells(s);
+  }
+
+  /* When running with a zoom region we need to check we have a big enough mesh
+   * for the zoom cells, both initially and if the cells have been modified.
+   * NOTE: Sadly we have to wait to do this until the engine is attached to the
+   * space before we can make this check without breaking the initialisation
+   * order, or passing around extra information. Although annoying this just
+   * means this error could be triggered after everything is set up instead of
+   * during set up at the beginning of a run. */
+  if (s->with_zoom_region && s->e != NULL &&
+      s->dim[0] / s->e->gravity_properties->mesh_size >
+          s->zoom_props->width[0]) {
+    error(
+        "Mesh too small given the size of top-level zoom cells (width= "
+        "%.2f). Should be at least %d cells wide (Currently: %d).",
+        s->zoom_props->width[0], (int)(s->dim[0] / s->zoom_props->width[0]),
+        s->e->gravity_properties->mesh_size);
   }
 
   if (verbose)
