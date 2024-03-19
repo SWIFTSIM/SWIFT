@@ -698,37 +698,28 @@ INLINE static void sink_star_formation_give_new_velocity(const struct engine* e,
   double v_given[3] = {fraction*v_swallowed[0], fraction*v_swallowed[1], fraction*v_swallowed[2]};
   double p_given_ph[3] = {fraction*p_swallowed_ph[0], fraction*p_swallowed_ph[1], fraction*p_swallowed_ph[2]};
 
-  /* Now, verify that the velocity is smaller than v_max */
-  const double v_max = 200 ; /* In km/s */
-  const double sigma = v_max/3.0 ;
+  
+  const double sigma = 5 ;
 
   for (int i=0 ; i < 3; ++i) {
-    /* Compute the sign of this velocity component */
-    const double sign_i = v_given[i]/fabs(v_given[i]);
 
-    /* If the velocity component i is bigger than the maximal allowed velocity */
-    if (fabs(v_given[i]) > v_max ){
+    /* Draw a random value in unform interval (0, 1] */
+    const double random_number = random_unit_interval_part_ID_and_index(sp->id, i, e->ti_current, (enum random_number_type)1);
 
-      /* Draw a random value in unform interval (0, 1] */
-      const double random_number = random_unit_interval_part_ID_and_index(sp->id, i, e->ti_current, (enum random_number_type)1);
+    /* Sample a gaussian with mu=0 and sigma=sigma */
+    double v_i_random = gsl_cdf_gaussian_Pinv(random_number, sigma);
+    v_given[i] = v_i_random;
 
-      /* Sample a gaussian with mu=0 and sigma=sigma */
-      double v_i_random = gsl_cdf_gaussian_Pinv(random_number, sigma);
+    /* Also update p_swallowed_physical. */
+    const double v_given_ph = (v_given[i] + a2H*dx[i])*cosmo->a_inv;
+    p_given_ph[i] = v_given_ph*si->mass;
 
-      message("Velocity component %d bigger than v_max = 200 km/s. Old velocity : %lf ; New velocity: %lf", i, v_given[i], sign_i*v_i_random);
-
-      v_given[i] = sign_i*v_i_random;
-
-      /* Also update p_swallowed_physical. */
-      const double v_given_ph = (v_given[i] + a2H*dx[i])*cosmo->a_inv;
-      p_given_ph[i] = v_given_ph*si->mass;
-    }
 #else
   error("Code not compiled with GSL. Can't compute Star new velocity.");
 #endif
   }
   
-  /* Update the star velocity. Do not forget to update the gart velocity */
+  /* Update the star velocity. Do not forget to update the gpart velocity */
   sp->v[0] = si->v[0] + v_given[0];
   sp->v[1] = si->v[1] + v_given[1];
   sp->v[2] = si->v[2] + v_given[2];
