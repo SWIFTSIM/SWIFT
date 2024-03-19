@@ -325,11 +325,11 @@ void zoom_find_neighbouring_cells(struct space *s, const int verbose) {
                 neighbour_cells_top[zoom_props->nr_neighbour_cells++] = cjd;
               }
             } /* neighbour k loop */
-          }   /* neighbour j loop */
-        }     /* neighbour i loop */
-      }       /* k loop */
-    }         /* j loop */
-  }           /* i loop */
+          } /* neighbour j loop */
+        } /* neighbour i loop */
+      } /* k loop */
+    } /* j loop */
+  } /* i loop */
 
   if (verbose)
     message("%i cells neighbour the zoom region",
@@ -604,6 +604,10 @@ void zoom_construct_tl_cells(struct space *s, const integertime_t ti_current,
     }
   }
 
+  if (verbose)
+    message("Set zoom cell dimensions to [ %i %i %i ].", cdim[0], cdim[1],
+            cdim[2]);
+
   /* Get the minimum cell size. */
   const double dmin = min3(s->width[0], s->width[1], s->width[2]);
 
@@ -655,6 +659,10 @@ void zoom_construct_tl_cells(struct space *s, const integertime_t ti_current,
       }
     }
   }
+
+  if (verbose)
+    message("Set background cell dimensions to [ %i %i %i ].", cdim[0], cdim[1],
+            cdim[2]);
 
   /* If we have a buffer region create buffer cells. */
   if (zoom_props->with_buffer_cells) {
@@ -718,6 +726,10 @@ void zoom_construct_tl_cells(struct space *s, const integertime_t ti_current,
         }
       }
     }
+
+    if (verbose)
+      message("Set buffer cell dimensions to [ %i %i %i ].", cdim[0], cdim[1],
+              cdim[2]);
   }
 
   /* Now find and label what cells contain the zoom region. */

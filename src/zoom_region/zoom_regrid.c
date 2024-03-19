@@ -28,10 +28,30 @@
 #include "engine.h"
 #include "gravity_properties.h"
 #include "scheduler.h"
-#include "space.h"
 #include "zoom_cell.h"
 #include "zoom_init.h"
 #include "zoom_regrid.h"
+
+/**
+ * @breif Check whether we need a regrid based on the zoom region.
+ *
+ * This function is called in space_need_regrid in space_regrid.c and provides
+ * the zoom specific regrid check.
+ *
+ * TODO: In the future this check needs to take into account the particle
+ * distribution to ensure that the zoom region is sufficiently placed given
+ * any bulk motion.
+ *
+ * @param s The #space.
+ * @param new_cdim The new top-level cell dimensions (based on current hmax).
+ *
+ * @return 1 if a regrid is needed, 0 otherwise.
+ */
+int zoom_need_regrid(const struct space *s, const int new_cdim[3]) {
+  return (s->cells_top == NULL || new_cdim[0] < s->zoom_props->cdim[0] ||
+          new_cdim[1] < s->zoom_props->cdim[1] ||
+          new_cdim[2] < s->zoom_props->cdim[2]);
+}
 
 /**
  * @brief Re-build the top-level cell grid with a zoom region.

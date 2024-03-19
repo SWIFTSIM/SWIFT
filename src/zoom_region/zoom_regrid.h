@@ -22,6 +22,7 @@
 /* Local includes */
 #include "space.h"
 
+int zoom_need_regrid(const struct space *s, const int new_cdim[3]);
 void zoom_space_regrid(struct space *s, int verbose);
 
 #endif /* SWIFT_ZOOM_REGRID_H */
