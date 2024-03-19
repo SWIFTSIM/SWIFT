@@ -28,6 +28,7 @@
 #include "engine.h"
 #include "gravity_properties.h"
 #include "scheduler.h"
+#include "zoom_init.h"
 #include "zoom_regrid.h"
 
 /**
