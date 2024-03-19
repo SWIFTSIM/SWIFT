@@ -82,7 +82,7 @@ INLINE static void sink_update_target_mass(struct sink* sink,
   if (random_number < imf->sink_Pc) {
     // we are dealing with the continous part of the IMF
     sink->target_mass = imf->sink_stellar_particle_mass;
-    sink->target_type = sink_star_population;
+    sink->target_type = star_population_no_SNII;
   } else {
     // we are dealing with the discrete part of the IMF
     random_number = random_unit_interval_part_ID_and_index(
@@ -91,7 +91,7 @@ INLINE static void sink_update_target_mass(struct sink* sink,
         initial_mass_function_sample_power_law(minimal_discrete_mass, imf->mass_max,
                                 imf->exp[imf->n_parts - 1], random_number);
     sink->target_mass = m;
-    sink->target_type = sink_single_star;
+    sink->target_type = single_star;
   }
 }
 
