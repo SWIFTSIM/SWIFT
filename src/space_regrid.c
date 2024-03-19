@@ -30,6 +30,7 @@
 #include "engine.h"
 #include "scheduler.h"
 #include "zoom_region/zoom_cell.h"
+#include "zoom_region/zoom_init.h"
 #include "zoom_region/zoom_regrid.h"
 
 /**
@@ -215,6 +216,7 @@ static int space_need_regrid(const struct space *s, const int new_cdim[3]) {
   }
 }
 
+#ifdef WITH_MPI
 /**
  * @brief Prepare the new partition.
  *
@@ -264,6 +266,7 @@ static int space_prepare_new_partition(const struct space *s, const int cdim[3],
    * Can happen when restarting the application. */
   return (s->cells_top == NULL && oldnodeIDs == NULL);
 }
+#endif  // WITH_MPI
 
 /**
  * @brief Prepare and allocate the top-level cell and pointer arrays.
@@ -462,6 +465,7 @@ static void space_construct_tl_cells(struct space *s,
   }
 }
 
+#ifdef WITH_MPI
 /**
  * @brief Partition the cells over the nodes.
  *
@@ -528,6 +532,7 @@ static void space_partition_cells(struct space *s, int *oldnodeIDs,
     engine_makeproxies(s->e);
   }
 }
+#endif  // WITH_MPI
 
 /**
  * @brief Re-build the top-level cell grid in a uniform box.
