@@ -52,6 +52,21 @@ int zoom_need_regrid(const struct space *s, const int new_cdim[3]) {
           new_cdim[2] < s->zoom_props->cdim[2]);
 }
 
+/**
+ * @brief Prepare the cells for the zoom region.
+ *
+ * This function is called in space_regrid in space_regrid.c and provides
+ * the zoom specific cell preparation, freeing only the zoom specific cell
+ * pointer arrays and computing the new zoom region geometry if necessary.
+ *
+ * The cells are counted here and stored on the space. In the zoom case this
+ * includes counts from each top-level cell grid (zoom, bkg, and buffer if
+ * used).
+ *
+ * @param s The #space.
+ * @param zoom_cdim The new top-level cell dimensions (based on current hmax).
+ * @param verbose Whether to print verbose output.
+ */
 void zoom_prepare_cells(struct space *s, const int zoom_cdim[3], int verbose) {
   /* Free the old zoom specific cells, if they were allocated. */
   if (s->cells_top != NULL) {
