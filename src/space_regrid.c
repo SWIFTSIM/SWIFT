@@ -198,9 +198,8 @@ static void space_new_cdim_from_hmax(const struct space *s, const float h_max,
  * @return 1 if we need a regrid, 0 otherwise.
  */
 static int space_need_regrid(const struct space *s, const int new_cdim[3]) {
-  return (!s->with_zoom_region &&
-          (new_cdim[0] < s->cdim[0] || new_cdim[1] < s->cdim[1] ||
-           new_cdim[2] < s->cdim[2]));
+  return (new_cdim[0] < s->cdim[0] || new_cdim[1] < s->cdim[1] ||
+          new_cdim[2] < s->cdim[2]);
 }
 
 #ifdef WITH_MPI
@@ -224,7 +223,8 @@ static int space_prepare_new_partition(const struct space *s, const int cdim[3],
                                        int *oldnodeIDs) {
   /* Are we regridding? (We only want to trigger this code when we already
    * have cells defined.) */
-  if (space_need_regrid(s, cdim) || zoom_need_regrid(s, cdim)) {
+  if ((!s->with_zoom_region && space_need_regrid(s, cdim)) ||
+      (s->with_zoom_region && zoom_need_regrid(s, cdim))) {
 
     /* Capture state of current space. */
     oldcdim[0] = s->cdim[0];
@@ -537,8 +537,9 @@ void space_regrid(struct space *s, int verbose) {
 #endif
 
   /* Do we need to re-build the upper-level cells? */
-  if (s->cells_top == NULL || space_need_regrid(s, cdim) ||
-      zoom_need_regrid(s, cdim)) {
+  if (s->cells_top == NULL ||
+      (!s->with_zoom_region && space_need_regrid(s, cdim)) ||
+      (s->with_zoom_region && zoom_need_regrid(s, cdim))) {
 
 #ifdef SWIFT_DEBUG_CHECKS
     /* Be verbose about this. */
