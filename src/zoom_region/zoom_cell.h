@@ -17,15 +17,16 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_ZOOM_INIT_H
-#define SWIFT_ZOOM_INIT_H
+#ifndef SWIFT_ZOOM_CELL_H
+#define SWIFT_ZOOM_CELL_H
 
 /* Local includes */
+#include "cell.h"
 #include "space.h"
+#include "timeline.h"
 
-/* Zoom region and cell grid initialisation */
-void zoom_props_init(struct swift_params *params, struct space *s,
-                     const int verbose);
-void zoom_region_init(struct space *s, const int verbose);
+/* Zoom specific cell_getid to handle different levels. */
+void zoom_construct_tl_cells(struct space *s, const integertime_t ti_current,
+                             int verbose);
 
-#endif /* SWIFT_ZOOM_INIT_H */
+#endif /* SWIFT_ZOOM_CELL_H */

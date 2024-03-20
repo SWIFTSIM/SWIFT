@@ -246,7 +246,8 @@ int main(int argc, char *argv[]) {
   s->with_zoom_region = 1;
 
   /* Run the zoom_init function. */
-  zoom_region_init(&param_file, s, 0);
+  zoom_props_init(&param_file, s, 0);
+  zoom_region_init(s, 0);
 
   /* Make the cells. */
   make_mock_cells(s);
