@@ -86,25 +86,37 @@ def add_other_particle_properties(pos,h,a,b,c,V0,kb,kv,Vz_factor,L,field_type):
         else:
             print('Error: wrong field type. Should be one_mode or random')
     else:
-        from swiftsimio import load
 
         vol = L ** 3
         # Put path to IC snapshots here
-        filename = "../ICfiles/g32_randB_withVP.hdf5"
-        data = load(filename)
+        filename = "./ICfiles/g32_randB_withVP.hdf5"
+        # read the variables of interest from the snapshot file
+        v = None
+        P = None
+        B = None
+        A = None
+        with h5py.File(filename,"r") as handle:
+            print(handle["PartType0"].keys())
+            v = handle["PartType0/Velocities"][:]
+            m = handle["PartType0/Masses"][:]
+            u = handle["PartType0/InternalEnergies"][:]
+            B = handle["PartType0/MagneticFluxDensities"][:]
+            A = handle["PartType0/MagneticVectorPotentials"][:]
+            ids = handle["PartType0/ParticleIDs"][:]
+        #data = load(filename)
         # print(data.metadata.gas_properties.field_names)
 
-        pos = data.gas.coordinates[:].value
-        rho = data.gas.densities.value
-        h = data.gas.smoothing_lengths.value
-        v = data.gas.velocities.value
-        m = data.gas.masses.value
-        P = data.gas.pressures.value
-        B = data.gas.magnetic_flux_densities.value
-        A = data.gas.magnetic_vector_potentials.value
-        u = data.gas.internal_energies.value
-        ids = data.gas.particle_ids.value
-        N = len(h)
+        #pos = data.gas.coordinates[:].value
+        #rho = data.gas.densities.value
+        #h = data.gas.smoothing_lengths.value
+        #v = data.gas.velocities.value
+        #m = data.gas.masses.value
+        #P = data.gas.pressures.value
+        #B = data.gas.magnetic_flux_densities.value
+        #A = data.gas.magnetic_vector_potentials.value
+        #u = data.gas.internal_energies.value
+        #ids = data.gas.particle_ids.value
+        #N = len(h)
 
     return v,B,A,ids,m,u
 
@@ -182,7 +194,7 @@ if __name__ == "__main__":
         "-ft",
         "--field_type",
         help="How to generate a field: one_mode, several_modes or random",
-        default='random',
+        default='random',#'load_from_file',#'random',
         type=str,
     )
     args = parser.parse_args()
