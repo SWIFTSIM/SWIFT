@@ -7,8 +7,8 @@ from scipy.signal import find_peaks
 
 
 results_directory_name = "test_results/"
-tau_max = 200
-take_last = int(100 / (5e-2))
+tau_max = 300
+take_last = int(180 / (5e-2))
 
 
 def load_test_run_parameters():
@@ -55,30 +55,33 @@ def find_complex_growth_rate(the_time, B_field, nlast=take_last):
    B_field_cut = B_field_new[l - 1 - nlast : -1]
    time_cut = the_time[l - 1 - nlast : -1]
    peaks, _ = find_peaks(B_field_cut, height=0,width = 10)
+   #if len(peaks)<-1:
+   #    peak_times = np.array([time_cut[peaks[i]] for i in range(len(peaks))])
+   #    peak_Amps = np.array([B_field_cut[peaks[i]] for i in range(len(peaks))])
+   #    peak_time_diff = np.diff(peak_times)
+   #    omega = 2*np.pi/peak_time_diff
+   #    mean_omega = np.mean(omega)
+   #    sigma_omega = np.std(omega)
+   #    growth_rate = find_growth_rate(peak_times, peak_Amps)
+   #else:
+   peak_times = []
+   peak_Amps = []    
+   mean_omega = -1
+   sigma_omega = -1
+   growth_rate = find_growth_rate(time_cut, B_field_cut)
+   peaks, _ = find_peaks(B_field_cut*np.exp(-growth_rate*time_cut), height=0, width = 50)
    if len(peaks)>2:
-       peak_times = np.array([time_cut[peaks[i]] for i in range(len(peaks))])
-       peak_Amps = np.array([B_field_cut[peaks[i]] for i in range(len(peaks))])
-       peak_time_diff = np.diff(peak_times)
-       omega = 2*np.pi/peak_time_diff
-       mean_omega = np.mean(omega)
-       sigma_omega = np.std(omega)
-       growth_rate = find_growth_rate(peak_times, peak_Amps)
-   else:
-       mean_omega = -1
-       sigma_omega = -1
-       growth_rate = find_growth_rate(time_cut, B_field_cut)
-       peaks, _ = find_peaks(B_field_cut*np.exp(-growth_rate*time_cut), height=0, width = 10)
-       if len(peaks)>2:
-            peak_times = np.array([time_cut[peaks[i]] for i in range(len(peaks))])
-            peak_Amps = np.array([B_field_cut[peaks[i]] for i in range(len(peaks))])
-            peak_time_diff = np.diff(peak_times)
-            omega = 2*np.pi/peak_time_diff
-            mean_omega = np.mean(omega)
-            sigma_omega = np.std(omega)
-   return round(growth_rate,4), round(mean_omega,4)
+        peak_times = np.array([time_cut[peaks[i]] for i in range(len(peaks))])
+        peak_Amps = np.array([B_field_cut[peaks[i]] for i in range(len(peaks))])
+        peak_time_diff = np.diff(peak_times)
+        omega = 2*np.pi/peak_time_diff
+        mean_omega = np.mean(omega)
+        sigma_omega = np.std(omega)
+        growth_rate = find_growth_rate(peak_times, peak_Amps)
+   return round(growth_rate,4), round(mean_omega,4), peak_times, peak_Amps   
 
 def plot_info(run_data, the_key):
-    fig, ax = plt.subplots(1, 3, sharex=True, figsize=(15, 5))
+    fig, ax = plt.subplots(1, 2, sharex=True, figsize=(10, 5))
     name_of_the_plot = (
         "Scheme="
         + the_key["Scheme"]
@@ -129,7 +132,10 @@ def plot_info(run_data, the_key):
         Mh = Mh[mask]
         divB = divB[mask]
 
-        growth_rate, frequency = find_complex_growth_rate(Time, B, nlast=take_last)
+        growth_rate, frequency, peak_times, peak_Amps = find_complex_growth_rate(Time, B, nlast=take_last)
+        if plot_peaks:
+            ax[0].scatter(peak_times, peak_Amps,color='black',s=1)
+ 
         #saturated_v = np.mean(vrms[-take_last:])
         the_name = (
             "#"
@@ -148,19 +154,19 @@ def plot_info(run_data, the_key):
             + str(round(frequency,4))
         )
         ax[0].plot(Time, B)
-        ax[2].plot(Time, divB, label=the_name)
-        ax[1].plot(Time, vrms)
+        ax[1].plot(Time, divB, label=the_name)
+        #ax[1].plot(Time, vrms)
         # ax[2].plot(Time, Mh)
     ax[0].set_xlabel("t/$t_c$", fontsize=8)
+    #ax[1].set_xlabel("t/$t_c$", fontsize=8)
     ax[1].set_xlabel("t/$t_c$", fontsize=8)
-    ax[2].set_xlabel("t/$t_c$", fontsize=8)
     ax[0].set_ylabel("<$B_{rms}$>/<$B_{rms}$(0)>", fontsize=8)
-    ax[2].set_ylabel("<divB*h/B>", fontsize=8)
-    ax[1].set_ylabel("$v_{rms}$", fontsize=8)
-    ax[2].legend(loc="best", fontsize=8)
+    ax[1].set_ylabel("<divB*h/B>", fontsize=8)
+    #ax[1].set_ylabel("$v_{rms}$", fontsize=8)
+    ax[1].legend(loc="best", fontsize=8)
     ax[0].set_yscale("log")
     # ax[1].set_yscale("log")
-    ax[2].set_yscale("log")
+    ax[1].set_yscale("log")
     # ax[0].set_ylim(1,1e4)
     # ax[0].set_xlim(0,10)
     # ax[1].set_ylim(1e-4,1)

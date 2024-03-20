@@ -12,7 +12,7 @@ rho = 1.0
 cs2 = 3025.0
 gamma = 5.0 / 3.0
 u0 = cs2 / (gamma * (gamma - 1))
-Bi_fraction = 1e-3
+Bi_fraction = 1e-12
 
 # output file
 fileOutputName = "ABCFlow.hdf5"
@@ -28,8 +28,8 @@ def generate_random_vectors(N_of_vectors, randomize_length=True):
             r*=np.random.rand()
         RVF+=[r]
     return np.array(RVF)
-        
 
+# smoothing kernel optimized for numpy Price 1012.1885 (6)
 def open_IAfile(path_to_file):
     IAfile = h5py.File(path_to_file, "r")
     pos = IAfile["/PartType0/Coordinates"][:, :]
@@ -37,54 +37,75 @@ def open_IAfile(path_to_file):
     return pos, h
 
 def add_other_particle_properties(pos,h,a,b,c,V0,kb,kv,Vz_factor,L,field_type):
-    vol = L ** 3 
-    N = len(h)
+    if field_type!='load_from_file'
+        vol = L ** 3 
+        N = len(h)
 
-    # initializing arrays with particle properties
-    v = np.zeros((N, 3))
-    B = np.zeros((N, 3))
-    A = np.zeros((N, 3))
-    ids = np.linspace(1, N, N)
-    m = np.ones(N) * rho * vol / N
-    u = np.ones(N) * u0
+        # initializing arrays with particle properties
+        v = np.zeros((N, 3))
+        B = np.zeros((N, 3))
+        A = np.zeros((N, 3))
+        ids = np.linspace(1, N, N)
+        m = np.ones(N) * rho * vol / N
+        u = np.ones(N) * u0
     
-    # setting constants
-    kv0 = 2 * np.pi / L * kv
-    kb0 = 2 * np.pi / L * kb
-    Beq0 = np.sqrt(rho) * V0
-    B0 = Bi_fraction * Beq0
-    Norm = 1/np.sqrt(a**2+b**2+c**2)
+        # setting constants
+        kv0 = 2 * np.pi / L * kv
+        kb0 = 2 * np.pi / L * kb
+        Beq0 = np.sqrt(rho) * V0
+        B0 = Bi_fraction * Beq0
+        Norm = 1/np.sqrt(a**2+b**2+c**2)
 
-    # rescaling the box to size L
-    pos *= L
+        # rescaling the box to size L
+        pos *= L
 
-    # setting the velocity profile
-    v[:,0] = (a * np.sin(kv0 * pos[:,2])+c * np.cos(kv0 * pos[:,1]))
-    v[:,1] = (b * np.sin(kv0 * pos[:,0])+a * np.cos(kv0 * pos[:,2]))
-    v[:,2] = (c * np.sin(kv0 * pos[:,1])+b * np.cos(kv0 * pos[:,0]))
-    v[:,2] *= Vz_factor
-    v*=V0 * Norm
+        # setting the velocity profile
+        v[:,0] = (a * np.sin(kv0 * pos[:,2])+c * np.cos(kv0 * pos[:,1]))
+        v[:,1] = (b * np.sin(kv0 * pos[:,0])+a * np.cos(kv0 * pos[:,2]))
+        v[:,2] = (c * np.sin(kv0 * pos[:,1])+b * np.cos(kv0 * pos[:,0]))
+        v[:,2] *= Vz_factor
+        v*=V0 * Norm
 
-    # setting the initial magnetic field
+        # setting the initial magnetic field
 
-    if field_type=='one_mode':
-        B[:, 0] = -(np.sin(kb0 * pos[:, 2]) - np.cos(kb0 * pos[:, 1]))
-        B[:, 1] = -(np.cos(kb0 * pos[:, 0]) - np.cos(kb0 * pos[:, 2]))
-        B[:, 2] = -(np.cos(kb0 * pos[:, 1]) - np.cos(kb0 * pos[:, 0]))
-        B *= B0
+        if field_type=='one_mode':
+            B[:, 0] = -(np.sin(kb0 * pos[:, 2]) - np.cos(kb0 * pos[:, 1]))
+            B[:, 1] = -(np.cos(kb0 * pos[:, 0]) - np.cos(kb0 * pos[:, 2]))
+            B[:, 2] = -(np.cos(kb0 * pos[:, 1]) - np.cos(kb0 * pos[:, 0]))
+            B *= B0
 
-        A[:, 0] = np.sin(kb0 * pos[:, 2]) - np.cos(kb0 * pos[:, 1])
-        A[:, 1] = np.sin(kb0 * pos[:, 0]) - np.cos(kb0 * pos[:, 2])
-        A[:, 2] = np.sin(kb0 * pos[:, 1]) - np.cos(kb0 * pos[:, 0])
-        A0 = B0 / kb0
-        A *= A0
-    elif field_type=='random':
-        B = generate_random_vectors(N, randomize_length=True)
-        B *= B0
-        A = B
+            A[:, 0] = np.sin(kb0 * pos[:, 2]) - np.cos(kb0 * pos[:, 1])
+            A[:, 1] = np.sin(kb0 * pos[:, 0]) - np.cos(kb0 * pos[:, 2])
+            A[:, 2] = np.sin(kb0 * pos[:, 1]) - np.cos(kb0 * pos[:, 0])
+            A0 = B0 / kb0
+            A *= A0
+        elif field_type=='random':
+            B = generate_random_vectors(N, randomize_length=True)
+            B *= B0
+            A = B
+        else:
+            print('Error: wrong field type. Should be one_mode or random')
     else:
-        print('Error: wrong field type. Should be one_mode or random')
- 
+        from swiftsimio import load
+
+        vol = L ** 3
+        # Put path to IC snapshots here
+        filename = "../ICfiles/g32_randB_withVP.hdf5"
+        data = load(filename)
+        # print(data.metadata.gas_properties.field_names)
+
+        pos = data.gas.coordinates[:].value
+        rho = data.gas.densities.value
+        h = data.gas.smoothing_lengths.value
+        v = data.gas.velocities.value
+        m = data.gas.masses.value
+        P = data.gas.pressures.value
+        B = data.gas.magnetic_flux_densities.value
+        A = data.gas.magnetic_vector_potentials.value
+        u = data.gas.internal_energies.value
+        ids = data.gas.particle_ids.value
+        N = len(h)
+
     return v,B,A,ids,m,u
 
 
@@ -161,6 +182,13 @@ if __name__ == "__main__":
         "-ft",
         "--field_type",
         help="How to generate a field: one_mode, several_modes or random",
+        default='random',
+        type=str,
+    )
+    parser.add_argument(
+        "-n",
+        "--field_type",
+        help="How to generate a field: one_mode, random or load_from_file",
         default='random',
         type=str,
     )

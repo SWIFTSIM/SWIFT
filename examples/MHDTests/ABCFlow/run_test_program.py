@@ -58,7 +58,7 @@ IA_dict = {
 #forcing_dict = {"v": "roberts-flow", "a": "roberts-flow-acceleration"}
 
 # Number of threads
-threads = 18
+threads = 18 #60
 
 # Where to store results
 results_directory_name = "test_results"
