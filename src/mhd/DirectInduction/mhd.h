@@ -350,7 +350,13 @@ __attribute__((always_inline)) INLINE static void mhd_end_gradient(
  * @param cosmo The cosmological model.
  */
 __attribute__((always_inline)) INLINE static void mhd_part_has_no_neighbours(
-    struct part *p, struct xpart *xp, const struct cosmology *cosmo) {}
+    struct part *p, struct xpart *xp, const struct cosmology *cosmo) {
+
+  p->mhd_data.divB = 0.0f;
+  p->mhd_data.curlB = 0.0f;
+  p->mhd_data.alpha_AR = 0.0f;
+
+}
 
 /**
  * @brief Prepare a particle for the force calculation.
@@ -393,8 +399,8 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_force(
     }
   }
 
-  p->mhd_data.alpha_AR =
-      normB ? fminf(1.0f, h * sqrtf(grad_B_mean_square) / normB) : 0.0f;
+  p->mhd_data.alpha_AR = 1.0f;
+  //    normB ? fminf(1.0f, h * sqrtf(grad_B_mean_square) / normB) : 0.0f;
 }
 
 /**
