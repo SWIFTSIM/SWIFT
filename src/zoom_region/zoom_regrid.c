@@ -34,7 +34,7 @@
 /**
  * @breif Check whether we need a regrid based on the zoom region.
  *
- * This function is called in space_need_regrid in space_regrid.c and provides
+ * This function is called in space_regrid in space_regrid.c and provides
  * the zoom specific regrid check.
  *
  * TODO: In the future this check needs to take into account the particle
@@ -44,10 +44,16 @@
  * @param s The #space.
  * @param new_cdim The new top-level cell dimensions (based on current hmax).
  *
- * @return 1 if a regrid is needed, 0 otherwise.
+ * @return 1 if a zoom regrid is needed, 0 otherwise.
  */
 int zoom_need_regrid(const struct space *s, const int new_cdim[3]) {
-  return (s->cells_top == NULL || new_cdim[0] < s->zoom_props->cdim[0] ||
+  /* If we aren't running a zoom we need to return 0. */
+  if (!s->with_zoom_region) {
+    return 0;
+  }
+
+  /* If we are running a zoom do we need to regrid based on the new cdim? */
+  return (new_cdim[0] < s->zoom_props->cdim[0] ||
           new_cdim[1] < s->zoom_props->cdim[1] ||
           new_cdim[2] < s->zoom_props->cdim[2]);
 }
