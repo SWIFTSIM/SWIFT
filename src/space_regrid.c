@@ -444,27 +444,6 @@ static void uniform_construct_tl_cells(struct space *s,
   }
 }
 
-/**
- * @brief Construct the top-level cells.
- *
- * This function acts as a wrapper around the uniform and zoom specific
- * cell construction functions.
- *
- * @param s The #space.
- * @param ti_current The current time.
- * @param verbose Are we talking?
- */
-static void space_construct_tl_cells(struct space *s,
-                                     const integertime_t ti_current,
-                                     int verbose) {
-  /* Construct the top-level cells using the appropriate function. */
-  if (!s->with_zoom_region) {
-    uniform_construct_tl_cells(s, ti_current, verbose);
-  } else {
-    zoom_construct_tl_cells(s, ti_current, verbose);
-  }
-}
-
 #ifdef WITH_MPI
 /**
  * @brief Partition the cells over the nodes.
@@ -603,8 +582,12 @@ void space_regrid(struct space *s, int verbose) {
       zoom_allocate_cells(s);
     }
 
-    /* Construct the top-level cells. */
-    space_construct_tl_cells(s, ti_current, verbose);
+    /* Construct the top-level cells using the appropriate function. */
+    if (!s->with_zoom_region) {
+      uniform_construct_tl_cells(s, ti_current, verbose);
+    } else {
+      zoom_construct_tl_cells(s, ti_current, verbose);
+    }
 
     /* Be verbose about the change. */
     if (verbose && !s->with_zoom_region)
