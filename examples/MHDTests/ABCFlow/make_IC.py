@@ -8,7 +8,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # Parameters
-rho = 1.0
+rho0 = 1.0
 cs2 = 3025.0
 gamma = 5.0 / 3.0
 u0 = cs2 / (gamma * (gamma - 1))
@@ -37,7 +37,7 @@ def open_IAfile(path_to_file):
     return pos, h
 
 def add_other_particle_properties(pos,h,a,b,c,V0,kb,kv,Vz_factor,L,field_type):
-    if field_type!='load_from_file'
+    if field_type!='load_from_file':
         vol = L ** 3 
         N = len(h)
 
@@ -46,13 +46,13 @@ def add_other_particle_properties(pos,h,a,b,c,V0,kb,kv,Vz_factor,L,field_type):
         B = np.zeros((N, 3))
         A = np.zeros((N, 3))
         ids = np.linspace(1, N, N)
-        m = np.ones(N) * rho * vol / N
+        m = np.ones(N) * rho0 * vol / N
         u = np.ones(N) * u0
     
         # setting constants
         kv0 = 2 * np.pi / L * kv
         kb0 = 2 * np.pi / L * kb
-        Beq0 = np.sqrt(rho) * V0
+        Beq0 = np.sqrt(rho0) * V0
         B0 = Bi_fraction * Beq0
         Norm = 1/np.sqrt(a**2+b**2+c**2)
 
@@ -185,14 +185,6 @@ if __name__ == "__main__":
         default='random',
         type=str,
     )
-    parser.add_argument(
-        "-n",
-        "--field_type",
-        help="How to generate a field: one_mode, random or load_from_file",
-        default='random',
-        type=str,
-    )
-
     args = parser.parse_args()
     pos,h = open_IAfile(args.IA_path)
     v,B,A,ids,m,u = add_other_particle_properties(pos,h,args.A,args.B,args.C,args.rms_velocity,args.magnetic_wavevector,args.velocity_wavevector,args.Vz_factor,args.boxsize,args.field_type)
