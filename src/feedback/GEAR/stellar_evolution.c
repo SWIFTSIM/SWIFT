@@ -315,6 +315,7 @@ void stellar_evolution_evolve_individual_star(
       star_age_beg_step_myr, star_age_end_step_myr,
       sp->mass / phys_const->const_solar_mass);
 
+  /* Why is this commented ? */
   /* disable the star */
   // sp->feedback_data.will_do_feedback = 0;
 
@@ -427,6 +428,9 @@ void stellar_evolution_evolve_spart(
   /* Is it possible to generate a supernovae? */
   if (!can_produce_snia && !can_produce_snii) return;
 
+  /* Here, make something with if continuous_star_IMF: blablba, else (WHole
+  IMF), blablabla.
+  * Maybe even do a function for this */
   /* Compute the initial mass */
   const float m_init = sp->sf_data.birth_mass / phys_const->const_solar_mass;
 
