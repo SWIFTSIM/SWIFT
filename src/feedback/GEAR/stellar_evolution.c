@@ -689,3 +689,27 @@ void stellar_evolution_clean(struct stellar_model* sm) {
   supernovae_ia_clean(&sm->snia);
   supernovae_ii_clean(&sm->snii);
 }
+
+
+/**
+ * @brief Computes the initial mass of a #spart. This function distinguish
+ * between the stellar particle representing a whole IMF and the stellar
+ * particles representing only the continuous part.
+ *
+ * @param sp The particle to compute the initial mass
+ * @param sm The #stellar_model structure.
+ */
+float stellar_evolution_compute_initial_mass(const struct spart* restrict sp,
+					     const struct stellar_model* sm,
+					     const struct phys_const* phys_const) {
+
+  float m_init = 0.0 ;
+
+  if (sp->feedback_data.star_type == star_population) {
+     m_init = sp->sf_data.birth_mass / phys_const->const_solar_mass;
+  } else if (sp->feedback_data.star_type == star_population_continuous_IMF) {
+    m_init = 0.0;
+  }
+
+  return m_init;
+}
