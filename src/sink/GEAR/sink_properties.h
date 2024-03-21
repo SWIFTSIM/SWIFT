@@ -96,10 +96,16 @@ INLINE static void sink_props_init_probabilities(
   /* Make a function with IMF thing that computes this --> hide implementation
      and make it usable elsewhere */
   if (!first_stars) {
+    /* Give the IMF the minimal discrete mass */
+    imf->minimal_discrete_mass = sp->minimal_discrete_mass;
+
     minimal_discrete_mass = sp->minimal_discrete_mass;
     stellar_particle_mass =
         sp->stellar_particle_mass / phys_const->const_solar_mass;
   } else {
+    /* Give the IMF the minimal discrete mass */
+    imf->minimal_discrete_mass_first_stars = sp->minimal_discrete_mass_first_stars;
+
     minimal_discrete_mass = sp->minimal_discrete_mass_first_stars;
     stellar_particle_mass =
         sp->stellar_particle_mass_first_stars / phys_const->const_solar_mass;
