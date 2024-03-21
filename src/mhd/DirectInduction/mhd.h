@@ -316,6 +316,9 @@ __attribute__((always_inline)) INLINE static void mhd_reset_gradient(
     }
   }
 
+  /* Initialise AR prefactor */
+  p->mhd_data.alpha_AR = 1.0f;
+
   /* SPH error*/
   p->mhd_data.mean_SPH_err = 0.f;
   for (int k = 0; k < 3; k++) {
@@ -399,8 +402,7 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_force(
     }
   }
 
-  p->mhd_data.alpha_AR = 1.0f;
-  //    normB ? fminf(1.0f, h * sqrtf(grad_B_mean_square) / normB) : 0.0f;
+  // p->mhd_data.alpha_AR = normB ? fminf(1.0f, h * sqrtf(grad_B_mean_square) / normB) : 0.0f;
 }
 
 /**
