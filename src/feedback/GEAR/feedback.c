@@ -238,20 +238,23 @@ void feedback_will_do_feedback(
     const struct unit_system* us, const struct phys_const* phys_const,
     const integertime_t ti_current, const double time_base) {
 
-  /* quit if the particle contains no SNII */
-  if (sp->feedback_data.star_type == star_population_no_SNII) {
-    sp->feedback_data.energy_ejected = 0;
-    sp->feedback_data.will_do_feedback = 0;
-    return;
-  }
-
-  /* a single star */
+  /* A single star */
   if (sp->feedback_data.star_type == single_star) {
     feedback_will_do_feedback_individual_star(
         sp, feedback_props, with_cosmology, cosmo, time, us, phys_const,
         ti_current, time_base);
     return;
   }
+
+  /* quit if the particle contains no SNII */
+  /* Rename the 'star_population_no_SNII --> star_population_continuous_IMF */
+  /* But, if we set the separation between the continuous part and the discrete
+     one, how will we handle the SNII ?*/
+  /* if (sp->feedback_data.star_type == star_population_no_SNII) { */
+    /* sp->feedback_data.energy_ejected = 0; */
+    /* sp->feedback_data.will_do_feedback = 0; */
+    /* return; */
+  /* } */
 
   /* Compute the times */
   double star_age_beg_step = 0;
@@ -283,6 +286,16 @@ void feedback_will_do_feedback(
   const struct stellar_model* model =
       metal < threshold ? &feedback_props->stellar_model_first_stars
                         : &feedback_props->stellar_model;
+
+  /* Do SNI and SNII feedback for cont part of the IMF.
+     1) Pay attention to verify the limit of the coninuous part for SNII, it
+     must be bigger than 8. Don't know yet if I should do it
+     2) Do SNI feedback */
+
+
+  /* Maybe put something like  if (sp->feedback_data.star_type ==
+     star_population)
+     or only for the continuous part of the IMF */
 
   /* Compute the stellar evolution including SNe energy */
   stellar_evolution_evolve_spart(sp, model, cosmo, us, phys_const, ti_begin,
