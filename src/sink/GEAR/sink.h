@@ -662,44 +662,46 @@ INLINE static void sink_star_formation_give_new_velocity(const struct engine* e,
 
   /* We give the stars some fraction of momentum taken from the sink swallowed momentum. */
 
-  const struct cosmology* cosmo = e->cosmology;
-  const float a = cosmo->a;
-  const float H = cosmo->H;
-  const float a2H = a * a * H;
+  /* const struct cosmology* cosmo = e->cosmology; */
+  /* const float a = cosmo->a; */
+  /* const float H = cosmo->H; */
+  /* const float a2H = a * a * H; */
 
-  /* Physical sink distance */
-  double dx[3] = {sp->x[0] - si->x[0], sp->x[1] - si->x[1], sp->x[2] - si->x[2]};
-  double dx_ph[3] = {dx[0]*a, dx[1]*a, dx[2]*a};
+  /* /\* Physical sink distance *\/ */
+  /* double dx[3] = {sp->x[0] - si->x[0], sp->x[1] - si->x[1], sp->x[2] - si->x[2]}; */
+  /* double dx_ph[3] = {dx[0]*a, dx[1]*a, dx[2]*a}; */
 
-  /* Recall that the swallowed momentum is physical. Also, this is NOT a
-     specific angular momentum. */
-  double b[3] = {si->swallowed_angular_momentum[0],
-		 si->swallowed_angular_momentum[1],
-		 si->swallowed_angular_momentum[2]};
+  /* /\* Recall that the swallowed momentum is physical. Also, this is NOT a */
+  /*    specific angular momentum. *\/ */
+  /* double b[3] = {si->swallowed_angular_momentum[0], */
+  /* 		 si->swallowed_angular_momentum[1], */
+  /* 		 si->swallowed_angular_momentum[2]}; */
 
-  /* Compute the sink swallowed momentum */
-  double p_swallowed_ph[3] = {0.0, 0.0, 0.0} ;
-  double long_sum = b[0]/dx_ph[1] + (dx_ph[2]*b[2])/(dx_ph[0]*dx_ph[1]) - b[1]/dx_ph[0] ;
-  p_swallowed_ph[0] = - b[1]/dx_ph[2] + dx_ph[0]/(2.0*dx_ph[2])*long_sum;
-  p_swallowed_ph[1] = - b[0]/dx_ph[2] + dx_ph[1]/(2.0*dx_ph[2])*long_sum;
-  p_swallowed_ph[2] = 0.5*long_sum;
+  /* /\* Compute the sink swallowed momentum *\/ */
+  /* double p_swallowed_ph[3] = {0.0, 0.0, 0.0} ; */
+  /* double long_sum = b[0]/dx_ph[1] + (dx_ph[2]*b[2])/(dx_ph[0]*dx_ph[1]) - b[1]/dx_ph[0] ; */
+  /* p_swallowed_ph[0] = - b[1]/dx_ph[2] + dx_ph[0]/(2.0*dx_ph[2])*long_sum; */
+  /* p_swallowed_ph[1] = - b[0]/dx_ph[2] + dx_ph[1]/(2.0*dx_ph[2])*long_sum; */
+  /* p_swallowed_ph[2] = 0.5*long_sum; */
 
-  /* Compute the comoving swallowed velocity */
-  double fraction = sp->mass / sink_mass_tot_before_spawning;
-  double v_swallowed_ph[3] = {p_swallowed_ph[0]/sp->mass,
-			      p_swallowed_ph[1]/sp->mass,
-			      p_swallowed_ph[2]/sp->mass};
-  double v_swallowed[3] = {v_swallowed_ph[0]*a - a2H*dx[0],
-			   v_swallowed_ph[1]*a - a2H*dx[1],
-			   v_swallowed_ph[2]*a - a2H*dx[2]};
+  /* /\* Compute the comoving swallowed velocity *\/ */
+  /* double fraction = sp->mass / sink_mass_tot_before_spawning; */
+  /* double v_swallowed_ph[3] = {p_swallowed_ph[0]/sp->mass, */
+  /* 			      p_swallowed_ph[1]/sp->mass, */
+  /* 			      p_swallowed_ph[2]/sp->mass}; */
+  /* double v_swallowed[3] = {v_swallowed_ph[0]*a - a2H*dx[0], */
+  /* 			   v_swallowed_ph[1]*a - a2H*dx[1], */
+  /* 			   v_swallowed_ph[2]*a - a2H*dx[2]}; */
 
   /* Those intermediate variables are the values that will be given to the star
      and subtracted from the sink. */
-  double v_given[3] = {fraction*v_swallowed[0], fraction*v_swallowed[1], fraction*v_swallowed[2]};
-  double p_given_ph[3] = {fraction*p_swallowed_ph[0], fraction*p_swallowed_ph[1], fraction*p_swallowed_ph[2]};
+  double v_given[3] = {0.0, 0.0, 0.0};
+  /* double p_given_ph[3] = {fraction*p_swallowed_ph[0], fraction*p_swallowed_ph[1], fraction*p_swallowed_ph[2]}; */
 
-  
-  const double sigma = 5 ;
+  const double factor = 2e-1;
+  const double G_newton = e->physical_constants->const_newton_G;
+  const double sigma_2 = G_newton*sink_mass_tot_before_spawning/si->r_cut;
+  const double sigma = factor*sqrt(sigma_2) ;
 
   for (int i=0 ; i < 3; ++i) {
 
@@ -711,8 +713,8 @@ INLINE static void sink_star_formation_give_new_velocity(const struct engine* e,
     v_given[i] = v_i_random;
 
     /* Also update p_swallowed_physical. */
-    const double v_given_ph = (v_given[i] + a2H*dx[i])*cosmo->a_inv;
-    p_given_ph[i] = v_given_ph*si->mass;
+    /* const double v_given_ph = (v_given[i] + a2H*dx[i])*cosmo->a_inv; */
+    /* p_given_ph[i] = v_given_ph*si->mass; */
 
 #else
   error("Code not compiled with GSL. Can't compute Star new velocity.");
@@ -726,14 +728,13 @@ INLINE static void sink_star_formation_give_new_velocity(const struct engine* e,
   sp->gpart->v_full[0] = sp->v[0];
   sp->gpart->v_full[1] = sp->v[1];
   sp->gpart->v_full[2] = sp->v[2];
-  message("New star velocity: v = (%lf %lf %lf)", sp->v[0], sp->v[1], sp->v[2]);
-  message("Sink velocity: v = (%lf %lf %lf)", si->v[0], si->v[1], si->v[2]);
+  message("New star velocity: v = (%lf %lf %lf). Sink velocity: v = (%lf %lf %lf). Sigma = %lf", sp->v[0], sp->v[1], sp->v[2],si->v[0], si->v[1], si->v[2], sigma);
 
   /* Update the swallowed angular momentum to subtract what was given to the star. */
   /* Still worth to recall that this quantity is physical. */
-  si->swallowed_angular_momentum[0] -= dx_ph[1]*p_given_ph[2] - dx_ph[2]*p_given_ph[1];
-  si->swallowed_angular_momentum[1] -= dx_ph[2]*p_given_ph[0] - dx_ph[0]*p_given_ph[2];
-  si->swallowed_angular_momentum[2] -= dx_ph[0]*p_given_ph[1] - dx_ph[1]*p_given_ph[0];
+  /* si->swallowed_angular_momentum[0] -= dx_ph[1]*p_given_ph[2] - dx_ph[2]*p_given_ph[1]; */
+  /* si->swallowed_angular_momentum[1] -= dx_ph[2]*p_given_ph[0] - dx_ph[0]*p_given_ph[2]; */
+  /* si->swallowed_angular_momentum[2] -= dx_ph[0]*p_given_ph[1] - dx_ph[1]*p_given_ph[0]; */
 }
 
 /**
