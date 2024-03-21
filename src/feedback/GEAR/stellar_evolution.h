@@ -76,4 +76,8 @@ void stellar_evolution_restore(struct stellar_model* sm, FILE* stream);
 
 void stellar_evolution_clean(struct stellar_model* sm);
 
+float stellar_evolution_compute_initial_mass(const struct spart* restrict sp,
+					     const struct stellar_model* sm,
+					     const struct phys_const* phys_const);
+
 #endif  // SWIFT_STELLAR_EVOLUTION_GEAR_H
