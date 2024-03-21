@@ -85,7 +85,7 @@ def update_parameter_csv(the_parameters, i):
 
 
 # Function for configuring simulation
-def configure_simulation(scheme, forcing, spline, eos, path_to_lib=True):
+def configure_simulation(scheme, forcing, spline, eos, path_to_lib=False):
 
     path_to_configure = " ../../../"
     scheme_opt = " --with-spmhd=" + scheme
@@ -109,7 +109,7 @@ def configure_simulation(scheme, forcing, spline, eos, path_to_lib=True):
     goto_swift_directory_command = " cd " + path_to_configure
     # configure simulation with the options (scheme, forcing, other things...)
     configure_command = (
-        " ./configure"
+        " ./configure "
         + kernel_opt
         + scheme_opt
         + forcing_opt
@@ -137,11 +137,15 @@ def configure_simulation(scheme, forcing, spline, eos, path_to_lib=True):
         + " )"
     )
     # show sandwich
-    print(command_sandwich)
+    print('Script sends command: '+command_sandwich)
     # execute
-    subprocess.call(command_sandwich, shell=True)
+    try:
+        subprocess.run(command_sandwich, shell=True,check=True)
+        print("Configuring swift successful")
+    except Exception as e:
+        print('Error: '+str(e))
+        raise Exception("Execution was stopped due to an error")
     # maybe shoud addd some try except here
-    print("configuring swift complete")
 
 
 # Funciton for making ICfile
@@ -173,9 +177,15 @@ def make_IC(phys_parameters, IAfile):
         + c
     )
     # show command
-    print(command)
+    print('Script sends command: '+command)
     # execute
-    subprocess.call(command, shell=True)
+    try:
+        subprocess.run(command, shell=True,check=True)
+        print("created ICs")
+    except Exception as e:
+        print('Error: '+str(e))
+        raise Exception("Execution was stopped due to an error")
+
 
 # Function for running simulation
 def run_simulation(phys_parameters, threads):
@@ -316,9 +326,16 @@ def run_simulation(phys_parameters, threads):
         + write_output_file
     )
     # show command
-    print(command)
+    print('Script sends command: '+command)
     # execute
-    subprocess.call(command, shell=True)
+    try:
+        subprocess.run(command, shell=True,check=True)
+        print("run complete")
+    except Exception as e:
+        print('Error: '+str(e))
+        raise Exception("Execution was stopped due to an error")
+
+
 
 
 # a function that creates the directory for all run data storage
@@ -326,7 +343,7 @@ def create_results_directory(res_dirname):
     # construct command to create results directory
     mkdir_command = "mkdir " + res_dirname
     # show command
-    print(mkdir_command)
+    print('Creating the results directory if it is not there: '+mkdir_command)
     # execute
     subprocess.call(mkdir_command, shell=True)
 
@@ -366,10 +383,15 @@ def move_results(phys_parameters, res_dirname):
         + " ) "
     )
     # show command
-    print(command_sandwich)
+    print('Script sends command: '+command_sandwich)
     # execute
-    subprocess.call(command_sandwich, shell=True)
-
+    try:
+        subprocess.run(command_sandwich, shell=True,check=True)
+        print("Moved files to results folder")
+    except Exception as e:
+        print('Error: '+str(e))
+        raise Exception("Execution was stopped due to an error")
+ 
 
 # main program that takes the_parameters from table, creates ICs, configures code and executes each row and stores data
 def run_all():
@@ -396,4 +418,8 @@ def run_all():
 
 # code execution
 ###################################################################################################
-run_all()
+try:
+    run_all()
+except Exception as e:
+    print('Error: '+str(e))
+
