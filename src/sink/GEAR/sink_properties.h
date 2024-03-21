@@ -93,6 +93,8 @@ INLINE static void sink_props_init_probabilities(
   float minimal_discrete_mass;
   float stellar_particle_mass;
 
+  /* Make a function with IMF thing that computes this --> hide implementation
+     and make it usable elsewhere */
   if (!first_stars) {
     minimal_discrete_mass = sp->minimal_discrete_mass;
     stellar_particle_mass =
@@ -113,10 +115,13 @@ INLINE static void sink_props_init_probabilities(
   /* Compute the IMF mass below the minimal IMF discrete mass (continuous part)
    */
   double Mtot, Md, Mc;
+
+  /* OK, here M_c is not the mass, but the mass fraction. */
   Mc = initial_mass_function_get_imf_mass_fraction(imf, mass_min,
                                                    minimal_discrete_mass);
 
   if (Mc > 0) {
+    /* How can this have unit mass if we divide a mass by another mass ? */
     Mtot = stellar_particle_mass / Mc;
     Md = Mtot - stellar_particle_mass;
     Mc = stellar_particle_mass;
