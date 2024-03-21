@@ -111,7 +111,8 @@ int main(int argc, char *argv[]) {
   s->with_zoom_region = 1;
 
   /* Run the zoom_init function. */
-  zoom_region_init(&param_file, s, 0);
+  zoom_props_init(&param_file, s, 0);
+  zoom_region_init(s, 0);
 
   /* Test what we've calculated and ensure the centre is in the centre of the
    * box. This ensures the dimensions, bounds and cdims have all been
