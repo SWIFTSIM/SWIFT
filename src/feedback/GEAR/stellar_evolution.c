@@ -273,6 +273,10 @@ void stellar_evolution_compute_discrete_feedback_properties(
  * Here I am using Myr-solar mass units internally in order to
  * avoid numerical errors.
  *
+ * Note: This function treats the case of particles representing the whole IMF
+ * (star_type = star_population) and the particles representing only the
+ * continuous part of the IMF (star_type = star_population_continuous_IMF).
+ *
  * @param sp The particle to act upon
  * @param sm The #stellar_model structure.
  * @param cosmo The current cosmological model.
