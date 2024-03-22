@@ -395,7 +395,7 @@ void stellar_evolution_evolve_spart(
     const struct cosmology* cosmo, const struct unit_system* us,
     const struct phys_const* phys_const, const integertime_t ti_begin,
     const double star_age_beg_step, const double dt,
-    const float star_metal, const float first_star_threshold) {
+    const int is_first_star) {
 
   /* Convert the inputs */
   const double conversion_to_myr = phys_const->const_year * 1e6;
@@ -433,16 +433,18 @@ void stellar_evolution_evolve_spart(
   Note that we need to treat separately the first stars and the other stars
   because they do not have the same minimal_discrete_mass. */
   if (sp->feedback_data.star_type == star_population_continuous_IMF) {
+    float minimal_discrete_mass = 0;
     /* If you are a first star, pick the correct minimal_discrete_mass. */
-    if (star_metal < first_star_threshold) {
-      if (m_beg_step > sm->imf.minimal_discrete_mass_first_stars) {
-	return ;
-      }
+    if (is_first_star) {
+      minimal_discrete_mass = sm->imf.minimal_discrete_mass_first_stars;
     } else {
-      if (m_beg_step > sm->imf.minimal_discrete_mass) {
+      minimal_discrete_mass = sm->imf.minimal_discrete_mass;
+    }
+
+    /* If it's not time yet for feedback, exit. */
+    if (m_beg_step > minimal_discrete_mass) {
 	return ;
       }
-    }
   }
 
   /* Check if the star can produce a supernovae */
@@ -457,7 +459,7 @@ void stellar_evolution_evolve_spart(
   /* Compute the initial mass. The initial mass is different if the star
      particle is of type 'star_population' or
      'star_population_continuous_IMF'. The function call treats both cases. */
-  const float m_init =  stellar_evolution_compute_initial_mass(sp, sm, phys_const);
+  const float m_init =  stellar_evolution_compute_initial_mass(sp, sm, phys_const, is_first_star);
 
   /* Then, for 'star_population_continuous_IMF', everything remain the same as
      with the "old" 'star_population'! */
@@ -730,7 +732,11 @@ void stellar_evolution_clean(struct stellar_model* sm) {
  */
 float stellar_evolution_compute_initial_mass(const struct spart* restrict sp,
 					     const struct stellar_model* sm,
-					     const struct phys_const* phys_const) {
+					     const struct phys_const* phys_const,
+					     const int is_first_star) {
+
+  /* WHat are the units of the minimal_discrete_mass and stellar_particle_mass
+     ??? */
 
   float m_init = 0.0 ;
 

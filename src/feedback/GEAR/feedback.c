@@ -273,16 +273,19 @@ void feedback_will_do_feedback(
       chemistry_get_star_total_iron_mass_fraction_for_feedback(sp);
   const float threshold = feedback_props->metallicity_max_first_stars;
 
+  /* If metal < threshold, then  sp is a first star particle. */
+  const int is_first_star = metal < threshold;
+
   const struct stellar_model* model =
-      metal < threshold ? &feedback_props->stellar_model_first_stars
-                        : &feedback_props->stellar_model;
+      is_first_star ? &feedback_props->stellar_model_first_stars
+                    : &feedback_props->stellar_model;
 
   /* Compute the stellar evolution including SNe energy. This function treats
      the case of particles representing the whole IMF (star_type =
      star_population) and the particles representing only the continuous part
      of the IMF (star_type = star_population_continuous_IMF) */
   stellar_evolution_evolve_spart(sp, model, cosmo, us, phys_const, ti_begin,
-                                 star_age_beg_step_safe, dt_enrichment, metal, threshold);
+                                 star_age_beg_step_safe, dt_enrichment, is_first_star);
 
   /* apply the energy efficiency factor */
   sp->feedback_data.energy_ejected *= feedback_props->supernovae_efficiency;
