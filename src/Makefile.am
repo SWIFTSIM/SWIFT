@@ -148,6 +148,7 @@ endif
 GEAR_RT_SOURCES =
 if HAVEGEARRT
 GEAR_RT_SOURCES += rt/GEAR/rt_interaction_cross_sections.c
+GEAR_RT_SOURCES += rt/GEAR/rt_thermochemistry.c
 endif
 
 # source files for SPHM1RT cooling
