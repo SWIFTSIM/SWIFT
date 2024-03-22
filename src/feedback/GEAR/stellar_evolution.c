@@ -762,8 +762,9 @@ float stellar_evolution_compute_initial_mass(const struct spart* restrict sp,
 					   stellar_particle_mass, &M_c_dummy,
 					   &M_d_dummy, &M_IMF_tot);
 
-    /* Convert from M_sun to internal units */
-    m_init = M_IMF_tot / phys_const->const_solar_mass;
+    /* No need to convert from internal units to M_sun because the masses are
+       already in solar masses (to avoid numerical errors) */
+    m_init = M_IMF_tot;
   }
 
   return m_init;
