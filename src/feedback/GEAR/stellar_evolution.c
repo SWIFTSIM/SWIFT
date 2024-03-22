@@ -454,11 +454,13 @@ void stellar_evolution_evolve_spart(
   /* Is it possible to generate a supernovae? */
   if (!can_produce_snia && !can_produce_snii) return;
 
-  /* Here, make something with if continuous_star_IMF: blablba, else (WHole
-  IMF), blablabla.
-  * Maybe even do a function for this */
-  /* Compute the initial mass */
-  const float m_init = sp->sf_data.birth_mass / phys_const->const_solar_mass;
+  /* Compute the initial mass. The initial mass is different if the star
+     particle is of type 'star_population' or
+     'star_population_continuous_IMF'. The function call treats both cases. */
+  const float m_init =  stellar_evolution_compute_initial_mass(sp, sm, phys_const);
+
+  /* Then, for 'star_population_continuous_IMF', everything remain the same as
+     with the "old" 'star_population'! */
 
   /* Compute number of SNIa */
   float number_snia_f = 0;
