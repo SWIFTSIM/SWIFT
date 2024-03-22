@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2020 Mladen Ivkovic (mladen.ivkovic@hotmail.com)
+ * Copyright (c) 2024 Mladen Ivkovic (mladen.ivkovic@hotmail.com)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -19,6 +19,13 @@
 #ifndef SWIFT_RT_GEAR_THERMOCHEMISTRY_H
 #define SWIFT_RT_GEAR_THERMOCHEMISTRY_H
 
+#include "part.h"
+#include "rt_properties.h"
+#include "hydro_properties.h"
+#include "physical_constants.h"
+#include "units.h"
+#include "cosmology.h"
+
 /**
  * @file src/rt/GEAR/rt_thermochemistry.h
  * @brief Main header file for the GEAR M1 closure radiative transfer scheme
@@ -35,7 +42,7 @@
  * @param us unit system struct
  * @param cosmo cosmology struct
  */
-static void rt_tchem_first_init_part(
+void rt_tchem_first_init_part(
     struct part* restrict p, const struct rt_props* rt_props,
     const struct hydro_props* hydro_props,
     const struct phys_const* restrict phys_const,
@@ -55,7 +62,7 @@ static void rt_tchem_first_init_part(
  * @param dt The time-step of this particle.
  * @param depth recursion depth
  */
-static void rt_do_thermochemistry(
+void rt_do_thermochemistry(
     struct part* restrict p, struct xpart* restrict xp,
     struct rt_props* rt_props, const struct cosmology* restrict cosmo,
     const struct hydro_props* hydro_props,
@@ -74,12 +81,11 @@ static void rt_do_thermochemistry(
  * @param phys_const The physical constants in internal units.
  * @param us The internal system of units.
  */
-static float rt_tchem_get_tchem_time(
+float rt_tchem_get_tchem_time(
     const struct part* restrict p, const struct xpart* restrict xp,
     struct rt_props* rt_props, const struct cosmology* restrict cosmo,
     const struct hydro_props* hydro_props,
     const struct phys_const* restrict phys_const,
     const struct unit_system* restrict us);
-}
 
 #endif /* SWIFT_RT_GEAR_THERMOCHEMISTRY_H */

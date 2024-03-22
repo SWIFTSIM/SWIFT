@@ -21,6 +21,8 @@
 #include "rt_interaction_cross_sections.h"
 #include "rt_interaction_rates.h"
 #include "rt_ionization_equilibrium.h"
+#include "rt_unphysical.h"
+#include "rt_getters.h"
 
 /**
  * @file src/rt/GEAR/rt_thermochemistry.h
@@ -38,7 +40,7 @@
  * @param us unit system struct
  * @param cosmo cosmology struct
  */
-static void rt_tchem_first_init_part(
+void rt_tchem_first_init_part(
     struct part* restrict p, const struct rt_props* rt_props,
     const struct hydro_props* hydro_props,
     const struct phys_const* restrict phys_const,
@@ -100,7 +102,7 @@ static void rt_tchem_first_init_part(
  * @param dt The time-step of this particle.
  * @param depth recursion depth
  */
-INLINE static void rt_do_thermochemistry(
+INLINE void rt_do_thermochemistry(
     struct part* restrict p, struct xpart* restrict xp,
     struct rt_props* rt_props, const struct cosmology* restrict cosmo,
     const struct hydro_props* hydro_props,
@@ -247,7 +249,7 @@ INLINE static void rt_do_thermochemistry(
  * @param phys_const The physical constants in internal units.
  * @param us The internal system of units.
  */
-static float rt_tchem_get_tchem_time(
+float rt_tchem_get_tchem_time(
     const struct part* restrict p, const struct xpart* restrict xp,
     struct rt_props* rt_props, const struct cosmology* restrict cosmo,
     const struct hydro_props* hydro_props,
