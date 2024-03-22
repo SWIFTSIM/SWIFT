@@ -387,12 +387,15 @@ void stellar_evolution_evolve_individual_star(
  * @param star_age_beg_step The age of the star at the star of the time-step in
  * internal units.
  * @param dt The time-step size of this star in internal units.
+ * @param star_metal Metallicity of the #spart.
+ * @param first_star_threshold Metallicity limit for the first stars.
  */
 void stellar_evolution_evolve_spart(
     struct spart* restrict sp, const struct stellar_model* sm,
     const struct cosmology* cosmo, const struct unit_system* us,
     const struct phys_const* phys_const, const integertime_t ti_begin,
-    const double star_age_beg_step, const double dt) {
+    const double star_age_beg_step, const double dt,
+    const float star_metal, const float first_star_threshold) {
 
   /* Convert the inputs */
   const double conversion_to_myr = phys_const->const_year * 1e6;
@@ -432,6 +435,17 @@ void stellar_evolution_evolve_spart(
     /* We need to treat separately the first stars and the other stars */
     /* Rajouter une condition pour ne rien faire quand m_beg_step > m_t (masse
        qui sépare les deux parties de l'IMF). */
+      /* Pick the correct table. (if only one table, threshold is < 0) */
+    /* You are a first star */
+    if (star_metal < first_star_threshold) {
+      if (m_beg_step > sm->imf.minimal_discrete_mass_first_stars) {
+	return ;
+      }
+    } else {
+      if (m_beg_step > sm->imf.minimal_discrete_mass) {
+	return ;
+      }
+    }
   }
 
 

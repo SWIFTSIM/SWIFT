@@ -282,7 +282,7 @@ void feedback_will_do_feedback(
      star_population) and the particles representing only the continuous part
      of the IMF (star_type = star_population_continuous_IMF) */
   stellar_evolution_evolve_spart(sp, model, cosmo, us, phys_const, ti_begin,
-                                 star_age_beg_step_safe, dt_enrichment);
+                                 star_age_beg_step_safe, dt_enrichment, metal, threshold);
 
   /* apply the energy efficiency factor */
   sp->feedback_data.energy_ejected *= feedback_props->supernovae_efficiency;

@@ -56,7 +56,8 @@ void stellar_evolution_evolve_spart(
     struct spart* restrict sp, const struct stellar_model* sm,
     const struct cosmology* cosmo, const struct unit_system* us,
     const struct phys_const* phys_const, const integertime_t ti_begin,
-    const double star_age_beg_step, const double dt);
+    const double star_age_beg_step, const double dt,
+    const float star_metal, const float first_star_threshold);
 
 const char* stellar_evolution_get_element_name(const struct stellar_model* sm,
                                                int i);
