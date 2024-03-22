@@ -67,17 +67,8 @@ struct initial_mass_function {
   /*! Stellar mass of the continous part of the IMF (in solar mass). */
   float stellar_particle_mass;
 
-  /*! Stellar mass of the continous part of the IMF (in solar mass).
-   *  First stars. */
-  float stellar_particle_mass_first_stars;
-
   /*! Minimal mass of stars represented by discrete particles (in solar mass). */
   float minimal_discrete_mass;
-
-  /*! Minimal mass of stars represented by discrete particles (in solar mass).
-   * First stars. */
-  float minimal_discrete_mass_first_stars;
-
 };
 
 /**
