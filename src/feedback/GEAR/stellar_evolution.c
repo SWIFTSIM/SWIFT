@@ -433,21 +433,13 @@ void stellar_evolution_evolve_spart(
   Note that we need to treat separately the first stars and the other stars
   because they do not have the same minimal_discrete_mass. */
   if (sp->feedback_data.star_type == star_population_continuous_IMF) {
-    float minimal_discrete_mass = 0;
-    /* If you are a first star, pick the correct minimal_discrete_mass. */
+    const float minimal_discrete_mass = sm->imf.minimal_discrete_mass;
 
-    /* All masses below are in solar mass */
-    if (is_first_star) {
-      minimal_discrete_mass = sm->imf.minimal_discrete_mass_first_stars;
-    } else {
-      minimal_discrete_mass = sm->imf.minimal_discrete_mass;
-    }
-
-    /* If it's not time yet for feedback, exit. Notice that both masses are in
+     /* If it's not time yet for feedback, exit. Notice that both masses are in
        solar mass. */
     if (m_beg_step > minimal_discrete_mass) {
-	return ;
-      }
+      return ;
+    }
   }
 
   /* Check if the star can produce a supernovae */
@@ -742,21 +734,10 @@ float stellar_evolution_compute_initial_mass(const struct spart* restrict sp,
   const struct initial_mass_function* imf = &(sm->imf);
 
   if (sp->feedback_data.star_type == star_population) {
-     m_init = sp->sf_data.birth_mass / phys_const->const_solar_mass;
+    m_init = sp->sf_data.birth_mass / phys_const->const_solar_mass;
   } else if (sp->feedback_data.star_type == star_population_continuous_IMF) {
-    float minimal_discrete_mass = 0.0;
-    float stellar_particle_mass = 0.0;
-
-    /* If you are a first star, pick the correct minimal_discrete_mass. */
-    /* Note that all masses in the imf struct below are in solar mass. */
-    if (is_first_star) {
-      minimal_discrete_mass = imf->minimal_discrete_mass_first_stars;
-      stellar_particle_mass = imf->stellar_particle_mass_first_stars;
-    } else {
-      minimal_discrete_mass = imf->minimal_discrete_mass;
-      stellar_particle_mass = imf->stellar_particle_mass;
-    }
-
+    float minimal_discrete_mass = imf->minimal_discrete_mass;
+    float stellar_particle_mass = imf->stellar_particle_mass;
     double M_IMF_tot, M_d_dummy, M_c_dummy;
     initial_mass_function_compute_Mc_Md_Mtot(imf, minimal_discrete_mass,
 					   stellar_particle_mass, &M_c_dummy,
