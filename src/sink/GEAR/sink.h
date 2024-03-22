@@ -71,25 +71,39 @@ INLINE static void sink_update_target_mass(struct sink* sink,
       chemistry_get_sink_total_iron_mass_fraction_for_feedback(sink);
   const float threshold = feedback_props->metallicity_max_first_stars;
 
+  /* If metal < threshold, then the sink generate first star particles. */
+  const int is_first_star = metal < threshold;
+
   const struct stellar_model* model;
   double minimal_discrete_mass;
 
-  if (metal >= threshold) {
+  /* Take the correct values if your are a first star or not. */
+  if (!is_first_star) /* (metal >= threshold)*/ {
     model = &feedback_props->stellar_model;
-    minimal_discrete_mass = sink_props->minimal_discrete_mass_first_stars;
+    minimal_discrete_mass = sink_props->minimal_discrete_mass;
+    /* Old code: minimal_discrete_mass = sink_props->minimal_discrete_mass_first_stars;*/
   } else {
     model = &feedback_props->stellar_model_first_stars;
-    minimal_discrete_mass = sink_props->minimal_discrete_mass;
+    minimal_discrete_mass = sink_props->minimal_discrete_mass_first_stars;
+    /* Old code: minimal_discrete_mass = sink_props->minimal_discrete_mass; */
   }
 
   const struct initial_mass_function* imf = &model->imf;
 
   if (random_number < imf->sink_Pc) {
-    // we are dealing with the continous part of the IMF
-    sink->target_mass = imf->sink_stellar_particle_mass;
+    /* We are dealing with the continous part of the IMF. */
+
+    /* Choose the correct target mass if you are a first star or not. */
+    if (is_first_star) {
+      sink->target_mass = imf->stellar_particle_mass;
+    } else {
+      sink->target_mass = imf->stellar_particle_mass_first_stars;
+    }
+
+    /* Old code sink->target_mass = imf->sink_stellar_particle_mass; */
     sink->target_type = star_population_continuous_IMF;
   } else {
-    // we are dealing with the discrete part of the IMF
+    /* We are dealing with the discrete part of the IMF. */
     random_number = random_unit_interval_part_ID_and_index(
         sink->id, rloop + 1, e->ti_current, random_number_sink_formation);
     double m =
