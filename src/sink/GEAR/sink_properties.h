@@ -122,26 +122,12 @@ INLINE static void sink_props_init_probabilities(
         "(=%8.3f) of the last IMF segment,",
         minimal_discrete_mass, imf->mass_limits[imf->n_parts - 1]);
 
-  /* Compute the IMF mass below the minimal IMF discrete mass (continuous part)
-   */
-  double Mtot, Md, Mc, fc;
-
-  /* fc is imf mass fraction of the continuous part (of the IMF). */
-  fc = initial_mass_function_get_imf_mass_fraction(imf, mass_min,
-                                                   minimal_discrete_mass);
-
-  /* Determine Mc and Md the masses of the continuous and discrete parts of the
-     IMF, as well as Mtot the total mass of the IMF */
-  if (fc > 0) {
-    /* How can this have unit mass if we divide a mass by another mass ? */
-    Mtot = stellar_particle_mass / fc;
-    Md = Mtot - stellar_particle_mass;
-    Mc = stellar_particle_mass;
-  } else {
-    Mtot = stellar_particle_mass;
-    Md = Mtot;
-    Mc = 0;
-  }
+  /* Compute the IMF mass (in solar mass) below the minimal IMF discrete mass
+     (continuous part). */
+  double Mtot, Md, Mc;
+  initial_mass_function_compute_Mc_Md_Mtot(imf, minimal_discrete_mass,
+					   stellar_particle_mass, &Mc,  &Md,
+					   &Mtot);
 
   /* Compute the number of stars in the continuous part of the IMF */
   double Nc = initial_mass_function_get_imf_number_fraction(
