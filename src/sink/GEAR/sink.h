@@ -92,15 +92,7 @@ INLINE static void sink_update_target_mass(struct sink* sink,
 
   if (random_number < imf->sink_Pc) {
     /* We are dealing with the continous part of the IMF. */
-
-    /* Choose the correct target mass if you are a first star or not. */
-    if (is_first_star) {
-      sink->target_mass = imf->stellar_particle_mass;
-    } else {
-      sink->target_mass = imf->stellar_particle_mass_first_stars;
-    }
-
-    /* Old code sink->target_mass = imf->sink_stellar_particle_mass; */
+    sink->target_mass = imf->stellar_particle_mass;
     sink->target_type = star_population_continuous_IMF;
   } else {
     /* We are dealing with the discrete part of the IMF. */
