@@ -427,16 +427,13 @@ void stellar_evolution_evolve_spart(
   if (m_end_step >= m_beg_step) return;
 
   /* Star particles representing only the continuous part of the IMF need a
-  special treatment. They doe not contain stars above the mass that separate the
+  special treatment. They do not contain stars above the mass that separate the
   IMF into two parts (variable called minimal_discrete_mass in the sink
-  module). So, if m_beg_step > mininal_discrete_mass, you don't do feedback. */
+  module). So, if m_beg_step > minimal_discrete_mass, you don't do feedback.
+  Note that we need to treat separately the first stars and the other stars
+  because they do not have the same minimal_discrete_mass. */
   if (sp->feedback_data.star_type == star_population_continuous_IMF) {
-    /* We need to store the minimal discrete mass */
-    /* We need to treat separately the first stars and the other stars */
-    /* Rajouter une condition pour ne rien faire quand m_beg_step > m_t (masse
-       qui sépare les deux parties de l'IMF). */
-      /* Pick the correct table. (if only one table, threshold is < 0) */
-    /* You are a first star */
+    /* If you are a first star, pick the correct minimal_discrete_mass. */
     if (star_metal < first_star_threshold) {
       if (m_beg_step > sm->imf.minimal_discrete_mass_first_stars) {
 	return ;
@@ -447,7 +444,6 @@ void stellar_evolution_evolve_spart(
       }
     }
   }
-
 
   /* Check if the star can produce a supernovae */
   const int can_produce_snia =
