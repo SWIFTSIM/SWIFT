@@ -3025,6 +3025,10 @@ case "$with_rt" in
         AC_MSG_ERROR([GEAR-RT: You need the grackle library for GEAR-RT. (--with-grackle=PATH)])
       fi
 
+      if test "$with_cooling" = "none"; then
+          AC_MSG_ERROR([GEAR-RT: You need to select a cooling module (--with-cooling=grackle_1)])
+      fi
+
    ;;
    debug)
       AC_DEFINE([RT_DEBUG], [1], [debugging scheme])
