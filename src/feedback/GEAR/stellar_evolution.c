@@ -726,6 +726,7 @@ void stellar_evolution_clean(struct stellar_model* sm) {
  *
  * @param sp The particle to compute the initial mass
  * @param sm The #stellar_model structure.
+ * @param phys_const The phy
  */
 float stellar_evolution_compute_initial_mass(const struct spart* restrict sp,
 					     const struct stellar_model* sm,
