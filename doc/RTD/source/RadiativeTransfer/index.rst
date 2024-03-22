@@ -12,8 +12,8 @@ schemes.
 
 .. warning::
     The radiative transfer schemes are still in development and are not useable
-    at this moment. This page is currently a placeholder to document new
-    features and requirements as the code grows.
+    for production runs at this moment. This page is currently a placeholder to 
+    document new features and requirements as the code grows.
 
 
 
