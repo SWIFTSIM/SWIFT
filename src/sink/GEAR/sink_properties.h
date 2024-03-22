@@ -93,34 +93,41 @@ INLINE static void sink_props_init_probabilities(
   float minimal_discrete_mass;
   float stellar_particle_mass;
 
+  /* Treat separately the cases of first star or not. */
   if (!first_stars) {
-    /* Give the IMF the minimal discrete mass (in M_sun). */
-    imf->minimal_discrete_mass = sp->minimal_discrete_mass;
-
     /* This is already in M_sun */
     minimal_discrete_mass = sp->minimal_discrete_mass;
 
-    /* This needs to be converted to M_sun */
+    /* This needs to be converted to M_sun (because was converted to internal
+       units in sink_init_props()). */
     stellar_particle_mass =
-        sp->stellar_particle_mass / phys_const->const_solar_mass;
-  } else {
-    /* Give the IMF the minimal discrete mass (in M_sun). */
-    imf->minimal_discrete_mass_first_stars = sp->minimal_discrete_mass_first_stars;
+	sp->stellar_particle_mass / phys_const->const_solar_mass;
 
+    /* Give the IMF the minimal discrete mass and the stellar_particle_mass
+       (in M_sun). */
+    imf->minimal_discrete_mass = minimal_discrete_mass;
+    imf->stellar_particle_mass = stellar_particle_mass;
+  } else {
     /* This is already in M_sun */
     minimal_discrete_mass = sp->minimal_discrete_mass_first_stars;
 
-    /* This needs to be converted to M_sun */
+    /* This needs to be converted to M_sun (because was converted to internal
+       units in sink_init_props()). */
     stellar_particle_mass =
-        sp->stellar_particle_mass_first_stars / phys_const->const_solar_mass;
+	sp->stellar_particle_mass_first_stars / phys_const->const_solar_mass;
+
+    /* Give the IMF the minimal discrete mass and the stellar_particle_mass
+       (in M_sun). */
+    imf->minimal_discrete_mass_first_stars = minimal_discrete_mass;
+    imf->stellar_particle_mass_first_stars = stellar_particle_mass;
   }
 
   /* sanity check */
   if (minimal_discrete_mass < imf->mass_limits[imf->n_parts - 1])
     error(
-        "minimal_discrete_mass (=%8.3f) cannot be smaller than the mass limit "
-        "(=%8.3f) of the last IMF segment,",
-        minimal_discrete_mass, imf->mass_limits[imf->n_parts - 1]);
+	"minimal_discrete_mass (=%8.3f) cannot be smaller than the mass limit "
+	"(=%8.3f) of the last IMF segment,",
+	minimal_discrete_mass, imf->mass_limits[imf->n_parts - 1]);
 
   /* Compute the IMF mass (in solar mass) below the minimal IMF discrete mass
      (continuous part). */
@@ -131,13 +138,13 @@ INLINE static void sink_props_init_probabilities(
 
   /* Compute the number of stars in the continuous part of the IMF */
   double Nc = initial_mass_function_get_imf_number_fraction(
-                  imf, mass_min, minimal_discrete_mass) *
-              Mtot;
+		  imf, mass_min, minimal_discrete_mass) *
+	      Mtot;
 
   /* Compute the number of stars in the discrete part of the IMF */
   double Nd = initial_mass_function_get_imf_number_fraction(
-                  imf, minimal_discrete_mass, mass_max) *
-              Mtot;
+		  imf, minimal_discrete_mass, mass_max) *
+	      Mtot;
 
   message("Mass of the continuous part            : %g", Mc);
   message("Mass of the discrete   part            : %g", Md);
@@ -148,7 +155,13 @@ INLINE static void sink_props_init_probabilities(
   /* if no continous part, return */
   if (Mc == 0) {
     imf->sink_Pc = 0;
-    imf->sink_stellar_particle_mass = 0;
+
+    if (first_stars) {
+      imf->stellar_particle_mass_first_stars = 0;
+    } else {
+      imf->stellar_particle_mass = 0;
+    }
+
     message("probability of the continuous part    : %g", 0.);
     message("probability of the discrete   part    : %g", 1.);
     return;
@@ -158,7 +171,6 @@ INLINE static void sink_props_init_probabilities(
   double Pc = 1 / (1 + Nd);
   double Pd = 1 - Pc;
   imf->sink_Pc = Pc;
-  imf->sink_stellar_particle_mass = Mc;
 
   message("probability of the continuous part     : %g", Pc);
   message("probability of the discrete   part     : %g", Pd);
