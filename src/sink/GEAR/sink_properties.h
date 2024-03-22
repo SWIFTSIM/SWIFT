@@ -118,8 +118,8 @@ INLINE static void sink_props_init_probabilities(
 
     /* Give the IMF the minimal discrete mass and the stellar_particle_mass
        (in M_sun). */
-    imf->minimal_discrete_mass_first_stars = minimal_discrete_mass;
-    imf->stellar_particle_mass_first_stars = stellar_particle_mass;
+    imf->minimal_discrete_mass = minimal_discrete_mass;
+    imf->stellar_particle_mass = stellar_particle_mass;
   }
 
   /* sanity check */
@@ -155,12 +155,7 @@ INLINE static void sink_props_init_probabilities(
   /* if no continous part, return */
   if (Mc == 0) {
     imf->sink_Pc = 0;
-
-    if (first_stars) {
-      imf->stellar_particle_mass_first_stars = 0;
-    } else {
-      imf->stellar_particle_mass = 0;
-    }
+    imf->stellar_particle_mass = 0;
 
     message("probability of the continuous part    : %g", 0.);
     message("probability of the discrete   part    : %g", 1.);
