@@ -46,17 +46,17 @@ struct sink_props {
   int size_of_calibration_sample;
 
   /*! Mass of the stellar particle representing the low mass stars
-   * (continuous IMF sampling). */
+   * (continuous IMF sampling). In M_sun. */
   float stellar_particle_mass;
 
-  /*! Minimal mass of stars represented by discrete particles */
+  /*! Minimal mass of stars represented by discrete particles. In M_sun. */
   float minimal_discrete_mass;
 
   /*! Mass of the stellar particle representing the low mass stars
-   * (continuous IMF sampling). First stars */
+   * (continuous IMF sampling). In M_sun. First stars */
   float stellar_particle_mass_first_stars;
 
-  /*! Minimal mass of stars represented by discrete particles.
+  /*! Minimal mass of stars represented by discrete particles. In M_sun.
    * First stars. */
   float minimal_discrete_mass_first_stars;
 
@@ -93,20 +93,24 @@ INLINE static void sink_props_init_probabilities(
   float minimal_discrete_mass;
   float stellar_particle_mass;
 
-  /* Make a function with IMF thing that computes this --> hide implementation
-     and make it usable elsewhere */
   if (!first_stars) {
-    /* Give the IMF the minimal discrete mass */
+    /* Give the IMF the minimal discrete mass (in M_sun). */
     imf->minimal_discrete_mass = sp->minimal_discrete_mass;
 
+    /* This is already in M_sun */
     minimal_discrete_mass = sp->minimal_discrete_mass;
+
+    /* This needs to be converted to M_sun */
     stellar_particle_mass =
         sp->stellar_particle_mass / phys_const->const_solar_mass;
   } else {
-    /* Give the IMF the minimal discrete mass */
+    /* Give the IMF the minimal discrete mass (in M_sun). */
     imf->minimal_discrete_mass_first_stars = sp->minimal_discrete_mass_first_stars;
 
+    /* This is already in M_sun */
     minimal_discrete_mass = sp->minimal_discrete_mass_first_stars;
+
+    /* This needs to be converted to M_sun */
     stellar_particle_mass =
         sp->stellar_particle_mass_first_stars / phys_const->const_solar_mass;
   }
@@ -266,6 +270,7 @@ INLINE static void sink_props_init(struct sink_props *sp,
 
   sp->density_threshold /= units_cgs_conversion_factor(us, UNIT_CONV_DENSITY);
 
+  /* Convert from M_sun to internal units */
   sp->stellar_particle_mass *= phys_const->const_solar_mass;
   sp->stellar_particle_mass_first_stars *= phys_const->const_solar_mass;
 
