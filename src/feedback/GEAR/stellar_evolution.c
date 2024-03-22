@@ -435,13 +435,16 @@ void stellar_evolution_evolve_spart(
   if (sp->feedback_data.star_type == star_population_continuous_IMF) {
     float minimal_discrete_mass = 0;
     /* If you are a first star, pick the correct minimal_discrete_mass. */
+
+    /* All masses below are in solar mass */
     if (is_first_star) {
       minimal_discrete_mass = sm->imf.minimal_discrete_mass_first_stars;
     } else {
       minimal_discrete_mass = sm->imf.minimal_discrete_mass;
     }
 
-    /* If it's not time yet for feedback, exit. */
+    /* If it's not time yet for feedback, exit. Notice that both masses are in
+       solar mass. */
     if (m_beg_step > minimal_discrete_mass) {
 	return ;
       }
