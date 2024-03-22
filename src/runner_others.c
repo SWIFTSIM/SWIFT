@@ -294,7 +294,7 @@ void runner_do_star_formation_sink(struct runner *r, struct cell *c,
           message(
               "%010lld spawn a star (%010lld) with mass %8.2f Msol type=%d  "
               "loop=%03d. Sink remaining mass: %e.",
-              s->id, sp->id, sp->mass, s->target_type, loop, s->mass);
+              s->id, sp->id, sp->mass/phys_const->const_solar_mass, s->target_type, loop, s->mass);
 /* #endif */
         }
       }
