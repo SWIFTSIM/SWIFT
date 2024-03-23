@@ -17,7 +17,7 @@ Bi_fraction = 1e-12
 # output file
 fileOutputName = "ABCFlow.hdf5"
 
-
+############################################################### Random B and A vector field generator
 def generate_random_vectors(N_of_vectors, randomize_length=True):
     RVF=[]
     for i in range(N_of_vectors):
@@ -28,6 +28,74 @@ def generate_random_vectors(N_of_vectors, randomize_length=True):
             r*=np.random.rand()
         RVF+=[r]
     return np.array(RVF)
+
+def generate_k(Npart,Lbox,min_sine_res=4):
+    # calculate maximal wavenumber
+    nmax = int(Npart**(1/3)/min_sine_res)
+    kmax = 2*np.pi/Lbox*nmax
+    k = []
+    for nx in range(-nmax,nmax+1):
+        for ny in range(-nmax,nmax+1):
+            for nz in range(-nmax,nmax+1):
+                if np.sqrt(nx**2+ny**2+nz**2)<=nmax:
+                    k.append([nx,ny,nz])
+    k = np.array(k)
+    k = k.astype('float64')
+    k *= 2*np.pi/Lbox
+    return k,kmax
+
+def generate_random_complex_phases(N_of_phases,generate_vector_phase=True):
+    if generate_vector_phase:
+        Phx = np.random.rand(N_of_phases)*2*np.pi
+        Phy = np.random.rand(N_of_phases)*2*np.pi
+        Phz = np.random.rand(N_of_phases)*2*np.pi
+        phase_array = np.array([[Phx[i],Phy[i],Phz[i]] for i in range(N_of_phases)])
+        z = np.cos(phase_array)+1.j*np.sin(phase_array)
+    else:
+        Ph = np.random.rand(N_of_phases)*2*np.pi
+        z = np.cos(Ph)+1.j*np.sin(Ph)      
+    return z
+
+def generate_Ak(kvec,kmax):
+    a = generate_random_vectors(len(kvec), randomize_length=False)
+    b = np.cross(a,kvec)
+    kabs = np.linalg.norm(kvec,axis=1)
+    babs = np.linalg.norm(b,axis=1)
+    
+    for i in range(len(b)):
+        if babs[i]!=0:
+            b[i] /= babs[i]
+        else:
+            b[i]=a[i]
+            
+    Cph = generate_random_complex_phases(len(kvec))
+    
+    Ak = np.zeros(kvec.shape)+1.j*np.zeros(kvec.shape)
+    
+    for i in range(len(kvec)):
+        Ak[i] = Cph[i] * b[i] * 1
+    
+    
+    #print(b,Cph)
+    return Ak
+
+def find_Magnetic_Field(pos,kvec,Ak):
+    A = np.zeros(pos.shape)
+    B = np.zeros(pos.shape)
+
+    for i in range(len(pos)):
+        for j in range(3):
+            A[i,j]=np.real(np.sum(Ak[:,j]*(np.exp(1.j*(kvec[:,0]*pos[i,0]+kvec[:,1]*pos[i,1]+kvec[:,2]*pos[i,2])) )[:,None] ))
+            B[i,j]=np.real(1.j*np.sum(np.cross(kvec[:],Ak[:])[:,j]*(np.exp(1.j*(kvec[:,0]*pos[i,0]+kvec[:,1]*pos[i,1]+kvec[:,2]*pos[i,2])) )[:,None] ))
+    return A,B
+
+def normalize_Magnetic_Field(A,B,B0):
+    norms = np.linalg.norm(B,axis=1)
+    normalization_factor = B0/np.sqrt(np.sum(norms**2))
+    return A*normalization_factor, B*normalization_factor
+
+############################################################################
+
 
 # smoothing kernel optimized for numpy Price 1012.1885 (6)
 def open_IAfile(path_to_file):
@@ -80,9 +148,10 @@ def add_other_particle_properties(pos,h,a,b,c,V0,kb,kv,Vz_factor,L,field_type):
             A0 = B0 / kb0
             A *= A0
         elif field_type=='random':
-            B = generate_random_vectors(N, randomize_length=True)
-            B *= B0
-            A = B
+            kvec,kmax = generate_k(N,L)
+            Ak = generate_Ak(kvec,kmax)
+            A,B = find_Magnetic_Field(pos,kvec,Ak)
+            A,B = normalize_Magnetic_Field(A,B,B0)
         else:
             print('Error: wrong field type. Should be one_mode or random')
     else:
