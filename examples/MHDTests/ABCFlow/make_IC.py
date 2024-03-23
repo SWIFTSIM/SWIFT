@@ -12,7 +12,7 @@ rho0 = 1.0
 cs2 = 3025.0
 gamma = 5.0 / 3.0
 u0 = cs2 / (gamma * (gamma - 1))
-Bi_fraction = 1e-12
+Bi_fraction = 1e-8
 
 # output file
 fileOutputName = "ABCFlow.hdf5"
@@ -227,7 +227,7 @@ if __name__ == "__main__":
         "-L",
         "--boxsize",
         help="dimensions of the simulation box",
-        default=1.0,
+        default=2*np.pi,
         type=float,
     )
     parser.add_argument(
