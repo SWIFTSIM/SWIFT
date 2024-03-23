@@ -21,15 +21,15 @@ fileOutputName = "ABCFlow.hdf5"
 def generate_random_vectors(N_of_vectors, randomize_length=True):
     RVF=[]
     for i in range(N_of_vectors):
-        r = np.random.rand(3)
-        r = r-0.5*np.array([1,1,1])
-        r = r/np.linalg.norm(r)
+        phi = np.random.rand()*2*np.pi
+        theta = np.random.rand()*np.pi
+        r = np.array([np.cos(phi)*np.sin(theta),np.sin(phi)*np.sin(theta),np.cos(theta)])
         if randomize_length:
             r*=np.random.rand()
         RVF+=[r]
-    return np.array(RVF)
+    return np.array(RVF)  
 
-def generate_k(Npart,Lbox,min_sine_res=4):
+def generate_k(Npart,Lbox,min_sine_res=6):
     # calculate maximal wavenumber
     nmax = int(Npart**(1/3)/min_sine_res)
     kmax = 2*np.pi/Lbox*nmax
@@ -69,24 +69,22 @@ def generate_Ak(kvec,kmax):
             b[i]=a[i]
             
     Cph = generate_random_complex_phases(len(kvec))
-    
+    amps = np.random.rand(len(kvec)) 
     Ak = np.zeros(kvec.shape)+1.j*np.zeros(kvec.shape)
     
     for i in range(len(kvec)):
-        Ak[i] = Cph[i] * b[i] * 1
+        Ak[i] = Cph[i] * b[i] * amps[i]
     
-    
-    #print(b,Cph)
     return Ak
 
 def find_Magnetic_Field(pos,kvec,Ak):
     A = np.zeros(pos.shape)
     B = np.zeros(pos.shape)
-
+    Ph = 2*np.pi*np.random.rand(len(kvec))
     for i in range(len(pos)):
         for j in range(3):
-            A[i,j]=np.real(np.sum(Ak[:,j]*(np.exp(1.j*(kvec[:,0]*pos[i,0]+kvec[:,1]*pos[i,1]+kvec[:,2]*pos[i,2])) )[:,None] ))
-            B[i,j]=np.real(1.j*np.sum(np.cross(kvec[:],Ak[:])[:,j]*(np.exp(1.j*(kvec[:,0]*pos[i,0]+kvec[:,1]*pos[i,1]+kvec[:,2]*pos[i,2])) )[:,None] ))
+            A[i,j]=np.real(np.sum(Ak[:,j]*(np.exp(1.j*(kvec[:,0]*pos[i,0]+kvec[:,1]*pos[i,1]+kvec[:,2]*pos[i,2]+Ph)) )[:,None] ))
+            B[i,j]=np.real(1.j*np.sum(np.cross(kvec[:],Ak[:])[:,j]*(np.exp(1.j*(kvec[:,0]*pos[i,0]+kvec[:,1]*pos[i,1]+kvec[:,2]*pos[i,2]+Ph)) )[:,None] ))
     return A,B
 
 def normalize_Magnetic_Field(A,B,B0):
