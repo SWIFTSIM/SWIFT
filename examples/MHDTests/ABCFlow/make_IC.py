@@ -85,6 +85,7 @@ def find_Magnetic_Field(pos,kvec,Ak):
         for j in range(3):
             A[i,j]=np.real(np.sum(Ak[:,j]*(np.exp(1.j*(kvec[:,0]*pos[i,0]+kvec[:,1]*pos[i,1]+kvec[:,2]*pos[i,2]+Ph)) )[:,None] ))
             B[i,j]=np.real(1.j*np.sum(np.cross(kvec[:],Ak[:])[:,j]*(np.exp(1.j*(kvec[:,0]*pos[i,0]+kvec[:,1]*pos[i,1]+kvec[:,2]*pos[i,2]+Ph)) )[:,None] ))
+        print('Generating magnetic field: '+str(int((i+1)/len(pos)*100))+'% complete', end='\r')
     return A,B
 
 def normalize_Magnetic_Field(A,B,B0):
