@@ -150,32 +150,34 @@ def configure_simulation(scheme, forcing, spline, eos, path_to_lib=False):
 
 # Funciton for making ICfile
 def make_IC(phys_parameters, IAfile):
+    if len(phys_parameters)!=0:
+        # get configuration parameters from phys_parameters row of parameters dataframe
+        v0 = " --rms_velocity=" + str(phys_parameters["v0"].values[0])
+        Vz_factor = " --Vz_factor=" + str(phys_parameters["Vz_factor"].values[0])
+        kv = " --velocity_wavevector=" + str(phys_parameters["kv"].values[0])
+        kb = " --magnetic_wavevector=" + str(phys_parameters["kb"].values[0])
+        Lbox = " --boxsize=" + str(phys_parameters["Lbox"].values[0])
+        a = " --A=" + str(phys_parameters["A"].values[0])
+        b = " --B=" + str(phys_parameters["B"].values[0])
+        c = " --C=" + str(phys_parameters["C"].values[0])
+        path = " --IA_path="+"./IAfiles/"+IAfile
 
-    # get configuration parameters from phys_parameters row of parameters dataframe
-    v0 = " --rms_velocity=" + str(phys_parameters["v0"].values[0])
-    Vz_factor = " --Vz_factor=" + str(phys_parameters["Vz_factor"].values[0])
-    kv = " --velocity_wavevector=" + str(phys_parameters["kv"].values[0])
-    kb = " --magnetic_wavevector=" + str(phys_parameters["kb"].values[0])
-    Lbox = " --boxsize=" + str(phys_parameters["Lbox"].values[0])
-    a = " --A=" + str(phys_parameters["A"].values[0])
-    b = " --B=" + str(phys_parameters["B"].values[0])
-    c = " --C=" + str(phys_parameters["C"].values[0])
-    path = " --IA_path="+"./IAfiles/"+IAfile
-
-    # Construct command to make ICs with selected parameters
-    command = (
-        " python "
-        + "make_IC.py"
-        + v0
-        + path
-        + kv
-        + kb
-        + Lbox
-        + Vz_factor
-        + a
-        + b
-        + c
-    )
+        # Construct command to make ICs with selected parameters
+        command = (
+            " python3 "
+            + "make_IC.py"
+            + v0
+            + path
+            + kv
+            + kb
+            + Lbox
+            + Vz_factor
+            + a
+            + b
+            + c
+        )
+    else:
+        command = " python3 " + "make_IC.py"
     # show command
     print('Script sends command: '+command)
     # execute
@@ -397,6 +399,9 @@ def move_results(phys_parameters, res_dirname):
 def run_all():
     the_parameters = read_parameter_csv("test_run_parameters.csv")
     create_results_directory(results_directory_name)
+
+    make_IC([],'')
+
     # prepare_glass()
     for i in range(len(the_parameters)):
         if mask[i]:
@@ -406,8 +411,8 @@ def run_all():
             forcing = 'abc-flow'
             configure_simulation(scheme, forcing, "quintic-spline", "isothermal-gas")
 
-            IAfile = IA_dict[parameters_for_the_run["IAfile"].values[0]]
-            make_IC(parameters_for_the_run, IAfile)
+            #IAfile = IA_dict[parameters_for_the_run["IAfile"].values[0]]
+            #make_IC(parameters_for_the_run, IAfile)
 
             run_simulation(parameters_for_the_run, threads)
 
