@@ -801,6 +801,21 @@ void zoom_construct_tl_cells(struct space *s, const integertime_t ti_current,
  */
 void zoom_link_void_leaves(struct space *s, struct cell *c) {
 
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Ensure we have the right kind of cell. */
+  if (c->subtype != cell_subtype_void) {
+    error("Trying to split cell which isn't a void cell! (c->subtype=%s)",
+          subcellID_names[c->subtype]);
+  }
+  if ((!s->zoom_props->with_buffer_cells && c->type != cell_type_bkg) ||
+      (s->zoom_props->with_buffer_cells && c->type != cell_type_buffer)) {
+    error(
+        "Trying to split cell which isn't directly above the zoom level! "
+        "(c->type=%s)",
+        cellID_names[c->type]);
+  }
+#endif
+
   /* We need to ensure this bottom level isn't treated like a
    * normal split cell since it's linked into top level "progeny". */
   c->split = 0;
