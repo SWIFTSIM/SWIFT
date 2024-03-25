@@ -50,3 +50,4 @@ tumbler of 16yrs old Lagavulin.
    AnalysisTools/index
    CSDS/index
    ImplementationDetails/index
+   ZoomSimulations/index

@@ -47,6 +47,7 @@ can be found by typing ``./swift -h``:
                                       Stream (CSDS).
     -R, --radiation                   Run with radiative transfer.
     --power                           Run with power spectrum outputs.
+    -z, --zoom                        Run with a zoom region.
 
   Simulation meta-options:
 

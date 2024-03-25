@@ -69,7 +69,7 @@ corresponding to a given entry in the files.
 
 Note that the only particles that have hydrodynamical forces calculated
 between them are those in ``PartType0``. The background dark matter
-particles are used for zoom-in simulations and can have different masses
+particles are used for zoom-in simulations (see the :doc:`zoom docs<../ZoomSimulations/index>`) and can have different masses
 (and as a consequence softening length) within the ``/PartType2`` arrays.
 
 
