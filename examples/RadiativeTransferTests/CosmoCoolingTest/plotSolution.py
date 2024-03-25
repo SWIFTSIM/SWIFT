@@ -43,6 +43,7 @@ snapshot_base = "output"
 # -----------------------------------------------------------------------
 energy_units = unyt.Msun * unyt.kpc ** 2 / unyt.kyr ** 2
 mass_units = unyt.Msun
+length_units = unyt.kpc
 
 
 def mean_molecular_weight(XH0, XHp, XHe0, XHep, XHepp):
@@ -193,6 +194,8 @@ def get_snapshot_data(snaplist):
     mean_molecular_weights = np.zeros(nsnaps)
     mass_fractions = np.zeros((nsnaps, 5))
     internal_energies = np.zeros(nsnaps) * energy_units
+    specific_internal_energies = np.zeros(nsnaps) * energy_units / mass_units
+    densities = np.zeros(nsnaps) * 1e10 * unyt.Msun / length_units**3
 
     if with_rt:
         photon_energies = np.zeros((ngroups, nsnaps)) * energy_units
@@ -207,6 +210,10 @@ def get_snapshot_data(snaplist):
         gas = data.gas
         u = gas.internal_energies[:].to(energy_units / mass_units)
         u.convert_to_physical()
+
+        rho = gas.densities
+        rho.convert_to_physical()
+        rho.to(1e10 * unyt.Msun/length_units**3)
 
         masses = gas.masses[:].to(mass_units)
         masses.convert_to_physical()
@@ -224,6 +231,8 @@ def get_snapshot_data(snaplist):
         temperatures[i] = np.mean(T)
         mean_molecular_weights[i] = np.mean(mu)
         internal_energies[i] = np.mean(um)
+        specific_internal_energies[i] = np.mean(u.to(energy_units / mass_units))
+        densities[i] = (rho.sum() / len(rho))
 
         mass_fractions[i, 0] = np.mean(imf.HI)
         mass_fractions[i, 1] = np.mean(imf.HII)
@@ -244,6 +253,8 @@ def get_snapshot_data(snaplist):
         mass_fractions,
         internal_energies,
         photon_energies,
+        specific_internal_energies,
+        densities,
     )
 
 
@@ -254,7 +265,7 @@ if __name__ == "__main__":
     # ------------------
 
     snaplist = get_snapshot_list(snapshot_base)
-    t, T, mu, mass_fraction, u, photon_energies = get_snapshot_data(snaplist)
+    t, T, mu, mass_fraction, u, photon_energies, us, rho = get_snapshot_data(snaplist)
 
     with_rt = photon_energies is not None
     if with_rt:
@@ -272,6 +283,7 @@ if __name__ == "__main__":
     rhoHeII_ref = refdata[:, 11]
     rhoHeIII_ref = refdata[:, 12]
     rhoe_ref = refdata[:, 13]
+    u_ref = refdata[:,-1]
     t_ref *= 1e-6  # turn to Myrs
     t_ref += t[0].value
     mass_fraction_ref = np.empty((t_ref.shape[0], 5))
@@ -293,20 +305,32 @@ if __name__ == "__main__":
     # ax2.set_xlim(10, max(t))
     # ax3.set_xlim(10, max(t))
     # ax4.set_xlim(10, max(t))
+    
     ax1.semilogy(t_ref, T_ref, label="reference", **referenceplotkwargs)
     ax1.semilogy(t, T, label="obtained results")
     
+    us_internal = (1e5 * unyt.cm / unyt.s)**2
+
+     #ax1.semilogy(t_ref, u_ref, label="reference", **referenceplotkwargs)
+    # ax1.semilogy(t, us.to(us_internal), label="obtained results")
+
     # ax1.scatter(t, T, label="obtained results")
     ax1.set_yscale("log")
     ax1.set_xlabel("time [Myr]")
-    ax1.set_ylabel("gas temperature [K]")
+    # ax1.set_ylabel("gas temperature [K]")
+    ax1.set_ylabel("Internal energy [IU]")
     ax1.legend(prop=legendprops)
     ax1.grid()
     
-    ax2.plot(t_ref, mu_ref, label="reference", **referenceplotkwargs)
-    ax2.plot(t, mu, label="obtained results")
+    rho_internal = 1e10 * unyt.Msun / unyt.kpc**3
+    # ax2.plot(t_ref, mu_ref, label="reference", **referenceplotkwargs)
+    # ax2.plot(t, mu, label="obtained results")
+    ax2.plot(t_ref, rho_ref, label="reference", **referenceplotkwargs)
+    ax2.plot(t, rho.to(rho_internal), label="Obtained results")
+
     ax2.set_xlabel("time [Myr]")
-    ax2.set_ylabel("mean molecular weight")
+    # ax2.set_ylabel("mean molecular weight")
+    ax2.set_ylabel("Density [IU]")
     ax2.legend(prop=legendprops)
     ax2.grid()
 
