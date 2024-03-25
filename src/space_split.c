@@ -41,7 +41,7 @@ static void space_allocate_buffers(struct cell *c,
                                    struct cell_buff *restrict sbuff,
                                    struct cell_buff *restrict bbuff,
                                    struct cell_buff *restrict gbuff,
-                                   struct cell_buff *restrict sink_buff, ) {
+                                   struct cell_buff *restrict sink_buff) {
 
   /* Unpack particle information we need for the buffers. */
   const int count = c->hydro.count;
@@ -316,9 +316,46 @@ void space_populate_multipole(struct cell *c) {
 #endif
 }
 
-static void space_get_leaf_timestep(struct cell *c,
-                                    const integertime_t ti_current, const int e,
-                                    const int with_rt) {
+static void space_populate_leaf_props(struct cell *c,
+                                      const integertime_t ti_current,
+                                      const int e, const int with_rt) {
+
+  /* Unpack the particle counts and pointers. */
+  const int count = c->hydro.count;
+  const int gcount = c->grav.count;
+  const int scount = c->stars.count;
+  const int bcount = c->black_holes.count;
+  const int sink_count = c->sinks.count;
+  const int with_self_gravity = s->with_self_gravity;
+  const int depth = c->depth;
+  struct part *parts = c->hydro.parts;
+  struct gpart *gparts = c->grav.parts;
+  struct spart *sparts = c->stars.parts;
+  struct bpart *bparts = c->black_holes.parts;
+  struct xpart *xparts = c->hydro.xparts;
+  struct sink *sinks = c->sinks.parts;
+
+  /* Initialise everything we're about to get. */
+  float h_max = 0.0f;
+  float h_max_active = 0.0f;
+  float stars_h_max = 0.f;
+  float stars_h_max_active = 0.f;
+  float black_holes_h_max = 0.f;
+  float black_holes_h_max_active = 0.f;
+  float sinks_h_max = 0.f;
+  float sinks_h_max_active = 0.f;
+  integertime_t ti_hydro_end_min = max_nr_timesteps, ti_hydro_end_max = 0,
+                ti_hydro_beg_max = 0;
+  integertime_t ti_rt_end_min = max_nr_timesteps, ti_rt_beg_max = 0;
+  integertime_t ti_rt_min_step_size = max_nr_timesteps;
+  integertime_t ti_gravity_end_min = max_nr_timesteps, ti_gravity_end_max = 0,
+                ti_gravity_beg_max = 0;
+  integertime_t ti_stars_end_min = max_nr_timesteps, ti_stars_end_max = 0,
+                ti_stars_beg_max = 0;
+  integertime_t ti_sinks_end_min = max_nr_timesteps, ti_sinks_end_max = 0,
+                ti_sinks_beg_max = 0;
+  integertime_t ti_black_holes_end_min = max_nr_timesteps,
+                ti_black_holes_end_max = 0, ti_black_holes_beg_max = 0;
 
   /* Initialise variables we'll update for each particle type below. */
   ti_hydro_end_min = max_nr_timesteps;
@@ -498,6 +535,29 @@ static void space_get_leaf_timestep(struct cell *c,
     bparts[k].x_diff[1] = 0.f;
     bparts[k].x_diff[2] = 0.f;
   }
+
+  /* Set the values for this cell. */
+  c->hydro.h_max = h_max;
+  c->hydro.h_max_active = h_max_active;
+  c->hydro.ti_end_min = ti_hydro_end_min;
+  c->hydro.ti_beg_max = ti_hydro_beg_max;
+  c->rt.ti_rt_end_min = ti_rt_end_min;
+  c->rt.ti_rt_beg_max = ti_rt_beg_max;
+  c->rt.ti_rt_min_step_size = ti_rt_min_step_size;
+  c->grav.ti_end_min = ti_gravity_end_min;
+  c->grav.ti_beg_max = ti_gravity_beg_max;
+  c->stars.ti_end_min = ti_stars_end_min;
+  c->stars.ti_beg_max = ti_stars_beg_max;
+  c->stars.h_max = stars_h_max;
+  c->stars.h_max_active = stars_h_max_active;
+  c->sinks.ti_end_min = ti_sinks_end_min;
+  c->sinks.ti_beg_max = ti_sinks_beg_max;
+  c->sinks.r_cut_max = sinks_h_max;
+  c->sinks.r_cut_max_active = sinks_h_max_active;
+  c->black_holes.ti_end_min = ti_black_holes_end_min;
+  c->black_holes.ti_beg_max = ti_black_holes_beg_max;
+  c->black_holes.h_max = black_holes_h_max;
+  c->black_holes.h_max_active = black_holes_h_max_active;
 }
 
 static void space_construct_leaf_multipole(struct cell *c, struct engine *e) {
@@ -562,27 +622,6 @@ void space_split_recursive(struct space *s, struct cell *c,
   const int sink_count = c->sinks.count;
   const int with_self_gravity = s->with_self_gravity;
   const int depth = c->depth;
-  int maxdepth = 0;
-  float h_max = 0.0f;
-  float h_max_active = 0.0f;
-  float stars_h_max = 0.f;
-  float stars_h_max_active = 0.f;
-  float black_holes_h_max = 0.f;
-  float black_holes_h_max_active = 0.f;
-  float sinks_h_max = 0.f;
-  float sinks_h_max_active = 0.f;
-  integertime_t ti_hydro_end_min = max_nr_timesteps, ti_hydro_end_max = 0,
-                ti_hydro_beg_max = 0;
-  integertime_t ti_rt_end_min = max_nr_timesteps, ti_rt_beg_max = 0;
-  integertime_t ti_rt_min_step_size = max_nr_timesteps;
-  integertime_t ti_gravity_end_min = max_nr_timesteps, ti_gravity_end_max = 0,
-                ti_gravity_beg_max = 0;
-  integertime_t ti_stars_end_min = max_nr_timesteps, ti_stars_end_max = 0,
-                ti_stars_beg_max = 0;
-  integertime_t ti_sinks_end_min = max_nr_timesteps, ti_sinks_end_max = 0,
-                ti_sinks_beg_max = 0;
-  integertime_t ti_black_holes_end_min = max_nr_timesteps,
-                ti_black_holes_end_max = 0, ti_black_holes_beg_max = 0;
   struct part *parts = c->hydro.parts;
   struct gpart *gparts = c->grav.parts;
   struct spart *sparts = c->stars.parts;
@@ -633,6 +672,29 @@ void space_split_recursive(struct space *s, struct cell *c,
     struct cell_buff *progeny_buff = buff, *progeny_gbuff = gbuff,
                      *progeny_sbuff = sbuff, *progeny_bbuff = bbuff,
                      *progeny_sink_buff = sink_buff;
+
+    /* Define properties we'll compute from the progeny. */
+    int maxdepth = 0;
+    float h_max = 0.0f;
+    float h_max_active = 0.0f;
+    float stars_h_max = 0.f;
+    float stars_h_max_active = 0.f;
+    float black_holes_h_max = 0.f;
+    float black_holes_h_max_active = 0.f;
+    float sinks_h_max = 0.f;
+    float sinks_h_max_active = 0.f;
+    integertime_t ti_hydro_end_min = max_nr_timesteps, ti_hydro_end_max = 0,
+                  ti_hydro_beg_max = 0;
+    integertime_t ti_rt_end_min = max_nr_timesteps, ti_rt_beg_max = 0;
+    integertime_t ti_rt_min_step_size = max_nr_timesteps;
+    integertime_t ti_gravity_end_min = max_nr_timesteps, ti_gravity_end_max = 0,
+                  ti_gravity_beg_max = 0;
+    integertime_t ti_stars_end_min = max_nr_timesteps, ti_stars_end_max = 0,
+                  ti_stars_beg_max = 0;
+    integertime_t ti_sinks_end_min = max_nr_timesteps, ti_sinks_end_max = 0,
+                  ti_sinks_beg_max = 0;
+    integertime_t ti_black_holes_end_min = max_nr_timesteps,
+                  ti_black_holes_end_max = 0, ti_black_holes_beg_max = 0;
 
     /* Loop over progeny, cleaning up progeny or splitting and recursing. */
     for (int k = 0; k < 8; k++) {
@@ -702,6 +764,30 @@ void space_split_recursive(struct space *s, struct cell *c,
       space_populate_multipole(c);
     }
 
+    /* Set the smoothing length and timestep props for this cell. */
+    c->hydro.h_max = h_max;
+    c->hydro.h_max_active = h_max_active;
+    c->hydro.ti_end_min = ti_hydro_end_min;
+    c->hydro.ti_beg_max = ti_hydro_beg_max;
+    c->rt.ti_rt_end_min = ti_rt_end_min;
+    c->rt.ti_rt_beg_max = ti_rt_beg_max;
+    c->rt.ti_rt_min_step_size = ti_rt_min_step_size;
+    c->grav.ti_end_min = ti_gravity_end_min;
+    c->grav.ti_beg_max = ti_gravity_beg_max;
+    c->stars.ti_end_min = ti_stars_end_min;
+    c->stars.ti_beg_max = ti_stars_beg_max;
+    c->stars.h_max = stars_h_max;
+    c->stars.h_max_active = stars_h_max_active;
+    c->sinks.ti_end_min = ti_sinks_end_min;
+    c->sinks.ti_beg_max = ti_sinks_beg_max;
+    c->sinks.r_cut_max = sinks_h_max;
+    c->sinks.r_cut_max_active = sinks_h_max_active;
+    c->black_holes.ti_end_min = ti_black_holes_end_min;
+    c->black_holes.ti_beg_max = ti_black_holes_beg_max;
+    c->black_holes.h_max = black_holes_h_max;
+    c->black_holes.h_max_active = black_holes_h_max_active;
+    c->maxdepth = maxdepth;
+
   } /* Split or let it be? */
 
   /* Otherwise, collect the data from the particles in this cell. */
@@ -711,37 +797,17 @@ void space_split_recursive(struct space *s, struct cell *c,
     c->split = 0;
     maxdepth = c->depth;
 
-    /* Get the time-step information for the particles in this leaf. */
-    space_get_leaf_timestep(c, ti_current, e, with_rt);
+    /* Get the time-steps and smoothing lengths for particles in this
+     * leaf and attach them to the leaf cell. */
+    space_populate_leaf_props(c, ti_current, e, with_rt);
 
-    /* Construct the multipole and the centre of mass*/
+    /* Construct the multipole and the centre of mass for this leaf. */
     if (s->with_self_gravity) {
       space_construct_leaf_multipole(c, e);
     }
   }
 
-  /* Set the values for this cell. */
-  c->hydro.h_max = h_max;
-  c->hydro.h_max_active = h_max_active;
-  c->hydro.ti_end_min = ti_hydro_end_min;
-  c->hydro.ti_beg_max = ti_hydro_beg_max;
-  c->rt.ti_rt_end_min = ti_rt_end_min;
-  c->rt.ti_rt_beg_max = ti_rt_beg_max;
-  c->rt.ti_rt_min_step_size = ti_rt_min_step_size;
-  c->grav.ti_end_min = ti_gravity_end_min;
-  c->grav.ti_beg_max = ti_gravity_beg_max;
-  c->stars.ti_end_min = ti_stars_end_min;
-  c->stars.ti_beg_max = ti_stars_beg_max;
-  c->stars.h_max = stars_h_max;
-  c->stars.h_max_active = stars_h_max_active;
-  c->sinks.ti_end_min = ti_sinks_end_min;
-  c->sinks.ti_beg_max = ti_sinks_beg_max;
-  c->sinks.r_cut_max = sinks_h_max;
-  c->sinks.r_cut_max_active = sinks_h_max_active;
-  c->black_holes.ti_end_min = ti_black_holes_end_min;
-  c->black_holes.ti_beg_max = ti_black_holes_beg_max;
-  c->black_holes.h_max = black_holes_h_max;
-  c->black_holes.h_max_active = black_holes_h_max_active;
+  /* Set the maximum depth. */
   c->maxdepth = maxdepth;
 
   /* No runner owns this cell yet. We assign those during scheduling. */
