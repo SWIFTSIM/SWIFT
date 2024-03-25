@@ -805,7 +805,8 @@ void space_split_recursive(struct space *s, struct cell *c,
 
   } /* Split or let it be? */
 
-  /* Otherwise, collect the data from the particles in this cell. */
+  /* Otherwise we're in a leaf, collect the data from the particles in this
+     leaf cell. */
   else {
     /* Clear the progeny. */
     bzero(c->progeny, sizeof(struct cell *) * 8);
