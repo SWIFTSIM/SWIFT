@@ -81,7 +81,7 @@ Contribution Guidelines
 -----------------------
 
 The SWIFT source code uses a variation of the 'Google' formatting style.
-The script 'format.sh' in the root directory applies the clang-format-10
+The script 'format.sh' in the root directory applies the clang-format-13
 tool with our style choices to all the SWIFT C source file. Please apply
 the formatting script to the files before submitting a pull request.
 
