@@ -73,7 +73,7 @@ struct power_spectrum_data {
 
   /* Shall we correct the position of the k-space bin? */
   int shift_centre_small_k_bins;
-  
+
   /*! Array of component types to correlate on the "left" side */
   enum power_type* types1;
 

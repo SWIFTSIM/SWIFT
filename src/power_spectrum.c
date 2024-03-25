@@ -51,10 +51,14 @@
 #define power_data_default_fold_factor 4
 #define power_data_default_window_order 3
 
-
-/* The way to calculate these shifts is to consider a 3D cube of (kx,ky,kz) cells and check which cells fall inside a spherical shell with boundaries (i+0.5,i+1.5), then calculate the average k=sqrt(kx^2+ky^2+kz^2). So for i=0 you'd find 6 cells k=1 and 12 cells k=sqrt(2), so the weighted k becomes (6 * 1 + 12 * sqrt(2)) / 18 = 1.2761424 – etc.
- Terms beyond the ones listed here lead to a correction < 1%. */
-static const float correction_shift_k_values[6] = {1.2761424,  1.1154015, 1.0447197, 1.0151449, 1.0195166, 1.0112120};
+/* The way to calculate these shifts is to consider a 3D cube of (kx,ky,kz)
+ * cells and check which cells fall inside a spherical shell with boundaries
+ * (i+0.5,i+1.5), then calculate the average k=sqrt(kx^2+ky^2+kz^2). So for i=0
+ * you'd find 6 cells k=1 and 12 cells k=sqrt(2), so the weighted k becomes
+ * (6 * 1 + 12 * sqrt(2)) / 18 = 1.2761424 – etc.
+ * Terms beyond the ones listed here lead to a correction < 1%. */
+static const float correction_shift_k_values[6] = {
+    1.2761424, 1.1154015, 1.0447197, 1.0151449, 1.0195166, 1.0112120};
 
 #ifdef HAVE_FFTW
 
@@ -1159,7 +1163,9 @@ void power_spectrum(const enum power_type type1, const enum power_type type2,
       else
         sprintf(powunits, "Mpc^3 eV cm^(-3)");
 
-      fprintf(outputfile, "# Folding %d, all lengths/volumes are comoving. k-bin centres are not corrected for the weights of the modes.\n",
+      fprintf(outputfile,
+              "# Folding %d, all lengths/volumes are comoving. k-bin centres "
+              "are not corrected for the weights of the modes.\n",
               i);
       fprintf(outputfile, "# Shotnoise [%s]\n", powunits);
       fprintf(outputfile, "%g\n", shot);
@@ -1218,8 +1224,8 @@ void power_spectrum(const enum power_type type1, const enum power_type type2,
 
       /* Shall we correct the position of the k-space bin
        * to account for the different weights of the modes entering the bin? */
-      if(pow_data->shift_centre_small_k_bins && j < 6) {
-	k *= correction_shift_k_values[j];
+      if (pow_data->shift_centre_small_k_bins && j < 6) {
+        k *= correction_shift_k_values[j];
       }
 
       fprintf(outputfile, "%15.8f %15.8e %15.8e %15.8e\n", s->e->cosmology->z,
@@ -1287,9 +1293,9 @@ void power_init(struct power_spectrum_data* p, struct swift_params* params,
         "WARNING: fold factor is recommended not to exceed 6 for a "
         "mass assignment order of 3 (TSC) or below.");
 
-  p->shift_centre_small_k_bins =
-    parser_get_opt_param_int(params, "PowerSpectrum:shift_centre_small_k_bins", 1);
-  
+  p->shift_centre_small_k_bins = parser_get_opt_param_int(
+      params, "PowerSpectrum:shift_centre_small_k_bins", 1);
+
   /* Make sensible choices for the k-cuts */
   const int kcutn = (p->windoworder >= 3) ? 90 : 70;
   const int kcutleft = (int)(p->Ngrid / 256.0 * kcutn);
