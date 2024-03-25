@@ -64,6 +64,9 @@
 /* Are we timing the i/o? */
 //#define IO_SPEED_MEASUREMENT
 
+/* Max number of entries that can be written for a given particle type */
+static const int io_max_size_output_list = 100;
+
 /**
  * @brief Writes a data array in given HDF5 group.
  *
@@ -642,8 +645,8 @@ void write_virtual_file(struct engine* e, const char* fileName_base,
     io_write_attribute_ll(h_grp, "TotalNumberOfParticles", N_total[ptype]);
 
     int num_fields = 0;
-    struct io_props list[100];
-    bzero(list, 100 * sizeof(struct io_props));
+    struct io_props list[io_max_size_output_list];
+    bzero(list, io_max_size_output_list * sizeof(struct io_props));
 
     /* Write particle fields from the particle structure */
     switch (ptype) {
@@ -682,6 +685,15 @@ void write_virtual_file(struct engine* e, const char* fileName_base,
 
       default:
         error("Particle Type %d not yet supported. Aborting", ptype);
+    }
+
+    /* Verify we are not going to crash when writing below */
+    if (num_fields >= io_max_size_output_list)
+      error("Too many fields to write for particle type %d", ptype);
+    for (int i = 0; i < num_fields; ++i) {
+      if (!list[i].is_used) error("List of field contains an empty entry!");
+      if (!list[i].dimension)
+        error("Dimension of field '%s' is <= 1!", list[i].name);
     }
 
     /* Did the user specify a non-standard default for the entire particle
@@ -1147,8 +1159,8 @@ void write_output_distributed(struct engine* e,
     io_write_attribute_ll(h_grp, "TotalNumberOfParticles", N_total[ptype]);
 
     int num_fields = 0;
-    struct io_props list[100];
-    bzero(list, 100 * sizeof(struct io_props));
+    struct io_props list[io_max_size_output_list];
+    bzero(list, io_max_size_output_list * sizeof(struct io_props));
     size_t Nparticles = 0;
 
     struct part* parts_written = NULL;
@@ -1414,6 +1426,15 @@ void write_output_distributed(struct engine* e,
 
       default:
         error("Particle Type %d not yet supported. Aborting", ptype);
+    }
+
+    /* Verify we are not going to crash when writing below */
+    if (num_fields >= io_max_size_output_list)
+      error("Too many fields to write for particle type %d", ptype);
+    for (int i = 0; i < num_fields; ++i) {
+      if (!list[i].is_used) error("List of field contains an empty entry!");
+      if (!list[i].dimension)
+        error("Dimension of field '%s' is <= 1!", list[i].name);
     }
 
     /* Did the user specify a non-standard default for the entire particle
