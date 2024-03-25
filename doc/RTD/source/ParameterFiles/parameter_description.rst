@@ -1329,9 +1329,10 @@ is thus shifted by a small amount. The way to calculate these shifts is to consi
 :math:`(kx,ky,kz)` cells and check which cells fall inside a spherical shell with boundaries
 :math:`(i+0.5,i+1.5)`, then calculate the average :math:`k=\sqrt{kx^2+ky^2+kz^2}`. So for
 :math:`i=0` there cells :math:`k=1` and 12 cells :math:`k=\sqrt(2)`, so the weighted k becomes
-:math:`(6 * 1 + 12 * \sqrt(2)) / 18 = 1.2761424`. Note that only the first 6 bins require a
-correction larger than 1 percent. This correction is activated when ``shift_centre_small_k_bins`` is
-switched on (that's the default behaviour). 
+:math:`(6 * 1 + 12 * \sqrt(2)) / 18 = 1.2761424`. Note that only the first 7 (22) bins require a
+correction larger than 1 (0.1) percent. We apply a correction to the first 128 terms. This
+correction is activated when ``shift_centre_small_k_bins`` is switched on (that's the default
+behaviour).
 
 An example of a valid power-spectrum section of the parameter file looks like:
 
