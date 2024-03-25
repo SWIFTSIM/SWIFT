@@ -105,6 +105,7 @@
 #include "tools.h"
 #include "units.h"
 #include "velociraptor_interface.h"
+#include "zoom_split.h"
 
 const char *engine_policy_names[] = {"none",
                                      "rand",
@@ -3014,8 +3015,7 @@ void engine_pin(void) {
   threadpool_set_affinity_mask(entry_affinity);
 
   int pin;
-  for (pin = 0; pin < CPU_SETSIZE && !CPU_ISSET(pin, entry_affinity); ++pin)
-    ;
+  for (pin = 0; pin < CPU_SETSIZE && !CPU_ISSET(pin, entry_affinity); ++pin);
 
   cpu_set_t affinity;
   CPU_ZERO(&affinity);
