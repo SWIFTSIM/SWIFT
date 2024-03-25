@@ -593,9 +593,6 @@ void zoom_construct_tl_cells(struct space *s, const integertime_t ti_current,
         c->mpi.tag = -1;
         c->mpi.recv = NULL;
         c->mpi.send = NULL;
-#if (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
-        c->nr_vertex_edges = 0;
-#endif
 #endif
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
         cell_assign_top_level_cell_index(c, s);
