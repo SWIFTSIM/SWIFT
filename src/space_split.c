@@ -327,8 +327,6 @@ static void space_populate_leaf_props(struct cell *c, struct space *s,
   const int scount = c->stars.count;
   const int bcount = c->black_holes.count;
   const int sink_count = c->sinks.count;
-  const int with_self_gravity = s->with_self_gravity;
-  const int depth = c->depth;
   struct part *parts = c->hydro.parts;
   struct gpart *gparts = c->grav.parts;
   struct spart *sparts = c->stars.parts;
@@ -603,12 +601,7 @@ void space_split_recursive(struct space *s, struct cell *c,
   const int sink_count = c->sinks.count;
   const int with_self_gravity = s->with_self_gravity;
   const int depth = c->depth;
-  struct part *parts = c->hydro.parts;
-  struct gpart *gparts = c->grav.parts;
-  struct spart *sparts = c->stars.parts;
-  struct bpart *bparts = c->black_holes.parts;
-  struct xpart *xparts = c->hydro.xparts;
-  struct sink *sinks = c->sinks.parts;
+  int maxdepth = 0;
   struct engine *e = s->e;
   const integertime_t ti_current = e->ti_current;
   const int with_rt = e->policy & engine_policy_rt;
@@ -631,8 +624,8 @@ void space_split_recursive(struct space *s, struct cell *c,
         "most likely due to having too many particles at the exact same "
         "position, making the construction of a tree impossible. (gcount=%d,"
         " c->type=%d, c->subtype=%d, gparts[0].x=%.3f, gparts[1].x=%.3f)",
-        space_cell_maxdepth, gcount, c->type, c->subtype, gparts[0].x[0],
-        gparts[1].x[0]);
+        space_cell_maxdepth, gcount, c->type, c->subtype, c->grav.parts[0].x[0],
+        c->grav.parts[1].x[0]);
   }
 
   /* Split or let it be? */
@@ -655,7 +648,6 @@ void space_split_recursive(struct space *s, struct cell *c,
                      *progeny_sink_buff = sink_buff;
 
     /* Define properties we'll compute from the progeny. */
-    int maxdepth = 0;
     float h_max = 0.0f;
     float h_max_active = 0.0f;
     float stars_h_max = 0.f;
@@ -664,18 +656,14 @@ void space_split_recursive(struct space *s, struct cell *c,
     float black_holes_h_max_active = 0.f;
     float sinks_h_max = 0.f;
     float sinks_h_max_active = 0.f;
-    integertime_t ti_hydro_end_min = max_nr_timesteps, ti_hydro_end_max = 0,
-                  ti_hydro_beg_max = 0;
+    integertime_t ti_hydro_end_min = max_nr_timesteps, ti_hydro_beg_max = 0;
     integertime_t ti_rt_end_min = max_nr_timesteps, ti_rt_beg_max = 0;
     integertime_t ti_rt_min_step_size = max_nr_timesteps;
-    integertime_t ti_gravity_end_min = max_nr_timesteps, ti_gravity_end_max = 0,
-                  ti_gravity_beg_max = 0;
-    integertime_t ti_stars_end_min = max_nr_timesteps, ti_stars_end_max = 0,
-                  ti_stars_beg_max = 0;
-    integertime_t ti_sinks_end_min = max_nr_timesteps, ti_sinks_end_max = 0,
-                  ti_sinks_beg_max = 0;
+    integertime_t ti_gravity_end_min = max_nr_timesteps, ti_gravity_beg_max = 0;
+    integertime_t ti_stars_end_min = max_nr_timesteps, ti_stars_beg_max = 0;
+    integertime_t ti_sinks_end_min = max_nr_timesteps, ti_sinks_beg_max = 0;
     integertime_t ti_black_holes_end_min = max_nr_timesteps,
-                  ti_black_holes_end_max = 0, ti_black_holes_beg_max = 0;
+                  ti_black_holes_beg_max = 0;
 
     /* Loop over progeny, cleaning up progeny or splitting and recursing. */
     for (int k = 0; k < 8; k++) {
@@ -780,7 +768,7 @@ void space_split_recursive(struct space *s, struct cell *c,
 
     /* Get the time-steps and smoothing lengths for particles in this
      * leaf and attach them to the leaf cell. */
-    space_populate_leaf_props(c, s, ti_current, e, with_rt);
+    space_populate_leaf_props(c, s, ti_current, with_rt);
 
     /* Construct the multipole and the centre of mass for this leaf. */
     if (s->with_self_gravity) {
