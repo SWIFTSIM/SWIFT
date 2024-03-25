@@ -275,6 +275,13 @@ void runner_do_star_formation_sink(struct runner *r, struct cell *c,
           c->stars.h_max = max(c->stars.h_max, sp->h);
           c->stars.h_max_active = max(c->stars.h_max_active, sp->h);
 
+#ifdef SWIFT_DEBUG_CHECKS
+          message(
+              "%010lld spawn a star (%010lld) with mass %8.2f Msol type=%d  "
+              "loop=%03d. Sink remaining mass: %e.",
+              s->id, sp->id, sp->mass/phys_const->const_solar_mass, s->target_type, loop, s->mass);
+#endif
+
           /* count the number of stars spawned by this particle */
           s->n_stars++;
 
@@ -289,13 +296,6 @@ void runner_do_star_formation_sink(struct runner *r, struct cell *c,
 
           /* increase loop counter */
           loop++;
-
-/* #ifdef SWIFT_DEBUG_CHECKS */
-          message(
-              "%010lld spawn a star (%010lld) with mass %8.2f Msol type=%d  "
-              "loop=%03d. Sink remaining mass: %e.",
-              s->id, sp->id, sp->mass/phys_const->const_solar_mass, s->target_type, loop, s->mass);
-/* #endif */
         }
       }
     } /* Loop over the particles */
