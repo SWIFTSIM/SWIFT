@@ -38,6 +38,7 @@
 /* Local includes. */
 #include "cooling.h"
 #include "engine.h"
+#include "mhd.h"
 #include "minmax.h"
 #include "neutrino.h"
 #include "random.h"
@@ -67,6 +68,8 @@ INLINE static enum power_type power_spectrum_get_type(const char* name) {
     return pow_type_starBH;
   else if (strcasecmp(name, "pressure") == 0)
     return pow_type_pressure;
+  else if (strcasecmp(name, "magnetic_energy") == 0)
+    return pow_type_magnetic_energy;
   else if (strcasecmp(name, "neutrino") == 0)
     return pow_type_neutrino;
   else if (strcasecmp(name, "neutrino0") == 0)
@@ -92,7 +95,8 @@ INLINE static const char* get_powtype_name(const enum power_type type) {
                                                       "electron pressure",
                                                       "neutrino",
                                                       "neutrino (even)",
-                                                      "neutrino (odd)"};
+                                                      "neutrino (odd)",
+                                                      "magnetic energy"};
 
   return powtype_names[type];
 }
@@ -100,8 +104,8 @@ INLINE static const char* get_powtype_name(const enum power_type type) {
 INLINE static const char* get_powtype_filename(const enum power_type type) {
 
   static const char* powtype_filenames[pow_type_count] = {
-      "matter",   "cdm",      "gas",       "starBH",
-      "pressure", "neutrino", "neutrino0", "neutrino1"};
+      "matter",   "cdm",       "gas",       "starBH",         "pressure",
+      "neutrino", "neutrino0", "neutrino1", "magnetic_energy"};
 
   return powtype_filenames[type];
 }
@@ -248,6 +252,18 @@ void shotnoiseterms(const struct cell* c, double* tot12,
       const struct xpart* xp = &xparts[-gparts[i].id_or_neg_offset];
       quantity1 = cooling_get_electron_pressure(phys_const, hydro_props, us,
                                                 cosmo, cool_func, p, xp);
+
+      /* Special case for the magnetic energy */
+    } else if (type1 == pow_type_magnetic_energy) {
+
+      /* Skip non-gas particles */
+      if (gparts[i].type != swift_type_gas) continue;
+
+      const struct part* p = &parts[-gparts[i].id_or_neg_offset];
+      const struct xpart* xp = &xparts[-gparts[i].id_or_neg_offset];
+      quantity1 =
+          mhd_get_magnetic_energy(p, xp, phys_const->const_vacuum_permeability);
+
     } else {
 
       /* We are collecting a mass of some kind.
@@ -285,6 +301,18 @@ void shotnoiseterms(const struct cell* c, double* tot12,
         const struct xpart* xp = &xparts[-gparts[i].id_or_neg_offset];
         quantity2 = cooling_get_electron_pressure(phys_const, hydro_props, us,
                                                   cosmo, cool_func, p, xp);
+
+        /* Special case for the magnetic energy */
+      } else if (type2 == pow_type_magnetic_energy) {
+
+        /* Skip non-gas particles */
+        if (gparts[i].type != swift_type_gas) continue;
+
+        const struct part* p = &parts[-gparts[i].id_or_neg_offset];
+        const struct xpart* xp = &xparts[-gparts[i].id_or_neg_offset];
+        quantity2 = mhd_get_magnetic_energy(
+            p, xp, phys_const->const_vacuum_permeability);
+
       } else {
 
         /* We are collecting a mass of some kind.
@@ -595,6 +623,18 @@ void cell_to_powgrid(const struct cell* c, double* rho, const int N,
       const struct xpart* xp = &xparts[-gparts[i].id_or_neg_offset];
       quantity = cooling_get_electron_pressure(phys_const, hydro_props, us,
                                                cosmo, cool_func, p, xp);
+
+      /* Special case for the magnetic energy */
+    } else if (type == pow_type_magnetic_energy) {
+
+      /* Skip non-gas particles */
+      if (gparts[i].type != swift_type_gas) continue;
+
+      const struct part* p = &parts[-gparts[i].id_or_neg_offset];
+      const struct xpart* xp = &xparts[-gparts[i].id_or_neg_offset];
+      quantity =
+          mhd_get_magnetic_energy(p, xp, phys_const->const_vacuum_permeability);
+
     } else {
 
       /* We are collecting a mass of some kind.
@@ -789,6 +829,8 @@ INLINE static void power_init_output_file(FILE* fp, const enum power_type type1,
                                           const struct unit_system* restrict us,
                                           const struct phys_const* phys_const) {
 
+  // TODO MATTHIEU: Work out magnetic energy units
+
   /* Write a header to the output file */
   if (type1 != type2)
     fprintf(fp, "# %s-%s cross-spectrum\n", get_powtype_name(type1),
@@ -918,15 +960,21 @@ void power_spectrum(const enum power_type type1, const enum power_type type2,
   /* Inverse of the cosmic mean mass per grid cell in code units */
   double invcellmean, invcellmean2;
 
-  if (type1 != pow_type_pressure)
-    invcellmean = Ngrid3 / (meanrho * volume);
-  else
-    invcellmean = Ngrid3 / volume * conv_EV;
+  // TODO MATTHIEU: Work out magnetic energy normalisation
 
-  if (type2 != pow_type_pressure)
-    invcellmean2 = Ngrid3 / (meanrho * volume);
+  if (type1 == pow_type_pressure)
+    invcellmean = Ngrid3 / volume * conv_EV;
+  else if (type1 == pow_type_magnetic_energy)
+    invcellmean = 1;
   else
+    invcellmean = Ngrid3 / (meanrho * volume);
+
+  if (type2 == pow_type_pressure)
     invcellmean2 = Ngrid3 / volume * conv_EV;
+  else if (type2 == pow_type_magnetic_energy)
+    invcellmean2 = 1;
+  else
+    invcellmean2 = Ngrid3 / (meanrho * volume);
 
   /* When splitting the neutrino ensemble in half, double the inverse mean */
   if (type1 == pow_type_neutrino_0 || type1 == pow_type_neutrino_1)
@@ -963,6 +1011,8 @@ void power_spectrum(const enum power_type type1, const enum power_type type2,
   if (type1 == pow_type_matter || type2 == pow_type_matter || type1 == type2 ||
       (type1 == pow_type_gas && type2 == pow_type_pressure) ||
       (type2 == pow_type_gas && type1 == pow_type_pressure)) {
+
+    // TODO Matthieu: work it out for B energy
 
     /* Note that for cross-power, there is only shot noise for particles
        that occur in both fields */
@@ -1144,6 +1194,8 @@ void power_spectrum(const enum power_type type1, const enum power_type type2,
       sprintf(outputfileName, "%s/%s_%04d_%d.txt", "power_spectra/foldings",
               outputfileBase, snapnum, i);
       FILE* outputfile = fopen(outputfileName, "w");
+
+      // TODO MATTHIEU: Work units for magnetic energy
 
       /* Determine units of power */
       char powunits[32] = "";

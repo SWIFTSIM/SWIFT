@@ -79,7 +79,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_inject(
  */
 __attribute__((always_inline)) INLINE static void runner_iact_rt_transport(
     float r2, const float *dx, float hi, float hj, struct part *restrict pi,
-    struct part *restrict pj, float a, float H) {}
+    struct part *restrict pj, const float mu_0, float a, float H) {}
 
 /**
  * @brief Flux calculation between particle i and particle j: non-symmetric
@@ -98,7 +98,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_transport(
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_rt_transport(float r2, const float *dx, float hi, float hj,
                                 struct part *restrict pi,
-                                struct part *restrict pj, float a, float H) {}
+                                struct part *restrict pj, const float mu_0,
+                                float a, float H) {}
 
 /**
  * @brief Calculate the gradient interaction between particle i and particle j
@@ -115,7 +116,7 @@ runner_iact_nonsym_rt_transport(float r2, const float *dx, float hi, float hj,
  */
 __attribute__((always_inline)) INLINE static void runner_iact_rt_gradient(
     float r2, const float *dx, float hi, float hj, struct part *restrict pi,
-    struct part *restrict pj, float a, float H) {}
+    struct part *restrict pj, const float mu_0, float a, float H) {}
 
 /**
  * @brief Calculate the gradient interaction between particle i and particle j:
@@ -134,6 +135,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_gradient(
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_rt_gradient(float r2, const float *dx, float hi, float hj,
                                struct part *restrict pi,
-                               struct part *restrict pj, float a, float H) {}
+                               struct part *restrict pj, const float mu_0,
+                               float a, float H) {}
 
 #endif /* SWIFT_RT_IACT_NONE_H */

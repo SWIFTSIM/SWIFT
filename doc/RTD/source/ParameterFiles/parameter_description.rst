@@ -1310,6 +1310,8 @@ listed in the following table:
 +---------------------+---------------------------------------------------+
 | ``pressure``        | Electron pressure                                 |
 +---------------------+---------------------------------------------------+
+| ``magnetic_energy`` | Magnetic field energy                             |
++---------------------+---------------------------------------------------+
 
 A dark matter mass density auto-spectrum is specified as ``cdm-cdm`` and a gas
 density - electron pressure cross-spectrum as ``gas-pressure``.
