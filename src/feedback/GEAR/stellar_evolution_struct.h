@@ -39,13 +39,17 @@ struct initial_mass_function {
   /*! Mass limits between IMF parts (n_parts + 1 elements). */
   float *mass_limits;
 
+  /*! Mass fraction computed at the interface between two IMF parts (n_parts + 1
+   * elements). */
+  float *mass_fraction;
+
   /*! Exponent of each IMF parts (n_parts elements). */
   float *exp;
 
   /*! Coefficient of each IMF parts (n_parts elements). */
   float *coef;
 
-  /*! Number of parts in the function. */
+  /*! Number of parts (segments) in the function. */
   int n_parts;
 
   /*! Minimal mass contained in mass_limits, copied for more clarity. */
@@ -53,6 +57,15 @@ struct initial_mass_function {
 
   /*! Maximal mass contained in mass_limits, copied for more clarity. */
   float mass_max;
+
+  /*! Total number of stars (per mass unit) in the IMF. */
+  float N_tot;
+
+  /*! Probability to generate a star out of the continuous part of the IMF. */
+  float sink_Pc;
+
+  /*! Stellar mass of the continous part of the IMF (in solar mass). */
+  float sink_stellar_particle_mass;
 };
 
 /**

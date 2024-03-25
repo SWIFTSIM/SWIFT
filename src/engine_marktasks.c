@@ -52,6 +52,7 @@
 #include "error.h"
 #include "feedback.h"
 #include "proxy.h"
+#include "task.h"
 #include "timers.h"
 
 /**
@@ -209,7 +210,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         if (ci_active_stars) scheduler_activate(s, t);
       }
 
-      /* Activate the sink formation */
+      /* Activate the sink swallow task */
       else if (t_type == task_type_self &&
                t_subtype == task_subtype_sink_swallow) {
         if (ci_active_sinks) {
@@ -221,7 +222,6 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         }
       }
 
-      /* Store current values of dx_max and h_max. */
       else if (t_type == task_type_sub_self &&
                t_subtype == task_subtype_sink_swallow) {
         if (ci_active_sinks) {
@@ -230,7 +230,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         }
       }
 
-      /* Activate the sink merger */
+      /* Activate the sink do sink swallow */
       else if (t_type == task_type_self &&
                t_subtype == task_subtype_sink_do_sink_swallow) {
         if (ci_active_sinks) {
@@ -245,7 +245,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         }
       }
 
-      /* Activate the sink accretion */
+      /* Activate the sink do gas swallow */
       else if (t_type == task_type_self &&
                t_subtype == task_subtype_sink_do_gas_swallow) {
         if (ci_active_sinks) {
@@ -685,7 +685,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 #endif
       }
 
-      /* Sink formation */
+      /* Sink tasks */
+
       else if ((t_subtype == task_subtype_sink_swallow ||
                 t_subtype == task_subtype_sink_do_sink_swallow ||
                 t_subtype == task_subtype_sink_do_gas_swallow) &&
@@ -694,84 +695,48 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
         scheduler_activate(s, t);
 
-        /* Set the correct sorting flags */
+        /* New implementation based on bh */
+        /* Set the correct drifting flags and sink_formation */
         if (t_type == task_type_pair &&
             t_subtype == task_subtype_sink_swallow) {
-
-          /* Activate the sink drift for the sink merger */
-          if (ci_nodeID == nodeID) {
-            cell_activate_drift_sink(ci, s);
+          if (ci_nodeID == nodeID) cell_activate_drift_spart(ci, s);
+          if (ci_nodeID == nodeID) cell_activate_drift_part(ci, s);
+          if (ci_nodeID == nodeID)
             cell_activate_sink_formation_tasks(ci->top, s);
-            /* Activate all sink_in tasks for each cell involved
-             * in pair type tasks */
-            scheduler_activate(s, ci->hydro.super->sinks.sink_in);
-          }
 
-          if (cj_nodeID == nodeID) {
-            cell_activate_drift_sink(cj, s);
-            if (ci->top != cj->top) {
-              cell_activate_sink_formation_tasks(cj->top, s);
-            }
-            /* Activate all sink_in tasks for each cell involved
-             * in pair type tasks */
-            scheduler_activate(s, cj->hydro.super->sinks.sink_in);
-          }
+          if (cj_nodeID == nodeID) cell_activate_drift_part(cj, s);
+          if (cj_nodeID == nodeID) cell_activate_drift_spart(cj, s);
+          if (cj_nodeID == nodeID)
+            cell_activate_sink_formation_tasks(cj->top, s);
 
-          /* Do ci */
-          if (ci_active_sinks) {
-
-            /* hydro for cj */
-            atomic_or(&cj->hydro.requires_sorts, 1 << t->flags);
-            cj->hydro.dx_max_sort_old = cj->hydro.dx_max_sort;
-
-            /* Activate the drift tasks. */
-            if (cj_nodeID == nodeID) cell_activate_drift_part(cj, s);
-            if (cj_nodeID == nodeID && with_timestep_sync)
-              cell_activate_sync_part(cj, s);
-
-            /* Check the sorts and activate them if needed. */
-            cell_activate_hydro_sorts(cj, t->flags, s);
-          }
-
-          /* Do cj */
-          if (cj_active_sinks) {
-
-            /* hydro for ci */
-            atomic_or(&ci->hydro.requires_sorts, 1 << t->flags);
-            ci->hydro.dx_max_sort_old = ci->hydro.dx_max_sort;
-
-            /* Activate the drift tasks. */
-            /* Activate the sink drift for the merger */
-            if (ci_nodeID == nodeID) cell_activate_drift_part(ci, s);
-            if (ci_nodeID == nodeID && with_timestep_sync)
-              cell_activate_sync_part(ci, s);
-
-            /* Check the sorts and activate them if needed. */
-            cell_activate_hydro_sorts(ci, t->flags, s);
-          }
-        }
-
-        else if (t_type == task_type_sub_pair &&
-                 t_subtype == task_subtype_sink_swallow) {
-          /* Activate all sink_in tasks for each cell involved
-           * in sub_pair type tasks */
+          /* Activate sink_in for each cell that is part of
+           * a pair task as to not miss any dependencies */
           if (ci_nodeID == nodeID)
             scheduler_activate(s, ci->hydro.super->sinks.sink_in);
           if (cj_nodeID == nodeID)
             scheduler_activate(s, cj->hydro.super->sinks.sink_in);
-
-          /* Store current values of dx_max and h_max. */
-          cell_activate_subcell_sinks_tasks(ci, cj, s, with_timestep_sync);
         }
 
-        else if ((t_type == task_type_pair || t_type == task_type_sub_pair) &&
-                 t_subtype == task_subtype_sink_do_gas_swallow) {
-          /* Activate sinks_out for each cell that is part of
+        if ((t_type == task_type_pair || t_type == task_type_sub_pair) &&
+            t_subtype == task_subtype_sink_do_sink_swallow) {
+          /* Add sink_out dependencies for each cell that is part of
            * a pair/sub_pair task as to not miss any dependencies */
           if (ci_nodeID == nodeID)
             scheduler_activate(s, ci->hydro.super->sinks.sink_out);
           if (cj_nodeID == nodeID)
             scheduler_activate(s, cj->hydro.super->sinks.sink_out);
+        }
+
+        /* Store current values of dx_max and h_max. */
+        else if (t_type == task_type_sub_pair &&
+                 t_subtype == task_subtype_sink_swallow) {
+          cell_activate_subcell_sinks_tasks(ci, cj, s, with_timestep_sync);
+          /* Activate sinks_in for each cell that is part of
+           * a sub_pair task as to not miss any dependencies */
+          if (ci_nodeID == nodeID)
+            scheduler_activate(s, ci->hydro.super->sinks.sink_in);
+          if (cj_nodeID == nodeID)
+            scheduler_activate(s, cj->hydro.super->sinks.sink_in);
         }
       }
 
@@ -1546,7 +1511,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
     /* Sink implicit tasks? */
     else if (t_type == task_type_sink_in || t_type == task_type_sink_out ||
-             t_type == task_type_sink_ghost1) {
+             t_type == task_type_sink_ghost1 ||
+             t_type == task_type_sink_ghost2) {
       if (cell_is_active_sinks(t->ci, e) || cell_is_active_hydro(t->ci, e))
         scheduler_activate(s, t);
     }
@@ -1649,8 +1615,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
     /* Subgrid tasks: sink formation */
     else if (t_type == task_type_sink_formation) {
-      if (with_star_formation_sink && t->ci->hydro.count > 0 &&
-          cell_is_active_hydro(t->ci, e)) {
+      if (with_star_formation_sink && cell_is_active_hydro(t->ci, e)) {
         cell_activate_sink_formation_tasks(t->ci, s);
         cell_activate_super_sink_drifts(t->ci, s);
       }

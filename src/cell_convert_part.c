@@ -26,6 +26,7 @@
 #include "cell.h"
 
 /* Local headers. */
+#include "active.h"
 #include "engine.h"
 #include "hydro.h"
 #include "sink_properties.h"
@@ -220,6 +221,7 @@ struct spart *cell_add_spart(struct engine *e, struct cell *const c) {
 
     /* Update the spart->gpart links (shift by 1) */
     for (size_t i = 0; i < n_copy; ++i) {
+
 #ifdef SWIFT_DEBUG_CHECKS
       if (c->stars.parts[i + 1].gpart == NULL) {
         error("Incorrectly linked spart!");
@@ -288,7 +290,7 @@ struct spart *cell_add_spart(struct engine *e, struct cell *const c) {
 struct sink *cell_add_sink(struct engine *e, struct cell *const c) {
   /* Perform some basic consitency checks */
   if (c->nodeID != engine_rank) error("Adding sink on a foreign node");
-  if (c->grav.ti_old_part != e->ti_current) error("Undrifted cell!");
+  if (c->sinks.ti_old_part != e->ti_current) error("Undrifted cell!");
   if (c->split) error("Addition of sink performed above the leaf level");
 
   /* Progeny number at each level */
@@ -353,6 +355,10 @@ struct sink *cell_add_sink(struct engine *e, struct cell *const c) {
 
     /* Update the sink->gpart links (shift by 1) */
     for (size_t i = 0; i < n_copy; ++i) {
+
+      /* Skip inhibited (swallowed) sink particles */
+      if (sink_is_inhibited(&c->sinks.parts[i + 1], e)) continue;
+
 #ifdef SWIFT_DEBUG_CHECKS
       if (c->sinks.parts[i + 1].gpart == NULL) {
         error("Incorrectly linked sink!");
@@ -489,6 +495,10 @@ struct gpart *cell_add_gpart(struct engine *e, struct cell *c) {
     /* Update the gpart->spart links (shift by 1) */
     struct gpart *gparts = c->grav.parts;
     for (size_t i = 0; i < n_copy; ++i) {
+
+      /* Skip inhibited particles */
+      if (gpart_is_inhibited(&c->grav.parts[i + 1], e)) continue;
+
       if (gparts[i + 1].type == swift_type_gas) {
         s->parts[-gparts[i + 1].id_or_neg_offset].gpart++;
       } else if (gparts[i + 1].type == swift_type_stars) {
@@ -1051,10 +1061,9 @@ struct sink *cell_convert_part_to_sink(struct engine *e, struct cell *c,
 #ifdef SWIFT_DEBUG_CHECKS
   sp->ti_kick = gp->ti_kick;
   gp->ti_drift = sp->ti_drift;
-#endif
 
-  /* Set a smoothing length */
-  sp->r_cut = e->sink_properties->cut_off_radius;
+  message("A new sink (%lld) is born !", sp->id);
+#endif
 
   /* Here comes the Sink! */
   return sp;
