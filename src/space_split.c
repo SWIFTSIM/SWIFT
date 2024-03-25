@@ -53,7 +53,6 @@ static void space_allocate_buffers(struct cell *c,
   struct gpart *gparts = c->grav.parts;
   struct spart *sparts = c->stars.parts;
   struct bpart *bparts = c->black_holes.parts;
-  struct xpart *xparts = c->hydro.xparts;
   struct sink *sinks = c->sinks.parts;
 
   /* Allocate the buffers. */
@@ -316,9 +315,11 @@ void space_populate_multipole(struct cell *c) {
 #endif
 }
 
-static void space_populate_leaf_props(struct cell *c,
+static void space_populate_leaf_props(struct cell *c, struct space *s,
                                       const integertime_t ti_current,
-                                      const int e, const int with_rt) {
+                                      const int with_rt) {
+
+  struct engine *e = s->e;
 
   /* Unpack the particle counts and pointers. */
   const int count = c->hydro.count;
@@ -799,7 +800,7 @@ void space_split_recursive(struct space *s, struct cell *c,
 
     /* Get the time-steps and smoothing lengths for particles in this
      * leaf and attach them to the leaf cell. */
-    space_populate_leaf_props(c, ti_current, e, with_rt);
+    space_populate_leaf_props(c, s, ti_current, e, with_rt);
 
     /* Construct the multipole and the centre of mass for this leaf. */
     if (s->with_self_gravity) {
