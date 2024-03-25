@@ -387,12 +387,8 @@ def move_results(phys_parameters, res_dirname):
     # show command
     print('Script sends command: '+command_sandwich)
     # execute
-    try:
-        subprocess.run(command_sandwich, shell=True,check=True)
-        print("Moved files to results folder")
-    except Exception as e:
-        print('Error: '+str(e))
-        raise Exception("Execution was stopped due to an error")
+    subprocess.run(command_sandwich, shell=True,check=True)
+    print("Moved files to results folder")
  
 
 # main program that takes the_parameters from table, creates ICs, configures code and executes each row and stores data
@@ -400,7 +396,7 @@ def run_all():
     the_parameters = read_parameter_csv("test_run_parameters.csv")
     create_results_directory(results_directory_name)
 
-    make_IC([],'')
+    #make_IC([],'')
 
     # prepare_glass()
     for i in range(len(the_parameters)):
@@ -411,8 +407,8 @@ def run_all():
             forcing = 'abc-flow'
             configure_simulation(scheme, forcing, "quintic-spline", "isothermal-gas")
 
-            #IAfile = IA_dict[parameters_for_the_run["IAfile"].values[0]]
-            #make_IC(parameters_for_the_run, IAfile)
+            IAfile = IA_dict[parameters_for_the_run["IAfile"].values[0]]
+            make_IC(parameters_for_the_run, IAfile)
 
             run_simulation(parameters_for_the_run, threads)
 
