@@ -394,8 +394,7 @@ void stellar_evolution_evolve_spart(
     struct spart* restrict sp, const struct stellar_model* sm,
     const struct cosmology* cosmo, const struct unit_system* us,
     const struct phys_const* phys_const, const integertime_t ti_begin,
-    const double star_age_beg_step, const double dt,
-    const int is_first_star) {
+    const double star_age_beg_step, const double dt) {
 
   /* Convert the inputs */
   const double conversion_to_myr = phys_const->const_year * 1e6;
@@ -454,7 +453,7 @@ void stellar_evolution_evolve_spart(
   /* Compute the initial mass. The initial mass is different if the star
      particle is of type 'star_population' or
      'star_population_continuous_IMF'. The function call treats both cases. */
-  const float m_init =  stellar_evolution_compute_initial_mass(sp, sm, phys_const, is_first_star);
+  const float m_init =  stellar_evolution_compute_initial_mass(sp, sm, phys_const);
 
   /* Then, for 'star_population_continuous_IMF', everything remain the same as
      with the "old" 'star_population'! */
@@ -727,8 +726,7 @@ void stellar_evolution_clean(struct stellar_model* sm) {
  */
 float stellar_evolution_compute_initial_mass(const struct spart* restrict sp,
 					     const struct stellar_model* sm,
-					     const struct phys_const* phys_const,
-					     const int is_first_star) {
+					     const struct phys_const* phys_const) {
 
   float m_init = 0.0 ;
   const struct initial_mass_function* imf = &(sm->imf);
