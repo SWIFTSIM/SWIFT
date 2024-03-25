@@ -711,7 +711,7 @@ void space_split_recursive(struct space *s, struct cell *c,
     integertime_t ti_black_holes_end_min = max_nr_timesteps,
                   ti_black_holes_beg_max = 0;
 
-    /* Loop over progeny, cleaning up progeny or splitting and recursing. */
+    /* Loop over progeny, cleaning up or splitting and recursing. */
     for (int k = 0; k < 8; k++) {
 
       /* Get the progenitor */
