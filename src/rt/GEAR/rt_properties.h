@@ -104,6 +104,8 @@ struct rt_props {
   double average_photon_energy[RT_NGROUPS];
   /* Integral over photon numbers of user provided spectrum. */
   double photon_number_integral[RT_NGROUPS];
+  /* Mean redshifted energy in frequency bin for user provided spectrum. In erg. */
+  double average_redshift_energy[RT_NGROUPS];
 
   /* Grackle Stuff */
   /* ------------- */
@@ -460,7 +462,8 @@ __attribute__((always_inline)) INLINE static void rt_props_init(
   rtp->energy_weighted_cross_sections = NULL;
   rtp->number_weighted_cross_sections = NULL;
   rt_cross_sections_init(rtp, phys_const, us);
-
+  // TODO: Check if this works correctly
+  rt_redshift_init(rtp, phys_const, us);
   /* Finishers */
   /* --------- */
 }
@@ -507,7 +510,9 @@ __attribute__((always_inline)) INLINE static void rt_struct_restore(
   props->energy_weighted_cross_sections = NULL;
   props->number_weighted_cross_sections = NULL;
   rt_cross_sections_init(props, phys_const, us);
-
+  
+  // TODO: Check if this works correctly
+  rt_redshift_init(props, phys_const, us);
   /* The RT parameters, in particular the reduced speed of light, are
    * not defined at compile time. So we need to write them down. */
   restart_read_blocks(&rt_params, sizeof(struct rt_parameters), 1, stream, NULL,
