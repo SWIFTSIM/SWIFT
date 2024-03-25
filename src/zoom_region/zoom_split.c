@@ -49,10 +49,8 @@
 void zoom_void_split_recursive(struct space *s, struct cell *c,
                                const short int tpid) {
 
-  const int with_self_gravity = s->with_self_gravity;
   const int depth = c->depth;
   int maxdepth = 0;
-  struct engine *e = s->e;
 
   /* Set the top level cell tpid. Doing it here ensures top level cells
    * have the same tpid as their progeny. */
@@ -80,8 +78,8 @@ void zoom_void_split_recursive(struct space *s, struct cell *c,
         "Exceeded maximum depth (%d) when splitting the void cells, aborting. "
         "This is most likely due to having the zoom region too deep within the "
         "background cells. Try using buffer cells or increasing "
-        "region_buffer_cell_ratio (depth=%d, space_cell_maxdepth=%d)",
-        depth, space_cell_maxdepth);
+        "region_buffer_cell_ratio (depth=%d)",
+        depth);
   }
 
   /* Construct the progeny ready to populate with particles and multipoles (if
@@ -172,7 +170,7 @@ void zoom_void_space_split(struct space *s, int verbose) {
   /* Loop over the void cells */
   for (int ind = 0; ind < nr_void_cells; ind++) {
     struct cell *c = &cells_top[void_cells_top[ind]];
-    zoom_void_split_recursive(s, c, NULL, NULL, NULL, NULL, NULL, 0);
+    zoom_void_split_recursive(s, c, 0);
   }
 
   if (verbose)
