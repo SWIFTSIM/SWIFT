@@ -325,11 +325,11 @@ void zoom_find_neighbouring_cells(struct space *s, const int verbose) {
                 neighbour_cells_top[zoom_props->nr_neighbour_cells++] = cjd;
               }
             } /* neighbour k loop */
-          }   /* neighbour j loop */
-        }     /* neighbour i loop */
-      }       /* k loop */
-    }         /* j loop */
-  }           /* i loop */
+          } /* neighbour j loop */
+        } /* neighbour i loop */
+      } /* k loop */
+    } /* j loop */
+  } /* i loop */
 
   if (verbose)
     message("%i cells neighbour the zoom region",
@@ -646,9 +646,6 @@ void zoom_construct_tl_cells(struct space *s, const integertime_t ti_current,
         c->mpi.tag = -1;
         c->mpi.recv = NULL;
         c->mpi.send = NULL;
-#if (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
-        c->nr_vertex_edges = 0;
-#endif
 #endif
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
         cell_assign_top_level_cell_index(c, s);
