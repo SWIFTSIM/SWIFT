@@ -358,27 +358,6 @@ static void space_populate_leaf_props(struct cell *c, struct space *s,
   integertime_t ti_black_holes_end_min = max_nr_timesteps,
                 ti_black_holes_end_max = 0, ti_black_holes_beg_max = 0;
 
-  /* Initialise variables we'll update for each particle type below. */
-  ti_hydro_end_min = max_nr_timesteps;
-  ti_hydro_end_max = 0;
-  ti_hydro_beg_max = 0;
-
-  ti_gravity_end_min = max_nr_timesteps;
-  ti_gravity_end_max = 0;
-  ti_gravity_beg_max = 0;
-
-  ti_stars_end_min = max_nr_timesteps;
-  ti_stars_end_max = 0;
-  ti_stars_beg_max = 0;
-
-  ti_black_holes_end_min = max_nr_timesteps;
-  ti_black_holes_end_max = 0;
-  ti_black_holes_beg_max = 0;
-
-  ti_rt_end_min = max_nr_timesteps;
-  ti_rt_beg_max = 0;
-  ti_rt_min_step_size = max_nr_timesteps;
-
   /* parts: Get dt_min/dt_max and h_max. */
   for (int k = 0; k < count; k++) {
 #ifdef SWIFT_DEBUG_CHECKS
@@ -563,7 +542,8 @@ static void space_populate_leaf_props(struct cell *c, struct space *s,
 
 static void space_construct_leaf_multipole(struct cell *c, struct engine *e) {
 
-  if (c->grav.gcount > 0) {
+  /* Do we have particles? */
+  if (c->grav.count > 0) {
 
     gravity_P2M(c->grav.multipole, c->grav.parts, c->grav.count,
                 e->gravity_properties);
