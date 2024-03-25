@@ -58,6 +58,31 @@ __attribute__((always_inline)) INLINE double blackbody_spectrum_intensity(
 }
 
 /**
+ * @brief Return the first derivative of the specific intensity 
+ * of the blackbody spectrum
+ *
+ * @param nu frequency at which to compute first derivative
+ * @param T temperature characterizing the spectrum
+ * @param kB Boltzmann constant
+ * @param h_planck Planck's constant
+ * @param c speed of light
+ */
+
+__attribute__((always_inline)) INLINE double blackbody_spectrum_intensity_first_derivative(
+    const double nu, const double T, const double kB, const double h_planck, 
+    const double c) {
+  
+  const double hnu = h_planck * nu;
+  const double kT = kB * T;
+  const double hnu2 = hnu * nu;
+  const double exponential = exp(hnu / kT);
+
+  const double num = -2 * hnu2 * ((hnu - 3 * kT) * exponential + 3 * kT);  // Numerator
+  const double denom = c * c * kT * (exponential + 1) * (exponential + 1); // Denominator
+  
+  return num / denom
+
+/**
  * Return the blackbody spectrum energy density
  *
  * @param nu frequency at which to compute specific intensity
