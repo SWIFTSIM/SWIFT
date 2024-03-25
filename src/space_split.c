@@ -36,6 +36,16 @@
 #include "threadpool.h"
 #include "zoom_region/zoom_cell.h"
 
+/**
+ * @brief Allocate the particle buffers ready for populating during splitting.
+ *
+ * @param c The #cell to be split.
+ * @param buff The buffer for the hydro particles.
+ * @param sbuff The buffer for the star particles.
+ * @param bbuff The buffer for the black hole particles.
+ * @param gbuff The buffer for the gravity particles.
+ * @param sink_buff The buffer for the sink particles.
+ */
 static void space_allocate_buffers(struct cell *c,
                                    struct cell_buff *restrict buff,
                                    struct cell_buff *restrict sbuff,
@@ -139,6 +149,13 @@ static void space_allocate_buffers(struct cell *c,
   }
 }
 
+/**
+ * @brief Get the progeny and set the progeny's properties.
+ *
+ * @param s The #space.
+ * @param c The #cell to split.
+ * @param tpid The thread ID.
+ */
 void space_construct_progeny(struct space *s, struct cell *c,
                              const short int tpid) {
 
@@ -211,6 +228,15 @@ void space_construct_progeny(struct space *s, struct cell *c,
   }
 }
 
+/**
+ * @brief Populate the multipoles of the cell.
+ *
+ * The multipoles of the leaves are set in space_construct_leaf_multipoles. The
+ * multipoles are then propagated up the tree in calls to this function. This
+ * function derives the cell's multipole based on the multipole of its progeny.
+ *
+ * @param c The #cell to populate.
+ */
 void space_populate_multipole(struct cell *c) {
 
   /* Reset everything */
@@ -315,6 +341,18 @@ void space_populate_multipole(struct cell *c) {
 #endif
 }
 
+/**
+ * @brief Populate the properties of a leaf cell.
+ *
+ * This function derives the smoothing length and timestep quantites of a
+ * leaf based on the particles it contains. These properties will be handed
+ * up the tree during the recursion.
+ *
+ * @param c The #cell to populate.
+ * @param s The #space.
+ * @param ti_current The current time.
+ * @param with_rt Are we doing radiative transfer?
+ */
 static void space_populate_leaf_props(struct cell *c, struct space *s,
                                       const integertime_t ti_current,
                                       const int with_rt) {
@@ -538,6 +576,16 @@ static void space_populate_leaf_props(struct cell *c, struct space *s,
   c->black_holes.h_max_active = black_holes_h_max_active;
 }
 
+/**
+ * @brief Construct the multipoles of a leaf cell.
+ *
+ * This function constructs the multipoles of a leaf cell based on the
+ * particles it contains. These multipoles will be handed up the tree during
+ * the recursion.
+ *
+ * @param c The #cell to populate.
+ * @param e The #engine.
+ */
 static void space_construct_leaf_multipole(struct cell *c, struct engine *e) {
 
   /* Do we have particles? */
