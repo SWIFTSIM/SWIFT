@@ -52,8 +52,8 @@ void zoom_void_split_recursive(struct space *s, struct cell *c,
   const int depth = c->depth;
   int maxdepth = 0;
 
-  /* Set the top level cell tpid. Doing it here ensures top level cells
-   * have the same tpid as their progeny. */
+  /* Set the top level void cell tpid. Doing it here ensures top level void
+   * cells have the same tpid as their progeny. */
   if (depth == 0) c->tpid = tpid;
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -79,7 +79,7 @@ void zoom_void_split_recursive(struct space *s, struct cell *c,
         "This is most likely due to having the zoom region too deep within the "
         "background cells. Try using buffer cells or increasing "
         "region_buffer_cell_ratio (depth=%d)",
-        depth);
+        space_cell_maxdepth, depth);
   }
 
   /* Construct the progeny ready to populate with particles and multipoles (if
