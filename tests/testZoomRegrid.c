@@ -91,9 +91,9 @@ void make_mock_space(struct space *s) {
         gparts[gpart_count].mass = 1.0;
 
         /* Set buffer particles to be at the center of the cell. */
-        gparts[gpart_count].x[0] = buffer_width * (i + 0.5) + buffer_lower[0];
-        gparts[gpart_count].x[1] = buffer_width * (j + 0.5) + buffer_lower[1];
-        gparts[gpart_count].x[2] = buffer_width * (k + 0.5) + buffer_lower[2];
+        gparts[gpart_count].x[0] = (buffer_width * (i + 0.5)) + buffer_lower[0];
+        gparts[gpart_count].x[1] = (buffer_width * (j + 0.5)) + buffer_lower[1];
+        gparts[gpart_count].x[2] = (buffer_width * (k + 0.5)) + buffer_lower[2];
         gparts[gpart_count++].type = swift_type_dark_matter_background;
       }
     }
@@ -104,9 +104,9 @@ void make_mock_space(struct space *s) {
         gparts[gpart_count].mass = 1.0;
 
         /* Set zoom particles to be at the center of the cell. */
-        gparts[gpart_count].x[0] = zoom_width * (i + 0.5) + zoom_lower[0];
-        gparts[gpart_count].x[1] = zoom_width * (j + 0.5) + zoom_lower[1];
-        gparts[gpart_count].x[2] = zoom_width * (k + 0.5) + zoom_lower[2];
+        gparts[gpart_count].x[0] = (zoom_width * (i + 0.5)) + zoom_lower[0];
+        gparts[gpart_count].x[1] = (zoom_width * (j + 0.5)) + zoom_lower[1];
+        gparts[gpart_count].x[2] = (zoom_width * (k + 0.5)) + zoom_lower[2];
         gparts[gpart_count++].type = swift_type_dark_matter_background;
       }
     }
@@ -131,8 +131,6 @@ void associate_gparts_to_cells(struct space *s) {
     struct gpart *gpart = &s->gparts[i];
 
     int cid = cell_getid_from_pos(s, gpart->x[0], gpart->x[1], gpart->x[2]);
-    printf("cid = %d pos = [%f, %f, %f]\n", cid, gpart->x[0], gpart->x[1],
-           gpart->x[2]);
 
     struct cell *c = &s->cells_top[cid];
     if (c == NULL) {
