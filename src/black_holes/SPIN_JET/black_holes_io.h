@@ -176,7 +176,7 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
                                                const int with_cosmology) {
 
   /* Say how much we want to write */
-  *num_fields = 56;
+  *num_fields = 61;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_bpart(
@@ -416,7 +416,7 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
       "AGNTotalInjectedEnergies", FLOAT, 1, UNIT_CONV_ENERGY, 0.f, bparts,
       AGN_cumulative_energy,
       "Total (cumulative) physical energies injected into gas particles "
-      "in AGN feedback.");
+      "in AGN feedback, including the effects of both radiation and winds.");
 
   list[36] = io_make_output_field_convert_bpart(
       "Potentials", FLOAT, 1, UNIT_CONV_POTENTIAL, -1.f, bparts,
@@ -518,7 +518,8 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
   list[54] = io_make_output_field(
       "AGNTotalInjectedEnergiesByMode", FLOAT, 3, UNIT_CONV_ENERGY, 0.f, bparts,
       thermal_energy_by_mode,
-      "The total energy injected in the thermal AGN feedback mode, split by "
+      "The total energy injected in the thermal AGN feedback mode, including "
+      "the contributions of both radiation and wind feedback, split by "
       "accretion mode. The components correspond to the thermal energy dumped "
       "in the thick, thin and slim disc modes, respectively.");
 
@@ -526,8 +527,40 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
       "InjectedJetEnergiesByMode", FLOAT, 3, UNIT_CONV_ENERGY, 0.f, bparts,
       jet_energy_by_mode,
       "The total energy injected in the kinetic jet AGN feedback mode, split "
-      "by accretion mode. The components correspond to the thermal energy "
+      "by accretion mode. The components correspond to the jet energy "
       "dumped in the thick, thin and slim disc modes, respectively.");
+    
+  list[56] = io_make_output_field(
+      "WindEfficiencies", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
+      wind_efficiency,
+      "The wind efficiencies of the black holes.");
+    
+  list[57] = io_make_output_field(
+      "TotalRadiatedEnergies", FLOAT, 1, UNIT_CONV_ENERGY, 0.f, bparts,
+      radiated_energy,
+      "The total energy launched into radiation by the black holes, "
+      "in all accretion modes. ");
+
+  list[58] = io_make_output_field(
+      "RadiatedEnergiesByMode", FLOAT, 3, UNIT_CONV_ENERGY, 0.f, bparts,
+      radiated_energy_by_mode,
+      "The total energy launched into radiation by the black holes, split "
+      "by accretion mode. The components correspond to the radiative energy "
+      "dumped in the thick, thin and slim disc modes, respectively.");
+
+  list[59] = io_make_output_field(
+      "TotalWindEnergies", FLOAT, 1, UNIT_CONV_ENERGY, 0.f, bparts,
+      wind_energy,
+      "The total energy launched into accretion disc winds by the black " 
+      "holes, in all accretion modes. ");
+
+  list[60] = io_make_output_field(
+      "WindEnergiesByMode", FLOAT, 3, UNIT_CONV_ENERGY, 0.f, bparts,
+      wind_energy_by_mode,
+      "The total energy launched into accretion disc winds by the black "
+      "holes, split by accretion mode. The components correspond to the "
+      "radiative energy dumped in the thick, thin and slim disc modes, "
+      "respectively.");
 
 #ifdef DEBUG_INTERACTIONS_BLACK_HOLES
 

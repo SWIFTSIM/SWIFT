@@ -1062,10 +1062,19 @@ runner_iact_nonsym_bh_gas_feedback(
           bi->id, pj->id, xpj->v_full[0], xpj->v_full[1], xpj->v_full[2]);
 #endif
 
-      /* Store the jet energy */
+      int mode = 0;
+      if (bi->accretion_mode == BH_thick_disc) {
+        mode = 0;
+      } else if (bi->accretion_mode == BH_thin_disc) {
+        mode = 1;
+      } else if (bi->accretion_mode == BH_slim_disc) {
+        mode = 2;
+      }
+        
+      /* Store the jet energy and other variables of interest */
       const double delta_energy_jet = delta_u_jet * hydro_get_mass(pj);
       tracers_after_jet_feedback(pj, xpj, with_cosmology, cosmo->a, time,
-                                 delta_energy_jet, vel_kick);
+                                 delta_energy_jet, vel_kick, mode, bi->id);
 
       /* Impose maximal viscosity */
       hydro_diffusive_feedback_reset(pj);
