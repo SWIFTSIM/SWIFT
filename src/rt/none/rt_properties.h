@@ -60,6 +60,20 @@ __attribute__((always_inline)) INLINE static void rt_props_init(
     struct cosmology* cosmo) {}
 
 /**
+ * @brief Used to update common properties on the RT/thermochemistry
+ * at a given time-step or redshift.
+ *
+ * @param rtp The #rt_props.
+ * @param phys_const The physical constants in the internal unit system.
+ * @param us The internal unit system.
+ * @param params The parsed parameters.
+ * @param cosmo the #cosmology
+ */
+__attribute__((always_inline)) INLINE static void rt_props_update(
+    struct rt_props* rtp, const struct phys_const* phys_const,
+    const struct unit_system* us, struct cosmology* cosmo) {}
+
+/**
  * @brief Write an RT properties struct to the given FILE as a
  * stream of bytes.
  *
@@ -81,10 +95,11 @@ __attribute__((always_inline)) INLINE static void rt_struct_dump(
  * @param stream the file stream
  * @param phys_const The physical constants in the internal unit system.
  * @param us The internal unit system.
+ * @param cosmo the #cosmology
  */
 __attribute__((always_inline)) INLINE static void rt_struct_restore(
     struct rt_props* props, FILE* stream, const struct phys_const* phys_const,
-    const struct unit_system* us) {
+    const struct unit_system* us, const struct cosmology* restrict cosmo) {
 
   restart_read_blocks((void*)props, sizeof(struct rt_props), 1, stream, NULL,
                       "RT properties struct");

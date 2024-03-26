@@ -38,7 +38,7 @@
 __attribute__((always_inline)) INLINE void update_grackle_units_cosmo(code_units *grackle_units,
 				const struct unit_system *us,
 				const struct cosmology* restrict cosmo) {
-  
+
   /* Update grackle units. The units must convert from code units in the comoving frame
    * to CGS in the proper frame. More info at
    * https://grackle.readthedocs.io/en/grackle-3.2.1/Integration.html#comoving-coordinates
@@ -74,6 +74,10 @@ __attribute__((always_inline)) INLINE static void rt_init_grackle(
   /* we assume all quantities to be physical, not comoving */
   grackle_units->a_units = 1.0;
   grackle_units->a_value = cosmo->a;
+  /* grackle_units->a_value = 1.; */
+  /* grackle_units->comoving_coordinates = 0; */
+  /* grackle_units->density_units = units_cgs_conversion_factor(us, UNIT_CONV_DENSITY); */
+  /* grackle_units->length_units = units_cgs_conversion_factor(us, UNIT_CONV_LENGTH); */
   grackle_units->comoving_coordinates = 1;
   grackle_units->density_units =
       units_cgs_conversion_factor(us, UNIT_CONV_DENSITY) * cosmo->a3_inv; // Convert to proper units

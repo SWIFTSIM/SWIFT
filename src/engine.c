@@ -1887,7 +1887,9 @@ void engine_run_rt_sub_cycles(struct engine *e) {
     e->max_active_bin_subcycle = get_max_active_bin(e->ti_current_subcycle);
     e->min_active_bin_subcycle =
         get_min_active_bin(e->ti_current_subcycle, ti_subcycle_old);
-    /* TODO: add rt_props_update() for cosmological thermochemistry*/
+
+    rt_props_update(e->rt_props, e->physical_constants, e->internal_units, e->cosmology);
+
     if (e->policy & engine_policy_cosmology) {
       double time_old = time;
       cosmology_update(
@@ -2036,6 +2038,8 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
     cooling_update(e->physical_constants, e->cosmology, e->pressure_floor_props,
                    e->cooling_func, e->s, e->time);
 
+  if (e->policy & engine_policy_rt)
+    rt_props_update(e->rt_props, e->physical_constants, e->internal_units, e->cosmology);
 #ifdef WITH_CSDS
   if (e->policy & engine_policy_csds) {
     /* Mark the first time step in the particle csds file. */
@@ -2468,6 +2472,9 @@ int engine_step(struct engine *e) {
   if (e->policy & engine_policy_hydro)
     hydro_props_update(e->hydro_properties, e->gravity_properties,
                        e->cosmology);
+
+  if (e->policy & engine_policy_rt)
+    rt_props_update(e->rt_props, e->physical_constants, e->internal_units, e->cosmology);
 
   /* Check for any snapshot triggers */
   engine_io_check_snapshot_triggers(e);
