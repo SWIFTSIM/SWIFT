@@ -39,8 +39,9 @@ void make_mock_space(struct space *s) {
   s->dim[1] = 1000;
   s->dim[2] = 1000;
 
-  /* Define the gpart count (this is a particle per cell) */
-  s->nr_gparts = 18;
+  /* Define the gpart count (this is a background particle per cell + the 8
+   * corner high res particles used to define the region.) */
+  s->nr_gparts = (2 * 10 * 10 * 10) + (16 * 16 * 16) + 8;
 
   /* We need the engine to be NULL for the logic. */
   s->e = NULL;
@@ -52,7 +53,7 @@ void make_mock_space(struct space *s) {
 
   /* Define the corners of the region */
   const double mid = 600;
-  const double offset = 9;
+  const double offset = 12.5;
   double cube_corners[8][3] = {{mid - offset, mid - offset, mid - offset},
                                {mid - offset, mid - offset, mid + offset},
                                {mid - offset, mid + offset, mid - offset},
@@ -62,25 +63,62 @@ void make_mock_space(struct space *s) {
                                {mid + offset, mid + offset, mid - offset},
                                {mid + offset, mid + offset, mid + offset}};
 
-  /* Loop over the gparts and set up baxckground and zoom particles. */
-  for (size_t i = 0; i < s->nr_gparts; i++) {
-    gparts[i].mass = 1.0;
+  /* Loop over the cell grids making a background particle per cell. */
+  int gpart_count = 0;
+  const double bkg_width = 100;
+  const double buffer_width = 20;
+  const double zoom_width = 2.5;
+  const double buffer_lower[3] = {400, 400, 400};
+  const double zoom_lower[3] = {480, 480, 480};
+  for (int i = 0; i < 10, i++) {
+    for (int j = 0; j < 10, j++) {
+      for (int k = 0; k < 10, k++) {
+        gparts[gpart_count].mass = 1.0;
 
-    /* Handle background and zoom region particles differently. */
-    if (i < 10) {
-      /* Set background particles to be evenly spaced. */
-      gparts[i].x[0] = s->dim[0] / s->nr_gparts * i;
-      gparts[i].x[1] = s->dim[1] / s->nr_gparts * i;
-      gparts[i].x[2] = s->dim[2] / s->nr_gparts * i;
-      gparts[i].type = swift_type_dark_matter_background;
-
-    } else {
-      /* Set zoom region particles to be at the corners of the region. */
-      gparts[i].x[0] = cube_corners[i - 10][0];
-      gparts[i].x[1] = cube_corners[i - 10][1];
-      gparts[i].x[2] = cube_corners[i - 10][2];
-      gparts[i].type = swift_type_dark_matter;
+        /* Set background particles to be at the center of the cell. */
+        gparts[gpart_count].x[0] = bkg_width * (i + 0.5);
+        gparts[gpart_count].x[1] = bkg_width * (j + 0.5);
+        gparts[gpart_count].x[2] = bkg_width * (k + 0.5);
+        gparts[gpart_count++].type = swift_type_dark_matter_background;
+      }
     }
+  }
+  for (int i = 0; i < 10; i++) {
+    for (int j = 0; j < 10; j++) {
+      for (int k = 0; k < 10; k++) {
+        gparts[gpart_count].mass = 1.0;
+
+        /* Set buffer particles to be at the center of the cell. */
+        gparts[gpart_count].x[0] = buffer_width * (i + 0.5) + buffer_lower[0];
+        gparts[gpart_count].x[1] = buffer_width * (j + 0.5) + buffer_lower[1];
+        gparts[gpart_count].x[2] = buffer_width * (k + 0.5) + buffer_lower[2];
+        gparts[gpart_count++].type = swift_type_dark_matter_background;
+      }
+    }
+  }
+  for (int i = 0; i < 16; i++) {
+    for (int j = 0; j < 16; j++) {
+      for (int k = 0; k < 16; k++) {
+        gparts[gpart_count].mass = 1.0;
+
+        /* Set zoom particles to be at the center of the cell. */
+        gparts[gpart_count].x[0] = zoom_width * (i + 0.5) + zoom_lower[0];
+        gparts[gpart_count].x[1] = zoom_width * (j + 0.5) + zoom_lower[1];
+        gparts[gpart_count].x[2] = zoom_width * (k + 0.5) + zoom_lower[2];
+        gparts[gpart_count++].type = swift_type_dark_matter_background;
+      }
+    }
+  }
+
+  /* Make a zoom particle in each corner to define the zoom region. */
+  for (size_t i = 0; i < 8; i++) {
+    gparts[gpart_count].mass = 1.0;
+
+    /* Set zoom region particles to be at the corners of the region. */
+    gparts[gpart_count].x[0] = cube_corners[i - 10][0];
+    gparts[gpart_count].x[1] = cube_corners[i - 10][1];
+    gparts[gpart_count].x[2] = cube_corners[i - 10][2];
+    gparts[gpart_count++].type = swift_type_dark_matter;
   }
 
   s->gparts = gparts;
