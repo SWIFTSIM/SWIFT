@@ -191,10 +191,22 @@ int main(int argc, char *argv[]) {
             i, cellID_names[c->type], subcellID_names[c->subtype], c->loc[0],
             c->loc[1], c->loc[2]);
       }
+    }
 
-      /* If we don't have a zoom cell ensure the count is 1. */
-      if (c->type != cell_type_zoom && c->subtype != cell_subtype_void &&
-          c->subtype != cell_subtype_empty && c->grav.count != 1) {
+    /* If we have a background cell ensure the count is 1 (because of nesting
+     * zoom and buffer cells can have more). */
+    if (c->type == cell_type_bkg && c->subtype != cell_subtype_empty &&
+        c->grav.count != 1) {
+      error(
+          "Cell %d has %d particles (c->type = %s, c->subtype = %s, c->loc = "
+          "[%f, %f, %f])",
+          i, c->grav.count, cellID_names[c->type], subcellID_names[c->subtype],
+          c->loc[0], c->loc[1], c->loc[2]);
+    }
+
+    /* Ensure empty and void cells have 0 counts. */
+    if (c->subtype == cell_subtype_empty || c->subtype == cell_subtype_void) {
+      if (c->grav.count != 0) {
         error(
             "Cell %d has %d particles (c->type = %s, c->subtype = %s, c->loc = "
             "[%f, %f, %f])",
@@ -204,7 +216,8 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  /* Test each cell type contains the expected counts. */
+  /* Test each cell type contains the expected counts. (This ensures the zoom
+   * and void cells make sense too.)*/
   int zoom_count = 0;
   int bkg_count = 0;
   int buffer_count = 0;
