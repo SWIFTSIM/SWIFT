@@ -20,16 +20,7 @@
 /* Config parameters. */
 #include <config.h>
 
-/* Standard headers. */
-#include <fenv.h>
-#include <stdlib.h>
-#include <string.h>
-
 /* Local headers. */
-#include "cell.h"
-#include "engine.h"
-#include "parser.h"
-#include "space.h"
 #include "swift.h"
 #include "zoom_region/zoom_init.h"
 #include "zoom_region/zoom_regrid.h"
