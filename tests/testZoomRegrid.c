@@ -182,7 +182,7 @@ int main(int argc, char *argv[]) {
   /* Test all cells that aren't void or empty have at least one particle. */
   for (int i = 0; i < s->nr_cells; i++) {
     struct cell *c = &s->cells_top[i];
-    if (c->type != cell_type_void && c->type != cell_type_empty) {
+    if (c->subtype != cell_subtype_void && c->subtype != cell_subtype_empty) {
       if (c->grav.count == 0) {
         error("Cell has no particles (c->type = %d, c->grav.count = %d).",
               c->type, c->grav.count);
