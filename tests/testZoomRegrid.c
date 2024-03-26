@@ -26,6 +26,7 @@
 #include <string.h>
 
 /* Local headers. */
+#include "cell.h"
 #include "engine.h"
 #include "parser.h"
 #include "space.h"
