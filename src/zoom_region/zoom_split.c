@@ -183,7 +183,7 @@ void zoom_void_space_split(struct space *s, int verbose) {
   int nr_gparts_in_zoom = 0;
   for (int k = 0; k < s->zoom_props->nr_zoom_cells; k++) {
     nr_gparts_in_zoom += s->multipoles_top[k].m_pole.num_gpart;
-    if (cells_top[k].void_parent == NULL) notlinked++;
+    if (cells_top[k].direct_void_parent == NULL) notlinked++;
   }
   if (notlinked > 0)
     error("%d zoom cells are not linked into a void cell tree!", notlinked);

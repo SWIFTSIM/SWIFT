@@ -354,11 +354,11 @@ void zoom_find_neighbouring_cells(struct space *s, const int verbose) {
                 neighbour_cells_top[zoom_props->nr_neighbour_cells++] = cjd;
               }
             } /* neighbour k loop */
-          }   /* neighbour j loop */
-        }     /* neighbour i loop */
-      }       /* k loop */
-    }         /* j loop */
-  }           /* i loop */
+          } /* neighbour j loop */
+        } /* neighbour i loop */
+      } /* k loop */
+    } /* j loop */
+  } /* i loop */
 
   if (verbose)
     message("%i cells neighbour the zoom region",
@@ -865,7 +865,7 @@ void zoom_link_void_leaves(struct space *s, struct cell *c) {
     c->progeny[k] = zoom_cell;
 
     /* Flag this void cell "progeny" as the zoom cell's void cell parent. */
-    zoom_cell->void_parent = c;
+    zoom_cell->direct_void_parent = c;
   }
 
   /* Interact the zoom cell multipoles with this cell. */

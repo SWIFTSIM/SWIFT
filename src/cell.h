@@ -451,7 +451,7 @@ struct cell {
 
   /*! The void cell parent of a zoom cell. Only used if running with
    * a zoom region. */
-  struct cell *void_parent;
+  struct cell *direct_void_parent;
 
   /*! Cell flags bit-mask. */
   volatile uint32_t flags;
