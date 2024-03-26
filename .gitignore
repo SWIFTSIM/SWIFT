@@ -200,6 +200,8 @@ tests/testTimeline
 tests/testZoomInit
 tests/testZoomInit.sh
 tests/testGetZoomIJKFunc.sh
+tests/testZoomRegrid
+tests/testZoomRegrid.sh
 tests/*.png
 tests/*.txt
 
