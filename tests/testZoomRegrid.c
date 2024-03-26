@@ -191,6 +191,16 @@ int main(int argc, char *argv[]) {
             i, cellID_names[c->type], subcellID_names[c->subtype], c->loc[0],
             c->loc[1], c->loc[2]);
       }
+
+      /* If we don't have a zoom cell ensure the count is 1. */
+      if (c->type != cell_type_zoom && c->subtype != cell_subtype_void &&
+          c->subtype != cell_subtype_empty && c->grav.count != 1) {
+        error(
+            "Cell %d has %d particles (c->type = %s, c->subtype = %s, c->loc = "
+            "[%f, %f, %f])",
+            i, c->grav.count, cellID_names[c->type],
+            subcellID_names[c->subtype], c->loc[0], c->loc[1], c->loc[2]);
+      }
     }
   }
 
@@ -202,7 +212,7 @@ int main(int argc, char *argv[]) {
     struct cell *c = &s->cells_top[i];
     if (c->type == cell_type_zoom) {
       zoom_count += c->grav.count;
-    } else if (c->type == cell_type_background) {
+    } else if (c->type == cell_type_bkg) {
       bkg_count += c->grav.count;
     } else if (c->type == cell_type_buffer) {
       buffer_count += c->grav.count;
