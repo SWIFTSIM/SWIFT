@@ -184,8 +184,11 @@ int main(int argc, char *argv[]) {
     struct cell *c = &s->cells_top[i];
     if (c->subtype != cell_subtype_void && c->subtype != cell_subtype_empty) {
       if (c->grav.count == 0) {
-        error("Cell has no particles (c->type = %s, c->subtype = %s)",
-              cellID_names[c->type], subcellID_names[c->subtype]);
+        error(
+            "Cell has no particles (c->type = %s, c->subtype = %s, c->loc = "
+            "[%f, %f, %f])",
+            cellID_names[c->type], subcellID_names[c->subtype], c->loc[0],
+            c->loc[1], c->loc[2]);
       }
     }
   }
