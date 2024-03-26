@@ -150,13 +150,11 @@ int main(int argc, char *argv[]) {
   feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW);
 #endif
 
-  const char *input_file = argv[1];
-
   /* Create a structure to read file into. */
   struct swift_params param_file;
 
   /* Read the parameter file. */
-  parser_read_file(input_file, &param_file);
+  parser_read_file(argv[1], &param_file);
 
   /* Create a space structure. (this creates fake particles to get the layout
    * of cells right but we will modify this shortly to get a particle per
@@ -169,10 +167,10 @@ int main(int argc, char *argv[]) {
   s->with_zoom_region = 1;
 
   /* Run the zoom_init function. */
-  zoom_props_init(&param_file, s, 0);
+  zoom_props_init(&param_file, s, /*verbose*/ 0);
 
   /* Run the regridding. */
-  space_regrid(s, 1);
+  space_regrid(s, /*verbose*/ 1);
 
   /* Associate gparts. */
   associate_gparts_to_cells(s);
