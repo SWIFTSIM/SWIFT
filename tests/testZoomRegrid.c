@@ -194,6 +194,33 @@ int main(int argc, char *argv[]) {
     }
   }
 
+  /* Test each cell type contains the expected counts. */
+  int zoom_count = 0;
+  int bkg_count = 0;
+  int buffer_count = 0;
+  for (int i = 0; i < s->nr_cells; i++) {
+    struct cell *c = &s->cells_top[i];
+    if (c->type == cell_type_zoom) {
+      zoom_count += c->grav.count;
+    } else if (c->type == cell_type_background) {
+      bkg_count += c->grav.count;
+    } else if (c->type == cell_type_buffer) {
+      buffer_count += c->grav.count;
+    } else {
+      error("Cell %d has unexpected type %s", i, cellID_names[c->type]);
+    }
+  }
+
+  /* Zoom region should have zoom cdim^3 + 8 high res "corners" + 8 void cells +
+   * 8 empty cells. */
+  assert(zoom_count == 16 * 16 * 16 + 8 + 8 + 8);
+
+  /* Background cell should have bkg cdim^3 - 8 empty */
+  assert(bkg_count == 10 * 10 * 10);
+
+  /* Buffer cell should have buffer cdim^3 - 8 void */
+  assert(buffer_count == 10 * 10 * 10);
+
   /* Free the space. */
   free(s->cells_top);
   free(s->gparts);
