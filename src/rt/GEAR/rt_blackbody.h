@@ -68,6 +68,7 @@ __attribute__((always_inline)) INLINE double blackbody_spectrum_intensity(
  * @param c speed of light
  */
 
+
 __attribute__((always_inline)) INLINE double blackbody_spectrum_intensity_first_derivative(
     const double nu, const double T, const double kB, const double h_planck, 
     const double c) {
@@ -80,7 +81,8 @@ __attribute__((always_inline)) INLINE double blackbody_spectrum_intensity_first_
   const double num = -2 * hnu2 * ((hnu - 3 * kT) * exponential + 3 * kT);  // Numerator
   const double denom = c * c * kT * (exponential + 1) * (exponential + 1); // Denominator
   
-  return num / denom
+  return num / denom;
+}
 
 /**
  * Return the blackbody spectrum energy density
