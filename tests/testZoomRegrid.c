@@ -234,9 +234,9 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  prints("Zoom count: %d\n", zoom_count);
-  prints("Bkg count: %d\n", bkg_count);
-  prints("Buffer count: %d\n", buffer_count);
+  printf("Zoom count: %d\n", zoom_count);
+  printf("Bkg count: %d\n", bkg_count);
+  printf("Buffer count: %d\n", buffer_count);
 
   /* Zoom region should have zoom cdim^3 + 8 high res "corners" + 8 void cells +
    * 8 empty cells. */
