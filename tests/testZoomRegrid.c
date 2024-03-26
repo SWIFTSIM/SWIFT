@@ -189,7 +189,7 @@ int main(int argc, char *argv[]) {
         error(
             "Cell %d has no particles (c->type = %s, c->subtype = %s, c->loc = "
             "[%f, %f, %f])",
-            i cellID_names[c->type], subcellID_names[c->subtype], c->loc[0],
+            i, cellID_names[c->type], subcellID_names[c->subtype], c->loc[0],
             c->loc[1], c->loc[2]);
       }
     }
