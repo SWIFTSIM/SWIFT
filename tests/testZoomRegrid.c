@@ -159,7 +159,7 @@ int main(int argc, char *argv[]) {
   zoom_props_init(&param_file, s, 0);
 
   /* Run the regridding. */
-  space_regrid(s, 1);
+  space_rebuild(s, 0, 1);
 
   free(s->cells_top);
   free(s->gparts);
