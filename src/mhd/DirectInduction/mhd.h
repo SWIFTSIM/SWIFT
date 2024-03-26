@@ -316,9 +316,6 @@ __attribute__((always_inline)) INLINE static void mhd_reset_gradient(
     }
   }
 
-  /* Initialise AR prefactor */
-  p->mhd_data.alpha_AR = 1.0f;
-
   /* SPH error*/
   p->mhd_data.mean_SPH_err = 0.f;
   for (int k = 0; k < 3; k++) {
@@ -356,9 +353,9 @@ __attribute__((always_inline)) INLINE static void mhd_part_has_no_neighbours(
     struct part *p, struct xpart *xp, const struct cosmology *cosmo) {
 
   p->mhd_data.divB = 0.0f;
-  p->mhd_data.curlB = 0.0f;
-  p->mhd_data.alpha_AR = 0.0f;
-
+  p->mhd_data.curl_B[0] = 0.0f;
+  p->mhd_data.curl_B[1] = 0.0f;
+  p->mhd_data.curl_B[2] = 0.0f;
 }
 
 /**
@@ -402,7 +399,7 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_force(
     }
   }
 
-  // p->mhd_data.alpha_AR = normB ? fminf(1.0f, h * sqrtf(grad_B_mean_square) / normB) : 0.0f;
+  p->mhd_data.alpha_AR = normB ? fminf(1.0f, h * sqrtf(grad_B_mean_square) / normB) : 0.0f;
 }
 
 /**

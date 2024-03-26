@@ -565,8 +565,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   /*Artificial resistivity*/
 
   // const float resistivity_beta = hydro_props->mhd.art_resistivity;
-  const float art_diff_beta_i = pi->mhd_data.art_diff_beta * pi->mhd_data.alpha_AR;
-  const float art_diff_beta_j = pj->mhd_data.art_diff_beta * pj->mhd_data.alpha_AR;;
+  const float art_diff_beta_i = pi->mhd_data.art_diff_beta;
+  const float art_diff_beta_j = pj->mhd_data.art_diff_beta;
 
   /*
   const float rhoij = rhoi + rhoj;
@@ -873,7 +873,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
 
   // const float resistivity_beta = hydro_props->mhd.art_resistivity;
 
-  const float art_diff_beta = pi->mhd_data.art_diff_beta * pi->mhd_data.alpha_AR;
+  const float art_diff_beta = pi->mhd_data.art_diff_beta;
 
   /*
   const float rhoij = rhoi + rhoj;
