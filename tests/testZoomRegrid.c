@@ -25,6 +25,12 @@
 #include "zoom_region/zoom_init.h"
 #include "zoom_region/zoom_regrid.h"
 
+/* This script tests the process of regridding a zoom simulation. It'll first
+ * calculate the zoom geometry, construct the cell structures as would be done
+ * in a run during a regrid, populates 1 particle per cell and then tests that
+ * all cells (and different cell types) containing the expected number
+ * particles. This ensures the regrid produces the expected cell structure. */
+
 void make_mock_space(struct space *s) {
 
   /* Define the boxsize. */
