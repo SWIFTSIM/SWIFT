@@ -462,7 +462,7 @@ __attribute__((always_inline)) INLINE static void rt_end_gradient(
  * @param cosmo #cosmology data structure.
  */
 __attribute__((always_inline)) INLINE static void rt_finalise_transport(
-    struct part* restrict p, const double dt,
+    struct part* restrict p, struct rt_props *rtp, const double dt,
     const struct cosmology* restrict cosmo) {
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
@@ -486,16 +486,16 @@ __attribute__((always_inline)) INLINE static void rt_finalise_transport(
     /* Note: in this scheme, we're updating d/dt (U * V) + sum F * A * dt = 0.
      * So we'll need the division by the volume here. */
     rtd->radiation[g].energy_density += rtd->flux[g].energy * Vinv;
-    rtd->radiation[g].energy_density -= rtd->radiation[g].energy_density * cosmo->H * dt; // Energy lost due to redshift
+    rtd->radiation[g].energy_density -= rtp->average_redshift_energy[g] * rtd->radiation[g].energy_density * cosmo->H * dt; // Energy lost due to redshift
 
     rtd->radiation[g].flux[0] += rtd->flux[g].flux[0] * Vinv;
-    rtd->radiation[g].flux[0] -= rtd->radiation[g].flux[0] * cosmo->H * dt; // Energy lost due to redshift
+    rtd->radiation[g].flux[0] -= rtp->average_redshift_energy[g] * rtd->radiation[g].flux[0] * cosmo->H * dt; // Energy lost due to redshift
 
     rtd->radiation[g].flux[1] += rtd->flux[g].flux[1] * Vinv;
-    rtd->radiation[g].flux[1] -= rtd->radiation[g].flux[2] * cosmo->H * dt; // Energy lost due to redshift
+    rtd->radiation[g].flux[1] -= rtp->average_redshift_energy[g] * rtd->radiation[g].flux[1] * cosmo->H * dt; // Energy lost due to redshift
 
     rtd->radiation[g].flux[2] += rtd->flux[g].flux[2] * Vinv;
-    rtd->radiation[g].flux[2] -= rtd->radiation[g].flux[2] * cosmo->H * dt; // Energy lost due to redshift
+    rtd->radiation[g].flux[2] -= rtp->average_redshift_energy[g] * rtd->radiation[g].flux[2] * cosmo->H * dt; // Energy lost due to redshift
 
     rt_check_unphysical_state(&rtd->radiation[g].energy_density,
                               rtd->radiation[g].flux, e_old, /*callloc=*/4);
