@@ -178,6 +178,18 @@ int main(int argc, char *argv[]) {
   /* Associate gparts. */
   associate_gparts_to_cells(s);
 
+  /* Test all cells that aren't void or empty have at least one particle. */
+  for (int i = 0; i < s->nr_cells; i++) {
+    struct cell *c = &s->cells_top[i];
+    if (c->type != cell_type_void && c->type != cell_type_empty) {
+      if (c->grav.count == 0) {
+        error("Cell has no particles (c->type = %d, c->grav.count = %d).",
+              c->type, c->grav.count);
+      }
+    }
+  }
+
+  /* Free the space. */
   free(s->cells_top);
   free(s->gparts);
   free(s->zoom_props);
