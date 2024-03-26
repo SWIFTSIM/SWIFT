@@ -449,7 +449,7 @@ struct cell {
   /*! Super cell, i.e. the highest-level parent cell with *any* task */
   struct cell *super;
 
-  /*! The void cell parent of a zoom cell. Only used if running with
+  /*! The direct void cell parent of a zoom cell. Only used if running with
    * a zoom region. */
   struct cell *direct_void_parent;
 
