@@ -419,6 +419,9 @@ struct zoom_region_properties {
   /*! Vector outlining the neighbour region lower boundaries. */
   double buffer_lower_bounds[3];
 
+  /*! The depth of the zoom cells within a void cell tree. */
+  int zoom_cell_depth;
+
   /*! Offset in the top level cell list background/natural cells start from. */
   int bkg_cell_offset;
 
@@ -575,6 +578,9 @@ void space_recycle_list(struct space *s, struct cell *cell_list_begin,
 void space_regrid(struct space *s, int verbose);
 void space_allocate_extras(struct space *s, int verbose);
 void space_split(struct space *s, int verbose);
+void space_construct_progeny(struct space *s, struct cell *c,
+                             const short int tpid);
+void space_populate_multipole(struct cell *c);
 void space_reorder_extras(struct space *s, int verbose);
 void space_list_useful_top_level_cells(struct space *s);
 void space_parts_get_cell_index(struct space *s, int *ind, int *cell_counts,

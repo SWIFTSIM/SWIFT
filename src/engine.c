@@ -105,6 +105,7 @@
 #include "tools.h"
 #include "units.h"
 #include "velociraptor_interface.h"
+#include "zoom_region/zoom_split.h"
 
 const char *engine_policy_names[] = {"none",
                                      "rand",
@@ -545,6 +546,11 @@ void engine_exchange_top_multipoles(struct engine *e) {
 
   /* Let's check that what we received makes sense */
   for (int i = 0; i < e->s->nr_cells; ++i) {
+
+    /* Skip the void cells, avoids double counting zoom cells. (Only applicable
+     * to zoom sims) */
+    if (e->s->cells_top[i].subtype == cell_subtype_void) continue;
+
     const struct gravity_tensors *m = &e->s->multipoles_top[i];
     counter += m->m_pole.num_gpart;
     if (m->m_pole.num_gpart < 0) {
@@ -1317,6 +1323,11 @@ void engine_rebuild(struct engine *e, const int repartitioned,
   engine_exchange_cells(e);
 #endif
 
+  if (e->s->with_zoom_region) {
+    /* Construct the void cell tree. */
+    zoom_void_space_split(e->s, e->verbose);
+  }
+
 #ifdef SWIFT_DEBUG_CHECKS
 
   /* Let's check that what we received makes sense */
@@ -1324,6 +1335,11 @@ void engine_rebuild(struct engine *e, const int repartitioned,
     long long counter = 0;
 
     for (int i = 0; i < e->s->nr_cells; ++i) {
+
+      /* Skip the void cells, avoids double counting zoom cells. (Only
+       * applicable to zoom sims) */
+      if (e->s->cells_top[i].subtype == cell_subtype_void) continue;
+
       const struct gravity_tensors *m = &e->s->multipoles_top[i];
       counter += m->m_pole.num_gpart;
     }

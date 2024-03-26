@@ -462,6 +462,8 @@ void zoom_report_cell_properties(const struct space *s) {
             zoom_props->buffer_width[1] * zoom_props->buffer_cdim[1],
             zoom_props->buffer_width[2] * zoom_props->buffer_cdim[2]);
     message("%25s = %d", "Number of Buffer Cells", zoom_props->nr_buffer_cells);
+    message("%25s = %d", "Zoom Depth in Void Tree",
+            zoom_props->zoom_cell_depth);
   }
 }
 
@@ -642,6 +644,14 @@ void zoom_region_init(struct space *s, const int verbose) {
     s->zoom_props->iwidth[i] = 1.0 / s->zoom_props->width[i];
   }
 
+  /* Calculate the depth of the zoom cells in the void cell hierarchy. */
+  if (s->zoom_props->with_buffer_cells) {
+    s->zoom_props->zoom_cell_depth =
+        log2((s->zoom_props->buffer_width[0] / s->zoom_props->width[0]) + 0.1);
+  } else {
+    s->zoom_props->zoom_cell_depth =
+        log2((s->width[0] / s->zoom_props->width[0]) + 0.1);
+  }
   /* Set the minimum allowed zoom cell width. */
   const double zoom_dmax =
       max3(s->zoom_props->dim[0], s->zoom_props->dim[1], s->zoom_props->dim[2]);
