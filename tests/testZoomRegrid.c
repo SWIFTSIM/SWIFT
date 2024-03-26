@@ -20,6 +20,9 @@
 /* Config parameters. */
 #include <config.h>
 
+/* Standard headers. */
+#include <fenv.h>
+
 /* Local headers. */
 #include "swift.h"
 #include "zoom_region/zoom_init.h"
