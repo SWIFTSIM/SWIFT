@@ -175,6 +175,9 @@ int main(int argc, char *argv[]) {
   /* Run the regridding. */
   space_regrid(s, 1);
 
+  /* Associate gparts. */
+  associate_gparts_to_cells(s);
+
   free(s->cells_top);
   free(s->gparts);
   free(s->zoom_props);
