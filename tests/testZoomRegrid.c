@@ -130,8 +130,10 @@ void associate_gparts_to_cells(struct space *s) {
   for (size_t i = 0; i < s->nr_gparts; i++) {
     struct gpart *gpart = &s->gparts[i];
 
-    struct cell *c = &s->cells_top[cell_getid_from_pos(
-        s, gpart->x[0], gpart->x[1], gpart->x[2])];
+    int cid = cell_getid_from_pos(s, gpart->x[0], gpart->x[1], gpart->x[2]);
+    printf("cid = %d\n", cid);
+
+    struct cell *c = &s->cells_top[cid];
     if (c == NULL) {
       error("Failed to find cell for gpart.");
     }
@@ -185,9 +187,9 @@ int main(int argc, char *argv[]) {
     if (c->subtype != cell_subtype_void && c->subtype != cell_subtype_empty) {
       if (c->grav.count == 0) {
         error(
-            "Cell has no particles (c->type = %s, c->subtype = %s, c->loc = "
+            "Cell %d has no particles (c->type = %s, c->subtype = %s, c->loc = "
             "[%f, %f, %f])",
-            cellID_names[c->type], subcellID_names[c->subtype], c->loc[0],
+            i cellID_names[c->type], subcellID_names[c->subtype], c->loc[0],
             c->loc[1], c->loc[2]);
       }
     }
