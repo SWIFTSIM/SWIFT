@@ -20,6 +20,7 @@
 #include "rt_redshifting.h"
 #include "rt_blackbody.h"
 #include "rt_properties.h"
+#include "rt_interaction_cross_sections.h"
 #include <gsl/gsl_integration.h>
 #include "error.h"
 
@@ -89,12 +90,12 @@ static double rt_redshift_integrate_gsl( double (*function)(double, void *), dou
 
 void rt_redshift_init(struct rt_props *restrict rt_props,
 		      const struct phys_const *restrict phys_const,
-		      const struct unit_system *restruct us) {
-  
+		      const struct unit_system *restrict us) {
+
   /* Allocate the space to store the redshift integrals */
   double *av_redshift_energy = rt_props->average_redshift_energy;
-  double integral_E[RT_NGROUPS];
-  double integral_N[RT_NGROUPS];
+  double *av_energy = rt_props->average_photon_energy;
+  double integral_nuE[RT_NGROUPS];
   
   /* Grab constants and conversions in cgs */
   /* ------------------------------------- */
@@ -120,7 +121,7 @@ void rt_redshift_init(struct rt_props *restrict rt_props,
   const double T_bb = rt_props->stellar_spectrum_blackbody_T * T_cgs;
   
   // NOTE: Not needed for the integration, but may be needed for the frequency bounds
-  // struct rt_photoion_cs_parameters cs_params = rt_init_photoion_cs_params_cgs(); 
+  struct rt_photoion_cs_parameters cs_params = rt_init_photoion_cs_params_cgs(); 
 
   struct rt_spectrum_integration_params integration_params = {
       /*species=*/0,
@@ -152,12 +153,12 @@ void rt_redshift_init(struct rt_props *restrict rt_props,
     
     /* For redshifting, it does not matter where we start integrating
      * (even if we only have one group). */
-    /* nu_start[0] = cs_params.E_ion[rt_ionizing_species_HI] / h_planck_cgs;
+    nu_start[0] = cs_params.E_ion[rt_ionizing_species_HI] / h_planck_cgs;
     if (engine_rank == 0)
       message(
           "WARNING: with only 1 photon group, I'll start integrating"
           " the redshift energy at the first ionizing frequency %.3g",
-          nu_start[0]);*/
+          nu_start[0]);
   } else {
     /* don't start at exactly 0 to avoid unlucky divisions */
     if (nu_start[0] == 0.) nu_start[0] = min(1e-20, 1e-12 * nu_start[1]);
@@ -180,23 +181,18 @@ void rt_redshift_init(struct rt_props *restrict rt_props,
   /* ----------------- */
 
   for (int g=0; g < RT_NGROUPS; g++) {
-    integral_E[g] = rt_redshift_integrate_gsl(spectrum_derivative_times_nu_integrand, 
-		      nu_start[g], nu_stop[g], RT_INTEGRAL_NPOINTS /* TODO: Define in header */, 
+    integral_nuE[g] = rt_redshift_integrate_gsl(spectrum_derivative_times_nu_integrand, 
+		      nu_start[g], nu_stop[g], RT_INTEGRAL_NPOINTS, 
 		      &integration_params);
     
-    /* TODO: If calling this init AFTER cross-section init, the integral_N is already 
-     * calculated and stored in rt_props->photon_number_integral. Grab from there? */
-    integral_N[g] = rt_redshift_integrate_gsl(spectrum_over_hnu_integrand, 
-		      nu_start[g], nu_stop[g], RT_INTEGRAL_NPOINTS /* TODO: Define in header */, 
-		      &integration_params);
-  
-  
+  }
   /* Now compute the actual average redshifted energy */
   /* ------------------------------------------------ */
   for (int g = 0; g < RT_NGROUPS; g++) {
-    if (integral_N[g] > 0.) {
-      av_redshift_energy[g] = integral_E[g] / integral_N[g];
+    if (avg_energy[g] > 0.) {
+      av_redshift_energy[g] = integral_nuE[g] / avg_energy[g];
     } else {
       av_redshift_energy[g] = 0.;
     }
   }
+}
