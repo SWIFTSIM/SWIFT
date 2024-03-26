@@ -131,7 +131,8 @@ void associate_gparts_to_cells(struct space *s) {
     struct gpart *gpart = &s->gparts[i];
 
     int cid = cell_getid_from_pos(s, gpart->x[0], gpart->x[1], gpart->x[2]);
-    printf("cid = %d\n", cid);
+    printf("cid = %d pos = [%f, %f, %f]\n", cid, gpart->x[0], gpart->x[1],
+           gpart->x[2]);
 
     struct cell *c = &s->cells_top[cid];
     if (c == NULL) {
