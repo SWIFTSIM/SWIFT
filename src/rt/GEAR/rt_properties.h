@@ -104,7 +104,7 @@ struct rt_props {
   double average_photon_energy[RT_NGROUPS];
   /* Integral over photon numbers of user provided spectrum. */
   double photon_number_integral[RT_NGROUPS];
-  /* Mean redshifted energy in frequency bin for user provided spectrum. In erg. */
+  /* Mean redshifted energy in frequency bin for user provided spectrum. */
   double average_redshift_energy[RT_NGROUPS];
 
   /* Grackle Stuff */
@@ -165,6 +165,10 @@ struct rt_props {
 void rt_cross_sections_init(struct rt_props* restrict rt_props,
                             const struct phys_const* restrict phys_const,
                             const struct unit_system* restrict us);
+
+void rt_redshift_init(struct rt_props* restrict rt_props,
+		      const struct phys_const* restrict phys_const,
+		      const struct unit_system* restrict us);
 
 /* Now for the good stuff                */
 /* ------------------------------------- */
