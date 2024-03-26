@@ -146,7 +146,7 @@ AC_ARG_ENABLE([mpi],
     [enable_mpi="$enableval"],
     [enable_mpi="yes"]
 )
-# Use extra flags set by AC_PROG_CC as part of $CC. Currently undocumented as ac_cv_prog_cc_stdc, 
+# Use extra flags set by AC_PROG_CC as part of $CC. Currently undocumented as ac_cv_prog_cc_stdc,
 # so could change.
 good_mpi="yes"
 if test "$enable_mpi" = "yes"; then
@@ -486,64 +486,6 @@ AC_ARG_ENABLE([planetary-fixed-entropy],
 )
 if test "$planetary_fixed_entropy" = "yes"; then
    AC_DEFINE([PLANETARY_FIXED_ENTROPY],1,[Enable planetary fixed entropy])
-fi
-# Check if GDF is on for planetary simulations
-AC_ARG_ENABLE([planetary-gdf],
-   [AS_HELP_STRING([--enable-planetary-gdf],
-     [Enable GDF for planetary simulations @<:@yes/no@:>@]
-   )],
-   [planetary_gdf="$enableval"],
-   [planetary_gdf="no"]
-)
-if test "$planetary_gdf" = "yes"; then
-   AC_DEFINE([PLANETARY_GDF],1,[Enable GDF])
-fi
-
-# Check if imbalance statistic method is on for planetary simulations
-AC_ARG_ENABLE([planetary-imbalance],
-   [AS_HELP_STRING([--enable-planetary-imbalance],
-     [Enable imbalance statistic method for planetary simulations @<:@yes/no@:>@]
-   )],
-   [planetary_imbalance="$enableval"],
-   [planetary_imbalance="no"]
-)
-if test "$planetary_imbalance" = "yes"; then
-   AC_DEFINE([PLANETARY_IMBALANCE],1,[Enable planetary imbalance statistic method])
-fi
-
-# Check if smoothing correction method is on for planetary simulations
-AC_ARG_ENABLE([planetary-smoothing-correction],
-   [AS_HELP_STRING([--enable-planetary-smoothing-correction],
-     [Enable smoothing correction method for planetary simulations @<:@yes/no@:>@]
-   )],
-   [planetary_smoothing_correction="$enableval"],
-   [planetary_smoothing_correction="no"]
-)
-if test "$planetary_smoothing_correction" = "yes"; then
-   AC_DEFINE([PLANETARY_SMOOTHING_CORRECTION],1,[Enable planetary smoothing correction method])
-fi
-
-# Check if matrix inversion method is on for planetary simulations
-AC_ARG_ENABLE([planetary-matrix-inversion],
-   [AS_HELP_STRING([--enable-planetary-matrix-inversion],
-     [Enable matrix inversion method for planetary simulations @<:@yes/no@:>@]
-   )],
-   [planetary_matrix_inversion="$enableval"],
-   [planetary_matrix_inversion="no"]
-)
-if test "$planetary_matrix_inversion" = "yes"; then
-   AC_DEFINE([PLANETARY_MATRIX_INVERSION],1,[Enable planetary matrix inversion method])
-fi
-# Check if quad visc is on for planetary simulations
-AC_ARG_ENABLE([planetary-quad-visc],
-   [AS_HELP_STRING([--enable-planetary-quad-visc],
-     [Enable quad visc for planetary simulations @<:@yes/no@:>@]
-   )],
-   [planetary_quad_visc="$enableval"],
-   [planetary_quad_visc="no"]
-)
-if test "$planetary_quad_visc" = "yes"; then
-   AC_DEFINE([PLANETARY_QUAD_VISC],1,[Enable planetary quad visc])
 fi
 
 # Check whether we have any of the ARM v8.1 tick timers
@@ -1598,10 +1540,10 @@ AC_SUBST([NUMA_LIBS])
 
 
 # Check for Sundials (required for the SPHM1RT library).
-# There is a problems with the headers of this library 
-# as they do not pass the strict prototypes check when 
-# installed outside of the system directories. So we 
-# need to do this check in two phases. 
+# There is a problems with the headers of this library
+# as they do not pass the strict prototypes check when
+# installed outside of the system directories. So we
+# need to do this check in two phases.
 have_sundials="no"
 SUNDIALS_LIBS=""
 SUNDIALS_INCS=""
@@ -1630,22 +1572,22 @@ if test "x$with_sundials" != "xno"; then
       AC_DEFINE([HAVE_SUNDIALS],1,[The SUNDIALS library is present.])
    else
       if test "x$with_sundials" != "xyes" -a "x$with_sundials" != "x"; then
-      	 # It might be that the libraries are in 
-      	 # /lib64 rather than /lib 
+      	 # It might be that the libraries are in
+      	 # /lib64 rather than /lib
       	 SUNDIALS_LIBS="-L$with_sundials/lib64 -lsundials_cvode -lsundials_nvecserial -lsundials_sunlinsoldense -lsundials_sunmatrixdense"
 
 	 # unset cached result of previous AC_CHECK_LIB
 	 unset ac_cv_lib_sundials_cvode_CVode
 
-   	 AC_CHECK_LIB([sundials_cvode], [CVode], [have_sundials="yes"], [have_sundials="no"], $SUNDIALS_LIBS)      
-	 
+   	 AC_CHECK_LIB([sundials_cvode], [CVode], [have_sundials="yes"], [have_sundials="no"], $SUNDIALS_LIBS)
+
    	 if test "$have_sundials" == "yes"; then
       	    AC_DEFINE([HAVE_SUNDIALS],1,[The SUNDIALS library is present.])
-	 else 
+	 else
 	    AC_MSG_ERROR("Failed to find a SUNDIALS library")
-	 fi 
+	 fi
 
-      else 
+      else
       	 AC_MSG_ERROR("Failed to find a SUNDIALS library")
       fi
    fi
@@ -1814,9 +1756,9 @@ fi
 AC_SUBST([NUMA_INCS])
 
 
-# Second part of the Sundials library checks. 
-# We now decide if we need to use -isystem to 
-# get around the strict-prototypes problem. Assumes 
+# Second part of the Sundials library checks.
+# We now decide if we need to use -isystem to
+# get around the strict-prototypes problem. Assumes
 # isystem is available when strict-prototypes is.
 if test "x$with_sundials" != "xno"; then
    if test "x$with_sundials" != "xyes" -a "x$with_sundials" != "x"; then
@@ -1829,7 +1771,7 @@ if test "x$with_sundials" != "xno"; then
             ;;
         esac
    fi
-fi 
+fi
 AC_SUBST([SUNDIALS_INCS])
 
 
@@ -1888,7 +1830,7 @@ case "$with_subgrid" in
 	with_subgrid_sink=none
 	with_subgrid_extra_io=none
 	enable_fof=no
-   ;;   
+   ;;
    QLA)
 	with_subgrid_cooling=QLA
 	with_subgrid_chemistry=QLA
@@ -2023,7 +1965,7 @@ fi
 # Hydro scheme.
 AC_ARG_WITH([hydro],
    [AS_HELP_STRING([--with-hydro=<scheme>],
-      [Hydro dynamics to use @<:@gadget2, minimal, pressure-entropy, pressure-energy, pressure-energy-monaghan, phantom, gizmo-mfv, gizmo-mfm, shadowfax, planetary, planetary-plus, sphenix, gasoline, anarchy-pu default: sphenix@:>@]
+      [Hydro dynamics to use @<:@gadget2, minimal, pressure-entropy, pressure-energy, pressure-energy-monaghan, phantom, gizmo-mfv, gizmo-mfm, shadowfax, planetary, remix, sphenix, gasoline, anarchy-pu default: sphenix@:>@]
    )],
    [with_hydro="$withval"],
    [with_hydro="sphenix"]
@@ -2066,8 +2008,8 @@ case "$with_hydro" in
    planetary)
       AC_DEFINE([PLANETARY_SPH], [1], [Planetary SPH])
    ;;
-   planetary-plus)
-      AC_DEFINE([PLANETARY_PLUS_SPH], [1], [Planetary Plus SPH])
+   remix)
+      AC_DEFINE([REMIX_SPH], [1], [REMIX SPH])
    ;;
    sphenix)
       AC_DEFINE([SPHENIX_SPH], [1], [SPHENIX SPH])
@@ -2343,7 +2285,7 @@ case "$with_chemistry" in
    AGORA)
       AC_DEFINE([CHEMISTRY_AGORA], [1], [Chemistry taken from the AGORA model])
       with_chemistry_name="AGORA"
-   ;;   
+   ;;
    QLA)
       AC_DEFINE([CHEMISTRY_QLA], [1], [Chemistry taken from the Quick-Lyman-alpha model])
       with_chemistry_name="QLA"
@@ -2525,7 +2467,7 @@ case "$with_stars" in
    ;;
    GEAR)
       AC_DEFINE([STARS_GEAR], [1], [GEAR stellar model])
-   ;;  
+   ;;
    basic)
       AC_DEFINE([STARS_BASIC], [1], [Basic stellar model])
    ;;
@@ -2575,7 +2517,7 @@ case "$with_feedback" in
    AGORA)
       AC_DEFINE([FEEDBACK_AGORA], [1], [AGORA stellar feedback and evolution model])
       with_feedback_name="AGORA"
-   ;;   
+   ;;
    none)
       AC_DEFINE([FEEDBACK_NONE], [1], [No feedback])
    ;;
@@ -2921,8 +2863,8 @@ case "$with_rt" in
       fi
       AC_MSG_CHECKING([for Sundials libraries])
       AC_MSG_RESULT($have_sundials)
-      if test "$have_sundials" != "yes"; then 
-         AC_MSG_ERROR([The Sundials library is not present. Sundials is required for the SPHM1RT module.]) 
+      if test "$have_sundials" != "yes"; then
+         AC_MSG_ERROR([The Sundials library is not present. Sundials is required for the SPHM1RT module.])
       fi
    ;;
    *)
@@ -3054,8 +2996,8 @@ AC_MSG_RESULT([
    HDF5 enabled         : $with_hdf5
     - parallel          : $have_parallel_hdf5
    METIS/ParMETIS       : $have_metis / $have_parmetis
-   FFTW3 enabled        : $have_fftw   
-    - threaded/openmp   : $have_threaded_fftw / $have_openmp_fftw 
+   FFTW3 enabled        : $have_fftw
+    - threaded/openmp   : $have_threaded_fftw / $have_openmp_fftw
     - MPI               : $have_mpi_fftw
     - ARM               : $have_arm_fftw
    GSL enabled          : $have_gsl
@@ -3098,13 +3040,6 @@ AC_MSG_RESULT([
    Radiative transfer   : $with_rt
    Extra i/o            : $with_extra_io
 
-   Planetary fixed entropy         : $planetary_fixed_entropy
-   Planetary+ GDF                  : $planetary_gdf
-   Planetary+ imbalance method     : $planetary_imbalance
-   Planetary+ smoothing correction : $planetary_smoothing_correction
-   Planetary+ matrix method        : $planetary_matrix_inversion
-   Planetary+ quad visc            : $planetary_quad_visc
-
    Atomic operations in tasks  : $enable_atomics_within_tasks
    Individual timers           : $enable_timers
    Task debugging              : $enable_task_debugging
@@ -3118,6 +3053,7 @@ AC_MSG_RESULT([
    Custom icbrtf               : $enable_custom_icbrtf
    Boundary particles          : $boundary_particles
    Fixed boundary particles    : $fixed_boundary_particles
+   Planetary fixed entropy         : $planetary_fixed_entropy
 
    Continuous Sim. Data Stream : $with_csds
 
