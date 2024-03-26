@@ -69,9 +69,9 @@ struct xpart {
 
   /*! Internal energy at the last full step. */
   float u_full;
-    
+
    /*! Evolved density at the last full step. */
-  float rho_evolved_full; 
+  float rho_evolved_full;
 
   /*! Additional data used to record particle splits */
   struct particle_splitting_data split_data;
@@ -255,115 +255,18 @@ struct part {
   float s_fixed;
 #endif
 
-#ifdef PLANETARY_IMBALANCE
-  /*! Sum of r_ij (used to compute imbalance statistic)*/
-  float sum_rij[3];
-
-  /*! Imbalance statistic*/
-  float I;
-
-  /*! Weighted mean pressure*/
-  float sum_wij_exp_P;
-
-  /*! Weighted mean temperature*/
-  float sum_wij_exp_T;
-
-  /*! Sum of W_ij * exp(-Ij) for rho_new */
-  float sum_wij_exp;
-
-  /*! sum w_ij*/
-  float sum_wij;
-#endif
-
-#ifdef PLANETARY_SMOOTHING_CORRECTION
-  /*! Derivative of density w.r.t. smoothing length */
-  float drho_dh;
-
-  /*! Gradient of drho_dh */
-  float grad_drho_dh[3];
-
-  /*! Sum of P_SPH f_g Wij see eq ... */
-  float P_tilde_numerator;
-
-  /*! Sum of f_g Wij (Sandnes+ 2022 eq ...) */
-  float P_tilde_denominator;
-
-  /*! Max particle density within H */
-  float max_ngb_sph_rho;
-
-  /*! Min particle density within H */
-  float min_ngb_sph_rho;
-
-  /*! S (Sandnes+ 2022 eq ...) */
-  float smoothing_error;
-
-  /*! Last time-step corrected rho. Used for matrix method and quad visc volume
-   * elements */
-  float last_corrected_rho;
-
-  /*! Good or bad last time-step? Used for energy_correction_flag and matrix
-   * method and quad visc volume elements */
-  float last_f_S;
-
-  /*! Gradient of rho */
-  float grad_rho[3];
-#endif
-
-#if defined PLANETARY_MATRIX_INVERSION || defined PLANETARY_QUAD_VISC
-  /*! Particle C matrix. */
-  float C[3][3], Cinv[3][3];
-#endif
-
-#ifdef PLANETARY_QUAD_VISC
-  /*! Particle D matrix. */
-  //float Dinv[3][3];
-    
-   // Note we might want to move calculation of D to hydro_kernels_etc.h 
- // float D[3][3];  
-
-  /*! Particle E matrix. i.e. second part of eq 19 in Rosswog 2020*/
- // float E_v[3][3];
-
-  /*! Particle auxiliary gradient*/
- // float dv_aux[3][3];
-
-  /*! Particle gradients from Rosswog 2020 eq 18 (without C multiplied)*/
-  float dv_no_C[3][3];
-  //float ddv_no_C[3][3][3];
-
-  /*! Particle gradients from Rosswog 2020 eq 18 (with C multiplied)*/
-  float dv[3][3];
- // float ddv[3][3][3];
-
-  /*! Number of particles in grad loop*/
-  float N_grad;
-#endif
-    
-    
     float rho_evolved;
-    
+
     float drho_dt;
-      
-    float drho_no_C[3];
-    
-    float drho_cond[3];
-    
-    float du_no_C[3];
-    
-    float du_cond[3];
-    
+
     float eta_crit;
-    
+
     float vac_term;
-    
-    float grad_h[3];
-    
-    float sum_grad_w[3];
-    
+
     float sph_volume;
-    
+
     float sph_rho;
-    
+
     float m0;
 
     float m1[3];
@@ -387,41 +290,39 @@ struct part {
     float grad_A[3];
 
     float grad_B[3][3];
-    
-    float sum_dw_dh;
-    
-    
-    
+
+
+
+
     float dv_sphgrad[3][3];
-    
+
     float du_sphgrad[3];
-    
+
     float drho_sphgrad[3];
-    
+
     float dh_sphgrad[3];
-    
-    
+
+
     float div_v_sphgrad;
-    
+
     float curl_v_sphgrad[3];
-    
-    float test;
-    
+
+
 
     float testing_output;
-    
+
     float m0_density_loop;
-    
+
     float grad_m0_density_loop[3];
-    
-        
+
+
     float grad_m0_gradhterm[3];
 
     float grad_m1_term1_gradhterm[3][3];
 
     float grad_m2_term1_gradhterm[3][3][3];
-    
-    
+
+
 } SWIFT_STRUCT_ALIGN;
 
 #endif /* SWIFT_PLANETARY_HYDRO_PART_H */

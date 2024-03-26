@@ -115,7 +115,7 @@ void prepare_force(struct part *parts, size_t count) {
     !defined(MINIMAL_SPH) && !defined(PLANETARY_SPH) &&              \
     !defined(HOPKINS_PU_SPH) && !defined(HOPKINS_PU_SPH_MONAGHAN) && \
     !defined(ANARCHY_PU_SPH) && !defined(SPHENIX_SPH) &&             \
-    !defined(PHANTOM_SPH) && !defined(GASOLINE_SPH)  && !defined(PLANETARY_PLUS_SPH)
+    !defined(PHANTOM_SPH) && !defined(GASOLINE_SPH)  && !defined(REMIX_SPH)
   struct part *p;
   for (size_t i = 0; i < count; ++i) {
     p = &parts[i];

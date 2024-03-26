@@ -29,37 +29,6 @@
 #include "hydro_parameters.h"
 #include "math.h"
 
-/**
- * @brief Sets standard SPH or GDF rho^2-like factors.
- */
-__attribute__((always_inline)) INLINE static void hydro_set_rho_factors(
-    float *rho_factor_i, float *rho_factor_j, const struct part *restrict pi,
-    const struct part *restrict pj) {
-
-#ifdef PLANETARY_GDF
-  *rho_factor_i = pi->rho * pj->rho;
-  *rho_factor_j = *rho_factor_i;
-#else
-  *rho_factor_i = pi->rho * pi->rho;
-  *rho_factor_j = pj->rho * pj->rho;
-#endif
-}
-
-/**
- * @brief Overwrite volume elements using the previous-timestep corrected
- * density.
- */
-__attribute__((always_inline)) INLINE static void
-planetary_smoothing_correction_tweak_volume(float *volume_i,
-                                            const struct part *restrict pi) {
-
-#ifdef PLANETARY_SMOOTHING_CORRECTION
-  if (pi->last_corrected_rho) {
-    *volume_i = pi->mass / (pi->last_f_S * pi->rho +
-                            (1.f - pi->last_f_S) * pi->last_corrected_rho);
-  }
-#endif
-}
 
 
 
