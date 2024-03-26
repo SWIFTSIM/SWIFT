@@ -26,16 +26,12 @@
 #include <string.h>
 
 /* Local headers. */
+#include "engine.h"
 #include "parser.h"
 #include "space.h"
 #include "swift.h"
 #include "zoom_region/zoom_init.h"
 #include "zoom_region/zoom_regrid.h"
-
-/* Fake engine */
-struct engine {
-  int nodeID;
-};
 
 void make_mock_space(struct space *s) {
 
