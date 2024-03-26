@@ -54,7 +54,7 @@ void make_mock_space(struct space *s) {
   bzero(gparts, s->nr_gparts * sizeof(struct gpart));
 
   /* Define the corners of the region */
-  const double mid = 600;
+  const double mid = 500;
   const double offset = 12.5;
   double cube_corners[8][3] = {{mid - offset, mid - offset, mid - offset},
                                {mid - offset, mid - offset, mid + offset},
