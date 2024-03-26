@@ -97,11 +97,11 @@ struct tracers_xpart_data {
 
   /*! Kick velocity at last AGN jet event */
   float last_jet_kick_velocity;
-    
-  /*! The accretion/feedback mode of the BH when this particle was last 
+
+  /*! The accretion/feedback mode of the BH when this particle was last
    * kicked */
   int last_jet_kick_mode;
-    
+
   /*! The ID of the BH that did the last kick */
   long long last_jet_kick_BH_id;
 };

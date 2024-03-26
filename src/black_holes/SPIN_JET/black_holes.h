@@ -58,8 +58,9 @@ __attribute__((always_inline)) INLINE static float black_holes_compute_timestep(
 
     /* Compute instantaneous energy supply rate to the BH energy reservoir
      * which is proportional to the BH mass accretion rate */
-    const double Energy_rate = (bp->radiative_efficiency * props->epsilon_f  + bp->wind_efficiency) *
-                               bp->accretion_rate * c * c;
+    const double Energy_rate =
+        (bp->radiative_efficiency * props->epsilon_f + bp->wind_efficiency) *
+        bp->accretion_rate * c * c;
 
     /* Compute instantaneous jet energy supply rate to the BH jet reservoir
      * which is proportional to the BH mass accretion rate */
@@ -830,9 +831,8 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
   /* Compute the Eddington rate (internal units). The radiative efficiency
      is taken to be equal to the Novikov-Thorne (1973) one, and thus varies
      with spin between 4% and 40%. */
-  const double Eddington_rate =
-      4. * M_PI * G * BH_mass * proton_mass /
-      (eps_NT(bp->spin) * c * sigma_Thomson);
+  const double Eddington_rate = 4. * M_PI * G * BH_mass * proton_mass /
+                                (eps_NT(bp->spin) * c * sigma_Thomson);
 
   /* Should we record this time as the most recent high accretion rate? */
   if (accr_rate > props->f_Edd_recording * Eddington_rate) {
@@ -846,12 +846,12 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
   /* Limit the accretion rate to a fraction of the Eddington rate */
   bp->eddington_fraction = accr_rate / Eddington_rate;
   accr_rate = min(accr_rate, props->f_Edd * Eddington_rate);
-  
+
   /* Include the effects of the accretion efficiency */
   bp->accretion_rate = accr_rate * bp->acc_eff;
   bp->eddington_fraction *= bp->acc_eff;
 
-  /* Change mode based on new accretion rates if necessary, and update 
+  /* Change mode based on new accretion rates if necessary, and update
      all important quantities. */
   decide_mode(bp, props);
   bp->acc_eff = accretion_efficiency(bp, props, constants, cosmo);
@@ -950,7 +950,7 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
     bp->angular_momentum_direction[1] = 0.;
     bp->angular_momentum_direction[2] = 1;
   }
-    
+
   bp->jet_direction[0] = bp->angular_momentum_direction[0];
   bp->jet_direction[1] = bp->angular_momentum_direction[1];
   bp->jet_direction[2] = bp->angular_momentum_direction[2];
@@ -1006,13 +1006,15 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
   /* The amount of mass the BH is actually swallowing, including the
      effects of the updated efficiencies. */
   const double delta_m_real =
-      delta_m_0 * (1. - rad_efficiency(bp, props) - jet_efficiency(bp, props) - wind_efficiency(bp, props));
+      delta_m_0 * (1. - rad_efficiency(bp, props) - jet_efficiency(bp, props) -
+                   wind_efficiency(bp, props));
 
   /* Increase the reservoir */
   bp->jet_reservoir +=
       delta_m_0 * c * c * props->eps_f_jet * jet_efficiency(bp, props);
-  bp->energy_reservoir +=
-      delta_m_0 * c * c * (props->epsilon_f * rad_efficiency(bp, props) + wind_efficiency(bp, props));
+  bp->energy_reservoir += delta_m_0 * c * c *
+                          (props->epsilon_f * rad_efficiency(bp, props) +
+                           wind_efficiency(bp, props));
 
   /* Update the masses */
   bp->subgrid_mass += delta_m_real;
@@ -1020,11 +1022,13 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
 
   /* Update the total accreted masses split by accretion mode of the BHs */
   bp->accreted_mass_by_mode[bp->accretion_mode] += delta_m_real;
-    
+
   /* Update total energies launched as radiation/winds, and by mode */
   bp->radiated_energy += delta_m_0 * c * c * bp->radiative_efficiency;
-  bp->radiated_energy_by_mode[bp->accretion_mode] += delta_m_0 * c * c * bp->radiative_efficiency;
-  bp->wind_energy_by_mode[bp->accretion_mode] += delta_m_0 * c * c * bp->wind_efficiency;
+  bp->radiated_energy_by_mode[bp->accretion_mode] +=
+      delta_m_0 * c * c * bp->radiative_efficiency;
+  bp->wind_energy_by_mode[bp->accretion_mode] +=
+      delta_m_0 * c * c * bp->wind_efficiency;
   bp->wind_energy += delta_m_0 * c * c * bp->wind_efficiency;
 
   if (bp->subgrid_mass < 0.) {
@@ -1051,7 +1055,8 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
      * in proprtion to its current accretion rate. We do not account for this
      * in the swallowing approach, however. */
     bp->mass -=
-        (bp->radiative_efficiency + bp->jet_efficiency + bp->wind_efficiency) * bp->accretion_rate * dt;
+        (bp->radiative_efficiency + bp->jet_efficiency + bp->wind_efficiency) *
+        bp->accretion_rate * dt;
     if (bp->mass < 0)
       error(
           "Black hole %lld has reached a negative mass (%f). This is "
@@ -1343,14 +1348,14 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
   bp->acc_eff = accretion_efficiency(bp, props, constants, cosmo);
   bp->accretion_rate = accr_rate * bp->acc_eff;
   bp->eddington_fraction = bp->accretion_rate / Eddington_rate;
-    
+
   /* The accretion/feedback mode is now possibly different, so the feedback
      efficiencies need to be updated. This is important for computing the
      next time-step of the BH. */
   bp->radiative_efficiency = rad_efficiency(bp, props);
   bp->jet_efficiency = jet_efficiency(bp, props);
   bp->wind_efficiency = wind_efficiency(bp, props);
-    
+
   /* Calculate a BH angular momentum evolution time step. Two conditions are
      used, one ensures that the BH spin changes by a small amount over the
      next time-step, while the other ensures that the spin is not wildly
@@ -1381,19 +1386,20 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
       /* Angular momentum direction of gas in kernel along the direction of
          the current spin vector */
 
-      if (spec_ang_mom_norm>0.) {
+      if (spec_ang_mom_norm > 0.) {
         const float cosine = (bp->spec_angular_momentum_gas[0] *
-                                bp->angular_momentum_direction[0] +
-                            bp->spec_angular_momentum_gas[1] *
-                                bp->angular_momentum_direction[1] +
-                            bp->spec_angular_momentum_gas[2] *
-                                bp->angular_momentum_direction[2]) /
-                           spec_ang_mom_norm;
+                                  bp->angular_momentum_direction[0] +
+                              bp->spec_angular_momentum_gas[1] *
+                                  bp->angular_momentum_direction[1] +
+                              bp->spec_angular_momentum_gas[2] *
+                                  bp->angular_momentum_direction[2]) /
+                             spec_ang_mom_norm;
         /* Compute sine, i.e. the componenent perpendicular to that. */
         const float sine = fmaxf(0., sqrtf(1. - cosine * cosine));
 
-        const float dt_redirection = 0.1 * m_warp(bp, constants, props) * j_BH(bp, constants) /
-                                   (bp->accretion_rate * j_warp(bp, constants, props) * sine);
+        const float dt_redirection =
+            0.1 * m_warp(bp, constants, props) * j_BH(bp, constants) /
+            (bp->accretion_rate * j_warp(bp, constants, props) * sine);
         dt_ang_mom = min(dt_ang_mom, dt_redirection);
       }
     }
@@ -1638,7 +1644,7 @@ INLINE static void black_holes_create_from_gas(
     bp->wind_energy_by_mode[i] = 0.f;
   for (int i = 0; i < BH_accretion_modes_count; ++i)
     bp->radiated_energy_by_mode[i] = 0.f;
-    
+
   /* We haven't accreted anything yet */
   bp->total_accreted_mass = 0.f;
   bp->cumulative_number_seeds = 1;

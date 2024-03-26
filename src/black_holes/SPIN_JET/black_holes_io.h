@@ -529,12 +529,11 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
       "The total energy injected in the kinetic jet AGN feedback mode, split "
       "by accretion mode. The components correspond to the jet energy "
       "dumped in the thick, thin and slim disc modes, respectively.");
-    
+
   list[56] = io_make_output_field(
       "WindEfficiencies", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
-      wind_efficiency,
-      "The wind efficiencies of the black holes.");
-    
+      wind_efficiency, "The wind efficiencies of the black holes.");
+
   list[57] = io_make_output_field(
       "TotalRadiatedEnergies", FLOAT, 1, UNIT_CONV_ENERGY, 0.f, bparts,
       radiated_energy,
@@ -549,9 +548,8 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
       "dumped in the thick, thin and slim disc modes, respectively.");
 
   list[59] = io_make_output_field(
-      "TotalWindEnergies", FLOAT, 1, UNIT_CONV_ENERGY, 0.f, bparts,
-      wind_energy,
-      "The total energy launched into accretion disc winds by the black " 
+      "TotalWindEnergies", FLOAT, 1, UNIT_CONV_ENERGY, 0.f, bparts, wind_energy,
+      "The total energy launched into accretion disc winds by the black "
       "holes, in all accretion modes. ");
 
   list[60] = io_make_output_field(

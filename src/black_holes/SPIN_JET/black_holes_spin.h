@@ -471,11 +471,11 @@ __attribute__((always_inline)) INLINE static float eps_SD(float a, float mdot) {
         mdot);
   }
 #endif
-    
+
   /* Since we use a definition of the Eddington ratio (mdot) that includes
      the varying (Novikov-Thorne) radiative efficiency, we need to rescale this
      back to a constant one. */
-    
+
   mdot = mdot * 0.1 / eps_NT(a);
 
   return 0.1 / mdot * (0.985 / (B + 1.6 / mdot) + 0.015 / (C + 1.6 / mdot)) * A;
@@ -518,8 +518,7 @@ __attribute__((always_inline)) INLINE static void decide_mode(
      * it is more sensible to define the Eddington luminosity using the spin-
      * dependent eps_NT(a). We thus assume that the disc becomes super-
      * Eddington at a critical f_Edd(a) = f_Edd * (eps_NT(a)/0.1) = 1. */
-    if ((eddington_fraction_Bondi > 1.) &&
-        (props->include_slim_disk)) {
+    if ((eddington_fraction_Bondi > 1.) && (props->include_slim_disk)) {
       bp->accretion_mode = BH_slim_disc;
     } else {
       bp->accretion_mode = BH_thin_disc;
@@ -618,22 +617,25 @@ __attribute__((always_inline)) INLINE static float aspect_ratio(
  * @brief Compute the accretion efficiency of a BH particle.
  *
  * The result depends on bp->accretion_mode (thick disk, thin disk or
- * slim disk). We assume no accretion efficiency (100%) in the thin disk, 
+ * slim disk). We assume no accretion efficiency (100%) in the thin disk,
  * and allow for options for a non-zero accretion efficiency in the thick
  * and slim disc. For both we allow the option of constant values, and for the
- * thick disc we allow an option for a scaling with Eddington ratio that is 
+ * thick disc we allow an option for a scaling with Eddington ratio that is
  * motivated by simulations.
  *
  * @param bp Pointer to the b-particle data.
  * @param constants Physical constants (in internal units).
  * @param props Properties of the black hole scheme.
  */
-__attribute__((always_inline)) INLINE static float accretion_efficiency(struct bpart* bp, const struct black_holes_props* props, const struct phys_const* constants, const struct cosmology* cosmo) {
-  
+__attribute__((always_inline)) INLINE static float accretion_efficiency(
+    struct bpart* bp, const struct black_holes_props* props,
+    const struct phys_const* constants, const struct cosmology* cosmo) {
+
   /* Initialize placeholder variable. */
   float accr_eff = 1.;
 
-  if (bp->accretion_mode == BH_thick_disc || bp->accretion_mode == BH_slim_disc) {
+  if (bp->accretion_mode == BH_thick_disc ||
+      bp->accretion_mode == BH_slim_disc) {
 
     if (props->accretion_efficiency_mode == Constant) {
       if (bp->accretion_mode == BH_thick_disc) {
@@ -642,31 +644,33 @@ __attribute__((always_inline)) INLINE static float accretion_efficiency(struct b
         accr_eff = props->accretion_efficiency_slim;
       }
     } else if (props->accretion_efficiency_mode == Variable) {
-        
+
       if (bp->accretion_mode == BH_thick_disc) {
-        
+
         /* Compute the transition radius between an outer thin disc and an
-         * inner thick disc. This is assumed to happen at 10 R_G at the 
-         * critical value of the Eddington ratio between the two regimes. 
+         * inner thick disc. This is assumed to happen at 10 R_G at the
+         * critical value of the Eddington ratio between the two regimes.
          * The transition radius then increases as 1 / f_Edd^2. Note that
          * we also need to use the raw (unsuppressed) Eddington ratio here,
          * hence the multiplication by accretion efficiencies. Note that the
          * units of the transition radius here are in R_G. */
-        float R_tr = 10.f * props->mdot_crit_ADAF * props->mdot_crit_ADAF * bp->acc_eff * bp->acc_eff / (bp->eddington_fraction * bp->eddington_fraction); 
-          
-        /* We need to also compute the Bondi radius (in units of R_G), which 
-         * can be expressed in terms of the ratio between speed of light and 
+        float R_tr = 10.f * props->mdot_crit_ADAF * props->mdot_crit_ADAF *
+                     bp->acc_eff * bp->acc_eff /
+                     (bp->eddington_fraction * bp->eddington_fraction);
+
+        /* We need to also compute the Bondi radius (in units of R_G), which
+         * can be expressed in terms of the ratio between speed of light and
          * sound speed. */
         const double c = constants->const_speed_light_c;
         float gas_c_phys2 = bp->sound_speed_gas * cosmo->a_factor_sound_speed;
         gas_c_phys2 = gas_c_phys2 * gas_c_phys2;
         float R_B = c * c / gas_c_phys2;
-          
-        /* Limit the transition radius to no larger than R_B and no smaller 
+
+        /* Limit the transition radius to no larger than R_B and no smaller
          * than 10 R_G. */
         R_tr = fminf(R_B, R_tr);
         R_tr = fmaxf(10.f, R_tr);
-          
+
         /* Implement the actual scaling of accretion efficiency with transition
          * radius as found by GRMHD simulations. */
         float suppr_factor = powf(10.f / R_tr, props->ADIOS_s);
@@ -705,19 +709,22 @@ __attribute__((always_inline)) INLINE static float jet_efficiency(
     const float horizon_ang_vel =
         bp->spin / (2. * (1. + sqrtf(1. - bp->spin * bp->spin)));
     float phi = -20.2 * bp->spin * bp->spin * bp->spin -
-                      14.9 * bp->spin * bp->spin + 34. * bp->spin + 52.6;
-    
+                14.9 * bp->spin * bp->spin + 34. * bp->spin + 52.6;
+
     float Eddington_ratio = bp->eddington_fraction;
-    
-    /* Suppress the magnetic flux if we are in the thin or slim disc, 
+
+    /* Suppress the magnetic flux if we are in the thin or slim disc,
      * according to results from Ricarte et al. (2023). */
-    if ((bp->accretion_mode == BH_slim_disc) || (props->use_jets_in_thin_disc==1 && bp->accretion_mode == BH_thin_disc)) {
-      phi = phi * powf(Eddington_ratio/1.88, 1.29) / (1. + powf(Eddington_ratio/1.88, 1.29));
+    if ((bp->accretion_mode == BH_slim_disc) ||
+        (props->use_jets_in_thin_disc == 1 &&
+         bp->accretion_mode == BH_thin_disc)) {
+      phi = phi * powf(Eddington_ratio / 1.88, 1.29) /
+            (1. + powf(Eddington_ratio / 1.88, 1.29));
     }
 
     /* Full jet efficiency formula as in Tchekhovskoy et al. (2010). */
-    jet_eff = kappa * 0.25 * M_1_PI * phi * phi *
-              horizon_ang_vel * horizon_ang_vel *
+    jet_eff = kappa * 0.25 * M_1_PI * phi * phi * horizon_ang_vel *
+              horizon_ang_vel *
               (1. + 1.38 * horizon_ang_vel * horizon_ang_vel -
                9.2 * horizon_ang_vel * horizon_ang_vel * horizon_ang_vel *
                    horizon_ang_vel);
@@ -729,7 +736,8 @@ __attribute__((always_inline)) INLINE static float jet_efficiency(
   }
 
   /* Turn off jets in thin disk mode if we want to do that */
-  if ((bp->accretion_mode == BH_thin_disc) && (props->use_jets_in_thin_disc==0)) {
+  if ((bp->accretion_mode == BH_thin_disc) &&
+      (props->use_jets_in_thin_disc == 0)) {
     jet_eff = 0.;
   }
 
@@ -802,10 +810,12 @@ __attribute__((always_inline)) INLINE static float rad_efficiency(
         rad_eff = 2.4 * eps_TD / r_isco(bp->spin) * props->beta_acc *
                   bp->eddington_fraction * props->alpha_acc_2_inv;
       }
-        
+
       /* Add contribution of truncated thin disc from larger radii */
       if (props->accretion_efficiency_mode == Variable) {
-        float R_tr = 10.f * props->mdot_crit_ADAF * props->mdot_crit_ADAF * bp->acc_eff * bp->acc_eff / (bp->eddington_fraction * bp->eddington_fraction);
+        float R_tr = 10.f * props->mdot_crit_ADAF * props->mdot_crit_ADAF *
+                     bp->acc_eff * bp->acc_eff /
+                     (bp->eddington_fraction * bp->eddington_fraction);
         R_tr = fmaxf(10.f, R_tr);
         rad_eff += 1. - sqrtf(1. - 2.f / (3.f * R_tr));
       }
@@ -829,20 +839,19 @@ __attribute__((always_inline)) INLINE static float rad_efficiency(
   return rad_eff;
 }
 
-
 /**
  * @brief Compute the wind efficiency of a BH particle.
  *
  * The result depends on bp->accretion_mode (thick disk, thin disk or
- * slim disk), with no wind assumed for the thin disc (effectively, the 
+ * slim disk), with no wind assumed for the thin disc (effectively, the
  * radiation launches its own wind, while in the thick/slim disc, it is gas
  * pressure/MHD effects that launch the wind. In all cases, the wind is dumped
  * as thermal energy, alongside radiation.
  *
- * For the thick disk, we take the results from Sadowski et al. (2013) 
+ * For the thick disk, we take the results from Sadowski et al. (2013)
  * (2013MNRAS.436.3856S), which is applicable to MAD discs. For the slim disc,
  * we constructed a fitting function by using the total MHD efficiency from
- * Ricarte et al. (2023) (2023ApJ...954L..22R), which includes both winds and 
+ * Ricarte et al. (2023) (2023ApJ...954L..22R), which includes both winds and
  * jets, and subtracting from that the jet efficiency used by our model.
  *
  * @param bp Pointer to the b-particle data.
@@ -854,37 +863,39 @@ __attribute__((always_inline)) INLINE static float wind_efficiency(
 
   /* Define placeholder variable for the result */
   float wind_eff = 0.f;
-    
-  /* (Dimensionless) magnetic flux on the BH horizon, as given by the 
+
+  /* (Dimensionless) magnetic flux on the BH horizon, as given by the
      Narayan et al. (2021) fitting function for MAD discs. */
   float phi = -20.2f * bp->spin * bp->spin * bp->spin -
-                      14.9f * bp->spin * bp->spin + 34.f * bp->spin + 52.6f;
-    
+              14.9f * bp->spin * bp->spin + 34.f * bp->spin + 52.6f;
+
   if (bp->accretion_mode == BH_slim_disc) {
-      
+
     /* We need to suppress the magnetic flux by an Eddington-ratio-dependent
        factor (Equation 3 from Ricarte et al. 2023). */
     float Eddington_ratio = bp->eddington_fraction;
-    phi = phi * powf(Eddington_ratio / 1.88f, 1.29f) / (1.f + powf(Eddington_ratio / 1.88f, 1.29f));
+    phi = phi * powf(Eddington_ratio / 1.88f, 1.29f) /
+          (1.f + powf(Eddington_ratio / 1.88f, 1.29f));
     float phi_factor = (1.f + (phi / 50.f) * (phi / 50.f));
-      
+
     float horizon_ang_vel =
         bp->spin / (2.f * (1.f + sqrtf(1.f - bp->spin * bp->spin)));
-    float spin_factor = 1.f - 8.f * horizon_ang_vel * horizon_ang_vel + 1.f * horizon_ang_vel;
+    float spin_factor =
+        1.f - 8.f * horizon_ang_vel * horizon_ang_vel + 1.f * horizon_ang_vel;
     if (bp->spin > 0.f) {
       spin_factor = max(0.4f, spin_factor);
-    }
-    else {
+    } else {
       spin_factor = max(0.f, spin_factor);
     }
 
     wind_eff = props->slim_disc_wind_factor * 0.0635 * phi_factor * spin_factor;
   } else if (bp->accretion_mode == BH_thick_disc && props->use_ADIOS_winds) {
-    
+
     /* Equation (29) from Sadowski et al. (2013). */
     float horizon_ang_vel =
         bp->spin / (2.f * (1.f + sqrtf(1.f - bp->spin * bp->spin)));
-    wind_eff = 0.005f * (1.f + 3.f * phi * phi / 2500.f * horizon_ang_vel * horizon_ang_vel / 0.04f);
+    wind_eff = 0.005f * (1.f + 3.f * phi * phi / 2500.f * horizon_ang_vel *
+                                   horizon_ang_vel / 0.04f);
   }
   return wind_eff;
 }
@@ -951,8 +962,8 @@ __attribute__((always_inline)) INLINE static float l_acc(
  * slim disk), due to differing spec. ang. momenta as well as jet and
  * radiative efficiencies.
  *
- * For the thick disc, we use the jet spindown formula from Narayan et al. 
- * (2021). For the slim and thin disc, we use the formula from Ricarte et al. 
+ * For the thick disc, we use the jet spindown formula from Narayan et al.
+ * (2021). For the slim and thin disc, we use the formula from Ricarte et al.
  * (2023).
  *
  * @param bp Pointer to the b-particle data.
@@ -975,40 +986,42 @@ __attribute__((always_inline)) INLINE static float da_dln_mbh_0(
   float spinup_rate = 0.;
 
   if (bp->accretion_mode == BH_thin_disc && props->use_jets_in_thin_disc == 0) {
-      
-    /* If we are in the thin disc and use no jets, we use the simple spinup / 
+
+    /* If we are in the thin disc and use no jets, we use the simple spinup /
      * spindown formula, e.g. from Benson & Babul (2009). This accounts for
      * accretion only. */
-    spinup_rate = l_acc(bp, constants, props) -
-                    2. * a * (1. - bp->radiative_efficiency);
-      
+    spinup_rate =
+        l_acc(bp, constants, props) - 2. * a * (1. - bp->radiative_efficiency);
+
   } else if (bp->accretion_mode == BH_thick_disc) {
-      
+
     /* Fiting function from Narayan et al. (2021) */
     spinup_rate = 0.45 - 12.53 * a - 7.8 * a * a + 9.44 * a * a * a +
-                    5.71 * a * a * a * a - 4.03 * a * a * a * a * a;
-      
-  } else if (bp->accretion_mode == BH_slim_disc || (bp->accretion_mode == BH_thin_disc && props->use_jets_in_thin_disc == 1)) {
-      
+                  5.71 * a * a * a * a - 4.03 * a * a * a * a * a;
+
+  } else if (bp->accretion_mode == BH_slim_disc ||
+             (bp->accretion_mode == BH_thin_disc &&
+              props->use_jets_in_thin_disc == 1)) {
+
     /* Fitting function from Ricarte et al. (2023). */
     float Eddington_ratio = bp->eddington_fraction * eps_NT(bp->spin) / 0.1;
     float xi = Eddington_ratio * 0.017;
     float s_min = 0.86 - 1.94 * bp->spin;
     float L_ISCO = 0.385 * (1. + 2. * sqrtf(3. * r_isco(bp->spin) - 2.));
-    float s_thin =  L_ISCO -
-        2. * a * (1. - eps_NT(bp->spin));
+    float s_thin = L_ISCO - 2. * a * (1. - eps_NT(bp->spin));
     float s_HD = (s_thin + s_min * xi) / (1. + xi);
-        
+
     float horizon_ang_vel =
         fabsf(bp->spin) / (2. * (1. + sqrtf(1. - bp->spin * bp->spin)));
     float k_EM = 0.23;
     if (bp->spin > 0.) {
-      k_EM = min(0.1 + 0.5 * bp->spin,0.35);
+      k_EM = min(0.1 + 0.5 * bp->spin, 0.35);
     }
 
-    float s_EM = -1. * bp->spin / fabsf(bp->spin) * bp->jet_efficiency * (1. / (k_EM * horizon_ang_vel) - 2. * bp->spin);
+    float s_EM = -1. * bp->spin / fabsf(bp->spin) * bp->jet_efficiency *
+                 (1. / (k_EM * horizon_ang_vel) - 2. * bp->spin);
     spinup_rate = s_HD + s_EM;
-    } 
+  }
 
   return spinup_rate;
 }
@@ -1111,10 +1124,12 @@ __attribute__((always_inline)) INLINE static float black_hole_feedback_dv_jet(
   float v_jet = -1.;
   if (props->AGN_jet_velocity_model == AGN_jet_velocity_BH_mass) {
 
-    v_jet = powf((bp->subgrid_mass / props->v_jet_BH_mass_scaling_reference_mass), props->v_jet_BH_mass_scaling_slope);
+    v_jet =
+        powf((bp->subgrid_mass / props->v_jet_BH_mass_scaling_reference_mass),
+             props->v_jet_BH_mass_scaling_slope);
 
     /* Apply floor and ceiling values */
-    v_jet = props->v_jet_max * fminf(v_jet, 1.); 
+    v_jet = props->v_jet_max * fminf(v_jet, 1.);
     v_jet = fmaxf(v_jet, props->v_jet_min);
 
   } else if (props->AGN_jet_velocity_model == AGN_jet_velocity_constant) {
@@ -1378,13 +1393,19 @@ __attribute__((always_inline)) INLINE static float merger_spin_evolve(
 
   /* The angular momentum of each BH in the centre of mass frame. */
   const float angular_momentum_1[3] = {
-      m1 * (relative_coordinates_1[1] * relative_velocities_1[2] - relative_coordinates_1[2] * relative_velocities_1[1]),
-      m1 * (relative_coordinates_1[2] * relative_velocities_1[0] - relative_coordinates_1[0] * relative_velocities_1[2]),
-      m1 * (relative_coordinates_1[0] * relative_velocities_1[1] - relative_coordinates_1[1] * relative_velocities_1[0])};
+      m1 * (relative_coordinates_1[1] * relative_velocities_1[2] -
+            relative_coordinates_1[2] * relative_velocities_1[1]),
+      m1 * (relative_coordinates_1[2] * relative_velocities_1[0] -
+            relative_coordinates_1[0] * relative_velocities_1[2]),
+      m1 * (relative_coordinates_1[0] * relative_velocities_1[1] -
+            relative_coordinates_1[1] * relative_velocities_1[0])};
   const float angular_momentum_2[3] = {
-      m2 * (relative_coordinates_2[1] * relative_velocities_2[2] - relative_coordinates_2[2] * relative_velocities_2[1]),
-      m2 * (relative_coordinates_2[2] * relative_velocities_2[0] - relative_coordinates_2[0] * relative_velocities_2[2]),
-      m2 * (relative_coordinates_2[0] * relative_velocities_2[1] - relative_coordinates_2[1] * relative_velocities_2[0])};
+      m2 * (relative_coordinates_2[1] * relative_velocities_2[2] -
+            relative_coordinates_2[2] * relative_velocities_2[1]),
+      m2 * (relative_coordinates_2[2] * relative_velocities_2[0] -
+            relative_coordinates_2[0] * relative_velocities_2[2]),
+      m2 * (relative_coordinates_2[0] * relative_velocities_2[1] -
+            relative_coordinates_2[1] * relative_velocities_2[0])};
 
   /* Calculate the orbital angular momentum itself. */
   const float orbital_angular_momentum[3] = {
@@ -1421,9 +1442,9 @@ __attribute__((always_inline)) INLINE static float merger_spin_evolve(
            constants->const_newton_G / constants->const_speed_light_c);
 
   float total_angular_momentum_direction[3] = {
-      j_BH_1 *spin_vec1[0] + j_BH_2 * spin_vec2[0] +
+      j_BH_1 * spin_vec1[0] + j_BH_2 * spin_vec2[0] +
           orbital_angular_momentum[0],
-      j_BH_1 * spin_vec1[1] + j_BH_2* spin_vec2[1] +
+      j_BH_1 * spin_vec1[1] + j_BH_2 * spin_vec2[1] +
           orbital_angular_momentum[1],
       j_BH_1 * spin_vec1[2] + j_BH_2 * spin_vec2[2] +
           orbital_angular_momentum[2]};
@@ -1467,12 +1488,23 @@ __attribute__((always_inline)) INLINE static float merger_spin_evolve(
   const float l = l_variable(spin1, spin2, mass_ratio, sym_mass_ratio,
                              cos_alpha, cos_beta, cos_gamma);
 
-  const float l_vector[3] = {l * orbital_angular_momentum_direction[0], l * orbital_angular_momentum_direction[1], l * orbital_angular_momentum_direction[2]};
+  const float l_vector[3] = {l * orbital_angular_momentum_direction[0],
+                             l * orbital_angular_momentum_direction[1],
+                             l * orbital_angular_momentum_direction[2]};
 
   /* Final spin vector, constructed from the two spins and the auxilliary l
      vector. */
-  const float spin_vector[3] = {(spin_vec1[0] + spin_vec2[0]*mass_ratio*mass_ratio * l_vector[0]*mass_ratio) / ((1.f+mass_ratio) * (1.f+mass_ratio)), (spin_vec1[1] + spin_vec2[1]*mass_ratio*mass_ratio * l_vector[1]*mass_ratio) / ((1.f+mass_ratio) * (1.f+mass_ratio)), (spin_vec1[2] + spin_vec2[2]*mass_ratio*mass_ratio * l_vector[2]*mass_ratio) / ((1.f+mass_ratio) * (1.f+mass_ratio))};
-    
+  const float spin_vector[3] = {
+      (spin_vec1[0] +
+       spin_vec2[0] * mass_ratio * mass_ratio * l_vector[0] * mass_ratio) /
+          ((1.f + mass_ratio) * (1.f + mass_ratio)),
+      (spin_vec1[1] +
+       spin_vec2[1] * mass_ratio * mass_ratio * l_vector[1] * mass_ratio) /
+          ((1.f + mass_ratio) * (1.f + mass_ratio)),
+      (spin_vec1[2] +
+       spin_vec2[2] * mass_ratio * mass_ratio * l_vector[2] * mass_ratio) /
+          ((1.f + mass_ratio) * (1.f + mass_ratio))};
+
 #ifdef SWIFT_DEBUG_CHECKS
   if (l < 0.) {
     error(
@@ -1483,7 +1515,9 @@ __attribute__((always_inline)) INLINE static float merger_spin_evolve(
 #endif
 
   /* Get magnitude of the final spin simply as the magnitude of the vector. */
-  const float final_spin_magnitude = sqrtf(spin_vector[0] * spin_vector[0] + spin_vector[1] * spin_vector[1] + spin_vector[2] * spin_vector[2]);
+  const float final_spin_magnitude =
+      sqrtf(spin_vector[0] * spin_vector[0] + spin_vector[1] * spin_vector[1] +
+            spin_vector[2] * spin_vector[2]);
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (final_spin_magnitude <= 0.) {
@@ -1503,7 +1537,7 @@ __attribute__((always_inline)) INLINE static float merger_spin_evolve(
 
   /* Assign the directions of the spin to the BH. */
   bpi->angular_momentum_direction[0] = spin_vector[0] / final_spin_magnitude;
-  bpi->angular_momentum_direction[1] = spin_vector[1] / final_spin_magnitude; 
+  bpi->angular_momentum_direction[1] = spin_vector[1] / final_spin_magnitude;
   bpi->angular_momentum_direction[2] = spin_vector[2] / final_spin_magnitude;
 
   /* Finally we also want to calculate the fraction of total mass-energy

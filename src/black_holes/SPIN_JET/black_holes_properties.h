@@ -340,8 +340,8 @@ struct black_holes_props {
   /* Whether we want to include super-Eddington accretion, modeled as the slim
      disk */
   int include_slim_disk;
-    
-  /* Whether or not to use jets from the thin disc regime (at moderate 
+
+  /* Whether or not to use jets from the thin disc regime (at moderate
    * Eddington ratios. */
   int use_jets_in_thin_disc;
 
@@ -375,11 +375,11 @@ struct black_holes_props {
   /*! The free numerical parameter to scale the velocity by, if the local or
       sound_speed launching models are used. */
   float v_jet_xi;
-    
+
   /*! The reference BH mass to use in the case that we employ a BH mass scaling
    * for the jet velocity. */
   float v_jet_BH_mass_scaling_reference_mass;
-    
+
   /*! The power law slope to use in the case that we employ a BH mass scaling
    * for the jet velocity. */
   float v_jet_BH_mass_scaling_slope;
@@ -412,19 +412,19 @@ struct black_holes_props {
   /*! The accretion efficiency (suppression of accretion rate) to use in
    *  the thick disc regime (at low Eddington ratios). */
   float accretion_efficiency_thick;
-    
+
   /*! The accretion efficiency (suppression of accretion rate) to use in
    *  the slim disc regime (at super-Eddington ratios). */
   float accretion_efficiency_slim;
-    
+
   /*! Expontent to use for scaling of accretion efficiency with transition
    *  radius in the thick disc. */
   float ADIOS_s;
-    
-  /* Whether or not we want to use wind feedback in the ADAF/ADIOS regime 
+
+  /* Whether or not we want to use wind feedback in the ADAF/ADIOS regime
      (at low Eddington ratios). */
   int use_ADIOS_winds;
-    
+
   /* The factor by which we multiply the slim disc wind efficiency - 0 meaning
      no winds, and 1 meaning full winds. */
   float slim_disc_wind_factor;
@@ -432,7 +432,7 @@ struct black_holes_props {
   /*! The jet launching scheme to use: minimum distance,
       maximum distance, closest to spin axis or minimum density. */
   enum AGN_jet_feedback_models jet_feedback_model;
-    
+
   /*! The accretion efficiency mode to use: constant or variable
    * (Eddington-ratio dependent) . */
   enum accretion_efficiency_modes accretion_efficiency_mode;
@@ -873,7 +873,7 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
         "not %d",
         bp->include_slim_disk);
   }
-    
+
   bp->use_jets_in_thin_disc =
       parser_get_param_int(params, "SPINJETAGN:use_jets_in_thin_disc");
 
@@ -915,7 +915,7 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
     bp->v_jet_min =
         parser_get_param_float(params, "SPINJETAGN:v_jet_min_km_p_s");
     bp->v_jet_min *= (1e5 / (us->UnitLength_in_cgs / us->UnitTime_in_cgs));
-      
+
     bp->v_jet_max =
         parser_get_param_float(params, "SPINJETAGN:v_jet_max_km_p_s");
     bp->v_jet_max *= (1e5 / (us->UnitLength_in_cgs / us->UnitTime_in_cgs));
@@ -1028,23 +1028,21 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
         "must be between 0. and 1., not %f",
         bp->radiative_efficiency);
   }
-    
+
   bp->use_ADIOS_winds =
       parser_get_param_int(params, "SPINJETAGN:use_ADIOS_winds");
 
-  if ((bp->use_ADIOS_winds != 0) &&
-      (bp->use_ADIOS_winds != 1)) {
+  if ((bp->use_ADIOS_winds != 0) && (bp->use_ADIOS_winds != 1)) {
     error(
         "The use_ADIOS_winds parameter must be either 0 or 1, "
         "not %d",
         bp->use_ADIOS_winds);
   }
-    
+
   bp->slim_disc_wind_factor =
       parser_get_param_float(params, "SPINJETAGN:slim_disc_wind_factor");
 
-  if ((bp->slim_disc_wind_factor < 0) ||
-      (bp->slim_disc_wind_factor > 1)) {
+  if ((bp->slim_disc_wind_factor < 0) || (bp->slim_disc_wind_factor > 1)) {
     error(
         "The slim_disc_wind_factor parameter must be between 0 and 1, "
         "(inclusive), not %f",
@@ -1066,7 +1064,7 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
         "The AGN feedback model must be MinimumDistance, MaximumDistance, "
         "SpinAxis or MinimumDensity, not %s",
         temp6);
-    
+
   bp->accretion_efficiency_slim =
       parser_get_param_float(params, "SPINJETAGN:accretion_efficiency_slim");
 
@@ -1077,37 +1075,35 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
         "(inclusive), not %f",
         bp->accretion_efficiency_slim);
   }
-    
+
   char temp7[60];
-  parser_get_param_string(params, "SPINJETAGN:accretion_efficiency_mode", temp7);
+  parser_get_param_string(params, "SPINJETAGN:accretion_efficiency_mode",
+                          temp7);
   if (strcmp(temp7, "Constant") == 0) {
     bp->accretion_efficiency_mode = Constant;
     bp->accretion_efficiency_thick =
-      parser_get_param_float(params, "SPINJETAGN:accretion_efficiency_thick");
-     
+        parser_get_param_float(params, "SPINJETAGN:accretion_efficiency_thick");
+
     if ((bp->accretion_efficiency_thick < 0) ||
-      (bp->accretion_efficiency_thick > 1)) {
+        (bp->accretion_efficiency_thick > 1)) {
       error(
-        "The accretion_efficiency_thick parameter must be between 0 and 1, "
-        "(inclusive), not %f",
-        bp->accretion_efficiency_thick);
+          "The accretion_efficiency_thick parameter must be between 0 and 1, "
+          "(inclusive), not %f",
+          bp->accretion_efficiency_thick);
     }
   } else if (strcmp(temp7, "Variable") == 0) {
     bp->accretion_efficiency_mode = Variable;
-    bp->ADIOS_s =
-      parser_get_param_float(params, "SPINJETAGN:ADIOS_s");
-     
-    if ((bp->ADIOS_s < 0) ||
-      (bp->ADIOS_s > 1)) {
+    bp->ADIOS_s = parser_get_param_float(params, "SPINJETAGN:ADIOS_s");
+
+    if ((bp->ADIOS_s < 0) || (bp->ADIOS_s > 1)) {
       error(
-        "The ADIOS_s parameter must be between 0 and 1, "
-        "(inclusive), not %f",
-        bp->ADIOS_s);
+          "The ADIOS_s parameter must be between 0 and 1, "
+          "(inclusive), not %f",
+          bp->ADIOS_s);
     }
   } else {
-    error(
-        "The accretion efficiency model must be Constant or Variable, not %s",
-        temp7);
+    error("The accretion efficiency model must be Constant or Variable, not %s",
+          temp7);
   }
 }
 

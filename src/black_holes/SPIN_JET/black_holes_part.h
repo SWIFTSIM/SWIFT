@@ -31,7 +31,7 @@
 
 /*! The possible accretion modes every black hole can take. */
 enum BH_accretion_modes {
-  BH_thick_disc = 0,       /* At low Eddington ratios */
+  BH_thick_disc = 0,           /* At low Eddington ratios */
   BH_thin_disc = 1,            /* At moderate Eddington ratios */
   BH_slim_disc = 2,            /* Super-Eddington accretion */
   BH_accretion_modes_count = 3 /* Number of possible accretion modes */
@@ -250,16 +250,16 @@ struct bpart {
 
   /*! Total jet energy launched so far */
   float total_jet_energy;
-    
+
   /*! Efficiency of wind launching */
   float wind_efficiency;
-    
+
   /*! Energy launched into radiation */
   float radiated_energy;
-    
+
   /*! Energy launched as winds */
   float wind_energy;
-    
+
   /*! Accretion efficiency of this BH */
   float acc_eff;
 
