@@ -244,6 +244,11 @@ int main(int argc, char *argv[]) {
   assert(buffer_count == 10 * 10 * 10);
 
   /* Free the space. */
+  free(s->local_cells_top);
+  free(s->multipoles_top);
+  free(s->local_cells_with_tasks_top);
+  free(s->cells_with_particles_top);
+  free(s->local_cells_with_particles_top);
   free(s->cells_top);
   free(s->gparts);
   free(s->zoom_props);
