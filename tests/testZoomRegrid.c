@@ -32,6 +32,11 @@
 #include "zoom_region/zoom_init.h"
 #include "zoom_region/zoom_regrid.h"
 
+/* Fake engine */
+struct engine {
+  int nodeID;
+};
+
 void make_mock_space(struct space *s) {
 
   /* Define the boxsize. */
@@ -152,19 +157,32 @@ int main(int argc, char *argv[]) {
   bzero(s, sizeof(struct space));
   make_mock_space(s);
 
+  /* Create the fake engine. */
+  struct engine *e = malloc(sizeof(struct engine));
+  e->nodeID = 0;
+
   /* Flag that we are running a zoom. */
   s->with_zoom_region = 1;
 
   /* Run the zoom_init function. */
   zoom_props_init(&param_file, s, 0);
 
+  /* Below we emulate the order in which calls would happen in actual run */
+
   /* Run the regridding. */
+  space_regrid(s, 1);
+
+  /* Attach the engine. */
+  s->e = e;
+
+  /* Call the rebuild to attach particles. */
   space_rebuild(s, 0, 1);
 
   free(s->cells_top);
   free(s->gparts);
   free(s->zoom_props);
   free(s);
+  free(e);
 
   return 0;
 }
