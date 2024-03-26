@@ -70,9 +70,9 @@ void make_mock_space(struct space *s) {
   const double zoom_width = 2.5;
   const double buffer_lower[3] = {400, 400, 400};
   const double zoom_lower[3] = {480, 480, 480};
-  for (int i = 0; i < 10, i++) {
-    for (int j = 0; j < 10, j++) {
-      for (int k = 0; k < 10, k++) {
+  for (int i = 0; i < 10; i++) {
+    for (int j = 0; j < 10; j++) {
+      for (int k = 0; k < 10; k++) {
         gparts[gpart_count].mass = 1.0;
 
         /* Set background particles to be at the center of the cell. */
@@ -115,9 +115,9 @@ void make_mock_space(struct space *s) {
     gparts[gpart_count].mass = 1.0;
 
     /* Set zoom region particles to be at the corners of the region. */
-    gparts[gpart_count].x[0] = cube_corners[i - 10][0];
-    gparts[gpart_count].x[1] = cube_corners[i - 10][1];
-    gparts[gpart_count].x[2] = cube_corners[i - 10][2];
+    gparts[gpart_count].x[0] = cube_corners[i][0];
+    gparts[gpart_count].x[1] = cube_corners[i][1];
+    gparts[gpart_count].x[2] = cube_corners[i][2];
     gparts[gpart_count++].type = swift_type_dark_matter;
   }
 
