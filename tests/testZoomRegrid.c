@@ -126,10 +126,10 @@ void make_mock_space(struct space *s) {
 }
 
 void associate_gparts_to_cells(struct space *s) {
-  for (int i = 0; i < s->nr_gparts; i++) {
+  for (size_t i = 0; i < s->nr_gparts; i++) {
     struct gpart *gpart = &s->gparts[i];
 
-    struct cell *c = s->cells_top[cell_getid_from_pos(
+    struct cell *c = &s->cells_top[cell_getid_from_pos(
         s, gpart->x[0], gpart->x[1], gpart->x[2])];
     if (c == NULL) {
       error("Failed to find cell for gpart.");
@@ -179,7 +179,6 @@ int main(int argc, char *argv[]) {
   free(s->gparts);
   free(s->zoom_props);
   free(s);
-  free(e);
 
   return 0;
 }
