@@ -234,18 +234,13 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  printf("Zoom count: %d\n", zoom_count);
-  printf("Bkg count: %d\n", bkg_count);
-  printf("Buffer count: %d\n", buffer_count);
-
-  /* Zoom region should have zoom cdim^3 + 8 high res "corners" + 8 void cells +
-   * 8 empty cells. */
+  /* Zoom region should have zoomcdim^3 + 8 high res corners + 8 void cells. */
   assert(zoom_count == 16 * 16 * 16 + 8 + 8 + 8);
 
-  /* Background cell should have bkg cdim^3 - 8 empty */
-  assert(bkg_count == 10 * 10 * 10);
+  /* Background cell should have bkgcdim^3 - 8 empty */
+  assert(bkg_count == 10 * 10 * 10 - 8);
 
-  /* Buffer cell should have buffer cdim^3 - 8 void */
+  /* Buffer cell should have buffercdim^3 - 8 void + 8 empty */
   assert(buffer_count == 10 * 10 * 10);
 
   /* Free the space. */
