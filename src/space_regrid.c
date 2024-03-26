@@ -282,16 +282,20 @@ static void space_prepare_cells(struct space *s, const int cdim[3]) {
    * memory while copying the particle arrays. */
   if (s->e != NULL) scheduler_free_tasks(&s->e->sched);
 
-  /* Set the new cell dimensions only if smaller. */
-  for (int k = 0; k < 3; k++) {
-    s->cdim[k] = cdim[k];
-    s->width[k] = s->dim[k] / cdim[k];
-    s->iwidth[k] = 1.0 / s->width[k];
-  }
-
-  /* Count the number of top level cells. (In the zoom case this is
-   * calculated separately)*/
+  /* When running a zoom we need to avoid overwriting what zoom_region_init has
+   * already done. */
   if (!s->with_zoom_region) {
+
+    /* Set the new cell dimensions only if smaller. (In the zoom case this
+     * is done in zoom_region_init) */
+    for (int k = 0; k < 3; k++) {
+      s->cdim[k] = cdim[k];
+      s->width[k] = s->dim[k] / cdim[k];
+      s->iwidth[k] = 1.0 / s->width[k];
+    }
+
+    /* Count the number of top level cells. (In the zoom case this is
+     * calculated in zoom_prepare_cells)*/
     s->tot_cells = s->nr_cells = cdim[0] * cdim[1] * cdim[2];
   }
 }
