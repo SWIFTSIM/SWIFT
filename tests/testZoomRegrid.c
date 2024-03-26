@@ -125,6 +125,19 @@ void make_mock_space(struct space *s) {
   s->gparts = gparts;
 }
 
+void associate_gparts_to_cells(struct space *s) {
+  for (int i = 0; i < s->nr_gparts; i++) {
+    struct gpart *gpart = &s->gparts[i];
+
+    struct cell *c = s->cells_top[cell_getid_from_pos(
+        s, gpart->x[0], gpart->x[1], gpart->x[2])];
+    if (c == NULL) {
+      error("Failed to find cell for gpart.");
+    }
+    c->grav.count++;
+  }
+}
+
 void make_gparts_grid(struct space *s) {}
 
 int main(int argc, char *argv[]) {
@@ -153,26 +166,14 @@ int main(int argc, char *argv[]) {
   bzero(s, sizeof(struct space));
   make_mock_space(s);
 
-  /* Create the fake engine. */
-  struct engine *e = malloc(sizeof(struct engine));
-  e->nodeID = 0;
-
   /* Flag that we are running a zoom. */
   s->with_zoom_region = 1;
 
   /* Run the zoom_init function. */
   zoom_props_init(&param_file, s, 0);
 
-  /* Below we emulate the order in which calls would happen in actual run */
-
   /* Run the regridding. */
   space_regrid(s, 1);
-
-  /* Attach the engine. */
-  s->e = e;
-
-  /* Call the rebuild to attach particles. */
-  space_rebuild(s, 0, 1);
 
   free(s->cells_top);
   free(s->gparts);
