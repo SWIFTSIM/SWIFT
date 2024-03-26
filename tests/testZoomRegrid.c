@@ -52,11 +52,15 @@ void make_mock_space(struct space *s) {
 
   /* Define the corners of the region */
   const double mid = 600;
-  double cube_corners[8][3] = {
-      {mid - 24, mid - 24, mid - 24}, {mid - 24, mid - 24, mid + 24},
-      {mid - 24, mid + 24, mid - 24}, {mid - 24, mid + 24, mid + 24},
-      {mid + 24, mid - 24, mid - 24}, {mid + 24, mid - 24, mid + 24},
-      {mid + 24, mid + 24, mid - 24}, {mid + 24, mid + 24, mid + 24}};
+  const double offset = 9;
+  double cube_corners[8][3] = {{mid - offset, mid - offset, mid - offset},
+                               {mid - offset, mid - offset, mid + offset},
+                               {mid - offset, mid + offset, mid - offset},
+                               {mid - offset, mid + offset, mid + offset},
+                               {mid + offset, mid - offset, mid - offset},
+                               {mid + offset, mid - offset, mid + offset},
+                               {mid + offset, mid + offset, mid - offset},
+                               {mid + offset, mid + offset, mid + offset}};
 
   /* Loop over the gparts and set up baxckground and zoom particles. */
   for (size_t i = 0; i < s->nr_gparts; i++) {
