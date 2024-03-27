@@ -31,10 +31,10 @@
 
 /*! The possible accretion modes every black hole can take. */
 enum BH_accretion_modes {
-  BH_thick_disc = 0,       /* At low Eddington ratios */
-  BH_thin_disc,            /* At moderate Eddington ratios */
-  BH_slim_disc,            /* Super-Eddington accretion */
-  BH_accretion_modes_count /* Number of possible accretion modes */
+  BH_thick_disc = 0,           /* At low Eddington ratios */
+  BH_thin_disc = 1,            /* At moderate Eddington ratios */
+  BH_slim_disc = 2,            /* Super-Eddington accretion */
+  BH_accretion_modes_count = 3 /* Number of possible accretion modes */
 };
 
 /**
@@ -245,17 +245,31 @@ struct bpart {
   /*! The current jet kick velocity to be applied */
   float v_jet;
 
-  /*! The energ in the jet reservoir */
+  /*! The energy in the jet reservoir */
   float jet_reservoir;
 
   /*! Total jet energy launched so far */
   float total_jet_energy;
+
+  /*! Efficiency of wind launching */
+  float wind_efficiency;
+
+  /*! Energy launched into radiation */
+  float radiated_energy;
+
+  /*! Energy launched as winds */
+  float wind_energy;
+
+  /*! Accretion efficiency of this BH */
+  float acc_eff;
 
   /*! Total accreted masses, radiated energies and jet energies launched
       by BHs, split by accretion mode */
   float accreted_mass_by_mode[BH_accretion_modes_count];
   float thermal_energy_by_mode[BH_accretion_modes_count];
   float jet_energy_by_mode[BH_accretion_modes_count];
+  float wind_energy_by_mode[BH_accretion_modes_count];
+  float radiated_energy_by_mode[BH_accretion_modes_count];
 
   /*! Total number of jet kicks */
   int AGN_number_of_jet_injections;
