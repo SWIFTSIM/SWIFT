@@ -681,6 +681,9 @@ if test "$enable_opt" = "yes" ; then
       if test "$ax_cv_c_compiler_vendor" = "intel"; then
       	 CFLAGS="$CFLAGS -no-vec -no-simd"
       	 AC_MSG_RESULT([disabled Intel vectorization])
+      elif test "$ax_cv_c_compiler_vendor" = "oneapi"; then
+         CFLAGS="$CFLAGS -no-vec"
+         AC_MSG_RESULT([disabled oneAPI vectorization])
       elif test "$ax_cv_c_compiler_vendor" = "gnu"; then
       	 CFLAGS="$CFLAGS -fno-tree-vectorize"
       	 AC_MSG_RESULT([disabled GCC vectorization])
@@ -1276,7 +1279,7 @@ if test "x$with_tcmalloc" != "xno"; then
 
       # Prevent compilers that replace the calls with built-ins (GNU 99) from doing so.
       case "$ax_cv_c_compiler_vendor" in
-        intel | gnu | clang)
+        intel | gnu | clang | oneapi)
              CFLAGS="$CFLAGS -fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-free"
           ;;
       esac
@@ -1319,7 +1322,7 @@ if test "x$with_jemalloc" != "xno"; then
 
       # Prevent compilers that replace the regular calls with built-ins (GNU 99) from doing so.
       case "$ax_cv_c_compiler_vendor" in
-        intel | gnu | clang)
+        intel | gnu | clang | oneapi)
              CFLAGS="$CFLAGS -fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-free"
           ;;
       esac
@@ -1362,7 +1365,7 @@ if test "x$with_tbbmalloc" != "xno"; then
 
       # Prevent compilers that replace the calls with built-ins (GNU 99) from doing so.
       case "$ax_cv_c_compiler_vendor" in
-        intel | gnu | clang)
+        intel | gnu | clang | oneapi)
              CFLAGS="$CFLAGS -fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-free"
           ;;
       esac
@@ -1868,12 +1871,13 @@ if test "$enable_warn" != "no"; then
     # AX_CFLAGS_WARN_ALL does not give good warning flags for the Intel compiler
     # We will do this by hand instead and only default to the macro for unknown compilers
     case "$ax_cv_c_compiler_vendor" in
-          gnu | clang)
+          gnu | clang | oneapi)
              CFLAGS="$CFLAGS -Wall -Wextra -Wno-unused-parameter -Wshadow"
           ;;
 	  intel)
              CFLAGS="$CFLAGS -w2 -Wunused-variable -Wshadow"
           ;;
+
 	  *)
 	     AX_CFLAGS_WARN_ALL
 	  ;;
@@ -1882,7 +1886,7 @@ if test "$enable_warn" != "no"; then
     # Add a "choke on warning" flag if it exists
     if test "$enable_warn" = "error"; then
        case "$ax_cv_c_compiler_vendor" in
-          intel | gnu | clang)
+          intel | gnu | clang | oneapi)
              CFLAGS="$CFLAGS -Werror"
           ;;
        esac
@@ -2393,6 +2397,34 @@ case "$with_gamma" in
       AC_MSG_ERROR([Unknown adiabatic index: $with_gamma])
    ;;
 esac
+
+# Adaptive softening
+AC_ARG_WITH([adaptive-softening],
+   [AS_HELP_STRING([--with-adaptive-softening=<yes/no>],
+      [Adaptive softening @<:@no, yes, default: no@:>@]
+   )],
+   [with_adaptive_softening="$withval"],
+   [with_adaptive_softening="no"]
+)
+case "$with_adaptive_softening" in
+   no)
+      AC_DEFINE([FIXED_SOFTENING], [1], [No adaptive softening])
+   ;;
+   yes)
+      AC_DEFINE([ADAPTIVE_SOFTENING], [1], [Adaptive softening])
+   ;;
+   *)
+      AC_MSG_ERROR([Unknown adaptive softening: $with_adaptive_softening])
+   ;;
+esac
+# Verify that the configuration is allowed
+if test "x$with_adaptive_softening" = "xyes" -a "$with_kernel" != "wendland-C2"; then
+  AC_MSG_ERROR([Adaptive softening scheme requires the usage of the Wendland-C2 kernel!])
+fi
+if test "x$with_adaptive_softening" = "xyes" -a "$with_gravity" != "with-multi-softening"; then
+  AC_MSG_ERROR([Adaptive softening scheme requires the usage of the multi-softening gravity scheme!])
+fi
+
 
 #  Riemann solver
 AC_ARG_WITH([riemann-solver],
@@ -3130,6 +3162,9 @@ AM_CONDITIONAL([HAVEEAGLEKINETICFEEDBACK], [test "$with_feedback" = "EAGLE-kinet
 # check if using grackle cooling
 AM_CONDITIONAL([HAVEGRACKLECOOLING], [test "$with_cooling" = "grackle"])
 
+# check if using EAGLE floor
+AM_CONDITIONAL([HAVEEAGLEFLOOR], [test "$with_entropy_floor" = "EAGLE"])
+
 # check if using gear feedback
 AM_CONDITIONAL([HAVEGEARFEEDBACK], [test "$with_feedback" = "GEAR"])
 
@@ -3252,6 +3287,7 @@ AC_MSG_RESULT([
    Adiabatic index    : $with_gamma
    Riemann solver     : $with_riemann
    SPMHD scheme       : $with_spmhd
+   Adaptive softening : $with_adaptive_softening
 
    Gravity scheme      : $with_gravity
    Multipole order     : $with_multipole_order

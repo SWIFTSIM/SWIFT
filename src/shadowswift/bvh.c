@@ -82,8 +82,14 @@ int flat_bvh_hit_rec(const bvh_t *bvh, int node_id, struct part *parts,
  * @param pid The indices of particles to be added to the current subtree.
  * @param count The length of the `pid` array.
  **/
-void flat_bvh_populate_rec(bvh_t *bvh, int node_id,
-                           const struct part *parts, int *pid, int count) {
+void flat_bvh_populate_rec(bvh_t *bvh, int node_id, const struct part *parts,
+                           int *pid, int count) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (count < 0) {
+    error("Trying to populate BVH with negative particle count!");
+  }
+#endif
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (count < 0) {

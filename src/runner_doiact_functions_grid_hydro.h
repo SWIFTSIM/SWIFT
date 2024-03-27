@@ -177,7 +177,9 @@ void DOPAIR(struct runner *restrict r, struct cell *ci, struct cell *cj,
     struct part *part_left = &ci->hydro.parts[pair->left_idx];
     struct part *part_right = &cj->hydro.parts[pair->right_idx];
 
-#ifdef SWIFT_DEBUG_CHECKS
+#ifdef SHADOWSWIFT_FIX_PARTICLES
+    if (!part_is_active(part_left, e)) continue;
+#elif defined(SWIFT_DEBUG_CHECKS)
     if (!part_is_active(part_left, e))
       error("Encountered face of Voronoi cell of inactive particle!");
 #endif
@@ -352,6 +354,13 @@ void DOSELF(struct runner *restrict r, struct cell *restrict c) {
 
     const int left_is_active = part_is_active(part_left, e);
     const int right_is_active = part_is_active(part_right, e);
+
+#ifdef SHADOWSWIFT_FIX_PARTICLES
+    if (!left_is_active && !right_is_active) continue;
+#elif defined(SWIFT_DEBUG_CHECKS)
+    if (!left_is_active && !right_is_active)
+      error("Encountered voronoi face between two inactive particles!");
+#endif
 
     if (IACT_BOUNDARY_PARTICLES(part_left, part_right, left_is_active,
                                 right_is_active, pair->midpoint,

@@ -19,6 +19,8 @@
 #ifndef SWIFT_SHADOWSWIFT_HYDRO_SETTERS_H
 #define SWIFT_SHADOWSWIFT_HYDRO_SETTERS_H
 
+#include "pressure_floor.h"
+
 /**
  * @brief Set the primitive variables for the given particle to the given
  * values.
@@ -232,9 +234,9 @@ hydro_set_physical_internal_energy(struct part* p, struct xpart* xp,
  * @param u The physical internal energy
  */
 __attribute__((always_inline)) INLINE static void
-hydro_set_drifted_physical_internal_energy(struct part* p,
-                                           const struct cosmology* cosmo,
-                                           const float u) {
+hydro_set_drifted_physical_internal_energy(
+    struct part* p, const struct cosmology* cosmo,
+    const struct pressure_floor_props* pressure_floor, const float u) {
   hydro_set_comoving_internal_energy(p, u / cosmo->a_factor_internal_energy);
 }
 

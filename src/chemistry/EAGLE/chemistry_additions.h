@@ -17,8 +17,8 @@
  *
  ******************************************************************************/
 
-#ifndef SWIFT_EAGLE_CHEMISTRY_ADDITIONS_H
-#define SWIFT_EAGLE_CHEMISTRY_ADDITIONS_H
+#ifndef SWIFT_CHEMISTRY_EAGLE_ADDITIONS_H
+#define SWIFT_CHEMISTRY_EAGLE_ADDITIONS_H
 
 /**
  * @brief Resets the metal mass fluxes for schemes that use them.
@@ -180,4 +180,4 @@ __attribute__((always_inline)) INLINE static void runner_iact_chemistry_fluxes(
   }
 }
 
-#endif  // SWIFT_EAGLE_CHEMISTRY_ADDITIONS_H
+#endif  // SWIFT_CHEMISTRY_EAGLE_ADDITIONS_H

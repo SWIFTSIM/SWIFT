@@ -37,7 +37,9 @@ def plot_single(ax_mass, ax_fraction, name, title, data, mass_map, kwargs_inner)
     mass_weighted_map = project_gas(data, project=name, **kwargs_inner["projection"])
     ax_mass.imshow(mass_weighted_map.in_cgs().value.T, **kwargs_inner["imshow_mass"])
     ax_mass.set_title(title)
-    ax_fraction.imshow((mass_weighted_map / mass_map).T, **kwargs_inner["imshow_fraction"])
+    ax_fraction.imshow(
+        (mass_weighted_map / mass_map).T, **kwargs_inner["imshow_fraction"]
+    )
     ax_fraction.set_title(title)
     ax_mass.axis("off")
     ax_fraction.axis("off")
@@ -66,7 +68,10 @@ def plot_all(fname, savename):
 
     # Create necessary figures and axes
     fig = plt.figure(layout="constrained", figsize=(16, 8))
-    fig.suptitle(f"Profiles shifted to starting position after t={data.metadata.time:.2f}", fontsize=14)
+    fig.suptitle(
+        f"Profiles shifted to starting position after t={data.metadata.time:.2f}",
+        fontsize=14,
+    )
     fig_ratios, fig_masses = fig.subfigures(2, 1)
     fig_ratios.suptitle("Mass ratio of elements")
     fig_masses.suptitle("Surface density in elements")
@@ -77,11 +82,11 @@ def plot_all(fname, savename):
     projection_kwargs = {
         "region": np.array([0, 2, 0, 1, 0, 1]) * unyt.cm,
         "resolution": 500,
-        "parallel": True
+        "parallel": True,
     }
     # Parameters for imshow
-    norm_ratios = Normalize(0, .95)
-    norm_masses = Normalize(0, .9)
+    norm_ratios = Normalize(0, 0.95)
+    norm_masses = Normalize(0, 0.9)
     imshow_fraction_kwargs = dict(norm=norm_ratios, cmap="rainbow")
     imshow_mass_kwargs = dict(norm=norm_masses, cmap="turbo")
 
@@ -96,23 +101,87 @@ def plot_all(fname, savename):
             projection=projection_kwargs,
             imshow_mass=imshow_mass_kwargs,
             imshow_fraction=imshow_fraction_kwargs,
-        )
+        ),
     )
 
-    plot_single(axes_masses[0][0], axes_ratios[0][0], "total_metal_mass", "All metals", **plotting_kwargs)
-    plot_single(axes_masses[0][1], axes_ratios[0][1], "element_mass_H", "Hydrogen", **plotting_kwargs)
-    plot_single(axes_masses[0][2], axes_ratios[0][2], "element_mass_He", "Helium", **plotting_kwargs)
-    plot_single(axes_masses[0][3], axes_ratios[0][3], "element_mass_C", "Carbon", **plotting_kwargs)
-    plot_single(axes_masses[0][4], axes_ratios[0][4], "element_mass_N", "Nitrogen", **plotting_kwargs)
-    plot_single(axes_masses[1][0], axes_ratios[1][0], "element_mass_O", "Oxygen", **plotting_kwargs)
-    plot_single(axes_masses[1][1], axes_ratios[1][1], "element_mass_Ne", "Neon", **plotting_kwargs)
-    plot_single(axes_masses[1][2], axes_ratios[1][2], "element_mass_Mg", "Magnesium", **plotting_kwargs)
-    plot_single(axes_masses[1][3], axes_ratios[1][3], "element_mass_Si", "Silicon", **plotting_kwargs)
-    plot_single(axes_masses[1][4], axes_ratios[1][4], "element_mass_Fe", "Iron", **plotting_kwargs)
+    plot_single(
+        axes_masses[0][0],
+        axes_ratios[0][0],
+        "total_metal_mass",
+        "All metals",
+        **plotting_kwargs,
+    )
+    plot_single(
+        axes_masses[0][1],
+        axes_ratios[0][1],
+        "element_mass_H",
+        "Hydrogen",
+        **plotting_kwargs,
+    )
+    plot_single(
+        axes_masses[0][2],
+        axes_ratios[0][2],
+        "element_mass_He",
+        "Helium",
+        **plotting_kwargs,
+    )
+    plot_single(
+        axes_masses[0][3],
+        axes_ratios[0][3],
+        "element_mass_C",
+        "Carbon",
+        **plotting_kwargs,
+    )
+    plot_single(
+        axes_masses[0][4],
+        axes_ratios[0][4],
+        "element_mass_N",
+        "Nitrogen",
+        **plotting_kwargs,
+    )
+    plot_single(
+        axes_masses[1][0],
+        axes_ratios[1][0],
+        "element_mass_O",
+        "Oxygen",
+        **plotting_kwargs,
+    )
+    plot_single(
+        axes_masses[1][1],
+        axes_ratios[1][1],
+        "element_mass_Ne",
+        "Neon",
+        **plotting_kwargs,
+    )
+    plot_single(
+        axes_masses[1][2],
+        axes_ratios[1][2],
+        "element_mass_Mg",
+        "Magnesium",
+        **plotting_kwargs,
+    )
+    plot_single(
+        axes_masses[1][3],
+        axes_ratios[1][3],
+        "element_mass_Si",
+        "Silicon",
+        **plotting_kwargs,
+    )
+    plot_single(
+        axes_masses[1][4],
+        axes_ratios[1][4],
+        "element_mass_Fe",
+        "Iron",
+        **plotting_kwargs,
+    )
 
     # Add Colorbars
-    cb_masses = fig_masses.colorbar(ScalarMappable(**imshow_mass_kwargs), shrink=0.75, pad=0.01, ax=axes_masses)
-    cb_ratios = fig_ratios.colorbar(ScalarMappable(**imshow_fraction_kwargs), shrink=0.75, pad=0.01, ax=axes_ratios)
+    cb_masses = fig_masses.colorbar(
+        ScalarMappable(**imshow_mass_kwargs), shrink=0.75, pad=0.01, ax=axes_masses
+    )
+    cb_ratios = fig_ratios.colorbar(
+        ScalarMappable(**imshow_fraction_kwargs), shrink=0.75, pad=0.01, ax=axes_ratios
+    )
     cb_masses.ax.set_ylabel("Surface density (g/cm^2)", rotation=270, labelpad=15)
     cb_ratios.ax.set_ylabel("Mass ratio", rotation=270, labelpad=15)
 

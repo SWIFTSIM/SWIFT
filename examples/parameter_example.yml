@@ -94,6 +94,8 @@ Gravity:
   comoving_nu_softening:         0.0026994 # Comoving Plummer-equivalent softening length for neutrino particles (in internal units).
   max_physical_nu_softening:     0.0007    # Maximal Plummer-equivalent softening length in physical coordinates for neutrino particles (in internal units).
   softening_ratio_background:    0.04      # Fraction of the mean inter-particle separation to use as Plummer-equivalent softening for the background DM particles.
+  max_adaptive_softening:        FLT_MAX   # (Optional) Maximal Plummer-equivalent co-moving adaptive softening (in internal units).
+  min_adaptive_softening:        0.        # (Optional) Minimal Plummer-equivalent co-moving adaptive softening (in internal units).
   rebuild_frequency:             0.01      # (Optional) Frequency of the gravity-tree rebuild in units of the number of g-particles (this is the default value).
   rebuild_active_fraction:       1.01      # (Optional) Fraction of active gravity particles needed to trigger a gravity-tree rebuild (not triggered by this if > 1, which is the default value).
   a_smooth:                      1.25      # (Optional) Smoothing scale in top-level cell sizes to smooth the long-range forces over (this is the default value).
@@ -935,6 +937,7 @@ PowerSpectrum:
   num_folds:         6                    # Number of foldings (1 means no foldings), determines the max k
   fold_factor:       4                    # (Optional) factor by which to reduce the box along each side each folding (default: 4)
   window_order:      3                    # (Optional) order of the mass assignment scheme (default: 3, TSC)
+  shift_centre_small_k_bins: 1            # (Optional) Correct the centre of the bins with a small k to account for the small number of modes entering the bin.
   output_list_on:    0                    # (Optional) Enable the output list
   output_list:       ./output_list_ps.txt # (Optional) File containing the output times (see documentation in "Parameter File" section)
   requested_spectra: ["matter-matter","cdm-cdm","starBH-starBH","gas-matter","pressure-pressure","matter-pressure", "neutrino0-neutrino1"] # Array of strings indicating which components should be correlated for power spectra

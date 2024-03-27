@@ -683,9 +683,6 @@ int main(int argc, char *argv[]) {
   if (with_rt && with_cooling) {
     error("Error: Cannot use radiative transfer and cooling simultaneously.");
   }
-  if (with_rt && with_cosmology) {
-    error("Error: Cannot use run radiative transfer with cosmology (yet).");
-  }
 #endif /* idfef RT_NONE */
 
 #ifdef SINK_NONE
@@ -1960,6 +1957,7 @@ int main(int argc, char *argv[]) {
   free(output_options);
 
 #ifdef WITH_MPI
+  partition_clean(&initial_partition, &reparttype);
   if ((res = MPI_Finalize()) != MPI_SUCCESS)
     error("call to MPI_Finalize failed with error %i.", res);
 #endif

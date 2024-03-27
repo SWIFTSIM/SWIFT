@@ -57,9 +57,8 @@ __attribute__((always_inline)) INLINE static void get_hilbert_keys_active(
 #endif
 
 __attribute__((always_inline)) INLINE static void cell_add_local_parts_grid(
-    struct delaunay *d, struct cell *c, struct part *parts,
-    const bvh_t *bvh, int *pid, int count) {
-
+    struct delaunay *d, struct cell *c, struct part *parts, const bvh_t *bvh,
+    int *pid, int count) {
 #ifdef SHADOWSWIFT_HILBERT_ORDERING
   ticks grid_tic;
   grid_tic = getticks();

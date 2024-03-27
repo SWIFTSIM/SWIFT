@@ -139,6 +139,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_flux_exchange(
   const float r = (float)sqrtf(r2);
   const float r_inv = r > 0. ? 1.f / r : 0.f;
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (r > pi->geometry.search_radius)
+    error("Too large distance between particles!");
+#endif
+
   /* Midpoint between pj and pi */
   double midpoint[3];
   for (int k = 0; k < 3; k++) {

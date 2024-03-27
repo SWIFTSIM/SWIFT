@@ -85,8 +85,8 @@ typedef struct flat_bvh {
 /** Forward declarations */
 int flat_bvh_hit_rec(const bvh_t *bvh, int node_id, struct part *parts,
                      double x, double y, double z, double r2);
-void flat_bvh_populate_rec(bvh_t *bvh, int node_id,
-                           const struct part *parts, int *pid, int count);
+void flat_bvh_populate_rec(bvh_t *bvh, int node_id, const struct part *parts,
+                           int *pid, int count);
 
 /**
  * @brief Tests whether a given positions is contained in a given bounding box.
@@ -341,8 +341,8 @@ inline static void flat_bvh_populate(bvh_t *bvh, const struct part *parts,
  * candidate position in it's search radius and is itself contained in the
  * safety radius of the candidate position. If no hit is found, -1 is returned.
  */
-inline static int flat_bvh_hit(const bvh_t *bvh, struct part *parts,
-                               double x, double y, double z, double r2) {
+inline static int flat_bvh_hit(const bvh_t *bvh, struct part *parts, double x,
+                               double y, double z, double r2) {
   return flat_bvh_hit_rec(bvh, 0, parts, x, y, z, r2);
 }
 

@@ -30,6 +30,9 @@ __attribute__((always_inline)) INLINE static void runner_build_grid(
 
   /* Anything to do here? */
   if (c->hydro.count == 0) return;
+#ifdef SHADOWSWIFT_FIX_PARTICLES
+  if (c->grid.voronoi != NULL) return;
+#endif
 
   /* Is the cell active and local? */
   if (!cell_is_active_hydro(c, e) || c->nodeID != e->nodeID)
@@ -66,6 +69,16 @@ __attribute__((always_inline)) INLINE static void runner_build_grid(
   int count_unconverged = 0, count_ghost = 0;
   float r_max = 0.f;
   for (int i = 0; i < c->hydro.count; i++) {
+#ifdef SHADOWSWIFT_FIX_PARTICLES
+    /* Just add all the particles at every rebuild (since we will only be
+     * building the tesselation at those rebuilds...) */
+    pid_unconverged[count_unconverged] = i;
+    search_radii[count_unconverged] = 0.;
+    r_max = fmaxf(r_max, parts[i].geometry.search_radius);
+    ++count_unconverged;
+    // Nothing left to do
+    continue;
+#endif
     if (part_is_active(&parts[i], e)) {
       pid_unconverged[count_unconverged] = i;
       search_radii[count_unconverged] = 0.;
@@ -176,12 +189,12 @@ __attribute__((always_inline)) INLINE static void runner_build_grid(
   }
 
   /* Finally build the voronoi grid */
+  int n_cells = d->vertex_end - d->vertex_start;
   grid_tic = getticks();
   if (c->grid.voronoi == NULL) {
-    c->grid.voronoi =
-        voronoi_malloc(d->vertex_end - d->vertex_start, c->width[0]);
+    c->grid.voronoi = voronoi_malloc(n_cells, c->width[0]);
   } else {
-    voronoi_reset(c->grid.voronoi, c->hydro.count, c->width[0]);
+    voronoi_reset(c->grid.voronoi, n_cells, c->width[0]);
   }
   voronoi_build(c->grid.voronoi, d, parts);
   c->grid.extra_info.timers[voronoi_construction] += getticks() - grid_tic;

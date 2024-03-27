@@ -145,7 +145,7 @@ void lightcone_io_append_gas_output_fields(
 #if defined(TRACERS_EAGLE) || defined(TRACERS_FLAMINGO)
   lightcone_io_field_list_append(list, "LastAGNFeedbackScaleFactors", FLOAT, 1,
                                  OFFSET(last_AGN_injection_scale_factor),
-                                 UNIT_CONV_NO_UNITS, 0.0, "BFloat16");
+                                 UNIT_CONV_NO_UNITS, 0.0, "FMantissa13");
 #endif
 #ifdef STAR_FORMATION_EAGLE
   lightcone_io_field_list_append(list, "StarFormationRates", FLOAT, 1,
@@ -652,22 +652,22 @@ void append_dataset(const struct unit_system *snapshot_units,
   if (dims[0] == 0) return;
 
   /* Determine size of the dataset after we append our data */
-  hsize_t full_dims[rank];
+  hsize_t full_dims[2];
   for (int i = 0; i < rank; i += 1) full_dims[i] = dims[i];
   full_dims[0] += num_written;
 
   /* Determine maximum size in each dimension */
-  hsize_t max_dims[rank];
+  hsize_t max_dims[2];
   for (int i = 1; i < rank; i += 1) max_dims[i] = full_dims[i];
   max_dims[0] = H5S_UNLIMITED;
 
   /* Determine chunk size in each dimension */
-  hsize_t chunk_dims[rank];
+  hsize_t chunk_dims[2];
   for (int i = 1; i < rank; i += 1) chunk_dims[i] = full_dims[i];
   chunk_dims[0] = (hsize_t)chunk_size;
 
   /* Find offset to region to write in each dimension */
-  hsize_t offset[rank];
+  hsize_t offset[2];
   for (int i = 1; i < rank; i += 1) offset[i] = 0;
   offset[0] = num_written;
 
