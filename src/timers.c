@@ -54,6 +54,9 @@ const char* timers_names[timer_count] = {
     "doself_density",
     "doself_gradient",
     "doself_force",
+    "doself_slope_estimate",
+    "doself_slope_limiter",
+    "doself_flux_exchange",
     "doself_limiter",
     "doself_stars_density",
     "doself_stars_feedback",
@@ -65,6 +68,9 @@ const char* timers_names[timer_count] = {
     "dopair_density",
     "dopair_gradient",
     "dopair_force",
+    "dopair_slope_estimate",
+    "dopair_slope_limiter",
+    "dopair_flux_exchange",
     "dopair_limiter",
     "dopair_stars_density",
     "dopair_stars_feedback",
@@ -142,6 +148,11 @@ const char* timers_names[timer_count] = {
     "rt_tchem",
     "rt_advance_cell_time",
     "rt_collect_times",
+    "do_grid_construction",
+    "do_grid_ghost",
+    "do_slope_estimate_ghost",
+    "do_slope_limiter_ghost",
+    "do_flux_ghost",
 };
 
 /* File to store the timers */

@@ -72,6 +72,7 @@ int space_subsize_pair_grav = space_subsize_pair_grav_default;
 int space_subsize_self_grav = space_subsize_self_grav_default;
 int space_subdepth_diff_grav = space_subdepth_diff_grav_default;
 int space_maxsize = space_maxsize_default;
+int space_grid_split_threshold = space_grid_split_threshold_default;
 
 /*! Number of extra #part we allocate memory for per top-level cell */
 int space_extra_parts = space_extra_parts_default;
@@ -87,6 +88,11 @@ int space_extra_gparts = space_extra_gparts_default;
 
 /*! Number of extra #sink we allocate memory for per top-level cell */
 int space_extra_sinks = space_extra_sinks_default;
+
+#if defined(SWIFT_BOUNDARY_PARTICLES) && defined(MOVING_MESH)
+/*! Number of boundary particles considered interior boundary particles */
+int space_boundary_parts_interior = space_boundary_parts_interior_default;
+#endif
 
 /*! Maximum number of particles per ghost */
 int engine_max_parts_per_ghost = engine_max_parts_per_ghost_default;
@@ -1246,6 +1252,8 @@ void space_init(struct space *s, struct swift_params *params,
                                space_subsize_self_grav_default);
   space_splitsize = parser_get_opt_param_int(
       params, "Scheduler:cell_split_size", space_splitsize_default);
+  space_grid_split_threshold = parser_get_opt_param_int(
+      params, "Scheduler:grid_split_threshold", space_grid_split_threshold);
   space_subdepth_diff_grav =
       parser_get_opt_param_int(params, "Scheduler:cell_subdepth_diff_grav",
                                space_subdepth_diff_grav_default);
@@ -1259,6 +1267,10 @@ void space_init(struct space *s, struct swift_params *params,
       params, "Scheduler:cell_extra_bparts", space_extra_bparts_default);
   space_extra_sinks = parser_get_opt_param_int(
       params, "Scheduler:cell_extra_sinks", space_extra_sinks_default);
+#if defined(SWIFT_BOUNDARY_PARTICLES) && defined(MOVING_MESH)
+  space_boundary_parts_interior =
+      parser_get_param_int(params, "Scheduler:boundary_parts_interior");
+#endif
 
   engine_max_parts_per_ghost =
       parser_get_opt_param_int(params, "Scheduler:engine_max_parts_per_ghost",
@@ -1425,7 +1437,7 @@ void space_init(struct space *s, struct swift_params *params,
     bzero(s->xparts, Npart * sizeof(struct xpart));
   }
 
-  hydro_space_init(&s->hs, s);
+  hydro_space_init(&s->hs, s, params);
 
   /* Init the space lock. */
   if (lock_init(&s->lock) != 0) error("Failed to create space spin-lock.");

@@ -81,22 +81,92 @@
    gradient matrix and use SPH gradients instead. */
 #define const_gizmo_min_wcorr 0.5f
 
-/* Types of gradients to use for SHADOWFAX_SPH */
-/* If no option is chosen, no gradients are used (first order scheme) */
-#define SHADOWFAX_GRADIENTS
+/* Options controlling ShadowSWIFT */
+/* Option to enable gradients for ShadowSWIFT */
+/* If disabled, no gradients are used (first order scheme) */
+#define SHADOWSWIFT_MESHLESS_GRADIENTS
+#ifndef SHADOWSWIFT_MESHLESS_GRADIENTS
+#define SHADOWSWIFT_GRADIENTS
+#endif
+/* Always activate the slope limiters if we use gradients (the scheme becomes
+ * unstable otherwise) */
+#ifdef SHADOWSWIFT_GRADIENTS
+/*! @brief Option controlling which type of gradient calculation is used */
+#define SHADOWSWIFT_GRADIENTS_WLS
+/* Always activate the slope limiters if we use gradients (the scheme becomes
+ * unstable otherwise) */
+#define SHADOWSWIFT_SLOPE_LIMITER_PER_FACE
+#define SHADOWSWIFT_SLOPE_LIMITER_CELL_WIDE
+#endif
+#ifdef SHADOWSWIFT_MESHLESS_GRADIENTS
+#define SHADOWSWIFT_SLOPE_LIMITER_PER_FACE
+#define SHADOWSWIFT_SLOPE_LIMITER_MESHLESS
+#endif
+#if defined(SHADOWSWIFT_MESHLESS_GRADIENTS) || defined(SHADOWSWIFT_GRADIENTS)
+/*! @brief Option to enable time extrapolation */
+#define SHADOWSWIFT_EXTRAPOLATE_TIME
+#endif
 
-/* SHADOWFAX_SPH slope limiters */
-#define SHADOWFAX_SLOPE_LIMITER_PER_FACE
-#define SHADOWFAX_SLOPE_LIMITER_CELL_WIDE
+/*! @brief Option controlling output of grids */
+//#define SHADOWSWIFT_OUTPUT_GRIDS
 
-/* Options to control SHADOWFAX_SPH */
-/* This option disables cell movement */
-//#define SHADOWFAX_FIX_CELLS
-/* This option enables cell steering, i.e. trying to keep the cells regular by
-   adding a correction to the cell velocities.*/
-#define SHADOWFAX_STEER_CELL_MOTION
-/* This option evolves the total energy instead of the thermal energy */
-//#define SHADOWFAX_TOTAL_ENERGY
+/* Options controlling acceleration strategies*/
+/*! @brief Option enabling a more relaxed completeness criterion */
+#define SHADOWSWIFT_RELAXED_COMPLETENESS
+
+/*! @brief Option to enable the bvh acceleration structure for neighbour
+ * searching */
+#define SHADOWSWIFT_BVH
+#ifdef SHADOWSWIFT_BVH
+/*! @brief Option to insert parts by BFO of the BVH during grid construction. */
+#define SHADOWSWIFT_BVH_INSERT_BFO
+#define BVH_MEDIAN_SPLIT 0
+#define BVH_MIDPOINT_SPLIT 1
+/*! @brief The splitting method used during the BVH construction */
+#define BVH_SPLITTING_METHOD BVH_MEDIAN_SPLIT
+#endif
+/*! @brief Option to enable the hilbert order insertion during the grid
+ * construction */
+#ifndef SHADOWSWIFT_BVH_INSERT_BFO
+//#define SHADOWSWIFT_HILBERT_ORDERING
+#endif
+
+/* Options controlling particle movement */
+/*! @brief This option disables cell movement */
+//#define SHADOWSWIFT_FIX_PARTICLES
+/*! @brief This option enables cell steering, i.e. trying to keep the cells
+ * regular by adding a correction to the cell velocities.*/
+#ifndef SHADOWSWIFT_FIX_PARTICLES
+#define SHADOWSWIFT_STEER_MOTION
+#endif
+
+/*! @brief This option enables boundary conditions for non-periodic ShadowSWIFT
+ * runs */
+#define VACUUM_BC 0
+#define REFLECTIVE_BC 1
+#define OPEN_BC 2
+#define INFLOW_BC 3
+#define RADIAL_INFLOW_BC 4
+#define SHADOWSWIFT_BC REFLECTIVE_BC
+
+/* Options controlling behaviour of the code when unphysical situations are
+ * encountered */
+#ifdef SWIF_DEBUG_CHECKS
+/*! @brief Whether to show or hide ShadowSWIFT specific warnings*/
+#define SHADOWSWIFT_WARNINGS
+#endif
+/*! @brief This option tries to recover from unphysical situations */
+#define SHADOWSWIFT_UNPHYSICAL_RESCUE
+#ifdef SHADOWSWIFT_UNPHYSICAL_RESCUE
+#ifdef SHADOWSWIFT_WARNINGS
+/*! @brief Show a warning message if an unphysical value was reset */
+#define SHADOWSWIFT_UNPHYSICAL_WARNING
+#endif
+#else
+/*! @brief This option halts the execution in the case of unphysical conditions
+ */
+#define SHADOWSWIFT_UNPHYSICAL_ERROR
+#endif
 
 /* Source terms */
 #define SOURCETERMS_NONE

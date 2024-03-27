@@ -76,13 +76,6 @@ void hydro_props_init(struct hydro_props *p,
       (pow_dimension(delta_eta) - pow_dimension(p->eta_neighbours)) *
       kernel_norm;
 
-#ifdef SHADOWFAX_SPH
-  /* change the meaning of target_neighbours and delta_neighbours */
-  p->target_neighbours = 1.0f;
-  p->delta_neighbours = 0.0f;
-  p->eta_neighbours = 1.0f;
-#endif
-
   /* Maximal smoothing length */
   p->h_max = parser_get_opt_param_float(params, "SPH:h_max",
                                         hydro_props_default_h_max);
@@ -108,7 +101,7 @@ void hydro_props_init(struct hydro_props *p,
       parser_get_opt_param_int(params, "SPH:use_mass_weighted_num_ngb", 0);
 
   if (p->use_mass_weighted_num_ngb) {
-#if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH) || defined(SHADOWFAX_SPH)
+#if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH)
     error("Can't use alternative neighbour definition with this scheme!");
 #endif
   }

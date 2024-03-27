@@ -134,7 +134,9 @@ const char *engine_policy_names[] = {"none",
                                      "line of sight",
                                      "sink",
                                      "rt",
-                                     "power spectra"};
+                                     "power spectra",
+                                     "moving mesh",
+                                     "moving mesh hydro"};
 
 const int engine_default_snapshot_subsample[swift_type_count] = {0};
 
@@ -492,6 +494,34 @@ void engine_exchange_cells(struct engine *e) {
 }
 
 /**
+ * @brief Exchange extra information for the grid construction with other nodes.
+ *
+ * @param e The #engine.
+ */
+void engine_exchange_grid_extra(struct engine *e) {
+
+#ifdef WITH_MPI
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (!(e->policy & engine_policy_grid))
+    error("Not running with grid, but trying to exchange grid information!");
+#endif
+
+  const ticks tic = getticks();
+
+  /* Exchange the grid info with neighbouring ranks. */
+  proxy_grid_extra_exchange(e->proxies, e->nr_proxies, e->s);
+
+  if (e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
+
+#else
+  error("SWIFT was not compiled with MPI support.");
+#endif
+}
+
+/**
  * @brief Exchanges the top-level multipoles between all the nodes
  * such that every node has a multipole for each top-level cell.
  *
@@ -747,7 +777,8 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
 #ifdef WITH_MPI
 
   const int nr_proxies = e->nr_proxies;
-  const int with_hydro = e->policy & engine_policy_hydro;
+  const int with_hydro =
+      e->policy & (engine_policy_hydro | engine_policy_grid_hydro);
   const int with_stars = e->policy & engine_policy_stars;
   const int with_black_holes = e->policy & engine_policy_black_holes;
   struct space *s = e->s;
@@ -1132,6 +1163,35 @@ int engine_estimate_nr_tasks(const struct engine *e) {
     n1 += 2;
 #endif
   }
+  if (e->policy & engine_policy_grid) {
+    /* Grid construction: 1 self + 26 (asymmetric) pairs + 1 ghost + 1 sort */
+    n1 += 29;
+    n2 += 3;
+#ifdef WITH_MPI
+    n1 += 3;
+#endif
+  }
+  if (e->policy & engine_policy_grid_hydro) {
+    /* slope estimate: 1 self + 13 pairs (on average)       |   14
+     * others: 1 ghosts, 2 kicks, 1 drift, 1 timestep       | +  7
+     * Total:                                               =   21 */
+    n1 += 21;
+    n2 += 2;
+#ifdef EXTRA_HYDRO_LOOP
+    /* slope limiter: 1 self + 13 pairs                     | + 14
+     * flux: 1 self + 13 pairs                              | + 14
+     * others: 2 ghost.                                     | +  2
+     * Total:                                               =   30  */
+    n1 += 30;
+    n2 += 3;
+#endif
+#ifdef WITH_MPI
+    n1 += 1;
+#ifdef EXTRA_HYDRO_LOOP
+    n1 += 1;
+#endif
+#endif
+  }
 
 #ifdef WITH_MPI
 
@@ -1214,6 +1274,12 @@ void engine_rebuild(struct engine *e, const int repartitioned,
 
   /* Re-build the space. */
   space_rebuild(e->s, repartitioned, e->verbose);
+
+  /* Set the split flag for the moving mesh */
+  if (e->policy & engine_policy_grid) {
+    cell_grid_set_self_completeness_mapper(e->s->cells_top, e->s->nr_cells,
+                                           NULL);
+  }
 
   /* Report the number of cells and memory */
   if (e->verbose)
@@ -1331,6 +1397,18 @@ void engine_rebuild(struct engine *e, const int repartitioned,
       error("Total particles in multipoles inconsistent with engine");
   }
 #endif
+
+  /* Set the grid construction level, is needed before splitting */
+  if (e->policy & engine_policy_grid) {
+    /* Set the completeness and construction level */
+    threadpool_map(&e->threadpool, cell_set_grid_completeness_mapper, NULL,
+                   e->s->nr_cells, 1, threadpool_auto_chunk_size, e);
+    threadpool_map(&e->threadpool, cell_set_grid_construction_level_mapper,
+                   NULL, e->s->nr_cells, 1, threadpool_auto_chunk_size, e);
+#ifdef WITH_MPI
+    engine_exchange_grid_extra(e);
+#endif
+  }
 
   /* Re-build the tasks. */
   engine_maketasks(e);
@@ -1621,7 +1699,9 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->type == task_type_rt_ghost2 || t->type == task_type_rt_tchem ||
         t->type == task_type_rt_advance_cell_time ||
         t->type == task_type_neutrino_weight || t->type == task_type_csds ||
-        t->subtype == task_subtype_force ||
+        t->type == task_type_slope_estimate_ghost ||
+        t->type == task_type_slope_limiter_ghost ||
+        t->type == task_type_flux_ghost || t->subtype == task_subtype_force ||
         t->subtype == task_subtype_limiter ||
         t->subtype == task_subtype_gradient ||
         t->subtype == task_subtype_stars_prep1 ||
@@ -1644,7 +1724,10 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->subtype == task_subtype_spart_prep2 ||
         t->subtype == task_subtype_sf_counts ||
         t->subtype == task_subtype_rt_gradient ||
-        t->subtype == task_subtype_rt_transport)
+        t->subtype == task_subtype_rt_transport ||
+        t->subtype == task_subtype_flux ||
+        t->subtype == task_subtype_slope_estimate ||
+        t->subtype == task_subtype_slope_limiter)
       t->skip = 1;
   }
 

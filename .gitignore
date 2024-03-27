@@ -406,3 +406,6 @@ black_formatting_env
 
 # vscode
 *.json
+
+# IntelliJ
+.idea

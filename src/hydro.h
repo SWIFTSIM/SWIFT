@@ -62,11 +62,11 @@
 #elif defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH)
 #include "./hydro/Gizmo/hydro.h"
 #include "./hydro/Gizmo/hydro_iact.h"
-#elif defined(SHADOWFAX_SPH)
+#elif defined(SHADOWSWIFT)
 #include "./hydro/Shadowswift/hydro.h"
 #include "./hydro/Shadowswift/hydro_iact.h"
-#define SPH_IMPLEMENTATION \
-  "Shadowfax moving mesh (Vandenbroucke and De Rijcke 2016)"
+#include "./hydro/Shadowswift/hydro_iact_boundary.h"
+#define SPH_IMPLEMENTATION "ShadowSWIFT moving mesh"
 #elif defined(PLANETARY_SPH)
 #include "./hydro/Planetary/hydro.h"
 #include "./hydro/Planetary/hydro_iact.h"

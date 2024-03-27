@@ -113,6 +113,8 @@ void proxy_cells_exchange(struct proxy *proxies, int num_proxies,
                           struct space *s, int with_gravity);
 void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
                          struct space *s);
+void proxy_grid_extra_exchange(struct proxy *proxies, int num_proxies,
+                               struct space *s);
 void proxy_create_mpi_type(void);
 void proxy_free_mpi_type(void);
 
