@@ -32,6 +32,7 @@
  * Gadget-2 tree-code neighbours search.
  */
 
+#include "adaptive_softening_iact.h"
 #include "cache.h"
 #include "hydro_parameters.h"
 #include "minmax.h"
@@ -86,6 +87,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   pi->density.wcount += wi;
   pi->density.wcount_dh -= (hydro_dimension * wi + ui * wi_dx);
 
+  /* Compute contribution to the adpative softening correction */
+  adaptive_softening_add_correction_term(pi, ui, hi_inv, mj);
+
   /* Compute the kernel function for pj */
   const float hj_inv = 1.f / hj;
   const float uj = r * hj_inv;
@@ -98,6 +102,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   /* Compute contribution to the number of neighbours */
   pj->density.wcount += wj;
   pj->density.wcount_dh -= (hydro_dimension * wj + uj * wj_dx);
+
+  /* Compute contribution to the adpative softening correction */
+  adaptive_softening_add_correction_term(pj, uj, hj_inv, mi);
 
   const float faci = mj * wi_dx * r_inv;
   const float facj = mi * wj_dx * r_inv;
@@ -182,6 +189,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   /* Compute contribution to the number of neighbours */
   pi->density.wcount += wi;
   pi->density.wcount_dh -= (hydro_dimension * wi + ui * wi_dx);
+
+  /* Compute contribution to the adpative softening correction */
+  adaptive_softening_add_correction_term(pi, ui, hi_inv, mj);
 
   const float fac = mj * wi_dx * r_inv;
 
@@ -567,8 +577,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float sph_term =
       (f_i * P_over_rho2_i * wi_dr + f_j * P_over_rho2_j * wj_dr) * r_inv;
 
+  /* Adaptive softening acceleration term */
+  const float adapt_soft_acc_term =
+      adaptive_softening_get_acc_term(pi, pj, wi_dr, wj_dr, f_ij, f_ji, r_inv);
+
   /* Eventually got the acceleration */
-  const float acc = visc_term + sph_term;
+  const float acc = visc_term + sph_term + adapt_soft_acc_term;
 
   /* Use the force Luke ! */
   pi->a_hydro[0] -= mj * acc * dx[0];
@@ -692,8 +706,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float sph_term =
       (f_i * P_over_rho2_i * wi_dr + f_j * P_over_rho2_j * wj_dr) * r_inv;
 
+  /* Adaptive softening acceleration term */
+  const float adapt_soft_acc_term =
+      adaptive_softening_get_acc_term(pi, pj, wi_dr, wj_dr, f_ij, f_ji, r_inv);
+
   /* Eventually got the acceleration */
-  const float acc = visc_term + sph_term;
+  const float acc = visc_term + sph_term + adapt_soft_acc_term;
 
   /* Use the force Luke ! */
   pi->a_hydro[0] -= mj * acc * dx[0];

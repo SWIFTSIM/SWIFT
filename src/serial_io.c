@@ -63,6 +63,9 @@
 #include "version.h"
 #include "xmf.h"
 
+/* Max number of entries that can be written for a given particle type */
+static const int io_max_size_output_list = 100;
+
 /**
  * @brief Reads a data array from a given HDF5 group.
  *
@@ -794,8 +797,8 @@ void read_ic_serial(char* fileName, const struct unit_system* internal_units,
           error("Error while opening particle group %s.", partTypeGroupName);
 
         int num_fields = 0;
-        struct io_props list[100];
-        bzero(list, 100 * sizeof(struct io_props));
+        struct io_props list[io_max_size_output_list];
+        bzero(list, io_max_size_output_list * sizeof(struct io_props));
         size_t Nparticles = 0;
 
         /* Read particle fields into the particle structure */
@@ -1364,8 +1367,8 @@ void write_output_serial(struct engine* e,
           error("Error while opening particle group %s.", partTypeGroupName);
 
         int num_fields = 0;
-        struct io_props list[100];
-        bzero(list, 100 * sizeof(struct io_props));
+        struct io_props list[io_max_size_output_list];
+        bzero(list, io_max_size_output_list * sizeof(struct io_props));
         size_t Nparticles = 0;
 
         struct part* parts_written = NULL;
@@ -1636,6 +1639,15 @@ void write_output_serial(struct engine* e,
 
           default:
             error("Particle Type %d not yet supported. Aborting", ptype);
+        }
+
+        /* Verify we are not going to crash when writing below */
+        if (num_fields >= io_max_size_output_list)
+          error("Too many fields to write for particle type %d", ptype);
+        for (int i = 0; i < num_fields; ++i) {
+          if (!list[i].is_used) error("List of field contains an empty entry!");
+          if (!list[i].dimension)
+            error("Dimension of field '%s' is <= 1!", list[i].name);
         }
 
         /* Did the user specify a non-standard default for the entire particle
