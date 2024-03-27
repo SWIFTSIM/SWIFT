@@ -10,6 +10,7 @@
 #include "shadowswift/algorithm3d/geometry.h"
 #include "shadowswift/algorithm3d/tetrahedron.h"
 #include "shadowswift/queues.h"
+#include "timers.h"
 
 /*! @brief The sid order in which the faces are stored in their array */
 static const int face_sid_order[28] = {
@@ -238,15 +239,18 @@ inline static void voronoi_reset(struct voronoi *restrict v,
  * @param parts The particle array of the local cell.
  */
 inline static void voronoi_build(struct voronoi *v, struct delaunay *d,
-                                 struct part *parts) {
+                                 struct part *parts, ticks* grid_timers) {
 
   /* the number of cells equals the number of non-ghost and non-dummy
      vertex_indices in the Delaunay tessellation */
   voronoi_assert(d->vertex_end > 0);
 
   /* Compute the circumcentres */
+  ticks grid_ticks = getticks();
   delaunay_compute_circumcentres(d);
+  timers[timer_voronoi_vertices] += getticks() - grid_ticks;
 
+  grid_ticks = getticks();
   /* Allocate memory for the neighbour flags and initialize them to 0 (will be
    * freed at the end of this function!) */
   int *neighbour_flags = (int *)malloc(d->vertex_index * sizeof(int));
@@ -528,9 +532,13 @@ inline static void voronoi_build(struct voronoi *v, struct delaunay *d,
     }
 #endif
   }
+  timers[timer_voronoi_cells] += getticks() - grid_ticks;
+
   free(neighbour_flags);
   int3_fifo_queue_destroy(&neighbour_info_q);
+  grid_ticks = getticks();
   voronoi_finalize(v, d, parts);
+  timers[timer_voronoi_face_ordering] += getticks() - grid_ticks;
   voronoi_check_grid(v, d, parts);
   free(face_vertices);
 }

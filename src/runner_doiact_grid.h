@@ -101,7 +101,7 @@ __attribute__((always_inline)) INLINE static void runner_build_grid(
   struct flat_bvh *bvh = flat_bvh_malloc(count_unconverged);
   /* Build bvh of unconverged particles */
   flat_bvh_populate(bvh, parts, pid_unconverged, count_unconverged);
-  c->grid.extra_info.timers[bvh_construction] += getticks() - grid_tic;
+  c->grid.extra_info.timers[timer_bvh_construction] += getticks() - grid_tic;
 #else
   struct flat_bvh *bvh = NULL;
 #endif
@@ -171,7 +171,7 @@ __attribute__((always_inline)) INLINE static void runner_build_grid(
     /* rebuild bvh of unconverged particles */
     grid_tic = getticks();
     flat_bvh_populate(bvh, parts, pid_unconverged, count_unconverged);
-    c->grid.extra_info.timers[bvh_rebuild] += getticks() - grid_tic;
+    c->grid.extra_info.timers[timer_bvh_rebuild] += getticks() - grid_tic;
 #endif
   }
 
@@ -196,8 +196,8 @@ __attribute__((always_inline)) INLINE static void runner_build_grid(
   } else {
     voronoi_reset(c->grid.voronoi, n_cells, c->width[0]);
   }
-  voronoi_build(c->grid.voronoi, d, parts);
-  c->grid.extra_info.timers[voronoi_construction] += getticks() - grid_tic;
+  voronoi_build(c->grid.voronoi, d, parts, c->grid.extra_info.timers);
+  c->grid.extra_info.timers[timer_voronoi_construction] += getticks() - grid_tic;
 
   /* Be clean */
   delaunay_destroy(d);

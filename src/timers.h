@@ -163,13 +163,16 @@ extern ticks timers[timer_count];
 extern const char *timers_names[];
 
 enum grid_timers {
-  bvh_construction,
-  bvh_rebuild,
-  hilbert_ordering,
-  bfo_ordering,
-  point_location,
-  triangle_flipping,
-  voronoi_construction,
+  timer_bvh_construction,
+  timer_bvh_rebuild,
+  timer_hilbert_ordering,
+  timer_bfo_ordering,
+  timer_point_location,
+  timer_triangle_flipping,
+  timer_voronoi_construction,
+  timer_voronoi_vertices,
+  timer_voronoi_cells,
+  timer_voronoi_face_ordering,
   grid_timers_count,
 };
 

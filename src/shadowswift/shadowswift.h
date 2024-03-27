@@ -72,7 +72,7 @@ __attribute__((always_inline)) INLINE static void cell_add_local_parts_grid(
     hilbert_r_sort[i] = i;
   }
   qsort_r(hilbert_r_sort, count, sizeof(int), sort_h_comp, hilbert_keys);
-  c->grid.extra_info.timers[hilbert_ordering] += getticks() - grid_tic;
+  c->grid.extra_info.timers[timer_hilbert_ordering] += getticks() - grid_tic;
 #elif defined(SHADOWSWIFT_RANDOM_ORDER)
   for (int i = 0; i < count; i++) {
     /* Get random destination index and swap */
@@ -88,7 +88,7 @@ __attribute__((always_inline)) INLINE static void cell_add_local_parts_grid(
   grid_tic = getticks();
   /* Sort pid in breadth first order. */
   flat_bvh_get_bfo(bvh, pid);
-  c->grid.extra_info.timers[bfo_ordering] += getticks() - grid_tic;
+  c->grid.extra_info.timers[timer_bfo_ordering] += getticks() - grid_tic;
 #endif
 
   /* Add the active particles to the delaunay tesselation */

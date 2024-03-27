@@ -639,7 +639,7 @@ inline static int delaunay_finalize_vertex(struct delaunay* restrict d, int v,
 #endif
   grid_tic = getticks();
   int number_of_tetrahedra = delaunay_find_tetrahedra_containing_vertex(d, v);
-  grid_timers[point_location] += getticks() - grid_tic;
+  grid_timers[timer_point_location] += getticks() - grid_tic;
 
   grid_tic = getticks();
   if (number_of_tetrahedra == -1) {
@@ -672,7 +672,7 @@ inline static int delaunay_finalize_vertex(struct delaunay* restrict d, int v,
 
   /* Now check all tetrahedra in de queue */
   delaunay_check_tetrahedra(d, v);
-  grid_timers[triangle_flipping] += getticks() - grid_tic;
+  grid_timers[timer_triangle_flipping] += getticks() - grid_tic;
 
   /* perform sanity checks if enabled */
   delaunay_check_tessellation(d);
