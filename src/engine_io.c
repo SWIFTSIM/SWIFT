@@ -213,8 +213,14 @@ int engine_dump_restarts(struct engine *e, const int drifted_all,
       restart_remove_previous(e->restart_file);
 
       /* Drift all particles first (may have just been done). */
-      if (!drifted_all) engine_drift_all(e, /*drift_mpole=*/1);
-
+      if (!drifted_all) {
+        engine_drift_all(e, /*drift_mpole=*/1);
+#ifdef WITH_MPI
+        /* Make sure new cell variables are communicated after the drift. */
+        engine_unskip_timestep_communications(e);
+        engine_launch(e, "timesteps");
+#endif
+      }
         /* Free the foreign particles to get more breathing space. */
 #ifdef WITH_MPI
       if (e->free_foreign_when_dumping_restart)
@@ -500,6 +506,12 @@ void engine_io(struct engine *e) {
 
     /* Drift everyone */
     engine_drift_all(e, /*drift_mpole=*/0);
+
+#ifdef WITH_MPI
+    /* Make sure cell variables get communicated after the drift */
+    engine_unskip_timestep_communications(e);
+    engine_launch(e, "timesteps");
+#endif
 
     /* Write some form of output */
     switch (type) {

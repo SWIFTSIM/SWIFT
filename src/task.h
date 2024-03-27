@@ -269,7 +269,11 @@ struct task {
   /*! Sub-type of the task (for the tasks that have one */
   enum task_subtypes subtype;
 
-  /*! Should the scheduler skip this task ? */
+  /*! Should the scheduler skip this task? 0 means the task will be executed,
+   *  1 means it will be skipped, 2 means a pair task that should have been
+   *  activated was not because it recursed to no work. All activated tasks are
+   *  reset to 1 after execution. Tasks flagged with skip=2 should set skip=1
+   *  before attempting normal activation using scheduler_activate(). */
   char skip;
 
   /*! Is this task implicit (i.e. does not do anything) ? */

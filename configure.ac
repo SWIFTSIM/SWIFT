@@ -433,6 +433,20 @@ elif test "$stars_density_checks" != "no"; then
    AC_DEFINE_UNQUOTED([SWIFT_STARS_DENSITY_CHECKS], [$enableval] ,[Enable stars density brute-force checks])
 fi
 
+# Check if black holes density checks are on for some particles.
+AC_ARG_ENABLE([black-holes-density-checks],
+   [AS_HELP_STRING([--enable-black-holes-density-checks],
+     [Activate expensive brute-force black holes density checks for a fraction 1/N of all particles @<:@N@:>@]
+   )],
+   [black_holes_density_checks="$enableval"],
+   [black_holes_density_checks="no"]
+)
+if test "$black_holes_density_checks" == "yes"; then
+   AC_MSG_ERROR(Need to specify the fraction of particles to check when using --enable-black-holes-density-checks!)
+elif test "$black_holes_density_checks" != "no"; then
+   AC_DEFINE_UNQUOTED([SWIFT_BLACK_HOLES_DENSITY_CHECKS], [$enableval] ,[Enable black holes density brute-force checks])
+fi
+
 # Check if ghost statistics are enabled
 AC_ARG_ENABLE([ghost-statistics],
    [AS_HELP_STRING([--enable-ghost-statistics],

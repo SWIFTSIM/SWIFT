@@ -185,6 +185,17 @@ __attribute__((always_inline)) INLINE static void black_holes_init_bpart(
 
   /* Reset the rays carried by this BH */
   ray_init(bp->rays, eagle_blackhole_number_of_rays);
+
+#ifdef SWIFT_BLACK_HOLES_DENSITY_CHECKS
+  bp->N_density = 0;
+  bp->N_density_exact = 0;
+  bp->rho = 0.f;
+  bp->rho_exact = 0.f;
+  bp->n = 0.f;
+  bp->n_exact = 0.f;
+  bp->inhibited_exact = 0;
+  bp->has_done_feedback = 0;
+#endif
 }
 
 /**
@@ -1066,6 +1077,10 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
     bp->to_distribute.AGN_number_of_energy_injections = 0;
     bp->to_distribute.AGN_delta_u = 0.f;
   }
+
+#ifdef SWIFT_BLACK_HOLES_DENSITY_CHECKS
+  bp->has_done_feedback = 1;
+#endif
 }
 
 /**

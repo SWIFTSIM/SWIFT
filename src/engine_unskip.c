@@ -569,3 +569,60 @@ void engine_unskip_rt_sub_cycle(struct engine *e) {
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
 }
+
+void engine_unskip_timestep_communications_mapper(void *map_data,
+                                                  int num_elements,
+                                                  void *extra_data) {
+  /* Unpack the data */
+  struct scheduler *s = (struct scheduler *)extra_data;
+  struct task *const tasks = (struct task *)map_data;
+  const int nr_tasks = num_elements;
+
+  /* Unskip the tasks in this part of the array */
+  for (int i = 0; i < nr_tasks; ++i) {
+
+    struct task *const t = &tasks[i];
+
+    if (t->type == task_type_send || t->type == task_type_recv) {
+      if (t->subtype == task_subtype_tend) {
+        scheduler_activate(s, t);
+      }
+    }
+  }
+}
+
+/**
+ * @brief Blindly unskips all the tend communications.
+ *
+ * This function should be used to rerun the communication tasks after any
+ * drift that is not accompanied by a rebuild. This is to prevent cell
+ * variables like hydro.dx_max_part or stars.h_max to diverge between different
+ * nodes, which would lead to different recursion logic for a cell and its
+ * foreign proxies. In some cases, this can lead to a mismatch between the
+ * send and recv tasks that are created on both ends, leading to a deadlock.
+ *
+ * @param e The #engine.
+ */
+void engine_unskip_timestep_communications(struct engine *e) {
+
+#ifdef WITH_MPI
+
+  const ticks tic = getticks();
+
+  struct scheduler *s = &e->sched;
+  struct task *tasks = e->sched.tasks;
+  const int nr_tasks = e->sched.nr_tasks;
+
+  /* Activate all the tend tasks */
+  threadpool_map(&e->threadpool, engine_unskip_timestep_communications_mapper,
+                 tasks, nr_tasks, sizeof(struct task),
+                 threadpool_auto_chunk_size, s);
+
+  if (e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
+
+#else
+  error("SWIFT was not compiled with MPI support.");
+#endif
+}
