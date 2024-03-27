@@ -122,8 +122,8 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   /* Allocate counters of particles that will land in each cell */
   int *cell_part_counts =
       (int *)swift_malloc("cell_part_counts", sizeof(int) * s->nr_cells);
-  int *cell_gpart_counts =
-      (int *)swift_malloc("cell_gpart_counts", sizeof(int) * s->nr_cells);
+  long long *cell_gpart_counts =
+      (long long *)swift_malloc("cell_gpart_counts", sizeof(long long) * s->nr_cells);
   int *cell_spart_counts =
       (int *)swift_malloc("cell_spart_counts", sizeof(int) * s->nr_cells);
   int *cell_bpart_counts =

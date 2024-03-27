@@ -289,7 +289,8 @@ void space_sinks_sort(struct sink *sinks, int *restrict ind,
 void space_gparts_sort(struct gpart *gparts, struct part *parts,
                        struct sink *sinks, struct spart *sparts,
                        struct bpart *bparts, int *restrict ind,
-                       int *restrict counts, int num_bins) {
+                       long long *restrict counts, int num_bins) {
+  
   /* Create the offsets array. */
   size_t *offsets = NULL;
   if (swift_memalign("gparts_offsets", (void **)&offsets,

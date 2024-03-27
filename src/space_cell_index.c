@@ -41,7 +41,7 @@
 struct space_index_data {
   struct space *s;
   int *ind;
-  int *cell_counts;
+  long long *cell_counts;
   size_t count_inhibited_part;
   size_t count_inhibited_gpart;
   size_t count_inhibited_spart;
@@ -188,7 +188,7 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
  * @param nr_gparts The number of g-particles to treat.
  * @param extra_data Pointers to the space and index list
  */
-void space_gparts_get_cell_index_mapper(void *map_data, int nr_gparts,
+void space_gparts_get_cell_index_mapper(void *map_data, long long nr_gparts,
                                         void *extra_data) {
 
   /* Unpack the data */
@@ -207,7 +207,7 @@ void space_gparts_get_cell_index_mapper(void *map_data, int nr_gparts,
   const double ih_z = s->iwidth[2];
 
   /* Init the local count buffer. */
-  int *cell_counts = (int *)calloc(sizeof(int), s->nr_cells);
+  long long *cell_counts = (long long *)calloc(sizeof(long long), s->nr_cells);
   if (cell_counts == NULL)
     error("Failed to allocate temporary cell count buffer.");
 
@@ -217,7 +217,7 @@ void space_gparts_get_cell_index_mapper(void *map_data, int nr_gparts,
   size_t count_inhibited_gpart = 0;
   size_t count_extra_gpart = 0;
 
-  for (int k = 0; k < nr_gparts; k++) {
+  for (long long k = 0; k < nr_gparts; k++) {
 
     /* Get the particle */
     struct gpart *restrict gp = &gparts[k];
@@ -723,7 +723,7 @@ void space_parts_get_cell_index(struct space *s, int *ind, int *cell_counts,
   struct space_index_data data;
   data.s = s;
   data.ind = ind;
-  data.cell_counts = cell_counts;
+  //  data.cell_counts = cell_counts;
   data.count_inhibited_part = 0;
   data.count_inhibited_gpart = 0;
   data.count_inhibited_spart = 0;
@@ -760,7 +760,7 @@ void space_parts_get_cell_index(struct space *s, int *ind, int *cell_counts,
  * creation.
  * @param verbose Are we talkative ?
  */
-void space_gparts_get_cell_index(struct space *s, int *gind, int *cell_counts,
+void space_gparts_get_cell_index(struct space *s, int *gind, long long *cell_counts,
                                  size_t *count_inhibited_gparts,
                                  size_t *count_extra_gparts, int verbose) {
 
@@ -786,9 +786,10 @@ void space_gparts_get_cell_index(struct space *s, int *gind, int *cell_counts,
   data.count_extra_bpart = 0;
   data.count_extra_sink = 0;
 
-  threadpool_map(&s->e->threadpool, space_gparts_get_cell_index_mapper,
-                 s->gparts, s->nr_gparts, sizeof(struct gpart),
-                 threadpool_auto_chunk_size, &data);
+  /* threadpool_map(&s->e->threadpool, space_gparts_get_cell_index_mapper, */
+  /*                s->gparts, s->nr_gparts, sizeof(struct gpart), */
+  /*                threadpool_auto_chunk_size, &data); */
+  space_gparts_get_cell_index_mapper(s->gparts, s->nr_gparts, &data);
 
   *count_inhibited_gparts = data.count_inhibited_gpart;
   *count_extra_gparts = data.count_extra_gpart;
@@ -825,7 +826,7 @@ void space_sparts_get_cell_index(struct space *s, int *sind, int *cell_counts,
   struct space_index_data data;
   data.s = s;
   data.ind = sind;
-  data.cell_counts = cell_counts;
+  // data.cell_counts = cell_counts;
   data.count_inhibited_part = 0;
   data.count_inhibited_gpart = 0;
   data.count_inhibited_spart = 0;
@@ -874,7 +875,7 @@ void space_sinks_get_cell_index(struct space *s, int *sink_ind,
   struct space_index_data data;
   data.s = s;
   data.ind = sink_ind;
-  data.cell_counts = cell_counts;
+  // data.cell_counts = cell_counts;
   data.count_inhibited_part = 0;
   data.count_inhibited_gpart = 0;
   data.count_inhibited_spart = 0;
@@ -925,7 +926,7 @@ void space_bparts_get_cell_index(struct space *s, int *bind, int *cell_counts,
   struct space_index_data data;
   data.s = s;
   data.ind = bind;
-  data.cell_counts = cell_counts;
+  // data.cell_counts = cell_counts;
   data.count_inhibited_part = 0;
   data.count_inhibited_gpart = 0;
   data.count_inhibited_spart = 0;

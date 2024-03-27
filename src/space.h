@@ -357,7 +357,7 @@ void space_parts_sort(struct part *parts, struct xpart *xparts, int *ind,
                       int *counts, int num_bins, ptrdiff_t parts_offset);
 void space_gparts_sort(struct gpart *gparts, struct part *parts,
                        struct sink *sinks, struct spart *sparts,
-                       struct bpart *bparts, int *ind, int *counts,
+                       struct bpart *bparts, int *ind, long long *counts,
                        int num_bins);
 void space_sparts_sort(struct spart *sparts, int *ind, int *counts,
                        int num_bins, ptrdiff_t sparts_offset);
@@ -402,7 +402,7 @@ void space_list_useful_top_level_cells(struct space *s);
 void space_parts_get_cell_index(struct space *s, int *ind, int *cell_counts,
                                 size_t *count_inhibited_parts,
                                 size_t *count_extra_parts, int verbose);
-void space_gparts_get_cell_index(struct space *s, int *gind, int *cell_counts,
+void space_gparts_get_cell_index(struct space *s, int *gind, long long *cell_counts,
                                  size_t *count_inhibited_gparts,
                                  size_t *count_extra_gparts, int verbose);
 void space_sparts_get_cell_index(struct space *s, int *sind, int *cell_counts,
