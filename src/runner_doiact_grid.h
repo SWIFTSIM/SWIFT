@@ -181,8 +181,7 @@ __attribute__((always_inline)) INLINE static void runner_build_grid(
   /* Finally build the voronoi grid */
   int n_cells = d->vertex_end - d->vertex_start;
   if (c->grid.voronoi == NULL) {
-    c->grid.voronoi =
-        voronoi_malloc(n_cells, c->width[0]);
+    c->grid.voronoi = voronoi_malloc(n_cells, c->width[0]);
   } else {
     voronoi_reset(c->grid.voronoi, n_cells, c->width[0]);
   }

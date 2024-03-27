@@ -178,8 +178,7 @@ void DOPAIR(struct runner *restrict r, struct cell *ci, struct cell *cj,
     struct part *part_right = &cj->hydro.parts[pair->right_idx];
 
 #ifdef SHADOWSWIFT_FIX_PARTICLES
-    if (!part_is_active(part_left, e))
-      continue;
+    if (!part_is_active(part_left, e)) continue;
 #elif defined(SWIFT_DEBUG_CHECKS)
     if (!part_is_active(part_left, e))
       error("Encountered face of Voronoi cell of inactive particle!");
