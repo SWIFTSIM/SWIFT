@@ -31,6 +31,9 @@ struct RTUserData {
 
   // void *cvode_mem;           /*!< Pointer to the CVODE memory. */
 
+  /* number of equations */
+  int network_size;
+
   /* switch for on the spot approximation */
   int onthespot;
 
@@ -43,6 +46,9 @@ struct RTUserData {
   /* 1: to use the input parameters; 0: calculate with temperature. */
   /* (H coefficient only; no heating or cooling) */
   int useparams;
+
+  /* smoothed Radiative transfer switch */
+  int smoothedRT;
 
   /*! Fraction of the particle mass in a given element */
   double metal_mass_fraction[rt_chemistry_element_count];
@@ -58,6 +64,12 @@ struct RTUserData {
   double n_H_cgs;
 
   double ngamma_cgs[3];
+
+  double ngamma_inject_rate_cgs[3];
+
+  double fgamma_cgs[3][3];
+
+  double fgamma_inject_rate_cgs[3][3];
 
   double u_cgs;
 
@@ -496,7 +508,7 @@ INLINE static void rt_compute_chemistry_rate(
  * helium fraction are passed it so as to compute them only once per particle.
  *
  * @param n_H_cgs Hydrogen number density in CGS units.
- * @param cred_cgs (reduced) speed of light in cm/s in cm/s
+ * @param cred_cgs (reduced) speed of light in cm/s
  * @param abundances species abundance in n_i/nH.
  * @param ngamma_cgs photon density in cm^-3
  * @param sigmalist  photo-ionization cross section in cm^2
@@ -505,7 +517,7 @@ INLINE static void rt_compute_chemistry_rate(
  * @return absorption_rate The radiation absorption rate (d n_gamma / d t in
  * cgs) excluded diffuse emission
  */
-INLINE static void rt_compute_radiation_rate(
+INLINE static void rt_compute_radiation_absorption_rate(
     const double n_H_cgs, const double cred_cgs,
     const double abundances[rt_species_count], const double ngamma_cgs[3],
     double sigmalist[3][3], const int aindex[3], double absorption_rate[3]) {
@@ -521,6 +533,46 @@ INLINE static void rt_compute_radiation_rate(
                           abundances[aindex[i]] * n_H_cgs;
     absorption_rate[2] += sigmalist[2][i] * cred_cgs * ngamma_cgs[2] *
                           abundances[aindex[i]] * n_H_cgs;
+  }
+}
+
+
+/**
+ * @brief function used to calculate radiation absorption rate for flux.
+ * Table indices and offsets for redshift, hydrogen number density and
+ * helium fraction are passed it so as to compute them only once per particle.
+ *
+ * @param n_H_cgs Hydrogen number density in CGS units.
+ * @param cred_cgs (reduced) speed of light in cm/s
+ * @param abundances species abundance in n_i/nH.
+ * @param fgamma_cgs photon flux density in cm^-2s^-1
+ * @param sigmalist  photo-ionization cross section in cm^2
+ * @param aindex   use to translate index to species
+ *
+ * @return flux_absorption_rate The radiation absorption rate (d f_gamma / d t in
+ * cgs) excluded diffuse emission
+ */
+INLINE static void rt_compute_radiation_flux_absorption_rate(
+    const double n_H_cgs, const double cred_cgs,
+    const double abundances[rt_species_count], double fgamma_cgs[3][3],
+    double sigmalist[3][3], const int aindex[3], double flux_absorption_rate[3][3]) {
+
+
+  for (int g = 0; g < 3; g++) {
+    for (int i = 0; i < 3; i++) {
+      flux_absorption_rate[g][i] = 0.0;
+    }
+  }
+
+  for (int g = 0; g < 3; g++) {
+    for (int i = 0; i < 3; i++) {
+      flux_absorption_rate[g][0] += sigmalist[g][i] * cred_cgs * fgamma_cgs[g][0] *
+                            abundances[aindex[i]] * n_H_cgs;
+      flux_absorption_rate[g][1] += sigmalist[g][i] * cred_cgs * fgamma_cgs[g][1] *
+                            abundances[aindex[i]] * n_H_cgs;
+      flux_absorption_rate[g][2] += sigmalist[g][i] * cred_cgs * fgamma_cgs[g][2] *
+                            abundances[aindex[i]] * n_H_cgs;
+    }
   }
 }
 
@@ -664,20 +716,26 @@ INLINE static void rt_compute_explicit_thermochemistry_solution(
     const double n_H_cgs, const double cred_cgs, const double dt_cgs,
     const double rho_cgs, const double u_cgs, const double u_min_cgs,
     const double abundances[rt_species_count], const double ngamma_cgs[3],
+    const double ngamma_inject_rate_cgs[3],  double fgamma_cgs[3][3],
+    double fgamma_inject_rate_cgs[3][3], 
     const double alphalist[rt_species_count],
     const double betalist[rt_species_count],
     const double Gammalist[rt_species_count], double sigmalist[3][3],
     double epsilonlist[3][3], int aindex[3], double *u_new_cgs,
     double new_abundances[rt_species_count], double new_ngamma_cgs[3],
+    double new_fgamma_cgs[3][3], 
     double *max_relative_change) {
 
-  double absorption_rate[3], chemistry_rates[rt_species_count];
+  double absorption_rate[3], fgamma_absorption_rate[3][3], chemistry_rates[rt_species_count];
 
   if (dt_cgs == 0.0) error("dt_cgs==%e", dt_cgs);
   if (n_H_cgs == 0.0) error("n_H_cgs==%e", n_H_cgs);
 
-  rt_compute_radiation_rate(n_H_cgs, cred_cgs, abundances, ngamma_cgs,
+  rt_compute_radiation_absorption_rate(n_H_cgs, cred_cgs, abundances, ngamma_cgs,
                             sigmalist, aindex, absorption_rate);
+
+  rt_compute_radiation_flux_absorption_rate(n_H_cgs, cred_cgs, abundances,
+                            fgamma_cgs, sigmalist, aindex, fgamma_absorption_rate);
 
   rt_compute_chemistry_rate(n_H_cgs, cred_cgs, abundances, ngamma_cgs,
                             alphalist, betalist, sigmalist, aindex,
@@ -713,13 +771,19 @@ INLINE static void rt_compute_explicit_thermochemistry_solution(
   max_relative_change_value = fmax(max_relative_change_value, relative_change);
 
   for (int i = 0; i < 3; i++) {
-    new_ngamma_cgs[i] = fmax(ngamma_cgs[i] - absorption_rate[i] * dt_cgs, 0.0);
+    new_ngamma_cgs[i] = fmax(ngamma_cgs[i] + ngamma_inject_rate_cgs[i] * dt_cgs - absorption_rate[i] * dt_cgs, 0.0);
     if ((new_ngamma_cgs[i] > 1e-8 * n_H_cgs) &&
         (ngamma_cgs[i] > 1e-8 * n_H_cgs)) {
       relative_change = fabs(new_ngamma_cgs[i] - ngamma_cgs[i]) / ngamma_cgs[i];
       max_relative_change_value =
           fmax(max_relative_change_value, relative_change);
     }
+  }
+
+  for (int i = 0; i < 3; i++) {
+    new_fgamma_cgs[i][0] = fgamma_cgs[i][0] + fgamma_inject_rate_cgs[i][0] * dt_cgs- fgamma_absorption_rate[i][0] * dt_cgs;
+    new_fgamma_cgs[i][1] = fgamma_cgs[i][1] + fgamma_inject_rate_cgs[i][1] * dt_cgs- fgamma_absorption_rate[i][1] * dt_cgs;
+    new_fgamma_cgs[i][2] = fgamma_cgs[i][2] + fgamma_inject_rate_cgs[i][2] * dt_cgs- fgamma_absorption_rate[i][2] * dt_cgs;
   }
 
   *u_new_cgs = u_new_cgs_value;

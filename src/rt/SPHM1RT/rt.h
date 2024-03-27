@@ -30,6 +30,7 @@
 
 #include <float.h>
 
+
 /**
  * @file src/rt/SPHM1RT/rt.h
  * @brief Main header file for SPHM1RT radiative transfer scheme.
@@ -57,6 +58,7 @@ __attribute__((always_inline)) INLINE static void rt_init_part(
 __attribute__((always_inline)) INLINE static void rt_reset_part(
     struct part* restrict p, const struct cosmology* cosmo) {}
 
+
 /**
  * @brief Reset RT particle data which needs to be reset each sub-cycle.
  *
@@ -81,7 +83,7 @@ __attribute__((always_inline)) INLINE static void rt_reset_part_each_subcycle(
     rpd->diffusion[g].graduradc[0] = 0.0f;
     rpd->diffusion[g].graduradc[1] = 0.0f;
     rpd->diffusion[g].graduradc[2] = 0.0f;
-  }
+  }   
 
   /* To avoid radiation reaching other dimension and violating conservation */
   for (int g = 0; g < RT_NGROUPS; g++) {
@@ -96,12 +98,13 @@ __attribute__((always_inline)) INLINE static void rt_reset_part_each_subcycle(
 
   float urad_old;
   const float cred = rt_get_comoving_cred(p, cosmo->a);
+  const char loc[30] = "rt_reset_part_each_subcycle";
   for (int g = 0; g < RT_NGROUPS; g++) {
     /* TK: avoid the radiation flux to violate causality. Impose a limit: F<Ec
      */
     urad_old = rpd->conserved[g].urad;
     rt_check_unphysical_state(&rpd->conserved[g].urad, rpd->conserved[g].frad,
-                              urad_old, cred);
+                              urad_old, cred, loc);
   }
 };
 
@@ -146,6 +149,7 @@ __attribute__((always_inline)) INLINE static void rt_first_init_part(
 __attribute__((always_inline)) INLINE static void rt_init_spart(
     struct spart* restrict sp) {
 
+  sp->rt_data.dt = 0.f;
   sp->rt_data.injection_weight = 0.f;
   for (int g = 0; g < RT_NGROUPS; g++) {
     sp->rt_data.emission_reinject[g] = 0.f;
@@ -355,11 +359,16 @@ rt_compute_stellar_emission_rate(struct spart* restrict sp, double time,
     star_age = dt;
   }
 
+  /* store the time-step of star */
+  sp->rt_data.dt = dt;
+
   /* now get the emission rates */
   double star_age_begin_of_step = star_age - dt;
   star_age_begin_of_step = max(0.l, star_age_begin_of_step);
   rt_set_stellar_emission_rate(sp, star_age_begin_of_step, star_age, rt_props,
                                phys_const, internal_units);
+
+
 }
 
 /**
@@ -449,31 +458,28 @@ __attribute__((always_inline)) INLINE static void rt_end_gradient(
  * @param p particle to work on
  * @param dt the current time step of the particle
  * @param cosmo #cosmology data structure.
+ * @param rt_props RT properties struct
  */
 __attribute__((always_inline)) INLINE static void rt_finalise_transport(
     struct part* restrict p, const double dt,
-    const struct cosmology* restrict cosmo) {
+    const struct cosmology* restrict cosmo, struct rt_props* rt_props) {
   struct rt_part_data* rpd = &p->rt_data;
 
-  for (int g = 0; g < RT_NGROUPS; g++) {
-    rpd->conserved[g].urad += rpd->dconserved_dt[g].urad * dt;
-    rpd->conserved[g].frad[0] += rpd->dconserved_dt[g].frad[0] * dt;
-    rpd->conserved[g].frad[1] += rpd->dconserved_dt[g].frad[1] * dt;
-    rpd->conserved[g].frad[2] += rpd->dconserved_dt[g].frad[2] * dt;
+  /* Add radiation from propagation equations */
+  /* when smoothedRT == 1, we add them in thermo-chemistry equation */
+  if (rt_props->smoothedRT == 0) {
+    for (int g = 0; g < RT_NGROUPS; g++) {
+      rpd->conserved[g].urad += rpd->dconserved_dt[g].urad * dt;
+      rpd->conserved[g].frad[0] += rpd->dconserved_dt[g].frad[0] * dt;
+      rpd->conserved[g].frad[1] += rpd->dconserved_dt[g].frad[1] * dt;
+      rpd->conserved[g].frad[2] += rpd->dconserved_dt[g].frad[2] * dt;
+    }
   }
-
-  /* add frad source term implicitly */
-  float dfrac, cred;
-  cred = rt_get_comoving_cred(p, cosmo->a);
+  
+  /* update urad */
+  /* limiter to avoid negative urad */
+  /* negative urad will make the dissipation (diffusion) unstable) */
   for (int g = 0; g < RT_NGROUPS; g++) {
-    dfrac = -rpd->params.chi[g] * p->rho * cred;
-    rpd->conserved[g].frad[0] *= expf(dfrac * dt);
-    rpd->conserved[g].frad[1] *= expf(dfrac * dt);
-    rpd->conserved[g].frad[2] *= expf(dfrac * dt);
-
-    /* update urad */
-    /* limiter to avoid negative urad */
-    /* negative urad will make the dissipation (diffusion) unstable) */
     if (rpd->conserved[g].urad < 0.0f) {
       rpd->conserved[g].urad = 0.0f;
       rpd->conserved[g].frad[0] = 0.0f;

@@ -35,9 +35,11 @@
  * @param flux pointer to radiation flux (3 dimensional)
  * @param e_old energy density before change to check. Set = 0 if not available
  * @param cred reduced speed of light in (comoving) code unit
+ * @param loc indicating the location
  */
 __attribute__((always_inline)) INLINE static void rt_check_unphysical_state(
-    float* energy_density, float flux[3], const float e_old, const float cred) {
+    float* energy_density, float flux[3], const float e_old, const float cred, 
+    const char* loc) {
 
   /* Check for negative energies */
   /* Note to self for printouts: Maximal allowable F = E * c.
@@ -68,8 +70,8 @@ __attribute__((always_inline)) INLINE static void rt_check_unphysical_state(
                              fluxdouble[1] * fluxdouble[1] +
                              fluxdouble[2] * fluxdouble[2];
   if (isinf(flux2double) || isnan(flux2double))
-    error("Got inf/nan in flux2 | %.6e| %.6e %.6e %.6e", flux2double, flux[0],
-          flux[1], flux[2]);
+    error("Got inf/nan in flux2 | %.6e| %.6e %.6e %.6e %s", flux2double, flux[0],
+          flux[1], flux[2], loc);
 
   const double flux_normdouble = (flux2double == 0.0) ? 0.0 : sqrt(flux2double);
   const float flux_norm = (float)(flux_normdouble);
