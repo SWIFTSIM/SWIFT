@@ -145,7 +145,7 @@ void lightcone_io_append_gas_output_fields(
 #if defined(TRACERS_EAGLE) || defined(TRACERS_FLAMINGO)
   lightcone_io_field_list_append(list, "LastAGNFeedbackScaleFactors", FLOAT, 1,
                                  OFFSET(last_AGN_injection_scale_factor),
-                                 UNIT_CONV_NO_UNITS, 0.0, "BFloat16");
+                                 UNIT_CONV_NO_UNITS, 0.0, "FMantissa13");
 #endif
 #ifdef STAR_FORMATION_EAGLE
   lightcone_io_field_list_append(list, "StarFormationRates", FLOAT, 1,
