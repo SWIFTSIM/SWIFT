@@ -192,7 +192,7 @@ __attribute__((always_inline)) INLINE static void drift_part(
 #ifdef HYDRO_DIMENSION_2p5D
   p->x[2] = 0.;
 #endif
-  
+
   /* Predict velocities (for hydro terms) */
   p->v[0] += p->a_hydro[0] * dt_kick_hydro;
   p->v[1] += p->a_hydro[1] * dt_kick_hydro;

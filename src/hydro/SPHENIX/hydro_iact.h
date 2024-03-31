@@ -407,8 +407,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
       signal_velocity(dx, pi, pj, mu_ij, const_viscosity_beta, a, mu_0);
 
   /* Variable smoothing length term */
-  const float f_ij = 1.f - pi->force.f / mj;
-  const float f_ji = 1.f - pj->force.f / mi;
+  const float f_ij = 1.f;// - pi->force.f / mj;
+  const float f_ji = 1.f;// - pj->force.f / mi;
 
   /* Balsara term */
   const float balsara_i = pi->force.balsara;
@@ -429,7 +429,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float P_over_rho2_j = pressurej / (rhoj * rhoj) * f_ji;
 
   /* SPH acceleration term */
-  const float sph_acc_term =
+  const float sph_acc_term = 0.f *
       (P_over_rho2_i * wi_dr + P_over_rho2_j * wj_dr) * r_inv;
 
   /* Adaptive softening acceleration term */
@@ -449,8 +449,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   pj->a_hydro[2] += mi * acc * dx[2];
 
   /* Get the time derivative for u. */
-  const float sph_du_term_i = P_over_rho2_i * dvdr * r_inv * wi_dr;
-  const float sph_du_term_j = P_over_rho2_j * dvdr * r_inv * wj_dr;
+  const float sph_du_term_i = 0.f * P_over_rho2_i * dvdr * r_inv * wi_dr;
+  const float sph_du_term_j = 0.f * P_over_rho2_j * dvdr * r_inv * wj_dr;
 
   /* Viscosity term */
   const float visc_du_term = 0.5f * visc_acc_term * dvdr_Hubble;
@@ -559,8 +559,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
       signal_velocity(dx, pi, pj, mu_ij, const_viscosity_beta, a, mu_0);
 
   /* Variable smoothing length term */
-  const float f_ij = 1.f - pi->force.f / mj;
-  const float f_ji = 1.f - pj->force.f / mi;
+  const float f_ij = 1.f;// - pi->force.f / mj;
+  const float f_ji = 1.f;// - pj->force.f / mi;
 
   /* Balsara term */
   const float balsara_i = pi->force.balsara;
@@ -581,7 +581,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float P_over_rho2_j = pressurej / (rhoj * rhoj) * f_ji;
 
   /* SPH acceleration term */
-  const float sph_acc_term =
+  const float sph_acc_term = 0.f *
       (P_over_rho2_i * wi_dr + P_over_rho2_j * wj_dr) * r_inv;
 
   /* Adaptive softening acceleration term */
@@ -597,7 +597,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   pi->a_hydro[2] -= mj * acc * dx[2];
 
   /* Get the time derivative for u. */
-  const float sph_du_term_i = P_over_rho2_i * dvdr * r_inv * wi_dr;
+  const float sph_du_term_i = 0.f * P_over_rho2_i * dvdr * r_inv * wi_dr;
 
   /* Viscosity term */
   const float visc_du_term = 0.5f * visc_acc_term * dvdr_Hubble;
