@@ -20,6 +20,9 @@ Snapshots:
   delta_time:          0.1                             # Time difference between consecutive outputs (in internal units)
   compression:         1
 
+Scheduler:
+  max_top_level_cells: 6
+  
 # Parameters governing the conserved quantities statistics
 Statistics:
   delta_time:          1e-2 # Time between statistics output
@@ -35,6 +38,7 @@ SPH:
   diffusion_alpha_min: 0
   diffusion_alpha: 0
   diffusion_beta: 0
+  h_tolerance: 1e-6
 
 # Parameters for MHD schemes
 MHD:
@@ -53,6 +57,3 @@ PhysicalConstants:
 InitialConditions:
   file_name:  ./CircularlyPolarisedAlfvenWave.hdf5     # The file to read
   periodic:   1
-
-Scheduler:
-  max_top_level_cells: 256

@@ -48,8 +48,6 @@ with h5py.File(filename, "r") as handle:
     h = handle["PartType0/SmoothingLengths"][:]
     B = handle["PartType0/MagneticFluxDensities"][:]
     divB = handle["PartType0/MagneticDivergences"][:]
-
-print(np.min(u), np.max(u))
     
 # Plot things
 fig, ax = plt.subplots(2, 4, figsize=(13,6))
