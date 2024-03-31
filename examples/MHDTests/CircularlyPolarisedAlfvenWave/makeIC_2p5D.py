@@ -77,9 +77,13 @@ print("The box size is : ", Lx, Ly)
 print("The max (x,y,z) is : ", max(pos[:,0]), max(pos[:,1]), max(pos[:,2]))
 
 # Set the masses, ids and energies
-m = np.ones(N) * rho * vol / N
+m = np.ones(N) * rho * vol / N / 0.995881
 ids = np.linspace(1, N, N)
 u = np.ones(N) * P / (rho * (gamma - 1))
+
+# P = u * rho * (g - 1)
+# P / (rho) = u * (g - 1)
+# P / (rho * (g - 1)) = u
 
 # Set the v and B fields
 v = np.zeros((N, 3))
