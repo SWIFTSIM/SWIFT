@@ -353,7 +353,7 @@ __attribute__((always_inline)) INLINE static void hydro_set_Qi_Qj(
     }
   }
 
-  /* Finally assemble eq 15 in Rosswog 2020 */
+  // Finally assemble eq 15 in Rosswog 2020
   float mu_i =  min(0.f, ((vtilde_i[0] - vtilde_j[0]) * dx[0] +
                          (vtilde_i[1] - vtilde_j[1]) * dx[1] +
                          (vtilde_i[2] - vtilde_j[2]) * dx[2]) *
@@ -370,12 +370,41 @@ __attribute__((always_inline)) INLINE static void hydro_set_Qi_Qj(
 float balsara_i = pi->force.balsara / 3.f + 2.f / 3.f;
   float balsara_j = pj->force.balsara / 3.f + 2.f / 3.f;
 
-  /* Get viscous pressure terms (eq 14 in Rosswog 2020) */
+  // Get viscous pressure terms (eq 14 in Rosswog 2020)
   *Qi =  balsara_i * 0.5f * pi->rho * (-alpha * ci * mu_i + beta * mu_i * mu_i);
   *Qj = balsara_j * 0.5f * pj->rho * (-alpha * cj * mu_j + beta * mu_j * mu_j);
 
     float different_form_beta =  2.f * beta / alpha;
     *visc_signal_velocity  = ci + cj - different_form_beta * min(mu_i, mu_j);
+
+
+/*
+// visc on expand maybe to fix tensile instability?
+
+// Finally assemble eq 15 in Rosswog 2020
+float mu_i =  ((vtilde_i[0] - vtilde_j[0]) * dx[0] +
+                       (vtilde_i[1] - vtilde_j[1]) * dx[1] +
+                       (vtilde_i[2] - vtilde_j[2]) * dx[2]) *
+                          hi_inv / (eta_i_2 + epsilon * epsilon);
+float mu_j = ((vtilde_i[0] - vtilde_j[0]) * dx[0] +
+                       (vtilde_i[1] - vtilde_j[1]) * dx[1] +
+                       (vtilde_i[2] - vtilde_j[2]) * dx[2]) *
+                          hj_inv / (eta_j_2 + epsilon * epsilon);
+
+const float ci = pi->force.soundspeed;
+const float cj = pj->force.soundspeed;
+
+
+float balsara_i = pi->force.balsara / 3.f + 2.f / 3.f;
+float balsara_j = pj->force.balsara / 3.f + 2.f / 3.f;
+
+// Get viscous pressure terms (eq 14 in Rosswog 2020)
+*Qi =  balsara_i * 0.5f * pi->rho * (-alpha * ci * mu_i - beta * fabs(mu_i) * mu_i);
+*Qj = balsara_j * 0.5f * pj->rho * (-alpha * cj * mu_j - beta * fabs(mu_j) * mu_j);
+
+  float different_form_beta =  2.f * beta / alpha;
+  *visc_signal_velocity  = ci + cj + different_form_beta * max(fabs(mu_i), fabs(mu_j));
+*/
 
 
       float mean_balsara = 0.5f * (pi->force.balsara + pj->force.balsara);

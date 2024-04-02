@@ -52,9 +52,9 @@ INLINE static void hydro_read_particles(struct part* parts,
                                         int* num_fields) {
 
  #ifdef PLANETARY_FIXED_ENTROPY
-  *num_fields = 10;
+  *num_fields = 12;
 #else
-  *num_fields = 9;
+  *num_fields = 11;
 #endif
 
   /* List what we want to read */
@@ -76,8 +76,15 @@ INLINE static void hydro_read_particles(struct part* parts,
                                 UNIT_CONV_DENSITY, parts, rho);
   list[8] = io_make_input_field("MaterialIDs", INT, 1, COMPULSORY,
                                 UNIT_CONV_NO_UNITS, parts, mat_id);
+  list[9] = io_make_input_field("NumFlaws", INT, 1, COMPULSORY,
+                                UNIT_CONV_NO_UNITS, parts, number_of_flaws);
+  // Need to do unit conversions here
+  list[10] = io_make_input_field("ActivationThresholds", FLOAT, 40, COMPULSORY,
+                                UNIT_CONV_NO_UNITS, parts, activation_thresholds_epsilon_act_ij);
+
+
 #ifdef PLANETARY_FIXED_ENTROPY
-  list[9] = io_make_input_field("Entropies", FLOAT, 1, COMPULSORY,
+  list[11] = io_make_input_field("Entropies", FLOAT, 1, COMPULSORY,
                                 UNIT_CONV_PHYSICAL_ENTROPY_PER_UNIT_MASS, parts,
                                 s_fixed);
 #endif
@@ -189,8 +196,11 @@ INLINE static void hydro_write_particles(const struct part* parts,
                                          const struct xpart* xparts,
                                          struct io_props* list,
                                          int* num_fields) {
-
+#ifdef MATERIAL_STRENGTH
+   *num_fields = 15;
+#else
   *num_fields = 12;
+#endif /* MATERIAL_STRENGTH */
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_part(
@@ -230,6 +240,14 @@ INLINE static void hydro_write_particles(const struct part* parts,
       io_make_output_field("Testing", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f,
                            parts, testing_output, "Temp. testing");
 
+#ifdef MATERIAL_STRENGTH
+   list[12] = io_make_output_field(
+       "Damage", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, parts, damage_D, "Damage of the particles");
+      list[13] = io_make_output_field(
+       "NumActiveFlaws", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, parts, number_of_activated_flaws, "Damage of the particles");
+       list[14] = io_make_output_field(
+       "LocalStrain", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, parts, local_scalar_strain, "Damage of the particles");
+#endif /* MATERIAL_STRENGTH */
 }
 
 /**

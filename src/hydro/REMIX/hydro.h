@@ -45,6 +45,7 @@
 #include "hydro_parameters.h"
 #include "hydro_properties.h"
 #include "hydro_space.h"
+#include "hydro_strength.h"
 #include "hydro_viscosity.h"
 #include "kernel_hydro.h"
 #include "minmax.h"
@@ -548,6 +549,10 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
 
   hydro_init_part_extra_kernel(p);
   hydro_init_part_extra_viscosity(p);
+  #ifdef MATERIAL_STRENGTH
+  hydro_init_part_extra_strength(p);
+  #endif /* MATERIAL_STRENGTH */
+
 }
 
 /**
@@ -602,6 +607,9 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
 
   hydro_end_density_extra_viscosity(p);
   hydro_end_density_extra_kernel(p);
+  #ifdef MATERIAL_STRENGTH
+  hydro_end_density_extra_strength(p);
+  #endif /* MATERIAL_STRENGTH */
 
   p->sph_volume = 1.f / p->density.wcount;
   p->eta_crit = powf(p->sph_volume, 1/hydro_dimension) / p->h;
@@ -682,6 +690,9 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
 
   hydro_prepare_gradient_extra_kernel(p);
   hydro_prepare_gradient_extra_viscosity(p);
+  #ifdef MATERIAL_STRENGTH
+  hydro_prepare_gradient_extra_strength(p);
+  #endif /* MATERIAL_STRENGTH */
 }
 
 /**
@@ -719,6 +730,9 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
 
   hydro_end_gradient_extra_kernel(p);
   hydro_end_gradient_extra_viscosity(p);
+  #ifdef MATERIAL_STRENGTH
+  hydro_end_gradient_extra_strength(p);
+  #endif /* MATERIAL_STRENGTH */
 
     p->rho = p->rho_evolved;
 
@@ -828,6 +842,11 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   p->force.pressure = pressure;
   p->force.soundspeed = soundspeed;
   p->force.balsara = balsara;
+
+  // Not sure exactly where/how often to call this (e.g. in kick/drift)
+  // NEW (NOT STRENGTH SPECIFIC)
+  hydro_set_sigma(p, p->deviatoric_stress_tensor_S, pressure);
+
 }
 
 /**
@@ -969,6 +988,20 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   p->force.pressure = pressure;
   p->force.soundspeed = soundspeed;
 
+#ifdef MATERIAL_STRENGTH
+  float temperature = gas_temperature_from_internal_energy(p->rho, p->u, p->mat_id);
+  evolve_deviatoric_stress(p, pressure, temperature, dt_therm);
+#endif /* MATERIAL_STRENGTH */
+  // Not sure exactly where/how often to call this (e.g. in kick/drift)
+  // NEW (NOT STRENGTH SPECIFIC)
+  hydro_set_sigma(p, p->deviatoric_stress_tensor_S, pressure);
+
+  // ## Hmmm does this go after setting sigma (sigma depends on D and dD depends on sigma). Seems like it based on wording in B&A and Schafer
+  // turn off for cylinders
+#ifdef MATERIAL_STRENGTH
+    evolve_damage(p, soundspeed, dt_therm);
+#endif /* MATERIAL_STRENGTH */
+
   p->force.v_sig = max(p->force.v_sig, 2.f * soundspeed);
 }
 
@@ -1103,6 +1136,76 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
 
   hydro_reset_acceleration(p);
   hydro_init_part(p, NULL);
+
+// Maybe eventually have a way to start with stressed and damaged materials in ICs?
+for (int i = 0; i < 3; i++) {
+  for (int j = 0; j < 3; j++) {
+          p->deviatoric_stress_tensor_S[i][j] = 0.f;
+  }
+}
+#ifdef MATERIAL_STRENGTH
+  p->damage_D = 0.f;
+
+
+      // For now manually set material properties here
+
+
+
+      // For cylinders
+      /*
+      p->shear_modulus_mu = 0.22;
+      p->yield_stress_Y = FLT_MAX;//0.025f;
+      p->T_m = FLT_MAX;
+*/
+
+
+         // For basalt
+         p->shear_modulus_mu = 22.7e9;
+        p->T_m= FLT_MAX;
+      //  p->yield_stress_Y = 3.5e9;
+          // from B&A 1994
+        p->bulk_modulus_K = 2.67e11 * 0.1;
+        // Note we can set a fixed Y by setting these two to the same value
+        p->Y_0 = 3.5e9;
+        p->Y_M = 3.5e9;
+
+       // For bullet we temporarily still use basalt but with different properties
+      //Select bullet in a bit of a temporarily dodgy way
+      float v = sqrtf(p->v[0] * p->v[0] + p->v[1] * p->v[1] + p->v[2] * p->v[2]);
+      if(v > 1000){
+                 p->shear_modulus_mu = 73.0e6;
+            p->T_m= FLT_MAX;
+          //  p->yield_stress_Y = 3.5e9;
+              // from B&A 1994
+            p->bulk_modulus_K = 1.01e11 * 0.1;
+            p->Y_0 = 1e7;
+            p->Y_M = 1e7;
+
+
+      }
+
+
+
+
+
+      // for Lucit. Note: for now changed til iron parameters
+
+
+
+      /*
+      p->bulk_modulus_K = 1e10f;
+      p->number_of_flaws = 1.f;
+      for (int i = 0; i < 10; i++) {
+          p->activation_thresholds_epsilon_act_ij[i] = 0.f;
+      }
+      p->activation_thresholds_epsilon_act_ij[0] = 10000000.f;
+
+      */
+
+
+
+#endif /* MATERIAL_STRENGTH */
+
 }
 
 /**

@@ -488,6 +488,18 @@ if test "$planetary_fixed_entropy" = "yes"; then
    AC_DEFINE([PLANETARY_FIXED_ENTROPY],1,[Enable planetary fixed entropy])
 fi
 
+# Check if material strength is on
+AC_ARG_ENABLE([material-strength],
+   [AS_HELP_STRING([--enable-material-strength],
+     [Enable material strength @<:@yes/no@:>@]
+   )],
+   [material_strength="$enableval"],
+   [material_strength="no"]
+)
+if test "$material_strength" = "yes"; then
+   AC_DEFINE([MATERIAL_STRENGTH],1,[Enable material strength])
+fi
+
 # Check whether we have any of the ARM v8.1 tick timers
 AX_ASM_ARM_PMCCNTR
 AX_ASM_ARM_CNTVCT
@@ -3053,7 +3065,8 @@ AC_MSG_RESULT([
    Custom icbrtf               : $enable_custom_icbrtf
    Boundary particles          : $boundary_particles
    Fixed boundary particles    : $fixed_boundary_particles
-   Planetary fixed entropy         : $planetary_fixed_entropy
+   Planetary fixed entropy     : $planetary_fixed_entropy
+   Material strength           : $material_strength
 
    Continuous Sim. Data Stream : $with_csds
 
