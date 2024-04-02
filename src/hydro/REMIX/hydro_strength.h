@@ -69,84 +69,140 @@ __attribute__((always_inline)) INLINE static void hydro_end_density_extra_streng
     struct part *restrict p) {}
 
 
+    /**
+     * @brief Prepares extra strength parameters for a particle for the gradient calculation.
+     *
+     * @param p The particle to act upon
+     */
+    __attribute__((always_inline)) INLINE static void hydro_prepare_gradient_extra_strength(
+        struct part *restrict p) {
+          for (int i = 0; i < 3; ++i) {
+      for (int j = 0; j < 3; ++j) {
+          p->grad_v[i][j] = 0.f;
+          p->correction_matrix_C[i][j] = 0.f;
+      }
+    }
+        }
 
-/**
- * @brief Prepares extra strength parameters for a particle for the gradient calculation.
- *
- * @param p The particle to act upon
- */
-__attribute__((always_inline)) INLINE static void hydro_prepare_gradient_extra_strength(
-    struct part *restrict p) {
+    /**
+     * @brief Extra strength gradient interaction between two particles
+     *
+     * @param p The particle to act upon
+     */
+    __attribute__((always_inline)) INLINE static void hydro_runner_iact_gradient_extra_strength(
+        struct part *restrict pi, struct part *restrict pj, const float dx[3], const float wi, const float wj, const float wi_dx, const float wj_dx) {
+
+          const float r = sqrtf(dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]);
+    const float r_inv = r ? 1.0f / r : 0.0f;
       for (int i = 0; i < 3; ++i) {
-  for (int j = 0; j < 3; ++j) {
-      p->grad_v[i][j] = 0.f;
-  }
-}
-    }
+          for (int j = 0; j < 3; ++j) {
+              // Note here using vi - vj in grad
+              pi->grad_v[i][j] += (pj->v[i] - pi->v[i]) * (dx[j]*wi_dx*r_inv) * (pj->mass / pj->rho_evolved);
+              pj->grad_v[i][j] += (pj->v[i] - pi->v[i]) * (dx[j]*wj_dx*r_inv) * (pi->mass / pi->rho_evolved);
 
-/**
- * @brief Extra strength gradient interaction between two particles
- *
- * @param p The particle to act upon
- */
-__attribute__((always_inline)) INLINE static void hydro_runner_iact_gradient_extra_strength(
-    struct part *restrict pi, struct part *restrict pj, const float dx[3], const float wi, const float wj, const float wi_dx, const float wj_dx) {
+              pi->correction_matrix_C[i][j] += -dx[i] * (dx[j]*wi_dx*r_inv) * (pj->mass / pj->rho_evolved);
+              pj->correction_matrix_C[i][j] += dx[i] * (-dx[j]*wj_dx*r_inv) * (pi->mass / pi->rho_evolved);
+          }
+        }
+        }
 
-      const float r = sqrtf(dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]);
-const float r_inv = r ? 1.0f / r : 0.0f;
-  for (int i = 0; i < 3; ++i) {
-      for (int j = 0; j < 3; ++j) {
-          // Note here using vi - vj in grad
-          pi->grad_v[i][j] += (pj->v[i] - pi->v[i]) * (dx[j]*wi_dx*r_inv) * (pj->mass / pj->rho_evolved);
-          pj->grad_v[i][j] += (pj->v[i] - pi->v[i]) * (dx[j]*wj_dx*r_inv) * (pi->mass / pi->rho_evolved);
+
+
+
+    /**
+     * @brief Extra strength gradient interaction between two particles (non-symmetric)
+     *
+     * @param p The particle to act upon
+     */
+    __attribute__((always_inline)) INLINE static void hydro_runner_iact_nonsym_gradient_extra_strength(
+        struct part *restrict pi, const struct part *restrict pj, const float dx[3], const float wi, const float wi_dx) {
+
+          const float r = sqrtf(dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]);
+    const float r_inv = r ? 1.0f / r : 0.0f;
+
+      for (int i = 0; i < 3; ++i) {
+          for (int j = 0; j < 3; ++j) {
+              // Note here using vi - vj in grad
+              pi->grad_v[i][j] += (pj->v[i] - pi->v[i]) * (dx[j]*wi_dx*r_inv) * (pj->mass / pj->rho_evolved);
+
+              pi->correction_matrix_C[i][j] += -dx[i] * (dx[j]*wi_dx*r_inv) * (pj->mass / pj->rho_evolved);
+          }
+        }
+        }
+
+
+
+
+    /**
+     * @brief Finishes extra strength parts of the gradient calculation.
+     *
+     * @param p The particle to act upon
+     */
+    __attribute__((always_inline)) INLINE static void hydro_end_gradient_extra_strength(
+        struct part *restrict p) {
+
+    // ### If strength
+    int i, j, k;
+    /*
+      for (i = 0; i < 3; i++) {
+        for (j = 0; j < 3; j++) {
+            p->strain_rate_tensor_epsilon_dot[i][j] = 0.5f * (p->dv_sphgrad[i][j] + p->dv_sphgrad[j][i]);
+            p->rotation_rate_tensor_R[i][j] = 0.5f * (p->dv_sphgrad[j][i] - p->dv_sphgrad[i][j]);
+        }
+      }
+    */
+    /// Some smoothing length multiples.
+    const float h = p->h;
+    const float h_inv = 1.0f / h;
+    const float h_inv_dim = pow_dimension(h_inv);
+    const float h_inv_dim_plus_one = h_inv_dim * h_inv;
+
+    for (i = 0; i < 3; i++) {
+      for (j = 0; j < 3; j++) {
+        p->grad_v[i][j] *= h_inv_dim_plus_one;
+        p->correction_matrix_C[i][j] *= h_inv_dim_plus_one;
       }
     }
-    }
 
+    float inverted_correction_matrix_C[3][3];
 
-
-
-/**
- * @brief Extra strength gradient interaction between two particles (non-symmetric)
- *
- * @param p The particle to act upon
- */
-__attribute__((always_inline)) INLINE static void hydro_runner_iact_nonsym_gradient_extra_strength(
-    struct part *restrict pi, const struct part *restrict pj, const float dx[3], const float wi, const float wi_dx) {
-
-      const float r = sqrtf(dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]);
-const float r_inv = r ? 1.0f / r : 0.0f;
-
-  for (int i = 0; i < 3; ++i) {
-      for (int j = 0; j < 3; ++j) {
-          // Note here using vi - vj in grad
-          pi->grad_v[i][j] += (pj->v[i] - pi->v[i]) * (dx[j]*wi_dx*r_inv) * (pj->mass / pj->rho_evolved);
+    for (i = 0; i < 3; i++) {
+      for (j = 0; j < 3; j++) {
+        inverted_correction_matrix_C[i][j] = p->correction_matrix_C[i][j];
       }
     }
+
+    invert_dimension_by_dimension_matrix(inverted_correction_matrix_C);
+
+    float corrected_grad_v[3][3];
+    for (i = 0; i < 3; i++) {
+      for (j = 0; j < 3; j++) {
+        corrected_grad_v[i][j] = 0.f;
+      }
+    }
+
+    for (i = 0; i < 3; i++) {
+      for (j = 0; j < 3; j++) {
+        for (k = 0; k < 3; k++) {
+           // This way for k,j or reversed in correction_matrix_C?
+            corrected_grad_v[i][j] += p->grad_v[i][k] * inverted_correction_matrix_C[k][j];
+          }
+        }
+      }
+
+
+
+
+    for (i = 0; i < 3; i++) {
+      for (j = 0; j < 3; j++) {
+          // grad_v is missing h_inv_dim_plus_one
+          p->strain_rate_tensor_epsilon_dot[i][j] = 0.5f * (corrected_grad_v[i][j] + corrected_grad_v[j][i]);
+          p->rotation_rate_tensor_R[i][j] = 0.5f * (corrected_grad_v[i][j] - corrected_grad_v[j][i]);
+      }
     }
 
 
-
-
-/**
- * @brief Finishes extra strength parts of the gradient calculation.
- *
- * @param p The particle to act upon
- */
-__attribute__((always_inline)) INLINE static void hydro_end_gradient_extra_strength(
-    struct part *restrict p) {
-
-// ### If strength
-int i, j, k;
 /*
-  for (i = 0; i < 3; i++) {
-    for (j = 0; j < 3; j++) {
-        p->strain_rate_tensor_epsilon_dot[i][j] = 0.5f * (p->dv_sphgrad[i][j] + p->dv_sphgrad[j][i]);
-        p->rotation_rate_tensor_R[i][j] = 0.5f * (p->dv_sphgrad[j][i] - p->dv_sphgrad[i][j]);
-    }
-  }
-*/
-
 /// Some smoothing length multiples.
 const float h = p->h;
 const float h_inv = 1.0f / h;
@@ -160,7 +216,7 @@ for (i = 0; i < 3; i++) {
       p->rotation_rate_tensor_R[i][j] = 0.5f * (p->grad_v[i][j] - p->grad_v[j][i]) * h_inv_dim_plus_one;
   }
 }
-
+*/
 
 
 

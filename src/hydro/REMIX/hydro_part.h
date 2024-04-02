@@ -350,7 +350,9 @@ struct part {
   float bulk_modulus_K;
 
 
-float grad_v[3][3]; 
+float grad_v[3][3];
+
+float correction_matrix_C[3][3];
   #endif /* MATERIAL_STRENGTH */
 
 } SWIFT_STRUCT_ALIGN;
