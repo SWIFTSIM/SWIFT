@@ -847,6 +847,11 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   // NEW (NOT STRENGTH SPECIFIC)
   hydro_set_sigma(p, p->deviatoric_stress_tensor_S, pressure);
 
+
+  #ifdef MATERIAL_STRENGTH
+  hydro_prepare_force_extra_strength(p);
+  #endif /* MATERIAL_STRENGTH */
+
 }
 
 /**
@@ -1022,7 +1027,15 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
 
   p->force.h_dt *= p->h * hydro_dimension_inv;
 
-    p->testing_output = p->vac_term;
+
+
+    #ifdef MATERIAL_STRENGTH
+    hydro_end_force_extra_strength(p);
+    #endif /* MATERIAL_STRENGTH */
+
+
+    p->testing_output = p->grad_v[0][0];
+
 }
 
 /**

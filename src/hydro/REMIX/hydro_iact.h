@@ -490,6 +490,10 @@ float du_dt_j = -(dv_dot_sigma_dot_kernel_gradient_j + dv_dot_Q_term_j) / (pi->r
     pj->drho_dt += drho_dt_cond_j;
  }
 
+ #ifdef MATERIAL_STRENGTH
+ hydro_runner_iact_force_extra_strength(pi, pj, dx, Gi, Gj);
+ #endif /* MATERIAL_STRENGTH */
+
 }
 
 /**
@@ -637,6 +641,11 @@ float du_dt_i = -(dv_dot_sigma_dot_kernel_gradient_i + dv_dot_Q_term_i) / (pi->r
 
     pi->drho_dt += drho_dt_cond_i;
 }
+
+#ifdef MATERIAL_STRENGTH
+hydro_runner_iact_nonsym_force_extra_strength(pi, pj, dx, Gi);
+#endif /* MATERIAL_STRENGTH */
+
 }
 
 #endif /* SWIFT_PLANETARY_HYDRO_IACT_H */
