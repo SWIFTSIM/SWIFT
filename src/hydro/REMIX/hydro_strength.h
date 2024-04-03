@@ -151,6 +151,7 @@ __attribute__((always_inline)) INLINE static void hydro_end_density_extra_streng
         }
       }
     */
+
     /// Some smoothing length multiples.
     const float h = p->h;
     const float h_inv = 1.0f / h;
@@ -281,10 +282,12 @@ __attribute__((always_inline)) INLINE static void calculate_yield_stress(
     Y_damaged = min(Y_damaged, Y_intact);
 
     // Temporarily set to 0 for examples
-    Y_damaged = 0.f;
+  //  Y_damaged = 0.f;
 
     p->yield_stress_Y = (1.f - p->damage_D) * Y_intact + p->damage_D * Y_damaged;
     p->yield_stress_Y = min(p->yield_stress_Y, Y_intact);
+
+
 }
 
 
@@ -333,7 +336,7 @@ if (temperature > p->T_m){
         }
     }
     // B&A
-   //float f = min( (p->yield_stress_Y * p->yield_stress_Y) / (3.f * p->J_2), 1);
+  // float f = min( (p->yield_stress_Y * p->yield_stress_Y) / (3.f * p->J_2), 1);
 
     // Jutzi 2015 / Collins
     float f = min(p->yield_stress_Y / sqrtf(p->J_2), 1);
@@ -403,7 +406,7 @@ __attribute__((always_inline)) INLINE static void evolve_damage(
     if(p->number_of_flaws > 0){
         if (max_stress_tensor_sigma > 0.f){
 
-            float E = 9.f * p->bulk_modulus_K * p->shear_modulus_mu / (3.f * p->bulk_modulus_K + p->shear_modulus_mu);
+            float E = 9.f * p->bulk_modulus_K * p->shear_modulus_mu / (3.f * p->bulk_modulus_K + p->shear_modulus_mu);//5.3e10;//
 
             p->local_scalar_strain = max_stress_tensor_sigma / ((1.f - p->damage_D) * E);
 
@@ -413,22 +416,29 @@ __attribute__((always_inline)) INLINE static void evolve_damage(
                     number_of_activated_flaws += 1;
                 }
             }
-            p->number_of_activated_flaws = number_of_activated_flaws / (float)p->number_of_flaws;
+            p->number_of_activated_flaws = max(p->number_of_activated_flaws, number_of_activated_flaws);// / (float)p->number_of_flaws;
 
+            // Schafer
+            float longitudinal_wave_speed = sqrtf((p->bulk_modulus_K + (4.f / 3.f) * (1.f - p->damage_D) * p->shear_modulus_mu) / p->rho);
+            float crack_velocity = 0.4f * longitudinal_wave_speed;
 
-            float crack_velocity = 0.4f * soundspeed;
-            // Set to hardcoded value for impact example
-            crack_velocity = 0.4f * 4.59e3;
+            p->dD1_3_dt = number_of_activated_flaws * crack_velocity * cbrtf(p->rho / p->mass);/// (p->h);//* cbrtf(p->rho / p->mass);
 
-            p->dD1_3_dt = number_of_activated_flaws * crack_velocity * cbrtf(p->rho / p->mass);
-
-
-            float D_max = cbrtf(number_of_activated_flaws / (float)p->number_of_flaws);
+            /*
+            float D_max = number_of_activated_flaws / (float)p->number_of_flaws;//cbrtf(number_of_activated_flaws / (float)p->number_of_flaws);
             float dD = powf(p->dD1_3_dt * dt_therm, 3.f);
             float dD_max = max(0.f, D_max - p->damage_D);
             if (dD > dD_max)
                 dD = dD_max;
             p->damage_D += dD;
+            */
+            float D_max_cbrt = cbrtf(number_of_activated_flaws / (float)p->number_of_flaws);
+            float dD_cbrt = p->dD1_3_dt * dt_therm;
+            float dD_max_cbrt = max(0.f, D_max_cbrt - cbrtf(p->damage_D));
+            if (dD_cbrt > dD_max_cbrt)
+                dD_cbrt = dD_max_cbrt;
+            float evolved_D_cbrt = cbrtf(p->damage_D) + dD_cbrt;
+            p->damage_D = powf(evolved_D_cbrt, 3.f);
         }
     }
 

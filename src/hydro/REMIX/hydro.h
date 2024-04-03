@@ -1160,19 +1160,19 @@ for (int i = 0; i < 3; i++) {
 
 
          // For basalt
-         p->shear_modulus_mu = 22.7e9;
+         p->shear_modulus_mu =  22.7e9;
         p->T_m= FLT_MAX;
       //  p->yield_stress_Y = 3.5e9;
           // from B&A 1994
-        p->bulk_modulus_K = 2.67e11 * 0.1;
+        p->bulk_modulus_K =  2.67e11 * 0.1;
         // Note we can set a fixed Y by setting these two to the same value
         p->Y_0 = 3.5e9;
         p->Y_M = 3.5e9;
 
        // For bullet we temporarily still use basalt but with different properties
       //Select bullet in a bit of a temporarily dodgy way
-      float v = sqrtf(p->v[0] * p->v[0] + p->v[1] * p->v[1] + p->v[2] * p->v[2]);
-      if(v > 1000){
+    //  float v = sqrtf(p->v[0] * p->v[0] + p->v[1] * p->v[1] + p->v[2] * p->v[2]);
+      if(p->mat_id == 100){
                  p->shear_modulus_mu = 73.0e6;
             p->T_m= FLT_MAX;
           //  p->yield_stress_Y = 3.5e9;
@@ -1184,7 +1184,7 @@ for (int i = 0; i < 3; i++) {
 
       }
 
-
+p->number_of_activated_flaws = 0.f;
 
 
 
