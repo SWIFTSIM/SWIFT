@@ -18,6 +18,11 @@
  ******************************************************************************/
 #ifndef SWIFT_DIRECT_INDUCTION_MHD_H
 #define SWIFT_DIRECT_INDUCTION_MHD_H
+
+#include "entropy_floor.h"
+#include "equation_of_state.h"
+#include "hydro_parameters.h"
+#include "hydro_properties.h"
 #include "minmax.h"
 
 #include <float.h>
@@ -504,6 +509,17 @@ __attribute__((always_inline)) INLINE static void mhd_predict_extra(
       mhd_get_psi_over_ch_dt(p, cosmo->a, cosmo->a_factor_sound_speed, cosmo->H,
                              hydro_props, mu_0) *
       dt_therm;
+
+  /* Check against entropy floor - explicitly do this after drifting the                                                                                                                      * density as this has a density dependence. */
+  const float floor_A = entropy_floor(p, cosmo, floor_props);
+  const float floor_u = gas_internal_energy_from_entropy(p->rho, floor_A);
+
+  /* Check against absolute minimum */
+  const float min_u =
+    hydro_props->minimal_internal_energy / cosmo->a_factor_internal_energy;
+
+  p->u = max(p->u, floor_u);
+  p->u = max(p->u, min_u);
 }
 
 /**
@@ -565,6 +581,22 @@ __attribute__((always_inline)) INLINE static void mhd_kick_extra(
   xp->mhd_data.B_over_rho_full[0] = xp->mhd_data.B_over_rho_full[0] + delta_Bx;
   xp->mhd_data.B_over_rho_full[1] = xp->mhd_data.B_over_rho_full[1] + delta_By;
   xp->mhd_data.B_over_rho_full[2] = xp->mhd_data.B_over_rho_full[2] + delta_Bz;
+
+  /* Check against entropy floor */
+  const float floor_A = entropy_floor(p, cosmo, floor_props);
+  const float floor_u = gas_internal_energy_from_entropy(p->rho, floor_A);
+
+  /* Check against absolute minimum */
+  const float min_u =
+    hydro_props->minimal_internal_energy / cosmo->a_factor_internal_energy;
+
+  /* Take highest of both limits */
+  const float energy_min = max(min_u, floor_u);
+
+  if (xp->u_full < energy_min) {
+    xp->u_full = energy_min;
+    p->u_dt = 0.f;
+  }
 }
 
 /**
