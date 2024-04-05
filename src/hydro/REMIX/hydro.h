@@ -845,7 +845,12 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
 
   // Not sure exactly where/how often to call this (e.g. in kick/drift)
   // NEW (NOT STRENGTH SPECIFIC)
-  hydro_set_sigma(p, p->deviatoric_stress_tensor_S, pressure);
+  float temperature;  
+#ifdef MATERIAL_STRENGTH
+  temperature = gas_temperature_from_internal_energy(p->rho_evolved, p->u, p->mat_id);
+  p->temperature = temperature;  
+#endif /* MATERIAL_STRENGTH */
+  hydro_set_sigma(p, p->deviatoric_stress_tensor_S, pressure, temperature);
 
 
   #ifdef MATERIAL_STRENGTH
@@ -993,13 +998,14 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   p->force.pressure = pressure;
   p->force.soundspeed = soundspeed;
 
+  float temperature;  
 #ifdef MATERIAL_STRENGTH
-  float temperature = gas_temperature_from_internal_energy(p->rho, p->u, p->mat_id);
+  temperature = gas_temperature_from_internal_energy(p->rho_evolved, p->u, p->mat_id);
   evolve_deviatoric_stress(p, pressure, temperature, dt_therm);
 #endif /* MATERIAL_STRENGTH */
   // Not sure exactly where/how often to call this (e.g. in kick/drift)
   // NEW (NOT STRENGTH SPECIFIC)
-  hydro_set_sigma(p, p->deviatoric_stress_tensor_S, pressure);
+  hydro_set_sigma(p, p->deviatoric_stress_tensor_S, pressure, temperature);
 
   // ## Hmmm does this go after setting sigma (sigma depends on D and dD depends on sigma). Seems like it based on wording in B&A and Schafer
   // turn off for cylinders
@@ -1034,7 +1040,8 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
     #endif /* MATERIAL_STRENGTH */
 
 
-    p->testing_output = p->grad_v[0][0];
+    float temperature = gas_temperature_from_internal_energy(p->rho_evolved, p->u, p->mat_id);
+    p->testing_output = temperature;
 
 }
 
@@ -1164,6 +1171,25 @@ for (int i = 0; i < 3; i++) {
 
 
 
+    /*
+        
+    // For Aluminium
+        
+        // Hmm Davison et al only gives Poisson ratio (not enough to calc shear modulus)
+        // this is from a quick google
+        p->shear_modulus_mu =  2.4e10;
+    
+    
+        p->T_m= 660.f;
+
+        // Note we can set a fixed Y by setting these two to the same value
+        p->Y_0 = 200e6;
+        p->Y_M = 200e6;
+    
+    */
+    
+    
+    
       // For cylinders
       /*
       p->shear_modulus_mu = 0.22;

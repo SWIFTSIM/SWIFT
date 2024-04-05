@@ -36,7 +36,7 @@
  * @param p The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void hydro_set_sigma(
-    struct part *restrict p, float deviatoric_stress_tensor_S[3][3], const float pressure) {
+    struct part *restrict p, float deviatoric_stress_tensor_S[3][3], const float pressure, const float temperature) {
 
  for (int i = 0; i < 3; i++) {
     for (int j = 0; j < 3; j++) {
@@ -47,18 +47,29 @@ __attribute__((always_inline)) INLINE static void hydro_set_sigma(
             #ifdef MATERIAL_STRENGTH
             if (pressure < 0.f){
                 pressure_hat *= (1 - p->damage_D);
+                
+                if (temperature > p->T_m){
+                    pressure_hat = 0.f;
+                }//else{
+                    // This etra bit is a new idea. Maybe something like this?
+                //  float xi = 1.2f;
+                // pressure_hat *= tanhf(xi * (p->T_m / temperature - 1.f));
+                    
+                //}
+                
+                // negative pressure cap (had to grep through miluphCUDA (see Schafer et al 2016) code for this. Maybe better ways)
+                // This kind of thing should eventually be in EoS files
+                if(pressure_hat < -p->Y_0){
+                  pressure_hat = -p->Y_0;   
+                }
+                
             }
             #endif /* MATERIAL_STRENGTH */
 
             p->stress_tensor_sigma[i][j] -= pressure_hat;
             // For cylinders instead do
             //p->stress_tensor_sigma[i][j] -= 1.f*(p->rho - 1.f);
-            
-            // negative pressure cap (had to grep through miluphCUDA (see Schafer et al 2016) code for this. Maybe better ways)
-            // This kind of thing should eventually be in EoS files
-            if(pressure_hat < -p->Y_0){
-              pressure_hat = -p->Y_0;   
-            }
+              
         }
     }
   }

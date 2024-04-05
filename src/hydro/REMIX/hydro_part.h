@@ -353,6 +353,8 @@ struct part {
 float grad_v[3][3];
 
 float correction_matrix_C[3][3];
+    
+    float temperature;
   #endif /* MATERIAL_STRENGTH */
 
 } SWIFT_STRUCT_ALIGN;

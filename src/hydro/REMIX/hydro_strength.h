@@ -133,6 +133,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force_extra_stre
 __attribute__((always_inline)) INLINE static void hydro_runner_iact_force_extra_strength(
     struct part *restrict pi, struct part *restrict pj, const float dx[3], const float Gi[3], const float Gj[3]) {
 
+    if(pi->temperature < pi->T_m && pj->temperature < pj->T_m){
   for (int i = 0; i < 3; ++i) {
       for (int j = 0; j < 3; ++j) {
           // Note here using vi - vj in grad
@@ -141,7 +142,7 @@ __attribute__((always_inline)) INLINE static void hydro_runner_iact_force_extra_
       }
     }
     }
-
+ }
 
 
 
@@ -153,6 +154,7 @@ __attribute__((always_inline)) INLINE static void hydro_runner_iact_force_extra_
 __attribute__((always_inline)) INLINE static void hydro_runner_iact_nonsym_force_extra_strength(
     struct part *restrict pi, const struct part *restrict pj, const float dx[3], const float Gi[3]) {
 
+    if(pi->temperature < pi->T_m && pj->temperature < pj->T_m){
           for (int i = 0; i < 3; ++i) {
               for (int j = 0; j < 3; ++j) {
                   // Note here using vi - vj in grad
@@ -160,7 +162,7 @@ __attribute__((always_inline)) INLINE static void hydro_runner_iact_nonsym_force
               }
             }
           }
-
+ }
 
 
 

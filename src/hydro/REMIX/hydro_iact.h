@@ -381,6 +381,28 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
                                   Gj);
 
 float  sigma_dot_kernel_gradient_i[3], sigma_dot_kernel_gradient_j[3], Q_term_i[3], Q_term_j[3];
+float melt_corrected_stress_tensor_sigma_i[3][3], melt_corrected_stress_tensor_sigma_j[3][3];
+
+if(pi->temperature < pi->T_m && pj->temperature < pj->T_m){
+    for (int i = 0; i < 3; i++) {
+        for (int j = 0; j < 3; j++) {
+            melt_corrected_stress_tensor_sigma_i[i][j] = pi->stress_tensor_sigma[i][j];
+             melt_corrected_stress_tensor_sigma_j[i][j] = pj->stress_tensor_sigma[i][j];
+        }
+    }
+}else{
+    for (int i = 0; i < 3; i++) {
+        for (int j = 0; j < 3; j++) {
+            melt_corrected_stress_tensor_sigma_i[i][j] = 0.f;
+             melt_corrected_stress_tensor_sigma_j[i][j] = 0.f;
+            if(i==j){
+                melt_corrected_stress_tensor_sigma_i[i][j] = -max(pi->force.pressure, 0.f);
+                melt_corrected_stress_tensor_sigma_j[i][j] = -max(pj->force.pressure, 0.f);
+            }
+        }
+    }
+}
+    
 for (int i = 0; i < 3; i++) {
   Q_term_i[i] = -Qi * Q_kernel_gradient_i[i];
   Q_term_j[i] = -Qj * Q_kernel_gradient_j[i];
@@ -388,8 +410,8 @@ for (int i = 0; i < 3; i++) {
   sigma_dot_kernel_gradient_i[i] = 0.f;
   sigma_dot_kernel_gradient_j[i] = 0.f;
   for (int j = 0; j < 3; j++) {
-      sigma_dot_kernel_gradient_i[i] += pi->stress_tensor_sigma[i][j] * kernel_gradient_i[j];
-      sigma_dot_kernel_gradient_j[i] += pj->stress_tensor_sigma[i][j] * kernel_gradient_j[j];
+      sigma_dot_kernel_gradient_i[i] += melt_corrected_stress_tensor_sigma_i[i][j] * kernel_gradient_i[j];
+      sigma_dot_kernel_gradient_j[i] += melt_corrected_stress_tensor_sigma_j[i][j] * kernel_gradient_j[j];
   }
 
 }
@@ -560,6 +582,28 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
                                   Gj);
 
 float  sigma_dot_kernel_gradient_i[3], sigma_dot_kernel_gradient_j[3], Q_term_i[3], Q_term_j[3];
+float melt_corrected_stress_tensor_sigma_i[3][3], melt_corrected_stress_tensor_sigma_j[3][3];
+
+if(pi->temperature < pi->T_m && pj->temperature < pj->T_m){
+    for (int i = 0; i < 3; i++) {
+        for (int j = 0; j < 3; j++) {
+            melt_corrected_stress_tensor_sigma_i[i][j] = pi->stress_tensor_sigma[i][j];
+             melt_corrected_stress_tensor_sigma_j[i][j] = pj->stress_tensor_sigma[i][j];
+        }
+    }
+}else{
+    for (int i = 0; i < 3; i++) {
+        for (int j = 0; j < 3; j++) {
+            melt_corrected_stress_tensor_sigma_i[i][j] = 0.f;
+             melt_corrected_stress_tensor_sigma_j[i][j] = 0.f;
+            if(i==j){
+                melt_corrected_stress_tensor_sigma_i[i][j] = -max(pi->force.pressure, 0.f);
+                melt_corrected_stress_tensor_sigma_j[i][j] = -max(pj->force.pressure, 0.f);
+            }
+        }
+    }
+}
+    
 for (int i = 0; i < 3; i++) {
   Q_term_i[i] = -Qi * Q_kernel_gradient_i[i];
   Q_term_j[i] = -Qj * Q_kernel_gradient_j[i];
@@ -567,8 +611,8 @@ for (int i = 0; i < 3; i++) {
   sigma_dot_kernel_gradient_i[i] = 0.f;
   sigma_dot_kernel_gradient_j[i] = 0.f;
   for (int j = 0; j < 3; j++) {
-      sigma_dot_kernel_gradient_i[i] += pi->stress_tensor_sigma[i][j] * kernel_gradient_i[j];
-      sigma_dot_kernel_gradient_j[i] += pj->stress_tensor_sigma[i][j] * kernel_gradient_j[j];
+      sigma_dot_kernel_gradient_i[i] += melt_corrected_stress_tensor_sigma_i[i][j] * kernel_gradient_i[j];
+      sigma_dot_kernel_gradient_j[i] += melt_corrected_stress_tensor_sigma_j[i][j] * kernel_gradient_j[j];
   }
 
 }
