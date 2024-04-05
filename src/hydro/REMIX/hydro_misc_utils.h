@@ -53,6 +53,12 @@ __attribute__((always_inline)) INLINE static void hydro_set_sigma(
             p->stress_tensor_sigma[i][j] -= pressure_hat;
             // For cylinders instead do
             //p->stress_tensor_sigma[i][j] -= 1.f*(p->rho - 1.f);
+            
+            // negative pressure cap (had to grep through miluphCUDA (see Schafer et al 2016) code for this. Maybe better ways)
+            // This kind of thing should eventually be in EoS files
+            if(pressure_hat < -p->Y_0){
+              pressure_hat = -p->Y_0;   
+            }
         }
     }
   }
