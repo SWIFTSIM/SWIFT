@@ -442,8 +442,10 @@ INLINE static float compute_u_cold(float density, struct Til_params *mat,
 
   for (int i = 0; i < N; i++) {
     x += drho;
-    u_cold +=
-        Til_pressure_from_internal_energy(x, u_cold, mat) * drho / (x * x);
+    float P = Til_pressure_from_internal_energy(x, u_cold, mat);
+    if(P > 0.f){
+    u_cold += P * drho / (x * x);
+    }
   }
 
   return u_cold;
