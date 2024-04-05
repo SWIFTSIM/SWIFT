@@ -258,19 +258,27 @@ __attribute__((always_inline)) INLINE static void calculate_yield_stress(
     float mu_i = 2.f;
     float mu_d = 0.8f;
 
-    float Y_intact = p->Y_0 + mu_i * pressure / (1.f + (mu_i * pressure) / (p->Y_M - p->Y_0));
+    float Y_intact = p->Y_0;
+    if(pressure > 0){
+        Y_intact = p->Y_0 + mu_i * pressure / (1.f + (mu_i * pressure) / (p->Y_M - p->Y_0));
+    }
 
     // This is from Emsenhuber+ (2017)
     float xi = 1.2f;
     Y_intact *= tanhf(xi * (p->T_m / temperature - 1.f));
 
-    float Y_damaged = mu_d * pressure;
+    float Y_damaged = 0.f;
+    if(pressure > 0){
+        Y_damaged = mu_d * pressure;
+    }
+    //one of these might not be needed
     Y_damaged = min(Y_damaged, Y_intact);
 
     // Temporarily set to 0 for examples
   //  Y_damaged = 0.f;
 
     p->yield_stress_Y = (1.f - p->damage_D) * Y_intact + p->damage_D * Y_damaged;
+    //one of these might not be needed
     p->yield_stress_Y = min(p->yield_stress_Y, Y_intact);
 
 
@@ -293,6 +301,8 @@ __attribute__((always_inline)) INLINE static void evolve_deviatoric_stress(
 
 int i, j;
 if (temperature > p->T_m){
+    
+    p->yield_stress_Y  = 0.f;
 
    // No deviatoric stress
     for (i = 0; i < 3; i++) {
