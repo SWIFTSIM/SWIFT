@@ -416,24 +416,66 @@ for (int i = 0; i < 3; i++) {
 
 }
 
-/* Use the force Luke! */
-pi->a_hydro[0] += mj * (sigma_dot_kernel_gradient_i[0]  + Q_term_i[0] + sigma_dot_kernel_gradient_j[0] + Q_term_j[0]) / (pi->rho * pj->rho);
-pi->a_hydro[1] += mj * (sigma_dot_kernel_gradient_i[1]  + Q_term_i[1] + sigma_dot_kernel_gradient_j[1] + Q_term_j[1]) / (pi->rho * pj->rho);
-pi->a_hydro[2] += mj * (sigma_dot_kernel_gradient_i[2]  + Q_term_i[2] + sigma_dot_kernel_gradient_j[2] + Q_term_j[2]) / (pi->rho * pj->rho);
+    // Artificial stress
+    float artificial_stress[3];
+    artificial_stress[0] = 0.f;
+    artificial_stress[1] = 0.f;
+    artificial_stress[2] = 0.f;
+    float f_factor = 0.f;
+    
+    if(pi->temperature < pi->T_m && pj->temperature < pj->T_m){
+        float stress_epsilon = 0.2f;
 
-pj->a_hydro[0] -= mi * (sigma_dot_kernel_gradient_i[0]  + Q_term_i[0] + sigma_dot_kernel_gradient_j[0] + Q_term_j[0]) / (pi->rho * pj->rho);
-pj->a_hydro[1] -= mi * (sigma_dot_kernel_gradient_i[1]  + Q_term_i[1] + sigma_dot_kernel_gradient_j[1] + Q_term_j[1]) / (pi->rho * pj->rho);
-pj->a_hydro[2] -= mi * (sigma_dot_kernel_gradient_i[2]  + Q_term_i[2] + sigma_dot_kernel_gradient_j[2] + Q_term_j[2]) / (pi->rho * pj->rho);
+
+        // for cylinders Pressure needs to be hardcoded
+        if (pi->force.pressure < 0){
+            artificial_stress[0] -= stress_epsilon * sigma_dot_kernel_gradient_i[0];
+            artificial_stress[1] -= stress_epsilon * sigma_dot_kernel_gradient_i[1];
+            artificial_stress[2] -= stress_epsilon * sigma_dot_kernel_gradient_i[2];
+        }
+        if (pj->force.pressure < 0){
+            artificial_stress[0] -= stress_epsilon * sigma_dot_kernel_gradient_j[0];
+            artificial_stress[1] -= stress_epsilon * sigma_dot_kernel_gradient_j[1] ;
+            artificial_stress[2] -= stress_epsilon * sigma_dot_kernel_gradient_j[2] ;
+        }
+
+    // probably much better ways of doing this since h is related to standard deviation
+        float delta_p = 0.5f * (powf(pi->sph_volume, 1/hydro_dimension) + powf(pj->sph_volume, 1/hydro_dimension));
+        float mean_h = 0.5f * (pi->h + pj->h);
+
+        float w_deltap, w_dx_deltap;
+      kernel_deval(delta_p / mean_h, &w_deltap, &w_dx_deltap);
+      w_deltap /= pow_dimension(mean_h);
+
+        float w_r, w_dx_r;
+      kernel_deval(r / mean_h, &w_r, &w_dx_r);
+      w_r /= pow_dimension(mean_h);
+
+        f_factor = powf(w_r / w_deltap, 4.f);
+    }
+    
+    
+
+/* Use the force Luke! */
+pi->a_hydro[0] += mj * (sigma_dot_kernel_gradient_i[0]  + Q_term_i[0] + sigma_dot_kernel_gradient_j[0] + Q_term_j[0] + f_factor * artificial_stress[0]) / (pi->rho * pj->rho);
+pi->a_hydro[1] += mj * (sigma_dot_kernel_gradient_i[1]  + Q_term_i[1] + sigma_dot_kernel_gradient_j[1] + Q_term_j[1] + f_factor * artificial_stress[1]) / (pi->rho * pj->rho);
+pi->a_hydro[2] += mj * (sigma_dot_kernel_gradient_i[2]  + Q_term_i[2] + sigma_dot_kernel_gradient_j[2] + Q_term_j[2] + f_factor * artificial_stress[2]) / (pi->rho * pj->rho);
+
+pj->a_hydro[0] -= mi * (sigma_dot_kernel_gradient_i[0]  + Q_term_i[0] + sigma_dot_kernel_gradient_j[0] + Q_term_j[0] + f_factor * artificial_stress[0]) / (pi->rho * pj->rho);
+pj->a_hydro[1] -= mi * (sigma_dot_kernel_gradient_i[1]  + Q_term_i[1] + sigma_dot_kernel_gradient_j[1] + Q_term_j[1] + f_factor * artificial_stress[1]) / (pi->rho * pj->rho);
+pj->a_hydro[2] -= mi * (sigma_dot_kernel_gradient_i[2]  + Q_term_i[2] + sigma_dot_kernel_gradient_j[2] + Q_term_j[2] + f_factor * artificial_stress[2]) / (pi->rho * pj->rho);
 
 
 /* dx dot kernel gradient term needed for du/dt in e.g. eq 13 of Wadsley and
 * equiv*/
-const float dv_dot_sigma_dot_kernel_gradient_i = (pi->v[0] - pj->v[0]) * sigma_dot_kernel_gradient_i[0] +
-                   (pi->v[1] - pj->v[1]) * sigma_dot_kernel_gradient_i[1] +
-                   (pi->v[2] - pj->v[2]) * sigma_dot_kernel_gradient_i[2];
-const float dv_dot_sigma_dot_kernel_gradient_j = (pi->v[0] - pj->v[0]) * sigma_dot_kernel_gradient_j[0] +
-                   (pi->v[1] - pj->v[1]) * sigma_dot_kernel_gradient_j[1] +
-                   (pi->v[2] - pj->v[2]) * sigma_dot_kernel_gradient_j[2];
+// Quickly try artificial stress conservation
+    
+const float dv_dot_sigma_dot_kernel_gradient_i = (pi->v[0] - pj->v[0]) * (sigma_dot_kernel_gradient_i[0] + 0.5f * f_factor * artificial_stress[0]) +
+                   (pi->v[1] - pj->v[1]) * (sigma_dot_kernel_gradient_i[1] + 0.5f * f_factor * artificial_stress[1]) +
+                   (pi->v[2] - pj->v[2]) * (sigma_dot_kernel_gradient_i[2] + 0.5f * f_factor * artificial_stress[2]);
+const float dv_dot_sigma_dot_kernel_gradient_j = (pi->v[0] - pj->v[0]) * (sigma_dot_kernel_gradient_j[0] + 0.5f * f_factor * artificial_stress[0]) +
+                   (pi->v[1] - pj->v[1]) * (sigma_dot_kernel_gradient_j[1] + 0.5f * f_factor * artificial_stress[1]) +
+                   (pi->v[2] - pj->v[2]) * (sigma_dot_kernel_gradient_j[2] + 0.5f * f_factor * artificial_stress[2]);
 const float dv_dot_Q_term_i = (pi->v[0] - pj->v[0]) * Q_term_i[0] +
                    (pi->v[1] - pj->v[1]) * Q_term_i[1] +
                    (pi->v[2] - pj->v[2]) * Q_term_i[2];
@@ -617,16 +659,58 @@ for (int i = 0; i < 3; i++) {
 
 }
 
+    // Artificial stress
+    float artificial_stress[3];
+    artificial_stress[0] = 0.f;
+    artificial_stress[1] = 0.f;
+    artificial_stress[2] = 0.f;
+    float f_factor = 0.f;
+    
+    if(pi->temperature < pi->T_m && pj->temperature < pj->T_m){
+        float stress_epsilon = 0.2f;
+
+
+        // for cylinders Pressure needs to be hardcoded
+        if (pi->force.pressure < 0){
+            artificial_stress[0] -= stress_epsilon * sigma_dot_kernel_gradient_i[0];
+            artificial_stress[1] -= stress_epsilon * sigma_dot_kernel_gradient_i[1];
+            artificial_stress[2] -= stress_epsilon * sigma_dot_kernel_gradient_i[2];
+        }
+        if (pj->force.pressure < 0){
+            artificial_stress[0] -= stress_epsilon * sigma_dot_kernel_gradient_j[0];
+            artificial_stress[1] -= stress_epsilon * sigma_dot_kernel_gradient_j[1] ;
+            artificial_stress[2] -= stress_epsilon * sigma_dot_kernel_gradient_j[2] ;
+        }
+
+    // probably much better ways of doing this since h is related to standard deviation
+        float delta_p = 0.5f * (powf(pi->sph_volume, 1/hydro_dimension) + powf(pj->sph_volume, 1/hydro_dimension));
+        float mean_h = 0.5f * (pi->h + pj->h);
+
+        float w_deltap, w_dx_deltap;
+      kernel_deval(delta_p / mean_h, &w_deltap, &w_dx_deltap);
+      w_deltap /= pow_dimension(mean_h);
+
+        float w_r, w_dx_r;
+      kernel_deval(r / mean_h, &w_r, &w_dx_r);
+      w_r /= pow_dimension(mean_h);
+
+        f_factor = powf(w_r / w_deltap, 4.f);
+    }
+    
+    
+
 /* Use the force Luke! */
-pi->a_hydro[0] += mj * (sigma_dot_kernel_gradient_i[0]  + Q_term_i[0] + sigma_dot_kernel_gradient_j[0] + Q_term_j[0]) / (pi->rho * pj->rho);
-pi->a_hydro[1] += mj * (sigma_dot_kernel_gradient_i[1]  + Q_term_i[1] + sigma_dot_kernel_gradient_j[1] + Q_term_j[1]) / (pi->rho * pj->rho);
-pi->a_hydro[2] += mj * (sigma_dot_kernel_gradient_i[2]  + Q_term_i[2] + sigma_dot_kernel_gradient_j[2] + Q_term_j[2]) / (pi->rho * pj->rho);
+pi->a_hydro[0] += mj * (sigma_dot_kernel_gradient_i[0]  + Q_term_i[0] + sigma_dot_kernel_gradient_j[0] + Q_term_j[0] + f_factor * artificial_stress[0]) / (pi->rho * pj->rho);
+pi->a_hydro[1] += mj * (sigma_dot_kernel_gradient_i[1]  + Q_term_i[1] + sigma_dot_kernel_gradient_j[1] + Q_term_j[1] + f_factor * artificial_stress[1]) / (pi->rho * pj->rho);
+pi->a_hydro[2] += mj * (sigma_dot_kernel_gradient_i[2]  + Q_term_i[2] + sigma_dot_kernel_gradient_j[2] + Q_term_j[2] + f_factor * artificial_stress[2]) / (pi->rho * pj->rho);
 
 /* dx dot kernel gradient term needed for du/dt in e.g. eq 13 of Wadsley and
 * equiv*/
-const float dv_dot_sigma_dot_kernel_gradient_i = (pi->v[0] - pj->v[0]) * sigma_dot_kernel_gradient_i[0] +
-                   (pi->v[1] - pj->v[1]) * sigma_dot_kernel_gradient_i[1] +
-                   (pi->v[2] - pj->v[2]) * sigma_dot_kernel_gradient_i[2];
+// Quickly try artificial stress conservation
+    
+const float dv_dot_sigma_dot_kernel_gradient_i = (pi->v[0] - pj->v[0]) * (sigma_dot_kernel_gradient_i[0] + 0.5f * f_factor * artificial_stress[0]) +
+                   (pi->v[1] - pj->v[1]) * (sigma_dot_kernel_gradient_i[1] + 0.5f * f_factor * artificial_stress[1]) +
+                   (pi->v[2] - pj->v[2]) * (sigma_dot_kernel_gradient_i[2] + 0.5f * f_factor * artificial_stress[2]);
 const float dv_dot_Q_term_i = (pi->v[0] - pj->v[0]) * Q_term_i[0] +
                    (pi->v[1] - pj->v[1]) * Q_term_i[1] +
                    (pi->v[2] - pj->v[2]) * Q_term_i[2];
