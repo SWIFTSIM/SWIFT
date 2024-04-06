@@ -165,9 +165,25 @@ runner_iact_nonsym_sinks_sink_swallow(const float r2, const float dx[3],
   runner_iact_grav_pp_full(r2, eps2, eps_inv, eps_inv3, sj_mass, &dummy,
                            &pot_ji);
 
+  const double Omega_r = cosmo->Omega_r + cosmo->Omega_nu;
+  const double Omega_m = cosmo->Omega_cdm + cosmo->Omega_b;
+  const double Omega_l = cosmo->Omega_lambda;
+  const double w0 = cosmo->w_0;
+  const double wa = cosmo->w_a;
+  const double a_inv = cosmo->a_inv;
+
+  const double w_DE =  w0 + wa * (1. - a) ; //cosmology_dark_energy_EoS(a, w0, wa);
+  const double w_tilde = (a - 1.) * wa - (1. + w0 + wa) * log(a);
+  const double density_sum = Omega_m * a_inv * a_inv * a_inv
+                               + 2.0*Omega_r* a_inv * a_inv * a_inv * a_inv
+                               + Omega_l * exp(3. * w_tilde) * (1 + w_DE);
+                               //w_tilde(a, w0, wa)
+  const double a_dot_dot = - H*H/2.0 * density_sum;
+
   /* Compute the potential energies */
-  const float E_pot_ij = grav_props->G_Newton * pot_ij * cosmo->a_inv;
-  const float E_pot_ji = grav_props->G_Newton * pot_ji * cosmo->a_inv;
+  const double constant = - a_dot_dot*a*r2/2.0;
+  const float E_pot_ij = grav_props->G_Newton * pot_ij * cosmo->a_inv + constant;
+  const float E_pot_ji = grav_props->G_Newton * pot_ji * cosmo->a_inv + constant;
 
   /* Mechanical energy of the pair i-j and j-i */
   const float E_mec_si = E_kin_rel + E_pot_ij;
@@ -305,9 +321,25 @@ runner_iact_nonsym_sinks_gas_swallow(const float r2, const float dx[3],
     runner_iact_grav_pp_full(r2, eps2, eps_inv, eps_inv3, sink_mass, &dummy,
                              &pot_ij);
 
+    const double Omega_r = cosmo->Omega_r + cosmo->Omega_nu;
+    const double Omega_m = cosmo->Omega_cdm + cosmo->Omega_b;
+    const double Omega_l = cosmo->Omega_lambda;
+    const double w0 = cosmo->w_0;
+    const double wa = cosmo->w_a;
+    const double a_inv = cosmo->a_inv;
+
+    const double w_DE =  w0 + wa * (1. - a) ; //cosmology_dark_energy_EoS(a, w0, wa);
+    const double w_tilde = (a - 1.) * wa - (1. + w0 + wa) * log(a);
+    const double density_sum = Omega_m * a_inv * a_inv * a_inv
+                               + 2.0*Omega_r* a_inv * a_inv * a_inv * a_inv
+                               + Omega_l * exp(3. * w_tilde) * (1 + w_DE);
+                               //w_tilde(a, w0, wa)
+    const double a_dot_dot = - H*H/2.0 * density_sum;
+
     /* Compute the potential energy that the sink exerts in the gas (do not
        forget to convert to physical quantity)*/
-    float E_pot_gas = grav_props->G_Newton * pot_ij * cosmo->a_inv;
+    float E_pot_gas = grav_props->G_Newton * pot_ij * cosmo->a_inv
+                       - a_dot_dot*a*r2/2.0;
 
     /* Mechanical energy of the pair sink-gas */
     float E_mec_sink_part = E_kin_relative_gas + E_pot_gas;
