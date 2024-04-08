@@ -109,6 +109,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_sink(
 /**
  * @brief Compute sink-sink swallow interaction (non-symmetric).
  *
+ * Note: Energies are computed with physical quantities, not the comoving ones.
+ *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
  * @param ri Comoving cut off radius of particle i.
@@ -165,7 +167,9 @@ runner_iact_nonsym_sinks_sink_swallow(const float r2, const float dx[3],
   runner_iact_grav_pp_full(r2, eps2, eps_inv, eps_inv3, sj_mass, &dummy,
                            &pot_ji);
 
-  /* Compute the potential energies */
+  /* Compute the physical potential energies :
+                       E_pot_phys = G*pot_grav*a^(-1) + c(z). */
+  /* The normalization is c(z) = 0 for all redshift z. */
   const float E_pot_ij = grav_props->G_Newton * pot_ij * cosmo->a_inv;
   const float E_pot_ji = grav_props->G_Newton * pot_ji * cosmo->a_inv;
 
@@ -205,6 +209,8 @@ runner_iact_nonsym_sinks_sink_swallow(const float r2, const float dx[3],
 
 /**
  * @brief Compute sink-gas swallow interaction (non-symmetric).
+ *
+ * Note: Energies are computed with physical quantities, not the comoving ones.
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
@@ -307,6 +313,9 @@ runner_iact_nonsym_sinks_gas_swallow(const float r2, const float dx[3],
 
     /* Compute the potential energy that the sink exerts in the gas (do not
        forget to convert to physical quantity)*/
+    /* Compute the potential energy :
+                      E_pot_phys = G*pot_grav*a^(-1) + c(z). */
+    /* The normalization is c(z) = 0 for all redshift z. */
     float E_pot_gas = grav_props->G_Newton * pot_ij * cosmo->a_inv;
 
     /* Mechanical energy of the pair sink-gas */
