@@ -49,6 +49,14 @@ Notice that the potential normalization constant has been chosen to be :math:`c(
 Sink formation
 --------------
 
+.. figure:: sink_accretion_radius.png
+    :width: 400px
+    :align: center
+    :figclass: align-center
+    :alt: GEAR sink accretion radius representation
+
+    This figure shows a sink particle newly formed among other gas particles. The main accretion radius is :math:`r_{\text{acc}}`. This is the one used for sink formation. There is also an inner accretion radius :math:`f_{\text{acc}} r_{\text{acc}}` (:math:`0 \leq f_{\text{acc}} \leq 1`) that is used for gas and sink swallowing. Particles within this inner radius are swallowed without passing any other check, while particles between the two radii pass some check before being swallowed. 
+
 At the core of the sink particle method is the sink formation algorithm. This is critical to form sink in regions adequate to star formation. Failling to can produce spurious sinks and stars, which is not desirable. However, there is not easy answer to the question. We made the choice to implement a simple and efficient algorithm.
 The primary criteria required to transform a gas particle into a sink are:
 
@@ -99,7 +107,7 @@ The third criterion is mainly here to prevent two sink particles to form at a di
 The tenth criterion prevents the formation of spurious sinks. Experiences have shown that removing gas within the accretion radius biases the hydro density estimates: the gas feel a force toward the sink. At some point, there is an equilibrium and gas particles accumulate at the edge of the accretion radius, which can then spawn sink particles that do not fall onto the primary sink and thus never merges. *This criterion can be disabled*. 
 
 .. note::
-  Notice however than contrary to  `Bate et al. <https://ui.adsabs.harvard.edu/abs/1995MNRAS.277..362B/abstract>`_, no boundary conditions for sink particles are introduced in the hydrodynamics calculations.
+  Notice however that contrary to  `Bate et al. <https://ui.adsabs.harvard.edu/abs/1995MNRAS.277..362B/abstract>`_, no boundary conditions for sink particles are introduced in the hydrodynamics calculations.
 
 .. note::
    Note that sink formation can be disabled. This can be useful e.g. if you already have sinks in your initial conditions. 
