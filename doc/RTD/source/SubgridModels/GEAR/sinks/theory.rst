@@ -65,16 +65,15 @@ Then, further criteria are checked. They are always checked for gas particles wi
 So, the other criteria are the following:
 
 3. The gas particle is at local potential minimum: :math:`\Phi_i = \min_j \Phi_j`.
-4. Gas surrounding the particle is at rest or collapsing: :math:`\nabla \cdot \mathbf{v}_{i, p} \leq 0`.
-5. The smoothing lenght of the particle is less than half the accretion radius: :math:`h_i < r_{\text{acc}} / 2`.
+4. Gas surrounding the particle is at rest or collapsing: :math:`\nabla \cdot \mathbf{v}_{i, p} \leq 0`. (Optional)
+5. The smoothing lenght of the particle is less than half the accretion radius: :math:`h_i < r_{\text{acc}} / 2`. (Optional)
 6. All neighbours are currently active.
-7. The sum of thermal of the neighbours satisfies: :math:`E_{\text{therm}} < |E_{\text{pot}}|/2`.
-8. The sum of thermal energy and rotational energy satisfies: :math:`E_{\text{therm}} + E_{\text{rot}} < | E_{\text{pot}}|`.
-9. The total energy of the neihbours si negative, i.e. the clump is bound to the sink: :math:`E_{\text{tot}} < 0`.
-10. Forming a sink here will not overlap an existing sink :math:`s`: :math:`\left| \mathbf{x}_i - \mathbf{x}_s \right| > r_{\text{acc}, i} + r_{\text{acc}, s}`.
+7. The sum of thermal of the neighbours satisfies: :math:`E_{\text{therm}} < |E_{\text{pot}}|/2`. (Optional, together with criterion 8.)
+8. The sum of thermal energy and rotational energy satisfies: :math:`E_{\text{therm}} + E_{\text{rot}} < | E_{\text{pot}}|`. (Optional, together with criterion 7.)
+9. The total energy of the neihbours si negative, i.e. the clump is bound to the sink: :math:`E_{\text{tot}} < 0`. (Optional)
+10. Forming a sink here will not overlap an existing sink :math:`s`: :math:`\left| \mathbf{x}_i - \mathbf{x}_s \right| > r_{\text{acc}, i} + r_{\text{acc}, s}`. (Optional)
 
-
-The different energies are computed as follow:
+Some criteria are *optional* and can be *deactivated*. By default, they are all enabled. The different energies are computed as follow:
 
 * :math:`E_{\text{therm}} = \displaystyle \sum_j m_j u_{j, p}`
 * :math:`E_{\text{kin}} = \displaystyle \frac{1}{2} \sum_j m_j v_{j, p}^2`
@@ -95,20 +94,21 @@ The different energies are computed as follow:
 
 Some comments about the criteria:
 
-The third criteria is mainly here to prevent two sink particles to form at a distance smaller than the sink accretion radius. Since we allow sinks merging, such situation raises the question of which sink should swallow the other one? This can depend on the order of the task, which is not desirable. As a result, this criterion is enforced.
+The third criterion is mainly here to prevent two sink particles to form at a distance smaller than the sink accretion radius. Since we allow sinks merging, such situation raises the question of which sink should swallow the other one? This can depend on the order of the task, which is not desirable. As a result, this criterion is enforced.
 
-
-
-The last criterion prevents the formation of spurious sinks. Experiences have shown that removing gas within the accretion radius biases the hydro density estimates: the gas feel a force toward the sink. At some point, there is an equilibrium and gas particles accumulate at the edge of the accretion radius, which can then spawn sink particles that do not fall onto the primary sink and thus never merges. This criterion can be disabled. 
+The tenth criterion prevents the formation of spurious sinks. Experiences have shown that removing gas within the accretion radius biases the hydro density estimates: the gas feel a force toward the sink. At some point, there is an equilibrium and gas particles accumulate at the edge of the accretion radius, which can then spawn sink particles that do not fall onto the primary sink and thus never merges. *This criterion can be disabled*. 
 
 .. note::
   Notice however than contrary to  `Bate et al. <https://ui.adsabs.harvard.edu/abs/1995MNRAS.277..362B/abstract>`_, no boundary conditions for sink particles are introduced in the hydrodynamics calculations.
 
+.. note::
+   Note that sink formation can be disabled. This can be useful e.g. if you already have sinks in your initial conditions. 
 
 
 Gas accretion
 -------------
 
+Well, now that sink particles can populate the simulation, they need to swallow gas particles. 
 
 
 
