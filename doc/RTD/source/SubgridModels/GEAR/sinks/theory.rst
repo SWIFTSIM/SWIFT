@@ -55,7 +55,7 @@ Sink formation
     :figclass: align-center
     :alt: GEAR sink accretion radius representation
 
-    This figure shows a sink particle newly formed among other gas particles. The main accretion radius is :math:`r_{\text{acc}}`. This is the one used for sink formation. There is also an inner accretion radius :math:`f_{\text{acc}} r_{\text{acc}}` (:math:`0 \leq f_{\text{acc}} \leq 1`) that is used for gas and sink swallowing. Particles within this inner radius are swallowed without passing any other check, while particles between the two radii pass some check before being swallowed. 
+    This figure shows a sink particle (in orange) newly formed among other gas particles (in blue). The main accretion radius is :math:`r_{\text{acc}}`. This is the one used for sink formation. There is also an inner accretion radius :math:`f_{\text{acc}} r_{\text{acc}}` (:math:`0 \leq f_{\text{acc}} \leq 1`) that is used for gas and sink swallowing. Particles within this inner radius are swallowed without passing any other check, while particles between the two radii pass some check before being swallowed. 
 
 At the core of the sink particle method is the sink formation algorithm. This is critical to form sink in regions adequate to star formation. Failling to can produce spurious sinks and stars, which is not desirable. However, there is not easy answer to the question. We made the choice to implement a simple and efficient algorithm.
 The primary criteria required to transform a gas particle into a sink are:
@@ -99,6 +99,8 @@ Some criteria are *optional* and can be *deactivated*. By default, they are all 
 
    The :math:`p` subscript is to recall that we are using physical quantities to compute energies.
 
+   Here, the potential is retrieved from the gravity solver. 
+
 
 Some comments about the criteria:
 
@@ -125,12 +127,16 @@ Well, now that sink particles can populate the simulation, they need to swallow 
    #. The gas is gravitationally bound to the sink particle: :math:`E_{\text{tot}} < 0`.
    #. Out of all pairs sink-gas, the gas is the most bound to this one. This case is illustrated in the figure below. 
 
-The physical specific angular momenta are given by:
+The physical specific angular momenta and the total energy are given by:
 
 * :math:`\mathbf{L}_{si} = ( \mathbf{x}_{s, p} - \mathbf{x}_{i, p}) \times ( \mathbf{v}_{s, p} - \mathbf{x}_{i, p})`,
 * :math:`|\mathbf{L}_{\text{Kepler}}| = r_{\text{acc}, p} \cdot \sqrt{G_N m_s / |\mathbf{x}_{s, p} - \mathbf{x}_{i, p}|^3}`.
+* :math:`E_{\text{tot}} = \frac{1}{2}  (\mathbf{v}_{s, p} - \mathbf{x}_{i, p})^2 - G_N \Phi(|\mathbf{x}_{s, p} - \mathbf{x}_{i, p}|)`.
 
-Those criteria are the same than `Price et al. <https://ui.adsabs.harvard.edu/abs/2018PASA...35...31P/abstract>`_.
+.. note::
+   Here the potential is the softened potential of Swift.
+
+Those criteria are similar to `Price et al. <https://ui.adsabs.harvard.edu/abs/2018PASA...35...31P/abstract>`_.
 
 Once a gas is eligible to accretion, its properties are assigned to the sink. The sink accrete the *entire* gas mass in step and its properties are updated in the following way:
 
@@ -139,6 +145,13 @@ Once a gas is eligible to accretion, its properties are assigned to the sink. Th
 * The chemistry data are transfered from the gas to the sink.
 * :math:`m_s = m_s + m_i`,
 
+.. figure:: sink_overlapping.png
+    :width: 400px
+    :align: center
+    :figclass: align-center
+    :alt: Example of two sinks overlapping
+
+    This figure shows two sink particles (in orange) with gas particles (in blue) falling in the accretion radii of both sinks. In such cases, the gas particles in the overlapping region are swallowed by the sink they are the most bound to. 
 
 Sink merging
 ------------
