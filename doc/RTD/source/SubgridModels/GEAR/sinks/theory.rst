@@ -84,7 +84,7 @@ So, the other criteria are the following:
 Some criteria are *optional* and can be *deactivated*. By default, they are all enabled. The different energies are computed as follow:
 
 * :math:`E_{\text{therm}} = \displaystyle \sum_j m_j u_{j, p}`
-* :math:`E_{\text{kin}} = \displaystyle \frac{1}{2} \sum_j m_j v_{j, p}^2`
+* :math:`E_{\text{kin}} = \displaystyle \frac{1}{2} \sum_j m_j (\mathbf{v}_{i, p} - \mathbf{v}_{j, p})^2`
 * :math:`E_{\text{pot}} = \displaystyle \frac{G_N}{2} \sum_j m_i m_j \Phi_{j, p}`
 * :math:`E_{\text{rot}} = \displaystyle \sqrt{E_{\text{rot}, x}^2 + E_{\text{rot}, y}^2 + E_{\text{rot}, z}^2}`
 * :math:`E_{\text{rot}, x} = \displaystyle \frac{1}{2} \sum_j m_j \frac{L_{ij, x}^2}{\sqrt{(y_{i, p} - y_{j, p})^2 + (z_{i,p} - z_{j, p})^2}}`
