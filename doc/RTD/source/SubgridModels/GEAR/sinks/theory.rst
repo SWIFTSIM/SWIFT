@@ -156,6 +156,11 @@ Once a gas is eligible to accretion, its properties are assigned to the sink. Th
 Sink merging
 ------------
 
+Sink are allowed to merge if they enter the accretion radius. Two sink particles can be merged if:
+
+* One of the sink particle must be bound to the other. 
+
+In this case, the sink with the smallest mass is merged onto the sink with the largest. If the two sinks have the same mass, we check the sink ID number and accrete the smallest ID onto the biggest one. 
 
 IMF sampling
 ------------
