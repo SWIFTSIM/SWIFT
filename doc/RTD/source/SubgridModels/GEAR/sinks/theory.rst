@@ -49,10 +49,58 @@ Notice that the potential normalization constant has been chosen to be :math:`c(
 Sink formation
 --------------
 
+At the core of the sink particle method is the sink formation algorithm. This is critical to form sink in regions adequate to star formation. Failling to can produce spurious sinks and stars, which is not desirable. However, there is not easy answer to the question. We made the choice to implement a simple and efficient algorithm.
+The primary criteria required to transform a gas particle into a sink are:
+
+1. the density of a given particle :math:`i` is bigger than a user-defined threshold density: :math:`\rho_i > \rho_{\text{threshold}}` ;
+2. the temperature of a given particle is smaller than a user-defined threshold temperature: :math:`T_i < T_{\text{threshold}}`. 
+
+The first critetion is common but not the second one. This is checked to ensure that sink particles, and thus stars, are not generated in hot regions. The parameters for those threshold quantities are respectively called ``density_threshold`` and ``maximal_temperature``.
+
+Then, further criteria are checked. They are always checked for gas particles within the accretion radius :math:`r_{\text{acc}}` (also called cut-off radius) of a given gas particle :math:`i`. Such gas particles are called *neighbours*.
+
+.. note::
+   Notice that in the current implementation, the accretion radius is kept *fixed and the same* for all sink. However, for the sake of generality, the mathematical expressions are given as if the accretion radii could be different. 
+
+So, the other criteria are the following:
+
+3. The gas particle is at local potential minimum: :math:`\Phi_i = \min_j \Phi_j`.
+4. Gas surrounding the particle is at rest or collapsing: :math:`\nabla \cdot \mathbf{v}_p \leq 0`.
+5. The smoothing lenght of the particle is less than half the accretion radius: :math:`h_i < r_{\text{acc}} / 2`.
+6. All neighbours are currently active.
+7. The sum of thermal of the neighbours satisfies: :math:`E_{\text{therm}} < |E_{\text{pot}}|/2`.
+8. The sum of thermal energy and rotational energy satisies: :math:`E_{\text{therm}} + E_{\text{rot}} < | E_{\text{pot}}|`.
+9. The total energy of the neihbours si negative, i.e. the clump is bound to the sink: :math:`E_{\text{tot}} < 0`.
+10. Forming a sink here will not overlap an existing sink :math:`s`: :math:`\left| \mathbf{x}_i - \mathbf{x}_s \right| > r_{\text{acc}, i} + r_{\text{acc}, s}`.
 
 
+The different energies are computed as follow:
 
-Notice however than contrary to  `Bate et al. <https://ui.adsabs.harvard.edu/abs/1995MNRAS.277..362B/abstract>`_, no boundary conditions for sink particles are indtroduced in the hydrodynamics calculations.
+* :math:`E_{\text{therm}} = \displaystyle \sum_j m_j u_{j, p}`
+* :math:`E_{\text{kin}} = \displaystyle \frac{1}{2} \sum_j m_j v_{j, p}^2`
+* :math:`E_{\text{pot}} = \displaystyle \sum_j m_j * pi->sink_data.potential_p`
+* :math:`E_{\text{rot}} = \displaystyle \sqrt{E_{\text{rot}, x}^2 + E_{\text{rot}, y}^2 + E_{\text{rot}, z}^2}`
+* :math:`E_{\text{rot}, x} = \displaystyle \frac{1}{2} \sum_j xxx`
+* :math:`E_{\text{rot}, y} = \displaystyle \frac{1}{2} \sum_j xxx`
+* :math:`E_{\text{rot}, z} = \displaystyle \frac{1}{2} \sum_j xxx`
+* ANGULAR MOMENTUM
+* :math:`E_{\text{mag}} = \displaystyle E_{\text{mag}, j}`
+* :math:`E_{\text{tot}} = E_{\text{kin}} + E_{\text{pot}} +  E_{\text{therm}} + E_{\text{mag}}`
+
+.. note::
+   Currently, magnetic energy is not included in the total energy, since the MHD scheme is in progress. However, the necessary modifications have already been taken care of.
+
+   The :math:`p` subscript is to recall that we are using physical quantities to compute energies.
+
+
+Some comments about the criteria:
+
+The third criteria is mainly here to prevent two sink particles to form at a distance smaller than the sink accretion radius. Since we allow sinks merging, such situation raises the question of which sink should swallow the other one? This can depend on the order of the task, which is not desirable. As a result, this criterion is enforced.
+
+The last criterion prevents the formation of spurious sinks. Experiences have shown that removing gas within the accretion radius biases the hydro density estimates: the gas feel a force toward the sink. At some point, there is an equilibrium and gas particles accumulate at the edge of the accretion radius, which can then spawn sink particles that do not fall onto the primary sink and thus never merges. This criterion can be disabled. 
+
+.. note::
+  Notice however than contrary to  `Bate et al. <https://ui.adsabs.harvard.edu/abs/1995MNRAS.277..362B/abstract>`_, no boundary conditions for sink particles are introduced in the hydrodynamics calculations.
 
 
 
@@ -71,3 +119,9 @@ IMF sampling
 
 Star spawning
 -------------
+
+
+Stellar feedback
+----------------
+
+Stellar feedback per se is not in the sink module, but in the feedback one. However, if one uses sink particles with individual stars, the feedback implementation must be adapted. Here is a recap of the GEAR feedback with sink particles. 
