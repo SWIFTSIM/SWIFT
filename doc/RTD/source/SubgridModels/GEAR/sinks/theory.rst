@@ -9,11 +9,11 @@
 Model summary
 -------------
 
-Here, we provide a comprehensive summary of the model. Sink particles are an alternative to the current model of star formation that transforms gas particles into sink particles under some criteria explained below. Then, the sink can accrete gas and spawn stars. 
+Here, we provide a comprehensive summary of the model. Sink particles are an alternative to the current model of star formation that transforms gas particles into sink particles under some criteria explained below. Then, the sink can accrete gas and spawn stars. Sink particles are colisionless particles, i.e. they interact with other particles only through gravity. They can be seen as particles representing unresolved region of collapse. 
 
 To spawn stars, an IMF is sampled. Details explanation of the IMF sampling are explained below. In short, the IMF is split into two parts In the lower part, star particles represent continuous stellar population in a similar way than what is currently implemented in common models. In the second upper part, star particles represent individual stars. Then, the feedback is improved to take into account both type of stars. Currently, only supernovae feedback is implemented. The sink particle method allows thus to track the effect of the supernovae of individual stars in the simulation.
 
-The current model includes sink formation, gas accretion, sink merging, IMF sampling and star spawning and finally supernove feedback (type Ia and II).
+The current model includes sink formation, gas accretion, sink merging, IMF sampling and star spawning and finally supernove feedback (type Ia and II). 
 
 Our main references are the following papers `Bate et al. <https://ui.adsabs.harvard.edu/abs/1995MNRAS.277..362B/abstract>`_, `Price et al. <https://ui.adsabs.harvard.edu/abs/2018PASA...35...31P/abstract>`_ and `Federrath et al. <https://ui.adsabs.harvard.edu/abs/2010ApJ...713..269F/abstract>`_
 
@@ -116,8 +116,28 @@ The tenth criterion prevents the formation of spurious sinks. Experiences have s
 Gas accretion
 -------------
 
-Well, now that sink particles can populate the simulation, they need to swallow gas particles. 
+Well, now that sink particles can populate the simulation, they need to swallow gas particles. To be accreted, gas particles need to pass a serie of criteria. In the folowing, :math:`s` denotes a sink particle and :math:`i` a gas particle. The criterai are the following:
 
+#. If the gas falls within :math:`f_{\text{acc}} r_{\text{acc}}` (:math:`0 \leq f_{\text{acc}} \leq 1`), the gas is accreted without further check.
+#. In the region  :math:`f_{\text{acc}} r_{\text{acc}} \leq |\mathbf{x}_i| \leq r_{\text{acc}}`, then, we check:
+   
+   #. The specific angular momentum is smaller than the one of a Keplerian orbit at :math:`r_{\text{acc}}`: :math:`|\mathbf{L}_{si}| \leq |\mathbf{L}_{\text{Kepler}}|`.
+   #. The gas is gravitationally bound to the sink particle: :math:`E_{\text{tot}} < 0`.
+   #. Out of all pairs sink-gas, the gas is the most bound to this one. This case is illustrated in the figure below. 
+
+The physical specific angular momenta are given by:
+
+* :math:`\mathbf{L}_{si} = ( \mathbf{x}_{s, p} - \mathbf{x}_{i, p}) \times ( \mathbf{v}_{s, p} - \mathbf{x}_{i, p})`,
+* :math:`|\mathbf{L}_{\text{Kepler}}| = r_{\text{acc}, p} \cdot \sqrt{G_N m_s / |\mathbf{x}_{s, p} - \mathbf{x}_{i, p}|^3}`.
+
+Those criteria are the same than `Price et al. <https://ui.adsabs.harvard.edu/abs/2018PASA...35...31P/abstract>`_.
+
+Once a gas is eligible to accretion, its properties are assigned to the sink. The sink accrete the *entire* gas mass in step and its properties are updated in the following way:
+
+* :math:`\displaystyle \mathbf{v}_{s, c} = \frac{m_s \mathbf{v}_{s, c} + m_i \mathbf{v}_{i, c}}{m_s + m_i}`,
+* Swallowed physical angular momentum:  :math:`\mathbf{L}_{\text{acc}} = \mathbf{L}_{\text{acc}} + m_i( \mathbf{x}_{s, p} - \mathbf{x}_{i, p}) \times ( \mathbf{v}_{s, p} - \mathbf{x}_{i, p})`,
+* The chemistry data are transfered from the gas to the sink.
+* :math:`m_s = m_s + m_i`,
 
 
 Sink merging
