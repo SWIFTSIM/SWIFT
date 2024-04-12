@@ -162,7 +162,11 @@ const char* grid_timers_names[grid_timers_count] = {
     "BFO (BVH) ordering",
     "Point location",
     "Triangle flipping",
+    "Updating search radii",
     "Voronoi construction",
+    "Voronoi vertices",
+    "Voronoi cells",
+    "Voronoi face ordering",
 };
 
 /* File to store the timers */

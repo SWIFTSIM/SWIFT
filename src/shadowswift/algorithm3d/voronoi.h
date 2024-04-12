@@ -248,7 +248,7 @@ inline static void voronoi_build(struct voronoi *v, struct delaunay *d,
   /* Compute the circumcentres */
   ticks grid_ticks = getticks();
   delaunay_compute_circumcentres(d);
-  timers[timer_voronoi_vertices] += getticks() - grid_ticks;
+  grid_timers[timer_voronoi_vertices] += getticks() - grid_ticks;
 
   grid_ticks = getticks();
   /* Allocate memory for the neighbour flags and initialize them to 0 (will be
@@ -532,13 +532,13 @@ inline static void voronoi_build(struct voronoi *v, struct delaunay *d,
     }
 #endif
   }
-  timers[timer_voronoi_cells] += getticks() - grid_ticks;
+  grid_timers[timer_voronoi_cells] += getticks() - grid_ticks;
 
   free(neighbour_flags);
   int3_fifo_queue_destroy(&neighbour_info_q);
   grid_ticks = getticks();
   voronoi_finalize(v, d, parts);
-  timers[timer_voronoi_face_ordering] += getticks() - grid_ticks;
+  grid_timers[timer_voronoi_face_ordering] += getticks() - grid_ticks;
   voronoi_check_grid(v, d, parts);
   free(face_vertices);
 }

@@ -119,7 +119,7 @@
 #define SHADOWSWIFT_BVH
 #ifdef SHADOWSWIFT_BVH
 /*! @brief Option to insert parts by BFO of the BVH during grid construction. */
-//#define SHADOWSWIFT_BVH_INSERT_BFO
+#define SHADOWSWIFT_BVH_INSERT_BFO
 #define BVH_MEDIAN_SPLIT 0
 #define BVH_MIDPOINT_SPLIT 1
 /*! @brief The splitting method used during the BVH construction */

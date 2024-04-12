@@ -169,6 +169,7 @@ enum grid_timers {
   timer_bfo_ordering,
   timer_point_location,
   timer_triangle_flipping,
+  timer_update_search_radii,
   timer_voronoi_construction,
   timer_voronoi_vertices,
   timer_voronoi_cells,

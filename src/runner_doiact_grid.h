@@ -140,6 +140,7 @@ __attribute__((always_inline)) INLINE static void runner_build_grid(
     }
 
     /* Check if particles have converged */
+    grid_tic = getticks();
     delaunay_get_search_radii(d, parts, pid_unconverged, count_unconverged,
                               search_radii);
     redo = 0;
@@ -162,6 +163,7 @@ __attribute__((always_inline)) INLINE static void runner_build_grid(
       }
       r_max_active = fmaxf(r_max_active, p->geometry.search_radius);
     }
+    c->grid.extra_info.timers[timer_update_search_radii] += getticks() - grid_tic;
     count_unconverged = redo;
     if (r_max_active > c->dmin) {
       error("Particle search radii grew larger than cell dimensions!");
