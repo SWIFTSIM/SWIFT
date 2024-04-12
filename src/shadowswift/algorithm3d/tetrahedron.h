@@ -43,6 +43,8 @@ struct tetrahedron {
   /*! @brief Indicates whether or not a tetrahedron is active (or has been
    * invalidated) */
   int active;
+
+  int _flag;
 };
 
 /**
@@ -71,6 +73,7 @@ inline static void tetrahedron_init(struct tetrahedron *t, int v0, int v1,
   t->index_in_neighbour[3] = -1;
 
   t->active = 1;
+  t->_flag = 0;
 }
 
 /**
@@ -95,6 +98,7 @@ inline static void tetrahedron_deactivate(struct tetrahedron *restrict t) {
   t->index_in_neighbour[3] = -1;
 
   t->active = 0;
+  t->_flag = -1;
 }
 
 /**

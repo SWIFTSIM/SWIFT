@@ -944,7 +944,7 @@ static inline void geometry3d_compute_circumcenter_adaptive(
   circumcenter[2] = (circumcenter[2] + v0[2] - 1.) * box_side + box_anchor[2];
 }
 
-static inline double geometry3d_compute_circumradius_adaptive(
+static inline double geometry3d_compute_circumradius2_adaptive(
     struct geometry3d* restrict g, const double* restrict v0,
     const double* restrict v1, const double* restrict v2,
     const double* restrict v3, const unsigned long* restrict v0ul,
@@ -957,10 +957,10 @@ static inline double geometry3d_compute_circumradius_adaptive(
       g, v0, v1, v2, v3, v0ul, v1ul, v2ul, v3ul, circumcenter);
 
   /* Calculate and rescale radius */
-  double radius = sqrt(circumcenter[0] * circumcenter[0] +
+  double radius = circumcenter[0] * circumcenter[0] +
                        circumcenter[1] * circumcenter[1] +
-                       circumcenter[2] * circumcenter[2]);
-  return radius * box_side;
+                       circumcenter[2] * circumcenter[2];
+  return radius * box_side * box_side;
 }
 
 inline static double geometry3d_compute_area_triangle(double ax, double ay,

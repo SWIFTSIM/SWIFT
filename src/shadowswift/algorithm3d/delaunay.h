@@ -166,7 +166,8 @@ inline static void delaunay_finalize_tetrahedron(struct delaunay* d, int t);
 inline static void delaunay_check_tetrahedra(struct delaunay* d, int v);
 inline static int delaunay_check_tetrahedron(struct delaunay* d, int t, int v);
 inline static int positive_permutation(int a, int b, int c, int d);
-inline static double delaunay_get_radius(struct delaunay* restrict d, int t);
+inline static double delaunay_get_radius2(struct delaunay* restrict d,
+                                          const struct tetrahedron* t);
 inline static int delaunay_test_orientation(struct delaunay* restrict d, int v0,
                                             int v1, int v2, int v3);
 inline static int delaunay_vertex_is_valid(struct delaunay* restrict d, int v);
@@ -2196,28 +2197,31 @@ inline static int delaunay_check_tetrahedron(struct delaunay* d, const int t,
 }
 
 /**
- * @brief Get the radius of the circumsphere of the given tetrahedron.
+ * @brief Get the square of the radius of the circumsphere of the given
+ * tetrahedron.
  *
  * @param d Delaunay tessellation.
- * @param t Tetrahedron index.
+ * @param t Tetrahedron pointer.
  * @return Radius of the circumsphere of the given tetrahedron.
  */
-inline static double delaunay_get_radius(struct delaunay* restrict d, int t) {
-  int v0 = d->tetrahedra[t].vertices[0];
-  int v1 = d->tetrahedra[t].vertices[1];
-  int v2 = d->tetrahedra[t].vertices[2];
-  int v3 = d->tetrahedra[t].vertices[3];
+inline static double delaunay_get_radius2(struct delaunay* restrict d,
+                                          const struct tetrahedron* t) {
+  int v0 = t->vertices[0];
+  int v1 = t->vertices[1];
+  int v2 = t->vertices[2];
+  int v3 = t->vertices[3];
 
   double* v0d = &d->rescaled_vertices[3 * v0];
   double* v1d = &d->rescaled_vertices[3 * v1];
   double* v2d = &d->rescaled_vertices[3 * v2];
   double* v3d = &d->rescaled_vertices[3 * v3];
+
   unsigned long* v0ul = &d->integer_vertices[3 * v0];
   unsigned long* v1ul = &d->integer_vertices[3 * v1];
   unsigned long* v2ul = &d->integer_vertices[3 * v2];
   unsigned long* v3ul = &d->integer_vertices[3 * v3];
 
-  return geometry3d_compute_circumradius_adaptive(
+  return geometry3d_compute_circumradius2_adaptive(
       &d->geometry, v0d, v1d, v2d, v3d, v0ul, v1ul, v2ul, v3ul, d->side);
 }
 
@@ -2325,6 +2329,52 @@ inline static void delaunay_compute_circumcentres(struct delaunay* d) {
   }
 }
 
+inline static struct tetrahedron** delaunay_get_vertex_tetrahedra(
+    const struct delaunay* restrict d, int vertex_idx,
+    struct int_lifo_queue* queue, size_t* count, size_t* capacity,
+    struct tetrahedron** arr) {
+  size_t _capacity = *capacity;
+
+  int tet_idx = d->vertex_tetrahedron_links[vertex_idx];
+  struct tetrahedron* tet = &d->tetrahedra[tet_idx];
+  arr[0] = tet;
+  size_t _count = 1;
+
+  int_lifo_queue_reset(queue);
+  for (int i = 0; i < 4; i++) {
+    if (tet->vertices[i] == vertex_idx) continue;
+    int_lifo_queue_push(queue, tet->neighbours[i]);
+  }
+  while (!int_lifo_queue_is_empty(queue)) {
+    tet_idx = int_lifo_queue_pop(queue);
+    tet = &d->tetrahedra[tet_idx];
+    /* Anything to do here? */
+    if (tet->_flag) continue;
+
+    /* Append it to the array and update the flag correspondingly */
+    if (_count == _capacity) {
+      /* grow the array */
+      _capacity *= 2;
+      arr = swift_realloc("vertex_tetrahedra", arr, _capacity * sizeof(*arr));
+    }
+    arr[_count] = tet;
+    _count++;
+    tet->_flag = 1;
+
+    /* Push its neighbours to the queue */
+    for (int i = 0; i < 4; i++) {
+      if (tet->vertices[i] == vertex_idx) continue;
+      int_lifo_queue_push(queue, tet->neighbours[i]);
+    }
+  }
+
+  /* Update the count and capacity and return the array (which may have been
+   * realocced) */
+  *count = _count;
+  *capacity = _capacity;
+  return arr;
+}
+
 /**
  * @brief Computes the delaunay search radii for a list of particles.
  *
@@ -2343,181 +2393,40 @@ inline static void delaunay_get_search_radii(struct delaunay* restrict d,
                                              const int* restrict pid, int count,
                                              /*return*/ double* restrict r) {
   /* Prepare for calculation */
-  /* Queue containing neighbouring generators of the currently active generators
-   * and necessary info to proceed (a tetrahedron containing both and the index
-   * of the neighbour in the tetrahedron). */
-  struct int3_fifo_queue neighbour_info_queue;
-  int3_fifo_queue_init(&neighbour_info_queue, 10);
-  /* Flags indicating whether a neighbouring generator has already been added
-   * to the queue for processing. */
-  int* neighbour_flags = (int*)malloc(d->vertex_index * sizeof(int));
-  bzero(neighbour_flags, d->vertex_index * sizeof(int));
-
-  /* Flags indicating whether we already tested a tetrahedron */
-  int* tetrahedra_flags = (int*)malloc(d->tetrahedra_index * sizeof(int));
-  bzero(tetrahedra_flags, d->tetrahedra_index * sizeof(int));
-  struct int_fifo_queue tetrahedra_to_check;
-  int_fifo_queue_init(&tetrahedra_to_check, 25);
+  /* Queue for storing the indices of tetrahedra whose neighbours we still need
+   * to check. */
+  struct int_lifo_queue tetrahedron_queue;
+  int_lifo_queue_init(&tetrahedron_queue, 32);
+  /* Array to store the tetrahedra neighbouring a given vertex */
+  size_t vertex_tetrahedra_size = 32;
+  struct tetrahedron** vertex_tetrahedra = swift_malloc(
+      "Vertex tetrahedra", vertex_tetrahedra_size * sizeof(*vertex_tetrahedra));
 
   /* loop over the particles */
   for (int i = 0; i < count; i++) {
     int gen_idx_in_d = parts[pid[i]].geometry.delaunay_vertex;
 
-    /* start */
-    neighbour_flags[gen_idx_in_d] = 1;
+    /* Get the tetrahedra containing this generator */
+    size_t vertex_tetrahedra_count;
+    vertex_tetrahedra = delaunay_get_vertex_tetrahedra(
+        d, gen_idx_in_d, &tetrahedron_queue, &vertex_tetrahedra_count,
+        &vertex_tetrahedra_size, vertex_tetrahedra);
 
-    /* Get a tetrahedron containing the central generator */
-    int t_idx = d->vertex_tetrahedron_links[gen_idx_in_d];
-    int gen_idx_in_t = d->vertex_tetrahedron_index[gen_idx_in_d];
-
-    /* Pick another vertex (generator) from this tetrahedron and add it to the
-     * queue */
-    int other_v_idx_in_t = (gen_idx_in_t + 1) % 4;
-    struct tetrahedron* t = &d->tetrahedra[t_idx];
-    int other_v_idx_in_d = t->vertices[other_v_idx_in_t];
-    /* Add the vertex info to the queue */
-    int3 vertex_info = {
-        ._0 = t_idx, ._1 = other_v_idx_in_d, ._2 = other_v_idx_in_t};
-    int3_fifo_queue_push(&neighbour_info_queue, vertex_info);
-    /* update flag of the other vertex indicating that it was added to the
-     * queue*/
-    neighbour_flags[other_v_idx_in_d] = 1;
-
-    /* Loop over all neighbouring vertices of the current vertex */
-    while (!int3_fifo_queue_is_empty(&neighbour_info_queue)) {
-      /* Pop the next axis vertex and corresponding tetrahedron from the queue*/
-      int3 info = int3_fifo_queue_pop(&neighbour_info_queue);
-      int prev_t_idx = info._0;
-      int axis_idx_in_d = info._1;
-      int axis_idx_in_t = info._2;
-
-      /* Add tetrahedron to queue */
-      if (!tetrahedra_flags[prev_t_idx]) {
-        int_fifo_queue_push(&tetrahedra_to_check, prev_t_idx);
-        tetrahedra_flags[prev_t_idx] = 1;
-      }
-
-      struct tetrahedron* prev_t = &d->tetrahedra[prev_t_idx];
-
-      /* Get a non axis vertex from first_t */
-      int non_axis_idx_in_prev_t = (axis_idx_in_t + 1) % 4;
-      if (prev_t->vertices[non_axis_idx_in_prev_t] == gen_idx_in_d) {
-        non_axis_idx_in_prev_t = (non_axis_idx_in_prev_t + 1) % 4;
-      }
-      int non_axis_idx_in_d = prev_t->vertices[non_axis_idx_in_prev_t];
-
-      if (!neighbour_flags[non_axis_idx_in_d]) {
-        /* Add this vertex and tetrahedron to the neighbour queue and update
-         * its flag */
-        int3 new_info = {._0 = prev_t_idx,
-                         ._1 = non_axis_idx_in_d,
-                         ._2 = non_axis_idx_in_prev_t};
-        int3_fifo_queue_push(&neighbour_info_queue, new_info);
-        /* update flag */
-        neighbour_flags[non_axis_idx_in_d] = 1;
-      }
-
-      /* Get a neighbouring tetrahedron of first_t sharing the axis */
-      int cur_t_idx = prev_t->neighbours[non_axis_idx_in_prev_t];
-      int prev_t_idx_in_cur_t =
-          prev_t->index_in_neighbour[non_axis_idx_in_prev_t];
-
-      /* Loop around the tetrahedra sharing this axis */
-      int first_t_idx = prev_t_idx;
-      while (cur_t_idx != first_t_idx) {
-        /* Add tetrahedron to queue */
-        if (!tetrahedra_flags[cur_t_idx]) {
-          int_fifo_queue_push(&tetrahedra_to_check, cur_t_idx);
-          tetrahedra_flags[cur_t_idx] = 1;
-        }
-
-#ifdef SWIFT_DEBUG_CHECKS
-        if (axis_idx_in_d != d->tetrahedra[cur_t_idx].vertices[0] &&
-            axis_idx_in_d != d->tetrahedra[cur_t_idx].vertices[1] &&
-            axis_idx_in_d != d->tetrahedra[cur_t_idx].vertices[2] &&
-            axis_idx_in_d != d->tetrahedra[cur_t_idx].vertices[3])
-          error("Axis vertex no longer contained in current tet!");
-        if (gen_idx_in_d != d->tetrahedra[cur_t_idx].vertices[0] &&
-            gen_idx_in_d != d->tetrahedra[cur_t_idx].vertices[1] &&
-            gen_idx_in_d != d->tetrahedra[cur_t_idx].vertices[2] &&
-            gen_idx_in_d != d->tetrahedra[cur_t_idx].vertices[3])
-          error("Central vertex no longer contained in current tet!");
-#endif
-
-        /* Update the variables */
-        prev_t_idx = cur_t_idx;
-        prev_t = &d->tetrahedra[prev_t_idx];
-        /* get the next non axis vertex */
-        non_axis_idx_in_prev_t = (prev_t_idx_in_cur_t + 1) % 4;
-        non_axis_idx_in_d = prev_t->vertices[non_axis_idx_in_prev_t];
-        while (non_axis_idx_in_d == axis_idx_in_d ||
-               non_axis_idx_in_d == gen_idx_in_d) {
-          non_axis_idx_in_prev_t = (non_axis_idx_in_prev_t + 1) % 4;
-          non_axis_idx_in_d = prev_t->vertices[non_axis_idx_in_prev_t];
-        }
-        /* Add it to the queue if necessary */
-        if (!neighbour_flags[non_axis_idx_in_d]) {
-          /* Add this vertex and tetrahedron to the queue and update its flag */
-          int3 new_info = {._0 = prev_t_idx,
-                           ._1 = non_axis_idx_in_d,
-                           ._2 = non_axis_idx_in_prev_t};
-          int3_fifo_queue_push(&neighbour_info_queue, new_info);
-          /* update flag */
-          neighbour_flags[non_axis_idx_in_d] = 1;
-        }
-        /* Get the next tetrahedron sharing the same axis */
-        cur_t_idx = prev_t->neighbours[non_axis_idx_in_prev_t];
-        prev_t_idx_in_cur_t =
-            prev_t->index_in_neighbour[non_axis_idx_in_prev_t];
-      }
+    /* Loop over the tetrahedra and compute the search radius
+     * (twice the maximal circumradius) */
+    double max_circumradius2 = 0.;
+    for (size_t k = 0; k < vertex_tetrahedra_count; k++) {
+      struct tetrahedron* tet = vertex_tetrahedra[k];
+      /* Before doing anything, reset the flag of this tet */
+      tet->_flag = 0;
+      max_circumradius2 = max(max_circumradius2, delaunay_get_radius2(d, tet));
     }
-
-    /* reset neighbour flags for next particle */
-    neighbour_flags[gen_idx_in_d] = 0;
-    for (int j = 0; j < neighbour_info_queue.end; j++) {
-      delaunay_assert(neighbour_info_queue.values[j]._1 < d->vertex_index);
-      neighbour_flags[neighbour_info_queue.values[j]._1] = 0;
-    }
-#ifdef DELAUNAY_CHECKS
-    for (int k = 0; k < d->vertex_index; k++) {
-      if (neighbour_flags[k]) {
-        error("Found nonzero flag at end of get_radius!");
-      }
-    }
-#endif
-
-    /* Reset neighbour info queue for next particle */
-    int3_fifo_queue_reset(&neighbour_info_queue);
-
-    /* Loop over the queued tetrahedra to calculate the search radius */
-    double search_radius = 0.;
-    while (!int_fifo_queue_is_empty(&tetrahedra_to_check)) {
-      int t_to_check = int_fifo_queue_pop(&tetrahedra_to_check);
-
-      /* Reset flag of current tetrahedron */
-#ifdef SWIFT_DEBUG_CHECKS
-      if (!tetrahedra_flags[t_to_check])
-        error("Encountered tetrahedron which should not have to be checked!");
-#endif
-      tetrahedra_flags[t_to_check] = 0;
-
-      /* Update search radius */
-      search_radius =
-          max(search_radius, 2. * delaunay_get_radius(d, t_to_check));
-    }
-
-    /* Reset tetrahedra queue */
-    int_fifo_queue_reset(&tetrahedra_to_check);
-
-    /* Save search radius */
-    r[i] = search_radius;
+    r[i] = 2. * sqrt(max_circumradius2);
   }
 
   /* Be clean */
-  int3_fifo_queue_destroy(&neighbour_info_queue);
-  free(neighbour_flags);
-  int_fifo_queue_destroy(&tetrahedra_to_check);
-  free(tetrahedra_flags);
+  int_lifo_queue_destroy(&tetrahedron_queue);
+  free(vertex_tetrahedra);
 }
 
 /**
