@@ -1,7 +1,10 @@
 #!/bin/bash
 
-# Clang format command, can be overridden using CLANG_FORMAT_CMD.
-# We currrently use version 13.0 so any overrides should provide that.
+# The clang-format command can be overridden using CLANG_FORMAT_CMD.
+# We currrently use version 13.0 so any overrides should use that version
+# or one known to be compatible with it for instance if your standard
+# command is version 13 use:
+#    CLANG_FORMAT_CMD=clang-format ./format.sh
 clang=${CLANG_FORMAT_CMD:="clang-format-13"}
 
 # Formatting command
@@ -11,7 +14,10 @@ cmd="$clang -style=file $(git ls-files | grep '\.[ch]$')"
 command -v $clang > /dev/null
 if [[ $? -ne 0 ]]
 then
-    echo "ERROR: cannot find $clang"
+    echo "ERROR: cannot find the command $clang."
+    echo
+    head -8 "$0" | grep -v "/bin/bash" | grep '^#'
+    echo
     exit 1
 fi
 

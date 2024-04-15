@@ -109,6 +109,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_sink(
 /**
  * @brief Compute sink-sink swallow interaction (non-symmetric).
  *
+ * Note: Energies are computed with physical quantities, not the comoving ones.
+ *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
  * @param ri Comoving cut off radius of particle i.
@@ -180,7 +182,9 @@ runner_iact_nonsym_sinks_sink_swallow(const float r2, const float dx[3],
                                //w_tilde(a, w0, wa)
   const double a_dot_dot = - H*H/2.0 * density_sum;
 
-  /* Compute the potential energies */
+  /* Compute the physical potential energies :
+                       E_pot_phys = G*pot_grav*a^(-1) + c(a). */
+  /* The normalization is c(a) = -a_dot*a*r^2/2.0. */
   const double constant = - a_dot_dot*a*r2/2.0;
   const float E_pot_ij = grav_props->G_Newton * pot_ij * cosmo->a_inv + constant;
   const float E_pot_ji = grav_props->G_Newton * pot_ji * cosmo->a_inv + constant;
@@ -221,6 +225,8 @@ runner_iact_nonsym_sinks_sink_swallow(const float r2, const float dx[3],
 
 /**
  * @brief Compute sink-gas swallow interaction (non-symmetric).
+ *
+ * Note: Energies are computed with physical quantities, not the comoving ones.
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
@@ -336,8 +342,9 @@ runner_iact_nonsym_sinks_gas_swallow(const float r2, const float dx[3],
                                //w_tilde(a, w0, wa)
     const double a_dot_dot = - H*H/2.0 * density_sum;
 
-    /* Compute the potential energy that the sink exerts in the gas (do not
-       forget to convert to physical quantity)*/
+    /* Compute the physical potential energy that the sink exerts in the gas :
+                       E_pot_phys = G*pot_grav*a^(-1) + c(a). */
+    /* The normalization is c(a) = -a_dot*a*r^2/2.0. */
     float E_pot_gas = grav_props->G_Newton * pot_ij * cosmo->a_inv
                        - a_dot_dot*a*r2/2.0;
 
