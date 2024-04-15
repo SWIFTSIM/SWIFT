@@ -70,6 +70,10 @@ struct sink_props {
   /* Disable sink formation? (e.g. used in sink accretion tests). Default: 0
      (keep sink formation) */
   uint8_t disable_sink_formation;
+
+  /* Factor to rescale the velocity dispersion of the stars when they are
+     spawned */
+  double star_spawning_sigma_factor;
 };
 
 /**
@@ -189,13 +193,15 @@ INLINE static void sink_props_init(struct sink_props *sp,
 
   /* Default values */
   const float default_f_acc = 0.8;
-
+  const float default_star_spawning_sigma_factor = 0.2;
   const char default_disable_sink_formation = 0; /* Sink formation is
                                                      activated */
 
   /* By default all current implemented criteria are active */
   const uint8_t default_sink_formation_criterion_all = 1;
 
+
+  /* Read the parameters from the parameter file */
   sp->cut_off_radius =
       parser_get_param_float(params, "GEARSink:cut_off_radius");
 
@@ -230,6 +236,10 @@ INLINE static void sink_props_init(struct sink_props *sp,
 
   sp->minimal_discrete_mass_first_stars = parser_get_param_float(
       params, "GEARSink:minimal_discrete_mass_first_stars");
+
+  sp->star_spawning_sigma_factor =
+      parser_get_opt_param_int(params, "GEARSink:star_spawning_sigma_factor",
+                               default_star_spawning_sigma_factor);
 
   /* Sink formation criterion parameters (all active by default) */
   sp->sink_formation_contracting_gas_criterion = parser_get_opt_param_int(
