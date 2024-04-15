@@ -758,6 +758,46 @@ INLINE static void sink_copy_properties_to_star(
 }
 
 /**
+ * @brief Update the #sink particle properties after spawning a star. Important
+ * properties that are updated are the sink mass and the sink->target_mass to
+ * draw the next star mass.
+ *
+ * @param sink the sink particle.
+ * @param e The #engine
+ * @param sink_props the sink properties to use.
+ * @param phys_const the physical constants in internal units.
+ * @param loop The star loop counter. 
+ */
+INLINE static void sink_update_sink_properties_after_star_formation(struct sink* sink, 
+   const struct engine* e,  const struct sink_props* sink_props,
+   const struct phys_const* phys_const, int loop) {
+
+  /* count the number of stars spawned by this particle */
+  sink->n_stars++;
+
+  /* Update the mass */
+  sink->mass = sink->mass - sink->target_mass * phys_const->const_solar_mass;
+
+  /* Bug fix: Do not forget to update the sink gpart's mass. */
+  sink->gpart->mass = sink->mass;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* This message must be put carefully after giving the star its mass,
+     updated the sink mass and before changing the target_type */
+  message(
+	  "%010lld spawn a star (%010lld) with mass %8.2f Msol type=%d  "
+	  "loop=%03d. Sink remaining mass: %e Msol.",
+	  s->id, sp->id, sp->mass/phys_const->const_solar_mass, s->target_type,
+	  loop, s->mass/phys_const->const_solar_mass);
+#endif
+
+  /* Sample the IMF to the get next target mass */
+  sink_update_target_mass(sink, sink_props, e, loop);
+}
+
+
+
+/**
  * @brief Store the gravitational potential of a particle by copying it from
  * its #gpart friend.
  *
