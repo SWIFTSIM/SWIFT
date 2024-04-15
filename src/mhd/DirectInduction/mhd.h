@@ -141,7 +141,7 @@ __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
 
   const float CFL_condition = hydro_properties->CFL_condition;
 
-  const float dt_boost_inv psi_over_ch != 0.f ? 1.f + p->h*fabsf(divB) / fabsf(psi_over_ch) : 1.f;
+  const float dt_boost_inv = psi_over_ch != 0.f ? 1.f + p->h*fabsf(divB) / fabsf(psi_over_ch) : 1.f;
 
   const float dt_boost = 1.f / dt_boost_inv;
 
