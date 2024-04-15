@@ -684,10 +684,6 @@ INLINE static void sink_star_formation_give_new_velocity(const struct engine* e,
     /* Sample a gaussian with mu=0 and sigma=sigma */
     double v_i_random = gsl_cdf_gaussian_Pinv(random_number, sigma);
     v_given[i] = v_i_random;
-
-#else
-  error("Code not compiled with GSL. Can't compute Star new velocity.");
-#endif
   }
   
   /* Update the star velocity. Do not forget to update the gpart velocity */
@@ -698,12 +694,9 @@ INLINE static void sink_star_formation_give_new_velocity(const struct engine* e,
   sp->gpart->v_full[1] = sp->v[1];
   sp->gpart->v_full[2] = sp->v[2];
   message("New star velocity: v = (%lf %lf %lf). Sink velocity: v = (%lf %lf %lf). Sigma = %lf", sp->v[0], sp->v[1], sp->v[2],si->v[0], si->v[1], si->v[2], sigma);
-
-  /* Update the swallowed angular momentum to subtract what was given to the star. */
-  /* Still worth to recall that this quantity is physical. */
-  /* si->swallowed_angular_momentum[0] -= dx_ph[1]*p_given_ph[2] - dx_ph[2]*p_given_ph[1]; */
-  /* si->swallowed_angular_momentum[1] -= dx_ph[2]*p_given_ph[0] - dx_ph[0]*p_given_ph[2]; */
-  /* si->swallowed_angular_momentum[2] -= dx_ph[0]*p_given_ph[1] - dx_ph[1]*p_given_ph[0]; */
+#else
+  error("Code not compiled with GSL. Can't compute Star new velocity.");
+#endif
 }
 
 /**
