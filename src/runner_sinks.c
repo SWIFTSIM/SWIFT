@@ -161,7 +161,8 @@ void runner_doself_sinks_swallow(struct runner *r, struct cell *c, int timer) {
       if (r2 < ri2 || r2 < rj2) {
         runner_iact_nonsym_sinks_sink_swallow(r2, dx, ri, rj, si, sj,
                                               with_cosmology, cosmo,
-                                              e->gravity_properties);
+                                              e->gravity_properties,
+					      e->sink_properties);
       }
     } /* loop over the sinks in ci. */
   }   /* loop over the sinks in ci. */
@@ -304,7 +305,8 @@ void runner_do_nonsym_pair_sinks_naive_swallow(struct runner *r,
       if (r2 < ri2 || r2 < rj2) {
         runner_iact_nonsym_sinks_sink_swallow(r2, dx, ri, rj, si, sj,
                                               with_cosmology, cosmo,
-                                              e->gravity_properties);
+                                              e->gravity_properties,
+					      e->sink_properties);
       }
     } /* loop over the sinks in cj. */
   }   /* loop over the sinks in ci. */
