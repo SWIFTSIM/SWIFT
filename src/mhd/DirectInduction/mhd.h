@@ -19,6 +19,7 @@
 #ifndef SWIFT_DIRECT_INDUCTION_MHD_H
 #define SWIFT_DIRECT_INDUCTION_MHD_H
 #include "minmax.h"
+#include "kernel_hydro.h"
 
 #include <float.h>
 
@@ -128,16 +129,33 @@ __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
 
   /* Dt from 1/DivOperator(Alfven speed) */
 
+  const float a = cosmo->a;
+
   const float divB = p->mhd_data.divB;
 
-  const float dt_B_factor = fabsf(divB);
+  // const float dt_B_factor = fabsf(divB);
 
+  const float ch = mhd_get_magnetosonic_speed(p, a, mu_0);
+
+  const float psi_over_ch = p->mhd_data.psi_over_ch;
+
+  const float CFL_condition = hydro_properties->CFL_condition;
+
+  const float dt_boost_inv psi_over_ch != 0.f ? 1.f + p->h*fabsf(divB) / fabsf(psi_over_ch) : 1.f;
+
+  const float dt_boost = 1.f / dt_boost_inv;
+
+  const float dt_B_derivatives = 
+    2.f * kernel_gamma * CFL_conditions * dt_boost / ch;
+
+  /*
   const float dt_B_derivatives =
       dt_B_factor != 0.f
           ? hydro_properties->CFL_condition * cosmo->a /
                 cosmo->a_factor_sound_speed *
                 sqrtf(p->rho * mu_0 / (dt_B_factor * dt_B_factor))
           : FLT_MAX;
+  */
 
   const float dt_eta = p->mhd_data.resistive_eta != 0.f
                            ? hydro_properties->CFL_condition * cosmo->a *
