@@ -376,8 +376,7 @@ INLINE static int sink_is_forming(
   }
 
 /* #ifdef SWIFT_DEBUG_CHECKS */
-  message("Gas particle %lld can form a sink !", p->id);
-  message("Gas velocity: v= (%lf, %lf, %lf).", p->v[0], p->v[1], p->v[2]);
+  message("Gas particle %lld can form a sink ! Gas velocity: v= (%lf, %lf, %lf).", p->id, p->v[0], p->v[1], p->v[2]);
 /* #endif */
   return 1;
 }
@@ -532,8 +531,7 @@ __attribute__((always_inline)) INLINE static void sink_swallow_part(
       "Delta_v_rad = %f)",
       sp->id, p->id, sp->mass, -dv[0], -dv[1], -dv[2], -dx[0], -dx[1], -dx[2],
       (dv[0] * dx[0] + dv[1] * dx[1] + dv[2] * dx[2]) / dr);
-  message("Sink new velocity: v= (%lf, %lf, %lf).", sp->v[0], sp->v[1], sp->v[2]);
-/* #endif */
+  /* #endif */
 }
 
 /**
@@ -768,7 +766,8 @@ INLINE static void sink_copy_properties_to_star(
  * @param phys_const the physical constants in internal units.
  * @param loop The star loop counter. 
  */
-INLINE static void sink_update_sink_properties_after_star_formation(struct sink* sink, 
+INLINE static void sink_update_sink_properties_after_star_formation(struct sink* sink,
+								    const struct spart* sp, 
    const struct engine* e,  const struct sink_props* sink_props,
    const struct phys_const* phys_const, int loop) {
 
@@ -781,15 +780,15 @@ INLINE static void sink_update_sink_properties_after_star_formation(struct sink*
   /* Bug fix: Do not forget to update the sink gpart's mass. */
   sink->gpart->mass = sink->mass;
 
-#ifdef SWIFT_DEBUG_CHECKS
+/* #ifdef SWIFT_DEBUG_CHECKS */
   /* This message must be put carefully after giving the star its mass,
      updated the sink mass and before changing the target_type */
   message(
 	  "%010lld spawn a star (%010lld) with mass %8.2f Msol type=%d  "
 	  "loop=%03d. Sink remaining mass: %e Msol.",
-	  s->id, sp->id, sp->mass/phys_const->const_solar_mass, s->target_type,
-	  loop, s->mass/phys_const->const_solar_mass);
-#endif
+	  sink->id, sp->id, sp->mass/phys_const->const_solar_mass, sink->target_type,
+	  loop, sink->mass/phys_const->const_solar_mass);
+/* #endif */
 
   /* Sample the IMF to the get next target mass */
   sink_update_target_mass(sink, sink_props, e, loop);
