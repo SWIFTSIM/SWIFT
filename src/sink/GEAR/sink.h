@@ -618,14 +618,15 @@ INLINE static int sink_spawn_star(struct sink* sink, const struct engine* e,
 }
 
 /**
- * @brief Separate the #spart and #part by randomly moving both of them.
+ * @brief Give the #spart a new position by randomly sampling in an homogeneous
+ * sphere centered on the #sink with radius the sink's r_cut.
  *
  * @param e The #engine.
  * @param p The #part generating a star.
  * @param xp The #xpart generating a star.
  * @param sp The new #spart.
  */
-INLINE static void sink_star_formation_separate_particles(
+INLINE static void sink_star_formation_give_new_position(
     const struct engine* e, struct sink* si, struct spart* sp) {
 #ifdef SWIFT_DEBUG_CHECKS
   if (si->x[0] != sp->x[0] || si->x[1] != sp->x[1] || si->x[2] != sp->x[2]) {
@@ -744,7 +745,9 @@ INLINE static void sink_star_formation_give_new_velocity(const struct engine* e,
 }
 
 /**
- * @brief Copy the properties of the sink particle towards the new star.
+ * @brief Copy the properties of the sink particle towards the new star. Also,
+ * give the stars some properties such as position and velocity.
+ *
  * This function also needs to update the sink particle.
  *
  * @param e The #engine
@@ -762,7 +765,8 @@ INLINE static void sink_copy_properties_to_star(
     const int with_cosmology, const struct phys_const* phys_const,
     const struct unit_system* restrict us, double sink_mass_tot_before_spawning) {
 
-  sink_star_formation_separate_particles(e, sink, sp);
+  /* Give the stars a new position */
+  sink_star_formation_give_new_position(e, sink, sp);
 
   /* set the mass */
   sp->mass = sink->target_mass * phys_const->const_solar_mass;
