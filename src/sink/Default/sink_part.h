@@ -62,17 +62,8 @@ struct sink {
   /*! Sink particle mass */
   float mass;
 
-  /*! Sink target mass */
-  float target_mass;
-
-  /*! Sink target stellar type */
-  sink_star_type target_type;
-
   /*! Particle time bin */
   timebin_t time_bin;
-
-  /*! Number of stars contained in the sink */
-  int n_stars;
 
 #ifdef SWIFT_DEBUG_CHECKS
 
