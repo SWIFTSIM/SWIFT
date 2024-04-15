@@ -151,9 +151,9 @@ INLINE static void sink_props_init_probabilities(
 		  imf, minimal_discrete_mass, mass_max) *
 	      Mtot;
 
-  message("Mass of the continuous part            : %g", Mc);
-  message("Mass of the discrete   part            : %g", Md);
-  message("Total IMF mass                         : %g", Mtot);
+  message("Mass of the continuous part (in M_sun) : %g", Mc);
+  message("Mass of the discrete   part (in M_sun) : %g", Md);
+  message("Total IMF mass (in M_sun)              : %g", Mtot);
   message("Number of stars in the continuous part : %g", Nc);
   message("Number of stars in the discrete   part : %g", Nd);
 
