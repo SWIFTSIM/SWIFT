@@ -665,16 +665,16 @@ INLINE static void sink_star_formation_give_new_position(
  * @param sp The new #spart.
  */
 INLINE static void sink_star_formation_give_new_velocity(const struct engine* e,
-     struct sink* si, struct spart* sp, double sink_mass_tot_before_spawning) {
+struct sink* si, struct spart* sp, double sink_mass_tot_before_spawning,
+const struct sink_props* sink_props) {
 
 #ifdef HAVE_LIBGSL
   /* Those intermediate variables are the values that will be given to the star
      and subtracted from the sink. */
   double v_given[3] = {0.0, 0.0, 0.0};
-  const double factor = 2e-1;
   const double G_newton = e->physical_constants->const_newton_G;
   const double sigma_2 = G_newton*sink_mass_tot_before_spawning/si->r_cut;
-  const double sigma = factor*sqrt(sigma_2) ;
+  const double sigma = sink_props->star_spawning_sigma_factor*sqrt(sigma_2) ;
 
   for (int i=0 ; i < 3; ++i) {
 
@@ -728,7 +728,7 @@ INLINE static void sink_copy_properties_to_star(
   sp->gpart->mass = sp->mass;
 
   /* Give a new velocity to the stars */
-  sink_star_formation_give_new_velocity(e, sink, sp, sink_mass_tot_before_spawning);
+  sink_star_formation_give_new_velocity(e, sink, sp, sink_mass_tot_before_spawning, sink_props);
 
   /* set feedback type */
   sp->feedback_data.star_type = (star_feedback_type)sink->target_type;
