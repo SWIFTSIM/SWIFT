@@ -22,6 +22,7 @@
 /* Local includes */
 #include "gravity.h"
 #include "gravity_iact.h"
+#include "hydro.h"
 
 /**
  * @brief do sink computation after the runner_iact_density (symmetric
@@ -377,8 +378,8 @@ runner_iact_nonsym_sinks_gas_swallow(const float r2, const float dx[3],
     /* Update: Add thermal energy to avoid the sink to swallow hot gas regions */
     const float E_therm = hydro_get_drifted_physical_internal_energy(pj, cosmo);
 
-    /* Mechanical energy of the pair sink-gas */
-    float E_mec_sink_part = E_kin_relative_gas + E_pot_gas;
+    /* Energy of the pair sink-gas */
+    const float E_mec_sink_part = E_kin_relative_gas + E_pot_gas + E_therm;
 
     /* To be accreted, the gas must be gravitationally bound to the sink. */
     if (E_mec_sink_part >= 0) return;
