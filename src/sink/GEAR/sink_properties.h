@@ -274,6 +274,12 @@ INLINE static void sink_props_init(struct sink_props *sp,
 
   sp->density_threshold /= units_cgs_conversion_factor(us, UNIT_CONV_DENSITY);
 
+
+  /* Those variables are used to give the message output below in consistent
+     units, i.e. in M_sun. */
+  const double stellar_particle_mass_M_sun = sp->stellar_particle_mass;
+  const double stellar_particle_mass_first_stars_M_sun = sp->stellar_particle_mass;
+
   /* Convert from M_sun to internal units */
   sp->stellar_particle_mass *= phys_const->const_solar_mass;
   sp->stellar_particle_mass_first_stars *= phys_const->const_solar_mass;
@@ -295,30 +301,31 @@ INLINE static void sink_props_init(struct sink_props *sp,
     sink_props_init_probabilities(sp, imf, phys_const, 1);
   }
 
-  message("maximal_temperature               = %g", sp->maximal_temperature);
-  message("density_threshold                 = %g", sp->density_threshold);
+  message("maximal_temperature                          = %g", sp->maximal_temperature);
+  message("density_threshold                            = %g", sp->density_threshold);
   /* message("size_of_calibration_sample        = %d", */
           /* sp->size_of_calibration_sample); */
 
-  message("stellar_particle_mass             = %g", sp->stellar_particle_mass);
-  message("minimal_discrete_mass             = %g", sp->minimal_discrete_mass);
+  message("stellar_particle_mass (in M_sun)             = %g", stellar_particle_mass_M_sun);
+  message("minimal_discrete_mass (in M_sun)             = %g", sp->minimal_discrete_mass);
 
-  message("stellar_particle_mass_first_stars = %g",
-          sp->stellar_particle_mass_first_stars);
-  message("minimal_discrete_mass_first_stars = %g",
+  message("stellar_particle_mass_first_stars (in M_sun) = %g",
+          stellar_particle_mass_first_stars_M_sun);
+  message("minimal_discrete_mass_first_stars (in M_sun) = %g",
           sp->minimal_discrete_mass_first_stars);
 
   /* Print information about the functionalities */
-  message("disable_sink_formation = %d", sp->disable_sink_formation);
-  message("sink_formation_contracting_gas_criterion = %d",
+  message("disable_sink_formation                       = %d",
+	  sp->disable_sink_formation);
+  message("sink_formation_contracting_gas_criterion     = %d",
           sp->sink_formation_contracting_gas_criterion);
-  message("sink_formation_smoothing_length_criterion = %d",
+  message("sink_formation_smoothing_length_criterion    = %d",
           sp->sink_formation_smoothing_length_criterion);
-  message("sink_formation_jeans_instability_criterion = %d",
+  message("sink_formation_jeans_instability_criterion   = %d",
           sp->sink_formation_jeans_instability_criterion);
-  message("sink_formation_bound_state_criterion = %d",
+  message("sink_formation_bound_state_criterion         = %d",
           sp->sink_formation_bound_state_criterion);
-  message("sink_formation_overlapping_sink_criterion = %d",
+  message("sink_formation_overlapping_sink_criterion    = %d",
           sp->sink_formation_overlapping_sink_criterion);
 }
 
