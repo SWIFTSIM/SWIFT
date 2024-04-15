@@ -265,7 +265,7 @@ INLINE static void sink_copy_properties_to_star(
  * @param loop The star loop counter. 
  */
 INLINE static void sink_update_sink_properties_after_star_formation(struct sink* sink, 
-   const struct engine* e,  const struct sink_props* sink_props,
+   const struct spart* sp, const struct engine* e,  const struct sink_props* sink_props,
    const struct phys_const* phys_const, int loop) {}
 
 /**

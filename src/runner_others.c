@@ -276,7 +276,7 @@ void runner_do_star_formation_sink(struct runner *r, struct cell *c,
           c->stars.h_max_active = max(c->stars.h_max_active, sp->h);
 
 	  /* Update sink properties */
-	  sink_update_sink_properties_after_star_formation(s, e, sink_props,
+	  sink_update_sink_properties_after_star_formation(s, sp, e, sink_props,
 							   phys_const, loop);
 	  loop++;
         }
