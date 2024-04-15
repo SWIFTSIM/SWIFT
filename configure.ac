@@ -2785,6 +2785,9 @@ case "$with_forcing" in
    roberts-flow-acceleration)
       AC_DEFINE([FORCING_ROBERTS_FLOW_ACCELERATION], [1], [Roberts' flow external forcing terms entering the equations as an acceleration term])
    ;;
+   driven-turbulence)
+      AC_DEFINE([FORCING_DRIVEN_TURBULENCE], [1], [Driven turbulence external forcing terms])
+   ;;
    *)
       AC_MSG_ERROR([Unknown external forcing term: $with_forcing])
    ;;

@@ -2464,10 +2464,15 @@ int engine_step(struct engine *e) {
   if (e->policy & engine_policy_self_gravity)
     gravity_props_update(e->gravity_properties, e->cosmology);
 
-  /* Udpate the hydro properties */
+  /* Update the hydro properties */
   if (e->policy & engine_policy_hydro)
     hydro_props_update(e->hydro_properties, e->gravity_properties,
                        e->cosmology);
+
+  /* Update the forcing terms (only used with hydro) */
+  if (e->policy & engine_policy_hydro)
+    forcing_terms_update(e->time, e->time_step, e->forcing_terms, e->s,
+                         e->internal_units, e->physical_constants);
 
   /* Check for any snapshot triggers */
   engine_io_check_snapshot_triggers(e);

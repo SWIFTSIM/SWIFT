@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2023 Matthieu Schaller (schaller@strw.leidenuniv.nl)
+ * Copyright (c) 2024 Yolan Uyttenhove (yolan.uyttenhove@ugent.be)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_FORCING_NONE_H
-#define SWIFT_FORCING_NONE_H
+#ifndef SWIFT_FORCING_DRIVEN_TURBULENCE_H
+#define SWIFT_FORCING_DRIVEN_TURBULENCE_H
 
 /* Config parameters. */
 #include <config.h>
@@ -36,7 +36,20 @@
 /**
  * @brief Forcing Term Properties
  */
-struct forcing_terms {};
+struct forcing_terms {
+  // For some small wavenumbers (large scales) store f_0 (amplitudes) for each
+  // wavevector. These must be adjusted to yield the desired mach number.
+  // Default: Paraboloid in fourier space, |k| in (1, 3)
+
+  // Store the current f for each wavevector
+
+  // Store seeded rng
+
+  // Store forcing parameter eta to select mixture of purely solenoidal or
+  // compressive forcing power (default 0.5)
+
+  // Store characteristic timescale/turnover time T
+};
 
 /**
  * @brief Computes the forcing terms.
@@ -53,7 +66,10 @@ struct forcing_terms {};
 __attribute__((always_inline)) INLINE static void forcing_terms_apply(
     const double time, const struct forcing_terms* terms, const struct space* s,
     const struct phys_const* phys_const, struct part* p, struct xpart* xp) {
-  /* Nothing to do here */
+  /* Either update velocity directly OR update a_hydro */
+  /* NOTE: for moving mesh, a_hydro is currently not used/existing */
+
+  /* Compute fourier series with coefficients f at location of particle */
 }
 
 /**
@@ -72,7 +88,11 @@ __attribute__((always_inline)) INLINE static void forcing_terms_update(
     const double time, const double timestep, const struct forcing_terms* terms,
     const struct space* s, const struct unit_system* us,
     const struct phys_const* phys_const) {
-  /* Nothing to do here */
+  // Ornstein-Uhlenbeck (OU) process. For each wavevector:
+  // - subtract f * dt / T of f (exponentially decaying autocorrelation)
+  // - add random "diffusion" term: f_0 * projection(eta) \dot W(dt)
+  //   with W(dt) a gaussian random increment to the vector field (Wiener
+  //   process).
 }
 
 /**
@@ -91,6 +111,8 @@ __attribute__((always_inline)) INLINE static float forcing_terms_timestep(
     const struct phys_const* phys_const, const struct part* p,
     const struct xpart* xp) {
 
+  // Maybe limit based on T?
+
   /* No time-step size limit */
   return FLT_MAX;
 }
@@ -101,7 +123,7 @@ __attribute__((always_inline)) INLINE static float forcing_terms_timestep(
  * @param terms The #forcing_terms properties of the run.
  */
 static INLINE void forcing_terms_print(const struct forcing_terms* terms) {
-
+  // TODO
   message("Forcing terms is 'No forcing terms'.");
 }
 
@@ -125,4 +147,4 @@ static INLINE void forcing_terms_init(struct swift_params* parameter_file,
   /* Nothing to do here */
 }
 
-#endif /* SWIFT_FORCING_NONE_H */
+#endif /* SWIFT_FORCING_DRIVEN_TURBULENCE_H */

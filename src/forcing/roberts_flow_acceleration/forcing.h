@@ -165,6 +165,25 @@ __attribute__((always_inline)) INLINE static void forcing_terms_apply(
 }
 
 /**
+ * @brief Updates the forcing terms.
+ *
+ * We do nothing in this scheme.
+ *
+ * @param time The current time.
+ * @param timestep The timestep to the current time.
+ * @param terms The properties of the forcing terms.
+ * @param s The #space we act on.
+ * @param us The current internal system of units
+ * @param phys_const The physical constants in internal units.
+ */
+__attribute__((always_inline)) INLINE static void forcing_terms_update(
+    const double time, const double timestep, const struct forcing_terms* terms,
+    const struct space* s, const struct unit_system* us,
+    const struct phys_const* phys_const) {
+  /* Nothing to do here */
+}
+
+/**
  * @brief Computes the time-step condition due to the forcing terms.
  *
  * Nothing to do here. --> Return FLT_MAX.
