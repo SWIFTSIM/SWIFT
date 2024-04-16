@@ -170,6 +170,9 @@ In the chemistry, we are using the smoothed metallicity scheme that consists in 
     initial_metallicity: 1         # Initial metallicity of the gas (mass fraction)
     scale_initial_metallicity: 1   # Should we scale the initial metallicity with the solar one?
 
+
+.. _gear_feedback:
+   
 Feedback
 ~~~~~~~~
 
