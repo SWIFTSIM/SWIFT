@@ -105,7 +105,7 @@
 #include "tools.h"
 #include "units.h"
 #include "velociraptor_interface.h"
-#include "zoom_region/zoom_split.h"
+#include "zoom_region/zoom.h"
 
 const char *engine_policy_names[] = {"none",
                                      "rand",

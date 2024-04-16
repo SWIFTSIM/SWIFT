@@ -29,7 +29,7 @@
 #include "parser.h"
 #include "space.h"
 #include "swift.h"
-#include "zoom_region/zoom_init.h"
+#include "zoom_region/zoom.h"
 
 void make_mock_space(struct space *s, const double zoom_width) {
 

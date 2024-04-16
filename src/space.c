@@ -61,7 +61,7 @@
 #include "threadpool.h"
 #include "tools.h"
 #include "tracers.h"
-#include "zoom_region/zoom_init.h"
+#include "zoom_region/zoom.h"
 
 /* Split size. */
 int space_splitsize = space_splitsize_default;

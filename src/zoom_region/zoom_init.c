@@ -29,7 +29,7 @@
 #include "engine.h"
 #include "gravity_properties.h"
 #include "space.h"
-#include "zoom_init.h"
+#include "zoom.h"
 
 /* mpi headers. */
 #ifdef WITH_MPI

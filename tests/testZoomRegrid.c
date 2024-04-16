@@ -25,8 +25,7 @@
 
 /* Local headers. */
 #include "swift.h"
-#include "zoom_region/zoom_init.h"
-#include "zoom_region/zoom_regrid.h"
+#include "zoom_region/zoom.h"
 
 /* This script tests the process of regridding a zoom simulation. It'll first
  * calculate the zoom geometry, construct the cell structures as would be done
