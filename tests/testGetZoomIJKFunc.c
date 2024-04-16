@@ -44,9 +44,9 @@ void make_mock_space(struct space *s) {
   s->e = NULL;
 
   /* Allocate memory for the gparts. */
-  struct gpart *gparts =
-      (struct gpart *)malloc(s->nr_gparts * sizeof(struct gpart));
-  if (gparts == NULL) {
+  struct gpart *gparts = NULL;
+  if (posix_memalign((void **)&gparts, gpart_align,
+                     s->nr_gparts * sizeof(struct gpart)) != 0) {
     error("Failed to allocate memory for gparts");
   }
   bzero(gparts, s->nr_gparts * sizeof(struct gpart));
@@ -95,9 +95,9 @@ void make_mock_cells(struct space *s) {
           zoom_props->buffer_cdim[2];
 
   /* Allocate cells. */
-  s->cells_top = (struct cell *)malloc(s->nr_cells * sizeof(struct cell));
-  if (s->cells_top == NULL) {
-    error("Failed to allocate memory for cells");
+  if (posix_memalign((void **)&s->cells_top, cell_align,
+                     s->nr_cells * sizeof(struct cell)) != 0) {
+    error("Couldn't allocate the cell");
   }
   bzero(s->cells_top, s->nr_cells * sizeof(struct cell));
 
@@ -235,22 +235,19 @@ int main(int argc, char *argv[]) {
   parser_read_file(input_file, &param_file);
 
   /* Create a space structure. */
-  struct space *s = malloc(sizeof(struct space));
-  if (s == NULL) {
-    error("Failed to allocate memory for space");
-  }
-  bzero(s, sizeof(struct space));
-  make_mock_space(s);
+  struct space s;
+  bzero(&s, sizeof(struct space));
+  make_mock_space(&s);
 
   /* Flag that we are running a zoom. */
-  s->with_zoom_region = 1;
+  s.with_zoom_region = 1;
 
   /* Run the zoom_init function. */
-  zoom_props_init(&param_file, s, 0);
-  zoom_region_init(s, 0);
+  zoom_props_init(&param_file, &s, 0);
+  zoom_region_init(&s, 0);
 
   /* Make the cells. */
-  make_mock_cells(s);
+  make_mock_cells(&s);
 
   /* Define coordinates to test. */
   const double zoom_coords[3] = {500.0, 500.0, 500.0};
@@ -259,16 +256,16 @@ int main(int argc, char *argv[]) {
 
   /* Get a zoom, buffer and background cell using cell_getid functions. */
   const size_t zoom_cell_id =
-      cell_getid_from_pos(s, zoom_coords[0], zoom_coords[1], zoom_coords[2]);
+      cell_getid_from_pos(&s, zoom_coords[0], zoom_coords[1], zoom_coords[2]);
   const size_t buffer_cell_id = cell_getid_from_pos(
-      s, buffer_coords[0], buffer_coords[1], buffer_coords[2]);
+      &s, buffer_coords[0], buffer_coords[1], buffer_coords[2]);
   const size_t bkg_cell_id =
-      cell_getid_from_pos(s, bkg_coords[0], bkg_coords[1], bkg_coords[2]);
+      cell_getid_from_pos(&s, bkg_coords[0], bkg_coords[1], bkg_coords[2]);
 
   /* Get the cells. */
-  const struct cell *zoom_cell = &s->cells_top[zoom_cell_id];
-  const struct cell *buffer_cell = &s->cells_top[buffer_cell_id];
-  const struct cell *bkg_cell = &s->cells_top[bkg_cell_id];
+  const struct cell *zoom_cell = &s.cells_top[zoom_cell_id];
+  const struct cell *buffer_cell = &s.cells_top[buffer_cell_id];
+  const struct cell *bkg_cell = &s.cells_top[bkg_cell_id];
 
   /* Test that the right type of cell was returned. */
   assert(zoom_cell->type == cell_type_zoom);
@@ -295,9 +292,8 @@ int main(int argc, char *argv[]) {
   assert(bkg_coords[2] >= bkg_cell->loc[2] &&
          bkg_coords[2] < bkg_cell->loc[2] + bkg_cell->width[2]);
 
-  free(s->cells_top);
-  free(s->zoom_props);
-  free(s);
+  free(s.cells_top);
+  free(s.zoom_props);
 
   return 0;
 }

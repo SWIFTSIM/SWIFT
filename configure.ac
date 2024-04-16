@@ -3149,6 +3149,7 @@ AC_CONFIG_FILES([tests/testNeutrinoCosmology.sh], [chmod +x tests/testNeutrinoCo
 AC_CONFIG_FILES([tests/testZoomInit.sh], [chmod +x tests/testZoomInit.sh])
 AC_CONFIG_FILES([tests/testGetZoomIJKFunc.sh], [chmod +x tests/testGetZoomIJKFunc.sh])
 AC_CONFIG_FILES([tests/testZoomRegrid.sh], [chmod +x tests/testZoomRegrid.sh])
+AC_CONFIG_FILES([tests/testZoomVoidTree.sh], [chmod +x tests/testZoomVoidTree.sh])
 AC_CONFIG_FILES([tests/output_list_params.yml])
 
 # Save the compilation options

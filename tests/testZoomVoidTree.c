@@ -27,12 +27,7 @@
 #include "swift.h"
 #include "zoom_region/zoom_init.h"
 #include "zoom_region/zoom_regrid.h"
-
-/* This script tests the process of regridding a zoom simulation. It'll first
- * calculate the zoom geometry, construct the cell structures as would be done
- * in a run during a regrid, populates 1 particle per cell and then tests that
- * all cells (and different cell types) containing the expected number
- * particles. This ensures the regrid produces the expected cell structure. */
+#include "zoom_region/zoom_split.h"
 
 void make_mock_space(struct space *s) {
 
@@ -127,6 +122,11 @@ void make_mock_space(struct space *s) {
   }
 
   s->gparts = gparts;
+
+  /* Allocate sub cells and multipoles. */
+  s->cells_sub = (struct cell **)calloc(2, sizeof(struct cell *));
+  s->multipoles_sub =
+      (struct gravity_tensors **)calloc(2, sizeof(struct gravity_tensors *));
 }
 
 void associate_gparts_to_cells(struct space *s) {
@@ -143,9 +143,36 @@ void associate_gparts_to_cells(struct space *s) {
   }
 }
 
-void make_gparts_grid(struct space *s) {}
+void test_cell_tree(struct cell *c, struct space *s) {
+
+  /* Recurse if the the cell is split. */
+  if (c->split) {
+    for (int i = 0; i < 8; i++) {
+      test_cell_tree(c->progeny[i], s);
+    }
+  }
+
+  /* Otherwise we are in a void leaf which should have zoom cell progeny. */
+  else {
+
+    /* Check this void leaf is attached to zoom cells and the zoom cells are
+     * correctly attached. */
+    for (int i = 0; i < 8; i++) {
+      assert(c->progeny[i]->void_parent != NULL);
+      assert(c->progeny[i]->void_parent->subtype == cell_subtype_void);
+      assert(c->progeny[i]->type == cell_type_zoom);
+    }
+
+    /* NOTE: zoom_void_space_split contains a lot of its own checks so this
+     * is sufficient here. */
+  }
+}
 
 int main(int argc, char *argv[]) {
+
+  /* NOTE: This is a modified version of testZoomRegrid. It uses the exact same
+   * construction mechanism and then constructs the void tree and tests it.
+   * This does mean there are redundant background particles  */
 
   /* Initialize CPU frequency, this also starts time. */
   unsigned long long cpufreq = 0;
@@ -181,68 +208,8 @@ int main(int argc, char *argv[]) {
   /* Associate gparts. */
   associate_gparts_to_cells(s);
 
-  /* Test all cells that aren't void or empty have at least one particle. */
-  for (int i = 0; i < s->nr_cells; i++) {
-    struct cell *c = &s->cells_top[i];
-    if (c->subtype != cell_subtype_void && c->subtype != cell_subtype_empty) {
-      if (c->grav.count == 0) {
-        error(
-            "Cell %d has no particles (c->type = %s, c->subtype = %s, c->loc = "
-            "[%f, %f, %f])",
-            i, cellID_names[c->type], subcellID_names[c->subtype], c->loc[0],
-            c->loc[1], c->loc[2]);
-      }
-    }
-
-    /* If we have a background cell ensure the count is 1 (because of nesting
-     * zoom and buffer cells can have more). */
-    if (c->type == cell_type_bkg && c->subtype != cell_subtype_empty &&
-        c->grav.count != 1) {
-      error(
-          "Cell %d has %d particles (c->type = %s, c->subtype = %s, c->loc = "
-          "[%f, %f, %f])",
-          i, c->grav.count, cellID_names[c->type], subcellID_names[c->subtype],
-          c->loc[0], c->loc[1], c->loc[2]);
-    }
-
-    /* Ensure empty and void cells have 0 counts. */
-    if (c->subtype == cell_subtype_empty || c->subtype == cell_subtype_void) {
-      if (c->grav.count != 0) {
-        error(
-            "Cell %d has %d particles (c->type = %s, c->subtype = %s, c->loc = "
-            "[%f, %f, %f])",
-            i, c->grav.count, cellID_names[c->type],
-            subcellID_names[c->subtype], c->loc[0], c->loc[1], c->loc[2]);
-      }
-    }
-  }
-
-  /* Test each cell type contains the expected counts. (This ensures the zoom
-   * and void cells make sense too.)*/
-  int zoom_count = 0;
-  int bkg_count = 0;
-  int buffer_count = 0;
-  for (int i = 0; i < s->nr_cells; i++) {
-    struct cell *c = &s->cells_top[i];
-    if (c->type == cell_type_zoom) {
-      zoom_count += c->grav.count;
-    } else if (c->type == cell_type_bkg) {
-      bkg_count += c->grav.count;
-    } else if (c->type == cell_type_buffer) {
-      buffer_count += c->grav.count;
-    } else {
-      error("Cell %d has unexpected type %s", i, cellID_names[c->type]);
-    }
-  }
-
-  /* Zoom region should have zoomcdim^3 + 8 high res corners + 8 void cells. */
-  assert(zoom_count == 16 * 16 * 16 + 8 + 8);
-
-  /* Background cell should have bkgcdim^3 - 8 empty */
-  assert(bkg_count == 10 * 10 * 10 - 8);
-
-  /* Buffer cell should have buffercdim^3 - 8 void + 8 empty */
-  assert(buffer_count == 10 * 10 * 10);
+  /* Construct the void cell tree. */
+  zoom_void_space_split(s, /*verbose*/ 0);
 
   /* Free the space. */
   free(s->local_cells_top);
@@ -261,6 +228,8 @@ int main(int argc, char *argv[]) {
   free(s->cells_top);
   free(s->gparts);
   free(s->zoom_props);
+  free(s->cells_sub);
+  free(s->multipoles_sub);
   free(s);
 
   return 0;
