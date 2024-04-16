@@ -23,6 +23,14 @@
 /* Local includes */
 #include "tracers_triggers.h"
 
+/*! The possible accretion modes every black hole can take. */
+enum BH_accretion_modes {
+  BH_thick_disc = 0,       /* At low Eddington ratios */
+  BH_thin_disc,            /* At moderate Eddington ratios */
+  BH_slim_disc,            /* Super-Eddington accretion */
+  BH_accretion_modes_count /* Number of possible accretion modes */
+};
+
 /**
  * @brief Properties of the tracers stored in the extended particle data.
  */
