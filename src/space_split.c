@@ -34,7 +34,7 @@
 #include "multipole.h"
 #include "star_formation_logger.h"
 #include "threadpool.h"
-#include "zoom_region/zoom_cell.h"
+#include "zoom_region/zoom.h"
 
 /**
  * @brief Allocate the particle buffers ready for populating during splitting.

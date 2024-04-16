@@ -29,9 +29,7 @@
 #include "cell.h"
 #include "engine.h"
 #include "scheduler.h"
-#include "zoom_region/zoom_cell.h"
-#include "zoom_region/zoom_init.h"
-#include "zoom_region/zoom_regrid.h"
+#include "zoom_region/zoom.h"
 
 /**
  * @brief Get the current h_max.

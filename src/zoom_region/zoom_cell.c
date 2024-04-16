@@ -28,7 +28,7 @@
 #include "cell.h"
 #include "multipole.h"
 #include "space.h"
-#include "zoom_cell.h"
+#include "zoom.h"
 
 /**
  * @brief Is this cell within the buffer region?

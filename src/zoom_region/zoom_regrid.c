@@ -28,8 +28,7 @@
 #include "engine.h"
 #include "gravity_properties.h"
 #include "scheduler.h"
-#include "zoom_init.h"
-#include "zoom_regrid.h"
+#include "zoom.h"
 
 /**
  * @breif Check whether we need a regrid based on the zoom region.

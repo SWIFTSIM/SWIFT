@@ -20,15 +20,12 @@
 /* Config */
 #include <config.h>
 
-/* This objects header. */
-#include "zoom_split.h"
-
 /* Local includes */
 #include "cell.h"
 #include "engine.h"
 #include "space.h"
 #include "threadpool.h"
-#include "zoom_cell.h"
+#include "zoom.h"
 
 /**
  * @brief Recursively split a cell.

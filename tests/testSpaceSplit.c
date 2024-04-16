@@ -31,7 +31,7 @@
 #include "parser.h"
 #include "space.h"
 #include "swift.h"
-#include "zoom_region/zoom_init.h"
+#include "zoom_region/zoom.h"
 
 double generate_gaussian_coordinate(const double mean, const double std,
                                     const double cell_width) {
