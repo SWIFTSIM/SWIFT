@@ -800,35 +800,35 @@ SPINJETAGN:
   include_jets:                       1          # Global switch whether to include jet feedback [1] or not [0].
   turn_off_radiative_feedback:        0          # Global switch whether to turn off radiative (thermal) feedback [1] or not [0]. This should only be used if 'include_jets' is set to 1, since we want feedback in some form or another.
   alpha_acc:                          0.2        # Viscous alpha of the subgrid accretion disks. Likely to be within the 0.1-0.3 range. The main effect is that it sets the transition accretion rate between the thin and thick disk, as dot(m) = 0.2 * alpha^2.
-  mdot_crit_ADAF:                     0.03       # The transition normalized accretion rate (Eddington ratio) at which the disc goes from thick (low accretion rates) to thin (high accretion rates). The feedback also changes from kinetic jets to thermal isotropic, respectively.
+  mdot_crit_ADAF:                     0.01       # The transition normalized accretion rate (Eddington ratio) at which the disc goes from thick (low accretion rates) to thin (high accretion rates). The feedback also changes from kinetic jets to thermal isotropic, respectively.
   seed_spin:                          0.01       # The (randomly-directed) black hole spin assigned to BHs when they are seeded. Should be strictly between 0 and 1.
   AGN_jet_velocity_model:             Constant   # How AGN jet velocities are calculated. If 'Constant', a single value is used. If 'BlackHoleMass', then an empirical relation between halo mass and black hole mass is used to calculate jet velocities. 'HaloMass' is currently not supported. 
   v_jet_km_p_s:                       3160.      # Jet velocity to use if 'AGN_jet_velocity_model' is 'Constant'. Units are km/s.
-  v_jet_cs_ratio:                     10.        # This sets the jet velocity to v_jet_cs_ratio times the sound speed of the hot gas of the parent halo the black hole is in. This is used if 'AGN_jet_velocity_model' is 'BlackHoleMass'.
-  v_jet_BH_mass_scaling_reference_mass_Msun: 3.4e3 # The reference mass used in the relation between halo mass and BH mass used to calculate jet velocities. Only used if 'AGN_jet_velocity_model' is 'BlackHoleMass'.
-  v_jet_BH_mass_scaling_slope:        0.65       # The slope of the relation between halo mass and BH mass used to calculate jet velocities. Only used if 'AGN_jet_velocity_model' is 'BlackHoleMass'.
-  v_jet_mass_loading:                 400.       # The constant mass loading to use if 'AGN_jet_velocity_model' is 'MassLoading'.
-  v_jet_xi:                           1.         # The numerical multiplier by which the jet velocity formula is scaled, if 'AGN_jet_velocity_model' is 'Local'. If a value of 1 is used, the formulas are used as derived, i.e. they are not rescaled.
+  v_jet_BH_mass_scaling_reference_mass_Msun: 1e9 # The reference mass used in the relation between halo mass and BH mass used to calculate jet velocities. Only used if 'AGN_jet_velocity_model' is 'BlackHoleMass'.
+  v_jet_BH_mass_scaling_slope:        0.5        # The slope of the relation between halo mass and BH mass used to calculate jet velocities. Only used if 'AGN_jet_velocity_model' is 'BlackHoleMass'.
   v_jet_min_km_p_s:                   500        # The minimal jet velocity. This is used if 'AGN_jet_velocity_model' is 'BlackHoleMass', 'MassLoading' or 'Local'.
-  v_jet_max_km_p_s:                   1e5        # The maximal jet velocity. This is used if 'AGN_jet_velocity_model' is 'BlackHoleMass', 'MassLoading' or 'Local'.
-  temperature_hot_gas_min_K:          1e4        # The minimum temperature (in Kelvin) of hot gas to include in the calculation of the hot gas sound speed around the BH. This is only used if 'AGN_jet_velocity_model' or 'AGN_heating_temperature_model' is 'Local'.
+  v_jet_max_km_p_s:                   1e4        # The maximal jet velocity. This is used if 'AGN_jet_velocity_model' is 'BlackHoleMass', 'MassLoading' or 'Local'.
   opening_angle_in_degrees:           7.5        # The half-opening angle of the jet in degrees. Should use values < 15 unless for tests.
   N_jet:                              2          # Target number of particles to kick as part of a single jet feedback event. Should be a multiple of 2 to ensure approximate momentum conservation (we always kick particles in pairs, one from each 'side' of the BH, relative to the spin vector).
-  AGN_jet_feedback_model:             MinimumDistance   # Which particles to kick from the black hole smoothing kernels. Should be 'SpinAxis', 'MinimumDistance', 'MaximumDistance' or 'MinimumDensity'
+  AGN_jet_feedback_model:             MinimumDistance # Which particles to kick from the black hole smoothing kernels. Should be 'SpinAxis', 'MinimumDistance', 'MaximumDistance' or 'MinimumDensity'
   eps_f_jet:                          1.         # Coupling efficiency for jet feedback. No reason to expect this to be less than 1.
   fix_jet_efficiency:                 0          # Global switch whether to fix jet efficiency to a particular value [1], or use a spin-dependant formula [0].
   jet_efficiency:                     0.1        # The constant jet efficiency used if 'fix_jet_efficiency' is set to 1.
   fix_jet_direction:                  0          # Global switch whether to fix the jet direction to be along the z-axis, instead of along the spin vector.
-  accretion_efficiency:               0.1        # The accretion efficiency (suppression factor of the accretion rate) to use in the thick disc (ADAF), to represent the effects of subgrid winds that take away most of the mass flowing through the accretion disc.
+  accretion_efficiency_mode:          Constant   # How the accretion efficiencies are calculated for the thick accretion disc. If 'Constant', the value of 'accretion_efficiency_thick' will be used. If 'Vari
+able', the accretion efficiency will scale with Eddington ratio.
+  accretion_efficiency_thick:         0.01       # The accretion efficiency (suppression factor of the accretion rate) to use in the thick disc (ADAF), to represent the effects of subgrid ADIOS winds that take away most of the mass flowing through the accretion disc.
+  accretion_efficiency_slim:          1          # The constant accretion efficiency to use in the slim disc, at super-Eddington rates.
   fix_radiative_efficiency:           0          # Global switch whether to fix the radiative efficiency to a particular value [1], or use a spin-dependant formula [0]. 
   radiative_efficiency:               0.1        # The constant jet efficiency used if 'fix_radiative_efficiency' is set to 1. Otherwise, this value is used to define the Eddington accretion rate.
   TD_region:                          B          # How to treat the subgrid accretion disk if it is thin, according to the Shakura & Sunyaev (1973) model. If set to B, region b will be used. If set to C, region c will be used.
   include_GRMHD_spindown:             1          # Whether to include high jet spindown rates from GRMHD simulations [1], or use an analytical formula that assumes extraction of energy from the rotational mass/energy of the BH.
-  turn_off_secondary_feedback:        1          # If set to 1, there will be only radiative (thermal) feedback in the thin disk mode, and only jets in the thick disk mode.
-  jet_h_r_slope:                      1.         # The slope of the dependence of jet efficiency on aspect ratio of the subgrid accretion disk, H/R. Default value is 1, and another reasonable value is 0 (same jet efficiency for all disks). Reality could be anything in between. This parameter is only used if turn_off_secondary_feedback is set to 0.
   delta_ADAF:                         0.2        # Electron heating parameter, which controls the strength of radiative feedback in thick disks. Should be between 0.1 and 0.5. This parameter is only used if turn_off_secondary_feedback is set to 0.
-  include_slim_disk:                  0          # Global switch whether to include super-Eddington accretion, modeled as the slim disk. If set to 0, disks will be considered thin even at very large accretion rates.
-
+  include_slim_disk:                  1          # Global switch whether to include super-Eddington accretion, modeled as the slim disk. If set to 0, disks will be considered thin even at very large accretion rates.
+  use_jets_in_thin_disc:              1          # Whether to use jets alongside radiation in the thin disc at moderate Eddington ratios.
+  use_ADIOS_winds:                    1          # Whether to include ADIOS winds in the thick disc as thermal isotropic feedback (same channel as thin disc quasar feedback, but with a different efficiency). 
+  slim_disc_wind_factor:              1          # The relative efficiency of slim disc winds at super-Eddington rates. If '1', full winds will be used, while '0' will lead to no winds. Any value in between
+ those can also be used. The wind is implemented in the thermal isotropic feedback channel.
   
 # Parameters related to the neutrinos --------------------------------------------
 Neutrino:
@@ -932,6 +932,7 @@ PowerSpectrum:
   num_folds:         6                    # Number of foldings (1 means no foldings), determines the max k
   fold_factor:       4                    # (Optional) factor by which to reduce the box along each side each folding (default: 4)
   window_order:      3                    # (Optional) order of the mass assignment scheme (default: 3, TSC)
+  shift_centre_small_k_bins: 1            # (Optional) Correct the centre of the bins with a small k to account for the small number of modes entering the bin.
   output_list_on:    0                    # (Optional) Enable the output list
   output_list:       ./output_list_ps.txt # (Optional) File containing the output times (see documentation in "Parameter File" section)
   requested_spectra: ["matter-matter","cdm-cdm","starBH-starBH","gas-matter","pressure-pressure","matter-pressure", "neutrino0-neutrino1"] # Array of strings indicating which components should be correlated for power spectra
