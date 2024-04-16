@@ -1001,6 +1001,14 @@ void cell_check_multipole(struct cell *c,
   struct gravity_tensors ma;
   const double tolerance = 1e-3; /* Relative */
 
+  /* If the cell is a void, exit immediately. We don't want
+   * to double count particles in the zoom region which are also in the void
+   * cell multipoles. This is because the void cell multipoles are populated
+   * bottom up from the zoom cells. The void cell tree itself is tested
+   * elsewhere (NOTE: This issue and these cell types only appear when running
+   * with a zoom region). */
+  if (c->subtype == cell_subtype_void) return;
+
   /* First recurse */
   if (c->split)
     for (int k = 0; k < 8; k++)

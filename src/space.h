@@ -40,6 +40,7 @@
 
 /* Avoid cyclic inclusions */
 struct cell;
+struct cell_buff;
 struct cosmology;
 struct gravity_props;
 struct star_formation;
@@ -419,6 +420,9 @@ struct zoom_region_properties {
   /*! Vector outlining the neighbour region lower boundaries. */
   double buffer_lower_bounds[3];
 
+  /*! The depth of the zoom cells within a void cell tree. */
+  int zoom_cell_depth;
+
   /*! Offset in the top level cell list background/natural cells start from. */
   int bkg_cell_offset;
 
@@ -574,7 +578,23 @@ void space_recycle_list(struct space *s, struct cell *cell_list_begin,
                         struct gravity_tensors *multipole_list_end);
 void space_regrid(struct space *s, int verbose);
 void space_allocate_extras(struct space *s, int verbose);
+void space_allocate_and_fill_buffers(const struct cell *c,
+                                     struct cell_buff **restrict buff,
+                                     struct cell_buff **restrict sbuff,
+                                     struct cell_buff **restrict bbuff,
+                                     struct cell_buff **restrict gbuff,
+                                     struct cell_buff **restrict sink_buff);
+void space_split_recursive(struct space *s, struct cell *c,
+                           struct cell_buff *restrict buff,
+                           struct cell_buff *restrict sbuff,
+                           struct cell_buff *restrict bbuff,
+                           struct cell_buff *restrict gbuff,
+                           struct cell_buff *restrict sink_buff,
+                           const short int tpid);
 void space_split(struct space *s, int verbose);
+void space_construct_progeny(struct space *s, struct cell *c,
+                             const short int tpid);
+void space_populate_multipole(struct cell *c);
 void space_reorder_extras(struct space *s, int verbose);
 void space_list_useful_top_level_cells(struct space *s);
 void space_parts_get_cell_index(struct space *s, int *ind, int *cell_counts,

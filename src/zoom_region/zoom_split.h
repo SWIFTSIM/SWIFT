@@ -1,7 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2019 Stuart McAlpine (stuart.mcalpine@helsinki.fi)
- *               2024 Will J. Roper (w.roper@sussex.ac.uk)
+ * Copyright (c) 2024 Will J. Roper (w.roper@sussex.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -17,19 +16,13 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_ZOOM_CELL_H
-#define SWIFT_ZOOM_CELL_H
+#ifndef SWIFT_ZOOM_SPLIT_H
+#define SWIFT_ZOOM_SPLIT_H
 
 /* Local includes */
-#include "cell.h"
 #include "space.h"
-#include "timeline.h"
 
-/* Zoom specific cell_getid to handle different levels. */
-void zoom_construct_tl_cells(struct space *s, const integertime_t ti_current,
-                             int verbose);
+/* Void cell tree construction prototype. */
+void zoom_void_space_split(struct space *s, int verbose);
 
-/* Linking zoom cells to void leaves. */
-void zoom_link_void_leaves(struct space *s, struct cell *c);
-
-#endif /* SWIFT_ZOOM_CELL_H */
+#endif  // SWIFT_ZOOM_SPLIT_H

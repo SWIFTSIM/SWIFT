@@ -595,8 +595,35 @@ void space_regrid(struct space *s, int verbose) {
   }      /* re-build upper-level cells? */
   else { /* Otherwise, just clean up the cells. */
 
-    /* Free the old cells, if they were allocated. */
+    /* Free the old sub-cells, if they were allocated, and reinitialise the top
+     * level cells.  */
     space_free_cells(s);
+#ifdef SWIFT_DEBUG_CHECKS
+    /* Check the cell types counts against what we have now. */
+    int nr_zoom_cells = 0;
+    int nr_buffer_cells = 0;
+    int nr_bkg_cells = 0;
+    for (int k = 0; k < s->nr_cells; k++) {
+      if (s->cells_top[k].type == cell_type_zoom) {
+        nr_zoom_cells++;
+      } else if (s->cells_top[k].type == cell_type_buffer) {
+        nr_buffer_cells++;
+      } else if (s->cells_top[k].type == cell_type_background) {
+        nr_bkg_cells++;
+      }
+    }
+    if (nr_zoom_cells != s->zoom_props->nr_zoom_cells ||
+        nr_buffer_cells != s->zoom_props->nr_buffer_cells ||
+        nr_bkg_cells != s->zoom_props->nr_bkg_cells) {
+      error(
+          "The number of zoom cells (%d), buffer cells (%d) or background "
+          "cells (%d) does not match the expected values (%d, %d, %d).",
+          nr_zoom_cells, nr_buffer_cells, nr_bkg_cells,
+          s->zoom_props->nr_zoom_cells, s->zoom_props->nr_buffer_cells,
+          s->zoom_props->nr_bkg_cells);
+    }
+
+#endif
   }
 
   /* When running with a zoom region we need to check we have a big enough mesh
