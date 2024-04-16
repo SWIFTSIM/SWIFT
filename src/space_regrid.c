@@ -606,7 +606,7 @@ void space_regrid(struct space *s, int verbose) {
         nr_zoom_cells++;
       } else if (s->cells_top[k].type == cell_type_buffer) {
         nr_buffer_cells++;
-      } else if (s->cells_top[k].type == cell_type_background) {
+      } else if (s->cells_top[k].type == cell_type_bkg) {
         nr_bkg_cells++;
       }
     }
