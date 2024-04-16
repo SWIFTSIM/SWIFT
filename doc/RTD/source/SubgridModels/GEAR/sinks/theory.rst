@@ -165,11 +165,41 @@ In this case, the sink with the smallest mass is merged onto the sink with the l
 IMF sampling
 ------------
 
+IMAGE
+
+Now remains one critical question: how are stars formed in this scheme? Simply, by sampling an IMF. 
+In our scheme, population III stars and population II have two different IMF. For the sake of simplicity, in the following presentation, we consider only the case of population II stars. However, this can be easily generalized to population III. 
+
+Consider an IMF such as the one above. We split it into two parts at ``minimal_discrete_masss``. The reason behind this is that we want to spawn star particles that represent *individual* (massive) stars, i.e. they are "discrete". However, for computational reasons, we cannot afford to spawn every stars of the IMF as a single particle. Since the IMF is dominated by low mass stars (< 8 M_sun and even smaller) that do not end up in supernovae, we would have lots of "passive". 
+
+.. note::
+   Recall that currently (April 2024), gear only implements SNIa and SNII as stellar feedback. Stars that do not undergo supernovae phases are "passive" in the current implementation. 
+
+As a result, we group all those low-mass stars in one stellar particle of mass ``stellar_particle_mass``. Such star particles are called "continuous"", contrary to the "discrete" individual stars.  With all those information, we are able to compute the number of stars in the continuous part of the IMF (called :math:`N_c`) and in the discrete part (called :math:`N_d`). Finally, we can compute the probabilities of each part, respectively called :math:`P_c` and :math:`P_d`. Notice that the mathematical derivation is given in the theory latex files. 
+
+Thus, the algorithm to sample the IMF and five the sink their ``target_mass`` is the following :
+
+* draw a random number :math:`\chi`  from a uniform distribution in the interval :math:`(0 , \; 1 ]`;
+* if  :math:`\chi < P_c`: ``sink.target_mass = stellar_particle_mass``;
+* else: ``sink_target_mass = sample_IMF_high()``.
+
+We have assumed that we have a function ``sample_IMF_high()`` that correctly samples the IMF in the discrete part
+
+Now, what happens to the sink? After a first sink forms, we give it a target mass with the algorithm outlined above. The sink then swallow gas particles (see the task graph at the top of the page) and finally spawn stars.  While the sink posses enough mass, we can continue to choose a new target mass. When the sink has not enough mass, the algorithm stops for this timestep. The next timestep, the sink may accrete gas and spawn stars again. If the sink never reaches the target mass, then it cannot spawn stars. In practice however, sink particles could accumulate enough pass to spawn individual (Pop III) stars with masses 240 :math:`M_\odot` and more! 
+
 Star spawning
 -------------
+
+Once the sink spawn a star particle, we need to give properties to the star. From the sink, the star inherits the chemistry properties. Concerning position, the star is currently put at the same location than the sink and the sink is moved by a small distance (randomly chosen) to avoid the two particles to overlap. The star’s velocity is the same than the sink’s one. This model will be improved in a future update. 
 
 
 Stellar feedback
 ----------------
 
-Stellar feedback per se is not in the sink module, but in the feedback one. However, if one uses sink particles with individual stars, the feedback implementation must be adapted. Here is a recap of the GEAR feedback with sink particles. 
+Stellar feedback *per se* is not in the sink module, but in the feedback one. However, if one uses sink particles with individual stars, the feedback implementation must be adapted. Here is a recap of the GEAR feedback with sink particles. 
+
+All details and explanations about GEAR steallr feedback are provided ##in this page##. Here, we only provide the changes from the previous model. 
+
+In the previous model, star particles represented a population of stars with a defined IMF. Now, we have two kinds of star particles: particles representing a *continuous* portion of the IMF (see the image above) and particldd representing a *single* (discrete) star. This requires to update the feedback model such that stars eligible to SN feedback can realise this feedback. In practice, this means that now we have individual SNII feedback for individual stars with mass larger than 8  :math:`M_\odot`. 
+
+SNIa are not yet implemented for the continuous star particle, but it will in a future update. 
