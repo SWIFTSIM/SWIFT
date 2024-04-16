@@ -176,7 +176,7 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
                                                const int with_cosmology) {
 
   /* Say how much we want to write */
-  *num_fields = 56;
+  *num_fields = 59;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_bpart(
@@ -416,7 +416,7 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
       "AGNTotalInjectedEnergies", FLOAT, 1, UNIT_CONV_ENERGY, 0.f, bparts,
       AGN_cumulative_energy,
       "Total (cumulative) physical energies injected into gas particles "
-      "in AGN feedback.");
+      "in AGN feedback, including the effects of both radiation and winds.");
 
   list[36] = io_make_output_field_convert_bpart(
       "Potentials", FLOAT, 1, UNIT_CONV_POTENTIAL, -1.f, bparts,
@@ -433,101 +433,121 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
       "Direction of the black hole spin vector, normalised to unity.");
 
   list[39] = io_make_output_field(
-      "AccretionDiscAspectRatios", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
-      aspect_ratio,
-      "The aspect ratio, h/r, of the subgrid accretion disc "
-      "around the black hole.");
-
-  list[40] = io_make_output_field(
       "JetEfficiencies", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
       jet_efficiency, "Jet power divided by accretion rate.");
 
-  list[41] = io_make_output_field(
+  list[40] = io_make_output_field(
       "RadiativeEfficiencies", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
       radiative_efficiency, "AGN luminosity divided by accretion rate.");
 
-  list[42] = io_make_output_field("CosAccretionDiskAngle", FLOAT, 1,
+  list[41] = io_make_output_field("CosAccretionDiskAngle", FLOAT, 1,
                                   UNIT_CONV_NO_UNITS, 0.f, bparts,
                                   accretion_disk_angle,
                                   "Cosine of the angle between the spin vector "
                                   "and the accreting gas angular momentum.");
 
-  list[43] = io_make_output_field(
+  list[42] = io_make_output_field(
       "AccretionModes", INT, 1, UNIT_CONV_NO_UNITS, 0.f, bparts, accretion_mode,
       "Accretion flow regime. 0 - Thick disk, 1 - Thin disk, 2 - Slim disk");
 
-  list[44] = io_make_output_field(
+  list[43] = io_make_output_field(
       "JetReservoir", FLOAT, 1, UNIT_CONV_ENERGY, 0.f, bparts, jet_reservoir,
       "Total jet energy waiting to be released (once it "
       "grows large enough to kick a single particle).");
 
-  list[45] = io_make_output_field(
+  list[44] = io_make_output_field(
       "InjectedJetEnergies", FLOAT, 1, UNIT_CONV_ENERGY, 0.f, bparts,
       total_jet_energy, "Total jet energy injected into AGN surroundings.");
 
-  list[46] = io_make_output_field(
+  list[45] = io_make_output_field(
       "JetTimeSteps", FLOAT, 1, UNIT_CONV_TIME, 0.f, bparts, dt_jet,
       "Jet-launching-limited time-steps of black holes.");
 
-  list[47] = io_make_output_field(
+  list[46] = io_make_output_field(
       "NumberOfJetParticlesLaunched", INT, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
       AGN_number_of_jet_injections,
       "Integer number of (kinetic) energy injections the black hole has had "
       "so far");
 
-  list[48] = io_make_output_field(
+  list[47] = io_make_output_field(
       "NumberOfAGNJetEvents", INT, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
       AGN_number_of_AGN_jet_events,
       "Integer number of AGN jet launching events the black hole has had"
       " (the number of times the BH did AGN jet feedback)");
 
   if (with_cosmology) {
-    list[49] = io_make_output_field(
+    list[48] = io_make_output_field(
         "LastAGNJetScaleFactors", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
         last_AGN_jet_event_scale_factor,
         "Scale-factors at which the black holes last had an AGN jet event.");
   } else {
-    list[49] = io_make_output_field(
+    list[48] = io_make_output_field(
         "LastAGNJetTimes", FLOAT, 1, UNIT_CONV_TIME, 0.f, bparts,
         last_AGN_jet_event_time,
         "Times at which the black holes last had an AGN jet event.");
   }
 
-  list[50] = io_make_output_field(
+  list[49] = io_make_output_field(
       "EddingtonFractions", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
       eddington_fraction,
       "Accretion rates of black holes in units of their Eddington rates. "
       "This is based on the unlimited accretion rates, so these fractions "
       "can be above the limiting fEdd.");
 
-  list[51] = io_make_output_field(
-      "FOFGroupMasses", FLOAT, 1, UNIT_CONV_MASS, 0.f, bparts, group_mass,
-      "Parent halo masses of the black holes, as determined from the FOF  "
-      "algorithm.");
-
-  list[52] =
+  list[50] =
       io_make_output_field("JetVelocities", FLOAT, 1, UNIT_CONV_VELOCITY, 0.f,
                            bparts, v_jet, "The current jet velocities.");
 
-  list[53] = io_make_output_field(
-      "TotalAccretedMassesByMode", FLOAT, 3, UNIT_CONV_MASS, 0.f, bparts,
-      accreted_mass_by_mode,
+  list[51] = io_make_output_field(
+      "TotalAccretedMassesByMode", FLOAT, BH_accretion_modes_count,
+      UNIT_CONV_MASS, 0.f, bparts, accreted_mass_by_mode,
       "The total accreted mass in each accretion mode. The components to the "
       "mass accreted in the thick, thin and slim disc modes, respectively.");
 
-  list[54] = io_make_output_field(
-      "AGNTotalInjectedEnergiesByMode", FLOAT, 3, UNIT_CONV_ENERGY, 0.f, bparts,
-      thermal_energy_by_mode,
-      "The total energy injected in the thermal AGN feedback mode, split by "
+  list[52] = io_make_output_field(
+      "AGNTotalInjectedEnergiesByMode", FLOAT, BH_accretion_modes_count,
+      UNIT_CONV_ENERGY, 0.f, bparts, thermal_energy_by_mode,
+      "The total energy injected in the thermal AGN feedback mode, including "
+      "the contributions of both radiation and wind feedback, split by "
       "accretion mode. The components correspond to the thermal energy dumped "
       "in the thick, thin and slim disc modes, respectively.");
 
-  list[55] = io_make_output_field(
-      "InjectedJetEnergiesByMode", FLOAT, 3, UNIT_CONV_ENERGY, 0.f, bparts,
-      jet_energy_by_mode,
+  list[53] = io_make_output_field(
+      "InjectedJetEnergiesByMode", FLOAT, BH_accretion_modes_count,
+      UNIT_CONV_ENERGY, 0.f, bparts, jet_energy_by_mode,
       "The total energy injected in the kinetic jet AGN feedback mode, split "
-      "by accretion mode. The components correspond to the thermal energy "
+      "by accretion mode. The components correspond to the jet energy "
       "dumped in the thick, thin and slim disc modes, respectively.");
+
+  list[54] = io_make_output_field(
+      "WindEfficiencies", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
+      wind_efficiency, "The wind efficiencies of the black holes.");
+
+  list[55] = io_make_output_field(
+      "TotalRadiatedEnergies", FLOAT, 1, UNIT_CONV_ENERGY, 0.f, bparts,
+      radiated_energy,
+      "The total energy launched into radiation by the black holes, "
+      "in all accretion modes. ");
+
+  list[56] = io_make_output_field(
+      "RadiatedEnergiesByMode", FLOAT, BH_accretion_modes_count,
+      UNIT_CONV_ENERGY, 0.f, bparts, radiated_energy_by_mode,
+      "The total energy launched into radiation by the black holes, split "
+      "by accretion mode. The components correspond to the radiative energy "
+      "dumped in the thick, thin and slim disc modes, respectively.");
+
+  list[57] = io_make_output_field(
+      "TotalWindEnergies", FLOAT, 1, UNIT_CONV_ENERGY, 0.f, bparts, wind_energy,
+      "The total energy launched into accretion disc winds by the black "
+      "holes, in all accretion modes. ");
+
+  list[58] = io_make_output_field(
+      "WindEnergiesByMode", FLOAT, BH_accretion_modes_count, UNIT_CONV_ENERGY,
+      0.f, bparts, wind_energy_by_mode,
+      "The total energy launched into accretion disc winds by the black "
+      "holes, split by accretion mode. The components correspond to the "
+      "radiative energy dumped in the thick, thin and slim disc modes, "
+      "respectively.");
 
 #ifdef DEBUG_INTERACTIONS_BLACK_HOLES
 
