@@ -31,13 +31,40 @@
 #include "physical_constants.h"
 
 /**
+ * @brief Compute the gravitational radius of a black hole.
+ *
+ * @param a Black hole mass.
+ * @param constants Physical constants (in internal units).
+ */
+__attribute__((always_inline)) INLINE static float
+black_hole_gravitational_radius(float mass,
+                                const struct phys_const* constants) {
+
+  const float r_G =
+      mass * constants->const_newton_G /
+      (constants->const_speed_light_c * constants->const_speed_light_c);
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (r_G <= 0.f) {
+    error(
+        "Something went wrong with calculation of R_G of black holes. "
+        " R_G is %f instead of R_G > 0.",
+        r_G);
+  }
+#endif
+
+  return r_G;
+}
+
+/**
  * @brief Compute the radius of the horizon of a BH particle in gravitational
  * units.
  *
  * @param a Black hole spin, -1 < a < 1.
  */
-__attribute__((always_inline)) INLINE static float r_hor(float a) {
-  return 1. + sqrtf((1. - a) * (1. + a));
+__attribute__((always_inline)) INLINE static float black_hole_horizon_radius(
+    float a) {
+  return 1.f + sqrtf((1.f - a) * (1.f + a));
 }
 
 /**
@@ -49,32 +76,33 @@ __attribute__((always_inline)) INLINE static float r_hor(float a) {
  *
  * @param a Black hole spin, -1 < a < 1.
  */
-__attribute__((always_inline)) INLINE static float r_isco(float a) {
-  const float Z1 = 1. + (cbrtf((1. + fabsf(a)) * (1. - a * a)) +
-                         cbrtf((1. - fabsf(a)) * (1. - a * a)));
-  const float Z2 = sqrtf(3. * a * a + Z1 * Z1);
+__attribute__((always_inline)) INLINE static float black_hole_isco_radius(
+    float a) {
+  const float Z1 = 1.f + (cbrtf((1.f + fabsf(a)) * (1.f - a * a)) +
+                          cbrtf((1.f - fabsf(a)) * (1.f - a * a)));
+  const float Z2 = sqrtf(3.f * a * a + Z1 * Z1);
 
   const float R_ISCO =
-      3. + Z2 - a / fabsf(a) * sqrtf((3. - Z1) * (3. + Z1 + 2. * Z2));
+      3. + Z2 - a / fabsf(a) * sqrtf((3.f - Z1) * (3.f + Z1 + 2.f * Z2));
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (Z1 > 3.) {
+  if (Z1 > 3.f) {
     error(
         "Something went wrong with calculation of Z1 factor for r_isco of"
         " black holes. Z1 is %f instead of Z1 > 3.",
         Z1);
   }
 
-  if ((3. + Z1 + 2. * Z2) < 0.) {
+  if ((3.f + Z1 + 2.f * Z2) < 0.f) {
     error(
         "Something went wrong with calculation of (3. + Z1 + 2. * Z2 ) "
         "factor for r_isco of black holes. (3. + Z1 + 2. * Z2 ) is %f instead "
         "of"
         " (3. + Z1 + 2. * Z2 ) > 0.",
-        3. + Z1 + 2. * Z2);
+        3.f + Z1 + 2.f * Z2);
   }
 
-  if (R_ISCO < 1.) {
+  if (R_ISCO < 1.f) {
     error(
         "Something went wrong with calculation of R_ISCO of black holes. "
         "R_ISCO is %f instead >= 1.",
@@ -92,15 +120,16 @@ __attribute__((always_inline)) INLINE static float r_isco(float a) {
  * @param a Black hole spin magnitude, 0 < a < 1.
  * @param constants Physical constants (in internal units).
  */
-__attribute__((always_inline)) INLINE static float j_BH(
-    struct bpart* bp, const struct phys_const* constants) {
+__attribute__((always_inline)) INLINE static float
+black_hole_angular_momentum_magnitude(struct bpart* bp,
+                                      const struct phys_const* constants) {
 
   const float J_BH =
       fabs(bp->subgrid_mass * bp->subgrid_mass * bp->spin *
            constants->const_newton_G / constants->const_speed_light_c);
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (J_BH <= 0.) {
+  if (J_BH <= 0.f) {
     error(
         "Something went wrong with calculation of j_BH of black holes. "
         " J_BH is %f instead of J_BH > 0.",
@@ -109,31 +138,6 @@ __attribute__((always_inline)) INLINE static float j_BH(
 #endif
 
   return J_BH;
-}
-
-/**
- * @brief Compute the gravitational radius of a black hole.
- *
- * @param a Black hole mass.
- * @param constants Physical constants (in internal units).
- */
-__attribute__((always_inline)) INLINE static float R_gravitational(
-    float mass, const struct phys_const* constants) {
-
-  const float r_G =
-      mass * constants->const_newton_G /
-      (constants->const_speed_light_c * constants->const_speed_light_c);
-
-#ifdef SWIFT_DEBUG_CHECKS
-  if (r_G <= 0.) {
-    error(
-        "Something went wrong with calculation of R_G of black holes. "
-        " R_G is %f instead of R_G > 0.",
-        r_G);
-  }
-#endif
-
-  return r_G;
 }
 
 /**
@@ -159,27 +163,29 @@ __attribute__((always_inline)) INLINE static float R_gravitational(
  * @param constants Physical constants (in internal units).
  * @param props Properties of the black hole scheme.
  */
-__attribute__((always_inline)) INLINE static float r_warp(
+__attribute__((always_inline)) INLINE static float black_hole_warp_radius(
     struct bpart* bp, const struct phys_const* constants,
     const struct black_holes_props* props) {
 
-  /* Define placeholder variable for the result */
-  float Rw = -1.;
+  /* Define placeholder value for the result. We will assign the final result
+     to this variable. */
+  float Rw = -1.f;
 
   /* Gravitational radius */
-  const float R_G = R_gravitational(bp->subgrid_mass, constants);
+  const float R_G =
+      black_hole_gravitational_radius(bp->subgrid_mass, constants);
 
   /* Start branching depending on which accretion mode the BH is in */
   if (bp->accretion_mode == BH_thick_disc) {
 
     /* Eqn. 22 from Lubow et al. (2002) with H/R=h_0_ADAF (thick disk) */
-    const float base = 15.36 * fabsf(bp->spin) / props->h_0_ADAF_2;
-    Rw = R_G * powf(base, 0.4);
+    const float base = 15.36f * fabsf(bp->spin) / props->h_0_ADAF_2;
+    Rw = R_G * powf(base, 0.4f);
   } else if (bp->accretion_mode == BH_slim_disc) {
 
     /* Eqn. 22 from Lubow et al. (2002) with H/R=1/gamma_SD (slim disk) */
-    const float base = 15.36 * fabsf(bp->spin) * props->gamma_SD;
-    Rw = R_G * powf(base, 0.4);
+    const float base = 15.36f * fabsf(bp->spin) * props->gamma_SD;
+    Rw = R_G * powf(base, 0.4f);
   } else if (bp->accretion_mode == BH_thin_disc) {
 
     /* Start branching depending on which region of the thin disk we wish to
@@ -190,20 +196,20 @@ __attribute__((always_inline)) INLINE static float r_warp(
       /* Calculate different factors in eqn. 11 (Griffin et al. 2019) for warp
           radius of region b in Shakura & Sunyaev (1973) */
       float mass_factor =
-          powf(bp->subgrid_mass / (1e8 * constants->const_solar_mass), 0.2);
-      float edd_factor = powf(bp->eddington_fraction, 0.4);
+          powf(bp->subgrid_mass / (1e8f * constants->const_solar_mass), 0.2f);
+      float edd_factor = powf(bp->eddington_fraction, 0.4f);
 
       /* Gather the factors and finalize calculation */
       const float base = mass_factor * fabsf(bp->spin) /
                          (props->xi_TD * props->alpha_factor_08 * edd_factor);
-      const float rw = 3410. * 2. * R_G * powf(base, 0.625);
+      const float rw = 3410.f * 2.f * R_G * powf(base, 0.625f);
 
       /* Self-gravity radius in region b: eqn. 16 in Griffin et al. */
-      mass_factor =
-          powf(bp->subgrid_mass / (1e8 * constants->const_solar_mass), -0.961);
-      edd_factor = powf(bp->eddington_fraction, -0.353);
+      mass_factor = powf(
+          bp->subgrid_mass / (1e8f * constants->const_solar_mass), -0.961f);
+      edd_factor = powf(bp->eddington_fraction, -0.353f);
 
-      const float rs = 4790. * 2. * R_G * mass_factor *
+      const float rs = 4790.f * 2.f * R_G * mass_factor *
                        props->alpha_factor_0549 * edd_factor;
 
       /* Take the minimum */
@@ -214,20 +220,20 @@ __attribute__((always_inline)) INLINE static float r_warp(
 
       /* Calculate different factors in eqn. A8 (Fiacconi et al. 2018) */
       float mass_factor =
-          powf(bp->subgrid_mass / (1e6 * constants->const_solar_mass), 0.2);
-      float edd_factor = powf(bp->eddington_fraction, 0.3);
+          powf(bp->subgrid_mass / (1e6f * constants->const_solar_mass), 0.2f);
+      float edd_factor = powf(bp->eddington_fraction, 0.3f);
 
       /* Gather the factors and finalize calculation */
       const float base = mass_factor * fabsf(bp->spin) /
                          (props->xi_TD * props->alpha_factor_02 * edd_factor);
-      const float rw = 1553. * 2. * R_G * powf(base, 0.5714);
+      const float rw = 1553.f * 2.f * R_G * powf(base, 0.5714f);
 
       /* Repeat the same for self-gravity radius - eqn. A6 in F2018 */
-      mass_factor =
-          powf(bp->subgrid_mass / (1e6 * constants->const_solar_mass), -1.1556);
-      edd_factor = powf(bp->eddington_fraction, -0.48889);
+      mass_factor = powf(
+          bp->subgrid_mass / (1e6f * constants->const_solar_mass), -1.1556f);
+      edd_factor = powf(bp->eddington_fraction, -0.48889f);
 
-      const float rs = 1.2 * 100000. * 2. * R_G * mass_factor *
+      const float rs = 1.2f * 100000.f * 2.f * R_G * mass_factor *
                        props->alpha_factor_06222 * edd_factor;
 
       /* Take the minimum */
@@ -236,7 +242,7 @@ __attribute__((always_inline)) INLINE static float r_warp(
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (Rw < 0.) {
+  if (Rw < 0.f) {
     error(
         "Something went wrong with calculation of Rw of black holes. "
         " Rw is %f instead of Rw >= 0.",
@@ -272,15 +278,17 @@ __attribute__((always_inline)) INLINE static float r_warp(
  * @param constants Physical constants (in internal units).
  * @param props Properties of the black hole scheme.
  */
-__attribute__((always_inline)) INLINE static double m_warp(
+__attribute__((always_inline)) INLINE static double black_hole_warp_mass(
     struct bpart* bp, const struct phys_const* constants,
     const struct black_holes_props* props) {
 
-  /* Define placeholder variable for the result */
+  /* Define placeholder value for the result. We will assign the final result
+     to this variable. */
   double Mw = -1.;
 
   /* Gravitational radius */
-  const float R_G = R_gravitational(bp->subgrid_mass, constants);
+  const float R_G =
+      black_hole_gravitational_radius(bp->subgrid_mass, constants);
 
   /* Start branching depending on which accretion mode the BH is in */
   if ((bp->accretion_mode == BH_thick_disc) ||
@@ -299,7 +307,7 @@ __attribute__((always_inline)) INLINE static double m_warp(
     Mw = 2. * bp->accretion_rate /
          (3. * props->alpha_acc * v_0 *
           sqrtf(bp->subgrid_mass * constants->const_newton_G)) *
-         powf(r_warp(bp, constants, props), 1.5);
+         powf(black_hole_warp_radius(bp, constants, props), 1.5);
   } else {
 
     /* Start branching depending on which region of the thin disk we wish to
@@ -312,7 +320,7 @@ __attribute__((always_inline)) INLINE static double m_warp(
           powf(bp->subgrid_mass / (1e8 * constants->const_solar_mass), 2.2);
       const float edd_factor = powf(bp->eddington_fraction, 0.6);
       const float R_factor =
-          powf(r_warp(bp, constants, props) / (2. * R_G), 1.4);
+          powf(black_hole_warp_radius(bp, constants, props) / (2. * R_G), 1.4);
 
       /* Gather factors and finalize calculation */
       Mw = constants->const_solar_mass * 1.35 * mass_factor *
@@ -325,7 +333,7 @@ __attribute__((always_inline)) INLINE static double m_warp(
           powf(bp->subgrid_mass / (1e6 * constants->const_solar_mass), 2.2);
       const float edd_factor = powf(bp->eddington_fraction, 0.7);
       const float R_factor =
-          powf(r_warp(bp, constants, props) / (2. * R_G), 1.25);
+          powf(black_hole_warp_radius(bp, constants, props) / (2. * R_G), 1.25);
 
       Mw = constants->const_solar_mass * 0.01 * mass_factor *
            props->alpha_factor_08_inv_10 * edd_factor * R_factor;
@@ -364,11 +372,13 @@ __attribute__((always_inline)) INLINE static double m_warp(
  * @param constants Physical constants (in internal units).
  * @param props Properties of the black hole scheme.
  */
-__attribute__((always_inline)) INLINE static double j_warp(
-    struct bpart* bp, const struct phys_const* constants,
-    const struct black_holes_props* props) {
+__attribute__((always_inline)) INLINE static double
+black_hole_warp_angular_momentum(struct bpart* bp,
+                                 const struct phys_const* constants,
+                                 const struct black_holes_props* props) {
 
-  /* Define placeholder variable for the result */
+  /* Define placeholder value for the result. We will assign the final result
+     to this variable. */
   double Jw = -1.;
 
   /* Start branching depending on which accretion mode the BH is in */
@@ -389,8 +399,9 @@ __attribute__((always_inline)) INLINE static double j_warp(
     }
 
     /* Gather factors for the final result  */
+    const double r_warp = black_hole_warp_radius(bp, constants, props);
     Jw = 2. * bp->accretion_rate * omega_0 / (2. * props->alpha_acc * v_0) *
-         r_warp(bp, constants, props) * r_warp(bp, constants, props);
+         r_warp * r_warp;
   } else {
 
     /* Start branching depending on which region of the thin disk we wish to
@@ -402,14 +413,14 @@ __attribute__((always_inline)) INLINE static double j_warp(
        For region b, c=-3/5 (see Griffin et al. 2019), and for region c, c=-3/4
        (see Fiacconi et al. 2018). */
     if (props->TD_region == TD_region_B) {
-      Jw = 0.737 * m_warp(bp, constants, props) *
+      Jw = 0.737 * black_hole_warp_mass(bp, constants, props) *
            sqrtf(bp->subgrid_mass * constants->const_newton_G *
-                 r_warp(bp, constants, props));
+                 black_hole_warp_radius(bp, constants, props));
     }
     if (props->TD_region == TD_region_C) {
-      Jw = 0.714 * m_warp(bp, constants, props) *
+      Jw = 0.714 * black_hole_warp_mass(bp, constants, props) *
            sqrtf(bp->subgrid_mass * constants->const_newton_G *
-                 r_warp(bp, constants, props));
+                 black_hole_warp_radius(bp, constants, props));
     }
   }
 
@@ -433,46 +444,64 @@ __attribute__((always_inline)) INLINE static double j_warp(
  *
  * @param a Black hole spin, -1 < a < 1.
  */
-__attribute__((always_inline)) INLINE static float eps_NT(float a) {
+__attribute__((always_inline)) INLINE static float eps_Novikov_Thorne(float a) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (r_isco(a) <= 0.6667) {
+  if (black_hole_isco_radius(a) <= 0.6667f) {
     error(
-        "Something went wrong with calculation of eps_NT of black holes. "
-        " r_isco is %f instead of r_isco > 1.",
-        r_isco(a));
+        "Something went wrong with calculation of eps_Novikov_Thorn of. "
+        "black holes. r_isco is %f instead of r_isco > 1.",
+        black_hole_isco_radius(a));
   }
 #endif
 
-  return 1. - sqrtf(1. - 2. / 3. / r_isco(a));
+  return 1. - sqrtf(1. - 2.f / (3.f * black_hole_isco_radius(a)));
 }
 
 /**
  * @brief Compute the spin- and accretion rate-dependant radiative efficiency
  * of a BH particle in the super-Eddington (slim disk) regime.
  *
- * This is eqn. 3 in Madau et al. (2014), which is based on numerical GR
+ * This is eqn. 3-6 in Madau et al. (2014), which is based on numerical GR
  * results by Sadowski (2009).
  *
  * @param a Black hole spin, -1 < a < 1.
  * @param m_dot Accretion rate normalized to the Eddington rate.
  */
-__attribute__((always_inline)) INLINE static float eps_SD(float a, float mdot) {
-  const float B = powf(4.627 - 4.445 * a, -0.5524);
-  const float C = powf(827.3 - 718.1 * a, -0.706);
-  const float A = powf(0.9663 - 0.9292 * a, -0.5693);
+__attribute__((always_inline)) INLINE static float eps_slim_disc(float a,
+                                                                 float mdot) {
+  const float B = powf(4.627f - 4.445f * a, -0.5524f);
+  const float C = powf(827.3f - 718.1f * a, -0.706f);
+  const float A = powf(0.9663f - 0.9292f * a, -0.5693f);
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (mdot <= 0.) {
+  if (mdot <= 0.f) {
     error(
-        "The calculation of eps_SD was called even though mdot is %f. "
+        "The calculation of eps_slim_disc was called even though mdot is %f. "
         " This function should not have been called if the accretion rate is "
         " not > 0.",
         mdot);
   }
 #endif
 
-  return 0.1 / mdot * (0.985 / (B + 1.6 / mdot) + 0.015 / (C + 1.6 / mdot)) * A;
+  /* Since we use a definition of the Eddington ratio (mdot) that includes
+     the varying (Novikov-Thorne) radiative efficiency, we need to rescale this
+     back to a constant one, as the paper provides a formula assuming a
+     constant radiative efficiency. They use a value of 1/16, so we redefine
+     the Eddington ratio using the ratio of efficiencies. */
+  const float constant_rad_efficiency = 1.f / 16.f;
+
+  mdot = mdot * constant_rad_efficiency / eps_Novikov_Thorne(a);
+
+  /* Return radiative efficiency as given by Eqn 3 from Madau et al. (2014).
+     Note that the equation provided in the paper is for L / L_Edd, rather than
+     for L / (f_Edd * M_Edd * c^2). We thus need to multiply their Eqn 3 by
+     L_Edd / (f_Edd * M_Edd * c^2) = eps_rad_constant / mdot. Here we have used
+     M_Edd = L_Edd / (eps_rad_constant * c^2). Also note that mdot = f_Edd in
+     our notation. */
+
+  return (constant_rad_efficiency / mdot) *
+         (0.985f / (B + mdot) + 0.015f / (C + mdot)) * A;
 }
 
 /**
@@ -480,18 +509,19 @@ __attribute__((always_inline)) INLINE static float eps_SD(float a, float mdot) {
  *
  * The possible modes are the thick disk, thin disk and slim disk, in
  * order of increasing accretion rate. The transition from thick to thin disk
- * is at 0.4*alpha^2, based on current theory (Yuan & Narayan 2014). The
- * transition from thin to slim disk occurs when the slim disk efficiency
- * becomes sufficiently weak compared to the thin disk one. We parametrize
- * this transition as occuring at eps_SD = props->TD_SD_eps_r_threshold *
- * eps_TD, with props->TD_SD_eps_r_threshold < 1 of order 0.5
+ * is currently governed by a free parameter, props->mdot_crit_ADAF (of order
+ * 0.01. The transition between the thin and slim disc is assumed to take place
+ * at mdot = 1, i.e. for super-Eddington accretion. Note that this assumption
+ * only works if we define mdot by using the spin-dependent radiative
+ * efficiency, which we do.
  *
  * @param bp Pointer to the b-particle data.
  * @param constants Physical constants (in internal units).
  * @param props Properties of the black hole scheme.
  */
-__attribute__((always_inline)) INLINE static void decide_mode(
-    struct bpart* bp, const struct black_holes_props* props) {
+__attribute__((always_inline)) INLINE static void
+black_hole_select_accretion_mode(struct bpart* bp,
+                                 const struct black_holes_props* props) {
 
   /* For deciding the accretion mode, we want to use the Eddington fraction
    * calculated using the raw, unsuppressed accretion rate. This means that
@@ -499,22 +529,15 @@ __attribute__((always_inline)) INLINE static void decide_mode(
    * already suppressed, needs to be unsuppressed (increased) to retrieve the
    * raw Bondi-based Eddington ratio. */
   float eddington_fraction_Bondi = bp->eddington_fraction;
-  if (bp->accretion_mode == BH_thick_disc)
-    eddington_fraction_Bondi *= 1. / props->accretion_efficiency;
+  eddington_fraction_Bondi *= 1.f / bp->accretion_efficiency;
 
   if (eddington_fraction_Bondi < props->mdot_crit_ADAF) {
     bp->accretion_mode = BH_thick_disc;
   } else {
 
     /* The disc is assumed to be slim (super-Eddington) if the Eddington
-     * fraction is above 1. However, the Eddington fraction is typically
-     * (also in this code and model) defined using an Eddington luminosity
-     * with an assumed radiative efficiency of eps_r = 0.1. For this purpose
-     * it is more sensible to define the Eddington luminosity using the spin-
-     * dependent eps_NT(a). We thus assume that the disc becomes super-
-     * Eddington at a critical f_Edd(a) = f_Edd * (eps_NT(a)/0.1) = 1. */
-    if ((eddington_fraction_Bondi * eps_NT(bp->spin) / 0.1 > 1.) &&
-        (props->include_slim_disk)) {
+     * fraction is above 1. */
+    if ((eddington_fraction_Bondi > 1.f) && (props->include_slim_disk)) {
       bp->accretion_mode = BH_slim_disc;
     } else {
       bp->accretion_mode = BH_thin_disc;
@@ -522,142 +545,182 @@ __attribute__((always_inline)) INLINE static void decide_mode(
   }
 
   /* If we do not include radiative feedback, then we force the disk to be in
-     the thick disk mode */
+     the thick disk mode always. */
   if (props->turn_off_radiative_feedback) {
     bp->accretion_mode = BH_thick_disc;
   }
 
   /* similar for if we do not include jets - we force the disk to be thin */
-  if (props->include_jets == 0) {
+  if (!props->include_jets) {
     bp->accretion_mode = BH_thin_disc;
   }
 }
 
 /**
- * @brief Compute the aspect ratio of the subgrid accretion disk.
+ * @brief Compute the accretion efficiency of a BH particle.
  *
  * The result depends on bp->accretion_mode (thick disk, thin disk or
- * slim disk). For the thick disk and slim disk, the aspect ratio is
- * a constant, H/R = h_0.
- *
- * For the thin disk, the result depends on props->TD_region (B - region b from
- * Shakura & Sunyaev 1973, C - region c from Shakura & Sunyaev 1973). In region
- * b, we take H/R as eqn. 8 in Griffin et al. (2019), and in region c H/r is
- * taken directly as eqn. 2.19 from Shakura & Sunyaev (1973).
+ * slim disk). We assume no accretion efficiency (100%) in the thin disk,
+ * and allow for options for a non-zero accretion efficiency in the thick
+ * and slim disc. For both we allow the option of constant values, and for the
+ * thick disc we allow an option for a scaling with Eddington ratio that is
+ * motivated by simulations.
  *
  * @param bp Pointer to the b-particle data.
  * @param constants Physical constants (in internal units).
  * @param props Properties of the black hole scheme.
  */
-__attribute__((always_inline)) INLINE static float aspect_ratio(
-    struct bpart* bp, const struct phys_const* constants,
-    const struct black_holes_props* props) {
+__attribute__((always_inline)) INLINE static float
+black_hole_accretion_efficiency(struct bpart* bp,
+                                const struct black_holes_props* props,
+                                const struct phys_const* constants,
+                                const struct cosmology* cosmo) {
 
-  /* Define placeholder variable for the result */
-  float h_0 = -1.;
+  if (bp->accretion_mode == BH_thick_disc ||
+      bp->accretion_mode == BH_slim_disc) {
 
-  /* Start branching depending on which accretion mode the BH is in.
-   * We assume the thick and slim disc to be very similar in geometrical
-   * terms. */
-  if ((bp->accretion_mode == BH_thick_disc) ||
-      (bp->accretion_mode == BH_slim_disc)) {
-    h_0 = props->h_0_ADAF;
-  } else {
-
-    /* Start branching depending on which region of the thin disk we wish to
-       base the model upon (TD_region=B: region b from Shakura & Sunyaev 1973,
-       or TD_region=C: region c). */
-    if (props->TD_region == TD_region_B) {
-
-      /* Compute factors for eqn. 8 in Griffin et al. (2019). */
-      const float mass_factor =
-          powf(bp->subgrid_mass / (1e8 * constants->const_solar_mass), -0.1);
-      const float edd_factor = powf(bp->eddington_fraction, 0.2);
-      const float R_G = R_gravitational(bp->subgrid_mass, constants);
-      const float R_factor =
-          powf(r_warp(bp, constants, props) / (2. * R_G), 0.05);
-
-      /* Gather factors and finalize calculation. */
-      h_0 = 1.25 * 0.001 * mass_factor * props->alpha_factor_01 * edd_factor *
-            R_factor;
-    }
-    if (props->TD_region == TD_region_C) {
-
-      /* Compute factors for eqn. 2.19 in Shakura & Sunyaev (1973). */
-      const float mass_factor =
-          powf(bp->subgrid_mass / (1e8 * constants->const_solar_mass), -0.1);
-      const float edd_factor = powf(bp->eddington_fraction, 0.15);
-      const float R_G = R_gravitational(bp->subgrid_mass, constants);
-      const float R_factor =
-          powf(r_warp(bp, constants, props) / (2. * R_G), 0.125);
-
-      /* Gather factors and finalize calculation. */
-      h_0 = 1.15 * 0.001 * mass_factor * props->alpha_factor_01 * edd_factor *
-            R_factor;
-    }
-  }
+    if (props->accretion_efficiency_mode == BH_accretion_efficiency_constant) {
+      if (bp->accretion_mode == BH_thick_disc) {
+        return props->accretion_efficiency_thick;
+      } else if (bp->accretion_mode == BH_slim_disc) {
+        return props->accretion_efficiency_slim;
+      } else {
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (h_0 <= 0.) {
-    error(
-        "Something went wrong with calculation of h_0 of black holes. "
-        " h_0 is %f instead of h_0 > 0.",
-        h_0);
-  }
+        error(
+            "This branch of the function accretion_efficiency() should not"
+            " have been reached!");
 #endif
 
-  return h_0;
+        return 1.f;
+      }
+    } else if (props->accretion_efficiency_mode ==
+               BH_accretion_efficiency_variable) {
+
+      if (bp->accretion_mode == BH_thick_disc) {
+
+        /* Compute the transition radius between an outer thin disc and an
+         * inner thick disc. This is assumed to happen at 10 R_G at the
+         * critical value of the Eddington ratio between the two regimes.
+         * The transition radius then increases as 1 / f_Edd^2. Note that
+         * we also need to use the raw (unsuppressed) Eddington ratio here,
+         * hence the multiplication by accretion efficiencies. Note that the
+         * units of the transition radius here are in R_G. */
+        float R_tr = 10.f * props->mdot_crit_ADAF * props->mdot_crit_ADAF *
+                     bp->accretion_efficiency * bp->accretion_efficiency /
+                     (bp->eddington_fraction * bp->eddington_fraction);
+
+        /* We need to also compute the Bondi radius (in units of R_G), which
+         * can be expressed in terms of the ratio between speed of light and
+         * sound speed. */
+        const double c = constants->const_speed_light_c;
+        float gas_c_phys2 = bp->sound_speed_gas * cosmo->a_factor_sound_speed;
+        gas_c_phys2 = gas_c_phys2 * gas_c_phys2;
+        float R_B = c * c / gas_c_phys2;
+
+        /* Limit the transition radius to no larger than R_B and no smaller
+         * than 10 R_G. */
+        R_tr = fminf(R_B, R_tr);
+        R_tr = fmaxf(10.f, R_tr);
+
+        /* Implement the actual scaling of accretion efficiency with transition
+         * radius as found by GRMHD simulations. */
+        float suppr_factor = powf(10.f / R_tr, props->ADIOS_s);
+        return suppr_factor;
+      } else if (bp->accretion_mode == BH_slim_disc) {
+        return props->accretion_efficiency_slim;
+      } else {
+
+#ifdef SWIFT_DEBUG_CHECKS
+        error(
+            "This branch of the function accretion_efficiency() should not"
+            " have been reached!");
+#endif
+
+        return 1.f;
+      }
+    } else {
+
+#ifdef SWIFT_DEBUG_CHECKS
+      error(
+          "This branch of the function accretion_efficiency() should not"
+          " have been reached!");
+#endif
+
+      return 1.f;
+    }
+  } else {
+    return 1.f;
+  }
 }
 
 /**
  * @brief Compute the jet efficiency of a BH particle.
  *
  * The result depends on bp->accretion_mode (thick disk, thin disk or
- * slim disk), through the varying H/R aspect ratios.
+ * slim disk).
  *
  * The equation implemented is eqn. 9 from Tchekhovskoy et al. (2010), with the
- * dimensionless magnetic flux phi taken as eqn. 9 from Narayan et al. (2021).
- *
- * The dependence on the aspect ratio comes from results in Tchekhovskoy et al.
- * (2014) and the dependence in classical Blandford & Znajek (1979) jet theory.
+ * dimensionless magnetic flux phi taken as eqn. 9 from Narayan et al. (2022),
+ * and an additional modification from Ricarte et al. (2023).
  *
  * @param bp Pointer to the b-particle data.
  * @param constants Physical constants (in internal units).
  * @param props Properties of the black hole scheme.
  */
-__attribute__((always_inline)) INLINE static float jet_efficiency(
+__attribute__((always_inline)) INLINE static float black_hole_jet_efficiency(
     struct bpart* bp, const struct black_holes_props* props) {
 
-  float jet_eff = -1.;
+  /* Define placeholder value for the result. We will assign the final result
+     to this variable. */
+  float jet_eff = -1.f;
   if (props->fix_jet_efficiency) {
     jet_eff = props->jet_efficiency;
   } else {
-    const float kappa = 0.05;
+
+    /* Numerical prefactor that appears in the jet power formula, related to
+       the geometry of the magnetic field. */
+    const float kappa = 0.05f;
+
+    /* Definition of angular velocity at the BH event horizon */
     const float horizon_ang_vel =
-        bp->spin / (2. * (1. + sqrtf(1. - bp->spin * bp->spin)));
-    const float phi = -20.2 * bp->spin * bp->spin * bp->spin -
-                      14.9 * bp->spin * bp->spin + 34. * bp->spin + 52.6;
-    jet_eff = kappa * 0.25 * M_1_PI * phi * phi *
-              powf(bp->aspect_ratio * 3.333, props->jet_h_r_slope) *
-              horizon_ang_vel * horizon_ang_vel *
-              (1. + 1.38 * horizon_ang_vel * horizon_ang_vel -
-               9.2 * horizon_ang_vel * horizon_ang_vel * horizon_ang_vel *
+        bp->spin / (2.f * (1.f + sqrtf(1.f - bp->spin * bp->spin)));
+
+    /* Dimensionless magnetic flux as a function of BH spin, using Eqn. (15)
+       from Narayan et al. (2022). */
+    float phi = -20.2f * bp->spin * bp->spin * bp->spin -
+                14.9f * bp->spin * bp->spin + 34.f * bp->spin + 52.6f;
+
+    float Eddington_ratio = bp->eddington_fraction;
+
+    /* Suppress the magnetic flux if we are in the thin or slim disc,
+     * according to results from Ricarte et al. (2023). */
+    if ((bp->accretion_mode == BH_slim_disc) ||
+        (props->use_jets_in_thin_disc && bp->accretion_mode == BH_thin_disc)) {
+      phi *= powf(Eddington_ratio / 1.88f, 1.29f) /
+             (1.f + powf(Eddington_ratio / 1.88f, 1.29f));
+    }
+
+    /* Full jet efficiency formula as in Tchekhovskoy et al. (2010). */
+    jet_eff = kappa * 0.25f * M_1_PI * phi * phi * horizon_ang_vel *
+              horizon_ang_vel *
+              (1.f + 1.38f * horizon_ang_vel * horizon_ang_vel -
+               9.2f * horizon_ang_vel * horizon_ang_vel * horizon_ang_vel *
                    horizon_ang_vel);
   }
 
   /* Turn off jet feedback if we want to do that */
-  if (props->include_jets == 0) {
-    jet_eff = 0.;
+  if (!props->include_jets) {
+    jet_eff = 0.f;
   }
 
   /* Turn off jets in thin disk mode if we want to do that */
-  if ((props->turn_off_secondary_feedback) &&
-      (bp->accretion_mode == BH_thin_disc)) {
-    jet_eff = 0.;
+  if ((bp->accretion_mode == BH_thin_disc) && (!props->use_jets_in_thin_disc)) {
+    jet_eff = 0.f;
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (jet_eff < 0.) {
+  if (jet_eff < 0.f) {
     error(
         "Something went wrong with calculation of jet efficiency of black "
         "holes. jet_eff is %f instead of jet_eff >= 0.",
@@ -684,14 +747,16 @@ __attribute__((always_inline)) INLINE static float jet_efficiency(
  * @param constants Physical constants (in internal units).
  * @param props Properties of the black hole scheme.
  */
-__attribute__((always_inline)) INLINE static float rad_efficiency(
-    struct bpart* bp, const struct black_holes_props* props) {
+__attribute__((always_inline)) INLINE static float
+black_hole_radiative_efficiency(struct bpart* bp,
+                                const struct black_holes_props* props) {
 
   /* Calculate Novikov-Thorne efficiency, which will be needed twice. */
-  const float eps_TD = eps_NT(bp->spin);
+  const float eps_TD = eps_Novikov_Thorne(bp->spin);
 
-  /* Define placeholder variable for the result */
-  float rad_eff = -1;
+  /* Define placeholder value for the result. We will assign the final result
+     to this variable. */
+  float rad_eff = -1.f;
 
   if (props->fix_radiative_efficiency) {
     rad_eff = props->radiative_efficiency;
@@ -705,11 +770,11 @@ __attribute__((always_inline)) INLINE static float rad_efficiency(
     } else if (bp->accretion_mode == BH_slim_disc) {
 
       /* Assign Madau 2014 efficiency to the slim disk. */
-      rad_eff = eps_SD(bp->spin, bp->eddington_fraction);
+      rad_eff = eps_slim_disc(bp->spin, bp->eddington_fraction);
     } else {
 
 #ifdef SWIFT_DEBUG_CHECKS
-      if (props->beta_acc > 1.) {
+      if (props->beta_acc > 1.f) {
         error(
             "Something went wrong with calculation of radiative efficiency of "
             " black holes. beta_acc is %f instead of beta_acc < 1.",
@@ -717,30 +782,36 @@ __attribute__((always_inline)) INLINE static float rad_efficiency(
       }
 #endif
 
-      /* Assign Mahadevan 1997 efficiency to the thick disk. */
-      if (bp->eddington_fraction < props->edd_crit_thick) {
-        rad_eff = 4.8 * eps_TD / r_isco(bp->spin) * (1. - props->beta_acc) *
-                  props->delta_ADAF;
+      /* Assign Mahadevan 1997 efficiency to the thick disk. We implement these
+         using Eqns. (29) and (30) from Griffin et al. (2019). */
+      if (bp->eddington_fraction < props->mdot_crit_ADAF) {
+        rad_eff = 4.8f * eps_TD / black_hole_isco_radius(bp->spin) *
+                  (1.f - props->beta_acc) * props->delta_ADAF;
       } else {
-        rad_eff = 2.4 * eps_TD / r_isco(bp->spin) * props->beta_acc *
-                  bp->eddington_fraction * props->alpha_acc_2_inv;
+        rad_eff = 2.4f * eps_TD / black_hole_isco_radius(bp->spin) *
+                  props->beta_acc * bp->eddington_fraction *
+                  props->alpha_acc_2_inv;
+      }
+
+      /* Add contribution of truncated thin disc from larger radii */
+      if (props->accretion_efficiency_mode ==
+          BH_accretion_efficiency_variable) {
+        float R_tr = 10.f * props->mdot_crit_ADAF * props->mdot_crit_ADAF *
+                     bp->accretion_efficiency * bp->accretion_efficiency /
+                     (bp->eddington_fraction * bp->eddington_fraction);
+        R_tr = fmaxf(10.f, R_tr);
+        rad_eff += 1.f - sqrtf(1. - 2.f / (3.f * R_tr));
       }
     }
   }
 
   /* Turn off radiative feedback if we want to do that */
   if (props->turn_off_radiative_feedback) {
-    rad_eff = 0.;
-  }
-
-  /* Turn off radiation in the thick disk mode if we want to do that */
-  if ((props->turn_off_secondary_feedback) &&
-      (bp->accretion_mode == BH_thick_disc)) {
-    rad_eff = 0.;
+    rad_eff = 0.f;
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (rad_eff < 0.) {
+  if (rad_eff < 0.f) {
     error(
         "Something went wrong with calculation of radiative efficiency of "
         " black holes. rad_eff is %f instead of rad_eff >= 0.",
@@ -749,6 +820,67 @@ __attribute__((always_inline)) INLINE static float rad_efficiency(
 #endif
 
   return rad_eff;
+}
+
+/**
+ * @brief Compute the wind efficiency of a BH particle.
+ *
+ * The result depends on bp->accretion_mode (thick disk, thin disk or
+ * slim disk), with no wind assumed for the thin disc (effectively, the
+ * radiation launches its own wind, while in the thick/slim disc, it is gas
+ * pressure/MHD effects that launch the wind. In all cases, the wind is dumped
+ * as thermal energy, alongside radiation.
+ *
+ * For the thick disk, we take the results from Sadowski et al. (2013)
+ * (2013MNRAS.436.3856S), which is applicable to MAD discs. For the slim disc,
+ * we constructed a fitting function by using the total MHD efficiency from
+ * Ricarte et al. (2023) (2023ApJ...954L..22R), which includes both winds and
+ * jets, and subtracting from that the jet efficiency used by our model.
+ *
+ * @param bp Pointer to the b-particle data.
+ * @param constants Physical constants (in internal units).
+ * @param props Properties of the black hole scheme.
+ */
+__attribute__((always_inline)) INLINE static float black_hole_wind_efficiency(
+    struct bpart* bp, const struct black_holes_props* props) {
+
+  /* (Dimensionless) magnetic flux on the BH horizon, as given by the
+     Narayan et al. (2022) fitting function for MAD discs. */
+  float phi = -20.2f * bp->spin * bp->spin * bp->spin -
+              14.9f * bp->spin * bp->spin + 34.f * bp->spin + 52.6f;
+
+  if (bp->accretion_mode == BH_slim_disc) {
+
+    /* We need to suppress the magnetic flux by an Eddington-ratio-dependent
+       factor (Equation 3 from Ricarte et al. 2023). */
+    float Eddington_ratio = bp->eddington_fraction;
+    phi *= powf(Eddington_ratio / 1.88f, 1.29f) /
+           (1.f + powf(Eddington_ratio / 1.88f, 1.29f));
+    float phi_factor = (1.f + (phi / 50.f) * (phi / 50.f));
+
+    float horizon_ang_vel =
+        bp->spin / (2.f * (1.f + sqrtf(1.f - bp->spin * bp->spin)));
+    float spin_factor =
+        1.f - 8.f * horizon_ang_vel * horizon_ang_vel + 1.f * horizon_ang_vel;
+    if (bp->spin > 0.f) {
+      spin_factor = max(0.4f, spin_factor);
+    } else {
+      spin_factor = max(0.f, spin_factor);
+    }
+
+    /* Final result for slim disc wind efficiency. (Not published
+       yet anywhere) */
+    return props->slim_disc_wind_factor * 0.0635f * phi_factor * spin_factor;
+  } else if (bp->accretion_mode == BH_thick_disc && props->use_ADIOS_winds) {
+
+    /* Equation (29) from Sadowski et al. (2013). */
+    float horizon_ang_vel =
+        bp->spin / (2.f * (1.f + sqrtf(1.f - bp->spin * bp->spin)));
+    return 0.005f * (1.f + 3.f * phi * phi / 2500.f * horizon_ang_vel *
+                               horizon_ang_vel / 0.04f);
+  } else {
+    return 0.f;
+  }
 }
 
 /**
@@ -771,31 +903,34 @@ __attribute__((always_inline)) INLINE static float l_acc(
     struct bpart* bp, const struct phys_const* constants,
     const struct black_holes_props* props) {
 
-  /* Define placeholder variable for the result */
-  float L = -1.;
+  /* Define placeholder value for the result. We will assign the final result
+     to this variable. */
+  float L = -1.f;
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (r_isco(bp->spin) <= 0.6667) {
+  if (black_hole_isco_radius(bp->spin) <= 0.6667f) {
     error(
         "Something went wrong with calculation of l_acc of black holes. "
         " r_isco is %f instead of r_isco > 1.",
-        r_isco(bp->spin));
+        black_hole_isco_radius(bp->spin));
   }
 #endif
 
   /* Spec. ang. mom. at ISCO */
-  const float L_ISCO = 0.385 * (1. + 2. * sqrtf(3. * r_isco(bp->spin) - 2.));
+  const float L_ISCO =
+      0.385f *
+      (1.f + 2.f * sqrtf(3.f * black_hole_isco_radius(bp->spin) - 2.f));
 
   /* Branch depending on which accretion mode the BH is in */
   if ((bp->accretion_mode == BH_thick_disc) ||
       (bp->accretion_mode == BH_slim_disc)) {
-    L = 0.45 * L_ISCO;
+    L = 0.45f * L_ISCO;
   } else {
     L = L_ISCO;
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (L <= 0.) {
+  if (L <= 0.f) {
     error(
         "Something went wrong with calculation of l_acc of black holes. "
         " l_acc is %f instead of l_acc > 0.",
@@ -807,51 +942,85 @@ __attribute__((always_inline)) INLINE static float l_acc(
 }
 
 /**
- * @brief Compute the evolution of the spin of a BH particle.
+ * @brief Compute the evolution of the spin of a BH particle. This
+ * spinup/spindown rate is equal to da / dln(M_BH)_0, or
+ * da / (d(M_BH,0)/M_BH ), where the subscript '0' means that it is
+ * the mass increment before losses due to jets, radiation or winds
+ * (i.e. without the effect of efficiencies).
  *
  * The result depends on bp->accretion_mode (thick disk, thin disk or
  * slim disk), due to differing spec. ang. momenta as well as jet and
  * radiative efficiencies.
  *
- * This equation corresponds to eqn. 2 in Benson & Babul (2009), including
- * a jet spindown term.
+ * For the thick disc, we use the jet spindown formula from Narayan et al.
+ * (2022). For the slim and thin disc, we use the formula from Ricarte et al.
+ * (2023).
  *
  * @param bp Pointer to the b-particle data.
  * @param constants Physical constants (in internal units).
  * @param props Properties of the black hole scheme.
  */
-__attribute__((always_inline)) INLINE static float da_dln_mbh_0(
+__attribute__((always_inline)) INLINE static float black_hole_spinup_rate(
     struct bpart* bp, const struct phys_const* constants,
     const struct black_holes_props* props) {
   const float a = bp->spin;
 
-  if ((a == 0.) || (a < -0.9981) || (a > 0.9981)) {
+  if ((a == 0.f) || (a < -0.9981f) || (a > 0.9981f)) {
     error(
-        "The da_dln_mbh_0 function was called and spin is %f. Spin should "
+        "The spinup function was called and spin is %f. Spin should "
         " not be a = 0, a < -0.998 or a > 0.998.",
         a);
   }
 
-  float spinup_rate = 0.;
+  if (bp->accretion_mode == BH_thin_disc && !props->use_jets_in_thin_disc) {
 
-  if (props->include_GRMHD_spindown) {
-    if (bp->accretion_mode == BH_thin_disc) {
-      spinup_rate = l_acc(bp, constants, props) -
-                    2. * a * (1. - rad_efficiency(bp, props));
-    } else {
-      spinup_rate = 0.45 - 12.53 * a - 7.8 * a * a + 9.44 * a * a * a +
-                    5.71 * a * a * a * a - 4.03 * a * a * a * a * a;
+    /* If we are in the thin disc and use no jets, we use the simple spinup /
+     * spindown formula, e.g. from Benson & Babul (2009). This accounts for
+     * accretion only. */
+    return l_acc(bp, constants, props) -
+           2.f * a * (1.f - bp->radiative_efficiency);
+
+  } else if (bp->accretion_mode == BH_thick_disc) {
+
+    /* Fiting function from Narayan et al. (2022) */
+    return 0.45f - 12.53f * a - 7.8f * a * a + 9.44f * a * a * a +
+           5.71f * a * a * a * a - 4.03f * a * a * a * a * a;
+
+  } else if (bp->accretion_mode == BH_slim_disc ||
+             (bp->accretion_mode == BH_thin_disc &&
+              props->use_jets_in_thin_disc)) {
+
+    /* Fitting function from Ricarte et al. (2023). */
+    float Eddington_ratio =
+        bp->eddington_fraction * eps_Novikov_Thorne(bp->spin) / 0.1f;
+    float xi = Eddington_ratio * 0.017f;
+    float s_min = 0.86f - 1.94f * bp->spin;
+    float L_ISCO =
+        0.385f *
+        (1.f + 2.f * sqrtf(3.f * black_hole_isco_radius(bp->spin) - 2.f));
+    float s_thin = L_ISCO - 2.f * a * (1.f - eps_Novikov_Thorne(bp->spin));
+    float s_HD = (s_thin + s_min * xi) / (1.f + xi);
+
+    float horizon_ang_vel =
+        fabsf(bp->spin) / (2.f * (1.f + sqrtf(1.f - bp->spin * bp->spin)));
+    float k_EM = 0.23f;
+    if (bp->spin > 0.f) {
+      k_EM = min(0.1f + 0.5f * bp->spin, 0.35f);
     }
-  } else {
-    spinup_rate =
-        l_acc(bp, constants, props) -
-        2. * a * (1. - rad_efficiency(bp, props)) -
-        sqrtf(1. - a * a) / a *
-            (a * a + (1. + sqrtf(1. - a * a)) * (1. + sqrtf(1. - a * a))) *
-            jet_efficiency(bp, props);
-  }
 
-  return spinup_rate;
+    float s_EM = -1.f * bp->spin / fabsf(bp->spin) * bp->jet_efficiency *
+                 (1.f / (k_EM * horizon_ang_vel) - 2.f * bp->spin);
+    return s_HD + s_EM;
+  } else {
+
+#ifdef SWIFT_DEBUG_CHECKS
+    error(
+        "We shouldn't have reached this branch of the "
+        "black_hole_spinup_rate() function!");
+#endif
+
+    return 0;
+  }
 }
 
 /**
@@ -866,7 +1035,7 @@ __attribute__((always_inline)) INLINE static float black_hole_feedback_delta_T(
     const struct bpart* bp, const struct black_holes_props* props,
     const struct cosmology* cosmo, const struct phys_const* constants) {
 
-  float delta_T = -1.;
+  float delta_T = -1.f;
   if (props->AGN_heating_temperature_model ==
       AGN_heating_temperature_constant) {
     delta_T = props->AGN_delta_T_desired;
@@ -898,7 +1067,7 @@ __attribute__((always_inline)) INLINE static float black_hole_feedback_delta_T(
     /* Calculate heating temperature from the power, smoothing length (proper,
        not comoving), neighbour sound speed and neighbour mass. Apply floor. */
     const float delta_T_repl =
-        (2.f * 0.6 * constants->const_proton_mass * feedback_power *
+        (2.f * 0.6f * constants->const_proton_mass * feedback_power *
          replenishment_time_scale) /
         (3.f * constants->const_boltzmann_k * bp->ngb_mass);
 
@@ -911,7 +1080,7 @@ __attribute__((always_inline)) INLINE static float black_hole_feedback_delta_T(
         (0.6 * constants->const_proton_mass) / (constants->const_boltzmann_k) *
         powf(2.f * bp->h * cosmo->a * feedback_power /
                  (sqrtf(15.f) * bp->ngb_mass / ((double)bp->num_ngbs)),
-             0.6667);
+             0.6667f);
 
     /* Calculate minimum temperature from Dalla Vecchia & Schaye (2012) to
        prevent numerical overcooling. This is in Kelvin. */
@@ -952,28 +1121,13 @@ __attribute__((always_inline)) INLINE static float black_hole_feedback_dv_jet(
   float v_jet = -1.;
   if (props->AGN_jet_velocity_model == AGN_jet_velocity_BH_mass) {
 
-    /* Assign the halo mass according to an empirical relation given in the
-       parameter file */
-    const float halo_mass =
-        powf(bp->subgrid_mass / props->v_jet_BH_mass_scaling_reference_mass,
+    v_jet =
+        powf((bp->subgrid_mass / props->v_jet_BH_mass_scaling_reference_mass),
              props->v_jet_BH_mass_scaling_slope);
 
-    /* Get the critical density and virial overdensity at this redshift */
-    const float critical_density = cosmo->critical_density;
-    const float overdensity = cosmo->overdensity_BN98;
-
-    /* Gather the previous factors and compute the virial radius, virial
-       velocity and finally the sound speed in the hot gas */
-    const float virial_radius =
-        cbrtf(3. * halo_mass / (4. * M_PI * overdensity * critical_density));
-    const float virial_velocity =
-        sqrtf(halo_mass * constants->const_newton_G / virial_radius);
-    const float sound_speed = sqrtf(5. / 3. * 0.5) * virial_velocity;
-
-    /* Return the jet velocity as some factor times the sound speed, apply
-     * floor and ceiling values. */
-    v_jet = fmaxf(props->v_jet_min, props->v_jet_cs_ratio * sound_speed);
-    v_jet = fminf(props->v_jet_max, v_jet);
+    /* Apply floor and ceiling values */
+    v_jet = props->v_jet_max * fminf(v_jet, 1.f);
+    v_jet = fmaxf(v_jet, props->v_jet_min);
 
   } else if (props->AGN_jet_velocity_model == AGN_jet_velocity_constant) {
     v_jet = props->v_jet;
@@ -1016,7 +1170,7 @@ __attribute__((always_inline)) INLINE static float black_hole_feedback_dv_jet(
      * power, smoothing length (proper, not comoving), neighbour sound speed
      * and (total) neighbour mass. */
     const float v_jet_repl =
-        sqrtf(jet_power * replenishment_time_scale / (2. * bp->ngb_mass));
+        sqrtf(jet_power * replenishment_time_scale / (2.f * bp->ngb_mass));
 
     /* Calculate jet velocity from the crossing condition, i.e. set the
      * velocity such that a new particle pair will be launched roughly when
@@ -1024,7 +1178,7 @@ __attribute__((always_inline)) INLINE static float black_hole_feedback_dv_jet(
      * power, smoothing length and neighbour mass (per particle, not total). */
     const float v_jet_cross =
         cbrtf(bp->h * cosmo->a * jet_power /
-              (4. * bp->ngb_mass / ((double)bp->num_ngbs)));
+              (4.f * bp->ngb_mass / ((double)bp->num_ngbs)));
 
     /* Find whichever of these two is the minimum, and multiply it by an
      * arbitrary scaling factor (whose fiducial value is 1, i.e. no
@@ -1041,7 +1195,7 @@ __attribute__((always_inline)) INLINE static float black_hole_feedback_dv_jet(
         "supported.");
   }
 
-  if (v_jet <= 0.) {
+  if (v_jet <= 0.f) {
     error(
         "The black_hole_feedback_dv_jet returned a value less than 0. which "
         " is v_jet = %f.",
@@ -1069,7 +1223,7 @@ __attribute__((always_inline)) INLINE static float black_hole_feedback_dv_jet(
  * @param cos_gamma cosine of the angle between the second spin and the initial
  * total angular momentu
  */
-__attribute__((always_inline)) INLINE static float l_variable(
+__attribute__((always_inline)) INLINE static float black_hole_l_variable(
     const float a1, const float a2, const float q, const float eta,
     const float cos_alpha, const float cos_beta, const float cos_gamma) {
 
@@ -1093,38 +1247,6 @@ __attribute__((always_inline)) INLINE static float l_variable(
 
   /* Return the variable l */
   return term1 + term2 + term3 + term4 + term5;
-}
-
-/**
- * @brief Auxilliary function used for the calculation of final spin of
- * a BH merger.
- *
- * This implements the fitting formula for the final spin from Barausse &
- * Rezolla (2009), ApJ, 704, Equation 6. It is used in the merger_spin_evolve()
- * function.
- *
- * @param a1 spin of the first (more massive) black hole
- * @param a2 spin of the less massive black hole
- * @param q mass ratio of the two black holes, 0 < q < 1
- * @param cos_alpha cosine of the angle between the two spins
- * @param cos_beta cosine of the angle between the first spin and the initial
- * total angular momentum
- * @param cos_gamma cosine of the angle between the second spin and the initial
- * total angular momentu
- */
-__attribute__((always_inline)) INLINE static float final_spin(
-    const float a1, const float a2, const float q, const float cos_alpha,
-    const float cos_beta, const float cos_gamma, const float l) {
-
-  /* Gather the terms of Eqn. 6 */
-  const float term1 = a1 * a1;
-  const float term2 = a2 * a2 * q * q * q * q;
-  const float term3 = 2.f * a1 * a2 * q * q * cos_alpha;
-  const float term4 = 2.f * (a1 * cos_beta + a2 * q * q * cos_gamma) * l * q;
-  const float term5 = l * l * q * q;
-
-  /* Calculate the final spin */
-  return sqrtf(term1 + term2 + term3 + term4 + term5) / ((1.f + q) * (1.f + q));
 }
 
 /**
@@ -1159,14 +1281,14 @@ __attribute__((always_inline)) INLINE static float mass_fraction_lost_to_GWs(
  * @param constants Physical constants (in internal units).
  * @param props Properties of the black hole scheme.
  */
-__attribute__((always_inline)) INLINE static float merger_spin_evolve(
-    struct bpart* bpi, const struct bpart* bpj,
-    const struct phys_const* constants) {
+__attribute__((always_inline)) INLINE static float
+black_hole_merger_spin_evolve(struct bpart* bpi, const struct bpart* bpj,
+                              const struct phys_const* constants) {
 
   /* Check if something is wrong with the masses. This is important and could
      possibly happen as a result of jet spindown and mass loss at any time,
      so we want to know about it. */
-  if ((bpj->subgrid_mass <= 0.) || (bpi->subgrid_mass <= 0.)) {
+  if ((bpj->subgrid_mass <= 0.f) || (bpi->subgrid_mass <= 0.f)) {
     error(
         "Something went wrong with calculation of spin of a black hole "
         " merger remnant. The black hole masses are %f and %f, instead of  > "
@@ -1190,7 +1312,7 @@ __attribute__((always_inline)) INLINE static float merger_spin_evolve(
 
   /* Check if the BHs have been spun down to 0. This is again an important
      potential break point, we want to know about it. */
-  if ((spin1 == 0.) || (spin2 == 0.)) {
+  if ((spin1 == 0.f) || (spin2 == 0.f)) {
     error(
         "Something went wrong with calculation of spin of a black hole "
         " merger remnant. The black hole spins are %f and %f, instead of  > 0.",
@@ -1207,8 +1329,8 @@ __attribute__((always_inline)) INLINE static float merger_spin_evolve(
 
   /* We want to compute the direction of the orbital angular momentum of the
      two BHs, which is used in the fits. Start by defining the coordinates in
-     the frame of the centre of mass. For this we first need to compute the
-     centre of mass coodinates and velocity. */
+     the frame of one of the BHs (it doesn't matter which one, the total
+     angular momentum is the same). */
   const float centre_of_mass[3] = {
       (m1 * bpi->x[0] + m2 * bpj->x[0]) / (m1 + m2),
       (m1 * bpi->x[1] + m2 * bpj->x[1]) / (m1 + m2),
@@ -1250,7 +1372,7 @@ __attribute__((always_inline)) INLINE static float merger_spin_evolve(
       m2 * (relative_coordinates_2[0] * relative_velocities_2[1] -
             relative_coordinates_2[1] * relative_velocities_2[0])};
 
-  /* The total, final orbital angular momentum. */
+  /* Calculate the orbital angular momentum itself. */
   const float orbital_angular_momentum[3] = {
       angular_momentum_1[0] + angular_momentum_2[0],
       angular_momentum_1[1] + angular_momentum_2[1],
@@ -1283,6 +1405,7 @@ __attribute__((always_inline)) INLINE static float merger_spin_evolve(
   const float j_BH_2 =
       fabs(bpj->subgrid_mass * bpj->subgrid_mass * bpj->spin *
            constants->const_newton_G / constants->const_speed_light_c);
+
   float total_angular_momentum_direction[3] = {
       j_BH_1 * spin_vec1[0] + j_BH_2 * spin_vec2[0] +
           orbital_angular_momentum[0],
@@ -1327,11 +1450,28 @@ __attribute__((always_inline)) INLINE static float merger_spin_evolve(
 
   /* Get the variable l used in the fit, see Eqn. 10 in Barausse & Rezolla
      (2009). */
-  const float l = l_variable(spin1, spin2, mass_ratio, sym_mass_ratio,
-                             cos_alpha, cos_beta, cos_gamma);
+  const float l = black_hole_l_variable(
+      spin1, spin2, mass_ratio, sym_mass_ratio, cos_alpha, cos_beta, cos_gamma);
+
+  const float l_vector[3] = {l * orbital_angular_momentum_direction[0],
+                             l * orbital_angular_momentum_direction[1],
+                             l * orbital_angular_momentum_direction[2]};
+
+  /* Final spin vector, constructed from the two spins and the auxilliary l
+     vector. */
+  const float spin_vector[3] = {
+      (spin_vec1[0] +
+       spin_vec2[0] * mass_ratio * mass_ratio * l_vector[0] * mass_ratio) /
+          ((1.f + mass_ratio) * (1.f + mass_ratio)),
+      (spin_vec1[1] +
+       spin_vec2[1] * mass_ratio * mass_ratio * l_vector[1] * mass_ratio) /
+          ((1.f + mass_ratio) * (1.f + mass_ratio)),
+      (spin_vec1[2] +
+       spin_vec2[2] * mass_ratio * mass_ratio * l_vector[2] * mass_ratio) /
+          ((1.f + mass_ratio) * (1.f + mass_ratio))};
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (l < 0.) {
+  if (l < 0.f) {
     error(
         "Something went wrong with calculation of spin of a black hole "
         " merger remnant. The l factor is %f, instead of  >= 0.",
@@ -1339,13 +1479,13 @@ __attribute__((always_inline)) INLINE static float merger_spin_evolve(
   }
 #endif
 
-  /* Calculate the magnitude of final spin from Barausse & Rezolla (2009),
-     Eqn. 6. */
+  /* Get magnitude of the final spin simply as the magnitude of the vector. */
   const float final_spin_magnitude =
-      final_spin(spin1, spin2, mass_ratio, cos_alpha, cos_beta, cos_gamma, l);
+      sqrtf(spin_vector[0] * spin_vector[0] + spin_vector[1] * spin_vector[1] +
+            spin_vector[2] * spin_vector[2]);
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (final_spin_magnitude <= 0.) {
+  if (final_spin_magnitude <= 0.f) {
     error(
         "Something went wrong with calculation of spin of a black hole "
         " merger remnant. The final spin magnitude is %f, instead of > 0.",
@@ -1355,15 +1495,15 @@ __attribute__((always_inline)) INLINE static float merger_spin_evolve(
 
   /* Assign the final spin value to the BH, but also make sure we don't go
      above 0.998 nor below 0.001. */
-  bpi->spin = min(final_spin_magnitude, 0.998);
-  if (fabsf(bpi->spin) < 0.01) {
-    bpi->spin = 0.01;
+  bpi->spin = min(final_spin_magnitude, 0.998f);
+  if (fabsf(bpi->spin) < 0.01f) {
+    bpi->spin = 0.01f;
   }
 
   /* Assign the directions of the spin to the BH. */
-  bpi->angular_momentum_direction[0] = total_angular_momentum_direction[0];
-  bpi->angular_momentum_direction[1] = total_angular_momentum_direction[1];
-  bpi->angular_momentum_direction[2] = total_angular_momentum_direction[2];
+  bpi->angular_momentum_direction[0] = spin_vector[0] / final_spin_magnitude;
+  bpi->angular_momentum_direction[1] = spin_vector[1] / final_spin_magnitude;
+  bpi->angular_momentum_direction[2] = spin_vector[2] / final_spin_magnitude;
 
   /* Finally we also want to calculate the fraction of total mass-energy
      lost during the merger to gravitational waves. We use Eqn. 16 and 18
