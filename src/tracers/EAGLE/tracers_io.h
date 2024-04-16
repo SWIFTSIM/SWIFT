@@ -228,7 +228,21 @@ __attribute__((always_inline)) INLINE static int tracers_write_particles(
                                     tracers_data.last_jet_kick_velocity,
                                     "Kick velocity at last AGN jet event.");
 
-    return 15;
+    list[15] = io_make_output_field("LastAGNJetKickMode", CHAR, 1,
+                                    UNIT_CONV_NO_UNITS, 0.f, xparts,
+                                    tracers_data.last_jet_kick_accretion_mode,
+                                    "The accretion/feedback mode the BH was "
+                                    "in when it kicked this particle. 0 "
+                                    "corresponds to the thick disc, 1 to the "
+                                    "thin disc and 2 to the slim disc.");
+
+    list[16] =
+        io_make_output_field("LastAGNJetKickBHId", CHAR, 1, UNIT_CONV_NO_UNITS,
+                             0.f, xparts, tracers_data.last_jet_kick_BH_id,
+                             "The id of the BH that last kicked this "
+                             "particle.");
+
+    return 17;
   } else {
     return 11;
   }
@@ -376,7 +390,21 @@ __attribute__((always_inline)) INLINE static int tracers_write_sparticles(
                                     tracers_data.last_jet_kick_velocity,
                                     "Kick velocity at last AGN jet event.");
 
-    return 15;
+    list[15] = io_make_output_field("LastAGNJetKickMode", CHAR, 1,
+                                    UNIT_CONV_NO_UNITS, 0.f, sparts,
+                                    tracers_data.last_jet_kick_accretion_mode,
+                                    "The accretion/feedback mode the BH was "
+                                    "in when it kicked this particle. 0 "
+                                    "corresponds to the thick disc, 1 to the "
+                                    "thin disc and 2 to the slim disc.");
+
+    list[16] =
+        io_make_output_field("LastAGNJetKickBHId", CHAR, 1, UNIT_CONV_NO_UNITS,
+                             0.f, sparts, tracers_data.last_jet_kick_BH_id,
+                             "The id of the BH that last kicked this "
+                             "particle.");
+
+    return 17;
   } else {
     return 11;
   }
