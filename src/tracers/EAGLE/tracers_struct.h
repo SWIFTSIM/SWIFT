@@ -95,8 +95,15 @@ struct tracers_xpart_data {
   /*! Has this particle been hit by AGN feedback? */
   char hit_by_AGN_feedback;
 
-  /* Kick velocity at last AGN jet event */
+  /*! Kick velocity at last AGN jet event */
   float last_jet_kick_velocity;
+
+  /*! The accretion/feedback mode of the BH when this particle was last
+   * kicked */
+  enum BH_accretion_modes last_jet_kick_accretion_mode;
+
+  /*! The ID of the BH that did the last kick */
+  long long last_jet_kick_BH_id;
 };
 
 /**

@@ -3086,6 +3086,9 @@ AM_CONDITIONAL([HAVEEAGLEKINETICFEEDBACK], [test "$with_feedback" = "EAGLE-kinet
 # check if using grackle cooling
 AM_CONDITIONAL([HAVEGRACKLECOOLING], [test "$with_cooling" = "grackle"])
 
+# check if using EAGLE floor
+AM_CONDITIONAL([HAVEEAGLEFLOOR], [test "$with_entropy_floor" = "EAGLE"])
+
 # check if using gear feedback
 AM_CONDITIONAL([HAVEGEARFEEDBACK], [test "$with_feedback" = "GEAR"])
 
