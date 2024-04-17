@@ -1,5 +1,5 @@
 .. Sink particles in GEAR model
-   Darwin Roduit, 15 March 2024
+   Darwin Roduit, 17 April 2024
 
 .. sink_GEAR_model:
 
@@ -32,7 +32,7 @@ Our main references are the following papers `Bate et al. <https://ui.adsabs.har
 
 
 Conversion from comoving to physical space
-------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 In the following, we always refer to physical quantities. In non-cosmological simulations, there is no ambiguity between comoving and physical quantities, since the universe is not expanding and thus the scale factor is :math:`a(t)=1`. However, in cosmological simulation, we need to take care to convert from comoving quantities to physical ones when needed, e.g. to compute energies. Here is a recap:
 
@@ -47,7 +47,7 @@ Notice that the potential normalization constant has been chosen to be :math:`c(
 
 
 Sink formation
---------------
+~~~~~~~~~~~~~~
 
 .. figure:: sink_accretion_radius.png
     :width: 400px
@@ -116,7 +116,7 @@ The tenth criterion prevents the formation of spurious sinks. Experiences have s
 
 
 Gas accretion
--------------
+~~~~~~~~~~~~~
 
 Now that sink particles can populate the simulation, they need to swallow gas particles. To be accreted, gas particles need to pass a series of criteria. In the following, :math:`s` denotes a sink particle and :math:`i` is a gas particle. The criteria are the following:
 
@@ -154,7 +154,7 @@ Once a gas is eligible for accretion, its properties are assigned to the sink. T
     This figure shows two sink particles (in orange) with gas particles (in blue) falling in the accretion radii of both sinks. In such cases, the gas particles in the overlapping regions are swallowed by the sink they are the most bound to. 
 
 Sink merging
-------------
+~~~~~~~~~~~~
 
 Sinks are allowed to merge if they enter the accretion radius. Two sink particles can be merged if:
 
@@ -163,7 +163,7 @@ Sinks are allowed to merge if they enter the accretion radius. Two sink particle
 In this case, the sink with the smallest mass is merged with the sink with the largest. If the two sinks have the same mass, we check the sink ID number and accrete the smallest ID onto the biggest one. 
 
 IMF sampling
-------------
+~~~~~~~~~~~~
 
 IMAGE
 
@@ -188,13 +188,13 @@ We have assumed that we have a function ``sample_IMF_high()`` that correctly sam
 Now, what happens to the sink? After a first sink forms, we give it a target mass with the algorithm outlined above. The sink then swallows gas particles (see the task graph at the top of the page) and finally spawns stars.  While the sink possesses enough mass, we can continue to choose a new target mass. When the sink does have enough mass, the algorithm stops for this timestep. The next timestep, the sink may accrete gas and spawn stars again. If the sink never reaches the target mass, then it cannot spawn stars. In practice, however, sink particles could accumulate enough pass to spawn individual (Pop III) stars with masses 240 :math:`M_\odot` and more! 
 
 Star spawning
--------------
+~~~~~~~~~~~~~
 
 Once the sink spawns a star particle, we need to give properties to the star. From the sink, the star inherits the chemistry properties. Concerning position, the star is currently put at the same location as the sink and the sink is moved by a small distance (randomly chosen) to avoid the two particles from overlapping. The star’s velocity is the same as the sink’s one. This model will be improved in a future update. 
 
 
 Stellar feedback
-----------------
+~~~~~~~~~~~~~~~~
 
 Stellar feedback *per se* is not in the sink module but in the feedback one. However, if one uses sink particles with individual stars, the feedback implementation must be adapted. Here is a recap of the GEAR feedback with sink particles. 
 
