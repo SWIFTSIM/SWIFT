@@ -20,8 +20,8 @@
 #define SWIFT_GEAR_SINK_PROPERTIES_H
 
 /* Local header */
-#include "parser.h"
 #include "feedback_properties.h"
+#include "parser.h"
 
 /**
  * @brief Properties of sink in the Default model.

@@ -83,11 +83,11 @@ float initial_mass_function_sample(const struct initial_mass_function *imf,
       float exponent = 1. / imf->exp[i];
       float base_part_1 = imf->N_tot * imf->exp[i] / imf->coef[i];
       base_part_1 *= (f - imf->mass_fraction[i]);
-      float base = base_part_1 +  pmin;
+      float base = base_part_1 + pmin;
 
       /* The mathematical expression is:
            (N_tot * exp_{imf, i} / coeff_{imf, i} * (f - mass_fraction_{imf, i})
-	     + pmin)**(1/exp_{imf, i})
+             + pmin)**(1/exp_{imf, i})
       */
       return pow(base, exponent);
     }
@@ -619,9 +619,8 @@ void initial_mass_function_clean(struct initial_mass_function *imf) {
  * @param x : a random number in the range [0, 1].
  */
 INLINE double initial_mass_function_sample_power_law(double min_mass,
-						     double max_mass,
-						     double exp,
-						     double x) {
+                                                     double max_mass,
+                                                     double exp, double x) {
 
   double pmin = pow(min_mass, exp);
   double pmax = pow(max_mass, exp);

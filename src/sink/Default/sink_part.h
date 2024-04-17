@@ -29,9 +29,10 @@
  * particle representing a stellar population ("sink_star_population").
  */
 typedef enum sink_star_modes {
-  sink_single_star, /* particle representing a single star (discrete sampling of IMF)*/
-  sink_star_population /* particle representing a population (continuous sampling of
-		     IMF) */
+  sink_single_star, /* particle representing a single star (discrete sampling of
+                       IMF)*/
+  sink_star_population /* particle representing a population (continuous
+                     sampling of IMF) */
 } sink_star_type;
 
 /**

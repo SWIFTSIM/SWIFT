@@ -65,6 +65,6 @@ void initial_mass_function_restore(struct initial_mass_function *imf,
 void initial_mass_function_clean(struct initial_mass_function *imf);
 
 double initial_mass_function_sample_power_law(double min_mass, double max_mass,
-					      double exp, double x);
+                                              double exp, double x);
 
 #endif  // SWIFT_INITIAL_MASS_FUNCTION_GEAR_H

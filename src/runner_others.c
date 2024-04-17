@@ -54,11 +54,11 @@
 #include "potential.h"
 #include "pressure_floor.h"
 #include "rt.h"
+#include "runner_doiact_sinks.h"
 #include "space.h"
 #include "star_formation.h"
 #include "star_formation_logger.h"
 #include "stars.h"
-#include "runner_doiact_sinks.h"
 #include "timers.h"
 #include "timestep_limiter.h"
 #include "tracers.h"
@@ -278,17 +278,17 @@ void runner_do_star_formation_sink(struct runner *r, struct cell *c,
           /* Update the mass */
           s->mass = s->mass - s->target_mass * phys_const->const_solar_mass;
 
-	  /* Bug fix: Do not forget to update the sink gpart's mass. */
-	  s->gpart->mass = s->mass;
+          /* Bug fix: Do not forget to update the sink gpart's mass. */
+          s->gpart->mass = s->mass;
 
 #ifdef SWIFT_DEBUG_CHECKS
-	  /* This message must be put carefully after giving the star its mass,
-	     updated the sink mass and before changing the target_type */
+          /* This message must be put carefully after giving the star its mass,
+             updated the sink mass and before changing the target_type */
           message(
               "%010lld spawn a star (%010lld) with mass %8.2f Msol type=%d  "
               "loop=%03d. Sink remaining mass: %e Msol.",
-              s->id, sp->id, sp->mass/phys_const->const_solar_mass, s->target_type,
-	      loop, s->mass/phys_const->const_solar_mass);
+              s->id, sp->id, sp->mass / phys_const->const_solar_mass,
+              s->target_type, loop, s->mass / phys_const->const_solar_mass);
 #endif
 
           /* Sample the IMF to the get next target mass */
@@ -598,7 +598,7 @@ void runner_do_sink_formation(struct runner *r, struct cell *c) {
 
         /* Loop over all particles to find the neighbours within r_acc. Then, */
         /* compute all quantities you need to decide to form a sink or not. */
-	runner_do_prepare_part_sink_formation(r, c, p, xp);
+        runner_do_prepare_part_sink_formation(r, c, p, xp);
 
         /* Is this particle star forming? */
         if (sink_is_forming(p, xp, sink_props, phys_const, cosmo, hydro_props,
