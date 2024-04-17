@@ -74,7 +74,7 @@ So, the other criteria are the following:
 
 3. The gas particle is at a local potential minimum: :math:`\Phi_i = \min_j \Phi_j`.
 4. Gas surrounding the particle is at rest or collapsing: :math:`\nabla \cdot \mathbf{v}_{i, p} \leq 0`. (Optional)
-5. The smoothing length of the particle is less than half the accretion radius: :math:`h_i < r_{\text{acc}} / 2`. (Optional)
+5. The smoothing kernel's edge of the particle is less than the accretion radius: :math:`\gamma_k h_i < r_{\text{acc}}`, where :math:`\gamma_k` is kernel dependent. (Optional)
 6. All neighbours are currently active.
 7. The sum of the thermal of the neighbours satisfies: :math:`E_{\text{therm}} < |E_{\text{pot}}|/2`. (Optional, together with criterion 8.)
 8. The sum of thermal energy and rotational energy satisfies: :math:`E_{\text{therm}} + E_{\text{rot}} < | E_{\text{pot}}|`. (Optional, together with criterion 7.)
@@ -92,7 +92,8 @@ Some criteria are *optional* and can be *deactivated*. By default, they are all 
 * :math:`E_{\text{rot}, z} = \displaystyle \frac{1}{2} \sum_j m_j \frac{L_{ij, z}^2}{\sqrt{(x_{i, p} - x_{j, p})^2 + (y_{i,p} - y_{j,p})^2}}`
 * The  (physical) specific angular momentum: :math:`\mathbf{L}_{ij} = ( \mathbf{x}_{i, p} - \mathbf{x}_{j, p}) \times ( \mathbf{v}_{i, p} - \mathbf{x}_{j, p})`
 * :math:`E_{\text{mag}} = \displaystyle \sum_j E_{\text{mag}, j}`
-* :math:`E_{\text{tot}} = E_{\text{kin}} + E_{\text{pot}} +  E_{\text{therm}} + E_{\text{mag}}`
+* :math:`E_{\text{rad}} = \displaystyle \sum_j E_{\text{rad}, j}`
+* :math:`E_{\text{tot}} = E_{\text{kin}} + E_{\text{pot}} +  E_{\text{therm}} + E_{\text{mag}} + E_{\text{rad}}`
 
 .. note::
    Currently, magnetic energy is not included in the total energy, since the MHD scheme is in progress. However, the necessary modifications have already been taken care of.
