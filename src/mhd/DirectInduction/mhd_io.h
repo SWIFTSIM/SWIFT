@@ -291,11 +291,11 @@ INLINE static int mhd_write_particles(const struct part* parts,
       "The curl of Magnetic flux densities of the particles");
 
   list[6] = io_make_output_field(
-      "TIC_beta", FLOAT, 1, UNIT_CONV_NO_UNITS, 1.f, parts, mhd_data.TIC_beta,
+      "TIC_beta", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, parts, mhd_data.TIC_beta,
       "Tensile instability correction term coupling strength");
 
   list[7] = io_make_output_field(
-      "AlphaAR", FLOAT, 1, UNIT_CONV_NO_UNITS, 1.f, parts, mhd_data.alpha_AR,
+      "AlphaAR", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, parts, mhd_data.alpha_AR,
       "Artificial resistivity switch of the particles");
 
   /* Error metrics */
