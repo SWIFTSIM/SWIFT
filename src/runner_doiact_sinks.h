@@ -40,6 +40,6 @@ void runner_do_sinks_sink_swallow_self(struct runner *r, struct cell *c,
 void runner_do_sinks_sink_swallow_pair(struct runner *r, struct cell *ci,
                                        struct cell *cj, int timer);
 
-void runner_do_prepare_part_sink_formation(struct runner* r, struct cell* c,
-					   struct part* restrict p,
-					   struct xpart* restrict xp);
+void runner_do_prepare_part_sink_formation(struct runner *r, struct cell *c,
+                                           struct part *restrict p,
+                                           struct xpart *restrict xp);

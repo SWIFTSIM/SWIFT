@@ -932,34 +932,34 @@ void runner_do_sinks_sink_swallow_pair(struct runner *r, struct cell *ci,
  * @brief Compute the energies (kinetic, potential, etc ) of the gas particle
  * #p and all quantities required for the formation of a sink.
  *
- * Note: This function iterates over gas particles and sink particles. 
+ * Note: This function iterates over gas particles and sink particles.
  *
  * @param e The #engine.
  * @param c The #cell.
  * @param p The #part.
  * @param xp The #xpart data of the particle #p.
  */
-void runner_do_prepare_part_sink_formation(struct runner* r,
-					struct cell* c,
-					struct part* restrict p,
-					struct xpart* restrict xp) {
+void runner_do_prepare_part_sink_formation(struct runner *r, struct cell *c,
+                                           struct part *restrict p,
+                                           struct xpart *restrict xp) {
   struct engine *e = r->e;
-  const struct cosmology* cosmo = e->cosmology;
-  const struct sink_props* sink_props = e->sink_properties;
+  const struct cosmology *cosmo = e->cosmology;
+  const struct sink_props *sink_props = e->sink_properties;
   const int count = c->hydro.count;
-  struct part* restrict parts = c->hydro.parts;
-  struct xpart* restrict xparts = c->hydro.xparts;
+  struct part *restrict parts = c->hydro.parts;
+  struct xpart *restrict xparts = c->hydro.xparts;
 
   /* Loop over all particles to find the neighbours within r_acc. Then,
      compute all quantities you need.  */
   for (int i = 0; i < count; i++) {
 
     /*Get a handle on the part */
-    struct part* restrict pi = &parts[i];
-    struct xpart* restrict xpi = &xparts[i];
+    struct part *restrict pi = &parts[i];
+    struct xpart *restrict xpi = &xparts[i];
 
     /* Compute the quantities required to later decide to form a sink or not. */
-    sink_prepare_part_sink_formation_gas_criteria(e, p, xp, pi, xpi, cosmo, sink_props) ;
+    sink_prepare_part_sink_formation_gas_criteria(e, p, xp, pi, xpi, cosmo,
+                                                  sink_props);
   } /* End of gas neighbour loop */
 
   /* Shall we reset the values of the energies for the next timestep? No, it is
@@ -969,15 +969,16 @@ void runner_do_prepare_part_sink_formation(struct runner* r,
   /* Check that we are not forming a sink in the accretion radius of another
      one. The new sink may be swallowed by the older one.) */
   const int scount = c->sinks.count;
-  struct sink* restrict sinks = c->sinks.parts;
+  struct sink *restrict sinks = c->sinks.parts;
 
   for (int i = 0; i < scount; i++) {
 
-     /* Get a hold of the ith sinks in ci. */
-    struct sink* restrict si = &sinks[i];
+    /* Get a hold of the ith sinks in ci. */
+    struct sink *restrict si = &sinks[i];
 
     /* Compute the quantities required to later decide to form a sink or not. */
-    sink_prepare_part_sink_formation_sink_criteria(e, p, xp, si, cosmo, sink_props);
+    sink_prepare_part_sink_formation_sink_criteria(e, p, xp, si, cosmo,
+                                                   sink_props);
 
   } /* End of sink neighbour loop */
 }

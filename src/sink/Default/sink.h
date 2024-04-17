@@ -278,7 +278,6 @@ INLINE static void sink_update_sink_properties_after_star_formation(struct sink*
 __attribute__((always_inline)) INLINE static void sink_store_potential_in_part(
     struct sink_part_data* p_data, const struct gpart* gp) {}
 
-
 /**
  * @brief Compute all quantities required for the formation of a sink such as
  * kinetic energy, potential energy, etc. This function works on the
@@ -292,10 +291,9 @@ __attribute__((always_inline)) INLINE static void sink_store_potential_in_part(
  * @param xpi The #xpart data of the particle #pi.
  */
 INLINE static void sink_prepare_part_sink_formation_gas_criteria(
-    struct engine* e, struct part* restrict p,
-    struct xpart* restrict xp, struct part* restrict pi,
-    struct xpart* restrict xpi, const struct cosmology* cosmo,
-    const struct sink_props* sink_props) {}
+    struct engine* e, struct part* restrict p, struct xpart* restrict xp,
+    struct part* restrict pi, struct xpart* restrict xpi,
+    const struct cosmology* cosmo, const struct sink_props* sink_props) {}
 
 /**
  * @brief Compute all quantities required for the formation of a sink. This
@@ -308,8 +306,8 @@ INLINE static void sink_prepare_part_sink_formation_gas_criteria(
  * @param si A neighbouring #sink of #p.
  */
 INLINE static void sink_prepare_part_sink_formation_sink_criteria(
-    struct engine* e, struct part* restrict p,
-    struct xpart* restrict xp, struct sink* restrict si,
-    const struct cosmology* cosmo, const struct sink_props* sink_props) {}
+    struct engine* e, struct part* restrict p, struct xpart* restrict xp,
+    struct sink* restrict si, const struct cosmology* cosmo,
+    const struct sink_props* sink_props) {}
 
 #endif /* SWIFT_DEFAULT_SINK_H */
