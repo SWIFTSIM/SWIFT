@@ -329,7 +329,7 @@ INLINE static int sink_is_forming(
 
   /* Smoothing length criterion */
   if ((sink_props->sink_formation_smoothing_length_criterion) &&
-      (h >= 0.5 * sink_cut_off_radius)) {
+      (kernel_gamma*h >= sink_cut_off_radius)) {
     return 0;
   }
 
