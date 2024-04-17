@@ -596,6 +596,7 @@ void space_regrid(struct space *s, int verbose) {
     /* Free the old sub-cells, if they were allocated, and reinitialise the top
      * level cells.  */
     space_free_cells(s);
+
 #ifdef SWIFT_DEBUG_CHECKS
     /* Check the cell types counts against what we have now. */
     int nr_zoom_cells = 0;
@@ -610,9 +611,10 @@ void space_regrid(struct space *s, int verbose) {
         nr_bkg_cells++;
       }
     }
-    if (nr_zoom_cells != s->zoom_props->nr_zoom_cells ||
-        nr_buffer_cells != s->zoom_props->nr_buffer_cells ||
-        nr_bkg_cells != s->zoom_props->nr_bkg_cells) {
+    if (s->with_zoom_region &&
+        (nr_zoom_cells != s->zoom_props->nr_zoom_cells ||
+         nr_buffer_cells != s->zoom_props->nr_buffer_cells ||
+         nr_bkg_cells != s->zoom_props->nr_bkg_cells)) {
       error(
           "The number of zoom cells (%d), buffer cells (%d) or background "
           "cells (%d) does not match the expected values (%d, %d, %d).",
