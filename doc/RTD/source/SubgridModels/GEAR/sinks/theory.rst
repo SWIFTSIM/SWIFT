@@ -165,7 +165,13 @@ In this case, the sink with the smallest mass is merged with the sink with the l
 IMF sampling
 ~~~~~~~~~~~~
 
-IMAGE
+.. figure:: sink_imf.png
+    :width: 400px
+    :align: center
+    :figclass: align-center
+    :alt: Initial mass function split into the continuous and discrete part. 
+
+    This figure shows an IMF split into two parts: the continuous (orange) and the discrete (blue) part.
 
 Now remains one critical question: how are stars formed in this scheme? Simply, by sampling an IMF. 
 In our scheme, population III stars and population II have two different IMFs. For the sake of simplicity, in the following presentation, we consider only the case of population II stars. However, this can be easily generalized to population III. 
