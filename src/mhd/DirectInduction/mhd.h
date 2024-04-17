@@ -408,7 +408,7 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_force(
   const float scale = 0.125f * (10.0f - plasma_beta);
   const float tensile_correction_scale = fmaxf(0.0f, fminf(scale, 1.0f));
   
-  p->mhd_data.TIC_beta = p->mhd_data.monopole_beta * ensile_correction_scale;
+  p->mhd_data.TIC_beta = p->mhd_data.monopole_beta * tensile_correction_scale;
 }
 
 /**
