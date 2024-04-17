@@ -315,7 +315,7 @@ INLINE static int sink_is_forming(
   double E_grav = sink_data->E_pot_self_neighbours;
   double E_rot_neighbours = sink_compute_neighbour_rotation_energy_magnitude(p);
   double E_tot = sink_data->E_kin_neighbours + sink_data->E_int_neighbours +
-                 E_grav + sink_data->E_mag_neighbours;
+                 E_grav + sink_data->E_mag_neighbours + sink_data->E_rad_neighbours;
 
   /* Density and temperature criterion */
   if (density <= density_threshold || temperature >= temperature_max) {
