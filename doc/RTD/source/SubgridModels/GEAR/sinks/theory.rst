@@ -92,8 +92,7 @@ Some criteria are *optional* and can be *deactivated*. By default, they are all 
 * :math:`E_{\text{rot}, z} = \displaystyle \frac{1}{2} \sum_j m_j \frac{L_{ij, z}^2}{\sqrt{(x_{i, p} - x_{j, p})^2 + (y_{i,p} - y_{j,p})^2}}`
 * The  (physical) specific angular momentum: :math:`\mathbf{L}_{ij} = ( \mathbf{x}_{i, p} - \mathbf{x}_{j, p}) \times ( \mathbf{v}_{i, p} - \mathbf{x}_{j, p})`
 * :math:`E_{\text{mag}} = \displaystyle \sum_j E_{\text{mag}, j}`
-* :math:`E_{\text{rad}} = \displaystyle \sum_j E_{\text{rad}, j}`
-* :math:`E_{\text{tot}} = E_{\text{kin}} + E_{\text{pot}} +  E_{\text{therm}} + E_{\text{mag}} + E_{\text{rad}}`
+* :math:`E_{\text{tot}} = E_{\text{kin}} + E_{\text{pot}} +  E_{\text{therm}} + E_{\text{mag}}`
 
 .. note::
    Currently, magnetic energy is not included in the total energy, since the MHD scheme is in progress. However, the necessary modifications have already been taken care of.
