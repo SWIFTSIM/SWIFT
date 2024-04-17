@@ -382,6 +382,8 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_force(
 
   const float h = p->h;
   const float rho = p->rho;
+  const float P = p->force.pressure;
+  
   float B[3];
   B[0] = p->mhd_data.B_over_rho[0] * rho;
   B[1] = p->mhd_data.B_over_rho[1] * rho;
@@ -401,6 +403,12 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_force(
 
   p->mhd_data.alpha_AR =
       normB ? fminf(1.0f, h * sqrtf(grad_B_mean_square) / normB) : 0.0f;
+
+  const float plasma_beta = B2 != 0.0f ? 2.0f * mu_0 * P / B2 : FLT_MAX;
+  const float scale = 0.125f * (10.0f - plasma_beta);
+  const float tensile_correction_scale = fmaxf(0.0f, fminf(scale, 1.0f));
+  
+  p->mhd_data.TIC_beta = p->mhd_data.monopole_beta * ensile_correction_scale;
 }
 
 /**
