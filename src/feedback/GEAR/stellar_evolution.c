@@ -214,19 +214,70 @@ void stellar_evolution_compute_discrete_feedback_properties(
   /* Transform into internal units */
   sp->feedback_data.mass_ejected *= phys_const->const_solar_mass;
 
-  /* Check if we can ejected the required amount of elements. */
-  const int negative_mass = sp->mass <= sp->feedback_data.mass_ejected;
-  if (negative_mass) {
-    message("Negative mass, skipping current star: %lli", sp->id);
-    /* Reset everything */
-    sp->feedback_data.number_snia = 0;
-    sp->feedback_data.number_snii = 0;
-    sp->feedback_data.mass_ejected = 0;
-    return;
-  }
+  /* If a star is a discrete star */
+  if (sp->feedback_data.star_type == single_star) {
+    const int null_mass = sp->mass == sp->feedback_data.mass_ejected;
+    const int negative_mass = sp->mass < sp->feedback_data.mass_ejected;
+    const float star_minimal_gravity_mass = 1.0 ;
+
+    if (null_mass) {
+      /* If the star ejects all its mass (for very massive stars), give it a
+	 zero mass so that we know it has exploded.
+         We do not remove the star from the simulation to keep track of its
+	 properties, e.g. to check the IMF sampling (with sinks). */
+      sp->mass = 0.0 ;
+
+      /* It's not a good idea to put the gpart's mass to zero. Instead, we give
+	 it minimal mass that is provided by the user in the paramter file */
+      sp->gpart->mass = star_minimal_gravity_mass ;
+      /* mettre la masse de la gpart a une masse minimale qui est user defined */
+
+      /* If somehow the star has a negative mass, we have a problem. */
+    } else if (negative_mass) {
+      warning("Negative mass, skipping current star: %lli", sp->id);
+      /* Reset everything */
+      sp->feedback_data.number_snia = 0;
+      sp->feedback_data.number_snii = 0;
+      sp->feedback_data.mass_ejected = 0;
+      return;
+    }
+
+    /* If the star is the continuous part of the IMF or the enteire IMF */
+  } else {
+    /* Check if we can ejected the required amount of elements. */
+     const int negative_mass = sp->mass <= sp->feedback_data.mass_ejected;
+     if (negative_mass) {
+       warning("Negative mass, skipping current star: %lli", sp->id);
+       /* Reset everything */
+       sp->feedback_data.number_snia = 0;
+       sp->feedback_data.number_snii = 0;
+       sp->feedback_data.mass_ejected = 0;
+       return;
+    
+  }   
 
   /* Update the mass */
   sp->mass -= sp->feedback_data.mass_ejected;
+
+  /* Should we also update the gpart's mass ? */
+  /* 1) Yes, but then,
+        a) If we conserve momentum, the velocities must be updated as well. For
+        Pop III stars, the mass change is so high that the particle may run
+        away...
+	b) If we conserve velocity, we do not have the last problem, but is it
+        consistent with the rest of the code? Is the momentum conserved we we
+        distribute the star ejecta to the gas particles? Yve thinks so.
+     2) No, but then the first stars clump will not evaporate. The stars may also
+        attract gas (because such clumps contains 10^3 solar masses) that can
+        generate new stars.
+	Also, the dynamics can be affected.
+  */
+  /* What we could do instead is to thing globally, i.e star + surrounding
+     gas. In this case, we conserve momentum and the stars does not run
+     awway. But that require to know which particles are at which distance
+     before doing so. And then to apply the feedback and the momentum
+     conservation.
+  */
 
   /* Get the SNIa yields */
   const float* snia_yields = supernovae_ia_get_yields(&sm->snia);
