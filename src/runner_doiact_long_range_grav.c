@@ -326,7 +326,7 @@ void runner_do_grav_long_range_periodic(struct runner *r, struct cell *ci,
   if (s->with_zoom_region && s->zoom_props->with_buffer_cells) {
 
     /* Get the buffer cell pointers. */
-    const int *buffer_cells = s->zoom_props->buffer_cells_top;
+    struct cell *buffer_cells = s->zoom_props->buffer_cells_top;
 
     /* Get useful values. */
     const double *buffer_bounds = s->zoom_props->buffer_lower_bounds;
