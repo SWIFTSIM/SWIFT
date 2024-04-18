@@ -546,9 +546,9 @@ void runner_do_grav_long_range_buffer(struct runner *r, struct cell *ci,
   struct cell *buffer_cells = s->zoom_props->buffer_cells_top;
 
   /* Get the (i,j,k) location of the top-level buffer cell in the grid. */
-  const int top_i = (top->loc[0] - buffer_bounds[0]) * buffer_iwidth[0];
-  const int top_j = (top->loc[1] - buffer_bounds[1]) * buffer_iwidth[1];
-  const int top_k = (top->loc[2] - buffer_bounds[2]) * buffer_iwidth[2];
+  int top_i = (top->loc[0] - buffer_bounds[0]) * buffer_iwidth[0];
+  int top_j = (top->loc[1] - buffer_bounds[1]) * buffer_iwidth[1];
+  int top_k = (top->loc[2] - buffer_bounds[2]) * buffer_iwidth[2];
 
   /* Maximal distance any interaction can take place
    * before the mesh kicks in, rounded up to the next integer */
@@ -700,7 +700,8 @@ void runner_do_grav_long_range_buffer(struct runner *r, struct cell *ci,
  * @param dim The dimensions of the space.
  * @param max_distance2 The maximum distance for a pair or mm interaction.
  */
-void runner_count_mesh_interactions(struct runner *r, struct cell *top) {
+void runner_count_mesh_interactions(struct runner *r, struct cell *ci,
+                                    struct cell *top) {
 
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_GRAVITY_FORCE_CHECKS)
 
@@ -825,7 +826,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_GRAVITY_FORCE_CHECKS)
   /* Count the number of mesh interactions if using the mesh. */
   if (periodic) {
-    runner_count_mesh_interactions(r, top);
+    runner_count_mesh_interactions(r, ci, top);
   }
 #endif
 
