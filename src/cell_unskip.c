@@ -1343,8 +1343,13 @@ int cell_activate_subcell_grav_tasks(struct cell *restrict ci,
     if (lock_unlock(&cj->grav.mlock) != 0) error("Impossible to unlock m-pole");
 
     /* Can we use multipoles ? */
+    /* NOTE: If we are consider 2 zoom cells then the periodicity is wrong (zoom
+     * cells are not periodic at the zoom region boundary), but we don't care
+     * because wrapping will have no effect in this context. */
     if (cell_can_use_pair_mm(ci, cj, e, sp, /*use_rebuild_data=*/0,
-                             /*is_tree_walk=*/1)) {
+                             /*is_tree_walk=*/1,
+                             /*periodic boundaries*/ sp->periodic,
+                             /*use_mesh*/ sp->periodic)) {
 
       /* Ok, no need to drift anything */
       return 0;

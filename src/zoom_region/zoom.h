@@ -21,9 +21,13 @@
 #define SWIFT_ZOOM_H
 
 /* Local includes */
-#include "cell.h"
-#include "space.h"
 #include "timeline.h"
+
+/* Avoid cyclic inclusions. */
+struct swift_params;
+struct space;
+struct cell;
+struct engine;
 
 /* Zoom region and cell grid initialisation functions. */
 void zoom_props_init(struct swift_params *params, struct space *s,
@@ -44,5 +48,8 @@ void zoom_allocate_cells(struct space *s);
 
 /* Void cell tree construction function. */
 void zoom_void_space_split(struct space *s, int verbose);
+
+/* Task creation functions. */
+void zoom_engine_make_self_gravity_tasks(struct space *s, struct engine *e);
 
 #endif /* SWIFT_ZOOM_H */
