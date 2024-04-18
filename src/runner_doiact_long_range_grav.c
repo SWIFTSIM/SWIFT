@@ -802,7 +802,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
     switch (top->type) {
 
       case cell_type_regular:
-        runner_do_grav_long_range_periodic(r, ci, top, s->cell_top);
+        runner_do_grav_long_range_periodic(r, ci, top, s->cells_top);
         break;
       case cell_type_zoom:
         runner_do_long_range_zoom(r, ci, top);
