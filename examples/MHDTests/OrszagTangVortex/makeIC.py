@@ -20,104 +20,91 @@
 ################################################################################
 
 import h5py
+import argparse
 import numpy as np
 
-# Generates a swift IC file for the OrzagTang vortex in a periodic box
+# Generates a swift IC file for the Orszag-Tang vortex in a periodic box
+
+# Read in number of BCC cells to stack along x and y
+argparser = argparse.ArgumentParser()
+argparser.add_argument(
+    "-r",
+    "--replications",
+    help="Number of BCC unit cells to stack along the x and y directions. Default: 4",
+    default=4,
+    type=int,
+)
+args = argparser.parse_args()
 
 # Parameters
 gamma = 5.0 / 3.0  # Gas adiabatic index
-B0 = 1.0 / (np.sqrt(4.0 * np.pi))  # Bfield
-P0 = gamma * pow(B0, 2)  # Pressure
-rho0 = gamma * P0  # Density
+v0 = 1.0  # Velocity
+B0 = 1.0 / (np.sqrt(4.0 * np.pi))  # Magnetic field
+P0 = gamma * B0 * B0  # Pressure
+rho0 = gamma * P0 / v0  # Density
 
 fileOutputName = "OrszagTangVortex.hdf5"
 
-# ---------------------------------------------------
-
-# glass = h5py.File("glassCube_64.hdf5", 'r')
-# glass = h5py.File("glassCube_32.hdf5", 'r')
+# Stack unit cells
 glass = h5py.File("glassCube_16.hdf5", "r")
-# glass = h5py.File("glassCube_8.hdf5", 'r')
-pos = glass["/PartType0/Coordinates"][:, :]
-h = glass["/PartType0/SmoothingLength"][:]
+pos_unit_cell = glass["/PartType0/Coordinates"][:, :]
+h_unit_cell = glass["/PartType0/SmoothingLength"][:]
 
-Nold = len(h)
-times = 6
-############ NEW
-cx = times
-cy = times
-cz = 1
+N_unit_cell = len(h_unit_cell)
 
-lx = 1.0
-ly = 1.0
-lz = 1.0 / float(times)  # becasue 2D
+times = args.replications
 
-pnew = np.zeros((int(Nold * cx * cy * cz), 3))
-hnew = np.zeros(int(Nold * cx * cy * cz))
-N = Nold * cx * cy * cz
+cx, cy, cz = times, times, 1
 
-k = 0
+lx, ly, lz = 1.0, 1.0, 1.0 / times
+
+pos = np.zeros((int(N_unit_cell * cx * cy * cz), 3))
+h = np.zeros(int(N_unit_cell * cx * cy * cz))
+N = N_unit_cell * cx * cy * cz
+
 c0 = 0
-c1 = Nold
-for i in range(0, cx):
-    for j in range(0, cy):
-        for k in range(0, cz):
-            print(i, j, k)
-            pnew[c0:c1, 0] = pos[:, 0] + i
-            pnew[c0:c1, 1] = pos[:, 1] + j
-            pnew[c0:c1, 2] = pos[:, 2] + k
-            hnew[c0:c1] = h[:]
-            c0 = c0 + Nold
-            c1 = c1 + Nold
+c1 = N_unit_cell
+for i in range(cx):
+    for j in range(cy):
+        for k in range(cz):
+            pos[c0:c1, 0] = pos_unit_cell[:, 0] + i
+            pos[c0:c1, 1] = pos_unit_cell[:, 1] + j
+            pos[c0:c1, 2] = pos_unit_cell[:, 2] + k
+            h[c0:c1] = h_unit_cell[:]
+            c0 += N_unit_cell
+            c1 += N_unit_cell
 
-print(len(pnew[:, 1]), " / ", N)
-pos = pnew
-pnew = 0
-pos[:, 0] = pos[:, 0] * lx / cx  # -0.5
-pos[:, 1] = pos[:, 1] * ly / cy  # -0.5
-pos[:, 2] = pos[:, 2] * lz / cz
-h = hnew / cx
-hnew = 0
-vol = 1.0
+# Rescale to desired length
+pos *= lx / cx
+h *= lx / cx
 vol = lx * ly * lz
+
 # Generate extra arrays
 v = np.zeros((N, 3))
-b = np.zeros((N, 3))
-vp = np.zeros((N, 3))
-epa = np.zeros(N)
-epb = np.zeros(N)
+B = np.zeros((N, 3))
+A = np.zeros((N, 3))
 ids = np.linspace(1, N, N)
 m = np.ones(N) * rho0 * vol / N
 u = np.ones(N) * P0 / (rho0 * (gamma - 1.0))
 
+# Instantiate extra arrays
+v[:, 0] = -v0 * np.sin(2.0 * np.pi * pos[:, 1])
+v[:, 1] = v0 * np.sin(2.0 * np.pi * pos[:, 0])
 
-v[:, 0] = -np.sin(2.0 * np.pi * pos[:, 1])
-v[:, 1] = np.sin(2.0 * np.pi * pos[:, 0])
-v[:, 2] = 0.0
-b[:, 0] = -B0 * np.sin(2.0 * np.pi * pos[:, 1])
-b[:, 1] = B0 * np.sin(4.0 * np.pi * pos[:, 0])
-b[:, 2] = 0.0
-# epa[:]  = B0*(np.cos(2.*np.pi*pos[:,1])/(2.*np.pi) + np.cos(4.*np.pi*pos[:,0])/(4.*np.pi))
-# epb[:]  = pos[:,2]
+B[:, 0] = -B0 * np.sin(2.0 * np.pi * pos[:, 1])
+B[:, 1] = B0 * np.sin(4.0 * np.pi * pos[:, 0])
 
-vp[:, 0] = 0.0
-vp[:, 1] = 0.0
-vp[:, 2] = B0 * (
+A[:, 2] = B0 * (
     np.cos(2.0 * np.pi * pos[:, 1]) / (2.0 * np.pi)
     + np.cos(4.0 * np.pi * pos[:, 0]) / (4.0 * np.pi)
 )
-
-##vp[:,:] = 0.0
-
-pos[:, 0] = pos[:, 0]  # +0.5
-pos[:, 1] = pos[:, 1]  # +0.5
 
 # File
 fileOutput = h5py.File(fileOutputName, "w")
 
 # Header
 grp = fileOutput.create_group("/Header")
-grp.attrs["BoxSize"] = [lx, ly, lz]  #####
+grp.attrs["BoxSize"] = [lx, ly, lz]
 grp.attrs["NumPart_Total"] = [N, 0, 0, 0, 0, 0]
 grp.attrs["NumPart_Total_HighWord"] = [0, 0, 0, 0, 0, 0]
 grp.attrs["NumPart_ThisFile"] = [N, 0, 0, 0, 0, 0]
@@ -143,7 +130,7 @@ grp.create_dataset("Masses", data=m, dtype="f")
 grp.create_dataset("SmoothingLength", data=h, dtype="f")
 grp.create_dataset("InternalEnergy", data=u, dtype="f")
 grp.create_dataset("ParticleIDs", data=ids, dtype="L")
-grp.create_dataset("MagneticFluxDensities", data=b, dtype="f")
-grp.create_dataset("MagneticVectorPotentials", data=vp, dtype="f")
+grp.create_dataset("MagneticFluxDensities", data=B, dtype="f")
+grp.create_dataset("MagneticVectorPotentials", data=A, dtype="f")
 
 fileOutput.close()

@@ -1,20 +1,24 @@
 #!/bin/bash
 
-# Generate the initial conditions if they are not present.
-if [ ! -e glassCube_64.hdf5 ]
+# Generate the initial conditions file if not present.
+if [ ! -f ./BCCglassCube_48.hdf5 ]
 then
-    echo "Fetching initial glass file for the BrioWu example..."
-    ./getGlass.sh
+    echo "Generating a BCC unit cell, copies of which are to be stacked to generate the left state of the Brio & Wu shock tube ..."
+    python3 makeBCC.py -n 48
 fi
-if [ ! -e BrioWu.hdf5 ]
+if [ ! -f ./BCCglassCube_24.hdf5 ]
 then
-    echo "Generating initial conditions for the Brio Wu shock example..."
+    echo "Generating a BCC unit cell, copies of which are to be stacked to generate the right state of the Brio & Wu shock tube ..."
+    python3 makeBCC.py -n 24
+fi
+if [ ! -f ./BrioWu.hdf5 ]
+then
+    echo "Generating initial conditions for the Brio & Wu shock tube example..."
     python3 makeIC.py
 fi
 
-# Run SWIFT
-rm -I BrioWu_0???.hdf5 
-../../../swift --hydro --threads=8 BrioWu.yml 2>&1 | tee output.log
+# Run the example with SWIFT 
+../../../swift --hydro --threads=4 BrioWu.yml 2>&1 | tee output.log
 
-#python plotSolution.py 1
-#julia plotSolution.jl BrioWu_0008.hdf5
+# Plot the calculated solution at time t=0.1
+python3 plotSolution.py BrioWu_0011.hdf5 BrioWu_0011.png	

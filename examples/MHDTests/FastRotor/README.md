@@ -1,10 +1,24 @@
-Fast Rotor in MHD
-Lodrillo, P. & Del Zanna, L., 2000ApJ..530...508
-Stasyszyn et al , 2013MNRAS.428...13S
-##############################
-previous run TestAllMHD.sh in the ~/swiftsim root directory
+Fast Rotor MHD test in 3D, following :
+Lodrillo P. & Del Zanna L., 2000
+Stasyszyn et al., 2013
+Seo J. & Ryu D., 2023
 
-./runSchemes.sh #will generate the ICs for the fast rotor and run all the schemes
-#if not wanted, one comment which schemes one wants to run 
-##############################
+This test requires setting mu_0 = 1 and gamma = 7/5.
+We recommend running with a quartic spline kernel ;
+the parameters in the .yml file are chosen to work best	in that	configuration.
+
+It is also possible to automatically compile and run the test for all available
+MHD schemes, sequentially (files in the directoy with the _schemes suffix serve
+this purpose). To do so, run :
+
+./run_schemes.sh [what Scheme] [FOLDER_TAIL]
+
+where :
+
+[what scheme]:
+vep: vector potentials
+odi: Oresti's direct induction
+fdi: simple direct induction
+[FOLDER_TAIL]:
+the trailing name for the folders created
 

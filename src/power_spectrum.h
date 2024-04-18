@@ -45,6 +45,7 @@ enum power_type {
   pow_type_neutrino,
   pow_type_neutrino_0,
   pow_type_neutrino_1,
+  pow_type_magnetic_energy,
   pow_type_count /* Nb. of power spect. types (always last elem. in the enum) */
 } __attribute__((packed));
 
@@ -70,6 +71,9 @@ struct power_spectrum_data {
 
   /*! The order of the mass assignment window */
   int windoworder;
+
+  /* Shall we correct the position of the k-space bin? */
+  int shift_centre_small_k_bins;
 
   /*! Array of component types to correlate on the "left" side */
   enum power_type* types1;

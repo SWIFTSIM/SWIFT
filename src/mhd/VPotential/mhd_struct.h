@@ -40,15 +40,19 @@ struct mhd_part_data {
   float dAdt[3];
   /* Resistive Eta */
   float resistive_eta;
+  /* Curl B */
+  float curlB[3];
+  /* SPH <1> error */
+  float mean_SPH_err;
+  /* SPH <grad1> error */
+  float mean_grad_SPH_err[3];
+  /* Magnetic force */
+  float tot_mag_F[3];
 };
 
 /**
  * @brief Particle-carried extra fields for the MHD scheme.
  */
-struct mhd_xpart_data {
-
-  /* Full step VPotential */
-  float APot_full[3];
-};
+struct mhd_xpart_data {};
 
 #endif /* SWIFT_VECTOR_POTENTIAL_MHD_STRUCT_H */

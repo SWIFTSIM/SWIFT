@@ -38,6 +38,7 @@
 /* Local includes. */
 #include "cooling.h"
 #include "engine.h"
+#include "mhd.h"
 #include "minmax.h"
 #include "neutrino.h"
 #include "random.h"
@@ -50,6 +51,37 @@
 #define power_data_default_grid_side_length 256
 #define power_data_default_fold_factor 4
 #define power_data_default_window_order 3
+
+/* The way to calculate these shifts is to consider a 3D cube of (kx,ky,kz)
+ * cells and check which cells fall inside a spherical shell with boundaries
+ * (i+0.5,i+1.5), then calculate the average k=sqrt(kx^2+ky^2+kz^2). So for i=0
+ * you'd find 6 cells k=1 and 12 cells k=sqrt(2), so the weighted k becomes
+ * (6 * 1 + 12 * sqrt(2)) / 18 = 1.2761424 – etc.
+ * Note that beyond the 7th term, the correction is < 1%. */
+#define number_of_corrected_bins 128
+static const float correction_shift_k_values[number_of_corrected_bins] = {
+    1.2761424f, 1.1154015f, 1.0447197f, 1.0151449f, 1.0195166f, 1.0203214f,
+    1.0102490f, 1.0031348f, 1.0063766f, 1.0093355f, 1.0055681f, 1.0024279f,
+    1.0034435f, 1.0038386f, 1.0011069f, 1.0002888f, 1.0018693f, 1.0029172f,
+    1.0019128f, 1.0009282f, 1.0015312f, 1.0016361f, 1.0009436f, 1.0003777f,
+    1.0005931f, 1.0010948f, 1.0010581f, 1.0009779f, 1.0010282f, 1.0008224f,
+    1.0006637f, 1.0004002f, 1.0002419f, 1.0005172f, 1.0005523f, 1.0004342f,
+    1.0005183f, 1.0005357f, 1.0003162f, 1.0001836f, 1.0003737f, 1.0004792f,
+    1.0004169f, 1.0003660f, 1.0004468f, 1.0004218f, 1.0001436f, 1.0000479f,
+    1.0002012f, 1.0003710f, 1.0003234f, 1.0002661f, 1.0003446f, 1.0003313f,
+    1.0001844f, 1.0000630f, 1.0001714f, 1.0002382f, 1.0001507f, 1.0001663f,
+    1.0002199f, 1.0002403f, 1.0000911f, 0.9999714f, 1.0001136f, 1.0001907f,
+    1.0001917f, 1.0001684f, 1.0001875f, 1.0002158f, 1.0000941f, 1.0000646f,
+    1.0000930f, 1.0001497f, 1.0001589f, 1.0001215f, 1.0001563f, 1.0001254f,
+    1.0000557f, 1.0000220f, 1.0000517f, 1.0001039f, 1.0001185f, 1.0000778f,
+    1.0000848f, 1.0001415f, 1.0001108f, 1.0000709f, 1.0000724f, 1.0001201f,
+    1.0001480f, 1.0001204f, 1.0001185f, 1.0000844f, 1.0000224f, 0.9999752f,
+    0.9999997f, 1.0000969f, 1.0001076f, 1.0000756f, 1.0000700f, 1.0000854f,
+    1.0001067f, 1.0000390f, 1.0000443f, 1.0000863f, 1.0000585f, 1.0000352f,
+    1.0000677f, 1.0001081f, 1.0000537f, 1.0000199f, 1.0000308f, 1.0000585f,
+    1.0000479f, 1.0000304f, 1.0000751f, 1.0000710f, 1.0000152f, 1.0000083f,
+    1.0000342f, 1.0000530f, 1.0000543f, 1.0000442f, 1.0000680f, 1.0000753f,
+    1.0000369f, 1.0000117f};
 
 #ifdef HAVE_FFTW
 
@@ -67,6 +99,8 @@ INLINE static enum power_type power_spectrum_get_type(const char* name) {
     return pow_type_starBH;
   else if (strcasecmp(name, "pressure") == 0)
     return pow_type_pressure;
+  else if (strcasecmp(name, "magnetic_energy") == 0)
+    return pow_type_magnetic_energy;
   else if (strcasecmp(name, "neutrino") == 0)
     return pow_type_neutrino;
   else if (strcasecmp(name, "neutrino0") == 0)
@@ -92,7 +126,8 @@ INLINE static const char* get_powtype_name(const enum power_type type) {
                                                       "electron pressure",
                                                       "neutrino",
                                                       "neutrino (even)",
-                                                      "neutrino (odd)"};
+                                                      "neutrino (odd)",
+                                                      "magnetic energy"};
 
   return powtype_names[type];
 }
@@ -100,8 +135,8 @@ INLINE static const char* get_powtype_name(const enum power_type type) {
 INLINE static const char* get_powtype_filename(const enum power_type type) {
 
   static const char* powtype_filenames[pow_type_count] = {
-      "matter",   "cdm",      "gas",       "starBH",
-      "pressure", "neutrino", "neutrino0", "neutrino1"};
+      "matter",   "cdm",       "gas",       "starBH",         "pressure",
+      "neutrino", "neutrino0", "neutrino1", "magnetic_energy"};
 
   return powtype_filenames[type];
 }
@@ -248,6 +283,18 @@ void shotnoiseterms(const struct cell* c, double* tot12,
       const struct xpart* xp = &xparts[-gparts[i].id_or_neg_offset];
       quantity1 = cooling_get_electron_pressure(phys_const, hydro_props, us,
                                                 cosmo, cool_func, p, xp);
+
+      /* Special case for the magnetic energy */
+    } else if (type1 == pow_type_magnetic_energy) {
+
+      /* Skip non-gas particles */
+      if (gparts[i].type != swift_type_gas) continue;
+
+      const struct part* p = &parts[-gparts[i].id_or_neg_offset];
+      const struct xpart* xp = &xparts[-gparts[i].id_or_neg_offset];
+      quantity1 =
+          mhd_get_magnetic_energy(p, xp, phys_const->const_vacuum_permeability);
+
     } else {
 
       /* We are collecting a mass of some kind.
@@ -285,6 +332,18 @@ void shotnoiseterms(const struct cell* c, double* tot12,
         const struct xpart* xp = &xparts[-gparts[i].id_or_neg_offset];
         quantity2 = cooling_get_electron_pressure(phys_const, hydro_props, us,
                                                   cosmo, cool_func, p, xp);
+
+        /* Special case for the magnetic energy */
+      } else if (type2 == pow_type_magnetic_energy) {
+
+        /* Skip non-gas particles */
+        if (gparts[i].type != swift_type_gas) continue;
+
+        const struct part* p = &parts[-gparts[i].id_or_neg_offset];
+        const struct xpart* xp = &xparts[-gparts[i].id_or_neg_offset];
+        quantity2 = mhd_get_magnetic_energy(
+            p, xp, phys_const->const_vacuum_permeability);
+
       } else {
 
         /* We are collecting a mass of some kind.
@@ -595,6 +654,18 @@ void cell_to_powgrid(const struct cell* c, double* rho, const int N,
       const struct xpart* xp = &xparts[-gparts[i].id_or_neg_offset];
       quantity = cooling_get_electron_pressure(phys_const, hydro_props, us,
                                                cosmo, cool_func, p, xp);
+
+      /* Special case for the magnetic energy */
+    } else if (type == pow_type_magnetic_energy) {
+
+      /* Skip non-gas particles */
+      if (gparts[i].type != swift_type_gas) continue;
+
+      const struct part* p = &parts[-gparts[i].id_or_neg_offset];
+      const struct xpart* xp = &xparts[-gparts[i].id_or_neg_offset];
+      quantity =
+          mhd_get_magnetic_energy(p, xp, phys_const->const_vacuum_permeability);
+
     } else {
 
       /* We are collecting a mass of some kind.
@@ -789,6 +860,8 @@ INLINE static void power_init_output_file(FILE* fp, const enum power_type type1,
                                           const struct unit_system* restrict us,
                                           const struct phys_const* phys_const) {
 
+  // TODO MATTHIEU: Work out magnetic energy units
+
   /* Write a header to the output file */
   if (type1 != type2)
     fprintf(fp, "# %s-%s cross-spectrum\n", get_powtype_name(type1),
@@ -918,15 +991,21 @@ void power_spectrum(const enum power_type type1, const enum power_type type2,
   /* Inverse of the cosmic mean mass per grid cell in code units */
   double invcellmean, invcellmean2;
 
-  if (type1 != pow_type_pressure)
-    invcellmean = Ngrid3 / (meanrho * volume);
-  else
-    invcellmean = Ngrid3 / volume * conv_EV;
+  // TODO MATTHIEU: Work out magnetic energy normalisation
 
-  if (type2 != pow_type_pressure)
-    invcellmean2 = Ngrid3 / (meanrho * volume);
+  if (type1 == pow_type_pressure)
+    invcellmean = Ngrid3 / volume * conv_EV;
+  else if (type1 == pow_type_magnetic_energy)
+    invcellmean = 1;
   else
+    invcellmean = Ngrid3 / (meanrho * volume);
+
+  if (type2 == pow_type_pressure)
     invcellmean2 = Ngrid3 / volume * conv_EV;
+  else if (type2 == pow_type_magnetic_energy)
+    invcellmean2 = 1;
+  else
+    invcellmean2 = Ngrid3 / (meanrho * volume);
 
   /* When splitting the neutrino ensemble in half, double the inverse mean */
   if (type1 == pow_type_neutrino_0 || type1 == pow_type_neutrino_1)
@@ -963,6 +1042,8 @@ void power_spectrum(const enum power_type type1, const enum power_type type2,
   if (type1 == pow_type_matter || type2 == pow_type_matter || type1 == type2 ||
       (type1 == pow_type_gas && type2 == pow_type_pressure) ||
       (type2 == pow_type_gas && type1 == pow_type_pressure)) {
+
+    // TODO Matthieu: work it out for B energy
 
     /* Note that for cross-power, there is only shot noise for particles
        that occur in both fields */
@@ -1145,6 +1226,8 @@ void power_spectrum(const enum power_type type1, const enum power_type type2,
               outputfileBase, snapnum, i);
       FILE* outputfile = fopen(outputfileName, "w");
 
+      // TODO MATTHIEU: Work units for magnetic energy
+
       /* Determine units of power */
       char powunits[32] = "";
       if (type1 != pow_type_pressure && type2 != pow_type_pressure)
@@ -1154,7 +1237,9 @@ void power_spectrum(const enum power_type type1, const enum power_type type2,
       else
         sprintf(powunits, "Mpc^3 eV cm^(-3)");
 
-      fprintf(outputfile, "# Folding %d, all lengths/volumes are comoving\n",
+      fprintf(outputfile,
+              "# Folding %d, all lengths/volumes are comoving. k-bin centres "
+              "are not corrected for the weights of the modes.\n",
               i);
       fprintf(outputfile, "# Shotnoise [%s]\n", powunits);
       fprintf(outputfile, "%g\n", shot);
@@ -1208,8 +1293,17 @@ void power_spectrum(const enum power_type type1, const enum power_type type2,
     power_init_output_file(outputfile, type1, type2, us, phys_const);
 
     for (int j = 0; j < numtot; ++j) {
+
+      float k = kcomb[j];
+
+      /* Shall we correct the position of the k-space bin
+       * to account for the different weights of the modes entering the bin? */
+      if (pow_data->shift_centre_small_k_bins && j < number_of_corrected_bins) {
+        k *= correction_shift_k_values[j];
+      }
+
       fprintf(outputfile, "%15.8f %15.8e %15.8e %15.8e\n", s->e->cosmology->z,
-              kcomb[j], (pcomb[j] - shot), shot);
+              k, (pcomb[j] - shot), shot);
     }
     fclose(outputfile);
   }
@@ -1272,6 +1366,9 @@ void power_init(struct power_spectrum_data* p, struct swift_params* params,
     message(
         "WARNING: fold factor is recommended not to exceed 6 for a "
         "mass assignment order of 3 (TSC) or below.");
+
+  p->shift_centre_small_k_bins = parser_get_opt_param_int(
+      params, "PowerSpectrum:shift_centre_small_k_bins", 1);
 
   /* Make sensible choices for the k-cuts */
   const int kcutn = (p->windoworder >= 3) ? 90 : 70;

@@ -411,6 +411,8 @@ int main(int argc, char *argv[]) {
   }
 
   /* Deal with thread numbers */
+  if (nr_threads <= 0)
+    error("Invalid number of threads provided (%d), must be > 0.", nr_threads);
   if (nr_pool_threads == -1) nr_pool_threads = nr_threads;
 
   /* Write output parameter file */
@@ -667,9 +669,6 @@ int main(int argc, char *argv[]) {
   }
   if (with_rt && with_cooling) {
     error("Error: Cannot use radiative transfer and cooling simultaneously.");
-  }
-  if (with_rt && with_cosmology) {
-    error("Error: Cannot use run radiative transfer with cosmology (yet).");
   }
 #endif /* idfef RT_NONE */
 
@@ -1631,7 +1630,7 @@ int main(int argc, char *argv[]) {
       if (with_power)
         calc_all_power_spectra(e.power_data, e.s, &e.threadpool, e.verbose);
 
-      engine_dump_snapshot(&e);
+      engine_dump_snapshot(&e, /*fof=*/0);
     }
 
     /* Dump initial state statistics, if not working with an output list */
@@ -1874,7 +1873,7 @@ int main(int argc, char *argv[]) {
           !e.stf_this_timestep)
         velociraptor_invoke(&e, /*linked_with_snap=*/1);
 #endif
-      engine_dump_snapshot(&e);
+      engine_dump_snapshot(&e, /*fof=*/0);
 #ifdef HAVE_VELOCIRAPTOR
       if (with_structure_finding && e.snapshot_invoke_stf &&
           e.s->gpart_group_data)
@@ -1933,6 +1932,7 @@ int main(int argc, char *argv[]) {
   free(output_options);
 
 #ifdef WITH_MPI
+  partition_clean(&initial_partition, &reparttype);
   if ((res = MPI_Finalize()) != MPI_SUCCESS)
     error("call to MPI_Finalize failed with error %i.", res);
 #endif

@@ -18,7 +18,7 @@ More general information about SWIFT is available on the project
 [webpages](http://www.swiftsim.com).
 
 For information on how to _run_ SWIFT, please consult the onboarding guide
-available [here](http://www.swiftsim.com/onboarding.pdf). This includes
+available [here](https://swift.strw.leidenuniv.nl/onboarding.pdf). This includes
 dependencies, and a few examples to get you going.
 
 We suggest that you use the latest release branch of SWIFT, rather than the
@@ -81,7 +81,7 @@ Contribution Guidelines
 -----------------------
 
 The SWIFT source code uses a variation of the 'Google' formatting style.
-The script 'format.sh' in the root directory applies the clang-format-10
+The script 'format.sh' in the root directory applies the clang-format-13
 tool with our style choices to all the SWIFT C source file. Please apply
 the formatting script to the files before submitting a pull request.
 

@@ -98,12 +98,19 @@ __attribute__((always_inline)) INLINE static void forcing_terms_apply(
     case Brandenburg_flow:
 
       /* Eq. 8 of Tilgner & Brandenburg, 2008, MNRAS, 391, 1477 */
-      Psi = (u0 / k0) * cos(k0 * p->x[0]) * cos(k0 * p->x[1]);
+      // Psi = (u0 / k0) * cos(k0 * p->x[0]) * cos(k0 * p->x[1]);
 
       /* Eq. 7 of Tilgner & Brandenburg, 2008, MNRAS, 391, 1477 */
-      v_Rob[0] = u0 * cos(k0 * p->x[0]) * sin(k0 * p->x[1]);
-      v_Rob[1] = -u0 * sin(k0 * p->x[0]) * cos(k0 * p->x[1]);
+      // v_Rob[0] = u0 * cos(k0 * p->x[0]) * sin(k0 * p->x[1]);
+      // v_Rob[1] = -u0 * sin(k0 * p->x[0]) * cos(k0 * p->x[1]);
+      // v_Rob[2] = kf * Psi;
+
+      // Velocity used to compare with A.B. runs (from overleaf)
+      Psi = (u0 / k0) * sin(k0 * p->x[0]) * sin(k0 * p->x[1]);
+      v_Rob[0] = u0 * sin(k0 * p->x[0]) * cos(k0 * p->x[1]);
+      v_Rob[1] = -u0 * cos(k0 * p->x[0]) * sin(k0 * p->x[1]);
       v_Rob[2] = kf * Psi;
+
       break;
 
     case Roberts_flow_1:

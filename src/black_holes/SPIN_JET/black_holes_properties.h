@@ -29,6 +29,11 @@ enum AGN_feedback_models {
   AGN_minimum_distance_model /*< Minimum-distance model of AGN feedback */
 };
 
+enum AGN_heating_temperature_models {
+  AGN_heating_temperature_constant, /*< Use a constant delta_T */
+  AGN_heating_temperature_local,    /*< Variable delta_T */
+};
+
 enum AGN_jet_feedback_models {
   AGN_jet_minimum_distance_model, /*< Minimum-distance model of AGN feedback */
   AGN_jet_maximum_distance_model, /*< Maximum-distance model of AGN feedback */
@@ -58,6 +63,11 @@ enum BH_merger_thresholds {
 enum thin_disc_regions {
   TD_region_B, /*< Region B from Shakura & Sunyaev (1973) */
   TD_region_C  /*< Region C from Shakura & Sunyaev (1973) */
+};
+
+enum accretion_efficiency_modes {
+  BH_accretion_efficiency_constant, /*< Single number */
+  BH_accretion_efficiency_variable  /*< Scaling with Eddington ratio */
 };
 
 /**
@@ -153,8 +163,30 @@ struct black_holes_props {
   /*! Feedback coupling efficiency of the black holes. */
   float epsilon_f;
 
-  /*! Temperature increase induced by AGN feedback (Kelvin) */
+  /*! The type of jet velocity scaling to use. */
+  enum AGN_heating_temperature_models AGN_heating_temperature_model;
+
+  /*! Temperature increase induced by AGN feedback (Kelvin),
+      in the constant-temperature case */
   float AGN_delta_T_desired;
+
+  /* Numerical factor by which we rescale the variable delta_T formula,
+     fiducial value is 1 */
+  float delta_T_xi;
+
+  /* The minimum heating temperature to apply in the case of variable feedback,
+     expressed in Kelvin */
+  float delta_T_min;
+
+  /* The maximum heating temperature to apply in the case of variable feedback,
+     expressed in Kelvin */
+  float delta_T_max;
+
+  /* Constants used to parametrise the Dalla Vecchia & Schaye (2012)
+   condition - Eqn 18. */
+  float normalisation_Dalla_Vecchia;
+  float ref_ngb_mass_Dalla_Vecchia;
+  float ref_density_Dalla_Vecchia;
 
   /*! Number of gas neighbours to heat in a feedback event */
   float num_ngbs_to_heat;
@@ -305,16 +337,13 @@ struct black_holes_props {
    */
   int turn_off_radiative_feedback;
 
-  /*! Global switch for whether to turn off radiation in the thick disk and
-      jets in the thin disk [1] or not [0] */
-  int turn_off_secondary_feedback;
-
   /* Whether we want to include super-Eddington accretion, modeled as the slim
      disk */
   int include_slim_disk;
 
-  /* Whether to use GRMHD fits for the spindown rate due to jets */
-  int include_GRMHD_spindown;
+  /* Whether or not to use jets from the thin disc regime (at moderate
+   * Eddington ratios. */
+  int use_jets_in_thin_disc;
 
   /*! Whether to fix the radiative efficiency to some value [1] or not [0]. */
   int fix_radiative_efficiency;
@@ -333,10 +362,6 @@ struct black_holes_props {
   /*! Jet velocity if the constant velocity model is used */
   float v_jet;
 
-  /*! Parameters of the scaling between AGN jet velocity and BH mass */
-  float v_jet_BH_mass_scaling_reference_mass;
-  float v_jet_BH_mass_scaling_slope;
-
   /*! Sets the launching velocity of the jet to v_jet_cs_ratio times the
       sound speed of the hot gas in the halo, assuming it is at virial
       temperature. This is used if the launching model is BH_mass or
@@ -351,6 +376,14 @@ struct black_holes_props {
       sound_speed launching models are used. */
   float v_jet_xi;
 
+  /*! The reference BH mass to use in the case that we employ a BH mass scaling
+   * for the jet velocity. */
+  float v_jet_BH_mass_scaling_reference_mass;
+
+  /*! The power law slope to use in the case that we employ a BH mass scaling
+   * for the jet velocity. */
+  float v_jet_BH_mass_scaling_slope;
+
   /*! The minimal jet velocity to use in the variable-velocity models */
   float v_jet_min;
 
@@ -363,11 +396,6 @@ struct black_holes_props {
 
   /*! The effective (half-)opening angle of the jet. */
   float opening_angle;
-
-  /*! The slope of the dependence of jet efficiency on aspect ratio of the
-      subgrid accretion disk, H/R. Default value is 1, and another reasonable
-      value is 0 (same jet efficiency for all disks). */
-  float jet_h_r_slope;
 
   /*! The coupling efficiency for jet feedback. */
   float eps_f_jet;
@@ -383,11 +411,31 @@ struct black_holes_props {
 
   /*! The accretion efficiency (suppression of accretion rate) to use in
    *  the thick disc regime (at low Eddington ratios). */
-  float accretion_efficiency;
+  float accretion_efficiency_thick;
+
+  /*! The accretion efficiency (suppression of accretion rate) to use in
+   *  the slim disc regime (at super-Eddington ratios). */
+  float accretion_efficiency_slim;
+
+  /*! Expontent to use for scaling of accretion efficiency with transition
+   *  radius in the thick disc. */
+  float ADIOS_s;
+
+  /* Whether or not we want to use wind feedback in the ADAF/ADIOS regime
+     (at low Eddington ratios). */
+  int use_ADIOS_winds;
+
+  /* The factor by which we multiply the slim disc wind efficiency - 0 meaning
+     no winds, and 1 meaning full winds. */
+  float slim_disc_wind_factor;
 
   /*! The jet launching scheme to use: minimum distance,
       maximum distance, closest to spin axis or minimum density. */
   enum AGN_jet_feedback_models jet_feedback_model;
+
+  /*! The accretion efficiency mode to use: constant or variable
+   * (Eddington-ratio dependent) . */
+  enum accretion_efficiency_modes accretion_efficiency_mode;
 };
 
 /**
@@ -525,15 +573,92 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
       params, "SPINJETAGN:AGN_use_deterministic_feedback", 1);
   bp->epsilon_f =
       parser_get_param_float(params, "SPINJETAGN:coupling_efficiency");
-  bp->AGN_delta_T_desired =
-      parser_get_param_float(params, "SPINJETAGN:AGN_delta_T_K");
-  /* Check that it makes sense. */
-  if (bp->AGN_delta_T_desired <= 0.f)
-    error("The AGN heating temperature delta T must be > 0 K, not %.5e K.",
-          bp->AGN_delta_T_desired);
 
-  bp->AGN_delta_T_desired /=
-      units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
+  /* Common conversion factors ----------------------------- */
+
+  /* Calculate temperature to internal energy conversion factor (all internal
+   * units) */
+  const double k_B = phys_const->const_boltzmann_k;
+  const double m_p = phys_const->const_proton_mass;
+  const double mu = hydro_props->mu_ionised;
+  bp->temp_to_u_factor = k_B / (mu * hydro_gamma_minus_one * m_p);
+
+  /* ---- Black hole time-step properties ------------------ */
+
+  char temp2[PARSER_MAX_LINE_SIZE];
+  parser_get_param_string(params, "SPINJETAGN:AGN_delta_T_model", temp2);
+  if (strcmp(temp2, "Constant") == 0) {
+    bp->AGN_heating_temperature_model = AGN_heating_temperature_constant;
+
+    bp->AGN_delta_T_desired =
+        parser_get_param_float(params, "SPINJETAGN:AGN_delta_T_K");
+    /* Check that it makes sense. */
+
+    if (bp->AGN_delta_T_desired <= 0.f)
+      error("The AGN heating temperature delta T must be > 0 K, not %.5e K.",
+            bp->AGN_delta_T_desired);
+
+    bp->AGN_delta_T_desired /=
+        units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
+
+  } else if (strcmp(temp2, "Local") == 0) {
+    bp->AGN_heating_temperature_model = AGN_heating_temperature_local;
+
+    bp->delta_T_xi = parser_get_param_float(params, "SPINJETAGN:delta_T_xi");
+
+    bp->delta_T_min =
+        parser_get_param_float(params, "SPINJETAGN:delta_T_min_K");
+
+    /* Check that minimum temperature makes sense */
+    if (bp->delta_T_min <= 0.f)
+      error(
+          "The minimum AGN heating temperature delta T must be > 0 K, "
+          "not %.5e K.",
+          bp->delta_T_min);
+
+    /* Convert to internal units */
+    bp->delta_T_min /= units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
+
+    bp->delta_T_max =
+        parser_get_param_float(params, "SPINJETAGN:delta_T_max_K");
+
+    /* Check that minimum temperature makes sense */
+    if (bp->delta_T_max <= 0.f)
+      error(
+          "The maximum AGN heating temperature delta T must be > 0 K, "
+          "not %.5e K.",
+          bp->delta_T_max);
+
+    /* Convert to internal units */
+    bp->delta_T_max /= units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
+
+    float temp_hot_gas_min =
+        parser_get_param_float(params, "SPINJETAGN:temperature_hot_gas_min_K");
+
+    temp_hot_gas_min /= units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
+
+    bp->sound_speed_hot_gas_min =
+        sqrtf(hydro_gamma * hydro_gamma_minus_one * temp_hot_gas_min *
+              bp->temp_to_u_factor);
+
+    /* Define constants used to parametrise the Dalla Vecchia & Schaye (2012)
+       condition - Eqn 18. */
+    bp->normalisation_Dalla_Vecchia = 1.8e6;
+    bp->normalisation_Dalla_Vecchia /=
+        units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
+    bp->ref_ngb_mass_Dalla_Vecchia = 1e6 * 60. * phys_const->const_solar_mass;
+
+    /* This is nH = 0.1 cm^-3, convert to physical density */
+    bp->ref_density_Dalla_Vecchia =
+        0.1 * mu * m_p /
+        units_cgs_conversion_factor(us, UNIT_CONV_NUMBER_DENSITY);
+
+  } else {
+    error(
+        "The AGN heating temperature model must be Constant or SoundSpeed,"
+        " not %s",
+        temp2);
+  }
 
   bp->num_ngbs_to_heat =
       parser_get_param_float(params, "SPINJETAGN:AGN_num_ngb_to_heat");
@@ -601,33 +726,22 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
   bp->major_merger_threshold =
       parser_get_param_float(params, "SPINJETAGN:threshold_major_merger");
 
-  char temp2[PARSER_MAX_LINE_SIZE];
-  parser_get_param_string(params, "SPINJETAGN:merger_threshold_type", temp2);
-  if (strcmp(temp2, "CircularVelocity") == 0)
+  char temp3[PARSER_MAX_LINE_SIZE];
+  parser_get_param_string(params, "SPINJETAGN:merger_threshold_type", temp3);
+  if (strcmp(temp3, "CircularVelocity") == 0)
     bp->merger_threshold_type = BH_mergers_circular_velocity;
-  else if (strcmp(temp2, "EscapeVelocity") == 0)
+  else if (strcmp(temp3, "EscapeVelocity") == 0)
     bp->merger_threshold_type = BH_mergers_escape_velocity;
-  else if (strcmp(temp2, "DynamicalEscapeVelocity") == 0)
+  else if (strcmp(temp3, "DynamicalEscapeVelocity") == 0)
     bp->merger_threshold_type = BH_mergers_dynamical_escape_velocity;
   else
     error(
         "The BH merger model must be either CircularVelocity, EscapeVelocity, "
         "or DynamicalEscapeVelocity, not %s",
-        temp2);
+        temp3);
 
   bp->max_merging_distance_ratio =
       parser_get_param_float(params, "SPINJETAGN:merger_max_distance_ratio");
-
-  /* Common conversion factors ----------------------------- */
-
-  /* Calculate temperature to internal energy conversion factor (all internal
-   * units) */
-  const double k_B = phys_const->const_boltzmann_k;
-  const double m_p = phys_const->const_proton_mass;
-  const double mu = hydro_props->mu_ionised;
-  bp->temp_to_u_factor = k_B / (mu * hydro_gamma_minus_one * m_p);
-
-  /* ---- Black hole time-step properties ------------------ */
 
   const double yr_in_cgs = 365.25 * 24. * 3600.;
   bp->time_step_min =
@@ -715,14 +829,14 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
   bp->xi_TD = 2. * (1. + 7. * bp->alpha_acc_2) / (4. + bp->alpha_acc_2) /
               bp->alpha_acc_2;
 
-  char temp3[PARSER_MAX_LINE_SIZE];
-  parser_get_param_string(params, "SPINJETAGN:TD_region", temp3);
-  if (strcmp(temp3, "B") == 0)
+  char temp4[PARSER_MAX_LINE_SIZE];
+  parser_get_param_string(params, "SPINJETAGN:TD_region", temp4);
+  if (strcmp(temp4, "B") == 0)
     bp->TD_region = TD_region_B;
-  else if (strcmp(temp3, "C") == 0)
+  else if (strcmp(temp4, "C") == 0)
     bp->TD_region = TD_region_C;
   else
-    error("The choice of thin disc region must be B or C, not %s", temp3);
+    error("The choice of thin disc region must be B or C, not %s", temp4);
 
   /* ---- Jet feedback - related parameters ---------- */
   bp->include_jets = parser_get_param_int(params, "SPINJETAGN:include_jets");
@@ -750,17 +864,6 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
         "least one of the two feedback modes must be turned on.");
   }
 
-  bp->turn_off_secondary_feedback =
-      parser_get_param_int(params, "SPINJETAGN:turn_off_secondary_feedback");
-
-  if ((bp->turn_off_secondary_feedback != 0) &&
-      (bp->turn_off_secondary_feedback != 1)) {
-    error(
-        "The turn_off_secondary_feedback parameter must be either 0 or 1, "
-        "not %d",
-        bp->turn_off_secondary_feedback);
-  }
-
   bp->include_slim_disk =
       parser_get_param_int(params, "SPINJETAGN:include_slim_disk");
 
@@ -771,14 +874,14 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
         bp->include_slim_disk);
   }
 
-  bp->include_GRMHD_spindown =
-      parser_get_param_int(params, "SPINJETAGN:include_GRMHD_spindown");
+  bp->use_jets_in_thin_disc =
+      parser_get_param_int(params, "SPINJETAGN:use_jets_in_thin_disc");
 
-  if ((bp->include_GRMHD_spindown != 0) && (bp->include_GRMHD_spindown != 1)) {
+  if ((bp->use_jets_in_thin_disc != 0) && (bp->use_jets_in_thin_disc != 1)) {
     error(
-        "The include_GRMHD_spindown parameter must be either 0 or 1, "
+        "The use_jets_in_thin_disc parameter must be either 0 or 1, "
         "not %d",
-        bp->include_GRMHD_spindown);
+        bp->use_jets_in_thin_disc);
   }
 
   bp->N_jet = parser_get_param_float(params, "SPINJETAGN:N_jet");
@@ -787,9 +890,9 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
     error("The N_jet parameter must be divisible by two, not %d", bp->N_jet);
   }
 
-  char temp4[PARSER_MAX_LINE_SIZE];
-  parser_get_param_string(params, "SPINJETAGN:AGN_jet_velocity_model", temp4);
-  if (strcmp(temp4, "Constant") == 0) {
+  char temp5[PARSER_MAX_LINE_SIZE];
+  parser_get_param_string(params, "SPINJETAGN:AGN_jet_velocity_model", temp5);
+  if (strcmp(temp5, "Constant") == 0) {
     bp->AGN_jet_velocity_model = AGN_jet_velocity_constant;
 
     bp->v_jet = parser_get_param_float(params, "SPINJETAGN:v_jet_km_p_s");
@@ -800,7 +903,7 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
     if (bp->v_jet <= 0.)
       error("The v_jet parameter must be > 0., not %f", bp->v_jet);
 
-  } else if (strcmp(temp4, "BlackHoleMass") == 0) {
+  } else if (strcmp(temp5, "BlackHoleMass") == 0) {
     bp->AGN_jet_velocity_model = AGN_jet_velocity_BH_mass;
 
     bp->v_jet_BH_mass_scaling_reference_mass = parser_get_param_float(
@@ -808,9 +911,6 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
     bp->v_jet_BH_mass_scaling_reference_mass *= phys_const->const_solar_mass;
     bp->v_jet_BH_mass_scaling_slope = parser_get_param_float(
         params, "SPINJETAGN:v_jet_BH_mass_scaling_slope");
-
-    bp->v_jet_cs_ratio =
-        parser_get_param_float(params, "SPINJETAGN:v_jet_cs_ratio");
 
     bp->v_jet_min =
         parser_get_param_float(params, "SPINJETAGN:v_jet_min_km_p_s");
@@ -820,7 +920,7 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
         parser_get_param_float(params, "SPINJETAGN:v_jet_max_km_p_s");
     bp->v_jet_max *= (1e5 / (us->UnitLength_in_cgs / us->UnitTime_in_cgs));
 
-  } else if (strcmp(temp4, "MassLoading") == 0) {
+  } else if (strcmp(temp5, "MassLoading") == 0) {
     bp->AGN_jet_velocity_model = AGN_jet_velocity_mass_loading;
 
     bp->v_jet_mass_loading =
@@ -834,7 +934,7 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
         parser_get_param_float(params, "SPINJETAGN:v_jet_max_km_p_s");
     bp->v_jet_max *= (1e5 / (us->UnitLength_in_cgs / us->UnitTime_in_cgs));
 
-  } else if (strcmp(temp4, "Local") == 0) {
+  } else if (strcmp(temp5, "Local") == 0) {
     bp->AGN_jet_velocity_model = AGN_jet_velocity_local;
 
     bp->v_jet_xi = parser_get_param_float(params, "SPINJETAGN:v_jet_xi");
@@ -856,7 +956,7 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
         sqrtf(hydro_gamma * hydro_gamma_minus_one * temp_hot_gas_min *
               bp->temp_to_u_factor);
 
-  } else if (strcmp(temp4, "HaloMass") == 0) {
+  } else if (strcmp(temp5, "HaloMass") == 0) {
     error(
         "The scaling of jet velocities with halo mass is currently not "
         "supported.");
@@ -864,15 +964,12 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
     error(
         "The AGN jet velocity model must be Constant, MassLoading, "
         "BlackHoleMass, Local, SoundSpeed or HaloMass, not %s",
-        temp4);
+        temp5);
   }
 
   bp->opening_angle =
       parser_get_param_float(params, "SPINJETAGN:opening_angle_in_degrees");
   bp->opening_angle = bp->opening_angle * M_PI / 180.;
-
-  bp->jet_h_r_slope =
-      parser_get_param_float(params, "SPINJETAGN:jet_h_r_slope");
 
   bp->eps_f_jet = parser_get_param_float(params, "SPINJETAGN:eps_f_jet");
 
@@ -911,14 +1008,6 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
         bp->fix_jet_direction);
   }
 
-  bp->accretion_efficiency =
-      parser_get_param_float(params, "SPINJETAGN:accretion_efficiency");
-
-  if (bp->accretion_efficiency <= 0.) {
-    error("The accretion efficiency must be larger than 0., not %f",
-          bp->accretion_efficiency);
-  }
-
   bp->fix_radiative_efficiency =
       parser_get_param_int(params, "SPINJETAGN:fix_radiative_efficiency");
 
@@ -940,21 +1029,82 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
         bp->radiative_efficiency);
   }
 
-  char temp5[60];
-  parser_get_param_string(params, "SPINJETAGN:AGN_jet_feedback_model", temp5);
-  if (strcmp(temp5, "MinimumDistance") == 0)
+  bp->use_ADIOS_winds =
+      parser_get_param_int(params, "SPINJETAGN:use_ADIOS_winds");
+
+  if ((bp->use_ADIOS_winds != 0) && (bp->use_ADIOS_winds != 1)) {
+    error(
+        "The use_ADIOS_winds parameter must be either 0 or 1, "
+        "not %d",
+        bp->use_ADIOS_winds);
+  }
+
+  bp->slim_disc_wind_factor =
+      parser_get_param_float(params, "SPINJETAGN:slim_disc_wind_factor");
+
+  if ((bp->slim_disc_wind_factor < 0) || (bp->slim_disc_wind_factor > 1)) {
+    error(
+        "The slim_disc_wind_factor parameter must be between 0 and 1, "
+        "(inclusive), not %f",
+        bp->slim_disc_wind_factor);
+  }
+
+  char temp6[60];
+  parser_get_param_string(params, "SPINJETAGN:AGN_jet_feedback_model", temp6);
+  if (strcmp(temp6, "MinimumDistance") == 0)
     bp->jet_feedback_model = AGN_jet_minimum_distance_model;
-  else if (strcmp(temp5, "MaximumDistance") == 0)
+  else if (strcmp(temp6, "MaximumDistance") == 0)
     bp->jet_feedback_model = AGN_jet_maximum_distance_model;
-  else if (strcmp(temp5, "SpinAxis") == 0)
+  else if (strcmp(temp6, "SpinAxis") == 0)
     bp->jet_feedback_model = AGN_jet_spin_axis_model;
-  else if (strcmp(temp5, "MinimumDensity") == 0)
+  else if (strcmp(temp6, "MinimumDensity") == 0)
     bp->jet_feedback_model = AGN_jet_minimum_density_model;
   else
     error(
         "The AGN feedback model must be MinimumDistance, MaximumDistance, "
         "SpinAxis or MinimumDensity, not %s",
-        temp5);
+        temp6);
+
+  bp->accretion_efficiency_slim =
+      parser_get_param_float(params, "SPINJETAGN:accretion_efficiency_slim");
+
+  if ((bp->accretion_efficiency_slim < 0) ||
+      (bp->accretion_efficiency_slim > 1)) {
+    error(
+        "The accretion_efficiency_slim parameter must be between 0 and 1, "
+        "(inclusive), not %f",
+        bp->accretion_efficiency_slim);
+  }
+
+  char temp7[60];
+  parser_get_param_string(params, "SPINJETAGN:accretion_efficiency_mode",
+                          temp7);
+  if (strcmp(temp7, "Constant") == 0) {
+    bp->accretion_efficiency_mode = BH_accretion_efficiency_constant;
+    bp->accretion_efficiency_thick =
+        parser_get_param_float(params, "SPINJETAGN:accretion_efficiency_thick");
+
+    if ((bp->accretion_efficiency_thick < 0) ||
+        (bp->accretion_efficiency_thick > 1)) {
+      error(
+          "The accretion_efficiency_thick parameter must be between 0 and 1, "
+          "(inclusive), not %f",
+          bp->accretion_efficiency_thick);
+    }
+  } else if (strcmp(temp7, "Variable") == 0) {
+    bp->accretion_efficiency_mode = BH_accretion_efficiency_variable;
+    bp->ADIOS_s = parser_get_param_float(params, "SPINJETAGN:ADIOS_s");
+
+    if ((bp->ADIOS_s < 0) || (bp->ADIOS_s > 1)) {
+      error(
+          "The ADIOS_s parameter must be between 0 and 1, "
+          "(inclusive), not %f",
+          bp->ADIOS_s);
+    }
+  } else {
+    error("The accretion efficiency model must be Constant or Variable, not %s",
+          temp7);
+  }
 }
 
 /**

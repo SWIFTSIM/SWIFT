@@ -43,6 +43,7 @@
 #include "engine.h"
 
 /* Local headers. */
+#include "adaptive_softening.h"
 #include "atomic.h"
 #include "cell.h"
 #include "clocks.h"
@@ -102,6 +103,9 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
 
       /* Drift before you send */
       scheduler_addunlock(s, ci->grav.super->grav.drift, t_grav);
+
+      if (gravity_after_hydro_density)
+        scheduler_addunlock(s, ci->grav.super->grav.init_out, t_grav);
     }
 
     /* Add them to the local cell. */
@@ -1378,6 +1382,11 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
         scheduler_addunlock(s, c->grav.init, c->grav.long_range);
         scheduler_addunlock(s, c->grav.long_range, c->grav.down);
         scheduler_addunlock(s, c->grav.down, c->grav.super->grav.end_force);
+
+        /* With adaptive softening, force the hydro density to complete first */
+        if (gravity_after_hydro_density && c->hydro.super == c) {
+          scheduler_addunlock(s, c->hydro.ghost_out, c->grav.init_out);
+        }
 
         /* Link in the implicit tasks */
         scheduler_addunlock(s, c->grav.init, c->grav.init_out);
@@ -4490,11 +4499,12 @@ void engine_make_fofloop_tasks_mapper(void *map_data, int num_elements,
     if (ci->grav.count == 0) continue;
 
     /* If the cells is local build a self-interaction */
-    if (ci->nodeID == nodeID)
+    if (ci->nodeID == nodeID) {
       scheduler_addtask(sched, task_type_fof_self, task_subtype_none, 0, 0, ci,
                         NULL);
-    else
-      continue;
+      scheduler_addtask(sched, task_type_fof_attach_self, task_subtype_none, 0,
+                        0, ci, NULL);
+    }
 
     /* Now loop over all the neighbours of this cell */
     for (int ii = -1; ii < 2; ii++) {
@@ -4514,13 +4524,19 @@ void engine_make_fofloop_tasks_mapper(void *map_data, int num_elements,
           const int cjd = cell_getid(cdim, iii, jjj, kkk);
           struct cell *cj = &cells[cjd];
 
-          /* Is that neighbour local and does it have particles ? */
-          if (cid >= cjd || cj->grav.count == 0 || (ci->nodeID != cj->nodeID))
-            continue;
+          /* Does that neighbour have particles ? */
+          if (cid >= cjd || cj->grav.count == 0) continue;
 
-          /* Construct the pair task */
-          scheduler_addtask(sched, task_type_fof_pair, task_subtype_none, 0, 0,
-                            ci, cj);
+          /* Construct the pair search task only for fully local pairs */
+          if (ci->nodeID == nodeID && cj->nodeID == nodeID)
+            scheduler_addtask(sched, task_type_fof_pair, task_subtype_none, 0,
+                              0, ci, cj);
+
+          /* Construct the pair search task for pairs overlapping with the node
+           */
+          if (ci->nodeID == nodeID || cj->nodeID == nodeID)
+            scheduler_addtask(sched, task_type_fof_attach_pair,
+                              task_subtype_none, 0, 0, ci, cj);
         }
       }
     }

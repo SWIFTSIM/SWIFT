@@ -120,6 +120,7 @@ enum engine_step_properties {
 #define engine_foreign_alloc_margin_default 1.05
 #define engine_default_energy_file_name "statistics"
 #define engine_default_timesteps_file_name "timesteps"
+#define engine_default_rt_subcycles_file_name "rtsubcycles"
 #define engine_max_parts_per_ghost_default 1000
 #define engine_max_sparts_per_ghost_default 1000
 #define engine_max_parts_per_cooling_default 10000
@@ -430,6 +431,9 @@ struct engine {
   /* File handle for the timesteps information */
   FILE *file_timesteps;
 
+  /* File handle for the Radiative Transfer sub-cycling information */
+  FILE *file_rt_subcycles;
+
   /* File handle for the SFH logger file */
   FILE *sfh_logger;
 
@@ -696,7 +700,7 @@ void engine_io(struct engine *e);
 void engine_io_check_snapshot_triggers(struct engine *e);
 void engine_collect_end_of_step(struct engine *e, int apply);
 void engine_collect_end_of_sub_cycle(struct engine *e);
-void engine_dump_snapshot(struct engine *e);
+void engine_dump_snapshot(struct engine *e, const int fof);
 void engine_run_on_dump(struct engine *e);
 void engine_init_output_lists(struct engine *e, struct swift_params *params,
                               const struct output_options *output_options);
@@ -760,6 +764,7 @@ void engine_fof(struct engine *e, const int dump_results,
                 const int dump_debug_results, const int seed_black_holes,
                 const int foreign_buffers_allocated);
 void engine_activate_gpart_comms(struct engine *e);
+void engine_activate_fof_attach_tasks(struct engine *e);
 
 /* Function prototypes, engine_maketasks.c. */
 void engine_maketasks(struct engine *e);

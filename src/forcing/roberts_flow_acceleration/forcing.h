@@ -34,6 +34,15 @@
 #include "space.h"
 #include "units.h"
 
+/* Type of flow */
+enum flow {
+  Brandenburg_flow,
+  Roberts_flow_1,
+  Roberts_flow_2,
+  Roberts_flow_3,
+  Roberts_flow_4
+};
+
 /**
  * @brief Forcing Term Properties
  */
@@ -47,6 +56,12 @@ struct forcing_terms {
 
   /*! Velocity scaling along the z direction */
   float Vz_factor;
+
+  /*! Kind of RobertsFlow */
+  enum flow Flow_kind;
+
+  /*! Wavenumber of the flow*/
+  float kv;
 };
 
 /**
@@ -65,22 +80,79 @@ __attribute__((always_inline)) INLINE static void forcing_terms_apply(
     const double time, const struct forcing_terms* terms, const struct space* s,
     const struct phys_const* phys_const, struct part* p, struct xpart* xp) {
 
-  const float c_s = hydro_get_comoving_soundspeed(p);
+  enum flow Flow_kind = terms->Flow_kind;
   const double L = s->dim[0];
   const float u0 = terms->u0;
-  const float nu = terms->nu * p->viscosity.alpha * c_s * p->h;
+  const float c_s = hydro_get_comoving_soundspeed(p);
+
+  /* Effective viscosity from artificial viscosity, as in eq. 100 from
+   * arXiv:1012.1885 */
+  const float nu = terms->nu * p->viscosity.alpha * c_s * p->h /
+                   (2.f * (hydro_dimension + 2.f));
+
   const float Vz_factor = terms->Vz_factor;
-  const double k0 = 2. * M_PI / L;
+  const double k0 = (2. * M_PI / L) * terms->kv;
   const double kf = M_SQRT2 * k0;
+  double v_Rob[3];
+  double Psi;
 
-  /* Eq. 8 of Tilgner & Brandenburg, 2008, MNRAS, 391, 1477 */
-  const double Psi = (u0 / k0) * cos(k0 * p->x[0]) * cos(k0 * p->x[1]);
+  switch (Flow_kind) {
 
-  /* Eq. 7 of Tilgner & Brandenburg, 2008, MNRAS, 391, 1477
-   * (with optional scaling along z) */
-  const double v_Rob[3] = {u0 * cos(k0 * p->x[0]) * sin(k0 * p->x[1]),
-                           -u0 * sin(k0 * p->x[0]) * cos(k0 * p->x[1]),
-                           kf * Psi * Vz_factor};
+    case Brandenburg_flow:
+      /* Eq. 8 of Tilgner & Brandenburg, 2008, MNRAS, 391, 1477 */
+      // Psi = (u0 / k0) * cos(k0 * p->x[0]) * cos(k0 * p->x[1]);
+
+      /* Eq. 7 of Tilgner & Brandenburg, 2008, MNRAS, 391, 1477 */
+      // v_Rob[0] = u0 * cos(k0 * p->x[0]) * sin(k0 * p->x[1]);
+      // v_Rob[1] = -u0 * sin(k0 * p->x[0]) * cos(k0 * p->x[1]);
+      // v_Rob[2] = kf * Psi;
+
+      // Velocity used to compare with A.B. runs (from overleaf)
+      Psi = (u0 / k0) * sin(k0 * p->x[0]) * sin(k0 * p->x[1]);
+      v_Rob[0] = u0 * sin(k0 * p->x[0]) * cos(k0 * p->x[1]);
+      v_Rob[1] = -u0 * cos(k0 * p->x[0]) * sin(k0 * p->x[1]);
+      v_Rob[2] = kf * Psi;
+
+      break;
+
+    case Roberts_flow_1:
+      /* Eq. 5.1 of Roberts, Feb. 3, 1972, Vol. 271, No. 1216 (Feb. 3, 1972),
+       * pp. 411-454.*/
+      v_Rob[0] = u0 * sin(k0 * p->x[0]);
+      v_Rob[1] = u0 * sin(k0 * p->x[1]);
+      v_Rob[2] = u0 * (cos(k0 * p->x[0]) - cos(k0 * p->x[1]));
+      break;
+
+    case Roberts_flow_2:
+      /* Eq. 6.1 of Roberts, Feb. 3, 1972, Vol. 271, No. 1216 (Feb. 3, 1972),
+       * pp. 411-454.*/
+      v_Rob[0] = u0 * sin(k0 * p->x[0]);
+      v_Rob[1] = u0 * sin(k0 * p->x[1]);
+      v_Rob[2] = u0 * (cos(k0 * p->x[0]) + cos(k0 * p->x[1]));
+      break;
+
+    case Roberts_flow_3:
+      /* Eq. 6.2 of Roberts, Feb. 3, 1972, Vol. 271, No. 1216 (Feb. 3, 1972),
+       * pp. 411-454.*/
+      v_Rob[0] = u0 * sin(k0 * p->x[0]);
+      v_Rob[1] = u0 * sin(k0 * p->x[1]);
+      v_Rob[2] = u0 * 2 * cos(k0 * p->x[0]) * cos(k0 * p->x[1]);
+      break;
+
+    case Roberts_flow_4:
+      /* Eq. 6.3 of Roberts, Feb. 3, 1972, Vol. 271, No. 1216 (Feb. 3, 1972),
+       * pp. 411-454.*/
+      v_Rob[0] = u0 * sin(k0 * p->x[0]);
+      v_Rob[1] = u0 * sin(k0 * p->x[1]);
+      v_Rob[2] = u0 * sin(k0 * (p->x[0] + p->x[1]));
+      break;
+
+    default:
+
+      v_Rob[0] = 0.f;
+      v_Rob[1] = 0.f;
+      v_Rob[2] = 0.f;
+  }
 
   /* Eq. 6 of Tilgner & Brandenburg, 2008, MNRAS, 391, 1477 */
   const double f[3] = {nu * kf * kf * v_Rob[0], nu * kf * kf * v_Rob[1],
@@ -89,7 +161,7 @@ __attribute__((always_inline)) INLINE static void forcing_terms_apply(
   /* Update the accelerations */
   p->a_hydro[0] += f[0];
   p->a_hydro[1] += f[1];
-  p->a_hydro[2] += f[2];
+  p->a_hydro[2] += f[2] * Vz_factor;
 }
 
 /**
@@ -122,6 +194,7 @@ static INLINE void forcing_terms_print(const struct forcing_terms* terms) {
       "Forcing terms is 'Roberts flow using accelerations'. U0: %.5f. nu: "
       "%.5f. Vz factor: %.5f.",
       terms->u0, terms->nu, terms->Vz_factor);
+  message("Forcing 'Roberts flow' Kind: %i .", terms->Flow_kind);
 }
 
 /**
@@ -145,6 +218,14 @@ static INLINE void forcing_terms_init(struct swift_params* parameter_file,
                                       "RobertsFlowAccelerationForcing:nu");
   terms->Vz_factor = parser_get_opt_param_float(
       parameter_file, "RobertsFlowAccelerationForcing:Vz_factor", 1.f);
+  terms->Flow_kind =
+      parser_get_param_int(parameter_file, "RobertsFlowForcing:Flow_kind");
+  terms->kv = parser_get_param_double(parameter_file, "RobertsFlowForcing:kv");
+
+  if (terms->Flow_kind > 4 || terms->Flow_kind < 0)
+    error(
+        "Error: Flow_kind variable can take integer values from [0,4] "
+        "interval.");
 }
 
 #endif /* SWIFT_FORCING_ROBERTS_FLOW_ACCELERATION_H */
