@@ -220,6 +220,8 @@ static INLINE void tracers_first_init_xpart(
   xp->tracers_data.last_AGN_jet_feedback_scale_factor = 0.f;
   xp->tracers_data.last_AGN_jet_feedback_time = 0.f;
   xp->tracers_data.last_jet_kick_velocity = 0.f;
+  xp->tracers_data.last_jet_kick_accretion_mode = BH_thick_disc;
+  xp->tracers_data.last_jet_kick_BH_id = 0;
 }
 
 /**
@@ -324,7 +326,8 @@ static INLINE void tracers_after_black_holes_feedback(
 static INLINE void tracers_after_jet_feedback(
     const struct part *p, struct xpart *xp, const int with_cosmology,
     const float scale_factor, const double time, const double delta_energy,
-    const float vel_kick) {
+    const float vel_kick, const enum BH_accretion_modes accretion_mode,
+    const long long id) {
 
   if (with_cosmology)
     xp->tracers_data.last_AGN_jet_feedback_scale_factor = scale_factor;
@@ -333,6 +336,8 @@ static INLINE void tracers_after_jet_feedback(
   xp->tracers_data.hit_by_jet_feedback++;
   xp->tracers_data.jet_feedback_energy += delta_energy;
   xp->tracers_data.last_jet_kick_velocity = vel_kick;
+  xp->tracers_data.last_jet_kick_accretion_mode = accretion_mode;
+  xp->tracers_data.last_jet_kick_BH_id = id;
 }
 
 /**
