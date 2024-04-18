@@ -55,6 +55,7 @@
 #include "proxy.h"
 #include "rt_properties.h"
 #include "timers.h"
+#include "zoom_region/zoom.h"
 
 extern int engine_max_parts_per_ghost;
 extern int engine_max_sparts_per_ghost;
@@ -1856,6 +1857,220 @@ void engine_make_hierarchical_tasks_mapper(void *map_data, int num_elements,
 }
 
 /**
+ * @brief Test whether two cells need a pair gravity task.
+ *
+ * This function will test if the two cells are far enough apart to let
+ * the mesh handle the interaction or if the cells are too close for a
+ * multipole-multipole (long range) interaction. If neither of these are
+ * true then we need a pair task.
+ *
+ * @param e The #engine.
+ * @param ci The first #cell.
+ * @param cj The second #cell.
+ * @param periodic Whether the domain is periodic.
+ * @param dim The dimensions of the domain.
+ * @param max_distance2 The square of the maximal distance for a direct
+ *                      interaction.
+ * @param nodeID The nodeID of the current node.
+ *
+ * @return 1 if a pair gravity task is needed, 0 otherwise.
+ */
+int engine_gravity_need_cell_pair_task(struct engine *e, struct cell *ci,
+                                       struct cell *cj, const int periodic,
+                                       const int use_mesh) {
+
+  struct space *s = e->s;
+  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
+  const double max_distance = e->mesh->r_cut_max;
+  const double max_distance2 = max_distance * max_distance;
+
+#ifdef WITH_MPI
+  const int nodeID = e->nodeID;
+
+  /* Recover the multipole information */
+  const struct gravity_tensors *multi_i = ci->grav.multipole;
+  const struct gravity_tensors *multi_j = cj->grav.multipole;
+
+  if (multi_i == NULL && ci->nodeID != nodeID)
+    error("Multipole of ci was not exchanged properly via the proxies");
+  if (multi_j == NULL && cj->nodeID != nodeID)
+    error("Multipole of cj was not exchanged properly via the proxies");
+#endif
+
+  /* Minimal distance between any pair of particles */
+  const double min_radius2 = cell_min_dist2(ci, cj, periodic, dim);
+
+  /* Are we beyond the distance where the truncated forces are 0 ?*/
+  if (periodic && min_radius2 > max_distance2) return 0;
+
+  /* Are the cells too close for a MM interaction ? */
+  return !cell_can_use_pair_mm(ci, cj, e, e->s, /*use_rebuild_data=*/1,
+                               /*is_tree_walk=*/0, periodic, use_mesh);
+}
+
+/**
+ * @brief Constructs a top-level pair gravity task between two cells.
+ *
+ * This will also check and ensure we have the proxy for the foreign cell.
+ *
+ * @param e The #engine.
+ * @param sched The #scheduler.
+ * @param ci The first #cell.
+ * @param cj The second #cell.
+ * @param nodeID The nodeID of the current node.
+ */
+void engine_make_pair_gravity_task(struct engine *e, struct scheduler *sched,
+                                   struct cell *ci, struct cell *cj,
+                                   const int nodeID, const int cid,
+                                   const int cjd) {
+  /* Add a pair task. */
+  scheduler_addtask(sched, task_type_pair, task_subtype_grav, 0, 0, ci, cj);
+
+#ifdef SWIFT_DEBUG_CHECKS
+#ifdef WITH_MPI
+
+  /* Let's cross-check that we had a proxy for that cell */
+  if (ci->nodeID == nodeID && cj->nodeID != engine_rank) {
+
+    /* Find the proxy for this node */
+    const int proxy_id = e->proxy_ind[cj->nodeID];
+    if (proxy_id < 0)
+      error("No proxy exists for that foreign node %d!", cj->nodeID);
+
+    const struct proxy *p = &e->proxies[proxy_id];
+
+    /* Check whether the cell exists in the proxy */
+    int n = 0;
+    for (; n < p->nr_cells_in; n++)
+      if (p->cells_in[n] == cj) {
+        break;
+      }
+    if (n == p->nr_cells_in)
+      error(
+          "Cell %d not found in the proxy but trying to construct "
+          "grav task!",
+          cjd);
+  } else if (cj->nodeID == nodeID && ci->nodeID != engine_rank) {
+
+    /* Find the proxy for this node */
+    const int proxy_id = e->proxy_ind[ci->nodeID];
+    if (proxy_id < 0)
+      error("No proxy exists for that foreign node %d!", ci->nodeID);
+
+    const struct proxy *p = &e->proxies[proxy_id];
+
+    /* Check whether the cell exists in the proxy */
+    int n = 0;
+    for (; n < p->nr_cells_in; n++)
+      if (p->cells_in[n] == ci) {
+        break;
+      }
+    if (n == p->nr_cells_in)
+      error(
+          "Cell %d not found in the proxy but trying to construct "
+          "grav task!",
+          cid);
+  }
+#endif /* WITH_MPI */
+#endif /* SWIFT_DEBUG_CHECKS */
+}
+
+/**
+ * @brief Construct a self-gravity task for a cell and loop over all
+ * pairs of cells within the mesh interaction range creating pair tasks.
+ *
+ * - All top-cells get a self-interaction.
+ * - All pairs within range according to the multipole acceptance
+ *   criterion get a pair task.
+ *
+ *   @param e The #engine.
+ *   @param cid The cell index.
+ *   @param offset The offset into cells_top for the current cell type.
+ *   @param cdim The dimensions of the cell grid.
+ *   @param cells The array of cells.
+ *   @param periodic Whether the domain is periodic.
+ *   @param use_mesh Whether to use the mesh for the interaction.
+ *   @param delta_m The lower delta for the interaction range.
+ *   @param delta_p The upper delta for the interaction range.
+ */
+void engine_gravity_make_task_loop(struct engine *e, int cid, const int cdim[3],
+                                   struct cell *cells, const int periodic,
+                                   const int use_mesh, const int delta_m,
+                                   const int delta_p) {
+
+  struct scheduler *sched = &e->sched;
+  const int nodeID = e->nodeID;
+
+  /* Integer indices of the cell in the top-level grid */
+  const int i = cid / (cdim[1] * cdim[2]);
+  const int j = (cid / cdim[2]) % cdim[1];
+  const int k = cid % cdim[2];
+
+  /* Get the first cell */
+  struct cell *ci = &cells[cid];
+
+  /* Skip cells without gravity particles */
+  if (ci->grav.count == 0) return;
+
+  /* If the cell is local build a self-interaction */
+  if (ci->nodeID == nodeID) {
+    scheduler_addtask(sched, task_type_self, task_subtype_grav, 0, 0, ci, NULL);
+  }
+
+  /* Loop over every other cell within (Manhattan) range delta */
+  for (int ii = i - delta_m; ii <= i + delta_p; ii++) {
+
+    /* Escape if non-periodic and beyond range */
+    if (!periodic && (ii < 0 || ii >= cdim[0])) continue;
+
+    for (int jj = j - delta_m; jj <= j + delta_p; jj++) {
+
+      /* Escape if non-periodic and beyond range */
+      if (!periodic && (jj < 0 || jj >= cdim[1])) continue;
+
+      for (int kk = k - delta_m; kk <= k + delta_p; kk++) {
+
+        /* Escape if non-periodic and beyond range */
+        if (!periodic && (kk < 0 || kk >= cdim[2])) continue;
+
+        /* Apply periodic BC (not harmful if not using periodic BC) */
+        const int iii = (ii + cdim[0]) % cdim[0];
+        const int jjj = (jj + cdim[1]) % cdim[1];
+        const int kkk = (kk + cdim[2]) % cdim[2];
+
+        /* Get the second cell */
+        const int cjd = cell_getid(cdim, iii, jjj, kkk);
+        struct cell *cj = &cells[cjd];
+
+#ifdef SWIFT_DEBUG_CHECKS
+        /* Ensure both cells are zoom cells */
+        if (ci->type != cj->type) {
+          error(
+              "Cell %d and cell %d are not the same cell type! "
+              "(ci->type=%s, cj->type=%s)",
+              cid, cjd, cellID_names[ci->type], cellID_names[cj->type]);
+        }
+#endif
+
+        /* Avoid duplicates and empty cells. Completely foreign pairs also get
+         * the Nigel treatment (AKA are kicked out of the union/we skip
+         * them). */
+        if (cid >= cjd || cj->grav.count == 0 ||
+            (ci->nodeID != nodeID && cj->nodeID != nodeID))
+          continue;
+
+        /* Do we need a pair interaction for these cells? */
+        if (engine_gravity_need_cell_pair_task(e, ci, cj, periodic, use_mesh)) {
+
+          /* Ok, we need to add a direct pair calculation */
+          engine_make_pair_gravity_task(e, sched, ci, cj, nodeID, cid, cjd);
+        }
+      }
+    }
+  }
+}
+
+/**
  * @brief Constructs the top-level tasks for the short-range gravity
  * and long-range gravity interactions.
  *
@@ -1868,14 +2083,12 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
 
   struct engine *e = (struct engine *)extra_data;
   struct space *s = e->s;
-  struct scheduler *sched = &e->sched;
-  const int nodeID = e->nodeID;
   const int periodic = s->periodic;
-  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
   struct cell *cells = s->cells_top;
-  const double max_distance = e->mesh->r_cut_max;
-  const double max_distance2 = max_distance * max_distance;
+
+  /* We always use the mesh if the volume is periodic. */
+  const int use_mesh = s->periodic;
 
   /* Compute maximal distance where we can expect a direct interaction */
   const float distance = gravity_M2L_min_accept_distance(
@@ -1909,133 +2122,10 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
   /* Loop through the elements, which are just byte offsets from NULL. */
   for (int ind = 0; ind < num_elements; ind++) {
 
-    /* Get the cell index. */
-    const int cid = (size_t)(map_data) + ind;
-
-    /* Integer indices of the cell in the top-level grid */
-    const int i = cid / (cdim[1] * cdim[2]);
-    const int j = (cid / cdim[2]) % cdim[1];
-    const int k = cid % cdim[2];
-
-    /* Get the first cell */
-    struct cell *ci = &cells[cid];
-
-    /* Skip cells without gravity particles */
-    if (ci->grav.count == 0) continue;
-
-    /* If the cell is local build a self-interaction */
-    if (ci->nodeID == nodeID) {
-      scheduler_addtask(sched, task_type_self, task_subtype_grav, 0, 0, ci,
-                        NULL);
-    }
-
-    /* Loop over every other cell within (Manhattan) range delta */
-    for (int ii = i - delta_m; ii <= i + delta_p; ii++) {
-
-      /* Escape if non-periodic and beyond range */
-      if (!periodic && (ii < 0 || ii >= cdim[0])) continue;
-
-      for (int jj = j - delta_m; jj <= j + delta_p; jj++) {
-
-        /* Escape if non-periodic and beyond range */
-        if (!periodic && (jj < 0 || jj >= cdim[1])) continue;
-
-        for (int kk = k - delta_m; kk <= k + delta_p; kk++) {
-
-          /* Escape if non-periodic and beyond range */
-          if (!periodic && (kk < 0 || kk >= cdim[2])) continue;
-
-          /* Apply periodic BC (not harmful if not using periodic BC) */
-          const int iii = (ii + cdim[0]) % cdim[0];
-          const int jjj = (jj + cdim[1]) % cdim[1];
-          const int kkk = (kk + cdim[2]) % cdim[2];
-
-          /* Get the second cell */
-          const int cjd = cell_getid(cdim, iii, jjj, kkk);
-          struct cell *cj = &cells[cjd];
-
-          /* Avoid duplicates, empty cells and completely foreign pairs */
-          if (cid >= cjd || cj->grav.count == 0 ||
-              (ci->nodeID != nodeID && cj->nodeID != nodeID))
-            continue;
-
-#ifdef WITH_MPI
-          /* Recover the multipole information */
-          const struct gravity_tensors *multi_i = ci->grav.multipole;
-          const struct gravity_tensors *multi_j = cj->grav.multipole;
-
-          if (multi_i == NULL && ci->nodeID != nodeID)
-            error("Multipole of ci was not exchanged properly via the proxies");
-          if (multi_j == NULL && cj->nodeID != nodeID)
-            error("Multipole of cj was not exchanged properly via the proxies");
-#endif
-
-          /* Minimal distance between any pair of particles */
-          const double min_radius2 =
-              cell_min_dist2_same_size(ci, cj, periodic, dim);
-
-          /* Are we beyond the distance where the truncated forces are 0 ?*/
-          if (periodic && min_radius2 > max_distance2) continue;
-
-          /* Are the cells too close for a MM interaction ? */
-          if (!cell_can_use_pair_mm(ci, cj, e, s, /*use_rebuild_data=*/1,
-                                    /*is_tree_walk=*/0)) {
-
-            /* Ok, we need to add a direct pair calculation */
-            scheduler_addtask(sched, task_type_pair, task_subtype_grav, 0, 0,
-                              ci, cj);
-
-#ifdef SWIFT_DEBUG_CHECKS
-#ifdef WITH_MPI
-
-            /* Let's cross-check that we had a proxy for that cell */
-            if (ci->nodeID == nodeID && cj->nodeID != engine_rank) {
-
-              /* Find the proxy for this node */
-              const int proxy_id = e->proxy_ind[cj->nodeID];
-              if (proxy_id < 0)
-                error("No proxy exists for that foreign node %d!", cj->nodeID);
-
-              const struct proxy *p = &e->proxies[proxy_id];
-
-              /* Check whether the cell exists in the proxy */
-              int n = 0;
-              for (; n < p->nr_cells_in; n++)
-                if (p->cells_in[n] == cj) {
-                  break;
-                }
-              if (n == p->nr_cells_in)
-                error(
-                    "Cell %d not found in the proxy but trying to construct "
-                    "grav task!",
-                    cjd);
-            } else if (cj->nodeID == nodeID && ci->nodeID != engine_rank) {
-
-              /* Find the proxy for this node */
-              const int proxy_id = e->proxy_ind[ci->nodeID];
-              if (proxy_id < 0)
-                error("No proxy exists for that foreign node %d!", ci->nodeID);
-
-              const struct proxy *p = &e->proxies[proxy_id];
-
-              /* Check whether the cell exists in the proxy */
-              int n = 0;
-              for (; n < p->nr_cells_in; n++)
-                if (p->cells_in[n] == ci) {
-                  break;
-                }
-              if (n == p->nr_cells_in)
-                error(
-                    "Cell %d not found in the proxy but trying to construct "
-                    "grav task!",
-                    cid);
-            }
-#endif /* WITH_MPI */
-#endif /* SWIFT_DEBUG_CHECKS */
-          }
-        }
-      }
-    }
+    /* Create a self task, and loop over neighbouring cells making pair tasks
+     * where appropriate. */
+    engine_gravity_make_task_loop(e, (size_t)(map_data) + ind, cdim, cells,
+                                  periodic, use_mesh, delta_m, delta_p);
   }
 }
 
@@ -2917,7 +3007,8 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 #else
 
       /* Now, build all the dependencies for the hydro for the cells */
-      /* that are local and are not descendant of the same super_hydro-cells */
+      /* that are local and are not descendant of the same super_hydro-cells
+       */
       if (ci->nodeID == nodeID) {
         engine_make_hydro_loops_dependencies(sched, t, t_force, t_limiter, ci,
                                              with_cooling,
@@ -3394,14 +3485,16 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       engine_addlink(e, &ci->hydro.gradient, t_gradient);
 
       /* Now, build all the dependencies for the hydro for the cells */
-      /* that are local and are not descendant of the same super_hydro-cells */
+      /* that are local and are not descendant of the same super_hydro-cells
+       */
       engine_make_hydro_loops_dependencies(sched, t, t_gradient, t_force,
                                            t_limiter, ci, with_cooling,
                                            with_timestep_limiter);
 #else
 
       /* Now, build all the dependencies for the hydro for the cells */
-      /* that are local and are not descendant of the same super_hydro-cells */
+      /* that are local and are not descendant of the same super_hydro-cells
+       */
       engine_make_hydro_loops_dependencies(sched, t, t_force, t_limiter, ci,
                                            with_cooling, with_timestep_limiter);
 #endif
@@ -3733,7 +3826,8 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       engine_addlink(e, &cj->hydro.gradient, t_gradient);
 
       /* Now, build all the dependencies for the hydro for the cells */
-      /* that are local and are not descendant of the same super_hydro-cells */
+      /* that are local and are not descendant of the same super_hydro-cells
+       */
       if (ci->nodeID == nodeID) {
         engine_make_hydro_loops_dependencies(sched, t, t_gradient, t_force,
                                              t_limiter, ci, with_cooling,
@@ -3747,7 +3841,8 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 #else
 
       /* Now, build all the dependencies for the hydro for the cells */
-      /* that are local and are not descendant of the same super_hydro-cells */
+      /* that are local and are not descendant of the same super_hydro-cells
+       */
       if (ci->nodeID == nodeID) {
         engine_make_hydro_loops_dependencies(sched, t, t_force, t_limiter, ci,
                                              with_cooling,
@@ -4107,6 +4202,9 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
  * Additional loop over neighbours can later be added by simply duplicating
  * all the tasks created by this function.
  *
+ * In the zoom case we only consider zoom cells and periodicity is ignored
+ * since the zoom region is never periodic.
+ *
  * @param map_data Offset of first two indices disguised as a pointer.
  * @param num_elements Number of cells to traverse.
  * @param extra_data The #engine.
@@ -4116,7 +4214,7 @@ void engine_make_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
   /* Extract the engine pointer. */
   struct engine *e = (struct engine *)extra_data;
-  const int periodic = e->s->periodic;
+  const int periodic = !e->s->with_zoom_region ? e->s->periodic : 0;
   const int with_feedback = (e->policy & engine_policy_feedback);
   const int with_stars = (e->policy & engine_policy_stars);
   const int with_sinks = (e->policy & engine_policy_sinks);
@@ -4125,7 +4223,7 @@ void engine_make_hydroloop_tasks_mapper(void *map_data, int num_elements,
   struct space *s = e->s;
   struct scheduler *sched = &e->sched;
   const int nodeID = e->nodeID;
-  const int *cdim = s->cdim;
+  const int *cdim = !s->with_zoom_region ? s->cdim : s->zoom_props->cdim;
   struct cell *cells = s->cells_top;
 
   /* Loop through the elements, which are just byte offsets from NULL. */
@@ -4172,7 +4270,19 @@ void engine_make_hydroloop_tasks_mapper(void *map_data, int num_elements,
           const int cjd = cell_getid(cdim, iii, jjj, kkk);
           struct cell *cj = &cells[cjd];
 
-          /* Is that neighbour local and does it have gas or star particles ? */
+#ifdef SWIFT_DEBUG_CHECKS
+          /* Ensure we only have zoom cells in the zoom case. */
+          if (s->with_zoom_region &&
+              (ci->type != cell_type_zoom || cj->type != cell_type_zoom)) {
+            error(
+                "Trying to make hydro tasks for non-zoom cells while running a "
+                "zoom! (ci->type=%s, cj->type=%s)",
+                cellID_names[ci->type], cellID_names[cj->type]);
+          }
+#endif
+
+          /* Is that neighbour local and does it have gas or star particles ?
+           */
           if ((cid >= cjd) ||
               ((cj->hydro.count == 0) &&
                (!with_feedback || cj->stars.count == 0) &&
@@ -4268,8 +4378,8 @@ void engine_addunlock_rt_advance_cell_time_tend(struct cell *c,
   if (cell_is_empty(c)) return;
 
   if (c->super == c) {
-    /* Found the super level cell. Add dependency from rt_advance_cell_time, if
-     * it exists. */
+    /* Found the super level cell. Add dependency from rt_advance_cell_time,
+     * if it exists. */
     if (c->super->rt.rt_advance_cell_time != NULL) {
       scheduler_addunlock(&e->sched, c->super->rt.rt_advance_cell_time, tend);
     }
@@ -4414,10 +4524,11 @@ void engine_addtasks_recv_mapper(void *map_data, int num_elements,
          * run at the same time. rt_collect_times runs in sub-cycles,
          * tend runs on normal steps. */
 
-        /* Make sure the timestep task replacements, i.e. rt_advance_cell_time,
-         * exists on the super levels regardless of proxy type.
-         * This needs to be done before engine_addtasks_recv_hydro so we
-         * can set appropriate unlocks there without re-creating tasks. */
+        /* Make sure the timestep task replacements, i.e.
+         * rt_advance_cell_time, exists on the super levels regardless of
+         * proxy type. This needs to be done before engine_addtasks_recv_hydro
+         * so we can set appropriate unlocks there without re-creating tasks.
+         */
         engine_addtasks_recv_rt_advance_cell_time(e, ci, tend);
       }
     }
@@ -4467,6 +4578,9 @@ void engine_addtasks_recv_mapper(void *map_data, int num_elements,
  * Additional loop over neighbours can later be added by simply duplicating
  * all the tasks created by this function.
  *
+ * In the zoom case we only consider zoom cells and periodicity is ignored
+ * since the zoom region is never periodic.
+ *
  * @param map_data Offset of first two indices disguised as a pointer.
  * @param num_elements Number of cells to traverse.
  * @param extra_data The #engine.
@@ -4478,9 +4592,10 @@ void engine_make_fofloop_tasks_mapper(void *map_data, int num_elements,
   struct engine *e = (struct engine *)extra_data;
 
   struct space *s = e->s;
+  const int periodic = !s->with_zoom_region ? s->periodic : 0;
   struct scheduler *sched = &e->sched;
   const int nodeID = e->nodeID;
-  const int *cdim = s->cdim;
+  const int *cdim = !s->with_zoom_region ? s->cdim : s->zoom_props->cdim;
   struct cell *cells = s->cells_top;
 
   /* Loop through the elements, which are just byte offsets from NULL. */
@@ -4509,20 +4624,31 @@ void engine_make_fofloop_tasks_mapper(void *map_data, int num_elements,
     /* Now loop over all the neighbours of this cell */
     for (int ii = -1; ii < 2; ii++) {
       int iii = i + ii;
-      if (!s->periodic && (iii < 0 || iii >= cdim[0])) continue;
+      if (!periodic && (iii < 0 || iii >= cdim[0])) continue;
       iii = (iii + cdim[0]) % cdim[0];
       for (int jj = -1; jj < 2; jj++) {
         int jjj = j + jj;
-        if (!s->periodic && (jjj < 0 || jjj >= cdim[1])) continue;
+        if (!periodic && (jjj < 0 || jjj >= cdim[1])) continue;
         jjj = (jjj + cdim[1]) % cdim[1];
         for (int kk = -1; kk < 2; kk++) {
           int kkk = k + kk;
-          if (!s->periodic && (kkk < 0 || kkk >= cdim[2])) continue;
+          if (!periodic && (kkk < 0 || kkk >= cdim[2])) continue;
           kkk = (kkk + cdim[2]) % cdim[2];
 
           /* Get the neighbouring cell */
           const int cjd = cell_getid(cdim, iii, jjj, kkk);
           struct cell *cj = &cells[cjd];
+
+#ifdef SWIFT_DEBUG_CHECKS
+          /* Ensure we only have zoom cells in the zoom case. */
+          if (s->with_zoom_region &&
+              (ci->type != cell_type_zoom || cj->type != cell_type_zoom)) {
+            error(
+                "Trying to make FOF tasks for non-zoom cells while running a "
+                "zoom! (ci->type=%s, cj->type=%s)",
+                cellID_names[ci->type], cellID_names[cj->type]);
+          }
+#endif
 
           /* Does that neighbour have particles ? */
           if (cid >= cjd || cj->grav.count == 0) continue;
@@ -4532,7 +4658,8 @@ void engine_make_fofloop_tasks_mapper(void *map_data, int num_elements,
             scheduler_addtask(sched, task_type_fof_pair, task_subtype_none, 0,
                               0, ci, cj);
 
-          /* Construct the pair search task for pairs overlapping with the node
+          /* Construct the pair search task for pairs overlapping with the
+           * node
            */
           if (ci->nodeID == nodeID || cj->nodeID == nodeID)
             scheduler_addtask(sched, task_type_fof_attach_pair,
@@ -4557,9 +4684,18 @@ void engine_make_fof_tasks(struct engine *e) {
   if (e->restarting) error("Running FOF on a restart step!");
 
   /* Construct a FOF loop over neighbours */
-  if (e->policy & engine_policy_fof)
-    threadpool_map(&e->threadpool, engine_make_fofloop_tasks_mapper, NULL,
-                   s->nr_cells, 1, threadpool_auto_chunk_size, e);
+  if (e->policy & engine_policy_fof) {
+    if (!s->with_zoom_region) {
+      threadpool_map(&e->threadpool, engine_make_fofloop_tasks_mapper, NULL,
+                     s->nr_cells, 1, threadpool_auto_chunk_size, e);
+    } else {
+      /* In the zoom case we only need to loop over the zoom cells which are the
+       * first nr_zoom_cells pointers in cells_top.  */
+      threadpool_map(&e->threadpool, engine_make_fofloop_tasks_mapper, NULL,
+                     s->zoom_props->nr_zoom_cells, 1,
+                     threadpool_auto_chunk_size, e);
+    }
+  }
 
   if (e->verbose)
     message("Making FOF tasks took %.3f %s.",
@@ -4614,9 +4750,18 @@ void engine_maketasks(struct engine *e) {
   ticks tic2 = getticks();
 
   /* Construct the first hydro loop over neighbours */
-  if (e->policy & engine_policy_hydro)
-    threadpool_map(&e->threadpool, engine_make_hydroloop_tasks_mapper, NULL,
-                   s->nr_cells, 1, threadpool_auto_chunk_size, e);
+  if (e->policy & engine_policy_hydro) {
+    if (!s->with_zoom_region) {
+      threadpool_map(&e->threadpool, engine_make_hydroloop_tasks_mapper, NULL,
+                     s->nr_cells, 1, threadpool_auto_chunk_size, e);
+    } else if (e->policy & engine_policy_hydro && s->with_zoom_region) {
+      /* In the zoom case we only need to loop over the zoom cells which are the
+       * first nr_zoom_cells pointers in cells_top.  */
+      threadpool_map(&e->threadpool, engine_make_hydroloop_tasks_mapper, NULL,
+                     s->zoom_props->nr_zoom_cells, 1,
+                     threadpool_auto_chunk_size, e);
+    }
+  }
 
   if (e->verbose)
     message("Making hydro tasks took %.3f %s.",
@@ -4625,9 +4770,13 @@ void engine_maketasks(struct engine *e) {
   tic2 = getticks();
 
   /* Add the self gravity tasks. */
-  if (e->policy & engine_policy_self_gravity) {
+  if (e->policy & engine_policy_self_gravity && !s->with_zoom_region) {
     threadpool_map(&e->threadpool, engine_make_self_gravity_tasks_mapper, NULL,
                    s->nr_cells, 1, threadpool_auto_chunk_size, e);
+  } else if (e->policy & engine_policy_self_gravity && s->with_zoom_region) {
+    /* Call the zoom region specific wrapper. This handles the pair tasks
+     * between each cell grid explicitly. */
+    zoom_engine_make_self_gravity_tasks(s, e);
   }
 
   if (e->verbose)
@@ -4687,8 +4836,8 @@ void engine_maketasks(struct engine *e) {
 
   tic2 = getticks();
 
-  /* Re-set the tag counter. MPI tags are defined for top-level cells in
-   * cell_set_super_mapper. */
+/* Re-set the tag counter. MPI tags are defined for top-level cells in
+ * cell_set_super_mapper. */
 #ifdef WITH_MPI
   cell_next_tag = 0;
 #endif
@@ -4718,9 +4867,10 @@ void engine_maketasks(struct engine *e) {
      * We call the mapper function directly as if there was only 1 thread
      * in the pool. */
     engine_make_extra_hydroloop_tasks_mapper(sched->tasks, sched->nr_tasks, e);
-    /* threadpool_map(&e->threadpool, engine_make_extra_hydroloop_tasks_mapper,
-     *                sched->tasks, sched->nr_tasks, sizeof(struct task),
-     *                threadpool_auto_chunk_size, e); */
+    /* threadpool_map(&e->threadpool,
+     * engine_make_extra_hydroloop_tasks_mapper, sched->tasks,
+     * sched->nr_tasks, sizeof(struct task), threadpool_auto_chunk_size, e);
+     */
   }
 
   if (e->verbose)
@@ -4790,8 +4940,8 @@ void engine_maketasks(struct engine *e) {
 
     tic2 = getticks();
 
-    /* Loop over the proxies and add the recv tasks, which relies on having the
-     * cell tags. */
+    /* Loop over the proxies and add the recv tasks, which relies on having
+     * the cell tags. */
     int max_num_recv_cells = 0;
     for (int pid = 0; pid < e->nr_proxies; pid++)
       max_num_recv_cells += e->proxies[pid].nr_cells_in;
@@ -4836,7 +4986,8 @@ void engine_maketasks(struct engine *e) {
   /* Report the number of links we actually used */
   if (e->verbose)
     message(
-        "Nr. of links: %zd allocated links: %zd ratio: %f memory use: %zd MB.",
+        "Nr. of links: %zd allocated links: %zd ratio: %f memory use: %zd "
+        "MB.",
         e->nr_links, e->size_links, (float)e->nr_links / (float)e->size_links,
         e->size_links * sizeof(struct link) / (1024 * 1024));
 

@@ -1490,7 +1490,9 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
                   /* Can we use a M-M interaction here? */
                   if (cell_can_use_pair_mm(ci->progeny[i], cj->progeny[j], e,
                                            sp, /*use_rebuild_data=*/1,
-                                           /*is_tree_walk=*/1)) {
+                                           /*is_tree_walk=*/1,
+                                           /*periodic boundaries*/ sp->periodic,
+                                           /*use_mesh*/ sp->periodic)) {
 
                     /* Flag this pair as being treated by the M-M task.
                      * We use the 64 bits in the task->flags field to store

@@ -147,9 +147,9 @@ struct cell_split_pair cell_split_pairs[13] = {
 /* Cell names. */
 const char *cellID_names[4] = {
     "Regular",
-    "Background",
     "Zoom",
     "Buffer",
+    "Background",
 };
 
 /* Sub-cell names. */
@@ -1447,10 +1447,10 @@ void cell_check_sort_flags(const struct cell *c) {
 int cell_can_use_pair_mm(const struct cell *restrict ci,
                          const struct cell *restrict cj, const struct engine *e,
                          const struct space *s, const int use_rebuild_data,
-                         const int is_tree_walk) {
+                         const int is_tree_walk, const int periodic,
+                         const int use_mesh) {
 
   const struct gravity_props *props = e->gravity_properties;
-  const int periodic = s->periodic;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
 
   /* Check for trivial cases */
@@ -1483,5 +1483,5 @@ int cell_can_use_pair_mm(const struct cell *restrict ci,
   const double r2 = dx * dx + dy * dy + dz * dz;
 
   return gravity_M2L_accept_symmetric(props, multi_i, multi_j, r2,
-                                      use_rebuild_data, periodic);
+                                      use_rebuild_data, use_mesh);
 }
