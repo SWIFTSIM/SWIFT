@@ -630,6 +630,10 @@ void zoom_construct_tl_cells(struct space *s, const integertime_t ti_current,
     }
   }
 
+  /* Attach zoom cells to their cell array (they are the first cells in
+   * cells_top so nothing fancy needed here). */
+  zoom_props->zoom_cells_top = s->cells_top;
+
   if (verbose)
     message("Set zoom cell dimensions to [ %i %i %i ].", zoom_props->cdim[0],
             zoom_props->cdim[1], zoom_props->cdim[2]);
@@ -682,6 +686,9 @@ void zoom_construct_tl_cells(struct space *s, const integertime_t ti_current,
       }
     }
   }
+
+  /* Attach background cells to their cell array. */
+  zoom_props->bkg_cells_top = &s->cells_top[bkg_cell_offset];
 
   if (verbose)
     message("Set background cell dimensions to [ %i %i %i ].", s->cdim[0],
@@ -746,6 +753,9 @@ void zoom_construct_tl_cells(struct space *s, const integertime_t ti_current,
         }
       }
     }
+
+    /* Attach background cells to their cell array. */
+    zoom_props->buffer_cells_top = &s->cells_top[buffer_offset];
 
     if (verbose)
       message("Set buffer cell dimensions to [ %i %i %i ].",
