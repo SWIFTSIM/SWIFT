@@ -70,9 +70,14 @@ int check_can_long_range(const struct engine *e, struct cell *ci,
     if ((min_radius2 > max_distance2)) return 0;
 
     /* In that case, can we do a long range interaction between ci and cj? */
+    /* NOTE: If we are consider 2 zoom cells then the periodicity is wrong (zoom
+     * cells are not periodic at the zoom region boundary), but we don't care
+     * because wrapping will have no effect in this context. */
     return cell_can_use_pair_mm(ci, cj, e, s,
                                 /*use_rebuild_data=*/1,
-                                /*is_tree_walk=*/0);
+                                /*is_tree_walk=*/0,
+                                /*periodic boundaries*/ s->periodic,
+                                /*use_mesh*/ s->periodic);
   }
 
   /* Declare interaction flag. */
@@ -133,8 +138,9 @@ void runner_do_grav_long_range_recurse(struct runner *r, struct cell *ci,
  * @brief Performs M-M interactions between a given top-level cell and
  *        all other top level cells not interacted with via pair tasks.
  *
- * This is the non-periodic case where there is no mesh so all cells not handled
- * by a pair task are interacted with here in this long range gravity function.
+ * This is the non-periodic case where there is no mesh so all cells not
+ * handled by a pair task are interacted with here in this long range
+ * gravity function.
  *
  * @param r The thread #runner.
  * @param ci The #cell of interest.
@@ -144,6 +150,7 @@ void runner_do_grav_long_range_non_periodic(struct runner *r, struct cell *ci,
                                             struct cell *top) {
 
   struct engine *e = r->e;
+  struct space *s = e->s;
 
   /* Get the mutlipole of the cell we are interacting. */
   struct gravity_tensors *const multi_i = ci->grav.multipole;
@@ -177,7 +184,9 @@ void runner_do_grav_long_range_non_periodic(struct runner *r, struct cell *ci,
     if (multi_j->m_pole.M_000 == 0.f) continue;
 
     if (cell_can_use_pair_mm(top, cj, e, e->s, /*use_rebuild_data=*/1,
-                             /*is_tree_walk=*/0)) {
+                             /*is_tree_walk=*/0,
+                             /*periodic boundaries*/ s->periodic,
+                             /*use_mesh*/ s->periodic)) {
 
       /* Call the PM interaction function on the active sub-cells of ci */
       runner_dopair_grav_mm_nonsym_wrapper(r, ci, cj);
@@ -187,7 +196,7 @@ void runner_do_grav_long_range_non_periodic(struct runner *r, struct cell *ci,
       multi_i->pot.interacted = 1;
 
     } /* We are in charge of this pair */
-  }   /* Loop over top-level cells */
+  } /* Loop over top-level cells */
 }
 
 /**
@@ -196,20 +205,22 @@ void runner_do_grav_long_range_non_periodic(struct runner *r, struct cell *ci,
  *        with via pair tasks or the mesh.
  *
  * This is used when the space is periodic and there is a mesh, therefore we
- * only interact with cells that are closer than the mesh interaction distance
- * but further than the direct interaction distance.
+ * only interact with cells that are closer than the mesh interaction
+ * distance but further than the direct interaction distance.
  *
- * This function will be "clever" and only loop over the parts of the top-level
- * grid that are not covered by the mesh. Add some buffer for safety.
+ * This function will be "clever" and only loop over the parts of the
+ * top-level grid that are not covered by the mesh. Add some buffer for
+ * safety.
  *
- * In the zoom case this function handles the following long range interactions:
+ * In the zoom case this function handles the following long range
+ * interactions:
  * - bkg -> bkg
  * - bkg -> zoom
  * - bkg -> buffer (if their are buffer cells)
  *
- * Interactions with the zoom cells are handled by recursing through the void
- * cell hierarchy and interacting with all cells at any appropriate level as
- * long as all zoom cell leaves can have an mm interaction.
+ * Interactions with the zoom cells are handled by recursing through the
+ * void cell hierarchy and interacting with all cells at any appropriate
+ * level as long as all zoom cell leaves can have an mm interaction.
  *
  * @param r The thread #runner.
  * @param ci The #cell of interest.
@@ -223,7 +234,8 @@ void runner_do_grav_long_range_periodic(struct runner *r, struct cell *ci,
   const int periodic = e->mesh->periodic;
   const double dim[3] = {e->mesh->dim[0], e->mesh->dim[1], e->mesh->dim[2]};
 
-  /* Get the maximum distance at which we can have a non-mesh interaction. */
+  /* Get the maximum distance at which we can have a non-mesh interaction.
+   */
   const double max_distance = e->mesh->r_cut_max;
   const double max_distance2 = max_distance * max_distance;
 
@@ -259,8 +271,8 @@ void runner_do_grav_long_range_periodic(struct runner *r, struct cell *ci,
         /* Avoid self contributions  */
         if (top == cj) continue;
 
-        /* If this is the void cell we need to interact with zoom cells (only
-         * applicable when running a zoom region). */
+        /* If this is the void cell we need to interact with zoom cells
+         * (only applicable when running a zoom region). */
         if (cj->subtype == cell_subtype_void) {
 
           /* Loop over the first level of the void cell hierarchy. */
@@ -291,7 +303,9 @@ void runner_do_grav_long_range_periodic(struct runner *r, struct cell *ci,
 
         /* Shall we interact with this cell? */
         if (cell_can_use_pair_mm(top, cj, e, e->s, /*use_rebuild_data=*/1,
-                                 /*is_tree_walk=*/0)) {
+                                 /*is_tree_walk=*/0,
+                                 /*periodic boundaries*/ s->periodic,
+                                 /*use_mesh*/ s->periodic)) {
 
           /* Call the PM interaction function on the active sub-cells of ci
            */
@@ -302,13 +316,13 @@ void runner_do_grav_long_range_periodic(struct runner *r, struct cell *ci,
           multi_i->pot.interacted = 1;
 
         } /* We can interact with this cell */
-      }   /* Loop over relevant top-level cells (k) */
-    }     /* Loop over relevant top-level cells (j) */
-  }       /* Loop over relevant top-level cells (i) */
+      } /* Loop over relevant top-level cells (k) */
+    } /* Loop over relevant top-level cells (j) */
+  } /* Loop over relevant top-level cells (i) */
 
   /* When running with a zoom region we also need to loop over useful buffer
-   * cells. We can play the same game here walking out only a certain number of
-   * buffer cells to interact with those we need to. */
+   * cells. We can play the same game here walking out only a certain number
+   * of buffer cells to interact with those we need to. */
   if (s->with_zoom_region && s->zoom_props->with_buffer_cells) {
 
     /* Get the buffer cell pointers. */
@@ -348,7 +362,8 @@ void runner_do_grav_long_range_periodic(struct runner *r, struct cell *ci,
           /* Avoid self contributions  */
           if (top == cj) continue;
 
-          /* If this is the void cell we need to interact with the zoom cells.
+          /* If this is the void cell we need to interact with the zoom
+           * cells.
            */
           if (cj->subtype == cell_subtype_void) {
 
@@ -380,7 +395,9 @@ void runner_do_grav_long_range_periodic(struct runner *r, struct cell *ci,
 
           /* Shall we interact with this cell? */
           if (cell_can_use_pair_mm(top, cj, e, e->s, /*use_rebuild_data=*/1,
-                                   /*is_tree_walk=*/0)) {
+                                   /*is_tree_walk=*/0,
+                                   /*periodic boundaries*/ s->periodic,
+                                   /*use_mesh*/ s->periodic)) {
 
             /* Call the PM interaction function on the active sub-cells of
              * ci */
@@ -391,30 +408,31 @@ void runner_do_grav_long_range_periodic(struct runner *r, struct cell *ci,
             multi_i->pot.interacted = 1;
 
           } /* We can interact with this cell */
-        }   /* Buffer cell i loop. */
-      }     /* Buffer cell j loop. */
-    }       /* Buffer cell k loop. */
-  }         /* Buffer cells enabled. */
+        } /* Buffer cell i loop. */
+      } /* Buffer cell j loop. */
+    } /* Buffer cell k loop. */
+  } /* Buffer cells enabled. */
 }
 
 /**
  * @brief Performs M-M interactions between a given top-level zoom cell and
- *        all other top level cells not interacted with via pair tasks or the
- *        mesh.
+ *        all other top level cells not interacted with via pair tasks or
+ * the mesh.
  *
  * This is used when the space is periodic and there is a mesh, therefore we
- * only interact with cells that are closer than the mesh interaction distance
- * but further than the direct interaction distance.
+ * only interact with cells that are closer than the mesh interaction
+ * distance but further than the direct interaction distance.
  *
  * Rather than looping over relevant top-level cells, this function instead
- * recurses through the void cell hierarchy and interacts with all cells at any
- * appropriate level as long as all zoom cell leaves can have an mm
+ * recurses through the void cell hierarchy and interacts with all cells at
+ * any appropriate level as long as all zoom cell leaves can have an mm
  * interaction.
  *
  * This function is only used when running a zoom simulation and handles the
  * following long range interactions:
  * - zoom -> zoom
- * - zoom -> nieghbour (where a neighbour can be either a background or buffer)
+ * - zoom -> nieghbour (where a neighbour can be either a background or
+ * buffer)
  *
  * @param r The thread #runner.
  * @param ci The #cell of interest.
@@ -429,7 +447,8 @@ void runner_do_long_range_zoom(struct runner *r, struct cell *ci,
   const int periodic = e->mesh->periodic;
   const double dim[3] = {e->mesh->dim[0], e->mesh->dim[1], e->mesh->dim[2]};
 
-  /* Get the maximum distance at which we can have a non-mesh interaction. */
+  /* Get the maximum distance at which we can have a non-mesh interaction.
+   */
   const double max_distance = e->mesh->r_cut_max;
   const double max_distance2 = max_distance * max_distance;
 
@@ -480,8 +499,10 @@ void runner_do_long_range_zoom(struct runner *r, struct cell *ci,
     }
 
     /* Shall we interact with this cell? */
-    if (cell_can_use_pair_mm(top, bkg_cj, e, e->s, /*use_rebuild_data=*/1,
-                             /*is_tree_walk=*/0)) {
+    if (cell_can_use_pair_mm(top, bkg_cj, e, s, /*use_rebuild_data=*/1,
+                             /*is_tree_walk=*/0,
+                             /*periodic boundaries*/ s->periodic,
+                             /*use_mesh*/ s->periodic)) {
 
       /* Call the PM interaction function on the active sub-cells of ci
        */
@@ -492,20 +513,21 @@ void runner_do_long_range_zoom(struct runner *r, struct cell *ci,
       multi_i->pot.interacted = 1;
 
     } /* We can interact with this cell. */
-  }   /* Neighbour cell loop. */
+  } /* Neighbour cell loop. */
 }
 
 /**
- * @brief Performs M-M interactions between a given top-level buffer cell and
- *        all other top level cells not interacted with via pair tasks or the
+ * @brief Performs M-M interactions between a given top-level buffer cell
+ * and all other top level cells not interacted with via pair tasks or the
  *        mesh.
  *
  * This is used when the space is periodic and there is a mesh, therefore we
- * only interact with cells that are closer than the mesh interaction distance
- * but further than the direct interaction distance.
+ * only interact with cells that are closer than the mesh interaction
+ * distance but further than the direct interaction distance.
  *
- * This function will be "clever" and only loop over the parts of the top-level
- * grids that are not covered by the mesh and some padding for safety.
+ * This function will be "clever" and only loop over the parts of the
+ * top-level grids that are not covered by the mesh and some padding for
+ * safety.
  *
  * This function is only used when running a zoom simulation and handles the
  * following long range interactions:
@@ -513,9 +535,9 @@ void runner_do_long_range_zoom(struct runner *r, struct cell *ci,
  * - buffer -> zoom
  * - buffer -> bkg
  *
- * Interactions with the zoom cells are handled by recursing through the void
- * cell hierarchy and interacting with all cells at any appropriate level as
- * long as all zoom cell leaves can have an mm interaction.
+ * Interactions with the zoom cells are handled by recursing through the
+ * void cell hierarchy and interacting with all cells at any appropriate
+ * level as long as all zoom cell leaves can have an mm interaction.
  *
  * @param r The thread #runner.
  * @param ci The #cell of interest.
@@ -529,7 +551,8 @@ void runner_do_grav_long_range_buffer(struct runner *r, struct cell *ci,
   const int periodic = e->mesh->periodic;
   const double dim[3] = {e->mesh->dim[0], e->mesh->dim[1], e->mesh->dim[2]};
 
-  /* Get the maximum distance at which we can have a non-mesh interaction. */
+  /* Get the maximum distance at which we can have a non-mesh interaction.
+   */
   const double max_distance = e->mesh->r_cut_max;
   const double max_distance2 = max_distance * max_distance;
 
@@ -605,8 +628,10 @@ void runner_do_grav_long_range_buffer(struct runner *r, struct cell *ci,
         }
 
         /* Shall we interact with this cell? */
-        if (cell_can_use_pair_mm(top, cj, e, e->s, /*use_rebuild_data=*/1,
-                                 /*is_tree_walk=*/0)) {
+        if (cell_can_use_pair_mm(top, cj, e, s, /*use_rebuild_data=*/1,
+                                 /*is_tree_walk=*/0,
+                                 /*periodic boundaries*/ s->periodic,
+                                 /*use_mesh*/ s->periodic)) {
 
           /* Call the PM interaction function on the active sub-cells of ci
            */
@@ -617,9 +642,9 @@ void runner_do_grav_long_range_buffer(struct runner *r, struct cell *ci,
           multi_i->pot.interacted = 1;
 
         } /* We can interact with this cell */
-      }   /* Buffer cell i loop. */
-    }     /* Buffer cell j loop. */
-  }       /* Buffer cell k loop. */
+      } /* Buffer cell i loop. */
+    } /* Buffer cell j loop. */
+  } /* Buffer cell k loop. */
 
   /* Finally we can interact with the background cells we need to by walking
    * out only as far as we need to from the empty cells above
@@ -673,10 +698,13 @@ void runner_do_grav_long_range_buffer(struct runner *r, struct cell *ci,
         }
 
         /* Shall we interact with this cell? */
-        if (cell_can_use_pair_mm(top, cj, e, e->s, /*use_rebuild_data=*/1,
-                                 /*is_tree_walk=*/0)) {
+        if (cell_can_use_pair_mm(top, cj, e, s, /*use_rebuild_data=*/1,
+                                 /*is_tree_walk=*/0,
+                                 /*periodic boundaries*/ s->periodic,
+                                 /*use_mesh*/ s->periodic)) {
 
-          /* Call the PM interaction function on the active sub-cells of ci */
+          /* Call the PM interaction function on the active sub-cells of ci
+           */
           runner_dopair_grav_mm_nonsym_wrapper(r, ci, cj);
           // runner_dopair_recursive_grav_pm(r, ci, cj);
 
@@ -684,9 +712,9 @@ void runner_do_grav_long_range_buffer(struct runner *r, struct cell *ci,
           multi_i->pot.interacted = 1;
 
         } /* We can interact with this cell */
-      }   /* Loop over relevant top-level cells (k) */
-    }     /* Loop over relevant top-level cells (j) */
-  }       /* Loop over relevant top-level cells (i) */
+      } /* Loop over relevant top-level cells (k) */
+    } /* Loop over relevant top-level cells (j) */
+  } /* Loop over relevant top-level cells (i) */
 }
 
 /**
@@ -711,7 +739,8 @@ void runner_count_mesh_interactions(struct runner *r, struct cell *ci,
   const int periodic = e->mesh->periodic;
   const double dim[3] = {e->mesh->dim[0], e->mesh->dim[1], e->mesh->dim[2]};
 
-  /* Get the maximum distance at which we can have a non-mesh interaction. */
+  /* Get the maximum distance at which we can have a non-mesh interaction.
+   */
   const double max_distance = e->mesh->r_cut_max;
   const double max_distance2 = max_distance * max_distance;
 
@@ -757,18 +786,19 @@ void runner_count_mesh_interactions(struct runner *r, struct cell *ci,
   }
 #else
   error(
-      "This function should not be called without debugging checks or force "
+      "This function should not be called without debugging checks or "
+      "force "
       "checks enabled!");
 #endif
 }
 
 /**
- * @brief Performs all M-M interactions between a given top-level cell and all
- * the other top-levels that are far enough.
+ * @brief Performs all M-M interactions between a given top-level cell and
+ * all the other top-levels that are far enough.
  *
- * This function is the main long-range gravity function. It is called by the
- * runner and will call the appropriate interaction function for the given cell
- * type/space periodicity.
+ * This function is the main long-range gravity function. It is called by
+ * the runner and will call the appropriate interaction function for the
+ * given cell type/space periodicity.
  *
  * @param r The thread #runner.
  * @param ci The #cell of interest.
