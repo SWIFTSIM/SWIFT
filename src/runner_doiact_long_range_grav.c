@@ -21,12 +21,14 @@
 #include <config.h>
 
 /* Local headers. */
+#include "active.h"
 #include "cell.h"
 #include "engine.h"
 #include "gravity_properties.h"
 #include "runner.h"
 #include "runner_doiact_grav.h"
 #include "space.h"
+#include "timers.h"
 
 /**
  * @brief Ensure no progeny of this cell neighbour in the void cell heirarchy
@@ -524,7 +526,6 @@ void runner_do_grav_long_range_buffer(struct runner *r, struct cell *ci,
 
   struct engine *e = r->e;
   struct space *s = e->s;
-  struct cell *cells = s->cells_top;
   const int periodic = e->mesh->periodic;
   const double dim[3] = {e->mesh->dim[0], e->mesh->dim[1], e->mesh->dim[2]};
 
@@ -545,9 +546,9 @@ void runner_do_grav_long_range_buffer(struct runner *r, struct cell *ci,
   struct cell *buffer_cells = s->zoom_props->buffer_cells_top;
 
   /* Get the (i,j,k) location of the top-level buffer cell in the grid. */
-  top_i = (top->loc[0] - buffer_bounds[0]) * buffer_iwidth[0];
-  top_j = (top->loc[1] - buffer_bounds[1]) * buffer_iwidth[1];
-  top_k = (top->loc[2] - buffer_bounds[2]) * buffer_iwidth[2];
+  const int top_i = (top->loc[0] - buffer_bounds[0]) * buffer_iwidth[0];
+  const int top_j = (top->loc[1] - buffer_bounds[1]) * buffer_iwidth[1];
+  const int top_k = (top->loc[2] - buffer_bounds[2]) * buffer_iwidth[2];
 
   /* Maximal distance any interaction can take place
    * before the mesh kicks in, rounded up to the next integer */
@@ -713,6 +714,9 @@ void runner_count_mesh_interactions(struct runner *r, struct cell *top) {
   const double max_distance = e->mesh->r_cut_max;
   const double max_distance2 = max_distance * max_distance;
 
+  /* Get the mutlipole of the cell we are interacting. */
+  struct gravity_tensors *const multi_i = ci->grav.multipole;
+
   /* Loop over all other cells and account for the mesh contribution. */
   for (int n = 0; n < s->nr_cells; n++) {
 
@@ -774,7 +778,12 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
 
   TIMER_TIC;
 
-  /* Anything to do here? */
+  struct space *s = r->e->s;
+
+  /* Is the space periodic? */
+  const int periodic = s->periodic;
+
+  /* anything to do here? */
   if (!cell_is_active_gravity(ci, r->e)) return;
 
   if (ci->nodeID != engine_rank)
@@ -793,7 +802,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
     switch (top->type) {
 
       case cell_type_regular:
-        runner_do_grav_long_range_periodic(r, ci, top);
+        runner_do_grav_long_range_periodic(r, ci, top, s->cell_top);
         break;
       case cell_type_zoom:
         runner_do_long_range_zoom(r, ci, top);
@@ -802,7 +811,8 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
         runner_do_grav_long_range_buffer(r, ci, top);
         break;
       case cell_type_bkg:
-        runner_do_grav_long_range_periodic(r, ci, top);
+        runner_do_grav_long_range_periodic(r, ci, top,
+                                           s->zoom_props->bkg_cells_top);
         break;
       default:
         error("Unknown cell type in long-range gravity task!");
