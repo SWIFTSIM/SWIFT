@@ -2023,6 +2023,24 @@ static INLINE void runner_dopair_grav_mm_nonsym(struct runner *r,
 }
 
 /**
+ * @brief Computes the interaction of the field tensor in a cell with the
+ * multipole of another cell.
+ *
+ * This function is a wrapper to allow the function to be called from the long
+ * range gravity functions file. This only exists to maintain the inlining
+ * of runner_dopair_grav_mm_nonsym. (Is this needed?)
+ *
+ * @param r The #runner.
+ * @param ci The #cell with field tensor to interact.
+ * @param cj The #cell with the multipole.
+ */
+void runner_dopair_grav_mm_nonsym_wrapper(struct runner *r,
+                                          struct cell *restrict ci,
+                                          struct cell *restrict cj) {
+  runner_dopair_grav_mm_nonsym(r, ci, cj);
+}
+
+/**
  * @brief Call the M-M calculation on two cells if active.
  *
  * @param r The #runner object.

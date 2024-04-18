@@ -110,7 +110,7 @@ void runner_do_grav_long_range_recurse(struct runner *r, struct cell *ci,
   if (check_can_long_range(e, ci, cj)) {
 
     /* Call the PM interaction function on the active sub-cells of ci. */
-    runner_dopair_grav_mm_nonsym(r, ci, cj);
+    runner_dopair_grav_mm_nonsym_wrapper(r, ci, cj);
 
     /* Record that this multipole received a contribution */
     multi_i->pot.interacted = 1;
@@ -178,7 +178,7 @@ void runner_do_grav_long_range_non_periodic(struct runner *r, struct cell *ci,
                              /*is_tree_walk=*/0)) {
 
       /* Call the PM interaction function on the active sub-cells of ci */
-      runner_dopair_grav_mm_nonsym(r, ci, cj);
+      runner_dopair_grav_mm_nonsym_wrapper(r, ci, cj);
       // runner_dopair_recursive_grav_pm(r, ci, cj);
 
       /* Record that this multipole received a contribution */
@@ -293,7 +293,7 @@ void runner_do_grav_long_range_periodic(struct runner *r, struct cell *ci,
 
           /* Call the PM interaction function on the active sub-cells of ci
            */
-          runner_dopair_grav_mm_nonsym(r, ci, cj);
+          runner_dopair_grav_mm_nonsym_wrapper(r, ci, cj);
           // runner_dopair_recursive_grav_pm(r, ci, cj);
 
           /* Record that this multipole received a contribution */
@@ -382,7 +382,7 @@ void runner_do_grav_long_range_periodic(struct runner *r, struct cell *ci,
 
             /* Call the PM interaction function on the active sub-cells of
              * ci */
-            runner_dopair_grav_mm_nonsym(r, ci, cj);
+            runner_dopair_grav_mm_nonsym_wrapper(r, ci, cj);
             // runner_dopair_recursive_grav_pm(r, ci, cj);
 
             /* Record that this multipole received a contribution */
@@ -483,7 +483,7 @@ void runner_do_long_range_zoom(struct runner *r, struct cell *ci,
 
       /* Call the PM interaction function on the active sub-cells of ci
        */
-      runner_dopair_grav_mm_nonsym(r, ci, bkg_cj);
+      runner_dopair_grav_mm_nonsym_wrapper(r, ci, bkg_cj);
       // runner_dopair_recursive_grav_pm(r, ci, cj);
 
       /* Record that this multipole received a contribution */
@@ -609,7 +609,7 @@ void runner_do_grav_long_range_buffer(struct runner *r, struct cell *ci,
 
           /* Call the PM interaction function on the active sub-cells of ci
            */
-          runner_dopair_grav_mm_nonsym(r, ci, cj);
+          runner_dopair_grav_mm_nonsym_wrapper(r, ci, cj);
           // runner_dopair_recursive_grav_pm(r, ci, cj);
 
           /* Record that this multipole received a contribution */
@@ -676,7 +676,7 @@ void runner_do_grav_long_range_buffer(struct runner *r, struct cell *ci,
                                  /*is_tree_walk=*/0)) {
 
           /* Call the PM interaction function on the active sub-cells of ci */
-          runner_dopair_grav_mm_nonsym(r, ci, cj);
+          runner_dopair_grav_mm_nonsym_wrapper(r, ci, cj);
           // runner_dopair_recursive_grav_pm(r, ci, cj);
 
           /* Record that this multipole received a contribution */
