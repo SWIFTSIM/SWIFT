@@ -25,6 +25,8 @@
 #include "engine.h"
 #include "gravity_properties.h"
 #include "runner.h"
+#include "runner_doiact_grav.h"
+#include "space.h"
 
 /**
  * @brief Ensure no progeny of this cell neighbour in the void cell heirarchy
