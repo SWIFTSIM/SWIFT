@@ -253,7 +253,7 @@ void stellar_evolution_compute_discrete_feedback_properties(
        sp->feedback_data.number_snii = 0;
        sp->feedback_data.mass_ejected = 0;
        return;
-    
+     }
   }   
 
   /* Update the mass */
