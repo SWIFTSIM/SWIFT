@@ -27,6 +27,7 @@
 #include "active.h"
 #include "inline.h"
 #include "multipole.h"
+#include "timers.h"
 
 /* Avoid cyclic inclusions. */
 struct runner;
