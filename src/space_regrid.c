@@ -590,7 +590,7 @@ void space_regrid(struct space *s, int verbose) {
     space_partition_cells(s, oldnodeIDs, oldwidth, oldcdim, no_regrid);
 #endif
 
-  }      /* re-build upper-level cells? */
+  } /* re-build upper-level cells? */
   else { /* Otherwise, just clean up the cells. */
 
     /* Free the old sub-cells, if they were allocated, and reinitialise the top
@@ -633,7 +633,7 @@ void space_regrid(struct space *s, int verbose) {
    * order, or passing around extra information. Although annoying this just
    * means this error could be triggered after everything is set up instead of
    * during set up at the beginning of a run. */
-  if (s->with_zoom_region && s->e != NULL &&
+  if (s->periodic && s->with_zoom_region && s->e != NULL &&
       s->dim[0] / s->e->gravity_properties->mesh_size >
           s->zoom_props->width[0]) {
     error(
