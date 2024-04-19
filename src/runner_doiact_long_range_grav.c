@@ -142,12 +142,16 @@ void runner_do_grav_long_range_recurse(struct runner *r, struct cell *ci,
  * handled by a pair task are interacted with here in this long range
  * gravity function.
  *
+ * This function is used when running a non-periodic uniform box and just loops
+ * over every other cell with particles and interacts with them.
+ *
  * @param r The thread #runner.
  * @param ci The #cell of interest.
  * @param top The top-level parent of the #cell of interest.
  */
-void runner_do_grav_long_range_non_periodic(struct runner *r, struct cell *ci,
-                                            struct cell *top) {
+void runner_do_grav_long_range_uniform_non_periodic(struct runner *r,
+                                                    struct cell *ci,
+                                                    struct cell *top) {
 
   struct engine *e = r->e;
   struct space *s = e->s;
@@ -167,15 +171,6 @@ void runner_do_grav_long_range_non_periodic(struct runner *r, struct cell *ci,
     /* Handle on the top-level cell and it's gravity business*/
     struct cell *cj = &cells[cells_with_particles[n]];
     struct gravity_tensors *const multi_j = cj->grav.multipole;
-
-    /* We can skip non-neighbour background cells */
-    if ((ci->type == cell_type_zoom && cj->subtype != cell_subtype_neighbour) ||
-        (cj->type == cell_type_zoom && ci->subtype != cell_subtype_neighbour))
-      continue;
-
-    /* We can skip top-level cells parent to the zoom region */
-    if (ci->subtype == cell_subtype_void || cj->subtype == cell_subtype_void)
-      continue;
 
     /* Avoid self contributions */
     if (top == cj) continue;
@@ -197,6 +192,73 @@ void runner_do_grav_long_range_non_periodic(struct runner *r, struct cell *ci,
 
     } /* We are in charge of this pair */
   }   /* Loop over top-level cells */
+}
+
+/**
+ * @brief Performs M-M interactions between a given top-level cell and
+ *        all other top level cells not interacted with via pair tasks.
+ *
+ * This is the non-periodic case where there is no mesh so all cells not
+ * handled by a pair task are interacted with here in this long range
+ * gravity function.
+ *
+ * This function is used when running a non-periodic zoom simulation and
+ * will loop over all non-zoom cells but use the void cell hierarchy to
+ * interact with all zoom cells.
+ *
+ * @param r The thread #runner.
+ * @param ci The #cell of interest.
+ * @param top The top-level parent of the #cell of interest.
+ */
+void runner_do_grav_long_range_zoom_non_periodic(struct runner *r,
+                                                 struct cell *ci,
+                                                 struct cell *top) {
+
+  struct engine *e = r->e;
+  struct space *s = e->s;
+
+  /* Get the mutlipole of the cell we are interacting. */
+  struct gravity_tensors *const multi_i = ci->grav.multipole;
+
+  /* Recover the list of top-level cells */
+  struct cell *cells = e->s->cells_top;
+
+  /* Since the zoom cells will be handled by the void cell hierarchy we can
+   * just loop over all other cells which are not zoom cells. This is
+   * trivial since the zoom cells are first in cells_top. */
+  for (int cjd = s->zoom_props->nr_zoom_cells; cjd < s->nr_cells; cjd++) {
+
+    /* Handle on the top-level cell and it's gravity business*/
+    struct cell *cj = &cells[cjd];
+    struct gravity_tensors *const multi_j = cj->grav.multipole;
+
+    /* If cj is a void cell interact recursively with the zoom cells. */
+    if (cj->subtype == cell_subtype_void) {
+      for (int k = 0; k < 8; k++) {
+        runner_do_grav_long_range_recurse(r, ci, cj->progeny[k]);
+      }
+      continue;
+    }
+
+    /* Avoid self contributions */
+    if (top == cj) continue;
+
+    /* Skip empty cells */
+    if (multi_j->m_pole.M_000 == 0.f) continue;
+
+    if (cell_can_use_pair_mm(top, cj, e, e->s, /*use_rebuild_data=*/1,
+                             /*is_tree_walk=*/0,
+                             /*periodic boundaries*/ s->periodic,
+                             /*use_mesh*/ s->periodic)) {
+      /* Call the PM interaction function on the active sub-cells of ci */
+      runner_dopair_grav_mm_nonsym(r, ci, cj);
+      // runner_dopair_recursive_grav_pm(r, ci, cj);
+
+      /* Record that this multipole received a contribution */
+      multi_i->pot.interacted = 1;
+
+    } /* We are in charge of this pair */
+  } /* Loop over top-level cells */
 }
 
 /**
@@ -438,8 +500,8 @@ void runner_do_grav_long_range_periodic(struct runner *r, struct cell *ci,
  * @param ci The #cell of interest.
  * @param top The top-level parent of the #cell of interest.
  */
-void runner_do_long_range_zoom(struct runner *r, struct cell *ci,
-                               struct cell *top) {
+void runner_do_long_range_zoom_periodic(struct runner *r, struct cell *ci,
+                                        struct cell *top) {
 
   struct engine *e = r->e;
   struct space *s = e->s;
@@ -543,8 +605,9 @@ void runner_do_long_range_zoom(struct runner *r, struct cell *ci,
  * @param ci The #cell of interest.
  * @param top The top-level parent of the #cell of interest.
  */
-void runner_do_grav_long_range_buffer(struct runner *r, struct cell *ci,
-                                      struct cell *top) {
+void runner_do_grav_long_range_buffer_periodic(struct runner *r,
+                                               struct cell *ci,
+                                               struct cell *top) {
 
   struct engine *e = r->e;
   struct space *s = e->s;
@@ -836,10 +899,10 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
         runner_do_grav_long_range_periodic(r, ci, top, s->cells_top);
         break;
       case cell_type_zoom:
-        runner_do_long_range_zoom(r, ci, top);
+        runner_do_long_range_zoom_periodic(r, ci, top);
         break;
       case cell_type_buffer:
-        runner_do_grav_long_range_buffer(r, ci, top);
+        runner_do_grav_long_range_buffer_periodic(r, ci, top);
         break;
       case cell_type_bkg:
         runner_do_grav_long_range_periodic(r, ci, top,
@@ -850,15 +913,30 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
     }
   } else {
 
-    runner_do_grav_long_range_non_periodic(r, ci, top);
-  }
+    switch (top->type) {
+
+      case cell_type_regular:
+        runner_do_grav_long_range_uniform_non_periodic(r, ci, top);
+        break;
+      case cell_type_zoom:
+        runner_do_grav_long_range_zoom_non_periodic(r, ci, top);
+        break;
+      case cell_type_buffer:
+        runner_do_grav_long_range_zoom_non_periodic(r, ci, top);
+        break;
+      case cell_type_bkg:
+        runner_do_grav_long_range_zoom_non_periodic(r, ci, top);
+        break;
+      default:
+        error("Unknown cell type in long-range gravity task!");
+    }
 
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_GRAVITY_FORCE_CHECKS)
-  /* Count the number of mesh interactions if using the mesh. */
-  if (periodic) {
-    runner_count_mesh_interactions(r, ci, top);
-  }
+    /* Count the number of mesh interactions if using the mesh. */
+    if (periodic) {
+      runner_count_mesh_interactions(r, ci, top);
+    }
 #endif
 
-  if (timer) TIMER_TOC(timer_dograv_long_range);
-}
+    if (timer) TIMER_TOC(timer_dograv_long_range);
+  }
