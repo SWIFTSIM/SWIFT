@@ -24,7 +24,9 @@
 #include <config.h>
 
 /* Local includes */
+#include "active.h"
 #include "inline.h"
+#include "multipole.h"
 
 /* Avoid cyclic inclusions. */
 struct runner;
