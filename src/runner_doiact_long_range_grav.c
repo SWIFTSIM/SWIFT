@@ -258,7 +258,7 @@ void runner_do_grav_long_range_zoom_non_periodic(struct runner *r,
       multi_i->pot.interacted = 1;
 
     } /* We are in charge of this pair */
-  } /* Loop over top-level cells */
+  }   /* Loop over top-level cells */
 }
 
 /**
