@@ -191,7 +191,7 @@ void runner_do_grav_long_range_uniform_non_periodic(struct runner *r,
       multi_i->pot.interacted = 1;
 
     } /* We are in charge of this pair */
-  }   /* Loop over top-level cells */
+  } /* Loop over top-level cells */
 }
 
 /**
@@ -258,7 +258,7 @@ void runner_do_grav_long_range_zoom_non_periodic(struct runner *r,
       multi_i->pot.interacted = 1;
 
     } /* We are in charge of this pair */
-  }   /* Loop over top-level cells */
+  } /* Loop over top-level cells */
 }
 
 /**
@@ -378,9 +378,9 @@ void runner_do_grav_long_range_periodic(struct runner *r, struct cell *ci,
           multi_i->pot.interacted = 1;
 
         } /* We can interact with this cell */
-      }   /* Loop over relevant top-level cells (k) */
-    }     /* Loop over relevant top-level cells (j) */
-  }       /* Loop over relevant top-level cells (i) */
+      } /* Loop over relevant top-level cells (k) */
+    } /* Loop over relevant top-level cells (j) */
+  } /* Loop over relevant top-level cells (i) */
 
   /* When running with a zoom region we also need to loop over useful buffer
    * cells. We can play the same game here walking out only a certain number
@@ -470,10 +470,10 @@ void runner_do_grav_long_range_periodic(struct runner *r, struct cell *ci,
             multi_i->pot.interacted = 1;
 
           } /* We can interact with this cell */
-        }   /* Buffer cell i loop. */
-      }     /* Buffer cell j loop. */
-    }       /* Buffer cell k loop. */
-  }         /* Buffer cells enabled. */
+        } /* Buffer cell i loop. */
+      } /* Buffer cell j loop. */
+    } /* Buffer cell k loop. */
+  } /* Buffer cells enabled. */
 }
 
 /**
@@ -575,7 +575,7 @@ void runner_do_long_range_zoom_periodic(struct runner *r, struct cell *ci,
       multi_i->pot.interacted = 1;
 
     } /* We can interact with this cell. */
-  }   /* Neighbour cell loop. */
+  } /* Neighbour cell loop. */
 }
 
 /**
@@ -705,9 +705,9 @@ void runner_do_grav_long_range_buffer_periodic(struct runner *r,
           multi_i->pot.interacted = 1;
 
         } /* We can interact with this cell */
-      }   /* Buffer cell i loop. */
-    }     /* Buffer cell j loop. */
-  }       /* Buffer cell k loop. */
+      } /* Buffer cell i loop. */
+    } /* Buffer cell j loop. */
+  } /* Buffer cell k loop. */
 
   /* Finally we can interact with the background cells we need to by walking
    * out only as far as we need to from the empty cells above
@@ -775,9 +775,9 @@ void runner_do_grav_long_range_buffer_periodic(struct runner *r,
           multi_i->pot.interacted = 1;
 
         } /* We can interact with this cell */
-      }   /* Loop over relevant top-level cells (k) */
-    }     /* Loop over relevant top-level cells (j) */
-  }       /* Loop over relevant top-level cells (i) */
+      } /* Loop over relevant top-level cells (k) */
+    } /* Loop over relevant top-level cells (j) */
+  } /* Loop over relevant top-level cells (i) */
 }
 
 /**
@@ -930,13 +930,14 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
       default:
         error("Unknown cell type in long-range gravity task!");
     }
+  }
 
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_GRAVITY_FORCE_CHECKS)
-    /* Count the number of mesh interactions if using the mesh. */
-    if (periodic) {
-      runner_count_mesh_interactions(r, ci, top);
-    }
+  /* Count the number of mesh interactions if using the mesh. */
+  if (periodic) {
+    runner_count_mesh_interactions(r, ci, top);
+  }
 #endif
 
-    if (timer) TIMER_TOC(timer_dograv_long_range);
-  }
+  if (timer) TIMER_TOC(timer_dograv_long_range);
+}
