@@ -173,6 +173,12 @@ void feedback_will_do_feedback_individual_star(
     const struct unit_system* us, const struct phys_const* phys_const,
     const integertime_t ti_current, const double time_base) {
 
+  /* If the star has completely exploded, do not continue. This will also avoid
+     NaN values in the liftetime. */
+  if (sp->mass <= 0.0) {
+    return;
+  }
+  
   /* Compute the times */
   double star_age_beg_step = 0;
   double dt_enrichment = 0;
