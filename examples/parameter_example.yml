@@ -57,6 +57,7 @@ SPH:
   diffusion_beta:                    0.01     # (Optional) Override the decay/rise rate tuning parameter for the thermal diffusion.
   diffusion_alpha_max:               1.0      # (Optional) Override the maximal thermal diffusion coefficient that is allowed for a given particle.
   diffusion_alpha_min:               0.0      # (Optional) Override the minimal thermal diffusion coefficient that is allowed for a given particle.
+  convert_particles_at_h_max:         1        # Flag for whether to convert SPH particles which reach h_max to dark matter (this can help with long running neighbour searches by removing non-physical particles limited by h_max)
 
 # Parameters of the stars
 Stars:

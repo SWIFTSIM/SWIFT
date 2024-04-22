@@ -123,6 +123,13 @@ struct hydro_props {
   /*! Are we generating random IDs when splitting particles? */
   int generate_random_ids;
 
+  /*! Should we convert particles that reach h_max?
+   * NOTE: turning this on will convert hydro particles that reach h_max to
+   * dark matter particles. Removing these can help with long running neighbour
+   * searches for non-physical particles limied by h_max but should be used
+   * with caution. */
+  int convert_at_h_max;
+
   /* ------ Viscosity and diffusion ---------------- */
 
   /*! Artificial viscosity parameters */
@@ -138,6 +145,8 @@ struct hydro_props {
 };
 
 void hydro_props_print(const struct hydro_props *p);
+void hydro_density_limit_print(const struct hydro_props *p,
+                               const struct part *parts);
 void hydro_props_init(struct hydro_props *p,
                       const struct phys_const *phys_const,
                       const struct unit_system *us,
