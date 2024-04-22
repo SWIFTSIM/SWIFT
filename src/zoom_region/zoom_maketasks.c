@@ -236,46 +236,43 @@ void engine_make_self_gravity_tasks_mapper_zoom_cells(void *map_data,
                                                       void *extra_data) {
 
   struct engine *e = (struct engine *)extra_data;
-  const int nodeID = e->nodeID;
-  struct scheduler *sched = &e->sched;
   struct space *s = e->s;
+  const int cdim[3] = {s->zoom_props->cdim[0], s->zoom_props->cdim[1],
+                       s->zoom_props->cdim[2]};
   struct cell *cells = s->zoom_props->zoom_cells_top;
 
   /* We always use the mesh if the volume is periodic. */
   const int use_mesh = s->periodic;
 
-  /* The zoom region is never periodic at it's boundaries. */
+  /* The buffer region is never periodic at it's boundaries. */
   const int periodic = 0;
 
-  /* Get pointers to the void cells. */
-  const int *void_cells = s->zoom_props->void_cells_top;
-  const int nr_void_cells = s->zoom_props->nr_void_cells;
+  /* Compute maximal distance where we can expect a direct interaction */
+  const float distance = gravity_M2L_min_accept_distance(
+      e->gravity_properties, sqrtf(3) * cells[0].width[0], s->max_softening,
+      s->min_a_grav, s->max_mpole_power, periodic);
+
+  /* Convert the maximal search distance to a number of cells
+   * Define a lower and upper delta in case things are not symmetric */
+  /* NOTE: The 2 in the max below may not be necessary but does insure some
+   * safety buffer. */
+  const int delta = max((int)(sqrt(3) * distance / cells[0].width[0]) + 1, 2);
+  int delta_m = delta;
+  int delta_p = delta;
+
+  /* Special case where every cell is in range of every other one */
+  if (delta > cdim[0]) {
+    delta_m = cdim[0];
+    delta_p = cdim[0];
+  }
 
   /* Loop through the elements, which are just byte offsets from NULL. */
   for (int ind = 0; ind < num_elements; ind++) {
 
-    /* Get this zoom cell. */
-    struct cell *ci = &cells[(size_t)(map_data) + ind];
-
-    /* skip cells without gravity particles */
-    if (ci->grav.count == 0) continue;
-
-    /* if the cell is local build a self-interaction */
-    if (ci->nodeID == nodeID) {
-      scheduler_addtask(sched, task_type_self, task_subtype_grav, 0, 0, ci,
-                        NULL);
-    }
-
-    /* Loop over void cells. */
-    for (int k = 0; k < nr_void_cells; k++) {
-
-      /* Get the void cell */
-      struct cell *cj = &cells[void_cells[k]];
-
-      /* Recurse through the void cell tree to see where we need pair tasks. */
-      engine_make_self_gravity_tasks_void_cell_recursive(e, ci, cj, periodic,
-                                                         use_mesh);
-    }
+    /* Create a self task, and loop over neighbouring cells making pair tasks
+     * where appropriate. */
+    engine_gravity_make_task_loop(e, (size_t)(map_data) + ind, cdim, cells,
+                                  periodic, use_mesh, delta_m, delta_p);
   }
 }
 
