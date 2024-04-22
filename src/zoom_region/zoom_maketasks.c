@@ -203,7 +203,7 @@ static void engine_make_self_gravity_tasks_void_cell_recursive(struct engine *e,
       /* Since we aren't at the zoom level we must recurse. */
       for (int k = 0; k < 8; k++) {
         engine_make_self_gravity_tasks_void_cell_recursive(
-            e, ci, &cj->progeny[k], periodic, use_mesh);
+            e, ci, cj->progeny[k], periodic, use_mesh);
       }
     }
   }
@@ -307,7 +307,6 @@ void engine_make_self_gravity_tasks_mapper_zoom_neighbour(void *map_data,
   /* Useful local information */
   struct engine *e = (struct engine *)extra_data;
   struct space *s = e->s;
-  const int nodeID = e->nodeID;
 
   /* We always use the mesh if the volume is periodic. */
   const int use_mesh = s->periodic;
