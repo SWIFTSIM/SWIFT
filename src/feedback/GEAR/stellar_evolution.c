@@ -218,9 +218,9 @@ void stellar_evolution_compute_discrete_feedback_properties(
   if (sp->feedback_data.star_type == single_star) {
     const int null_mass = sp->mass == sp->feedback_data.mass_ejected;
     const int negative_mass = sp->mass < sp->feedback_data.mass_ejected;
-    const float star_minimal_gravity_mass = 1.0 ;
 
     if (null_mass) {
+      message("Star %lld completely exploded", sp->id);
       /* If the star ejects all its mass (for very massive stars), give it a
 	 zero mass so that we know it has exploded.
          We do not remove the star from the simulation to keep track of its
@@ -229,8 +229,7 @@ void stellar_evolution_compute_discrete_feedback_properties(
 
       /* It's not a good idea to put the gpart's mass to zero. Instead, we give
 	 it minimal mass that is provided by the user in the paramter file */
-      sp->gpart->mass = star_minimal_gravity_mass ;
-      /* mettre la masse de la gpart a une masse minimale qui est user defined */
+      sp->gpart->mass = sm->discrete_star_minimal_gravity_mass ;
 
       /* If somehow the star has a negative mass, we have a problem. */
     } else if (negative_mass) {
@@ -700,6 +699,14 @@ void stellar_evolution_props_init(struct stellar_model* sm,
 
   /* Initialize the supernovae II model */
   supernovae_ii_init(&sm->snii, params, sm, us);
+
+  /* Initialize the minimal gravity mass for the stars */
+  const float default_star_minimal_gravity_mass = 1e-1;
+  sm->discrete_star_minimal_gravity_mass = parser_get_opt_param_float(
+      params, "GEARFeedback:discrete_star_minimal_gravity_mass", default_star_minimal_gravity_mass);
+
+  /* Convert from M_sun to internal units */
+  sm->discrete_star_minimal_gravity_mass *= phys_const->const_solar_mass; 
 }
 
 /**

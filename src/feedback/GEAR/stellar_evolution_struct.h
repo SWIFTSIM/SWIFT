@@ -207,6 +207,19 @@ struct stellar_model {
 
   /* Filename of the yields table */
   char yields_table[FILENAME_BUFFER_SIZE];
+
+  /* Minimal gravity mass after a discrete star has completely exploded.
+
+     This will be the mass of the gpart's friend of the star. The mass of the star
+     will be 0 after it losses all its mass.
+     
+     The purpose of this is to avoid zero mass for the gravitsy
+     computations. We keep the star so that we know it *existed* and we can
+     extract its properties at the end of a run. If we remove the star, then
+     we do not have any information about its existence.
+     However, since the star is dead/inexistent, the gravity mass must be small
+     so that it does not drastically alter the dynamics of the systems. */
+  float discrete_star_minimal_gravity_mass;
 };
 
 #endif  // SWIFT_STELLAR_EVOLUTION_STRUCT_GEAR_H
