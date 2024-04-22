@@ -165,6 +165,50 @@ void engine_make_self_gravity_tasks_mapper_buffer_cells(void *map_data,
 }
 
 /**
+ * @brief Recurses through the void cells and constructs the top-level tasks
+ * at the zoom level but only if an mm interaction couldn't be used higher in
+ * the void hierarchy.
+ *
+ * @param e The #engine.
+ * @param ci The neighbour #cell.
+ * @param cj The void or zoom #cell to test for a pair task.
+ * @param periodic The periodicity of the space.
+ * @param use_mesh Are we using the mesh?
+ */
+static void engine_make_self_gravity_tasks_void_cell_recursive(struct engine *e,
+                                                               struct cell *ci,
+                                                               struct cell *cj,
+                                                               int periodic,
+                                                               int use_mesh) {
+
+  /* At least one of these must be on this rank. For the void cell here we need
+   * the nodeID to be a valid rank, < 0 indicates it's zoom leaves are on
+   * different ranks and we can't know for sure that we can exit. */
+  if (ci->nodeID != e->nodeID && (cj >= 0 && cj->nodeID != e->nodeID)) return;
+
+  /* Do we need a pair interaction for these cells? */
+  if (engine_gravity_need_cell_pair_task(e, ci, cj, periodic, use_mesh)) {
+
+    /* If so we can only make a direct interaction at the zoom level. */
+    if (cj->type == cell_type_zoom) {
+
+      /* Ok, we need to add a direct pair calculation */
+      engine_make_pair_gravity_task(e, &e->sched, ci, cj, e->nodeID, ci->id,
+                                    cj->id);
+    } else {
+      /* Since we aren't at the zoom level we must recurse. */
+      for (int k = 0; k < 8; k++) {
+        engine_make_self_gravity_tasks_void_cell_recursion(
+            e, ci, &cj->progeny[k], periodic, use_mesh);
+      }
+    }
+  }
+
+  /* If not then this interaction will be handled by an mm interction in the
+   * long range gravity task. */
+}
+
+/**
  * @brief Constructs the top-level tasks for the short-range gravity
  * and long-range gravity interactions for zoom cells.
  *
@@ -173,6 +217,11 @@ void engine_make_self_gravity_tasks_mapper_buffer_cells(void *map_data,
  * - All top-cells get a self task.
  * - All pairs within range according to the multipole acceptance
  *   criterion get a pair task.
+ *
+ * Unlike the other mappers considered with pairs of cells with the same type,
+ * this mapper recurses through the void heirarchy to capture any interactions
+ * which can be handled by a mm interaction in the long-range gravity task above
+ * the zoom level.
  *
  * @param map_data Offset of first two indices disguised as a pointer.
  * @param num_elements Number of cells to traverse.
@@ -194,32 +243,35 @@ void engine_make_self_gravity_tasks_mapper_zoom_cells(void *map_data,
   /* The zoom region is never periodic at it's boundaries. */
   const int periodic = 0;
 
-  /* Compute maximal distance where we can expect a direct interaction */
-  const float distance = gravity_M2L_min_accept_distance(
-      e->gravity_properties, sqrtf(3) * cells[0].width[0], s->max_softening,
-      s->min_a_grav, s->max_mpole_power, periodic);
-
-  /* Convert the maximal search distance to a number of cells
-   * Define a lower and upper delta in case things are not symmetric */
-  /* NOTE: The 2 in the max below may not be necessary but does insure some
-   * safety buffer. */
-  const int delta = max((int)(sqrt(3) * distance / cells[0].width[0]) + 1, 2);
-  int delta_m = delta;
-  int delta_p = delta;
-
-  /* Special case where every cell is in range of every other one */
-  if (delta > cdim[0]) {
-    delta_m = cdim[0];
-    delta_p = cdim[0];
-  }
+  /* Get pointers to the void cells. */
+  const int *void_cells = s->zoom_props->void_cells_top;
+  const int nr_void_cells = s->zoom_props->nr_void_cells;
 
   /* Loop through the elements, which are just byte offsets from NULL. */
   for (int ind = 0; ind < num_elements; ind++) {
 
-    /* Create a self task, and loop over neighbouring cells making pair tasks
-     * where appropriate. */
-    engine_gravity_make_task_loop(e, (size_t)(map_data) + ind, cdim, cells,
-                                  periodic, use_mesh, delta_m, delta_p);
+    /* Get this zoom cell. */
+    struct cell *ci = &cells[(size_t)(map_data) + ind];
+
+    /* skip cells without gravity particles */
+    if (ci->grav.count == 0) continue;
+
+    /* if the cell is local build a self-interaction */
+    if (ci->nodeID == nodeID) {
+      scheduler_addtask(sched, task_type_self, task_subtype_grav, 0, 0, ci,
+                        null);
+    }
+
+    /* Loop over void cells. */
+    for (int k = 0; k < nr_void_cells; k++) {
+
+      /* Get the void cell */
+      struct cell *cj = &cells[void_cells[k]];
+
+      /* Recurse through the void cell tree to see where we need pair tasks. */
+      engine_make_self_gravity_tasks_void_cell_recursive(e, ci, cj, periodic,
+                                                         use_mesh);
+    }
   }
 }
 
@@ -264,8 +316,11 @@ void engine_make_self_gravity_tasks_mapper_zoom_neighbour(void *map_data,
   struct cell *cells = s->cells_top;
 
   /* Get the neighbouring background cells. */
-  const int nr_neighbours = s->zoom_props->nr_neighbour_cells;
   const int *neighbour_cells = s->zoom_props->neighbour_cells_top;
+
+  /* Get the void cells. */
+  const int *void_cells = s->zoom_props->void_cells_top;
+  const int nr_void_cells = s->zoom_props->nr_void_cells;
 
   /* Loop through the elements, which are just byte offsets from NULL. */
   for (int ind = 0; ind < num_elements; ind++) {
@@ -274,40 +329,21 @@ void engine_make_self_gravity_tasks_mapper_zoom_neighbour(void *map_data,
     const int cid = (size_t)(map_data) + ind;
 
     /* Get the cell */
-    struct cell *ci = &cells[cid];
+    struct cell *ci = &cells[neighbour_cells[cid]];
 
     /* Skip cells without gravity particles */
     if (ci->grav.count == 0) continue;
 
-    /* Loop over every neighbouring background cells */
-    for (int k = 0; k < nr_neighbours; k++) {
+    /* Loop over every void cell. */
+    for (int k = 0; k < nr_void_cells; k++) {
 
       /* Get the cell */
-      int cjd = neighbour_cells[k];
+      int cjd = void_cells[k];
       struct cell *cj = &cells[cjd];
 
-      /* Avoid duplicates, empty cells and completely foreign pairs */
-      if (cid >= cjd || cj->grav.count == 0 ||
-          (ci->nodeID != nodeID && cj->nodeID != nodeID))
-        continue;
-
-#ifdef SWIFT_DEBUG_CHECKS
-      /* Ensure both cells are not in the same level */
-      if (ci->type == cj->type) {
-        error(
-            "Cell %d and cell %d are the same cell type "
-            "(One should be a neighbour)! "
-            "(ci->type=%d, cj->type=%d)",
-            cid, cjd, ci->type, cj->type);
-      }
-#endif
-
-      /* Do we need a pair interaction for these cells? */
-      if (engine_gravity_need_cell_pair_task(e, ci, cj, periodic, use_mesh)) {
-
-        /* Ok, we need to add a direct pair calculation */
-        engine_make_pair_gravity_task(e, sched, ci, cj, nodeID, cid, cjd);
-      }
+      /* Recurse through the void cell tree to see where we need pair tasks. */
+      engine_make_self_gravity_tasks_void_cell_recursive(e, ci, cj, periodic,
+                                                         use_mesh);
     }
   }
 }
@@ -449,9 +485,10 @@ void zoom_engine_make_self_gravity_tasks(struct space *s, struct engine *e) {
 
   /* Zoom -> Neighbour (A neighbour is a Buffer cell if we have a buffer region,
    * otherwise it's a Background cell). */
-  threadpool_map(
-      &e->threadpool, engine_make_self_gravity_tasks_mapper_zoom_neighbour,
-      NULL, s->zoom_props->nr_zoom_cells, 1, threadpool_auto_chunk_size, e);
+  threadpool_map(&e->threadpool,
+                 engine_make_self_gravity_tasks_mapper_zoom_neighbour, NULL,
+                 s->zoom_props->nr_neighbour_cells, 1,
+                 threadpool_auto_chunk_size, e);
 
   if (e->verbose)
     message("Making zoom->buffer gravity tasks took %.3f %s.",
