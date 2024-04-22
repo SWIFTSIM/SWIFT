@@ -12,10 +12,10 @@ rho0 = 1.0
 cs2 = 3025.0
 gamma = 5.0 / 3.0
 u0 = cs2 / (gamma * (gamma - 1))
-Bi_fraction = 1e-4
+Bi_fraction = 1e-8
 
 # output file
-fileOutputName = "RobertsFlow.hdf5"
+fileOutputName = "ABCFlow.hdf5"
 
 ############################################################### Random B and A vector field generator
 def generate_random_vectors(N_of_vectors, randomize_length=True):
@@ -149,7 +149,7 @@ def open_IAfile(path_to_file):
 
 
 def add_other_particle_properties(
-    pos, h, V0, kb, kv, Vz_factor, L, field_type, Flow_kind
+    pos, h, a, b, c, V0, kb, kv, Vz_factor, L, field_type
 ):
     if field_type != "load_from_file":
         vol = L ** 3
@@ -168,45 +168,17 @@ def add_other_particle_properties(
         kb0 = 2 * np.pi / L * kb
         Beq0 = np.sqrt(rho0) * V0
         B0 = Bi_fraction * Beq0
+        Norm = 1 / np.sqrt(a ** 2 + b ** 2 + c ** 2)
 
         # rescaling the box to size L
         pos *= L
 
         # setting the velocity profile
-        if Flow_kind == 1:
-            v[:, 0] = np.sin(kv0 * pos[:, 0]) * np.cos(kv0 * pos[:, 1])
-            v[:, 1] = -np.sin(kv0 * pos[:, 1]) * np.cos(kv0 * pos[:, 0])
-            v[:, 2] = (
-                Vz_factor
-                * np.sqrt(2)
-                * np.sin(kv0 * pos[:, 1])
-                * np.sin(kv0 * pos[:, 0])
-            )
-        elif Flow_kind == 2:
-            v[:, 0] = np.sin(kv0 * pos[:, 0]) * np.cos(kv0 * pos[:, 1])
-            v[:, 1] = -np.sin(kv0 * pos[:, 1]) * np.cos(kv0 * pos[:, 0])
-            v[:, 2] = (
-                Vz_factor
-                * np.sqrt(2)
-                * np.cos(kv0 * pos[:, 0])
-                * np.cos(kv0 * pos[:, 1])
-            )
-        elif Flow_kind == 3:
-            v[:, 0] = np.sin(kv0 * pos[:, 0]) * np.cos(kv0 * pos[:, 1])
-            v[:, 1] = -np.sin(kv0 * pos[:, 1]) * np.cos(kv0 * pos[:, 0])
-            v[:, 2] = (
-                Vz_factor
-                * (np.cos(2 * kv0 * pos[:, 0]) + np.cos(2 * kv0 * pos[:, 1]))
-                / np.sqrt(2)
-            )
-        elif Flow_kind == 4:
-            v[:, 0] = np.sin(kv0 * pos[:, 0]) * np.cos(kv0 * pos[:, 1])
-            v[:, 1] = -np.sin(kv0 * pos[:, 1]) * np.cos(kv0 * pos[:, 0])
-            v[:, 2] = Vz_factor * np.sin(kv0 * pos[:, 0])
-        else:
-            print("Wrong Flow kind. Use values 1-4")
-
-        v *= V0
+        v[:, 0] = a * np.sin(kv0 * pos[:, 2]) + c * np.cos(kv0 * pos[:, 1])
+        v[:, 1] = b * np.sin(kv0 * pos[:, 0]) + a * np.cos(kv0 * pos[:, 2])
+        v[:, 2] = c * np.sin(kv0 * pos[:, 1]) + b * np.cos(kv0 * pos[:, 0])
+        v[:, 2] *= Vz_factor
+        v *= V0 * Norm
 
         # setting the initial magnetic field
 
@@ -328,31 +300,35 @@ if __name__ == "__main__":
         type=float,
     )
     parser.add_argument(
+        "-A", "--A", help="constant A of the ABC flow", default=1.0, type=float
+    )
+    parser.add_argument(
+        "-B", "--B", help="constant B of the ABC flow", default=1.0, type=float
+    )
+    parser.add_argument(
+        "-C", "--C", help="constant C of the ABC flow", default=1.0, type=float
+    )
+    parser.add_argument(
         "-ft",
         "--field_type",
         help="How to generate a field: one_mode, several_modes or random",
         default="random",  #'load_from_file',#'random',
         type=str,
     )
-    parser.add_argument(
-        "-fk",
-        "--flow_kind",
-        help="RobertsFlow has four flow kinds: 1-4",
-        default=1,
-        type=int,
-    )
     args = parser.parse_args()
     pos, h = open_IAfile(args.IA_path)
     pos, h, v, B, A, ids, m, u = add_other_particle_properties(
         pos,
         h,
+        args.A,
+        args.B,
+        args.C,
         args.rms_velocity,
         args.magnetic_wavevector,
         args.velocity_wavevector,
         args.Vz_factor,
         args.boxsize,
         args.field_type,
-        args.flow_kind,
     )
     L = args.boxsize
     N = len(h)

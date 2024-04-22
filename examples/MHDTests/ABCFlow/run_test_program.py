@@ -55,10 +55,10 @@ IA_dict = {
 }
 
 # full names of forcing types
-forcing_dict = {"v": "roberts-flow", "a": "roberts-flow-acceleration"}
+# forcing_dict = {"v": "roberts-flow", "a": "roberts-flow-acceleration"}
 
 # Number of threads
-threads = 18
+threads = 18  # 60
 
 # Where to store results
 results_directory_name = "test_results"
@@ -109,7 +109,7 @@ def configure_simulation(scheme, forcing, spline, eos, path_to_lib=False):
     goto_swift_directory_command = " cd " + path_to_configure
     # configure simulation with the options (scheme, forcing, other things...)
     configure_command = (
-        " ./configure"
+        " ./configure "
         + kernel_opt
         + scheme_opt
         + forcing_opt
@@ -137,11 +137,15 @@ def configure_simulation(scheme, forcing, spline, eos, path_to_lib=False):
         + " )"
     )
     # show sandwich
-    print(command_sandwich)
+    print("Script sends command: " + command_sandwich)
     # execute
-    subprocess.call(command_sandwich, shell=True)
+    try:
+        subprocess.run(command_sandwich, shell=True, check=True)
+        print("Configuring swift successful")
+    except Exception as e:
+        print("Error: " + str(e))
+        raise Exception("Execution was stopped due to an error")
     # maybe shoud addd some try except here
-    print("configuring swift complete")
 
 
 # Funciton for making ICfile
@@ -153,8 +157,11 @@ def make_IC(phys_parameters, IAfile):
         kv = " --velocity_wavevector=" + str(phys_parameters["kv"].values[0])
         kb = " --magnetic_wavevector=" + str(phys_parameters["kb"].values[0])
         Lbox = " --boxsize=" + str(phys_parameters["Lbox"].values[0])
+        a = " --A=" + str(phys_parameters["A"].values[0])
+        b = " --B=" + str(phys_parameters["B"].values[0])
+        c = " --C=" + str(phys_parameters["C"].values[0])
         path = " --IA_path=" + "./IAfiles/" + IAfile
-        Flow_kind = " --flow_kind=" + str(int(phys_parameters["Flow_kind"].values[0]))
+
         # Construct command to make ICs with selected parameters
         command = (
             " python3 "
@@ -165,7 +172,9 @@ def make_IC(phys_parameters, IAfile):
             + kb
             + Lbox
             + Vz_factor
-            + Flow_kind
+            + a
+            + b
+            + c
         )
     else:
         command = " python3 " + "make_IC.py"
@@ -177,6 +186,7 @@ def make_IC(phys_parameters, IAfile):
         print("created ICs")
     except Exception as e:
         print("Error: " + str(e))
+        raise Exception("Execution was stopped due to an error")
 
 
 # Function for running simulation
@@ -186,10 +196,11 @@ def run_simulation(phys_parameters, threads):
     Vz_factor = phys_parameters["Vz_factor"].values[0]
     eta = phys_parameters["eta"].values[0]
     kv = phys_parameters["kv"].values[0]
-    Flow_kind = phys_parameters["Flow_kind"].values[0]
     Lbox = phys_parameters["Lbox"].values[0]
-    Forcing_kind = phys_parameters["Forcing_kind"].values[0]
-    viscosity_alpha = phys_parameters["viscosity_alpha"].values[0]
+    # viscosity_alpha = phys_parameters["viscosity_alpha"].values[0]
+    a = phys_parameters["A"].values[0]
+    b = phys_parameters["B"].values[0]
+    c = phys_parameters["C"].values[0]
 
     # get parameters for the scheme
     monopole_subtraction = phys_parameters["monopole_subtraction"].values[0]
@@ -221,22 +232,19 @@ def run_simulation(phys_parameters, threads):
     set_timeI_par = set_time_end + set_dt_max
 
     # Construct command to set up SPH parameters
-    set_av = ""
-    set_av_max = ""
-    set_av_min = ""
-    sph_pref = " -P SPH:"
-    if Forcing_kind == "a":
-        set_av = sph_pref + "viscosity_alpha:" + str(viscosity_alpha)
-        set_av_max = sph_pref + "viscosity_alpha_max:" + str(viscosity_alpha)
-        set_av_min = sph_pref + "viscosity_alpha_min:" + str(viscosity_alpha)
-    set_sph_par = set_av + set_av_max + set_av_min
+    # set_av = ""
+    # set_av_max = ""
+    # set_av_min = ""
+    # sph_pref = " -P SPH:"
+    # if Forcing_kind == "a":
+    #    set_av = sph_pref + "viscosity_alpha:" + str(viscosity_alpha)
+    #    set_av_max = sph_pref + "viscosity_alpha_max:" + str(viscosity_alpha)
+    #    set_av_min = sph_pref + "viscosity_alpha_min:" + str(viscosity_alpha)
+    # set_sph_par = set_av + set_av_max + set_av_min
 
     # Construct string command to set up forcing options
 
-    if Forcing_kind == "a":
-        f_pref = " -P RobertsFlowAccelerationForcing:"
-    elif Forcing_kind == "v":
-        f_pref = " -P RobertsFlowForcing:"
+    f_pref = " -P ABC_Flow_Forcing:"
 
     set_u0 = ""
     if v0 != None:
@@ -246,15 +254,20 @@ def run_simulation(phys_parameters, threads):
     if kv != None:
         set_kv = f_pref + "kv:" + str(kv)
 
-    set_Flow_kind = ""
-    if Flow_kind != None:
-        set_Flow_kind = f_pref + "Flow_kind:" + str(int(Flow_kind))
-
     set_Vz_factor = ""
     if Vz_factor != None:
         set_Vz_factor = f_pref + "Vz_factor:" + str(int(Vz_factor))
+    set_a = ""
+    if a != None:
+        set_a = f_pref + "A:" + str(a)
+    set_b = ""
+    if b != None:
+        set_b = f_pref + "B:" + str(b)
+    set_c = ""
+    if c != None:
+        set_c = f_pref + "C:" + str(c)
 
-    set_forcing_par = set_u0 + set_kv + set_Flow_kind + set_Vz_factor
+    set_forcing_par = set_u0 + set_kv + set_Vz_factor + set_a + set_b + set_c
 
     # Construct string command to set up MHD parameters
     MHD_pref = " -P MHD:"
@@ -298,10 +311,10 @@ def run_simulation(phys_parameters, threads):
     )
 
     # Add all options
-    set_all_par = set_timeI_par + set_sph_par + set_forcing_par + set_MHD_par
+    set_all_par = set_timeI_par + set_forcing_par + set_MHD_par  # + set_sph_par
 
     # path to parameter file
-    parameter_file = " ./RobertsFlow.yml"
+    parameter_file = " ./ABCFlow.yml"
 
     # where to write output
     write_output_file = " | tee output_log.txt"
@@ -315,9 +328,14 @@ def run_simulation(phys_parameters, threads):
         + write_output_file
     )
     # show command
-    print(command)
+    print("Script sends command: " + command)
     # execute
-    subprocess.call(command, shell=True)
+    try:
+        subprocess.run(command, shell=True, check=True)
+        print("run complete")
+    except Exception as e:
+        print("Error: " + str(e))
+        raise Exception("Execution was stopped due to an error")
 
 
 # a function that creates the directory for all run data storage
@@ -325,7 +343,7 @@ def create_results_directory(res_dirname):
     # construct command to create results directory
     mkdir_command = "mkdir " + res_dirname
     # show command
-    print(mkdir_command)
+    print("Creating the results directory if it is not there: " + mkdir_command)
     # execute
     subprocess.call(mkdir_command, shell=True)
 
@@ -365,22 +383,26 @@ def move_results(phys_parameters, res_dirname):
         + " ) "
     )
     # show command
-    print(command_sandwich)
+    print("Script sends command: " + command_sandwich)
     # execute
-    subprocess.call(command_sandwich, shell=True)
+    subprocess.run(command_sandwich, shell=True, check=True)
+    print("Moved files to results folder")
 
 
 # main program that takes the_parameters from table, creates ICs, configures code and executes each row and stores data
 def run_all():
     the_parameters = read_parameter_csv("test_run_parameters.csv")
     create_results_directory(results_directory_name)
+
+    # make_IC([],'')
+
     # prepare_glass()
     for i in range(len(the_parameters)):
         if mask[i]:
             parameters_for_the_run = the_parameters.iloc[[i]]
             print(parameters_for_the_run)
             scheme = schemes_dict[parameters_for_the_run["Scheme"].values[0]]
-            forcing = forcing_dict[parameters_for_the_run["Forcing_kind"].values[0]]
+            forcing = "abc-flow"
             configure_simulation(scheme, forcing, "quintic-spline", "isothermal-gas")
 
             IAfile = IA_dict[parameters_for_the_run["IAfile"].values[0]]
@@ -395,4 +417,7 @@ def run_all():
 
 # code execution
 ###################################################################################################
-run_all()
+try:
+    run_all()
+except Exception as e:
+    print("Error: " + str(e))

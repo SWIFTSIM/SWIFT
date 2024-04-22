@@ -1,5 +1,5 @@
 """
-Create a fcc glass.
+Create a cubic lattice.
 """
 
 import numpy as np
@@ -42,7 +42,7 @@ def generate_cube(num_on_side, side_length=1.0):
 #    return positions
 
 
-def write_out_fcc(filename, cube, side_length=1.0):
+def write_out_cube(filename, cube, side_length=1.0):
     x = Writer(cgs_unit_system, side_length * cm)
 
     x.gas.coordinates = cube * cm
@@ -63,7 +63,7 @@ def write_out_fcc(filename, cube, side_length=1.0):
 if __name__ == "__main__":
     import argparse as ap
 
-    parser = ap.ArgumentParser(description="Generate a glass file with a FCC lattice")
+    parser = ap.ArgumentParser(description="Generate a glass file with a cubic lattice")
 
     parser.add_argument(
         "-n",
@@ -73,11 +73,12 @@ if __name__ == "__main__":
         type=int,
     )
 
-    parser.add_argument(
-        "-o", "--output", help="Output filename.", type=str, required=False
-    )
+    # parser.add_argument(
+    #    "-o", "--output", help="Output filename.", type=str, required=False
+    # )
 
     args = parser.parse_args()
 
-    fcc_cube = generate_cube(args.numparts)  # generate_two_cube(args.numparts)
-    write_out_fcc(args.output, fcc_cube)
+    cube = generate_cube(args.numparts)  # generate_two_cube(args.numparts)
+    name = "c" + str(args.numparts) + ".hdf5"
+    write_out_cube(name, cube)
