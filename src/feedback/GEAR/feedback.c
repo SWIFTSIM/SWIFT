@@ -61,6 +61,9 @@ void feedback_update_part(struct part* p, struct xpart* xp,
 
   hydro_set_mass(p, new_mass);
 
+  /* Update the gpart mass */
+  p->gpart->mass = p->mass ;
+
   xp->feedback_data.delta_mass = 0;
 
   /* Update the density */
@@ -84,6 +87,9 @@ void feedback_update_part(struct part* p, struct xpart* xp,
     p->v[i] += dv;
 
     xp->feedback_data.delta_p[i] = 0;
+
+    /* update the gpart velocity */
+    p->gpart->v_full[i] = p->v[i];
   }
 }
 

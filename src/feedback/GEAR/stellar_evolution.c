@@ -220,7 +220,7 @@ void stellar_evolution_compute_discrete_feedback_properties(
     const int negative_mass = sp->mass < sp->feedback_data.mass_ejected;
 
     if (null_mass) {
-      message("Star %lld completely exploded", sp->id);
+      message("Star %lld completely exploded!", sp->id);
       /* If the star ejects all its mass (for very massive stars), give it a
 	 zero mass so that we know it has exploded.
          We do not remove the star from the simulation to keep track of its
@@ -253,11 +253,12 @@ void stellar_evolution_compute_discrete_feedback_properties(
        sp->feedback_data.mass_ejected = 0;
        return;
      }
-  }   
+     /* Update the mass */
+     sp->mass -= sp->feedback_data.mass_ejected;
 
-  /* Update the mass */
-  sp->mass -= sp->feedback_data.mass_ejected;
-
+     /* Update the gpart mass */
+     sp->gpart->mass = sp->mass;
+  }
   /* Should we also update the gpart's mass ? */
   /* 1) Yes, but then,
         a) If we conserve momentum, the velocities must be updated as well. For
@@ -270,8 +271,12 @@ void stellar_evolution_compute_discrete_feedback_properties(
         attract gas (because such clumps contains 10^3 solar masses) that can
         generate new stars.
 	Also, the dynamics can be affected.
+
+     Notice that in the feedback event, the energy is not conserved.
+
+     (So, should we conserve momentum ?)
   */
-  /* What we could do instead is to thing globally, i.e star + surrounding
+  /* What we could do instead is to think globally, i.e star + surrounding
      gas. In this case, we conserve momentum and the stars does not run
      awway. But that require to know which particles are at which distance
      before doing so. And then to apply the feedback and the momentum
