@@ -497,7 +497,7 @@ void runner_do_long_range_zoom_periodic(struct runner *r, struct cell *ci,
         const int cjd = cell_getid(zoom_cdim, ii, jj, kk);
 
         /* Handle on the top-level cell */
-        struct cell *cj = &zoom_cells[cjd];
+        struct cell *cj = &cells[cjd];
 
         /* Avoid self contributions  */
         if (top == cj) continue;
