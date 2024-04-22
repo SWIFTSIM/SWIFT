@@ -184,7 +184,8 @@ static void engine_make_self_gravity_tasks_void_cell_recursive(struct engine *e,
   /* At least one of these must be on this rank. For the void cell here we need
    * the nodeID to be a valid rank, < 0 indicates it's zoom leaves are on
    * different ranks and we can't know for sure that we can exit. */
-  if (ci->nodeID != e->nodeID && (cj >= 0 && cj->nodeID != e->nodeID)) return;
+  if (ci->nodeID != e->nodeID && (cj->nodeID >= 0 && cj->nodeID != e->nodeID))
+    return;
 
   /* Do we need a pair interaction for these cells? */
   if (engine_gravity_need_cell_pair_task(e, ci, cj, periodic, use_mesh)) {
@@ -192,13 +193,16 @@ static void engine_make_self_gravity_tasks_void_cell_recursive(struct engine *e,
     /* If so we can only make a direct interaction at the zoom level. */
     if (cj->type == cell_type_zoom) {
 
+      /* Get the indices of ci and cj. */
+      const int cid = ci - e->s->cells_top;
+      const int cjd = cj - e->s->cells_top;
+
       /* Ok, we need to add a direct pair calculation */
-      engine_make_pair_gravity_task(e, &e->sched, ci, cj, e->nodeID, ci->id,
-                                    cj->id);
+      engine_make_pair_gravity_task(e, &e->sched, ci, cj, e->nodeID, cid, cjd);
     } else {
       /* Since we aren't at the zoom level we must recurse. */
       for (int k = 0; k < 8; k++) {
-        engine_make_self_gravity_tasks_void_cell_recursion(
+        engine_make_self_gravity_tasks_void_cell_recursive(
             e, ci, &cj->progeny[k], periodic, use_mesh);
       }
     }
@@ -232,9 +236,9 @@ void engine_make_self_gravity_tasks_mapper_zoom_cells(void *map_data,
                                                       void *extra_data) {
 
   struct engine *e = (struct engine *)extra_data;
+  const int nodeID = e->nodeID;
+  struct scheduler *sched = &e->sched;
   struct space *s = e->s;
-  const int cdim[3] = {s->zoom_props->cdim[0], s->zoom_props->cdim[1],
-                       s->zoom_props->cdim[2]};
   struct cell *cells = s->zoom_props->zoom_cells_top;
 
   /* We always use the mesh if the volume is periodic. */
@@ -259,7 +263,7 @@ void engine_make_self_gravity_tasks_mapper_zoom_cells(void *map_data,
     /* if the cell is local build a self-interaction */
     if (ci->nodeID == nodeID) {
       scheduler_addtask(sched, task_type_self, task_subtype_grav, 0, 0, ci,
-                        null);
+                        NULL);
     }
 
     /* Loop over void cells. */
@@ -303,7 +307,6 @@ void engine_make_self_gravity_tasks_mapper_zoom_neighbour(void *map_data,
   /* Useful local information */
   struct engine *e = (struct engine *)extra_data;
   struct space *s = e->s;
-  struct scheduler *sched = &e->sched;
   const int nodeID = e->nodeID;
 
   /* We always use the mesh if the volume is periodic. */
