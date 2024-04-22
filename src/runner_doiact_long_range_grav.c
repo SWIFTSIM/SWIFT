@@ -472,7 +472,7 @@ void runner_do_long_range_zoom_periodic(struct runner *r, struct cell *ci,
   const double *zoom_bounds = s->zoom_props->region_lower_bounds;
   const int *zoom_cdim = s->zoom_props->cdim;
   const double *zoom_iwidth = s->zoom_props->iwidth;
-  struct cell *zoom_cells = s->zoom_props->zoom_cells_top;
+  struct cell *cells = s->cells_top;
 
   /* Get the (i,j,k) location of the top-level zoom cell in the grid. */
   int top_i = (top->loc[0] - zoom_bounds[0]) * zoom_iwidth[0];
