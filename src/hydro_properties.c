@@ -323,9 +323,9 @@ void hydro_density_limit_print(const struct hydro_props *p,
   /* Compute the limiting densities. (Taking into account the factor of
    * eta^dimensions from h = eta (m / rho)^(1/dimension)) */
   const double min_density =
-      pow_dimension(p->eta_neighbours) * parts[0].mass / max_volume;
+      pow_dimension(p->eta_neighbours) * hydro_get_mass(&parts[0]) / max_volume;
   const double max_density =
-      pow_dimension(p->eta_neighbours) * parts[0].mass / min_volume;
+      pow_dimension(p->eta_neighbours) * hydro_get_mass(&parts[0]) / min_volume;
 
   message(
       "Minimum density imposed by maximal smoothing length: %e U_M U_L^(-3) "
