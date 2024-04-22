@@ -187,6 +187,17 @@ static void engine_make_self_gravity_tasks_void_cell_recursive(struct engine *e,
   if (ci->nodeID != e->nodeID && (cj->nodeID >= 0 && cj->nodeID != e->nodeID))
     return;
 
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Check that cj is either a void cell or a zoom cell. */
+  if (cj->subtype != cell_subtype_void && cj->type != cell_type_zoom) {
+    error(
+        "Invalid cell type in "
+        "engine_make_self_gravity_tasks_void_cell_recursive. (cj->type=%s, "
+        "cj->subtype=%s)",
+        cellID_names[cj->type], subcellID_names[cj->subtype]);
+  }
+#endif
+
   /* Do we need a pair interaction for these cells? */
   if (engine_gravity_need_cell_pair_task(e, ci, cj, periodic, use_mesh)) {
 
@@ -199,6 +210,7 @@ static void engine_make_self_gravity_tasks_void_cell_recursive(struct engine *e,
 
       /* Ok, we need to add a direct pair calculation */
       engine_make_pair_gravity_task(e, &e->sched, ci, cj, e->nodeID, cid, cjd);
+
     } else {
       /* Since we aren't at the zoom level we must recurse. */
       for (int k = 0; k < 8; k++) {
@@ -209,7 +221,7 @@ static void engine_make_self_gravity_tasks_void_cell_recursive(struct engine *e,
   }
 
   /* If not then this interaction will be handled by an mm interction in the
-   * long range gravity task. */
+   * long range gravity task or the mesh. */
 }
 
 /**
