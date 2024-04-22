@@ -326,7 +326,8 @@ static INLINE void tracers_after_black_holes_feedback(
 static INLINE void tracers_after_jet_feedback(
     const struct part *p, struct xpart *xp, const int with_cosmology,
     const float scale_factor, const double time, const double delta_energy,
-    const float vel_kick, BH_accretion_modes accretion_mode, long long id) {
+    const float vel_kick, const enum BH_accretion_modes accretion_mode,
+    const long long id) {
 
   if (with_cosmology)
     xp->tracers_data.last_AGN_jet_feedback_scale_factor = scale_factor;
