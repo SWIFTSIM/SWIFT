@@ -1472,7 +1472,7 @@ void task_dump_all(struct engine *e, int step) {
     if (!e->sched.tasks[l].implicit && e->sched.tasks[l].tic > e->tic_step) {
       fprintf(
           file_thread,
-          " %i %i %i %i %lli %lli %i %i %i %i %i %i %i %i %i %i %i, %f %f\n",
+          " %i %i %i %i %lli %lli %i %i %i %i %i %i %i %i %i %i %i %f %f\n",
           e->sched.tasks[l].rid, e->sched.tasks[l].type,
           e->sched.tasks[l].subtype, (e->sched.tasks[l].cj == NULL),
           (unsigned long long)e->sched.tasks[l].tic,
