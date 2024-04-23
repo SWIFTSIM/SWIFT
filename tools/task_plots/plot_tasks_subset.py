@@ -334,7 +334,7 @@ data = pl.loadtxt(infile)
 
 #  Do we have an MPI file?
 full_step = data[0, :]
-if full_step.size == 19:
+if full_step.size == 21:
     print("# MPI mode")
     mpimode = True
     if ranks == None:
