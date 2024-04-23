@@ -208,7 +208,8 @@ __attribute__((always_inline)) INLINE static void feedback_prepare_feedback(
     const int with_cosmology) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (sp->birth_time == -1.) error("Evolving a star particle that should not!");
+  if (sp->birth_time == -1. && dt > 0.)
+    error("Evolving a star particle that should not!");
 #endif
 
   /* Start by finishing the loops over neighbours */
