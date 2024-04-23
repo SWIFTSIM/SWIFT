@@ -226,8 +226,8 @@ class TaskParser:
             self._col_look_up["cj_subtype"] = 14
             self._col_look_up["ci_depth"] = 15
             self._col_look_up["cj_depth"] = 16
-            self._col_look_up["min_dist"] = 19
-            self._col_look_up["mpole_dist"] = 20
+            self._col_look_up["min_dist"] = 17
+            self._col_look_up["mpole_dist"] = 18
 
     def _extract_column(self, column):
         return self.data[:, self._col_look_up[column]]
