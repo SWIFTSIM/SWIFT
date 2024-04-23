@@ -264,14 +264,30 @@ class TaskParser:
                     tic_step = int(full_step[self._col_look_up["tic"]])
                 else:
                     tic_step = mintic
-                toc_step = int(full_step[self._col_look_up["tic"]])
+                toc_step = int(full_step[self._col_look_up["toc"]])
                 dt = toc_step - tic_step
                 if dt > self.delta_t:
                     self.delta_t = dt
         print("# Data range: ", self.delta_t / self.cpu_clock, "ms")
 
-        # Set the start tic and end toc
-        self.start_t = tic_step
+        # Get the start tic
+        if self.start_t < 0:
+            self.start_t = np.inf
+            for rank in self.ranks:
+                if self.mpimode:
+                    data = self.data[self.task_ranks == rank]
+                else:
+                    data = self.data
+
+                # Get a local version of the full step.
+                full_step = data[0, :]
+
+                # Get the start tic for this rank
+                tic_step = int(full_step[self._col_look_up["tic"]])
+                if self.start_t > tic_step:
+                    self.start_t = tic_step
+
+        # Set the end toc
         self.end_t = self.start_t + self.delta_t
 
     def _clean_up_data(self):
@@ -284,6 +300,14 @@ class TaskParser:
             self.tocs != 0,
         )
         self.data = self.data[mask, :]
+
+        # Make tics and tocs relative to start
+        self.data[:, self._col_look_up["tic"]] -= self.start_t
+        self.data[:, self._col_look_up["toc"]] -= self.start_t
+
+        # Convert tics and tocs to ms
+        self.data[:, self._col_look_up["tic"]] /= self.cpu_clock
+        self.data[:, self._col_look_up["toc"]] /= self.cpu_clock
 
     def _parse_tasks(self):
         # Prepare the arrays we'll populate
