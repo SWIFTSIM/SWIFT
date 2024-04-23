@@ -285,29 +285,51 @@ class TaskParser:
         self.data = self.data[mask, :]
 
     def _parse_tasks(self):
-        # Loop over tasks creating task objects
+        # Prepare the arrays we'll populate
         self.tasks = np.zeros(self.ntasks, dtype=object)
         self.task_labels = np.zeros(self.ntasks, dtype=str)
+
+        # Get local copies of the columns to avoid extracting every single loop
+        task_ranks = self.task_ranks
+        task_threads = self.task_threads
+        task_types = self.task_types
+        task_subtypes = self.task_subtypes
+        tics = self.tics
+        tocs = self.tocs
+        ci_part_count = self.ci_part_count
+        cj_part_count = self.cj_part_count
+        ci_gpart_count = self.ci_gpart_count
+        cj_gpart_count = self.cj_gpart_count
+        ci_types = self.ci_types
+        cj_types = self.cj_types
+        ci_subtypes = self.ci_subtypes
+        cj_subtypes = self.cj_subtypes
+        ci_depths = self.ci_depths
+        cj_depths = self.cj_depths
+        min_dists = self.min_dists
+        mpole_dists = self.mpole_dists
+
+        # Loop over tasks creating task objects
         for i in range(self.ntasks):
             self.tasks[i] = Task(
-                self.task_ranks[i],
-                self.task_threads[i],
-                self.task_types[i],
-                self.task_subtypes[i],
-                self.tics[i],
-                self.tocs[i],
-                self.ci_part_count[i],
-                self.cj_part_count[i],
-                self.ci_gpart_count[i],
-                self.cj_gpart_count[i],
-                self.ci_types[i],
-                self.cj_types[i],
-                self.ci_subtypes[i],
-                self.cj_subtypes[i],
-                self.ci_depths[i],
-                self.cj_depths[i],
-                self.min_dists[i],
-                self.mpole_dists[i],
+                task_ranks[i],
+                task_threads[i],
+                task_types[i],
+                task_subtypes[i],
+                tics[i],
+                tocs[i],
+                ci_part_count[i],
+                cj_part_count[i],
+                ci_gpart_count[i],
+                cj_gpart_count[i],
+                ci_types[i],
+                cj_types[i],
+                ci_subtypes[i],
+                cj_subtypes[i],
+                ci_depths[i],
+                cj_depths[i],
+                min_dists[i],
+                mpole_dists[i],
             )
             self.task_labels[i] = self.tasks[i].task
 
