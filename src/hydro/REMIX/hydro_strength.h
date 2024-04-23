@@ -222,8 +222,9 @@ __attribute__((always_inline)) INLINE static void hydro_end_force_extra_strength
        for (i = 0; i < 3; i++) {
           for (j = 0; j < 3; j++) {
               for (k = 0; k < 3; k++) {
-                  //check this one: is S symmetrixc and R antisymmetric
-                  rotation_term[i][j] += -p->deviatoric_stress_tensor_S[i][k] * p->rotation_rate_tensor_R[k][j] + p->rotation_rate_tensor_R[i][k] * p->deviatoric_stress_tensor_S[k][j] ;
+                  //check this one: is S symmetric and R antisymmetric
+                  // switched signs to maych Schafer. See Dienes 1978 (eq 4.8) for derivation
+                  rotation_term[i][j] += p->deviatoric_stress_tensor_S[i][k] * p->rotation_rate_tensor_R[k][j] - p->rotation_rate_tensor_R[i][k] * p->deviatoric_stress_tensor_S[k][j] ;
               }
           }
         }
@@ -254,25 +255,42 @@ __attribute__((always_inline)) INLINE static void calculate_yield_stress(
     struct part *restrict p, const float pressure, const float temperature) {
 
 
+
     // Jutzi 2015 notation
 
     // From Collins (2004)
     float mu_i = 2.f;
     float mu_d = 0.8f;
 
+    
+    // Should be able to decrease if negative pressures until Y=0?
+    // miluphcuda does this so maybe not wrong?
     float Y_intact = p->Y_0;
     if(pressure > 0){
         Y_intact = p->Y_0 + mu_i * pressure / (1.f + (mu_i * pressure) / (p->Y_M - p->Y_0));
     }
 
     // This is from Emsenhuber+ (2017)
-    float xi = 1.2f;
-    Y_intact *= tanhf(xi * (p->T_m / temperature - 1.f));
+    if (temperature > p->T_m){
+        p->yield_stress_Y  = 0.f;
+    }else{    
+        float xi = 1.2f;
+        Y_intact *= tanhf(xi * (p->T_m / temperature - 1.f));
+    }
+    
+    //aluminium hard-coded for now. See Luther et al. 2022 appendix. this should be 0.85xref density.
+    float rho_weak = 0.85f * 2700.f;
+    if (p->rho < rho_weak){
+        Y_intact *= powf(p->rho / rho_weak, 4.f);
+    }
 
     float Y_damaged = 0.f;
     if(pressure > 0){
         Y_damaged = mu_d * pressure;
     }
+    
+    //Maybe Y_damaged also needs have a max value indep of Y_intact? See e.g. Güldemeister et al. 2015; Winkler et al. 2018
+    
     //one of these might not be needed
     Y_damaged = min(Y_damaged, Y_intact);
 

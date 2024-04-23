@@ -850,7 +850,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   temperature = gas_temperature_from_internal_energy(p->rho_evolved, p->u, p->mat_id);
   p->temperature = temperature;  
 #endif /* MATERIAL_STRENGTH */
-  hydro_set_sigma(p, p->deviatoric_stress_tensor_S, pressure, temperature);
+  hydro_set_sigma(p, p->deviatoric_stress_tensor_S, pressure);
 
 
   #ifdef MATERIAL_STRENGTH
@@ -1005,10 +1005,10 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
 #endif /* MATERIAL_STRENGTH */
   // Not sure exactly where/how often to call this (e.g. in kick/drift)
   // NEW (NOT STRENGTH SPECIFIC)
-  hydro_set_sigma(p, p->deviatoric_stress_tensor_S, pressure, temperature);
+  hydro_set_sigma(p, p->deviatoric_stress_tensor_S, pressure);
 
   // ## Hmmm does this go after setting sigma (sigma depends on D and dD depends on sigma). Seems like it based on wording in B&A and Schafer
-  // turn off for cylinders
+  // turn off for cylinders or aluminium
 #ifdef MATERIAL_STRENGTH
     evolve_damage(p, soundspeed, dt_therm);
 #endif /* MATERIAL_STRENGTH */
@@ -1180,7 +1180,7 @@ for (int i = 0; i < 3; i++) {
         p->shear_modulus_mu =  2.4e10;
     
     
-        p->T_m= 660.f;
+        p->T_m= 660.f + 273.15f; // note mistake in Davison paper. Google Al melting point
 
         // Note we can set a fixed Y by setting these two to the same value
         p->Y_0 = 200e6;

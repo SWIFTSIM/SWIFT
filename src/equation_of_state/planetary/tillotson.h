@@ -345,6 +345,29 @@ INLINE static float Til_pressure_from_internal_energy(
   if (P < mat->P_min) {
     P = mat->P_min;
   }
+    
+  // For aluminium. This should be P_min: P_min = -Y0
+        // This should be made P_min in mat properties
+    // not sure whether to fix or have weakening
+    /*
+    float Y_0 = 200e6;
+  if (P < -Y_0) {
+    P = -Y_0;
+  }
+    */
+    
+    // With rho weakening
+    float rho0 = 2700.f;
+  float rho_weak = 0.85f * rho0;
+    float Y_min = -200e6;
+    if (density < rho_weak){
+        Y_min *= powf(density / rho_weak, 4.f);
+    } 
+    
+    if (P < Y_min) {
+    P = Y_min;
+  }
+  
 
   return P;
 }
@@ -442,13 +465,12 @@ INLINE static float compute_u_cold(float density, struct Til_params *mat,
 
   for (int i = 0; i < N; i++) {
     x += drho;
-    float P = Til_pressure_from_internal_energy(x, u_cold, mat);
-    if(P > 0.f){
-    u_cold += P * drho / (x * x);
-    }
+    u_cold +=
+        Til_pressure_from_internal_energy(x, u_cold, mat) * drho / (x * x);
   }
 
   return u_cold;
+
 }
 
 // Compute A1_u_cold
