@@ -24,6 +24,8 @@
 
 /* Standard includes. */
 #include <float.h>
+#include <gsl.h>
+#include <stddef.h>
 
 /* Local includes. */
 #include "error.h"
@@ -40,15 +42,23 @@ struct forcing_terms {
   // For some small wavenumbers (large scales) store f_0 (amplitudes) for each
   // wavevector. These must be adjusted to yield the desired mach number.
   // Default: Paraboloid in fourier space, |k| in (1, 3)
+  size_t wave_vectors_count;
+  float *wave_vectors;
 
-  // Store the current f for each wavevector
+  // Store the current f (vector amplitude) for each wavevector
+  float *forcing_amplitudes;
 
-  // Store seeded rng
+  float *f_0;
 
   // Store forcing parameter eta to select mixture of purely solenoidal or
   // compressive forcing power (default 0.5)
+  float zeta;
 
-  // Store characteristic timescale/turnover time T
+  // Store inverse characteristic timescale/turnover time T
+  float inv_forcing_timescale;
+
+  // Store seeded rng
+  gsl_rng *rng;
 };
 
 /**
@@ -93,6 +103,42 @@ __attribute__((always_inline)) INLINE static void forcing_terms_update(
   // - add random "diffusion" term: f_0 * projection(eta) \dot W(dt)
   //   with W(dt) a gaussian random increment to the vector field (Wiener
   //   process).
+  for (int i = 0; i < terms->wave_vectors_count; i++) {
+    float *k = &terms->wave_vectors[3 * i];
+    float *f = &terms->forcing_amplitudes[3 * i];
+    float f_0 = terms->f_0[i];
+
+    float df[3] = {0.f, 0.f, 0.f};
+
+    // Exponentially decaying autocorrelation
+    float diffusion_fac = timestep * terms->inv_forcing_timescale;
+    df[0] -= f[0] * diffusion_fac;
+    df[1] -= f[1] * diffusion_fac;
+    df[2] -= f[2] * diffusion_fac;
+
+    // random diffusion term TODO: needs normalizing/rescaling?
+    float dW[3];
+    dW[0] = gsl_ran_gaussian(terms->rng, timestep);
+    dW[1] = gsl_ran_gaussian(terms->rng, timestep);
+    dW[2] = gsl_ran_gaussian(terms->rng, timestep);
+    // Project the random increment and add to df
+    df[0] += f_0 * terms->zeta * dW[0];
+    df[1] += f_0 * terms->zeta * dW[1];
+    df[2] += f_0 * terms->zeta * dW[2];
+
+    float k_sq = k[0] * k[0] + k[1] * k[1] + k[2] * k[2];
+    float fac = f_0 * (1.f - 2.f * terms->zeta) / k_sq;
+    for (int ii = 0; ii < 3; ii++) {
+      df[0] += fac * k[0] * k[ii];
+      df[1] += fac * k[1] * k[ii];
+      df[2] += fac * k[2] * k[ii];
+    }
+
+    // Update the forcing amplitudes
+    f[0] += df[0];
+    f[1] += df[1];
+    f[2] += df[2];
+  }
 }
 
 /**
