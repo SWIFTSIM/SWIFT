@@ -439,11 +439,11 @@ class TaskParser:
 
     @property
     def tics(self):
-        return np.int32(self._extract_column("tic"))
+        return np.float64(self._extract_column("tic"))
 
     @property
     def tocs(self):
-        return np.int32(self._extract_column("toc"))
+        return np.float64(self._extract_column("toc"))
 
     @property
     def ci_part_count(self):
