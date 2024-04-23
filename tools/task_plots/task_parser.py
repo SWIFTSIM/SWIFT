@@ -78,7 +78,11 @@ class Task:
         self.thread = thread
         self.type = TASKTYPES[type_int]
         self.subtype = SUBTYPES[subtype_int]
-        self.task = self.type + "/" + self.subtype
+        self.task = (
+            self.type + "/" + self.subtype
+            if self.subtype != "none"
+            else self.type
+        )
         self.tic = tic
         self.toc = toc
         self.ci_part_count = ci_part_count
