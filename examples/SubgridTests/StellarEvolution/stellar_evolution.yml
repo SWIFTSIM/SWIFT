@@ -19,6 +19,8 @@ Snapshots:
   time_first:          0.                # Time of the first output (in internal units)
   delta_time:          3.e-5             # Time difference between consecutive outputs (internal units)
   compression:         4
+  recording_triggers_part: [1.0227e-4, 1.0227e-5]   # Recording starts 100M and 10M years before a snapshot
+  recording_triggers_bpart: [1.0227e-4, 1.0227e-5]  # Recording starts 100M and 10M years before a snapshot
 
 # Parameters governing the conserved quantities statistics
 Statistics:

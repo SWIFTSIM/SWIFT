@@ -43,6 +43,7 @@
 #include "engine.h"
 
 /* Local headers. */
+#include "adaptive_softening.h"
 #include "atomic.h"
 #include "cell.h"
 #include "clocks.h"
@@ -102,6 +103,9 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
 
       /* Drift before you send */
       scheduler_addunlock(s, ci->grav.super->grav.drift, t_grav);
+
+      if (gravity_after_hydro_density)
+        scheduler_addunlock(s, ci->grav.super->grav.init_out, t_grav);
     }
 
     /* Add them to the local cell. */
@@ -626,38 +630,17 @@ void engine_addtasks_recv_hydro(
           s, task_type_recv, task_subtype_rt_transport, c->mpi.tag, 0, c, NULL);
       /* Also create the rt_advance_cell_time tasks for the foreign cells
        * for the sub-cycling. */
+
 #ifdef SWIFT_RT_DEBUG_CHECKS
       if (c->super == NULL)
         error("trying to add rt_advance_cell_time above super level...");
-#endif
-
-      /* Create the RT collect times task at the top level, if it hasn't
-       * already. */
       if (c->top->rt.rt_collect_times == NULL) {
-        c->top->rt.rt_collect_times =
-            scheduler_addtask(s, task_type_rt_collect_times, task_subtype_none,
-                              0, 0, c->top, NULL);
+        error("rt_collect_times should exist already");
       }
-
-      /* Create the RT advance times task at the super level, if it hasn't
-       * already. Also set all the dependencies */
       if (c->super->rt.rt_advance_cell_time == NULL) {
-
-        c->super->rt.rt_advance_cell_time =
-            scheduler_addtask(s, task_type_rt_advance_cell_time,
-                              task_subtype_none, 0, 0, c->super, NULL);
-
-        /* Don't run collect times before you run advance cell time */
-        scheduler_addunlock(s, c->super->rt.rt_advance_cell_time,
-                            c->top->rt.rt_collect_times);
-
-        /* In normal steps, tend mustn't run before rt_advance_cell_time or the
-         * cell's ti_rt_end_min will be updated wrongly. In sub-cycles, we don't
-         * have the tend tasks, so there's no worry about that. (Them missing is
-         * the reason we need the rt_advanced_cell_time to complete the
-         * sub-cycles in the first place) */
-        scheduler_addunlock(s, c->super->rt.rt_advance_cell_time, tend);
+        error("rt_advance_cell_times should exist already");
       }
+#endif
 
       /* Make sure we sort after receiving RT data. The hydro sorts may or may
        * not be active. Blocking them with dependencies deadlocks with MPI. So
@@ -822,6 +805,72 @@ void engine_addtasks_recv_hydro(
             e, c->progeny[k], t_xv, t_rho, t_gradient, t_prep1, t_limiter,
             t_unpack_limiter, t_rt_gradient, t_rt_transport, t_rt_sorts, tend,
             with_feedback, with_black_holes, with_limiter, with_sync, with_rt);
+
+#else
+  error("SWIFT was not compiled with MPI support.");
+#endif
+}
+
+/**
+ * @brief Add time rt_advance_cell_time tasks to super levels of
+ * foreign cells. This function recurses down to the super level
+ * and creates the required tasks, and adds a dependency between
+ * rt_advance_cell_time, rt_collect_times, and tend tasks.
+ *
+ * In normal steps, tend mustn't run before rt_advance_cell_time or the
+ * cell's ti_rt_end_min will be updated wrongly. In sub-cycles, we don't
+ * have the tend tasks, so there's no worry about that. (Them missing is
+ * the reason we need the rt_advanced_cell_time to complete the
+ * sub-cycles in the first place)
+ *
+ * @param e The #engine.
+ * @param c The foreign #cell.
+ * @param tend The top-level time-step communication #task.
+ */
+
+void engine_addtasks_recv_rt_advance_cell_time(struct engine *e, struct cell *c,
+                                               struct task *const tend) {
+
+#ifdef WITH_MPI
+  struct scheduler *s = &e->sched;
+
+  /* Early abort (are we below the level where tasks are)? */
+  if (!cell_get_flag(c, cell_flag_has_tasks)) return;
+
+  /* Have we reached the super level? */
+  if (c->super == c) {
+
+#ifdef SWIFT_RT_DEBUG_CHECKS
+    if (c->super == NULL)
+      error("trying to add rt_advance_cell_time above super level...");
+    if (c->top->rt.rt_collect_times == NULL)
+      error("rt_collect_times should have been created already????");
+#endif
+
+    /* Create the rt advance times task at the super level, if it hasn't
+     * already. also set all the dependencies */
+    if (c->rt.rt_advance_cell_time == NULL) {
+
+      c->rt.rt_advance_cell_time = scheduler_addtask(
+          s, task_type_rt_advance_cell_time, task_subtype_none, 0, 0, c, NULL);
+
+      /* don't run collect times before you run advance cell time */
+      scheduler_addunlock(s, c->rt.rt_advance_cell_time,
+                          c->top->rt.rt_collect_times);
+
+      /* Add the dependency */
+      scheduler_addunlock(s, c->super->rt.rt_advance_cell_time, tend);
+    }
+
+    /* we're done. */
+    return;
+  }
+
+  /* Recurse? */
+  if (c->split)
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL)
+        engine_addtasks_recv_rt_advance_cell_time(e, c->progeny[k], tend);
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -1334,6 +1383,11 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
         scheduler_addunlock(s, c->grav.long_range, c->grav.down);
         scheduler_addunlock(s, c->grav.down, c->grav.super->grav.end_force);
 
+        /* With adaptive softening, force the hydro density to complete first */
+        if (gravity_after_hydro_density && c->hydro.super == c) {
+          scheduler_addunlock(s, c->hydro.ghost_out, c->grav.init_out);
+        }
+
         /* Link in the implicit tasks */
         scheduler_addunlock(s, c->grav.init, c->grav.init_out);
         scheduler_addunlock(s, c->grav.drift, c->grav.drift_out);
@@ -1684,7 +1738,7 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
 
         /* In cases where nothing but RT is active, don't allow the timestep
          * collect to run before we've finished */
-        scheduler_addunlock(s, c->rt.rt_out, c->super->timestep_collect);
+        scheduler_addunlock(s, c->rt.rt_out, c->top->timestep_collect);
 
         /* non-implicit ghost 1 */
         c->rt.rt_ghost1 = scheduler_addtask(s, task_type_rt_ghost1,
@@ -4186,6 +4240,57 @@ struct cell_type_pair {
   int type;
 };
 
+/**
+ * @brief Recurse down to the super level and add a dependency between
+ * rt_advance_cell_time and tend tasks. Note: This function is intended
+ * for the sending side, i.e. for local cells.
+ *
+ * If we're running with RT subcycling, we need to ensure that nothing
+ * is sent before the advance cell time task has finished. This may
+ * overwrite the correct cell times, particularly so when we're sending
+ * over data for non-RT tasks, e.g. for gravity pair tasks. Therefore the
+ * send/tend task needs to be unlocked by the rt_advance_cell_time task.
+ *
+ * The send/tend task is on the top level, while the rt_advance_cell_time
+ * task is on the super level. This function simply recurses down to the
+ * super level and adds the required dependency.
+ *
+ * @param c cell to check/recurse into
+ * @param tend the send/tend task that needs to be unlocked.
+ * @param e the engine
+ */
+void engine_addunlock_rt_advance_cell_time_tend(struct cell *c,
+                                                struct task *tend,
+                                                struct engine *e) {
+
+  /* safety measure */
+  if (!cell_get_flag(c, cell_flag_has_tasks)) return;
+  if (cell_is_empty(c)) return;
+
+  if (c->super == c) {
+    /* Found the super level cell. Add dependency from rt_advance_cell_time, if
+     * it exists. */
+    if (c->super->rt.rt_advance_cell_time != NULL) {
+      scheduler_addunlock(&e->sched, c->super->rt.rt_advance_cell_time, tend);
+    }
+#ifdef SWIFT_RT_DEBUG_CHECKS
+    else {
+      error("Got local super cell without rt_advance_cell_time task");
+    }
+#endif
+
+  } else {
+    /* descend the tree until you find the super level */
+    if (c->split) {
+      for (int k = 0; k < 8; k++) {
+        if (c->progeny[k] != NULL) {
+          engine_addunlock_rt_advance_cell_time_tend(c->progeny[k], tend, e);
+        }
+      }
+    }
+  }
+}
+
 void engine_addtasks_send_mapper(void *map_data, int num_elements,
                                  void *extra_data) {
 
@@ -4217,21 +4322,8 @@ void engine_addtasks_send_mapper(void *map_data, int num_elements,
       scheduler_addunlock(&e->sched, ci->timestep_collect, tend);
       engine_addlink(e, &ci->mpi.send, tend);
 
-      if (with_rt && (type & proxy_cell_type_hydro)) {
-
-        /* If we're running with RT subcycling, we need to ensure that nothing
-         * is sent before the advance cell time task has finished. This may
-         * overwrite the correct cell times, particularly so when we're sending
-         * over data for non-RT tasks, e.g. for gravity pair tasks. */
-        if (ci->super->rt.rt_advance_cell_time != NULL) {
-          scheduler_addunlock(&e->sched, ci->super->rt.rt_advance_cell_time,
-                              tend);
-#ifdef SWIFT_RT_DEBUG_CHECKS
-        } else {
-          error("Got local super cell without rt_advance_cell_time task");
-#endif
-        }
-      }
+      if (with_rt && (type & proxy_cell_type_hydro))
+        engine_addunlock_rt_advance_cell_time_tend(ci, tend, e);
     }
 #endif
 
@@ -4299,6 +4391,35 @@ void engine_addtasks_recv_mapper(void *map_data, int num_elements,
       tend = scheduler_addtask(&e->sched, task_type_recv, task_subtype_tend,
                                ci->mpi.tag, 0, ci, NULL);
       engine_addlink(e, &ci->mpi.recv, tend);
+
+      /* If we're running with RT, there may be foreign cells that
+       * don't receive any actual hydro particles. These cells however
+       * still need to have the "advance_cell_time" and "rt_collect_times"
+       * tasks in order for their time variables to be correct, especially
+       * during syb-cycles, where the cell times aren't communicated at the
+       * end of the step. So we create them now. */
+      if (with_rt) {
+#ifdef SWIFT_RT_DEBUG_CHECKS
+        if (ci->top == NULL) error("Working on a cell with top == NULL??");
+#endif
+
+        /* Create the RT collect times task at the top level, if it hasn't
+         * already. */
+        if (ci->top->rt.rt_collect_times == NULL) {
+          ci->top->rt.rt_collect_times =
+              scheduler_addtask(&e->sched, task_type_rt_collect_times,
+                                task_subtype_none, 0, 0, ci->top, NULL);
+        }
+        /* We don't need rt_collect_times -> tend dependencies. They never
+         * run at the same time. rt_collect_times runs in sub-cycles,
+         * tend runs on normal steps. */
+
+        /* Make sure the timestep task replacements, i.e. rt_advance_cell_time,
+         * exists on the super levels regardless of proxy type.
+         * This needs to be done before engine_addtasks_recv_hydro so we
+         * can set appropriate unlocks there without re-creating tasks. */
+        engine_addtasks_recv_rt_advance_cell_time(e, ci, tend);
+      }
     }
 #endif
 
@@ -4378,11 +4499,12 @@ void engine_make_fofloop_tasks_mapper(void *map_data, int num_elements,
     if (ci->grav.count == 0) continue;
 
     /* If the cells is local build a self-interaction */
-    if (ci->nodeID == nodeID)
+    if (ci->nodeID == nodeID) {
       scheduler_addtask(sched, task_type_fof_self, task_subtype_none, 0, 0, ci,
                         NULL);
-    else
-      continue;
+      scheduler_addtask(sched, task_type_fof_attach_self, task_subtype_none, 0,
+                        0, ci, NULL);
+    }
 
     /* Now loop over all the neighbours of this cell */
     for (int ii = -1; ii < 2; ii++) {
@@ -4402,13 +4524,19 @@ void engine_make_fofloop_tasks_mapper(void *map_data, int num_elements,
           const int cjd = cell_getid(cdim, iii, jjj, kkk);
           struct cell *cj = &cells[cjd];
 
-          /* Is that neighbour local and does it have particles ? */
-          if (cid >= cjd || cj->grav.count == 0 || (ci->nodeID != cj->nodeID))
-            continue;
+          /* Does that neighbour have particles ? */
+          if (cid >= cjd || cj->grav.count == 0) continue;
 
-          /* Construct the pair task */
-          scheduler_addtask(sched, task_type_fof_pair, task_subtype_none, 0, 0,
-                            ci, cj);
+          /* Construct the pair search task only for fully local pairs */
+          if (ci->nodeID == nodeID && cj->nodeID == nodeID)
+            scheduler_addtask(sched, task_type_fof_pair, task_subtype_none, 0,
+                              0, ci, cj);
+
+          /* Construct the pair search task for pairs overlapping with the node
+           */
+          if (ci->nodeID == nodeID || cj->nodeID == nodeID)
+            scheduler_addtask(sched, task_type_fof_attach_pair,
+                              task_subtype_none, 0, 0, ci, cj);
         }
       }
     }

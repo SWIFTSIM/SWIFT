@@ -65,8 +65,12 @@ __attribute__((always_inline)) INLINE static void rt_tchem_first_init_part(
     p->rt_data.tchem.mass_fraction_HeIII = rt_props->mass_fraction_HeIII_init;
   }
 
+  /* pretend you have nonzero density so the check doesn't reset the mass
+   * fractions */
+  p->rho = 1.f;
   /* Check that we didn't do something stupid */
   rt_check_unphysical_mass_fractions(p);
+  p->rho = 0.f;
 
   /* Check that the Hydrogen and Helium mass fractions correspond to those
    * provided by the user in the parameter file. This mass fraction is also
@@ -96,7 +100,7 @@ __attribute__((always_inline)) INLINE static void rt_tchem_first_init_part(
  * @param phys_const The physical constants in internal units.
  * @param us The internal system of units.
  * @param dt The time-step of this particle.
- * @depth recursion depth
+ * @param depth recursion depth
  */
 INLINE static void rt_do_thermochemistry(
     struct part* restrict p, struct xpart* restrict xp,
@@ -151,9 +155,9 @@ INLINE static void rt_do_thermochemistry(
   /* Note: `grackle_rates` is a global variable defined by grackle itself.
    * Using a manually allocd and initialized variable here fails with MPI
    * for some reason. */
-  if (local_solve_chemistry(&rt_props->grackle_chemistry_data, &grackle_rates,
-                            &rt_props->grackle_units, &particle_grackle_data,
-                            dt) == 0)
+  if (local_solve_chemistry(
+          &rt_props->grackle_chemistry_data, &rt_props->grackle_chemistry_rates,
+          &rt_props->grackle_units, &particle_grackle_data, dt) == 0)
     error("Error in solve_chemistry.");
 
   /* copy updated grackle data to particle */
@@ -282,9 +286,9 @@ __attribute__((always_inline)) INLINE static float rt_tchem_get_tchem_time(
    * Using a manually allocd and initialized variable here fails with MPI
    * for some reason. */
   gr_float tchem_time;
-  if (local_calculate_cooling_time(&rt_props->grackle_chemistry_data,
-                                   &grackle_rates, &rt_props->grackle_units,
-                                   &particle_grackle_data, &tchem_time) == 0)
+  if (local_calculate_cooling_time(
+          &rt_props->grackle_chemistry_data, &rt_props->grackle_chemistry_rates,
+          &rt_props->grackle_units, &particle_grackle_data, &tchem_time) == 0)
     error("Error in calculate_cooling_time.");
 
   /* Clean up after yourself. */

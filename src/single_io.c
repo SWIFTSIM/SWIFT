@@ -63,6 +63,9 @@
 #include "version.h"
 #include "xmf.h"
 
+/* Max number of entries that can be written for a given particle type */
+static const int io_max_size_output_list = 100;
+
 /**
  * @brief Reads a data array from a given HDF5 group.
  *
@@ -297,36 +300,36 @@ void write_array_single(const struct engine* e, hid_t grp, const char* fileName,
   /* Dataset properties */
   hid_t h_prop = H5Pcreate(H5P_DATASET_CREATE);
 
-  /* Set chunk size if have some particles */
+  /* Create filters and set compression level if we have something to write */
+  char comp_buffer[32] = "None";
   if (N > 0) {
+
+    /* Set chunk size */
     h_err = H5Pset_chunk(h_prop, rank, chunk_shape);
     if (h_err < 0)
       error("Error while setting chunk size (%llu, %llu) for field '%s'.",
             (unsigned long long)chunk_shape[0],
             (unsigned long long)chunk_shape[1], props.name);
-  }
 
-  /* Are we imposing some form of lossy compression filter? */
-  char comp_buffer[32] = "None";
-  if (lossy_compression != compression_write_lossless)
-    set_hdf5_lossy_compression(&h_prop, &h_type, lossy_compression, props.name,
-                               comp_buffer);
+    /* Are we imposing some form of lossy compression filter? */
+    if (lossy_compression != compression_write_lossless)
+      set_hdf5_lossy_compression(&h_prop, &h_type, lossy_compression,
+                                 props.name, comp_buffer);
 
-  /* Impose GZIP and shuffle data compression */
-  if (e->snapshot_compression > 0 && N > 0) {
-    h_err = H5Pset_shuffle(h_prop);
-    if (h_err < 0)
-      error("Error while setting shuffling options for field '%s'.",
-            props.name);
+    /* Impose GZIP and shuffle data compression */
+    if (e->snapshot_compression > 0) {
+      h_err = H5Pset_shuffle(h_prop);
+      if (h_err < 0)
+        error("Error while setting shuffling options for field '%s'.",
+              props.name);
 
-    h_err = H5Pset_deflate(h_prop, e->snapshot_compression);
-    if (h_err < 0)
-      error("Error while setting compression options for field '%s'.",
-            props.name);
-  }
+      h_err = H5Pset_deflate(h_prop, e->snapshot_compression);
+      if (h_err < 0)
+        error("Error while setting compression options for field '%s'.",
+              props.name);
+    }
 
-  /* Impose check-sum to verify data corruption */
-  if (N > 0) {
+    /* Impose check-sum to verify data corruption */
     h_err = H5Pset_fletcher32(h_prop);
     if (h_err < 0)
       error("Error while setting checksum options for field '%s'.", props.name);
@@ -657,8 +660,8 @@ void read_ic_single(
       error("Error while opening particle group %s.", partTypeGroupName);
 
     int num_fields = 0;
-    struct io_props list[100];
-    bzero(list, 100 * sizeof(struct io_props));
+    struct io_props list[io_max_size_output_list];
+    bzero(list, io_max_size_output_list * sizeof(struct io_props));
     size_t Nparticles = 0;
 
     /* Read particle fields into the structure */
@@ -799,6 +802,7 @@ void read_ic_single(
  * @param e The engine containing all the system.
  * @param internal_units The #unit_system used internally
  * @param snapshot_units The #unit_system used in the snapshots
+ * @param fof Is this a snapshot related to a stand-alone FOF call?
  *
  * Creates an HDF5 output file and writes the particles contained
  * in the engine. If such a file already exists, it is erased and replaced
@@ -810,7 +814,8 @@ void read_ic_single(
  */
 void write_output_single(struct engine* e,
                          const struct unit_system* internal_units,
-                         const struct unit_system* snapshot_units) {
+                         const struct unit_system* snapshot_units,
+                         const int fof) {
 
   hid_t h_file = 0, h_grp = 0;
   int numFiles = 1;
@@ -1093,7 +1098,7 @@ void write_output_single(struct engine* e,
   ic_info_write_hdf5(e->ics_metadata, h_file);
 
   /* Write all the meta-data */
-  io_write_meta_data(h_file, e, internal_units, snapshot_units);
+  io_write_meta_data(h_file, e, internal_units, snapshot_units, fof);
 
   /* Now write the top-level cell structure */
   long long global_offsets[swift_type_count] = {0};
@@ -1141,8 +1146,8 @@ void write_output_single(struct engine* e,
     io_write_attribute_ll(h_grp, "TotalNumberOfParticles", N_total[ptype]);
 
     int num_fields = 0;
-    struct io_props list[100];
-    bzero(list, 100 * sizeof(struct io_props));
+    struct io_props list[io_max_size_output_list];
+    bzero(list, io_max_size_output_list * sizeof(struct io_props));
     size_t N = 0;
 
     struct part* parts_written = NULL;
@@ -1409,6 +1414,15 @@ void write_output_single(struct engine* e,
 
       default:
         error("Particle Type %d not yet supported. Aborting", ptype);
+    }
+
+    /* Verify we are not going to crash when writing below */
+    if (num_fields >= io_max_size_output_list)
+      error("Too many fields to write for particle type %d", ptype);
+    for (int i = 0; i < num_fields; ++i) {
+      if (!list[i].is_used) error("List of field contains an empty entry!");
+      if (!list[i].dimension)
+        error("Dimension of field '%s' is <= 1!", list[i].name);
     }
 
     /* Did the user specify a non-standard default for the entire particle

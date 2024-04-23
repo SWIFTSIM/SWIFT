@@ -402,8 +402,7 @@ __attribute__((always_inline)) INLINE static double rt_part_dt(
     const double time_base, const int with_cosmology,
     const struct cosmology* cosmo) {
   if (with_cosmology) {
-    error("GEAR RT with cosmology not implemented yet! :(");
-    return 0.f;
+    return cosmology_get_delta_time(cosmo, ti_beg, ti_end);
   } else {
     return (ti_end - ti_beg) * time_base;
   }
@@ -483,12 +482,17 @@ __attribute__((always_inline)) INLINE static void rt_finalise_transport(
 
   for (int g = 0; g < RT_NGROUPS; g++) {
     const float e_old = rtd->radiation[g].energy_density;
+
     /* Note: in this scheme, we're updating d/dt (U * V) + sum F * A * dt = 0.
      * So we'll need the division by the volume here. */
     rtd->radiation[g].energy_density += rtd->flux[g].energy * Vinv;
+
     rtd->radiation[g].flux[0] += rtd->flux[g].flux[0] * Vinv;
+
     rtd->radiation[g].flux[1] += rtd->flux[g].flux[1] * Vinv;
+
     rtd->radiation[g].flux[2] += rtd->flux[g].flux[2] * Vinv;
+
     rt_check_unphysical_state(&rtd->radiation[g].energy_density,
                               rtd->radiation[g].flux, e_old, /*callloc=*/4);
   }
@@ -568,7 +572,7 @@ __attribute__((always_inline)) INLINE static void rt_kick_extra(
     /* Update the mass fraction changes due to interparticle fluxes */
     const float current_mass = p->conserved.mass;
 
-    if (current_mass <= 0.f || p->rho <= 0.f) {
+    if ((current_mass <= 0.f) || (p->rho <= 0.f)) {
       /* Deal with vacuum. Let hydro deal with actuall mass < 0, just do your
        * mass fractions thing. */
       p->rt_data.tchem.mass_fraction_HI = 0.f;
@@ -683,7 +687,8 @@ __attribute__((always_inline)) INLINE static void rt_clean(
    * segfaults since we didn't malloc the stuff */
   if (!restart) {
     /* Clean up grackle data. This is a call to a grackle function */
-    _free_chemistry_data(&props->grackle_chemistry_data, &grackle_rates);
+    local_free_chemistry_data(&props->grackle_chemistry_data,
+                              &props->grackle_chemistry_rates);
 
     for (int g = 0; g < RT_NGROUPS; g++) {
       free(props->energy_weighted_cross_sections[g]);

@@ -18,7 +18,7 @@ More general information about SWIFT is available on the project
 [webpages](http://www.swiftsim.com).
 
 For information on how to _run_ SWIFT, please consult the onboarding guide
-available [here](http://www.swiftsim.com/onboarding.pdf). This includes
+available [here](https://swift.strw.leidenuniv.nl/onboarding.pdf). This includes
 dependencies, and a few examples to get you going.
 
 We suggest that you use the latest release branch of SWIFT, rather than the
@@ -58,6 +58,12 @@ physical model is something left to the users to explore.
 Acknowledgment & Citation
 -------------------------
 
+The SWIFT code was last described in this paper:
+https://ui.adsabs.harvard.edu/abs/2023arXiv230513380S.  The core solver, the
+numerical methods as well as many extensions where described there. We ask users
+running SWIFT for their research to please cite this paper when they present
+their results.
+
 In order to keep track of usage and measure the impact of the software, we
 kindly ask users publishing scientific results using SWIFT to add the following
 sentence to the acknowledgment section of their papers:
@@ -75,7 +81,7 @@ Contribution Guidelines
 -----------------------
 
 The SWIFT source code uses a variation of the 'Google' formatting style.
-The script 'format.sh' in the root directory applies the clang-format-10
+The script 'format.sh' in the root directory applies the clang-format-13
 tool with our style choices to all the SWIFT C source file. Please apply
 the formatting script to the files before submitting a pull request.
 
@@ -100,7 +106,7 @@ Runtime parameters
  /____/ |__/|__/___/_/    /_/
  SPH With Inter-dependent Fine-grained Tasking
 
- Version : 0.9.0
+ Version : 1.0.0
  Website: www.swiftsim.com
  Twitter: @SwiftSimulation
 

@@ -16,7 +16,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Add the non-standard paths to the included library headers
-AM_CFLAGS = $(HDF5_CPPFLAGS) $(GSL_INCS) $(FFTW_INCS) $(NUMA_INCS) $(GRACKLE_INCS)  $(SUNDIALS_INCS) $(OPENMP_CFLAGS) $(CHEALPIX_CFLAGS)
+AM_CFLAGS = $(HDF5_CPPFLAGS) $(GSL_INCS) $(FFTW_INCS) $(NUMA_INCS) $(GRACKLE_INCS)  $(SUNDIALS_INCS) $(CHEALPIX_CFLAGS)
 
 # Assign a "safe" version number
 AM_LDFLAGS = $(HDF5_LDFLAGS) $(FFTW_LIBS)
@@ -50,7 +50,8 @@ include_HEADERS += hydro_properties.h riemann.h threadpool.h cooling_io.h coolin
 include_HEADERS += statistics.h memswap.h cache.h runner_doiact_hydro_vec.h runner_doiact_undef.h profiler.h entropy_floor.h 
 include_HEADERS += csds.h active.h timeline.h xmf.h gravity_properties.h gravity_derivatives.h 
 include_HEADERS += gravity_softened_derivatives.h vector_power.h collectgroup.h hydro_space.h sort_part.h 
-include_HEADERS += chemistry.h chemistry_io.h chemistry_struct.h chemistry_debug.h cosmology.h restart.h space_getsid.h utilities.h 
+include_HEADERS += chemistry.h chemistry_additions.h chemistry_io.h chemistry_struct.h chemistry_debug.h
+include_HEADERS += cosmology.h restart.h space_getsid.h utilities.h
 include_HEADERS += cbrt.h exp10.h velociraptor_interface.h swift_velociraptor_part.h output_list.h 
 include_HEADERS += csds_io.h
 include_HEADERS += tracers_io.h tracers.h tracers_triggers.h tracers_struct.h tracers_debug.h
@@ -74,6 +75,8 @@ include_HEADERS += lightcone/lightcone.h lightcone/lightcone_particle_io.h light
 include_HEADERS += lightcone/lightcone_crossing.h lightcone/lightcone_array.h lightcone/lightcone_map.h
 include_HEADERS += lightcone/lightcone_map_types.h lightcone/projected_kernel.h lightcone/lightcone_shell.h
 include_HEADERS += lightcone/healpix_util.h lightcone/pixel_index.h
+include_HEADERS += adaptive_softening.h adaptive_softening_iact.h adaptive_softening_struct.h
+include_HEADERS += forcing.h
 include_HEADERS += power_spectrum.h
 include_HEADERS += ghost_stats.h
 
@@ -122,11 +125,17 @@ if HAVEGRACKLECOOLING
 GRACKLE_COOLING_SOURCES += cooling/grackle/cooling.c
 endif
 
+# source files for EAGLE floor
+EAGLE_FLOOR_SOURCES =
+if HAVEEAGLEFLOOR
+EAGLE_FLOOR_SOURCES += entropy_floor/EAGLE/entropy_floor.c
+endif
+
 # source files for GEAR feedback
 GEAR_FEEDBACK_SOURCES =
 if HAVEGEARFEEDBACK
-GEAR_FEEDBACK_SOURCES += feedback/GEAR/stellar_evolution.c feedback/GEAR/feedback.c \
-	feedback/GEAR/initial_mass_function.c feedback/GEAR/supernovae_ia.c feedback/GEAR/supernovae_ii.c
+GEAR_FEEDBACK_SOURCES += feedback/GEAR/stellar_evolution.c feedback/GEAR/feedback.c
+GEAR_FEEDBACK_SOURCES += feedback/GEAR/initial_mass_function.c feedback/GEAR/supernovae_ia.c feedback/GEAR/supernovae_ii.c
 endif
 
 # source files for AGORA feedback
@@ -175,22 +184,24 @@ AM_SOURCES += statistics.c profiler.c csds.c part_type.c
 AM_SOURCES += gravity_properties.c gravity.c multipole.c 
 AM_SOURCES += collectgroup.c hydro_space.c equation_of_state.c io_compression.c 
 AM_SOURCES += chemistry.c cosmology.c velociraptor_interface.c 
-AM_SOURCES += output_list.c velociraptor_dummy.c csds_io.c memuse.c mpiuse.c memuse_rnodes.c
+AM_SOURCES += output_list.c csds_io.c memuse.c mpiuse.c memuse_rnodes.c
 AM_SOURCES += fof.c fof_catalogue_io.c
 AM_SOURCES += hashmap.c
 AM_SOURCES += mesh_gravity.c mesh_gravity_mpi.c mesh_gravity_patch.c mesh_gravity_sort.c
 AM_SOURCES += runner_neutrino.c
-AM_SOURCES += neutrino/Default/fermi_dirac.c neutrino/Default/neutrino.c neutrino/Default/neutrino_response.c 
+AM_SOURCES += neutrino/Default/fermi_dirac.c neutrino/Default/neutrino.c neutrino/Default/neutrino_response.c
 AM_SOURCES += rt_parameters.c hdf5_object_to_blob.c ic_info.c exchange_structs.c particle_buffer.c
 AM_SOURCES += lightcone/lightcone.c lightcone/lightcone_particle_io.c lightcone/lightcone_replications.c
 AM_SOURCES += lightcone/healpix_util.c lightcone/lightcone_array.c lightcone/lightcone_map.c
 AM_SOURCES += lightcone/lightcone_map_types.c lightcone/projected_kernel.c lightcone/lightcone_shell.c
 AM_SOURCES += power_spectrum.c
+AM_SOURCES += forcing.c
 AM_SOURCES += ghost_stats.c
 AM_SOURCES += $(EAGLE_EXTRA_IO_SOURCES)
 AM_SOURCES += $(QLA_COOLING_SOURCES) $(QLA_EAGLE_COOLING_SOURCES) 
 AM_SOURCES += $(EAGLE_COOLING_SOURCES) $(EAGLE_FEEDBACK_SOURCES) 
-AM_SOURCES += $(GRACKLE_COOLING_SOURCES) $(GEAR_FEEDBACK_SOURCES) 
+AM_SOURCES += $(GRACKLE_COOLING_SOURCES) $(GEAR_FEEDBACK_SOURCES)
+AM_SOURCES += $(EAGLE_FLOOR_SOURCES)
 AM_SOURCES += $(AGORA_FEEDBACK_SOURCES)
 AM_SOURCES += $(PS2020_COOLING_SOURCES)
 AM_SOURCES += $(SPHM1RT_RT_SOURCES)
@@ -212,7 +223,7 @@ nobase_noinst_HEADERS += gravity/MultiSoftening/gravity.h gravity/MultiSoftening
 nobase_noinst_HEADERS += gravity/MultiSoftening/gravity_debug.h gravity/MultiSoftening/gravity_part.h 
 nobase_noinst_HEADERS += gravity/MultiSoftening/gravity_csds.h 
 nobase_noinst_HEADERS += equation_of_state.h 
-nobase_noinst_HEADERS += equation_of_state/ideal_gas/equation_of_state.h equation_of_state/isothermal/equation_of_state.h
+nobase_noinst_HEADERS += equation_of_state/ideal_gas/equation_of_state.h equation_of_state/isothermal/equation_of_state.h equation_of_state/barotropic/equation_of_state.h
 nobase_noinst_HEADERS += signal_velocity.h
 nobase_noinst_HEADERS += hydro.h hydro_io.h hydro_csds.h hydro_parameters.h 
 nobase_noinst_HEADERS += hydro/None/hydro.h hydro/None/hydro_iact.h hydro/None/hydro_io.h 
@@ -363,6 +374,7 @@ nobase_noinst_HEADERS += stars/EAGLE/stars.h stars/EAGLE/stars_iact.h stars/EAGL
 nobase_noinst_HEADERS += stars/EAGLE/stars_debug.h stars/EAGLE/stars_part.h 
 nobase_noinst_HEADERS += stars/GEAR/stars.h stars/GEAR/stars_iact.h stars/GEAR/stars_io.h 
 nobase_noinst_HEADERS += stars/GEAR/stars_debug.h stars/GEAR/stars_csds.h stars/GEAR/stars_part.h
+nobase_noinst_HEADERS += forcing/none/forcing.h forcing/roberts_flow/forcing.h forcing/roberts_flow_acceleration/forcing.h 
 nobase_noinst_HEADERS += potential/none/potential.h potential/point_mass/potential.h 
 nobase_noinst_HEADERS += potential/isothermal/potential.h potential/disc_patch/potential.h 
 nobase_noinst_HEADERS += potential/sine_wave/potential.h potential/constant/potential.h 
@@ -405,13 +417,14 @@ nobase_noinst_HEADERS += cooling/PS2020/cooling_io.h cooling/PS2020/interpolate.
 nobase_noinst_HEADERS += cooling/PS2020/cooling_tables.h cooling/PS2020/cooling_subgrid.h
 nobase_noinst_HEADERS += cooling/PS2020/cooling_properties.h cooling/PS2020/cooling_debug.h
 nobase_noinst_HEADERS += chemistry/none/chemistry.h 
-nobase_noinst_HEADERS += chemistry/none/chemistry_io.h 
+nobase_noinst_HEADERS += chemistry/none/chemistry_additions.h
+nobase_noinst_HEADERS += chemistry/none/chemistry_io.h
 nobase_noinst_HEADERS += chemistry/none/chemistry_csds.h
 nobase_noinst_HEADERS += chemistry/none/chemistry_struct.h 
 nobase_noinst_HEADERS += chemistry/none/chemistry_iact.h 
 nobase_noinst_HEADERS += chemistry/none/chemistry_debug.h 
 nobase_noinst_HEADERS += chemistry/GEAR/chemistry.h 
-nobase_noinst_HEADERS += chemistry/GEAR/chemistry_io.h 
+nobase_noinst_HEADERS += chemistry/GEAR/chemistry_io.h
 nobase_noinst_HEADERS += chemistry/GEAR/chemistry_csds.h
 nobase_noinst_HEADERS += chemistry/GEAR/chemistry_struct.h 
 nobase_noinst_HEADERS += chemistry/GEAR/chemistry_iact.h 
@@ -422,18 +435,19 @@ nobase_noinst_HEADERS += chemistry/GEAR_DIFFUSION/chemistry_struct.h
 nobase_noinst_HEADERS += chemistry/GEAR_DIFFUSION/chemistry_iact.h
 nobase_noinst_HEADERS += chemistry/GEAR_DIFFUSION/chemistry_debug.h
 nobase_noinst_HEADERS += chemistry/AGORA/chemistry.h 
-nobase_noinst_HEADERS += chemistry/AGORA/chemistry_io.h 
+nobase_noinst_HEADERS += chemistry/AGORA/chemistry_io.h
 nobase_noinst_HEADERS += chemistry/AGORA/chemistry_csds.h
 nobase_noinst_HEADERS += chemistry/AGORA/chemistry_struct.h 
 nobase_noinst_HEADERS += chemistry/AGORA/chemistry_iact.h 
 nobase_noinst_HEADERS += chemistry/AGORA/chemistry_debug.h 
 nobase_noinst_HEADERS += chemistry/EAGLE/chemistry.h 
-nobase_noinst_HEADERS += chemistry/EAGLE/chemistry_io.h 
+nobase_noinst_HEADERS += chemistry/EAGLE/chemistry_additions.h
+nobase_noinst_HEADERS += chemistry/EAGLE/chemistry_io.h
 nobase_noinst_HEADERS += chemistry/EAGLE/chemistry_struct.h
 nobase_noinst_HEADERS += chemistry/EAGLE/chemistry_iact.h 
 nobase_noinst_HEADERS += chemistry/EAGLE/chemistry_debug.h 
 nobase_noinst_HEADERS += chemistry/QLA/chemistry.h 
-nobase_noinst_HEADERS += chemistry/QLA/chemistry_io.h 
+nobase_noinst_HEADERS += chemistry/QLA/chemistry_io.h
 nobase_noinst_HEADERS += chemistry/QLA/chemistry_struct.h
 nobase_noinst_HEADERS += chemistry/QLA/chemistry_iact.h 
 nobase_noinst_HEADERS += chemistry/QLA/chemistry_debug.h 
