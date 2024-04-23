@@ -1434,7 +1434,8 @@ void task_dump_all(struct engine *e, int step) {
               (e->sched.tasks[l].cj != NULL) ? e->sched.tasks[l].cj->depth : -1,
               (e->sched.tasks[l].ci != NULL && e->sched.tasks[l].cj != NULL)
                   ? cell_min_dist2(e->sched.tasks[l].ci, e->sched.tasks[l].cj,
-                                   e->s->periodic, e->s->dim)
+                                   /*periodic*/ e->s->periodic,
+                                   /*use_mesh*/ e->s->periodic, e->s->dim)
                   : -1,
               (e->sched.tasks[l].ci != NULL && e->sched.tasks[l].cj != NULL)
                   ? cell_mpole_CoM_dist2(e->sched.tasks[l].ci->grav.multipole,
@@ -1490,7 +1491,8 @@ void task_dump_all(struct engine *e, int step) {
           (e->sched.tasks[l].cj != NULL) ? e->sched.tasks[l].cj->depth : -1,
           (e->sched.tasks[l].ci != NULL && e->sched.tasks[l].cj != NULL)
               ? cell_min_dist2(e->sched.tasks[l].ci, e->sched.tasks[l].cj,
-                               e->s->periodic, e->s->dim)
+                               /*periodic*/ e->s->periodic,
+                               /*use_mesh*/ e->s->periodic, e->s->dim)
               : -1,
           (e->sched.tasks[l].ci != NULL && e->sched.tasks[l].cj != NULL)
               ? cell_mpole_CoM_dist2(e->sched.tasks[l].ci->grav.multipole,
