@@ -61,12 +61,18 @@ class Task:
         subtype_int,
         tic,
         toc,
+        ci_part_count,
+        cj_part_count,
+        ci_gpart_count,
+        cj_gpart_count,
         ci_type,
         cj_type,
         ci_subtype,
         cj_subtype,
         ci_depth,
         cj_depth,
+        min_dist,
+        mpole_dist,
     ):
         self.rank = rank
         self.thread = thread
@@ -75,12 +81,18 @@ class Task:
         self.task = self.type + "/" + self.subtype
         self.tic = tic
         self.toc = toc
+        self.ci_part_count = ci_part_count
+        self.cj_part_count = cj_part_count
+        self.ci_gpart_count = ci_gpart_count
+        self.cj_gpart_count = cj_gpart_count
         self.ci_type = CELLTYPES[ci_type]
         self.cj_type = CELLTYPES[cj_type]
         self.ci_subtype = CELLSUBTYPES[ci_subtype]
         self.cj_subtype = CELLSUBTYPES[cj_subtype]
         self.ci_depth = ci_depth
         self.cj_depth = cj_depth
+        self.min_dist = min_dist
+        self.mpole_dist = mpole_dist
         self.dt = toc - tic
 
     def __str__(self):
@@ -183,12 +195,18 @@ class TaskParser:
             self._col_look_up["subtask"] = 3
             self._col_look_up["tic"] = 5
             self._col_look_up["toc"] = 6
+            self._col_look_up["ci_part_count"] = 7
+            self._col_look_up["cj_part_count"] = 8
+            self._col_look_up["ci_gpart_count"] = 9
+            self._col_look_up["cj_gpart_count"] = 10
             self._col_look_up["ci_type"] = 13
             self._col_look_up["cj_type"] = 14
             self._col_look_up["ci_subtype"] = 15
             self._col_look_up["cj_subtype"] = 16
             self._col_look_up["ci_depth"] = 17
             self._col_look_up["cj_depth"] = 18
+            self._col_look_up["min_dist"] = 19
+            self._col_look_up["mpole_dist"] = 20
         else:
             print("# non MPI mode")
             self.ranks = [0]
@@ -198,12 +216,18 @@ class TaskParser:
             self._col_look_up["subtask"] = 2
             self._col_look_up["tic"] = 4
             self._col_look_up["toc"] = 5
+            self._col_look_up["ci_part_count"] = 6
+            self._col_look_up["cj_part_count"] = 7
+            self._col_look_up["ci_gpart_count"] = 8
+            self._col_look_up["cj_gpart_count"] = 9
             self._col_look_up["ci_type"] = 11
             self._col_look_up["cj_type"] = 12
             self._col_look_up["ci_subtype"] = 13
             self._col_look_up["cj_subtype"] = 14
             self._col_look_up["ci_depth"] = 15
             self._col_look_up["cj_depth"] = 16
+            self._col_look_up["min_dist"] = 19
+            self._col_look_up["mpole_dist"] = 20
 
     def _extract_column(self, column):
         return self.data[:, self._col_look_up[column]]
@@ -220,9 +244,9 @@ class TaskParser:
         )
         print("# Number of threads:", self.nthread)
 
-        # Each rank can have different clocks (compute node), but we want to use the
-        # same delta times range for comparisons, so we suck it up and take the hit of
-        # precalculating this, unless the user knows better.
+        # Each rank can have different clocks (compute node), but we want to
+        # use the same delta times range for comparisons, so we suck it up and
+        # take the hit of precalculating this, unless the user knows better.
         self.delta_t = self.delta_t * self.cpu_clock
         if self.delta_t == 0:
             for rank in self.ranks:
@@ -371,6 +395,22 @@ class TaskParser:
         return self._extract_column("toc")
 
     @property
+    def ci_part_count(self):
+        return self._extract_column("ci_part_count")
+
+    @property
+    def cj_part_count(self):
+        return self._extract_column("cj_part_count")
+
+    @property
+    def ci_gpart_count(self):
+        return self._extract_column("ci_gpart_count")
+
+    @property
+    def cj_gpart_count(self):
+        return self._extract_column("cj_gpart_count")
+
+    @property
     def ci_types(self):
         return self._extract_column("ci_type")
 
@@ -393,3 +433,11 @@ class TaskParser:
     @property
     def cj_depths(self):
         return self._extract_column("cj_depth")
+
+    @property
+    def min_dists(self):
+        return self._extract_column("min_dist")
+
+    @property
+    def mpole_dists(self):
+        return self._extract_column("mpole_dist")
