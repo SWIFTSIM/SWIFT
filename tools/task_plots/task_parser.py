@@ -376,72 +376,72 @@ class TaskParser:
 
     @property
     def task_ranks(self):
-        return self._extract_column("rank")
+        return np.int32(self._extract_column("rank"))
 
     @property
     def task_threads(self):
-        return self._extract_column("threads")
+        return np.int32(self._extract_column("threads"))
 
     @property
     def task_types(self):
-        return self._extract_column("task")
+        return np.int32(self._extract_column("task"))
 
     @property
     def task_subtypes(self):
-        return self._extract_column("subtask")
+        return np.int32(self._extract_column("subtask"))
 
     @property
     def tics(self):
-        return self._extract_column("tic")
+        return np.int32(self._extract_column("tic"))
 
     @property
     def tocs(self):
-        return self._extract_column("toc")
+        return np.int32(self._extract_column("toc"))
 
     @property
     def ci_part_count(self):
-        return self._extract_column("ci_part_count")
+        return np.int32(self._extract_column("ci_part_count"))
 
     @property
     def cj_part_count(self):
-        return self._extract_column("cj_part_count")
+        return np.int32(self._extract_column("cj_part_count"))
 
     @property
     def ci_gpart_count(self):
-        return self._extract_column("ci_gpart_count")
+        return np.int32(self._extract_column("ci_gpart_count"))
 
     @property
     def cj_gpart_count(self):
-        return self._extract_column("cj_gpart_count")
+        return np.int32(self._extract_column("cj_gpart_count"))
 
     @property
     def ci_types(self):
-        return self._extract_column("ci_type")
+        return np.int32(self._extract_column("ci_type"))
 
     @property
     def cj_types(self):
-        return self._extract_column("cj_type")
+        return np.int32(self._extract_column("cj_type"))
 
     @property
     def ci_subtypes(self):
-        return self._extract_column("ci_subtype")
+        return np.int32(self._extract_column("ci_subtype"))
 
     @property
     def cj_subtypes(self):
-        return self._extract_column("cj_subtype")
+        return np.int32(self._extract_column("cj_subtype"))
 
     @property
     def ci_depths(self):
-        return self._extract_column("ci_depth")
+        return np.int32(self._extract_column("ci_depth"))
 
     @property
     def cj_depths(self):
-        return self._extract_column("cj_depth")
+        return np.int32(self._extract_column("cj_depth"))
 
     @property
     def min_dists(self):
-        return self._extract_column("min_dist")
+        return np.float64(self._extract_column("min_dist"))
 
     @property
     def mpole_dists(self):
-        return self._extract_column("mpole_dist")
+        return np.float64(self._extract_column("mpole_dist"))
