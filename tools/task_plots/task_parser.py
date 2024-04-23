@@ -161,7 +161,7 @@ class TaskParser:
         # Process the header
         self.cpu_clock = None
         self.nthread = None
-        self._process_header()
+        self._process_header(mintic)
 
         # Clean up the data
         self._clean_up_data()
@@ -232,7 +232,7 @@ class TaskParser:
     def _extract_column(self, column):
         return self.data[:, self._col_look_up[column]]
 
-    def _process_header(self):
+    def _process_header(self, mintic):
         # Extract the CPU clock
         self.cpu_clock = float(self.full_step[-1]) / 1000.0
         if self.verbose:
@@ -259,10 +259,10 @@ class TaskParser:
                 #  Start and end times for this rank. Can be changed using the mintic
                 #  option. This moves our zero time to other time. Useful for
                 #  comparing to other plots.
-                if self.mintic < 0:
+                if mintic < 0:
                     tic_step = int(full_step[self._col_look_up["tic"]])
                 else:
-                    tic_step = self.mintic
+                    tic_step = mintic
                 toc_step = int(full_step[self._col_look_up["tic"]])
                 dt = toc_step - tic_step
                 if dt > self.delta_t:
