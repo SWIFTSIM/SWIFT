@@ -365,7 +365,7 @@ class TaskParser:
     ):
         tasks = self.tasks
         mask = np.ones(len(tasks), dtype=bool)
-        if task_type is None:
+        if task_type is not None:
             mask = np.logical_and(mask, self.task_types == task_type)
         if depth is not None:
             mask = np.logical_and(
