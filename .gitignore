@@ -199,7 +199,13 @@ tests/testLog
 tests/testTimeline
 tests/testZoomInit
 tests/testZoomInit.sh
+tests/testGetZoomIJKFunc
 tests/testGetZoomIJKFunc.sh
+tests/testSpaceSplit
+tests/testZoomRegrid
+tests/testZoomRegrid.sh
+tests/testZoomVoidTree
+tests/testZoomVoidTree.sh
 tests/*.png
 tests/*.txt
 

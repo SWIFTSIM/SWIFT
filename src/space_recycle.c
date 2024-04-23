@@ -200,6 +200,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->sinks.ti_end_min = -1;
     c->stars.ti_end_min = -1;
     c->black_holes.ti_end_min = -1;
+    c->void_parent = NULL;
     c->rt.rt_in = NULL;
     c->rt.rt_ghost1 = NULL;
     c->rt.rt_gradient = NULL;
@@ -217,6 +218,13 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
 #ifdef SWIFT_RT_DEBUG_CHECKS
     c->rt.advanced_time = 0;
 #endif
+
+    /* The cell type and subtype of a top level cell should NEVER be recycled!
+     * These are set during a regrid, overwriting them here will cause
+     * the rebuild to fail when running a zoom. */
+    /* DO NOT DO THIS: */
+    /* c->type = 0; */
+    /* c->subtype = 0; */
 
     star_formation_logger_init(&c->stars.sfh);
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)

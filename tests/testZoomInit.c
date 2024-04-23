@@ -29,7 +29,7 @@
 #include "parser.h"
 #include "space.h"
 #include "swift.h"
-#include "zoom_region/zoom_init.h"
+#include "zoom_region/zoom.h"
 
 void make_mock_space(struct space *s, const double zoom_width) {
 
@@ -111,7 +111,8 @@ int main(int argc, char *argv[]) {
   s->with_zoom_region = 1;
 
   /* Run the zoom_init function. */
-  zoom_region_init(&param_file, s, 0);
+  zoom_props_init(&param_file, s, 0);
+  zoom_region_init(s, 0);
 
   /* Test what we've calculated and ensure the centre is in the centre of the
    * box. This ensures the dimensions, bounds and cdims have all been

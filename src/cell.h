@@ -449,6 +449,10 @@ struct cell {
   /*! Super cell, i.e. the highest-level parent cell with *any* task */
   struct cell *super;
 
+  /*! The direct void cell parent of a zoom cell. Only used if running with
+   * a zoom region. */
+  struct cell *void_parent;
+
   /*! Cell flags bit-mask. */
   volatile uint32_t flags;
 
@@ -737,6 +741,8 @@ struct gpart *cell_convert_part_to_gpart(const struct engine *e, struct cell *c,
                                          struct part *p, struct xpart *xp);
 struct gpart *cell_convert_spart_to_gpart(const struct engine *e,
                                           struct cell *c, struct spart *sp);
+struct gpart *cell_convert_bpart_to_gpart(const struct engine *e,
+                                          struct cell *c, struct bpart *bp);
 struct spart *cell_convert_part_to_spart(struct engine *e, struct cell *c,
                                          struct part *p, struct xpart *xp);
 struct sink *cell_convert_part_to_sink(struct engine *e, struct cell *c,
@@ -748,7 +754,8 @@ void cell_reorder_extra_sparts(struct cell *c, const ptrdiff_t sparts_offset);
 void cell_reorder_extra_sinks(struct cell *c, const ptrdiff_t sinks_offset);
 int cell_can_use_pair_mm(const struct cell *ci, const struct cell *cj,
                          const struct engine *e, const struct space *s,
-                         const int use_rebuild_data, const int is_tree_walk);
+                         const int use_rebuild_data, const int is_tree_walk,
+                         const int periodic, const int use_mesh);
 
 /***
  * @brief Get the cell ID of a cell including an offset.
@@ -983,16 +990,12 @@ __attribute__((always_inline)) INLINE static double cell_mpole_CoM_dist2(
  * @param cj The second #cell.
  * @param periodic Are we using periodic BCs?
  * @param dim The dimensions of the simulation volume
+ *
+ * @return The square of the minimal distance between the two cells.
  */
-__attribute__((always_inline)) INLINE static double cell_min_dist2_same_size(
+__attribute__((always_inline)) INLINE static double cell_min_dist2(
     const struct cell *restrict ci, const struct cell *restrict cj,
     const int periodic, const double dim[3]) {
-
-#ifdef SWIFT_DEBUG_CHECKS
-  if (ci->width[0] != cj->width[0]) error("Cells of different size!");
-  if (ci->width[1] != cj->width[1]) error("Cells of different size!");
-  if (ci->width[2] != cj->width[2]) error("Cells of different size!");
-#endif
 
   const double cix_min = ci->loc[0];
   const double ciy_min = ci->loc[1];

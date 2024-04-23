@@ -105,6 +105,7 @@
 #include "tools.h"
 #include "units.h"
 #include "velociraptor_interface.h"
+#include "zoom_region/zoom.h"
 
 const char *engine_policy_names[] = {"none",
                                      "rand",
@@ -545,6 +546,11 @@ void engine_exchange_top_multipoles(struct engine *e) {
 
   /* Let's check that what we received makes sense */
   for (int i = 0; i < e->s->nr_cells; ++i) {
+
+    /* Skip the void cells, avoids double counting zoom cells. (Only applicable
+     * to zoom sims) */
+    if (e->s->cells_top[i].subtype == cell_subtype_void) continue;
+
     const struct gravity_tensors *m = &e->s->multipoles_top[i];
     counter += m->m_pole.num_gpart;
     if (m->m_pole.num_gpart < 0) {
@@ -1317,6 +1323,11 @@ void engine_rebuild(struct engine *e, const int repartitioned,
   engine_exchange_cells(e);
 #endif
 
+  if (e->s->with_zoom_region) {
+    /* Construct the void cell tree. */
+    zoom_void_space_split(e->s, e->verbose);
+  }
+
 #ifdef SWIFT_DEBUG_CHECKS
 
   /* Let's check that what we received makes sense */
@@ -1324,6 +1335,11 @@ void engine_rebuild(struct engine *e, const int repartitioned,
     long long counter = 0;
 
     for (int i = 0; i < e->s->nr_cells; ++i) {
+
+      /* Skip the void cells, avoids double counting zoom cells. (Only
+       * applicable to zoom sims) */
+      if (e->s->cells_top[i].subtype == cell_subtype_void) continue;
+
       const struct gravity_tensors *m = &e->s->multipoles_top[i];
       counter += m->m_pole.num_gpart;
     }
@@ -1820,13 +1836,14 @@ void engine_run_rt_sub_cycles(struct engine *e) {
   /* Get some time variables for printouts. Don't update the ones in the
    * engine like in the regular step, or the outputs in the regular steps
    * will be wrong. */
-  /* think cosmology one day: needs adapting here */
-  /* Also needs adapting further below - we print out current values of a
-   * and z. They need to be updated in the engine. */
-  if (e->policy & engine_policy_cosmology)
-    error("Can't run RT subcycling with cosmology yet");
-  const double dt_subcycle = rt_step_size * e->time_base;
-  double time = e->ti_current_subcycle * e->time_base + e->time_begin;
+  double dt_subcycle;
+  if (e->policy & engine_policy_cosmology) {
+    dt_subcycle =
+        cosmology_get_delta_time(e->cosmology, e->ti_current, e->ti_rt_end_min);
+  } else {
+    dt_subcycle = rt_step_size * e->time_base;
+  }
+  double time = e->time;
 
   /* Keep track and accumulate the deadtime over all sub-cycles. */
   /* We need to manually put this back in the engine struct when
@@ -1886,10 +1903,17 @@ void engine_run_rt_sub_cycles(struct engine *e) {
     e->max_active_bin_subcycle = get_max_active_bin(e->ti_current_subcycle);
     e->min_active_bin_subcycle =
         get_min_active_bin(e->ti_current_subcycle, ti_subcycle_old);
-    /* think cosmology one day: needs adapting here */
-    if (e->policy & engine_policy_cosmology)
-      error("Can't run RT subcycling with cosmology yet");
-    time = e->ti_current_subcycle * e->time_base + e->time_begin;
+    /* TODO: add rt_props_update() for cosmological thermochemistry*/
+    if (e->policy & engine_policy_cosmology) {
+      double time_old = time;
+      cosmology_update(
+          e->cosmology, e->physical_constants,
+          e->ti_current_subcycle);  // Update cosmological parameters
+      time = e->cosmology->time;    // Grab new cosmology time
+      dt_subcycle = time - time_old;
+    } else {
+      time = e->ti_current_subcycle * e->time_base + e->time_begin;
+    }
 
     /* Do the actual work now. */
     engine_unskip_rt_sub_cycle(e);
@@ -2089,8 +2113,14 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   /* Check that we have the correct total mass in the top-level multipoles */
   long long num_gpart_mpole = 0;
   if (e->policy & engine_policy_self_gravity) {
-    for (int i = 0; i < e->s->nr_cells; ++i)
+    for (int i = 0; i < e->s->nr_cells; ++i) {
+
+      /* Skip void cells. */
+      if (e->s->cells_top[i].subtype == cell_subtype_void) continue;
+
       num_gpart_mpole += e->s->cells_top[i].grav.multipole->m_pole.num_gpart;
+    }
+
     if (num_gpart_mpole != e->total_nr_gparts)
       error(
           "Top-level multipoles don't contain the total number of gpart "
@@ -2573,8 +2603,11 @@ int engine_step(struct engine *e) {
   /* Check that we have the correct total mass in the top-level multipoles */
   long long num_gpart_mpole = 0;
   if (e->policy & engine_policy_self_gravity) {
-    for (int i = 0; i < e->s->nr_cells; ++i)
+    for (int i = 0; i < e->s->nr_cells; ++i) {
+      /* Skip void cells. */
+      if (e->s->cells_top[i].subtype == cell_subtype_void) continue;
       num_gpart_mpole += e->s->cells_top[i].grav.multipole->m_pole.num_gpart;
+    }
     if (num_gpart_mpole != e->total_nr_gparts)
       error(
           "Multipoles don't contain the total number of gpart mpoles=%lld "

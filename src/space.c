@@ -61,7 +61,7 @@
 #include "threadpool.h"
 #include "tools.h"
 #include "tracers.h"
-#include "zoom_region/zoom_init.h"
+#include "zoom_region/zoom.h"
 
 /* Split size. */
 int space_splitsize = space_splitsize_default;
@@ -1314,19 +1314,12 @@ void space_init(struct space *s, struct swift_params *params,
 
   /* Init the zoom region, if not enabled this does nothing other than flag
    * that zoom support is off. */
-  zoom_region_init(params, s, verbose);
+  zoom_props_init(params, s, verbose);
 
   /* Apply shift */
   double shift[3] = {0.0, 0.0, 0.0};
   parser_get_opt_param_double_array(params, "InitialConditions:shift", 3,
                                     shift);
-
-  /* Include the zoom region shift. (Calculated in zoom_region_init)*/
-  if (s->with_zoom_region) {
-    shift[0] += s->zoom_props->zoom_shift[0];
-    shift[1] += s->zoom_props->zoom_shift[1];
-    shift[2] += s->zoom_props->zoom_shift[2];
-  }
 
   /* Store the shift */
   memcpy(s->initial_shift, shift, 3 * sizeof(double));
@@ -2455,6 +2448,16 @@ void space_clean(struct space *s) {
   free(s->multipoles_sub);
 
   if (s->zoom_props != NULL) {
+    swift_free("local_zoom_cells_top", s->zoom_props->local_zoom_cells_top);
+    swift_free("local_bkg_cells_top", s->zoom_props->local_bkg_cells_top);
+    swift_free("local_zoom_cells_with_particles_top",
+               s->zoom_props->local_zoom_cells_with_particles_top);
+    swift_free("local_bkg_cell_with_particless_top",
+               s->zoom_props->local_bkg_cells_with_particles_top);
+    swift_free("local_buffer_cell_with_particless_top",
+               s->zoom_props->local_buffer_cells_with_particles_top);
+    swift_free("void_cells_top", s->zoom_props->void_cells_top);
+    swift_free("neighbour_cells_top", s->zoom_props->neighbour_cells_top);
     free(s->zoom_props);
   }
 

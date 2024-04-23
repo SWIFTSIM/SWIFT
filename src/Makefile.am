@@ -79,7 +79,7 @@ include_HEADERS += adaptive_softening.h adaptive_softening_iact.h adaptive_softe
 include_HEADERS += forcing.h
 include_HEADERS += power_spectrum.h
 include_HEADERS += ghost_stats.h
-include_HEADERS += zoom_region/zoom_init.h
+include_HEADERS += zoom_region/zoom.h
 
 # source files for EAGLE extra I/O
 EAGLE_EXTRA_IO_SOURCES=
@@ -126,11 +126,17 @@ if HAVEGRACKLECOOLING
 GRACKLE_COOLING_SOURCES += cooling/grackle/cooling.c
 endif
 
+# source files for EAGLE floor
+EAGLE_FLOOR_SOURCES =
+if HAVEEAGLEFLOOR
+EAGLE_FLOOR_SOURCES += entropy_floor/EAGLE/entropy_floor.c
+endif
+
 # source files for GEAR feedback
 GEAR_FEEDBACK_SOURCES =
 if HAVEGEARFEEDBACK
-GEAR_FEEDBACK_SOURCES += feedback/GEAR/stellar_evolution.c feedback/GEAR/feedback.c \
-	feedback/GEAR/initial_mass_function.c feedback/GEAR/supernovae_ia.c feedback/GEAR/supernovae_ii.c
+GEAR_FEEDBACK_SOURCES += feedback/GEAR/stellar_evolution.c feedback/GEAR/feedback.c
+GEAR_FEEDBACK_SOURCES += feedback/GEAR/initial_mass_function.c feedback/GEAR/supernovae_ia.c feedback/GEAR/supernovae_ii.c
 endif
 
 # source files for AGORA feedback
@@ -153,7 +159,8 @@ SPHM1RT_RT_SOURCES += rt/SPHM1RT/rt_cooling.c
 endif
 
 # source files for Zoom support
-ZOOM_REGION_SOURCES = zoom_region/zoom_init.c
+ZOOM_REGION_SOURCES = zoom_region/zoom_init.c zoom_region/zoom_cell.c \
+    zoom_region/zoom_regrid.c zoom_region/zoom_maketasks.c zoom_region/zoom_split.c
 
 # Common source files
 AM_SOURCES = space.c space_rebuild.c space_regrid.c space_unique_id.c 
@@ -187,7 +194,7 @@ AM_SOURCES += fof.c fof_catalogue_io.c
 AM_SOURCES += hashmap.c
 AM_SOURCES += mesh_gravity.c mesh_gravity_mpi.c mesh_gravity_patch.c mesh_gravity_sort.c
 AM_SOURCES += runner_neutrino.c
-AM_SOURCES += neutrino/Default/fermi_dirac.c neutrino/Default/neutrino.c neutrino/Default/neutrino_response.c 
+AM_SOURCES += neutrino/Default/fermi_dirac.c neutrino/Default/neutrino.c neutrino/Default/neutrino_response.c
 AM_SOURCES += rt_parameters.c hdf5_object_to_blob.c ic_info.c exchange_structs.c particle_buffer.c
 AM_SOURCES += lightcone/lightcone.c lightcone/lightcone_particle_io.c lightcone/lightcone_replications.c
 AM_SOURCES += lightcone/healpix_util.c lightcone/lightcone_array.c lightcone/lightcone_map.c
@@ -198,7 +205,8 @@ AM_SOURCES += ghost_stats.c
 AM_SOURCES += $(EAGLE_EXTRA_IO_SOURCES)
 AM_SOURCES += $(QLA_COOLING_SOURCES) $(QLA_EAGLE_COOLING_SOURCES) 
 AM_SOURCES += $(EAGLE_COOLING_SOURCES) $(EAGLE_FEEDBACK_SOURCES) 
-AM_SOURCES += $(GRACKLE_COOLING_SOURCES) $(GEAR_FEEDBACK_SOURCES) 
+AM_SOURCES += $(GRACKLE_COOLING_SOURCES) $(GEAR_FEEDBACK_SOURCES)
+AM_SOURCES += $(EAGLE_FLOOR_SOURCES)
 AM_SOURCES += $(AGORA_FEEDBACK_SOURCES)
 AM_SOURCES += $(PS2020_COOLING_SOURCES)
 AM_SOURCES += $(SPHM1RT_RT_SOURCES)

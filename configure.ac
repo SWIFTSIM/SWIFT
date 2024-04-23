@@ -3086,6 +3086,9 @@ AM_CONDITIONAL([HAVEEAGLEKINETICFEEDBACK], [test "$with_feedback" = "EAGLE-kinet
 # check if using grackle cooling
 AM_CONDITIONAL([HAVEGRACKLECOOLING], [test "$with_cooling" = "grackle"])
 
+# check if using EAGLE floor
+AM_CONDITIONAL([HAVEEAGLEFLOOR], [test "$with_entropy_floor" = "EAGLE"])
+
 # check if using gear feedback
 AM_CONDITIONAL([HAVEGEARFEEDBACK], [test "$with_feedback" = "GEAR"])
 
@@ -3148,6 +3151,8 @@ AC_CONFIG_FILES([tests/testFormat.sh], [chmod +x tests/testFormat.sh])
 AC_CONFIG_FILES([tests/testNeutrinoCosmology.sh], [chmod +x tests/testNeutrinoCosmology.sh])
 AC_CONFIG_FILES([tests/testZoomInit.sh], [chmod +x tests/testZoomInit.sh])
 AC_CONFIG_FILES([tests/testGetZoomIJKFunc.sh], [chmod +x tests/testGetZoomIJKFunc.sh])
+AC_CONFIG_FILES([tests/testZoomRegrid.sh], [chmod +x tests/testZoomRegrid.sh])
+AC_CONFIG_FILES([tests/testZoomVoidTree.sh], [chmod +x tests/testZoomVoidTree.sh])
 AC_CONFIG_FILES([tests/output_list_params.yml])
 
 # Save the compilation options
