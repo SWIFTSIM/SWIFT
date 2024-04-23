@@ -233,9 +233,9 @@ class TaskParser:
     def _process_header(self, mintic):
         # Extract the CPU clock
         if self.mpimode:
-            self.cpu_clock = float(self.full_step[10]) / 1000.0
-        else:
             self.cpu_clock = float(self.full_step[12]) / 1000.0
+        else:
+            self.cpu_clock = float(self.full_step[10]) / 1000.0
         if self.verbose:
             print("# CPU frequency:", self.cpu_clock * 1000.0)
 
