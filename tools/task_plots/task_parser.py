@@ -171,7 +171,7 @@ class TaskParser:
             self.ranks = [int(item) for item in self.ranks.split(",")]
 
         #  Do we have an MPI file?
-        if self.full_step.size == 19:
+        if self.full_step.size == 21:
             print("# MPI mode")
             self.mpimode = True
             if self.ranks is None:
