@@ -13,13 +13,13 @@ We use autotools for setup. To get a basic running version of the code (the exec
 MacOS Specific Oddities
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-To build on MacOS you will need to disable compiler warnings due to an
+To build on MacOS you will need to enable compiler warnings due to an
 incomplete implementation of pthread barriers. DOXYGEN also has some issues on
 MacOS, so it is best to leave it out. To configure:
 
 .. code-block:: bash
 
-  ./configure --disable-compiler-warnings \ 
+  ./configure --enable-compiler-warnings \
       --disable-doxygen-doc
 
 When using the ``clang`` compiler, the hand-written vectorized routines
