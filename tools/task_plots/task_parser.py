@@ -147,9 +147,8 @@ class TaskParser:
         self.full_step = None  # header containing the full step information
         self._load_data()
 
-        # Flag for MPI mode (will be modified in _define_columns if analysis a
-        # run with MPI)
-        self.mpimode = False
+        # Flag for MPI mode
+        self.mpimode = "MPI" in filename
 
         # Define a list of all the ranks we have
         self.ranks = ranks
@@ -183,9 +182,8 @@ class TaskParser:
             self.ranks = [int(item) for item in self.ranks.split(",")]
 
         #  Do we have an MPI file?
-        if self.full_step.size == 21:
+        if self.mpimode:
             print("# MPI mode")
-            self.mpimode = True
             if self.ranks is None:
                 self.ranks = list(range(int(max(self.data[:, 0])) + 1))
             print("# Number of ranks:", len(self.ranks))
@@ -234,7 +232,10 @@ class TaskParser:
 
     def _process_header(self, mintic):
         # Extract the CPU clock
-        self.cpu_clock = float(self.full_step[-1]) / 1000.0
+        if self.mpimode:
+            self.cpu_clock = float(self.full_step[10]) / 1000.0
+        else:
+            self.cpu_clock = float(self.full_step[12]) / 1000.0
         if self.verbose:
             print("# CPU frequency:", self.cpu_clock * 1000.0)
 
