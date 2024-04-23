@@ -363,7 +363,7 @@ class TaskParser:
             tasks = self.tasks[mask]
         else:
             tasks = self.tasks
-        unique_tasks = set(tasks)
+        unique_tasks = np.unique(self.task_labels[mask])
         unique_count = len(unique_tasks)
         return tasks, unique_tasks, unique_count
 
