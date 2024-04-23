@@ -2770,7 +2770,7 @@ esac
 # Forcing terms
 AC_ARG_WITH([forcing],
    [AS_HELP_STRING([--with-forcing=<term>],
-      [Hydrodynamics forcing terms @<:@none, roberts-flow, roberts-flow-acceleration default: none@:>@]
+      [Hydrodynamics forcing terms @<:@none, roberts-flow, roberts-flow-acceleration, abc-flow, driven-turbulence default: none@:>@]
    )],
    [with_forcing="$withval"],
    [with_forcing="none"]
@@ -2784,6 +2784,9 @@ case "$with_forcing" in
    ;;
    roberts-flow-acceleration)
       AC_DEFINE([FORCING_ROBERTS_FLOW_ACCELERATION], [1], [Roberts' flow external forcing terms entering the equations as an acceleration term])
+   ;;
+   abc-flow)
+      AC_DEFINE([FORCING_ABC_FLOW], [1], [ABC flow external forcing terms])
    ;;
    driven-turbulence)
       AC_DEFINE([FORCING_DRIVEN_TURBULENCE], [1], [Driven turbulence external forcing terms])
