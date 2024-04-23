@@ -137,8 +137,8 @@ INLINE static void sink_write_particles(const struct sink* sinks,
       number_of_sink_swallows, "Total number of sink merger events");
 
   list[6] = io_make_output_field(
-      "NumberOfGasSwallows", INT, 1, UNIT_CONV_NO_UNITS, 0.f, sinks,
-      number_of_gas_swallows, "Total number of gas merger events");
+      "TargetMass", FLOAT, 1,  UNIT_CONV_MASS, 0.f, sinks,
+      target_mass, "Sink target mass to spawn star particles");
 
 #ifdef DEBUG_INTERACTIONS_SINKS
 
