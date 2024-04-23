@@ -296,12 +296,18 @@ class TaskParser:
                 self.task_subtypes[i],
                 self.tics[i],
                 self.tocs[i],
+                self.ci_part_count[i],
+                self.cj_part_count[i],
+                self.ci_gpart_count[i],
+                self.cj_gpart_count[i],
                 self.ci_types[i],
                 self.cj_types[i],
                 self.ci_subtypes[i],
                 self.cj_subtypes[i],
                 self.ci_depths[i],
                 self.cj_depths[i],
+                self.min_dists[i],
+                self.mpole_dists[i],
             )
             self.task_labels[i] = self.tasks[i].task
 
