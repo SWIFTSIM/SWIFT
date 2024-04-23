@@ -257,9 +257,9 @@ class TaskParser:
                 # Get a local version of the full step.
                 full_step = data[0, :]
 
-                #  Start and end times for this rank. Can be changed using the mintic
-                #  option. This moves our zero time to other time. Useful for
-                #  comparing to other plots.
+                #  Start and end times for this rank. Can be changed using the
+                #  mintic option. This moves our zero time to other time.
+                #  Useful for comparing to other plots.
                 if mintic < 0:
                     tic_step = int(full_step[self._col_look_up["tic"]])
                 else:
@@ -288,7 +288,7 @@ class TaskParser:
     def _parse_tasks(self):
         # Prepare the arrays we'll populate
         self.tasks = np.zeros(self.ntasks, dtype=object)
-        self.task_labels = np.zeros(self.ntasks, dtype=str)
+        self.task_labels = np.zeros(self.ntasks, dtype=object)
 
         # Get local copies of the columns to avoid extracting every single loop
         task_ranks = self.task_ranks
