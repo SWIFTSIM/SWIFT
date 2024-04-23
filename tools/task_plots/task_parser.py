@@ -239,9 +239,7 @@ class TaskParser:
             print("# CPU frequency:", self.cpu_clock * 1000.0)
 
         # Count the number of threads
-        self.nthread = (
-            int(max(self.data[:, self._col_look_up["threadscol"]])) + 1
-        )
+        self.nthread = int(max(self.data[:, self._col_look_up["threads"]])) + 1
         print("# Number of threads:", self.nthread)
 
         # Each rank can have different clocks (compute node), but we want to
@@ -262,10 +260,10 @@ class TaskParser:
                 #  option. This moves our zero time to other time. Useful for
                 #  comparing to other plots.
                 if self.mintic < 0:
-                    tic_step = int(full_step[self._col_look_up["ticcol"]])
+                    tic_step = int(full_step[self._col_look_up["tic"]])
                 else:
                     tic_step = self.mintic
-                toc_step = int(full_step[self._col_look_up["ticcol"]])
+                toc_step = int(full_step[self._col_look_up["tic"]])
                 dt = toc_step - tic_step
                 if dt > self.delta_t:
                     self.delta_t = dt
