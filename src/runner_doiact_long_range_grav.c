@@ -794,6 +794,66 @@ void runner_do_grav_long_range_buffer_periodic(struct runner *r,
 }
 
 /**
+ * @brief Recurse through the void cell tree to accumalate the number of
+ * particle mesh interactions for debugging purposes.
+ *
+ * @param r The thread #runner.
+ * @param ci The #cell of interest.
+ * @param cj The other #cell to test.
+ */
+void runner_count_mesh_interactions_recursive(struct runner *r, struct cell *ci,
+                                              struct cell *cj) {
+
+  /* Some constants. */
+  const struct engine *e = r->e;
+  const struct space *s = e->s;
+  const int periodic = e->mesh->periodic;
+  const double dim[3] = {e->mesh->dim[0], e->mesh->dim[1], e->mesh->dim[2]};
+  const double max_distance = e->mesh->r_cut_max;
+  const double max_distance2 = max_distance * max_distance;
+
+  /* Get the cells' multipole information */
+  struct gravity_tensors *const multi_i = ci->grav.multipole;
+  struct gravity_tensors *const multi_j = cj->grav.multipole;
+
+  /* Skip empty cells */
+  if (multi_j->m_pole.M_000 == 0.f) return;
+
+  /* Minimal distance between any pair of particles */
+  const double min_radius2 = cell_min_dist2(ci, cj, periodic, dim);
+
+  /* Would we have used the mesh? */
+  if (min_radius2 > max_distance2) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+    /* Need to account for the interactions we missed */
+    accumulate_add_ll(&multi_i->pot.num_interacted, multi_j->m_pole.num_gpart);
+#endif
+
+#ifdef SWIFT_GRAVITY_FORCE_CHECKS
+    /* Need to account for the interactions we missed */
+    accumulate_add_ll(&multi_i->pot.num_interacted_pm,
+                      multi_j->m_pole.num_gpart);
+#endif
+    /* Record that this multipole received a contribution */
+    multi_i->pot.interacted = 1;
+
+    return;
+  }
+
+  /* Ok, if we have hit the zoom cells were done, we wouldn't have done a mesh
+   * interaction. */
+  if (cj->type == cell_type_zoom) {
+    return;
+  }
+
+  /* Otherwise, we need to recurse. */
+  for (int k = 0; k < 8; k++) {
+    runner_count_mesh_interactions_recursive(r, ci, cj->progeny[k]);
+  }
+}
+
+/**
  * @brief Accumalate the number of particle mesh interactions for debugging
  * purposes.
  *
@@ -830,8 +890,13 @@ void runner_count_mesh_interactions(struct runner *r, struct cell *ci,
     struct cell *cj = &cells[n];
     struct gravity_tensors *const multi_j = cj->grav.multipole;
 
-    /* Explict skip of void cell. */
-    if (cj->subtype == cell_subtype_void) continue;
+    /* We need to recurse through void cells to collect any cells handled by
+     * the mesh. */
+    if (cj->subtype == cell_subtype_void)
+      runner_count_mesh_interactions_recursive(r, ci, cj);
+
+    /* Skip zoom cells they're handled by the recursion above. */
+    if (cj->type == cell_type_zoom) continue;
 
     /* Avoid self contributions */
     if (top == cj) continue;
