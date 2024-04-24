@@ -51,8 +51,12 @@ void runner_do_grav_long_range_recurse(struct runner *r, struct cell *ci,
   const double max_distance = e->mesh->r_cut_max;
   const double max_distance2 = max_distance * max_distance;
 
-  /* Get this cell's multipole information */
+  /* Get the cells' multipole information */
   struct gravity_tensors *const multi_i = ci->grav.multipole;
+  struct gravity_tensors *const multi_j = cj->grav.multipole;
+
+  /* Skip empty cells */
+  if (multi_j->m_pole.M_000 == 0.f) return;
 
   /* Minimal distance between any pair of particles */
   const double min_radius2 = cell_min_dist2(ci, cj, periodic, dim);
