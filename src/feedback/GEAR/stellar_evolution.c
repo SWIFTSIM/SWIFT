@@ -233,7 +233,7 @@ void stellar_evolution_compute_discrete_feedback_properties(
 
       /* If somehow the star has a negative mass, we have a problem. */
     } else if (negative_mass) {
-      warning("Negative mass, skipping current star: %lli", sp->id);
+      warning("(Discrete start) Negative mass (m_star = %e, m_ej = %e), skipping current star: %lli", sp->mass, sp->feedback_data.mass_ejected, sp->id);
       /* Reset everything */
       sp->feedback_data.number_snia = 0;
       sp->feedback_data.number_snii = 0;
@@ -246,7 +246,7 @@ void stellar_evolution_compute_discrete_feedback_properties(
     /* Check if we can ejected the required amount of elements. */
      const int negative_mass = sp->mass <= sp->feedback_data.mass_ejected;
      if (negative_mass) {
-       warning("Negative mass, skipping current star: %lli", sp->id);
+       warning("(Continuous star) Negative mass (m_star = %e, m_ej = %e), skipping current star: %lli",sp->mass, sp->feedback_data.mass_ejected, sp->id);
        /* Reset everything */
        sp->feedback_data.number_snia = 0;
        sp->feedback_data.number_snii = 0;
