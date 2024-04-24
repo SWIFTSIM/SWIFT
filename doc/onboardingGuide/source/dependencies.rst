@@ -10,7 +10,7 @@ HDF5
 
 Version 1.8.x or higher is required. Input and output files are stored as HDF5
 and are compatible with the GADGET-2 specification. A parallel-HDF5 build
-and HDF5 > 1.10.x is strongly recommended when running over MPI.
+and HDF5 > 1.10.x is recommended when running over MPI.
 
 MPI
 ~~~
@@ -33,7 +33,15 @@ GSL
 ~~~
 The GSL 2.x is required for cosmological integration.
 
+In most cases the configuration script will be able to detect the libraries
+installed on the system. If that is not the case, the script can be pointed
+towards the libraries' location using the following parameters
 
+.. code-block:: bash
+
+  ./configure --with-gsl=<PATH-TO-GSL>
+
+and similar for the other libaries.
 
 Optional Dependencies
 =====================
@@ -47,10 +55,6 @@ libNUMA is used to pin threads.
 TCmalloc/Jemalloc/TBBmalloc
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 TCmalloc/Jemalloc/TBBmalloc are used for faster memory allocations when available.
-
-DOXYGEN
-~~~~~~~
-You can build documentation for SWIFT with DOXYGEN.
 
 Python
 ~~~~~~
