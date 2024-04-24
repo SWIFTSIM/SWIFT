@@ -1901,7 +1901,7 @@ int engine_gravity_need_cell_pair_task(struct engine *e, struct cell *ci,
   const double min_radius2 = cell_min_dist2(ci, cj, periodic, dim);
 
   /* Are we beyond the distance where the truncated forces are 0 ?*/
-  if (periodic && min_radius2 > max_distance2) return 0;
+  if (use_mesh && min_radius2 > max_distance2) return 0;
 
   /* Are the cells too close for a MM interaction ? */
   return !cell_can_use_pair_mm(ci, cj, e, e->s, /*use_rebuild_data=*/1,
