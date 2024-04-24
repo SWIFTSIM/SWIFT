@@ -78,7 +78,11 @@ class Task:
         self.thread = thread
         self.type = TASKTYPES[type_int]
         self.subtype = SUBTYPES[subtype_int]
-        self.task = self.type + "/" + self.subtype
+        self.task = (
+            self.type + "/" + self.subtype
+            if self.subtype != "none"
+            else self.type
+        )
         self.tic = tic
         self.toc = toc
         self.ci_part_count = ci_part_count
@@ -147,9 +151,8 @@ class TaskParser:
         self.full_step = None  # header containing the full step information
         self._load_data()
 
-        # Flag for MPI mode (will be modified in _define_columns if analysis a
-        # run with MPI)
-        self.mpimode = False
+        # Flag for MPI mode
+        self.mpimode = "MPI" in filename
 
         # Define a list of all the ranks we have
         self.ranks = ranks
@@ -161,7 +164,7 @@ class TaskParser:
         # Process the header
         self.cpu_clock = None
         self.nthread = None
-        self._process_header()
+        self._process_header(mintic)
 
         # Clean up the data
         self._clean_up_data()
@@ -171,6 +174,7 @@ class TaskParser:
 
         # Parse the file populating the look up table
         self.tasks = None
+        self.dt = None
         self._parse_tasks()
 
     def _load_data(self):
@@ -183,9 +187,8 @@ class TaskParser:
             self.ranks = [int(item) for item in self.ranks.split(",")]
 
         #  Do we have an MPI file?
-        if self.full_step.size == 21:
+        if self.mpimode:
             print("# MPI mode")
-            self.mpimode = True
             if self.ranks is None:
                 self.ranks = list(range(int(max(self.data[:, 0])) + 1))
             print("# Number of ranks:", len(self.ranks))
@@ -226,15 +229,18 @@ class TaskParser:
             self._col_look_up["cj_subtype"] = 14
             self._col_look_up["ci_depth"] = 15
             self._col_look_up["cj_depth"] = 16
-            self._col_look_up["min_dist"] = 19
-            self._col_look_up["mpole_dist"] = 20
+            self._col_look_up["min_dist"] = 17
+            self._col_look_up["mpole_dist"] = 18
 
     def _extract_column(self, column):
         return self.data[:, self._col_look_up[column]]
 
-    def _process_header(self):
+    def _process_header(self, mintic):
         # Extract the CPU clock
-        self.cpu_clock = float(self.full_step[-1]) / 1000.0
+        if self.mpimode:
+            self.cpu_clock = float(self.full_step[12]) / 1000.0
+        else:
+            self.cpu_clock = float(self.full_step[10]) / 1000.0
         if self.verbose:
             print("# CPU frequency:", self.cpu_clock * 1000.0)
 
@@ -256,21 +262,37 @@ class TaskParser:
                 # Get a local version of the full step.
                 full_step = data[0, :]
 
-                #  Start and end times for this rank. Can be changed using the mintic
-                #  option. This moves our zero time to other time. Useful for
-                #  comparing to other plots.
-                if self.mintic < 0:
+                #  Start and end times for this rank. Can be changed using the
+                #  mintic option. This moves our zero time to other time.
+                #  Useful for comparing to other plots.
+                if mintic < 0:
                     tic_step = int(full_step[self._col_look_up["tic"]])
                 else:
-                    tic_step = self.mintic
-                toc_step = int(full_step[self._col_look_up["tic"]])
+                    tic_step = mintic
+                toc_step = int(full_step[self._col_look_up["toc"]])
                 dt = toc_step - tic_step
                 if dt > self.delta_t:
                     self.delta_t = dt
         print("# Data range: ", self.delta_t / self.cpu_clock, "ms")
 
-        # Set the start tic and end toc
-        self.start_t = tic_step
+        # Get the start tic
+        if self.start_t < 0:
+            self.start_t = np.inf
+            for rank in self.ranks:
+                if self.mpimode:
+                    data = self.data[self.task_ranks == rank]
+                else:
+                    data = self.data
+
+                # Get a local version of the full step.
+                full_step = data[0, :]
+
+                # Get the start tic for this rank
+                tic_step = int(full_step[self._col_look_up["tic"]])
+                if self.start_t > tic_step:
+                    self.start_t = tic_step
+
+        # Set the end toc
         self.end_t = self.start_t + self.delta_t
 
     def _clean_up_data(self):
@@ -284,33 +306,71 @@ class TaskParser:
         )
         self.data = self.data[mask, :]
 
+        # Make tics and tocs relative to start
+        self.data[:, self._col_look_up["tic"]] -= self.start_t
+        self.data[:, self._col_look_up["toc"]] -= self.start_t
+
+        # Convert tics and tocs to ms
+        self.data[:, self._col_look_up["tic"]] /= self.cpu_clock
+        self.data[:, self._col_look_up["toc"]] /= self.cpu_clock
+
     def _parse_tasks(self):
-        # Loop over tasks creating task objects
+        # Prepare the arrays we'll populate
         self.tasks = np.zeros(self.ntasks, dtype=object)
-        self.task_labels = np.zeros(self.ntasks, dtype=str)
+        self.task_labels = np.zeros(self.ntasks, dtype=object)
+        self.dt = np.zeros(self.ntasks, dtype=np.float64)
+
+        # Get local copies of the columns to avoid extracting every single loop
+        task_ranks = self.task_ranks
+        task_threads = self.task_threads
+        task_types = self.task_types
+        task_subtypes = self.task_subtypes
+        tics = self.tics
+        tocs = self.tocs
+        ci_part_count = self.ci_part_count
+        cj_part_count = self.cj_part_count
+        ci_gpart_count = self.ci_gpart_count
+        cj_gpart_count = self.cj_gpart_count
+        ci_types = self.ci_types
+        cj_types = self.cj_types
+        ci_subtypes = self.ci_subtypes
+        cj_subtypes = self.cj_subtypes
+        ci_depths = self.ci_depths
+        cj_depths = self.cj_depths
+        min_dists = self.min_dists
+        mpole_dists = self.mpole_dists
+
+        # Loop over tasks creating task objects
         for i in range(self.ntasks):
             self.tasks[i] = Task(
-                self.task_ranks[i],
-                self.task_threads[i],
-                self.task_types[i],
-                self.task_subtypes[i],
-                self.tics[i],
-                self.tocs[i],
-                self.ci_types[i],
-                self.cj_types[i],
-                self.ci_subtypes[i],
-                self.cj_subtypes[i],
-                self.ci_depths[i],
-                self.cj_depths[i],
+                task_ranks[i],
+                task_threads[i],
+                task_types[i],
+                task_subtypes[i],
+                tics[i],
+                tocs[i],
+                ci_part_count[i],
+                cj_part_count[i],
+                ci_gpart_count[i],
+                cj_gpart_count[i],
+                ci_types[i],
+                cj_types[i],
+                ci_subtypes[i],
+                cj_subtypes[i],
+                ci_depths[i],
+                cj_depths[i],
+                min_dists[i],
+                mpole_dists[i],
             )
             self.task_labels[i] = self.tasks[i].task
+            self.dt[i] = self.tasks[i].dt
 
     def _get_tasks_with_mask(self, mask=None):
         if mask is not None:
             tasks = self.tasks[mask]
         else:
             tasks = self.tasks
-        unique_tasks = set(tasks)
+        unique_tasks = np.unique(self.task_labels[mask])
         unique_count = len(unique_tasks)
         return tasks, unique_tasks, unique_count
 
@@ -337,7 +397,7 @@ class TaskParser:
     ):
         tasks = self.tasks
         mask = np.ones(len(tasks), dtype=bool)
-        if task_type is None:
+        if task_type is not None:
             mask = np.logical_and(mask, self.task_types == task_type)
         if depth is not None:
             mask = np.logical_and(
@@ -370,72 +430,72 @@ class TaskParser:
 
     @property
     def task_ranks(self):
-        return self._extract_column("rank")
+        return np.int32(self._extract_column("rank"))
 
     @property
     def task_threads(self):
-        return self._extract_column("threads")
+        return np.int32(self._extract_column("threads"))
 
     @property
     def task_types(self):
-        return self._extract_column("task")
+        return np.int32(self._extract_column("task"))
 
     @property
     def task_subtypes(self):
-        return self._extract_column("subtask")
+        return np.int32(self._extract_column("subtask"))
 
     @property
     def tics(self):
-        return self._extract_column("tic")
+        return np.float64(self._extract_column("tic"))
 
     @property
     def tocs(self):
-        return self._extract_column("toc")
+        return np.float64(self._extract_column("toc"))
 
     @property
     def ci_part_count(self):
-        return self._extract_column("ci_part_count")
+        return np.int32(self._extract_column("ci_part_count"))
 
     @property
     def cj_part_count(self):
-        return self._extract_column("cj_part_count")
+        return np.int32(self._extract_column("cj_part_count"))
 
     @property
     def ci_gpart_count(self):
-        return self._extract_column("ci_gpart_count")
+        return np.int32(self._extract_column("ci_gpart_count"))
 
     @property
     def cj_gpart_count(self):
-        return self._extract_column("cj_gpart_count")
+        return np.int32(self._extract_column("cj_gpart_count"))
 
     @property
     def ci_types(self):
-        return self._extract_column("ci_type")
+        return np.int32(self._extract_column("ci_type"))
 
     @property
     def cj_types(self):
-        return self._extract_column("cj_type")
+        return np.int32(self._extract_column("cj_type"))
 
     @property
     def ci_subtypes(self):
-        return self._extract_column("ci_subtype")
+        return np.int32(self._extract_column("ci_subtype"))
 
     @property
     def cj_subtypes(self):
-        return self._extract_column("cj_subtype")
+        return np.int32(self._extract_column("cj_subtype"))
 
     @property
     def ci_depths(self):
-        return self._extract_column("ci_depth")
+        return np.int32(self._extract_column("ci_depth"))
 
     @property
     def cj_depths(self):
-        return self._extract_column("cj_depth")
+        return np.int32(self._extract_column("cj_depth"))
 
     @property
     def min_dists(self):
-        return self._extract_column("min_dist")
+        return np.float64(self._extract_column("min_dist"))
 
     @property
     def mpole_dists(self):
-        return self._extract_column("mpole_dist")
+        return np.float64(self._extract_column("mpole_dist"))
