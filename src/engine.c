@@ -1279,12 +1279,6 @@ void engine_rebuild(struct engine *e, const int repartitioned,
   /* Re-build the space. */
   space_rebuild(e->s, repartitioned, e->verbose);
 
-  /* Set the split flag for the moving mesh */
-  if (e->policy & engine_policy_grid) {
-    cell_grid_set_self_completeness_mapper(e->s->cells_top, e->s->nr_cells,
-                                           NULL);
-  }
-
   /* Report the number of cells and memory */
   if (e->verbose)
     message(
@@ -1377,6 +1371,12 @@ void engine_rebuild(struct engine *e, const int repartitioned,
   /* Initial cleaning up session ? */
   if (clean_smoothing_length_values) space_sanitize(e->s);
 
+  /* Set the initial completeness flag for the moving mesh (before exchange) */
+  if (e->policy & engine_policy_grid) {
+    cell_grid_set_self_completeness_mapper(e->s->cells_top, e->s->nr_cells,
+                                           NULL);
+  }
+
 /* If in parallel, exchange the cell structure, top-level and neighbouring
  * multipoles. To achieve this, free the foreign particle buffers first. */
 #ifdef WITH_MPI
@@ -1399,6 +1399,13 @@ void engine_rebuild(struct engine *e, const int repartitioned,
     }
     if (counter != e->total_nr_gparts)
       error("Total particles in multipoles inconsistent with engine");
+  }
+  if (e->policy & engine_policy_grid) {
+    for (int i = 0; i < e->s->nr_cells; i++) {
+      const struct cell *ci = &e->s->cells_top[i];
+      if (ci->hydro.count > 0 && !ci->grid.self_complete)
+        error("Encountered incomplete top level cell!");
+    }
   }
 #endif
 

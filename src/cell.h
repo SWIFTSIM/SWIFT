@@ -1039,9 +1039,8 @@ cell_need_rebuild_for_grid_pair(struct cell *ci, struct cell *cj) {
   //  if (cj->hydro.dx_max_part > 0.333 * cj->dmin) return 1;
 
   /* Check completeness criteria */
-  /* ci's completeness flag has already been set */
+  /* NOTE: Both completeness flags should already be updated at this point */
   if (!ci->grid.self_complete) return 1;
-  cell_grid_set_self_completeness(cj);
   if (!cj->grid.self_complete) return 1;
 
   return 0;

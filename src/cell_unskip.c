@@ -3435,11 +3435,9 @@ int cell_unskip_grid_tasks(struct cell *c, struct scheduler *s) {
   /* Activate the construction task for this cell */
   if (c->nodeID == nodeID) {
     scheduler_activate(s, c->grid.construction);
-    /* Update the self-completeness flag of c */
+    /* Update the self-completeness flag of c. For non-local cells the rebuild
+     * will be triggered on another node if necessary */
     cell_grid_set_self_completeness(c);
-  } else {
-    /* Non-local cell. rebuild will be triggered on other node if necessary */
-    c->grid.self_complete = 1;
   }
 
   /* Loop over incoming sync tasks linked to this cell */
@@ -3488,6 +3486,11 @@ int cell_unskip_grid_tasks(struct cell *c, struct scheduler *s) {
         cell_activate_hydro_sorts(cj, t->flags, s);
 
         /* Check if we need to rebuild. */
+        if (cj->nodeID == nodeID) {
+          /* Update the self-completeness flag of cj. For non-local cells the
+           * rebuild will be triggered on another node if necessary */
+          cell_grid_set_self_completeness(c);
+        }
         rebuild = cell_need_rebuild_for_grid_pair(ci, cj);
 
 #if WITH_MPI
