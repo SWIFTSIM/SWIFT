@@ -1730,12 +1730,20 @@ struct task *scheduler_addtask(struct scheduler *s, enum task_types type,
     const double cjy_max = cj->loc[1] + cj->width[1];
     const double cjz_max = cj->loc[2] + cj->width[2];
 
-    const double dx = min4(fabs(cix_min - cjx_min), fabs(cix_min - cjx_max),
-                           fabs(cix_max - cjx_min), fabs(cix_max - cjx_max));
-    const double dy = min4(fabs(ciy_min - cjy_min), fabs(ciy_min - cjy_max),
-                           fabs(ciy_max - cjy_min), fabs(ciy_max - cjy_max));
-    const double dz = min4(fabs(ciz_min - cjz_min), fabs(ciz_min - cjz_max),
-                           fabs(ciz_max - cjz_min), fabs(ciz_max - cjz_max));
+    const double dx = min4(fabs(nearest(cix_min - cjx_min, s->e->dim[0])),
+                           fabs(nearest(cix_min - cjx_max, s->e->dim[0])),
+                           fabs(nearest(cix_max - cjx_min, s->e->dim[0])),
+                           fabs(nearest(cix_max - cjx_max, s->e->dim[0])));
+
+    const double dy = min4(fabs(nearest(ciy_min - cjy_min, s->e->dim[1])),
+                           fabs(nearest(ciy_min - cjy_max, s->e->dim[1])),
+                           fabs(nearest(ciy_max - cjy_min, s->e->dim[1])),
+                           fabs(nearest(ciy_max - cjy_max, s->e->dim[1])));
+
+    const double dz = min4(fabs(nearest(ciz_min - cjz_min, s->e->dim[2])),
+                           fabs(nearest(ciz_min - cjz_max, s->e->dim[2])),
+                           fabs(nearest(ciz_max - cjz_min, s->e->dim[2])),
+                           fabs(nearest(ciz_max - cjz_max, s->e->dim[2])));
 
     const double r = sqrt(dx * dx + dy * dy + dz * dz);
 
