@@ -676,6 +676,7 @@ void space_split_recursive(struct space *s, struct cell *c,
 
   /* Split or let it be? */
   if ((with_self_gravity && gcount > space_splitsize) ||
+      (c->subtype == cell_subtype_neighbour && depth < 2) ||
       (!with_self_gravity &&
        (count > space_splitsize || scount > space_splitsize))) {
 
