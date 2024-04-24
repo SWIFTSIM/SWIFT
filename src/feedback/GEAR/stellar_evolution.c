@@ -220,7 +220,7 @@ void stellar_evolution_compute_discrete_feedback_properties(
     const int negative_mass = sp->mass < sp->feedback_data.mass_ejected;
 
     if (null_mass) {
-      message("Star %lld completely exploded!", sp->id);
+      message("Star %lld (m_star = %e, m_ej = %e) completely exploded!",  sp->id, sp->mass, sp->feedback_data.mass_ejected);
       /* If the star ejects all its mass (for very massive stars), give it a
 	 zero mass so that we know it has exploded.
          We do not remove the star from the simulation to keep track of its
