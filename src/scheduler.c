@@ -1714,46 +1714,6 @@ struct task *scheduler_addtask(struct scheduler *s, enum task_types type,
         "Scheduler:tasks_per_cell.",
         ind);
 
-  if (type == task_type_pair) {
-
-    const double cix_min = ci->loc[0];
-    const double ciy_min = ci->loc[1];
-    const double ciz_min = ci->loc[2];
-    const double cjx_min = cj->loc[0];
-    const double cjy_min = cj->loc[1];
-    const double cjz_min = cj->loc[2];
-
-    const double cix_max = ci->loc[0] + ci->width[0];
-    const double ciy_max = ci->loc[1] + ci->width[1];
-    const double ciz_max = ci->loc[2] + ci->width[2];
-    const double cjx_max = cj->loc[0] + cj->width[0];
-    const double cjy_max = cj->loc[1] + cj->width[1];
-    const double cjz_max = cj->loc[2] + cj->width[2];
-
-    const double dx = min4(fabs(nearest(cix_min - cjx_min, s->space->dim[0])),
-                           fabs(nearest(cix_min - cjx_max, s->space->dim[0])),
-                           fabs(nearest(cix_max - cjx_min, s->space->dim[0])),
-                           fabs(nearest(cix_max - cjx_max, s->space->dim[0])));
-
-    const double dy = min4(fabs(nearest(ciy_min - cjy_min, s->space->dim[1])),
-                           fabs(nearest(ciy_min - cjy_max, s->space->dim[1])),
-                           fabs(nearest(ciy_max - cjy_min, s->space->dim[1])),
-                           fabs(nearest(ciy_max - cjy_max, s->space->dim[1])));
-
-    const double dz = min4(fabs(nearest(ciz_min - cjz_min, s->space->dim[2])),
-                           fabs(nearest(ciz_min - cjz_max, s->space->dim[2])),
-                           fabs(nearest(ciz_max - cjz_min, s->space->dim[2])),
-                           fabs(nearest(ciz_max - cjz_max, s->space->dim[2])));
-
-    const double r = sqrt(dx * dx + dy * dy + dz * dz);
-
-    if (r > 25)
-      error(
-          "Found pair task with large distance (r=%f) for ci->type=%s and "
-          "cj->type=%s",
-          r, cellID_names[ci->type], cellID_names[cj->type]);
-  }
-
   /* Get a pointer to the new task. */
   struct task *t = &s->tasks[ind];
 
