@@ -804,6 +804,8 @@ void runner_do_grav_long_range_buffer_periodic(struct runner *r,
 void runner_count_mesh_interactions_recursive(struct runner *r, struct cell *ci,
                                               struct cell *cj) {
 
+#if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_GRAVITY_FORCE_CHECKS)
+
   /* Some constants. */
   const struct engine *e = r->e;
   const struct space *s = e->s;
@@ -851,18 +853,22 @@ void runner_count_mesh_interactions_recursive(struct runner *r, struct cell *ci,
   for (int k = 0; k < 8; k++) {
     runner_count_mesh_interactions_recursive(r, ci, cj->progeny[k]);
   }
+
+#else
+  error(
+      "This function should not be called without debugging checks or "
+      "force "
+      "checks enabled!");
+#endif
 }
 
 /**
  * @brief Accumalate the number of particle mesh interactions for debugging
  * purposes.
  *
- * @param s The #space.
- * @param cells The top-level cells.
- * @param top The current top-level cell.
- * @param periodic Is the space periodic?
- * @param dim The dimensions of the space.
- * @param max_distance2 The maximum distance for a pair or mm interaction.
+ * @param r The thread #runner.
+ * @param ci The #cell of interest.
+ * @param top The top-level parent of the #cell of interest.
  */
 void runner_count_mesh_interactions(struct runner *r, struct cell *ci,
                                     struct cell *top) {
