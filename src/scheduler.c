@@ -20,6 +20,8 @@
  ******************************************************************************/
 
 /* Config parameters. */
+#include "cell.h"
+
 #include <config.h>
 
 /* Some standard headers. */
@@ -77,8 +79,7 @@ static void scheduler_extend_unlocks(struct scheduler *s) {
     error("Failed to re-allocate unlocks.");
 
   /* Wait for all writes to the old buffer to complete. */
-  while (s->completed_unlock_writes < s->size_unlocks)
-    ;
+  while (s->completed_unlock_writes < s->size_unlocks);
 
   /* Copy the buffers. */
   memcpy(unlocks_new, s->unlocks, sizeof(struct task *) * s->size_unlocks);
@@ -119,8 +120,7 @@ void scheduler_addunlock(struct scheduler *s, struct task *ta,
 #endif
 
   /* Wait for there to actually be space at my index. */
-  while (ind > s->size_unlocks)
-    ;
+  while (ind > s->size_unlocks);
 
   /* Guard against case when more than (old) s->size_unlocks unlocks
    * are now pending. */
@@ -1374,7 +1374,7 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
               }
       }
     } /* pair interaction? */
-  }   /* iterate over the current task. */
+  } /* iterate over the current task. */
 }
 
 /**
@@ -1449,9 +1449,9 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
                         s);
 
           } /* Self-gravity only */
-        }   /* Make tasks explicitly */
-      }     /* Cell is split */
-    }       /* Self interaction */
+        } /* Make tasks explicitly */
+      } /* Cell is split */
+    } /* Self interaction */
 
     /* Pair interaction? */
     else if (t->type == task_type_pair) {
@@ -1526,7 +1526,7 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
         } /* Split the pair */
       }
     } /* pair interaction? */
-  }   /* iterate over the current task. */
+  } /* iterate over the current task. */
 }
 
 /**
@@ -1713,6 +1713,38 @@ struct task *scheduler_addtask(struct scheduler *s, enum task_types type,
         "Task list overflow (%d). Need to increase "
         "Scheduler:tasks_per_cell.",
         ind);
+
+  if (type == task_type_pair) {
+
+    const double cix_min = ci->loc[0];
+    const double ciy_min = ci->loc[1];
+    const double ciz_min = ci->loc[2];
+    const double cjx_min = cj->loc[0];
+    const double cjy_min = cj->loc[1];
+    const double cjz_min = cj->loc[2];
+
+    const double cix_max = ci->loc[0] + ci->width[0];
+    const double ciy_max = ci->loc[1] + ci->width[1];
+    const double ciz_max = ci->loc[2] + ci->width[2];
+    const double cjx_max = cj->loc[0] + cj->width[0];
+    const double cjy_max = cj->loc[1] + cj->width[1];
+    const double cjz_max = cj->loc[2] + cj->width[2];
+
+    const double dx = min4(fabs(cix_min - cjx_min), fabs(cix_min - cjx_max),
+                           fabs(cix_max - cjx_min), fabs(cix_max - cjx_max));
+    const double dy = min4(fabs(ciy_min - cjy_min), fabs(ciy_min - cjy_max),
+                           fabs(ciy_max - cjy_min), fabs(ciy_max - cjy_max));
+    const double dz = min4(fabs(ciz_min - cjz_min), fabs(ciz_min - cjz_max),
+                           fabs(ciz_max - cjz_min), fabs(ciz_max - cjz_max));
+
+    const double r = sqrt(dx * dx + dy * dy + dz * dz);
+
+    if (r > 25)
+      error(
+          "Found pair task with large distance (r=%f) for ci->type=%s and "
+          "cj->type=%s",
+          r, cellID_names[ci->type], cellID_names[cj->type]);
+  }
 
   /* Get a pointer to the new task. */
   struct task *t = &s->tasks[ind];
