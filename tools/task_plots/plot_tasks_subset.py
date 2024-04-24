@@ -122,10 +122,26 @@ parser.add_argument(
 )
 parser.add_argument(
     "--celltype",
-    dest="use_celltype",
-    help="Add cell type to task type (def: False)",
-    default=False,
-    action="store_true",
+    dest="celltype",
+    help="Plot tasks for the given cell type (default: all, "
+    "0: Regular, 1: Zoom, 2: Buffer, 3: Background)",
+    default=-1,
+    type=int,
+)
+parser.add_argument(
+    "--cellsubtype",
+    dest="cellsubtype",
+    help="Plot tasks for the given cell subtype (default: all, "
+    "0: Regular, 1: Neighbour, 2: Void)",
+    default=-1,
+    type=int,
+)
+parser.add_argument(
+    "--mindepth",
+    dest="mindepth",
+    help="Plot tasks below the passed depth (default: 0)",
+    default=0,
+    type=int,
 )
 
 args = parser.parse_args()
@@ -134,11 +150,20 @@ outbase = args.outbase
 delta_t = args.limit
 expand = args.expand
 mintic = args.mintic
-use_celltype = args.use_celltype
+celltype = args.celltype
+cellsubtype = args.cellsubtype
+mindepth = args.mindepth
 if args.ranks != None:
     ranks = [int(item) for item in args.ranks.split(",")]
 else:
     ranks = None
+
+# Setting both cell type and subtype is useless since setting the subtype
+# will enforce the cell type so we don't allow it for simplicities sake
+if celltype >= 0 and cellsubtype >= 0:
+    print("Setting both cell type and subtype is not supported")
+    sys.exit(1)
+
 
 #  Basic plot configuration.
 PLOT_PARAMS = {
@@ -246,6 +271,23 @@ CELLTYPES = [
     "Bkg",
 ]
 
+# Cell subtypes.
+CELLSUBTYPES = [
+    "Regular",
+    "Neighbour",
+    "Void",
+    # Empty will never appear
+]
+
+# Add the subset to the outbase
+if celltype >= 0:
+    outbase += "_Type{0}".format(CELLTYPES[celltype])
+if cellsubtype >= 0:
+    outbase += "_Subtype{0}".format(CELLSUBTYPES[cellsubtype])
+if mindepth > 0:
+    outbase += "_MinDepth{0}".format(mindepth)
+
+
 # Set the seed
 pl.seed(42)
 
@@ -269,37 +311,15 @@ def generate_random_hex_color():
 #  Set colours of task/subtype.
 TASKCOLOURS = {}
 ncolours = 0
-if not args.use_celltype:
-    for task in TASKTYPES:
-        TASKCOLOURS[task] = generate_random_hex_color()
-else:
-    for task in TASKTYPES:
-        for cell in CELLTYPES:
-            TASKCOLOURS[cell + "/" + task] = generate_random_hex_color()
+for task in TASKTYPES:
+    TASKCOLOURS[task] = generate_random_hex_color()
 
 SUBCOLOURS = {}
-if not args.use_celltype:
-    for task in FULLTYPES:
-        SUBCOLOURS[task] = generate_random_hex_color()
+for task in FULLTYPES:
+    SUBCOLOURS[task] = generate_random_hex_color()
 
-    for task in SUBTYPES:
-        SUBCOLOURS[task] = generate_random_hex_color()
-else:
-    for task in FULLTYPES:
-        for cell in CELLTYPES:
-            SUBCOLOURS[cell + "/" + task] = generate_random_hex_color()
-            if "pair" in task:
-                SUBCOLOURS["Zoom->Bkg/" + task] = generate_random_hex_color()
-                SUBCOLOURS["Zoom->Buff/" + task] = generate_random_hex_color()
-                SUBCOLOURS["Buff->Bkg/" + task] = generate_random_hex_color()
-
-        for task in SUBTYPES:
-            for cell in CELLTYPES:
-                SUBCOLOURS[cell + "/" + task] = generate_random_hex_color()
-            if "pair" in task:
-                SUBCOLOURS["Zoom->Bkg/" + task] = generate_random_hex_color()
-                SUBCOLOURS["Zoom->Buff/" + task] = generate_random_hex_color()
-                SUBCOLOURS["Buff->Bkg/" + task] = generate_random_hex_color()
+for task in SUBTYPES:
+    SUBCOLOURS[task] = generate_random_hex_color()
 
 #  For fiddling with colours...
 if args.verbose:
@@ -330,6 +350,8 @@ if full_step.size == 21:
     cj_type_col = 14
     ci_subtype_col = 15
     cj_subtype_col = 16
+    ci_depth_col = 17
+    cj_depth_col = 18
 else:
     print("# non MPI mode")
     ranks = [0]
@@ -344,6 +366,8 @@ else:
     cj_type_col = 12
     ci_subtype_col = 13
     cj_subtype_col = 14
+    ci_depth_col = 15
+    cj_depth_col = 16
 
 #  Get CPU_CLOCK to convert ticks into milliseconds.
 CPU_CLOCK = float(full_step[-7]) / 1000.0
@@ -439,40 +463,29 @@ for rank in ranks:
             ecounter[thread] = ecounter[thread] + 1
             thread = ethread
 
-            # Get the cell types involved
+            # Get the cell types, subtypes and depths involved
             ci_type = int(data[line, ci_type_col])
             cj_type = int(data[line, cj_type_col])
+            ci_subtype = int(data[line, ci_subtype_col])
+            cj_subtype = int(data[line, cj_subtype_col])
+            ci_depth = int(data[line, ci_depth_col])
+            cj_depth = int(data[line, cj_depth_col])
+
+            # Skip tasks that are above the minimum depth
+            if ci_depth < mindepth and cj_depth < mindepth:
+                continue
+
+            # Skip tasks that are not of the correct cell type
+            if celltype >= 0:
+                if ci_type != celltype and cj_type != celltype:
+                    continue
+            if cellsubtype >= 0:
+                if ci_subtype != cellsubtype and cj_subtype != cellsubtype:
+                    continue
 
             tasks[thread].append({})
             tasktype = TASKTYPES[int(data[line, taskcol])]
             subtype = SUBTYPES[int(data[line, subtaskcol])]
-
-            # Have we been told to add a qualifier based on cell type?
-            if use_celltype and (ci_type > 0 or cj_type > 0):
-                if ci_type == cj_type:
-                    tasktype = CELLTYPES[ci_type] + "/" + tasktype
-                elif ci_type > 0 and cj_type > 0:
-                    if ci_type > cj_type:
-                        tasktype = (
-                            CELLTYPES[cj_type]
-                            + "->"
-                            + CELLTYPES[ci_type]
-                            + "/"
-                            + tasktype
-                        )
-                    else:
-                        tasktype = (
-                            CELLTYPES[ci_type]
-                            + "->"
-                            + CELLTYPES[cj_type]
-                            + "/"
-                            + tasktype
-                        )
-                elif ci_type < 0:
-                    tasktype = CELLTYPES[cj_type] + "/" + tasktype
-                elif cj_type < 0:
-                    tasktype = CELLTYPES[ci_type] + "/" + tasktype
-
             tasks[thread][-1]["type"] = tasktype
             tasks[thread][-1]["subtype"] = subtype
             tic = int(data[line, ticcol]) / CPU_CLOCK

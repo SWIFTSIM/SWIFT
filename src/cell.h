@@ -741,6 +741,8 @@ struct gpart *cell_convert_part_to_gpart(const struct engine *e, struct cell *c,
                                          struct part *p, struct xpart *xp);
 struct gpart *cell_convert_spart_to_gpart(const struct engine *e,
                                           struct cell *c, struct spart *sp);
+struct gpart *cell_convert_bpart_to_gpart(const struct engine *e,
+                                          struct cell *c, struct bpart *bp);
 struct spart *cell_convert_part_to_spart(struct engine *e, struct cell *c,
                                          struct part *p, struct xpart *xp);
 struct sink *cell_convert_part_to_sink(struct engine *e, struct cell *c,
@@ -939,6 +941,45 @@ __attribute__((always_inline)) INLINE static int cell_is_empty(
 
   return (c->hydro.count == 0 && c->grav.count == 0 && c->stars.count == 0 &&
           c->black_holes.count == 0 && c->sinks.count == 0);
+}
+
+/**
+ * @brief Compute the square of the distance between the CoMs of two multipoles.
+ *
+ * @param multi_i The first #gravity_tensors.
+ * @param multi_j The second #gravity_tensors.
+ * @param use_rebuild_data Are we considering the data at the last tree-build
+ * (1) or current data (0)?
+ * @param periodic Are we using periodic BCs?
+ * @param dim The dimensions of the simulation volume.
+ *
+ * @return The square of the distance between the multiepoles' CoMs.
+ */
+__attribute__((always_inline)) INLINE static double cell_mpole_CoM_dist2(
+    const struct gravity_tensors *restrict multi_i,
+    const struct gravity_tensors *restrict multi_j, const int use_rebuild_data,
+    const int periodic, const double dim[3]) {
+
+  double dx, dy, dz;
+
+  /* Get the distance between the CoMs */
+  if (use_rebuild_data) {
+    dx = multi_i->CoM_rebuild[0] - multi_j->CoM_rebuild[0];
+    dy = multi_i->CoM_rebuild[1] - multi_j->CoM_rebuild[1];
+    dz = multi_i->CoM_rebuild[2] - multi_j->CoM_rebuild[2];
+  } else {
+    dx = multi_i->CoM[0] - multi_j->CoM[0];
+    dy = multi_i->CoM[1] - multi_j->CoM[1];
+    dz = multi_i->CoM[2] - multi_j->CoM[2];
+  }
+
+  /* Apply BC */
+  if (periodic) {
+    dx = nearest(dx, dim[0]);
+    dy = nearest(dy, dim[1]);
+    dz = nearest(dz, dim[2]);
+  }
+  return dx * dx + dy * dy + dz * dz;
 }
 
 /**
