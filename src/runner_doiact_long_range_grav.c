@@ -61,9 +61,9 @@ void runner_do_grav_long_range_recurse(struct runner *r, struct cell *ci,
   /* Minimal distance between any pair of particles */
   const double min_radius2 = cell_min_dist2(ci, cj, periodic, dim);
 
-  /* Can we can interact at this level? (The cells are not nested, we aren't
-   * beyond where truncated forces are 0 and we can do a mm interaction). */
-  if ((ci->top != cj && cj->top != ci) && !(min_radius2 > max_distance2) &&
+  /* Can we can interact at this level? (The cells aren't beyond where truncated
+   * forces are 0 and we can do a mm interaction). */
+  if (!(min_radius2 > max_distance2) &&
       cell_can_use_pair_mm(ci, cj, e, s,
                            /*use_rebuild_data=*/1,
                            /*is_tree_walk=*/0,

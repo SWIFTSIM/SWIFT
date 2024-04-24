@@ -1433,13 +1433,15 @@ void task_dump_all(struct engine *e, int step) {
               (e->sched.tasks[l].ci != NULL) ? e->sched.tasks[l].ci->depth : -1,
               (e->sched.tasks[l].cj != NULL) ? e->sched.tasks[l].cj->depth : -1,
               (e->sched.tasks[l].ci != NULL && e->sched.tasks[l].cj != NULL)
-                  ? cell_min_dist2(e->sched.tasks[l].ci, e->sched.tasks[l].cj,
-                                   e->s->periodic, e->s->dim)
+                  ? sqrt(cell_min_dist2(e->sched.tasks[l].ci,
+                                        e->sched.tasks[l].cj, e->s->periodic,
+                                        e->s->dim))
                   : -1,
               (e->sched.tasks[l].ci != NULL && e->sched.tasks[l].cj != NULL)
-                  ? cell_mpole_CoM_dist2(e->sched.tasks[l].ci->grav.multipole,
-                                         e->sched.tasks[l].cj->grav.multipole,
-                                         e->s->periodic, e->s->dim)
+                  ? sqrt(cell_mpole_CoM_dist2(
+                        e->sched.tasks[l].ci->grav.multipole,
+                        e->sched.tasks[l].cj->grav.multipole,
+                        /*use_rebuild_data*/ 1, e->s->periodic, e->s->dim))
                   : -1);
         }
         count++;
@@ -1489,13 +1491,14 @@ void task_dump_all(struct engine *e, int step) {
           (e->sched.tasks[l].ci != NULL) ? e->sched.tasks[l].ci->depth : -1,
           (e->sched.tasks[l].cj != NULL) ? e->sched.tasks[l].cj->depth : -1,
           (e->sched.tasks[l].ci != NULL && e->sched.tasks[l].cj != NULL)
-              ? cell_min_dist2(e->sched.tasks[l].ci, e->sched.tasks[l].cj,
-                               e->s->periodic, e->s->dim)
+              ? sqrt(cell_min_dist2(e->sched.tasks[l].ci, e->sched.tasks[l].cj,
+                                    e->s->periodic, e->s->dim))
               : -1,
           (e->sched.tasks[l].ci != NULL && e->sched.tasks[l].cj != NULL)
-              ? cell_mpole_CoM_dist2(e->sched.tasks[l].ci->grav.multipole,
-                                     e->sched.tasks[l].cj->grav.multipole,
-                                     e->s->periodic, e->s->dim)
+              ? sqrt(cell_mpole_CoM_dist2(e->sched.tasks[l].ci->grav.multipole,
+                                          e->sched.tasks[l].cj->grav.multipole,
+                                          /*use_rebuild_data*/ 1,
+                                          e->s->periodic, e->s->dim))
               : -1);
     }
   }
