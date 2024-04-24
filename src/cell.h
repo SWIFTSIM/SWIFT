@@ -1203,8 +1203,9 @@ cell_can_split_pair_gravity_task(const struct cell *ci, const struct cell *cj) {
   }
 
   /* Otherwise, are the cells split and still far from the leaves ? */
-  return ci->split && cj->split &&
-         ((c->maxdepth - c->depth) > space_subdepth_diff_grav);
+  return (ci->split && cj->split) &&
+         ((ci->maxdepth - ci->depth) > space_subdepth_diff_grav) &&
+         ((cj->maxdepth - cj->depth) > space_subdepth_diff_grav);
 }
 
 /**
