@@ -1,0 +1,68 @@
+# Define the system of units to use internally.
+InternalUnitSystem:
+    UnitMass_in_cgs:        1e27        # Sets Earth mass = 5.972
+    UnitLength_in_cgs:      1e8         # Sets Earth radius = 6.371
+    UnitVelocity_in_cgs:    1e8         # Sets time in seconds
+    UnitCurrent_in_cgs:     1           # Amperes
+    UnitTemp_in_cgs:        1           # Kelvin
+
+# Parameters related to the initial conditions
+InitialConditions:
+    file_name:  demo_impact_n70.hdf5    # The initial conditions file to read
+    periodic:   0                       # Are we running with periodic ICs?
+
+# Parameters governing the time integration
+TimeIntegration:
+    time_begin:     0                   # The starting time of the simulation (in internal units).
+    time_end:       54000               # The end time of the simulation (in internal units).
+    dt_min:         0.000001            # The minimal time-step size of the simulation (in internal units).
+    dt_max:         1000                # The maximal time-step size of the simulation (in internal units).
+
+# Parameters governing the snapshots
+Snapshots:
+    subdir:             snapshots       # Sub-directory in which to write the snapshots. Defaults to "" (i.e. the directory where SWIFT is run).
+    basename:           demo_impact_n70 # Common part of the name of output files
+    time_first:         0               # Time of the first output (in internal units)
+    delta_time:         2000            # Time difference between consecutive outputs (in internal units)
+
+# Parameters governing the conserved quantities statistics
+Statistics:
+    time_first: 0                       # Time of the first output (in internal units)
+    delta_time: 1000                    # Time between statistics output
+
+# Parameters controlling restarts
+Restarts:
+    enable:             1               # Whether to enable dumping restarts at fixed intervals.
+    save:               1               # Whether to save copies of the previous set of restart files (named .prev)
+    subdir:             restart         # Name of subdirectory for restart files.
+    basename:           demo_impact_n70 # Prefix used in naming restart files.
+    delta_hours:        10.0            # Decimal hours between dumps of restart files.
+
+# Parameters for the hydrodynamics scheme
+SPH:
+    resolution_eta:     1.2348          # Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel).
+    delta_neighbours:   0.1             # The tolerance for the targetted number of neighbours.
+    CFL_condition:      0.2             # Courant-Friedrich-Levy condition for time integration.
+    h_max:              1.0             # Maximal allowed smoothing length (in internal units).
+    viscosity_alpha:    1.5             # Override for the initial value of the artificial viscosity.
+
+# Parameters for the self-gravity scheme
+Gravity:
+    eta:                            0.025       # Constant dimensionless multiplier for time integration.
+    MAC:                            adaptive    # Choice of mulitpole acceptance criterion: 'adaptive' OR 'geometric'.
+    epsilon_fmm:                    0.001       # Tolerance parameter for the adaptive multipole acceptance criterion.
+    theta_cr:                       0.5         # Opening angle for the purely gemoetric criterion.
+    max_physical_baryon_softening:  0.04        # Physical softening length (in internal units).
+
+# Parameters for the task scheduling
+Scheduler:
+    max_top_level_cells:    64          # Maximal number of top-level cells in any dimension. The nu
+
+# Parameters related to the equation of state
+EoS:
+    # Select which planetary EoS material(s) to enable for use.
+    planetary_use_ANEOS_forsterite:   1     # ANEOS forsterite (Stewart et al. 2019), material ID 400
+    planetary_use_ANEOS_Fe85Si15:     1     # ANEOS Fe85Si15 (Stewart 2020), material ID 402
+    # Tablulated EoS file paths.
+    planetary_ANEOS_forsterite_table_file:  ../EoSTables/ANEOS_forsterite_S19.txt
+    planetary_ANEOS_Fe85Si15_table_file:    ../EoSTables/ANEOS_Fe85Si15_S20.txt
