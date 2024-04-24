@@ -174,6 +174,7 @@ class TaskParser:
 
         # Parse the file populating the look up table
         self.tasks = None
+        self.dt = None
         self._parse_tasks()
 
     def _load_data(self):
@@ -317,6 +318,7 @@ class TaskParser:
         # Prepare the arrays we'll populate
         self.tasks = np.zeros(self.ntasks, dtype=object)
         self.task_labels = np.zeros(self.ntasks, dtype=object)
+        self.dt = np.zeros(self.ntasks, dtype=np.float64)
 
         # Get local copies of the columns to avoid extracting every single loop
         task_ranks = self.task_ranks
@@ -361,6 +363,7 @@ class TaskParser:
                 mpole_dists[i],
             )
             self.task_labels[i] = self.tasks[i].task
+            self.dt[i] = self.tasks[i].dt
 
     def _get_tasks_with_mask(self, mask=None):
         if mask is not None:
