@@ -65,6 +65,15 @@ struct feedback_spart_data {
 
   /*! Does the particle needs the feedback loop? */
   char will_do_feedback;
+
+
+  double f_plus_num[3];
+  double f_plus_denom[3];
+  double f_minus_num[3];
+  double f_minus_denom[3];
+  double f_plus[3];
+  double f_minus[3];
+  double sum_vector_weight_norm;
 };
 
 #endif /* SWIFT_FEEDBACK_STRUCT_GEAR_H */

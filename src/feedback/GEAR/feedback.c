@@ -253,6 +253,32 @@ double feedback_get_enrichment_timestep(const struct spart* sp,
 void feedback_init_spart(struct spart* sp) {
 
   sp->feedback_data.enrichment_weight = 0.f;
+
+  sp->feedback_data.f_plus_num[0] = 0.0;
+  sp->feedback_data.f_plus_num[1] = 0.0;
+  sp->feedback_data.f_plus_num[2] = 0.0;
+
+  sp->feedback_data.f_plus_denom[0] = 0.0;
+  sp->feedback_data.f_plus_denom[1] = 0.0;
+  sp->feedback_data.f_plus_denom[2] = 0.0;
+
+  sp->feedback_data.f_minus_num[0] = 0.0;
+  sp->feedback_data.f_minus_num[1] = 0.0;
+  sp->feedback_data.f_minus_num[2] = 0.0;
+
+  sp->feedback_data.f_minus_denom[0] = 0.0;
+  sp->feedback_data.f_minus_denom[1] = 0.0;
+  sp->feedback_data.f_minus_denom[2] = 0.0;
+
+  sp->feedback_data.f_plus[0] = 0.0;
+  sp->feedback_data.f_plus[1] = 0.0;
+  sp->feedback_data.f_plus[2] = 0.0;
+
+  sp->feedback_data.f_minus[0] = 0.0;
+  sp->feedback_data.f_minus[1] = 0.0;
+  sp->feedback_data.f_minus[2] = 0.0;
+
+  sp->feedback_data.sum_vector_weight_norm = 0.0;
 }
 
 /**
