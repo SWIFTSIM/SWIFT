@@ -48,86 +48,13 @@ runner_iact_nonsym_feedback_density(const float r2, const float dx[3],
                                     const struct feedback_props *fb_props,
                                     const integertime_t ti_current) {
 
-  /* Get the gas mass. */
-  /* const float mj = hydro_get_mass(pj); */
-
-  /* Get r */
-  const float r = sqrtf(r2);
-
-  /* Compute the kernel function */
-  /* const float hi_inv = 1.0f / hi; */
-  /* const float ui = r * hi_inv; */
-  /* float wi; */
-  /* kernel_eval(ui, &wi); */
-
-  /* Add contribution of pj to normalisation of density weighted fraction
-   * which determines how much mass to distribute to neighbouring
-   * gas particles */
-
   /* The normalization by 1 / h^d is done in feedback.h */
   /* si->feedback_data.enrichment_weight += mj * wi; */
 
-
-  /* Recompute the scalar_weight */
-  const float r_j2 = pj->x[0]*si->x[0] + pj->x[1]*si->x[1] + pj->x[1]*si->x[1];
-
-  float dW_ij_dr_j;
-  float dW_jj_dr_j;
-  const float u_ij = sqrt(r_j2)/hi;
-  const float u_jj = sqrt(r_j2)/hj;
-  float dummy_W;
-
-  kernel_deval(u_ij, &dummy_W, &dW_ij_dr_j);
-  kernel_deval(u_jj, &dummy_W, &dW_jj_dr_j);
-
-  dW_ij_dr_j *= pow_dimension(1.0/hi); /* 1/h_i^d */
-  dW_jj_dr_j *= pow_dimension(1.0/hj); /* 1/h_j^d */
-
-  /* Compute the projection vectors */
-  const double dx_ij_plus[3] = {max(dx[0], 0.0)/r,
-			  max(dx[1], 0.0)/r,
-			  max(dx[2], 0.0)/r};
-
-  const double dx_ij_minus[3] = {min(dx[0], 0.0)/r,
-				 min(dx[1], 0.0)/r,
-				 min(dx[2], 0.0)/r};
-
-  /* Correct in stars_iact the 1/r factor (remove it) */
-  const double dx_ij_hat[3] = {dx_ij_plus[0] + dx_ij_minus[0],
-			       dx_ij_plus[1] + dx_ij_minus[1],
-			       dx_ij_plus[2] + dx_ij_minus[2]};
-
-  /* I also need the x_ij_hat... which must be calculated before... */
-  double n_bar_i_2_inv = 1.0/(si->density.wcount*si->density.wcount);
-  double n_bar_j_2_inv = 1.0/(pj->density.wcount*pj->density.wcount);
-
-  double A_j[3] = {(n_bar_i_2_inv * dW_ij_dr_j + n_bar_j_2_inv * dW_jj_dr_j)*dx_ij_hat[0],
-		   (n_bar_i_2_inv * dW_ij_dr_j + n_bar_j_2_inv * dW_jj_dr_j)*dx_ij_hat[1],
-		   (n_bar_i_2_inv * dW_ij_dr_j + n_bar_j_2_inv * dW_jj_dr_j)*dx_ij_hat[2]};
-
-  double number_1 = A_j[0]*dx_ij_hat[0] *  A_j[1]*dx_ij_hat[1] *  A_j[2]*dx_ij_hat[2];
-  double number_2 = M_PI * r2;
-  double denom = sqrt(1 + number_1/number_2);
-
-  /* Store at least this value. I would not be against storing dx_ij and A to
-     avoid computing them many times and making mistakes... */
-  double scalar_weight_j = 0.5*(1.0 + 1.0/denom) ;
-
-
-  /* Now, that we have accumulated the sums, we can compute the f_plus and
-     f_minus */
-
-  const double value_plus[3] = {1 + (si->feedback_data.f_plus_num[0]*si->feedback_data.f_plus_num[0])/(si->feedback_data.f_plus_denom[0]*si->feedback_data.f_plus_denom[0]),
-		     1 + (si->feedback_data.f_plus_num[1]*si->feedback_data.f_plus_num[1])/(si->feedback_data.f_plus_denom[1]*si->feedback_data.f_plus_denom[1]),
-		     1 + (si->feedback_data.f_plus_num[2]*si->feedback_data.f_plus_num[2])/(si->feedback_data.f_plus_denom[2]*si->feedback_data.f_plus_denom[2])};
-
-  const double f_plus_i[3] = {sqrt(0.5*value_plus[0]), sqrt(0.5*value_plus[1]), sqrt(0.5*value_plus[2])};
-
-  const double value_minus[3] = {1 + (si->feedback_data.f_minus_num[0]*si->feedback_data.f_minus_num[0])/(si->feedback_data.f_minus_denom[0]*si->feedback_data.f_minus_denom[0]),
-		     1 + (si->feedback_data.f_minus_num[1]*si->feedback_data.f_minus_num[1])/(si->feedback_data.f_minus_denom[1]*si->feedback_data.f_minus_denom[1]),
-		     1 + (si->feedback_data.f_minus_num[2]*si->feedback_data.f_minus_num[2])/(si->feedback_data.f_minus_denom[2]*si->feedback_data.f_minus_denom[2])};
-
-  const double f_minus_i[3] = {sqrt(0.5*value_minus[0]), sqrt(0.5*value_minus[1]), sqrt(0.5*value_minus[2])};
+  /* Now we can compute f_plus and f_minus for the star */
+  double f_plus_i[3], f_minus_i[3], w_j[3];
+  feedback_compute_vector_weight_non_normalized(r2, dx, hi, hj, si, pj, f_plus_i,
+						f_minus_i, w_j);
 
   /* Assign the f_plus and f_minus to the star */
   si->feedback_data.f_plus[0] = f_plus_i[0];
@@ -138,39 +65,27 @@ runner_iact_nonsym_feedback_density(const float r2, const float dx[3],
   si->feedback_data.f_minus[1] = f_minus_i[1];
   si->feedback_data.f_minus[2] = f_minus_i[2];
 
-  /* Now compute the w_j (vector) */
-  double w_j[3];
-
-  /* Dans le texte, on somme sur +/- et sur alpha=x,y,z. Mais ca ne donne pas
-  un vecteur. Je pense que la somme sur alpha est fausse et c'est juste
-  multiplier par les composantes */
-  w_j[0] = scalar_weight_j*(dx_ij_plus[0]*f_plus_i[0] + dx_ij_minus[0]*f_minus_i[0]);
-  w_j[1] = scalar_weight_j*(dx_ij_plus[1]*f_plus_i[1] + dx_ij_minus[1]*f_minus_i[1]);
-  w_j[2] = scalar_weight_j*(dx_ij_plus[2]*f_plus_i[2] + dx_ij_minus[1]*f_minus_i[2]);
-
   /* Accumulate w_j norm for later */
   const double w_j_norm_2 = w_j[0]*w_j[0] + w_j[1]*w_j[1] + w_j[2]*w_j[2];
   si->feedback_data.sum_vector_weight_norm += sqrt(w_j_norm_2);
 }
 
 
-__attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_feedback_prep1(const float r2, const float dx[3],
-                                  const float hi, const float hj,
-                                  const struct spart *si, struct part *pj,
-                                  const struct xpart *xpj,
-                                  const struct cosmology *cosmo,
-                                  const integertime_t ti_current) {
-  message("HELLO");
-}
+/* __attribute__((always_inline)) INLINE static void */
+/* runner_iact_nonsym_feedback_prep1(const float r2, const float dx[3], */
+/*                                   const float hi, const float hj, */
+/*                                   const struct spart *si, struct part *pj, */
+/*                                   const struct xpart *xpj, */
+/*                                   const struct cosmology *cosmo, */
+/*                                   const integertime_t ti_current) {} */
 
-__attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_feedback_prep2(const float r2, const float dx[3],
-                                  const float hi, const float hj,
-                                  struct spart *si, const struct part *pj,
-                                  const struct xpart *xpj,
-                                  const struct cosmology *cosmo,
-                                  const integertime_t ti_current) {}
+/* __attribute__((always_inline)) INLINE static void */
+/* runner_iact_nonsym_feedback_prep2(const float r2, const float dx[3], */
+/*                                   const float hi, const float hj, */
+/*                                   struct spart *si, const struct part *pj, */
+/*                                   const struct xpart *xpj, */
+/*                                   const struct cosmology *cosmo, */
+/*                                   const integertime_t ti_current) {} */
 
 /**
  * @brief Feedback interaction between two particles (non-symmetric).
@@ -202,115 +117,9 @@ runner_iact_nonsym_feedback_apply(
     return;
   }
 
-  const float mj = hydro_get_mass(pj);
-  const float r = sqrtf(r2);
-
-  /* Get the kernel for hi. */
-  /* float hi_inv = 1.0f / hi; */
-  /* float hi_inv_dim = pow_dimension(hi_inv); /\* 1/h^d *\/ */
-  /* float xi = r * hi_inv; */
-  /* float wi, wi_dx; */
-  /* kernel_deval(xi, &wi, &wi_dx); */
-  /* wi *= hi_inv_dim; */
-
-  /* Compute inverse enrichment weight */
-  /* const double si_inv_weight = si->feedback_data.enrichment_weight == 0 */
-  /*                                  ? 0. */
-  /*                                  : 1. / si->feedback_data.enrichment_weight; */
-
-  /* /\* Mass received *\/ */
-  /* const double m_ej = si->feedback_data.mass_ejected; */
-  /* const double weight = mj * wi * si_inv_weight; */
-  /* const double dm = m_ej * weight; */
-  /* const double new_mass = mj + dm; */
-
-  /* /\* Energy received *\/ */
-  /* const double du = e_sn * weight / new_mass; */
-
-  /* xpj->feedback_data.delta_mass += dm; */
-  /* xpj->feedback_data.delta_u += du; */
-
-  /* /\* Compute momentum received. *\/ */
-  /* for (int i = 0; i < 3; i++) { */
-  /*   xpj->feedback_data.delta_p[i] += dm * (si->v[i] - xpj->v_full[i]); */
-  /* } */
-
-  /* /\* Add the metals *\/ */
-  /* for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) { */
-  /*   pj->chemistry_data.metal_mass[i] += */
-  /*       weight * si->feedback_data.metal_mass_ejected[i]; */
-  /* } */
-
-
-
-  const float r_j2 = pj->x[0]*si->x[0] + pj->x[1]*si->x[1] + pj->x[1]*si->x[1];
-
-  float dW_ij_dr_j;
-  float dW_jj_dr_j;
-  const float u_ij = sqrt(r_j2)/hi;
-  const float u_jj = sqrt(r_j2)/hj;
-  float dummy_W;
-
-  kernel_deval(u_ij, &dummy_W, &dW_ij_dr_j);
-  kernel_deval(u_jj, &dummy_W, &dW_jj_dr_j);
-
-  dW_ij_dr_j *= pow_dimension(1.0/hi); /* 1/h_i^d */
-  dW_jj_dr_j *= pow_dimension(1.0/hj); /* 1/h_j^d */
-
-  /* Compute the projection vectors */
-  const double dx_ij_plus[3] = {max(dx[0], 0.0)/r,
-			  max(dx[1], 0.0)/r,
-			  max(dx[2], 0.0)/r};
-
-  const double dx_ij_minus[3] = {min(dx[0], 0.0)/r,
-				 min(dx[1], 0.0)/r,
-				 min(dx[2], 0.0)/r};
-
-  /* Correct in stars_iact the 1/r factor (remove it) */
-  const double dx_ij_hat[3] = {dx_ij_plus[0] + dx_ij_minus[0],
-			       dx_ij_plus[1] + dx_ij_minus[1],
-			       dx_ij_plus[2] + dx_ij_minus[2]};
-
-  /* I also need the x_ij_hat... which must be calculated before... */
-  double n_bar_i_2_inv = 1.0/(si->density.wcount*si->density.wcount);
-  double n_bar_j_2_inv = 1.0/(pj->density.wcount*pj->density.wcount);
-
-  double A_j[3] = {(n_bar_i_2_inv * dW_ij_dr_j + n_bar_j_2_inv * dW_jj_dr_j)*dx_ij_hat[0],
-		   (n_bar_i_2_inv * dW_ij_dr_j + n_bar_j_2_inv * dW_jj_dr_j)*dx_ij_hat[1],
-		   (n_bar_i_2_inv * dW_ij_dr_j + n_bar_j_2_inv * dW_jj_dr_j)*dx_ij_hat[2]};
-
-  double number_1 = A_j[0]*dx_ij_hat[0] *  A_j[1]*dx_ij_hat[1] *  A_j[2]*dx_ij_hat[2];
-  double number_2 = M_PI * r2;
-  double denom = sqrt(1 + number_1/number_2);
-
-  /* Store at least this value. I would not be against storing dx_ij and A to
-     avoid computing them many times and making mistakes... */
-  double scalar_weight_j = 0.5*(1.0 + 1.0/denom) ;
-
-
-  /* Now, that we have accumulated the sums, we can compute the f_plus and
-     f_minus */
-  const double value_plus[3] = {1 + (si->feedback_data.f_plus_num[0]*si->feedback_data.f_plus_num[0])/(si->feedback_data.f_plus_denom[0]*si->feedback_data.f_plus_denom[0]),
-		     1 + (si->feedback_data.f_plus_num[1]*si->feedback_data.f_plus_num[1])/(si->feedback_data.f_plus_denom[1]*si->feedback_data.f_plus_denom[1]),
-		     1 + (si->feedback_data.f_plus_num[2]*si->feedback_data.f_plus_num[2])/(si->feedback_data.f_plus_denom[2]*si->feedback_data.f_plus_denom[2])};
-
-  const double f_plus_i[3] = {sqrt(0.5*value_plus[0]), sqrt(0.5*value_plus[1]), sqrt(0.5*value_plus[2])};
-
-  const double value_minus[3] = {1 + (si->feedback_data.f_minus_num[0]*si->feedback_data.f_minus_num[0])/(si->feedback_data.f_minus_denom[0]*si->feedback_data.f_minus_denom[0]),
-		     1 + (si->feedback_data.f_minus_num[1]*si->feedback_data.f_minus_num[1])/(si->feedback_data.f_minus_denom[1]*si->feedback_data.f_minus_denom[1]),
-		     1 + (si->feedback_data.f_minus_num[2]*si->feedback_data.f_minus_num[2])/(si->feedback_data.f_minus_denom[2]*si->feedback_data.f_minus_denom[2])};
-
-  const double f_minus_i[3] = {sqrt(0.5*value_minus[0]), sqrt(0.5*value_minus[1]), sqrt(0.5*value_minus[2])};
-
-  /* Now compute the w_j (vector) */
-  double w_j[3];
-
-  /* Dans le texte, on somme sur +/- et sur alpha=x,y,z. Mais ca ne donne pas
-  un vecteur. Je pense que la somme sur alpha est fausse et c'est juste
-  multiplier par les composantes */
-  w_j[0] = scalar_weight_j*(dx_ij_plus[0]*f_plus_i[0] + dx_ij_minus[0]*f_minus_i[0]);
-  w_j[1] = scalar_weight_j*(dx_ij_plus[1]*f_plus_i[1] + dx_ij_minus[1]*f_minus_i[1]);
-  w_j[2] = scalar_weight_j*(dx_ij_plus[2]*f_plus_i[2] + dx_ij_minus[1]*f_minus_i[2]);
+  /* Finally, we can compute the w_j_bar. */
+  double f_plus_i[3], f_minus_i[3], w_j[3];
+  feedback_compute_vector_weight_non_normalized(r2, dx, hi, hj, si, pj, f_plus_i, f_minus_i, w_j);
 
   double w_j_bar[3] =  {w_j[0]/si->feedback_data.sum_vector_weight_norm,
 			w_j[1]/si->feedback_data.sum_vector_weight_norm,
@@ -319,8 +128,8 @@ runner_iact_nonsym_feedback_apply(
   const double w_j_bar_norm_2 = w_j_bar[0]*w_j_bar[0] + w_j_bar[1]*w_j_bar[1] + w_j_bar[2]*w_j_bar[2];
   const double w_j_bar_norm = sqrt(w_j_bar_norm_2);
 
-
-  /* */
+  /* Update the xpart properties */
+  const float mj = hydro_get_mass(pj);
   const double m_ej = si->feedback_data.mass_ejected;
   const double p_ej = sqrt(2*m_ej*e_sn) ;
 
@@ -352,6 +161,24 @@ runner_iact_nonsym_feedback_apply(
   const double new_mass = mj + dm;
 
   xpj->feedback_data.delta_u += dE_prime/new_mass;
+
+  /* Verify conservation things */
+  si->feedback_data.delta_m_check += dm;
+  si->feedback_data.delta_E_check += dE;
+  si->feedback_data.delta_p_norm_check += sqrt(dp_norm_2);
+
+  si->feedback_data.delta_p_check[0] += dp[0];
+  si->feedback_data.delta_p_check[1] += dp[1];
+  si->feedback_data.delta_p_check[2] += dp[2];
+
+  message("Conservation check (star %lld): Sum dm_i = %e, Sum dE_i = %e, Sum |dp_i| = %e, Sum dp_i = (%e, %e, %e)", si->id, si->feedback_data.delta_m_check, si->feedback_data.delta_E_check, si->feedback_data.delta_p_norm_check, si->feedback_data.delta_p_check[0], si->feedback_data.delta_p_check[1], si->feedback_data.delta_p_check[2]);
+
+  /* si->feedback_data.delta_p_tot[0] += mj*pj->v[0] + dp_prime[0]; */
+  /* si->feedback_data.delta_p_tot[1] += mj*pj->v[1] + dp_prime[1] ; */
+  /* si->feedback_data.delta_p_tot[2] += mj*pj->v[1] + dp_prime[2] ; */
+
+  /* const double v_norm_2 = pj->v[0]*sp->v[0] + pj->v[1]*sp->v[1] + sp->v[2]*sp->v[2]; */
+  /* sp->feedback_data.E_tot = 0.5*sp->mass*v_norm_2; */
 
   /* Impose maximal viscosity */
   hydro_diffusive_feedback_reset(pj);
