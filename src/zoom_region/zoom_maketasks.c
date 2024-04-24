@@ -204,6 +204,9 @@ static void engine_make_self_gravity_tasks_void_cell_recursive(struct engine *e,
     /* If so we can only make a direct interaction at the zoom level. */
     if (cj->type == cell_type_zoom) {
 
+      /* Exit if there are no particles. */
+      if (cj->grav.count == 0) return;
+
       /* Get the indices of ci and cj. */
       const int cid = ci - e->s->cells_top;
       const int cjd = cj - e->s->cells_top;
