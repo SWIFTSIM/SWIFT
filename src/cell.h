@@ -1193,10 +1193,12 @@ __attribute__((always_inline)) INLINE static int cell_can_split_self_hydro_task(
 __attribute__((always_inline)) INLINE static int
 cell_can_split_pair_gravity_task(const struct cell *ci, const struct cell *cj) {
 
-  /* If we have a neighbour we just need to check if the cells are both split.
-   */
-  if (ci->subtype == cell_subtype_neighbour ||
-      cj->subtype == cell_subtype_neighbour) {
+  /* If we have a zoom->neighbour task we just need to check if the cells are
+   * both split. */
+  if ((ci->subtype == cell_subtype_neighbour &&
+       cj->subtype != cell_subtype_neighbour) ||
+      (ci->subtype != cell_subtype_neighbour &&
+       cj->subtype == cell_subtype_neighbour)) {
     return ci->split && cj->split;
   }
 
