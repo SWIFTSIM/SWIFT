@@ -121,19 +121,51 @@ void stellar_evolution_compute_continuous_feedback_properties(
   sp->feedback_data.mass_ejected = mass_frac_snii * sp->sf_data.birth_mass +
                                    mass_snia * phys_const->const_solar_mass;
 
-  /* Check if we can ejected the required amount of elements. */
-  const int negative_mass = sp->mass <= sp->feedback_data.mass_ejected;
-  if (negative_mass) {
-    message("Negative mass, skipping current star: %lli", sp->id);
-    /* Reset everything */
-    sp->feedback_data.number_snia = 0;
-    sp->feedback_data.number_snii = 0;
-    sp->feedback_data.mass_ejected = 0;
-    return;
-  }
+  /* If a star is a discrete star */
+  if (sp->feedback_data.star_type == single_star) {
+    const int null_mass = sp->mass == sp->feedback_data.mass_ejected;
+    const int negative_mass = sp->mass < sp->feedback_data.mass_ejected;
 
-  /* Update the mass */
-  sp->mass -= sp->feedback_data.mass_ejected;
+    if (null_mass) {
+      message("Star %lld (m_star = %e, m_ej = %e) completely exploded!",  sp->id, sp->mass, sp->feedback_data.mass_ejected);
+      /* If the star ejects all its mass (for very massive stars), give it a
+	 zero mass so that we know it has exploded.
+         We do not remove the star from the simulation to keep track of its
+	 properties, e.g. to check the IMF sampling (with sinks). */
+      sp->mass = 0.0 ;
+
+      /* It's not a good idea to put the gpart's mass to zero. Instead, we give
+	 it minimal mass that is provided by the user in the paramter file */
+      sp->gpart->mass = sm->discrete_star_minimal_gravity_mass ;
+
+      /* If somehow the star has a negative mass, we have a problem. */
+    } else if (negative_mass) {
+      warning("(Discrete start) Negative mass (m_star = %e, m_ej = %e), skipping current star: %lli", sp->mass, sp->feedback_data.mass_ejected, sp->id);
+      /* Reset everything */
+      sp->feedback_data.number_snia = 0;
+      sp->feedback_data.number_snii = 0;
+      sp->feedback_data.mass_ejected = 0;
+      return;
+    }
+
+    /* If the star is the continuous part of the IMF or the enteire IMF */
+  } else {
+    /* Check if we can ejected the required amount of elements. */
+    const int negative_mass = sp->mass <= sp->feedback_data.mass_ejected;
+    if (negative_mass) {
+      warning("(Continuous star) Negative mass (m_star = %e, m_ej = %e), skipping current star: %lli",sp->mass, sp->feedback_data.mass_ejected, sp->id);
+      /* Reset everything */
+      sp->feedback_data.number_snia = 0;
+      sp->feedback_data.number_snii = 0;
+      sp->feedback_data.mass_ejected = 0;
+      return;
+    }
+    /* Update the mass */
+    sp->mass -= sp->feedback_data.mass_ejected;
+
+    /* Update the gpart mass */
+    sp->gpart->mass = sp->mass;
+  }
 
   /* Now deal with the metals */
 
