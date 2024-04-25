@@ -461,6 +461,15 @@ void zoom_engine_make_self_gravity_tasks(struct space *s, struct engine *e) {
 
   ticks tic = getticks();
 
+  /* Report the distance at which we'll search for zoom->zoom pair tasks. */
+  if (e->verbose) {
+    const float distance = gravity_M2L_min_accept_distance(
+        e->gravity_properties,
+        sqrtf(3) * s->zoom_props->zoom_cells_top[0].width[0], s->max_softening,
+        s->min_a_grav, s->max_mpole_power, /*periodic*/ 0);
+    message("Searching for zoom->zoom pair tasks within %.3f U_L", distance);
+  }
+
   /* Zoom -> Zoom */
   threadpool_map(
       &e->threadpool, engine_make_self_gravity_tasks_mapper_zoom_cells, NULL,
@@ -471,6 +480,15 @@ void zoom_engine_make_self_gravity_tasks(struct space *s, struct engine *e) {
             clocks_from_ticks(getticks() - tic), clocks_getunit());
 
   tic = getticks();
+
+  /* Report the distance at which we'll search for bkg->bkg pair tasks. */
+  if (e->verbose) {
+    const float distance = gravity_M2L_min_accept_distance(
+        e->gravity_properties,
+        sqrtf(3) * s->zoom_props->bkg_cells_top[0].width[0], s->max_softening,
+        s->min_a_grav, s->max_mpole_power, s->periodic);
+    message("Searching for bkg->bkg pair tasks within %.3f U_L", distance);
+  }
 
   /* Background -> Background */
   threadpool_map(&e->threadpool,
@@ -484,6 +502,17 @@ void zoom_engine_make_self_gravity_tasks(struct space *s, struct engine *e) {
   if (s->zoom_props->with_buffer_cells) {
 
     tic = getticks();
+
+    /* Report the distance at which we'll search for buffer->buffer pair tasks.
+     */
+    if (e->verbose) {
+      const float distance = gravity_M2L_min_accept_distance(
+          e->gravity_properties,
+          sqrtf(3) * s->zoom_props->buffer_cells_top[0].width[0],
+          s->max_softening, s->min_a_grav, s->max_mpole_power, /*periodic*/ 0);
+      message("Searching for buffer->buffer pair tasks within %.3f U_L",
+              distance);
+    }
 
     /* Buffer -> Buffer (only if we have a buffer region). */
     threadpool_map(
