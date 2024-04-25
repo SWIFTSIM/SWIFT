@@ -28,6 +28,9 @@
 /**
  * @brief Density interaction between two particles (non-symmetric).
  *
+ * In GEAR, this function does nothing. What we need is the
+ * star->density.wcount computed in runner_iact_nonsym_stars_density().
+ *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
  * @param hi Comoving smoothing-length of particle i.
@@ -46,46 +49,89 @@ runner_iact_nonsym_feedback_density(const float r2, const float dx[3],
                                     const struct xpart *xpj,
                                     const struct cosmology *cosmo,
                                     const struct feedback_props *fb_props,
-                                    const integertime_t ti_current) {
+                                    const integertime_t ti_current) {}
 
-  /* The normalization by 1 / h^d is done in feedback.h */
-  /* si->feedback_data.enrichment_weight += mj * wi; */
+/**
+ * @brief Prepare the feedback by computing the required quantities (loop 1). 
+ * Used for updating properties of star particles required for the feedback. 
+ *
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (si - pj).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param si First (star) particle (updated).
+ * @param pj Second (gas) particle (not updated).
+ * @param xpj Extra particle data
+ * @param cosmo The cosmological model.
+ * @param ti_current Current integer time.
+ */
+__attribute__((always_inline)) INLINE static void
+runner_iact_nonsym_feedback_prep1(const float r2, const float dx[3],
+                                  const float hi, const float hj,
+                                  struct spart *si, struct part *pj,
+                                  const struct xpart *xpj,
+                                  const struct cosmology *cosmo,
+                                  const integertime_t ti_current) {
+
+  /* Accumulate the sum in the numerator and denominator of f_plus and f_minus */
+  double dx_ij_plus[3];
+  double dx_ij_minus[3];
+  double scalar_weight_j = feedback_compute_scalar_weight(r2, dx, hi, hj, si, pj,
+							  dx_ij_plus, dx_ij_minus);
+
+  si->feedback_data.f_plus_num[0] += scalar_weight_j*fabs(dx_ij_minus[0]);
+  si->feedback_data.f_plus_num[1] += scalar_weight_j*fabs(dx_ij_minus[1]);
+  si->feedback_data.f_plus_num[2] += scalar_weight_j*fabs(dx_ij_minus[2]);
+
+  si->feedback_data.f_plus_denom[0] += scalar_weight_j*fabs(dx_ij_plus[0]);
+  si->feedback_data.f_plus_denom[1] += scalar_weight_j*fabs(dx_ij_plus[1]);
+  si->feedback_data.f_plus_denom[2] += scalar_weight_j*fabs(dx_ij_plus[2]);
+
+
+  si->feedback_data.f_minus_num[0] += scalar_weight_j*fabs(dx_ij_plus[0]);
+  si->feedback_data.f_minus_num[1] += scalar_weight_j*fabs(dx_ij_plus[1]);
+  si->feedback_data.f_minus_num[2] += scalar_weight_j*fabs(dx_ij_plus[2]);
+
+  si->feedback_data.f_minus_denom[0] += scalar_weight_j*fabs(dx_ij_minus[0]);
+  si->feedback_data.f_minus_denom[1] += scalar_weight_j*fabs(dx_ij_minus[1]);
+  si->feedback_data.f_minus_denom[2] += scalar_weight_j*fabs(dx_ij_minus[2]);
+}
+
+
+/**
+ * @brief Prepare the feedback by computing the required quantities (loop 2). 
+ * Used for updating properties of star particles required for the feedback.
+ *
+ * In GEAR, we update the enrichment weight. 
+ *
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (si - pj).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param si First (star) particle (updated).
+ * @param pj Second (gas) particle (not updated).
+ * @param xpj Extra particle data
+ * @param cosmo The cosmological model.
+ * @param ti_current Current integer time.
+ */
+__attribute__((always_inline)) INLINE static void
+runner_iact_nonsym_feedback_prep2(const float r2, const float dx[3],
+                                  const float hi, const float hj,
+                                  struct spart *si, const struct part *pj,
+                                  const struct xpart *xpj,
+                                  const struct cosmology *cosmo,
+                                  const integertime_t ti_current) {
 
   /* Now we can compute f_plus and f_minus for the star */
   double f_plus_i[3], f_minus_i[3], w_j[3];
   feedback_compute_vector_weight_non_normalized(r2, dx, hi, hj, si, pj, f_plus_i,
 						f_minus_i, w_j);
 
-  /* Assign the f_plus and f_minus to the star */
-  si->feedback_data.f_plus[0] = f_plus_i[0];
-  si->feedback_data.f_plus[1] = f_plus_i[1];
-  si->feedback_data.f_plus[2] = f_plus_i[2];
-
-  si->feedback_data.f_minus[0] = f_minus_i[0];
-  si->feedback_data.f_minus[1] = f_minus_i[1];
-  si->feedback_data.f_minus[2] = f_minus_i[2];
-
   /* Accumulate w_j norm for later */
-  const double w_j_norm_2 = w_j[0]*w_j[0] + w_j[1]*w_j[1] + w_j[2]*w_j[2];
-  si->feedback_data.sum_vector_weight_norm += sqrt(w_j_norm_2);
+  const double w_j_norm_2 = w_j[0]*w_j[0] + w_j[1]*w_j[1] + w_j[2]*w_j[2];  
+  si->feedback_data.enrichment_weight += sqrt(w_j_norm_2);
 }
 
-
-/* __attribute__((always_inline)) INLINE static void */
-/* runner_iact_nonsym_feedback_prep1(const float r2, const float dx[3], */
-/*                                   const float hi, const float hj, */
-/*                                   const struct spart *si, struct part *pj, */
-/*                                   const struct xpart *xpj, */
-/*                                   const struct cosmology *cosmo, */
-/*                                   const integertime_t ti_current) {} */
-
-/* __attribute__((always_inline)) INLINE static void */
-/* runner_iact_nonsym_feedback_prep2(const float r2, const float dx[3], */
-/*                                   const float hi, const float hj, */
-/*                                   struct spart *si, const struct part *pj, */
-/*                                   const struct xpart *xpj, */
-/*                                   const struct cosmology *cosmo, */
-/*                                   const integertime_t ti_current) {} */
 
 /**
  * @brief Feedback interaction between two particles (non-symmetric).
@@ -117,50 +163,57 @@ runner_iact_nonsym_feedback_apply(
     return;
   }
 
+  message("pj->wcount = %e, id = %lld, wcount_approx = %e", pj->density.wcount, pj->id, pj->rho/pj->mass);
+  
   /* Finally, we can compute the w_j_bar. */
   double f_plus_i[3], f_minus_i[3], w_j[3];
   feedback_compute_vector_weight_non_normalized(r2, dx, hi, hj, si, pj, f_plus_i, f_minus_i, w_j);
 
-  double w_j_bar[3] =  {w_j[0]/si->feedback_data.sum_vector_weight_norm,
-			w_j[1]/si->feedback_data.sum_vector_weight_norm,
-			w_j[2]/si->feedback_data.sum_vector_weight_norm};
-
+  /* The normalized vector weight */
+  double w_j_bar[3] =  {w_j[0]/si->feedback_data.enrichment_weight,
+			w_j[1]/si->feedback_data.enrichment_weight,
+			w_j[2]/si->feedback_data.enrichment_weight};
   const double w_j_bar_norm_2 = w_j_bar[0]*w_j_bar[0] + w_j_bar[1]*w_j_bar[1] + w_j_bar[2]*w_j_bar[2];
   const double w_j_bar_norm = sqrt(w_j_bar_norm_2);
 
-  /* Update the xpart properties */
+  /* Here just get the feedback properties we want to distribute */
   const float mj = hydro_get_mass(pj);
   const double m_ej = si->feedback_data.mass_ejected;
   const double p_ej = sqrt(2*m_ej*e_sn) ;
 
-  /* Energy received */
+  /* Distribute mass... */
   double dm = w_j_bar_norm * m_ej;
   xpj->feedback_data.delta_mass += dm;
 
-  /* Add the metals */
+  /* ... metals */
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
     pj->chemistry_data.metal_mass[i] +=
 	w_j_bar_norm * si->feedback_data.metal_mass_ejected[i];
   }
 
-  /* Update Momentum */
+  /* ... momentum */
   const double dp[3] = {w_j_bar[0]*p_ej, w_j_bar[1]*p_ej, w_j_bar[2]*p_ej};
-  const double dp_prime[3] = {dp[0] + dm*si->v[0], dp[1] + dm*si->v[1], dp[2] + dm*si->v[2] };
-  const double dp_norm_2 = dp[0]*dp[0] +  dp[2]*dp[2] +  dp[2]*dp[2];
-  const double dp_prime_norm_2 = dp_prime[0]*dp_prime[0] +  dp_prime[2]*dp_prime[2]
+  const double dp_prime[3] = {dp[0] + dm*si->v[0], dp[1] + dm*si->v[1], dp[2] + dm*si->v[2]};
+  const double dp_norm_2 = dp[0]*dp[0] +  dp[1]*dp[1] +  dp[2]*dp[2];
+  const double dp_prime_norm_2 = dp_prime[0]*dp_prime[0] +  dp_prime[1]*dp_prime[1]
 				 +  dp_prime[2]*dp_prime[2];
 
   for (int i = 0; i < 3; i++) {
     xpj->feedback_data.delta_p[i] += dp_prime[i];
   }
 
-  /* Update energy */
+  /* ... energy */
   const double dE = w_j_bar_norm * e_sn;
   const double dE_prime = dE + 1.0/dm * (dp_prime_norm_2 - dp_norm_2);
-
   const double new_mass = mj + dm;
 
   xpj->feedback_data.delta_u += dE_prime/new_mass;
+
+  /* Impose maximal viscosity */
+  hydro_diffusive_feedback_reset(pj);
+
+  /* Synchronize the particle on the timeline */
+  timestep_sync_part(pj);
 
   /* Verify conservation things */
   si->feedback_data.delta_m_check += dm;
@@ -171,20 +224,7 @@ runner_iact_nonsym_feedback_apply(
   si->feedback_data.delta_p_check[1] += dp[1];
   si->feedback_data.delta_p_check[2] += dp[2];
 
-  message("Conservation check (star %lld): Sum dm_i = %e, Sum dE_i = %e, Sum |dp_i| = %e, Sum dp_i = (%e, %e, %e)", si->id, si->feedback_data.delta_m_check, si->feedback_data.delta_E_check, si->feedback_data.delta_p_norm_check, si->feedback_data.delta_p_check[0], si->feedback_data.delta_p_check[1], si->feedback_data.delta_p_check[2]);
-
-  /* si->feedback_data.delta_p_tot[0] += mj*pj->v[0] + dp_prime[0]; */
-  /* si->feedback_data.delta_p_tot[1] += mj*pj->v[1] + dp_prime[1] ; */
-  /* si->feedback_data.delta_p_tot[2] += mj*pj->v[1] + dp_prime[2] ; */
-
-  /* const double v_norm_2 = pj->v[0]*sp->v[0] + pj->v[1]*sp->v[1] + sp->v[2]*sp->v[2]; */
-  /* sp->feedback_data.E_tot = 0.5*sp->mass*v_norm_2; */
-
-  /* Impose maximal viscosity */
-  hydro_diffusive_feedback_reset(pj);
-
-  /* Synchronize the particle on the timeline */
-  timestep_sync_part(pj);
+  message("Conservation check (star %lld): Sum dm_i = %e (m_ej), Sum dE_i = %e (e_ej), Sum |dp_i| = %e (p_ej), Sum dp_i = (%e, %e, %e) (0), m_ej = %e, E_ej = %e, p_ej = %e", si->id, si->feedback_data.delta_m_check, si->feedback_data.delta_E_check, si->feedback_data.delta_p_norm_check, si->feedback_data.delta_p_check[0], si->feedback_data.delta_p_check[1], si->feedback_data.delta_p_check[2], m_ej, e_sn, p_ej);
 }
 
 

@@ -81,9 +81,6 @@ INLINE static void feedback_write_flavour(struct feedback_props* feedback,
   io_write_attribute_s(h_grp, "Feedback Model", "GEAR");
 };
 
-
-
-
 double feedback_compute_scalar_weight(const float r2, const float* dx,
                                       const float hi, const float hj,
                                       const struct spart* restrict si,

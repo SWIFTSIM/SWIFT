@@ -270,20 +270,6 @@ void feedback_init_spart(struct spart* sp) {
   sp->feedback_data.f_minus_denom[1] = 0.0;
   sp->feedback_data.f_minus_denom[2] = 0.0;
 
-  sp->feedback_data.f_plus[0] = 0.0;
-  sp->feedback_data.f_plus[1] = 0.0;
-  sp->feedback_data.f_plus[2] = 0.0;
-
-  sp->feedback_data.f_minus[0] = 0.0;
-  sp->feedback_data.f_minus[1] = 0.0;
-  sp->feedback_data.f_minus[2] = 0.0;
-
-  sp->feedback_data.sum_vector_weight_norm = 0.0;
-
-  /* Check things */
-    message("Conservation check (star %lld): Sum dm_i = %e, Sum dE_i = %e, Sum |dp_i| = %e, Sum dp_i = (%e, %e, %e)", sp->id, sp->feedback_data.delta_m_check, sp->feedback_data.delta_E_check, sp->feedback_data.delta_p_norm_check, sp->feedback_data.delta_p_check[0], sp->feedback_data.delta_p_check[1], sp->feedback_data.delta_p_check[2]);
-
-
   sp->feedback_data.delta_m_check = 0.0;
   sp->feedback_data.delta_E_check = 0.0;
   sp->feedback_data.delta_p_norm_check = 0.0;
@@ -291,13 +277,6 @@ void feedback_init_spart(struct spart* sp) {
   sp->feedback_data.delta_p_check[0] = 0 ;
   sp->feedback_data.delta_p_check[1] = 0 ;
   sp->feedback_data.delta_p_check[2] = 0 ;
-
-  sp->feedback_data.delta_p_tot[0] = sp->mass*sp->v[0];
-  sp->feedback_data.delta_p_tot[1] = sp->mass*sp->v[1];
-  sp->feedback_data.delta_p_tot[2] = sp->mass*sp->v[2];
-
-  const double v_norm_2 = sp->v[0]*sp->v[0] + sp->v[1]*sp->v[1] + sp->v[2]*sp->v[2];
-  sp->feedback_data.E_tot = 0.5*sp->mass*v_norm_2;
 }
 
 /**
@@ -442,9 +421,21 @@ void feedback_clean(struct feedback_props* feedback) {
 }
 
 
-
-/* Compute the scalar weight omega_j for particle j */
-/* Arrays are of length 3 */
+/**
+ * @brief Compute the scalar weight for the feedback. This scalar weight is
+ * used to compute the vector weight. 
+ *
+ * This function need to be called in loop 1.
+ *
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (si - pj).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param si First (star) particle.
+ * @param pj Second (gas) particle.
+ * @param dx_ij_plus (return) Projection vector plus. Pointer to array of size 3.
+ * @param dx_ij_minus (return) Projection vector minus. Pointer to array of size 3.
+ */
 __attribute__((always_inline)) INLINE
 double feedback_compute_scalar_weight(const float r2, const float *dx,
 				      const float hi, const float hj,
@@ -454,19 +445,21 @@ double feedback_compute_scalar_weight(const float r2, const float *dx,
 				      double* dx_ij_minus) {
 
   const float r = sqrtf(r2);
-  const float r_j2 = pj->x[0]*si->x[0] + pj->x[1]*si->x[1] + pj->x[1]*si->x[1];
 
-  float dW_ij_dr_j;
-  float dW_jj_dr_j;
-  const float u_ij = sqrt(r_j2)/hi;
-  const float u_jj = sqrt(r_j2)/hj;
-  float dummy_W;
+  /* Kernel derivatives evaluation */
+  const float u_ij = r/hi;
+  const float u_jj = r/hj;
+  float dW_ij_dr_j, dW_jj_dr_j, dummy_W;
 
   kernel_deval(u_ij, &dummy_W, &dW_ij_dr_j);
   kernel_deval(u_jj, &dummy_W, &dW_jj_dr_j);
 
-  dW_ij_dr_j *= pow_dimension(1.0/hi); /* 1/h_i^d */
-  dW_jj_dr_j *= pow_dimension(1.0/hj); /* 1/h_j^d */
+  dW_ij_dr_j *= pow_dimension_plus_one(1.0/hi); /* 1/h_i^(d+1) */
+  dW_jj_dr_j *= pow_dimension_plus_one(1.0/hj); /* 1/h_j^(d+1) */
+
+  /* Ensure they are positive (norm of the gradient) */
+  dW_ij_dr_j = fabsf(dW_ij_dr_j); 
+  dW_jj_dr_j = fabsf(dW_jj_dr_j);
 
   /* Compute the projection vectors */
   dx_ij_plus[0] = max(dx[0], 0.0)/r;
@@ -477,33 +470,55 @@ double feedback_compute_scalar_weight(const float r2, const float *dx,
   dx_ij_minus[1] = min(dx[1], 0.0)/r;
   dx_ij_minus[2] = min(dx[2], 0.0)/r;
 
+  /* This is simply dx/r, i.e the unit vector of dx */
   const double dx_ij_hat[3] = {(dx_ij_plus[0] + dx_ij_minus[0]),
 			       (dx_ij_plus[1] + dx_ij_minus[1]),
 			       (dx_ij_plus[2] + dx_ij_minus[2])};
 
-  /* I also need the x_ij_hat... which must be calculated before... */
-  double n_bar_i_2_inv = 1.0/(si->density.wcount*si->density.wcount);
-  double n_bar_j_2_inv = 1.0/(pj->density.wcount*pj->density.wcount);
 
+  /* The star wcount has been computed in the star density loop. It need to be
+   * multiplied by 1/h^d.
+   * The gas wcount cannot be retrived from here. So we approximate it using
+   * rho/mass. */
+  double n_bar_i = si->density.wcount *  pow_dimension(1.0/hi);
+  double n_bar_j = pj->rho/pj->mass;
+  double n_bar_i_2_inv = 1.0/(n_bar_i*n_bar_i);
+  double n_bar_j_2_inv = 1.0/(n_bar_j*n_bar_j);
+
+  /* Compute the face orientation vector */
   double A_j[3] = {(n_bar_i_2_inv * dW_ij_dr_j + n_bar_j_2_inv * dW_jj_dr_j)*dx_ij_hat[0],
 		   (n_bar_i_2_inv * dW_ij_dr_j + n_bar_j_2_inv * dW_jj_dr_j)*dx_ij_hat[1],
 		   (n_bar_i_2_inv * dW_ij_dr_j + n_bar_j_2_inv * dW_jj_dr_j)*dx_ij_hat[2]};
 
+  /* Prepare the computation of the scalar weight */
   double number_1 = A_j[0]*dx_ij_hat[0] +  A_j[1]*dx_ij_hat[1] + A_j[2]*dx_ij_hat[2];
-  double number_2 = M_PI * r2;
+  double number_2 = M_PI * r2;  
   double denom = sqrt(1 + number_1/number_2);
 
-  /* Store at least this value. I would not be against storing dx_ij and A to
-     avoid computing them many times and making mistakes... */
+  /* Finally compute the scalar weight = solid angle fraction the gas j occupy around the star. */
   double scalar_weight_j = 0.5*(1.0 - 1.0/denom) ;
 
   return scalar_weight_j;
 }
 
 
-
-/* Compute the vector weight w_j non normalized for particle j */
-/* Arrays are of length 3 */
+/**
+ * @brief Compute the non-normalized vector weight for the feedback.
+ *
+ * This function need to be called after loop 1 (in loop 2 and final feedback
+ * computations), i.e. it needs the accumulation of scalar weights to properly
+ * compute the vector weights. 
+ *
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (si - pj).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param si First (star) particle.
+ * @param pj Second (gas) particle.
+ * @param f_plus_i (return) Vector factor f_minus. Pointer to array of size 3.
+ * @param f_minus_i (return) Vector factor f_minus. Pointer to array of size 3.
+ * @param w_j (return) Non-noralized vector weight. Pointer to array of size 3.
+ */
 __attribute__((always_inline)) INLINE
 void feedback_compute_vector_weight_non_normalized(const float r2, const float *dx,
 						     const float hi, const float hj,
@@ -516,13 +531,14 @@ void feedback_compute_vector_weight_non_normalized(const float r2, const float *
   double dx_ij_minus[3];
   double scalar_weight_j = feedback_compute_scalar_weight(r2, dx, hi, hj, si, pj,
 							  dx_ij_plus, dx_ij_minus);
+
   /* Now, that we have accumulated the sums, we can compute the f_plus and
      f_minus */
-
   const double value_plus[3] = {1 + (si->feedback_data.f_plus_num[0]*si->feedback_data.f_plus_num[0])/(si->feedback_data.f_plus_denom[0]*si->feedback_data.f_plus_denom[0]),
 		     1 + (si->feedback_data.f_plus_num[1]*si->feedback_data.f_plus_num[1])/(si->feedback_data.f_plus_denom[1]*si->feedback_data.f_plus_denom[1]),
 		     1 + (si->feedback_data.f_plus_num[2]*si->feedback_data.f_plus_num[2])/(si->feedback_data.f_plus_denom[2]*si->feedback_data.f_plus_denom[2])};
 
+  /* Compute the vector factor f_plus */
   f_plus_i[0] = sqrt(0.5*value_plus[0]);
   f_plus_i[1] = sqrt(0.5*value_plus[1]);
   f_plus_i[2] = sqrt(0.5*value_plus[2]);
@@ -531,15 +547,13 @@ void feedback_compute_vector_weight_non_normalized(const float r2, const float *
 		     1 + (si->feedback_data.f_minus_num[1]*si->feedback_data.f_minus_num[1])/(si->feedback_data.f_minus_denom[1]*si->feedback_data.f_minus_denom[1]),
 		     1 + (si->feedback_data.f_minus_num[2]*si->feedback_data.f_minus_num[2])/(si->feedback_data.f_minus_denom[2]*si->feedback_data.f_minus_denom[2])};
 
+  /* Compute the vector factor f_minus */
   f_minus_i[0] = sqrt(0.5*value_minus[0]);
   f_minus_i[1] = sqrt(0.5*value_minus[1]);
   f_minus_i[2] = sqrt(0.5*value_minus[2]);
 
-  /* Now compute the w_j (vector) */
-  /* Dans le texte, on somme sur +/- et sur alpha=x,y,z. Mais ca ne donne pas
-  un vecteur. Je pense que la somme sur alpha est fausse et c'est juste
-  multiplier par les composantes */
+  /* Now compute the vector weight (non-normalized) */
   w_j[0] = scalar_weight_j*(dx_ij_plus[0]*f_plus_i[0] + dx_ij_minus[0]*f_minus_i[0]);
   w_j[1] = scalar_weight_j*(dx_ij_plus[1]*f_plus_i[1] + dx_ij_minus[1]*f_minus_i[1]);
-  w_j[2] = scalar_weight_j*(dx_ij_plus[2]*f_plus_i[2] + dx_ij_minus[1]*f_minus_i[2]);
+  w_j[2] = scalar_weight_j*(dx_ij_plus[2]*f_plus_i[2] + dx_ij_minus[2]*f_minus_i[2]);
 }

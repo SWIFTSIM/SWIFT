@@ -71,16 +71,12 @@ struct feedback_spart_data {
   double f_plus_denom[3];
   double f_minus_num[3];
   double f_minus_denom[3];
-  double f_plus[3];
-  double f_minus[3];
-  double sum_vector_weight_norm;
+  /* double sum_vector_weight_norm; */
 
   double delta_m_check;
   double delta_E_check;
   double delta_p_norm_check;
   double delta_p_check[3];
-  double delta_p_tot[3] ;
-  double E_tot;
 };
 
 #endif /* SWIFT_FEEDBACK_STRUCT_GEAR_H */
