@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """A module that defines a generic task parser class.
 
 This module should not be used directly, but instead should be imported by other
@@ -123,10 +122,13 @@ class Task:
 
 class TaskParser:
     def __init__(
-        self, filename, ranks=None, verbose=True, delta_t=0.0, mintic=-1
+        self, filename, name, ranks=None, verbose=True, delta_t=0.0, mintic=-1
     ):
         # Define the filename
         self.filename = filename
+
+        # Define the name for this data set
+        self.name = name
 
         # Are we talking?
         self.verbose = verbose
