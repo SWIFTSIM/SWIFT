@@ -1403,7 +1403,7 @@ void engine_rebuild(struct engine *e, const int repartitioned,
   if (e->policy & engine_policy_grid) {
     for (int i = 0; i < e->s->nr_cells; i++) {
       const struct cell *ci = &e->s->cells_top[i];
-      if (ci->hydro.count > 0 && !ci->grid.self_complete)
+      if (ci->hydro.count > 0 && !(ci->grid.self_completeness == grid_complete))
         error("Encountered incomplete top level cell!");
     }
   }

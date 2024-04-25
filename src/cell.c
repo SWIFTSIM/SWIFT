@@ -1289,9 +1289,15 @@ void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data) {
  *
  * The same must be true for all directly neighbouring cells on the same level,
  * but this is checked later.
+ *
+ * @param c The #cell to be checked
+ * @param force Whether to forcefully recompute the completeness if it was not
+ * invalidated.
  * */
-void cell_grid_set_self_completeness(struct cell *c) {
+void cell_grid_update_self_completeness(struct cell *c, int force) {
   if (c == NULL) return;
+  if (!force && (c->grid.self_completeness != grid_invalidated_completeness))
+    return;
 
   if (c->split) {
     int all_complete = 1;
@@ -1299,25 +1305,26 @@ void cell_grid_set_self_completeness(struct cell *c) {
     /* recurse */
     for (int i = 0; all_complete && i < 8; i++) {
       if (c->progeny[i] != NULL) {
-        cell_grid_set_self_completeness(c->progeny[i]);
+        cell_grid_update_self_completeness(c->progeny[i], force);
         /* As long as all progeny is complete, this cell can safely be split for
          * the grid construction (when not considering neighbouring cells) */
-        all_complete &= c->progeny[i]->grid.self_complete;
+        all_complete &=
+            (c->progeny[i]->grid.self_completeness == grid_complete);
       }
     }
 
     /* If all sub-cells are complete, this cell is also complete. */
     if (all_complete) {
-      c->grid.self_complete = 1;
-      /* We set complete to the same value as self complete for now */
-      c->grid.complete = c->grid.self_complete;
+      c->grid.self_completeness = grid_complete;
+      /* We set complete to true for now */
+      c->grid.complete = 1;
       /* We are done here */
       return;
     }
   }
 
-  /* If this cell is not split, we need to check if this cell is complete by
-   * looping over all the particles. */
+  /* If this cell is not split, or not all subcells are complete, we need to
+   * check if this cell is complete by looping over all the particles. */
 
   /* criterion = 0b111_111_111_111_111_111_111_111_111*/
 #ifdef HYDRO_DIMENSION_1D
@@ -1343,10 +1350,14 @@ void cell_grid_set_self_completeness(struct cell *c) {
     }
   }
 
-  c->grid.self_complete = (flags == criterion);
-
-  /* We set complete to the same value as self complete for now */
-  c->grid.complete = c->grid.self_complete;
+  /* Set completeness flags accordingly */
+  if (flags == criterion) {
+    c->grid.self_completeness = grid_complete;
+    c->grid.complete = 1;
+  } else {
+    c->grid.self_completeness = grid_incomplete;
+    c->grid.complete = 0;
+  }
 }
 
 void cell_grid_set_self_completeness_mapper(void *map_data, int num_elements,
@@ -1364,7 +1375,7 @@ void cell_grid_set_self_completeness_mapper(void *map_data, int num_elements,
     }
 
     /* Set the splittable attribute for the moving mesh */
-    cell_grid_set_self_completeness(c);
+    cell_grid_update_self_completeness(c, /*force*/ 1);
   }
 }
 
@@ -1438,20 +1449,22 @@ void cell_grid_set_pair_completeness(struct cell *restrict ci,
      * neighbouring cell invalidates completeness)
      * We need to use atomics here, since multiple threads may change this at
      * the same time. */
+    const int ci_self_complete = ci->grid.self_completeness == grid_complete;
+    const int cj_self_complete = cj->grid.self_completeness == grid_complete;
 #ifdef SHADOWSWIFT_RELAXED_COMPLETENESS
     if (ci_local) {
-      atomic_and(&ci->grid.complete,
-                 cj->grid.self_complete ||
-                     kernel_gamma * ci->hydro.h_max < 0.5 * cj->dmin);
+      atomic_and(
+          &ci->grid.complete,
+          cj_self_complete || kernel_gamma * ci->hydro.h_max < 0.5 * cj->dmin);
     }
     if (cj_local) {
-      atomic_and(&cj->grid.complete,
-                 ci->grid.self_complete ||
-                     kernel_gamma * cj->hydro.h_max < 0.5 * ci->dmin);
+      atomic_and(
+          &cj->grid.complete,
+          ci_self_complete || kernel_gamma * cj->hydro.h_max < 0.5 * ci->dmin);
     }
 #else
-    if (ci_local) atomic_and(&ci->grid.complete, cj->grid.self_complete);
-    if (cj_local) atomic_and(&cj->grid.complete, ci->grid.self_complete);
+    if (ci_local) atomic_and(&ci->grid.complete, cj_self_complete);
+    if (cj_local) atomic_and(&cj->grid.complete, ci_self_complete);
 #endif
   }
 }

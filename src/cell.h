@@ -215,7 +215,7 @@ struct pcell {
   /*! Grid variables */
   struct {
     /*! self complete flag */
-    int self_complete;
+    enum grid_completeness self_completeness;
   } grid;
 
   /*! RT variables */
@@ -652,7 +652,7 @@ void cell_activate_limiter(struct cell *c, struct scheduler *s);
 void cell_clear_drift_flags(struct cell *c, void *data);
 void cell_clear_limiter_flags(struct cell *c, void *data);
 void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data);
-void cell_grid_set_self_completeness(struct cell *c);
+void cell_grid_update_self_completeness(struct cell *c, int force);
 void cell_set_grid_completeness_mapper(void *map_data, int num_elements,
                                        void *extra_data);
 void cell_set_grid_construction_level_mapper(void *map_data, int num_elements,
@@ -1040,8 +1040,8 @@ cell_need_rebuild_for_grid_pair(struct cell *ci, struct cell *cj) {
 
   /* Check completeness criteria */
   /* NOTE: Both completeness flags should already be updated at this point */
-  if (!ci->grid.self_complete) return 1;
-  if (!cj->grid.self_complete) return 1;
+  if (ci->grid.self_completeness != grid_complete) return 1;
+  if (cj->grid.self_completeness != grid_complete) return 1;
 
   return 0;
 }

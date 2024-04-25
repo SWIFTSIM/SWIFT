@@ -958,8 +958,8 @@ static inline double geometry3d_compute_circumradius2_adaptive(
 
   /* Calculate and rescale radius */
   double radius = circumcenter[0] * circumcenter[0] +
-                       circumcenter[1] * circumcenter[1] +
-                       circumcenter[2] * circumcenter[2];
+                  circumcenter[1] * circumcenter[1] +
+                  circumcenter[2] * circumcenter[2];
   return radius * box_side * box_side;
 }
 

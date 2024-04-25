@@ -3437,7 +3437,7 @@ int cell_unskip_grid_tasks(struct cell *c, struct scheduler *s) {
     scheduler_activate(s, c->grid.construction);
     /* Update the self-completeness flag of c. For non-local cells the rebuild
      * will be triggered on another node if necessary */
-    cell_grid_set_self_completeness(c);
+    cell_grid_update_self_completeness(c, 0);
   }
 
   /* Loop over incoming sync tasks linked to this cell */
@@ -3445,6 +3445,7 @@ int cell_unskip_grid_tasks(struct cell *c, struct scheduler *s) {
 
     struct task *t = l->t;
 
+    /* Note that ci == c by definition of the sync_in tasks */
     struct cell *ci = t->ci;
     struct cell *cj = t->cj;
     int ci_nodeID = ci->nodeID;
@@ -3489,7 +3490,7 @@ int cell_unskip_grid_tasks(struct cell *c, struct scheduler *s) {
         if (cj->nodeID == nodeID) {
           /* Update the self-completeness flag of cj. For non-local cells the
            * rebuild will be triggered on another node if necessary */
-          cell_grid_set_self_completeness(c);
+          cell_grid_update_self_completeness(cj, 0);
         }
         rebuild = cell_need_rebuild_for_grid_pair(ci, cj);
 

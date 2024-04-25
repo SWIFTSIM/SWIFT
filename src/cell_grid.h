@@ -8,6 +8,12 @@
 #include "const.h"
 #include "shadowswift/voronoi.h"
 
+enum grid_completeness {
+  grid_invalidated_completeness = 0,
+  grid_complete,
+  grid_incomplete,
+};
+
 struct cell_grid {
   /*! Pointer to parent where the grid is constructed. */
   struct cell *construction_level;
@@ -19,7 +25,7 @@ struct cell_grid {
 
   /*! Whether this cell is complete (at least one particle in all 27 sub-cells
    * if this cell is divided in thirds along each axis). */
-  int self_complete;
+  enum grid_completeness self_completeness;
 
   /*! Whether this cell is itself complete and has directly neighbouring cell
    * on the same level in all directions which are also complete. */
