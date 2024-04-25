@@ -239,7 +239,7 @@ INLINE static void sink_props_init(struct sink_props *sp,
       params, "GEARSink:minimal_discrete_mass_first_stars");
 
   sp->star_spawning_sigma_factor =
-      parser_get_opt_param_int(params, "GEARSink:star_spawning_sigma_factor",
+      parser_get_opt_param_float(params, "GEARSink:star_spawning_sigma_factor",
                                default_star_spawning_sigma_factor);
 
   /* Sink formation criterion parameters (all active by default) */
