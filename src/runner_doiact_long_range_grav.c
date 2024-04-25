@@ -62,7 +62,7 @@ void runner_do_grav_long_range_recurse(struct runner *r, struct cell *ci,
   const double min_radius2 = cell_min_dist2(ci, cj, periodic, dim);
 
   /* If we're beyond the mesh distance we can exit. */
-  if (min_radius2 > max_distance2) return;
+  if (periodic && min_radius2 > max_distance2) return;
 
   /* Can we can interact at this level? */
   if (cell_can_use_pair_mm(ci, cj, e, s,
