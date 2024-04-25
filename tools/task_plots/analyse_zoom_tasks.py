@@ -494,6 +494,13 @@ def make_pair_mpoledist_plot(
         # Get the distances
         dists[name] = run.mpole_dists[mask]
 
+    # Combine all distances
+    all_dists = np.concatenate(list(dists.values()))
+
+    # Anything to do here?
+    if all_dists.size == 0:
+        return
+
     # Construct the bins
     all_dists = np.concatenate(list(dists.values()))
     bins = np.linspace(all_dists.min(), all_dists.max(), nbins + 1)
