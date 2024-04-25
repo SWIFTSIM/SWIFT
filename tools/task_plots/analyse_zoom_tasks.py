@@ -419,8 +419,14 @@ def make_pair_mindist_plot(
         # Get the distances
         dists[name] = run.min_dists[mask]
 
-    # Construct the bins
+    # Combine all distances
     all_dists = np.concatenate(list(dists.values()))
+
+    # Anything to do here?
+    if all_dists.size == 0:
+        return
+
+    # Construct the bins
     bins = np.linspace(all_dists.min(), all_dists.max(), nbins + 1)
     bin_cents = (bins[:-1] + bins[1:]) / 2
 
