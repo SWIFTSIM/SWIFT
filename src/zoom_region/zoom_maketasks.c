@@ -198,6 +198,12 @@ static void engine_make_self_gravity_tasks_void_cell_recursive(struct engine *e,
   }
 #endif
 
+  /* Recover the multipole information */
+  const struct gravity_tensors *multi_j = cj->grav.multipole;
+
+  /* Skip empty cells */
+  if (multi_j->m_pole.M_000 == 0.f) return;
+
   /* Do we need a pair interaction for these cells? */
   if (engine_gravity_need_cell_pair_task(e, ci, cj, periodic, use_mesh)) {
 
