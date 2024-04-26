@@ -208,6 +208,17 @@ void hydro_props_init(struct hydro_props *p,
     p->generate_random_ids = parser_get_opt_param_int(
         params, "SPH:particle_splitting_generate_random_ids", 0);
   }
+
+  /* ------ Particle conversion------- */
+
+  /* Get the flag for whether particles that reach h_max should be converted
+   * to dark matter.
+   * NOTE: turning this on will convert hydro particles that
+   * reach h_max to dark matter particles. Removing these can help with long
+   * running neighbour searches for non-physical particles limied by h_max but
+   * should be used with caution. */
+  p->convert_at_h_max =
+      parser_get_opt_param_int(params, "SPH:convert_particles_at_h_max", 0);
 }
 
 /**
@@ -283,6 +294,47 @@ void hydro_props_print(const struct hydro_props *p) {
   message("Planetary SPH: Balsara switch ENABLED");
 #endif
 #endif
+}
+
+/**
+ * @brief Print the limiting densities imposed by the maximal and minimal
+ * smoothing lengths.
+ *
+ * The reported densities use the mass of the first particle, although
+ * particle masses can vary this is a good enough approximation for the purpose
+ * of reporting an indicative density.
+ *
+ * @param p The #hydro_props.
+ * @param parts The #part array.
+ */
+void hydro_density_limit_print(const struct hydro_props *p,
+                               const struct part *parts) {
+
+  /* Get the limiting smoothing lengths. */
+  const float hydro_h_max = p->h_max;
+  const float hydro_h_min = p->h_min;
+
+  /* Compute the volume of the sphere defined by h_max and h_min. */
+  const double max_volume =
+      hydro_dimension_unit_sphere * pow_dimension(hydro_h_max);
+  const double min_volume =
+      hydro_dimension_unit_sphere * pow_dimension(hydro_h_min);
+
+  /* Compute the limiting densities. (Taking into account the factor of
+   * eta^dimensions from h = eta (m / rho)^(1/dimension)) */
+  const double min_density =
+      pow_dimension(p->eta_neighbours) * hydro_get_mass(&parts[0]) / max_volume;
+  const double max_density =
+      pow_dimension(p->eta_neighbours) * hydro_get_mass(&parts[0]) / min_volume;
+
+  message(
+      "Minimum density imposed by maximal smoothing length: %e U_M U_L^(-3) "
+      "(h_max = %e U_L)",
+      min_density, hydro_h_max);
+  message(
+      "Maximum density imposed by minimal smoothing length: %e U_M U_L^(-3) "
+      "(h_min = %e U_L)",
+      max_density, hydro_h_min);
 }
 
 #if defined(HAVE_HDF5)

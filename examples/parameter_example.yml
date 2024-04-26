@@ -57,6 +57,7 @@ SPH:
   diffusion_beta:                    0.01     # (Optional) Override the decay/rise rate tuning parameter for the thermal diffusion.
   diffusion_alpha_max:               1.0      # (Optional) Override the maximal thermal diffusion coefficient that is allowed for a given particle.
   diffusion_alpha_min:               0.0      # (Optional) Override the minimal thermal diffusion coefficient that is allowed for a given particle.
+  convert_particles_at_h_max:         1        # Flag for whether to convert SPH particles which reach h_max to dark matter (this can help with long running neighbour searches by removing non-physical particles limited by h_max)
 
 # Parameters of the stars
 Stars:
@@ -101,7 +102,8 @@ Gravity:
   a_smooth:                      1.25      # (Optional) Smoothing scale in top-level cell sizes to smooth the long-range forces over (this is the default value).
   r_cut_max:                     4.5       # (Optional) Cut-off in number of top-level cells beyond which no FMM forces are computed (this is the default value).
   r_cut_min:                     0.1       # (Optional) Cut-off in number of top-level cells below which no truncation of FMM forces are performed (this is the default value).
-
+  exact_gravity_check_types:     [0, 1, 0, 0, 0, 0, 0] # (Optional) What particle types to check for in the exact gravity N^2 algorithm. (defaults to all types)
+  
 # Parameters when running with SWIFT_GRAVITY_FORCE_CHECKS 
 ForceChecks:
   only_when_all_active: 1  # (Optional) Only compute exact forces during timesteps when all gparts are active (default: 0).

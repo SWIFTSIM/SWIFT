@@ -483,6 +483,10 @@ void gravity_exact_force_compute_mapper(void *map_data, int nr_gparts,
 
     struct gpart *gpi = &gparts[i];
 
+    /* Are we ignoring this particle type? */
+    if (!e->gravity_properties->exact_gravity_to_check_types[gpi->type])
+      continue;
+
     /* Get the particle ID */
     long long id = 0;
     if (gpi->type == swift_type_gas)
@@ -715,6 +719,10 @@ void gravity_exact_force_check(struct space *s, const struct engine *e,
 
     struct gpart *gpi = &s->gparts[i];
 
+    /* Are we ignoring this particle type? */
+    if (!e->gravity_properties->exact_gravity_to_check_types[gpi->type])
+      continue;
+
     /* Get the particle ID */
     long long id = 0;
     if (gpi->type == swift_type_gas)
@@ -783,6 +791,10 @@ void gravity_exact_force_check(struct space *s, const struct engine *e,
     for (size_t i = 0; i < s->nr_gparts; ++i) {
 
       struct gpart *gpi = &s->gparts[i];
+
+      /* Are we ignoring this particle type? */
+      if (!e->gravity_properties->exact_gravity_to_check_types[gpi->type])
+        continue;
 
       long long id = 0;
       if (gpi->type == swift_type_gas)

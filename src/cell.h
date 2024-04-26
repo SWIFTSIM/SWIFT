@@ -719,6 +719,7 @@ void cell_check_spart_pos(const struct cell *c,
 void cell_check_sort_flags(const struct cell *c);
 void cell_clear_stars_sort_flags(struct cell *c, const int unused_flags);
 void cell_clear_hydro_sort_flags(struct cell *c, const int unused_flags);
+void cell_clear_unskip_flags(struct cell *c);
 int cell_has_tasks(struct cell *c);
 void cell_remove_part(const struct engine *e, struct cell *c, struct part *p,
                       struct xpart *xp);
@@ -741,6 +742,8 @@ struct gpart *cell_convert_part_to_gpart(const struct engine *e, struct cell *c,
                                          struct part *p, struct xpart *xp);
 struct gpart *cell_convert_spart_to_gpart(const struct engine *e,
                                           struct cell *c, struct spart *sp);
+struct gpart *cell_convert_bpart_to_gpart(const struct engine *e,
+                                          struct cell *c, struct bpart *bp);
 struct spart *cell_convert_part_to_spart(struct engine *e, struct cell *c,
                                          struct part *p, struct xpart *xp);
 struct sink *cell_convert_part_to_sink(struct engine *e, struct cell *c,
