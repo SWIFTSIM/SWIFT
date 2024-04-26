@@ -245,7 +245,9 @@ inline static void voronoi_build(struct voronoi *v, struct delaunay *d,
   voronoi_assert(d->vertex_end > 0);
 
   /* Compute the circumcentres */
-  delaunay_compute_circumcentres(d);
+  double *circumcenters =
+      malloc(3 * d->tetrahedra_index * sizeof(*circumcenters));
+  delaunay_compute_circumcenters(d, circumcenters);
 
   /* Allocate memory for the neighbour flags and initialize them to 0 (will be
    * freed at the end of this function!) */
@@ -339,6 +341,19 @@ inline static void voronoi_build(struct voronoi *v, struct delaunay *d,
       voronoi_assert(axis_idx_in_d >= d->vertex_start);
       struct tetrahedron *first_t = &d->tetrahedra[first_t_idx];
 
+#ifdef SWIFT_DEBUG_CHECKS
+      /* Local ngb? */
+      if (axis_idx_in_d < d->vertex_end) {
+        int ngb = d->vertex_part_idx[axis_idx_in_d];
+        double *nx = parts[ngb].x;
+        double dx[] = {nx[0] - ax, nx[1] - ay, nx[2] - az};
+        if (dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2] >
+            p->geometry.search_radius) {
+          error("Neigbouring particle too far away!");
+        }
+      }
+#endif
+
       /* Get a non axis vertex from first_t */
       int non_axis_idx_in_first_t = (axis_idx_in_t + 1) % 4;
       if (first_t->vertices[non_axis_idx_in_first_t] == gen_idx_in_d) {
@@ -381,7 +396,7 @@ inline static void voronoi_build(struct voronoi *v, struct delaunay *d,
       }
 
       /* Get the coordinates of the voronoi vertex of the new face */
-      const double *vor_vertex0 = d->tetrahedra[first_t_idx].circumcenter;
+      const double *vor_vertex0 = &circumcenters[3 * first_t_idx];
 #ifdef VORONOI_STORE_FACES
       memcpy(&face_vertices[0], vor_vertex0, 3 * sizeof(*vor_vertex0));
       face_vertices_index = 1;
@@ -404,8 +419,8 @@ inline static void voronoi_build(struct voronoi *v, struct delaunay *d,
 #endif
         /* Get the coordinates of the voronoi vertex corresponding to cur_t and
          * next_t */
-        const double *vor_vertex1 = d->tetrahedra[cur_t_idx].circumcenter;
-        const double *vor_vertex2 = d->tetrahedra[next_t_idx].circumcenter;
+        const double *vor_vertex1 = &circumcenters[3 * cur_t_idx];
+        const double *vor_vertex2 = &circumcenters[3 * next_t_idx];
 #ifdef VORONOI_STORE_FACES
         memcpy(&face_vertices[3 * face_vertices_index], vor_vertex1,
                3 * sizeof(*vor_vertex1));
@@ -528,6 +543,7 @@ inline static void voronoi_build(struct voronoi *v, struct delaunay *d,
     }
 #endif
   }
+  free(circumcenters);
   free(neighbour_flags);
   int3_fifo_queue_destroy(&neighbour_info_q);
   voronoi_finalize(v, d, parts);
