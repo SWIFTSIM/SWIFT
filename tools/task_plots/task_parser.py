@@ -25,6 +25,7 @@ You should have received a copy of the GNU Lesser General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 import sys
+import random
 import numpy as np
 
 # import hardcoded data
@@ -46,6 +47,94 @@ CELLSUBTYPES = [
     "Void",
     # Empty will never appear
 ]
+
+
+def hsv_to_rgb(h, s, v):
+    """
+    Convert HSV color space to RGB color space.
+
+    Args:
+        h (float): Hue (0-360 degrees)
+        s (float): Saturation (0-1)
+        v (float): Value (0-1)
+
+    Returns:
+        tuple: Corresponding RGB values scaled between 0 and 255
+    """
+    c = v * s
+    x = c * (1 - abs((h / 60) % 2 - 1))
+    m = v - c
+
+    if h < 60:
+        r, g, b = c, x, 0
+    elif h < 120:
+        r, g, b = x, c, 0
+    elif h < 180:
+        r, g, b = 0, c, x
+    elif h < 240:
+        r, g, b = 0, x, c
+    elif h < 300:
+        r, g, b = x, 0, c
+    else:
+        r, g, b = c, 0, x
+
+    r = (r + m) * 255
+    g = (g + m) * 255
+    b = (b + m) * 255
+
+    return int(r), int(g), int(b)
+
+
+def rgb_to_hex(r, g, b):
+    """
+    Convert RGB color space to Hex color code.
+
+    Args:
+        r (int): Red component (0-255)
+        g (int): Green component (0-255)
+        b (int): Blue component (0-255)
+
+    Returns:
+        str: Corresponding Hex color code
+    """
+    return f"#{r:02x}{g:02x}{b:02x}"
+
+
+def generate_distinct_colors(n):
+    """
+    Generate n distinct hex colors using HSV color space.
+
+    Args:
+        n (int): Number of distinct colors to generate.
+
+    Returns:
+        list: List of hex color codes.
+    """
+    colors = []
+    for i in range(n):
+        h = (360 / n) * i  # Evenly space the hue values
+        s = 1  # Set saturation to 100%
+        v = 1  # Set value to 100%
+        r, g, b = hsv_to_rgb(h, s, v)
+        hex_color = rgb_to_hex(r, g, b)
+        colors.append(hex_color)
+    return colors
+
+
+def assign_colors(labels):
+    """
+    Generate a dictionary mapping each label to a distinct hex color.
+
+    Args:
+        labels (list): A list of labels for which to generate distinct colors.
+
+    Returns:
+        dict: A dictionary with labels as keys and hex color codes as values.
+    """
+    num_labels = len(labels)
+    colors = generate_distinct_colors(num_labels)
+    random.shuffle(colors)
+    return dict(zip(labels, colors))
 
 
 class Task:
@@ -612,6 +701,10 @@ class TaskParser:
         This will return the labels, tics, and tocs split by thread for a given
         set of tasks or all tasks if no filters are applied.
 
+        This method will also generate a color for each label. These colors are
+        evenly spaced in the HSV color space and then randomly assigned to each
+        label.
+
         Args:
             task: The specific task to return.
             ci_type: The type of the ci cell.
@@ -639,8 +732,7 @@ class TaskParser:
         _tocs = self.tocs[mask]
         threads = self.task_threads[mask]
 
-        # Count the tasks and threads
-        unique_labels = set(_labels)
+        # Count the threads
         nthreads = threads.max() + 1
 
         # Create dictionaries split by thread
@@ -654,7 +746,7 @@ class TaskParser:
             tics[threads[i]].append(_tics[i])
             tocs[threads[i]].append(_tocs[i])
 
-        return labels, tics, tocs, len(unique_labels)
+        return labels, tics, tocs, assign_colors(labels)
 
     @property
     def task_ranks(self):
