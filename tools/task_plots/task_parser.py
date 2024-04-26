@@ -367,6 +367,75 @@ class TaskParser:
             self.task_labels[i] = self.tasks[i].task
             self.dt[i] = self.tasks[i].dt
 
+    def get_mask(
+        self,
+        ci_type=None,
+        cj_type=None,
+        ci_subtype=None,
+        cj_subtype=None,
+        depth=None,
+    ):
+        mask = np.ones(len(self.task_labels), dtype=bool)
+        if (ci_type is not None and cj_type is None) or (
+            ci_type is None and cj_type is not None
+        ):
+            cell_type = ci_type if ci_type is not None else cj_type
+            mask = np.logical_and(
+                mask,
+                np.logical_or(
+                    self.ci_types == cell_type,
+                    self.cj_types == cell_type,
+                ),
+            )
+        if ci_type is not None and cj_type is not None:
+            mask = np.logical_and(
+                mask,
+                np.logical_or(
+                    np.logical_and(
+                        self.ci_types == ci_type,
+                        self.cj_types == cj_type,
+                    ),
+                    np.logical_and(
+                        self.ci_types == cj_type,
+                        self.cj_types == ci_type,
+                    ),
+                ),
+            )
+        if (ci_subtype is not None and cj_subtype is None) or (
+            ci_subtype is None and cj_subtype is not None
+        ):
+            cell_subtype = ci_subtype if ci_subtype is not None else cj_subtype
+            mask = np.logical_and(
+                mask,
+                np.logical_or(
+                    self.ci_subtypes == cell_subtype,
+                    self.cj_subtypes == cell_subtype,
+                ),
+            )
+        if ci_subtype is not None and cj_subtype is not None:
+            mask = np.logical_and(
+                mask,
+                np.logical_or(
+                    np.logical_and(
+                        self.ci_subtypes == ci_subtype,
+                        self.cj_subtypes == cj_subtype,
+                    ),
+                    np.logical_and(
+                        self.ci_subtypes == cj_subtype,
+                        self.cj_subtypes == ci_subtype,
+                    ),
+                ),
+            )
+        if depth is not None:
+            mask = np.logical_and(
+                mask,
+                np.logical_or(
+                    self.ci_depths == depth, self.cj_depths == depth
+                ),
+            )
+
+        return mask
+
     def _get_tasks_with_mask(self, mask=None):
         if mask is not None:
             tasks = self.tasks[mask]
