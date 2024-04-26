@@ -32,6 +32,11 @@ import numpy as np
 from swift_hardcoded_data import TASKTYPES, SUBTYPES
 
 
+# Set the random seed for reproducibility
+random.seed(42)
+np.random.seed(42)
+
+
 # Cell types.
 CELLTYPES = [
     "Regular",
