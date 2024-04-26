@@ -190,7 +190,9 @@ def make_task_hist(
     ax.grid(True)
 
     for i, (name, run) in enumerate(runs.items()):
-        mask = make_mask(run, ci_type, cj_type, ci_subtype, cj_subtype, depth)
+        mask = run.get_mask(
+            run, ci_type, cj_type, ci_subtype, cj_subtype, depth
+        )
 
         labels, counts = np.unique(run.task_labels[mask], return_counts=True)
 
@@ -261,7 +263,9 @@ def make_task_hist_time_weighted(
     ax.grid(True)
 
     for i, (name, run) in enumerate(runs.items()):
-        mask = make_mask(run, ci_type, cj_type, ci_subtype, cj_subtype, depth)
+        mask = run.get_mask(
+            run, ci_type, cj_type, ci_subtype, cj_subtype, depth
+        )
 
         # Loop over tasks collecting their runtime
         labels = np.unique(run.task_labels[mask])
@@ -340,7 +344,9 @@ def make_pair_mindist_plot(
     # Collect the distances
     dists = {}
     for i, (name, run) in enumerate(runs.items()):
-        mask = make_mask(run, ci_type, cj_type, ci_subtype, cj_subtype, depth)
+        mask = run.get_mask(
+            run, ci_type, cj_type, ci_subtype, cj_subtype, depth
+        )
 
         # Ensure we only have pair tasks (i.e. the string "pair" is in the
         # task label)
@@ -409,7 +415,9 @@ def make_pair_mpoledist_plot(
     # Collect the distances
     dists = {}
     for i, (name, run) in enumerate(runs.items()):
-        mask = make_mask(run, ci_type, cj_type, ci_subtype, cj_subtype, depth)
+        mask = run.get_mask(
+            run, ci_type, cj_type, ci_subtype, cj_subtype, depth
+        )
 
         # Ensure we only have pair tasks (i.e. the string "pair" is in the
         # task label)
@@ -506,30 +514,48 @@ if __name__ == "__main__":
 
     make_task_hist(runs)
     make_task_hist(runs, ci_type=1, cj_type=1)
+    make_task_hist(runs, ci_type=2, cj_type=2)
     make_task_hist(runs, ci_type=3, cj_type=3)
+    make_task_hist(runs, ci_type=1, cj_type=2)
     make_task_hist(runs, ci_type=1, cj_type=3)
+    make_task_hist(runs, ci_type=2, cj_type=3)
 
     make_task_hist(runs, depth=0)
     make_task_hist(runs, ci_type=1, cj_type=1, depth=0)
-    make_task_hist(runs, ci_type=1, cj_type=3, depth=0)
+    make_task_hist(runs, ci_type=2, cj_type=2, depth=0)
     make_task_hist(runs, ci_type=3, cj_type=3, depth=0)
+    make_task_hist(runs, ci_type=1, cj_type=3, depth=0)
+    make_task_hist(runs, ci_type=1, cj_type=2, depth=0)
+    make_task_hist(runs, ci_type=2, cj_type=3, depth=0)
 
     make_task_hist_time_weighted(runs)
     make_task_hist_time_weighted(runs, ci_type=1, cj_type=1)
+    make_task_hist_time_weighted(runs, ci_type=2, cj_type=2)
     make_task_hist_time_weighted(runs, ci_type=3, cj_type=3)
     make_task_hist_time_weighted(runs, ci_type=1, cj_type=3)
+    make_task_hist_time_weighted(runs, ci_type=1, cj_type=2)
+    make_task_hist_time_weighted(runs, ci_type=2, cj_type=3)
 
     make_task_hist_time_weighted(runs, depth=0)
     make_task_hist_time_weighted(runs, ci_type=1, cj_type=1, depth=0)
-    make_task_hist_time_weighted(runs, ci_type=1, cj_type=3, depth=0)
+    make_task_hist_time_weighted(runs, ci_type=2, cj_type=2, depth=0)
     make_task_hist_time_weighted(runs, ci_type=3, cj_type=3, depth=0)
+    make_task_hist_time_weighted(runs, ci_type=1, cj_type=3, depth=0)
+    make_task_hist_time_weighted(runs, ci_type=1, cj_type=2, depth=0)
+    make_task_hist_time_weighted(runs, ci_type=2, cj_type=3, depth=0)
 
     make_pair_mindist_plot(runs)
     make_pair_mindist_plot(runs, ci_type=1, cj_type=1)
+    make_pair_mindist_plot(runs, ci_type=2, cj_type=2)
     make_pair_mindist_plot(runs, ci_type=3, cj_type=3)
     make_pair_mindist_plot(runs, ci_type=1, cj_type=3)
+    make_pair_mindist_plot(runs, ci_type=1, cj_type=2)
+    make_pair_mindist_plot(runs, ci_type=2, cj_type=3)
 
     make_pair_mpoledist_plot(runs)
     make_pair_mpoledist_plot(runs, ci_type=1, cj_type=1)
+    make_pair_mpoledist_plot(runs, ci_type=2, cj_type=2)
     make_pair_mpoledist_plot(runs, ci_type=3, cj_type=3)
     make_pair_mpoledist_plot(runs, ci_type=1, cj_type=3)
+    make_pair_mpoledist_plot(runs, ci_type=1, cj_type=2)
+    make_pair_mpoledist_plot(runs, ci_type=2, cj_type=3)
