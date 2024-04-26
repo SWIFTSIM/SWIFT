@@ -2,6 +2,7 @@
 """
 Usage:
 
+python analyse_zoom_tasks.py --files file1 file2 --labels label1 label2
 
 This file is part of SWIFT.
 
@@ -189,10 +190,17 @@ def make_task_hist(
     ax.set_xscale("log")
     ax.grid(True)
 
+    # Combine all information into the labels
+    nempty_runs = 0
     for i, (name, run) in enumerate(runs.items()):
         mask = run.get_mask(
             run, ci_type, cj_type, ci_subtype, cj_subtype, depth
         )
+
+        # Check we have something to plot
+        if mask.sum() == 0:
+            nempty_runs += 1
+            continue
 
         labels, counts = np.unique(run.task_labels[mask], return_counts=True)
 
@@ -216,6 +224,14 @@ def make_task_hist(
             label=name,
             alpha=0.7,
         )
+
+    # Exit if there's nothing to plot
+    if nempty_runs == len(runs):
+        print(
+            f"Nothing to plot for ci_type={ci_type}, cj_type={cj_type} "
+            f"ci_subtype={ci_subtype}, cj_subtype={cj_subtype}, depth={depth}"
+        )
+        return
 
     ax.set_yticks(np.arange(len(labels)) + 0.2)
     ax.set_yticklabels(labels)
@@ -262,10 +278,17 @@ def make_task_hist_time_weighted(
     ax.set_xscale("log")
     ax.grid(True)
 
+    # Combine all information into the labels
+    nempty_runs = 0
     for i, (name, run) in enumerate(runs.items()):
         mask = run.get_mask(
             run, ci_type, cj_type, ci_subtype, cj_subtype, depth
         )
+
+        # Check we have something to plot
+        if mask.sum() == 0:
+            nempty_runs += 1
+            continue
 
         # Loop over tasks collecting their runtime
         labels = np.unique(run.task_labels[mask])
@@ -293,6 +316,14 @@ def make_task_hist_time_weighted(
             label=name,
             alpha=0.7,
         )
+
+    # Exit if there's nothing to plot
+    if nempty_runs == len(runs):
+        print(
+            f"Nothing to plot for ci_type={ci_type}, cj_type={cj_type} "
+            f"ci_subtype={ci_subtype}, cj_subtype={cj_subtype}, depth={depth}"
+        )
+        return
 
     ax.set_yticks(np.arange(len(labels)) + 0.2)
     ax.set_yticklabels(labels)
@@ -357,8 +388,18 @@ def make_pair_mindist_plot(
         # Get the distances
         dists[name] = run.min_dists[mask]
 
-    # Construct the bins
+    # Collect together all the distances
     all_dists = np.concatenate(list(dists.values()))
+
+    # Exit if there are no distances
+    if all_dists.size == 0:
+        print(
+            f"No distances to plot for ci_type={ci_type}, cj_type={cj_type} "
+            f"ci_subtype={ci_subtype}, cj_subtype={cj_subtype}, depth={depth}"
+        )
+        return
+
+    # Construct the bins
     bins = np.linspace(all_dists.min(), all_dists.max(), nbins + 1)
     bin_cents = (bins[:-1] + bins[1:]) / 2
 
@@ -428,8 +469,18 @@ def make_pair_mpoledist_plot(
         # Get the distances
         dists[name] = run.mpole_dists[mask]
 
-    # Construct the bins
+    # Collect together all the distances
     all_dists = np.concatenate(list(dists.values()))
+
+    # Exit if there are no distances
+    if all_dists.size == 0:
+        print(
+            f"No distances to plot for ci_type={ci_type}, cj_type={cj_type} "
+            f"ci_subtype={ci_subtype}, cj_subtype={cj_subtype}, depth={depth}"
+        )
+        return
+
+    # Construct the bins
     bins = np.linspace(all_dists.min(), all_dists.max(), nbins + 1)
     bin_cents = (bins[:-1] + bins[1:]) / 2
 
