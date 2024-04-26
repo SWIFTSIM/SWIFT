@@ -8,10 +8,7 @@ thread_info*files.
 
 This file is part of SWIFT.
 
-Copyright (C) 2015 Pedro Gonnet (pedro.gonnet@durham.ac.uk),
-                   Bert Vandenbroucke (bert.vandenbroucke@ugent.be)
-                   Matthieu Schaller (schaller@strw.leidenuniv.nl)
-          (C) 2017 Peter W. Draper (p.w.draper@durham.ac.uk)
+Copyright (C) 2024 Will Roper (w.roper@sussex.ac.uk)
 All Rights Reserved.
 
 This program is free software: you can redistribute it and/or modify
@@ -52,6 +49,34 @@ CELLSUBTYPES = [
 
 
 class Task:
+    """A class to hold the data for a single task.
+
+    This class is used to hold the data for a single task. It is used by the
+    TaskParser class to hold the data for each task in the file.
+
+    Attributes:
+        rank: The rank of the task.
+        thread: The thread of the task.
+        type: The type of the task.
+        subtype: The subtype of the task.
+        task: The task string.
+        tic: The start time of the task.
+        toc: The end time of the task.
+        ci_part_count: The number of particles in the ci cell.
+        cj_part_count: The number of particles in the cj cell.
+        ci_gpart_count: The number of ghost particles in the ci cell.
+        cj_gpart_count: The number of ghost particles in the cj cell.
+        ci_type: The type of the ci cell.
+        cj_type: The type of the cj cell.
+        ci_subtype: The subtype of the ci cell.
+        cj_subtype: The subtype of the cj cell.
+        ci_depth: The depth of the ci cell.
+        cj_depth: The depth of the cj cell.
+        min_dist: The minimum distance.
+        mpole_dist: The multipole distance.
+        dt: The duration of the task.
+    """
+
     def __init__(
         self,
         rank,
@@ -73,6 +98,29 @@ class Task:
         min_dist,
         mpole_dist,
     ):
+        """
+        Initialise the Task object.
+
+        Args:
+            rank: The rank of the task.
+            thread: The thread of the task.
+            type_int: The type of the task.
+            subtype_int: The subtype of the task.
+            tic: The start time of the task.
+            toc: The end time of the task.
+            ci_part_count: The number of particles in the ci cell.
+            cj_part_count: The number of particles in the cj cell.
+            ci_gpart_count: The number of ghost particles in the ci cell.
+            cj_gpart_count: The number of ghost particles in the cj cell.
+            ci_type: The type of the ci cell.
+            cj_type: The type of the cj cell.
+            ci_subtype: The subtype of the ci cell.
+            cj_subtype: The subtype of the cj cell.
+            ci_depth: The depth of the ci cell.
+            cj_depth: The depth of the cj cell.
+            min_dist: The minimum distance.
+            mpole_dist: The multipole distance.
+        """
         self.rank = rank
         self.thread = thread
         self.type = TASKTYPES[type_int]
@@ -99,6 +147,12 @@ class Task:
         self.dt = toc - tic
 
     def __str__(self):
+        """
+        Return a string representation of the task.
+
+        Returns:
+            A string representation of the task.
+        """
         return (
             "Rank: %d, Thread: %d, Task: %d, Subtask: %d, Tic: %d, Toc: %d, "
             "ci_type: %d, cj_type: %d, ci_subtype: %d, cj_subtype: %d, "
@@ -121,9 +175,50 @@ class Task:
 
 
 class TaskParser:
+    """A class to parse the thread_info-step*.dat files.
+
+    This will ingest a thread_info-step*.dat file and parse it to extract the
+    data and convert it to a useful human readable format. The methods then
+    provide an interface to access this data.
+
+    Attributes:
+        filename: The filename of the file to parse.
+        name: The name of the data set.
+        ranks: A list of ranks to parse.
+        verbose: A flag to determine if the parser should print information.
+        delta_t: The time range to parse.
+        mintic: The start time to parse.
+        filename: The filename of the file to parse.
+        name: The name of the data set.
+        verbose: A flag to determine if the parser should print information.
+        delta_t: The time range to parse.
+        mintic: The start time to parse.
+        end_t: The end time of the data.
+        data: The data from the file.
+        full_step: The header of the file.
+        mpimode: A flag to determine if the file is an MPI file.
+        ranks: A list of ranks to parse.
+        _col_look_up: A dictionary to look up the columns in the data.
+        cpu_clock: The CPU clock frequency.
+        nthread: The number of threads.
+        tasks: An array of tasks.
+        dt: An array of task durations.
+    """
+
     def __init__(
         self, filename, name, ranks=None, verbose=True, delta_t=0.0, mintic=-1
     ):
+        """
+        Initialise the TaskParser object.
+
+        Args:
+            filename: The filename of the file to parse.
+            name: The name of the data set.
+            ranks: A list of ranks to parse.
+            verbose: A flag to determine if the parser should print information.
+            delta_t: The time range to parse.
+            mintic: The start time to parse.
+        """
         # Define the filename
         self.filename = filename
 
@@ -180,10 +275,20 @@ class TaskParser:
         self._parse_tasks()
 
     def _load_data(self):
+        """Load the data from the file."""
         self.data = np.loadtxt(self.filename)
         self.full_step = self.data[0, :]
 
     def _define_columns(self):
+        """
+        Define the columns of the data.
+
+        This is needed since the data is stored in different columns depending
+        on whether the file is an MPI file or not.
+
+        This populates a look up dictionary which can be utilised to get data
+        by label.
+        """
         # If we have been given a subset of ranks, parse them
         if self.ranks is not None:
             self.ranks = [int(item) for item in self.ranks.split(",")]
@@ -235,9 +340,16 @@ class TaskParser:
             self._col_look_up["mpole_dist"] = 18
 
     def _extract_column(self, column):
+        """
+        Get a column without needing to know the index.
+
+        Args:
+            column: The string defining the column to extract.
+        """
         return self.data[:, self._col_look_up[column]]
 
     def _process_header(self, mintic):
+        """Process the header to extract metadata."""
         # Extract the CPU clock
         if self.mpimode:
             self.cpu_clock = float(self.full_step[12]) / 1000.0
@@ -298,6 +410,12 @@ class TaskParser:
         self.end_t = self.start_t + self.delta_t
 
     def _clean_up_data(self):
+        """
+        Clean up the data.
+
+        This method will remove the header, remove any zero start and end times
+        and convert the tics and tocs to ms.
+        """
         # Remove the header
         self.data = self.data[1:, :]
 
@@ -317,6 +435,7 @@ class TaskParser:
         self.data[:, self._col_look_up["toc"]] /= self.cpu_clock
 
     def _parse_tasks(self):
+        """Parse the tasks creating Task objects."""
         # Prepare the arrays we'll populate
         self.tasks = np.zeros(self.ntasks, dtype=object)
         self.task_labels = np.zeros(self.ntasks, dtype=object)
@@ -375,6 +494,16 @@ class TaskParser:
         cj_subtype=None,
         depth=None,
     ):
+        """
+        Get a mask for the data based on some filters.
+
+        Args:
+            ci_type: The type of the ci cell.
+            cj_type: The type of the cj cell.
+            ci_subtype: The subtype of the ci cell.
+            cj_subtype: The subtype of the cj cell.
+            depth: The depth of the cells.
+        """
         mask = np.ones(len(self.task_labels), dtype=bool)
         if (ci_type is not None and cj_type is None) or (
             ci_type is None and cj_type is not None
@@ -437,6 +566,12 @@ class TaskParser:
         return mask
 
     def _get_tasks_with_mask(self, mask=None):
+        """
+        Get a subset of the tasks.
+
+        Args:
+            mask: The mask to apply to the data.
+        """
         if mask is not None:
             tasks = self.tasks[mask]
         else:
@@ -446,12 +581,15 @@ class TaskParser:
         return tasks, unique_tasks, unique_count
 
     def get_tasks(self):
+        """Get all tasks."""
         return self._get_tasks_with_mask()
 
     def get_tasks_on_rank(self, rank):
+        """Get tasks filtered by ranks."""
         return self._get_tasks_with_mask(mask=self.task_ranks == rank)
 
     def get_tasks_at_depth(self, depth):
+        """Get tasks filtered by depth."""
         return self._get_tasks_with_mask(
             mask=np.logical_or(
                 self.ci_depths == depth,
@@ -461,112 +599,149 @@ class TaskParser:
 
     def get_tasks_tictoc_by_thread(
         self,
-        task_type=None,
-        cell_type=None,
-        cell_subtype=None,
+        task=None,
+        ci_type=None,
+        cj_type=None,
+        ci_subtype=None,
+        cj_subtype=None,
         depth=None,
     ):
-        tasks = self.tasks
-        mask = np.ones(len(tasks), dtype=bool)
-        if task_type is not None:
-            mask = np.logical_and(mask, self.task_types == task_type)
-        if depth is not None:
-            mask = np.logical_and(
-                mask,
-                np.logical_or(
-                    self.ci_depths == depth, self.cj_depths == depth
-                ),
-            )
-        if cell_type is not None:
-            mask = np.logical_and(
-                mask,
-                np.logical_or(
-                    self.ci_types == cell_type, self.cj_types == cell_type
-                ),
-            )
-        if cell_subtype is not None:
-            mask = np.logical_and(
-                mask,
-                np.logical_or(
-                    self.ci_subtypes == cell_subtype,
-                    self.cj_subtypes == cell_subtype,
-                ),
-            )
-        labels = self.task_labels[mask]
-        tics = self.tics[mask]
-        tocs = self.tocs[mask]
+        """
+        Get the tics and tocs split by thread.
+
+        This will return the labels, tics, and tocs split by thread for a given
+        set of tasks or all tasks if no filters are applied.
+
+        Args:
+            task: The specific task to return.
+            ci_type: The type of the ci cell.
+            cj_type: The type of the cj cell.
+            ci_subtype: The subtype of the ci cell.
+            cj_subtype: The subtype of the cj cell.
+            depth: The depth of the cells.
+        """
+        # Get a mask
+        mask = self.get_mask(
+            ci_type=ci_type,
+            cj_type=cj_type,
+            ci_subtype=ci_subtype,
+            cj_subtype=cj_subtype,
+            depth=depth,
+        )
+
+        # Combine the task into the mask
+        if task is not None:
+            mask = np.logical_and(mask, self.task_labels == task)
+
+        # Extract the data
+        _labels = self.task_labels[mask]
+        _tics = self.tics[mask]
+        _tocs = self.tocs[mask]
         threads = self.task_threads[mask]
-        unique_labels = set(labels)
-        return labels, tics, tocs, threads, len(unique_labels)
+
+        # Count the tasks and threads
+        unique_labels = set(_labels)
+        nthreads = threads.max() + 1
+
+        # Create dictionaries split by thread
+        labels = {tid: [] for tid in range(nthreads)}
+        tics = {tid: [] for tid in range(nthreads)}
+        tocs = {tid: [] for tid in range(nthreads)}
+
+        # Populate the dictionaries
+        for i in range(len(labels)):
+            labels[threads[i]].append(_labels[i])
+            tics[threads[i]].append(_tics[i])
+            tocs[threads[i]].append(_tocs[i])
+
+        return labels, tics, tocs, len(unique_labels)
 
     @property
     def task_ranks(self):
+        """Get the ranks of the tasks."""
         return np.int32(self._extract_column("rank"))
 
     @property
     def task_threads(self):
+        """Get the threads of the tasks."""
         return np.int32(self._extract_column("threads"))
 
     @property
     def task_types(self):
+        """Get the types of the tasks."""
         return np.int32(self._extract_column("task"))
 
     @property
     def task_subtypes(self):
+        """Get the subtypes of the tasks."""
         return np.int32(self._extract_column("subtask"))
 
     @property
     def tics(self):
+        """Get the tics of the tasks."""
         return np.float64(self._extract_column("tic"))
 
     @property
     def tocs(self):
+        """Get the tocs of the tasks."""
         return np.float64(self._extract_column("toc"))
 
     @property
     def ci_part_count(self):
+        """Get the number of hydro particles in the ci cell."""
         return np.int32(self._extract_column("ci_part_count"))
 
     @property
     def cj_part_count(self):
+        """Get the number of hydro particles in the cj cell."""
         return np.int32(self._extract_column("cj_part_count"))
 
     @property
     def ci_gpart_count(self):
+        """Get the number of gravity particles in the ci cell."""
         return np.int32(self._extract_column("ci_gpart_count"))
 
     @property
     def cj_gpart_count(self):
+        """Get the number of gravity particles in the cj cell."""
         return np.int32(self._extract_column("cj_gpart_count"))
 
     @property
     def ci_types(self):
+        """Get the types of the ci cells."""
         return np.int32(self._extract_column("ci_type"))
 
     @property
     def cj_types(self):
+        """Get the types of the cj cells."""
         return np.int32(self._extract_column("cj_type"))
 
     @property
     def ci_subtypes(self):
+        """Get the subtypes of the ci cells."""
         return np.int32(self._extract_column("ci_subtype"))
 
     @property
     def cj_subtypes(self):
+        """Get the subtypes of the cj cells."""
         return np.int32(self._extract_column("cj_subtype"))
 
     @property
     def ci_depths(self):
+        """Get the depths of the ci cells."""
         return np.int32(self._extract_column("ci_depth"))
 
     @property
     def cj_depths(self):
+        """Get the depths of the cj cells."""
         return np.int32(self._extract_column("cj_depth"))
 
     @property
     def min_dists(self):
+        """Get the minimum distances."""
         return np.float64(self._extract_column("min_dist"))
 
     @property
     def mpole_dists(self):
+        """Get the multipole distances."""
         return np.float64(self._extract_column("mpole_dist"))
