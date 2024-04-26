@@ -85,10 +85,10 @@ def make_task_hist_time_split(runs, order_by_count=True, output=""):
             counts = counts[sinds]
 
             # Unpack the times
-            times = np.array([time_dict[l] for l in labels])
+            times = np.array([time_dict[lab] for lab in labels])
         else:
             # Unpack the times
-            times = np.array([time_dict[l] for l in labels])
+            times = np.array([time_dict[lab] for lab in labels])
 
             # Sort the labels by time
             if i == 0:
@@ -103,7 +103,7 @@ def make_task_hist_time_split(runs, order_by_count=True, output=""):
         width = 0.8 / (len(runs) + 1)
 
         # Create horizontal bar plot
-        bars = ax.barh(
+        ax.barh(
             positions + (i * width),
             times,
             height=0.75 / len(runs),
@@ -127,7 +127,7 @@ def make_task_hist_time_split(runs, order_by_count=True, output=""):
     filename += ".png"
 
     fig.tight_layout()
-    fig.savefig(f"{output}/{filename}", bbox_inches="tight")
+    fig.savefig(f"{output}_{filename}", bbox_inches="tight")
 
     plt.close(fig)
 
@@ -177,7 +177,7 @@ def make_task_hist_split(runs, output=""):
         width = 0.8 / (len(runs) + 1)
 
         # Create horizontal bar plot
-        bars = ax.barh(
+        ax.barh(
             positions + (i * width),
             counts,
             height=0.75 / len(runs),
@@ -198,7 +198,7 @@ def make_task_hist_split(runs, output=""):
     filename = "task_count_comp_split.png"
 
     fig.tight_layout()
-    fig.savefig(f"{output}/{filename}", bbox_inches="tight")
+    fig.savefig(f"{output}_{filename}", bbox_inches="tight")
 
     plt.close(fig)
 
@@ -223,11 +223,11 @@ def make_task_hist(
 
     Args:
         runs: Dictionary of TaskParser objects.
-        ci_type: Cell type of the first cell. (Optional)
-        cj_type: Cell type of the second cell. (Optional)
-        ci_subtype: Cell subtype of the first cell to include. (Optional)
-        cj_subtype: Cell subtype of the second cell. (Optional)
-        depth: Depth of the tasks to include. (Optional)
+        ci_type: Cell type of the first cell to filter on. (Optional)
+        cj_type: Cell type of the second cell to filter on. (Optional)
+        ci_subtype: Cell subtype of the first cell to filter on. (Optional)
+        cj_subtype: Cell subtype of the second cell to filter on. (Optional)
+        depth: Depth of the tasks to filter on. (Optional)
         output: Output filepath.
     """
     fig = plt.figure(figsize=(12, 6))
@@ -262,7 +262,7 @@ def make_task_hist(
         width = 0.8 / (len(runs) + 1)
 
         # Create horizontal bar plot
-        bars = ax.barh(
+        ax.barh(
             positions + (i * width),
             counts,
             height=0.75 / len(runs),
@@ -305,7 +305,7 @@ def make_task_hist(
         filename += f"_depth{depth}"
 
     fig.tight_layout()
-    fig.savefig(f"{output}/{filename}", bbox_inches="tight")
+    fig.savefig(f"{output}_{filename}", bbox_inches="tight")
 
     plt.close(fig)
 
@@ -330,11 +330,11 @@ def make_task_hist_time_weighted(
 
     Args:
         runs: Dictionary of TaskParser objects.
-        ci_type: Cell type of the first cell. (Optional)
-        cj_type: Cell type of the second cell. (Optional)
-        ci_subtype: Cell subtype of the first cell to include. (Optional)
-        cj_subtype: Cell subtype of the second cell. (Optional)
-        depth: Depth of the tasks to include. (Optional)
+        ci_type: Cell type of the first cell to filter on. (Optional)
+        cj_type: Cell type of the second cell to filter on. (Optional)
+        ci_subtype: Cell subtype of the first cell to filter on. (Optional)
+        cj_subtype: Cell subtype of the second cell to filter on. (Optional)
+        depth: Depth of the tasks to filter on. (Optional)
         output: Output filepath.
     """
     fig = plt.figure(figsize=(12, 6))
@@ -373,7 +373,7 @@ def make_task_hist_time_weighted(
         width = 0.8 / (len(runs) + 1)
 
         # Create horizontal bar plot
-        bars = ax.barh(
+        ax.barh(
             positions + (i * width),
             counts,
             height=0.75 / len(runs),
@@ -416,7 +416,7 @@ def make_task_hist_time_weighted(
         filename += f"_depth{depth}"
 
     fig.tight_layout()
-    fig.savefig(f"{output}/{filename}", bbox_inches="tight")
+    fig.savefig(f"{output}_{filename}", bbox_inches="tight")
 
     plt.close(fig)
 
@@ -444,11 +444,11 @@ def make_pair_mindist_plot(
 
     Args:
         runs: Dictionary of TaskParser objects.
-        ci_type: Cell type of the first cell. (Optional)
-        cj_type: Cell type of the second cell. (Optional)
-        ci_subtype: Cell subtype of the first cell to include. (Optional)
-        cj_subtype: Cell subtype of the second cell. (Optional)
-        depth: Depth of the tasks to include. (Optional)
+        ci_type: Cell type of the first cell to filter on. (Optional)
+        cj_type: Cell type of the second cell to filter on. (Optional)
+        ci_subtype: Cell subtype of the first cell to filter on. (Optional)
+        cj_subtype: Cell subtype of the second cell to filter on. (Optional)
+        depth: Depth of the tasks to filter on. (Optional)
         nbins: Number of bins in the histogram.
         output: Output filepath.
     """
@@ -519,7 +519,7 @@ def make_pair_mindist_plot(
         filename += f"_depth{depth}"
 
     fig.tight_layout()
-    fig.savefig(f"{output}/{filename}", bbox_inches="tight")
+    fig.savefig(f"{output}_{filename}", bbox_inches="tight")
 
     plt.close(fig)
 
@@ -548,11 +548,11 @@ def make_pair_mpoledist_plot(
 
     Args:
         runs: Dictionary of TaskParser objects.
-        ci_type: Cell type of the first cell. (Optional)
-        cj_type: Cell type of the second cell. (Optional)
-        ci_subtype: Cell subtype of the first cell to include. (Optional)
-        cj_subtype: Cell subtype of the second cell. (Optional)
-        depth: Depth of the tasks to include. (Optional)
+        ci_type: Cell type of the first cell to filter on. (Optional)
+        cj_type: Cell type of the second cell to filter on. (Optional)
+        ci_subtype: Cell subtype of the first cell to filter on. (Optional)
+        cj_subtype: Cell subtype of the second cell to filter on. (Optional)
+        depth: Depth of the tasks to filter on. (Optional)
         nbins: Number of bins in the histogram.
         output: Output filepath.
     """
@@ -623,7 +623,7 @@ def make_pair_mpoledist_plot(
         filename += f"_depth{depth}"
 
     fig.tight_layout()
-    fig.savefig(f"{output}/{filename}", bbox_inches="tight")
+    fig.savefig(f"{output}_{filename}", bbox_inches="tight")
     plt.close(fig)
 
 
@@ -646,11 +646,11 @@ def make_mindist_mpoledist_comp(
 
     Args:
         run: A TaskParser object.
-        ci_type: Cell type of the first cell. (Optional)
-        cj_type: Cell type of the second cell. (Optional)
-        ci_subtype: Cell subtype of the first cell to include. (Optional)
-        cj_subtype: Cell subtype of the second cell. (Optional)
-        depth: Depth of the tasks to include. (Optional)
+        ci_type: Cell type of the first cell to filter on. (Optional)
+        cj_type: Cell type of the second cell to filter on. (Optional)
+        ci_subtype: Cell subtype of the first cell to filter on. (Optional)
+        cj_subtype: Cell subtype of the second cell to filter on. (Optional)
+        depth: Depth of the tasks to filter on. (Optional)
         output: Output filepath.
     """
     # Make the mask
@@ -703,7 +703,266 @@ def make_mindist_mpoledist_comp(
     fig.tight_layout()
 
     # Save the figure
-    fig.savefig(f"{output}/{run.name}_{filename}.png", bbox_inches="tight")
+    fig.savefig(f"{output}_{run.name}_{filename}.png", bbox_inches="tight")
+    plt.close(fig)
+
+
+def make_task_plot(
+    run,
+    task_type=None,
+    ci_type=None,
+    cj_type=None,
+    ci_subtype=None,
+    cj_subtype=None,
+    depth=None,
+    output="",
+):
+    """
+    Plot tasks as a function of time per thread.
+
+    This will give the same output as plot_tasks.py but offers more flexibility
+    in the filters that can be applied.
+
+    Args:
+        run: A TaskParser object.
+        task_type: The type of task to plot to filter on. (Optional)
+        ci_type: Cell type of the first cell to filter on. (Optional)
+        cj_type: Cell type of the second cell to filter on. (Optional)
+        ci_subtype: Cell subtype of the first cell to filter on. (Optional)
+        cj_subtype: Cell subtype of the second cell to filter on. (Optional)
+        depth: Depth of the tasks to filter on. (Optional)
+    """
+    # Get the dictionaries containing the labels, tics, tocs and colors
+    labels, tics, tocs, colors = run.get_tasks_tictoc_by_thread(
+        task_type, ci_type, cj_type, ci_subtype, cj_subtype, depth
+    )
+
+    # If we have nothing then exit and move on
+    ntasks_tot = run.get_mask(
+        run,
+        ci_type,
+        cj_type,
+        ci_subtype,
+        cj_subtype,
+        depth,
+    ).sum()
+    if ntasks_tot == 0:
+        print(
+            f"No tasks to plot for task_type={task_type} ci_type={ci_type} "
+            f"cj_type={cj_type} ci_subtype={ci_subtype} "
+            f"cj_subtype={cj_subtype} depth={depth}"
+        )
+        return
+
+    # Set up the figure
+    fig = plt.figure(figsize=(16, 4))
+    ax = fig.add_subplot(111)
+    ax.set_xlim(-run.delta_t * 0.01, run.delta_t * 1.01)
+    ax.set_ylim(0.5, run.nthread + 1.0)
+
+    # Loop over threads plotting the tasks
+    typesseen = []
+    for i in range(run.nthread):
+        # Collect the ranges and colors into lists
+        _tictocs = []
+        _colors = []
+
+        # Loop over the tasks
+        for j in range(len(labels[i])):
+            _tictocs.append((tics[i][j], tocs[i][j] - tics[i][j]))
+            _colors.append(colors[labels[i][j]])
+
+            if labels[i][j] not in typesseen:
+                plt.plot(
+                    [], [], color=colors[labels[i][j]], label=labels[i][j]
+                )
+                typesseen.append(labels[i][j])
+
+        ax.broken_barh(
+            _tictocs,
+            [i + 0.55, 0.9],
+            facecolors=_colors,
+            linewidth=0,
+        )
+
+    # Legend and room for it.
+    nrow = len(typesseen) / 8
+    ax.fill_between([0, 0], run.nthread, run.nthread + nrow, facecolor="white")
+    ax.legend(
+        loc="lower left",
+        shadow=True,
+        bbox_to_anchor=(0.0, 1.0, 1.0, 0.2),
+        mode="expand",
+        ncol=8,
+    )
+
+    # Start and end of time-step
+    ax.plot([0, 0], [0, run.nthread + nrow + 1], "k--", linewidth=1)
+    ax.plot(
+        [run.end_t, run.end_t],
+        [0, run.nthread + nrow + 1],
+        "k--",
+        linewidth=1,
+    )
+
+    ax.set_xlabel("Wall clock time [ms]")
+    ax.set_ylabel("Thread ID")
+
+    ax.grid(True, which="major", axis="y", linestyle="-")
+
+    # Define the filename
+    filename = "tasks"
+    if ci_type is not None and cj_type is not None:
+        filename += f"_types{ci_type}-{cj_type}"
+    if ci_subtype is not None and cj_subtype is not None:
+        filename += f"_subtypes{ci_subtype}-{cj_subtype}"
+    if ci_type is not None and cj_type is None:
+        filename += f"_type{ci_type}"
+    if ci_subtype is not None and cj_subtype is None:
+        filename += f"_subtype{ci_subtype}"
+    if ci_type is None and cj_type is not None:
+        filename += f"_type{cj_type}"
+    if ci_subtype is None and cj_subtype is not None:
+        filename += f"_subtype{cj_subtype}"
+    if depth is not None:
+        filename += f"_depth{depth}"
+    if run.mpimode:
+        filename += f"_rank{run.rank}"
+
+    fig.tight_layout()
+
+    # Save the figure
+    fig.savefig(f"{output}_{run.name}_{filename}.png", bbox_inches="tight")
+    plt.close(fig)
+
+
+def make_task_hotspot_plot(
+    run,
+    task_type=None,
+    ci_type=None,
+    cj_type=None,
+    ci_subtype=None,
+    cj_subtype=None,
+    depth=None,
+    xbins=10000,
+    sort_threads=True,
+    output="",
+):
+    """
+    Histogram tasks as a function of time per thread.
+
+    This will bin tasks into a grid, counting how many tasks ran in a
+    particular bin. This is particularly useful for visualising runs containing
+    numerous short lived tasks which will not necessarily appear in a normal
+    task plot.
+
+    Args:
+        run: A TaskParser object.
+        task_type: The type of task to plot to filter on. (Optional)
+        ci_type: Cell type of the first cell to filter on. (Optional)
+        cj_type: Cell type of the second cell to filter on. (Optional)
+        ci_subtype: Cell subtype of the first cell to filter on. (Optional)
+        cj_subtype: Cell subtype of the second cell to filter on. (Optional)
+        depth: Depth of the tasks to filter on. (Optional)
+        xbins: Number of bins in the x-axis. This defines the minimum time
+               period that can be resolved.
+    """
+    # Get the dictionaries containing the labels, tics, tocs and colors
+    labels, tics, tocs, colors = run.get_tasks_tictoc_by_thread(
+        task_type, ci_type, cj_type, ci_subtype, cj_subtype, depth
+    )
+
+    # If we have nothing then exit and move on
+    ntasks_tot = run.get_mask(
+        run,
+        ci_type,
+        cj_type,
+        ci_subtype,
+        cj_subtype,
+        depth,
+    ).sum()
+    if ntasks_tot == 0:
+        print(
+            f"No tasks to plot for task_type={task_type} ci_type={ci_type} "
+            f"cj_type={cj_type} ci_subtype={ci_subtype} "
+            f"cj_subtype={cj_subtype} depth={depth}"
+        )
+        return
+
+    # Define the grid of bins. This has shape (run.nthread, xbins)
+    grid = np.zeros((run.nthead, xbins))
+
+    # Populate the grid thread by thread and task by task
+    for i in range(run.nthread):
+        for j in range(len(labels[i])):
+            # Calculate the tic bin
+            xtic_bin = int(tics[i][j] / run.delta_t * xbins)
+
+            # Calculate the toc bin
+            xtoc_bin = int(tocs[i][j] / run.delta_t * xbins)
+
+            # Populate the bins
+            for xbin in range(xtic_bin, xtoc_bin):
+                grid[i, xbin] += 1
+
+    # Remove empty bins
+    grid[grid == 0] = np.nan
+
+    # Sort the rows of the grid
+    end_bins = []
+    for i in range(run.nthread):
+        end_bins.append(np.max(np.where(~np.isnan(grid[i, :]))[0]))
+    sinds = np.argsort(end_bins)
+    grid = grid[sinds, :]
+
+    # Set up the figure
+    fig = plt.figure(figsize=(16, 4))
+    ax = fig.add_subplot(111)
+
+    # Plot the grid
+    im = ax.imshow(
+        grid,
+        extent=[0, run.delta_t, 0, run.nthread],
+        cmap="plasma",
+    )
+
+    # Start and end of time-step
+    ax.plot([0, 0], ax.get_ylim(), "k--", linewidth=1)
+    ax.plot([run.end_t, run.end_t], ax.get_ylim(), "k--", linewidth=1)
+
+    ax.set_xlabel("Wall clock time [ms]")
+    ax.set_ylabel("Thread ID")
+
+    # Create the colorbar
+    cbar = fig.colorbar(im)
+    cbar.set_label("Counts")
+
+    # Define the filename
+    filename = "task_hotspots"
+    if ci_type is not None and cj_type is not None:
+        filename += f"_types{ci_type}-{cj_type}"
+    if ci_subtype is not None and cj_subtype is not None:
+        filename += f"_subtypes{ci_subtype}-{cj_subtype}"
+    if ci_type is not None and cj_type is None:
+        filename += f"_type{ci_type}"
+    if ci_subtype is not None and cj_subtype is None:
+        filename += f"_subtype{ci_subtype}"
+    if ci_type is None and cj_type is not None:
+        filename += f"_type{cj_type}"
+    if ci_subtype is None and cj_subtype is not None:
+        filename += f"_subtype{cj_subtype}"
+    if depth is not None:
+        filename += f"_depth{depth}"
+    if run.mpimode:
+        filename += f"_rank{run.rank}"
+    if sort_threads:
+        filename += "_sorted"
+
+    fig.tight_layout()
+
+    # Save the figure
+    fig.savefig(f"{output}_{run.name}_{filename}.png", bbox_inches="tight")
+    plt.close(fig)
 
 
 if __name__ == "__main__":
@@ -765,71 +1024,101 @@ if __name__ == "__main__":
     # Below we call the functions for all common useful combinations of filters
 
     # Detailed stacked histograms
-    make_task_hist_split(runs)
-    make_task_hist_time_split(runs)
-    make_task_hist_time_split(runs, order_by_count=False)
+    make_task_hist_split(runs, output=output)
+    make_task_hist_time_split(runs, output=output)
+    make_task_hist_time_split(runs, order_by_count=False, output=output)
 
     # Counts of tasks
-    make_task_hist(runs)
-    make_task_hist(runs, ci_type=1, cj_type=1)
-    make_task_hist(runs, ci_type=2, cj_type=2)
-    make_task_hist(runs, ci_type=3, cj_type=3)
-    make_task_hist(runs, ci_type=1, cj_type=2)
-    make_task_hist(runs, ci_type=1, cj_type=3)
-    make_task_hist(runs, ci_type=2, cj_type=3)
+    make_task_hist(runs, output=output)
+    make_task_hist(runs, ci_type=1, cj_type=1, output=output)
+    make_task_hist(runs, ci_type=2, cj_type=2, output=output)
+    make_task_hist(runs, ci_type=3, cj_type=3, output=output)
+    make_task_hist(runs, ci_type=1, cj_type=2, output=output)
+    make_task_hist(runs, ci_type=1, cj_type=3, output=output)
+    make_task_hist(runs, ci_type=2, cj_type=3, output=output)
 
     # Counts of tasks but only depth 0
-    make_task_hist(runs, depth=0)
-    make_task_hist(runs, ci_type=1, cj_type=1, depth=0)
-    make_task_hist(runs, ci_type=2, cj_type=2, depth=0)
-    make_task_hist(runs, ci_type=3, cj_type=3, depth=0)
-    make_task_hist(runs, ci_type=1, cj_type=3, depth=0)
-    make_task_hist(runs, ci_type=1, cj_type=2, depth=0)
-    make_task_hist(runs, ci_type=2, cj_type=3, depth=0)
+    make_task_hist(runs, depth=0, output=output)
+    make_task_hist(runs, ci_type=1, cj_type=1, depth=0, output=output)
+    make_task_hist(runs, ci_type=2, cj_type=2, depth=0, output=output)
+    make_task_hist(runs, ci_type=3, cj_type=3, depth=0, output=output)
+    make_task_hist(runs, ci_type=1, cj_type=3, depth=0, output=output)
+    make_task_hist(runs, ci_type=1, cj_type=2, depth=0, output=output)
+    make_task_hist(runs, ci_type=2, cj_type=3, depth=0, output=output)
 
     # Time weighted counts of tasks
-    make_task_hist_time_weighted(runs)
-    make_task_hist_time_weighted(runs, ci_type=1, cj_type=1)
-    make_task_hist_time_weighted(runs, ci_type=2, cj_type=2)
-    make_task_hist_time_weighted(runs, ci_type=3, cj_type=3)
-    make_task_hist_time_weighted(runs, ci_type=1, cj_type=3)
-    make_task_hist_time_weighted(runs, ci_type=1, cj_type=2)
-    make_task_hist_time_weighted(runs, ci_type=2, cj_type=3)
+    make_task_hist_time_weighted(runs, output=output)
+    make_task_hist_time_weighted(runs, ci_type=1, cj_type=1, output=output)
+    make_task_hist_time_weighted(runs, ci_type=2, cj_type=2, output=output)
+    make_task_hist_time_weighted(runs, ci_type=3, cj_type=3, output=output)
+    make_task_hist_time_weighted(runs, ci_type=1, cj_type=3, output=output)
+    make_task_hist_time_weighted(runs, ci_type=1, cj_type=2, output=output)
+    make_task_hist_time_weighted(runs, ci_type=2, cj_type=3, output=output)
 
     # Time weighted counts of tasks but only depth 0
-    make_task_hist_time_weighted(runs, depth=0)
-    make_task_hist_time_weighted(runs, ci_type=1, cj_type=1, depth=0)
-    make_task_hist_time_weighted(runs, ci_type=2, cj_type=2, depth=0)
-    make_task_hist_time_weighted(runs, ci_type=3, cj_type=3, depth=0)
-    make_task_hist_time_weighted(runs, ci_type=1, cj_type=3, depth=0)
-    make_task_hist_time_weighted(runs, ci_type=1, cj_type=2, depth=0)
-    make_task_hist_time_weighted(runs, ci_type=2, cj_type=3, depth=0)
+    make_task_hist_time_weighted(runs, depth=0, output=output)
+    make_task_hist_time_weighted(
+        runs, ci_type=1, cj_type=1, depth=0, output=output
+    )
+    make_task_hist_time_weighted(
+        runs, ci_type=2, cj_type=2, depth=0, output=output
+    )
+    make_task_hist_time_weighted(
+        runs, ci_type=3, cj_type=3, depth=0, output=output
+    )
+    make_task_hist_time_weighted(
+        runs, ci_type=1, cj_type=3, depth=0, output=output
+    )
+    make_task_hist_time_weighted(
+        runs, ci_type=1, cj_type=2, depth=0, output=output
+    )
+    make_task_hist_time_weighted(
+        runs, ci_type=2, cj_type=3, depth=0, output=output
+    )
 
     # Pair distance histograms
-    make_pair_mindist_plot(runs)
-    make_pair_mindist_plot(runs, ci_type=1, cj_type=1)
-    make_pair_mindist_plot(runs, ci_type=2, cj_type=2)
-    make_pair_mindist_plot(runs, ci_type=3, cj_type=3)
-    make_pair_mindist_plot(runs, ci_type=1, cj_type=3)
-    make_pair_mindist_plot(runs, ci_type=1, cj_type=2)
-    make_pair_mindist_plot(runs, ci_type=2, cj_type=3)
+    make_pair_mindist_plot(runs, output=output)
+    make_pair_mindist_plot(runs, ci_type=1, cj_type=1, output=output)
+    make_pair_mindist_plot(runs, ci_type=2, cj_type=2, output=output)
+    make_pair_mindist_plot(runs, ci_type=3, cj_type=3, output=output)
+    make_pair_mindist_plot(runs, ci_type=1, cj_type=3, output=output)
+    make_pair_mindist_plot(runs, ci_type=1, cj_type=2, output=output)
+    make_pair_mindist_plot(runs, ci_type=2, cj_type=3, output=output)
 
     # Pair multipole distance histograms
-    make_pair_mpoledist_plot(runs)
-    make_pair_mpoledist_plot(runs, ci_type=1, cj_type=1)
-    make_pair_mpoledist_plot(runs, ci_type=2, cj_type=2)
-    make_pair_mpoledist_plot(runs, ci_type=3, cj_type=3)
-    make_pair_mpoledist_plot(runs, ci_type=1, cj_type=3)
-    make_pair_mpoledist_plot(runs, ci_type=1, cj_type=2)
-    make_pair_mpoledist_plot(runs, ci_type=2, cj_type=3)
+    make_pair_mpoledist_plot(runs, output=output)
+    make_pair_mpoledist_plot(runs, ci_type=1, cj_type=1, output=output)
+    make_pair_mpoledist_plot(runs, ci_type=2, cj_type=2, output=output)
+    make_pair_mpoledist_plot(runs, ci_type=3, cj_type=3, output=output)
+    make_pair_mpoledist_plot(runs, ci_type=1, cj_type=3, output=output)
+    make_pair_mpoledist_plot(runs, ci_type=1, cj_type=2, output=output)
+    make_pair_mpoledist_plot(runs, ci_type=2, cj_type=3, output=output)
 
     # Make the plots which only plot a single run at a time
     for run in runs.values():
         # Distance comparison
-        make_mindist_mpoledist_comp(run)
-        make_mindist_mpoledist_comp(run, ci_type=1, cj_type=1)
-        make_mindist_mpoledist_comp(run, ci_type=2, cj_type=2)
-        make_mindist_mpoledist_comp(run, ci_type=3, cj_type=3)
-        make_mindist_mpoledist_comp(run, ci_type=1, cj_type=3)
-        make_mindist_mpoledist_comp(run, ci_type=1, cj_type=2)
-        make_mindist_mpoledist_comp(run, ci_type=2, cj_type=3)
+        make_mindist_mpoledist_comp(run, output=output)
+        make_mindist_mpoledist_comp(run, ci_type=1, cj_type=1, output=output)
+        make_mindist_mpoledist_comp(run, ci_type=2, cj_type=2, output=output)
+        make_mindist_mpoledist_comp(run, ci_type=3, cj_type=3, output=output)
+        make_mindist_mpoledist_comp(run, ci_type=1, cj_type=3, output=output)
+        make_mindist_mpoledist_comp(run, ci_type=1, cj_type=2, output=output)
+        make_mindist_mpoledist_comp(run, ci_type=2, cj_type=3, output=output)
+
+        # Make the task plots showing tasks per thread as a function of time
+        make_task_plot(run, output=output)
+        make_task_plot(run, ci_type=1, cj_type=1, output=output)
+        make_task_plot(run, ci_type=2, cj_type=2, output=output)
+        make_task_plot(run, ci_type=3, cj_type=3, output=output)
+        make_task_plot(run, ci_type=1, cj_type=3, output=output)
+        make_task_plot(run, ci_type=1, cj_type=2, output=output)
+        make_task_plot(run, ci_type=2, cj_type=3, output=output)
+
+        # Make task hotspot plots
+        make_task_hotspot_plot(run, output)
+        make_task_hotspot_plot(run, ci_type=1, cj_type=1, output=output)
+        make_task_hotspot_plot(run, ci_type=2, cj_type=2, output=output)
+        make_task_hotspot_plot(run, ci_type=3, cj_type=3, output=output)
+        make_task_hotspot_plot(run, ci_type=1, cj_type=3, output=output)
+        make_task_hotspot_plot(run, ci_type=1, cj_type=2, output=output)
+        make_task_hotspot_plot(run, ci_type=2, cj_type=3, output=output)
