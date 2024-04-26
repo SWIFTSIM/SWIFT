@@ -4,6 +4,16 @@ Usage:
 
 python analyse_zoom_tasks.py --files file1 file2 --labels label1 label2
 
+Running this script will produce a series of plots that compare different
+thread_info-step*.dat files produced by SWIFT when configured with
+--enable-task-debugging. This will produce a series of diagnostic plots that
+show the task counts, runtime and distance metrics for different types of tasks
+in the simulation.
+
+This script is specifically designed to work with zoom simulations, where the
+tasking is complicated by having several different types of cell and complex
+geometries.
+
 This file is part of SWIFT.
 
 Copyright (C) 2024 Will Roper (w.roper@sussex.ac.uk)
@@ -30,6 +40,15 @@ from task_parser import TaskParser
 
 
 def make_task_hist_time_split(runs, order_by_count=True, output=""):
+    """
+    Plot the runtime of each task type including cell and depth information.
+
+    Args:
+        runs: Dictionary of TaskParser objects.
+        order_by_count: If True, order the tasks by count, otherwise order
+                        by time.
+        output: Output filepath.
+    """
     fig = plt.figure(figsize=(12, 16))
     ax = fig.add_subplot(111)
     ax.set_xscale("log")
@@ -102,7 +121,7 @@ def make_task_hist_time_split(runs, order_by_count=True, output=""):
     ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.05), ncol=3)
 
     # Define the filename
-    filename = f"task_time_comp_split"
+    filename = "task_time_comp_split"
     if order_by_count:
         filename += "_count_ordered"
     filename += ".png"
@@ -114,6 +133,13 @@ def make_task_hist_time_split(runs, order_by_count=True, output=""):
 
 
 def make_task_hist_split(runs, output=""):
+    """
+    Plot the count of each task type including cell and depth information.
+
+    Args:
+        runs: Dictionary of TaskParser objects.
+        output: Output filepath.
+    """
     fig = plt.figure(figsize=(12, 16))
     ax = fig.add_subplot(111)
     ax.set_xscale("log")
@@ -186,6 +212,24 @@ def make_task_hist(
     depth=None,
     output="",
 ):
+    """
+    Plot the count of each task type.
+
+    If any of the filter arguments are specifie then a subset of tasks will be
+    plotted. If all are None then all tasks will be plotted.
+
+    Note that ci and ci are symmetric, i.e. ci_type=1, cj_type=2 is the same
+    as ci_type=2, cj_type=1.
+
+    Args:
+        runs: Dictionary of TaskParser objects.
+        ci_type: Cell type of the first cell. (Optional)
+        cj_type: Cell type of the second cell. (Optional)
+        ci_subtype: Cell subtype of the first cell to include. (Optional)
+        cj_subtype: Cell subtype of the second cell. (Optional)
+        depth: Depth of the tasks to include. (Optional)
+        output: Output filepath.
+    """
     fig = plt.figure(figsize=(12, 6))
     ax = fig.add_subplot(111)
     ax.set_xscale("log")
@@ -275,6 +319,24 @@ def make_task_hist_time_weighted(
     depth=None,
     output="",
 ):
+    """
+    Plot the runtime of each task type.
+
+    If any of the filter arguments are specifie then a subset of tasks will be
+    plotted. If all are None then all tasks will be plotted.
+
+    Note that ci and ci are symmetric, i.e. ci_type=1, cj_type=2 is the same
+    as ci_type=2, cj_type=1.
+
+    Args:
+        runs: Dictionary of TaskParser objects.
+        ci_type: Cell type of the first cell. (Optional)
+        cj_type: Cell type of the second cell. (Optional)
+        ci_subtype: Cell subtype of the first cell to include. (Optional)
+        cj_subtype: Cell subtype of the second cell. (Optional)
+        depth: Depth of the tasks to include. (Optional)
+        output: Output filepath.
+    """
     fig = plt.figure(figsize=(12, 6))
     ax = fig.add_subplot(111)
     ax.set_xscale("log")
@@ -369,6 +431,27 @@ def make_pair_mindist_plot(
     nbins=30,
     output="",
 ):
+    """
+    Histogram of the minimum distances between cells.
+
+    This will histogram the output of sqrt(cell_min_dist2).
+
+    If any of the filter arguments are specifie then a subset of tasks will be
+    plotted. If all are None then all tasks will be plotted.
+
+    Note that ci and ci are symmetric, i.e. ci_type=1, cj_type=2 is the same
+    as ci_type=2, cj_type=1.
+
+    Args:
+        runs: Dictionary of TaskParser objects.
+        ci_type: Cell type of the first cell. (Optional)
+        cj_type: Cell type of the second cell. (Optional)
+        ci_subtype: Cell subtype of the first cell to include. (Optional)
+        cj_subtype: Cell subtype of the second cell. (Optional)
+        depth: Depth of the tasks to include. (Optional)
+        nbins: Number of bins in the histogram.
+        output: Output filepath.
+    """
     # Make the figure
     fig = plt.figure(figsize=(12, 6))
     ax = fig.add_subplot(111)
@@ -451,6 +534,28 @@ def make_pair_mpoledist_plot(
     nbins=30,
     output="",
 ):
+    """
+    Histogram of the minimum distances between multipoles.
+
+    This will histogram the distances between the centres of mass of the
+    multipoles which have pair tasks.
+
+    If any of the filter arguments are specifie then a subset of tasks will be
+    plotted. If all are None then all tasks will be plotted.
+
+    Note that ci and ci are symmetric, i.e. ci_type=1, cj_type=2 is the same
+    as ci_type=2, cj_type=1.
+
+    Args:
+        runs: Dictionary of TaskParser objects.
+        ci_type: Cell type of the first cell. (Optional)
+        cj_type: Cell type of the second cell. (Optional)
+        ci_subtype: Cell subtype of the first cell to include. (Optional)
+        cj_subtype: Cell subtype of the second cell. (Optional)
+        depth: Depth of the tasks to include. (Optional)
+        nbins: Number of bins in the histogram.
+        output: Output filepath.
+    """
     # Make the figure
     fig = plt.figure(figsize=(12, 6))
     ax = fig.add_subplot(111)
@@ -522,6 +627,85 @@ def make_pair_mpoledist_plot(
     plt.close(fig)
 
 
+def make_mindist_mpoledist_comp(
+    run,
+    ci_type=None,
+    cj_type=None,
+    ci_subtype=None,
+    cj_subtype=None,
+    depth=None,
+    output="",
+):
+    """
+    Plot a scatter comparing the different distances.
+
+    This function will compare the minimum distance between cells and the
+    distance between the multipoles.
+
+    Unlike other functions this function acts on a single run at a time.
+
+    Args:
+        run: A TaskParser object.
+        ci_type: Cell type of the first cell. (Optional)
+        cj_type: Cell type of the second cell. (Optional)
+        ci_subtype: Cell subtype of the first cell to include. (Optional)
+        cj_subtype: Cell subtype of the second cell. (Optional)
+        depth: Depth of the tasks to include. (Optional)
+        output: Output filepath.
+    """
+    # Make the mask
+    mask = run.get_mask(run, ci_type, cj_type, ci_subtype, cj_subtype, depth)
+
+    # Ensure we only have pair tasks (i.e. the string "pair" is in the
+    # task label)
+    mask = np.logical_and(
+        mask, np.array(["pair" in t for t in run.task_labels])
+    )
+
+    # Exit if there are no distances
+    if np.sum(mask) == 0:
+        print(
+            f"No distances to plot for ci_type={ci_type}, cj_type={cj_type} "
+            f"ci_subtype={ci_subtype}, cj_subtype={cj_subtype}, depth={depth}"
+        )
+        return
+
+    # Get the distances
+    min_dists = run.min_dists[mask]
+    mpole_dists = run.mpole_dists[mask]
+
+    # Set up the figure
+    fig = plt.figure(figsize=(6, 6))
+    ax = fig.add_subplot(111)
+    ax.loglog()
+    ax.grid(True)
+    ax.scatter(min_dists, mpole_dists, marker=".", color="grey", alpha=0.7)
+    ax.set_xlabel("Minimum distance between cells (U_L)")
+    ax.set_ylabel("Distance between multipoles (U_L)")
+
+    # Define the filename
+    filename = "min_dist_mpole_dist_comp"
+    if ci_type is not None and cj_type is not None:
+        filename += f"_types{ci_type}-{cj_type}"
+    if ci_subtype is not None and cj_subtype is not None:
+        filename += f"_subtypes{ci_subtype}-{cj_subtype}"
+    if ci_type is not None and cj_type is None:
+        filename += f"_type{ci_type}"
+    if ci_subtype is not None and cj_subtype is None:
+        filename += f"_subtype{ci_subtype}"
+    if ci_type is None and cj_type is not None:
+        filename += f"_type{cj_type}"
+    if ci_subtype is None and cj_subtype is not None:
+        filename += f"_subtype{cj_subtype}"
+    if depth is not None:
+        filename += f"_depth{depth}"
+
+    fig.tight_layout()
+
+    # Save the figure
+    fig.savefig(f"{output}/{run.name}_{filename}.png", bbox_inches="tight")
+
+
 if __name__ == "__main__":
     # Define the command line arguments
     parser = argparse.ArgumentParser(
@@ -573,17 +757,19 @@ if __name__ == "__main__":
     if len(files) != len(labels):
         raise ValueError("Number of files and labels must match")
 
-    # TODO: don't plot empty plots
-
     # Parse all the task files
     runs = {}
     for f, lab in zip(files, labels):
         runs[lab] = TaskParser(f, lab)
 
+    # Below we call the functions for all common useful combinations of filters
+
+    # Detailed stacked histograms
     make_task_hist_split(runs)
     make_task_hist_time_split(runs)
     make_task_hist_time_split(runs, order_by_count=False)
 
+    # Counts of tasks
     make_task_hist(runs)
     make_task_hist(runs, ci_type=1, cj_type=1)
     make_task_hist(runs, ci_type=2, cj_type=2)
@@ -592,6 +778,7 @@ if __name__ == "__main__":
     make_task_hist(runs, ci_type=1, cj_type=3)
     make_task_hist(runs, ci_type=2, cj_type=3)
 
+    # Counts of tasks but only depth 0
     make_task_hist(runs, depth=0)
     make_task_hist(runs, ci_type=1, cj_type=1, depth=0)
     make_task_hist(runs, ci_type=2, cj_type=2, depth=0)
@@ -600,6 +787,7 @@ if __name__ == "__main__":
     make_task_hist(runs, ci_type=1, cj_type=2, depth=0)
     make_task_hist(runs, ci_type=2, cj_type=3, depth=0)
 
+    # Time weighted counts of tasks
     make_task_hist_time_weighted(runs)
     make_task_hist_time_weighted(runs, ci_type=1, cj_type=1)
     make_task_hist_time_weighted(runs, ci_type=2, cj_type=2)
@@ -608,6 +796,7 @@ if __name__ == "__main__":
     make_task_hist_time_weighted(runs, ci_type=1, cj_type=2)
     make_task_hist_time_weighted(runs, ci_type=2, cj_type=3)
 
+    # Time weighted counts of tasks but only depth 0
     make_task_hist_time_weighted(runs, depth=0)
     make_task_hist_time_weighted(runs, ci_type=1, cj_type=1, depth=0)
     make_task_hist_time_weighted(runs, ci_type=2, cj_type=2, depth=0)
@@ -616,6 +805,7 @@ if __name__ == "__main__":
     make_task_hist_time_weighted(runs, ci_type=1, cj_type=2, depth=0)
     make_task_hist_time_weighted(runs, ci_type=2, cj_type=3, depth=0)
 
+    # Pair distance histograms
     make_pair_mindist_plot(runs)
     make_pair_mindist_plot(runs, ci_type=1, cj_type=1)
     make_pair_mindist_plot(runs, ci_type=2, cj_type=2)
@@ -624,6 +814,7 @@ if __name__ == "__main__":
     make_pair_mindist_plot(runs, ci_type=1, cj_type=2)
     make_pair_mindist_plot(runs, ci_type=2, cj_type=3)
 
+    # Pair multipole distance histograms
     make_pair_mpoledist_plot(runs)
     make_pair_mpoledist_plot(runs, ci_type=1, cj_type=1)
     make_pair_mpoledist_plot(runs, ci_type=2, cj_type=2)
@@ -631,3 +822,14 @@ if __name__ == "__main__":
     make_pair_mpoledist_plot(runs, ci_type=1, cj_type=3)
     make_pair_mpoledist_plot(runs, ci_type=1, cj_type=2)
     make_pair_mpoledist_plot(runs, ci_type=2, cj_type=3)
+
+    # Make the plots which only plot a single run at a time
+    for run in runs.values():
+        # Distance comparison
+        make_mindist_mpoledist_comp(run)
+        make_mindist_mpoledist_comp(run, ci_type=1, cj_type=1)
+        make_mindist_mpoledist_comp(run, ci_type=2, cj_type=2)
+        make_mindist_mpoledist_comp(run, ci_type=3, cj_type=3)
+        make_mindist_mpoledist_comp(run, ci_type=1, cj_type=3)
+        make_mindist_mpoledist_comp(run, ci_type=1, cj_type=2)
+        make_mindist_mpoledist_comp(run, ci_type=2, cj_type=3)
