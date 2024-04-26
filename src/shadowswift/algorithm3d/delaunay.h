@@ -100,6 +100,11 @@ struct delaunay {
    *  created when flipping invalid tetrahedra are also added to the queue. */
   struct int_lifo_queue tetrahedra_to_check;
 
+  /*! @brief Array containing indices of flagged tetrahedra */
+  int* flagged_tetrahedra;
+  size_t flagged_tetrahedra_index;
+  size_t flagged_tetrahedra_size;
+
   /*! @brief Lifo queue of free spots in the tetrahedra array. Sometimes 3
    * tetrahedra can be split into 2 new ones. This leaves a free spot in the
    * array.
@@ -173,6 +178,7 @@ inline static int delaunay_test_orientation(struct delaunay* restrict d, int v0,
 inline static int delaunay_vertex_is_valid(struct delaunay* restrict d, int v);
 inline static void delaunay_get_vertex_at(const struct delaunay* d, int idx,
                                           double* out);
+inline static void delaunay_flag_tetrahedron(struct delaunay* d, int t);
 inline static int delaunay_choose_2(int a, int b,
                                     const double* restrict centroid,
                                     const double* a0, const double* a1,
@@ -253,6 +259,12 @@ inline static struct delaunay* delaunay_malloc(const double* cell_loc,
   /* Allocate the array with the cell information of the ghost particles */
   d->ghost_cell_sids = (int*)swift_malloc("delaunay", ghost_size * sizeof(int));
   d->ghost_size = ghost_size;
+
+  /* Allocade the array with the flagged tetrahedra indices */
+  d->flagged_tetrahedra_size = 32;
+  d->flagged_tetrahedra_index = 0;
+  d->flagged_tetrahedra = swift_malloc(
+      "delaunay", d->flagged_tetrahedra_size * sizeof(*d->flagged_tetrahedra));
 
   /* initialise the structure used to perform exact geometrical tests */
   geometry3d_init(&d->geometry);
@@ -2329,50 +2341,36 @@ inline static void delaunay_compute_circumcentres(struct delaunay* d) {
   }
 }
 
-inline static struct tetrahedron** delaunay_get_vertex_tetrahedra(
-    const struct delaunay* restrict d, int vertex_idx,
-    struct int_lifo_queue* queue, size_t* count, size_t* capacity,
-    struct tetrahedron** arr) {
-  size_t _capacity = *capacity;
+inline static void delaunay_flag_vertex_tetrahedra(struct delaunay* restrict d,
+                                                   int vertex_idx) {
+
+  delaunay_assert(d->flagged_tetrahedra_index == 0);
+  delaunay_assert(d->flagged_tetrahedra_size > 0);
+  delaunay_assert(int_lifo_queue_is_empty(&d->tetrahedra_to_check));
 
   int tet_idx = d->vertex_tetrahedron_links[vertex_idx];
   struct tetrahedron* tet = &d->tetrahedra[tet_idx];
-  arr[0] = tet;
-  size_t _count = 1;
+  delaunay_flag_tetrahedron(d, tet_idx);
 
-  int_lifo_queue_reset(queue);
+  int_lifo_queue_reset(&d->tetrahedra_to_check);
   for (int i = 0; i < 4; i++) {
     if (tet->vertices[i] == vertex_idx) continue;
-    int_lifo_queue_push(queue, tet->neighbours[i]);
+    int_lifo_queue_push(&d->tetrahedra_to_check, tet->neighbours[i]);
   }
-  while (!int_lifo_queue_is_empty(queue)) {
-    tet_idx = int_lifo_queue_pop(queue);
+  while (!int_lifo_queue_is_empty(&d->tetrahedra_to_check)) {
+    tet_idx = int_lifo_queue_pop(&d->tetrahedra_to_check);
     tet = &d->tetrahedra[tet_idx];
     /* Anything to do here? */
     if (tet->_flag) continue;
 
-    /* Append it to the array and update the flag correspondingly */
-    if (_count == _capacity) {
-      /* grow the array */
-      _capacity *= 2;
-      arr = swift_realloc("vertex_tetrahedra", arr, _capacity * sizeof(*arr));
-    }
-    arr[_count] = tet;
-    _count++;
-    tet->_flag = 1;
+    delaunay_flag_tetrahedron(d, tet_idx);
 
     /* Push its neighbours to the queue */
     for (int i = 0; i < 4; i++) {
       if (tet->vertices[i] == vertex_idx) continue;
-      int_lifo_queue_push(queue, tet->neighbours[i]);
+      int_lifo_queue_push(&d->tetrahedra_to_check, tet->neighbours[i]);
     }
   }
-
-  /* Update the count and capacity and return the array (which may have been
-   * realocced) */
-  *count = _count;
-  *capacity = _capacity;
-  return arr;
 }
 
 /**
@@ -2392,41 +2390,27 @@ inline static void delaunay_get_search_radii(struct delaunay* restrict d,
                                              const struct part* restrict parts,
                                              const int* restrict pid, int count,
                                              /*return*/ double* restrict r) {
-  /* Prepare for calculation */
-  /* Queue for storing the indices of tetrahedra whose neighbours we still need
-   * to check. */
-  struct int_lifo_queue tetrahedron_queue;
-  int_lifo_queue_init(&tetrahedron_queue, 32);
-  /* Array to store the tetrahedra neighbouring a given vertex */
-  size_t vertex_tetrahedra_size = 32;
-  struct tetrahedron** vertex_tetrahedra = swift_malloc(
-      "Vertex tetrahedra", vertex_tetrahedra_size * sizeof(*vertex_tetrahedra));
-
   /* loop over the particles */
   for (int i = 0; i < count; i++) {
     int gen_idx_in_d = parts[pid[i]].geometry.delaunay_vertex;
 
     /* Get the tetrahedra containing this generator */
-    size_t vertex_tetrahedra_count;
-    vertex_tetrahedra = delaunay_get_vertex_tetrahedra(
-        d, gen_idx_in_d, &tetrahedron_queue, &vertex_tetrahedra_count,
-        &vertex_tetrahedra_size, vertex_tetrahedra);
+    delaunay_flag_vertex_tetrahedra(d, gen_idx_in_d);
 
     /* Loop over the tetrahedra and compute the search radius
      * (twice the maximal circumradius) */
     double max_circumradius2 = 0.;
-    for (size_t k = 0; k < vertex_tetrahedra_count; k++) {
-      struct tetrahedron* tet = vertex_tetrahedra[k];
+    for (size_t k = 0; k < d->flagged_tetrahedra_index; k++) {
+      struct tetrahedron* tet = &d->tetrahedra[d->flagged_tetrahedra[k]];
       /* Before doing anything, reset the flag of this tet */
       tet->_flag = 0;
       max_circumradius2 = max(max_circumradius2, delaunay_get_radius2(d, tet));
     }
     r[i] = 2. * sqrt(max_circumradius2);
-  }
 
-  /* Be clean */
-  int_lifo_queue_destroy(&tetrahedron_queue);
-  free(vertex_tetrahedra);
+    /* Reset the list of flagged tetrahedra (all flags should be reset) */
+    d->flagged_tetrahedra_index = 0;
+  }
 }
 
 /**
@@ -2514,6 +2498,23 @@ inline static void delaunay_print_tessellation(
   delaunay_write_tessellation(d, file, 0);
 
   fclose(file);
+}
+
+inline static void delaunay_flag_tetrahedron(struct delaunay* d, int t) {
+  delaunay_assert(t < d->tetrahedra_index);
+  delaunay_assert(d->tetrahedra[t]._flag == 0);
+
+  /* Append it to the array and update the flag correspondingly */
+  if (d->flagged_tetrahedra_index == d->flagged_tetrahedra_size) {
+    /* grow the array */
+    d->flagged_tetrahedra_size *= 2;
+    d->flagged_tetrahedra = swift_realloc(
+        "delaunay", d->flagged_tetrahedra,
+        d->flagged_tetrahedra_size * sizeof(*d->flagged_tetrahedra));
+  }
+  d->tetrahedra[t]._flag = 1;
+  d->flagged_tetrahedra[d->flagged_tetrahedra_index] = t;
+  d->flagged_tetrahedra_index++;
 }
 
 inline static int delaunay_test_orientation(struct delaunay* restrict d, int v0,
