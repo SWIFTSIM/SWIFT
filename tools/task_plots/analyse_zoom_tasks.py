@@ -29,7 +29,7 @@ import matplotlib.pyplot as plt
 from task_parser import TaskParser
 
 
-def make_task_hist_time_split(runs, order_by_count=True):
+def make_task_hist_time_split(runs, order_by_count=True, output=""):
     fig = plt.figure(figsize=(12, 16))
     ax = fig.add_subplot(111)
     ax.set_xscale("log")
@@ -102,18 +102,18 @@ def make_task_hist_time_split(runs, order_by_count=True):
     ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.05), ncol=3)
 
     # Define the filename
-    filename = "task_time_comp_split"
+    filename = f"task_time_comp_split"
     if order_by_count:
         filename += "_count_ordered"
     filename += ".png"
 
     fig.tight_layout()
-    fig.savefig(filename, bbox_inches="tight")
+    fig.savefig(f"{output}/{filename}", bbox_inches="tight")
 
     plt.close(fig)
 
 
-def make_task_hist_split(runs):
+def make_task_hist_split(runs, output=""):
     fig = plt.figure(figsize=(12, 16))
     ax = fig.add_subplot(111)
     ax.set_xscale("log")
@@ -172,7 +172,7 @@ def make_task_hist_split(runs):
     filename = "task_count_comp_split.png"
 
     fig.tight_layout()
-    fig.savefig(filename, bbox_inches="tight")
+    fig.savefig(f"{output}/{filename}", bbox_inches="tight")
 
     plt.close(fig)
 
@@ -184,6 +184,7 @@ def make_task_hist(
     ci_subtype=None,
     cj_subtype=None,
     depth=None,
+    output="",
 ):
     fig = plt.figure(figsize=(12, 6))
     ax = fig.add_subplot(111)
@@ -260,7 +261,7 @@ def make_task_hist(
         filename += f"_depth{depth}"
 
     fig.tight_layout()
-    fig.savefig(filename, bbox_inches="tight")
+    fig.savefig(f"{output}/{filename}", bbox_inches="tight")
 
     plt.close(fig)
 
@@ -272,6 +273,7 @@ def make_task_hist_time_weighted(
     ci_subtype=None,
     cj_subtype=None,
     depth=None,
+    output="",
 ):
     fig = plt.figure(figsize=(12, 6))
     ax = fig.add_subplot(111)
@@ -352,7 +354,7 @@ def make_task_hist_time_weighted(
         filename += f"_depth{depth}"
 
     fig.tight_layout()
-    fig.savefig(filename, bbox_inches="tight")
+    fig.savefig(f"{output}/{filename}", bbox_inches="tight")
 
     plt.close(fig)
 
@@ -365,6 +367,7 @@ def make_pair_mindist_plot(
     cj_subtype=None,
     depth=None,
     nbins=30,
+    output="",
 ):
     # Make the figure
     fig = plt.figure(figsize=(12, 6))
@@ -433,7 +436,7 @@ def make_pair_mindist_plot(
         filename += f"_depth{depth}"
 
     fig.tight_layout()
-    fig.savefig(filename, bbox_inches="tight")
+    fig.savefig(f"{output}/{filename}", bbox_inches="tight")
 
     plt.close(fig)
 
@@ -446,6 +449,7 @@ def make_pair_mpoledist_plot(
     cj_subtype=None,
     depth=None,
     nbins=30,
+    output="",
 ):
     # Make the figure
     fig = plt.figure(figsize=(12, 6))
@@ -514,7 +518,7 @@ def make_pair_mpoledist_plot(
         filename += f"_depth{depth}"
 
     fig.tight_layout()
-    fig.savefig(filename, bbox_inches="tight")
+    fig.savefig(f"{output}/{filename}", bbox_inches="tight")
     plt.close(fig)
 
 
@@ -540,10 +544,27 @@ if __name__ == "__main__":
         default=[],
     )
 
+    # Adding output directory
+    parser.add_argument(
+        "--outdir",
+        help="Output directory",
+        default=".",
+    )
+
+    # Adding output base name
+    parser.add_argument(
+        "--outbase",
+        help="Output base name",
+        default="",
+    )
+
     # Parse the arguments
     args = parser.parse_args()
     files = args.files
     labels = args.labels
+    outdir = args.outdir
+    outbase = args.outbase
+    output = f"{outdir}/{outbase}"
 
     if len(labels) == 0:
         labels = files
