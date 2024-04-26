@@ -1122,3 +1122,24 @@ if __name__ == "__main__":
         make_task_hotspot_plot(run, ci_type=1, cj_type=3, output=output)
         make_task_hotspot_plot(run, ci_type=1, cj_type=2, output=output)
         make_task_hotspot_plot(run, ci_type=2, cj_type=3, output=output)
+
+        # Make task hotspot plots but don't sort the threads
+        make_task_hotspot_plot(run, sort_threads=False, output=output)
+        make_task_hotspot_plot(
+            run, ci_type=1, cj_type=1, sort_threads=False, output=output
+        )
+        make_task_hotspot_plot(
+            run, ci_type=2, cj_type=2, sort_threads=False, output=output
+        )
+        make_task_hotspot_plot(
+            run, ci_type=3, cj_type=3, sort_threads=False, output=output
+        )
+        make_task_hotspot_plot(
+            run, ci_type=1, cj_type=3, sort_threads=False, output=output
+        )
+        make_task_hotspot_plot(
+            run, ci_type=1, cj_type=2, sort_threads=False, output=output
+        )
+        make_task_hotspot_plot(
+            run, ci_type=2, cj_type=3, sort_threads=False, output=output
+        )
