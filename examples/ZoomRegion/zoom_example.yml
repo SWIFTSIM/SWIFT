@@ -60,3 +60,14 @@ InitialConditions:
   cleanup_h_factors: 1               # Remove the h-factors inherited from Gadget
   cleanup_velocity_factors: 1        # Remove the sqrt(a) factor in the velocities inherited from Gadget
 
+# Parameters for the hydrodynamics scheme
+SPH:
+  resolution_eta:                    1.2348   # Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel).
+  h_min_ratio:                       0.01     # Minimal smoothing length in units of softening.
+  h_max:                             0.5      # Maximal smoothing length in co-moving internal units.
+  CFL_condition:                     0.2      # Courant-Friedrich-Levy condition for time integration.
+  minimal_temperature:               100.0    # (internal units)
+  initial_temperature:               268.7    # (internal units)
+  particle_splitting:                1        # Particle splitting is ON
+  particle_splitting_mass_threshold: 7e-4     # (internal units, i.e. 7e6 Msun ~ 4x initial gas particle mass)
+  convert_particles_at_h_max:         1        # Flag for whether to convert SPH particles which reach h_max to dark matter (this can help with long running neighbour searches by removing non-physical particles limited by h_max)

@@ -258,6 +258,13 @@ void gravity_props_init(struct gravity_props *p, struct swift_params *params,
   p->max_adaptive_softening *= kernel_gravity_softening_plummer_equivalent;
   p->min_adaptive_softening *= kernel_gravity_softening_plummer_equivalent;
 
+  /* The types to check for in the exact gravity N^2 debugging */
+  for (int i = 0; i < swift_type_count; ++i)
+    p->exact_gravity_to_check_types[i] = 1;
+  parser_get_opt_param_int_array(params, "Gravity:exact_gravity_check_types",
+                                 swift_type_count,
+                                 p->exact_gravity_to_check_types);
+
   /* Copy over the gravitational constant */
   p->G_Newton = phys_const->const_newton_G;
 
