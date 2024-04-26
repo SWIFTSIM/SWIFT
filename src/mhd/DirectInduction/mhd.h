@@ -450,6 +450,11 @@ __attribute__((always_inline)) INLINE static float mhd_get_psi_over_ch_dt(
 __attribute__((always_inline)) INLINE static void mhd_reset_acceleration(
     struct part *restrict p) {
 
+  /* Store prvious step's dB/dt for time integration */
+  p->mhd_data.B_over_rho_dt_prev_step[0] = p->mhd_data.B_over_rho_dt[0];
+  p->mhd_data.B_over_rho_dt_prev_step[1] = p->mhd_data.B_over_rho_dt[1];
+  p->mhd_data.B_over_rho_dt_prev_step[2] = p->mhd_data.B_over_rho_dt[2];
+
   /* Zero the fields updated by the mhd force loop */
   p->mhd_data.B_over_rho_dt[0] = 0.0f;
   p->mhd_data.B_over_rho_dt[1] = 0.0f;
@@ -563,9 +568,15 @@ __attribute__((always_inline)) INLINE static void mhd_kick_extra(
     const struct entropy_floor_properties *floor_props) {
 
   /* Integrate the magnetic flux density forward in time */
-  const float delta_Bx = p->mhd_data.B_over_rho_dt[0] * dt_therm;
-  const float delta_By = p->mhd_data.B_over_rho_dt[1] * dt_therm;
-  const float delta_Bz = p->mhd_data.B_over_rho_dt[2] * dt_therm;
+  float delta_Bx = p->mhd_data.B_over_rho_dt[0] * dt_therm;
+  delta_Bx += p->mhd_data.B_over_rho_dt_prev_step[0]
+  delta_Bx *= 0.5f * dt_therm;  
+  float delta_By= p->mhd_data.B_over_rho_dt[1];
+  delta_By += p->mhd_data.B_over_rho_dt_prev_step[1];
+  delta_By *= 0.5f * dt_therm;  
+  float delta_Bz = p->mhd_data.B_over_rho_dt[2];
+  delta_Bz += p->mhd_data.B_over_rho_dt_prev_step[2];
+  delta_Bz *= 0.5f * dt_therm;  
 
   /* Do not decrease the magnetic flux density by more than a factor of 2*/
   xp->mhd_data.B_over_rho_full[0] = xp->mhd_data.B_over_rho_full[0] + delta_Bx;

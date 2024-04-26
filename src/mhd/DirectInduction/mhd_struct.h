@@ -30,6 +30,8 @@ struct mhd_part_data {
 
   /*! dB Direct Induction */
   float B_over_rho_dt[3];
+  
+  float B_over_rho_dt_prev_step[3];
 
   float v_fm;
 
