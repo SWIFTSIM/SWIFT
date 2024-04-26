@@ -3425,6 +3425,8 @@ int cell_unskip_grid_tasks(struct cell *c, struct scheduler *s) {
     error(
         "Trying to activate grid construction tasks, but not at construction "
         "level!");
+  if (c->grid.self_completeness == grid_incomplete)
+    error("Incomplete cell at construction level!");
 #endif
 
 #if WITH_MPI
@@ -3475,6 +3477,10 @@ int cell_unskip_grid_tasks(struct cell *c, struct scheduler *s) {
 
       /* Only construct the grid for local cells */
       if (ci_nodeID == nodeID) {
+#if defined(SWIFT_DEBUG_CHECKS) && !defined(SHADOWSWIFT_RELAXED_COMPLETENESS)
+        if (cj->grid.self_completeness == grid_incomplete)
+          error("Incomplete neighbouring cell at construction level!");
+#endif
         scheduler_activate(s, t);
 
         /* We only need sorts for the grid construction.
@@ -3492,7 +3498,7 @@ int cell_unskip_grid_tasks(struct cell *c, struct scheduler *s) {
            * rebuild will be triggered on another node if necessary */
           cell_grid_update_self_completeness(cj, 0);
         }
-        rebuild = cell_need_rebuild_for_grid_pair(ci, cj);
+        rebuild = cell_need_rebuild_for_grid_construction_pair(ci, cj);
 
 #if WITH_MPI
         /* Do we need to send the voronoi faces to cj's node for this sid? */

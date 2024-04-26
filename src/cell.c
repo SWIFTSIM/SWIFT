@@ -1449,23 +1449,16 @@ void cell_grid_set_pair_completeness(struct cell *restrict ci,
      * neighbouring cell invalidates completeness)
      * We need to use atomics here, since multiple threads may change this at
      * the same time. */
-    const int ci_self_complete = ci->grid.self_completeness == grid_complete;
-    const int cj_self_complete = cj->grid.self_completeness == grid_complete;
-#ifdef SHADOWSWIFT_RELAXED_COMPLETENESS
     if (ci_local) {
       atomic_and(
           &ci->grid.complete,
-          cj_self_complete || kernel_gamma * ci->hydro.h_max < 0.5 * cj->dmin);
+          !cell_need_rebuild_for_grid_construction_pair(ci, cj));
     }
     if (cj_local) {
       atomic_and(
           &cj->grid.complete,
-          ci_self_complete || kernel_gamma * cj->hydro.h_max < 0.5 * ci->dmin);
+          !cell_need_rebuild_for_grid_construction_pair(cj, ci));
     }
-#else
-    if (ci_local) atomic_and(&ci->grid.complete, cj_self_complete);
-    if (cj_local) atomic_and(&cj->grid.complete, ci_self_complete);
-#endif
   }
 }
 
