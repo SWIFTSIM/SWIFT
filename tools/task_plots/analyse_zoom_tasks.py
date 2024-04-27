@@ -745,19 +745,11 @@ def make_task_plot(
         task_type, ci_type, cj_type, ci_subtype, cj_subtype, depth
     )
 
-    print(run.delta_t)
-    print(tics[0][:10])
-    print(tocs[0][:10])
-    print(run.start_t)
-    print(run.end_t)
-
     # Set up the figure
     fig = plt.figure(figsize=(16, 4))
     ax = fig.add_subplot(111)
     ax.set_xlim(-run.delta_t * 0.01, run.delta_t * 1.01)
     ax.set_ylim(0.5, run.nthread + 1.0)
-
-    print(colors)
 
     # Loop over threads plotting the tasks
     typesseen = []
