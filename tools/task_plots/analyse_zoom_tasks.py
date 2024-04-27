@@ -1000,7 +1000,7 @@ if __name__ == "__main__":
     outdir = args.outdir
     outbase = args.outbase
     output = f"{outdir}/{outbase}"
-    if output[-1] != "_":
+    if len(output) > 0 and output[-1] != "_":
         output += "_"
 
     if len(labels) == 0:
