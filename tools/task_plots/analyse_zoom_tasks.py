@@ -907,12 +907,13 @@ def make_task_hotspot_plot(
     # Remove empty bins
     grid[grid == 0] = np.nan
 
-    # Sort the rows of the grid
-    end_bins = []
-    for i in range(run.nthread):
-        end_bins.append(np.max(np.where(~np.isnan(grid[i, :]))[0]))
-    sinds = np.argsort(end_bins)
-    grid = grid[sinds, :]
+    # # Sort the rows of the grid
+    # end_bins = []
+    # for i in range(run.nthread):
+    #     if
+    #     end_bins.append(np.max(np.where(~np.isnan(grid[i, :]))[0]))
+    # sinds = np.argsort(end_bins)
+    # grid = grid[sinds, :]
 
     # Set up the figure
     fig = plt.figure(figsize=(16, 4))
