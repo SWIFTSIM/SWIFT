@@ -7,21 +7,23 @@ Planetary Simulations
 =====================
 
 SWIFT is also designed for running planetary simulations
-such as of giant impacts, as introduced in Kegerreis+2019,
-and any other types of simulations with more complicated equations of state
-and/or multiple materials, etc.
+such as of giant impacts, as introduced in
+`Kegerreis et al. (2019)  <https://doi.org/10.1093/mnras/stz1606>`_,
+and any other non-planetary simulations with more complicated equations
+of state and/or multiple materials, etc.
 
 Active development is ongoing of more features and examples,
 so please let us know if you are interested in using SWIFT
 or have any implementation requests.
 
-You can find an example simulation in ``swiftsim/examples/Planetary/``
-under ``EarthImpact/``, as well as some hydro tests for comparison with other
-schemes. The tabulated equation of state files can be downloaded using
+You can find an example of creating initial conditions and running an impact
+simulation in ``swiftsim/examples/Planetary/`` under ``DemoInitCond/`` and
+``DemoImpact/``. Check out their `README.md` files for more info.
+The tabulated equation of state files can be downloaded there using
 ``EoSTables/get_eos_tables.sh``.
 
-Planetary simulations are currently intended to be run with
-SWIFT configured to use the planetary hydrodynamics scheme and equations of state:
+To run planetary or similar simulations, SWIFT should be configured to use
+the planetary hydrodynamics scheme and equations of state:
 ``--with-hydro=planetary`` and ``--with-equation-of-state=planetary``.
 These allow for multiple materials to be used,
 chosen from the several available equations of state.
