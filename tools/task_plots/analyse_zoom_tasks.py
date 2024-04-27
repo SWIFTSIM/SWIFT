@@ -888,8 +888,8 @@ def make_task_hotspot_plot(
         return
 
     # Calculate the number of bins
-    median_dt = np.median(run.dt)
-    xbins = int(run.delta_t / median_dt) + 1
+    m_dt = np.mean(run.dt)
+    xbins = int(run.delta_t / m_dt) + 1
 
     # Define the grid of bins. This has shape (run.nthread, xbins)
     grid = np.zeros((run.nthread, xbins))
