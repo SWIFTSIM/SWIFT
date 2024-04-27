@@ -747,7 +747,7 @@ class TaskParser:
         tocs = {tid: [] for tid in range(nthreads)}
 
         # Populate the dictionaries
-        for i in range(len(labels)):
+        for i in range(len(_labels)):
             labels[threads[i]].append(_labels[i])
             tics[threads[i]].append(_tics[i])
             tocs[threads[i]].append(_tocs[i])
