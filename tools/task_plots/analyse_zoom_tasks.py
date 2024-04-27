@@ -790,7 +790,7 @@ def make_task_plot(
     # Start and end of time-step
     ax.plot([0, 0], [0, run.nthread + nrow + 1], "k--", linewidth=1)
     ax.plot(
-        [run.end_t, run.end_t],
+        [run.delta_t, run.delta_t],
         [0, run.nthread + nrow + 1],
         "k--",
         linewidth=1,
@@ -932,7 +932,7 @@ def make_task_hotspot_plot(
 
     # Start and end of time-step
     ax.plot([0, 0], ax.get_ylim(), "k--", linewidth=1)
-    ax.plot([run.end_t, run.end_t], ax.get_ylim(), "k--", linewidth=1)
+    ax.plot([run.delta_t, run.delta_t], ax.get_ylim(), "k--", linewidth=1)
 
     ax.set_xlabel("Wall clock time [ms]")
     ax.set_ylabel("Thread ID")
