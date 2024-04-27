@@ -746,7 +746,7 @@ def make_task_plot(
     )
 
     # Set up the figure
-    fig = plt.figure(figsize=(16, 0.1 * run.nthreads))
+    fig = plt.figure(figsize=(16, 0.1 * run.nthread))
     ax = fig.add_subplot(111)
     ax.set_xlim(-run.delta_t * 0.01, run.delta_t * 1.01)
     ax.set_ylim(0.5, run.nthread + 1.0)
@@ -919,7 +919,7 @@ def make_task_hotspot_plot(
     grid = grid[sinds, :]
 
     # Set up the figure
-    fig = plt.figure(figsize=(16, 0.1 * run.nthreads))
+    fig = plt.figure(figsize=(16, 0.1 * run.nthread))
     ax = fig.add_subplot(111)
 
     # Plot the grid
