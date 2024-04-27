@@ -1012,7 +1012,7 @@ if __name__ == "__main__":
     outdir = args.outdir
     outbase = args.outbase
     output = f"{outdir}/{outbase}"
-    if len(output) > 0 and output[-1] != "_":
+    if output[-1] != "_" and output[-1] != "/":
         output += "_"
 
     print("Writing outputs to:", output)
