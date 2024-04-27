@@ -732,6 +732,7 @@ class TaskParser:
             mask = np.logical_and(mask, self.task_labels == task)
 
         # Extract the data
+        unique_tasks = np.unique(self.task_labels[mask])
         _labels = self.task_labels[mask]
         _tics = self.tics[mask]
         _tocs = self.tocs[mask]
@@ -751,7 +752,7 @@ class TaskParser:
             tics[threads[i]].append(_tics[i])
             tocs[threads[i]].append(_tocs[i])
 
-        return labels, tics, tocs, assign_colors(labels)
+        return labels, tics, tocs, assign_colors(unique_tasks)
 
     @property
     def task_ranks(self):
