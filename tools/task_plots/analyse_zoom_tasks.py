@@ -724,11 +724,6 @@ def make_task_plot(
         cj_subtype: Cell subtype of the second cell to filter on. (Optional)
         depth: Depth of the tasks to filter on. (Optional)
     """
-    # Get the dictionaries containing the labels, tics, tocs and colors
-    labels, tics, tocs, colors = run.get_tasks_tictoc_by_thread(
-        task_type, ci_type, cj_type, ci_subtype, cj_subtype, depth
-    )
-
     # If we have nothing then exit and move on
     ntasks_tot = run.get_mask(
         ci_type,
@@ -744,6 +739,11 @@ def make_task_plot(
             f"cj_subtype={cj_subtype} depth={depth}"
         )
         return
+
+    # Get the dictionaries containing the labels, tics, tocs and colors
+    labels, tics, tocs, colors = run.get_tasks_tictoc_by_thread(
+        task_type, ci_type, cj_type, ci_subtype, cj_subtype, depth
+    )
 
     # Set up the figure
     fig = plt.figure(figsize=(16, 4))
@@ -860,11 +860,6 @@ def make_task_hotspot_plot(
         xbins: Number of bins in the x-axis. This defines the minimum time
                period that can be resolved.
     """
-    # Get the dictionaries containing the labels, tics, tocs and colors
-    labels, tics, tocs, colors = run.get_tasks_tictoc_by_thread(
-        task_type, ci_type, cj_type, ci_subtype, cj_subtype, depth
-    )
-
     # If we have nothing then exit and move on
     ntasks_tot = run.get_mask(
         ci_type,
@@ -880,6 +875,11 @@ def make_task_hotspot_plot(
             f"cj_subtype={cj_subtype} depth={depth}"
         )
         return
+
+    # Get the dictionaries containing the labels, tics, tocs and colors
+    labels, tics, tocs, colors = run.get_tasks_tictoc_by_thread(
+        task_type, ci_type, cj_type, ci_subtype, cj_subtype, depth
+    )
 
     # Define the grid of bins. This has shape (run.nthread, xbins)
     grid = np.zeros((run.nthead, xbins))
