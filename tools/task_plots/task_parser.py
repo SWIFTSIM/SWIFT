@@ -739,7 +739,7 @@ class TaskParser:
                 f"ci_subtype={ci_subtype}, cj_subtype={cj_subtype}, "
                 f"depth={depth})"
             )
-            return
+            return [], [], [], []
 
         # Extract the data
         unique_tasks = np.unique(self.task_labels[mask])
