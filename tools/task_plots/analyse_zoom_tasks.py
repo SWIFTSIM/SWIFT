@@ -835,6 +835,7 @@ def make_task_hotspot_plot(
     ci_subtype=None,
     cj_subtype=None,
     depth=None,
+    xbins=100,
     sort_threads=True,
     output="",
 ):
@@ -856,6 +857,7 @@ def make_task_hotspot_plot(
         depth: Depth of the tasks to filter on. (Optional)
         xbins: Number of bins in the x-axis. This defines the minimum time
                period that can be resolved.
+        sort_threads: Sort the threads by the end of their tasks. (Optional)
     """
     # If we have nothing then exit and move on
     ntasks_tot = run.get_mask(
@@ -886,10 +888,6 @@ def make_task_hotspot_plot(
             f"cj_subtype={cj_subtype} depth={depth}"
         )
         return
-
-    # Calculate the number of bins
-    m_dt = np.mean(run.dt)
-    xbins = int(run.delta_t / m_dt) + 1
 
     # Define the grid of bins. This has shape (run.nthread, xbins)
     grid = np.zeros((run.nthread, xbins))
