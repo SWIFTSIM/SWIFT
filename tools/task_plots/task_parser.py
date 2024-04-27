@@ -368,10 +368,22 @@ class TaskParser:
         self.dt = None
         self._parse_tasks()
 
+        self._report()
+
     def _load_data(self):
         """Load the data from the file."""
         self.data = np.loadtxt(self.filename)
         self.full_step = self.data[0, :]
+
+    def _report(self):
+        if self.mpimode:
+            print("MPI MODE")
+            print(f"Number of ranks:         {len(self.ranks)}")
+        print(f"CPU frequency:           {self.cpu_clock * 1000.0}")
+        print(f"Number of threads:       {self.nthread}")
+        print(f"Data range:              {self.delta_t} ms")
+        print(f"Number of tasks:         {self.task_labels.size}")
+        print(f"Number of unique tasks:  {np.unique(self.task_labels).size}")
 
     def _define_columns(self):
         """
@@ -389,10 +401,8 @@ class TaskParser:
 
         #  Do we have an MPI file?
         if self.mpimode:
-            print("# MPI mode")
             if self.ranks is None:
                 self.ranks = list(range(int(max(self.data[:, 0])) + 1))
-            print("# Number of ranks:", len(self.ranks))
             self._col_look_up["rank"] = 0
             self._col_look_up["threads"] = 1
             self._col_look_up["task"] = 2
@@ -412,7 +422,6 @@ class TaskParser:
             self._col_look_up["min_dist"] = 19
             self._col_look_up["mpole_dist"] = 20
         else:
-            print("# non MPI mode")
             self.ranks = [0]
             self._col_look_up["rank"] = -1
             self._col_look_up["threads"] = 0
@@ -449,12 +458,9 @@ class TaskParser:
             self.cpu_clock = float(self.full_step[12]) / 1000.0
         else:
             self.cpu_clock = float(self.full_step[10]) / 1000.0
-        if self.verbose:
-            print("# CPU frequency:", self.cpu_clock * 1000.0)
 
         # Count the number of threads
         self.nthread = int(max(self.data[:, self._col_look_up["threads"]])) + 1
-        print("# Number of threads:", self.nthread)
 
         # Each rank can have different clocks (compute node), but we want to
         # use the same delta times range for comparisons, so we suck it up and
@@ -480,7 +486,6 @@ class TaskParser:
                 dt = toc_step - tic_step
                 if dt > self.delta_t:
                     self.delta_t = dt
-        print("# Data range: ", self.delta_t, "ms")
 
         # Get the start tic
         if self.start_t < 0:
@@ -528,6 +533,7 @@ class TaskParser:
         self.data[:, self._col_look_up["toc"]] /= self.cpu_clock
         self.start_t /= self.cpu_clock
         self.end_t /= self.cpu_clock
+        self.delta_t /= self.cpu_clock
 
     def _parse_tasks(self):
         """Parse the tasks creating Task objects."""
