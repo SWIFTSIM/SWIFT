@@ -751,6 +751,8 @@ def make_task_plot(
     ax.set_xlim(-run.delta_t * 0.01, run.delta_t * 1.01)
     ax.set_ylim(0.5, run.nthread + 1.0)
 
+    print(colors)
+
     # Loop over threads plotting the tasks
     typesseen = []
     for i in range(run.nthread):
