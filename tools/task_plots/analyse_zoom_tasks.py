@@ -881,6 +881,15 @@ def make_task_hotspot_plot(
         task_type, ci_type, cj_type, ci_subtype, cj_subtype, depth
     )
 
+    # Exit if there are no tasks to plot
+    if len(labels) == 0:
+        print(
+            f"No tasks to plot for task_type={task_type} ci_type={ci_type} "
+            f"cj_type={cj_type} ci_subtype={ci_subtype} "
+            f"cj_subtype={cj_subtype} depth={depth}"
+        )
+        return
+
     # Define the grid of bins. This has shape (run.nthread, xbins)
     grid = np.zeros((run.nthead, xbins))
 
