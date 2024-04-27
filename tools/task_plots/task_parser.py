@@ -383,6 +383,8 @@ class TaskParser:
             f"CPU frequency:                        {self.cpu_clock * 1000.0}"
         )
         print(f"Number of threads:                    {self.nthread}")
+        print(f"Start:                                {self.start_t} ms")
+        print(f"End:                                  {self.end_t} ms")
         print(f"Data range:                           {self.delta_t} ms")
         print(f"Number of tasks:                      {self.task_labels.size}")
         print(
