@@ -384,6 +384,8 @@ class TaskParser:
         print(f"Data range:              {self.delta_t} ms")
         print(f"Number of tasks:         {self.task_labels.size}")
         print(f"Number of unique tasks:  {np.unique(self.task_labels).size}")
+        print(f"Average task dt:         {np.mean(self.dt)} ms")
+        print(f"Median task dt:          {np.median(self.dt)} ms")
 
     def _define_columns(self):
         """
