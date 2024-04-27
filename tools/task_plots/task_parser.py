@@ -378,14 +378,25 @@ class TaskParser:
     def _report(self):
         if self.mpimode:
             print("MPI MODE")
-            print(f"Number of ranks:         {len(self.ranks)}")
-        print(f"CPU frequency:           {self.cpu_clock * 1000.0}")
-        print(f"Number of threads:       {self.nthread}")
-        print(f"Data range:              {self.delta_t} ms")
-        print(f"Number of tasks:         {self.task_labels.size}")
-        print(f"Number of unique tasks:  {np.unique(self.task_labels).size}")
-        print(f"Average task dt:         {np.mean(self.dt)} ms")
-        print(f"Median task dt:          {np.median(self.dt)} ms")
+        print(f"Number of ranks:                      {len(self.ranks)}")
+        print(
+            f"CPU frequency:                        {self.cpu_clock * 1000.0}"
+        )
+        print(f"Number of threads:                    {self.nthread}")
+        print(f"Data range:                           {self.delta_t} ms")
+        print(f"Number of tasks:                      {self.task_labels.size}")
+        print(
+            "Number of unique tasks:               "
+            f"{np.unique(self.task_labels).size}"
+        )
+        print(f"Average task dt:                      {np.mean(self.dt)} ms")
+        pcent_16 = np.percentile(self.dt, 16)
+        pcent_50 = np.percentile(self.dt, 50)
+        pcent_84 = np.percentile(self.dt, 84)
+        print(
+            "Percentiles task dt (16%, 50%, 84%):  "
+            f"{pcent_16}, {pcent_50}, {pcent_84} (ms)"
+        )
 
     def _define_columns(self):
         """
