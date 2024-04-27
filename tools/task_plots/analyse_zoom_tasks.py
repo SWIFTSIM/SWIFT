@@ -127,7 +127,7 @@ def make_task_hist_time_split(runs, order_by_count=True, output=""):
     filename += ".png"
 
     fig.tight_layout()
-    fig.savefig(f"{output}_{filename}", bbox_inches="tight")
+    fig.savefig(f"{output}{filename}", bbox_inches="tight")
 
     plt.close(fig)
 
@@ -198,7 +198,7 @@ def make_task_hist_split(runs, output=""):
     filename = "task_count_comp_split.png"
 
     fig.tight_layout()
-    fig.savefig(f"{output}_{filename}", bbox_inches="tight")
+    fig.savefig(f"{output}{filename}", bbox_inches="tight")
 
     plt.close(fig)
 
@@ -303,7 +303,7 @@ def make_task_hist(
         filename += f"_depth{depth}"
 
     fig.tight_layout()
-    fig.savefig(f"{output}_{filename}", bbox_inches="tight")
+    fig.savefig(f"{output}{filename}", bbox_inches="tight")
 
     plt.close(fig)
 
@@ -412,7 +412,7 @@ def make_task_hist_time_weighted(
         filename += f"_depth{depth}"
 
     fig.tight_layout()
-    fig.savefig(f"{output}_{filename}", bbox_inches="tight")
+    fig.savefig(f"{output}{filename}", bbox_inches="tight")
 
     plt.close(fig)
 
@@ -513,7 +513,7 @@ def make_pair_mindist_plot(
         filename += f"_depth{depth}"
 
     fig.tight_layout()
-    fig.savefig(f"{output}_{filename}", bbox_inches="tight")
+    fig.savefig(f"{output}{filename}", bbox_inches="tight")
 
     plt.close(fig)
 
@@ -615,7 +615,7 @@ def make_pair_mpoledist_plot(
         filename += f"_depth{depth}"
 
     fig.tight_layout()
-    fig.savefig(f"{output}_{filename}", bbox_inches="tight")
+    fig.savefig(f"{output}{filename}", bbox_inches="tight")
     plt.close(fig)
 
 
@@ -695,7 +695,7 @@ def make_mindist_mpoledist_comp(
     fig.tight_layout()
 
     # Save the figure
-    fig.savefig(f"{output}_{run.name}_{filename}.png", bbox_inches="tight")
+    fig.savefig(f"{output}{run.name}_{filename}.png", bbox_inches="tight")
     plt.close(fig)
 
 
@@ -823,7 +823,7 @@ def make_task_plot(
     fig.tight_layout()
 
     # Save the figure
-    fig.savefig(f"{output}_{run.name}_{filename}.png", bbox_inches="tight")
+    fig.savefig(f"{output}{run.name}_{filename}.png", bbox_inches="tight")
     plt.close(fig)
 
 
@@ -951,7 +951,7 @@ def make_task_hotspot_plot(
     fig.tight_layout()
 
     # Save the figure
-    fig.savefig(f"{output}_{run.name}_{filename}.png", bbox_inches="tight")
+    fig.savefig(f"{output}{run.name}_{filename}.png", bbox_inches="tight")
     plt.close(fig)
 
 
@@ -998,6 +998,8 @@ if __name__ == "__main__":
     outdir = args.outdir
     outbase = args.outbase
     output = f"{outdir}/{outbase}"
+    if output[-1] != "_":
+        output += "_"
 
     if len(labels) == 0:
         labels = files
