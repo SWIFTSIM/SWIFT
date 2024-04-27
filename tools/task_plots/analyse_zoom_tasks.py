@@ -745,6 +745,12 @@ def make_task_plot(
         task_type, ci_type, cj_type, ci_subtype, cj_subtype, depth
     )
 
+    print(run.delta_t)
+    print(tics)
+    print(tocs)
+    print(run.start_t)
+    print(run.end_t)
+
     # Set up the figure
     fig = plt.figure(figsize=(16, 4))
     ax = fig.add_subplot(111)
