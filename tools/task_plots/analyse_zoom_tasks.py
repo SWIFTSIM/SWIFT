@@ -746,8 +746,8 @@ def make_task_plot(
     )
 
     print(run.delta_t)
-    print(tics)
-    print(tocs)
+    print(tics[:10])
+    print(tocs[:10])
     print(run.start_t)
     print(run.end_t)
 
