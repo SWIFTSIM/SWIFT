@@ -543,12 +543,18 @@ class TaskParser:
         self.data[:, self._col_look_up["tic"]] -= self.start_t
         self.data[:, self._col_look_up["toc"]] -= self.start_t
 
-        # Convert tics and tocs to ms
+        # Convert tics and tocs to ms or seconds depending on range
         self.data[:, self._col_look_up["tic"]] /= self.cpu_clock
         self.data[:, self._col_look_up["toc"]] /= self.cpu_clock
         self.start_t /= self.cpu_clock
         self.end_t /= self.cpu_clock
         self.delta_t /= self.cpu_clock
+        if self.delta_t > 10000:
+            self.data[:, self._col_look_up["tic"]] /= 1000
+            self.data[:, self._col_look_up["toc"]] /= 1000
+            self.start_t /= 1000
+            self.end_t /= 1000
+            self.delta_t /= 1000
 
     def _parse_tasks(self):
         """Parse the tasks creating Task objects."""
