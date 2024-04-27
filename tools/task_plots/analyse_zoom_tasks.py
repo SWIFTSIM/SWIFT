@@ -1014,6 +1014,8 @@ if __name__ == "__main__":
     if len(output) > 0 and output[-1] != "_":
         output += "_"
 
+    print("Writing outputs to:", output)
+
     if len(labels) == 0:
         labels = files
         print("Using filenames as labels")

@@ -358,6 +358,7 @@ class TaskParser:
         self._process_header(mintic)
 
         # Clean up the data
+        self.units = None
         self._clean_up_data()
 
         # How many tasks are there total?
@@ -383,21 +384,32 @@ class TaskParser:
             f"CPU frequency:                        {self.cpu_clock * 1000.0}"
         )
         print(f"Number of threads:                    {self.nthread}")
-        print(f"Start:                                {self.start_t} ms")
-        print(f"End:                                  {self.end_t} ms")
-        print(f"Data range:                           {self.delta_t} ms")
+        print(
+            f"Start:                                "
+            f"{self.start_t} {self.units}"
+        )
+        print(
+            f"End:                                  {self.end_t} {self.units}"
+        )
+        print(
+            f"Data range:                           "
+            f"{self.delta_t} {self.units}"
+        )
         print(f"Number of tasks:                      {self.task_labels.size}")
         print(
             "Number of unique tasks:               "
             f"{np.unique(self.task_labels).size}"
         )
-        print(f"Average task dt:                      {np.mean(self.dt)} ms")
+        print(
+            f"Average task dt:                      "
+            f"{np.mean(self.dt)} {self.units}"
+        )
         pcent_16 = np.percentile(self.dt, 16)
         pcent_50 = np.percentile(self.dt, 50)
         pcent_84 = np.percentile(self.dt, 84)
         print(
             "Percentiles task dt (16%, 50%, 84%):  "
-            f"{pcent_16}, {pcent_50}, {pcent_84} (ms)"
+            f"{pcent_16}, {pcent_50}, {pcent_84} ({self.units})"
         )
 
     def _define_columns(self):
@@ -549,12 +561,14 @@ class TaskParser:
         self.start_t /= self.cpu_clock
         self.end_t /= self.cpu_clock
         self.delta_t /= self.cpu_clock
+        self.units = "ms"
         if self.delta_t > 10000:
             self.data[:, self._col_look_up["tic"]] /= 1000
             self.data[:, self._col_look_up["toc"]] /= 1000
             self.start_t /= 1000
             self.end_t /= 1000
             self.delta_t /= 1000
+            self.units = "s"
 
     def _parse_tasks(self):
         """Parse the tasks creating Task objects."""
