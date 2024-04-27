@@ -1124,7 +1124,7 @@ if __name__ == "__main__":
         make_task_plot(run, ci_type=2, cj_type=3, output=output)
 
         # Make task hotspot plots
-        make_task_hotspot_plot(run, output)
+        make_task_hotspot_plot(run, output=output)
         make_task_hotspot_plot(run, ci_type=1, cj_type=1, output=output)
         make_task_hotspot_plot(run, ci_type=2, cj_type=2, output=output)
         make_task_hotspot_plot(run, ci_type=3, cj_type=3, output=output)
