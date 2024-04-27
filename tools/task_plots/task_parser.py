@@ -731,6 +731,16 @@ class TaskParser:
         if task is not None:
             mask = np.logical_and(mask, self.task_labels == task)
 
+        # Early exit if filter is empty
+        if mask.sum() == 0:
+            print(
+                f"No tasks found with the given filters (task={task}, "
+                f"ci_type={ci_type}, cj_type={cj_type}, "
+                f"ci_subtype={ci_subtype}, cj_subtype={cj_subtype}, "
+                f"depth={depth})"
+            )
+            return
+
         # Extract the data
         unique_tasks = np.unique(self.task_labels[mask])
         _labels = self.task_labels[mask]
