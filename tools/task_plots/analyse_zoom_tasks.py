@@ -891,7 +891,7 @@ def make_task_hotspot_plot(
         return
 
     # Define the grid of bins. This has shape (run.nthread, xbins)
-    grid = np.zeros((run.nthead, xbins))
+    grid = np.zeros((run.nthread, xbins))
 
     # Populate the grid thread by thread and task by task
     for i in labels.keys():
