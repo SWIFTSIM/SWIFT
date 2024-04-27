@@ -925,8 +925,9 @@ def make_task_hotspot_plot(
     # Plot the grid
     im = ax.imshow(
         grid,
-        extent=[0, run.delta_t, 0, run.nthread],
+        # extent=[0, run.delta_t, 0, run.nthread],
         cmap="plasma",
+        aspect="auto",
     )
 
     # Start and end of time-step
