@@ -238,9 +238,7 @@ def make_task_hist(
     # Combine all information into the labels
     nempty_runs = 0
     for i, (name, run) in enumerate(runs.items()):
-        mask = run.get_mask(
-            run, ci_type, cj_type, ci_subtype, cj_subtype, depth
-        )
+        mask = run.get_mask(ci_type, cj_type, ci_subtype, cj_subtype, depth)
 
         # Check we have something to plot
         if mask.sum() == 0:
@@ -345,9 +343,7 @@ def make_task_hist_time_weighted(
     # Combine all information into the labels
     nempty_runs = 0
     for i, (name, run) in enumerate(runs.items()):
-        mask = run.get_mask(
-            run, ci_type, cj_type, ci_subtype, cj_subtype, depth
-        )
+        mask = run.get_mask(ci_type, cj_type, ci_subtype, cj_subtype, depth)
 
         # Check we have something to plot
         if mask.sum() == 0:
@@ -461,9 +457,7 @@ def make_pair_mindist_plot(
     # Collect the distances
     dists = {}
     for i, (name, run) in enumerate(runs.items()):
-        mask = run.get_mask(
-            run, ci_type, cj_type, ci_subtype, cj_subtype, depth
-        )
+        mask = run.get_mask(ci_type, cj_type, ci_subtype, cj_subtype, depth)
 
         # Ensure we only have pair tasks (i.e. the string "pair" is in the
         # task label)
@@ -565,9 +559,7 @@ def make_pair_mpoledist_plot(
     # Collect the distances
     dists = {}
     for i, (name, run) in enumerate(runs.items()):
-        mask = run.get_mask(
-            run, ci_type, cj_type, ci_subtype, cj_subtype, depth
-        )
+        mask = run.get_mask(ci_type, cj_type, ci_subtype, cj_subtype, depth)
 
         # Ensure we only have pair tasks (i.e. the string "pair" is in the
         # task label)
@@ -654,7 +646,7 @@ def make_mindist_mpoledist_comp(
         output: Output filepath.
     """
     # Make the mask
-    mask = run.get_mask(run, ci_type, cj_type, ci_subtype, cj_subtype, depth)
+    mask = run.get_mask(ci_type, cj_type, ci_subtype, cj_subtype, depth)
 
     # Ensure we only have pair tasks (i.e. the string "pair" is in the
     # task label)
@@ -739,7 +731,6 @@ def make_task_plot(
 
     # If we have nothing then exit and move on
     ntasks_tot = run.get_mask(
-        run,
         ci_type,
         cj_type,
         ci_subtype,
@@ -874,7 +865,6 @@ def make_task_hotspot_plot(
 
     # If we have nothing then exit and move on
     ntasks_tot = run.get_mask(
-        run,
         ci_type,
         cj_type,
         ci_subtype,
