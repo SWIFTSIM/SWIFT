@@ -746,7 +746,7 @@ def make_task_plot(
     )
 
     # Set up the figure
-    fig = plt.figure(figsize=(16, 4))
+    fig = plt.figure(figsize=(16, 0.1 * run.nthreads))
     ax = fig.add_subplot(111)
     ax.set_xlim(-run.delta_t * 0.01, run.delta_t * 1.01)
     ax.set_ylim(0.5, run.nthread + 1.0)
@@ -907,16 +907,19 @@ def make_task_hotspot_plot(
     # Remove empty bins
     grid[grid == 0] = np.nan
 
-    # # Sort the rows of the grid
-    # end_bins = []
-    # for i in range(run.nthread):
-    #     if
-    #     end_bins.append(np.max(np.where(~np.isnan(grid[i, :]))[0]))
-    # sinds = np.argsort(end_bins)
-    # grid = grid[sinds, :]
+    # Sort the rows of the grid
+    end_bins = []
+    for i in range(run.nthread):
+        inds = np.where(~np.isnan(grid[i, :]))[0]
+        if len(inds) == 0:
+            end_bins.append(0)
+        else:
+            end_bins.append(np.max(inds))
+    sinds = np.argsort(end_bins)
+    grid = grid[sinds, :]
 
     # Set up the figure
-    fig = plt.figure(figsize=(16, 4))
+    fig = plt.figure(figsize=(16, 0.1 * run.nthreads))
     ax = fig.add_subplot(111)
 
     # Plot the grid
