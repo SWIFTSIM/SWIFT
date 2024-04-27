@@ -755,7 +755,7 @@ def make_task_plot(
 
     # Loop over threads plotting the tasks
     typesseen = []
-    for i in range(run.nthread):
+    for i in labels.keys():
         # Collect the ranges and colors into lists
         _tictocs = []
         _colors = []
@@ -885,7 +885,7 @@ def make_task_hotspot_plot(
     grid = np.zeros((run.nthead, xbins))
 
     # Populate the grid thread by thread and task by task
-    for i in range(run.nthread):
+    for i in labels.keys():
         for j in range(len(labels[i])):
             # Calculate the tic bin
             xtic_bin = int(tics[i][j] / run.delta_t * xbins)
