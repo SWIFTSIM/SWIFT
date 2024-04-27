@@ -835,7 +835,6 @@ def make_task_hotspot_plot(
     ci_subtype=None,
     cj_subtype=None,
     depth=None,
-    xbins=10000,
     sort_threads=True,
     output="",
 ):
@@ -887,6 +886,10 @@ def make_task_hotspot_plot(
             f"cj_subtype={cj_subtype} depth={depth}"
         )
         return
+
+    # Calculate the number of bins
+    median_dt = np.median(run.dt)
+    xbins = int(run.delta_t / median_dt) + 1
 
     # Define the grid of bins. This has shape (run.nthread, xbins)
     grid = np.zeros((run.nthread, xbins))
