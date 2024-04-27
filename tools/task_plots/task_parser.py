@@ -459,7 +459,6 @@ class TaskParser:
         # Each rank can have different clocks (compute node), but we want to
         # use the same delta times range for comparisons, so we suck it up and
         # take the hit of precalculating this, unless the user knows better.
-        self.delta_t = self.delta_t * self.cpu_clock
         if self.delta_t == 0:
             for rank in self.ranks:
                 if self.mpimode:
@@ -481,7 +480,7 @@ class TaskParser:
                 dt = toc_step - tic_step
                 if dt > self.delta_t:
                     self.delta_t = dt
-        print("# Data range: ", self.delta_t / self.cpu_clock, "ms")
+        print("# Data range: ", self.delta_t, "ms")
 
         # Get the start tic
         if self.start_t < 0:
@@ -527,6 +526,8 @@ class TaskParser:
         # Convert tics and tocs to ms
         self.data[:, self._col_look_up["tic"]] /= self.cpu_clock
         self.data[:, self._col_look_up["toc"]] /= self.cpu_clock
+        self.start_t /= self.cpu_clock
+        self.end_t /= self.cpu_clock
 
     def _parse_tasks(self):
         """Parse the tasks creating Task objects."""
