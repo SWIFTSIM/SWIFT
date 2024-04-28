@@ -926,7 +926,6 @@ def make_task_activity_plot(
         np.linspace(0, run.nthread - 1, run.nthread),
         grid,
         cmap="coolwarm",
-        aspect="auto",
     )
 
     # Start and end of time-step
