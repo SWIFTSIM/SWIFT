@@ -93,12 +93,17 @@ struct delaunay {
    */
   int last_tetrahedron;
 
-  /*! @brief Lifo queue of tetrahedra that need checking during the incremental
-   *  construction algorithm. After a new vertex has been added, all new
-   *  tetrahedra are added to this queue and are tested to see if the
-   *  Delaunay criterion (empty circumcircles) still holds. New tetrahedra
-   *  created when flipping invalid tetrahedra are also added to the queue. */
-  struct int_lifo_queue tetrahedra_to_check;
+  union {
+    /*! @brief Array of tetrahedra containing the current vertex */
+    struct int_lifo_queue tetrahedra_containing_vertex;
+
+    /*! @brief Lifo queue of tetrahedra that need checking during the
+     * incremental construction algorithm. After a new vertex has been added,
+     * all new tetrahedra are added to this queue and are tested to see if the
+     *  Delaunay criterion (empty circumcircles) still holds. New tetrahedra
+     *  created when flipping invalid tetrahedra are also added to the queue. */
+    struct int_lifo_queue tetrahedra_to_check;
+  };
 
   /*! @brief Array containing indices of flagged tetrahedra */
   int* flagged_tetrahedra;
@@ -110,9 +115,6 @@ struct delaunay {
    * array.
    */
   struct int_lifo_queue free_tetrahedron_indices;
-
-  /*! @brief Array of tetrahedra containing the current vertex */
-  struct int_lifo_queue tetrahedra_containing_vertex;
 
   /*! @brief Geometry variables. Auxiliary variables used by the exact integer
    *  geometry3d tests that need to be stored in between tests, since allocating
@@ -169,7 +171,10 @@ inline static void delaunay_n_to_2n_flip(struct delaunay* d, int v,
                                          const int* t, int n);
 inline static void delaunay_finalize_tetrahedron(struct delaunay* d, int t);
 inline static void delaunay_check_tetrahedra(struct delaunay* d, int v);
-inline static int delaunay_check_tetrahedron(struct delaunay* d, int t, int v);
+inline static int delaunay_check_and_fix_tetrahedron(struct delaunay* d,
+                                                     const int t, const int v);
+inline static int delaunay_tetrahedron_is_regular(struct delaunay* d, int t,
+                                                  int v);
 inline static int positive_permutation(int a, int b, int c, int d);
 inline static double delaunay_get_radius2(struct delaunay* restrict d,
                                           const struct tetrahedron* t);
@@ -254,7 +259,6 @@ inline static struct delaunay* delaunay_malloc(const double* cell_loc,
 
   /* Allocate queues */
   int_lifo_queue_init(&d->tetrahedra_containing_vertex, 10);
-  int_lifo_queue_init(&d->tetrahedra_to_check, 10);
   int_lifo_queue_init(&d->free_tetrahedron_indices, 10);
 
   /* Allocate the array with the cell information of the ghost particles */
@@ -304,7 +308,6 @@ inline static void delaunay_reset(struct delaunay* restrict d,
   /* Reset all the queues */
   int_lifo_queue_reset(&d->tetrahedra_to_check);
   int_lifo_queue_reset(&d->free_tetrahedron_indices);
-  int_lifo_queue_reset(&d->tetrahedra_containing_vertex);
 
   /* Reset the sid mask.
    * Sid=13 does not correspond to a face and is always set to 1.
@@ -403,9 +406,8 @@ inline static void delaunay_destroy(struct delaunay* restrict d) {
   swift_free("delaunay", d->vertex_tetrahedron_index);
   swift_free("delaunay", d->vertex_part_idx);
   swift_free("delaunay", d->tetrahedra);
-  int_lifo_queue_destroy(&d->tetrahedra_to_check);
-  int_lifo_queue_destroy(&d->free_tetrahedron_indices);
   int_lifo_queue_destroy(&d->tetrahedra_containing_vertex);
+  int_lifo_queue_destroy(&d->free_tetrahedron_indices);
   geometry3d_destroy(&d->geometry);
   swift_free("delaunay", d->ghost_cell_sids);
   gsl_rng_free(d->rng);
@@ -1252,7 +1254,7 @@ inline static void delaunay_one_to_four_flip(struct delaunay* d, int v, int t) {
   tetrahedron_swap_neighbour(&d->tetrahedra[ngbs[3]], idx_in_ngbs[3], t, 3);
 
   /* enqueue all new/updated tetrahedra for delaunay checks */
-  int_lifo_queue_push(&d->tetrahedra_to_check, t);
+  delaunay_assert(d->tetrahedra_to_check.values[0] == t);
   int_lifo_queue_push(&d->tetrahedra_to_check, t1);
   int_lifo_queue_push(&d->tetrahedra_to_check, t2);
   int_lifo_queue_push(&d->tetrahedra_to_check, t3);
@@ -1379,8 +1381,8 @@ inline static void delaunay_two_to_six_flip(struct delaunay* d, int v,
   tetrahedron_swap_neighbour(&d->tetrahedra[ngbs[5]], idx_in_ngbs[5], tn3, 2);
 
   /* Add new/updated tetrahedra to queue for checking */
-  int_lifo_queue_push(&d->tetrahedra_to_check, t[0]);
-  int_lifo_queue_push(&d->tetrahedra_to_check, t[1]);
+  delaunay_assert(d->tetrahedra_to_check.values[0] == t[0])
+  delaunay_assert(d->tetrahedra_to_check.values[1] == t[1])
   int_lifo_queue_push(&d->tetrahedra_to_check, tn2);
   int_lifo_queue_push(&d->tetrahedra_to_check, tn3);
   int_lifo_queue_push(&d->tetrahedra_to_check, tn4);
@@ -1568,6 +1570,7 @@ inline static void delaunay_n_to_2n_flip(struct delaunay* d, int v,
 #endif
 
   /* add new/updated tetrahedra to the queue for checking */
+  int_lifo_queue_reset(&d->tetrahedra_to_check);
   for (int j = 0; j < 2 * n; j++) {
     int_lifo_queue_push(&d->tetrahedra_to_check, tn[j]);
   }
@@ -2021,7 +2024,7 @@ inline static void delaunay_check_tetrahedra(struct delaunay* d, int v) {
   int freed_tetrahedron;
   int t = get_next_tetrahedron_to_check(d);
   while (t >= 0) {
-    freed_tetrahedron = delaunay_check_tetrahedron(d, t, v);
+    freed_tetrahedron = delaunay_check_and_fix_tetrahedron(d, t, v);
     /* Did we free a tetrahedron? */
     if (freed_tetrahedron >= 0) {
       if (n_freed >= freed_size) {
@@ -2037,9 +2040,50 @@ inline static void delaunay_check_tetrahedra(struct delaunay* d, int v) {
   }
   /* Enqueue the newly freed tetrahedra indices */
   for (int i = 0; i < n_freed; i++) {
+#ifdef SWIFT_DEBUG_CHECKS
+    tetrahedron_deactivate(&d->tetrahedra[freed[i]]);
+#endif
     int_lifo_queue_push(&d->free_tetrahedron_indices, freed[i]);
   }
   free(freed);
+}
+
+/**
+ * @brief Check if the given tetrahedron satisfies the empty circumsphere
+ * criterion that marks it as a Delaunay tetrahedron, with respect to the given
+ * vertex.
+ *
+ * @param d Delaunay tessellation
+ * @param t The tetrahedron to check.
+ * @param v The new vertex that might cause invalidation of the tetrahedron.
+ * @return 0 if the tetrahedron failed the empty circumsphere criterion, 1
+ * otherwise.
+ */
+inline static int delaunay_tetrahedron_is_regular(struct delaunay* d, int t,
+                                                  int v) {
+  delaunay_assert(0 <= t && t < d->tetrahedra_index);
+  delaunay_assert(d->vertex_start <= v && t < d->vertex_index);
+
+  struct tetrahedron* tetrahedron = &d->tetrahedra[t];
+  const int v0 = tetrahedron->vertices[0];
+  const int v1 = tetrahedron->vertices[1];
+  const int v2 = tetrahedron->vertices[2];
+  const int v3 = tetrahedron->vertices[3];
+
+  const unsigned long* al = &d->integer_vertices[3 * v0];
+  const unsigned long* bl = &d->integer_vertices[3 * v1];
+  const unsigned long* cl = &d->integer_vertices[3 * v2];
+  const unsigned long* dl = &d->integer_vertices[3 * v3];
+  const unsigned long* el = &d->integer_vertices[3 * v];
+
+  const double* ad = &d->rescaled_vertices[3 * v0];
+  const double* bd = &d->rescaled_vertices[3 * v1];
+  const double* cd = &d->rescaled_vertices[3 * v2];
+  const double* dd = &d->rescaled_vertices[3 * v3];
+  const double* ed = &d->rescaled_vertices[3 * v];
+
+  return 0 <= geometry3d_in_sphere_adaptive(&d->geometry, al, bl, cl, dl, el,
+                                            ad, bd, cd, dd, ed);
 }
 
 /**
@@ -2055,8 +2099,8 @@ inline static void delaunay_check_tetrahedra(struct delaunay* d, int v) {
  * @param v The new vertex that might cause invalidation of the tetrahedron.
  * @return Index of freed tetrahedron, or negative if no tetrahedra are freed
  */
-inline static int delaunay_check_tetrahedron(struct delaunay* d, const int t,
-                                             const int v) {
+inline static int delaunay_check_and_fix_tetrahedron(struct delaunay* d,
+                                                     const int t, const int v) {
   struct tetrahedron* tetrahedron = &d->tetrahedra[t];
   const int v0 = tetrahedron->vertices[0];
   const int v1 = tetrahedron->vertices[1];
