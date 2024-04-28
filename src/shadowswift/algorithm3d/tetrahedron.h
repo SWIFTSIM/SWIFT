@@ -5,6 +5,15 @@
 #ifndef SWIFTSIM_GITLAB_TETRAHEDRON_H
 #define SWIFTSIM_GITLAB_TETRAHEDRON_H
 
+enum tetrahedron_flags {
+  tetrahedron_flag_none = 0,
+  tetrahedron_flag_has_vertex = (1 << 0),
+  tetrahedron_flag_regular = (1 << 1),
+  tetrahedron_flag_irregular = (1 << 2),
+  tetrahedron_flag_tested_regularity = tetrahedron_flag_irregular | tetrahedron_flag_regular,
+  tetrahedron_flag_on_boundary = (1 << 3),
+};
+
 /**
  * @brief Tetrahedron
  *
@@ -44,7 +53,7 @@ struct tetrahedron {
    * invalidated) */
   int active;
 
-  int _flag;
+  enum tetrahedron_flags _flags;
 };
 
 /**
@@ -73,7 +82,7 @@ inline static void tetrahedron_init(struct tetrahedron *t, int v0, int v1,
   t->index_in_neighbour[3] = -1;
 
   t->active = 1;
-  t->_flag = 0;
+  t->_flags = tetrahedron_flag_none;
 }
 
 /**
@@ -98,7 +107,7 @@ inline static void tetrahedron_deactivate(struct tetrahedron *restrict t) {
   t->index_in_neighbour[3] = -1;
 
   t->active = 0;
-  t->_flag = -1;
+  t->_flags = tetrahedron_flag_none;
 }
 
 /**
