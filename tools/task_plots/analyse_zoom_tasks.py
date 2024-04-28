@@ -727,13 +727,14 @@ def make_task_plot(
         depth: Depth of the tasks to filter on. (Optional)
     """
     # If we have nothing then exit and move on
-    ntasks_tot = run.get_mask(
+    mask = run.get_mask(
         ci_type,
         cj_type,
         ci_subtype,
         cj_subtype,
         depth,
-    ).sum()
+    )
+    ntasks_tot = mask.sum()
     if ntasks_tot == 0:
         print(
             f"No tasks to plot for task_type={task_type} ci_type={ci_type} "
@@ -748,7 +749,9 @@ def make_task_plot(
     )
 
     # Get the unique tasks
-    unique_tasks, task_counts = np.unique(labels, return_counts=True)
+    unique_tasks, task_counts = np.unique(
+        run.task_lables[mask], return_counts=True
+    )
     ntasks = len(unique_tasks)
 
     # Set up the figure
@@ -758,7 +761,6 @@ def make_task_plot(
     ax.set_ylim(0.5, run.nthread + 1.0)
 
     # Loop over threads plotting the tasks
-    typesseen = []
     for i in labels.keys():
         # Collect the ranges and colors into lists
         _tictocs = []
