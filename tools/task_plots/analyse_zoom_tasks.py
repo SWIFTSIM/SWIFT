@@ -943,13 +943,11 @@ def make_task_activity_plot(
     ax_grid.set_ylabel("Thread ID")
 
     # Create the colorbar
-    cbar = fig.colorbar(im, ax=cax, ticks=[0, 1])
+    cbar = fig.colorbar(im, cax=cax, ticks=[0, 1])
     cbar.set_ticklabels(["Inactive", "Active"])
 
-    # Create an axis for the histogram above the main plot
-    ax_hist.set_xlim(
-        ax_grid.get_xlim()
-    )  # Ensure the histogram aligns perfectly with the grid plot
+    # Ensure the histogram aligns perfectly with the grid plot
+    ax_hist.set_xlim(ax_grid.get_xlim())
 
     # Calculate the sum across each column for the histogram
     column_sums = grid.sum(axis=0)
@@ -961,8 +959,11 @@ def make_task_activity_plot(
     )
 
     ax_hist.set_ylabel("Sum of counts")
-    ax_hist.set_ylim(0, run.nthread)
+    ax_hist.set_ylim(0, run.nthread + 0.1 * run.nthread)
     ax_hist.grid(True)
+
+    # Turn off the x-axis on the histogram
+    ax_hist.xaxis.set_visible(False)
 
     # Define the filename
     filename = "task_activity"
