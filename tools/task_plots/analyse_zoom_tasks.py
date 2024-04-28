@@ -750,7 +750,7 @@ def make_task_plot(
 
     # Get the unique tasks
     unique_tasks, task_counts = np.unique(
-        run.task_lables[mask], return_counts=True
+        run.task_labels[mask], return_counts=True
     )
     ntasks = len(unique_tasks)
 
