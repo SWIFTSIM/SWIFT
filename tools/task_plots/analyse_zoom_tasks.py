@@ -757,6 +757,7 @@ def make_task_plot(
     # Set up the figure
     fig = plt.figure(figsize=(16, 0.15 * run.nthread))
     ax = fig.add_subplot(111)
+    ax.grid(True, zorder=0)
     ax.set_xlim(-run.delta_t * 0.01, run.delta_t * 1.01)
     ax.set_ylim(0.5, run.nthread + 1.0)
 
@@ -776,6 +777,7 @@ def make_task_plot(
             [i + 0.55, 0.9],
             facecolors=_colors,
             linewidth=0,
+            zorder=1,
         )
 
     # Create legend handles from sorted labels and colors
@@ -806,12 +808,11 @@ def make_task_plot(
         [0, run.nthread + nrow + 1],
         "k--",
         linewidth=1,
+        zorder=1,
     )
 
     ax.set_xlabel("Wall clock time [ms]")
     ax.set_ylabel("Thread ID")
-
-    ax.grid(True, which="major", axis="y", linestyle="-")
 
     # Define the filename
     filename = "tasks"
@@ -934,6 +935,7 @@ def make_task_activity_plot(
     )
     ax_grid = fig.add_subplot(gs[1, 0])
     ax_hist = fig.add_subplot(gs[0, 0])
+    ax_hist.grid(True, zorder=0)
     cax = fig.add_subplot(gs[:, 1])
 
     # Plot the grid
@@ -967,14 +969,15 @@ def make_task_activity_plot(
         column_sums,
         width=np.diff(np.linspace(0, run.delta_t, xbins))[0],
         align="edge",
+        zorder=1,
     )
 
-    ax_hist.set_ylabel("Task Running")
+    ax_hist.set_ylabel("Tasks Running")
     ax_hist.set_ylim(0, run.nthread + 0.1 * run.nthread)
     ax_hist.grid(True)
 
-    # Turn off the x-axis on the histogram
-    ax_hist.xaxis.set_visible(False)
+    # Turn off the x-axis ticks and tick labels on the histogram
+    ax_hist.tick_params(axis="x", which="both", bottom=False, top=False)
 
     # Define the filename
     filename = "task_activity"
