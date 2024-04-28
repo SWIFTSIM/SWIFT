@@ -944,7 +944,7 @@ def make_task_activity_plot(
 
     # Create the colorbar
     cbar = fig.colorbar(im, cax=cax, ticks=[0, 1])
-    cbar.set_ticklabels(["Inactive", "Active"])
+    cbar.set_ticklabels(["Inactive", "Task"])
 
     # Ensure the histogram aligns perfectly with the grid plot
     ax_hist.set_xlim(ax_grid.get_xlim())
@@ -958,7 +958,7 @@ def make_task_activity_plot(
         align="edge",
     )
 
-    ax_hist.set_ylabel("Sum of counts")
+    ax_hist.set_ylabel("Task Running")
     ax_hist.set_ylim(0, run.nthread + 0.1 * run.nthread)
     ax_hist.grid(True)
 
