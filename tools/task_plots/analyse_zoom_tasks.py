@@ -835,7 +835,7 @@ def make_task_activity_plot(
     ci_subtype=None,
     cj_subtype=None,
     depth=None,
-    xbins=100,
+    xbins=1000,
     sort_threads=True,
     output="",
 ):
@@ -906,15 +906,10 @@ def make_task_activity_plot(
                 grid[i, xbin] = 1
 
     # Sort the rows of the grid
-    end_bins = []
-    for i in range(run.nthread):
-        inds = np.where(~np.isnan(grid[i, :]))[0]
-        if len(inds) == 0:
-            end_bins.append(0)
-        else:
-            end_bins.append(np.max(inds))
-    sinds = np.argsort(end_bins)
-    grid = grid[sinds, :]
+    if sort_threads:
+        counts = [np.sum(grid[i, :]) for i in range(run.nthread)]
+        sinds = np.argsort(counts)
+        grid = grid[sinds, :]
 
     # Set up the figure
     fig = plt.figure(figsize=(16, 0.07 * run.nthread))
