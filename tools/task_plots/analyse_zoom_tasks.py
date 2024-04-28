@@ -35,6 +35,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import argparse
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.gridspec as gridspec
 
 from task_parser import TaskParser
 
@@ -912,10 +913,17 @@ def make_task_activity_plot(
         grid = grid[sinds, :]
 
     # Set up the figure with a main plot for the grid and a histogram on top
-    fig = plt.figure(
-        figsize=(16, 0.05 * run.nthread + 2)
-    )  # Adjusted height to accommodate histogram
-    ax_grid = fig.add_subplot(211)  # Main plot for the grid
+    fig = plt.figure(figsize=(16, 0.05 * run.nthread + 2))
+    gs = gridspec.GridSpec(
+        2,
+        2,
+        height_ratios=[2, 10],
+        width_ratios=[20, 1],
+        hspace=0.0,
+    )
+    ax_grid = fig.add_subplot(gs[1, 0])
+    ax_hist = fig.add_subplot(gs[0, 0])
+    cax = fig.add_subplot(gs[:, 1])
 
     # Plot the grid
     im = ax_grid.pcolormesh(
@@ -935,7 +943,7 @@ def make_task_activity_plot(
     ax_grid.set_ylabel("Thread ID")
 
     # Create the colorbar
-    cbar = fig.colorbar(im, ax=ax_grid)
+    cbar = fig.colorbar(im, ax=cax)
     cbar.set_label("Counts")
 
     # Create an axis for the histogram above the main plot
