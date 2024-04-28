@@ -775,7 +775,6 @@ def make_task_plot(
             [i + 0.55, 0.9],
             facecolors=_colors,
             linewidth=0,
-            width=0.9,
         )
 
     # Legend and room for it.
