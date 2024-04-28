@@ -909,7 +909,7 @@ def make_task_activity_plot(
     # Sort the rows of the grid
     if sort_threads:
         counts = [np.sum(grid[i, :]) for i in range(run.nthread)]
-        sinds = np.argsort(counts)
+        sinds = np.argsort(counts)[::-1]
         grid = grid[sinds, :]
 
     # Set up the figure with a main plot for the grid and a histogram on top
@@ -1139,6 +1139,9 @@ if __name__ == "__main__":
 
         # Make the task plots showing tasks per thread as a function of time
         make_task_plot(run, output=output)
+        make_task_plot(run, ci_type=1, output=output)
+        make_task_plot(run, ci_type=2, output=output)
+        make_task_plot(run, ci_type=3, output=output)
         make_task_plot(run, ci_type=1, cj_type=1, output=output)
         make_task_plot(run, ci_type=2, cj_type=2, output=output)
         make_task_plot(run, ci_type=3, cj_type=3, output=output)
@@ -1148,6 +1151,9 @@ if __name__ == "__main__":
 
         # Make task activity plots
         make_task_activity_plot(run, output=output)
+        make_task_activity_plot(run, ci_type=1, output=output)
+        make_task_activity_plot(run, ci_type=2, output=output)
+        make_task_activity_plot(run, ci_type=3, output=output)
         make_task_activity_plot(run, ci_type=1, cj_type=1, output=output)
         make_task_activity_plot(run, ci_type=2, cj_type=2, output=output)
         make_task_activity_plot(run, ci_type=3, cj_type=3, output=output)
@@ -1157,6 +1163,15 @@ if __name__ == "__main__":
 
         # Make task activity plots but don't sort the threads
         make_task_activity_plot(run, sort_threads=False, output=output)
+        make_task_activity_plot(
+            run, ci_type=1, sort_threads=False, output=output
+        )
+        make_task_activity_plot(
+            run, ci_type=2, sort_threads=False, output=output
+        )
+        make_task_activity_plot(
+            run, ci_type=3, sort_threads=False, output=output
+        )
         make_task_activity_plot(
             run, ci_type=1, cj_type=1, sort_threads=False, output=output
         )
