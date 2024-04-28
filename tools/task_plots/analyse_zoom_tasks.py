@@ -935,7 +935,8 @@ def make_task_activity_plot(
     )
     ax_grid = fig.add_subplot(gs[1, 0])
     ax_hist = fig.add_subplot(gs[0, 0])
-    ax_hist.grid(True, zorder=0)
+    ax_hist.grid(True)
+    ax_hist.set_axisbelow(True)
     cax = fig.add_subplot(gs[:, 1])
 
     # Plot the grid
@@ -974,7 +975,6 @@ def make_task_activity_plot(
 
     ax_hist.set_ylabel("Tasks Running")
     ax_hist.set_ylim(0, run.nthread + 0.1 * run.nthread)
-    ax_hist.grid(True)
 
     # Turn off the x-axis ticks and tick labels on the histogram
     ax_hist.tick_params(axis="x", which="both", bottom=False, top=False)
