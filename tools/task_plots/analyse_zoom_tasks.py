@@ -746,7 +746,7 @@ def make_task_plot(
     )
 
     # Set up the figure
-    fig = plt.figure(figsize=(16, 0.1 * run.nthread))
+    fig = plt.figure(figsize=(16, 0.09 * run.nthread))
     ax = fig.add_subplot(111)
     ax.set_xlim(-run.delta_t * 0.01, run.delta_t * 1.01)
     ax.set_ylim(0.5, run.nthread + 1.0)
@@ -827,7 +827,7 @@ def make_task_plot(
     plt.close(fig)
 
 
-def make_task_hotspot_plot(
+def make_task_activity_plot(
     run,
     task_type=None,
     ci_type=None,
@@ -903,10 +903,7 @@ def make_task_hotspot_plot(
 
             # Populate the bins
             for xbin in range(xtic_bin, xtoc_bin):
-                grid[i, xbin] += 1
-
-    # Remove empty bins
-    grid[grid == 0] = np.nan
+                grid[i, xbin] = 1
 
     # Sort the rows of the grid
     end_bins = []
@@ -920,14 +917,15 @@ def make_task_hotspot_plot(
     grid = grid[sinds, :]
 
     # Set up the figure
-    fig = plt.figure(figsize=(16, 0.1 * run.nthread))
+    fig = plt.figure(figsize=(16, 0.09 * run.nthread))
     ax = fig.add_subplot(111)
 
     # Plot the grid
-    im = ax.imshow(
+    im = ax.pcolormesh(
+        np.linspace(0, run.delta_t, xbins),
+        np.linspace(0, run.nthread - 1, run.nthread),
         grid,
-        # extent=[0, run.delta_t, 0, run.nthread],
-        cmap="plasma",
+        cmap="coolwarm",
         aspect="auto",
     )
 
@@ -943,7 +941,7 @@ def make_task_hotspot_plot(
     cbar.set_label("Counts")
 
     # Define the filename
-    filename = "task_hotspots"
+    filename = "task_activity"
     if ci_type is not None and cj_type is not None:
         filename += f"_types{ci_type}-{cj_type}"
     if ci_subtype is not None and cj_subtype is not None:
@@ -1123,32 +1121,32 @@ if __name__ == "__main__":
         make_task_plot(run, ci_type=1, cj_type=2, output=output)
         make_task_plot(run, ci_type=2, cj_type=3, output=output)
 
-        # Make task hotspot plots
-        make_task_hotspot_plot(run, output=output)
-        make_task_hotspot_plot(run, ci_type=1, cj_type=1, output=output)
-        make_task_hotspot_plot(run, ci_type=2, cj_type=2, output=output)
-        make_task_hotspot_plot(run, ci_type=3, cj_type=3, output=output)
-        make_task_hotspot_plot(run, ci_type=1, cj_type=3, output=output)
-        make_task_hotspot_plot(run, ci_type=1, cj_type=2, output=output)
-        make_task_hotspot_plot(run, ci_type=2, cj_type=3, output=output)
+        # Make task activity plots
+        make_task_activity_plot(run, output=output)
+        make_task_activity_plot(run, ci_type=1, cj_type=1, output=output)
+        make_task_activity_plot(run, ci_type=2, cj_type=2, output=output)
+        make_task_activity_plot(run, ci_type=3, cj_type=3, output=output)
+        make_task_activity_plot(run, ci_type=1, cj_type=3, output=output)
+        make_task_activity_plot(run, ci_type=1, cj_type=2, output=output)
+        make_task_activity_plot(run, ci_type=2, cj_type=3, output=output)
 
-        # Make task hotspot plots but don't sort the threads
-        make_task_hotspot_plot(run, sort_threads=False, output=output)
-        make_task_hotspot_plot(
+        # Make task activity plots but don't sort the threads
+        make_task_activity_plot(run, sort_threads=False, output=output)
+        make_task_activity_plot(
             run, ci_type=1, cj_type=1, sort_threads=False, output=output
         )
-        make_task_hotspot_plot(
+        make_task_activity_plot(
             run, ci_type=2, cj_type=2, sort_threads=False, output=output
         )
-        make_task_hotspot_plot(
+        make_task_activity_plot(
             run, ci_type=3, cj_type=3, sort_threads=False, output=output
         )
-        make_task_hotspot_plot(
+        make_task_activity_plot(
             run, ci_type=1, cj_type=3, sort_threads=False, output=output
         )
-        make_task_hotspot_plot(
+        make_task_activity_plot(
             run, ci_type=1, cj_type=2, sort_threads=False, output=output
         )
-        make_task_hotspot_plot(
+        make_task_activity_plot(
             run, ci_type=2, cj_type=3, sort_threads=False, output=output
         )
