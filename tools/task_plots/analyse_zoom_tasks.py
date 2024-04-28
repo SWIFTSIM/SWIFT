@@ -944,7 +944,7 @@ def make_task_activity_plot(
 
     # Create the colorbar
     cbar = fig.colorbar(im, ax=cax, ticks=[0, 1])
-cbar.set_ticklabels(['Inactive', 'Active'])
+    cbar.set_ticklabels(["Inactive", "Active"])
 
     # Create an axis for the histogram above the main plot
     ax_hist.set_xlim(
