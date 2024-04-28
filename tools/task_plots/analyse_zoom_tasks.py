@@ -746,7 +746,7 @@ def make_task_plot(
     )
 
     # Set up the figure
-    fig = plt.figure(figsize=(16, 0.07 * run.nthread))
+    fig = plt.figure(figsize=(16, 0.05 * run.nthread))
     ax = fig.add_subplot(111)
     ax.set_xlim(-run.delta_t * 0.01, run.delta_t * 1.01)
     ax.set_ylim(0.5, run.nthread + 1.0)
@@ -913,7 +913,7 @@ def make_task_activity_plot(
 
     # Set up the figure with a main plot for the grid and a histogram on top
     fig = plt.figure(
-        figsize=(16, 0.07 * run.nthread + 2)
+        figsize=(16, 0.05 * run.nthread + 2)
     )  # Adjusted height to accommodate histogram
     ax_grid = fig.add_subplot(211)  # Main plot for the grid
 
