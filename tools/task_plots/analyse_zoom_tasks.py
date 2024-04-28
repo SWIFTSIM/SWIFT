@@ -36,6 +36,7 @@ import argparse
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
+import matplotlib.patches as mpatches
 
 from task_parser import TaskParser
 
@@ -746,6 +747,10 @@ def make_task_plot(
         task_type, ci_type, cj_type, ci_subtype, cj_subtype, depth
     )
 
+    # Get the unique tasks
+    unique_tasks, task_counts = np.unique(labels, return_counts=True)
+    ntasks = len(unique_tasks)
+
     # Set up the figure
     fig = plt.figure(figsize=(16, 0.15 * run.nthread))
     ax = fig.add_subplot(111)
@@ -764,12 +769,6 @@ def make_task_plot(
             _tictocs.append((tics[i][j], tocs[i][j] - tics[i][j]))
             _colors.append(colors[labels[i][j]])
 
-            if labels[i][j] not in typesseen:
-                plt.plot(
-                    [], [], color=colors[labels[i][j]], label=labels[i][j]
-                )
-                typesseen.append(labels[i][j])
-
         ax.broken_barh(
             _tictocs,
             [i + 0.55, 0.9],
@@ -777,10 +776,20 @@ def make_task_plot(
             linewidth=0,
         )
 
+    # Create legend handles from sorted labels and colors
+    sinds = np.argsort(-task_counts)
+    sorted_labels = unique_tasks[sinds]
+    sorted_colors = [colors[lab] for lab in sorted_labels]
+    handles = [
+        mpatches.Patch(color=color, label=label)
+        for label, color in zip(sorted_labels, sorted_colors)
+    ]
+
     # Legend and room for it.
-    nrow = len(typesseen) / 8
+    nrow = ntasks / 8
     ax.fill_between([0, 0], run.nthread, run.nthread + nrow, facecolor="white")
     ax.legend(
+        handles=handles,
         loc="lower left",
         shadow=True,
         bbox_to_anchor=(0.0, 1.0, 1.0, 0.2),
