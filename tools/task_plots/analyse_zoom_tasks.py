@@ -913,7 +913,7 @@ def make_task_activity_plot(
         grid = grid[sinds, :]
 
     # Set up the figure with a main plot for the grid and a histogram on top
-   fig = plt.figure(figsize=(16, 0.15 * run.nthread + 2))
+    fig = plt.figure(figsize=(16, 0.15 * run.nthread + 2))
     gs = gridspec.GridSpec(
         2,
         2,
@@ -943,7 +943,8 @@ def make_task_activity_plot(
     ax_grid.set_ylabel("Thread ID")
 
     # Create the colorbar
-    cbar = fig.colorbar(im, ax=cax)
+    cbar = fig.colorbar(im, ax=cax, ticks=[0, 1])
+cbar.set_ticklabels(['Inactive', 'Active'])
 
     # Create an axis for the histogram above the main plot
     ax_hist.set_xlim(
