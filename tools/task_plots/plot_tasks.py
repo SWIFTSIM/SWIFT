@@ -472,9 +472,7 @@ for rank in ranks:
                     typesseen.append(qtask)
 
             #  Now plot.
-            ax.broken_barh(
-                tictocs, [i + 0.55, 0.9], facecolors=colours, linewidth=0
-            )
+            ax.broken_barh(tictocs, [i + 0.55, 0.9], facecolors=colours, linewidth=0)
 
     #  Legend and room for it.
     nrow = len(typesseen) / 8
@@ -494,12 +492,7 @@ for rank in ranks:
         ax.plot([0, 0], [0, nethread + nrow + 1], "k--", linewidth=1)
     else:
         real_start = tic_step - mintic
-        ax.plot(
-            [real_start, real_start],
-            [0, nethread + nrow + 1],
-            "k--",
-            linewidth=1,
-        )
+        ax.plot([real_start, real_start], [0, nethread + nrow + 1], "k--", linewidth=1)
     ax.plot([end_t, end_t], [0, nethread + nrow + 1], "k--", linewidth=1)
 
     ax.set_xlabel("Wall clock time [ms]")
