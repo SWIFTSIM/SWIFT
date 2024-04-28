@@ -2649,23 +2649,19 @@ inline static void delaunay_flag_vertex_tetrahedra(struct delaunay* restrict d,
   delaunay_assert(int_lifo_queue_is_empty(&d->tetrahedra_to_check));
 
   int tet_idx = d->vertex_tetrahedron_links[vertex_idx];
-  struct tetrahedron* tet = &d->tetrahedra[tet_idx];
+  int_lifo_queue_push(&d->tetrahedra_to_check, tet_idx);
   delaunay_flag_tetrahedron(d, tet_idx, tetrahedron_flag_has_vertex);
-
-  for (int i = 0; i < 4; i++) {
-    if (tet->vertices[i] == vertex_idx) continue;
-    int_lifo_queue_push(&d->tetrahedra_to_check, tet->neighbours[i]);
-  }
   while (!int_lifo_queue_is_empty(&d->tetrahedra_to_check)) {
     tet_idx = int_lifo_queue_pop(&d->tetrahedra_to_check);
-    delaunay_flag_tetrahedron(d, tet_idx, tetrahedron_flag_has_vertex);
 
     /* Push its unvisited neighbours to the queue */
-    tet = &d->tetrahedra[tet_idx];
+    struct tetrahedron *tet = &d->tetrahedra[tet_idx];
     for (int i = 0; i < 4; i++) {
       if (tet->vertices[i] == vertex_idx) continue;
-      if (tet->_flags & tetrahedron_flag_has_vertex) continue;
-      int_lifo_queue_push(&d->tetrahedra_to_check, tet->neighbours[i]);
+      int ngb = tet->neighbours[i];
+      if (d->tetrahedra[ngb]._flags & tetrahedron_flag_has_vertex) continue;
+      int_lifo_queue_push(&d->tetrahedra_to_check, ngb);
+      delaunay_flag_tetrahedron(d, ngb, tetrahedron_flag_has_vertex);
     }
   }
 }
