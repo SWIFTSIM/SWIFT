@@ -978,6 +978,7 @@ def make_task_activity_plot(
 
     # Turn off the x-axis ticks and tick labels on the histogram
     ax_hist.tick_params(axis="x", which="both", bottom=False, top=False)
+    ax_hist.set_xticklabels([])
 
     # Define the filename
     filename = "task_activity"
