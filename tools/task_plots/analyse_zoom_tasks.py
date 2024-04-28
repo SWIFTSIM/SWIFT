@@ -911,12 +911,14 @@ def make_task_activity_plot(
         sinds = np.argsort(counts)
         grid = grid[sinds, :]
 
-    # Set up the figure
-    fig = plt.figure(figsize=(16, 0.07 * run.nthread))
-    ax = fig.add_subplot(111)
+    # Set up the figure with a main plot for the grid and a histogram on top
+    fig = plt.figure(
+        figsize=(16, 0.07 * run.nthread + 2)
+    )  # Adjusted height to accommodate histogram
+    ax_grid = fig.add_subplot(211)  # Main plot for the grid
 
     # Plot the grid
-    im = ax.pcolormesh(
+    im = ax_grid.pcolormesh(
         np.linspace(0, run.delta_t, xbins),
         np.linspace(0, run.nthread - 1, run.nthread),
         grid,
@@ -924,15 +926,35 @@ def make_task_activity_plot(
     )
 
     # Start and end of time-step
-    ax.plot([0, 0], ax.get_ylim(), "k--", linewidth=1)
-    ax.plot([run.delta_t, run.delta_t], ax.get_ylim(), "k--", linewidth=1)
+    ax_grid.plot([0, 0], ax_grid.get_ylim(), "k--", linewidth=1)
+    ax_grid.plot(
+        [run.delta_t, run.delta_t], ax_grid.get_ylim(), "k--", linewidth=1
+    )
 
-    ax.set_xlabel("Wall clock time [ms]")
-    ax.set_ylabel("Thread ID")
+    ax_grid.set_xlabel("Wall clock time [ms]")
+    ax_grid.set_ylabel("Thread ID")
 
     # Create the colorbar
-    cbar = fig.colorbar(im)
+    cbar = fig.colorbar(im, ax=ax_grid)
     cbar.set_label("Counts")
+
+    # Create an axis for the histogram above the main plot
+    ax_hist = fig.add_subplot(212, sharex=ax_grid)
+    ax_hist.set_xlim(
+        ax_grid.get_xlim()
+    )  # Ensure the histogram aligns perfectly with the grid plot
+
+    # Calculate the sum across each column for the histogram
+    column_sums = grid.sum(axis=0)
+    ax_hist.bar(
+        np.linspace(0, run.delta_t, xbins),
+        column_sums,
+        width=np.diff(np.linspace(0, run.delta_t, xbins))[0],
+        align="edge",
+    )
+
+    ax_hist.set_ylabel("Sum of counts")
+    ax_hist.grid(True)
 
     # Define the filename
     filename = "task_activity"
