@@ -178,7 +178,8 @@ inline static int delaunay_test_orientation(struct delaunay* restrict d, int v0,
 inline static int delaunay_vertex_is_valid(struct delaunay* restrict d, int v);
 inline static void delaunay_get_vertex_at(const struct delaunay* d, int idx,
                                           double* out);
-inline static void delaunay_flag_tetrahedron(struct delaunay* d, int t);
+inline static void delaunay_flag_tetrahedron(struct delaunay* d, int t,
+                                             enum tetrahedron_flags flags);
 inline static int delaunay_choose_2(int a, int b,
                                     const double* restrict centroid,
                                     const double* a0, const double* a1,
@@ -2350,24 +2351,21 @@ inline static void delaunay_flag_vertex_tetrahedra(struct delaunay* restrict d,
 
   int tet_idx = d->vertex_tetrahedron_links[vertex_idx];
   struct tetrahedron* tet = &d->tetrahedra[tet_idx];
-  delaunay_flag_tetrahedron(d, tet_idx);
+  delaunay_flag_tetrahedron(d, tet_idx, tetrahedron_flag_has_vertex);
 
-  int_lifo_queue_reset(&d->tetrahedra_to_check);
   for (int i = 0; i < 4; i++) {
     if (tet->vertices[i] == vertex_idx) continue;
     int_lifo_queue_push(&d->tetrahedra_to_check, tet->neighbours[i]);
   }
   while (!int_lifo_queue_is_empty(&d->tetrahedra_to_check)) {
     tet_idx = int_lifo_queue_pop(&d->tetrahedra_to_check);
+    delaunay_flag_tetrahedron(d, tet_idx, tetrahedron_flag_has_vertex);
+
+    /* Push its unvisited neighbours to the queue */
     tet = &d->tetrahedra[tet_idx];
-    /* Anything to do here? */
-    if (tet->_flag) continue;
-
-    delaunay_flag_tetrahedron(d, tet_idx);
-
-    /* Push its neighbours to the queue */
     for (int i = 0; i < 4; i++) {
       if (tet->vertices[i] == vertex_idx) continue;
+      if (tet->_flags & tetrahedron_flag_has_vertex) continue;
       int_lifo_queue_push(&d->tetrahedra_to_check, tet->neighbours[i]);
     }
   }
@@ -2402,12 +2400,21 @@ inline static void delaunay_get_search_radii(struct delaunay* restrict d,
     double max_circumradius2 = 0.;
     for (size_t k = 0; k < d->flagged_tetrahedra_index; k++) {
       struct tetrahedron* tet = &d->tetrahedra[d->flagged_tetrahedra[k]];
+      delaunay_assert(tet->_flags == tetrahedron_flag_has_vertex);
       /* Before doing anything, reset the flag of this tet */
-      tet->_flag = 0;
+      tet->_flags = tetrahedron_flag_none;
       max_circumradius2 = max(max_circumradius2, delaunay_get_radius2(d, tet));
     }
     r[i] = 2. * sqrt(max_circumradius2);
 
+#ifdef SWIFT_DEBUG_CHECKS
+    /* Check that all flags have been reset */
+    for (size_t j = 0; j < d->flagged_tetrahedra_index; j++) {
+      if (d->tetrahedra[d->flagged_tetrahedra[j]]._flags !=
+          tetrahedron_flag_none)
+        error("Other flags on tetrahedron during search radius calculation!");
+    }
+#endif
     /* Reset the list of flagged tetrahedra (all flags should be reset) */
     d->flagged_tetrahedra_index = 0;
   }
@@ -2500,9 +2507,10 @@ inline static void delaunay_print_tessellation(
   fclose(file);
 }
 
-inline static void delaunay_flag_tetrahedron(struct delaunay* d, int t) {
+inline static void delaunay_flag_tetrahedron(struct delaunay* d, int t,
+                                             enum tetrahedron_flags flags) {
   delaunay_assert(t < d->tetrahedra_index);
-  delaunay_assert(d->tetrahedra[t]._flag == 0);
+  delaunay_assert(!(d->tetrahedra[t]._flags & flags));
 
   /* Append it to the array and update the flag correspondingly */
   if (d->flagged_tetrahedra_index == d->flagged_tetrahedra_size) {
@@ -2512,7 +2520,7 @@ inline static void delaunay_flag_tetrahedron(struct delaunay* d, int t) {
         "delaunay", d->flagged_tetrahedra,
         d->flagged_tetrahedra_size * sizeof(*d->flagged_tetrahedra));
   }
-  d->tetrahedra[t]._flag = 1;
+  d->tetrahedra[t]._flags |= flags;
   d->flagged_tetrahedra[d->flagged_tetrahedra_index] = t;
   d->flagged_tetrahedra_index++;
 }
