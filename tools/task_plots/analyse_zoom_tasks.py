@@ -775,6 +775,7 @@ def make_task_plot(
             [i + 0.55, 0.9],
             facecolors=_colors,
             linewidth=0,
+            width=0.9,
         )
 
     # Legend and room for it.
@@ -913,7 +914,7 @@ def make_task_activity_plot(
         grid = grid[sinds, :]
 
     # Set up the figure with a main plot for the grid and a histogram on top
-    fig = plt.figure(figsize=(16, 0.15 * run.nthread + 2))
+    fig = plt.figure(figsize=(16, 8))
     gs = gridspec.GridSpec(
         2,
         2,
@@ -961,6 +962,7 @@ def make_task_activity_plot(
     )
 
     ax_hist.set_ylabel("Sum of counts")
+    ax_hist.set_ylim(0, run.nthread)
     ax_hist.grid(True)
 
     # Define the filename
