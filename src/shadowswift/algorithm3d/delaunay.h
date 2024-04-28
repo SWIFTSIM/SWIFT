@@ -110,6 +110,10 @@ struct delaunay {
   size_t flagged_tetrahedra_index;
   size_t flagged_tetrahedra_size;
 
+  /*! @brief queue of boundary faces. These are defined by a to-be-removed
+   * tetrahedron and the index of the face in that tetrahedron */
+  struct int2_lifo_queue boundary_faces;
+
   /*! @brief Lifo queue of free spots in the tetrahedra array. Sometimes 3
    * tetrahedra can be split into 2 new ones. This leaves a free spot in the
    * array.
@@ -152,6 +156,7 @@ inline static void delaunay_check_tessellation(struct delaunay* d);
 inline static int delaunay_new_vertex(struct delaunay* restrict d, double x,
                                       double y, double z, int idx);
 inline static int delaunay_finalize_vertex(struct delaunay* restrict d, int v);
+inline static void delaunay_cleanup_bowyer_watson(struct delaunay* d);
 inline static int delaunay_new_tetrahedron(struct delaunay* restrict d);
 inline static void delaunay_init_tetrahedron(struct delaunay* d, int t, int v0,
                                              int v1, int v2, int v3);
@@ -260,6 +265,7 @@ inline static struct delaunay* delaunay_malloc(const double* cell_loc,
   /* Allocate queues */
   int_lifo_queue_init(&d->tetrahedra_containing_vertex, 10);
   int_lifo_queue_init(&d->free_tetrahedron_indices, 10);
+  int2_lifo_queue_init(&d->boundary_faces, 10);
 
   /* Allocate the array with the cell information of the ghost particles */
   d->ghost_cell_sids = (int*)swift_malloc("delaunay", ghost_size * sizeof(int));
@@ -308,6 +314,7 @@ inline static void delaunay_reset(struct delaunay* restrict d,
   /* Reset all the queues */
   int_lifo_queue_reset(&d->tetrahedra_to_check);
   int_lifo_queue_reset(&d->free_tetrahedron_indices);
+  int2_lifo_queue_reset(&d->boundary_faces);
 
   /* Reset the sid mask.
    * Sid=13 does not correspond to a face and is always set to 1.
@@ -687,6 +694,254 @@ inline static int delaunay_finalize_vertex(struct delaunay* restrict d, int v) {
   delaunay_log("Passed checks after inserting vertex %i", v);
 
   return number_of_tetrahedra;
+}
+
+/**
+ * @brief Find a tetrahedron containing the given vertex
+ *
+ * Performs a walk through the tetrahedra until one is found that contains the
+ * newly added vertex.
+ *
+ * @param d Delaunay tessellation
+ * @param v The vertex
+ * @return The index of a tetrahedron containing the given vertex.
+ */
+inline static int delaunay_find_tetrahedron_containing_vertex(
+    struct delaunay* restrict d, const int v) {
+
+  /* Get the last tetrahedron index */
+  int tetrahedron_idx = -1;
+  int next_tetrahedron_idx = d->last_tetrahedron;
+
+  /* Walk through the tetrahedron structure until we find a tetrahedron that
+   * contains the newly added vertex */
+  while (next_tetrahedron_idx >= 0) {
+    /* No dummy current_tetrahedron? */
+    tetrahedron_idx = next_tetrahedron_idx;
+    delaunay_assert(tetrahedron_idx > 3);
+
+    /* Check whether the point is inside or outside all four faces */
+    int tests[4];
+#if DELAUNAY_3D_TETRAHEDRON_WALK == DELAUNAY_3D_STEERED_RANDOW_WALK
+    /* This is the default method */
+    next_tetrahedron_idx =
+        delaunay_get_next_tetrahedron_idx_random(d, tetrahedron_idx, v, tests);
+#else
+    next_tetrahedron_idx =
+        delaunay_get_next_tetrahedron_idx_ray(d, tetrahedron_idx, v, tests);
+#endif
+  }
+  return tetrahedron_idx;
+}
+
+/**
+ * @brief Mark conflicting tetrahedra with the new vertex and add them to the
+ * deletion list. (Bowyer-Watson algorithm)
+ *
+ * @param d The #delaunay tesselation
+ * @param v The index of the newly added vertex
+ * @param t The index of *a* #tetrahedron containing v
+ * @param v_in_out The index of the newly added vertex in the returned
+ * #tetrahedron. This is also the index of the neighbouring #tetrahedron sharing
+ * the boundary face (in the returned #tetrahedron)
+ * @returns The index of *a* tetrahedron containing a boundary face
+ */
+inline static int delaunay_find_conflicting_tetrahedra(struct delaunay* d,
+                                                       const int v, const int t,
+                                                       int* v_in_out) {
+  // Perform BFS or DFS starting from t to find all tetrahedra that are
+  // irregular wrt the newly added vertex.
+
+  // Mark each tetrahedron for deletion and add it to a list for easy iteration.
+
+  // Keep track of a tetrahedron that has at least one neighbour that is not
+  // invalidated (to be returned)
+
+  delaunay_assert(int_lifo_queue_is_empty(&d->tetrahedra_to_check));
+  delaunay_assert(d->flagged_tetrahedra_index == 0);
+
+  int cur_t = t;
+  int t_out = -1;
+
+  /* Flag the given tetrahedron for removal and as checked */
+  /* NOTE: for a Delaunay tesselation a tetrahedron containing v will always be
+   * invalidated. This is not necessarily the case for general regular
+   * triangulations... (see e.g. Michal Zemek (2009)) */
+  delaunay_flag_tetrahedron(d, cur_t, tetrahedron_flag_irregular);
+  /* Add it to the checking queue */
+  int_lifo_queue_push(&d->tetrahedra_to_check, cur_t);
+
+  /* Check if the neighbours of invalidated tetrahedra (on the queue) are
+   * invalidated themselves (DFS) */
+  while (!int_lifo_queue_is_empty(&d->tetrahedra_to_check)) {
+    cur_t = int_lifo_queue_pop(&d->tetrahedra_to_check);
+    struct tetrahedron* tet = &d->tetrahedra[cur_t];
+
+    /* Add its neighbours to the checking queue, if they are invalidated */
+    for (int i = 0; i < 4; i++) {
+      int ngb = tet->neighbours[i];
+      /* If we already performed the test, continue */
+      if (d->tetrahedra[ngb]._flags & tetrahedron_flag_tested_regularity)
+        continue;
+      /* Check if the neighbouring tetrahedron becomes invalidated */
+      if (!delaunay_tetrahedron_is_regular(d, ngb, v)) {
+        delaunay_flag_tetrahedron(d, cur_t, tetrahedron_flag_irregular);
+        int_lifo_queue_push(&d->tetrahedra_to_check, ngb);
+      } else {
+        delaunay_flag_tetrahedron(d, cur_t, tetrahedron_flag_regular);
+        if (t_out == -1) {
+          /* We found the first boundary face (face between invalidated and not
+           * invalidated tetrahedron); save it. */
+          t_out = cur_t;
+          *v_in_out = i;
+        }
+      }
+    }
+  }
+
+  return t_out;
+}
+
+/**
+ * @brief Fill the hole of to-be-deleted triangles by connecting the boundary
+ * faces with the newly added vertex. (Bowyer-Watson algorithm)
+ *
+ * This performs DFS from a given boundary face to loop over all the others,
+ * while constructing new tetrahedra with the newly added vertex and updating
+ * the neighbour relations.
+ */
+inline static void delaunay_fill_hole(struct delaunay* d, const int v, int t,
+                                      int v_in_t) {
+  // replace v in t and unmark t for deletion (recycled).
+  // Add t, v_in_t to a queue.
+
+  // While queue is not empty, pop t
+  // Loop around edges of boundary face until neighbouring boundary face is
+  // found.
+
+  // If new boundary face is part of another to be deleted tetrahedron,
+  // unmark it, replace v, update both tetrahedra's neighbour relations and add
+  // it to queue
+  // Else (face of same tetrahedron), create new tetrahedron of face and v and
+  // set neighbour relations.
+
+  /* Add the first boundary face to the queue */
+  int2_lifo_queue_push(&d->boundary_faces, (int2){._0 = t, ._1 = v_in_t});
+
+  /* Fix boundary faces */
+  while (!int2_lifo_queue_is_empty(&d->boundary_faces)) {
+    int2 face = int2_lifo_queue_pop(&d->boundary_faces);
+    int cur_t = face._0;
+    int v_in_cur_t = face._1;
+    struct tetrahedron* cur_tet = &d->tetrahedra[cur_t];
+
+    /* Loop around the 3 edges of the boundary face (opposing the newly added
+     * vertex) */
+    int v0v1v2_in_cur_t[3] = {(v_in_cur_t + 1) % 4, (v_in_cur_t + 2) % 4,
+                              (v_in_cur_t + 3) % 4};
+    for (int i = 0; i < 3; i++) {
+      int e0_in_cur_t = v0v1v2_in_cur_t[i];
+      int e1_in_cur_t = v0v1v2_in_cur_t[(i + 1) % 3];
+      int v_other_in_cur_t = v0v1v2_in_cur_t[(i + 2) % 3];
+      int e0 = cur_tet->vertices[e0_in_cur_t];
+      int e1 = cur_tet->vertices[e1_in_cur_t];
+      int next_t = cur_tet->neighbours[v_other_in_cur_t];
+      struct tetrahedron* next_tet = &d->tetrahedra[next_t];
+
+      /* Is the tetrahedron opposing the new vertex also flagged for removal? */
+      if (next_tet->_flags & tetrahedron_flag_irregular) {
+        /* Loop around this edge until we find a tetrahedron that is not flagged
+         * for removal. Add the corresponding face to the queue. */
+        int iter_t = cur_t;
+        struct tetrahedron* iter_tet = &d->tetrahedra[iter_t];
+        int prev_t_in_iter_t = -1;
+        int next_t_in_iter_t = v_other_in_cur_t;
+        int iter_t_in_next_t = cur_tet->index_in_neighbour[v_other_in_cur_t];
+        while (next_tet->_flags & tetrahedron_flag_irregular) {
+          iter_t = next_t;
+          prev_t_in_iter_t = iter_t_in_next_t;
+          next_t_in_iter_t = (iter_t_in_next_t + 1) % 4;
+          while (next_tet->vertices[next_t_in_iter_t] == e0 ||
+                 next_tet->vertices[next_t_in_iter_t] == e1) {
+            next_t_in_iter_t = (next_t_in_iter_t + 1) % 4;
+          }
+          iter_tet = &d->tetrahedra[iter_t];
+          next_t = iter_tet->neighbours[next_t_in_iter_t];
+          iter_t_in_next_t = iter_tet->index_in_neighbour[next_t_in_iter_t];
+          next_tet = &d->tetrahedra[next_t];
+        }
+
+        /* If this tetrahedron was already flagged on_boundary, it is already
+         * treated; skip it and go to the next edge of this face. */
+        if (iter_tet->_flags & tetrahedron_flag_on_boundary) continue;
+
+        /* Update the neighbour relation of this tetrahedron in the direction
+         * of v_other to be the last tetrahedron that was flagged for removal.
+         * And vice-versa update the neighbour relations of the other flagged
+         * tetrahedron correspondingly. The tetrahedron itself will be fully
+         * fixed when treating its boundary face(s) */
+        cur_tet->neighbours[v_other_in_cur_t] = iter_t;
+        cur_tet->index_in_neighbour[v_other_in_cur_t] = prev_t_in_iter_t;
+        iter_tet->neighbours[prev_t_in_iter_t] = cur_t;
+        iter_tet->index_in_neighbour[prev_t_in_iter_t] = v_other_in_cur_t;
+
+      } else {
+        /* If there is no neighbouring tetrahedron that was flagged, then we
+         * must create a new tetrahedron here, set the right neighbour
+         * relations and add the new face to the queue */
+        int new_t = delaunay_new_tetrahedron(d);
+        struct tetrahedron* new_tet = &d->tetrahedra[new_t];
+        *new_tet = *cur_tet;
+        delaunay_flag_tetrahedron(d, new_t, tetrahedron_flag_irregular);
+
+        /* Update neighbour relations */
+        cur_tet->neighbours[v_other_in_cur_t] = new_t;
+        cur_tet->index_in_neighbour[v_other_in_cur_t] = v_in_cur_t;
+        new_tet->neighbours[v_in_cur_t] = cur_t;
+        new_tet->index_in_neighbour[v_in_cur_t] = v_other_in_cur_t;
+        next_tet->neighbours[new_tet->index_in_neighbour[v_other_in_cur_t]] =
+            new_t;
+
+        /* Add the new tetrahedron to the queue */
+        int2_lifo_queue_push(&d->boundary_faces,
+                             (int2){._0 = new_t, ._1 = v_other_in_cur_t});
+      }
+
+      /* Finally, insert the newly added vertex in the current tetrahedron. */
+      /* NOTE: the newly added vertex will be added to the other involved
+       * tetrahedra, when they are popped from the queue. */
+      cur_tet->vertices[v_in_cur_t] = v;
+
+      /* Mark the tetrahedron as on boundary; it is now fully treated */
+      delaunay_flag_tetrahedron(d, t, tetrahedron_flag_on_boundary);
+    }
+  }
+}
+
+/**
+ * @brief Delete the remaining to-be-deleted tetrahedra (those that were not
+ * recycled). (Bowyer-Watson algorithm)
+ *
+ * This loops over all the tetrahedra that were flagged for removal and
+ * finally deletes those that were not recycled while filling the boundary
+ */
+inline static void delaunay_cleanup_bowyer_watson(struct delaunay* d) {
+  for (size_t i = 0; i < d->flagged_tetrahedra_index; i++) {
+    /* Remove tetrahedra flagged irregular, but not on_boundary */
+    int t = d->flagged_tetrahedra[i];
+    struct tetrahedron* tet = &d->tetrahedra[t];
+    if ((tet->_flags & tetrahedron_flag_irregular) &&
+        !(tet->_flags & tetrahedron_flag_on_boundary)) {
+#ifdef SWIFT_DEBUG_CHECKS
+      tetrahedron_deactivate(tet);
+#endif
+      int_lifo_queue_push(&d->free_tetrahedron_indices, t);
+    }
+    /* Reset flags */
+    d->tetrahedra[t]._flags = tetrahedron_flag_none;
+  }
+  /* Now all the flags of the tetrahedra should be reset */
+  d->flagged_tetrahedra_index = 0;
 }
 
 /**
@@ -2567,6 +2822,28 @@ inline static void delaunay_flag_tetrahedron(struct delaunay* d, int t,
   d->tetrahedra[t]._flags |= flags;
   d->flagged_tetrahedra[d->flagged_tetrahedra_index] = t;
   d->flagged_tetrahedra_index++;
+}
+
+inline static void delaunay_unflag_tetrahedra(struct delaunay* d,
+                                              enum tetrahedron_flags flags) {
+  delaunay_assert(d->flagged_tetrahedra_index > 0);
+
+  /* Loop over flagged tetrahedra and unflag the requested flags.
+   * If other flags are still set, we keep it in the flagged list, otherwise
+   * it is deleted from the list */
+  size_t head = 0;
+  size_t tail = 0;
+  while (tail < d->flagged_tetrahedra_index) {
+    int t = d->flagged_tetrahedra[tail];
+    struct tetrahedron* tet = &d->tetrahedra[t];
+    tet->_flags &= ~flags;
+    if (tet->_flags != tetrahedron_flag_none) {
+      d->flagged_tetrahedra[head] = t;
+      head++;
+    }
+    tail++;
+  }
+  d->flagged_tetrahedra_index = head;
 }
 
 inline static int delaunay_test_orientation(struct delaunay* restrict d, int v0,
