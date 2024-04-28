@@ -747,7 +747,7 @@ def make_task_plot(
     )
 
     # Set up the figure
-    fig = plt.figure(figsize=(16, 0.05 * run.nthread))
+    fig = plt.figure(figsize=(16, 0.15 * run.nthread))
     ax = fig.add_subplot(111)
     ax.set_xlim(-run.delta_t * 0.01, run.delta_t * 1.01)
     ax.set_ylim(0.5, run.nthread + 1.0)
@@ -913,7 +913,7 @@ def make_task_activity_plot(
         grid = grid[sinds, :]
 
     # Set up the figure with a main plot for the grid and a histogram on top
-    fig = plt.figure(figsize=(16, 0.05 * run.nthread + 2))
+   fig = plt.figure(figsize=(16, 0.15 * run.nthread + 2))
     gs = gridspec.GridSpec(
         2,
         2,
@@ -944,10 +944,8 @@ def make_task_activity_plot(
 
     # Create the colorbar
     cbar = fig.colorbar(im, ax=cax)
-    cbar.set_label("Counts")
 
     # Create an axis for the histogram above the main plot
-    ax_hist = fig.add_subplot(212, sharex=ax_grid)
     ax_hist.set_xlim(
         ax_grid.get_xlim()
     )  # Ensure the histogram aligns perfectly with the grid plot
