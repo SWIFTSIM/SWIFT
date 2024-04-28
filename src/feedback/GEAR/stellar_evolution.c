@@ -129,10 +129,18 @@ void stellar_evolution_compute_continuous_feedback_properties(
     if (null_mass) {
       message("Star %lld (m_star = %e, m_ej = %e) completely exploded!",  sp->id, sp->mass, sp->feedback_data.mass_ejected);
       /* If the star ejects all its mass (for very massive stars), give it a
-	 zero mass so that we know it has exploded.
+         zero mass so that we know it has exploded.
          We do not remove the star from the simulation to keep track of its
-	 properties, e.g. to check the IMF sampling (with sinks). */
-      sp->mass = 0.0 ;
+         properties, e.g. to check the IMF sampling (with sinks).
+
+         Bug fix (28.04.2024): The mass of the star should not be set to
+         0. This a lead a gpart of dark matter to want a timestep of 0.0 <
+         minimal timestep and stopped all simulations... Setting the star mass
+	 to the same minimal value than the gpart has solved the issue.
+	 Notice that increasing 'discrete_star_minimal_gravity_mass' has not
+         solved the issue.
+         The issue happenened after the changes here. */
+      sp->mass = sm->discrete_star_minimal_gravity_mass ;
 
       /* It's not a good idea to put the gpart's mass to zero. Instead, we give
 	 it minimal mass that is provided by the user in the paramter file */
@@ -254,10 +262,18 @@ void stellar_evolution_compute_discrete_feedback_properties(
     if (null_mass) {
       message("Star %lld (m_star = %e, m_ej = %e) completely exploded!",  sp->id, sp->mass, sp->feedback_data.mass_ejected);
       /* If the star ejects all its mass (for very massive stars), give it a
-	 zero mass so that we know it has exploded.
+         zero mass so that we know it has exploded.
          We do not remove the star from the simulation to keep track of its
-	 properties, e.g. to check the IMF sampling (with sinks). */
-      sp->mass = 0.0 ;
+         properties, e.g. to check the IMF sampling (with sinks).
+
+         Bug fix (28.04.2024): The mass of the star should not be set to
+         0. This a lead a gpart of dark matter to want a timestep of 0.0 <
+         minimal timestep and stopped all simulations... Setting the star mass
+	 to the same minimal value than the gpart has solved the issue.
+	 Notice that increasing 'discrete_star_minimal_gravity_mass' has not
+         solved the issue.
+         The issue happenened after the changes here. */
+      sp->mass = sm->discrete_star_minimal_gravity_mass ;
 
       /* It's not a good idea to put the gpart's mass to zero. Instead, we give
 	 it minimal mass that is provided by the user in the paramter file */

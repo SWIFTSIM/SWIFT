@@ -179,9 +179,22 @@ void feedback_will_do_feedback_individual_star(
     const struct unit_system* us, const struct phys_const* phys_const,
     const integertime_t ti_current, const double time_base) {
 
+  /* Pick the correct table. (if only one table, threshold is < 0) */
+  const float metal =
+      chemistry_get_star_total_iron_mass_fraction_for_feedback(sp);
+  const float threshold = feedback_props->metallicity_max_first_stars;
+
+  const struct stellar_model* model =
+      metal < threshold ? &feedback_props->stellar_model_first_stars
+                        : &feedback_props->stellar_model;
+
   /* If the star has completely exploded, do not continue. This will also avoid
-     NaN values in the liftetime. */
-  if (sp->mass <= 0.0) {
+     NaN values in the liftetime if the mass is set to 0.
+     Correction (28.04.2024): A bug fix in the mass of the star (see
+     stellar_evolution.c in stellar_evolution_compute_X_feedback_properties,
+     X=discrete, continuous) has changed the mass of the star from 0 to
+     discrete_star_minimal_gravity_mass. Hence the fix is propagated here. */
+  if (sp->mass <= model->discrete_star_minimal_gravity_mass) {
     return;
   }
   
@@ -207,14 +220,7 @@ void feedback_will_do_feedback_individual_star(
   const double star_age_beg_step_safe =
       star_age_beg_step < 0 ? 0 : star_age_beg_step;
 
-  /* Pick the correct table. (if only one table, threshold is < 0) */
-  const float metal =
-      chemistry_get_star_total_iron_mass_fraction_for_feedback(sp);
-  const float threshold = feedback_props->metallicity_max_first_stars;
 
-  const struct stellar_model* model =
-      metal < threshold ? &feedback_props->stellar_model_first_stars
-                        : &feedback_props->stellar_model;
 
   /* Compute the stellar evolution including SNe energy */
   stellar_evolution_evolve_individual_star(sp, model, cosmo, us, phys_const,
