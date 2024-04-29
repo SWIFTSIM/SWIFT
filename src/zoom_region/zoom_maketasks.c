@@ -281,7 +281,7 @@ void engine_make_self_gravity_tasks_mapper_zoom_neighbour(void *map_data,
     if (ci->grav.count == 0) continue;
 
     /* Loop over every neighbouring background cells */
-    for (int k = 0; k < nr_neighbours; k++) {
+    for (int k = 0; k < nr_voids; k++) {
 
       /* Get the cell */
       int cjd = void_cells[k];
