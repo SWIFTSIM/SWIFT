@@ -153,14 +153,24 @@ inline static void delaunay_reset(struct delaunay* restrict d,
                                   const double* cell_loc,
                                   const double* cell_width, int vertex_size);
 inline static void delaunay_check_tessellation(struct delaunay* d);
+inline static void delaunay_tetrahedron_sanity_checks(const struct delaunay* d,
+                                                      int t);
 inline static int delaunay_new_vertex(struct delaunay* restrict d, double x,
                                       double y, double z, int idx);
 inline static int delaunay_finalize_vertex(struct delaunay* restrict d, int v);
+inline static int delaunay_remove_conflicting_tetrahedra(struct delaunay* d,
+                                                         const int v,
+                                                         const int t,
+                                                         int* v_in_out);
+inline static void delaunay_fill_hole(struct delaunay* d, int v, int t,
+                                      int v_in_t);
 inline static void delaunay_cleanup_bowyer_watson(struct delaunay* d);
 inline static int delaunay_new_tetrahedron(struct delaunay* restrict d);
 inline static void delaunay_init_tetrahedron(struct delaunay* d, int t, int v0,
                                              int v1, int v2, int v3);
 inline static int get_next_tetrahedron_to_check(struct delaunay* restrict d);
+inline static int delaunay_find_tetrahedron_containing_vertex(
+    struct delaunay* restrict d, int v);
 inline static int delaunay_find_tetrahedra_containing_vertex(struct delaunay* d,
                                                              int v);
 inline static int delaunay_get_next_tetrahedron_idx_random(
@@ -176,8 +186,8 @@ inline static void delaunay_n_to_2n_flip(struct delaunay* d, int v,
                                          const int* t, int n);
 inline static void delaunay_finalize_tetrahedron(struct delaunay* d, int t);
 inline static void delaunay_check_tetrahedra(struct delaunay* d, int v);
-inline static int delaunay_check_and_fix_tetrahedron(struct delaunay* d,
-                                                     const int t, const int v);
+inline static int delaunay_check_and_fix_tetrahedron(struct delaunay* d, int t,
+                                                     const int v);
 inline static int delaunay_tetrahedron_is_regular(struct delaunay* d, int t,
                                                   int v);
 inline static int positive_permutation(int a, int b, int c, int d);
@@ -567,7 +577,7 @@ inline static int delaunay_add_vertex(struct delaunay* d, double x, double y,
   delaunay_log("Adding vertex at %i with coordinates: %g %g %g", idx, x, y, z);
 
   int v = delaunay_new_vertex(d, x, y, z, idx);
-  if (delaunay_finalize_vertex(d, v) == -1) {
+  if (!delaunay_finalize_vertex(d, v)) {
     error("Vertices cannot be added twice!");
   }
   return v;
@@ -596,7 +606,7 @@ inline static void delaunay_add_ghost_vertex(struct delaunay* d, double x,
   /* Create the new vertex */
   int v = delaunay_new_vertex(d, x, y, z, part_idx);
 
-  if (delaunay_finalize_vertex(d, v) == -1)
+  if (!delaunay_finalize_vertex(d, v))
     error("Trying to add the same vertex more than once to this delaunay!");
 
   /* Ghost vertex: add neighbour information */
@@ -611,6 +621,52 @@ inline static void delaunay_add_ghost_vertex(struct delaunay* d, double x,
   d->ghost_index++;
 }
 
+#ifdef DELAUNAY_BOWYER_WATSON
+/**
+ * @brief Finalize adding a new vertex to the tessellation using the
+ * Bowyer-Watson algorithm.
+ *
+ * At the end of this function, the Delaunay tesselation is restored to a valid
+ * state.
+ * This function locates the tetrahedron in the current tessellation that are
+ * invalidated by the new vertex. These are removed and the resulting star
+ * shaped hole is filled with new tetrahedra containing the new vertex as one of
+ * their vertices.
+ *
+ * @param d Delaunay tessellation.
+ * @param v Index of new vertex
+ * @return 0 if the vertex already exists or 1 if the finalization succeeded.
+ */
+inline static int delaunay_finalize_vertex_bowyer_watson(
+    struct delaunay* restrict d, int v) {
+
+  int tetrahedron_idx = delaunay_find_tetrahedron_containing_vertex(d, v);
+
+  if (tetrahedron_idx == -1) {
+    /* Vertex already exists! */
+    return 0;
+  }
+
+  /* Normal case:
+   * - find tetrahedra invalidated by this vertex
+   * - fill the hole of invalidated tetrahedra
+   * - do some cleanup
+   */
+  int v_in_boundary_tet = -1;
+  int boundary_tet_idx = delaunay_remove_conflicting_tetrahedra(
+      d, v, tetrahedron_idx, &v_in_boundary_tet);
+
+  delaunay_fill_hole(d, v, boundary_tet_idx, v_in_boundary_tet);
+
+  delaunay_cleanup_bowyer_watson(d);
+
+  /* perform sanity checks if enabled */
+  delaunay_check_tessellation(d);
+  delaunay_log("Passed checks after inserting vertex %i", v);
+
+  return 1;
+}
+#else
 /**
  * @brief Finalize adding a new vertex to the tessellation.
  *
@@ -629,38 +685,17 @@ inline static void delaunay_add_ghost_vertex(struct delaunay* d, double x,
  *
  * @param d Delaunay tessellation.
  * @param v Index of new vertex
- * @return The number of tetrahedra initially containing the new vertex
+ * @return 0 if the vertex already exists or else the number of tetrahedra
+ * initially containing the new vertex.
  */
-inline static int delaunay_finalize_vertex(struct delaunay* restrict d, int v) {
-#ifdef DELAUNAY_DO_ASSERTIONS
-  /* Check that the new vertex falls in the bounding box */
-  const unsigned long* vl = &d->integer_vertices[3 * v];
-  const unsigned long* d0l = &d->integer_vertices[0];
-  const unsigned long* d1l = &d->integer_vertices[3];
-  const unsigned long* d2l = &d->integer_vertices[6];
-  const unsigned long* d3l = &d->integer_vertices[9];
-
-  const double* vd = &d->rescaled_vertices[3 * v];
-  const double* d0d = &d->rescaled_vertices[0];
-  const double* d1d = &d->rescaled_vertices[3];
-  const double* d2d = &d->rescaled_vertices[6];
-  const double* d3d = &d->rescaled_vertices[9];
-
-  delaunay_assert(geometry3d_orient_adaptive(&d->geometry, d0l, d1l, d2l, vl,
-                                             d0d, d1d, d2d, vd) &&
-                  geometry3d_orient_adaptive(&d->geometry, d0l, d2l, d3l, vl,
-                                             d0d, d2d, d3d, vd) &&
-                  geometry3d_orient_adaptive(&d->geometry, d0l, d3l, d1l, vl,
-                                             d0d, d3d, d1d, vd) &&
-                  geometry3d_orient_adaptive(&d->geometry, d1l, d3l, d2l, vl,
-                                             d1d, d3d, d2d, vd));
-#endif
+inline static int delaunay_finalize_vertex_flipping(struct delaunay* restrict d,
+                                                    int v) {
 
   int number_of_tetrahedra = delaunay_find_tetrahedra_containing_vertex(d, v);
 
   if (number_of_tetrahedra == -1) {
     /* Vertex already exists! */
-    return -1;
+    return 0;
   } else if (number_of_tetrahedra == 1) {
     /* normal case: split 'd->tetrahedra_containing_vertex.values[0]' into 4 new
      * tetrahedra */
@@ -695,6 +730,39 @@ inline static int delaunay_finalize_vertex(struct delaunay* restrict d, int v) {
 
   return number_of_tetrahedra;
 }
+#endif
+
+inline static int delaunay_finalize_vertex(struct delaunay* restrict d, int v) {
+#ifdef DELAUNAY_DO_ASSERTIONS
+  /* Check that the new vertex falls in the bounding box */
+  const unsigned long* vl = &d->integer_vertices[3 * v];
+  const unsigned long* d0l = &d->integer_vertices[0];
+  const unsigned long* d1l = &d->integer_vertices[3];
+  const unsigned long* d2l = &d->integer_vertices[6];
+  const unsigned long* d3l = &d->integer_vertices[9];
+
+  const double* vd = &d->rescaled_vertices[3 * v];
+  const double* d0d = &d->rescaled_vertices[0];
+  const double* d1d = &d->rescaled_vertices[3];
+  const double* d2d = &d->rescaled_vertices[6];
+  const double* d3d = &d->rescaled_vertices[9];
+
+  delaunay_assert(geometry3d_orient_adaptive(&d->geometry, d0l, d1l, d2l, vl,
+                                             d0d, d1d, d2d, vd) &&
+                  geometry3d_orient_adaptive(&d->geometry, d0l, d2l, d3l, vl,
+                                             d0d, d2d, d3d, vd) &&
+                  geometry3d_orient_adaptive(&d->geometry, d0l, d3l, d1l, vl,
+                                             d0d, d3d, d1d, vd) &&
+                  geometry3d_orient_adaptive(&d->geometry, d1l, d3l, d2l, vl,
+                                             d1d, d3d, d2d, vd));
+#endif
+
+#ifdef DELAUNAY_BOWYER_WATSON
+  return delaunay_finalize_vertex_bowyer_watson(d, v);
+#else
+  return delaunay_finalize_vertex_flipping(d, v);
+#endif
+}
 
 /**
  * @brief Find a tetrahedron containing the given vertex
@@ -704,7 +772,8 @@ inline static int delaunay_finalize_vertex(struct delaunay* restrict d, int v) {
  *
  * @param d Delaunay tessellation
  * @param v The vertex
- * @return The index of a tetrahedron containing the given vertex.
+ * @return -1 if the vertex already exists or the index of a tetrahedron
+ * containing the given vertex.
  */
 inline static int delaunay_find_tetrahedron_containing_vertex(
     struct delaunay* restrict d, const int v) {
@@ -712,16 +781,17 @@ inline static int delaunay_find_tetrahedron_containing_vertex(
   /* Get the last tetrahedron index */
   int tetrahedron_idx = -1;
   int next_tetrahedron_idx = d->last_tetrahedron;
+  delaunay_assert(next_tetrahedron_idx >= 0);
 
   /* Walk through the tetrahedron structure until we find a tetrahedron that
    * contains the newly added vertex */
+  int tests[] = {0, 0, 0, 0};
   while (next_tetrahedron_idx >= 0) {
     /* No dummy current_tetrahedron? */
     tetrahedron_idx = next_tetrahedron_idx;
     delaunay_assert(tetrahedron_idx > 3);
 
     /* Check whether the point is inside or outside all four faces */
-    int tests[4];
 #if DELAUNAY_3D_TETRAHEDRON_WALK == DELAUNAY_3D_STEERED_RANDOW_WALK
     /* This is the default method */
     next_tetrahedron_idx =
@@ -731,6 +801,21 @@ inline static int delaunay_find_tetrahedron_containing_vertex(
         delaunay_get_next_tetrahedron_idx_ray(d, tetrahedron_idx, v, tests);
 #endif
   }
+
+  /* Point inside tetrahedron, check for degenerate cases */
+  delaunay_assert(tests[3] <= 0 && tests[1] <= 0 && tests[2] <= 0 &&
+                  tests[0] <= 0);
+
+  int n_zero_tests = 0;
+  for (int i = 0; i < 4; i++) {
+    if (tests[i] == 0) n_zero_tests++;
+  }
+  if (n_zero_tests > 2) {
+    /* Point lies simultaneously in this tetrahedron and 3 or more of its
+     * neighbours, i.e.: the point coincides with an existing vertex. */
+    return -1;
+  }
+
   return tetrahedron_idx;
 }
 
@@ -746,9 +831,10 @@ inline static int delaunay_find_tetrahedron_containing_vertex(
  * the boundary face (in the returned #tetrahedron)
  * @returns The index of *a* tetrahedron containing a boundary face
  */
-inline static int delaunay_find_conflicting_tetrahedra(struct delaunay* d,
-                                                       const int v, const int t,
-                                                       int* v_in_out) {
+inline static int delaunay_remove_conflicting_tetrahedra(struct delaunay* d,
+                                                         const int v,
+                                                         const int t,
+                                                         int* v_in_out) {
   // Perform BFS or DFS starting from t to find all tetrahedra that are
   // irregular wrt the newly added vertex.
 
@@ -785,10 +871,10 @@ inline static int delaunay_find_conflicting_tetrahedra(struct delaunay* d,
         continue;
       /* Check if the neighbouring tetrahedron becomes invalidated */
       if (!delaunay_tetrahedron_is_regular(d, ngb, v)) {
-        delaunay_flag_tetrahedron(d, cur_t, tetrahedron_flag_irregular);
+        delaunay_flag_tetrahedron(d, ngb, tetrahedron_flag_irregular);
         int_lifo_queue_push(&d->tetrahedra_to_check, ngb);
       } else {
-        delaunay_flag_tetrahedron(d, cur_t, tetrahedron_flag_regular);
+        delaunay_flag_tetrahedron(d, ngb, tetrahedron_flag_regular);
         if (t_out == -1) {
           /* We found the first boundary face (face between invalidated and not
            * invalidated tetrahedron); save it. */
@@ -799,6 +885,7 @@ inline static int delaunay_find_conflicting_tetrahedra(struct delaunay* d,
     }
   }
 
+  delaunay_assert(*v_in_out != -1);
   return t_out;
 }
 
@@ -834,6 +921,10 @@ inline static void delaunay_fill_hole(struct delaunay* d, const int v, int t,
     int cur_t = face._0;
     int v_in_cur_t = face._1;
     struct tetrahedron* cur_tet = &d->tetrahedra[cur_t];
+    delaunay_assert(!(cur_tet->_flags & tetrahedron_flag_on_boundary));
+    delaunay_assert(cur_tet->_flags & tetrahedron_flag_irregular);
+    delaunay_assert(d->tetrahedra[cur_tet->neighbours[v_in_cur_t]]._flags &
+                    tetrahedron_flag_regular);
 
     /* Loop around the 3 edges of the boundary face (opposing the newly added
      * vertex) */
@@ -884,7 +975,13 @@ inline static void delaunay_fill_hole(struct delaunay* d, const int v, int t,
         cur_tet->index_in_neighbour[v_other_in_cur_t] = prev_t_in_iter_t;
         iter_tet->neighbours[prev_t_in_iter_t] = cur_t;
         iter_tet->index_in_neighbour[prev_t_in_iter_t] = v_other_in_cur_t;
-
+#ifdef SWIFT_DEBUG_CHECKS
+        delaunay_tetrahedron_sanity_checks(d, cur_t);
+        delaunay_tetrahedron_sanity_checks(d, iter_t);
+#endif
+        /* Add the new boundary face to the queue */
+        int2_lifo_queue_push(&d->boundary_faces,
+                             (int2){._0 = iter_t, ._1 = next_t_in_iter_t});
       } else {
         /* If there is no neighbouring tetrahedron that was flagged, then we
          * must create a new tetrahedron here, set the right neighbour
@@ -892,7 +989,7 @@ inline static void delaunay_fill_hole(struct delaunay* d, const int v, int t,
         int new_t = delaunay_new_tetrahedron(d);
         struct tetrahedron* new_tet = &d->tetrahedra[new_t];
         *new_tet = *cur_tet;
-        delaunay_flag_tetrahedron(d, new_t, tetrahedron_flag_irregular);
+        delaunay_assert(new_tet->_flags == tetrahedron_flag_irregular);
 
         /* Update neighbour relations */
         cur_tet->neighbours[v_other_in_cur_t] = new_t;
@@ -906,15 +1003,18 @@ inline static void delaunay_fill_hole(struct delaunay* d, const int v, int t,
         int2_lifo_queue_push(&d->boundary_faces,
                              (int2){._0 = new_t, ._1 = v_other_in_cur_t});
       }
-
-      /* Finally, insert the newly added vertex in the current tetrahedron. */
-      /* NOTE: the newly added vertex will be added to the other involved
-       * tetrahedra, when they are popped from the queue. */
-      cur_tet->vertices[v_in_cur_t] = v;
-
-      /* Mark the tetrahedron as on boundary; it is now fully treated */
-      delaunay_flag_tetrahedron(d, t, tetrahedron_flag_on_boundary);
     }
+    /* Finally, insert the newly added vertex in the current tetrahedron. */
+    /* NOTE: the newly added vertex will be added to the other involved
+     * tetrahedra, when they are popped from the queue. */
+    cur_tet->vertices[v_in_cur_t] = v;
+
+    /* Mark the tetrahedron as on boundary; it is now fully treated */
+    delaunay_flag_tetrahedron(d, cur_t, tetrahedron_flag_on_boundary);
+
+#ifdef SWIFT_DEBUG_CHECKS
+    delaunay_tetrahedron_sanity_checks(d, cur_t);
+#endif
   }
 }
 
@@ -1637,8 +1737,8 @@ inline static void delaunay_two_to_six_flip(struct delaunay* d, int v,
 
   /* Add new/updated tetrahedra to queue for checking */
   delaunay_assert(d->tetrahedra_to_check.values[0] == t[0])
-  delaunay_assert(d->tetrahedra_to_check.values[1] == t[1])
-  int_lifo_queue_push(&d->tetrahedra_to_check, tn2);
+      delaunay_assert(d->tetrahedra_to_check.values[1] == t[1])
+          int_lifo_queue_push(&d->tetrahedra_to_check, tn2);
   int_lifo_queue_push(&d->tetrahedra_to_check, tn3);
   int_lifo_queue_push(&d->tetrahedra_to_check, tn4);
   int_lifo_queue_push(&d->tetrahedra_to_check, tn5);
@@ -2317,7 +2417,7 @@ inline static void delaunay_check_tetrahedra(struct delaunay* d, int v) {
 inline static int delaunay_tetrahedron_is_regular(struct delaunay* d, int t,
                                                   int v) {
   delaunay_assert(0 <= t && t < d->tetrahedra_index);
-  delaunay_assert(d->vertex_start <= v && t < d->vertex_index);
+  delaunay_assert(d->vertex_start <= v && v < d->vertex_index);
 
   struct tetrahedron* tetrahedron = &d->tetrahedra[t];
   const int v0 = tetrahedron->vertices[0];
@@ -2655,7 +2755,7 @@ inline static void delaunay_flag_vertex_tetrahedra(struct delaunay* restrict d,
     tet_idx = int_lifo_queue_pop(&d->tetrahedra_to_check);
 
     /* Push its unvisited neighbours to the queue */
-    struct tetrahedron *tet = &d->tetrahedra[tet_idx];
+    struct tetrahedron* tet = &d->tetrahedra[tet_idx];
     for (int i = 0; i < 4; i++) {
       if (tet->vertices[i] == vertex_idx) continue;
       int ngb = tet->neighbours[i];
@@ -2979,6 +3079,27 @@ inline static void delaunay_check_tessellation(struct delaunay* restrict d) {
       }
     }
   }
+}
+
+inline static void delaunay_tetrahedron_sanity_checks(const struct delaunay* d,
+                                                      int t) {
+#ifndef DELAUNAY_DO_ASSERTIONS
+  return;
+#else
+  struct tetrahedron* tet = &d->tetrahedra[t];
+  for (int i = 0; i < 4; i++) {
+    int vi = tet->vertices[i];
+    delaunay_assert(0 <= vi && vi < d->vertex_index);
+    int ngbi = tet->neighbours[i];
+    struct tetrahedron* ngb = &d->tetrahedra[ngbi];
+    delaunay_assert(0 <= ngbi && ngbi < d->tetrahedra_index);
+    delaunay_assert(ngb->neighbours[tet->index_in_neighbour[i]] ==
+                    t) for (int j = i + 1; j < 4; j++) {
+      delaunay_assert(vi != tet->vertices[j]);
+      delaunay_assert(ngbi != tet->neighbours[j]);
+    }
+  }
+#endif
 }
 
 /**
