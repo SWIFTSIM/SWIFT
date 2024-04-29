@@ -263,9 +263,10 @@ void engine_make_self_gravity_tasks_mapper_zoom_neighbour(void *map_data,
   /* Handle on the cells and proxies */
   struct cell *cells = s->cells_top;
 
-  /* Get the neighbouring background cells. */
-  const int nr_neighbours = s->zoom_props->nr_neighbour_cells;
+  /* Get the  neighbour and void cells. */
   const int *neighbour_cells = s->zoom_props->neighbour_cells_top;
+  const int nr_voids = s->zoom_props->nr_void_cells;
+  const int *void_cells = s->zoom_props->void_cells_top;
 
   /* Loop through the elements, which are just byte offsets from NULL. */
   for (int ind = 0; ind < num_elements; ind++) {
@@ -274,7 +275,7 @@ void engine_make_self_gravity_tasks_mapper_zoom_neighbour(void *map_data,
     const int cid = (size_t)(map_data) + ind;
 
     /* Get the cell */
-    struct cell *ci = &cells[cid];
+    struct cell *ci = &cells[neighbour_cells[cid]];
 
     /* Skip cells without gravity particles */
     if (ci->grav.count == 0) continue;
@@ -283,13 +284,11 @@ void engine_make_self_gravity_tasks_mapper_zoom_neighbour(void *map_data,
     for (int k = 0; k < nr_neighbours; k++) {
 
       /* Get the cell */
-      int cjd = neighbour_cells[k];
+      int cjd = void_cells[k];
       struct cell *cj = &cells[cjd];
 
-      /* Avoid duplicates, empty cells and completely foreign pairs */
-      if (cid >= cjd || cj->grav.count == 0 ||
-          (ci->nodeID != nodeID && cj->nodeID != nodeID))
-        continue;
+      /* Avoid empty cells. */
+      if (cj->grav.multipole->m_pole.M_000 == 0.f) continue;
 
 #ifdef SWIFT_DEBUG_CHECKS
       /* Ensure both cells are not in the same level */
@@ -449,9 +448,10 @@ void zoom_engine_make_self_gravity_tasks(struct space *s, struct engine *e) {
 
   /* Zoom -> Neighbour (A neighbour is a Buffer cell if we have a buffer region,
    * otherwise it's a Background cell). */
-  threadpool_map(
-      &e->threadpool, engine_make_self_gravity_tasks_mapper_zoom_neighbour,
-      NULL, s->zoom_props->nr_zoom_cells, 1, threadpool_auto_chunk_size, e);
+  threadpool_map(&e->threadpool,
+                 engine_make_self_gravity_tasks_mapper_zoom_neighbour, NULL,
+                 s->zoom_props->nr_neighbour_cells, 1,
+                 threadpool_auto_chunk_size, e);
 
   if (e->verbose)
     message("Making zoom->buffer gravity tasks took %.3f %s.",
