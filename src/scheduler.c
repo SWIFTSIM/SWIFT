@@ -1470,13 +1470,15 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
       }
 
       /* Should this task be split-up? */
-      if (cell_can_split_pair_gravity_task(ci, cj)) {
+      if (cj->subtype == cell_subtype_void ||
+          cell_can_split_pair_gravity_task(ci, cj)) {
         const long long gcount_i = ci->grav.count;
         const long long gcount_j = cj->grav.count;
 
         /* Replace by a single sub-task? */
         if (scheduler_dosub &&
-            gcount_i * gcount_j < ((long long)space_subsize_pair_grav)) {
+            gcount_i * gcount_j < ((long long)space_subsize_pair_grav) &&
+            cj->subtype != cell_subtype_void) {
           /* Otherwise, split it. */
         } else {
           /* Turn the task into a M-M task that will take care of all the
