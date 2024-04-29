@@ -89,5 +89,5 @@ void runner_do_neutrino_weighting(struct runner *r, struct cell *c, int timer) {
     }
   }
 
-  if (timer) TIMER_TOC(timer_weight);
+  if (timer) TIMER_TOC(timer_neutrino_weighting);
 }
