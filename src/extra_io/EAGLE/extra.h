@@ -25,7 +25,7 @@
 #include "engine.h"
 #include "star_formation.h"
 
-#define xray_table_date_string 20230110
+#define xray_table_date_string 20240406
 
 #define xray_emission_N_temperature 46
 #define xray_emission_N_density 71
