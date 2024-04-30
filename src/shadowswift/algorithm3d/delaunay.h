@@ -183,7 +183,6 @@ inline static void delaunay_two_to_six_flip(struct delaunay* d, int v,
                                             const int* t);
 inline static void delaunay_n_to_2n_flip(struct delaunay* d, int v,
                                          const int* t, int n);
-inline static void delaunay_finalize_tetrahedron(struct delaunay* d, int t);
 inline static void delaunay_check_tetrahedra(struct delaunay* d, int v);
 inline static int delaunay_check_and_fix_tetrahedron(struct delaunay* d, int t,
                                                      const int v);
@@ -199,19 +198,16 @@ inline static void delaunay_get_vertex_at(const struct delaunay* d, int idx,
                                           double* out);
 inline static void delaunay_flag_tetrahedron(struct delaunay* d, int t,
                                              tetrahedron_flags_t flags);
-inline static int delaunay_choose_2(int a, int b,
-                                    const double* restrict centroid,
-                                    const double* a0, const double* a1,
-                                    const double* a2, const double* b0,
-                                    const double* b1, const double* b2,
-                                    const double* restrict v);
-inline static int delaunay_choose_3(int a, int b, int c,
-                                    const double* restrict centroid,
-                                    const double* a0, const double* a1,
-                                    const double* a2, const double* b0,
-                                    const double* b1, const double* b2,
-                                    const double* c0, const double* c1,
-                                    const double* c2, const double* restrict v);
+inline static int delaunay_choose_2(int a, int b, const double* a0,
+                                    const double* a1, const double* a2,
+                                    const double* b0, const double* b1,
+                                    const double* b2, const double* v);
+inline static int delaunay_choose_3(int a, int b, int c, const double* a0,
+                                    const double* a1, const double* a2,
+                                    const double* b0, const double* b1,
+                                    const double* b2, const double* c0,
+                                    const double* c1, const double* c2,
+                                    const double* v);
 inline static int delaunay_choose_random_3(struct delaunay* d, int a, int b,
                                            int c);
 
@@ -400,7 +396,6 @@ inline static void delaunay_reset(struct delaunay* restrict d,
       dummy3, v0, v2, v1, -1);
   tetrahedron_init(&d->tetrahedra[dummy3], v0, v2, v1, -1);
   delaunay_init_tetrahedron(d, first_tetrahedron, v0, v1, v2, v3);
-  delaunay_finalize_tetrahedron(d, first_tetrahedron);
 
   /* Setup neighbour relations */
   tetrahedron_swap_neighbours(&d->tetrahedra[dummy0], dummy1, dummy2, dummy3,
@@ -915,8 +910,6 @@ inline static void delaunay_fill_hole(struct delaunay* d, const int v, int t,
     vert_new[face_in_t] = v;
     delaunay_init_tetrahedron(d, new_t, vert_new[0], vert_new[1], vert_new[2],
                               vert_new[3]);
-    /* Any newly created tetrahedron is immediately valid in BW algorithm */
-    delaunay_finalize_tetrahedron(d, new_t);
 
     /* Add the neighbour relations with the tetrahedron outside the hole */
     struct tetrahedron* tet_out =
@@ -996,8 +989,6 @@ inline static void delaunay_fill_hole(struct delaunay* d, const int v, int t,
         vert_new[next_t_in_iter_t] = v;
         delaunay_init_tetrahedron(d, new_t, vert_new[0], vert_new[1],
                                   vert_new[2], vert_new[3]);
-        /* Any newly created tetrahedron is immediately valid in BW algorithm */
-        delaunay_finalize_tetrahedron(d, new_t);
         /* Add the neighbour relations with the tetrahedron outside the hole */
         struct tetrahedron* next_tet = &d->tetrahedra[next_t];
         new_tet->neighbours[next_t_in_iter_t] = next_t;
@@ -1286,43 +1277,37 @@ inline static int delaunay_get_next_tetrahedron_idx_random(
       /* Orientation test BDCE and ACDE > 0 */
       next_tetrahedron_idx = delaunay_choose_2(
           current_tetrahedron->neighbours[0],
-          current_tetrahedron->neighbours[1], current_tetrahedron->centroid, bd,
-          dd, cd, ad, cd, dd, ed);
+          current_tetrahedron->neighbours[1], bd, dd, cd, ad, cd, dd, ed);
       break;
     case 5:
       /* Orientation test BDCE and ADBE > 0 */
       next_tetrahedron_idx = delaunay_choose_2(
           current_tetrahedron->neighbours[0],
-          current_tetrahedron->neighbours[2], current_tetrahedron->centroid, bd,
-          dd, cd, ad, dd, bd, ed);
+          current_tetrahedron->neighbours[2], cd, bd, dd, ad, dd, bd, ed);
       break;
     case 6:
       /* Orientation test ACDE and ADBE > 0 */
       next_tetrahedron_idx = delaunay_choose_2(
           current_tetrahedron->neighbours[1],
-          current_tetrahedron->neighbours[2], current_tetrahedron->centroid, ad,
-          cd, dd, ad, dd, bd, ed);
+          current_tetrahedron->neighbours[2], cd, dd, ad, bd, ad, dd, ed);
       break;
     case 9:
       /* Orientation test BDCE and ABCE > 0 */
       next_tetrahedron_idx = delaunay_choose_2(
           current_tetrahedron->neighbours[0],
-          current_tetrahedron->neighbours[3], current_tetrahedron->centroid, bd,
-          dd, cd, ad, bd, cd, ed);
+          current_tetrahedron->neighbours[3], dd, cd, bd, ad, bd, cd, ed);
       break;
     case 10:
       /* Orientation test ACDE and ABCE > 0 */
       next_tetrahedron_idx = delaunay_choose_2(
           current_tetrahedron->neighbours[1],
-          current_tetrahedron->neighbours[3], current_tetrahedron->centroid, ad,
-          cd, dd, ad, bd, cd, ed);
+          current_tetrahedron->neighbours[3], dd, ad, cd, bd, cd, ad, ed);
       break;
     case 12:
       /* Orientation test ADBE and ABCE > 0 */
       next_tetrahedron_idx = delaunay_choose_2(
           current_tetrahedron->neighbours[2],
-          current_tetrahedron->neighbours[3], current_tetrahedron->centroid, ad,
-          dd, bd, ad, bd, cd, ed);
+          current_tetrahedron->neighbours[3], dd, bd, ad, cd, ad, bd, ed);
       break;
     case 7:
       /* Orientation test BDCE and ACDE and ADBE > 0 */
@@ -2364,24 +2349,6 @@ inline static int delaunay_three_to_two_flip(struct delaunay* restrict d,
 }
 
 /**
- * @brief Set the centroid of the tetrahedron
- *
- * @param d Delaunay tessellation
- * @param t The tetrahedron to finalize
- */
-inline static void delaunay_finalize_tetrahedron(struct delaunay* d, int t) {
-  struct tetrahedron* tet = &d->tetrahedra[t];
-  double* v0 = &d->rescaled_vertices[3 * tet->vertices[0]];
-  double* v1 = &d->rescaled_vertices[3 * tet->vertices[1]];
-  double* v2 = &d->rescaled_vertices[3 * tet->vertices[2]];
-  double* v3 = &d->rescaled_vertices[3 * tet->vertices[3]];
-
-  for (int i = 0; i < 3; i++) {
-    tet->centroid[i] = 0.25 * (v0[i] + v1[i] + v2[i] + v3[i]);
-  }
-}
-
-/**
  * @brief Check the Delaunay criterion for tetrahedra in the queue until the
  * queue is empty.
  * @param d Delaunay tessellation
@@ -2622,8 +2589,7 @@ inline static int delaunay_check_and_fix_tetrahedron(struct delaunay* d,
       }
     }
   } else {
-    delaunay_log("Tetrahedron %i is valid!", t)
-        delaunay_finalize_tetrahedron(d, t);
+    delaunay_log("Tetrahedron %i is valid!", t);
   }
   return -1;
 }
@@ -3158,16 +3124,16 @@ inline static void compute_normal(const double* restrict v0,
 
 /**
  * @brief Calculate the cosine of the angle between the normal of the triangle
- * formed by `v0`, `v1` and `v2` and the direction from the centroid to `v`.
+ * formed by `v0`, `v1` and `v2` and the direction from the origin to `v`.
  */
-inline static double compute_cos_theta(const double* restrict centroid,
+inline static double compute_cos_theta(const double* restrict origin,
                                        const double* restrict v0,
                                        const double* restrict v1,
                                        const double* restrict v2,
                                        const double* restrict v) {
   double n[3];
   compute_normal(v0, v1, v2, n);
-  double dv[3] = {v[0] - centroid[0], v[1] - centroid[1], v[2] - centroid[2]};
+  double dv[3] = {v[0] - origin[0], v[1] - origin[1], v[2] - origin[2]};
 
   double cos_theta = geometry3d_dot(n, dv);
   double norm_2 = geometry3d_dot(n, n) * geometry3d_dot(dv, dv);
@@ -3182,22 +3148,22 @@ inline static double compute_cos_theta(const double* restrict centroid,
  * normal makes the smallest angle with the direction of the new vertex `v`
  * (from the centroid of the tetrahedron).
  *
+ * The faces should be passed along so that a0a1a2v and b0b1b2v are both
+ * positively oriented tetrahedra and a0 is not in b[0,1,2] and vice versa.
+ *
  * @param a, b The candidate neighbouring tetrahedra
- * @param centroid The centroid of the current tetrahedron
  * @param a0, a1, a2 The vertices of the face facing neighbour a
  * @param b0, b1, b2 The vertices of the face facing neighbour b
  * @return The index of the chosen neighbour.
  */
-inline static int delaunay_choose_2(int a, int b,
-                                    const double* restrict centroid,
-                                    const double* a0, const double* a1,
-                                    const double* a2, const double* b0,
-                                    const double* b1, const double* b2,
-                                    const double* restrict v) {
+inline static int delaunay_choose_2(int a, int b, const double* a0,
+                                    const double* a1, const double* a2,
+                                    const double* b0, const double* b1,
+                                    const double* b2, const double* v) {
   /* Calculate the cosine of the angle between the normal on face a and the
    * vector from its centroid to the new vertex */
-  double cos_theta_a = compute_cos_theta(centroid, a0, a1, a2, v);
-  double cos_theta_b = compute_cos_theta(centroid, b0, b1, b2, v);
+  double cos_theta_a = compute_cos_theta(b0, a0, a1, a2, v);
+  double cos_theta_b = compute_cos_theta(a0, b0, b1, b2, v);
 
   if (cos_theta_a > cos_theta_b) {
     return a;
@@ -3210,18 +3176,21 @@ inline static int delaunay_choose_2(int a, int b,
  *
  * The face which faces the new vertex "the most" is chosen.
  *
+ * currently unused.
+ *
  * @return The index of the chosen face/neighbour.
  */
-inline static int delaunay_choose_3(
-    int a, int b, int c, const double* restrict centroid, const double* a0,
-    const double* a1, const double* a2, const double* b0, const double* b1,
-    const double* b2, const double* c0, const double* c1, const double* c2,
-    const double* restrict v) {
+inline static int delaunay_choose_3(int a, int b, int c, const double* a0,
+                                    const double* a1, const double* a2,
+                                    const double* b0, const double* b1,
+                                    const double* b2, const double* c0,
+                                    const double* c1, const double* c2,
+                                    const double* v) {
   /* Calculate the cosine of the angle between the normal on face a and the
    * vector from its centroid to the new vertex */
-  double cos_theta_a = compute_cos_theta(centroid, a0, a1, a2, v);
-  double cos_theta_b = compute_cos_theta(centroid, b0, b1, b2, v);
-  double cos_theta_c = compute_cos_theta(centroid, c0, c1, c2, v);
+  double cos_theta_a = compute_cos_theta(b0, a0, a1, a2, v);
+  double cos_theta_b = compute_cos_theta(c0, b0, b1, b2, v);
+  double cos_theta_c = compute_cos_theta(a0, c0, c1, c2, v);
   if (cos_theta_a > cos_theta_b && cos_theta_a > cos_theta_c) {
     return a;
   } else if (cos_theta_b > cos_theta_a && cos_theta_b > cos_theta_c) {

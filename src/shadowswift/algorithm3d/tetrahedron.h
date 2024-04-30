@@ -41,14 +41,9 @@ struct tetrahedron {
    * */
   int index_in_neighbour[4];
 
-  union {
-    /*! @brief The centroid of this tetrahedron. Used during construction. */
-    double centroid[3];
-
-    /*! @brief The circumcenter of this tetrahedron. Used for Voronoi
-     * construction. */
-    double circumcenter[3];
-  };
+  /*! @brief The circumcenter of this tetrahedron. Used for Voronoi
+   * construction. */
+  double circumcenter[3];
 
   /*! @brief Indicates whether or not a tetrahedron is active (or has been
    * invalidated) */
