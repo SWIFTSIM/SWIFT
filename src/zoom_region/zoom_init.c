@@ -103,6 +103,10 @@ void zoom_parse_params(struct swift_params *params,
    * zoom region). */
   props->region_pad_factor =
       parser_get_opt_param_float(params, "ZoomRegion:region_pad_factor", 1.1);
+
+  /* Extract the depth we'll split neighbour cells to. */
+  props->neighbour_max_tree_depth = parser_get_opt_param_int(
+      params, "ZoomRegion:neighbour_max_tree_depth", -1);
 }
 
 /**
@@ -652,6 +656,14 @@ void zoom_region_init(struct space *s, const int verbose) {
     s->zoom_props->zoom_cell_depth =
         log2((s->width[0] / s->zoom_props->width[0]) + 0.1);
   }
+
+  /* If we didn't get an explicit neighbour cell depth we'll use the zoom
+   * depth. */
+  s->zoom_props->neighbour_max_tree_depth =
+      (s->zoom_props->neighbour_max_tree_depth < 0)
+          ? s->zoom_props->zoom_cell_depth
+          : s->zoom_props->neighbour_max_tree_depth;
+
   /* Set the minimum allowed zoom cell width. */
   const double zoom_dmax =
       max3(s->zoom_props->dim[0], s->zoom_props->dim[1], s->zoom_props->dim[2]);
