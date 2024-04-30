@@ -1470,8 +1470,7 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
       }
 
       /* Should this task be split-up? */
-      if (cell_can_split_pair_gravity_task(ci) &&
-          cell_can_split_pair_gravity_task(cj)) {
+      if (cell_can_split_pair_gravity_task(ci, cj)) {
         const long long gcount_i = ci->grav.count;
         const long long gcount_j = cj->grav.count;
 

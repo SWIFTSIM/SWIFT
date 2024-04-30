@@ -1919,10 +1919,67 @@ A complete specification of the model looks like
     use_delta_f:   1    # Use the delta-f method for shot noise reduction
     neutrino_seed: 1234 # A random seed used for the Fermi-Dirac momenta
 
+Zoom Region
+-----------
+
+The ``ZoomRegion`` parameter block is used to define the properties of the zoom region and background. An example is shown below.
+
+.. code-block:: none
+
+  ZoomRegion:
+    region_pad_factor: 1.1
+    zoom_top_level_cells: 8
+    bkg_top_level_cells: 8
+    region_buffer_cell_ratio: 2
+    neighbour_max_tree_depth: -1
+
+These 5 parameters alone control the construction of the cell hierarchy which enables efficient zoom simulations in SWIFT (see the :doc:`cell docs <cell_structures>` for more information).
+
+``region_pad_factor``
+~~~~~~~~~~~~~~~~~~~~~
+
+ The extent of the zoom region is defined as the extent of the high resolution particle distribution mutliplied by ``region_pad_factor``. This is independant of any padding applied during initial condition generation and should be selected to be as small as possible while still providing a sufficient padding when running with hydrodynamics (see :doc:`Zoom Hydrodynamics <zoom_hydrodynamics`). If the padding is set too large then the zoom region will be poorly resolved and performance will be sub-optimal.
+
+ It's important to note that the value of ``region_pad_factor`` will be modified slightly during cell construction to ensure the zoom region tesselates the parent volume correctly in each cell scenario (:doc:`discussed here <cell_structures>`). The padding factor after tesselation is reported by the code. Should the requested cell geometry lead to a substantial increase in the padding factor then an error will be thrown, at which point you should review the parameters you have set. You probably need to increase the background resolution and/or include buffer cells (more below).
+
+``zoom_top_level_cells``
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+This replaces ``Scheduler:max_top_level_cells`` (which is ignored when running a zoom) and defines the number of zoom cells along each axis of the zoom region.
+
+This value is always respected during cell construction (although it can be later modified in a regrid if the hydrodynamics demand it).
+
+``bkg_top_level_cells``
+~~~~~~~~~~~~~~~~~~~~~~~
+
+This is the background cell analogue of ``Scheduler:max_top_level_cells`` and defines the number of background cells along an axis of the full parent volume.
+
+This value behaves differently in different scenarios:
+
+- For large zoom regions: This value is treated as a target to aim for.
+- For intermediate zoom regions: This value is ignored entirely and the number of background cells is the number of zoom regions which tesselate the parent volume along each axis.
+- For small zoom regions: This value is respected and never modified.
+
+
+``region_buffer_cell_ratio``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+This defines the number of buffer cells that tesselate the zoom region and should only be used for small zoom regions. When set to 0 buffer cells won't be made (i.e. there will only be background and zoom cells).
+
+When ``region_buffer_cell_ratio > 0`` ``zoom_top_level_cells`` should be a power of 2 multiplied by ``region_buffer_cell_ratio`` to ensure the cell edges align. If this is not the case an error will be thrown. If ``region_buffer_cell_ratio`` is non-zero in a situation it shouldn't be an error will also be thrown.
+
+``neighbour_max_tree_depth``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+This defines the maximum depth of the cell trees in background or buffer top level cells within the mesh distance criterion of the zoom region bounadaries (``neighbour`` cells). Increasing the depth in these cell trees can minimise the number of direct particle-particle interactions needed at the zoom region region boundary, but at a certain depth a minimum will be reached and the number of tasks will be increased for no gain in speed.
+
+If not given in the parameter file ``neighbour_max_tree_depth`` will default to the depth of the zoom cells relative to the neighbour cells (this behaviour can also be achieved by setting ``neighbour_max_tree_depth`` to -1).
+
+
 
 ------------------------
     
-.. [#f1] The thorough reader (or overly keen SWIFT tester) would find  that the speed of light is :math:`c=1.8026\times10^{12}\,\rm{fur}\,\rm{ftn}^{-1}`, Newton's constant becomes :math:`G_N=4.896735\times10^{-4}~\rm{fur}^3\,\rm{fir}^{-1}\,\rm{ftn}^{-2}` and Planck's constant turns into :math:`h=4.851453\times 10^{-34}~\rm{fur}^2\,\rm{fir}\,\rm{ftn}^{-1}`.
+.. [#f1] The thorough reader (or overly keen SWIFT tester) would find  that the speed of light is :math:``c=1.8026\times10^{12}\,\rm{fur}\,\rm{ftn}^{-1}`, Newton's constant becomes :math:`G_N=4.896735\times10^{-4}~\rm{fur}^3\,\rm{fir}^{-1}\,\rm{ftn}^{-2}` and Planck's constant turns into :math:`h=4.851453\times 10^{-34}~\rm{fur}^2\,\rm{fir}\,\rm{ftn}^{-1}`.
 
 
 .. [#f2] which would translate into a constant :math:`G_N=1.5517771\times10^{-9}~cm^{3}\,g^{-1}\,s^{-2}` if expressed in the CGS system.
