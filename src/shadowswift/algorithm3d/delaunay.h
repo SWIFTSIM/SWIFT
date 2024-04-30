@@ -159,9 +159,8 @@ inline static int delaunay_new_vertex(struct delaunay* restrict d, double x,
                                       double y, double z, int idx);
 inline static int delaunay_finalize_vertex(struct delaunay* restrict d, int v);
 inline static int delaunay_flag_conflicting_tetrahedra(struct delaunay* d,
-                                                         const int v,
-                                                         const int t,
-                                                         int* face_in_out);
+                                                       const int v, const int t,
+                                                       int* face_in_out);
 inline static void delaunay_fill_hole(struct delaunay* d, int v, int t,
                                       int face_in_t);
 inline static void delaunay_cleanup_bowyer_watson(struct delaunay* d);
@@ -842,9 +841,8 @@ inline static int delaunay_find_tetrahedron_containing_vertex(
  * @returns The index of *a* tetrahedron containing a boundary face
  */
 inline static int delaunay_flag_conflicting_tetrahedra(struct delaunay* d,
-                                                         const int v,
-                                                         const int t,
-                                                         int* face_in_out) {
+                                                       const int v, const int t,
+                                                       int* face_in_out) {
 
   delaunay_assert(int_lifo_queue_is_empty(&d->tetrahedra_to_check));
   delaunay_assert(d->flagged_tetrahedra_index == 0);
@@ -871,8 +869,7 @@ inline static int delaunay_flag_conflicting_tetrahedra(struct delaunay* d,
       int ngb = tet->neighbours[i];
 
       /* If we already performed the test, continue */
-      if (d->tetrahedra[ngb]._flags & tetrahedron_flag_validated)
-        continue;
+      if (d->tetrahedra[ngb]._flags & tetrahedron_flag_validated) continue;
       /* Check if the neighbouring tetrahedron becomes invalidated */
       if (!delaunay_tetrahedron_is_regular(d, ngb, v)) {
         delaunay_flag_tetrahedron(d, ngb, tetrahedron_flag_invalid);
@@ -2431,7 +2428,7 @@ inline static int delaunay_tetrahedron_is_regular(struct delaunay* d, int t,
                                                   int v) {
 
   /* Dummy tetrahedra are always regular (assuming the vertex falls inside
-   * the box of this delaunay tesselation */
+   * the box of this delaunay tesselation) */
   if (t < 4) return 1;
 
   delaunay_assert(3 <= t && t < d->tetrahedra_index);
@@ -3077,27 +3074,12 @@ inline static void delaunay_check_tessellation(struct delaunay* restrict d) {
       /* check in-sphere criterion for delaunayness */
       int vertex_to_check = d->tetrahedra[t_ngb].vertices[idx_in_ngb];
 
-      unsigned long* al = &d->integer_vertices[3 * vt0_0];
-      unsigned long* bl = &d->integer_vertices[3 * vt0_1];
-      unsigned long* cl = &d->integer_vertices[3 * vt0_2];
-      unsigned long* dl = &d->integer_vertices[3 * vt0_3];
-      unsigned long* el = &d->integer_vertices[3 * vertex_to_check];
-
-      double* ad = &d->rescaled_vertices[3 * vt0_0];
-      double* bd = &d->rescaled_vertices[3 * vt0_1];
-      double* cd = &d->rescaled_vertices[3 * vt0_2];
-      double* dd = &d->rescaled_vertices[3 * vt0_3];
-      double* ed = &d->rescaled_vertices[3 * vertex_to_check];
-
-      int test = geometry3d_in_sphere_adaptive(&d->geometry, al, bl, cl, dl, el,
-                                               ad, bd, cd, dd, ed);
-      if (test < 0) {
+      if (!delaunay_tetrahedron_is_regular(d, t0, vertex_to_check))
         error(
-            "Failed in-sphere test, value: %i!\n"
+            "Failed in-sphere test!\n"
             "\tTetrahedron %i: %i %i %i %i\n"
             "\tOpposite vertex: %i\n",
-            test, t0, vt0_0, vt0_1, vt0_2, vt0_3, vertex_to_check);
-      }
+            t0, vt0_0, vt0_1, vt0_2, vt0_3, vertex_to_check);
     }
   }
 }

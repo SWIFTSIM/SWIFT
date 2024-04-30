@@ -1450,14 +1450,12 @@ void cell_grid_set_pair_completeness(struct cell *restrict ci,
      * We need to use atomics here, since multiple threads may change this at
      * the same time. */
     if (ci_local) {
-      atomic_and(
-          &ci->grid.complete,
-          !cell_need_rebuild_for_grid_construction_pair(ci, cj));
+      atomic_and(&ci->grid.complete,
+                 !cell_need_rebuild_for_grid_construction_pair(ci, cj));
     }
     if (cj_local) {
-      atomic_and(
-          &cj->grid.complete,
-          !cell_need_rebuild_for_grid_construction_pair(cj, ci));
+      atomic_and(&cj->grid.complete,
+                 !cell_need_rebuild_for_grid_construction_pair(cj, ci));
     }
   }
 }
