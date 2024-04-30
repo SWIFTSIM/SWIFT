@@ -5,13 +5,14 @@
 #ifndef SWIFTSIM_GITLAB_TETRAHEDRON_H
 #define SWIFTSIM_GITLAB_TETRAHEDRON_H
 
+typedef uint8_t tetrahedron_flags_t;
 enum tetrahedron_flags {
   tetrahedron_flag_none = 0,
   tetrahedron_flag_has_vertex = (1 << 0),
-  tetrahedron_flag_regular = (1 << 1),
-  tetrahedron_flag_irregular = (1 << 2),
-  tetrahedron_flag_tested_regularity = tetrahedron_flag_irregular | tetrahedron_flag_regular,
-  tetrahedron_flag_on_boundary = (1 << 3),
+  tetrahedron_flag_valid = (1 << 1),
+  tetrahedron_flag_invalid = (1 << 2),
+  tetrahedron_flag_validated =
+      tetrahedron_flag_invalid | tetrahedron_flag_valid,
 };
 
 /**
@@ -36,6 +37,10 @@ struct tetrahedron {
   /*! @brief Indices of the neighbour tetrahedra. */
   int neighbours[4];
 
+  /*! @brief Index of this tetrahedron in the neighbour lists of its neighbours.
+   * */
+  int index_in_neighbour[4];
+
   union {
     /*! @brief The centroid of this tetrahedron. Used during construction. */
     double centroid[3];
@@ -45,15 +50,11 @@ struct tetrahedron {
     double circumcenter[3];
   };
 
-  /*! @brief Index of this tetrahedron in the neighbour list of its neighbours.
-   * */
-  int index_in_neighbour[4];
-
   /*! @brief Indicates whether or not a tetrahedron is active (or has been
    * invalidated) */
-  int active;
+  uint8_t active;
 
-  enum tetrahedron_flags _flags;
+  tetrahedron_flags_t _flags;
 };
 
 /**
