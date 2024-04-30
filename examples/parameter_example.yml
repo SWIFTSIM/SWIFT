@@ -986,3 +986,11 @@ Lightcone1:
   min_z_for_gas_filtering:    0.025  # Filter gas particles above this redshift, output all below
   min_temp_for_filtered_gas:  1.0e5  # Above min_z_for_gas_filtering only output gas with temperature above this
   min_nh_for_filtered_gas:    1.0e-6 # Above min_z_for_gas_filtering only output gas with nh/(1+z)^4 above this
+
+# Parameters defining a zoom region (only used for running zoom simulations with --zoom runtime flag)
+ZoomRegion:
+  region_pad_factor: 1.1            # How much larger the zoom region will be than the high res particle distribution in the ICs?
+  zoom_top_level_cells: 16          # How many top level cells should the zoom region be resolved with? (superceeds Scheduler:max_top_level_cells which is unused when a zoom region is turned on)
+  bkg_top_level_cells: 22           # How many cells should the background be resolved with?
+  region_buffer_cell_ratio: 2       # (Optional) How many buffer cells should be in the zoom region? (if 0 buffer cells are ignored) (default: 0)
+  neighbour_max_tree_depth: 2       # (Optional) The depth of the cell trees neighbouring the zoom region (default: -1)
