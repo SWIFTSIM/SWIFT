@@ -815,8 +815,7 @@ SPINJETAGN:
   fix_jet_efficiency:                 0          # Global switch whether to fix jet efficiency to a particular value [1], or use a spin-dependant formula [0].
   jet_efficiency:                     0.1        # The constant jet efficiency used if 'fix_jet_efficiency' is set to 1.
   fix_jet_direction:                  0          # Global switch whether to fix the jet direction to be along the z-axis, instead of along the spin vector.
-  accretion_efficiency_mode:          Constant   # How the accretion efficiencies are calculated for the thick accretion disc. If 'Constant', the value of 'accretion_efficiency_thick' will be used. If 'Vari
-able', the accretion efficiency will scale with Eddington ratio.
+  accretion_efficiency_mode:          Constant   # How the accretion efficiencies are calculated for the thick accretion disc. If 'Constant', the value of 'accretion_efficiency_thick' will be used. If 'Variable', the accretion efficiency will scale with Eddington ratio.
   accretion_efficiency_thick:         0.01       # The accretion efficiency (suppression factor of the accretion rate) to use in the thick disc (ADAF), to represent the effects of subgrid ADIOS winds that take away most of the mass flowing through the accretion disc.
   accretion_efficiency_slim:          1          # The constant accretion efficiency to use in the slim disc, at super-Eddington rates.
   fix_radiative_efficiency:           0          # Global switch whether to fix the radiative efficiency to a particular value [1], or use a spin-dependant formula [0]. 
@@ -827,8 +826,7 @@ able', the accretion efficiency will scale with Eddington ratio.
   include_slim_disk:                  1          # Global switch whether to include super-Eddington accretion, modeled as the slim disk. If set to 0, disks will be considered thin even at very large accretion rates.
   use_jets_in_thin_disc:              1          # Whether to use jets alongside radiation in the thin disc at moderate Eddington ratios.
   use_ADIOS_winds:                    1          # Whether to include ADIOS winds in the thick disc as thermal isotropic feedback (same channel as thin disc quasar feedback, but with a different efficiency). 
-  slim_disc_wind_factor:              1          # The relative efficiency of slim disc winds at super-Eddington rates. If '1', full winds will be used, while '0' will lead to no winds. Any value in between
- those can also be used. The wind is implemented in the thermal isotropic feedback channel.
+  slim_disc_wind_factor:              1          # The relative efficiency of slim disc winds at super-Eddington rates. If '1', full winds will be used, while '0' will lead to no winds. Any value in between those can also be used. The wind is implemented in the thermal isotropic feedback channel.
   
 # Parameters related to the neutrinos --------------------------------------------
 Neutrino:
