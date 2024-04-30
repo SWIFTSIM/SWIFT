@@ -24,7 +24,6 @@ Copyright (C) 2015 Pedro Gonnet (pedro.gonnet@durham.ac.uk),
                    Bert Vandenbroucke (bert.vandenbroucke@ugent.be)
                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
           (C) 2017 Peter W. Draper (p.w.draper@durham.ac.uk)
-          (C) 2024 Will Roper (w.roper@sussex.ac.uk)
 All Rights Reserved.
 
 This program is free software: you can redistribute it and/or modify
@@ -40,7 +39,6 @@ GNU General Public License for more details.
 You should have received a copy of the GNU Lesser General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
-import colorsys
 
 import matplotlib
 
@@ -120,13 +118,6 @@ parser.add_argument(
     default=-1,
     type=int,
 )
-parser.add_argument(
-    "--celltype",
-    dest="use_celltype",
-    help="Add cell type to task type (def: False)",
-    default=False,
-    action="store_true",
-)
 
 args = parser.parse_args()
 infile = args.input
@@ -134,7 +125,6 @@ outbase = args.outbase
 delta_t = args.limit
 expand = args.expand
 mintic = args.mintic
-use_celltype = args.use_celltype
 if args.ranks != None:
     ranks = [int(item) for item in args.ranks.split(",")]
 else:
@@ -238,68 +228,66 @@ FULLTYPES = [
     "sub_pair/bh_feedback",
 ]
 
-# Cell types.
-CELLTYPES = [
-    "Regular",
-    "Zoom",
-    "Buff",
-    "Bkg",
+#  A number of colours for the various types. Recycled when there are
+#  more task types than colours...
+colours = [
+    "cyan",
+    "lightgray",
+    "darkblue",
+    "yellow",
+    "tan",
+    "dodgerblue",
+    "sienna",
+    "aquamarine",
+    "bisque",
+    "blue",
+    "green",
+    "lightgreen",
+    "brown",
+    "purple",
+    "moccasin",
+    "olivedrab",
+    "chartreuse",
+    "olive",
+    "darkgreen",
+    "green",
+    "mediumseagreen",
+    "mediumaquamarine",
+    "darkslategrey",
+    "mediumturquoise",
+    "black",
+    "cadetblue",
+    "skyblue",
+    "red",
+    "slategray",
+    "gold",
+    "slateblue",
+    "blueviolet",
+    "mediumorchid",
+    "firebrick",
+    "magenta",
+    "hotpink",
+    "pink",
+    "orange",
+    "lightgreen",
 ]
-
-# Set the seed
-pl.seed(42)
-
-
-def generate_random_hex_color():
-    """
-    Generate a random colour in hex format.
-    """
-    # Divide the hue space into equal parts
-    hue = pl.randn()
-    # Convert HSL to RGB
-    rgb = colorsys.hls_to_rgb(hue, 0.5, 1)
-    # Convert RGB to Hex
-    return "#%02x%02x%02x" % (
-        int(rgb[0] * 255),
-        int(rgb[1] * 255),
-        int(rgb[2] * 255),
-    )
-
+maxcolours = len(colours)
 
 #  Set colours of task/subtype.
 TASKCOLOURS = {}
 ncolours = 0
-if not args.use_celltype:
-    for task in TASKTYPES:
-        TASKCOLOURS[task] = generate_random_hex_color()
-else:
-    for task in TASKTYPES:
-        for cell in CELLTYPES:
-            TASKCOLOURS[cell + "/" + task] = generate_random_hex_color()
+for task in TASKTYPES:
+    TASKCOLOURS[task] = colours[ncolours]
+    ncolours = (ncolours + 1) % maxcolours
 
 SUBCOLOURS = {}
-if not args.use_celltype:
-    for task in FULLTYPES:
-        SUBCOLOURS[task] = generate_random_hex_color()
+for task in FULLTYPES:
+    SUBCOLOURS[task] = colours[ncolours]
+    ncolours = (ncolours + 1) % maxcolours
 
-    for task in SUBTYPES:
-        SUBCOLOURS[task] = generate_random_hex_color()
-else:
-    for task in FULLTYPES:
-        for cell in CELLTYPES:
-            SUBCOLOURS[cell + "/" + task] = generate_random_hex_color()
-            if "pair" in task:
-                SUBCOLOURS["Zoom->Bkg/" + task] = generate_random_hex_color()
-                SUBCOLOURS["Zoom->Buff/" + task] = generate_random_hex_color()
-                SUBCOLOURS["Buff->Bkg/" + task] = generate_random_hex_color()
-
-        for task in SUBTYPES:
-            for cell in CELLTYPES:
-                SUBCOLOURS[cell + "/" + task] = generate_random_hex_color()
-            if "pair" in task:
-                SUBCOLOURS["Zoom->Bkg/" + task] = generate_random_hex_color()
-                SUBCOLOURS["Zoom->Buff/" + task] = generate_random_hex_color()
-                SUBCOLOURS["Buff->Bkg/" + task] = generate_random_hex_color()
+for task in SUBTYPES:
+    SUBCOLOURS[task] = colours[ncolours]
+    ncolours = (ncolours + 1) % maxcolours
 
 #  For fiddling with colours...
 if args.verbose:
@@ -326,10 +314,6 @@ if full_step.size == 21:
     subtaskcol = 3
     ticcol = 5
     toccol = 6
-    ci_type_col = 13
-    cj_type_col = 14
-    ci_subtype_col = 15
-    cj_subtype_col = 16
 else:
     print("# non MPI mode")
     ranks = [0]
@@ -340,10 +324,6 @@ else:
     subtaskcol = 2
     ticcol = 4
     toccol = 5
-    ci_type_col = 11
-    cj_type_col = 12
-    ci_subtype_col = 13
-    cj_subtype_col = 14
 
 #  Get CPU_CLOCK to convert ticks into milliseconds.
 CPU_CLOCK = float(full_step[-7]) / 1000.0
@@ -439,40 +419,9 @@ for rank in ranks:
             ecounter[thread] = ecounter[thread] + 1
             thread = ethread
 
-            # Get the cell types involved
-            ci_type = int(data[line, ci_type_col])
-            cj_type = int(data[line, cj_type_col])
-
             tasks[thread].append({})
             tasktype = TASKTYPES[int(data[line, taskcol])]
             subtype = SUBTYPES[int(data[line, subtaskcol])]
-
-            # Have we been told to add a qualifier based on cell type?
-            if use_celltype and (ci_type > 0 or cj_type > 0):
-                if ci_type == cj_type:
-                    tasktype = CELLTYPES[ci_type] + "/" + tasktype
-                elif ci_type > 0 and cj_type > 0:
-                    if ci_type > cj_type:
-                        tasktype = (
-                            CELLTYPES[cj_type]
-                            + "->"
-                            + CELLTYPES[ci_type]
-                            + "/"
-                            + tasktype
-                        )
-                    else:
-                        tasktype = (
-                            CELLTYPES[ci_type]
-                            + "->"
-                            + CELLTYPES[cj_type]
-                            + "/"
-                            + tasktype
-                        )
-                elif ci_type < 0:
-                    tasktype = CELLTYPES[cj_type] + "/" + tasktype
-                elif cj_type < 0:
-                    tasktype = CELLTYPES[ci_type] + "/" + tasktype
-
             tasks[thread][-1]["type"] = tasktype
             tasks[thread][-1]["subtype"] = subtype
             tic = int(data[line, ticcol]) / CPU_CLOCK
@@ -523,12 +472,7 @@ for rank in ranks:
                     typesseen.append(qtask)
 
             #  Now plot.
-            ax.broken_barh(
-                tictocs,
-                [i + 0.55, 0.9],
-                facecolors=colours,
-                linewidth=0,
-            )
+            ax.broken_barh(tictocs, [i + 0.55, 0.9], facecolors=colours, linewidth=0)
 
     #  Legend and room for it.
     nrow = len(typesseen) / 8
@@ -548,12 +492,7 @@ for rank in ranks:
         ax.plot([0, 0], [0, nethread + nrow + 1], "k--", linewidth=1)
     else:
         real_start = tic_step - mintic
-        ax.plot(
-            [real_start, real_start],
-            [0, nethread + nrow + 1],
-            "k--",
-            linewidth=1,
-        )
+        ax.plot([real_start, real_start], [0, nethread + nrow + 1], "k--", linewidth=1)
     ax.plot([end_t, end_t], [0, nethread + nrow + 1], "k--", linewidth=1)
 
     ax.set_xlabel("Wall clock time [ms]")
