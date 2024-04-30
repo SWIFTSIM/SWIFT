@@ -215,7 +215,9 @@ class Task:
         self.type = TASKTYPES[type_int]
         self.subtype = SUBTYPES[subtype_int]
         self.task = (
-            self.type + "/" + self.subtype if self.subtype != "none" else self.type
+            self.type + "/" + self.subtype
+            if self.subtype != "none"
+            else self.type
         )
         self.tic = tic
         self.toc = toc
@@ -373,18 +375,29 @@ class TaskParser:
         if self.mpimode:
             print("MPI MODE")
         print(f"Number of ranks:                      {len(self.ranks)}")
-        print(f"CPU frequency:                        {self.cpu_clock * 1000.0}")
+        print(
+            f"CPU frequency:                        {self.cpu_clock * 1000.0}"
+        )
         print(f"Number of threads:                    {self.nthread}")
-        print(f"Start:                                " f"{self.start_t} {self.units}")
-        print(f"End:                                  {self.end_t} {self.units}")
-        print(f"Data range:                           " f"{self.delta_t} {self.units}")
+        print(
+            f"Start:                                "
+            f"{self.start_t} {self.units}"
+        )
+        print(
+            f"End:                                  {self.end_t} {self.units}"
+        )
+        print(
+            f"Data range:                           "
+            f"{self.delta_t} {self.units}"
+        )
         print(f"Number of tasks:                      {self.task_labels.size}")
         print(
             "Number of unique tasks:               "
             f"{np.unique(self.task_labels).size}"
         )
         print(
-            f"Average task dt:                      " f"{np.mean(self.dt)} {self.units}"
+            f"Average task dt:                      "
+            f"{np.mean(self.dt)} {self.units}"
         )
         pcent_16 = np.percentile(self.dt, 16)
         pcent_50 = np.percentile(self.dt, 50)
@@ -469,7 +482,9 @@ class TaskParser:
             self.cpu_clock = float(self.full_step[10]) / 1000.0
 
         # Count the number of threads
-        self.nthread = int(max(self.data[:, self._col_look_up["threads"]])) + 1
+        self.nthread = np.unique(
+            self.data[1:, self._col_look_up["threads"]]
+        ).size
 
         # Each rank can have different clocks (compute node), but we want to
         # use the same delta times range for comparisons, so we suck it up and
@@ -549,6 +564,19 @@ class TaskParser:
             self.delta_t /= 1000
             self.units = "s"
 
+        # Do we need to relabel the thread ids to be contiguous?
+        if np.max(self.task_threads) + 1 != self.nthread:
+            threads = self.task_threads
+
+            # Creating a mapping
+            id_map = {
+                k: v for k, v in zip(np.unique(threads), range(self.nthread))
+            }
+
+            # Map the real thread ids to contiguous ones
+            for i in range(threads.size):
+                self.data[i, self._col_look_up["threads"]] = id_map[threads[i]]
+
     def _parse_tasks(self):
         """Parse the tasks creating Task objects."""
         # Prepare the arrays we'll populate
@@ -602,7 +630,12 @@ class TaskParser:
             self.dt[i] = self.tasks[i].dt
 
     def get_mask(
-        self, ci_type=None, cj_type=None, ci_subtype=None, cj_subtype=None, depth=None
+        self,
+        ci_type=None,
+        cj_type=None,
+        ci_subtype=None,
+        cj_subtype=None,
+        depth=None,
     ):
         """
         Get a mask for the data based on some filters.
@@ -621,14 +654,20 @@ class TaskParser:
             cell_type = ci_type if ci_type is not None else cj_type
             mask = np.logical_and(
                 mask,
-                np.logical_or(self.ci_types == cell_type, self.cj_types == cell_type),
+                np.logical_or(
+                    self.ci_types == cell_type, self.cj_types == cell_type
+                ),
             )
         if ci_type is not None and cj_type is not None:
             mask = np.logical_and(
                 mask,
                 np.logical_or(
-                    np.logical_and(self.ci_types == ci_type, self.cj_types == cj_type),
-                    np.logical_and(self.ci_types == cj_type, self.cj_types == ci_type),
+                    np.logical_and(
+                        self.ci_types == ci_type, self.cj_types == cj_type
+                    ),
+                    np.logical_and(
+                        self.ci_types == cj_type, self.cj_types == ci_type
+                    ),
                 ),
             )
         if (ci_subtype is not None and cj_subtype is None) or (
@@ -638,7 +677,8 @@ class TaskParser:
             mask = np.logical_and(
                 mask,
                 np.logical_or(
-                    self.ci_subtypes == cell_subtype, self.cj_subtypes == cell_subtype
+                    self.ci_subtypes == cell_subtype,
+                    self.cj_subtypes == cell_subtype,
                 ),
             )
         if ci_subtype is not None and cj_subtype is not None:
@@ -646,16 +686,21 @@ class TaskParser:
                 mask,
                 np.logical_or(
                     np.logical_and(
-                        self.ci_subtypes == ci_subtype, self.cj_subtypes == cj_subtype
+                        self.ci_subtypes == ci_subtype,
+                        self.cj_subtypes == cj_subtype,
                     ),
                     np.logical_and(
-                        self.ci_subtypes == cj_subtype, self.cj_subtypes == ci_subtype
+                        self.ci_subtypes == cj_subtype,
+                        self.cj_subtypes == ci_subtype,
                     ),
                 ),
             )
         if depth is not None:
             mask = np.logical_and(
-                mask, np.logical_or(self.ci_depths == depth, self.cj_depths == depth)
+                mask,
+                np.logical_or(
+                    self.ci_depths == depth, self.cj_depths == depth
+                ),
             )
 
         return mask
@@ -686,7 +731,9 @@ class TaskParser:
     def get_tasks_at_depth(self, depth):
         """Get tasks filtered by depth."""
         return self._get_tasks_with_mask(
-            mask=np.logical_or(self.ci_depths == depth, self.cj_depths == depth)
+            mask=np.logical_or(
+                self.ci_depths == depth, self.cj_depths == depth
+            )
         )
 
     def get_tasks_tictoc_by_thread(
