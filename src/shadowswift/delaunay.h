@@ -36,7 +36,7 @@
 #define DELAUNAY_3D_TETRAHEDRON_WALK DELAUNAY_3D_TETRAHEDRON_WALK_DEFAULT
 
 /*! @brief Use the Bowyer-Watson algorithm instead of the default flipping. */
-#define DELAUNAY_BOWYER_WATSON
+//#define DELAUNAY_BOWYER_WATSON
 
 #if defined(WITH_VECTORIZATION) && defined(HAVE_AVX2)
 /*! @brief whether to use hand-vectorized code in some hot parts. */

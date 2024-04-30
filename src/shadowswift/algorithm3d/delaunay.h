@@ -2267,7 +2267,7 @@ inline static int delaunay_three_to_two_flip(struct delaunay* restrict d,
                                              int top_t1, int non_axis_in_t0) {
   /* Get the common axis of the three tetrahedra */
   /* First in t0 */
-  int axis[3][2];
+  int axis[3][2] = {{0, 0}, {0, 0}, {0, 0}};
   axis[0][0] = (top_t0 + 1) % 4;
   if (axis[0][0] == non_axis_in_t0) axis[0][0] = (axis[0][0] + 1) % 4;
   axis[0][1] = 6 - axis[0][0] - top_t0 - non_axis_in_t0;
