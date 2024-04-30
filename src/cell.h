@@ -1187,16 +1187,28 @@ __attribute__((always_inline)) INLINE static int cell_can_split_self_hydro_task(
 }
 
 /**
- * @brief Can a pair gravity task associated with a cell be split into smaller
- * sub-tasks.
+ * @brief Can a pair gravity task associated with a pair of cells be split into
+ * smaller sub-tasks?
  *
- * @param c The #cell.
+ * @param ci The first #cell.
+ * @param cj The second #cell.
  */
 __attribute__((always_inline)) INLINE static int
-cell_can_split_pair_gravity_task(const struct cell *c) {
+cell_can_split_pair_gravity_task(const struct cell *ci, const struct cell *cj) {
 
-  /* Is the cell split and still far from the leaves ? */
-  return c->split && ((c->maxdepth - c->depth) > space_subdepth_diff_grav);
+  /* If we have a zoom->neighbour task we just need to check if the cells are
+   * both split. */
+  if ((ci->subtype == cell_subtype_neighbour &&
+       cj->subtype != cell_subtype_neighbour) ||
+      (ci->subtype != cell_subtype_neighbour &&
+       cj->subtype == cell_subtype_neighbour)) {
+    return ci->split && cj->split;
+  }
+
+  /* Otherwise, are the cells split and still far from the leaves ? */
+  return (ci->split && cj->split) &&
+         ((ci->maxdepth - ci->depth) > space_subdepth_diff_grav) &&
+         ((cj->maxdepth - cj->depth) > space_subdepth_diff_grav);
 }
 
 /**

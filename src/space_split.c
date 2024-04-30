@@ -662,6 +662,8 @@ void space_split_recursive(struct space *s, struct cell *c,
   struct engine *e = s->e;
   const integertime_t ti_current = e->ti_current;
   const int with_rt = e->policy & engine_policy_rt;
+  const int neighbour_depth =
+      s->with_zoom_region ? s->zoom_props->neighbour_max_tree_depth : 0;
 
   /* If the depth is too large, we have a problem and should stop. */
   if (depth > space_cell_maxdepth) {
@@ -674,10 +676,15 @@ void space_split_recursive(struct space *s, struct cell *c,
         c->grav.parts[1].x[0]);
   }
 
-  /* Split or let it be? */
-  if ((with_self_gravity && gcount > space_splitsize) ||
-      (!with_self_gravity &&
-       (count > space_splitsize || scount > space_splitsize))) {
+  /* Split or let it be? (When running a zoom we split neighbour cells to better
+   * divide interactions between zoom and neighbour cells.)*/
+  const int gparts_need_split = with_self_gravity && gcount > space_splitsize;
+  const int parts_need_split = !with_self_gravity && count > space_splitsize;
+  const int sparts_need_split = !with_self_gravity && scount > space_splitsize;
+  const int neighbour_need_split =
+      c->subtype == cell_subtype_neighbour && depth < neighbour_depth;
+  if (gparts_need_split || parts_need_split || sparts_need_split ||
+      neighbour_need_split) {
 
     /* Construct the progeny ready to populate with particles and multipoles
      * (if doing gravity). */
