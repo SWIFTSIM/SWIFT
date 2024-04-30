@@ -915,6 +915,9 @@ inline static void delaunay_fill_hole(struct delaunay* d, const int v, int t,
     vert_new[face_in_t] = v;
     delaunay_init_tetrahedron(d, new_t, vert_new[0], vert_new[1], vert_new[2],
                               vert_new[3]);
+    /* Any newly created tetrahedron is immediately valid in BW algorithm */
+    delaunay_finalize_tetrahedron(d, new_t);
+
     /* Add the neighbour relations with the tetrahedron outside the hole */
     struct tetrahedron* tet_out =
         &d->tetrahedra[tet_boundary->neighbours[face_in_t]];
@@ -993,6 +996,8 @@ inline static void delaunay_fill_hole(struct delaunay* d, const int v, int t,
         vert_new[next_t_in_iter_t] = v;
         delaunay_init_tetrahedron(d, new_t, vert_new[0], vert_new[1],
                                   vert_new[2], vert_new[3]);
+        /* Any newly created tetrahedron is immediately valid in BW algorithm */
+        delaunay_finalize_tetrahedron(d, new_t);
         /* Add the neighbour relations with the tetrahedron outside the hole */
         struct tetrahedron* next_tet = &d->tetrahedra[next_t];
         new_tet->neighbours[next_t_in_iter_t] = next_t;
