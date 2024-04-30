@@ -637,6 +637,7 @@ void cell_check_spart_pos(const struct cell *c,
 void cell_check_sort_flags(const struct cell *c);
 void cell_clear_stars_sort_flags(struct cell *c, const int unused_flags);
 void cell_clear_hydro_sort_flags(struct cell *c, const int unused_flags);
+void cell_clear_unskip_flags(struct cell *c);
 int cell_has_tasks(struct cell *c);
 void cell_remove_part(const struct engine *e, struct cell *c, struct part *p,
                       struct xpart *xp);
