@@ -485,7 +485,6 @@ class TaskParser:
         self.nthread = np.unique(
             self.data[1:, self._col_look_up["threads"]]
         ).size
-        print(np.unique(self.data[1:, self._col_look_up["threads"]]))
 
         # Each rank can have different clocks (compute node), but we want to
         # use the same delta times range for comparisons, so we suck it up and
