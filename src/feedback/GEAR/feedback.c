@@ -179,6 +179,10 @@ void feedback_will_do_feedback_individual_star(
     const struct unit_system* us, const struct phys_const* phys_const,
     const integertime_t ti_current, const double time_base) {
 
+  /* Zero the energy of supernovae */
+  sp->feedback_data.energy_ejected = 0;
+  sp->feedback_data.will_do_feedback = 0;
+
   /* Pick the correct table. (if only one table, threshold is < 0) */
   const float metal =
       chemistry_get_star_total_iron_mass_fraction_for_feedback(sp);
@@ -204,10 +208,6 @@ void feedback_will_do_feedback_individual_star(
   integertime_t ti_begin = 0;
   compute_time(sp, with_cosmology, cosmo, &star_age_beg_step, &dt_enrichment,
                &ti_begin, ti_current, time_base, time);
-
-  /* Zero the energy of supernovae */
-  sp->feedback_data.energy_ejected = 0;
-  sp->feedback_data.will_do_feedback = 0;
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (sp->birth_time == -1.) error("Evolving a star particle that should not!");
@@ -256,6 +256,10 @@ void feedback_will_do_feedback(
     const struct unit_system* us, const struct phys_const* phys_const,
     const integertime_t ti_current, const double time_base) {
 
+  /* Zero the energy of supernovae */
+  sp->feedback_data.energy_ejected = 0;
+  sp->feedback_data.will_do_feedback = 0;
+
   /* A single star */
   if (sp->feedback_data.star_type == single_star) {
     feedback_will_do_feedback_individual_star(
@@ -270,10 +274,6 @@ void feedback_will_do_feedback(
   integertime_t ti_begin = 0;
   compute_time(sp, with_cosmology, cosmo, &star_age_beg_step, &dt_enrichment,
                &ti_begin, ti_current, time_base, time);
-
-  /* Zero the energy of supernovae */
-  sp->feedback_data.energy_ejected = 0;
-  sp->feedback_data.will_do_feedback = 0;
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (sp->birth_time == -1.) error("Evolving a star particle that should not!");
