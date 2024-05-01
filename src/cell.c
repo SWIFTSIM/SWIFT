@@ -1494,7 +1494,7 @@ int cell_can_use_pair_mm(const struct cell *restrict ci,
   const struct gravity_tensors *restrict multi_j = cj->grav.multipole;
 
   const double r2 =
-      cell_mpole_CoM_dist2(multi_i, multi_j, use_rebuild_data, periodicm, dim);
+      cell_mpole_CoM_dist2(multi_i, multi_j, use_rebuild_data, periodic, dim);
 
   return gravity_M2L_accept_symmetric(props, multi_i, multi_j, r2,
                                       use_rebuild_data, use_mesh);
