@@ -287,6 +287,12 @@ void stellar_evolution_compute_discrete_feedback_properties(
       sp->feedback_data.number_snii = 0;
       sp->feedback_data.mass_ejected = 0;
       return;
+    } else {
+      /* Update the mass */
+      sp->mass -= sp->feedback_data.mass_ejected;
+
+      /* Update the gpart mass */
+      sp->gpart->mass = sp->mass;
     }
 
     /* If the star is the continuous part of the IMF or the enteire IMF */
