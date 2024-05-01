@@ -256,7 +256,10 @@ void runner_do_star_formation_sink(struct runner *r, struct cell *c,
 
 	double sink_mass_tot_before_spawning = s->mass;
 
-        /* Spawn as many sink as necessary */
+	/* Update the sink properties before spwaning stars */
+	sink_update_sink_properties_before_star_formation(s, e, sink_props, phys_const);
+
+        /* Spawn as many star as necessary */
         while (sink_spawn_star(s, e, sink_props, cosmo, with_cosmology,
                                phys_const, us)) {
 

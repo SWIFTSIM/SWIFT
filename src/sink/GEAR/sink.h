@@ -130,6 +130,8 @@ __attribute__((always_inline)) INLINE static void sink_first_init_sink(
   sp->swallowed_angular_momentum[1] = 0.f;
   sp->swallowed_angular_momentum[2] = 0.f;
 
+  sp->has_IMF_changed_from_popIII_to_popII = 0;
+
   sink_mark_sink_as_not_swallowed(&sp->merger_data);
 
   /* Bug fix: Setup the target mass for sink formation after reading the
@@ -796,6 +798,51 @@ INLINE static void sink_update_sink_properties_after_star_formation(struct sink*
 
   /* Sample the IMF to the get next target mass */
   sink_update_target_mass(sink, sink_props, e, loop);
+}
+
+/**
+ * @brief Update the #sink particle properties after spawning a star. Important
+ * properties that are updated are the sink mass and the sink->target_mass to
+ * draw the next star mass.
+ *
+ * @param sink the sink particle.
+ * @param e The #engine
+ * @param sink_props the sink properties to use.
+ * @param phys_const the physical constants in internal units.
+ * @param loop The star loop counter.
+ */
+INLINE static void sink_update_sink_properties_before_star_formation(struct sink* sink,
+   const struct engine* e,  const struct sink_props* sink_props,
+   const struct phys_const* phys_const) {
+
+  /* Has the sink accumulated enough metallicity so that the target mass
+     should be updated before spawning stars?
+     Between the last update of the target_mass, the sink may have accreted gas
+     with metallicities that that are higher than those of population III
+     stars. However, the target mass was set with the pop
+     III IMF. */
+
+  const struct feedback_props* feedback_props = e->feedback_props;
+
+  /* Pick the correct table. (if only one table, threshold is < 0) */
+  const float metal =
+      chemistry_get_sink_total_iron_mass_fraction_for_feedback(sink);
+  const float threshold = feedback_props->metallicity_max_first_stars;
+
+  /* If metal < threshold, then the sink generate first star particles. */
+  const int is_first_star = metal < threshold;
+
+  /* If the sink has not changed its IMF yet (has_IMF_changed_from_popIII_to_popII = 0)
+     but is eligible to (sink metal > threshold), get a target_mass of the pop II stars. */
+  if (!(sink->has_IMF_changed_from_popIII_to_popII) && !is_first_star){
+    sink_update_target_mass(sink, sink_props, e, 0);
+
+    /* Flag the sink to have made the transition of IMF. This ensures that next
+    time we do not update the target_mass because metal > threshold (otherwise
+    we would update it without needing to) */
+    sink->has_IMF_changed_from_popIII_to_popII = 1;
+    message("IMF transition : Sink %lld will now spawn Pop II stars.", sink->id);
+  }
 }
 
 
