@@ -89,7 +89,7 @@ void feedback_update_part(struct part* p, struct xpart* xp,
     xp->feedback_data.delta_p[i] = 0;
 
     /* update the gpart velocity */
-    p->gpart->v_full[i] = p->v[i];
+    p->gpart->v_full[i] = xp->v_full[i];
   }
 }
 
