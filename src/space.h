@@ -423,6 +423,9 @@ struct zoom_region_properties {
   /*! The depth of the zoom cells within a void cell tree. */
   int zoom_cell_depth;
 
+  /*! The depth of the neighbour cell tree. */
+  int neighbour_max_tree_depth;
+
   /*! Offset in the top level cell list background/natural cells start from. */
   int bkg_cell_offset;
 
@@ -450,7 +453,7 @@ struct zoom_region_properties {
   /*! Number of particles in zoom cells */
   size_t nr_zoom_cell_particles;
 
-  /*! Number of particles in natural/background cells */
+  /*! Number of particls in natural/background cells */
   size_t nr_bkg_cell_particles;
 
   /*! Number of neighbour top-level bkg cells */
