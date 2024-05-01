@@ -187,22 +187,22 @@ MPI_Comm subtaskMPI_comms[task_subtype_count];
  * @param ARRAY is the array of this specific type.
  * @param COUNT is the number of elements in the array.
  */
-#define TASK_CELL_OVERLAP(TYPE, ARRAY, COUNT)                           \
-  __attribute__((always_inline))                                        \
-  INLINE static size_t task_cell_overlap_##TYPE(                        \
-      const struct cell *restrict ci, const struct cell *restrict cj) { \
-                                                                        \
-    if (ci == NULL || cj == NULL) return 0;                             \
-                                                                        \
-    if (ci->ARRAY <= cj->ARRAY &&                                       \
-        ci->ARRAY + ci->COUNT >= cj->ARRAY + cj->COUNT) {               \
-      return cj->COUNT;                                                 \
-    } else if (cj->ARRAY <= ci->ARRAY &&                                \
-               cj->ARRAY + cj->COUNT >= ci->ARRAY + ci->COUNT) {        \
-      return ci->COUNT;                                                 \
-    }                                                                   \
-                                                                        \
-    return 0;                                                           \
+#define TASK_CELL_OVERLAP(TYPE, ARRAY, COUNT)                    \
+  __attribute__((always_inline)) INLINE static size_t            \
+      task_cell_overlap_##TYPE(const struct cell *restrict ci,   \
+                               const struct cell *restrict cj) { \
+                                                                 \
+    if (ci == NULL || cj == NULL) return 0;                      \
+                                                                 \
+    if (ci->ARRAY <= cj->ARRAY &&                                \
+        ci->ARRAY + ci->COUNT >= cj->ARRAY + cj->COUNT) {        \
+      return cj->COUNT;                                          \
+    } else if (cj->ARRAY <= ci->ARRAY &&                         \
+               cj->ARRAY + cj->COUNT >= ci->ARRAY + ci->COUNT) { \
+      return ci->COUNT;                                          \
+    }                                                            \
+                                                                 \
+    return 0;                                                    \
   }
 
 TASK_CELL_OVERLAP(part, hydro.parts, hydro.count);
@@ -1439,7 +1439,8 @@ void task_dump_all(struct engine *e, int step) {
               (e->sched.tasks[l].ci != NULL && e->sched.tasks[l].cj != NULL)
                   ? cell_mpole_CoM_dist2(e->sched.tasks[l].ci->grav.multipole,
                                          e->sched.tasks[l].cj->grav.multipole,
-                                         e->s->periodic, e->s->dim)
+                                         /*use_rebuild_data*/ 1, e->s->periodic,
+                                         e->s->dim)
                   : -1);
         }
         count++;
@@ -1495,7 +1496,8 @@ void task_dump_all(struct engine *e, int step) {
           (e->sched.tasks[l].ci != NULL && e->sched.tasks[l].cj != NULL)
               ? cell_mpole_CoM_dist2(e->sched.tasks[l].ci->grav.multipole,
                                      e->sched.tasks[l].cj->grav.multipole,
-                                     e->s->periodic, e->s->dim)
+                                     /*use_rebuild_data*/ 1, e->s->periodic,
+                                     e->s->dim)
               : -1);
     }
   }
