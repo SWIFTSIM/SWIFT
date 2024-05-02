@@ -213,7 +213,7 @@ void feedback_will_do_feedback(
                                  star_age_beg_step_safe, dt_enrichment);
 
   /* apply the energy efficiency factor */
-  sp->feedback_data.energy_ejected *= feedback_props->supernovae_efficiency;
+  /* sp->feedback_data.energy_ejected *= feedback_props->supernovae_efficiency; */
 
   /* Set the particle as doing some feedback */
   sp->feedback_data.will_do_feedback = sp->feedback_data.energy_ejected != 0.;
