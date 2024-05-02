@@ -82,7 +82,7 @@ __attribute__((always_inline)) INLINE static void forcing_terms_apply(
 
   enum flow Flow_kind = terms->Flow_kind;
   const double L = s->dim[0];
-  const float u0 = terms->u0;
+  float u0 = terms->u0;
   const float Vz_factor = terms->Vz_factor;
   const double k0 = (2. * M_PI / L) * terms->kv;
   const double kf = M_SQRT2 * k0;
@@ -127,9 +127,11 @@ __attribute__((always_inline)) INLINE static void forcing_terms_apply(
 
     case Roberts_flow_4:
       /* Based on Brandenburg & Ntormousi, arxiv 2211.03476, SB4, flow 4 */
-
-      v_Rob[0] = u0 * sin(k0 * p->x[0]) * cos(k0 * p->x[1]);
-      v_Rob[1] = -u0 * cos(k0 * p->x[0]) * sin(k0 * p->x[1]);
+    
+      u0 *= sqrtf(2.0/3.0);      
+ 
+      v_Rob[0] = u0 * M_SQRT2 * sin(k0 * p->x[0]) * cos(k0 * p->x[1]);
+      v_Rob[1] = -u0 * M_SQRT2 * cos(k0 * p->x[0]) * sin(k0 * p->x[1]);
       v_Rob[2] = u0 * sin(k0 * p->x[0]);
       break;
 

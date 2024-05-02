@@ -200,9 +200,10 @@ def add_other_particle_properties(
                 / np.sqrt(2)
             )
         elif Flow_kind == 4:
-            v[:, 0] = np.sin(kv0 * pos[:, 0]) * np.cos(kv0 * pos[:, 1])
-            v[:, 1] = -np.sin(kv0 * pos[:, 1]) * np.cos(kv0 * pos[:, 0])
+            v[:, 0] = np.sqrt(2) * np.sin(kv0 * pos[:, 0]) * np.cos(kv0 * pos[:, 1])
+            v[:, 1] = -np.sqrt(2) * np.sin(kv0 * pos[:, 1]) * np.cos(kv0 * pos[:, 0])
             v[:, 2] = Vz_factor * np.sin(kv0 * pos[:, 0])
+            v *= np.sqrt(2/3)
         else:
             print("Wrong Flow kind. Use values 1-4")
 
@@ -211,16 +212,28 @@ def add_other_particle_properties(
         # setting the initial magnetic field
 
         if field_type == "one_mode":
-            B[:, 0] = -(np.sin(kb0 * pos[:, 2]) - np.cos(kb0 * pos[:, 1]))
-            B[:, 1] = -(np.cos(kb0 * pos[:, 0]) - np.cos(kb0 * pos[:, 2]))
-            B[:, 2] = -(np.cos(kb0 * pos[:, 1]) - np.cos(kb0 * pos[:, 0]))
-            B *= B0
+            if Flow_kind == 4:  # ICs from arxiv 1212.2626
+                phix = 2*np.pi*np.random.rand()
+                phiy = 2*np.pi*np.random.rand()
 
-            A[:, 0] = np.sin(kb0 * pos[:, 2]) - np.cos(kb0 * pos[:, 1])
-            A[:, 1] = np.sin(kb0 * pos[:, 0]) - np.cos(kb0 * pos[:, 2])
-            A[:, 2] = np.sin(kb0 * pos[:, 1]) - np.cos(kb0 * pos[:, 0])
-            A0 = B0 / kb0
-            A *= A0
+                B[:,0] = np.cos(kb0 * pos[:,2]+phix)
+                B[:,1] = np.cos(kb0 * pos[:,2]+phiy)
+                B *= B0
+                
+                A[:,0] = np.sin(kb0 * pos[:,2]+phiy)
+                A[:,0] = -np.sin(kb0 * pos[:,2]+phix)
+                A *= B0/kb0
+            else:
+                B[:, 0] = -(np.sin(kb0 * pos[:, 2]) - np.cos(kb0 * pos[:, 1]))
+                B[:, 1] = -(np.cos(kb0 * pos[:, 0]) - np.cos(kb0 * pos[:, 2]))
+                B[:, 2] = -(np.cos(kb0 * pos[:, 1]) - np.cos(kb0 * pos[:, 0]))
+                B *= B0
+
+                A[:, 0] = np.sin(kb0 * pos[:, 2]) - np.cos(kb0 * pos[:, 1])
+                A[:, 1] = np.sin(kb0 * pos[:, 0]) - np.cos(kb0 * pos[:, 2])
+                A[:, 2] = np.sin(kb0 * pos[:, 1]) - np.cos(kb0 * pos[:, 0])
+                A0 = B0 / kb0
+                A *= A0
         elif field_type == "random":
             # kvec,kmax = generate_k(N,L)
             # Ak = generate_Ak(kvec,kmax)
