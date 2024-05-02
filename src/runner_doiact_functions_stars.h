@@ -136,7 +136,8 @@ void DOSELF1_STARS(struct runner *r, struct cell *c, int timer) {
 #elif (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
         runner_iact_nonsym_feedback_apply(r2, dx, hi, hj, si, pj, xpj, cosmo,
                                           e->hydro_properties,
-                                          e->feedback_props, ti_current);
+                                          e->feedback_props, e->physical_constants,
+					  e->internal_units, ti_current);
 #endif
       }
       if (r2 < hig2 && with_rt) {
@@ -266,7 +267,8 @@ void DO_NONSYM_PAIR1_STARS_NAIVE(struct runner *r, struct cell *restrict ci,
 #elif (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
         runner_iact_nonsym_feedback_apply(r2, dx, hi, hj, si, pj, xpj, cosmo,
                                           e->hydro_properties,
-                                          e->feedback_props, ti_current);
+                                          e->feedback_props, e->physical_constants,
+					  e->internal_units, ti_current);
 #endif
       }
       if (r2 < hig2 && with_rt) {
@@ -461,7 +463,8 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
 #elif (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
           runner_iact_nonsym_feedback_apply(r2, dx, hi, hj, spi, pj, xpj, cosmo,
                                             e->hydro_properties,
-                                            e->feedback_props, ti_current);
+                                            e->feedback_props, e->physical_constants,
+					  e->internal_units, ti_current);
 #endif
         }
         if (r2 < hig2 && with_rt) {
@@ -615,7 +618,8 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
 #elif (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
           runner_iact_nonsym_feedback_apply(r2, dx, hj, hi, spj, pi, xpi, cosmo,
                                             e->hydro_properties,
-                                            e->feedback_props, ti_current);
+                                            e->feedback_props, e->physical_constants,
+					    e->internal_units, ti_current);
 #endif
         }
         if (r2 < hjg2 && with_rt) {
