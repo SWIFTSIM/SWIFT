@@ -153,7 +153,7 @@ inline static void delaunay_reset(struct delaunay* restrict d,
                                   const double* cell_loc,
                                   const double* cell_width, int vertex_size);
 inline static void delaunay_check_tessellation(struct delaunay* d);
-inline static void delaunay_tetrahedron_sanity_checks(const struct delaunay* d,
+inline static void delaunay_tetrahedron_sanity_checks(struct delaunay* d,
                                                       int t);
 inline static int delaunay_new_vertex(struct delaunay* restrict d, double x,
                                       double y, double z, int idx);
@@ -185,12 +185,12 @@ inline static void delaunay_n_to_2n_flip(struct delaunay* d, int v,
                                          const int* t, int n);
 inline static void delaunay_check_tetrahedra(struct delaunay* d, int v);
 inline static int delaunay_check_and_fix_tetrahedron(struct delaunay* d, int t,
-                                                     const int v);
+                                                     int v);
 inline static int delaunay_tetrahedron_is_regular(struct delaunay* d, int t,
                                                   int v);
 inline static int positive_permutation(int a, int b, int c, int d);
-inline static double delaunay_get_radius2(struct delaunay* restrict d,
-                                          const struct tetrahedron* t);
+inline static void delaunay_compute_radius2(struct delaunay* restrict d,
+                                            struct tetrahedron* t);
 inline static int delaunay_test_orientation(struct delaunay* restrict d, int v0,
                                             int v1, int v2, int v3);
 inline static int delaunay_vertex_is_valid(struct delaunay* restrict d, int v);
@@ -473,6 +473,7 @@ inline static void delaunay_init_tetrahedron(struct delaunay* d, int t, int v0,
       "Initializing tetrahedron at %i with vertex_indices: %i %i %i %i", t, v0,
       v1, v2, v3);
 #ifdef SWIFT_DEBUG_CHECKS
+  delaunay_assert(v0 >= 0 && v1 >= 0 && v2 >= 0 && v3 >= 0);
   const int test = delaunay_test_orientation(d, v0, v1, v2, v3);
   if (test >= 0) {
     error(
@@ -2401,11 +2402,13 @@ inline static int delaunay_tetrahedron_is_regular(struct delaunay* d, int t,
 
   /* Dummy tetrahedra are always regular (assuming the vertex falls inside
    * the box of this delaunay tesselation) */
-  if (t < 4) return 1;
+  if (t < 4) {
+    delaunay_log("Dummy tetrahedron is always considered regular.");
+    return 1;
+  }
 
   delaunay_assert(3 <= t && t < d->tetrahedra_index);
-  delaunay_assert(d->vertex_start <= v && v < d->vertex_index);
-
+  delaunay_assert(0 <= v && v < d->vertex_index);
   struct tetrahedron* tetrahedron = &d->tetrahedra[t];
   const int v0 = tetrahedron->vertices[0];
   const int v1 = tetrahedron->vertices[1];
@@ -2424,8 +2427,36 @@ inline static int delaunay_tetrahedron_is_regular(struct delaunay* d, int t,
   const double* dd = &d->rescaled_vertices[3 * v3];
   const double* ed = &d->rescaled_vertices[3 * v];
 
-  return 0 <= geometry3d_in_sphere_adaptive(&d->geometry, al, bl, cl, dl, el,
-                                            ad, bd, cd, dd, ed);
+  if (tetrahedron->circumradius2 > 0) {
+    const double dx[] = {tetrahedron->circumcenter[0] - ed[0],
+                         tetrahedron->circumcenter[1] - ed[1],
+                         tetrahedron->circumcenter[2] - ed[2]};
+    double r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+    if (tetrahedron->circumradius2 < 0.9f * r2) {
+      /* We can safely assume that this tetrahedron is regular */
+      delaunay_log("Tetrahedron %i is valid (decided using circumradius)!", t);
+#ifdef SWIFT_DEBUG_CHECKS
+      const int test = geometry3d_in_sphere_adaptive(
+          &d->geometry, al, bl, cl, dl, el, ad, bd, cd, dd, ed,
+          tetrahedron->circumcenter, &tetrahedron->circumradius2);
+      delaunay_assert(test >= 0);
+#endif
+      return 1;
+    }
+  }
+
+  /* Normal case, do the in_sphere test, which sets the circumcenter */
+  const int test = geometry3d_in_sphere_adaptive(
+      &d->geometry, al, bl, cl, dl, el, ad, bd, cd, dd, ed,
+      tetrahedron->circumcenter, &tetrahedron->circumradius2);
+
+  if (test >= 0) {
+    delaunay_log("Tetrahedron %i is valid (performed geometric check)!", t);
+    return 1;
+  } else {
+    delaunay_log("Tetrahedron %i is invalidated by vertex %i!", t, v);
+    return 0;
+  }
 }
 
 /**
@@ -2472,15 +2503,20 @@ inline static int delaunay_check_and_fix_tetrahedron(struct delaunay* d,
   /* Get the vertex in the neighbouring tetrahedron opposite of t */
   const int v4 = d->tetrahedra[ngb].vertices[idx_in_ngb];
 
-  /* check if we have a neighbour that can be checked (dummies are not real and
-     should not be tested) */
-  if (ngb < 4) {
-    delaunay_log("Dummy neighbour! Skipping checks for %i...", t);
-    delaunay_assert(v4 == -1);
-    return -1;
-  }
-  delaunay_assert(v4 != -1);
+#ifdef SWIFT_DEBUG_CHECKS
+  delaunay_tetrahedron_sanity_checks(d, t);
+  delaunay_tetrahedron_sanity_checks(d, ngb);
+#endif
 
+  /* Is this tetrahedron stil valid?
+   * NOTE: Whether this tetrahedron is invalidated by the top of its neighbour
+   * is equivalent to whether the neighbour is invalidated by v. */
+  const int is_valid = delaunay_tetrahedron_is_regular(d, ngb, v);
+  if (is_valid) return -1;
+
+  /* Tetrahedron was invalidated. */
+  /* Figure out which flip is needed to restore the tetrahedra */
+  /* Get the vertices to perform the orientation tests */
   const unsigned long* al = &d->integer_vertices[3 * v0];
   const unsigned long* bl = &d->integer_vertices[3 * v1];
   const unsigned long* cl = &d->integer_vertices[3 * v2];
@@ -2493,117 +2529,113 @@ inline static int delaunay_check_and_fix_tetrahedron(struct delaunay* d,
   const double* dd = &d->rescaled_vertices[3 * v3];
   const double* ed = &d->rescaled_vertices[3 * v4];
 
-  const int test = geometry3d_in_sphere_adaptive(&d->geometry, al, bl, cl, dl,
-                                                 el, ad, bd, cd, dd, ed);
-
-  if (test < 0) {
-    delaunay_log("Tetrahedron %i was invalidated by adding vertex %i", t, v);
-    /* Figure out which flip is needed to restore the tetrahedra */
 #ifdef DELAUNAY_3D_HAND_VEC
-    int tests[4];
-    geometry3d_orient_4(&d->geometry, al, bl, cl, dl, el, ad, bd, cd, dd, ed,
-                        tests);
-    tests[top] = -1;
+  int tests[4];
+  geometry3d_orient_4(&d->geometry, al, bl, cl, dl, el, ad, bd, cd, dd, ed,
+                      tests);
+  tests[top] = -1;
 #else
-    int tests[4] = {-1, -1, -1, -1};
-    if (top != 0)
-      tests[0] = geometry3d_orient_adaptive(&d->geometry, bl, dl, cl, el, bd,
-                                            dd, cd, ed);
-    if (top != 1)
-      tests[1] = geometry3d_orient_adaptive(&d->geometry, al, cl, dl, el, ad,
-                                            cd, dd, ed);
-    if (top != 2)
-      tests[2] = geometry3d_orient_adaptive(&d->geometry, al, dl, bl, el, ad,
-                                            dd, bd, ed);
-    if (top != 3)
-      tests[3] = geometry3d_orient_adaptive(&d->geometry, al, bl, cl, el, ad,
-                                            bd, cd, ed);
+  int tests[4] = {-1, -1, -1, -1};
+  if (top != 0)
+    tests[0] = geometry3d_orient_adaptive(&d->geometry, bl, dl, cl, el, bd, dd,
+                                          cd, ed);
+  if (top != 1)
+    tests[1] = geometry3d_orient_adaptive(&d->geometry, al, cl, dl, el, ad, cd,
+                                          dd, ed);
+  if (top != 2)
+    tests[2] = geometry3d_orient_adaptive(&d->geometry, al, dl, bl, el, ad, dd,
+                                          bd, ed);
+  if (top != 3)
+    tests[3] = geometry3d_orient_adaptive(&d->geometry, al, bl, cl, el, ad, bd,
+                                          cd, ed);
 #endif
-    int i;
-    for (i = 0; i < 4 && tests[i] < 0; ++i) {
+  int i;
+  for (i = 0; i < 4 && tests[i] < 0; ++i) {
+  }
+  if (i == 4) {
+    /* v4 inside sphere around v0, v1, v2 and v3: need to do a 2 to 3 flip */
+    delaunay_log("Performing 2 to 3 flip with %i and %i", t, ngb);
+    delaunay_two_to_three_flip(d, t, ngb, top, idx_in_ngb);
+  } else if (tests[i] == 0) {
+    /* degenerate case: possible 4 to 4 flip needed. The line that connects v
+     * and v4 intersects an edge of the triangle formed by the other 3
+     * vertex_indices of t. If that edge is shared by exactly 4 tetrahedra in
+     * total, the 2 neighbours are involved in the 4 to 4 flip. If it isn't,
+     * we cannot solve this situation now, it will be solved later by another
+     * flip. */
+
+    /* get the other involved neighbour of t */
+    /* the non_axis point is simply the vertex not present in the relevant
+     * orientation test */
+    const int other_ngb = d->tetrahedra[t].neighbours[i];
+    /* get the index of 'new_vertex' in 'other_ngb', as the neighbour
+     * opposite that vertex is the other neighbour we need to check */
+    int idx_v_in_other_ngb;
+    for (idx_v_in_other_ngb = 0;
+         idx_v_in_other_ngb < 4 &&
+         d->tetrahedra[other_ngb].vertices[idx_v_in_other_ngb] != v;
+         idx_v_in_other_ngb++) {
     }
-    if (i == 4) {
-      /* v4 inside sphere around v0, v1, v2 and v3: need to do a 2 to 3 flip */
-      delaunay_log("Performing 2 to 3 flip with %i and %i", t, ngb);
-      delaunay_two_to_three_flip(d, t, ngb, top, idx_in_ngb);
-    } else if (tests[i] == 0) {
-      /* degenerate case: possible 4 to 4 flip needed. The line that connects v
-       * and v4 intersects an edge of the triangle formed by the other 3
-       * vertex_indices of t. If that edge is shared by exactly 4 tetrahedra in
-       * total, the 2 neighbours are involved in the 4 to 4 flip. If it isn't,
-       * we cannot solve this situation now, it will be solved later by another
-       * flip. */
-
-      /* get the other involved neighbour of t */
-      /* the non_axis point is simply the vertex not present in the relevant
-       * orientation test */
-      const int other_ngb = d->tetrahedra[t].neighbours[i];
-      /* get the index of 'new_vertex' in 'other_ngb', as the neighbour
-       * opposite that vertex is the other neighbour we need to check */
-      int idx_v_in_other_ngb;
-      for (idx_v_in_other_ngb = 0;
-           idx_v_in_other_ngb < 4 &&
-           d->tetrahedra[other_ngb].vertices[idx_v_in_other_ngb] != v;
-           idx_v_in_other_ngb++) {
-      }
-      const int other_ngbs_ngb =
-          d->tetrahedra[other_ngb].neighbours[idx_v_in_other_ngb];
-      /* check if other_ngbs_ngb is also a neighbour of ngb. */
-      int second_idx_in_ngb =
-          tetrahedron_is_neighbour(&d->tetrahedra[ngb], other_ngbs_ngb);
-      if (second_idx_in_ngb < 4) {
-        delaunay_log("Performing 4 to 4 flip between %i, %i, %i and %i!", t,
-                     other_ngb, ngb, other_ngbs_ngb);
-        delaunay_four_to_four_flip(d, t, other_ngb, ngb, other_ngbs_ngb);
-      } else {
-        delaunay_log("4 to 4 with %i and %i flip not possible!", t, ngb);
-      }
+    const int other_ngbs_ngb =
+        d->tetrahedra[other_ngb].neighbours[idx_v_in_other_ngb];
+    /* check if other_ngbs_ngb is also a neighbour of ngb. */
+    int second_idx_in_ngb =
+        tetrahedron_is_neighbour(&d->tetrahedra[ngb], other_ngbs_ngb);
+    if (second_idx_in_ngb < 4) {
+      delaunay_log("Performing 4 to 4 flip between %i, %i, %i and %i!", t,
+                   other_ngb, ngb, other_ngbs_ngb);
+      delaunay_four_to_four_flip(d, t, other_ngb, ngb, other_ngbs_ngb);
     } else {
-      /* check that this is indeed the only case left */
-      delaunay_assert(tests[i] > 0);
-      /* Outside: possible 3 to 2 flip.
-       * The line that connects 'new_vertex' and 'v4' lies outside an edge of
-       * the triangle formed by the other 3 vertex_indices of 'tetrahedron'. We
-       * need to check if the neighbouring tetrahedron opposite the non-edge
-       * point of that triangle is the same for 't' and 'ngb'. If it is, that is
-       * the third tetrahedron for the 3 to 2 flip. If it is not, we cannot
-       * solve this faulty situation now, but it will be solved by another flip
-       * later on */
-
-      /* get the other involved neighbour of t */
-      /* the non_axis point is simply the vertex not present in the relevant
-       * orientation test */
-      const int other_ngb = d->tetrahedra[t].neighbours[i];
-      /* check if other_ngb is also a neighbour of ngb */
-      const int other_ngb_idx_in_ngb =
-          tetrahedron_is_neighbour(&d->tetrahedra[ngb], other_ngb);
-      if (other_ngb_idx_in_ngb < 4) {
-        delaunay_log("Performing 3 to 2 flip with %i, %i and %i!", t, ngb,
-                     other_ngb);
-
-        return delaunay_three_to_two_flip(
-            d, t, ngb, other_ngb, top, d->tetrahedra[t].index_in_neighbour[top],
-            i);
-      } else {
-        delaunay_log("3 to 2 with %i and %i flip not possible!", t, ngb);
-      }
+      delaunay_log("4 to 4 with %i and %i flip not possible!", t, ngb);
     }
   } else {
-    delaunay_log("Tetrahedron %i is valid!", t);
+    /* check that this is indeed the only case left */
+    delaunay_assert(tests[i] > 0);
+    /* Outside: possible 3 to 2 flip.
+     * The line that connects 'new_vertex' and 'v4' lies outside an edge of
+     * the triangle formed by the other 3 vertex_indices of 'tetrahedron'. We
+     * need to check if the neighbouring tetrahedron opposite the non-edge
+     * point of that triangle is the same for 't' and 'ngb'. If it is, that is
+     * the third tetrahedron for the 3 to 2 flip. If it is not, we cannot
+     * solve this faulty situation now, but it will be solved by another flip
+     * later on */
+
+    /* get the other involved neighbour of t */
+    /* the non_axis point is simply the vertex not present in the relevant
+     * orientation test */
+    const int other_ngb = d->tetrahedra[t].neighbours[i];
+#ifdef SWIFT_DEBUG_CHECKS
+    delaunay_tetrahedron_sanity_checks(d, other_ngb);
+#endif
+    /* check if other_ngb is also a neighbour of ngb */
+    const int other_ngb_idx_in_ngb =
+        tetrahedron_is_neighbour(&d->tetrahedra[ngb], other_ngb);
+    if (other_ngb_idx_in_ngb < 4) {
+      delaunay_log("Performing 3 to 2 flip with %i, %i and %i!", t, ngb,
+                   other_ngb);
+
+      return delaunay_three_to_two_flip(
+          d, t, ngb, other_ngb, top, d->tetrahedra[t].index_in_neighbour[top],
+          i);
+    } else {
+      delaunay_log("3 to 2 with %i and %i flip not possible!", t, ngb);
+    }
   }
   return -1;
 }
 
 /**
- * @brief Get the square of the radius of the circumsphere of the given
+ * @brief Compute the square of the radius of the circumsphere of the given
  * tetrahedron.
+ *
+ * This also updates the circumcenter of t.
  *
  * @param d Delaunay tessellation.
  * @param t Tetrahedron pointer.
  * @return Radius of the circumsphere of the given tetrahedron.
  */
-inline static double delaunay_get_radius2(struct delaunay* restrict d,
-                                          const struct tetrahedron* t) {
+inline static void delaunay_compute_radius2(struct delaunay* restrict d,
+                                            struct tetrahedron* t) {
   int v0 = t->vertices[0];
   int v1 = t->vertices[1];
   int v2 = t->vertices[2];
@@ -2619,8 +2651,9 @@ inline static double delaunay_get_radius2(struct delaunay* restrict d,
   unsigned long* v2ul = &d->integer_vertices[3 * v2];
   unsigned long* v3ul = &d->integer_vertices[3 * v3];
 
-  return geometry3d_compute_circumradius2_adaptive(
-      &d->geometry, v0d, v1d, v2d, v3d, v0ul, v1ul, v2ul, v3ul, d->side);
+  geometry3d_compute_circumradius2_adaptive(&d->geometry, v0d, v1d, v2d, v3d,
+                                            v0ul, v1ul, v2ul, v3ul,
+                                            t->circumcenter, &t->circumradius2);
 }
 
 inline static void delaunay_compute_circumcentres(struct delaunay* d) {
@@ -2640,6 +2673,17 @@ inline static void delaunay_compute_circumcentres(struct delaunay* d) {
       t->circumcenter[2] = NAN;
       continue;
     }
+    /* If the tetrahedron has a valid circumradius, its circumcenter is already
+     * computed, we just need to rescale it. */
+    if (t->circumradius2 > 0) {
+      t->circumcenter[0] = d->anchor[0] + (t->circumcenter[0] - 1.) * d->side;
+      t->circumcenter[1] = d->anchor[1] + (t->circumcenter[1] - 1.) * d->side;
+      t->circumcenter[2] = d->anchor[2] + (t->circumcenter[2] - 1.) * d->side;
+      /* Nothing left to do */
+      continue;
+    }
+
+    /* Normal case: compute the circumcenter from scratch */
     /* Get the indices of the vertices of the tetrahedron */
     int v0 = t->vertices[0];
     int v1 = t->vertices[1];
@@ -2784,9 +2828,15 @@ inline static void delaunay_get_search_radii(struct delaunay* restrict d,
       delaunay_assert(tet->_flags == tetrahedron_flag_has_vertex);
       /* Before doing anything, reset the flag of this tet */
       tet->_flags = tetrahedron_flag_none;
-      max_circumradius2 = max(max_circumradius2, delaunay_get_radius2(d, tet));
+      /* Do we still need to compute the circumradius of this tetrahedron? */
+      if (tet->circumradius2 < 0) {
+        delaunay_compute_radius2(d, tet);
+      }
+      /* The circumradius stored in the tetrahedra is in rescaled coordinates */
+      max_circumradius2 = max(max_circumradius2, tet->circumradius2);
     }
-    r[i] = 2. * sqrt(max_circumradius2);
+    /* The circumradius stored in the tetrahedra is rescaled coordinates */
+    r[i] = 2. * d->side * sqrt(max_circumradius2);
 
 #ifdef SWIFT_DEBUG_CHECKS
     /* Check that all flags have been reset */
@@ -3055,7 +3105,7 @@ inline static void delaunay_check_tessellation(struct delaunay* restrict d) {
   }
 }
 
-inline static void delaunay_tetrahedron_sanity_checks(const struct delaunay* d,
+inline static void delaunay_tetrahedron_sanity_checks(struct delaunay* d,
                                                       int t) {
 #ifndef DELAUNAY_DO_ASSERTIONS
   return;
@@ -3084,6 +3134,13 @@ inline static void delaunay_tetrahedron_sanity_checks(const struct delaunay* d,
       delaunay_assert(vi != tet->vertices[j]);
       if (ngbi != -1) delaunay_assert(ngbi != tet->neighbours[j]);
     }
+  }
+  if (t > 4) {
+    int test_orientation =
+        delaunay_test_orientation(d, tet->vertices[0], tet->vertices[1],
+                                  tet->vertices[2], tet->vertices[3]);
+    if (test_orientation >= 0)
+      error("Tetrahedron %i has incorrect orientation!", t);
   }
 #endif
 }

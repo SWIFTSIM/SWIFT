@@ -381,107 +381,140 @@ inline static int geometry3d_in_sphere_simd(const double* a, const double* b,
                     _mm256_add_pd(_mm256_mul_pd(y, y), _mm256_mul_pd(z, z)));
 
   double err_bound;
-  double result = determinant_4x4_bounded_simd(x, y, z, n, &err_bound);
+  const double result = determinant_4x4_bounded_simd(x, y, z, n, &err_bound);
   if (fabs(result) > err_bound) return sgn(result);
 
   return 0;
 #endif
 }
 
-inline static int geometry3d_in_sphere(
-    const double ax, const double ay, const double az, const double bx,
-    const double by, const double bz, const double cx, const double cy,
-    const double cz, const double dx, const double dy, const double dz,
-    const double ex, const double ey, const double ez) {
+/*! @brief Computes whether the 5th point lies inside the sphere through the
+ * other 4 points.
+ *
+ * By cleverly developing the determinant over the last row (containing the
+ * coordinates of the last point), we compute the coordinates of the
+ * circumcenter of the first 4 points as intermediate values.
+ * (see https://mathworld.wolfram.com/Circumsphere.html)
+ */
+inline static int geometry3d_in_sphere(const double* a, const double* b,
+                                       const double* c, const double* d,
+                                       const double* e, double* circumcenter,
+                                       float* circumradius2) {
 
-  /* Compute relative coordinates */
-  const double aex = ax - ex;
-  const double aey = ay - ey;
-  const double aez = az - ez;
+  /* Compute relative coordinates wrt the first point.
+   * This allows us to rewrite the 5x5 determinant to a 4x4 determinant */
+  const double bax = b[0] - a[0];
+  const double bay = b[1] - a[1];
+  const double baz = b[2] - a[2];
 
-  const double bex = bx - ex;
-  const double bey = by - ey;
-  const double bez = bz - ez;
+  const double cax = c[0] - a[0];
+  const double cay = c[1] - a[1];
+  const double caz = c[2] - a[2];
 
-  const double cex = cx - ex;
-  const double cey = cy - ey;
-  const double cez = cz - ez;
+  const double dax = d[0] - a[0];
+  const double day = d[1] - a[1];
+  const double daz = d[2] - a[2];
 
-  const double dex = dx - ex;
-  const double dey = dy - ey;
-  const double dez = dz - ez;
+  const double eax = e[0] - a[0];
+  const double eay = e[1] - a[1];
+  const double eaz = e[2] - a[2];
+
+  /* Squared norm of relative coordinates (this is the last column of the
+   * coordinate matrix) */
+  const double banrm2 = bax * bax + bay * bay + baz * baz;
+  const double canrm2 = cax * cax + cay * cay + caz * caz;
+  const double danrm2 = dax * dax + day * day + daz * daz;
+  const double eanrm2 = eax * eax + eay * eay + eaz * eaz;
 
   /* Compute intermediate values */
-  const double aexbey = aex * bey;
-  const double bexaey = bex * aey;
-  const double ab = aexbey - bexaey;
-  const double bexcey = bex * cey;
-  const double cexbey = cex * bey;
-  const double bc = bexcey - cexbey;
-  const double cexdey = cex * dey;
-  const double dexcey = dex * cey;
-  const double cd = cexdey - dexcey;
-  const double dexaey = dex * aey;
-  const double aexdey = aex * dey;
-  const double da = dexaey - aexdey;
-  const double aexcey = aex * cey;
-  const double cexaey = cex * aey;
-  const double ac = aexcey - cexaey;
-  const double bexdey = bex * dey;
-  const double dexbey = dex * bey;
-  const double bd = bexdey - dexbey;
+  const double caydaz = cay * daz;
+  const double daycaz = day * caz;
+  const double baydaz = bay * daz;
+  const double daybaz = day * baz;
+  const double baycaz = bay * caz;
+  const double caybaz = cay * baz;
+  const double caxdanrm2 = cax * danrm2;
+  const double daxcanrm2 = dax * canrm2;
+  const double baxdanrm2 = bax * danrm2;
+  const double daxbanrm2 = dax * banrm2;
+  const double baxcanrm2 = bax * canrm2;
+  const double caxbanrm2 = cax * banrm2;
 
-  const double abc = aez * bc - bez * ac + cez * ab;
-  const double bcd = bez * cd - cez * bd + dez * bc;
-  const double cda = cez * da + dez * ac + aez * cd;
-  const double dab = dez * ab + aez * bd + bez * da;
+  /* Compute a */
+  const double A = bax * (caydaz - daycaz) - cax * (baydaz - daybaz) +
+                   dax * (baycaz - caybaz);
+  /* Compute Dx */
+  const double Dx = banrm2 * (caydaz - daycaz) - canrm2 * (baydaz - daybaz) +
+                    danrm2 * (baycaz - caybaz);
+  /* Compute Dy */
+  const double Dy = -baz * (caxdanrm2 - daxcanrm2) +
+                    caz * (baxdanrm2 - daxbanrm2) -
+                    daz * (baxcanrm2 - caxbanrm2);
+  /* Compute Dz */
+  const double Dz = -bay * (caxdanrm2 - daxcanrm2) +
+                    cay * (baxdanrm2 - daxbanrm2) -
+                    day * (baxcanrm2 - caxbanrm2);
 
-  const double aenrm2 = aex * aex + aey * aey + aez * aez;
-  const double benrm2 = bex * bex + bey * bey + bez * bez;
-  const double cenrm2 = cex * cex + cey * cey + cez * cez;
-  const double denrm2 = dex * dex + dey * dey + dez * dez;
+  /* Compute circumcenter */
+  const double one_over_2A = 0.5 / A;
+  circumcenter[0] = a[0] + Dx * one_over_2A;
+  circumcenter[1] = a[1] - Dy * one_over_2A;
+  circumcenter[2] = a[2] + Dz * one_over_2A;
+  *circumradius2 = (Dx * Dx + Dy * Dy + Dz * Dz) * one_over_2A * one_over_2A;
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Check that the distance to the other 2 vertices is approximately equal to
+   * the circumradius */
+  const double dx_b[] = {b[0] - circumcenter[0], b[1] - circumcenter[1],
+                         b[2] - circumcenter[2]};
+  const double dx_c[] = {c[0] - circumcenter[0], c[1] - circumcenter[1],
+                         c[2] - circumcenter[2]};
+  const double dx_d[] = {d[0] - circumcenter[0], d[1] - circumcenter[1],
+                         d[2] - circumcenter[2]};
+  const float r2_b = dx_b[0] * dx_b[0] + dx_b[1] * dx_b[1] + dx_b[2] * dx_b[2];
+  const float r2_c = dx_c[0] * dx_c[0] + dx_c[1] * dx_c[1] + dx_c[2] * dx_c[2];
+  const float r2_d = dx_d[0] * dx_d[0] + dx_d[1] * dx_d[1] + dx_d[2] * dx_d[2];
+  if (fabsf(r2_b - *circumradius2) > 1e-5f * r2_b ||
+      fabsf(r2_c - *circumradius2) > 1e-5f * r2_c ||
+      fabsf(r2_d - *circumradius2) > 1e-5f * r2_d)
+    error("Circumcenter not equidistant from all vertices of the tetrahedron!");
+#endif
+
+  /* Compute result */
+  const double result = -eax * Dx + eay * Dy - eaz * Dz + eanrm2 * A;
 
   /* Compute errorbound */
-  const double aezplus = fabs(aez);
-  const double bezplus = fabs(bez);
-  const double cezplus = fabs(cez);
-  const double dezplus = fabs(dez);
-  const double aexbeyplus = fabs(aexbey);
-  const double bexaeyplus = fabs(bexaey);
-  const double bexceyplus = fabs(bexcey);
-  const double cexbeyplus = fabs(cexbey);
-  const double cexdeyplus = fabs(cexdey);
-  const double dexceyplus = fabs(dexcey);
-  const double dexaeyplus = fabs(dexaey);
-  const double aexdeyplus = fabs(aexdey);
-  const double aexceyplus = fabs(aexcey);
-  const double cexaeyplus = fabs(cexaey);
-  const double bexdeyplus = fabs(bexdey);
-  const double dexbeyplus = fabs(dexbey);
+  const double bax_abs = fabs(bax);
+  const double cax_abs = fabs(cax);
+  const double dax_abs = fabs(dax);
+  const double eax_abs = fabs(eaz);
+  const double bay_abs = fabs(bay);
+  const double cay_abs = fabs(cay);
+  const double day_abs = fabs(day);
+  const double eay_abs = fabs(eaz);
+  const double baz_abs = fabs(baz);
+  const double caz_abs = fabs(caz);
+  const double daz_abs = fabs(daz);
+  const double eaz_abs = fabs(eaz);
+  const double cd_yz_abs = fabs(caydaz) + fabs(daycaz);
+  const double bd_yz_abs = fabs(baydaz) + fabs(daybaz);
+  const double bc_yz_abs = fabs(baycaz) + fabs(caybaz);
+  const double cd_xnrm2_abs = fabs(caxdanrm2) + fabs(daxcanrm2);
+  const double bd_xnrm2_abs = fabs(baxdanrm2) + fabs(daxbanrm2);
+  const double bc_xnrm2_abs = fabs(baxcanrm2) + fabs(caxbanrm2);
 
-  double errbound = ((cexdeyplus + dexceyplus) * bezplus +
-                     (dexbeyplus + bexdeyplus) * cezplus +
-                     (bexceyplus + cexbeyplus) * dezplus) *
-                        aenrm2 +
-                    ((dexaeyplus + aexdeyplus) * cezplus +
-                     (aexceyplus + cexaeyplus) * dezplus +
-                     (cexdeyplus + dexceyplus) * aezplus) *
-                        benrm2 +
-                    ((aexbeyplus + bexaeyplus) * dezplus +
-                     (bexdeyplus + dexbeyplus) * aezplus +
-                     (dexaeyplus + aexdeyplus) * bezplus) *
-                        cenrm2 +
-                    ((bexceyplus + cexbeyplus) * aezplus +
-                     (cexaeyplus + aexceyplus) * bezplus +
-                     (aexbeyplus + bexaeyplus) * cezplus) *
-                        denrm2;
+  double errbound =
+      (cd_yz_abs * banrm2 + bd_yz_abs * canrm2 + bc_yz_abs * danrm2) * eax_abs +
+      (cd_xnrm2_abs * bay_abs + bd_xnrm2_abs * cay_abs +
+       bc_xnrm2_abs * day_abs) *
+          eay_abs +
+      (cd_xnrm2_abs * baz_abs + bd_xnrm2_abs * caz_abs +
+       bc_xnrm2_abs * daz_abs) *
+          eaz_abs +
+      (cd_yz_abs * bax_abs + bd_yz_abs * cax_abs + bc_yz_abs * dax_abs) *
+          eanrm2;
   // not really the right factor (which is smaller), but this will do
   //  errbound *= 1.e-10;
   errbound *= DBL_EPSILON * 5.;
-
-  /* Compute result */
-  const double result =
-      (denrm2 * abc - cenrm2 * dab) + (benrm2 * cda - aenrm2 * bcd);
 
   if (result < -errbound || result > errbound) {
     return sgn(result);
@@ -609,28 +642,29 @@ inline static int geometry3d_in_sphere_exact(
 }
 
 inline static int geometry3d_in_sphere_adaptive(
-    struct geometry3d* restrict g, const unsigned long* al,
-    const unsigned long* bl, const unsigned long* cl, const unsigned long* dl,
-    const unsigned long* el, const double* ad, const double* bd,
-    const double* cd, const double* dd, const double* ed) {
+    struct geometry3d* restrict g, const unsigned long* restrict al,
+    const unsigned long* restrict bl, const unsigned long* restrict cl,
+    const unsigned long* restrict dl, const unsigned long* restrict el,
+    const double* restrict ad, const double* restrict bd,
+    const double* restrict cd, const double* restrict dd,
+    const double* restrict ed, double* restrict circumcenter,
+    float* restrict circumradius2) {
 
 #ifdef DELAUNAY_3D_HAND_VEC
   int result = geometry3d_in_sphere_simd(ad, bd, cd, dd, ed);
-#ifdef SWIFT_DEBUG_CHECKS
-  int result_normal = geometry3d_in_sphere(ad[0], ad[1], ad[2], bd[0], bd[1],
-                                           bd[2], cd[0], cd[1], cd[2], dd[0],
-                                           dd[1], dd[2], ed[0], ed[1], ed[2]);
-  assert(result == result_normal);
-#endif
 #else
-  int result = geometry3d_in_sphere(ad[0], ad[1], ad[2], bd[0], bd[1], bd[2],
-                                    cd[0], cd[1], cd[2], dd[0], dd[1], dd[2],
-                                    ed[0], ed[1], ed[2]);
+  int result =
+      geometry3d_in_sphere(ad, bd, cd, dd, ed, circumcenter, circumradius2);
 #endif
   if (result == 0) {
     result = geometry3d_in_sphere_exact(g, al[0], al[1], al[2], bl[0], bl[1],
                                         bl[2], cl[0], cl[1], cl[2], dl[0],
                                         dl[1], dl[2], el[0], el[1], el[2]);
+  } else {
+#if defined(SWIFT_DEBUG_CHECKS) && defined(DELAUNAY_3D_HAND_VEC)
+    int result_normal = geometry3d_in_sphere(ad, bd, cd, dd, ed, circumcenter);
+    assert(result == result_normal);
+#endif
   }
 
   return result;
@@ -641,60 +675,58 @@ static inline int geometry3d_compute_circumcenter_relative_non_exact_no_errb(
     double v2x, double v2y, double v2z, double v3x, double v3y, double v3z,
     double* circumcenter) {
   /* Compute relative coordinates */
-  const double r1x = v1x - v0x;
-  const double r1y = v1y - v0y;
-  const double r1z = v1z - v0z;
-  const double r2x = v2x - v0x;
-  const double r2y = v2y - v0y;
-  const double r2z = v2z - v0z;
-  const double r3x = v3x - v0x;
-  const double r3y = v3y - v0y;
-  const double r3z = v3z - v0z;
+  const double bax = v1x - v0x;
+  const double bay = v1y - v0y;
+  const double baz = v1z - v0z;
+
+  const double cax = v2x - v0x;
+  const double cay = v2y - v0y;
+  const double caz = v2z - v0z;
+
+  const double dax = v3x - v0x;
+  const double day = v3y - v0y;
+  const double daz = v3z - v0z;
 
   /* Compute squared norm of relative coordinates */
-  const double r1_sqrd = r1x * r1x + r1y * r1y + r1z * r1z;
-  const double r2_sqrd = r2x * r2x + r2y * r2y + r2z * r2z;
-  const double r3_sqrd = r3x * r3x + r3y * r3y + r3z * r3z;
+  const double banrm2 = bax * bax + bay * bay + baz * baz;
+  const double canrm2 = cax * cax + cay * cay + caz * caz;
+  const double danrm2 = dax * dax + day * day + daz * daz;
 
-  /* Compute a */
-  const double r2yr3z = r2y * r3z;
-  const double r3yr2z = r3y * r2z;
-  const double r1yr3z = r1y * r3z;
-  const double r3yr1z = r3y * r1z;
-  const double r1yr2z = r1y * r2z;
-  const double r2yr1z = r2y * r1z;
-  const double a = r1x * (r2yr3z - r3yr2z) - r2x * (r1yr3z - r3yr1z) +
-                   r3x * (r1yr2z - r2yr1z);
+  /* Compute A */
+  const double caydaz = cay * daz;
+  const double daycaz = day * caz;
+  const double baydaz = bay * daz;
+  const double daybaz = day * baz;
+  const double baycaz = bay * caz;
+  const double caybaz = cay * baz;
+  const double a = bax * (caydaz - daycaz) - cax * (baydaz - daybaz) +
+                   dax * (baycaz - caybaz);
 
   /* Compute Dx */
-  const double Dx = r1_sqrd * (r2yr3z - r3yr2z) - r2_sqrd * (r1yr3z - r3yr1z) +
-                    r3_sqrd * (r1yr2z - r2yr1z);
+  const double Dx = banrm2 * (caydaz - daycaz) - canrm2 * (baydaz - daybaz) +
+                    danrm2 * (baycaz - caybaz);
 
   /* Compute Dy */
-  const double r2xr3z = r2x * r3z;
-  const double r3xr2z = r3x * r2z;
-  const double r1xr3z = r1x * r3z;
-  const double r3xr1z = r3x * r1z;
-  const double r1xr2z = r1x * r2z;
-  const double r2xr1z = r2x * r1z;
-  const double Dy = -r1_sqrd * (r2xr3z - r3xr2z) + r2_sqrd * (r1xr3z - r3xr1z) -
-                    r3_sqrd * (r1xr2z - r2xr1z);
+  const double caxdanrm2 = cax * danrm2;
+  const double daxcanrm2 = dax * canrm2;
+  const double baxdanrm2 = bax * danrm2;
+  const double daxbanrm2 = dax * banrm2;
+  const double baxcanrm2 = bax * canrm2;
+  const double caxbanrm2 = cax * banrm2;
+  const double Dy = baz * (caxdanrm2 - daxcanrm2) -
+                    caz * (baxdanrm2 - daxbanrm2) +
+                    daz * (baxcanrm2 - caxbanrm2);
 
   /* Compute Dz */
-  const double r2xr3y = r2x * r3y;
-  const double r3xr2y = r3x * r2y;
-  const double r1xr3y = r1x * r3y;
-  const double r3xr1y = r3x * r1y;
-  const double r1xr2y = r1x * r2y;
-  const double r2xr1y = r2x * r1y;
-  const double Dz = r1_sqrd * (r2xr3y - r3xr2y) - r2_sqrd * (r1xr3y - r3xr1y) +
-                    r3_sqrd * (r1xr2y - r2xr1y);
+  const double Dz = -bay * (caxdanrm2 - daxcanrm2) +
+                    cay * (baxdanrm2 - daxbanrm2) -
+                    day * (baxcanrm2 - caxbanrm2);
 
   /* Compute circumcenter */
-  const double denominator = 2. * a;
-  circumcenter[0] = Dx / denominator;
-  circumcenter[1] = Dy / denominator;
-  circumcenter[2] = Dz / denominator;
+  const double one_over_2a = 0.5 / a;
+  circumcenter[0] = Dx * one_over_2a;
+  circumcenter[1] = Dy * one_over_2a;
+  circumcenter[2] = Dz * one_over_2a;
   return 1;
 }
 
@@ -944,23 +976,25 @@ static inline void geometry3d_compute_circumcenter_adaptive(
   circumcenter[2] = (circumcenter[2] + v0[2] - 1.) * box_side + box_anchor[2];
 }
 
-static inline double geometry3d_compute_circumradius2_adaptive(
+static inline void geometry3d_compute_circumradius2_adaptive(
     struct geometry3d* restrict g, const double* restrict v0,
     const double* restrict v1, const double* restrict v2,
     const double* restrict v3, const unsigned long* restrict v0ul,
     const unsigned long* restrict v1ul, const unsigned long* restrict v2ul,
-    const unsigned long* restrict v3ul, double box_side) {
+    const unsigned long* restrict v3ul, double* restrict circumcenter,
+    float* circumradius2) {
 
   /* Calculate relative circumcenter (relative to v0, rescaled coordinates) */
-  double circumcenter[3];
   geometry3d_compute_circumcenter_relative_adaptive(
       g, v0, v1, v2, v3, v0ul, v1ul, v2ul, v3ul, circumcenter);
 
-  /* Calculate and rescale radius */
-  double radius = circumcenter[0] * circumcenter[0] +
-                  circumcenter[1] * circumcenter[1] +
-                  circumcenter[2] * circumcenter[2];
-  return radius * box_side * box_side;
+  /* Calculate radius */
+  *circumradius2 = circumcenter[0] * circumcenter[0] +
+                   circumcenter[1] * circumcenter[1] +
+                   circumcenter[2] * circumcenter[2];
+  circumcenter[0] += v0[0];
+  circumcenter[1] += v0[1];
+  circumcenter[2] += v0[2];
 }
 
 inline static double geometry3d_compute_area_triangle(double ax, double ay,

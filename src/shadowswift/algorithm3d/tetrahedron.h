@@ -45,6 +45,9 @@ struct tetrahedron {
    * construction. */
   double circumcenter[3];
 
+  /*! @brief The circumradius of this tetrahedron. */
+  float circumradius2;
+
   /*! @brief Indicates whether or not a tetrahedron is active (or has been
    * invalidated) */
   uint8_t active;
@@ -77,6 +80,7 @@ inline static void tetrahedron_init(struct tetrahedron *t, int v0, int v1,
   t->index_in_neighbour[2] = -1;
   t->index_in_neighbour[3] = -1;
 
+  t->circumradius2 = -1.f;
   t->active = 1;
   t->_flags = tetrahedron_flag_none;
 }
