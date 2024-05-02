@@ -61,8 +61,6 @@ void feedback_update_part(struct part* p, struct xpart* xp,
 
   hydro_set_mass(p, new_mass);
 
-  xp->feedback_data.delta_mass = 0;
-
   /* Update the density */
   p->rho *= new_mass / old_mass;
 
@@ -74,7 +72,8 @@ void feedback_update_part(struct part* p, struct xpart* xp,
   hydro_set_physical_internal_energy(p, xp, cosmo, u_new);
   hydro_set_drifted_physical_internal_energy(p, cosmo, pressure_floor, u_new);
 
-  xp->feedback_data.delta_u = 0.;
+  /* Compute correction therm to account for multiple feedback events. This
+     terms allows to recover energy conservation. */
 
   /* Update the velocities */
   for (int i = 0; i < 3; i++) {
@@ -83,8 +82,14 @@ void feedback_update_part(struct part* p, struct xpart* xp,
     xp->v_full[i] += dv;
     p->v[i] += dv;
 
+    /* Reset the values */
     xp->feedback_data.delta_p[i] = 0;
   }
+
+  /* Reset the values */
+  xp->feedback_data.delta_u = 0.;
+  xp->feedback_data.delta_E_kin = 0.;
+  xp->feedback_data.delta_mass = 0;
 }
 
 /**
