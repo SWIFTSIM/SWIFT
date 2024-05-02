@@ -273,6 +273,11 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
   }
 }
 
+__attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part *restrict pi, const struct part *restrict pj, const double mu_0,
+    const float a, const float H);
+
 /**
  * @brief MHD-Force interaction between two particles.
  *
@@ -291,6 +296,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
     struct part *restrict pi, struct part *restrict pj, const double mu_0,
     const float a, const float H) {
 
+  runner_iact_nonsym_mhd_force(r2, dx, hi, hj, pi, pj, mu_0, a, H);
+  const float dx_rev[3] = {-dx[0], -dx[1], -dx[2]};
+  runner_iact_nonsym_mhd_force(r2, dx_rev, hi, hj, pj, pi, mu_0, a, H);
+  
+#if 0
+  
   /* Get r and 1/r. */
   const float r = sqrtf(r2);
   const float r_inv = r ? 1.0f / r : 0.0f;
@@ -616,7 +627,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   const float vsig_Dedner_i = mhd_get_magnetosonic_speed(pi, a, mu_0);
   const float vsig_Dedner_j = mhd_get_magnetosonic_speed(pj, a, mu_0);
 
-  float grad_psi_i =
+  float grad_psi_i = 
       over_rho2_i * psi_over_ch_i * vsig_Dedner_i * wi_dr * r_inv;
   grad_psi_i += over_rho2_j * psi_over_ch_j * vsig_Dedner_j * wj_dr * r_inv;
   float grad_psi_j = grad_psi_i;
@@ -639,6 +650,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   pj->mhd_data.B_over_rho_dt[0] += mi * Qj * grad_psi_j * dx[0];
   pj->mhd_data.B_over_rho_dt[1] += mi * Qj * grad_psi_j * dx[1];
   pj->mhd_data.B_over_rho_dt[2] += mi * Qj * grad_psi_j * dx[2];
+
+#endif 
 }
 
 /**
@@ -746,7 +759,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   /* Accelerations along X */
 
   /* Isotropic MHD pressure term */
-  sph_acc_term_i[0] +=
+  sph_acc_term_i[0] += 
       0.5f * B2i * permeability_inv * over_rho2_i * wi_dr * r_inv * dx[0];
   sph_acc_term_i[0] +=
       0.5f * B2j * permeability_inv * over_rho2_j * wj_dr * r_inv * dx[0];
@@ -835,7 +848,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   pi->mhd_data.B_over_rho_dt[2] += mj * dB_dt_pref_i * dB_dt_i[2];
 
   /* Physical resistivity */
-  const float resistive_eta = pi->mhd_data.resistive_eta;
+  const float resistive_eta = pi->mhd_data.resistive_eta * 0.f;
 
   const float dB_dt_pref_PR = 2.0f * resistive_eta * r_inv / (rhoi * rhoj);
 
@@ -898,7 +911,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
                           dv_cross_dx[2] * dv_cross_dx[2];
   const float v_sig_B = sqrtf(v_sig_B_2) * r_inv;
 
-  const float art_diff_pref = 0.5f * art_diff_beta * v_sig_B *
+  const float art_diff_pref = 0.5f * art_diff_beta * v_sig_B * 0.f *
                               (wi_dr * over_rho2_i + wj_dr * over_rho2_j);
 
   pi->mhd_data.B_over_rho_dt[0] += mj * art_diff_pref * dB[0];
@@ -915,7 +928,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   const float vsig_Dedner_i = mhd_get_magnetosonic_speed(pi, a, mu_0);
   const float vsig_Dedner_j = mhd_get_magnetosonic_speed(pj, a, mu_0);
 
-  float grad_psi_i =
+  float grad_psi_i = 0.f *
       over_rho2_i * psi_over_ch_i * vsig_Dedner_i * wi_dr * r_inv;
   grad_psi_i += over_rho2_j * psi_over_ch_j * vsig_Dedner_j * wj_dr * r_inv;
 
