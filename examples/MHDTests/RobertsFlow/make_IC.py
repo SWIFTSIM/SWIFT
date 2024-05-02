@@ -203,7 +203,7 @@ def add_other_particle_properties(
             v[:, 0] = np.sqrt(2) * np.sin(kv0 * pos[:, 0]) * np.cos(kv0 * pos[:, 1])
             v[:, 1] = -np.sqrt(2) * np.sin(kv0 * pos[:, 1]) * np.cos(kv0 * pos[:, 0])
             v[:, 2] = Vz_factor * np.sin(kv0 * pos[:, 0])
-            v *= np.sqrt(2/3)
+            v *= np.sqrt(2 / 3)
         else:
             print("Wrong Flow kind. Use values 1-4")
 
@@ -213,16 +213,16 @@ def add_other_particle_properties(
 
         if field_type == "one_mode":
             if Flow_kind == 4:  # ICs from arxiv 1212.2626
-                phix = 2*np.pi*np.random.rand()
-                phiy = 2*np.pi*np.random.rand()
+                phix = 2 * np.pi * np.random.rand()
+                phiy = 2 * np.pi * np.random.rand()
 
-                B[:,0] = np.cos(kb0 * pos[:,2]+phix)
-                B[:,1] = np.cos(kb0 * pos[:,2]+phiy)
+                B[:, 0] = np.cos(kb0 * pos[:, 2] + phix)
+                B[:, 1] = np.cos(kb0 * pos[:, 2] + phiy)
                 B *= B0
-                
-                A[:,0] = np.sin(kb0 * pos[:,2]+phiy)
-                A[:,0] = -np.sin(kb0 * pos[:,2]+phix)
-                A *= B0/kb0
+
+                A[:, 0] = np.sin(kb0 * pos[:, 2] + phiy)
+                A[:, 0] = -np.sin(kb0 * pos[:, 2] + phix)
+                A *= B0 / kb0
             else:
                 B[:, 0] = -(np.sin(kb0 * pos[:, 2]) - np.cos(kb0 * pos[:, 1]))
                 B[:, 1] = -(np.cos(kb0 * pos[:, 0]) - np.cos(kb0 * pos[:, 2]))
