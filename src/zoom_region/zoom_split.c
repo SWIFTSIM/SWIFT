@@ -40,6 +40,9 @@ void zoom_void_split_recursive(struct space *s, struct cell *c,
   const int depth = c->depth;
   int maxdepth = 0;
 
+  /* Flag that the void cell is split. */
+  c->split = 1;
+
   /* Set the top level void cell tpid. Doing it here ensures top level void
    * cells have the same tpid as their progeny. */
   if (depth == 0) c->tpid = tpid;
