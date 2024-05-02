@@ -24,6 +24,8 @@
 #include "hydro.h"
 #include "random.h"
 #include "timestep_sync_part.h"
+#include <math.h>
+
 
 /**
  * @brief Density interaction between two particles (non-symmetric).
@@ -154,7 +156,8 @@ runner_iact_nonsym_feedback_apply(
     const float r2, const float dx[3], const float hi, const float hj,
     struct spart *si, struct part *pj, struct xpart *xpj,
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
-    const struct feedback_props *fb_props, const integertime_t ti_current) {
+    const struct feedback_props *fb_props, const struct phys_const* phys_const,
+    const struct unit_system* us, const integertime_t ti_current) {
 
   const double e_sn = si->feedback_data.energy_ejected;
 
@@ -164,7 +167,7 @@ runner_iact_nonsym_feedback_apply(
   }
 
   message("pj->wcount = %e, id = %lld, wcount_approx = %e", pj->density.wcount, pj->id, pj->rho/pj->mass);
-  
+
   /* Finally, we can compute the w_j_bar. */
   double f_plus_i[3], f_minus_i[3], w_j[3];
   feedback_compute_vector_weight_non_normalized(r2, dx, hi, hj, si, pj, f_plus_i, f_minus_i, w_j);
@@ -192,22 +195,64 @@ runner_iact_nonsym_feedback_apply(
   }
 
   /* ... momentum */
-  const double dp[3] = {w_j_bar[0]*p_ej, w_j_bar[1]*p_ej, w_j_bar[2]*p_ej};
+  double dp[3] = {w_j_bar[0]*p_ej, w_j_bar[1]*p_ej, w_j_bar[2]*p_ej};
+
+  /* Now, we take into account for potentially unresolved energy-conserving
+     phase of the SN explosion */
+
+  /* During the energy-conserving phase, the blastwave an expand and swepts
+     m_ej as well as the mass m_j of the particle. When the wave reaches the
+     particle, it has done a work P*dV corresponding to the following weight */
+  const double PdV_work_fraction = sqrt(1 + mj/dm);
+
+  /* If we cannot resolve the energu conserving phase, the blastwave reaches
+     its terminal momentum. */
+  const double p_terminal = feedback_get_SN_terminal_momentum(si, pj, xpj, phys_const, us);
+  const double p_factor = min(PdV_work_fraction, p_terminal/p_ej);
+
+  dp[0] *= p_factor;
+  dp[1] *= p_factor;
+  dp[2] *= p_factor;
+
+  /* Now boost to the 'laboratory' frame */
   const double dp_prime[3] = {dp[0] + dm*si->v[0], dp[1] + dm*si->v[1], dp[2] + dm*si->v[2]};
   const double dp_norm_2 = dp[0]*dp[0] +  dp[1]*dp[1] +  dp[2]*dp[2];
-  const double dp_prime_norm_2 = dp_prime[0]*dp_prime[0] +  dp_prime[1]*dp_prime[1]
-				 +  dp_prime[2]*dp_prime[2];
+  /* const double dp_prime_norm_2 = dp_prime[0]*dp_prime[0] +  dp_prime[1]*dp_prime[1] */
+				 /* +  dp_prime[2]*dp_prime[2]; */
 
   for (int i = 0; i < 3; i++) {
     xpj->feedback_data.delta_p[i] += dp_prime[i];
   }
 
-  /* ... energy */
+  /* ... internal energy */
   const double dE = w_j_bar_norm * e_sn;
-  const double dE_prime = dE + 1.0/dm * (dp_prime_norm_2 - dp_norm_2);
+  /* const double dE_prime = dE + 1.0/dm * (dp_prime_norm_2 - dp_norm_2); */
   const double new_mass = mj + dm;
 
-  xpj->feedback_data.delta_u += dE_prime/new_mass;
+  /* Compute kinetic energy difference before and after SN */
+  const double p_old_2 = mj*mj*(xpj->v_full[0]*xpj->v_full[0] + xpj->v_full[1]*xpj->v_full[1] + xpj->v_full[2]*xpj->v_full[2]);
+  const double p_new[3] = {mj*xpj->v_full[0] + dp_prime[0],
+			   mj*xpj->v_full[1] + dp_prime[1],
+			   mj*xpj->v_full[2] + dp_prime[2]};
+  const double p_new_2 = p_new[0]*p_new[0] + p_new[1]*p_new[1] + p_new[2]*p_new[2];
+  const double dKE = p_new_2/(2.0*new_mass) - p_old_2/(2.0*mj);
+
+  /* Compute the internal energy */
+  double dU = e_sn - dKE;
+
+  /* Compute the cooling radius */
+  const double second_part = p_terminal*p_terminal/(p_ej*p_ej) - 1;
+  const double r_cool = pow(3.0*m_ej*second_part/(4.0*M_PI*pj->rho), 1.0/3.0);
+
+  /* If we do not resolve the Taylor-Sedov, we rescale the internal energy */
+  if (r2 > r_cool*r_cool) {
+    dU *= pow(sqrt(r2)/r_cool, -6.5);
+  } /* else we do not change dU */
+
+  /* Finally, give the new thermal and kinetic energy to the gas */
+  xpj->feedback_data.delta_u += dU/new_mass;
+  xpj->feedback_data.delta_E_kin += dKE;
+
 
   /* Impose maximal viscosity */
   hydro_diffusive_feedback_reset(pj);
@@ -215,6 +260,7 @@ runner_iact_nonsym_feedback_apply(
   /* Synchronize the particle on the timeline */
   timestep_sync_part(pj);
 
+  /*-------------------------------------------------------------------------*/
   /* Verify conservation things */
   si->feedback_data.delta_m_check += dm;
   si->feedback_data.delta_E_check += dE;
