@@ -557,3 +557,66 @@ void feedback_compute_vector_weight_non_normalized(const float r2, const float *
   w_j[1] = scalar_weight_j*(dx_ij_plus[1]*f_plus_i[1] + dx_ij_minus[1]*f_minus_i[1]);
   w_j[2] = scalar_weight_j*(dx_ij_plus[2]*f_plus_i[2] + dx_ij_minus[2]*f_minus_i[2]);
 }
+
+
+/**
+ * @brief Compute the terminal momentum of a SN explosion. This is the momentum
+ * the blastwave can give to the gas after the energy-conserving phase.
+ *
+ * This function is used if we do not resolve the enery-conserving phase.
+ *
+ * Note: This function compute the terminal momentum in the same way as in
+ * Fire-3 (PAPERS).
+ *
+ * @param sp Star particle undergoing SN explosion.
+ * @param p Gas particle receiving the terminal momentum.
+ * @param xp The #xpart
+ */
+double feedback_get_SN_terminal_momentum(const struct spart* restrict sp,
+					 const struct part* restrict p,
+					 const struct xpart* restrict xp,
+					 const struct phys_const* phys_const,
+					 const struct unit_system* us) {
+
+  /* Check the unit conversions: * or / ? */
+  const double p_terminal_0 = 2.5e5;
+
+  /* In erg */
+  const double E_ej = sp->feedback_data.energy_ejected*units_cgs_conversion_factor(us, UNIT_CONV_ENERGY);
+  const double ten_to_51 = 1e51;
+
+  /* Get velocity factor. Currently, this is = 1. See PAPER 2024. */
+  const double velocity_factor = 1;
+
+  /* Get metallicity factor */
+  const double Z = chemistry_get_star_total_metal_mass_fraction_for_feedback(sp);
+  const double Z_sun = 0.0134; /* Find the exact value somewhere */
+  double metallicity_factor = 0.0;
+
+  if (Z/Z_sun < 0.01) {
+    metallicity_factor = 2;
+  } else if ((0.01 <= Z/Z_sun) && (Z/Z_sun<= 1)) {
+    metallicity_factor = pow(Z/Z_sun, -0.18);
+  } else /* Z/Z_sun > 1 */ {
+    metallicity_factor = pow(Z/Z_sun, -0.14);
+  }
+
+  /* Get number density factor in cgs */
+  const double number_density = p->rho*phys_const->const_avogadro_number/p->mass*units_cgs_conversion_factor(us, UNIT_CONV_NUMBER_DENSITY);
+  double number_density_factor = 0.0;
+
+  if (number_density < 0.001) {
+    number_density_factor = 2.63;
+  } else /* >= 0.001 */ {
+    number_density_factor = pow(number_density, -0.143);
+  }
+
+  /* This is in units of M_sun km/s */
+  double p_terminal = p_terminal_0*E_ej/ten_to_51*number_density_factor*metallicity_factor*velocity_factor;
+
+  /* Converts to internal units */
+  p_terminal /= phys_const->const_solar_mass*1e5*units_cgs_conversion_factor(us, UNIT_CONV_VELOCITY);
+
+  message("p_terminal = %e (internal_units)", p_terminal);
+  return p_terminal;
+}
