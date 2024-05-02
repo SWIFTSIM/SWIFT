@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 
 results_directory_name = "test_results/"
 tau_max = 60
-take_last = int(0.5 / (5e-2))
+take_last = int(10 / (5e-2))
 
 
 def load_test_run_parameters():
@@ -51,7 +51,7 @@ def find_growth_rate(the_time, B_field, nlast=take_last):
 
 
 def plot_info(run_data, the_key):
-    fig, ax = plt.subplots(1, 3, sharex=True, figsize=(15, 5))
+    fig, ax = plt.subplots(1, 3, figsize=(15, 5))
     name_of_the_plot = (
         "Scheme="
         + the_key["Scheme"]
@@ -102,8 +102,16 @@ def plot_info(run_data, the_key):
         Mh = Mh[mask]
         divB = divB[mask]
 
-        # growth_rate = find_growth_rate(Time, np.log(B))
-        saturated_v = np.mean(vrms[-take_last:])
+
+        dBdt = np.diff(B)/np.diff(Time)
+        cut_B = B[1:]
+        local_growth_rate = dBdt[-take_last:]/cut_B[-take_last:]
+        cut_timestamps = Time[-take_last:]
+
+        growth_rate = round(np.mean(local_growth_rate),5)
+        growth_rate_err_2sigma = round(2*np.std(local_growth_rate),5)
+        growth_rate_str = str(growth_rate)+"$\pm$"+str(growth_rate_err_2sigma)
+
         the_name = (
             "#"
             + str(run_data_slice["Run #"].values[0])
@@ -115,23 +123,22 @@ def plot_info(run_data, the_key):
             + str(v0)
             + "_$\eta$="
             + str(run_data_slice["eta"].values[0])
-            + "_<v>="
-            + str(saturated_v)
+            + "_<s>="
+            + growth_rate_str
         )
         ax[0].plot(Time, B)
-        ax[2].plot(Time, divB, label=the_name)
-        ax[1].plot(Time, vrms)
-        # ax[2].plot(Time, Mh)
+        ax[1].plot(Time, divB, label=the_name)
+        ax[2].plot(cut_timestamps, local_growth_rate)
     ax[0].set_xlabel("t/$t_c$", fontsize=8)
     ax[1].set_xlabel("t/$t_c$", fontsize=8)
     ax[2].set_xlabel("t/$t_c$", fontsize=8)
     ax[0].set_ylabel("<$B_{rms}$>/<$B_{rms}$(0)>", fontsize=8)
-    ax[2].set_ylabel("<divB*h/B>", fontsize=8)
-    ax[1].set_ylabel("$v_{rms}$", fontsize=8)
-    ax[2].legend(loc="best", fontsize=8)
+    ax[1].set_ylabel("<divB*h/B>", fontsize=8)
+    ax[2].set_ylabel("d(LnB)/dt", fontsize=8)
+    ax[1].legend(loc="best", fontsize=8)
     ax[0].set_yscale("log")
     # ax[1].set_yscale("log")
-    ax[2].set_yscale("log")
+    ax[1].set_yscale("log")
     # ax[0].set_ylim(1,1e4)
     # ax[0].set_xlim(0,10)
     # ax[1].set_ylim(1e-4,1)
