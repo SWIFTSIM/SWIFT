@@ -41,6 +41,8 @@
 #include "minmax.h"
 #include "vector.h"
 
+#define HYDRO_DIMENSION_2D
+
 /* ------------------------------------------------------------------------- */
 #if defined(CUBIC_SPLINE_KERNEL)
 
@@ -1010,5 +1012,7 @@ __attribute__((always_inline)) INLINE static void kernel_eval_dWdx_force_2_vec(
 
 /* Some cross-check functions */
 void hydro_kernel_dump(int N);
+
+#undef HYDRO_DIMENSION_2D
 
 #endif  // SWIFT_KERNEL_HYDRO_H

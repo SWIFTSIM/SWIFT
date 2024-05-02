@@ -2287,7 +2287,7 @@ esac
 #  Dimensionality of the hydro scheme.
 AC_ARG_WITH([hydro-dimension],
    [AS_HELP_STRING([--with-hydro-dimension=<dim>],
-      [dimensionality of problem @<:@3/2/1 default: 3@:>@]
+      [dimensionality of problem @<:@3/2.5/2/1 default: 3@:>@]
    )],
    [with_dimension="$withval"],
    [with_dimension="3"]
@@ -2298,6 +2298,9 @@ case "$with_dimension" in
    ;;
    2)
       AC_DEFINE([HYDRO_DIMENSION_2D], [2], [2D solver])
+   ;;
+   2.5)
+      AC_DEFINE([HYDRO_DIMENSION_2p5D], [2], [2.5D solver])
    ;;
    3)
       AC_DEFINE([HYDRO_DIMENSION_3D], [3], [3D solver])

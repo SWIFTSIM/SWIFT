@@ -34,6 +34,8 @@
 
 #include <math.h>
 
+#define HYDRO_DIMENSION_2D
+
 /* First define some constants */
 #if defined(HYDRO_DIMENSION_3D)
 
@@ -400,5 +402,7 @@ __attribute__((always_inline)) INLINE static vector pow_dimension_plus_one_vec(
 #endif
 }
 #endif
+
+#undef HYDRO_DIMENSION_2D
 
 #endif /* SWIFT_DIMENSION_H */
