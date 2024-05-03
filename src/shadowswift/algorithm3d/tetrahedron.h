@@ -42,10 +42,13 @@ struct tetrahedron {
   int index_in_neighbour[4];
 
   /*! @brief The circumcenter of this tetrahedron. Used for Voronoi
-   * construction. */
+   * construction.
+   * During the construction of the Delaunay tesselation, this might also be
+   * used to store the circumcenter, but then in rescaled coordinates and
+   * relative to the first vertex of this tetrahedron */
   double circumcenter[3];
 
-  /*! @brief The circumradius of this tetrahedron. */
+  /*! @brief The circumradius of this tetrahedron (in rescaled coordinates). */
   float circumradius2;
 
   /*! @brief Indicates whether or not a tetrahedron is active (or has been

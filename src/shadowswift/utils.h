@@ -82,11 +82,13 @@ inline static __m256d mm256_flip_sign_1100(__m256d x) {
  * @brief Compute a four by four determinant using simd instructions
  *
  * @param c0, c1, c2, c3 The columns of the matrix
+ * @param c_out (Return) the vector of cofactors when developing around c3
  * @param bound (Return) The errorbound for the determinant
  * @return The determinant.
  */
 inline static double determinant_4x4_bounded_simd(__m256d c0, __m256d c1,
                                                   __m256d c2, __m256d c3,
+                                                  __m256d* c_out,
                                                   double* bound) {
   /* STEP 1 Compute terms with 2 factors */
   /* Contains: ax * by, bx * ay, cx * dy, dx * cy */
@@ -121,6 +123,7 @@ inline static double determinant_4x4_bounded_simd(__m256d c0, __m256d c1,
               _mm256_permute4x64_pd(ac_ac_bd_bd, _MM_SHUFFLE(3, 1, 2, 0))),
           _mm256_mul_pd(_mm256_permute4x64_pd(c2, _MM_SHUFFLE(1, 0, 3, 2)),
                         ab_bc_cd_da)));
+  *c_out = cofactors;
 
   /* STEP 3: Compute the determinant */
   __m256d mul = _mm256_mul_pd(
@@ -136,7 +139,7 @@ inline static double determinant_4x4_bounded_simd(__m256d c0, __m256d c1,
   ac_bd = mm256_abs_pd(ac_bd);
   c2 = mm256_abs_pd(c2);
   /* c3 is guaranteed to be positive for our usecase */
-  // c3 = mm256_abs_pd(c3);
+  c3 = mm256_abs_pd(c3);
 #ifdef SWIFT_DEBUG_CHECKS
   __m256d abs_c3 = mm256_abs_pd(c3);
   for (int i = 0; i < 4; i++) assert(c3[i] == abs_c3[i]);

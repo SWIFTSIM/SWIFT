@@ -358,31 +358,68 @@ inline static void geometry3d_orient_4(
 
 inline static int geometry3d_in_sphere_simd(const double* a, const double* b,
                                             const double* c, const double* d,
-                                            const double* e) {
+                                            const double* e,
+                                            double* circumcenter,
+                                            float* circumradius2) {
 #ifndef DELAUNAY_3D_HAND_VEC
   error("Should not be calling this function!");
   return 0;
 #else
-  __m256d x = {a[0], b[0], c[0], d[0]};
-  __m256d e_x = {e[0], e[0], e[0], e[0]};
-  x = _mm256_sub_pd(x, e_x);
+#ifdef SWIFT_DEBUG_CHECKS
+  int fast_outside = 0;
+#endif
+  if (*circumradius2 > 1e-8f) {
+    /* Does the new point (e) lie clearly outside the circumcircle? */
+    double dx[3];
+    dx[0] = e[0] - a[0] - circumcenter[0];
+    dx[1] = e[1] - a[1] - circumcenter[1];
+    dx[2] = e[2] - a[2] - circumcenter[2];
+    double r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+    if (*circumradius2 < 0.999f * r2) {
+#ifdef SWIFT_DEBUG_CHECKS
+      fast_outside = 1;
+#else
+      return 1;
+#endif
+    }
+  }
 
-  __m256d y = {a[1], b[1], c[1], d[1]};
-  __m256d e_y = {e[1], e[1], e[1], e[1]};
-  y = _mm256_sub_pd(y, e_y);
+  __m256d a_vec = {a[0], a[1], a[2], 0.};
+  __m256d rows[] = {
+      _mm256_sub_pd((__m256d){b[0], b[1], b[2], 0.}, a_vec),
+      _mm256_sub_pd((__m256d){c[0], c[1], c[2], 0.}, a_vec),
+      _mm256_sub_pd((__m256d){d[0], d[1], d[2], 0.}, a_vec),
+      _mm256_sub_pd((__m256d){e[0], e[1], e[2], 0.}, a_vec),
+  };
 
-  __m256d z = {a[2], b[2], c[2], d[2]};
-  __m256d e_z = {e[2], e[2], e[2], e[2]};
-  z = _mm256_sub_pd(z, e_z);
-
-  // x^2 + y^2 + z^2
-  __m256d n =
-      _mm256_add_pd(_mm256_mul_pd(x, x),
-                    _mm256_add_pd(_mm256_mul_pd(y, y), _mm256_mul_pd(z, z)));
+  for (int i = 0; i < 4; i++) {
+    __m256d nrm2 = _mm256_mul_pd(rows[i], rows[i]);
+    rows[i][3] = nrm2[0] + nrm2[1] + nrm2[2];
+  }
 
   double err_bound;
-  const double result = determinant_4x4_bounded_simd(x, y, z, n, &err_bound);
-  if (fabs(result) > err_bound) return sgn(result);
+  __m256d cofactors;
+  const double result = determinant_4x4_bounded_simd(
+      rows[0], rows[1], rows[2], rows[3], &cofactors, &err_bound);
+
+  /* Compute the circumradius and set the circumcenter */
+  const double one_over_2A = 0.5 / cofactors[0];
+  cofactors = _mm256_mul_pd(
+      cofactors, (__m256d){one_over_2A, one_over_2A, one_over_2A, one_over_2A});
+  circumcenter[0] = cofactors[1];
+  circumcenter[1] = -cofactors[2];
+  circumcenter[2] = cofactors[3];
+  cofactors = _mm256_mul_pd(cofactors, cofactors);
+  *circumradius2 = cofactors[1] + cofactors[2] + cofactors[3];
+
+  /* Check result */
+  if (fabs(result) > err_bound) {
+#ifdef SWIFT_DEBUG_CHECKS
+    if (fast_outside && sgn(result) != 1)
+      error("Fast insphere test was incorrect!");
+#endif
+    return sgn(result);
+  }
 
   return 0;
 #endif
@@ -418,6 +455,23 @@ inline static int geometry3d_in_sphere(const double* a, const double* b,
   const double eax = e[0] - a[0];
   const double eay = e[1] - a[1];
   const double eaz = e[2] - a[2];
+
+#ifdef SWIFT_DEBUG_CHECKS
+  int fast_outside = 0;
+#endif
+  if (*circumradius2 > 1e-6f) {
+    /* Does the new point (e) lie clearly outside the circumcircle? */
+    double dx[] = {circumcenter[0] - eax, circumcenter[1] - eay,
+                   circumcenter[2] - eaz};
+    double r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+    if (*circumradius2 < 0.999f * r2) {
+#ifdef SWIFT_DEBUG_CHECKS
+      fast_outside = 1;
+#else
+      return 1;
+#endif
+    }
+  }
 
   /* Squared norm of relative coordinates (this is the last column of the
    * coordinate matrix) */
@@ -457,27 +511,10 @@ inline static int geometry3d_in_sphere(const double* a, const double* b,
 
   /* Compute circumcenter */
   const double one_over_2A = 0.5 / A;
-  circumcenter[0] = a[0] + Dx * one_over_2A;
-  circumcenter[1] = a[1] - Dy * one_over_2A;
-  circumcenter[2] = a[2] + Dz * one_over_2A;
+  circumcenter[0] = Dx * one_over_2A;
+  circumcenter[1] = -Dy * one_over_2A;
+  circumcenter[2] = Dz * one_over_2A;
   *circumradius2 = (Dx * Dx + Dy * Dy + Dz * Dz) * one_over_2A * one_over_2A;
-#ifdef SWIFT_DEBUG_CHECKS
-  /* Check that the distance to the other 2 vertices is approximately equal to
-   * the circumradius */
-  const double dx_b[] = {b[0] - circumcenter[0], b[1] - circumcenter[1],
-                         b[2] - circumcenter[2]};
-  const double dx_c[] = {c[0] - circumcenter[0], c[1] - circumcenter[1],
-                         c[2] - circumcenter[2]};
-  const double dx_d[] = {d[0] - circumcenter[0], d[1] - circumcenter[1],
-                         d[2] - circumcenter[2]};
-  const float r2_b = dx_b[0] * dx_b[0] + dx_b[1] * dx_b[1] + dx_b[2] * dx_b[2];
-  const float r2_c = dx_c[0] * dx_c[0] + dx_c[1] * dx_c[1] + dx_c[2] * dx_c[2];
-  const float r2_d = dx_d[0] * dx_d[0] + dx_d[1] * dx_d[1] + dx_d[2] * dx_d[2];
-  if (fabsf(r2_b - *circumradius2) > 1e-5f * r2_b ||
-      fabsf(r2_c - *circumradius2) > 1e-5f * r2_c ||
-      fabsf(r2_d - *circumradius2) > 1e-5f * r2_d)
-    error("Circumcenter not equidistant from all vertices of the tetrahedron!");
-#endif
 
   /* Compute result */
   const double result = -eax * Dx + eay * Dy - eaz * Dz + eanrm2 * A;
@@ -517,6 +554,10 @@ inline static int geometry3d_in_sphere(const double* a, const double* b,
   errbound *= DBL_EPSILON * 5.;
 
   if (result < -errbound || result > errbound) {
+#ifdef SWIFT_DEBUG_CHECKS
+    if (fast_outside && sgn(result) != 1)
+      error("Fast insphere test was incorrect!");
+#endif
     return sgn(result);
   }
 
@@ -651,10 +692,31 @@ inline static int geometry3d_in_sphere_adaptive(
     float* restrict circumradius2) {
 
 #ifdef DELAUNAY_3D_HAND_VEC
-  int result = geometry3d_in_sphere_simd(ad, bd, cd, dd, ed);
+  int result = geometry3d_in_sphere_simd(ad, bd, cd, dd, ed, circumcenter,
+                                         circumradius2);
 #else
   int result =
       geometry3d_in_sphere(ad, bd, cd, dd, ed, circumcenter, circumradius2);
+#endif
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Check that the distance to the other 2 vertices is approximately equal to
+   * the circumradius */
+  const double dx_b[] = {bd[0] - ad[0] - circumcenter[0],
+                         bd[1] - ad[1] - circumcenter[1],
+                         bd[2] - ad[2] - circumcenter[2]};
+  const double dx_c[] = {cd[0] - ad[0] - circumcenter[0],
+                         cd[1] - ad[1] - circumcenter[1],
+                         cd[2] - ad[2] - circumcenter[2]};
+  const double dx_d[] = {dd[0] - ad[0] - circumcenter[0],
+                         dd[1] - ad[1] - circumcenter[1],
+                         dd[2] - ad[2] - circumcenter[2]};
+  const float r2_b = dx_b[0] * dx_b[0] + dx_b[1] * dx_b[1] + dx_b[2] * dx_b[2];
+  const float r2_c = dx_c[0] * dx_c[0] + dx_c[1] * dx_c[1] + dx_c[2] * dx_c[2];
+  const float r2_d = dx_d[0] * dx_d[0] + dx_d[1] * dx_d[1] + dx_d[2] * dx_d[2];
+  if (fabsf(r2_b - *circumradius2) > 1e-5f * r2_b ||
+      fabsf(r2_c - *circumradius2) > 1e-5f * r2_c ||
+      fabsf(r2_d - *circumradius2) > 1e-5f * r2_d)
+    error("Circumcenter not equidistant from all vertices of the tetrahedron!");
 #endif
   if (result == 0) {
     result = geometry3d_in_sphere_exact(g, al[0], al[1], al[2], bl[0], bl[1],
@@ -992,9 +1054,6 @@ static inline void geometry3d_compute_circumradius2_adaptive(
   *circumradius2 = circumcenter[0] * circumcenter[0] +
                    circumcenter[1] * circumcenter[1] +
                    circumcenter[2] * circumcenter[2];
-  circumcenter[0] += v0[0];
-  circumcenter[1] += v0[1];
-  circumcenter[2] += v0[2];
 }
 
 inline static double geometry3d_compute_area_triangle(double ax, double ay,

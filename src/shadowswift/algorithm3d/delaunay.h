@@ -2427,31 +2427,13 @@ inline static int delaunay_tetrahedron_is_regular(struct delaunay* d, int t,
   const double* dd = &d->rescaled_vertices[3 * v3];
   const double* ed = &d->rescaled_vertices[3 * v];
 
-  if (tetrahedron->circumradius2 > 0) {
-    const double dx[] = {tetrahedron->circumcenter[0] - ed[0],
-                         tetrahedron->circumcenter[1] - ed[1],
-                         tetrahedron->circumcenter[2] - ed[2]};
-    double r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
-    if (tetrahedron->circumradius2 < 0.9f * r2) {
-      /* We can safely assume that this tetrahedron is regular */
-      delaunay_log("Tetrahedron %i is valid (decided using circumradius)!", t);
-#ifdef SWIFT_DEBUG_CHECKS
-      const int test = geometry3d_in_sphere_adaptive(
-          &d->geometry, al, bl, cl, dl, el, ad, bd, cd, dd, ed,
-          tetrahedron->circumcenter, &tetrahedron->circumradius2);
-      delaunay_assert(test >= 0);
-#endif
-      return 1;
-    }
-  }
-
-  /* Normal case, do the in_sphere test, which sets the circumcenter */
+  /* Do the in_sphere test, which sets the circumcenter */
   const int test = geometry3d_in_sphere_adaptive(
       &d->geometry, al, bl, cl, dl, el, ad, bd, cd, dd, ed,
       tetrahedron->circumcenter, &tetrahedron->circumradius2);
 
   if (test >= 0) {
-    delaunay_log("Tetrahedron %i is valid (performed geometric check)!", t);
+    delaunay_log("Tetrahedron %i is valid!", t);
     return 1;
   } else {
     delaunay_log("Tetrahedron %i is invalidated by vertex %i!", t, v);
@@ -2673,17 +2655,7 @@ inline static void delaunay_compute_circumcentres(struct delaunay* d) {
       t->circumcenter[2] = NAN;
       continue;
     }
-    /* If the tetrahedron has a valid circumradius, its circumcenter is already
-     * computed, we just need to rescale it. */
-    if (t->circumradius2 > 0) {
-      t->circumcenter[0] = d->anchor[0] + (t->circumcenter[0] - 1.) * d->side;
-      t->circumcenter[1] = d->anchor[1] + (t->circumcenter[1] - 1.) * d->side;
-      t->circumcenter[2] = d->anchor[2] + (t->circumcenter[2] - 1.) * d->side;
-      /* Nothing left to do */
-      continue;
-    }
 
-    /* Normal case: compute the circumcenter from scratch */
     /* Get the indices of the vertices of the tetrahedron */
     int v0 = t->vertices[0];
     int v1 = t->vertices[1];
@@ -2738,36 +2710,47 @@ inline static void delaunay_compute_circumcentres(struct delaunay* d) {
     double* v3d = &d->rescaled_vertices[3 * v3];
     unsigned long* v3ul = &d->integer_vertices[3 * v3];
 
-    geometry3d_compute_circumcenter_adaptive(
-        &d->geometry, v0d, v1d, v2d, v3d, v0ul, v1ul, v2ul, v3ul,
-        t->circumcenter, d->side, d->anchor);
+    /* If the tetrahedron has a valid circumradius, its circumcenter is already
+     * computed, we just need to rescale and translate it. */
+    if (t->circumradius2 > 0.f) {
+      t->circumcenter[0] =
+          d->anchor[0] + (v0d[0] + t->circumcenter[0] - 1.) * d->side;
+      t->circumcenter[1] =
+          d->anchor[1] + (v0d[1] + t->circumcenter[1] - 1.) * d->side;
+      t->circumcenter[2] =
+          d->anchor[2] + (v0d[2] + t->circumcenter[2] - 1.) * d->side;
+    } else {
+      geometry3d_compute_circumcenter_adaptive(
+          &d->geometry, v0d, v1d, v2d, v3d, v0ul, v1ul, v2ul, v3ul,
+          t->circumcenter, d->side, d->anchor);
 
 #ifdef SWIFT_DEBUG_CHECKS
-    const double cx = t->circumcenter[0];
-    const double cy = t->circumcenter[1];
-    const double cz = t->circumcenter[2];
+      const double cx = t->circumcenter[0];
+      const double cy = t->circumcenter[1];
+      const double cz = t->circumcenter[2];
 
-    double v0r[3], v1r[3], v2r[3], v3r[3];
-    delaunay_get_vertex_at(d, v0, v0r);
-    delaunay_get_vertex_at(d, v1, v1r);
-    delaunay_get_vertex_at(d, v2, v2r);
-    delaunay_get_vertex_at(d, v3, v3r);
+      double v0r[3], v1r[3], v2r[3], v3r[3];
+      delaunay_get_vertex_at(d, v0, v0r);
+      delaunay_get_vertex_at(d, v1, v1r);
+      delaunay_get_vertex_at(d, v2, v2r);
+      delaunay_get_vertex_at(d, v3, v3r);
 
-    const double r0 =
-        sqrt((cx - v0r[0]) * (cx - v0r[0]) + (cy - v0r[1]) * (cy - v0r[1]) +
-             (cz - v0r[2]) * (cz - v0r[2]));
-    const double r1 =
-        sqrt((cx - v1r[0]) * (cx - v1r[0]) + (cy - v1r[1]) * (cy - v1r[1]) +
-             (cz - v1r[2]) * (cz - v1r[2]));
-    const double r2 =
-        sqrt((cx - v2r[0]) * (cx - v2r[0]) + (cy - v2r[1]) * (cy - v2r[1]) +
-             (cz - v2r[2]) * (cz - v2r[2]));
-    const double r3 =
-        sqrt((cx - v3r[0]) * (cx - v3r[0]) + (cy - v3r[1]) * (cy - v3r[1]) +
-             (cz - v3r[2]) * (cz - v3r[2]));
-    delaunay_assert(double_cmp(r0, r1, 1e5) && double_cmp(r0, r2, 1e5) &&
-                    double_cmp(r0, r3, 1e5));
+      const double r0 =
+          sqrt((cx - v0r[0]) * (cx - v0r[0]) + (cy - v0r[1]) * (cy - v0r[1]) +
+               (cz - v0r[2]) * (cz - v0r[2]));
+      const double r1 =
+          sqrt((cx - v1r[0]) * (cx - v1r[0]) + (cy - v1r[1]) * (cy - v1r[1]) +
+               (cz - v1r[2]) * (cz - v1r[2]));
+      const double r2 =
+          sqrt((cx - v2r[0]) * (cx - v2r[0]) + (cy - v2r[1]) * (cy - v2r[1]) +
+               (cz - v2r[2]) * (cz - v2r[2]));
+      const double r3 =
+          sqrt((cx - v3r[0]) * (cx - v3r[0]) + (cy - v3r[1]) * (cy - v3r[1]) +
+               (cz - v3r[2]) * (cz - v3r[2]));
+      delaunay_assert(double_cmp(r0, r1, 1e5) && double_cmp(r0, r2, 1e5) &&
+                      double_cmp(r0, r3, 1e5));
 #endif
+    }
   }
 }
 
