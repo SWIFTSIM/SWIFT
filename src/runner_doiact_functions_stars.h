@@ -123,6 +123,7 @@ void DOSELF1_STARS(struct runner *r, struct cell *c, int timer) {
 #endif
 
       if (r2 < hig2 && si_active_feedback) {
+      /* if ((r2 < hig2 || r2 < hj*hj*kernel_gamma2) && si_active_feedback) { */
         IACT_STARS(r2, dx, hi, hj, si, pj, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
         runner_iact_nonsym_feedback_density(r2, dx, hi, hj, si, pj, NULL, cosmo,
