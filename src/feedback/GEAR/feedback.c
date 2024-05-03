@@ -387,10 +387,11 @@ void feedback_init_spart(struct spart* sp) {
  */
 void feedback_init_after_star_formation(
     struct spart* sp, const struct feedback_props* feedback_props) {
+
+  /* Give appropriate values to the star by setting everything to 0 */
   feedback_init_spart(sp);
 
-  /* Zero the energy of supernovae */
-  sp->feedback_data.energy_ejected = 0;
+  sp->feedback_data.energy_ejected = 0.f;
 
   /* Activate the feedback loop for the first step */
   sp->feedback_data.will_do_feedback = 1;
@@ -403,7 +404,34 @@ void feedback_init_after_star_formation(
  * This is called in the stars ghost.
  */
 void feedback_reset_feedback(struct spart* sp,
-                             const struct feedback_props* feedback_props) {}
+                             const struct feedback_props* feedback_props) {
+  sp->feedback_data.energy_ejected = 0;
+  sp->feedback_data.enrichment_weight = 0.f;
+
+  sp->feedback_data.f_plus_num[0] = 0.0;
+  sp->feedback_data.f_plus_num[1] = 0.0;
+  sp->feedback_data.f_plus_num[2] = 0.0;
+
+  sp->feedback_data.f_plus_denom[0] = 0.0;
+  sp->feedback_data.f_plus_denom[1] = 0.0;
+  sp->feedback_data.f_plus_denom[2] = 0.0;
+
+  sp->feedback_data.f_minus_num[0] = 0.0;
+  sp->feedback_data.f_minus_num[1] = 0.0;
+  sp->feedback_data.f_minus_num[2] = 0.0;
+
+  sp->feedback_data.f_minus_denom[0] = 0.0;
+  sp->feedback_data.f_minus_denom[1] = 0.0;
+  sp->feedback_data.f_minus_denom[2] = 0.0;
+
+  sp->feedback_data.delta_m_check = 0.0;
+  sp->feedback_data.delta_E_check = 0.0;
+  sp->feedback_data.delta_p_norm_check = 0.0;
+
+  sp->feedback_data.delta_p_check[0] = 0 ;
+  sp->feedback_data.delta_p_check[1] = 0 ;
+  sp->feedback_data.delta_p_check[2] = 0 ;
+}
 
 /**
  * @brief Initialises the s-particles feedback props for the first time
@@ -416,7 +444,7 @@ void feedback_reset_feedback(struct spart* sp,
  */
 void feedback_first_init_spart(struct spart* sp,
                                const struct feedback_props* feedback_props) {
-
+  /* Initialize the feedback struct for the first time */
   feedback_init_spart(sp);
 
   /* Zero the energy of supernovae */
