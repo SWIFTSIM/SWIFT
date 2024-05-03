@@ -40,7 +40,7 @@
  * @param e The #engine.
  */
 void feedback_update_part(struct part* p, struct xpart* xp,
-                          const struct engine* e) {
+			  const struct engine* e) {
 
   /* Did the particle receive a supernovae */
   if (xp->feedback_data.delta_mass == 0) return;
@@ -52,14 +52,17 @@ void feedback_update_part(struct part* p, struct xpart* xp,
   xp->cooling_data.time_last_event = e->time;
 
   /* Update mass */
+  const float dm = xp->feedback_data.delta_mass;
   const float old_mass = hydro_get_mass(p);
-  const float new_mass = old_mass + xp->feedback_data.delta_mass;
+  const float new_mass = old_mass + dm;
 
   if (xp->feedback_data.delta_mass < 0.) {
     error("Delta mass smaller than 0");
   }
 
+  /* Update the mass of p, as well as its gpart's friend */
   hydro_set_mass(p, new_mass);
+  p->gpart->mass = p->mass ;
 
   /* Update the density */
   p->rho *= new_mass / old_mass;
@@ -73,7 +76,29 @@ void feedback_update_part(struct part* p, struct xpart* xp,
   hydro_set_drifted_physical_internal_energy(p, cosmo, pressure_floor, u_new);
 
   /* Compute correction therm to account for multiple feedback events. This
-     terms allows to recover energy conservation. */
+     terms allows to recover energy conservation. If there is only one
+     feedback that affected p and xp, f_corr = 1. */
+  /* const double p_old[3] = {old_mass*xp->v_full[0], old_mass*xp->v_full[1], old_mass*xp->v_full[2]}; */
+  /* const double p_old_norm_2 =  p_old[0]*p_old[0] + p_old[1]*p_old[1] + p_old[2]*p_old[2]; */
+  /* const double p_tilde_norm_2 = p_old_norm_2*dm/old_mass + 2*(old_mass + dm)*xp->feedback_data.delta_E_kin; */
+
+  /* const double dp[3] = {xp->feedback_data.delta_p[0], xp->feedback_data.delta_p[1], xp->feedback_data.delta_p[2]}; */
+  /* const double dp_norm_2 = dp[0]*dp[0] + dp[1]*dp[1] + dp[2]*dp[2]; */
+  /* const double p_old_times_dp = p_old[0]*dp[0] + p_old[1]*dp[1] + p_old[2]*dp[2]; */
+
+  /* /\* Finally compute the corrector factor *\/ */
+  /* const double sqrt_argument = p_old_times_dp*p_old_times_dp - p_tilde_norm_2*dp_norm_2; */
+  /* message("p_tilde_norm_2 = %e, dp_norm_2 = %e, p_old_norm_2 = %e", p_tilde_norm_2, dp_norm_2, p_old_norm_2); */
+  /* message("p_old_times_dp = %e, dp_old_times_dp^2 = %e,  p_tilde_norm_2*dp_norm_2 = %e, sqrt_argument = %e", p_old_times_dp, p_old_times_dp*p_old_times_dp, sqrt_argument); */
+
+  /* const double f_corr = (- p_old_times_dp + sqrt(sqrt_argument))/p_tilde_norm_2; */
+
+  /* message("f_corr = %e", f_corr); */
+
+  /* /\* Update the xpart accumulated dp *\/ */
+  /* xp->feedback_data.delta_p[0] *= f_corr; */
+  /* xp->feedback_data.delta_p[1] *= f_corr; */
+  /* xp->feedback_data.delta_p[2] *= f_corr; */
 
   /* Update the velocities */
   for (int i = 0; i < 3; i++) {
