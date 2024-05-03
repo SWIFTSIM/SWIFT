@@ -181,6 +181,81 @@ void compute_time(struct spart* sp, const int with_cosmology,
 }
 
 /**
+ * @brief Will this individual star want to do feedback during the next
+ * time-step?
+ *
+ * This is called in the time step task.
+ *
+ * In GEAR, we compute the full stellar evolution here.
+ *
+ * @param sp The particle to act upon
+ * @param feedback_props The #feedback_props structure.
+ * @param cosmo The current cosmological model.
+ * @param us The unit system.
+ * @param phys_const The #phys_const.
+ * @param ti_current The current time (in integer)
+ * @param time_base The time base.
+ * @param time The physical time in internal units.
+ */
+void feedback_will_do_feedback_individual_star(
+    struct spart* sp, const struct feedback_props* feedback_props,
+    const int with_cosmology, const struct cosmology* cosmo, const double time,
+    const struct unit_system* us, const struct phys_const* phys_const,
+    const integertime_t ti_current, const double time_base) {
+
+  /* Zero the energy of supernovae */
+  sp->feedback_data.energy_ejected = 0;
+  sp->feedback_data.will_do_feedback = 0;
+
+  /* Pick the correct table. (if only one table, threshold is < 0) */
+  const float metal =
+      chemistry_get_star_total_iron_mass_fraction_for_feedback(sp);
+  const float threshold = feedback_props->metallicity_max_first_stars;
+
+  const struct stellar_model* model =
+      metal < threshold ? &feedback_props->stellar_model_first_stars
+                        : &feedback_props->stellar_model;
+
+  /* If the star has completely exploded, do not continue. This will also avoid
+     NaN values in the liftetime if the mass is set to 0.
+     Correction (28.04.2024): A bug fix in the mass of the star (see
+     stellar_evolution.c in stellar_evolution_compute_X_feedback_properties,
+     X=discrete, continuous) has changed the mass of the star from 0 to
+     discrete_star_minimal_gravity_mass. Hence the fix is propagated here. */
+  if (sp->mass <= model->discrete_star_minimal_gravity_mass) {
+    return;
+  }
+  
+  /* Compute the times */
+  double star_age_beg_step = 0;
+  double dt_enrichment = 0;
+  integertime_t ti_begin = 0;
+  compute_time(sp, with_cosmology, cosmo, &star_age_beg_step, &dt_enrichment,
+               &ti_begin, ti_current, time_base, time);
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (sp->birth_time == -1.) error("Evolving a star particle that should not!");
+  if (star_age_beg_step + dt_enrichment < 0) {
+    error("Negative age for a star");
+  }
+#endif
+
+  /* Ensure that the age is positive (rounding errors) */
+  const double star_age_beg_step_safe =
+      star_age_beg_step < 0 ? 0 : star_age_beg_step;
+
+
+
+  /* Compute the stellar evolution including SNe energy */
+  stellar_evolution_evolve_individual_star(sp, model, cosmo, us, phys_const,
+                                           ti_begin, star_age_beg_step_safe,
+                                           dt_enrichment);
+
+  /* Set the particle as doing some feedback */
+  sp->feedback_data.will_do_feedback = sp->feedback_data.energy_ejected != 0.;
+}
+
+/**
  * @brief Will this star particle want to do feedback during the next time-step?
  *
  * This is called in the time step task.
@@ -237,9 +312,6 @@ void feedback_will_do_feedback(
   stellar_evolution_evolve_spart(sp, model, cosmo, us, phys_const, ti_begin,
                                  star_age_beg_step_safe, dt_enrichment);
 
-  /* apply the energy efficiency factor */
-  /* sp->feedback_data.energy_ejected *= feedback_props->supernovae_efficiency; */
-
   /* Set the particle as doing some feedback */
   sp->feedback_data.will_do_feedback = sp->feedback_data.energy_ejected != 0.;
 }
@@ -251,7 +323,6 @@ void feedback_will_do_feedback(
  * @param e The #engine.
  */
 int feedback_is_active(const struct spart* sp, const struct engine* e) {
-
   return sp->feedback_data.will_do_feedback;
 }
 
@@ -281,7 +352,6 @@ double feedback_get_enrichment_timestep(const struct spart* sp,
  * @param sp The particle to act upon
  */
 void feedback_init_spart(struct spart* sp) {
-
   sp->feedback_data.enrichment_weight = 0.f;
 
   sp->feedback_data.f_plus_num[0] = 0.0;
@@ -394,12 +464,7 @@ void feedback_prepare_feedback(struct spart* restrict sp,
                                const struct phys_const* phys_const,
                                const double star_age_beg_step, const double dt,
                                const double time, const integertime_t ti_begin,
-                               const int with_cosmology) {
-  /* Add missing h factor */
-  const float hi_inv = 1.f / sp->h;
-  const float hi_inv_dim = pow_dimension(hi_inv); /* 1/h^d */
-  sp->feedback_data.enrichment_weight *= hi_inv_dim;
-}
+                               const int with_cosmology) {  }
 
 /**
  * @brief Write a feedback struct to the given FILE as a stream of bytes.
@@ -600,7 +665,9 @@ void feedback_compute_vector_weight_non_normalized(const float r2, const float *
  *
  * @param sp Star particle undergoing SN explosion.
  * @param p Gas particle receiving the terminal momentum.
- * @param xp The #xpart
+ * @param xp The #xpart.
+ * @param phys_const The #phys_const.
+ * @param us The #unit_system.
  */
 double feedback_get_SN_terminal_momentum(const struct spart* restrict sp,
 					 const struct part* restrict p,
