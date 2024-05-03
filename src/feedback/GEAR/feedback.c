@@ -727,21 +727,21 @@ double feedback_get_SN_terminal_momentum(const struct spart* restrict sp,
   }
 
   /* Get number density factor in cgs */
-  const double number_density = p->rho*phys_const->const_avogadro_number/p->mass*units_cgs_conversion_factor(us, UNIT_CONV_NUMBER_DENSITY);
-  double number_density_factor = 0.0;
+  const double m_p_cgs = phys_const->const_proton_mass * units_cgs_conversion_factor(us, UNIT_CONV_MASS);
+  const double density = p->rho*units_cgs_conversion_factor(us, UNIT_CONV_DENSITY)/m_p_cgs;
 
-  if (number_density < 0.001) {
-    number_density_factor = 2.63;
+  double density_factor = 0.0;
+
+  if (density < 0.001) {
+    density_factor = 2.63;
   } else /* >= 0.001 */ {
-    number_density_factor = pow(number_density, -0.143);
+    density_factor = pow(density, -0.143);
   }
 
   /* This is in units of M_sun km/s */
-  double p_terminal = p_terminal_0*E_ej/ten_to_51*number_density_factor*metallicity_factor*velocity_factor;
+  double p_terminal = p_terminal_0*E_ej/ten_to_51*density_factor*metallicity_factor*velocity_factor;
 
   /* Converts to internal units */
-  p_terminal /= phys_const->const_solar_mass*1e5*units_cgs_conversion_factor(us, UNIT_CONV_VELOCITY);
-
-  message("p_terminal = %e (internal_units)", p_terminal);
+  p_terminal *= phys_const->const_solar_mass*1e-5*units_cgs_conversion_factor(us, UNIT_CONV_VELOCITY);
   return p_terminal;
 }
