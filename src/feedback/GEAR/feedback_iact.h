@@ -166,8 +166,6 @@ runner_iact_nonsym_feedback_apply(
     return;
   }
 
-  message("pj->wcount = %e, id = %lld, wcount_approx = %e", pj->density.wcount, pj->id, pj->rho/pj->mass);
-
   /* Finally, we can compute the w_j_bar. */
   double f_plus_i[3], f_minus_i[3], w_j[3];
   feedback_compute_vector_weight_non_normalized(r2, dx, hi, hj, si, pj, f_plus_i, f_minus_i, w_j);
@@ -184,8 +182,8 @@ runner_iact_nonsym_feedback_apply(
   const double m_ej = si->feedback_data.mass_ejected;
   const double p_ej = sqrt(2*m_ej*e_sn) ;
 
-  /* Distribute mass... */
-  double dm = w_j_bar_norm * m_ej;
+  /* Distribute mass... (the max avoids to have dm=0 and NaN by dividing by dm) */
+  double dm = max(w_j_bar_norm * m_ej, FLT_MIN);
   xpj->feedback_data.delta_mass += dm;
 
   /* ... metals */
@@ -197,10 +195,10 @@ runner_iact_nonsym_feedback_apply(
   /* ... momentum */
   double dp[3] = {w_j_bar[0]*p_ej, w_j_bar[1]*p_ej, w_j_bar[2]*p_ej};
 
-  /* Now, we take into account for potentially unresolved energy-conserving
-     phase of the SN explosion */
+  /* --Now, we take into account for potentially unresolved energy-conserving
+     phase of the SN explosion-- */
 
-  /* During the energy-conserving phase, the blastwave an expand and swepts
+  /* During the energy-conserving phase, the blastwave expands and swepts
      m_ej as well as the mass m_j of the particle. When the wave reaches the
      particle, it has done a work P*dV corresponding to the following weight */
   const double PdV_work_fraction = sqrt(1 + mj/dm);
@@ -209,6 +207,12 @@ runner_iact_nonsym_feedback_apply(
      its terminal momentum. */
   const double p_terminal = feedback_get_SN_terminal_momentum(si, pj, xpj, phys_const, us);
   const double p_factor = min(PdV_work_fraction, p_terminal/p_ej);
+
+  if (p_factor == p_terminal/p_ej) {
+    message("We do not resolve the Sedov-Taylor. Using p_terminal. p_factor = %e, PdV_work_fraction=%e.", p_factor, PdV_work_fraction);
+  } else {
+    message("We do resolve the Sedov-Taylor. p_factor=%e, p_t/p_ej = %e", p_factor, p_terminal/p_ej);
+  }
 
   dp[0] *= p_factor;
   dp[1] *= p_factor;
@@ -244,15 +248,16 @@ runner_iact_nonsym_feedback_apply(
   const double second_part = p_terminal*p_terminal/(p_ej*p_ej) - 1;
   const double r_cool = pow(3.0*m_ej*second_part/(4.0*M_PI*pj->rho), 1.0/3.0);
 
+  message("R_cool = %e", r_cool);
   /* If we do not resolve the Taylor-Sedov, we rescale the internal energy */
   if (r2 > r_cool*r_cool) {
     dU *= pow(sqrt(r2)/r_cool, -6.5);
+    message("We do not resolve the Sedov-Taylor. Rescaling dU.");
   } /* else we do not change dU */
 
   /* Finally, give the new thermal and kinetic energy to the gas */
   xpj->feedback_data.delta_u += dU/new_mass;
   xpj->feedback_data.delta_E_kin += dKE;
-
 
   /* Impose maximal viscosity */
   hydro_diffusive_feedback_reset(pj);
@@ -264,13 +269,13 @@ runner_iact_nonsym_feedback_apply(
   /* Verify conservation things */
   si->feedback_data.delta_m_check += dm;
   si->feedback_data.delta_E_check += dE;
-  si->feedback_data.delta_p_norm_check += sqrt(dp_norm_2);
+  si->feedback_data.delta_p_norm_check += sqrt(dp_norm_2/(p_factor*p_factor));
 
-  si->feedback_data.delta_p_check[0] += dp[0];
-  si->feedback_data.delta_p_check[1] += dp[1];
-  si->feedback_data.delta_p_check[2] += dp[2];
+  si->feedback_data.delta_p_check[0] += dp[0]/p_factor;
+  si->feedback_data.delta_p_check[1] += dp[1]/p_factor;
+  si->feedback_data.delta_p_check[2] += dp[2]/p_factor;
 
-  message("Conservation check (star %lld): Sum dm_i = %e (m_ej), Sum dE_i = %e (e_ej), Sum |dp_i| = %e (p_ej), Sum dp_i = (%e, %e, %e) (0), m_ej = %e, E_ej = %e, p_ej = %e", si->id, si->feedback_data.delta_m_check, si->feedback_data.delta_E_check, si->feedback_data.delta_p_norm_check, si->feedback_data.delta_p_check[0], si->feedback_data.delta_p_check[1], si->feedback_data.delta_p_check[2], m_ej, e_sn, p_ej);
+  /* message("Conservation check (star %lld): Sum dm_i = %e (m_ej), Sum dE_i = %e (e_ej), Sum |dp_i| = %e (p_ej), Sum dp_i = (%e, %e, %e) (0), m_ej = %e, E_ej = %e, p_ej = %e", si->id, si->feedback_data.delta_m_check, si->feedback_data.delta_E_check, si->feedback_data.delta_p_norm_check, si->feedback_data.delta_p_check[0], si->feedback_data.delta_p_check[1], si->feedback_data.delta_p_check[2], m_ej, e_sn, p_ej); */
 }
 
 
