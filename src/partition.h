@@ -47,6 +47,7 @@ struct partition {
 /* Repartition type to use. */
 enum repartition_type {
   REPART_NONE = 0,
+  REPART_FILE,
   REPART_METIS_VERTEX_EDGE_COSTS,
   REPART_METIS_EDGE_COSTS,
   REPART_METIS_VERTEX_COUNTS,
@@ -61,6 +62,7 @@ struct repartition {
   float itr;
   int usemetis;
   int adaptive;
+  char filename[PARSER_MAX_LINE_SIZE];
 
   int use_fixed_costs;
   int use_ticks;

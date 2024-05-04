@@ -65,7 +65,8 @@
 
 /* Simple descriptions of initial partition types for reports. */
 const char *initial_partition_name[] = {
-    "axis aligned grids of cells", "vectorized point associated cells",
+    "axis aligned grids of cells",
+    "vectorized point associated cells",
     "read from file",
     "memory balanced, using particle weighted cells",
     "similar sized regions, using unweighted cells",
@@ -73,7 +74,10 @@ const char *initial_partition_name[] = {
 
 /* Simple descriptions of repartition types for reports. */
 const char *repartition_name[] = {
-    "none", "edge and vertex task cost weights", "task cost edge weights",
+    "none",
+    "read from file",
+    "edge and vertex task cost weights",
+    "task cost edge weights",
     "memory balanced, using particle vertex weights",
     "vertex task costs and edge delta timebin weights"};
 
@@ -1849,6 +1853,63 @@ static void repart_memory_metis(struct repartition *repartition, int nodeID,
 }
 #endif /* WITH_MPI && (HAVE_METIS || HAVE_PARMETIS) */
 
+#if defined(WITH_MPI)
+static void repart_file(struct repartition *repartition, int nodeID,
+                        int nr_nodes, struct space *s) {
+  int *grid = NULL;
+  grid = (int *)calloc(s->nr_cells, sizeof(int));
+  if (grid == NULL) error("Error allocating the list of grid cells");
+
+  if (nodeID == 0) {
+    FILE *file = NULL;
+    file = fopen(repartition->filename, "r");
+    if (file == NULL)
+      error("Unable to open repartition file '%s'", repartition->filename);
+
+    /* Count number of non-zero length lines */
+    size_t len = 0;
+    char *line = NULL;
+    int nr_lines = 0;
+    while (getline(&line, &len, file) != -1) nr_lines += 1;
+    rewind(file);
+
+    /* Check we got the correct number of lines */
+    if (nr_lines != s->nr_cells)
+      error(
+          "Number of entries (%d) in file '%s' does not match the number of "
+          "top-level cells (%d)",
+          nr_lines, repartition->filename, s->nr_cells);
+
+    /* Read in the entries */
+    for (int i = 0; i < nr_lines; ++i) {
+      if (fscanf(file, "%d", &grid[i]) != 1)
+        error("Failed to read nodeID from decomposition file.");
+    }
+
+    /* Clean up */
+    fclose(file);
+  }
+
+#if defined(WITH_MPI)
+  /* Send the list to all the MPI ranks */
+  MPI_Bcast(grid, s->nr_cells, MPI_INT, 0, MPI_COMM_WORLD);
+#endif
+
+  /* Apply the list to the cells */
+  for (int i = 0; i < s->nr_cells; ++i) {
+    s->cells_top[i].nodeID = grid[i];
+  }
+
+  /* Last check that everything is fine */
+  if (!check_complete(s, (nodeID == 0), nr_nodes)) {
+    if (nodeID == 0) error("File-based initial partition failed!");
+  }
+
+  /* Clean up */
+  free(grid);
+}
+#endif
+
 /**
  * @brief Repartition the space using the given repartition type.
  *
@@ -1865,6 +1926,12 @@ static void repart_memory_metis(struct repartition *repartition, int nodeID,
 void partition_repartition(struct repartition *reparttype, int nodeID,
                            int nr_nodes, struct space *s, struct task *tasks,
                            int nr_tasks) {
+
+#if defined(WITH_MPI)
+  if (reparttype->type == REPART_FILE) {
+    repart_file(reparttype, nodeID, nr_nodes, s);
+  }
+#endif
 
 #if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
 
@@ -1886,6 +1953,9 @@ void partition_repartition(struct repartition *reparttype, int nodeID,
     repart_memory_metis(reparttype, nodeID, nr_nodes, s);
 
   } else if (reparttype->type == REPART_NONE) {
+    /* Doing nothing. */
+
+  } else if (reparttype->type == REPART_FILE) {
     /* Doing nothing. */
 
   } else {
@@ -2045,14 +2115,15 @@ void partition_initial_partition(struct partition *initial_partition,
   } else if (initial_partition->type == INITPART_FILE) {
 
     int *grid = NULL;
-    grid = (int*) calloc(s->nr_cells, sizeof(int));
+    grid = (int *)calloc(s->nr_cells, sizeof(int));
     if (grid == NULL) error("Error allocating the list of grid cells");
-    
+
     if (nodeID == 0) {
       FILE *file = NULL;
       file = fopen(initial_partition->filename, "r");
       if (file == NULL)
-	error("Unable to open initial partition file '%s'", initial_partition->filename);
+        error("Unable to open initial partition file '%s'",
+              initial_partition->filename);
 
       /* Count number of non-zero length lines */
       size_t len = 0;
@@ -2063,15 +2134,17 @@ void partition_initial_partition(struct partition *initial_partition,
 
       /* Check we got the correct number of lines */
       if (nr_lines != s->nr_cells)
-	error("Number of entries (%d) in file '%s' does not match the number of top-level cells (%d)",
-	      nr_lines, initial_partition->filename, s->nr_cells);
+        error(
+            "Number of entries (%d) in file '%s' does not match the number of "
+            "top-level cells (%d)",
+            nr_lines, initial_partition->filename, s->nr_cells);
 
       /* Read in the entries */
-      for (int i = 0 ; i <  nr_lines; ++i) {
-	if (fscanf(file, "%d", &grid[i]) != 1)
-	  error("Failed to read nodeID from decomposition file.");
-      }     
-      
+      for (int i = 0; i < nr_lines; ++i) {
+        if (fscanf(file, "%d", &grid[i]) != 1)
+          error("Failed to read nodeID from decomposition file.");
+      }
+
       /* Clean up */
       fclose(file);
     }
@@ -2083,15 +2156,14 @@ void partition_initial_partition(struct partition *initial_partition,
 
     /* Apply the list to the cells */
     for (int i = 0; i < s->nr_cells; ++i) {
-      s->cells_top[i].nodeID = grid[i];      
+      s->cells_top[i].nodeID = grid[i];
     }
 
     /* Last check that everything is fine */
     if (!check_complete(s, (nodeID == 0), nr_nodes)) {
-      if (nodeID == 0)
-        error("File-based initial partition failed!");
+      if (nodeID == 0) error("File-based initial partition failed!");
     }
-    
+
     /* Clean up */
     free(grid);
   }
@@ -2176,17 +2248,23 @@ void partition_init(struct partition *partition,
                                    3, partition->grid);
   }
 
-  /* In case of grid, read more parameters */
+  /* In case of file, read more parameters */
   if (part_type[0] == 'f') {
-    parser_get_param_string(params, "DomainDecomposition:filename",  partition->filename);
+    parser_get_param_string(params, "DomainDecomposition:filename",
+                            partition->filename);
   }
-  
+
   /* Now let's check what the user wants as a repartition strategy */
   parser_get_opt_param_string(params, "DomainDecomposition:repartition_type",
                               part_type, default_repart);
 
   if (strcmp("none", part_type) == 0) {
     repartition->type = REPART_NONE;
+
+  } else if (strcmp("file", part_type) == 0) {
+    repartition->type = REPART_FILE;
+    parser_get_param_string(params, "DomainDecomposition:filename",
+                            partition->filename);
 
 #if defined(HAVE_METIS) || defined(HAVE_PARMETIS)
   } else if (strcmp("fullcosts", part_type) == 0) {
