@@ -41,6 +41,10 @@ struct feedback_xpart_data {
 
   /*! Momemtum received from a supernovae */
   float delta_p[3];
+
+  /* Number of supernovae affecting this particle */
+  /* int number_SN; */
+
 };
 
 /**
@@ -74,7 +78,6 @@ struct feedback_spart_data {
   double f_plus_denom[3];
   double f_minus_num[3];
   double f_minus_denom[3];
-  /* double sum_vector_weight_norm; */
 
   double delta_m_check;
   double delta_E_check;
