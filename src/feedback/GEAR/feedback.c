@@ -628,8 +628,8 @@ double feedback_get_SN_terminal_momentum(const struct spart* restrict sp,
 					 const struct phys_const* phys_const,
 					 const struct unit_system* us) {
 
-  /* Check the unit conversions: * or / ? */
-  const double p_terminal_0 = 2.5e5;
+  /* Terminal momentum 0 (in internal units) */
+  const double p_terminal_0 = 2.5e5*phys_const->const_solar_mass*1e-5*units_cgs_conversion_factor(us, UNIT_CONV_VELOCITY);
 
   /* In erg */
   const double E_ej = sp->feedback_data.energy_ejected*units_cgs_conversion_factor(us, UNIT_CONV_ENERGY);
@@ -663,10 +663,7 @@ double feedback_get_SN_terminal_momentum(const struct spart* restrict sp,
     density_factor = pow(density, -0.143);
   }
 
-  /* This is in units of M_sun km/s */
+  /* This is in internal units */
   double p_terminal = p_terminal_0*E_ej/ten_to_51*density_factor*metallicity_factor*velocity_factor;
-
-  /* Converts to internal units */
-  p_terminal *= phys_const->const_solar_mass*1e-5*units_cgs_conversion_factor(us, UNIT_CONV_VELOCITY);
   return p_terminal;
 }
