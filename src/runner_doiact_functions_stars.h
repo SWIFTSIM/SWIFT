@@ -122,8 +122,8 @@ void DOSELF1_STARS(struct runner *r, struct cell *c, int timer) {
         error("Particle pj not drifted to current time");
 #endif
 
-      if (r2 < hig2 && si_active_feedback) {
-      /* if ((r2 < hig2 || r2 < hj*hj*kernel_gamma2) && si_active_feedback) { */
+      /* if (r2 < hig2 && si_active_feedback) { */
+      if ((r2 < hig2 || r2 < hj*hj*kernel_gamma2) && si_active_feedback) {
         IACT_STARS(r2, dx, hi, hj, si, pj, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
         runner_iact_nonsym_feedback_density(r2, dx, hi, hj, si, pj, NULL, cosmo,
@@ -253,7 +253,8 @@ void DO_NONSYM_PAIR1_STARS_NAIVE(struct runner *r, struct cell *restrict ci,
         error("Particle pj not drifted to current time");
 #endif
 
-      if (r2 < hig2 && si_active_feedback) {
+      /* if (r2 < hig2 && si_active_feedback) { */
+      if ((r2 < hig2 || r2 < hj*hj*kernel_gamma2) && si_active_feedback) {
         IACT_STARS(r2, dx, hi, hj, si, pj, a, H);
 
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
@@ -448,8 +449,9 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
 #endif
 
         /* Hit or miss? */
-        if (r2 < hig2 && spi_active_feedback) {
-          IACT_STARS(r2, dx, hi, hj, spi, pj, a, H);
+        /* if (r2 < hig2 && spi_active_feedback) { */
+	if ((r2 < hig2 || r2 < hj*hj*kernel_gamma2) && spi_active_feedback) {
+	  IACT_STARS(r2, dx, hi, hj, spi, pj, a, H);
 
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
           runner_iact_nonsym_feedback_density(r2, dx, hi, hj, spi, pj, NULL,
@@ -602,7 +604,8 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
 #endif
 
         /* Hit or miss? */
-        if (r2 < hjg2 && spj_active_feedback) {
+        /* if (r2 < hjg2 && spj_active_feedback) { */
+	if ((r2 < hjg2 || r2 < hi*hi*kernel_gamma2) && spj_active_feedback) {
 
           IACT_STARS(r2, dx, hj, hi, spj, pi, a, H);
 
@@ -744,7 +747,9 @@ void DOPAIR1_SUBSET_STARS(struct runner *r, struct cell *restrict ci,
 #endif
 
         /* Hit or miss? */
-        if (r2 < hig2) {
+        /* if (r2 < hig2) { */
+	if (r2 < hig2 || r2 < hj*hj*kernel_gamma2) {
+
           IACT_STARS(r2, dx, hi, hj, spi, pj, a, H);
 
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
@@ -807,7 +812,9 @@ void DOPAIR1_SUBSET_STARS(struct runner *r, struct cell *restrict ci,
 #endif
 
         /* Hit or miss? */
-        if (r2 < hig2) {
+        /* if (r2 < hig2) { */
+	if (r2 < hig2 || r2 < hj*hj*kernel_gamma2) {
+
           IACT_STARS(r2, dx, hi, hj, spi, pj, a, H);
 
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
@@ -905,7 +912,8 @@ void DOPAIR1_SUBSET_STARS_NAIVE(struct runner *r, struct cell *restrict ci,
         error("Particle pj not drifted to current time");
 #endif
       /* Hit or miss? */
-      if (r2 < hig2) {
+      /* if (r2 < hig2) { */
+      if (r2 < hig2 || r2 < hj*hj*kernel_gamma2) {
         IACT_STARS(r2, dx, hi, hj, spi, pj, a, H);
 
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
@@ -985,6 +993,7 @@ void DOSELF1_SUBSET_STARS(struct runner *r, struct cell *restrict ci,
                             (float)(pj->x[2] - ci->loc[2])};
       float dx[3] = {spix[0] - pjx[0], spix[1] - pjx[1], spix[2] - pjx[2]};
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+      const float hj = pj->h;
 
 #ifdef SWIFT_DEBUG_CHECKS
       /* Check that particles have been drifted to the current time */
@@ -993,7 +1002,9 @@ void DOSELF1_SUBSET_STARS(struct runner *r, struct cell *restrict ci,
 #endif
 
       /* Hit or miss? */
-      if (r2 < hig2) {
+      /* if (r2 < hig2) { */
+      if (r2 < hig2 || r2 < hj*hj*kernel_gamma2) {
+
         IACT_STARS(r2, dx, hi, pj->h, spi, pj, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
         runner_iact_nonsym_feedback_density(r2, dx, hi, pj->h, spi, pj, NULL,
