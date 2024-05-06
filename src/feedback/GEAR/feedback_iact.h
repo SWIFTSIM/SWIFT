@@ -159,10 +159,10 @@ runner_iact_nonsym_feedback_apply(
     const struct feedback_props *fb_props, const struct phys_const* phys_const,
     const struct unit_system* us, const integertime_t ti_current) {
 
-  const double e_sn = si->feedback_data.energy_ejected;
+  const double E_ej = si->feedback_data.energy_ejected;
 
   /* Do we have supernovae? */
-  if (e_sn == 0) {
+  if (E_ej == 0) {
     return;
   }
 
@@ -180,7 +180,7 @@ runner_iact_nonsym_feedback_apply(
   /* Here just get the feedback properties we want to distribute */
   const float mj = hydro_get_mass(pj);
   const double m_ej = si->feedback_data.mass_ejected;
-  const double p_ej = sqrt(2*m_ej*e_sn) ;
+  const double p_ej = sqrt(2*m_ej*E_ej) ;
 
   /* Distribute mass... (the max avoids to have dm=0 and NaN by dividing by dm) */
   double dm = max(w_j_bar_norm * m_ej, FLT_MIN);
@@ -193,71 +193,98 @@ runner_iact_nonsym_feedback_apply(
   }
 
   /* ... momentum */
-  double dp[3] = {w_j_bar[0]*p_ej, w_j_bar[1]*p_ej, w_j_bar[2]*p_ej};
+  const double dp[3] = {w_j_bar[0]*p_ej, w_j_bar[1]*p_ej, w_j_bar[2]*p_ej};
+  const double dE = w_j_bar_norm * E_ej;
+
+  /* Now boost to the 'laboratory' frame */
+  double dp_prime[3] = {dp[0] + dm*si->v[0], dp[1] + dm*si->v[1], dp[2] + dm*si->v[2]};
+
+  /* Note: The momentum is given to xpj later... We need to do some physics before. */
+
+  /* ... Total energy */
+  const double dp_norm_2 = dp[0]*dp[0] +  dp[1]*dp[1] +  dp[2]*dp[2];
+  const double dp_prime_norm_2 = dp_prime[0]*dp_prime[0] +  dp_prime[1]*dp_prime[1] +  dp_prime[2]*dp_prime[2];
+  const double dE_prime = dE + 1.0/(2.0*dm) * (dp_prime_norm_2 - dp_norm_2);
+
+  /* ... internal energy */
+  const double new_mass = mj + dm;
+
+  /* Compute kinetic energy difference before and after SN */
+  const double p_old_norm_2 = mj*mj*(xpj->v_full[0]*xpj->v_full[0] + xpj->v_full[1]*xpj->v_full[1] + xpj->v_full[2]*xpj->v_full[2]);
+  const double p_new[3] = {mj*xpj->v_full[0] + dp_prime[0],
+			   mj*xpj->v_full[1] + dp_prime[1],
+			   mj*xpj->v_full[2] + dp_prime[2]};
+  const double p_new_norm_2 = p_new[0]*p_new[0] + p_new[1]*p_new[1] + p_new[2]*p_new[2];
+
+  const double E_kin_old = p_old_norm_2/(2.0*mj);
+  const double E_kin_new = p_new_norm_2/(2.0*new_mass);
+  const double dKE = E_kin_new - E_kin_old;
+
+  const double U_old = xpj->u_full*mj;
+  const double E_old = U_old + E_kin_old;
+  const double E_new = E_old + dE_prime;
+  const double U_new = E_new - E_kin_new;
+
+  /* Compute the internal energy */
+  double dU = U_new - U_old;
+  /* message("dE_prime= %e, dU = %e,  dKE = %e, p_new_2 = %e, p_old_2 = %e", dE_prime, dU, dKE, p_new_norm_2, p_old_norm_2); */
+  /* message("E_old = %e, E_new = %e, E_kin_old = %e, E_kin_new = %e, U_old = %e, U_new = %e", E_old, E_new, E_kin_old, E_kin_old, U_old, U_new); */
 
   /* --Now, we take into account for potentially unresolved energy-conserving
      phase of the SN explosion-- */
 
-  /* During the energy-conserving phase, the blastwave expands and swepts
-     m_ej as well as the mass m_j of the particle. When the wave reaches the
-     particle, it has done a work P*dV corresponding to the following weight */
+  /* Now, momentum given to the particle is not simply dp_prime. This is the
+     momentum the location of the SN explosion. The ejecta must travel to the
+     particle at distance r, i.e it must sweep up the mass mj of the particle
+     as in a shock or a shell.
+     This means that there is some work PdV that is done to reach the particle,
+     work that converts thermal energy to kinetic energy. Therefore, the
+     correct momentum to couple is proportional to the following factor: */
   const double PdV_work_fraction = sqrt(1 + mj/dm);
 
-  /* If we cannot resolve the energu conserving phase, the blastwave reaches
-     its terminal momentum. */
+  /* At the end of the energy conserving phase, the blastwave reaches its
+     terminal momentum. */
   const double p_terminal = feedback_get_SN_terminal_momentum(si, pj, xpj, phys_const, us);
+
+  /* During the Taylor Sedov phase (energy conserving phase), dp_prime <=
+     p_terminal. Thus the momentum coupling is irrelevant. We couple the
+     thermal energy and leave the hydro solver correctly determines the PdV work. */
+
+  /* If we can resolve the Taylor Sedov, then we give the right coupled
+     momentum (which is by definition <= p_terminal). If we cannot resolve it,
+     then we have reached the p_terminal. This is the upper limit of momentum,
+     since afterwards the cooling is efficient and the thermal energy is radiated
+     away.
+     Thus, the factor to multiply dp_prime is: */
   const double p_factor = min(PdV_work_fraction, p_terminal/p_ej);
 
-  if (p_factor == p_terminal/p_ej) {
-    message("We do not resolve the Sedov-Taylor. Using p_terminal. p_factor = %e, PdV_work_fraction=%e.", p_factor, PdV_work_fraction);
-  } else {
-    message("We do resolve the Sedov-Taylor. p_factor=%e, p_t/p_ej = %e", p_factor, p_terminal/p_ej);
-  }
+  /* if (p_factor == p_terminal/p_ej) { */
+  /*   message("We do not resolve the Sedov-Taylor. Using p_terminal. p_t = %e, p_ej=%e, p_factor = %e, PdV_work_fraction=%e.",p_terminal, p_ej, p_factor, PdV_work_fraction); */
+  /* } else { */
+  /*   message("We do resolve the Sedov-Taylor. p_t = %e, p_ej = %e, p_factor=%e, p_t/p_ej = %e", p_terminal, p_ej, p_factor, p_terminal/p_ej); */
+  /* } */
 
-  dp[0] *= p_factor;
-  dp[1] *= p_factor;
-  dp[2] *= p_factor;
-
-  /* Now boost to the 'laboratory' frame */
-  const double dp_prime[3] = {dp[0] + dm*si->v[0], dp[1] + dm*si->v[1], dp[2] + dm*si->v[2]};
-  const double dp_norm_2 = dp[0]*dp[0] +  dp[1]*dp[1] +  dp[2]*dp[2];
-  /* const double dp_prime_norm_2 = dp_prime[0]*dp_prime[0] +  dp_prime[1]*dp_prime[1] */
-				 /* +  dp_prime[2]*dp_prime[2]; */
-
-  for (int i = 0; i < 3; i++) {
-    xpj->feedback_data.delta_p[i] += dp_prime[i];
-  }
-
-  /* ... internal energy */
-  const double dE = w_j_bar_norm * e_sn;
-  /* const double dE_prime = dE + 1.0/dm * (dp_prime_norm_2 - dp_norm_2); */
-  const double new_mass = mj + dm;
-
-  /* Compute kinetic energy difference before and after SN */
-  const double p_old_2 = mj*mj*(xpj->v_full[0]*xpj->v_full[0] + xpj->v_full[1]*xpj->v_full[1] + xpj->v_full[2]*xpj->v_full[2]);
-  const double p_new[3] = {mj*xpj->v_full[0] + dp_prime[0],
-			   mj*xpj->v_full[1] + dp_prime[1],
-			   mj*xpj->v_full[2] + dp_prime[2]};
-  const double p_new_2 = p_new[0]*p_new[0] + p_new[1]*p_new[1] + p_new[2]*p_new[2];
-  const double dKE = p_new_2/(2.0*new_mass) - p_old_2/(2.0*mj);
-
-  /* Compute the internal energy */
-  double dU = e_sn - dKE;
+  dp_prime[0] *= p_factor;
+  dp_prime[1] *= p_factor;
+  dp_prime[2] *= p_factor;
 
   /* Compute the cooling radius */
   const double second_part = p_terminal*p_terminal/(p_ej*p_ej) - 1;
   const double r_cool = pow(3.0*m_ej*second_part/(4.0*M_PI*pj->rho), 1.0/3.0);
 
-  message("R_cool = %e", r_cool);
   /* If we do not resolve the Taylor-Sedov, we rescale the internal energy */
   if (r2 > r_cool*r_cool) {
     dU *= pow(sqrt(r2)/r_cool, -6.5);
-    message("We do not resolve the Sedov-Taylor. Rescaling dU.");
+    message("We do not resolve the Sedov-Taylor (r_cool = %e). Rescaling dU.", r_cool);
   } /* else we do not change dU */
 
-  /* Finally, give the new thermal and kinetic energy to the gas */
+  /* Now we can give momentum, thermal and kinetic energy to the xpart. */
+  for (int i = 0; i < 3; i++) {
+    xpj->feedback_data.delta_p[i] += dp_prime[i];
+  }
   xpj->feedback_data.delta_u += dU/new_mass;
   xpj->feedback_data.delta_E_kin += dKE;
+  /* xpj->feedback_data.number_SN += 1; */
 
   /* Impose maximal viscosity */
   hydro_diffusive_feedback_reset(pj);
@@ -269,11 +296,11 @@ runner_iact_nonsym_feedback_apply(
   /* Verify conservation things */
   si->feedback_data.delta_m_check += dm;
   si->feedback_data.delta_E_check += dE;
-  si->feedback_data.delta_p_norm_check += sqrt(dp_norm_2/(p_factor*p_factor));
+  si->feedback_data.delta_p_norm_check += sqrt(dp_norm_2);
 
-  si->feedback_data.delta_p_check[0] += dp[0]/p_factor;
-  si->feedback_data.delta_p_check[1] += dp[1]/p_factor;
-  si->feedback_data.delta_p_check[2] += dp[2]/p_factor;
+  si->feedback_data.delta_p_check[0] += dp[0];
+  si->feedback_data.delta_p_check[1] += dp[1];
+  si->feedback_data.delta_p_check[2] += dp[2];
 
   /* message("Conservation check (star %lld): Sum dm_i = %e (m_ej), Sum dE_i = %e (e_ej), Sum |dp_i| = %e (p_ej), Sum dp_i = (%e, %e, %e) (0), m_ej = %e, E_ej = %e, p_ej = %e", si->id, si->feedback_data.delta_m_check, si->feedback_data.delta_E_check, si->feedback_data.delta_p_norm_check, si->feedback_data.delta_p_check[0], si->feedback_data.delta_p_check[1], si->feedback_data.delta_p_check[2], m_ej, e_sn, p_ej); */
 }
