@@ -6,6 +6,7 @@
 #define SWIFTSIM_GITLAB_GEOMETRY_3D_H
 
 #include "error.h"
+#include "shadowswift/algorithm3d/delaunay_vertex.h"
 #include "shadowswift/algorithm3d/shadowswift_ray.h"
 #include "shadowswift/delaunay.h"
 #include "shadowswift/utils.h"
@@ -138,24 +139,22 @@ inline static void geometry3d_orient_simd(__m256d ax, __m256d ay, __m256d az,
  *
  * */
 
-inline static int geometry3d_orient(const double ax, const double ay,
-                                    const double az, const double bx,
-                                    const double by, const double bz,
-                                    const double cx, const double cy,
-                                    const double cz, const double dx,
-                                    const double dy, const double dz) {
+inline static int geometry3d_orient(const double* restrict a,
+                                    const double* restrict b,
+                                    const double* restrict c,
+                                    const double* restrict d) {
   /* Compute relative coordinates */
-  const double adx = ax - dx;
-  const double ady = ay - dy;
-  const double adz = az - dz;
+  const double adx = a[0] - d[0];
+  const double ady = a[1] - d[1];
+  const double adz = a[2] - d[2];
 
-  const double bdx = bx - dx;
-  const double bdy = by - dy;
-  const double bdz = bz - dz;
+  const double bdx = b[0] - d[0];
+  const double bdy = b[1] - d[1];
+  const double bdz = b[2] - d[2];
 
-  const double cdx = cx - dx;
-  const double cdy = cy - dy;
-  const double cdz = cz - dz;
+  const double cdx = c[0] - d[0];
+  const double cdy = c[1] - d[1];
+  const double cdz = c[2] - d[2];
 
   /* Compute intermediate terms */
   const double bdxcdy = bdx * cdy;
@@ -211,21 +210,22 @@ inline static int geometry3d_orient_exact(struct geometry3d* g,
                                           const unsigned long* d) {
 
   /* store the input coordinates into the temporary large integer variables */
-  mpz_set_ui(g->aix, a[0]);
-  mpz_set_ui(g->aiy, a[1]);
-  mpz_set_ui(g->aiz, a[2]);
+  /* also: explicitely set the f64's exponent bits to zero */
+  mpz_set_ui(g->aix, a[0] & 0xFFFFFFFFFFFFFllu);
+  mpz_set_ui(g->aiy, a[1] & 0xFFFFFFFFFFFFFllu);
+  mpz_set_ui(g->aiz, a[2] & 0xFFFFFFFFFFFFFllu);
 
-  mpz_set_ui(g->bix, b[0]);
-  mpz_set_ui(g->biy, b[1]);
-  mpz_set_ui(g->biz, b[2]);
+  mpz_set_ui(g->bix, b[0] & 0xFFFFFFFFFFFFFllu);
+  mpz_set_ui(g->biy, b[1] & 0xFFFFFFFFFFFFFllu);
+  mpz_set_ui(g->biz, b[2] & 0xFFFFFFFFFFFFFllu);
 
-  mpz_set_ui(g->cix, c[0]);
-  mpz_set_ui(g->ciy, c[1]);
-  mpz_set_ui(g->ciz, c[2]);
+  mpz_set_ui(g->cix, c[0] & 0xFFFFFFFFFFFFFllu);
+  mpz_set_ui(g->ciy, c[1] & 0xFFFFFFFFFFFFFllu);
+  mpz_set_ui(g->ciz, c[2] & 0xFFFFFFFFFFFFFllu);
 
-  mpz_set_ui(g->dix, d[0]);
-  mpz_set_ui(g->diy, d[1]);
-  mpz_set_ui(g->diz, d[2]);
+  mpz_set_ui(g->dix, d[0] & 0xFFFFFFFFFFFFFllu);
+  mpz_set_ui(g->diy, d[1] & 0xFFFFFFFFFFFFFllu);
+  mpz_set_ui(g->diz, d[2] & 0xFFFFFFFFFFFFFllu);
 
   /* compute large integer relative coordinates */
   mpz_sub(g->s1x, g->aix, g->dix);
@@ -269,56 +269,53 @@ inline static int geometry3d_orient_exact(struct geometry3d* g,
  * are seen in counterclockwise order, e.g. if the points are A (0,0,0), B
  * (0,0,1), C (0,1,0) and D (1,0,0), then this function returns 1.
  *
- * @param al Integer coordinates of the first point
- * @param bl Integer coordinates of the second point
- * @param cl Integer coordinates of the third point
- * @param dl Integer coordinates of the fourth point
- * @param ad Coordinates of the first point, have to be in the interval [1,2]
- * @param bd Coordinates of the second point, have to be in the interval [1,2]
- * @param cd Coordinates of the third point, have to be in the interval [1,2]
- * @param dd Coordinates of the fourth point, have to be in the interval [1,2]
+ * @param a Coordinates of the first point, have to be in the interval [1,2]
+ * @param b Coordinates of the second point, have to be in the interval [1,2]
+ * @param c Coordinates of the third point, have to be in the interval [1,2]
+ * @param d Coordinates of the fourth point, have to be in the interval [1,2]
  * @return A positive, negative or zero value, depending on the outcome of the
  * test
  */
 inline static int geometry3d_orient_adaptive(
-    struct geometry3d* restrict g, const unsigned long* al,
-    const unsigned long* bl, const unsigned long* cl, const unsigned long* dl,
-    const double* ad, const double* bd, const double* cd, const double* dd) {
+    struct geometry3d* restrict g, const delaunay_vertex_t* restrict a,
+    const delaunay_vertex_t* restrict b, const delaunay_vertex_t* restrict c,
+    const delaunay_vertex_t* restrict d) {
 
-  int result = geometry3d_orient(ad[0], ad[1], ad[2], bd[0], bd[1], bd[2],
-                                 cd[0], cd[1], cd[2], dd[0], dd[1], dd[2]);
+  int result = geometry3d_orient(a->x_f64, b->x_f64, c->x_f64, d->x_f64);
 
   if (result == 0) {
-    result = geometry3d_orient_exact(g, al, bl, cl, dl);
+    result = geometry3d_orient_exact(g, a->x_u64, b->x_u64, c->x_u64, d->x_u64);
   }
 
   return result;
 }
 
-inline static void geometry3d_orient_4(
-    struct geometry3d* restrict g, const unsigned long* al,
-    const unsigned long* bl, const unsigned long* cl, const unsigned long* dl,
-    const unsigned long* el, const double* ad, const double* bd,
-    const double* cd, const double* dd, const double* ed, int* tests) {
+inline static void geometry3d_orient_4(struct geometry3d* restrict g,
+                                       const delaunay_vertex_t* restrict a,
+                                       const delaunay_vertex_t* restrict b,
+                                       const delaunay_vertex_t* restrict c,
+                                       const delaunay_vertex_t* restrict d,
+                                       const delaunay_vertex_t* restrict e,
+                                       int* tests) {
 #ifndef DELAUNAY_3D_HAND_VEC
   error("Should not be calling this function!");
 #else
   /* Get the data in the right format */
-  __m256d v0x = {bd[0], ad[0], ad[0], ad[0]};
-  __m256d v0y = {bd[1], ad[1], ad[1], ad[1]};
-  __m256d v0z = {bd[2], ad[2], ad[2], ad[2]};
+  __m256d v0x = {b->x_f64[0], a->x_f64[0], a->x_f64[0], a->x_f64[0]};
+  __m256d v0y = {b->x_f64[1], a->x_f64[1], a->x_f64[1], a->x_f64[1]};
+  __m256d v0z = {b->x_f64[2], a->x_f64[2], a->x_f64[2], a->x_f64[2]};
 
-  __m256d v1x = {dd[0], cd[0], dd[0], bd[0]};
-  __m256d v1y = {dd[1], cd[1], dd[1], bd[1]};
-  __m256d v1z = {dd[2], cd[2], dd[2], bd[2]};
+  __m256d v1x = {d->x_f64[0], c->x_f64[0], d->x_f64[0], b->x_f64[0]};
+  __m256d v1y = {d->x_f64[1], c->x_f64[1], d->x_f64[1], b->x_f64[1]};
+  __m256d v1z = {d->x_f64[2], c->x_f64[2], d->x_f64[2], b->x_f64[2]};
 
-  __m256d v2x = {cd[0], dd[0], bd[0], cd[0]};
-  __m256d v2y = {cd[1], dd[1], bd[1], cd[1]};
-  __m256d v2z = {cd[2], dd[2], bd[2], cd[2]};
+  __m256d v2x = {c->x_f64[0], d->x_f64[0], b->x_f64[0], c->x_f64[0]};
+  __m256d v2y = {c->x_f64[1], d->x_f64[1], b->x_f64[1], c->x_f64[1]};
+  __m256d v2z = {c->x_f64[2], d->x_f64[2], b->x_f64[2], c->x_f64[2]};
 
-  __m256d v3x = {ed[0], ed[0], ed[0], ed[0]};
-  __m256d v3y = {ed[1], ed[1], ed[1], ed[1]};
-  __m256d v3z = {ed[2], ed[2], ed[2], ed[2]};
+  __m256d v3x = {e->x_f64[0], e->x_f64[0], e->x_f64[0], e->x_f64[0]};
+  __m256d v3y = {e->x_f64[1], e->x_f64[1], e->x_f64[1], e->x_f64[1]};
+  __m256d v3z = {e->x_f64[2], e->x_f64[2], e->x_f64[2], e->x_f64[2]};
 
   /* Compute the tests */
   geometry3d_orient_simd(v0x, v0y, v0z, v1x, v1y, v1z, v2x, v2y, v2z, v3x, v3y,
@@ -326,32 +323,32 @@ inline static void geometry3d_orient_4(
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify result */
-  int test = geometry3d_orient(bd[0], bd[1], bd[2], dd[0], dd[1], dd[2], cd[0],
-                               cd[1], cd[2], ed[0], ed[1], ed[2]);
+  int test = geometry3d_orient(b->x_f64, d->x_f64, c->x_f64, e->x_f64);
   if (test != tests[0]) error("AVX result doesn't match regular calculation!");
-  test = geometry3d_orient(ad[0], ad[1], ad[2], cd[0], cd[1], cd[2], dd[0],
-                           dd[1], dd[2], ed[0], ed[1], ed[2]);
+  test = geometry3d_orient(a->x_f64, c->x_f64, d->x_f64, e->x_f64);
   if (test != tests[1]) error("AVX result doesn't match regular calculation!");
-  test = geometry3d_orient(ad[0], ad[1], ad[2], dd[0], dd[1], dd[2], bd[0],
-                           bd[1], bd[2], ed[0], ed[1], ed[2]);
+  test = geometry3d_orient(a->x_f64, d->x_f64, b->x_f64, e->x_f64);
   if (test != tests[2]) error("AVX result doesn't match regular calculation!");
-  test = geometry3d_orient(ad[0], ad[1], ad[2], bd[0], bd[1], bd[2], cd[0],
-                           cd[1], cd[2], ed[0], ed[1], ed[2]);
+  test = geometry3d_orient(a->x_f64, b->x_f64, c->x_f64, e->x_f64);
   if (test != tests[3]) error("AVX result doesn't match regular calculation!");
 #endif
 
   /* Do we need to run some exact tests? */
   if (tests[0] == 0) {
-    tests[0] = geometry3d_orient_exact(g, bl, dl, cl, el);
+    tests[0] =
+        geometry3d_orient_exact(g, b->x_u64, d->x_u64, c->x_u64, e->x_u64);
   }
   if (tests[1] == 0) {
-    tests[1] = geometry3d_orient_exact(g, al, cl, dl, el);
+    tests[1] =
+        geometry3d_orient_exact(g, a->x_u64, c->x_u64, d->x_u64, e->x_u64);
   }
   if (tests[2] == 0) {
-    tests[2] = geometry3d_orient_exact(g, al, dl, bl, el);
+    tests[2] =
+        geometry3d_orient_exact(g, a->x_u64, d->x_u64, b->x_u64, e->x_u64);
   }
   if (tests[3] == 0) {
-    tests[3] = geometry3d_orient_exact(g, al, bl, cl, el);
+    tests[3] =
+        geometry3d_orient_exact(g, a->x_u64, b->x_u64, c->x_u64, e->x_u64);
   }
 #endif
 }
@@ -388,28 +385,28 @@ inline static int geometry3d_in_sphere_simd(const double* a, const double* b,
 #endif
 }
 
-inline static int geometry3d_in_sphere(
-    const double ax, const double ay, const double az, const double bx,
-    const double by, const double bz, const double cx, const double cy,
-    const double cz, const double dx, const double dy, const double dz,
-    const double ex, const double ey, const double ez) {
+inline static int geometry3d_in_sphere(const double* restrict a,
+                                       const double* restrict b,
+                                       const double* restrict c,
+                                       const double* restrict d,
+                                       const double* restrict e) {
 
   /* Compute relative coordinates */
-  const double aex = ax - ex;
-  const double aey = ay - ey;
-  const double aez = az - ez;
+  const double aex = a[0] - e[0];
+  const double aey = a[1] - e[1];
+  const double aez = a[2] - e[2];
 
-  const double bex = bx - ex;
-  const double bey = by - ey;
-  const double bez = bz - ez;
+  const double bex = b[0] - e[0];
+  const double bey = b[1] - e[1];
+  const double bez = b[2] - e[2];
 
-  const double cex = cx - ex;
-  const double cey = cy - ey;
-  const double cez = cz - ez;
+  const double cex = c[0] - e[0];
+  const double cey = c[1] - e[1];
+  const double cez = c[2] - e[2];
 
-  const double dex = dx - ex;
-  const double dey = dy - ey;
-  const double dez = dz - ez;
+  const double dex = d[0] - e[0];
+  const double dey = d[1] - e[1];
+  const double dez = d[2] - e[2];
 
   /* Compute intermediate values */
   const double aexbey = aex * bey;
@@ -502,37 +499,37 @@ inline static int geometry3d_in_sphere(
  * functions returns 0.
  *
  * @param g Geometry struct
- * @param ax, ay, az, bx, by, bz, cx, cy, cz, dx, dy, dz, ex, ey, ez Coordinates
- * of the vertex_indices of the tetrahedron and the test point (e).
+ * @param a, b, c, d, e Coordinates of the vertices of the tetrahedron and the
+ * test point (e).
  * @return -1, 0, or 1, depending on the outcome of the geometric test
  */
-inline static int geometry3d_in_sphere_exact(
-    struct geometry3d* restrict g, const unsigned long ax,
-    const unsigned long ay, const unsigned long az, const unsigned long bx,
-    const unsigned long by, const unsigned long bz, const unsigned long cx,
-    const unsigned long cy, const unsigned long cz, const unsigned long dx,
-    const unsigned long dy, const unsigned long dz, const unsigned long ex,
-    const unsigned long ey, const unsigned long ez) {
+inline static int geometry3d_in_sphere_exact(struct geometry3d* restrict g,
+                                             const unsigned long* restrict a,
+                                             const unsigned long* restrict b,
+                                             const unsigned long* restrict c,
+                                             const unsigned long* restrict d,
+                                             const unsigned long* restrict e) {
   /* store the input coordinates into the temporary large integer variables */
-  mpz_set_ui(g->aix, ax);
-  mpz_set_ui(g->aiy, ay);
-  mpz_set_ui(g->aiz, az);
+  /* We also need to erase the leading bits (due to rescaling) */
+  mpz_set_ui(g->aix, a[0] & 0xFFFFFFFFFFFFFllu);
+  mpz_set_ui(g->aiy, a[1] & 0xFFFFFFFFFFFFFllu);
+  mpz_set_ui(g->aiz, a[2] & 0xFFFFFFFFFFFFFllu);
 
-  mpz_set_ui(g->bix, bx);
-  mpz_set_ui(g->biy, by);
-  mpz_set_ui(g->biz, bz);
+  mpz_set_ui(g->bix, b[0] & 0xFFFFFFFFFFFFFllu);
+  mpz_set_ui(g->biy, b[1] & 0xFFFFFFFFFFFFFllu);
+  mpz_set_ui(g->biz, b[2] & 0xFFFFFFFFFFFFFllu);
 
-  mpz_set_ui(g->cix, cx);
-  mpz_set_ui(g->ciy, cy);
-  mpz_set_ui(g->ciz, cz);
+  mpz_set_ui(g->cix, c[0] & 0xFFFFFFFFFFFFFllu);
+  mpz_set_ui(g->ciy, c[1] & 0xFFFFFFFFFFFFFllu);
+  mpz_set_ui(g->ciz, c[2] & 0xFFFFFFFFFFFFFllu);
 
-  mpz_set_ui(g->dix, dx);
-  mpz_set_ui(g->diy, dy);
-  mpz_set_ui(g->diz, dz);
+  mpz_set_ui(g->dix, d[0] & 0xFFFFFFFFFFFFFllu);
+  mpz_set_ui(g->diy, d[1] & 0xFFFFFFFFFFFFFllu);
+  mpz_set_ui(g->diz, d[2] & 0xFFFFFFFFFFFFFllu);
 
-  mpz_set_ui(g->eix, ex);
-  mpz_set_ui(g->eiy, ey);
-  mpz_set_ui(g->eiz, ez);
+  mpz_set_ui(g->eix, e[0] & 0xFFFFFFFFFFFFFllu);
+  mpz_set_ui(g->eiy, e[1] & 0xFFFFFFFFFFFFFllu);
+  mpz_set_ui(g->eiz, e[2] & 0xFFFFFFFFFFFFFllu);
 
   /* compute large integer relative coordinates */
   mpz_sub(g->s1x, g->aix, g->eix);
@@ -608,48 +605,47 @@ inline static int geometry3d_in_sphere_exact(
   return mpz_sgn(g->result);
 }
 
-inline static int geometry3d_in_sphere_adaptive(
-    struct geometry3d* restrict g, const unsigned long* al,
-    const unsigned long* bl, const unsigned long* cl, const unsigned long* dl,
-    const unsigned long* el, const double* ad, const double* bd,
-    const double* cd, const double* dd, const double* ed) {
+inline static int geometry3d_in_sphere_adaptive(struct geometry3d* restrict g,
+                                                const delaunay_vertex_t* a,
+                                                const delaunay_vertex_t* b,
+                                                const delaunay_vertex_t* c,
+                                                const delaunay_vertex_t* d,
+                                                const delaunay_vertex_t* e) {
 
 #ifdef DELAUNAY_3D_HAND_VEC
-  int result = geometry3d_in_sphere_simd(ad, bd, cd, dd, ed);
+  int result = geometry3d_in_sphere_simd(a->x_f64, b->x_f64, c->x_f64, d->x_f64,
+                                         e->x_f64);
 #ifdef SWIFT_DEBUG_CHECKS
-  int result_normal = geometry3d_in_sphere(ad[0], ad[1], ad[2], bd[0], bd[1],
-                                           bd[2], cd[0], cd[1], cd[2], dd[0],
-                                           dd[1], dd[2], ed[0], ed[1], ed[2]);
+  int result_normal =
+      geometry3d_in_sphere(a->x_f64, b->x_f64, c->x_f64, d->x_f64, e->x_f64);
   assert(result == result_normal);
 #endif
 #else
-  int result = geometry3d_in_sphere(ad[0], ad[1], ad[2], bd[0], bd[1], bd[2],
-                                    cd[0], cd[1], cd[2], dd[0], dd[1], dd[2],
-                                    ed[0], ed[1], ed[2]);
+  int result =
+      geometry3d_in_sphere(a->x_f64, b->x_f64, c->x_f64, d->x_f64, e->x_f64);
 #endif
   if (result == 0) {
-    result = geometry3d_in_sphere_exact(g, al[0], al[1], al[2], bl[0], bl[1],
-                                        bl[2], cl[0], cl[1], cl[2], dl[0],
-                                        dl[1], dl[2], el[0], el[1], el[2]);
+    result = geometry3d_in_sphere_exact(g, a->x_u64, b->x_u64, c->x_u64,
+                                        d->x_u64, e->x_u64);
   }
 
   return result;
 }
 
 static inline int geometry3d_compute_circumcenter_relative_non_exact_no_errb(
-    double v0x, double v0y, double v0z, double v1x, double v1y, double v1z,
-    double v2x, double v2y, double v2z, double v3x, double v3y, double v3z,
-    double* circumcenter) {
+    const double* restrict v0, const double* restrict v1,
+    const double* restrict v2, const double* restrict v3,
+    double* restrict circumcenter) {
   /* Compute relative coordinates */
-  const double r1x = v1x - v0x;
-  const double r1y = v1y - v0y;
-  const double r1z = v1z - v0z;
-  const double r2x = v2x - v0x;
-  const double r2y = v2y - v0y;
-  const double r2z = v2z - v0z;
-  const double r3x = v3x - v0x;
-  const double r3y = v3y - v0y;
-  const double r3z = v3z - v0z;
+  const double r1x = v1[0] - v0[0];
+  const double r1y = v1[1] - v0[1];
+  const double r1z = v1[2] - v0[2];
+  const double r2x = v2[0] - v0[0];
+  const double r2y = v2[1] - v0[1];
+  const double r2z = v2[2] - v0[2];
+  const double r3x = v3[0] - v0[0];
+  const double r3y = v3[1] - v0[1];
+  const double r3z = v3[2] - v0[2];
 
   /* Compute squared norm of relative coordinates */
   const double r1_sqrd = r1x * r1x + r1y * r1y + r1z * r1z;
@@ -788,21 +784,21 @@ static inline void geometry3d_compute_circumcenter_relative_exact(
     unsigned long cy, unsigned long cz, unsigned long dx, unsigned long dy,
     unsigned long dz, double* circumcenter) {
   /* store the input coordinates into the temporary large integer variables */
-  mpz_set_ui(g->aix, ax);
-  mpz_set_ui(g->aiy, ay);
-  mpz_set_ui(g->aiz, az);
+  mpz_set_ui(g->aix, ax & 0xFFFFFFFFFFFFFllu);
+  mpz_set_ui(g->aiy, ay & 0xFFFFFFFFFFFFFllu);
+  mpz_set_ui(g->aiz, az & 0xFFFFFFFFFFFFFllu);
 
-  mpz_set_ui(g->bix, bx);
-  mpz_set_ui(g->biy, by);
-  mpz_set_ui(g->biz, bz);
+  mpz_set_ui(g->bix, bx & 0xFFFFFFFFFFFFFllu);
+  mpz_set_ui(g->biy, by & 0xFFFFFFFFFFFFFllu);
+  mpz_set_ui(g->biz, bz & 0xFFFFFFFFFFFFFllu);
 
-  mpz_set_ui(g->cix, cx);
-  mpz_set_ui(g->ciy, cy);
-  mpz_set_ui(g->ciz, cz);
+  mpz_set_ui(g->cix, cx & 0xFFFFFFFFFFFFFllu);
+  mpz_set_ui(g->ciy, cy & 0xFFFFFFFFFFFFFllu);
+  mpz_set_ui(g->ciz, cz & 0xFFFFFFFFFFFFFllu);
 
-  mpz_set_ui(g->dix, dx);
-  mpz_set_ui(g->diy, dy);
-  mpz_set_ui(g->diz, dz);
+  mpz_set_ui(g->dix, dx & 0xFFFFFFFFFFFFFllu);
+  mpz_set_ui(g->diy, dy & 0xFFFFFFFFFFFFFllu);
+  mpz_set_ui(g->diz, dz & 0xFFFFFFFFFFFFFllu);
 
   /* compute large integer relative coordinates */
   mpz_sub(g->s1x, g->bix, g->aix);
@@ -890,11 +886,9 @@ static inline void geometry3d_compute_circumcenter_relative_exact(
 
 /*! @brief Compute circumcenter relative to v0 */
 static inline void geometry3d_compute_circumcenter_relative_adaptive(
-    struct geometry3d* restrict g, const double* restrict v0,
-    const double* restrict v1, const double* restrict v2,
-    const double* restrict v3, const unsigned long* restrict v0ul,
-    const unsigned long* restrict v1ul, const unsigned long* restrict v2ul,
-    const unsigned long* restrict v3ul, double* restrict circumcenter) {
+    struct geometry3d* restrict g, const delaunay_vertex_t* restrict v0,
+    const delaunay_vertex_t* restrict v1, const delaunay_vertex_t* restrict v2,
+    const delaunay_vertex_t* restrict v3, double* restrict circumcenter) {
 
 #ifdef DELAUNAY_3D_ADAPTIVE_CIRCUMCENTER
   int result_non_exact = geometry3d_compute_circumcenter_relative_non_exact(
@@ -908,8 +902,7 @@ static inline void geometry3d_compute_circumcenter_relative_adaptive(
   }
 #else
   geometry3d_compute_circumcenter_relative_non_exact_no_errb(
-      v0[0], v0[1], v0[2], v1[0], v1[1], v1[2], v2[0], v2[1], v2[2], v3[0],
-      v3[1], v3[2], circumcenter);
+      v0->x_f64, v1->x_f64, v2->x_f64, v3->x_f64, circumcenter);
 #endif
 }
 
@@ -927,34 +920,33 @@ static inline void geometry3d_compute_circumcenter_relative_adaptive(
  * @param box_anchor Anchor of box used to rescale coordinates
  */
 static inline void geometry3d_compute_circumcenter_adaptive(
-    struct geometry3d* restrict g, const double* restrict v0,
-    const double* restrict v1, const double* restrict v2,
-    const double* restrict v3, const unsigned long* restrict v0ul,
-    const unsigned long* restrict v1ul, const unsigned long* restrict v2ul,
-    const unsigned long* restrict v3ul, double* restrict circumcenter,
+    struct geometry3d* restrict g, const delaunay_vertex_t* restrict v0,
+    const delaunay_vertex_t* restrict v1, const delaunay_vertex_t* restrict v2,
+    const delaunay_vertex_t* restrict v3, double* restrict circumcenter,
     double box_side, const double* restrict box_anchor) {
 
   /* Calculate relative circumcenter (relative to v0, rescaled coordinates) */
-  geometry3d_compute_circumcenter_relative_adaptive(
-      g, v0, v1, v2, v3, v0ul, v1ul, v2ul, v3ul, circumcenter);
+  geometry3d_compute_circumcenter_relative_adaptive(g, v0, v1, v2, v3,
+                                                    circumcenter);
 
   /* Translate and rescale circumcenter */
-  circumcenter[0] = (circumcenter[0] + v0[0] - 1.) * box_side + box_anchor[0];
-  circumcenter[1] = (circumcenter[1] + v0[1] - 1.) * box_side + box_anchor[1];
-  circumcenter[2] = (circumcenter[2] + v0[2] - 1.) * box_side + box_anchor[2];
+  circumcenter[0] =
+      (circumcenter[0] + v0->x_f64[0] - 1.) * box_side + box_anchor[0];
+  circumcenter[1] =
+      (circumcenter[1] + v0->x_f64[1] - 1.) * box_side + box_anchor[1];
+  circumcenter[2] =
+      (circumcenter[2] + v0->x_f64[2] - 1.) * box_side + box_anchor[2];
 }
 
 static inline double geometry3d_compute_circumradius2_adaptive(
-    struct geometry3d* restrict g, const double* restrict v0,
-    const double* restrict v1, const double* restrict v2,
-    const double* restrict v3, const unsigned long* restrict v0ul,
-    const unsigned long* restrict v1ul, const unsigned long* restrict v2ul,
-    const unsigned long* restrict v3ul, double box_side) {
+    struct geometry3d* restrict g, const delaunay_vertex_t* restrict v0,
+    const delaunay_vertex_t* restrict v1, const delaunay_vertex_t* restrict v2,
+    const delaunay_vertex_t* restrict v3, double box_side) {
 
   /* Calculate relative circumcenter (relative to v0, rescaled coordinates) */
   double circumcenter[3];
-  geometry3d_compute_circumcenter_relative_adaptive(
-      g, v0, v1, v2, v3, v0ul, v1ul, v2ul, v3ul, circumcenter);
+  geometry3d_compute_circumcenter_relative_adaptive(g, v0, v1, v2, v3,
+                                                    circumcenter);
 
   /* Calculate and rescale radius */
   double radius = circumcenter[0] * circumcenter[0] +
@@ -1116,22 +1108,27 @@ inline static double geometry3d_dot(const double* v1, const double* v2) {
 /*! @returns the signed distance from the ray origin along the ray
  * direction to the intersection with the plane given by p1, p2, p3. */
 inline static double geometry3d_ray_plane_intersect(
-    const struct shadowswift_ray* r, const double* p1, const double* p2,
-    const double* p3) {
+    const struct shadowswift_ray* r, const delaunay_vertex_t* restrict p1,
+    const delaunay_vertex_t* restrict p2,
+    const delaunay_vertex_t* restrict p3) {
 
   /* Setup useful variables */
   const double EPSILON = 1e-13;
   /* Vectors determining plane */
-  const double v1[3] = {p1[0] - p3[0], p1[1] - p3[1], p1[2] - p3[2]};
-  const double v2[3] = {p2[0] - p3[0], p2[1] - p3[1], p2[2] - p3[2]};
+  const double v1[3] = {p1->x_f64[0] - p3->x_f64[0],
+                        p1->x_f64[1] - p3->x_f64[1],
+                        p1->x_f64[2] - p3->x_f64[2]};
+  const double v2[3] = {p2->x_f64[0] - p3->x_f64[0],
+                        p2->x_f64[1] - p3->x_f64[1],
+                        p2->x_f64[2] - p3->x_f64[2]};
   /* Normal vector to plane */
   double n[3];
   geometry3d_cross(v1, v2, n);
 
   /* Compute result (see Camps 2013) */
-  double numerator = n[0] * (p3[0] - r->origin[0]) +
-                     n[1] * (p3[1] - r->origin[1]) +
-                     n[2] * (p3[2] - r->origin[2]);
+  double numerator = n[0] * (p3->x_f64[0] - r->origin[0]) +
+                     n[1] * (p3->x_f64[1] - r->origin[1]) +
+                     n[2] * (p3->x_f64[2] - r->origin[2]);
   if (fabs(numerator) < EPSILON) {
     /* Point lies on the plane... */
     return 0.;
@@ -1148,15 +1145,20 @@ inline static double geometry3d_ray_plane_intersect(
 /*! @brief
  * returns -1 when exact test is needed */
 inline static int geometry3d_ray_triangle_intersect_non_exact(
-    const struct shadowswift_ray* r, const double* p1, const double* p2,
-    const double* p3, double* out_distance) {
+    const struct shadowswift_ray* restrict r,
+    const delaunay_vertex_t* restrict p1, const delaunay_vertex_t* restrict p2,
+    const delaunay_vertex_t* restrict p3, double* restrict out_distance) {
 
   const double errbound_factor = 1e-10;
 
   /* Setup useful variables */
   /* edges of triangle */
-  const double e1[3] = {p2[0] - p1[0], p2[1] - p1[1], p2[2] - p1[2]};
-  const double e2[3] = {p3[0] - p1[0], p3[1] - p1[1], p3[2] - p1[2]};
+  const double e1[3] = {p2->x_f64[0] - p1->x_f64[0],
+                        p2->x_f64[1] - p1->x_f64[1],
+                        p2->x_f64[2] - p1->x_f64[2]};
+  const double e2[3] = {p3->x_f64[0] - p1->x_f64[0],
+                        p3->x_f64[1] - p1->x_f64[1],
+                        p3->x_f64[2] - p1->x_f64[2]};
 
   const double dxe2y = r->direction[0] * e2[1];
   const double dye2x = r->direction[1] * e2[0];
@@ -1178,8 +1180,8 @@ inline static int geometry3d_ray_triangle_intersect_non_exact(
   }
 
   double f = 1.0 / a;
-  double s[3] = {r->origin[0] - p1[0], r->origin[1] - p1[1],
-                 r->origin[2] - p1[2]};
+  double s[3] = {r->origin[0] - p1->x_f64[0], r->origin[1] - p1->x_f64[1],
+                 r->origin[2] - p1->x_f64[2]};
   double u = f * geometry3d_dot(s, h);
   errbound = fabs(f) * (fabs(e1[0]) * (fabs(dxe2y) + fabs(dye2x)) +
                         fabs(e1[1]) * (fabs(dze2x) + fabs(dxe2z)) +
@@ -1221,20 +1223,21 @@ inline static int geometry3d_ray_triangle_intersect_non_exact(
 }
 
 inline static int geometry3d_ray_triangle_intersect_exact(
-    struct geometry3d* g, const struct shadowswift_ray* r,
-    const unsigned long* p1, const unsigned long* p2, const unsigned long* p3,
-    double* out_distance) {
-  mpz_set_ui(g->aix, p1[0]);
-  mpz_set_ui(g->aiy, p1[1]);
-  mpz_set_ui(g->aiz, p1[2]);
+    struct geometry3d* g, const struct shadowswift_ray* restrict r,
+    const delaunay_vertex_t* restrict p1, const delaunay_vertex_t* restrict p2,
+    const delaunay_vertex_t* restrict p3, double* restrict out_distance) {
+  /* Set exponent and sign bits of f64 to zero */
+  mpz_set_ui(g->aix, p1->x_u64[0] & 0xFFFFFFFFFFFFFllu);
+  mpz_set_ui(g->aiy, p1->x_u64[1] & 0xFFFFFFFFFFFFFllu);
+  mpz_set_ui(g->aiz, p1->x_u64[2] & 0xFFFFFFFFFFFFFllu);
 
-  mpz_set_ui(g->bix, p2[0]);
-  mpz_set_ui(g->biy, p2[1]);
-  mpz_set_ui(g->biz, p2[2]);
+  mpz_set_ui(g->bix, p2->x_u64[0] & 0xFFFFFFFFFFFFFllu);
+  mpz_set_ui(g->biy, p2->x_u64[1] & 0xFFFFFFFFFFFFFllu);
+  mpz_set_ui(g->biz, p2->x_u64[2] & 0xFFFFFFFFFFFFFllu);
 
-  mpz_set_ui(g->cix, p3[0]);
-  mpz_set_ui(g->ciy, p3[1]);
-  mpz_set_ui(g->ciz, p3[2]);
+  mpz_set_ui(g->cix, p3->x_u64[0] & 0xFFFFFFFFFFFFFllu);
+  mpz_set_ui(g->ciy, p3->x_u64[1] & 0xFFFFFFFFFFFFFllu);
+  mpz_set_ui(g->ciz, p3->x_u64[2] & 0xFFFFFFFFFFFFFllu);
 
   mpz_set_ui(g->dix, r->origin_ul[0]);
   mpz_set_ui(g->diy, r->origin_ul[1]);
@@ -1336,15 +1339,14 @@ inline static int geometry3d_ray_triangle_intersect_exact(
 }
 
 inline static int geometry3d_ray_triangle_intersect(
-    struct geometry3d* g, const struct shadowswift_ray* r, const double* p1,
-    const double* p2, const double* p3, const unsigned long* p1ul,
-    const unsigned long* p2ul, const unsigned long* p3ul,
-    double* out_distance) {
+    struct geometry3d* restrict g, const struct shadowswift_ray* restrict r,
+    const delaunay_vertex_t* restrict p1, const delaunay_vertex_t* restrict p2,
+    const delaunay_vertex_t* restrict p3, double* restrict out_distance) {
   int intersection_result =
       geometry3d_ray_triangle_intersect_non_exact(r, p1, p2, p3, out_distance);
 
   if (intersection_result == -1) {
-    return geometry3d_ray_triangle_intersect_exact(g, r, p1ul, p2ul, p3ul,
+    return geometry3d_ray_triangle_intersect_exact(g, r, p1, p2, p3,
                                                    out_distance);
   }
   return intersection_result;
