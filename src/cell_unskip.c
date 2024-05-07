@@ -2283,11 +2283,18 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
 #ifdef EXTRA_STAR_LOOPS
           scheduler_activate_recv(s, ci->mpi.recv, task_subtype_part_prep1);
 #endif
+#ifdef EXTRA_STAR_LOOPS_2
+          scheduler_activate_recv(s, ci->mpi.recv, task_subtype_part_prep3);
+#endif
           /* If the local cell is active, more stuff will be needed. */
           scheduler_activate_send(s, cj->mpi.send, task_subtype_spart_density,
                                   ci_nodeID);
 #ifdef EXTRA_STAR_LOOPS
           scheduler_activate_send(s, cj->mpi.send, task_subtype_spart_prep2,
+                                  ci_nodeID);
+#endif
+#ifdef EXTRA_STAR_LOOPS_2
+          scheduler_activate_send(s, cj->mpi.send, task_subtype_spart_prep4,
                                   ci_nodeID);
 #endif
           cell_activate_drift_spart(cj, s);
@@ -2298,12 +2305,18 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
 #ifdef EXTRA_STAR_LOOPS
           scheduler_activate_recv(s, ci->mpi.recv, task_subtype_spart_prep2);
 #endif
-
+#ifdef EXTRA_STAR_LOOPS_2
+          scheduler_activate_recv(s, ci->mpi.recv, task_subtype_spart_prep4);
+#endif
           /* Is the foreign cell active and will need stuff from us? */
           scheduler_activate_send(s, cj->mpi.send, task_subtype_xv, ci_nodeID);
           scheduler_activate_send(s, cj->mpi.send, task_subtype_rho, ci_nodeID);
 #ifdef EXTRA_STAR_LOOPS
           scheduler_activate_send(s, cj->mpi.send, task_subtype_part_prep1,
+                                  ci_nodeID);
+#endif
+#ifdef EXTRA_STAR_LOOPS_2
+          scheduler_activate_send(s, cj->mpi.send, task_subtype_part_prep3,
                                   ci_nodeID);
 #endif
           /* Drift the cell which will be sent; note that not all sent
@@ -2319,11 +2332,18 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
 #ifdef EXTRA_STAR_LOOPS
           scheduler_activate_recv(s, cj->mpi.recv, task_subtype_part_prep1);
 #endif
+#ifdef EXTRA_STAR_LOOPS_2
+          scheduler_activate_recv(s, cj->mpi.recv, task_subtype_part_prep3);
+#endif
           /* If the local cell is active, more stuff will be needed. */
           scheduler_activate_send(s, ci->mpi.send, task_subtype_spart_density,
                                   cj_nodeID);
 #ifdef EXTRA_STAR_LOOPS
           scheduler_activate_send(s, ci->mpi.send, task_subtype_spart_prep2,
+                                  cj_nodeID);
+#endif
+#ifdef EXTRA_STAR_LOOPS_2
+          scheduler_activate_send(s, ci->mpi.send, task_subtype_spart_prep4,
                                   cj_nodeID);
 #endif
           cell_activate_drift_spart(ci, s);
@@ -2334,12 +2354,19 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
 #ifdef EXTRA_STAR_LOOPS
           scheduler_activate_recv(s, cj->mpi.recv, task_subtype_spart_prep2);
 #endif
+#ifdef EXTRA_STAR_LOOPS_2
+          scheduler_activate_recv(s, cj->mpi.recv, task_subtype_spart_prep4);
+#endif
 
           /* Is the foreign cell active and will need stuff from us? */
           scheduler_activate_send(s, ci->mpi.send, task_subtype_xv, cj_nodeID);
           scheduler_activate_send(s, ci->mpi.send, task_subtype_rho, cj_nodeID);
 #ifdef EXTRA_STAR_LOOPS
           scheduler_activate_send(s, ci->mpi.send, task_subtype_part_prep1,
+                                  cj_nodeID);
+#endif
+#ifdef EXTRA_STAR_LOOPS_2
+          scheduler_activate_send(s, ci->mpi.send, task_subtype_part_prep3,
                                   cj_nodeID);
 #endif
 
@@ -2467,6 +2494,108 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
     }
   }
 
+  for (struct link *l = c->stars.prepare3; l != NULL; l = l->next) {
+    struct task *t = l->t;
+    struct cell *ci = t->ci;
+    struct cell *cj = t->cj;
+#ifdef WITH_MPI
+    const int ci_nodeID = ci->nodeID;
+    const int cj_nodeID = (cj != NULL) ? cj->nodeID : -1;
+#else
+    const int ci_nodeID = nodeID;
+    const int cj_nodeID = nodeID;
+#endif
+
+#ifdef SWIFT_DEBUG_CHECKS
+    if (with_star_formation_sink) {
+      error("TODO");
+    }
+#endif
+
+    const int ci_active = cell_need_activating_stars(ci, e, with_star_formation,
+                                                     with_star_formation_sink);
+
+    const int cj_active =
+        (cj != NULL) && cell_need_activating_stars(cj, e, with_star_formation,
+                                                   with_star_formation_sink);
+
+    if (t->type == task_type_self && ci_active) {
+      scheduler_activate(s, t);
+    }
+
+    else if (t->type == task_type_sub_self && ci_active) {
+      scheduler_activate(s, t);
+    }
+
+    else if (t->type == task_type_pair || t->type == task_type_sub_pair) {
+      /* We only want to activate the task if the cell is active and is
+         going to update some gas on the *local* node */
+      if ((ci_nodeID == nodeID && cj_nodeID == nodeID) &&
+          (ci_active || cj_active)) {
+        scheduler_activate(s, t);
+      }
+      /* Cells ci and cj are from different MPI domains */
+      else if ((ci_nodeID == nodeID && cj_nodeID != nodeID) && (ci_active)) {
+        /* In task prep3, we update stars so sparts must be on the local node */
+        scheduler_activate(s, t);
+      } else if ((ci_nodeID != nodeID && cj_nodeID == nodeID) && (cj_active)) {
+        /* In task prep3, we update stars so sparts must be on the local node */
+        scheduler_activate(s, t);
+      }
+    }
+  }
+
+  for (struct link *l = c->stars.prepare4; l != NULL; l = l->next) {
+    struct task *t = l->t;
+    struct cell *ci = t->ci;
+    struct cell *cj = t->cj;
+#ifdef WITH_MPI
+    const int ci_nodeID = ci->nodeID;
+    const int cj_nodeID = (cj != NULL) ? cj->nodeID : -1;
+#else
+    const int ci_nodeID = nodeID;
+    const int cj_nodeID = nodeID;
+#endif
+
+#ifdef SWIFT_DEBUG_CHECKS
+    if (with_star_formation_sink) {
+      error("TODO");
+    }
+#endif
+
+    const int ci_active = cell_need_activating_stars(ci, e, with_star_formation,
+                                                     with_star_formation_sink);
+
+    const int cj_active =
+        (cj != NULL) && cell_need_activating_stars(cj, e, with_star_formation,
+                                                   with_star_formation_sink);
+
+    if (t->type == task_type_self && ci_active) {
+      scheduler_activate(s, t);
+    }
+
+    else if (t->type == task_type_sub_self && ci_active) {
+      scheduler_activate(s, t);
+    }
+
+    else if (t->type == task_type_pair || t->type == task_type_sub_pair) {
+      /* We only want to activate the task if the cell is active and is
+         going to update some gas on the *local* node */
+      if ((ci_nodeID == nodeID && cj_nodeID == nodeID) &&
+          (ci_active || cj_active)) {
+        scheduler_activate(s, t);
+      }
+      /* Cells ci and cj are from different MPI domains */
+      else if ((ci_nodeID == nodeID && cj_nodeID != nodeID) && (ci_active)) {
+        /* In task prep4, we update stars so sparts must be on the local node */
+        scheduler_activate(s, t);
+      } else if ((ci_nodeID != nodeID && cj_nodeID == nodeID) && (cj_active)) {
+        /* In task prep4, we update stars so sparts must be on the local node */
+        scheduler_activate(s, t);
+      }
+    }
+  }
+
   /* Un-skip the feedback tasks involved with this cell. */
   for (struct link *l = c->stars.feedback; l != NULL; l = l->next) {
     struct task *t = l->t;
@@ -2536,6 +2665,10 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
         scheduler_activate(s, c->hydro.prep1_ghost);
       if (c->stars.prep2_ghost != NULL)
         scheduler_activate(s, c->stars.prep2_ghost);
+      if (c->stars.prep3_ghost != NULL)
+        scheduler_activate(s, c->stars.prep3_ghost);
+      if (c->stars.prep4_ghost != NULL)
+        scheduler_activate(s, c->stars.prep4_ghost);
       /* If we don't have pair tasks, then the stars_in and stars_out still
        * need reactivation. */
       if (c->stars.stars_in != NULL) scheduler_activate(s, c->stars.stars_in);

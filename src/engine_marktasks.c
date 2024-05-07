@@ -199,6 +199,30 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       }
 
       else if (t_type == task_type_self &&
+               t_subtype == task_subtype_stars_prep3) {
+        if (ci_active_stars) {
+          scheduler_activate(s, t);
+        }
+      }
+
+      else if (t_type == task_type_sub_self &&
+               t_subtype == task_subtype_stars_prep3) {
+        if (ci_active_stars) scheduler_activate(s, t);
+      }
+
+      else if (t_type == task_type_self &&
+               t_subtype == task_subtype_stars_prep4) {
+        if (ci_active_stars) {
+          scheduler_activate(s, t);
+        }
+      }
+
+      else if (t_type == task_type_sub_self &&
+               t_subtype == task_subtype_stars_prep4) {
+        if (ci_active_stars) scheduler_activate(s, t);
+      }
+
+      else if (t_type == task_type_self &&
                t_subtype == task_subtype_stars_feedback) {
         if (ci_active_stars) {
           scheduler_activate(s, t);
@@ -566,6 +590,50 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
       /* Stars prep2 */
       else if (t_subtype == task_subtype_stars_prep2) {
+
+        /* We only want to activate the task if the cell is active and is
+           going to update some sparts on the *local* node */
+        if ((ci_nodeID == nodeID && cj_nodeID == nodeID) &&
+            (ci_active_stars || cj_active_stars)) {
+
+          scheduler_activate(s, t);
+
+        } else if ((ci_nodeID == nodeID && cj_nodeID != nodeID) &&
+                   (ci_active_stars)) {
+
+          scheduler_activate(s, t);
+
+        } else if ((ci_nodeID != nodeID && cj_nodeID == nodeID) &&
+                   (cj_active_stars)) {
+
+          scheduler_activate(s, t);
+        }
+      }
+
+      /* Stars prep3 */
+      else if (t_subtype == task_subtype_stars_prep3) {
+
+        /* We only want to activate the task if the cell is active and is
+           going to update some sparts on the *local* node */
+        if ((ci_nodeID == nodeID && cj_nodeID == nodeID) &&
+            (ci_active_stars || cj_active_stars)) {
+
+          scheduler_activate(s, t);
+
+        } else if ((ci_nodeID == nodeID && cj_nodeID != nodeID) &&
+                   (ci_active_stars)) {
+
+          scheduler_activate(s, t);
+
+        } else if ((ci_nodeID != nodeID && cj_nodeID == nodeID) &&
+                   (cj_active_stars)) {
+
+          scheduler_activate(s, t);
+        }
+      }
+
+      /* Stars prep4 */
+      else if (t_subtype == task_subtype_stars_prep4) {
 
         /* We only want to activate the task if the cell is active and is
            going to update some sparts on the *local* node */
@@ -1590,7 +1658,9 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
     else if (t_type == task_type_stars_ghost ||
              t_type == task_type_stars_prep_ghost1 ||
              t_type == task_type_hydro_prep_ghost1 ||
-             t_type == task_type_stars_prep_ghost2) {
+             t_type == task_type_stars_prep_ghost2 ||
+	     t_type == task_type_stars_prep_ghost3 ||
+	     t_type == task_type_stars_prep_ghost4) {
       if (cell_need_activating_stars(t->ci, e, with_star_formation,
                                      with_star_formation_sink))
         scheduler_activate(s, t);
