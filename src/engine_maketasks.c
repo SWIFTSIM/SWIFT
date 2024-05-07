@@ -3809,7 +3809,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         engine_addlink(e, &ci->stars.prepare2, t_star_prep2);
         engine_addlink(e, &cj->stars.prepare2, t_star_prep2);
 #endif
-#ifdef EXTRA_STAR_LOOPS
+#ifdef EXTRA_STAR_LOOPS_2
         engine_addlink(e, &ci->stars.prepare3, t_star_prep3);
         engine_addlink(e, &cj->stars.prepare3, t_star_prep3);
         engine_addlink(e, &ci->stars.prepare4, t_star_prep4);

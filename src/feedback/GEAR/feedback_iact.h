@@ -100,7 +100,6 @@ runner_iact_nonsym_feedback_prep1(const float r2, const float dx[3],
 }
 
 
-#ifdef EXTRA_STAR_LOOPS_2 
 /**
  * @brief Prepare the feedback by computing the required quantities (loop 2). 
  * Used for updating properties of star particles required for the feedback.
@@ -135,6 +134,8 @@ runner_iact_nonsym_feedback_prep2(const float r2, const float dx[3],
   si->feedback_data.enrichment_weight += sqrt(w_j_norm_2);
 }
 
+
+#ifdef EXTRA_STAR_LOOPS_2
 /**
  * @brief Prepare the feedback by computing the required quantities (loop 3). 
  *
