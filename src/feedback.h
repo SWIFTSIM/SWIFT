@@ -33,6 +33,7 @@
 #elif defined(FEEDBACK_GEAR)
 #include "./feedback/GEAR/feedback.h"
 #define EXTRA_STAR_LOOPS
+#define EXTRA_STAR_LOOPS_2
 #elif defined(FEEDBACK_AGORA)
 #include "./feedback/AGORA/feedback.h"
 #else

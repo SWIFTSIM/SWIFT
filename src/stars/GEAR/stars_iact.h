@@ -107,6 +107,47 @@ runner_iact_nonsym_stars_prep2(const float r2, const float dx[3],
                                const struct part *pj, const float a,
                                const float H) {}
 
+#ifdef EXTRA_STAR_LOOPS_2
+/**
+ * @brief Prepare the feedback by computing the required quantities (loop 3). 
+ * Used for updating properties of star particles required for the feedback. 
+ *
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (si - pj).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param si First (star) particle (updated).
+ * @param pj Second (gas) particle (not updated).
+ * @param xpj Extra particle data
+ * @param cosmo The cosmological model.
+ * @param ti_current Current integer time.
+ */
+__attribute__((always_inline)) INLINE static void
+runner_iact_nonsym_stars_prep3(const float r2, const float dx[3],
+                               const float hi, const float hj, struct spart *si,
+                               const struct part *pj, const float a,
+                               const float H) {}
+
+/**
+ * @brief Prepare the feedback by computing the required quantities (loop 4). 
+ * Used for updating properties of star particles required for the feedback.
+ *
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (si - pj).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param si First (star) particle (updated).
+ * @param pj Second (gas) particle (not updated).
+ * @param xpj Extra particle data
+ * @param cosmo The cosmological model.
+ * @param ti_current Current integer time.
+ */
+__attribute__((always_inline)) INLINE static void
+runner_iact_nonsym_stars_prep4(const float r2, const float dx[3],
+                               const float hi, const float hj, struct spart *si,
+                               const struct part *pj, const float a,
+                               const float H) {}
+#endif /* EXTRA_STAR_LOOPS_2 */
 /**
  * @brief Feedback interaction between two particles (non-symmetric).
  * Used for updating properties of gas particles neighbouring a star particle
