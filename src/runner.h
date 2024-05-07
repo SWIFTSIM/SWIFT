@@ -48,6 +48,8 @@ struct task;
 #define TASK_LOOP_STARS_PREP2 10
 #define TASK_LOOP_RT_GRADIENT 11
 #define TASK_LOOP_RT_TRANSPORT 12
+#define TASK_LOOP_STARS_PREP3 13
+#define TASK_LOOP_STARS_PREP4 14
 
 /**
  * @brief A struct representing a runner's thread and its data.

@@ -89,6 +89,22 @@
 
 #endif /* EXTRA_STAR_LOOPS */
 
+#ifdef EXTRA_STAR_LOOPS_2
+
+/* Import the stars prepare3 loop functions. */
+#define FUNCTION prep3
+#define FUNCTION_TASK_LOOP TASK_LOOP_STARS_PREP3
+#include "runner_doiact_stars.h"
+#include "runner_doiact_undef.h"
+
+/* Import the stars prepare4 loop functions. */
+#define FUNCTION prep4
+#define FUNCTION_TASK_LOOP TASK_LOOP_STARS_PREP4
+#include "runner_doiact_stars.h"
+#include "runner_doiact_undef.h"
+
+#endif /* EXTRA_STAR_LOOPS_2 */
+
 /* Import the stars feedback loop functions. */
 #define FUNCTION feedback
 #define FUNCTION_TASK_LOOP TASK_LOOP_FEEDBACK
@@ -216,6 +232,12 @@ void *runner_main(void *data) {
           else if (t->subtype == task_subtype_stars_prep2)
             runner_doself_branch_stars_prep2(r, ci);
 #endif
+#ifdef EXTRA_STAR_LOOPS_2
+          else if (t->subtype == task_subtype_stars_prep3)
+            runner_doself_branch_stars_prep3(r, ci);
+          else if (t->subtype == task_subtype_stars_prep4)
+            runner_doself_branch_stars_prep4(r, ci);
+#endif
           else if (t->subtype == task_subtype_stars_feedback)
             runner_doself_branch_stars_feedback(r, ci);
           else if (t->subtype == task_subtype_bh_density)
@@ -264,6 +286,12 @@ void *runner_main(void *data) {
           else if (t->subtype == task_subtype_stars_prep2)
             runner_dopair_branch_stars_prep2(r, ci, cj);
 #endif
+#ifdef EXTRA_STAR_LOOPS_2
+          else if (t->subtype == task_subtype_stars_prep3)
+            runner_dopair_branch_stars_prep3(r, ci, cj);
+          else if (t->subtype == task_subtype_stars_prep4)
+            runner_dopair_branch_stars_prep4(r, ci, cj);
+#endif
           else if (t->subtype == task_subtype_stars_feedback)
             runner_dopair_branch_stars_feedback(r, ci, cj);
           else if (t->subtype == task_subtype_bh_density)
@@ -310,6 +338,12 @@ void *runner_main(void *data) {
           else if (t->subtype == task_subtype_stars_prep2)
             runner_dosub_self_stars_prep2(r, ci, 1);
 #endif
+#ifdef EXTRA_STAR_LOOPS_2
+          else if (t->subtype == task_subtype_stars_prep3)
+            runner_dosub_self_stars_prep3(r, ci, 1);
+          else if (t->subtype == task_subtype_stars_prep4)
+            runner_dosub_self_stars_prep4(r, ci, 1);
+#endif
           else if (t->subtype == task_subtype_stars_feedback)
             runner_dosub_self_stars_feedback(r, ci, 1);
           else if (t->subtype == task_subtype_bh_density)
@@ -355,6 +389,12 @@ void *runner_main(void *data) {
             runner_dosub_pair_stars_prep1(r, ci, cj, 1);
           else if (t->subtype == task_subtype_stars_prep2)
             runner_dosub_pair_stars_prep2(r, ci, cj, 1);
+#endif
+#ifdef EXTRA_STAR_LOOPS_2
+          else if (t->subtype == task_subtype_stars_prep3)
+            runner_dosub_pair_stars_prep3(r, ci, cj, 1);
+          else if (t->subtype == task_subtype_stars_prep4)
+            runner_dosub_pair_stars_prep4(r, ci, cj, 1);
 #endif
           else if (t->subtype == task_subtype_stars_feedback)
             runner_dosub_pair_stars_feedback(r, ci, cj, 1);
