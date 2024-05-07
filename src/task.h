@@ -93,6 +93,8 @@ enum task_types {
   task_type_stars_prep_ghost1, /* Implicit */
   task_type_hydro_prep_ghost1, /* Implicit */
   task_type_stars_prep_ghost2, /* Implicit */
+  task_type_stars_prep_ghost3, /* Implicit */
+  task_type_stars_prep_ghost4, /* Implicit */
   task_type_stars_sort,
   task_type_stars_resort,
   task_type_bh_in,  /* Implicit */
@@ -143,9 +145,13 @@ enum task_subtypes {
   task_subtype_spart_density,
   task_subtype_part_prep1,
   task_subtype_spart_prep2,
+  task_subtype_part_prep3,
+  task_subtype_spart_prep4,
   task_subtype_stars_density,
   task_subtype_stars_prep1,
   task_subtype_stars_prep2,
+  task_subtype_stars_prep3,
+  task_subtype_stars_prep4,
   task_subtype_stars_feedback,
   task_subtype_sf_counts,
   task_subtype_bpart_rho,
