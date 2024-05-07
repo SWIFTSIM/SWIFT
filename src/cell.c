@@ -586,6 +586,8 @@ void cell_clean_links(struct cell *c, void *data) {
   c->stars.density = NULL;
   c->stars.prepare1 = NULL;
   c->stars.prepare2 = NULL;
+  c->stars.prepare3 = NULL;
+  c->stars.prepare4 = NULL;
   c->stars.feedback = NULL;
   c->sinks.swallow = NULL;
   c->sinks.do_sink_swallow = NULL;

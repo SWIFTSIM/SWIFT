@@ -55,6 +55,12 @@ struct cell_stars {
     /*! The second star ghost task related to kinetic feedback */
     struct task *prep2_ghost;
 
+    /*! The first star ghost task related to mechanical feedback */
+    struct task *prep3_ghost;
+
+    /*! The second star ghost task related to mechanical feedback */
+    struct task *prep4_ghost;
+
     /*! Linked list of the tasks computing this cell's star density. */
     struct link *density;
 
@@ -65,6 +71,14 @@ struct cell_stars {
     /*! Linked list of the tasks computing this cell's star 2nd prep for kinetic
      * feedback. */
     struct link *prepare2;
+
+    /*! Linked list of the tasks computing this cell's star 3st prep for mechanical
+     * feedback. */
+    struct link *prepare3;
+
+    /*! Linked list of the tasks computing this cell's star 4nd prep for mechanical
+     * feedback. */
+    struct link *prepare4;
 
     /*! Linked list of the tasks computing this cell's star feedback. */
     struct link *feedback;
