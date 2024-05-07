@@ -134,6 +134,12 @@ void DOSELF1_STARS(struct runner *r, struct cell *c, int timer) {
 #elif (FUNCTION_TASK_LOOP == TASK_LOOP_STARS_PREP2)
         runner_iact_nonsym_feedback_prep2(r2, dx, hi, hj, si, pj, NULL, cosmo,
                                           ti_current);
+#elif (FUNCTION_TASK_LOOP == TASK_LOOP_STARS_PREP3)
+        runner_iact_nonsym_feedback_prep3(r2, dx, hi, hj, si, pj, NULL, cosmo,
+                                          ti_current);
+#elif (FUNCTION_TASK_LOOP == TASK_LOOP_STARS_PREP4)
+        runner_iact_nonsym_feedback_prep4(r2, dx, hi, hj, si, pj, NULL, cosmo,
+                                          ti_current);
 #elif (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
         runner_iact_nonsym_feedback_apply(r2, dx, hi, hj, si, pj, xpj, cosmo,
                                           e->hydro_properties,
@@ -265,6 +271,12 @@ void DO_NONSYM_PAIR1_STARS_NAIVE(struct runner *r, struct cell *restrict ci,
                                           ti_current);
 #elif (FUNCTION_TASK_LOOP == TASK_LOOP_STARS_PREP2)
         runner_iact_nonsym_feedback_prep2(r2, dx, hi, hj, si, pj, NULL, cosmo,
+                                          ti_current);
+#elif (FUNCTION_TASK_LOOP == TASK_LOOP_STARS_PREP3)
+        runner_iact_nonsym_feedback_prep3(r2, dx, hi, hj, si, pj, NULL, cosmo,
+                                          ti_current);
+#elif (FUNCTION_TASK_LOOP == TASK_LOOP_STARS_PREP4)
+        runner_iact_nonsym_feedback_prep4(r2, dx, hi, hj, si, pj, NULL, cosmo,
                                           ti_current);
 #elif (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
         runner_iact_nonsym_feedback_apply(r2, dx, hi, hj, si, pj, xpj, cosmo,
@@ -463,6 +475,12 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
 #elif (FUNCTION_TASK_LOOP == TASK_LOOP_STARS_PREP2)
           runner_iact_nonsym_feedback_prep2(r2, dx, hi, hj, spi, pj, NULL,
                                             cosmo, ti_current);
+#elif (FUNCTION_TASK_LOOP == TASK_LOOP_STARS_PREP3)
+          runner_iact_nonsym_feedback_prep3(r2, dx, hi, hj, spi, pj, NULL,
+                                            cosmo, ti_current);
+#elif (FUNCTION_TASK_LOOP == TASK_LOOP_STARS_PREP4)
+          runner_iact_nonsym_feedback_prep4(r2, dx, hi, hj, spi, pj, NULL,
+                                            cosmo, ti_current);
 #elif (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
           runner_iact_nonsym_feedback_apply(r2, dx, hi, hj, spi, pj, xpj, cosmo,
                                             e->hydro_properties,
@@ -618,6 +636,12 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
                                             cosmo, ti_current);
 #elif (FUNCTION_TASK_LOOP == TASK_LOOP_STARS_PREP2)
           runner_iact_nonsym_feedback_prep2(r2, dx, hj, hi, spj, pi, NULL,
+                                            cosmo, ti_current);
+#elif (FUNCTION_TASK_LOOP == TASK_LOOP_STARS_PREP3)
+          runner_iact_nonsym_feedback_prep3(r2, dx, hj, hi, spj, pi, NULL,
+                                            cosmo, ti_current);
+#elif (FUNCTION_TASK_LOOP == TASK_LOOP_STARS_PREP4)
+          runner_iact_nonsym_feedback_prep4(r2, dx, hj, hi, spj, pi, NULL,
                                             cosmo, ti_current);
 #elif (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
           runner_iact_nonsym_feedback_apply(r2, dx, hj, hi, spj, pi, xpi, cosmo,
