@@ -92,6 +92,12 @@ void feedback_compute_vector_weight_non_normalized(
     const struct spart* restrict si, const struct part* restrict pj,
     double* f_plus_i, double* f_minus_i, double* w_j);
 
+void feedback_compute_vector_weight_normalized(const float r2, const float *dx,
+					       const float hi, const float hj,
+					       const struct spart *restrict si,
+					       const struct part *restrict pj,
+					       double* w_j_bar);
+
 double feedback_get_SN_terminal_momentum(const struct spart* restrict sp,
 					 const struct part* restrict p,
 					 const struct xpart* restrict xp,

@@ -43,7 +43,7 @@ struct feedback_xpart_data {
   float delta_p[3];
 
   /* Number of supernovae affecting this particle */
-  /* int number_SN; */
+  int number_SN;
 
 };
 
@@ -73,16 +73,31 @@ struct feedback_spart_data {
   /*! Does the particle needs the feedback loop? */
   char will_do_feedback;
 
-
+  /* Parameters to be accumulated in the feedback loops. Used to compute the
+     vector weights */
   double f_plus_num[3];
   double f_plus_denom[3];
   double f_minus_num[3];
   double f_minus_denom[3];
 
+  /* Accumulated value for the total energy available in the SN, taking into
+     account gas-star motion */
+  double E_total_accumulator;
+
+  /* Parameters to determine the coupled energy, momentum and internal energy
+     of the SN */
+  double beta_1_accumulator; /* accumulated value for beta_1 */
+  double beta_2_accumulator; /* accumulated value for beta_2 */
+
+  /* Sum of the gas properties used to compute the mean of the properties */
+  double sum_gas_density;
+  double sum_gas_metallicity;
+
+  /* Checks that the SN weighting is working (put debugging checks) */
   double delta_m_check;
-  double delta_E_check;
   double delta_p_norm_check;
   double delta_p_check[3];
+  double delta_p_tot[3];
 };
 
 #endif /* SWIFT_FEEDBACK_STRUCT_GEAR_H */

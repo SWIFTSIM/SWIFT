@@ -295,8 +295,13 @@ void feedback_init_spart(struct spart* sp) {
   sp->feedback_data.f_minus_denom[1] = 0.0;
   sp->feedback_data.f_minus_denom[2] = 0.0;
 
+  sp->feedback_data.E_total_accumulator = 0;
+  sp->feedback_data.beta_1_accumulator = 0;
+  sp->feedback_data.beta_2_accumulator = 0;
+  sp->feedback_data.sum_gas_density = 0;
+  sp->feedback_data.sum_gas_metallicity = 0;
+
   sp->feedback_data.delta_m_check = 0.0;
-  sp->feedback_data.delta_E_check = 0.0;
   sp->feedback_data.delta_p_norm_check = 0.0;
 
   sp->feedback_data.delta_p_check[0] = 0 ;
@@ -349,8 +354,13 @@ void feedback_reset_feedback(struct spart* sp,
   sp->feedback_data.f_minus_denom[1] = 0.0;
   sp->feedback_data.f_minus_denom[2] = 0.0;
 
+  sp->feedback_data.E_total_accumulator = 0;
+  sp->feedback_data.beta_1_accumulator = 0;
+  sp->feedback_data.beta_2_accumulator = 0;
+  sp->feedback_data.sum_gas_density = 0;
+  sp->feedback_data.sum_gas_metallicity = 0;
+
   sp->feedback_data.delta_m_check = 0.0;
-  sp->feedback_data.delta_E_check = 0.0;
   sp->feedback_data.delta_p_norm_check = 0.0;
 
   sp->feedback_data.delta_p_check[0] = 0 ;
@@ -608,6 +618,38 @@ void feedback_compute_vector_weight_non_normalized(const float r2, const float *
 
 
 /**
+ * @brief Compute the non-normalized vector weight for the feedback.
+ *
+ * This function need to be called after loop 2, i.e. it needs the accumulation
+ * of f_plus and f_minus numerator and denominator to properly compute the
+ * noramlized vector weights. 
+ *
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (si - pj).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param si First (star) particle.
+ * @param pj Second (gas) particle.
+ * @param f_plus_i (return) Vector factor f_minus. Pointer to array of size 3.
+ * @param f_minus_i (return) Vector factor f_minus. Pointer to array of size 3.
+ * @param w_j (return) Non-noralized vector weight. Pointer to array of size 3.
+ */
+__attribute__((always_inline)) INLINE
+void feedback_compute_vector_weight_normalized(const float r2, const float *dx,
+						     const float hi, const float hj,
+						     const struct spart *restrict si,
+						     const struct part *restrict pj,
+						     double* w_j_bar) {
+  double f_plus_i[3], f_minus_i[3], w_j[3];
+  feedback_compute_vector_weight_non_normalized(r2, dx, hi, hj, si, pj, f_plus_i, f_minus_i, w_j);
+
+  /* The normalized vector weight */
+  w_j_bar[0] = w_j[0]/si->feedback_data.enrichment_weight;
+  w_j_bar[1] = w_j[1]/si->feedback_data.enrichment_weight;
+  w_j_bar[2] = w_j[2]/si->feedback_data.enrichment_weight;
+}
+
+/**
  * @brief Compute the terminal momentum of a SN explosion. This is the momentum
  * the blastwave can give to the gas after the energy-conserving phase.
  *
@@ -639,28 +681,29 @@ double feedback_get_SN_terminal_momentum(const struct spart* restrict sp,
   const double velocity_factor = 1;
 
   /* Get metallicity factor */
-  const double Z = chemistry_get_star_total_metal_mass_fraction_for_feedback(sp);
+  const double Z_mean = sp->feedback_data.sum_gas_metallicity/sp->density.wcount;
   const double Z_sun = 0.0134; /* Find the exact value somewhere */
   double metallicity_factor = 0.0;
 
-  if (Z/Z_sun < 0.01) {
+  if (Z_mean/Z_sun < 0.01) {
     metallicity_factor = 2;
-  } else if ((0.01 <= Z/Z_sun) && (Z/Z_sun<= 1)) {
-    metallicity_factor = pow(Z/Z_sun, -0.18);
+  } else if ((0.01 <= Z_mean/Z_sun) && (Z_mean/Z_sun<= 1)) {
+    metallicity_factor = pow(Z_mean/Z_sun, -0.18);
   } else /* Z/Z_sun > 1 */ {
-    metallicity_factor = pow(Z/Z_sun, -0.14);
+    metallicity_factor = pow(Z_mean/Z_sun, -0.14);
   }
 
   /* Get number density factor in cgs */
   const double m_p_cgs = phys_const->const_proton_mass * units_cgs_conversion_factor(us, UNIT_CONV_MASS);
-  const double density = p->rho*units_cgs_conversion_factor(us, UNIT_CONV_DENSITY)/m_p_cgs;
+  double density_mean = sp->feedback_data.sum_gas_density / sp->density.wcount;
+  density_mean = density_mean*units_cgs_conversion_factor(us, UNIT_CONV_DENSITY)/m_p_cgs;
 
   double density_factor = 0.0;
 
-  if (density < 0.001) {
+  if (density_mean < 0.001) {
     density_factor = 2.63;
   } else /* >= 0.001 */ {
-    density_factor = pow(density, -0.143);
+    density_factor = pow(density_mean, -0.143);
   }
 
   /* This is in internal units */

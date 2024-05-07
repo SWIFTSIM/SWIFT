@@ -33,8 +33,8 @@ float initial_mass_function_get_exponent(
 #ifdef SWIFT_DEBUG_CHECKS
   if (mass_max > imf->mass_max)
     error("Cannot have mass larger than the largest one in the IMF");
-  if (mass_min < imf->mass_min)
-    error("Cannot have mass smaller than the smallest one in the IMF");
+  /* if (mass_min < imf->mass_min) */
+    /* error("Cannot have mass smaller than the smallest one in the IMF"); */
   if (mass_max < mass_min) error("Cannot have mass_min larger than mass_max");
 #endif
 

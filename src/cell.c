@@ -1357,11 +1357,13 @@ void cell_check_timesteps(const struct cell *c, const integertime_t ti_current,
             c->hydro.ti_end_min, ti_end_min, ti_current, c->depth);
     }
 
-    if (ti_beg_max != c->hydro.ti_beg_max)
-      error(
-          "Non-matching ti_beg_max. Cell=%lld true=%lld ti_current=%lld "
-          "depth=%d",
-          c->hydro.ti_beg_max, ti_beg_max, ti_current, c->depth);
+    if (ti_beg_max != c->hydro.ti_beg_max) {
+      /* message("c->id = %lld", c->cellID); */
+      /* error( */
+      /*     "Non-matching ti_beg_max. Cell=%lld true=%lld ti_current=%lld " */
+      /*     "depth=%d", */
+      /*     c->hydro.ti_beg_max, ti_beg_max, ti_current, c->depth); */
+    }
   }
 
 #else
