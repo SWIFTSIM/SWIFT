@@ -2901,7 +2901,8 @@ void engine_do_reconstruct_multipoles_mapper(void *map_data, int num_elements,
 
   for (int ind = 0; ind < num_elements; ind++) {
     struct cell *c = &cells[ind];
-    if (c != NULL && c->nodeID == e->nodeID) {
+    if (c != NULL && c->nodeID == e->nodeID &&
+        c->subtype != cell_subtype_void) {
 
       /* Construct the multipoles in this cell hierarchy */
       cell_make_multipoles(c, e->ti_current, e->gravity_properties);
