@@ -81,27 +81,4 @@ INLINE static void feedback_write_flavour(struct feedback_props* feedback,
   io_write_attribute_s(h_grp, "Feedback Model", "GEAR");
 };
 
-double feedback_compute_scalar_weight(const float r2, const float* dx,
-                                      const float hi, const float hj,
-                                      const struct spart* restrict si,
-                                      const struct part* restrict pj,
-                                      double* dx_ij_plus, double* dx_ij_minus);
-
-void feedback_compute_vector_weight_non_normalized(
-    const float r2, const float* dx, const float hi, const float hj,
-    const struct spart* restrict si, const struct part* restrict pj,
-    double* f_plus_i, double* f_minus_i, double* w_j);
-
-void feedback_compute_vector_weight_normalized(const float r2, const float *dx,
-					       const float hi, const float hj,
-					       const struct spart *restrict si,
-					       const struct part *restrict pj,
-					       double* w_j_bar);
-
-double feedback_get_SN_terminal_momentum(const struct spart* restrict sp,
-					 const struct part* restrict p,
-					 const struct xpart* restrict xp,
-					 const struct phys_const* phys_const,
-					 const struct unit_system* us);
-
 #endif /* SWIFT_FEEDBACK_GEAR_H */
