@@ -48,9 +48,6 @@ int check_can_long_range(const struct engine *e, struct cell *ci,
   const double max_distance = e->mesh->r_cut_max;
   const double max_distance2 = max_distance * max_distance;
 
-  /* Exit for empty multipoles. */
-  if (cj->grav.multipole->m_pole.M_000 == 0.f) return 0;
-
 #ifdef SWIFT_DEBUG_CHECKS
 
   if (cj->type == cell_type_zoom && cj->depth != 0)
@@ -89,6 +86,13 @@ int check_can_long_range(const struct engine *e, struct cell *ci,
   /* Otherwise, we're in the tree and need to recurse. */
   int k = 0;
   while (k < 8 && can_interact) {
+
+    /* Skip empty progeny. */
+    if (cj->progeny[k]->grav.multipole->m_pole.M_000 == 0.f) {
+      k++;
+      continue;
+    }
+
     can_interact = check_can_long_range(e, ci, cj->progeny[k]);
     k++;
   }
