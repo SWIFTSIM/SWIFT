@@ -113,6 +113,10 @@ void runner_do_grav_long_range_recurse(struct runner *r, struct cell *ci,
   /* Get this cell's multipole information */
   struct gravity_tensors *const multi_i = ci->grav.multipole;
 
+  /* Exit for empty multipoles. */
+  if (multi_i->m_pole.M_000 == 0.f || cj->grav.multipole->m_pole.M_000 == 0.f)
+    return;
+
   /* Check whether we can interact at this level. */
   if (check_can_long_range(e, ci, cj)) {
 
@@ -191,7 +195,7 @@ void runner_do_grav_long_range_uniform_non_periodic(struct runner *r,
       multi_i->pot.interacted = 1;
 
     } /* We are in charge of this pair */
-  }   /* Loop over top-level cells */
+  } /* Loop over top-level cells */
 }
 
 /**
@@ -258,7 +262,7 @@ void runner_do_grav_long_range_zoom_non_periodic(struct runner *r,
       multi_i->pot.interacted = 1;
 
     } /* We are in charge of this pair */
-  }   /* Loop over top-level cells */
+  } /* Loop over top-level cells */
 }
 
 /**
@@ -378,9 +382,9 @@ void runner_do_grav_long_range_periodic(struct runner *r, struct cell *ci,
           multi_i->pot.interacted = 1;
 
         } /* We can interact with this cell */
-      }   /* Loop over relevant top-level cells (k) */
-    }     /* Loop over relevant top-level cells (j) */
-  }       /* Loop over relevant top-level cells (i) */
+      } /* Loop over relevant top-level cells (k) */
+    } /* Loop over relevant top-level cells (j) */
+  } /* Loop over relevant top-level cells (i) */
 
   /* When running with a zoom region we also need to loop over useful buffer
    * cells. We can play the same game here walking out only a certain number
@@ -470,10 +474,10 @@ void runner_do_grav_long_range_periodic(struct runner *r, struct cell *ci,
             multi_i->pot.interacted = 1;
 
           } /* We can interact with this cell */
-        }   /* Buffer cell i loop. */
-      }     /* Buffer cell j loop. */
-    }       /* Buffer cell k loop. */
-  }         /* Buffer cells enabled. */
+        } /* Buffer cell i loop. */
+      } /* Buffer cell j loop. */
+    } /* Buffer cell k loop. */
+  } /* Buffer cells enabled. */
 }
 
 /**
@@ -575,7 +579,7 @@ void runner_do_long_range_zoom_periodic(struct runner *r, struct cell *ci,
       multi_i->pot.interacted = 1;
 
     } /* We can interact with this cell. */
-  }   /* Neighbour cell loop. */
+  } /* Neighbour cell loop. */
 }
 
 /**
@@ -705,9 +709,9 @@ void runner_do_grav_long_range_buffer_periodic(struct runner *r,
           multi_i->pot.interacted = 1;
 
         } /* We can interact with this cell */
-      }   /* Buffer cell i loop. */
-    }     /* Buffer cell j loop. */
-  }       /* Buffer cell k loop. */
+      } /* Buffer cell i loop. */
+    } /* Buffer cell j loop. */
+  } /* Buffer cell k loop. */
 
   /* Finally we can interact with the background cells we need to by walking
    * out only as far as we need to from the empty cells above
@@ -775,9 +779,9 @@ void runner_do_grav_long_range_buffer_periodic(struct runner *r,
           multi_i->pot.interacted = 1;
 
         } /* We can interact with this cell */
-      }   /* Loop over relevant top-level cells (k) */
-    }     /* Loop over relevant top-level cells (j) */
-  }       /* Loop over relevant top-level cells (i) */
+      } /* Loop over relevant top-level cells (k) */
+    } /* Loop over relevant top-level cells (j) */
+  } /* Loop over relevant top-level cells (i) */
 }
 
 /**
