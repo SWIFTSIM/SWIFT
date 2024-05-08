@@ -66,7 +66,7 @@ runner_iact_nonsym_stars_density(const float r2, const float *dx,
 #endif
 }
 
-
+#if FEEDBACK_GEAR_MECHANICAL_MODE >=1
 /**
  * @brief Prepare the feedback by computing the required quantities (loop 1). 
  * Used for updating properties of star particles required for the feedback. 
@@ -106,8 +106,8 @@ runner_iact_nonsym_stars_prep2(const float r2, const float dx[3],
                                const float hi, const float hj, struct spart *si,
                                const struct part *pj, const float a,
                                const float H) {}
-
-#ifdef EXTRA_STAR_LOOPS_2
+#endif /* FEEDBACK_GEAR_MECHANICAL_MODE >=1 */
+#if FEEDBACK_GEAR_MECHANICAL_MODE >=2
 /**
  * @brief Prepare the feedback by computing the required quantities (loop 3). 
  * Used for updating properties of star particles required for the feedback. 
@@ -147,7 +147,7 @@ runner_iact_nonsym_stars_prep4(const float r2, const float dx[3],
                                const float hi, const float hj, struct spart *si,
                                const struct part *pj, const float a,
                                const float H) {}
-#endif /* EXTRA_STAR_LOOPS_2 */
+#endif /* FEEDBACK_GEAR_MECHANICAL_MODE >=2 */
 /**
  * @brief Feedback interaction between two particles (non-symmetric).
  * Used for updating properties of gas particles neighbouring a star particle
