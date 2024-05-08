@@ -2640,7 +2640,7 @@ esac
 # Feedback model
 AC_ARG_WITH([feedback],
    [AS_HELP_STRING([--with-feedback=<model>],
-      [Feedback model to use @<:@none, EAGLE, EAGLE-thermal, EAGLE-kinetic, GEAR, AGORA default: none@:>@]
+      [Feedback model to use @<:@none, EAGLE, EAGLE-thermal, EAGLE-kinetic, GEAR, GEAR-mechanical_1, GEAR-mechanical_2, AGORA default: none@:>@]
    )],
    [with_feedback="$withval"],
    [with_feedback="none"]
@@ -2669,8 +2669,15 @@ case "$with_feedback" in
       with_feedback_name="EAGLE thermal stellar feedback and evolution model"
    ;;
    GEAR)
-      AC_DEFINE([FEEDBACK_GEAR], [1], [GEAR stellar feedback and evolution model])
+      AC_DEFINE([FEEDBACK_GEAR], [1], [GEAR thermal stellar feedback and evolution model])
       with_feedback_name="GEAR"
+   ;;
+   GEAR-mechanical_*)
+      AC_DEFINE([FEEDBACK_GEAR_MECHANICAL], [1], [GEAR mechanical stellar feedback and evolution model])
+      gear_mechanical_mode=${with_feedback#*_}
+      AC_DEFINE_UNQUOTED([FEEDBACK_GEAR_MECHANICAL_MODE], [$gear_mechanical_mode], [GEAR mechanical feedback mode])
+      with_feedback_name="GEAR mechanical $gear_mechanical_mode"
+      $with_feedback="GEAR-mechanical"
    ;;
    AGORA)
       AC_DEFINE([FEEDBACK_AGORA], [1], [AGORA stellar feedback and evolution model])
@@ -3095,6 +3102,7 @@ AM_CONDITIONAL([HAVEEAGLEFLOOR], [test "$with_entropy_floor" = "EAGLE"])
 
 # check if using gear feedback
 AM_CONDITIONAL([HAVEGEARFEEDBACK], [test "$with_feedback" = "GEAR"])
+AM_CONDITIONAL([HAVEGEARMECHANICALFEEDBACK], [test "$with_feedback" = "GEAR-mechanical"])
 
 # check if using gear feedback
 AM_CONDITIONAL([HAVEAGORAFEEDBACK], [test "$with_feedback" = "AGORA"])
