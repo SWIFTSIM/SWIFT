@@ -128,20 +128,37 @@ __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
 
   /* Dt from 1/DivOperator(Alfven speed) */
 
+  const float h = p->h;
+  const float rho = p->rho;
+  
+  float B[3];
+  B[0] = p->mhd_data.B_over_rho[0] * rho;
+  B[1] = p->mhd_data.B_over_rho[1] * rho;
+  B[2] = p->mhd_data.B_over_rho[2] * rho;
+
   const float divB = p->mhd_data.divB;
 
-  const float dt_B_factor = fabsf(divB);
+  float curlB[3];
+  curlB[0] = p->mhd_data.curl_B[0];
+  curlB[1] = p->mhd_data.curl_B[1];
+  curlB[2] = p->mhd_data.curl_B[2];
+
+  const float norm_B = sqrtf(B[0] * B[0] + B[1] * B[1] + B[2] * B[2]);
+  const float norm_divB = fabsf(divB);
+  const float norm_curlB = sqrtf(curlB[0] * curlB[0] + curlB[1] * curlB[1] + curlB[2] * curlB[2]);
+
+  const float dt_B_factor = fmaxf(norm_divB, norm_curlB);
 
   const float dt_B_derivatives =
       dt_B_factor != 0.f
           ? hydro_properties->CFL_condition * cosmo->a /
                 cosmo->a_factor_sound_speed *
-                sqrtf(p->rho * mu_0 / (dt_B_factor * dt_B_factor))
+                sqrtf(mu_0 * h * rho/ (norm_B * dt_B_factor))
           : FLT_MAX;
 
   const float dt_eta = p->mhd_data.resistive_eta != 0.f
                            ? hydro_properties->CFL_condition * cosmo->a *
-                                 cosmo->a * p->h * p->h /
+                                 cosmo->a * h * h /
                                  p->mhd_data.resistive_eta
                            : FLT_MAX;
 
