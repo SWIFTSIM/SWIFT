@@ -2627,6 +2627,13 @@ int engine_step(struct engine *e) {
       engine_reconstruct_multipoles(e);
     else
       engine_drift_top_multipoles(e);
+
+    /* In zoom land we also need to reconstruct the void multipoles since
+     * they're never explicitly updated outside a rebuild. (Guaranteed to
+     * be a very cheap operation). */
+    if (e->s->with_zoom_region) {
+      zoom_void_reconstruct_multipoles(e->s, e->verbose);
+    }
   }
 
 #ifdef WITH_MPI
@@ -3076,8 +3083,7 @@ void engine_pin(void) {
   threadpool_set_affinity_mask(entry_affinity);
 
   int pin;
-  for (pin = 0; pin < CPU_SETSIZE && !CPU_ISSET(pin, entry_affinity); ++pin)
-    ;
+  for (pin = 0; pin < CPU_SETSIZE && !CPU_ISSET(pin, entry_affinity); ++pin);
 
   cpu_set_t affinity;
   CPU_ZERO(&affinity);
