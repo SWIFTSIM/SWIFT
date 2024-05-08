@@ -32,8 +32,13 @@
 #define EXTRA_STAR_LOOPS
 #elif defined(FEEDBACK_GEAR)
 #include "./feedback/GEAR/feedback.h"
+#elif defined(FEEDBACK_GEAR_MECHANICAL)
+#include "./feedback/GEAR_mechanical/feedback.h"
 #define EXTRA_STAR_LOOPS
+/* Define the other loops */
+#if FEEDBACK_GEAR_MECHANICAL_MODE == 2
 #define EXTRA_STAR_LOOPS_2
+#endif /* FEEDBACK_GEAR_MECHANICAL_MODE */
 #elif defined(FEEDBACK_AGORA)
 #include "./feedback/AGORA/feedback.h"
 #else
