@@ -54,7 +54,7 @@ INLINE static void hydro_read_particles(struct part* parts,
  #ifdef PLANETARY_FIXED_ENTROPY
   *num_fields = 12;
 #else
-  *num_fields = 11;
+  *num_fields = 9;
 #endif
 
   /* List what we want to read */
@@ -76,11 +76,11 @@ INLINE static void hydro_read_particles(struct part* parts,
                                 UNIT_CONV_DENSITY, parts, rho);
   list[8] = io_make_input_field("MaterialIDs", INT, 1, COMPULSORY,
                                 UNIT_CONV_NO_UNITS, parts, mat_id);
-  list[9] = io_make_input_field("NumFlaws", INT, 1, COMPULSORY,
-                                UNIT_CONV_NO_UNITS, parts, number_of_flaws);
+ // list[9] = io_make_input_field("NumFlaws", INT, 1, COMPULSORY,
+  //                              UNIT_CONV_NO_UNITS, parts, number_of_flaws);
   // Need to do unit conversions here
-  list[10] = io_make_input_field("ActivationThresholds", FLOAT, 40, COMPULSORY,
-                                UNIT_CONV_NO_UNITS, parts, activation_thresholds_epsilon_act_ij);
+  //list[10] = io_make_input_field("ActivationThresholds", FLOAT, 40, COMPULSORY,
+    //                            UNIT_CONV_NO_UNITS, parts, activation_thresholds_epsilon_act_ij);
 
 
 #ifdef PLANETARY_FIXED_ENTROPY

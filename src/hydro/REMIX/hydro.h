@@ -688,6 +688,12 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const struct pressure_floor_props *pressure_floor) {
 
+    if (p->h > 0.999f * hydro_props->h_max) {
+    p->is_h_max = 1;
+  } else {
+    p->is_h_max = 0;
+  }
+    
   hydro_prepare_gradient_extra_kernel(p);
   hydro_prepare_gradient_extra_viscosity(p);
   #ifdef MATERIAL_STRENGTH
@@ -1010,7 +1016,7 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   // ## Hmmm does this go after setting sigma (sigma depends on D and dD depends on sigma). Seems like it based on wording in B&A and Schafer
   // turn off for cylinders or aluminium
 #ifdef MATERIAL_STRENGTH
-    evolve_damage(p, soundspeed, dt_therm);
+    evolve_damage(p, pressure, soundspeed, dt_therm);
 #endif /* MATERIAL_STRENGTH */
 
   p->force.v_sig = max(p->force.v_sig, 2.f * soundspeed);
@@ -1040,8 +1046,8 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
     #endif /* MATERIAL_STRENGTH */
 
 
-    float temperature = gas_temperature_from_internal_energy(p->rho_evolved, p->u, p->mat_id);
-    p->testing_output = temperature;
+    //float temperature = gas_temperature_from_internal_energy(p->rho_evolved, p->u, p->mat_id);
+    p->testing_output =p->damage_D;// p->local_scalar_strain;//temperature;
 
 }
 
@@ -1165,12 +1171,67 @@ for (int i = 0; i < 3; i++) {
 }
 #ifdef MATERIAL_STRENGTH
   p->damage_D = 0.f;
-
+  p->tensile_damage = 0.f;  
+  p->shear_damage = 0.f;   
+    
+    
+    //These are from SENFT and STEWART 2008
+    
+    // basalt
+    if(p->mat_id == 103){
+    
+        
+        p->Y_0 = 10e6;
+        p->Y_M = 3.5e9;
+        p->coefficient_friction_intact_mu_i = 1.2f;
+        // use low pressure mu_d only for now
+        p->coefficient_friction_damaged_mu_d = 0.85f;
+        p->T_m = 1200;
+        p->thermal_softening_parameter_xi = 1.2f;
+        // what is Maximum tensile strength, is this just P_min?
+        
+        p->bulk_modulus_K = 45e9;
+        p->shear_modulus_mu =  30e9;
+        
+        // note this is just tillotson rho_0 done like this temporarily
+        p->rho_0 = 2700;
+        
+        p->brittle_to_ductile_transition_pressure = 2.77e9;
+        p->brittle_to_plastic_transition_pressure = 4.11e9;
+    
+        }
+    
+    // ice
+    if(p->mat_id == 104){
+        
+        
+        p->Y_0 = 16.4e6;
+        p->Y_M = 147e6;
+        p->coefficient_friction_intact_mu_i = 6.54f;
+        // use low pressure mu_d only for now
+        p->coefficient_friction_damaged_mu_d = 0.55f;
+        p->T_m = 273.15;
+        p->thermal_softening_parameter_xi = 1.84f;
+        // what is Maximum tensile strength, is this just P_min?
+        
+        p->bulk_modulus_K = 8.9e9;
+        p->shear_modulus_mu =  3.52e9;
+        
+        // note this is just tillotson rho_0 done like this temporarily
+        p->rho_0 = 1293;
+        
+        p->brittle_to_ductile_transition_pressure = 689e6;
+        p->brittle_to_plastic_transition_pressure = 699e6;
+        
+        
+    }
 
       // For now manually set material properties here
 
 
-
+p->number_of_activated_flaws = 0.f;
+    
+    
     /*
         
     // For Aluminium
@@ -1197,7 +1258,7 @@ for (int i = 0; i < 3; i++) {
       p->T_m = FLT_MAX;
 */
 
-
+/*
          // For basalt
          p->shear_modulus_mu =  22.7e9;
         p->T_m= FLT_MAX;
@@ -1224,7 +1285,7 @@ for (int i = 0; i < 3; i++) {
       }
 
 p->number_of_activated_flaws = 0.f;
-
+*/
 
 
       // for Lucit. Note: for now changed til iron parameters

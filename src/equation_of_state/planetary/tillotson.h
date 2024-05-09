@@ -110,7 +110,7 @@ INLINE static void set_Til_basalt(struct Til_params *mat,
   mat->beta = 5.0f;
   mat->eta_min = 0.0f;
   mat->eta_zero = 0.0f;
-  mat->P_min = -FLT_MAX;//0.01f;
+  mat->P_min = -1e6;//-10e6;//0.01f;
   mat->C_V = 790.0f;
   mat->rho_cold_min = 100.0f;
   mat->rho_cold_max = 1.0e5f;
@@ -154,7 +154,7 @@ INLINE static void set_Til_ice(struct Til_params *mat,
   mat->beta = 5.0f;
   mat->eta_min = 0.925f;
   mat->eta_zero = 0.875f;
-  mat->P_min = -FLT_MAX;//0.0f;
+  mat->P_min = -0.17e6;//0.0f;
   mat->C_V = 2093.0f;
   mat->rho_cold_min = 100.0f;
   mat->rho_cold_max = 1.0e5f;
@@ -342,9 +342,9 @@ INLINE static float Til_pressure_from_internal_energy(
   }
 
   // Minimum pressure
-  if (P < mat->P_min) {
-    P = mat->P_min;
-  }
+ // if (P < mat->P_min) {
+ //   P = mat->P_min;
+ // }
     
   // For aluminium. This should be P_min: P_min = -Y0
         // This should be made P_min in mat properties
@@ -357,9 +357,8 @@ INLINE static float Til_pressure_from_internal_energy(
     */
     
     // With rho weakening
-    float rho0 = 2700.f;
-  float rho_weak = 0.85f * rho0;
-    float Y_min = -200e6;
+  float rho_weak = 0.85f * mat->rho_0;
+    float Y_min = mat->P_min;
     if (density < rho_weak){
         Y_min *= powf(density / rho_weak, 4.f);
     } 
@@ -406,6 +405,19 @@ INLINE static float Til_soundspeed_from_internal_energy(
   } else if (eta < mat->eta_min) {
     P_c *= (eta - mat->eta_zero) / (mat->eta_min - mat->eta_zero);
   }
+    
+    
+        // With rho weakening
+  float rho_weak = 0.85f * mat->rho_0;
+    float Y_min = mat->P_min;
+    if (density < rho_weak){
+        Y_min *= powf(density / rho_weak, 4.f);
+    } 
+    
+    if (P_c < Y_min) {
+    P_c = Y_min;
+  }
+    
   c_sq_c = P_c * rho_inv * (1.f + mat->a + mat->b * w_inv) +
            mat->b * (w - 1.f) * w_inv_sq * (2.f * u - P_c * rho_inv) +
            rho_inv * (mat->A + mat->B * (eta_sq - 1.f));
@@ -414,6 +426,12 @@ INLINE static float Til_soundspeed_from_internal_energy(
   P_e = mat->a * density * u +
         (mat->b * density * u * w_inv + mat->A * mu * exp_beta) * exp_alpha;
 
+    
+        // With rho weakening
+  if (P_e < Y_min) {
+    P_e = Y_min;
+  }
+    
   c_sq_e =
       P_e * rho_inv * (1.f + mat->a + mat->b * w_inv * exp_alpha) +
       (mat->b * density * u * w_inv_sq / eta_sq *
@@ -423,6 +441,8 @@ INLINE static float Til_soundspeed_from_internal_energy(
            (1.f + mu / eta_sq * (mat->beta + 2.f * mat->alpha * nu - eta)) *
            exp_beta) *
           exp_alpha;
+    
+
 
   // Condensed or cold state
   if ((1.f < eta) || (u < mat->u_iv)) {

@@ -348,7 +348,18 @@ struct part {
   float Y_0;
   float Y_M;
   float bulk_modulus_K;
-
+    
+    float thermal_softening_parameter_xi;
+    float coefficient_friction_intact_mu_i;
+    float coefficient_friction_damaged_mu_d;
+    
+    float rho_0;
+    
+    float tensile_damage;
+    float shear_damage;
+    
+    float brittle_to_ductile_transition_pressure;
+    float brittle_to_plastic_transition_pressure;
 
 float grad_v[3][3];
 

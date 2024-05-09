@@ -309,6 +309,39 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force,
 
           continue;
         }
+          
+          
+          /* Delete edjecta */
+        if (p->is_h_max) {  
+
+          lock_lock(&e->s->lock);
+
+          /* Re-check that the particle has not been removed
+           * by another thread before we do the deed. */
+          if (!part_is_inhibited(p, e)) {
+
+#ifdef WITH_CSDS
+            if (e->policy & engine_policy_csds) {
+              /* Log the particle one last time. */
+              csds_log_part(e->csds, p, xp, e, /* log_all */ 1,
+                            csds_flag_delete, /* data */ 0);
+            }
+#endif
+
+            /* One last action before death? */
+            hydro_remove_part(p, xp, e->time);
+
+            /* Remove the particle entirely */
+            cell_remove_part(e, c, p, xp);
+          }
+
+          if (lock_unlock(&e->s->lock) != 0)
+            error("Failed to unlock the space!");
+
+          continue;
+        }
+          
+          
       }
 
       /* Limit h to within the allowed range */

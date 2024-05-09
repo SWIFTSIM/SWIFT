@@ -48,6 +48,8 @@ __attribute__((always_inline)) INLINE static void hydro_set_sigma(
             if (pressure < 0.f){
                 pressure_hat *= (1 - p->damage_D);    
             }
+          
+            
             #endif /* MATERIAL_STRENGTH */
 
             p->stress_tensor_sigma[i][j] -= pressure_hat;
