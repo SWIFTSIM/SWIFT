@@ -407,11 +407,11 @@ runner_iact_nonsym_feedback_apply(
      Thus, the factor to multiply dp_prime is: */
   const double p_factor = min(PdV_work_fraction, p_terminal/p_ej);
 
-  if (p_factor == p_terminal/p_ej) {
-    message("We do not resolve the Sedov-Taylor. Using p_terminal. p_t = %e, p_ej=%e, p_factor = %e, PdV_work_fraction=%e.",p_terminal, p_ej, p_factor, PdV_work_fraction);
-  } else {
-    message("We do resolve the Sedov-Taylor. p_t = %e, p_ej = %e, p_factor=%e, p_t/p_ej = %e", p_terminal, p_ej, p_factor, p_terminal/p_ej);
-  }
+  /* if (p_factor == p_terminal/p_ej) { */
+  /*   message("We do not resolve the Sedov-Taylor. Using p_terminal. p_t = %e, p_ej=%e, p_factor = %e, PdV_work_fraction=%e.",p_terminal, p_ej, p_factor, PdV_work_fraction); */
+  /* } else { */
+  /*   message("We do resolve the Sedov-Taylor. p_t = %e, p_ej = %e, p_factor=%e, p_t/p_ej = %e", p_terminal, p_ej, p_factor, p_terminal/p_ej); */
+  /* } */
 
   dp_prime[0] *= p_factor;
   dp_prime[1] *= p_factor;
@@ -472,9 +472,9 @@ runner_iact_nonsym_feedback_apply(
 
   const double dp_norm_2 = dp[0]*dp[0] +  dp[1]*dp[1] +  dp[2]*dp[2];
 
-  message("beta_1 = %e, beta_2 = %e, psi = %e", beta_1, beta_2, psi);
-  message("p_epsilon = %e, xsi = %e", p_epsilon, xsi);
-  message("E_ej = %e, E_tot = %e, U_tot = %e, E_kin_tot = %e, p_ej = %e, p_terminal = %e, dU = %e, f_therm = %e", E_ej, E_tot, U_tot, epsilon, p_ej, p_terminal, dU, f_therm);
+  /* message("beta_1 = %e, beta_2 = %e, psi = %e", beta_1, beta_2, psi); */
+  /* message("p_epsilon = %e, xsi = %e", p_epsilon, xsi); */
+  /* message("E_ej = %e, E_tot = %e, U_tot = %e, E_kin_tot = %e, p_ej = %e, p_terminal = %e, dU = %e, f_therm = %e", E_ej, E_tot, U_tot, epsilon, p_ej, p_terminal, dU, f_therm); */
 
 #endif /* FEEDBACK_GEAR_MECHANICAL_MODE == 2 */
 
@@ -502,7 +502,7 @@ runner_iact_nonsym_feedback_apply(
   si->feedback_data.delta_p_check[1] += dp[1];
   si->feedback_data.delta_p_check[2] += dp[2];
 
-  message("Conservation check (star %lld): Sum dm_i = %e (m_ej), Sum |dp_i| = %e (p_ej), Sum dp_i = (%e, %e, %e) (0), m_ej = %e, E_ej = %e, p_ej = %e", si->id, si->feedback_data.delta_m_check, si->feedback_data.delta_p_norm_check, si->feedback_data.delta_p_check[0], si->feedback_data.delta_p_check[1], si->feedback_data.delta_p_check[2], m_ej, E_ej, p_ej);
+  /* message("Conservation check (star %lld): Sum dm_i = %e (m_ej), Sum |dp_i| = %e (p_ej), Sum dp_i = (%e, %e, %e) (0), m_ej = %e, E_ej = %e, p_ej = %e", si->id, si->feedback_data.delta_m_check, si->feedback_data.delta_p_norm_check, si->feedback_data.delta_p_check[0], si->feedback_data.delta_p_check[1], si->feedback_data.delta_p_check[2], m_ej, E_ej, p_ej); */
   
 }
 
