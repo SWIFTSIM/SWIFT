@@ -44,6 +44,10 @@ struct feedback_props {
   /* Comoving maximal radius for feedback injection */
   float r_max;
 
+  /* Fraction of the total energy of the SN available to kinetic energy. It
+     must respect 0 <= f_kin_0 <= 1 */
+  float f_kin_0;
+
   /* Enable the correction factor to momentum if multiple SN affect a gas
      particle during one timestep. This factor ensures exact energy
      conservation in the case of multiple SN. */
@@ -157,12 +161,21 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
     fp->r_max = parser_get_opt_param_float(
       params, "GEARFeedback:maximal_radius", default_r_max);
 
+    /* Get the fraction of the SN energy available to kinetic energy. The
+       default value is for an idealized Sedov solution in a homogenous background. */
+    const float default_f_kin_0 = 0.28;
+
+    fp->f_kin_0 = parser_get_opt_param_float(
+      params, "GEARFeedback:f_kin_0", default_f_kin_0);
+
     /* Do we want to correct the total momentum of the gas particles after
        multiple SN ? */
     fp->enable_multiple_SN_momentum_correction_factor = parser_get_opt_param_int(
       params, "GEARFeedback:enable_multiple_SN_momentum_correction_factor", 0);
 
-    message("r_max = %e, enable_f_cor = %i", fp->r_max, fp->enable_multiple_SN_momentum_correction_factor);
+    if (fp->f_kin_0 < 0 || fp->f_kin_0 > 1) {
+      error("f_kin_0 must be comprised between 0 and 1  (0 <= f_kin_0 <= 1)!");
+    }
   }
 
   /* Print the stellar properties */
