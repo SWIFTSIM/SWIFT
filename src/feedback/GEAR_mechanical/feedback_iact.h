@@ -76,9 +76,6 @@ runner_iact_nonsym_feedback_density(const float r2, const float dx[3],
   kernel_deval(ui, &wi, &wi_dx);
 
   /* Compute contribution to the number of neighbours */
-  si->density.wcount += wi;
-  si->density.wcount_dh -= (hydro_dimension * wi + ui * wi_dx);
-
   si->feedback_data.density_wcount += wi;
 }
 
