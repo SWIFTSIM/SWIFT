@@ -349,7 +349,8 @@ runner_iact_nonsym_feedback_apply(
   const double m_ej = si->feedback_data.mass_ejected;
 
   /* Distribute mass... (the max avoids to have dm=0 and NaN by dividing by dm) */
-  double dm = max(w_j_bar_norm * m_ej, FLT_MIN);
+  const double dm = max(w_j_bar_norm * m_ej, FLT_MIN);
+  const double new_mass = mj + dm;
   xpj->feedback_data.delta_mass += dm;
 
   /* ... metals */
@@ -360,30 +361,13 @@ runner_iact_nonsym_feedback_apply(
 
 #if FEEDBACK_GEAR_MECHANICAL_MODE == 1
 
-  /* Finally, we can compute the w_j_bar. */
-  /* double w_j_bar[3]; */
-  /* feedback_compute_vector_weight_normalized(r2, dx, hi, hj, si, pj, w_j_bar) ; */
-  /* const double w_j_bar_norm_2 = w_j_bar[0]*w_j_bar[0] + w_j_bar[1]*w_j_bar[1] + w_j_bar[2]*w_j_bar[2]; */
-  /* const double w_j_bar_norm = sqrt(w_j_bar_norm_2); */
-
-  /* /\* If p does not contribute, skip the computations to avoid NaN *\/ */
-  /* if (w_j_bar_norm == 0) { */
-  /*   return; */
-  /* } */
-
-  /* /\* Here just get the feedback properties we want to distribute *\/ */
-  /* const float mj = hydro_get_mass(pj); */
-  /* const double m_ej = si->feedback_data.mass_ejected; */
-  const double p_ej = sqrt(2*m_ej*E_ej) ;
-
   /* ... momentum */
+  const double p_ej = sqrt(2*m_ej*E_ej) ;
   const double dp[3] = {w_j_bar[0]*p_ej, w_j_bar[1]*p_ej, w_j_bar[2]*p_ej};
   const double dE = w_j_bar_norm * E_ej;
 
   /* Now boost to the 'laboratory' frame */
   double dp_prime[3] = {dp[0] + dm*si->v[0], dp[1] + dm*si->v[1], dp[2] + dm*si->v[2]};
-
-  /* Note: The momentum is given to xpj later... We need to do some physics before. */
 
   /* ... Total energy */
   const double dp_norm_2 = dp[0]*dp[0] +  dp[1]*dp[1] +  dp[2]*dp[2];
@@ -391,8 +375,6 @@ runner_iact_nonsym_feedback_apply(
   const double dE_prime = dE + 1.0/(2.0*dm) * (dp_prime_norm_2 - dp_norm_2);
 
   /* ... internal energy */
-  const double new_mass = mj + dm;
-
   /* Compute kinetic energy difference before and after SN */
   const double p_old_norm_2 = mj*mj*(xpj->v_full[0]*xpj->v_full[0] + xpj->v_full[1]*xpj->v_full[1] + xpj->v_full[2]*xpj->v_full[2]);
   const double p_new[3] = {mj*xpj->v_full[0] + dp_prime[0],
@@ -417,22 +399,8 @@ runner_iact_nonsym_feedback_apply(
   /* --Now, we take into account for potentially unresolved energy-conserving
      phase of the SN explosion-- */
 
-  /* Now, momentum given to the particle is not simply dp_prime. This is the
-     momentum the location of the SN explosion. The ejecta must travel to the
-     particle at distance r, i.e it must sweep up the mass mj of the particle
-     as in a shock or a shell.
-     This means that there is some work PdV that is done to reach the particle,
-     work that converts thermal energy to kinetic energy. Therefore, the
-     correct momentum to couple is proportional to the following factor: */
   const double PdV_work_fraction = sqrt(1 + mj/dm);
-
-  /* At the end of the energy conserving phase, the blastwave reaches its
-     terminal momentum. */
   const double p_terminal = feedback_get_SN_terminal_momentum(si, pj, xpj, phys_const, us);
-
-  /* During the Taylor Sedov phase (energy conserving phase), dp_prime <=
-     p_terminal. Thus the momentum coupling is irrelevant. We couple the
-     thermal energy and leave the hydro solver correctly determines the PdV work. */
 
   /* If we can resolve the Taylor Sedov, then we give the right coupled
      momentum (which is by definition <= p_terminal). If we cannot resolve it,
@@ -462,37 +430,9 @@ runner_iact_nonsym_feedback_apply(
     message("We do not resolve the Sedov-Taylor (r_cool = %e). Rescaling dU.", r_cool);
   } /* else we do not change dU */
 
-  /* Now we can give momentum, thermal and kinetic energy to the xpart. */
-  /* for (int i = 0; i < 3; i++) { */
-  /*   xpj->feedback_data.delta_p[i] += dp_prime[i]; */
-  /* } */
-  /* xpj->feedback_data.delta_u += dU/new_mass; */
-  /* xpj->feedback_data.delta_E_kin += dKE; */
-  /* xpj->feedback_data.number_SN += 1; */
-
 #endif /* FEEDBACK_GEAR_MECHANICAL_MODE == 1 */
 #if FEEDBACK_GEAR_MECHANICAL_MODE == 2
-  const double f_kin_0 = 0.28; /* Should be read in the params.yml file */
-
-  /* /\* Compute w_j_bar. *\/ */
-  /* double w_j_bar[3]; */
-  /* feedback_compute_vector_weight_normalized(r2, dx, hi, hj, si, pj, w_j_bar) ; */
-  /* const double w_j_bar_norm_2 = w_j_bar[0]*w_j_bar[0] + w_j_bar[1]*w_j_bar[1] + w_j_bar[2]*w_j_bar[2]; */
-  /* const double w_j_bar_norm = sqrt(w_j_bar_norm_2); */
-
-  /* /\* Here just get the feedback properties we want to distribute *\/ */
-  /* const float mj = hydro_get_mass(pj); */
-  /* const double m_ej = si->feedback_data.mass_ejected; */
-
-  /* Distribute mass... (the max avoids to have dm=0 and NaN by dividing by dm) */
-  /* double dm = max(w_j_bar_norm * m_ej, FLT_MIN); */
-  /* xpj->feedback_data.delta_mass += dm; */
-
-  /* /\* ... metals *\/ */
-  /* for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) { */
-  /*   pj->chemistry_data.metal_mass[i] += */
-  /* 	w_j_bar_norm * si->feedback_data.metal_mass_ejected[i]; */
-  /* } */
+  const double f_kin_0 = fb_props->f_kin_0;
 
   /* ... momentum */
   const double E_tot = E_ej + 0.5*m_ej*si->feedback_data.E_total_accumulator;
@@ -516,17 +456,10 @@ runner_iact_nonsym_feedback_apply(
   /* Now boost to the 'laboratory' frame */
   double dp_prime[3] = {dp[0] + dm*si->v[0], dp[1] + dm*si->v[1], dp[2] + dm*si->v[2]};
 
-  /* Now we can give momentum, thermal and kinetic energy to the xpart. */
-  /* for (int i = 0; i < 3; i++) { */
-    /* xpj->feedback_data.delta_p[i] += dp_prime[i]; */
-  /* } */
-
   /* ... internal energy */
   const double f_kin = (psi*psi * xsi*xsi)*beta_2 + 2.0*(psi*xsi)*beta_1;
   const double U_tot = E_tot - f_kin*epsilon;
   const double dU = w_j_bar_norm * U_tot;
-  const double new_mass = mj + dm;
-  /* xpj->feedback_data.delta_u += dU/new_mass; */
 
   /* Compute kinetic energy difference before and after SN */
   const double p_old_norm_2 = mj*mj*(xpj->v_full[0]*xpj->v_full[0] + xpj->v_full[1]*xpj->v_full[1] + xpj->v_full[2]*xpj->v_full[2]);
@@ -540,9 +473,6 @@ runner_iact_nonsym_feedback_apply(
   const double dKE = E_kin_new - E_kin_old;
 
   const double dp_norm_2 = dp[0]*dp[0] +  dp[1]*dp[1] +  dp[2]*dp[2];
-
-  /* xpj->feedback_data.delta_E_kin += dKE; */
-  /* xpj->feedback_data.number_SN += 1; */
 
   message("beta_1 = %e, beta_2 = %e, psi = %e", beta_1, beta_2, psi);
   message("p_epsilon = %e, xsi = %e", p_epsilon, xsi);
