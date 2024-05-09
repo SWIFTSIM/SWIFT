@@ -680,6 +680,12 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const struct pressure_floor_props *pressure_floor) {
 
+  if (p->h > 0.999f * hydro_props->h_max) {
+    p->is_h_max = 1;
+  } else {
+    p->is_h_max = 0;
+  }
+
   hydro_prepare_gradient_extra_kernel(p);
   hydro_prepare_gradient_extra_viscosity(p);
 }
