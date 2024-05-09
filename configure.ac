@@ -2677,7 +2677,7 @@ case "$with_feedback" in
       gear_mechanical_mode=${with_feedback#*_}
       AC_DEFINE_UNQUOTED([FEEDBACK_GEAR_MECHANICAL_MODE], [$gear_mechanical_mode], [GEAR mechanical feedback mode])
       with_feedback_name="GEAR mechanical $gear_mechanical_mode"
-      $with_feedback="GEAR-mechanical"
+      with_feedback="GEAR-mechanical"
    ;;
    AGORA)
       AC_DEFINE([FEEDBACK_AGORA], [1], [AGORA stellar feedback and evolution model])
