@@ -433,7 +433,7 @@ runner_iact_nonsym_feedback_apply(
 
   /* ... momentum */
   const double E_tot = E_ej + 0.5*m_ej*si->feedback_data.E_total_accumulator;
-  const double epsilon = f_kin_0 * E_tot;
+  const double epsilon = f_kin_0 * E_tot; /* coupled kinetic energy */
   const double beta_1 = sqrt(m_ej/(2.0*epsilon))*si->feedback_data.beta_1_accumulator;
   const double beta_2 = m_ej * si->feedback_data.beta_2_accumulator;
 
@@ -454,8 +454,8 @@ runner_iact_nonsym_feedback_apply(
   double dp_prime[3] = {dp[0] + dm*si->v[0], dp[1] + dm*si->v[1], dp[2] + dm*si->v[2]};
 
   /* ... internal energy */
-  const double f_kin = (psi*psi * xsi*xsi)*beta_2 + 2.0*(psi*xsi)*beta_1;
-  const double U_tot = E_tot - f_kin*epsilon;
+  const double f_therm = (psi*psi * xsi*xsi)*beta_2 + 2.0*(psi*xsi)*beta_1;
+  const double U_tot = E_tot - f_therm*epsilon;
   const double dU = w_j_bar_norm * U_tot;
 
   /* Compute kinetic energy difference before and after SN */
@@ -473,7 +473,7 @@ runner_iact_nonsym_feedback_apply(
 
   message("beta_1 = %e, beta_2 = %e, psi = %e", beta_1, beta_2, psi);
   message("p_epsilon = %e, xsi = %e", p_epsilon, xsi);
-  message("E_ej = %e, E_tot = %e, U_tot = %e, E_kin_tot = %e, p_ej = %e, p_terminal = %e, dU = %e", E_ej, E_tot, U_tot, epsilon, p_ej, p_terminal, dU);
+  message("E_ej = %e, E_tot = %e, U_tot = %e, E_kin_tot = %e, p_ej = %e, p_terminal = %e, dU = %e, f_therm = %e", E_ej, E_tot, U_tot, epsilon, p_ej, p_terminal, dU, f_therm);
 
 #endif /* FEEDBACK_GEAR_MECHANICAL_MODE == 2 */
 
@@ -492,7 +492,6 @@ runner_iact_nonsym_feedback_apply(
   /* Synchronize the particle on the timeline */
   timestep_sync_part(pj);
 
-
   /*-------------------------------------------------------------------------*/
   /* Verify conservation things */
   si->feedback_data.delta_m_check += dm;
@@ -502,7 +501,7 @@ runner_iact_nonsym_feedback_apply(
   si->feedback_data.delta_p_check[1] += dp[1];
   si->feedback_data.delta_p_check[2] += dp[2];
 
-  /* message("Conservation check (star %lld): Sum dm_i = %e (m_ej), Sum |dp_i| = %e (p_ej), Sum dp_i = (%e, %e, %e) (0), m_ej = %e, E_ej = %e, p_ej = %e", si->id, si->feedback_data.delta_m_check, si->feedback_data.delta_p_norm_check, si->feedback_data.delta_p_check[0], si->feedback_data.delta_p_check[1], si->feedback_data.delta_p_check[2], m_ej, E_ej, p_ej); */
+  message("Conservation check (star %lld): Sum dm_i = %e (m_ej), Sum |dp_i| = %e (p_ej), Sum dp_i = (%e, %e, %e) (0), m_ej = %e, E_ej = %e, p_ej = %e", si->id, si->feedback_data.delta_m_check, si->feedback_data.delta_p_norm_check, si->feedback_data.delta_p_check[0], si->feedback_data.delta_p_check[1], si->feedback_data.delta_p_check[2], m_ej, E_ej, p_ej);
   
 }
 
