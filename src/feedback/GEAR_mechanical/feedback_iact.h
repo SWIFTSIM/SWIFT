@@ -51,7 +51,36 @@ runner_iact_nonsym_feedback_density(const float r2, const float dx[3],
                                     const struct xpart *xpj,
                                     const struct cosmology *cosmo,
                                     const struct feedback_props *fb_props,
-                                    const integertime_t ti_current) {}
+                                    const integertime_t ti_current) {
+
+  /* Compute the feedback w_count here. wcount_feedback != star wcount to take
+     into account that there is a maximal feedback radius */
+
+  const float r_max_2 = fb_props->r_max * fb_props->r_max;
+
+  /* If the particle is farther than the maximal radius, it does not receive
+     feedback */
+  if (r2 > r_max_2) {
+    return;
+  }
+
+  /* Now compute the number of neighbour eligible to feedback */
+  float wi, wi_dx;
+
+  /* Get r and 1/r. */
+  const float r = sqrtf(r2);
+
+  /* Compute the kernel function */
+  const float hi_inv = 1.0f / hi;
+  const float ui = r * hi_inv;
+  kernel_deval(ui, &wi, &wi_dx);
+
+  /* Compute contribution to the number of neighbours */
+  si->density.wcount += wi;
+  si->density.wcount_dh -= (hydro_dimension * wi + ui * wi_dx);
+
+  si->feedback_data.density_wcount += wi;
+}
 
 /**
  * @brief Prepare the feedback by computing the required quantities (loop 1). 
@@ -73,7 +102,16 @@ runner_iact_nonsym_feedback_prep1(const float r2, const float dx[3],
                                   struct spart *si, struct part *pj,
                                   const struct xpart *xpj,
                                   const struct cosmology *cosmo,
+				  const struct feedback_props *fb_props,
                                   const integertime_t ti_current) {
+
+  const float r_max_2 = fb_props->r_max * fb_props->r_max;
+
+  /* If the particle is farther than the maximal radius, it does not receive
+     feedback */
+  if (r2 > r_max_2) {
+    return;
+  }
 
   /* Accumulate the sum in the numerator and denominator of f_plus and f_minus */
   double dx_ij_plus[3];
@@ -127,7 +165,16 @@ runner_iact_nonsym_feedback_prep2(const float r2, const float dx[3],
                                   struct spart *si, const struct part *pj,
                                   const struct xpart *xpj,
                                   const struct cosmology *cosmo,
+				  const struct feedback_props *fb_props,
                                   const integertime_t ti_current) {
+
+  const float r_max_2 = fb_props->r_max * fb_props->r_max;
+
+  /* If the particle is farther than the maximal radius, it does not receive
+     feedback */
+  if (r2 > r_max_2) {
+    return;
+  }
 
   /* Now we can compute f_plus and f_minus for the star */
   double f_plus_i[3], f_minus_i[3], w_j[3];
@@ -160,7 +207,17 @@ runner_iact_nonsym_feedback_prep3(const float r2, const float dx[3],
                                   struct spart *si, const struct part *pj,
                                   const struct xpart *xpj,
                                   const struct cosmology *cosmo,
+				  const struct feedback_props *fb_props,
                                   const integertime_t ti_current) {
+
+  const float r_max_2 = fb_props->r_max * fb_props->r_max;
+
+  /* If the particle is farther than the maximal radius, it does not receive
+     feedback */
+  if (r2 > r_max_2) {
+    return;
+  }
+
   /* Compute w_j_bar. */
   double w_j_bar[3];
   feedback_compute_vector_weight_normalized(r2, dx, hi, hj, si, pj, w_j_bar) ;
@@ -218,7 +275,16 @@ runner_iact_nonsym_feedback_prep4(const float r2, const float dx[3],
                                   struct spart *si, const struct part *pj,
                                   const struct xpart *xpj,
                                   const struct cosmology *cosmo,
+				  const struct feedback_props *fb_props,
                                   const integertime_t ti_current) {
+
+  const float r_max_2 = fb_props->r_max * fb_props->r_max;
+
+  /* If the particle is farther than the maximal radius, it does not receive
+     feedback */
+  if (r2 > r_max_2) {
+    return;
+  }
   
 }
 #endif /*  FEEDBACK_GEAR_MECHANICAL_MODE == 2 */
@@ -246,6 +312,15 @@ runner_iact_nonsym_feedback_apply(
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const struct feedback_props *fb_props, const struct phys_const* phys_const,
     const struct unit_system* us, const integertime_t ti_current) {
+
+  const float r_max_2 = fb_props->r_max * fb_props->r_max;
+
+  /* If the particle is farther than the maximal radius, it does not receive
+     feedback */
+  if (r2 > r_max_2) {
+    warning("Particle %lld has a distance (%e) bigger than r_max = %e. It will not receive the feedback!", pj->id, sqrt(r2), fb_props->r_max);
+    return;
+  }
 
   const double E_ej = si->feedback_data.energy_ejected;
 

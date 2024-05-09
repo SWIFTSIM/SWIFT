@@ -78,26 +78,27 @@ void feedback_update_part(struct part* p, struct xpart* xp,
   /* Compute correction therm to account for multiple feedback events. This
      terms allows to recover energy conservation. If there is only one
      feedback that affected p and xp, f_corr = 1. */
-  /* if (xp->feedback_data.number_SN > 1) { */
-  /*   const double p_old[3] = {old_mass*xp->v_full[0], old_mass*xp->v_full[1], old_mass*xp->v_full[2]}; */
-  /*   const double p_old_norm_2 =  p_old[0]*p_old[0] + p_old[1]*p_old[1] + p_old[2]*p_old[2]; */
-  /*   const double p_tilde_norm_2 = p_old_norm_2*dm/old_mass + 2*(old_mass + dm)*xp->feedback_data.delta_E_kin; */
+  if (e->feedback_props->enable_multiple_SN_momentum_correction_factor
+      && xp->feedback_data.number_SN > 1) {
+    const double p_old[3] = {old_mass*xp->v_full[0], old_mass*xp->v_full[1], old_mass*xp->v_full[2]};
+    const double p_old_norm_2 =  p_old[0]*p_old[0] + p_old[1]*p_old[1] + p_old[2]*p_old[2];
+    const double p_tilde_norm_2 = p_old_norm_2*dm/old_mass + 2*(old_mass + dm)*xp->feedback_data.delta_E_kin;
 
-  /*   const double dp[3] = {xp->feedback_data.delta_p[0], xp->feedback_data.delta_p[1], xp->feedback_data.delta_p[2]}; */
-  /*   const double dp_norm_2 = dp[0]*dp[0] + dp[1]*dp[1] + dp[2]*dp[2]; */
-  /*   const double p_old_times_dp = p_old[0]*dp[0] + p_old[1]*dp[1] + p_old[2]*dp[2]; */
+    const double dp[3] = {xp->feedback_data.delta_p[0], xp->feedback_data.delta_p[1], xp->feedback_data.delta_p[2]};
+    const double dp_norm_2 = dp[0]*dp[0] + dp[1]*dp[1] + dp[2]*dp[2];
+    const double p_old_times_dp = p_old[0]*dp[0] + p_old[1]*dp[1] + p_old[2]*dp[2];
 
-  /*   /\* Finally compute the corrector factor *\/ */
-  /*   const double sqrt_argument = fabs(p_old_times_dp*p_old_times_dp - p_tilde_norm_2*dp_norm_2); */
-  /*   const double f_corr = (- p_old_times_dp + sqrt(sqrt_argument))/p_tilde_norm_2; */
+    /* Finally compute the corrector factor */
+    const double sqrt_argument = fabs(p_old_times_dp*p_old_times_dp - p_tilde_norm_2*dp_norm_2);
+    const double f_corr = (- p_old_times_dp + sqrt(sqrt_argument))/p_tilde_norm_2;
 
-  /*   message("f_corr = %e", f_corr); */
+    message("f_corr = %e", f_corr);
 
-  /*   /\* Update the xpart accumulated dp *\/ */
-  /*   xp->feedback_data.delta_p[0] *= f_corr; */
-  /*   xp->feedback_data.delta_p[1] *= f_corr; */
-  /*   xp->feedback_data.delta_p[2] *= f_corr; */
-  /* } */
+    /* Update the xpart accumulated dp */
+    xp->feedback_data.delta_p[0] *= f_corr;
+    xp->feedback_data.delta_p[1] *= f_corr;
+    xp->feedback_data.delta_p[2] *= f_corr;
+  }
 
   /* Update the velocities */
   for (int i = 0; i < 3; i++) {
@@ -300,6 +301,7 @@ void feedback_init_spart(struct spart* sp) {
   sp->feedback_data.beta_2_accumulator = 0;
   sp->feedback_data.sum_gas_density = 0;
   sp->feedback_data.sum_gas_metallicity = 0;
+  sp->feedback_data.density_wcount = 0;
 
   sp->feedback_data.delta_m_check = 0.0;
   sp->feedback_data.delta_p_norm_check = 0.0;
@@ -359,6 +361,7 @@ void feedback_reset_feedback(struct spart* sp,
   sp->feedback_data.beta_2_accumulator = 0;
   sp->feedback_data.sum_gas_density = 0;
   sp->feedback_data.sum_gas_metallicity = 0;
+  sp->feedback_data.density_wcount = 0;
 
   sp->feedback_data.delta_m_check = 0.0;
   sp->feedback_data.delta_p_norm_check = 0.0;
@@ -534,11 +537,11 @@ double feedback_compute_scalar_weight(const float r2, const float *dx,
 			       (dx_ij_plus[2] + dx_ij_minus[2])};
 
 
-  /* The star wcount has been computed in the star density loop. It need to be
+  /* The star wcount has been computed in the feedback density loop. It need to be
    * multiplied by 1/h^d.
    * The gas wcount cannot be retrived from here. So we approximate it using
    * rho/mass. */
-  double n_bar_i = si->density.wcount *  pow_dimension(1.0/hi);
+  double n_bar_i = si->feedback_data.density_wcount *  pow_dimension(1.0/hi);
   double n_bar_j = pj->rho/pj->mass;
   double n_bar_i_2_inv = 1.0/(n_bar_i*n_bar_i);
   double n_bar_j_2_inv = 1.0/(n_bar_j*n_bar_j);
@@ -680,8 +683,11 @@ double feedback_get_SN_terminal_momentum(const struct spart* restrict sp,
   /* Get velocity factor. Currently, this is = 1. See PAPER 2024. */
   const double velocity_factor = 1;
 
+  /* Compute the number of neighbours. Its need to multiply wcount by 1/h^d */
+  const double n_neighbours = sp->feedback_data.density_wcount * pow_dimension(1.0/sp->h);
+
   /* Get metallicity factor */
-  const double Z_mean = sp->feedback_data.sum_gas_metallicity/sp->density.wcount;
+  const double Z_mean = sp->feedback_data.sum_gas_metallicity/(n_neighbours);
   const double Z_sun = 0.0134; /* Find the exact value somewhere */
   double metallicity_factor = 0.0;
 
@@ -695,7 +701,7 @@ double feedback_get_SN_terminal_momentum(const struct spart* restrict sp,
 
   /* Get number density factor in cgs */
   const double m_p_cgs = phys_const->const_proton_mass * units_cgs_conversion_factor(us, UNIT_CONV_MASS);
-  double density_mean = sp->feedback_data.sum_gas_density / sp->density.wcount;
+  double density_mean = sp->feedback_data.sum_gas_density / n_neighbours;
   density_mean = density_mean*units_cgs_conversion_factor(us, UNIT_CONV_DENSITY)/m_p_cgs;
 
   double density_factor = 0.0;

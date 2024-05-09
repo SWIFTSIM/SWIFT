@@ -40,6 +40,14 @@ struct feedback_props {
 
   /* Metallicity [Fe/H] transition for the first stars */
   float imf_transition_metallicity;
+
+  /* Comoving maximal radius for feedback injection */
+  float r_max;
+
+  /* Enable the correction factor to momentum if multiple SN affect a gas
+     particle during one timestep. This factor ensures exact energy
+     conservation in the case of multiple SN. */
+  int enable_multiple_SN_momentum_correction_factor;
 };
 
 /**
@@ -142,6 +150,19 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
                             fp->stellar_model_first_stars.yields_table);
     stellar_evolution_props_init(&fp->stellar_model_first_stars, phys_const, us,
                                  params, cosmo);
+
+    /* Get the maximal feedback radius */
+    const float default_r_max = 2.0e3*phys_const->const_parsec;
+
+    fp->r_max = parser_get_opt_param_float(
+      params, "GEARFeedback:maximal_radius", default_r_max);
+
+    /* Do we want to correct the total momentum of the gas particles after
+       multiple SN ? */
+    fp->enable_multiple_SN_momentum_correction_factor = parser_get_opt_param_int(
+      params, "GEARFeedback:enable_multiple_SN_momentum_correction_factor", 0);
+
+    message("r_max = %e, enable_f_cor = %i", fp->r_max, fp->enable_multiple_SN_momentum_correction_factor);
   }
 
   /* Print the stellar properties */

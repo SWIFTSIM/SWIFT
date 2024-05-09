@@ -94,6 +94,9 @@ struct feedback_spart_data {
   double sum_gas_density;
   double sum_gas_metallicity;
 
+  /* Number of neighbours contributing to feedback */
+  double density_wcount;
+
   /* Checks that the SN weighting is working (put debugging checks) */
   double delta_m_check;
   double delta_p_norm_check;
