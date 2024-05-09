@@ -246,10 +246,11 @@ __attribute__((always_inline)) INLINE static void rt_end_gradient(
  * @param p particle to work on
  * @param dt the current time step of the particle
  * @param cosmo #cosmology data structure.
+ * @param rt_props RT properties struct
  */
 __attribute__((always_inline)) INLINE static void rt_finalise_transport(
     struct part* restrict p, const double dt,
-    const struct cosmology* restrict cosmo) {}
+    const struct cosmology* restrict cosmo, struct rt_props* rt_props) {}
 
 /**
  * @brief Do the thermochemistry on a particle.

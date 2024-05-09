@@ -108,7 +108,7 @@ def plot_result(filename):
     imf = spt.get_imf(scheme, data)
 
     # use units that are most likely not to produce infinities and NaNs
-    masses_MSun = data.gas.masses.to("M_Sun")
+    masses_MSun = data.gas.masses.to("Msun")
 
     data.gas.mXHI = imf.HI * masses_MSun
     data.gas.mXHII = imf.HII * masses_MSun

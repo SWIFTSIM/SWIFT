@@ -57,8 +57,7 @@ int rt_frateeq(realtype t, N_Vector y, N_Vector ydot, void *user_data) {
    * non-eq species. If they are included in
    * the network then their abundance is in
    * the vector y. */
-  int icount =
-      0; /* We use this to keep track of where we are in the vector y */
+  int icount = 0; /* We use this to keep track of where we are in the vector y */
   int aindex[3];
   for (int i = 0; i < 3; i++) {
     aindex[i] = data->aindex[i];
@@ -97,14 +96,26 @@ int rt_frateeq(realtype t, N_Vector y, N_Vector ydot, void *user_data) {
    * vector y is the photon density.
    * */
   double ngamma_cgs[3];
+  double fgamma_cgs[3][3];  
   if (data->fixphotondensity == 0) {
     for (int i = 0; i < 3; i++) {
       ngamma_cgs[i] = (double)NV_Ith_S(y, icount);
       icount += 1;
     }
+    for (int i = 0; i < 3; i++) {
+      fgamma_cgs[i][0] = (double)NV_Ith_S(y, icount);
+      icount += 1;
+      fgamma_cgs[i][1] = (double)NV_Ith_S(y, icount);
+      icount += 1;
+      fgamma_cgs[i][2] = (double)NV_Ith_S(y, icount);
+      icount += 1;    
+    } 
   } else {
     for (int i = 0; i < 3; i++) {
       ngamma_cgs[i] = data->ngamma_cgs[i];
+      fgamma_cgs[i][0] = 0.0;
+      fgamma_cgs[i][1] = 0.0;
+      fgamma_cgs[i][2] = 0.0;
     }
   }
 
@@ -167,10 +178,23 @@ int rt_frateeq(realtype t, N_Vector y, N_Vector ydot, void *user_data) {
   }
 
   // Compute creation and destruction rates
-  double absorption_rate[3], chemistry_rates[rt_species_count];
-
-  rt_compute_radiation_rate(data->n_H_cgs, data->cred_cgs, data->abundances,
+  double injection_rate[3], absorption_rate[3], chemistry_rates[rt_species_count];
+  for (int g = 0; g < 3; g++) {
+    injection_rate[g] = data->ngamma_inject_rate_cgs[g];
+  }
+  rt_compute_radiation_absorption_rate(data->n_H_cgs, data->cred_cgs, data->abundances,
                             ngamma_cgs, sigmalist, aindex, absorption_rate);
+
+
+
+  double fgamma_injection_rate[3][3], fgamma_absorption_rate[3][3];
+  for (int g = 0; g < 3; g++) {
+    fgamma_injection_rate[g][0] = data->fgamma_inject_rate_cgs[g][0];
+    fgamma_injection_rate[g][1] = data->fgamma_inject_rate_cgs[g][1];
+    fgamma_injection_rate[g][2] = data->fgamma_inject_rate_cgs[g][2];
+  }  
+  rt_compute_radiation_flux_absorption_rate(data->n_H_cgs, data->cred_cgs, data->abundances,
+                            fgamma_cgs, sigmalist, aindex, fgamma_absorption_rate);
 
   rt_compute_chemistry_rate(data->n_H_cgs, data->cred_cgs, data->abundances,
                             ngamma_cgs, alphalist, betalist, sigmalist, aindex,
@@ -197,9 +221,22 @@ int rt_frateeq(realtype t, N_Vector y, N_Vector ydot, void *user_data) {
   /* Now set the output ydot vector for the radiation density */
   if (data->fixphotondensity == 0) {
     for (int i = 0; i < 3; i++) {
-      NV_Ith_S(ydot, jcount) = (realtype)(-absorption_rate[i]);
+      NV_Ith_S(ydot, jcount) = (realtype)(injection_rate[i]-absorption_rate[i]);
       jcount += 1;
     }
+    for (int i = 0; i < 3; i++) {
+      NV_Ith_S(ydot, jcount) = (realtype)(fgamma_injection_rate[i][0]-fgamma_absorption_rate[i][0]);
+      jcount += 1;     
+      NV_Ith_S(ydot, jcount) = (realtype)(fgamma_injection_rate[i][1]-fgamma_absorption_rate[i][1]);
+      jcount += 1; 
+      NV_Ith_S(ydot, jcount) = (realtype)(fgamma_injection_rate[i][2]-fgamma_absorption_rate[i][2]);
+      jcount += 1; 
+    }
   }
+
+  if (jcount != data->network_size) {
+    error("Error: inside: jcount does not agree with network_size %i, %i", jcount,data->network_size);
+  }
+
   return (0);
 }

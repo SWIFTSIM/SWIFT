@@ -55,8 +55,8 @@ You need to provide the following runtime parameters in the yaml file:
         stellar_spectrum_type: 0                            # Which radiation spectrum to use. 0: constant from 0 until some max frequency set by stellar_spectrum_const_max_frequency_Hz. 1: blackbody spectrum.
         stellar_spectrum_const_max_frequency_Hz: 1.e17      # (Conditional) if stellar_spectrum_type=0, use this maximal frequency for the constant spectrum. 
         stars_max_timestep: -1.                             # (Optional) restrict the maximal timestep of stars to this value (in internal units). Set to negative to turn off.
-        reinject:               1                           # (Optional) gather energy around injection radius and re-inject the energy
-
+        reinject:               0                           # (Optional) gather energy around injection radius and re-inject the energy
+        smoothedRT:             0                           # (Optional) put the source of radiation in thermo-chemistry equations.
 
 The ``photon_groups_Hz`` need to be ``N - 1`` frequency edges (floats) to separate 
 the spectrum into ``N`` groups. The outer limits of zero and infinity are 
@@ -93,6 +93,13 @@ flux within the injection radius and re-inject radiation. Combined with larger
 smoothing length, this can increase the isotropy of the radiation and the central 
 radiation distribution. 
 
+If ``smoothedRT`` is set to 1, we use the ``Smoothed RT`` scheme (see Section 4.4 
+in doi:10.1093/mnras/stt1722). Instead of adding radiation energy and then decaying 
+through thermo-chemistry, we add source terms for radiation in the thermo-chemistry 
+equations. ``Smoothed RT`` should be faster because radiation is not artifically 
+boosted and decayed within the time-step. ``Smoothed RT`` should also be more accurate
+since it models the physical process more accurately -- radiation is continously 
+injected and interacts with matter. 
 
 
 Thermo-chemistry parameters for RT

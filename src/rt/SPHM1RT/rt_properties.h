@@ -99,6 +99,9 @@ struct rt_props {
   /* switch for fixing the photo-density */
   int fixphotondensity;
 
+  /* smoothed Radiative transfer switch */
+  int smoothedRT;
+
   /* the photo-density values if the photo density is fixed  */
   float Fgamma_fixed_cgs[3];
 
@@ -342,6 +345,12 @@ __attribute__((always_inline)) INLINE static void rt_props_init(
     rtp->ionizing_photon_energy_cgs[2] = 1.05154e-10;
   }
 
+  for (int i = 0; i < 3; i++) {
+    if (rtp->ionizing_photon_energy_cgs[i]==0.0) {
+      error("Unphysical: rtp->ionizing_photon_energy_cgs[%d]==0.0 ",i);
+    }
+  }
+
   /* options */
   /* gather energy around injection radius and re-inject the energy */
   rtp->reinject = parser_get_opt_param_int(params, "SPHM1RT:reinject", 0);
@@ -358,6 +367,13 @@ __attribute__((always_inline)) INLINE static void rt_props_init(
    * density. */
   rtp->fixphotondensity =
       parser_get_opt_param_int(params, "SPHM1RT:fixphotondensity", 0);
+
+  /*! Check if we use smoothed radiative transfer.  */
+  /*! In short, it is including the source term in thermo-chemistry.  */
+  /*! see doi:10.1093/mnras/stt1722 */
+  rtp->smoothedRT =
+      parser_get_opt_param_int(params, "SPHM1RT:smoothedRT", 0);  
+
   errorint = parser_get_opt_param_float_array(
       params, "SPHM1RT:Fgamma_fixed_cgs", 3, rtp->Fgamma_fixed_cgs);
   if (errorint == 0) {
@@ -392,6 +408,10 @@ __attribute__((always_inline)) INLINE static void rt_props_init(
 
   if ((rtp->useparams == 1) && (rtp->coolingon == 1)) {
     error("Unphysical: SPHM1RT:useparams=1 and SPHM1RT:coolingon=1");
+  }
+
+  if ((rtp->smoothedRT == 1) && (rtp->skip_thermochemistry == 1)) {
+    error("Cannot work together: SPHM1RT:smoothedRT=1 and SPHM1RT:skip_thermochemistry=1");
   }
 
   /* After initialisation, print params to screen */

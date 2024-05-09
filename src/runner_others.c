@@ -1144,7 +1144,7 @@ void runner_do_rt_tchem(struct runner *r, struct cell *c, int timer) {
         error("Got part with negative time-step: %lld, %.6g", p->id, dt);
 #endif
 
-      rt_finalise_transport(p, dt, cosmo);
+      rt_finalise_transport(p, dt, cosmo, rt_props);
 
       /* And finally do thermochemistry */
       rt_tchem(p, xp, rt_props, cosmo, hydro_props, phys_const, us, dt);
