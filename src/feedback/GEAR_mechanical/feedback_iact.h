@@ -454,8 +454,9 @@ runner_iact_nonsym_feedback_apply(
   double dp_prime[3] = {dp[0] + dm*si->v[0], dp[1] + dm*si->v[1], dp[2] + dm*si->v[2]};
 
   /* ... internal energy */
-  const double f_therm = (psi*psi * xsi*xsi)*beta_2 + 2.0*(psi*xsi)*beta_1;
-  const double U_tot = E_tot - f_therm*epsilon;
+  const double factor = (psi*psi * xsi*xsi)*beta_2 + 2.0*(psi*xsi)*beta_1;
+  const double f_therm = 1.0 - factor*epsilon/E_tot;
+  const double U_tot = f_therm*E_tot;
   const double dU = w_j_bar_norm * U_tot;
 
   /* Compute kinetic energy difference before and after SN */
