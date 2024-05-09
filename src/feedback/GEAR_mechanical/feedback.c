@@ -115,7 +115,7 @@ void feedback_update_part(struct part* p, struct xpart* xp,
   xp->feedback_data.delta_u = 0.;
   xp->feedback_data.delta_E_kin = 0.;
   xp->feedback_data.delta_mass = 0;
-  /* xp->feedback_data.number_SN = 0; */
+  xp->feedback_data.number_SN = 0;
 }
 
 /**
