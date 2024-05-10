@@ -356,21 +356,6 @@ void zoom_engine_make_self_gravity_tasks(struct space *s, struct engine *e) {
               clocks_from_ticks(getticks() - tic), clocks_getunit());
   }
 
-  /* tic = getticks(); */
-
-  /* /\* Zoom -> Neighbour (A neighbour is a Buffer cell if we have a buffer
-   * region, */
-  /*  * otherwise it's a Background cell). *\/ */
-  /* threadpool_map(&e->threadpool, */
-  /*                engine_make_self_gravity_tasks_mapper_zoom_neighbour, NULL,
-   */
-  /*                s->zoom_props->nr_neighbour_cells, 1, */
-  /*                threadpool_auto_chunk_size, e); */
-
-  /* if (e->verbose) */
-  /*   message("Making zoom->buffer gravity tasks took %.3f %s.", */
-  /*           clocks_from_ticks(getticks() - tic), clocks_getunit()); */
-
   if (s->zoom_props->with_buffer_cells) {
 
     tic = getticks();
