@@ -414,6 +414,6 @@ void zoom_engine_make_void_gravity_tasks(struct space *s, struct engine *e) {
   }
 
   if (e->verbose)
-    message("Making void cell tree and multipole construction took %.3f %s.",
+    message("Making void cell tasks took %.3f %s.",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
 }
