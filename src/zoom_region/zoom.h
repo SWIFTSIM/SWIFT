@@ -46,7 +46,7 @@ int zoom_need_regrid(const struct space *s, const int new_cdim[3]);
 void zoom_prepare_cells(struct space *s, const int zoom_cdim[3], int verbose);
 void zoom_allocate_cells(struct space *s);
 
-/* Void cell tree construction function. */
+/* Void cell tree construction functions. */
 void zoom_void_space_split(struct space *s, int verbose);
 
 /* Task creation functions. */

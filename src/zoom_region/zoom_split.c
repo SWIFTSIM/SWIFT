@@ -33,12 +33,16 @@
  * @param s The #space in which the cell lives.
  * @param c The #cell to split recursively.
  * @param tpid The thread id.
+ * @param rebuild Are we rebuilding the tree?
  */
 void zoom_void_split_recursive(struct space *s, struct cell *c,
-                               const short int tpid) {
+                               const short int tpid, const int rebuild) {
 
   const int depth = c->depth;
   int maxdepth = 0;
+
+  /* Flag that the void cell is split. */
+  c->split = 1;
 
   /* Set the top level void cell tpid. Doing it here ensures top level void
    * cells have the same tpid as their progeny. */
@@ -72,7 +76,9 @@ void zoom_void_split_recursive(struct space *s, struct cell *c,
 
   /* Construct the progeny ready to populate with particles and multipoles (if
    * doing gravity). */
-  space_construct_progeny(s, c, tpid);
+  if (rebuild) {
+    space_construct_progeny(s, c, tpid);
+  }
 
   for (int k = 0; k < 8; k++) {
 
@@ -112,7 +118,7 @@ void zoom_void_split_recursive(struct space *s, struct cell *c,
     } else {
 
       /* Recurse */
-      zoom_void_split_recursive(s, cp, tpid);
+      zoom_void_split_recursive(s, cp, tpid, rebuild);
 
       /* Increase the depth */
       maxdepth = max(maxdepth, cp->maxdepth);
@@ -158,7 +164,7 @@ void zoom_void_space_split(struct space *s, int verbose) {
   /* Loop over the void cells */
   for (int ind = 0; ind < nr_void_cells; ind++) {
     struct cell *c = &cells_top[void_cells_top[ind]];
-    zoom_void_split_recursive(s, c, /*tpid*/ 0);
+    zoom_void_split_recursive(s, c, /*tpid*/ 0, /*rebuild*/ 1);
   }
 
   if (verbose)

@@ -354,11 +354,11 @@ void zoom_find_neighbouring_cells(struct space *s, const int verbose) {
                 neighbour_cells_top[zoom_props->nr_neighbour_cells++] = cjd;
               }
             } /* neighbour k loop */
-          }   /* neighbour j loop */
-        }     /* neighbour i loop */
-      }       /* k loop */
-    }         /* j loop */
-  }           /* i loop */
+          } /* neighbour j loop */
+        } /* neighbour i loop */
+      } /* k loop */
+    } /* j loop */
+  } /* i loop */
 
   if (verbose)
     message("%i cells neighbour the zoom region",
@@ -819,11 +819,11 @@ void zoom_link_void_leaves(struct space *s, struct cell *c) {
   }
 #endif
 
-  /* We need to ensure this bottom level isn't treated like a
-   * normal split cell since it's linked into top level "progeny". */
-  c->split = 0;
+  /* /\* We need to ensure this bottom level isn't treated like a */
+  /*  * normal split cell since it's linked into top level "progeny". *\/ */
+  /* c->split = 0; */
 
-  /* Loop over the 8 progeny cells which are now the zoom cells. */
+  /* loop over the 8 progeny cells which are now the zoom cells. */
   for (int k = 0; k < 8; k++) {
 
     /* Establish the location of the fake progeny cell. */
