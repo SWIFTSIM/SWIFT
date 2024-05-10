@@ -76,13 +76,6 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
     error("c->field tensor not initialised");
 #endif
 
-  /* If running a zoom region and we're in a void cell we need to stop
-   * before hitting the zoom cells (these are handled by their own grav down)
-   * task. */
-  if (e->s->with_zoom_region && c->type == cell_subtype_void &&
-      c->progeny[0]->type == cell_type_zoom)
-    return;
-
   if (c->split) {
 
     /* Node case */
@@ -112,6 +105,12 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
           /* Add it to this level's tensor */
           gravity_field_tensors_add(&cp->grav.multipole->pot, &shifted_tensor);
         }
+
+        /* If running a zoom region and we're in a void cell we need to stop
+         * before hitting the zoom cells (these are handled by their own grav
+         * down) task. */
+        if (c->subtype == cell_subtype_void && cp->type == cell_type_zoom)
+          return;
 
         /* Recurse */
         runner_do_grav_down(r, cp, 0);
