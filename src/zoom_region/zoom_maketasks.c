@@ -370,3 +370,38 @@ void zoom_engine_make_self_gravity_tasks(struct space *s, struct engine *e) {
               clocks_from_ticks(getticks() - tic), clocks_getunit());
   }
 }
+
+void zoom_engine_make_void_gravity_tasks(struct space *s, struct engine *e) {
+
+  ticks tic = getticks();
+
+  /* TODO: long range gravity can probably be done here instead of at the
+   * zoom level */
+
+  /* Loop over the void cells creating the tasks we need. */
+  for (int ind = 0; ind < s->zoom_props->nr_void_cells; ind++) {
+    struct cell *c = &s->cells_top[s->zoom_props->void_cells_top[ind]];
+
+    /* Initialisation of the multipoles */
+    c->grav.init = scheduler_addtask(s, task_type_init_grav, task_subtype_none,
+                                     0, 0, c, NULL);
+
+    /* Implicit tasks. */
+    c->grav.init_out = scheduler_addtask(s, task_type_init_grav_out,
+                                         task_subtype_none, 0, 1, c, NULL);
+    c->grav.down_in = scheduler_addtask(s, task_type_grav_down_in,
+                                        task_subtype_none, 0, 1, c, NULL);
+
+    /* Gravity recursive down-pass */
+    c->grav.down = scheduler_addtask(s, task_type_grav_down, task_subtype_none,
+                                     0, 0, c, NULL);
+
+    /* Add the implicit unlocks. */
+    scheduler_addunlock(s, c->grav.init, c->grav.init_out);
+    scheduler_addunlock(s, c->grav.down_in, c->grav.down);
+  }
+
+  if (e->verbose)
+    message("Making void cell tree and multipole construction took %.3f %s.",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
+}
