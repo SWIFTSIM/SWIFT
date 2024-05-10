@@ -36,7 +36,7 @@
  * @param rebuild Are we rebuilding the tree?
  */
 void zoom_void_split_recursive(struct space *s, struct cell *c,
-                               const short int tpid, const int rebuild) {
+                               const short int tpid) {
 
   const int depth = c->depth;
   int maxdepth = 0;
@@ -76,9 +76,7 @@ void zoom_void_split_recursive(struct space *s, struct cell *c,
 
   /* Construct the progeny ready to populate with particles and multipoles (if
    * doing gravity). */
-  if (rebuild) {
-    space_construct_progeny(s, c, tpid);
-  }
+  space_construct_progeny(s, c, tpid);
 
   for (int k = 0; k < 8; k++) {
 
@@ -118,7 +116,7 @@ void zoom_void_split_recursive(struct space *s, struct cell *c,
     } else {
 
       /* Recurse */
-      zoom_void_split_recursive(s, cp, tpid, rebuild);
+      zoom_void_split_recursive(s, cp, tpid);
 
       /* Increase the depth */
       maxdepth = max(maxdepth, cp->maxdepth);
@@ -164,7 +162,7 @@ void zoom_void_space_split(struct space *s, int verbose) {
   /* Loop over the void cells */
   for (int ind = 0; ind < nr_void_cells; ind++) {
     struct cell *c = &cells_top[void_cells_top[ind]];
-    zoom_void_split_recursive(s, c, /*tpid*/ 0, /*rebuild*/ 1);
+    zoom_void_split_recursive(s, c, /*tpid*/ 0);
   }
 
   if (verbose)
