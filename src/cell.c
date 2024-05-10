@@ -1201,7 +1201,10 @@ void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data) {
   for (int ind = 0; ind < num_elements; ind++) {
     struct cell *c = &((struct cell *)map_data)[ind];
 
-    /* All top-level cells get an MPI tag. */
+    /* In zoom land we need to skip void cells top == super always. */
+    if (c->subtype == cell_subtype_void) continue;
+
+      /* All top-level cells get an MPI tag. */
 #ifdef WITH_MPI
     cell_ensure_tagged(c);
 #endif
