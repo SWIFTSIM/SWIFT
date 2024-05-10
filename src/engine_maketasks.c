@@ -4873,6 +4873,12 @@ void engine_maketasks(struct engine *e) {
   threadpool_map(&e->threadpool, engine_make_hierarchical_tasks_mapper, cells,
                  nr_cells, sizeof(struct cell), threadpool_auto_chunk_size, e);
 
+  /* In zoom land we need to make void cell specific tasks now that the zoom
+   * grav down tasks have been made. */
+  if (s->with_zoom_region) {
+    zoom_engine_make_void_gravity_tasks(s, e);
+  }
+
   tic2 = getticks();
 
   /* Run through the tasks and make force tasks for each density task.

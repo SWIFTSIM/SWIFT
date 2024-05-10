@@ -371,7 +371,19 @@ void zoom_engine_make_self_gravity_tasks(struct space *s, struct engine *e) {
   }
 }
 
+/**
+ * @brief Constructs the top level gravity tasks needed for void cells.
+ *
+ * These include the initialisation of the multipoles, the implicit tasks
+ * and the down-pass of the gravity interactions.
+ *
+ * @param map_data Offset of first two indices disguised as a pointer.
+ * @param num_elements Number of cells to traverse.
+ * @param extra_data The #engine.
+ */
 void zoom_engine_make_void_gravity_tasks(struct space *s, struct engine *e) {
+
+  struct scheduler *sched = &e->sched;
 
   ticks tic = getticks();
 
@@ -383,18 +395,18 @@ void zoom_engine_make_void_gravity_tasks(struct space *s, struct engine *e) {
     struct cell *c = &s->cells_top[s->zoom_props->void_cells_top[ind]];
 
     /* Initialisation of the multipoles */
-    c->grav.init = scheduler_addtask(s, task_type_init_grav, task_subtype_none,
-                                     0, 0, c, NULL);
+    c->grav.init = scheduler_addtask(sched, task_type_init_grav,
+                                     task_subtype_none, 0, 0, c, NULL);
 
     /* Implicit tasks. */
-    c->grav.init_out = scheduler_addtask(s, task_type_init_grav_out,
+    c->grav.init_out = scheduler_addtask(sched, task_type_init_grav_out,
                                          task_subtype_none, 0, 1, c, NULL);
-    c->grav.down_in = scheduler_addtask(s, task_type_grav_down_in,
+    c->grav.down_in = scheduler_addtask(sched, task_type_grav_down_in,
                                         task_subtype_none, 0, 1, c, NULL);
 
     /* Gravity recursive down-pass */
-    c->grav.down = scheduler_addtask(s, task_type_grav_down, task_subtype_none,
-                                     0, 0, c, NULL);
+    c->grav.down = scheduler_addtask(sched, task_type_grav_down,
+                                     task_subtype_none, 0, 0, c, NULL);
 
     /* Add the implicit unlocks. */
     scheduler_addunlock(s, c->grav.init, c->grav.init_out);
