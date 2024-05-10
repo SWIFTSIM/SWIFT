@@ -79,7 +79,7 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
   /* If running a zoom region and we're in a void cell we need to stop
    * before hitting the zoom cells (these are handled by their own grav down)
    * task. */
-  if (e->s->zoom_region && c->type == cell_subtype_void &&
+  if (e->s->with_zoom_region && c->type == cell_subtype_void &&
       c->progeny[0]->type == cell_type_zoom)
     return;
 
