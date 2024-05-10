@@ -225,94 +225,6 @@ void engine_make_self_gravity_tasks_mapper_zoom_cells(void *map_data,
 
 /**
  * @brief Constructs the top-level tasks for the short-range gravity
- * and long-range gravity interactions between zoom cells
- * and background cells.
- *
- * This mapper only considers interactions between zoom cells and their
- * neighbours (i.e. the cells within the gravity criterion distance
- * above them in hierarchy). When buffer cells are present, interactions
- between
- * zoom cells and buffer cells are considered, otherwise only interactions
- * between zoom cells and background cells are considered.
- *
- * - All top-cells get a self task.
- * - All pairs of differing sized cells within range according to
- *   the multipole acceptance criterion get a pair task.
- *
- * @param map_data Offset of first two indices disguised as a pointer.
- * @param num_elements Number of cells to traverse.
- * @param extra_data The #engine.
-
- */
-void engine_make_self_gravity_tasks_mapper_zoom_neighbour(void *map_data,
-                                                          int num_elements,
-                                                          void *extra_data) {
-
-  /* Useful local information */
-  struct engine *e = (struct engine *)extra_data;
-  struct space *s = e->s;
-  struct scheduler *sched = &e->sched;
-  const int nodeID = e->nodeID;
-
-  /* We always use the mesh if the volume is periodic. */
-  const int use_mesh = s->periodic;
-
-  /* Zoom->Bkg interactions will never cross the box boundary. */
-  const int periodic = 0;
-
-  /* Handle on the cells and proxies */
-  struct cell *cells = s->cells_top;
-
-  /* Get the  neighbour and void cells. */
-  const int *neighbour_cells = s->zoom_props->neighbour_cells_top;
-  const int nr_voids = s->zoom_props->nr_void_cells;
-  const int *void_cells = s->zoom_props->void_cells_top;
-
-  /* Loop through the elements, which are just byte offsets from NULL. */
-  for (int ind = 0; ind < num_elements; ind++) {
-
-    /* Get the cell index. */
-    const int cid = (size_t)(map_data) + ind;
-
-    /* Get the cell */
-    struct cell *ci = &cells[neighbour_cells[cid]];
-
-    /* Skip cells without gravity particles */
-    if (ci->grav.count == 0) continue;
-
-    /* Loop over every neighbouring background cells */
-    for (int k = 0; k < nr_voids; k++) {
-
-      /* Get the cell */
-      int cjd = void_cells[k];
-      struct cell *cj = &cells[cjd];
-
-      /* Avoid empty cells. */
-      if (cj->grav.multipole->m_pole.M_000 == 0.f) continue;
-
-#ifdef SWIFT_DEBUG_CHECKS
-      /* Ensure both cells are not in the same level */
-      if (ci->type == cj->type) {
-        error(
-            "Cell %d and cell %d are the same cell type "
-            "(One should be a neighbour)! "
-            "(ci->type=%d, cj->type=%d)",
-            cid, cjd, ci->type, cj->type);
-      }
-#endif
-
-      /* Do we need a pair interaction for these cells? */
-      if (engine_gravity_need_cell_pair_task(e, ci, cj, periodic, use_mesh)) {
-
-        /* Ok, we need to add a direct pair calculation */
-        engine_make_pair_gravity_task(e, sched, ci, cj, nodeID, cid, cjd);
-      }
-    }
-  }
-}
-
-/**
- * @brief Constructs the top-level tasks for the short-range gravity
  * and long-range gravity interactions between natural level cells
  * and zoom level cells.
  *
@@ -444,18 +356,20 @@ void zoom_engine_make_self_gravity_tasks(struct space *s, struct engine *e) {
               clocks_from_ticks(getticks() - tic), clocks_getunit());
   }
 
-  tic = getticks();
+  /* tic = getticks(); */
 
-  /* Zoom -> Neighbour (A neighbour is a Buffer cell if we have a buffer region,
-   * otherwise it's a Background cell). */
-  threadpool_map(&e->threadpool,
-                 engine_make_self_gravity_tasks_mapper_zoom_neighbour, NULL,
-                 s->zoom_props->nr_neighbour_cells, 1,
-                 threadpool_auto_chunk_size, e);
+  /* /\* Zoom -> Neighbour (A neighbour is a Buffer cell if we have a buffer
+   * region, */
+  /*  * otherwise it's a Background cell). *\/ */
+  /* threadpool_map(&e->threadpool, */
+  /*                engine_make_self_gravity_tasks_mapper_zoom_neighbour, NULL,
+   */
+  /*                s->zoom_props->nr_neighbour_cells, 1, */
+  /*                threadpool_auto_chunk_size, e); */
 
-  if (e->verbose)
-    message("Making zoom->buffer gravity tasks took %.3f %s.",
-            clocks_from_ticks(getticks() - tic), clocks_getunit());
+  /* if (e->verbose) */
+  /*   message("Making zoom->buffer gravity tasks took %.3f %s.", */
+  /*           clocks_from_ticks(getticks() - tic), clocks_getunit()); */
 
   if (s->zoom_props->with_buffer_cells) {
 

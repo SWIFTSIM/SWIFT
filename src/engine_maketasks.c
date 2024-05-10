@@ -2055,9 +2055,10 @@ void engine_gravity_make_task_loop(struct engine *e, int cid, const int cdim[3],
 
         /* Avoid duplicates and empty cells. Completely foreign pairs also get
          * the Nigel treatment (AKA are kicked out of the union/we skip
-         * them). */
-        if (cid >= cjd || cj->grav.count == 0 ||
-            (ci->nodeID != nodeID && cj->nodeID != nodeID))
+         * them). (We always want to make a pair for a void) */
+        if (cj->subtype != cell_subtype_void &&
+            (cid >= cjd || cj->grav.count == 0 ||
+             (ci->nodeID != nodeID && cj->nodeID != nodeID)))
           continue;
 
         /* Do we need a pair interaction for these cells? */
