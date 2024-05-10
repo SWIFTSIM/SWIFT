@@ -198,34 +198,3 @@ void zoom_void_space_split(struct space *s, int verbose) {
 
 #endif
 }
-
-/**
- * @brief Reconstruct the void cell multipoles from the zoom cells up.
- *
- * The void cell multipoles themselves are never updated, nor do void cells
- * contain particles. To ensure the void cell are up to date we instead
- * construct them from the zoom cell leaves which are updated in the tasking.
- *
- * @param s The #space.
- * @param verbose Are we talking?
- */
-void zoom_void_reconstruct_multipoles(struct space *s, const int verbose) {
-
-  const ticks tic = getticks();
-
-  /* Unpack some useful information. */
-  struct cell *cells_top = s->cells_top;
-  int *void_cells_top = s->zoom_props->void_cells_top;
-  int nr_void_cells = s->zoom_props->nr_void_cells;
-
-  /* Loop over the void cells reconstructing the void cell multipoles from the
-   * zoom cells up. */
-  for (int ind = 0; ind < nr_void_cells; ind++) {
-    struct cell *c = &cells_top[void_cells_top[ind]];
-    zoom_void_split_recursive(s, c, /*tpid*/ 0, /*rebuild*/ 0);
-  }
-
-  if (verbose)
-    message("Reconstructing void cell multipoles took %.3f %s.",
-            clocks_from_ticks(getticks() - tic), clocks_getunit());
-}

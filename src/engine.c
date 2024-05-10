@@ -2627,13 +2627,6 @@ int engine_step(struct engine *e) {
       engine_reconstruct_multipoles(e);
     else
       engine_drift_top_multipoles(e);
-
-    /* In zoom land we also need to reconstruct the void multipoles since
-     * they're never explicitly updated outside a rebuild. (Guaranteed to
-     * be a very cheap operation). */
-    if (e->s->with_zoom_region) {
-      zoom_void_reconstruct_multipoles(e->s, e->verbose);
-    }
   }
 
 #ifdef WITH_MPI
@@ -2901,8 +2894,7 @@ void engine_do_reconstruct_multipoles_mapper(void *map_data, int num_elements,
 
   for (int ind = 0; ind < num_elements; ind++) {
     struct cell *c = &cells[ind];
-    if (c != NULL && c->nodeID == e->nodeID &&
-        c->subtype != cell_subtype_void) {
+    if (c != NULL && c->nodeID == e->nodeID) {
 
       /* Construct the multipoles in this cell hierarchy */
       cell_make_multipoles(c, e->ti_current, e->gravity_properties);

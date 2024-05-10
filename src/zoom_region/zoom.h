@@ -48,7 +48,6 @@ void zoom_allocate_cells(struct space *s);
 
 /* Void cell tree construction functions. */
 void zoom_void_space_split(struct space *s, int verbose);
-void zoom_void_reconstruct_multipoles(struct space *s, const int verbose);
 
 /* Task creation functions. */
 void zoom_engine_make_self_gravity_tasks(struct space *s, struct engine *e);
