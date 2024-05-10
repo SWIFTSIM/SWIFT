@@ -409,8 +409,8 @@ void zoom_engine_make_void_gravity_tasks(struct space *s, struct engine *e) {
                                      task_subtype_none, 0, 0, c, NULL);
 
     /* Add the implicit unlocks. */
-    scheduler_addunlock(s, c->grav.init, c->grav.init_out);
-    scheduler_addunlock(s, c->grav.down_in, c->grav.down);
+    scheduler_addunlock(sched, c->grav.init, c->grav.init_out);
+    scheduler_addunlock(sched, c->grav.down_in, c->grav.down);
   }
 
   if (e->verbose)
