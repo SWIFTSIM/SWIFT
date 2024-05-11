@@ -432,8 +432,17 @@ static void zoom_make_hierarchical_void_gravity_tasks(struct engine *e,
 
   /* Recurse but not into the zoom cell tree. */
   for (int k = 0; k < 8; k++) {
-    if (c->progeny[k]->subtype == cell_subtype_void)
+    if (c->progeny[k]->subtype == cell_subtype_void) {
       zoom_make_hierarchical_void_gravity_tasks(e, c->progeny[k]);
+    }
+
+    /* Otherwise we've reached the zoom level and need to make the void
+     * grav down unlock the top level zoom grav down.  */
+    else if (c->progeny[k]->type == cell_type_zoom) {
+      if (is_self_gravity) {
+        scheduler_addunlock(s, c->top->grav.down, c->progeny[k]->grav.down_in);
+      }
+    }
   }
 }
 

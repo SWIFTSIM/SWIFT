@@ -2443,21 +2443,23 @@ void engine_link_gravity_tasks(struct engine *e) {
       }
     }
 
-    /* Otherwise, zoom grav down? */
-    else if (t_type == task_type_grav_down &&
-             ci_parent->type == cell_type_zoom) {
+    /* /\* Otherwise, zoom grav down? *\/ */
+    /* else if (t_type == task_type_grav_down && */
+    /*          ci_parent->type == cell_type_zoom) { */
 
-      /* The parent void grav down must be done before the zoom grav down so
-       * that the multipoles are handled top down. The void cell grav down is
-       * attached at the top level and has to be done irrespective of the
-       * nodeID of the void parent. */
+    /*   /\* The parent void grav down must be done before the zoom grav down so
+     */
+    /*    * that the multipoles are handled top down. The void cell grav down is
+     */
+    /*    * attached at the top level and has to be done irrespective of the */
+    /*    * nodeID of the void parent. *\/ */
 
-      /* Get the top level void parent */
-      struct cell *void_parent = ci_parent->void_parent->top;
+    /*   /\* Get the top level void parent *\/ */
+    /*   struct cell *void_parent = ci_parent->void_parent->top; */
 
-      /* init -----> gravity --> grav_down */
-      scheduler_addunlock(sched, void_parent->grav.down, t);
-    }
+    /*   /\* init -----> gravity --> grav_down *\/ */
+    /*   scheduler_addunlock(sched, void_parent->grav.down, t); */
+    /* } */
   }
 }
 
