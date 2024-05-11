@@ -1292,7 +1292,9 @@ int cell_activate_subcell_grav_tasks(struct cell *restrict ci,
   if (cj == NULL) {
 
     /* Do anything? */
-    if (ci->grav.count == 0 || !cell_is_active_gravity(ci, e)) return 1;
+    if ((ci->grav.count == 0 && ci->subtype != cell_subtype_void) ||
+        !cell_is_active_gravity(ci, e))
+      return 1;
 
     /* Has it already been processed? */
     if (cell_get_flag(ci, cell_flag_unskip_self_grav_processed)) return 1;
@@ -1337,7 +1339,9 @@ int cell_activate_subcell_grav_tasks(struct cell *restrict ci,
     const int do_ci = cell_is_active_gravity(ci, e) && ci->nodeID == nodeID;
     const int do_cj = cell_is_active_gravity(cj, e) && cj->nodeID == nodeID;
     if (!do_ci && !do_cj) return 0;
-    if (ci->grav.count == 0 || cj->grav.count == 0) return 0;
+    if ((ci->grav.count == 0 || cj->grav.count == 0) &&
+        !(ci->subtype == cell_subtype_void || cj->subtype == cell_subtype_void))
+      return 0;
 
     /* Atomically drift the multipole in ci */
     lock_lock(&ci->grav.mlock);
@@ -1357,14 +1361,12 @@ int cell_activate_subcell_grav_tasks(struct cell *restrict ci,
                              /*is_tree_walk=*/1,
                              /*periodic boundaries*/ sp->periodic,
                              /*use_mesh*/ sp->periodic)) {
-
       /* Ok, no need to drift anything */
       return 0;
     }
 
     /* Otherwise, if we are at the bottom, activate the gpart drifts. */
     else if (!ci->split && !cj->split) {
-
       /* Activate the drifts if the cells are local. */
       if (cell_is_active_gravity(ci, e) || cell_is_active_gravity(cj, e)) {
 
@@ -1382,7 +1384,6 @@ int cell_activate_subcell_grav_tasks(struct cell *restrict ci,
 
     /* Ok, we can still recurse at least on one side. */
     else {
-
       /* Recover the multipole information */
       const struct gravity_tensors *const multi_i = ci->grav.multipole;
       const struct gravity_tensors *const multi_j = cj->grav.multipole;
