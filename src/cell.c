@@ -1137,7 +1137,7 @@ void cell_set_super(struct cell *c, struct cell *super, const int with_hydro,
   /* Recurse */
   if (c->split)
     for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL)
+      if (c->progeny[k] != NULL && c->progeny[k]->depth > 0)
         cell_set_super(c->progeny[k], super, with_hydro, with_grav);
 }
 
@@ -1158,7 +1158,7 @@ void cell_set_super_hydro(struct cell *c, struct cell *super_hydro) {
   /* Recurse */
   if (c->split)
     for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL)
+      if (c->progeny[k] != NULL && c->progeny[k]->depth > 0)
         cell_set_super_hydro(c->progeny[k], super_hydro);
 }
 
@@ -1180,7 +1180,7 @@ void cell_set_super_gravity(struct cell *c, struct cell *super_gravity) {
   /* Recurse */
   if (c->split)
     for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL)
+      if (c->progeny[k] != NULL && c->progeny[k]->depth > 0)
         cell_set_super_gravity(c->progeny[k], super_gravity);
 }
 
@@ -1201,10 +1201,7 @@ void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data) {
   for (int ind = 0; ind < num_elements; ind++) {
     struct cell *c = &((struct cell *)map_data)[ind];
 
-    /* In zoom land we need to skip void cells top == super always. */
-    if (c->subtype == cell_subtype_void) continue;
-
-      /* All top-level cells get an MPI tag. */
+    /* All top-level cells get an MPI tag. */
 #ifdef WITH_MPI
     cell_ensure_tagged(c);
 #endif
