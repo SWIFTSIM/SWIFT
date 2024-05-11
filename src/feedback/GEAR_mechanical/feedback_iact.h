@@ -390,8 +390,6 @@ runner_iact_nonsym_feedback_apply(
 
   /* Compute the internal energy */
   double dU = U_new - U_old;
-  /* message("dE_prime= %e, dU = %e,  dKE = %e, p_new_2 = %e, p_old_2 = %e", dE_prime, dU, dKE, p_new_norm_2, p_old_norm_2); */
-  /* message("E_old = %e, E_new = %e, E_kin_old = %e, E_kin_new = %e, U_old = %e, U_new = %e", E_old, E_new, E_kin_old, E_kin_old, U_old, U_new); */
 
   /* --Now, we take into account for potentially unresolved energy-conserving
      phase of the SN explosion-- */
@@ -407,23 +405,21 @@ runner_iact_nonsym_feedback_apply(
      Thus, the factor to multiply dp_prime is: */
   const double p_factor = min(PdV_work_fraction, p_terminal/p_ej);
 
-  /* if (p_factor == p_terminal/p_ej) { */
-  /*   message("We do not resolve the Sedov-Taylor. Using p_terminal. p_t = %e, p_ej=%e, p_factor = %e, PdV_work_fraction=%e.",p_terminal, p_ej, p_factor, PdV_work_fraction); */
-  /* } else { */
-  /*   message("We do resolve the Sedov-Taylor. p_t = %e, p_ej = %e, p_factor=%e, p_t/p_ej = %e", p_terminal, p_ej, p_factor, p_terminal/p_ej); */
-  /* } */
-
   dp_prime[0] *= p_factor;
   dp_prime[1] *= p_factor;
   dp_prime[2] *= p_factor;
 
   /* Compute the cooling radius */
-  const double second_part = p_terminal*p_terminal/(p_ej*p_ej) - 1;
-  const double r_cool = pow(3.0*m_ej*second_part/(4.0*M_PI*pj->rho), 1.0/3.0);
+  const double r_cool =  feedback_get_SN_cooling_radius(si, p_available, p_terminal);
 
   /* If we do not resolve the Taylor-Sedov, we rescale the internal energy */
   if (r2 > r_cool*r_cool) {
-    dU *= pow(sqrt(r2)/r_cool, -6.5);
+    const double r = sqrt(r2);
+    dU *= pow(r/r_cool, -6.5);
+    dp_prime[0] *= pow(r/r_cool, -6.5);
+    dp_prime[1] *= pow(r/r_cool, -6.5);
+    dp_prime[2] *= pow(r/r_cool, -6.5);
+
     message("We do not resolve the Sedov-Taylor (r_cool = %e). Rescaling dU.", r_cool);
   } /* else we do not change dU */
 
@@ -439,17 +435,30 @@ runner_iact_nonsym_feedback_apply(
 
   /* Compute the PdV work, taking into account gas in/outflows */
   const double psi = (sqrt(fabs(beta_2 + beta_1*beta_1)) - beta_1)/beta_2;
-  
+
   /* Now, we take into account for potentially unresolved energy-conserving
      phase of the SN explosion (xsi != 1 in such cases). */
-  const double p_epsilon = sqrt(2.0*epsilon*m_ej);
+  const double p_available = sqrt(2.0*epsilon*m_ej);
   const double p_terminal = feedback_get_SN_terminal_momentum(si, pj, xpj, phys_const, us);
-  const double xsi = min(1, p_terminal/(psi * p_epsilon));
+  const double xsi = min(1, p_terminal/(psi * p_available));
 
   /* Finally, the ejected velocity is */
-  const double p_ej = psi*xsi*p_epsilon;
+  double p_ej = psi*xsi*p_available;
+
+  /* --We need to rescale the momentum if it goes beyond the cooling
+     radius. Otherwise we can give p_terminal at unphysical distances.-- */
+  /* Compute the cooling radius */
+  const double r_cool =  feedback_get_SN_cooling_radius(si, p_available, p_terminal);
+
+  if (r2 > r_cool) {
+    /* message("xsi = %e, r_cool = %e", xsi, r_cool); */
+    const double r = sqrt(r2);
+    p_ej *= pow(r/r_cool, -6.5) ;
+  }
+
+  /* Now, we can compute dp */
   const double dp[3] = {w_j_bar[0]*p_ej, w_j_bar[1]*p_ej, w_j_bar[2]*p_ej};
-    
+
   /* Now boost to the 'laboratory' frame */
   double dp_prime[3] = {dp[0] + dm*si->v[0], dp[1] + dm*si->v[1], dp[2] + dm*si->v[2]};
 
@@ -482,7 +491,7 @@ runner_iact_nonsym_feedback_apply(
   for (int i = 0; i < 3; i++) {
     xpj->feedback_data.delta_p[i] += dp_prime[i];
   }
-  
+
   xpj->feedback_data.delta_u += dU/new_mass;
   xpj->feedback_data.delta_E_kin += dKE;
   xpj->feedback_data.number_SN += 1;
@@ -503,7 +512,7 @@ runner_iact_nonsym_feedback_apply(
   si->feedback_data.delta_p_check[2] += dp[2];
 
   /* message("Conservation check (star %lld): Sum dm_i = %e (m_ej), Sum |dp_i| = %e (p_ej), Sum dp_i = (%e, %e, %e) (0), m_ej = %e, E_ej = %e, p_ej = %e", si->id, si->feedback_data.delta_m_check, si->feedback_data.delta_p_norm_check, si->feedback_data.delta_p_check[0], si->feedback_data.delta_p_check[1], si->feedback_data.delta_p_check[2], m_ej, E_ej, p_ej); */
-  
+
 }
 
 #endif /* SWIFT_GEAR_MECHANICAL_FEEDBACK_IACT_H */
