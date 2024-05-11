@@ -440,7 +440,8 @@ static void zoom_make_hierarchical_void_gravity_tasks(struct engine *e,
      * grav down unlock the top level zoom grav down.  */
     else if (c->progeny[k]->type == cell_type_zoom) {
       if (is_self_gravity) {
-        scheduler_addunlock(s, c->top->grav.down, c->progeny[k]->grav.down_in);
+        scheduler_addunlock(s, c->super->grav.down,
+                            c->progeny[k]->grav.down_in);
       }
     }
   }
