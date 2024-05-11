@@ -1400,6 +1400,7 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
   /* We are below the super-cell but not below the maximal splitting depth */
   else if ((c->grav.super != NULL) &&
            ((c->maxdepth - c->depth) >= space_subdepth_diff_grav ||
+            c->subtype == cell_subtype_neighbour ||
             c->subtype == cell_subtype_void)) {
 
     /* Local tasks only... */
