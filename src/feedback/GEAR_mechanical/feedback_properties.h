@@ -113,7 +113,7 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
     struct feedback_props* fp, const struct phys_const* phys_const,
     const struct unit_system* us, struct swift_params* params,
     const struct hydro_props* hydro_props, const struct cosmology* cosmo) {
-  
+
   /* filename of the chemistry tables. */
   parser_get_param_string(params, "GEARFeedback:yields_table",
                           fp->stellar_model.yields_table);
@@ -154,28 +154,29 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
                             fp->stellar_model_first_stars.yields_table);
     stellar_evolution_props_init(&fp->stellar_model_first_stars, phys_const, us,
                                  params, cosmo);
+  }
 
-    /* Get the maximal feedback radius */
-    const float default_r_max = 2.0e3*phys_const->const_parsec;
+  /* Get the maximal feedback radius */
+  const float default_r_max = 2.0e3 * phys_const->const_parsec;
 
-    fp->r_max = parser_get_opt_param_float(
-      params, "GEARFeedback:maximal_radius", default_r_max);
+  fp->r_max = parser_get_opt_param_float(params, "GEARFeedback:maximal_radius",
+                                         default_r_max);
 
-    /* Get the fraction of the SN energy available to kinetic energy. The
-       default value is for an idealized Sedov solution in a homogenous background. */
-    const float default_f_kin_0 = 0.28;
+  /* Get the fraction of the SN energy available to kinetic energy. The
+     default value is for an idealized Sedov solution in a homogenous
+     background. */
+  const float default_f_kin_0 = 0.28;
 
-    fp->f_kin_0 = parser_get_opt_param_float(
-      params, "GEARFeedback:f_kin_0", default_f_kin_0);
+  fp->f_kin_0 = parser_get_opt_param_float(params, "GEARFeedback:f_kin_0",
+                                           default_f_kin_0);
 
-    /* Do we want to correct the total momentum of the gas particles after
-       multiple SN ? */
-    fp->enable_multiple_SN_momentum_correction_factor = parser_get_opt_param_int(
+  /* Do we want to correct the total momentum of the gas particles after
+     multiple SN ? */
+  fp->enable_multiple_SN_momentum_correction_factor = parser_get_opt_param_int(
       params, "GEARFeedback:enable_multiple_SN_momentum_correction_factor", 0);
 
-    if (fp->f_kin_0 < 0 || fp->f_kin_0 > 1) {
-      error("f_kin_0 must be comprised between 0 and 1  (0 <= f_kin_0 <= 1)!");
-    }
+  if (fp->f_kin_0 < 0 || fp->f_kin_0 > 1) {
+    error("f_kin_0 must be comprised between 0 and 1  (0 <= f_kin_0 <= 1)!");
   }
 
   /* Print the stellar properties */
