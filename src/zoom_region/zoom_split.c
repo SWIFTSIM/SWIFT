@@ -123,6 +123,9 @@ void zoom_void_split_recursive(struct space *s, struct cell *c,
     }
   }
 
+  /* Set the maxdepth. */
+  c->maxdepth = maxdepth;
+
   /* Deal with the multipole */
   if (s->with_self_gravity) {
     space_populate_multipole(c);
