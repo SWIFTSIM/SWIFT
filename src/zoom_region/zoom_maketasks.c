@@ -388,8 +388,6 @@ static void zoom_make_hierarchical_void_gravity_tasks(struct engine *e,
 
   struct scheduler *s = &e->sched;
   const int is_self_gravity = (e->policy & engine_policy_self_gravity);
-  const int stars_only_gravity =
-      (e->policy & engine_policy_stars) && !(e->policy & engine_policy_hydro);
 
   /* Are we in a super-cell ? */
   if (c->grav.super == c) {
@@ -435,7 +433,7 @@ static void zoom_make_hierarchical_void_gravity_tasks(struct engine *e,
   /* Recurse but not into the zoom cell tree. */
   for (int k = 0; k < 8; k++) {
     if (c->progeny[k] != NULL && c->progeny[k]->subtype == cell_subtype_void)
-      engine_make_hierarchical_tasks_gravity(e, c->progeny[k]);
+      zoom_make_hierarchical_void_gravity_tasks(e, c->progeny[k]);
   }
 }
 
