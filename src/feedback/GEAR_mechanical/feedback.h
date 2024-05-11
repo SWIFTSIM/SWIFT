@@ -99,9 +99,13 @@ void feedback_compute_vector_weight_normalized(const float r2, const float *dx,
 					       double* w_j_bar);
 
 double feedback_get_SN_terminal_momentum(const struct spart* restrict sp,
-					 const struct part* restrict p,
-					 const struct xpart* restrict xp,
-					 const struct phys_const* phys_const,
-					 const struct unit_system* us);
+                                         const struct part* restrict p,
+                                         const struct xpart* restrict xp,
+                                         const struct phys_const* phys_const,
+                                         const struct unit_system* us);
+
+double feedback_get_SN_cooling_radius(const struct spart* restrict sp,
+				      double p_SN_initial,
+				      double p_terminal) ;
 
 #endif /* SWIFT_FEEDBACK_GEAR_MECHANICAL_H */

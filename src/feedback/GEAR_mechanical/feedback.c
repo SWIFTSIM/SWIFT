@@ -667,6 +667,7 @@ void feedback_compute_vector_weight_normalized(const float r2, const float *dx,
  * @param phys_const The #phys_const.
  * @param us The #unit_system.
  */
+__attribute__((always_inline)) INLINE
 double feedback_get_SN_terminal_momentum(const struct spart* restrict sp,
 					 const struct part* restrict p,
 					 const struct xpart* restrict xp,
@@ -715,4 +716,40 @@ double feedback_get_SN_terminal_momentum(const struct spart* restrict sp,
   /* This is in internal units */
   double p_terminal = p_terminal_0*E_ej/ten_to_51*density_factor*metallicity_factor*velocity_factor;
   return p_terminal;
+}
+
+
+/**
+ * @brief Compute the terminal momentum of a SN explosion. This is the momentum
+ * the blastwave can give to the gas after the energy-conserving phase.
+ *
+ * This function is used if we do not resolve the enery-conserving phase.
+ *
+ * Note: This function compute the terminal momentum in the same way as in
+ * Fire-3 (PAPERS).
+ *
+ * @param sp Star particle undergoing SN explosion.
+ * @param p Gas particle receiving the terminal momentum.
+ * @param xp The #xpart.
+ * @param phys_const The #phys_const.
+ * @param us The #unit_system.
+ */
+__attribute__((always_inline)) INLINE
+double feedback_get_SN_cooling_radius(const struct spart* restrict sp,
+				      double p_SN_initial,
+				      double p_terminal) {
+
+  const double m_ej = sp->feedback_data.mass_ejected;
+
+  /* Compute the number of neighbours. Its need to multiply wcount by 1/h^d */
+  const double n_neighbours =
+      sp->feedback_data.density_wcount * pow_dimension(1.0 / sp->h);
+
+  const double mean_density =  sp->feedback_data.sum_gas_density / n_neighbours;
+
+  /* Compute the cooling radius */
+  const double second_part = p_terminal*p_terminal/(p_SN_initial*p_SN_initial) - 1;
+  const double r_cool = pow(3.0*m_ej*second_part/(4.0*M_PI*mean_density), 1.0/3.0);
+
+  return r_cool;
 }
