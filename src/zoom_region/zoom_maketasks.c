@@ -415,7 +415,7 @@ static void zoom_make_hierarchical_void_gravity_tasks(struct engine *e,
   }
 
   /* We are below the super-cell but not below the maximal splitting depth */
-  else if ((c->grav.super != NULL) && (c->subtype == cell_subtype_void)) {
+  else if (c->grav.super != NULL) {
 
     if (is_self_gravity) {
 
@@ -432,7 +432,7 @@ static void zoom_make_hierarchical_void_gravity_tasks(struct engine *e,
 
   /* Recurse but not into the zoom cell tree. */
   for (int k = 0; k < 8; k++) {
-    if (c->progeny[k] != NULL && c->progeny[k]->subtype == cell_subtype_void)
+    if (c->progeny[k]->subtype == cell_subtype_void)
       zoom_make_hierarchical_void_gravity_tasks(e, c->progeny[k]);
   }
 }
