@@ -372,6 +372,74 @@ void zoom_engine_make_self_gravity_tasks(struct space *s, struct engine *e) {
 }
 
 /**
+ * @brief Generate the hydro hierarchical tasks for a hierarchy of cells -
+ * i.e. all the O(Npart) tasks -- gravity version
+ *
+ * Tasks are only created here. The dependencies will be added later on.
+ *
+ * Note that there is no need to recurse below the super-cell. Note also
+ * that we only add tasks if the relevant particles are present in the cell.
+ *
+ * @param e The #engine.
+ * @param c The #cell.
+ */
+static void zoom_make_hierarchical_void_gravity_tasks(struct engine *e,
+                                                      struct cell *c) {
+
+  struct scheduler *s = &e->sched;
+  const int is_self_gravity = (e->policy & engine_policy_self_gravity);
+  const int stars_only_gravity =
+      (e->policy & engine_policy_stars) && !(e->policy & engine_policy_hydro);
+
+  /* Are we in a super-cell ? */
+  if (c->grav.super == c) {
+
+    if (is_self_gravity) {
+
+      /* Initialisation of the multipoles */
+      c->grav.init = scheduler_addtask(s, task_type_init_grav,
+                                       task_subtype_none, 0, 0, c, NULL);
+
+      /* Gravity recursive down-pass */
+      c->grav.down = scheduler_addtask(s, task_type_grav_down,
+                                       task_subtype_none, 0, 0, c, NULL);
+
+      /* Implicit tasks for the up and down passes */
+      c->grav.init_out = scheduler_addtask(s, task_type_init_grav_out,
+                                           task_subtype_none, 0, 1, c, NULL);
+      c->grav.down_in = scheduler_addtask(s, task_type_grav_down_in,
+                                          task_subtype_none, 0, 1, c, NULL);
+
+      /* Link in the implicit tasks */
+      scheduler_addunlock(s, c->grav.init, c->grav.init_out);
+      scheduler_addunlock(s, c->grav.down_in, c->grav.down);
+    }
+  }
+
+  /* We are below the super-cell but not below the maximal splitting depth */
+  else if ((c->grav.super != NULL) && (c->subtype == cell_subtype_void)) {
+
+    if (is_self_gravity) {
+
+      c->grav.init_out = scheduler_addtask(s, task_type_init_grav_out,
+                                           task_subtype_none, 0, 1, c, NULL);
+
+      c->grav.down_in = scheduler_addtask(s, task_type_grav_down_in,
+                                          task_subtype_none, 0, 1, c, NULL);
+
+      scheduler_addunlock(s, c->parent->grav.init_out, c->grav.init_out);
+      scheduler_addunlock(s, c->grav.down_in, c->parent->grav.down_in);
+    }
+  }
+
+  /* Recurse but not into the zoom cell tree. */
+  for (int k = 0; k < 8; k++) {
+    if (c->progeny[k] != NULL && c->progeny[k]->subtype == cell_subtype_void)
+      engine_make_hierarchical_tasks_gravity(e, c->progeny[k]);
+  }
+}
+
+/**
  * @brief Constructs the top level gravity tasks needed for void cells.
  *
  * These include the initialisation of the multipoles, the implicit tasks
@@ -383,8 +451,6 @@ void zoom_engine_make_self_gravity_tasks(struct space *s, struct engine *e) {
  */
 void zoom_engine_make_void_gravity_tasks(struct space *s, struct engine *e) {
 
-  struct scheduler *sched = &e->sched;
-
   ticks tic = getticks();
 
   /* TODO: long range gravity can probably be done here instead of at the
@@ -394,23 +460,8 @@ void zoom_engine_make_void_gravity_tasks(struct space *s, struct engine *e) {
   for (int ind = 0; ind < s->zoom_props->nr_void_cells; ind++) {
     struct cell *c = &s->cells_top[s->zoom_props->void_cells_top[ind]];
 
-    /* Initialisation of the multipoles */
-    c->grav.init = scheduler_addtask(sched, task_type_init_grav,
-                                     task_subtype_none, 0, 0, c, NULL);
-
-    /* Implicit tasks. */
-    c->grav.init_out = scheduler_addtask(sched, task_type_init_grav_out,
-                                         task_subtype_none, 0, 1, c, NULL);
-    c->grav.down_in = scheduler_addtask(sched, task_type_grav_down_in,
-                                        task_subtype_none, 0, 1, c, NULL);
-
-    /* Gravity recursive down-pass */
-    c->grav.down = scheduler_addtask(sched, task_type_grav_down,
-                                     task_subtype_none, 0, 0, c, NULL);
-
-    /* Add the implicit unlocks. */
-    scheduler_addunlock(sched, c->grav.init, c->grav.init_out);
-    scheduler_addunlock(sched, c->grav.down_in, c->grav.down);
+    /* Recurse through the void cell tree. */
+    zoom_make_hierarchical_void_gravity_tasks(e, c);
   }
 
   if (e->verbose)
