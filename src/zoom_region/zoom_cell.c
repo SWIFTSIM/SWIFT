@@ -868,7 +868,7 @@ void zoom_link_void_leaves(struct space *s, struct cell *c) {
 
     /* Record the maximum depth of the tree. (zoom tree depth + 1 for the top
      * level zoom cell at depth 0 + the void cell depth). */
-    maxdepth = max(maxdepth, zoom_cell->max_depth + 1 + c->depth);
+    maxdepth = max(maxdepth, zoom_cell->maxdepth + 1 + c->depth);
   }
 
   /* Set the maximum depth of the void cell. */
