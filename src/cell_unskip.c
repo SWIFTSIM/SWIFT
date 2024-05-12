@@ -1292,9 +1292,7 @@ int cell_activate_subcell_grav_tasks(struct cell *restrict ci,
   if (cj == NULL) {
 
     /* Do anything? */
-    if ((ci->grav.count == 0 && ci->subtype != cell_subtype_void) ||
-        !cell_is_active_gravity(ci, e))
-      return 1;
+    if (ci->grav.count == 0 || !cell_is_active_gravity(ci, e)) return 1;
 
     /* Has it already been processed? */
     if (cell_get_flag(ci, cell_flag_unskip_self_grav_processed)) return 1;
@@ -1339,9 +1337,7 @@ int cell_activate_subcell_grav_tasks(struct cell *restrict ci,
     const int do_ci = cell_is_active_gravity(ci, e) && ci->nodeID == nodeID;
     const int do_cj = cell_is_active_gravity(cj, e) && cj->nodeID == nodeID;
     if (!do_ci && !do_cj) return 0;
-    if ((ci->grav.count == 0 || cj->grav.count == 0) &&
-        !(ci->subtype == cell_subtype_void || cj->subtype == cell_subtype_void))
-      return 0;
+    if (ci->grav.count == 0 || cj->grav.count == 0) return 0;
 
     /* Atomically drift the multipole in ci */
     lock_lock(&ci->grav.mlock);
