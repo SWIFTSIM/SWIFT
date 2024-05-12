@@ -118,7 +118,8 @@ void zoom_void_split_recursive(struct space *s, struct cell *c,
       /* Recurse */
       zoom_void_split_recursive(s, cp, tpid);
 
-      /* Increase the depth */
+      /* Increase the maxdepth (this takes into account the depth in the
+       * zoom tree too). */
       maxdepth = max(maxdepth, cp->maxdepth);
     }
   }

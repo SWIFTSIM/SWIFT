@@ -802,6 +802,8 @@ void zoom_construct_tl_cells(struct space *s, const integertime_t ti_current,
  */
 void zoom_link_void_leaves(struct space *s, struct cell *c) {
 
+  int maxdepth = 0;
+
 #ifdef SWIFT_DEBUG_CHECKS
   /* Ensure we have the right kind of cell. */
   if (c->subtype != cell_subtype_void) {
@@ -818,10 +820,6 @@ void zoom_link_void_leaves(struct space *s, struct cell *c) {
         cellID_names[c->type], subcellID_names[c->subtype]);
   }
 #endif
-
-  /* /\* We need to ensure this bottom level isn't treated like a */
-  /*  * normal split cell since it's linked into top level "progeny". *\/ */
-  /* c->split = 0; */
 
   /* loop over the 8 progeny cells which are now the zoom cells. */
   for (int k = 0; k < 8; k++) {
@@ -867,7 +865,14 @@ void zoom_link_void_leaves(struct space *s, struct cell *c) {
 
     /* Flag this void cell "progeny" as the zoom cell's void cell parent. */
     zoom_cell->void_parent = c;
+
+    /* Record the maximum depth of the tree. (zoom tree depth + 1 for the top
+     * level zoom cell at depth 0 + the void cell depth). */
+    maxdepth = max(maxdepth, zoom_cell->max_depth + 1 + c->depth);
   }
+
+  /* Set the maximum depth of the void cell. */
+  c->maxdepth = maxdepth;
 
   /* Interact the zoom cell multipoles with this cell. */
   if (s->with_self_gravity) {
