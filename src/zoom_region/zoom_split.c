@@ -121,6 +121,9 @@ void zoom_void_split_recursive(struct space *s, struct cell *c,
       /* Increase the maxdepth (this takes into account the depth in the
        * zoom tree too). */
       maxdepth = max(maxdepth, cp->maxdepth);
+
+      /* Count gparts. */
+      c->grav.count += cp->grav.count;
     }
   }
 
