@@ -31,6 +31,10 @@
 #include "space.h"
 #include "zoom.h"
 
+#ifdef SWIFT_DEBUG_CHECKS
+int activate_by_unskip = 1;
+#endif
+
 /**
  * @brief Is this cell within the buffer region?
  *
