@@ -439,10 +439,8 @@ void runner_do_long_range_zoom_periodic(struct runner *r, struct cell *ci,
                                  /*periodic boundaries*/ 0,
                                  /*use_mesh*/ s->periodic)) {
 
-          /* Call the PM interaction function on the active sub-cells of ci
-           */
+          /* Call the PM interaction function on the active sub-cells of ci */
           runner_dopair_grav_mm_nonsym(r, ci, cj);
-          // runner_dopair_recursive_grav_pm(r, ci, cj);
 
           /* Record that this multipole received a contribution */
           multi_i->pot.interacted = 1;
@@ -743,6 +741,12 @@ void runner_count_mesh_interactions(struct runner *r, struct cell *ci,
 
     /* Minimal distance between any pair of particles */
     const double min_radius2 = cell_min_dist2(top, cj, periodic, dim);
+
+    if (min_radius2 < max_distance2 && ci->type == cell_type_zoom &&
+        s->zoom_props->with_buffer_cells && cj->type == cell_type_bkg)
+      error(
+          "Have buffer cells but zoom cell think's it should have interacted "
+          "with a background cell!");
 
     /* Are we beyond the distance where the truncated forces are 0 ?*/
     if (min_radius2 > max_distance2) {
