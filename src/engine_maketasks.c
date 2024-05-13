@@ -2067,7 +2067,7 @@ void engine_gravity_make_task_loop(struct engine *e, int cid, const int cdim[3],
          * the Nigel treatment (AKA are kicked out of the union/we skip
          * them). Nigel is ok with void cells though (we always want to
          * create a pair task for void cells). */
-        if (ci->subtype != cell_subtype_void &&
+        if (cj->subtype != cell_subtype_void &&
             (cid >= cjd || cj->grav.count == 0 ||
              (ci->nodeID != nodeID && cj->nodeID != nodeID)))
           continue;
