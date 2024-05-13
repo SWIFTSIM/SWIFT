@@ -454,6 +454,9 @@ void runner_do_long_range_zoom_periodic(struct runner *r, struct cell *ci,
   const int nr_neighbours = s->zoom_props->nr_neighbour_cells;
   const int *neighbour_cells = s->zoom_props->neighbour_cells_top;
 
+  /* Get the void top level for comparison to the neighbour. */
+  struct cell *void_top = top->void_parent->top;
+
   /* Now loop over the neighbouring background cells.  */
   for (int k = 0; k < nr_neighbours; k++) {
 
@@ -467,7 +470,8 @@ void runner_do_long_range_zoom_periodic(struct runner *r, struct cell *ci,
     if (multi_j->m_pole.M_000 == 0.f) continue;
 
     /* Minimal distance between any pair of particles */
-    const double min_radius2 = cell_min_dist2(top, bkg_cj, s->periodic, dim);
+    const double min_radius2 =
+        cell_min_dist2(void_top, bkg_cj, s->periodic, dim);
 
     /* Are we beyond the distance where the truncated forces are 0 ?*/
     if (min_radius2 > max_distance2) {
@@ -480,7 +484,7 @@ void runner_do_long_range_zoom_periodic(struct runner *r, struct cell *ci,
     }
 
     /* Shall we interact with this cell? */
-    if (cell_can_use_pair_mm(top, bkg_cj, e, s, /*use_rebuild_data=*/1,
+    if (cell_can_use_pair_mm(void_top, bkg_cj, e, s, /*use_rebuild_data=*/1,
                              /*is_tree_walk=*/0,
                              /*periodic boundaries*/ s->periodic,
                              /*use_mesh*/ s->periodic)) {
@@ -742,6 +746,7 @@ void runner_count_mesh_interactions(struct runner *r, struct cell *ci,
     /* Minimal distance between any pair of particles */
     const double min_radius2 = cell_min_dist2(top, cj, periodic, dim);
 
+    /* Ensure we don't have unexpected interactions. */
     if (min_radius2 < max_distance2 && ci->type == cell_type_zoom &&
         s->zoom_props->with_buffer_cells && cj->type == cell_type_bkg)
       error(
