@@ -189,11 +189,11 @@ void *runner_main(void *data) {
       /* Store the task that will be running (for debugging only) */
       r->t = t;
 
-      /* Ensure a void cell never enters here with a task, if it has something
-       * has gone awfully wrong. */
-      if (ci->subtype == cell_subtype_void) {
-        error("Void cell with task (%s/%s).", taskID_names[t->type],
-              subtaskID_names[t->subtype]);
+      /* Ensure a void cell never enters here with a particle based task. */
+      if (ci->subtype == cell_subtype_void &&
+          (t->type == task_type_self || t->type == task_type_pair)) {
+        error("Void cell found with task it shouldn't have (%s/%s).",
+              taskID_names[t->type], subtaskID_names[t->subtype]);
       }
 #endif
 
