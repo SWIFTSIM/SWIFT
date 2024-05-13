@@ -998,3 +998,121 @@ void zoom_link_void_leaves(struct space *s, struct cell *c) {
   }
 #endif
 }
+
+/**
+ * @brief Unskip void cell tasks in the tree.
+ *
+ * This function will activate all tasks attached to void cells in the tree. For
+ * now this activates all tasks irrespective whether the cell is on the current
+ * node or whether the cell is "active".
+ *
+ * Possible tasks are:
+ * - grav mm tasks
+ * - grav init tasks
+ * - grav init out tasks
+ * - grav down tasks
+ * - grav down in tasks
+ *
+ * @param s The scheduler.
+ */
+static void zoom_subcell_unskip_void_tasks(struct scheduler *s,
+                                           struct cell *restrict c) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* A void cell can't have any self or pair tasks since it contains no
+   * particles. */
+  if (c->grav != NULL) {
+    error("Void cell has self or pair tasks (c->grav != NULL)!");
+  }
+#endif
+
+  /* Loop over grav mm tasks. */
+  for (struct link *l = c->grav.mm; l != NULL; l = l->next) {
+    struct task *t = l->t;
+
+#ifdef SWIFT_DEBUG_CHECKS
+    if (t->type != task_type_grav_mm) error("Incorrectly linked gravity task!");
+#endif
+
+    /* For now we'll activate all mm tasks. */
+    scheduler_activate(s, t);
+  }
+
+  /* Activate any other task types. */
+  if (c->grav.init != NULL) scheduler_activate(s, c->grav.init);
+  if (c->grav.init_out != NULL) scheduler_activate(s, c->grav.init_out);
+  if (c->grav.down != NULL) scheduler_activate(s, c->grav.down);
+  if (c->grav.down_in != NULL) scheduler_activate(s, c->grav.down_in);
+
+  /* Recurse, unless we will hit the zoom cells (these are handled in
+   * cell_unskip) */
+  for (int k = 0; k < 8; k++) {
+    if (c->progeny[k]->type != cell_type_zoom) {
+      zoom_subcell_unskip_void_tasks(s, c->progeny[k]);
+    }
+  }
+}
+
+/**
+ * @brief Unskip void cell tasks.
+ *
+ * This function will activate all tasks attached to void cells at the top level
+ * before recursing through the tree. For now this activates all tasks
+ * irrespective whether the cell is on the current node or whether the cell is
+ * "active".
+ *
+ * Possible tasks are:
+ * - grav mm tasks
+ * - grav init tasks
+ * - grav init out tasks
+ * - grav down tasks
+ * - grav down in tasks
+ *
+ * @param s The scheduler.
+ */
+void zoom_unskip_void_tasks(struct scheduler *s) {
+
+  /* Get the space. */
+  struct space *space = s->space;
+
+  /* Get the void cell pointers. */
+  const int *void_cells = space->void_cells_top;
+  const int nr_void_cells = space->zoom_props->nr_void_cells;
+
+  /* Loop over void cells. */
+  for (int i = 0; i < nr_void_cells; i++) {
+    struct cell *c = &space->cells_top[void_cells[i]];
+
+#ifdef SWIFT_DEBUG_CHECKS
+    /* A void cell can't have any self or pair tasks since it contains no
+     * particles. */
+    if (c->grav != NULL) {
+      error("Void cell has self or pair tasks (c->grav != NULL)!");
+    }
+#endif
+
+    /* Loop over grav mm tasks. */
+    for (struct link *l = c->grav.mm; l != NULL; l = l->next) {
+      struct task *t = l->t;
+
+#ifdef SWIFT_DEBUG_CHECKS
+      if (t->type != task_type_grav_mm)
+        error("Incorrectly linked gravity task!");
+#endif
+
+      /* For now we'll activate all mm tasks. */
+      scheduler_activate(s, t);
+    }
+
+    /* Activate any other task types. */
+    if (c->grav.init != NULL) scheduler_activate(s, c->grav.init);
+    if (c->grav.init_out != NULL) scheduler_activate(s, c->grav.init_out);
+    if (c->grav.down != NULL) scheduler_activate(s, c->grav.down);
+    if (c->grav.down_in != NULL) scheduler_activate(s, c->grav.down_in);
+
+    /* Recurse... */
+    for (int k = 0; k < 8; k++) {
+      zoom_subcell_unskip_void_tasks(s, c->progeny[k]);
+    }
+  }
+}

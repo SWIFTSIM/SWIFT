@@ -28,6 +28,7 @@
 #include "active.h"
 #include "cell.h"
 #include "memswap.h"
+#include "zoom_region/zoom.h"
 
 /* Load the profiler header, if needed. */
 #ifdef WITH_PROFILER
@@ -497,6 +498,12 @@ void engine_unskip(struct engine *e) {
 #ifdef WITH_PROFILER
   ProfilerStop();
 #endif  // WITH_PROFILER
+
+  /* In zoom land we also need to unskip the void cell tree tasks. (inits,
+   * downs, and mm)*/
+  if (e->s->with_zoom_region) {
+    zoom_unskip_void_tasks(&e->sched);
+  }
 
   /* Free stuff? */
   if (multiplier > 1) {

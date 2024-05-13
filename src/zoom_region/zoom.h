@@ -53,4 +53,7 @@ void zoom_void_space_split(struct space *s, int verbose);
 void zoom_engine_make_self_gravity_tasks(struct space *s, struct engine *e);
 void zoom_engine_make_void_gravity_tasks(struct space *s, struct engine *e);
 
+/* Zoom specific unskip. */
+void zoom_unskip_void_tasks(struct scheduler *s);
+
 #endif /* SWIFT_ZOOM_H */
