@@ -271,7 +271,7 @@ static INLINE void chemistry_init_backend(struct swift_params* parameter_file,
     chemistry_scale_initial_metallicities(parameter_file, data);
   }
   /* We do not care about the solar abundances without feedback */
-#ifdef FEEDBACK_GEAR
+#if defined(FEEDBACK_GEAR) || FEEDBACK_GEAR_MECHANICAL_MODE >= 1
   else {
     chemistry_read_solar_abundances(parameter_file, data);
     chemistry_read_elements(parameter_file, data);

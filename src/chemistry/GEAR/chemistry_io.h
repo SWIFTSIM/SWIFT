@@ -132,11 +132,10 @@ INLINE static int chemistry_write_bparticles(const struct bpart* bparts,
  */
 INLINE static void chemistry_write_flavour(hid_t h_grp, hid_t h_grp_columns,
                                            const struct engine* e) {
-
   io_write_attribute_s(h_grp, "Chemistry model", "GEAR");
   io_write_attribute_d(h_grp, "Chemistry element count",
                        GEAR_CHEMISTRY_ELEMENT_COUNT);
-#ifdef FEEDBACK_GEAR
+#if defined(FEEDBACK_GEAR) || FEEDBACK_GEAR_MECHANICAL_MODE >= 1
   /* Without feedback, the elements are meaningless */
   const int with_feedback = e->policy & engine_policy_feedback;
   if (!with_feedback) return;
