@@ -156,7 +156,7 @@ void runner_do_grav_long_range_zoom_non_periodic(struct runner *r,
                                /*is_tree_walk=*/0,
                                /*periodic boundaries*/ s->periodic,
                                /*use_mesh*/ s->periodic)) {
-        interact = 1;
+        interact = 0;
       }
     }
 
