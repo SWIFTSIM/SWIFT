@@ -122,7 +122,6 @@ INLINE static void rt_do_thermochemistry(
   grackle_field_data particle_grackle_data;
 
   gr_float density = hydro_get_physical_density(p, cosmo);
-
   /* In rare cases, unphysical solutions can arise with negative densities
    * which won't be fixed in the hydro part until further down the dependency
    * graph. Also, we can have vacuum, in which case we have nothing to do here.
@@ -130,15 +129,20 @@ INLINE static void rt_do_thermochemistry(
   if (density <= 0.) return;
 
   const float u_minimal = hydro_props->minimal_internal_energy;
-  gr_float internal_energy =
-      max(hydro_get_physical_internal_energy(p, xp, cosmo), u_minimal);
+
+  /* Physical internal energy */
+  gr_float internal_energy_phys =
+      hydro_get_physical_internal_energy(p, xp, cosmo);
+  gr_float internal_energy = max(internal_energy_phys, u_minimal);
+
   const float u_old = internal_energy;
 
   gr_float species_densities[6];
   rt_tchem_get_species_densities(p, density, species_densities);
 
   float radiation_energy_density[RT_NGROUPS];
-  rt_part_get_radiation_energy_density(p, radiation_energy_density);
+  rt_part_get_physical_radiation_energy_density(p, radiation_energy_density,
+                                                cosmo);
 
   gr_float iact_rates[5];
   rt_get_interaction_rates_for_grackle(
@@ -152,9 +156,6 @@ INLINE static void rt_do_thermochemistry(
                                  iact_rates);
 
   /* solve chemistry */
-  /* Note: `grackle_rates` is a global variable defined by grackle itself.
-   * Using a manually allocd and initialized variable here fails with MPI
-   * for some reason. */
   if (local_solve_chemistry(
           &rt_props->grackle_chemistry_data, &rt_props->grackle_chemistry_rates,
           &rt_props->grackle_units, &particle_grackle_data, dt) == 0)
@@ -163,8 +164,9 @@ INLINE static void rt_do_thermochemistry(
   /* copy updated grackle data to particle */
   /* update particle internal energy. Grackle had access by reference
    * to internal_energy */
-  internal_energy = particle_grackle_data.internal_energy[0];
-  const float u_new = max(internal_energy, u_minimal);
+  internal_energy_phys = particle_grackle_data.internal_energy[0];
+
+  const float u_new = max(internal_energy_phys, u_minimal);
 
   /* Re-do thermochemistry? */
   if ((rt_props->max_tchem_recursion > depth) &&
@@ -180,7 +182,7 @@ INLINE static void rt_do_thermochemistry(
   }
 
   /* If we're good, update the particle data from grackle results */
-  hydro_set_internal_energy(p, u_new);
+  hydro_set_physical_internal_energy(p, xp, cosmo, u_new);
 
   /* Update mass fractions */
   const gr_float one_over_rho = 1. / density;
@@ -232,7 +234,6 @@ INLINE static void rt_do_thermochemistry(
                               p->rt_data.radiation[g].flux, E_old,
                               /*callloc=*/2);
   }
-
   /* Clean up after yourself. */
   rt_clean_grackle_fields(&particle_grackle_data);
 }
@@ -262,14 +263,18 @@ __attribute__((always_inline)) INLINE static float rt_tchem_get_tchem_time(
 
   gr_float density = hydro_get_physical_density(p, cosmo);
   const float u_minimal = hydro_props->minimal_internal_energy;
-  gr_float internal_energy =
-      max(hydro_get_physical_internal_energy(p, xp, cosmo), u_minimal);
+
+  /* Physical internal energy */
+  gr_float internal_energy_phys =
+      hydro_get_physical_internal_energy(p, xp, cosmo);
+  gr_float internal_energy = max(internal_energy_phys, u_minimal);
 
   gr_float species_densities[6];
   rt_tchem_get_species_densities(p, density, species_densities);
 
   float radiation_energy_density[RT_NGROUPS];
-  rt_part_get_radiation_energy_density(p, radiation_energy_density);
+  rt_part_get_physical_radiation_energy_density(p, radiation_energy_density,
+                                                cosmo);
 
   gr_float iact_rates[5];
   rt_get_interaction_rates_for_grackle(
@@ -282,15 +287,11 @@ __attribute__((always_inline)) INLINE static float rt_tchem_get_tchem_time(
                                  iact_rates);
 
   /* Compute 'cooling' time */
-  /* Note: grackle_rates is a global variable defined by grackle itself.
-   * Using a manually allocd and initialized variable here fails with MPI
-   * for some reason. */
   gr_float tchem_time;
   if (local_calculate_cooling_time(
           &rt_props->grackle_chemistry_data, &rt_props->grackle_chemistry_rates,
           &rt_props->grackle_units, &particle_grackle_data, &tchem_time) == 0)
     error("Error in calculate_cooling_time.");
-
   /* Clean up after yourself. */
   rt_clean_grackle_fields(&particle_grackle_data);
 
