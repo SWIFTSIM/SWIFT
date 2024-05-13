@@ -128,6 +128,15 @@ void runner_do_grav_long_range_zoom_non_periodic(struct runner *r,
     struct cell *cj = &cells[cjd];
     struct gravity_tensors *const multi_j = cj->grav.multipole;
 
+    /* Ensure we don't double interact zoom cells since they're also in the void
+     * level. */
+    if (ci->type == cell_type_zoom && cj->subtype == cell_subtype_void)
+      continue;
+
+    /* Ensure we don't double interact background cells since they will have
+     * interacted with the void cell. */
+    if (ci->type != cell_type_zoom && cj->type == cell_type_zoom) continue;
+
     /* Avoid self contributions */
     if (top == cj) continue;
 
@@ -492,7 +501,6 @@ void runner_do_long_range_zoom_periodic(struct runner *r, struct cell *ci,
       /* Call the PM interaction function on the active sub-cells of ci
        */
       runner_dopair_grav_mm_nonsym(r, ci, bkg_cj);
-      // runner_dopair_recursive_grav_pm(r, ci, cj);
 
       /* Record that this multipole received a contribution */
       multi_i->pot.interacted = 1;
