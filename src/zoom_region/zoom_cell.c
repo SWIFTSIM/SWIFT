@@ -1022,7 +1022,7 @@ static void zoom_subcell_unskip_void_tasks(struct scheduler *s,
 #ifdef SWIFT_DEBUG_CHECKS
   /* A void cell can't have any self or pair tasks since it contains no
    * particles. */
-  if (c->grav != NULL) {
+  if (c->grav.grav != NULL) {
     error("Void cell has self or pair tasks (c->grav != NULL)!");
   }
 #endif
@@ -1077,7 +1077,7 @@ void zoom_unskip_void_tasks(struct scheduler *s) {
   struct space *space = s->space;
 
   /* Get the void cell pointers. */
-  const int *void_cells = space->void_cells_top;
+  const int *void_cells = space->zoom_props->void_cells_top;
   const int nr_void_cells = space->zoom_props->nr_void_cells;
 
   /* Loop over void cells. */
@@ -1087,7 +1087,7 @@ void zoom_unskip_void_tasks(struct scheduler *s) {
 #ifdef SWIFT_DEBUG_CHECKS
     /* A void cell can't have any self or pair tasks since it contains no
      * particles. */
-    if (c->grav != NULL) {
+    if (c->grav.grav != NULL) {
       error("Void cell has self or pair tasks (c->grav != NULL)!");
     }
 #endif
