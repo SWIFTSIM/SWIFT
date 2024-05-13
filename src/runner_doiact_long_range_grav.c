@@ -143,10 +143,32 @@ void runner_do_grav_long_range_zoom_non_periodic(struct runner *r,
     /* Skip empty cells */
     if (multi_j->m_pole.M_000 == 0.f) continue;
 
-    if (cell_can_use_pair_mm(top, cj, e, e->s, /*use_rebuild_data=*/1,
-                             /*is_tree_walk=*/0,
-                             /*periodic boundaries*/ s->periodic,
-                             /*use_mesh*/ s->periodic)) {
+    /* Define interaction flag */
+    int interact = 0;
+
+    /* Need to handled zoom->neighbour differently to all others. */
+    if (ci->type == cell_type_zoom && cj->subtype == cell_subtype_neighbour) {
+
+      /* Get void top level */
+      struct cell *void_top = top->void_parent->top;
+
+      if (cell_can_use_pair_mm(void_top, cj, e, e->s, /*use_rebuild_data=*/1,
+                               /*is_tree_walk=*/0,
+                               /*periodic boundaries*/ s->periodic,
+                               /*use_mesh*/ s->periodic)) {
+        interact = 1;
+      }
+    }
+
+    else if (cell_can_use_pair_mm(top, cj, e, e->s, /*use_rebuild_data=*/1,
+                                  /*is_tree_walk=*/0,
+                                  /*periodic boundaries*/ s->periodic,
+                                  /*use_mesh*/ s->periodic)) {
+      interact = 1;
+    }
+
+    /* Are we interacting? */
+    if (interact) {
       /* Call the PM interaction function on the active sub-cells of ci */
       runner_dopair_grav_mm_nonsym(r, ci, cj);
       // runner_dopair_recursive_grav_pm(r, ci, cj);
