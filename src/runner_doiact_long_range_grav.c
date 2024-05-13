@@ -727,8 +727,13 @@ void runner_count_mesh_interactions(struct runner *r, struct cell *ci,
     struct cell *cj = &cells[n];
     struct gravity_tensors *const multi_j = cj->grav.multipole;
 
-    /* Explict skip the void cell if on a zoom cell. */
+    /* Skip the void cell if in a zoom cell. */
     if (ci->type == cell_type_zoom && cj->subtype == cell_subtype_void)
+      continue;
+
+    /* Skip the zoom cells if not in a zoom cell (these are handled by the
+     * void cell). */
+    if (ci->type != cell_type_zoom && cj->subtype == cell_subtype_zoom)
       continue;
 
     /* Avoid self contributions */
