@@ -225,8 +225,9 @@ static void engine_do_unskip_gravity(struct cell *c, struct engine *e) {
   /* Skip inactive cells. */
   if (!cell_is_active_gravity(c, e)) return;
 
-  /* Recurse */
-  if (c->split && ((c->maxdepth - c->depth) >= space_subdepth_diff_grav)) {
+  /* Recurse. (We always recurse on neighbours when in zoom land) */
+  if (c->split && ((c->maxdepth - c->depth) >= space_subdepth_diff_grav) ||
+      c->subtype == cell_subtype_neighbour) {
     for (int k = 0; k < 8; k++) {
       if (c->progeny[k] != NULL) {
         struct cell *cp = c->progeny[k];
