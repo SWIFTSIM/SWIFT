@@ -371,7 +371,8 @@ void runner_do_long_range_zoom_periodic(struct runner *r, struct cell *ci,
   struct engine *e = r->e;
   struct space *s = e->s;
   const double dim[3] = {e->mesh->dim[0], e->mesh->dim[1], e->mesh->dim[2]};
-  const int cdim[3] = s->zoom_props->cdim;
+  const int cdim[3] = {s->zoom_props->cdim[0], s->zoom_props->cdim[1],
+                       s->zoom_props->cdim[2]};
   struct cell *cells = s->cells_top;
 
   /* Get the maximum distance at which we can have a non-mesh interaction. */
@@ -468,7 +469,7 @@ void runner_do_long_range_zoom_periodic(struct runner *r, struct cell *ci,
     if (multi_j->m_pole.M_000 == 0.f) continue;
 
     /* Minimal distance between any pair of particles */
-    const double min_radius2 = cell_min_dist2(top, bkg_cj, periodic, dim);
+    const double min_radius2 = cell_min_dist2(top, bkg_cj, s->periodic, dim);
 
     /* Are we beyond the distance where the truncated forces are 0 ?*/
     if (min_radius2 > max_distance2) {
