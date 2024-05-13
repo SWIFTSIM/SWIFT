@@ -59,6 +59,10 @@ __attribute__((always_inline)) INLINE static void rt_props_init(
     const struct unit_system* us, struct swift_params* params,
     struct cosmology* cosmo) {}
 
+__attribute__((always_inline)) INLINE static void rt_props_update(
+    struct rt_props* rtp, const struct unit_system* us,
+    struct cosmology* cosmo) {}
+
 /**
  * @brief Write an RT properties struct to the given FILE as a
  * stream of bytes.
@@ -84,7 +88,7 @@ __attribute__((always_inline)) INLINE static void rt_struct_dump(
  */
 __attribute__((always_inline)) INLINE static void rt_struct_restore(
     struct rt_props* props, FILE* stream, const struct phys_const* phys_const,
-    const struct unit_system* us) {
+    const struct unit_system* us, const struct cosmology* restrict cosmo) {
 
   restart_read_blocks((void*)props, sizeof(struct rt_props), 1, stream, NULL,
                       "RT properties struct");
