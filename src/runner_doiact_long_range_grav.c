@@ -733,8 +733,7 @@ void runner_count_mesh_interactions(struct runner *r, struct cell *ci,
 
     /* Skip the zoom cells if not in a zoom cell (these are handled by the
      * void cell). */
-    if (ci->type != cell_type_zoom && cj->subtype == cell_subtype_zoom)
-      continue;
+    if (ci->type != cell_type_zoom && cj->type == cell_type_zoom) continue;
 
     /* Avoid self contributions */
     if (top == cj) continue;
