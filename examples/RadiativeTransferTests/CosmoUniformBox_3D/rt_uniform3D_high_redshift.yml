@@ -14,8 +14,6 @@ TimeIntegration:
   max_nr_rt_subcycles: 1
   dt_min:     1.e-17  # The minimal time-step size of the simulation (in internal units).
   dt_max:     1.e-2   # The maximal time-step size of the simulation (in internal units).
-  time_begin: 0
-  time_end:   1.
 
 # Parameters governing the snapshots
 Snapshots:
@@ -46,11 +44,12 @@ GEARRT:
   f_reduce_c: 1.                                  # reduce the speed of light for the RT solver by multiplying c with this factor
   f_limit_cooling_time: 0.0                       # (Optional) multiply the cooling time by this factor when estimating maximal next time step. Set to 0.0 to turn computation of cooling time off.
   CFL_condition: 0.99                             # CFL condition for RT, independent of hydro
-  photon_groups_Hz: [1.]                          # Lower photon frequency group bin edges in Hz. Needs to have exactly N elements, where N is the configured number of bins --with-RT=GEAR_N
+  photon_groups_Hz: [0, 3.2880e+15, 6.5760e+15, 9.8640e+15, 1.3152e+16, 1.6440e+16, 1.9728e+16, 2.3016e+16, 2.6304e+16, 2.9592e+16, 3.2880e+16]  # Hz
   stellar_luminosity_model: const                 # Which model to use to determine the stellar luminosities.
-  const_stellar_luminosities_LSol: [0.]           # (Conditional) constant star luminosities for each photon frequency group to use if stellar_luminosity_model:const is set, in units of Solar Luminosity.
+  const_stellar_luminosities_LSol: [0, 2.221e+04, 2.020e+04, 1.153e+04, 5.122e+03, 1.952e+03, 6.705e+02, 2.140e+02, 6.461e+01, 1.869e+01, 7.158e+00]
   hydrogen_mass_fraction:  0.76                   # total hydrogen (H + H+) mass fraction in the metal-free portion of the gas
-  stellar_spectrum_type: 0                        # Which radiation spectrum to use. 0: constant from 0 until some max frequency set by stellar_spectrum_const_max_frequency_Hz. 1: blackbody spectrum.
+  stellar_spectrum_type: 1                        # Which radiation spectrum to use. 0: constant from 0 until some max frequency set by stellar_spectrum_const_max_frequency_Hz. 1: blackbody spectrum.
+  stellar_spectrum_blackbody_temperature_K: 1.e6  # K
   stellar_spectrum_const_max_frequency_Hz: 1.e17  # (Conditional) if stellar_spectrum_type=0, use this maximal frequency for the constant spectrum. 
   set_initial_ionization_mass_fractions: 1        # (Optional) manually overwrite initial mass fraction of each species (using the values you set below)
   mass_fraction_HI: 0.76                          # (Conditional) If overwrite_initial_ionization_fractions=1, needed to set initial HI mass fractions to this value

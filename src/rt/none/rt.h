@@ -248,9 +248,8 @@ __attribute__((always_inline)) INLINE static void rt_end_gradient(
  * @param cosmo #cosmology data structure.
  */
 __attribute__((always_inline)) INLINE static void rt_finalise_transport(
-    struct part* restrict p, const double dt,
+    struct part* restrict p, struct rt_props* rtp, const double dt,
     const struct cosmology* restrict cosmo) {}
-
 /**
  * @brief Do the thermochemistry on a particle.
  *
