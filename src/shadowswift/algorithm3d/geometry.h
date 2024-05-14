@@ -971,7 +971,7 @@ inline static double geometry3d_compute_area_triangle(double ax, double ay,
   const double Dy = abz * acx - abx * acz;
   const double Dz = abx * acy - aby * acx;
 
-  return sqrt(Dx * Dx + Dy * Dy + Dz * Dz) / 2.;
+  return 0.5 * sqrt(Dx * Dx + Dy * Dy + Dz * Dz);
 }
 
 inline static void geometry3d_compute_centroid_triangle(
