@@ -92,8 +92,6 @@ void feedback_update_part(struct part* p, struct xpart* xp,
     const double sqrt_argument = fabs(p_old_times_dp*p_old_times_dp - p_tilde_norm_2*dp_norm_2);
     const double f_corr = (- p_old_times_dp + sqrt(sqrt_argument))/p_tilde_norm_2;
 
-    message("f_corr = %e", f_corr);
-
     /* Update the xpart accumulated dp */
     xp->feedback_data.delta_p[0] *= f_corr;
     xp->feedback_data.delta_p[1] *= f_corr;
@@ -299,8 +297,8 @@ void feedback_init_spart(struct spart* sp) {
   sp->feedback_data.E_total_accumulator = 0;
   sp->feedback_data.beta_1_accumulator = 0;
   sp->feedback_data.beta_2_accumulator = 0;
-  sp->feedback_data.sum_gas_density = 0;
-  sp->feedback_data.sum_gas_metallicity = 0;
+  sp->feedback_data.weighted_gas_density = 0;
+  sp->feedback_data.weighted_gas_metallicity = 0;
   sp->feedback_data.density_wcount = 0;
 
   sp->feedback_data.delta_m_check = 0.0;
@@ -359,8 +357,8 @@ void feedback_reset_feedback(struct spart* sp,
   sp->feedback_data.E_total_accumulator = 0;
   sp->feedback_data.beta_1_accumulator = 0;
   sp->feedback_data.beta_2_accumulator = 0;
-  sp->feedback_data.sum_gas_density = 0;
-  sp->feedback_data.sum_gas_metallicity = 0;
+  sp->feedback_data.weighted_gas_density = 0;
+  sp->feedback_data.weighted_gas_metallicity = 0;
   sp->feedback_data.density_wcount = 0;
 
   sp->feedback_data.delta_m_check = 0.0;
@@ -669,41 +667,47 @@ void feedback_compute_vector_weight_normalized(const float r2, const float *dx,
  */
 __attribute__((always_inline)) INLINE
 double feedback_get_SN_terminal_momentum(const struct spart* restrict sp,
-					 const struct part* restrict p,
-					 const struct xpart* restrict xp,
-					 const struct phys_const* phys_const,
-					 const struct unit_system* us) {
+                                         const struct part* restrict p,
+                                         const struct xpart* restrict xp,
+                                         const struct phys_const* phys_const,
+                                         const struct unit_system* us) {
 
   /* Terminal momentum 0 (in internal units) */
-  const double p_terminal_0 = 2.5e5*phys_const->const_solar_mass*1e-5*units_cgs_conversion_factor(us, UNIT_CONV_VELOCITY);
+  const double p_terminal_0 =
+      2.5e5 * phys_const->const_solar_mass * 1e-5 *
+      units_cgs_conversion_factor(us, UNIT_CONV_VELOCITY);
 
   /* In erg */
-  const double E_ej = sp->feedback_data.energy_ejected*units_cgs_conversion_factor(us, UNIT_CONV_ENERGY);
+  const double E_ej = sp->feedback_data.energy_ejected *
+                      units_cgs_conversion_factor(us, UNIT_CONV_ENERGY);
   const double ten_to_51 = 1e51;
 
   /* Get velocity factor. Currently, this is = 1. See PAPER 2024. */
   const double velocity_factor = 1;
 
   /* Compute the number of neighbours. Its need to multiply wcount by 1/h^d */
-  const double n_neighbours = sp->feedback_data.density_wcount * pow_dimension(1.0/sp->h);
+  const double n_neighbours =
+      sp->feedback_data.density_wcount * pow_dimension(1.0 / sp->h);
 
   /* Get metallicity factor */
-  const double Z_mean = sp->feedback_data.sum_gas_metallicity/(n_neighbours);
+  const double Z_mean = sp->feedback_data.weighted_gas_metallicity;
   const double Z_sun = 0.0134; /* Find the exact value somewhere */
   double metallicity_factor = 0.0;
 
-  if (Z_mean/Z_sun < 0.01) {
+  if (Z_mean / Z_sun < 0.01) {
     metallicity_factor = 2;
-  } else if ((0.01 <= Z_mean/Z_sun) && (Z_mean/Z_sun<= 1)) {
-    metallicity_factor = pow(Z_mean/Z_sun, -0.18);
+  } else if ((0.01 <= Z_mean / Z_sun) && (Z_mean / Z_sun <= 1)) {
+    metallicity_factor = pow(Z_mean / Z_sun, -0.18);
   } else /* Z/Z_sun > 1 */ {
-    metallicity_factor = pow(Z_mean/Z_sun, -0.14);
+    metallicity_factor = pow(Z_mean / Z_sun, -0.14);
   }
 
   /* Get number density factor in cgs */
-  const double m_p_cgs = phys_const->const_proton_mass * units_cgs_conversion_factor(us, UNIT_CONV_MASS);
-  double density_mean = sp->feedback_data.sum_gas_density / n_neighbours;
-  density_mean = density_mean*units_cgs_conversion_factor(us, UNIT_CONV_DENSITY)/m_p_cgs;
+  const double m_p_cgs = phys_const->const_proton_mass *
+                         units_cgs_conversion_factor(us, UNIT_CONV_MASS);
+  double density_mean = sp->feedback_data.weighted_gas_density;
+  density_mean = density_mean *
+                 units_cgs_conversion_factor(us, UNIT_CONV_DENSITY) / m_p_cgs;
 
   double density_factor = 0.0;
 
@@ -714,7 +718,8 @@ double feedback_get_SN_terminal_momentum(const struct spart* restrict sp,
   }
 
   /* This is in internal units */
-  double p_terminal = p_terminal_0*E_ej/ten_to_51*density_factor*metallicity_factor*velocity_factor;
+  double p_terminal = p_terminal_0 * E_ej / ten_to_51 * density_factor *
+                      metallicity_factor * velocity_factor;
   return p_terminal;
 }
 
@@ -745,7 +750,7 @@ double feedback_get_SN_cooling_radius(const struct spart* restrict sp,
   const double n_neighbours =
       sp->feedback_data.density_wcount * pow_dimension(1.0 / sp->h);
 
-  const double mean_density =  sp->feedback_data.sum_gas_density / n_neighbours;
+  const double mean_density =  sp->feedback_data.weighted_gas_density;
 
   /* Compute the cooling radius */
   const double second_part = p_terminal*p_terminal/(p_SN_initial*p_SN_initial) - 1;

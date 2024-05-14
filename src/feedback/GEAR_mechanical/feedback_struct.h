@@ -91,8 +91,8 @@ struct feedback_spart_data {
   double beta_2_accumulator; /* accumulated value for beta_2 */
 
   /* Sum of the gas properties used to compute the mean of the properties */
-  double sum_gas_density;
-  double sum_gas_metallicity;
+  double weighted_gas_density;
+  double weighted_gas_metallicity;
 
   /* Number of neighbours contributing to feedback */
   double density_wcount;

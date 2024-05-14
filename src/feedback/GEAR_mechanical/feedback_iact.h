@@ -132,11 +132,6 @@ runner_iact_nonsym_feedback_prep1(const float r2, const float dx[3],
   si->feedback_data.f_minus_denom[0] += scalar_weight_j*fabs(dx_ij_minus[0]);
   si->feedback_data.f_minus_denom[1] += scalar_weight_j*fabs(dx_ij_minus[1]);
   si->feedback_data.f_minus_denom[2] += scalar_weight_j*fabs(dx_ij_minus[2]);
-
-
-  /* Compute the sum of the gas properties around the star (to compute the mean) */
-  si->feedback_data.sum_gas_density += pj->rho;
-  si->feedback_data.sum_gas_metallicity += chemistry_get_total_metal_mass_fraction_for_feedback(pj);
 }
 
 
@@ -250,6 +245,12 @@ runner_iact_nonsym_feedback_prep3(const float r2, const float dx[3],
 
   /* Notice that we will multiply by m_ej later on */
   si->feedback_data.beta_2_accumulator += w_prime_ij*w_j_bar_norm/mj;
+
+
+  /* Compute the weigthed average of the gas properties around the star with
+     our isotropic weighting scheme. */
+  si->feedback_data.weighted_gas_density += w_j_bar_norm*pj->rho;
+  si->feedback_data.weighted_gas_metallicity += w_j_bar_norm*chemistry_get_total_metal_mass_fraction_for_feedback(pj);
   
 }
 
@@ -357,6 +358,7 @@ runner_iact_nonsym_feedback_apply(
   }
 
 #if FEEDBACK_GEAR_MECHANICAL_MODE == 1
+  const float internal_energy_snowplow_exponent = -6.5;
 
   /* ... momentum */
   const double p_ej = sqrt(2*m_ej*E_ej) ;
@@ -410,15 +412,12 @@ runner_iact_nonsym_feedback_apply(
   dp_prime[2] *= p_factor;
 
   /* Compute the cooling radius */
-  const double r_cool =  feedback_get_SN_cooling_radius(si, p_available, p_terminal);
+  const double r_cool = feedback_get_SN_cooling_radius(si, p_ej, p_terminal);
 
   /* If we do not resolve the Taylor-Sedov, we rescale the internal energy */
   if (r2 > r_cool*r_cool) {
     const double r = sqrt(r2);
-    dU *= pow(r/r_cool, -6.5);
-    dp_prime[0] *= pow(r/r_cool, -6.5);
-    dp_prime[1] *= pow(r/r_cool, -6.5);
-    dp_prime[2] *= pow(r/r_cool, -6.5);
+    dU *= pow(r/r_cool, internal_energy_snowplow_exponent);
 
     message("We do not resolve the Sedov-Taylor (r_cool = %e). Rescaling dU.", r_cool);
   } /* else we do not change dU */
@@ -438,18 +437,11 @@ runner_iact_nonsym_feedback_apply(
 
   /* Now, we take into account for potentially unresolved energy-conserving
      phase of the SN explosion (xsi != 1 in such cases). If we cannot resolve
-     this phase, we give momentum mostly. The thermal energy is radiated away
-     because of cooling.
-
-     Also, we need to rescale the momentum if the gas is way beyond the cooling
-     radius. Otherwise we can give p_terminal at unphysical distances and
-     create large bubbles ~100 kpc. */
+     this phase, we give mostly momentum, but also thermal energy. The thermal
+     energy will be radiated away because of cooling. */
   const double p_available = sqrt(2.0*epsilon*m_ej);
   const double p_terminal = feedback_get_SN_terminal_momentum(si, pj, xpj, phys_const, us);
-  const double r = sqrt(r2);
-  const double r_cool =  feedback_get_SN_cooling_radius(si, p_available, p_terminal);
-  const double ISM_merging_term = pow(r/r_cool, -6.5);
-  const double xsi = min(1, p_terminal/(psi * p_available)*ISM_merging_term);
+  const double xsi = min(1, p_terminal/(psi * p_available));
 
   /* Finally, the ejected velocity is */
   double p_ej = psi*xsi*p_available;
@@ -464,18 +456,7 @@ runner_iact_nonsym_feedback_apply(
   const double factor = (psi*psi * xsi*xsi)*beta_2 + 2.0*(psi*xsi)*beta_1;
   const double f_therm = 1.0 - factor*epsilon/E_tot;
   const double U_tot = f_therm*E_tot;
-
-  /* If we are far beyond r_cool, U_tot = U_therm + U_rad, i.e some energy is
-     radiated because of cooling. So we need to rescale the internal energy we
-     give to the gas. */
-  double U_therm = 0;
-  if (r > r_cool) {
-    U_therm = U_tot*ISM_merging_term; /* Energy lost in radiation */
-  } else {
-    U_therm = U_tot ; /* Energy not yet lost in radiation */
-  }
-
-  const double dU = w_j_bar_norm * U_therm;
+  const double dU = w_j_bar_norm * U_tot;
 
   /* Compute kinetic energy difference before and after SN */
   const double p_old_norm_2 = mj*mj*(xpj->v_full[0]*xpj->v_full[0] + xpj->v_full[1]*xpj->v_full[1] + xpj->v_full[2]*xpj->v_full[2]);
@@ -491,8 +472,8 @@ runner_iact_nonsym_feedback_apply(
   const double dp_norm_2 = dp[0]*dp[0] +  dp[1]*dp[1] +  dp[2]*dp[2];
 
   /* message("beta_1 = %e, beta_2 = %e, psi = %e, psi*p_available = %e, p_available = %e", beta_1, beta_2, psi,  psi*p_available, p_available); */
-  /* message("xsi = %e, p_t = %e, r = %e, r_cool = %e, ISM_merging = %e", xsi, p_terminal, r, r_cool, ISM_merging_term); */
-  /* message("E_ej = %e, E_tot = %e, U_tot = %e, E_kin_tot = %e, U_therm = %e, p_ej = %e, p_terminal = %e, dU = %e, f_therm = %e", E_ej, E_tot, U_tot, epsilon, U_therm, p_ej, p_terminal, dU, f_therm); */
+  /* message("xsi = %e, p_t = %e, r = %e, r_cool = %e", xsi, p_terminal, r, r_cool); */
+  /* message("E_ej = %e, E_tot = %e, U_tot = %e, E_kin_tot = %e, p_ej = %e, p_terminal = %e, dU = %e, f_therm = %e", E_ej, E_tot, U_tot, epsilon, p_ej, p_terminal, dU, f_therm); */
 
 #endif /* FEEDBACK_GEAR_MECHANICAL_MODE == 2 */
 
