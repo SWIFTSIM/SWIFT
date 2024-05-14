@@ -1091,6 +1091,38 @@ void cell_clear_limiter_flags(struct cell *c, void *data) {
                   cell_flag_do_hydro_limiter | cell_flag_do_hydro_sub_limiter);
 }
 
+void cell_clear_unskip_flags(struct cell *c) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+
+  if (c->split) {
+    for (int k = 0; k < 8; ++k) {
+      if (c->progeny[k] != NULL) cell_clear_unskip_flags(c->progeny[k]);
+    }
+  }
+
+  cell_clear_flag(
+      c, cell_flag_do_stars_resort | cell_flag_do_stars_drift |
+             cell_flag_do_stars_sub_drift | cell_flag_do_hydro_drift |
+             cell_flag_do_hydro_sub_drift | cell_flag_do_hydro_sync |
+             cell_flag_do_hydro_sub_sync | cell_flag_do_grav_drift |
+             cell_flag_do_grav_sub_drift | cell_flag_do_bh_drift |
+             cell_flag_do_bh_sub_drift | cell_flag_do_sink_drift |
+             cell_flag_do_sink_sub_drift | cell_flag_do_hydro_limiter |
+             cell_flag_do_hydro_sub_limiter | cell_flag_do_hydro_sub_sort |
+             cell_flag_do_stars_sub_sort | cell_flag_do_rt_sub_sort |
+             cell_flag_unskip_self_grav_processed |
+             cell_flag_unskip_pair_grav_processed);
+
+  c->hydro.do_sort = 0;
+  c->stars.do_sort = 0;
+  c->hydro.requires_sorts = 0;
+  c->stars.requires_sorts = 0;
+#else
+  error("Calling debugging code without debugging flag activated.");
+#endif
+}
+
 /**
  * @brief Set the super-cell pointers for all cells in a hierarchy.
  *
@@ -1257,9 +1289,15 @@ void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data) {
  *
  * The same must be true for all directly neighbouring cells on the same level,
  * but this is checked later.
+ *
+ * @param c The #cell to be checked
+ * @param force Whether to forcefully recompute the completeness if it was not
+ * invalidated.
  * */
-void cell_grid_set_self_completeness(struct cell *c) {
+void cell_grid_update_self_completeness(struct cell *c, int force) {
   if (c == NULL) return;
+  if (!force && (c->grid.self_completeness != grid_invalidated_completeness))
+    return;
 
   if (c->split) {
     int all_complete = 1;
@@ -1267,25 +1305,26 @@ void cell_grid_set_self_completeness(struct cell *c) {
     /* recurse */
     for (int i = 0; all_complete && i < 8; i++) {
       if (c->progeny[i] != NULL) {
-        cell_grid_set_self_completeness(c->progeny[i]);
+        cell_grid_update_self_completeness(c->progeny[i], force);
         /* As long as all progeny is complete, this cell can safely be split for
          * the grid construction (when not considering neighbouring cells) */
-        all_complete &= c->progeny[i]->grid.self_complete;
+        all_complete &=
+            (c->progeny[i]->grid.self_completeness == grid_complete);
       }
     }
 
     /* If all sub-cells are complete, this cell is also complete. */
     if (all_complete) {
-      c->grid.self_complete = 1;
-      /* We set complete to the same value as self complete for now */
-      c->grid.complete = c->grid.self_complete;
+      c->grid.self_completeness = grid_complete;
+      /* We set complete to true for now */
+      c->grid.complete = 1;
       /* We are done here */
       return;
     }
   }
 
-  /* If this cell is not split, we need to check if this cell is complete by
-   * looping over all the particles. */
+  /* If this cell is not split, or not all subcells are complete, we need to
+   * check if this cell is complete by looping over all the particles. */
 
   /* criterion = 0b111_111_111_111_111_111_111_111_111*/
 #ifdef HYDRO_DIMENSION_1D
@@ -1311,10 +1350,14 @@ void cell_grid_set_self_completeness(struct cell *c) {
     }
   }
 
-  c->grid.self_complete = (flags == criterion);
-
-  /* We set complete to the same value as self complete for now */
-  c->grid.complete = c->grid.self_complete;
+  /* Set completeness flags accordingly */
+  if (flags == criterion) {
+    c->grid.self_completeness = grid_complete;
+    c->grid.complete = 1;
+  } else {
+    c->grid.self_completeness = grid_incomplete;
+    c->grid.complete = 0;
+  }
 }
 
 void cell_grid_set_self_completeness_mapper(void *map_data, int num_elements,
@@ -1332,7 +1375,7 @@ void cell_grid_set_self_completeness_mapper(void *map_data, int num_elements,
     }
 
     /* Set the splittable attribute for the moving mesh */
-    cell_grid_set_self_completeness(c);
+    cell_grid_update_self_completeness(c, /*force*/ 1);
   }
 }
 
@@ -1406,21 +1449,16 @@ void cell_grid_set_pair_completeness(struct cell *restrict ci,
      * neighbouring cell invalidates completeness)
      * We need to use atomics here, since multiple threads may change this at
      * the same time. */
-#ifdef SHADOWSWIFT_RELAXED_COMPLETENESS
     if (ci_local) {
-      atomic_and(&ci->grid.complete,
-                 cj->grid.self_complete ||
-                     kernel_gamma * ci->hydro.h_max < 0.5 * cj->dmin);
+      atomic_and(
+          &ci->grid.complete,
+          !cell_need_rebuild_for_grid_construction_pair(ci, cj));
     }
     if (cj_local) {
-      atomic_and(&cj->grid.complete,
-                 ci->grid.self_complete ||
-                     kernel_gamma * cj->hydro.h_max < 0.5 * ci->dmin);
+      atomic_and(
+          &cj->grid.complete,
+          !cell_need_rebuild_for_grid_construction_pair(cj, ci));
     }
-#else
-    if (ci_local) atomic_and(&ci->grid.complete, cj->grid.self_complete);
-    if (cj_local) atomic_and(&cj->grid.complete, ci->grid.self_complete);
-#endif
   }
 }
 

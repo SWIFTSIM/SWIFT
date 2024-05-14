@@ -192,6 +192,13 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force,
   replication_list = refine_replications(e, c, replication_list_in);
 #endif
 
+  /* Invalidate grid completeness flags if we drift somewhere at or below this
+   * cell. */
+  if ((e->policy & engine_policy_grid) &&
+      (force || cell_get_flag(c, cell_flag_do_hydro_sub_drift))) {
+    c->grid.self_completeness = grid_invalidated_completeness;
+  }
+
   /* Are we not in a leaf ? */
   if (c->split && (force || cell_get_flag(c, cell_flag_do_hydro_sub_drift))) {
 

@@ -113,7 +113,19 @@ INLINE static void convert_A(const struct engine* e, const struct part* p,
  */
 INLINE static void convert_Etot(const struct engine* e, const struct part* p,
                                 const struct xpart* xp, float* ret) {
-  ret[0] = p->conserved.energy;
+  ret[0] = p->conserved.energy + p->flux.energy;
+}
+
+/**
+ * @brief Get the total mass of a particle
+ *
+ * @param e #engine.
+ * @param p Particle.
+ * @return Total mass of the particle
+ */
+INLINE static void convert_mass(const struct engine* e, const struct part* p,
+                                const struct xpart* xp, float* ret) {
+  ret[0] = p->conserved.mass + p->flux.mass;
 }
 
 INLINE static void convert_part_pos(const struct engine* e,
@@ -206,8 +218,9 @@ INLINE static void hydro_write_particles(const struct part* parts,
       "Peculiar velocities of the stars. This is (a * dx/dt) where x is the "
       "co-moving positions of the particles");
 
-  list[2] = io_make_output_field("Masses", FLOAT, 1, UNIT_CONV_MASS, 1.f, parts,
-                                 conserved.mass, "Masses of the particles");
+  list[2] = io_make_output_field_convert_part(
+      "Masses", FLOAT, 1, UNIT_CONV_MASS, 1.f, parts, xparts, convert_mass,
+      "Masses of the particles");
 
   list[3] = io_make_output_field(
       "SmoothingLengths", FLOAT, 1, UNIT_CONV_LENGTH, 1.f, parts, h,

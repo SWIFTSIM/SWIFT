@@ -5,6 +5,12 @@
 #ifndef SWIFTSIM_GITLAB_TETRAHEDRON_H
 #define SWIFTSIM_GITLAB_TETRAHEDRON_H
 
+typedef unsigned char tetrahedron_flags_t;
+enum tetrahedron_flags {
+  tetrahedron_flag_none = 0,
+  tetrahedron_flag_has_vertex = (1 << 0),
+};
+
 /**
  * @brief Tetrahedron
  *
@@ -27,24 +33,15 @@ struct tetrahedron {
   /*! @brief Indices of the neighbour tetrahedra. */
   int neighbours[4];
 
-  union {
-    /*! @brief The centroid of this tetrahedron. Used during construction. */
-    double centroid[3];
-
-    /*! @brief The circumcenter of this tetrahedron. Used for Voronoi
-     * construction. */
-    double circumcenter[3];
-  };
-
-  /*! @brief Index of this tetrahedron in the neighbour list of its neighbours.
+  /*! @brief Index of this tetrahedron in the neighbour lists of its neighbours.
    * */
-  int index_in_neighbour[4];
+  unsigned char index_in_neighbour[4];
 
   /*! @brief Indicates whether or not a tetrahedron is active (or has been
    * invalidated) */
-  int active;
+  unsigned char active;
 
-  int _flag;
+  tetrahedron_flags_t _flags;
 };
 
 /**
@@ -73,7 +70,7 @@ inline static void tetrahedron_init(struct tetrahedron *t, int v0, int v1,
   t->index_in_neighbour[3] = -1;
 
   t->active = 1;
-  t->_flag = 0;
+  t->_flags = tetrahedron_flag_none;
 }
 
 /**
@@ -98,7 +95,7 @@ inline static void tetrahedron_deactivate(struct tetrahedron *restrict t) {
   t->index_in_neighbour[3] = -1;
 
   t->active = 0;
-  t->_flag = -1;
+  t->_flags = tetrahedron_flag_none;
 }
 
 /**

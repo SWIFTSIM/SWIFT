@@ -215,7 +215,7 @@ struct pcell {
   /*! Grid variables */
   struct {
     /*! self complete flag */
-    int self_complete;
+    enum grid_completeness self_completeness;
   } grid;
 
   /*! RT variables */
@@ -652,7 +652,7 @@ void cell_activate_limiter(struct cell *c, struct scheduler *s);
 void cell_clear_drift_flags(struct cell *c, void *data);
 void cell_clear_limiter_flags(struct cell *c, void *data);
 void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data);
-void cell_grid_set_self_completeness(struct cell *c);
+void cell_grid_update_self_completeness(struct cell *c, int force);
 void cell_set_grid_completeness_mapper(void *map_data, int num_elements,
                                        void *extra_data);
 void cell_set_grid_construction_level_mapper(void *map_data, int num_elements,
@@ -664,6 +664,7 @@ void cell_check_spart_pos(const struct cell *c,
 void cell_check_sort_flags(const struct cell *c);
 void cell_clear_stars_sort_flags(struct cell *c, const int unused_flags);
 void cell_clear_hydro_sort_flags(struct cell *c, const int unused_flags);
+void cell_clear_unskip_flags(struct cell *c);
 int cell_has_tasks(struct cell *c);
 void cell_remove_part(const struct engine *e, struct cell *c, struct part *p,
                       struct xpart *xp);
@@ -1023,25 +1024,32 @@ cell_need_rebuild_for_hydro_pair(const struct cell *ci, const struct cell *cj) {
  * @brief Have gas particles in a pair of cells moved too much and require a
  * rebuild?
  *
+ * This function returns true the grid completeness criterion from the
+ * perspective of ci (the #cell for which the grid will be constructed) is no
+ * longer valid.
+ *
+ * NOTE: This function assumes that the self_completeness flags are up to date.
+ *
  * @param ci The first #cell. This is the cell for which the grid will be
  * constructed.
  * @param cj The second #cell. This is the neighbouring cell whose particles are
  * used as ghost particles.
  */
 __attribute__((always_inline, nonnull)) INLINE static int
-cell_need_rebuild_for_grid_pair(struct cell *ci, struct cell *cj) {
-
-  /* The max distance the parts in both cells have */
-  /* moved larger than the cell size divided by three? */
-  /* Note ci->dmin == cj->dmin */
-  //  if (ci->hydro.dx_max_part > 0.333 * ci->dmin) return 1;
-  //  if (cj->hydro.dx_max_part > 0.333 * cj->dmin) return 1;
+cell_need_rebuild_for_grid_construction_pair(struct cell *ci, struct cell *cj) {
 
   /* Check completeness criteria */
-  /* ci's completeness flag has already been set */
-  if (!ci->grid.self_complete) return 1;
-  cell_grid_set_self_completeness(cj);
-  if (!cj->grid.self_complete) return 1;
+  /* NOTE: Both completeness flags should already be updated at this point */
+  const int ci_self_complete = ci->grid.self_completeness == grid_complete;
+  const int cj_self_complete = cj->grid.self_completeness == grid_complete;
+  if (!ci_self_complete) return 1;
+#ifdef SHADOWSWIFT_RELAXED_COMPLETENESS
+  /* NOTE: ci->dmin == cj->dmin */
+  if (!cj_self_complete && kernel_gamma * ci->hydro.h_max > 0.5 * cj->dmin)
+    return 1;
+#else
+  if (!ci_self_complete || !cj_self_complete) return 1;
+#endif
 
   return 0;
 }

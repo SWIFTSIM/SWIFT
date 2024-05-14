@@ -144,9 +144,9 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->sinks.do_sink_swallow = NULL;
     c->sinks.do_gas_swallow = NULL;
     c->black_holes.density_ghost = NULL;
-    c->black_holes.swallow_ghost_0 = NULL;
     c->black_holes.swallow_ghost_1 = NULL;
     c->black_holes.swallow_ghost_2 = NULL;
+    c->black_holes.swallow_ghost_3 = NULL;
     c->black_holes.density = NULL;
     c->black_holes.swallow = NULL;
     c->black_holes.do_gas_swallow = NULL;
@@ -220,7 +220,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->rt.advanced_time = 0;
 #endif
     c->grid.voronoi = NULL;
-    c->grid.self_complete = 0;
+    c->grid.self_completeness = grid_invalidated_completeness;
     c->grid.complete = 0;
 #if WITH_MPI
     c->grid.send_flags = 0;
