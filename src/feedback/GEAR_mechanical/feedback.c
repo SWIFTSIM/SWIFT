@@ -685,10 +685,6 @@ double feedback_get_SN_terminal_momentum(const struct spart* restrict sp,
   /* Get velocity factor. Currently, this is = 1. See PAPER 2024. */
   const double velocity_factor = 1;
 
-  /* Compute the number of neighbours. Its need to multiply wcount by 1/h^d */
-  const double n_neighbours =
-      sp->feedback_data.density_wcount * pow_dimension(1.0 / sp->h);
-
   /* Get metallicity factor */
   const double Z_mean = sp->feedback_data.weighted_gas_metallicity;
   const double Z_sun = 0.0134; /* Find the exact value somewhere */
@@ -745,11 +741,6 @@ double feedback_get_SN_cooling_radius(const struct spart* restrict sp,
 				      double p_terminal) {
 
   const double m_ej = sp->feedback_data.mass_ejected;
-
-  /* Compute the number of neighbours. Its need to multiply wcount by 1/h^d */
-  const double n_neighbours =
-      sp->feedback_data.density_wcount * pow_dimension(1.0 / sp->h);
-
   const double mean_density =  sp->feedback_data.weighted_gas_density;
 
   /* Compute the cooling radius */
