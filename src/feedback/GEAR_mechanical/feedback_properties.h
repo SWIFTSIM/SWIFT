@@ -29,6 +29,9 @@
  */
 struct feedback_props {
 
+  /*! Supernovae energy effectively deposited */
+  float supernovae_efficiency;
+
   /*! The stellar model */
   struct stellar_model stellar_model;
 
@@ -82,6 +85,7 @@ __attribute__((always_inline)) INLINE static void feedback_props_print(
   }
 
   /* Print the feedback properties */
+  message("Supernovae efficiency = %.2g", feedback_props->supernovae_efficiency);
   message("Yields table = %s", feedback_props->stellar_model.yields_table);
 
   /* Print the stellar model */
@@ -113,6 +117,9 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
     struct feedback_props* fp, const struct phys_const* phys_const,
     const struct unit_system* us, struct swift_params* params,
     const struct hydro_props* hydro_props, const struct cosmology* cosmo) {
+
+  /* Supernovae energy efficiency */
+  fp->supernovae_efficiency = parser_get_param_double(params, "GEARFeedback:supernovae_efficiency");
 
   /* filename of the chemistry tables. */
   parser_get_param_string(params, "GEARFeedback:yields_table",
