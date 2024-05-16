@@ -2788,8 +2788,8 @@ case "$with_forcing" in
    abc-flow)
       AC_DEFINE([FORCING_ABC_FLOW], [1], [ABC flow external forcing terms])
    ;;
-   driven-turbulence)
-      AC_DEFINE([FORCING_DRIVEN_TURBULENCE], [1], [Driven turbulence external forcing terms])
+   alvelius-driven-turbulence)
+      AC_DEFINE([FORCING_ALVELIUS_DRIVEN_TURBULENCE], [1], [Alvelius driven turbulence (1999) external forcing terms])
    ;;
    *)
       AC_MSG_ERROR([Unknown external forcing term: $with_forcing])

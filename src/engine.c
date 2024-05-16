@@ -3194,7 +3194,7 @@ void engine_init(
     struct pressure_floor_props *pressure_floor, struct rt_props *rt,
     struct pm_mesh *mesh, struct power_spectrum_data *pow_data,
     const struct external_potential *potential,
-    const struct forcing_terms *forcing_terms,
+    struct forcing_terms *forcing_terms,
     struct cooling_function_data *cooling_func,
     const struct star_formation *starform,
     const struct chemistry_global_data *chemistry,
@@ -3743,6 +3743,7 @@ void engine_clean(struct engine *e, const int fof, const int restart) {
   scheduler_clean(&e->sched);
   space_clean(e->s);
   threadpool_clean(&e->threadpool);
+  forcing_terms_clean(e->forcing_terms);
 #if defined(WITH_MPI)
   for (int i = 0; i < e->nr_proxies; ++i) {
     proxy_clean(&e->proxies[i]);

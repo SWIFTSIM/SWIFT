@@ -168,4 +168,13 @@ static INLINE void forcing_terms_init(struct swift_params* parameter_file,
   terms->C = parser_get_param_double(parameter_file, "ABC_Flow_Forcing:C");
 }
 
+/**
+ * @brief Frees any memory allocated for the forcing terms
+ *
+ * @param terms The forcing term properties to clean
+ */
+static INLINE void forcing_terms_clean(struct forcing_terms* terms) {
+  /* Nothing to do here */
+}
+
 #endif /* SWIFT_FORCING_ABC_FLOW_H */

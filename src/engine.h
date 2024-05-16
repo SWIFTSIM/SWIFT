@@ -542,7 +542,7 @@ struct engine {
   const struct external_potential *external_potential;
 
   /* Properties of the hydrodynamics forcing terms */
-  const struct forcing_terms *forcing_terms;
+  struct forcing_terms *forcing_terms;
 
   /* Properties of the cooling scheme */
   struct cooling_function_data *cooling_func;
@@ -721,7 +721,7 @@ void engine_init(
     struct pressure_floor_props *pressure_floor, struct rt_props *rt,
     struct pm_mesh *mesh, struct power_spectrum_data *pow_data,
     const struct external_potential *potential,
-    const struct forcing_terms *forcing_terms,
+    struct forcing_terms *forcing_terms,
     struct cooling_function_data *cooling_func,
     const struct star_formation *starform,
     const struct chemistry_global_data *chemistry,
