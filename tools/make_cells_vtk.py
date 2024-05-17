@@ -169,8 +169,6 @@ def make_cells_vtk(input_file, output_basename):
         f.write("\t" + "</UnstructuredGrid>\n")
         f.write("</VTKFile>\n")
 
-        # TODO: under Cells, write the connectivity, offsets, and types
-
 
 if __name__ == "__main__":
     # Define command line arguments
