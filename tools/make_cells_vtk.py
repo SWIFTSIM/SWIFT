@@ -109,7 +109,7 @@ def make_cells_vtk(input_file, output_basename):
     # Derive CellData
 
     # Write the VTK XML file
-    with open(output_basename + ".vdu", "w") as f:
+    with open(output_basename + ".vtu", "w") as f:
         f.write("<VTKFile type=UnstructuredGrid>\n")
         f.write("\t" + "<UnstructuredGrid>\n")
         f.write(
