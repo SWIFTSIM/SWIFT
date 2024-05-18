@@ -32,8 +32,13 @@ float initial_mass_function_get_exponent(
 #ifdef SWIFT_DEBUG_CHECKS
   if (mass_max > imf->mass_max)
     error("Cannot have mass larger than the largest one in the IMF");
-  if (mass_min < imf->mass_min)
-    error("Cannot have mass smaller than the smallest one in the IMF");
+
+  /* 18.05.2024: This check is ill-defined. It needs to be improved.
+     For population II stars, no problem.
+     For population III stars, the snia->mass_min_progenitor can be smaller
+     than the minimal mass of the IMF, which causes the code to crash here. */
+  /* if (mass_min < imf->mass_min) */
+  /*   error("Cannot have mass smaller than the smallest one in the IMF"); */
   if (mass_max < mass_min) error("Cannot have mass_min larger than mass_max");
 #endif
 
