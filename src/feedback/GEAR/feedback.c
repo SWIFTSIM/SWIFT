@@ -157,84 +157,6 @@ void compute_time(struct spart* sp, const int with_cosmology,
 }
 
 /**
- * @brief Will this individual star want to do feedback during the next
- * time-step?
- *
- * This is called in the time step task.
- *
- * In GEAR, we compute the full stellar evolution here.
- *
- * @param sp The particle to act upon
- * @param feedback_props The #feedback_props structure.
- * @param cosmo The current cosmological model.
- * @param us The unit system.
- * @param phys_const The #phys_const.
- * @param ti_current The current time (in integer)
- * @param time_base The time base.
- * @param time The physical time in internal units.
- */
-void feedback_will_do_feedback_individual_star(
-    struct spart* sp, const struct feedback_props* feedback_props,
-    const int with_cosmology, const struct cosmology* cosmo, const double time,
-    const struct unit_system* us, const struct phys_const* phys_const,
-    const integertime_t ti_current, const double time_base) {
-
-  /* Zero the energy of supernovae */
-  sp->feedback_data.energy_ejected = 0;
-  sp->feedback_data.will_do_feedback = 0;
-
-  /* Pick the correct table. (if only one table, threshold is < 0) */
-  const float metal =
-      chemistry_get_star_total_iron_mass_fraction_for_feedback(sp);
-  const float threshold = feedback_props->metallicity_max_first_stars;
-
-  const struct stellar_model* model =
-      metal < threshold ? &feedback_props->stellar_model_first_stars
-                        : &feedback_props->stellar_model;
-
-  /* If the star has completely exploded, do not continue. This will also avoid
-     NaN values in the liftetime if the mass is set to 0.
-     Correction (28.04.2024): A bug fix in the mass of the star (see
-     stellar_evolution.c in stellar_evolution_compute_X_feedback_properties,
-     X=discrete, continuous) has changed the mass of the star from 0 to
-     discrete_star_minimal_gravity_mass. Hence the fix is propagated here. */
-  if (sp->mass <= model->discrete_star_minimal_gravity_mass) {
-    return;
-  }
-  
-  /* Compute the times */
-  double star_age_beg_step = 0;
-  double dt_enrichment = 0;
-  integertime_t ti_begin = 0;
-  compute_time(sp, with_cosmology, cosmo, &star_age_beg_step, &dt_enrichment,
-               &ti_begin, ti_current, time_base, time);
-
-#ifdef SWIFT_DEBUG_CHECKS
-  if (sp->birth_time == -1.) error("Evolving a star particle that should not!");
-  if (star_age_beg_step + dt_enrichment < 0) {
-    error("Negative age for a star");
-  }
-#endif
-
-  /* Ensure that the age is positive (rounding errors) */
-  const double star_age_beg_step_safe =
-      star_age_beg_step < 0 ? 0 : star_age_beg_step;
-
-
-
-  /* Compute the stellar evolution including SNe energy */
-  stellar_evolution_evolve_individual_star(sp, model, cosmo, us, phys_const,
-                                           ti_begin, star_age_beg_step_safe,
-                                           dt_enrichment);
-
-  /* apply the energy efficiency factor */
-  sp->feedback_data.energy_ejected *= feedback_props->supernovae_efficiency;
-
-  /* Set the particle as doing some feedback */
-  sp->feedback_data.will_do_feedback = sp->feedback_data.energy_ejected != 0.;
-}
-
-/**
  * @brief Will this star particle want to do feedback during the next time-step?
  *
  * This is called in the time step task.
@@ -260,32 +182,6 @@ void feedback_will_do_feedback(
   sp->feedback_data.energy_ejected = 0;
   sp->feedback_data.will_do_feedback = 0;
 
-  /* A single star */
-  if (sp->feedback_data.star_type == single_star) {
-    feedback_will_do_feedback_individual_star(
-        sp, feedback_props, with_cosmology, cosmo, time, us, phys_const,
-        ti_current, time_base);
-    return;
-  }
-
-  /* Compute the times */
-  double star_age_beg_step = 0;
-  double dt_enrichment = 0;
-  integertime_t ti_begin = 0;
-  compute_time(sp, with_cosmology, cosmo, &star_age_beg_step, &dt_enrichment,
-               &ti_begin, ti_current, time_base, time);
-
-#ifdef SWIFT_DEBUG_CHECKS
-  if (sp->birth_time == -1.) error("Evolving a star particle that should not!");
-  if (star_age_beg_step + dt_enrichment < 0) {
-    error("Negative age for a star");
-  }
-#endif
-
-  /* Ensure that the age is positive (rounding errors) */
-  const double star_age_beg_step_safe =
-      star_age_beg_step < 0 ? 0 : star_age_beg_step;
-
   /* Pick the correct table. (if only one table, threshold is < 0) */
   const float metal =
       chemistry_get_star_total_iron_mass_fraction_for_feedback(sp);
@@ -293,19 +189,52 @@ void feedback_will_do_feedback(
 
   /* If metal < threshold, then  sp is a first star particle. */
   const int is_first_star = metal < threshold;
-
   const struct stellar_model* model =
-      is_first_star ? &feedback_props->stellar_model_first_stars
-                    : &feedback_props->stellar_model;
+    is_first_star ? &feedback_props->stellar_model_first_stars
+    : &feedback_props->stellar_model;
 
-  /* Compute the stellar evolution including SNe energy. This function treats
-     the case of particles representing the whole IMF (star_type =
-     star_population) and the particles representing only the continuous part
-     of the IMF (star_type = star_population_continuous_IMF) */
-  stellar_evolution_evolve_spart(sp, model, cosmo, us, phys_const, ti_begin,
-                                 star_age_beg_step_safe, dt_enrichment);
+  /* Compute the times */
+  double star_age_beg_step = 0;
+  double dt_enrichment = 0;
+  integertime_t ti_begin = 0;
+  compute_time(sp, with_cosmology, cosmo, &star_age_beg_step, &dt_enrichment,
+	       &ti_begin, ti_current, time_base, time);
 
-  /* apply the energy efficiency factor */
+#ifdef SWIFT_DEBUG_CHECKS
+  if (sp->birth_time == -1.) error("Evolving a star particle that should not!");
+  if (star_age_beg_step + dt_enrichment < 0) {
+    error("Negative age for a star");
+  }
+#endif
+  /* Ensure that the age is positive (rounding errors) */
+  const double star_age_beg_step_safe = star_age_beg_step < 0 ? 0 : star_age_beg_step;
+
+  /* A single star */
+  if (sp->feedback_data.star_type == single_star) {
+    /* If the star has completely exploded, do not continue. This will also avoid
+       NaN values in the liftetime if the mass is set to 0.
+       Correction (28.04.2024): A bug fix in the mass of the star (see
+       stellar_evolution.c in stellar_evolution_compute_X_feedback_properties,
+       X=discrete, continuous) has changed the mass of the star from 0 to
+       discrete_star_minimal_gravity_mass. Hence the fix is propagated here. */
+    if (sp->mass <= model->discrete_star_minimal_gravity_mass) {
+      return;
+    }
+
+    /* Now, compute the stellar evolution state for individual star particles. */
+    stellar_evolution_evolve_individual_star(sp, model, cosmo, us, phys_const,
+					     ti_begin, star_age_beg_step_safe,
+					     dt_enrichment);
+  } else {
+    /* Compute the stellar evolution including SNe energy. This function treats
+       the case of particles representing the whole IMF (star_type =
+       star_population) and the particles representing only the continuous part
+       of the IMF (star_type = star_population_continuous_IMF) */
+    stellar_evolution_evolve_spart(sp, model, cosmo, us, phys_const, ti_begin,
+				   star_age_beg_step_safe, dt_enrichment);
+  }
+
+  /* Apply the energy efficiency factor */
   sp->feedback_data.energy_ejected *= feedback_props->supernovae_efficiency;
 
   /* Set the particle as doing some feedback */
