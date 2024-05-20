@@ -51,6 +51,8 @@
 #define power_data_default_fold_factor 4
 #define power_data_default_window_order 3
 
+#ifdef HAVE_FFTW
+
 /* The way to calculate these shifts is to consider a 3D cube of (kx,ky,kz)
  * cells and check which cells fall inside a spherical shell with boundaries
  * (i+0.5,i+1.5), then calculate the average k=sqrt(kx^2+ky^2+kz^2). So for i=0
@@ -81,8 +83,6 @@ static const float correction_shift_k_values[number_of_corrected_bins] = {
     1.0000479f, 1.0000304f, 1.0000751f, 1.0000710f, 1.0000152f, 1.0000083f,
     1.0000342f, 1.0000530f, 1.0000543f, 1.0000442f, 1.0000680f, 1.0000753f,
     1.0000369f, 1.0000117f};
-
-#ifdef HAVE_FFTW
 
 /**
  * @brief Return the #power_type corresponding to a given string.
