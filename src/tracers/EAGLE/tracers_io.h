@@ -236,11 +236,11 @@ __attribute__((always_inline)) INLINE static int tracers_write_particles(
                                     "corresponds to the thick disc, 1 to the "
                                     "thin disc and 2 to the slim disc.");
 
-    list[16] =
-        io_make_output_field("LastAGNJetKickBHId", CHAR, 1, UNIT_CONV_NO_UNITS,
-                             0.f, xparts, tracers_data.last_jet_kick_BH_id,
-                             "The id of the BH that last kicked this "
-                             "particle.");
+    list[16] = io_make_output_field("LastAGNJetKickBHId", ULONGLONG, 1,
+                                    UNIT_CONV_NO_UNITS, 0.f, xparts,
+                                    tracers_data.last_jet_kick_BH_id,
+                                    "The id of the BH that last kicked this "
+                                    "particle.");
 
     return 17;
   } else {
