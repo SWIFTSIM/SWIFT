@@ -48,7 +48,7 @@ void space_update_unique_id(struct space *s) {
     return;
   }
 
-  const int require_new_batch = s->unique_id.next_batch.current == 0;
+  int require_new_batch = s->unique_id.next_batch.current == 0;
 
 #ifdef WITH_MPI
   const struct engine *e = s->e;

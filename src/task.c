@@ -1575,32 +1575,33 @@ void task_dump_stats(const char *dumpfile, struct engine *e,
     /* Get these from all ranks for output from rank 0. Could wrap these into a
      * single operation. */
     size_t size = task_type_count * task_subtype_count;
-    int res = MPI_Reduce((engine_rank == 0 ? MPI_IN_PLACE : sum), sum, size,
-                         MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+    int res =
+        MPI_Reduce((engine_rank == 0 ? MPI_IN_PLACE : &sum[0][0]), &sum[0][0],
+                   size, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
     if (res != MPI_SUCCESS) mpi_error(res, "Failed to reduce task sums");
 
-    res = MPI_Reduce((engine_rank == 0 ? MPI_IN_PLACE : tsum), tsum, size,
-                     MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+    res = MPI_Reduce((engine_rank == 0 ? MPI_IN_PLACE : &tsum[0][0]),
+                     &tsum[0][0], size, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
     if (res != MPI_SUCCESS) mpi_error(res, "Failed to reduce task tsums");
 
-    res = MPI_Reduce((engine_rank == 0 ? MPI_IN_PLACE : count), count, size,
-                     MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+    res = MPI_Reduce((engine_rank == 0 ? MPI_IN_PLACE : &count[0][0]),
+                     &count[0][0], size, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
     if (res != MPI_SUCCESS) mpi_error(res, "Failed to reduce task counts");
 
-    res = MPI_Reduce((engine_rank == 0 ? MPI_IN_PLACE : min), min, size,
-                     MPI_DOUBLE, MPI_MIN, 0, MPI_COMM_WORLD);
+    res = MPI_Reduce((engine_rank == 0 ? MPI_IN_PLACE : &min[0][0]), &min[0][0],
+                     size, MPI_DOUBLE, MPI_MIN, 0, MPI_COMM_WORLD);
     if (res != MPI_SUCCESS) mpi_error(res, "Failed to reduce task minima");
 
-    res = MPI_Reduce((engine_rank == 0 ? MPI_IN_PLACE : tmin), tmin, size,
-                     MPI_DOUBLE, MPI_MIN, 0, MPI_COMM_WORLD);
+    res = MPI_Reduce((engine_rank == 0 ? MPI_IN_PLACE : &tmin[0][0]),
+                     &tmin[0][0], size, MPI_DOUBLE, MPI_MIN, 0, MPI_COMM_WORLD);
     if (res != MPI_SUCCESS) mpi_error(res, "Failed to reduce task minima");
 
-    res = MPI_Reduce((engine_rank == 0 ? MPI_IN_PLACE : max), max, size,
-                     MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+    res = MPI_Reduce((engine_rank == 0 ? MPI_IN_PLACE : &max[0][0]), &max[0][0],
+                     size, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
     if (res != MPI_SUCCESS) mpi_error(res, "Failed to reduce task maxima");
 
-    res = MPI_Reduce((engine_rank == 0 ? MPI_IN_PLACE : tmax), tmax, size,
-                     MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+    res = MPI_Reduce((engine_rank == 0 ? MPI_IN_PLACE : &tmax[0][0]),
+                     &tmax[0][0], size, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
     if (res != MPI_SUCCESS) mpi_error(res, "Failed to reduce task maxima");
 
     res = MPI_Reduce((engine_rank == 0 ? MPI_IN_PLACE : total), total, 1,
