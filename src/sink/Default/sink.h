@@ -269,6 +269,21 @@ INLINE static void sink_update_sink_properties_after_star_formation(struct sink*
    const struct phys_const* phys_const, int loop) {}
 
 /**
+ * @brief Update the #sink particle properties after spawning a star. Important
+ * properties that are updated are the sink mass and the sink->target_mass to
+ * draw the next star mass.
+ *
+ * @param sink the sink particle.
+ * @param e The #engine
+ * @param sink_props the sink properties to use.
+ * @param phys_const the physical constants in internal units.
+ * @param loop The star loop counter.
+ */
+INLINE static void sink_update_sink_properties_before_star_formation(struct sink* sink,
+   const struct engine* e,  const struct sink_props* sink_props,
+   const struct phys_const* phys_const) {}
+
+/**
  * @brief Store the gravitational potential of a particle by copying it from
  * its #gpart friend.
  *
