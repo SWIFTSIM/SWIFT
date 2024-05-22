@@ -4146,7 +4146,7 @@ void fof_compute_group_props(struct fof_props *props,
   /* Dump group data. */
   if (dump_results) {
 #ifdef HAVE_HDF5
-    write_fof_hdf5_catalogue(props, num_groups_local, s->e);
+    write_fof_hdf5_catalogue(props, (long long)num_groups_local, s->e);
 #else
     error("Can't dump hdf5 catalogues with hdf5 switched off!");
 #endif

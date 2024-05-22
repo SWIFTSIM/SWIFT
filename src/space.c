@@ -1664,8 +1664,8 @@ void space_remap_ids(struct space *s, int nr_nodes, int verbose) {
 
   if (verbose) message("Remapping all the IDs");
 
-  size_t local_nr_dm_background = 0;
-  size_t local_nr_nuparts = 0;
+  long long local_nr_dm_background = 0;
+  long long local_nr_nuparts = 0;
   for (size_t i = 0; i < s->nr_gparts; ++i) {
     if (s->gparts[i].type == swift_type_neutrino)
       local_nr_nuparts++;
@@ -1674,17 +1674,17 @@ void space_remap_ids(struct space *s, int nr_nodes, int verbose) {
   }
 
   /* Get the current local number of particles */
-  const size_t local_nr_parts = s->nr_parts;
-  const size_t local_nr_sinks = s->nr_sinks;
-  const size_t local_nr_gparts = s->nr_gparts;
-  const size_t local_nr_sparts = s->nr_sparts;
-  const size_t local_nr_bparts = s->nr_bparts;
-  const size_t local_nr_baryons =
+  long long local_nr_parts = s->nr_parts;
+  long long local_nr_sinks = s->nr_sinks;
+  long long local_nr_gparts = s->nr_gparts;
+  long long local_nr_sparts = s->nr_sparts;
+  long long local_nr_bparts = s->nr_bparts;
+  long long local_nr_baryons =
       local_nr_parts + local_nr_sinks + local_nr_sparts + local_nr_bparts;
-  const size_t local_nr_dm = local_nr_gparts > 0
-                                 ? local_nr_gparts - local_nr_baryons -
-                                       local_nr_nuparts - local_nr_dm_background
-                                 : 0;
+  long long local_nr_dm = local_nr_gparts > 0
+                              ? local_nr_gparts - local_nr_baryons -
+                                    local_nr_nuparts - local_nr_dm_background
+                              : 0;
 
   /* Get the global offsets */
   long long offset_parts = 0;
@@ -1750,21 +1750,21 @@ void space_remap_ids(struct space *s, int nr_nodes, int verbose) {
                 total_bparts + total_nuparts);
 
   /* We can now remap the IDs in the range [offset offset + local_nr] */
-  for (size_t i = 0; i < local_nr_parts; ++i) {
+  for (long long i = 0; i < local_nr_parts; ++i) {
     s->parts[i].id = offset_parts + i;
   }
-  for (size_t i = 0; i < local_nr_sinks; ++i) {
+  for (long long i = 0; i < local_nr_sinks; ++i) {
     s->sinks[i].id = offset_sinks + i;
   }
-  for (size_t i = 0; i < local_nr_sparts; ++i) {
+  for (long long i = 0; i < local_nr_sparts; ++i) {
     s->sparts[i].id = offset_sparts + i;
   }
-  for (size_t i = 0; i < local_nr_bparts; ++i) {
+  for (long long i = 0; i < local_nr_bparts; ++i) {
     s->bparts[i].id = offset_bparts + i;
   }
-  size_t count_dm = 0;
-  size_t count_dm_background = 0;
-  size_t count_nu = 0;
+  long long count_dm = 0;
+  long long count_dm_background = 0;
+  long long count_nu = 0;
   for (size_t i = 0; i < s->nr_gparts; ++i) {
     if (s->gparts[i].type == swift_type_dark_matter) {
       s->gparts[i].id_or_neg_offset = offset_dm + count_dm;
