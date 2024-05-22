@@ -326,7 +326,7 @@ void engine_repartition_trigger(struct engine *e) {
           e->usertime_last_step, e->systime_last_step, (double)resident,
           e->local_deadtime / (e->nr_threads * e->wallclock_time)};
       double timemems[e->nr_nodes * 4];
-      MPI_Gather(&timemem, 4, MPI_DOUBLE, timemems, 4, MPI_DOUBLE, 0,
+      MPI_Gather(timemem, 4, MPI_DOUBLE, timemems, 4, MPI_DOUBLE, 0,
                  MPI_COMM_WORLD);
       if (e->nodeID == 0) {
 
@@ -1285,7 +1285,7 @@ void engine_rebuild(struct engine *e, const int repartitioned,
                 MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, &e->s->max_softening, 1, MPI_FLOAT, MPI_MAX,
                 MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, &e->s->max_mpole_power,
+  MPI_Allreduce(MPI_IN_PLACE, e->s->max_mpole_power,
                 SELF_GRAVITY_MULTIPOLE_ORDER + 1, MPI_FLOAT, MPI_MAX,
                 MPI_COMM_WORLD);
 #endif
