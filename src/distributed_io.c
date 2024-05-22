@@ -955,7 +955,7 @@ void write_output_distributed(struct engine* e,
   }
 
   /* Compute offset in the file and total number of particles */
-  const long long N[swift_type_count] = {
+  long long N[swift_type_count] = {
       Ngas_written,   Ndm_written,         Ndm_background, Nsinks_written,
       Nstars_written, Nblackholes_written, Ndm_neutrino};
 
