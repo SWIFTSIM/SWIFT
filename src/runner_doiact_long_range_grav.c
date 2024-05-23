@@ -122,20 +122,11 @@ void runner_do_grav_long_range_zoom_non_periodic(struct runner *r,
   /* Since the zoom cells will be handled by the void cell hierarchy we can
    * just loop over all other cells which are not zoom cells. This is
    * trivial since the zoom cells are first in cells_top. */
-  for (int cjd = 0; cjd < s->nr_cells; cjd++) {
+  for (int cjd = s->zoom_props->nr_zoom_cells; cjd < s->nr_cells; cjd++) {
 
     /* Handle on the top-level cell and it's gravity business*/
     struct cell *cj = &cells[cjd];
     struct gravity_tensors *const multi_j = cj->grav.multipole;
-
-    /* Ensure we don't double interact zoom cells since they're also in the void
-     * level. */
-    if (ci->type == cell_type_zoom && cj->subtype == cell_subtype_void)
-      continue;
-
-    /* Ensure we don't double interact background cells since they will have
-     * interacted with the void cell. */
-    if (ci->type != cell_type_zoom && cj->type == cell_type_zoom) continue;
 
     /* Avoid self contributions */
     if (top == cj) continue;
@@ -143,32 +134,12 @@ void runner_do_grav_long_range_zoom_non_periodic(struct runner *r,
     /* Skip empty cells */
     if (multi_j->m_pole.M_000 == 0.f) continue;
 
-    /* Define interaction flag */
-    int interact = 0;
+    /* Do we need an interaction? */
+    if (cell_can_use_pair_mm(top, cj, e, e->s, /*use_rebuild_data=*/1,
+                             /*is_tree_walk=*/0,
+                             /*periodic boundaries*/ s->periodic,
+                             /*use_mesh*/ s->periodic)) {
 
-    /* Need to handled zoom->neighbour differently to all others. */
-    if (ci->type == cell_type_zoom && cj->subtype == cell_subtype_neighbour) {
-
-      /* Get void top level */
-      struct cell *void_top = top->void_parent->top;
-
-      if (cell_can_use_pair_mm(void_top, cj, e, e->s, /*use_rebuild_data=*/1,
-                               /*is_tree_walk=*/0,
-                               /*periodic boundaries*/ s->periodic,
-                               /*use_mesh*/ s->periodic)) {
-        interact = 1;
-      }
-    }
-
-    else if (cell_can_use_pair_mm(top, cj, e, e->s, /*use_rebuild_data=*/1,
-                                  /*is_tree_walk=*/0,
-                                  /*periodic boundaries*/ s->periodic,
-                                  /*use_mesh*/ s->periodic)) {
-      interact = 1;
-    }
-
-    /* Are we interacting? */
-    if (interact) {
       /* Call the PM interaction function on the active sub-cells of ci */
       runner_dopair_grav_mm_nonsym(r, ci, cj);
       // runner_dopair_recursive_grav_pm(r, ci, cj);

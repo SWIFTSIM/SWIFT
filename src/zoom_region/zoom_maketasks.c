@@ -332,6 +332,10 @@ static void zoom_make_hierarchical_void_gravity_tasks(struct engine *e,
       c->grav.down = scheduler_addtask(s, task_type_grav_down,
                                        task_subtype_none, 0, 0, c, NULL);
 
+      /* Gravity non-neighbouring pm calculations (only for non-zoom cells).*/
+      c->grav.long_range = scheduler_addtask(s, task_type_grav_long_range,
+                                             task_subtype_none, 0, 0, c, NULL);
+
       /* Implicit tasks for the up and down passes */
       c->grav.init_out = scheduler_addtask(s, task_type_init_grav_out,
                                            task_subtype_none, 0, 1, c, NULL);
@@ -390,9 +394,6 @@ static void zoom_make_hierarchical_void_gravity_tasks(struct engine *e,
 void zoom_engine_make_void_gravity_tasks(struct space *s, struct engine *e) {
 
   ticks tic = getticks();
-
-  /* TODO: long range gravity can probably be done here instead of at the
-   * zoom level */
 
   /* Loop over the void cells creating the tasks we need. */
   for (int ind = 0; ind < s->zoom_props->nr_void_cells; ind++) {
