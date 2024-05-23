@@ -2021,10 +2021,10 @@ void engine_gravity_make_task_loop(struct engine *e, int cid, const int cdim[3],
   struct cell *ci = &cells[cid];
 
   /* Skip cells without gravity particles */
-  if (ci->grav.count == 0) return;
+  if (ci->grav.count == 0 && ci->subtype != cell_subtype_void) return;
 
   /* If the cell is local build a self-interaction */
-  if (ci->nodeID == nodeID) {
+  if (ci->nodeID == nodeID || ci->subtype == cell_subtype_void) {
     scheduler_addtask(sched, task_type_self, task_subtype_grav, 0, 0, ci, NULL);
   }
 
@@ -2063,12 +2063,15 @@ void engine_gravity_make_task_loop(struct engine *e, int cid, const int cdim[3],
         }
 #endif
 
-        /* Avoid duplicates and empty cells. Completely foreign pairs also get
+        /* Avoid duplicate and same cell pairs. */
+        if (cid >= cjd) continue;
+
+        /* Avoid empty cells. Completely foreign pairs also get
          * the Nigel treatment (AKA are kicked out of the union/we skip
          * them). Nigel is ok with void cells though (we always want to
          * create a pair task for void cells). */
         if (cj->subtype != cell_subtype_void &&
-            (cid >= cjd || cj->grav.count == 0 ||
+            (cj->grav.count == 0 ||
              (ci->nodeID != nodeID && cj->nodeID != nodeID)))
           continue;
 

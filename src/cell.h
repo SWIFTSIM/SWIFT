@@ -1235,6 +1235,12 @@ __attribute__((always_inline)) INLINE static int cell_can_split_self_hydro_task(
 __attribute__((always_inline)) INLINE static int
 cell_can_split_pair_gravity_task(const struct cell *ci, const struct cell *cj) {
 
+  /* If either cell is a void cell we have to split (void cells are guaranteed
+   * to be split). */
+  if (ci->subtype == cell_subtype_void || cj->subtype cell_subtype_void) {
+    return 1;
+  }
+
   /* If we have a zoom->neighbour task we just need to check if the cells are
    * both split. */
   if ((ci->subtype == cell_subtype_neighbour &&
@@ -1258,6 +1264,11 @@ cell_can_split_pair_gravity_task(const struct cell *ci, const struct cell *cj) {
  */
 __attribute__((always_inline)) INLINE static int
 cell_can_split_self_gravity_task(const struct cell *c) {
+
+  /* In zoom land we always split void cell selfs. */
+  if (c->subtype == cell_subtype_void) {
+    return 1;
+  }
 
   /* Is the cell split and still far from the leaves ? */
   return c->split && ((c->maxdepth - c->depth) > space_subdepth_diff_grav);

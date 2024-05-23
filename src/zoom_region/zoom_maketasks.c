@@ -166,65 +166,6 @@ void engine_make_self_gravity_tasks_mapper_buffer_cells(void *map_data,
 
 /**
  * @brief Constructs the top-level tasks for the short-range gravity
- * and long-range gravity interactions for zoom cells.
- *
- * This mapper only considers zoom->zoom interactions.
- *
- * - All top-cells get a self task.
- * - All pairs within range according to the multipole acceptance
- *   criterion get a pair task.
- *
- * @param map_data Offset of first two indices disguised as a pointer.
- * @param num_elements Number of cells to traverse.
- * @param extra_data The #engine.
- */
-void engine_make_self_gravity_tasks_mapper_zoom_cells(void *map_data,
-                                                      int num_elements,
-                                                      void *extra_data) {
-
-  struct engine *e = (struct engine *)extra_data;
-  struct space *s = e->s;
-  const int cdim[3] = {s->zoom_props->cdim[0], s->zoom_props->cdim[1],
-                       s->zoom_props->cdim[2]};
-  struct cell *cells = s->zoom_props->zoom_cells_top;
-
-  /* We always use the mesh if the volume is periodic. */
-  const int use_mesh = s->periodic;
-
-  /* The zoom region is never periodic at it's boundaries. */
-  const int periodic = 0;
-
-  /* Compute maximal distance where we can expect a direct interaction */
-  const float distance = gravity_M2L_min_accept_distance(
-      e->gravity_properties, sqrtf(3) * cells[0].width[0], s->max_softening,
-      s->min_a_grav, s->max_mpole_power, periodic);
-
-  /* Convert the maximal search distance to a number of cells
-   * Define a lower and upper delta in case things are not symmetric */
-  /* NOTE: The 2 in the max below may not be necessary but does insure some
-   * safety buffer. */
-  const int delta = max((int)(sqrt(3) * distance / cells[0].width[0]) + 1, 2);
-  int delta_m = delta;
-  int delta_p = delta;
-
-  /* Special case where every cell is in range of every other one */
-  if (delta > cdim[0]) {
-    delta_m = cdim[0];
-    delta_p = cdim[0];
-  }
-
-  /* Loop through the elements, which are just byte offsets from NULL. */
-  for (int ind = 0; ind < num_elements; ind++) {
-
-    /* Create a self task, and loop over neighbouring cells making pair tasks
-     * where appropriate. */
-    engine_gravity_make_task_loop(e, (size_t)(map_data) + ind, cdim, cells,
-                                  periodic, use_mesh, delta_m, delta_p);
-  }
-}
-
-/**
- * @brief Constructs the top-level tasks for the short-range gravity
  * and long-range gravity interactions between natural level cells
  * and zoom level cells.
  *
@@ -319,17 +260,6 @@ void engine_make_self_gravity_tasks_mapper_buffer_bkg(void *map_data,
  * @param e The #engine.
  */
 void zoom_engine_make_self_gravity_tasks(struct space *s, struct engine *e) {
-
-  ticks tic = getticks();
-
-  /* Zoom -> Zoom */
-  threadpool_map(
-      &e->threadpool, engine_make_self_gravity_tasks_mapper_zoom_cells, NULL,
-      s->zoom_props->nr_zoom_cells, 1, threadpool_auto_chunk_size, e);
-
-  if (e->verbose)
-    message("Making zoom->zoom gravity tasks took %.3f %s.",
-            clocks_from_ticks(getticks() - tic), clocks_getunit());
 
   tic = getticks();
 

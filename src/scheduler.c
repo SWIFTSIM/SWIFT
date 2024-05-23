@@ -1405,20 +1405,28 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
       break;
     }
 
+    /* In zoom land we need to know if we have a void cell. */
+    int is_void = 0;
+    if (t->ci->subtype == cell_subtype_void ||
+        (t->cj != NULL && t->cj->subtype == cell_subtype_void)) {
+      is_void = 1;
+    }
+
     /* Self-interaction? */
     if (t->type == task_type_self) {
       /* Get a handle on the cell involved. */
       const struct cell *ci = t->ci;
 
       /* Foreign task? */
-      if (ci->nodeID != s->nodeID) {
+      if (ci->nodeID != s->nodeID && !is_void) {
         t->skip = 1;
         break;
       }
 
       /* Should we split this task? */
       if (cell_can_split_self_gravity_task(ci)) {
-        if (scheduler_dosub && ci->grav.count < space_subsize_self_grav) {
+        if (!is_void &&
+            (scheduler_dosub && ci->grav.count < space_subsize_self_grav)) {
           /* Otherwise, split it. */
         } else {
           /* Take a step back (we're going to recycle the current task)... */
@@ -1468,15 +1476,14 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
       }
 
       /* Should this task be split-up? */
-      if (cj->subtype == cell_subtype_void ||
-          cell_can_split_pair_gravity_task(ci, cj)) {
+      if (cell_can_split_pair_gravity_task(ci, cj)) {
         const long long gcount_i = ci->grav.count;
         const long long gcount_j = cj->grav.count;
 
         /* Replace by a single sub-task? */
-        if (scheduler_dosub &&
-            gcount_i * gcount_j < ((long long)space_subsize_pair_grav) &&
-            cj->subtype != cell_subtype_void) {
+        if (!is_void &&
+            (scheduler_dosub &&
+             gcount_i * gcount_j < ((long long)space_subsize_pair_grav))) {
           /* Otherwise, split it. */
         } else {
           /* Turn the task into a M-M task that will take care of all the
