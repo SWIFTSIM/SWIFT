@@ -261,7 +261,7 @@ void engine_make_self_gravity_tasks_mapper_buffer_bkg(void *map_data,
  */
 void zoom_engine_make_self_gravity_tasks(struct space *s, struct engine *e) {
 
-  tic = getticks();
+  ticks tic = getticks();
 
   /* Background -> Background */
   threadpool_map(&e->threadpool,
