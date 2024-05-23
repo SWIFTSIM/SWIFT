@@ -1042,6 +1042,7 @@ static void zoom_subcell_unskip_void_tasks(struct scheduler *s,
   /* Activate any other task types. */
   if (c->grav.init != NULL) scheduler_activate(s, c->grav.init);
   if (c->grav.init_out != NULL) scheduler_activate(s, c->grav.init_out);
+  if (c->grav.long_range != NULL) scheduler_activate(s, c->grav.long_range);
   if (c->grav.down != NULL) scheduler_activate(s, c->grav.down);
   if (c->grav.down_in != NULL) scheduler_activate(s, c->grav.down_in);
 
@@ -1108,6 +1109,7 @@ void zoom_unskip_void_tasks(struct scheduler *s) {
     /* Activate any other task types. */
     if (c->grav.init != NULL) scheduler_activate(s, c->grav.init);
     if (c->grav.init_out != NULL) scheduler_activate(s, c->grav.init_out);
+    if (c->grav.long_range != NULL) scheduler_activate(s, c->grav.long_range);
     if (c->grav.down != NULL) scheduler_activate(s, c->grav.down);
     if (c->grav.down_in != NULL) scheduler_activate(s, c->grav.down_in);
 
