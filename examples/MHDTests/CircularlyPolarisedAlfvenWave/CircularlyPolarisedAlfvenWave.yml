@@ -9,7 +9,7 @@ InternalUnitSystem:
 # Parameters governing the time integration
 TimeIntegration:
   time_begin: 0.    # The starting time of the simulation (in internal units).
-  time_end:   50.0   # The end time of the simulation (in internal units).
+  time_end:   5.0   # The end time of the simulation (in internal units).
   dt_min:     1e-7  # The minimal time-step size of the simulation (in internal units).
   dt_max:     1e-2  # The maximal time-step size of the simulation (in internal units).
 
@@ -26,15 +26,17 @@ Statistics:
 
 # Parameters for the hydrodynamics scheme
 SPH:
-  resolution_eta:        1.2348   # Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel$
+  resolution_eta:        1.2      # Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel$
   CFL_condition:         0.075    # Courant-Friedrich-Levy condition for time integration.
-  viscosity_alpha:       2.0
 
 # Parameters for MHD schemes
 MHD:
-  hyperbolic_dedner:  1.0
-  parabolic_dedner:   2.0
-  diffusion_eta:      0.0
+  monopole_subtraction :  1.0
+  artificial_diffusion:   0.0
+  hyperbolic_dedner:      0.0
+  hyperbolic_dedner_divv: 0.0
+  parabolic_dedner:       0.0
+  resistive_eta:          0.0
 
 # Physical parameters
 PhysicalConstants:
