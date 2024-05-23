@@ -1237,7 +1237,7 @@ cell_can_split_pair_gravity_task(const struct cell *ci, const struct cell *cj) {
 
   /* If either cell is a void cell we have to split (void cells are guaranteed
    * to be split). */
-  if (ci->subtype == cell_subtype_void || cj->subtype cell_subtype_void) {
+  if (ci->subtype == cell_subtype_void || cj->subtype == cell_subtype_void) {
     return 1;
   }
 
