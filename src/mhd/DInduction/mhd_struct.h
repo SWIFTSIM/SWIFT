@@ -44,6 +44,12 @@ struct mhd_part_data {
   float mean_grad_SPH_err[3];
   /* Magnetic force */
   float tot_mag_F[3];
+  /* B advection source */
+  float Adv_B_source[3];
+  /* B resistivity source */
+  float Diff_B_source[3];
+  /* B artificial diffusion source*/
+  float Art_Diff_B_source[3]; 
 };
 
 /**
