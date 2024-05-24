@@ -43,6 +43,8 @@ struct forcing_terms {
   // For some small wavenumbers (large scales) store f_0 (amplitudes) for each
   // wavevector. These must be adjusted to yield the desired mach number.
   // Default: Paraboloid in fourier space, |k| in (1, 3)
+  float box_width;
+
   size_t wave_vectors_count;
   float* wave_vectors;
 
@@ -58,11 +60,11 @@ struct forcing_terms {
   // The forcing for each mode
   float* kforce;
 
-  /*! @brief Driving time step (in s). */
-  double _time_step;
+  /*! @brief Driving time step (in internal units). */
+  double time_step;
 
   /*! @brief Number of driving steps since the start of the simulation. */
-  uint_fast32_t _number_of_driving_steps;
+  uint_fast32_t number_of_driving_steps;
 
   // Store seeded rng
   gsl_rng* rng;
@@ -71,7 +73,8 @@ struct forcing_terms {
 /**
  * @brief Computes the forcing terms.
  *
- * We do nothing in this 'none' scheme.
+ * Computes the total acceleration from all the forcing modes at the given
+ * particles position.
  *
  * @param time The current time.
  * @param terms The properties of the forcing terms.
@@ -132,7 +135,8 @@ static void get_random_factors(gsl_rng* rng, double* RealRand, double* ImRand) {
 /**
  * @brief Updates the forcing terms.
  *
- * We do nothing in this 'none' scheme.
+ * This performs the necessary number of driving steps until the current time is
+ * reached.
  *
  * @param time The current time.
  * @param timestep The timestep to the current time.
@@ -145,29 +149,39 @@ __attribute__((always_inline)) INLINE static void forcing_terms_update(
     const double time, const double timestep, struct forcing_terms* terms,
     const struct space* s, const struct unit_system* us,
     const struct phys_const* phys_const) {
+
+  uint_fast32_t number_of_driving_steps =
+      (int)(time / terms->time_step) + 1 - terms->number_of_driving_steps;
+  if (number_of_driving_steps == 0) return;
+
   /* Reset amplitudes */
   bzero(terms->amplitudes_real,
         3 * terms->wave_vectors_count * sizeof(*terms->amplitudes_real));
   bzero(terms->amplitudes_imaginary,
         3 * terms->wave_vectors_count * sizeof(*terms->amplitudes_imaginary));
 
-  /* Compute combined contribution of the required number of driving steps */
-  while (terms->_number_of_driving_steps * terms->_time_step < time) {
-    for (unsigned int i = 0; i < terms->wave_vectors_count; ++i) {
+  /* Compute net contribution of the required number of driving steps */
+  for (uint_fast32_t step = 0; step < number_of_driving_steps; step++) {
+    for (unsigned int k = 0; k < terms->wave_vectors_count; ++k) {
       double RealRand[2];
       double ImRand[2];
       get_random_factors(terms->rng, RealRand, ImRand);
 
-      for (int j = 0; j < 3; j++) {
-        terms->amplitudes_real[i] +=
-            terms->kforce[i] * terms->e1[3 * i + j] * RealRand[0] +
-            terms->kforce[i] * terms->e2[3 * i + j] * RealRand[1];
-        terms->amplitudes_imaginary[i] +=
-            terms->kforce[i] * terms->e1[3 * i + j] * ImRand[0] +
-            terms->kforce[i] * terms->e2[3 * i + j] * ImRand[1];
+      for (int i = 0; i < 3; i++) {
+        terms->amplitudes_real[3 * k + i] +=
+            terms->kforce[k] * terms->e1[3 * k + i] * RealRand[0] +
+            terms->kforce[k] * terms->e2[3 * k + i] * RealRand[1];
+        terms->amplitudes_imaginary[3 * k + i] +=
+            terms->kforce[k] * terms->e1[3 * k + i] * ImRand[0] +
+            terms->kforce[k] * terms->e2[3 * k + i] * ImRand[1];
       }
     }
-    terms->_number_of_driving_steps++;
+  }
+  terms->number_of_driving_steps += number_of_driving_steps;
+  float norm = 1.f / number_of_driving_steps;
+  for (unsigned int i = 0; i < 3 * terms->wave_vectors_count; ++i) {
+    terms->amplitudes_real[i] *= norm;
+    terms->amplitudes_imaginary[i] *= norm;
   }
 }
 
@@ -187,7 +201,6 @@ __attribute__((always_inline)) INLINE static float forcing_terms_timestep(
     const struct phys_const* phys_const, const struct part* p,
     const struct xpart* xp) {
 
-  /* No time-step size limit */
   return FLT_MAX;
 }
 
@@ -197,9 +210,16 @@ __attribute__((always_inline)) INLINE static float forcing_terms_timestep(
  * @param terms The #forcing_terms properties of the run.
  */
 static INLINE void forcing_terms_print(const struct forcing_terms* terms) {
-  message("Forcing terms is 'Alvelius driven turbulence'.");
-  message("Forcing 'Alvelius driven turbulence' with %lu modes",
+  message("Forcing terms is 'Alvelius driven turbulence' with %lu modes",
           terms->wave_vectors_count);
+  message("Wavevectors (normalized to box width):");
+  for (size_t i = 0; i < terms->wave_vectors_count; i++) {
+    const float k[3] = {terms->box_width * terms->wave_vectors[3 * i],
+                        terms->box_width * terms->wave_vectors[3 * i + 1],
+                        terms->box_width * terms->wave_vectors[3 * i + 2]};
+    const float norm = sqrtf(k[0] * k[0] + k[1] * k[1] + k[2] * k[2]);
+    message("mode %zu: (%.1f, %.1f, %.1f) norm: %f", i, k[0], k[1], k[2], norm);
+  }
 }
 
 /**
@@ -233,7 +253,7 @@ static INLINE void forcing_terms_init(struct swift_params* parameter_file,
       forcing_power_unit_factor *
       parser_get_opt_param_double(parameter_file,
                                   "AlveliusTurbulenceForcing:forcing_power_cgs",
-                                  2.717e-2 /* cm^2 s^-3 */);
+                                  2.717 /* cm^2 s^-3 */);
   double time_step =
       parser_get_opt_param_double(parameter_file,
                                   "AlveliusTurbulenceForcing:time_step_cgs",
@@ -243,7 +263,8 @@ static INLINE void forcing_terms_init(struct swift_params* parameter_file,
       parameter_file, "AlveliusTurbulenceForcing:random_seed", 42);
 
   /* Get boxsize */
-  const double Linv = 1. / max3(s->dim[0], s->dim[1], s->dim[2]);
+  const double L = max3(s->dim[0], s->dim[1], s->dim[2]);
+  const double Linv = 1. / L;
 
   /* The force spectrum here prescribed is  Gaussian in shape:
    * F(k) = amplitude*exp^((k-k_peak)^2/concentration_factor)
@@ -349,11 +370,11 @@ static INLINE void forcing_terms_init(struct swift_params* parameter_file,
   /* Obtain full expression for the forcing amplitude */
   const float norm = forcing_power / (spectra_sum * time_step);
   for (size_t i = 0; i < number_of_modes; ++i) {
-    kforce[i] *= norm;
-    kforce[i] = sqrtf(kforce[i]);
+    kforce[i] = sqrtf(norm * kforce[i]);
   }
 
   /* Finally initialize the struct */
+  terms->box_width = L;
   terms->wave_vectors_count = number_of_modes;
   terms->wave_vectors = wave_vectors;
   terms->e1 = e1_arr;
@@ -364,9 +385,9 @@ static INLINE void forcing_terms_init(struct swift_params* parameter_file,
   terms->amplitudes_imaginary =
       swift_calloc("Forcing terms", 3 * number_of_modes,
                    sizeof *terms->amplitudes_imaginary);
-  terms->_time_step = time_step;
-  terms->_number_of_driving_steps = 0;
-  gsl_rng* rng = gsl_rng_alloc(gsl_rng_default);
+  terms->time_step = time_step;
+  terms->number_of_driving_steps = 0;
+  gsl_rng* rng = gsl_rng_alloc(gsl_rng_ranlxd2);  // To match CMacIonize?
   gsl_rng_set(rng, seed);
   terms->rng = rng;
 }
