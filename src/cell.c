@@ -1207,6 +1207,7 @@ void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data) {
       c->super = c;
       cell_set_super(c, c->super, with_hydro, with_grav);
       if (with_grav) cell_set_super_gravity(c, c->super);
+      continue;
     }
 
     /* All top-level cells get an MPI tag. */
