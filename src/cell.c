@@ -1137,7 +1137,8 @@ void cell_set_super(struct cell *c, struct cell *super, const int with_hydro,
   /* Recurse */
   if (c->split)
     for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL && c->progeny[k]->depth > 0)
+      if (c->progeny[k] != NULL &&
+          (c->progeny[k]->depth > 0 || c->progeny[k]->type == cell_type_zoom))
         cell_set_super(c->progeny[k], super, with_hydro, with_grav);
 }
 
@@ -1180,7 +1181,8 @@ void cell_set_super_gravity(struct cell *c, struct cell *super_gravity) {
   /* Recurse */
   if (c->split)
     for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL && c->progeny[k]->depth > 0)
+      if (c->progeny[k] != NULL &&
+          (c->progeny[k]->depth > 0 || c->progeny[k]->type == cell_type_zoom))
         cell_set_super_gravity(c->progeny[k], super_gravity);
 }
 
