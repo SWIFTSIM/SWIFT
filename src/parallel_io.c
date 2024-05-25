@@ -1610,7 +1610,7 @@ void write_output_parallel(struct engine* e,
   }
 
   /* Compute offset in the file and total number of particles */
-  size_t N[swift_type_count] = {
+  long long N[swift_type_count] = {
       Ngas_written,   Ndm_written,         Ndm_background, Nsinks_written,
       Nstars_written, Nblackholes_written, Ndm_neutrino};
   long long N_total[swift_type_count] = {0};
