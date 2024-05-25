@@ -92,6 +92,7 @@ if test "$with_csds" = "yes"; then
    fi
 
    AC_CONFIG_SUBDIRS([csds])
+   CFLAGS="$CFLAGS -fopenmp"
 
 fi
 AM_CONDITIONAL([HAVECSDS],[test $with_csds = "yes"])
