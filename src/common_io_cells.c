@@ -641,9 +641,9 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3], const double dim[3],
     }
 
     /* Compute the location of the origin */
-    const double origin[3] = {centre[0] - cell_width[0] / 2.,
-                              centre[1] - cell_width[1] / 2.,
-                              centre[2] - cell_width[2] / 2.};
+    const double origin[3] = {centres[0] - cell_width[0] / 2.,
+                              centres[1] - cell_width[1] / 2.,
+                              centres[2] - cell_width[2] / 2.};
 
     /* Write some meta-information first */
     hid_t h_subgrp =
