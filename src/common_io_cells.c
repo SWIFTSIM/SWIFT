@@ -260,7 +260,7 @@ void io_write_array(hid_t h_grp, const int n, const int dim, const void* array,
  * @param cells_top The top-level cells.
  * @param nr_cells The number of top-level cells.
  * @param width The width of the cells.
- * @param shifr The overall shift that was applied by the zoom code to the
+ * @param shift The overall shift that was applied by the zoom code to the
  * particles.
  * @param nodeID The node we are on.
  * @param distributed Is this a distributed snapshot?
