@@ -1321,9 +1321,17 @@ void write_output_serial(struct engine* e,
     if (h_grp_cells < 0) error("Error while creating cells group");
   }
 
+  /* Is the zoom code applying any shift to all the particles? */
+  double zoom_shift[3] = {0.};
+  if (e->s->with_zoom_region) {
+    zoom_shift[0] = e->s->zoom_props->zoom_shift[0];
+    zoom_shift[1] = e->s->zoom_props->zoom_shift[1];
+    zoom_shift[2] = e->s->zoom_props->zoom_shift[2];
+  }
+
   /* Write the location of the particles in the arrays */
   io_write_cell_offsets(h_grp_cells, e->s->cdim, e->s->dim, e->s->cells_top,
-                        e->s->nr_cells, e->s->width, mpi_rank,
+                        e->s->nr_cells, e->s->width, zoom_shift, mpi_rank,
                         /*distributed=*/0, subsample, subsample_fraction,
                         e->snapshot_output_count, N_total, offset, to_write,
                         numFields, internal_units, snapshot_units);

@@ -259,6 +259,10 @@ void io_write_array(hid_t h_grp, const int n, const int dim, const void* array,
  * @param dim The box size.
  * @param cells_top The top-level cells.
  * @param nr_cells The number of top-level cells.
+ * @param width The width of the cells.
+ * @param shifr The overall shift that was applied by the zoom code to the
+ * particles.
+ * @param nodeID The node we are on.
  * @param distributed Is this a distributed snapshot?
  * @param subsample Are we subsampling the different particle types?
  * @param subsample_fraction The fraction of particles to keep when subsampling.
@@ -274,8 +278,8 @@ void io_write_array(hid_t h_grp, const int n, const int dim, const void* array,
  */
 void io_write_cell_offsets(hid_t h_grp, const int cdim[3], const double dim[3],
                            const struct cell* cells_top, const int nr_cells,
-                           const double width[3], const int nodeID,
-                           const int distributed,
+                           const double width[3], const double shift[3],
+                           const int nodeID, const int distributed,
                            const int subsample[swift_type_count],
                            const float subsample_fraction[swift_type_count],
                            const int snap_num,
@@ -391,6 +395,11 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3], const double dim[3],
       centres[i * 3 + 0] = cells_top[i].loc[0] + cell_width[0] * 0.5;
       centres[i * 3 + 1] = cells_top[i].loc[1] + cell_width[1] * 0.5;
       centres[i * 3 + 2] = cells_top[i].loc[2] + cell_width[2] * 0.5;
+
+      /* Undo the zoom shift */
+      centres[i * 3 + 0] -= shift[0];
+      centres[i * 3 + 1] -= shift[1];
+      centres[i * 3 + 2] -= shift[2];
 
       /* Finish by box wrapping to match what is done to the particles */
       centres[i * 3 + 0] = box_wrap(centres[i * 3 + 0], 0.0, dim[0]);

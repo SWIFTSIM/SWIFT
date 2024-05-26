@@ -110,8 +110,8 @@ void io_write_part_type_names(hid_t h_grp);
 
 void io_write_cell_offsets(hid_t h_grp, const int cdim[3], const double dim[3],
                            const struct cell* cells_top, const int nr_cells,
-                           const double width[3], const int nodeID,
-                           const int distributed,
+                           const double width[3], const double shift[3],
+                           const int nodeID, const int distributed,
                            const int subsample[swift_type_count],
                            const float subsample_fraction[swift_type_count],
                            const int snap_num,
