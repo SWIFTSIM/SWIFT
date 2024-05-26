@@ -640,6 +640,11 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3], const double dim[3],
       cell_width[2] *= factor;
     }
 
+    /* Compute the location of the origin */
+    const double origin[3] = {centre[0] - cell_width[0] / 2.,
+                              centre[1] - cell_width[1] / 2.,
+                              centre[2] - cell_width[2] / 2.};
+
     /* Write some meta-information first */
     hid_t h_subgrp =
         H5Gcreate(h_grp, "Meta-data", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
@@ -647,6 +652,7 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3], const double dim[3],
     io_write_attribute(h_subgrp, "nr_cells", INT, &nr_cells, 1);
     io_write_attribute(h_subgrp, "size", DOUBLE, cell_width, 3);
     io_write_attribute(h_subgrp, "dimension", INT, cdim, 3);
+    io_write_attribute(h_subgrp, "Origin", DOUBLE, origin, 3);
     H5Gclose(h_subgrp);
 
     /* Write the centres to the group */
