@@ -1282,6 +1282,7 @@ void prepare_file(struct engine* e, const char* fileName,
   io_write_attribute_s(h_grp, "SelectOutput", current_selection_name);
   io_write_attribute_i(h_grp, "Virtual", 0);
   io_write_attribute(h_grp, "CanHaveTypes", INT, to_write, swift_type_count);
+  io_write_attribute_i(h_grp, "ZoomIn", e->s->with_zoom_region);
 
   if (subsample_any) {
     io_write_attribute_s(h_grp, "OutputType", "SubSampled");

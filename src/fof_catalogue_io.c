@@ -121,6 +121,7 @@ void write_fof_hdf5_header(hid_t h_file, const struct engine* e,
   io_write_attribute_i(h_grp, "Virtual", virtual_file);
   const int to_write[swift_type_count] = {0};
   io_write_attribute(h_grp, "CanHaveTypes", INT, to_write, swift_type_count);
+  io_write_attribute_i(h_grp, "ZoomIn", e->s->with_zoom_region);
   io_write_attribute_s(h_grp, "OutputType", "FOF");
 
   /* FOF-specific counters */
