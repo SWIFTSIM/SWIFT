@@ -170,6 +170,40 @@ long long io_count_neutrinos_to_write(const struct space* s,
                                       const float subsample_ratio,
                                       const int snap_num);
 
+long long io_count_gas_in_zoom_to_write(const struct space* s,
+                                        const int subsample,
+                                        const float subsample_ratio,
+                                        const int snap_num);
+
+long long io_count_dark_matter_in_zoom_to_write(const struct space* s,
+                                                const int subsample,
+                                                const float subsample_ratio,
+                                                const int snap_num);
+
+long long io_count_background_dark_matter_in_zoom_to_write(
+    const struct space* s, const int subsample, const float subsample_ratio,
+    const int snap_num);
+
+long long io_count_stars_in_zoom_to_write(const struct space* s,
+                                          const int subsample,
+                                          const float subsample_ratio,
+                                          const int snap_num);
+
+long long io_count_sinks_in_zoom_to_write(const struct space* s,
+                                          const int subsample,
+                                          const float subsample_ratio,
+                                          const int snap_num);
+
+long long io_count_black_holes_in_zoom_to_write(const struct space* s,
+                                                const int subsample,
+                                                const float subsample_ratio,
+                                                const int snap_num);
+
+long long io_count_neutrinos_in_zoom_to_write(const struct space* s,
+                                              const int subsample,
+                                              const float subsample_ratio,
+                                              const int snap_num);
+
 void io_collect_parts_to_write(const struct part* restrict parts,
                                const struct xpart* restrict xparts,
                                struct part* restrict parts_written,

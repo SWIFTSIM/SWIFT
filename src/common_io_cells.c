@@ -173,6 +173,41 @@ long long IO_COUNT_PARTICLES_TO_WRITE(sinks, sink);
 long long IO_COUNT_PARTICLES_TO_WRITE(black_holes, bpart);
 long long IO_COUNT_PARTICLES_TO_WRITE(neutrinos, neutrinos);
 
+/**
+ * @brief Count the number of local non-inhibited particles to write.
+ *
+ * Takes into account downsampling.
+ *
+ * @param s The #space.
+ * @param subsample Are we subsampling?
+ * @param subsample_ratio The fraction of particle to keep when subsampling.
+ * @param snap_num The snapshot number to use as random seed.
+ */
+#define IO_COUNT_PARTICLES_IN_ZOOM_TO_WRITE(NAME, TYPE)                        \
+  io_count_##NAME##_in_zoom_to_write(                                          \
+      const struct space* s, const int subsample, const float subsample_ratio, \
+      const int snap_num) {                                                    \
+    long long count = 0;                                                       \
+    const struct zoom_region_properties* props = s->zoom_props;                \
+    for (int i = 0; i < props->nr_local_zoom_cells; ++i) {                     \
+      double dummy1[3], dummy2[3];                                             \
+      const struct cell* c =                                                   \
+          &props->zoom_cells_top[props->local_zoom_cells_top[i]];              \
+      count += cell_count_non_inhibited_##TYPE(c, subsample, subsample_ratio,  \
+                                               snap_num, dummy1, dummy2);      \
+    }                                                                          \
+    return count;                                                              \
+  }
+
+long long IO_COUNT_PARTICLES_IN_ZOOM_TO_WRITE(gas, part);
+long long IO_COUNT_PARTICLES_IN_ZOOM_TO_WRITE(dark_matter, dark_matter);
+long long IO_COUNT_PARTICLES_IN_ZOOM_TO_WRITE(background_dark_matter,
+                                              background_dark_matter);
+long long IO_COUNT_PARTICLES_IN_ZOOM_TO_WRITE(stars, spart);
+long long IO_COUNT_PARTICLES_IN_ZOOM_TO_WRITE(sinks, sink);
+long long IO_COUNT_PARTICLES_IN_ZOOM_TO_WRITE(black_holes, bpart);
+long long IO_COUNT_PARTICLES_IN_ZOOM_TO_WRITE(neutrinos, neutrinos);
+
 #if defined(HAVE_HDF5)
 
 #include <hdf5.h>
