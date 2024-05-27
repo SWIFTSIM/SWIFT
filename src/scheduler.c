@@ -1440,7 +1440,7 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
           cell_set_flag(t->ci, cell_flag_has_tasks);
 
           for (int k = first_child + 1; k < 8; k++)
-            if (ci->progeny[k] != NULL)
+            if (ci->progeny[k] != NULL && ci->progeny[k]->grav.count > 0)
               scheduler_splittask_gravity(
                   scheduler_addtask(s, task_type_self, t->subtype, 0, 0,
                                     ci->progeny[k], NULL),
