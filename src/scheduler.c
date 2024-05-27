@@ -1396,7 +1396,8 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
     redo = 0;
 
     /* Non-splittable task? */
-    if ((t->ci == NULL) || (t->type == task_type_pair && t->cj == NULL)) {
+    if ((t->ci == NULL) || (t->type == task_type_pair && t->cj == NULL) ||
+        t->ci->grav.count == 0) {
       t->type = task_type_none;
       t->subtype = task_subtype_none;
       t->ci = NULL;
@@ -1440,7 +1441,8 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
           cell_set_flag(t->ci, cell_flag_has_tasks);
 
           for (int k = first_child + 1; k < 8; k++)
-            if (ci->progeny[k] != NULL && ci->progeny[k]->grav.count > 0)
+            if (ci->progeny[k] != NULL &&
+                (ci->progeny[k]->grav.count > 0 || is_void))
               scheduler_splittask_gravity(
                   scheduler_addtask(s, task_type_self, t->subtype, 0, 0,
                                     ci->progeny[k], NULL),
@@ -1449,9 +1451,11 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
           /* Make a task for each pair of progeny */
           if (t->subtype != task_subtype_external_grav) {
             for (int j = 0; j < 8; j++)
-              if (ci->progeny[j] != NULL && ci->progeny[j]->grav.count > 0)
+              if (ci->progeny[j] != NULL &&
+                  (ci->progeny[j]->grav.count > 0 || is_void))
                 for (int k = j + 1; k < 8; k++)
-                  if (ci->progeny[k] != NULL && ci->progeny[k]->grav.count > 0)
+                  if (ci->progeny[k] != NULL &&
+                      (ci->progeny[k]->grav.count > 0 || is_void))
                     scheduler_splittask_gravity(
                         scheduler_addtask(s, task_type_pair, t->subtype,
                                           sub_sid_flag[j][k], 0, ci->progeny[j],
