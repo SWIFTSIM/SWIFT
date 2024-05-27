@@ -42,9 +42,9 @@ struct mhd_part_data {
 
   float alpha_AR;
 
-  float psi_over_ch;
+  float psi;
 
-  float psi_over_ch_dt;
+  float psi_dt;
 
   /*! Monopole subtraction in Lorentz Force*/
   float monopole_beta;

@@ -409,7 +409,7 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_force(
  * @param p The particle to act upon
  * @param a The current value of the cosmological scale factor
  */
-__attribute__((always_inline)) INLINE static float mhd_get_psi_over_ch_dt(
+__attribute__((always_inline)) INLINE static float mhd_get_psi_dt(
     struct part *p, const float a, const float a_factor_sound_speed,
     const float H, const struct hydro_props *hydro_props, const float mu_0) {
 
@@ -427,11 +427,11 @@ __attribute__((always_inline)) INLINE static float mhd_get_psi_over_ch_dt(
 
   const float div_B = p->mhd_data.divB;
   const float div_v = a * a * hydro_get_div_v(p) - 3.0f * a * a * H;
-  const float psi_over_ch = p->mhd_data.psi_over_ch;
+  const float psi = p->mhd_data.psi;
 
   const float hyperbolic_term =
-      -hyp * a * a * a_factor_sound_speed * a_factor_sound_speed * ch * div_B;
-  const float hyperbolic_divv_term = -hyp_divv * psi_over_ch * div_v;
+      -hyp * a * a * a_factor_sound_speed * a_factor_sound_speed * ch * ch * div_B;
+  const float hyperbolic_divv_term = -hyp_divv * psi * div_v;
   const float parabolic_term =
       -par * a * a_factor_sound_speed * psi_over_ch * ch * h_inv;
   const float Hubble_term = a * a * H * psi_over_ch;
@@ -504,10 +504,10 @@ __attribute__((always_inline)) INLINE static void mhd_predict_extra(
   p->mhd_data.B_over_rho[1] += p->mhd_data.B_over_rho_dt[1] * dt_therm;
   p->mhd_data.B_over_rho[2] += p->mhd_data.B_over_rho_dt[2] * dt_therm;
 
-  p->mhd_data.psi_over_ch_dt = mhd_get_psi_over_ch_dt(
+  p->mhd_data.psi_dt = mhd_get_psi_dt(
       p, cosmo->a, cosmo->a_factor_sound_speed, cosmo->H, hydro_props, mu_0);
-  p->mhd_data.psi_over_ch +=
-      mhd_get_psi_over_ch_dt(p, cosmo->a, cosmo->a_factor_sound_speed, cosmo->H,
+  p->mhd_data.psi +=
+      mhd_get_psi_dt(p, cosmo->a, cosmo->a_factor_sound_speed, cosmo->H,
                              hydro_props, mu_0) *
       dt_therm;
 }

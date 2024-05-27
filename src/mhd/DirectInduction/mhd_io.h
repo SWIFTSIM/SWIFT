@@ -271,13 +271,13 @@ INLINE static int mhd_write_particles(const struct part* parts,
 
   list[2] = io_make_output_field(
       "DednerScalars", FLOAT, 1, UNIT_CONV_ELECTRIC_CHARGE_FIELD_STRENGTH,
-      -1.5f * hydro_gamma - 1.f, parts, mhd_data.psi_over_ch,
+      -1.5f * hydro_gamma - 1.f, parts, mhd_data.psi,
       "Dedner scalar associated to the particle");
 
   list[3] = io_make_output_field(
       "DednerScalarsdt", FLOAT, 1,
       UNIT_CONV_ELECTRIC_CHARGE_FIELD_STRENGTH_RATE, 1.f, parts,
-      mhd_data.psi_over_ch_dt,
+      mhd_data.psi_dt,
       "Time derivative of Dedner scalar associated to particle");
 
   list[4] = io_make_output_field(
