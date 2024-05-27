@@ -1449,9 +1449,9 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
           /* Make a task for each pair of progeny */
           if (t->subtype != task_subtype_external_grav) {
             for (int j = 0; j < 8; j++)
-              if (ci->progeny[j] != NULL)
+              if (ci->progeny[j] != NULL && ci->progeny[j]->grav.count > 0)
                 for (int k = j + 1; k < 8; k++)
-                  if (ci->progeny[k] != NULL)
+                  if (ci->progeny[k] != NULL && ci->progeny[k]->grav.count > 0)
                     scheduler_splittask_gravity(
                         scheduler_addtask(s, task_type_pair, t->subtype,
                                           sub_sid_flag[j][k], 0, ci->progeny[j],
