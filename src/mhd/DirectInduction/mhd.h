@@ -433,8 +433,8 @@ __attribute__((always_inline)) INLINE static float mhd_get_psi_dt(
       -hyp * a * a * a_factor_sound_speed * a_factor_sound_speed * ch * ch * div_B;
   const float hyperbolic_divv_term = -hyp_divv * psi * div_v;
   const float parabolic_term =
-      -par * a * a_factor_sound_speed * psi_over_ch * ch * h_inv;
-  const float Hubble_term = a * a * H * psi_over_ch;
+      -par * a * a_factor_sound_speed * psi * ch * h_inv;
+  const float Hubble_term = a * a * H * psi;
 
   return hyperbolic_term + hyperbolic_divv_term + parabolic_term + Hubble_term;
 }
