@@ -302,6 +302,38 @@ void zoom_engine_make_self_gravity_tasks(struct space *s, struct engine *e) {
 }
 
 /**
+ * @brief Recusively find the zoom super level and link the void grav down.
+ *
+ * This is necessary because the zoom cells super level may not be directly
+ * below the void cell.
+ *
+ * @param zoom The #cell.
+ * @param void_cell The #cell.
+ */
+static void zoom_link_void_to_zoom_super(struct cell *zoom,
+                                         struct cell *void_cell) {
+
+  /* Have we hit the zoom super level? */
+  if (zoom->super == zoom) {
+
+    scheduler_addunlock(s, void_cell->grav.init_out, zoom->grav.init_out);
+    scheduler_addunlock(s, zoom->grav.down_in, void_cell->grav.down_in);
+
+    return;
+  }
+
+  /* Recurse... */
+  if (zoom->split &&
+      (((zoom->maxdepth - zoom->depth) >= space_subdepth_diff_grav))) {
+    for (int k = 0; k < 8; k++) {
+      if (zoom->progeny[k] != NULL) {
+        zoom_link_void_to_zoom_super(zoom->progeny[k], void_cell);
+      }
+    }
+  }
+}
+
+/**
  * @brief Generate the hydro hierarchical tasks for a hierarchy of cells -
  * i.e. all the O(Npart) tasks -- gravity version
  *
@@ -375,8 +407,7 @@ static void zoom_make_hierarchical_void_gravity_tasks(struct engine *e,
     else if (c->progeny[k]->type == cell_type_zoom &&
              c->progeny[k]->grav.count > 0) {
       if (is_self_gravity) {
-        scheduler_addunlock(s, c->super->grav.down,
-                            c->progeny[k]->grav.down_in);
+        zoom_link_void_to_zoom_super(c->progeny[k], c);
       }
     }
   }

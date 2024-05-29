@@ -1429,13 +1429,6 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
     }
   }
 
-  /* If we have a zoom cell at depth 0 we need to link in the
-   * void parent tasks. */
-  if (c->type == cell_type_zoom && c->depth == 0) {
-    scheduler_addunlock(s, c->void_parent->grav.init_out, c->grav.init_out);
-    scheduler_addunlock(s, c->grav.down_in, c->void_parent->grav.down_in);
-  }
-
   /* Recurse but not below the maximal splitting depth */
   if (c->split && (((c->maxdepth - c->depth) >= space_subdepth_diff_grav) ||
                    c->subtype == cell_subtype_neighbour)) {
