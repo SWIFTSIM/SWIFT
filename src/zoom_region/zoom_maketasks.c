@@ -310,8 +310,10 @@ void zoom_engine_make_self_gravity_tasks(struct space *s, struct engine *e) {
  * @param zoom The #cell.
  * @param void_cell The #cell.
  */
-static void zoom_link_void_to_zoom_super(struct cell *zoom,
+static void zoom_link_void_to_zoom_super(struct engine *e, struct cell *zoom,
                                          struct cell *void_cell) {
+
+  struct scheduler *s = &e->sched;
 
   /* Have we hit the zoom super level? */
   if (zoom->super == zoom) {
@@ -327,7 +329,7 @@ static void zoom_link_void_to_zoom_super(struct cell *zoom,
       (((zoom->maxdepth - zoom->depth) >= space_subdepth_diff_grav))) {
     for (int k = 0; k < 8; k++) {
       if (zoom->progeny[k] != NULL) {
-        zoom_link_void_to_zoom_super(zoom->progeny[k], void_cell);
+        zoom_link_void_to_zoom_super(e, zoom->progeny[k], void_cell);
       }
     }
   }
@@ -407,7 +409,7 @@ static void zoom_make_hierarchical_void_gravity_tasks(struct engine *e,
     else if (c->progeny[k]->type == cell_type_zoom &&
              c->progeny[k]->grav.count > 0) {
       if (is_self_gravity) {
-        zoom_link_void_to_zoom_super(c->progeny[k], c);
+        zoom_link_void_to_zoom_super(e, c->progeny[k], c);
       }
     }
   }
