@@ -2257,8 +2257,8 @@ inline static void delaunay_compute_circumcenters(
     const double r3 =
         sqrt((cx - v3r[0]) * (cx - v3r[0]) + (cy - v3r[1]) * (cy - v3r[1]) +
              (cz - v3r[2]) * (cz - v3r[2]));
-    delaunay_assert(double_cmp(r0, r1, 1e5) && double_cmp(r0, r2, 1e5) &&
-                    double_cmp(r0, r3, 1e5));
+    delaunay_assert(double_cmp(r0, r1, 6) && double_cmp(r0, r2, 6) &&
+                    double_cmp(r0, r3, 6));
 #endif
   }
 }
