@@ -320,12 +320,11 @@ INLINE static int mhd_write_particles(const struct part* parts,
       "signal_to_noise parameter, default is 10 (if 1 - weak noise filtering, "
       "if 100 - strong noise filtering)");
   list[7] = io_make_output_field_convert_part(
-      "OW_trigger_physical", FLOAT, 1, UNIT_CONV_NO_UNITS, 0, parts, xparts, calculate_OW_trigger,
+      "OW_trigger", FLOAT, 1, UNIT_CONV_NO_UNITS, 0, parts, xparts, calculate_OW_trigger,
       "Trigger, indicates if localy the magnetic field advection is limited by the "
-      "resolution of the simulation. If physical resistivity is large enough, the "
-      "magnetic field gradients will always stay below maximal resolvable gradient"
+      "resolution of the simulation. If total magnetic diffusion is large enough, the "
+      "magnetic field gradients will stay below maximal resolvable gradient"
       "of B/h");
-
   return 8;
 }
 

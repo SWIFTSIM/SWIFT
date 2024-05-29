@@ -46,10 +46,8 @@ struct mhd_part_data {
   float tot_mag_F[3];
   /* B advection source */
   float Adv_B_source[3];
-  /* B resistivity source */
+  /* B total diffusion source */
   float Diff_B_source[3];
-  /* B artificial diffusion source*/
-  float Art_Diff_B_source[3]; 
 };
 
 /**
