@@ -101,6 +101,14 @@ __attribute__((always_inline)) INLINE static void runner_build_grid(
   /* First add all the active particles to the delaunay tesselation */
   cell_add_local_parts_grid(d, c, parts, bvh, pid_unconverged,
                             count_unconverged);
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Check if all active particles have been added to the tesselation */
+  for (int i = 0; i < c->hydro.count; i++) {
+      if (part_is_active(&c->hydro.parts[i], e))
+        if (!(c->hydro.parts[i].geometry.delaunay_flags & 1 << 13))
+          error("Should have added active local part to Delaunay!");
+  }
+#endif
 
   /* Now add ghost particles (i.e. particles from neighbouring cells and/or
    * inactive particles) until all active particles have converged */
