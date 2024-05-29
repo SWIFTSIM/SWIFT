@@ -298,8 +298,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   /* Recover some data */
   const float mi = pi->mass;
   const float mj = pj->mass;
-  const float Pi = pi->force.pressure;
-  const float Pj = pj->force.pressure;
   const float rhoi = pi->rho;
   const float rhoj = pj->rho;
 
@@ -429,46 +427,39 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   /* Manifestly *NOT* symmetric in i <-> j */
 
   // const float monopole_beta = hydro_props->mhd.monopole_subtraction;
-  const float monopole_beta = pi->mhd_data.monopole_beta;
 
-  const float plasma_beta_i = B2i != 0.0f ? 2.0f * mu_0 * Pi / B2i : FLT_MAX;
-  const float plasma_beta_j = B2j != 0.0f ? 2.0f * mu_0 * Pj / B2j : FLT_MAX;
+  const float TIC_beta_i = pi->mhd_data.TIC_beta;
+  const float TIC_beta_j = pj->mhd_data.TIC_beta;
 
-  const float scale_i = 0.125f * (10.0f - plasma_beta_i);
-  const float scale_j = 0.125f * (10.0f - plasma_beta_j);
+  sph_acc_term_i[0] += TIC_beta_i * over_rho2_i * wi_dr * permeability_inv *
+                       Bri * r_inv * Bi[0];
+  sph_acc_term_i[0] += TIC_beta_i * over_rho2_j * wj_dr * permeability_inv *
+                       Brj * r_inv * Bi[0];
 
-  const float tensile_correction_scale_i = fmaxf(0.0f, fminf(scale_i, 1.0f));
-  const float tensile_correction_scale_j = fmaxf(0.0f, fminf(scale_j, 1.0f));
+  sph_acc_term_i[1] += TIC_beta_i * over_rho2_i * wi_dr * permeability_inv *
+                       Bri * r_inv * Bi[1];
+  sph_acc_term_i[1] += TIC_beta_i * over_rho2_j * wj_dr * permeability_inv *
+                       Brj * r_inv * Bi[1];
 
-  sph_acc_term_i[0] += monopole_beta * over_rho2_i * wi_dr * permeability_inv *
-                       Bri * r_inv * Bi[0] * tensile_correction_scale_i;
-  sph_acc_term_i[0] += monopole_beta * over_rho2_j * wj_dr * permeability_inv *
-                       Brj * r_inv * Bi[0] * tensile_correction_scale_i;
+  sph_acc_term_i[2] += TIC_beta_i * over_rho2_i * wi_dr * permeability_inv *
+                       Bri * r_inv * Bi[2];
+  sph_acc_term_i[2] += TIC_beta_i * over_rho2_j * wj_dr * permeability_inv *
+                       Brj * r_inv * Bi[2];
 
-  sph_acc_term_i[1] += monopole_beta * over_rho2_i * wi_dr * permeability_inv *
-                       Bri * r_inv * Bi[1] * tensile_correction_scale_i;
-  sph_acc_term_i[1] += monopole_beta * over_rho2_j * wj_dr * permeability_inv *
-                       Brj * r_inv * Bi[1] * tensile_correction_scale_i;
+  sph_acc_term_j[0] -= TIC_beta_j * over_rho2_i * wi_dr * permeability_inv *
+                       Bri * r_inv * Bj[0];
+  sph_acc_term_j[0] -= TIC_beta_j * over_rho2_j * wj_dr * permeability_inv *
+                       Brj * r_inv * Bj[0];
 
-  sph_acc_term_i[2] += monopole_beta * over_rho2_i * wi_dr * permeability_inv *
-                       Bri * r_inv * Bi[2] * tensile_correction_scale_i;
-  sph_acc_term_i[2] += monopole_beta * over_rho2_j * wj_dr * permeability_inv *
-                       Brj * r_inv * Bi[2] * tensile_correction_scale_i;
+  sph_acc_term_j[1] -= TIC_beta_j * over_rho2_i * wi_dr * permeability_inv *
+                       Bri * r_inv * Bj[1];
+  sph_acc_term_j[1] -= TIC_beta_j * over_rho2_j * wj_dr * permeability_inv *
+                       Brj * r_inv * Bj[1];
 
-  sph_acc_term_j[0] -= monopole_beta * over_rho2_i * wi_dr * permeability_inv *
-                       Bri * r_inv * Bj[0] * tensile_correction_scale_j;
-  sph_acc_term_j[0] -= monopole_beta * over_rho2_j * wj_dr * permeability_inv *
-                       Brj * r_inv * Bj[0] * tensile_correction_scale_j;
-
-  sph_acc_term_j[1] -= monopole_beta * over_rho2_i * wi_dr * permeability_inv *
-                       Bri * r_inv * Bj[1] * tensile_correction_scale_j;
-  sph_acc_term_j[1] -= monopole_beta * over_rho2_j * wj_dr * permeability_inv *
-                       Brj * r_inv * Bj[1] * tensile_correction_scale_j;
-
-  sph_acc_term_j[2] -= monopole_beta * over_rho2_i * wi_dr * permeability_inv *
-                       Bri * r_inv * Bj[2] * tensile_correction_scale_j;
-  sph_acc_term_j[2] -= monopole_beta * over_rho2_j * wj_dr * permeability_inv *
-                       Brj * r_inv * Bj[2] * tensile_correction_scale_j;
+  sph_acc_term_j[2] -= TIC_beta_j * over_rho2_i * wi_dr * permeability_inv *
+                       Bri * r_inv * Bj[2];
+  sph_acc_term_j[2] -= TIC_beta_j * over_rho2_j * wj_dr * permeability_inv *
+                       Brj * r_inv * Bj[2];
 
   /* Use the force Luke ! */
   pi->a_hydro[0] -= mj * sph_acc_term_i[0];
@@ -666,7 +657,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   /* Recover some data */
   const float mi = pi->mass;
   const float mj = pj->mass;
-  const float Pi = pi->force.pressure;
   const float rhoi = pi->rho;
   const float rhoj = pj->rho;
 
@@ -789,26 +779,23 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   /* Manifestly *NOT* symmetric in i <-> j */
 
   // const float monopole_beta = hydro_props->mhd.monopole_subtraction;
-  const float monopole_beta = pi->mhd_data.monopole_beta;
 
-  const float plasma_beta_i = B2i != 0.0f ? 2.0f * mu_0 * Pi / B2i : FLT_MAX;
-  const float scale_i = 0.125f * (10.0f - plasma_beta_i);
-  const float tensile_correction_scale_i = fmaxf(0.0f, fminf(scale_i, 1.0f));
+  const float TIC_beta_i = pi->mhd_data.TIC_beta;
 
-  sph_acc_term_i[0] += monopole_beta * over_rho2_i * wi_dr * permeability_inv *
-                       Bri * r_inv * Bi[0] * tensile_correction_scale_i;
-  sph_acc_term_i[0] += monopole_beta * over_rho2_j * wj_dr * permeability_inv *
-                       Brj * r_inv * Bi[0] * tensile_correction_scale_i;
+  sph_acc_term_i[0] += TIC_beta_i * over_rho2_i * wi_dr * permeability_inv *
+                       Bri * r_inv * Bi[0];
+  sph_acc_term_i[0] += TIC_beta_i * over_rho2_j * wj_dr * permeability_inv *
+                       Brj * r_inv * Bi[0];
 
-  sph_acc_term_i[1] += monopole_beta * over_rho2_i * wi_dr * permeability_inv *
-                       Bri * r_inv * Bi[1] * tensile_correction_scale_i;
-  sph_acc_term_i[1] += monopole_beta * over_rho2_j * wj_dr * permeability_inv *
-                       Brj * r_inv * Bi[1] * tensile_correction_scale_i;
+  sph_acc_term_i[1] += TIC_beta_i * over_rho2_i * wi_dr * permeability_inv *
+                       Bri * r_inv * Bi[1];
+  sph_acc_term_i[1] += TIC_beta_i * over_rho2_j * wj_dr * permeability_inv *
+                       Brj * r_inv * Bi[1];
 
-  sph_acc_term_i[2] += monopole_beta * over_rho2_i * wi_dr * permeability_inv *
-                       Bri * r_inv * Bi[2] * tensile_correction_scale_i;
-  sph_acc_term_i[2] += monopole_beta * over_rho2_j * wj_dr * permeability_inv *
-                       Brj * r_inv * Bi[2] * tensile_correction_scale_i;
+  sph_acc_term_i[2] += TIC_beta_i * over_rho2_i * wi_dr * permeability_inv *
+                       Bri * r_inv * Bi[2];
+  sph_acc_term_i[2] += TIC_beta_i * over_rho2_j * wj_dr * permeability_inv *
+                       Brj * r_inv * Bi[2];
   /* Use the force Luke ! */
   pi->a_hydro[0] -= mj * sph_acc_term_i[0];
   pi->a_hydro[1] -= mj * sph_acc_term_i[1];
