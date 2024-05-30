@@ -283,6 +283,52 @@ INLINE static void calculate_OW_trigger(const struct engine* e, const struct par
   ret[0] = Rm_local*sign_prefactor*Laplace_ratio;
 }
 
+INLINE static void calculate_effective_resistivity(const struct engine* e, const struct part* p,
+                                const struct xpart* xp, float* ret) {
+
+  /* Calculate effective resistivity of the code (physical+numerical) */
+ 
+  /* Get diffusion source and laplacian */
+ 
+  const float Diff_B[3] = {p->mhd_data.Diff_B_source[0], p->mhd_data.Diff_B_source[1],p->mhd_data.Diff_B_source[2]}; 
+ 
+  const float Abs_Diff_B = sqrtf(Diff_B[0]*Diff_B[0]+Diff_B[1]*Diff_B[1]+Diff_B[2]*Diff_B[2]);
+
+  const float Delta_B[3] = {p->mhd_data.Delta_B[0], p->mhd_data.Delta_B[1],
+                      p->mhd_data.Delta_B[2]};
+ 
+  const float Abs_Delta_B = sqrtf(Delta_B[0]*Delta_B[0]+Delta_B[1]*Delta_B[1]+Delta_B[2]*Delta_B[2]);  
+
+  /* Effective resistivity */
+
+  const float effective_resistivity = Abs_Diff_B/(Abs_Delta_B+FLT_MIN);
+
+  ret[0] = effective_resistivity;
+}
+
+INLINE static void calculate_Rm_local(const struct engine* e, const struct part* p,
+                                const struct xpart* xp, float* ret) {
+
+  /* Calculate local magnetic Reynolds number */
+ 
+  /* Get advection and diffusion sources in induction equation*/
+ 
+  const float Adv_B[3] = {p->mhd_data.Adv_B_source[0], p->mhd_data.Adv_B_source[1],p->mhd_data.Adv_B_source[2]};
+
+  const float Abs_Adv_B = sqrtf(Adv_B[0]*Adv_B[0]+Adv_B[1]*Adv_B[1]+Adv_B[2]*Adv_B[2]);
+ 
+  const float Diff_B[3] = {p->mhd_data.Diff_B_source[0], p->mhd_data.Diff_B_source[1],p->mhd_data.Diff_B_source[2]}; 
+ 
+  const float Abs_Diff_B = sqrtf(Diff_B[0]*Diff_B[0]+Diff_B[1]*Diff_B[1]+Diff_B[2]*Diff_B[2]);
+
+  /* Estimating local magnetic Reynolds number*/
+
+  const float Rm_local = Abs_Adv_B / (Abs_Diff_B + FLT_MIN);
+
+  ret[0] = Rm_local;
+}
+
+
 
 
 
@@ -344,7 +390,14 @@ INLINE static int mhd_write_particles(const struct part* parts,
       "resolution of the simulation. If total magnetic diffusion is large enough, the "
       "magnetic field gradients will stay below maximal resolvable gradient"
       "of B/h");
-  return 8;
+  list[8] = io_make_output_field_convert_part(
+      "total_effective_resistivity", FLOAT, 1, UNIT_CONV_NO_UNITS, 0, parts, xparts, calculate_effective_resistivity,
+      "Shows local value of total resistivity of the code");
+  list[9] = io_make_output_field_convert_part(
+      "Rm_local", FLOAT, 1, UNIT_CONV_NO_UNITS, 0, parts, xparts, calculate_Rm_local,
+      "Shows local value of magnetic Reynolds number");
+
+  return 10;
 }
 
 /**
