@@ -479,6 +479,13 @@ __attribute__((always_inline)) INLINE static void mhd_reset_acceleration(
   for (int k = 0; k < 3; k++) {
     p->mhd_data.tot_mag_F[k] = 0.0f;
   }
+  /* Save induction sources*/
+  for (int k = 0; k < 3; k++) {
+    p->mhd_data.Adv_A_source[k] = 0.0f;
+    p->mhd_data.Diff_A_source[k] = 0.0f;
+    p->mhd_data.Delta_A[k] = 0.0f;
+  }
+
 }
 
 /**
