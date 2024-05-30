@@ -62,6 +62,8 @@ struct mhd_part_data {
   float Adv_B_source[3];
   /* B total diffusion source */
   float Diff_B_source[3];
+  /* Laplacian B */
+  float Delta_B[3];
 };
 
 /**

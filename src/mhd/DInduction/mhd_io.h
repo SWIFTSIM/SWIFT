@@ -241,12 +241,10 @@ INLINE static void calculate_R3(const struct engine* e, const struct part* p,
 INLINE static void calculate_OW_trigger(const struct engine* e, const struct part* p,
                                 const struct xpart* xp, float* ret) {
 
-  /* Calculate overwinding trigger value */
-
-  const float B[3] = {p->mhd_data.BPred[0], p->mhd_data.BPred[1],
-                      p->mhd_data.BPred[2]};
-  const float Babs = sqrtf(B[0]*B[0]+B[1]*B[1]+B[2]*B[2]);
-  
+  /* Calculate overwinding trigger */
+ 
+  /* Get advection and diffusion sources in induction equation*/
+ 
   const float Adv_B[3] = {p->mhd_data.Adv_B_source[0], p->mhd_data.Adv_B_source[1],p->mhd_data.Adv_B_source[2]};
 
   const float Abs_Adv_B = sqrtf(Adv_B[0]*Adv_B[0]+Adv_B[1]*Adv_B[1]+Adv_B[2]*Adv_B[2]);
@@ -255,13 +253,34 @@ INLINE static void calculate_OW_trigger(const struct engine* e, const struct par
  
   const float Abs_Diff_B = sqrtf(Diff_B[0]*Diff_B[0]+Diff_B[1]*Diff_B[1]+Diff_B[2]*Diff_B[2]);
 
+  /* Estimating local magnetic Reynolds number*/
+
+  const float Rm_local = Abs_Adv_B / (Abs_Diff_B + FLT_MIN);
+
+  /* Accounting for advection direction*/
+
   const float Cos_Adv_Diff = (Diff_B[0]*Adv_B[0]+Diff_B[1]*Adv_B[1]+Diff_B[2]*Adv_B[2])/(Abs_Adv_B*Abs_Diff_B+FLT_MIN);
 
   const float sign_prefactor = 0.5*(1-Cos_Adv_Diff);
 
-  const float Max_Diff_B = p->mhd_data.resistive_eta*2*Babs/(p->h*p->h+FLT_MIN);   
+  /* Calculating ratio of local laplacian to largest resolvable laplacian*/
 
-  ret[0] = Abs_Adv_B / (Max_Diff_B + FLT_MIN)*sign_prefactor;
+  const float Delta_B[3] = {p->mhd_data.Delta_B[0], p->mhd_data.Delta_B[1],
+                      p->mhd_data.Delta_B[2]};
+ 
+  const float Abs_Delta_B = sqrtf(Delta_B[0]*Delta_B[0]+Delta_B[1]*Delta_B[1]+Delta_B[2]*Delta_B[2]);  
+
+  const float B[3] = {p->mhd_data.BPred[0], p->mhd_data.BPred[1],
+                      p->mhd_data.BPred[2]};
+  const float Babs = sqrtf(B[0]*B[0]+B[1]*B[1]+B[2]*B[2]);
+
+  const float Max_Delta_B = 2*Babs/(p->h*p->h+FLT_MIN);
+
+  const float Laplace_ratio = Abs_Delta_B/(Max_Delta_B+FLT_MIN);
+
+  /* Overwinding triger value */
+
+  ret[0] = Rm_local*sign_prefactor*Laplace_ratio;
 }
 
 
