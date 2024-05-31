@@ -25,7 +25,7 @@
 // #define VORONOI_CHECKS
 
 /*! @brief The minimal relative face size in 1D of voronoi faces */
-#define MIN_REL_FACE_SIZE 1e-12
+#define MIN_REL_FACE_SIZE 0.0
 
 /*! @brief The maximum number of vertices on a voronoi face (3D) */
 #define VORONOI_CONSTRUCTION_MAX_FACES 1000
