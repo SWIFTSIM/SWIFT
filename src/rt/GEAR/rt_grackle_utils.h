@@ -36,6 +36,21 @@
  */
 
 /**
+ * @brief Update grackle units during run
+ *
+ * @param grackle_units grackle units struct
+ * @param cosmo cosmology struct
+ *
+ * NOTE: In the current implementation, this function does nothing.
+ * However, there might be use-cases in the future (e.g. switching
+ * UV background on or off depending on redshift) that might be
+ * needed in the future, which can be implemented into this function.
+ */
+__attribute__((always_inline)) INLINE void update_grackle_units_cosmo(
+    code_units *grackle_units, const struct unit_system *us,
+    const struct cosmology *restrict cosmo) {}
+
+/**
  * @brief initialize grackle during rt_props_init
  *
  * @param grackle_units grackle units struct to fill up correctly.
@@ -50,7 +65,8 @@ __attribute__((always_inline)) INLINE static void rt_init_grackle(
     code_units *grackle_units, chemistry_data *grackle_chemistry_data,
     chemistry_data_storage *grackle_chemistry_rates,
     float hydrogen_mass_fraction, const int grackle_verb,
-    const int case_B_recombination, const struct unit_system *us) {
+    const int case_B_recombination, const struct unit_system *us,
+    const struct cosmology *restrict cosmo) {
 
   grackle_verbose = grackle_verb;
 

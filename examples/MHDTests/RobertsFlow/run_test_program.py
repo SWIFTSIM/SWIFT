@@ -50,8 +50,8 @@ IA_dict = {
     "s112": "stacked_112.hdf5",
     "s120": "stacked_120.hdf5",
     "s128": "stacked_128.hdf5",
-    "fcc32": "FCC_32.hdf5",
-    "fcc64": "FCC_64.hdf5",
+    "c32": "c32.hdf5",
+    "c64": "c64.hdf5",
 }
 
 # full names of forcing types
@@ -146,37 +146,37 @@ def configure_simulation(scheme, forcing, spline, eos, path_to_lib=False):
 
 # Funciton for making ICfile
 def make_IC(phys_parameters, IAfile):
-
-    # get configuration parameters from phys_parameters row of parameters dataframe
-    v0 = " " + str(phys_parameters["v0"].values[0])
-    Vz_factor = " " + str(phys_parameters["Vz_factor"].values[0])
-    eta = " " + str(phys_parameters["eta"].values[0])
-    kv = " " + str(phys_parameters["kv"].values[0])
-    kb = " " + str(phys_parameters["kb"].values[0])
-    Lbox = " " + str(phys_parameters["Lbox"].values[0])
-
-    Flow_kind = " " + str(int(phys_parameters["Flow_kind"].values[0]))
-
-    # Construct command to make ICs with selected parameters
-    command = (
-        " python "
-        + "make_IC.py"
-        + v0
-        + eta
-        + " ./IAfiles/"
-        + IAfile
-        + kv
-        + kb
-        + Lbox
-        + Vz_factor
-        + Flow_kind
-    )
+    if len(phys_parameters) != 0:
+        # get configuration parameters from phys_parameters row of parameters dataframe
+        v0 = " --rms_velocity=" + str(phys_parameters["v0"].values[0])
+        Vz_factor = " --Vz_factor=" + str(phys_parameters["Vz_factor"].values[0])
+        kv = " --velocity_wavevector=" + str(phys_parameters["kv"].values[0])
+        kb = " --magnetic_wavevector=" + str(phys_parameters["kb"].values[0])
+        Lbox = " --boxsize=" + str(phys_parameters["Lbox"].values[0])
+        path = " --IA_path=" + "./IAfiles/" + IAfile
+        Flow_kind = " --flow_kind=" + str(int(phys_parameters["Flow_kind"].values[0]))
+        # Construct command to make ICs with selected parameters
+        command = (
+            " python3 "
+            + "make_IC.py"
+            + v0
+            + path
+            + kv
+            + kb
+            + Lbox
+            + Vz_factor
+            + Flow_kind
+        )
+    else:
+        command = " python3 " + "make_IC.py"
     # show command
-    print(command)
+    print("Script sends command: " + command)
     # execute
-    subprocess.call(command, shell=True)
-
-    print("Created ICs")
+    try:
+        subprocess.run(command, shell=True, check=True)
+        print("created ICs")
+    except Exception as e:
+        print("Error: " + str(e))
 
 
 # Function for running simulation
