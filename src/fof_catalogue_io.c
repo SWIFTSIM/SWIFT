@@ -506,7 +506,7 @@ void write_fof_hdf5_array(
 }
 
 void write_fof_hdf5_catalogue(const struct fof_props* props,
-                              const size_t num_groups, const struct engine* e) {
+                              long long num_groups, const struct engine* e) {
 
   char file_name[512];
 #ifdef WITH_MPI

@@ -1059,6 +1059,38 @@ void cell_clear_limiter_flags(struct cell *c, void *data) {
                   cell_flag_do_hydro_limiter | cell_flag_do_hydro_sub_limiter);
 }
 
+void cell_clear_unskip_flags(struct cell *c) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+
+  if (c->split) {
+    for (int k = 0; k < 8; ++k) {
+      if (c->progeny[k] != NULL) cell_clear_unskip_flags(c->progeny[k]);
+    }
+  }
+
+  cell_clear_flag(
+      c, cell_flag_do_stars_resort | cell_flag_do_stars_drift |
+             cell_flag_do_stars_sub_drift | cell_flag_do_hydro_drift |
+             cell_flag_do_hydro_sub_drift | cell_flag_do_hydro_sync |
+             cell_flag_do_hydro_sub_sync | cell_flag_do_grav_drift |
+             cell_flag_do_grav_sub_drift | cell_flag_do_bh_drift |
+             cell_flag_do_bh_sub_drift | cell_flag_do_sink_drift |
+             cell_flag_do_sink_sub_drift | cell_flag_do_hydro_limiter |
+             cell_flag_do_hydro_sub_limiter | cell_flag_do_hydro_sub_sort |
+             cell_flag_do_stars_sub_sort | cell_flag_do_rt_sub_sort |
+             cell_flag_unskip_self_grav_processed |
+             cell_flag_unskip_pair_grav_processed);
+
+  c->hydro.do_sort = 0;
+  c->stars.do_sort = 0;
+  c->hydro.requires_sorts = 0;
+  c->stars.requires_sorts = 0;
+#else
+  error("Calling debugging code without debugging flag activated.");
+#endif
+}
+
 /**
  * @brief Set the super-cell pointers for all cells in a hierarchy.
  *
