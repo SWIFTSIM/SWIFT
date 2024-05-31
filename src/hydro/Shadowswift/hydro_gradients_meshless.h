@@ -47,7 +47,7 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_collect(
     float r2, const float* dx, float hi, float hj, struct part* restrict pi,
     struct part* restrict pj) {
 
-  /* Get ds (distance vector between centroids) */
+  /* Get ds (distance vector between centroids (pj - pi) */
   float ds[3];
   for (int i = 0; i < 3; i++)
     ds[i] = (float)-dx[i] + pj->geometry.centroid[i] - pi->geometry.centroid[i];
