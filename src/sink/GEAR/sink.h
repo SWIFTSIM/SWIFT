@@ -815,15 +815,16 @@ INLINE static void sink_update_sink_properties_after_star_formation(struct sink*
 }
 
 /**
- * @brief Update the #sink particle properties after spawning a star. Important
- * properties that are updated are the sink mass and the sink->target_mass to
- * draw the next star mass.
+ * @brief Update the #sink particle properties before spawning a star.
+ *
+ * In GEAR, we check if the sink had an IMF change from pop III to pop II
+ * during the last gas/sink accretion loops. If so, we draw a new target mass
+ * with the correct IMF os that star have the right metallicities.
  *
  * @param sink the sink particle.
  * @param e The #engine
  * @param sink_props the sink properties to use.
  * @param phys_const the physical constants in internal units.
- * @param loop The star loop counter.
  */
 INLINE static void sink_update_sink_properties_before_star_formation(struct sink* sink,
    const struct engine* e,  const struct sink_props* sink_props,
