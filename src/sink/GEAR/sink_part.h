@@ -54,6 +54,9 @@ struct sink {
   /*! Sink target mass */
   float target_mass;
 
+  /*! Mass of the sink before starting the star spawning loop */
+  float mass_tot_before_star_spawning;
+
   /*! Sink target stellar type */
   star_feedback_type target_type;
 

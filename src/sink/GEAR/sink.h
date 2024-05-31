@@ -138,6 +138,9 @@ __attribute__((always_inline)) INLINE static void sink_first_init_sink(
      ICs. Otherwise sink->target_mass = 0.0 and a sink present in the IC spawn
      a star of mass 0.0... */
   sink_update_target_mass(sp, sink_props, e, 0);
+
+  /* Initialize to the mass of the sink */
+  sp->mass_tot_before_star_spawning = sp->mass;
 }
 
 /**
@@ -181,6 +184,10 @@ __attribute__((always_inline)) INLINE static void sink_init_part(
  */
 __attribute__((always_inline)) INLINE static void sink_init_sink(
     struct sink* sp) {
+
+  /* Reset to the mass of the sink */
+  sp->mass_tot_before_star_spawning = sp->mass;
+
 #ifdef DEBUG_INTERACTIONS_SINKS
   for (int i = 0; i < MAX_NUM_OF_NEIGHBOURS_SINKS; ++i)
     sp->ids_ngbs_accretion[i] = -1;
@@ -527,6 +534,9 @@ __attribute__((always_inline)) INLINE static void sink_swallow_part(
   sp->number_of_gas_swallows++;
   sp->number_of_direct_gas_swallows++;
 
+  /* Update the total mass before star spawning */
+  sp->mass_tot_before_star_spawning = sp->mass;
+
 /* #ifdef SWIFT_DEBUG_CHECKS */
   const float dr = sqrt(dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]);
   message(
@@ -590,6 +600,9 @@ __attribute__((always_inline)) INLINE static void sink_swallow_sink(
   /* Add all other swallowed particles swallowed by the swallowed sink */
   spi->number_of_sink_swallows += spj->number_of_sink_swallows;
   spi->number_of_gas_swallows += spj->number_of_gas_swallows;
+
+  /* Update the total mass before star spawning */
+  spi->mass_tot_before_star_spawning = spi->mass;
 
 /* #ifdef SWIFT_DEBUG_CHECKS */
   message("sink %lld swallow sink particle %lld. New mass: %e.", spi->id,
@@ -669,15 +682,16 @@ INLINE static void sink_star_formation_give_new_position(
  * @param sp The new #spart.
  */
 INLINE static void sink_star_formation_give_new_velocity(const struct engine* e,
-struct sink* si, struct spart* sp, double sink_mass_tot_before_spawning,
-const struct sink_props* sink_props) {
+							 struct sink* si,
+							 struct spart* sp,
+							 const struct sink_props* sink_props) {
 
 #ifdef HAVE_LIBGSL
   /* Those intermediate variables are the values that will be given to the star
      and subtracted from the sink. */
   double v_given[3] = {0.0, 0.0, 0.0};
   const double G_newton = e->physical_constants->const_newton_G;
-  const double sigma_2 = G_newton*sink_mass_tot_before_spawning/si->r_cut;
+  const double sigma_2 = G_newton*si->mass_tot_before_star_spawning/si->r_cut;
   const double sigma = sink_props->star_spawning_sigma_factor*sqrt(sigma_2) ;
 
   for (int i=0 ; i < 3; ++i) {
@@ -722,7 +736,7 @@ INLINE static void sink_copy_properties_to_star(
     struct sink* sink, struct spart* sp, const struct engine* e,
     const struct sink_props* sink_props, const struct cosmology* cosmo,
     const int with_cosmology, const struct phys_const* phys_const,
-    const struct unit_system* restrict us, double sink_mass_tot_before_spawning) {
+    const struct unit_system* restrict us) {
 
   /* Give the stars a new position */
   sink_star_formation_give_new_position(e, sink, sp);
@@ -732,7 +746,7 @@ INLINE static void sink_copy_properties_to_star(
   sp->gpart->mass = sp->mass;
 
   /* Give a new velocity to the stars */
-  sink_star_formation_give_new_velocity(e, sink, sp, sink_mass_tot_before_spawning, sink_props);
+  sink_star_formation_give_new_velocity(e, sink, sp, sink_props);
 
   /* set feedback type */
   sp->feedback_data.star_type = (star_feedback_type)sink->target_type;
