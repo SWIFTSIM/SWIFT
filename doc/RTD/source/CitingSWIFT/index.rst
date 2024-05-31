@@ -52,18 +52,19 @@ following bibtex citation block:
 
   @ARTICLE{2023arXiv230513380S,
     author = {{Schaller}, Matthieu and others},
-    title = "{Swift: A modern highly-parallel gravity and smoothed particle hydrodynamics solver for astrophysical and cosmological applications}",
-    journal = {arXiv e-prints},
-    keywords = {Astrophysics - Instrumentation and Methods for Astrophysics, Astrophysics - Cosmology and Nongalactic Astrophysics, Astrophysics - Earth and Planetary Astrophysics, Astrophysics - Astrophysics of Galaxies, Computer Science - Distributed, Parallel, and Cluster Computing},
-    year = 2023,
+    title = "{SWIFT: A modern highly-parallel gravity and smoothed particle hydrodynamics solver for astrophysical and cosmological applications}",
+    journal = {\mnras},
+    keywords = {software: simulations, methods: numerical, software: public release, Astrophysics - Instrumentation and Methods for Astrophysics, Astrophysics - Cosmology and Nongalactic Astrophysics, Astrophysics - Earth and Planetary Astrophysics, Astrophysics - Astrophysics of Galaxies, Computer Science - Distributed, Parallel, and Cluster Computing},
+    year = 2024,
     month = may,
-    eid = {arXiv:2305.13380},
-    pages = {arXiv:2305.13380},
-    doi = {10.48550/arXiv.2305.13380},
+    volume = {530},
+    number = {2},
+    pages = {2378-2419},
+    doi = {10.1093/mnras/stae922},
     archivePrefix = {arXiv},
     eprint = {2305.13380},
     primaryClass = {astro-ph.IM},
-    adsurl = {https://ui.adsabs.harvard.edu/abs/2023arXiv230513380S},
+    adsurl = {https://ui.adsabs.harvard.edu/abs/2024MNRAS.530.2378S},
     adsnote = {Provided by the SAO/NASA Astrophysics Data System}
   }
 
