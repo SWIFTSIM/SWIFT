@@ -119,13 +119,11 @@ void zoom_find_void_cells(struct space *s, const int verbose) {
   } else {
     /* With only background cells we need to work this out from the
      * background cell width */
-    const int void_cdim = zoom_props->dim[0] * s->iwidth[0];
-
-    /* Handle weird rounding for single void cells. */
-    if (void_cdim < 1) {
-      void_cdim = 1;
-    }
+    const int void_cdim = zoom_props->dim[0] / s->width[0];
     target_void_count = void_cdim * void_cdim * void_cdim;
+
+    /* The target can't be 0. */
+    if (target_void_count == 0) error("The target number of void cells is 0!");
   }
 
   /* Allocate the indices of void cells */
