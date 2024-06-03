@@ -122,9 +122,9 @@
 #define BVH_MIDPOINT_SPLIT 1
 /*! @brief The splitting method used during the BVH construction */
 #define BVH_SPLITTING_METHOD BVH_MEDIAN_SPLIT
-#endif
 /*! @brief Option to insert parts by BFO of the BVH during grid construction. */
 #define SHADOWSWIFT_BVH_INSERT_BFO
+#endif
 #ifndef SHADOWSWIFT_BVH_INSERT_BFO
 /*! @brief Option to enable the hilbert order insertion during the grid
  * construction */
@@ -133,7 +133,7 @@
 
 /* Options controlling particle movement */
 /*! @brief This option disables cell movement */
-//#define SHADOWSWIFT_FIX_PARTICLES
+#define SHADOWSWIFT_FIX_PARTICLES
 /*! @brief This option enables cell steering, i.e. trying to keep the cells
  * regular by adding a correction to the cell velocities.*/
 #ifndef SHADOWSWIFT_FIX_PARTICLES
