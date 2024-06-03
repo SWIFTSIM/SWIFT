@@ -69,18 +69,6 @@ void space_first_init_parts_mapper(void *restrict map_data, int count,
   const struct cooling_function_data *cool_func = e->cooling_func;
   const struct rt_props *rt_props = e->rt_props;
 
-  /* In non-periodic zoom land we will have applied a shift that could shift
-   * particles outside of the volume. Let's inhibit these now before
-   * they break everything. */
-  if (s->with_zoom_region && !s->periodic) {
-    for (int k = 0; k < count; k++) {
-      if (p[k].x[0] < 0 || p[k].x[0] >= s->dim[0] || p[k].x[1] < 0 ||
-          p[k].x[1] >= s->dim[1] || p[k].x[2] < 0 || p[k].x[2] >= s->dim[2]) {
-        p[k].time_bin = time_bin_inhibited;
-      }
-    }
-  }
-
   /* Check that the smoothing lengths are non-zero */
   for (int k = 0; k < count; k++) {
     if (p[k].h <= 0.)
@@ -201,19 +189,6 @@ void space_first_init_gparts_mapper(void *restrict map_data, int count,
   const float a_factor_vel = cosmo->a;
   const struct gravity_props *grav_props = s->e->gravity_properties;
 
-  /* In non-periodic zoom land we will have applied a shift that could shift
-   * particles outside of the volume. Let's inhibit these now before
-   * they break everything. */
-  if (s->with_zoom_region && !s->periodic) {
-    for (int k = 0; k < count; k++) {
-      if (gp[k].x[0] < 0 || gp[k].x[0] >= s->dim[0] || gp[k].x[1] < 0 ||
-          gp[k].x[1] >= s->dim[1] || gp[k].x[2] < 0 ||
-          gp[k].x[2] >= s->dim[2]) {
-        gp[k].time_bin = time_bin_inhibited;
-      }
-    }
-  }
-
   /* Convert velocities to internal units */
   for (int k = 0; k < count; k++) {
     gp[k].v_full[0] *= a_factor_vel;
@@ -278,19 +253,6 @@ void space_first_init_sparts_mapper(void *restrict map_data, int count,
   const struct engine *e = s->e;
 
   const struct chemistry_global_data *chemistry = e->chemistry;
-
-  /* In non-periodic zoom land we will have applied a shift that could shift
-   * particles outside of the volume. Let's inhibit these now before
-   * they break everything. */
-  if (s->with_zoom_region && !s->periodic) {
-    for (int k = 0; k < count; k++) {
-      if (sp[k].x[0] < 0 || sp[k].x[0] >= s->dim[0] || sp[k].x[1] < 0 ||
-          sp[k].x[1] >= s->dim[1] || sp[k].x[2] < 0 ||
-          sp[k].x[2] >= s->dim[2]) {
-        sp[k].time_bin = time_bin_inhibited;
-      }
-    }
-  }
 
 #ifdef SWIFT_DEBUG_CHECKS
   const ptrdiff_t delta = sp - s->sparts;
@@ -399,19 +361,6 @@ void space_first_init_bparts_mapper(void *restrict map_data, int count,
   const struct engine *e = s->e;
   const struct black_holes_props *props = e->black_holes_properties;
 
-  /* In non-periodic zoom land we will have applied a shift that could shift
-   * particles outside of the volume. Let's inhibit these now before
-   * they break everything. */
-  if (s->with_zoom_region && !s->periodic) {
-    for (int k = 0; k < count; k++) {
-      if (bp[k].x[0] < 0 || bp[k].x[0] >= s->dim[0] || bp[k].x[1] < 0 ||
-          bp[k].x[1] >= s->dim[1] || bp[k].x[2] < 0 ||
-          bp[k].x[2] >= s->dim[2]) {
-        bp[k].time_bin = time_bin_inhibited;
-      }
-    }
-  }
-
 #ifdef SWIFT_DEBUG_CHECKS
   const ptrdiff_t delta = bp - s->bparts;
 #endif
@@ -502,19 +451,6 @@ void space_first_init_sinks_mapper(void *restrict map_data, int count,
   const struct space *restrict s = (struct space *)extra_data;
   const struct engine *e = s->e;
   const struct sink_props *props = e->sink_properties;
-
-  /* In non-periodic zoom land we will have applied a shift that could shift
-   * particles outside of the volume. Let's inhibit these now before
-   * they break everything. */
-  if (s->with_zoom_region && !s->periodic) {
-    for (int k = 0; k < count; k++) {
-      if (sink[k].x[0] < 0 || sink[k].x[0] >= s->dim[0] || sink[k].x[1] < 0 ||
-          sink[k].x[1] >= s->dim[1] || sink[k].x[2] < 0 ||
-          sink[k].x[2] >= s->dim[2]) {
-        sink[k].time_bin = time_bin_inhibited;
-      }
-    }
-  }
 
 #ifdef SWIFT_DEBUG_CHECKS
   const ptrdiff_t delta = sink - s->sinks;

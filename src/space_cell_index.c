@@ -96,6 +96,18 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
     double old_pos_y = p->x[1];
     double old_pos_z = p->x[2];
 
+    /* In non-periodic zoom land we need to inhibit any particles that
+     * moved outside the box when the zoom region was shifted. */
+    if (s->with_zoom_region && !s->periodic) {
+      if (old_pos_x < 0. || old_pos_x > dim_x || old_pos_y < 0. ||
+          old_pos_y > dim_y || old_pos_z < 0. || old_pos_z > dim_z) {
+        p->time_bin = time_bin_inhibited;
+        ind[k] = -1;
+        ++count_inhibited_part;
+        continue;
+      }
+    }
+
 #ifdef SWIFT_DEBUG_CHECKS
     if (!s->periodic && p->time_bin != time_bin_inhibited) {
       if (old_pos_x < 0. || old_pos_x > dim_x)
@@ -221,6 +233,18 @@ void space_gparts_get_cell_index_mapper(void *map_data, int nr_gparts,
     double old_pos_x = gp->x[0];
     double old_pos_y = gp->x[1];
     double old_pos_z = gp->x[2];
+
+    /* In non-periodic zoom land we need to inhibit any particles that
+     * moved outside the box when the zoom region was shifted. */
+    if (s->with_zoom_region && !s->periodic) {
+      if (old_pos_x < 0. || old_pos_x > dim_x || old_pos_y < 0. ||
+          old_pos_y > dim_y || old_pos_z < 0. || old_pos_z > dim_z) {
+        gp->time_bin = time_bin_inhibited;
+        ind[k] = -1;
+        ++count_inhibited_part;
+        continue;
+      }
+    }
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (!s->periodic && gp->time_bin != time_bin_inhibited) {
@@ -354,6 +378,17 @@ void space_sparts_get_cell_index_mapper(void *map_data, int nr_sparts,
     double old_pos_y = sp->x[1];
     double old_pos_z = sp->x[2];
 
+    /* In non-periodic zoom land we need to inhibit any particles that
+     * moved outside the box when the zoom region was shifted. */
+    if (s->with_zoom_region && !s->periodic) {
+      if (old_pos_x < 0. || old_pos_x > dim_x || old_pos_y < 0. ||
+          old_pos_y > dim_y || old_pos_z < 0. || old_pos_z > dim_z) {
+        sp->time_bin = time_bin_inhibited;
+        ind[k] = -1;
+        ++count_inhibited_part;
+        continue;
+      }
+    }
 #ifdef SWIFT_DEBUG_CHECKS
     if (!s->periodic && sp->time_bin != time_bin_inhibited) {
       if (old_pos_x < 0. || old_pos_x > dim_x)
@@ -482,6 +517,17 @@ void space_bparts_get_cell_index_mapper(void *map_data, int nr_bparts,
     double old_pos_y = bp->x[1];
     double old_pos_z = bp->x[2];
 
+    /* In non-periodic zoom land we need to inhibit any particles that
+     * moved outside the box when the zoom region was shifted. */
+    if (s->with_zoom_region && !s->periodic) {
+      if (old_pos_x < 0. || old_pos_x > dim_x || old_pos_y < 0. ||
+          old_pos_y > dim_y || old_pos_z < 0. || old_pos_z > dim_z) {
+        bp->time_bin = time_bin_inhibited;
+        ind[k] = -1;
+        ++count_inhibited_part;
+        continue;
+      }
+    }
 #ifdef SWIFT_DEBUG_CHECKS
     if (!s->periodic && bp->time_bin != time_bin_inhibited) {
       if (old_pos_x < 0. || old_pos_x > dim_x)
@@ -570,7 +616,8 @@ void space_bparts_get_cell_index_mapper(void *map_data, int nr_bparts,
 }
 
 /**
- * @brief #threadpool mapper function to compute the sink-particle cell indices.
+ * @brief #threadpool mapper function to compute the sink-particle cell
+ * indices.
  *
  * @param map_data Pointer towards the sink-particles.
  * @param nr_sinks The number of sink-particles to treat.
@@ -610,6 +657,17 @@ void space_sinks_get_cell_index_mapper(void *map_data, int nr_sinks,
     double old_pos_y = sink->x[1];
     double old_pos_z = sink->x[2];
 
+    /* In non-periodic zoom land we need to inhibit any particles that
+     * moved outside the box when the zoom region was shifted. */
+    if (s->with_zoom_region && !s->periodic) {
+      if (old_pos_x < 0. || old_pos_x > dim_x || old_pos_y < 0. ||
+          old_pos_y > dim_y || old_pos_z < 0. || old_pos_z > dim_z) {
+        sink->time_bin = time_bin_inhibited;
+        ind[k] = -1;
+        ++count_inhibited_part;
+        continue;
+      }
+    }
 #ifdef SWIFT_DEBUG_CHECKS
     if (!s->periodic && sink->time_bin != time_bin_inhibited) {
       if (old_pos_x < 0. || old_pos_x > dim_x)
