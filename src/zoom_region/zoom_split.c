@@ -40,6 +40,7 @@ void zoom_void_split_recursive(struct space *s, struct cell *c,
 
   const int depth = c->depth;
   int maxdepth = 0;
+  integertime_t ti_gravity_end_min = max_nr_timesteps, ti_gravity_beg_max = 0;
 
   /* Flag that the void cell is split. */
   c->split = 1;
@@ -122,6 +123,10 @@ void zoom_void_split_recursive(struct space *s, struct cell *c,
        * zoom tree too). */
       maxdepth = max(maxdepth, cp->maxdepth);
     }
+
+    /* Update the timestep props. */
+    ti_gravity_end_min = min(ti_gravity_end_min, cp->grav.ti_end_min);
+    ti_gravity_beg_max = max(ti_gravity_beg_max, cp->grav.ti_beg_max);
   }
 
   /* Set the maxdepth. */
@@ -131,6 +136,10 @@ void zoom_void_split_recursive(struct space *s, struct cell *c,
   if (s->with_self_gravity) {
     space_populate_multipole(c);
   }
+
+  /* Set the timestep props. */
+  c->grav.ti_end_min = ti_gravity_end_min;
+  c->grav.ti_beg_max = ti_gravity_beg_max;
 }
 
 /**
