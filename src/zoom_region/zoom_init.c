@@ -466,9 +466,9 @@ void zoom_report_cell_properties(const struct space *s) {
             zoom_props->buffer_width[1] * zoom_props->buffer_cdim[1],
             zoom_props->buffer_width[2] * zoom_props->buffer_cdim[2]);
     message("%25s = %d", "Number of Buffer Cells", zoom_props->nr_buffer_cells);
-    message("%25s = %d", "Zoom Depth in Void Tree",
-            zoom_props->zoom_cell_depth);
   }
+
+  message("%25s = %d", "Zoom Depth in Void Tree", zoom_props->zoom_cell_depth);
 }
 
 /**
