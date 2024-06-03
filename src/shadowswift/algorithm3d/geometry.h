@@ -118,7 +118,7 @@ inline static void geometry3d_orient_simd(__m256d ax, __m256d ay, __m256d az,
   bound = _mm256_add_pd(bound, _mm256_mul_pd(_mm256_add_pd(mm256_abs_pd(axby),
                                                            mm256_abs_pd(bxay)),
                                              mm256_abs_pd(cz)));
-  static const double dbl_fac = DELAUNAY_ERRBOUND_FAC;
+  static const double dbl_fac = DBL_EPSILON * DELAUNAY_ERRBOUND_FAC;
   static const __m256d fac = {dbl_fac, dbl_fac, dbl_fac, dbl_fac};
   bound = _mm256_mul_pd(bound, fac);
 
