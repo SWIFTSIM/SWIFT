@@ -118,7 +118,7 @@ inline static void geometry3d_orient_simd(__m256d ax, __m256d ay, __m256d az,
   bound = _mm256_add_pd(bound, _mm256_mul_pd(_mm256_add_pd(mm256_abs_pd(axby),
                                                            mm256_abs_pd(bxay)),
                                              mm256_abs_pd(cz)));
-  static const double dbl_fac = 4. * DBL_EPSILON;
+  static const double dbl_fac = ERRBOUND_FAC;
   static const __m256d fac = {dbl_fac, dbl_fac, dbl_fac, dbl_fac};
   bound = _mm256_mul_pd(bound, fac);
 
@@ -172,7 +172,7 @@ inline static int geometry3d_orient(const double* restrict a,
                     (fabs(adxbdy) + fabs(bdxady)) * fabs(cdz);
   // not really the right factor (probably too large), but this will do
   //  errbound *= 1.e-10;
-  errbound *= DBL_EPSILON * 4;
+  errbound *= DBL_EPSILON * DELAUNAY_ERRBOUND_FAC;
 
   /* Compute result */
   double result = adz * (bdxcdy - cdxbdy) + bdz * (cdxady - adxcdy) +
@@ -474,7 +474,7 @@ inline static int geometry3d_in_sphere(const double* restrict a,
                         denrm2;
   // not really the right factor (which is smaller), but this will do
   //  errbound *= 1.e-10;
-  errbound *= DBL_EPSILON * 5.;
+  errbound *= DBL_EPSILON * DELAUNAY_ERRBOUND_FAC;
 
   /* Compute result */
   const double result =
@@ -699,8 +699,8 @@ static inline int geometry3d_compute_circumcenter_relative_non_exact(
     double v2x, double v2y, double v2z, double v3x, double v3y, double v3z,
     double* circumcenter) {
 
-  double errbound_factor = 1.e-10;
-  // double errbound_factor = DBL_EPSILON * 4;
+  //  double errbound_factor = 1.e-10;
+  double errbound_factor = DBL_EPSILON * DELAUNAY_ERRBOUND_FAC;
 
   /* Compute relative coordinates */
   const double r1x = v1x - v0x;

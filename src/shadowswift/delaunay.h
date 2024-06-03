@@ -43,6 +43,10 @@
 /*! @brief Whether to use an adaptive circumcenter calculation in 3D */
 // #define DELAUNAY_3D_ADAPTIVE_CIRCUMCENTER
 
+/*! @brief Factor to multiply with DBL_EPSILON to obtain errbound in geometry
+ * checks*/
+#define DELAUNAY_ERRBOUND_FAC 16
+
 /*! @brief The default sid mask for marking faces as inside */
 #ifdef HYDRO_DIMENSION_1D
 /*                         111_101_111_111_111_111_111_101_111 */
