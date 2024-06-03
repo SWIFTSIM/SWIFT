@@ -76,7 +76,7 @@ void space_first_init_parts_mapper(void *restrict map_data, int count,
     for (int k = 0; k < count; k++) {
       if (p[k].x[0] < 0 || p[k].x[0] >= s->dim[0] || p[k].x[1] < 0 ||
           p[k].x[1] >= s->dim[1] || p[k].x[2] < 0 || p[k].x[2] >= s->dim[2]) {
-        p[k].time_bin == time_bin_inhibited;
+        p[k].time_bin = time_bin_inhibited;
       }
     }
   }
@@ -209,7 +209,7 @@ void space_first_init_gparts_mapper(void *restrict map_data, int count,
       if (gp[k].x[0] < 0 || gp[k].x[0] >= s->dim[0] || gp[k].x[1] < 0 ||
           gp[k].x[1] >= s->dim[1] || gp[k].x[2] < 0 ||
           gp[k].x[2] >= s->dim[2]) {
-        gp[k].time_bin == time_bin_inhibited;
+        gp[k].time_bin = time_bin_inhibited;
       }
     }
   }
@@ -287,7 +287,7 @@ void space_first_init_sparts_mapper(void *restrict map_data, int count,
       if (sp[k].x[0] < 0 || sp[k].x[0] >= s->dim[0] || sp[k].x[1] < 0 ||
           sp[k].x[1] >= s->dim[1] || sp[k].x[2] < 0 ||
           sp[k].x[2] >= s->dim[2]) {
-        sp[k].time_bin == time_bin_inhibited;
+        sp[k].time_bin = time_bin_inhibited;
       }
     }
   }
@@ -407,7 +407,7 @@ void space_first_init_bparts_mapper(void *restrict map_data, int count,
       if (bp[k].x[0] < 0 || bp[k].x[0] >= s->dim[0] || bp[k].x[1] < 0 ||
           bp[k].x[1] >= s->dim[1] || bp[k].x[2] < 0 ||
           bp[k].x[2] >= s->dim[2]) {
-        bp[k].time_bin == time_bin_inhibited;
+        bp[k].time_bin = time_bin_inhibited;
       }
     }
   }
@@ -511,7 +511,7 @@ void space_first_init_sinks_mapper(void *restrict map_data, int count,
       if (sink[k].x[0] < 0 || sink[k].x[0] >= s->dim[0] || sink[k].x[1] < 0 ||
           sink[k].x[1] >= s->dim[1] || sink[k].x[2] < 0 ||
           sink[k].x[2] >= s->dim[2]) {
-        sink[k].time_bin == time_bin_inhibited;
+        sink[k].time_bin = time_bin_inhibited;
       }
     }
   }
