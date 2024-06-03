@@ -118,17 +118,17 @@
  * searching */
 #define SHADOWSWIFT_BVH
 #ifdef SHADOWSWIFT_BVH
-/*! @brief Option to insert parts by BFO of the BVH during grid construction. */
-#define SHADOWSWIFT_BVH_INSERT_BFO
 #define BVH_MEDIAN_SPLIT 0
 #define BVH_MIDPOINT_SPLIT 1
 /*! @brief The splitting method used during the BVH construction */
 #define BVH_SPLITTING_METHOD BVH_MEDIAN_SPLIT
 #endif
+/*! @brief Option to insert parts by BFO of the BVH during grid construction. */
+#define SHADOWSWIFT_BVH_INSERT_BFO
+#ifndef SHADOWSWIFT_BVH_INSERT_BFO
 /*! @brief Option to enable the hilbert order insertion during the grid
  * construction */
-#ifndef SHADOWSWIFT_BVH_INSERT_BFO
-//#define SHADOWSWIFT_HILBERT_ORDERING
+#define SHADOWSWIFT_HILBERT_ORDERING
 #endif
 
 /* Options controlling particle movement */
@@ -151,7 +151,7 @@
 
 /* Options controlling behaviour of the code when unphysical situations are
  * encountered */
-#ifdef SWIF_DEBUG_CHECKS
+#ifdef SWIFT_DEBUG_CHECKS
 /*! @brief Whether to show or hide ShadowSWIFT specific warnings*/
 #define SHADOWSWIFT_WARNINGS
 #endif

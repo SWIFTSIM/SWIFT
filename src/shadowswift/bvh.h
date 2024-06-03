@@ -97,9 +97,9 @@ void flat_bvh_populate_rec(bvh_t *bvh, int node_id, const struct part *parts,
  **/
 inline static int bbox_contains(const bbox_t *bbox, double x, double y,
                                 double z) {
-  return bbox->anchor[0] <= x && x < bbox->opposite[0] &&
-         bbox->anchor[1] <= y && y < bbox->opposite[1] &&
-         bbox->anchor[2] <= z && z < bbox->opposite[2];
+  return bbox->anchor[0] <= x && x <= bbox->opposite[0] &&
+         bbox->anchor[1] <= y && y <= bbox->opposite[1] &&
+         bbox->anchor[2] <= z && z <= bbox->opposite[2];
 }
 
 /**
@@ -317,10 +317,37 @@ inline static void flat_bvh_populate(bvh_t *bvh, const struct part *parts,
   for (int i = 0; i < bvh->count; i++) {
     flat_bvh_node_t *node = &bvh->nodes[i];
     if (node->is_leaf) {
+      /* Does this node's bbox contain the particles? */
       assert(node->data[BVH_DATA_SIZE] <= BVH_DATA_SIZE);
+      for (int j = 0; j < node->data[BVH_DATA_SIZE]; j++) {
+        int pjd = node->data[j];
+        const struct part *pj = &parts[pjd];
+        float r = pj->geometry.search_radius;
+        assert(bbox_contains(&node->bbox, pj->x[0] - r, pj->x[1] - r,
+                             pj->x[2] - r));
+        assert(bbox_contains(&node->bbox, pj->x[0] + r, pj->x[1] + r,
+                             pj->x[2] + r));
+      }
     } else {
       assert(node->children.left < bvh->count && 0 <= node->children.left);
       assert(node->children.right < bvh->count && 0 <= node->children.right);
+      /* Does this node's bbox contain the central particle and its children? */
+#ifdef SHADOWSWIFT_BVH_INSERT_BFO
+      const struct part *p = &parts[node->data[BVH_DATA_SIZE]];
+      float r = p->geometry.search_radius;
+      assert(bbox_contains(&node->bbox, p->x[0] - r, p->x[1] - r, p->x[2] - r));
+      assert(bbox_contains(&node->bbox, p->x[0] + r, p->x[1] + r, p->x[2] + r));
+#endif
+      bbox_t *bb_l = &bvh->nodes[node->children.left].bbox;
+      assert(bbox_contains(&node->bbox, bb_l->anchor[0], bb_l->anchor[1],
+                           bb_l->anchor[2]));
+      assert(bbox_contains(&node->bbox, bb_l->opposite[0], bb_l->opposite[1],
+                           bb_l->opposite[2]));
+      bbox_t *bb_r = &bvh->nodes[node->children.right].bbox;
+      assert(bbox_contains(&node->bbox, bb_r->anchor[0], bb_r->anchor[1],
+                           bb_r->anchor[2]));
+      assert(bbox_contains(&node->bbox, bb_r->opposite[0], bb_r->opposite[1],
+                           bb_r->opposite[2]));
     }
   }
 #endif
