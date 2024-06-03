@@ -241,7 +241,7 @@ void space_gparts_get_cell_index_mapper(void *map_data, int nr_gparts,
           old_pos_y > dim_y || old_pos_z < 0. || old_pos_z > dim_z) {
         gp->time_bin = time_bin_inhibited;
         ind[k] = -1;
-        ++count_inhibited_part;
+        ++count_inhibited_gpart;
         continue;
       }
     }
@@ -385,7 +385,7 @@ void space_sparts_get_cell_index_mapper(void *map_data, int nr_sparts,
           old_pos_y > dim_y || old_pos_z < 0. || old_pos_z > dim_z) {
         sp->time_bin = time_bin_inhibited;
         ind[k] = -1;
-        ++count_inhibited_part;
+        ++count_inhibited_spart;
         continue;
       }
     }
@@ -524,7 +524,7 @@ void space_bparts_get_cell_index_mapper(void *map_data, int nr_bparts,
           old_pos_y > dim_y || old_pos_z < 0. || old_pos_z > dim_z) {
         bp->time_bin = time_bin_inhibited;
         ind[k] = -1;
-        ++count_inhibited_part;
+        ++count_inhibited_bpart;
         continue;
       }
     }
@@ -664,7 +664,7 @@ void space_sinks_get_cell_index_mapper(void *map_data, int nr_sinks,
           old_pos_y > dim_y || old_pos_z < 0. || old_pos_z > dim_z) {
         sink->time_bin = time_bin_inhibited;
         ind[k] = -1;
-        ++count_inhibited_part;
+        ++count_inhibited_sink;
         continue;
       }
     }
