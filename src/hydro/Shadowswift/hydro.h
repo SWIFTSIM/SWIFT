@@ -556,6 +556,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
 #endif
 
     if (p->flux.dt > 0.0f) {
+      /* Apply the fluxes */
       /* We are in kick2 of a normal timestep (not the very beginning of the
        * simulation) */
       float flux[6];
