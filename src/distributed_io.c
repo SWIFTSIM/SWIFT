@@ -592,6 +592,7 @@ void write_virtual_file(struct engine* e, const char* fileName_base,
   io_write_attribute_s(h_grp, "SelectOutput", current_selection_name);
   io_write_attribute_i(h_grp, "Virtual", 1);
   io_write_attribute(h_grp, "CanHaveTypes", INT, to_write, swift_type_count);
+  io_write_attribute_i(h_grp, "ZoomIn", e->s->with_zoom_region);
 
   if (subsample_any) {
     io_write_attribute_s(h_grp, "OutputType", "SubSampled");
@@ -1096,6 +1097,7 @@ void write_output_distributed(struct engine* e,
   io_write_attribute_s(h_grp, "SelectOutput", current_selection_name);
   io_write_attribute_i(h_grp, "Virtual", 0);
   io_write_attribute(h_grp, "CanHaveTypes", INT, to_write, swift_type_count);
+  io_write_attribute_i(h_grp, "ZoomIn", e->s->with_zoom_region);
 
   if (subsample_any) {
     io_write_attribute_s(h_grp, "OutputType", "SubSampled");
@@ -1122,9 +1124,30 @@ void write_output_distributed(struct engine* e,
   h_grp = H5Gcreate(h_file, "/Cells", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
   if (h_grp < 0) error("Error while creating cells group");
 
+  /* Is the zoom code used and altering the normal top-level zoom topology ? */
+  double zoom_shift[3] = {0.};
+  double width[3] = {e->s->width[0], e->s->width[1], e->s->width[2]};
+  int cdim[3] = {e->s->cdim[0], e->s->cdim[1], e->s->cdim[2]};
+  struct cell* cells = e->s->cells_top;
+  int nr_cells = e->s->nr_cells;
+  if (e->s->with_zoom_region) {
+    const struct zoom_region_properties* props = e->s->zoom_props;
+    zoom_shift[0] = props->zoom_shift[0];
+    zoom_shift[1] = props->zoom_shift[1];
+    zoom_shift[2] = props->zoom_shift[2];
+    width[0] = props->width[0];
+    width[1] = props->width[1];
+    width[2] = props->width[2];
+    cdim[0] = props->cdim[0];
+    cdim[1] = props->cdim[1];
+    cdim[2] = props->cdim[2];
+    cells = props->zoom_cells_top;
+    nr_cells = props->nr_zoom_cells;
+  }
+
   /* Write the location of the particles in the arrays */
-  io_write_cell_offsets(h_grp, e->s->cdim, e->s->dim, e->s->cells_top,
-                        e->s->nr_cells, e->s->width, mpi_rank,
+  io_write_cell_offsets(h_grp, cdim, e->s->dim, cells, nr_cells, width,
+                        zoom_shift, mpi_rank,
                         /*distributed=*/1, subsample, subsample_fraction,
                         e->snapshot_output_count, N_total, global_offsets,
                         to_write, numFields, internal_units, snapshot_units);
@@ -1525,8 +1548,8 @@ void write_output_distributed(struct engine* e,
              comm);
 
   /* Write the location of the particles in the arrays */
-  io_write_cell_offsets(h_grp_cells, e->s->cdim, e->s->dim, e->s->cells_top,
-                        e->s->nr_cells, e->s->width, mpi_rank,
+  io_write_cell_offsets(h_grp_cells, cdim, e->s->dim, cells, nr_cells, width,
+                        zoom_shift, mpi_rank,
                         /*distributed=*/0, subsample, subsample_fraction,
                         e->snapshot_output_count, N_total, global_offsets,
                         to_write, numFields, internal_units, snapshot_units);
