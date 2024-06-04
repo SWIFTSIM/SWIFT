@@ -542,6 +542,7 @@ void write_hdf5_header(hid_t h_file, const struct engine *e,
   io_write_attribute_i(h_grp, "Virtual", 0);
   const int to_write[swift_type_count] = {1}; /* We can only have gas */
   io_write_attribute(h_grp, "CanHaveTypes", INT, to_write, swift_type_count);
+  io_write_attribute_i(h_grp, "ZoomIn", e->s->with_zoom_region);
   io_write_attribute_s(h_grp, "OutputType", "LineOfSight");
 
   /* Close group */
