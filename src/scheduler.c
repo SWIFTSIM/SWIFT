@@ -57,10 +57,6 @@
 #include "timers.h"
 #include "version.h"
 
-#ifdef SWIFT_DEBUG_CHECKS
-int activate_by_unskip = 1;
-#endif
-
 /**
  * @brief Re-set the list of active tasks.
  */
@@ -1737,10 +1733,6 @@ struct task *scheduler_addtask(struct scheduler *s, enum task_types type,
   t->tic = 0;
   t->toc = 0;
   t->total_ticks = 0;
-#ifdef SWIFT_DEBUG_CHECKS
-  t->activated_by_unskip = 0;
-  t->activated_by_marktask = 0;
-#endif
 
   if (ci != NULL) cell_set_flag(ci, cell_flag_has_tasks);
   if (cj != NULL) cell_set_flag(cj, cell_flag_has_tasks);
