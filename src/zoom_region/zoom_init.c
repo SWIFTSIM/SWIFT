@@ -201,6 +201,18 @@ double zoom_get_region_dim_and_shift(struct space *s) {
     s->zoom_props->zoom_shift[i] = box_mid[i] - midpoint[i];
   }
 
+  /* If the volume isn't periodic then we can't shift. */
+  if (!s->periodic) {
+    for (int i = 0; i < 3; i++) {
+      if (fabs(s->zoom_props->zoom_shift[i]) > 0.0) {
+        error(
+            "Cannot shift the zoom region to the centre of the box "
+            "when the box is not periodic. Centre the CoM of the high "
+            "resolution particles in the box.");
+      }
+    }
+  }
+
   /* Let's shift the COM.
    * NOTE: boundaries are recalculated relative to box centre later. */
   for (int i = 0; i < 3; i++)
