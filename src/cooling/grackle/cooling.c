@@ -311,7 +311,24 @@ void cooling_print_backend(const struct cooling_function_data* cooling) {
           cooling->RT_HeII_ionization_rate);
   message("grackle_chemistry_data.RT_H2_dissociation_rate = %g",
           cooling->RT_H2_dissociation_rate);
-
+  message("cooling.initial_nHII_to_nH_ratio= %g",
+          cooling->initial_nHII_to_nH_ratio);
+  message("cooling.initial_nHeII_to_nH_ratio= %g",
+          cooling->initial_nHeII_to_nH_ratio);          
+  message("cooling.initial_nHeIII_to_nH_ratio= %g",
+          cooling->initial_nHeIII_to_nH_ratio);                            
+  message("cooling.initial_nDI_to_nH_ratio= %g",
+          cooling->initial_nDI_to_nH_ratio);
+  message("cooling.initial_nDII_to_nH_ratio= %g",
+          cooling->initial_nDII_to_nH_ratio);
+  message("cooling.initial_nHM_to_nH_ratio= %g",
+          cooling->initial_nHM_to_nH_ratio);
+  message("cooling.initial_nH2I_to_nH_ratio= %g",
+          cooling->initial_nH2I_to_nH_ratio);
+  message("cooling.initial_nH2II_to_nH_ratio= %g",
+          cooling->initial_nH2II_to_nH_ratio);
+  message("cooling.initial_nHDI_to_nH_ratio= %g",
+          cooling->initial_nHDI_to_nH_ratio);
   message("Units:");
   message("\tComoving = %i", cooling->units.comoving_coordinates);
   message("\tLength = %g", cooling->units.length_units);
