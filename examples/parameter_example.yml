@@ -864,7 +864,6 @@ GEARSink:
   f_acc: 0.8                                  # (Optional) Fraction of the cut_off_radius that determines if a gas particle should be swallowed wihtout additional check. It has to respect 0 <= f_acc <= 1. (Default: 0.8)
   maximal_temperature:        3e10            # Maximal gas temperature for forming a star (in K)
   density_threshold:          1.67e-23        # Minimal gas density for forming a star (in g/cm3 (1.67e-24 =1acc))
-  size_of_calibration_sample: 100000          # Size of the calibration sample used to determine the probabilities to form stellar particles with mass stellar_particle_mass
   stellar_particle_mass:      20              # Mass of the stellar particle representing the low mass stars (continuous IMF sampling) (in solar mass)
   minimal_discrete_mass:      8               # Minimal mass of stars represented by discrete particles (in solar mass)
   stellar_particle_mass_first_stars: 20       # Mass of the stellar particle representing the low mass stars (continuous IMF sampling) (in solar mass). First stars

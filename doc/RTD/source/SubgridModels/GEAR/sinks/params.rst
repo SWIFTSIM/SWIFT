@@ -29,7 +29,6 @@ These two parameters govern the first two criteria of the sink formation scheme.
 
 The next set of parameters deals with the sampling of the IMF and the representation of star particles:
 
-* size of the calibration sample used to determine the probabilities to form stellar particles with mass ``stellar_particle_mass``: ``size_of_calibration_sample``,
 * minimal mass of stars represented by discrete particles: ``minimal_discrete_mass``,
 * mass of the stellar particle representing the continuous part of the IMF: ``stellar_particle_mass``,
 * minimal mass of the first stars represented by discrete particles: ``minimal_discrete_mass_first_stars``,
@@ -58,7 +57,6 @@ The full section is:
      f_acc: 0.8                                  # (Optional) Fraction of the cut_off_radius that determines if a gas particle should be swallowed wihtout additional check. (Default: 0.8)
      maximal_temperature:        3e3             # Maximal gas temperature for forming a star (in K)
      density_threshold:          1.67e-21        # Minimal gas density for forming a star (in g/cm3 (1.67e-24 =1acc))
-     size_of_calibration_sample: 100000          # Size of the calibration sample used to determine the probabilities to form stellar particles with mass stellar_particle_mass
      stellar_particle_mass:      20              # Mass of the stellar particle representing the low mass stars (continuous IMF sampling) (in solar mass)
      minimal_discrete_mass:      8               # Minimal mass of stars represented by discrete particles (in solar mass)
      stellar_particle_mass_first_stars: 20       # Mass of the stellar particle representing the low mass stars (continuous IMF sampling) (in solar mass). First stars

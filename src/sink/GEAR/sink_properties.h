@@ -41,11 +41,6 @@ struct sink_props {
   /*! Minimal gas density for forming a star. */
   float density_threshold;
 
-  /* This is not used in the code. Will be removed after Yves' approval */
-  /*! Size of the calibration sample used to determine the probabilities
-   * to form stellar particles with mass stellar_particle_mass */
-  /* int size_of_calibration_sample; */
-
   /*! Mass of the stellar particle representing the low mass stars
    * (continuous IMF sampling). In M_sun. */
   float stellar_particle_mass;
@@ -222,9 +217,6 @@ INLINE static void sink_props_init(struct sink_props *sp,
 
   sp->density_threshold =
       parser_get_param_float(params, "GEARSink:density_threshold");
-
-  /* sp->size_of_calibration_sample = */
-  /*     parser_get_param_int(params, "GEARSink:size_of_calibration_sample"); */
 
   sp->stellar_particle_mass =
       parser_get_param_float(params, "GEARSink:stellar_particle_mass");
