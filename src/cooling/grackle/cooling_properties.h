@@ -106,6 +106,9 @@ struct cooling_function_data {
   /*! initial nHII to nH ratio (number density ratio) */
   float initial_nHII_to_nH_ratio;  
 
+  /*! initial nHeI to nH ratio (number density ratio) */
+  float initial_nHeI_to_nH_ratio;  
+
   /*! initial nHeII to nH ratio (number density ratio) */
   float initial_nHeII_to_nH_ratio;  
   

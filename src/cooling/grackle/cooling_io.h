@@ -210,6 +210,9 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
   cooling->initial_nHII_to_nH_ratio = parser_get_opt_param_double(
       parameter_file, "GrackleCooling:initial_nHII_to_nH_ratio", -1);
 
+  cooling->initial_nHeI_to_nH_ratio = parser_get_opt_param_double(
+      parameter_file, "GrackleCooling:initial_nHeI_to_nH_ratio", -1);
+      
   cooling->initial_nHeII_to_nH_ratio = parser_get_opt_param_double(
       parameter_file, "GrackleCooling:initial_nHeII_to_nH_ratio", -1);
 

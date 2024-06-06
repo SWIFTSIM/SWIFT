@@ -207,32 +207,140 @@ void cooling_first_init_part(const struct phys_const* phys_const,
 #if COOLING_GRACKLE_MODE >= 1
   gr_float zero = 1.e-20;
 
-  /* NOTE: at this stage, we assume neutral gas
-   * a better determination will be done in cooling_post_init_part */
+  /* NOTE: if the ratio with respect to hydrogen is given, use it. Instead,
+   * we assume neutral gas.
+   * A better determination of the abundances can be done in cooling_post_init_part */
+
+  /* Compute nH (formally divided by the gas density and assuming the proton mass to be one) */
+  double nH = grackle_data->HydrogenFractionByMass;
+  
+  /* Compute nHe (formally divided by the gas density and assuming the proton mass to be one) */
+  double nHe= (1-grackle_data->HydrogenFractionByMass)/4;
+  
+  /* Electron density */
+  double ne = zero;
 
   /* primordial chemistry >= 1 */
-  /* assume neutral gas */
-  xp->cooling_data.HI_frac = grackle_data->HydrogenFractionByMass;
-  xp->cooling_data.HII_frac = zero;
-  xp->cooling_data.HeI_frac = 1. - grackle_data->HydrogenFractionByMass;
-  xp->cooling_data.HeII_frac = zero;
-  xp->cooling_data.HeIII_frac = zero;
-  xp->cooling_data.e_frac = zero;
+    
+  /* Hydrogen I */  
+  if (cooling->initial_nHII_to_nH_ratio >= 0)
+    xp->cooling_data.HI_frac = nH*(1-cooling->initial_nHII_to_nH_ratio);
+  else
+    xp->cooling_data.HI_frac = nH;
+  
+  /* Hydrogen II */
+  if (cooling->initial_nHII_to_nH_ratio >= 0){
+    double nHII = nH* cooling->initial_nHII_to_nH_ratio;
+    xp->cooling_data.HII_frac = nHII;
+    ne+= nHII;
+  }
+  else
+    xp->cooling_data.HII_frac = zero;
+    
+  /* Helium I */
+  if (cooling->initial_nHeI_to_nH_ratio >= 0) {
+    double nHeI = nH* cooling->initial_nHeI_to_nH_ratio;
+    xp->cooling_data.HeI_frac = nHeI * 4;
+  }
+  else
+    xp->cooling_data.HeI_frac = nHe*4;
+
+  /* Helium II */
+  if (cooling->initial_nHeII_to_nH_ratio >= 0) {
+    double nHeII = nH* cooling->initial_nHeII_to_nH_ratio;
+    xp->cooling_data.HeII_frac = nHeII * 4;
+    ne+= nHeII;
+  }
+  else
+    xp->cooling_data.HeII_frac = zero;
+    
+  /* Helium III */
+  if (cooling->initial_nHeIII_to_nH_ratio >= 0) {
+    double nHeIII = nH* cooling->initial_nHeIII_to_nH_ratio;
+    xp->cooling_data.HeIII_frac = nHeIII * 4;
+    ne+= 2* nHeIII;
+  }
+  else
+    xp->cooling_data.HeIII_frac = zero;    
+    
+  /* electron mass fraction (multiplied by the proton mass (Grackle convention) */
+  xp->cooling_data.e_frac = ne;
+  
 #endif  // MODE >= 1
 
 #if COOLING_GRACKLE_MODE >= 2
   /* primordial chemistry >= 2 */
-  xp->cooling_data.HM_frac = zero;
-  xp->cooling_data.H2I_frac = zero;
-  xp->cooling_data.H2II_frac = zero;
+  
+  /* Hydrogen- */
+  if (cooling->initial_nHM_to_nH_ratio >= 0) {
+    double nHM = nH* cooling->initial_nHM_to_nH_ratio;
+    xp->cooling_data.HM_frac = nHM;
+  }
+  else
+    xp->cooling_data.HM_frac = zero;      
+  
+
+  /* H2I */
+  if (cooling->initial_nH2I_to_nH_ratio >= 0) {
+    double nH2I = nH* cooling->initial_nH2I_to_nH_ratio;
+    xp->cooling_data.H2I_frac = nH2I * 2;
+  }
+  else
+    xp->cooling_data.H2I_frac = zero;    
+  
+  /* H2II */
+  if (cooling->initial_nH2II_to_nH_ratio >= 0) {
+    double nH2II = nH* cooling->initial_nH2II_to_nH_ratio;
+    xp->cooling_data.H2II_frac = nH2II * 2;
+    ne+= nH2II;
+  }
+  else
+    xp->cooling_data.H2II_frac = zero;     
+  
+  
+  /* electron mass fraction (multiplied by the proton mass (Grackle convention) */
+  xp->cooling_data.e_frac = ne;  
+  
+  
 #endif  // MODE >= 2
 
 #if COOLING_GRACKLE_MODE >= 3
   /* primordial chemistry >= 3 */
-  xp->cooling_data.DI_frac = grackle_data->DeuteriumToHydrogenRatio *
-                             grackle_data->HydrogenFractionByMass;
-  xp->cooling_data.DII_frac = zero;
-  xp->cooling_data.HDI_frac = zero;
+  
+
+  /* Deuterium I */
+  if (cooling->initial_nDI_to_nH_ratio >= 0) {
+    double nDI = nH* cooling->initial_nDI_to_nH_ratio;
+    xp->cooling_data.DI_frac = nDI * 2;
+  }
+  else
+    xp->cooling_data.DI_frac = grackle_data->DeuteriumToHydrogenRatio *
+                               grackle_data->HydrogenFractionByMass;   
+  
+
+  /* Deuterium II */
+  if (cooling->initial_nDII_to_nH_ratio >= 0) {
+    double nDII = nH* cooling->initial_nDII_to_nH_ratio;
+    xp->cooling_data.DII_frac = nDII * 2;
+    ne+= nDII;
+  }
+  else
+    xp->cooling_data.DII_frac = zero;   
+  
+  
+  /* HD I */
+  if (cooling->initial_nHDI_to_nH_ratio >= 0) {
+    double nHDI = nH* cooling->initial_nHDI_to_nH_ratio;
+    xp->cooling_data.HDI_frac = nHDI * 3;
+  }
+  else
+    xp->cooling_data.HDI_frac = zero;     
+  
+
+  /* electron mass fraction (multiplied by the proton mass (Grackle convention) */
+  xp->cooling_data.e_frac = ne;
+  
+  
 #endif  // MODE >= 3
 }
 
@@ -313,6 +421,8 @@ void cooling_print_backend(const struct cooling_function_data* cooling) {
           cooling->RT_H2_dissociation_rate);
   message("cooling.initial_nHII_to_nH_ratio= %g",
           cooling->initial_nHII_to_nH_ratio);
+  message("cooling.initial_nHeI_to_nH_ratio= %g",
+          cooling->initial_nHeI_to_nH_ratio);           
   message("cooling.initial_nHeII_to_nH_ratio= %g",
           cooling->initial_nHeII_to_nH_ratio);          
   message("cooling.initial_nHeIII_to_nH_ratio= %g",
