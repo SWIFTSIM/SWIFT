@@ -79,6 +79,11 @@ INLINE static void hydro_read_particles(struct part* parts,
                                 UNIT_CONV_DENSITY, parts, rho);
 }
 
+INLINE static void convert_h(const struct engine* e, const struct part* p,
+                             const struct xpart* xp, float* ret) {
+  *ret = kernel_gamma * p->h;
+}
+
 /**
  * @brief Get the internal energy of a particle
  *
@@ -89,7 +94,20 @@ INLINE static void hydro_read_particles(struct part* parts,
 INLINE static void convert_u(const struct engine* e, const struct part* p,
                              const struct xpart* xp, float* ret) {
 
-  ret[0] = hydro_get_comoving_internal_energy(p, xp);
+  float Q[6], fluxes[6];
+  hydro_part_get_conserved_variables(p, Q);
+  hydro_part_get_fluxes(p, fluxes);
+  for (int i = 0; i < 6; i++) {
+    Q[i] += fluxes[i];
+  }
+  float m_inv = Q[0] > 0.f ? 1.f / Q[0] : 0.f;
+  float v[3] = {m_inv * Q[1], m_inv * Q[2], m_inv * Q[3]};
+  float Ekin = 0.5f * (Q[1] * v[0] + Q[2] * v[1] + Q[3] * v[2]);
+  if (Q[4] > Ekin) {
+    ret[0] = m_inv * (Q[4] - Ekin);
+  } else {
+    ret[0] = hydro_get_comoving_internal_energy(p, xp);
+  }
 }
 
 /**
@@ -105,7 +123,27 @@ INLINE static void convert_A(const struct engine* e, const struct part* p,
 }
 
 /**
- * @brief Get the total energy of a particle
+ * @brief Get the peculiar total energy of a particle
+ *
+ * @param e #engine.
+ * @param p Particle.
+ * @return Total energy of the particle
+ */
+INLINE static void convert_Ekin(const struct engine* e, const struct part* p,
+                                const struct xpart* xp, float* ret) {
+  float Q[6], fluxes[6];
+  hydro_part_get_conserved_variables(p, Q);
+  hydro_part_get_fluxes(p, fluxes);
+  for (int i = 0; i < 6; i++) {
+    Q[i] += fluxes[i];
+  }
+  float m_inv = Q[0] > 0.f ? 1.f / Q[0] : 0.f;
+  float v[3] = {m_inv * Q[1], m_inv * Q[2], m_inv * Q[3]};
+  *ret = 0.5f * (Q[1] * v[0] + Q[2] * v[1] + Q[3] * v[2]);
+}
+
+/**
+ * @brief Get the peculiar total energy of a particle
  *
  * @param e #engine.
  * @param p Particle.
@@ -113,7 +151,21 @@ INLINE static void convert_A(const struct engine* e, const struct part* p,
  */
 INLINE static void convert_Etot(const struct engine* e, const struct part* p,
                                 const struct xpart* xp, float* ret) {
-  ret[0] = p->conserved.energy + p->flux.energy;
+  float Q[6], fluxes[6];
+  hydro_part_get_conserved_variables(p, Q);
+  hydro_part_get_fluxes(p, fluxes);
+  for (int i = 0; i < 6; i++) {
+    Q[i] += fluxes[i];
+  }
+  float m_inv = Q[0] > 0.f ? 1.f / Q[0] : 0.f;
+  float v[3] = {m_inv * Q[1], m_inv * Q[2], m_inv * Q[3]};
+  float Ekin = 0.5f * (Q[1] * v[0] + Q[2] * v[1] + Q[3] * v[2]);
+  float Etherm = Q[4] - Ekin;
+
+  /* NOTE: the internal velocities are defined as a^2 (dx / dt), with x the
+   * co-moving coordinates, meaning that the peculiar velocity v_p = v / a. */
+  *ret = e->cosmology->a_inv * e->cosmology->a_inv * Ekin +
+         pow(e->cosmology->a, -3.f * hydro_gamma_minus_one) * Etherm;
 }
 
 /**
@@ -177,7 +229,9 @@ INLINE static void convert_part_vel(const struct engine* e,
   /* Extrapolate the velocites to the current time */
   hydro_get_drifted_velocities(p, xp, dt_kick_hydro, dt_kick_grav, ret);
 
-  /* Conversion from internal units to peculiar velocities */
+  /* Conversion from internal units to peculiar velocities.
+   * NOTE: The velocities used internally are a^2 (dx / dt), hence de division
+   * by a. */
   ret[0] *= cosmo->a_inv;
   ret[1] *= cosmo->a_inv;
   ret[2] *= cosmo->a_inv;
@@ -205,7 +259,7 @@ INLINE static void hydro_write_particles(const struct part* parts,
                                          struct io_props* list,
                                          int* num_fields) {
 
-  *num_fields = 13;
+  *num_fields = 14;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_part(
@@ -215,16 +269,16 @@ INLINE static void hydro_write_particles(const struct part* parts,
   list[1] = io_make_output_field_convert_part(
       "Velocities", FLOAT, 3, UNIT_CONV_SPEED, 0.f, parts, xparts,
       convert_part_vel,
-      "Peculiar velocities of the stars. This is (a * dx/dt) where x is the "
-      "co-moving positions of the particles");
+      "Peculiar velocities of the particles. This is (a * dx/dt) where x is "
+      "the co-moving positions of the particles");
 
   list[2] = io_make_output_field_convert_part(
-      "Masses", FLOAT, 1, UNIT_CONV_MASS, 1.f, parts, xparts, convert_mass,
+      "Masses", FLOAT, 1, UNIT_CONV_MASS, 0.f, parts, xparts, convert_mass,
       "Masses of the particles");
 
-  list[3] = io_make_output_field(
-      "SmoothingLengths", FLOAT, 1, UNIT_CONV_LENGTH, 1.f, parts, h,
-      "Co-moving smoothing lengths (FWHM of the kernel) of the particles");
+  list[3] = io_make_output_field("SmoothingLengths", FLOAT, 1, UNIT_CONV_LENGTH,
+                                 1.f, parts, geometry.search_radius,
+                                 "Co-moving search radii of the particles");
 
   list[4] = io_make_output_field_convert_part(
       "InternalEnergies", FLOAT, 1, UNIT_CONV_ENERGY_PER_UNIT_MASS,
@@ -240,35 +294,39 @@ INLINE static void hydro_write_particles(const struct part* parts,
                                  "Co-moving mass densities of the particles");
 
   list[7] = io_make_output_field_convert_part(
-      "Entropies", FLOAT, 1, UNIT_CONV_ENTROPY, 0.f, parts, xparts, convert_A,
-      "Co-moving entropies of the particles");
+      "Entropies", FLOAT, 1, UNIT_CONV_ENTROPY_PER_UNIT_MASS, 0.f, parts,
+      xparts, convert_A, "Co-moving entropies per unit mass of the particles");
 
   list[8] = io_make_output_field("Pressures", FLOAT, 1, UNIT_CONV_PRESSURE,
                                  -3.f * hydro_gamma, parts, P,
                                  "Co-moving pressures of the particles");
 
   list[9] = io_make_output_field_convert_part(
-      "TotalEnergies", FLOAT, 1, UNIT_CONV_ENERGY, -3.f * hydro_gamma_minus_one,
-      parts, xparts, convert_Etot, "Total (co-moving) energy of the particles");
+      "KineticEnergies", FLOAT, 1, UNIT_CONV_ENERGY, 2.f, parts, xparts,
+      convert_Ekin, "Co-moving kinetic energy of the particles");
 
   list[10] = io_make_output_field_convert_part(
+      "TotalEnergies", FLOAT, 1, UNIT_CONV_ENERGY, 0.f, parts, xparts,
+      convert_Etot, "Total peculiar energy of the particles");
+
+  list[11] = io_make_output_field_convert_part(
       "Potentials", FLOAT, 1, UNIT_CONV_POTENTIAL, -1.f, parts, xparts,
       convert_part_potential, "Gravitational potentials of the particles");
 
-  list[11] =
+  list[12] =
       io_make_output_field("Flux_counts", LONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f,
                            parts, flux_count, "Flux counters of the particles");
 
 #if defined(HYDRO_DIMENSION_1D)
-  list[12] = io_make_output_field("Volumes", FLOAT, 1, UNIT_CONV_LENGTH, 1.f,
+  list[13] = io_make_output_field("Volumes", FLOAT, 1, UNIT_CONV_LENGTH, 1.f,
                                   parts, geometry.volume,
                                   "Co-moving volumes of the particles");
 #elif defined(HYDRO_DIMENSION_2D)
-  list[12] = io_make_output_field("Volumes", FLOAT, 1, UNIT_CONV_AREA, 2.f,
+  list[13] = io_make_output_field("Volumes", FLOAT, 1, UNIT_CONV_AREA, 2.f,
                                   parts, geometry.volume,
                                   "Co-moving volumes of the particles");
 #elif defined(HYDRO_DIMENSION_3D)
-  list[12] = io_make_output_field("Volumes", FLOAT, 1, UNIT_CONV_VOLUME, 3.f,
+  list[13] = io_make_output_field("Volumes", FLOAT, 1, UNIT_CONV_VOLUME, 3.f,
                                   parts, geometry.volume,
                                   "Co-moving volumes of the particles");
 #else
