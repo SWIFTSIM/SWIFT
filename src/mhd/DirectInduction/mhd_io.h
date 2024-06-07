@@ -300,7 +300,7 @@ INLINE static int mhd_write_particles(const struct part* parts,
       "AR contribution to time derivative of Magnetic flux densities of the particles");
 
   list[8] = io_make_output_field(
-      "ThermalEnergiesdtAR", FLOAT, 3, UNIT_CONV_ENERGY_PER_UNIT_MASS_PER_TIME,
+      "ThermalEnergiesdtAR", FLOAT, 1, UNIT_CONV_ENERGY_PER_UNIT_MASS_PER_TIME,
       -3.f * hydro_gamma_minus_one, parts, mhd_data.u_dt_AR,
       "AR contribution to time derivative of thermal energies of the particles");
   
