@@ -212,7 +212,7 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
 
   cooling->initial_nHeI_to_nH_ratio = parser_get_opt_param_double(
       parameter_file, "GrackleCooling:initial_nHeI_to_nH_ratio", -1);
-      
+
   cooling->initial_nHeII_to_nH_ratio = parser_get_opt_param_double(
       parameter_file, "GrackleCooling:initial_nHeII_to_nH_ratio", -1);
 
@@ -223,20 +223,19 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
       parameter_file, "GrackleCooling:initial_nDI_to_nH_ratio", -1);
 
   cooling->initial_nDII_to_nH_ratio = parser_get_opt_param_double(
-      parameter_file, "GrackleCooling:initial_nDII_to_nH_ratio", -1);      
+      parameter_file, "GrackleCooling:initial_nDII_to_nH_ratio", -1);
 
   cooling->initial_nHM_to_nH_ratio = parser_get_opt_param_double(
-      parameter_file, "GrackleCooling:initial_nHM_to_nH_ratio", -1); 
+      parameter_file, "GrackleCooling:initial_nHM_to_nH_ratio", -1);
 
   cooling->initial_nH2I_to_nH_ratio = parser_get_opt_param_double(
-      parameter_file, "GrackleCooling:initial_nH2I_to_nH_ratio", -1); 
+      parameter_file, "GrackleCooling:initial_nH2I_to_nH_ratio", -1);
 
   cooling->initial_nH2II_to_nH_ratio = parser_get_opt_param_double(
-      parameter_file, "GrackleCooling:initial_nH2II_to_nH_ratio", -1);       
+      parameter_file, "GrackleCooling:initial_nH2II_to_nH_ratio", -1);
 
   cooling->initial_nHDI_to_nH_ratio = parser_get_opt_param_double(
-      parameter_file, "GrackleCooling:initial_nHDI_to_nH_ratio", -1); 
-            
+      parameter_file, "GrackleCooling:initial_nHDI_to_nH_ratio", -1);
 
   /* Self shielding */
   cooling->self_shielding_method = parser_get_opt_param_int(
