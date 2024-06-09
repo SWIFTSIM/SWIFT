@@ -1904,11 +1904,11 @@ void fof_attach_pair_cells(const struct fof_props *props, const double dim[3],
       /* Hit or miss? */
       if (r2 < l_x2) {
 
-	if (pj->real_id == ID_TO_TRACK)
-	  message("aa local_i=%d local_j=%d link_i=%d link_j=%d", ci_local, cj_local, is_link_i, is_link_j);
+	/* if (pj->real_id == ID_TO_TRACK) */
+	/*   message("aa local_i=%d local_j=%d link_i=%d link_j=%d", ci_local, cj_local, is_link_i, is_link_j); */
 
-	if (pi->real_id == ID_TO_TRACK)
-	  message("bb local_i=%d local_j=%d link_i=%d link_j=%d -- %lld", ci_local, cj_local, is_link_i, is_link_j, pj->real_id);
+	/* if (pi->real_id == ID_TO_TRACK) */
+	/*   message("bb local_i=%d local_j=%d link_i=%d link_j=%d -- %lld", ci_local, cj_local, is_link_i, is_link_j, pj->real_id); */
 
 
         /* Now that we are within the linking length,
@@ -3454,8 +3454,8 @@ void fof_finalise_attachables(struct fof_props *props, const struct space *s) {
 
     const struct gpart *gp = &s->gparts[i];
 
-    if (gp->real_id==ID_TO_TRACK)
-      message("hello! found_attachable=%d", found_attachable_link[i]);
+    /* if (gp->real_id==ID_TO_TRACK) */
+    /*   message("hello! found_attachable=%d", found_attachable_link[i]); */
 
     if (gpart_is_attachable(gp) && found_attachable_link[i]) {
 

@@ -4534,7 +4534,7 @@ void engine_make_fofloop_tasks_mapper(void *map_data, int num_elements,
 
           /* Construct the pair search task for pairs overlapping with the node
            */
-          if ((ci->nodeID == nodeID || cj->nodeID == nodeID))
+          if (ci->nodeID == nodeID || cj->nodeID == nodeID)
             scheduler_addtask(sched, task_type_fof_attach_pair,
                               task_subtype_none, 0, 0, ci, cj);
         }
@@ -4551,7 +4551,7 @@ void engine_make_fofloop_tasks_mapper(void *map_data, int num_elements,
 void engine_make_fof_tasks(struct engine *e) {
 
   struct space *s = e->s;
-  //struct scheduler *sched = &e->sched;
+  struct scheduler *sched = &e->sched;
   ticks tic = getticks();
 
   if (e->restarting) error("Running FOF on a restart step!");
@@ -4568,7 +4568,7 @@ void engine_make_fof_tasks(struct engine *e) {
   tic = getticks();
 
   /* Split the tasks. */
-  //scheduler_splittasks(sched, /*fof_tasks=*/1, e->verbose);
+  scheduler_splittasks(sched, /*fof_tasks=*/1, e->verbose);
 
   if (e->verbose)
     message("Splitting FOF tasks took %.3f %s.",
