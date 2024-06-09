@@ -3426,7 +3426,106 @@ void fof_link_attachable_particles(struct fof_props *props,
 
 void fof_build_list_of_purely_local_groups(struct fof_props *props, const struct space *s) {
 
+#ifdef WITH_MPI
 
+  struct engine *e = s->e;
+  const int verbose = e->verbose;
+
+  /* Abort if only one node */
+  if (e->nr_nodes == 1) return;
+
+  const size_t nr_gparts = s->nr_gparts;
+  size_t *restrict group_index = props->group_index;
+
+  if (verbose)
+    message(
+        "Searching %zu gravity particles for cross-node links with l_x: %lf",
+        nr_gparts, sqrt(props->l_x2));
+
+  /* Local copy of the variable set in the mapper */
+  const int group_link_count = props->group_link_count;
+
+  /* Sum the total number of links across MPI domains over each MPI rank. */
+  int global_group_link_count = 0;
+  MPI_Allreduce(&group_link_count, &global_group_link_count, 1, MPI_INT,
+                MPI_SUM, MPI_COMM_WORLD);
+
+  if (global_group_link_count < 0) error("Overflow of the size of the global list of foregin links");
+
+  struct fof_mpi *global_group_links = NULL;
+  int *displ = NULL, *group_link_counts = NULL;
+
+  if (swift_memalign("fof_global_group_links", (void **)&global_group_links,
+                     SWIFT_STRUCT_ALIGNMENT,
+                     global_group_link_count * sizeof(struct fof_mpi)) != 0)
+    error("Error while allocating memory for the global list of group links");
+
+  if (posix_memalign((void **)&group_link_counts, SWIFT_STRUCT_ALIGNMENT,
+                     e->nr_nodes * sizeof(int)) != 0)
+    error(
+        "Error while allocating memory for the number of group links on each "
+        "MPI rank");
+
+  if (posix_memalign((void **)&displ, SWIFT_STRUCT_ALIGNMENT,
+                     e->nr_nodes * sizeof(int)) != 0)
+    error(
+        "Error while allocating memory for the displacement in memory for the "
+        "global group link list");
+
+  /* Gather the total number of links on each rank. */
+  MPI_Allgather(&group_link_count, 1, MPI_INT, group_link_counts, 1, MPI_INT,
+                MPI_COMM_WORLD);
+
+  /* Set the displacements into the global link list using the link counts from
+   * each rank */
+  displ[0] = 0;
+  for (int i = 1; i < e->nr_nodes; i++) {
+    displ[i] = displ[i - 1] + group_link_counts[i - 1];
+    if (displ[i] < 0) error("Number of group links overflowing!");
+  }
+
+  /* Gather the global link list on all ranks. */
+  MPI_Allgatherv(props->group_links, group_link_count, fof_mpi_type,
+                 global_group_links, group_link_counts, displ, fof_mpi_type,
+                 MPI_COMM_WORLD);
+
+  /* Clean up memory. */
+  free(group_link_counts);
+  free(displ);
+
+  /* We now have a list of all the fragment connections.
+   * We can iterate over the *local* groups to identify the ones which 
+   * are *not* appearing in the list */
+
+  if (posix_memalign((void **)&props->is_purely_local, SWIFT_STRUCT_ALIGNMENT,
+                     nr_gparts * sizeof(char)) != 0)
+    error("Error while allocating memory for the list of purely local groups");
+
+  /* Start by pretending every group is purely local */
+  for (size_t i = 0; i<nr_gparts; ++i) props->is_purely_local[i] = 1;
+
+  /* Now loop over the list of inter-rank connections and flag each halo present in the list */
+  for (int k = 0; k < global_group_link_count; ++k) {
+
+    const size_t group_i = global_group_links[k].group_i;
+    const size_t group_j = global_group_links[k].group_j;
+
+    const size_t root_i =
+      fof_find_global(group_i - node_offset, group_index, nr_gparts);
+    const size_t root_j =
+      fof_find_global(group_j - node_offset, group_index, nr_gparts);
+
+    if (is_local(root_i, nr_gparts)) {
+      const size_t local_root = root_i - node_offset;
+      props->is_purely_local[local_root] = 0;
+    }
+
+    if (is_local(root_j, nr_gparts)) {
+      const size_t local_root = root_j - node_offset;
+      props->is_purely_local[local_root] = 0;
+    }
+  }
+#endif
 }
 
 /**
@@ -3495,6 +3594,9 @@ void fof_finalise_attachables(struct fof_props *props, const struct space *s) {
       /* } */
     }
   }
+
+  /* We can free the list of purely local groups */
+  free(props->is_purely_local);
 
 #else /* not WITH_MPI */
 
@@ -3566,6 +3668,8 @@ void fof_link_foreign_fragments(struct fof_props *props,
   int global_group_link_count = 0;
   MPI_Allreduce(&group_link_count, &global_group_link_count, 1, MPI_INT,
                 MPI_SUM, MPI_COMM_WORLD);
+
+  if (global_group_link_count < 0) error("Overflow of the size of the global list of foreign links");
 
   struct fof_mpi *global_group_links = NULL;
   int *displ = NULL, *group_link_counts = NULL;
