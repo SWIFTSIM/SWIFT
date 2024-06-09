@@ -1228,6 +1228,8 @@ static INLINE void add_foreign_link_to_list(
 
     message("Re-allocating local group links from %d to %d elements.",
             *local_link_count, new_size);
+
+    if (new_size < 0) error("Overflow in size of list of foreign links");
   }
 
   /* Store the particle group properties for communication. */
@@ -3420,6 +3422,11 @@ void fof_link_attachable_particles(struct fof_props *props,
   if (s->e->verbose)
     message("fof_link_attachable_particles() took (FOF SCALING): %.3f %s.",
             clocks_from_ticks(getticks() - tic_total), clocks_getunit());
+}
+
+void fof_build_list_of_purely_local_groups(struct fof_props *props, const struct space *s) {
+
+
 }
 
 /**
