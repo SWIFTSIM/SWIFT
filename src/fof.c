@@ -3426,23 +3426,20 @@ void fof_link_attachable_particles(struct fof_props *props,
 
 void fof_build_list_of_purely_local_groups(struct fof_props *props, const struct space *s) {
 
+  /* Is there anything to attach? 
+   * (The array we construct here is only useful with attacheables)*/
+  if (!current_fof_attach_type) return;
+
 #ifdef WITH_MPI
 
   struct engine *e = s->e;
-  const int verbose = e->verbose;
 
   /* Abort if only one node */
   if (e->nr_nodes == 1) return;
 
+  /* Local copy of the variable set in the mapper */
   const size_t nr_gparts = s->nr_gparts;
   size_t *restrict group_index = props->group_index;
-
-  if (verbose)
-    message(
-        "Searching %zu gravity particles for cross-node links with l_x: %lf",
-        nr_gparts, sqrt(props->l_x2));
-
-  /* Local copy of the variable set in the mapper */
   const int group_link_count = props->group_link_count;
 
   /* Sum the total number of links across MPI domains over each MPI rank. */
@@ -3544,16 +3541,20 @@ void fof_finalise_attachables(struct fof_props *props, const struct space *s) {
 
   const size_t nr_gparts = s->nr_gparts;
 
-  char *found_attachable_link = props->found_attachable_link;
+  char *restrict found_attachable_link = props->found_attachable_link;
   size_t *restrict attach_index = props->attach_index;
   size_t *restrict group_index = props->group_index;
+  size_t *restrict group_size = props->group_size;
 
 #ifdef WITH_MPI
 
   /* Get pointers to global arrays. */
+  char *restrict is_purely_local = props->is_purely_local;
   int *restrict group_links_size = &props->group_links_size;
   int *restrict group_link_count = &props->group_link_count;
   struct fof_mpi **group_links = &props->group_links;
+
+  /* int count_1 = 0, count_2 = 0, count_3 = 0; */
 
   /* Loop over all the attachables and added them to the group they belong to */
   for (size_t i = 0; i < nr_gparts; ++i) {
@@ -3570,18 +3571,32 @@ void fof_finalise_attachables(struct fof_props *props, const struct space *s) {
       const size_t root_i =
           fof_find_global(group_index[i] - node_offset, group_index, nr_gparts);
 
-      /* /\* Update the size of the group the particle belongs to *\/ */
-      /* if (is_local(root_j, nr_gparts)) { */
+      /* Update the size of the group the particle belongs to */
+      if (is_local(root_j, nr_gparts)) {
 
-      /* 	if (gp->real_id==ID_TO_TRACK) */
-      /* 	  message("hello! root is local!"); */
+      	/* if (gp->real_id==ID_TO_TRACK) */
+      	/*   message("hello! root is local!"); */
 
-      /*   const size_t local_root = root_j - node_offset; */
+        const size_t local_root = root_j - node_offset;
 
-      /*   group_index[i] = local_root + node_offset; */
-      /*   group_size[local_root]++; */
+	if (is_purely_local[local_root]) {
 
-      /* } else { */
+	  group_index[i] = local_root + node_offset;
+	  group_size[local_root]++;
+	
+	  /* count_1++; */
+
+	} else {
+
+	  add_foreign_link_to_list(group_link_count, group_links_size,
+				   group_links, group_links, root_i, root_j,
+				   /*size_i=*/1,
+				   /*size_j=*/2);
+
+	  /* count_2++; */
+	}
+
+      } else {
 
       /* 	if (gp->real_id==ID_TO_TRACK) */
       /* 	  message("hello! root is NOT local! i=%zd, root_i=%lld root_j=%lld", i, root_i, root_j); */
@@ -3591,17 +3606,21 @@ void fof_finalise_attachables(struct fof_props *props, const struct space *s) {
                                  group_links, group_links, root_i, root_j,
                                  /*size_i=*/1,
                                  /*size_j=*/2);
-      /* } */
+
+	/* count_3++; */
+      }
     }
   }
+
+  /* message("%d %d %d", count_1, count_2, count_3); */
+
+  /* MPI_Barrier(MPI_COMM_WORLD); */
+  /* if (engine_rank == 0) error("done"); */
 
   /* We can free the list of purely local groups */
   free(props->is_purely_local);
 
 #else /* not WITH_MPI */
-
-  size_t *restrict group_size = props->group_size;
-
 
   /* Loop over all the attachables and added them to the group they belong to */
   for (size_t i = 0; i < nr_gparts; ++i) {
