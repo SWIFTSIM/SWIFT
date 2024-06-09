@@ -263,12 +263,12 @@ void io_prepare_output_fields(struct output_options* output_options,
       int param_is_known = 0; /* Update below if it is a known one */
       if (field_id < ptype_num_fields_total[param_ptype])
         param_is_known = 1;
-      else
-        message(
-            "WARNING: Trying to change behaviour of field '%s' (read from "
-            "'%s') that does not exist. This may be because you are not "
-            "running with all of the physics that you compiled the code with.",
-            param_name, params->fileName);
+      /* else */
+      /*   message( */
+      /*       "WARNING: Trying to change behaviour of field '%s' (read from " */
+      /*       "'%s') that does not exist. This may be because you are not " */
+      /*       "running with all of the physics that you compiled the code with.", */
+      /*       param_name, params->fileName); */
 
       /* Perform a correctness check on the _value_ of the parameter */
       char param_value[FIELD_BUFFER_SIZE];

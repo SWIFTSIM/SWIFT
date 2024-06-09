@@ -186,6 +186,7 @@ void engine_fof(struct engine *e, const int dump_results,
 
 #ifdef WITH_MPI
 
+
   /* Free the foreign particles */
   space_free_foreign_parts(e->s, /*clear pointers=*/1);
 
@@ -196,10 +197,43 @@ void engine_fof(struct engine *e, const int dump_results,
 
 #ifdef WITH_MPI
 
+
+  /* for (long long k = 0; k < e->fof_properties->group_link_count; ++k) { */
+
+  /*   if (e->fof_properties->group_links[k].group_i == 79663764) { */
+  /*     message("group_i=%lld group_j=%lld size_i=%lld size_j=%lld", */
+  /* 	      e->fof_properties->group_links[k].group_i, */
+  /* 	      e->fof_properties->group_links[k].group_j, */
+  /* 	      e->fof_properties->group_links[k].group_i_size, */
+  /* 	      e->fof_properties->group_links[k].group_j_size); */
+  /*   } */
+
+  /*   if (e->fof_properties->group_links[k].group_j == 91831011) { */
+  /*     message("group_i=%lld group_j=%lld size_i=%lld size_j=%lld", */
+  /* 	      e->fof_properties->group_links[k].group_i, */
+  /* 	      e->fof_properties->group_links[k].group_j, */
+  /* 	      e->fof_properties->group_links[k].group_i_size, */
+  /* 	      e->fof_properties->group_links[k].group_j_size); */
+  /*   } */
+
+  /* } */
+
+
+
+#endif
+
+#ifdef WITH_MPI
+
+  MPI_Barrier(MPI_COMM_WORLD);
+  //if(engine_rank == 0) error("done");
+
+
   /* Link the foreign fragments and finalise global group list (nothing to do
    * without MPI) */
   fof_link_foreign_fragments(e->fof_properties, e->s);
 #endif
+
+
 
   /* Compute group properties and act on the results
    * (seed BHs, dump catalogues..) */

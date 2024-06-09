@@ -161,7 +161,14 @@ static void split_vector(struct space *s, int nregions, int *samplecells) {
             select = l;
           }
         }
-        s->cells_top[n++].nodeID = select;
+        s->cells_top[n].nodeID = select;
+
+	/* if(s->cells_top[n].nodeID == 22) s->cells_top[n].nodeID = -1; */
+	/* if(s->cells_top[n].nodeID == 25) s->cells_top[n].nodeID = 22; */
+	/* if(s->cells_top[n].nodeID == -1) s->cells_top[n].nodeID = 25; */
+
+
+	   n++;
       }
     }
   }

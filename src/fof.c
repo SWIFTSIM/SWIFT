@@ -93,6 +93,10 @@ size_t node_offset;
 static integertime_t ti_current;
 #endif
 
+const struct space *s_global;
+
+#define ID_TO_TRACK 69372305901LL
+
 void fof_set_current_types(const struct fof_props *props) {
 
   /* Initialize the FoF linking mode */
@@ -361,6 +365,8 @@ void fof_allocate(const struct space *s, struct fof_props *props) {
 
   const int verbose = s->e->verbose;
   const ticks total_tic = getticks();
+
+  s_global = s;
 
   /* Start by computing the mean inter DM particle separation */
 
@@ -1692,7 +1698,7 @@ void fof_attach_self_cell(const struct fof_props *props, const double l_x2,
 
             /* Store the current best root */
             attach_offset[j] = root_i;
-            found_attach_offset[j] = 1;
+            found_attach_offset[j] = 1;//pi->fof_data.group_size;
           }
 
         } else if (is_link_j && is_attach_i) {
@@ -1709,7 +1715,7 @@ void fof_attach_self_cell(const struct fof_props *props, const double l_x2,
 
             /* Store the current best root */
             attach_offset[i] = root_j;
-            found_attach_offset[i] = 1;
+            found_attach_offset[i] = 1;//pj->fof_data.group_size;
           }
 
         } else {
@@ -1898,6 +1904,13 @@ void fof_attach_pair_cells(const struct fof_props *props, const double dim[3],
       /* Hit or miss? */
       if (r2 < l_x2) {
 
+	if (pj->real_id == ID_TO_TRACK)
+	  message("aa local_i=%d local_j=%d link_i=%d link_j=%d", ci_local, cj_local, is_link_i, is_link_j);
+
+	if (pi->real_id == ID_TO_TRACK)
+	  message("bb local_i=%d local_j=%d link_i=%d link_j=%d -- %lld", ci_local, cj_local, is_link_i, is_link_j, pj->real_id);
+
+
         /* Now that we are within the linking length,
          * decide what to do based on linking types */
 
@@ -1909,6 +1922,7 @@ void fof_attach_pair_cells(const struct fof_props *props, const double dim[3],
 
         } else if (is_link_i && is_attach_j) {
 
+
           /* We got a linkable and an attachable.
            * See whether it is closer and if so re-link.
            * This is safe to do as the attachables are never roots and
@@ -1917,6 +1931,10 @@ void fof_attach_pair_cells(const struct fof_props *props, const double dim[3],
 
             const float dist = sqrtf(r2);
 
+	  /* if (pi->real_id==72820238098LL && pj->real_id == 26164234497LL) */
+	  /*   message("dd local_i=%d local_j=%d link_i=%d link_j=%d", ci_local, cj_local, is_link_i, is_link_j); */
+
+
             if (dist < offset_dist_j[j]) {
 
               /* Store the new min dist */
@@ -1924,7 +1942,7 @@ void fof_attach_pair_cells(const struct fof_props *props, const double dim[3],
 
               /* Store the current best root */
               attach_offset_j[j] = root_i;
-              found_attach_offset_j[j] = 1;
+              found_attach_offset_j[j] = 1;//pi->fof_data.group_size;
             }
           }
 
@@ -1940,12 +1958,20 @@ void fof_attach_pair_cells(const struct fof_props *props, const double dim[3],
 
             if (dist < offset_dist_i[i]) {
 
+	      /* if (pi->real_id==72820238098LL && pj->real_id != 26164234497LL) */
+	      /* 	continue; */
+	      
+	      /* if (pi->real_id==72820238098LL && pj->real_id == 26164234497LL) */
+	      /* 	message("cc local_i=%d local_j=%d link_i=%d link_j=%d root_i=%lld root_j=%lld size=%lld", ci_local, cj_local, is_link_i, is_link_j, */
+	      /* 		root_i, root_j, pj->fof_data.group_size); */
+
               /* Store the new min dist */
               offset_dist_i[i] = dist;
 
               /* Store the current best root */
               attach_offset_i[i] = root_j;
-              found_attach_offset_i[i] = 1;
+              found_attach_offset_i[i] = 1;//pj->fof_data.group_size;
+
             }
           }
 
@@ -3413,9 +3439,8 @@ void fof_finalise_attachables(struct fof_props *props, const struct space *s) {
   const size_t nr_gparts = s->nr_gparts;
 
   char *found_attachable_link = props->found_attachable_link;
-  size_t *restrict group_index = props->group_index;
   size_t *restrict attach_index = props->attach_index;
-  size_t *restrict group_size = props->group_size;
+  size_t *restrict group_index = props->group_index;
 
 #ifdef WITH_MPI
 
@@ -3429,6 +3454,9 @@ void fof_finalise_attachables(struct fof_props *props, const struct space *s) {
 
     const struct gpart *gp = &s->gparts[i];
 
+    if (gp->real_id==ID_TO_TRACK)
+      message("hello! found_attachable=%d", found_attachable_link[i]);
+
     if (gpart_is_attachable(gp) && found_attachable_link[i]) {
 
       /* Update its root */
@@ -3436,25 +3464,35 @@ void fof_finalise_attachables(struct fof_props *props, const struct space *s) {
       const size_t root_i =
           fof_find_global(group_index[i] - node_offset, group_index, nr_gparts);
 
-      /* Update the size of the group the particle belongs to */
-      if (is_local(root_j, nr_gparts)) {
+      /* /\* Update the size of the group the particle belongs to *\/ */
+      /* if (is_local(root_j, nr_gparts)) { */
 
-        const size_t local_root = root_j - node_offset;
+      /* 	if (gp->real_id==ID_TO_TRACK) */
+      /* 	  message("hello! root is local!"); */
 
-        group_index[i] = local_root + node_offset;
-        group_size[local_root]++;
+      /*   const size_t local_root = root_j - node_offset; */
 
-      } else {
+      /*   group_index[i] = local_root + node_offset; */
+      /*   group_size[local_root]++; */
+
+      /* } else { */
+
+      /* 	if (gp->real_id==ID_TO_TRACK) */
+      /* 	  message("hello! root is NOT local! i=%zd, root_i=%lld root_j=%lld", i, root_i, root_j); */
+
 
         add_foreign_link_to_list(group_link_count, group_links_size,
                                  group_links, group_links, root_i, root_j,
                                  /*size_i=*/1,
                                  /*size_j=*/2);
-      }
+      /* } */
     }
   }
 
 #else /* not WITH_MPI */
+
+  size_t *restrict group_size = props->group_size;
+
 
   /* Loop over all the attachables and added them to the group they belong to */
   for (size_t i = 0; i < nr_gparts; ++i) {

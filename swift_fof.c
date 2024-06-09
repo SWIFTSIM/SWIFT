@@ -575,6 +575,15 @@ int main(int argc, char *argv[]) {
              with_DM_particles, with_DM_background_particles, with_neutrinos,
              talking, /*dry_run=*/0, nr_nodes);
 
+  for (size_t i = 0; i<s.nr_parts; ++i) {
+    s.parts[i].gpart->real_id = s.parts[i].id;
+  }
+  for (size_t i = 0; i<s.nr_gparts; ++i) {
+    if (s.gparts[i].type == swift_type_dark_matter)
+      s.gparts[i].real_id = s.gparts[i].id_or_neg_offset;
+  }
+
+
   if (myrank == 0) {
     clocks_gettime(&toc);
     message("space_init took %.3f %s.", clocks_diff(&tic, &toc),
