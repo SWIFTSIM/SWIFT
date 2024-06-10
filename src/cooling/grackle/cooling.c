@@ -222,6 +222,10 @@ void cooling_first_init_part(const struct phys_const* phys_const,
 
   /* Electron density */
   double ne = zero;
+  
+  /* Sum of mass fraction (to test its consistency) */
+  double Xtot = 0.f;
+  
 
   /* primordial chemistry >= 1 */
 
@@ -230,6 +234,8 @@ void cooling_first_init_part(const struct phys_const* phys_const,
     xp->cooling_data.HI_frac = nH * (1.f - cooling->initial_nHII_to_nH_ratio);
   else
     xp->cooling_data.HI_frac = nH;
+    
+  Xtot+=xp->cooling_data.HI_frac;  
 
   /* Hydrogen II */
   if (cooling->initial_nHII_to_nH_ratio >= 0.f) {
@@ -239,12 +245,16 @@ void cooling_first_init_part(const struct phys_const* phys_const,
   } else
     xp->cooling_data.HII_frac = zero;
 
+  Xtot+=xp->cooling_data.HII_frac;
+
   /* Helium I */
   if (cooling->initial_nHeI_to_nH_ratio >= 0.f) {
     double nHeI = nH * cooling->initial_nHeI_to_nH_ratio;
     xp->cooling_data.HeI_frac = nHeI * 4.f;
   } else
     xp->cooling_data.HeI_frac = nHe * 4.f;
+  
+  Xtot+=xp->cooling_data.HeI_frac;  
 
   /* Helium II */
   if (cooling->initial_nHeII_to_nH_ratio >= 0.f) {
@@ -253,6 +263,8 @@ void cooling_first_init_part(const struct phys_const* phys_const,
     ne += nHeII;
   } else
     xp->cooling_data.HeII_frac = zero;
+    
+  Xtot+=xp->cooling_data.HeII_frac;  
 
   /* Helium III */
   if (cooling->initial_nHeIII_to_nH_ratio >= 0.f) {
@@ -261,6 +273,8 @@ void cooling_first_init_part(const struct phys_const* phys_const,
     ne += 2.f * nHeIII;
   } else
     xp->cooling_data.HeIII_frac = zero;
+    
+  Xtot+=xp->cooling_data.HeIII_frac;  
 
   /* electron mass fraction (multiplied by the proton mass (Grackle convention)
    */
@@ -278,6 +292,9 @@ void cooling_first_init_part(const struct phys_const* phys_const,
     ne -= nHM;
   } else
     xp->cooling_data.HM_frac = zero;
+    
+  Xtot+=xp->cooling_data.HM_frac;
+    
 
   /* H2I */
   if (cooling->initial_nH2I_to_nH_ratio >= 0.f) {
@@ -285,6 +302,8 @@ void cooling_first_init_part(const struct phys_const* phys_const,
     xp->cooling_data.H2I_frac = nH2I * 2.f;
   } else
     xp->cooling_data.H2I_frac = zero;
+    
+  Xtot+=xp->cooling_data.H2I_frac;  
 
   /* H2II */
   if (cooling->initial_nH2II_to_nH_ratio >= 0.f) {
@@ -293,6 +312,8 @@ void cooling_first_init_part(const struct phys_const* phys_const,
     ne += nH2II;
   } else
     xp->cooling_data.H2II_frac = zero;
+    
+  Xtot+=xp->cooling_data.H2II_frac;
 
   /* electron mass fraction (multiplied by the proton mass (Grackle convention)
    */
@@ -311,6 +332,8 @@ void cooling_first_init_part(const struct phys_const* phys_const,
     xp->cooling_data.DI_frac = grackle_data->DeuteriumToHydrogenRatio *
                                grackle_data->HydrogenFractionByMass;
 
+  Xtot+=xp->cooling_data.DI_frac;
+
   /* Deuterium II */
   if (cooling->initial_nDII_to_nH_ratio >= 0.f) {
     double nDII = nH * cooling->initial_nDII_to_nH_ratio;
@@ -318,6 +341,8 @@ void cooling_first_init_part(const struct phys_const* phys_const,
     ne += nDII;
   } else
     xp->cooling_data.DII_frac = zero;
+    
+  Xtot+=xp->cooling_data.DII_frac;  
 
   /* HD I */
   if (cooling->initial_nHDI_to_nH_ratio >= 0.f) {
@@ -325,12 +350,19 @@ void cooling_first_init_part(const struct phys_const* phys_const,
     xp->cooling_data.HDI_frac = nHDI * 3.f;
   } else
     xp->cooling_data.HDI_frac = zero;
+    
+  Xtot+=xp->cooling_data.HDI_frac;  
 
   /* electron mass fraction (multiplied by the proton mass (Grackle convention)
    */
   xp->cooling_data.e_frac = ne;
 
 #endif  // MODE >= 3
+
+  if (fabs(Xtot - 1.f) > 1e-3)
+    error("Got total mass fraction of gas = %.6g", Xtot);
+
+
 }
 
 /**
