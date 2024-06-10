@@ -362,8 +362,6 @@ void fof_allocate(const struct space *s, struct fof_props *props) {
   const int verbose = s->e->verbose;
   const ticks total_tic = getticks();
 
-  s_global = s;
-
   /* Start by computing the mean inter DM particle separation */
 
   /* Collect the mean mass of the non-background gpart */
@@ -1901,6 +1899,9 @@ void fof_attach_pair_cells(const struct fof_props *props, const double dim[3],
 
       /* Hit or miss? */
       if (r2 < l_x2) {
+
+        /* Now that we are within the linking length,
+         * decide what to do based on linking types */
 
         if (is_link_i && is_link_j) {
 
@@ -3542,8 +3543,6 @@ void fof_finalise_attachables(struct fof_props *props, const struct space *s) {
   int *restrict group_link_count = &props->group_link_count;
   struct fof_mpi **group_links = &props->group_links;
 
-  /* int count_1 = 0, count_2 = 0, count_3 = 0; */
-
   /* Loop over all the attachables and added them to the group they belong to */
   for (size_t i = 0; i < nr_gparts; ++i) {
 
@@ -3556,7 +3555,8 @@ void fof_finalise_attachables(struct fof_props *props, const struct space *s) {
       const size_t root_i =
           fof_find_global(group_index[i] - node_offset, group_index, nr_gparts);
 
-      /* Update the size of the group the particle belongs to */
+      /* Update the size of the group the particle belongs to.
+       * The strategy emploed depends on where the root and particles are. */
       if (is_local(root_j, nr_gparts)) {
 
         const size_t local_root = root_j - node_offset;
@@ -3582,6 +3582,7 @@ void fof_finalise_attachables(struct fof_props *props, const struct space *s) {
         add_foreign_link_to_list(group_link_count, group_links_size,
                                  group_links, group_links, root_i, root_j,
                                  /*size_i=*/1,
+                                 /*size_j=*/2);
       }
     }
   }
