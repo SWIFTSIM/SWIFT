@@ -118,8 +118,9 @@ void zoom_find_void_cells(struct space *s, const int verbose) {
                         zoom_props->region_buffer_ratio;
   } else {
     /* With only background cells we need to work this out from the
-     * background cell width */
-    const int void_cdim = zoom_props->dim[0] / s->width[0];
+     * background cell width. (where we multiply by 1.0001 to avoid
+     * rounding errors) */
+    const int void_cdim = zoom_props->dim[0] * s->iwidth[0] * 1.0001;
     target_void_count = void_cdim * void_cdim * void_cdim;
 
     /* The target can't be 0. */
