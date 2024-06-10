@@ -1493,26 +1493,8 @@ int cell_can_use_pair_mm(const struct cell *restrict ci,
   const struct gravity_tensors *restrict multi_i = ci->grav.multipole;
   const struct gravity_tensors *restrict multi_j = cj->grav.multipole;
 
-  double dx, dy, dz;
-
-  /* Get the distance between the CoMs */
-  if (use_rebuild_data) {
-    dx = multi_i->CoM_rebuild[0] - multi_j->CoM_rebuild[0];
-    dy = multi_i->CoM_rebuild[1] - multi_j->CoM_rebuild[1];
-    dz = multi_i->CoM_rebuild[2] - multi_j->CoM_rebuild[2];
-  } else {
-    dx = multi_i->CoM[0] - multi_j->CoM[0];
-    dy = multi_i->CoM[1] - multi_j->CoM[1];
-    dz = multi_i->CoM[2] - multi_j->CoM[2];
-  }
-
-  /* Apply BC */
-  if (periodic) {
-    dx = nearest(dx, dim[0]);
-    dy = nearest(dy, dim[1]);
-    dz = nearest(dz, dim[2]);
-  }
-  const double r2 = dx * dx + dy * dy + dz * dz;
+  const double r2 =
+      cell_mpole_CoM_dist2(multi_i, multi_j, use_rebuild_data, periodic, dim);
 
   return gravity_M2L_accept_symmetric(props, multi_i, multi_j, r2,
                                       use_rebuild_data, use_mesh);
