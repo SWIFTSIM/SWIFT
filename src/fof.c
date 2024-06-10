@@ -1700,7 +1700,7 @@ void fof_attach_self_cell(const struct fof_props *props, const double l_x2,
 
             /* Store the current best root */
             attach_offset[j] = root_i;
-            found_attach_offset[j] = 1;//pi->fof_data.group_size;
+            found_attach_offset[j] = 1;  // pi->fof_data.group_size;
           }
 
         } else if (is_link_j && is_attach_i) {
@@ -1717,7 +1717,7 @@ void fof_attach_self_cell(const struct fof_props *props, const double l_x2,
 
             /* Store the current best root */
             attach_offset[i] = root_j;
-            found_attach_offset[i] = 1;//pj->fof_data.group_size;
+            found_attach_offset[i] = 1;  // pj->fof_data.group_size;
           }
 
         } else {
@@ -1906,12 +1906,13 @@ void fof_attach_pair_cells(const struct fof_props *props, const double dim[3],
       /* Hit or miss? */
       if (r2 < l_x2) {
 
-	/* if (pj->real_id == ID_TO_TRACK) */
-	/*   message("aa local_i=%d local_j=%d link_i=%d link_j=%d", ci_local, cj_local, is_link_i, is_link_j); */
+        /* if (pj->real_id == ID_TO_TRACK) */
+        /*   message("aa local_i=%d local_j=%d link_i=%d link_j=%d", ci_local,
+         * cj_local, is_link_i, is_link_j); */
 
-	/* if (pi->real_id == ID_TO_TRACK) */
-	/*   message("bb local_i=%d local_j=%d link_i=%d link_j=%d -- %lld", ci_local, cj_local, is_link_i, is_link_j, pj->real_id); */
-
+        /* if (pi->real_id == ID_TO_TRACK) */
+        /*   message("bb local_i=%d local_j=%d link_i=%d link_j=%d -- %lld",
+         * ci_local, cj_local, is_link_i, is_link_j, pj->real_id); */
 
         /* Now that we are within the linking length,
          * decide what to do based on linking types */
@@ -1924,7 +1925,6 @@ void fof_attach_pair_cells(const struct fof_props *props, const double dim[3],
 
         } else if (is_link_i && is_attach_j) {
 
-
           /* We got a linkable and an attachable.
            * See whether it is closer and if so re-link.
            * This is safe to do as the attachables are never roots and
@@ -1933,9 +1933,10 @@ void fof_attach_pair_cells(const struct fof_props *props, const double dim[3],
 
             const float dist = sqrtf(r2);
 
-	  /* if (pi->real_id==72820238098LL && pj->real_id == 26164234497LL) */
-	  /*   message("dd local_i=%d local_j=%d link_i=%d link_j=%d", ci_local, cj_local, is_link_i, is_link_j); */
-
+            /* if (pi->real_id==72820238098LL && pj->real_id == 26164234497LL)
+             */
+            /*   message("dd local_i=%d local_j=%d link_i=%d link_j=%d",
+             * ci_local, cj_local, is_link_i, is_link_j); */
 
             if (dist < offset_dist_j[j]) {
 
@@ -1944,7 +1945,7 @@ void fof_attach_pair_cells(const struct fof_props *props, const double dim[3],
 
               /* Store the current best root */
               attach_offset_j[j] = root_i;
-              found_attach_offset_j[j] = 1;//pi->fof_data.group_size;
+              found_attach_offset_j[j] = 1;  // pi->fof_data.group_size;
             }
           }
 
@@ -1960,20 +1961,23 @@ void fof_attach_pair_cells(const struct fof_props *props, const double dim[3],
 
             if (dist < offset_dist_i[i]) {
 
-	      /* if (pi->real_id==72820238098LL && pj->real_id != 26164234497LL) */
-	      /* 	continue; */
-	      
-	      /* if (pi->real_id==72820238098LL && pj->real_id == 26164234497LL) */
-	      /* 	message("cc local_i=%d local_j=%d link_i=%d link_j=%d root_i=%lld root_j=%lld size=%lld", ci_local, cj_local, is_link_i, is_link_j, */
-	      /* 		root_i, root_j, pj->fof_data.group_size); */
+              /* if (pi->real_id==72820238098LL && pj->real_id != 26164234497LL)
+               */
+              /* 	continue; */
+
+              /* if (pi->real_id==72820238098LL && pj->real_id == 26164234497LL)
+               */
+              /* 	message("cc local_i=%d local_j=%d link_i=%d link_j=%d
+               * root_i=%lld root_j=%lld size=%lld", ci_local, cj_local,
+               * is_link_i, is_link_j, */
+              /* 		root_i, root_j, pj->fof_data.group_size); */
 
               /* Store the new min dist */
               offset_dist_i[i] = dist;
 
               /* Store the current best root */
               attach_offset_i[i] = root_j;
-              found_attach_offset_i[i] = 1;//pj->fof_data.group_size;
-
+              found_attach_offset_i[i] = 1;  // pj->fof_data.group_size;
             }
           }
 
@@ -3424,9 +3428,19 @@ void fof_link_attachable_particles(struct fof_props *props,
             clocks_from_ticks(getticks() - tic_total), clocks_getunit());
 }
 
-void fof_build_list_of_purely_local_groups(struct fof_props *props, const struct space *s) {
+/**
+ * @brief Construct an array indicating whether a given root does not appear
+ * in the global list of fragments to link.
+ *
+ * Nothing to do here if not running with MPI or if there are no attacheables.
+ *
+ * @param props The properties fof the FOF scheme.
+ * @param s The #space we work with.
+ */
+void fof_build_list_of_purely_local_groups(struct fof_props *props,
+                                           const struct space *s) {
 
-  /* Is there anything to attach? 
+  /* Is there anything to attach?
    * (The array we construct here is only useful with attacheables)*/
   if (!current_fof_attach_type) return;
 
@@ -3447,7 +3461,8 @@ void fof_build_list_of_purely_local_groups(struct fof_props *props, const struct
   MPI_Allreduce(&group_link_count, &global_group_link_count, 1, MPI_INT,
                 MPI_SUM, MPI_COMM_WORLD);
 
-  if (global_group_link_count < 0) error("Overflow of the size of the global list of foregin links");
+  if (global_group_link_count < 0)
+    error("Overflow of the size of the global list of foregin links");
 
   struct fof_mpi *global_group_links = NULL;
   int *displ = NULL, *group_link_counts = NULL;
@@ -3491,7 +3506,7 @@ void fof_build_list_of_purely_local_groups(struct fof_props *props, const struct
   free(displ);
 
   /* We now have a list of all the fragment connections.
-   * We can iterate over the *local* groups to identify the ones which 
+   * We can iterate over the *local* groups to identify the ones which
    * are *not* appearing in the list */
 
   if (posix_memalign((void **)&props->is_purely_local, SWIFT_STRUCT_ALIGNMENT,
@@ -3499,18 +3514,19 @@ void fof_build_list_of_purely_local_groups(struct fof_props *props, const struct
     error("Error while allocating memory for the list of purely local groups");
 
   /* Start by pretending every group is purely local */
-  for (size_t i = 0; i<nr_gparts; ++i) props->is_purely_local[i] = 1;
+  for (size_t i = 0; i < nr_gparts; ++i) props->is_purely_local[i] = 1;
 
-  /* Now loop over the list of inter-rank connections and flag each halo present in the list */
+  /* Now loop over the list of inter-rank connections and flag each halo present
+   * in the list */
   for (int k = 0; k < global_group_link_count; ++k) {
 
     const size_t group_i = global_group_links[k].group_i;
     const size_t group_j = global_group_links[k].group_j;
 
     const size_t root_i =
-      fof_find_global(group_i - node_offset, group_index, nr_gparts);
+        fof_find_global(group_i - node_offset, group_index, nr_gparts);
     const size_t root_j =
-      fof_find_global(group_j - node_offset, group_index, nr_gparts);
+        fof_find_global(group_j - node_offset, group_index, nr_gparts);
 
     if (is_local(root_i, nr_gparts)) {
       const size_t local_root = root_i - node_offset;
@@ -3522,6 +3538,9 @@ void fof_build_list_of_purely_local_groups(struct fof_props *props, const struct
       props->is_purely_local[local_root] = 0;
     }
   }
+
+  /* Clean up the last allocated array */
+  swift_free("fof_global_group_links", global_group_links);
 #endif
 }
 
@@ -3574,40 +3593,40 @@ void fof_finalise_attachables(struct fof_props *props, const struct space *s) {
       /* Update the size of the group the particle belongs to */
       if (is_local(root_j, nr_gparts)) {
 
-      	/* if (gp->real_id==ID_TO_TRACK) */
-      	/*   message("hello! root is local!"); */
+        /* if (gp->real_id==ID_TO_TRACK) */
+        /*   message("hello! root is local!"); */
 
         const size_t local_root = root_j - node_offset;
 
-	if (is_purely_local[local_root]) {
+        if (is_purely_local[local_root]) {
 
-	  group_index[i] = local_root + node_offset;
-	  group_size[local_root]++;
-	
-	  /* count_1++; */
+          group_index[i] = local_root + node_offset;
+          group_size[local_root]++;
 
-	} else {
+          /* count_1++; */
 
-	  add_foreign_link_to_list(group_link_count, group_links_size,
-				   group_links, group_links, root_i, root_j,
-				   /*size_i=*/1,
-				   /*size_j=*/2);
+        } else {
 
-	  /* count_2++; */
-	}
+          add_foreign_link_to_list(group_link_count, group_links_size,
+                                   group_links, group_links, root_i, root_j,
+                                   /*size_i=*/1,
+                                   /*size_j=*/2);
+
+          /* count_2++; */
+        }
 
       } else {
 
-      /* 	if (gp->real_id==ID_TO_TRACK) */
-      /* 	  message("hello! root is NOT local! i=%zd, root_i=%lld root_j=%lld", i, root_i, root_j); */
-
+        /* 	if (gp->real_id==ID_TO_TRACK) */
+        /* 	  message("hello! root is NOT local! i=%zd, root_i=%lld
+         * root_j=%lld", i, root_i, root_j); */
 
         add_foreign_link_to_list(group_link_count, group_links_size,
                                  group_links, group_links, root_i, root_j,
                                  /*size_i=*/1,
                                  /*size_j=*/2);
 
-	/* count_3++; */
+        /* count_3++; */
       }
     }
   }
@@ -3688,7 +3707,8 @@ void fof_link_foreign_fragments(struct fof_props *props,
   MPI_Allreduce(&group_link_count, &global_group_link_count, 1, MPI_INT,
                 MPI_SUM, MPI_COMM_WORLD);
 
-  if (global_group_link_count < 0) error("Overflow of the size of the global list of foreign links");
+  if (global_group_link_count < 0)
+    error("Overflow of the size of the global list of foreign links");
 
   struct fof_mpi *global_group_links = NULL;
   int *displ = NULL, *group_link_counts = NULL;
