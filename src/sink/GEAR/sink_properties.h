@@ -295,8 +295,6 @@ INLINE static void sink_props_init(struct sink_props *sp,
 
   message("maximal_temperature                          = %g", sp->maximal_temperature);
   message("density_threshold                            = %g", sp->density_threshold);
-  /* message("size_of_calibration_sample        = %d", */
-          /* sp->size_of_calibration_sample); */
 
   message("stellar_particle_mass (in M_sun)             = %g", stellar_particle_mass_M_sun);
   message("minimal_discrete_mass (in M_sun)             = %g", sp->minimal_discrete_mass);
