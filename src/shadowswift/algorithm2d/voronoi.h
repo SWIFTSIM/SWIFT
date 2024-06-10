@@ -443,7 +443,7 @@ static inline void voronoi_build(struct voronoi *v, struct delaunay *d,
      * back at the original triangle */
     int counter = 0;
     while (t1 != t0) {
-      if (counter++ >= VORONOI_CONSTRUCTION_MAX_NGB_ITER)
+      if (counter++ >= VORONOI_CONSTRUCTION_MAX_FACES)
         error(
             "Voronoi cell construction did not finish within allowed number of "
             "iterations! This probably means something went wrong with the "
