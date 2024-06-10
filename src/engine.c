@@ -3729,6 +3729,9 @@ void engine_recompute_displacement_constraint(struct engine *e) {
 
     /* Apply the dimensionless factor */
     e->dt_max_RMS_displacement = dt * e->max_RMS_displacement_factor;
+    if (e->dt_max_RMS_displacement == 0.f) {
+      error("Setting dt_max_RMS_displacement to 0!");
+    }
 
     if (e->verbose)
       message("max_dt_RMS_displacement = %e", e->dt_max_RMS_displacement);
