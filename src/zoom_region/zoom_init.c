@@ -204,11 +204,15 @@ double zoom_get_region_dim_and_shift(struct space *s) {
   /* If the volume isn't periodic then we can't shift. */
   if (!s->periodic) {
     for (int i = 0; i < 3; i++) {
-      if (fabs(s->zoom_props->zoom_shift[i]) > 0.0) {
+      if (fabs(s->zoom_props->zoom_shift[i]) > 0.01 * s->dim[i]) {
         error(
             "Cannot shift the zoom region to the centre of the box "
             "when the box is not periodic. Centre the CoM of the high "
             "resolution particles in the box.");
+      } else {
+        /* We can't shift so it must be zeroed, and the required shift
+         * is sufficiently small we can do this without issue. */
+        s->zoom_props->zoom_shift[i] = 0.0;
       }
     }
   }
