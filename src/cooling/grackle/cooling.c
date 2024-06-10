@@ -275,6 +275,7 @@ void cooling_first_init_part(const struct phys_const* phys_const,
   if (cooling->initial_nHM_to_nH_ratio >= 0.f) {
     double nHM = nH * cooling->initial_nHM_to_nH_ratio;
     xp->cooling_data.HM_frac = nHM;
+    ne -= nHM;
   } else
     xp->cooling_data.HM_frac = zero;
 
