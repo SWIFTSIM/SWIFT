@@ -74,16 +74,16 @@ GrackleCooling:
   H2_three_body_rate : 1                       # (optional) H2 formation three body rate (see grackle documentation)
   H2_cie_cooling : 0                           # Enable/disable H2 collision-induced emission cooling from Ripamonti & Abel (2004)
   cmb_temperature_floor : 1                    # Enable/disable an effective CMB temperature floor
-  initial_nHII_to_nH_ratio:    0.00020393      # initial nHII   to nH ratio (number density ratio). Value is ignored if set to -1.
-  initial_nHeI_to_nH_ratio:    0.0789474       # initial nHeI   to nH ratio (number density ratio). Value is ignored if set to -1.  
-  initial_nHeII_to_nH_ratio:   0               # initial nHeII  to nH ratio (number density ratio). Value is ignored if set to -1.
-  initial_nHeIII_to_nH_ratio:  0               # initial nHeIII to nH ratio (number density ratio). Value is ignored if set to -1.
-  initial_nDI_to_nH_ratio:     4e-05           # initial nDI    to nH ratio (number density ratio). Value is ignored if set to -1.
-  initial_nDII_to_nH_ratio:    1e-08           # initial nDII   to nH ratio (number density ratio). Value is ignored if set to -1.
-  initial_nHM_to_nH_ratio:     8.72162e-12     # initial nHM    to nH ratio (number density ratio). Value is ignored if set to -1.
-  initial_nH2I_to_nH_ratio:    3.55748e-07     # initial nH2I   to nH ratio (number density ratio). Value is ignored if set to -1.
-  initial_nH2II_to_nH_ratio:   1.32136e-14     # initial nH2II  to nH ratio (number density ratio). Value is ignored if set to -1.
-  initial_nHDI_to_nH_ratio:    3.55748e-10     # initial nHDI   to nH ratio (number density ratio). Value is ignored if set to -1.
+  initial_nHII_to_nH_ratio:   2.393761E-004    # initial nHII   to nH ratio (number density ratio). Value is ignored if set to -1.
+  initial_nHeI_to_nH_ratio:   7.900000E-002    # initial nHeI   to nH ratio (number density ratio). Value is ignored if set to -1.  
+  initial_nHeII_to_nH_ratio:  5.692753E-020    # initial nHeII  to nH ratio (number density ratio). Value is ignored if set to -1.
+  initial_nHeIII_to_nH_ratio: 0                # initial nHeIII to nH ratio (number density ratio). Value is ignored if set to -1.
+  initial_nDI_to_nH_ratio:    2.529538E-005    # initial nDI    to nH ratio (number density ratio). Value is ignored if set to -1.
+  initial_nDII_to_nH_ratio:   4.284496E-009    # initial nDII   to nH ratio (number density ratio). Value is ignored if set to -1.
+  initial_nHM_to_nH_ratio:    6.509693E-012    # initial nHM    to nH ratio (number density ratio). Value is ignored if set to -1.
+  initial_nH2I_to_nH_ratio:   1.891128E-006    # initial nH2I   to nH ratio (number density ratio). Value is ignored if set to -1.
+  initial_nH2II_to_nH_ratio:  4.153181E-014    # initial nH2II  to nH ratio (number density ratio). Value is ignored if set to -1.
+  initial_nHDI_to_nH_ratio:   3.356904E-010    # initial nHDI   to nH ratio (number density ratio). Value is ignored if set to -1.
 
 
 

@@ -20,7 +20,7 @@
 
 import matplotlib.pyplot as plt
 
-plt.style.use("../../../tools/stylesheets/mnras.mplstyle")
+plt.style.use("local.mplstyle")
 
 import numpy as np
 from glob import glob
@@ -109,17 +109,14 @@ for i, filename in enumerate(filenames):
 
 # data from Faure, A., Hily-Blant, Pineau des Forêts, Flower 2024
 
-dHI = 1
-dHII = 2e-4
-dHeI = 0
-dHeII = 0
-dHeIII = 0
-dHM = 1e-12
-dH2I = 2e-6
-dH2II = 4e-15
-dDI = 0
-dDII = 8e-11
-dHDI = 1e-9
+with open("faure2024.dat", "r") as f:
+  f.readline()
+  f.readline()
+  header = str.split(f.readline())
+  lines = f.readlines()
+  data = np.array(list(map(str.split,lines)),float)
+  dic = {x: i for i,x in enumerate(header)}
+
 
 
 ##########################################
@@ -133,33 +130,35 @@ ax = plt.gca()
 
 rs = rs + 1
 
-pHI = ax.plot(rs, nHIs, ms=2, label="HI")
-pHII = ax.plot(rs, nHIIs, ms=2, label="HII")
-pHeI = ax.plot(rs, nHeIs, ms=2, label="HeI")
-pHeII = ax.plot(rs, nHeIIs, ms=2, label="HeII")
-pHeIII = ax.plot(rs, nHeIIIs, ms=2, label="HeIII")
+pHI = ax.plot(rs, nHIs, ms=2, lw=1, label="HI")
+pHII = ax.plot(rs, nHIIs, ms=2, lw=1, label="HII")
+pHeI = ax.plot(rs, nHeIs, ms=2, lw=1, label="HeI")
+pHeII = ax.plot(rs, nHeIIs, ms=2, lw=1, label="HeII")
+pHeIII = ax.plot(rs, nHeIIIs, ms=2, lw=1, label="HeIII")
 
-pHM = ax.plot(rs, nHMs, ms=2, label="HM")
-pH2I = ax.plot(rs, nH2Is, ms=2, label="H2I")
-pH2II = ax.plot(rs, nH2IIs, ms=2, label="H2II")
+pHM = ax.plot(rs, nHMs, ms=2, lw=1, label="HM")
+pH2I = ax.plot(rs, nH2Is, ms=2, lw=1, label="H2I")
+pH2II = ax.plot(rs, nH2IIs, ms=2, lw=1, label="H2II")
 
-pDI = ax.plot(rs, nDIs, ms=2, label="DI")
-pDII = ax.plot(rs, nDIIs, ms=2, label="DII")
-pHDI = ax.plot(rs, nHDIs, ms=2, label="HDI")
+pDI = ax.plot(rs, nDIs, ms=2, lw=1, label="DI")
+pDII = ax.plot(rs, nDIIs, ms=2, lw=1, label="DII")
+pHDI = ax.plot(rs, nHDIs, ms=2, lw=1, label="HDI")
 
 
 # add data
-ax.plot(1, dHI, "go", color=pHI[0].get_color())
-ax.plot(1, dHII, "go", color=pHII[0].get_color())
-ax.plot(1, dHeI, "go", color=pHeI[0].get_color())
-ax.plot(1, dHeII, "go", color=pHeII[0].get_color())
-ax.plot(1, dHeIII, "go", color=pHeIII[0].get_color())
-ax.plot(1, dHM, "go", color=pHM[0].get_color())
-ax.plot(1, dH2I, "go", color=pH2I[0].get_color())
-ax.plot(1, dH2II, "go", color=pH2II[0].get_color())
-ax.plot(1, dDI, "go", color=pDI[0].get_color())
-ax.plot(1, dDII, "go", color=pDII[0].get_color())
-ax.plot(1, dHDI, "go", color=pHDI[0].get_color())
+ax.plot(data[:,dic["Redshift"]]+1, data[:,dic["H"]], "--", color=pHI[0].get_color())
+ax.plot(data[:,dic["Redshift"]]+1, data[:,dic["H+"]], "--", color=pHII[0].get_color())
+ax.plot(data[:,dic["Redshift"]]+1, data[:,dic["He"]], "--", color=pHeI[0].get_color())
+ax.plot(data[:,dic["Redshift"]]+1, data[:,dic["He+"]], "--", color=pHeII[0].get_color())
+ax.plot(data[:,dic["Redshift"]]+1, data[:,dic["H-"]], "--", color=pHM[0].get_color())
+ax.plot(data[:,dic["Redshift"]]+1, data[:,dic["H2"]], "--", color=pH2I[0].get_color())
+ax.plot(data[:,dic["Redshift"]]+1, data[:,dic["H2+"]], "--", color=pH2II[0].get_color())
+ax.plot(data[:,dic["Redshift"]]+1, data[:,dic["D"]], "--", color=pDI[0].get_color())
+ax.plot(data[:,dic["Redshift"]]+1, data[:,dic["D+"]], "--", color=pDII[0].get_color())
+ax.plot(data[:,dic["Redshift"]]+1, data[:,dic["HD"]], "--", color=pHDI[0].get_color())
+
+
+
 
 
 ax.set_xlabel(r"$\rm{1+z}$")
@@ -168,6 +167,6 @@ ax.set_ylabel(r"$\rm{Fractional abundances}$")
 ax.set_ylim(1e-21, 2)
 
 ax.loglog()
-ax.legend(loc="lower left")
+ax.legend(loc="lower right")
 
 plt.show()
