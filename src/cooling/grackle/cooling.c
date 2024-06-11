@@ -355,10 +355,11 @@ void cooling_first_init_part(const struct phys_const* phys_const,
    */
   xp->cooling_data.e_frac = ne;
 
+  if (fabs(Xtot - 1.0) > 1e-3)
+    error("Got total mass fraction of gas = %.6g", Xtot);
+    
 #endif  // MODE >= 3
 
-  if (fabs(Xtot - 1.f) > 1e-3)
-    error("Got total mass fraction of gas = %.6g", Xtot);
 }
 
 /**
