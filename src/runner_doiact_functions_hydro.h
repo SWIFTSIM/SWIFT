@@ -124,7 +124,7 @@ void DOPAIR1_NAIVE(struct runner *r, struct cell *restrict ci,
         runner_iact_nonsym_pressure_floor(r2, dx, hi, hj, pi, pj, a, H);
         runner_iact_nonsym_star_formation(r2, dx, hi, hj, pi, pj, a, H);
         runner_iact_nonsym_sink(r2, dx, hi, hj, pi, pj, a, H,
-                                e->sink_properties);
+                                e->sink_properties->cut_off_radius);
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
         runner_iact_nonsym_timebin(r2, dx, hi, hj, pi, pj, a, H);
@@ -146,7 +146,7 @@ void DOPAIR1_NAIVE(struct runner *r, struct cell *restrict ci,
         runner_iact_nonsym_pressure_floor(r2, dx, hj, hi, pj, pi, a, H);
         runner_iact_nonsym_star_formation(r2, dx, hj, hi, pj, pi, a, H);
         runner_iact_nonsym_sink(r2, dx, hj, hi, pj, pi, a, H,
-                                e->sink_properties);
+                                e->sink_properties->cut_off_radius);
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
         runner_iact_nonsym_timebin(r2, dx, hj, hi, pj, pi, a, H);
@@ -260,6 +260,8 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
           runner_iact_chemistry(r2, dx, hi, hj, pi, pj, a, H);
           runner_iact_pressure_floor(r2, dx, hi, hj, pi, pj, a, H);
           runner_iact_star_formation(r2, dx, hi, hj, pi, pj, a, H);
+          runner_iact_sink(r2, dx, hi, hj, pi, pj, a, H,
+                           e->sink_properties->cut_off_radius);
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
           runner_iact_timebin(r2, dx, hi, hj, pi, pj, a, H);
@@ -276,7 +278,7 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
           runner_iact_nonsym_pressure_floor(r2, dx, hi, hj, pi, pj, a, H);
           runner_iact_nonsym_star_formation(r2, dx, hi, hj, pi, pj, a, H);
           runner_iact_nonsym_sink(r2, dx, hi, hj, pi, pj, a, H,
-                                  e->sink_properties);
+                                  e->sink_properties->cut_off_radius);
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
           runner_iact_nonsym_timebin(r2, dx, hi, hj, pi, pj, a, H);
@@ -297,7 +299,7 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
           runner_iact_nonsym_pressure_floor(r2, dx, hj, hi, pj, pi, a, H);
           runner_iact_nonsym_star_formation(r2, dx, hj, hi, pj, pi, a, H);
           runner_iact_nonsym_sink(r2, dx, hj, hi, pj, pi, a, H,
-                                  e->sink_properties);
+                                  e->sink_properties->cut_off_radius);
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
           runner_iact_nonsym_timebin(r2, dx, hj, hi, pj, pi, a, H);
@@ -400,6 +402,8 @@ void DOSELF1_NAIVE(struct runner *r, struct cell *restrict c) {
         runner_iact_chemistry(r2, dx, hi, hj, pi, pj, a, H);
         runner_iact_pressure_floor(r2, dx, hi, hj, pi, pj, a, H);
         runner_iact_star_formation(r2, dx, hi, hj, pi, pj, a, H);
+        runner_iact_sink(r2, dx, hi, hj, pi, pj, a, H,
+                         e->sink_properties->cut_off_radius);
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
         runner_iact_timebin(r2, dx, hi, hj, pi, pj, a, H);
@@ -416,7 +420,7 @@ void DOSELF1_NAIVE(struct runner *r, struct cell *restrict c) {
         runner_iact_nonsym_pressure_floor(r2, dx, hi, hj, pi, pj, a, H);
         runner_iact_nonsym_star_formation(r2, dx, hi, hj, pi, pj, a, H);
         runner_iact_nonsym_sink(r2, dx, hi, hj, pi, pj, a, H,
-                                e->sink_properties);
+                                e->sink_properties->cut_off_radius);
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
         runner_iact_nonsym_timebin(r2, dx, hi, hj, pi, pj, a, H);
@@ -437,7 +441,7 @@ void DOSELF1_NAIVE(struct runner *r, struct cell *restrict c) {
         runner_iact_nonsym_pressure_floor(r2, dx, hj, hi, pj, pi, a, H);
         runner_iact_nonsym_star_formation(r2, dx, hj, hi, pj, pi, a, H);
         runner_iact_nonsym_sink(r2, dx, hj, hi, pj, pi, a, H,
-                                e->sink_properties);
+                                e->sink_properties->cut_off_radius);
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
         runner_iact_nonsym_timebin(r2, dx, hj, hi, pj, pi, a, H);
@@ -539,6 +543,8 @@ void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
         runner_iact_chemistry(r2, dx, hi, hj, pi, pj, a, H);
         runner_iact_pressure_floor(r2, dx, hi, hj, pi, pj, a, H);
         runner_iact_star_formation(r2, dx, hi, hj, pi, pj, a, H);
+        runner_iact_sink(r2, dx, hi, hj, pi, pj, a, H,
+                         e->sink_properties->cut_off_radius);
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
         runner_iact_timebin(r2, dx, hi, hj, pi, pj, a, H);
@@ -555,7 +561,7 @@ void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
         runner_iact_nonsym_pressure_floor(r2, dx, hi, hj, pi, pj, a, H);
         runner_iact_nonsym_star_formation(r2, dx, hi, hj, pi, pj, a, H);
         runner_iact_nonsym_sink(r2, dx, hi, hj, pi, pj, a, H,
-                                e->sink_properties);
+                                e->sink_properties->cut_off_radius);
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
         runner_iact_nonsym_timebin(r2, dx, hi, hj, pi, pj, a, H);
@@ -576,7 +582,7 @@ void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
         runner_iact_nonsym_pressure_floor(r2, dx, hj, hi, pj, pi, a, H);
         runner_iact_nonsym_star_formation(r2, dx, hj, hi, pj, pi, a, H);
         runner_iact_nonsym_sink(r2, dx, hj, hi, pj, pi, a, H,
-                                e->sink_properties);
+                                e->sink_properties->cut_off_radius);
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
         runner_iact_nonsym_timebin(r2, dx, hj, hi, pj, pi, a, H);
@@ -678,7 +684,7 @@ void DOPAIR_SUBSET_NAIVE(struct runner *r, struct cell *restrict ci,
         runner_iact_nonsym_pressure_floor(r2, dx, hi, pj->h, pi, pj, a, H);
         runner_iact_nonsym_star_formation(r2, dx, hi, pj->h, pi, pj, a, H);
         runner_iact_nonsym_sink(r2, dx, hi, pj->h, pi, pj, a, H,
-                                e->sink_properties);
+                                e->sink_properties->cut_off_radius);
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
         runner_iact_nonsym_timebin(r2, dx, hi, pj->h, pi, pj, a, H);
@@ -787,7 +793,7 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
           runner_iact_nonsym_pressure_floor(r2, dx, hi, hj, pi, pj, a, H);
           runner_iact_nonsym_star_formation(r2, dx, hi, hj, pi, pj, a, H);
           runner_iact_nonsym_sink(r2, dx, hi, hj, pi, pj, a, H,
-                                  e->sink_properties);
+                                  e->sink_properties->cut_off_radius);
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
           runner_iact_nonsym_timebin(r2, dx, hi, hj, pi, pj, a, H);
@@ -853,7 +859,7 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
           runner_iact_nonsym_pressure_floor(r2, dx, hi, hj, pi, pj, a, H);
           runner_iact_nonsym_star_formation(r2, dx, hi, hj, pi, pj, a, H);
           runner_iact_nonsym_sink(r2, dx, hi, hj, pi, pj, a, H,
-                                  e->sink_properties);
+                                  e->sink_properties->cut_off_radius);
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
           runner_iact_nonsym_timebin(r2, dx, hi, hj, pi, pj, a, H);
@@ -1020,7 +1026,7 @@ void DOSELF_SUBSET(struct runner *r, struct cell *restrict ci,
         runner_iact_nonsym_pressure_floor(r2, dx, hi, hj, pi, pj, a, H);
         runner_iact_nonsym_star_formation(r2, dx, hi, hj, pi, pj, a, H);
         runner_iact_nonsym_sink(r2, dx, hi, hj, pi, pj, a, H,
-                                e->sink_properties);
+                                e->sink_properties->cut_off_radius);
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
         runner_iact_nonsym_timebin(r2, dx, hi, hj, pi, pj, a, H);
@@ -1203,7 +1209,7 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
           runner_iact_nonsym_pressure_floor(r2, dx, hi, hj, pi, pj, a, H);
           runner_iact_nonsym_star_formation(r2, dx, hi, hj, pi, pj, a, H);
           runner_iact_nonsym_sink(r2, dx, hi, hj, pi, pj, a, H,
-                                  e->sink_properties);
+                                  e->sink_properties->cut_off_radius);
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
           runner_iact_nonsym_timebin(r2, dx, hi, hj, pi, pj, a, H);
@@ -1303,7 +1309,7 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
           runner_iact_nonsym_pressure_floor(r2, dx, hj, hi, pj, pi, a, H);
           runner_iact_nonsym_star_formation(r2, dx, hj, hi, pj, pi, a, H);
           runner_iact_nonsym_sink(r2, dx, hj, hi, pj, pi, a, H,
-                                  e->sink_properties);
+                                  e->sink_properties->cut_off_radius);
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
           runner_iact_nonsym_timebin(r2, dx, hj, hi, pj, pi, a, H);
@@ -1624,7 +1630,7 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
           runner_iact_nonsym_pressure_floor(r2, dx, hj, hi, pj, pi, a, H);
           runner_iact_nonsym_star_formation(r2, dx, hj, hi, pj, pi, a, H);
           runner_iact_nonsym_sink(r2, dx, hj, hi, pj, pi, a, H,
-                                  e->sink_properties);
+                                  e->sink_properties->cut_off_radius);
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
           runner_iact_nonsym_timebin(r2, dx, hj, hi, pj, pi, a, H);
@@ -1706,6 +1712,8 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
             runner_iact_chemistry(r2, dx, hi, hj, pi, pj, a, H);
             runner_iact_pressure_floor(r2, dx, hi, hj, pi, pj, a, H);
             runner_iact_star_formation(r2, dx, hi, hj, pi, pj, a, H);
+            runner_iact_sink(r2, dx, hi, hj, pi, pj, a, H,
+                             e->sink_properties->cut_off_radius);
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
             runner_iact_timebin(r2, dx, hi, hj, pi, pj, a, H);
@@ -1721,7 +1729,7 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
             runner_iact_nonsym_pressure_floor(r2, dx, hi, hj, pi, pj, a, H);
             runner_iact_nonsym_star_formation(r2, dx, hi, hj, pi, pj, a, H);
             runner_iact_nonsym_sink(r2, dx, hi, hj, pi, pj, a, H,
-                                    e->sink_properties);
+                                    e->sink_properties->cut_off_radius);
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
             runner_iact_nonsym_timebin(r2, dx, hi, hj, pi, pj, a, H);
@@ -1837,7 +1845,7 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
           runner_iact_nonsym_pressure_floor(r2, dx, hi, hj, pi, pj, a, H);
           runner_iact_nonsym_star_formation(r2, dx, hi, hj, pi, pj, a, H);
           runner_iact_nonsym_sink(r2, dx, hi, hj, pi, pj, a, H,
-                                  e->sink_properties);
+                                  e->sink_properties->cut_off_radius);
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
           runner_iact_nonsym_timebin(r2, dx, hi, hj, pi, pj, a, H);
@@ -1921,6 +1929,8 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
             runner_iact_chemistry(r2, dx, hj, hi, pj, pi, a, H);
             runner_iact_pressure_floor(r2, dx, hj, hi, pj, pi, a, H);
             runner_iact_star_formation(r2, dx, hj, hi, pj, pi, a, H);
+            runner_iact_sink(r2, dx, hj, hi, pj, pi, a, H,
+                             e->sink_properties->cut_off_radius);
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
             runner_iact_timebin(r2, dx, hj, hi, pj, pi, a, H);
@@ -1936,7 +1946,7 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
             runner_iact_nonsym_pressure_floor(r2, dx, hj, hi, pj, pi, a, H);
             runner_iact_nonsym_star_formation(r2, dx, hj, hi, pj, pi, a, H);
             runner_iact_nonsym_sink(r2, dx, hj, hi, pj, pi, a, H,
-                                    e->sink_properties);
+                                    e->sink_properties->cut_off_radius);
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
             runner_iact_nonsym_timebin(r2, dx, hj, hi, pj, pi, a, H);
@@ -2142,7 +2152,7 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
           runner_iact_nonsym_pressure_floor(r2, dx, hj, hi, pj, pi, a, H);
           runner_iact_nonsym_star_formation(r2, dx, hj, hi, pj, pi, a, H);
           runner_iact_nonsym_sink(r2, dx, hj, hi, pj, pi, a, H,
-                                  e->sink_properties);
+                                  e->sink_properties->cut_off_radius);
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
           runner_iact_nonsym_timebin(r2, dx, hj, hi, pj, pi, a, H);
@@ -2203,6 +2213,8 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
             runner_iact_chemistry(r2, dx, hi, hj, pi, pj, a, H);
             runner_iact_pressure_floor(r2, dx, hi, hj, pi, pj, a, H);
             runner_iact_star_formation(r2, dx, hi, hj, pi, pj, a, H);
+            runner_iact_sink(r2, dx, hi, hj, pi, pj, a, H,
+                             e->sink_properties->cut_off_radius);
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
             runner_iact_timebin(r2, dx, hi, hj, pi, pj, a, H);
@@ -2219,7 +2231,7 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
             runner_iact_nonsym_pressure_floor(r2, dx, hi, hj, pi, pj, a, H);
             runner_iact_nonsym_star_formation(r2, dx, hi, hj, pi, pj, a, H);
             runner_iact_nonsym_sink(r2, dx, hi, hj, pi, pj, a, H,
-                                    e->sink_properties);
+                                    e->sink_properties->cut_off_radius);
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
             runner_iact_nonsym_timebin(r2, dx, hi, hj, pi, pj, a, H);
@@ -2240,7 +2252,7 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
             runner_iact_nonsym_pressure_floor(r2, dx, hj, hi, pj, pi, a, H);
             runner_iact_nonsym_star_formation(r2, dx, hj, hi, pj, pi, a, H);
             runner_iact_nonsym_sink(r2, dx, hj, hi, pj, pi, a, H,
-                                    e->sink_properties);
+                                    e->sink_properties->cut_off_radius);
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
             runner_iact_nonsym_timebin(r2, dx, hj, hi, pj, pi, a, H);
@@ -2384,7 +2396,7 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
           runner_iact_nonsym_pressure_floor(r2, dx, hj, hi, pj, pi, a, H);
           runner_iact_nonsym_star_formation(r2, dx, hj, hi, pj, pi, a, H);
           runner_iact_nonsym_sink(r2, dx, hj, hi, pj, pi, a, H,
-                                  e->sink_properties);
+                                  e->sink_properties->cut_off_radius);
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
           runner_iact_nonsym_timebin(r2, dx, hj, hi, pj, pi, a, H);
@@ -2440,6 +2452,8 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
             runner_iact_chemistry(r2, dx, hi, hj, pi, pj, a, H);
             runner_iact_pressure_floor(r2, dx, hi, hj, pi, pj, a, H);
             runner_iact_star_formation(r2, dx, hi, hj, pi, pj, a, H);
+            runner_iact_sink(r2, dx, hi, hj, pi, pj, a, H,
+                             e->sink_properties->cut_off_radius);
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
             runner_iact_timebin(r2, dx, hi, hj, pi, pj, a, H);
@@ -2455,7 +2469,7 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
             runner_iact_nonsym_pressure_floor(r2, dx, hi, hj, pi, pj, a, H);
             runner_iact_nonsym_star_formation(r2, dx, hi, hj, pi, pj, a, H);
             runner_iact_nonsym_sink(r2, dx, hi, hj, pi, pj, a, H,
-                                    e->sink_properties);
+                                    e->sink_properties->cut_off_radius);
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
             runner_iact_nonsym_timebin(r2, dx, hi, hj, pi, pj, a, H);
