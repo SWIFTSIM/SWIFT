@@ -54,6 +54,7 @@
 #include "potential.h"
 #include "pressure_floor.h"
 #include "rt.h"
+#include "runner_doiact_sinks.h"
 #include "space.h"
 #include "star_formation.h"
 #include "star_formation_logger.h"
@@ -61,6 +62,8 @@
 #include "timers.h"
 #include "timestep_limiter.h"
 #include "tracers.h"
+
+extern const int sort_stack_size;
 
 /**
  * @brief Calculate gravity acceleration from external potential
@@ -249,11 +252,14 @@ void runner_do_star_formation_sink(struct runner *r, struct cell *c,
         error("TODO");
 #endif
 
-        /* Spawn as many sink as necessary */
-        while (sink_spawn_star(s, e, sink_props, cosmo, with_cosmology,
-                               phys_const, us)) {
+        /* Spawn as many stars as necessary
+           - loop counter for the random seed.
+           - Start by 1 as 0 is used at init (sink_copy_properties) */
+        for (int star_counter = 1; sink_spawn_star(
+                 s, e, sink_props, cosmo, with_cosmology, phys_const, us);
+             star_counter++) {
 
-          /* Create a new star */
+          /* Create a new star with a mass s->target_mass */
           struct spart *sp = cell_spawn_new_spart_from_sink(e, c, s);
           if (sp == NULL)
             error("Run out of available star particles or gparts");
@@ -262,12 +268,46 @@ void runner_do_star_formation_sink(struct runner *r, struct cell *c,
           sink_copy_properties_to_star(s, sp, e, sink_props, cosmo,
                                        with_cosmology, phys_const, us);
 
+          /* Verify that we do not have too many stars in the leaf for
+           * the sort task to be able to act. */
+          if (c->stars.count > (1LL << sort_stack_size))
+            error(
+                "Too many stars in the cell tree leaf! The sorting task will "
+                "not be able to perform its duties. Possible solutions: (1) "
+                "The code need to be run with different star formation "
+                "parameters to reduce the number of star particles created. OR "
+                "(2) The size of the sorting stack must be increased in "
+                "runner_sort.c.");
+
           /* Update the h_max */
           c->stars.h_max = max(c->stars.h_max, sp->h);
           c->stars.h_max_active = max(c->stars.h_max_active, sp->h);
-        }
-      }
-    } /* Loop over the particles */
+
+          /* count the number of stars spawned by this particle */
+          s->n_stars++;
+
+          /* Update the mass */
+          s->mass = s->mass - s->target_mass * phys_const->const_solar_mass;
+
+          /* Bug fix: Do not forget to update the sink gpart's mass. */
+          s->gpart->mass = s->mass;
+
+#ifdef SWIFT_DEBUG_CHECKS
+          /* This message must be put carefully after giving the star its mass,
+             updated the sink mass and before changing the target_type */
+          message(
+              "%010lld spawn a star (%010lld) with mass %8.2f Msol type=%d  "
+              "loop=%03d. Sink remaining mass: %e Msol.",
+              s->id, sp->id, sp->mass / phys_const->const_solar_mass,
+              s->target_type, star_counter,
+              s->mass / phys_const->const_solar_mass);
+#endif
+
+          /* Sample the IMF to the get next target mass */
+          sink_update_target_mass(s, sink_props, e, star_counter);
+        } /* Loop over the stars to spawn */
+      }   /* if sink_is_active */
+    }     /* Loop over the particles */
   }
 
   /* If we formed any stars, the star sorts are now invalid. We need to
@@ -533,7 +573,7 @@ void runner_do_sink_formation(struct runner *r, struct cell *c) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->nodeID != e->nodeID)
-    error("Running star formation task on a foreign node!");
+    error("Running sink formation task on a foreign node!");
 #endif
 
   /* Anything to do here? */
@@ -562,6 +602,10 @@ void runner_do_sink_formation(struct runner *r, struct cell *c) {
 
       /* Only work on active particles */
       if (part_is_active(p, e)) {
+
+        /* Loop over all particles to find the neighbours within r_acc. Then, */
+        /* compute all quantities you need to decide to form a sink or not. */
+        runner_do_prepare_part_sink_formation(r, c, p, xp);
 
         /* Is this particle star forming? */
         if (sink_is_forming(p, xp, sink_props, phys_const, cosmo, hydro_props,
@@ -710,6 +754,7 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
   const struct engine *e = r->e;
   const int with_self_gravity = (e->policy & engine_policy_self_gravity);
   const int with_black_holes = (e->policy & engine_policy_black_holes);
+  const int with_sinks = (e->policy & engine_policy_sinks);
 
   TIMER_TIC;
 
@@ -829,6 +874,12 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
           const size_t offset = -gp->id_or_neg_offset;
           black_holes_store_potential_in_part(
               &s->parts[offset].black_holes_data, gp);
+        }
+
+        /* Deal with sinks' need of potentials */
+        if (with_sinks && gp->type == swift_type_gas) {
+          const size_t offset = -gp->id_or_neg_offset;
+          sink_store_potential_in_part(&s->parts[offset].sink_data, gp);
         }
       }
     }

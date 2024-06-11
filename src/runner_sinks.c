@@ -47,6 +47,8 @@ void runner_doself_sinks_swallow(struct runner *r, struct cell *c, int timer) {
   TIMER_TIC;
 
   const struct engine *e = r->e;
+  const struct cosmology *cosmo = e->cosmology;
+  const int with_cosmology = e->policy & engine_policy_cosmology;
 
   /* Anything to do here? */
   if (c->sinks.count == 0) return;
@@ -101,7 +103,9 @@ void runner_doself_sinks_swallow(struct runner *r, struct cell *c, int timer) {
 #endif
 
         if (r2 < ri2) {
-          runner_iact_nonsym_sinks_gas_swallow(r2, dx, ri, hj, si, pj);
+          runner_iact_nonsym_sinks_gas_swallow(
+              r2, dx, ri, hj, si, pj, with_cosmology, cosmo,
+              e->gravity_properties, e->sink_properties);
         }
       } /* loop over the parts in ci. */
     }   /* loop over the bparts in ci. */
@@ -146,8 +150,18 @@ void runner_doself_sinks_swallow(struct runner *r, struct cell *c, int timer) {
       const float dx[3] = {six[0] - sjx[0], six[1] - sjx[1], six[2] - sjx[2]};
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
+#ifdef SWIFT_DEBUG_CHECKS
+      /* Check that particles have been drifted to the current time */
+      if (si->ti_drift != e->ti_current)
+        error("Particle bi not drifted to current time");
+      if (sj->ti_drift != e->ti_current)
+        error("Particle bj not drifted to current time");
+#endif
+
       if (r2 < ri2 || r2 < rj2) {
-        runner_iact_nonsym_sinks_sink_swallow(r2, dx, ri, rj, si, sj);
+        runner_iact_nonsym_sinks_sink_swallow(r2, dx, ri, rj, si, sj,
+                                              with_cosmology, cosmo,
+                                              e->gravity_properties);
       }
     } /* loop over the sinks in ci. */
   }   /* loop over the sinks in ci. */
@@ -167,6 +181,8 @@ void runner_do_nonsym_pair_sinks_naive_swallow(struct runner *r,
                                                struct cell *restrict cj) {
 
   const struct engine *e = r->e;
+  const struct cosmology *cosmo = e->cosmology;
+  const int with_cosmology = e->policy & engine_policy_cosmology;
 
   /* Anything to do here? */
   if (ci->sinks.count == 0) return;
@@ -230,7 +246,9 @@ void runner_do_nonsym_pair_sinks_naive_swallow(struct runner *r,
 #endif
 
         if (r2 < ri2) {
-          runner_iact_nonsym_sinks_gas_swallow(r2, dx, ri, hj, si, pj);
+          runner_iact_nonsym_sinks_gas_swallow(
+              r2, dx, ri, hj, si, pj, with_cosmology, cosmo,
+              e->gravity_properties, e->sink_properties);
         }
       } /* loop over the parts in cj. */
     }   /* loop over the sinks in ci. */
@@ -284,7 +302,9 @@ void runner_do_nonsym_pair_sinks_naive_swallow(struct runner *r,
 #endif
 
       if (r2 < ri2 || r2 < rj2) {
-        runner_iact_nonsym_sinks_sink_swallow(r2, dx, ri, rj, si, sj);
+        runner_iact_nonsym_sinks_sink_swallow(r2, dx, ri, rj, si, sj,
+                                              with_cosmology, cosmo,
+                                              e->gravity_properties);
       }
     } /* loop over the sinks in cj. */
   }   /* loop over the sinks in ci. */
@@ -531,6 +551,9 @@ void runner_do_sinks_gas_swallow(struct runner *r, struct cell *c, int timer) {
   struct part *parts = c->hydro.parts;
   struct xpart *xparts = c->hydro.xparts;
 
+  integertime_t ti_current = e->ti_current;
+  integertime_t ti_beg_max = 0;
+
   /* Early abort?
    * (We only want cells for which we drifted the gas as these are
    * the only ones that could have gas particles that have been flagged
@@ -546,6 +569,10 @@ void runner_do_sinks_gas_swallow(struct runner *r, struct cell *c, int timer) {
         struct cell *restrict cp = c->progeny[k];
 
         runner_do_sinks_gas_swallow(r, cp, 0);
+
+        /* Propagate the ti_beg_max from the leaves to the roots.
+         * See bug fix below. */
+        ti_beg_max = max(cp->hydro.ti_beg_max, ti_beg_max);
       }
     }
   } else {
@@ -601,8 +628,6 @@ void runner_do_sinks_gas_swallow(struct runner *r, struct cell *c, int timer) {
             /* If the gas particle is local, remove it */
             if (c->nodeID == e->nodeID) {
 
-              message("sink %lld removing gas particle %lld", sp->id, p->id);
-
               lock_lock(&e->s->lock);
 
               /* Re-check that the particle has not been removed
@@ -639,8 +664,29 @@ void runner_do_sinks_gas_swallow(struct runner *r, struct cell *c, int timer) {
                 p->id, swallow_id);
         }
       } /* Part was flagged for swallowing */
-    }   /* Loop over the parts */
-  }     /* Cell is not split */
+
+      /* Bug fix : Change the hydro.ti_beg_max when a sink eats the last gas
+       * particle possessing the ti_beg_max of the cell. We set hydro.ti_beg_max
+       * to the max ti_beg of the remaining gas particle. Why this fix ?
+       * Otherwise, we fail the check from cell_check_timesteps. This bug is
+       * rare because it needs that the swallowed gas is the last part with the
+       * ti_beg_max of the cell.
+       * The same is not done for ti_end_min since it may inactivate cells that
+       * need to perform sinks tasks.
+       */
+
+      if (part_is_inhibited(p, e)) continue;
+
+      integertime_t ti_beg =
+          get_integer_time_begin(ti_current + 1, p->time_bin);
+      ti_beg_max = max(ti_beg, ti_beg_max);
+    } /* Loop over the parts */
+  }   /* Cell is not split */
+
+  /* Update ti_beg_max. See bug fix above. */
+  if (ti_beg_max != c->hydro.ti_beg_max) {
+    c->hydro.ti_beg_max = ti_beg_max;
+  }
 }
 
 /**
@@ -655,7 +701,7 @@ void runner_do_sinks_gas_swallow_self(struct runner *r, struct cell *c,
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->nodeID != r->e->nodeID) error("Running self task on foreign node");
-  if (!cell_is_active_sinks(c, r->e))
+  if (!cell_is_active_sinks(c, r->e) && !cell_is_active_hydro(c, r->e))
     error("Running self task on inactive cell");
 #endif
 
@@ -801,9 +847,6 @@ void runner_do_sinks_sink_swallow(struct runner *r, struct cell *c, int timer) {
             /* If the sink particle is local, remove it */
             if (c->nodeID == e->nodeID) {
 
-              message("sink %lld removing sink particle %lld", sp->id,
-                      cell_sp->id);
-
               /* Finally, remove the sink particle from the system
                * Recall that the gpart associated with it is also removed
                * at the same time. */
@@ -847,7 +890,7 @@ void runner_do_sinks_sink_swallow_self(struct runner *r, struct cell *c,
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->nodeID != r->e->nodeID) error("Running self task on foreign node");
-  if (!cell_is_active_sinks(c, r->e))
+  if (!cell_is_active_sinks(c, r->e) && !cell_is_active_hydro(c, r->e))
     error("Running self task on inactive cell");
 #endif
 
@@ -876,4 +919,59 @@ void runner_do_sinks_sink_swallow_pair(struct runner *r, struct cell *ci,
    * active sink */
   if (cell_is_active_sinks(cj, e)) runner_do_sinks_sink_swallow(r, ci, timer);
   if (cell_is_active_sinks(ci, e)) runner_do_sinks_sink_swallow(r, cj, timer);
+}
+
+/**
+ * @brief Compute the energies (kinetic, potential, etc ) of the gas particle
+ * #p and all quantities required for the formation of a sink.
+ *
+ * Note: This function iterates over gas particles and sink particles.
+ *
+ * @param e The #engine.
+ * @param c The #cell.
+ * @param p The #part.
+ * @param xp The #xpart data of the particle #p.
+ */
+void runner_do_prepare_part_sink_formation(struct runner *r, struct cell *c,
+                                           struct part *restrict p,
+                                           struct xpart *restrict xp) {
+  struct engine *e = r->e;
+  const struct cosmology *cosmo = e->cosmology;
+  const struct sink_props *sink_props = e->sink_properties;
+  const int count = c->hydro.count;
+  struct part *restrict parts = c->hydro.parts;
+  struct xpart *restrict xparts = c->hydro.xparts;
+
+  /* Loop over all particles to find the neighbours within r_acc. Then,
+     compute all quantities you need.  */
+  for (int i = 0; i < count; i++) {
+
+    /*Get a handle on the part */
+    struct part *restrict pi = &parts[i];
+    struct xpart *restrict xpi = &xparts[i];
+
+    /* Compute the quantities required to later decide to form a sink or not. */
+    sink_prepare_part_sink_formation_gas_criteria(e, p, xp, pi, xpi, cosmo,
+                                                  sink_props);
+  } /* End of gas neighbour loop */
+
+  /* Shall we reset the values of the energies for the next timestep? No, it is
+     done in cell_drift.c and space_init.c, for active particles. The
+     potential is set in runner_others.c->runner_do_end_grav_force() */
+
+  /* Check that we are not forming a sink in the accretion radius of another
+     one. The new sink may be swallowed by the older one.) */
+  const int scount = c->sinks.count;
+  struct sink *restrict sinks = c->sinks.parts;
+
+  for (int i = 0; i < scount; i++) {
+
+    /* Get a hold of the ith sinks in ci. */
+    struct sink *restrict si = &sinks[i];
+
+    /* Compute the quantities required to later decide to form a sink or not. */
+    sink_prepare_part_sink_formation_sink_criteria(e, p, xp, si, cosmo,
+                                                   sink_props);
+
+  } /* End of sink neighbour loop */
 }
