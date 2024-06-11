@@ -39,6 +39,19 @@ __attribute__((always_inline)) INLINE static float sink_compute_timestep(
 }
 
 /**
+ * @brief Update the target mass of the sink particle.
+ *
+ * @param e The #engine
+ * @param sink the sink particle.
+ * @param sink_props the sink properties to use.
+ * @param phys_const the physical constants in internal units.
+ * @param cosmo the cosmological parameters and properties.
+ */
+INLINE static void sink_update_target_mass(struct sink* sink,
+                                           const struct sink_props* sink_props,
+                                           const struct engine* e, int rloop) {}
+
+/**
  * @brief Initialises the sink-particles for the first time
  *
  * This function is called only once just after the ICs have been
@@ -48,7 +61,8 @@ __attribute__((always_inline)) INLINE static float sink_compute_timestep(
  * @param sink_props The properties of the sink particles scheme.
  */
 __attribute__((always_inline)) INLINE static void sink_first_init_sink(
-    struct sink* sp, const struct sink_props* sink_props) {}
+    struct sink* sp, const struct sink_props* sink_props,
+    const struct engine* e) {}
 
 /**
  * @brief Prepares a particle for the sink calculation.
@@ -56,7 +70,7 @@ __attribute__((always_inline)) INLINE static void sink_first_init_sink(
  * @param p The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void sink_init_part(
-    struct part* restrict p) {}
+    struct part* restrict p, const struct sink_props* sink_props) {}
 
 /**
  * @brief Prepares a sink-particle for its interactions
@@ -237,5 +251,47 @@ INLINE static void sink_copy_properties_to_star(
     const struct sink_props* sink_props, const struct cosmology* cosmo,
     const int with_cosmology, const struct phys_const* phys_const,
     const struct unit_system* restrict us) {}
+
+/**
+ * @brief Store the gravitational potential of a particle by copying it from
+ * its #gpart friend.
+ *
+ * @param p_data The sink data of a gas particle.
+ * @param gp The part's #gpart.
+ */
+__attribute__((always_inline)) INLINE static void sink_store_potential_in_part(
+    struct sink_part_data* p_data, const struct gpart* gp) {}
+
+/**
+ * @brief Compute all quantities required for the formation of a sink such as
+ * kinetic energy, potential energy, etc. This function works on the
+ * neighbouring gas particles.
+ *
+ * @param e The #engine.
+ * @param c The #cell.
+ * @param p The #part for which we compute the quantities.
+ * @param xp The #xpart data of the particle #p.
+ * @param pi A neighbouring #part of #p.
+ * @param xpi The #xpart data of the particle #pi.
+ */
+INLINE static void sink_prepare_part_sink_formation_gas_criteria(
+    struct engine* e, struct part* restrict p, struct xpart* restrict xp,
+    struct part* restrict pi, struct xpart* restrict xpi,
+    const struct cosmology* cosmo, const struct sink_props* sink_props) {}
+
+/**
+ * @brief Compute all quantities required for the formation of a sink. This
+ * function works on the neighbouring sink particles.
+ *
+ * @param e The #engine.
+ * @param c The #cell.
+ * @param p The #part for which we compute the quantities.
+ * @param xp The #xpart data of the particle #p.
+ * @param si A neighbouring #sink of #p.
+ */
+INLINE static void sink_prepare_part_sink_formation_sink_criteria(
+    struct engine* e, struct part* restrict p, struct xpart* restrict xp,
+    struct sink* restrict si, const struct cosmology* cosmo,
+    const struct sink_props* sink_props) {}
 
 #endif /* SWIFT_DEFAULT_SINK_H */
