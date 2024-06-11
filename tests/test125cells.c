@@ -610,6 +610,10 @@ int main(int argc, char *argv[]) {
   cosmology_init_no_cosmo(&cosmo);
   engine.cosmology = &cosmo;
 
+  struct sink_props sink_props;
+  bzero(&sink_props, sizeof(struct sink_props));
+  engine.sink_properties = &sink_props;
+
   struct runner runner;
   runner.e = &engine;
 

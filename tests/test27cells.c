@@ -505,6 +505,10 @@ int main(int argc, char *argv[]) {
   bzero(&gravity_props, sizeof(struct gravity_props));
   gravity_props.G_Newton = 1.;
 
+  struct sink_props sink_props;
+  bzero(&sink_props, sizeof(struct sink_props));
+  engine.sink_properties = &sink_props;
+
   struct runner runner;
   runner.e = &engine;
 
