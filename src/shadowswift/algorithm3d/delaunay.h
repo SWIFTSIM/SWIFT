@@ -2279,6 +2279,9 @@ inline static void delaunay_flag_vertex_tetrahedra(struct delaunay* restrict d,
 
     /* Push its unvisited neighbours to the queue */
     struct tetrahedron* tet = &d->tetrahedra[tet_idx];
+    delaunay_assert(
+        tet->vertices[0] == vertex_idx || tet->vertices[1] == vertex_idx ||
+        tet->vertices[2] == vertex_idx || tet->vertices[3] == vertex_idx);
     for (int i = 0; i < 4; i++) {
       if (tet->vertices[i] == vertex_idx) continue;
       /* Only add unflagged neighbours and flag them */
@@ -2323,6 +2326,7 @@ inline static void delaunay_get_search_radii(struct delaunay* restrict d,
       /* Before doing anything, reset the flag of this tet */
       tet->_flags = tetrahedron_flag_none;
       max_circumradius2 = max(max_circumradius2, delaunay_get_radius2(d, tet));
+      delaunay_assert(sqrt(max_circumradius2) * d->inverse_side < 1000.);
     }
     r[i] = 2. * sqrt(max_circumradius2);
 

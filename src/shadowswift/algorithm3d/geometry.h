@@ -695,23 +695,23 @@ static inline int geometry3d_compute_circumcenter_relative_non_exact_no_errb(
 }
 
 static inline int geometry3d_compute_circumcenter_relative_non_exact(
-    double v0x, double v0y, double v0z, double v1x, double v1y, double v1z,
-    double v2x, double v2y, double v2z, double v3x, double v3y, double v3z,
-    double* circumcenter) {
+    const double* restrict v0, const double* restrict v1,
+    const double* restrict v2, const double* restrict v3,
+    double* restrict circumcenter) {
 
   //  double errbound_factor = 1.e-10;
   double errbound_factor = DBL_EPSILON * DELAUNAY_ERRBOUND_FAC;
 
   /* Compute relative coordinates */
-  const double r1x = v1x - v0x;
-  const double r1y = v1y - v0y;
-  const double r1z = v1z - v0z;
-  const double r2x = v2x - v0x;
-  const double r2y = v2y - v0y;
-  const double r2z = v2z - v0z;
-  const double r3x = v3x - v0x;
-  const double r3y = v3y - v0y;
-  const double r3z = v3z - v0z;
+  const double r1x = v1[0] - v0[0];
+  const double r1y = v1[1] - v0[1];
+  const double r1z = v1[2] - v0[2];
+  const double r2x = v2[0] - v0[0];
+  const double r2y = v2[1] - v0[1];
+  const double r2z = v2[2] - v0[2];
+  const double r3x = v3[0] - v0[0];
+  const double r3y = v3[1] - v0[1];
+  const double r3z = v3[2] - v0[2];
 
   /* Compute squared norm of relative coordinates */
   const double r1_sqrd = r1x * r1x + r1y * r1y + r1z * r1z;
@@ -779,26 +779,25 @@ static inline int geometry3d_compute_circumcenter_relative_non_exact(
 }
 
 static inline void geometry3d_compute_circumcenter_relative_exact(
-    struct geometry3d* g, unsigned long ax, unsigned long ay, unsigned long az,
-    unsigned long bx, unsigned long by, unsigned long bz, unsigned long cx,
-    unsigned long cy, unsigned long cz, unsigned long dx, unsigned long dy,
-    unsigned long dz, double* circumcenter) {
+    struct geometry3d* restrict g, const unsigned long* restrict a,
+    const unsigned long* restrict b, const unsigned long* restrict c,
+    const unsigned long* restrict d, double* restrict circumcenter) {
   /* store the input coordinates into the temporary large integer variables */
-  mpz_set_ui(g->aix, ax & 0xFFFFFFFFFFFFFllu);
-  mpz_set_ui(g->aiy, ay & 0xFFFFFFFFFFFFFllu);
-  mpz_set_ui(g->aiz, az & 0xFFFFFFFFFFFFFllu);
+  mpz_set_ui(g->aix, a[0] & 0xFFFFFFFFFFFFFllu);
+  mpz_set_ui(g->aiy, a[1] & 0xFFFFFFFFFFFFFllu);
+  mpz_set_ui(g->aiz, a[2] & 0xFFFFFFFFFFFFFllu);
 
-  mpz_set_ui(g->bix, bx & 0xFFFFFFFFFFFFFllu);
-  mpz_set_ui(g->biy, by & 0xFFFFFFFFFFFFFllu);
-  mpz_set_ui(g->biz, bz & 0xFFFFFFFFFFFFFllu);
+  mpz_set_ui(g->bix, b[0] & 0xFFFFFFFFFFFFFllu);
+  mpz_set_ui(g->biy, b[1] & 0xFFFFFFFFFFFFFllu);
+  mpz_set_ui(g->biz, b[2] & 0xFFFFFFFFFFFFFllu);
 
-  mpz_set_ui(g->cix, cx & 0xFFFFFFFFFFFFFllu);
-  mpz_set_ui(g->ciy, cy & 0xFFFFFFFFFFFFFllu);
-  mpz_set_ui(g->ciz, cz & 0xFFFFFFFFFFFFFllu);
+  mpz_set_ui(g->cix, c[0] & 0xFFFFFFFFFFFFFllu);
+  mpz_set_ui(g->ciy, c[1] & 0xFFFFFFFFFFFFFllu);
+  mpz_set_ui(g->ciz, c[2] & 0xFFFFFFFFFFFFFllu);
 
-  mpz_set_ui(g->dix, dx & 0xFFFFFFFFFFFFFllu);
-  mpz_set_ui(g->diy, dy & 0xFFFFFFFFFFFFFllu);
-  mpz_set_ui(g->diz, dz & 0xFFFFFFFFFFFFFllu);
+  mpz_set_ui(g->dix, d[0] & 0xFFFFFFFFFFFFFllu);
+  mpz_set_ui(g->diy, d[1] & 0xFFFFFFFFFFFFFllu);
+  mpz_set_ui(g->diz, d[2] & 0xFFFFFFFFFFFFFllu);
 
   /* compute large integer relative coordinates */
   mpz_sub(g->s1x, g->bix, g->aix);
@@ -892,13 +891,11 @@ static inline void geometry3d_compute_circumcenter_relative_adaptive(
 
 #ifdef DELAUNAY_3D_ADAPTIVE_CIRCUMCENTER
   int result_non_exact = geometry3d_compute_circumcenter_relative_non_exact(
-      v0[0], v0[1], v0[2], v1[0], v1[1], v1[2], v2[0], v2[1], v2[2], v3[0],
-      v3[1], v3[2], circumcenter);
+      v0->x_f64, v1->x_f64, v2->x_f64, v3->x_f64, circumcenter);
 
   if (!result_non_exact) {
     geometry3d_compute_circumcenter_relative_exact(
-        g, v0ul[0], v0ul[1], v0ul[2], v1ul[0], v1ul[1], v1ul[2], v2ul[0],
-        v2ul[1], v2ul[2], v3ul[0], v3ul[1], v3ul[2], circumcenter);
+        g, v0->x_u64, v1->x_u64, v2->x_u64, v3->x_u64, circumcenter);
   }
 #else
   geometry3d_compute_circumcenter_relative_non_exact_no_errb(
@@ -949,10 +946,28 @@ static inline double geometry3d_compute_circumradius2_adaptive(
                                                     circumcenter);
 
   /* Calculate and rescale radius */
-  double radius = circumcenter[0] * circumcenter[0] +
-                  circumcenter[1] * circumcenter[1] +
-                  circumcenter[2] * circumcenter[2];
-  return radius * box_side * box_side;
+  const double radius2 = circumcenter[0] * circumcenter[0] +
+                         circumcenter[1] * circumcenter[1] +
+                         circumcenter[2] * circumcenter[2];
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Check validity */
+  const double r12 =
+      (circumcenter[0] - v1->x_f64[0]) * (circumcenter[0] - v1->x_f64[0]) +
+      (circumcenter[1] - v1->x_f64[1]) * (circumcenter[1] - v1->x_f64[1]) +
+      (circumcenter[2] - v1->x_f64[2]) * (circumcenter[2] - v1->x_f64[2]);
+  const double r22 =
+      (circumcenter[0] - v2->x_f64[0]) * (circumcenter[0] - v2->x_f64[0]) +
+      (circumcenter[1] - v2->x_f64[1]) * (circumcenter[1] - v2->x_f64[1]) +
+      (circumcenter[2] - v2->x_f64[2]) * (circumcenter[2] - v2->x_f64[2]);
+  const double r32 =
+      (circumcenter[0] - v3->x_f64[0]) * (circumcenter[0] - v3->x_f64[0]) +
+      (circumcenter[1] - v3->x_f64[1]) * (circumcenter[1] - v3->x_f64[1]) +
+      (circumcenter[2] - v3->x_f64[2]) * (circumcenter[2] - v3->x_f64[2]);
+  assert(double_cmp(radius2, r12, 1e3) && double_cmp(radius2, r22, 1e3) &&
+         double_cmp(radius2, r32, 1e3));
+#endif
+
+  return radius2 * box_side * box_side;
 }
 
 inline static double geometry3d_compute_area_triangle(double ax, double ay,
