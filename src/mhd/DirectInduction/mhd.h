@@ -510,12 +510,8 @@ __attribute__((always_inline)) INLINE static void mhd_predict_extra(
   p->mhd_data.B_over_rho[1] += p->mhd_data.B_over_rho_dt[1] * dt_therm;
   p->mhd_data.B_over_rho[2] += p->mhd_data.B_over_rho_dt[2] * dt_therm;
 
-  p->mhd_data.psi_over_ch_dt = mhd_get_psi_over_ch_dt(
-      p, cosmo->a, cosmo->a_factor_sound_speed, cosmo->H, hydro_props, mu_0);
-  p->mhd_data.psi_over_ch +=
-      mhd_get_psi_over_ch_dt(p, cosmo->a, cosmo->a_factor_sound_speed, cosmo->H,
-                             hydro_props, mu_0) *
-      dt_therm;
+  /* Predict Dedner scalar */
+  p->mhd_data.psi_over_ch += p->mhd_data.psi_over_ch_dt * dt_therm;
 }
 
 /**
@@ -534,6 +530,10 @@ __attribute__((always_inline)) INLINE static void mhd_end_force(
     struct part *p, const struct cosmology *cosmo,
     const struct hydro_props *hydro_props, const float mu_0) {
 
+  /* Commpute time derivative of Dedner scalar */ 
+  p->mhd_data.psi_over_ch_dt = mhd_get_psi_over_ch_dt(
+      p, cosmo->a, cosmo->a_factor_sound_speed, cosmo->H, hydro_props, mu_0);
+  
   /* Hubble expansion contribution to induction equation */
 
   const float Hubble_induction_pref =
