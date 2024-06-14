@@ -320,9 +320,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   const float B2i = Bi[0] * Bi[0] + Bi[1] * Bi[1] + Bi[2] * Bi[2];
   const float B2j = Bj[0] * Bj[0] + Bj[1] * Bj[1] + Bj[2] * Bj[2];
 
-  const float normBi = sqrtf(B2i);
-  const float normBj = sqrtf(B2j);
-
   /*
   float curlBi[3];
   float curlBj[3];
@@ -633,24 +630,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   grad_psi_i += over_rho2_j * psi_over_ch_j * vsig_Dedner_j * wj_dr * r_inv;
   float grad_psi_j = grad_psi_i;
 
-  const float psi_over_ch_i_inv =
-      psi_over_ch_i != 0.f ? 1.f / psi_over_ch_i : 0.;
-  const float psi_over_ch_j_inv =
-      psi_over_ch_j != 0.f ? 1.f / psi_over_ch_j : 0.;
+  pi->mhd_data.B_over_rho_dt[0] -= mj * grad_psi_i * dx[0];
+  pi->mhd_data.B_over_rho_dt[1] -= mj * grad_psi_i * dx[1];
+  pi->mhd_data.B_over_rho_dt[2] -= mj * grad_psi_i * dx[2];
 
-  const float corr_ratio_i = fabsf(normBi * psi_over_ch_i_inv);
-  const float corr_ratio_j = fabsf(normBj * psi_over_ch_j_inv);
-
-  const float Qi = corr_ratio_i < 2 ? 0.5 * corr_ratio_i : 1.0f;
-  const float Qj = corr_ratio_j < 2 ? 0.5 * corr_ratio_j : 1.0f;
-
-  pi->mhd_data.B_over_rho_dt[0] -= mj * Qi * grad_psi_i * dx[0];
-  pi->mhd_data.B_over_rho_dt[1] -= mj * Qi * grad_psi_i * dx[1];
-  pi->mhd_data.B_over_rho_dt[2] -= mj * Qi * grad_psi_i * dx[2];
-
-  pj->mhd_data.B_over_rho_dt[0] += mi * Qj * grad_psi_j * dx[0];
-  pj->mhd_data.B_over_rho_dt[1] += mi * Qj * grad_psi_j * dx[1];
-  pj->mhd_data.B_over_rho_dt[2] += mi * Qj * grad_psi_j * dx[2];
+  pj->mhd_data.B_over_rho_dt[0] += mi * grad_psi_j * dx[0];
+  pj->mhd_data.B_over_rho_dt[1] += mi * grad_psi_j * dx[1];
+  pj->mhd_data.B_over_rho_dt[2] += mi * grad_psi_j * dx[2];
 }
 
 /**
@@ -698,8 +684,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
 
   const float B2i = Bi[0] * Bi[0] + Bi[1] * Bi[1] + Bi[2] * Bi[2];
   const float B2j = Bj[0] * Bj[0] + Bj[1] * Bj[1] + Bj[2] * Bj[2];
-
-  const float normBi = sqrtf(B2i);
 
   /*
   float curlBi[3];
@@ -939,16 +923,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
       over_rho2_i * psi_over_ch_i * vsig_Dedner_i * wi_dr * r_inv;
   grad_psi_i += over_rho2_j * psi_over_ch_j * vsig_Dedner_j * wj_dr * r_inv;
 
-  const float psi_over_ch_i_inv =
-      psi_over_ch_i != 0.f ? 1.f / psi_over_ch_i : 0.;
-
-  const float corr_ratio_i = fabsf(normBi * psi_over_ch_i_inv);
-
-  const float Qi = corr_ratio_i < 2 ? 0.5 * corr_ratio_i : 1.0f;
-
-  pi->mhd_data.B_over_rho_dt[0] -= mj * Qi * grad_psi_i * dx[0];
-  pi->mhd_data.B_over_rho_dt[1] -= mj * Qi * grad_psi_i * dx[1];
-  pi->mhd_data.B_over_rho_dt[2] -= mj * Qi * grad_psi_i * dx[2];
+  pi->mhd_data.B_over_rho_dt[0] -= mj * grad_psi_i * dx[0];
+  pi->mhd_data.B_over_rho_dt[1] -= mj * grad_psi_i * dx[1];
+  pi->mhd_data.B_over_rho_dt[2] -= mj * grad_psi_i * dx[2];
 }
 
 #endif /* SWIFT_DIRECT_INDUCTION_MHD_H */
