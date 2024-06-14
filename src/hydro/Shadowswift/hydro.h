@@ -500,39 +500,6 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const struct entropy_floor_properties *floor_props) {
 
-  /* Add gravity. We only do this if we have gravity activated. */
-  if (p->gpart) {
-    /* Retrieve the current value of the gravitational acceleration from the
-       gpart. We are only allowed to do this because this is the kick. We still
-       need to check whether gpart exists though.*/
-    float a_grav[3], grav_kick_factor[3];
-
-    a_grav[0] = p->gpart->a_grav[0] + p->gpart->a_grav_mesh[0];
-    a_grav[1] = p->gpart->a_grav[1] + p->gpart->a_grav_mesh[1];
-    a_grav[2] = p->gpart->a_grav[2] + p->gpart->a_grav_mesh[2];
-
-    grav_kick_factor[0] = dt_grav * p->gpart->a_grav[0];
-    grav_kick_factor[1] = dt_grav * p->gpart->a_grav[1];
-    grav_kick_factor[2] = dt_grav * p->gpart->a_grav[2];
-    if (dt_grav_mesh != 0) {
-      grav_kick_factor[0] += dt_grav_mesh * p->gpart->a_grav_mesh[0];
-      grav_kick_factor[1] += dt_grav_mesh * p->gpart->a_grav_mesh[1];
-      grav_kick_factor[2] += dt_grav_mesh * p->gpart->a_grav_mesh[2];
-    }
-
-    /* Kick the momentum for half a time step */
-    /* Note that this also affects the particle movement, as the velocity for
-       the particles is set after this. */
-    p->conserved.momentum[0] += p->conserved.mass * grav_kick_factor[0];
-    p->conserved.momentum[1] += p->conserved.mass * grav_kick_factor[1];
-    p->conserved.momentum[2] += p->conserved.mass * grav_kick_factor[2];
-
-    /* Extra *kinetic* energy due to gravity kick */
-    float gravity_work_therm = hydro_gravity_energy_update_term(
-        dt_kick_corr, p, p->conserved.momentum, a_grav, grav_kick_factor);
-    p->conserved.energy += gravity_work_therm;
-  }
-
   if (dt_therm < 0.0f) {
     /* We are reversing a kick1 due to the timestep limiter */
     /* Note on the fluxes: Since a particle can only receive time integrated
@@ -555,6 +522,53 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
 
   if (p->timestepvars.last_kick == KICK1) {
     /* I.e. we are in kick2 (end of timestep), since the dt_therm > 0. */
+
+    /* Add gravity. We only do this if we have gravity activated. */
+    if (p->gpart) {
+      /* Retrieve the current value of the gravitational acceleration from the
+         gpart. We are only allowed to do this because this is the kick. We still
+         need to check whether gpart exists though.*/
+      float a_grav[3], grav_kick[3];
+
+      a_grav[0] = p->gpart->a_grav[0] + p->gpart->a_grav_mesh[0];
+      a_grav[1] = p->gpart->a_grav[1] + p->gpart->a_grav_mesh[1];
+      a_grav[2] = p->gpart->a_grav[2] + p->gpart->a_grav_mesh[2];
+
+      float mass_prev = p->conserved.mass;
+      float mass = mass_prev + p->flux.mass;
+      grav_kick[0] = dt_grav * (mass * a_grav[0] + mass_prev * xp->a_grav[0]);
+      grav_kick[1] = dt_grav * (mass * a_grav[1] + mass_prev * xp->a_grav[1]);
+      grav_kick[2] = dt_grav * (mass * a_grav[2] + mass_prev * xp->a_grav[2]);
+
+      /* Kick the momentum for half a time step */
+      /* Note that this also affects the particle movement, as the velocity for
+         the particles is set after this. */
+      p->conserved.momentum[0] += grav_kick[0];
+      p->conserved.momentum[1] += grav_kick[1];
+      p->conserved.momentum[2] += grav_kick[2];
+
+      /* Extra *kinetic* energy due to gravity kick, see eq. 94 in Springel (2010)
+     * or eq. 62 in theory/Cosmology/cosmology.pdf. */
+      /* Divide total integrated mass flux by the timestep for hydrodynamical
+     * quantities. We will later multiply with the correct timestep (these
+     * differ for cosmological simulations). */
+      if (p->flux.dt > 0.) {
+        p->gravity.mflux[0] /= p->flux.dt;
+        p->gravity.mflux[1] /= p->flux.dt;
+        p->gravity.mflux[2] /= p->flux.dt;
+      }
+      float gravity_work_therm = hydro_gravity_energy_update_term(
+          dt_kick_corr, p, a_grav, xp->a_grav, grav_kick);
+      p->conserved.energy += gravity_work_therm;
+
+      //    float Ekin = 0.5f / p->conserved.mass *
+      //                 (p->conserved.momentum[0] * p->conserved.momentum[0] +
+      //                  p->conserved.momentum[1] * p->conserved.momentum[1] +
+      //                  p->conserved.momentum[2] * p->conserved.momentum[2]);
+      //    assert(fabsf((p->conserved.energy - Ekin) - p->thermal_energy) /
+      //               p->thermal_energy <
+      //           1e-2);
+    }
 
 #ifdef SWIFT_DEBUG_CHECKS
     assert(p->flux.dt >= 0.0f);

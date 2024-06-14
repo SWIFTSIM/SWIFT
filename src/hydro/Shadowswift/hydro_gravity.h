@@ -21,27 +21,27 @@ hydro_gravity_extra_velocity_drift(struct part* p) {
  * @brief Get the term required to update the energy due to the change in
  * gravitational energy.
  *
- * @param dt_kick_corr Time step for the potential energy correction.
- * @param dt_grav Time step for the (optional) kinetic energy correction.
+ * @param dt_kick_corr Time step for the kinetic energy correction due to mass
+ * fluxes.
  * @param p Particle.
- * @param momentum Momentum of the particle, explicitly requested so that it is
- * clear from the code that the momentum needs to be updated after the call to
- * this function.
  * @param a_grav Gravitational acceleration.
+ * @param a_grav_prev Gravitational acceleration at the previous full timestep.
+ * @param grav_kick Gravitational kick vector also used to update momentum:
+ * $dt (m^n a^n + m^(n+1) a^(n+1)$.
  * @return Term used to update the energy variable.
  */
 __attribute__((always_inline)) INLINE static float
 hydro_gravity_energy_update_term(const float dt_kick_corr,
                                  const struct part* restrict p,
-                                 const float* momentum, const float* a_grav,
-                                 const float* grav_kick_factor) {
+                                 const float* a_grav, const float* a_grav_prev,
+                                 const float* grav_kick) {
 
-  float dE =
-      -0.5f * dt_kick_corr *
-      (p->gravity.mflux[0] * a_grav[0] + p->gravity.mflux[1] * a_grav[1] +
-       p->gravity.mflux[2] * a_grav[2]);
-  dE += momentum[0] * grav_kick_factor[0] + momentum[1] * grav_kick_factor[1] +
-        momentum[2] * grav_kick_factor[2];
+  float dE = -0.5f * dt_kick_corr *
+             (p->gravity.mflux[0] * (a_grav[0] + a_grav_prev[0]) +
+              p->gravity.mflux[1] * (a_grav[1] + a_grav_prev[1]) +
+              p->gravity.mflux[2] * (a_grav[2] + a_grav_prev[2]));
+  dE += p->v_full[0] * grav_kick[0] + p->v_full[1] * grav_kick[1] +
+        p->v_full[2] * grav_kick[2];
   return dE;
 }
 

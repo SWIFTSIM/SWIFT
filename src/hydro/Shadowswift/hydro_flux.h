@@ -81,11 +81,11 @@ __attribute__((always_inline)) INLINE static void hydro_compute_flux(
  * assuming the particle is to the left of the interparticle interface.
  *
  * @param p Particle.
- * @param fluxes Fluxes accross the interface.
+ * @param fluxes Time integrated fluxes across the interface.
  * @param dx Vector pointing from right particle to left particle.
  */
 __attribute__((always_inline)) INLINE static void hydro_part_update_fluxes_left(
-    struct part* restrict p, const float* fluxes, const float* dx) {
+    struct part* restrict p, const float* restrict fluxes, const float* restrict dx) {
 
   p->gravity.mflux[0] += fluxes[0] * dx[0];
   p->gravity.mflux[1] += fluxes[0] * dx[1];
@@ -110,12 +110,12 @@ __attribute__((always_inline)) INLINE static void hydro_part_update_fluxes_left(
  * assuming the particle is to the right of the interparticle interface.
  *
  * @param p Particle.
- * @param fluxes Fluxes accross the interface.
+ * @param fluxes Time integrated fluxes across the interface.
  * @param dx Vector pointing from right particle to left particle.
  */
 __attribute__((always_inline)) INLINE static void
-hydro_part_update_fluxes_right(struct part* restrict p, const float* fluxes,
-                               const float* dx) {
+hydro_part_update_fluxes_right(struct part* restrict p, const float* restrict fluxes,
+                               const float* restrict dx) {
 
   p->gravity.mflux[0] += fluxes[0] * dx[0];
   p->gravity.mflux[1] += fluxes[0] * dx[1];
