@@ -85,7 +85,7 @@ INLINE static void convert_h(const struct engine* e, const struct part* p,
 }
 
 /**
- * @brief Get the internal energy of a particle
+ * @brief Get the comoving internal energy of a particle
  *
  * @param e #engine.
  * @param p Particle.
@@ -101,9 +101,8 @@ INLINE static void convert_u(const struct engine* e, const struct part* p,
     Q[i] += fluxes[i];
   }
   float m_inv = Q[0] > 0.f ? 1.f / Q[0] : 0.f;
-  float v[3] = {m_inv * Q[1], m_inv * Q[2], m_inv * Q[3]};
-  float Ekin = 0.5f * (Q[1] * v[0] + Q[2] * v[1] + Q[3] * v[2]);
-  if (Q[4] > Ekin) {
+  float Ekin = 0.5f * m_inv * (Q[1] * Q[1] + Q[2] * Q[2] + Q[3] * Q[3]);
+  if (p->thermal_energy > 1e-2 * Ekin) {
     ret[0] = m_inv * (Q[4] - Ekin);
   } else {
     ret[0] = hydro_get_comoving_internal_energy(p, xp);
