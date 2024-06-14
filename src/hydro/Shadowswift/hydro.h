@@ -639,6 +639,13 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     /* Update primitive quantities. Note that this also updates the fluid
      * velocity p->v. */
     hydro_convert_conserved_to_primitive(p, xp, cosmo);
+#ifndef SHADOWSWIFT_FIX_PARTICLES
+    /* Set the generator velocity to the fluid velocity. Steering will be
+     * applied after the first half kick */
+    xp->v_full[0] = p->v[0];
+    xp->v_full[1] = p->v[1];
+    xp->v_full[2] = p->v[2];
+#endif
 
     /* Reset the fluxes so that they do not get used again in the kick1. */
     hydro_part_reset_fluxes(p);
@@ -684,6 +691,10 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
 
     /* Add the remainder of this particle's timestep to flux.dt */
     p->flux.dt += 2.f * dt_therm;
+
+    /* Now that we have received both half kicks, we can set the actual
+     * velocity of the ShadowSWIFT particle (!= fluid velocity) */
+    hydro_velocities_set(p, xp, p->flux.dt);
 
     /* Signal we just did a kick1 */
     p->timestepvars.last_kick = KICK1;

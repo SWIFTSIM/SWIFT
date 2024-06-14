@@ -138,6 +138,9 @@
  * regular by adding a correction to the cell velocities.*/
 #ifndef SHADOWSWIFT_FIX_PARTICLES
 #define SHADOWSWIFT_STEER_MOTION
+#ifdef SHADOWSWIFT_STEER_MOTION
+#define SHADOWSWIFT_STEERING_COLD_FLOWS
+#endif
 #endif
 
 /*! @brief This option enables boundary conditions for non-periodic ShadowSWIFT
