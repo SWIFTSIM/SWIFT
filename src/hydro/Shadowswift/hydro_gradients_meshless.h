@@ -231,6 +231,11 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_predict(
   dWj[3] += pj->dW_time[3];
   dWj[4] += pj->dW_time[4];
   dWj[5] += pj->dW_time[5];
+
+  /* Apply a backwards correction over half the timestep (dt) of the flux
+   * exchange (we always extrapolate until the end of the particles timestep) */
+  hydro_gradients_extrapolate_in_time(pi, Wi, -0.5f * dt, dWi);
+  hydro_gradients_extrapolate_in_time(pj, Wj, -0.5f * dt, dWj);
 #endif
 
   /* Apply the slope limiter at this interface */

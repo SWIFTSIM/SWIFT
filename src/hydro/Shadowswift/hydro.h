@@ -346,10 +346,10 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   /* TODO */
 
 #ifdef SHADOWSWIFT_EXTRAPOLATE_TIME
-  /* Extrapolate primitive quantities in time */
+  /* Extrapolate primitive quantities to the current time */
   float W[6];
   hydro_part_get_primitive_variables(p, W);
-  hydro_gradients_extrapolate_in_time(p, W, 0.5f * dt_therm, p->dW_time);
+  hydro_gradients_extrapolate_in_time(p, W, dt_therm, p->dW_time);
 
   // MATTHIEU: Apply the entropy floor here.
 #endif
