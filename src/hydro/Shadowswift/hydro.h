@@ -545,48 +545,39 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     /* Add gravity. We only do this if we have gravity activated. */
     if (p->gpart) {
       /* Retrieve the current value of the gravitational acceleration from the
-         gpart. We are only allowed to do this because this is the kick. We still
-         need to check whether gpart exists though.*/
+         gpart. We are only allowed to do this because this is the kick. We
+         still need to check whether gpart exists though.*/
       float a_grav[3], grav_kick[3];
 
       a_grav[0] = p->gpart->a_grav[0] + p->gpart->a_grav_mesh[0];
       a_grav[1] = p->gpart->a_grav[1] + p->gpart->a_grav_mesh[1];
       a_grav[2] = p->gpart->a_grav[2] + p->gpart->a_grav_mesh[2];
 
-      float mass_prev = p->conserved.mass;
-      float mass = mass_prev + p->flux.mass;
-      grav_kick[0] = dt_grav * (mass * a_grav[0] + mass_prev * xp->a_grav[0]);
-      grav_kick[1] = dt_grav * (mass * a_grav[1] + mass_prev * xp->a_grav[1]);
-      grav_kick[2] = dt_grav * (mass * a_grav[2] + mass_prev * xp->a_grav[2]);
+      float mdt1 = p->gravity.dt * p->conserved.mass;
+      float mdt2 = dt_grav * (p->conserved.mass + p->flux.mass);
+      grav_kick[0] = mdt2 * a_grav[0] + mdt1 * xp->a_grav[0];
+      grav_kick[1] = mdt2 * a_grav[1] + mdt1 * xp->a_grav[1];
+      grav_kick[2] = mdt2 * a_grav[2] + mdt1 * xp->a_grav[2];
 
-      /* Kick the momentum for half a time step */
+      /* apply both half kicks to the momentum */
       /* Note that this also affects the particle movement, as the velocity for
          the particles is set after this. */
       p->conserved.momentum[0] += grav_kick[0];
       p->conserved.momentum[1] += grav_kick[1];
       p->conserved.momentum[2] += grav_kick[2];
 
-      /* Extra *kinetic* energy due to gravity kick, see eq. 94 in Springel (2010)
-     * or eq. 62 in theory/Cosmology/cosmology.pdf. */
+      /* Extra *kinetic* energy due to gravity kick, see eq. 94 in Springel
+       * (2010) or eq. 62 in theory/Cosmology/cosmology.pdf. */
       /* Divide total integrated mass flux by the timestep for hydrodynamical
-     * quantities. We will later multiply with the correct timestep (these
-     * differ for cosmological simulations). */
+       * quantities. We will later multiply with the correct timestep (these
+       * differ for cosmological simulations). */
       if (p->flux.dt > 0.) {
         p->gravity.mflux[0] /= p->flux.dt;
         p->gravity.mflux[1] /= p->flux.dt;
         p->gravity.mflux[2] /= p->flux.dt;
       }
-      float gravity_work_therm = hydro_gravity_energy_update_term(
+      p->conserved.energy += hydro_gravity_energy_update_term(
           dt_kick_corr, p, a_grav, xp->a_grav, grav_kick);
-      p->conserved.energy += gravity_work_therm;
-
-      //    float Ekin = 0.5f / p->conserved.mass *
-      //                 (p->conserved.momentum[0] * p->conserved.momentum[0] +
-      //                  p->conserved.momentum[1] * p->conserved.momentum[1] +
-      //                  p->conserved.momentum[2] * p->conserved.momentum[2]);
-      //    assert(fabsf((p->conserved.energy - Ekin) - p->thermal_energy) /
-      //               p->thermal_energy <
-      //           1e-2);
     }
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -713,6 +704,10 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     /* Update the flux.dt */
     p->flux.dt = dt_therm;
 
+    /* Update the gravitational dt */
+    p->gravity.dt = dt_grav;
+    p->gravity.dt_corr = dt_kick_corr;
+
     /* Signal we just did a restore */
     p->timestepvars.last_kick = RESTORE_AFTER_ROLLBACK;
 
@@ -724,6 +719,10 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
 
     /* Add the remainder of this particle's timestep to flux.dt */
     p->flux.dt += 2.f * dt_therm;
+
+    /* Add the remainder of the first half kick to gravity timesteps */
+    p->gravity.dt += dt_grav;
+    p->gravity.dt_corr += dt_kick_corr;
 
     /* Now that we have received both half kicks, we can set the actual
      * velocity of the ShadowSWIFT particle (!= fluid velocity) */
@@ -740,6 +739,10 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
 
     /* Update the time step used in the flux calculation */
     p->flux.dt = 2.f * dt_therm;
+
+    /* Set the timestep for the first half kick (gravity) */
+    p->gravity.dt = dt_grav;
+    p->gravity.dt_corr = dt_kick_corr;
 
     /* Reset v_max */
     p->timestepvars.vmax = 0.f;

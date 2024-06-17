@@ -308,7 +308,13 @@ struct part {
   /* Specific stuff for the gravity-hydro coupling. */
   struct {
 
-    /* Current value of the mass flux vector. */
+    /*! Timestep of first half kick of this timestep (gravity) */
+    float dt;
+
+    /*! Timestep of first half kick for the potential energy correction */
+    float dt_corr;
+
+    /*! Current value of the mass flux vector. */
     float mflux[3];
 
   } gravity;

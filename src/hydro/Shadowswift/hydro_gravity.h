@@ -36,12 +36,18 @@ hydro_gravity_energy_update_term(const float dt_kick_corr,
                                  const float* a_grav, const float* a_grav_prev,
                                  const float* grav_kick) {
 
-  float dE = -0.5f * dt_kick_corr *
-             (p->gravity.mflux[0] * (a_grav[0] + a_grav_prev[0]) +
-              p->gravity.mflux[1] * (a_grav[1] + a_grav_prev[1]) +
-              p->gravity.mflux[2] * (a_grav[2] + a_grav_prev[2]));
+  float dE =
+      -0.5f *
+      (p->gravity.mflux[0] *
+           (dt_kick_corr * a_grav[0] + p->gravity.dt_corr * a_grav_prev[0]) +
+       p->gravity.mflux[1] *
+           (dt_kick_corr * a_grav[1] + p->gravity.dt_corr * a_grav_prev[1]) +
+       p->gravity.mflux[2] *
+           (dt_kick_corr * a_grav[2] + p->gravity.dt_corr * a_grav_prev[2]));
+
   dE += p->v_full[0] * grav_kick[0] + p->v_full[1] * grav_kick[1] +
         p->v_full[2] * grav_kick[2];
+
   return dE;
 }
 
