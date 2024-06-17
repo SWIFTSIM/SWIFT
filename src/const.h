@@ -142,6 +142,11 @@
 #define SHADOWSWIFT_STEERING_COLD_FLOWS
 #endif
 #endif
+/* Options controlling thermal energy evolution */
+//#define SHADOWSWIFT_THERMAL_SPRINGEL
+#ifndef SHADOWSWIFT_THERMAL_SPRINGEL
+#define SHADOWSWIFT_THERMAL_ASENSIO
+#endif
 
 /*! @brief This option enables boundary conditions for non-periodic ShadowSWIFT
  * runs */

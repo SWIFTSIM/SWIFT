@@ -179,24 +179,22 @@ __attribute__((always_inline)) INLINE static void runner_iact_flux_exchange(
   if (pj->flux.dt >= 0)
     pj->timestepvars.vmax = (float)fmax(pj->timestepvars.vmax, vmax);
 
-  /* Store the maximal kinetic energy of the neighbours */
-  float mi = pi->conserved.mass;
-  float mj = pj->conserved.mass;
-  float mi_inv = mi > 0.f ? 1.f / mi : 0.f;
-  float mj_inv = mj > 0.f ? 1.f / mj : 0.f;
-  float v_rel[3] = {
-      mj_inv * pj->conserved.momentum[0] - mi_inv * pi->conserved.momentum[0],
-      mj_inv * pj->conserved.momentum[1] - mi_inv * pi->conserved.momentum[1],
-      mj_inv * pj->conserved.momentum[2] - mi_inv * pi->conserved.momentum[2]};
-  float Ekin_j =
-      0.5f * mj *
-      (v_rel[0] * v_rel[0] + v_rel[1] * v_rel[1] + v_rel[2] * v_rel[2]);
+  /* Store the maximal relative kinetic energy of the neighbours */
+  float v_rel_j[3] = {pj->v[0] - pi->v_full[0],
+                                    pj->v[1] - pi->v_full[1],
+                                    pj->v[2] - pi->v_full[2]};
+  float Ekin_j = 0.5f * pj->conserved.mass *
+                 (v_rel_j[0] * v_rel_j[0] + v_rel_j[1] * v_rel_j[1] +
+                  v_rel_j[2] * v_rel_j[2]);
   pi->timestepvars.Ekin = fmaxf(pi->timestepvars.Ekin, Ekin_j);
   if (pj->flux.dt >= 0) {
-    float Ekin_i =
-        0.5f * mi *
-        (v_rel[0] * v_rel[0] + v_rel[1] * v_rel[1] + v_rel[2] * v_rel[2]);
-    pj->timestepvars.Ekin = fmaxf(pi->timestepvars.Ekin, Ekin_i);
+    float v_rel_i[3] = {pi->v[0] - pj->v_full[0],
+                                      pi->v[1] - pj->v_full[1],
+                                      pi->v[2] - pj->v_full[2]};
+    float Ekin_i = 0.5f * pi->conserved.mass *
+                   (v_rel_i[0] * v_rel_i[0] + v_rel_i[1] * v_rel_i[1] +
+                    v_rel_i[2] * v_rel_i[2]);
+    pj->timestepvars.Ekin = fmaxf(pj->timestepvars.Ekin, Ekin_i);
   }
 
   /* Compute interface velocity */

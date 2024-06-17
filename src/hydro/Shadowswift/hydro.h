@@ -413,23 +413,42 @@ hydro_convert_conserved_to_primitive(struct part *p, struct xpart *xp,
   float Egrav = Q[0] * sqrtf(g[0] * g[0] + g[1] * g[1] + g[2] * g[2]) *
                 hydro_get_comoving_psize(p);
   float thermal_energy = Q[4] - Ekin;
+#ifdef SHADOWSWIFT_THERMAL_SPRINGEL
+  if (thermal_energy > 1e-2 * p->timestepvars.Ekin &&
+      thermal_energy > 1e-2 * Egrav) {
+    /* Recover thermal energy and entropy from total energy */
+    p->thermal_energy = thermal_energy;
+    W[5] = gas_entropy_from_internal_energy(W[0], thermal_energy * m_inv);
+    p->conserved.entropy = Q[0] * W[5];
+  } else {
+    /* Keep entropy conserved and recover thermal and total energy. */
+    W[5] = p->conserved.entropy * m_inv;
+    p->thermal_energy = Q[0] * gas_internal_energy_from_entropy(W[0], W[5]);
+    p->conserved.energy = Ekin + p->thermal_energy;
+  }
+#elif defined(SHADOWSWIFT_THERMAL_ASENSIO)
   if (thermal_energy > 1e-2 * (Ekin + Egrav)) {
     /* Recover thermal energy and entropy from total energy */
     p->thermal_energy = thermal_energy;
     W[5] = gas_entropy_from_internal_energy(W[0], thermal_energy * m_inv);
     p->conserved.entropy = Q[0] * W[5];
-  } else if (thermal_energy < 1e-3 * p->timestepvars.Ekin ||
+  } else if (thermal_energy < 1e-3 * (p->timestepvars.Ekin + thermal_energy) ||
              thermal_energy < 1e-3 * Egrav) {
     /* Keep entropy conserved and recover thermal and total energy. */
     W[5] = p->conserved.entropy * m_inv;
     p->thermal_energy = Q[0] * gas_internal_energy_from_entropy(W[0], W[5]);
     p->conserved.energy = Ekin + p->thermal_energy;
   } else {
-    /* Use evolved thermal energy to set entropy and total energy */
+    /* Use evolved thermal energy to set total energy and entropy */
     p->conserved.energy = Ekin + p->thermal_energy;
     W[5] = gas_entropy_from_internal_energy(W[0], p->thermal_energy * m_inv);
     p->conserved.entropy = Q[0] * W[5];
   }
+#else
+  p->thermal_energy = thermal_energy;
+  W[5] = gas_entropy_from_internal_energy(W[0], thermal_energy * m_inv);
+  p->conserved.entropy = Q[0] * W[5];
+#endif
   /* Calculate pressure from thermal energy */
   W[4] = gas_pressure_from_internal_energy(W[0], p->thermal_energy * m_inv);
 #endif
