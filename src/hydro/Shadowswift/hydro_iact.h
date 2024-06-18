@@ -180,17 +180,15 @@ __attribute__((always_inline)) INLINE static void runner_iact_flux_exchange(
     pj->timestepvars.vmax = (float)fmax(pj->timestepvars.vmax, vmax);
 
   /* Store the maximal relative kinetic energy of the neighbours */
-  float v_rel_j[3] = {pj->v[0] - pi->v_full[0],
-                                    pj->v[1] - pi->v_full[1],
-                                    pj->v[2] - pi->v_full[2]};
+  float v_rel_j[3] = {pj->v[0] - pi->v_full[0], pj->v[1] - pi->v_full[1],
+                      pj->v[2] - pi->v_full[2]};
   float Ekin_j = 0.5f * pj->conserved.mass *
                  (v_rel_j[0] * v_rel_j[0] + v_rel_j[1] * v_rel_j[1] +
                   v_rel_j[2] * v_rel_j[2]);
   pi->timestepvars.Ekin = fmaxf(pi->timestepvars.Ekin, Ekin_j);
   if (pj->flux.dt >= 0) {
-    float v_rel_i[3] = {pi->v[0] - pj->v_full[0],
-                                      pi->v[1] - pj->v_full[1],
-                                      pi->v[2] - pj->v_full[2]};
+    float v_rel_i[3] = {pi->v[0] - pj->v_full[0], pi->v[1] - pj->v_full[1],
+                        pi->v[2] - pj->v_full[2]};
     float Ekin_i = 0.5f * pi->conserved.mass *
                    (v_rel_i[0] * v_rel_i[0] + v_rel_i[1] * v_rel_i[1] +
                     v_rel_i[2] * v_rel_i[2]);
