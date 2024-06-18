@@ -108,6 +108,11 @@ hydro_part_set_conserved_variables(struct part* restrict p, const float* Q) {
   p->conserved.momentum[2] = Q[3];
   p->conserved.energy = Q[4];
   p->conserved.entropy = Q[5];
+
+  shadowswift_check_physical_quantities(
+      "mass", "energy", p->conserved.mass, p->conserved.momentum[0],
+      p->conserved.momentum[1], p->conserved.momentum[2],
+      p->conserved.energy, p->conserved.entropy);
 }
 
 /**

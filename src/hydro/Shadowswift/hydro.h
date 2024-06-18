@@ -114,50 +114,39 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
 __attribute__((always_inline)) INLINE static void hydro_first_init_part(
     struct part *restrict p, struct xpart *restrict xp) {
 
-  float W[6], Q[6];
-
-  W[0] = 0.0f;
-  W[1] = p->v[0];
-  W[2] = p->v[1];
-  W[3] = p->v[2];
-  W[4] = 0.0f;
-  W[5] = 0.0f;
-
+  /* Convert internal energy to thermal energy */
 #ifdef EOS_ISOTHERMAL_GAS
   p->thermal_energy = Q[0] * gas_internal_energy_from_entropy(0.0f, 0.0f);
 #else
+  /* This needs to be corrected by a scale factor for cosmological runs, but
+   * that happens in `hydro_convert_quantities(...)` */
   p->thermal_energy = p->thermal_energy * p->conserved.mass;
 #endif
 
-  Q[0] = p->conserved.mass;
-  Q[1] = Q[0] * W[1];
-  Q[2] = Q[0] * W[2];
-  Q[3] = Q[0] * W[3];
-  Q[4] = 0.0f;  // We need the comoving internal energy to compute the total
-                // comoving energy, so we cannot do this here...
-  Q[5] = 0.0f;  // We need the volume to be able to compute the entropy...?
+  /* Compute momentum from velocity and mass */
+  p->conserved.momentum[0] = p->conserved.mass * p->v[0];
+  p->conserved.momentum[1] = p->conserved.mass * p->v[1];
+  p->conserved.momentum[2] = p->conserved.mass * p->v[2];
 
   /* overwrite all hydro variables if we are using Lloyd's algorithm */
   /* TODO */
 
-  p->time_bin = 0;
-
-  hydro_part_set_primitive_variables(p, W);
-  hydro_part_set_conserved_variables(p, Q);
-
-  /* initialize the particle velocity based on the primitive fluid velocity */
+  /* initialize the generator velocity based on the primitive fluid velocity */
   hydro_velocities_init(p, xp);
 
-  /* ignore accelerations present in the initial condition */
+  /* Ignore hydro accelerations present in the initial condition */
   p->a_hydro[0] = 0.0f;
   p->a_hydro[1] = 0.0f;
   p->a_hydro[2] = 0.0f;
 
+  /* Set some other quantities related to geometry and time-integration to valid
+   * initial values*/
+  p->time_bin = 0;
   p->flux_count = 0;
   p->geometry.delaunay_flags = 0;
   p->geometry.search_radius = p->h;
-
-  p->timestepvars.mach_number = FLT_MAX;
+  p->timestepvars.vmax = -FLT_MAX;
+  p->timestepvars.mach_number = -FLT_MAX;
   p->timestepvars.Ekin = 0.f;
 }
 
@@ -481,19 +470,18 @@ hydro_convert_conserved_to_primitive(struct part *p, struct xpart *xp,
 }
 
 /**
- * @brief Converts the hydrodynamic variables from the initial condition file to
- * conserved variables that can be used during the integration (flux
- * calculation).
+ * @brief Carries out the remaining conversion of the hydrodynamic variables
+ * from the initial condition file, now that the volume is known and we have
+ * access to the cosmology struct.
  *
- * Requires the volume to be known.
+ * Mass, velocity, momentum and thermal energy (not comoving) have already been
+ * set in `hydro_first_init_part(...)`. We still need to:
  *
- * The initial condition file contains a mixture of primitive and conserved
- * variables. Mass is a conserved variable, and we just copy the particle
- * mass into the corresponding conserved quantity. We need the volume to
- * also derive a density, which is then used to convert the internal energy
- * to a pressure. However, we do not actually use these variables anymore.
- * We do need to initialize the linear momentum, based on the mass and the
- * velocity of the particle.
+ * - Convert thermal energy to comoving thermal energy.
+ * - Compute total energy from kinetic energy and thermal energy
+ * - Convert mass to density
+ * - Compute pressure from density and internal energy
+ * - Compute entropy from density and interal energy
  *
  * @param p The particle to act upon.
  * @param xp The extended particle data to act upon.
@@ -503,23 +491,42 @@ __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
     const struct hydro_props *hydro_props,
     const struct pressure_floor_props *pressure_floor) {
 
-  /* Convert thermal energy to comoving thermal energy, we have to do this here
-   * because we do not have access to the cosmology struct in
-   * hydro_first_init_part()... */
-  p->thermal_energy /= cosmo->a_factor_internal_energy;
-  float Q[6];
+  /* Get some quantities that we'll be using */
+  float Q[6], W[6];
   hydro_part_get_conserved_variables(p, Q);
-  float m_inv = Q[0] > 0.f ? 1.f / Q[0] : 0.f;
-  p->conserved.energy =
-      p->thermal_energy +
-      0.5f * m_inv * (Q[1] * Q[1] + Q[2] * Q[2] + Q[3] * Q[3]);
+  hydro_part_get_primitive_variables(p, W);
+  const float m_inv = Q[0] > 0.f ? 1.f / Q[0] : 0.f;
+  const float volume_inv = 1.f / p->geometry.volume;
 
-  shadowswift_check_physical_quantities(
-      "mass", "energy", p->conserved.mass, p->conserved.momentum[0],
-      p->conserved.momentum[1], p->conserved.momentum[2], p->conserved.energy,
-      p->conserved.entropy);
+  /* First of all, convert thermal energy to comoving thermal energy. */
+  const float thermal_energy =
+      p->thermal_energy / cosmo->a_factor_internal_energy;
 
-  hydro_convert_conserved_to_primitive(p, xp, cosmo);
+  /* Total energy */
+  Q[4] =
+      thermal_energy + 0.5f * m_inv * (Q[1] * Q[1] + Q[2] * Q[2] + Q[3] * Q[3]);
+
+  /* Density */
+  W[0] = Q[0] * volume_inv;
+
+  /* Pressure and entropy */
+#ifdef EOS_ISOTHERMAL_GAS
+  /* although the pressure is not formally used anywhere if an isothermal eos
+     has been selected, we still make sure it is set to the correct value */
+  W[4] = gas_pressure_from_internal_energy(W[0], 0.0f);
+  W[5] = gas_entropy_from_pressure(W[0], W[4]);
+  Q[5] = Q[0] * W[5];
+#else
+  const float u = thermal_energy * m_inv;
+  W[4] = gas_pressure_from_internal_energy(W[0], u);
+  Q[5] = Q[0] * gas_entropy_from_internal_energy(W[0], u);
+  W[5] = Q[5] * m_inv;
+#endif
+
+  /* Update quantities */
+  hydro_part_set_conserved_variables(p, Q);
+  hydro_part_set_primitive_variables(p, W);
+  p->thermal_energy = thermal_energy;
 }
 
 /**
@@ -610,33 +617,28 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
       /* Apply the fluxes */
       /* We are in kick2 of a normal timestep (not the very beginning of the
        * simulation) */
-      float flux[6];
+      float flux[6], Q[6];
       hydro_part_get_fluxes(p, flux);
+      hydro_part_get_conserved_variables(p, Q);
 
       /* Update conserved variables. */
-      p->conserved.mass += flux[0];
-      p->conserved.momentum[0] += flux[1];
-      p->conserved.momentum[1] += flux[2];
-      p->conserved.momentum[2] += flux[3];
+      Q[0] += flux[0];
+      Q[1] += flux[1];
+      Q[2] += flux[2];
+      Q[3] += flux[3];
 #if defined(EOS_ISOTHERMAL_GAS)
       /* We use the EoS equation in a sneaky way here just to get the constant
        * internal energy */
       float u = gas_internal_energy_from_entropy(0.0f, 0.0f);
+      float rho = Q[0] / p->geometry.volume;
       p->thermal_energy = p->conserved.mass * u;
-      float m_inv = p->conserved.mass > 0.f ? p->conserved.mass : 0.f;
-      p->conserved.energy =
-          p->thermal_energy +
-          0.5f *
-              (p->conserved.momentum[0] * p->conserved.momentum[0] +
-               p->conserved.momentum[1] * p->conserved.momentum[1] +
-               p->conserved.momentum[2] * p->conserved.momentum[2]) *
-              m_inv;
-      p->conserved.entropy =
-          p->conserved.mass * gas_entropy_from_internal_energy(
-                                  p->conserved.mass / p->geometry.volume, u);
+      float m_inv = Q[0] > 0.f ? 1.f / Q[0] : 0.f;
+      Q[4] = p->thermal_energy +
+             0.5f * (Q[1] * Q[1] + Q[2] * Q[2] + Q[3] * Q[3]) * m_inv;
+      Q[5] = Q[0] * gas_entropy_from_internal_energy(rho, u);
 #else
-      p->conserved.energy += flux[4];
-      p->conserved.entropy += flux[5];
+      Q[4] += flux[4];
+      Q[5] += flux[5];
       // See eq. 24 in Alonso Asensio et al. (preprint 2023)
       p->thermal_energy +=
           flux[4] -
@@ -646,21 +648,17 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
 #endif
 
 #ifndef HYDRO_GAMMA_5_3
-
       const float Pcorr = (dt_hydro - dt_therm) * p->geometry.volume;
-      p->conserved.momentum[0] -= Pcorr * p->gradients.P[0];
-      p->conserved.momentum[1] -= Pcorr * p->gradients.P[1];
-      p->conserved.momentum[2] -= Pcorr * p->gradients.P[2];
-      p->conserved.energy -=
+      Q[1] -= Pcorr * p->gradients.P[0];
+      Q[2] -= Pcorr * p->gradients.P[1];
+      Q[3] -= Pcorr * p->gradients.P[2];
+      Q[4] -=
           Pcorr * (p->v[0] * p->gradients.P[0] + p->v[1] * p->gradients.P[1] +
                    p->v[2] * p->gradients.P[2]);
 #endif
 
-      /* Check conserved quantities */
-      shadowswift_check_physical_quantities(
-          "mass", "energy", p->conserved.mass, p->conserved.momentum[0],
-          p->conserved.momentum[1], p->conserved.momentum[2],
-          p->conserved.energy, p->conserved.entropy);
+      /* Update conserved quantities */
+      hydro_part_set_conserved_variables(p, Q);
 
 #ifdef SWIFT_DEBUG_CHECKS
       if (p->conserved.mass < 0.) {
