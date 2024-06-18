@@ -321,7 +321,6 @@ Jet_ADAF = jet_factor * 0.3
 Jet_SD = 0.22 * jet_factor
 Jet_TD1 = 10 ** -3 * 0.1 ** (-0.1) * 100 ** 0.2 * 10 ** (2 * 0.1) * jet_factor
 Jet_TD2 = 10 ** -3 * 0.1 ** (-0.1) * 10 ** (-1 * 0.1) * jet_factor
-print(Jet_ADAF[11500])
 
 eps_SD1 = (
     1
