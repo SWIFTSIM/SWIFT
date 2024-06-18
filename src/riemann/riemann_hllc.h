@@ -33,7 +33,7 @@
 #include "riemann_checks.h"
 #include "riemann_vacuum.h"
 
-__attribute__((always_inline)) INLINE static void riemann_solve_for_flux(
+__attribute__((always_inline)) INLINE static float riemann_solve_for_flux(
     const float *WL, const float *WR, const float *n, const float *vij,
     float *totflux) {
 
@@ -48,7 +48,7 @@ __attribute__((always_inline)) INLINE static void riemann_solve_for_flux(
     totflux[2] = 0.0f;
     totflux[3] = 0.0f;
     totflux[4] = 0.0f;
-    return;
+    return -FLT_MAX;
   }
 
   /* STEP 0: obtain velocity in interface frame */
@@ -61,8 +61,7 @@ __attribute__((always_inline)) INLINE static void riemann_solve_for_flux(
 
   /* Handle vacuum: vacuum does not require iteration and is always exact */
   if (riemann_is_vacuum(WL, WR, uL, uR, aL, aR)) {
-    riemann_solve_vacuum_flux(WL, WR, uL, uR, aL, aR, n, vij, totflux);
-    return;
+    return riemann_solve_vacuum_flux(WL, WR, uL, uR, aL, aR, n, vij, totflux);
   }
 
   /* STEP 1: pressure estimate */
@@ -90,13 +89,45 @@ __attribute__((always_inline)) INLINE static void riemann_solve_for_flux(
       (WR[4] - WL[4] + WL[0] * uL * SLmuL - WR[0] * uR * SRmuR) /
       (WL[0] * SLmuL - WR[0] * SRmuR);
 
+  /* INTERMEDIATE STEP: compute maximal mach number of the signal velocity of
+   * the shockwaves (if any). */
+  float mach_number = -FLT_MAX;
+  /* Left shock wave? */
+  const float SL = SLmuL + uL;
+  const float starfacL = SLmuL / (SL - Sstar);
+  if (pstar > WL[4] && WL[4] > 0.f) {
+    if (SL < 0.f) {
+      /* Wave traveling into left state */
+      mach_number = fmaxf(mach_number, fabsf(SL) / aL);
+    } else {
+      /* Wave traveling into left star state */
+      const float rhostarL = WL[0] * starfacL;
+      float astarLinv = sqrtf(hydro_one_over_gamma * rhostarL / pstar);
+      mach_number = fmaxf(mach_number, fabsf(SL) * astarLinv);
+    }
+  }
+  /* Right shock wave? */
+  const float SR = SRmuR + uR;
+  const float starfacR = SRmuR / (SR - Sstar);
+  if (pstar > WR[4] && WR[4] > 0.f) {
+    if (SR < 0.f) {
+      /* Wave traveling into left state */
+      mach_number = fmaxf(mach_number, fabsf(SR) / aL);
+    } else {
+      /* Wave traveling into left star state */
+      const float rhostarR = WR[0] * starfacR;
+      float astarRinv = sqrtf(hydro_one_over_gamma * rhostarR / pstar);
+      mach_number = fmaxf(mach_number, fabsf(SR) * astarRinv);
+    }
+  }
+
+
   /* STEP 3: HLLC flux in a frame moving with the interface velocity */
   if (Sstar >= 0.0f) {
     const float rhoLuL = WL[0] * uL;
     const float v2 = WL[1] * WL[1] + WL[2] * WL[2] + WL[3] * WL[3];
     const float eL =
         WL[4] * rhoLinv * hydro_one_over_gamma_minus_one + 0.5f * v2;
-    const float SL = SLmuL + uL;
 
     /* flux FL */
     totflux[0] = rhoLuL;
@@ -109,11 +140,10 @@ __attribute__((always_inline)) INLINE static void riemann_solve_for_flux(
 
     if (SL < 0.0f) {
 
-      const float starfac = SLmuL / (SL - Sstar);
       const float rhoLSL = WL[0] * SL;
       const float SstarmuL = Sstar - uL;
-      const float rhoLSLstarfac = rhoLSL * (starfac - 1.0f);
-      const float rhoLSLSstarmuL = rhoLSL * SstarmuL * starfac;
+      const float rhoLSLstarfac = rhoLSL * (starfacL - 1.0f);
+      const float rhoLSLSstarmuL = rhoLSL * SstarmuL * starfacL;
 
       totflux[0] += rhoLSLstarfac;
       totflux[1] += rhoLSLstarfac * WL[1] + rhoLSLSstarmuL * n[0];
@@ -127,7 +157,6 @@ __attribute__((always_inline)) INLINE static void riemann_solve_for_flux(
     const float v2 = WR[1] * WR[1] + WR[2] * WR[2] + WR[3] * WR[3];
     const float eR =
         WR[4] * rhoRinv * hydro_one_over_gamma_minus_one + 0.5f * v2;
-    const float SR = SRmuR + uR;
 
     /* flux FR */
     totflux[0] = rhoRuR;
@@ -170,6 +199,8 @@ __attribute__((always_inline)) INLINE static void riemann_solve_for_flux(
 #ifdef SWIFT_DEBUG_CHECKS
   riemann_check_output(WL, WR, n, vij, totflux);
 #endif
+
+  return mach_number;
 }
 
 __attribute__((always_inline)) INLINE static void

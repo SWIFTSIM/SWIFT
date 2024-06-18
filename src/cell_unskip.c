@@ -3425,8 +3425,6 @@ int cell_unskip_grid_tasks(struct cell *c, struct scheduler *s) {
     error(
         "Trying to activate grid construction tasks, but not at construction "
         "level!");
-  if (c->grid.self_completeness == grid_incomplete)
-    error("Incomplete cell at construction level!");
 #endif
 
 #if WITH_MPI
@@ -3440,6 +3438,7 @@ int cell_unskip_grid_tasks(struct cell *c, struct scheduler *s) {
     /* Update the self-completeness flag of c. For non-local cells the rebuild
      * will be triggered on another node if necessary */
     cell_grid_update_self_completeness(c, 0);
+    rebuild = c->grid.self_completeness != grid_complete;
   }
 
   /* Loop over incoming sync tasks linked to this cell */
@@ -3477,10 +3476,6 @@ int cell_unskip_grid_tasks(struct cell *c, struct scheduler *s) {
 
       /* Only construct the grid for local cells */
       if (ci_nodeID == nodeID) {
-#if defined(SWIFT_DEBUG_CHECKS) && !defined(SHADOWSWIFT_RELAXED_COMPLETENESS)
-        if (cj->grid.self_completeness == grid_incomplete)
-          error("Incomplete neighbouring cell at construction level!");
-#endif
         scheduler_activate(s, t);
 
         /* We only need sorts for the grid construction.

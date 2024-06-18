@@ -235,7 +235,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_flux_exchange(
     n_unit[k] = -dx[k] * r_inv;
   }
 
-  hydro_compute_flux(Wi, Wj, n_unit, vij, surface_area, totflux);
+  const float mach_number =
+      hydro_compute_flux(Wi, Wj, n_unit, vij, surface_area, totflux);
+  pi->timestepvars.mach_number =
+      fmaxf(pi->timestepvars.mach_number, mach_number);
+  if (pj->flux.dt > 0.f) {
+    pj->timestepvars.mach_number =
+        fmaxf(pj->timestepvars.mach_number, mach_number);
+  }
 
   /* If we're working with RT, we need to pay additional attention to the
    * individual mass fractions of ionizing species. */

@@ -275,13 +275,17 @@ struct part {
 
   struct {
 
-    /* Signal velocity */
+    /*! Signal velocity */
     float vmax;
 
-    /* Maximal value of the kinetic energy among the neighbours */
+    /*! Maximal value of the kinetic energy among the neighbours */
     float Ekin;
 
-    /* Last kick applied to this particle. */
+    /*! Maximal mach number of the signal speed of shock waves in Riemann
+     * problems across faces of this particle */
+    float mach_number;
+
+    /*! Last kick type applied to this particle. */
     enum kick_type last_kick;
 
   } timestepvars;

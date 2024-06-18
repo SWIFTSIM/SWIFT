@@ -156,6 +156,9 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
   p->flux_count = 0;
   p->geometry.delaunay_flags = 0;
   p->geometry.search_radius = p->h;
+
+  p->timestepvars.mach_number = FLT_MAX;
+  p->timestepvars.Ekin = 0.f;
 }
 
 /**
@@ -409,11 +412,12 @@ hydro_convert_conserved_to_primitive(struct part *p, struct xpart *xp,
    * and total energy stay consistent with our choice of thermal energy.
    * NOTE: This may violate energy conservation. */
   float Ekin = 0.5f * (Q[1] * Q[1] + Q[2] * Q[2] + Q[3] * Q[3]) * m_inv;
+  float thermal_energy = Q[4] - Ekin;
+#ifdef SHADOWSWIFT_THERMAL_ENERGY_SWITCH
+#if SHADOWSWIFT_THERMAL_ENERGY_SWITCH == THERMAL_ENERGY_SWITCH_SPRINGEL
   float *g = xp->a_grav;
   float Egrav = Q[0] * sqrtf(g[0] * g[0] + g[1] * g[1] + g[2] * g[2]) *
                 hydro_get_comoving_psize(p);
-  float thermal_energy = Q[4] - Ekin;
-#ifdef SHADOWSWIFT_THERMAL_SPRINGEL
   if (thermal_energy > 1e-2 * p->timestepvars.Ekin &&
       thermal_energy > 1e-2 * Egrav) {
     /* Recover thermal energy and entropy from total energy */
@@ -426,7 +430,22 @@ hydro_convert_conserved_to_primitive(struct part *p, struct xpart *xp,
     p->thermal_energy = Q[0] * gas_internal_energy_from_entropy(W[0], W[5]);
     p->conserved.energy = Ekin + p->thermal_energy;
   }
-#elif defined(SHADOWSWIFT_THERMAL_ASENSIO)
+#elif SHADOWSWIFT_THERMAL_ENERGY_SWITCH == THERMAL_ENERGY_SWITCH_SPRINGEL_MACH
+  if (p->timestepvars.mach_number > 1.1) {
+    /* Recover thermal energy and entropy from total energy */
+    p->thermal_energy = thermal_energy;
+    W[5] = gas_entropy_from_internal_energy(W[0], thermal_energy * m_inv);
+    p->conserved.entropy = Q[0] * W[5];
+  } else {
+    /* Keep entropy conserved and recover thermal and total energy. */
+    W[5] = p->conserved.entropy * m_inv;
+    p->thermal_energy = Q[0] * gas_internal_energy_from_entropy(W[0], W[5]);
+    p->conserved.energy = Ekin + p->thermal_energy;
+  }
+#elif SHADOWSWIFT_THERMAL_ENERGY_SWITCH == THERMAL_ENERGY_SWITCH_ASENSIO
+  float *g = xp->a_grav;
+  float Egrav = Q[0] * sqrtf(g[0] * g[0] + g[1] * g[1] + g[2] * g[2]) *
+                hydro_get_comoving_psize(p);
   if (thermal_energy > 1e-2 * (Ekin + Egrav)) {
     /* Recover thermal energy and entropy from total energy */
     p->thermal_energy = thermal_energy;
@@ -444,6 +463,9 @@ hydro_convert_conserved_to_primitive(struct part *p, struct xpart *xp,
     W[5] = gas_entropy_from_internal_energy(W[0], p->thermal_energy * m_inv);
     p->conserved.entropy = Q[0] * W[5];
   }
+#else
+  error("Unknown thermal energy switch!");
+#endif
 #else
   p->thermal_energy = thermal_energy;
   W[5] = gas_entropy_from_internal_energy(W[0], thermal_energy * m_inv);
@@ -748,7 +770,10 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     p->timestepvars.vmax = 0.f;
 
     /* Reset Ekin */
-    p->timestepvars.Ekin = -INFINITY;
+    p->timestepvars.Ekin = -FLT_MAX;
+
+    /* Reset mach number */
+    p->timestepvars.mach_number = -FLT_MAX;
 
     /* Now that we have received both half kicks, we can set the actual
      * velocity of the ShadowSWIFT particle (!= fluid velocity) */

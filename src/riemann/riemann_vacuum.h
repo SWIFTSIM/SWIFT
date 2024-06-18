@@ -202,13 +202,14 @@ __attribute__((always_inline)) INLINE static void riemann_solve_vacuum(
 /**
  * @brief Solve the vacuum Riemann problem and return the fluxes
  */
-__attribute__((always_inline)) INLINE static void riemann_solve_vacuum_flux(
+__attribute__((always_inline)) INLINE static float riemann_solve_vacuum_flux(
     const float* WL, const float* WR, float vL, float vR, float aL, float aR,
     const float* n_unit, const float* vij, float* totflux) {
 
   float Whalf[5];
   riemann_solve_vacuum(WL, WR, vL, vR, aL, aR, Whalf, n_unit);
   riemann_flux_from_half_state(Whalf, vij, n_unit, totflux);
+  return -FLT_MAX;
 }
 
 #endif /* SWIFT_RIEMANN_VACUUM_H */

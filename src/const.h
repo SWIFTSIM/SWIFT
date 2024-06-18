@@ -143,10 +143,10 @@
 #endif
 #endif
 /* Options controlling thermal energy evolution */
-//#define SHADOWSWIFT_THERMAL_SPRINGEL
-#ifndef SHADOWSWIFT_THERMAL_SPRINGEL
-#define SHADOWSWIFT_THERMAL_ASENSIO
-#endif
+#define THERMAL_ENERGY_SWITCH_SPRINGEL 1
+#define THERMAL_ENERGY_SWITCH_SPRINGEL_MACH 2
+#define THERMAL_ENERGY_SWITCH_ASENSIO 3
+#define SHADOWSWIFT_THERMAL_ENERGY_SWITCH THERMAL_ENERGY_SWITCH_SPRINGEL_MACH
 
 /*! @brief This option enables boundary conditions for non-periodic ShadowSWIFT
  * runs */
