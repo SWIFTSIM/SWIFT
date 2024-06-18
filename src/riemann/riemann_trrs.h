@@ -53,8 +53,9 @@
  * @param WR The right state vector
  * @param Whalf Empty state vector in which the result will be stored
  * @param n_unit Normal vector of the interface
+ * @return The pressure in the intermediate region (P_star)
  */
-__attribute__((always_inline)) INLINE static void riemann_solver_solve(
+__attribute__((always_inline)) INLINE static float riemann_solver_solve(
     const float* WL, const float* WR, float* Whalf, const float* n_unit) {
   float aL, aR;
   float PLR;
@@ -73,8 +74,7 @@ __attribute__((always_inline)) INLINE static void riemann_solver_solve(
   aR = sqrtf(hydro_gamma * WR[4] / WR[0]);
 
   if (riemann_is_vacuum(WL, WR, vL, vR, aL, aR)) {
-    riemann_solve_vacuum(WL, WR, vL, vR, aL, aR, Whalf, n_unit);
-    return;
+    return riemann_solve_vacuum(WL, WR, vL, vR, aL, aR, Whalf, n_unit);
   }
 
   /* calculate the velocity and pressure in the intermediate state */
@@ -160,9 +160,11 @@ __attribute__((always_inline)) INLINE static void riemann_solver_solve(
   Whalf[1] += vhalf * n_unit[0];
   Whalf[2] += vhalf * n_unit[1];
   Whalf[3] += vhalf * n_unit[2];
+
+  return pstar;
 }
 
-__attribute__((always_inline)) INLINE static void riemann_solve_for_flux(
+__attribute__((always_inline)) INLINE static float riemann_solve_for_flux(
     const float* Wi, const float* Wj, const float* n_unit, const float* vij,
     float* totflux) {
 
@@ -171,12 +173,14 @@ __attribute__((always_inline)) INLINE static void riemann_solve_for_flux(
 #endif
 
   float Whalf[5];
-  riemann_solver_solve(Wi, Wj, Whalf, n_unit);
+  const float pstar = riemann_solver_solve(Wi, Wj, Whalf, n_unit);
   riemann_flux_from_half_state(Whalf, vij, n_unit, totflux);
 
 #ifdef SWIFT_DEBUG_CHECKS
   riemann_check_output(Wi, Wj, n_unit, vij, totflux);
 #endif
+
+  return pstar;
 }
 
 __attribute__((always_inline)) INLINE static void

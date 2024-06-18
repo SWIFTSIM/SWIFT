@@ -315,8 +315,9 @@ __attribute__((always_inline)) INLINE static float riemann_solve_brent(
  * @param WR The right state vector
  * @param Whalf Empty state vector in which the result will be stored
  * @param n_unit Normal vector of the interface
+ * @return The pressure of the middle state (P_star).
  */
-__attribute__((always_inline)) INLINE static void riemann_solver_solve(
+__attribute__((always_inline)) INLINE static float riemann_solver_solve(
     const float* WL, const float* WR, float* Whalf, const float* n_unit) {
 
   /* velocity of the left and right state in a frame aligned with n_unit */
@@ -342,8 +343,7 @@ __attribute__((always_inline)) INLINE static void riemann_solver_solve(
 
   /* check vacuum (generation) condition */
   if (riemann_is_vacuum(WL, WR, vL, vR, aL, aR)) {
-    riemann_solve_vacuum(WL, WR, vL, vR, aL, aR, Whalf, n_unit);
-    return;
+    return riemann_solve_vacuum(WL, WR, vL, vR, aL, aR, Whalf, n_unit);
   }
 
   /* values are ok: let's find pstar (riemann_f(pstar) = 0)! */
@@ -492,6 +492,8 @@ __attribute__((always_inline)) INLINE static void riemann_solver_solve(
   Whalf[1] += vhalf * n_unit[0];
   Whalf[2] += vhalf * n_unit[1];
   Whalf[3] += vhalf * n_unit[2];
+
+  return p;
 }
 
 /**
@@ -575,7 +577,7 @@ riemann_solver_solve_middle_state(const float* WL, const float vL,
       0.5f * (vL + vR) + 0.5f * (riemann_fb(p, WR, aR) - riemann_fb(p, WL, aL));
 }
 
-__attribute__((always_inline)) INLINE static void riemann_solve_for_flux(
+__attribute__((always_inline)) INLINE static float riemann_solve_for_flux(
     const float* Wi, const float* Wj, const float* n_unit, const float* vij,
     float* totflux) {
 
@@ -584,12 +586,14 @@ __attribute__((always_inline)) INLINE static void riemann_solve_for_flux(
 #endif
 
   float Whalf[5];
-  riemann_solver_solve(Wi, Wj, Whalf, n_unit);
+  float P_star = riemann_solver_solve(Wi, Wj, Whalf, n_unit);
   riemann_flux_from_half_state(Whalf, vij, n_unit, totflux);
 
 #ifdef SWIFT_DEBUG_CHECKS
   riemann_check_output(Wi, Wj, n_unit, vij, totflux);
 #endif
+
+  return P_star;
 }
 
 __attribute__((always_inline)) INLINE static void

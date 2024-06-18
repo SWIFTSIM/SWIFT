@@ -62,7 +62,8 @@ __attribute__((always_inline)) INLINE static float hydro_compute_flux(
     const float* WL, const float* WR, const float* n_unit, const float* vLR,
     const float Anorm, float* fluxes) {
 
-  const float mach_number = riemann_solve_for_flux(WL, WR, n_unit, vLR, fluxes);
+  const float P_star = riemann_solve_for_flux(WL, WR, n_unit, vLR, fluxes);
+  const float mach_number = riemann_get_max_mach_number(WL, WR, P_star);
   float entropy_flux;
   if (fluxes[0] > 0.f) {
     entropy_flux = fluxes[0] * WL[5];

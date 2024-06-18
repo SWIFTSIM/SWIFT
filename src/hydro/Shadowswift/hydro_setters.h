@@ -22,6 +22,16 @@
 #include "pressure_floor.h"
 
 /**
+ * @brief Reset the extra timestep variables
+ */
+__attribute__((always_inline)) INLINE static void hydro_reset_timestep_vars(
+    struct part* p) {
+  p->timestepvars.vmax = 0.f;
+  p->timestepvars.mach_number = 0.f;
+  p->timestepvars.Ekin = 0.f;
+}
+
+/**
  * @brief Set the primitive variables for the given particle to the given
  * values.
  *
@@ -111,8 +121,8 @@ hydro_part_set_conserved_variables(struct part* restrict p, const float* Q) {
 
   shadowswift_check_physical_quantities(
       "mass", "energy", p->conserved.mass, p->conserved.momentum[0],
-      p->conserved.momentum[1], p->conserved.momentum[2],
-      p->conserved.energy, p->conserved.entropy);
+      p->conserved.momentum[1], p->conserved.momentum[2], p->conserved.energy,
+      p->conserved.entropy);
 }
 
 /**

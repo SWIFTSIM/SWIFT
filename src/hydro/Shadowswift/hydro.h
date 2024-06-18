@@ -145,9 +145,7 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
   p->flux_count = 0;
   p->geometry.delaunay_flags = 0;
   p->geometry.search_radius = p->h;
-  p->timestepvars.vmax = -FLT_MAX;
-  p->timestepvars.mach_number = -FLT_MAX;
-  p->timestepvars.Ekin = 0.f;
+  hydro_reset_timestep_vars(p);
 }
 
 /**
@@ -764,14 +762,8 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     p->gravity.dt = dt_grav;
     p->gravity.dt_corr = dt_kick_corr;
 
-    /* Reset v_max */
-    p->timestepvars.vmax = 0.f;
-
-    /* Reset Ekin */
-    p->timestepvars.Ekin = -FLT_MAX;
-
-    /* Reset mach number */
-    p->timestepvars.mach_number = -FLT_MAX;
+    /* Reset the timestep_vars for the next timestep */
+    hydro_reset_timestep_vars(p);
 
     /* Now that we have received both half kicks, we can set the actual
      * velocity of the ShadowSWIFT particle (!= fluid velocity) */
