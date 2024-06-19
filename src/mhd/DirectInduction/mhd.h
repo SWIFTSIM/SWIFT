@@ -138,14 +138,21 @@ __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
                 cosmo->a_factor_sound_speed *
                 sqrtf(p->rho * mu_0 / (dt_B_factor * dt_B_factor))
           : FLT_MAX;
-
+    
+  const float dt_AR = p->mhd_data.v_sig_AR != 0.f
+                           ? hydro_properties->CFL_condition * p->h /
+                                 p->mhd_data.v_sig_AR
+                           : FLT_MAX;
+  
   const float dt_eta = p->mhd_data.resistive_eta != 0.f
                            ? hydro_properties->CFL_condition * cosmo->a *
                                  cosmo->a * p->h * p->h /
                                  p->mhd_data.resistive_eta
                            : FLT_MAX;
-
-  return fminf(dt_B_derivatives, dt_eta);
+  
+  const float dt_res = fminf(dt_AR, dt_eta);
+  
+  return fminf(dt_res, dt_B_derivatives);
 }
 
 /**
@@ -289,7 +296,7 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_gradient(
     struct part *restrict p, struct xpart *restrict xp,
     const struct cosmology *cosmo, const struct hydro_props *hydro_props) {
 
-  p->force.balsara = 1.f;
+  // p->force.balsara = 1.f;
 }
 
 /**

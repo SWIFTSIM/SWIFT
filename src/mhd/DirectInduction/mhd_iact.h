@@ -589,6 +589,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
                           dv_cross_dx[2] * dv_cross_dx[2];
   const float v_sig_B = sqrtf(v_sig_B_2) * r_inv;
 
+  pi->mhd_data.v_sig_AR = fmaxf(v_sig_B, pi->mhd_data.v_sig_AR);
+  pj->mhd_data.v_sig_AR = fmaxf(v_sig_B, pj->mhd_data.v_sig_AR);
+  
   const float art_diff_pref_i = 0.5f * art_diff_beta_i * v_sig_B *
                                 (wi_dr * over_rho2_i + wj_dr * over_rho2_j);
   const float art_diff_pref_j = 0.5f * art_diff_beta_j * v_sig_B *
@@ -894,6 +897,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
                           dv_cross_dx[2] * dv_cross_dx[2];
   const float v_sig_B = sqrtf(v_sig_B_2) * r_inv;
 
+  pi->mhd_data.v_sig_AR = fmaxf(v_sig_B, pi->mhd_data.v_sig_AR);
+  
   const float art_diff_pref = 0.5f * art_diff_beta * v_sig_B *
                               (wi_dr * over_rho2_i + wj_dr * over_rho2_j);
 
