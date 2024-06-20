@@ -555,6 +555,8 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
 #ifdef SWIFT_DEBUG_CHECKS
     assert(p->timestepvars.last_kick == KICK1);
 #endif
+    /* Kick generator (undo the last half kick) */
+    hydro_generator_velocity_half_kick(p, xp, dt_therm);
 
     /* Signal that we just did a rollback */
     p->timestepvars.last_kick = ROLLBACK;
@@ -719,6 +721,9 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
 #ifdef SWIFT_DEBUG_CHECKS
     assert(p->flux.dt == -1.0f);
 #endif
+    /* Kick generator */
+    hydro_generator_velocity_half_kick(p, xp, dt_therm);
+
     /* Update the flux.dt */
     p->flux.dt = dt_therm;
 
@@ -734,6 +739,8 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
 #ifdef SWIFT_DEBUG_CHECKS
     assert(p->flux.dt >= 0.0f);
 #endif
+    /* Kick generator */
+    hydro_generator_velocity_half_kick(p, xp, dt_therm);
 
     /* Add the remainder of this particle's timestep to flux.dt */
     p->flux.dt += 2.f * dt_therm;
@@ -754,6 +761,8 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
 #ifdef SWIFT_DEBUG_CHECKS
     assert(p->flux.dt == -1.0f);
 #endif
+    /* Kick generator */
+    hydro_generator_velocity_half_kick(p, xp, dt_therm);
 
     /* Update the time step used in the flux calculation */
     p->flux.dt = 2.f * dt_therm;
