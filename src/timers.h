@@ -153,6 +153,8 @@ enum {
   timer_do_slope_estimate_ghost,
   timer_do_slope_limiter_ghost,
   timer_do_flux_ghost,
+  timer_do_sync,
+  timer_neutrino_weighting,
   timer_count,
 };
 

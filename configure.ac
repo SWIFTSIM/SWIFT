@@ -92,6 +92,7 @@ if test "$with_csds" = "yes"; then
    fi
 
    AC_CONFIG_SUBDIRS([csds])
+   CFLAGS="$CFLAGS $OPENMP_CFLAGS"
 
 fi
 AM_CONDITIONAL([HAVECSDS],[test $with_csds = "yes"])
@@ -1494,7 +1495,7 @@ AC_ARG_WITH([velociraptor],
 if test "x$with_velociraptor" != "xno"; then
    if test "x$with_velociraptor" != "xyes" -a "x$with_velociraptor" != "x"; then
       VELOCIRAPTOR_LIBS="-L$with_velociraptor -lvelociraptor -lstdc++ -lhdf5"
-      CFLAGS="$CFLAGS -fopenmp"
+      CFLAGS="$CFLAGS $OPENMP_CFLAGS"
    else
       VELOCIRAPTOR_LIBS=""
    fi

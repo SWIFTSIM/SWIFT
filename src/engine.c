@@ -328,7 +328,7 @@ void engine_repartition_trigger(struct engine *e) {
           e->usertime_last_step, e->systime_last_step, (double)resident,
           e->local_deadtime / (e->nr_threads * e->wallclock_time)};
       double timemems[e->nr_nodes * 4];
-      MPI_Gather(&timemem, 4, MPI_DOUBLE, timemems, 4, MPI_DOUBLE, 0,
+      MPI_Gather(timemem, 4, MPI_DOUBLE, timemems, 4, MPI_DOUBLE, 0,
                  MPI_COMM_WORLD);
       if (e->nodeID == 0) {
 
@@ -1345,7 +1345,7 @@ void engine_rebuild(struct engine *e, const int repartitioned,
                 MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, &e->s->max_softening, 1, MPI_FLOAT, MPI_MAX,
                 MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, &e->s->max_mpole_power,
+  MPI_Allreduce(MPI_IN_PLACE, e->s->max_mpole_power,
                 SELF_GRAVITY_MULTIPOLE_ORDER + 1, MPI_FLOAT, MPI_MAX,
                 MPI_COMM_WORLD);
 #endif
@@ -2021,7 +2021,10 @@ void engine_run_rt_sub_cycles(struct engine *e) {
     e->max_active_bin_subcycle = get_max_active_bin(e->ti_current_subcycle);
     e->min_active_bin_subcycle =
         get_min_active_bin(e->ti_current_subcycle, ti_subcycle_old);
-    /* TODO: add rt_props_update() for cosmological thermochemistry*/
+
+    /* Update rt properties */
+    rt_props_update(e->rt_props, e->internal_units, e->cosmology);
+
     if (e->policy & engine_policy_cosmology) {
       double time_old = time;
       cosmology_update(
@@ -2169,6 +2172,9 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
       (e->policy & engine_policy_temperature))
     cooling_update(e->physical_constants, e->cosmology, e->pressure_floor_props,
                    e->cooling_func, e->s, e->time);
+
+  if (e->policy & engine_policy_rt)
+    rt_props_update(e->rt_props, e->internal_units, e->cosmology);
 
 #ifdef WITH_CSDS
   if (e->policy & engine_policy_csds) {
@@ -2602,6 +2608,10 @@ int engine_step(struct engine *e) {
   if (e->policy & engine_policy_hydro)
     hydro_props_update(e->hydro_properties, e->gravity_properties,
                        e->cosmology);
+
+  /* Update the rt properties */
+  if (e->policy & engine_policy_rt)
+    rt_props_update(e->rt_props, e->internal_units, e->cosmology);
 
   /* Check for any snapshot triggers */
   engine_io_check_snapshot_triggers(e);
@@ -4088,7 +4098,7 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
   struct rt_props *rt_properties =
       (struct rt_props *)malloc(sizeof(struct rt_props));
   rt_struct_restore(rt_properties, stream, e->physical_constants,
-                    e->internal_units);
+                    e->internal_units, cosmo);
   e->rt_props = rt_properties;
 
   struct black_holes_props *black_holes_properties =

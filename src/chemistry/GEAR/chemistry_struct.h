@@ -70,6 +70,10 @@ struct chemistry_bpart_data {};
 /**
  * @brief Chemical abundances traced by the #sink in the GEAR model.
  */
-struct chemistry_sink_data {};
+struct chemistry_sink_data {
+
+  /*! Total mass of element in a particle. */
+  double metal_mass_fraction[GEAR_CHEMISTRY_ELEMENT_COUNT];
+};
 
 #endif /* SWIFT_CHEMISTRY_STRUCT_GEAR_H */
