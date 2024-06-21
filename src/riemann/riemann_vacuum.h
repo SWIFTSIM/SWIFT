@@ -59,8 +59,8 @@ __attribute__((always_inline)) INLINE static float riemann_solve_vacuum(
     float* Whalf, const float* n_unit) {
 
   float SL, SR;
-  float vhalf;
-  float P_star;
+  float vhalf = 0.f;
+  float P_star = 0.f;
 
   if (!WR[0] && !WL[0]) {
     /* if both states are vacuum, the solution is also vacuum */
@@ -69,7 +69,6 @@ __attribute__((always_inline)) INLINE static float riemann_solve_vacuum(
     Whalf[2] = 0.0f;
     Whalf[3] = 0.0f;
     Whalf[4] = 0.0f;
-    P_star = 0.0f;
   } else if (!WR[0]) {
     /* vacuum right state */
     Whalf[1] = WL[1];
@@ -98,7 +97,6 @@ __attribute__((always_inline)) INLINE static float riemann_solve_vacuum(
       }
     } else {
       Whalf[0] = WL[0];
-      vhalf = 0.0f;
       Whalf[4] = WL[4];
     }
   } else if (!WL[0]) {
@@ -129,7 +127,6 @@ __attribute__((always_inline)) INLINE static float riemann_solve_vacuum(
       }
     } else {
       Whalf[0] = WR[0];
-      vhalf = 0.0f;
       Whalf[4] = WR[4];
     }
   } else {
@@ -142,7 +139,6 @@ __attribute__((always_inline)) INLINE static float riemann_solve_vacuum(
       Whalf[2] = 0.0f;
       Whalf[3] = 0.0f;
       Whalf[4] = 0.0f;
-      P_star = 0.f;
     } else {
       if (SL >= 0.0f) {
         Whalf[1] = WL[1];
@@ -163,7 +159,6 @@ __attribute__((always_inline)) INLINE static float riemann_solve_vacuum(
           Whalf[4] = P_star;
         } else {
           Whalf[0] = WL[0];
-          vhalf = 0.0f;
           Whalf[4] = WL[4];
         }
       } else {
@@ -185,7 +180,6 @@ __attribute__((always_inline)) INLINE static float riemann_solve_vacuum(
           Whalf[4] = P_star;
         } else {
           Whalf[0] = WR[0];
-          vhalf = 0.0f;
           Whalf[4] = WR[4];
         }
       }
