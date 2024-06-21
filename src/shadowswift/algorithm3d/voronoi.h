@@ -60,26 +60,30 @@ static const int face_sid_index[28] = {27, 14, 26, 15, 3,  13, 25, 12, 23, 19,
  * neighbouring cells, a surface area and a midpoint position.
  */
 struct voronoi_pair {
+  /*! Midpoint of the interface. */
+  double midpoint[3];
+
+  /*! Surface area of the interface. */
+  double surface_area;
+
   /*! idx of the particle on the left of this pair in its respective swift
    * cell. Since the left particle is always local this is also the index of the
    * corresponding cell in this voronoi tesselation. */
   int left_idx;
 
-  /*! idx of the particle on the right of this pair in its respective swift cell
+  /* We store either the index of the right particle *or* the actual sid
+   * (direction) of the face, we never need both */
+  union{
+    /*! idx of the particle on the right of this pair in its respective swift cell
    * if that cell is the same as the cell holding this Voronoi tesselation (i.e.
    * the particle is local) or in the super cell of its respective swift cell if
    * that swift cell is foreign. For local particles, this is also the index of
    * the corresponding cell in this voronoi tesselation. */
-  int right_idx;
+    int right_idx;
 
-  /*! Real sid of this pair (boundary faces are stored under sid 27) */
-  int sid;
-
-  /*! Surface area of the interface. */
-  double surface_area;
-
-  /*! Midpoint of the interface. */
-  double midpoint[3];
+    /*! Real sid of this pair (boundary faces are stored under sid 27) */
+    int sid;
+  };
 
 #ifdef VORONOI_STORE_FACES
   /*! Vertices of the interface. */
@@ -137,18 +141,16 @@ struct voronoi {
 };
 
 /* Forward declarations */
-inline static int voronoi_new_face(struct voronoi *restrict v,
-                                   const struct delaunay *restrict d,
-                                   int left_part_idx_in_d,
-                                   int right_part_idx_in_d,
-                                   struct part *restrict parts, double area,
-                                   double *restrict centroid,
-                                   double *restrict vertices, int n_vertices);
+inline static int voronoi_new_face(
+    struct voronoi *restrict v, const struct delaunay *restrict d,
+    int left_part_idx_in_d, int right_part_idx_in_d,
+    struct part *restrict parts, double area, double *restrict centroid,
+    double *restrict vertices, int n_vertices, int **sids_arr);
 inline static void voronoi_check_grid(struct voronoi *v,
                                       const struct delaunay *d,
                                       const struct part *parts);
 inline static void voronoi_finalize(struct voronoi *v, const struct delaunay *d,
-                                    struct part *parts);
+                                    struct part *parts, int* face_sids);
 inline static void voronoi_destroy(struct voronoi *restrict v);
 
 inline static struct voronoi *voronoi_malloc(int number_of_cells, double dmin) {
@@ -248,6 +250,9 @@ inline static void voronoi_build(struct voronoi *v, struct delaunay *d,
   double *circumcenters =
       malloc(3 * d->tetrahedra_index * sizeof(*circumcenters));
   delaunay_compute_circumcenters(d, circumcenters);
+
+  /* Allocate memory to store the face sids */
+  int *face_sids = malloc(v->pair_size * sizeof(*face_sids));
 
   /* Allocate memory for the neighbour flags and initialize them to 0 (will be
    * freed at the end of this function!) */
@@ -465,12 +470,14 @@ inline static void voronoi_build(struct voronoi *v, struct delaunay *d,
       face_centroid[1] *= n_vertices_inv;
       face_centroid[2] *= n_vertices_inv;
       if (voronoi_new_face(v, d, gen_idx_in_d, ngb_idx_in_d, parts, face_area,
-                           face_centroid, face_vertices, face_vertex_count)) {
+                           face_centroid, face_vertices, face_vertex_count,
+                           &face_sids)) {
         /* The face is not degenerate */
 #ifdef VORONOI_STORE_CELL_FACE_CONNECTIONS
         nface++;
 #endif
         /* Update the minimal dist to a neighbouring generator */
+        voronoi_assert(face_dist > 0.f);
         if (face_dist < min_face_dist) {
           min_face_dist = face_dist;
           min_face_dist_ngb = ngb_idx_in_d;
@@ -518,11 +525,14 @@ inline static void voronoi_build(struct voronoi *v, struct delaunay *d,
     }
 #endif
   }
+  voronoi_finalize(v, d, parts, face_sids);
+  voronoi_check_grid(v, d, parts);
+
+  /* Be clean */
   free(circumcenters);
+  swift_free("voronoi", face_sids);
   free(neighbour_flags);
   int3_fifo_queue_destroy(&neighbour_info_q);
-  voronoi_finalize(v, d, parts);
-  voronoi_check_grid(v, d, parts);
   free(face_vertices);
 }
 
@@ -533,9 +543,10 @@ inline static void voronoi_build(struct voronoi *v, struct delaunay *d,
  * @param v The voronoi struct
  * @param d The delaunay tesselation from which this voronoi was built
  * @param parts The array of local particles.
+ * @param face_sids The array of the sids under which the faces must be stored
  */
 inline static void voronoi_finalize(struct voronoi *v, const struct delaunay *d,
-                                    struct part *parts) {
+                                    struct part *parts, int* face_sids) {
   /* Set some trackers */
   /* The running counts of faces of each sid that are in the correct location */
   int counts[28];
@@ -564,12 +575,8 @@ inline static void voronoi_finalize(struct voronoi *v, const struct delaunay *d,
     sid = face_sid_order[i];
   }
   while (face_idx < v->pair_index) {
-    struct voronoi_pair *face = &v->pairs_flat[face_idx];
-    int face_sid = face->sid;
-    if (face->sid & 1 << 5) {
-      face_sid = 27;
-      face->sid &= ~(1 << 5);
-    }
+    int face_sid = face_sids[face_idx];
+
     /* Does this face have the sid we are currently collecting? */
     if (face_sid == sid) {
       /* Face at correct location:
@@ -586,19 +593,27 @@ inline static void voronoi_finalize(struct voronoi *v, const struct delaunay *d,
       }
       voronoi_assert(face_idx >= 0 && face_idx <= offset);
     } else {
-      /* Swap this face to the correct sid */
+      /* Swap this face (and its sid) to the correct location */
       voronoi_assert(face_sid_index[face_sid] > face_sid_index[sid]);
       int idx_dest = offsets[face_sid] + counts[face_sid];
       voronoi_assert(idx_dest < v->pair_index);
-      struct voronoi_pair tmp = v->pairs_flat[idx_dest];
-      memcpy(&v->pairs_flat[idx_dest], &v->pairs_flat[face_idx],
-             sizeof(struct voronoi_pair));
-      memcpy(&v->pairs_flat[face_idx], &tmp, sizeof(struct voronoi_pair));
+      struct voronoi_pair face = v->pairs_flat[face_idx];
+      v->pairs_flat[face_idx] = v->pairs_flat[idx_dest];
+      v->pairs_flat[idx_dest] = face;
+      face_sids[face_idx] = face_sids[idx_dest];
+      face_sids[idx_dest] = face_sid;
       counts[face_sid]++;
       voronoi_assert(counts[face_sid] <= v->pair_count[face_sid]);
-      voronoi_assert(v->pairs_flat[face_idx].sid < 59);
     }
   }
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Do the running counts tally up to the correct amount? */
+  for (int j = 0; j < 28; j++) {
+    if (counts[j] != v->pair_count[j])
+      error("Incorrect face count %i for sid %i! Should be %i", counts[j], j,
+            v->pair_count[j]);
+  }
+#endif
 
 #ifdef VORONOI_STORE_CELL_FACE_CONNECTIONS
   /* Recompute the cell face links */
@@ -650,16 +665,6 @@ inline static void voronoi_finalize(struct voronoi *v, const struct delaunay *d,
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
-  for (int j = 0; j < 28; j++) {
-    if (counts[j] != v->pair_count[j])
-      error("Incorrect face count %i for sid %i! Should be %i", counts[j], j,
-            v->pair_count[j]);
-    int face_count = v->pair_count[j];
-    const struct voronoi_pair *faces = v->pairs[j];
-    assert(face_count == counts[j]);
-    for (int k = 0; k < face_count; k++)
-      if (faces->sid != j) error("Face ended up under wrong sid!");
-  }
   /* Check whether the face counts match */
   int count_total = 0;
   for (int j = d->vertex_start; j < d->vertex_end; j++) {
@@ -759,20 +764,21 @@ inline static void voronoi_add_cell_face_connection(struct voronoi *v,
  * @param centroid Centroid of the new face.
  * @param vertices Corner vertices of the new face.
  * @param n_vertices Number of vertices in the vertices array.
+ * @param sids_arr (inout) pointer to the array of face sids. This function
+ * might reallocate the array.
  * @returns 1 if a non-degenerate face was added or found, else 0
  */
-inline static int voronoi_new_face(struct voronoi *restrict v,
-                                   const struct delaunay *restrict d,
-                                   int left_part_idx_in_d,
-                                   int right_part_idx_in_d,
-                                   struct part *restrict parts, double area,
-                                   double *restrict centroid,
-                                   double *restrict vertices, int n_vertices) {
-  int sid;
+inline static int voronoi_new_face(
+    struct voronoi *restrict v, const struct delaunay *restrict d,
+    int left_part_idx_in_d, int right_part_idx_in_d,
+    struct part *restrict parts, double area, double *restrict centroid,
+    double *restrict vertices, int n_vertices, int **sids_arr) {
+
   int left_part_idx = d->vertex_part_idx[left_part_idx_in_d];
   int right_part_idx = d->vertex_part_idx[right_part_idx_in_d];
 
   /* Pair between local active particles? */
+  int sid;
   if (right_part_idx_in_d < d->vertex_end) {
     /* Already processed this pair? */
     if (right_part_idx_in_d < left_part_idx_in_d) {
@@ -784,7 +790,7 @@ inline static int voronoi_new_face(struct voronoi *restrict v,
         int face_idx = v->cell_pair_connections[idx];
         voronoi_assert(face_idx < v->pair_index);
         struct voronoi_pair *face = &v->pairs_flat[face_idx];
-        if (face->sid == 13 && face->right_idx == left_part_idx) {
+        if ((*sids_arr)[face_idx] == 13 && face->right_idx == left_part_idx) {
           voronoi_add_cell_face_connection(v, face_idx);
           return 1;
         }
@@ -793,26 +799,27 @@ inline static int voronoi_new_face(struct voronoi *restrict v,
        * to do. */
       return 0;
 #else
+      /* Be conservative and make sure we perform the tests after adding a new
+       * face (even though the equivalent already created face might be
+       * degenerate). */
       return 1;
 #endif
     }
+
     sid = 13;
   } else {
     sid = d->ghost_cell_sids[right_part_idx_in_d - d->vertex_end];
   }
 
-  /* Boundary particle? */
-  int actual_sid = sid;
-  if (sid & 1 << 5) {
-    /* We store all boundary faces under fictive sid 27 */
-    sid = 27;
-  }
+  /* Degenerate face? */
+  if (area < v->min_surface_area) return 0;
 
-  /* Do we need to extend the pairs array? */
+  /* Do we need to extend the pairs and sids array? */
   if (v->pair_index == v->pair_size) {
     v->pair_size = (3 * v->pair_size) / 2;
     v->pairs_flat = (struct voronoi_pair *)swift_realloc(
         "voronoi", v->pairs_flat, v->pair_size * sizeof(struct voronoi_pair));
+    *sids_arr = (int *)realloc(*sids_arr, v->pair_size * sizeof(**sids_arr));
   }
 
   /* Grab the next free pair */
@@ -820,16 +827,20 @@ inline static int voronoi_new_face(struct voronoi *restrict v,
   struct voronoi_pair *this_pair = &v->pairs_flat[face_idx];
   this_pair->surface_area = area;
   memcpy(this_pair->midpoint, centroid, 3 * sizeof(this_pair->midpoint[0]));
-  /* is the face degenerate? */
-  if (this_pair->surface_area < v->min_surface_area) {
-    return 0;
-  }
-  v->pair_index++;
 
   /* Initialize pair */
   this_pair->left_idx = left_part_idx;
-  this_pair->right_idx = right_part_idx;
-  this_pair->sid = actual_sid;
+  /* Boundary particle? */
+  if (sid & 1 << 5) {
+    /* We store all boundary faces under fictive sid 27 and store the actual
+     * sid inside the face. */
+    this_pair->sid = sid & ~(1 << 5);
+    sid = 27;
+  } else {
+    /* Store the right particle index for normal particles */
+    this_pair->right_idx = right_part_idx;
+  }
+  (*sids_arr)[face_idx] = sid;
 
 #ifdef VORONOI_STORE_FACES
 #ifdef SWIFT_DEBUG_CHECKS
@@ -850,8 +861,6 @@ inline static int voronoi_new_face(struct voronoi *restrict v,
   memcpy(this_pair->vertices, vertices, 3 * n_vertices * sizeof(double));
 #endif
 
-  voronoi_assert(this_pair->sid < 59);
-
 #ifdef VORONOI_STORE_CELL_FACE_CONNECTIONS
   /* Add cell_pair_connection */
   voronoi_add_cell_face_connection(v, face_idx);
@@ -859,6 +868,7 @@ inline static int voronoi_new_face(struct voronoi *restrict v,
 
   /* increase index (to signal that we added the face) */
   v->pair_count[sid]++;
+  v->pair_index++;
 
   return 1;
 }
@@ -890,7 +900,8 @@ inline static void voronoi_check_grid(struct voronoi *v,
          k++) {
       const struct voronoi_pair *face =
           &v->pairs_flat[v->cell_pair_connections[k]];
-      if (face->sid == 13) {
+      /* Local faces are stored first in the flattened array */
+      if (face < v->pairs[1]) {
         if (face->right_idx != p_idx && face->left_idx != p_idx) {
           error("Incorrect cell face link!");
         }
