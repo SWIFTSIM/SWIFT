@@ -187,22 +187,22 @@ MPI_Comm subtaskMPI_comms[task_subtype_count];
  * @param ARRAY is the array of this specific type.
  * @param COUNT is the number of elements in the array.
  */
-#define TASK_CELL_OVERLAP(TYPE, ARRAY, COUNT)                    \
-  __attribute__((always_inline)) INLINE static size_t            \
-      task_cell_overlap_##TYPE(const struct cell *restrict ci,   \
-                               const struct cell *restrict cj) { \
-                                                                 \
-    if (ci == NULL || cj == NULL) return 0;                      \
-                                                                 \
-    if (ci->ARRAY <= cj->ARRAY &&                                \
-        ci->ARRAY + ci->COUNT >= cj->ARRAY + cj->COUNT) {        \
-      return cj->COUNT;                                          \
-    } else if (cj->ARRAY <= ci->ARRAY &&                         \
-               cj->ARRAY + cj->COUNT >= ci->ARRAY + ci->COUNT) { \
-      return ci->COUNT;                                          \
-    }                                                            \
-                                                                 \
-    return 0;                                                    \
+#define TASK_CELL_OVERLAP(TYPE, ARRAY, COUNT)                           \
+  __attribute__((always_inline))                                        \
+  INLINE static size_t task_cell_overlap_##TYPE(                        \
+      const struct cell *restrict ci, const struct cell *restrict cj) { \
+                                                                        \
+    if (ci == NULL || cj == NULL) return 0;                             \
+                                                                        \
+    if (ci->ARRAY <= cj->ARRAY &&                                       \
+        ci->ARRAY + ci->COUNT >= cj->ARRAY + cj->COUNT) {               \
+      return cj->COUNT;                                                 \
+    } else if (cj->ARRAY <= ci->ARRAY &&                                \
+               cj->ARRAY + cj->COUNT >= ci->ARRAY + ci->COUNT) {        \
+      return ci->COUNT;                                                 \
+    }                                                                   \
+                                                                        \
+    return 0;                                                           \
   }
 
 TASK_CELL_OVERLAP(part, hydro.parts, hydro.count);
