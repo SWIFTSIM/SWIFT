@@ -215,7 +215,10 @@ double zoom_get_region_dim_and_shift(struct space *s) {
         error(
             "Cannot shift the zoom region to the centre of the box "
             "when the box is not periodic. Centre the CoM of the high "
-            "resolution particles in the box.");
+            "resolution particles in the box. (shift=[%f, %f, %f], dim=[%f, "
+            "%f, %f])",
+            s->zoom_props->zoom_shift[0], s->zoom_props->zoom_shift[1],
+            s->zoom_props->zoom_shift[2], s->dim[0], s->dim[1], s->dim[2]);
       }
     }
   }
