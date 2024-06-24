@@ -201,14 +201,24 @@ double zoom_get_region_dim_and_shift(struct space *s) {
     s->zoom_props->zoom_shift[i] = box_mid[i] - midpoint[i];
   }
 
+  /* We shouldn't shift if the shift is incremental. */
+  for (int i = 0; i < 3; i++) {
+    if (fabs(s->zoom_props->zoom_shift[i]) < 0.01 * s->dim[i]) {
+      s->zoom_props->zoom_shift[i] = 0.0;
+    }
+  }
+
   /* If the volume isn't periodic then we can't shift. */
   if (!s->periodic) {
     for (int i = 0; i < 3; i++) {
-      if (fabs(s->zoom_props->zoom_shift[i]) > 0.0) {
+      if (fabs(s->zoom_props->zoom_shift[i]) > 0.01 * s->dim[i]) {
         error(
             "Cannot shift the zoom region to the centre of the box "
             "when the box is not periodic. Centre the CoM of the high "
-            "resolution particles in the box.");
+            "resolution particles in the box. (shift=[%f, %f, %f], dim=[%f, "
+            "%f, %f])",
+            s->zoom_props->zoom_shift[0], s->zoom_props->zoom_shift[1],
+            s->zoom_props->zoom_shift[2], s->dim[0], s->dim[1], s->dim[2]);
       }
     }
   }
@@ -233,7 +243,8 @@ double zoom_get_region_dim_and_shift(struct space *s) {
  * instead treat it as a target.
  *
  * @param s The space
- * @param ini_max_dim The dim of the zoom region before tesselating the volume.
+ * @param ini_max_dim The dim of the zoom region before tesselating the
+ * volume.
  */
 void zoom_get_cell_props_large_region(struct space *s, double ini_max_dim) {
 
@@ -290,9 +301,10 @@ void zoom_get_cell_props_large_region(struct space *s, double ini_max_dim) {
  * @brief Compute the zoom, background and buffer cell grid properties.
  *
  * This function is used when buffer cells are need to ensure the number of
- * background cells is kept to a minimum. Buffer cells will fill the background
- * cell containing the zoom region and ensure the zoom region can remain
- * sufficiently small while the background cells remain sufficiently large.
+ * background cells is kept to a minimum. Buffer cells will fill the
+ * background cell containing the zoom region and ensure the zoom region can
+ * remain sufficiently small while the background cells remain sufficiently
+ * large.
  *
  * @param s The space
  * @param max_dim The dim of the zoom region including padding. This will be
@@ -340,8 +352,8 @@ void zoom_get_cell_props_with_buffer_cells(struct space *s, double max_dim) {
   /* Calculate the initial buffer region cdim. */
   int ini_buffer_cdim = (int)(floor(buffer_dim / max_dim));
 
-  /* Ensure the initial buffer cdim is odd (it must be centered on middle of the
-   * box). */
+  /* Ensure the initial buffer cdim is odd (it must be centered on middle of
+   * the box). */
   if (ini_buffer_cdim % 2 == 0) ini_buffer_cdim -= 1;
 
   /* Account for the number of buffer cells we want in the zoom region. */
@@ -383,7 +395,8 @@ void zoom_get_cell_props_with_buffer_cells(struct space *s, double max_dim) {
  * the box.
  *
  * @param s The space
- * @param ini_max_dim The dim of the zoom region before tesselating the volume.
+ * @param ini_max_dim The dim of the zoom region before tesselating the
+ * volume.
  */
 void zoom_get_cell_props_no_buffer_cells(struct space *s, double ini_max_dim) {
 
