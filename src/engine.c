@@ -134,7 +134,9 @@ const char *engine_policy_names[] = {"none",
                                      "line of sight",
                                      "sink",
                                      "rt",
-                                     "power spectra"};
+                                     "power spectra",
+                                     "moving mesh",
+                                     "moving mesh hydro"};
 
 const int engine_default_snapshot_subsample[swift_type_count] = {0};
 
@@ -751,7 +753,8 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
 #ifdef WITH_MPI
 
   const int nr_proxies = e->nr_proxies;
-  const int with_hydro = e->policy & engine_policy_hydro;
+  const int with_hydro =
+      e->policy & (engine_policy_hydro | engine_policy_grid_hydro);
   const int with_stars = e->policy & engine_policy_stars;
   const int with_black_holes = e->policy & engine_policy_black_holes;
   struct space *s = e->s;
