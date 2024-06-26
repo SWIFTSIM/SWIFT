@@ -93,6 +93,9 @@ struct fof_props {
   /*! Has the particle found a linkable to attach to? */
   char *found_attachable_link;
 
+  /*! Is the group purely local after linking the foreign particles? */
+  char *is_purely_local;
+
   /*! For attachable particles: distance to the current nearest linkable part */
   float *distance_to_link;
 
@@ -198,6 +201,8 @@ void fof_link_attachable_particles(struct fof_props *props,
                                    const struct space *s);
 void fof_finalise_attachables(struct fof_props *props, const struct space *s);
 void fof_link_foreign_fragments(struct fof_props *props, const struct space *s);
+void fof_build_list_of_purely_local_groups(struct fof_props *props,
+                                           const struct space *s);
 void fof_compute_group_props(struct fof_props *props,
                              const struct black_holes_props *bh_props,
                              const struct phys_const *constants,
