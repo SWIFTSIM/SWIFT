@@ -28,6 +28,7 @@
 #include "cell.h"
 #include "engine.h"
 #include "sink.h"
+#include "sink_iact.h"
 #include "space_getsid.h"
 #include "timers.h"
 
