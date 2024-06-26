@@ -53,7 +53,8 @@
 #include "periodic.h"
 #include "pressure_floor_iact.h"
 #include "runner.h"
-#include "sink.h"
+#include "sink_iact.h"
+#include "sink_properties.h"
 #include "star_formation_iact.h"
 #include "stars.h"
 
