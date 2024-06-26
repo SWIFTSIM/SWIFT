@@ -207,6 +207,36 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
   cooling->HydrogenFractionByMass = parser_get_opt_param_double(
       parameter_file, "GrackleCooling:HydrogenFractionByMass", 0.76);
 
+  cooling->initial_nHII_to_nH_ratio = parser_get_opt_param_double(
+      parameter_file, "GrackleCooling:initial_nHII_to_nH_ratio", -1);
+
+  cooling->initial_nHeI_to_nH_ratio = parser_get_opt_param_double(
+      parameter_file, "GrackleCooling:initial_nHeI_to_nH_ratio", -1);
+
+  cooling->initial_nHeII_to_nH_ratio = parser_get_opt_param_double(
+      parameter_file, "GrackleCooling:initial_nHeII_to_nH_ratio", -1);
+
+  cooling->initial_nHeIII_to_nH_ratio = parser_get_opt_param_double(
+      parameter_file, "GrackleCooling:initial_nHeIII_to_nH_ratio", -1);
+
+  cooling->initial_nDI_to_nH_ratio = parser_get_opt_param_double(
+      parameter_file, "GrackleCooling:initial_nDI_to_nH_ratio", -1);
+
+  cooling->initial_nDII_to_nH_ratio = parser_get_opt_param_double(
+      parameter_file, "GrackleCooling:initial_nDII_to_nH_ratio", -1);
+
+  cooling->initial_nHM_to_nH_ratio = parser_get_opt_param_double(
+      parameter_file, "GrackleCooling:initial_nHM_to_nH_ratio", -1);
+
+  cooling->initial_nH2I_to_nH_ratio = parser_get_opt_param_double(
+      parameter_file, "GrackleCooling:initial_nH2I_to_nH_ratio", -1);
+
+  cooling->initial_nH2II_to_nH_ratio = parser_get_opt_param_double(
+      parameter_file, "GrackleCooling:initial_nH2II_to_nH_ratio", -1);
+
+  cooling->initial_nHDI_to_nH_ratio = parser_get_opt_param_double(
+      parameter_file, "GrackleCooling:initial_nHDI_to_nH_ratio", -1);
+
   /* Self shielding */
   cooling->self_shielding_method = parser_get_opt_param_int(
       parameter_file, "GrackleCooling:self_shielding_method", 0);
@@ -215,9 +245,6 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
     cooling->self_shielding_threshold = parser_get_param_float(
         parameter_file, "GrackleCooling:self_shielding_threshold_atom_per_cm3");
   }
-
-  cooling->HydrogenFractionByMass = parser_get_opt_param_double(
-      parameter_file, "GrackleCooling:HydrogenFractionByMass", 0.76);
 
   /* Initial step convergence */
   cooling->max_step = parser_get_opt_param_int(
