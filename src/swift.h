@@ -87,6 +87,7 @@
 #include "scheduler.h"
 #include "serial_io.h"
 #include "single_io.h"
+#include "sink_iact.h"
 #include "sink_properties.h"
 #include "space.h"
 #include "star_formation.h"
