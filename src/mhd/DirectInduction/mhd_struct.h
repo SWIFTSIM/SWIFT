@@ -52,10 +52,16 @@ struct mhd_part_data {
   /*! Artifical Diffusion */
   float art_diff_beta;
 
+  float B_over_rho_dt_AR[3];
+
+  float u_dt_AR;
+  
   /* SPH <1> error */
   float mean_SPH_err;
+
   /* SPH <grad1> error */
   float mean_grad_SPH_err[3];
+
   /* Magnetic force */
   float tot_mag_F[3];
   /* B advection source */

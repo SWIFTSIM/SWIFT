@@ -608,6 +608,18 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   pi->u_dt -= 0.5f * mj * permeability_inv * art_diff_pref_i * dB_2;
   pj->u_dt -= 0.5f * mi * permeability_inv * art_diff_pref_j * dB_2;
 
+  /* Store AR terms */ 
+  pi->mhd_data.B_over_rho_dt_AR[0] += mj * art_diff_pref_i * dB[0];
+  pi->mhd_data.B_over_rho_dt_AR[1] += mj * art_diff_pref_i * dB[1];
+  pi->mhd_data.B_over_rho_dt_AR[2] += mj * art_diff_pref_i * dB[2];
+
+  pj->mhd_data.B_over_rho_dt_AR[0] -= mi * art_diff_pref_j * dB[0];
+  pj->mhd_data.B_over_rho_dt_AR[1] -= mi * art_diff_pref_j * dB[1];
+  pj->mhd_data.B_over_rho_dt_AR[2] -= mi * art_diff_pref_j * dB[2];
+
+  pi->mhd_data.u_dt_AR -= 0.5f * mj * permeability_inv * art_diff_pref_i * dB_2;
+  pj->mhd_data.u_dt_AR -= 0.5f * mi * permeability_inv * art_diff_pref_j * dB_2;
+
   /*Divergence diffusion */
 
   // const float vsig_Dedner_i = pi->viscosity.v_sig;
@@ -927,6 +939,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
 
   pi->u_dt -= 0.5f * mj * permeability_inv * art_diff_pref * dB_2;
 
+
+  /* Store AR terms */ 
+  pi->mhd_data.B_over_rho_dt_AR[0] += mj * art_diff_pref * dB[0];
+  pi->mhd_data.B_over_rho_dt_AR[1] += mj * art_diff_pref * dB[1];
+  pi->mhd_data.B_over_rho_dt_AR[2] += mj * art_diff_pref * dB[2];
+
+  pi->mhd_data.u_dt_AR -= 0.5f * mj * permeability_inv * art_diff_pref * dB_2;
+  
   /*Divergence diffusion */
 
   // const float vsig_Dedner_i = pi->viscosity.v_sig;

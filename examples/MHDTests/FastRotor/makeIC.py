@@ -88,11 +88,7 @@ h_out *= lx / cx_out
 # Stack unit cells to generate dense disk
 ratio = np.cbrt(rho_in_0 / rho_out_0)
 
-cx_in, cy_in, cz_in = (
-    int(np.ceil(ratio * cx_out)),
-    int(np.ceil(ratio * cy_out)),
-    int(np.ceil(ratio * cz_out)),
-)
+cx_in, cy_in, cz_in = int(np.ceil(ratio * cx_out)),int(np.ceil(ratio * cy_out)), int(np.ceil(ratio * cz_out))
 
 lx_in = lx + (np.ceil(ratio * cx_out) / (ratio * cx_out) - 1.0) * lx
 ly_in = ly + (np.ceil(ratio * cy_out) / (ratio * cy_out) - 1.0) * ly
@@ -150,8 +146,8 @@ u = np.ones(N)
 
 rot = np.sqrt((pos[:, 0] - 0.5 * lx) ** 2 + (pos[:, 1] - 0.5 * ly) ** 2)
 
-v[:, 0][rot < R_0] = -v_0 * (pos[:, 1][rot < R_0] - 0.5 * ly) / rot[rot < R_0]
-v[:, 1][rot < R_0] = v_0 * (pos[:, 0][rot < R_0] - 0.5 * lx) / rot[rot < R_0]
+v[:, 0][rot < R_0] = -v_0 * (pos[:, 1][rot < R_0] - 0.5 * ly) / R_0
+v[:, 1][rot < R_0] = v_0 * (pos[:, 0][rot < R_0] - 0.5 * lx) / R_0
 
 B[:, 0] = B_0
 
