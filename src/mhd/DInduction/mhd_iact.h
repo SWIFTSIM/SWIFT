@@ -381,7 +381,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
     pj->mhd_data.dBdt[i] -=
         mi * 8.0 * pj->mhd_data.resistive_eta * mag_Disj * (Bi[i] - Bj[i]);
   }
- /* Save induction sources */
+  /* Save induction sources */
   for (int i = 0; i < 3; i++) {
     pi->mhd_data.Adv_B_source[i] +=
         mj * mag_Indi *
@@ -392,9 +392,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
         ((Bj[i] * dv[(i + 1) % 3] - Bj[(i + 1) % 3] * dv[i]) * dx[(i + 1) % 3] +
          (Bj[i] * dv[(i + 2) % 3] - Bj[(i + 2) % 3] * dv[i]) * dx[(i + 2) % 3]);
     pi->mhd_data.Adv_B_source[i] += pi->mhd_data.Q1 * mj * a * a * mag_Indi *
-                            (pi->mhd_data.phi - pj->mhd_data.phi) * dx[i];
+                                    (pi->mhd_data.phi - pj->mhd_data.phi) *
+                                    dx[i];
     pj->mhd_data.Adv_B_source[i] += pj->mhd_data.Q1 * mi * a * a * mag_Indj *
-                            (pi->mhd_data.phi - pj->mhd_data.phi) * dx[i];
+                                    (pi->mhd_data.phi - pj->mhd_data.phi) *
+                                    dx[i];
     pi->mhd_data.Diff_B_source[i] +=
         mj * 8.0 * pi->mhd_data.resistive_eta * mag_Disi * (Bi[i] - Bj[i]);
     pj->mhd_data.Diff_B_source[i] -=
@@ -522,7 +524,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
         ((Bi[i] * dv[(i + 1) % 3] - Bi[(i + 1) % 3] * dv[i]) * dx[(i + 1) % 3] +
          (Bi[i] * dv[(i + 2) % 3] - Bi[(i + 2) % 3] * dv[i]) * dx[(i + 2) % 3]);
     pi->mhd_data.Adv_B_source[i] += pi->mhd_data.Q1 * mj * mag_Indi * a * a *
-                            (pi->mhd_data.phi - pj->mhd_data.phi) * dx[i];
+                                    (pi->mhd_data.phi - pj->mhd_data.phi) *
+                                    dx[i];
     pi->mhd_data.Diff_B_source[i] +=
         mj * 8.0 * pi->mhd_data.resistive_eta * mag_Disi * (Bi[i] - Bj[i]);
     pi->mhd_data.Delta_B[i] += mj * 8.0 * mag_Disi * (Bi[i] - Bj[i]);
