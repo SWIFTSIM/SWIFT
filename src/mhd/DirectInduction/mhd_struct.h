@@ -55,7 +55,7 @@ struct mhd_part_data {
   float B_over_rho_dt_AR[3];
 
   float u_dt_AR;
-  
+
   /* SPH <1> error */
   float mean_SPH_err;
 
@@ -64,6 +64,12 @@ struct mhd_part_data {
 
   /* Magnetic force */
   float tot_mag_F[3];
+  /* B advection source */
+  float Adv_B_source[3];
+  /* B total diffusion source */
+  float Diff_B_source[3];
+  /* Laplacian B */
+  float Delta_B[3];
 };
 
 /**

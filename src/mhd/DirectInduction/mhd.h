@@ -460,10 +460,16 @@ __attribute__((always_inline)) INLINE static void mhd_reset_acceleration(
   p->mhd_data.B_over_rho_dt_AR[2] = 0.0f;
 
   p->mhd_data.u_dt_AR = 0.0f;
-  
+
   /* Save forces*/
   for (int k = 0; k < 3; k++) {
     p->mhd_data.tot_mag_F[k] = 0.0f;
+  }
+  /* Save induction sources*/
+  for (int k = 0; k < 3; k++) {
+    p->mhd_data.Adv_B_source[k] = 0.0f;
+    p->mhd_data.Diff_B_source[k] = 0.0f;
+    p->mhd_data.Delta_B[k] = 0.0f;
   }
 }
 
