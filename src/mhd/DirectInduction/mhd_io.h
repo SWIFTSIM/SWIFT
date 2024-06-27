@@ -295,42 +295,52 @@ INLINE static int mhd_write_particles(const struct part* parts,
       "Artificial resistivity switch of the particles");
 
   list[7] = io_make_output_field(
+      "SignalVelocityARmin", FLOAT, 1, UNIT_CONV_VELOCITY,
+      -1.f, parts, mhd_data.v_sig_AR_min,
+      "Co-moving minimum artificial resistivity signal velocity of the particle");
+
+  list[8] = io_make_output_field(
+      "SignalVelocityARmax", FLOAT, 1, UNIT_CONV_VELOCITY,
+      -1.f, parts, mhd_data.v_sig_AR_max,
+      "Co-moving minimum artificial resistivity signal velocity of the particle");
+  
+  list[9] = io_make_output_field(
       "MagneticFluxDensitiesdtAR", FLOAT, 3, UNIT_CONV_MAGNETIC_FIELD_PER_TIME,
       -1.5f * hydro_gamma + 3.f, parts, mhd_data.B_over_rho_dt_AR,
       "AR contribution to time derivative of Magnetic flux densities of the particles");
 
-  list[8] = io_make_output_field(
+  list[10] = io_make_output_field(
       "ThermalEnergiesdtAR", FLOAT, 1, UNIT_CONV_ENERGY_PER_UNIT_MASS_PER_TIME,
       -3.f * hydro_gamma_minus_one, parts, mhd_data.u_dt_AR,
       "AR contribution to time derivative of thermal energies of the particles");
   
   /* Error metrics */
-  list[9] = io_make_output_field_convert_part(
+  list[11] = io_make_output_field_convert_part(
       "R0", FLOAT, 1, UNIT_CONV_NO_UNITS, 0, parts, xparts, calculate_R0,
       "Classical error metric, indicates places with large divergence. "
       "Sensetivity to particle noise depends on signal_to_noise parameter, "
       "default is 10 (if 1 - weak noise filtering, if 100 - strong noise "
       "filtering)");
-  list[10] = io_make_output_field_convert_part(
+  list[12] = io_make_output_field_convert_part(
       "R1", FLOAT, 1, UNIT_CONV_NO_UNITS, 0, parts, xparts, calculate_R1,
       "Error metric, angle between B field and total Fmag. Indicates unpysical "
       "magnetic force. Sensetivity to particle noise depends on "
       "signal_to_noise parameter, default is 10 (if 1 - weak noise filtering, "
       "if 100 - strong noise filtering)");
-  list[11] = io_make_output_field_convert_part(
+  list[13] = io_make_output_field_convert_part(
       "R2", FLOAT, 1, UNIT_CONV_NO_UNITS, 0, parts, xparts, calculate_R2,
       "Error metric, ratio of divB and |curlB|. Estimates upper limit on "
       "B_monopole/B_physical. Sensetivity to particle noise depends on "
       "signal_to_noise parameter, default is 10 (if 1 - weak noise filtering, "
       "if 100 - strong noise filtering)");
-  list[12] = io_make_output_field_convert_part(
+  list[14] = io_make_output_field_convert_part(
       "R3", FLOAT, 1, UNIT_CONV_NO_UNITS, 0, parts, xparts, calculate_R3,
       "Error metric, shows relation of smoothing length to characteristic B "
       "gradient scale. Sensetivity to particle noise depends on "
       "signal_to_noise parameter, default is 10 (if 1 - weak noise filtering, "
       "if 100 - strong noise filtering)");
 
-  return 13;
+  return 15;
 }
 
 /**
