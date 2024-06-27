@@ -22,6 +22,7 @@
 /* Local includes */
 #include "gravity.h"
 #include "gravity_iact.h"
+#include "sink_properties.h"
 
 /**
  * @brief do sink computation after the runner_iact_density (symmetric
