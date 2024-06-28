@@ -1016,6 +1016,121 @@ void engine_print_task_counts(const struct engine *e) {
   printf("%s engine_print_task_counts: task counts are [ %s=%i",
          clocks_get_timesincestart(), taskID_names[0], counts[0]);
 #endif
+
+  /* In zoom land its helpful to print the pair types. */
+  if (e->s->with_zoom_region) {
+    /* Initialise counts; */
+    int nr_zoom_zoom = 0;
+    int nr_zoom_buffer = 0;
+    int nr_zoom_bkg = 0;
+    int nr_buffer_buffer = 0;
+    int nr_buffer_bkg = 0;
+    int nr_bkg_bkg = 0;
+    int nr_zoom_neighbour = 0;
+    int nr_void_pairs = 0; /* Should always be 0! */
+    /* Loop over tasks. */
+    for (int i = 0; i < nr_tasks; i++) {
+      const struct task *t = &tasks[i];
+
+      /* Skip skipped tasks. */
+      if (t->skip) continue;
+
+      /* Skip non-pairs. */
+      if (t->type != task_type_pair) continue;
+
+      /* If either ci or cj are void cells count them. (again this should never
+       * happen!) */
+      if (t->ci->subtype == cell_subtype_void ||
+          t->cj->subtype == cell_subtype_void) {
+        nr_void_pairs++;
+      }
+
+      /* Count a nieghbour pair if ci and cj are the combination of a zoom and
+       * neighbour cell. */
+      if ((t->ci->type == cell_type_zoom &&
+           t->cj->subtype == cell_subtype_neighbour) ||
+          (t->cj->type == cell_type_zoom &&
+           t->ci->subtype == cell_subtype_neighbour)) {
+        nr_zoom_neighbour++;
+      }
+
+      /* Count the pair types. */
+      switch (t->ci->type) {
+        case cell_type_zoom:
+          switch (t->cj->type) {
+            case cell_type_zoom:
+              nr_zoom_zoom++;
+              break;
+            case cell_type_buffer:
+              nr_zoom_buffer++;
+              break;
+            case cell_type_bkg:
+              nr_zoom_bkg++;
+              break;
+            default:
+              error("Unknown cell type %d", t->cj->type);
+          }
+          break;
+        case cell_type_buffer:
+          switch (t->cj->type) {
+            case cell_type_zoom:
+              nr_zoom_buffer++;
+              break;
+            case cell_type_buffer:
+              nr_buffer_buffer++;
+              break;
+            case cell_type_bkg:
+              nr_buffer_bkg++;
+              break;
+            default:
+              error("Unknown cell type %d", t->cj->type);
+          }
+          break;
+        case cell_type_bkg:
+          switch (t->cj->type) {
+            case cell_type_zoom:
+              nr_zoom_bkg++;
+              break;
+            case cell_type_buffer:
+              nr_buffer_bkg++;
+              break;
+            case cell_type_bkg:
+              nr_bkg_bkg++;
+              break;
+            default:
+              error("Unknown cell type %d", t->cj->type);
+          }
+          break;
+        case cell_type_regular:
+          error(
+              "Regular cell found in zoom simulation pair task! There should "
+              "be no regular cells in zoom simulations.");
+          break;
+        default:
+          error("Unknown cell type %d", t->ci->type);
+      }
+    }
+
+    /* Print the pair types. */
+#ifdef WITH_MPI
+    printf(
+        "[%04i] %s engine_print_task_counts: pair task type counts are [ "
+        "zoom<->zoom=%i zoom<->buffer=%i zoom<->bkg=%i buffer<->buffer=%i "
+        "buffer<->bkg=%i bkg<->bkg=%i zoom<->neighbour=%i void_pairs=%i ]\n",
+        e->nodeID, clocks_get_timesincestart(), nr_zoom_zoom, nr_zoom_buffer,
+        nr_zoom_bkg, nr_buffer_buffer, nr_buffer_bkg, nr_bkg_bkg,
+        nr_zoom_neighbour, nr_void_pairs);
+#else
+    printf(
+        "%s engine_print_task_counts: pair task type counts are [ "
+        "zoom<->zoom=%i zoom<->buffer=%i zoom<->bkg=%i buffer<->buffer=%i "
+        "buffer<->bkg=%i bkg<->bkg=%i zoom<->neighbour=%i void_pairs=%i ]\n",
+        clocks_get_timesincestart(), nr_zoom_zoom, nr_zoom_buffer, nr_zoom_bkg,
+        nr_buffer_buffer, nr_buffer_bkg, nr_bkg_bkg, nr_zoom_neighbour,
+        nr_void_pairs);
+#endif
+  }
+
   for (int k = 1; k < task_type_count; k++)
     printf(" %s=%i", taskID_names[k], counts[k]);
   printf(" skipped=%i ]\n", counts[task_type_count]);
@@ -1228,7 +1343,8 @@ void engine_rebuild(struct engine *e, const int repartitioned,
   /* Report the number of cells and memory */
   if (e->verbose)
     message(
-        "Nr. of top-level cells: %d Nr. of local cells: %d memory use: %zd MB.",
+        "Nr. of top-level cells: %d Nr. of local cells: %d memory use: %zd "
+        "MB.",
         e->s->nr_cells, e->s->tot_cells,
         (e->s->nr_cells + e->s->tot_cells) * sizeof(struct cell) /
             (1024 * 1024));
@@ -1245,7 +1361,8 @@ void engine_rebuild(struct engine *e, const int repartitioned,
   /* Report the number of particles and memory */
   if (e->verbose)
     message(
-        "Space has memory for %zd/%zd/%zd/%zd/%zd part/gpart/spart/sink/bpart "
+        "Space has memory for %zd/%zd/%zd/%zd/%zd "
+        "part/gpart/spart/sink/bpart "
         "(%zd/%zd/%zd/%zd/%zd MB)",
         e->s->size_parts, e->s->size_gparts, e->s->size_sparts,
         e->s->size_sinks, e->s->size_bparts,
@@ -1842,8 +1959,8 @@ void engine_run_rt_sub_cycles(struct engine *e) {
   /* Do we have work to do? */
   if (!(e->policy & engine_policy_rt)) return;
 
-  /* Note that if running without sub-cycles, no RT-specific timestep data will
-   * be written to screen or to the RT subcycles timestep data file. It's
+  /* Note that if running without sub-cycles, no RT-specific timestep data
+   * will be written to screen or to the RT subcycles timestep data file. It's
    * meaningless to do so, as all data will already be contained in the normal
    * timesteps file. */
   if (e->max_nr_rt_subcycles <= 1) return;
@@ -2015,7 +2132,8 @@ void engine_run_rt_sub_cycles(struct engine *e) {
 
   if (rt_integration_end != e->ti_end_min)
     error(
-        "End of sub-cycling doesn't add up: got %lld should have %lld. Started "
+        "End of sub-cycling doesn't add up: got %lld should have %lld. "
+        "Started "
         "at ti_current = %lld dt_rt = %lld cycles = %d",
         rt_integration_end, e->ti_end_min, e->ti_current, rt_step_size,
         nr_rt_cycles);
@@ -2569,7 +2687,8 @@ int engine_step(struct engine *e) {
     }
   }
 
-  /* Trigger a tree-rebuild if the fraction of active gparts is large enough */
+  /* Trigger a tree-rebuild if the fraction of active gparts is large enough
+   */
   if ((e->policy & engine_policy_self_gravity) && !e->forcerebuild &&
       e->gravity_properties->rebuild_active_fraction <= 1.0f) {
 
@@ -3063,8 +3182,8 @@ cpu_set_t *engine_entry_affinity(void) {
 #endif
 
 /**
- * @brief  Ensure the NUMA node on which we initialise (first touch) everything
- * doesn't change before engine_init allocates NUMA-local workers.
+ * @brief  Ensure the NUMA node on which we initialise (first touch)
+ * everything doesn't change before engine_init allocates NUMA-local workers.
  */
 void engine_pin(void) {
 
@@ -3076,8 +3195,7 @@ void engine_pin(void) {
   threadpool_set_affinity_mask(entry_affinity);
 
   int pin;
-  for (pin = 0; pin < CPU_SETSIZE && !CPU_ISSET(pin, entry_affinity); ++pin)
-    ;
+  for (pin = 0; pin < CPU_SETSIZE && !CPU_ISSET(pin, entry_affinity); ++pin);
 
   cpu_set_t affinity;
   CPU_ZERO(&affinity);
