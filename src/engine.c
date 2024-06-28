@@ -1017,6 +1017,16 @@ void engine_print_task_counts(const struct engine *e) {
          clocks_get_timesincestart(), taskID_names[0], counts[0]);
 #endif
 
+  for (int k = 1; k < task_type_count; k++)
+    printf(" %s=%i", taskID_names[k], counts[k]);
+  printf(" skipped=%i ]\n", counts[task_type_count]);
+  fflush(stdout);
+  message("nr_parts = %zu.", e->s->nr_parts);
+  message("nr_gparts = %zu.", e->s->nr_gparts);
+  message("nr_sink = %zu.", e->s->nr_sinks);
+  message("nr_sparts = %zu.", e->s->nr_sparts);
+  message("nr_bparts = %zu.", e->s->nr_bparts);
+
   /* In zoom land its helpful to print the pair types. */
   if (e->s->with_zoom_region) {
     /* Initialise counts; */
@@ -1130,16 +1140,6 @@ void engine_print_task_counts(const struct engine *e) {
         nr_void_pairs);
 #endif
   }
-
-  for (int k = 1; k < task_type_count; k++)
-    printf(" %s=%i", taskID_names[k], counts[k]);
-  printf(" skipped=%i ]\n", counts[task_type_count]);
-  fflush(stdout);
-  message("nr_parts = %zu.", e->s->nr_parts);
-  message("nr_gparts = %zu.", e->s->nr_gparts);
-  message("nr_sink = %zu.", e->s->nr_sinks);
-  message("nr_sparts = %zu.", e->s->nr_sparts);
-  message("nr_bparts = %zu.", e->s->nr_bparts);
 
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
