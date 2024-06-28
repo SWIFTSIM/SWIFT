@@ -21,149 +21,276 @@
 #ifndef SWIFT_SHADOWSWIFT_HYDRO_PART_H
 #define SWIFT_SHADOWSWIFT_HYDRO_PART_H
 
+/**
+ * @file Shadowswift/hydro_part.h
+ * @brief Moving mesh hydrodynamics implementation
+ */
+
 #include "black_holes_struct.h"
 #include "chemistry_struct.h"
+#include "const.h"
 #include "cooling_struct.h"
 #include "feedback_struct.h"
 #include "particle_splitting_struct.h"
 #include "rt_struct.h"
 #include "sink_struct.h"
+#include "star_formation_struct.h"
 #include "timestep_limiter_struct.h"
 #include "tracers_struct.h"
-#include "voronoi_cell.h"
 
-/* Extra particle data not needed during the computation. */
+enum kick_type {
+  KICK1,
+  KICK2,
+  ROLLBACK,
+  RESTORE_AFTER_ROLLBACK,
+};
+
+/**
+ * @brief Particle fields not needed during the SPH loops over neighbours.
+ *
+ * This structure contains the particle fields that are not used in the
+ * density or force loops. Quantities should be used in the kick, drift and
+ * potentially ghost tasks only.
+ */
 struct xpart {
 
-  /* Offset between current position and position at last tree rebuild. */
+  /*! Offset between current position and position at last tree rebuild. */
   float x_diff[3];
 
   /*! Offset between the current position and position at the last sort. */
   float x_diff_sort[3];
 
-  /* Velocity at the last full step. */
+  /*! Velocity at the last full step. */
   float v_full[3];
 
   /*! Gravitational acceleration at the end of the last step */
   float a_grav[3];
 
+  /*! Internal energy at the last full step. */
+  float u_full;
+
   /*! Additional data used to record particle splits */
   struct particle_splitting_data split_data;
 
-  /* Additional data used to record cooling information */
+  /*! Additional data used to record cooling information */
   struct cooling_xpart_data cooling_data;
 
   /* Additional data used by the tracers */
   struct tracers_xpart_data tracers_data;
 
+  /* Additional data used by the tracers */
+  struct star_formation_xpart_data sf_data;
+
   /* Additional data used by the feedback */
-  struct feedback_part_data feedback_data;
+  struct feedback_xpart_data feedback_data;
 
 } SWIFT_STRUCT_ALIGN;
 
-/* Data of a single particle. */
+/**
+ * @brief Particle fields for the Moving mesh particles
+ *
+ */
 struct part {
 
-  /* Particle ID. */
+  /*! Particle unique ID. */
   long long id;
 
-  /* Associated gravitas. */
-  struct gpart *gpart;
+  /*! Pointer to corresponding gravity part. */
+  struct gpart* gpart;
 
-  /* Particle position. */
+  /*! Particle position. */
   double x[3];
 
-  /* Particle predicted velocity. */
-  float v[3];
-
-  /* Particle acceleration. */
+  /*! Particle acceleration. */
   float a_hydro[3];
 
-  /* Particle cutoff radius. */
+  /*! Particle smoothing length. This is used for neighbour loops that do not
+   * use the Voronoi mesh. */
   float h;
 
-  /* The primitive hydrodynamical variables. */
+  /*! Density. */
+  float rho;
+
+  /*! Fluid velocity. */
+  float v[3];
+
+  /*! Particle velocity */
+  float v_full[3];
+
+  /*! Pressure. */
+  float P;
+
+  /*! Entropic function */
+  float A;
+
+  /*! Fluid thermal energy (not per unit mass!). */
+  float thermal_energy;
+
+  /*! Gradients of the primitive variables. */
   struct {
 
-    /* Fluid velocity. */
-    float v[3];
+    /* Density gradients. */
+    float rho[3];
 
-    /* Density. */
-    float rho;
+    /* Fluid velocity gradients. */
+    float v[3][3];
 
-    /* Pressure. */
-    float P;
+    /* Pressure gradients. */
+    float P[3];
 
-    /* Gradients of the primitive variables. */
+    /* Entropic function gradients */
+    float A[3];
+
+#if defined(SHADOWSWIFT_GRADIENTS_WLS) || \
+    defined(SHADOWSWIFT_MESHLESS_GRADIENTS)
+    /* Matrix to invert during gradient calculation */
+    float matrix_wls[3][3];
+#endif
+
+  } gradients;
+
+  /*! Quantities needed by the slope limiter. */
+  struct {
+
+    /* Extreme values of the density among the neighbours. */
+    float rho[2];
+
+    /* Extreme values of the fluid velocity among the neighbours. */
+    float v[3][2];
+
+    /* Extreme values of the pressure among the neighbours. */
+    float P[2];
+
+    /* Extreme values of the entropic function among the neighbours */
+    float A[2];
+
+#ifdef SHADOWSWIFT_SLOPE_LIMITER_MESHLESS
+    /* Maximal distance to any of the neighbours */
+    /* TODO: Use the maximal distance from the _centroid_ to any of the faces
+     * instead? */
+    float r_max;
+#endif
+
+#ifdef SHADOWSWIFT_SLOPE_LIMITER_CELL_WIDE
     struct {
 
-      /* Density gradients. */
-      float rho[3];
-
-      /* Fluid velocity gradients. */
-      float v[3][3];
-
-      /* Pressure gradients. */
-      float P[3];
-
-    } gradients;
-
-    /* Quantities needed by the slope limiter. */
-    struct {
-
-      /* Extreme values of the density among the neighbours. */
+      /* Extreme values of the extrapolated density towards the neighbours. */
       float rho[2];
 
-      /* Extreme values of the fluid velocity among the neighbours. */
+      /* Extreme values of the extrapolated fluid velocity towards the
+       * neighbours. */
       float v[3][2];
 
-      /* Extreme values of the pressure among the neighbours. */
+      /* Extreme values of the extrapolated pressure towards the neighbours. */
       float P[2];
 
-      /* Maximal distance to all neighbouring faces. */
-      float maxr;
+      /* Extreme values of the extrapolated entropic function towards the
+       * neighbours.*/
+      float A[2];
 
-    } limiter;
+    } extrapolations;
+#endif
 
-  } primitives;
+  } limiter;
 
-  /* The conserved hydrodynamical variables. */
+#ifdef SHADOWSWIFT_EXTRAPOLATE_TIME
+  /*! Time extrapolations of primitive variables (cumulative over timestep) */
+  float dW_time[6];
+#endif
+
+  /*! The conserved hydrodynamical variables. */
   struct {
+
+    /* Fluid mass */
+    float mass;
 
     /* Fluid momentum. */
     float momentum[3];
 
-    /* Fluid mass (this field already exists outside of this struct as well). */
-    float mass;
-
-    /* Fluid thermal energy (not per unit mass!). */
+    /* Fluid total energy. */
     float energy;
 
-    /* Fluxes. */
-    struct {
-
-      /* Mass flux. */
-      float mass;
-
-      /* Momentum flux. */
-      float momentum[3];
-
-      /* Energy flux. */
-      float energy;
-
-    } flux;
+    /* This is related to the thermodynamical entropy (see Springel 2010 eq.
+     * 49).
+     * Note that this is in general *not* conserved, but conservation of
+     * entropy may be given precedence in smooth cold flows */
+    float entropy;
 
   } conserved;
 
-  /* Variables used for timestep calculation (currently not used). */
+  /* Flux counter, should be conserved */
+  long flux_count;
+
+  /*! Fluxes. */
   struct {
 
-    /* Maximum fluid velocity among all neighbours. */
+    /* Mass flux. */
+    float mass;
+
+    /* Momentum flux. */
+    float momentum[3];
+
+    /* Energy flux. */
+    float energy;
+
+    /* Entropy flux. */
+    float entropy;
+
+    /* Timestep for flux calculation. */
+    float dt;
+
+  } flux;
+
+  /*! Geometric information associated with this particle */
+  struct {
+
+    /*! Voronoi cell volume. */
+    float volume;
+
+    /*! Voronoi cell centroid, relative to this particles position. */
+    float centroid[3];
+
+    /*! Number of faces of this voronoi cell. */
+    int nface;
+
+    /*! cell_pair_connections offset in voronoi tesselation */
+    int pair_connections_offset;
+
+    /*! Estimate of the minimal distance from centroid to a face */
+    float min_face_dist;
+
+    /*! Flags indicating to which neighbouring cells this particle has already
+     * been added. */
+    unsigned long delaunay_flags;
+
+    /*! Index of this particle in the delaunay tesselation (only valid if it is
+     * active) */
+    int delaunay_vertex;
+
+    /*! Search radius of this particle. This will approximately be equal to
+     * the safety radius of the voronoi cell of this particle. */
+    float search_radius;
+
+  } geometry;
+
+  struct {
+
+    /*! Signal velocity */
     float vmax;
+
+    /*! Maximal value of the kinetic energy among the neighbours */
+    float Ekin;
+
+    /*! Maximal mach number of the signal speed of shock waves in Riemann
+     * problems across faces of this particle */
+    float mach_number;
+
+    /*! Last kick type applied to this particle. */
+    enum kick_type last_kick;
 
   } timestepvars;
 
-  /* Quantities used during the volume (=density) loop. */
+  /* Unused in the ShadowSWIFT scheme */
   struct {
 
     /* Derivative of particle number density. */
@@ -174,28 +301,36 @@ struct part {
 
   } density;
 
-  /* Quantities used during the force loop. */
+  /* Unused in the ShadowSWIFT scheme. */
   struct {
 
     /* Needed to drift the primitive variables. */
     float h_dt;
 
-    /* Physical time step of the particle. */
+  } force;
+
+  /* Specific stuff for the gravity-hydro coupling. */
+  struct {
+
+    /*! Timestep of first half kick of this timestep (gravity) */
     float dt;
 
-    /* Active flag. */
-    char active;
+    /*! Timestep of first half kick for the potential energy correction */
+    float dt_corr;
 
-    /* Actual velocity of the particle. */
-    float v_full[3];
+    /*! Current value of the mass flux vector. */
+    float mflux[3];
 
-  } force;
+  } gravity;
 
   /*! Chemistry information */
   struct chemistry_part_data chemistry_data;
 
   /*! Cooling information */
   struct cooling_part_data cooling_data;
+
+  /*! Additional data used by the feedback */
+  struct feedback_part_data feedback_data;
 
   /*! Black holes information (e.g. swallowing ID) */
   struct black_holes_part_data black_holes_data;
@@ -224,9 +359,6 @@ struct part {
   integertime_t ti_kick;
 
 #endif
-
-  /* Voronoi cell. */
-  struct voronoi_cell cell;
 
 } SWIFT_STRUCT_ALIGN;
 

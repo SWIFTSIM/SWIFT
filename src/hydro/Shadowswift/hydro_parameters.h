@@ -35,7 +35,7 @@
 #include "inline.h"
 
 /**
- * @file Shadowswift/hydro_parameters.h
+ * @file  Shadowswift/hydro_parameters.h
  * @brief Shadowswift implementation. (default parameters)
  *
  *        This file defines a number of things that are used in

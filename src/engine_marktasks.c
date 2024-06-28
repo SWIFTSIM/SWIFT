@@ -52,6 +52,7 @@
 #include "error.h"
 #include "feedback.h"
 #include "proxy.h"
+#include "space_getsid.h"
 #include "task.h"
 #include "timers.h"
 
@@ -71,6 +72,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
   struct scheduler *s = (struct scheduler *)(((size_t *)extra_data)[2]);
   struct engine *e = (struct engine *)((size_t *)extra_data)[0];
   const int nodeID = e->nodeID;
+  const int grid_hydro = e->policy & engine_policy_grid_hydro;
   const int with_timestep_limiter = e->policy & engine_policy_timestep_limiter;
   const int with_timestep_sync = e->policy & engine_policy_timestep_sync;
   const int with_sinks = e->policy & engine_policy_sinks;
@@ -107,7 +109,9 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       const int ci_active_rt = cell_is_rt_active(ci, e);
 
       /* Activate the hydro drift */
-      if (t_type == task_type_self && t_subtype == task_subtype_density) {
+      if (t_type == task_type_self &&
+          (t_subtype == task_subtype_density ||
+           (grid_hydro && t_subtype == task_subtype_gradient))) {
         if (ci_active_hydro) {
           scheduler_activate(s, t);
           cell_activate_drift_part(ci, s);
@@ -117,7 +121,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
       /* Store current values of dx_max and h_max. */
       else if (t_type == task_type_sub_self &&
-               t_subtype == task_subtype_density) {
+               (t_subtype == task_subtype_density ||
+                (grid_hydro && t_subtype == task_subtype_gradient))) {
         if (ci_active_hydro) {
           scheduler_activate(s, t);
           cell_activate_subcell_hydro_tasks(ci, NULL, s, with_timestep_limiter);
@@ -365,6 +370,38 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         if (ci_active_rt) scheduler_activate(s, t);
       }
 
+      /* Activate grid construction tasks */
+      else if (t_subtype == task_subtype_grid_sync) {
+        if (ci_active_hydro) {
+#ifdef SWIFT_DEBUG_CHECKS
+          if (!(e->policy & engine_policy_grid)) {
+            error(
+                "Encountered grid construction task without "
+                "engine_policy_grid!");
+          }
+#endif
+          scheduler_activate(s, t);
+          cell_activate_drift_part(ci, s);
+          if (with_timestep_limiter) cell_activate_limiter(ci, s);
+        }
+      }
+
+      /* Activate grid hydro tasks */
+      else if (t_subtype == task_subtype_slope_estimate ||
+               t_subtype == task_subtype_slope_limiter ||
+               t_subtype == task_subtype_flux) {
+        if (ci_active_hydro) {
+#ifdef SWIFT_DEBUG_CHECKS
+          if (!(e->policy & engine_policy_grid_hydro)) {
+            error(
+                "Encountered flux exchange task without "
+                "engine_policy_grid_hydro!");
+          }
+#endif
+          scheduler_activate(s, t);
+        }
+      }
+
 #ifdef SWIFT_DEBUG_CHECKS
       else {
         error("Invalid task type / sub-type encountered");
@@ -420,7 +457,9 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         scheduler_activate(s, t);
 
         /* Set the correct sorting flags */
-        if (t_type == task_type_pair && t_subtype == task_subtype_density) {
+        if (t_type == task_type_pair &&
+            (t_subtype == task_subtype_density ||
+             (grid_hydro && t_subtype == task_subtype_gradient))) {
 
           /* Store some values. */
           atomic_or(&ci->hydro.requires_sorts, 1 << t->flags);
@@ -446,7 +485,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
         /* Store current values of dx_max and h_max. */
         else if (t_type == task_type_sub_pair &&
-                 t_subtype == task_subtype_density) {
+                 (t_subtype == task_subtype_density ||
+                  (grid_hydro && t_subtype == task_subtype_gradient))) {
           cell_activate_subcell_hydro_tasks(t->ci, t->cj, s,
                                             with_timestep_limiter);
         }
@@ -813,6 +853,76 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         }
       }
 
+      /* Grid construction tasks */
+      else if (t_subtype == task_subtype_grid_sync) {
+        /* activate construction task only for local active cells */
+        if (ci_nodeID == nodeID && ci_active_hydro) {
+          scheduler_activate(s, t);
+
+          /* Store some values. */
+          atomic_or(&ci->hydro.requires_sorts, 1 << t->flags);
+          atomic_or(&cj->hydro.requires_sorts, 1 << t->flags);
+          ci->hydro.dx_max_sort_old = ci->hydro.dx_max_sort;
+          cj->hydro.dx_max_sort_old = cj->hydro.dx_max_sort;
+          /* Check the sorts and activate them if needed. */
+          cell_activate_hydro_sorts(ci, t->flags, s);
+          cell_activate_hydro_sorts(cj, t->flags, s);
+
+          /* Activate the hydro drift tasks. (ci's drift is activated from
+           * the self task) */
+          if (cj_nodeID == nodeID) {
+            cell_activate_drift_part(cj, s);
+            /* And the limiter */
+            if (with_timestep_limiter) cell_activate_limiter(cj, s);
+          }
+
+#if WITH_MPI
+          /* Do we need to send the voronoi faces to cj's node for this sid? */
+          if (cj_nodeID != nodeID) {
+            struct cell *ci_temp = ci;
+            struct cell *cj_temp = cj;
+            double shift[3];
+            int sid = space_getsid(s->space, &ci_temp, &cj_temp, shift);
+            if (ci == ci_temp) sid = 26 - sid;
+            ci->grid.send_flags |= 1 << sid;
+          }
+#endif
+        }
+      }
+
+      /* Activate slope estimate or limiter task only for pairs with at least
+       * one active *AND* local cell (must be the same cell). */
+      else if (t_subtype == task_subtype_slope_estimate ||
+               t_subtype == task_subtype_slope_limiter) {
+#ifdef SWIFT_DEBUG_CHECKS
+        if (!(e->policy & engine_policy_grid_hydro)) {
+          error(
+              "Encountered slope estimate/limiter task without "
+              "engine_policy_grid_hydro!");
+        }
+#endif
+        if ((ci_active_hydro && ci_nodeID == nodeID) ||
+            (cj_active_hydro && cj_nodeID == nodeID)) {
+          scheduler_activate(s, t);
+        }
+      }
+
+      /* Activate flux tasks for all pairs if at least one of the cells
+       * is active (regardless of whether they are local or not). */
+      else if (t_subtype == task_subtype_flux) {
+        if ((ci_active_hydro || cj_active_hydro) &&
+            (ci_nodeID == nodeID || cj_nodeID == nodeID)) {
+#ifdef SWIFT_DEBUG_CHECKS
+          if (!(e->policy & engine_policy_grid_hydro)) {
+            error(
+                "Encountered flux exchange task without "
+                "engine_policy_grid_hydro!");
+          }
+#endif
+          scheduler_activate(s, t);
+        }
+      }
+
       /* Pair tasks between inactive local cells and active remote cells. */
       if ((ci_nodeID != nodeID && cj_nodeID == nodeID && ci_active_hydro &&
            !cj_active_hydro) ||
@@ -1103,6 +1213,66 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
               scheduler_activate_send(s, ci->mpi.send, task_subtype_sf_counts,
                                       cj_nodeID);
             }
+          }
+        }
+#endif
+      }
+
+      else if (t_subtype == task_subtype_gradient) {
+#if defined(WITH_MPI) && defined(MOVING_MESH)
+        /* We do the gradient calculation only on nodes where the local cell
+         * of the pair is active. */
+        if (ci_nodeID != nodeID) {
+          /* If the local cell is active, receive data from remote node */
+          if (cj_active_hydro) {
+            scheduler_activate_recv(s, ci->mpi.recv, task_subtype_xv);
+            scheduler_activate_recv(s, ci->mpi.recv, task_subtype_rho);
+          }
+          /* If the foreign cell is active, send data to remote */
+          if (ci_active_hydro) {
+            scheduler_activate_send(s, cj->mpi.send, task_subtype_xv,
+                                    ci_nodeID);
+            scheduler_activate_send(s, cj->mpi.send, task_subtype_rho,
+                                    ci_nodeID);
+          }
+          /* If the foreign cell is active, we want its particles for the
+           * limiter */
+          if (ci_active_hydro && with_timestep_limiter) {
+            scheduler_activate_recv(s, ci->mpi.recv, task_subtype_limiter);
+            scheduler_activate_unpack(s, ci->mpi.unpack, task_subtype_limiter);
+          }
+          /* If the local cell is active, send its particles for the limiting */
+          if (cj_active_hydro && with_timestep_limiter) {
+            scheduler_activate_send(s, cj->mpi.send, task_subtype_limiter,
+                                    ci_nodeID);
+            scheduler_activate_pack(s, cj->mpi.pack, task_subtype_limiter,
+                                    ci_nodeID);
+          }
+        } else if (cj_nodeID != nodeID) {
+          /* If the local cell is active, receive data from remote node */
+          if (ci_active_hydro) {
+            scheduler_activate_recv(s, cj->mpi.recv, task_subtype_xv);
+            scheduler_activate_recv(s, cj->mpi.recv, task_subtype_rho);
+          }
+          /* If the foreign cell is active, send data to remote */
+          if (cj_active_hydro) {
+            scheduler_activate_send(s, ci->mpi.send, task_subtype_rho,
+                                    cj_nodeID);
+            scheduler_activate_send(s, ci->mpi.send, task_subtype_xv,
+                                    cj_nodeID);
+          }
+          /* If the foreign cell is active, we want its particles for the
+           * limiter */
+          if (cj_active_hydro && with_timestep_limiter) {
+            scheduler_activate_recv(s, cj->mpi.recv, task_subtype_limiter);
+            scheduler_activate_unpack(s, cj->mpi.unpack, task_subtype_limiter);
+          }
+          /* If the local cell is active, send its particles for the limiting */
+          if (ci_active_hydro && with_timestep_limiter) {
+            scheduler_activate_send(s, ci->mpi.send, task_subtype_limiter,
+                                    cj_nodeID);
+            scheduler_activate_pack(s, ci->mpi.pack, task_subtype_limiter,
+                                    cj_nodeID);
           }
         }
 #endif
@@ -1469,6 +1639,123 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         }
 #endif
       }
+
+      /* Activate send and receive tasks for the grid */
+      else if (t->subtype == task_subtype_grid_sync) {
+        /* TODO: trigger rebuild if necessary */
+#ifdef WITH_MPI
+        if (ci_active_hydro && ci_nodeID != nodeID) {
+          /* cj local.
+           * There is another pair construction task with cj and ci
+           * swapped (so that cj, or a sub or parent cell of cj, is the left
+           * cell).
+           * Here we just need to make sure that the particles of cj are sent
+           * to ci's node if ci is active, so that the grid of ci can be
+           * constructed on the foreign node.
+           * If ci is active, we also need to activate the recv_faces task of
+           * ci so that cj can receive fluxes from ci. */
+
+          /* Send the particles of cj to the foreign node */
+          scheduler_activate_send(s, cj->mpi.send, task_subtype_xv, ci_nodeID);
+          /* Receive the voronoi faces from the foreign node */
+          scheduler_activate_recv(s, ci->mpi.recv, task_subtype_faces);
+        } else if (ci_active_hydro && cj_nodeID != nodeID) {
+          /* ci is local.
+           * If ci is active, we need to receive the particles from cj to
+           * build ci's voronoi grid. We also need to send the voronoi grid to
+           * the foreign node. */
+
+          /* Receive cj's particles from the foreign node */
+          scheduler_activate_recv(s, cj->mpi.recv, task_subtype_xv);
+
+          /* Send ci's voronoi grid to the foreign node. */
+          scheduler_activate_send(s, ci->mpi.send, task_subtype_faces,
+                                  cj_nodeID);
+        }
+#endif
+      }
+
+      /* Activate send and receive tasks for grid slope estimate/limiter */
+      else if (t->subtype == task_subtype_slope_estimate) {
+#ifdef WITH_MPI
+        /* We do the slope estimate/limiter only on nodes where the local cell
+         * of the pair is active. */
+        if (ci_nodeID != nodeID) {
+          /* If the local cell is active, receive data from remote node */
+          if (cj_active_hydro) {
+            scheduler_activate_recv(s, ci->mpi.recv, task_subtype_xv);
+            scheduler_activate_recv(s, ci->mpi.recv, task_subtype_rho);
+          }
+          /* If the foreign cell is active, send data to remote */
+          if (ci_active_hydro) {
+            scheduler_activate_send(s, cj->mpi.send, task_subtype_xv,
+                                    ci_nodeID);
+            scheduler_activate_send(s, cj->mpi.send, task_subtype_rho,
+                                    ci_nodeID);
+          }
+          /* If the foreign cell is active, we want its particles for the
+           * limiter */
+          if (ci_active_hydro && with_timestep_limiter) {
+            scheduler_activate_recv(s, ci->mpi.recv, task_subtype_limiter);
+            scheduler_activate_unpack(s, ci->mpi.unpack, task_subtype_limiter);
+          }
+          /* If the local cell is active, send its particles for the limiting */
+          if (cj_active_hydro && with_timestep_limiter) {
+            scheduler_activate_send(s, cj->mpi.send, task_subtype_limiter,
+                                    ci_nodeID);
+            scheduler_activate_pack(s, cj->mpi.pack, task_subtype_limiter,
+                                    ci_nodeID);
+          }
+        } else if (cj_nodeID != nodeID) {
+          /* If the local cell is active, receive data from remote node */
+          if (ci_active_hydro) {
+            scheduler_activate_recv(s, cj->mpi.recv, task_subtype_rho);
+          }
+          /* If the foreign cell is active, send data to remote */
+          if (cj_active_hydro) {
+            scheduler_activate_send(s, ci->mpi.send, task_subtype_rho,
+                                    cj_nodeID);
+          }
+          /* If the foreign cell is active, we want its particles for the
+           * limiter */
+          if (cj_active_hydro && with_timestep_limiter) {
+            scheduler_activate_recv(s, cj->mpi.recv, task_subtype_limiter);
+            scheduler_activate_unpack(s, cj->mpi.unpack, task_subtype_limiter);
+          }
+          /* If the local cell is active, send its particles for the limiting */
+          if (ci_active_hydro && with_timestep_limiter) {
+            scheduler_activate_send(s, ci->mpi.send, task_subtype_limiter,
+                                    cj_nodeID);
+            scheduler_activate_pack(s, ci->mpi.pack, task_subtype_limiter,
+                                    cj_nodeID);
+          }
+        }
+#endif
+      }
+      /* Activate send and receive tasks for grid flux exchange */
+      else if (t->subtype == task_subtype_flux) {
+#ifdef WITH_MPI
+        /* We do the flux interactions on both nodes as long as at least one of
+         * the cells is active */
+        if (ci_nodeID != nodeID) {
+          /* If one of the cells is active, make sure, we are receiving and
+           * sending the updated particle positions */
+          if (ci_active_hydro || cj_active_hydro) {
+            scheduler_activate_recv(s, ci->mpi.recv, task_subtype_xv);
+            scheduler_activate_send(s, cj->mpi.send, task_subtype_xv,
+                                    ci_nodeID);
+          }
+        } else if (cj_nodeID != nodeID) {
+          /* If one of the cells is active, make sure, we are receiving and
+           * sending the updated particle positions */
+          if (ci_active_hydro || cj_active_hydro) {
+            scheduler_activate_recv(s, cj->mpi.recv, task_subtype_xv);
+            scheduler_activate_send(s, ci->mpi.send, task_subtype_xv,
+                                    cj_nodeID);
+          }
+        }
+#endif
+      }
     }
 
     /* End force for hydro ? */
@@ -1681,6 +1968,47 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           cell_is_active_hydro(t->ci, e)) {
         cell_activate_sink_formation_tasks(t->ci, s);
         cell_activate_super_sink_drifts(t->ci, s);
+      }
+    }
+
+    /* Grid construction task? */
+    else if (t_type == task_type_grid_construction) {
+      if (cell_is_active_hydro(t->ci, e)) {
+#ifdef SWIFT_DEBUG_CHECKS
+        if (!(e->policy & engine_policy_grid)) {
+          error(
+              "Encountered grid construction task without engine_policy_grid!");
+        }
+#endif
+        scheduler_activate(s, t);
+      }
+    }
+
+    /* Grid ghost task? */
+    else if (t_type == task_type_grid_ghost) {
+      if (cell_is_active_hydro(t->ci, e)) {
+#ifdef SWIFT_DEBUG_CHECKS
+        if (!(e->policy & engine_policy_grid)) {
+          error("Encountered grid ghost task without engine_policy_grid!");
+        }
+#endif
+        scheduler_activate(s, t);
+      }
+    }
+
+    /* grid hydro ghost task? */
+    else if (t_type == task_type_slope_estimate_ghost ||
+             t_type == task_type_slope_limiter_ghost ||
+             t_type == task_type_flux_ghost) {
+      if (cell_is_active_hydro(t->ci, e)) {
+#ifdef SWIFT_DEBUG_CHECKS
+        if (!(e->policy & engine_policy_grid_hydro)) {
+          error(
+              "Encountered flux ghost task without "
+              "engine_policy_grid_hydro!");
+        }
+#endif
+        scheduler_activate(s, t);
       }
     }
   }
