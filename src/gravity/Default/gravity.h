@@ -330,6 +330,7 @@ __attribute__((always_inline)) INLINE static void gravity_first_init_gpart(
 
   gp->time_bin = 0;
   gp->old_a_grav_norm = 0.f;
+  gp->mass_ini = gp->mass;
 #ifdef HAVE_VELOCIRAPTOR_ORPHANS
   gp->has_been_most_bound = 0;
 #endif
