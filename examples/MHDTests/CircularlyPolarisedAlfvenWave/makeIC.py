@@ -13,7 +13,9 @@ rho = 1.0
 P = 0.1
 gamma = 5.0 / 3.0
 
+v0 = 0.1
 B0 = 0.1
+
 wavelen = 1.0
 wavenum = 2.0 * np.pi / wavelen
 
@@ -66,51 +68,24 @@ vol = Lx * Ly * Lz
 
 ###---------------------------###
 
-sina = 2.0 / 3.0
-cosa = np.sqrt(1 - sina ** 2)
-
-sinb = 2.0 / np.sqrt(5)
-cosb = np.sqrt(1 - sinb ** 2)
-
-Rotation = np.array(
-    [
-        [cosa * cosb, -sinb, -sina * cosb],
-        [cosa * sinb, cosb, -sina * sinb],
-        [sina, 0, cosa],
-    ]
-)
-
-# Rotationinv = np.linalg.inv(Rotation)
-
-# x = np.matmul(Rotationinv, pos.T)
-x1 = (pos[:, 0] + 2 * pos[:, 1] + 2 * pos[:, 2]) / 3
-v = np.zeros((3, N))
-B = np.zeros((3, N))
-A = np.zeros((3, N))
+x = pos[:, 0]
+v = np.zeros((N, 3))
+B = np.zeros((N, 3))
+A = np.zeros((N, 3))
 ids = np.linspace(1, N, N)
 m = np.ones(N) * rho * vol / N
 u = np.ones(N) * P / (rho * (gamma - 1))
 
-"""
-v[0, :] = 1.0
-v[1, :] = 0.1 * np.sin(wavenum * x1)
-v[2, :] = 0.1 * np.cos(wavenum * x1)
-"""
+v[:, 0] = 0.0
+v[:, 1] = v0 * np.sin(wavenum * x)
+v[:, 2] = v0 * np.cos(wavenum * x)
 
-# B[0, :] = 0.0
-B[1, :] = B0 * np.sin(wavenum * x1)
-B[2, :] = B0 * np.cos(wavenum * x1)
+B[:, 0] = 1.0
+B[:, 1] = B0 * np.sin(wavenum * x)
+B[:, 2] = B0 * np.cos(wavenum * x)
 
-A[1, :] = B0 / wavenum * np.sin(wavenum * x1)
-A[2, :] = B0 / wavenum * np.cos(wavenum * x1)
-
-v = np.matmul(Rotation, v)
-B = np.matmul(Rotation, B)
-A = np.matmul(Rotation, A)
-
-v = v.T
-B = B.T
-A = A.T
+A[:, 1] = B0 / wavenum * np.sin(wavenum * x)
+A[:, 2] = B0 / wavenum * np.cos(wavenum * x)
 
 ###---------------------------###
 
