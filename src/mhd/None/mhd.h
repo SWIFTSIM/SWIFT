@@ -26,8 +26,32 @@
  * @param xp the #xpart.
  */
 __attribute__((always_inline)) INLINE static float mhd_get_magnetic_energy(
+    const struct part *p, const struct xpart *xp, const float mu_0) {
+  return 0.f;
+}
+
+/**
+ * @brief Returns the magnetic field squared contained in the particle.
+ *
+ * @param p the #part.
+ * @param xp the #xpart.
+ */
+__attribute__((always_inline)) INLINE static float mhd_get_Bms(
     const struct part *p, const struct xpart *xp) {
 
+  return 0.f;
+}
+
+/**
+ * @brief Returns the magnetic field divergence of a particle.
+ *
+ * @param p the #part.
+ * @param xp the #xpart.
+ */
+__attribute__((always_inline)) INLINE static float mhd_get_magnetic_divergence(
+    const struct part *p, const struct xpart *xp) {
+
+  error("Calling mhd_get_magnetic_divergence when compiling without MHD!");
   return 0.f;
 }
 
@@ -56,7 +80,7 @@ __attribute__((always_inline)) INLINE static float mhd_get_cross_helicity(
 }
 
 /**
- * @brief Returns the magnetic field divergence of the particle.
+ * @brief Returns the magnetic field divergence error of the particle.
  *
  * This is (div B) / (B / h) and is hence dimensionless.
  *
@@ -82,9 +106,30 @@ __attribute__((always_inline)) INLINE static float mhd_get_divB_error(
  */
 __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
     const struct part *p, const struct xpart *xp,
-    const struct hydro_props *hydro_properties, const struct cosmology *cosmo) {
+    const struct hydro_props *hydro_properties, const struct cosmology *cosmo,
+    const float mu_0) {
 
   return FLT_MAX;
+}
+/**
+ * @brief Compute magnetosonic speed
+ */
+__attribute__((always_inline)) INLINE static float mhd_get_magnetosonic_speed(
+    const struct part *restrict p, const float a, const float mu_0) {
+
+  error("Calling mhd_get_fast_magnetosonic_speed when compiling without MHD!");
+  return -1.f;
+}
+
+/**
+ * @brief Compute fast magnetosonic wave phase veolcity
+ */
+__attribute__((always_inline)) INLINE static float
+mhd_get_fast_magnetosonic_wave_phase_velocity(const float dx[3],
+                                              const struct part *restrict p,
+                                              const float a, const float mu_0) {
+  error("Calling mhd_get_fast_magnetosonic_wave when compiling without MHD!");
+  return -1.f;
 }
 
 /**
@@ -202,7 +247,8 @@ __attribute__((always_inline)) INLINE static void mhd_part_has_no_neighbours(
  */
 __attribute__((always_inline)) INLINE static void mhd_prepare_force(
     struct part *p, struct xpart *xp, const struct cosmology *cosmo,
-    const struct hydro_props *hydro_props, const float dt_alpha) {}
+    const struct hydro_props *hydro_props, const float dt_alpha,
+    const float mu_0) {}
 
 /**
  * @brief Reset acceleration fields of a particle
@@ -239,12 +285,13 @@ __attribute__((always_inline)) INLINE static void mhd_reset_predicted_values(
  * @param cosmo The cosmological model.
  * @param hydro_props The properties of the hydro scheme.
  * @param floor_props The properties of the entropy floor.
+ * @param mu_0 The vacuum magnetic permeability.
  */
 __attribute__((always_inline)) INLINE static void mhd_predict_extra(
     struct part *p, const struct xpart *xp, const float dt_drift,
     const float dt_therm, const struct cosmology *cosmo,
     const struct hydro_props *hydro_props,
-    const struct entropy_floor_properties *floor_props) {}
+    const struct entropy_floor_properties *floor_props, const float mu_0) {}
 
 /**
  * @brief Finishes the force calculation.
@@ -259,7 +306,8 @@ __attribute__((always_inline)) INLINE static void mhd_predict_extra(
  * @param cosmo The current cosmological model.
  */
 __attribute__((always_inline)) INLINE static void mhd_end_force(
-    struct part *p, const struct cosmology *cosmo) {}
+    struct part *p, const struct cosmology *cosmo,
+    const struct hydro_props *hydro_props, const float mu_0) {}
 
 /**
  * @brief Kick the additional variables

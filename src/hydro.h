@@ -75,6 +75,10 @@
 #include "./hydro/SPHENIX/hydro.h"
 #include "./hydro/SPHENIX/hydro_iact.h"
 #define SPH_IMPLEMENTATION "SPHENIX (Borrow+ 2020)"
+#elif defined(MAGMA_SPH)
+#include "./hydro/MAGMA/hydro.h"
+#include "./hydro/MAGMA/hydro_iact.h"
+#define SPH_IMPLEMENTATION "MAGMA-2 (Rosswog+ 2020)"
 #elif defined(GASOLINE_SPH)
 #include "./hydro/Gasoline/hydro.h"
 #include "./hydro/Gasoline/hydro_iact.h"
