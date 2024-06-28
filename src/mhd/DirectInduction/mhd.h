@@ -132,13 +132,21 @@ __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
 
   const float dt_B_factor = fabsf(divB);
 
+  const float laplacian_psi = p->mhd_data.laplacian_psi;
+
+  const float dt_psi_factor = fabsf(laplacian_psi);
+  
   const float dt_B_derivatives =
       dt_B_factor != 0.f
           ? hydro_properties->CFL_condition * cosmo->a /
                 cosmo->a_factor_sound_speed *
                 sqrtf(p->rho * mu_0 / (dt_B_factor * dt_B_factor))
           : FLT_MAX;
-   
+
+  const float dt_psi =
+      dt_psi_factor != 0.f
+           ? hydro_properties->CFL_condition * dt_B_factor / dt_psi_factor : FLT_MAX;
+  
   const float dt_AR = p->mhd_data.v_sig_AR_max != 0.f
                            ? hydro_properties->CFL_condition * p->h /
                                  p->mhd_data.v_sig_AR_max
@@ -151,8 +159,10 @@ __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
                            : FLT_MAX;
   
   const float dt_res = fminf(dt_AR, dt_eta);
+
+  const float dt_divB = fminf(dt_B_derivatives, dt_psi);
   
-  return fminf(dt_res, dt_B_derivatives);
+  return fminf(dt_res, dt_divB);
 }
 
 /**
@@ -470,6 +480,8 @@ __attribute__((always_inline)) INLINE static void mhd_reset_acceleration(
   p->mhd_data.B_over_rho_dt_AR[2] = 0.0f;
 
   p->mhd_data.u_dt_AR = 0.0f;
+
+  p->mhd_data.laplacian_psi = 0.0f;
   
   /* Save forces*/
   for (int k = 0; k < 3; k++) {
