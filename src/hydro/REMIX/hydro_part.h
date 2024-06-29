@@ -273,11 +273,7 @@ struct part {
 
     float grad_m1_term1[3][3];
 
-    float grad_m1_term2[3][3];
-
     float grad_m2_term1[3][3][3];
-
-    float grad_m2_term2[3][3][3];
 
     float A;
 
@@ -309,11 +305,11 @@ struct part {
     float grad_m0_density_loop[3];
 
 
-    float grad_m0_gradhterm[3];
+    float grad_m0_gradhterm;
 
-    float grad_m1_term1_gradhterm[3][3];
+    float grad_m1_term1_gradhterm[3];
 
-    float grad_m2_term1_gradhterm[3][3][3];
+    float grad_m2_term1_gradhterm[3][3];
 
 
 } SWIFT_STRUCT_ALIGN;
