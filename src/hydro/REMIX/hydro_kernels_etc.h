@@ -128,19 +128,17 @@ __attribute__((always_inline)) INLINE static void
 hydro_prepare_gradient_extra_kernel(struct part *restrict p) {
 
     p->m0 = 0.f;
+    p->grad_m0_gradhterm = 0.f;
     for (int i = 0; i < 3; i++) {
       p->m1[i] = 0.f;
       p->grad_m0[i] = 0.f;
-      p->grad_m0_gradhterm[i] = 0.f;
+      p->grad_m1_term1_gradhterm[i] = 0.f;
       for (int j = 0; j < 3; j++) {
         p->m2[i][j] = 0.f;
         p->grad_m1_term1[i][j] = 0.f;
-        p->grad_m1_term1_gradhterm[i][j] = 0.f;
-        p->grad_m1_term2[i][j] = 0.f;
+        p->grad_m2_term1_gradhterm[i][j] = 0.f;
         for (int k = 0; k < 3; k++) {
             p->grad_m2_term1[i][j][k] = 0.f;
-            p->grad_m2_term1_gradhterm[i][j][k] = 0.f;
-            p->grad_m2_term2[i][j][k] = 0.f;
         }
       }
     }
@@ -187,15 +185,17 @@ for (int i = 0; i < 3; i++) {
 }
 
     // h term
-float wi_dx_gradhterm[3], wj_dx_gradhterm[3];
-  for (int i = 0; i < 3; i++) {
-    wi_dx_gradhterm[i] = -0.5f *(hydro_dimension * wi + (r / hi) * wi_dx) * hi_inv_dim_plus_one;
-    wj_dx_gradhterm[i] = -0.5f *(hydro_dimension * wj + (r / hj) * wj_dx) * hj_inv_dim_plus_one;
-}
+float wi_dx_gradhterm, wj_dx_gradhterm;
+wi_dx_gradhterm = -0.5f *(hydro_dimension * wi + (r / hi) * wi_dx) * hi_inv_dim_plus_one;
+wj_dx_gradhterm = -0.5f *(hydro_dimension * wj + (r / hj) * wj_dx) * hj_inv_dim_plus_one;
+
 
 
 pi->m0 += volume_j * wi_term;
 pj->m0 += volume_i * wj_term;
+
+pi->grad_m0_gradhterm += volume_j * wi_dx_gradhterm;
+pj->grad_m0_gradhterm += volume_i * wj_dx_gradhterm;
 for (int i = 0; i < 3; i++) {
   pi->m1[i] += dx[i] * volume_j * wi_term;
   pj->m1[i] += -dx[i] * volume_i * wj_term;
@@ -203,8 +203,11 @@ for (int i = 0; i < 3; i++) {
   pi->grad_m0[i] += volume_j * wi_dx_term[i];
   pj->grad_m0[i] += volume_i * wj_dx_term[i];
 
-    pi->grad_m0_gradhterm[i] += volume_j * wi_dx_gradhterm[i];
-  pj->grad_m0_gradhterm[i] += volume_i * wj_dx_gradhterm[i];
+
+  pi->grad_m1_term1_gradhterm[i] += volume_j * dx[i] * wi_dx_gradhterm;
+  pj->grad_m1_term1_gradhterm[i] += -volume_i * dx[i] * wj_dx_gradhterm;
+
+
   for (int j = 0; j < 3; j++) {
     pi->m2[i][j] += dx[i] * dx[j] * volume_j * wi_term;
     pj->m2[i][j] += dx[i] * dx[j] * volume_i * wj_term;
@@ -212,28 +215,15 @@ for (int i = 0; i < 3; i++) {
     pi->grad_m1_term1[i][j] += volume_j * dx[j] * wi_dx_term[i];
     pj->grad_m1_term1[i][j] += -volume_i * dx[j] * wj_dx_term[i];
 
-      pi->grad_m1_term1_gradhterm[i][j] += volume_j * dx[j] * wi_dx_gradhterm[i];
-    pj->grad_m1_term1_gradhterm[i][j] += -volume_i * dx[j] * wj_dx_gradhterm[i];
-    if (i == j){
-      pi->grad_m1_term2[i][j] += volume_j * wi_term;
-      pj->grad_m1_term2[i][j] += volume_i * wj_term;
-    }
+    pi->grad_m2_term1_gradhterm[i][j] += volume_j * dx[i] * dx[j] * wi_dx_gradhterm;
+    pj->grad_m2_term1_gradhterm[i][j] += volume_i * dx[i] * dx[j] * wj_dx_gradhterm;
+
 
     for (int k = 0; k < 3; k++) {
         pi->grad_m2_term1[i][j][k] += volume_j * dx[k] * dx[j] * wi_dx_term[i];
         pj->grad_m2_term1[i][j][k] += volume_i * dx[k] * dx[j] * wj_dx_term[i];
 
-        pi->grad_m2_term1_gradhterm[i][j][k] += volume_j * dx[k] * dx[j] * wi_dx_gradhterm[i];
-        pj->grad_m2_term1_gradhterm[i][j][k] += volume_i * dx[k] * dx[j] * wj_dx_gradhterm[i];
 
-        if (i == j){
-          pi->grad_m2_term2[i][j][k] += volume_j * dx[k] * wi_term;
-          pj->grad_m2_term2[i][j][k] += -volume_i * dx[k] * wj_term;
-        }
-        if (i == k){
-          pi->grad_m2_term2[i][j][k] += volume_j * dx[j] * wi_term;
-          pj->grad_m2_term2[i][j][k] += -volume_i * dx[j] * wj_term;
-        }
     }
   }
 }
@@ -277,40 +267,31 @@ for (int i = 0; i < 3; i++) {
 
 
     // h term
-float wi_dx_gradhterm[3];
-  for (int i = 0; i < 3; i++) {
-    wi_dx_gradhterm[i] = -0.5f *(hydro_dimension * wi + (r / hi) * wi_dx) * hi_inv_dim_plus_one;
-}
+float wi_dx_gradhterm;
+wi_dx_gradhterm = -0.5f *(hydro_dimension * wi + (r / hi) * wi_dx) * hi_inv_dim_plus_one;
+
 
 
 pi->m0 += volume_j * wi_term;
+
+pi->grad_m0_gradhterm += volume_j * wi_dx_gradhterm;
+
 for (int i = 0; i < 3; i++) {
   pi->m1[i] += dx[i] * volume_j * wi_term;
 
   pi->grad_m0[i] += volume_j * wi_dx_term[i];
 
-     pi->grad_m0_gradhterm[i] += volume_j * wi_dx_gradhterm[i];
+  pi->grad_m1_term1_gradhterm[i] += volume_j * dx[i] * wi_dx_gradhterm;
+
   for (int j = 0; j < 3; j++) {
     pi->m2[i][j] += dx[i] * dx[j] * volume_j * wi_term;
 
     pi->grad_m1_term1[i][j] += volume_j * dx[j] * wi_dx_term[i];
 
-    pi->grad_m1_term1_gradhterm[i][j] += volume_j * dx[j] * wi_dx_gradhterm[i];
-    if (i == j){
-      pi->grad_m1_term2[i][j] += volume_j * wi_term;
-    }
+    pi->grad_m2_term1_gradhterm[i][j] += volume_j * dx[i] * dx[j] * wi_dx_gradhterm;
 
     for (int k = 0; k < 3; k++) {
         pi->grad_m2_term1[i][j][k] += volume_j * dx[k] * dx[j] * wi_dx_term[i];
-
-        pi->grad_m2_term1_gradhterm[i][j][k] += volume_j * dx[k] * dx[j] * wi_dx_gradhterm[i];
-
-        if (i == j){
-          pi->grad_m2_term2[i][j][k] += volume_j * dx[k] * wi_term;
-        }
-        if (i == k){
-          pi->grad_m2_term2[i][j][k] += volume_j * dx[j] * wi_term;
-        }
     }
   }
 }
@@ -334,38 +315,37 @@ float volume = p->mass / p->rho_evolved;
 
 int i, j, k;
 p->m0 += volume * kernel_root * h_inv_dim;
-p->grad_m1_term2[0][0] += volume * kernel_root * h_inv_dim;
-p->grad_m1_term2[1][1] += volume * kernel_root * h_inv_dim;
-p->grad_m1_term2[2][2] += volume * kernel_root * h_inv_dim;
 
 const float h_inv_dim_plus_one = h_inv_dim * h_inv;
-p->grad_m0_gradhterm[0] -= 0.5f * volume * hydro_dimension * kernel_root * h_inv_dim_plus_one;
-p->grad_m0_gradhterm[1] -= 0.5f * volume * hydro_dimension * kernel_root * h_inv_dim_plus_one;
-p->grad_m0_gradhterm[2] -= 0.5f * volume * hydro_dimension * kernel_root * h_inv_dim_plus_one;
+p->grad_m0_gradhterm -= 0.5f * volume * hydro_dimension * kernel_root * h_inv_dim_plus_one;
 
 
+float grad_m1[3][3];
+float grad_m2[3][3][3];
 for (i = 0; i < 3; i++) {
-    p->grad_m0_gradhterm[i] *= p->dh_sphgrad[i];
-    p->grad_m0[i] += p->grad_m0_gradhterm[i];
+    p->grad_m0[i] += p->grad_m0_gradhterm * p->dh_sphgrad[i];
   for (j = 0; j < 3; j++) {
-    p->grad_m1_term1_gradhterm[i][j] *= p->dh_sphgrad[i];
-    p->grad_m1_term1[i][j] += p->grad_m1_term1_gradhterm[i][j];
+    grad_m1[i][j] = 0.f;
+    p->grad_m1_term1[i][j] += p->grad_m1_term1_gradhterm[j] * p->dh_sphgrad[i];
     for (k = 0; k < 3; k++) {
-        p->grad_m2_term1_gradhterm[i][j][k] *= p->dh_sphgrad[i];
-        p->grad_m2_term1[i][j][k] += p->grad_m2_term1_gradhterm[i][j][k];
+        grad_m2[i][j][k] = 0.f;
+        p->grad_m2_term1[i][j][k] += p->grad_m2_term1_gradhterm[j][k] * p->dh_sphgrad[i];
     }
   }
 }
 
 
 // Combine terms to get final m expressions
-float grad_m1[3][3];
-float grad_m2[3][3][3];
 for (i = 0; i < 3; i++) {
+  grad_m1[i][i] +=p->m0;
   for (j = 0; j < 3; j++) {
-    grad_m1[i][j] = p->grad_m1_term1[i][j] + p->grad_m1_term2[i][j];
+    grad_m1[i][j] += p->grad_m1_term1[i][j];
+
+    grad_m2[i][i][j] += p->m1[j];
+    grad_m2[i][j][i] += p->m1[j];
+
     for (k = 0; k < 3; k++) {
-        grad_m2[i][j][k] = p->grad_m2_term1[i][j][k] + p->grad_m2_term2[i][j][k];
+        grad_m2[i][j][k] += p->grad_m2_term1[i][j][k];
     }
   }
 }
