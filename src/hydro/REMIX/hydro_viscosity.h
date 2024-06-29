@@ -420,7 +420,7 @@ __attribute__((always_inline)) INLINE static void hydro_set_u_rho_cond(
     float rho_quad_j = 0.f;
 
     /* eq 23 in Rosswog 2020 set to constant */
-    const float eta_crit = max(pi->eta_crit, pj->eta_crit);//planetary_quad_visc_eta_crit;//0.5f * (pi->eta_crit + pj->eta_crit);// 0.5359018;//
+    const float eta_crit = max(pi->eta_crit, pj->eta_crit);
 
     for (int i = 0; i < 3; ++i) {
         /* Get the A numerators and denominators (eq 22 in Rosswog 2020). dv

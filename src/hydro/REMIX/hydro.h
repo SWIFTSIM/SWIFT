@@ -602,13 +602,6 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
 
   hydro_end_density_extra_viscosity(p);
   hydro_end_density_extra_kernel(p);
-
-  p->sph_volume = 1.f / p->density.wcount;
-  p->eta_crit = powf(p->sph_volume, 1/hydro_dimension) / p->h;
-  p->sph_rho = p->rho;
-
-
-
 }
 
 /**
@@ -646,10 +639,6 @@ __attribute__((always_inline)) INLINE static void hydro_part_has_no_neighbours(
   p->weighted_neighbour_wcount = 1.f;
 
     p->is_h_max = 1;
-  p->sph_volume = 1.f / p->density.wcount;
-  p->eta_crit = powf(p->sph_volume, 1/hydro_dimension) / p->h;
-  p->sph_rho = p->rho;
-
     p->m0_density_loop = p->mass * kernel_root * h_inv_dim / p->rho_evolved;
 
 
@@ -685,6 +674,8 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
   } else {
     p->is_h_max = 0;
   }
+
+  p->eta_crit = 1.f / hydro_props->eta_neighbours;
 
   hydro_prepare_gradient_extra_kernel(p);
   hydro_prepare_gradient_extra_viscosity(p);
@@ -994,8 +985,6 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
     struct part *restrict p, const struct cosmology *cosmo) {
 
   p->force.h_dt *= p->h * hydro_dimension_inv;
-
-    p->testing_output = p->vac_term;
 }
 
 /**

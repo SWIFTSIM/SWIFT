@@ -263,10 +263,6 @@ struct part {
 
     float vac_term;
 
-    float sph_volume;
-
-    float sph_rho;
-
     float m0;
 
     float m1[3];
@@ -307,9 +303,6 @@ struct part {
 
     float curl_v_sphgrad[3];
 
-
-
-    float testing_output;
 
     float m0_density_loop;
 
