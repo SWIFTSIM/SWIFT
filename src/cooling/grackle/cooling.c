@@ -1418,7 +1418,7 @@ INLINE double cooling_get_physical_density(const struct part* p,
   if (cooling_max_density > 0) {
     if (part_density > cooling_max_density) {
 #ifdef SWIFT_DEBUG_CHECKS
-    warning("Gas particle %lld physical density (%e) is higher than the maximal physical density set in the parameter files (%e).", p->ID, part_density, cooling_max_density);
+    warning("Gas particle %lld physical density (%e) is higher than the maximal physical density set in the parameter files (%e).", p->id, part_density, cooling_max_density);
 #endif
     }
     return min(part_density, cooling_max_density);
