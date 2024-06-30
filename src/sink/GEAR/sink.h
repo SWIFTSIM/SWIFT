@@ -749,7 +749,7 @@ INLINE static void sink_copy_properties_to_star(
   sink_star_formation_give_new_velocity(e, sink, sp, sink_props);
 
   /* set feedback type */
-  sp->feedback_data.star_type = (star_feedback_type)sink->target_type;
+  sp->feedback_data.star_type = (enum star_feedback_type)sink->target_type;
 
   /* Initialize the feedback */
   if (sp->feedback_data.star_type == single_star)
