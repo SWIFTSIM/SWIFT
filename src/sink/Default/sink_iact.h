@@ -72,7 +72,8 @@ runner_iact_nonsym_sinks_sink_swallow(const float r2, const float dx[3],
                                       struct sink *restrict sj,
                                       const int with_cosmology,
                                       const struct cosmology *cosmo,
-                                      const struct gravity_props *grav_props) {}
+                                      const struct gravity_props *grav_props,
+				      const struct sink_props *sink_properties) {}
 
 /**
  * @brief Compute sink-gas swallow interaction (non-symmetric).
