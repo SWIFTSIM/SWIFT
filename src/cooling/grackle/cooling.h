@@ -183,8 +183,4 @@ INLINE static double cooling_get_electron_pressure(
   return 0;
 }
 
-double cooling_get_physical_density(const struct part* p,
-				   const struct cosmology* cosmo,
-				   const struct cooling_function_data* cooling);
-
 #endif /* SWIFT_COOLING_GRACKLE_H */

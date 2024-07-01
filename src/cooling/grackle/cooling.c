@@ -64,6 +64,10 @@ gr_float cooling_time(const struct phys_const* phys_const,
                       const struct cooling_function_data* cooling,
                       const struct part* p, struct xpart* xp);
 
+double cooling_get_physical_density(const struct part* p,
+				   const struct cosmology* cosmo,
+				   const struct cooling_function_data* cooling);
+
 /**
  * @brief Common operations performed on the cooling function at a
  * given time-step or redshift.
