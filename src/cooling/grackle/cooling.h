@@ -28,7 +28,6 @@
 #include "cooling_properties.h"
 #include "error.h"
 #include "inline.h"
-#include "minmax.h"
 
 struct part;
 struct xpart;
