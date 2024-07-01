@@ -50,18 +50,18 @@ __attribute__((always_inline)) INLINE static float sink_compute_timestep(
 /**
  * @brief Update the target mass of the sink particle.
  *
- * @param e The #engine
  * @param sink the sink particle.
  * @param sink_props the sink properties to use.
  * @param phys_const the physical constants in internal units.
- * @param cosmo the cosmological parameters and properties.
- */
+ * @param e The #engine
+ * @param star_counter The star loop counter.
+*/
 INLINE static void sink_update_target_mass(struct sink* sink,
                                            const struct sink_props* sink_props,
-                                           const struct engine* e, int rloop) {
+                                           const struct engine* e, int star_counter) {
 
   float random_number = random_unit_interval_part_ID_and_index(
-      sink->id, rloop, e->ti_current, random_number_sink_formation);
+      sink->id, star_counter, e->ti_current, random_number_sink_formation);
 
   const struct feedback_props* feedback_props = e->feedback_props;
 
@@ -97,7 +97,7 @@ INLINE static void sink_update_target_mass(struct sink* sink,
   } else {
     /* We are dealing with the discrete part of the IMF. */
     random_number = random_unit_interval_part_ID_and_index(
-        sink->id, rloop + 1, e->ti_current, random_number_sink_formation);
+        sink->id, star_counter + 1, e->ti_current, random_number_sink_formation);
     double m = initial_mass_function_sample_power_law(
         minimal_discrete_mass, imf->mass_max, imf->exp[imf->n_parts - 1],
         random_number);
