@@ -1417,16 +1417,13 @@ double cooling_get_physical_density(
   const double part_density = hydro_get_physical_density(p, cosmo);
   const double cooling_max_density = cooling->cooling_density_max;
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (cooling_max_density > 0.0 && part_density > cooling_max_density) {
+    warning("Gas particle %lld physical density (%e) is higher than the maximal physical density set in the parameter files (%e).", p->id, part_density, cooling_max_density);
+  }
+#endif
   /* Maximal density cooling is defined */
   if (cooling_max_density > 0.0) {
-    if (part_density > cooling_max_density) {
-#ifdef SWIFT_DEBUG_CHECKS
-      warning(
-          "Gas particle %lld physical density (%e) is higher than the maximal "
-          "physical density set in the parameter files (%e).",
-          p->id, part_density, cooling_max_density);
-#endif
-    }
     return fminf(part_density, cooling_max_density);
   }
   /* else ( if cooling_max_density <= 0) we do not want to use a density
