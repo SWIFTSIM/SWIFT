@@ -1419,7 +1419,10 @@ double cooling_get_physical_density(
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (cooling_max_density > 0.0 && part_density > cooling_max_density) {
-    warning("Gas particle %lld physical density (%e) is higher than the maximal physical density set in the parameter files (%e).", p->id, part_density, cooling_max_density);
+    warning(
+        "Gas particle %lld physical density (%e) is higher than the maximal "
+        "physical density set in the parameter files (%e).",
+        p->id, part_density, cooling_max_density);
   }
 #endif
   /* Maximal density cooling is defined */
