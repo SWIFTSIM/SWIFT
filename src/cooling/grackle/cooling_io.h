@@ -266,7 +266,8 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
   /* Convert from acc to intenal units */
   const double m_p_cgs = phys_const->const_proton_mass *
                          units_cgs_conversion_factor(us, UNIT_CONV_MASS);
-  cooling->cooling_density_max *= m_p_cgs / units_cgs_conversion_factor(us, UNIT_CONV_DENSITY);
+  cooling->cooling_density_max *=
+      m_p_cgs / units_cgs_conversion_factor(us, UNIT_CONV_DENSITY);
 }
 
 #endif /* SWIFT_COOLING_GRACKLE_IO_H */

@@ -64,9 +64,9 @@ gr_float cooling_time(const struct phys_const* phys_const,
                       const struct cooling_function_data* cooling,
                       const struct part* p, struct xpart* xp);
 
-double cooling_get_physical_density(const struct part* p,
-				   const struct cosmology* cosmo,
-				   const struct cooling_function_data* cooling);
+double cooling_get_physical_density(
+    const struct part* p, const struct cosmology* cosmo,
+    const struct cooling_function_data* cooling);
 
 /**
  * @brief Common operations performed on the cooling function at a
@@ -1397,7 +1397,6 @@ void cooling_struct_restore(struct cooling_function_data* cooling, FILE* stream,
   cooling_init_grackle(cooling);
 }
 
-
 /**
  * @brief Get the density of the #part. If the density is bigger than
  * cooling_density_max, then we floor the density to this value.
@@ -1411,9 +1410,9 @@ void cooling_struct_restore(struct cooling_function_data* cooling, FILE* stream,
  * @param cosmo #cosmology data structure.
  * @param cooling #cooling_function_data struct.
  */
-double cooling_get_physical_density(const struct part* p,
-				    const struct cosmology* cosmo,
-				    const struct cooling_function_data* cooling) {
+double cooling_get_physical_density(
+    const struct part* p, const struct cosmology* cosmo,
+    const struct cooling_function_data* cooling) {
 
   const double part_density = hydro_get_physical_density(p, cosmo);
   const double cooling_max_density = cooling->cooling_density_max;
@@ -1422,7 +1421,10 @@ double cooling_get_physical_density(const struct part* p,
   if (cooling_max_density > 0.0) {
     if (part_density > cooling_max_density) {
 #ifdef SWIFT_DEBUG_CHECKS
-    warning("Gas particle %lld physical density (%e) is higher than the maximal physical density set in the parameter files (%e).", p->id, part_density, cooling_max_density);
+      warning(
+          "Gas particle %lld physical density (%e) is higher than the maximal "
+          "physical density set in the parameter files (%e).",
+          p->id, part_density, cooling_max_density);
 #endif
     }
     return fminf(part_density, cooling_max_density);
