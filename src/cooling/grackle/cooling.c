@@ -1411,9 +1411,9 @@ void cooling_struct_restore(struct cooling_function_data* cooling, FILE* stream,
  * @param cosmo #cosmology data structure.
  * @param cooling #cooling_function_data struct.
  */
-INLINE double cooling_get_physical_density(const struct part* p,
-					   const struct cosmology* cosmo,
-					   const struct cooling_function_data* cooling) {
+double cooling_get_physical_density(const struct part* p,
+				    const struct cosmology* cosmo,
+				    const struct cooling_function_data* cooling) {
 
   const double part_density = hydro_get_physical_density(p, cosmo);
   const double cooling_max_density = cooling->cooling_density_max;
