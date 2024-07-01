@@ -1421,7 +1421,7 @@ INLINE double cooling_get_physical_density(const struct part* p,
     warning("Gas particle %lld physical density (%e) is higher than the maximal physical density set in the parameter files (%e).", p->id, part_density, cooling_max_density);
 #endif
     }
-    return min(part_density, cooling_max_density);
+    return fminf(part_density, cooling_max_density);
   }
   /* else ( if cooling_max_density <= 0) we do not want to use a density
      threshold, then return the part density. */
