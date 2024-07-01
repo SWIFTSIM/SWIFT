@@ -67,6 +67,7 @@ GrackleCooling:
   self_shielding_method: 0                    # (optional) Grackle (1->3 for Grackle's ones, 0 for none and -1 for GEAR)
   primordial_chemistry: 1
   thermal_time_myr: 5
+  maximal_density_Hpcm3: -1                   # Maximal density (in hydrogen atoms/cm^3) for cooling. Higher densities are floored to this value to ensure grackle works properly when interpolating beyond the cloudy_table maximal density. A value < 0 deactivates this parameter.
 
 Scheduler:
   tasks_per_cell: 128
