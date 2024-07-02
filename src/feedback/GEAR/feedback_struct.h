@@ -22,10 +22,10 @@
 #include "chemistry_struct.h"
 
 /**
- * @brief The stellar feedback type for each star type. Now, star particles can
- * represent a single star ("single_star"), a stellar population without SNII
- * feedback ("star_population_no_SNII") or a stellar population with SNII
- * feedback ("stellar population").
+ * @brief The stellar feedback type for each star type.
+ *
+ * Now, star particles can represent a single star ("single_star"), a stellar
+ * population from a continuous IMF or a stellar population from a whole IMF.
  */
 enum star_feedback_type {
   single_star,                    /* particle representing a single star */
