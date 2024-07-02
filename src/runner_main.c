@@ -198,8 +198,8 @@ void *runner_main(void *data) {
             runner_doself1_branch_density(r, ci);
 #ifdef EXTRA_HYDRO_LOOP
           else if (t->subtype == task_subtype_gradient)
-            //runner_doself1_branch_gradient(r, ci);
-             runner_doself2_branch_gradient(r, ci); 
+            // runner_doself1_branch_gradient(r, ci);
+            runner_doself2_branch_gradient(r, ci);
 #endif
           else if (t->subtype == task_subtype_force)
             runner_doself2_branch_force(r, ci);
@@ -249,8 +249,8 @@ void *runner_main(void *data) {
             runner_dopair1_branch_density(r, ci, cj);
 #ifdef EXTRA_HYDRO_LOOP
           else if (t->subtype == task_subtype_gradient)
-            //runner_dopair1_branch_gradient(r, ci, cj);
-            runner_dopair2_branch_gradient(r, ci, cj);  
+            // runner_dopair1_branch_gradient(r, ci, cj);
+            runner_dopair2_branch_gradient(r, ci, cj);
 #endif
           else if (t->subtype == task_subtype_force)
             runner_dopair2_branch_force(r, ci, cj);
@@ -346,7 +346,7 @@ void *runner_main(void *data) {
 #ifdef EXTRA_HYDRO_LOOP
           else if (t->subtype == task_subtype_gradient)
             runner_dosub_pair2_gradient(r, ci, cj, 1);
-            // runner_dosub_pair1_gradient(r, ci, cj, 1);  
+            // runner_dosub_pair1_gradient(r, ci, cj, 1);
 #endif
           else if (t->subtype == task_subtype_force)
             runner_dosub_pair2_force(r, ci, cj, 1);
