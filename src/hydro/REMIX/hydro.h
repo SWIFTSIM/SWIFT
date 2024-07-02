@@ -163,7 +163,8 @@ __attribute__((always_inline)) INLINE static float hydro_get_physical_pressure(
 __attribute__((always_inline)) INLINE static float hydro_get_comoving_entropy(
     const struct part *restrict p, const struct xpart *restrict xp) {
 
-  return gas_entropy_from_internal_energy(p->rho_evolved, xp->u_full, p->mat_id);
+  return gas_entropy_from_internal_energy(p->rho_evolved, xp->u_full,
+                                          p->mat_id);
 }
 
 /**
@@ -184,7 +185,8 @@ __attribute__((always_inline)) INLINE static float hydro_get_physical_entropy(
 
   /* Note: no cosmological conversion required here with our choice of
    * coordinates. */
-  return gas_entropy_from_internal_energy(p->rho_evolved, xp->u_full, p->mat_id);
+  return gas_entropy_from_internal_energy(p->rho_evolved, xp->u_full,
+                                          p->mat_id);
 }
 
 /**
@@ -358,8 +360,8 @@ __attribute__((always_inline)) INLINE static void hydro_set_physical_entropy(
 
   /* Note there is no conversion from physical to comoving entropy */
   const float comoving_entropy = entropy;
-  xp->u_full =
-      gas_internal_energy_from_entropy(p->rho_evolved, comoving_entropy, p->mat_id);
+  xp->u_full = gas_internal_energy_from_entropy(p->rho_evolved,
+                                                comoving_entropy, p->mat_id);
 }
 
 /**
@@ -605,7 +607,6 @@ __attribute__((always_inline)) INLINE static void hydro_part_has_no_neighbours(
   p->m0_no_mean_kernel = p->mass * kernel_root * h_inv_dim / p->rho_evolved;
 
   p->vac_switch = 1.f;
-
 }
 
 /**
@@ -666,9 +667,8 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
   hydro_end_gradient_extra_kernel(p);
   hydro_end_gradient_extra_viscosity(p);
 
-    p->rho = p->rho_evolved;
-
-   }
+  p->rho = p->rho_evolved;
+}
 
 /**
  * @brief Prepare a particle for the force calculation.
@@ -694,13 +694,14 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
     const struct pressure_floor_props *pressure_floor, const float dt_alpha,
     const float dt_therm) {
 
-hydro_prepare_force_extra_kernel(p);
+  hydro_prepare_force_extra_kernel(p);
 
-p->force.eta_crit = 1.f / hydro_props->eta_neighbours;
+  p->force.eta_crit = 1.f / hydro_props->eta_neighbours;
 
 #ifdef PLANETARY_FIXED_ENTROPY
   /* Override the internal energy to satisfy the fixed entropy */
-  p->u = gas_internal_energy_from_entropy(p->rho_evolved, p->s_fixed, p->mat_id);
+  p->u =
+      gas_internal_energy_from_entropy(p->rho_evolved, p->s_fixed, p->mat_id);
   xp->u_full = p->u;
 #endif
 
@@ -708,21 +709,22 @@ p->force.eta_crit = 1.f / hydro_props->eta_neighbours;
   const float soundspeed =
       gas_soundspeed_from_internal_energy(p->rho_evolved, p->u, p->mat_id);
 
+  float div_v = p->dv_norm_kernel[0][0] + p->dv_norm_kernel[1][1] +
+                p->dv_norm_kernel[2][2];
+  float curl_v[3];
+  curl_v[0] = p->dv_norm_kernel[1][2] - p->dv_norm_kernel[2][1];
+  curl_v[1] = p->dv_norm_kernel[2][0] - p->dv_norm_kernel[0][2];
+  curl_v[2] = p->dv_norm_kernel[0][1] - p->dv_norm_kernel[1][0];
+  float mod_curl_v = sqrtf(curl_v[0] * curl_v[0] + curl_v[1] * curl_v[1] +
+                           curl_v[2] * curl_v[2]);
+  float balsara;
 
-float div_v = p->dv_norm_kernel[0][0] + p->dv_norm_kernel[1][1] + p->dv_norm_kernel[2][2];
-float curl_v[3];
-curl_v[0] = p->dv_norm_kernel[1][2] - p->dv_norm_kernel[2][1];
-curl_v[1] = p->dv_norm_kernel[2][0] - p->dv_norm_kernel[0][2];
-curl_v[2] = p->dv_norm_kernel[0][1] - p->dv_norm_kernel[1][0];
-float mod_curl_v = sqrtf(curl_v[0] * curl_v[0] + curl_v[1] * curl_v[1] + curl_v[2] * curl_v[2]);
-float balsara;
-
-if (div_v == 0.f) {
-  balsara = 0.f;
-} else {
-  balsara = fabsf(div_v) /
-            (fabsf(div_v) + mod_curl_v + 0.0001f * soundspeed / p->h);
-}
+  if (div_v == 0.f) {
+    balsara = 0.f;
+  } else {
+    balsara = fabsf(div_v) /
+              (fabsf(div_v) + mod_curl_v + 0.0001f * soundspeed / p->h);
+  }
 
   /* Compute the pressure */
   const float pressure =
@@ -754,7 +756,6 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
   p->force.v_sig = p->force.soundspeed;
 
   p->drho_dt = 0.f;
-
 }
 
 /**
@@ -826,11 +827,11 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   p->rho_evolved += p->drho_dt * dt_therm;
 
   // Not sure if we need this
-    /* compute minimum SPH quantities */
+  /* compute minimum SPH quantities */
   const float h = p->h;
-  const float h_inv = 1.0f / h;                 /* 1/h */
-  const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */
-  const float floor_rho = p->mass * kernel_root * h_inv_dim;//FLT_MIN;
+  const float h_inv = 1.0f / h;                               /* 1/h */
+  const float h_inv_dim = pow_dimension(h_inv);               /* 1/h^d */
+  const float floor_rho = p->mass * kernel_root * h_inv_dim;  // FLT_MIN;
   p->rho_evolved = max(p->rho_evolved, floor_rho);
 
   /* Check against absolute minimum */
@@ -839,7 +840,7 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
 
   p->u = max(p->u, min_u);
 
-//  const float h_inv = 1.f / p->h;
+  //  const float h_inv = 1.f / p->h;
 
   /* Predict smoothing length */
   const float w1 = p->force.h_dt * h_inv * dt_drift;
@@ -935,16 +936,17 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     p->u_dt = 0.f;
   }
 
-    const float delta_rho = p->drho_dt * dt_therm;
+  const float delta_rho = p->drho_dt * dt_therm;
 
-    xp->rho_evolved_full = max(xp->rho_evolved_full + delta_rho, 0.5f * xp->rho_evolved_full);
+  xp->rho_evolved_full =
+      max(xp->rho_evolved_full + delta_rho, 0.5f * xp->rho_evolved_full);
 
-    /* compute minimum SPH quantities */
+  /* compute minimum SPH quantities */
   const float h = p->h;
-  const float h_inv = 1.0f / h;                 /* 1/h */
-  const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */
-  const float floor_rho = p->mass * kernel_root * h_inv_dim;//FLT_MIN;
-    if (xp->rho_evolved_full < floor_rho) {
+  const float h_inv = 1.0f / h;                               /* 1/h */
+  const float h_inv_dim = pow_dimension(h_inv);               /* 1/h^d */
+  const float floor_rho = p->mass * kernel_root * h_inv_dim;  // FLT_MIN;
+  if (xp->rho_evolved_full < floor_rho) {
     xp->rho_evolved_full = floor_rho;
     p->drho_dt = 0.f;
   }

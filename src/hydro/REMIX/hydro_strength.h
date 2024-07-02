@@ -29,6 +29,4 @@
 #include "hydro_parameters.h"
 #include "math.h"
 
-
-
 #endif /* SWIFT_PLANETARY_HYDRO_STRENGTH_H */

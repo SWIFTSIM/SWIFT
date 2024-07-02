@@ -51,7 +51,7 @@ INLINE static void hydro_read_particles(struct part* parts,
                                         struct io_props* list,
                                         int* num_fields) {
 
- #ifdef PLANETARY_FIXED_ENTROPY
+#ifdef PLANETARY_FIXED_ENTROPY
   *num_fields = 10;
 #else
   *num_fields = 9;
@@ -225,10 +225,9 @@ INLINE static void hydro_write_particles(const struct part* parts,
   list[10] = io_make_output_field_convert_part(
       "Potentials", FLOAT, 1, UNIT_CONV_POTENTIAL, 0.f, parts, xparts,
       convert_part_potential, "Gravitational potentials of the particles");
-  list[11] =
-      io_make_output_field("VacuumSwitch", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f,
-                           parts, vac_switch, "Vacuum boundary identification switch");
-
+  list[11] = io_make_output_field("VacuumSwitch", FLOAT, 1, UNIT_CONV_NO_UNITS,
+                                  0.f, parts, vac_switch,
+                                  "Vacuum boundary identification switch");
 }
 
 /**

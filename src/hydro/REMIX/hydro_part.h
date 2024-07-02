@@ -71,7 +71,7 @@ struct xpart {
   /*! Internal energy at the last full step. */
   float u_full;
 
-   /*! Evolved density at the last full step. */
+  /*! Evolved density at the last full step. */
   float rho_evolved_full;
 
   /*! Additional data used to record particle splits */
@@ -172,29 +172,29 @@ struct part {
      * Quantities should only be accessed in the gradient loop over neighbours
      * and the extra ghost task.
      */
-     struct {
+    struct {
 
-       float m0;
+      float m0;
 
-       float m1[3];
+      float m1[3];
 
-       struct sym_matrix m2;
+      struct sym_matrix m2;
 
-       float grad_m0[3];
+      float grad_m0[3];
 
-       float grad_m1_term1[3][3];
+      float grad_m1_term1[3][3];
 
-       struct sym_matrix grad_m2_term1_x;
+      struct sym_matrix grad_m2_term1_x;
 
-       struct sym_matrix grad_m2_term1_y;
+      struct sym_matrix grad_m2_term1_y;
 
-       struct sym_matrix grad_m2_term1_z;
+      struct sym_matrix grad_m2_term1_z;
 
-       float grad_m0_gradhterm;
+      float grad_m0_gradhterm;
 
-       float grad_m1_term1_gradhterm[3];
+      float grad_m1_term1_gradhterm[3];
 
-       struct sym_matrix grad_m2_term1_gradhterm;
+      struct sym_matrix grad_m2_term1_gradhterm;
 
     } gradient;
 
@@ -280,25 +280,23 @@ struct part {
   float s_fixed;
 #endif
 
-    float rho_evolved;
+  float rho_evolved;
 
-    float drho_dt;
+  float drho_dt;
 
-    float vac_switch;
+  float vac_switch;
 
-    float dv_norm_kernel[3][3];
+  float dv_norm_kernel[3][3];
 
-    float du_norm_kernel[3];
+  float du_norm_kernel[3];
 
-    float drho_norm_kernel[3];
+  float drho_norm_kernel[3];
 
-    float dh_norm_kernel[3];
+  float dh_norm_kernel[3];
 
-    float m0_no_mean_kernel;
+  float m0_no_mean_kernel;
 
-    float grad_m0_no_mean_kernel[3];
-
-
+  float grad_m0_no_mean_kernel[3];
 
 } SWIFT_STRUCT_ALIGN;
 
