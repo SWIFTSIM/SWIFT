@@ -252,31 +252,41 @@ INLINE static void sink_copy_properties_to_star(
     const int with_cosmology, const struct phys_const* phys_const,
     const struct unit_system* restrict us) {}
 
-
-/**
- * @brief Update the #sink particle properties after spawning a star. Important
- * properties that are updated are the sink mass and the sink->target_mass to
- * draw the next star mass.
- *
- * @param sink the sink particle.
- * @param e The #engine
- * @param sink_props the sink properties to use.
- * @param phys_const the physical constants in internal units.
- * @param loop The star loop counter. 
- */
-INLINE static void sink_update_sink_properties_after_star_formation(struct sink* sink, 
-   const struct spart* sp, const struct engine* e,  const struct sink_props* sink_props,
-   const struct phys_const* phys_const, int loop) {}
-
 /**
  * @brief Update the #sink particle properties before spawning a star.
  *
- * @param sink the sink particle.
+ * @param sink The sink particle.
+ * @param e The #engine
+ * @param sink_props The sink properties to use.
+ * @param phys_const The physical constants in internal units.
+ */
+INLINE static void sink_update_sink_properties_before_star_formation(struct sink* sink,
+   const struct engine* e,  const struct sink_props* sink_props,
+   const struct phys_const* phys_const) {}
+
+/**
+ * @brief Update the #sink particle properties right after spawning a star.
+ *
+ * @param sink The #sink particle that spawed stars.
+ * @param sp The #spart particle spawned.
  * @param e The #engine
  * @param sink_props the sink properties to use.
  * @param phys_const the physical constants in internal units.
+ * @param star_counter The star loop counter.
  */
-INLINE static void sink_update_sink_properties_before_star_formation(struct sink* sink,
+INLINE static void sink_update_sink_properties_during_star_formation(struct sink* sink,
+   const struct spart* sp, const struct engine* e,  const struct sink_props* sink_props,
+   const struct phys_const* phys_const, int star_counter) {}
+
+/**
+ * @brief Update the #sink particle properties after star formation.
+ *
+ * @param sink The sink particle.
+ * @param e The #engine
+ * @param sink_props The sink properties to use.
+ * @param phys_const The physical constants in internal units.
+ */
+INLINE static void sink_update_sink_properties_after_star_formation(struct sink* sink,
    const struct engine* e,  const struct sink_props* sink_props,
    const struct phys_const* phys_const) {}
 
