@@ -107,7 +107,7 @@ INLINE static void sink_write_particles(const struct sink* sinks,
                                         int with_cosmology) {
 
   /* Say how much we want to write */
-  *num_fields = 7;
+  *num_fields = 8;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_sink(
