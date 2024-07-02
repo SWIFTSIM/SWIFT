@@ -390,11 +390,9 @@ INLINE static int sink_is_forming(
     return 0;
   }
 
-  /* #ifdef SWIFT_DEBUG_CHECKS */
   message(
       "Gas particle %lld can form a sink ! Gas velocity: v= (%lf, %lf, %lf).",
       p->id, p->v[0], p->v[1], p->v[2]);
-  /* #endif */
   return 1;
 }
 
@@ -546,7 +544,7 @@ __attribute__((always_inline)) INLINE static void sink_swallow_part(
   /* Update the total mass before star spawning */
   sp->mass_tot_before_star_spawning = sp->mass;
 
-  /* #ifdef SWIFT_DEBUG_CHECKS */
+#ifdef SWIFT_DEBUG_CHECKS
   const float dr = sqrt(dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]);
   message(
       "sink %lld swallow gas particle %lld. "
@@ -556,7 +554,7 @@ __attribute__((always_inline)) INLINE static void sink_swallow_part(
       "Delta_v_rad = %f)",
       sp->id, p->id, sp->mass, -dv[0], -dv[1], -dv[2], -dx[0], -dx[1], -dx[2],
       (dv[0] * dx[0] + dv[1] * dx[1] + dv[2] * dx[2]) / dr);
-  /* #endif */
+#endif
 }
 
 /**
@@ -613,10 +611,8 @@ __attribute__((always_inline)) INLINE static void sink_swallow_sink(
   /* Update the total mass before star spawning */
   spi->mass_tot_before_star_spawning = spi->mass;
 
-  /* #ifdef SWIFT_DEBUG_CHECKS */
   message("sink %lld swallow sink particle %lld. New mass: %e.", spi->id,
           spj->id, spi->mass);
-  /* #endif */
 }
 
 /**
