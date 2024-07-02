@@ -73,7 +73,7 @@ struct rt_props {
   float mass_fraction_HeI_init;
   float mass_fraction_HeII_init;
   float mass_fraction_HeIII_init;
-  float number_density_electrons_init; /* todo: do we need this? */
+  /* float number_density_electrons_init; [> todo: do we need this? <] */
 
   /* Hydrogen and Helium mass fractions of the non-metal portion of the gas */
   float hydrogen_mass_fraction;
@@ -114,16 +114,15 @@ struct rt_props {
   /*! grackle chemistry data */
   chemistry_data grackle_chemistry_data;
 
-  /* use case B recombination? */
-  int case_B_recombination;
-
-  /* make grackle talkative? */
-  int grackle_verbose;
-
-  /* TODO: cleanup later with all other grackle stuff */
   /*! grackle chemistry data storage
    * (needed for local function calls) */
-  /* chemistry_data_storage* grackle_chemistry_rates; */
+  chemistry_data_storage grackle_chemistry_rates;
+
+  /*! use case B recombination? */
+  int case_B_recombination;
+
+  /*! make grackle talkative? */
+  int grackle_verbose;
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
   /* radiation emitted by stars this step. This is not really a property,
@@ -452,8 +451,8 @@ __attribute__((always_inline)) INLINE static void rt_props_init(
   rtp->case_B_recombination = parser_get_opt_param_int(
       params, "GEARRT:case_B_recombination", /*default=*/1);
   rt_init_grackle(&rtp->grackle_units, &rtp->grackle_chemistry_data,
-                  rtp->hydrogen_mass_fraction, rtp->grackle_verbose,
-                  rtp->case_B_recombination, us);
+                  &rtp->grackle_chemistry_rates, rtp->hydrogen_mass_fraction,
+                  rtp->grackle_verbose, rtp->case_B_recombination, us, cosmo);
 
   /* Pre-compute interaction rates/cross sections */
   /* -------------------------------------------- */
@@ -464,6 +463,12 @@ __attribute__((always_inline)) INLINE static void rt_props_init(
 
   /* Finishers */
   /* --------- */
+}
+
+__attribute__((always_inline)) INLINE static void rt_props_update(
+    struct rt_props* rtp, const struct unit_system* us,
+    struct cosmology* cosmo) {
+  update_grackle_units_cosmo(&(rtp->grackle_units), us, cosmo);
 }
 
 /**
@@ -492,17 +497,19 @@ __attribute__((always_inline)) INLINE static void rt_struct_dump(
  * @param stream the file stream
  * @param phys_const The physical constants in the internal unit system.
  * @param us The internal unit system.
+ * @param cosmo the #cosmology
  */
 __attribute__((always_inline)) INLINE static void rt_struct_restore(
     struct rt_props* props, FILE* stream, const struct phys_const* phys_const,
-    const struct unit_system* us) {
+    const struct unit_system* us, const struct cosmology* restrict cosmo) {
 
   restart_read_blocks((void*)props, sizeof(struct rt_props), 1, stream, NULL,
                       "RT properties struct");
   /* Set up stuff that needs array allocation */
   rt_init_grackle(&props->grackle_units, &props->grackle_chemistry_data,
+                  &props->grackle_chemistry_rates,
                   props->hydrogen_mass_fraction, props->grackle_verbose,
-                  props->case_B_recombination, us);
+                  props->case_B_recombination, us, cosmo);
 
   props->energy_weighted_cross_sections = NULL;
   props->number_weighted_cross_sections = NULL;

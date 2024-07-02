@@ -223,6 +223,8 @@ void reset_particles(struct cell *c, struct hydro_space *hs,
 #endif
 
     hydro_init_part(p, hs);
+    adaptive_softening_init_part(p);
+    mhd_init_part(p);
 
 #if defined(SHADOWFAX_SPH)
     float volume = p->conserved.mass / density;
@@ -608,6 +610,10 @@ int main(int argc, char *argv[]) {
   cosmology_init_no_cosmo(&cosmo);
   engine.cosmology = &cosmo;
 
+  struct sink_props sink_props;
+  bzero(&sink_props, sizeof(struct sink_props));
+  engine.sink_properties = &sink_props;
+
   struct runner runner;
   runner.e = &engine;
 
@@ -666,8 +672,11 @@ int main(int argc, char *argv[]) {
 
     /* Reset particles. */
     for (int i = 0; i < 125; ++i) {
-      for (int pid = 0; pid < cells[i]->hydro.count; ++pid)
+      for (int pid = 0; pid < cells[i]->hydro.count; ++pid) {
         hydro_init_part(&cells[i]->hydro.parts[pid], &space.hs);
+        adaptive_softening_init_part(&cells[i]->hydro.parts[pid]);
+        mhd_init_part(&cells[i]->hydro.parts[pid]);
+      }
     }
 
     /* First, sort stuff */
@@ -816,8 +825,11 @@ int main(int argc, char *argv[]) {
     }
 
     for (int i = 0; i < 125; ++i) {
-      for (int pid = 0; pid < cells[i]->hydro.count; ++pid)
+      for (int pid = 0; pid < cells[i]->hydro.count; ++pid) {
         hydro_init_part(&cells[i]->hydro.parts[pid], &space.hs);
+        adaptive_softening_init_part(&cells[i]->hydro.parts[pid]);
+        mhd_init_part(&cells[i]->hydro.parts[pid]);
+      }
     }
   }
 

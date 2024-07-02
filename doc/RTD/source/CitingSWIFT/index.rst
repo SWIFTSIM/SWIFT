@@ -41,6 +41,34 @@ physical model is something left to the users to explore.
 Acknowledgment & Citation
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
+The SWIFT code was last described in this `publication
+<https://ui.adsabs.harvard.edu/abs/2023arXiv230513380S/abstract>`_, which
+introduced the core solver, the numerical methods used as well as many
+extensions. We ask users running SWIFT for their research to please cite this
+paper when they present their results. This paper is best referenced by the
+following bibtex citation block:
+
+.. code-block:: bibtex
+
+  @ARTICLE{2023arXiv230513380S,
+    author = {{Schaller}, Matthieu and others},
+    title = "{SWIFT: A modern highly-parallel gravity and smoothed particle hydrodynamics solver for astrophysical and cosmological applications}",
+    journal = {\mnras},
+    keywords = {software: simulations, methods: numerical, software: public release, Astrophysics - Instrumentation and Methods for Astrophysics, Astrophysics - Cosmology and Nongalactic Astrophysics, Astrophysics - Earth and Planetary Astrophysics, Astrophysics - Astrophysics of Galaxies, Computer Science - Distributed, Parallel, and Cluster Computing},
+    year = 2024,
+    month = may,
+    volume = {530},
+    number = {2},
+    pages = {2378-2419},
+    doi = {10.1093/mnras/stae922},
+    archivePrefix = {arXiv},
+    eprint = {2305.13380},
+    primaryClass = {astro-ph.IM},
+    adsurl = {https://ui.adsabs.harvard.edu/abs/2024MNRAS.530.2378S},
+    adsnote = {Provided by the SAO/NASA Astrophysics Data System}
+  }
+
+
 In order to keep track of usage and measure the impact of the software, we
 kindly ask users publishing scientific results using SWIFT to add the following
 sentence to the acknowledgment section of their papers:
@@ -57,7 +85,7 @@ code. This corresponds to the following bibtex citation block:
 .. code-block:: bibtex
 
    @MISC{2018ascl.soft05020S,
-     author = {{Schaller}, M. and others},
+     author = {{Schaller}, Matthieu and others},
      title = "{SWIFT: SPH With Inter-dependent Fine-grained Tasking}",
      keywords = {Software },
      howpublished = {Astrophysics Source Code Library},
@@ -71,4 +99,7 @@ code. This corresponds to the following bibtex citation block:
      adsnote = {Provided by the SAO/NASA Astrophysics Data System}
    }
 
-
+When using models or parts of the code whose details were introduced in other
+papers, we kindly ask that the relevant work is properly acknowledge and
+cited. This includes the :ref:`subgrid`, the :ref:`planetary` extensions, the
+:ref:`hydro` and :ref:`rt`, or the particle-based :ref:`neutrinos`.

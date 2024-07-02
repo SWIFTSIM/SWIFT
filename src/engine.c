@@ -70,6 +70,7 @@
 #include "extra_io.h"
 #include "feedback.h"
 #include "fof.h"
+#include "forcing.h"
 #include "gravity.h"
 #include "gravity_cache.h"
 #include "hydro.h"
@@ -142,6 +143,10 @@ int engine_rank;
 
 /** The current step of the engine as a global variable (for messages). */
 int engine_current_step;
+
+#ifdef SWIFT_DEBUG_CHECKS
+extern int activate_by_unskip;
+#endif
 
 /**
  * @brief Link a density/force task to a cell.
@@ -321,7 +326,7 @@ void engine_repartition_trigger(struct engine *e) {
           e->usertime_last_step, e->systime_last_step, (double)resident,
           e->local_deadtime / (e->nr_threads * e->wallclock_time)};
       double timemems[e->nr_nodes * 4];
-      MPI_Gather(&timemem, 4, MPI_DOUBLE, timemems, 4, MPI_DOUBLE, 0,
+      MPI_Gather(timemem, 4, MPI_DOUBLE, timemems, 4, MPI_DOUBLE, 0,
                  MPI_COMM_WORLD);
       if (e->nodeID == 0) {
 
@@ -780,12 +785,6 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
   if (!with_hydro && count_parts_in)
     error(
         "Not running with hydro but about to receive gas particles in "
-        "proxies!");
-  if (!with_stars && count_sparts_in)
-    error("Not running with stars but about to receive stars in proxies!");
-  if (!with_black_holes && count_bparts_in)
-    error(
-        "Not running with black holes but about to receive black holes in "
         "proxies!");
 
   if (e->verbose)
@@ -1286,7 +1285,7 @@ void engine_rebuild(struct engine *e, const int repartitioned,
                 MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, &e->s->max_softening, 1, MPI_FLOAT, MPI_MAX,
                 MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, &e->s->max_mpole_power,
+  MPI_Allreduce(MPI_IN_PLACE, e->s->max_mpole_power,
                 SELF_GRAVITY_MULTIPOLE_ORDER + 1, MPI_FLOAT, MPI_MAX,
                 MPI_COMM_WORLD);
 #endif
@@ -1368,8 +1367,48 @@ void engine_rebuild(struct engine *e, const int repartitioned,
 #endif
 
   /* Run through the tasks and mark as skip or not. */
-  if (engine_marktasks(e))
-    error("engine_marktasks failed after space_rebuild.");
+#ifdef SWIFT_DEBUG_CHECKS
+  activate_by_unskip = 1;
+#endif
+  engine_unskip(e);
+  if (e->forcerebuild) error("engine_unskip faled after a rebuild!");
+
+#ifdef SWIFT_DEBUG_CHECKS
+
+  /* Reset all the tasks */
+  for (int i = 0; i < e->sched.nr_tasks; ++i) {
+    e->sched.tasks[i].skip = 1;
+  }
+  for (int i = 0; i < e->sched.active_count; ++i) {
+    e->sched.tid_active[i] = -1;
+  }
+  e->sched.active_count = 0;
+  for (int i = 0; i < e->s->nr_cells; ++i) {
+    cell_clear_unskip_flags(&e->s->cells_top[i]);
+  }
+
+  /* Now run the (legacy) marktasks */
+  activate_by_unskip = 0;
+  engine_marktasks(e);
+
+  /* Verify that the two task activation procedures match */
+  for (int i = 0; i < e->sched.nr_tasks; ++i) {
+    struct task *t = &e->sched.tasks[i];
+
+    if (t->activated_by_unskip && !t->activated_by_marktask) {
+      error("Task %s/%s activated by unskip and not by marktask!",
+            taskID_names[t->type], subtaskID_names[t->subtype]);
+    }
+
+    if (!t->activated_by_unskip && t->activated_by_marktask) {
+      error("Task %s/%s activated by marktask and not by unskip!",
+            taskID_names[t->type], subtaskID_names[t->subtype]);
+    }
+
+    t->activated_by_marktask = 0;
+    t->activated_by_unskip = 0;
+  }
+#endif
 
   /* Print the status of the system */
   if (e->verbose) engine_print_task_counts(e);
@@ -1731,6 +1770,10 @@ void engine_launch(struct engine *e, const char *call) {
   e->sched.deadtime.active_ticks += active_time;
   e->sched.deadtime.waiting_ticks += getticks() - tic;
 
+#ifdef SWIFT_DEBUG_CHECKS
+  e->sched.last_successful_task_fetch = 0LL;
+#endif
+
   if (e->verbose)
     message("(%s) took %.3f %s.", call, clocks_from_ticks(getticks() - tic),
             clocks_getunit());
@@ -1782,6 +1825,11 @@ void engine_run_rt_sub_cycles(struct engine *e) {
 
   /* Do we have work to do? */
   if (!(e->policy & engine_policy_rt)) return;
+
+  /* Note that if running without sub-cycles, no RT-specific timestep data will
+   * be written to screen or to the RT subcycles timestep data file. It's
+   * meaningless to do so, as all data will already be contained in the normal
+   * timesteps file. */
   if (e->max_nr_rt_subcycles <= 1) return;
 
   /* Get the subcycling step */
@@ -1816,20 +1864,47 @@ void engine_run_rt_sub_cycles(struct engine *e) {
   /* Get some time variables for printouts. Don't update the ones in the
    * engine like in the regular step, or the outputs in the regular steps
    * will be wrong. */
-  /* think cosmology one day: needs adapting here */
-  if (e->policy & engine_policy_cosmology)
-    error("Can't run RT subcycling with cosmology yet");
-  const double dt_subcycle = rt_step_size * e->time_base;
-  double time = e->ti_current_subcycle * e->time_base + e->time_begin;
+  double dt_subcycle;
+  if (e->policy & engine_policy_cosmology) {
+    dt_subcycle =
+        cosmology_get_delta_time(e->cosmology, e->ti_current, e->ti_rt_end_min);
+  } else {
+    dt_subcycle = rt_step_size * e->time_base;
+  }
+  double time = e->time;
+
+  /* Keep track and accumulate the deadtime over all sub-cycles. */
+  /* We need to manually put this back in the engine struct when
+   * the sub-cycling is completed. */
+  double global_deadtime_acc = e->global_deadtime;
 
   /* Collect and print info before it's gone */
   engine_collect_end_of_sub_cycle(e);
+
   if (e->nodeID == 0) {
+
     printf(
-        "  %6d cycle   0 (during regular tasks) dt=%14e "
-        "min/max active bin=%2d/%2d rt_updates=%18lld\n",
-        e->step, dt_subcycle, e->min_active_bin_subcycle,
-        e->max_active_bin_subcycle, e->rt_updates);
+        " [rt-sc] %-4d %12e %11.6f %11.6f %13e %4d %4d %12lld %12s %12s "
+        "%12s %12s %21s %6s %17s\n",
+        0, e->time, e->cosmology->a, e->cosmology->z, dt_subcycle,
+        e->min_active_bin_subcycle, e->max_active_bin_subcycle, e->rt_updates,
+        /*g, s, sink, bh updates=*/"-", "-", "-", "-", /*wallclock_time=*/"-",
+        /*props=*/"-", /*dead_time=*/"-");
+#ifdef SWIFT_DEBUG_CHECKS
+    fflush(stdout);
+#endif
+
+    if (!e->restarting) {
+      fprintf(
+          e->file_rt_subcycles,
+          "  %6d %9d %14e %12.7f %12.7f %14e %4d %4d %12lld %21.3f %17.3f\n",
+          e->step, 0, time, e->cosmology->a, e->cosmology->z, dt_subcycle,
+          e->min_active_bin_subcycle, e->max_active_bin_subcycle, e->rt_updates,
+          /*wall-clock time=*/-1.f, /*deadtime=*/-1.f);
+    }
+#ifdef SWIFT_DEBUG_CHECKS
+    fflush(e->file_rt_subcycles);
+#endif
   }
 
   /* Take note of the (integer) time until which the radiative transfer
@@ -1841,32 +1916,87 @@ void engine_run_rt_sub_cycles(struct engine *e) {
 
   for (int sub_cycle = 1; sub_cycle < nr_rt_cycles; ++sub_cycle) {
 
+    /* Keep track of the wall-clock time of each additional sub-cycle. */
+    struct clocks_time time1, time2;
+    clocks_gettime(&time1);
+
+    /* reset the deadtime information in the scheduler */
+    e->sched.deadtime.active_ticks = 0;
+    e->sched.deadtime.waiting_ticks = 0;
+
+    /* Set and re-set times, bins, etc. */
     e->rt_updates = 0ll;
     integertime_t ti_subcycle_old = e->ti_current_subcycle;
     e->ti_current_subcycle = e->ti_current + sub_cycle * rt_step_size;
     e->max_active_bin_subcycle = get_max_active_bin(e->ti_current_subcycle);
     e->min_active_bin_subcycle =
         get_min_active_bin(e->ti_current_subcycle, ti_subcycle_old);
-    /* think cosmology one day: needs adapting here */
-    if (e->policy & engine_policy_cosmology)
-      error("Can't run RT subcycling with cosmology yet");
-    time = e->ti_current_subcycle * e->time_base + e->time_begin;
+
+    /* Update rt properties */
+    rt_props_update(e->rt_props, e->internal_units, e->cosmology);
+
+    if (e->policy & engine_policy_cosmology) {
+      double time_old = time;
+      cosmology_update(
+          e->cosmology, e->physical_constants,
+          e->ti_current_subcycle);  // Update cosmological parameters
+      time = e->cosmology->time;    // Grab new cosmology time
+      dt_subcycle = time - time_old;
+    } else {
+      time = e->ti_current_subcycle * e->time_base + e->time_begin;
+    }
 
     /* Do the actual work now. */
     engine_unskip_rt_sub_cycle(e);
+    TIMER_TIC;
     engine_launch(e, "cycles");
+    TIMER_TOC(timer_runners);
+
+    /* Compute the local accumulated deadtime. */
+    const ticks deadticks = (e->nr_threads * e->sched.deadtime.waiting_ticks) -
+                            e->sched.deadtime.active_ticks;
+    e->local_deadtime = clocks_from_ticks(deadticks);
 
     /* Collect number of updates and print */
     engine_collect_end_of_sub_cycle(e);
 
+    /* Add our sub-cycling deadtime. */
+    global_deadtime_acc += e->global_deadtime;
+
+    /* Keep track how far we have integrated over. */
     rt_integration_end += rt_step_size;
 
     if (e->nodeID == 0) {
+
+      const double dead_time =
+          e->global_deadtime / (e->nr_nodes * e->nr_threads);
+
+      /* engine_step() stores the wallclock time in the engine struct.
+       * Don't do that here - we want the full step to include the full
+       * duration of the step, which includes all sub-cycles. (Also it
+       * would be overwritten anyway.) */
+      clocks_gettime(&time2);
+      const float wallclock_time = (float)clocks_diff(&time1, &time2);
+
       printf(
-          "  %6d cycle %3d time=%13.6e     dt=%14e "
-          "min/max active bin=%2d/%2d rt_updates=%18lld\n",
-          e->step, sub_cycle, time, dt_subcycle, e->min_active_bin_subcycle,
-          e->max_active_bin_subcycle, e->rt_updates);
+          " [rt-sc] %-4d %12e %11.6f %11.6f %13e %4d %4d %12lld %12s %12s "
+          "%12s %12s %21.3f %6s %17.3f\n",
+          sub_cycle, time, e->cosmology->a, e->cosmology->z, dt_subcycle,
+          e->min_active_bin_subcycle, e->max_active_bin_subcycle, e->rt_updates,
+          /*g, s, sink, bh updates=*/"-", "-", "-", "-", wallclock_time,
+          /*props=*/"-", dead_time);
+#ifdef SWIFT_DEBUG_CHECKS
+      fflush(stdout);
+#endif
+      fprintf(
+          e->file_rt_subcycles,
+          "  %6d %9d %14e %12.7f %12.7f %14e %4d %4d %12lld %21.3f %17.3f\n",
+          e->step, sub_cycle, time, e->cosmology->a, e->cosmology->z,
+          dt_subcycle, e->min_active_bin_subcycle, e->max_active_bin_subcycle,
+          e->rt_updates, wallclock_time, dead_time);
+#ifdef SWIFT_DEBUG_CHECKS
+      fflush(e->file_rt_subcycles);
+#endif
     }
   }
 
@@ -1879,6 +2009,7 @@ void engine_run_rt_sub_cycles(struct engine *e) {
 
   /* Once we're done, clean up after ourselves */
   e->rt_updates = 0ll;
+  e->global_deadtime = global_deadtime_acc;
 }
 
 /**
@@ -1949,8 +2080,11 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   /* Update the cooling function */
   if ((e->policy & engine_policy_cooling) ||
       (e->policy & engine_policy_temperature))
-    cooling_update(e->cosmology, e->pressure_floor_props, e->cooling_func,
-                   e->s);
+    cooling_update(e->physical_constants, e->cosmology, e->pressure_floor_props,
+                   e->cooling_func, e->s, e->time);
+
+  if (e->policy & engine_policy_rt)
+    rt_props_update(e->rt_props, e->internal_units, e->cosmology);
 
 #ifdef WITH_CSDS
   if (e->policy & engine_policy_csds) {
@@ -1998,6 +2132,9 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
       engine_launch(e, "tasks");
     }
   }
+
+  /* Do some post initialisations */
+  space_post_init_parts(e->s, e->verbose);
 
   /* Apply some RT conversions (e.g. energy -> energy density) */
   if (e->policy & engine_policy_rt)
@@ -2370,8 +2507,8 @@ int engine_step(struct engine *e) {
   /* Update the cooling function */
   if ((e->policy & engine_policy_cooling) ||
       (e->policy & engine_policy_temperature))
-    cooling_update(e->cosmology, e->pressure_floor_props, e->cooling_func,
-                   e->s);
+    cooling_update(e->physical_constants, e->cosmology, e->pressure_floor_props,
+                   e->cooling_func, e->s, e->time);
 
   /* Update the softening lengths */
   if (e->policy & engine_policy_self_gravity)
@@ -2381,6 +2518,10 @@ int engine_step(struct engine *e) {
   if (e->policy & engine_policy_hydro)
     hydro_props_update(e->hydro_properties, e->gravity_properties,
                        e->cosmology);
+
+  /* Update the rt properties */
+  if (e->policy & engine_policy_rt)
+    rt_props_update(e->rt_props, e->internal_units, e->cosmology);
 
   /* Check for any snapshot triggers */
   engine_io_check_snapshot_triggers(e);
@@ -3058,6 +3199,7 @@ void engine_init(
     struct pressure_floor_props *pressure_floor, struct rt_props *rt,
     struct pm_mesh *mesh, struct power_spectrum_data *pow_data,
     const struct external_potential *potential,
+    const struct forcing_terms *forcing_terms,
     struct cooling_function_data *cooling_func,
     const struct star_formation *starform,
     const struct chemistry_global_data *chemistry,
@@ -3198,6 +3340,7 @@ void engine_init(
   e->mesh = mesh;
   e->power_data = pow_data;
   e->external_potential = potential;
+  e->forcing_terms = forcing_terms;
   e->cooling_func = cooling_func;
   e->star_formation = starform;
   e->feedback_props = feedback;
@@ -3618,7 +3761,7 @@ void engine_clean(struct engine *e, const int fof, const int restart) {
   stats_free_mpi_type();
   proxy_free_mpi_type();
   task_free_mpi_comms();
-  mpicollect_free_MPI_type();
+  if (!fof) mpicollect_free_MPI_type();
 #endif
 
   /* Close files */
@@ -3629,6 +3772,10 @@ void engine_clean(struct engine *e, const int fof, const int restart) {
     if (e->policy & engine_policy_star_formation) {
       fclose(e->sfh_logger);
     }
+
+#ifndef RT_NONE
+    fclose(e->file_rt_subcycles);
+#endif
   }
 
   /* If the run was restarted, we should also free the memory allocated
@@ -3637,6 +3784,7 @@ void engine_clean(struct engine *e, const int fof, const int restart) {
     free((void *)e->parameter_file);
     free((void *)e->output_options);
     free((void *)e->external_potential);
+    free((void *)e->forcing_terms);
     free((void *)e->black_holes_properties);
     free((void *)e->pressure_floor_props);
     free((void *)e->rt_props);
@@ -3711,6 +3859,7 @@ void engine_struct_dump(struct engine *e, FILE *stream) {
   pm_mesh_struct_dump(e->mesh, stream);
   power_spectrum_struct_dump(e->power_data, stream);
   potential_struct_dump(e->external_potential, stream);
+  forcing_terms_struct_dump(e->forcing_terms, stream);
   cooling_struct_dump(e->cooling_func, stream);
   starformation_struct_dump(e->star_formation, stream);
   feedback_struct_dump(e->feedback_props, stream);
@@ -3826,6 +3975,11 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
   potential_struct_restore(external_potential, stream);
   e->external_potential = external_potential;
 
+  struct forcing_terms *forcing_terms =
+      (struct forcing_terms *)malloc(sizeof(struct forcing_terms));
+  forcing_terms_struct_restore(forcing_terms, stream);
+  e->forcing_terms = forcing_terms;
+
   struct cooling_function_data *cooling_func =
       (struct cooling_function_data *)malloc(
           sizeof(struct cooling_function_data));
@@ -3851,7 +4005,7 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
   struct rt_props *rt_properties =
       (struct rt_props *)malloc(sizeof(struct rt_props));
   rt_struct_restore(rt_properties, stream, e->physical_constants,
-                    e->internal_units);
+                    e->internal_units, cosmo);
   e->rt_props = rt_properties;
 
   struct black_holes_props *black_holes_properties =

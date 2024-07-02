@@ -54,6 +54,10 @@
 #define scheduler_flag_none 0
 #define scheduler_flag_steal (1 << 1)
 
+#ifdef SWIFT_DEBUG_CHECKS
+extern int activate_by_unskip;
+#endif
+
 /* Data of a scheduler. */
 struct scheduler {
   /* Scheduler flags. */
@@ -125,6 +129,20 @@ struct scheduler {
 
   /* Frequency of the task levels dumping. */
   int frequency_task_levels;
+
+#if defined(SWIFT_DEBUG_CHECKS)
+  /* Stuff for the deadlock detector */
+
+  /* How long to wait (in ms) before assuming we're in a deadlock */
+  float deadlock_waiting_time_ms;
+
+  /* Time at which last task was successfully retrieved from a queue */
+  ticks last_successful_task_fetch;
+
+  /* needed to dump queues on deadlock detection */
+  struct engine *e;
+
+#endif /* SWIFT_DEBUG_CHECKS */
 };
 
 /* Inlined functions (for speed). */
@@ -141,6 +159,12 @@ __attribute__((always_inline)) INLINE static void scheduler_activate(
     int ind = atomic_inc(&s->active_count);
     s->tid_active[ind] = t - s->tasks;
   }
+#ifdef SWIFT_DEBUG_CHECKS
+  if (activate_by_unskip)
+    t->activated_by_unskip = 1;
+  else
+    t->activated_by_marktask = 1;
+#endif
 }
 
 /**

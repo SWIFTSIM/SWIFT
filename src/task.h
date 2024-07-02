@@ -103,6 +103,8 @@ enum task_types {
   task_type_bh_swallow_ghost3, /* Implicit */
   task_type_fof_self,
   task_type_fof_pair,
+  task_type_fof_attach_self,
+  task_type_fof_attach_pair,
   task_type_neutrino_weight,
   task_type_sink_in,     /* Implicit */
   task_type_sink_ghost1, /* Implicit */
@@ -290,6 +292,12 @@ struct task {
 #ifdef SWIFT_DEBUG_CHECKS
   /* When was this task last run? */
   integertime_t ti_run;
+
+  /* Was this task activted by unskip? */
+  char activated_by_unskip;
+
+  /* Was this task activted by marktask? */
+  char activated_by_marktask;
 #endif /* SWIFT_DEBUG_CHECKS */
 
 } SWIFT_STRUCT_ALIGN;

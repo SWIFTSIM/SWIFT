@@ -1,0 +1,80 @@
+MetaData:
+  run_name: RT Cooling Test
+
+# Define the system of units to use internally. 
+InternalUnitSystem:
+  UnitMass_in_cgs:     1.98848e43    # 10^10 M_sun in grams
+  UnitLength_in_cgs:   3.08567758e21 # 1 kpc in cm
+  UnitVelocity_in_cgs: 1e5           # 1 km/s in cm/s
+  UnitCurrent_in_cgs:  1             # Amperes
+  UnitTemp_in_cgs:     1             # Kelvin
+
+
+# Parameters governing the time integration
+TimeIntegration:
+  max_nr_rt_subcycles: 1
+  time_begin: 0.     # The starting time of the simulation (in internal units).
+  time_end:   0.100  # The end time of the simulation (in internal units).
+  dt_min:     1.e-8  # The minimal time-step size of the simulation (in internal units).
+  dt_max:     4.882814e-03  # The maximal time-step size of the simulation (in internal units).
+
+
+# Parameters governing the snapshots
+Snapshots:
+  basename:            output # Common part of the name of output files
+  output_list_on:      0
+  output_list:         snaplist_cooling
+  scale_factor_first:  0.047601     # Time of the first output (in internal units)
+  delta_time:          1.006
+
+# Parameters governing the conserved quantities statistics
+Statistics:
+  scale_factor_first:  0.047601
+  delta_time:          1.006 # Time between statistics output
+
+# Parameters for the hydrodynamics scheme
+SPH:
+  resolution_eta:        1.2348   # Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel).
+  CFL_condition:         0.6      # Courant-Friedrich-Levy condition for time integration.
+  minimal_temperature:   0.       # Kelvin
+
+# Parameters related to the initial conditions
+InitialConditions:
+  file_name:  ./cooling_test.hdf5  # The file to read
+  periodic:   1                    # periodic ICs
+
+GEARRT:
+  f_reduce_c: 1.e-9                                 # This test is without actual radiation, so we don't care about this
+  CFL_condition: 0.9                                # CFL condition for RT, independent of hydro
+  photon_groups_Hz: [3.288e15, 5.945e15, 13.157e15] # Lower photon frequency group bin edges in Hz. Needs to have exactly N elements, where N is the configured number of bins --with-RT=GEAR_N
+  stellar_luminosity_model: const                   # Which model to use to determine the stellar luminosities.
+  const_stellar_luminosities_LSol: [0., 0., 0.]     # (Conditional) constant star luminosities for each photon frequency group to use if stellar_luminosity_model:const is set, in units of Solar Luminosity.
+  hydrogen_mass_fraction:   0.76                    # total hydrogen mass fraction
+  stellar_spectrum_type: 0                          # Which radiation spectrum to use. 0: constant from 0 until some max frequency set by stellar_spectrum_const_max_frequency_Hz. 1: blackbody spectrum.
+  stellar_spectrum_const_max_frequency_Hz: 1.e17    # (Conditional) if stellar_spectrum_type=0, use this maximal frequency for the constant spectrum. 
+  case_B_recombination: 0                           # reference solution assumes case A recombination
+
+
+GrackleCooling:
+  cloudy_table: CloudyData_UVB=HM2012.h5       # Name of the Cloudy Table (available on the grackle bitbucket repository)
+  with_UV_background: 0                        # Enable or not the UV background
+  redshift: 0                                  # Redshift to use (-1 means time based redshift)
+  with_metal_cooling: 0                        # Enable or not the metal cooling
+  provide_volumetric_heating_rates: 0          # (optional) User provide volumetric heating rates
+  provide_specific_heating_rates: 0            # (optional) User provide specific heating rates
+  max_steps: 10000                             # (optional) Max number of step when computing the initial composition
+  convergence_limit: 1                      # (optional) Convergence threshold (relative) for initial composition
+  self_shielding_method: 0                    # (optional) Grackle (1->3 for Grackle's ones, 0 for none and -1 for GEAR)
+  primordial_chemistry: 1
+  thermal_time_myr: 5
+
+Scheduler:
+  tasks_per_cell: 128
+
+Cosmology:        # Planck13 (EAGLE flavour)
+  a_begin:        0.0476     # z~20
+  a_end:          0.2        # z~4
+  h:              0.6777
+  Omega_cdm:      0.2587481
+  Omega_lambda:   0.693
+  Omega_b:        0.0482519

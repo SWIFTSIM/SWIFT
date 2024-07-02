@@ -144,6 +144,7 @@ void space_first_init_parts_mapper(void *restrict map_data, int count,
     particle_splitting_mark_part_as_not_split(&xp[k].split_data, p[k].id);
 
     /* And the radiative transfer */
+    rt_first_init_timestep_data(&p[k]);
     rt_first_init_part(&p[k], cosmo, rt_props);
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -479,7 +480,7 @@ void space_first_init_sinks_mapper(void *restrict map_data, int count,
   /* Initialise the rest */
   for (int k = 0; k < count; k++) {
 
-    sink_first_init_sink(&sink[k], props);
+    sink_first_init_sink(&sink[k], props, e);
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (sink[k].gpart && sink[k].gpart->id_or_neg_offset != -(k + delta))

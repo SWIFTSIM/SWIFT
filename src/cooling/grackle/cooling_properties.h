@@ -19,6 +19,9 @@
 #ifndef SWIFT_COOLING_PROPERTIES_GRACKLE_H
 #define SWIFT_COOLING_PROPERTIES_GRACKLE_H
 
+/* skip deprecation warnings. I cleaned old API calls. */
+#define OMIT_LEGACY_INTERNAL_GRACKLE_FUNC
+
 /* include grackle */
 #include <grackle.h>
 
@@ -41,6 +44,22 @@ struct cooling_function_data {
   /*! Chemistry network */
   int primordial_chemistry;
 
+  /*! Set the three-body reaction rate (see grackle documentation) */
+  int H2_three_body_rate;
+
+  /*! Enable/disable H2 collision-induced emission cooling from Ripamonti & Abel
+   * (2004) */
+  int H2_cie_cooling;
+
+  /*! Flag to enable H2 formation on dust grains */
+  int H2_on_dust;
+
+  /*! The ratio of total dust mass to gas mass in the local Universe. */
+  double local_dust_to_gas_ratio;
+
+  /*! Enable/disable CMB temperature floor */
+  int cmb_temperature_floor;
+
   /*! Redshift to use for the UV backgroud (-1 to use cosmological one) */
   double redshift;
 
@@ -48,16 +67,71 @@ struct cooling_function_data {
   code_units units;
 
   /*! grackle chemistry data */
-  chemistry_data chemistry;
+  chemistry_data chemistry_data;
+
+  /*! grackle chemistry data storage
+   * (needed for local function calls) */
+  chemistry_data_storage chemistry_rates;
 
   /*! Enable/Disable metal cooling */
   int with_metal_cooling;
 
-  /*! User provide volumetric heating rates */
-  int provide_volumetric_heating_rates;
+  /*! Arrays of ionization and heating rates are provided */
+  int use_radiative_transfer;
 
-  /*! User provide specific heating rates */
-  int provide_specific_heating_rates;
+  /*! Grackle RT_heating_rate (in IU) */
+  float RT_heating_rate;
+
+  /*! Grackle RT_HI_ionization_rate (in IU) */
+  float RT_HI_ionization_rate;
+
+  /*! Grackle RT_HeI_ionization_rate (in IU) */
+  float RT_HeI_ionization_rate;
+
+  /*! Grackle RT_HeII_ionization_rate (in IU) */
+  float RT_HeII_ionization_rate;
+
+  /*! Grackle RT_H2_dissociation_rate (in IU) */
+  float RT_H2_dissociation_rate;
+
+  /*! Volumetric heating rates */
+  float volumetric_heating_rates;
+
+  /*! Specific heating rates */
+  float specific_heating_rates;
+
+  /*! Hydrogen fraction by mass */
+  float HydrogenFractionByMass;
+
+  /*! initial nHII to nH ratio (number density ratio) */
+  float initial_nHII_to_nH_ratio;
+
+  /*! initial nHeI to nH ratio (number density ratio) */
+  float initial_nHeI_to_nH_ratio;
+
+  /*! initial nHeII to nH ratio (number density ratio) */
+  float initial_nHeII_to_nH_ratio;
+
+  /*! initial nHeIII to nH ratio (number density ratio) */
+  float initial_nHeIII_to_nH_ratio;
+
+  /*! initial nDI to nH ratio (number density ratio) */
+  float initial_nDI_to_nH_ratio;
+
+  /*! initial nDII to nH ratio (number density ratio) */
+  float initial_nDII_to_nH_ratio;
+
+  /*! initial nHM to nH ratio (number density ratio) */
+  float initial_nHM_to_nH_ratio;
+
+  /*! initial nH2I to nH ratio (number density ratio) */
+  float initial_nH2I_to_nH_ratio;
+
+  /*! initial nH2II to nH ratio (number density ratio) */
+  float initial_nH2II_to_nH_ratio;
+
+  /*! initial nHDI to nH ratio (number density ratio) */
+  float initial_nHDI_to_nH_ratio;
 
   /*! Self shielding method (1 -> 3 for grackle's ones, 0 for none and -1 for
    * GEAR) */

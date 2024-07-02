@@ -40,6 +40,7 @@
 
 /* Local includes. */
 #include "active.h"
+#include "adaptive_softening.h"
 #include "cell.h"
 #include "chemistry.h"
 #include "cosmology.h"
@@ -52,7 +53,8 @@
 #include "periodic.h"
 #include "pressure_floor_iact.h"
 #include "runner.h"
-#include "sink.h"
+#include "sink_iact.h"
+#include "sink_properties.h"
 #include "star_formation_iact.h"
 #include "stars.h"
 
@@ -148,26 +150,31 @@ void pairs_n2(double *dim, struct part *restrict parts, int N, int periodic) {
 
 void pairs_single_density(double *dim, long long int pid,
                           struct part *restrict parts, int N, int periodic) {
-  int i, k;
-  double r2, dx[3];
-  float fdx[3];
-  struct part p;
-  float a = 1.f, H = 0.f;
+  const float a = 1.f;
+  const float H = 0.f;
 
   /* Find "our" part. */
+  int k;
   for (k = 0; k < N && parts[k].id != pid; k++)
     ;
+
+  /* Clear accumulators. */
   if (k == N) error("Part not found.");
-  p = parts[k];
+  struct part p = parts[k];
   printf("pairs_single: part[%i].id == %lli.\n", k, pid);
 
   hydro_init_part(&p, NULL);
+  adaptive_softening_init_part(&p);
   mhd_init_part(&p);
 
   /* Loop over all particle pairs. */
   for (k = 0; k < N; k++) {
     if (parts[k].id == p.id) continue;
-    for (i = 0; i < 3; i++) {
+
+    double dx[3];
+    float fdx[3];
+
+    for (int i = 0; i < 3; i++) {
       dx[i] = p.x[i] - parts[k].x[i];
       if (periodic) {
         if (dx[i] < -dim[i] / 2)
@@ -177,7 +184,7 @@ void pairs_single_density(double *dim, long long int pid,
       }
       fdx[i] = dx[i];
     }
-    r2 = fdx[0] * fdx[0] + fdx[1] * fdx[1] + fdx[2] * fdx[2];
+    const float r2 = fdx[0] * fdx[0] + fdx[1] * fdx[1] + fdx[2] * fdx[2];
     if (r2 < p.h * p.h) {
       runner_iact_nonsym_density(r2, fdx, p.h, parts[k].h, &p, &parts[k], a, H);
       /* printf( "pairs_simple: interacting particles %lli [%i,%i,%i] and %lli
@@ -236,7 +243,7 @@ void pairs_all_density(struct runner *r, struct cell *ci, struct cell *cj) {
         runner_iact_nonsym_pressure_floor(r2, dx, hi, pj->h, pi, pj, a, H);
         runner_iact_nonsym_star_formation(r2, dx, hi, pj->h, pi, pj, a, H);
         runner_iact_nonsym_sink(r2, dx, hi, pj->h, pi, pj, a, H,
-                                e->sink_properties);
+                                e->sink_properties->cut_off_radius);
       }
     }
   }
@@ -272,7 +279,7 @@ void pairs_all_density(struct runner *r, struct cell *ci, struct cell *cj) {
         runner_iact_nonsym_pressure_floor(r2, dx, hj, pi->h, pj, pi, a, H);
         runner_iact_nonsym_star_formation(r2, dx, hj, pi->h, pj, pi, a, H);
         runner_iact_nonsym_sink(r2, dx, hj, pi->h, pj, pi, a, H,
-                                e->sink_properties);
+                                e->sink_properties->cut_off_radius);
       }
     }
   }
@@ -552,7 +559,7 @@ void self_all_density(struct runner *r, struct cell *ci) {
         runner_iact_nonsym_pressure_floor(r2, dxi, hi, hj, pi, pj, a, H);
         runner_iact_nonsym_star_formation(r2, dxi, hi, hj, pi, pj, a, H);
         runner_iact_nonsym_sink(r2, dxi, hi, hj, pi, pj, a, H,
-                                e->sink_properties);
+                                e->sink_properties->cut_off_radius);
       }
 
       /* Hit or miss? */
@@ -568,7 +575,7 @@ void self_all_density(struct runner *r, struct cell *ci) {
         runner_iact_nonsym_pressure_floor(r2, dxi, hj, hi, pj, pi, a, H);
         runner_iact_nonsym_star_formation(r2, dxi, hj, hi, pj, pi, a, H);
         runner_iact_nonsym_sink(r2, dxi, hj, hi, pj, pi, a, H,
-                                e->sink_properties);
+                                e->sink_properties->cut_off_radius);
       }
     }
   }
@@ -714,28 +721,33 @@ void self_all_stars_density(struct runner *r, struct cell *ci) {
 /**
  * @brief Compute the force on a single particle brute-force.
  */
-void engine_single_density(double *dim, long long int pid,
-                           struct part *restrict parts, int N, int periodic,
-                           const struct cosmology *cosmo) {
-  double r2, dx[3];
-  float fdx[3];
-  struct part p;
-  float a = 1.f, H = 0.f;
+void engine_single_density(const double dim[3], const long long int pid,
+                           struct part *restrict parts, const int N,
+                           const int periodic, const struct cosmology *cosmo,
+                           const struct gravity_props *grav_props) {
+  const float a = 1.f;
+  const float H = 0.f;
 
   /* Find "our" part. */
   int k;
   for (k = 0; k < N && parts[k].id != pid; k++)
     ;
+
   if (k == N) error("Part not found.");
-  p = parts[k];
+  struct part p = parts[k];
 
   /* Clear accumulators. */
   hydro_init_part(&p, NULL);
+  adaptive_softening_init_part(&p);
   mhd_init_part(&p);
 
-  /* Loop over all particle pairs (force). */
+  /* Loop over all particle pairs (density). */
   for (k = 0; k < N; k++) {
     if (parts[k].id == p.id) continue;
+
+    double dx[3];
+    float fdx[3];
+
     for (int i = 0; i < 3; i++) {
       dx[i] = p.x[i] - parts[k].x[i];
       if (periodic) {
@@ -746,7 +758,8 @@ void engine_single_density(double *dim, long long int pid,
       }
       fdx[i] = dx[i];
     }
-    r2 = fdx[0] * fdx[0] + fdx[1] * fdx[1] + fdx[2] * fdx[2];
+
+    const float r2 = fdx[0] * fdx[0] + fdx[1] * fdx[1] + fdx[2] * fdx[2];
     if (r2 < p.h * p.h * kernel_gamma2) {
       runner_iact_nonsym_density(r2, fdx, p.h, parts[k].h, &p, &parts[k], a, H);
     }
@@ -754,6 +767,7 @@ void engine_single_density(double *dim, long long int pid,
 
   /* Dump the result. */
   hydro_end_density(&p, cosmo);
+  adaptive_softening_end_density(&p, grav_props);
   mhd_end_density(&p, cosmo);
   message("part %lli (h=%e) has wcount=%e, rho=%e.", p.id, p.h,
           p.density.wcount, hydro_get_comoving_density(&p));

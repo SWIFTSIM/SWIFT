@@ -27,6 +27,7 @@
 
 /* Local headers. */
 #include "active.h"
+#include "adaptive_softening.h"
 #include "black_holes.h"
 #include "cell.h"
 #include "engine.h"
@@ -327,7 +328,7 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
           if ((h_new == left[i] && h_old == right[i]) ||
               (h_old == left[i] && h_new == right[i])) {
 
-            /* Bissect the remaining interval */
+            /* Bisect the remaining interval */
             sp->h = pow_inv_dimension(
                 0.5f * (pow_dimension(left[i]) + pow_dimension(right[i])));
 
@@ -748,7 +749,7 @@ void runner_do_black_holes_density_ghost(struct runner *r, struct cell *c,
           if ((h_new == left[i] && h_old == right[i]) ||
               (h_old == left[i] && h_new == right[i])) {
 
-            /* Bissect the remaining interval */
+            /* Bisect the remaining interval */
             bp->h = pow_inv_dimension(
                 0.5f * (pow_dimension(left[i]) + pow_dimension(right[i])));
 
@@ -1199,6 +1200,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 
           /* Finish the density calculation */
           hydro_end_density(p, cosmo);
+          adaptive_softening_end_density(p, e->gravity_properties);
           mhd_end_density(p, cosmo);
           chemistry_end_density(p, chemistry, cosmo);
           star_formation_end_density(p, xp, star_formation, cosmo);
@@ -1357,7 +1359,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
           if ((h_new == left[i] && h_old == right[i]) ||
               (h_old == left[i] && h_new == right[i])) {
 
-            /* Bissect the remaining interval */
+            /* Bisect the remaining interval */
             p->h = pow_inv_dimension(
                 0.5f * (pow_dimension(left[i]) + pow_dimension(right[i])));
 
@@ -1379,6 +1381,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 
             /* Re-initialise everything */
             hydro_init_part(p, hs);
+            adaptive_softening_init_part(p);
             mhd_init_part(p);
             chemistry_init_part(p, chemistry);
             star_formation_init_part(p, star_formation);
@@ -1425,6 +1428,10 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
         h_max_active = max(h_max_active, p->h);
 
         ghost_stats_converged_hydro(&c->ghost_statistics, p);
+
+        /* Update gravitational softening (in adaptive softening case) */
+        if (p->gpart)
+          gravity_update_softening(p->gpart, p, e->gravity_properties);
 
 #ifdef EXTRA_HYDRO_LOOP
 

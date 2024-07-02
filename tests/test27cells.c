@@ -234,15 +234,21 @@ void zero_particle_fields(struct cell *c) {
 #endif
   for (int pid = 0; pid < c->hydro.count; pid++) {
     hydro_init_part(&c->hydro.parts[pid], hspointer);
+    adaptive_softening_init_part(&c->hydro.parts[pid]);
+    mhd_init_part(&c->hydro.parts[pid]);
   }
 }
 
 /**
  * @brief Ends the loop by adding the appropriate coefficients
  */
-void end_calculation(struct cell *c, const struct cosmology *cosmo) {
+void end_calculation(struct cell *c, const struct cosmology *cosmo,
+                     const struct gravity_props *gravity_props) {
+
   for (int pid = 0; pid < c->hydro.count; pid++) {
     hydro_end_density(&c->hydro.parts[pid], cosmo);
+    adaptive_softening_end_density(&c->hydro.parts[pid], gravity_props);
+    mhd_end_density(&c->hydro.parts[pid], cosmo);
 
     /* Recover the common "Neighbour number" definition */
     c->hydro.parts[pid].density.wcount *= pow_dimension(c->hydro.parts[pid].h);
@@ -495,6 +501,14 @@ int main(int argc, char *argv[]) {
   cosmology_init_no_cosmo(&cosmo);
   engine.cosmology = &cosmo;
 
+  struct gravity_props gravity_props;
+  bzero(&gravity_props, sizeof(struct gravity_props));
+  gravity_props.G_Newton = 1.;
+
+  struct sink_props sink_props;
+  bzero(&sink_props, sizeof(struct sink_props));
+  engine.sink_properties = &sink_props;
+
   struct runner runner;
   runner.e = &engine;
 
@@ -588,7 +602,7 @@ int main(int argc, char *argv[]) {
     time += toc - tic;
 
     /* Let's get physical ! */
-    end_calculation(main_cell, &cosmo);
+    end_calculation(main_cell, &cosmo, &gravity_props);
 
     /* Dump if necessary */
     if (i % 50 == 0) {
@@ -639,7 +653,7 @@ int main(int argc, char *argv[]) {
   const ticks toc = getticks();
 
   /* Let's get physical ! */
-  end_calculation(main_cell, &cosmo);
+  end_calculation(main_cell, &cosmo, &gravity_props);
 
   /* Dump */
   sprintf(outputFileName, "brute_force_27_%.150s.dat", outputFileNameExtension);

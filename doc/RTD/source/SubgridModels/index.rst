@@ -16,6 +16,7 @@ be use as an empty canvas to be copied to create additional models.
    EAGLE/index
    QuickLymanAlpha/index
    GEAR/index
+   GEAR/sinks/index
    Basic/index	     
    AGNSpinJets/index
    AGORA/index

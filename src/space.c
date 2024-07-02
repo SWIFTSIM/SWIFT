@@ -455,6 +455,9 @@ void space_getcells(struct space *s, int nr_cells, struct cell **cells,
                          space_cellallocchunk * sizeof(struct cell)) != 0)
         error("Failed to allocate more cells.");
 
+      /* This allocation is never correctly freed, that is ok. */
+      swift_ignore_leak(s->cells_sub[tpid]);
+
       /* Clear the newly-allocated cells. */
       bzero(s->cells_sub[tpid], sizeof(struct cell) * space_cellallocchunk);
 
@@ -838,6 +841,58 @@ void space_convert_rt_quantities(struct space *s, int verbose) {
     threadpool_map(&s->e->threadpool, space_convert_rt_quantities_mapper,
                    s->parts, s->nr_parts, sizeof(struct part),
                    threadpool_auto_chunk_size, s);
+
+  if (verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
+}
+
+void space_post_init_parts_mapper(void *restrict map_data, int count,
+                                  void *restrict extra_data) {
+  struct space *s = (struct space *)extra_data;
+  const struct engine *restrict e = s->e;
+
+  const struct hydro_props *restrict hydro_props = e->hydro_properties;
+  const struct phys_const *restrict phys_const = e->physical_constants;
+  const struct unit_system *us = s->e->internal_units;
+  const struct cosmology *restrict cosmo = e->cosmology;
+  const struct cooling_function_data *cool_func = e->cooling_func;
+
+  struct part *restrict p = (struct part *)map_data;
+  const ptrdiff_t delta = p - s->parts;
+  struct xpart *restrict xp = s->xparts + delta;
+
+  /* Loop over all the particles ignoring the extra buffer ones for on-the-fly
+   * creation
+   * Here we can initialize the cooling properties of the (x-)particles
+   * using quantities (like the density) defined only after the neighbour loop.
+   *
+   * */
+
+  for (int k = 0; k < count; k++) {
+    cooling_post_init_part(phys_const, us, hydro_props, cosmo, cool_func, &p[k],
+                           &xp[k]);
+  }
+}
+
+/**
+ * @brief Calls the #part post-initialisation function on all particles in the
+ * space.
+ * Here we can initialize the cooling properties of the (x-)particles
+ * using quantities (like the density) defined only after the initial neighbour
+ * loop.
+ *
+ * @param s The #space.
+ * @param verbose Are we talkative?
+ */
+void space_post_init_parts(struct space *s, int verbose) {
+
+  const ticks tic = getticks();
+
+  if (s->nr_parts > 0)
+    threadpool_map(&s->e->threadpool, space_post_init_parts_mapper, s->parts,
+                   s->nr_parts, sizeof(struct part), threadpool_auto_chunk_size,
+                   s);
 
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
@@ -1609,8 +1664,8 @@ void space_remap_ids(struct space *s, int nr_nodes, int verbose) {
 
   if (verbose) message("Remapping all the IDs");
 
-  size_t local_nr_dm_background = 0;
-  size_t local_nr_nuparts = 0;
+  long long local_nr_dm_background = 0;
+  long long local_nr_nuparts = 0;
   for (size_t i = 0; i < s->nr_gparts; ++i) {
     if (s->gparts[i].type == swift_type_neutrino)
       local_nr_nuparts++;
@@ -1619,17 +1674,17 @@ void space_remap_ids(struct space *s, int nr_nodes, int verbose) {
   }
 
   /* Get the current local number of particles */
-  const size_t local_nr_parts = s->nr_parts;
-  const size_t local_nr_sinks = s->nr_sinks;
-  const size_t local_nr_gparts = s->nr_gparts;
-  const size_t local_nr_sparts = s->nr_sparts;
-  const size_t local_nr_bparts = s->nr_bparts;
-  const size_t local_nr_baryons =
+  long long local_nr_parts = s->nr_parts;
+  long long local_nr_sinks = s->nr_sinks;
+  long long local_nr_gparts = s->nr_gparts;
+  long long local_nr_sparts = s->nr_sparts;
+  long long local_nr_bparts = s->nr_bparts;
+  long long local_nr_baryons =
       local_nr_parts + local_nr_sinks + local_nr_sparts + local_nr_bparts;
-  const size_t local_nr_dm = local_nr_gparts > 0
-                                 ? local_nr_gparts - local_nr_baryons -
-                                       local_nr_nuparts - local_nr_dm_background
-                                 : 0;
+  long long local_nr_dm = local_nr_gparts > 0
+                              ? local_nr_gparts - local_nr_baryons -
+                                    local_nr_nuparts - local_nr_dm_background
+                              : 0;
 
   /* Get the global offsets */
   long long offset_parts = 0;
@@ -1695,21 +1750,21 @@ void space_remap_ids(struct space *s, int nr_nodes, int verbose) {
                 total_bparts + total_nuparts);
 
   /* We can now remap the IDs in the range [offset offset + local_nr] */
-  for (size_t i = 0; i < local_nr_parts; ++i) {
+  for (long long i = 0; i < local_nr_parts; ++i) {
     s->parts[i].id = offset_parts + i;
   }
-  for (size_t i = 0; i < local_nr_sinks; ++i) {
+  for (long long i = 0; i < local_nr_sinks; ++i) {
     s->sinks[i].id = offset_sinks + i;
   }
-  for (size_t i = 0; i < local_nr_sparts; ++i) {
+  for (long long i = 0; i < local_nr_sparts; ++i) {
     s->sparts[i].id = offset_sparts + i;
   }
-  for (size_t i = 0; i < local_nr_bparts; ++i) {
+  for (long long i = 0; i < local_nr_bparts; ++i) {
     s->bparts[i].id = offset_bparts + i;
   }
-  size_t count_dm = 0;
-  size_t count_dm_background = 0;
-  size_t count_nu = 0;
+  long long count_dm = 0;
+  long long count_dm_background = 0;
+  long long count_nu = 0;
   for (size_t i = 0; i < s->nr_gparts; ++i) {
     if (s->gparts[i].type == swift_type_dark_matter) {
       s->gparts[i].id_or_neg_offset = offset_dm + count_dm;

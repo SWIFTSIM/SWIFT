@@ -525,7 +525,7 @@ int main(int argc, char *argv[]) {
   N_long[swift_type_black_hole] = Nbpart;
   N_long[swift_type_neutrino] = Nnupart;
   N_long[swift_type_count] = Ngpart;
-  MPI_Allreduce(&N_long, &N_total, swift_type_count + 1, MPI_LONG_LONG_INT,
+  MPI_Allreduce(N_long, N_total, swift_type_count + 1, MPI_LONG_LONG_INT,
                 MPI_SUM, MPI_COMM_WORLD);
 #else
   N_total[swift_type_gas] = Ngas;
@@ -613,7 +613,7 @@ int main(int argc, char *argv[]) {
   N_long[swift_type_stars] = s.nr_sparts;
   N_long[swift_type_black_hole] = s.nr_bparts;
   N_long[swift_type_neutrino] = s.nr_nuparts;
-  MPI_Allreduce(&N_long, &N_total, swift_type_count + 1, MPI_LONG_LONG_INT,
+  MPI_Allreduce(N_long, N_total, swift_type_count + 1, MPI_LONG_LONG_INT,
                 MPI_SUM, MPI_COMM_WORLD);
 #else
   N_total[swift_type_gas] = s.nr_parts;
@@ -660,6 +660,7 @@ int main(int argc, char *argv[]) {
       /*neutrino_response=*/NULL, /*feedback_properties=*/NULL,
       /*pressure_floor_properties=*/NULL,
       /*rt_properties=*/NULL, &mesh, /*pow_data=*/NULL, /*potential=*/NULL,
+      /*forcing_terms=*/NULL,
       /*cooling_func=*/NULL, /*starform=*/NULL, /*chemistry=*/NULL,
       /*extra_io_props=*/NULL, &fof_properties, /*los_properties=*/NULL,
       /*lightcone_properties=*/NULL, &ics_metadata);
@@ -715,7 +716,7 @@ int main(int argc, char *argv[]) {
   if (with_sinks) e.policy |= engine_policy_sinks;
 
   /* Write output. */
-  engine_dump_snapshot(&e);
+  engine_dump_snapshot(&e, /*fof=*/1);
 
 #ifdef WITH_MPI
   MPI_Barrier(MPI_COMM_WORLD);
@@ -768,17 +769,18 @@ int main(int argc, char *argv[]) {
   }
 #endif
 
-#ifdef WITH_MPI
-  if ((res = MPI_Finalize()) != MPI_SUCCESS)
-    error("call to MPI_Finalize failed with error %i.", res);
-#endif
-
   /* Clean everything */
   cosmology_clean(&cosmo);
   pm_mesh_clean(&mesh);
   engine_clean(&e, /*fof=*/1, /*restart=*/0);
   free(params);
   free(output_options);
+
+#ifdef WITH_MPI
+  partition_clean(&initial_partition, &reparttype);
+  if ((res = MPI_Finalize()) != MPI_SUCCESS)
+    error("call to MPI_Finalize failed with error %i.", res);
+#endif
 
   /* Say goodbye. */
   if (myrank == 0) message("done. Bye.");

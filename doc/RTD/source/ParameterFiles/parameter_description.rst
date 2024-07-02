@@ -576,6 +576,26 @@ specified, SWIFT will start and use the birth times specified in the
 ICs. If no values are given in the ICs, the stars' birth times will be
 zeroed, which can cause issues depending on the type of run performed.
 
+.. _Parameters_Sinks:
+
+Sinks
+-----
+
+Currently, there are two models for the sink particles, the Default model and the GEAR one. Their parameters are described below. To choose a model, configure the code with ``--with-sink=<model>``, where ``<model>`` can be ``none`` or ``GEAR``. To run with sink particles, add the option ``--sinks``.
+Below you will find the description of the ``none`` which is the default model. For ``GEAR`` model, please refer to :ref:`sink_GEAR_model`.
+
+By default, the code is configured with ``--with-sink=none``. Then, the ``DefaultSink`` section is used to set parameters that describe the sinks in this model. The unique parameter is the sink accretion radius (also called cut-off radius): ``cut_off_radius``.
+
+Note that this model does not create sink particles or accrete gas. 
+
+The full section is:
+
+.. code:: YAML
+
+  DefaultSink:
+    cut_off_radius:        1e-3       # Cut off radius of the sink particles (in internal units). This parameter should be adapted with the resolution..
+
+
 .. _Parameters_time_integration:
 
 Time Integration
@@ -1230,7 +1250,9 @@ parameter sets the thermal energy per unit mass.
 .. code:: YAML
 
    EoS:
-     isothermal_internal_energy: 20.26784  # Thermal energy per unit mass for the case of isothermal equation of state (in internal units).
+     isothermal_internal_energy: 20.26784      # Thermal energy per unit mass for the case of isothermal equation of state (in internal units).
+     barotropic_vacuum_sound_speed: 2e4        # Vacuum sound speed in the case of the barotropic equation of state (in internal units).
+     barotropic_core_density:       1e-13      # Core density in the case of the barotropic equation of state (in internal units).
      # Select which planetary EoS material(s) to enable for use.
      planetary_use_idg_def:    0               # Default ideal gas, material ID 0
      planetary_use_Til_iron:       1           # Tillotson iron, material ID 100
@@ -1278,6 +1300,7 @@ The options are:
  * The number of grid foldings to use: ``num_folds``.
  * The factor by which to fold at each iteration: ``fold_factor`` (default: 4)
  * The order of the window function: ``window_order`` (default: 3)
+ * Whether or not to correct the placement of the centre of the k-bins for small k values: ``shift_centre_small_k_bins`` (default: 1)
 
 The window order sets the way the particle properties get assigned to the mesh.
 Order 1 corresponds to the nearest-grid-point (NGP), order 2 to cloud-in-cell
@@ -1316,6 +1339,20 @@ The ``neutrino1`` and ``neutrino2`` selections are based on the particle IDs and
 are mutually exclusive. The particles selected in each half are different in
 each output. Note that neutrino PS can only be computed when neutrinos are
 simulated using particles.
+
+SWIFT uses bins of integer :math:`k`, with bins :math:`[0.5,1.5]`, :math:`[1.5,2.5]` etc.  The
+representative :math:`k` values used to be assigned to the bin centres (so k=1, 2, etc), which are
+then transformed to physical :math:`k` by a factor :math:`kL/(2*pi)`. For the first few bins, only
+few modes contribute to each bin. It is then advantageous to move the "centre" of the bin to the
+actual location correponding to the mean of the contributing modes. The :math:`k` label of the bin
+is thus shifted by a small amount. The way to calculate these shifts is to consider a 3D cube of
+:math:`(kx,ky,kz)` cells and check which cells fall inside a spherical shell with boundaries
+:math:`(i+0.5,i+1.5)`, then calculate the average :math:`k=\sqrt{kx^2+ky^2+kz^2}`. So for
+:math:`i=0` there cells :math:`k=1` and 12 cells :math:`k=\sqrt(2)`, so the weighted k becomes
+:math:`(6 * 1 + 12 * \sqrt(2)) / 18 = 1.2761424`. Note that only the first 7 (22) bins require a
+correction larger than 1 (0.1) percent. We apply a correction to the first 128 terms. This
+correction is activated when ``shift_centre_small_k_bins`` is switched on (that's the default
+behaviour).
 
 An example of a valid power-spectrum section of the parameter file looks like:
 

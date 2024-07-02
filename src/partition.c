@@ -1429,19 +1429,23 @@ void partition_gather_weights(void *map_data, int num_elements,
     int cid = ci - cells;
 
     /* Different weights for different tasks. */
-    if (t->type == task_type_drift_part || t->type == task_type_drift_gpart ||
-        t->type == task_type_drift_spart || t->type == task_type_drift_bpart ||
-        t->type == task_type_ghost || t->type == task_type_extra_ghost ||
-        t->type == task_type_stars_ghost ||
-        t->type == task_type_bh_density_ghost || t->type == task_type_kick1 ||
+    if (t->type == task_type_init_grav || t->type == task_type_ghost ||
+        t->type == task_type_extra_ghost || t->type == task_type_drift_part ||
+        t->type == task_type_drift_spart || t->type == task_type_drift_sink ||
+        t->type == task_type_drift_bpart || t->type == task_type_drift_gpart ||
+        t->type == task_type_end_hydro_force || t->type == task_type_kick1 ||
         t->type == task_type_kick2 || t->type == task_type_timestep ||
         t->type == task_type_timestep_limiter ||
-        t->type == task_type_timestep_sync || t->type == task_type_kick1 ||
-        t->type == task_type_kick2 || t->type == task_type_end_hydro_force ||
-        t->type == task_type_end_grav_force || t->type == task_type_cooling ||
-        t->type == task_type_star_formation || t->type == task_type_timestep ||
-        t->type == task_type_init_grav || t->type == task_type_grav_down ||
-        t->type == task_type_grav_long_range) {
+        t->type == task_type_timestep_sync ||
+        t->type == task_type_grav_long_range || t->type == task_type_grav_mm ||
+        t->type == task_type_grav_down || t->type == task_type_end_grav_force ||
+        t->type == task_type_cooling || t->type == task_type_star_formation ||
+        t->type == task_type_stars_ghost ||
+        t->type == task_type_bh_density_ghost ||
+        t->type == task_type_bh_swallow_ghost2 ||
+        t->type == task_type_neutrino_weight ||
+        t->type == task_type_sink_formation || t->type == task_type_rt_ghost1 ||
+        t->type == task_type_rt_ghost2 || t->type == task_type_rt_tchem) {
 
       /* Particle updates add only to vertex weight. */
       if (vweights) atomic_add_d(&weights_v[cid], w);
@@ -2059,7 +2063,7 @@ void partition_init(struct partition *partition,
 
 #ifdef WITH_MPI
 
-/* Defaults make use of METIS if available */
+  /* Defaults make use of METIS if available */
 #if defined(HAVE_METIS) || defined(HAVE_PARMETIS)
   const char *default_repart = "fullcosts";
   const char *default_part = "edgememory";
@@ -2074,6 +2078,10 @@ void partition_init(struct partition *partition,
          &partition->grid[2]);
   factor(partition->grid[0] * partition->grid[1], &partition->grid[1],
          &partition->grid[0]);
+
+  /* Initialise the repartition celllist. */
+  repartition->ncelllist = 0;
+  repartition->celllist = NULL;
 
   /* Now let's check what the user wants as an initial domain. */
   char part_type[20];
@@ -2183,10 +2191,6 @@ void partition_init(struct partition *partition,
   repartition->itr =
       parser_get_opt_param_float(params, "DomainDecomposition:itr", 100.0f);
 
-  /* Clear the celllist for use. */
-  repartition->ncelllist = 0;
-  repartition->celllist = NULL;
-
   /* Do we have fixed costs available? These can be used to force
    * repartitioning at any time. Not required if not repartitioning.*/
   repartition->use_fixed_costs = parser_get_opt_param_int(
@@ -2212,6 +2216,24 @@ void partition_init(struct partition *partition,
 
 #else
   error("SWIFT was not compiled with MPI support");
+#endif
+}
+
+/**
+ * @brief Clean up any allocated resources.
+ *
+ * @param partition The #partition
+ * @param repartition The #repartition
+ */
+void partition_clean(struct partition *partition,
+                     struct repartition *repartition) {
+#ifdef WITH_MPI
+  /* Only the celllist is dynamic. */
+  if (repartition->celllist != NULL) free(repartition->celllist);
+
+  /* Zero structs for reuse. */
+  bzero(partition, sizeof(struct partition));
+  bzero(repartition, sizeof(struct repartition));
 #endif
 }
 
@@ -2354,14 +2376,23 @@ static void check_weights(struct task *tasks, int nr_tasks,
     int cid = ci - cells;
 
     /* Different weights for different tasks. */
-    if (t->type == task_type_drift_part || t->type == task_type_drift_gpart ||
-        t->type == task_type_ghost || t->type == task_type_extra_ghost ||
-        t->type == task_type_kick1 || t->type == task_type_kick2 ||
-        t->type == task_type_end_hydro_force ||
-        t->type == task_type_end_grav_force || t->type == task_type_cooling ||
-        t->type == task_type_star_formation || t->type == task_type_timestep ||
-        t->type == task_type_init_grav || t->type == task_type_grav_down ||
-        t->type == task_type_grav_long_range) {
+    if (t->type == task_type_init_grav || t->type == task_type_ghost ||
+        t->type == task_type_extra_ghost || t->type == task_type_drift_part ||
+        t->type == task_type_drift_spart || t->type == task_type_drift_sink ||
+        t->type == task_type_drift_bpart || t->type == task_type_drift_gpart ||
+        t->type == task_type_end_hydro_force || t->type == task_type_kick1 ||
+        t->type == task_type_kick2 || t->type == task_type_timestep ||
+        t->type == task_type_timestep_limiter ||
+        t->type == task_type_timestep_sync ||
+        t->type == task_type_grav_long_range || t->type == task_type_grav_mm ||
+        t->type == task_type_grav_down || t->type == task_type_end_grav_force ||
+        t->type == task_type_cooling || t->type == task_type_star_formation ||
+        t->type == task_type_stars_ghost ||
+        t->type == task_type_bh_density_ghost ||
+        t->type == task_type_bh_swallow_ghost2 ||
+        t->type == task_type_neutrino_weight ||
+        t->type == task_type_sink_formation || t->type == task_type_rt_ghost1 ||
+        t->type == task_type_rt_ghost2 || t->type == task_type_rt_tchem) {
 
       /* Particle updates add only to vertex weight. */
       if (vweights) weights_v[cid] += w;
