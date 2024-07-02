@@ -142,9 +142,9 @@ INLINE static void sink_write_particles(const struct sink* sinks,
 
   /* TODO: Convert target_mass to internal units. It is in M_sun in the sink
      struct */
-  list[7] = io_make_output_field(
-      "TargetMass", FLOAT, 1,  UNIT_CONV_MASS, 0.f, sinks,
-      target_mass, "Sink target mass to spawn star particles");
+  list[7] = io_make_output_field("TargetMass", FLOAT, 1, UNIT_CONV_MASS, 0.f,
+                                 sinks, target_mass,
+                                 "Sink target mass to spawn star particles");
 
 #ifdef DEBUG_INTERACTIONS_SINKS
 

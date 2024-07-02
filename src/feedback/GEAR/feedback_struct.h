@@ -30,8 +30,8 @@
 enum star_feedback_type {
   single_star,                    /* particle representing a single star */
   star_population_continuous_IMF, /* particle representing a population of the
-				     continuous part of the IMF */
-  star_population                 /* particle representing a population with the whole IMF */
+                                     continuous part of the IMF */
+  star_population /* particle representing a population with the whole IMF */
 };
 
 /**

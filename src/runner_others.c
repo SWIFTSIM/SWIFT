@@ -252,8 +252,9 @@ void runner_do_star_formation_sink(struct runner *r, struct cell *c,
         error("TODO");
 #endif
 
-	/* Update the sink properties before spwaning stars */
-	sink_update_sink_properties_before_star_formation(s, e, sink_props, phys_const);
+        /* Update the sink properties before spwaning stars */
+        sink_update_sink_properties_before_star_formation(s, e, sink_props,
+                                                          phys_const);
 
         /* Spawn as many stars as necessary
            - loop counter for the random seed.
@@ -286,15 +287,16 @@ void runner_do_star_formation_sink(struct runner *r, struct cell *c,
           c->stars.h_max = max(c->stars.h_max, sp->h);
           c->stars.h_max_active = max(c->stars.h_max_active, sp->h);
 
-	  /* Update sink properties */
-	  sink_update_sink_properties_during_star_formation(s, sp, e, sink_props,
-							   phys_const, star_counter);
+          /* Update sink properties */
+          sink_update_sink_properties_during_star_formation(
+              s, sp, e, sink_props, phys_const, star_counter);
         } /* Loop over the stars to spawn */
 
-	/* Update the sink after star formation */
-	sink_update_sink_properties_before_star_formation(s, e, sink_props, phys_const);
-      }   /* if sink_is_active */
-    }     /* Loop over the particles */
+        /* Update the sink after star formation */
+        sink_update_sink_properties_before_star_formation(s, e, sink_props,
+                                                          phys_const);
+      } /* if sink_is_active */
+    }   /* Loop over the particles */
   }
 
   /* If we formed any stars, the star sorts are now invalid. We need to

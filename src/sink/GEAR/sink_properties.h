@@ -101,7 +101,7 @@ INLINE static void sink_props_init_probabilities(
     /* This needs to be converted to M_sun (because was converted to internal
        units in sink_init_props()). */
     stellar_particle_mass =
-	sp->stellar_particle_mass / phys_const->const_solar_mass;
+        sp->stellar_particle_mass / phys_const->const_solar_mass;
 
     /* Give the IMF the minimal discrete mass and the stellar_particle_mass
        (in M_sun). */
@@ -114,7 +114,7 @@ INLINE static void sink_props_init_probabilities(
     /* This needs to be converted to M_sun (because was converted to internal
        units in sink_init_props()). */
     stellar_particle_mass =
-	sp->stellar_particle_mass_first_stars / phys_const->const_solar_mass;
+        sp->stellar_particle_mass_first_stars / phys_const->const_solar_mass;
 
     /* Give the IMF the minimal discrete mass and the stellar_particle_mass
        (in M_sun). */
@@ -125,26 +125,25 @@ INLINE static void sink_props_init_probabilities(
   /* sanity check */
   if (minimal_discrete_mass < imf->mass_limits[imf->n_parts - 1])
     error(
-	"minimal_discrete_mass (=%8.3f) cannot be smaller than the mass limit "
-	"(=%8.3f) of the last IMF segment,",
-	minimal_discrete_mass, imf->mass_limits[imf->n_parts - 1]);
+        "minimal_discrete_mass (=%8.3f) cannot be smaller than the mass limit "
+        "(=%8.3f) of the last IMF segment,",
+        minimal_discrete_mass, imf->mass_limits[imf->n_parts - 1]);
 
   /* Compute the IMF mass (in solar mass) below the minimal IMF discrete mass
      (continuous part). */
   double Mtot, Md, Mc;
-  initial_mass_function_compute_Mc_Md_Mtot(imf, minimal_discrete_mass,
-					   stellar_particle_mass, &Mc,  &Md,
-					   &Mtot);
+  initial_mass_function_compute_Mc_Md_Mtot(
+      imf, minimal_discrete_mass, stellar_particle_mass, &Mc, &Md, &Mtot);
 
   /* Compute the number of stars in the continuous part of the IMF */
   double Nc = initial_mass_function_get_imf_number_fraction(
-		  imf, mass_min, minimal_discrete_mass) *
-	      Mtot;
+                  imf, mass_min, minimal_discrete_mass) *
+              Mtot;
 
   /* Compute the number of stars in the discrete part of the IMF */
   double Nd = initial_mass_function_get_imf_number_fraction(
-		  imf, minimal_discrete_mass, mass_max) *
-	      Mtot;
+                  imf, minimal_discrete_mass, mass_max) *
+              Mtot;
 
   message("Mass of the continuous part (in M_sun) : %g", Mc);
   message("Mass of the discrete   part (in M_sun) : %g", Md);
@@ -231,7 +230,7 @@ INLINE static void sink_props_init(struct sink_props *sp,
 
   sp->star_spawning_sigma_factor =
       parser_get_opt_param_float(params, "GEARSink:star_spawning_sigma_factor",
-                               default_star_spawning_sigma_factor);
+                                 default_star_spawning_sigma_factor);
 
   /* Sink formation criterion parameters (all active by default) */
   sp->sink_formation_contracting_gas_criterion = parser_get_opt_param_int(
@@ -268,7 +267,8 @@ INLINE static void sink_props_init(struct sink_props *sp,
   /* Those variables are used to give the message output below in consistent
      units, i.e. in M_sun. */
   const double stellar_particle_mass_M_sun = sp->stellar_particle_mass;
-  const double stellar_particle_mass_first_stars_M_sun = sp->stellar_particle_mass;
+  const double stellar_particle_mass_first_stars_M_sun =
+      sp->stellar_particle_mass;
 
   /* Convert from M_sun to internal units */
   sp->stellar_particle_mass *= phys_const->const_solar_mass;
@@ -291,11 +291,15 @@ INLINE static void sink_props_init(struct sink_props *sp,
     sink_props_init_probabilities(sp, imf, phys_const, 1);
   }
 
-  message("maximal_temperature                          = %g", sp->maximal_temperature);
-  message("density_threshold                            = %g", sp->density_threshold);
+  message("maximal_temperature                          = %g",
+          sp->maximal_temperature);
+  message("density_threshold                            = %g",
+          sp->density_threshold);
 
-  message("stellar_particle_mass (in M_sun)             = %g", stellar_particle_mass_M_sun);
-  message("minimal_discrete_mass (in M_sun)             = %g", sp->minimal_discrete_mass);
+  message("stellar_particle_mass (in M_sun)             = %g",
+          stellar_particle_mass_M_sun);
+  message("minimal_discrete_mass (in M_sun)             = %g",
+          sp->minimal_discrete_mass);
 
   message("stellar_particle_mass_first_stars (in M_sun) = %g",
           stellar_particle_mass_first_stars_M_sun);
@@ -304,7 +308,7 @@ INLINE static void sink_props_init(struct sink_props *sp,
 
   /* Print information about the functionalities */
   message("disable_sink_formation                       = %d",
-	  sp->disable_sink_formation);
+          sp->disable_sink_formation);
   message("sink_formation_contracting_gas_criterion     = %d",
           sp->sink_formation_contracting_gas_criterion);
   message("sink_formation_smoothing_length_criterion    = %d",

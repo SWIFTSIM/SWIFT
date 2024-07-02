@@ -127,7 +127,8 @@ void stellar_evolution_compute_continuous_feedback_properties(
     const int negative_mass = sp->mass < sp->feedback_data.mass_ejected;
 
     if (null_mass) {
-      message("Star %lld (m_star = %e, m_ej = %e) completely exploded!",  sp->id, sp->mass, sp->feedback_data.mass_ejected);
+      message("Star %lld (m_star = %e, m_ej = %e) completely exploded!", sp->id,
+              sp->mass, sp->feedback_data.mass_ejected);
       /* If the star ejects all its mass (for very massive stars), give it a
          zero mass so that we know it has exploded.
          We do not remove the star from the simulation to keep track of its
@@ -136,19 +137,22 @@ void stellar_evolution_compute_continuous_feedback_properties(
          Bug fix (28.04.2024): The mass of the star should not be set to
          0. This a lead a gpart of dark matter to want a timestep of 0.0 <
          minimal timestep and stopped all simulations... Setting the star mass
-	 to the same minimal value than the gpart has solved the issue.
-	 Notice that increasing 'discrete_star_minimal_gravity_mass' has not
+         to the same minimal value than the gpart has solved the issue.
+         Notice that increasing 'discrete_star_minimal_gravity_mass' has not
          solved the issue.
          The issue happenened after the changes here. */
-      sp->mass = sm->discrete_star_minimal_gravity_mass ;
+      sp->mass = sm->discrete_star_minimal_gravity_mass;
 
       /* It's not a good idea to put the gpart's mass to zero. Instead, we give
-	 it minimal mass that is provided by the user in the paramter file */
-      sp->gpart->mass = sm->discrete_star_minimal_gravity_mass ;
+         it minimal mass that is provided by the user in the paramter file */
+      sp->gpart->mass = sm->discrete_star_minimal_gravity_mass;
 
       /* If somehow the star has a negative mass, we have a problem. */
     } else if (negative_mass) {
-      warning("(Discrete start) Negative mass (m_star = %e, m_ej = %e), skipping current star: %lli", sp->mass, sp->feedback_data.mass_ejected, sp->id);
+      warning(
+          "(Discrete start) Negative mass (m_star = %e, m_ej = %e), skipping "
+          "current star: %lli",
+          sp->mass, sp->feedback_data.mass_ejected, sp->id);
       /* Reset everything */
       sp->feedback_data.number_snia = 0;
       sp->feedback_data.number_snii = 0;
@@ -161,7 +165,10 @@ void stellar_evolution_compute_continuous_feedback_properties(
     /* Check if we can ejected the required amount of elements. */
     const int negative_mass = sp->mass <= sp->feedback_data.mass_ejected;
     if (negative_mass) {
-      warning("(Continuous star) Negative mass (m_star = %e, m_ej = %e), skipping current star: %lli",sp->mass, sp->feedback_data.mass_ejected, sp->id);
+      warning(
+          "(Continuous star) Negative mass (m_star = %e, m_ej = %e), skipping "
+          "current star: %lli",
+          sp->mass, sp->feedback_data.mass_ejected, sp->id);
       /* Reset everything */
       sp->feedback_data.number_snia = 0;
       sp->feedback_data.number_snii = 0;
@@ -260,7 +267,8 @@ void stellar_evolution_compute_discrete_feedback_properties(
     const int negative_mass = sp->mass < sp->feedback_data.mass_ejected;
 
     if (null_mass) {
-      message("Star %lld (m_star = %e, m_ej = %e) completely exploded!",  sp->id, sp->mass, sp->feedback_data.mass_ejected);
+      message("Star %lld (m_star = %e, m_ej = %e) completely exploded!", sp->id,
+              sp->mass, sp->feedback_data.mass_ejected);
       /* If the star ejects all its mass (for very massive stars), give it a
          zero mass so that we know it has exploded.
          We do not remove the star from the simulation to keep track of its
@@ -269,19 +277,22 @@ void stellar_evolution_compute_discrete_feedback_properties(
          Bug fix (28.04.2024): The mass of the star should not be set to
          0. This a lead a gpart of dark matter to want a timestep of 0.0 <
          minimal timestep and stopped all simulations... Setting the star mass
-	 to the same minimal value than the gpart has solved the issue.
-	 Notice that increasing 'discrete_star_minimal_gravity_mass' has not
+         to the same minimal value than the gpart has solved the issue.
+         Notice that increasing 'discrete_star_minimal_gravity_mass' has not
          solved the issue.
          The issue happenened after the changes here. */
-      sp->mass = sm->discrete_star_minimal_gravity_mass ;
+      sp->mass = sm->discrete_star_minimal_gravity_mass;
 
       /* It's not a good idea to put the gpart's mass to zero. Instead, we give
-	 it minimal mass that is provided by the user in the paramter file */
-      sp->gpart->mass = sm->discrete_star_minimal_gravity_mass ;
+         it minimal mass that is provided by the user in the paramter file */
+      sp->gpart->mass = sm->discrete_star_minimal_gravity_mass;
 
       /* If somehow the star has a negative mass, we have a problem. */
     } else if (negative_mass) {
-      warning("(Discrete start) Negative mass (m_star = %e, m_ej = %e), skipping current star: %lli", sp->mass, sp->feedback_data.mass_ejected, sp->id);
+      warning(
+          "(Discrete start) Negative mass (m_star = %e, m_ej = %e), skipping "
+          "current star: %lli",
+          sp->mass, sp->feedback_data.mass_ejected, sp->id);
       /* Reset everything */
       sp->feedback_data.number_snia = 0;
       sp->feedback_data.number_snii = 0;
@@ -298,20 +309,23 @@ void stellar_evolution_compute_discrete_feedback_properties(
     /* If the star is the continuous part of the IMF or the enteire IMF */
   } else {
     /* Check if we can ejected the required amount of elements. */
-     const int negative_mass = sp->mass <= sp->feedback_data.mass_ejected;
-     if (negative_mass) {
-       warning("(Continuous star) Negative mass (m_star = %e, m_ej = %e), skipping current star: %lli",sp->mass, sp->feedback_data.mass_ejected, sp->id);
-       /* Reset everything */
-       sp->feedback_data.number_snia = 0;
-       sp->feedback_data.number_snii = 0;
-       sp->feedback_data.mass_ejected = 0;
-       return;
-     }
-     /* Update the mass */
-     sp->mass -= sp->feedback_data.mass_ejected;
+    const int negative_mass = sp->mass <= sp->feedback_data.mass_ejected;
+    if (negative_mass) {
+      warning(
+          "(Continuous star) Negative mass (m_star = %e, m_ej = %e), skipping "
+          "current star: %lli",
+          sp->mass, sp->feedback_data.mass_ejected, sp->id);
+      /* Reset everything */
+      sp->feedback_data.number_snia = 0;
+      sp->feedback_data.number_snii = 0;
+      sp->feedback_data.mass_ejected = 0;
+      return;
+    }
+    /* Update the mass */
+    sp->mass -= sp->feedback_data.mass_ejected;
 
-     /* Update the gpart mass */
-     sp->gpart->mass = sp->mass;
+    /* Update the gpart mass */
+    sp->gpart->mass = sp->mass;
   }
 
   /* Get the SNIa yields */
@@ -516,10 +530,10 @@ void stellar_evolution_evolve_spart(
   if (sp->feedback_data.star_type == star_population_continuous_IMF) {
     const float minimal_discrete_mass = sm->imf.minimal_discrete_mass;
 
-     /* If it's not time yet for feedback, exit. Notice that both masses are in
-       solar mass. */
+    /* If it's not time yet for feedback, exit. Notice that both masses are in
+      solar mass. */
     if (m_beg_step > minimal_discrete_mass) {
-      return ;
+      return;
     }
   }
 
@@ -535,7 +549,8 @@ void stellar_evolution_evolve_spart(
   /* Compute the initial mass. The initial mass is different if the star
      particle is of type 'star_population' or
      'star_population_continuous_IMF'. The function call treats both cases. */
-  const float m_init =  stellar_evolution_compute_initial_mass(sp, sm, phys_const);
+  const float m_init =
+      stellar_evolution_compute_initial_mass(sp, sm, phys_const);
 
   /* Then, for 'star_population_continuous_IMF', everything remain the same as
      with the "old" 'star_population'! */
@@ -735,11 +750,13 @@ void stellar_evolution_props_init(struct stellar_model* sm,
   /* Initialize the minimal gravity mass for the stars */
   const float default_star_minimal_gravity_mass = 1e-1;
   sm->discrete_star_minimal_gravity_mass = parser_get_opt_param_float(
-      params, "GEARFeedback:discrete_star_minimal_gravity_mass", default_star_minimal_gravity_mass);
+      params, "GEARFeedback:discrete_star_minimal_gravity_mass",
+      default_star_minimal_gravity_mass);
 
   /* Convert from M_sun to internal units */
   sm->discrete_star_minimal_gravity_mass *= phys_const->const_solar_mass;
-  message("discrete_star_minimal_gravity_mass: (internal units)          %e", sm->discrete_star_minimal_gravity_mass);
+  message("discrete_star_minimal_gravity_mass: (internal units)          %e",
+          sm->discrete_star_minimal_gravity_mass);
 }
 
 /**
@@ -805,7 +822,6 @@ void stellar_evolution_clean(struct stellar_model* sm) {
   supernovae_ii_clean(&sm->snii);
 }
 
-
 /**
  * @brief Computes the initial mass of a #spart. This function distinguish
  * between the stellar particle representing a whole IMF and the stellar
@@ -815,11 +831,11 @@ void stellar_evolution_clean(struct stellar_model* sm) {
  * @param sm The #stellar_model structure.
  * @param phys_const The phy
  */
-float stellar_evolution_compute_initial_mass(const struct spart* restrict sp,
-					     const struct stellar_model* sm,
-					     const struct phys_const* phys_const) {
+float stellar_evolution_compute_initial_mass(
+    const struct spart* restrict sp, const struct stellar_model* sm,
+    const struct phys_const* phys_const) {
 
-  float m_init = 0.0 ;
+  float m_init = 0.0;
   const struct initial_mass_function* imf = &(sm->imf);
 
   if (sp->feedback_data.star_type == star_population) {
@@ -829,8 +845,8 @@ float stellar_evolution_compute_initial_mass(const struct spart* restrict sp,
     float stellar_particle_mass = imf->stellar_particle_mass;
     double M_IMF_tot, M_d_dummy, M_c_dummy;
     initial_mass_function_compute_Mc_Md_Mtot(imf, minimal_discrete_mass,
-					   stellar_particle_mass, &M_c_dummy,
-					   &M_d_dummy, &M_IMF_tot);
+                                             stellar_particle_mass, &M_c_dummy,
+                                             &M_d_dummy, &M_IMF_tot);
 
     /* No need to convert from internal units to M_sun because the masses are
        already in solar masses (to avoid numerical errors) */

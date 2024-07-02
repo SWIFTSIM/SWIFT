@@ -62,7 +62,7 @@ void feedback_update_part(struct part* p, struct xpart* xp,
   hydro_set_mass(p, new_mass);
 
   /* Update the gpart mass */
-  p->gpart->mass = p->mass ;
+  p->gpart->mass = p->mass;
 
   xp->feedback_data.delta_mass = 0;
 
@@ -190,15 +190,15 @@ void feedback_will_do_feedback(
   /* If metal < threshold, then  sp is a first star particle. */
   const int is_first_star = metal < threshold;
   const struct stellar_model* model =
-    is_first_star ? &feedback_props->stellar_model_first_stars
-    : &feedback_props->stellar_model;
+      is_first_star ? &feedback_props->stellar_model_first_stars
+                    : &feedback_props->stellar_model;
 
   /* Compute the times */
   double star_age_beg_step = 0;
   double dt_enrichment = 0;
   integertime_t ti_begin = 0;
   compute_time(sp, with_cosmology, cosmo, &star_age_beg_step, &dt_enrichment,
-	       &ti_begin, ti_current, time_base, time);
+               &ti_begin, ti_current, time_base, time);
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (sp->birth_time == -1.) error("Evolving a star particle that should not!");
@@ -207,31 +207,33 @@ void feedback_will_do_feedback(
   }
 #endif
   /* Ensure that the age is positive (rounding errors) */
-  const double star_age_beg_step_safe = star_age_beg_step < 0 ? 0 : star_age_beg_step;
+  const double star_age_beg_step_safe =
+      star_age_beg_step < 0 ? 0 : star_age_beg_step;
 
   /* A single star */
   if (sp->feedback_data.star_type == single_star) {
-    /* If the star has completely exploded, do not continue. This will also avoid
-       NaN values in the liftetime if the mass is set to 0.
-       Correction (28.04.2024): A bug fix in the mass of the star (see
-       stellar_evolution.c in stellar_evolution_compute_X_feedback_properties,
-       X=discrete, continuous) has changed the mass of the star from 0 to
+    /* If the star has completely exploded, do not continue. This will also
+       avoid NaN values in the liftetime if the mass is set to 0. Correction
+       (28.04.2024): A bug fix in the mass of the star (see stellar_evolution.c
+       in stellar_evolution_compute_X_feedback_properties, X=discrete,
+       continuous) has changed the mass of the star from 0 to
        discrete_star_minimal_gravity_mass. Hence the fix is propagated here. */
     if (sp->mass <= model->discrete_star_minimal_gravity_mass) {
       return;
     }
 
-    /* Now, compute the stellar evolution state for individual star particles. */
+    /* Now, compute the stellar evolution state for individual star particles.
+     */
     stellar_evolution_evolve_individual_star(sp, model, cosmo, us, phys_const,
-					     ti_begin, star_age_beg_step_safe,
-					     dt_enrichment);
+                                             ti_begin, star_age_beg_step_safe,
+                                             dt_enrichment);
   } else {
     /* Compute the stellar evolution including SNe energy. This function treats
        the case of particles representing the whole IMF (star_type =
        star_population) and the particles representing only the continuous part
        of the IMF (star_type = star_population_continuous_IMF) */
     stellar_evolution_evolve_spart(sp, model, cosmo, us, phys_const, ti_begin,
-				   star_age_beg_step_safe, dt_enrichment);
+                                   star_age_beg_step_safe, dt_enrichment);
   }
 
   /* Apply the energy efficiency factor */

@@ -67,7 +67,8 @@ struct initial_mass_function {
   /*! Stellar mass of the continous part of the IMF (in solar mass). */
   float stellar_particle_mass;
 
-  /*! Minimal mass of stars represented by discrete particles (in solar mass). */
+  /*! Minimal mass of stars represented by discrete particles (in solar mass).
+   */
   float minimal_discrete_mass;
 };
 
@@ -210,9 +211,9 @@ struct stellar_model {
 
   /* Minimal gravity mass after a discrete star has completely exploded.
 
-     This will be the mass of the gpart's friend of the star. The mass of the star
-     will be 0 after it losses all its mass.
-     
+     This will be the mass of the gpart's friend of the star. The mass of the
+     star will be 0 after it losses all its mass.
+
      The purpose of this is to avoid zero mass for the gravitsy
      computations. We keep the star so that we know it *existed* and we can
      extract its properties at the end of a run. If we remove the star, then
