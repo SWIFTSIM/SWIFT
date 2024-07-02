@@ -313,29 +313,6 @@ void stellar_evolution_compute_discrete_feedback_properties(
      /* Update the gpart mass */
      sp->gpart->mass = sp->mass;
   }
-  /* Should we also update the gpart's mass ? */
-  /* 1) Yes, but then,
-        a) If we conserve momentum, the velocities must be updated as well. For
-        Pop III stars, the mass change is so high that the particle may run
-        away...
-	b) If we conserve velocity, we do not have the last problem, but is it
-        consistent with the rest of the code? Is the momentum conserved we we
-        distribute the star ejecta to the gas particles? Yve thinks so.
-     2) No, but then the first stars clump will not evaporate. The stars may also
-        attract gas (because such clumps contains 10^3 solar masses) that can
-        generate new stars.
-	Also, the dynamics can be affected.
-
-     Notice that in the feedback event, the energy is not conserved.
-
-     (So, should we conserve momentum ?)
-  */
-  /* What we could do instead is to think globally, i.e star + surrounding
-     gas. In this case, we conserve momentum and the stars does not run
-     awway. But that require to know which particles are at which distance
-     before doing so. And then to apply the feedback and the momentum
-     conservation.
-  */
 
   /* Get the SNIa yields */
   const float* snia_yields = supernovae_ia_get_yields(&sm->snia);
