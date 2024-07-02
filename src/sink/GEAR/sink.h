@@ -781,45 +781,6 @@ INLINE static void sink_copy_properties_to_star(
 }
 
 /**
- * @brief Update the #sink particle properties after spawning a star.
- *
- * In GEAR: Important properties that are updated are the sink mass and the
- * sink->target_mass to draw the next star mass.
- *
- * @param sink The #sink particle that spawed stars.
- * @param sp The #spart particle spawned.
- * @param e The #engine
- * @param sink_props the sink properties to use.
- * @param phys_const the physical constants in internal units.
- * @param star_counter The star loop counter.
- */
-INLINE static void sink_update_sink_properties_after_star_formation(struct sink* sink,
-								    const struct spart* sp, 
-   const struct engine* e,  const struct sink_props* sink_props,
-   const struct phys_const* phys_const, int star_counter) {
-
-  /* count the number of stars spawned by this particle */
-  sink->n_stars++;
-
-  /* Update the mass */
-  sink->mass = sink->mass - sink->target_mass * phys_const->const_solar_mass;
-
-  /* Bug fix: Do not forget to update the sink gpart's mass. */
-  sink->gpart->mass = sink->mass;
-
-  /* This message must be put carefully after giving the star its mass,
-     updated the sink mass and before changing the target_type */
-  message(
-	  "%010lld spawn a star (%010lld) with mass %8.2f Msol type=%d  "
-	  "star_counter=%03d. Sink remaining mass: %e Msol.",
-	  sink->id, sp->id, sp->mass/phys_const->const_solar_mass, sink->target_type,
-	  star_counter, sink->mass/phys_const->const_solar_mass);
-
-  /* Sample the IMF to the get next target mass */
-  sink_update_target_mass(sink, sink_props, e, star_counter);
-}
-
-/**
  * @brief Update the #sink particle properties before spawning a star.
  *
  * In GEAR, we check if the sink had an IMF change from pop III to pop II
@@ -864,6 +825,59 @@ INLINE static void sink_update_sink_properties_before_star_formation(struct sink
     message("IMF transition : Sink %lld will now spawn Pop II stars.", sink->id);
   }
 }
+
+/**
+ * @brief Update the #sink particle properties right after spawning a star.
+ *
+ * In GEAR: Important properties that are updated are the sink mass and the
+ * sink->target_mass to draw the next star mass.
+ *
+ * @param sink The #sink particle that spawed stars.
+ * @param sp The #spart particle spawned.
+ * @param e The #engine
+ * @param sink_props the sink properties to use.
+ * @param phys_const the physical constants in internal units.
+ * @param star_counter The star loop counter.
+ */
+INLINE static void sink_update_sink_properties_during_star_formation(struct sink* sink,
+								    const struct spart* sp, 
+   const struct engine* e,  const struct sink_props* sink_props,
+   const struct phys_const* phys_const, int star_counter) {
+
+  /* count the number of stars spawned by this particle */
+  sink->n_stars++;
+
+  /* Update the mass */
+  sink->mass = sink->mass - sink->target_mass * phys_const->const_solar_mass;
+
+  /* Bug fix: Do not forget to update the sink gpart's mass. */
+  sink->gpart->mass = sink->mass;
+
+  /* This message must be put carefully after giving the star its mass,
+     updated the sink mass and before changing the target_type */
+  message(
+	  "%010lld spawn a star (%010lld) with mass %8.2f Msol type=%d  "
+	  "star_counter=%03d. Sink remaining mass: %e Msol.",
+	  sink->id, sp->id, sp->mass/phys_const->const_solar_mass, sink->target_type,
+	  star_counter, sink->mass/phys_const->const_solar_mass);
+
+  /* Sample the IMF to the get next target mass */
+  sink_update_target_mass(sink, sink_props, e, star_counter);
+}
+
+/**
+ * @brief Update the #sink particle properties after star formation.
+ *
+ * In GEAR, this is unused. 
+ *
+ * @param sink The sink particle.
+ * @param e The #engine
+ * @param sink_props The sink properties to use.
+ * @param phys_const The physical constants in internal units.
+ */
+INLINE static void sink_update_sink_properties_after_star_formation(struct sink* sink,
+   const struct engine* e,  const struct sink_props* sink_props,
+   const struct phys_const* phys_const) {}
 
 /**
  * @brief Store the gravitational potential of a particle by copying it from
