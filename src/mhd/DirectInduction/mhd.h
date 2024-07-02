@@ -132,6 +132,10 @@ __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
 
   const float dt_B_factor = fabsf(divB);
 
+  const float laplacian_psi = p->mhd_data.laplacian_psi;
+
+  const float dt_psi_factor = fabsf(laplacian_psi);
+  
   const float dt_B_derivatives =
       dt_B_factor != 0.f
           ? hydro_properties->CFL_condition * cosmo->a /
@@ -139,13 +143,26 @@ __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
                 sqrtf(p->rho * mu_0 / (dt_B_factor * dt_B_factor))
           : FLT_MAX;
 
+  const float dt_psi =
+      (dt_psi_factor != 0.f && dt_B_factor != 0.f)
+           ? hydro_properties->CFL_condition * dt_B_factor / dt_psi_factor : FLT_MAX;
+  
+  const float dt_AR = p->mhd_data.v_sig_AR_max != 0.f
+                           ? hydro_properties->CFL_condition * p->h /
+                                 p->mhd_data.v_sig_AR_max
+                           : FLT_MAX;
+    
   const float dt_eta = p->mhd_data.resistive_eta != 0.f
                            ? hydro_properties->CFL_condition * cosmo->a *
                                  cosmo->a * p->h * p->h /
                                  p->mhd_data.resistive_eta
                            : FLT_MAX;
+  
+  const float dt_res = fminf(dt_AR, dt_eta);
 
-  return fminf(dt_B_derivatives, dt_eta);
+  const float dt_divB = fminf(dt_B_derivatives, dt_psi);
+  
+  return fminf(dt_res, dt_divB);
 }
 
 /**
@@ -289,7 +306,7 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_gradient(
     struct part *restrict p, struct xpart *restrict xp,
     const struct cosmology *cosmo, const struct hydro_props *hydro_props) {
 
-  p->force.balsara = 1.f;
+  // p->force.balsara = 1.f;
 }
 
 /**
@@ -455,11 +472,16 @@ __attribute__((always_inline)) INLINE static void mhd_reset_acceleration(
   p->mhd_data.B_over_rho_dt[1] = 0.0f;
   p->mhd_data.B_over_rho_dt[2] = 0.0f;
 
+  p->mhd_data.v_sig_AR_min = 0.0f;
+  p->mhd_data.v_sig_AR_max = 0.0f;
+    
   p->mhd_data.B_over_rho_dt_AR[0] = 0.0f;
   p->mhd_data.B_over_rho_dt_AR[1] = 0.0f;
   p->mhd_data.B_over_rho_dt_AR[2] = 0.0f;
 
   p->mhd_data.u_dt_AR = 0.0f;
+
+  p->mhd_data.laplacian_psi = 0.0f;
   
   /* Save forces*/
   for (int k = 0; k < 3; k++) {
@@ -510,12 +532,8 @@ __attribute__((always_inline)) INLINE static void mhd_predict_extra(
   p->mhd_data.B_over_rho[1] += p->mhd_data.B_over_rho_dt[1] * dt_therm;
   p->mhd_data.B_over_rho[2] += p->mhd_data.B_over_rho_dt[2] * dt_therm;
 
-  p->mhd_data.psi_over_ch_dt = mhd_get_psi_over_ch_dt(
-      p, cosmo->a, cosmo->a_factor_sound_speed, cosmo->H, hydro_props, mu_0);
-  p->mhd_data.psi_over_ch +=
-      mhd_get_psi_over_ch_dt(p, cosmo->a, cosmo->a_factor_sound_speed, cosmo->H,
-                             hydro_props, mu_0) *
-      dt_therm;
+  /* Predict Dedner scalar */
+  p->mhd_data.psi_over_ch += p->mhd_data.psi_over_ch_dt * dt_therm;
 }
 
 /**
@@ -534,6 +552,10 @@ __attribute__((always_inline)) INLINE static void mhd_end_force(
     struct part *p, const struct cosmology *cosmo,
     const struct hydro_props *hydro_props, const float mu_0) {
 
+  /* Commpute time derivative of Dedner scalar */ 
+  p->mhd_data.psi_over_ch_dt = mhd_get_psi_over_ch_dt(
+      p, cosmo->a, cosmo->a_factor_sound_speed, cosmo->H, hydro_props, mu_0);
+  
   /* Hubble expansion contribution to induction equation */
 
   const float Hubble_induction_pref =
