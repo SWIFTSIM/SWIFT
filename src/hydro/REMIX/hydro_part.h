@@ -133,16 +133,6 @@ struct part {
   /*! Particle density. */
   float rho;
 
-  /* Correction factors for kernel gradients. Numerator */
-  float weighted_wcount;
-
-  /* Correction factors for kernel gradients. Denominator */
-  float weighted_neighbour_wcount;
-
-  /* Correction factors for kernel gradients. f =
-   * weighted_wcount/(rho*weighted_neighbour_wcount) */
-  float f_gdf;
-
   /* Pressure */
   float P;
 
@@ -173,13 +163,40 @@ struct part {
       /*! Derivative of density with respect to h */
       float rho_dh;
 
-      /*! Velocity divergence. */
-      float div_v;
-
-      /*! Velocity curl. */
-      float rot_v[3];
-
     } density;
+
+    /**
+     * @brief Structure for the variables only used in the gradient loop over
+     * neighbours.
+     *
+     * Quantities should only be accessed in the gradient loop over neighbours
+     * and the extra ghost task.
+     */
+     struct {
+
+       float m0;
+
+       float m1[3];
+
+       struct sym_matrix m2;
+
+       float grad_m0[3];
+
+       float grad_m1_term1[3][3];
+
+       struct sym_matrix grad_m2_term1_x;
+
+       struct sym_matrix grad_m2_term1_y;
+
+       struct sym_matrix grad_m2_term1_z;
+
+       float grad_m0_gradhterm;
+
+       float grad_m1_term1_gradhterm[3];
+
+       struct sym_matrix grad_m2_term1_gradhterm;
+
+    } gradient;
 
     /**
      * @brief Structure for the variables only used in the force loop over
@@ -189,9 +206,6 @@ struct part {
      * loop over neighbours and the ghost, drift and kick tasks.
      */
     struct {
-
-      /*! "Grad h" term */
-      float f;
 
       /*! Particle pressure. */
       float pressure;
@@ -207,6 +221,16 @@ struct part {
 
       /*! Balsara switch */
       float balsara;
+
+      float eta_crit;
+
+      float A;
+
+      float B[3];
+
+      float grad_A[3];
+
+      float grad_B[3][3];
 
     } force;
   };
@@ -260,64 +284,20 @@ struct part {
 
     float drho_dt;
 
-    float eta_crit;
+    float vac_switch;
 
-    float vac_term;
+    float dv_norm_kernel[3][3];
 
-    float m0;
+    float du_norm_kernel[3];
 
-    float m1[3];
+    float drho_norm_kernel[3];
 
-    //float m2[3][3];
-    struct sym_matrix m2;
+    float dh_norm_kernel[3];
 
-    float grad_m0[3];
+    float m0_no_mean_kernel;
 
-    float grad_m1_term1[3][3];
+    float grad_m0_no_mean_kernel[3];
 
-    //float grad_m2_term1[3][3][3];
-    struct sym_matrix grad_m2_term1_x;
-
-    struct sym_matrix grad_m2_term1_y;
-
-    struct sym_matrix grad_m2_term1_z;
-
-
-    float A;
-
-    float B[3];
-
-    float grad_A[3];
-
-    float grad_B[3][3];
-
-
-
-
-    float dv_sphgrad[3][3];
-
-    float du_sphgrad[3];
-
-    float drho_sphgrad[3];
-
-    float dh_sphgrad[3];
-
-
-    float div_v_sphgrad;
-
-    float curl_v_sphgrad[3];
-
-
-    float m0_density_loop;
-
-    float grad_m0_density_loop[3];
-
-
-    float grad_m0_gradhterm;
-
-    float grad_m1_term1_gradhterm[3];
-
-    struct sym_matrix grad_m2_term1_gradhterm;
 
 
 } SWIFT_STRUCT_ALIGN;

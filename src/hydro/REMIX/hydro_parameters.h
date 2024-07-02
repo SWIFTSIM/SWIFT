@@ -189,8 +189,8 @@ static INLINE void diffusion_print_snapshot(
 /* Planetary-plus constants */
 
 /* Artificial viscosity parameters from Rosswog 2020 */
-#define planetary_quad_visc_alpha 1.5f
-#define planetary_quad_visc_beta 3.f
-#define planetary_quad_visc_epsilon 0.1f
+#define planetary_reconst_visc_alpha 1.5f
+#define planetary_reconst_visc_beta 3.f
+#define planetary_reconst_visc_epsilon 0.1f
 
 #endif /* SWIFT_PLANETARY_HYDRO_PARAMETERS_H */

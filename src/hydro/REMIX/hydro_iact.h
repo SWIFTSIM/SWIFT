@@ -68,9 +68,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
     error("Inhibited pj in interaction function!");
 #endif
 
-  /* Get r and 1/r. */
+  /* Get r */
   const float r = sqrtf(r2);
-  const float r_inv = r ? 1.0f / r : 0.0f;
 
   /* Get the masses. */
   const float mi = pi->mass;
@@ -95,33 +94,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   pj->density.rho_dh -= mi * (hydro_dimension * wj + uj * wj_dx);
   pj->density.wcount += wj;
   pj->density.wcount_dh -= (hydro_dimension * wj + uj * wj_dx);
-
-  /* Compute dv dot r */
-  float dv[3], curlvr[3];
-
-  const float faci = mj * wi_dx * r_inv;
-  const float facj = mi * wj_dx * r_inv;
-
-  dv[0] = pi->v[0] - pj->v[0];
-  dv[1] = pi->v[1] - pj->v[1];
-  dv[2] = pi->v[2] - pj->v[2];
-  const float dvdr = dv[0] * dx[0] + dv[1] * dx[1] + dv[2] * dx[2];
-
-  pi->density.div_v -= faci * dvdr;
-  pj->density.div_v -= facj * dvdr;
-
-  /* Compute dv cross r */
-  curlvr[0] = dv[1] * dx[2] - dv[2] * dx[1];
-  curlvr[1] = dv[2] * dx[0] - dv[0] * dx[2];
-  curlvr[2] = dv[0] * dx[1] - dv[1] * dx[0];
-
-  pi->density.rot_v[0] += faci * curlvr[0];
-  pi->density.rot_v[1] += faci * curlvr[1];
-  pi->density.rot_v[2] += faci * curlvr[2];
-
-  pj->density.rot_v[0] += facj * curlvr[0];
-  pj->density.rot_v[1] += facj * curlvr[1];
-  pj->density.rot_v[2] += facj * curlvr[2];
 
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
   pi->n_density += wi;
@@ -163,9 +135,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   /* Get the masses. */
   const float mj = pj->mass;
 
-  /* Get r and 1/r. */
+  /* Get r. */
   const float r = sqrtf(r2);
-  const float r_inv = r ? 1.0f / r : 0.0f;
 
   const float h_inv = 1.f / hi;
   const float ui = r * h_inv;
@@ -175,27 +146,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   pi->density.rho_dh -= mj * (hydro_dimension * wi + ui * wi_dx);
   pi->density.wcount += wi;
   pi->density.wcount_dh -= (hydro_dimension * wi + ui * wi_dx);
-
-  /* Compute dv dot r */
-  float dv[3], curlvr[3];
-
-  const float faci = mj * wi_dx * r_inv;
-
-  dv[0] = pi->v[0] - pj->v[0];
-  dv[1] = pi->v[1] - pj->v[1];
-  dv[2] = pi->v[2] - pj->v[2];
-  const float dvdr = dv[0] * dx[0] + dv[1] * dx[1] + dv[2] * dx[2];
-
-  pi->density.div_v -= faci * dvdr;
-
-  /* Compute dv cross r */
-  curlvr[0] = dv[1] * dx[2] - dv[2] * dx[1];
-  curlvr[1] = dv[2] * dx[0] - dv[0] * dx[2];
-  curlvr[2] = dv[0] * dx[1] - dv[1] * dx[0];
-
-  pi->density.rot_v[0] += faci * curlvr[0];
-  pi->density.rot_v[1] += faci * curlvr[1];
-  pi->density.rot_v[2] += faci * curlvr[2];
 
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
   pi->n_density += wi;
@@ -227,9 +177,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
 
   float wi, wj, wi_dx, wj_dx;
 
-  /* Get r and 1/r. */
+  /* Get r. */
   const float r = sqrtf(r2);
-  const float r_inv = r ? 1.0f / r : 0.0f;
 
   /* Compute kernel of pi. */
   const float hi_inv = 1.f / hi;
@@ -240,16 +189,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
   const float hj_inv = 1.f / hj;
   const float uj = r * hj_inv;
   kernel_deval(uj, &wj, &wj_dx);
-
-  /* Correction factors for kernel gradients */
-  const float rho_inv_i = 1.f / pi->rho;
-  const float rho_inv_j = 1.f / pj->rho;
-
-  pi->weighted_wcount += pj->mass * r2 * wi_dx * r_inv;
-  pj->weighted_wcount += pi->mass * r2 * wj_dx * r_inv;
-
-  pi->weighted_neighbour_wcount += pj->mass * r2 * wi_dx * rho_inv_j * r_inv;
-  pj->weighted_neighbour_wcount += pi->mass * r2 * wj_dx * rho_inv_i * r_inv;
 
   hydro_runner_iact_gradient_extra_kernel(pi, pj, dx, wi, wj, wi_dx, wj_dx);
   hydro_runner_iact_gradient_extra_viscosity(pi, pj, dx, wi, wj, wi_dx, wj_dx);
@@ -277,9 +216,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
 
   float wi, wj, wi_dx, wj_dx;
 
-  /* Get r and 1/r. */
+  /* Get r. */
   const float r = sqrtf(r2);
-  const float r_inv = r ? 1.0f / r : 0.0f;
 
   /* Compute kernel of pi. */
   const float h_inv = 1.f / hi;
@@ -290,12 +228,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
   const float hj_inv = 1.f / hj;
   const float uj = r * hj_inv;
   kernel_deval(uj, &wj, &wj_dx);
-
-  /* Correction factors for kernel gradients */
-  // Nominator and denominator for f_gdf factors, Wadsley+2017 Eqn. 8
-  const float rho_inv_j = 1.f / pj->rho;
-  pi->weighted_wcount += pj->mass * r2 * wi_dx * r_inv;
-  pi->weighted_neighbour_wcount += pj->mass * r2 * wi_dx * rho_inv_j * r_inv;
 
   hydro_runner_iact_nonsym_gradient_extra_kernel(pi, pj, dx, wi, wj, wi_dx, wj_dx);
   hydro_runner_iact_nonsym_gradient_extra_viscosity(pi, pj, dx, wi, wi_dx);
@@ -359,8 +291,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 
   /* Calculate the viscous pressures Q */
   float Qi, Qj;
-  float visc_signal_velocity, cond_signal_velocity;
-  hydro_set_Qi_Qj(&Qi, &Qj, &visc_signal_velocity, &cond_signal_velocity, pi, pj, dx, a, H);
+  float visc_signal_velocity, difn_signal_velocity;
+  hydro_set_Qi_Qj(&Qi, &Qj, &visc_signal_velocity, &difn_signal_velocity, pi, pj, dx, a, H);
 
   /* set kernel gradient terms to be used in eolution equations */
   float kernel_gradient_i[3], kernel_gradient_j[3];
@@ -451,32 +383,32 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
                                  (kernel_gradient_i[1] + kernel_gradient_j[1]) * (kernel_gradient_i[1] + kernel_gradient_j[1]) +
                                  (kernel_gradient_i[2] + kernel_gradient_j[2]) * (kernel_gradient_i[2] + kernel_gradient_j[2]));
 
-     float v_sig_decay = sqrtf((pi->v[0] - pj->v[0]) * (pi->v[0] - pj->v[0]) +
+     float v_sig_norm = sqrtf((pi->v[0] - pj->v[0]) * (pi->v[0] - pj->v[0]) +
                          (pi->v[1] - pj->v[1]) * (pi->v[1] - pj->v[1]) +
                          (pi->v[2] - pj->v[2]) * (pi->v[2] - pj->v[2]));
      float alpha_rho = 1.f;
-     float drho_dt_cond_i = alpha_rho * mj * v_sig_decay * pi->vac_term * (pi->m0_density_loop * pi->rho_evolved - pi->rho_evolved) * mean_G / mean_rho;
-      float drho_dt_cond_j = alpha_rho * mi * v_sig_decay * pj->vac_term * (pj->m0_density_loop * pj->rho_evolved - pj->rho_evolved) * mean_G / mean_rho;
+     float drho_dt_norm_and_difn_i = alpha_rho * mj * v_sig_norm * pi->vac_switch * (pi->m0_no_mean_kernel * pi->rho_evolved - pi->rho_evolved) * mean_G / mean_rho;
+      float drho_dt_norm_and_difn_j = alpha_rho * mi * v_sig_norm * pj->vac_switch * (pj->m0_no_mean_kernel * pj->rho_evolved - pj->rho_evolved) * mean_G / mean_rho;
 
       if (pi->mat_id == pj->mat_id){
           float utilde_i, utilde_j, rhotilde_i, rhotilde_j;
-          hydro_set_u_rho_cond(&utilde_i, &utilde_j, &rhotilde_i, &rhotilde_j, pi, pj, dx, a, H);
-          float v_sig_cond = cond_signal_velocity;
+          hydro_set_u_rho_difn(&utilde_i, &utilde_j, &rhotilde_i, &rhotilde_j, pi, pj, dx, a, H);
+          float v_sig_difn = difn_signal_velocity;
           float alpha_u = 1.f;
-          float du_dt_cond_i = -alpha_u * mj * v_sig_cond * (utilde_i - utilde_j) * mean_G / mean_rho;
-          float du_dt_cond_j = -alpha_u * mi * v_sig_cond * (utilde_j - utilde_i) * mean_G / mean_rho;
+          float du_dt_difn_i = -alpha_u * mj * v_sig_difn * (utilde_i - utilde_j) * mean_G / mean_rho;
+          float du_dt_difn_j = -alpha_u * mi * v_sig_difn * (utilde_j - utilde_i) * mean_G / mean_rho;
 
-          pi->u_dt += du_dt_cond_i;
-          pj->u_dt += du_dt_cond_j;
+          pi->u_dt += du_dt_difn_i;
+          pj->u_dt += du_dt_difn_j;
 
-          drho_dt_cond_i += -alpha_rho * mj * (pi->rho / pj->rho) * v_sig_cond * (rhotilde_i - rhotilde_j) * mean_G / mean_rho;
-          drho_dt_cond_j += -alpha_rho * mi * (pj->rho / pi->rho) * v_sig_cond * (rhotilde_j - rhotilde_i) * mean_G / mean_rho;
+          drho_dt_norm_and_difn_i += -alpha_rho * mj * (pi->rho / pj->rho) * v_sig_difn * (rhotilde_i - rhotilde_j) * mean_G / mean_rho;
+          drho_dt_norm_and_difn_j += -alpha_rho * mi * (pj->rho / pi->rho) * v_sig_difn * (rhotilde_j - rhotilde_i) * mean_G / mean_rho;
 
 
       }
 
-    pi->drho_dt += drho_dt_cond_i;
-    pj->drho_dt += drho_dt_cond_j;
+    pi->drho_dt += drho_dt_norm_and_difn_i;
+    pj->drho_dt += drho_dt_norm_and_difn_j;
  }
 
 }
@@ -536,8 +468,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Calculate the viscous pressures Q */
   float Qi, Qj;
-  float visc_signal_velocity, cond_signal_velocity;
-  hydro_set_Qi_Qj(&Qi, &Qj, &visc_signal_velocity, &cond_signal_velocity, pi, pj, dx, a, H);
+  float visc_signal_velocity, difn_signal_velocity;
+  hydro_set_Qi_Qj(&Qi, &Qj, &visc_signal_velocity, &difn_signal_velocity, pi, pj, dx, a, H);
 
   /* set kernel gradient terms to be used in eolution equations */
   float kernel_gradient_i[3], kernel_gradient_j[3];
@@ -601,27 +533,27 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
                                  (kernel_gradient_i[1] + kernel_gradient_j[1]) * (kernel_gradient_i[1] + kernel_gradient_j[1]) +
                                  (kernel_gradient_i[2] + kernel_gradient_j[2]) * (kernel_gradient_i[2] + kernel_gradient_j[2]));
 
-     float v_sig_decay = sqrtf((pi->v[0] - pj->v[0]) * (pi->v[0] - pj->v[0]) +
+     float v_sig_norm = sqrtf((pi->v[0] - pj->v[0]) * (pi->v[0] - pj->v[0]) +
                          (pi->v[1] - pj->v[1]) * (pi->v[1] - pj->v[1]) +
                          (pi->v[2] - pj->v[2]) * (pi->v[2] - pj->v[2]));
      float alpha_rho = 1.f;
-     float drho_dt_cond_i = alpha_rho * mj * v_sig_decay * pi->vac_term * (pi->m0_density_loop * pi->rho_evolved - pi->rho_evolved) * mean_G / mean_rho;
+     float drho_dt_norm_and_difn_i = alpha_rho * mj * v_sig_norm * pi->vac_switch * (pi->m0_no_mean_kernel * pi->rho_evolved - pi->rho_evolved) * mean_G / mean_rho;
 
       if (pi->mat_id == pj->mat_id){
           float utilde_i, utilde_j, rhotilde_i, rhotilde_j;
-          hydro_set_u_rho_cond(&utilde_i, &utilde_j, &rhotilde_i, &rhotilde_j, pi, pj, dx, a, H);
-          float v_sig_cond = cond_signal_velocity;
+          hydro_set_u_rho_difn(&utilde_i, &utilde_j, &rhotilde_i, &rhotilde_j, pi, pj, dx, a, H);
+          float v_sig_difn = difn_signal_velocity;
           float alpha_u = 1.f;
-          float du_dt_cond_i = -alpha_u * mj * v_sig_cond * (utilde_i - utilde_j) * mean_G / mean_rho;
+          float du_dt_difn_i = -alpha_u * mj * v_sig_difn * (utilde_i - utilde_j) * mean_G / mean_rho;
 
-          pi->u_dt += du_dt_cond_i;
+          pi->u_dt += du_dt_difn_i;
 
-          drho_dt_cond_i += -alpha_rho * mj * (pi->rho / pj->rho) * v_sig_cond * (rhotilde_i - rhotilde_j) * mean_G / mean_rho;
+          drho_dt_norm_and_difn_i += -alpha_rho * mj * (pi->rho / pj->rho) * v_sig_difn * (rhotilde_i - rhotilde_j) * mean_G / mean_rho;
 
 
       }
 
-    pi->drho_dt += drho_dt_cond_i;
+    pi->drho_dt += drho_dt_norm_and_difn_i;
 }
 }
 

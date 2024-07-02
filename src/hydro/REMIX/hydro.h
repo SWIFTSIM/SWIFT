@@ -487,17 +487,6 @@ __attribute__((always_inline)) INLINE static float hydro_get_signal_velocity(
 }
 
 /**
- * @brief returns the div_v
- *
- * @brief p  the particle
- */
-__attribute__((always_inline)) INLINE static float hydro_get_div_v(
-    const struct part *restrict p) {
-
-  return p->density.div_v;
-}
-
-/**
  * @brief Does some extra hydro operations once the actual physical time step
  * for the particle is known.
  *
@@ -524,13 +513,6 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->density.wcount_dh = 0.f;
   p->rho = 0.f;
   p->density.rho_dh = 0.f;
-  p->density.div_v = 0.f;
-  p->density.rot_v[0] = 0.f;
-  p->density.rot_v[1] = 0.f;
-  p->density.rot_v[2] = 0.f;
-  p->weighted_wcount = 0.f;
-  p->weighted_neighbour_wcount = 0.f;
-  p->f_gdf = 0.f;
 
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
   p->N_density = 1; /* Self contribution */
@@ -584,17 +566,6 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   p->density.wcount *= h_inv_dim;
   p->density.wcount_dh *= h_inv_dim_plus_one;
 
-  const float rho_inv = 1.f / p->rho;
-  const float a_inv2 = cosmo->a2_inv;
-
-  /* Finish calculation of the (physical) velocity curl components */
-  p->density.rot_v[0] *= h_inv_dim_plus_one * a_inv2 * rho_inv;
-  p->density.rot_v[1] *= h_inv_dim_plus_one * a_inv2 * rho_inv;
-  p->density.rot_v[2] *= h_inv_dim_plus_one * a_inv2 * rho_inv;
-
-  /* Finish calculation of the (physical) velocity divergence */
-  p->density.div_v *= h_inv_dim_plus_one * a_inv2 * rho_inv;
-
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
   p->n_density += kernel_root;
   p->n_density *= h_inv_dim;
@@ -629,24 +600,12 @@ __attribute__((always_inline)) INLINE static void hydro_part_has_no_neighbours(
   p->density.wcount = kernel_root * h_inv_dim;
   p->density.rho_dh = 0.f;
   p->density.wcount_dh = 0.f;
-  p->density.div_v = 0.f;
-  p->density.rot_v[0] = 0.f;
-  p->density.rot_v[1] = 0.f;
-  p->density.rot_v[2] = 0.f;
 
-  /* Set the ratio f_gdf = 1 if particle has no neighbours */
-  p->weighted_wcount = p->mass * kernel_root * h_inv_dim;
-  p->weighted_neighbour_wcount = 1.f;
+  p->is_h_max = 1;
+  p->m0_no_mean_kernel = p->mass * kernel_root * h_inv_dim / p->rho_evolved;
 
-    p->is_h_max = 1;
-    p->m0_density_loop = p->mass * kernel_root * h_inv_dim / p->rho_evolved;
+  p->vac_switch = 1.f;
 
-
- p->A = 1.f;
- p->vac_term = 1.f;
- for (int i = 0; i < 3; i++) {
-     p->B[i] = 0.f;
-  }
 }
 
 /**
@@ -674,8 +633,6 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
   } else {
     p->is_h_max = 0;
   }
-
-  p->eta_crit = 1.f / hydro_props->eta_neighbours;
 
   hydro_prepare_gradient_extra_kernel(p);
   hydro_prepare_gradient_extra_viscosity(p);
@@ -705,14 +662,6 @@ __attribute__((always_inline)) INLINE static void hydro_reset_gradient(
  */
 __attribute__((always_inline)) INLINE static void hydro_end_gradient(
     struct part *p) {
-
-  /* Ensure f_gdf = 1 when having two or more particles overlaping */
-  if (p->weighted_wcount == 0.f || p->weighted_neighbour_wcount == 0.f) {
-    p->f_gdf = 1.f;
-  } else {
-    /* Compute f_gdf normally*/
-    p->f_gdf = p->weighted_wcount / (p->weighted_neighbour_wcount * p->rho);
-  }
 
   hydro_end_gradient_extra_kernel(p);
   hydro_end_gradient_extra_viscosity(p);
@@ -745,16 +694,9 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
     const struct pressure_floor_props *pressure_floor, const float dt_alpha,
     const float dt_therm) {
 
-  const float fac_Balsara_eps = cosmo->a_factor_Balsara_eps;
+hydro_prepare_force_extra_kernel(p);
 
-  /* Compute the norm of the curl */
-  const float curl_v = sqrtf(p->density.rot_v[0] * p->density.rot_v[0] +
-                             p->density.rot_v[1] * p->density.rot_v[1] +
-                             p->density.rot_v[2] * p->density.rot_v[2]);
-
-  /* Compute the norm of div v including the Hubble flow term */
-  const float div_physical_v = p->density.div_v + hydro_dimension * cosmo->H;
-  const float abs_div_physical_v = fabsf(div_physical_v);
+p->force.eta_crit = 1.f / hydro_props->eta_neighbours;
 
 #ifdef PLANETARY_FIXED_ENTROPY
   /* Override the internal energy to satisfy the fixed entropy */
@@ -766,58 +708,21 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   const float soundspeed =
       gas_soundspeed_from_internal_energy(p->rho_evolved, p->u, p->mat_id);
 
-  /* Compute the "grad h" term  - Note here that we have \tilde{x}
-   * as 1 as we use the local number density to find neighbours. This
-   * introduces a j-component that is considered in the force loop,
-   * meaning that this cached grad_h_term gives:
-   *
-   * f_ij = 1.f - grad_h_term_i / m_j */
-  const float common_factor = p->h * hydro_dimension_inv / p->density.wcount;
-  float grad_h_term;
 
-  /* Ignore changing-kernel effects when h ~= h_max */
-  if (p->h > 0.999f * hydro_props->h_max) {
-    grad_h_term = 0.f;
-  } else {
-    grad_h_term = common_factor * p->density.rho_dh /
-                  (1.f + common_factor * p->density.wcount_dh);
-  }
+float div_v = p->dv_norm_kernel[0][0] + p->dv_norm_kernel[1][1] + p->dv_norm_kernel[2][2];
+float curl_v[3];
+curl_v[0] = p->dv_norm_kernel[1][2] - p->dv_norm_kernel[2][1];
+curl_v[1] = p->dv_norm_kernel[2][0] - p->dv_norm_kernel[0][2];
+curl_v[2] = p->dv_norm_kernel[0][1] - p->dv_norm_kernel[1][0];
+float mod_curl_v = sqrtf(curl_v[0] * curl_v[0] + curl_v[1] * curl_v[1] + curl_v[2] * curl_v[2]);
+float balsara;
 
-  /* Compute the Balsara switch */
-#ifdef PLANETARY_SPH_NO_BALSARA
-  const float balsara = hydro_props->viscosity.alpha;
-#else
-  /* Pre-multiply in the AV factor; hydro_props are not passed to the iact
-   * functions */
-
-  float balsara;
-  if (abs_div_physical_v == 0.f) {
-    balsara = 0.f;
-  } else {
-    balsara = abs_div_physical_v /
-              (abs_div_physical_v + curl_v +
-               0.0001f * fac_Balsara_eps * soundspeed / p->h);
-  }
-
-
-    const float curl_v_with_gradh = sqrtf(p->curl_v_sphgrad[0] * p->curl_v_sphgrad[0] +
-                             p->curl_v_sphgrad[1] * p->curl_v_sphgrad[1] +
-                             p->curl_v_sphgrad[2] * p->curl_v_sphgrad[2]);
-
-
-  if (p->div_v_sphgrad == 0.f) {
-    balsara = 0.f;
-  } else {
-    balsara = fabsf(p->div_v_sphgrad) /
-              (fabsf(p->div_v_sphgrad) + curl_v_with_gradh +
-               0.0001f * fac_Balsara_eps * soundspeed / p->h);
-  }
-
-
-#endif
-
-  /* Update variables. */
-  p->force.f = grad_h_term;
+if (div_v == 0.f) {
+  balsara = 0.f;
+} else {
+  balsara = fabsf(div_v) /
+            (fabsf(div_v) + mod_curl_v + 0.0001f * soundspeed / p->h);
+}
 
   /* Compute the pressure */
   const float pressure =

@@ -227,7 +227,7 @@ INLINE static void hydro_write_particles(const struct part* parts,
       convert_part_potential, "Gravitational potentials of the particles");
   list[11] =
       io_make_output_field("VacuumSwitch", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f,
-                           parts, vac_term, "Vacuum boundary identification switch");
+                           parts, vac_switch, "Vacuum boundary identification switch");
 
 }
 
