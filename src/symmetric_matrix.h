@@ -101,26 +101,27 @@ __attribute__((always_inline)) INLINE static void sym_matrix_multiply_by_vector(
  * @brief Multiply two symmetric matrices in two operations, ABA.
  */
 __attribute__((always_inline)) INLINE static void sym_matrix_multiplication_ABA(
-    struct sym_matrix * M_out, const struct sym_matrix *A, const struct sym_matrix *B) {
+    struct sym_matrix *M_out, const struct sym_matrix *A,
+    const struct sym_matrix *B) {
 
- M_out->xx = (A->xx * (A->xx * B->xx + A->xy * B->xy + A->xz * B->xz) +
-              A->xy * (A->xx * B->xy + A->xy * B->yy + A->xz * B->yz) +
-              A->xz * (A->xx * B->xz + A->xy * B->yz + A->xz * B->zz));
- M_out->yy = (A->xy * (A->xy * B->xx + A->yy * B->xy + A->yz * B->xz) +
-              A->yy * (A->xy * B->xy + A->yy * B->yy + A->yz * B->yz) +
-              A->yz * (A->xy * B->xz + A->yy * B->yz + A->yz * B->zz));
- M_out->zz = (A->xz * (A->xz * B->xx + A->yz * B->xy + A->zz * B->xz) +
-              A->yz * (A->xz * B->xy + A->yz * B->yy + A->zz * B->yz) +
-              A->zz * (A->xz * B->xz + A->yz * B->yz + A->zz * B->zz));
- M_out->xy = (A->xy * (A->xx * B->xx + A->xy * B->xy + A->xz * B->xz) +
-              A->yy * (A->xx * B->xy + A->xy * B->yy + A->xz * B->yz) +
-              A->yz * (A->xx * B->xz + A->xy * B->yz + A->xz * B->zz));
- M_out->xz = (A->xz * (A->xx * B->xx + A->xy * B->xy + A->xz * B->xz) +
-              A->yz * (A->xx * B->xy + A->xy * B->yy + A->xz * B->yz) +
-              A->zz * (A->xx * B->xz + A->xy * B->yz + A->xz * B->zz));
- M_out->yz = (A->xz * (A->xy * B->xx + A->yy * B->xy + A->yz * B->xz) +
-              A->yz * (A->xy * B->xy + A->yy * B->yy + A->yz * B->yz) +
-              A->zz * (A->xy * B->xz + A->yy * B->yz + A->yz * B->zz));
+  M_out->xx = (A->xx * (A->xx * B->xx + A->xy * B->xy + A->xz * B->xz) +
+               A->xy * (A->xx * B->xy + A->xy * B->yy + A->xz * B->yz) +
+               A->xz * (A->xx * B->xz + A->xy * B->yz + A->xz * B->zz));
+  M_out->yy = (A->xy * (A->xy * B->xx + A->yy * B->xy + A->yz * B->xz) +
+               A->yy * (A->xy * B->xy + A->yy * B->yy + A->yz * B->yz) +
+               A->yz * (A->xy * B->xz + A->yy * B->yz + A->yz * B->zz));
+  M_out->zz = (A->xz * (A->xz * B->xx + A->yz * B->xy + A->zz * B->xz) +
+               A->yz * (A->xz * B->xy + A->yz * B->yy + A->zz * B->yz) +
+               A->zz * (A->xz * B->xz + A->yz * B->yz + A->zz * B->zz));
+  M_out->xy = (A->xy * (A->xx * B->xx + A->xy * B->xy + A->xz * B->xz) +
+               A->yy * (A->xx * B->xy + A->xy * B->yy + A->xz * B->yz) +
+               A->yz * (A->xx * B->xz + A->xy * B->yz + A->xz * B->zz));
+  M_out->xz = (A->xz * (A->xx * B->xx + A->xy * B->xy + A->xz * B->xz) +
+               A->yz * (A->xx * B->xy + A->xy * B->yy + A->xz * B->yz) +
+               A->zz * (A->xx * B->xz + A->xy * B->yz + A->xz * B->zz));
+  M_out->yz = (A->xz * (A->xy * B->xx + A->yy * B->xy + A->yz * B->xz) +
+               A->yz * (A->xy * B->xy + A->yy * B->yy + A->yz * B->yz) +
+               A->zz * (A->xy * B->xz + A->yy * B->yz + A->yz * B->zz));
 }
 
 /**
@@ -141,17 +142,17 @@ __attribute__((always_inline)) INLINE static void sym_matrix_print(
 __attribute__((always_inline)) INLINE static void sym_matrix_invert(
     struct sym_matrix *M_inv, const struct sym_matrix *M) {
 
-      // Can probably do this by just typing out all the elements,
-      // so we don't have to go back and forth between arrays and sym_matrix.
-      // But, for now use invert_dimension_by_dimension_matrix function
-      float M_inv_matrix[3][3];
-      get_matrix_from_sym_matrix(M_inv_matrix, M);
-      int res = invert_dimension_by_dimension_matrix(M_inv_matrix);
-      if (res) {
-        sym_matrix_print(M);
-        error("Error inverting matrix");
-      }
-      get_sym_matrix_from_matrix(M_inv, M_inv_matrix);
+  // Can probably do this by just typing out all the elements,
+  // so we don't have to go back and forth between arrays and sym_matrix.
+  // But, for now use invert_dimension_by_dimension_matrix function
+  float M_inv_matrix[3][3];
+  get_matrix_from_sym_matrix(M_inv_matrix, M);
+  int res = invert_dimension_by_dimension_matrix(M_inv_matrix);
+  if (res) {
+    sym_matrix_print(M);
+    error("Error inverting matrix");
+  }
+  get_sym_matrix_from_matrix(M_inv, M_inv_matrix);
 }
 
 #endif /* SWIFT_SYMMETRIC_MATRIX_H */

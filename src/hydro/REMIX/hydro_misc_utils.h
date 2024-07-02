@@ -29,7 +29,4 @@
 #include "hydro_parameters.h"
 #include "math.h"
 
-
-
-
 #endif /* SWIFT_PLANETARY_HYDRO_MISC_UTILS_H */
