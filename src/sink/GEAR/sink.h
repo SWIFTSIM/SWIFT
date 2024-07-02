@@ -757,8 +757,8 @@ INLINE static void sink_copy_properties_to_star(
   sp->feedback_data.star_type = (enum star_feedback_type)sink->target_type;
 
   /* Initialize the feedback */
-  if (sp->feedback_data.star_type == single_star)
-    feedback_init_after_star_formation(sp, e->feedback_props);
+  /* if (sp->feedback_data.star_type == single_star) //TODO: TEST THIS */
+  feedback_init_after_star_formation(sp, e->feedback_props);
 
   /* sph smoothing */
   sp->h = sink->r_cut;
