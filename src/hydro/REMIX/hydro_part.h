@@ -43,6 +43,7 @@
 #include "rt_struct.h"
 #include "sink_struct.h"
 #include "star_formation_struct.h"
+#include "symmetric_matrix.h"
 #include "timestep_limiter_struct.h"
 #include "tracers_struct.h"
 
@@ -267,13 +268,20 @@ struct part {
 
     float m1[3];
 
-    float m2[3][3];
+    //float m2[3][3];
+    struct sym_matrix m2;
 
     float grad_m0[3];
 
     float grad_m1_term1[3][3];
 
-    float grad_m2_term1[3][3][3];
+    //float grad_m2_term1[3][3][3];
+    struct sym_matrix grad_m2_term1_x;
+
+    struct sym_matrix grad_m2_term1_y;
+
+    struct sym_matrix grad_m2_term1_z;
+
 
     float A;
 
@@ -309,7 +317,7 @@ struct part {
 
     float grad_m1_term1_gradhterm[3];
 
-    float grad_m2_term1_gradhterm[3][3];
+    struct sym_matrix grad_m2_term1_gradhterm;
 
 
 } SWIFT_STRUCT_ALIGN;
