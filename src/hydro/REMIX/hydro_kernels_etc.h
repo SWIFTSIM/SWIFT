@@ -127,6 +127,13 @@ hydro_end_density_extra_kernel(struct part *restrict p) {
 __attribute__((always_inline)) INLINE static void
 hydro_prepare_gradient_extra_kernel(struct part *restrict p) {
 
+    zero_sym_matrix(&p->m2);
+    zero_sym_matrix(&p->grad_m2_term1_x);
+    zero_sym_matrix(&p->grad_m2_term1_y);
+    zero_sym_matrix(&p->grad_m2_term1_z);
+    zero_sym_matrix(&p->grad_m2_term1_gradhterm);
+
+
     p->m0 = 0.f;
     p->grad_m0_gradhterm = 0.f;
     for (int i = 0; i < 3; i++) {
@@ -134,12 +141,7 @@ hydro_prepare_gradient_extra_kernel(struct part *restrict p) {
       p->grad_m0[i] = 0.f;
       p->grad_m1_term1_gradhterm[i] = 0.f;
       for (int j = 0; j < 3; j++) {
-        p->m2[i][j] = 0.f;
         p->grad_m1_term1[i][j] = 0.f;
-        p->grad_m2_term1_gradhterm[i][j] = 0.f;
-        for (int k = 0; k < 3; k++) {
-            p->grad_m2_term1[i][j][k] = 0.f;
-        }
       }
     }
 
@@ -191,43 +193,113 @@ wj_dx_gradhterm = -0.5f *(hydro_dimension * wj + (r / hj) * wj_dx) * hj_inv_dim_
 
 
 
-pi->m0 += volume_j * wi_term;
-pj->m0 += volume_i * wj_term;
+pi->m0 += wi_term * volume_j;
+pj->m0 += wj_term * volume_i;
 
-pi->grad_m0_gradhterm += volume_j * wi_dx_gradhterm;
-pj->grad_m0_gradhterm += volume_i * wj_dx_gradhterm;
+pi->grad_m0_gradhterm += wi_dx_gradhterm * volume_j;
+pj->grad_m0_gradhterm += wj_dx_gradhterm * volume_i;
 for (int i = 0; i < 3; i++) {
-  pi->m1[i] += dx[i] * volume_j * wi_term;
-  pj->m1[i] += -dx[i] * volume_i * wj_term;
+  pi->m1[i] += dx[i] * wi_term * volume_j;
+  pj->m1[i] += -dx[i] * wj_term * volume_i;
 
-  pi->grad_m0[i] += volume_j * wi_dx_term[i];
-  pj->grad_m0[i] += volume_i * wj_dx_term[i];
+  pi->grad_m0[i] += wi_dx_term[i] * volume_j;
+  pj->grad_m0[i] += wj_dx_term[i] * volume_i;
 
 
-  pi->grad_m1_term1_gradhterm[i] += volume_j * dx[i] * wi_dx_gradhterm;
-  pj->grad_m1_term1_gradhterm[i] += -volume_i * dx[i] * wj_dx_gradhterm;
-
+  pi->grad_m1_term1_gradhterm[i] += dx[i] * wi_dx_gradhterm * volume_j;
+  pj->grad_m1_term1_gradhterm[i] += -dx[i] * wj_dx_gradhterm * volume_i;
 
   for (int j = 0; j < 3; j++) {
-    pi->m2[i][j] += dx[i] * dx[j] * volume_j * wi_term;
-    pj->m2[i][j] += dx[i] * dx[j] * volume_i * wj_term;
 
-    pi->grad_m1_term1[i][j] += volume_j * dx[j] * wi_dx_term[i];
-    pj->grad_m1_term1[i][j] += -volume_i * dx[j] * wj_dx_term[i];
-
-    pi->grad_m2_term1_gradhterm[i][j] += volume_j * dx[i] * dx[j] * wi_dx_gradhterm;
-    pj->grad_m2_term1_gradhterm[i][j] += volume_i * dx[i] * dx[j] * wj_dx_gradhterm;
-
-
-    for (int k = 0; k < 3; k++) {
-        pi->grad_m2_term1[i][j][k] += volume_j * dx[k] * dx[j] * wi_dx_term[i];
-        pj->grad_m2_term1[i][j][k] += volume_i * dx[k] * dx[j] * wj_dx_term[i];
-
-
-    }
+    pi->grad_m1_term1[i][j] += dx[j] * wi_dx_term[i] * volume_j;
+    pj->grad_m1_term1[i][j] += -dx[j] * wj_dx_term[i] * volume_i;
   }
 }
+
+
+
+
+pi->m2.xx += dx[0] * dx[0] * wi_term * volume_j;
+pi->m2.yy += dx[1] * dx[1] * wi_term * volume_j;
+pi->m2.zz += dx[2] * dx[2] * wi_term * volume_j;
+pi->m2.xy += dx[0] * dx[1] * wi_term * volume_j;
+pi->m2.xz += dx[0] * dx[2] * wi_term * volume_j;
+pi->m2.yz += dx[1] * dx[2] * wi_term * volume_j;
+
+pj->m2.xx += dx[0] * dx[0] * wj_term * volume_i;
+pj->m2.yy += dx[1] * dx[1] * wj_term * volume_i;
+pj->m2.zz += dx[2] * dx[2] * wj_term * volume_i;
+pj->m2.xy += dx[0] * dx[1] * wj_term * volume_i;
+pj->m2.xz += dx[0] * dx[2] * wj_term * volume_i;
+pj->m2.yz += dx[1] * dx[2] * wj_term * volume_i;
+
+
+
+pi->grad_m2_term1_gradhterm.xx += dx[0] * dx[0] * wi_dx_gradhterm * volume_j;
+pi->grad_m2_term1_gradhterm.yy += dx[1] * dx[1] * wi_dx_gradhterm * volume_j;
+pi->grad_m2_term1_gradhterm.zz += dx[2] * dx[2] * wi_dx_gradhterm * volume_j;
+pi->grad_m2_term1_gradhterm.xy += dx[0] * dx[1] * wi_dx_gradhterm * volume_j;
+pi->grad_m2_term1_gradhterm.xz += dx[0] * dx[2] * wi_dx_gradhterm * volume_j;
+pi->grad_m2_term1_gradhterm.yz += dx[1] * dx[2] * wi_dx_gradhterm * volume_j;
+
+pj->grad_m2_term1_gradhterm.xx += dx[0] * dx[0] * wj_dx_gradhterm * volume_i;
+pj->grad_m2_term1_gradhterm.yy += dx[1] * dx[1] * wj_dx_gradhterm * volume_i;
+pj->grad_m2_term1_gradhterm.zz += dx[2] * dx[2] * wj_dx_gradhterm * volume_i;
+pj->grad_m2_term1_gradhterm.xy += dx[0] * dx[1] * wj_dx_gradhterm * volume_i;
+pj->grad_m2_term1_gradhterm.xz += dx[0] * dx[2] * wj_dx_gradhterm * volume_i;
+pj->grad_m2_term1_gradhterm.yz += dx[1] * dx[2] * wj_dx_gradhterm * volume_i;
+
+
+
+pi->grad_m2_term1_x.xx += dx[0] * dx[0] * wi_dx_term[0] * volume_j;
+pi->grad_m2_term1_x.yy += dx[1] * dx[1] * wi_dx_term[0] * volume_j;
+pi->grad_m2_term1_x.zz += dx[2] * dx[2] * wi_dx_term[0] * volume_j;
+pi->grad_m2_term1_x.xy += dx[0] * dx[1] * wi_dx_term[0] * volume_j;
+pi->grad_m2_term1_x.xz += dx[0] * dx[2] * wi_dx_term[0] * volume_j;
+pi->grad_m2_term1_x.yz += dx[1] * dx[2] * wi_dx_term[0] * volume_j;
+
+pj->grad_m2_term1_x.xx += dx[0] * dx[0] * wj_dx_term[0] * volume_i;
+pj->grad_m2_term1_x.yy += dx[1] * dx[1] * wj_dx_term[0] * volume_i;
+pj->grad_m2_term1_x.zz += dx[2] * dx[2] * wj_dx_term[0] * volume_i;
+pj->grad_m2_term1_x.xy += dx[0] * dx[1] * wj_dx_term[0] * volume_i;
+pj->grad_m2_term1_x.xz += dx[0] * dx[2] * wj_dx_term[0] * volume_i;
+pj->grad_m2_term1_x.yz += dx[1] * dx[2] * wj_dx_term[0] * volume_i;
+
+
+
+pi->grad_m2_term1_y.xx += dx[0] * dx[0] * wi_dx_term[1] * volume_j;
+pi->grad_m2_term1_y.yy += dx[1] * dx[1] * wi_dx_term[1] * volume_j;
+pi->grad_m2_term1_y.zz += dx[2] * dx[2] * wi_dx_term[1] * volume_j;
+pi->grad_m2_term1_y.xy += dx[0] * dx[1] * wi_dx_term[1] * volume_j;
+pi->grad_m2_term1_y.xz += dx[0] * dx[2] * wi_dx_term[1] * volume_j;
+pi->grad_m2_term1_y.yz += dx[1] * dx[2] * wi_dx_term[1] * volume_j;
+
+pj->grad_m2_term1_y.xx += dx[0] * dx[0] * wj_dx_term[1] * volume_i;
+pj->grad_m2_term1_y.yy += dx[1] * dx[1] * wj_dx_term[1] * volume_i;
+pj->grad_m2_term1_y.zz += dx[2] * dx[2] * wj_dx_term[1] * volume_i;
+pj->grad_m2_term1_y.xy += dx[0] * dx[1] * wj_dx_term[1] * volume_i;
+pj->grad_m2_term1_y.xz += dx[0] * dx[2] * wj_dx_term[1] * volume_i;
+pj->grad_m2_term1_y.yz += dx[1] * dx[2] * wj_dx_term[1] * volume_i;
+
+
+
+pi->grad_m2_term1_z.xx += dx[0] * dx[0] * wi_dx_term[2] * volume_j;
+pi->grad_m2_term1_z.yy += dx[1] * dx[1] * wi_dx_term[2] * volume_j;
+pi->grad_m2_term1_z.zz += dx[2] * dx[2] * wi_dx_term[2] * volume_j;
+pi->grad_m2_term1_z.xy += dx[0] * dx[1] * wi_dx_term[2] * volume_j;
+pi->grad_m2_term1_z.xz += dx[0] * dx[2] * wi_dx_term[2] * volume_j;
+pi->grad_m2_term1_z.yz += dx[1] * dx[2] * wi_dx_term[2] * volume_j;
+
+pj->grad_m2_term1_z.xx += dx[0] * dx[0] * wj_dx_term[2] * volume_i;
+pj->grad_m2_term1_z.yy += dx[1] * dx[1] * wj_dx_term[2] * volume_i;
+pj->grad_m2_term1_z.zz += dx[2] * dx[2] * wj_dx_term[2] * volume_i;
+pj->grad_m2_term1_z.xy += dx[0] * dx[1] * wj_dx_term[2] * volume_i;
+pj->grad_m2_term1_z.xz += dx[0] * dx[2] * wj_dx_term[2] * volume_i;
+pj->grad_m2_term1_z.yz += dx[1] * dx[2] * wj_dx_term[2] * volume_i;
+
+
 }
+
 
 /**
  * @brief Extra kernel gradient interaction between two particles
@@ -272,29 +344,66 @@ wi_dx_gradhterm = -0.5f *(hydro_dimension * wi + (r / hi) * wi_dx) * hi_inv_dim_
 
 
 
-pi->m0 += volume_j * wi_term;
+pi->m0 += wi_term * volume_j;
 
-pi->grad_m0_gradhterm += volume_j * wi_dx_gradhterm;
-
+pi->grad_m0_gradhterm += wi_dx_gradhterm * volume_j;
 for (int i = 0; i < 3; i++) {
-  pi->m1[i] += dx[i] * volume_j * wi_term;
+  pi->m1[i] += dx[i] * wi_term * volume_j;
 
-  pi->grad_m0[i] += volume_j * wi_dx_term[i];
+  pi->grad_m0[i] += wi_dx_term[i] * volume_j;
 
-  pi->grad_m1_term1_gradhterm[i] += volume_j * dx[i] * wi_dx_gradhterm;
+
+  pi->grad_m1_term1_gradhterm[i] += dx[i] * wi_dx_gradhterm * volume_j;
 
   for (int j = 0; j < 3; j++) {
-    pi->m2[i][j] += dx[i] * dx[j] * volume_j * wi_term;
-
-    pi->grad_m1_term1[i][j] += volume_j * dx[j] * wi_dx_term[i];
-
-    pi->grad_m2_term1_gradhterm[i][j] += volume_j * dx[i] * dx[j] * wi_dx_gradhterm;
-
-    for (int k = 0; k < 3; k++) {
-        pi->grad_m2_term1[i][j][k] += volume_j * dx[k] * dx[j] * wi_dx_term[i];
-    }
+    pi->grad_m1_term1[i][j] += dx[j] * wi_dx_term[i] * volume_j;
   }
 }
+
+
+
+
+pi->m2.xx += dx[0] * dx[0] * wi_term * volume_j;
+pi->m2.yy += dx[1] * dx[1] * wi_term * volume_j;
+pi->m2.zz += dx[2] * dx[2] * wi_term * volume_j;
+pi->m2.xy += dx[0] * dx[1] * wi_term * volume_j;
+pi->m2.xz += dx[0] * dx[2] * wi_term * volume_j;
+pi->m2.yz += dx[1] * dx[2] * wi_term * volume_j;
+
+
+
+pi->grad_m2_term1_gradhterm.xx += dx[0] * dx[0] * wi_dx_gradhterm * volume_j;
+pi->grad_m2_term1_gradhterm.yy += dx[1] * dx[1] * wi_dx_gradhterm * volume_j;
+pi->grad_m2_term1_gradhterm.zz += dx[2] * dx[2] * wi_dx_gradhterm * volume_j;
+pi->grad_m2_term1_gradhterm.xy += dx[0] * dx[1] * wi_dx_gradhterm * volume_j;
+pi->grad_m2_term1_gradhterm.xz += dx[0] * dx[2] * wi_dx_gradhterm * volume_j;
+pi->grad_m2_term1_gradhterm.yz += dx[1] * dx[2] * wi_dx_gradhterm * volume_j;
+
+
+pi->grad_m2_term1_x.xx += dx[0] * dx[0] * wi_dx_term[0] * volume_j;
+pi->grad_m2_term1_x.yy += dx[1] * dx[1] * wi_dx_term[0] * volume_j;
+pi->grad_m2_term1_x.zz += dx[2] * dx[2] * wi_dx_term[0] * volume_j;
+pi->grad_m2_term1_x.xy += dx[0] * dx[1] * wi_dx_term[0] * volume_j;
+pi->grad_m2_term1_x.xz += dx[0] * dx[2] * wi_dx_term[0] * volume_j;
+pi->grad_m2_term1_x.yz += dx[1] * dx[2] * wi_dx_term[0] * volume_j;
+
+
+
+pi->grad_m2_term1_y.xx += dx[0] * dx[0] * wi_dx_term[1] * volume_j;
+pi->grad_m2_term1_y.yy += dx[1] * dx[1] * wi_dx_term[1] * volume_j;
+pi->grad_m2_term1_y.zz += dx[2] * dx[2] * wi_dx_term[1] * volume_j;
+pi->grad_m2_term1_y.xy += dx[0] * dx[1] * wi_dx_term[1] * volume_j;
+pi->grad_m2_term1_y.xz += dx[0] * dx[2] * wi_dx_term[1] * volume_j;
+pi->grad_m2_term1_y.yz += dx[1] * dx[2] * wi_dx_term[1] * volume_j;
+
+
+
+pi->grad_m2_term1_z.xx += dx[0] * dx[0] * wi_dx_term[2] * volume_j;
+pi->grad_m2_term1_z.yy += dx[1] * dx[1] * wi_dx_term[2] * volume_j;
+pi->grad_m2_term1_z.zz += dx[2] * dx[2] * wi_dx_term[2] * volume_j;
+pi->grad_m2_term1_z.xy += dx[0] * dx[1] * wi_dx_term[2] * volume_j;
+pi->grad_m2_term1_z.xz += dx[0] * dx[2] * wi_dx_term[2] * volume_j;
+pi->grad_m2_term1_z.yz += dx[1] * dx[2] * wi_dx_term[2] * volume_j;
 
 }
 
@@ -313,103 +422,195 @@ const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */
 
 float volume = p->mass / p->rho_evolved;
 
-int i, j, k;
+int i, j;//, k;
 p->m0 += volume * kernel_root * h_inv_dim;
 
 const float h_inv_dim_plus_one = h_inv_dim * h_inv;
 p->grad_m0_gradhterm -= 0.5f * volume * hydro_dimension * kernel_root * h_inv_dim_plus_one;
 
 
-float grad_m1[3][3];
-float grad_m2[3][3][3];
 for (i = 0; i < 3; i++) {
     p->grad_m0[i] += p->grad_m0_gradhterm * p->dh_sphgrad[i];
   for (j = 0; j < 3; j++) {
-    grad_m1[i][j] = 0.f;
     p->grad_m1_term1[i][j] += p->grad_m1_term1_gradhterm[j] * p->dh_sphgrad[i];
-    for (k = 0; k < 3; k++) {
-        grad_m2[i][j][k] = 0.f;
-        p->grad_m2_term1[i][j][k] += p->grad_m2_term1_gradhterm[j][k] * p->dh_sphgrad[i];
-    }
   }
 }
 
 
-// Combine terms to get final m expressions
-for (i = 0; i < 3; i++) {
-  grad_m1[i][i] +=p->m0;
-  for (j = 0; j < 3; j++) {
-    grad_m1[i][j] += p->grad_m1_term1[i][j];
+p->grad_m2_term1_x.xx += p->grad_m2_term1_gradhterm.xx * p->dh_sphgrad[0];
+p->grad_m2_term1_x.yy += p->grad_m2_term1_gradhterm.yy * p->dh_sphgrad[0];
+p->grad_m2_term1_x.zz += p->grad_m2_term1_gradhterm.zz * p->dh_sphgrad[0];
+p->grad_m2_term1_x.xy += p->grad_m2_term1_gradhterm.xy * p->dh_sphgrad[0];
+p->grad_m2_term1_x.xz += p->grad_m2_term1_gradhterm.xz * p->dh_sphgrad[0];
+p->grad_m2_term1_x.yz += p->grad_m2_term1_gradhterm.yz * p->dh_sphgrad[0];
 
-    grad_m2[i][i][j] += p->m1[j];
-    grad_m2[i][j][i] += p->m1[j];
+p->grad_m2_term1_y.xx += p->grad_m2_term1_gradhterm.xx * p->dh_sphgrad[1];
+p->grad_m2_term1_y.yy += p->grad_m2_term1_gradhterm.yy * p->dh_sphgrad[1];
+p->grad_m2_term1_y.zz += p->grad_m2_term1_gradhterm.zz * p->dh_sphgrad[1];
+p->grad_m2_term1_y.xy += p->grad_m2_term1_gradhterm.xy * p->dh_sphgrad[1];
+p->grad_m2_term1_y.xz += p->grad_m2_term1_gradhterm.xz * p->dh_sphgrad[1];
+p->grad_m2_term1_y.yz += p->grad_m2_term1_gradhterm.yz * p->dh_sphgrad[1];
 
-    for (k = 0; k < 3; k++) {
-        grad_m2[i][j][k] += p->grad_m2_term1[i][j][k];
-    }
-  }
-}
+p->grad_m2_term1_z.xx += p->grad_m2_term1_gradhterm.xx * p->dh_sphgrad[2];
+p->grad_m2_term1_z.yy += p->grad_m2_term1_gradhterm.yy * p->dh_sphgrad[2];
+p->grad_m2_term1_z.zz += p->grad_m2_term1_gradhterm.zz * p->dh_sphgrad[2];
+p->grad_m2_term1_z.xy += p->grad_m2_term1_gradhterm.xy * p->dh_sphgrad[2];
+p->grad_m2_term1_z.xz += p->grad_m2_term1_gradhterm.xz * p->dh_sphgrad[2];
+p->grad_m2_term1_z.yz += p->grad_m2_term1_gradhterm.yz * p->dh_sphgrad[2];
+/*
+grad_m2_x.xx = p->grad_m2_term1_x.xx + p->grad_m2_term1_gradhterm.xx * p->dh_sphgrad[0];
+grad_m2_x.yy = p->grad_m2_term1_x.yy + p->grad_m2_term1_gradhterm.yy * p->dh_sphgrad[0];
+grad_m2_x.zz = p->grad_m2_term1_x.zz + p->grad_m2_term1_gradhterm.zz * p->dh_sphgrad[0];
+grad_m2_x.xy = p->grad_m2_term1_x.xy + p->grad_m2_term1_gradhterm.xy * p->dh_sphgrad[0];
+grad_m2_x.xz = p->grad_m2_term1_x.xz + p->grad_m2_term1_gradhterm.xz * p->dh_sphgrad[0];
+grad_m2_x.yz = p->grad_m2_term1_x.yz + p->grad_m2_term1_gradhterm.yz * p->dh_sphgrad[0];
+
+grad_m2_y.xx = p->grad_m2_term1_y.xx + p->grad_m2_term1_gradhterm.xx * p->dh_sphgrad[1];
+grad_m2_y.yy = p->grad_m2_term1_y.yy + p->grad_m2_term1_gradhterm.yy * p->dh_sphgrad[1];
+grad_m2_y.zz = p->grad_m2_term1_y.zz + p->grad_m2_term1_gradhterm.zz * p->dh_sphgrad[1];
+grad_m2_y.xy = p->grad_m2_term1_y.xy + p->grad_m2_term1_gradhterm.xy * p->dh_sphgrad[1];
+grad_m2_y.xz = p->grad_m2_term1_y.xz + p->grad_m2_term1_gradhterm.xz * p->dh_sphgrad[1];
+grad_m2_y.yz = p->grad_m2_term1_y.yz + p->grad_m2_term1_gradhterm.yz * p->dh_sphgrad[1];
+
+grad_m2_z.xx = p->grad_m2_term1_z.xx + p->grad_m2_term1_gradhterm.xx * p->dh_sphgrad[2];
+grad_m2_z.yy = p->grad_m2_term1_z.yy + p->grad_m2_term1_gradhterm.yy * p->dh_sphgrad[2];
+grad_m2_z.zz = p->grad_m2_term1_z.zz + p->grad_m2_term1_gradhterm.zz * p->dh_sphgrad[2];
+grad_m2_z.xy = p->grad_m2_term1_z.xy + p->grad_m2_term1_gradhterm.xy * p->dh_sphgrad[2];
+grad_m2_z.xz = p->grad_m2_term1_z.xz + p->grad_m2_term1_gradhterm.xz * p->dh_sphgrad[2];
+grad_m2_z.yz = p->grad_m2_term1_z.yz + p->grad_m2_term1_gradhterm.yz * p->dh_sphgrad[2];
+*/
+
 
 
 if (!p->is_h_max) {
-    // Invert m2 matrix
-    float m2_inv[3][3];
-
-    for (i = 0; i < 3; i++) {
-      for (j = 0; j < 3; j++) {
-        m2_inv[i][j] = p->m2[i][j];
-      }
-    }
-
-    invert_dimension_by_dimension_matrix(m2_inv);
 
 
-    // Calculate A and B
-    p->A = p->m0;
-    for (i = 0; i < 3; i++) {
-      p->B[i] = 0.f;
-      for (j = 0; j < 3; j++) {
-          p->A -= m2_inv[i][j] * p->m1[i] * p->m1[j];
-          p->B[i] -= m2_inv[i][j] * p->m1[j];
-        }
-      }
 
-    p->A = 1/p->A;
+  float grad_m1_x[3], grad_m1_y[3], grad_m1_z[3];
+
+  grad_m1_x[0] = p->grad_m1_term1[0][0] + p->m0;
+  grad_m1_x[1] = p->grad_m1_term1[0][1];
+  grad_m1_x[2] = p->grad_m1_term1[0][2];
+
+  grad_m1_y[0] = p->grad_m1_term1[1][0];
+  grad_m1_y[1] = p->grad_m1_term1[1][1] + p->m0;
+  grad_m1_y[2] = p->grad_m1_term1[1][2];
+
+  grad_m1_z[0] = p->grad_m1_term1[2][0];
+  grad_m1_z[1] = p->grad_m1_term1[2][1];
+  grad_m1_z[2] = p->grad_m1_term1[2][2] + p->m0;
 
 
-    // Calculate grad_A and grad_B
-    int l, m;
-    for (i = 0; i < 3; i++) {
-        p->grad_A[i] = p->grad_m0[i];
-        for (j = 0; j < 3; j++) {
-          p->grad_B[i][j] = 0.f;
 
-          for (k = 0; k < 3; k++) {
-            p->grad_A[i] += -m2_inv[j][k] * p->m1[k] * grad_m1[i][j] - m2_inv[j][k] * p->m1[j] * grad_m1[i][k];
-            p->grad_B[i][j] += -m2_inv[j][k] * grad_m1[i][k];
-            for (l = 0; l < 3; l++) {
-                for (m = 0; m < 3; m++) {
-                  p->grad_A[i] += m2_inv[j][l] * grad_m2[i][l][m] * m2_inv[m][k] * p->m1[k] * p->m1[j];
-                  p->grad_B[i][j] += m2_inv[j][l] * grad_m2[i][l][m] * m2_inv[m][k] * p->m1[k];
+  struct sym_matrix grad_m2_x;
+  struct sym_matrix grad_m2_y;
+  struct sym_matrix grad_m2_z;
 
-                }
-              }
+  grad_m2_x.xx = p->grad_m2_term1_x.xx+ 2.f * p->m1[0];
+  grad_m2_x.yy = p->grad_m2_term1_x.yy;
+  grad_m2_x.zz = p->grad_m2_term1_x.zz;
+  grad_m2_x.xy = p->grad_m2_term1_x.xy+ p->m1[1];
+  grad_m2_x.xz = p->grad_m2_term1_x.xz+ p->m1[2];
+  grad_m2_x.yz = p->grad_m2_term1_x.yz;
 
-          }
-        }
+  grad_m2_y.xx = p->grad_m2_term1_y.xx;
+  grad_m2_y.yy = p->grad_m2_term1_y.yy + 2.f * p->m1[1];
+  grad_m2_y.zz = p->grad_m2_term1_y.zz;
+  grad_m2_y.xy = p->grad_m2_term1_y.xy + p->m1[0];
+  grad_m2_y.xz = p->grad_m2_term1_y.xz;
+  grad_m2_y.yz = p->grad_m2_term1_y.yz + p->m1[2];
 
-        p->grad_A[i] *= - p->A * p->A;
+  grad_m2_z.xx = p->grad_m2_term1_z.xx;
+  grad_m2_z.yy = p->grad_m2_term1_z.yy;
+  grad_m2_z.zz = p->grad_m2_term1_z.zz + 2.f * p->m1[2];
+  grad_m2_z.xy = p->grad_m2_term1_z.xy;
+  grad_m2_z.xz = p->grad_m2_term1_z.xz + p->m1[0];
+  grad_m2_z.yz = p->grad_m2_term1_z.yz + p->m1[1];
 
-      }
 
-         p->vac_term = 1.f;
+  struct sym_matrix m2_inv;
+  sym_matrix_invert(&m2_inv, &p->m2);
 
-     float x = p->h * sqrtf(p->B[0] * p->B[0] + p->B[1] * p->B[1] + p->B[2] * p->B[2]);
-    float offset = 0.8f;
-    if (x > offset){
-        float sigma = 0.2f;
-        p->vac_term = expf(-(x - offset) * (x - offset) / (2.f * sigma * sigma));
-    }
+
+
+  // Vector and symetric matrices needed for muliplication
+  float m2_inv_mult_m1[3];
+  sym_matrix_multiply_by_vector(m2_inv_mult_m1, &m2_inv, p->m1);
+
+  float m2_inv_mult_grad_m1_x[3], m2_inv_mult_grad_m1_y[3], m2_inv_mult_grad_m1_z[3];
+  sym_matrix_multiply_by_vector(m2_inv_mult_grad_m1_x, &m2_inv, grad_m1_x);
+  sym_matrix_multiply_by_vector(m2_inv_mult_grad_m1_y, &m2_inv, grad_m1_y);
+  sym_matrix_multiply_by_vector(m2_inv_mult_grad_m1_z, &m2_inv, grad_m1_z);
+
+  struct sym_matrix m2_inv_mult_grad_m2_mult_m2_inv_x;
+  sym_matrix_multiplication_ABA(&m2_inv_mult_grad_m2_mult_m2_inv_x, &m2_inv, &grad_m2_x);
+  struct sym_matrix m2_inv_mult_grad_m2_mult_m2_inv_y;
+  sym_matrix_multiplication_ABA(&m2_inv_mult_grad_m2_mult_m2_inv_y, &m2_inv, &grad_m2_y);
+  struct sym_matrix m2_inv_mult_grad_m2_mult_m2_inv_z;
+  sym_matrix_multiplication_ABA(&m2_inv_mult_grad_m2_mult_m2_inv_z, &m2_inv, &grad_m2_z);
+
+  float ABA_mult_m1_x[3], ABA_mult_m1_y[3], ABA_mult_m1_z[3];
+  sym_matrix_multiply_by_vector(ABA_mult_m1_x, &m2_inv_mult_grad_m2_mult_m2_inv_x, p->m1);
+  sym_matrix_multiply_by_vector(ABA_mult_m1_y, &m2_inv_mult_grad_m2_mult_m2_inv_y, p->m1);
+  sym_matrix_multiply_by_vector(ABA_mult_m1_z, &m2_inv_mult_grad_m2_mult_m2_inv_z, p->m1);
+
+
+
+  // Calculata A
+  p->A = p->m0;
+  p->A -= m2_inv_mult_m1[0] * p->m1[0] + m2_inv_mult_m1[1] * p->m1[1] + m2_inv_mult_m1[2] * p->m1[2];
+  p->A = 1/p->A;
+
+  // Calculate B
+  p->B[0] = -m2_inv_mult_m1[0];
+  p->B[1] = -m2_inv_mult_m1[1];
+  p->B[2] = -m2_inv_mult_m1[2];
+
+
+  // Calculate grad A
+  p->grad_A[0] = p->grad_m0[0];
+  p->grad_A[1] = p->grad_m0[1];
+  p->grad_A[2] = p->grad_m0[2];
+
+  p->grad_A[0] -= 2 * (m2_inv_mult_m1[0] * grad_m1_x[0] +
+                       m2_inv_mult_m1[1] * grad_m1_x[1] +
+                       m2_inv_mult_m1[2] * grad_m1_x[2]);
+  p->grad_A[1] -= 2 * (m2_inv_mult_m1[0] * grad_m1_y[0] +
+                       m2_inv_mult_m1[1] * grad_m1_y[1] +
+                       m2_inv_mult_m1[2] * grad_m1_y[2]);
+  p->grad_A[2] -= 2 * (m2_inv_mult_m1[0] * grad_m1_z[0] +
+                       m2_inv_mult_m1[1] * grad_m1_z[1] +
+                       m2_inv_mult_m1[2] * grad_m1_z[2]);
+
+  p->grad_A[0] += ABA_mult_m1_x[0] * p->m1[0] + ABA_mult_m1_x[1] * p->m1[1] + ABA_mult_m1_x[2] * p->m1[2];
+  p->grad_A[1] += ABA_mult_m1_y[0] * p->m1[0] + ABA_mult_m1_y[1] * p->m1[1] + ABA_mult_m1_y[2] * p->m1[2];
+  p->grad_A[2] += ABA_mult_m1_z[0] * p->m1[0] + ABA_mult_m1_z[1] * p->m1[1] + ABA_mult_m1_z[2] * p->m1[2];
+
+  p->grad_A[0] *= -p->A * p->A;
+  p->grad_A[1] *= -p->A * p->A;
+  p->grad_A[2] *= -p->A * p->A;
+
+
+  // Calculate grad B
+  for (i = 0; i < 3; i++) {
+    p->grad_B[0][i] = -m2_inv_mult_grad_m1_x[i];
+    p->grad_B[1][i] = -m2_inv_mult_grad_m1_y[i];
+    p->grad_B[2][i] = -m2_inv_mult_grad_m1_z[i];
+
+    p->grad_B[0][i] += ABA_mult_m1_x[i];
+    p->grad_B[1][i] += ABA_mult_m1_y[i];
+    p->grad_B[2][i] += ABA_mult_m1_z[i];
+  }
+
+
+   p->vac_term = 1.f;
+
+   float x = p->h * sqrtf(p->B[0] * p->B[0] + p->B[1] * p->B[1] + p->B[2] * p->B[2]);
+  float offset = 0.8f;
+  if (x > offset){
+      float sigma = 0.2f;
+      p->vac_term = expf(-(x - offset) * (x - offset) / (2.f * sigma * sigma));
+  }
 
 
   }else{
