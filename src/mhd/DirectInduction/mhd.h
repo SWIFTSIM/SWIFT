@@ -144,7 +144,7 @@ __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
           : FLT_MAX;
 
   const float dt_psi =
-      dt_psi_factor != 0.f
+      (dt_psi_factor != 0.f && dt_B_factor != 0.f)
            ? hydro_properties->CFL_condition * dt_B_factor / dt_psi_factor : FLT_MAX;
   
   const float dt_AR = p->mhd_data.v_sig_AR_max != 0.f
