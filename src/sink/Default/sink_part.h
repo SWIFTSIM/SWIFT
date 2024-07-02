@@ -51,12 +51,6 @@ struct sink {
   /*! Sink particle mass */
   float mass;
 
-  /*! Sink target mass */
-  float target_mass;
-
-  /*! Sink target stellar type */
-  enum star_feedback_type target_type;
-
   /*! Particle time bin */
   timebin_t time_bin;
 
