@@ -555,6 +555,18 @@ GrackleCooling:
   H2_on_dust: 0                                # Flag to enable H2 formation on dust grains
   local_dust_to_gas_ratio : -1                 # The ratio of total dust mass to gas mass in the local Universe (-1 to use the Grackle default value). 
   cmb_temperature_floor : 1                    # Enable/disable an effective CMB temperature floor
+  initial_nHII_to_nH_ratio:    -1              # initial nHII   to nH ratio (number density ratio). Value is ignored if set to -1.
+  initial_nHeI_to_nH_ratio:    -1              # initial nHeI   to nH ratio (number density ratio). Value is ignored if set to -1.  
+  initial_nHeII_to_nH_ratio:   -1              # initial nHeII  to nH ratio (number density ratio). Value is ignored if set to -1.
+  initial_nHeIII_to_nH_ratio:  -1              # initial nHeIII to nH ratio (number density ratio). Value is ignored if set to -1.
+  initial_nDI_to_nH_ratio:     -1              # initial nDI    to nH ratio (number density ratio). Value is ignored if set to -1.
+  initial_nDII_to_nH_ratio:    -1              # initial nDII   to nH ratio (number density ratio). Value is ignored if set to -1.
+  initial_nHM_to_nH_ratio:     -1              # initial nHM    to nH ratio (number density ratio). Value is ignored if set to -1.
+  initial_nH2I_to_nH_ratio:    -1              # initial nH2I   to nH ratio (number density ratio). Value is ignored if set to -1.
+  initial_nH2II_to_nH_ratio:   -1              # initial nH2II  to nH ratio (number density ratio). Value is ignored if set to -1.
+  initial_nHDI_to_nH_ratio:    -1              # initial nHDI   to nH ratio (number density ratio). Value is ignored if set to -1.
+
+
   
 
 
@@ -857,7 +869,21 @@ DefaultSink:
 
 # GEAR sink particles
 GEARSink:
-  cut_off_radius:        1e-3       # Cut off radius of the sink particles (in internal units). This parameter should be adapted with the resolution.
+  cut_off_radius:        1e-3       # Cut off radius of the sink particles (in internal units). This parameter should be adapted with the resolution. 
+  f_acc: 0.8                                  # (Optional) Fraction of the cut_off_radius that determines if a gas particle should be swallowed wihtout additional check. It has to respect 0 <= f_acc <= 1. (Default: 0.8)
+  maximal_temperature:        3e10            # Maximal gas temperature for forming a star (in K)
+  density_threshold:          1.67e-23        # Minimal gas density for forming a star (in g/cm3 (1.67e-24 =1acc))
+  size_of_calibration_sample: 100000          # Size of the calibration sample used to determine the probabilities to form stellar particles with mass stellar_particle_mass
+  stellar_particle_mass:      20              # Mass of the stellar particle representing the low mass stars (continuous IMF sampling) (in solar mass)
+  minimal_discrete_mass:      8               # Minimal mass of stars represented by discrete particles (in solar mass)
+  stellar_particle_mass_first_stars: 20       # Mass of the stellar particle representing the low mass stars (continuous IMF sampling) (in solar mass). First stars
+  minimal_discrete_mass_first_stars: 8        # Minimal mass of stars represented by discrete particles (in solar mass). First stars
+  sink_formation_contracting_gas_criterion: 1     # (Optional) Activate the contracting gas check for sink formation. (Default: 1)
+  sink_formation_smoothing_length_criterion: 1    # (Optional) Activate the smoothing length check for sink formation. (Default: 1)
+  sink_formation_jeans_instability_criterion: 1   # (Optional) Activate the two Jeans instability checks for sink formation. (Default: 1)
+  sink_formation_bound_state_criterion: 1         # (Optional) Activate the bound state check for sink formation. (Default: 1)
+  sink_formation_overlapping_sink_criterion: 1    # (Optional) Activate the overlapping sink check for sink formation. (Default: 1)
+  disable_sink_formation: 0                   # (Optional) Disable sink formation. (Default: 0)
 
 # Parameters related to radiative transfer ---------------------------------------
 
