@@ -55,7 +55,7 @@ struct mhd_part_data {
   float B_over_rho_dt_AR[3];
 
   float u_dt_AR;
-  
+
   /* SPH <1> error */
   float mean_SPH_err;
 
