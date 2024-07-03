@@ -60,6 +60,8 @@ struct mhd_part_data {
 
   float v_sig_AR_max;
 
+  float grad_psi[3];
+  
   float laplacian_psi;
   
   /* SPH <1> error */

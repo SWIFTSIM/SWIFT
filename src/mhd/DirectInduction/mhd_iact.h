@@ -644,6 +644,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   pj->mhd_data.B_over_rho_dt[1] += mi * grad_psi_j * dx[1];
   pj->mhd_data.B_over_rho_dt[2] += mi * grad_psi_j * dx[2];
 
+  pi->mhd_data.grad_psi[0] -= mj * grad_psi_i * dx[0];
+  pi->mhd_data.grad_psi[1] -= mj * grad_psi_i * dx[1];
+  pi->mhd_data.grad_psi[2] -= mj * grad_psi_i * dx[2];
+
+  pj->mhd_data.grad_psi[0] += mi * grad_psi_j * dx[0];
+  pj->mhd_data.grad_psi[1] += mi * grad_psi_j * dx[1];
+  pj->mhd_data.grad_psi[2] += mi * grad_psi_j * dx[2];
+  
   pi->mhd_data.laplacian_psi += 2.0f * mj * (psi_over_ch_i * vsig_Dedner_i - psi_over_ch_j * vsig_Dedner_j) * wi_dr * r_inv / rhoj;
   pj->mhd_data.laplacian_psi +=	2.0f * mi * (psi_over_ch_j * vsig_Dedner_j - psi_over_ch_i * vsig_Dedner_i) * wj_dr * r_inv / rhoi; 
 }
@@ -939,6 +947,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   pi->mhd_data.B_over_rho_dt[1] -= mj * grad_psi_i * dx[1];
   pi->mhd_data.B_over_rho_dt[2] -= mj * grad_psi_i * dx[2];
 
+  pi->mhd_data.grad_psi[0] -= mj * grad_psi_i * dx[0];
+  pi->mhd_data.grad_psi[1] -= mj * grad_psi_i * dx[1];
+  pi->mhd_data.grad_psi[2] -= mj * grad_psi_i * dx[2];
+  
   pi->mhd_data.laplacian_psi +=	2.0f * mj * (psi_over_ch_i * vsig_Dedner_i - psi_over_ch_j * vsig_Dedner_j) * wi_dr * r_inv / rhoj;
 }
 

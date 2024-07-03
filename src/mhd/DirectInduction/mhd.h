@@ -142,16 +142,28 @@ __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
                 cosmo->a_factor_sound_speed *
                 sqrtf(p->rho * mu_0 / (dt_B_factor * dt_B_factor))
           : FLT_MAX;
-
-  const float dt_psi =
-      (dt_psi_factor != 0.f && dt_B_factor != 0.f)
-           ? hydro_properties->CFL_condition * dt_B_factor / dt_psi_factor : FLT_MAX;
   
-  const float dt_AR = p->mhd_data.v_sig_AR_max != 0.f
+  const float dt_AR_a = p->mhd_data.v_sig_AR_max != 0.f
                            ? hydro_properties->CFL_condition * p->h /
                                  p->mhd_data.v_sig_AR_max
                            : FLT_MAX;
-    
+
+  float B[3];
+  B[0] = p->mhd_data.B_over_rho[0];
+  B[1] = p->mhd_data.B_over_rho[1];
+  B[2] = p->mhd_data.B_over_rho[2];
+  const float normB = sqrtf(B[0] * B[0] + B[1] * B[1] + B[2] * B[2]);
+  
+  float B_dt_AR[3];
+  B_dt_AR[0] = p->mhd_data.B_over_rho_dt[0];  
+  B_dt_AR[1] = p->mhd_data.B_over_rho_dt[1];
+  B_dt_AR[2] = p->mhd_data.B_over_rho_dt[2];
+  const float norm_B_dt_AR = sqrtf(B_dt_AR[0] * B_dt_AR[0] + B_dt_AR[1] * B_dt_AR[1] + B_dt_AR[2] * B_dt_AR[2]);
+  
+  const float dt_AR_b = (normB != 0.f && norm_B_dt_AR != 0.f) ? 0.01f * normB / norm_B_dt_AR : FLT_MAX;
+
+  const float dt_AR = fminf(dt_AR_a, dt_AR_b);
+  
   const float dt_eta = p->mhd_data.resistive_eta != 0.f
                            ? hydro_properties->CFL_condition * cosmo->a *
                                  cosmo->a * p->h * p->h /
@@ -160,6 +172,20 @@ __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
   
   const float dt_res = fminf(dt_AR, dt_eta);
 
+
+  const float dt_psi_a = (dt_psi_factor != 0.f && dt_B_factor != 0.f)
+           ? hydro_properties->CFL_condition * dt_B_factor / dt_psi_factor : FLT_MAX;
+      
+  float grad_psi[3];
+  grad_psi[0] = p->mhd_data.grad_psi[0];
+  grad_psi[1] =	p->mhd_data.grad_psi[1];
+  grad_psi[2] =	p->mhd_data.grad_psi[2];
+  const float norm_grad_psi = sqrtf(grad_psi[0] * grad_psi[0] + grad_psi[1] * grad_psi[1] + grad_psi[2] * grad_psi[2]);
+
+  const float dt_psi_b = (normB != 0.f && norm_grad_psi != 0.f) ? 0.01f * normB / norm_grad_psi : FLT_MAX;
+
+  const float dt_psi = fminf(dt_psi_a, dt_psi_b);
+  
   const float dt_divB = fminf(dt_B_derivatives, dt_psi);
   
   return fminf(dt_res, dt_divB);
@@ -480,6 +506,10 @@ __attribute__((always_inline)) INLINE static void mhd_reset_acceleration(
   p->mhd_data.B_over_rho_dt_AR[2] = 0.0f;
 
   p->mhd_data.u_dt_AR = 0.0f;
+
+  p->mhd_data.grad_psi[0] = 0.0f;
+  p->mhd_data.grad_psi[1] = 0.0f;
+  p->mhd_data.grad_psi[2] = 0.0f;
 
   p->mhd_data.laplacian_psi = 0.0f;
   
