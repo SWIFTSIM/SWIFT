@@ -147,31 +147,15 @@ pHDI = ax.plot(rs, nHDIs, ms=2, lw=1, label="HDI")
 
 # add data
 ax.plot(data[:, dic["Redshift"]], data[:, dic["H"]], "--", color=pHI[0].get_color())
-ax.plot(
-    data[:, dic["Redshift"]], data[:, dic["H+"]], "--", color=pHII[0].get_color()
-)
-ax.plot(
-    data[:, dic["Redshift"]], data[:, dic["He"]], "--", color=pHeI[0].get_color()
-)
-ax.plot(
-    data[:, dic["Redshift"]], data[:, dic["He+"]], "--", color=pHeII[0].get_color()
-)
-ax.plot(
-    data[:, dic["Redshift"]], data[:, dic["H-"]], "--", color=pHM[0].get_color()
-)
-ax.plot(
-    data[:, dic["Redshift"]], data[:, dic["H2"]], "--", color=pH2I[0].get_color()
-)
-ax.plot(
-    data[:, dic["Redshift"]], data[:, dic["H2+"]], "--", color=pH2II[0].get_color()
-)
+ax.plot(data[:, dic["Redshift"]], data[:, dic["H+"]], "--", color=pHII[0].get_color())
+ax.plot(data[:, dic["Redshift"]], data[:, dic["He"]], "--", color=pHeI[0].get_color())
+ax.plot(data[:, dic["Redshift"]], data[:, dic["He+"]], "--", color=pHeII[0].get_color())
+ax.plot(data[:, dic["Redshift"]], data[:, dic["H-"]], "--", color=pHM[0].get_color())
+ax.plot(data[:, dic["Redshift"]], data[:, dic["H2"]], "--", color=pH2I[0].get_color())
+ax.plot(data[:, dic["Redshift"]], data[:, dic["H2+"]], "--", color=pH2II[0].get_color())
 ax.plot(data[:, dic["Redshift"]], data[:, dic["D"]], "--", color=pDI[0].get_color())
-ax.plot(
-    data[:, dic["Redshift"]], data[:, dic["D+"]], "--", color=pDII[0].get_color()
-)
-ax.plot(
-    data[:, dic["Redshift"]], data[:, dic["HD"]], "--", color=pHDI[0].get_color()
-)
+ax.plot(data[:, dic["Redshift"]], data[:, dic["D+"]], "--", color=pDII[0].get_color())
+ax.plot(data[:, dic["Redshift"]], data[:, dic["HD"]], "--", color=pHDI[0].get_color())
 
 
 ax.set_xlabel(r"$\rm{1+z}$")
