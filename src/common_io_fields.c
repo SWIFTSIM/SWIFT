@@ -400,8 +400,9 @@ void io_write_output_field_parameter(const char* filename, int with_cosmology,
         strcpy(&comment_write_buffer[PARSER_MAX_LINE_SIZE / 2 - 4], "...");
       }
 
-      fprintf(file, "  %s_%s: %s  # %s : %s\n", list[i].name,
-              part_type_names[ptype], "on", comment_write_buffer, unit_buffer);
+      fprintf(file, "  %s_%s: %s  # (%dD - %zd bytes / dim) %s : %s\n",
+              list[i].name, part_type_names[ptype], "on", list[i].dimension,
+              io_sizeof_type(list[i].type), comment_write_buffer, unit_buffer);
     }
 
     fprintf(file, "\n");
