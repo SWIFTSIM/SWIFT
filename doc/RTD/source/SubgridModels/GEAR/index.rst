@@ -88,32 +88,53 @@ For the feedback, it can be made more efficient by turning off the cooling durin
 
 The self shielding method is defined by ``GrackleCooling:self_shielding_method`` where 0 means no self shielding, > 0 means a method defined in Grackle (see Grackle documentation for more information) and -1 means GEAR's self shielding that simply turn off the UV background when reaching a given density (``GrackleCooling:self_shielding_threshold_atom_per_cm3``).
 
+A maximal (physical) density must be set with the ``GrackleCooling:maximal_density_Hpcm3 parameter``. The density passed to Grackle is *the minimum of this density and the gas particle (physical) density*. A negative value (:math:`< 0`) deactivates the maximal density, i.e. there is no maximal density limit.
+The purpose of this parameter is the following. The Cloudy tables provided by Grackle are limited in density (typically to  :math:`10^4 \; \mathrm{hydrogen \; atoms/cm}^3`). In high-resolution simulations, particles can have densities higher than :math:`10^4 \; \mathrm{hydrogen \; atoms/cm}^3`. This maximal density ensures that we pass a density within the interpolation ranges of the table, should the density exceed it.
+It can be a solution to some of the following errors (with a translation of what the values mean):
+
+.. code:: text
+
+	  inside if statement solve rate cool:           0           0
+	  MULTI_COOL iter >        10000  at j,k =           1           1
+	  FATAL error (2) in MULTI_COOL
+	  dt =  1.092E-08 ttmin =  7.493E-12
+	  2.8E-19    // sub-cycling timestep
+	  7.5E-12    // time elapsed (in the sub-cycle)
+	  2.2E+25    // derivative of the internal energy
+	  T
+
+.. note::
+   This problem is particularly relevant with metal cooling enabled. Another solution is to modify the tables. But one is not exempted from exceeding the table maximal density value, since Grackle does not check if the particle density is larger than the table maximal density.
+
+Here is the complete section in the parameter file:
+
 .. code:: YAML
 
   GrackleCooling:
-  cloudy_table: CloudyData_UVB=HM2012.h5       # Name of the Cloudy Table (available on the grackle bitbucket repository)
-  with_UV_background: 1                        # Enable or not the UV background
-  redshift: 0                                  # Redshift to use (-1 means time based redshift)
-  with_metal_cooling: 1                        # Enable or not the metal cooling
-  provide_volumetric_heating_rates: 0          # (optional) User provide volumetric heating rates
-  provide_specific_heating_rates: 0            # (optional) User provide specific heating rates
-  max_steps: 10000                             # (optional) Max number of step when computing the initial composition
-  convergence_limit: 1e-2                      # (optional) Convergence threshold (relative) for initial composition
-  thermal_time_myr: 5                          # (optional) Time (in Myr) for adiabatic cooling after a feedback event.
-  self_shielding_method: -1                    # (optional) Grackle (1->3 for Grackle's ones, 0 for none and -1 for GEAR)
-  self_shielding_threshold_atom_per_cm3: 0.007 # Required only with GEAR's self shielding. Density threshold of the self shielding
-  HydrogenFractionByMass : 1.                  # Hydrogen fraction by mass (default is 0.76)
-  use_radiative_transfer : 1                   # Arrays of ionization and heating rates are provided
-  RT_heating_rate_cgs    : 0                   # heating         rate in units of / nHI_cgs 
-  RT_HI_ionization_rate_cgs  : 0               # HI ionization   rate in cgs [1/s]
-  RT_HeI_ionization_rate_cgs : 0               # HeI ionization  rate in cgs [1/s]
-  RT_HeII_ionization_rate_cgs: 0               # HeII ionization rate in cgs [1/s]
-  RT_H2_dissociation_rate_cgs: 0               # H2 dissociation rate in cgs [1/s]
-  volumetric_heating_rates_cgs: 0              # Volumetric heating rate in cgs  [erg/s/cm3]
-  specific_heating_rates_cgs: 0                # Specific heating rate in cgs    [erg/s/g]
-  H2_three_body_rate : 1                       # Specific the H2 formation three body rate (0->5,see Grackle documentation)
-  H2_cie_cooling : 0                           # Enable/disable H2 collision-induced emission cooling from Ripamonti & Abel (2004)
-  cmb_temperature_floor : 1                    # Enable/disable an effective CMB temperature floor
+    cloudy_table: CloudyData_UVB=HM2012.h5       # Name of the Cloudy Table (available on the grackle bitbucket repository)
+    with_UV_background: 1                        # Enable or not the UV background
+    redshift: 0                                  # Redshift to use (-1 means time based redshift)
+    with_metal_cooling: 1                        # Enable or not the metal cooling
+    provide_volumetric_heating_rates: 0          # (optional) User provide volumetric heating rates
+    provide_specific_heating_rates: 0            # (optional) User provide specific heating rates
+    max_steps: 10000                             # (optional) Max number of step when computing the initial composition
+    convergence_limit: 1e-2                      # (optional) Convergence threshold (relative) for initial composition
+    thermal_time_myr: 5                          # (optional) Time (in Myr) for adiabatic cooling after a feedback event.
+    self_shielding_method: -1                    # (optional) Grackle (1->3 for Grackle's ones, 0 for none and -1 for GEAR)
+    self_shielding_threshold_atom_per_cm3: 0.007 # Required only with GEAR's self shielding. Density threshold of the self shielding
+    maximal_density_Hpcm3:         1e4                 # Maximal density (in atoms/cm^3) for cooling. Higher densities are floored to this value to ensure grackle works properly when interpolating beyond the cloudy_table maximal density. A value < 0 deactivates this parameter.
+    HydrogenFractionByMass : 1.                  # Hydrogen fraction by mass (default is 0.76)
+    use_radiative_transfer : 1                   # Arrays of ionization and heating rates are provided
+    RT_heating_rate_cgs    : 0                   # heating         rate in units of / nHI_cgs
+    RT_HI_ionization_rate_cgs  : 0               # HI ionization   rate in cgs [1/s]
+    RT_HeI_ionization_rate_cgs : 0               # HeI ionization  rate in cgs [1/s]
+    RT_HeII_ionization_rate_cgs: 0               # HeII ionization rate in cgs [1/s]
+    RT_H2_dissociation_rate_cgs: 0               # H2 dissociation rate in cgs [1/s]
+    volumetric_heating_rates_cgs: 0              # Volumetric heating rate in cgs  [erg/s/cm3]
+    specific_heating_rates_cgs: 0                # Specific heating rate in cgs    [erg/s/g]
+    H2_three_body_rate : 1                       # Specific the H2 formation three body rate (0->5,see Grackle documentation)
+    H2_cie_cooling : 0                           # Enable/disable H2 collision-induced emission cooling from Ripamonti & Abel (2004)
+    cmb_temperature_floor : 1                    # Enable/disable an effective CMB temperature floor
   
 .. note::
    A simple example running SWIFT with Grackle can be find in ``examples/Cooling/CoolingBox``. A more advanced example combining heating and cooling (with heating and ionization sources) is given in ``examples/Cooling/CoolingHeatingBox``.
