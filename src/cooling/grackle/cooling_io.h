@@ -25,6 +25,7 @@
 #include "cooling_struct.h"
 #include "io_properties.h"
 #include "physical_constants.h"
+#include "units.h"
 
 #ifdef HAVE_HDF5
 
@@ -140,7 +141,7 @@ __attribute__((always_inline)) INLINE static int cooling_write_particles(
  */
 __attribute__((always_inline)) INLINE static void cooling_read_parameters(
     struct swift_params* parameter_file, struct cooling_function_data* cooling,
-    const struct phys_const* phys_const) {
+    const struct phys_const* phys_const, const struct unit_system* us) {
 
   parser_get_param_string(parameter_file, "GrackleCooling:cloudy_table",
                           cooling->cloudy_table);
@@ -257,6 +258,16 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
   cooling->thermal_time = parser_get_param_double(
       parameter_file, "GrackleCooling:thermal_time_myr");
   cooling->thermal_time *= phys_const->const_year * 1e6;
+
+  /* Maximal cooling density (in acc) */
+  cooling->cooling_density_max = parser_get_param_double(
+      parameter_file, "GrackleCooling:maximal_density_Hpcm3");
+
+  /* Convert from acc to intenal units */
+  const double m_p_cgs = phys_const->const_proton_mass *
+                         units_cgs_conversion_factor(us, UNIT_CONV_MASS);
+  cooling->cooling_density_max *=
+      m_p_cgs / units_cgs_conversion_factor(us, UNIT_CONV_DENSITY);
 }
 
 #endif /* SWIFT_COOLING_GRACKLE_IO_H */
