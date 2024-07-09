@@ -418,7 +418,7 @@ void runner_dosub_pair_sinks_swallow(struct runner *r, struct cell *ci,
 
   /* Get the type of pair and flip ci/cj if needed. */
   double shift[3];
-  const int sid = space_getsid(s, &ci, &cj, shift);
+  const int sid = space_getsid_and_swap_cells(s, &ci, &cj, shift);
 
   /* Recurse? */
   if (cell_can_recurse_in_pair_sinks_task(ci, cj) &&
