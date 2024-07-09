@@ -43,7 +43,7 @@
  *
  * @return The shift ID and set shift, may or may not swap ci and cj.
  */
-__attribute__((always_inline, nonnull)) INLINE static int space_getsid(
+__attribute__((always_inline, nonnull)) INLINE static int space_getsid_and_swap_cells(
     const struct space *s, struct cell **ci, struct cell **cj,
     double shift[3]) {
 
