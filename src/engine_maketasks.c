@@ -1398,8 +1398,7 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
   }
 
   /* We are below the super-cell but not below the maximal splitting depth */
-  else if ((c->grav.super != NULL) &&
-           ((c->maxdepth - c->depth) >= space_subdepth_diff_grav)) {
+  else if ((c->grav.super != NULL) && cell_is_above_diff_grav_depth(c)) {
 
     /* Local tasks only... */
     if (c->nodeID == e->nodeID) {
@@ -1423,7 +1422,7 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
   }
 
   /* Recurse but not below the maximal splitting depth */
-  if (c->split && ((c->maxdepth - c->depth) >= space_subdepth_diff_grav))
+  if (c->split && cell_is_above_diff_grav_depth(c))
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL)
         engine_make_hierarchical_tasks_gravity(e, c->progeny[k]);
