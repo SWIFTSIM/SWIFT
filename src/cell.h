@@ -1226,8 +1226,31 @@ __attribute__((always_inline)) INLINE static int cell_can_split_self_hydro_task(
 }
 
 /**
- * @brief Can a pair gravity task associated with a pair of cells be split into
- * smaller sub-tasks?
+ * @brief Is a cell above the task level?
+ *
+ * The task level is defined as space_subdepth_diff_grav above the leaves
+ * of the tree.
+ *
+ * When running a zoom simulation this will use zoom_bkg_subdepth_diff_grav for
+ * the background cells while the zoom cells will use the regular threshold.
+ *
+ * @param c The #cell.
+ */
+__attribute__((always_inline)) INLINE static int cell_is_above_diff_grav_depth(
+    const struct cell *c) {
+
+  /* Regular and zoom cells use the usual condition. */
+  if (c->type == cell_type_regular || c->type == cell_type_zoom) {
+    return (c->maxdepth - c->depth) > space_subdepth_diff_grav;
+  }
+
+  /* Otherwise all other cells use the background diff_grav constant. */
+  return (c->maxdepth - c->depth) > zoom_bkg_subdepth_diff_grav;
+}
+
+/**
+ * @brief Can a pair gravity task associated with a pair of cells be split
+ * into smaller sub-tasks?
  *
  * @param ci The first #cell.
  * @param cj The second #cell.
@@ -1245,9 +1268,8 @@ cell_can_split_pair_gravity_task(const struct cell *ci, const struct cell *cj) {
   }
 
   /* Otherwise, are the cells split and still far from the leaves ? */
-  return (ci->split && cj->split) &&
-         ((ci->maxdepth - ci->depth) > space_subdepth_diff_grav) &&
-         ((cj->maxdepth - cj->depth) > space_subdepth_diff_grav);
+  return (ci->split && cj->split) && cell_is_above_diff_grav_depth(ci) &&
+         cell_is_above_diff_grav_depth(cj);
 }
 
 /**
@@ -1260,7 +1282,7 @@ __attribute__((always_inline)) INLINE static int
 cell_can_split_self_gravity_task(const struct cell *c) {
 
   /* Is the cell split and still far from the leaves ? */
-  return c->split && ((c->maxdepth - c->depth) > space_subdepth_diff_grav);
+  return c->split && cell_is_above_diff_grav_depth(c);
 }
 
 /**
@@ -1273,8 +1295,7 @@ __attribute__((always_inline)) INLINE static int cell_can_split_self_fof_task(
     const struct cell *c) {
 
   /* Is the cell split ? */
-  return c->split && c->grav.count > 5000 &&
-         ((c->maxdepth - c->depth) > space_subdepth_diff_grav);
+  return c->split && c->grav.count > 5000 && cell_is_above_diff_grav_depth(c);
 }
 
 /**
@@ -1288,7 +1309,8 @@ __attribute__((always_inline)) INLINE static int cell_can_split_self_fof_task(
 __attribute__((always_inline, nonnull)) INLINE static int
 cell_need_rebuild_for_hydro_pair(const struct cell *ci, const struct cell *cj) {
 
-  /* Is the cut-off radius plus the max distance the parts in both cells have */
+  /* Is the cut-off radius plus the max distance the parts in both cells have
+   */
   /* moved larger than the cell size ? */
   /* Note ci->dmin == cj->dmin */
   if (kernel_gamma * max(ci->hydro.h_max, cj->hydro.h_max) +
@@ -1309,7 +1331,8 @@ cell_need_rebuild_for_hydro_pair(const struct cell *ci, const struct cell *cj) {
 __attribute__((always_inline, nonnull)) INLINE static int
 cell_need_rebuild_for_stars_pair(const struct cell *ci, const struct cell *cj) {
 
-  /* Is the cut-off radius plus the max distance the parts in both cells have */
+  /* Is the cut-off radius plus the max distance the parts in both cells have
+   */
   /* moved larger than the cell size ? */
   /* Note ci->dmin == cj->dmin */
   if (kernel_gamma * max(ci->stars.h_max, cj->hydro.h_max) +
@@ -1330,7 +1353,8 @@ cell_need_rebuild_for_stars_pair(const struct cell *ci, const struct cell *cj) {
 __attribute__((always_inline, nonnull)) INLINE static int
 cell_need_rebuild_for_sinks_pair(const struct cell *ci, const struct cell *cj) {
 
-  /* Is the cut-off radius plus the max distance the parts in both cells have */
+  /* Is the cut-off radius plus the max distance the parts in both cells have
+   */
   /* moved larger than the cell size ? */
   /* Note ci->dmin == cj->dmin */
   if (max(ci->sinks.r_cut_max, kernel_gamma * cj->hydro.h_max) +
@@ -1352,7 +1376,8 @@ __attribute__((always_inline, nonnull)) INLINE static int
 cell_need_rebuild_for_black_holes_pair(const struct cell *ci,
                                        const struct cell *cj) {
 
-  /* Is the cut-off radius plus the max distance the parts in both cells have */
+  /* Is the cut-off radius plus the max distance the parts in both cells have
+   */
   /* moved larger than the cell size ? */
   /* Note ci->dmin == cj->dmin */
   if (kernel_gamma * max(ci->black_holes.h_max, cj->hydro.h_max) +
@@ -1590,8 +1615,8 @@ __attribute__((always_inline)) INLINE static void cell_free_stars_sorts(
 }
 
 /**
- * @brief Returns the array of sorted indices for the star particles of a given
- * cell along agiven direction.
+ * @brief Returns the array of sorted indices for the star particles of a
+ * given cell along agiven direction.
  *
  * @param c The #cell.
  * @param sid the direction id.
@@ -1757,8 +1782,8 @@ __attribute__((always_inline)) INLINE void cell_assign_top_level_cell_index(
  * We have 15 bits set aside in `cell->cellID` for the top level cells, with
  * 49 remaining. Each progeny cell gets a unique ID by inheriting
  * its parent ID and adding 3 bits on the left side, which are set according
- * to the progeny's location within its parent cell. Finally, a 1 is set as the
- * leading bit such that all recursive children with index (000) are still
+ * to the progeny's location within its parent cell. Finally, a 1 is set as
+ * the leading bit such that all recursive children with index (000) are still
  * recognized as such. This allows us to give IDs to 16 levels of depth
  * uniquely.
  * If the depth exceeds 16, we use the old scheme where we just add up a
