@@ -26,7 +26,6 @@
  */
 
 #include "const.h"
-#include "hydro_misc_utils.h"
 #include "hydro_parameters.h"
 #include "math.h"
 
