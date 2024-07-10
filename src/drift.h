@@ -392,6 +392,25 @@ __attribute__((always_inline)) INLINE static void drift_sink(
   sink->ti_drift = ti_current;
 #endif
 
+#ifdef SWIFT_FIXED_BOUNDARY_PARTICLES
+
+  /* Get the ID of the gpart */
+  const long long id = sink->id;
+
+  /* Cancel the velocity of the particles */
+  if (id < SWIFT_FIXED_BOUNDARY_PARTICLES) {
+
+    /* Don't move! */
+    sink->v[0] = 0.f;
+    sink->v[1] = 0.f;
+    sink->v[2] = 0.f;
+  }
+#endif
+
+#ifdef WITH_LIGHTCONE
+  error("Lightcone treatment of sinks needs implementing");
+#endif
+
   /* Drift... */
   sink->x[0] += sink->v[0] * dt_drift;
   sink->x[1] += sink->v[1] * dt_drift;

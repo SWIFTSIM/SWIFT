@@ -520,6 +520,10 @@ int main(int argc, char *argv[]) {
   struct pressure_floor_props pressure_floor;
   engine.pressure_floor_props = &pressure_floor;
 
+  struct sink_props sink_props;
+  bzero(&sink_props, sizeof(struct sink_props));
+  engine.sink_properties = &sink_props;
+
   struct gravity_props gravity_props;
   bzero(&gravity_props, sizeof(struct gravity_props));
   gravity_props.G_Newton = 1.f;

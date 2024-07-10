@@ -263,6 +263,103 @@ void stellar_evolution_compute_discrete_feedback_properties(
 }
 
 /**
+ * @brief Evolve an individual star represented by a #spart.
+ *
+ * This function compute the SN rate and yields before sending
+ * this information to a different MPI rank.
+ * It also compute the supernovae energy to be released by the
+ * star.
+ *
+ * Here I am using Myr-solar mass units internally in order to
+ * avoid numerical errors.
+ *
+ * @param sp The particle to act upon
+ * @param sm The #stellar_model structure.
+ * @param cosmo The current cosmological model.
+ * @param us The unit system.
+ * @param phys_const The physical constants in the internal unit system.
+ * @param ti_begin The #integertime_t at the begining of the step.
+ * @param star_age_beg_step The age of the star at the star of the time-step in
+ * internal units.
+ * @param dt The time-step size of this star in internal units.
+ */
+void stellar_evolution_evolve_individual_star(
+    struct spart* restrict sp, const struct stellar_model* sm,
+    const struct cosmology* cosmo, const struct unit_system* us,
+    const struct phys_const* phys_const, const integertime_t ti_begin,
+    const double star_age_beg_step, const double dt) {
+
+  /* Convert the inputs */
+  const double conversion_to_myr = phys_const->const_year * 1e6;
+  const double star_age_end_step_myr =
+      (star_age_beg_step + dt) / conversion_to_myr;
+  const double star_age_beg_step_myr = star_age_beg_step / conversion_to_myr;
+
+  /* Get the metallicity */
+  const float metallicity =
+      chemistry_get_star_total_metal_mass_fraction_for_feedback(sp);
+
+  const float log_mass = log10(sp->mass / phys_const->const_solar_mass);
+  const float lifetime_myr = pow(10, lifetime_get_log_lifetime_from_mass(
+                                         &sm->lifetime, log_mass, metallicity));
+
+  /* if the lifetime is outside the interval */
+  if ((lifetime_myr < star_age_beg_step_myr) ||
+      (lifetime_myr > star_age_end_step_myr))
+    return;
+
+  message(
+      "(%lld) lifetime_myr=%g %g star_age_beg_step=%g star_age_end_step=%g "
+      "(%g)",
+      sp->id, lifetime_myr, lifetime_myr * conversion_to_myr,
+      star_age_beg_step_myr, star_age_end_step_myr,
+      sp->mass / phys_const->const_solar_mass);
+
+  /* This is need by stellar_evolution_compute_discrete_feedback_properties(),
+     but this is not used inside the function. */
+  const float m_init = 0;
+
+  /* Get the integer number of supernovae */
+  const int number_snia = 0;
+  const int number_snii = 1;
+
+  /* Save the number of supernovae */
+  sp->feedback_data.number_snia = 0;
+  sp->feedback_data.number_snii = number_snii;
+
+  /* this is needed for  stellar_evolution_compute_discrete_feedback_properties
+   */
+  const float m_beg_step = sp->mass / phys_const->const_solar_mass;
+  const float m_end_step = sp->mass / phys_const->const_solar_mass;
+  const float m_avg = 0.5 * (m_beg_step + m_end_step);
+
+  /* Compute the yields */
+  stellar_evolution_compute_discrete_feedback_properties(
+      sp, sm, phys_const, m_beg_step, m_end_step, m_init, number_snia,
+      number_snii);
+
+  /* Compute the supernovae energy associated to the stellar particle */
+
+  const float energy_conversion =
+      units_cgs_conversion_factor(us, UNIT_CONV_ENERGY) / 1e51;
+
+  /* initialize */
+  sp->feedback_data.energy_ejected = 0;
+
+  /* snia contribution */
+  const float snia_energy = sm->snia.energy_per_supernovae;
+  sp->feedback_data.energy_ejected +=
+      sp->feedback_data.number_snia * snia_energy;
+
+  /* snii contribution */
+  const float snii_energy =
+      supernovae_ii_get_energy_from_progenitor_mass(&sm->snii, m_avg) /
+      energy_conversion;
+  sp->feedback_data.energy_ejected +=
+      sp->feedback_data.number_snii * snii_energy;
+}
+
+/**
  * @brief Evolve the stellar properties of a #spart.
  *
  * This function compute the SN rate and yields before sending
