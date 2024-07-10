@@ -110,6 +110,12 @@ struct io_props {
   /* Has this entry been filled */
   int is_used;
 
+  /* Is the entry actually written in the physical frame? */
+  int is_physical;
+
+  /* Is the entry not convertible to comoving (only meaningful if the entry is physical) */
+  int is_convertible_to_comoving;
+  
   /* Is it compulsory ? (input only) */
   enum DATA_IMPORTANCE importance;
 

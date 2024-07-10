@@ -66,6 +66,7 @@ enum IO_DATA_TYPE {
   FLOAT,
   DOUBLE,
   CHAR,
+  BOOL,
   SIZE_T,
 };
 
@@ -95,6 +96,7 @@ void io_write_attribute(hid_t grp, const char* name, enum IO_DATA_TYPE type,
 void io_write_attribute_d(hid_t grp, const char* name, double data);
 void io_write_attribute_f(hid_t grp, const char* name, float data);
 void io_write_attribute_i(hid_t grp, const char* name, int data);
+void io_write_attribute_b(hid_t grp, const char* name, int data);
 void io_write_attribute_l(hid_t grp, const char* name, long data);
 void io_write_attribute_ll(hid_t grp, const char* name, long long data);
 void io_write_attribute_s(hid_t grp, const char* name, const char* str);
