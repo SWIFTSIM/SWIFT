@@ -470,7 +470,7 @@ void DOPAIR1_BRANCH(struct runner *r, struct cell *ci, struct cell *cj) {
 
   /* Get the sort ID. */
   double shift[3] = {0.0, 0.0, 0.0};
-  const int sid = space_getsid(e->s, &ci, &cj, shift);
+  const int sid = space_getsid_and_swap_cells(e->s, &ci, &cj, shift);
 
   /* Have the cells been sorted? */
   if (!(ci->hydro.sorted & (1 << sid)) ||
@@ -730,7 +730,7 @@ void DOSUB_PAIR1(struct runner *r, struct cell *ci, struct cell *cj,
 
   /* Get the type of pair and flip ci/cj if needed. */
   double shift[3];
-  const int sid = space_getsid(s, &ci, &cj, shift);
+  const int sid = space_getsid_and_swap_cells(s, &ci, &cj, shift);
 
   /* Should we even bother? */
   const int do_i = cell_get_flag(ci, cell_flag_do_hydro_limiter);

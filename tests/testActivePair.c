@@ -557,6 +557,7 @@ int main(int argc, char *argv[]) {
   struct gravity_props gravity_props;
   struct hydro_props hydro_props;
   struct pressure_floor_props pressure_floor;
+  struct sink_props sink_props;
   struct phys_const prog_const;
   struct runner *runner;
   static long long partId = 0;
@@ -650,6 +651,8 @@ int main(int argc, char *argv[]) {
   bzero(&gravity_props, sizeof(struct gravity_props));
   gravity_props.G_Newton = 1.;
   engine.gravity_properties = &gravity_props;
+  bzero(&sink_props, sizeof(struct sink_props));
+  engine.sink_properties = &sink_props;
 
   if (posix_memalign((void **)&runner, SWIFT_STRUCT_ALIGNMENT,
                      sizeof(struct runner)) != 0) {

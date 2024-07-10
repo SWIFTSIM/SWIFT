@@ -1156,7 +1156,8 @@ int main(int argc, char *argv[]) {
 
     /* Initialise the sink properties */
     if (with_sinks) {
-      sink_props_init(&sink_properties, &prog_const, &us, params, &cosmo);
+      sink_props_init(&sink_properties, &feedback_properties, &prog_const, &us,
+                      params, &cosmo);
     } else
       bzero(&sink_properties, sizeof(struct sink_props));
 
@@ -1285,7 +1286,7 @@ int main(int argc, char *argv[]) {
       if (!dry_run && gparts[k].id_or_neg_offset == 0 &&
           (gparts[k].type == swift_type_dark_matter ||
            gparts[k].type == swift_type_dark_matter_background))
-        error("SWIFT does not allow the ID 0.");
+        error("SWIFT does not allow the ID 0 for dark matter.");
     if (!with_stars && !dry_run) {
       for (size_t k = 0; k < Ngpart; ++k)
         if (gparts[k].type == swift_type_stars) error("Linking problem");
@@ -1324,7 +1325,7 @@ int main(int argc, char *argv[]) {
     N_long[swift_type_dark_matter] =
         with_gravity ? Ngpart - Ngpart_background - Nbaryons - Nnupart : 0;
 
-    MPI_Allreduce(&N_long, &N_total, swift_type_count + 1, MPI_LONG_LONG_INT,
+    MPI_Allreduce(N_long, N_total, swift_type_count + 1, MPI_LONG_LONG_INT,
                   MPI_SUM, MPI_COMM_WORLD);
 #else
     N_total[swift_type_gas] = Ngas;
@@ -1450,7 +1451,7 @@ int main(int argc, char *argv[]) {
     N_long[swift_type_sink] = s.nr_sinks;
     N_long[swift_type_black_hole] = s.nr_bparts;
     N_long[swift_type_neutrino] = s.nr_nuparts;
-    MPI_Allreduce(&N_long, &N_total, swift_type_count + 1, MPI_LONG_LONG_INT,
+    MPI_Allreduce(N_long, N_total, swift_type_count + 1, MPI_LONG_LONG_INT,
                   MPI_SUM, MPI_COMM_WORLD);
 #else
     N_total[swift_type_gas] = s.nr_parts;
