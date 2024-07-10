@@ -36,6 +36,9 @@
 #include <mpi.h>
 #endif
 
+/* Declare the task diff grav constant. */
+int zoom_bkg_subdepth_diff_grav = zoom_bkg_subdepth_diff_grav_default;
+
 /**
  * @brief Check that cdim is a power of 2 times the region_buffer_ratio.
  *
