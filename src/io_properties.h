@@ -314,6 +314,7 @@ INLINE static struct io_props io_make_output_field_(
   }
   r.type = type;
   r.is_used = 1;
+  r.is_convertible_to_comoving = 1;
   r.dimension = dimension;
   r.importance = UNUSED;
   r.units = units;
@@ -367,6 +368,7 @@ INLINE static struct io_props io_make_output_field_convert_part_INT(
   }
   r.type = type;
   r.is_used = 1;
+  r.is_convertible_to_comoving = 1;
   r.dimension = dimension;
   r.importance = UNUSED;
   r.units = units;
@@ -413,6 +415,7 @@ INLINE static struct io_props io_make_output_field_convert_part_FLOAT(
   }
   r.type = type;
   r.is_used = 1;
+  r.is_convertible_to_comoving = 1;
   r.dimension = dimension;
   r.importance = UNUSED;
   r.units = units;
@@ -459,6 +462,7 @@ INLINE static struct io_props io_make_output_field_convert_part_DOUBLE(
   }
   r.type = type;
   r.is_used = 1;
+  r.is_convertible_to_comoving = 1;
   r.dimension = dimension;
   r.importance = UNUSED;
   r.units = units;
@@ -505,6 +509,7 @@ INLINE static struct io_props io_make_output_field_convert_part_LONGLONG(
   }
   r.type = type;
   r.is_used = 1;
+  r.is_convertible_to_comoving = 1;
   r.dimension = dimension;
   r.importance = UNUSED;
   r.units = units;
@@ -559,6 +564,7 @@ INLINE static struct io_props io_make_output_field_convert_gpart_INT(
   }
   r.type = type;
   r.is_used = 1;
+  r.is_convertible_to_comoving = 1;
   r.dimension = dimension;
   r.importance = UNUSED;
   r.units = units;
@@ -603,6 +609,7 @@ INLINE static struct io_props io_make_output_field_convert_gpart_FLOAT(
   }
   r.type = type;
   r.is_used = 1;
+  r.is_convertible_to_comoving = 1;
   r.dimension = dimension;
   r.importance = UNUSED;
   r.units = units;
@@ -647,6 +654,7 @@ INLINE static struct io_props io_make_output_field_convert_gpart_DOUBLE(
   }
   r.type = type;
   r.is_used = 1;
+  r.is_convertible_to_comoving = 1;
   r.dimension = dimension;
   r.importance = UNUSED;
   r.units = units;
@@ -691,6 +699,7 @@ INLINE static struct io_props io_make_output_field_convert_gpart_LONGLONG(
   }
   r.type = type;
   r.is_used = 1;
+  r.is_convertible_to_comoving = 1;
   r.dimension = dimension;
   r.importance = UNUSED;
   r.units = units;
@@ -744,6 +753,7 @@ INLINE static struct io_props io_make_output_field_convert_spart_INT(
   }
   r.type = type;
   r.is_used = 1;
+  r.is_convertible_to_comoving = 1;
   r.dimension = dimension;
   r.importance = UNUSED;
   r.units = units;
@@ -788,6 +798,7 @@ INLINE static struct io_props io_make_output_field_convert_spart_FLOAT(
   }
   r.type = type;
   r.is_used = 1;
+  r.is_convertible_to_comoving = 1;
   r.dimension = dimension;
   r.importance = UNUSED;
   r.units = units;
@@ -832,6 +843,7 @@ INLINE static struct io_props io_make_output_field_convert_spart_DOUBLE(
   }
   r.type = type;
   r.is_used = 1;
+  r.is_convertible_to_comoving = 1;
   r.dimension = dimension;
   r.importance = UNUSED;
   r.units = units;
@@ -876,6 +888,7 @@ INLINE static struct io_props io_make_output_field_convert_spart_LONGLONG(
   }
   r.type = type;
   r.is_used = 1;
+  r.is_convertible_to_comoving = 1;
   r.dimension = dimension;
   r.importance = UNUSED;
   r.units = units;
@@ -929,6 +942,7 @@ INLINE static struct io_props io_make_output_field_convert_bpart_INT(
   }
   r.type = type;
   r.is_used = 1;
+  r.is_convertible_to_comoving = 1;
   r.dimension = dimension;
   r.importance = UNUSED;
   r.units = units;
@@ -973,6 +987,7 @@ INLINE static struct io_props io_make_output_field_convert_bpart_FLOAT(
   }
   r.type = type;
   r.is_used = 1;
+  r.is_convertible_to_comoving = 1;
   r.dimension = dimension;
   r.importance = UNUSED;
   r.units = units;
@@ -1017,6 +1032,7 @@ INLINE static struct io_props io_make_output_field_convert_bpart_DOUBLE(
   }
   r.type = type;
   r.is_used = 1;
+  r.is_convertible_to_comoving = 1;
   r.dimension = dimension;
   r.importance = UNUSED;
   r.units = units;
@@ -1061,6 +1077,7 @@ INLINE static struct io_props io_make_output_field_convert_bpart_LONGLONG(
   }
   r.type = type;
   r.is_used = 1;
+  r.is_convertible_to_comoving = 1;  
   r.dimension = dimension;
   r.importance = UNUSED;
   r.units = units;
@@ -1114,6 +1131,7 @@ INLINE static struct io_props io_make_output_field_convert_sink_INT(
   }
   r.type = type;
   r.is_used = 1;
+  r.is_convertible_to_comoving = 1;  
   r.dimension = dimension;
   r.importance = UNUSED;
   r.units = units;
@@ -1158,6 +1176,7 @@ INLINE static struct io_props io_make_output_field_convert_sink_FLOAT(
   }
   r.type = type;
   r.is_used = 1;
+  r.is_convertible_to_comoving = 1;
   r.dimension = dimension;
   r.importance = UNUSED;
   r.units = units;
@@ -1202,6 +1221,7 @@ INLINE static struct io_props io_make_output_field_convert_sink_DOUBLE(
   }
   r.type = type;
   r.is_used = 1;
+  r.is_convertible_to_comoving = 1;
   r.dimension = dimension;
   r.importance = UNUSED;
   r.units = units;
@@ -1246,6 +1266,7 @@ INLINE static struct io_props io_make_output_field_convert_sink_LONGLONG(
   }
   r.type = type;
   r.is_used = 1;
+  r.is_convertible_to_comoving = 1;
   r.dimension = dimension;
   r.importance = UNUSED;
   r.units = units;
