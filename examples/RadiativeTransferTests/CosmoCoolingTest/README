@@ -1,0 +1,7 @@
+Check on a simple case whether the cooling works correctly without any
+radiation being present: Use a uniform 3D box of hot gas and let it cool down.
+
+The reference solution assumes case A recombination.
+
+To run with GEAR-RT, compile swift with:
+    --with-rt=GEAR_3 --with-rt-riemann-solver=GLF --with-hydro=gizmo-mfv --with-riemann-solver=hllc --with-stars=GEAR --with-feedback=none  --with-grackle=$GRACKLE_ROOT 
