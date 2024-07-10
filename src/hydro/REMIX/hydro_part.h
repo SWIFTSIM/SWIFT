@@ -133,14 +133,23 @@ struct part {
   /*! Particle density. */
   float rho;
 
-  /* Pressure */
-  float P;
+  float rho_evolved;
 
-  /* Temperature */
-  float T;
+  float drho_dt;
 
-  /* flag 1 if h=h_max 0 if not */
-  int is_h_max;
+  float vac_switch;
+
+  float dv_norm_kernel[3][3];
+
+  float du_norm_kernel[3];
+
+  float drho_norm_kernel[3];
+
+  float dh_norm_kernel[3];
+
+  float m0_no_mean_kernel;
+
+  float grad_m0_no_mean_kernel[3];
 
   /* Store density/force specific stuff. */
   union {
@@ -178,21 +187,21 @@ struct part {
 
       float m1[3];
 
-      struct sym_matrix m2;
-
       float grad_m0[3];
 
       float grad_m1_term1[3][3];
+
+      float grad_m0_gradhterm;
+
+      float grad_m1_term1_gradhterm[3];
+
+      struct sym_matrix m2;
 
       struct sym_matrix grad_m2_term1_x;
 
       struct sym_matrix grad_m2_term1_y;
 
       struct sym_matrix grad_m2_term1_z;
-
-      float grad_m0_gradhterm;
-
-      float grad_m1_term1_gradhterm[3];
 
       struct sym_matrix grad_m2_term1_gradhterm;
 
@@ -265,6 +274,9 @@ struct part {
   /*! Time-step limiter information */
   struct timestep_limiter_data limiter_data;
 
+  /* flag 1 if h=h_max 0 if not */
+  char is_h_max;
+
 #ifdef SWIFT_DEBUG_CHECKS
 
   /* Time of the last drift */
@@ -279,24 +291,6 @@ struct part {
   /* Fixed specific entropy */
   float s_fixed;
 #endif
-
-  float rho_evolved;
-
-  float drho_dt;
-
-  float vac_switch;
-
-  float dv_norm_kernel[3][3];
-
-  float du_norm_kernel[3];
-
-  float drho_norm_kernel[3];
-
-  float dh_norm_kernel[3];
-
-  float m0_no_mean_kernel;
-
-  float grad_m0_no_mean_kernel[3];
 
 } SWIFT_STRUCT_ALIGN;
 
