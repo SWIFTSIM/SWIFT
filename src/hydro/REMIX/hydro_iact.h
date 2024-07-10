@@ -36,7 +36,6 @@
 #include "adiabatic_index.h"
 #include "const.h"
 #include "hydro_kernels_etc.h"
-#include "hydro_misc_utils.h"
 #include "hydro_parameters.h"
 #include "hydro_viscosity.h"
 #include "math.h"
