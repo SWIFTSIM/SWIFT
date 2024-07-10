@@ -173,9 +173,9 @@ INLINE static void stars_write_particles(const struct spart *sparts,
                                  "Masses of the star particles at birth time");
 
   if (with_cosmology) {
-    list[6] = io_make_output_field(
+    list[6] = io_make_physical_output_field(
         "BirthScaleFactors", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, sparts,
-        birth_scale_factor, "Scale-factors at which the stars were born");
+        birth_scale_factor, 0, "Scale-factors at which the stars were born");
   } else {
     list[6] = io_make_output_field("BirthTimes", FLOAT, 1, UNIT_CONV_TIME, 0.f,
                                    sparts, birth_time,
@@ -192,12 +192,12 @@ INLINE static void stars_write_particles(const struct spart *sparts,
       number_of_SNII_events,
       "Number of SNII energy injection events the stars went through.");
 
-  list[9] = io_make_output_field(
-      "BirthDensities", FLOAT, 1, UNIT_CONV_DENSITY, 0.f, sparts, birth_density,
+  list[9] = io_make_physical_output_field(
+      "BirthDensities", FLOAT, 1, UNIT_CONV_DENSITY, -3.f, sparts,
+      birth_density, 0,
       "Physical densities at the time of birth of the gas particles that "
-      "turned into stars (note that "
-      "we store the physical density at the birth redshift, no conversion is "
-      "needed)");
+      "turned into stars (note that we store the physical density at the birth "
+      "redshift, no conversion is needed)");
 
   list[10] =
       io_make_output_field("BirthTemperatures", FLOAT, 1, UNIT_CONV_TEMPERATURE,

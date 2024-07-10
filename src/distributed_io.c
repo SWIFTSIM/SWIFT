@@ -240,7 +240,8 @@ void write_distributed_array(
   io_write_attribute_s(h_data, "Expression for physical CGS units", buffer);
   io_write_attribute_s(h_data, "Lossy compression filter", comp_buffer);
   io_write_attribute_b(h_data, "Value stored as physical", props.is_physical);
-  io_write_attribute_b(h_data, "Property can be converted to comoving", props.is_convertible_to_comoving);
+  io_write_attribute_b(h_data, "Property can be converted to comoving",
+                       props.is_convertible_to_comoving);
 
   /* Write the actual number this conversion factor corresponds to */
   const double factor =
@@ -407,7 +408,8 @@ void write_array_virtual(struct engine* e, hid_t grp, const char* fileName_base,
   io_write_attribute_s(h_data, "Expression for physical CGS units", buffer);
   io_write_attribute_s(h_data, "Lossy compression filter", comp_buffer);
   io_write_attribute_b(h_data, "Value stored as physical", props.is_physical);
-  io_write_attribute_b(h_data, "Property can be converted to comoving", props.is_convertible_to_comoving);
+  io_write_attribute_b(h_data, "Property can be converted to comoving",
+                       props.is_convertible_to_comoving);
 
   /* Write the actual number this conversion factor corresponds to */
   const double factor =

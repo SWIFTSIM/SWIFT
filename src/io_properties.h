@@ -113,9 +113,10 @@ struct io_props {
   /* Is the entry actually written in the physical frame? */
   int is_physical;
 
-  /* Is the entry not convertible to comoving (only meaningful if the entry is physical) */
+  /* Is the entry not convertible to comoving (only meaningful if the entry is
+   * physical) */
   int is_convertible_to_comoving;
-  
+
   /* Is it compulsory ? (input only) */
   enum DATA_IMPORTANCE importance;
 
@@ -282,8 +283,18 @@ INLINE static struct io_props io_make_input_field_(
 #define io_make_output_field(name, type, dim, units, a_exponent, part, field, \
                              desc)                                            \
   io_make_output_field_(name, type, dim, units, a_exponent,                   \
-			(char *)(&(part[0]).field), sizeof(part[0]), desc,    \
-			/*physical=*/0, /*convertible_to_physical=*/1);
+                        (char *)(&(part[0]).field), sizeof(part[0]), desc,    \
+                        /*physical=*/0, /*convertible_to_physical=*/1);
+
+/**
+ * @brief Constructs an #io_props from its parameters
+ */
+#define io_make_physical_output_field(name, type, dim, units, a_exponent,  \
+                                      part, field, convertible, desc)      \
+  io_make_output_field_(name, type, dim, units, a_exponent,                \
+                        (char *)(&(part[0]).field), sizeof(part[0]), desc, \
+                        /*physical=*/1,                                    \
+                        /*convertible_to_physical=*/convertible);
 
 /**
  * @brief Construct an #io_props from its parameters
@@ -1085,7 +1096,7 @@ INLINE static struct io_props io_make_output_field_convert_bpart_LONGLONG(
   }
   r.type = type;
   r.is_used = 1;
-  r.is_convertible_to_comoving = 1;  
+  r.is_convertible_to_comoving = 1;
   r.dimension = dimension;
   r.importance = UNUSED;
   r.units = units;
@@ -1139,7 +1150,7 @@ INLINE static struct io_props io_make_output_field_convert_sink_INT(
   }
   r.type = type;
   r.is_used = 1;
-  r.is_convertible_to_comoving = 1;  
+  r.is_convertible_to_comoving = 1;
   r.dimension = dimension;
   r.importance = UNUSED;
   r.units = units;

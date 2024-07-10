@@ -1374,7 +1374,8 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
                     scheduler_addtask(s, task_type_pair, t->subtype, 0, 0,
                                       ci->progeny[j], cj->progeny[k]);
                 scheduler_splittask_hydro(tl, s);
-                tl->flags = space_getsid_and_swap_cells(s->space, &t->ci, &t->cj, shift);
+                tl->flags = space_getsid_and_swap_cells(s->space, &t->ci,
+                                                        &t->cj, shift);
               }
       }
     } /* pair interaction? */

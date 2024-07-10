@@ -313,7 +313,7 @@ INLINE static void rt_write_flavour(hid_t h_grp, hid_t h_grp_columns,
   io_write_attribute_f(dset, "a-scale exponent", 0.f);
   io_write_attribute_s(dset, "Expression for physical CGS units", buffer);
   // TODO
-  
+
   /* Write the actual number this conversion factor corresponds to */
   const double factor =
       units_cgs_conversion_factor(snapshot_units, UNIT_CONV_INV_TIME);
@@ -416,7 +416,6 @@ INLINE static void rt_write_flavour(hid_t h_grp, hid_t h_grp_columns,
                        buffer_cred);
   // TODO
 
-  
   /* Write the actual number this conversion factor corresponds to */
   /* TODO Mladen: check cosmology. reduced_speed_of_light is physical only for
    * now. */
