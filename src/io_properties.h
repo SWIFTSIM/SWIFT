@@ -282,7 +282,8 @@ INLINE static struct io_props io_make_input_field_(
 #define io_make_output_field(name, type, dim, units, a_exponent, part, field, \
                              desc)                                            \
   io_make_output_field_(name, type, dim, units, a_exponent,                   \
-                        (char *)(&(part[0]).field), sizeof(part[0]), desc)
+			(char *)(&(part[0]).field), sizeof(part[0]), desc,    \
+			/*physical=*/0, /*convertible_to_physical=*/1);
 
 /**
  * @brief Construct an #io_props from its parameters
@@ -295,13 +296,19 @@ INLINE static struct io_props io_make_input_field_(
  * @param field Pointer to the field of the first particle
  * @param partSize The size in byte of the particle
  * @param description Description of the field added to the meta-data.
+ * @param is_physical Is the quantity written in the physical frame?
+ * @param is_convertible_to_comoving Is the quantity convertible to comoving?
+ *
+ * The last argument only makes sense if the quantity is written to
+ * in physical.
  *
  * Do not call this function directly. Use the macro defined above.
  */
 INLINE static struct io_props io_make_output_field_(
     const char *name, enum IO_DATA_TYPE type, int dimension,
     enum unit_conversion_factor units, float a_exponent, char *field,
-    size_t partSize, const char *description) {
+    size_t partSize, const char *description, const int is_physical,
+    const int is_convertible_to_comoving) {
 
   struct io_props r;
   bzero(&r, sizeof(struct io_props));
@@ -314,7 +321,8 @@ INLINE static struct io_props io_make_output_field_(
   }
   r.type = type;
   r.is_used = 1;
-  r.is_convertible_to_comoving = 1;
+  r.is_physical = is_physical;
+  r.is_convertible_to_comoving = is_convertible_to_comoving;
   r.dimension = dimension;
   r.importance = UNUSED;
   r.units = units;
