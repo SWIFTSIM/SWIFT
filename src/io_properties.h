@@ -368,6 +368,11 @@ INLINE static struct io_props io_make_output_field_(
       name, type, dim, units, a_exponent, sizeof(part[0]), part, xpart,       \
       convert, desc, /*physical=*/0, /*convertible_to_physical=*/1);
 
+#define io_make_comoving_output_field_convert_part(                           \
+    name, type, dim, units, a_exponent, part, xpart, convert, desc)           \
+  io_make_output_field_convert_part(name, type, dim, units, a_exponent, part, \
+                                    xpart, convert, desc)
+
 /**
  * @brief Construct an #io_props from its parameters
  *
@@ -426,6 +431,11 @@ INLINE static struct io_props io_make_output_field_convert_part_(
       name, type, dim, units, a_exponent, sizeof(gpart[0]), gpart, convert,    \
       desc, /*physical=*/0, /*convertible_to_physical=*/1)
 
+#define io_make_comoving_output_field_convert_gpart(                     \
+    name, type, dim, units, a_exponent, gpart, convert, desc)            \
+  io_make_output_field_convert_gpart(name, type, dim, units, a_exponent, \
+                                     gpart, convert, desc)
+
 /**
  * @brief Construct an #io_props from its parameters
  *
@@ -480,6 +490,11 @@ INLINE static struct io_props io_make_output_field_convert_gpart_(
   io_make_output_field_convert_spart_(                                         \
       name, type, dim, units, a_exponent, sizeof(spart[0]), spart, convert,    \
       desc, /*physical=*/0, /*convertible_to_physical=*/1)
+
+#define io_make_comoving_output_field_convert_spart(                     \
+    name, type, dim, units, a_exponent, spart, convert, desc)            \
+  io_make_output_field_convert_spart(name, type, dim, units, a_exponent, \
+                                     spart, convert, desc)
 
 /**
  * @brief Construct an #io_props from its parameters
@@ -536,6 +551,11 @@ INLINE static struct io_props io_make_output_field_convert_spart_(
       name, type, dim, units, a_exponent, sizeof(bpart[0]), bpart, convert,    \
       desc, /*physical=*/0, /*convertible_to_physical=*/1)
 
+#define io_make_comoving_output_field_convert_bpart(                     \
+    name, type, dim, units, a_exponent, bpart, convert, desc)            \
+  io_make_output_field_convert_bpart(name, type, dim, units, a_exponent, \
+                                     bpart, convert, desc)
+
 /**
  * @brief Construct an #io_props from its parameters
  *
@@ -590,6 +610,11 @@ INLINE static struct io_props io_make_output_field_convert_bpart_(
   io_make_output_field_convert_sink_(                                         \
       name, type, dim, units, a_exponent, sizeof(sink[0]), sink, convert,     \
       desc, /*physical=*/0, /*convertible_to_physical=*/1)
+
+#define io_make_comoving_output_field_convert_sink(                           \
+    name, type, dim, units, a_exponent, ink, convert, desc)                   \
+  io_make_output_field_convert_sink(name, type, dim, units, a_exponent, sink, \
+                                    convert, desc)
 
 /**
  * @brief Construct an #io_props from its parameters
