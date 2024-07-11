@@ -109,6 +109,22 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   pj->density.rot_v[1] += facj * curlvr[1];
   pj->density.rot_v[2] += facj * curlvr[2];
 
+  /* Geometry stuff (// to MFV) for pi
+   *
+   * these are eqns. (1) and (2) in the summary */
+  pi->geometry.volume += wi;
+  for (int k = 0; k < 3; k++)
+    for (int l = 0; l < 3; l++)
+      pi->geometry.matrix_E[k][l] += dx[k] * dx[l] * wi;
+
+  /* Geometry stuff (// to MFV) for pj
+   *
+   * these are eqns. (1) and (2) in the summary */
+  pj->geometry.volume += wj;
+  for (int k = 0; k < 3; k++)
+    for (int l = 0; l < 3; l++)
+      pj->geometry.matrix_E[k][l] += dx[k] * dx[l] * wj;
+
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
   pi->n_density += wi;
   pj->n_density += wj;
@@ -172,6 +188,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   pi->density.rot_v[0] += faci * curlvr[0];
   pi->density.rot_v[1] += faci * curlvr[1];
   pi->density.rot_v[2] += faci * curlvr[2];
+
+  /* Geometry stuff */
+  /* these are eqns. (1) and (2) in the summary */
+  pi->geometry.volume += wi;
+  for (int k = 0; k < 3; k++)
+    for (int l = 0; l < 3; l++)
+      pi->geometry.matrix_E[k][l] += dx[k] * dx[l] * wi;
 
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
   pi->n_density += wi;

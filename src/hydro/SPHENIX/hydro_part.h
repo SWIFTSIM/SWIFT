@@ -216,6 +216,21 @@ struct part {
     } force;
   };
 
+    /* Geometrical quantities used for hydro. */
+  struct {
+
+    /* Volume of the particle. */
+    float volume;
+
+    /* Geometrical shear matrix used to calculate second order accurate
+       gradients */
+    float matrix_E[3][3];
+
+    /* Correction factor for wcount. */
+    float wcorr;
+
+  } geometry;
+
   /*! Additional data used for adaptive softening */
   struct adaptive_softening_part_data adaptive_softening_data;
 

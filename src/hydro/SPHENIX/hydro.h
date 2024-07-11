@@ -565,6 +565,18 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->viscosity.div_v = 0.f;
   p->diffusion.laplace_u = 0.f;
 
+  /* Geometry things */
+  p->geometry.volume = 0.0f;
+  p->geometry.matrix_E[0][0] = 0.0f;
+  p->geometry.matrix_E[0][1] = 0.0f;
+  p->geometry.matrix_E[0][2] = 0.0f;
+  p->geometry.matrix_E[1][0] = 0.0f;
+  p->geometry.matrix_E[1][1] = 0.0f;
+  p->geometry.matrix_E[1][2] = 0.0f;
+  p->geometry.matrix_E[2][0] = 0.0f;
+  p->geometry.matrix_E[2][1] = 0.0f;
+  p->geometry.matrix_E[2][2] = 0.0f;
+
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
   p->N_density = 1; /* Self contribution */
   p->N_force = 0;
@@ -628,6 +640,73 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   /* Finish calculation of the velocity divergence */
   p->viscosity.div_v *= h_inv_dim_plus_one * rho_inv * a_inv2;
   p->viscosity.div_v += cosmo->H * hydro_dimension;
+
+  /* Geometry stuff */
+  /* Final operation on the geometry. */
+  /* we multiply with the smoothing kernel normalization ih3 and calculate the
+   * volume */
+  const float ih = 1.0f / h;
+  const float ihdim = pow_dimension(ih);
+  const float volume_inv = ihdim * (p->geometry.volume + kernel_root);
+  const float volume = 1.0f / volume_inv;
+  p->geometry.volume = volume;
+
+  /* we multiply with the smoothing kernel normalization */
+  p->geometry.matrix_E[0][0] *= ihdim;
+  p->geometry.matrix_E[0][1] *= ihdim;
+  p->geometry.matrix_E[0][2] *= ihdim;
+  p->geometry.matrix_E[1][0] *= ihdim;
+  p->geometry.matrix_E[1][1] *= ihdim;
+  p->geometry.matrix_E[1][2] *= ihdim;
+  p->geometry.matrix_E[2][0] *= ihdim;
+  p->geometry.matrix_E[2][1] *= ihdim;
+  p->geometry.matrix_E[2][2] *= ihdim;
+
+  /* Check the condition number to see if we have a stable geometry. */
+  const float condition_number_E =
+      p->geometry.matrix_E[0][0] * p->geometry.matrix_E[0][0] +
+      p->geometry.matrix_E[0][1] * p->geometry.matrix_E[0][1] +
+      p->geometry.matrix_E[0][2] * p->geometry.matrix_E[0][2] +
+      p->geometry.matrix_E[1][0] * p->geometry.matrix_E[1][0] +
+      p->geometry.matrix_E[1][1] * p->geometry.matrix_E[1][1] +
+      p->geometry.matrix_E[1][2] * p->geometry.matrix_E[1][2] +
+      p->geometry.matrix_E[2][0] * p->geometry.matrix_E[2][0] +
+      p->geometry.matrix_E[2][1] * p->geometry.matrix_E[2][1] +
+      p->geometry.matrix_E[2][2] * p->geometry.matrix_E[2][2];
+
+  float condition_number = 0.0f;
+  if (invert_dimension_by_dimension_matrix(p->geometry.matrix_E) != 0) {
+    /* something went wrong in the inversion; force bad condition number */
+    condition_number = const_gizmo_max_condition_number + 1.0f;
+  } else {
+    const float condition_number_Einv =
+        p->geometry.matrix_E[0][0] * p->geometry.matrix_E[0][0] +
+        p->geometry.matrix_E[0][1] * p->geometry.matrix_E[0][1] +
+        p->geometry.matrix_E[0][2] * p->geometry.matrix_E[0][2] +
+        p->geometry.matrix_E[1][0] * p->geometry.matrix_E[1][0] +
+        p->geometry.matrix_E[1][1] * p->geometry.matrix_E[1][1] +
+        p->geometry.matrix_E[1][2] * p->geometry.matrix_E[1][2] +
+        p->geometry.matrix_E[2][0] * p->geometry.matrix_E[2][0] +
+        p->geometry.matrix_E[2][1] * p->geometry.matrix_E[2][1] +
+        p->geometry.matrix_E[2][2] * p->geometry.matrix_E[2][2];
+
+    condition_number =
+        hydro_dimension_inv * sqrtf(condition_number_E * condition_number_Einv);
+  }
+
+  if (condition_number > const_gizmo_max_condition_number &&
+      p->geometry.wcorr > const_gizmo_min_wcorr) {
+#ifdef GIZMO_PATHOLOGICAL_ERROR
+    error("Condition number larger than %g (%g)!",
+          const_gizmo_max_condition_number, condition_number);
+#endif
+#ifdef GIZMO_PATHOLOGICAL_WARNING
+    message("Condition number too large: %g (> %g, p->id: %llu)!",
+            condition_number, const_gizmo_max_condition_number, p->id);
+#endif
+    /* add a correction to the number of neighbours for this particle */
+    p->geometry.wcorr = const_gizmo_w_correction_factor * p->geometry.wcorr;
+  }
 
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
   p->n_density += kernel_root;
@@ -799,6 +878,18 @@ __attribute__((always_inline)) INLINE static void hydro_part_has_no_neighbours(
   /* Probably not shocking, so this is safe to do */
   p->viscosity.div_v = 0.f;
   p->diffusion.laplace_u = 0.f;
+
+  /* Geometry things */
+  p->geometry.volume = 1.0f;
+  p->geometry.matrix_E[0][0] = 1.0f;
+  p->geometry.matrix_E[0][1] = 0.0f;
+  p->geometry.matrix_E[0][2] = 0.0f;
+  p->geometry.matrix_E[1][0] = 0.0f;
+  p->geometry.matrix_E[1][1] = 1.0f;
+  p->geometry.matrix_E[1][2] = 0.0f;
+  p->geometry.matrix_E[2][0] = 0.0f;
+  p->geometry.matrix_E[2][1] = 0.0f;
+  p->geometry.matrix_E[2][2] = 1.0f;
 }
 
 /**
@@ -1223,6 +1314,38 @@ __attribute__((always_inline)) INLINE static void
 hydro_set_init_internal_energy(struct part *p, float u_init) {
 
   p->u = u_init;
+}
+
+/**
+ * @brief Modifies the thermal state of a particle to the imposed internal
+ * energy
+ *
+ * This overrides the current state of the particle but does *not* change its
+ * time-derivatives
+ *
+ * @param p The particle
+ * @param u The new internal energy
+ */
+__attribute__((always_inline)) INLINE static void hydro_set_internal_energy(
+    struct part* restrict p, float u) {
+
+  /* conserved.energy is NOT the specific energy (u), but the total thermal
+     energy (u*m) */
+  p->u = u ;
+  p->force.pressure = hydro_gamma_minus_one * p->rho * u;
+}
+
+
+/**
+ * @brief Check if the gradient matrix for this particle is well behaved.
+ *
+ * @param p Particle.
+ * @return 1 if the gradient matrix is well behaved, 0 otherwise.
+ */
+__attribute__((always_inline)) INLINE static int
+hydro_part_geometry_well_behaved(const struct part* restrict p) {
+
+  return p->geometry.wcorr > const_gizmo_min_wcorr;
 }
 
 #endif /* SWIFT_SPHENIX_HYDRO_H */
