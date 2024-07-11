@@ -1332,7 +1332,6 @@ __attribute__((always_inline)) INLINE static void hydro_set_internal_energy(
   /* conserved.energy is NOT the specific energy (u), but the total thermal
      energy (u*m) */
   p->u = u ;
-  p->force.pressure = hydro_gamma_minus_one * p->rho * u;
 }
 
 
