@@ -584,10 +584,23 @@ __attribute__((always_inline)) INLINE static void rt_kick_extra(
    * The relevant time scale is the hydro time step for the mass fluxes,
    * not the RT times. We also need to prevent the kick to apply the mass
    * fluxes twice, so exit if the particle time step < 0 */
+#if defined(GIZMO_MFV_SPH)
+  const float dt = p->flux.dt;
+#else
+  /* The FMV flux.dt is set to dt_therm in the hydro files. So, set the same
+     timestep for consistency (TO BE CHECKED) */
+  const float dt = dt_therm;
+#endif
 
-  if (p->flux.dt > 0.0f) {
+  /* message("Timestep: %e, dt_hydro = %e, dt_therm = %e, dt_grav = %e", dt, dt_hydro, dt_therm, dt_grav); */
+
+  if (dt > 0.0f) {
     /* Update the mass fraction changes due to interparticle fluxes */
+#if defined(GIZMO_MFV_SPH)
     const float current_mass = p->conserved.mass;
+#else
+    const float current_mass = p->mass;
+#endif
 
     if ((current_mass <= 0.f) || (p->rho <= 0.f)) {
       /* Deal with vacuum. Let hydro deal with actuall mass < 0, just do your

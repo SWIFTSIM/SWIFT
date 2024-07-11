@@ -214,10 +214,18 @@ rt_tchem_set_particle_quantities_for_test(struct part* restrict p) {
 
   float mass_corr = density / p->rho;
   p->rho = density;
-  p->conserved.mass *= mass_corr;
+
+#if defined(GIZMO_MFV_SPH)
+   p->conserved.mass *= mass_corr;
   /* This assumes zero velocity */
-  p->conserved.energy = p->conserved.mass * internal_energy;
-  hydro_set_internal_energy(p, internal_energy);
+   p->conserved.energy = p->conserved.mass * internal_energy;
+   hydro_set_internal_energy(p, internal_energy);
+#else
+   p->mass *= mass_corr;
+   p->u = internal_energy;
+   /* No conserved energy in SPH. Hence, nothing to do (TODO: Verify). */
+#endif
+
 }
 
 /**
