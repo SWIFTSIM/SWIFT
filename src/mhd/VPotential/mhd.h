@@ -32,12 +32,14 @@
  * @param xp the #xpart.
  */
 __attribute__((always_inline)) INLINE static float mhd_get_magnetic_energy(
-    const struct part *p, const struct xpart *xp, const float mu_0) {
+    const struct part *p, const struct xpart *xp, const float mu_0, const float a) {
+
+  const float afact = pow(a,2.f*mhd_comoving_factor);
 
   const float b2 = p->mhd_data.BPred[0] * p->mhd_data.BPred[0] +
                    p->mhd_data.BPred[1] * p->mhd_data.BPred[1] +
                    p->mhd_data.BPred[2] * p->mhd_data.BPred[2];
-  return 0.5f * b2 / mu_0 * p->mass / p->rho;
+  return 0.5f * afact * b2 / mu_0 * p->mass / p->rho;
 }
 /**
  * @brief Returns the magnetic field squared contained in the particle.
@@ -121,8 +123,7 @@ __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
     const struct hydro_props *hydro_properties, const struct cosmology *cosmo,
     const float mu_0) {
 
-  const float afac_divB = pow(cosmo->a, -mhd_comoving_factor - 0.5f);
-  //const float afac_divB = pow(cosmo->a, -mhd_comoving_factor*0.5f - 0.5f);
+  const float afac_divB = (cosmo->a / cosmo->a_factor_sound_speed);
   const float afac_resistive = cosmo->a * cosmo->a;
   /* Dt from 1/DivOperator(Alfven speed) */
 
@@ -159,8 +160,8 @@ __attribute__((always_inline)) INLINE static float mhd_get_magnetosonic_speed(
   /* Compute effective sound speeds */
   const float cs = p->force.soundspeed;
   const float cs2 = cs * cs;
-  const float afact_ratio =
-      pow(a, (2.f * mhd_comoving_factor + 3.f * hydro_gamma));
+  const float afact_ratio = 1.f;
+//      pow(a, (2.f * mhd_comoving_factor + 3.f * hydro_gamma));
   const float v_A2 = afact_ratio * permeability_inv * B2 / rho;
   const float c_ms2 = cs2 + v_A2;
 
@@ -224,43 +225,19 @@ __attribute__((always_inline)) INLINE static float mhd_signal_velocity(
     const struct part *restrict pj, const float mu_ij, const float beta,
     const float a, const float mu_0) {
 
-  const float a_fac =
-      2.f * mhd_comoving_factor + 3.f + 3.f * (hydro_gamma - 1.f);
-  const float ci = pi->force.soundspeed;
-  const float cj = pj->force.soundspeed;
-  const float r2 = (dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]);
-  const float r_inv = r2 ? 1.f / sqrt(r2) : 0.0f;
+  const float v_sigi = mhd_get_magnetosonic_speed(pi, a, mu_0);
+  const float v_sigj = mhd_get_magnetosonic_speed(pj, a, mu_0);
 
-  const float b2_i = (pi->mhd_data.BPred[0] * pi->mhd_data.BPred[0] +
-                      pi->mhd_data.BPred[1] * pi->mhd_data.BPred[1] +
-                      pi->mhd_data.BPred[2] * pi->mhd_data.BPred[2]);
-  const float b2_j = (pj->mhd_data.BPred[0] * pj->mhd_data.BPred[0] +
-                      pj->mhd_data.BPred[1] * pj->mhd_data.BPred[1] +
-                      pj->mhd_data.BPred[2] * pj->mhd_data.BPred[2]);
-  const float vcsa2_i = ci * ci + pow(a, a_fac) * b2_i / pi->rho * 0.5 / mu_0;
-  const float vcsa2_j = cj * cj + pow(a, a_fac) * b2_j / pj->rho * 0.5 / mu_0;
-  float Bpro2_i =
-      (pi->mhd_data.BPred[0] * dx[0] + pi->mhd_data.BPred[1] * dx[1] +
-       pi->mhd_data.BPred[2] * dx[2]) *
-      r_inv;
-  Bpro2_i *= Bpro2_i;
-  float mag_speed_i = sqrtf(
-      0.5 * (vcsa2_i +
-             sqrtf(max((vcsa2_i * vcsa2_i - 4.f * ci * ci * pow(a, a_fac) *
-                                                Bpro2_i / pi->rho * 0.5 / mu_0),
-                       0.f))));
-  float Bpro2_j =
-      (pj->mhd_data.BPred[0] * dx[0] + pj->mhd_data.BPred[1] * dx[1] +
-       pj->mhd_data.BPred[2] * dx[2]) *
-      r_inv;
-  Bpro2_j *= Bpro2_j;
-  float mag_speed_j = sqrtf(
-      0.5 * (vcsa2_j +
-             sqrtf(max((vcsa2_j * vcsa2_j - 4.f * cj * cj * pow(a, a_fac) *
-                                                Bpro2_j / pj->rho * 0.5 / mu_0),
-                       0.f))));
+  /*
+  const float v_sigi =
+      mhd_get_fast_magnetosonic_wave_phase_velocity(dx, pi, a, mu_0);
+  const float v_sigj =
+      mhd_get_fast_magnetosonic_wave_phase_velocity(dx, pj, a, mu_0);
+  */
 
-  return (mag_speed_i + mag_speed_j - beta * mu_ij);
+  const float v_sig = v_sigi + v_sigj - beta * mu_ij;
+
+  return v_sig;
 }
 
 /**
@@ -275,19 +252,21 @@ __attribute__((always_inline)) INLINE static float hydro_get_dGau_dt(
     const float mu0) {
 
   const float v_sig = mhd_get_magnetosonic_speed(p, c->a, mu0);
-  const float afac1 = pow(c->a, 2.f * c->a_factor_sound_speed);
-  const float afac2 = pow(c->a, (c->a_factor_sound_speed + 1.f));
+  //const float afac1 = pow(c->a, 2.f * c->a_factor_sound_speed);
+  //const float afac2 = pow(c->a, (c->a_factor_sound_speed - 1.f));
+  const float afac1 = pow(c->a_factor_sound_speed, 2.f);
+  const float afac2 = c->a_factor_sound_speed / c->a;
 
   /* Hyperbolic term */
   const float Source_Term = 2.f * afac1 * p->mhd_data.divA * (v_sig * v_sig);
   /* Parabolic evolution term */
   const float Damping_Term = 4.f * afac2 * v_sig * Gauge / p->h;
   /* Density change term */
-  const float DivV_Term = hydro_get_div_v(p) * Gauge;
+  const float DivV_Term = 1.f * ( hydro_get_div_v(p) - 3.f * c->H ) * Gauge;
   /* Cosmological term */
   const float Hubble_Term = (2.f + mhd_comoving_factor) * c->H * Gauge;
 
-  return (-Source_Term - Damping_Term - DivV_Term - Hubble_Term) * c->a * c->a;
+  return (-Source_Term - Damping_Term - DivV_Term - Hubble_Term) * c->a * c->a ;
 }
 
 /**
@@ -344,7 +323,7 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_gradient(
     struct part *restrict p, struct xpart *restrict xp,
     const struct cosmology *cosmo, const struct hydro_props *hydro_props) {
 
-  p->force.balsara = 1.f;
+    //p->force.balsara = 1.f;
 }
 
 /**
@@ -515,10 +494,12 @@ __attribute__((always_inline)) INLINE static void mhd_predict_extra(
     const struct entropy_floor_properties *floor_props, const float mu_0) {
 
   /* Predict the VP magnetic field */  ///// May we need to predict B? XXX
-  p->mhd_data.APred[0] += p->mhd_data.dAdt[0] * dt_therm;
-  p->mhd_data.APred[1] += p->mhd_data.dAdt[1] * dt_therm;
-  p->mhd_data.APred[2] += p->mhd_data.dAdt[2] * dt_therm;
-
+  //const float afact=cosmo->a * cosmo->a;
+/*  const float afact=1.0f;
+  p->mhd_data.APred[0] += p->mhd_data.dAdt[0] * dt_therm * afact;
+  p->mhd_data.APred[1] += p->mhd_data.dAdt[1] * dt_therm * afact;
+  p->mhd_data.APred[2] += p->mhd_data.dAdt[2] * dt_therm * afact;
+*/
   float change_Gau =
       hydro_get_dGau_dt(p, p->mhd_data.Gau, cosmo, mu_0) * dt_therm;
   p->mhd_data.Gau += change_Gau;
@@ -540,7 +521,7 @@ __attribute__((always_inline)) INLINE static void mhd_end_force(
     struct part *p, const struct cosmology *cosmo,
     const struct hydro_props *hydro_props, const float mu_0) {
 
-  float a_fac = (1.f + mhd_comoving_factor) * cosmo->a * cosmo->a * cosmo->H;
+  float a_fac = (2.f + mhd_comoving_factor) * cosmo->a * cosmo->a * cosmo->H;
   p->mhd_data.dAdt[0] -= a_fac * p->mhd_data.APred[0];
   p->mhd_data.dAdt[1] -= a_fac * p->mhd_data.APred[1];
   p->mhd_data.dAdt[2] -= a_fac * p->mhd_data.APred[2];
@@ -566,7 +547,14 @@ __attribute__((always_inline)) INLINE static void mhd_kick_extra(
     struct part *p, struct xpart *xp, const float dt_therm, const float dt_grav,
     const float dt_hydro, const float dt_kick_corr,
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
-    const struct entropy_floor_properties *floor_props) {}
+    const struct entropy_floor_properties *floor_props) {
+
+  const float afact=1.0f;
+  p->mhd_data.APred[0] += p->mhd_data.dAdt[0] * dt_therm * afact;
+  p->mhd_data.APred[1] += p->mhd_data.dAdt[1] * dt_therm * afact;
+  p->mhd_data.APred[2] += p->mhd_data.dAdt[2] * dt_therm * afact;
+
+}
 
 /**
  * @brief Converts MHD quantities of a particle at the start of a run
