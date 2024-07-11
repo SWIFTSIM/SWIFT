@@ -18,13 +18,12 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include <config.h>
+#include "../config.h"
 
 /* Some standard headers. */
 #include <float.h>
 #include <limits.h>
 #include <math.h>
-#include <sched.h>
 #include <stdlib.h>
 #include <string.h>
 #ifdef SWIFT_DEBUG_THREADPOOL
@@ -40,24 +39,12 @@
 #include "error.h"
 #include "minmax.h"
 
-/* Keys for thread specific data. */
-static pthread_key_t threadpool_tid;
-
-/* Affinity mask shared by all threads, and if set. */
-#ifdef HAVE_SETAFFINITY
-static cpu_set_t thread_affinity;
-static int thread_affinity_set = 0;
-#endif
-
-/* Local declarations. */
-static void threadpool_apply_affinity_mask(void);
-
 #ifdef SWIFT_DEBUG_THREADPOOL
 /**
  * @brief Store a log entry of the given chunk.
  */
-static void threadpool_log(struct threadpool *tp, int tid, size_t chunk_size,
-                           ticks tic, ticks toc) {
+void threadpool_log(struct threadpool *tp, int tid, size_t chunk_size,
+                    ticks tic, ticks toc) {
   struct mapper_log *log = &tp->logs[tid > 0 ? tid : 0];
 
   /* Check if we need to re-allocate the log buffer. */
@@ -120,7 +107,8 @@ void threadpool_dump_log(struct threadpool *tp, const char *filename,
 
       /* If the name was not found, make a new entry. */
       if (nid == max_names) {
-        for (int j = 1; j < max_names; j++) names[j - 1] = names[j];
+        for (int j = 1; j < max_names; j++)
+          names[j - 1] = names[j];
         names[0].map_function = entry->map_function;
         Dl_info dl_info;
         dladdr(entry->map_function, &dl_info);
@@ -134,43 +122,40 @@ void threadpool_dump_log(struct threadpool *tp, const char *filename,
     }
 
     /* Clear the log if requested. */
-    if (reset) log->count = 0;
+    if (reset)
+      log->count = 0;
   }
 
   /* Close the file. */
   fclose(fd);
 }
-#endif  // SWIFT_DEBUG_THREADPOOL
+#endif // SWIFT_DEBUG_THREADPOOL
 
 /**
  * @brief Runner main loop, get a chunk and call the mapper function.
  */
-static void threadpool_chomp(struct threadpool *tp, int tid) {
-
-  /* Store the thread ID as thread specific data. */
-  int localtid = tid;
-  pthread_setspecific(threadpool_tid, &localtid);
+void threadpool_chomp(struct threadpool *tp, int tid) {
 
   /* Loop until we can't get a chunk. */
   while (1) {
     /* Compute the desired chunk size. */
     ptrdiff_t chunk_size;
     if (tp->map_data_chunk == threadpool_uniform_chunk_size) {
-      chunk_size = ((tid + 1) * tp->map_data_size / tp->num_threads) -
-                   (tid * tp->map_data_size / tp->num_threads);
+      chunk_size = (int)((tid + 1) * tp->map_data_size / tp->num_threads) -
+                   (int)(tid * tp->map_data_size / tp->num_threads);
     } else {
       chunk_size =
           (tp->map_data_size - tp->map_data_count) / (2 * tp->num_threads);
-      if (chunk_size > tp->map_data_chunk) chunk_size = tp->map_data_chunk;
+      if (chunk_size > tp->map_data_chunk)
+        chunk_size = tp->map_data_chunk;
     }
-    if (chunk_size < 1) chunk_size = 1;
-
-    /* A chunk cannot exceed INT_MAX, as we use int elements in map_function. */
-    if (chunk_size > INT_MAX) chunk_size = INT_MAX;
+    if (chunk_size < 1)
+      chunk_size = 1;
 
     /* Get a chunk and check its size. */
     size_t task_ind = atomic_add(&tp->map_data_count, chunk_size);
-    if (task_ind >= tp->map_data_size) break;
+    if (task_ind >= tp->map_data_size)
+      break;
     if (task_ind + chunk_size > tp->map_data_size)
       chunk_size = tp->map_data_size - task_ind;
 
@@ -178,28 +163,18 @@ static void threadpool_chomp(struct threadpool *tp, int tid) {
 #ifdef SWIFT_DEBUG_THREADPOOL
     ticks tic = getticks();
 #endif
-
     tp->map_function((char *)tp->map_data + (tp->map_data_stride * task_ind),
                      chunk_size, tp->map_extra_data);
-
 #ifdef SWIFT_DEBUG_THREADPOOL
     threadpool_log(tp, tid, chunk_size, tic, getticks());
 #endif
   }
 }
 
-/**
- * @brief The thread start routine. Loops until told to exit.
- *
- * @param data the threadpool we are part of.
- */
-static void *threadpool_runner(void *data) {
+void *threadpool_runner(void *data) {
 
   /* Our threadpool. */
   struct threadpool *tp = (struct threadpool *)data;
-
-  /* Our affinity, if set. */
-  threadpool_apply_affinity_mask();
 
   /* Main loop. */
   while (1) {
@@ -212,7 +187,8 @@ static void *threadpool_runner(void *data) {
 
     /* If no map function is specified, just die. We use this as a mechanism
        to shut down threads without leaving the barriers in an invalid state. */
-    if (tp->map_function == NULL) pthread_exit(NULL);
+    if (tp->map_function == NULL)
+      pthread_exit(NULL);
 
     /* Do actual work. */
     threadpool_chomp(tp, atomic_inc(&tp->num_threads_running));
@@ -230,13 +206,6 @@ void threadpool_init(struct threadpool *tp, int num_threads) {
   /* Initialize the thread counters. */
   tp->num_threads = num_threads;
 
-  /* Create thread local data areas. Only do this once for all threads. */
-  pthread_key_create(&threadpool_tid, NULL);
-
-  /* Store the main thread ID as thread specific data. */
-  static int localtid = 0;
-  pthread_setspecific(threadpool_tid, &localtid);
-
 #ifdef SWIFT_DEBUG_THREADPOOL
   if ((tp->logs = (struct mapper_log *)malloc(sizeof(struct mapper_log) *
                                               num_threads)) == NULL)
@@ -252,7 +221,8 @@ void threadpool_init(struct threadpool *tp, int num_threads) {
 
   /* If there is only a single thread, do nothing more as of here as
      we will just do work in the (blocked) calling thread. */
-  if (num_threads == 1) return;
+  if (num_threads == 1)
+    return;
 
   /* Init the barriers. */
   if (swift_barrier_init(&tp->wait_barrier, NULL, num_threads) != 0 ||
@@ -307,45 +277,16 @@ void threadpool_map(struct threadpool *tp, threadpool_map_function map_function,
                     void *extra_data) {
 
 #ifdef SWIFT_DEBUG_THREADPOOL
-  ticks tic_total = getticks();
+  ticks tic = getticks();
 #endif
 
   /* If we just have a single thread, call the map function directly. */
   if (tp->num_threads == 1) {
-
-    if (N <= INT_MAX) {
-      map_function(map_data, N, extra_data);
-
+    map_function(map_data, N, extra_data);
 #ifdef SWIFT_DEBUG_THREADPOOL
-      tp->map_function = map_function;
-      threadpool_log(tp, 0, N, tic_total, getticks());
+    tp->map_function = map_function;
+    threadpool_log(tp, 0, N, tic, getticks());
 #endif
-    } else {
-
-      /* N > INT_MAX, we need to do this in chunks as map_function only takes
-       * an int. */
-      size_t chunk_size = INT_MAX;
-      size_t data_size = N;
-      size_t data_count = 0;
-      while (1) {
-
-/* Call the mapper function. */
-#ifdef SWIFT_DEBUG_THREADPOOL
-        ticks tic = getticks();
-#endif
-        map_function((char *)map_data + (stride * data_count), chunk_size,
-                     extra_data);
-#ifdef SWIFT_DEBUG_THREADPOOL
-        threadpool_log(tp, 0, chunk_size, tic, getticks());
-#endif
-        /* Get the next chunk and check its size. */
-        data_count += chunk_size;
-        if (data_count >= data_size) break;
-        if (data_count + chunk_size > data_size)
-          chunk_size = data_size - data_count;
-      }
-    }
-
     return;
   }
 
@@ -355,7 +296,7 @@ void threadpool_map(struct threadpool *tp, threadpool_map_function map_function,
   tp->map_data_count = 0;
   if (chunk == threadpool_auto_chunk_size) {
     tp->map_data_chunk =
-        max((N / (tp->num_threads * threadpool_default_chunk_ratio)), 1U);
+        max((int)(N / (tp->num_threads * threadpool_default_chunk_ratio)), 1);
   } else if (chunk == threadpool_uniform_chunk_size) {
     tp->map_data_chunk = threadpool_uniform_chunk_size;
   } else {
@@ -377,7 +318,77 @@ void threadpool_map(struct threadpool *tp, threadpool_map_function map_function,
 
 #ifdef SWIFT_DEBUG_THREADPOOL
   /* Log the total call time to thread id -1. */
-  threadpool_log(tp, -1, N, tic_total, getticks());
+  threadpool_log(tp, -1, N, tic, getticks());
+#endif
+}
+
+/**
+ * @brief Map a function to an array of data in parallel using a #threadpool.
+ *
+ * The function @c map_function is called on each element of @c map_data
+ * in parallel.
+ *
+ * @param tp The #threadpool on which to run.
+ * @param map_function The function that will be applied to the map data.
+ * @param map_data The data on which the mapping function will be called.
+ * @param N Number of elements in @c map_data.
+ * @param stride Size, in bytes, of each element of @c map_data.
+ * @param chunk Number of map data elements to pass to the function at a time,
+ *        or #threadpool_auto_chunk_size to choose the number dynamically
+ *        depending on the number of threads and tasks (recommended), or
+ *        #threadpool_uniform_chunk_size to spread the tasks evenly over the
+ *        threads in one go.
+ * @param extra_data Addtitional pointer that will be passed to the mapping
+ *        function, may contain additional data.
+ */
+void threadpool_map_v2(struct threadpool *tp,
+                       threadpool_map_function map_function, void *map_data,
+                       size_t N, int stride, int chunk, void *extra_data,
+                       int target_gpu_tasks) {
+
+#ifdef SWIFT_DEBUG_THREADPOOL
+  ticks tic = getticks();
+#endif
+
+  /* If we just have a single thread, call the map function directly. */
+  if (tp->num_threads == 1) {
+    map_function(map_data, N, extra_data);
+#ifdef SWIFT_DEBUG_THREADPOOL
+    tp->map_function = map_function;
+    threadpool_log(tp, 0, N, tic, getticks());
+#endif
+    return;
+  }
+
+  /* Set the map data and signal the threads. */
+  tp->map_data_stride = stride;
+  tp->map_data_size = N;
+  tp->map_data_count = 0;
+  if (chunk == threadpool_auto_chunk_size) {
+    tp->map_data_chunk =
+        max((int)(N / (tp->num_threads * threadpool_default_chunk_ratio)), 1);
+  } else if (chunk == threadpool_uniform_chunk_size) {
+    tp->map_data_chunk = threadpool_uniform_chunk_size;
+  } else {
+    tp->map_data_chunk = chunk;
+  }
+  tp->map_function = map_function;
+  tp->map_data = map_data;
+  tp->map_extra_data = extra_data;
+  tp->num_threads_running = 0;
+
+  /* Wait for all the threads to be up and running. */
+  swift_barrier_wait(&tp->run_barrier);
+
+  /* Do some work while I'm at it. */
+  threadpool_chomp(tp, tp->num_threads - 1);
+
+  /* Wait for all threads to be done. */
+  swift_barrier_wait(&tp->wait_barrier);
+
+#ifdef SWIFT_DEBUG_THREADPOOL
+  /* Log the total call time to thread id -1. */
+  threadpool_log(tp, -1, N, tic, getticks());
 #endif
 }
 
@@ -386,7 +397,8 @@ void threadpool_map(struct threadpool *tp, threadpool_map_function map_function,
  */
 #ifdef SWIFT_DEBUG_THREADPOOL
 void threadpool_reset_log(struct threadpool *tp) {
-  for (int k = 0; k < tp->num_threads; k++) tp->logs[k].count = 0;
+  for (int k = 0; k < tp->num_threads; k++)
+    tp->logs[k].count = 0;
 }
 #endif
 
@@ -420,37 +432,5 @@ void threadpool_clean(struct threadpool *tp) {
     free(tp->logs[k].log);
   }
   free(tp->logs);
-#endif
-}
-
-/**
- * @brief return the threadpool id of the current thread.
- */
-int threadpool_gettid(void) {
-  int *tid = (int *)pthread_getspecific(threadpool_tid);
-  return *tid;
-}
-
-#ifdef HAVE_SETAFFINITY
-/**
- * @brief set an affinity mask to be used for all threads.
- *
- * @param affinity the mask to use.
- */
-void threadpool_set_affinity_mask(cpu_set_t *affinity) {
-  memcpy(&thread_affinity, affinity, sizeof(cpu_set_t));
-  thread_affinity_set = 1;
-}
-#endif
-
-/**
- * @brief apply the affinity mask the current thread, if set.
- *
- */
-static void threadpool_apply_affinity_mask(void) {
-#ifdef HAVE_SETAFFINITY
-  if (thread_affinity_set) {
-    pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &thread_affinity);
-  }
 #endif
 }

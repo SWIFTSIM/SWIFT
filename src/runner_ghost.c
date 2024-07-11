@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
- *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
+ *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
  *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
@@ -20,19 +20,19 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include <config.h>
+#include "../config.h"
 
 /* This object's header. */
 #include "runner.h"
 
 /* Local headers. */
 #include "active.h"
-#include "adaptive_softening.h"
 #include "black_holes.h"
 #include "cell.h"
 #include "engine.h"
 #include "feedback.h"
-#include "mhd.h"
+#include "pressure_floor.h"
+#include "pressure_floor_iact.h"
 #include "rt.h"
 #include "space_getsid.h"
 #include "star_formation.h"
@@ -77,10 +77,8 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
   const struct unit_system *us = e->internal_units;
   const struct phys_const *phys_const = e->physical_constants;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
-  const int with_rt = (e->policy & engine_policy_rt);
   const struct cosmology *cosmo = e->cosmology;
   const struct feedback_props *feedback_props = e->feedback_props;
-  const struct rt_props *rt_props = e->rt_props;
   const float stars_h_max = e->hydro_properties->h_max;
   const float stars_h_min = e->hydro_properties->h_min;
   const float eps = e->stars_properties->h_tolerance;
@@ -90,8 +88,7 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
   int redo = 0, scount = 0;
 
   /* Running value of the maximal smoothing length */
-  float h_max = c->stars.h_max;
-  float h_max_active = c->stars.h_max_active;
+  double h_max = c->stars.h_max;
 
   TIMER_TIC;
 
@@ -101,8 +98,10 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
 #endif
 
   /* Anything to do here? */
-  if (c->stars.count == 0) return;
-  if (!cell_is_active_stars(c, e)) return;
+  if (c->stars.count == 0)
+    return;
+  if (!cell_is_active_stars(c, e))
+    return;
 
   /* Recurse? */
   if (c->split) {
@@ -112,7 +111,6 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
 
         /* Update h_max */
         h_max = max(h_max, c->progeny[k]->stars.h_max);
-        h_max_active = max(h_max_active, c->progeny[k]->stars.h_max_active);
       }
     }
   } else {
@@ -132,7 +130,7 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
       error("Can't allocate memory for right.");
     for (int k = 0; k < c->stars.count; k++)
       if (spart_is_active(&sparts[k], e) &&
-          (feedback_is_active(&sparts[k], e) || with_rt)) {
+          feedback_is_active(&sparts[k], e->time, cosmo, with_cosmology)) {
         sid[scount] = k;
         h_0[scount] = sparts[k].h;
         left[scount] = 0.f;
@@ -143,9 +141,6 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
     /* While there are particles that need to be updated... */
     for (int num_reruns = 0; scount > 0 && num_reruns < max_smoothing_iter;
          num_reruns++) {
-
-      ghost_stats_account_for_stars(&c->ghost_statistics, num_reruns, scount,
-                                    sparts, sid);
 
       /* Reset the redo-count. */
       redo = 0;
@@ -160,8 +155,6 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
         /* Is this part within the timestep? */
         if (!spart_is_active(sp, e))
           error("Ghost applied to inactive particle");
-        if (!feedback_is_active(sp, e) && !with_rt)
-          error("Ghost applied to particle inactive for feedback and RT");
 #endif
 
         /* Get some useful values */
@@ -173,9 +166,7 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
         float h_new;
         int has_no_neighbours = 0;
 
-        if (sp->density.wcount < 1.e-5 * kernel_root) { /* No neighbours case */
-
-          ghost_stats_no_ngb_star_iteration(&c->ghost_statistics, num_reruns);
+        if (sp->density.wcount == 0.f) { /* No neighbours case */
 
           /* Flag that there were no neighbours */
           has_no_neighbours = 1;
@@ -217,7 +208,7 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
             stars_reset_feedback(sp);
 
             /* Only do feedback if stars have a reasonable birth time */
-            if (feedback_is_active(sp, e)) {
+            if (feedback_is_active(sp, e->time, cosmo, with_cosmology)) {
 
               const integertime_t ti_step = get_integer_timestep(sp->time_bin);
               const integertime_t ti_begin =
@@ -233,8 +224,14 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
               }
 
               /* Calculate age of the star at current time */
-              const double star_age_end_of_step =
-                  stars_compute_age(sp, e->cosmology, e->time, with_cosmology);
+              double star_age_end_of_step;
+              if (with_cosmology) {
+                star_age_end_of_step =
+                    cosmology_get_delta_time_from_scale_factors(
+                        cosmo, (double)sp->birth_scale_factor, cosmo->a);
+              } else {
+                star_age_end_of_step = e->time - (double)sp->birth_time;
+              }
 
               /* Has this star been around for a while ? */
               if (star_age_end_of_step > 0.) {
@@ -246,10 +243,9 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
                     star_age_end_of_step - dt_enrichment;
 
                 /* Compute the stellar evolution  */
-                feedback_prepare_feedback(sp, feedback_props, cosmo, us,
-                                          phys_const, star_age_beg_of_step,
-                                          dt_enrichment, e->time, ti_begin,
-                                          with_cosmology);
+                feedback_evolve_spart(sp, feedback_props, cosmo, us, phys_const,
+                                      star_age_beg_of_step, dt_enrichment,
+                                      e->time, ti_begin, with_cosmology);
               } else {
 
                 /* Reset the feedback fields of the star particle */
@@ -258,35 +254,6 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
             } else {
 
               feedback_reset_feedback(sp, feedback_props);
-            }
-
-            if (with_rt) {
-
-              rt_reset_spart(sp);
-
-              /* Get particle time-step */
-              double dt_star;
-              if (with_cosmology) {
-
-                /* get star's age and time step for stellar emission rates */
-                const integertime_t ti_begin =
-                    get_integer_time_begin(e->ti_current - 1, sp->time_bin);
-                const integertime_t ti_step =
-                    get_integer_timestep(sp->time_bin);
-                dt_star = cosmology_get_delta_time(e->cosmology, ti_begin,
-                                                   ti_begin + ti_step);
-
-              } else {
-                dt_star = get_timestep(sp->time_bin, e->time_base);
-              }
-
-              /* Calculate age of the star at current time */
-              const double star_age_end_of_step =
-                  stars_compute_age(sp, e->cosmology, e->time, with_cosmology);
-
-              rt_compute_stellar_emission_rate(sp, e->time,
-                                               star_age_end_of_step, dt_star,
-                                               rt_props, phys_const, us);
             }
 
             /* Ok, we are done with this particle */
@@ -301,12 +268,11 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
           /* Be verbose about the particles that struggle to converge */
           if (num_reruns > max_smoothing_iter - 10) {
 
-            message(
-                "Smoothing length convergence problem: iter=%d p->id=%lld "
-                "h_init=%12.8e h_old=%12.8e h_new=%12.8e f=%f f_prime=%f "
-                "n_sum=%12.8e n_target=%12.8e left=%12.8e right=%12.8e",
-                num_reruns, sp->id, h_init, h_old, h_new, f, f_prime, n_sum,
-                n_target, left[i], right[i]);
+            message("Smoothing length convergence problem: iter=%d p->id=%lld "
+                    "h_init=%12.8e h_old=%12.8e h_new=%12.8e f=%f f_prime=%f "
+                    "n_sum=%12.8e n_target=%12.8e left=%12.8e right=%12.8e",
+                    num_reruns, sp->id, h_init, h_old, h_new, f, f_prime, n_sum,
+                    n_target, left[i], right[i]);
           }
 
           /* Safety check: truncate to the range [ h_old/2 , 2h_old ]. */
@@ -328,7 +294,7 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
           if ((h_new == left[i] && h_old == right[i]) ||
               (h_old == left[i] && h_new == right[i])) {
 
-            /* Bisect the remaining interval */
+            /* Bissect the remaining interval */
             sp->h = pow_inv_dimension(
                 0.5f * (pow_dimension(left[i]) + pow_dimension(right[i])));
 
@@ -368,15 +334,12 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
 
             /* Do some damage control if no neighbours at all were found */
             if (has_no_neighbours) {
-              ghost_stats_no_ngb_star_converged(&c->ghost_statistics);
               stars_spart_has_no_neighbours(sp, cosmo);
-              rt_spart_has_no_neighbours(sp);
             }
 
           } else {
-            error(
-                "Fundamental problem with the smoothing length iteration "
-                "logic.");
+            error("Fundamental problem with the smoothing length iteration "
+                  "logic.");
           }
         }
 
@@ -384,14 +347,11 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
 
         /* Check if h_max has increased */
         h_max = max(h_max, sp->h);
-        h_max_active = max(h_max_active, sp->h);
-
-        ghost_stats_converged_star(&c->ghost_statistics, sp);
 
         stars_reset_feedback(sp);
 
         /* Only do feedback if stars have a reasonable birth time */
-        if (feedback_is_active(sp, e)) {
+        if (feedback_is_active(sp, e->time, cosmo, with_cosmology)) {
 
           const integertime_t ti_step = get_integer_timestep(sp->time_bin);
           const integertime_t ti_begin =
@@ -407,8 +367,13 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
           }
 
           /* Calculate age of the star at current time */
-          const double star_age_end_of_step =
-              stars_compute_age(sp, e->cosmology, e->time, with_cosmology);
+          double star_age_end_of_step;
+          if (with_cosmology) {
+            star_age_end_of_step = cosmology_get_delta_time_from_scale_factors(
+                cosmo, (double)sp->birth_scale_factor, cosmo->a);
+          } else {
+            star_age_end_of_step = e->time - (double)sp->birth_time;
+          }
 
           /* Has this star been around for a while ? */
           if (star_age_end_of_step > 0.) {
@@ -420,9 +385,9 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
                 star_age_end_of_step - dt_enrichment;
 
             /* Compute the stellar evolution  */
-            feedback_prepare_feedback(sp, feedback_props, cosmo, us, phys_const,
-                                      star_age_beg_of_step, dt_enrichment,
-                                      e->time, ti_begin, with_cosmology);
+            feedback_evolve_spart(sp, feedback_props, cosmo, us, phys_const,
+                                  star_age_beg_of_step, dt_enrichment, e->time,
+                                  ti_begin, with_cosmology);
           } else {
 
             /* Reset the feedback fields of the star particle */
@@ -432,33 +397,6 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
 
           /* Reset the feedback fields of the star particle */
           feedback_reset_feedback(sp, feedback_props);
-        }
-
-        if (with_rt) {
-
-          rt_reset_spart(sp);
-
-          /* Get particle time-step */
-          double dt_star;
-          if (with_cosmology) {
-
-            /* get star's age and time step for stellar emission rates */
-            const integertime_t ti_begin =
-                get_integer_time_begin(e->ti_current - 1, sp->time_bin);
-            const integertime_t ti_step = get_integer_timestep(sp->time_bin);
-            dt_star = cosmology_get_delta_time(e->cosmology, ti_begin,
-                                               ti_begin + ti_step);
-
-          } else {
-            dt_star = get_timestep(sp->time_bin, e->time_base);
-          }
-
-          /* Calculate age of the star at current time */
-          const double star_age_end_of_step =
-              stars_compute_age(sp, e->cosmology, e->time, with_cosmology);
-
-          rt_compute_stellar_emission_rate(sp, e->time, star_age_end_of_step,
-                                           dt_star, rt_props, phys_const, us);
         }
       }
 
@@ -519,15 +457,6 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
     }
 
     if (scount) {
-      warning(
-          "Smoothing length failed to converge for the following star "
-          "particles:");
-      for (int i = 0; i < scount; i++) {
-        struct spart *sp = &sparts[sid[i]];
-        warning("ID: %lld, h: %g, wcount: %g", sp->id, sp->h,
-                sp->density.wcount);
-      }
-
       error("Smoothing length failed to converge on %i particles.", scount);
     }
 
@@ -540,31 +469,17 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
 
   /* Update h_max */
   c->stars.h_max = h_max;
-  c->stars.h_max_active = h_max_active;
-
-#ifdef SWIFT_DEBUG_CHECKS
-  for (int i = 0; i < c->stars.count; ++i) {
-    const struct spart *sp = &c->stars.parts[i];
-    const float h = c->stars.parts[i].h;
-    if (spart_is_inhibited(sp, e)) continue;
-
-    if (h > c->stars.h_max)
-      error("Particle has h larger than h_max (id=%lld)", sp->id);
-    if (spart_is_active(sp, e) && h > c->stars.h_max_active)
-      error("Active particle has h larger than h_max_active (id=%lld)", sp->id);
-  }
-#endif
 
   /* The ghost may not always be at the top level.
    * Therefore we need to update h_max between the super- and top-levels */
-  if (c->stars.density_ghost) {
+  if (c->stars.ghost) {
     for (struct cell *tmp = c->parent; tmp != NULL; tmp = tmp->parent) {
       atomic_max_f(&tmp->stars.h_max, h_max);
-      atomic_max_f(&tmp->stars.h_max_active, h_max_active);
     }
   }
 
-  if (timer) TIMER_TOC(timer_do_stars_ghost);
+  if (timer)
+    TIMER_TOC(timer_do_stars_ghost);
 }
 
 /**
@@ -590,14 +505,15 @@ void runner_do_black_holes_density_ghost(struct runner *r, struct cell *c,
   int redo = 0, bcount = 0;
 
   /* Running value of the maximal smoothing length */
-  float h_max = c->black_holes.h_max;
-  float h_max_active = c->black_holes.h_max_active;
+  double h_max = c->black_holes.h_max;
 
   TIMER_TIC;
 
   /* Anything to do here? */
-  if (c->black_holes.count == 0) return;
-  if (!cell_is_active_black_holes(c, e)) return;
+  if (c->black_holes.count == 0)
+    return;
+  if (!cell_is_active_black_holes(c, e))
+    return;
 
   /* Recurse? */
   if (c->split) {
@@ -607,8 +523,6 @@ void runner_do_black_holes_density_ghost(struct runner *r, struct cell *c,
 
         /* Update h_max */
         h_max = max(h_max, c->progeny[k]->black_holes.h_max);
-        h_max_active =
-            max(h_max_active, c->progeny[k]->black_holes.h_max_active);
       }
     }
   } else {
@@ -639,9 +553,6 @@ void runner_do_black_holes_density_ghost(struct runner *r, struct cell *c,
     for (int num_reruns = 0; bcount > 0 && num_reruns < max_smoothing_iter;
          num_reruns++) {
 
-      ghost_stats_account_for_black_holes(&c->ghost_statistics, num_reruns,
-                                          bcount, bparts, sid);
-
       /* Reset the redo-count. */
       redo = 0;
 
@@ -666,10 +577,7 @@ void runner_do_black_holes_density_ghost(struct runner *r, struct cell *c,
         float h_new;
         int has_no_neighbours = 0;
 
-        if (bp->density.wcount < 1.e-5 * kernel_root) { /* No neighbours case */
-
-          ghost_stats_no_ngb_black_hole_iteration(&c->ghost_statistics,
-                                                  num_reruns);
+        if (bp->density.wcount == 0.f) { /* No neighbours case */
 
           /* Flag that there were no neighbours */
           has_no_neighbours = 1;
@@ -722,12 +630,11 @@ void runner_do_black_holes_density_ghost(struct runner *r, struct cell *c,
           /* Be verbose about the particles that struggle to converge */
           if (num_reruns > max_smoothing_iter - 10) {
 
-            message(
-                "Smoothing length convergence problem: iter=%d p->id=%lld "
-                "h_init=%12.8e h_old=%12.8e h_new=%12.8e f=%f f_prime=%f "
-                "n_sum=%12.8e n_target=%12.8e left=%12.8e right=%12.8e",
-                num_reruns, bp->id, h_init, h_old, h_new, f, f_prime, n_sum,
-                n_target, left[i], right[i]);
+            message("Smoothing length convergence problem: iter=%d p->id=%lld "
+                    "h_init=%12.8e h_old=%12.8e h_new=%12.8e f=%f f_prime=%f "
+                    "n_sum=%12.8e n_target=%12.8e left=%12.8e right=%12.8e",
+                    num_reruns, bp->id, h_init, h_old, h_new, f, f_prime, n_sum,
+                    n_target, left[i], right[i]);
           }
 
           /* Safety check: truncate to the range [ h_old/2 , 2h_old ]. */
@@ -749,7 +656,7 @@ void runner_do_black_holes_density_ghost(struct runner *r, struct cell *c,
           if ((h_new == left[i] && h_old == right[i]) ||
               (h_old == left[i] && h_new == right[i])) {
 
-            /* Bisect the remaining interval */
+            /* Bissect the remaining interval */
             bp->h = pow_inv_dimension(
                 0.5f * (pow_dimension(left[i]) + pow_dimension(right[i])));
 
@@ -787,26 +694,21 @@ void runner_do_black_holes_density_ghost(struct runner *r, struct cell *c,
 
             /* Do some damage control if no neighbours at all were found */
             if (has_no_neighbours) {
-              ghost_stats_no_ngb_black_hole_converged(&c->ghost_statistics);
               black_holes_bpart_has_no_neighbours(bp, cosmo);
             }
 
           } else {
-            error(
-                "Fundamental problem with the smoothing length iteration "
-                "logic.");
+            error("Fundamental problem with the smoothing length iteration "
+                  "logic.");
           }
         }
 
         /* We now have a particle whose smoothing length has converged */
 
-        ghost_stats_converged_black_hole(&c->ghost_statistics, bp);
-
         black_holes_reset_feedback(bp);
 
         /* Check if h_max has increased */
         h_max = max(h_max, bp->h);
-        h_max_active = max(h_max_active, bp->h);
       }
 
       /* We now need to treat the particles whose smoothing length had not
@@ -867,15 +769,6 @@ void runner_do_black_holes_density_ghost(struct runner *r, struct cell *c,
     }
 
     if (bcount) {
-      warning(
-          "Smoothing length failed to converge for the following BH "
-          "particles:");
-      for (int i = 0; i < bcount; i++) {
-        struct bpart *bp = &bparts[sid[i]];
-        warning("ID: %lld, h: %g, wcount: %g", bp->id, bp->h,
-                bp->density.wcount);
-      }
-
       error("Smoothing length failed to converge on %i particles.", bcount);
     }
 
@@ -888,31 +781,17 @@ void runner_do_black_holes_density_ghost(struct runner *r, struct cell *c,
 
   /* Update h_max */
   c->black_holes.h_max = h_max;
-  c->black_holes.h_max_active = h_max_active;
-
-#ifdef SWIFT_DEBUG_CHECKS
-  for (int i = 0; i < c->black_holes.count; ++i) {
-    const struct bpart *bp = &c->black_holes.parts[i];
-    const float h = c->black_holes.parts[i].h;
-    if (bpart_is_inhibited(bp, e)) continue;
-
-    if (h > c->black_holes.h_max)
-      error("Particle has h larger than h_max (id=%lld)", bp->id);
-    if (bpart_is_active(bp, e) && h > c->black_holes.h_max_active)
-      error("Active particle has h larger than h_max_active (id=%lld)", bp->id);
-  }
-#endif
 
   /* The ghost may not always be at the top level.
    * Therefore we need to update h_max between the super- and top-levels */
   if (c->black_holes.density_ghost) {
     for (struct cell *tmp = c->parent; tmp != NULL; tmp = tmp->parent) {
       atomic_max_f(&tmp->black_holes.h_max, h_max);
-      atomic_max_f(&tmp->black_holes.h_max_active, h_max_active);
     }
   }
 
-  if (timer) TIMER_TOC(timer_do_black_holes_ghost);
+  if (timer)
+    TIMER_TOC(timer_do_black_holes_ghost);
 }
 
 /**
@@ -934,8 +813,10 @@ void runner_do_black_holes_swallow_ghost(struct runner *r, struct cell *c,
   TIMER_TIC;
 
   /* Anything to do here? */
-  if (c->black_holes.count == 0) return;
-  if (!cell_is_active_black_holes(c, e)) return;
+  if (c->black_holes.count == 0)
+    return;
+  if (!cell_is_active_black_holes(c, e))
+    return;
 
   /* Recurse? */
   if (c->split) {
@@ -967,19 +848,18 @@ void runner_do_black_holes_swallow_ghost(struct runner *r, struct cell *c,
 
         /* Compute the final operations for repositioning of this BH */
         black_holes_end_reposition(bp, e->black_holes_properties,
-                                   e->physical_constants, e->cosmology, dt,
-                                   e->ti_current);
+                                   e->physical_constants, e->cosmology, dt);
 
         /* Compute variables required for the feedback loop */
-        black_holes_prepare_feedback(bp, e->black_holes_properties,
-                                     e->physical_constants, e->cosmology,
-                                     e->cooling_func, e->entropy_floor, e->time,
-                                     with_cosmology, dt, e->ti_current);
+        black_holes_prepare_feedback(
+            bp, e->black_holes_properties, e->physical_constants, e->cosmology,
+            e->cooling_func, e->entropy_floor, e->time, with_cosmology, dt);
       }
     }
   }
 
-  if (timer) TIMER_TOC(timer_do_black_holes_ghost);
+  if (timer)
+    TIMER_TOC(timer_do_black_holes_ghost);
 }
 
 /**
@@ -1003,17 +883,18 @@ void runner_do_extra_ghost(struct runner *r, struct cell *c, int timer) {
   const double time_base = e->time_base;
   const struct cosmology *cosmo = e->cosmology;
   const struct hydro_props *hydro_props = e->hydro_properties;
-  const struct pressure_floor_props *pressure_floor = e->pressure_floor_props;
 
   TIMER_TIC;
 
   /* Anything to do here? */
-  if (!cell_is_active_hydro(c, e)) return;
+  if (!cell_is_active_hydro(c, e))
+    return;
 
   /* Recurse? */
   if (c->split) {
     for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL) runner_do_extra_ghost(r, c->progeny[k], 0);
+      if (c->progeny[k] != NULL)
+        runner_do_extra_ghost(r, c->progeny[k], 0);
   } else {
 
     /* Loop over the parts in this cell. */
@@ -1027,14 +908,13 @@ void runner_do_extra_ghost(struct runner *r, struct cell *c, int timer) {
 
         /* Finish the gradient calculation */
         hydro_end_gradient(p);
-        mhd_end_gradient(p);
 
         /* As of here, particle force variables will be set. */
 
         /* Calculate the time-step for passing to hydro_prepare_force.
          * This is the physical time between the start and end of the time-step
          * without any scale-factor powers. */
-        double dt_alpha, dt_therm;
+        double dt_alpha;
 
         if (with_cosmology) {
           const integertime_t ti_step = get_integer_timestep(p->time_bin);
@@ -1043,32 +923,25 @@ void runner_do_extra_ghost(struct runner *r, struct cell *c, int timer) {
 
           dt_alpha =
               cosmology_get_delta_time(cosmo, ti_begin, ti_begin + ti_step);
-          dt_therm = cosmology_get_therm_kick_factor(cosmo, ti_begin,
-                                                     ti_begin + ti_step);
         } else {
           dt_alpha = get_timestep(p->time_bin, time_base);
-          dt_therm = get_timestep(p->time_bin, time_base);
         }
 
         /* Compute variables required for the force loop */
-        hydro_prepare_force(p, xp, cosmo, hydro_props, pressure_floor, dt_alpha,
-                            dt_therm);
-        mhd_prepare_force(p, xp, cosmo, hydro_props, dt_alpha);
+        hydro_prepare_force(p, xp, cosmo, hydro_props, dt_alpha);
         timestep_limiter_prepare_force(p, xp);
-        rt_prepare_force(p);
-        rt_timestep_prepare_force(p);
 
         /* The particle force values are now set.  Do _NOT_
            try to read any particle density variables! */
 
         /* Prepare the particle for the force loop over neighbours */
         hydro_reset_acceleration(p);
-        mhd_reset_acceleration(p);
       }
     }
   }
 
-  if (timer) TIMER_TOC(timer_do_extra_ghost);
+  if (timer)
+    TIMER_TOC(timer_do_extra_ghost);
 
 #else
   error("SWIFT was not compiled with the extra hydro loop activated.");
@@ -1094,10 +967,8 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
   const struct chemistry_global_data *chemistry = e->chemistry;
   const struct star_formation *star_formation = e->star_formation;
   const struct hydro_props *hydro_props = e->hydro_properties;
-  const struct pressure_floor_props *pressure_floor = e->pressure_floor_props;
 
   const int with_cosmology = (e->policy & engine_policy_cosmology);
-  const int with_rt = (e->policy & engine_policy_rt);
 
   const float hydro_h_max = e->hydro_properties->h_max;
   const float hydro_h_min = e->hydro_properties->h_min;
@@ -1110,14 +981,15 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
   int redo = 0, count = 0;
 
   /* Running value of the maximal smoothing length */
-  float h_max = c->hydro.h_max;
-  float h_max_active = c->hydro.h_max_active;
+  double h_max = c->hydro.h_max;
 
   TIMER_TIC;
 
   /* Anything to do here? */
-  if (c->hydro.count == 0) return;
-  if (!cell_is_active_hydro(c, e)) return;
+  if (c->hydro.count == 0)
+    return;
+  if (!cell_is_active_hydro(c, e))
+    return;
 
   /* Recurse? */
   if (c->split) {
@@ -1127,7 +999,6 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 
         /* Update h_max */
         h_max = max(h_max, c->progeny[k]->hydro.h_max);
-        h_max_active = max(h_max_active, c->progeny[k]->hydro.h_max_active);
       }
     }
   } else {
@@ -1159,9 +1030,6 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
     for (int num_reruns = 0; count > 0 && num_reruns < max_smoothing_iter;
          num_reruns++) {
 
-      ghost_stats_account_for_hydro(&c->ghost_statistics, num_reruns, count,
-                                    parts, pid);
-
       /* Reset the redo-count. */
       redo = 0;
 
@@ -1174,7 +1042,8 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 
 #ifdef SWIFT_DEBUG_CHECKS
         /* Is this part within the timestep? */
-        if (!part_is_active(p, e)) error("Ghost applied to inactive particle");
+        if (!part_is_active(p, e))
+          error("Ghost applied to inactive particle");
 #endif
 
         /* Get some useful values */
@@ -1185,10 +1054,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 
         float h_new;
         int has_no_neighbours = 0;
-
-        if (p->density.wcount < 1.e-5 * kernel_root) { /* No neighbours case */
-
-          ghost_stats_no_ngb_hydro_iteration(&c->ghost_statistics, num_reruns);
+        if (p->density.wcount == 0.f) { /* No neighbours case */
 
           /* Flag that there were no neighbours */
           has_no_neighbours = 1;
@@ -1200,9 +1066,8 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 
           /* Finish the density calculation */
           hydro_end_density(p, cosmo);
-          adaptive_softening_end_density(p, e->gravity_properties);
-          mhd_end_density(p, cosmo);
           chemistry_end_density(p, chemistry, cosmo);
+          pressure_floor_end_density(p, cosmo);
           star_formation_end_density(p, xp, star_formation, cosmo);
 
           /* Are we using the alternative definition of the
@@ -1254,8 +1119,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
             /* The force variables are set in the extra ghost. */
 
             /* Compute variables required for the gradient loop */
-            hydro_prepare_gradient(p, xp, cosmo, hydro_props, pressure_floor);
-            mhd_prepare_gradient(p, xp, cosmo, hydro_props);
+            hydro_prepare_gradient(p, xp, cosmo, hydro_props);
 
             /* The particle gradient values are now set.  Do _NOT_
                try to read any particle density variables! */
@@ -1263,7 +1127,6 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
             /* Prepare the particle for the gradient loop over neighbours
              */
             hydro_reset_gradient(p);
-            mhd_reset_gradient(p);
 
 #else
             /* Calculate the time-step for passing to hydro_prepare_force, used
@@ -1271,7 +1134,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
              * artificial viscosity and thermal conduction terms) */
             const double time_base = e->time_base;
             const integertime_t ti_current = e->ti_current;
-            double dt_alpha, dt_therm;
+            double dt_alpha;
 
             if (with_cosmology) {
               const integertime_t ti_step = get_integer_timestep(p->time_bin);
@@ -1280,38 +1143,23 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 
               dt_alpha =
                   cosmology_get_delta_time(cosmo, ti_begin, ti_begin + ti_step);
-              dt_therm = cosmology_get_therm_kick_factor(cosmo, ti_begin,
-                                                         ti_begin + ti_step);
             } else {
               dt_alpha = get_timestep(p->time_bin, time_base);
-              dt_therm = get_timestep(p->time_bin, time_base);
             }
 
             /* As of here, particle force variables will be set. */
 
             /* Compute variables required for the force loop */
-            hydro_prepare_force(p, xp, cosmo, hydro_props, pressure_floor,
-                                dt_alpha, dt_therm);
-            mhd_prepare_force(p, xp, cosmo, hydro_props, dt_alpha);
+            hydro_prepare_force(p, xp, cosmo, hydro_props, dt_alpha);
             timestep_limiter_prepare_force(p, xp);
-            rt_prepare_force(p);
-            rt_timestep_prepare_force(p);
 
             /* The particle force values are now set.  Do _NOT_
                try to read any particle density variables! */
 
             /* Prepare the particle for the force loop over neighbours */
             hydro_reset_acceleration(p);
-            mhd_reset_acceleration(p);
 
 #endif /* EXTRA_HYDRO_LOOP */
-
-            if (with_rt) {
-#ifdef SWIFT_RT_DEBUG_CHECKS
-              rt_debugging_check_nr_subcycles(p, e->rt_props);
-#endif
-              rt_reset_part(p, cosmo);
-            }
 
             /* Ok, we are done with this particle */
             continue;
@@ -1325,19 +1173,32 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
           /* Be verbose about the particles that struggle to converge */
           if (num_reruns > max_smoothing_iter - 10) {
 
-            message(
-                "Smoothing length convergence problem: iter=%d p->id=%lld "
-                "h_init=%12.8e h_old=%12.8e h_new=%12.8e f=%f f_prime=%f "
-                "n_sum=%12.8e n_target=%12.8e left=%12.8e right=%12.8e",
-                num_reruns, p->id, h_init, h_old, h_new, f, f_prime, n_sum,
-                n_target, left[i], right[i]);
+            message("Smoothing length convergence problem: iter=%d p->id=%lld "
+                    "h_init=%12.8e h_old=%12.8e h_new=%12.8e f=%f f_prime=%f "
+                    "n_sum=%12.8e n_target=%12.8e left=%12.8e right=%12.8e",
+                    num_reruns, p->id, h_init, h_old, h_new, f, f_prime, n_sum,
+                    n_target, left[i], right[i]);
           }
 
 #ifdef SWIFT_DEBUG_CHECKS
-          if (((f > 0.f && h_new > h_old) || (f < 0.f && h_new < h_old)) &&
-              (h_old < 0.999f * hydro_props->h_max))
+          if ((f > 0.f && h_new > h_old) || (f < 0.f && h_new < h_old)) {
+
+            /*   MATTHIEU: Commented out as it would need to use the linked
+                 list to access the cell of interest. Code not updated as only
+                 required for debugging
+            fprintf(stderr,
+                    "skip status of pack task for this cell is %i last run at "
+                    "step %i\n",
+                    c->hydro.super->hydro.2gpu_pack->skip,
+                    c->hydro.super->hydro.gpu_pack->ti_run);
+            fprintf(stderr,
+                    "skip status of unpack task for this cell is %i last run "
+                    "at step %i\n",
+                    c->hydro.super->hydro.gpu_unpack->skip,
+                    c->hydro.super->hydro.gpu_unpack->ti_run); */
             error(
                 "Smoothing length correction not going in the right direction");
+          }
 #endif
 
           /* Safety check: truncate to the range [ h_old/2 , 2h_old ]. */
@@ -1359,7 +1220,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
           if ((h_new == left[i] && h_old == right[i]) ||
               (h_old == left[i] && h_new == right[i])) {
 
-            /* Bisect the remaining interval */
+            /* Bissect the remaining interval */
             p->h = pow_inv_dimension(
                 0.5f * (pow_dimension(left[i]) + pow_dimension(right[i])));
 
@@ -1381,14 +1242,12 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 
             /* Re-initialise everything */
             hydro_init_part(p, hs);
-            adaptive_softening_init_part(p);
-            mhd_init_part(p);
             chemistry_init_part(p, chemistry);
+            pressure_floor_init_part(p, xp);
             star_formation_init_part(p, star_formation);
             tracers_after_init(p, xp, e->internal_units, e->physical_constants,
                                with_cosmology, e->cosmology,
                                e->hydro_properties, e->cooling_func, e->time);
-            rt_init_part(p);
 
             /* Off we go ! */
             continue;
@@ -1405,33 +1264,23 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 
             /* Do some damage control if no neighbours at all were found */
             if (has_no_neighbours) {
-              ghost_stats_no_ngb_hydro_converged(&c->ghost_statistics);
               hydro_part_has_no_neighbours(p, xp, cosmo);
-              mhd_part_has_no_neighbours(p, xp, cosmo);
               chemistry_part_has_no_neighbours(p, xp, chemistry, cosmo);
+              pressure_floor_part_has_no_neighbours(p, xp, cosmo);
               star_formation_part_has_no_neighbours(p, xp, star_formation,
                                                     cosmo);
-              rt_part_has_no_neighbours(p);
             }
 
           } else {
-            error(
-                "Fundamental problem with the smoothing length iteration "
-                "logic.");
+            error("Fundamental problem with the smoothing length iteration "
+                  "logic.");
           }
         }
 
         /* We now have a particle whose smoothing length has converged */
 
-        /* Check if h_max has increased */
+        /* Check if h_max is increased */
         h_max = max(h_max, p->h);
-        h_max_active = max(h_max_active, p->h);
-
-        ghost_stats_converged_hydro(&c->ghost_statistics, p);
-
-        /* Update gravitational softening (in adaptive softening case) */
-        if (p->gpart)
-          gravity_update_softening(p->gpart, p, e->gravity_properties);
 
 #ifdef EXTRA_HYDRO_LOOP
 
@@ -1439,15 +1288,13 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
         /* The force variables are set in the extra ghost. */
 
         /* Compute variables required for the gradient loop */
-        hydro_prepare_gradient(p, xp, cosmo, hydro_props, pressure_floor);
-        mhd_prepare_gradient(p, xp, cosmo, hydro_props);
+        hydro_prepare_gradient(p, xp, cosmo, hydro_props);
 
         /* The particle gradient values are now set.  Do _NOT_
            try to read any particle density variables! */
 
         /* Prepare the particle for the gradient loop over neighbours */
         hydro_reset_gradient(p);
-        mhd_reset_gradient(p);
 
 #else
 
@@ -1456,7 +1303,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
          * artificial viscosity and thermal conduction terms) */
         const double time_base = e->time_base;
         const integertime_t ti_current = e->ti_current;
-        double dt_alpha, dt_therm;
+        double dt_alpha;
 
         if (with_cosmology) {
           const integertime_t ti_step = get_integer_timestep(p->time_bin);
@@ -1465,38 +1312,23 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 
           dt_alpha =
               cosmology_get_delta_time(cosmo, ti_begin, ti_begin + ti_step);
-          dt_therm = cosmology_get_therm_kick_factor(cosmo, ti_begin,
-                                                     ti_begin + ti_step);
         } else {
           dt_alpha = get_timestep(p->time_bin, time_base);
-          dt_therm = get_timestep(p->time_bin, time_base);
         }
 
         /* As of here, particle force variables will be set. */
 
         /* Compute variables required for the force loop */
-        hydro_prepare_force(p, xp, cosmo, hydro_props, pressure_floor, dt_alpha,
-                            dt_therm);
-        mhd_prepare_force(p, xp, cosmo, hydro_props, dt_alpha);
+        hydro_prepare_force(p, xp, cosmo, hydro_props, dt_alpha);
         timestep_limiter_prepare_force(p, xp);
-        rt_prepare_force(p);
-        rt_timestep_prepare_force(p);
 
         /* The particle force values are now set.  Do _NOT_
            try to read any particle density variables! */
 
         /* Prepare the particle for the force loop over neighbours */
         hydro_reset_acceleration(p);
-        mhd_reset_acceleration(p);
 
 #endif /* EXTRA_HYDRO_LOOP */
-
-        if (with_rt) {
-#ifdef SWIFT_RT_DEBUG_CHECKS
-          rt_debugging_check_nr_subcycles(p, e->rt_props);
-#endif
-          rt_reset_part(p, cosmo);
-        }
       }
 
       /* We now need to treat the particles whose smoothing length had not
@@ -1555,14 +1387,6 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
     }
 
     if (count) {
-      warning(
-          "Smoothing length failed to converge for the following gas "
-          "particles:");
-      for (int i = 0; i < count; i++) {
-        struct part *p = &parts[pid[i]];
-        warning("ID: %lld, h: %g, wcount: %g", p->id, p->h, p->density.wcount);
-      }
-
       error("Smoothing length failed to converge on %i particles.", count);
     }
 
@@ -1575,31 +1399,17 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 
   /* Update h_max */
   c->hydro.h_max = h_max;
-  c->hydro.h_max_active = h_max_active;
-
-#ifdef SWIFT_DEBUG_CHECKS
-  for (int i = 0; i < c->hydro.count; ++i) {
-    const struct part *p = &c->hydro.parts[i];
-    const float h = c->hydro.parts[i].h;
-    if (part_is_inhibited(p, e)) continue;
-
-    if (h > c->hydro.h_max)
-      error("Particle has h larger than h_max (id=%lld)", p->id);
-    if (part_is_active(p, e) && h > c->hydro.h_max_active)
-      error("Active particle has h larger than h_max_active (id=%lld)", p->id);
-  }
-#endif
 
   /* The ghost may not always be at the top level.
    * Therefore we need to update h_max between the super- and top-levels */
   if (c->hydro.ghost) {
     for (struct cell *tmp = c->parent; tmp != NULL; tmp = tmp->parent) {
       atomic_max_f(&tmp->hydro.h_max, h_max);
-      atomic_max_f(&tmp->hydro.h_max_active, h_max_active);
     }
   }
 
-  if (timer) TIMER_TOC(timer_do_ghost);
+  if (timer)
+    TIMER_TOC(timer_do_ghost);
 }
 
 /**
@@ -1611,15 +1421,12 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
  * @param timer Are we timing this ?
  */
 void runner_do_rt_ghost1(struct runner *r, struct cell *c, int timer) {
-
-  const struct engine *e = r->e;
-  const int with_cosmology = (e->policy & engine_policy_cosmology);
-  const struct cosmology *cosmo = e->cosmology;
+  /* const struct engine *e = r->e; */
   int count = c->hydro.count;
 
   /* Anything to do here? */
-  if (count == 0) return;
-  if (!cell_is_rt_active(c, e)) return;
+  if (count == 0)
+    return;
 
   TIMER_TIC;
 
@@ -1630,80 +1437,13 @@ void runner_do_rt_ghost1(struct runner *r, struct cell *c, int timer) {
         runner_do_rt_ghost1(r, c->progeny[k], 0);
       }
     }
-  } else {
-
-    for (int pid = 0; pid < count; pid++) {
-      struct part *restrict p = &(c->hydro.parts[pid]);
-
-      /* Skip inhibited parts */
-      if (part_is_inhibited(p, e)) continue;
-
-      /* Skip inactive parts */
-      if (!part_is_rt_active(p, e)) continue;
-
-      /* First reset everything that needs to be reset for the following
-       * subcycle */
-      const integertime_t ti_current_subcycle = e->ti_current_subcycle;
-      const integertime_t ti_step =
-          get_integer_timestep(p->rt_time_data.time_bin);
-      const integertime_t ti_begin = get_integer_time_begin(
-          ti_current_subcycle + 1, p->rt_time_data.time_bin);
-      const integertime_t ti_end = ti_begin + ti_step;
-
-      const float dt =
-          rt_part_dt(ti_begin, ti_end, e->time_base, with_cosmology, cosmo);
-
-      rt_reset_part_each_subcycle(p, cosmo, dt);
-
-      /* Now finish up injection */
-      rt_finalise_injection(p, e->rt_props);
-    }
   }
 
-  if (timer) TIMER_TOC(timer_do_rt_ghost1);
-}
-
-/**
- * @brief Intermediate task after the gradient computation to finish
- *        up the gradients and prepare for the transport step
- *
- * @param r The runner thread.
- * @param c The cell.
- * @param timer Are we timing this ?
- */
-void runner_do_rt_ghost2(struct runner *r, struct cell *c, int timer) {
-
-  const struct engine *e = r->e;
-  int count = c->hydro.count;
-  const struct cosmology *cosmo = e->cosmology;
-
-  /* Anything to do here? */
-  if (count == 0) return;
-  if (!cell_is_rt_active(c, e)) return;
-
-  TIMER_TIC;
-
-  /* Recurse? */
-  if (c->split) {
-    for (int k = 0; k < 8; k++) {
-      if (c->progeny[k] != NULL) {
-        runner_do_rt_ghost2(r, c->progeny[k], 0);
-      }
-    }
-  } else {
-
-    for (int pid = 0; pid < count; pid++) {
-      struct part *restrict p = &(c->hydro.parts[pid]);
-
-      /* Skip inhibited parts */
-      if (part_is_inhibited(p, e)) continue;
-
-      /* Skip inactive parts */
-      if (!part_is_rt_active(p, e)) continue;
-
-      rt_end_gradient(p, cosmo);
-    }
+  for (int pid = 0; pid < count; pid++) {
+    struct part *restrict p = &(c->hydro.parts[pid]);
+    rt_injection_update_photon_density(p);
   }
 
-  if (timer) TIMER_TOC(timer_do_rt_ghost2);
+  if (timer)
+    TIMER_TOC(timer_do_rt_ghost1);
 }

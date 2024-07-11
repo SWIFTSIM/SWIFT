@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2013 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
- *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
+ *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -21,7 +21,7 @@
 #define SWIFT_SCHEDULER_H
 
 /* Config parameters. */
-#include <config.h>
+#include "../config.h"
 
 /* MPI headers. */
 #ifdef WITH_MPI
@@ -45,21 +45,45 @@
 #define scheduler_dosub 1
 #define scheduler_maxsteal 10
 #define scheduler_maxtries 2
-#define scheduler_doforcesplit            \
-  0 /* Beware: switching this on can/will \
-       break engine_addlink as it assumes \
+#define scheduler_doforcesplit                                                 \
+  0 /* Beware: switching this on can/will                                      \
+       break engine_addlink as it assumes                                      \
        a maximum number of tasks per cell. */
 
 /* Flags . */
 #define scheduler_flag_none 0
 #define scheduler_flag_steal (1 << 1)
 
-#ifdef SWIFT_DEBUG_CHECKS
-extern int activate_by_unskip;
-#endif
-
 /* Data of a scheduler. */
 struct scheduler {
+
+  /**************************************/
+  int nr_packs_self_dens_done;
+  int nr_packs_pair_dens_done;
+  int nr_packs_self_forc_done;
+  int nr_packs_pair_forc_done;
+  int nr_packs_self_grad_done;
+  int nr_packs_pair_grad_done;
+  /* Actual number of GPU tasks. */
+  int nr_gpu_tasks;
+  /* Number of tasks we want*/
+  int target_gpu_tasks;
+  /* Actual number of density pack tasks. */
+  int nr_self_pack_tasks, nr_pair_pack_tasks;
+  /* Actual number of force pack tasks. */
+  int nr_self_pack_tasks_f, nr_pair_pack_tasks_f;
+  /* Actual number of gradient pack tasks. */
+  int nr_self_pack_tasks_g, nr_pair_pack_tasks_g;
+  /* Pack task indices */
+
+  // MATTHIEU: To be removed as unused !!!
+  int *pack_tasks_ind;
+
+  /*how many tasks we want to try and work on at once on the GPU*/
+  int pack_size;
+  int pack_size_pair;
+  /**************************************/
+
   /* Scheduler flags. */
   unsigned int flags;
 
@@ -110,39 +134,11 @@ struct scheduler {
    * MPI. */
   size_t mpi_message_limit;
 
+  /* 'Pointer' to the seed for the random number generator */
+  pthread_key_t local_seed_pointer;
+
   /* Total ticks spent running the tasks */
   ticks total_ticks;
-
-  struct {
-    /* Total ticks spent waiting for runners to come home. */
-    ticks waiting_ticks;
-
-    /* Total ticks spent by runners running tasks. */
-    ticks active_ticks;
-  } deadtime;
-
-  /* Frequency of the dependency graph dumping. */
-  int frequency_dependency;
-
-  /* Specific cell to dump dependency graph for */
-  long long dependency_graph_cellID;
-
-  /* Frequency of the task levels dumping. */
-  int frequency_task_levels;
-
-#if defined(SWIFT_DEBUG_CHECKS)
-  /* Stuff for the deadlock detector */
-
-  /* How long to wait (in ms) before assuming we're in a deadlock */
-  float deadlock_waiting_time_ms;
-
-  /* Time at which last task was successfully retrieved from a queue */
-  ticks last_successful_task_fetch;
-
-  /* needed to dump queues on deadlock detection */
-  struct engine *e;
-
-#endif /* SWIFT_DEBUG_CHECKS */
 };
 
 /* Inlined functions (for speed). */
@@ -152,36 +148,12 @@ struct scheduler {
  * @param s The #scheduler.
  * @param t The task to be added.
  */
-__attribute__((always_inline)) INLINE static void scheduler_activate(
-    struct scheduler *s, struct task *t) {
+__attribute__((always_inline)) INLINE static void
+scheduler_activate(struct scheduler *s, struct task *t) {
   if (atomic_cas(&t->skip, 1, 0)) {
     t->wait = 0;
     int ind = atomic_inc(&s->active_count);
     s->tid_active[ind] = t - s->tasks;
-  }
-#ifdef SWIFT_DEBUG_CHECKS
-  if (activate_by_unskip)
-    t->activated_by_unskip = 1;
-  else
-    t->activated_by_marktask = 1;
-#endif
-}
-
-/**
- * @brief Search a given linked list of task for a given subtype and activate
- * it.
- *
- * @param s The #scheduler.
- * @param link The first element in the linked list of links for the task of
- * interest.
- * @param subtype the task subtype to activate.
- */
-__attribute__((always_inline)) INLINE static void
-scheduler_activate_all_subtype(struct scheduler *s, struct link *link,
-                               const enum task_subtypes subtype) {
-
-  for (struct link *l = link; l != NULL; l = l->next) {
-    if (l->t->subtype == subtype) scheduler_activate(s, l->t);
   }
 }
 
@@ -198,7 +170,7 @@ scheduler_activate_all_subtype(struct scheduler *s, struct link *link,
  */
 __attribute__((always_inline)) INLINE static struct link *
 scheduler_activate_send(struct scheduler *s, struct link *link,
-                        const enum task_subtypes subtype, const int nodeID) {
+                        enum task_subtypes subtype, int nodeID) {
   struct link *l = NULL;
   for (l = link;
        l != NULL && !(l->t->cj->nodeID == nodeID && l->t->subtype == subtype);
@@ -223,61 +195,12 @@ scheduler_activate_send(struct scheduler *s, struct link *link,
  */
 __attribute__((always_inline)) INLINE static struct link *
 scheduler_activate_recv(struct scheduler *s, struct link *link,
-                        const enum task_subtypes subtype) {
+                        enum task_subtypes subtype) {
   struct link *l = NULL;
   for (l = link; l != NULL && l->t->subtype != subtype; l = l->next)
     ;
   if (l == NULL) {
     error("Missing link to recv task.");
-  }
-  scheduler_activate(s, l->t);
-  return l;
-}
-
-/**
- * @brief Search and add an MPI pack task to the list of active tasks.
- *
- * @param s The #scheduler.
- * @param link The first element in the linked list of links for the task of
- * interest.
- * @param subtype the task subtype to activate.
- * @param nodeID The nodeID of the foreign cell.
- *
- * @return The #link to the MPI pack task.
- */
-__attribute__((always_inline)) INLINE static struct link *
-scheduler_activate_pack(struct scheduler *s, struct link *link,
-                        enum task_subtypes subtype, int nodeID) {
-  struct link *l = NULL;
-  for (l = link;
-       l != NULL && !(l->t->cj->nodeID == nodeID && l->t->subtype == subtype);
-       l = l->next)
-    ;
-  if (l == NULL) {
-    error("Missing link to pack task.");
-  }
-  scheduler_activate(s, l->t);
-  return l;
-}
-
-/**
- * @brief Search and add an MPI unpack task to the list of active tasks.
- *
- * @param s The #scheduler.
- * @param link The first element in the linked list of links for the task of
- * interest.
- * @param subtype the task subtype to activate.
- *
- * @return The #link to the MPI unpack task.
- */
-__attribute__((always_inline)) INLINE static struct link *
-scheduler_activate_unpack(struct scheduler *s, struct link *link,
-                          enum task_subtypes subtype) {
-  struct link *l = NULL;
-  for (l = link; l != NULL && l->t->subtype != subtype; l = l->next)
-    ;
-  if (l == NULL) {
-    error("Missing link to unpack task.");
   }
   scheduler_activate(s, l->t);
   return l;
@@ -296,11 +219,12 @@ void scheduler_reset(struct scheduler *s, int nr_tasks);
 void scheduler_ranktasks(struct scheduler *s);
 void scheduler_reweight(struct scheduler *s, int verbose);
 struct task *scheduler_addtask(struct scheduler *s, enum task_types type,
-                               enum task_subtypes subtype, long long flags,
+                               enum task_subtypes subtype, int flags,
                                int implicit, struct cell *ci, struct cell *cj);
 void scheduler_splittasks(struct scheduler *s, const int fof_tasks,
                           const int verbose);
 struct task *scheduler_done(struct scheduler *s, struct task *t);
+struct task *scheduler_done_pack(struct scheduler *s, struct task *t);
 struct task *scheduler_unlock(struct scheduler *s, struct task *t);
 void scheduler_addunlock(struct scheduler *s, struct task *ta, struct task *tb);
 void scheduler_set_unlocks(struct scheduler *s);
@@ -308,12 +232,12 @@ void scheduler_dump_queue(struct scheduler *s);
 void scheduler_print_tasks(const struct scheduler *s, const char *fileName);
 void scheduler_clean(struct scheduler *s);
 void scheduler_free_tasks(struct scheduler *s);
-void scheduler_write_dependencies(struct scheduler *s, int verbose, int step);
-void scheduler_write_cell_dependencies(struct scheduler *s, int verbose,
-                                       int step);
-void scheduler_write_task_level(const struct scheduler *s, int step);
+void scheduler_write_dependencies(struct scheduler *s, int verbose);
+void scheduler_write_task_level(const struct scheduler *s);
 void scheduler_dump_queues(struct engine *e);
 void scheduler_report_task_times(const struct scheduler *s,
                                  const int nr_threads);
+struct task *enqueue_dependencies(struct scheduler *s, struct task *t);
+struct task *signal_sleeping_runners(struct scheduler *s, struct task *t);
 
 #endif /* SWIFT_SCHEDULER_H */
