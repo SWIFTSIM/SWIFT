@@ -107,8 +107,7 @@ void threadpool_dump_log(struct threadpool *tp, const char *filename,
 
       /* If the name was not found, make a new entry. */
       if (nid == max_names) {
-        for (int j = 1; j < max_names; j++)
-          names[j - 1] = names[j];
+        for (int j = 1; j < max_names; j++) names[j - 1] = names[j];
         names[0].map_function = entry->map_function;
         Dl_info dl_info;
         dladdr(entry->map_function, &dl_info);
@@ -122,14 +121,13 @@ void threadpool_dump_log(struct threadpool *tp, const char *filename,
     }
 
     /* Clear the log if requested. */
-    if (reset)
-      log->count = 0;
+    if (reset) log->count = 0;
   }
 
   /* Close the file. */
   fclose(fd);
 }
-#endif // SWIFT_DEBUG_THREADPOOL
+#endif  // SWIFT_DEBUG_THREADPOOL
 
 /**
  * @brief Runner main loop, get a chunk and call the mapper function.
@@ -146,16 +144,13 @@ void threadpool_chomp(struct threadpool *tp, int tid) {
     } else {
       chunk_size =
           (tp->map_data_size - tp->map_data_count) / (2 * tp->num_threads);
-      if (chunk_size > tp->map_data_chunk)
-        chunk_size = tp->map_data_chunk;
+      if (chunk_size > tp->map_data_chunk) chunk_size = tp->map_data_chunk;
     }
-    if (chunk_size < 1)
-      chunk_size = 1;
+    if (chunk_size < 1) chunk_size = 1;
 
     /* Get a chunk and check its size. */
     size_t task_ind = atomic_add(&tp->map_data_count, chunk_size);
-    if (task_ind >= tp->map_data_size)
-      break;
+    if (task_ind >= tp->map_data_size) break;
     if (task_ind + chunk_size > tp->map_data_size)
       chunk_size = tp->map_data_size - task_ind;
 
@@ -187,8 +182,7 @@ void *threadpool_runner(void *data) {
 
     /* If no map function is specified, just die. We use this as a mechanism
        to shut down threads without leaving the barriers in an invalid state. */
-    if (tp->map_function == NULL)
-      pthread_exit(NULL);
+    if (tp->map_function == NULL) pthread_exit(NULL);
 
     /* Do actual work. */
     threadpool_chomp(tp, atomic_inc(&tp->num_threads_running));
@@ -221,8 +215,7 @@ void threadpool_init(struct threadpool *tp, int num_threads) {
 
   /* If there is only a single thread, do nothing more as of here as
      we will just do work in the (blocked) calling thread. */
-  if (num_threads == 1)
-    return;
+  if (num_threads == 1) return;
 
   /* Init the barriers. */
   if (swift_barrier_init(&tp->wait_barrier, NULL, num_threads) != 0 ||
@@ -397,8 +390,7 @@ void threadpool_map_v2(struct threadpool *tp,
  */
 #ifdef SWIFT_DEBUG_THREADPOOL
 void threadpool_reset_log(struct threadpool *tp) {
-  for (int k = 0; k < tp->num_threads; k++)
-    tp->logs[k].count = 0;
+  for (int k = 0; k < tp->num_threads; k++) tp->logs[k].count = 0;
 }
 #endif
 

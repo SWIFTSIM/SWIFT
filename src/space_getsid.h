@@ -43,9 +43,9 @@
  *
  * @return The shift ID and set shift, may or may not swap ci and cj.
  */
-__attribute__((always_inline, nonnull)) INLINE static int
-space_getsid(const struct space *s, struct cell **ci, struct cell **cj,
-             double shift[3]) {
+__attribute__((always_inline, nonnull)) INLINE static int space_getsid(
+    const struct space *s, struct cell **ci, struct cell **cj,
+    double shift[3]) {
 
   /* Get the relative distance between the pairs, wrapping. */
   const int periodic = s->periodic;
@@ -71,8 +71,7 @@ space_getsid(const struct space *s, struct cell **ci, struct cell **cj,
     struct cell *temp = *ci;
     *ci = *cj;
     *cj = temp;
-    for (int k = 0; k < 3; k++)
-      shift[k] = -shift[k];
+    for (int k = 0; k < 3; k++) shift[k] = -shift[k];
   }
   sid = sortlistID[sid];
 
@@ -80,15 +79,14 @@ space_getsid(const struct space *s, struct cell **ci, struct cell **cj,
   return sid;
 }
 
-__attribute__((always_inline, nonnull)) INLINE static int
-space_getsid_GPU(const struct space *s, struct cell **ci, struct cell **cj,
-                 double *shift_x, double *shift_y, double *shift_z) {
+__attribute__((always_inline, nonnull)) INLINE static int space_getsid_GPU(
+    const struct space *s, struct cell **ci, struct cell **cj, double *shift_x,
+    double *shift_y, double *shift_z) {
 
   /* Get the relative distance between the pairs, wrapping. */
   const int periodic = s->periodic;
   double dx[3];
-  for (int k = 0; k < 3; k++)
-    dx[k] = (*cj)->loc[k] - (*ci)->loc[k];
+  for (int k = 0; k < 3; k++) dx[k] = (*cj)->loc[k] - (*ci)->loc[k];
 
   if (periodic && dx[0] < -s->dim[0] / 2)
     *(shift_x) = s->dim[0];

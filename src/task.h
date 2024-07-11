@@ -222,7 +222,7 @@ struct task {
   int gpu_done;
 
   /*! Pointers to the cells this task acts upon */
-  struct cell **ci_unpack; //, **cj;
+  struct cell **ci_unpack;  //, **cj;
 
   /*! List of tasks unlocked by this one */
   struct task **unlock_tasks;

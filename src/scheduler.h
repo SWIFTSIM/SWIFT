@@ -45,9 +45,9 @@
 #define scheduler_dosub 1
 #define scheduler_maxsteal 10
 #define scheduler_maxtries 2
-#define scheduler_doforcesplit                                                 \
-  0 /* Beware: switching this on can/will                                      \
-       break engine_addlink as it assumes                                      \
+#define scheduler_doforcesplit            \
+  0 /* Beware: switching this on can/will \
+       break engine_addlink as it assumes \
        a maximum number of tasks per cell. */
 
 /* Flags . */
@@ -148,8 +148,8 @@ struct scheduler {
  * @param s The #scheduler.
  * @param t The task to be added.
  */
-__attribute__((always_inline)) INLINE static void
-scheduler_activate(struct scheduler *s, struct task *t) {
+__attribute__((always_inline)) INLINE static void scheduler_activate(
+    struct scheduler *s, struct task *t) {
   if (atomic_cas(&t->skip, 1, 0)) {
     t->wait = 0;
     int ind = atomic_inc(&s->active_count);

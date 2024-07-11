@@ -117,12 +117,10 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       /* Local pointer. */
       struct cell *ci = t->ci;
 
-      if (ci == NULL)
-        continue;
+      if (ci == NULL) continue;
 
 #ifdef SWIFT_DEBUG_CHECKS
-      if (ci->nodeID != nodeID)
-        error("Non-local self task found");
+      if (ci->nodeID != nodeID) error("Non-local self task found");
 #endif
       const int ci_active_hydro = cell_is_active_hydro(ci, e);
       const int ci_active_gravity = cell_is_active_gravity(ci, e);
@@ -137,8 +135,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         if (ci_active_hydro) {
           scheduler_activate(s, t);
           cell_activate_drift_part(ci, s);
-          if (with_timestep_limiter)
-            cell_activate_limiter(ci, s);
+          if (with_timestep_limiter) cell_activate_limiter(ci, s);
         }
       }
 
@@ -180,43 +177,36 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         if (ci_active_hydro) {
           scheduler_activate(s, t);
           cell_activate_subcell_hydro_tasks(ci, NULL, s, with_timestep_limiter);
-          if (with_timestep_limiter)
-            cell_activate_limiter(ci, s);
+          if (with_timestep_limiter) cell_activate_limiter(ci, s);
         }
       }
 
       else if (t_type == task_type_self && t_subtype == task_subtype_force) {
-        if (ci_active_hydro)
-          scheduler_activate(s, t);
+        if (ci_active_hydro) scheduler_activate(s, t);
       }
 
       else if (t_type == task_type_sub_self &&
                t_subtype == task_subtype_force) {
-        if (ci_active_hydro)
-          scheduler_activate(s, t);
+        if (ci_active_hydro) scheduler_activate(s, t);
       }
 
       else if (t->type == task_type_self &&
                t->subtype == task_subtype_limiter) {
-        if (ci_active_hydro)
-          scheduler_activate(s, t);
+        if (ci_active_hydro) scheduler_activate(s, t);
       }
 
       else if (t->type == task_type_sub_self &&
                t->subtype == task_subtype_limiter) {
-        if (ci_active_hydro)
-          scheduler_activate(s, t);
+        if (ci_active_hydro) scheduler_activate(s, t);
       }
 
       else if (t_type == task_type_self && t_subtype == task_subtype_gradient) {
-        if (ci_active_hydro)
-          scheduler_activate(s, t);
+        if (ci_active_hydro) scheduler_activate(s, t);
       }
 
       else if (t_type == task_type_sub_self &&
                t_subtype == task_subtype_gradient) {
-        if (ci_active_hydro)
-          scheduler_activate(s, t);
+        if (ci_active_hydro) scheduler_activate(s, t);
       }
 
       /* Activate the star density */
@@ -226,8 +216,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           scheduler_activate(s, t);
           cell_activate_drift_part(ci, s);
           cell_activate_drift_spart(ci, s);
-          if (with_timestep_sync)
-            cell_activate_sync_part(ci, s);
+          if (with_timestep_sync) cell_activate_sync_part(ci, s);
         }
       }
 
@@ -250,8 +239,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
       else if (t_type == task_type_sub_self &&
                t_subtype == task_subtype_stars_feedback) {
-        if (ci_active_stars)
-          scheduler_activate(s, t);
+        if (ci_active_stars) scheduler_activate(s, t);
       }
 
       /* Activate the sink formation */
@@ -261,8 +249,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           scheduler_activate(s, t);
           cell_activate_drift_part(ci, s);
           cell_activate_drift_sink(ci, s);
-          if (with_timestep_sync)
-            cell_activate_sync_part(ci, s);
+          if (with_timestep_sync) cell_activate_sync_part(ci, s);
         }
       }
 
@@ -304,8 +291,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
       else if (t_type == task_type_sub_self &&
                t_subtype == task_subtype_bh_swallow) {
-        if (ci_active_black_holes)
-          scheduler_activate(s, t);
+        if (ci_active_black_holes) scheduler_activate(s, t);
       }
 
       else if (t_type == task_type_self &&
@@ -317,8 +303,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
       else if (t_type == task_type_sub_self &&
                t_subtype == task_subtype_do_gas_swallow) {
-        if (ci_active_black_holes)
-          scheduler_activate(s, t);
+        if (ci_active_black_holes) scheduler_activate(s, t);
       }
 
       else if (t_type == task_type_self &&
@@ -330,8 +315,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
       else if (t_type == task_type_sub_self &&
                t_subtype == task_subtype_do_bh_swallow) {
-        if (ci_active_black_holes)
-          scheduler_activate(s, t);
+        if (ci_active_black_holes) scheduler_activate(s, t);
       }
 
       else if (t_type == task_type_self &&
@@ -343,8 +327,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
       else if (t_type == task_type_sub_self &&
                t_subtype == task_subtype_bh_feedback) {
-        if (ci_active_black_holes)
-          scheduler_activate(s, t);
+        if (ci_active_black_holes) scheduler_activate(s, t);
       }
 
       /* Activate the gravity drift */
@@ -385,8 +368,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       struct cell *ci = t->ci;
       struct cell *cj = t->cj;
 
-      if (ci == NULL && cj == NULL)
-        continue;
+      if (ci == NULL && cj == NULL) continue;
 
 #ifdef WITH_MPI
       const int ci_nodeID = ci->nodeID;
@@ -461,10 +443,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           cj->hydro.dx_max_sort_old = cj->hydro.dx_max_sort;
 
           /* Activate the hydro drift tasks. */
-          if (ci_nodeID == nodeID)
-            cell_activate_drift_part(ci, s);
-          if (cj_nodeID == nodeID)
-            cell_activate_drift_part(cj, s);
+          if (ci_nodeID == nodeID) cell_activate_drift_part(ci, s);
+          if (cj_nodeID == nodeID) cell_activate_drift_part(cj, s);
 
           /* And the limiter */
           if (ci_nodeID == nodeID && with_timestep_limiter)
@@ -508,10 +488,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
             cj->hydro.dx_max_sort_old = cj->hydro.dx_max_sort;
 
             /* Activate the drift tasks. */
-            if (ci_nodeID == nodeID)
-              cell_activate_drift_spart(ci, s);
-            if (cj_nodeID == nodeID)
-              cell_activate_drift_part(cj, s);
+            if (ci_nodeID == nodeID) cell_activate_drift_spart(ci, s);
+            if (cj_nodeID == nodeID) cell_activate_drift_part(cj, s);
             if (cj_nodeID == nodeID && with_timestep_sync)
               cell_activate_sync_part(cj, s);
 
@@ -532,10 +510,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
             cj->stars.dx_max_sort_old = cj->stars.dx_max_sort;
 
             /* Activate the drift tasks. */
-            if (ci_nodeID == nodeID)
-              cell_activate_drift_part(ci, s);
-            if (cj_nodeID == nodeID)
-              cell_activate_drift_spart(cj, s);
+            if (ci_nodeID == nodeID) cell_activate_drift_part(ci, s);
+            if (cj_nodeID == nodeID) cell_activate_drift_spart(cj, s);
             if (ci_nodeID == nodeID && with_timestep_sync)
               cell_activate_sync_part(ci, s);
 
@@ -588,15 +564,11 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
         /* Set the correct drifting flags */
         if (t_type == task_type_pair && t_subtype == task_subtype_bh_density) {
-          if (ci_nodeID == nodeID)
-            cell_activate_drift_bpart(ci, s);
-          if (ci_nodeID == nodeID)
-            cell_activate_drift_part(ci, s);
+          if (ci_nodeID == nodeID) cell_activate_drift_bpart(ci, s);
+          if (ci_nodeID == nodeID) cell_activate_drift_part(ci, s);
 
-          if (cj_nodeID == nodeID)
-            cell_activate_drift_part(cj, s);
-          if (cj_nodeID == nodeID)
-            cell_activate_drift_bpart(cj, s);
+          if (cj_nodeID == nodeID) cell_activate_drift_part(cj, s);
+          if (cj_nodeID == nodeID) cell_activate_drift_bpart(cj, s);
         }
 
         /* Store current values of dx_max and h_max. */
@@ -645,10 +617,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
             cj->hydro.dx_max_sort_old = cj->hydro.dx_max_sort;
 
             /* Activate the drift tasks. */
-            if (ci_nodeID == nodeID)
-              cell_activate_drift_sink(ci, s);
-            if (cj_nodeID == nodeID)
-              cell_activate_drift_part(cj, s);
+            if (ci_nodeID == nodeID) cell_activate_drift_sink(ci, s);
+            if (cj_nodeID == nodeID) cell_activate_drift_part(cj, s);
             if (cj_nodeID == nodeID && with_timestep_sync)
               cell_activate_sync_part(cj, s);
 
@@ -664,10 +634,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
             ci->hydro.dx_max_sort_old = ci->hydro.dx_max_sort;
 
             /* Activate the drift tasks. */
-            if (ci_nodeID == nodeID)
-              cell_activate_drift_part(ci, s);
-            if (cj_nodeID == nodeID)
-              cell_activate_drift_sink(cj, s);
+            if (ci_nodeID == nodeID) cell_activate_drift_part(ci, s);
+            if (cj_nodeID == nodeID) cell_activate_drift_sink(cj, s);
             if (ci_nodeID == nodeID && with_timestep_sync)
               cell_activate_sync_part(ci, s);
 
@@ -705,8 +673,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       if (t_subtype == task_subtype_density) {
 
         /* Too much particle movement? */
-        if (cell_need_rebuild_for_hydro_pair(ci, cj))
-          *rebuild_space = 1;
+        if (cell_need_rebuild_for_hydro_pair(ci, cj)) *rebuild_space = 1;
 
 #ifdef WITH_MPI
         /* Activate the send/recv tasks. */
@@ -858,10 +825,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       else if (t->subtype == task_subtype_stars_density) {
 
         /* Too much particle movement? */
-        if (cell_need_rebuild_for_stars_pair(ci, cj))
-          *rebuild_space = 1;
-        if (cell_need_rebuild_for_stars_pair(cj, ci))
-          *rebuild_space = 1;
+        if (cell_need_rebuild_for_stars_pair(ci, cj)) *rebuild_space = 1;
+        if (cell_need_rebuild_for_stars_pair(cj, ci)) *rebuild_space = 1;
 
 #ifdef WITH_MPI
         /* Activate the send/recv tasks. */
@@ -939,10 +904,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       else if (t->subtype == task_subtype_sink_compute_formation) {
 
         /* Too much particle movement? */
-        if (cell_need_rebuild_for_sinks_pair(ci, cj))
-          *rebuild_space = 1;
-        if (cell_need_rebuild_for_sinks_pair(cj, ci))
-          *rebuild_space = 1;
+        if (cell_need_rebuild_for_sinks_pair(ci, cj)) *rebuild_space = 1;
+        if (cell_need_rebuild_for_sinks_pair(cj, ci)) *rebuild_space = 1;
 
 #ifdef WITH_MPI
         error("TODO");
@@ -953,10 +916,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       else if (t->subtype == task_subtype_bh_density) {
 
         /* Too much particle movement? */
-        if (cell_need_rebuild_for_black_holes_pair(ci, cj))
-          *rebuild_space = 1;
-        if (cell_need_rebuild_for_black_holes_pair(cj, ci))
-          *rebuild_space = 1;
+        if (cell_need_rebuild_for_black_holes_pair(ci, cj)) *rebuild_space = 1;
+        if (cell_need_rebuild_for_black_holes_pair(cj, ci)) *rebuild_space = 1;
 
         scheduler_activate(s, ci->hydro.super->black_holes.swallow_ghost[0]);
         scheduler_activate(s, cj->hydro.super->black_holes.swallow_ghost[0]);
@@ -1119,15 +1080,13 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
     /* End force for hydro ? */
     else if (t_type == task_type_end_hydro_force) {
 
-      if (cell_is_active_hydro(t->ci, e))
-        scheduler_activate(s, t);
+      if (cell_is_active_hydro(t->ci, e)) scheduler_activate(s, t);
     }
 
     /* End force for gravity ? */
     else if (t_type == task_type_end_grav_force) {
 
-      if (cell_is_active_gravity(t->ci, e))
-        scheduler_activate(s, t);
+      if (cell_is_active_gravity(t->ci, e)) scheduler_activate(s, t);
     }
 
     /* Kick ? */
@@ -1142,15 +1101,13 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
     /* Sink drift ? */
     else if (t_type == task_type_drift_sink) {
 
-      if (cell_is_active_sinks(t->ci, e))
-        cell_activate_drift_sink(t->ci, s);
+      if (cell_is_active_sinks(t->ci, e)) cell_activate_drift_sink(t->ci, s);
     }
 
     /* Hydro ghost tasks ? */
     else if (t_type == task_type_ghost || t_type == task_type_extra_ghost ||
              t_type == task_type_ghost_in || t_type == task_type_ghost_out) {
-      if (cell_is_active_hydro(t->ci, e))
-        scheduler_activate(s, t);
+      if (cell_is_active_hydro(t->ci, e)) scheduler_activate(s, t);
     }
 
     /* logger tasks ? */
@@ -1167,8 +1124,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
              t_type == task_type_init_grav_out ||
              t_type == task_type_drift_gpart_out ||
              t_type == task_type_grav_down_in) {
-      if (cell_is_active_gravity(t->ci, e))
-        scheduler_activate(s, t);
+      if (cell_is_active_gravity(t->ci, e)) scheduler_activate(s, t);
     }
 
     /* Multipole - Multipole interaction task */
@@ -1217,14 +1173,12 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
              t_type == task_type_bh_swallow_ghost1 ||
              t_type == task_type_bh_swallow_ghost2 ||
              t_type == task_type_bh_swallow_ghost3) {
-      if (cell_is_active_black_holes(t->ci, e))
-        scheduler_activate(s, t);
+      if (cell_is_active_black_holes(t->ci, e)) scheduler_activate(s, t);
     }
 
     /* Black holes implicit tasks? */
     else if (t_type == task_type_bh_in || t_type == task_type_bh_out) {
-      if (cell_is_active_black_holes(t->ci, e))
-        scheduler_activate(s, t);
+      if (cell_is_active_black_holes(t->ci, e)) scheduler_activate(s, t);
     }
 
     /* Time-step? */
@@ -1243,8 +1197,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
     /* Subgrid tasks: cooling */
     else if (t_type == task_type_cooling || t_type == task_type_cooling_in ||
              t_type == task_type_cooling_out) {
-      if (cell_is_active_hydro(t->ci, e))
-        scheduler_activate(s, t);
+      if (cell_is_active_hydro(t->ci, e)) scheduler_activate(s, t);
     }
 
     /* Subgrid tasks: star formation */

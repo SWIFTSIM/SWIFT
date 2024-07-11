@@ -98,10 +98,8 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
 #endif
 
   /* Anything to do here? */
-  if (c->stars.count == 0)
-    return;
-  if (!cell_is_active_stars(c, e))
-    return;
+  if (c->stars.count == 0) return;
+  if (!cell_is_active_stars(c, e)) return;
 
   /* Recurse? */
   if (c->split) {
@@ -268,11 +266,12 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
           /* Be verbose about the particles that struggle to converge */
           if (num_reruns > max_smoothing_iter - 10) {
 
-            message("Smoothing length convergence problem: iter=%d p->id=%lld "
-                    "h_init=%12.8e h_old=%12.8e h_new=%12.8e f=%f f_prime=%f "
-                    "n_sum=%12.8e n_target=%12.8e left=%12.8e right=%12.8e",
-                    num_reruns, sp->id, h_init, h_old, h_new, f, f_prime, n_sum,
-                    n_target, left[i], right[i]);
+            message(
+                "Smoothing length convergence problem: iter=%d p->id=%lld "
+                "h_init=%12.8e h_old=%12.8e h_new=%12.8e f=%f f_prime=%f "
+                "n_sum=%12.8e n_target=%12.8e left=%12.8e right=%12.8e",
+                num_reruns, sp->id, h_init, h_old, h_new, f, f_prime, n_sum,
+                n_target, left[i], right[i]);
           }
 
           /* Safety check: truncate to the range [ h_old/2 , 2h_old ]. */
@@ -338,8 +337,9 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
             }
 
           } else {
-            error("Fundamental problem with the smoothing length iteration "
-                  "logic.");
+            error(
+                "Fundamental problem with the smoothing length iteration "
+                "logic.");
           }
         }
 
@@ -478,8 +478,7 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
     }
   }
 
-  if (timer)
-    TIMER_TOC(timer_do_stars_ghost);
+  if (timer) TIMER_TOC(timer_do_stars_ghost);
 }
 
 /**
@@ -510,10 +509,8 @@ void runner_do_black_holes_density_ghost(struct runner *r, struct cell *c,
   TIMER_TIC;
 
   /* Anything to do here? */
-  if (c->black_holes.count == 0)
-    return;
-  if (!cell_is_active_black_holes(c, e))
-    return;
+  if (c->black_holes.count == 0) return;
+  if (!cell_is_active_black_holes(c, e)) return;
 
   /* Recurse? */
   if (c->split) {
@@ -630,11 +627,12 @@ void runner_do_black_holes_density_ghost(struct runner *r, struct cell *c,
           /* Be verbose about the particles that struggle to converge */
           if (num_reruns > max_smoothing_iter - 10) {
 
-            message("Smoothing length convergence problem: iter=%d p->id=%lld "
-                    "h_init=%12.8e h_old=%12.8e h_new=%12.8e f=%f f_prime=%f "
-                    "n_sum=%12.8e n_target=%12.8e left=%12.8e right=%12.8e",
-                    num_reruns, bp->id, h_init, h_old, h_new, f, f_prime, n_sum,
-                    n_target, left[i], right[i]);
+            message(
+                "Smoothing length convergence problem: iter=%d p->id=%lld "
+                "h_init=%12.8e h_old=%12.8e h_new=%12.8e f=%f f_prime=%f "
+                "n_sum=%12.8e n_target=%12.8e left=%12.8e right=%12.8e",
+                num_reruns, bp->id, h_init, h_old, h_new, f, f_prime, n_sum,
+                n_target, left[i], right[i]);
           }
 
           /* Safety check: truncate to the range [ h_old/2 , 2h_old ]. */
@@ -698,8 +696,9 @@ void runner_do_black_holes_density_ghost(struct runner *r, struct cell *c,
             }
 
           } else {
-            error("Fundamental problem with the smoothing length iteration "
-                  "logic.");
+            error(
+                "Fundamental problem with the smoothing length iteration "
+                "logic.");
           }
         }
 
@@ -790,8 +789,7 @@ void runner_do_black_holes_density_ghost(struct runner *r, struct cell *c,
     }
   }
 
-  if (timer)
-    TIMER_TOC(timer_do_black_holes_ghost);
+  if (timer) TIMER_TOC(timer_do_black_holes_ghost);
 }
 
 /**
@@ -813,10 +811,8 @@ void runner_do_black_holes_swallow_ghost(struct runner *r, struct cell *c,
   TIMER_TIC;
 
   /* Anything to do here? */
-  if (c->black_holes.count == 0)
-    return;
-  if (!cell_is_active_black_holes(c, e))
-    return;
+  if (c->black_holes.count == 0) return;
+  if (!cell_is_active_black_holes(c, e)) return;
 
   /* Recurse? */
   if (c->split) {
@@ -858,8 +854,7 @@ void runner_do_black_holes_swallow_ghost(struct runner *r, struct cell *c,
     }
   }
 
-  if (timer)
-    TIMER_TOC(timer_do_black_holes_ghost);
+  if (timer) TIMER_TOC(timer_do_black_holes_ghost);
 }
 
 /**
@@ -887,14 +882,12 @@ void runner_do_extra_ghost(struct runner *r, struct cell *c, int timer) {
   TIMER_TIC;
 
   /* Anything to do here? */
-  if (!cell_is_active_hydro(c, e))
-    return;
+  if (!cell_is_active_hydro(c, e)) return;
 
   /* Recurse? */
   if (c->split) {
     for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL)
-        runner_do_extra_ghost(r, c->progeny[k], 0);
+      if (c->progeny[k] != NULL) runner_do_extra_ghost(r, c->progeny[k], 0);
   } else {
 
     /* Loop over the parts in this cell. */
@@ -940,8 +933,7 @@ void runner_do_extra_ghost(struct runner *r, struct cell *c, int timer) {
     }
   }
 
-  if (timer)
-    TIMER_TOC(timer_do_extra_ghost);
+  if (timer) TIMER_TOC(timer_do_extra_ghost);
 
 #else
   error("SWIFT was not compiled with the extra hydro loop activated.");
@@ -986,10 +978,8 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
   TIMER_TIC;
 
   /* Anything to do here? */
-  if (c->hydro.count == 0)
-    return;
-  if (!cell_is_active_hydro(c, e))
-    return;
+  if (c->hydro.count == 0) return;
+  if (!cell_is_active_hydro(c, e)) return;
 
   /* Recurse? */
   if (c->split) {
@@ -1042,8 +1032,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 
 #ifdef SWIFT_DEBUG_CHECKS
         /* Is this part within the timestep? */
-        if (!part_is_active(p, e))
-          error("Ghost applied to inactive particle");
+        if (!part_is_active(p, e)) error("Ghost applied to inactive particle");
 #endif
 
         /* Get some useful values */
@@ -1173,11 +1162,12 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
           /* Be verbose about the particles that struggle to converge */
           if (num_reruns > max_smoothing_iter - 10) {
 
-            message("Smoothing length convergence problem: iter=%d p->id=%lld "
-                    "h_init=%12.8e h_old=%12.8e h_new=%12.8e f=%f f_prime=%f "
-                    "n_sum=%12.8e n_target=%12.8e left=%12.8e right=%12.8e",
-                    num_reruns, p->id, h_init, h_old, h_new, f, f_prime, n_sum,
-                    n_target, left[i], right[i]);
+            message(
+                "Smoothing length convergence problem: iter=%d p->id=%lld "
+                "h_init=%12.8e h_old=%12.8e h_new=%12.8e f=%f f_prime=%f "
+                "n_sum=%12.8e n_target=%12.8e left=%12.8e right=%12.8e",
+                num_reruns, p->id, h_init, h_old, h_new, f, f_prime, n_sum,
+                n_target, left[i], right[i]);
           }
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -1272,8 +1262,9 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
             }
 
           } else {
-            error("Fundamental problem with the smoothing length iteration "
-                  "logic.");
+            error(
+                "Fundamental problem with the smoothing length iteration "
+                "logic.");
           }
         }
 
@@ -1408,8 +1399,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
     }
   }
 
-  if (timer)
-    TIMER_TOC(timer_do_ghost);
+  if (timer) TIMER_TOC(timer_do_ghost);
 }
 
 /**
@@ -1425,8 +1415,7 @@ void runner_do_rt_ghost1(struct runner *r, struct cell *c, int timer) {
   int count = c->hydro.count;
 
   /* Anything to do here? */
-  if (count == 0)
-    return;
+  if (count == 0) return;
 
   TIMER_TIC;
 
@@ -1444,6 +1433,5 @@ void runner_do_rt_ghost1(struct runner *r, struct cell *c, int timer) {
     rt_injection_update_photon_density(p);
   }
 
-  if (timer)
-    TIMER_TOC(timer_do_rt_ghost1);
+  if (timer) TIMER_TOC(timer_do_rt_ghost1);
 }

@@ -152,8 +152,7 @@ static FILE *timers_file;
  */
 void timers_reset_all(void) {
 
-  for (int k = 0; k < timer_count; k++)
-    timers[k] = 0;
+  for (int k = 0; k < timer_count; k++) timers[k] = 0;
 }
 
 /**

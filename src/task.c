@@ -171,23 +171,22 @@ MPI_Comm subtaskMPI_comms[task_subtype_count];
  * @param ARRAY is the array of this specific type.
  * @param COUNT is the number of elements in the array.
  */
-#define TASK_CELL_OVERLAP(TYPE, ARRAY, COUNT)                                  \
-  __attribute__((always_inline))                                               \
-  INLINE static size_t task_cell_overlap_##TYPE(                               \
-      const struct cell *restrict ci, const struct cell *restrict cj) {        \
-                                                                               \
-    if (ci == NULL || cj == NULL)                                              \
-      return 0;                                                                \
-                                                                               \
-    if (ci->ARRAY <= cj->ARRAY &&                                              \
-        ci->ARRAY + ci->COUNT >= cj->ARRAY + cj->COUNT) {                      \
-      return cj->COUNT;                                                        \
-    } else if (cj->ARRAY <= ci->ARRAY &&                                       \
-               cj->ARRAY + cj->COUNT >= ci->ARRAY + ci->COUNT) {               \
-      return ci->COUNT;                                                        \
-    }                                                                          \
-                                                                               \
-    return 0;                                                                  \
+#define TASK_CELL_OVERLAP(TYPE, ARRAY, COUNT)                           \
+  __attribute__((always_inline))                                        \
+  INLINE static size_t task_cell_overlap_##TYPE(                        \
+      const struct cell *restrict ci, const struct cell *restrict cj) { \
+                                                                        \
+    if (ci == NULL || cj == NULL) return 0;                             \
+                                                                        \
+    if (ci->ARRAY <= cj->ARRAY &&                                       \
+        ci->ARRAY + ci->COUNT >= cj->ARRAY + cj->COUNT) {               \
+      return cj->COUNT;                                                 \
+    } else if (cj->ARRAY <= ci->ARRAY &&                                \
+               cj->ARRAY + cj->COUNT >= ci->ARRAY + ci->COUNT) {        \
+      return ci->COUNT;                                                 \
+    }                                                                   \
+                                                                        \
+    return 0;                                                           \
   }
 
 TASK_CELL_OVERLAP(part, hydro.parts, hydro.count);
@@ -201,76 +200,121 @@ TASK_CELL_OVERLAP(bpart, black_holes.parts, black_holes.count);
  *
  * @param t The #task.
  */
-__attribute__((always_inline)) INLINE static enum task_actions
-task_acts_on(const struct task *t) {
+__attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
+    const struct task *t) {
 
   switch (t->type) {
 
-  case task_type_none:
-    return task_action_none;
-    break;
+    case task_type_none:
+      return task_action_none;
+      break;
 
-  case task_type_drift_part:
-  case task_type_sort:
-  case task_type_ghost:
-  case task_type_extra_ghost:
-  case task_type_cooling:
-  case task_type_end_hydro_force:
-    return task_action_part;
-    break;
-
-  case task_type_star_formation:
-  case task_type_sink_formation:
-    return task_action_all;
-
-  case task_type_drift_spart:
-  case task_type_stars_ghost:
-  case task_type_stars_sort:
-  case task_type_stars_resort:
-    return task_action_spart;
-    break;
-
-  case task_type_drift_sink:
-    return task_action_sink;
-    break;
-
-  case task_type_drift_bpart:
-  case task_type_bh_density_ghost:
-  case task_type_bh_swallow_ghost3:
-    return task_action_bpart;
-    break;
-
-  case task_type_self:
-  case task_type_pair:
-  case task_type_sub_self:
-  case task_type_sub_pair:
-    switch (t->subtype) {
-
-    case task_subtype_density:
-    case task_subtype_gradient:
-    case task_subtype_force:
-    case task_subtype_limiter:
+    case task_type_drift_part:
+    case task_type_sort:
+    case task_type_ghost:
+    case task_type_extra_ghost:
+    case task_type_cooling:
+    case task_type_end_hydro_force:
       return task_action_part;
       break;
 
-    case task_subtype_stars_density:
-    case task_subtype_stars_feedback:
+    case task_type_star_formation:
+    case task_type_sink_formation:
       return task_action_all;
+
+    case task_type_drift_spart:
+    case task_type_stars_ghost:
+    case task_type_stars_sort:
+    case task_type_stars_resort:
+      return task_action_spart;
       break;
 
-    case task_subtype_bh_density:
-    case task_subtype_bh_feedback:
-    case task_subtype_bh_swallow:
-    case task_subtype_do_gas_swallow:
-      return task_action_all;
+    case task_type_drift_sink:
+      return task_action_sink;
       break;
 
-    case task_subtype_do_bh_swallow:
+    case task_type_drift_bpart:
+    case task_type_bh_density_ghost:
+    case task_type_bh_swallow_ghost3:
       return task_action_bpart;
       break;
 
-    case task_subtype_grav:
-    case task_subtype_external_grav:
+    case task_type_self:
+    case task_type_pair:
+    case task_type_sub_self:
+    case task_type_sub_pair:
+      switch (t->subtype) {
+
+        case task_subtype_density:
+        case task_subtype_gradient:
+        case task_subtype_force:
+        case task_subtype_limiter:
+          return task_action_part;
+          break;
+
+        case task_subtype_stars_density:
+        case task_subtype_stars_feedback:
+          return task_action_all;
+          break;
+
+        case task_subtype_bh_density:
+        case task_subtype_bh_feedback:
+        case task_subtype_bh_swallow:
+        case task_subtype_do_gas_swallow:
+          return task_action_all;
+          break;
+
+        case task_subtype_do_bh_swallow:
+          return task_action_bpart;
+          break;
+
+        case task_subtype_grav:
+        case task_subtype_external_grav:
+          return task_action_gpart;
+          break;
+
+        default:
+#ifdef SWIFT_DEBUG_CHECKS
+          error("Unknown task_action for task %s/%s", taskID_names[t->type],
+                subtaskID_names[t->subtype]);
+#endif
+          return task_action_none;
+          break;
+      }
+      break;
+
+    case task_type_kick1:
+    case task_type_kick2:
+    case task_type_logger:
+    case task_type_fof_self:
+    case task_type_fof_pair:
+    case task_type_timestep:
+    case task_type_timestep_limiter:
+    case task_type_timestep_sync:
+    case task_type_send:
+    case task_type_recv:
+      if (t->ci->hydro.count > 0 && t->ci->grav.count > 0)
+        return task_action_all;
+      else if (t->ci->hydro.count > 0)
+        return task_action_part;
+      else if (t->ci->grav.count > 0)
+        return task_action_gpart;
+      else {
+#ifdef SWIFT_DEBUG_CHECKS
+        error("Task without particles");
+#endif
+      }
+      break;
+
+    case task_type_init_grav:
+    case task_type_grav_mm:
+    case task_type_grav_long_range:
+      return task_action_multipole;
+      break;
+
+    case task_type_drift_gpart:
+    case task_type_grav_down:
+    case task_type_end_grav_force:
       return task_action_gpart;
       break;
 
@@ -281,51 +325,6 @@ task_acts_on(const struct task *t) {
 #endif
       return task_action_none;
       break;
-    }
-    break;
-
-  case task_type_kick1:
-  case task_type_kick2:
-  case task_type_logger:
-  case task_type_fof_self:
-  case task_type_fof_pair:
-  case task_type_timestep:
-  case task_type_timestep_limiter:
-  case task_type_timestep_sync:
-  case task_type_send:
-  case task_type_recv:
-    if (t->ci->hydro.count > 0 && t->ci->grav.count > 0)
-      return task_action_all;
-    else if (t->ci->hydro.count > 0)
-      return task_action_part;
-    else if (t->ci->grav.count > 0)
-      return task_action_gpart;
-    else {
-#ifdef SWIFT_DEBUG_CHECKS
-      error("Task without particles");
-#endif
-    }
-    break;
-
-  case task_type_init_grav:
-  case task_type_grav_mm:
-  case task_type_grav_long_range:
-    return task_action_multipole;
-    break;
-
-  case task_type_drift_gpart:
-  case task_type_grav_down:
-  case task_type_end_grav_force:
-    return task_action_gpart;
-    break;
-
-  default:
-#ifdef SWIFT_DEBUG_CHECKS
-    error("Unknown task_action for task %s/%s", taskID_names[t->type],
-          subtaskID_names[t->subtype]);
-#endif
-    return task_action_none;
-    break;
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -346,16 +345,14 @@ task_acts_on(const struct task *t) {
 float task_overlap(const struct task *restrict ta,
                    const struct task *restrict tb) {
 
-  if (ta == NULL || tb == NULL)
-    return 0.f;
+  if (ta == NULL || tb == NULL) return 0.f;
 
   const enum task_actions ta_act = task_acts_on(ta);
   const enum task_actions tb_act = task_acts_on(tb);
 
   /* First check if any of the two tasks are of a type that don't
      use cells. */
-  if (ta_act == task_action_none || tb_act == task_action_none)
-    return 0.f;
+  if (ta_act == task_action_none || tb_act == task_action_none) return 0.f;
 
   const int ta_part = (ta_act == task_action_part || ta_act == task_action_all);
   const int ta_gpart =
@@ -379,17 +376,12 @@ float task_overlap(const struct task *restrict ta,
 
     /* Compute the union of the cell data. */
     size_t size_union = 0;
-    if (ta->ci != NULL)
-      size_union += ta->ci->hydro.count;
-    if (ta->cj != NULL)
-      size_union += ta->cj->hydro.count;
-    if (tb->ci != NULL)
-      size_union += tb->ci->hydro.count;
-    if (tb->cj != NULL)
-      size_union += tb->cj->hydro.count;
+    if (ta->ci != NULL) size_union += ta->ci->hydro.count;
+    if (ta->cj != NULL) size_union += ta->cj->hydro.count;
+    if (tb->ci != NULL) size_union += tb->ci->hydro.count;
+    if (tb->cj != NULL) size_union += tb->cj->hydro.count;
 
-    if (size_union == 0)
-      return 0.f;
+    if (size_union == 0) return 0.f;
 
     /* Compute the intersection of the cell data. */
     const size_t size_intersect = task_cell_overlap_part(ta->ci, tb->ci) +
@@ -405,17 +397,12 @@ float task_overlap(const struct task *restrict ta,
 
     /* Compute the union of the cell data. */
     size_t size_union = 0;
-    if (ta->ci != NULL)
-      size_union += ta->ci->grav.count;
-    if (ta->cj != NULL)
-      size_union += ta->cj->grav.count;
-    if (tb->ci != NULL)
-      size_union += tb->ci->grav.count;
-    if (tb->cj != NULL)
-      size_union += tb->cj->grav.count;
+    if (ta->ci != NULL) size_union += ta->ci->grav.count;
+    if (ta->cj != NULL) size_union += ta->cj->grav.count;
+    if (tb->ci != NULL) size_union += tb->ci->grav.count;
+    if (tb->cj != NULL) size_union += tb->cj->grav.count;
 
-    if (size_union == 0)
-      return 0.f;
+    if (size_union == 0) return 0.f;
 
     /* Compute the intersection of the cell data. */
     const size_t size_intersect = task_cell_overlap_gpart(ta->ci, tb->ci) +
@@ -431,17 +418,12 @@ float task_overlap(const struct task *restrict ta,
 
     /* Compute the union of the cell data. */
     size_t size_union = 0;
-    if (ta->ci != NULL)
-      size_union += ta->ci->stars.count;
-    if (ta->cj != NULL)
-      size_union += ta->cj->stars.count;
-    if (tb->ci != NULL)
-      size_union += tb->ci->stars.count;
-    if (tb->cj != NULL)
-      size_union += tb->cj->stars.count;
+    if (ta->ci != NULL) size_union += ta->ci->stars.count;
+    if (ta->cj != NULL) size_union += ta->cj->stars.count;
+    if (tb->ci != NULL) size_union += tb->ci->stars.count;
+    if (tb->cj != NULL) size_union += tb->cj->stars.count;
 
-    if (size_union == 0)
-      return 0.f;
+    if (size_union == 0) return 0.f;
 
     /* Compute the intersection of the cell data. */
     const size_t size_intersect = task_cell_overlap_spart(ta->ci, tb->ci) +
@@ -457,17 +439,12 @@ float task_overlap(const struct task *restrict ta,
 
     /* Compute the union of the cell data. */
     size_t size_union = 0;
-    if (ta->ci != NULL)
-      size_union += ta->ci->sinks.count;
-    if (ta->cj != NULL)
-      size_union += ta->cj->sinks.count;
-    if (tb->ci != NULL)
-      size_union += tb->ci->sinks.count;
-    if (tb->cj != NULL)
-      size_union += tb->cj->sinks.count;
+    if (ta->ci != NULL) size_union += ta->ci->sinks.count;
+    if (ta->cj != NULL) size_union += ta->cj->sinks.count;
+    if (tb->ci != NULL) size_union += tb->ci->sinks.count;
+    if (tb->cj != NULL) size_union += tb->cj->sinks.count;
 
-    if (size_union == 0)
-      return 0.f;
+    if (size_union == 0) return 0.f;
 
     /* Compute the intersection of the cell data. */
     const size_t size_intersect = task_cell_overlap_spart(ta->ci, tb->ci) +
@@ -483,17 +460,12 @@ float task_overlap(const struct task *restrict ta,
 
     /* Compute the union of the cell data. */
     size_t size_union = 0;
-    if (ta->ci != NULL)
-      size_union += ta->ci->black_holes.count;
-    if (ta->cj != NULL)
-      size_union += ta->cj->black_holes.count;
-    if (tb->ci != NULL)
-      size_union += tb->ci->black_holes.count;
-    if (tb->cj != NULL)
-      size_union += tb->cj->black_holes.count;
+    if (ta->ci != NULL) size_union += ta->ci->black_holes.count;
+    if (ta->cj != NULL) size_union += ta->cj->black_holes.count;
+    if (tb->ci != NULL) size_union += tb->ci->black_holes.count;
+    if (tb->cj != NULL) size_union += tb->cj->black_holes.count;
 
-    if (size_union == 0)
-      return 0.f;
+    if (size_union == 0) return 0.f;
 
     /* Compute the intersection of the cell data. */
     const size_t size_intersect = task_cell_overlap_bpart(ta->ci, tb->ci) +
@@ -522,165 +494,166 @@ void task_unlock(struct task *t) {
   /* Act based on task type. */
   switch (type) {
 
-  case task_type_kick1:
-  case task_type_kick2:
-  case task_type_logger:
-  case task_type_timestep:
-    cell_unlocktree(ci);
-    cell_gunlocktree(ci);
-    break;
+    case task_type_kick1:
+    case task_type_kick2:
+    case task_type_logger:
+    case task_type_timestep:
+      cell_unlocktree(ci);
+      cell_gunlocktree(ci);
+      break;
 
-  case task_type_drift_part:
-  case task_type_sort:
-  case task_type_ghost:
-  case task_type_extra_ghost:
-  case task_type_end_hydro_force:
-  case task_type_timestep_limiter:
-  case task_type_timestep_sync:
-    cell_unlocktree(ci);
-    break;
+    case task_type_drift_part:
+    case task_type_sort:
+    case task_type_ghost:
+    case task_type_extra_ghost:
+    case task_type_end_hydro_force:
+    case task_type_timestep_limiter:
+    case task_type_timestep_sync:
+      cell_unlocktree(ci);
+      break;
 
-  case task_type_drift_gpart:
-  case task_type_end_grav_force:
-    cell_gunlocktree(ci);
-    break;
+    case task_type_drift_gpart:
+    case task_type_end_grav_force:
+      cell_gunlocktree(ci);
+      break;
 
-  case task_type_stars_sort:
-  case task_type_stars_resort:
-    cell_sunlocktree(ci);
-    break;
+    case task_type_stars_sort:
+    case task_type_stars_resort:
+      cell_sunlocktree(ci);
+      break;
 
-  case task_type_self:
-  case task_type_sub_self:
-    if (subtype == task_subtype_grav) {
+    case task_type_self:
+    case task_type_sub_self:
+      if (subtype == task_subtype_grav) {
+#ifdef SWIFT_TASKS_WITHOUT_ATOMICS
+        cell_gunlocktree(ci);
+        cell_munlocktree(ci);
+#endif
+      } else if ((subtype == task_subtype_stars_density) ||
+                 (subtype == task_subtype_stars_feedback)) {
+        cell_sunlocktree(ci);
+        cell_unlocktree(ci);
+      } else if ((subtype == task_subtype_bh_density) ||
+                 (subtype == task_subtype_bh_feedback) ||
+                 (subtype == task_subtype_bh_swallow) ||
+                 (subtype == task_subtype_do_gas_swallow)) {
+        cell_bunlocktree(ci);
+        cell_unlocktree(ci);
+      } else if (subtype == task_subtype_do_bh_swallow) {
+        cell_bunlocktree(ci);
+      } else if (subtype == task_subtype_limiter) {
+#ifdef SWIFT_TASKS_WITHOUT_ATOMICS
+        cell_unlocktree(ci);
+#endif
+      } else if (subtype == task_subtype_gpu_unpack) {
+        //        for(int pp = 0; pp < 128 /*should be sched->pack_size*/;
+        //        pp++){
+        //		  cell_unlocktree(t->ci_unpack[pp]);
+        //	    }
+        /*Do nothing and be on your way*/
+      } else if (subtype == task_subtype_gpu_unpack_f) {
+        /*Do nothing and be on your way*/
+      } else if (subtype == task_subtype_gpu_unpack_g) {
+        /*Do nothing and be on your way*/
+
+      } else if (subtype == task_subtype_gpu_pack) {
+        cell_unlocktree(ci);
+      } else if (subtype == task_subtype_gpu_pack_f) {
+        cell_unlocktree(ci);
+      } else if (subtype == task_subtype_gpu_pack_g) {
+        cell_unlocktree(ci);
+      } else { /* hydro*/
+        cell_unlocktree(ci);
+      }
+      break;
+
+    case task_type_pair:
+    case task_type_sub_pair:
+      if (subtype == task_subtype_grav) {
+#ifdef SWIFT_TASKS_WITHOUT_ATOMICS
+        cell_gunlocktree(ci);
+        cell_gunlocktree(cj);
+        cell_munlocktree(ci);
+        cell_munlocktree(cj);
+#endif
+      } else if ((subtype == task_subtype_stars_density) ||
+                 (subtype == task_subtype_stars_feedback)) {
+        cell_sunlocktree(ci);
+        cell_sunlocktree(cj);
+        cell_unlocktree(ci);
+        cell_unlocktree(cj);
+      } else if ((subtype == task_subtype_bh_density) ||
+                 (subtype == task_subtype_bh_feedback) ||
+                 (subtype == task_subtype_bh_swallow) ||
+                 (subtype == task_subtype_do_gas_swallow)) {
+        cell_bunlocktree(ci);
+        cell_bunlocktree(cj);
+        cell_unlocktree(ci);
+        cell_unlocktree(cj);
+      } else if (subtype == task_subtype_do_bh_swallow) {
+        cell_bunlocktree(ci);
+        cell_bunlocktree(cj);
+      } else if (subtype == task_subtype_limiter) {
+#ifdef SWIFT_TASKS_WITHOUT_ATOMICS
+        cell_unlocktree(ci);
+        cell_unlocktree(cj);
+#endif
+      } else if (subtype == task_subtype_gpu_pack) {
+        cell_unlocktree(ci);
+        cell_unlocktree(cj);
+      } else if (subtype == task_subtype_gpu_pack_f) {
+        cell_unlocktree(ci);
+        cell_unlocktree(cj);
+      } else if (subtype == task_subtype_gpu_pack_g) {
+        cell_unlocktree(ci);
+        cell_unlocktree(cj);
+      } else if (subtype == task_subtype_gpu_unpack) {
+        /* Nothing to do */
+      } else if (subtype == task_subtype_gpu_unpack_f) {
+        /* Nothing to do */
+      } else if (subtype == task_subtype_gpu_unpack_g) {
+        /* Nothing to do */
+
+      } else { /* hydro */
+        cell_unlocktree(ci);
+        cell_unlocktree(cj);
+      }
+      break;
+
+    case task_type_grav_down:
 #ifdef SWIFT_TASKS_WITHOUT_ATOMICS
       cell_gunlocktree(ci);
       cell_munlocktree(ci);
 #endif
-    } else if ((subtype == task_subtype_stars_density) ||
-               (subtype == task_subtype_stars_feedback)) {
-      cell_sunlocktree(ci);
-      cell_unlocktree(ci);
-    } else if ((subtype == task_subtype_bh_density) ||
-               (subtype == task_subtype_bh_feedback) ||
-               (subtype == task_subtype_bh_swallow) ||
-               (subtype == task_subtype_do_gas_swallow)) {
-      cell_bunlocktree(ci);
-      cell_unlocktree(ci);
-    } else if (subtype == task_subtype_do_bh_swallow) {
-      cell_bunlocktree(ci);
-    } else if (subtype == task_subtype_limiter) {
+      break;
+
+    case task_type_grav_long_range:
 #ifdef SWIFT_TASKS_WITHOUT_ATOMICS
-      cell_unlocktree(ci);
+      cell_munlocktree(ci);
 #endif
-    } else if (subtype == task_subtype_gpu_unpack) {
-      //        for(int pp = 0; pp < 128 /*should be sched->pack_size*/; pp++){
-      //		  cell_unlocktree(t->ci_unpack[pp]);
-      //	    }
-      /*Do nothing and be on your way*/
-    } else if (subtype == task_subtype_gpu_unpack_f) {
-      /*Do nothing and be on your way*/
-    } else if (subtype == task_subtype_gpu_unpack_g) {
-      /*Do nothing and be on your way*/
+      break;
 
-    } else if (subtype == task_subtype_gpu_pack) {
-      cell_unlocktree(ci);
-    } else if (subtype == task_subtype_gpu_pack_f) {
-      cell_unlocktree(ci);
-    } else if (subtype == task_subtype_gpu_pack_g) {
-      cell_unlocktree(ci);
-    } else { /* hydro*/
-      cell_unlocktree(ci);
-    }
-    break;
-
-  case task_type_pair:
-  case task_type_sub_pair:
-    if (subtype == task_subtype_grav) {
+    case task_type_grav_mm:
 #ifdef SWIFT_TASKS_WITHOUT_ATOMICS
-      cell_gunlocktree(ci);
-      cell_gunlocktree(cj);
       cell_munlocktree(ci);
       cell_munlocktree(cj);
 #endif
-    } else if ((subtype == task_subtype_stars_density) ||
-               (subtype == task_subtype_stars_feedback)) {
+      break;
+
+    case task_type_star_formation:
+      cell_unlocktree(ci);
       cell_sunlocktree(ci);
-      cell_sunlocktree(cj);
-      cell_unlocktree(ci);
-      cell_unlocktree(cj);
-    } else if ((subtype == task_subtype_bh_density) ||
-               (subtype == task_subtype_bh_feedback) ||
-               (subtype == task_subtype_bh_swallow) ||
-               (subtype == task_subtype_do_gas_swallow)) {
-      cell_bunlocktree(ci);
-      cell_bunlocktree(cj);
-      cell_unlocktree(ci);
-      cell_unlocktree(cj);
-    } else if (subtype == task_subtype_do_bh_swallow) {
-      cell_bunlocktree(ci);
-      cell_bunlocktree(cj);
-    } else if (subtype == task_subtype_limiter) {
-#ifdef SWIFT_TASKS_WITHOUT_ATOMICS
-      cell_unlocktree(ci);
-      cell_unlocktree(cj);
-#endif
-    } else if (subtype == task_subtype_gpu_pack) {
-      cell_unlocktree(ci);
-      cell_unlocktree(cj);
-    } else if (subtype == task_subtype_gpu_pack_f) {
-      cell_unlocktree(ci);
-      cell_unlocktree(cj);
-    } else if (subtype == task_subtype_gpu_pack_g) {
-      cell_unlocktree(ci);
-      cell_unlocktree(cj);
-    } else if (subtype == task_subtype_gpu_unpack) {
-      /* Nothing to do */
-    } else if (subtype == task_subtype_gpu_unpack_f) {
-      /* Nothing to do */
-    } else if (subtype == task_subtype_gpu_unpack_g) {
-      /* Nothing to do */
+      cell_gunlocktree(ci);
+      break;
 
-    } else { /* hydro */
+    case task_type_sink_formation:
       cell_unlocktree(ci);
-      cell_unlocktree(cj);
-    }
-    break;
+      cell_sink_unlocktree(ci);
+      cell_gunlocktree(ci);
+      break;
 
-  case task_type_grav_down:
-#ifdef SWIFT_TASKS_WITHOUT_ATOMICS
-    cell_gunlocktree(ci);
-    cell_munlocktree(ci);
-#endif
-    break;
-
-  case task_type_grav_long_range:
-#ifdef SWIFT_TASKS_WITHOUT_ATOMICS
-    cell_munlocktree(ci);
-#endif
-    break;
-
-  case task_type_grav_mm:
-#ifdef SWIFT_TASKS_WITHOUT_ATOMICS
-    cell_munlocktree(ci);
-    cell_munlocktree(cj);
-#endif
-    break;
-
-  case task_type_star_formation:
-    cell_unlocktree(ci);
-    cell_sunlocktree(ci);
-    cell_gunlocktree(ci);
-    break;
-
-  case task_type_sink_formation:
-    cell_unlocktree(ci);
-    cell_sink_unlocktree(ci);
-    cell_gunlocktree(ci);
-    break;
-
-  default:
-    break;
+    default:
+      break;
   }
 }
 
@@ -701,81 +674,288 @@ int task_lock(struct task *t) {
 
   switch (type) {
 
-  /* Communication task? */
-  case task_type_recv:
-  case task_type_send:
+    /* Communication task? */
+    case task_type_recv:
+    case task_type_send:
 #ifdef WITH_MPI
-    /* Check the status of the MPI request. */
-    if ((err = MPI_Test(&t->req, &res, &stat)) != MPI_SUCCESS) {
-      char buff[MPI_MAX_ERROR_STRING];
-      int len;
-      MPI_Error_string(err, buff, &len);
-      error("Failed to test request on send/recv task (type=%s/%s tag=%lld, "
+      /* Check the status of the MPI request. */
+      if ((err = MPI_Test(&t->req, &res, &stat)) != MPI_SUCCESS) {
+        char buff[MPI_MAX_ERROR_STRING];
+        int len;
+        MPI_Error_string(err, buff, &len);
+        error(
+            "Failed to test request on send/recv task (type=%s/%s tag=%lld, "
             "%s).",
             taskID_names[t->type], subtaskID_names[t->subtype], t->flags, buff);
-    }
+      }
 
-    /* And log deactivation, if logging enabled. */
-    if (res) {
-      mpiuse_log_allocation(t->type, t->subtype, &t->req, 0, 0, 0, 0);
-    }
+      /* And log deactivation, if logging enabled. */
+      if (res) {
+        mpiuse_log_allocation(t->type, t->subtype, &t->req, 0, 0, 0, 0);
+      }
 
-    return res;
+      return res;
 #else
-    error("SWIFT was not compiled with MPI support.");
+      error("SWIFT was not compiled with MPI support.");
 #endif
-    break;
+      break;
 
-  case task_type_kick1:
-  case task_type_kick2:
-  case task_type_logger:
-  case task_type_timestep:
-    if (ci->hydro.hold || ci->grav.phold)
-      return 0;
-    if (cell_locktree(ci) != 0)
-      return 0;
-    if (cell_glocktree(ci) != 0) {
-      cell_unlocktree(ci);
-      return 0;
-    }
-    break;
-
-  case task_type_drift_part:
-  case task_type_sort:
-  case task_type_ghost:
-  case task_type_extra_ghost:
-  case task_type_end_hydro_force:
-  case task_type_timestep_limiter:
-  case task_type_timestep_sync:
-    if (ci->hydro.hold)
-      return 0;
-    if (cell_locktree(ci) != 0)
-      return 0;
-    break;
-
-  case task_type_stars_sort:
-  case task_type_stars_resort:
-    if (ci->stars.hold)
-      return 0;
-    if (cell_slocktree(ci) != 0)
-      return 0;
-    break;
-
-  case task_type_drift_gpart:
-  case task_type_end_grav_force:
-    if (ci->grav.phold)
-      return 0;
-    if (cell_glocktree(ci) != 0)
-      return 0;
-    break;
-
-  case task_type_self:
-  case task_type_sub_self:
-    if (subtype == task_subtype_grav) {
-#ifdef SWIFT_TASKS_WITHOUT_ATOMICS
-      /* Lock the gparts and the m-pole */
-      if (ci->grav.phold || ci->grav.mhold)
+    case task_type_kick1:
+    case task_type_kick2:
+    case task_type_logger:
+    case task_type_timestep:
+      if (ci->hydro.hold || ci->grav.phold) return 0;
+      if (cell_locktree(ci) != 0) return 0;
+      if (cell_glocktree(ci) != 0) {
+        cell_unlocktree(ci);
         return 0;
+      }
+      break;
+
+    case task_type_drift_part:
+    case task_type_sort:
+    case task_type_ghost:
+    case task_type_extra_ghost:
+    case task_type_end_hydro_force:
+    case task_type_timestep_limiter:
+    case task_type_timestep_sync:
+      if (ci->hydro.hold) return 0;
+      if (cell_locktree(ci) != 0) return 0;
+      break;
+
+    case task_type_stars_sort:
+    case task_type_stars_resort:
+      if (ci->stars.hold) return 0;
+      if (cell_slocktree(ci) != 0) return 0;
+      break;
+
+    case task_type_drift_gpart:
+    case task_type_end_grav_force:
+      if (ci->grav.phold) return 0;
+      if (cell_glocktree(ci) != 0) return 0;
+      break;
+
+    case task_type_self:
+    case task_type_sub_self:
+      if (subtype == task_subtype_grav) {
+#ifdef SWIFT_TASKS_WITHOUT_ATOMICS
+        /* Lock the gparts and the m-pole */
+        if (ci->grav.phold || ci->grav.mhold) return 0;
+        if (cell_glocktree(ci) != 0)
+          return 0;
+        else if (cell_mlocktree(ci) != 0) {
+          cell_gunlocktree(ci);
+          return 0;
+        }
+#endif
+      } else if ((subtype == task_subtype_stars_density) ||
+                 (subtype == task_subtype_stars_feedback)) {
+        if (ci->stars.hold) return 0;
+        if (ci->hydro.hold) return 0;
+        if (cell_slocktree(ci) != 0) return 0;
+        if (cell_locktree(ci) != 0) {
+          cell_sunlocktree(ci);
+          return 0;
+        }
+      } else if ((subtype == task_subtype_bh_density) ||
+                 (subtype == task_subtype_bh_feedback) ||
+                 (subtype == task_subtype_bh_swallow) ||
+                 (subtype == task_subtype_do_gas_swallow)) {
+        if (ci->black_holes.hold) return 0;
+        if (ci->hydro.hold) return 0;
+        if (cell_blocktree(ci) != 0) return 0;
+        if (cell_locktree(ci) != 0) {
+          cell_bunlocktree(ci);
+          return 0;
+        }
+      } else if (subtype == task_subtype_do_bh_swallow) {
+        if (ci->black_holes.hold) return 0;
+        if (cell_blocktree(ci) != 0) return 0;
+      } else if (subtype == task_subtype_limiter) {
+#ifdef SWIFT_TASKS_WITHOUT_ATOMICS
+        if (ci->hydro.hold) return 0;
+        if (cell_locktree(ci) != 0) return 0;
+#endif
+      } else if (subtype == task_subtype_gpu_pack) {
+
+        /* Attempt to lock the cell */
+        if (ci->hydro.hold) return 0;
+        if (cell_locktree(ci) != 0) return 0;
+      } else if (subtype == task_subtype_gpu_pack_f) {
+
+        /* Attempt to lock the cell */
+        if (ci->hydro.hold) return 0;
+        if (cell_locktree(ci) != 0) return 0;
+      } else if (subtype == task_subtype_gpu_pack_g) {
+
+        /* Attempt to lock the cell */
+        if (ci->hydro.hold) return 0;
+        if (cell_locktree(ci) != 0) return 0;
+
+      } else if (subtype == task_subtype_gpu_unpack) {
+        //        for(int pp = 0; pp < 128 /*should be sched->pack_size*/;
+        //        pp++){
+        //    	  if (t->ci_unpack[pp]->gpu_done == 0){
+        //    		  message("trying to queue an unpack before all packs
+        //    done on GPU"); 		  return 0;
+        //    	  }
+        ////          if (t->ci_unpack[pp]->hydro.hold)
+        ////    		return 0;
+        ////    	  if (cell_locktree(t->ci_unpack[pp]) != 0)
+        ////            return 0;
+        //        }
+        /* Nothing to do here */
+        return 1;
+      } else if (subtype == task_subtype_gpu_unpack_f) {
+        /* Nothing to do here */
+        return 1;
+      } else if (subtype == task_subtype_gpu_unpack_g) {
+        /* Nothing to do here */
+        return 1;
+
+      } else { /* subtype == hydro  */
+        if (ci->hydro.hold) return 0;
+        if (cell_locktree(ci) != 0) return 0;
+      }
+      break;
+    case task_type_pair:
+    case task_type_sub_pair:
+      if (subtype == task_subtype_grav) {
+#ifdef SWIFT_TASKS_WITHOUT_ATOMICS
+        /* Lock the gparts and the m-pole in both cells */
+        if (ci->grav.phold || cj->grav.phold) return 0;
+        if (cell_glocktree(ci) != 0) return 0;
+        if (cell_glocktree(cj) != 0) {
+          cell_gunlocktree(ci);
+          return 0;
+        } else if (cell_mlocktree(ci) != 0) {
+          cell_gunlocktree(ci);
+          cell_gunlocktree(cj);
+          return 0;
+        } else if (cell_mlocktree(cj) != 0) {
+          cell_gunlocktree(ci);
+          cell_gunlocktree(cj);
+          cell_munlocktree(ci);
+          return 0;
+        }
+#endif
+      } else if ((subtype == task_subtype_stars_density) ||
+                 (subtype == task_subtype_stars_feedback)) {
+        /* Lock the stars and the gas particles in both cells */
+        if (ci->stars.hold || cj->stars.hold) return 0;
+        if (ci->hydro.hold || cj->hydro.hold) return 0;
+        if (cell_slocktree(ci) != 0) return 0;
+        if (cell_slocktree(cj) != 0) {
+          cell_sunlocktree(ci);
+          return 0;
+        }
+        if (cell_locktree(ci) != 0) {
+          cell_sunlocktree(ci);
+          cell_sunlocktree(cj);
+          return 0;
+        }
+        if (cell_locktree(cj) != 0) {
+          cell_sunlocktree(ci);
+          cell_sunlocktree(cj);
+          cell_unlocktree(ci);
+          return 0;
+        }
+      } else if ((subtype == task_subtype_bh_density) ||
+                 (subtype == task_subtype_bh_feedback) ||
+                 (subtype == task_subtype_bh_swallow) ||
+                 (subtype == task_subtype_do_gas_swallow)) {
+        /* Lock the BHs and the gas particles in both cells */
+        if (ci->black_holes.hold || cj->black_holes.hold) return 0;
+        if (ci->hydro.hold || cj->hydro.hold) return 0;
+        if (cell_blocktree(ci) != 0) return 0;
+        if (cell_blocktree(cj) != 0) {
+          cell_bunlocktree(ci);
+          return 0;
+        }
+        if (cell_locktree(ci) != 0) {
+          cell_bunlocktree(ci);
+          cell_bunlocktree(cj);
+          return 0;
+        }
+        if (cell_locktree(cj) != 0) {
+          cell_bunlocktree(ci);
+          cell_bunlocktree(cj);
+          cell_unlocktree(ci);
+          return 0;
+        }
+      } else if (subtype == task_subtype_do_bh_swallow) {
+        if (ci->black_holes.hold || cj->black_holes.hold) return 0;
+        if (cell_blocktree(ci) != 0) return 0;
+        if (cell_blocktree(cj) != 0) {
+          cell_bunlocktree(ci);
+          return 0;
+        }
+      } else if (subtype == task_subtype_limiter) {
+#ifdef SWIFT_TASKS_WITHOUT_ATOMICS
+        if (ci->hydro.hold || cj->hydro.hold) return 0;
+        if (cell_locktree(ci) != 0) return 0;
+        if (cell_locktree(cj) != 0) {
+          cell_unlocktree(ci);
+          return 0;
+        }
+#endif
+
+      } else if (subtype == task_subtype_gpu_pack) {
+
+        /* Lock the parts in both cells */
+        if (ci->hydro.hold || cj->hydro.hold) return 0;
+        if (cell_locktree(ci) != 0) return 0;
+        if (cell_locktree(cj) != 0) {
+          cell_unlocktree(ci);
+          return 0;
+        }
+      } else if (subtype == task_subtype_gpu_pack_f) {
+
+        /* Lock the parts in both cells */
+        if (ci->hydro.hold || cj->hydro.hold) return 0;
+        if (cell_locktree(ci) != 0) return 0;
+        if (cell_locktree(cj) != 0) {
+          cell_unlocktree(ci);
+          return 0;
+        }
+      } else if (subtype == task_subtype_gpu_pack_g) {
+
+        /* Lock the parts in both cells */
+        if (ci->hydro.hold || cj->hydro.hold) return 0;
+        if (cell_locktree(ci) != 0) return 0;
+        if (cell_locktree(cj) != 0) {
+          cell_unlocktree(ci);
+          return 0;
+        }
+
+      } else if (subtype == task_subtype_gpu_unpack) {
+
+        /* Nothing to do here. */
+        return 1;
+      } else if (subtype == task_subtype_gpu_unpack_f) {
+
+        /* Nothing to do here. */
+        return 1;
+      } else if (subtype == task_subtype_gpu_unpack_g) {
+
+        /* Nothing to do here. */
+        return 1;
+
+      } else { /* subtype == hydro */
+        /* Lock the parts in both cells */
+        if (ci->hydro.hold || cj->hydro.hold) return 0;
+        if (cell_locktree(ci) != 0) return 0;
+        if (cell_locktree(cj) != 0) {
+          cell_unlocktree(ci);
+          return 0;
+        }
+      }
+      break;
+
+    case task_type_grav_down:
+#ifdef SWIFT_TASKS_WITHOUT_ATOMICS
+      /* Lock the gparts and the m-poles */
+      if (ci->grav.phold || ci->grav.mhold) return 0;
       if (cell_glocktree(ci) != 0)
         return 0;
       else if (cell_mlocktree(ci) != 0) {
@@ -783,321 +963,60 @@ int task_lock(struct task *t) {
         return 0;
       }
 #endif
-    } else if ((subtype == task_subtype_stars_density) ||
-               (subtype == task_subtype_stars_feedback)) {
-      if (ci->stars.hold)
-        return 0;
-      if (ci->hydro.hold)
-        return 0;
-      if (cell_slocktree(ci) != 0)
-        return 0;
-      if (cell_locktree(ci) != 0) {
-        cell_sunlocktree(ci);
-        return 0;
-      }
-    } else if ((subtype == task_subtype_bh_density) ||
-               (subtype == task_subtype_bh_feedback) ||
-               (subtype == task_subtype_bh_swallow) ||
-               (subtype == task_subtype_do_gas_swallow)) {
-      if (ci->black_holes.hold)
-        return 0;
-      if (ci->hydro.hold)
-        return 0;
-      if (cell_blocktree(ci) != 0)
-        return 0;
-      if (cell_locktree(ci) != 0) {
-        cell_bunlocktree(ci);
-        return 0;
-      }
-    } else if (subtype == task_subtype_do_bh_swallow) {
-      if (ci->black_holes.hold)
-        return 0;
-      if (cell_blocktree(ci) != 0)
-        return 0;
-    } else if (subtype == task_subtype_limiter) {
+      break;
+
+    case task_type_grav_long_range:
 #ifdef SWIFT_TASKS_WITHOUT_ATOMICS
-      if (ci->hydro.hold)
-        return 0;
-      if (cell_locktree(ci) != 0)
-        return 0;
+      /* Lock the m-poles */
+      if (ci->grav.mhold) return 0;
+      if (cell_mlocktree(ci) != 0) return 0;
 #endif
-    } else if (subtype == task_subtype_gpu_pack) {
+      break;
 
-      /* Attempt to lock the cell */
-      if (ci->hydro.hold)
-        return 0;
-      if (cell_locktree(ci) != 0)
-        return 0;
-    } else if (subtype == task_subtype_gpu_pack_f) {
-
-      /* Attempt to lock the cell */
-      if (ci->hydro.hold)
-        return 0;
-      if (cell_locktree(ci) != 0)
-        return 0;
-    } else if (subtype == task_subtype_gpu_pack_g) {
-
-      /* Attempt to lock the cell */
-      if (ci->hydro.hold)
-        return 0;
-      if (cell_locktree(ci) != 0)
-        return 0;
-
-    } else if (subtype == task_subtype_gpu_unpack) {
-      //        for(int pp = 0; pp < 128 /*should be sched->pack_size*/; pp++){
-      //    	  if (t->ci_unpack[pp]->gpu_done == 0){
-      //    		  message("trying to queue an unpack before all packs done
-      //    on GPU"); 		  return 0;
-      //    	  }
-      ////          if (t->ci_unpack[pp]->hydro.hold)
-      ////    		return 0;
-      ////    	  if (cell_locktree(t->ci_unpack[pp]) != 0)
-      ////            return 0;
-      //        }
-      /* Nothing to do here */
-      return 1;
-    } else if (subtype == task_subtype_gpu_unpack_f) {
-      /* Nothing to do here */
-      return 1;
-    } else if (subtype == task_subtype_gpu_unpack_g) {
-      /* Nothing to do here */
-      return 1;
-
-    } else { /* subtype == hydro  */
-      if (ci->hydro.hold)
-        return 0;
-      if (cell_locktree(ci) != 0)
-        return 0;
-    }
-    break;
-  case task_type_pair:
-  case task_type_sub_pair:
-    if (subtype == task_subtype_grav) {
+    case task_type_grav_mm:
 #ifdef SWIFT_TASKS_WITHOUT_ATOMICS
-      /* Lock the gparts and the m-pole in both cells */
-      if (ci->grav.phold || cj->grav.phold)
-        return 0;
-      if (cell_glocktree(ci) != 0)
-        return 0;
-      if (cell_glocktree(cj) != 0) {
-        cell_gunlocktree(ci);
-        return 0;
-      } else if (cell_mlocktree(ci) != 0) {
-        cell_gunlocktree(ci);
-        cell_gunlocktree(cj);
-        return 0;
-      } else if (cell_mlocktree(cj) != 0) {
-        cell_gunlocktree(ci);
-        cell_gunlocktree(cj);
+      /* Lock both m-poles */
+      if (ci->grav.mhold || cj->grav.mhold) return 0;
+      if (cell_mlocktree(ci) != 0) return 0;
+      if (cell_mlocktree(cj) != 0) {
         cell_munlocktree(ci);
         return 0;
       }
 #endif
-    } else if ((subtype == task_subtype_stars_density) ||
-               (subtype == task_subtype_stars_feedback)) {
-      /* Lock the stars and the gas particles in both cells */
-      if (ci->stars.hold || cj->stars.hold)
+      break;
+
+    case task_type_star_formation:
+      /* Lock the gas, gravity and star particles */
+      if (ci->hydro.hold || ci->stars.hold || ci->grav.phold) return 0;
+      if (cell_locktree(ci) != 0) return 0;
+      if (cell_slocktree(ci) != 0) {
+        cell_unlocktree(ci);
         return 0;
-      if (ci->hydro.hold || cj->hydro.hold)
-        return 0;
-      if (cell_slocktree(ci) != 0)
-        return 0;
-      if (cell_slocktree(cj) != 0) {
+      }
+      if (cell_glocktree(ci) != 0) {
+        cell_unlocktree(ci);
         cell_sunlocktree(ci);
         return 0;
       }
-      if (cell_locktree(ci) != 0) {
-        cell_sunlocktree(ci);
-        cell_sunlocktree(cj);
-        return 0;
-      }
-      if (cell_locktree(cj) != 0) {
-        cell_sunlocktree(ci);
-        cell_sunlocktree(cj);
+      break;
+
+    case task_type_sink_formation:
+      /* Lock the gas, gravity and star particles */
+      if (ci->hydro.hold || ci->sinks.hold || ci->grav.phold) return 0;
+      if (cell_locktree(ci) != 0) return 0;
+      if (cell_sink_locktree(ci) != 0) {
         cell_unlocktree(ci);
         return 0;
       }
-    } else if ((subtype == task_subtype_bh_density) ||
-               (subtype == task_subtype_bh_feedback) ||
-               (subtype == task_subtype_bh_swallow) ||
-               (subtype == task_subtype_do_gas_swallow)) {
-      /* Lock the BHs and the gas particles in both cells */
-      if (ci->black_holes.hold || cj->black_holes.hold)
-        return 0;
-      if (ci->hydro.hold || cj->hydro.hold)
-        return 0;
-      if (cell_blocktree(ci) != 0)
-        return 0;
-      if (cell_blocktree(cj) != 0) {
-        cell_bunlocktree(ci);
-        return 0;
-      }
-      if (cell_locktree(ci) != 0) {
-        cell_bunlocktree(ci);
-        cell_bunlocktree(cj);
-        return 0;
-      }
-      if (cell_locktree(cj) != 0) {
-        cell_bunlocktree(ci);
-        cell_bunlocktree(cj);
+      if (cell_glocktree(ci) != 0) {
         cell_unlocktree(ci);
+        cell_sink_unlocktree(ci);
         return 0;
       }
-    } else if (subtype == task_subtype_do_bh_swallow) {
-      if (ci->black_holes.hold || cj->black_holes.hold)
-        return 0;
-      if (cell_blocktree(ci) != 0)
-        return 0;
-      if (cell_blocktree(cj) != 0) {
-        cell_bunlocktree(ci);
-        return 0;
-      }
-    } else if (subtype == task_subtype_limiter) {
-#ifdef SWIFT_TASKS_WITHOUT_ATOMICS
-      if (ci->hydro.hold || cj->hydro.hold)
-        return 0;
-      if (cell_locktree(ci) != 0)
-        return 0;
-      if (cell_locktree(cj) != 0) {
-        cell_unlocktree(ci);
-        return 0;
-      }
-#endif
+      break;
 
-    } else if (subtype == task_subtype_gpu_pack) {
-
-      /* Lock the parts in both cells */
-      if (ci->hydro.hold || cj->hydro.hold)
-        return 0;
-      if (cell_locktree(ci) != 0)
-        return 0;
-      if (cell_locktree(cj) != 0) {
-        cell_unlocktree(ci);
-        return 0;
-      }
-    } else if (subtype == task_subtype_gpu_pack_f) {
-
-      /* Lock the parts in both cells */
-      if (ci->hydro.hold || cj->hydro.hold)
-        return 0;
-      if (cell_locktree(ci) != 0)
-        return 0;
-      if (cell_locktree(cj) != 0) {
-        cell_unlocktree(ci);
-        return 0;
-      }
-    } else if (subtype == task_subtype_gpu_pack_g) {
-
-      /* Lock the parts in both cells */
-      if (ci->hydro.hold || cj->hydro.hold)
-        return 0;
-      if (cell_locktree(ci) != 0)
-        return 0;
-      if (cell_locktree(cj) != 0) {
-        cell_unlocktree(ci);
-        return 0;
-      }
-
-    } else if (subtype == task_subtype_gpu_unpack) {
-
-      /* Nothing to do here. */
-      return 1;
-    } else if (subtype == task_subtype_gpu_unpack_f) {
-
-      /* Nothing to do here. */
-      return 1;
-    } else if (subtype == task_subtype_gpu_unpack_g) {
-
-      /* Nothing to do here. */
-      return 1;
-
-    } else { /* subtype == hydro */
-      /* Lock the parts in both cells */
-      if (ci->hydro.hold || cj->hydro.hold)
-        return 0;
-      if (cell_locktree(ci) != 0)
-        return 0;
-      if (cell_locktree(cj) != 0) {
-        cell_unlocktree(ci);
-        return 0;
-      }
-    }
-    break;
-
-  case task_type_grav_down:
-#ifdef SWIFT_TASKS_WITHOUT_ATOMICS
-    /* Lock the gparts and the m-poles */
-    if (ci->grav.phold || ci->grav.mhold)
-      return 0;
-    if (cell_glocktree(ci) != 0)
-      return 0;
-    else if (cell_mlocktree(ci) != 0) {
-      cell_gunlocktree(ci);
-      return 0;
-    }
-#endif
-    break;
-
-  case task_type_grav_long_range:
-#ifdef SWIFT_TASKS_WITHOUT_ATOMICS
-    /* Lock the m-poles */
-    if (ci->grav.mhold)
-      return 0;
-    if (cell_mlocktree(ci) != 0)
-      return 0;
-#endif
-    break;
-
-  case task_type_grav_mm:
-#ifdef SWIFT_TASKS_WITHOUT_ATOMICS
-    /* Lock both m-poles */
-    if (ci->grav.mhold || cj->grav.mhold)
-      return 0;
-    if (cell_mlocktree(ci) != 0)
-      return 0;
-    if (cell_mlocktree(cj) != 0) {
-      cell_munlocktree(ci);
-      return 0;
-    }
-#endif
-    break;
-
-  case task_type_star_formation:
-    /* Lock the gas, gravity and star particles */
-    if (ci->hydro.hold || ci->stars.hold || ci->grav.phold)
-      return 0;
-    if (cell_locktree(ci) != 0)
-      return 0;
-    if (cell_slocktree(ci) != 0) {
-      cell_unlocktree(ci);
-      return 0;
-    }
-    if (cell_glocktree(ci) != 0) {
-      cell_unlocktree(ci);
-      cell_sunlocktree(ci);
-      return 0;
-    }
-    break;
-
-  case task_type_sink_formation:
-    /* Lock the gas, gravity and star particles */
-    if (ci->hydro.hold || ci->sinks.hold || ci->grav.phold)
-      return 0;
-    if (cell_locktree(ci) != 0)
-      return 0;
-    if (cell_sink_locktree(ci) != 0) {
-      cell_unlocktree(ci);
-      return 0;
-    }
-    if (cell_glocktree(ci) != 0) {
-      cell_unlocktree(ci);
-      cell_sink_unlocktree(ci);
-      return 0;
-    }
-    break;
-
-  default:
-    break;
+    default:
+      break;
   }
 
   /* If we made it this far, we've got a lock. */
@@ -1136,76 +1055,79 @@ void task_get_group_name(int type, int subtype, char *cluster) {
 
   switch (subtype) {
 
-    /* Abouzied: Think about this when pack/unpack exist for gradient & force */
-  case task_subtype_gpu_pack:
-  case task_subtype_gpu_unpack:
-    strcpy(cluster, "Density");
-    break;
+      /* Abouzied: Think about this when pack/unpack exist for gradient & force
+       */
+    case task_subtype_gpu_pack:
+    case task_subtype_gpu_unpack:
+      strcpy(cluster, "Density");
+      break;
 
-    /* Abouzied: Think about this when pack/unpack exist for gradient & force */
-  case task_subtype_gpu_pack_f:
-  case task_subtype_gpu_unpack_f:
-    strcpy(cluster, "Force");
-    break;
-    /* Abouzied: Think about this when pack/unpack exist for gradient & force */
-  case task_subtype_gpu_pack_g:
-  case task_subtype_gpu_unpack_g:
-    strcpy(cluster, "Gradient");
-    break;
-
-  case task_subtype_density:
-    strcpy(cluster, "Density");
-    break;
-  case task_subtype_gradient:
-    if (type == task_type_send || type == task_type_recv) {
-      strcpy(cluster, "None");
-    } else {
+      /* Abouzied: Think about this when pack/unpack exist for gradient & force
+       */
+    case task_subtype_gpu_pack_f:
+    case task_subtype_gpu_unpack_f:
+      strcpy(cluster, "Force");
+      break;
+      /* Abouzied: Think about this when pack/unpack exist for gradient & force
+       */
+    case task_subtype_gpu_pack_g:
+    case task_subtype_gpu_unpack_g:
       strcpy(cluster, "Gradient");
-    }
-    break;
-  case task_subtype_force:
-    strcpy(cluster, "Force");
-    break;
-  case task_subtype_grav:
-    strcpy(cluster, "Gravity");
-    break;
-  case task_subtype_limiter:
-    if (type == task_type_send || type == task_type_recv) {
+      break;
+
+    case task_subtype_density:
+      strcpy(cluster, "Density");
+      break;
+    case task_subtype_gradient:
+      if (type == task_type_send || type == task_type_recv) {
+        strcpy(cluster, "None");
+      } else {
+        strcpy(cluster, "Gradient");
+      }
+      break;
+    case task_subtype_force:
+      strcpy(cluster, "Force");
+      break;
+    case task_subtype_grav:
+      strcpy(cluster, "Gravity");
+      break;
+    case task_subtype_limiter:
+      if (type == task_type_send || type == task_type_recv) {
+        strcpy(cluster, "None");
+      } else {
+        strcpy(cluster, "Timestep_limiter");
+      }
+      break;
+    case task_subtype_stars_density:
+      strcpy(cluster, "StarsDensity");
+      break;
+    case task_subtype_stars_feedback:
+      strcpy(cluster, "StarsFeedback");
+      break;
+    case task_subtype_bh_density:
+      strcpy(cluster, "BHDensity");
+      break;
+    case task_subtype_bh_swallow:
+      strcpy(cluster, "BHSwallow");
+      break;
+    case task_subtype_do_gas_swallow:
+      strcpy(cluster, "DoGasSwallow");
+      break;
+    case task_subtype_do_bh_swallow:
+      strcpy(cluster, "DoBHSwallow");
+      break;
+    case task_subtype_bh_feedback:
+      strcpy(cluster, "BHFeedback");
+      break;
+    case task_subtype_rt_inject:
+      strcpy(cluster, "RTinject");
+      break;
+    case task_subtype_sink_compute_formation:
+      strcpy(cluster, "SinkFormation");
+      break;
+    default:
       strcpy(cluster, "None");
-    } else {
-      strcpy(cluster, "Timestep_limiter");
-    }
-    break;
-  case task_subtype_stars_density:
-    strcpy(cluster, "StarsDensity");
-    break;
-  case task_subtype_stars_feedback:
-    strcpy(cluster, "StarsFeedback");
-    break;
-  case task_subtype_bh_density:
-    strcpy(cluster, "BHDensity");
-    break;
-  case task_subtype_bh_swallow:
-    strcpy(cluster, "BHSwallow");
-    break;
-  case task_subtype_do_gas_swallow:
-    strcpy(cluster, "DoGasSwallow");
-    break;
-  case task_subtype_do_bh_swallow:
-    strcpy(cluster, "DoBHSwallow");
-    break;
-  case task_subtype_bh_feedback:
-    strcpy(cluster, "BHFeedback");
-    break;
-  case task_subtype_rt_inject:
-    strcpy(cluster, "RTinject");
-    break;
-  case task_subtype_sink_compute_formation:
-    strcpy(cluster, "SinkFormation");
-    break;
-  default:
-    strcpy(cluster, "None");
-    break;
+      break;
   }
 }
 
@@ -1220,8 +1142,7 @@ void task_get_full_name(int type, int subtype, char *name) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check input */
-  if (type >= task_type_count)
-    error("Unknown task type %i", type);
+  if (type >= task_type_count) error("Unknown task type %i", type);
 
   if (subtype >= task_subtype_count)
     error("Unknown task subtype %i with type %s", subtype, taskID_names[type]);
@@ -1363,12 +1284,12 @@ void task_dump_all(struct engine *e, int step) {
     }
   }
   fclose(file_thread);
-#endif // WITH_MPI
+#endif  // WITH_MPI
 
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
-#endif // SWIFT_DEBUG_TASKS
+#endif  // SWIFT_DEBUG_TASKS
 }
 
 /**
@@ -1477,43 +1398,35 @@ void task_dump_stats(const char *dumpfile, struct engine *e,
     size_t size = task_type_count * task_subtype_count;
     int res = MPI_Reduce((engine_rank == 0 ? MPI_IN_PLACE : sum), sum, size,
                          MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-    if (res != MPI_SUCCESS)
-      mpi_error(res, "Failed to reduce task sums");
+    if (res != MPI_SUCCESS) mpi_error(res, "Failed to reduce task sums");
 
     res = MPI_Reduce((engine_rank == 0 ? MPI_IN_PLACE : tsum), tsum, size,
                      MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-    if (res != MPI_SUCCESS)
-      mpi_error(res, "Failed to reduce task tsums");
+    if (res != MPI_SUCCESS) mpi_error(res, "Failed to reduce task tsums");
 
     res = MPI_Reduce((engine_rank == 0 ? MPI_IN_PLACE : count), count, size,
                      MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
-    if (res != MPI_SUCCESS)
-      mpi_error(res, "Failed to reduce task counts");
+    if (res != MPI_SUCCESS) mpi_error(res, "Failed to reduce task counts");
 
     res = MPI_Reduce((engine_rank == 0 ? MPI_IN_PLACE : min), min, size,
                      MPI_DOUBLE, MPI_MIN, 0, MPI_COMM_WORLD);
-    if (res != MPI_SUCCESS)
-      mpi_error(res, "Failed to reduce task minima");
+    if (res != MPI_SUCCESS) mpi_error(res, "Failed to reduce task minima");
 
     res = MPI_Reduce((engine_rank == 0 ? MPI_IN_PLACE : tmin), tmin, size,
                      MPI_DOUBLE, MPI_MIN, 0, MPI_COMM_WORLD);
-    if (res != MPI_SUCCESS)
-      mpi_error(res, "Failed to reduce task minima");
+    if (res != MPI_SUCCESS) mpi_error(res, "Failed to reduce task minima");
 
     res = MPI_Reduce((engine_rank == 0 ? MPI_IN_PLACE : max), max, size,
                      MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-    if (res != MPI_SUCCESS)
-      mpi_error(res, "Failed to reduce task maxima");
+    if (res != MPI_SUCCESS) mpi_error(res, "Failed to reduce task maxima");
 
     res = MPI_Reduce((engine_rank == 0 ? MPI_IN_PLACE : tmax), tmax, size,
                      MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-    if (res != MPI_SUCCESS)
-      mpi_error(res, "Failed to reduce task maxima");
+    if (res != MPI_SUCCESS) mpi_error(res, "Failed to reduce task maxima");
 
     res = MPI_Reduce((engine_rank == 0 ? MPI_IN_PLACE : total), total, 1,
                      MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-    if (res != MPI_SUCCESS)
-      mpi_error(res, "Failed to reduce task total time");
+    if (res != MPI_SUCCESS) mpi_error(res, "Failed to reduce task total time");
   }
 
   if (!allranks || (engine_rank == 0 && (allranks || header))) {
@@ -1524,8 +1437,9 @@ void task_dump_stats(const char *dumpfile, struct engine *e,
       fprintf(dfile, "/* use as src/partition_fixed_costs.h */\n");
       fprintf(dfile, "#define HAVE_FIXED_COSTS 1\n");
     } else {
-      fprintf(dfile, "# task ntasks min max sum mean percent mintic maxtic"
-                     " meantic fixed_cost\n");
+      fprintf(dfile,
+              "# task ntasks min max sum mean percent mintic maxtic"
+              " meantic fixed_cost\n");
     }
 
     for (int j = 0; j < task_type_count; j++) {
@@ -1616,8 +1530,7 @@ void task_dump_active(struct engine *e) {
       /* Get destination rank of MPI requests. */
       int paired = (t->cj != NULL);
       int otherrank = t->ci->nodeID;
-      if (paired)
-        otherrank = t->cj->nodeID;
+      if (paired) otherrank = t->cj->nodeID;
 
       fprintf(file_thread, "%i %i %s %s %i %i %lli %lli %i %i %i %i %lli\n",
               engine_rank, otherrank, taskID_names[t->type],
@@ -1646,106 +1559,107 @@ enum task_categories task_get_category(const struct task *t) {
 
   switch (t->type) {
 
-  case task_type_cooling:
-    return task_category_cooling;
+    case task_type_cooling:
+      return task_category_cooling;
 
-  case task_type_star_formation:
-    return task_category_star_formation;
+    case task_type_star_formation:
+      return task_category_star_formation;
 
-  case task_type_sink_formation:
-    return task_category_sink;
+    case task_type_sink_formation:
+      return task_category_sink;
 
-  case task_type_drift_part:
-  case task_type_drift_spart:
-  case task_type_drift_sink:
-  case task_type_drift_bpart:
-  case task_type_drift_gpart:
-    return task_category_drift;
+    case task_type_drift_part:
+    case task_type_drift_spart:
+    case task_type_drift_sink:
+    case task_type_drift_bpart:
+    case task_type_drift_gpart:
+      return task_category_drift;
 
-  case task_type_sort:
-  case task_type_stars_sort:
-  case task_type_stars_resort:
-    return task_category_sort;
+    case task_type_sort:
+    case task_type_stars_sort:
+    case task_type_stars_resort:
+      return task_category_sort;
 
-  case task_type_send:
-  case task_type_recv:
-    return task_category_mpi;
+    case task_type_send:
+    case task_type_recv:
+      return task_category_mpi;
 
-  case task_type_kick1:
-  case task_type_kick2:
-  case task_type_timestep:
-    return task_category_time_integration;
+    case task_type_kick1:
+    case task_type_kick2:
+    case task_type_timestep:
+      return task_category_time_integration;
 
-  case task_type_timestep_limiter:
-  case task_type_timestep_sync:
-    return task_category_limiter;
-
-  case task_type_ghost:
-  case task_type_extra_ghost:
-  case task_type_end_hydro_force:
-
-  case task_type_stars_ghost:
-    return task_category_feedback;
-
-  case task_type_bh_density_ghost:
-  case task_type_bh_swallow_ghost2:
-    return task_category_black_holes;
-
-  case task_type_init_grav:
-  case task_type_grav_long_range:
-  case task_type_grav_mm:
-  case task_type_grav_down:
-  case task_type_end_grav_force:
-    return task_category_gravity;
-
-  case task_type_fof_self:
-  case task_type_fof_pair:
-    return task_category_fof;
-
-  case task_type_self:
-  case task_type_pair:
-  case task_type_sub_self:
-  case task_type_sub_pair: {
-    switch (t->subtype) {
-
-    case task_subtype_density:
-    case task_subtype_gradient:
-    case task_subtype_force:
-
-      /* Abouzied: Think about this when pack/unpack exist for gradient & force
-       */
-    case task_subtype_gpu_pack:
-    case task_subtype_gpu_unpack:
-    case task_subtype_gpu_pack_f:
-    case task_subtype_gpu_unpack_f:
-    case task_subtype_gpu_pack_g:
-    case task_subtype_gpu_unpack_g:
-      return task_category_hydro;
-
-    case task_subtype_limiter:
+    case task_type_timestep_limiter:
+    case task_type_timestep_sync:
       return task_category_limiter;
 
-    case task_subtype_grav:
-    case task_subtype_external_grav:
-      return task_category_gravity;
+    case task_type_ghost:
+    case task_type_extra_ghost:
+    case task_type_end_hydro_force:
 
-    case task_subtype_stars_density:
-    case task_subtype_stars_feedback:
+    case task_type_stars_ghost:
       return task_category_feedback;
 
-    case task_subtype_bh_density:
-    case task_subtype_bh_swallow:
-    case task_subtype_do_gas_swallow:
-    case task_subtype_do_bh_swallow:
-    case task_subtype_bh_feedback:
+    case task_type_bh_density_ghost:
+    case task_type_bh_swallow_ghost2:
       return task_category_black_holes;
+
+    case task_type_init_grav:
+    case task_type_grav_long_range:
+    case task_type_grav_mm:
+    case task_type_grav_down:
+    case task_type_end_grav_force:
+      return task_category_gravity;
+
+    case task_type_fof_self:
+    case task_type_fof_pair:
+      return task_category_fof;
+
+    case task_type_self:
+    case task_type_pair:
+    case task_type_sub_self:
+    case task_type_sub_pair: {
+      switch (t->subtype) {
+
+        case task_subtype_density:
+        case task_subtype_gradient:
+        case task_subtype_force:
+
+          /* Abouzied: Think about this when pack/unpack exist for gradient &
+           * force
+           */
+        case task_subtype_gpu_pack:
+        case task_subtype_gpu_unpack:
+        case task_subtype_gpu_pack_f:
+        case task_subtype_gpu_unpack_f:
+        case task_subtype_gpu_pack_g:
+        case task_subtype_gpu_unpack_g:
+          return task_category_hydro;
+
+        case task_subtype_limiter:
+          return task_category_limiter;
+
+        case task_subtype_grav:
+        case task_subtype_external_grav:
+          return task_category_gravity;
+
+        case task_subtype_stars_density:
+        case task_subtype_stars_feedback:
+          return task_category_feedback;
+
+        case task_subtype_bh_density:
+        case task_subtype_bh_swallow:
+        case task_subtype_do_gas_swallow:
+        case task_subtype_do_bh_swallow:
+        case task_subtype_bh_feedback:
+          return task_category_black_holes;
+
+        default:
+          return task_category_others;
+      }
+    }
 
     default:
       return task_category_others;
-    }
-  }
-
-  default:
-    return task_category_others;
   }
 }

@@ -63,8 +63,7 @@ void space_rebuild_recycle_rec(struct space *s, struct cell *c,
           *multipole_rec_begin = c->progeny[k]->grav.multipole;
         }
 
-        if (*cell_rec_end == NULL)
-          *cell_rec_end = *cell_rec_begin;
+        if (*cell_rec_end == NULL) *cell_rec_end = *cell_rec_begin;
         if (s->with_self_gravity && *multipole_rec_end == NULL)
           *multipole_rec_end = *multipole_rec_begin;
 

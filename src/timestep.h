@@ -61,24 +61,20 @@ make_integer_timestep(const float new_dt, const timebin_t old_bin,
   const integertime_t ti_end = get_integer_time_end(ti_current, old_bin);
 
   /* Limit timestep increase */
-  if (old_bin > 0)
-    new_dti = min(new_dti, 2 * current_dti);
+  if (old_bin > 0) new_dti = min(new_dti, 2 * current_dti);
 
   /* Put this timestep on the time line */
   integertime_t dti_timeline = max_nr_timesteps;
-  while (new_dti < dti_timeline)
-    dti_timeline /= ((integertime_t)2);
+  while (new_dti < dti_timeline) dti_timeline /= ((integertime_t)2);
   new_dti = dti_timeline;
 
   /* Make sure we are allowed to increase the timestep size */
   if (new_dti > current_dti) {
-    if ((max_nr_timesteps - ti_end) % new_dti > 0)
-      new_dti = current_dti;
+    if ((max_nr_timesteps - ti_end) % new_dti > 0) new_dti = current_dti;
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (new_dti == 0)
-    error("Computed an integer time-step of size 0");
+  if (new_dti == 0) error("Computed an integer time-step of size 0");
 #endif
 
   return new_dti;
@@ -90,9 +86,8 @@ make_integer_timestep(const float new_dt, const timebin_t old_bin,
  * @param gp The #gpart.
  * @param e The #engine (used to get some constants).
  */
-__attribute__((always_inline)) INLINE static integertime_t
-get_gpart_timestep(const struct gpart *restrict gp,
-                   const struct engine *restrict e) {
+__attribute__((always_inline)) INLINE static integertime_t get_gpart_timestep(
+    const struct gpart *restrict gp, const struct engine *restrict e) {
 
   float new_dt_self = FLT_MAX, new_dt_ext = FLT_MAX;
 
@@ -134,10 +129,9 @@ get_gpart_timestep(const struct gpart *restrict gp,
  * @param xp The #xpart partner of p.
  * @param e The #engine (used to get some constants).
  */
-__attribute__((always_inline)) INLINE static integertime_t
-get_part_timestep(const struct part *restrict p,
-                  const struct xpart *restrict xp,
-                  const struct engine *restrict e) {
+__attribute__((always_inline)) INLINE static integertime_t get_part_timestep(
+    const struct part *restrict p, const struct xpart *restrict xp,
+    const struct engine *restrict e) {
 
   /* Compute the next timestep (hydro condition) */
   //  const float new_dt_hydro = 5.e-5;
@@ -212,9 +206,8 @@ get_part_timestep(const struct part *restrict p,
  * @param sp The #spart.
  * @param e The #engine (used to get some constants).
  */
-__attribute__((always_inline)) INLINE static integertime_t
-get_spart_timestep(const struct spart *restrict sp,
-                   const struct engine *restrict e) {
+__attribute__((always_inline)) INLINE static integertime_t get_spart_timestep(
+    const struct spart *restrict sp, const struct engine *restrict e) {
 
   /* Stellar time-step */
   float new_dt_stars = stars_compute_timestep(
@@ -262,9 +255,8 @@ get_spart_timestep(const struct spart *restrict sp,
  * @param bp The #bpart.
  * @param e The #engine (used to get some constants).
  */
-__attribute__((always_inline)) INLINE static integertime_t
-get_bpart_timestep(const struct bpart *restrict bp,
-                   const struct engine *restrict e) {
+__attribute__((always_inline)) INLINE static integertime_t get_bpart_timestep(
+    const struct bpart *restrict bp, const struct engine *restrict e) {
 
   /* Black hole internal time-step */
   float new_dt_black_holes = black_holes_compute_timestep(
@@ -311,9 +303,8 @@ get_bpart_timestep(const struct bpart *restrict bp,
  * @param sink The #sink.
  * @param e The #engine (used to get some constants).
  */
-__attribute__((always_inline)) INLINE static integertime_t
-get_sink_timestep(const struct sink *restrict sink,
-                  const struct engine *restrict e) {
+__attribute__((always_inline)) INLINE static integertime_t get_sink_timestep(
+    const struct sink *restrict sink, const struct engine *restrict e) {
 
   /* Sink time-step */
   float new_dt_sink = sink_compute_timestep(sink);

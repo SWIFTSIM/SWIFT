@@ -149,8 +149,9 @@ void engine_addlink(struct engine *e, struct link **l, struct task *t) {
   /* Get the next free link. */
   const size_t ind = atomic_inc(&e->nr_links);
   if (ind >= e->size_links) {
-    error("Link table overflow. Increase the value of "
-          "`Scheduler:links_per_tasks`.");
+    error(
+        "Link table overflow. Increase the value of "
+        "`Scheduler:links_per_tasks`.");
   }
   struct link *res = &e->links[ind];
 
@@ -172,8 +173,7 @@ void engine_repartition(struct engine *e) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Be verbose about this. */
-  if (e->nodeID == 0 || e->verbose)
-    message("repartitioning space");
+  if (e->nodeID == 0 || e->verbose) message("repartitioning space");
   fflush(stdout);
 
   /* Check that all cells have been drifted to the current time */
@@ -185,8 +185,7 @@ void engine_repartition(struct engine *e) {
 
   /* Nothing to do if only using a single node. Also avoids METIS
    * bug that doesn't handle this case well. */
-  if (e->nr_nodes == 1)
-    return;
+  if (e->nr_nodes == 1) return;
 
   /* Generate the fixed costs include file. */
   if (e->step > 3 && e->reparttype->trigger <= 1.f) {
@@ -205,12 +204,10 @@ void engine_repartition(struct engine *e) {
    * particle arrays can go as these will be regenerated in proxy exchange. */
 
   /* Sorting indices. */
-  if (e->s->cells_top != NULL)
-    space_free_cells(e->s);
+  if (e->s->cells_top != NULL) space_free_cells(e->s);
 
   /* Report the time spent in the different task categories */
-  if (e->verbose)
-    scheduler_report_task_times(&e->sched, e->nr_threads);
+  if (e->verbose) scheduler_report_task_times(&e->sched, e->nr_threads);
 
   /* Task arrays. */
   scheduler_free_tasks(&e->sched);
@@ -260,8 +257,7 @@ void engine_repartition_trigger(struct engine *e) {
 
   const ticks tic = getticks();
   static int opened = 0;
-  if (e->restarting)
-    opened = 1;
+  if (e->restarting) opened = 1;
 
   /* Do nothing if there have not been enough steps since the last repartition
    * as we don't want to repeat this too often or immediately after a
@@ -277,8 +273,7 @@ void engine_repartition_trigger(struct engine *e) {
       if (e->reparttype->trigger > 1 ||
           (e->step == 2 && e->reparttype->use_fixed_costs)) {
         if (e->reparttype->trigger > 1) {
-          if ((e->step % (int)e->reparttype->trigger) == 0)
-            e->forcerepart = 1;
+          if ((e->step % (int)e->reparttype->trigger) == 0) e->forcerepart = 1;
         } else {
           e->forcerepart = 1;
         }
@@ -335,30 +330,22 @@ void engine_repartition_trigger(struct engine *e) {
         double msum = timemems[2];
 
         for (int k = 3; k < e->nr_nodes * 3; k += 3) {
-          if (timemems[k] > umaxtime)
-            umaxtime = timemems[k];
-          if (timemems[k] < umintime)
-            umintime = timemems[k];
+          if (timemems[k] > umaxtime) umaxtime = timemems[k];
+          if (timemems[k] < umintime) umintime = timemems[k];
 
-          if (timemems[k + 1] > smaxtime)
-            smaxtime = timemems[k + 1];
-          if (timemems[k + 1] < smintime)
-            smintime = timemems[k + 1];
+          if (timemems[k + 1] > smaxtime) smaxtime = timemems[k + 1];
+          if (timemems[k + 1] < smintime) smintime = timemems[k + 1];
 
           double total = timemems[k] + timemems[k + 1];
-          if (total > tmaxtime)
-            tmaxtime = total;
-          if (total < tmintime)
-            tmintime = total;
+          if (total > tmaxtime) tmaxtime = total;
+          if (total < tmintime) tmintime = total;
 
           usum += timemems[k];
           ssum += timemems[k + 1];
           tsum += total;
 
-          if (timemems[k + 2] > maxmem)
-            maxmem = timemems[k + 2];
-          if (timemems[k + 2] < minmem)
-            minmem = timemems[k + 2];
+          if (timemems[k + 2] > maxmem) maxmem = timemems[k + 2];
+          if (timemems[k + 2] < minmem) minmem = timemems[k + 2];
           msum += timemems[k + 2];
         }
         double umean = usum / (double)e->nr_nodes;
@@ -427,8 +414,7 @@ void engine_repartition_trigger(struct engine *e) {
 
         fprintf(timelog, "# %d mean times: %f %f %f\n", e->step, umean, smean,
                 tmean);
-        if (abs_trigger > 1.f)
-          abs_trigger = 0.f; /* Not relevant. */
+        if (abs_trigger > 1.f) abs_trigger = 0.f; /* Not relevant. */
         fprintf(timelog,
                 "# %d balance: %f, expected: %f (sys: %f, total: %f)\n",
                 e->step, balance, abs_trigger, (smaxtime - smintime) / smean,
@@ -446,8 +432,7 @@ void engine_repartition_trigger(struct engine *e) {
     }
 
     /* Remember we did this. */
-    if (e->forcerepart)
-      e->last_repartition = e->step;
+    if (e->forcerepart) e->last_repartition = e->step;
   }
 
   if (e->verbose)
@@ -505,14 +490,10 @@ void engine_exchange_top_multipoles(struct engine *e) {
           error("Invalid multipole position in Z");
       }
     } else {
-      if (m->m_pole.M_000 != 0.)
-        error("Non-zero mass for foreign m-pole");
-      if (m->CoM[0] != 0.)
-        error("Non-zero position in X for foreign m-pole");
-      if (m->CoM[1] != 0.)
-        error("Non-zero position in Y for foreign m-pole");
-      if (m->CoM[2] != 0.)
-        error("Non-zero position in Z for foreign m-pole");
+      if (m->m_pole.M_000 != 0.) error("Non-zero mass for foreign m-pole");
+      if (m->CoM[0] != 0.) error("Non-zero position in X for foreign m-pole");
+      if (m->CoM[1] != 0.) error("Non-zero position in Y for foreign m-pole");
+      if (m->CoM[2] != 0.) error("Non-zero position in Z for foreign m-pole");
       if (m->m_pole.num_gpart != 0)
         error("Non-zero gpart count in foreign m-pole");
     }
@@ -553,9 +534,10 @@ void engine_exchange_top_multipoles(struct engine *e) {
     }
   }
   if (counter != e->total_nr_gparts)
-    error("Total particles in multipoles inconsistent with engine.\n "
-          "  counter = %lld, nr_gparts = %lld",
-          counter, e->total_nr_gparts);
+    error(
+        "Total particles in multipoles inconsistent with engine.\n "
+        "  counter = %lld, nr_gparts = %lld",
+        counter, e->total_nr_gparts);
 #endif
 
   if (e->verbose)
@@ -613,8 +595,7 @@ void engine_exchange_proxy_multipoles(struct engine *e) {
   const int count_requests = count_send_requests + count_recv_requests;
   MPI_Request *requests =
       (MPI_Request *)malloc(sizeof(MPI_Request) * count_requests);
-  if (requests == NULL)
-    error("Unable to allocate memory for MPI requests");
+  if (requests == NULL) error("Unable to allocate memory for MPI requests");
 
   int this_request = 0;
   int this_recv = 0;
@@ -768,13 +749,15 @@ void engine_allocate_foreign_particles(struct engine *e) {
   }
 
   if (!with_hydro && count_parts_in)
-    error("Not running with hydro but about to receive gas particles in "
-          "proxies!");
+    error(
+        "Not running with hydro but about to receive gas particles in "
+        "proxies!");
   if (!with_stars && count_sparts_in)
     error("Not running with stars but about to receive stars in proxies!");
   if (!with_black_holes && count_bparts_in)
-    error("Not running with black holes but about to receive black holes in "
-          "proxies!");
+    error(
+        "Not running with black holes but about to receive black holes in "
+        "proxies!");
 
   if (e->verbose)
     message("Counting number of foreign particles took %.3f %s.",
@@ -785,8 +768,7 @@ void engine_allocate_foreign_particles(struct engine *e) {
   /* Allocate space for the foreign particles we will receive */
   size_t old_size_parts_foreign = s->size_parts_foreign;
   if (count_parts_in > s->size_parts_foreign) {
-    if (s->parts_foreign != NULL)
-      swift_free("parts_foreign", s->parts_foreign);
+    if (s->parts_foreign != NULL) swift_free("parts_foreign", s->parts_foreign);
     s->size_parts_foreign = engine_foreign_alloc_margin * count_parts_in;
     if (swift_memalign("parts_foreign", (void **)&s->parts_foreign, part_align,
                        sizeof(struct part) * s->size_parts_foreign) != 0)
@@ -830,33 +812,35 @@ void engine_allocate_foreign_particles(struct engine *e) {
   }
 
   if (e->verbose) {
-    message("Allocating %zd/%zd/%zd/%zd foreign part/gpart/spart/bpart "
-            "(%zd/%zd/%zd/%zd MB)",
-            s->size_parts_foreign, s->size_gparts_foreign,
-            s->size_sparts_foreign, s->size_bparts_foreign,
-            s->size_parts_foreign * sizeof(struct part) / (1024 * 1024),
-            s->size_gparts_foreign * sizeof(struct gpart) / (1024 * 1024),
-            s->size_sparts_foreign * sizeof(struct spart) / (1024 * 1024),
-            s->size_bparts_foreign * sizeof(struct bpart) / (1024 * 1024));
+    message(
+        "Allocating %zd/%zd/%zd/%zd foreign part/gpart/spart/bpart "
+        "(%zd/%zd/%zd/%zd MB)",
+        s->size_parts_foreign, s->size_gparts_foreign, s->size_sparts_foreign,
+        s->size_bparts_foreign,
+        s->size_parts_foreign * sizeof(struct part) / (1024 * 1024),
+        s->size_gparts_foreign * sizeof(struct gpart) / (1024 * 1024),
+        s->size_sparts_foreign * sizeof(struct spart) / (1024 * 1024),
+        s->size_bparts_foreign * sizeof(struct bpart) / (1024 * 1024));
 
     if ((s->size_parts_foreign - old_size_parts_foreign) > 0 ||
         (s->size_gparts_foreign - old_size_gparts_foreign) > 0 ||
         (s->size_sparts_foreign - old_size_sparts_foreign) > 0 ||
         (s->size_bparts_foreign - old_size_bparts_foreign) > 0) {
-      message("Re-allocations %zd/%zd/%zd/%zd part/gpart/spart/bpart "
-              "(%zd/%zd/%zd/%zd MB)",
-              (s->size_parts_foreign - old_size_parts_foreign),
-              (s->size_gparts_foreign - old_size_gparts_foreign),
-              (s->size_sparts_foreign - old_size_sparts_foreign),
-              (s->size_bparts_foreign - old_size_bparts_foreign),
-              (s->size_parts_foreign - old_size_parts_foreign) *
-                  sizeof(struct part) / (1024 * 1024),
-              (s->size_gparts_foreign - old_size_gparts_foreign) *
-                  sizeof(struct gpart) / (1024 * 1024),
-              (s->size_sparts_foreign - old_size_sparts_foreign) *
-                  sizeof(struct spart) / (1024 * 1024),
-              (s->size_bparts_foreign - old_size_bparts_foreign) *
-                  sizeof(struct bpart) / (1024 * 1024));
+      message(
+          "Re-allocations %zd/%zd/%zd/%zd part/gpart/spart/bpart "
+          "(%zd/%zd/%zd/%zd MB)",
+          (s->size_parts_foreign - old_size_parts_foreign),
+          (s->size_gparts_foreign - old_size_gparts_foreign),
+          (s->size_sparts_foreign - old_size_sparts_foreign),
+          (s->size_bparts_foreign - old_size_bparts_foreign),
+          (s->size_parts_foreign - old_size_parts_foreign) *
+              sizeof(struct part) / (1024 * 1024),
+          (s->size_gparts_foreign - old_size_gparts_foreign) *
+              sizeof(struct gpart) / (1024 * 1024),
+          (s->size_sparts_foreign - old_size_sparts_foreign) *
+              sizeof(struct spart) / (1024 * 1024),
+          (s->size_bparts_foreign - old_size_bparts_foreign) *
+              sizeof(struct bpart) / (1024 * 1024));
     }
   }
 
@@ -922,8 +906,7 @@ void engine_do_tasks_count_mapper(void *map_data, int num_elements,
 
   /* Local accumulator copy */
   int local_counts[task_type_count + 1];
-  for (int k = 0; k <= task_type_count; k++)
-    local_counts[k] = 0;
+  for (int k = 0; k <= task_type_count; k++) local_counts[k] = 0;
 
   /* Add task counts locally */
   for (int k = 0; k < num_elements; k++) {
@@ -939,8 +922,7 @@ void engine_do_tasks_count_mapper(void *map_data, int num_elements,
 
   /* Update the global counts */
   for (int k = 0; k <= task_type_count; k++) {
-    if (local_counts[k])
-      atomic_add(global_counts + k, local_counts[k]);
+    if (local_counts[k]) atomic_add(global_counts + k, local_counts[k]);
   }
 }
 
@@ -959,10 +941,11 @@ void engine_print_task_counts(const struct engine *e) {
   /* Global tasks and cells when using MPI. */
 #ifdef WITH_MPI
   if (e->nodeID == 0 && e->total_nr_tasks > 0)
-    printf("[%04i] %s engine_print_task_counts: System total: %lld,"
-           " no. cells: %lld\n",
-           e->nodeID, clocks_get_timesincestart(), e->total_nr_tasks,
-           e->total_nr_cells);
+    printf(
+        "[%04i] %s engine_print_task_counts: System total: %lld,"
+        " no. cells: %lld\n",
+        e->nodeID, clocks_get_timesincestart(), e->total_nr_tasks,
+        e->total_nr_cells);
   fflush(stdout);
 #endif
 
@@ -986,8 +969,7 @@ void engine_print_task_counts(const struct engine *e) {
 
   /* Count and print the number of each task type. */
   int counts[task_type_count + 1];
-  for (int k = 0; k <= task_type_count; k++)
-    counts[k] = 0;
+  for (int k = 0; k <= task_type_count; k++) counts[k] = 0;
   threadpool_map((struct threadpool *)&e->threadpool,
                  engine_do_tasks_count_mapper, (void *)tasks, nr_tasks,
                  sizeof(struct task), threadpool_auto_chunk_size, counts);
@@ -1051,8 +1033,8 @@ int engine_estimate_nr_tasks(const struct engine *e) {
     n1 += 38;
     n2 += 2;
 #ifdef WITH_CUDA
-    n1 += 2;  // Self force and density packs
-    n1 += 26; // Pair force and density packs
+    n1 += 2;   // Self force and density packs
+    n1 += 26;  // Pair force and density packs
 #endif
 ////////////////////////////////////////////////////
 #ifdef WITH_MPI
@@ -1062,8 +1044,8 @@ int engine_estimate_nr_tasks(const struct engine *e) {
 #ifdef EXTRA_HYDRO_LOOP
     n1 += 15;
 #ifdef WITH_CUDA
-    n1 += 1;  // Self gradient packs
-    n1 += 13; // Pair gradient packs
+    n1 += 1;   // Self gradient packs
+    n1 += 13;  // Pair gradient packs
 #endif
 #ifdef WITH_MPI
     n1 += 2;
@@ -1163,11 +1145,9 @@ int engine_estimate_nr_tasks(const struct engine *e) {
 #endif
 
   float ntasks = n1 * ntop + n2 * (ncells - ntop);
-  if (ncells > 0)
-    tasks_per_cell = ceil(ntasks / ncells);
+  if (ncells > 0) tasks_per_cell = ceil(ntasks / ncells);
 
-  if (tasks_per_cell < 1.0f)
-    tasks_per_cell = 1.0f;
+  if (tasks_per_cell < 1.0f) tasks_per_cell = 1.0f;
   if (e->verbose)
     message("tasks per cell estimated as: %.2f, maximum tasks: %d",
             tasks_per_cell, (int)(ncells * tasks_per_cell));
@@ -1195,18 +1175,15 @@ void engine_rebuild(struct engine *e, const int repartitioned,
   /* Report the time spent in the different task categories */
   if (e->verbose && !repartitioned)
     scheduler_report_task_times(&e->sched, e->nr_threads);
-  if (e->nodeID == 0)
-    message("after sched report\n");
+  if (e->nodeID == 0) message("after sched report\n");
   /* Give some breathing space */
   scheduler_free_tasks(&e->sched);
-  if (e->nodeID == 0)
-    message("after sched free tasks\n");
+  if (e->nodeID == 0) message("after sched free tasks\n");
 
   /* Re-build the space. */
   space_rebuild(e->s, repartitioned, e->verbose);
 
-  if (e->nodeID == 0)
-    message("after space rebuild\n");
+  if (e->nodeID == 0) message("after space rebuild\n");
 
   /* Report the number of cells and memory */
   if (e->verbose)
@@ -1288,17 +1265,14 @@ void engine_rebuild(struct engine *e, const int repartitioned,
 #endif
 
   /* Initial cleaning up session ? */
-  if (clean_smoothing_length_values)
-    space_sanitize(e->s);
+  if (clean_smoothing_length_values) space_sanitize(e->s);
 
-  if (e->nodeID == 0)
-    message("after space sanitize\n");
+  if (e->nodeID == 0) message("after space sanitize\n");
 
 /* If in parallel, exchange the cell structure, top-level and neighbouring
  * multipoles. */
 #ifdef WITH_MPI
-  if (e->policy & engine_policy_self_gravity)
-    engine_exchange_top_multipoles(e);
+  if (e->policy & engine_policy_self_gravity) engine_exchange_top_multipoles(e);
 
   engine_exchange_cells(e);
 #endif
@@ -1322,14 +1296,12 @@ void engine_rebuild(struct engine *e, const int repartitioned,
   /* Re-build the tasks. */
   engine_maketasks(e);
 
-  if (e->nodeID == 0)
-    message("after engine maketasks\n");
+  if (e->nodeID == 0) message("after engine maketasks\n");
   //  fprintf(stderr, "after engine_maketasks in engine_rebuild\n");
   /* Make the list of top-level cells that have tasks */
   space_list_useful_top_level_cells(e->s);
 
-  if (e->nodeID == 0)
-    message("after space list useful\n");
+  if (e->nodeID == 0) message("after space list useful\n");
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that all cells have been drifted to the current time.
@@ -1351,14 +1323,11 @@ void engine_rebuild(struct engine *e, const int repartitioned,
   if (engine_marktasks(e))
     error("engine_marktasks failed after space_rebuild.");
 
-  if (e->nodeID == 0)
-    message("after engine marktasks\n");
+  if (e->nodeID == 0) message("after engine marktasks\n");
   /* Print the status of the system */
-  if (e->verbose)
-    engine_print_task_counts(e);
+  if (e->verbose) engine_print_task_counts(e);
 
-  if (e->nodeID == 0)
-    message("after engine print task counts\n");
+  if (e->nodeID == 0) message("after engine print task counts\n");
 
   /* Clear the counters of updates since the last rebuild */
   e->updates_since_rebuild = 0;
@@ -1392,8 +1361,7 @@ int engine_prepare(struct engine *e) {
   int repartitioned = 0;
 
   /* Unskip active tasks and check for rebuild */
-  if (!e->forcerebuild && !e->forcerepart && !e->restarting)
-    engine_unskip(e);
+  if (!e->forcerebuild && !e->forcerepart && !e->restarting) engine_unskip(e);
 
   const ticks tic3 = getticks();
 
@@ -1423,8 +1391,7 @@ int engine_prepare(struct engine *e) {
   if (!e->restarting && e->forcerebuild && !e->forcerepart && e->step > 1) {
 
     /* Let's start by drifting everybody to the current time */
-    if (!drifted_all)
-      engine_drift_all(e, /*drift_mpole=*/0);
+    if (!drifted_all) engine_drift_all(e, /*drift_mpole=*/0);
     drifted_all = 1;
 
     engine_split_gas_particles(e);
@@ -1454,8 +1421,7 @@ int engine_prepare(struct engine *e) {
   if (e->forcerebuild) {
 
     /* Let's start by drifting everybody to the current time */
-    if (!e->restarting && !drifted_all)
-      engine_drift_all(e, /*drift_mpole=*/0);
+    if (!e->restarting && !drifted_all) engine_drift_all(e, /*drift_mpole=*/0);
 
     drifted_all = 1;
 
@@ -1763,14 +1729,13 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
                        e->cosmology);
 
   /* Start by setting the particles in a good state */
-  if (e->nodeID == 0)
-    message("Setting particles to a valid state...");
+  if (e->nodeID == 0) message("Setting particles to a valid state...");
   engine_first_init_particles(e);
 
   if (e->nodeID == 0)
     message("Computing initial gas densities and approximate gravity.");
   /* Construct all cells and tasks to start everything */
-  engine_rebuild(e, 0, clean_h_values); //////THIS IS WHERE CODE CRASHES!!!!
+  engine_rebuild(e, 0, clean_h_values);  //////THIS IS WHERE CODE CRASHES!!!!
   //  fprintf(stderr, "after first engine_init rebuild\n");
   /* Compute the mesh forces for the first time */
   if ((e->policy & engine_policy_self_gravity) && e->s->periodic) {
@@ -1788,8 +1753,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   engine_skip_force_and_kick(e);
   //  fprintf(stderr, "after skip force and kick in engine_init rebuild\n");
   /* Print the number of active tasks ? */
-  if (e->verbose)
-    engine_print_task_counts(e);
+  if (e->verbose) engine_print_task_counts(e);
 
   /* Init the particle data (by hand). */
   space_init_parts(s, e->verbose);
@@ -1822,8 +1786,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   /* Apply some conversions (e.g. internal energy -> entropy) */
   if (!flag_entropy_ICs) {
 
-    if (e->nodeID == 0)
-      message("Converting internal energy variable.");
+    if (e->nodeID == 0) message("Converting internal energy variable.");
 
     space_convert_quantities(e->s, e->verbose);
 
@@ -1842,16 +1805,16 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
     for (int i = 0; i < e->s->nr_cells; ++i)
       num_gpart_mpole += e->s->cells_top[i].grav.multipole->m_pole.num_gpart;
     if (num_gpart_mpole != e->total_nr_gparts)
-      error("Top-level multipoles don't contain the total number of gpart "
-            "s->nr_gpart=%lld, "
-            "m_poles=%lld",
-            e->total_nr_gparts, num_gpart_mpole);
+      error(
+          "Top-level multipoles don't contain the total number of gpart "
+          "s->nr_gpart=%lld, "
+          "m_poles=%lld",
+          e->total_nr_gparts, num_gpart_mpole);
   }
 #endif
 
   /* Now time to get ready for the first time-step */
-  if (e->nodeID == 0)
-    message("Running initial fake time-step.");
+  if (e->nodeID == 0) message("Running initial fake time-step.");
 
   /* Update the MAC strategy if necessary */
   if (e->policy & engine_policy_self_gravity)
@@ -1872,8 +1835,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   space_init_sinks(e->s, e->verbose);
 
   /* Print the number of active tasks ? */
-  if (e->verbose)
-    engine_print_task_counts(e);
+  if (e->verbose) engine_print_task_counts(e);
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
   /* Run the brute-force gravity calculation for some gparts */
@@ -1882,8 +1844,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
 #endif
 
   scheduler_write_dependencies(&e->sched, e->verbose);
-  if (e->nodeID == 0)
-    scheduler_write_task_level(&e->sched);
+  if (e->nodeID == 0) scheduler_write_task_level(&e->sched);
 
   /* Run the 0th time-step */
   TIMER_TIC2;
@@ -1926,8 +1887,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
     for (size_t k = 1; k < s->nr_parts; k++) {
 
       /* Ignore fake buffer particles for on-the-fly creation */
-      if (s->parts[k].time_bin == time_bin_not_created)
-        continue;
+      if (s->parts[k].time_bin == time_bin_not_created) continue;
 
       if (prev_x[0] == s->parts[k].x[0] && prev_x[1] == s->parts[k].x[1] &&
           prev_x[2] == s->parts[k].x[2]) {
@@ -1940,9 +1900,10 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
       prev_id = &s->parts[k].id;
     }
     if (failed > 0)
-      error("Have %d particle pairs with the same locations.\n"
-            "Cannot continue",
-            failed);
+      error(
+          "Have %d particle pairs with the same locations.\n"
+          "Cannot continue",
+          failed);
   }
 
   /* Also check any gparts. This is not supposed to be fatal so only warn. */
@@ -1952,8 +1913,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
     for (size_t k = 1; k < s->nr_gparts; k++) {
 
       /* Ignore fake buffer particles for on-the-fly creation */
-      if (s->gparts[k].time_bin == time_bin_not_created)
-        continue;
+      if (s->gparts[k].time_bin == time_bin_not_created) continue;
 
       if (prev_x[0] == s->gparts[k].x[0] && prev_x[1] == s->gparts[k].x[1] &&
           prev_x[2] == s->gparts[k].x[2]) {
@@ -1966,9 +1926,10 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
       prev_x = s->gparts[k].x;
     }
     if (failed > 0)
-      message("WARNING: found %d gpart pairs at the same location. "
-              "That is not optimal",
-              failed);
+      message(
+          "WARNING: found %d gpart pairs at the same location. "
+          "That is not optimal",
+          failed);
   }
 
   /* Check the top-level cell h_max matches the particles as these can be
@@ -2039,8 +2000,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   e->force_checks_snapshot_flag = 0;
 #endif
 
-  if (e->verbose)
-    message("took %.3f %s.", e->wallclock_time, clocks_getunit());
+  if (e->verbose) message("took %.3f %s.", e->wallclock_time, clocks_getunit());
 }
 
 /**
@@ -2067,12 +2027,13 @@ void engine_step(struct engine *e) {
     const ticks tic_files = getticks();
 
     /* Print some information to the screen */
-    printf("  %6d %14e %12.7f %12.7f %14e %4d %4d %12lld %12lld %12lld "
-           "%12lld %12lld %21.3f %6d\n",
-           e->step, e->time, e->cosmology->a, e->cosmology->z, e->time_step,
-           e->min_active_bin, e->max_active_bin, e->updates, e->g_updates,
-           e->s_updates, e->sink_updates, e->b_updates, e->wallclock_time,
-           e->step_props);
+    printf(
+        "  %6d %14e %12.7f %12.7f %14e %4d %4d %12lld %12lld %12lld "
+        "%12lld %12lld %21.3f %6d\n",
+        e->step, e->time, e->cosmology->a, e->cosmology->z, e->time_step,
+        e->min_active_bin, e->max_active_bin, e->updates, e->g_updates,
+        e->s_updates, e->sink_updates, e->b_updates, e->wallclock_time,
+        e->step_props);
 #ifdef SWIFT_DEBUG_CHECKS
     fflush(stdout);
 #endif
@@ -2087,8 +2048,7 @@ void engine_step(struct engine *e) {
 #ifdef SWIFT_DEBUG_CHECKS
       fflush(e->sfh_logger);
 #else
-      if (e->step % 32 == 0)
-        fflush(e->sfh_logger);
+      if (e->step % 32 == 0) fflush(e->sfh_logger);
 #endif
     }
 
@@ -2111,8 +2071,7 @@ void engine_step(struct engine *e) {
   }
 
   /* We need some cells to exist but not the whole task stuff. */
-  if (e->restarting)
-    space_rebuild(e->s, 0, e->verbose);
+  if (e->restarting) space_rebuild(e->s, 0, e->verbose);
 
   /* Move forward in time */
   e->ti_old = e->ti_current;
@@ -2124,8 +2083,7 @@ void engine_step(struct engine *e) {
   e->step_props = engine_step_prop_none;
 
   /* When restarting, move everyone to the current time. */
-  if (e->restarting)
-    engine_drift_all(e, /*drift_mpole=*/1);
+  if (e->restarting) engine_drift_all(e, /*drift_mpole=*/1);
 
   /* Get the physical value of the time and time-step size */
   if (e->policy & engine_policy_cosmology) {
@@ -2211,8 +2169,7 @@ void engine_step(struct engine *e) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Print the number of active tasks */
-  if (e->verbose)
-    engine_print_task_counts(e);
+  if (e->verbose) engine_print_task_counts(e);
 #endif
 
     /* Dump local cells and active particle counts. */
@@ -2225,9 +2182,10 @@ void engine_step(struct engine *e) {
     for (int i = 0; i < e->s->nr_cells; ++i)
       num_gpart_mpole += e->s->cells_top[i].grav.multipole->m_pole.num_gpart;
     if (num_gpart_mpole != e->total_nr_gparts)
-      error("Multipoles don't contain the total number of gpart mpoles=%lld "
-            "ngparts=%lld",
-            num_gpart_mpole, e->total_nr_gparts);
+      error(
+          "Multipoles don't contain the total number of gpart mpoles=%lld "
+          "ngparts=%lld",
+          num_gpart_mpole, e->total_nr_gparts);
   }
 #endif
 
@@ -2271,8 +2229,7 @@ void engine_step(struct engine *e) {
       e->mesh->ti_end_mesh_next == e->ti_current) {
 
     /* We might need to drift things */
-    if (!drifted_all)
-      engine_drift_all(e, /*drift_mpole=*/0);
+    if (!drifted_all) engine_drift_all(e, /*drift_mpole=*/0);
 
     /* ... and recompute */
     pm_mesh_compute_potential(e->mesh, e->s, &e->threadpool, e->verbose);
@@ -2585,8 +2542,7 @@ void engine_collect_stars_counter(struct engine *e) {
 
   int err = MPI_Allgather(&e->s->nr_sparts_foreign, 1, MPI_UNSIGNED_LONG,
                           n_sparts, 1, MPI_UNSIGNED_LONG, MPI_COMM_WORLD);
-  if (err != MPI_SUCCESS)
-    error("Communication failed");
+  if (err != MPI_SUCCESS) error("Communication failed");
 
   /* Compute derivated quantities */
   int total = 0;
@@ -2604,8 +2560,7 @@ void engine_collect_stars_counter(struct engine *e) {
   err = MPI_Allgatherv(e->s->sparts_foreign, e->s->nr_sparts_foreign,
                        spart_mpi_type, sparts, n_sparts_int, displs,
                        spart_mpi_type, MPI_COMM_WORLD);
-  if (err != MPI_SUCCESS)
-    error("Communication failed");
+  if (err != MPI_SUCCESS) error("Communication failed");
 
   /* Reset counters */
   for (size_t i = 0; i < e->s->nr_sparts_foreign; i++) {
@@ -2623,9 +2578,10 @@ void engine_collect_stars_counter(struct engine *e) {
       if (id_j == id_i) {
         if (j >= displs[engine_rank] &&
             j < displs[engine_rank] + n_sparts_int[engine_rank]) {
-          error("Found a local spart in foreign cell ID=%lli: j=%i, displs=%i, "
-                "n_sparts=%i",
-                id_j, j, displs[engine_rank], n_sparts_int[engine_rank]);
+          error(
+              "Found a local spart in foreign cell ID=%lli: j=%i, displs=%i, "
+              "n_sparts=%i",
+              id_j, j, displs[engine_rank], n_sparts_int[engine_rank]);
         }
 
         local_sparts[i].num_ngb_feedback += sparts[j].num_ngb_feedback;
@@ -2755,8 +2711,7 @@ static void engine_dumper_init(struct engine *e) {
 
   /* Make sure the .dump file is not present, that is bad when starting up. */
   struct stat buf;
-  if (stat(".dump", &buf) == 0)
-    unlink(".dump");
+  if (stat(".dump", &buf) == 0) unlink(".dump");
 
   /* Thread does not exit, so nothing to do but create it. */
   pthread_create(&dumper, NULL, &engine_dumper_poll, e);
@@ -3022,8 +2977,7 @@ void engine_print_policy(struct engine *e) {
     printf("[0000] %s engine_policy: engine policies are [ ",
            clocks_get_timesincestart());
     for (int k = 0; k <= engine_maxpolicy; k++)
-      if (e->policy & (1 << k))
-        printf(" '%s' ", engine_policy_names[k + 1]);
+      if (e->policy & (1 << k)) printf(" '%s' ", engine_policy_names[k + 1]);
     printf(" ]\n");
     fflush(stdout);
   }
@@ -3031,8 +2985,7 @@ void engine_print_policy(struct engine *e) {
   printf("%s engine_policy: engine policies are [ ",
          clocks_get_timesincestart());
   for (int k = 0; k <= engine_maxpolicy; k++)
-    if (e->policy & (1 << k))
-      printf(" '%s' ", engine_policy_names[k + 1]);
+    if (e->policy & (1 << k)) printf(" '%s' ", engine_policy_names[k + 1]);
   printf(" ]\n");
   fflush(stdout);
 #endif
@@ -3074,8 +3027,7 @@ void engine_recompute_displacement_constraint(struct engine *e) {
     /* Check that the minimal mass collection worked */
     float min_part_mass_check = FLT_MAX;
     for (size_t i = 0; i < e->s->nr_parts; ++i) {
-      if (e->s->parts[i].time_bin >= num_time_bins)
-        continue;
+      if (e->s->parts[i].time_bin >= num_time_bins) continue;
       min_part_mass_check =
           min(min_part_mass_check, hydro_get_mass(&e->s->parts[i]));
     }
@@ -3194,8 +3146,7 @@ void engine_recompute_displacement_constraint(struct engine *e) {
 
   /* Find the max integer time-step on the timeline below new_dti */
   integertime_t dti_timeline = max_nr_timesteps;
-  while (new_dti < dti_timeline)
-    dti_timeline /= ((integertime_t)2);
+  while (new_dti < dti_timeline) dti_timeline /= ((integertime_t)2);
   new_dti = dti_timeline;
 
   /* Make sure we are allowed to increase the timestep size */
@@ -3315,17 +3266,12 @@ void engine_clean(struct engine *e, const int fof, const int restart) {
 #ifdef WITH_MPI
     free((void *)e->reparttype);
 #endif
-    if (e->output_list_snapshots)
-      free((void *)e->output_list_snapshots);
-    if (e->output_list_stats)
-      free((void *)e->output_list_stats);
-    if (e->output_list_stf)
-      free((void *)e->output_list_stf);
-    if (e->output_list_los)
-      free((void *)e->output_list_los);
+    if (e->output_list_snapshots) free((void *)e->output_list_snapshots);
+    if (e->output_list_stats) free((void *)e->output_list_stats);
+    if (e->output_list_stf) free((void *)e->output_list_stf);
+    if (e->output_list_los) free((void *)e->output_list_los);
 #ifdef WITH_LOGGER
-    if (e->policy & engine_policy_logger)
-      free((void *)e->logger);
+    if (e->policy & engine_policy_logger) free((void *)e->logger);
 #endif
     free(e->s);
   }
@@ -3380,10 +3326,8 @@ void engine_struct_dump(struct engine *e, FILE *stream) {
     output_list_struct_dump(e->output_list_snapshots, stream);
   if (e->output_list_stats)
     output_list_struct_dump(e->output_list_stats, stream);
-  if (e->output_list_stf)
-    output_list_struct_dump(e->output_list_stf, stream);
-  if (e->output_list_los)
-    output_list_struct_dump(e->output_list_los, stream);
+  if (e->output_list_stf) output_list_struct_dump(e->output_list_stf, stream);
+  if (e->output_list_los) output_list_struct_dump(e->output_list_los, stream);
 
 #ifdef WITH_LOGGER
   if (e->policy & engine_policy_logger) {

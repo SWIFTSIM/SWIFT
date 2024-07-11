@@ -501,7 +501,7 @@ struct cell {
 } SWIFT_STRUCT_ALIGN;
 
 /* Convert cell location to ID. */
-#define cell_getid(cdim, i, j, k)                                              \
+#define cell_getid(cdim, i, j, k) \
   ((int)(k) + (cdim)[2] * ((int)(j) + (cdim)[1] * (int)(i)))
 
 /* Function prototypes. */
@@ -672,18 +672,14 @@ int cell_can_use_pair_mm(const struct cell *ci, const struct cell *cj,
  * @param periodic Are we using periodic BCs?
  * @param dim The dimensions of the simulation volume
  */
-__attribute__((always_inline)) INLINE static double
-cell_min_dist2_same_size(const struct cell *restrict ci,
-                         const struct cell *restrict cj, const int periodic,
-                         const double dim[3]) {
+__attribute__((always_inline)) INLINE static double cell_min_dist2_same_size(
+    const struct cell *restrict ci, const struct cell *restrict cj,
+    const int periodic, const double dim[3]) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (ci->width[0] != cj->width[0])
-    error("Cells of different size!");
-  if (ci->width[1] != cj->width[1])
-    error("Cells of different size!");
-  if (ci->width[2] != cj->width[2])
-    error("Cells of different size!");
+  if (ci->width[0] != cj->width[0]) error("Cells of different size!");
+  if (ci->width[1] != cj->width[1]) error("Cells of different size!");
+  if (ci->width[2] != cj->width[2]) error("Cells of different size!");
 #endif
 
   const double cix_min = ci->loc[0];
@@ -876,8 +872,8 @@ cell_can_recurse_in_self_sinks_task(const struct cell *c) {
  *
  * @param c The #cell.
  */
-__attribute__((always_inline)) INLINE static int
-cell_can_split_pair_hydro_task(const struct cell *c) {
+__attribute__((always_inline)) INLINE static int cell_can_split_pair_hydro_task(
+    const struct cell *c) {
 
   /* Is the cell split ? */
   /* If so, is the cut-off radius with some leeway smaller than */
@@ -896,8 +892,8 @@ cell_can_split_pair_hydro_task(const struct cell *c) {
  *
  * @param c The #cell.
  */
-__attribute__((always_inline)) INLINE static int
-cell_can_split_self_hydro_task(const struct cell *c) {
+__attribute__((always_inline)) INLINE static int cell_can_split_self_hydro_task(
+    const struct cell *c) {
 
   /* Is the cell split ? */
   /* If so, is the cut-off radius with some leeway smaller than */
@@ -942,8 +938,8 @@ cell_can_split_self_gravity_task(const struct cell *c) {
  *
  * @param c The #cell.
  */
-__attribute__((always_inline)) INLINE static int
-cell_can_split_self_fof_task(const struct cell *c) {
+__attribute__((always_inline)) INLINE static int cell_can_split_self_fof_task(
+    const struct cell *c) {
 
   /* Is the cell split ? */
   return c->split && c->grav.count > 5000 &&
@@ -1043,8 +1039,8 @@ cell_need_rebuild_for_black_holes_pair(const struct cell *ci,
  *
  * @param c The #cell to tag.
  */
-__attribute__((always_inline)) INLINE static void
-cell_ensure_tagged(struct cell *c) {
+__attribute__((always_inline)) INLINE static void cell_ensure_tagged(
+    struct cell *c) {
 #ifdef WITH_MPI
 
   lock_lock(&c->hydro.lock);
@@ -1056,7 +1052,7 @@ cell_ensure_tagged(struct cell *c) {
   }
 #else
   error("SWIFT was not compiled with MPI enabled.");
-#endif // WITH_MPI
+#endif  // WITH_MPI
 }
 
 /**
@@ -1065,8 +1061,8 @@ cell_ensure_tagged(struct cell *c) {
  * @param c The #cell that will require sorting.
  * @param flags Cell flags.
  */
-__attribute__((always_inline)) INLINE static void
-cell_malloc_hydro_sorts(struct cell *c, const int flags) {
+__attribute__((always_inline)) INLINE static void cell_malloc_hydro_sorts(
+    struct cell *c, const int flags) {
 
   const int count = c->hydro.count;
 
@@ -1081,8 +1077,7 @@ cell_malloc_hydro_sorts(struct cell *c, const int flags) {
         intrinsics_popcount(c->hydro.sort_allocated);
 
     /* Do we already have what we want? */
-    if (num_arrays_wanted == num_already_allocated)
-      return;
+    if (num_arrays_wanted == num_already_allocated) return;
 
     /* Allocate memory for the new array */
     struct sort_entry *new_array = NULL;
@@ -1132,8 +1127,8 @@ cell_malloc_hydro_sorts(struct cell *c, const int flags) {
  *
  * @param c The #cell.
  */
-__attribute__((always_inline)) INLINE static void
-cell_free_hydro_sorts(struct cell *c) {
+__attribute__((always_inline)) INLINE static void cell_free_hydro_sorts(
+    struct cell *c) {
 
   if (c->hydro.sort != NULL) {
     swift_free("hydro.sort", c->hydro.sort);
@@ -1153,8 +1148,7 @@ __attribute__((always_inline)) INLINE static struct sort_entry *
 cell_get_hydro_sorts(const struct cell *c, const int sid) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (sid >= 13 || sid < 0)
-    error("Invalid sid!");
+  if (sid >= 13 || sid < 0) error("Invalid sid!");
 
   if (!(c->hydro.sort_allocated & (1 << sid)))
     error("Sort not allocated along direction %d", sid);
@@ -1180,8 +1174,8 @@ cell_get_hydro_sorts(const struct cell *c, const int sid) {
  * @param c The #cell that will require sorting.
  * @param flags Cell flags.
  */
-__attribute__((always_inline)) INLINE static void
-cell_malloc_stars_sorts(struct cell *c, const int flags) {
+__attribute__((always_inline)) INLINE static void cell_malloc_stars_sorts(
+    struct cell *c, const int flags) {
 
   const int count = c->stars.count;
 
@@ -1196,8 +1190,7 @@ cell_malloc_stars_sorts(struct cell *c, const int flags) {
         intrinsics_popcount(c->stars.sort_allocated);
 
     /* Do we already have what we want? */
-    if (num_arrays_wanted == num_already_allocated)
-      return;
+    if (num_arrays_wanted == num_already_allocated) return;
 
     /* Allocate memory for the new array */
     struct sort_entry *new_array = NULL;
@@ -1247,8 +1240,8 @@ cell_malloc_stars_sorts(struct cell *c, const int flags) {
  *
  * @param c The #cell.
  */
-__attribute__((always_inline)) INLINE static void
-cell_free_stars_sorts(struct cell *c) {
+__attribute__((always_inline)) INLINE static void cell_free_stars_sorts(
+    struct cell *c) {
 
   if (c->stars.sort != NULL) {
     swift_free("stars.sort", c->stars.sort);
@@ -1268,8 +1261,7 @@ __attribute__((always_inline)) INLINE static struct sort_entry *
 cell_get_stars_sorts(const struct cell *c, const int sid) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (sid >= 13 || sid < 0)
-    error("Invalid sid!");
+  if (sid >= 13 || sid < 0) error("Invalid sid!");
 
   if (!(c->stars.sort_allocated & (1 << sid)))
     error("Sort not allocated along direction %d", sid);
@@ -1296,26 +1288,25 @@ __attribute__((always_inline)) INLINE static void cell_set_flag(struct cell *c,
 }
 
 /** Clear the given flag for the given cell. */
-__attribute__((always_inline)) INLINE static void
-cell_clear_flag(struct cell *c, uint32_t flag) {
+__attribute__((always_inline)) INLINE static void cell_clear_flag(
+    struct cell *c, uint32_t flag) {
   atomic_and(&c->flags, ~flag);
 }
 
 /** Get the given flag for the given cell. */
-__attribute__((always_inline)) INLINE static int
-cell_get_flag(const struct cell *c, uint32_t flag) {
+__attribute__((always_inline)) INLINE static int cell_get_flag(
+    const struct cell *c, uint32_t flag) {
   return (c->flags & flag) > 0;
 }
 
 /**
  * @brief Check if a cell has a recv task of the given subtype.
  */
-__attribute__((always_inline)) INLINE static struct task *
-cell_get_recv(const struct cell *c, enum task_subtypes subtype) {
+__attribute__((always_inline)) INLINE static struct task *cell_get_recv(
+    const struct cell *c, enum task_subtypes subtype) {
 #ifdef WITH_MPI
   struct link *l = c->mpi.recv;
-  while (l != NULL && l->t->subtype != subtype)
-    l = l->next;
+  while (l != NULL && l->t->subtype != subtype) l = l->next;
   return (l != NULL) ? l->t : NULL;
 #else
   return NULL;

@@ -24,9 +24,9 @@
    and runner_dosub_FUNCTION calling the pairwise interaction function
    runner_iact_FUNCTION. */
 
-#define PASTE(x, y)                                                            \
-  x##_##y // This is a macro for replacing the actual line in code saying y=f
-          // with x=runner_dopair1_branch
+#define PASTE(x, y) \
+  x##_##y  // This is a macro for replacing the actual line in code saying y=f
+           // with x=runner_dopair1_branch
 // So below, if my guess is correct, we say _DOPAIR1_Branch takes the value of
 // runner_dopair1_branch_gradient by concatenation later with gradient type?
 
