@@ -364,9 +364,9 @@ INLINE static struct io_props io_make_output_field_(
  */
 #define io_make_output_field_convert_part(name, type, dim, units, a_exponent, \
                                           part, xpart, convert, desc)         \
-  io_make_output_field_convert_part_(name, type, dim, units, a_exponent,      \
-                                     sizeof(part[0]), part, xpart, convert,   \
-                                     desc)
+  io_make_output_field_convert_part_(                                         \
+      name, type, dim, units, a_exponent, sizeof(part[0]), part, xpart,       \
+      convert, desc, /*physical=*/0, /*convertible_to_physical=*/1);
 
 /**
  * @brief Construct an #io_props from its parameters
@@ -388,7 +388,8 @@ INLINE static struct io_props io_make_output_field_convert_part_(
     const char *name, enum IO_DATA_TYPE type, int dimension,
     enum unit_conversion_factor units, float a_exponent, size_t partSize,
     const struct part *parts, const struct xpart *xparts, void *functionPtr,
-    const char *description) {
+    const char *description, const int is_physical,
+    const int is_convertible_to_comoving) {
 
   struct io_props r;
   bzero(&r, sizeof(struct io_props));
@@ -401,7 +402,8 @@ INLINE static struct io_props io_make_output_field_convert_part_(
   }
   r.type = type;
   r.is_used = 1;
-  r.is_convertible_to_comoving = 1;
+  r.is_physical = is_physical;
+  r.is_convertible_to_comoving = is_convertible_to_comoving;
   r.dimension = dimension;
   r.importance = UNUSED;
   r.units = units;
@@ -420,8 +422,9 @@ INLINE static struct io_props io_make_output_field_convert_part_(
  */
 #define io_make_output_field_convert_gpart(name, type, dim, units, a_exponent, \
                                            gpart, convert, desc)               \
-  io_make_output_field_convert_gpart_(name, type, dim, units, a_exponent,      \
-                                      sizeof(gpart[0]), gpart, convert, desc)
+  io_make_output_field_convert_gpart_(                                         \
+      name, type, dim, units, a_exponent, sizeof(gpart[0]), gpart, convert,    \
+      desc, /*physical=*/0, /*convertible_to_physical=*/1)
 
 /**
  * @brief Construct an #io_props from its parameters
@@ -441,7 +444,8 @@ INLINE static struct io_props io_make_output_field_convert_part_(
 INLINE static struct io_props io_make_output_field_convert_gpart_(
     const char *name, enum IO_DATA_TYPE type, int dimension,
     enum unit_conversion_factor units, float a_exponent, size_t gpartSize,
-    const struct gpart *gparts, void *functionPtr, const char *description) {
+    const struct gpart *gparts, void *functionPtr, const char *description,
+    const int is_physical, const int is_convertible_to_comoving) {
 
   struct io_props r;
   bzero(&r, sizeof(struct io_props));
@@ -454,7 +458,8 @@ INLINE static struct io_props io_make_output_field_convert_gpart_(
   }
   r.type = type;
   r.is_used = 1;
-  r.is_convertible_to_comoving = 1;
+  r.is_physical = is_physical;
+  r.is_convertible_to_comoving = is_convertible_to_comoving;
   r.dimension = dimension;
   r.importance = UNUSED;
   r.units = units;
@@ -472,8 +477,9 @@ INLINE static struct io_props io_make_output_field_convert_gpart_(
  */
 #define io_make_output_field_convert_spart(name, type, dim, units, a_exponent, \
                                            spart, convert, desc)               \
-  io_make_output_field_convert_spart_(name, type, dim, units, a_exponent,      \
-                                      sizeof(spart[0]), spart, convert, desc)
+  io_make_output_field_convert_spart_(                                         \
+      name, type, dim, units, a_exponent, sizeof(spart[0]), spart, convert,    \
+      desc, /*physical=*/0, /*convertible_to_physical=*/1)
 
 /**
  * @brief Construct an #io_props from its parameters
@@ -493,7 +499,8 @@ INLINE static struct io_props io_make_output_field_convert_gpart_(
 INLINE static struct io_props io_make_output_field_convert_spart_(
     const char *name, enum IO_DATA_TYPE type, int dimension,
     enum unit_conversion_factor units, float a_exponent, size_t spartSize,
-    const struct spart *sparts, void *functionPtr, const char *description) {
+    const struct spart *sparts, void *functionPtr, const char *description,
+    const int is_physical, const int is_convertible_to_comoving) {
 
   struct io_props r;
   bzero(&r, sizeof(struct io_props));
@@ -506,7 +513,8 @@ INLINE static struct io_props io_make_output_field_convert_spart_(
   }
   r.type = type;
   r.is_used = 1;
-  r.is_convertible_to_comoving = 1;
+  r.is_physical = is_physical;
+  r.is_convertible_to_comoving = is_convertible_to_comoving;
   r.dimension = dimension;
   r.importance = UNUSED;
   r.units = units;
@@ -524,8 +532,9 @@ INLINE static struct io_props io_make_output_field_convert_spart_(
  */
 #define io_make_output_field_convert_bpart(name, type, dim, units, a_exponent, \
                                            bpart, convert, desc)               \
-  io_make_output_field_convert_bpart_(name, type, dim, units, a_exponent,      \
-                                      sizeof(bpart[0]), bpart, convert, desc)
+  io_make_output_field_convert_bpart_(                                         \
+      name, type, dim, units, a_exponent, sizeof(bpart[0]), bpart, convert,    \
+      desc, /*physical=*/0, /*convertible_to_physical=*/1)
 
 /**
  * @brief Construct an #io_props from its parameters
@@ -545,7 +554,8 @@ INLINE static struct io_props io_make_output_field_convert_spart_(
 INLINE static struct io_props io_make_output_field_convert_bpart_(
     const char *name, enum IO_DATA_TYPE type, int dimension,
     enum unit_conversion_factor units, float a_exponent, size_t bpartSize,
-    const struct bpart *bparts, void *functionPtr, const char *description) {
+    const struct bpart *bparts, void *functionPtr, const char *description,
+    const int is_physical, const int is_convertible_to_comoving) {
 
   struct io_props r;
   bzero(&r, sizeof(struct io_props));
@@ -558,7 +568,8 @@ INLINE static struct io_props io_make_output_field_convert_bpart_(
   }
   r.type = type;
   r.is_used = 1;
-  r.is_convertible_to_comoving = 1;
+  r.is_physical = is_physical;
+  r.is_convertible_to_comoving = is_convertible_to_comoving;
   r.dimension = dimension;
   r.importance = UNUSED;
   r.units = units;
@@ -576,8 +587,9 @@ INLINE static struct io_props io_make_output_field_convert_bpart_(
  */
 #define io_make_output_field_convert_sink(name, type, dim, units, a_exponent, \
                                           sink, convert, desc)                \
-  io_make_output_field_convert_sink_(name, type, dim, units, a_exponent,      \
-                                     sizeof(sink[0]), sink, convert, desc)
+  io_make_output_field_convert_sink_(                                         \
+      name, type, dim, units, a_exponent, sizeof(sink[0]), sink, convert,     \
+      desc, /*physical=*/0, /*convertible_to_physical=*/1)
 
 /**
  * @brief Construct an #io_props from its parameters
@@ -597,7 +609,8 @@ INLINE static struct io_props io_make_output_field_convert_bpart_(
 INLINE static struct io_props io_make_output_field_convert_sink_(
     const char *name, enum IO_DATA_TYPE type, int dimension,
     enum unit_conversion_factor units, float a_exponent, size_t sinkSize,
-    const struct sink *sinks, void *functionPtr, const char *description) {
+    const struct sink *sinks, void *functionPtr, const char *description,
+    const int is_physical, const int is_convertible_to_comoving) {
 
   struct io_props r;
   bzero(&r, sizeof(struct io_props));
@@ -610,7 +623,8 @@ INLINE static struct io_props io_make_output_field_convert_sink_(
   }
   r.type = type;
   r.is_used = 1;
-  r.is_convertible_to_comoving = 1;
+  r.is_physical = is_physical;
+  r.is_convertible_to_comoving = is_convertible_to_comoving;
   r.dimension = dimension;
   r.importance = UNUSED;
   r.units = units;
