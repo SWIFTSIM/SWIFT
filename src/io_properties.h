@@ -287,7 +287,16 @@ INLINE static struct io_props io_make_input_field_(
                         /*physical=*/0, /*convertible_to_physical=*/1);
 
 /**
- * @brief Constructs an #io_props from its parameters
+ * @brief Constructs an #io_props from its parameters for a comoving quantity
+ *
+ * An alias of io_make_output_field().
+ */
+#define io_make_comoving_output_field(name, type, dim, units, a_exponent, \
+                                      part, field, desc)                  \
+  io_make_output_field(name, type, dim, units, a_exponent, part, field, desc)
+
+/**
+ * @brief Constructs an #io_props from its parameters for a physical quantity
  */
 #define io_make_physical_output_field(name, type, dim, units, a_exponent,  \
                                       part, field, convertible, desc)      \
