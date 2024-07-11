@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
- *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
+ *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
  *               2016 John A. Regan (john.a.regan@durham.ac.uk)
  *                    Tom Theuns (tom.theuns@durham.ac.uk)
  *
@@ -23,7 +23,7 @@
 #define SWIFT_TIMERS_H
 
 /* Config parameters. */
-#include <config.h>
+#include "../config.h"
 
 /* Local includes. */
 #include "atomic.h"
@@ -61,7 +61,6 @@ enum {
   timer_doself_bh_swallow,
   timer_doself_bh_feedback,
   timer_doself_grav_pp,
-  timer_doself_sink_swallow,
   timer_dopair_density,
   timer_dopair_gradient,
   timer_dopair_force,
@@ -73,7 +72,6 @@ enum {
   timer_dopair_bh_feedback,
   timer_dopair_grav_mm,
   timer_dopair_grav_pp,
-  timer_dopair_sink_swallow,
   timer_dograv_external,
   timer_dograv_down,
   timer_dograv_mesh,
@@ -89,7 +87,6 @@ enum {
   timer_dosub_self_bh_swallow,
   timer_dosub_self_bh_feedback,
   timer_dosub_self_grav,
-  timer_dosub_self_sink_swallow,
   timer_dosub_pair_density,
   timer_dosub_pair_gradient,
   timer_dosub_pair_force,
@@ -100,7 +97,6 @@ enum {
   timer_dosub_pair_bh_swallow,
   timer_dosub_pair_bh_feedback,
   timer_dosub_pair_grav,
-  timer_dosub_pair_sink_swallow,
   timer_doself_subset,
   timer_dopair_subset,
   timer_dopair_subset_naive,
@@ -123,27 +119,29 @@ enum {
   timer_locktree,
   timer_runners,
   timer_step,
-  timer_csds,
+  timer_logger,
   timer_do_stars_sort,
   timer_do_stars_resort,
   timer_fof_self,
   timer_fof_pair,
   timer_drift_sink,
+  timer_doself_rt_inject,
+  timer_dopair_rt_inject,
+  timer_dosub_self_rt_inject,
+  timer_dosub_pair_rt_inject,
   timer_do_rt_ghost1,
-  timer_do_rt_ghost2,
-  timer_doself_rt_gradient,
-  timer_dopair_rt_gradient,
-  timer_dosub_self_rt_gradient,
-  timer_dosub_pair_rt_gradient,
-  timer_doself_rt_transport,
-  timer_dopair_rt_transport,
-  timer_dosub_self_rt_transport,
-  timer_dosub_pair_rt_transport,
-  timer_do_rt_tchem,
-  timer_do_rt_advance_cell_time,
-  timer_do_rt_collect_times,
-  timer_do_sync,
-  timer_neutrino_weighting,
+  timer_doself_gpu_pack,
+  timer_doself_gpu_pack_g,
+  timer_doself_gpu_pack_f,
+  timer_doself_gpu_unpack,
+  timer_doself_gpu_unpack_g,
+  timer_doself_gpu_unpack_f,
+  timer_dopair_gpu_pack,
+  timer_dopair_gpu_pack_g,
+  timer_dopair_gpu_pack_f,
+  timer_dopair_gpu_unpack,
+  timer_dopair_gpu_unpack_g,
+  timer_dopair_gpu_unpack_f,
   timer_count,
 };
 

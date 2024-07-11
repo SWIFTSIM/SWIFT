@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
- *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
+ *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
  *               2016 John A. Regan (john.a.regan@durham.ac.uk)
  *                    Tom Theuns (tom.theuns@durham.ac.uk)
  *
@@ -30,13 +30,12 @@
 
 /* Local includes. */
 #include "clocks.h"
-#include "error.h"
 
 /* The timers. */
 ticks timers[timer_count];
 
 /* Timer names. */
-const char* timers_names[timer_count] = {
+const char *timers_names[timer_count] = {
     "none",
     "prepare",
     "init",
@@ -61,7 +60,6 @@ const char* timers_names[timer_count] = {
     "doself_bh_swallow",
     "doself_bh_feedback",
     "doself_grav_pp",
-    "doself_sink_swallow",
     "dopair_density",
     "dopair_gradient",
     "dopair_force",
@@ -73,7 +71,6 @@ const char* timers_names[timer_count] = {
     "dopair_bh_feedback",
     "dopair_grav_mm",
     "dopair_grav_pp",
-    "dopair_sink_swallow",
     "dograv_external",
     "dograv_down",
     "dograv_mesh",
@@ -89,7 +86,6 @@ const char* timers_names[timer_count] = {
     "dosub_self_bh_swallow",
     "dosub_self_bh_feedback",
     "dosub_self_grav",
-    "dosub_self_sink_swallow",
     "dosub_pair_density",
     "dosub_pair_gradient",
     "dosub_pair_force",
@@ -100,7 +96,6 @@ const char* timers_names[timer_count] = {
     "dosub_pair_bh_swallow",
     "dosub_pair_bh_feedback",
     "dosub_pair_grav",
-    "dosub_pair_sink_swallow",
     "doself_subset",
     "dopair_subset",
     "dopair_subset_naive",
@@ -123,31 +118,33 @@ const char* timers_names[timer_count] = {
     "locktree",
     "runners",
     "step",
-    "csds",
+    "logger",
     "do_stars_sort",
     "do_stars_resort",
     "fof_self",
     "fof_pair",
     "drift_sink",
+    "doself_rt_inject",
+    "dopair_rt_inject",
+    "dosub_self_rt_inject",
+    "dosub_pair_rt_inject",
     "rt_ghost1",
-    "rt_ghost2",
-    "doself_rt_gradient",
-    "dopair_rt_gradient",
-    "dosub_self_rt_gradient",
-    "dosub_pair_rt_gradient",
-    "doself_rt_transport",
-    "dopair_rt_transport",
-    "dosub_self_rt_transport",
-    "dosub_pair_rt_transport",
-    "rt_tchem",
-    "rt_advance_cell_time",
-    "rt_collect_times",
-    "do_sync",
-    "neutrino_weighting",
+    "doself_gpu_pack",
+    "doself_gpu_pack_g",
+    "doself_gpu_pack_f",
+    "doself_gpu_unpack",
+    "doself_gpu_unpack_g",
+    "doself_gpu_unpack_f",
+    "dopair_gpu_pack",
+    "dopair_gpu_pack_g",
+    "dopair_gpu_pack_f",
+    "dopair_gpu_unpack",
+    "dopair_gpu_unpack_g",
+    "dopair_gpu_unpack_f",
 };
 
 /* File to store the timers */
-static FILE* timers_file;
+static FILE *timers_file;
 
 /**
  * @brief Re-set all the timers.
@@ -181,7 +178,6 @@ void timers_open_file(int rank) {
   char buff[100];
   sprintf(buff, "timers_%d.txt", rank);
   timers_file = fopen(buff, "w");
-  if (timers_file == NULL) error("Could not create file '%s'.", buff);
 
   fprintf(timers_file, "# timers: \n# step |");
   for (int k = 0; k < timer_count; k++)

@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
- *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
+ *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
  *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
  *               2016 John A. Regan (john.a.regan@durham.ac.uk)
  *                    Tom Theuns (tom.theuns@durham.ac.uk)
@@ -22,7 +22,7 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include <config.h>
+#include "../config.h"
 
 /* Some standard headers. */
 #include <float.h>
@@ -515,9 +515,7 @@ void cell_sanitize(struct cell *c, int treated) {
   struct part *parts = c->hydro.parts;
   struct spart *sparts = c->stars.parts;
   float h_max = 0.f;
-  float h_max_active = 0.f;
   float stars_h_max = 0.f;
-  float stars_h_max_active = 0.f;
 
   /* Treat cells will <1000 particles */
   if (count < 1000 && !treated) {
@@ -544,28 +542,19 @@ void cell_sanitize(struct cell *c, int treated) {
 
         /* And collect */
         h_max = max(h_max, c->progeny[k]->hydro.h_max);
-        h_max_active = max(h_max_active, c->progeny[k]->hydro.h_max_active);
         stars_h_max = max(stars_h_max, c->progeny[k]->stars.h_max);
-        stars_h_max_active =
-            max(stars_h_max_active, c->progeny[k]->stars.h_max_active);
       }
     }
   } else {
-    /* Get the new value of h_max (note all particles are active) */
+    /* Get the new value of h_max */
     for (int i = 0; i < count; ++i) h_max = max(h_max, parts[i].h);
-    for (int i = 0; i < count; ++i)
-      h_max_active = max(h_max_active, parts[i].h);
     for (int i = 0; i < scount; ++i)
       stars_h_max = max(stars_h_max, sparts[i].h);
-    for (int i = 0; i < scount; ++i)
-      stars_h_max_active = max(stars_h_max_active, sparts[i].h);
   }
 
   /* Record the change */
   c->hydro.h_max = h_max;
-  c->hydro.h_max_active = h_max_active;
   c->stars.h_max = stars_h_max;
-  c->stars.h_max_active = stars_h_max_active;
 }
 
 /**
@@ -579,17 +568,11 @@ void cell_clean_links(struct cell *c, void *data) {
   c->hydro.gradient = NULL;
   c->hydro.force = NULL;
   c->hydro.limiter = NULL;
-  c->rt.rt_gradient = NULL;
-  c->rt.rt_transport = NULL;
+  c->hydro.rt_inject = NULL;
   c->grav.grav = NULL;
   c->grav.mm = NULL;
   c->stars.density = NULL;
-  c->stars.prepare1 = NULL;
-  c->stars.prepare2 = NULL;
   c->stars.feedback = NULL;
-  c->sinks.swallow = NULL;
-  c->sinks.do_sink_swallow = NULL;
-  c->sinks.do_gas_swallow = NULL;
   c->black_holes.density = NULL;
   c->black_holes.swallow = NULL;
   c->black_holes.do_gas_swallow = NULL;
@@ -961,9 +944,6 @@ void cell_check_foreign_multipole(const struct cell *c) {
 
     if (num_gpart != c->grav.multipole->m_pole.num_gpart)
       error("Sum of particles in progenies does not match");
-
-    if (fabs(M_000 / c->grav.multipole->m_pole.M_000 - 1.) > 1e-2)
-      error("Mass in progenies does not match!");
   }
 
 #else
@@ -1057,38 +1037,6 @@ void cell_clear_drift_flags(struct cell *c, void *data) {
 void cell_clear_limiter_flags(struct cell *c, void *data) {
   cell_clear_flag(c,
                   cell_flag_do_hydro_limiter | cell_flag_do_hydro_sub_limiter);
-}
-
-void cell_clear_unskip_flags(struct cell *c) {
-
-#ifdef SWIFT_DEBUG_CHECKS
-
-  if (c->split) {
-    for (int k = 0; k < 8; ++k) {
-      if (c->progeny[k] != NULL) cell_clear_unskip_flags(c->progeny[k]);
-    }
-  }
-
-  cell_clear_flag(
-      c, cell_flag_do_stars_resort | cell_flag_do_stars_drift |
-             cell_flag_do_stars_sub_drift | cell_flag_do_hydro_drift |
-             cell_flag_do_hydro_sub_drift | cell_flag_do_hydro_sync |
-             cell_flag_do_hydro_sub_sync | cell_flag_do_grav_drift |
-             cell_flag_do_grav_sub_drift | cell_flag_do_bh_drift |
-             cell_flag_do_bh_sub_drift | cell_flag_do_sink_drift |
-             cell_flag_do_sink_sub_drift | cell_flag_do_hydro_limiter |
-             cell_flag_do_hydro_sub_limiter | cell_flag_do_hydro_sub_sort |
-             cell_flag_do_stars_sub_sort | cell_flag_do_rt_sub_sort |
-             cell_flag_unskip_self_grav_processed |
-             cell_flag_unskip_pair_grav_processed);
-
-  c->hydro.do_sort = 0;
-  c->stars.do_sort = 0;
-  c->hydro.requires_sorts = 0;
-  c->stars.requires_sorts = 0;
-#else
-  error("Calling debugging code without debugging flag activated.");
-#endif
 }
 
 /**
@@ -1203,10 +1151,19 @@ void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data) {
  */
 int cell_has_tasks(struct cell *c) {
 #ifdef WITH_MPI
-  return (c->timestep_collect != NULL || c->mpi.recv != NULL);
+  if (c->timestep != NULL || c->mpi.recv != NULL) return 1;
 #else
-  return (c->timestep_collect != NULL);
+  if (c->timestep != NULL) return 1;
 #endif
+
+  if (c->split) {
+    int count = 0;
+    for (int k = 0; k < 8; ++k)
+      if (c->progeny[k] != NULL) count += cell_has_tasks(c->progeny[k]);
+    return count;
+  } else {
+    return 0;
+  }
 }
 
 /**
@@ -1288,7 +1245,7 @@ void cell_check_timesteps(const struct cell *c, const integertime_t ti_current,
 
   if (c->hydro.ti_end_min == 0 && c->grav.ti_end_min == 0 &&
       c->stars.ti_end_min == 0 && c->black_holes.ti_end_min == 0 &&
-      c->sinks.ti_end_min == 0 && c->rt.ti_rt_end_min == 0 && c->nr_tasks > 0)
+      c->sinks.ti_end_min == 0 && c->nr_tasks > 0)
     error("Cell without assigned time-step");
 
   if (c->split) {
@@ -1298,14 +1255,17 @@ void cell_check_timesteps(const struct cell *c, const integertime_t ti_current,
   } else {
     if (c->nodeID == engine_rank)
       for (int i = 0; i < c->hydro.count; ++i)
-        if (c->hydro.parts[i].time_bin == 0)
+        if (c->hydro.parts[i].time_bin == 0) {
+          int dummy = 0;
           error("Particle without assigned time-bin");
+        }
   }
 
   /* Other checks not relevent when starting-up */
   if (ti_current == 0) return;
 
   integertime_t ti_end_min = max_nr_timesteps;
+  integertime_t ti_end_max = 0;
   integertime_t ti_beg_max = 0;
 
   int count = 0;
@@ -1330,6 +1290,7 @@ void cell_check_timesteps(const struct cell *c, const integertime_t ti_current,
     }
 
     ti_end_min = min(ti_end, ti_end_min);
+    ti_end_max = max(ti_end, ti_end_max);
     ti_beg_max = max(ti_beg, ti_beg_max);
   }
 
@@ -1354,6 +1315,12 @@ void cell_check_timesteps(const struct cell *c, const integertime_t ti_current,
             "depth=%d",
             c->hydro.ti_end_min, ti_end_min, ti_current, c->depth);
     }
+
+    if (ti_end_max > c->hydro.ti_end_max)
+      error(
+          "Non-matching ti_end_max. Cell=%lld true=%lld ti_current=%lld "
+          "depth=%d",
+          c->hydro.ti_end_max, ti_end_max, ti_current, c->depth);
 
     if (ti_beg_max != c->hydro.ti_beg_max)
       error(
@@ -1421,14 +1388,12 @@ void cell_check_sort_flags(const struct cell *c) {
   const int do_stars_sub_sort = cell_get_flag(c, cell_flag_do_stars_sub_sort);
 
   if (do_hydro_sub_sort)
-    error(
-        "cell %lld has a hydro sub_sort flag set. Node=%d depth=%d maxdepth=%d",
-        c->cellID, c->nodeID, c->depth, c->maxdepth);
+    error("cell %d has a hydro sub_sort flag set. Node=%d depth=%d maxdepth=%d",
+          c->cellID, c->nodeID, c->depth, c->maxdepth);
 
   if (do_stars_sub_sort)
-    error(
-        "cell %lld has a stars sub_sort flag set. Node=%d depth=%d maxdepth=%d",
-        c->cellID, c->nodeID, c->depth, c->maxdepth);
+    error("cell %d has a stars sub_sort flag set. Node=%d depth=%d maxdepth=%d",
+          c->cellID, c->nodeID, c->depth, c->maxdepth);
 
   if (c->split) {
     for (int k = 0; k < 8; ++k) {

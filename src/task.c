@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
- *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
+ *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
  *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
  *               2016 John A. Regan (john.a.regan@durham.ac.uk)
  *                    Tom Theuns (tom.theuns@durham.ac.uk)
@@ -22,7 +22,7 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include <config.h>
+#include "../config.h"
 
 /* Some standard headers. */
 #include <float.h>
@@ -68,17 +68,14 @@ const char *taskID_names[task_type_count] = {
     "drift_bpart",
     "drift_gpart",
     "drift_gpart_out",
-    "hydro_end_force",
+    "end_hydro_force",
     "kick1",
     "kick2",
     "timestep",
     "timestep_limiter",
     "timestep_sync",
-    "collect",
     "send",
     "recv",
-    "pack",
-    "unpack",
     "grav_long_range",
     "grav_mm",
     "grav_down_in",
@@ -90,16 +87,12 @@ const char *taskID_names[task_type_count] = {
     "star_formation",
     "star_formation_in",
     "star_formation_out",
-    "star_formation_sink",
-    "csds",
+    "logger",
     "stars_in",
     "stars_out",
     "stars_ghost_in",
-    "stars_density_ghost",
+    "stars_ghost",
     "stars_ghost_out",
-    "stars_prep_ghost1",
-    "hydro_prep_ghost1",
-    "stars_prep_ghost2",
     "stars_sort",
     "stars_resort",
     "bh_in",
@@ -110,23 +103,12 @@ const char *taskID_names[task_type_count] = {
     "bh_swallow_ghost3",
     "fof_self",
     "fof_pair",
-    "fof_attach_self",
-    "fof_attach_pair",
-    "neutrino_weight",
     "sink_in",
-    "sink_ghost1",
-    "sink_ghost2",
     "sink_out",
     "rt_in",
     "rt_out",
     "sink_formation",
     "rt_ghost1",
-    "rt_ghost2",
-    "rt_transport_out",
-    "rt_tchem",
-    "rt_advance_cell_time",
-    "rt_sorts",
-    "rt_collect_times",
 };
 
 /* Sub-task type names. */
@@ -138,42 +120,44 @@ const char *subtaskID_names[task_subtype_count] = {
     "limiter",
     "grav",
     "external_grav",
-    "tend",
+    "tend_part",
+    "tend_gpart",
+    "tend_spart",
+    "tend_sink",
+    "tend_bpart",
     "xv",
     "rho",
     "part_swallow",
     "bpart_merger",
     "gpart",
-    "spart_density",
-    "part_prep1",
-    "spart_prep2",
+    "multipole",
+    "spart",
     "stars_density",
-    "stars_prep1",
-    "stars_prep2",
     "stars_feedback",
-    "sf_counts",
+    "sf_count",
     "bpart_rho",
+    "bpart_swallow",
     "bpart_feedback",
     "bh_density",
     "bh_swallow",
     "do_gas_swallow",
     "do_bh_swallow",
     "bh_feedback",
-    "sink_do_sink_swallow",
-    "sink_swallow",
-    "sink_do_gas_swallow",
-    "rt_gradient",
-    "rt_transport",
+    "sink",
+    "rt_inject",
+    "sink_compute_formation",
+    "gpu_pack",
+    "gpu_pack_g",
+    "gpu_pack_f",
+    "gpu_unpack",
+    "gpu_unpack_g",
+    "gpu_unpack_f",
 };
 
 const char *task_category_names[task_category_count] = {
-    "drift",       "sorts",    "resort",
-    "hydro",       "gravity",  "feedback",
-    "black holes", "cooling",  "star formation",
-    "limiter",     "sync",     "time integration",
-    "mpi",         "pack",     "fof",
-    "others",      "neutrino", "sink",
-    "RT",          "CSDS"};
+    "drift",       "sort",    "hydro",          "gravity", "feedback",
+    "black holes", "cooling", "star formation", "limiter", "time integration",
+    "mpi",         "fof",     "others",         "sink"};
 
 #ifdef WITH_MPI
 /* MPI communicators for the subtypes. */
@@ -235,7 +219,6 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
       break;
 
     case task_type_star_formation:
-    case task_type_star_formation_sink:
     case task_type_sink_formation:
       return task_action_all;
 
@@ -254,13 +237,6 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
     case task_type_bh_density_ghost:
     case task_type_bh_swallow_ghost3:
       return task_action_bpart;
-      break;
-
-    case task_type_rt_ghost1:
-    case task_type_rt_ghost2:
-    case task_type_rt_tchem:
-    case task_type_rt_sort:
-      return task_action_part;
       break;
 
     case task_type_self:
@@ -292,16 +268,6 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
           return task_action_bpart;
           break;
 
-        case task_subtype_sink_do_gas_swallow:
-        case task_subtype_sink_do_sink_swallow:
-        case task_subtype_sink_swallow:
-          return task_action_all;
-
-        case task_subtype_rt_transport:
-        case task_subtype_rt_gradient:
-          return task_action_part;
-          break;
-
         case task_subtype_grav:
         case task_subtype_external_grav:
           return task_action_gpart;
@@ -319,11 +285,9 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
 
     case task_type_kick1:
     case task_type_kick2:
-    case task_type_csds:
+    case task_type_logger:
     case task_type_fof_self:
     case task_type_fof_pair:
-    case task_type_fof_attach_self:
-    case task_type_fof_attach_pair:
     case task_type_timestep:
     case task_type_timestep_limiter:
     case task_type_timestep_sync:
@@ -532,7 +496,7 @@ void task_unlock(struct task *t) {
 
     case task_type_kick1:
     case task_type_kick2:
-    case task_type_csds:
+    case task_type_logger:
     case task_type_timestep:
       cell_unlocktree(ci);
       cell_gunlocktree(ci);
@@ -545,21 +509,12 @@ void task_unlock(struct task *t) {
     case task_type_end_hydro_force:
     case task_type_timestep_limiter:
     case task_type_timestep_sync:
-    case task_type_rt_ghost1:
-    case task_type_rt_ghost2:
-    case task_type_rt_tchem:
-    case task_type_rt_sort:
-    case task_type_rt_advance_cell_time:
       cell_unlocktree(ci);
       break;
 
     case task_type_drift_gpart:
     case task_type_end_grav_force:
       cell_gunlocktree(ci);
-      break;
-
-    case task_type_drift_sink:
-      cell_sink_unlocktree(ci);
       break;
 
     case task_type_stars_sort:
@@ -574,15 +529,7 @@ void task_unlock(struct task *t) {
         cell_gunlocktree(ci);
         cell_munlocktree(ci);
 #endif
-      } else if ((subtype == task_subtype_sink_swallow) ||
-                 (subtype == task_subtype_sink_do_gas_swallow)) {
-        cell_sink_unlocktree(ci);
-        cell_unlocktree(ci);
-      } else if (subtype == task_subtype_sink_do_sink_swallow) {
-        cell_sink_unlocktree(ci);
       } else if ((subtype == task_subtype_stars_density) ||
-                 (subtype == task_subtype_stars_prep1) ||
-                 (subtype == task_subtype_stars_prep2) ||
                  (subtype == task_subtype_stars_feedback)) {
         cell_sunlocktree(ci);
         cell_unlocktree(ci);
@@ -598,7 +545,24 @@ void task_unlock(struct task *t) {
 #ifdef SWIFT_TASKS_WITHOUT_ATOMICS
         cell_unlocktree(ci);
 #endif
-      } else { /* hydro */
+      } else if (subtype == task_subtype_gpu_unpack) {
+        //        for(int pp = 0; pp < 128 /*should be sched->pack_size*/;
+        //        pp++){
+        //		  cell_unlocktree(t->ci_unpack[pp]);
+        //	    }
+        /*Do nothing and be on your way*/
+      } else if (subtype == task_subtype_gpu_unpack_f) {
+        /*Do nothing and be on your way*/
+      } else if (subtype == task_subtype_gpu_unpack_g) {
+        /*Do nothing and be on your way*/
+
+      } else if (subtype == task_subtype_gpu_pack) {
+        cell_unlocktree(ci);
+      } else if (subtype == task_subtype_gpu_pack_f) {
+        cell_unlocktree(ci);
+      } else if (subtype == task_subtype_gpu_pack_g) {
+        cell_unlocktree(ci);
+      } else { /* hydro*/
         cell_unlocktree(ci);
       }
       break;
@@ -612,18 +576,7 @@ void task_unlock(struct task *t) {
         cell_munlocktree(ci);
         cell_munlocktree(cj);
 #endif
-      } else if ((subtype == task_subtype_sink_swallow) ||
-                 (subtype == task_subtype_sink_do_gas_swallow)) {
-        cell_sink_unlocktree(ci);
-        cell_sink_unlocktree(cj);
-        cell_unlocktree(ci);
-        cell_unlocktree(cj);
-      } else if (subtype == task_subtype_sink_do_sink_swallow) {
-        cell_sink_unlocktree(ci);
-        cell_sink_unlocktree(cj);
       } else if ((subtype == task_subtype_stars_density) ||
-                 (subtype == task_subtype_stars_prep1) ||
-                 (subtype == task_subtype_stars_prep2) ||
                  (subtype == task_subtype_stars_feedback)) {
         cell_sunlocktree(ci);
         cell_sunlocktree(cj);
@@ -645,6 +598,22 @@ void task_unlock(struct task *t) {
         cell_unlocktree(ci);
         cell_unlocktree(cj);
 #endif
+      } else if (subtype == task_subtype_gpu_pack) {
+        cell_unlocktree(ci);
+        cell_unlocktree(cj);
+      } else if (subtype == task_subtype_gpu_pack_f) {
+        cell_unlocktree(ci);
+        cell_unlocktree(cj);
+      } else if (subtype == task_subtype_gpu_pack_g) {
+        cell_unlocktree(ci);
+        cell_unlocktree(cj);
+      } else if (subtype == task_subtype_gpu_unpack) {
+        /* Nothing to do */
+      } else if (subtype == task_subtype_gpu_unpack_f) {
+        /* Nothing to do */
+      } else if (subtype == task_subtype_gpu_unpack_g) {
+        /* Nothing to do */
+
       } else { /* hydro */
         cell_unlocktree(ci);
         cell_unlocktree(cj);
@@ -671,25 +640,8 @@ void task_unlock(struct task *t) {
 #endif
       break;
 
-    case task_type_fof_self:
-    case task_type_fof_attach_self:
-      cell_gunlocktree(ci);
-      break;
-
-    case task_type_fof_pair:
-    case task_type_fof_attach_pair:
-      cell_gunlocktree(ci);
-      cell_gunlocktree(cj);
-      break;
-
     case task_type_star_formation:
       cell_unlocktree(ci);
-      cell_sunlocktree(ci);
-      cell_gunlocktree(ci);
-      break;
-
-    case task_type_star_formation_sink:
-      cell_sink_unlocktree(ci);
       cell_sunlocktree(ci);
       cell_gunlocktree(ci);
       break;
@@ -750,7 +702,7 @@ int task_lock(struct task *t) {
 
     case task_type_kick1:
     case task_type_kick2:
-    case task_type_csds:
+    case task_type_logger:
     case task_type_timestep:
       if (ci->hydro.hold || ci->grav.phold) return 0;
       if (cell_locktree(ci) != 0) return 0;
@@ -767,11 +719,6 @@ int task_lock(struct task *t) {
     case task_type_end_hydro_force:
     case task_type_timestep_limiter:
     case task_type_timestep_sync:
-    case task_type_rt_ghost1:
-    case task_type_rt_ghost2:
-    case task_type_rt_tchem:
-    case task_type_rt_sort:
-    case task_type_rt_advance_cell_time:
       if (ci->hydro.hold) return 0;
       if (cell_locktree(ci) != 0) return 0;
       break;
@@ -788,11 +735,6 @@ int task_lock(struct task *t) {
       if (cell_glocktree(ci) != 0) return 0;
       break;
 
-    case task_type_drift_sink:
-      if (ci->sinks.hold) return 0;
-      if (cell_sink_locktree(ci) != 0) return 0;
-      break;
-
     case task_type_self:
     case task_type_sub_self:
       if (subtype == task_subtype_grav) {
@@ -806,21 +748,7 @@ int task_lock(struct task *t) {
           return 0;
         }
 #endif
-      } else if ((subtype == task_subtype_sink_swallow) ||
-                 (subtype == task_subtype_sink_do_gas_swallow)) {
-        if (ci->sinks.hold) return 0;
-        if (ci->hydro.hold) return 0;
-        if (cell_sink_locktree(ci) != 0) return 0;
-        if (cell_locktree(ci) != 0) {
-          cell_sink_unlocktree(ci);
-          return 0;
-        }
-      } else if (subtype == task_subtype_sink_do_sink_swallow) {
-        if (ci->sinks.hold) return 0;
-        if (cell_sink_locktree(ci) != 0) return 0;
       } else if ((subtype == task_subtype_stars_density) ||
-                 (subtype == task_subtype_stars_prep1) ||
-                 (subtype == task_subtype_stars_prep2) ||
                  (subtype == task_subtype_stars_feedback)) {
         if (ci->stars.hold) return 0;
         if (ci->hydro.hold) return 0;
@@ -848,12 +776,48 @@ int task_lock(struct task *t) {
         if (ci->hydro.hold) return 0;
         if (cell_locktree(ci) != 0) return 0;
 #endif
-      } else { /* subtype == hydro */
+      } else if (subtype == task_subtype_gpu_pack) {
+
+        /* Attempt to lock the cell */
+        if (ci->hydro.hold) return 0;
+        if (cell_locktree(ci) != 0) return 0;
+      } else if (subtype == task_subtype_gpu_pack_f) {
+
+        /* Attempt to lock the cell */
+        if (ci->hydro.hold) return 0;
+        if (cell_locktree(ci) != 0) return 0;
+      } else if (subtype == task_subtype_gpu_pack_g) {
+
+        /* Attempt to lock the cell */
+        if (ci->hydro.hold) return 0;
+        if (cell_locktree(ci) != 0) return 0;
+
+      } else if (subtype == task_subtype_gpu_unpack) {
+        //        for(int pp = 0; pp < 128 /*should be sched->pack_size*/;
+        //        pp++){
+        //    	  if (t->ci_unpack[pp]->gpu_done == 0){
+        //    		  message("trying to queue an unpack before all packs
+        //    done on GPU"); 		  return 0;
+        //    	  }
+        ////          if (t->ci_unpack[pp]->hydro.hold)
+        ////    		return 0;
+        ////    	  if (cell_locktree(t->ci_unpack[pp]) != 0)
+        ////            return 0;
+        //        }
+        /* Nothing to do here */
+        return 1;
+      } else if (subtype == task_subtype_gpu_unpack_f) {
+        /* Nothing to do here */
+        return 1;
+      } else if (subtype == task_subtype_gpu_unpack_g) {
+        /* Nothing to do here */
+        return 1;
+
+      } else { /* subtype == hydro  */
         if (ci->hydro.hold) return 0;
         if (cell_locktree(ci) != 0) return 0;
       }
       break;
-
     case task_type_pair:
     case task_type_sub_pair:
       if (subtype == task_subtype_grav) {
@@ -875,36 +839,7 @@ int task_lock(struct task *t) {
           return 0;
         }
 #endif
-      } else if ((subtype == task_subtype_sink_swallow) ||
-                 (subtype == task_subtype_sink_do_gas_swallow)) {
-        if (ci->sinks.hold || cj->sinks.hold) return 0;
-        if (ci->hydro.hold || cj->hydro.hold) return 0;
-        if (cell_sink_locktree(ci) != 0) return 0;
-        if (cell_sink_locktree(cj) != 0) {
-          cell_sink_unlocktree(ci);
-          return 0;
-        }
-        if (cell_locktree(ci) != 0) {
-          cell_sink_unlocktree(ci);
-          cell_sink_unlocktree(cj);
-          return 0;
-        }
-        if (cell_locktree(cj) != 0) {
-          cell_sink_unlocktree(ci);
-          cell_sink_unlocktree(cj);
-          cell_unlocktree(ci);
-          return 0;
-        }
-      } else if (subtype == task_subtype_sink_do_sink_swallow) {
-        if (ci->sinks.hold || cj->sinks.hold) return 0;
-        if (cell_sink_locktree(ci) != 0) return 0;
-        if (cell_sink_locktree(cj) != 0) {
-          cell_sink_unlocktree(ci);
-          return 0;
-        }
       } else if ((subtype == task_subtype_stars_density) ||
-                 (subtype == task_subtype_stars_prep1) ||
-                 (subtype == task_subtype_stars_prep2) ||
                  (subtype == task_subtype_stars_feedback)) {
         /* Lock the stars and the gas particles in both cells */
         if (ci->stars.hold || cj->stars.hold) return 0;
@@ -964,6 +899,48 @@ int task_lock(struct task *t) {
           return 0;
         }
 #endif
+
+      } else if (subtype == task_subtype_gpu_pack) {
+
+        /* Lock the parts in both cells */
+        if (ci->hydro.hold || cj->hydro.hold) return 0;
+        if (cell_locktree(ci) != 0) return 0;
+        if (cell_locktree(cj) != 0) {
+          cell_unlocktree(ci);
+          return 0;
+        }
+      } else if (subtype == task_subtype_gpu_pack_f) {
+
+        /* Lock the parts in both cells */
+        if (ci->hydro.hold || cj->hydro.hold) return 0;
+        if (cell_locktree(ci) != 0) return 0;
+        if (cell_locktree(cj) != 0) {
+          cell_unlocktree(ci);
+          return 0;
+        }
+      } else if (subtype == task_subtype_gpu_pack_g) {
+
+        /* Lock the parts in both cells */
+        if (ci->hydro.hold || cj->hydro.hold) return 0;
+        if (cell_locktree(ci) != 0) return 0;
+        if (cell_locktree(cj) != 0) {
+          cell_unlocktree(ci);
+          return 0;
+        }
+
+      } else if (subtype == task_subtype_gpu_unpack) {
+
+        /* Nothing to do here. */
+        return 1;
+      } else if (subtype == task_subtype_gpu_unpack_f) {
+
+        /* Nothing to do here. */
+        return 1;
+      } else if (subtype == task_subtype_gpu_unpack_g) {
+
+        /* Nothing to do here. */
+        return 1;
+
       } else { /* subtype == hydro */
         /* Lock the parts in both cells */
         if (ci->hydro.hold || cj->hydro.hold) return 0;
@@ -1008,24 +985,6 @@ int task_lock(struct task *t) {
 #endif
       break;
 
-    case task_type_fof_self:
-    case task_type_fof_attach_self:
-      /* Lock the gpart as this this what we act on */
-      if (ci->grav.phold) return 0;
-      if (cell_glocktree(ci) != 0) return 0;
-      break;
-
-    case task_type_fof_pair:
-    case task_type_fof_attach_pair:
-      /* Lock the gpart as this this what we act on */
-      if (ci->grav.phold || cj->grav.phold) return 0;
-      if (cell_glocktree(ci) != 0) return 0;
-      if (cell_glocktree(cj) != 0) {
-        cell_gunlocktree(ci);
-        return 0;
-      }
-      break;
-
     case task_type_star_formation:
       /* Lock the gas, gravity and star particles */
       if (ci->hydro.hold || ci->stars.hold || ci->grav.phold) return 0;
@@ -1041,23 +1000,8 @@ int task_lock(struct task *t) {
       }
       break;
 
-    case task_type_star_formation_sink:
-      /* Lock the sinks, gravity and star particles */
-      if (ci->sinks.hold || ci->stars.hold || ci->grav.phold) return 0;
-      if (cell_sink_locktree(ci) != 0) return 0;
-      if (cell_slocktree(ci) != 0) {
-        cell_sink_unlocktree(ci);
-        return 0;
-      }
-      if (cell_glocktree(ci) != 0) {
-        cell_sink_unlocktree(ci);
-        cell_sunlocktree(ci);
-        return 0;
-      }
-      break;
-
     case task_type_sink_formation:
-      /* Lock the gas, sinks and star particles */
+      /* Lock the gas, gravity and star particles */
       if (ci->hydro.hold || ci->sinks.hold || ci->grav.phold) return 0;
       if (cell_locktree(ci) != 0) return 0;
       if (cell_sink_locktree(ci) != 0) {
@@ -1077,23 +1021,6 @@ int task_lock(struct task *t) {
 
   /* If we made it this far, we've got a lock. */
   return 1;
-}
-
-/**
- * @brief Returns a pointer to the unique task unlocked by this task.
- *
- * The task MUST have only dependence!
- *
- * @param The #task.
- */
-struct task *task_get_unique_dependent(const struct task *t) {
-
-#ifdef SWIFT_DEBUG_CHECKS
-  if (t->nr_unlock_tasks != 1)
-    error("Task is unlocking more than one dependence!");
-#endif
-
-  return t->unlock_tasks[0];
 }
 
 /**
@@ -1127,6 +1054,27 @@ void task_get_group_name(int type, int subtype, char *cluster) {
   }
 
   switch (subtype) {
+
+      /* Abouzied: Think about this when pack/unpack exist for gradient & force
+       */
+    case task_subtype_gpu_pack:
+    case task_subtype_gpu_unpack:
+      strcpy(cluster, "Density");
+      break;
+
+      /* Abouzied: Think about this when pack/unpack exist for gradient & force
+       */
+    case task_subtype_gpu_pack_f:
+    case task_subtype_gpu_unpack_f:
+      strcpy(cluster, "Force");
+      break;
+      /* Abouzied: Think about this when pack/unpack exist for gradient & force
+       */
+    case task_subtype_gpu_pack_g:
+    case task_subtype_gpu_unpack_g:
+      strcpy(cluster, "Gradient");
+      break;
+
     case task_subtype_density:
       strcpy(cluster, "Density");
       break;
@@ -1153,12 +1101,6 @@ void task_get_group_name(int type, int subtype, char *cluster) {
     case task_subtype_stars_density:
       strcpy(cluster, "StarsDensity");
       break;
-    case task_subtype_stars_prep1:
-      strcpy(cluster, "StarsKickPrep1");
-      break;
-    case task_subtype_stars_prep2:
-      strcpy(cluster, "StarsKickPrep2");
-      break;
     case task_subtype_stars_feedback:
       strcpy(cluster, "StarsFeedback");
       break;
@@ -1177,28 +1119,11 @@ void task_get_group_name(int type, int subtype, char *cluster) {
     case task_subtype_bh_feedback:
       strcpy(cluster, "BHFeedback");
       break;
-    case task_subtype_rt_gradient:
-      if (type == task_type_send || type == task_type_recv) {
-        strcpy(cluster, "None");
-      } else {
-        strcpy(cluster, "RTgradient");
-      }
+    case task_subtype_rt_inject:
+      strcpy(cluster, "RTinject");
       break;
-    case task_subtype_rt_transport:
-      if (type == task_type_send || type == task_type_recv) {
-        strcpy(cluster, "None");
-      } else {
-        strcpy(cluster, "RTtransport");
-      }
-      break;
-    case task_subtype_sink_swallow:
-      strcpy(cluster, "SinkSwallow");
-      break;
-    case task_subtype_sink_do_sink_swallow:
-      strcpy(cluster, "DoSinkSwallow");
-      break;
-    case task_subtype_sink_do_gas_swallow:
-      strcpy(cluster, "DoGasSwallow");
+    case task_subtype_sink_compute_formation:
+      strcpy(cluster, "SinkFormation");
       break;
     default:
       strcpy(cluster, "None");
@@ -1228,26 +1153,6 @@ void task_get_full_name(int type, int subtype, char *name) {
     sprintf(name, "%s", taskID_names[type]);
   else
     sprintf(name, "%s_%s", taskID_names[type], subtaskID_names[subtype]);
-}
-
-void task_create_name_files(const char *file_prefix) {
-  char file_name[200];
-  sprintf(file_name, "%s_task_types.txt", file_prefix);
-  FILE *file = fopen(file_name, "w");
-  if (file == NULL) error("Could not create file '%s'.", file_name);
-  fprintf(file, "# type\tname\n");
-  for (int type = 0; type < task_type_count; type++) {
-    fprintf(file, "%i\t%s\n", type, taskID_names[type]);
-  }
-  fclose(file);
-  sprintf(file_name, "%s_task_subtypes.txt", file_prefix);
-  file = fopen(file_name, "w");
-  if (file == NULL) error("Could not create file '%s'.", file_name);
-  fprintf(file, "# subtype\tname\n");
-  for (int subtype = 0; subtype < task_subtype_count; subtype++) {
-    fprintf(file, "%i\t%s\n", subtype, subtaskID_names[subtype]);
-  }
-  fclose(file);
 }
 
 #ifdef WITH_MPI
@@ -1297,8 +1202,6 @@ void task_dump_all(struct engine *e, int step) {
   FILE *file_thread;
   if (engine_rank == 0) {
     file_thread = fopen(dumpfile, "w");
-    if (file_thread == NULL)
-      error("Could not create/erase file '%s'.", dumpfile);
     fclose(file_thread);
   }
   MPI_Barrier(MPI_COMM_WORLD);
@@ -1314,8 +1217,6 @@ void task_dump_all(struct engine *e, int step) {
 
       /* Open file and position at end. */
       file_thread = fopen(dumpfile, "a");
-      if (file_thread == NULL)
-        error("Could not open file '%s' for writing.", dumpfile);
 
       /* Add some information to help with the plots and conversion of ticks to
        * seconds. */
@@ -1358,7 +1259,6 @@ void task_dump_all(struct engine *e, int step) {
   snprintf(dumpfile, sizeof(dumpfile), "thread_info-step%d.dat", step);
   FILE *file_thread;
   file_thread = fopen(dumpfile, "w");
-  if (file_thread == NULL) error("Could not create file '%s'.", dumpfile);
 
   /* Add some information to help with the plots and conversion of ticks to
    * seconds. */
@@ -1448,8 +1348,8 @@ void task_dump_stats(const char *dumpfile, struct engine *e,
   for (int l = 0; l < e->sched.nr_tasks; l++) {
     int type = e->sched.tasks[l].type;
 
-    /* Skip implicit tasks and tasks that have not ran. */
-    if (!e->sched.tasks[l].implicit && e->sched.tasks[l].tic > 0) {
+    /* Skip implicit tasks, tasks that didn't run this step. */
+    if (!e->sched.tasks[l].implicit && e->sched.tasks[l].tic > e->tic_step) {
       int subtype = e->sched.tasks[l].subtype;
 
       double dt = e->sched.tasks[l].toc - e->sched.tasks[l].tic;
@@ -1496,33 +1396,32 @@ void task_dump_stats(const char *dumpfile, struct engine *e,
     /* Get these from all ranks for output from rank 0. Could wrap these into a
      * single operation. */
     size_t size = task_type_count * task_subtype_count;
-    int res =
-        MPI_Reduce((engine_rank == 0 ? MPI_IN_PLACE : &sum[0][0]), &sum[0][0],
-                   size, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+    int res = MPI_Reduce((engine_rank == 0 ? MPI_IN_PLACE : sum), sum, size,
+                         MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
     if (res != MPI_SUCCESS) mpi_error(res, "Failed to reduce task sums");
 
-    res = MPI_Reduce((engine_rank == 0 ? MPI_IN_PLACE : &tsum[0][0]),
-                     &tsum[0][0], size, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+    res = MPI_Reduce((engine_rank == 0 ? MPI_IN_PLACE : tsum), tsum, size,
+                     MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
     if (res != MPI_SUCCESS) mpi_error(res, "Failed to reduce task tsums");
 
-    res = MPI_Reduce((engine_rank == 0 ? MPI_IN_PLACE : &count[0][0]),
-                     &count[0][0], size, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+    res = MPI_Reduce((engine_rank == 0 ? MPI_IN_PLACE : count), count, size,
+                     MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
     if (res != MPI_SUCCESS) mpi_error(res, "Failed to reduce task counts");
 
-    res = MPI_Reduce((engine_rank == 0 ? MPI_IN_PLACE : &min[0][0]), &min[0][0],
-                     size, MPI_DOUBLE, MPI_MIN, 0, MPI_COMM_WORLD);
+    res = MPI_Reduce((engine_rank == 0 ? MPI_IN_PLACE : min), min, size,
+                     MPI_DOUBLE, MPI_MIN, 0, MPI_COMM_WORLD);
     if (res != MPI_SUCCESS) mpi_error(res, "Failed to reduce task minima");
 
-    res = MPI_Reduce((engine_rank == 0 ? MPI_IN_PLACE : &tmin[0][0]),
-                     &tmin[0][0], size, MPI_DOUBLE, MPI_MIN, 0, MPI_COMM_WORLD);
+    res = MPI_Reduce((engine_rank == 0 ? MPI_IN_PLACE : tmin), tmin, size,
+                     MPI_DOUBLE, MPI_MIN, 0, MPI_COMM_WORLD);
     if (res != MPI_SUCCESS) mpi_error(res, "Failed to reduce task minima");
 
-    res = MPI_Reduce((engine_rank == 0 ? MPI_IN_PLACE : &max[0][0]), &max[0][0],
-                     size, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+    res = MPI_Reduce((engine_rank == 0 ? MPI_IN_PLACE : max), max, size,
+                     MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
     if (res != MPI_SUCCESS) mpi_error(res, "Failed to reduce task maxima");
 
-    res = MPI_Reduce((engine_rank == 0 ? MPI_IN_PLACE : &tmax[0][0]),
-                     &tmax[0][0], size, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+    res = MPI_Reduce((engine_rank == 0 ? MPI_IN_PLACE : tmax), tmax, size,
+                     MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
     if (res != MPI_SUCCESS) mpi_error(res, "Failed to reduce task maxima");
 
     res = MPI_Reduce((engine_rank == 0 ? MPI_IN_PLACE : total), total, 1,
@@ -1534,7 +1433,6 @@ void task_dump_stats(const char *dumpfile, struct engine *e,
 #endif
 
     FILE *dfile = fopen(dumpfile, "w");
-    if (dfile == NULL) error("Could not create file '%s'.", dumpfile);
     if (header) {
       fprintf(dfile, "/* use as src/partition_fixed_costs.h */\n");
       fprintf(dfile, "#define HAVE_FIXED_COSTS 1\n");
@@ -1612,7 +1510,6 @@ void task_dump_active(struct engine *e) {
 #endif
 
   FILE *file_thread = fopen(dumpfile, "w");
-  if (file_thread == NULL) error("Could not create file '%s'.", dumpfile);
   fprintf(file_thread,
           "# rank otherrank type subtype waits pair tic toc"
           " ci.hydro.count cj.hydro.count ci.grav.count cj.grav.count"
@@ -1623,6 +1520,7 @@ void task_dump_active(struct engine *e) {
   fprintf(file_thread, "%i 0 none none -1 0 %lld %lld %lld %lld %lld 0 %lld\n",
           engine_rank, (long long int)e->tic_step, (long long int)e->toc_step,
           e->updates, e->g_updates, e->s_updates, cpufreq);
+  int count = 0;
   for (int l = 0; l < e->sched.nr_tasks; l++) {
     struct task *t = &e->sched.tasks[l];
 
@@ -1643,6 +1541,7 @@ void task_dump_active(struct engine *e) {
               (t->ci != NULL) ? t->ci->grav.count : 0,
               (t->cj != NULL) ? t->cj->grav.count : 0, t->flags);
     }
+    count++;
   }
   fclose(file_thread);
 
@@ -1663,11 +1562,7 @@ enum task_categories task_get_category(const struct task *t) {
     case task_type_cooling:
       return task_category_cooling;
 
-    case task_type_csds:
-      return task_category_csds;
-
     case task_type_star_formation:
-    case task_type_star_formation_sink:
       return task_category_star_formation;
 
     case task_type_sink_formation:
@@ -1682,40 +1577,27 @@ enum task_categories task_get_category(const struct task *t) {
 
     case task_type_sort:
     case task_type_stars_sort:
-      return task_category_sort;
-
     case task_type_stars_resort:
-      return task_category_resort;
+      return task_category_sort;
 
     case task_type_send:
     case task_type_recv:
       return task_category_mpi;
 
-    case task_type_pack:
-    case task_type_unpack:
-      return task_category_pack;
-
     case task_type_kick1:
     case task_type_kick2:
     case task_type_timestep:
-    case task_type_collect:
       return task_category_time_integration;
 
     case task_type_timestep_limiter:
-      return task_category_limiter;
-
     case task_type_timestep_sync:
-      return task_category_sync;
+      return task_category_limiter;
 
     case task_type_ghost:
     case task_type_extra_ghost:
     case task_type_end_hydro_force:
-      return task_category_hydro;
 
     case task_type_stars_ghost:
-    case task_type_stars_prep_ghost1:
-    case task_type_hydro_prep_ghost1:
-    case task_type_stars_prep_ghost2:
       return task_category_feedback;
 
     case task_type_bh_density_ghost:
@@ -1731,22 +1613,7 @@ enum task_categories task_get_category(const struct task *t) {
 
     case task_type_fof_self:
     case task_type_fof_pair:
-    case task_type_fof_attach_self:
-    case task_type_fof_attach_pair:
       return task_category_fof;
-
-    case task_type_rt_in:
-    case task_type_rt_ghost1:
-    case task_type_rt_ghost2:
-    case task_type_rt_transport_out:
-    case task_type_rt_tchem:
-    case task_type_rt_out:
-    case task_type_rt_sort:
-    case task_type_rt_advance_cell_time:
-      return task_category_rt;
-
-    case task_type_neutrino_weight:
-      return task_category_neutrino;
 
     case task_type_self:
     case task_type_pair:
@@ -1757,6 +1624,16 @@ enum task_categories task_get_category(const struct task *t) {
         case task_subtype_density:
         case task_subtype_gradient:
         case task_subtype_force:
+
+          /* Abouzied: Think about this when pack/unpack exist for gradient &
+           * force
+           */
+        case task_subtype_gpu_pack:
+        case task_subtype_gpu_unpack:
+        case task_subtype_gpu_pack_f:
+        case task_subtype_gpu_unpack_f:
+        case task_subtype_gpu_pack_g:
+        case task_subtype_gpu_unpack_g:
           return task_category_hydro;
 
         case task_subtype_limiter:
@@ -1767,8 +1644,6 @@ enum task_categories task_get_category(const struct task *t) {
           return task_category_gravity;
 
         case task_subtype_stars_density:
-        case task_subtype_stars_prep1:
-        case task_subtype_stars_prep2:
         case task_subtype_stars_feedback:
           return task_category_feedback;
 
@@ -1778,15 +1653,6 @@ enum task_categories task_get_category(const struct task *t) {
         case task_subtype_do_bh_swallow:
         case task_subtype_bh_feedback:
           return task_category_black_holes;
-
-        case task_subtype_sink_swallow:
-        case task_subtype_sink_do_sink_swallow:
-        case task_subtype_sink_do_gas_swallow:
-          return task_category_sink;
-
-        case task_subtype_rt_gradient:
-        case task_subtype_rt_transport:
-          return task_category_rt;
 
         default:
           return task_category_others;

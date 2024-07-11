@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
- *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
+ *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -19,7 +19,7 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include <config.h>
+#include "../config.h"
 
 /* This object's header. */
 #include "engine.h"
@@ -64,7 +64,7 @@ struct unskip_data {
   /*! Number of times the list has been duplicated */
   int multiplier;
 
-  /*! The number of active cells (without dulication) */
+  /*! The number of active cells (without duplication) */
   int num_active_cells;
 
   /*! The #task_broad_types corresponding to each copy of the list */
@@ -79,16 +79,16 @@ struct unskip_data {
  */
 static void engine_do_unskip_hydro(struct cell *c, struct engine *e) {
 
+  //  scheduler_activate(&e->sched, c->hydro.super->hydro.gpu_pack);
+  //  scheduler_activate(&e->sched, c->hydro.super->hydro.gpu_unpack);
   /* Early abort (are we below the level where tasks are)? */
   if (!cell_get_flag(c, cell_flag_has_tasks)) return;
 
   /* Ignore empty cells. */
   if (c->hydro.count == 0) return;
 
-#ifndef MPI_SYMMETRIC_FORCE_INTERACTION
   /* Skip inactive cells. */
   if (!cell_is_active_hydro(c, e)) return;
-#endif
 
   /* Recurse */
   if (c->split) {
@@ -113,21 +113,19 @@ static void engine_do_unskip_hydro(struct cell *c, struct engine *e) {
  * @param with_star_formation Are we running with star formation switched on?
  */
 static void engine_do_unskip_stars(struct cell *c, struct engine *e,
-                                   const int with_star_formation,
-                                   const int with_star_formation_sink) {
+                                   const int with_star_formation) {
 
   /* Early abort (are we below the level where tasks are)? */
   if (!cell_get_flag(c, cell_flag_has_tasks)) return;
 
   const int non_empty =
-      c->stars.count > 0 || (with_star_formation && c->hydro.count > 0) ||
-      (with_star_formation_sink && (c->hydro.count > 0 || c->sinks.count > 0));
+      c->stars.count > 0 || (with_star_formation && c->hydro.count > 0);
 
   /* Ignore empty cells. */
   if (!non_empty) return;
 
-  const int ci_active = cell_need_activating_stars(c, e, with_star_formation,
-                                                   with_star_formation_sink);
+  const int ci_active = cell_is_active_stars(c, e) ||
+                        (with_star_formation && cell_is_active_hydro(c, e));
 
   /* Skip inactive cells. */
   if (!ci_active) return;
@@ -137,15 +135,14 @@ static void engine_do_unskip_stars(struct cell *c, struct engine *e,
     for (int k = 0; k < 8; k++) {
       if (c->progeny[k] != NULL) {
         struct cell *cp = c->progeny[k];
-        engine_do_unskip_stars(cp, e, with_star_formation,
-                               with_star_formation_sink);
+        engine_do_unskip_stars(cp, e, with_star_formation);
       }
     }
   }
 
   /* Unskip any active tasks. */
-  const int forcerebuild = cell_unskip_stars_tasks(
-      c, &e->sched, with_star_formation, with_star_formation_sink);
+  const int forcerebuild =
+      cell_unskip_stars_tasks(c, &e->sched, with_star_formation);
   if (forcerebuild) atomic_inc(&e->forcerebuild);
 }
 
@@ -159,6 +156,12 @@ static void engine_do_unskip_black_holes(struct cell *c, struct engine *e) {
 
   /* Early abort (are we below the level where tasks are)? */
   if (!cell_get_flag(c, cell_flag_has_tasks)) return;
+
+  /* Ignore empty cells. */
+  if (c->black_holes.count == 0) return;
+
+  /* Skip inactive cells. */
+  if (!cell_is_active_black_holes(c, e)) return;
 
   /* Recurse */
   if (c->split) {
@@ -243,35 +246,30 @@ static void engine_do_unskip_gravity(struct cell *c, struct engine *e) {
  *
  * @param c The cell.
  * @param e The engine.
- * @param sub_cycle 1 if this is a call for a sub cycle, 0 otherwise
  */
-static void engine_do_unskip_rt(struct cell *c, struct engine *e,
-                                const int sub_cycle) {
-
-  /* Note: we only get this far if engine_policy_rt is flagged. */
-#ifdef SWIFT_DEBUG_CHECKS
-  if (!(e->policy & engine_policy_rt))
-    error("Unksipping RT stuff without the policy being on");
-#endif
+static void engine_do_unskip_rt(struct cell *c, struct engine *e) {
 
   /* Early abort (are we below the level where tasks are)? */
   if (!cell_get_flag(c, cell_flag_has_tasks)) return;
 
-  /* Do we have work to do? */
+  /* Ignore empty cells. */
   if (c->hydro.count == 0) return;
-  if (!cell_is_rt_active(c, e)) return;
+
+  /* Skip inactive cells. */
+  if (!cell_is_active_hydro(c, e)) return;
 
   /* Recurse */
   if (c->split) {
     for (int k = 0; k < 8; k++) {
       if (c->progeny[k] != NULL) {
-        engine_do_unskip_rt(c->progeny[k], e, sub_cycle);
+        struct cell *cp = c->progeny[k];
+        engine_do_unskip_rt(cp, e);
       }
     }
   }
 
   /* Unskip any active tasks. */
-  const int forcerebuild = cell_unskip_rt_tasks(c, &e->sched, sub_cycle);
+  const int forcerebuild = cell_unskip_rt_tasks(c, &e->sched);
   if (forcerebuild) atomic_inc(&e->forcerebuild);
 }
 
@@ -294,10 +292,7 @@ void engine_do_unskip_mapper(void *map_data, int num_elements,
   struct cell *const cells_top = e->s->cells_top;
 
   /* What policies are we running? */
-  const int with_sinks = e->policy & engine_policy_sinks;
-  const int with_stars = e->policy & engine_policy_stars;
   const int with_star_formation = e->policy & engine_policy_star_formation;
-  const int with_star_formation_sink = with_sinks && with_stars;
 
   /* The current chunk of active cells */
   const int *const local_cells = (int *)map_data;
@@ -340,8 +335,7 @@ void engine_do_unskip_mapper(void *map_data, int num_elements,
         if (!(e->policy & engine_policy_stars))
           error("Trying to unskip star tasks in a non-stars run!");
 #endif
-        engine_do_unskip_stars(c, e, with_star_formation,
-                               with_star_formation_sink);
+        engine_do_unskip_stars(c, e, with_star_formation);
         break;
       case task_broad_types_sinks:
 #ifdef SWIFT_DEBUG_CHECKS
@@ -362,7 +356,7 @@ void engine_do_unskip_mapper(void *map_data, int num_elements,
         if (!(e->policy & engine_policy_rt))
           error("Trying to unskip radiative transfer tasks in a non-rt run!");
 #endif
-        engine_do_unskip_rt(c, e, /*sub_cycle=*/0);
+        engine_do_unskip_rt(c, e);
         break;
       default:
 #ifdef SWIFT_DEBUG_CHECKS
@@ -396,7 +390,7 @@ void engine_unskip(struct engine *e) {
 #ifdef WITH_PROFILER
   static int count = 0;
   char filename[100];
-  sprintf(filename, "/tmp/swift_engine_do_usnkip_mapper_%06i.prof", count++);
+  sprintf(filename, "/tmp/swift_engine_do_unskip_mapper_%06i.prof", count++);
   ProfilerStart(filename);
 #endif  // WITH_PROFILER
 
@@ -406,8 +400,6 @@ void engine_unskip(struct engine *e) {
   for (int k = 0; k < s->nr_local_cells_with_tasks; k++) {
     struct cell *c = &s->cells_top[local_cells[k]];
 
-    if (cell_is_empty(c)) continue;
-
     if ((with_hydro && cell_is_active_hydro(c, e)) ||
         (with_self_grav && cell_is_active_gravity(c, e)) ||
         (with_ext_grav && c->nodeID == nodeID &&
@@ -415,19 +407,12 @@ void engine_unskip(struct engine *e) {
         (with_feedback && cell_is_active_stars(c, e)) ||
         (with_stars && c->nodeID == nodeID && cell_is_active_stars(c, e)) ||
         (with_sinks && cell_is_active_sinks(c, e)) ||
-        (with_black_holes && cell_is_active_black_holes(c, e)) ||
-        (with_rt && cell_is_rt_active(c, e))) {
+        (with_black_holes && cell_is_active_black_holes(c, e))) {
 
       if (num_active_cells != k)
         memswap(&local_cells[k], &local_cells[num_active_cells], sizeof(int));
       num_active_cells += 1;
     }
-
-    /* Activate the top-level timestep exchange */
-#ifdef WITH_MPI
-    scheduler_activate_all_subtype(&e->sched, c->mpi.send, task_subtype_tend);
-    scheduler_activate_all_subtype(&e->sched, c->mpi.recv, task_subtype_tend);
-#endif
   }
 
   /* What kind of tasks do we have? */
@@ -508,58 +493,59 @@ void engine_unskip(struct engine *e) {
             clocks_getunit());
 }
 
-void engine_do_unskip_sub_cycle_mapper(void *map_data, int num_elements,
-                                       void *extra_data) {
+void engine_unskip_timestep_communications_mapper(void *map_data,
+                                                  int num_elements,
+                                                  void *extra_data) {
+  /* Unpack the data */
+  struct scheduler *s = (struct scheduler *)extra_data;
+  struct task *const tasks = (struct task *)map_data;
+  const int nr_tasks = num_elements;
 
-  struct engine *e = (struct engine *)extra_data;
-  struct cell *const cells_top = e->s->cells_top;
+  /* Unskip the tasks in this part of the array */
+  for (int i = 0; i < nr_tasks; ++i) {
 
-  /* The current chunk of active cells */
-  const int *const local_cells = (int *)map_data;
+    struct task *const t = &tasks[i];
 
-  /* Loop over this thread's chunk of cells to unskip */
-  for (int ind = 0; ind < num_elements; ind++) {
+    if (t->type == task_type_send || t->type == task_type_recv) {
 
-    /* Handle on the cell */
-    struct cell *const c = &cells_top[local_cells[ind]];
+      if (t->subtype == task_subtype_tend_part ||
+          t->subtype == task_subtype_tend_gpart) {
 
-    engine_do_unskip_rt(c, e, /*sub_cycle=*/1);
+        scheduler_activate(s, t);
+      }
+    }
   }
 }
 
 /**
- * @brief Unskip all the RT tasks that are active during this sub-cycle.
+ * @brief Blindly unskips all the tend communications for #part and #gpart.
+ *
+ * This function is only necessary when running with the time-step limiter
+ * or the time-step synchronization policy as the time-steps of inactive
+ * sections of the tree might have been changed by these tasks.
  *
  * @param e The #engine.
  */
-void engine_unskip_rt_sub_cycle(struct engine *e) {
+void engine_unskip_timestep_communications(struct engine *e) {
+
+#ifdef WITH_MPI
 
   const ticks tic = getticks();
-  struct space *s = e->s;
-  const int with_rt = e->policy & engine_policy_rt;
 
-  if (!with_rt) error("Unskipping sub-cycles when running without RT!");
+  struct scheduler *s = &e->sched;
+  struct task *tasks = e->sched.tasks;
+  const int nr_tasks = e->sched.nr_tasks;
 
-  int *local_cells = e->s->local_cells_with_tasks_top;
-  int num_active_cells = 0;
-  for (int k = 0; k < s->nr_local_cells_with_tasks; k++) {
-    struct cell *c = &s->cells_top[local_cells[k]];
-
-    if (c->hydro.count == 0) continue;
-
-    if (cell_is_rt_active(c, e)) {
-
-      if (num_active_cells != k)
-        memswap(&local_cells[k], &local_cells[num_active_cells], sizeof(int));
-      num_active_cells += 1;
-    }
-  }
-
-  /* Activate all the regular tasks */
-  threadpool_map(&e->threadpool, engine_do_unskip_sub_cycle_mapper, local_cells,
-                 num_active_cells, sizeof(int), /*chunk=*/1, e);
+  /* Activate all the part and gpart ti_end tasks */
+  threadpool_map(&e->threadpool, engine_unskip_timestep_communications_mapper,
+                 tasks, nr_tasks, sizeof(struct task),
+                 threadpool_auto_chunk_size, s);
 
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
+
+#else
+  error("SWIFT was not compiled with MPI support.");
+#endif
 }

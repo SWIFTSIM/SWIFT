@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
- *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
+ *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
  *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
@@ -20,10 +20,12 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include <config.h>
+#include "../config.h"
 
-/* System includes. */
-#include <stdlib.h>
+#ifdef WITH_CUDA
+#include <cuda_runtime.h>
+#endif
+
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -37,113 +39,36 @@
 
 /* Local headers. */
 #include "fof.h"
-#include "mpiuse.h"
 #include "part.h"
-#include "pressure_floor.h"
 #include "proxy.h"
-#include "rt.h"
-#include "star_formation.h"
+#include "runner.h"
 #include "star_formation_logger.h"
 #include "stars_io.h"
 #include "statistics.h"
 #include "version.h"
 
+#ifdef WITH_CUDA
+#include "runner_main_clean.cu"
+#endif
+
+#ifdef WITH_HIP
+//#include "/opt/rocm-5.1.0/hip/include/hip/hip_runtime.h"
+#include "runner_main_clean.hip"
+
+#include <hip/hip_runtime.h>
+#endif
+
 extern int engine_max_parts_per_ghost;
 extern int engine_max_sparts_per_ghost;
 extern int engine_max_parts_per_cooling;
 
-/**
- * @brief dump diagnostic data on tasks, memuse, mpiuse, queues.
- *
- * @param e the #engine
- */
-void engine_dump_diagnostic_data(struct engine *e) {
-  /* OK, do our work. */
-  message("Dumping engine tasks in step: %d", e->step);
-  task_dump_active(e);
-
-#ifdef SWIFT_MEMUSE_REPORTS
-  /* Dump the currently logged memory. */
-  message("Dumping memory use report");
-  memuse_log_dump_error(e->nodeID);
-#endif
-
-#if defined(SWIFT_MPIUSE_REPORTS) && defined(WITH_MPI)
-  /* Dump the MPI interactions in the step. */
-  mpiuse_log_dump_error(e->nodeID);
-#endif
-
-  /* Add more interesting diagnostics. */
-  scheduler_dump_queues(e);
-}
+/*counter for number of parts GPU works on*/
+// static int __gpu_part_pack_counter=0;
+// static pthread_mutex_t __mutex_gpu_part_pack_counter = (pthread_mutex_t)
+// PTHREAD_MUTEX_INITIALIZER;
 
 /* Particle cache size. */
 #define CACHE_SIZE 512
-
-#ifdef SWIFT_DUMPER_THREAD
-/**
- * @brief dumper thread action, checks got the existence of the .dump file
- * every 5 seconds and does the dump if found.
- *
- * @param p the #engine
- */
-static void *engine_dumper_poll(void *p) {
-  struct engine *e = (struct engine *)p;
-
-#ifdef WITH_MPI
-  char dumpfile[10];
-  snprintf(dumpfile, sizeof(dumpfile), ".dump.%d", e->nodeID);
-#else
-  const char *dumpfile = ".dump";
-#endif
-
-  while (1) {
-    if (access(dumpfile, F_OK) == 0) {
-
-      engine_dump_diagnostic_data(e);
-
-      /* Delete the file. */
-      unlink(dumpfile);
-      message("Dumping completed");
-      fflush(stdout);
-    }
-
-    /* Take a breath. */
-    sleep(5);
-  }
-  return NULL;
-}
-#endif /* SWIFT_DUMPER_THREAD */
-
-#ifdef SWIFT_DUMPER_THREAD
-/**
- * @brief creates the dumper thread.
- *
- * This watches for the creation of a ".dump" file in the current directory
- * and if found dumps the current state of the tasks and memory use (if also
- * configured).
- *
- * @param e the #engine
- *
- */
-static void engine_dumper_init(struct engine *e) {
-  pthread_t dumper;
-
-#ifdef WITH_MPI
-  char dumpfile[10];
-  snprintf(dumpfile, sizeof(dumpfile), ".dump.%d", e->nodeID);
-#else
-  const char *dumpfile = ".dump";
-#endif
-
-  /* Make sure the .dump file is not present, that is bad when starting up. */
-  struct stat buf;
-  if (stat(dumpfile, &buf) == 0) unlink(dumpfile);
-
-  /* Thread does not exit, so nothing to do but create it. */
-  pthread_create(&dumper, NULL, &engine_dumper_poll, e);
-}
-#endif /* SWIFT_DUMPER_THREAD */
 
 /**
  * @brief configure an engine with the given number of threads, queues
@@ -164,26 +89,19 @@ static void engine_dumper_init(struct engine *e) {
  * @param params The parsed parameter file.
  * @param nr_nodes The number of MPI ranks.
  * @param nodeID The MPI rank of this node.
- * @param nr_task_threads The number of engine threads per MPI rank.
- * @param nr_pool_threads The number of threadpool threads per MPI rank.
+ * @param nr_threads The number of threads per MPI rank.
  * @param with_aff use processor affinity, if supported.
  * @param verbose Is this #engine talkative ?
  * @param restart_file The name of our restart file.
- * @param reparttype What type of repartition algorithm are we using.
  */
 void engine_config(int restart, int fof, struct engine *e,
                    struct swift_params *params, int nr_nodes, int nodeID,
-                   int nr_task_threads, int nr_pool_threads, int with_aff,
-                   int verbose, const char *restart_dir,
-                   const char *restart_file, struct repartition *reparttype) {
-
-  struct clocks_time tic, toc;
-  if (nodeID == 0) clocks_gettime(&tic);
+                   int nr_threads, int with_aff, int verbose,
+                   const char *restart_file) {
 
   /* Store the values and initialise global fields. */
   e->nodeID = nodeID;
-  e->nr_threads = nr_task_threads;
-  e->nr_pool_threads = nr_pool_threads;
+  e->nr_threads = nr_threads;
   e->nr_nodes = nr_nodes;
   e->proxy_ind = NULL;
   e->nr_proxies = 0;
@@ -195,34 +113,15 @@ void engine_config(int restart, int fof, struct engine *e,
   e->nr_links = 0;
   e->file_stats = NULL;
   e->file_timesteps = NULL;
-  e->file_rt_subcycles = NULL;
   e->sfh_logger = NULL;
   e->verbose = verbose;
   e->wallclock_time = 0.f;
   e->restart_dump = 0;
-  e->restart_dir = restart_dir;
   e->restart_file = restart_file;
-  e->resubmit = 0;
   e->restart_next = 0;
   e->restart_dt = 0;
   e->run_fof = 0;
-
-  /* Seed rand(). */
-  srand(clocks_random_seed());
-
-  /* Allow repartitioning to be changed between restarts. On restart this is
-   * already allocated and freed on exit, so we need to copy over. */
-#ifdef WITH_MPI
-  if (restart) {
-    int *celllist = e->reparttype->celllist;
-    int ncelllist = e->reparttype->ncelllist;
-    memcpy(e->reparttype, reparttype, sizeof(struct repartition));
-    e->reparttype->celllist = celllist;
-    e->reparttype->ncelllist = ncelllist;
-  } else {
-    e->reparttype = reparttype;
-  }
-#endif
+  engine_rank = nodeID;
 
   if (restart && fof) {
     error(
@@ -233,52 +132,13 @@ void engine_config(int restart, int fof, struct engine *e,
   /* Welcome message */
   if (e->nodeID == 0) message("Running simulation '%s'.", e->run_name);
 
-  /* Check-pointing properties */
-
-  e->restart_stop_steps =
-      parser_get_opt_param_int(params, "Restarts:stop_steps", 100);
-
-  e->restart_max_hours_runtime =
-      parser_get_opt_param_float(params, "Restarts:max_run_time", FLT_MAX);
-
-  e->resubmit_after_max_hours =
-      parser_get_opt_param_int(params, "Restarts:resubmit_on_exit", 0);
-
-  if (e->resubmit_after_max_hours)
-    parser_get_param_string(params, "Restarts:resubmit_command",
-                            e->resubmit_command);
-
   /* Get the number of queues */
   int nr_queues =
-      parser_get_opt_param_int(params, "Scheduler:nr_queues", e->nr_threads);
+      parser_get_opt_param_int(params, "Scheduler:nr_queues", nr_threads);
   if (nr_queues <= 0) nr_queues = e->nr_threads;
-  if (nr_queues != nr_task_threads)
+  if (nr_queues != nr_threads)
     message("Number of task queues set to %d", nr_queues);
   e->s->nr_queues = nr_queues;
-
-  /* Get the frequency of the dependency graph dumping */
-  e->sched.frequency_dependency = parser_get_opt_param_int(
-      params, "Scheduler:dependency_graph_frequency", 0);
-  if (e->sched.frequency_dependency < 0) {
-    error("Scheduler:dependency_graph_frequency should be >= 0");
-  }
-  /* Get cellID for extra dependency graph dumps of specific cell */
-  e->sched.dependency_graph_cellID = parser_get_opt_param_longlong(
-      params, "Scheduler:dependency_graph_cell", 0LL);
-
-  /* Get the frequency of the task level dumping */
-  e->sched.frequency_task_levels = parser_get_opt_param_int(
-      params, "Scheduler:task_level_output_frequency", 0);
-  if (e->sched.frequency_task_levels < 0) {
-    error("Scheduler:task_level_output_frequency should be >= 0");
-  }
-
-#if defined(SWIFT_DEBUG_CHECKS)
-  e->sched.deadlock_waiting_time_ms = parser_get_opt_param_float(
-      params, "Scheduler:deadlock_waiting_time_s", -1.f);
-  /* User provides parameter in s. We want it in ms. */
-  e->sched.deadlock_waiting_time_ms *= 1000.f;
-#endif
 
 /* Deal with affinity. For now, just figure out the number of cores. */
 #if defined(HAVE_SETAFFINITY)
@@ -403,9 +263,6 @@ void engine_config(int restart, int fof, struct engine *e,
 #ifndef WITH_MPI
     error("SWIFT was not compiled with MPI support.");
 #else
-
-    /* Make sure the corresponding policy is set and make space for the proxies
-     */
     e->policy |= engine_policy_mpi;
     if ((e->proxies = (struct proxy *)calloc(sizeof(struct proxy),
                                              engine_maxproxies)) == NULL)
@@ -416,46 +273,6 @@ void engine_config(int restart, int fof, struct engine *e,
     e->syncredist =
         parser_get_opt_param_int(params, "DomainDecomposition:synchronous", 0);
 
-    /* Collect the hostname of each rank into a file */
-
-    const int hostname_buffer_length = 256;
-    char my_hostname[256] = {0};
-    sprintf(my_hostname, "%s", hostname());
-
-    char *hostnames = NULL;
-
-    if (nodeID == 0) {
-      hostnames =
-          (char *)calloc(nr_nodes * hostname_buffer_length, sizeof(char));
-      if (hostnames == NULL)
-        error("Failed to allocate memory for hostname list");
-    }
-
-    MPI_Gather(my_hostname, hostname_buffer_length, MPI_BYTE, hostnames,
-               hostname_buffer_length, MPI_BYTE, 0, MPI_COMM_WORLD);
-
-    if (nodeID == 0) {
-      FILE *ranklog = NULL;
-      if (restart) {
-        ranklog = fopen("rank_hostname.log", "a");
-        if (ranklog == NULL)
-          error("Could not create file 'rank_hostname.log'.");
-      } else {
-        ranklog = fopen("rank_hostname.log", "w");
-        if (ranklog == NULL)
-          error("Could not open file 'rank_hostname.log' for writing.");
-      }
-
-      /* Write the header every restart-cycle. It does not hurt. */
-      fprintf(ranklog, "# step rank hostname\n");
-
-      for (int i = 0; i < nr_nodes; ++i)
-        fprintf(ranklog, "%d %d %s\n", e->step, i,
-                hostnames + hostname_buffer_length * i);
-
-      fclose(ranklog);
-      free(hostnames);
-    }
 #endif
   }
 
@@ -475,9 +292,6 @@ void engine_config(int restart, int fof, struct engine *e,
                                 engine_default_energy_file_name);
     sprintf(energyfileName + strlen(energyfileName), ".txt");
     e->file_stats = fopen(energyfileName, mode);
-    if (e->file_stats == NULL)
-      error("Could not open the file '%s' with mode '%s'.", energyfileName,
-            mode);
 
     if (!restart)
       stats_write_file_header(e->file_stats, e->internal_units,
@@ -488,23 +302,9 @@ void engine_config(int restart, int fof, struct engine *e,
                                 timestepsfileName,
                                 engine_default_timesteps_file_name);
 
-    sprintf(timestepsfileName + strlen(timestepsfileName), ".txt");
+    sprintf(timestepsfileName + strlen(timestepsfileName), "_%d.txt",
+            nr_nodes * nr_threads);
     e->file_timesteps = fopen(timestepsfileName, mode);
-    if (e->file_timesteps == NULL)
-      error("Could not open the file '%s' with mode '%s'.", timestepsfileName,
-            mode);
-
-#ifndef RT_NONE
-    char rtSubcyclesFileName[200] = "";
-    parser_get_opt_param_string(params, "Statistics:rt_subcycles_file_name",
-                                rtSubcyclesFileName,
-                                engine_default_rt_subcycles_file_name);
-    sprintf(rtSubcyclesFileName + strlen(rtSubcyclesFileName), ".txt");
-    e->file_rt_subcycles = fopen(rtSubcyclesFileName, mode);
-    if (e->file_rt_subcycles == NULL)
-      error("Could not open the file '%s' with mode '%s'.", rtSubcyclesFileName,
-            mode);
-#endif
 
     if (!restart) {
       fprintf(
@@ -524,69 +324,26 @@ void engine_config(int restart, int fof, struct engine *e,
       fprintf(
           e->file_timesteps,
           "# Step Properties: Rebuild=%d, Redistribute=%d, Repartition=%d, "
-          "Statistics=%d, Snapshot=%d, Restarts=%d STF=%d, FOF=%d, mesh=%d\n",
+          "Statistics=%d, Snapshot=%d, Restarts=%d STF=%d, FOF=%d, mesh=%d, "
+          "logger=%d\n",
           engine_step_prop_rebuild, engine_step_prop_redistribute,
           engine_step_prop_repartition, engine_step_prop_statistics,
           engine_step_prop_snapshot, engine_step_prop_restarts,
-          engine_step_prop_stf, engine_step_prop_fof, engine_step_prop_mesh);
+          engine_step_prop_stf, engine_step_prop_fof, engine_step_prop_mesh,
+          engine_step_prop_logger_index);
 
       fprintf(e->file_timesteps,
               "# %6s %14s %12s %12s %14s %9s %12s %12s %12s %12s %12s %16s "
-              "[%s] %6s %12s [%s]\n",
+              "[%s] %6s\n",
               "Step", "Time", "Scale-factor", "Redshift", "Time-step",
               "Time-bins", "Updates", "g-Updates", "s-Updates", "Sink-Updates",
-              "b-Updates", "Wall-clock time", clocks_getunit(), "Props",
-              "Dead time", clocks_getunit());
+              "b-Updates", "Wall-clock time", clocks_getunit(), "Props");
       fflush(e->file_timesteps);
-
-#ifndef RT_NONE
-      fprintf(
-          e->file_rt_subcycles,
-          "# Host: %s\n# Branch: %s\n# Revision: %s\n# Compiler: %s, "
-          "Version: %s \n# "
-          "Number of threads: %d\n# Number of MPI ranks: %d\n# Hydrodynamic "
-          "scheme: %s\n# Hydrodynamic kernel: %s\n# No. of neighbours: %.2f "
-          "+/- %.4f\n# Eta: %f\n# Radiative Transfer Scheme: %s\n# Max Number "
-          "RT sub-cycles: %d\n# Config: %s\n# CFLAGS: %s\n",
-          hostname(), git_branch(), git_revision(), compiler_name(),
-          compiler_version(), e->nr_threads, e->nr_nodes, SPH_IMPLEMENTATION,
-          kernel_name, e->hydro_properties->target_neighbours,
-          e->hydro_properties->delta_neighbours,
-          e->hydro_properties->eta_neighbours, RT_IMPLEMENTATION,
-          e->max_nr_rt_subcycles, configuration_options(),
-          compilation_cflags());
-
-      fprintf(
-          e->file_rt_subcycles,
-          "# Step Properties: Rebuild=%d, Redistribute=%d, Repartition=%d, "
-          "Statistics=%d, Snapshot=%d, Restarts=%d STF=%d, FOF=%d, mesh=%d\n",
-          engine_step_prop_rebuild, engine_step_prop_redistribute,
-          engine_step_prop_repartition, engine_step_prop_statistics,
-          engine_step_prop_snapshot, engine_step_prop_restarts,
-          engine_step_prop_stf, engine_step_prop_fof, engine_step_prop_mesh);
-
-      fprintf(e->file_rt_subcycles,
-              "# Note: Sub-cycle=0 is performed during the regular SWIFT step, "
-              "alongside hydro, gravity etc.\n");
-      fprintf(e->file_rt_subcycles,
-              "#       For this reason, the wall-clock time and dead time is "
-              "not available for it, and is written as -1.\n");
-
-      fprintf(e->file_rt_subcycles,
-              "# %6s %9s %14s %12s %12s %14s %9s %12s %16s [%s] %12s [%s]\n",
-              "Step", "Sub-cycle", "Time", "Scale-factor", "Redshift",
-              "Time-step", "Time-bins", "RT-Updates", "Wall-clock time",
-              clocks_getunit(), "Dead time", clocks_getunit());
-      fflush(e->file_rt_subcycles);
-#endif  // compiled with RT
     }
 
     /* Initialize the SFH logger if running with star formation */
     if (e->policy & engine_policy_star_formation) {
       e->sfh_logger = fopen("SFR.txt", mode);
-      if (e->sfh_logger == NULL)
-        error("Could not open the file 'SFR.txt' with mode '%s'.", mode);
-
       if (!restart) {
         star_formation_logger_init_log_file(e->sfh_logger, e->internal_units,
                                             e->physical_constants);
@@ -603,7 +360,6 @@ void engine_config(int restart, int fof, struct engine *e,
     /* Print information about the hydro scheme */
     if (e->policy & engine_policy_hydro) {
       if (e->nodeID == 0) hydro_props_print(e->hydro_properties);
-      if (e->nodeID == 0) pressure_floor_print(e->pressure_floor_props);
       if (e->nodeID == 0) entropy_floor_print(e->entropy_floor);
     }
 
@@ -611,33 +367,8 @@ void engine_config(int restart, int fof, struct engine *e,
     if (e->policy & engine_policy_self_gravity)
       if (e->nodeID == 0) gravity_props_print(e->gravity_properties);
 
-    /* Print information about the stellar scheme */
     if (e->policy & engine_policy_stars)
       if (e->nodeID == 0) stars_props_print(e->stars_properties);
-
-    /* Print information about the RT scheme */
-    if (e->policy & engine_policy_rt) {
-      rt_props_print(e->rt_props);
-      if (e->nodeID == 0) {
-        if (e->max_nr_rt_subcycles <= 1)
-          message("WARNING: running without RT sub-cycling.");
-        else {
-          /* Make sure max_nr_rt_subcycles is an acceptable power of 2 */
-          timebin_t power_subcycles = 0;
-          while ((e->max_nr_rt_subcycles > (1 << power_subcycles)) &&
-                 power_subcycles < num_time_bins)
-            ++power_subcycles;
-          if (power_subcycles == num_time_bins)
-            error("TimeIntegration:max_nr_rt_subcycles=%d too big",
-                  e->max_nr_rt_subcycles);
-          if ((1 << power_subcycles) > e->max_nr_rt_subcycles)
-            error("TimeIntegration:max_nr_rt_subcycles=%d not a power of 2",
-                  e->max_nr_rt_subcycles);
-          message("Running up to %d RT sub-cycles per hydro step.",
-                  e->max_nr_rt_subcycles);
-        }
-      }
-    }
 
     /* Check we have sensible time bounds */
     if (e->time_begin >= e->time_end)
@@ -645,6 +376,10 @@ void engine_config(int restart, int fof, struct engine *e,
           "Final simulation time (t_end = %e) must be larger than the start "
           "time (t_beg = %e)",
           e->time_end, e->time_begin);
+
+    /* Check we don't have inappropriate time labels */
+    if ((e->snapshot_int_time_label_on == 1) && (e->time_end <= 1.f))
+      error("Snapshot integer time labels enabled but end time <= 1");
 
     /* Check we have sensible time-step values */
     if (e->dt_min > e->dt_max)
@@ -679,10 +414,7 @@ void engine_config(int restart, int fof, struct engine *e,
         error("Maximal time-step size larger than the simulation run time t=%e",
               e->time_end - e->time_begin);
 
-    /* Read (or re-read the list of outputs */
-    engine_init_output_lists(e, params, e->output_options);
-
-    /* Check whether output quantities make sense */
+    /* Deal with outputs */
     if (e->policy & engine_policy_cosmology) {
 
       if (e->delta_time_snapshot <= 1.)
@@ -717,8 +449,7 @@ void engine_config(int restart, int fof, struct engine *e,
               e->a_first_stf_output, e->cosmology->a_begin);
       }
 
-      if (e->policy & engine_policy_fof &&
-          e->fof_properties->seed_black_holes_enabled) {
+      if (e->policy & engine_policy_fof) {
 
         if (e->delta_time_fof <= 1.)
           error("Time between FOF (%e) must be > 1.", e->delta_time_fof);
@@ -768,6 +499,9 @@ void engine_config(int restart, int fof, struct engine *e,
       }
     }
 
+    /* Try to ensure the snapshot directory exists */
+    if (e->nodeID == 0) io_make_snapshot_subdir(e->snapshot_subdir);
+
     /* Get the total mass */
     e->total_mass = 0.;
     for (size_t i = 0; i < e->s->nr_gparts; ++i)
@@ -779,11 +513,11 @@ void engine_config(int restart, int fof, struct engine *e,
                   MPI_COMM_WORLD);
 #endif
 
-#if defined(WITH_CSDS)
-    if ((e->policy & engine_policy_csds) && e->nodeID == 0)
+#if defined(WITH_LOGGER)
+    if ((e->policy & engine_policy_logger) && e->nodeID == 0)
       message(
           "WARNING: There is currently no way of predicting the output "
-          "size, please use the CSDS carefully");
+          "size, please use it carefully");
 #endif
 
     /* Find the time of the first snapshot output */
@@ -803,10 +537,15 @@ void engine_config(int restart, int fof, struct engine *e,
     }
 
     /* Find the time of the first stf output */
-    if (e->policy & engine_policy_fof &&
-        e->fof_properties->seed_black_holes_enabled) {
+    if (e->policy & engine_policy_fof) {
       engine_compute_next_fof_time(e);
     }
+
+    /* Check that the snapshot naming policy is valid */
+    if (e->snapshot_invoke_stf && e->snapshot_int_time_label_on)
+      error(
+          "Cannot use snapshot time labels and VELOCIraptor invocations "
+          "together!");
 
     /* Check that we are invoking VELOCIraptor only if we have it */
     if (e->snapshot_invoke_stf &&
@@ -826,10 +565,6 @@ void engine_config(int restart, int fof, struct engine *e,
     /* Whether restarts should be dumped on exit. Not by default. Can be changed
      * on restart. */
     e->restart_onexit = parser_get_opt_param_int(params, "Restarts:onexit", 0);
-
-    /* Read the number of Lustre OSTs to distribute the restart files over */
-    e->restart_lustre_OST_count =
-        parser_get_opt_param_int(params, "Restarts:lustre_OST_count", 0);
 
     /* Hours between restart dumps. Can be changed on restart. */
     float dhours =
@@ -872,15 +607,7 @@ void engine_config(int restart, int fof, struct engine *e,
   }
 
   /* Initialize the threadpool. */
-  threadpool_init(&e->threadpool, nr_pool_threads);
-  if (e->nodeID == 0)
-    message("Using %d threads in the thread-pool", nr_pool_threads);
-
-  /* Cells per thread buffer. */
-  e->s->cells_sub =
-      (struct cell **)calloc(nr_pool_threads + 1, sizeof(struct cell *));
-  e->s->multipoles_sub = (struct gravity_tensors **)calloc(
-      nr_pool_threads + 1, sizeof(struct gravity_tensors *));
+  threadpool_init(&e->threadpool, e->nr_threads);
 
   /* First of all, init the barrier and lock it. */
   if (swift_barrier_init(&e->wait_barrier, NULL, e->nr_threads + 1) != 0 ||
@@ -905,9 +632,13 @@ void engine_config(int restart, int fof, struct engine *e,
   e->links_per_tasks =
       parser_get_opt_param_float(params, "Scheduler:links_per_tasks", 25.);
 
-  /* Init the scheduler. */
-  scheduler_init(&e->sched, e->s, maxtasks, nr_queues,
-                 (e->policy & scheduler_flag_steal), e->nodeID, &e->threadpool);
+  /* Init the scheduler. Allow stealing*/
+  //  scheduler_init(&e->sched, e->s, maxtasks, nr_queues,
+  //                 (e->policy & scheduler_flag_steal), e->nodeID,
+  //                 &e->threadpool);
+  /* Init the scheduler. NO stealing*/
+  scheduler_init(&e->sched, e->s, maxtasks, nr_queues, 0, e->nodeID,
+                 &e->threadpool);
 
   /* Maximum size of MPI task messages, in KB, that should not be buffered,
    * that is sent using MPI_Issend, not MPI_Isend. 4Mb by default. Can be
@@ -939,23 +670,13 @@ void engine_config(int restart, int fof, struct engine *e,
         parser_get_opt_param_int(params, "Scheduler:cell_subdepth_diff_grav",
                                  space_subdepth_diff_grav_default);
     space_extra_parts = parser_get_opt_param_int(
-        params, "Scheduler:cell_extra_parts", space_extra_parts_default);
+        params, "Scheduler:cell_extra_parts", space_extra_parts);
     space_extra_sparts = parser_get_opt_param_int(
-        params, "Scheduler:cell_extra_sparts", space_extra_sparts_default);
+        params, "Scheduler:cell_extra_sparts", space_extra_sparts);
     space_extra_gparts = parser_get_opt_param_int(
-        params, "Scheduler:cell_extra_gparts", space_extra_gparts_default);
+        params, "Scheduler:cell_extra_gparts", space_extra_gparts);
     space_extra_bparts = parser_get_opt_param_int(
-        params, "Scheduler:cell_extra_bparts", space_extra_bparts_default);
-
-    /* Do we want any spare particles for on the fly creation?
-       This condition should be the same than in space.c */
-    if (!(e->policy & engine_policy_star_formation ||
-          e->policy & engine_policy_sinks) ||
-        !swift_star_formation_model_creates_stars) {
-      space_extra_sparts = 0;
-      space_extra_gparts = 0;
-      space_extra_sinks = 0;
-    }
+        params, "Scheduler:cell_extra_bparts", space_extra_bparts);
 
     engine_max_parts_per_ghost =
         parser_get_opt_param_int(params, "Scheduler:engine_max_parts_per_ghost",
@@ -973,13 +694,23 @@ void engine_config(int restart, int fof, struct engine *e,
   if (swift_memalign("runners", (void **)&e->runners, SWIFT_CACHE_ALIGNMENT,
                      e->nr_threads * sizeof(struct runner)) != 0)
     error("Failed to allocate threads array.");
-
   for (int k = 0; k < e->nr_threads; k++) {
     e->runners[k].id = k;
     e->runners[k].e = e;
+
+#ifdef WITH_CUDA
+    if (pthread_create(&e->runners[k].thread, NULL, &runner_main2,
+                       &e->runners[k]) != 0)
+      error("Failed to create GPU runner thread.");
+#elif WITH_HIP
+    if (pthread_create(&e->runners[k].thread, NULL, &runner_main_hip,
+                       &e->runners[k]) != 0)
+      error("Failed to create runner thread.");
+#else
     if (pthread_create(&e->runners[k].thread, NULL, &runner_main,
                        &e->runners[k]) != 0)
       error("Failed to create runner thread.");
+#endif
 
     /* Try to pin the runner to a given core */
     if (with_aff &&
@@ -1034,10 +765,10 @@ void engine_config(int restart, int fof, struct engine *e,
     }
   }
 
-#ifdef WITH_CSDS
-  if ((e->policy & engine_policy_csds) && !restart) {
-    /* Write the particle csds header */
-    csds_write_file_header(e->csds);
+#ifdef WITH_LOGGER
+  if ((e->policy & engine_policy_logger) && !restart) {
+    /* Write the particle logger header */
+    logger_write_file_header(e->logger);
   }
 #endif
 
@@ -1061,10 +792,4 @@ void engine_config(int restart, int fof, struct engine *e,
 
   /* Wait for the runner threads to be in place. */
   swift_barrier_wait(&e->wait_barrier);
-
-  if (e->nodeID == 0) {
-    clocks_gettime(&toc);
-    message("took %.3f %s.", clocks_diff(&tic, &toc), clocks_getunit());
-    fflush(stdout);
-  }
 }
