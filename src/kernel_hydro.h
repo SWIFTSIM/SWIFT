@@ -250,6 +250,8 @@ static const float kernel_coeffs[(kernel_degree + 1) * (kernel_ivals + 1)]
  *
  * Returns 0 if \f$u > \gamma = H/h\f$.
  *
+ * Note: Types edited to long double to avoid truncation.
+ *
  * @param u The ratio of the distance to the smoothing length \f$u = x/h\f$.
  * @param W (return) The value of the kernel function \f$W(x,h)\f$.
  * @param dW_dx (return) The norm of the gradient of \f$|\nabla W(x,h)|\f$.
@@ -274,49 +276,11 @@ __attribute__((always_inline)) INLINE static void kernel_deval(
     dw_dx = dw_dx * x + w;
     w = x * w + coeffs[k];
   }
-  /*
-  if (x < 0.98){
-      if (w <= 0){
-          printf("here1");
-          printf("\n");
-          printf("%.20Lf", x);
-          printf("\n");
-          printf("%.20Lf", w);
-          printf("\n");
-          exit(0);
-      }
-
-      if (dw_dx >= 0){
-          printf("here2");
-          printf("\n");
-          printf("%.20Lf", x);
-          printf("\n");
-          printf("%.20Lf", dw_dx);
-          printf("\n");
-          exit(0);
-      }
-  }
-  */
   w = max(w, 0.f);
   dw_dx = min(dw_dx, 0.f);
 
   /* Return everything */
   *W = w * kernel_constant * kernel_gamma_inv_dim;
-  /*
-  if (x < 0.98){
-      if (*W <= 0){
-          printf("here1");
-          printf("\n");
-          printf("%.20Lf", x);
-          printf("\n");
-          printf("%.20Lf", w);
-          printf("\n");
-          printf("%.20f", *W);
-          printf("\n");
-          exit(0);
-      }
-  }
-  */
   *dW_dx = dw_dx * kernel_constant * kernel_gamma_inv_dim_plus_one;
 }
 

@@ -1,7 +1,8 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
- *               2018 Jacob Kegerreis (jacob.kegerreis@durham.ac.uk).
+ * Copyright (c) 2024 Thomas Sandnes (thomas.d.sandnes@durham.ac.uk)
+ *               2024 Jacob Kegerreis (jacob.kegerreis@durham.ac.uk)
+ *               2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -22,22 +23,14 @@
 
 /**
  * @file Planetary/hydro_iact.h
- * @brief Minimal conservative implementation of SPH (Neighbour loop equations)
- *
- * The thermal variable is the internal energy (u). Simple constant
- * viscosity term with the Balsara (1995) switch (optional).
- * No thermal conduction term is implemented.
- *
- * This corresponds to equations (43), (44), (45), (101), (103)  and (104) with
- * \f$\beta=3\f$ and \f$\alpha_u=0\f$ of Price, D., Journal of Computational
- * Physics, 2012, Volume 231, Issue 3, pp. 759-794.
+ * @brief REMIX implementation of SPH (Sandnes et al. 2024)
  */
 
 #include "adiabatic_index.h"
 #include "const.h"
-#include "hydro_kernels_etc.h"
+#include "hydro_kernels.h"
 #include "hydro_parameters.h"
-#include "hydro_viscosity.h"
+#include "hydro_visc_difn.h"
 #include "math.h"
 #include "minmax.h"
 
@@ -228,8 +221,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
   const float uj = r * hj_inv;
   kernel_deval(uj, &wj, &wj_dx);
 
-  hydro_runner_iact_nonsym_gradient_extra_kernel(pi, pj, dx, wi, wj, wi_dx,
-                                                 wj_dx);
+  hydro_runner_iact_nonsym_gradient_extra_kernel(pi, pj, dx, wi, wj, wi_dx, wj_dx);
   hydro_runner_iact_nonsym_gradient_extra_viscosity(pi, pj, dx, wi, wi_dx);
 }
 
@@ -280,26 +272,18 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   float wj, wj_dx;
   kernel_deval(xj, &wj, &wj_dx);
 
-  /* Compute the G and Q gradient and viscosity factors, either using matrix
-   * inversions or standard GDF SPH */
-
-  /* G[3] is the kernel gradient term. Takes the place of eq 7 in Wadsley+2017
-  or the average of eq 4 and 5 in Rosswog 2020 (as described below eq 11) */
-  float Gj[3], Gi[3];
+  // Linear-order reproducing kernel gradient term
+  float Gj[3], Gi[3], G_mean[3];
   hydro_set_Gi_Gj_forceloop(Gi, Gj, pi, pj, dx, wi, wj, wi_dx, wj_dx);
+  for (int i = 0; i < 3; i++) {
+      G_mean[i] = 0.5f * (Gi[i] + Gj[i]);
+  }
 
-  /* Calculate the viscous pressures Q */
+  // Viscous pressures
   float Qi, Qj;
   float visc_signal_velocity, difn_signal_velocity;
   hydro_set_Qi_Qj(&Qi, &Qj, &visc_signal_velocity, &difn_signal_velocity, pi,
                   pj, dx, a, H);
-
-  /* set kernel gradient terms to be used in eolution equations */
-  float kernel_gradient_i[3], kernel_gradient_j[3];
-  float Q_kernel_gradient_i[3], Q_kernel_gradient_j[3];
-  hydro_set_kernel_gradient_terms(dx, kernel_gradient_i, kernel_gradient_j,
-                                  Q_kernel_gradient_i, Q_kernel_gradient_j, Gi,
-                                  Gj);
 
   /* Pressure terms to be used in evolution equations */
   float P_i_term = pressurei / (pi->rho * pj->rho);
@@ -308,58 +292,27 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   float Q_j_term = Qj / (pi->rho * pj->rho);
 
   /* Use the force Luke! */
-  pi->a_hydro[0] -=
-      mj *
-      (P_i_term * kernel_gradient_i[0] + P_j_term * kernel_gradient_j[0] +
-       Q_i_term * Q_kernel_gradient_i[0] + Q_j_term * Q_kernel_gradient_j[0]);
-  pi->a_hydro[1] -=
-      mj *
-      (P_i_term * kernel_gradient_i[1] + P_j_term * kernel_gradient_j[1] +
-       Q_i_term * Q_kernel_gradient_i[1] + Q_j_term * Q_kernel_gradient_j[1]);
-  pi->a_hydro[2] -=
-      mj *
-      (P_i_term * kernel_gradient_i[2] + P_j_term * kernel_gradient_j[2] +
-       Q_i_term * Q_kernel_gradient_i[2] + Q_j_term * Q_kernel_gradient_j[2]);
+  for (int i = 0; i < 3; i++) {
+      pi->a_hydro[i] -= mj * (P_i_term + P_j_term + Q_i_term + Q_j_term) * G_mean[i];
+      pj->a_hydro[i] += mi * (P_i_term + P_j_term + Q_i_term + Q_j_term) * G_mean[i];
+  }
 
-  pj->a_hydro[0] +=
-      mi *
-      (P_i_term * kernel_gradient_i[0] + P_j_term * kernel_gradient_j[0] +
-       Q_i_term * Q_kernel_gradient_i[0] + Q_j_term * Q_kernel_gradient_j[0]);
-  pj->a_hydro[1] +=
-      mi *
-      (P_i_term * kernel_gradient_i[1] + P_j_term * kernel_gradient_j[1] +
-       Q_i_term * Q_kernel_gradient_i[1] + Q_j_term * Q_kernel_gradient_j[1]);
-  pj->a_hydro[2] +=
-      mi *
-      (P_i_term * kernel_gradient_i[2] + P_j_term * kernel_gradient_j[2] +
-       Q_i_term * Q_kernel_gradient_i[2] + Q_j_term * Q_kernel_gradient_j[2]);
-
-  /* dx dot kernel gradient term needed for du/dt in e.g. eq 13 of Wadsley and
-   * equiv*/
-  const float dvdG_i = (pi->v[0] - pj->v[0]) * kernel_gradient_i[0] +
-                       (pi->v[1] - pj->v[1]) * kernel_gradient_i[1] +
-                       (pi->v[2] - pj->v[2]) * kernel_gradient_i[2];
-  const float dvdG_j = (pi->v[0] - pj->v[0]) * kernel_gradient_j[0] +
-                       (pi->v[1] - pj->v[1]) * kernel_gradient_j[1] +
-                       (pi->v[2] - pj->v[2]) * kernel_gradient_j[2];
-  const float Q_dvdG_i = (pi->v[0] - pj->v[0]) * Q_kernel_gradient_i[0] +
-                         (pi->v[1] - pj->v[1]) * Q_kernel_gradient_i[1] +
-                         (pi->v[2] - pj->v[2]) * Q_kernel_gradient_i[2];
-  const float Q_dvdG_j = (pi->v[0] - pj->v[0]) * Q_kernel_gradient_j[0] +
-                         (pi->v[1] - pj->v[1]) * Q_kernel_gradient_j[1] +
-                         (pi->v[2] - pj->v[2]) * Q_kernel_gradient_j[2];
+  // v_ij dot kernel gradient term
+  const float dvdotG = (pi->v[0] - pj->v[0]) * G_mean[0] +
+                       (pi->v[1] - pj->v[1]) * G_mean[1] +
+                       (pi->v[2] - pj->v[2]) * G_mean[2];
 
   /* Get the time derivative for u, including the viscosity */
-  float du_dt_i = P_i_term * dvdG_i + Q_i_term * Q_dvdG_i;
-  float du_dt_j = P_j_term * dvdG_j + Q_j_term * Q_dvdG_j;
+  float du_dt_i = (P_i_term + Q_i_term) * dvdotG;
+  float du_dt_j = (P_j_term + Q_j_term) * dvdotG;
 
   /* Internal energy time derivative */
   pi->u_dt += du_dt_i * mj;
   pj->u_dt += du_dt_j * mi;
 
   /* Get the time derivative for h. */
-  pi->force.h_dt -= mj * dvdG_i / rhoj;
-  pj->force.h_dt -= mi * dvdG_j / rhoi;
+  pi->force.h_dt -= mj * dvdotG / rhoj;
+  pj->force.h_dt -= mi * dvdotG / rhoi;
 
   const float v_sig = visc_signal_velocity;
 
@@ -367,64 +320,65 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   pi->force.v_sig = max(pi->force.v_sig, v_sig);
   pj->force.v_sig = max(pj->force.v_sig, v_sig);
 
-  pi->drho_dt += mj * (pi->rho / pj->rho) * dvdG_i;
-  pj->drho_dt += mi * (pj->rho / pi->rho) * dvdG_j;
+  pi->drho_dt += mj * (pi->rho / pj->rho) * dvdotG;
+  pj->drho_dt += mi * (pj->rho / pi->rho) * dvdotG;
 
-#ifdef SWIFT_HYDRO_DENSITY_CHECKS
-  pi->n_force += wi + wj;
-  pj->n_force += wi + wj;
-  pi->N_force++;
-  pj->N_force++;
-#endif
-  if (!pi->is_h_max && !pj->is_h_max) {
-
+  if ((!pi->is_h_max) && (!pj->is_h_max)) {
     float mean_rho = 0.5f * (pi->rho + pj->rho);
-    float mean_G =
-        0.5f * sqrtf((kernel_gradient_i[0] + kernel_gradient_j[0]) *
-                         (kernel_gradient_i[0] + kernel_gradient_j[0]) +
-                     (kernel_gradient_i[1] + kernel_gradient_j[1]) *
-                         (kernel_gradient_i[1] + kernel_gradient_j[1]) +
-                     (kernel_gradient_i[2] + kernel_gradient_j[2]) *
-                         (kernel_gradient_i[2] + kernel_gradient_j[2]));
-
+    float mean_balsara = 0.5f * (pi->force.balsara + pj->force.balsara);
+    float mod_G = sqrtf(G_mean[0] * G_mean[0] + G_mean[1] * G_mean[1] + G_mean[2] * G_mean[2]);
     float v_sig_norm = sqrtf((pi->v[0] - pj->v[0]) * (pi->v[0] - pj->v[0]) +
                              (pi->v[1] - pj->v[1]) * (pi->v[1] - pj->v[1]) +
                              (pi->v[2] - pj->v[2]) * (pi->v[2] - pj->v[2]));
-    float alpha_rho = 1.f;
+
+    const float alpha_norm = viscosity_global.alpha_norm;
     float drho_dt_norm_and_difn_i =
-        alpha_rho * mj * v_sig_norm * pi->vac_switch *
-        (pi->m0_no_mean_kernel * pi->rho_evolved - pi->rho_evolved) * mean_G /
-        mean_rho;
+        alpha_norm * mj * v_sig_norm *
+        pi->force.vac_switch * (pi->m0 * pi->rho_evol - pi->rho_evol) * mod_G / mean_rho;
     float drho_dt_norm_and_difn_j =
-        alpha_rho * mi * v_sig_norm * pj->vac_switch *
-        (pj->m0_no_mean_kernel * pj->rho_evolved - pj->rho_evolved) * mean_G /
-        mean_rho;
+        alpha_norm * mi * v_sig_norm *
+        pj->force.vac_switch * (pj->m0 * pj->rho_evol - pj->rho_evol) * mod_G / mean_rho;
 
+    // Diffusion for same materials
     if (pi->mat_id == pj->mat_id) {
-      float utilde_i, utilde_j, rhotilde_i, rhotilde_j;
-      hydro_set_u_rho_difn(&utilde_i, &utilde_j, &rhotilde_i, &rhotilde_j, pi,
-                           pj, dx, a, H);
-      float v_sig_difn = difn_signal_velocity;
-      float alpha_u = 1.f;
-      float du_dt_difn_i = -alpha_u * mj * v_sig_difn * (utilde_i - utilde_j) *
-                           mean_G / mean_rho;
-      float du_dt_difn_j = -alpha_u * mi * v_sig_difn * (utilde_j - utilde_i) *
-                           mean_G / mean_rho;
+      // Diffusion parameters
+      const float a_difn_rho = viscosity_global.a_difn_rho;
+      const float b_difn_rho = viscosity_global.b_difn_rho;
+      const float a_difn_u = viscosity_global.a_difn_u;
+      const float b_difn_u = viscosity_global.b_difn_u;
 
+      // ...
+      float utilde_i, utilde_j, rhotilde_i, rhotilde_j;
+      hydro_set_u_rho_difn(&utilde_i, &utilde_j, &rhotilde_i, &rhotilde_j, pi, pj, dx, a, H);
+      float v_sig_difn = difn_signal_velocity;
+      float du_dt_difn_i = -(a_difn_u + b_difn_u * mean_balsara) * mj * v_sig_difn *
+                           (utilde_i - utilde_j) * mod_G / mean_rho;
+      float du_dt_difn_j = -(a_difn_u + b_difn_u * mean_balsara) * mi * v_sig_difn *
+                           (utilde_j - utilde_i) * mod_G / mean_rho;
+
+      // ...
       pi->u_dt += du_dt_difn_i;
       pj->u_dt += du_dt_difn_j;
 
-      drho_dt_norm_and_difn_i += -alpha_rho * mj * (pi->rho / pj->rho) *
-                                 v_sig_difn * (rhotilde_i - rhotilde_j) *
-                                 mean_G / mean_rho;
-      drho_dt_norm_and_difn_j += -alpha_rho * mi * (pj->rho / pi->rho) *
-                                 v_sig_difn * (rhotilde_j - rhotilde_i) *
-                                 mean_G / mean_rho;
+      // ...
+      drho_dt_norm_and_difn_i += -(a_difn_rho + b_difn_rho * mean_balsara) * mj *
+                                 (pi->rho / pj->rho) * v_sig_difn * (rhotilde_i - rhotilde_j) *
+                                 mod_G / mean_rho;
+      drho_dt_norm_and_difn_j += -(a_difn_rho + b_difn_rho * mean_balsara) * mi *
+                                 (pj->rho / pi->rho) * v_sig_difn * (rhotilde_j - rhotilde_i) *
+                                 mod_G / mean_rho;
     }
 
     pi->drho_dt += drho_dt_norm_and_difn_i;
     pj->drho_dt += drho_dt_norm_and_difn_j;
   }
+
+  #ifdef SWIFT_HYDRO_DENSITY_CHECKS
+    pi->n_force += wi + wj;
+    pj->n_force += wi + wj;
+    pi->N_force++;
+    pj->N_force++;
+  #endif
 }
 
 /**
@@ -472,26 +426,18 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   float wj, wj_dx;
   kernel_deval(xj, &wj, &wj_dx);
 
-  /* Compute the G and Q gradient and viscosity factors, either using matrix
-   * inversions or standard GDF SPH */
-
-  /* G[3] is the kernel gradient term. Takes the place of eq 7 in Wadsley+2017
-  or the average of eq 4 and 5 in Rosswog 2020 (as described below eq 11) */
-  float Gj[3], Gi[3];
+  // Linear-order reproducing kernel gradient term
+  float Gj[3], Gi[3], G_mean[3];
   hydro_set_Gi_Gj_forceloop(Gi, Gj, pi, pj, dx, wi, wj, wi_dx, wj_dx);
+  for (int i = 0; i < 3; i++) {
+      G_mean[i] = 0.5f * (Gi[i] + Gj[i]);
+  }
 
-  /* Calculate the viscous pressures Q */
+  // Viscous pressures
   float Qi, Qj;
   float visc_signal_velocity, difn_signal_velocity;
   hydro_set_Qi_Qj(&Qi, &Qj, &visc_signal_velocity, &difn_signal_velocity, pi,
                   pj, dx, a, H);
-
-  /* set kernel gradient terms to be used in eolution equations */
-  float kernel_gradient_i[3], kernel_gradient_j[3];
-  float Q_kernel_gradient_i[3], Q_kernel_gradient_j[3];
-  hydro_set_kernel_gradient_terms(dx, kernel_gradient_i, kernel_gradient_j,
-                                  Q_kernel_gradient_i, Q_kernel_gradient_j, Gi,
-                                  Gj);
 
   /* Pressure terms to be used in evolution equations */
   float P_i_term = pressurei / (pi->rho * pj->rho);
@@ -500,85 +446,76 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   float Q_j_term = Qj / (pi->rho * pj->rho);
 
   /* Use the force Luke! */
-  pi->a_hydro[0] -=
-      mj *
-      (P_i_term * kernel_gradient_i[0] + P_j_term * kernel_gradient_j[0] +
-       Q_i_term * Q_kernel_gradient_i[0] + Q_j_term * Q_kernel_gradient_j[0]);
-  pi->a_hydro[1] -=
-      mj *
-      (P_i_term * kernel_gradient_i[1] + P_j_term * kernel_gradient_j[1] +
-       Q_i_term * Q_kernel_gradient_i[1] + Q_j_term * Q_kernel_gradient_j[1]);
-  pi->a_hydro[2] -=
-      mj *
-      (P_i_term * kernel_gradient_i[2] + P_j_term * kernel_gradient_j[2] +
-       Q_i_term * Q_kernel_gradient_i[2] + Q_j_term * Q_kernel_gradient_j[2]);
+  for (int i = 0; i < 3; i++) {
+      pi->a_hydro[i] -= mj * (P_i_term + P_j_term + Q_i_term + Q_j_term) * G_mean[i];
+  }
 
-  /* dx dot kernel gradient term needed for du/dt in e.g. eq 13 of Wadsley and
-   * equiv*/
-  const float dvdG_i = (pi->v[0] - pj->v[0]) * kernel_gradient_i[0] +
-                       (pi->v[1] - pj->v[1]) * kernel_gradient_i[1] +
-                       (pi->v[2] - pj->v[2]) * kernel_gradient_i[2];
-  const float Q_dvdG_i = (pi->v[0] - pj->v[0]) * Q_kernel_gradient_i[0] +
-                         (pi->v[1] - pj->v[1]) * Q_kernel_gradient_i[1] +
-                         (pi->v[2] - pj->v[2]) * Q_kernel_gradient_i[2];
+  // v_ij dot kernel gradient term
+  const float dvdotG = (pi->v[0] - pj->v[0]) * G_mean[0] +
+                       (pi->v[1] - pj->v[1]) * G_mean[1] +
+                       (pi->v[2] - pj->v[2]) * G_mean[2];
 
   /* Get the time derivative for u, including the viscosity */
-  float du_dt_i = P_i_term * dvdG_i + Q_i_term * Q_dvdG_i;
+  float du_dt_i = (P_i_term + Q_i_term) * dvdotG;
 
   /* Internal energy time derivative */
   pi->u_dt += du_dt_i * mj;
 
   /* Get the time derivative for h. */
-  pi->force.h_dt -= mj * dvdG_i / rhoj;
+  pi->force.h_dt -= mj * dvdotG / rhoj;
 
   const float v_sig = visc_signal_velocity;
 
   /* Update the signal velocity. */
   pi->force.v_sig = max(pi->force.v_sig, v_sig);
 
-  pi->drho_dt += mj * (pi->rho / pj->rho) * dvdG_i;
+  pi->drho_dt += mj * (pi->rho / pj->rho) * dvdotG;
 
-#ifdef SWIFT_HYDRO_DENSITY_CHECKS
-  pi->n_force += wi + wj;
-  pi->N_force++;
-#endif
-  if (!pi->is_h_max && !pj->is_h_max) {
+  if ((!pi->is_h_max) && (!pj->is_h_max)) {
     float mean_rho = 0.5f * (pi->rho + pj->rho);
-    float mean_G =
-        0.5f * sqrtf((kernel_gradient_i[0] + kernel_gradient_j[0]) *
-                         (kernel_gradient_i[0] + kernel_gradient_j[0]) +
-                     (kernel_gradient_i[1] + kernel_gradient_j[1]) *
-                         (kernel_gradient_i[1] + kernel_gradient_j[1]) +
-                     (kernel_gradient_i[2] + kernel_gradient_j[2]) *
-                         (kernel_gradient_i[2] + kernel_gradient_j[2]));
+    float mean_balsara = 0.5f * (pi->force.balsara + pj->force.balsara);
+    float mod_G = sqrtf(G_mean[0] * G_mean[0] + G_mean[1] * G_mean[1] + G_mean[2] * G_mean[2]);
 
     float v_sig_norm = sqrtf((pi->v[0] - pj->v[0]) * (pi->v[0] - pj->v[0]) +
                              (pi->v[1] - pj->v[1]) * (pi->v[1] - pj->v[1]) +
                              (pi->v[2] - pj->v[2]) * (pi->v[2] - pj->v[2]));
-    float alpha_rho = 1.f;
+
+    const float alpha_norm = viscosity_global.alpha_norm;
     float drho_dt_norm_and_difn_i =
-        alpha_rho * mj * v_sig_norm * pi->vac_switch *
-        (pi->m0_no_mean_kernel * pi->rho_evolved - pi->rho_evolved) * mean_G /
-        mean_rho;
+        alpha_norm * mj * v_sig_norm *
+        pi->force.vac_switch * (pi->m0 * pi->rho_evol - pi->rho_evol) * mod_G / mean_rho;
 
+    // Diffusion for same materials
     if (pi->mat_id == pj->mat_id) {
-      float utilde_i, utilde_j, rhotilde_i, rhotilde_j;
-      hydro_set_u_rho_difn(&utilde_i, &utilde_j, &rhotilde_i, &rhotilde_j, pi,
-                           pj, dx, a, H);
-      float v_sig_difn = difn_signal_velocity;
-      float alpha_u = 1.f;
-      float du_dt_difn_i = -alpha_u * mj * v_sig_difn * (utilde_i - utilde_j) *
-                           mean_G / mean_rho;
+      // Diffusion parameters
+      const float a_difn_rho = viscosity_global.a_difn_rho;
+      const float b_difn_rho = viscosity_global.b_difn_rho;
+      const float a_difn_u = viscosity_global.a_difn_u;
+      const float b_difn_u = viscosity_global.b_difn_u;
 
+      // ...
+      float utilde_i, utilde_j, rhotilde_i, rhotilde_j;
+      hydro_set_u_rho_difn(&utilde_i, &utilde_j, &rhotilde_i, &rhotilde_j, pi, pj, dx, a, H);
+      float v_sig_difn = difn_signal_velocity;
+      float du_dt_difn_i = -(a_difn_u + b_difn_u * mean_balsara) * mj * v_sig_difn *
+                           (utilde_i - utilde_j) * mod_G / mean_rho;
+
+      // ...
       pi->u_dt += du_dt_difn_i;
 
-      drho_dt_norm_and_difn_i += -alpha_rho * mj * (pi->rho / pj->rho) *
-                                 v_sig_difn * (rhotilde_i - rhotilde_j) *
-                                 mean_G / mean_rho;
+      // ...
+      drho_dt_norm_and_difn_i += -(a_difn_rho + b_difn_rho * mean_balsara) * mj *
+                                 (pi->rho / pj->rho) * v_sig_difn * (rhotilde_i - rhotilde_j) *
+                                 mod_G / mean_rho;
     }
 
     pi->drho_dt += drho_dt_norm_and_difn_i;
   }
+
+  #ifdef SWIFT_HYDRO_DENSITY_CHECKS
+    pi->n_force += wi + wj;
+    pi->N_force++;
+  #endif
 }
 
 #endif /* SWIFT_PLANETARY_HYDRO_IACT_H */
