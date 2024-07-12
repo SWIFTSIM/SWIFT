@@ -9,13 +9,21 @@
 Model summary
 -------------
 
+.. figure:: sink_scheme.png
+    :width: 400px
+    :align: center
+    :figclass: align-center
+    :alt: Illustration of the sink scheme.
+
+    This figure illustrates the sink scheme. Eligible gas particles (blue) are converted to sink particles (orange). Then, the sink searches for eligible gas/sink particles (red edges) to swallow and finally accretes them. The final step is to spawn star particles (yellow) by sampling an IMF. These stars represent a continuous portion of the IMF or an individual star (the figure does not distinguish the two types of stars).
+
 Here, we provide a comprehensive summary of the model. Sink particles are an alternative to the current model of star formation that transforms gas particles into sink particles under some criteria explained below. Then, the sink can accrete gas and spawn stars. Sink particles are collisionless particles, i.e. they interact with other particles only through gravity. They can be seen as particles representing unresolved regions of collapse. 
 
-To spawn stars, an IMF is sampled. Details explanation of the IMF sampling are explained below. In short, the IMF is split into two parts In the lower part, star particles represent a continuous stellar population in a similar way to what is currently implemented in common models. In the second upper part, star particles represent individual stars. Then, the feedback is improved to take into account both types of stars. Currently, only supernovae feedback is implemented. The sink particle method allows thus to track the effect of the supernovae of individual stars in the simulation.
+We sample an IMF to draw the stars' mass and spawn them stochastically. Below, we provide a detailed explanation of the IMF sampling. In short, we split the IMF into two parts. In the lower part, star particles represent a continuous stellar population, similar to what is currently implemented in standard models. In the second upper part, star particles represent individual stars. Then, the feedback is improved to take into account both types of stars. Currently, only supernovae feedback is implemented. Thus, the sink particle method allows us to track the effects of individual stars' supernovae in the simulation. 
 
-The current model includes sink formation, gas accretion, sink merging, IMF sampling, star spawning and finally supernovae feedback (type Ia and II). 
+The current model includes sink formation, gas accretion, sink merging, IMF sampling, star spawning and finally supernovae feedback (type Ia and II). The figures below illustrates the scheme and the associated tasks.
 
-Our main references are the following papers `Bate et al. <https://ui.adsabs.harvard.edu/abs/1995MNRAS.277..362B/abstract>`_, `Price et al. <https://ui.adsabs.harvard.edu/abs/2018PASA...35...31P/abstract>`_ and `Federrath et al. <https://ui.adsabs.harvard.edu/abs/2010ApJ...713..269F/abstract>`_
+Our main references are the following papers: `Bate et al. <https://ui.adsabs.harvard.edu/abs/1995MNRAS.277..362B/abstract>`_, `Price et al. <https://ui.adsabs.harvard.edu/abs/2018PASA...35...31P/abstract>`_ and `Federrath et al. <https://ui.adsabs.harvard.edu/abs/2010ApJ...713..269F/abstract>`_
 
 .. figure:: ../../../Task/sink.png
     :width: 400px
