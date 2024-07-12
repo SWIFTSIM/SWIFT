@@ -206,7 +206,9 @@ Thus, the algorithm to sample the IMF and five the sink their ``target_mass`` is
 
 We have assumed that we have a function ``sample_IMF_high()`` that correctly samples the IMF in the discrete part.
 
-Now, what happens to the sink? After a first sink forms, we give it a target mass with the algorithm outlined above. The sink then swallows gas particles (see the task graph at the top of the page) and finally spawns stars.  While the sink possesses enough mass, we can continue to choose a new target mass. When the sink does have enough mass, the algorithm stops for this timestep. The next timestep, the sink may accrete gas and spawn stars again. If the sink never reaches the target mass, then it cannot spawn stars. In practice, however, sink particles could accumulate enough pass to spawn individual (Pop III) stars with masses 240 :math:`M_\odot` and more! 
+Now, what happens to the sink? After a first sink forms, we give it a target mass with the algorithm outlined above. The sink then swallows gas particles (see the task graph at the top of the page) and finally spawns stars.  While the sink possesses enough mass, we can continue to choose a new target mass. When the sink does have enough mass, the algorithm stops for this timestep. The next timestep, the sink may accrete gas and spawn stars again. If the sink never reaches the target mass, then it cannot spawn stars. In practice, however, sink particles could accumulate enough pass to spawn individual (Pop III) stars with masses 240 :math:`M_\odot` and more!
+
+As explained at the beginning of this section, GEAR uses two IMFs, for the population II and III stars. The latter are called first stars in the code. How does a sink decide which IMF to draw the target mass from? We define a threshold metallicity, ``GEARFeedback:imf_transition_metallicity`` that determines the first stars' maximal metallicity. When the sink particle's metallicity exceeds this threshold, it uses the population II IMF, defined in ``GEARFeedback:yields_table``.
 
 Star spawning
 ~~~~~~~~~~~~~
