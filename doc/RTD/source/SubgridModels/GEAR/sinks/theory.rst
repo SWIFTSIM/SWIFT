@@ -89,7 +89,7 @@ So, the other criteria are the following:
 4. Gas surrounding the particle is at rest or collapsing: :math:`\nabla \cdot \mathbf{v}_{i, p} \leq 0`. (Optional)
 5. The smoothing kernel's edge of the particle is less than the accretion radius: :math:`\gamma_k h_i < r_{\text{acc}}`, where :math:`\gamma_k` is kernel dependent. (Optional)
 6. All neighbours are currently active.
-7. The sum of the thermal of the neighbours satisfies: :math:`E_{\text{therm}} < |E_{\text{pot}}|/2`. (Optional, together with criterion 8.)
+7. The thermal energy of the neighbours satisfies: :math:`E_{\text{therm}} < |E_{\text{pot}}|/2`. (Optional, together with criterion 8.)
 8. The sum of thermal energy and rotational energy satisfies: :math:`E_{\text{therm}} + E_{\text{rot}} < | E_{\text{pot}}|`. (Optional, together with criterion 7.)
 9. The total energy of the neighbours is negative, i.e. the clump is bound to the sink: :math:`E_{\text{tot}} < 0`. (Optional)
 10. Forming a sink here will not overlap an existing sink :math:`s`: :math:`\left| \mathbf{x}_i - \mathbf{x}_s \right| > r_{\text{acc}, i} + r_{\text{acc}, s}`. (Optional)
@@ -119,7 +119,7 @@ Some comments about the criteria:
 
 The third criterion is mainly here to prevent two sink particles from forming at a distance smaller than the sink accretion radius. Since we allow sinks to merge, such a situation raises the question of which sink should swallow the other. This can depend on the order of the tasks, which is not a desirable property. As a result, this criterion is enforced.
 
-The tenth criterion prevents the formation of spurious sinks. Experiences have shown that removing gas within the accretion radius biases the hydro density estimates: the gas feels a force toward the sink. At some point, there is an equilibrium and gas particles accumulate at the edge of the accretion radius, which can then spawn sink particles that do not fall onto the primary sink and never merge. *This criterion can be disabled*. 
+The tenth criterion prevents the formation of spurious sinks. Experiences have shown that removing gas within the accretion radius biases the hydro density estimates: the gas feels a force toward the sink. At some point, there is an equilibrium and gas particles accumulate at the edge of the accretion radius, which can then spawn sink particles that do not fall onto the primary sink and never merge. Moreover, the physical reason behind this criterion is that a sink represents a region of collapse. As a result, there is no need to have many sinks occupying the same space volume. They would compete for gas accretion without necessarily merging. This cirterion is particularly meaningful in cosmological simulations to ensure proper sampling of the IMF. *This criterion can be disabled*.
 
 .. note::
   However, notice that contrary to  `Bate et al. <https://ui.adsabs.harvard.edu/abs/1995MNRAS.277..362B/abstract>`_, no boundary conditions for sink particles are introduced in the hydrodynamics calculations.
