@@ -42,16 +42,18 @@ Our main references are the following papers: `Bate et al. <https://ui.adsabs.ha
 Conversion from comoving to physical space
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-In the following, we always refer to physical quantities. In non-cosmological simulations, there is no ambiguity between comoving and physical quantities, since the universe is not expanding and thus the scale factor is :math:`a(t)=1`. However, in cosmological simulation, we need to take care to convert from comoving quantities to physical ones when needed, e.g. to compute energies. Here is a recap:
+In the following, we always refer to physical quantities. In non-cosmological simulations, there is no ambiguity between comoving and physical quantities since the universe is not expanding, and thus, the scale factor is :math:`a(t)=1`. However, in cosmological simulation, we need to convert from comoving quantities to physical ones when needed, e.g. to compute energies. We denote physical quantities by the subscript `p` and comoving ones by `c`. Here is a recap:
 
-* :math:`\mathbf{x}_p = \mathbf{x}_ca`
+* :math:`\mathbf{x}_p = \mathbf{x}_c a`
 * :math:`\mathbf{v}_p = \mathbf{v}_c/a + a H \mathbf{x}_c`
 * :math:`\rho_p = \rho_c/a^3`
 * :math:`\Phi_p = \Phi_c/a + c(a)`
+* :math:`u_p = u_c/a^{3(\gamma -1)}`
 
-Here, the subscript `p` stands for physical and `c` for comoving. 
 
-Notice that the potential normalization constant has been chosen to be :math:`c(a) = 0`. 
+Here, :math:`H` is the Hubble constant at any redshift, :math:`c(a)` is the potential normalization constant and :math:`\gamma` the gas adiabatic index.
+
+Notice that the potential normalization constant has been chosen to be :math:`c(a) = - \ddot{a} a  \mathbf{x}_c^2 / 2`.
 
 
 Sink formation
