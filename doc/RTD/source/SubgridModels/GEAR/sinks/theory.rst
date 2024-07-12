@@ -3,9 +3,6 @@
 
 .. sink_GEAR_model:
 
-.. warning::
-  This page is under construction. It may lack information. 
-
 Model summary
 -------------
 
