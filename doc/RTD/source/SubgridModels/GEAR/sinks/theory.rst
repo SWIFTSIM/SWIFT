@@ -169,11 +169,16 @@ Once a gas is eligible for accretion, its properties are assigned to the sink. T
 Sink merging
 ~~~~~~~~~~~~
 
-Sinks are allowed to merge if they enter the accretion radius. Two sink particles can be merged if:
+Sinks are allowed to merge if they enter one's accretion radius. We merge two sink particles if they respect a set of criteria. The criteria are similar to the gas particles, namely:
 
-* One of the sink particles must be bound to the other. 
+#. If one of the sinks falls within the other's inner accretion radius, :math:`f_{\text{acc}} r_{\text{acc}}` (:math:`0 \leq f_{\text{acc}} \leq 1`), the sinks are merged without further check.
+#. In the region  :math:`f_{\text{acc}} r_{\text{acc}} \leq |\mathbf{x}_i| \leq r_{\text{acc}}`, then, we check:
 
-In this case, the sink with the smallest mass is merged with the sink with the largest. If the two sinks have the same mass, we check the sink ID number and accrete the smallest ID onto the biggest one. 
+   #. One sink is gravitationally bound to the other: :math:`E_{\text{mec}, ss'} < 0` or  :math:`E_{\text{mec}, s's} < 0`.
+
+We compute the total energies in the same manner as gas particles, with the difference that we do not use internal energy. Notice that we have two energies: each sink has a different potential energy since their mass can differ.
+
+When sinks merge, the sink with the smallest mass merges with the sink with the largest. If the two sinks have the same mass, we check the sink ID number and add the smallest ID to the biggest one.
 
 IMF sampling
 ~~~~~~~~~~~~
