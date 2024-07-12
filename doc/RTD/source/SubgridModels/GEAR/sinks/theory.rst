@@ -213,7 +213,11 @@ As explained at the beginning of this section, GEAR uses two IMFs for the popula
 Star spawning
 ~~~~~~~~~~~~~
 
-Once the sink spawns a star particle, we need to give properties to the star. From the sink, the star inherits the chemistry properties. Concerning position, the star is currently put at the same location as the sink and the sink is moved by a small distance (randomly chosen) to avoid the two particles from overlapping. The star’s velocity is the same as the sink’s one. This model will be improved in a future update. 
+Once the sink spawns a star particle, we need to give properties to the star. From the sink, the star inherits the chemistry properties. The star is placed randomly within the sink's accretion radius. We draw the star's velocity components from a Gaussian distribution with mean :math:`\mu = 0` and standard deviation :math:`\sigma` determined as follows:
+
+:math:`\sigma = f \cdot \sqrt{\frac{G_N M_s}{r_{\text{acc}}}}`,
+
+where :math:`G_N` is Newton's gravitational constant, math:`M_s` is the sink's mass before starting to spawn stars, and math:`f` is a user-defined scaling factor. The latter corresponds to the ``star_spawning_sigma_factor`` parameter.
 
 
 Stellar feedback
