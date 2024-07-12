@@ -25,6 +25,9 @@ The current model includes sink formation, gas accretion, sink merging, IMF samp
 
 Our main references are the following papers: `Bate et al. <https://ui.adsabs.harvard.edu/abs/1995MNRAS.277..362B/abstract>`_, `Price et al. <https://ui.adsabs.harvard.edu/abs/2018PASA...35...31P/abstract>`_ and `Federrath et al. <https://ui.adsabs.harvard.edu/abs/2010ApJ...713..269F/abstract>`_
 
+.. note::
+   Sink examples are available in ``examples/SinkParticles/``. They include self-gravity, cooling and feedback effects.
+
 .. figure:: ../../../Task/sink.png
     :width: 400px
     :align: center
