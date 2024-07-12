@@ -189,17 +189,17 @@ IMF sampling
     :figclass: align-center
     :alt: Initial mass function split into the continuous and discrete part. 
 
-    This figure shows an IMF split into two parts: the continuous (orange) and the discrete (blue) part.
+    This figure shows an IMF split into two parts by :math:`m_t`: the continuous (orange) and the discrete (blue) part.
 
 Now remains one critical question: how are stars formed in this scheme? Simply, by sampling an IMF. 
 In our scheme, population III stars and population II have two different IMFs. For the sake of simplicity, in the following presentation, we consider only the case of population II stars. However, this can be easily generalized to population III. 
 
-Consider an IMF such as the one above. We split it into two parts at ``minimal_discrete_masss``. The reason behind this is that we want to spawn star particles that represent *individual* (massive) stars, i.e. they are "discrete". However, for computational reasons, we cannot afford to spawn every star of the IMF as a single particle. Since the IMF is dominated by low-mass stars (< 8 :math:`M_\odot` and even smaller) that do not end up in supernovae, we would have lots of "passive" stars. 
+Consider an IMF such as the one above. We split it into two parts at ``minimal_discrete_masss`` (called :math:`m_t` on the illustration). The reason behind this is that we want to spawn star particles that represent *individual* (massive) stars, i.e. they are "discrete". However, for computational reasons, we cannot afford to spawn every star of the IMF as a single particle. Since the IMF is dominated by low-mass stars (< 8 :math:`M_\odot` and even smaller) that do not end up in supernovae, we would have lots of "passive" stars.
 
 .. note::
-   Recall that currently (April 2024), GEAR only implements SNIa and SNII as stellar feedback. Stars that do not undergo supernovae phases are "passive" in the current implementation. 
+   Recall that currently (July 2024), GEAR only implements SNIa and SNII as stellar feedback. Stars that do not undergo supernovae phases are "passive" in the current implementation.
 
-As a result, we group all those low-mass stars in one stellar particle of mass ``stellar_particle_mass``. Such star particles are called "continuous", contrary to the "discrete" individual stars.  With all that information, we can compute the number of stars in the continuous part of the IMF (called :math:`N_c`) and in the discrete part (called :math:`N_d`). Finally, we can compute the probabilities of each part, respectively called :math:`P_c` and :math:`P_d`. Notice that the mathematical derivation is given in the theory latex files. 
+As a result, we group all those low-mass stars in one stellar particle of mass ``stellar_particle_mass``. Such star particles are called "continuous", contrary to the "discrete" individual stars.  With all that information, we can compute the number of stars in the continuous part of the IMF (called :math:`N_c`) and in the discrete part (called :math:`N_d`). Finally, we can compute the probabilities of each part, respectively called :math:`P_c` and :math:`P_d`. Notice that the mathematical derivation is given in the theory latex files.
 
 Thus, the algorithm to sample the IMF and five the sink their ``target_mass`` is the following :
 
