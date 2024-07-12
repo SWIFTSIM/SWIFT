@@ -232,4 +232,4 @@ In the previous model, star particles represented a population of stars with a d
 
 **Discrete star particles:** Since we now have individual star particles, we can easily track SNII feedback for stars with a mass larger than 8 :math:`M_\odot`. When a star's age reaches its lifetime, it undergoes SNII feedback.
 
-**Continuous star particles**: In this case, we implemented SNII and SNIa as in the previous model. At each timestep, we determine the number of SN explosions occurring. In practice, this means that we can set the ``minimal_discrete_masss``to any value, and the code takes care of the rest.
+**Continuous star particles**: In this case, we implemented SNII and SNIa as in the previous model. At each timestep, we determine the number of SN explosions occurring. In practice, this means that we can set the ``minimal_discrete_masss`` to any value, and the code takes care of the rest.
