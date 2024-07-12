@@ -144,19 +144,19 @@ The physical specific angular momenta and the total energy are given by:
 
 * :math:`\mathbf{L}_{si} = ( \mathbf{x}_{s, p} - \mathbf{x}_{i, p}) \times ( \mathbf{v}_{s, p} - \mathbf{x}_{i, p})`,
 * :math:`|\mathbf{L}_{\text{Kepler}}| = r_{\text{acc}, p} \cdot \sqrt{G_N m_s / |\mathbf{x}_{s, p} - \mathbf{x}_{i, p}|^3}`.
-* :math:`E_{\text{tot}} = \frac{1}{2}  (\mathbf{v}_{s, p} - \mathbf{x}_{i, p})^2 - G_N \Phi(|\mathbf{x}_{s, p} - \mathbf{x}_{i, p}|)`.
+* :math:`E_{\text{tot}} = \frac{1}{2}  (\mathbf{v}_{s, p} - \mathbf{x}_{i, p})^2 - G_N \Phi(|\mathbf{x}_{s, p} - \mathbf{x}_{i, p}|) + m_i u_{i, p}`.
 
 .. note::
    Here the potential is the softened potential of Swift.
 
-Those criteria are similar to `Price et al. <https://ui.adsabs.harvard.edu/abs/2018PASA...35...31P/abstract>`_.
+Those criteria are similar to `Price et al. <https://ui.adsabs.harvard.edu/abs/2018PASA...35...31P/abstract>`_, with the addition of the internal energy. This term ensures that the gas is cold enough to be accreted. Its main purpose is to avoid gas accretion and star spawning in hot regions far from sink/star-forming regions, which can happen, e.g., if a sink leaves a galaxy.
 
 Once a gas is eligible for accretion, its properties are assigned to the sink. The sink accretes the *entire* gas particle mass and its properties are updated in the following way:
 
 * :math:`\displaystyle \mathbf{v}_{s, c} = \frac{m_s \mathbf{v}_{s, c} + m_i \mathbf{v}_{i, c}}{m_s + m_i}`,
 * Swallowed physical angular momentum:  :math:`\mathbf{L}_{\text{acc}} = \mathbf{L}_{\text{acc}} + m_i( \mathbf{x}_{s, p} - \mathbf{x}_{i, p}) \times ( \mathbf{v}_{s, p} - \mathbf{x}_{i, p})`,
-* The chemistry data are transferred from the gas to the sink.
-* :math:`m_s = m_s + m_i`,
+* :math:`X_{Z, s} = X_{Z,i} m_i + X_{Z,s} m_s`, the metal mass fraction for each element,
+* :math:`m_s = m_s + m_i`.
 
 .. figure:: sink_overlapping.png
     :width: 400px
