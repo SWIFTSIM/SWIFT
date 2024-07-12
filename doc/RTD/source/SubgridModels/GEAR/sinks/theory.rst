@@ -75,7 +75,7 @@ The primary criteria required to transform a gas particle into a sink are:
 
 The first criterion is common but not the second one. This is checked to ensure that sink particles, and thus stars, are not generated in hot regions. The parameters for those threshold quantities are respectively called ``density_threshold`` and ``maximal_temperature``.
 
-Then, further criteria are checked. They are always checked for gas particles within the accretion radius :math:`r_{\text{acc}}` (also called the cut-off radius) of a given gas particle :math:`i`. Such gas particles are called *neighbours*.
+Then, further criteria are checked. They are always checked for gas particles within the accretion radius :math:`r_{\text{acc}}` (called the ``cut_off_radius`` in the parameter file) of a given gas particle :math:`i`. Such gas particles are called *neighbours*.
 
 .. note::
    Notice that in the current implementation, the accretion radius is kept *fixed and the same* for all sinks. However, for the sake of generality, the mathematical expressions are given as if the accretion radii could be different. 
