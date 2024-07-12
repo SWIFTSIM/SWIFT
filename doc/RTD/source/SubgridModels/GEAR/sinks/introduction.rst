@@ -17,7 +17,9 @@ In ``theory.rst`` we outline all of the theory which is implemented as part of t
 Compiling and running the model
 -------------------------------
 
-You can configure the model with ``--with-sink=GEAR`` in combination with other configure options of the GEAR model. The model will then be used when the ``--sinks`` flag is among the runtime options.
+You can configure the model with ``--with-sink=GEAR`` in combination with other configure options of the GEAR model. The model will then be used when the ``--sinks`` flag is among the runtime options. In particular, the sink particles require ``--feedback`` runtime option.
+
+Notice that you also need to compile with ``--with-star-formation=GEAR``. The star formation module is required to collect and write star formation data. However, you do not need to run Swift with the option ``--star-formation``.
 
 Then, you do not need to do anything special. Sink particles will be created during your runs. If you want, you can have sink particles in your ICs. At the moment, sink particles do not have any special fields to be set.
 
