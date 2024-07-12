@@ -1,7 +1,8 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2016 Matthieu Schaller (schaller@strw.leidenuniv.nl)
- *               2018   Jacob Kegerreis (jacob.kegerreis@durham.ac.uk).
+ * Copyright (c) 2024 Thomas Sandnes (thomas.d.sandnes@durham.ac.uk)
+ *               2024 Jacob Kegerreis (jacob.kegerreis@durham.ac.uk)
+ *               2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -22,15 +23,7 @@
 
 /**
  * @file Planetary/hydro_part.h
- * @brief Minimal conservative implementation of SPH (Particle definition)
- *
- * The thermal variable is the internal energy (u). Simple constant
- * viscosity term with the Balsara (1995) switch (optional).
- * No thermal conduction term is implemented.
- *
- * This corresponds to equations (43), (44), (45), (101), (103)  and (104) with
- * \f$\beta=3\f$ and \f$\alpha_u=0\f$ of Price, D., Journal of Computational
- * Physics, 2012, Volume 231, Issue 3, pp. 759-794.
+ * @brief REMIX implementation of SPH (Sandnes et al. 2024)
  */
 
 #include "black_holes_struct.h"
@@ -72,7 +65,7 @@ struct xpart {
   float u_full;
 
   /*! Evolved density at the last full step. */
-  float rho_evolved_full;
+  float rho_evol_full;
 
   /*! Additional data used to record particle splits */
   struct particle_splitting_data split_data;
@@ -130,26 +123,32 @@ struct part {
   /*! Time derivative of the internal energy. */
   float u_dt;
 
-  /*! Particle density. */
+  /*! Particle density (standard SPH estimate). */
   float rho;
 
-  float rho_evolved;
+  /*! Particle evolved density (primary density for REMIX equations). */
+  float rho_evol;
 
+  /*! Time derivative of the evolved density. */
   float drho_dt;
 
-  float vac_switch;
-
+  /*! Gradient of velocity, calculated using normalised kernel. */
   float dv_norm_kernel[3][3];
 
+  /*! Gradient of internal energy, calculated using normalised kernel. */
   float du_norm_kernel[3];
 
+  /*! Gradient of density, calculated using normalised kernel. */
   float drho_norm_kernel[3];
 
+  /*! Gradient of smoothing length, calculated using normalised kernel. */
   float dh_norm_kernel[3];
 
-  float m0_no_mean_kernel;
+  /*! Geometric moment m_0. */
+  float m0;
 
-  float grad_m0_no_mean_kernel[3];
+  /*! Gradient of geometric moment m_0. */
+  float grad_m0[3];
 
   /* Store density/force specific stuff. */
   union {
@@ -183,27 +182,32 @@ struct part {
      */
     struct {
 
-      float m0;
+      /*! Symmetrised kernel geometric moment m0. */
+      float m0_bar;
 
-      float m1[3];
+      /*! Gradient of symmetrised kernel geometric moment m0. */
+      float grad_m0_bar[3];
 
-      float grad_m0[3];
+      /*! Contributing term for grad-h component of grad_m0_bar. */
+      float grad_m0_bar_gradhterm;
 
-      float grad_m1_term1[3][3];
+      /*! Symmetrised kernel geometric moment m1. */
+      float m1_bar[3];
 
-      float grad_m0_gradhterm;
+      /*! Gradient of symmetrised kernel geometric moment m1. */
+      float grad_m1_bar[3][3];
 
-      float grad_m1_term1_gradhterm[3];
+      /*! Contributing term for grad-h component of grad_m1_bar. */
+      float grad_m1_bar_gradhterm[3];
 
-      struct sym_matrix m2;
+      /*! Symmetrised kernel geometric moment m2. */
+      struct sym_matrix m2_bar;
 
-      struct sym_matrix grad_m2_term1_x;
+      /*! Gradient of symmetrised kernel geometric moment m2 (x, y, z components). */
+      struct sym_matrix grad_m2_bar[3];
 
-      struct sym_matrix grad_m2_term1_y;
-
-      struct sym_matrix grad_m2_term1_z;
-
-      struct sym_matrix grad_m2_term1_gradhterm;
+      /*! Contributing term for grad-h component of grad_m2_bar. */
+      struct sym_matrix grad_m2_bar_gradhterm;
 
     } gradient;
 
@@ -231,15 +235,20 @@ struct part {
       /*! Balsara switch */
       float balsara;
 
-      float eta_crit;
-
+      /*! Linear-order reproducing kernel coefficient */
       float A;
 
+      /*! Linear-order reproducing kernel coefficient */
       float B[3];
 
+      /*! Gradient of linear-order reproducing kernel coefficient */
       float grad_A[3];
 
+      /*! Gradient of linear-order reproducing kernel coefficient */
       float grad_B[3][3];
+
+      /*! Variable switch to identify proximity to vacuum boundaries. */
+      float vac_switch;
 
     } force;
   };
@@ -274,7 +283,7 @@ struct part {
   /*! Time-step limiter information */
   struct timestep_limiter_data limiter_data;
 
-  /* flag 1 if h=h_max 0 if not */
+  /* Whether or not the particle has h=h_max ('1' or '0') */
   char is_h_max;
 
 #ifdef SWIFT_DEBUG_CHECKS
