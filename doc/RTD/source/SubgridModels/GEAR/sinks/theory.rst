@@ -217,7 +217,7 @@ Once the sink spawns a star particle, we need to give properties to the star. Fr
 
 :math:`\sigma = f \cdot \sqrt{\frac{G_N M_s}{r_{\text{acc}}}}`,
 
-where :math:`G_N` is Newton's gravitational constant, math:`M_s` is the sink's mass before starting to spawn stars, and math:`f` is a user-defined scaling factor. The latter corresponds to the ``star_spawning_sigma_factor`` parameter.
+where :math:`G_N` is Newton's gravitational constant, math:`M_s` is the sink's mass before starting to spawn stars, and :math:`f` is a user-defined scaling factor. The latter corresponds to the ``star_spawning_sigma_factor`` parameter.
 
 
 Stellar feedback
@@ -227,6 +227,8 @@ Stellar feedback *per se* is not in the sink module but in the feedback one. How
 
 All details and explanations about GEAR stellar feedback are provided in the GEAR :ref:`gear_feedback` section. Here, we only provide the changes from the previous model. 
 
-In the previous model, star particles represented a population of stars with a defined IMF. Now, we have two kinds of star particles: particles representing a *continuous* portion of the IMF (see the image above) and particles representing a *single* (discrete) star. This requires updating the feedback model such that stars eligible for SN feedback can realise this feedback. In practice, this means that now we have individual SNII feedback for individual stars with a mass larger than 8  :math:`M_\odot`. 
+In the previous model, star particles represented a population of stars with a defined IMF. Now, we have two kinds of star particles: particles representing a *continuous* portion of the IMF (see the image above) and particles representing a *single* (discrete) star. This new model requires updating the feedback model so that stars eligible for SN feedback can realise this feedback.
 
-SNIa feedback is not yet implemented for the continuous star particle, but it will be in a future update. 
+**Discrete star particles:** Since we now have individual star particles, we can easily track SNII feedback for stars with a mass larger than 8 :math:`M_\odot`. When a star's age reaches its lifetime, it undergoes SNII feedback.
+
+**Continuous star particles**: In this case, we implemented SNII and SNIa as in the previous model. At each timestep, we determine the number of SN explosions occurring. In practice, this means that we can set the ``minimal_discrete_masss``to any value, and the code takes care of the rest.
