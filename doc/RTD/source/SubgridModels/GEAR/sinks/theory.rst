@@ -215,7 +215,8 @@ Star spawning
 
 Once the sink spawns a star particle, we need to give properties to the star. From the sink, the star inherits the chemistry properties. The star is placed randomly within the sink's accretion radius. We draw the star's velocity components from a Gaussian distribution with mean :math:`\mu = 0` and standard deviation :math:`\sigma` determined as follows:
 
-:math:`\sigma = f \cdot \sqrt{\frac{G_N M_s}{r_{\text{acc}}}}`,
+.. math::
+   \sigma = f \cdot \sqrt{\frac{G_N M_s}{r_{\text{acc}}}} \; ,
 
 where :math:`G_N` is Newton's gravitational constant, math:`M_s` is the sink's mass before starting to spawn stars, and :math:`f` is a user-defined scaling factor. The latter corresponds to the ``star_spawning_sigma_factor`` parameter.
 
