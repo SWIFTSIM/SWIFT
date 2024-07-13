@@ -116,7 +116,7 @@ INLINE static void sink_write_particles(const struct sink* sinks,
                                         int with_cosmology) {
 
   /* Say how much we want to write */
-  *num_fields = 8;
+  *num_fields = 7;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_sink(
@@ -134,12 +134,6 @@ INLINE static void sink_write_particles(const struct sink* sinks,
   list[3] =
       io_make_output_field("ParticleIDs", ULONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f,
                            sinks, id, "Unique ID of the particles");
-
-  /* chemistry : this should be in chemistry_io.h */
-  /* list[4] = io_make_output_field( */
-  /*     "MetalMassFractions", DOUBLE, GEAR_CHEMISTRY_ELEMENT_COUNT, */
-  /*     UNIT_CONV_NO_UNITS, 0.f, sinks, chemistry_data.metal_mass_fraction, */
-  /*     "Mass fraction of each element"); */
 
   list[4] = io_make_output_field(
       "NumberOfSinkSwallows", INT, 1, UNIT_CONV_NO_UNITS, 0.f, sinks,
