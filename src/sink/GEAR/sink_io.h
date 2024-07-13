@@ -94,6 +94,15 @@ INLINE static void convert_sink_vel(const struct engine* e,
   ret[2] *= cosmo->a_inv;
 }
 
+
+INLINE static void convert_sink_target_mass(const struct engine *e,
+					    const struct sink *sink,
+					    float *ret) {
+  /* Recall that the target_mass is in M_sun in the code. We nee to convert it
+     to internal units for consistency in the output. */
+  ret[0] = sink->target_mass * e->physical_constants.const_solar_mass;
+}
+
 /**
  * @brief Specifies which sink-particle fields to write to a dataset
  *
@@ -140,11 +149,9 @@ INLINE static void sink_write_particles(const struct sink* sinks,
       "NumberOfGasSwallows", INT, 1, UNIT_CONV_NO_UNITS, 0.f, sinks,
       number_of_gas_swallows, "Total number of gas merger events");
 
-  /* TODO: Convert target_mass to internal units. It is in M_sun in the sink
-     struct */
-  list[7] = io_make_output_field("TargetMass", FLOAT, 1, UNIT_CONV_MASS, 0.f,
-                                 sinks, target_mass,
-                                 "Sink target mass to spawn star particles");
+  list[7] = io_make_output_field_convert_sink(
+	    "TargetMass", FLOAT, 1, UNIT_CONV_MASS, 0.f, sinks,
+	    convert_sink_target_mass, "Sink target mass to spawn star particles");
 
 #ifdef DEBUG_INTERACTIONS_SINKS
 
