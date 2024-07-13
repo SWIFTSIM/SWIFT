@@ -30,7 +30,7 @@ struct cell;
 struct engine;
 
 /* Define a constant for the background task depth. */
-#define zoom_bkg_subdepth_diff_grav_default 3
+#define zoom_bkg_subdepth_diff_grav_default 4
 extern int zoom_bkg_subdepth_diff_grav;
 
 /* Zoom region and cell grid initialisation functions. */
