@@ -276,7 +276,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   float Gj[3], Gi[3], G_mean[3];
   hydro_set_Gi_Gj_forceloop(Gi, Gj, pi, pj, dx, wi, wj, wi_dx, wj_dx);
   for (int i = 0; i < 3; i++) {
-      G_mean[i] = 0.5f * (Gi[i] + Gj[i]);
+      G_mean[i] = 0.5f * (Gi[i] - Gj[i]);
   }
 
   // Viscous pressures
@@ -430,7 +430,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   float Gj[3], Gi[3], G_mean[3];
   hydro_set_Gi_Gj_forceloop(Gi, Gj, pi, pj, dx, wi, wj, wi_dx, wj_dx);
   for (int i = 0; i < 3; i++) {
-      G_mean[i] = 0.5f * (Gi[i] + Gj[i]);
+      G_mean[i] = 0.5f * (Gi[i] - Gj[i]);
   }
 
   // Viscous pressures

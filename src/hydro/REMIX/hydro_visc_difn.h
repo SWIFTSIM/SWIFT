@@ -246,7 +246,7 @@ __attribute__((always_inline)) INLINE static void hydro_set_Qi_Qj(
 
     // ...
     float phi_i_v, phi_j_v;
-    if (A_i_v == 0.f && A_j_v == 0.f) {
+    if ((A_i_v == 0.f) && (A_j_v == 0.f)) {
       phi_i_v = 1.f;
       phi_j_v = 1.f;
 
@@ -300,9 +300,9 @@ __attribute__((always_inline)) INLINE static void hydro_set_Qi_Qj(
   const float cj = pj->force.soundspeed;
 
   /* Get viscous pressure terms (eq 14 in Rosswog 2020) */
-  *Qi = (pi->force.balsara * a_visc + b_visc) * 0.5f * pi->rho *
+  *Qi = (a_visc + b_visc * pi->force.balsara) * 0.5f * pi->rho *
         (-alpha * ci * mu_i + beta * mu_i * mu_i);
-  *Qj = (pj->force.balsara * a_visc + b_visc) * 0.5f * pj->rho *
+  *Qj = (a_visc + b_visc * pj->force.balsara) * 0.5f * pj->rho *
         (-alpha * cj * mu_j + beta * mu_j * mu_j);
 
   // Account for alpha being outside brackets in timestep code

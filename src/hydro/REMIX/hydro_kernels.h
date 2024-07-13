@@ -62,7 +62,7 @@ hydro_runner_iact_density_extra_kernel(struct part *restrict pi,
   pj->m0 += pi->mass * wj / pi->rho_evol;
   for (int i = 0; i < 3; i++) {
     pi->grad_m0[i] += (pj->mass / pj->rho_evol) * dx[i] * wi_dx * r_inv;
-    pj->grad_m0[i] += (pi->mass / pi->rho_evol) * -dx[i] * wj_dx * r_inv;
+    pj->grad_m0[i] += -(pi->mass / pi->rho_evol) * dx[i] * wj_dx * r_inv;
   }
 }
 
@@ -365,9 +365,9 @@ hydro_prepare_force_extra_kernel(struct part *restrict p) {
 
     sym_matrix_multiply_by_vector(m2_bar_inv_mult_m1_bar, &m2_bar_inv, p->gradient.m1_bar);
     for (int i = 0; i < 3; i++) {
-        sym_matrix_multiply_by_vector(m2_bar_inv_mult_grad_m1_bar[i], &m2_bar_inv, grad_m1_bar[i]);
+        sym_matrix_multiply_by_vector(m2_bar_inv_mult_grad_m1_bar[i], &m2_bar_inv, p->gradient.grad_m1_bar[i]);
         sym_matrix_multiplication_ABA(&m2_bar_inv_mult_grad_m2_bar_mult_m2_bar_inv[i],
-            &m2_bar_inv, &grad_m2_bar[i]);
+            &m2_bar_inv, &p->gradient.grad_m2_bar[i]);
         sym_matrix_multiply_by_vector(
             ABA_mult_m1_bar[i], &m2_bar_inv_mult_grad_m2_bar_mult_m2_bar_inv[i], p->gradient.m1_bar);
     }
@@ -392,7 +392,7 @@ hydro_prepare_force_extra_kernel(struct part *restrict p) {
         grad_A[i] = p->gradient.grad_m0_bar[i];
 
         for (int j = 0; j < 3; j++) {
-            grad_A[i] += -2 * m2_bar_inv_mult_m1_bar[j] * grad_m1_bar[i][j] +
+            grad_A[i] += -2 * m2_bar_inv_mult_m1_bar[j] * p->gradient.grad_m1_bar[i][j] +
                          ABA_mult_m1_bar[i][j] * p->gradient.m1_bar[j];
         }
 
@@ -467,22 +467,25 @@ __attribute__((always_inline)) INLINE static void hydro_set_Gi_Gj_forceloop(
   const float wj_dr = hj_inv_dim_plus_one * wj_dx;
 
   if ((!pi->is_h_max) && (!pj->is_h_max)) {
-    int i, j;
-
     // Mean ij kernels and gradients with grad-h terms
     float wi_term = 0.5f * (wi * hi_inv_dim + wj * hj_inv_dim);
     float wj_term = wi_term;
     float wi_dx_term[3], wj_dx_term[3];
     float Ai = pi->force.A;
     float Aj = pj->force.A;
-    float grad_A[3] = pi->force.grad_A;
-    float grad_A[3] = pj->force.grad_A;
-    float Bi[3] = pi->force.B;
-    float Bj[3] = pj->force.B;
-    float grad_Bi[3][3] = pi->force.grad_B;
-    float grad_Bj[3][3] = pj->force.grad_B;
+    float grad_Ai[3], grad_Aj[3], Bi[3], Bj[3], grad_Bi[3][3], grad_Bj[3][3];
+    for (int i = 0; i < 3; i++) {
+      grad_Ai[i] = pi->force.grad_A[i];
+      grad_Aj[i] = pj->force.grad_A[i];
+      Bi[i] = pi->force.B[i];
+      Bj[i] = pj->force.B[i];
+      for (int j = 0; j < 3; j++) {
+        grad_Bi[i][j] = pi->force.grad_B[i][j];
+        grad_Bj[i][j] = pj->force.grad_B[i][j];
+      }
+    }
 
-    for (i = 0; i < 3; i++) {
+    for (int i = 0; i < 3; i++) {
       wi_dx_term[i] =
           dx[i] * r_inv * 0.5f * (wi_dx * hi_inv_dim_plus_one + wj_dx * hj_inv_dim_plus_one);
       wj_dx_term[i] =
@@ -496,7 +499,7 @@ __attribute__((always_inline)) INLINE static void hydro_set_Gi_Gj_forceloop(
       Gi[i] = Ai * wi_dx_term[i] + grad_Ai[i] * wi_term + Ai * Bi[i] * wi_term;
       Gj[i] = Aj * wj_dx_term[i] + grad_Aj[i] * wj_term + Aj * Bj[i] * wj_term;
 
-      for (j = 0; j < 3; j++) {
+      for (int j = 0; j < 3; j++) {
         Gi[i] += Ai * Bi[j] * dx[j] * wi_dx_term[i]
                  + grad_Ai[i] * Bi[j] * dx[j] * wi_term
                  + Ai * grad_Bi[i][j] * dx[j] * wi_term;
@@ -509,7 +512,7 @@ __attribute__((always_inline)) INLINE static void hydro_set_Gi_Gj_forceloop(
 
     // Standard-kernel gradients, to be used for vacuum boundary switch
     float wi_dx_term_vac[3], wj_dx_term_vac[3];
-    for (i = 0; i < 3; i++) {
+    for (int i = 0; i < 3; i++) {
       wi_dx_term_vac[i] = dx[i] * r_inv * wi_dx * hi_inv_dim_plus_one;
       wj_dx_term_vac[i] = -dx[i] * r_inv * wj_dx * hj_inv_dim_plus_one;
 
@@ -520,7 +523,7 @@ __attribute__((always_inline)) INLINE static void hydro_set_Gi_Gj_forceloop(
     }
 
     // Gradients, including vacuum boundary switch
-    for (i = 0; i < 3; i++) {
+    for (int i = 0; i < 3; i++) {
       Gi[i] = pi->force.vac_switch * Gi[i] + (1.f - pi->force.vac_switch) * wi_dx_term_vac[i];
       Gj[i] = pj->force.vac_switch * Gj[i] + (1.f - pj->force.vac_switch) * wj_dx_term_vac[i];
     }
@@ -529,7 +532,7 @@ __attribute__((always_inline)) INLINE static void hydro_set_Gi_Gj_forceloop(
     // One or both particles at h_max
     for (int i = 0; i < 3; i++) {
       Gi[i] = wi_dr * dx[i] * r_inv;
-      Gj[i] = wj_dr * dx[i] * r_inv;
+      Gj[i] = -wj_dr * dx[i] * r_inv;
     }
   }
 }
