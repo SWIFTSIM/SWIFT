@@ -84,7 +84,7 @@ struct viscosity_global_data {
   float alpha_norm;
   float eta_crit;
 };
-viscosity_global_data viscosity_global;
+struct viscosity_global_data viscosity_global;
 
 /*! Thermal diffusion parameters */
 struct diffusion_global_data {};
@@ -115,28 +115,40 @@ static INLINE void viscosity_init(struct swift_params* params,
   /* Read the artificial viscosity parameters from the file, if they exist,
    * otherwise set them to the defaults defined above. */
 
-  viscosity_global->alpha = parser_get_opt_param_float(
+  viscosity->alpha = parser_get_opt_param_float(
       params, "SPH:viscosity_alpha", hydro_props_default_viscosity_alpha);
-  viscosity_global->beta = parser_get_opt_param_float(
+  viscosity->beta = parser_get_opt_param_float(
       params, "SPH:viscosity_beta", hydro_props_default_viscosity_beta);
-  viscosity_global->epsilon = parser_get_opt_param_float(
+  viscosity->epsilon = parser_get_opt_param_float(
       params, "SPH:viscosity_epsilon", hydro_props_default_viscosity_epsilon);
-  viscosity_global->a_visc = parser_get_opt_param_float(
+  viscosity->a_visc = parser_get_opt_param_float(
       params, "SPH:viscosity_a_visc", hydro_props_default_remix_a_visc);
-  viscosity_global->b_visc = parser_get_opt_param_float(
+  viscosity->b_visc = parser_get_opt_param_float(
       params, "SPH:viscosity_b_visc", hydro_props_default_remix_b_visc);
-  viscosity_global->a_difn_u = parser_get_opt_param_float(
+  viscosity->a_difn_u = parser_get_opt_param_float(
       params, "SPH:viscosity_a_difn_u", hydro_props_default_remix_a_difn_u);
-  viscosity_global->b_difn_u = parser_get_opt_param_float(
+  viscosity->b_difn_u = parser_get_opt_param_float(
       params, "SPH:viscosity_b_difn_u", hydro_props_default_remix_b_difn_u);
-  viscosity_global->a_difn_rho = parser_get_opt_param_float(
+  viscosity->a_difn_rho = parser_get_opt_param_float(
       params, "SPH:viscosity_a_difn_rho", hydro_props_default_remix_a_difn_rho);
-  viscosity_global->b_difn_rho = parser_get_opt_param_float(
+  viscosity->b_difn_rho = parser_get_opt_param_float(
       params, "SPH:viscosity_b_difn_rho", hydro_props_default_remix_b_difn_rho);
-  viscosity_global->alpha_norm = parser_get_opt_param_float(
+  viscosity->alpha_norm = parser_get_opt_param_float(
       params, "SPH:alpha_norm", hydro_props_default_remix_alpha_norm);
-  viscosity_global->eta_crit = 1.0f / parser_get_opt_param_float(
+  viscosity->eta_crit = 1.0f / parser_get_opt_param_float(
       params, "SPH:resolution_eta", hydro_props_default_remix_eta);
+
+  viscosity_global.alpha = viscosity->alpha;
+  viscosity_global.beta = viscosity->beta;
+  viscosity_global.epsilon = viscosity->epsilon;
+  viscosity_global.a_visc = viscosity->a_visc;
+  viscosity_global.b_visc = viscosity->b_visc;
+  viscosity_global.a_difn_u = viscosity->a_difn_u;
+  viscosity_global.b_difn_u = viscosity->b_difn_u;
+  viscosity_global.a_difn_rho = viscosity->a_difn_rho;
+  viscosity_global.b_difn_rho = viscosity->b_difn_rho;
+  viscosity_global.alpha_norm = viscosity->alpha_norm;
+  viscosity_global.eta_crit = viscosity->eta_crit;
 }
 
 /**

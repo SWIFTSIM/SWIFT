@@ -152,7 +152,13 @@ __attribute__((always_inline)) INLINE static void sym_matrix_invert(
     sym_matrix_print(M);
     error("Error inverting matrix");
   }
-  get_sym_matrix_from_matrix(M_inv, M_inv_matrix);
+    
+  M_inv->xx = M_inv_matrix[0][0];
+  M_inv->yy = M_inv_matrix[1][1];
+  M_inv->zz = M_inv_matrix[2][2];
+  M_inv->xy = M_inv_matrix[0][1];
+  M_inv->xz = M_inv_matrix[0][2];
+  M_inv->yz = M_inv_matrix[1][2];
 }
 
 #endif /* SWIFT_SYMMETRIC_MATRIX_H */
