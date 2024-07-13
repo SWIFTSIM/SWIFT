@@ -100,7 +100,7 @@ INLINE static void convert_sink_target_mass(const struct engine *e,
 					    float *ret) {
   /* Recall that the target_mass is in M_sun in the code. We nee to convert it
      to internal units for consistency in the output. */
-  ret[0] = sink->target_mass * e->physical_constants.const_solar_mass;
+  ret[0] = sink->target_mass * e->physical_constants->const_solar_mass;
 }
 
 /**
