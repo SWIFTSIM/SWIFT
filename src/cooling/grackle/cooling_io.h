@@ -25,6 +25,7 @@
 #include "cooling_struct.h"
 #include "io_properties.h"
 #include "physical_constants.h"
+#include "units.h"
 
 #ifdef HAVE_HDF5
 
@@ -140,7 +141,7 @@ __attribute__((always_inline)) INLINE static int cooling_write_particles(
  */
 __attribute__((always_inline)) INLINE static void cooling_read_parameters(
     struct swift_params* parameter_file, struct cooling_function_data* cooling,
-    const struct phys_const* phys_const) {
+    const struct phys_const* phys_const, const struct unit_system* us) {
 
   parser_get_param_string(parameter_file, "GrackleCooling:cloudy_table",
                           cooling->cloudy_table);
@@ -207,6 +208,36 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
   cooling->HydrogenFractionByMass = parser_get_opt_param_double(
       parameter_file, "GrackleCooling:HydrogenFractionByMass", 0.76);
 
+  cooling->initial_nHII_to_nH_ratio = parser_get_opt_param_double(
+      parameter_file, "GrackleCooling:initial_nHII_to_nH_ratio", -1);
+
+  cooling->initial_nHeI_to_nH_ratio = parser_get_opt_param_double(
+      parameter_file, "GrackleCooling:initial_nHeI_to_nH_ratio", -1);
+
+  cooling->initial_nHeII_to_nH_ratio = parser_get_opt_param_double(
+      parameter_file, "GrackleCooling:initial_nHeII_to_nH_ratio", -1);
+
+  cooling->initial_nHeIII_to_nH_ratio = parser_get_opt_param_double(
+      parameter_file, "GrackleCooling:initial_nHeIII_to_nH_ratio", -1);
+
+  cooling->initial_nDI_to_nH_ratio = parser_get_opt_param_double(
+      parameter_file, "GrackleCooling:initial_nDI_to_nH_ratio", -1);
+
+  cooling->initial_nDII_to_nH_ratio = parser_get_opt_param_double(
+      parameter_file, "GrackleCooling:initial_nDII_to_nH_ratio", -1);
+
+  cooling->initial_nHM_to_nH_ratio = parser_get_opt_param_double(
+      parameter_file, "GrackleCooling:initial_nHM_to_nH_ratio", -1);
+
+  cooling->initial_nH2I_to_nH_ratio = parser_get_opt_param_double(
+      parameter_file, "GrackleCooling:initial_nH2I_to_nH_ratio", -1);
+
+  cooling->initial_nH2II_to_nH_ratio = parser_get_opt_param_double(
+      parameter_file, "GrackleCooling:initial_nH2II_to_nH_ratio", -1);
+
+  cooling->initial_nHDI_to_nH_ratio = parser_get_opt_param_double(
+      parameter_file, "GrackleCooling:initial_nHDI_to_nH_ratio", -1);
+
   /* Self shielding */
   cooling->self_shielding_method = parser_get_opt_param_int(
       parameter_file, "GrackleCooling:self_shielding_method", 0);
@@ -215,9 +246,6 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
     cooling->self_shielding_threshold = parser_get_param_float(
         parameter_file, "GrackleCooling:self_shielding_threshold_atom_per_cm3");
   }
-
-  cooling->HydrogenFractionByMass = parser_get_opt_param_double(
-      parameter_file, "GrackleCooling:HydrogenFractionByMass", 0.76);
 
   /* Initial step convergence */
   cooling->max_step = parser_get_opt_param_int(
@@ -230,6 +258,16 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
   cooling->thermal_time = parser_get_param_double(
       parameter_file, "GrackleCooling:thermal_time_myr");
   cooling->thermal_time *= phys_const->const_year * 1e6;
+
+  /* Maximal cooling density (in acc) */
+  cooling->cooling_density_max = parser_get_param_double(
+      parameter_file, "GrackleCooling:maximal_density_Hpcm3");
+
+  /* Convert from acc to intenal units */
+  const double m_p_cgs = phys_const->const_proton_mass *
+                         units_cgs_conversion_factor(us, UNIT_CONV_MASS);
+  cooling->cooling_density_max *=
+      m_p_cgs / units_cgs_conversion_factor(us, UNIT_CONV_DENSITY);
 }
 
 #endif /* SWIFT_COOLING_GRACKLE_IO_H */

@@ -177,7 +177,7 @@ void *runner_main(void *data) {
         struct cell *ci_temp = ci;
         struct cell *cj_temp = cj;
         double shift[3];
-        t->sid = space_getsid(e->s, &ci_temp, &cj_temp, shift);
+        t->sid = space_getsid_and_swap_cells(e->s, &ci_temp, &cj_temp, shift);
       } else {
         t->sid = -1;
       }
