@@ -136,20 +136,20 @@ INLINE static void sink_write_particles(const struct sink* sinks,
                            sinks, id, "Unique ID of the particles");
 
   /* chemistry : this should be in chemistry_io.h */
-  list[4] = io_make_output_field(
-      "MetalMassFractions", DOUBLE, GEAR_CHEMISTRY_ELEMENT_COUNT,
-      UNIT_CONV_NO_UNITS, 0.f, sinks, chemistry_data.metal_mass_fraction,
-      "Mass fraction of each element");
+  /* list[4] = io_make_output_field( */
+  /*     "MetalMassFractions", DOUBLE, GEAR_CHEMISTRY_ELEMENT_COUNT, */
+  /*     UNIT_CONV_NO_UNITS, 0.f, sinks, chemistry_data.metal_mass_fraction, */
+  /*     "Mass fraction of each element"); */
 
-  list[5] = io_make_output_field(
+  list[4] = io_make_output_field(
       "NumberOfSinkSwallows", INT, 1, UNIT_CONV_NO_UNITS, 0.f, sinks,
       number_of_sink_swallows, "Total number of sink merger events");
 
-  list[6] = io_make_output_field(
+  list[5] = io_make_output_field(
       "NumberOfGasSwallows", INT, 1, UNIT_CONV_NO_UNITS, 0.f, sinks,
       number_of_gas_swallows, "Total number of gas merger events");
 
-  list[7] = io_make_output_field_convert_sink(
+  list[6] = io_make_output_field_convert_sink(
 	    "TargetMass", FLOAT, 1, UNIT_CONV_MASS, 0.f, sinks,
 	    convert_sink_target_mass, "Sink target mass to spawn star particles");
 
