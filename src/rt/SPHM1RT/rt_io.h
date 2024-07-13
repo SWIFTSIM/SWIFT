@@ -126,10 +126,8 @@ INLINE static void rt_convert_conserved_photon_fluxes(
 INLINE static int rt_write_particles(const struct part* parts,
                                      struct io_props* list) {
 
-  /* Note that in the output, we write radiation energy and flux
-   * then we convert these quantities from radiation energy per mass and flux
-   * per mass
-   * */
+  /* Note that in the output, we write radiation energy and flux then we convert
+   * these quantities from radiation energy per mass and flux per mass */
   int num_elements = 4;
 
   list[0] = io_make_output_field_convert_part(

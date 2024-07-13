@@ -198,9 +198,10 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
                                  "Subgrid masses of the particles");
 
   if (with_cosmology) {
-    list[6] = io_make_output_field(
+    list[6] = io_make_physical_output_field(
         "FormationScaleFactors", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
-        formation_scale_factor, "Scale-factors at which the BHs were formed");
+        formation_scale_factor, /*can convert to comoving=*/0,
+        "Scale-factors at which the BHs were formed");
   } else {
     list[6] = io_make_output_field("FormationTimes", FLOAT, 1, UNIT_CONV_TIME,
                                    0.f, bparts, formation_time,
@@ -246,9 +247,10 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
                            "accumulated by any merged black hole.");
 
   if (with_cosmology) {
-    list[14] = io_make_output_field(
+    list[14] = io_make_physical_output_field(
         "LastHighEddingtonFractionScaleFactors", FLOAT, 1, UNIT_CONV_NO_UNITS,
         0.f, bparts, last_high_Eddington_fraction_scale_factor,
+        /*can convert to comoving=*/0,
         "Scale-factors at which the black holes last reached a large Eddington "
         "ratio. -1 if never reached.");
   } else {
@@ -260,9 +262,9 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
   }
 
   if (with_cosmology) {
-    list[15] = io_make_output_field(
+    list[15] = io_make_physical_output_field(
         "LastMinorMergerScaleFactors", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f,
-        bparts, last_minor_merger_scale_factor,
+        bparts, last_minor_merger_scale_factor, /*can convert to comoving=*/0,
         "Scale-factors at which the black holes last had a minor merger.");
   } else {
     list[15] = io_make_output_field(
@@ -272,9 +274,9 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
   }
 
   if (with_cosmology) {
-    list[16] = io_make_output_field(
+    list[16] = io_make_physical_output_field(
         "LastMajorMergerScaleFactors", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f,
-        bparts, last_major_merger_scale_factor,
+        bparts, last_major_merger_scale_factor, /*can convert to comoving=*/0,
         "Scale-factors at which the black holes last had a major merger.");
   } else {
     list[16] = io_make_output_field(
@@ -360,9 +362,9 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
       sound_speed_subgrid_gas,
       "Physical subgrid sound-speeds used in the subgrid-Bondi model.");
 
-  list[29] = io_make_output_field(
+  list[29] = io_make_physical_output_field(
       "BirthGasDensities", FLOAT, 1, UNIT_CONV_DENSITY, 0.f, bparts,
-      formation_gas_density,
+      formation_gas_density, /*can convert to comoving=*/0,
       "Physical densities of the converted part at the time of birth. "
       "We store the physical density at the birth redshift, no conversion is "
       "needed.");
@@ -406,9 +408,9 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
       " (the number of time steps in which the BH did AGN feedback).");
 
   if (with_cosmology) {
-    list[36] = io_make_output_field(
+    list[36] = io_make_physical_output_field(
         "LastAGNFeedbackScaleFactors", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f,
-        bparts, last_AGN_event_scale_factor,
+        bparts, last_AGN_event_scale_factor, /*can convert to comoving=*/0,
         "Scale-factors at which the black holes last had an AGN event.");
   } else {
     list[36] = io_make_output_field(

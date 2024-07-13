@@ -205,9 +205,10 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
                                  "Subgrid masses of the particles");
 
   if (with_cosmology) {
-    list[6] = io_make_output_field(
+    list[6] = io_make_physical_output_field(
         "FormationScaleFactors", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
-        formation_scale_factor, "Scale-factors at which the BHs were formed");
+        formation_scale_factor, /*can convert to comoving=*/0,
+        "Scale-factors at which the BHs were formed");
   } else {
     list[6] = io_make_output_field("FormationTimes", FLOAT, 1, UNIT_CONV_TIME,
                                    0.f, bparts, formation_time,
@@ -267,9 +268,9 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
   }
 
   if (with_cosmology) {
-    list[15] = io_make_output_field(
+    list[15] = io_make_physical_output_field(
         "LastMinorMergerScaleFactors", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f,
-        bparts, last_minor_merger_scale_factor,
+        bparts, last_minor_merger_scale_factor, /*can convert to comoving=*/0,
         "Scale-factors at which the black holes last had a minor merger.");
   } else {
     list[15] = io_make_output_field(
@@ -279,9 +280,9 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
   }
 
   if (with_cosmology) {
-    list[16] = io_make_output_field(
+    list[16] = io_make_physical_output_field(
         "LastMajorMergerScaleFactors", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f,
-        bparts, last_major_merger_scale_factor,
+        bparts, last_major_merger_scale_factor, /*can convert to comoving=*/0,
         "Scale-factors at which the black holes last had a major merger.");
   } else {
     list[16] = io_make_output_field(
@@ -395,9 +396,9 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
       " (the number of time steps the BH did AGN feedback)");
 
   if (with_cosmology) {
-    list[33] = io_make_output_field(
+    list[33] = io_make_physical_output_field(
         "LastAGNFeedbackScaleFactors", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f,
-        bparts, last_AGN_event_scale_factor,
+        bparts, last_AGN_event_scale_factor, /*can convert to comoving=*/0,
         "Scale-factors at which the black holes last had an AGN event.");
   } else {
     list[33] = io_make_output_field(
@@ -476,9 +477,9 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
       " (the number of times the BH did AGN jet feedback)");
 
   if (with_cosmology) {
-    list[48] = io_make_output_field(
+    list[48] = io_make_physical_output_field(
         "LastAGNJetScaleFactors", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
-        last_AGN_jet_event_scale_factor,
+        last_AGN_jet_event_scale_factor, /*can convert to comoving=*/0,
         "Scale-factors at which the black holes last had an AGN jet event.");
   } else {
     list[48] = io_make_output_field(

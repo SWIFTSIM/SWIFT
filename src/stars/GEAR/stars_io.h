@@ -153,9 +153,10 @@ INLINE static void stars_write_particles(const struct spart *sparts,
       "Co-moving smoothing lengths (FWHM of the kernel) of the particles");
 
   if (with_cosmology) {
-    list[5] = io_make_output_field(
+    list[5] = io_make_physical_output_field(
         "BirthScaleFactors", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, sparts,
-        birth_scale_factor, "Scale-factors at which the stars were born");
+        birth_scale_factor, /*can convert to comoving=*/0,
+        "Scale-factors at which the stars were born");
   } else {
     list[5] = io_make_output_field("BirthTimes", FLOAT, 1, UNIT_CONV_TIME, 0.f,
                                    sparts, birth_time,
