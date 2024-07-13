@@ -77,17 +77,19 @@ struct viscosity_global_data {
   float epsilon;
   float a_visc;
   float b_visc;
+  float eta_crit;
+};
+struct viscosity_global_data viscosity_global;
+
+/*! Artificial diffusion parameters */
+struct diffusion_global_data {
   float a_difn_u;
   float b_difn_u;
   float a_difn_rho;
   float b_difn_rho;
   float alpha_norm;
-  float eta_crit;
 };
-struct viscosity_global_data viscosity_global;
-
-/*! Thermal diffusion parameters */
-struct diffusion_global_data {};
+struct diffusion_global_data diffusion_global;
 
 /* Functions for reading from parameter file */
 
@@ -122,33 +124,13 @@ static INLINE void viscosity_init(struct swift_params* params,
   viscosity->epsilon = parser_get_opt_param_float(
       params, "SPH:viscosity_epsilon", hydro_props_default_viscosity_epsilon);
   viscosity->a_visc = parser_get_opt_param_float(
-      params, "SPH:viscosity_a_visc", hydro_props_default_remix_a_visc);
+      params, "SPH:viscosity_a", hydro_props_default_remix_a_visc);
   viscosity->b_visc = parser_get_opt_param_float(
-      params, "SPH:viscosity_b_visc", hydro_props_default_remix_b_visc);
-  viscosity->a_difn_u = parser_get_opt_param_float(
-      params, "SPH:viscosity_a_difn_u", hydro_props_default_remix_a_difn_u);
-  viscosity->b_difn_u = parser_get_opt_param_float(
-      params, "SPH:viscosity_b_difn_u", hydro_props_default_remix_b_difn_u);
-  viscosity->a_difn_rho = parser_get_opt_param_float(
-      params, "SPH:viscosity_a_difn_rho", hydro_props_default_remix_a_difn_rho);
-  viscosity->b_difn_rho = parser_get_opt_param_float(
-      params, "SPH:viscosity_b_difn_rho", hydro_props_default_remix_b_difn_rho);
-  viscosity->alpha_norm = parser_get_opt_param_float(
-      params, "SPH:alpha_norm", hydro_props_default_remix_alpha_norm);
+      params, "SPH:viscosity_b", hydro_props_default_remix_b_visc);
   viscosity->eta_crit = 1.0f / parser_get_opt_param_float(
       params, "SPH:resolution_eta", hydro_props_default_remix_eta);
 
-  viscosity_global.alpha = viscosity->alpha;
-  viscosity_global.beta = viscosity->beta;
-  viscosity_global.epsilon = viscosity->epsilon;
-  viscosity_global.a_visc = viscosity->a_visc;
-  viscosity_global.b_visc = viscosity->b_visc;
-  viscosity_global.a_difn_u = viscosity->a_difn_u;
-  viscosity_global.b_difn_u = viscosity->b_difn_u;
-  viscosity_global.a_difn_rho = viscosity->a_difn_rho;
-  viscosity_global.b_difn_rho = viscosity->b_difn_rho;
-  viscosity_global.alpha_norm = viscosity->alpha_norm;
-  viscosity_global.eta_crit = viscosity->eta_crit;
+  viscosity_global = *viscosity;
 }
 
 /**
@@ -164,11 +146,6 @@ static INLINE void viscosity_init_no_hydro(
   viscosity->epsilon = 1.f;
   viscosity->a_visc = 0.f;
   viscosity->b_visc = 0.f;
-  viscosity->a_difn_u = 0.f;
-  viscosity->b_difn_u = 0.f;
-  viscosity->a_difn_rho = 0.f;
-  viscosity->b_difn_rho = 0.f;
-  viscosity->alpha_norm = 0.f;
   viscosity->eta_crit = 0.f;
 }
 
@@ -181,11 +158,9 @@ static INLINE void viscosity_init_no_hydro(
 static INLINE void viscosity_print(
     const struct viscosity_global_data* viscosity) {
   message("Artificial viscosity parameters set to alpha=%.3f, beta=%.3f, "
-          "epsilon=%.3f, a_visc=%.3f, b_visc=%.3f, a_difn_u=%.3f, b_difn_u=%.3f, "
-          "a_difn_rho=%.3f, b_difn_rho=%.3f, alpha_norm=%.3f, eta_crit=%.3f",
+          "epsilon=%.3f, a_visc=%.3f, b_visc=%.3f, eta_crit=%.3f",
           viscosity->alpha, viscosity->beta, viscosity->epsilon, viscosity->a_visc,
-          viscosity->b_visc, viscosity->a_difn_u, viscosity->b_difn_u, viscosity->a_difn_rho,
-          viscosity->b_difn_rho, viscosity->alpha_norm, viscosity->eta_crit);
+          viscosity->b_visc, viscosity->eta_crit);
 }
 
 #if defined(HAVE_HDF5)
@@ -203,11 +178,6 @@ static INLINE void viscosity_print_snapshot(
   io_write_attribute_f(h_grpsph, "Viscosity epsilon", viscosity->epsilon);
   io_write_attribute_f(h_grpsph, "Viscosity a_visc", viscosity->a_visc);
   io_write_attribute_f(h_grpsph, "Viscosity b_visc", viscosity->b_visc);
-  io_write_attribute_f(h_grpsph, "Diffusion a_difn_u", viscosity->a_difn_u);
-  io_write_attribute_f(h_grpsph, "Diffusion b_difn_u", viscosity->b_difn_u);
-  io_write_attribute_f(h_grpsph, "Diffusion a_difn_rho", viscosity->a_difn_rho);
-  io_write_attribute_f(h_grpsph, "Diffusion b_difn_rho", viscosity->b_difn_rho);
-  io_write_attribute_f(h_grpsph, "Normalising alpha_norm", viscosity->alpha_norm);
   io_write_attribute_f(h_grpsph, "Slope limiter eta_crit", viscosity->eta_crit);
 }
 #endif
@@ -226,7 +196,24 @@ static INLINE void viscosity_print_snapshot(
 static INLINE void diffusion_init(struct swift_params* params,
                                   const struct unit_system* us,
                                   const struct phys_const* phys_const,
-                                  struct diffusion_global_data* diffusion) {}
+                                  struct diffusion_global_data* diffusion) {
+
+    /* Read the artificial diffusion parameters from the file, if they exist,
+   * otherwise set them to the defaults defined above. */
+
+  diffusion->a_difn_u = parser_get_opt_param_float(
+      params, "SPH:diffusion_a_u", hydro_props_default_remix_a_difn_u);
+  diffusion->b_difn_u = parser_get_opt_param_float(
+      params, "SPH:diffusion_b_u", hydro_props_default_remix_b_difn_u);
+  diffusion->a_difn_rho = parser_get_opt_param_float(
+      params, "SPH:diffusion_a_rho", hydro_props_default_remix_a_difn_rho);
+  diffusion->b_difn_rho = parser_get_opt_param_float(
+      params, "SPH:vdiffusion_b_rho", hydro_props_default_remix_b_difn_rho);
+  diffusion->alpha_norm = parser_get_opt_param_float(
+      params, "SPH:alpha_norm", hydro_props_default_remix_alpha_norm);
+
+  diffusion_global = *diffusion;
+}
 
 /**
  * @brief Initialises a diffusion struct to sensible numbers for mocking
@@ -235,7 +222,13 @@ static INLINE void diffusion_init(struct swift_params* params,
  * @param diffusion: pointer to the diffusion_global_data struct to be filled.
  **/
 static INLINE void diffusion_init_no_hydro(
-    struct diffusion_global_data* diffusion) {}
+    struct diffusion_global_data* diffusion) {
+  diffusion->a_difn_u = 0.f;
+  diffusion->b_difn_u = 0.f;
+  diffusion->a_difn_rho = 0.f;
+  diffusion->b_difn_rho = 0.f;
+  diffusion->alpha_norm = 0.f;
+}
 
 /**
  * @brief Prints out the diffusion parameters at the start of a run.
@@ -244,7 +237,12 @@ static INLINE void diffusion_init_no_hydro(
  *                   hydro_properties
  **/
 static INLINE void diffusion_print(
-    const struct diffusion_global_data* diffusion) {}
+    const struct diffusion_global_data* diffusion) {
+  message("Artificial diffusion parameters set to a_difn_u=%.3f, b_difn_u=%.3f, "
+          "a_difn_rho=%.3f, b_difn_rho=%.3f, alpha_norm=%.3f",
+          diffusion->a_difn_u, diffusion->b_difn_u, diffusion->a_difn_rho,
+          diffusion->b_difn_rho, diffusion->alpha_norm);
+}
 
 #ifdef HAVE_HDF5
 /**
@@ -254,7 +252,13 @@ static INLINE void diffusion_print(
  * @param diffusion: pointer to the diffusion_global_data struct.
  **/
 static INLINE void diffusion_print_snapshot(
-    hid_t h_grpsph, const struct diffusion_global_data* diffusion) {}
+    hid_t h_grpsph, const struct diffusion_global_data* diffusion) {
+  io_write_attribute_f(h_grpsph, "Diffusion a_difn_u", diffusion->a_difn_u);
+  io_write_attribute_f(h_grpsph, "Diffusion b_difn_u", diffusion->b_difn_u);
+  io_write_attribute_f(h_grpsph, "Diffusion a_difn_rho", diffusion->a_difn_rho);
+  io_write_attribute_f(h_grpsph, "Diffusion b_difn_rho", diffusion->b_difn_rho);
+  io_write_attribute_f(h_grpsph, "Normalising alpha_norm", diffusion->alpha_norm);
+}
 #endif
 
 #endif /* SWIFT_PLANETARY_HYDRO_PARAMETERS_H */
