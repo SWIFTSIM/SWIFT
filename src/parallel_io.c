@@ -1682,6 +1682,16 @@ void write_output_parallel(struct engine* e,
   /* Prepare some file-access properties */
   hid_t plist_id = H5Pcreate(H5P_FILE_ACCESS);
 
+#if H5_VERSION_GE(1, 14, 4)
+  /* Relax hdf5's internal checks preventing a big difference in the number
+   * of bits in a type compared to its native value. We do reach the
+   * check's threshold, introduced in hdf5 1.14.4, with some of our lossy
+   * compression filters such as DMantissa13 */
+  herr_t err = H5Pset_relax_file_integrity_checks(
+      plist_id, H5F_RFIC_UNUSUAL_NUM_UNUSED_NUMERIC_BITS);
+  if (err < 0) error("Error relaxing the file integrity checks");
+#endif
+
   /* Set some MPI-IO parameters */
   // MPI_Info_set(info, "IBM_largeblock_io", "true");
   MPI_Info_set(info, "romio_cb_write", "enable");

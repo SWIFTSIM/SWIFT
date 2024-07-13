@@ -778,7 +778,18 @@ void read_ic_serial(char* fileName, const struct unit_system* internal_units,
     /* Is it this rank's turn to read ? */
     if (rank == mpi_rank) {
 
-      h_file = H5Fopen(fileName, H5F_ACC_RDONLY, H5P_DEFAULT);
+      hid_t h_props = H5Pcreate(H5P_FILE_ACCESS);
+#if H5_VERSION_GE(1, 14, 4)
+      /* Relax hdf5's internal checks preventing a big difference in the number
+       * of bits in a type compared to its native value. We do reach the
+       * check's threshold, introduced in hdf5 1.14.4, with some of our lossy
+       * compression filters such as DMantissa13 */
+      herr_t err = H5Pset_relax_file_integrity_checks(
+          h_props, H5F_RFIC_UNUSUAL_NUM_UNUSED_NUMERIC_BITS);
+      if (err < 0) error("Error relaxing the file integrity checks");
+#endif
+
+      h_file = H5Fopen(fileName, H5F_ACC_RDONLY, h_props);
       if (h_file < 0)
         error("Error while opening file '%s' on rank %d.", fileName, mpi_rank);
 
@@ -885,6 +896,7 @@ void read_ic_serial(char* fileName, const struct unit_system* internal_units,
 
       /* Close file */
       H5Fclose(h_file);
+      H5Pclose(h_props);
     }
 
     /* Wait for the read of the reading to complete */

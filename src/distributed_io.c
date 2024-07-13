@@ -996,9 +996,20 @@ void write_output_distributed(struct engine* e,
     }
   }
 
+  hid_t h_props = H5Pcreate(H5P_FILE_ACCESS);
+#if H5_VERSION_GE(1, 14, 4)
+  /* Relax hdf5's internal checks preventing a big difference in the number
+   * of bits in a type compared to its native value. We do reach the
+   * check's threshold, introduced in hdf5 1.14.4, with some of our lossy
+   * compression filters such as DMantissa13 */
+  herr_t err = H5Pset_relax_file_integrity_checks(
+      h_props, H5F_RFIC_UNUSUAL_NUM_UNUSED_NUMERIC_BITS);
+  if (err < 0) error("Error relaxing the file integrity checks");
+#endif
+
   /* Open file */
   /* message("Opening file '%s'.", fileName); */
-  h_file = H5Fcreate(fileName, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+  h_file = H5Fcreate(fileName, H5F_ACC_TRUNC, H5P_DEFAULT, h_props);
   if (h_file < 0) error("Error while opening file '%s'.", fileName);
 
   /* Open header to write simulation properties */
@@ -1484,6 +1495,7 @@ void write_output_distributed(struct engine* e,
 
   /* Close file */
   H5Fclose(h_file);
+  H5Pclose(h_props);
 
 #if H5_VERSION_GE(1, 10, 0)
 
