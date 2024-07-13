@@ -347,7 +347,7 @@ void write_fof_virtual_file(const struct fof_props* props,
       io_make_output_field_("Sizes", LONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f,
                             (char*)props->final_group_size, sizeof(long long),
                             "FOF group length (number of particles)",
-                            /*physical=*/0, /*convertible_to_comoving=*/1);
+                            /*physical=*/1, /*convertible_to_comoving=*/0);
   write_virtual_fof_hdf5_array(e, h_grp, file_name_base, "Groups", output_prop,
                                num_groups_total, N_counts,
                                compression_write_lossless, e->internal_units,
@@ -585,7 +585,7 @@ void write_fof_hdf5_catalogue(const struct fof_props* props,
       io_make_output_field_("Sizes", LONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f,
                             (char*)props->final_group_size, sizeof(long long),
                             "FOF group length (number of particles)",
-                            /*physical=*/0, /*convertible_to_comoving=*/1);
+                            /*physical=*/1, /*convertible_to_comoving=*/0);
   write_fof_hdf5_array(e, h_grp, file_name, "Groups", output_prop,
                        num_groups_local, compression_write_lossless,
                        e->internal_units, e->snapshot_units);
