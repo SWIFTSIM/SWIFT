@@ -239,7 +239,8 @@ void feedback_init_spart(struct spart* sp) {
 /**
  * @brief Prepare the feedback fields after a star is born.
  *
- * This function is called in the timestep task.
+ * This function is called in the functions sink_copy_properties_to_star() and
+ * star_formation_copy_properties().
  *
  * @param sp The #spart to act upon.
  * @param feedback_props The feedback perties to use.
