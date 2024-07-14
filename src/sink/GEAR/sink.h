@@ -778,7 +778,7 @@ INLINE static void sink_copy_properties_to_star(
   /* Star formation related initalisation */
   /* ------------------------------------ */
 
-  /* Note: The sink need to be compiled with GEAR SF as we store datra in the
+  /* Note: The sink need to be compiled with GEAR SF as we store data in the
      SF struct. However, we do not need to run with --star-formation */
   /* TODO: Ideally, I'd want this to be taken care of within the SF module
      to have a consistent manner of setting this. */
