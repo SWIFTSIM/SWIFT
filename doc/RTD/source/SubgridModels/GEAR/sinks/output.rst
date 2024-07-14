@@ -25,8 +25,9 @@ Sink particles
 |                                       | |                                   |           | | such a star. Such rare behaviour may bias the   |
 |                                       | |                                   |           | | IMF towards high masses.                        |
 +---------------------------------------+-------------------------------------+-----------+---------------------------------------------------+
-| ``MetalMassFractions``                | | Mass fraction of each metal       | [-]       | | The number of elements ``N`` is determined at   |
-|                                       | | element                           |           | | compile time by ``--with-chemistry=GEAR_N``.    |
+| ``MetalMassFractions``                | | Mass fraction of each metal       | [-]       | | Array of length ``N`` for each particles. The   |
+|                                       | | element                           |           | | number of elements ``N`` is determined at       |
+|                                       | |                                   |           | | compile time by ``--with-chemistry=GEAR_N``.    |
 +---------------------------------------+-------------------------------------+-----------+---------------------------------------------------+
 
 
