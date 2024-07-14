@@ -759,24 +759,37 @@ INLINE static void sink_copy_properties_to_star(
   /* Give the stars a new position */
   sink_star_formation_give_new_position(e, sink, sp);
 
-  /* set the mass */
+  /* Set the mass (do not forget the sink's gpart friend!) */
   sp->mass = sink->target_mass * phys_const->const_solar_mass;
   sp->gpart->mass = sp->mass;
 
   /* Give a new velocity to the stars */
   sink_star_formation_give_new_velocity(e, sink, sp, sink_props);
 
-  /* set feedback type */
+  /* Sph smoothing length */
+  sp->h = sink->r_cut;
+
+  /* Feedback related initialisation */
+  /* ------------------------------- */
+
+  /* Set feedback type */
+  /* TODO: Ideally, I'd want this to be taken care of within the feedback module
+     to have a consistent manner of setting this. */
   sp->feedback_data.star_type = (enum star_feedback_type)sink->target_type;
 
   /* Initialize the feedback */
   /* if (sp->feedback_data.star_type == single_star) //TODO: TEST THIS */
   feedback_init_after_star_formation(sp, e->feedback_props);
 
-  /* sph smoothing */
-  sp->h = sink->r_cut;
+  /* Star formation related initalisation */
+  /* ------------------------------------ */
 
-  /* mass at birth */
+  /* Note: The sink need to be compiled with GEAR SF as we store datra in the
+     SF struct. However, we do not need to run with --star-formation */
+  /* TODO: Ideally, I'd want this to be taken care of within the SF module
+     to have a consistent manner of setting this. */
+
+  /* Mass at birth */
   sp->sf_data.birth_mass = sp->mass;
 
   /* Store either the birth_scale_factor or birth_time depending  */
@@ -786,11 +799,13 @@ INLINE static void sink_copy_properties_to_star(
     sp->birth_time = e->time;
   }
 
-  /* Copy the chemistry properties */
-  chemistry_copy_sink_properties_to_star(sink, sp);
-
   /* Copy the progenitor id */
   sp->sf_data.progenitor_id = sink->id;
+
+  /* Copy the chemistry properties */
+  /* ----------------------------- */
+
+  chemistry_copy_sink_properties_to_star(sink, sp);
 }
 
 /**
