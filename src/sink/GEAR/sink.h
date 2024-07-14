@@ -1029,6 +1029,10 @@ INLINE static void sink_prepare_part_sink_formation_gas_criteria(
   p->sink_data.E_rot_neighbours[2] +=
       0.5 * mi * specific_angular_momentum[2] * specific_angular_momentum[2] /
       sqrtf(dx_physical[0] * dx_physical[0] + dx_physical[1] * dx_physical[1]);
+
+  /* Shall we reset the values of the energies for the next timestep? No, it is
+     done in cell_drift.c and space_init.c, for active particles. The
+     potential is set in runner_others.c->runner_do_end_grav_force() */
 }
 
 /**
