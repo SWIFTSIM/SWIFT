@@ -1,71 +1,33 @@
-.. AGN spin and jet model
-   Filip Husko, 1 April 2022
+.. Sink particles in GEAR model
+   Darwin Roduit, 14 July 2024
 
-.. AGN_spin_jet:
+.. sink_GEAR_model:
 
 Snapshots ouputs
 ----------------
 
-Here, we provide a summary of the quantities written in the snapshots.
+Here, we provide a summary of the quantities written in the snapshots, in addition to positions, velocities, masses and particle IDs.
 
 Sink particles
 ~~~~~~~~~~~~~~
 
-+---------------------------------------+-------------------------------------+-----------+-----------------------------+
-| Name                                  | Description                         | Units     | Comments                    |
-+=======================================+=====================================+===========+=============================+
-| ``AngularMomentumDirections``         | | The direction of the angular      | [-]       | | Array of length           |
-|                                       | | momentum (spin) vector of the BH  |           | | 3 for each particle       |
-+---------------------------------------+-------------------------------------+-----------+-----------------------------+
-| ``AccretionDiscAspectRatios``         | | Aspect ratio, H/R, of the subgrid | [-]       |                             |
-|                                       | | accretion disk surrounding each   |           |                             |
-|                                       | | black hole                        |           |                             |
-+---------------------------------------+-------------------------------------+-----------+-----------------------------+
-| ``AccretionModes``                    | | Type of subgrid accretion disk    | [-]       |                             |
-|                                       | | surrounding the black holes       |           |                             |
-|                                       | | 0 - Thick disk, 1 - Thin disk,    |           |                             |
-|                                       | | 2 - Slim disk                     |           |                             |
-+---------------------------------------+-------------------------------------+-----------+-----------------------------+
-| ``CosAccretionDiskAngle``             | | Cosine of the angle between the   | [-]       |                             |
-|                                       | | spin vector and the gas angular   |           |                             |
-|                                       | | momentum vector around the BH     |           |                             |
-+---------------------------------------+-------------------------------------+-----------+-----------------------------+
-| ``InjectedJetEnergies``               | | Total jet energy injected into    | [U_M U_L  |                             |
-|                                       | | surroundings of this BH           | ^2 U_t^-2]|                             |
-+---------------------------------------+-------------------------------------+-----------+-----------------------------+
-| ``JetEfficiencies``                   | | The efficiency of jet launching,  | [-]       |                             |
-|                                       | | i.e. the jet power divided by the |           |                             |
-|                                       | | accretion rate times c*c          |           |                             |
-+---------------------------------------+-------------------------------------+-----------+-----------------------------+
-| ``JetReservoirs``                     | | The remaining jet energy left to  | [U_M U_L  |                             |
-|                                       | | be launched from the BH           | ^2 U_t^-2]|                             |
-+---------------------------------------+-------------------------------------+-----------+-----------------------------+
-| ``JetTimeSteps``                      | | Jet-limited time steps of the BHs | [U_t]     |                             |
-+---------------------------------------+-------------------------------------+-----------+-----------------------------+
-| ``LastAGNJetScaleFactors``            | | Last AGN jet scale factors when   | [-]       |                             |
-|                                       | | the BH did jet feedback, if       |           |                             |
-|                                       | | cosmology is turned on            |           |                             |
-+---------------------------------------+-------------------------------------+-----------+-----------------------------+
-| ``LastAGNJetTimes``                   | | Last AGN jet times when the BH    | [U_t]     |                             |
-|                                       | | did jet feedback, if cosmology is |           |                             |
-|                                       | | turned off                        |           |                             |
-+---------------------------------------+-------------------------------------+-----------+-----------------------------+
-| ``NumberOfAGNJetEvents``              | | Total number of times this BH did | [-]       |                             |
-|                                       | | jet feedback                      |           |                             |
-+---------------------------------------+-------------------------------------+-----------+-----------------------------+
-| ``NumberOfJetParticlesLaunched``      | | Total number of times this BH     | [-]       |                             |
-|                                       | | launched particles as part of jet |           |                             |
-|                                       | | feedback                          |           |                             |
-+---------------------------------------+-------------------------------------+-----------+-----------------------------+
-| ``Spins``                             | | Dimensionless spin parameters of  | [-]       |                             |
-|                                       | | the black holes. Negative values  |           |                             |
-|                                       | | indicate retrograde accretion     |           |                             |
-+---------------------------------------+-------------------------------------+-----------+-----------------------------+
-| ``RadiativeEfficiencies``             | | The efficiency of radiative       | [-]       |                             |
-|                                       | | feedback, i.e. the radiative      |           |                             |
-|                                       | | power divided by the accretion    |           |                             |
-|                                       | | rate times c*c                    |           |                             |
-+---------------------------------------+-------------------------------------+-----------+-----------------------------+
++---------------------------------------+-------------------------------------+-----------+---------------------------------------------------+
+| Name                                  | Description                         | Units     | Comments                                          |
++=======================================+=====================================+===========+===================================================+
+| ``NumberOfSinkSwallows``              | | Number of sink merger events      | [-]       |                                                   |
+|                                       | |                                   |           |                                                   |
++---------------------------------------+-------------------------------------+-----------+---------------------------------------------------+
+| ``NumberOfGasSwallows``               | | Number of gas swallowed           | [-]       |                                                   |
+|                                       | |                                   |           |                                                   |
++---------------------------------------+-------------------------------------+-----------+---------------------------------------------------+
+| ``TargetMass``                        | | Sink target mass to spawn the     | [U_M]     | | You can use it to determine if the target mass  |
+|                                       | | next star particle                |           | | is so huge that the sink's mass cannot spawn    |
+|                                       | |                                   |           | | such a star. Such rare behaviour may bias the   |
+|                                       | |                                   |           | | IMF towards high masses.                        |
++---------------------------------------+-------------------------------------+-----------+---------------------------------------------------+
+| ``MetalMassFractions``                | | Mass fraction of each metal       | [-]       | | The number of elements ``N`` is determined at   |
+|                                       | | element                           |           | | compile time by ``--with-chemistry=GEAR_N``.    |
++---------------------------------------+-------------------------------------+-----------+---------------------------------------------------+
 
 
 Stars
