@@ -772,14 +772,8 @@ INLINE static void sink_copy_properties_to_star(
   /* Feedback related initialisation */
   /* ------------------------------- */
 
-  /* Set feedback type */
-  /* TODO: Ideally, I'd want this to be taken care of within the feedback module
-     to have a consistent manner of setting this. */
-  sp->feedback_data.star_type = (enum star_feedback_type)sink->target_type;
-
   /* Initialize the feedback */
-  /* if (sp->feedback_data.star_type == single_star) //TODO: TEST THIS */
-  feedback_init_after_star_formation(sp, e->feedback_props);
+  feedback_init_after_star_formation(sp, e->feedback_props, sink->target_type);
 
   /* Star formation related initalisation */
   /* ------------------------------------ */
