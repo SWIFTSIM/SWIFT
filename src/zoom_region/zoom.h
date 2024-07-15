@@ -29,6 +29,10 @@ struct space;
 struct cell;
 struct engine;
 
+/* Define a constant for the background task depth. */
+#define zoom_bkg_subdepth_diff_grav_default 4
+extern int zoom_bkg_subdepth_diff_grav;
+
 /* Zoom region and cell grid initialisation functions. */
 void zoom_props_init(struct swift_params *params, struct space *s,
                      const int verbose);

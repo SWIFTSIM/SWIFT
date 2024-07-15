@@ -48,6 +48,7 @@
 #include "space.h"
 #include "task.h"
 #include "timeline.h"
+#include "zoom_region/zoom.h"
 
 /* Avoid cyclic inclusions */
 struct engine;
@@ -1226,8 +1227,31 @@ __attribute__((always_inline)) INLINE static int cell_can_split_self_hydro_task(
 }
 
 /**
- * @brief Can a pair gravity task associated with a pair of cells be split into
- * smaller sub-tasks?
+ * @brief Is a cell above the task level?
+ *
+ * The task level is defined as space_subdepth_diff_grav above the leaves
+ * of the tree.
+ *
+ * When running a zoom simulation this will use zoom_bkg_subdepth_diff_grav for
+ * the background cells while the zoom cells will use the regular threshold.
+ *
+ * @param c The #cell.
+ */
+__attribute__((always_inline)) INLINE static int cell_is_above_diff_grav_depth(
+    const struct cell *c) {
+
+  /* Regular and zoom cells use the usual condition. */
+  if (c->type == cell_type_regular || c->type == cell_type_zoom) {
+    return (c->maxdepth - c->depth) > space_subdepth_diff_grav;
+  }
+
+  /* Otherwise all other cells use the background diff_grav constant. */
+  return (c->maxdepth - c->depth) > zoom_bkg_subdepth_diff_grav;
+}
+
+/**
+ * @brief Can a pair gravity task associated with a pair of cells be split
+ * into smaller sub-tasks?
  *
  * @param ci The first #cell.
  * @param cj The second #cell.
@@ -1245,9 +1269,8 @@ cell_can_split_pair_gravity_task(const struct cell *ci, const struct cell *cj) {
   }
 
   /* Otherwise, are the cells split and still far from the leaves ? */
-  return (ci->split && cj->split) &&
-         ((ci->maxdepth - ci->depth) > space_subdepth_diff_grav) &&
-         ((cj->maxdepth - cj->depth) > space_subdepth_diff_grav);
+  return (ci->split && cj->split) && cell_is_above_diff_grav_depth(ci) &&
+         cell_is_above_diff_grav_depth(cj);
 }
 
 /**
@@ -1260,7 +1283,7 @@ __attribute__((always_inline)) INLINE static int
 cell_can_split_self_gravity_task(const struct cell *c) {
 
   /* Is the cell split and still far from the leaves ? */
-  return c->split && ((c->maxdepth - c->depth) > space_subdepth_diff_grav);
+  return c->split && cell_is_above_diff_grav_depth(c);
 }
 
 /**
@@ -1273,8 +1296,7 @@ __attribute__((always_inline)) INLINE static int cell_can_split_self_fof_task(
     const struct cell *c) {
 
   /* Is the cell split ? */
-  return c->split && c->grav.count > 5000 &&
-         ((c->maxdepth - c->depth) > space_subdepth_diff_grav);
+  return c->split && c->grav.count > 5000 && cell_is_above_diff_grav_depth(c);
 }
 
 /**

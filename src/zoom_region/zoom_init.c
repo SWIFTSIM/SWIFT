@@ -36,6 +36,9 @@
 #include <mpi.h>
 #endif
 
+/* Declare the task diff grav constant. */
+int zoom_bkg_subdepth_diff_grav = zoom_bkg_subdepth_diff_grav_default;
+
 /**
  * @brief Check that cdim is a power of 2 times the region_buffer_ratio.
  *
@@ -107,6 +110,12 @@ void zoom_parse_params(struct swift_params *params,
   /* Extract the depth we'll split neighbour cells to. */
   props->neighbour_max_tree_depth = parser_get_opt_param_int(
       params, "ZoomRegion:neighbour_max_tree_depth", -1);
+
+  /* Extract the minimum difference between the task level and the leaves
+   * for background cells. */
+  zoom_bkg_subdepth_diff_grav =
+      parser_get_opt_param_int(params, "ZoomRegion:bkg_subdepth_diff_grav",
+                               zoom_bkg_subdepth_diff_grav_default);
 }
 
 /**
