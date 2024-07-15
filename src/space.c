@@ -2528,6 +2528,11 @@ void space_struct_dump(struct space *s, FILE *stream) {
                        "engine_foreign_alloc_margin",
                        "engine_foreign_alloc_margin");
 
+  /* Zoom specific blocks. */
+  restart_write_blocks(&zoom_bkg_subdepth_diff_grav, sizeof(int), 1, stream,
+                       "zoom_bkg_subdepth_diff_grav",
+                       "zoom_bkg_subdepth_diff_grav");
+
   /* More things to write. */
   if (s->nr_parts > 0) {
     restart_write_blocks(s->parts, s->nr_parts, sizeof(struct part), stream,
@@ -2610,6 +2615,10 @@ void space_struct_restore(struct space *s, FILE *stream) {
                       stream, NULL, "engine_redistribute_alloc_margin");
   restart_read_blocks(&engine_foreign_alloc_margin, sizeof(double), 1, stream,
                       NULL, "engine_foreign_alloc_margin");
+
+  /* Zoom specific blocks. */
+  restart_read_blocks(&zoom_bkg_subdepth_diff_grav, sizeof(int), 1, stream,
+                      NULL, "zoom_bkg_subdepth_diff_grav");
 
   /* Things that should be reconstructed in a rebuild. */
   s->cells_top = NULL;

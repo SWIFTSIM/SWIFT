@@ -1021,3 +1021,4 @@ ZoomRegion:
   bkg_top_level_cells: 22           # How many cells should the background be resolved with?
   region_buffer_cell_ratio: 2       # (Optional) How many buffer cells should be in the zoom region? (if 0 buffer cells are ignored) (default: 0)
   neighbour_max_tree_depth: 2       # (Optional) The depth of the cell trees neighbouring the zoom region (default: -1)
+  bkg_subdepth_diff_grav: 3         # The minimum difference between the leaf depth and the task depth for background cells.
