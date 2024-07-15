@@ -15,17 +15,26 @@ instead of, the lossless gzip compression filter.
 **These compression filters are lossy, meaning that they modify the
 data written to disk**
 
-*The filters will reduce the accuracy of the data stored. No check is
-made inside SWIFT to verify that the applied filters make sense. Poor
-choices can lead to all the values of a given array reduced to 0, Inf,
-or to have lost too much accuracy to be useful. The onus is entirely
-on the user to choose wisely how they want to compress their data.*
+.. warning::
+   The filters will reduce the accuracy of the data stored. No check is
+   made inside SWIFT to verify that the applied filters make sense. Poor
+   choices can lead to all the values of a given array reduced to 0, Inf,
+   or to have lost too much accuracy to be useful. The onus is entirely
+   on the user to choose wisely how they want to compress their data.
 
 The filters are not applied when using parallel-hdf5.
 
 The name of any filter applied is carried by each individual field in
 the snapshot using the meta-data attribute ``Lossy compression
 filter``.
+
+.. warning::
+   Starting with HDF5 version 1.14.4, filters which compress the data
+   by more than 2x are flagged as problematic (see their
+   `doc <https://docs.hdfgroup.org/hdf5/v1_14/group___f_a_p_l.html#gafa8e677af3200e155e9208522f8e05c0>`_
+   ).  SWIFT can nevertheless write files with them by setting the
+   appropriate file-level flags. However, some tools (such as
+   ``h5py``) may *not* be able to read these fields.
 
 The available filters are listed below.
 
@@ -170,6 +179,8 @@ Same for a ``double`` (64 bits) output:
 | Filter name     | :math:`n(a)` | :math:`n(b)` | Accuracy    | Range                                             | Compression ratio |
 +=================+==============+==============+=============+===================================================+===================+
 | No filter       | 52           | 11           | 15.9 digits | :math:`[2.2\times 10^{-308}, 1.8\times 10^{308}]` | ---               |
++-----------------+--------------+--------------+-------------+---------------------------------------------------+-------------------+
+| ``DMantissa21`` | 21           | 11           | 6.62 digits | :math:`[2.2\times 10^{-308}, 1.8\times 10^{308}]` | 1.93x             |
 +-----------------+--------------+--------------+-------------+---------------------------------------------------+-------------------+
 | ``DMantissa13`` | 13           | 11           | 4.21 digits | :math:`[2.2\times 10^{-308}, 1.8\times 10^{308}]` | 2.56x             |
 +-----------------+--------------+--------------+-------------+---------------------------------------------------+-------------------+
