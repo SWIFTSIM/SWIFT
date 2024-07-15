@@ -160,9 +160,9 @@ INLINE static void stars_write_particles(const struct spart *sparts,
                                  "Masses of the particles at the current point "
                                  "in time (i.e. after stellar losses");
 
-  list[3] =
-      io_make_output_field("ParticleIDs", ULONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f,
-                           sparts, id, "Unique ID of the particles");
+  list[3] = io_make_physical_output_field(
+      "ParticleIDs", ULONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f, sparts, id,
+      /*can convert to comoving=*/0, "Unique ID of the particles");
 
   list[4] = io_make_output_field(
       "SmoothingLengths", FLOAT, 1, UNIT_CONV_LENGTH, 1.f, sparts, h,

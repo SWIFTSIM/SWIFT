@@ -185,9 +185,9 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
       io_make_output_field("DynamicalMasses", FLOAT, 1, UNIT_CONV_MASS, 0.f,
                            bparts, mass, "Dynamical masses of the particles");
 
-  list[3] =
-      io_make_output_field("ParticleIDs", ULONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f,
-                           bparts, id, "Unique ID of the particles");
+  list[3] = io_make_physical_output_field(
+      "ParticleIDs", ULONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f, bparts, id,
+      /*can convert to comoving=*/0, "Unique ID of the particles");
 
   list[4] = io_make_output_field(
       "SmoothingLengths", FLOAT, 1, UNIT_CONV_LENGTH, 1.f, bparts, h,
@@ -234,17 +234,17 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
       "birth. This does not include any mass accreted onto any merged black "
       "holes.");
 
-  list[12] = io_make_output_field(
+  list[12] = io_make_physical_output_field(
       "CumulativeNumberOfSeeds", INT, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
-      cumulative_number_seeds,
+      cumulative_number_seeds, /*can convert to comoving=*/0,
       "Total number of BH seeds that have merged into this black hole");
 
-  list[13] =
-      io_make_output_field("NumberOfMergers", INT, 1, UNIT_CONV_NO_UNITS, 0.f,
-                           bparts, number_of_mergers,
-                           "Number of mergers the black holes went through. "
-                           "This does not include the number of mergers "
-                           "accumulated by any merged black hole.");
+  list[13] = io_make_physical_output_field(
+      "NumberOfMergers", INT, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
+      number_of_mergers, /*can convert to comoving=*/1,
+      "Number of mergers the black holes went through. "
+      "This does not include the number of mergers "
+      "accumulated by any merged black hole.");
 
   if (with_cosmology) {
     list[14] = io_make_physical_output_field(
@@ -310,30 +310,30 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
       io_make_output_field("TimeBins", CHAR, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
                            time_bin, "Time-bins of the particles");
 
-  list[21] = io_make_output_field(
+  list[21] = io_make_physical_output_field(
       "NumberOfSwallows", INT, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
-      number_of_gas_swallows,
+      number_of_gas_swallows, /*can convert to comoving=*/1,
       "Number of gas particles the black holes have swallowed. "
       "This includes the particles swallowed by any of the black holes that "
       "merged into this one.");
 
-  list[22] = io_make_output_field(
+  list[22] = io_make_physical_output_field(
       "NumberOfDirectSwallows", INT, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
-      number_of_direct_gas_swallows,
+      number_of_direct_gas_swallows, /*can convert to comoving=*/1,
       "Number of gas particles the black holes have swallowed. "
       "This does not include any particles swallowed by any of the black holes "
       "that merged into this one.");
 
-  list[23] = io_make_output_field(
+  list[23] = io_make_physical_output_field(
       "NumberOfRepositions", INT, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
-      number_of_repositions,
+      number_of_repositions, /*can convert to comoving=*/1,
       "Number of repositioning events the black holes went through. This does "
       "not include the number of reposition events accumulated by any merged "
       "black holes.");
 
-  list[24] = io_make_output_field(
+  list[24] = io_make_physical_output_field(
       "NumberOfRepositionAttempts", INT, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
-      number_of_reposition_attempts,
+      number_of_reposition_attempts, /*can convert to comoving=*/1,
       "Number of time steps in which the black holes had an eligible particle "
       "to reposition to. They may or may not have ended up moving there, "
       "depending on their subgrid mass and on whether these particles were at "
@@ -341,9 +341,9 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
       "not include attempted repositioning events accumulated by any merged "
       "black holes.");
 
-  list[25] = io_make_output_field(
+  list[25] = io_make_physical_output_field(
       "NumberOfTimeSteps", INT, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
-      number_of_time_steps,
+      number_of_time_steps, /*can convert to comoving=*/0,
       "Total number of time steps at which the black holes were active.");
 
   list[26] = io_make_output_field(
@@ -375,9 +375,9 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
       "Physical angular momenta that the black holes have accumulated through "
       "subgrid accretion.");
 
-  list[31] = io_make_output_field(
+  list[31] = io_make_physical_output_field(
       "NumberOfGasNeighbours", INT, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
-      num_ngbs,
+      num_ngbs, /*can convert to comoving=*/0,
       "Integer number of gas neighbour particles within the black hole "
       "kernels.");
 
@@ -394,16 +394,16 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
       "This is 0 for black holes that have never repositioned, or if the "
       "simulation has been run without prescribed repositioning speed.");
 
-  list[34] = io_make_output_field(
+  list[34] = io_make_physical_output_field(
       "NumberOfHeatingEvents", INT, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
-      AGN_number_of_energy_injections,
+      AGN_number_of_energy_injections, /*can convert to comoving=*/1,
       "Integer number of (thermal) energy injections the black hole has had "
       "so far. This counts each heated gas particle separately, and so can "
       "increase by more than one during a single time step.");
 
-  list[35] = io_make_output_field(
+  list[35] = io_make_physical_output_field(
       "NumberOfAGNEvents", INT, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
-      AGN_number_of_AGN_events,
+      AGN_number_of_AGN_events, /*can convert to comoving=*/1,
       "Integer number of AGN events the black hole has had so far"
       " (the number of time steps in which the BH did AGN feedback).");
 
