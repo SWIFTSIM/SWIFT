@@ -509,10 +509,10 @@ INLINE static struct io_props io_make_output_field_convert_gpart_(
   io_make_output_field_convert_spart(name, type, dim, units, a_exponent, \
                                      spart, convert, desc)
 
-#define io_make_physical_output_field_convert_spart(                         \
-    name, type, dim, units, a_exponent, spart, convertible, convert, desc)   \
-  io_make_output_field_convert_spart_(name, type, dim, units, a_exponent,    \
-                                      sizeof(part[0]), spart, convert, desc, \
+#define io_make_physical_output_field_convert_spart(                          \
+    name, type, dim, units, a_exponent, spart, convertible, convert, desc)    \
+  io_make_output_field_convert_spart_(name, type, dim, units, a_exponent,     \
+                                      sizeof(spart[0]), spart, convert, desc, \
                                       /*physical=*/1, convertible);
 
 /**
@@ -575,10 +575,10 @@ INLINE static struct io_props io_make_output_field_convert_spart_(
   io_make_output_field_convert_bpart(name, type, dim, units, a_exponent, \
                                      bpart, convert, desc)
 
-#define io_make_physical_output_field_convert_bpart(                         \
-    name, type, dim, units, a_exponent, bpart, convertible, convert, desc)   \
-  io_make_output_field_convert_bpart_(name, type, dim, units, a_exponent,    \
-                                      sizeof(part[0]), bpart, convert, desc, \
+#define io_make_physical_output_field_convert_bpart(                          \
+    name, type, dim, units, a_exponent, bpart, convertible, convert, desc)    \
+  io_make_output_field_convert_bpart_(name, type, dim, units, a_exponent,     \
+                                      sizeof(bpart[0]), bpart, convert, desc, \
                                       /*physical=*/1, convertible);
 
 /**
