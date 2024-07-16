@@ -84,6 +84,7 @@ GrackleCooling:
   initial_nH2I_to_nH_ratio:   1.891128E-006    # initial nH2I   to nH ratio (number density ratio). Value is ignored if set to -1.
   initial_nH2II_to_nH_ratio:  4.153181E-014    # initial nH2II  to nH ratio (number density ratio). Value is ignored if set to -1.
   initial_nHDI_to_nH_ratio:   3.356904E-010    # initial nHDI   to nH ratio (number density ratio). Value is ignored if set to -1.
+  maximal_density_Hpcm3: -1                    # Maximal density (in hydrogen atoms/cm^3) for cooling. Higher densities are floored to this value to ensure grackle works properly when interpolating beyond the cloudy_table maximal density. A value < 0 deactivates this parameter.
 
 
 
