@@ -446,7 +446,7 @@ INLINE static struct io_props io_make_output_field_convert_part_(
 #define io_make_physical_output_field_convert_gpart(                         \
     name, type, dim, units, a_exponent, gpart, convertible, convert, desc)   \
   io_make_output_field_convert_gpart_(name, type, dim, units, a_exponent,    \
-                                      sizeof(part[0]), gpart, convert, desc, \
+                                      sizeof(gpart[0]), gpart, convert, desc, \
                                       /*physical=*/1, convertible);
 
 /**

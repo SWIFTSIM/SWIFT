@@ -254,7 +254,7 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
       "accumulated by any merged black hole.");
 
   if (with_cosmology) {
-    list[14] = io_make_physcial_output_field(
+    list[14] = io_make_physical_output_field(
         "LastHighEddingtonFractionScaleFactors", FLOAT, 1, UNIT_CONV_NO_UNITS,
         0.f, bparts, last_high_Eddington_fraction_scale_factor,
         /*can convert to comoving=*/0,
