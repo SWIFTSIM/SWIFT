@@ -79,7 +79,6 @@ struct viscosity_global_data {
   float b_visc;
   float eta_crit;
 };
-struct viscosity_global_data viscosity_global;
 
 /*! Artificial diffusion parameters */
 struct diffusion_global_data {
@@ -89,7 +88,6 @@ struct diffusion_global_data {
   float b_difn_rho;
   float alpha_norm;
 };
-struct diffusion_global_data diffusion_global;
 
 /* Functions for reading from parameter file */
 
@@ -97,6 +95,9 @@ struct diffusion_global_data diffusion_global;
 struct swift_params;
 struct phys_const;
 struct unit_system;
+
+extern struct viscosity_global_data viscosity_global;
+extern struct diffusion_global_data diffusion_global;
 
 /* Viscosity */
 
