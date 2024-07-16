@@ -134,13 +134,17 @@ hydro_runner_iact_gradient_extra_viscosity(struct part *restrict pi,
       pi->du_norm_kernel[i] += (pj->u - pi->u) * wi_dx_term[i] * volume_j;
       pj->du_norm_kernel[i] += (pi->u - pj->u) * wj_dx_term[i] * volume_i;
 
-      pi->drho_norm_kernel[i] += (pj->rho_evol - pi->rho_evol) * wi_dx_term[i] * volume_j;
-      pj->drho_norm_kernel[i] += (pi->rho_evol - pj->rho_evol) * wj_dx_term[i] * volume_i;
+      pi->drho_norm_kernel[i] +=
+          (pj->rho_evol - pi->rho_evol) * wi_dx_term[i] * volume_j;
+      pj->drho_norm_kernel[i] +=
+          (pi->rho_evol - pj->rho_evol) * wj_dx_term[i] * volume_i;
     }
 
     for (int j = 0; j < 3; j++) {
-      pi->dv_norm_kernel[i][j] += (pj->v[j] - pi->v[j]) * wi_dx_term[i] * volume_j;
-      pj->dv_norm_kernel[i][j] += (pi->v[j] - pj->v[j]) * wj_dx_term[i] * volume_i;
+      pi->dv_norm_kernel[i][j] +=
+          (pj->v[j] - pi->v[j]) * wi_dx_term[i] * volume_j;
+      pj->dv_norm_kernel[i][j] +=
+          (pi->v[j] - pj->v[j]) * wj_dx_term[i] * volume_i;
     }
   }
 }
@@ -178,11 +182,13 @@ hydro_runner_iact_nonsym_gradient_extra_viscosity(
     // Contributions only from same-material particles for u and rho diffusion
     if (pi->mat_id == pj->mat_id) {
       pi->du_norm_kernel[i] += (pj->u - pi->u) * wi_dx_term[i] * volume_j;
-      pi->drho_norm_kernel[i] += (pj->rho_evol - pi->rho_evol) * wi_dx_term[i] * volume_j;
+      pi->drho_norm_kernel[i] +=
+          (pj->rho_evol - pi->rho_evol) * wi_dx_term[i] * volume_j;
     }
 
     for (int j = 0; j < 3; j++) {
-      pi->dv_norm_kernel[i][j] += (pj->v[j] - pi->v[j]) * wi_dx_term[i] * volume_j;
+      pi->dv_norm_kernel[i][j] +=
+          (pj->v[j] - pi->v[j]) * wi_dx_term[i] * volume_j;
     }
   }
 }
@@ -256,18 +262,22 @@ __attribute__((always_inline)) INLINE static void hydro_set_Qi_Qj(
       phi_j_v = 0.f;
     } else {
       /* Slope limiter (eq 21 in Rosswog 2020) */
-      phi_i_v = min(1.f, 4.f * A_i_v / A_j_v / (1.f + A_i_v / A_j_v) / (1.f + A_i_v / A_j_v));
+      phi_i_v = min(1.f, 4.f * A_i_v / A_j_v / (1.f + A_i_v / A_j_v) /
+                             (1.f + A_i_v / A_j_v));
       phi_i_v = max(0.f, phi_i_v);
 
-      phi_j_v = min(1.f, 4.f * A_j_v / A_i_v / (1.f + A_j_v / A_i_v) / (1.f + A_j_v / A_i_v));
+      phi_j_v = min(1.f, 4.f * A_j_v / A_i_v / (1.f + A_j_v / A_i_v) /
+                             (1.f + A_j_v / A_i_v));
       phi_j_v = max(0.f, phi_j_v);
     }
 
     // ...
     float eta_ab = min(r * hi_inv, r * hj_inv);
     if (eta_ab < eta_crit) {
-      phi_i_v *= expf(-(eta_ab - eta_crit) * (eta_ab - eta_crit) / hydro_slope_limiter_exp_denom);
-      phi_j_v *= expf(-(eta_ab - eta_crit) * (eta_ab - eta_crit) / hydro_slope_limiter_exp_denom);
+      phi_i_v *= expf(-(eta_ab - eta_crit) * (eta_ab - eta_crit) /
+                      hydro_slope_limiter_exp_denom);
+      phi_j_v *= expf(-(eta_ab - eta_crit) * (eta_ab - eta_crit) /
+                      hydro_slope_limiter_exp_denom);
     }
 
     // ...
@@ -287,14 +297,16 @@ __attribute__((always_inline)) INLINE static void hydro_set_Qi_Qj(
   }
 
   /* Finally assemble eq 15 in Rosswog 2020 */
-  float mu_i = min(0.f, ((vtilde_i[0] - vtilde_j[0]) * dx[0] +
-                         (vtilde_i[1] - vtilde_j[1]) * dx[1] +
-                         (vtilde_i[2] - vtilde_j[2]) * dx[2]) *
-                            hi_inv / (r2 * hi_inv * hi_inv + epsilon * epsilon));
-  float mu_j = min(0.f, ((vtilde_i[0] - vtilde_j[0]) * dx[0] +
-                         (vtilde_i[1] - vtilde_j[1]) * dx[1] +
-                         (vtilde_i[2] - vtilde_j[2]) * dx[2]) *
-                            hj_inv / (r2 * hj_inv * hj_inv + epsilon * epsilon));
+  float mu_i =
+      min(0.f, ((vtilde_i[0] - vtilde_j[0]) * dx[0] +
+                (vtilde_i[1] - vtilde_j[1]) * dx[1] +
+                (vtilde_i[2] - vtilde_j[2]) * dx[2]) *
+                   hi_inv / (r2 * hi_inv * hi_inv + epsilon * epsilon));
+  float mu_j =
+      min(0.f, ((vtilde_i[0] - vtilde_j[0]) * dx[0] +
+                (vtilde_i[1] - vtilde_j[1]) * dx[1] +
+                (vtilde_i[2] - vtilde_j[2]) * dx[2]) *
+                   hj_inv / (r2 * hj_inv * hj_inv + epsilon * epsilon));
 
   const float ci = pi->force.soundspeed;
   const float cj = pj->force.soundspeed;
@@ -310,9 +322,9 @@ __attribute__((always_inline)) INLINE static void hydro_set_Qi_Qj(
 
   // ...
   *difn_signal_velocity =
-        sqrtf((vtilde_i[0] - vtilde_j[0]) * (vtilde_i[0] - vtilde_j[0]) +
-              (vtilde_i[1] - vtilde_j[1]) * (vtilde_i[1] - vtilde_j[1]) +
-              (vtilde_i[2] - vtilde_j[2]) * (vtilde_i[2] - vtilde_j[2]));
+      sqrtf((vtilde_i[0] - vtilde_j[0]) * (vtilde_i[0] - vtilde_j[0]) +
+            (vtilde_i[1] - vtilde_j[1]) * (vtilde_i[1] - vtilde_j[1]) +
+            (vtilde_i[2] - vtilde_j[2]) * (vtilde_i[2] - vtilde_j[2]));
 }
 
 __attribute__((always_inline)) INLINE static void hydro_set_u_rho_difn(
@@ -399,10 +411,14 @@ __attribute__((always_inline)) INLINE static void hydro_set_u_rho_difn(
     float eta_ab = min(r * hi_inv, r * hj_inv);
     const float eta_crit = viscosity_global.eta_crit;
     if (eta_ab < eta_crit) {
-      phi_i_u *= expf(-(eta_ab - eta_crit) * (eta_ab - eta_crit) / hydro_slope_limiter_exp_denom);
-      phi_j_u *= expf(-(eta_ab - eta_crit) * (eta_ab - eta_crit) / hydro_slope_limiter_exp_denom);
-      phi_i_rho *= expf(-(eta_ab - eta_crit) * (eta_ab - eta_crit) / hydro_slope_limiter_exp_denom);
-      phi_j_rho *= expf(-(eta_ab - eta_crit) * (eta_ab - eta_crit) / hydro_slope_limiter_exp_denom);
+      phi_i_u *= expf(-(eta_ab - eta_crit) * (eta_ab - eta_crit) /
+                      hydro_slope_limiter_exp_denom);
+      phi_j_u *= expf(-(eta_ab - eta_crit) * (eta_ab - eta_crit) /
+                      hydro_slope_limiter_exp_denom);
+      phi_i_rho *= expf(-(eta_ab - eta_crit) * (eta_ab - eta_crit) /
+                        hydro_slope_limiter_exp_denom);
+      phi_j_rho *= expf(-(eta_ab - eta_crit) * (eta_ab - eta_crit) /
+                        hydro_slope_limiter_exp_denom);
     }
 
     /* Assemble the reconstructed velocity (eq 17 in Rosswog 2020) */

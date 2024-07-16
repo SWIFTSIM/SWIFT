@@ -344,8 +344,8 @@ __attribute__((always_inline)) INLINE static void hydro_set_physical_entropy(
 
   /* Note there is no conversion from physical to comoving entropy */
   const float comoving_entropy = entropy;
-  xp->u_full = gas_internal_energy_from_entropy(p->rho_evol,
-                                                comoving_entropy, p->mat_id);
+  xp->u_full = gas_internal_energy_from_entropy(p->rho_evol, comoving_entropy,
+                                                p->mat_id);
 }
 
 /**
@@ -681,7 +681,8 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   if (div_v == 0.f) {
     balsara = 0.f;
   } else {
-    balsara = fabsf(div_v) / (fabsf(div_v) + mod_curl_v + 0.0001f * soundspeed / p->h);
+    balsara = fabsf(div_v) /
+              (fabsf(div_v) + mod_curl_v + 0.0001f * soundspeed / p->h);
   }
 
   /* Compute the pressure */
@@ -784,8 +785,8 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
 
   /* compute minimum SPH quantities */
   const float h = p->h;
-  const float h_inv = 1.0f / h;                               /* 1/h */
-  const float h_inv_dim = pow_dimension(h_inv);               /* 1/h^d */
+  const float h_inv = 1.0f / h;                 /* 1/h */
+  const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */
   const float floor_rho = p->mass * kernel_root * h_inv_dim;
   p->rho_evol = max(p->rho_evol, floor_rho);
 
@@ -890,12 +891,13 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
 
   const float delta_rho = p->drho_dt * dt_therm;
 
-  xp->rho_evol_full = max(xp->rho_evol_full + delta_rho, 0.5f * xp->rho_evol_full);
+  xp->rho_evol_full =
+      max(xp->rho_evol_full + delta_rho, 0.5f * xp->rho_evol_full);
 
   /* Minimum SPH quantities */
   const float h = p->h;
-  const float h_inv = 1.0f / h;                               /* 1/h */
-  const float h_inv_dim = pow_dimension(h_inv);               /* 1/h^d */
+  const float h_inv = 1.0f / h;                 /* 1/h */
+  const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */
   const float floor_rho = p->mass * kernel_root * h_inv_dim;
   if (xp->rho_evol_full < floor_rho) {
     xp->rho_evol_full = floor_rho;
