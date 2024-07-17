@@ -1268,9 +1268,59 @@ cell_can_split_pair_gravity_task(const struct cell *ci, const struct cell *cj) {
     return ci->split && cj->split;
   }
 
+  /* Any task pair including a void cell must be split. */
+  if (ci->subtype == cell_subtype_void || cj->subtype == cell_subtype_void) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+    /* Ensure both cells are actually split. */
+    if (!(ci->split && cj->split)) {
+      error("Pair containing a void cell includes a pair that is not split.");
+    }
+
+    /* Ensure the non-void cell is above the maximal splitting distance. */
+    if ((ci->subtype == cell_subtype_void &&
+         !cell_is_above_diff_grav_depth(cj)) ||
+        (cj->subtype == cell_subtype_void &&
+         !cell_is_above_diff_grav_depth(ci))) {
+      error(
+          "Pair containing a void cell includes a non-void cell that cannot "
+          "be split.");
+    }
+#endif
+
+    return 1;
+  }
+
   /* Otherwise, are the cells split and still far from the leaves ? */
   return (ci->split && cj->split) && cell_is_above_diff_grav_depth(ci) &&
          cell_is_above_diff_grav_depth(cj);
+}
+
+/**
+ * @brief Can a pair gravity task be split into smaller sub-tasks
+ * based on the number of particles in the cells?
+ *
+ * If the product of the number of particles (the number of interactions) is
+ * smaller than space_subsize_pair_grav a task will not be split since it is
+ * already small enough and this function will return 1.
+ *
+ * Void cells will always be split regardless of the number of particles.
+ *
+ * @param ci The first #cell.
+ * @param cj The second #cell.
+ */
+int cell_pair_gravity_task_below_subsize(const struct cell *ci,
+                                         const struct cell *cj) {
+  /* If one cell is a void cell we need to split regardless of cell counts. */
+  if (ci->subtype == cell_subtype_void || cj->subtype == cell_subtype_void) {
+    return 0;
+  }
+
+  /* Get the cell counts. */
+  const long long gcount_i = ci->grav.count;
+  const long long gcount_j = cj->grav.count;
+
+  return gcount_i * gcount_j < ((long long)space_subsize_pair_grav);
 }
 
 /**
