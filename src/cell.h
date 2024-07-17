@@ -1309,8 +1309,9 @@ cell_can_split_pair_gravity_task(const struct cell *ci, const struct cell *cj) {
  * @param ci The first #cell.
  * @param cj The second #cell.
  */
-int cell_pair_gravity_task_below_subsize(const struct cell *ci,
-                                         const struct cell *cj) {
+__attribute__((always_inline)) INLINE static int
+cell_pair_gravity_task_below_subsize(const struct cell *ci,
+                                     const struct cell *cj) {
   /* If one cell is a void cell we need to split regardless of cell counts. */
   if (ci->subtype == cell_subtype_void || cj->subtype == cell_subtype_void) {
     return 0;
