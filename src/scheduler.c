@@ -1472,7 +1472,7 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
       if (cell_can_split_pair_gravity_task(ci, cj)) {
 
         /* Replace by a single sub-task? */
-        if (scheduler_dosub && cell_pair_gravity_task_above_subsize(ci, cj)) {
+        if (scheduler_dosub && cell_pair_gravity_task_below_subsize(ci, cj)) {
           /* Otherwise, split it. */
         } else {
           /* Turn the task into a M-M task that will take care of all the
