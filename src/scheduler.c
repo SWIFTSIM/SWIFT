@@ -41,7 +41,6 @@
 
 /* Local headers. */
 #include "atomic.h"
-#include "cell.h"
 #include "cycle.h"
 #include "engine.h"
 #include "error.h"
