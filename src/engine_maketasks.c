@@ -2200,170 +2200,159 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
     const enum task_types t_type = t->type;
     const enum task_subtypes t_subtype = t->subtype;
 
-    /* Link sort tasks to all the higher sort task. */
-    if (t_type == task_type_sort) {
-      for (struct cell *finger = t->ci->parent; finger != NULL;
-           finger = finger->parent) {
-        if (finger->hydro.sorts != NULL)
-          scheduler_addunlock(sched, t, finger->hydro.sorts);
-      }
+    /* It's possible in zoom land that we have spawned a pair task during
+     * splitting where one of the cells is a top level zoom cell with
+     * 0 particles. This is rare but just in case lets check and kill it
+     * off if needed. */
+    if (t_type == task_type_pair &&
+        (ci->grav.count == 0 || cj->grav.count == 0)) {
+      t->type = task_type_none;
+      t->subtype = task_subtype_none;
+      t->ci = NULL;
+      t->cj = NULL;
+      t->skip = 1;
+      continue;
 
-      /* Link stars sort tasks to all the higher sort task. */
-    } else if (t_type == task_type_stars_sort) {
-      for (struct cell *finger = t->ci->parent; finger != NULL;
-           finger = finger->parent) {
-        if (finger->stars.sorts != NULL)
-          scheduler_addunlock(sched, t, finger->stars.sorts);
-      }
+      /* Link sort tasks to all the higher sort task. */
+      if (t_type == task_type_sort) {
+        for (struct cell *finger = t->ci->parent; finger != NULL;
+             finger = finger->parent) {
+          if (finger->hydro.sorts != NULL)
+            scheduler_addunlock(sched, t, finger->hydro.sorts);
+        }
 
-      /* Link self tasks to cells. */
-    } else if (t_type == task_type_self) {
-      atomic_inc(&ci->nr_tasks);
+        /* Link stars sort tasks to all the higher sort task. */
+      } else if (t_type == task_type_stars_sort) {
+        for (struct cell *finger = t->ci->parent; finger != NULL;
+             finger = finger->parent) {
+          if (finger->stars.sorts != NULL)
+            scheduler_addunlock(sched, t, finger->stars.sorts);
+        }
 
-      if (t_subtype == task_subtype_density) {
-        engine_addlink(e, &ci->hydro.density, t);
-      } else if (t_subtype == task_subtype_grav) {
-        engine_addlink(e, &ci->grav.grav, t);
-      } else if (t_subtype == task_subtype_external_grav) {
-        engine_addlink(e, &ci->grav.grav, t);
-      }
+        /* Link self tasks to cells. */
+      } else if (t_type == task_type_self) {
+        atomic_inc(&ci->nr_tasks);
 
-      /* Link pair tasks to cells. */
-    } else if (t_type == task_type_pair) {
-      atomic_inc(&ci->nr_tasks);
-      atomic_inc(&cj->nr_tasks);
+        if (t_subtype == task_subtype_density) {
+          engine_addlink(e, &ci->hydro.density, t);
+        } else if (t_subtype == task_subtype_grav) {
+          engine_addlink(e, &ci->grav.grav, t);
+        } else if (t_subtype == task_subtype_external_grav) {
+          engine_addlink(e, &ci->grav.grav, t);
+        }
 
-      if (t_subtype == task_subtype_density) {
-        engine_addlink(e, &ci->hydro.density, t);
-        engine_addlink(e, &cj->hydro.density, t);
-      } else if (t_subtype == task_subtype_grav) {
-        engine_addlink(e, &ci->grav.grav, t);
-        engine_addlink(e, &cj->grav.grav, t);
-      }
+        /* Link pair tasks to cells. */
+      } else if (t_type == task_type_pair) {
+        atomic_inc(&ci->nr_tasks);
+        atomic_inc(&cj->nr_tasks);
+
+        if (t_subtype == task_subtype_density) {
+          engine_addlink(e, &ci->hydro.density, t);
+          engine_addlink(e, &cj->hydro.density, t);
+        } else if (t_subtype == task_subtype_grav) {
+          engine_addlink(e, &ci->grav.grav, t);
+          engine_addlink(e, &cj->grav.grav, t);
+        }
 #ifdef SWIFT_DEBUG_CHECKS
-      else if (t_subtype == task_subtype_external_grav) {
-        error("Found a pair/external-gravity task...");
-      }
+        else if (t_subtype == task_subtype_external_grav) {
+          error("Found a pair/external-gravity task...");
+        }
 #endif
 
-      /* Link sub-self tasks to cells. */
-    } else if (t_type == task_type_sub_self) {
-      atomic_inc(&ci->nr_tasks);
+        /* Link sub-self tasks to cells. */
+      } else if (t_type == task_type_sub_self) {
+        atomic_inc(&ci->nr_tasks);
 
-      if (t_subtype == task_subtype_density) {
-        engine_addlink(e, &ci->hydro.density, t);
-      } else if (t_subtype == task_subtype_grav) {
-        engine_addlink(e, &ci->grav.grav, t);
-      } else if (t_subtype == task_subtype_external_grav) {
-        engine_addlink(e, &ci->grav.grav, t);
-      }
+        if (t_subtype == task_subtype_density) {
+          engine_addlink(e, &ci->hydro.density, t);
+        } else if (t_subtype == task_subtype_grav) {
+          engine_addlink(e, &ci->grav.grav, t);
+        } else if (t_subtype == task_subtype_external_grav) {
+          engine_addlink(e, &ci->grav.grav, t);
+        }
 
-      /* Link sub-pair tasks to cells. */
-    } else if (t_type == task_type_sub_pair) {
-      atomic_inc(&ci->nr_tasks);
-      atomic_inc(&cj->nr_tasks);
+        /* Link sub-pair tasks to cells. */
+      } else if (t_type == task_type_sub_pair) {
+        atomic_inc(&ci->nr_tasks);
+        atomic_inc(&cj->nr_tasks);
 
-      if (t_subtype == task_subtype_density) {
-        engine_addlink(e, &ci->hydro.density, t);
-        engine_addlink(e, &cj->hydro.density, t);
-      } else if (t_subtype == task_subtype_grav) {
-        engine_addlink(e, &ci->grav.grav, t);
-        engine_addlink(e, &cj->grav.grav, t);
-      }
+        if (t_subtype == task_subtype_density) {
+          engine_addlink(e, &ci->hydro.density, t);
+          engine_addlink(e, &cj->hydro.density, t);
+        } else if (t_subtype == task_subtype_grav) {
+          engine_addlink(e, &ci->grav.grav, t);
+          engine_addlink(e, &cj->grav.grav, t);
+        }
 #ifdef SWIFT_DEBUG_CHECKS
-      else if (t_subtype == task_subtype_external_grav) {
-        error("Found a sub-pair/external-gravity task...");
-      }
+        else if (t_subtype == task_subtype_external_grav) {
+          error("Found a sub-pair/external-gravity task...");
+        }
 #endif
 
-      /* Multipole-multipole interaction of progenies */
-    } else if (t_type == task_type_grav_mm) {
+        /* Multipole-multipole interaction of progenies */
+      } else if (t_type == task_type_grav_mm) {
 
-      atomic_inc(&ci->grav.nr_mm_tasks);
-      atomic_inc(&cj->grav.nr_mm_tasks);
-      engine_addlink(e, &ci->grav.mm, t);
-      engine_addlink(e, &cj->grav.mm, t);
+        atomic_inc(&ci->grav.nr_mm_tasks);
+        atomic_inc(&cj->grav.nr_mm_tasks);
+        engine_addlink(e, &ci->grav.mm, t);
+        engine_addlink(e, &cj->grav.mm, t);
+      }
     }
   }
-}
 
-/**
- * @brief Creates all the task dependencies for the gravity
- *
- * @param e The #engine
- */
-void engine_link_gravity_tasks(struct engine *e) {
+  /**
+   * @brief Creates all the task dependencies for the gravity
+   *
+   * @param e The #engine
+   */
+  void engine_link_gravity_tasks(struct engine * e) {
 
-  struct scheduler *sched = &e->sched;
-  const int nodeID = e->nodeID;
-  const int nr_tasks = sched->nr_tasks;
+    struct scheduler *sched = &e->sched;
+    const int nodeID = e->nodeID;
+    const int nr_tasks = sched->nr_tasks;
 
-  for (int k = 0; k < nr_tasks; k++) {
+    for (int k = 0; k < nr_tasks; k++) {
 
-    /* Get a pointer to the task. */
-    struct task *t = &sched->tasks[k];
+      /* Get a pointer to the task. */
+      struct task *t = &sched->tasks[k];
 
-    if (t->type == task_type_none) continue;
+      if (t->type == task_type_none) continue;
 
-    /* Get the cells we act on */
-    struct cell *ci = t->ci;
-    struct cell *cj = t->cj;
-    const enum task_types t_type = t->type;
-    const enum task_subtypes t_subtype = t->subtype;
+      /* Get the cells we act on */
+      struct cell *ci = t->ci;
+      struct cell *cj = t->cj;
+      const enum task_types t_type = t->type;
+      const enum task_subtypes t_subtype = t->subtype;
 
-    /* Pointers to the parent cells for tasks going up and down the tree
-     * In the case where we are at the super-level we don't
-     * want the parent as no tasks are defined above that level. */
-    struct cell *ci_parent, *cj_parent;
-    if (ci->parent != NULL && ci->grav.super != ci)
-      ci_parent = ci->parent;
-    else
-      ci_parent = ci;
+      /* Pointers to the parent cells for tasks going up and down the tree
+       * In the case where we are at the super-level we don't
+       * want the parent as no tasks are defined above that level. */
+      struct cell *ci_parent, *cj_parent;
+      if (ci->parent != NULL && ci->grav.super != ci)
+        ci_parent = ci->parent;
+      else
+        ci_parent = ci;
 
-    if (cj != NULL && cj->parent != NULL && cj->grav.super != cj)
-      cj_parent = cj->parent;
-    else
-      cj_parent = cj;
+      if (cj != NULL && cj->parent != NULL && cj->grav.super != cj)
+        cj_parent = cj->parent;
+      else
+        cj_parent = cj;
 
 /* Node ID (if running with MPI) */
 #ifdef WITH_MPI
-    const int ci_nodeID = ci->nodeID;
-    const int cj_nodeID = (cj != NULL) ? cj->nodeID : -1;
+      const int ci_nodeID = ci->nodeID;
+      const int cj_nodeID = (cj != NULL) ? cj->nodeID : -1;
 #else
-    const int ci_nodeID = nodeID;
-    const int cj_nodeID = nodeID;
+      const int ci_nodeID = nodeID;
+      const int cj_nodeID = nodeID;
 #endif
 
-    /* Self-interaction for self-gravity? */
-    if (t_type == task_type_self && t_subtype == task_subtype_grav) {
+      /* Self-interaction for self-gravity? */
+      if (t_type == task_type_self && t_subtype == task_subtype_grav) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-      if (ci_nodeID != nodeID) error("Non-local self task");
+        if (ci_nodeID != nodeID) error("Non-local self task");
 #endif
-
-      /* drift ---+-> gravity --> grav_down */
-      /* init  --/    */
-      scheduler_addunlock(sched, ci_parent->grav.drift_out, t);
-      scheduler_addunlock(sched, ci_parent->grav.init_out, t);
-      scheduler_addunlock(sched, t, ci_parent->grav.down_in);
-    }
-
-    /* Self-interaction for external gravity ? */
-    if (t_type == task_type_self && t_subtype == task_subtype_external_grav) {
-
-#ifdef SWIFT_DEBUG_CHECKS
-      if (ci_nodeID != nodeID) error("Non-local self task");
-#endif
-
-      /* drift -----> gravity --> end_gravity_force */
-      scheduler_addunlock(sched, ci->grav.super->grav.drift, t);
-      scheduler_addunlock(sched, t, ci->grav.super->grav.end_force);
-    }
-
-    /* Otherwise, pair interaction? */
-    else if (t_type == task_type_pair && t_subtype == task_subtype_grav) {
-
-      if (ci_nodeID == nodeID) {
 
         /* drift ---+-> gravity --> grav_down */
         /* init  --/    */
@@ -2371,694 +2360,367 @@ void engine_link_gravity_tasks(struct engine *e) {
         scheduler_addunlock(sched, ci_parent->grav.init_out, t);
         scheduler_addunlock(sched, t, ci_parent->grav.down_in);
       }
-      if (cj_nodeID == nodeID) {
 
-        /* drift ---+-> gravity --> grav_down */
-        /* init  --/    */
-        if (ci_parent != cj_parent) { /* Avoid double unlock */
-          scheduler_addunlock(sched, cj_parent->grav.drift_out, t);
-          scheduler_addunlock(sched, cj_parent->grav.init_out, t);
-          scheduler_addunlock(sched, t, cj_parent->grav.down_in);
+      /* Self-interaction for external gravity ? */
+      if (t_type == task_type_self && t_subtype == task_subtype_external_grav) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+        if (ci_nodeID != nodeID) error("Non-local self task");
+#endif
+
+        /* drift -----> gravity --> end_gravity_force */
+        scheduler_addunlock(sched, ci->grav.super->grav.drift, t);
+        scheduler_addunlock(sched, t, ci->grav.super->grav.end_force);
+      }
+
+      /* Otherwise, pair interaction? */
+      else if (t_type == task_type_pair && t_subtype == task_subtype_grav) {
+
+        if (ci_nodeID == nodeID) {
+
+          /* drift ---+-> gravity --> grav_down */
+          /* init  --/    */
+          scheduler_addunlock(sched, ci_parent->grav.drift_out, t);
+          scheduler_addunlock(sched, ci_parent->grav.init_out, t);
+          scheduler_addunlock(sched, t, ci_parent->grav.down_in);
+        }
+        if (cj_nodeID == nodeID) {
+
+          /* drift ---+-> gravity --> grav_down */
+          /* init  --/    */
+          if (ci_parent != cj_parent) { /* Avoid double unlock */
+            scheduler_addunlock(sched, cj_parent->grav.drift_out, t);
+            scheduler_addunlock(sched, cj_parent->grav.init_out, t);
+            scheduler_addunlock(sched, t, cj_parent->grav.down_in);
+          }
         }
       }
-    }
 
-    /* Otherwise, sub-self interaction? */
-    else if (t_type == task_type_sub_self && t_subtype == task_subtype_grav) {
-
-#ifdef SWIFT_DEBUG_CHECKS
-      if (ci_nodeID != nodeID) error("Non-local sub-self task");
-#endif
-      /* drift ---+-> gravity --> grav_down */
-      /* init  --/    */
-      scheduler_addunlock(sched, ci_parent->grav.drift_out, t);
-      scheduler_addunlock(sched, ci_parent->grav.init_out, t);
-      scheduler_addunlock(sched, t, ci_parent->grav.down_in);
-    }
-
-    /* Sub-self-interaction for external gravity ? */
-    else if (t_type == task_type_sub_self &&
-             t_subtype == task_subtype_external_grav) {
+      /* Otherwise, sub-self interaction? */
+      else if (t_type == task_type_sub_self && t_subtype == task_subtype_grav) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-      if (ci_nodeID != nodeID) error("Non-local sub-self task");
+        if (ci_nodeID != nodeID) error("Non-local sub-self task");
 #endif
-
-      /* drift -----> gravity --> end_force */
-      scheduler_addunlock(sched, ci->grav.super->grav.drift, t);
-      scheduler_addunlock(sched, t, ci->grav.super->grav.end_force);
-    }
-
-    /* Otherwise, sub-pair interaction? */
-    else if (t_type == task_type_sub_pair && t_subtype == task_subtype_grav) {
-
-      if (ci_nodeID == nodeID) {
-
         /* drift ---+-> gravity --> grav_down */
         /* init  --/    */
         scheduler_addunlock(sched, ci_parent->grav.drift_out, t);
         scheduler_addunlock(sched, ci_parent->grav.init_out, t);
         scheduler_addunlock(sched, t, ci_parent->grav.down_in);
       }
-      if (cj_nodeID == nodeID) {
 
-        /* drift ---+-> gravity --> grav_down */
-        /* init  --/    */
-        if (ci_parent != cj_parent) { /* Avoid double unlock */
-          scheduler_addunlock(sched, cj_parent->grav.drift_out, t);
-          scheduler_addunlock(sched, cj_parent->grav.init_out, t);
-          scheduler_addunlock(sched, t, cj_parent->grav.down_in);
+      /* Sub-self-interaction for external gravity ? */
+      else if (t_type == task_type_sub_self &&
+               t_subtype == task_subtype_external_grav) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+        if (ci_nodeID != nodeID) error("Non-local sub-self task");
+#endif
+
+        /* drift -----> gravity --> end_force */
+        scheduler_addunlock(sched, ci->grav.super->grav.drift, t);
+        scheduler_addunlock(sched, t, ci->grav.super->grav.end_force);
+      }
+
+      /* Otherwise, sub-pair interaction? */
+      else if (t_type == task_type_sub_pair && t_subtype == task_subtype_grav) {
+
+        if (ci_nodeID == nodeID) {
+
+          /* drift ---+-> gravity --> grav_down */
+          /* init  --/    */
+          scheduler_addunlock(sched, ci_parent->grav.drift_out, t);
+          scheduler_addunlock(sched, ci_parent->grav.init_out, t);
+          scheduler_addunlock(sched, t, ci_parent->grav.down_in);
         }
+        if (cj_nodeID == nodeID) {
+
+          /* drift ---+-> gravity --> grav_down */
+          /* init  --/    */
+          if (ci_parent != cj_parent) { /* Avoid double unlock */
+            scheduler_addunlock(sched, cj_parent->grav.drift_out, t);
+            scheduler_addunlock(sched, cj_parent->grav.init_out, t);
+            scheduler_addunlock(sched, t, cj_parent->grav.down_in);
+          }
+        }
+
       }
 
-    }
+      /* Otherwise M-M interaction? */
+      else if (t_type == task_type_grav_mm) {
 
-    /* Otherwise M-M interaction? */
-    else if (t_type == task_type_grav_mm) {
+        if (ci_nodeID == nodeID) {
 
-      if (ci_nodeID == nodeID) {
+          /* init -----> gravity --> grav_down */
+          scheduler_addunlock(sched, ci_parent->grav.init_out, t);
+          scheduler_addunlock(sched, t, ci_parent->grav.down_in);
+        }
+        if (cj_nodeID == nodeID) {
 
-        /* init -----> gravity --> grav_down */
-        scheduler_addunlock(sched, ci_parent->grav.init_out, t);
-        scheduler_addunlock(sched, t, ci_parent->grav.down_in);
-      }
-      if (cj_nodeID == nodeID) {
-
-        /* init -----> gravity --> grav_down */
-        if (ci_parent != cj_parent) { /* Avoid double unlock */
-          scheduler_addunlock(sched, cj_parent->grav.init_out, t);
-          scheduler_addunlock(sched, t, cj_parent->grav.down_in);
+          /* init -----> gravity --> grav_down */
+          if (ci_parent != cj_parent) { /* Avoid double unlock */
+            scheduler_addunlock(sched, cj_parent->grav.init_out, t);
+            scheduler_addunlock(sched, t, cj_parent->grav.down_in);
+          }
         }
       }
     }
   }
-}
 
 #ifdef EXTRA_HYDRO_LOOP
 
-/**
- * @brief Creates the dependency network for the hydro tasks of a given cell.
- *
- * @param sched The #scheduler.
- * @param density The density task to link.
- * @param gradient The gradient task to link.
- * @param force The force task to link.
- * @param limiter The limiter task to link.
- * @param c The cell.
- * @param with_cooling Do we have a cooling task ?
- * @param with_limiter Do we have a time-step limiter ?
- */
-static inline void engine_make_hydro_loops_dependencies(
-    struct scheduler *sched, struct task *density, struct task *gradient,
-    struct task *force, struct task *limiter, struct cell *c, int with_cooling,
-    int with_limiter) {
+  /**
+   * @brief Creates the dependency network for the hydro tasks of a given cell.
+   *
+   * @param sched The #scheduler.
+   * @param density The density task to link.
+   * @param gradient The gradient task to link.
+   * @param force The force task to link.
+   * @param limiter The limiter task to link.
+   * @param c The cell.
+   * @param with_cooling Do we have a cooling task ?
+   * @param with_limiter Do we have a time-step limiter ?
+   */
+  static inline void engine_make_hydro_loops_dependencies(
+      struct scheduler * sched, struct task * density, struct task * gradient,
+      struct task * force, struct task * limiter, struct cell * c,
+      int with_cooling, int with_limiter) {
 
-  /* density loop --> ghost --> gradient loop --> extra_ghost */
-  /* extra_ghost --> force loop  */
-  scheduler_addunlock(sched, density, c->hydro.super->hydro.ghost_in);
-  scheduler_addunlock(sched, c->hydro.super->hydro.ghost_out, gradient);
-  scheduler_addunlock(sched, gradient, c->hydro.super->hydro.extra_ghost);
-  scheduler_addunlock(sched, c->hydro.super->hydro.extra_ghost, force);
-}
+    /* density loop --> ghost --> gradient loop --> extra_ghost */
+    /* extra_ghost --> force loop  */
+    scheduler_addunlock(sched, density, c->hydro.super->hydro.ghost_in);
+    scheduler_addunlock(sched, c->hydro.super->hydro.ghost_out, gradient);
+    scheduler_addunlock(sched, gradient, c->hydro.super->hydro.extra_ghost);
+    scheduler_addunlock(sched, c->hydro.super->hydro.extra_ghost, force);
+  }
 
 #else
 
-/**
- * @brief Creates the dependency network for the hydro tasks of a given cell.
- *
- * @param sched The #scheduler.
- * @param density The density task to link.
- * @param force The force task to link.
- * @param limiter The limiter task to link.
- * @param c The cell.
- * @param with_cooling Are we running with cooling switched on?
- * @param with_limiter Are we running with limiter switched on?
- */
-static inline void engine_make_hydro_loops_dependencies(
-    struct scheduler *sched, struct task *density, struct task *force,
-    struct task *limiter, struct cell *c, int with_cooling, int with_limiter) {
+  /**
+   * @brief Creates the dependency network for the hydro tasks of a given cell.
+   *
+   * @param sched The #scheduler.
+   * @param density The density task to link.
+   * @param force The force task to link.
+   * @param limiter The limiter task to link.
+   * @param c The cell.
+   * @param with_cooling Are we running with cooling switched on?
+   * @param with_limiter Are we running with limiter switched on?
+   */
+  static inline void engine_make_hydro_loops_dependencies(
+      struct scheduler * sched, struct task * density, struct task * force,
+      struct task * limiter, struct cell * c, int with_cooling,
+      int with_limiter) {
 
-  /* density loop --> ghost --> force loop */
-  scheduler_addunlock(sched, density, c->hydro.super->hydro.ghost_in);
-  scheduler_addunlock(sched, c->hydro.super->hydro.ghost_out, force);
-}
+    /* density loop --> ghost --> force loop */
+    scheduler_addunlock(sched, density, c->hydro.super->hydro.ghost_in);
+    scheduler_addunlock(sched, c->hydro.super->hydro.ghost_out, force);
+  }
 
 #endif
 
-/**
- * @brief Duplicates the first hydro loop and construct all the
- * dependencies for the hydro part
- *
- * This is done by looping over all the previously constructed tasks
- * and adding another task involving the same cells but this time
- * corresponding to the second hydro loop over neighbours.
- * With all the relevant tasks for a given cell available, we construct
- * all the dependencies for that cell.
- */
-void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
-                                              void *extra_data) {
+  /**
+   * @brief Duplicates the first hydro loop and construct all the
+   * dependencies for the hydro part
+   *
+   * This is done by looping over all the previously constructed tasks
+   * and adding another task involving the same cells but this time
+   * corresponding to the second hydro loop over neighbours.
+   * With all the relevant tasks for a given cell available, we construct
+   * all the dependencies for that cell.
+   */
+  void engine_make_extra_hydroloop_tasks_mapper(
+      void *map_data, int num_elements, void *extra_data) {
 
-  struct engine *e = (struct engine *)extra_data;
-  struct scheduler *sched = &e->sched;
-  const int nodeID = e->nodeID;
-  const int with_cooling = (e->policy & engine_policy_cooling);
-  const int with_timestep_limiter =
-      (e->policy & engine_policy_timestep_limiter);
-  const int with_timestep_sync = (e->policy & engine_policy_timestep_sync);
-  const int with_feedback = (e->policy & engine_policy_feedback);
-  const int with_black_holes = (e->policy & engine_policy_black_holes);
-  const int with_rt = (e->policy & engine_policy_rt);
-  const int with_sink = (e->policy & engine_policy_sinks);
+    struct engine *e = (struct engine *)extra_data;
+    struct scheduler *sched = &e->sched;
+    const int nodeID = e->nodeID;
+    const int with_cooling = (e->policy & engine_policy_cooling);
+    const int with_timestep_limiter =
+        (e->policy & engine_policy_timestep_limiter);
+    const int with_timestep_sync = (e->policy & engine_policy_timestep_sync);
+    const int with_feedback = (e->policy & engine_policy_feedback);
+    const int with_black_holes = (e->policy & engine_policy_black_holes);
+    const int with_rt = (e->policy & engine_policy_rt);
+    const int with_sink = (e->policy & engine_policy_sinks);
 #ifdef EXTRA_HYDRO_LOOP
-  struct task *t_gradient = NULL;
+    struct task *t_gradient = NULL;
 #endif
 #ifdef EXTRA_STAR_LOOPS
-  struct task *t_star_prep1 = NULL;
-  struct task *t_star_prep2 = NULL;
+    struct task *t_star_prep1 = NULL;
+    struct task *t_star_prep2 = NULL;
 #endif
-  struct task *t_force = NULL;
-  struct task *t_limiter = NULL;
-  struct task *t_star_density = NULL;
-  struct task *t_star_feedback = NULL;
-  struct task *t_bh_density = NULL;
-  struct task *t_bh_swallow = NULL;
-  struct task *t_do_gas_swallow = NULL;
-  struct task *t_do_bh_swallow = NULL;
-  struct task *t_bh_feedback = NULL;
-  struct task *t_sink_swallow = NULL;
-  struct task *t_rt_gradient = NULL;
-  struct task *t_rt_transport = NULL;
-  struct task *t_sink_do_sink_swallow = NULL;
-  struct task *t_sink_do_gas_swallow = NULL;
+    struct task *t_force = NULL;
+    struct task *t_limiter = NULL;
+    struct task *t_star_density = NULL;
+    struct task *t_star_feedback = NULL;
+    struct task *t_bh_density = NULL;
+    struct task *t_bh_swallow = NULL;
+    struct task *t_do_gas_swallow = NULL;
+    struct task *t_do_bh_swallow = NULL;
+    struct task *t_bh_feedback = NULL;
+    struct task *t_sink_swallow = NULL;
+    struct task *t_rt_gradient = NULL;
+    struct task *t_rt_transport = NULL;
+    struct task *t_sink_do_sink_swallow = NULL;
+    struct task *t_sink_do_gas_swallow = NULL;
 
-  for (int ind = 0; ind < num_elements; ind++) {
+    for (int ind = 0; ind < num_elements; ind++) {
 
-    struct task *t = &((struct task *)map_data)[ind];
-    const enum task_types t_type = t->type;
-    const enum task_subtypes t_subtype = t->subtype;
-    const long long flags = t->flags;
-    struct cell *const ci = t->ci;
-    struct cell *const cj = t->cj;
+      struct task *t = &((struct task *)map_data)[ind];
+      const enum task_types t_type = t->type;
+      const enum task_subtypes t_subtype = t->subtype;
+      const long long flags = t->flags;
+      struct cell *const ci = t->ci;
+      struct cell *const cj = t->cj;
 
-    /* Escape early */
-    if (t->type == task_type_none) continue;
-    if (t->type == task_type_stars_resort) continue;
-    if (t->type == task_type_star_formation) continue;
-    if (t->type == task_type_star_formation_sink) continue;
-    if (t->type == task_type_sink_formation) continue;
+      /* Escape early */
+      if (t->type == task_type_none) continue;
+      if (t->type == task_type_stars_resort) continue;
+      if (t->type == task_type_star_formation) continue;
+      if (t->type == task_type_star_formation_sink) continue;
+      if (t->type == task_type_sink_formation) continue;
 
-    /* Sort tasks depend on the drift of the cell (gas version). */
-    if (t_type == task_type_sort && ci->nodeID == nodeID) {
-      scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t);
-    }
-
-    /* Sort tasks depend on the drift of the cell (stars version). */
-    else if (t_type == task_type_stars_sort && ci->nodeID == nodeID) {
-      scheduler_addunlock(sched, ci->hydro.super->stars.drift, t);
-    }
-
-    /* Self-interaction? */
-    else if (t_type == task_type_self && t_subtype == task_subtype_density) {
-
-      const int bcount_i = ci->black_holes.count;
-
-      /* Make the self-density tasks depend on the drift only. */
-      scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t);
-
-      /* Task for the second hydro loop, */
-      t_force = scheduler_addtask(sched, task_type_self, task_subtype_force,
-                                  flags, 0, ci, NULL);
-
-      /* the task for the time-step limiter */
-      if (with_timestep_limiter) {
-        t_limiter = scheduler_addtask(sched, task_type_self,
-                                      task_subtype_limiter, flags, 0, ci, NULL);
-      }
-
-      /* The stellar feedback tasks */
-      if (with_feedback) {
-        t_star_density =
-            scheduler_addtask(sched, task_type_self, task_subtype_stars_density,
-                              flags, 0, ci, NULL);
-        t_star_feedback =
-            scheduler_addtask(sched, task_type_self,
-                              task_subtype_stars_feedback, flags, 0, ci, NULL);
-
-#ifdef EXTRA_STAR_LOOPS
-        t_star_prep1 =
-            scheduler_addtask(sched, task_type_self, task_subtype_stars_prep1,
-                              flags, 0, ci, NULL);
-        t_star_prep2 =
-            scheduler_addtask(sched, task_type_self, task_subtype_stars_prep2,
-                              flags, 0, ci, NULL);
-#endif
-      }
-
-      /* The sink tasks */
-      if (with_sink) {
-        t_sink_swallow =
-            scheduler_addtask(sched, task_type_self, task_subtype_sink_swallow,
-                              flags, 0, ci, NULL);
-        t_sink_do_sink_swallow = scheduler_addtask(
-            sched, task_type_self, task_subtype_sink_do_sink_swallow, flags, 0,
-            ci, NULL);
-        t_sink_do_gas_swallow = scheduler_addtask(
-            sched, task_type_self, task_subtype_sink_do_gas_swallow, flags, 0,
-            ci, NULL);
-      }
-
-      /* The black hole feedback tasks */
-      if (with_black_holes && bcount_i > 0) {
-        t_bh_density = scheduler_addtask(
-            sched, task_type_self, task_subtype_bh_density, flags, 0, ci, NULL);
-        t_bh_swallow = scheduler_addtask(
-            sched, task_type_self, task_subtype_bh_swallow, flags, 0, ci, NULL);
-        t_do_gas_swallow =
-            scheduler_addtask(sched, task_type_self,
-                              task_subtype_do_gas_swallow, flags, 0, ci, NULL);
-        t_do_bh_swallow =
-            scheduler_addtask(sched, task_type_self, task_subtype_do_bh_swallow,
-                              flags, 0, ci, NULL);
-        t_bh_feedback =
-            scheduler_addtask(sched, task_type_self, task_subtype_bh_feedback,
-                              flags, 0, ci, NULL);
-      }
-
-      if (with_rt) {
-        t_rt_gradient =
-            scheduler_addtask(sched, task_type_self, task_subtype_rt_gradient,
-                              flags, 0, ci, NULL);
-        t_rt_transport =
-            scheduler_addtask(sched, task_type_self, task_subtype_rt_transport,
-                              flags, 0, ci, NULL);
-      }
-
-      /* Link the tasks to the cells */
-      engine_addlink(e, &ci->hydro.force, t_force);
-      if (with_timestep_limiter) {
-        engine_addlink(e, &ci->hydro.limiter, t_limiter);
-      }
-      if (with_feedback) {
-        engine_addlink(e, &ci->stars.density, t_star_density);
-        engine_addlink(e, &ci->stars.feedback, t_star_feedback);
-#ifdef EXTRA_STAR_LOOPS
-        engine_addlink(e, &ci->stars.prepare1, t_star_prep1);
-        engine_addlink(e, &ci->stars.prepare2, t_star_prep2);
-#endif
-      }
-      if (with_sink) {
-        engine_addlink(e, &ci->sinks.swallow, t_sink_swallow);
-        engine_addlink(e, &ci->sinks.do_sink_swallow, t_sink_do_sink_swallow);
-        engine_addlink(e, &ci->sinks.do_gas_swallow, t_sink_do_gas_swallow);
-      }
-      if (with_black_holes && bcount_i > 0) {
-        engine_addlink(e, &ci->black_holes.density, t_bh_density);
-        engine_addlink(e, &ci->black_holes.swallow, t_bh_swallow);
-        engine_addlink(e, &ci->black_holes.do_gas_swallow, t_do_gas_swallow);
-        engine_addlink(e, &ci->black_holes.do_bh_swallow, t_do_bh_swallow);
-        engine_addlink(e, &ci->black_holes.feedback, t_bh_feedback);
-      }
-      if (with_rt) {
-        engine_addlink(e, &ci->rt.rt_gradient, t_rt_gradient);
-        engine_addlink(e, &ci->rt.rt_transport, t_rt_transport);
-      }
-
-#ifdef EXTRA_HYDRO_LOOP
-
-      /* Same work for the additional hydro loop */
-      t_gradient = scheduler_addtask(sched, task_type_self,
-                                     task_subtype_gradient, flags, 0, ci, NULL);
-
-      /* Add the link between the new loops and the cell */
-      engine_addlink(e, &ci->hydro.gradient, t_gradient);
-
-      /* Now, build all the dependencies for the hydro */
-      engine_make_hydro_loops_dependencies(sched, t, t_gradient, t_force,
-                                           t_limiter, ci, with_cooling,
-                                           with_timestep_limiter);
-#else
-
-      /* Now, build all the dependencies for the hydro */
-      engine_make_hydro_loops_dependencies(sched, t, t_force, t_limiter, ci,
-                                           with_cooling, with_timestep_limiter);
-#endif
-
-      /* Create the task dependencies */
-      scheduler_addunlock(sched, t_force, ci->hydro.super->hydro.end_force);
-
-      if (with_feedback) {
-
-        if (with_cooling)
-          scheduler_addunlock(sched, ci->hydro.super->hydro.cooling_out,
-                              t_star_density);
-
-        scheduler_addunlock(sched, ci->hydro.super->stars.drift,
-                            t_star_density);
-        scheduler_addunlock(sched, ci->hydro.super->hydro.drift,
-                            t_star_density);
-        scheduler_addunlock(sched, ci->hydro.super->stars.stars_in,
-                            t_star_density);
-        scheduler_addunlock(sched, t_star_density,
-                            ci->hydro.super->stars.density_ghost);
-#ifdef EXTRA_STAR_LOOPS
-        scheduler_addunlock(sched, ci->hydro.super->stars.density_ghost,
-                            t_star_prep1);
-        scheduler_addunlock(sched, t_star_prep1,
-                            ci->hydro.super->stars.prep1_ghost);
-        scheduler_addunlock(sched, t_star_prep1,
-                            ci->hydro.super->hydro.prep1_ghost);
-        scheduler_addunlock(sched, ci->hydro.super->stars.prep1_ghost,
-                            t_star_prep2);
-        scheduler_addunlock(sched, ci->hydro.super->hydro.prep1_ghost,
-                            t_star_prep2);
-        scheduler_addunlock(sched, t_star_prep2,
-                            ci->hydro.super->stars.prep2_ghost);
-        scheduler_addunlock(sched, ci->hydro.super->stars.prep2_ghost,
-                            t_star_feedback);
-#else
-        scheduler_addunlock(sched, ci->hydro.super->stars.density_ghost,
-                            t_star_feedback);
-#endif
-        scheduler_addunlock(sched, t_star_feedback,
-                            ci->hydro.super->stars.stars_out);
-      }
-
-      /* The sink's tasks. */
-      if (with_sink) {
-
-        /* Do the sink_swallow */
-        scheduler_addunlock(sched, ci->hydro.super->hydro.drift,
-                            t_sink_swallow);
-        scheduler_addunlock(sched, ci->hydro.super->sinks.drift,
-                            t_sink_swallow);
-        scheduler_addunlock(sched, ci->hydro.super->hydro.sorts,
-                            t_sink_swallow);
-        scheduler_addunlock(sched, ci->hydro.super->sinks.sink_in,
-                            t_sink_swallow);
-        scheduler_addunlock(sched, t_sink_swallow,
-                            ci->hydro.super->sinks.sink_ghost1);
-
-        /* Do the sink_do_gas_swallow */
-        scheduler_addunlock(sched, ci->hydro.super->sinks.sink_ghost1,
-                            t_sink_do_gas_swallow);
-        scheduler_addunlock(sched, t_sink_do_gas_swallow,
-                            ci->hydro.super->sinks.sink_ghost2);
-
-        /* Do the sink_do_sink_swallow */
-        scheduler_addunlock(sched, ci->hydro.super->sinks.sink_ghost2,
-                            t_sink_do_sink_swallow);
-        scheduler_addunlock(sched, t_sink_do_sink_swallow,
-                            ci->hydro.super->sinks.sink_out);
-      }
-
-      if (with_black_holes && bcount_i > 0) {
-
-        if (with_cooling)
-          scheduler_addunlock(sched, ci->hydro.super->hydro.cooling_out,
-                              t_bh_density);
-
-        scheduler_addunlock(sched, ci->hydro.super->black_holes.drift,
-                            t_bh_density);
-        scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t_bh_density);
-        scheduler_addunlock(sched, ci->hydro.super->black_holes.black_holes_in,
-                            t_bh_density);
-        scheduler_addunlock(sched, t_bh_density,
-                            ci->hydro.super->black_holes.density_ghost);
-
-        scheduler_addunlock(sched, ci->hydro.super->black_holes.density_ghost,
-                            t_bh_swallow);
-        scheduler_addunlock(sched, t_bh_swallow,
-                            ci->hydro.super->black_holes.swallow_ghost_1);
-
-        scheduler_addunlock(sched, ci->hydro.super->black_holes.swallow_ghost_1,
-                            t_do_gas_swallow);
-        scheduler_addunlock(sched, t_do_gas_swallow,
-                            ci->hydro.super->black_holes.swallow_ghost_2);
-
-        scheduler_addunlock(sched, ci->hydro.super->black_holes.swallow_ghost_2,
-                            t_do_bh_swallow);
-        scheduler_addunlock(sched, t_do_bh_swallow,
-                            ci->hydro.super->black_holes.swallow_ghost_3);
-
-        scheduler_addunlock(sched, ci->hydro.super->black_holes.swallow_ghost_3,
-                            t_bh_feedback);
-        scheduler_addunlock(sched, t_bh_feedback,
-                            ci->hydro.super->black_holes.black_holes_out);
-      }
-
-      if (with_timestep_limiter) {
-        scheduler_addunlock(sched, ci->super->timestep, t_limiter);
-        scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t_limiter);
-        scheduler_addunlock(sched, t_limiter, ci->super->kick1);
-        scheduler_addunlock(sched, t_limiter, ci->super->timestep_limiter);
-      }
-
-      if (with_timestep_sync && with_feedback) {
-        scheduler_addunlock(sched, t_star_feedback, ci->super->timestep_sync);
-      }
-      if (with_timestep_sync && with_black_holes && bcount_i > 0) {
-        scheduler_addunlock(sched, t_bh_feedback, ci->super->timestep_sync);
-      }
-
-      if (with_rt) {
-        scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t_rt_gradient);
-        scheduler_addunlock(sched, ci->hydro.super->rt.rt_ghost1,
-                            t_rt_gradient);
-        scheduler_addunlock(sched, t_rt_gradient,
-                            ci->hydro.super->rt.rt_ghost2);
-        scheduler_addunlock(sched, ci->hydro.super->rt.rt_ghost2,
-                            t_rt_transport);
-        scheduler_addunlock(sched, t_rt_transport,
-                            ci->hydro.super->rt.rt_transport_out);
-      }
-    }
-
-    /* Otherwise, pair interaction? */
-    else if (t_type == task_type_pair && t_subtype == task_subtype_density) {
-
-      const int bcount_i = ci->black_holes.count;
-      const int bcount_j = cj->black_holes.count;
-
-      /* Make all density tasks depend on the drift */
-      if (ci->nodeID == nodeID) {
+      /* Sort tasks depend on the drift of the cell (gas version). */
+      if (t_type == task_type_sort && ci->nodeID == nodeID) {
         scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t);
       }
-      if ((cj->nodeID == nodeID) && (ci->hydro.super != cj->hydro.super)) {
-        scheduler_addunlock(sched, cj->hydro.super->hydro.drift, t);
+
+      /* Sort tasks depend on the drift of the cell (stars version). */
+      else if (t_type == task_type_stars_sort && ci->nodeID == nodeID) {
+        scheduler_addunlock(sched, ci->hydro.super->stars.drift, t);
       }
 
-      /* Make all density tasks depend on the sorts */
-      scheduler_addunlock(sched, ci->hydro.super->hydro.sorts, t);
-      if (ci->hydro.super != cj->hydro.super) {
-        scheduler_addunlock(sched, cj->hydro.super->hydro.sorts, t);
-      }
+      /* Self-interaction? */
+      else if (t_type == task_type_self && t_subtype == task_subtype_density) {
 
-      /* New task for the force */
-      t_force = scheduler_addtask(sched, task_type_pair, task_subtype_force,
-                                  flags, 0, ci, cj);
+        const int bcount_i = ci->black_holes.count;
 
-#ifdef MPI_SYMMETRIC_FORCE_INTERACTION
-      /* The order of operations for an inactive local cell interacting
-       * with an active foreign cell is not guaranteed because the density
-       * (and gradient) iact loops don't exist in that case. So we need
-       * an explicit dependency here to have sorted cells. */
+        /* Make the self-density tasks depend on the drift only. */
+        scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t);
 
-      /* Make all force tasks depend on the sorts */
-      scheduler_addunlock(sched, ci->hydro.super->hydro.sorts, t_force);
-      if (ci->hydro.super != cj->hydro.super) {
-        scheduler_addunlock(sched, cj->hydro.super->hydro.sorts, t_force);
-      }
-#endif
+        /* Task for the second hydro loop, */
+        t_force = scheduler_addtask(sched, task_type_self, task_subtype_force,
+                                    flags, 0, ci, NULL);
 
-      /* and the task for the time-step limiter */
-      if (with_timestep_limiter) {
-        t_limiter = scheduler_addtask(sched, task_type_pair,
-                                      task_subtype_limiter, flags, 0, ci, cj);
-      }
-
-      /* The stellar feedback tasks */
-      if (with_feedback) {
-        t_star_density =
-            scheduler_addtask(sched, task_type_pair, task_subtype_stars_density,
-                              flags, 0, ci, cj);
-        t_star_feedback =
-            scheduler_addtask(sched, task_type_pair,
-                              task_subtype_stars_feedback, flags, 0, ci, cj);
-#ifdef EXTRA_STAR_LOOPS
-        t_star_prep1 = scheduler_addtask(
-            sched, task_type_pair, task_subtype_stars_prep1, flags, 0, ci, cj);
-        t_star_prep2 = scheduler_addtask(
-            sched, task_type_pair, task_subtype_stars_prep2, flags, 0, ci, cj);
-#endif
-      }
-
-      /* The sink tasks */
-      if (with_sink) {
-        t_sink_swallow = scheduler_addtask(
-            sched, task_type_pair, task_subtype_sink_swallow, flags, 0, ci, cj);
-        t_sink_do_sink_swallow = scheduler_addtask(
-            sched, task_type_pair, task_subtype_sink_do_sink_swallow, flags, 0,
-            ci, cj);
-        t_sink_do_gas_swallow = scheduler_addtask(
-            sched, task_type_pair, task_subtype_sink_do_gas_swallow, flags, 0,
-            ci, cj);
-      }
-
-      /* The black hole feedback tasks */
-      if (with_black_holes && (bcount_i > 0 || bcount_j > 0)) {
-        t_bh_density = scheduler_addtask(
-            sched, task_type_pair, task_subtype_bh_density, flags, 0, ci, cj);
-        t_bh_swallow = scheduler_addtask(
-            sched, task_type_pair, task_subtype_bh_swallow, flags, 0, ci, cj);
-        t_do_gas_swallow =
-            scheduler_addtask(sched, task_type_pair,
-                              task_subtype_do_gas_swallow, flags, 0, ci, cj);
-        t_do_bh_swallow =
-            scheduler_addtask(sched, task_type_pair, task_subtype_do_bh_swallow,
-                              flags, 0, ci, cj);
-        t_bh_feedback = scheduler_addtask(
-            sched, task_type_pair, task_subtype_bh_feedback, flags, 0, ci, cj);
-      }
-
-      if (with_rt) {
-        t_rt_gradient = scheduler_addtask(
-            sched, task_type_pair, task_subtype_rt_gradient, flags, 0, ci, cj);
-        t_rt_transport = scheduler_addtask(
-            sched, task_type_pair, task_subtype_rt_transport, flags, 0, ci, cj);
-#ifdef MPI_SYMMETRIC_FORCE_INTERACTION
-        /* The order of operations for an inactive local cell interacting
-         * with an active foreign cell is not guaranteed because the gradient
-         * iact loops don't exist in that case. So we need an explicit
-         * dependency here to have sorted cells. */
-
-        /* Make all force tasks depend on the sorts */
-        if (ci->hydro.super->rt.rt_sorts != NULL)
-          scheduler_addunlock(sched, ci->hydro.super->rt.rt_sorts,
-                              t_rt_transport);
-        if (ci->hydro.super != cj->hydro.super) {
-          if (cj->hydro.super->rt.rt_sorts != NULL)
-            scheduler_addunlock(sched, cj->hydro.super->rt.rt_sorts,
-                                t_rt_transport);
+        /* the task for the time-step limiter */
+        if (with_timestep_limiter) {
+          t_limiter = scheduler_addtask(
+              sched, task_type_self, task_subtype_limiter, flags, 0, ci, NULL);
         }
-        /* We need to ensure that a local inactive cell is sorted before
-         * the interaction in the transport loop. Local cells don't have an
-         * rt_sorts task. */
-        if (ci->hydro.super->hydro.sorts != NULL)
-          scheduler_addunlock(sched, ci->hydro.super->hydro.sorts,
-                              t_rt_transport);
-        if ((ci->hydro.super != cj->hydro.super) &&
-            (cj->hydro.super->hydro.sorts != NULL))
-          scheduler_addunlock(sched, cj->hydro.super->hydro.sorts,
-                              t_rt_transport);
-#endif
-      }
 
-      engine_addlink(e, &ci->hydro.force, t_force);
-      engine_addlink(e, &cj->hydro.force, t_force);
-      if (with_timestep_limiter) {
-        engine_addlink(e, &ci->hydro.limiter, t_limiter);
-        engine_addlink(e, &cj->hydro.limiter, t_limiter);
-      }
-      if (with_feedback) {
-        engine_addlink(e, &ci->stars.density, t_star_density);
-        engine_addlink(e, &cj->stars.density, t_star_density);
-        engine_addlink(e, &ci->stars.feedback, t_star_feedback);
-        engine_addlink(e, &cj->stars.feedback, t_star_feedback);
+        /* The stellar feedback tasks */
+        if (with_feedback) {
+          t_star_density =
+              scheduler_addtask(sched, task_type_self,
+                                task_subtype_stars_density, flags, 0, ci, NULL);
+          t_star_feedback = scheduler_addtask(sched, task_type_self,
+                                              task_subtype_stars_feedback,
+                                              flags, 0, ci, NULL);
+
 #ifdef EXTRA_STAR_LOOPS
-        engine_addlink(e, &ci->stars.prepare1, t_star_prep1);
-        engine_addlink(e, &cj->stars.prepare1, t_star_prep1);
-        engine_addlink(e, &ci->stars.prepare2, t_star_prep2);
-        engine_addlink(e, &cj->stars.prepare2, t_star_prep2);
+          t_star_prep1 =
+              scheduler_addtask(sched, task_type_self, task_subtype_stars_prep1,
+                                flags, 0, ci, NULL);
+          t_star_prep2 =
+              scheduler_addtask(sched, task_type_self, task_subtype_stars_prep2,
+                                flags, 0, ci, NULL);
 #endif
-      }
-      if (with_sink) {
-        /* Formation */
-        engine_addlink(e, &ci->sinks.swallow, t_sink_swallow);
-        engine_addlink(e, &cj->sinks.swallow, t_sink_swallow);
-        /* Merger */
-        engine_addlink(e, &ci->sinks.do_sink_swallow, t_sink_do_sink_swallow);
-        engine_addlink(e, &cj->sinks.do_sink_swallow, t_sink_do_sink_swallow);
-        /* Accretion */
-        engine_addlink(e, &ci->sinks.do_gas_swallow, t_sink_do_gas_swallow);
-        engine_addlink(e, &cj->sinks.do_gas_swallow, t_sink_do_gas_swallow);
-      }
-      if (with_black_holes && (bcount_i > 0 || bcount_j > 0)) {
-        engine_addlink(e, &ci->black_holes.density, t_bh_density);
-        engine_addlink(e, &cj->black_holes.density, t_bh_density);
-        engine_addlink(e, &ci->black_holes.swallow, t_bh_swallow);
-        engine_addlink(e, &cj->black_holes.swallow, t_bh_swallow);
-        engine_addlink(e, &ci->black_holes.do_gas_swallow, t_do_gas_swallow);
-        engine_addlink(e, &cj->black_holes.do_gas_swallow, t_do_gas_swallow);
-        engine_addlink(e, &ci->black_holes.do_bh_swallow, t_do_bh_swallow);
-        engine_addlink(e, &cj->black_holes.do_bh_swallow, t_do_bh_swallow);
-        engine_addlink(e, &ci->black_holes.feedback, t_bh_feedback);
-        engine_addlink(e, &cj->black_holes.feedback, t_bh_feedback);
-      }
-      if (with_rt) {
-        engine_addlink(e, &ci->rt.rt_gradient, t_rt_gradient);
-        engine_addlink(e, &cj->rt.rt_gradient, t_rt_gradient);
-        engine_addlink(e, &ci->rt.rt_transport, t_rt_transport);
-        engine_addlink(e, &cj->rt.rt_transport, t_rt_transport);
-      }
+        }
+
+        /* The sink tasks */
+        if (with_sink) {
+          t_sink_swallow =
+              scheduler_addtask(sched, task_type_self,
+                                task_subtype_sink_swallow, flags, 0, ci, NULL);
+          t_sink_do_sink_swallow = scheduler_addtask(
+              sched, task_type_self, task_subtype_sink_do_sink_swallow, flags,
+              0, ci, NULL);
+          t_sink_do_gas_swallow = scheduler_addtask(
+              sched, task_type_self, task_subtype_sink_do_gas_swallow, flags, 0,
+              ci, NULL);
+        }
+
+        /* The black hole feedback tasks */
+        if (with_black_holes && bcount_i > 0) {
+          t_bh_density =
+              scheduler_addtask(sched, task_type_self, task_subtype_bh_density,
+                                flags, 0, ci, NULL);
+          t_bh_swallow =
+              scheduler_addtask(sched, task_type_self, task_subtype_bh_swallow,
+                                flags, 0, ci, NULL);
+          t_do_gas_swallow = scheduler_addtask(sched, task_type_self,
+                                               task_subtype_do_gas_swallow,
+                                               flags, 0, ci, NULL);
+          t_do_bh_swallow =
+              scheduler_addtask(sched, task_type_self,
+                                task_subtype_do_bh_swallow, flags, 0, ci, NULL);
+          t_bh_feedback =
+              scheduler_addtask(sched, task_type_self, task_subtype_bh_feedback,
+                                flags, 0, ci, NULL);
+        }
+
+        if (with_rt) {
+          t_rt_gradient =
+              scheduler_addtask(sched, task_type_self, task_subtype_rt_gradient,
+                                flags, 0, ci, NULL);
+          t_rt_transport =
+              scheduler_addtask(sched, task_type_self,
+                                task_subtype_rt_transport, flags, 0, ci, NULL);
+        }
+
+        /* Link the tasks to the cells */
+        engine_addlink(e, &ci->hydro.force, t_force);
+        if (with_timestep_limiter) {
+          engine_addlink(e, &ci->hydro.limiter, t_limiter);
+        }
+        if (with_feedback) {
+          engine_addlink(e, &ci->stars.density, t_star_density);
+          engine_addlink(e, &ci->stars.feedback, t_star_feedback);
+#ifdef EXTRA_STAR_LOOPS
+          engine_addlink(e, &ci->stars.prepare1, t_star_prep1);
+          engine_addlink(e, &ci->stars.prepare2, t_star_prep2);
+#endif
+        }
+        if (with_sink) {
+          engine_addlink(e, &ci->sinks.swallow, t_sink_swallow);
+          engine_addlink(e, &ci->sinks.do_sink_swallow, t_sink_do_sink_swallow);
+          engine_addlink(e, &ci->sinks.do_gas_swallow, t_sink_do_gas_swallow);
+        }
+        if (with_black_holes && bcount_i > 0) {
+          engine_addlink(e, &ci->black_holes.density, t_bh_density);
+          engine_addlink(e, &ci->black_holes.swallow, t_bh_swallow);
+          engine_addlink(e, &ci->black_holes.do_gas_swallow, t_do_gas_swallow);
+          engine_addlink(e, &ci->black_holes.do_bh_swallow, t_do_bh_swallow);
+          engine_addlink(e, &ci->black_holes.feedback, t_bh_feedback);
+        }
+        if (with_rt) {
+          engine_addlink(e, &ci->rt.rt_gradient, t_rt_gradient);
+          engine_addlink(e, &ci->rt.rt_transport, t_rt_transport);
+        }
 
 #ifdef EXTRA_HYDRO_LOOP
 
-      /* Start by constructing the task for the second and third hydro loop */
-      t_gradient = scheduler_addtask(sched, task_type_pair,
-                                     task_subtype_gradient, flags, 0, ci, cj);
+        /* Same work for the additional hydro loop */
+        t_gradient = scheduler_addtask(
+            sched, task_type_self, task_subtype_gradient, flags, 0, ci, NULL);
 
-      /* Add the link between the new loop and both cells */
-      engine_addlink(e, &ci->hydro.gradient, t_gradient);
-      engine_addlink(e, &cj->hydro.gradient, t_gradient);
+        /* Add the link between the new loops and the cell */
+        engine_addlink(e, &ci->hydro.gradient, t_gradient);
 
-      /* Now, build all the dependencies for the hydro for the cells */
-      /* that are local and are not descendant of the same super_hydro-cells */
-      if (ci->nodeID == nodeID) {
+        /* Now, build all the dependencies for the hydro */
         engine_make_hydro_loops_dependencies(sched, t, t_gradient, t_force,
                                              t_limiter, ci, with_cooling,
                                              with_timestep_limiter);
-      }
-      if ((cj->nodeID == nodeID) && (ci->hydro.super != cj->hydro.super)) {
-        engine_make_hydro_loops_dependencies(sched, t, t_gradient, t_force,
-                                             t_limiter, cj, with_cooling,
-                                             with_timestep_limiter);
-      }
 #else
 
-      /* Now, build all the dependencies for the hydro for the cells */
-      /* that are local and are not descendant of the same super_hydro-cells
-       */
-      if (ci->nodeID == nodeID) {
+        /* Now, build all the dependencies for the hydro */
         engine_make_hydro_loops_dependencies(sched, t, t_force, t_limiter, ci,
                                              with_cooling,
                                              with_timestep_limiter);
-      }
-      if ((cj->nodeID == nodeID) && (ci->hydro.super != cj->hydro.super)) {
-        engine_make_hydro_loops_dependencies(sched, t, t_force, t_limiter, cj,
-                                             with_cooling,
-                                             with_timestep_limiter);
-      }
 #endif
 
-      if (with_feedback) {
-        scheduler_addunlock(sched, ci->hydro.super->hydro.sorts,
-                            t_star_density);
-
-        if (ci->hydro.super != cj->hydro.super) {
-          scheduler_addunlock(sched, cj->hydro.super->hydro.sorts,
-                              t_star_density);
-        }
-      }
-      if (with_rt) {
-        scheduler_addunlock(sched, ci->hydro.super->hydro.sorts, t_rt_gradient);
-
-        if (ci->hydro.super != cj->hydro.super) {
-          scheduler_addunlock(sched, cj->hydro.super->hydro.sorts,
-                              t_rt_gradient);
-        }
-      }
-
-      if (ci->nodeID == nodeID) {
+        /* Create the task dependencies */
         scheduler_addunlock(sched, t_force, ci->hydro.super->hydro.end_force);
 
         if (with_feedback) {
@@ -3068,8 +2730,6 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                                 t_star_density);
 
           scheduler_addunlock(sched, ci->hydro.super->stars.drift,
-                              t_star_density);
-          scheduler_addunlock(sched, ci->hydro.super->stars.sorts,
                               t_star_density);
           scheduler_addunlock(sched, ci->hydro.super->hydro.drift,
                               t_star_density);
@@ -3100,6 +2760,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                               ci->hydro.super->stars.stars_out);
         }
 
+        /* The sink's tasks. */
         if (with_sink) {
 
           /* Do the sink_swallow */
@@ -3127,7 +2788,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                               ci->hydro.super->sinks.sink_out);
         }
 
-        if (with_black_holes && (bcount_i > 0 || bcount_j > 0)) {
+        if (with_black_holes && bcount_i > 0) {
 
           if (with_cooling)
             scheduler_addunlock(sched, ci->hydro.super->hydro.cooling_out,
@@ -3167,8 +2828,8 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         }
 
         if (with_timestep_limiter) {
-          scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t_limiter);
           scheduler_addunlock(sched, ci->super->timestep, t_limiter);
+          scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t_limiter);
           scheduler_addunlock(sched, t_limiter, ci->super->kick1);
           scheduler_addunlock(sched, t_limiter, ci->super->timestep_limiter);
         }
@@ -3176,8 +2837,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         if (with_timestep_sync && with_feedback) {
           scheduler_addunlock(sched, t_star_feedback, ci->super->timestep_sync);
         }
-        if (with_timestep_sync && with_black_holes &&
-            (bcount_i > 0 || bcount_j > 0)) {
+        if (with_timestep_sync && with_black_holes && bcount_i > 0) {
           scheduler_addunlock(sched, t_bh_feedback, ci->super->timestep_sync);
         }
 
@@ -3193,1844 +2853,2245 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
           scheduler_addunlock(sched, t_rt_transport,
                               ci->hydro.super->rt.rt_transport_out);
         }
-
-      } else /*(ci->nodeID != nodeID) */ {
-        if (with_feedback) {
-#ifdef EXTRA_STAR_LOOPS
-          scheduler_addunlock(sched, ci->hydro.super->stars.sorts,
-                              t_star_prep1);
-#endif
-          scheduler_addunlock(sched, ci->hydro.super->stars.sorts,
-                              t_star_feedback);
-        }
-
-        if (with_black_holes && (bcount_i > 0 || bcount_j > 0)) {
-          scheduler_addunlock(sched, t_bh_swallow,
-                              ci->hydro.super->black_holes.swallow_ghost_1);
-        }
       }
 
-      if (cj->nodeID == nodeID) {
+      /* Otherwise, pair interaction? */
+      else if (t_type == task_type_pair && t_subtype == task_subtype_density) {
 
+        const int bcount_i = ci->black_holes.count;
+        const int bcount_j = cj->black_holes.count;
+
+        /* Make all density tasks depend on the drift */
+        if (ci->nodeID == nodeID) {
+          scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t);
+        }
+        if ((cj->nodeID == nodeID) && (ci->hydro.super != cj->hydro.super)) {
+          scheduler_addunlock(sched, cj->hydro.super->hydro.drift, t);
+        }
+
+        /* Make all density tasks depend on the sorts */
+        scheduler_addunlock(sched, ci->hydro.super->hydro.sorts, t);
         if (ci->hydro.super != cj->hydro.super) {
-
-          scheduler_addunlock(sched, t_force, cj->hydro.super->hydro.end_force);
-
-          if (with_feedback) {
-
-            if (with_cooling)
-              scheduler_addunlock(sched, cj->hydro.super->hydro.cooling_out,
-                                  t_star_density);
-
-            scheduler_addunlock(sched, cj->hydro.super->stars.sorts,
-                                t_star_density);
-            scheduler_addunlock(sched, cj->hydro.super->stars.drift,
-                                t_star_density);
-            scheduler_addunlock(sched, cj->hydro.super->hydro.drift,
-                                t_star_density);
-            scheduler_addunlock(sched, cj->hydro.super->stars.stars_in,
-                                t_star_density);
-            scheduler_addunlock(sched, t_star_density,
-                                cj->hydro.super->stars.density_ghost);
-#ifdef EXTRA_STAR_LOOPS
-            scheduler_addunlock(sched, cj->hydro.super->stars.density_ghost,
-                                t_star_prep1);
-            scheduler_addunlock(sched, t_star_prep1,
-                                cj->hydro.super->stars.prep1_ghost);
-            scheduler_addunlock(sched, t_star_prep1,
-                                cj->hydro.super->hydro.prep1_ghost);
-            scheduler_addunlock(sched, cj->hydro.super->stars.prep1_ghost,
-                                t_star_prep2);
-            scheduler_addunlock(sched, cj->hydro.super->hydro.prep1_ghost,
-                                t_star_prep2);
-            scheduler_addunlock(sched, t_star_prep2,
-                                cj->hydro.super->stars.prep2_ghost);
-            scheduler_addunlock(sched, cj->hydro.super->stars.prep2_ghost,
-                                t_star_feedback);
-#else
-            scheduler_addunlock(sched, cj->hydro.super->stars.density_ghost,
-                                t_star_feedback);
-#endif
-            scheduler_addunlock(sched, t_star_feedback,
-                                cj->hydro.super->stars.stars_out);
-          }
-
-          if (with_sink) {
-
-            /* Do the sink_swallow */
-            scheduler_addunlock(sched, cj->hydro.super->hydro.drift,
-                                t_sink_swallow);
-            scheduler_addunlock(sched, cj->hydro.super->sinks.drift,
-                                t_sink_swallow);
-            scheduler_addunlock(sched, cj->hydro.super->hydro.sorts,
-                                t_sink_swallow);
-            scheduler_addunlock(sched, cj->hydro.super->sinks.sink_in,
-                                t_sink_swallow);
-            scheduler_addunlock(sched, t_sink_swallow,
-                                cj->hydro.super->sinks.sink_ghost1);
-
-            /* Do the sink_do_gas_swallow */
-            scheduler_addunlock(sched, cj->hydro.super->sinks.sink_ghost1,
-                                t_sink_do_gas_swallow);
-            scheduler_addunlock(sched, t_sink_do_gas_swallow,
-                                cj->hydro.super->sinks.sink_ghost2);
-
-            /* Do the sink_do_sink_swallow */
-            scheduler_addunlock(sched, cj->hydro.super->sinks.sink_ghost2,
-                                t_sink_do_sink_swallow);
-            scheduler_addunlock(sched, t_sink_do_sink_swallow,
-                                cj->hydro.super->sinks.sink_out);
-          }
-
-          if (with_black_holes && (bcount_i > 0 || bcount_j > 0)) {
-
-            if (with_cooling)
-              scheduler_addunlock(sched, cj->hydro.super->hydro.cooling_out,
-                                  t_bh_density);
-
-            scheduler_addunlock(sched, cj->hydro.super->black_holes.drift,
-                                t_bh_density);
-            scheduler_addunlock(sched, cj->hydro.super->hydro.drift,
-                                t_bh_density);
-            scheduler_addunlock(sched,
-                                cj->hydro.super->black_holes.black_holes_in,
-                                t_bh_density);
-            scheduler_addunlock(sched, t_bh_density,
-                                cj->hydro.super->black_holes.density_ghost);
-
-            scheduler_addunlock(sched,
-                                cj->hydro.super->black_holes.density_ghost,
-                                t_bh_swallow);
-            scheduler_addunlock(sched, t_bh_swallow,
-                                cj->hydro.super->black_holes.swallow_ghost_1);
-
-            scheduler_addunlock(sched,
-                                cj->hydro.super->black_holes.swallow_ghost_1,
-                                t_do_gas_swallow);
-            scheduler_addunlock(sched, t_do_gas_swallow,
-                                cj->hydro.super->black_holes.swallow_ghost_2);
-
-            scheduler_addunlock(sched,
-                                cj->hydro.super->black_holes.swallow_ghost_2,
-                                t_do_bh_swallow);
-            scheduler_addunlock(sched, t_do_bh_swallow,
-                                cj->hydro.super->black_holes.swallow_ghost_3);
-
-            scheduler_addunlock(sched,
-                                cj->hydro.super->black_holes.swallow_ghost_3,
-                                t_bh_feedback);
-            scheduler_addunlock(sched, t_bh_feedback,
-                                cj->hydro.super->black_holes.black_holes_out);
-          }
-
-          if (with_rt) {
-            scheduler_addunlock(sched, cj->hydro.super->hydro.drift,
-                                t_rt_gradient);
-            scheduler_addunlock(sched, cj->hydro.super->rt.rt_ghost1,
-                                t_rt_gradient);
-            scheduler_addunlock(sched, t_rt_gradient,
-                                cj->hydro.super->rt.rt_ghost2);
-            scheduler_addunlock(sched, cj->hydro.super->rt.rt_ghost2,
-                                t_rt_transport);
-            scheduler_addunlock(sched, t_rt_transport,
-                                cj->hydro.super->rt.rt_transport_out);
-          }
-
-          if (with_timestep_limiter) {
-            scheduler_addunlock(sched, cj->hydro.super->hydro.drift, t_limiter);
-          }
+          scheduler_addunlock(sched, cj->hydro.super->hydro.sorts, t);
         }
 
-        if (ci->super != cj->super) {
+        /* New task for the force */
+        t_force = scheduler_addtask(sched, task_type_pair, task_subtype_force,
+                                    flags, 0, ci, cj);
 
-          if (with_timestep_limiter) {
-            scheduler_addunlock(sched, cj->super->timestep, t_limiter);
-            scheduler_addunlock(sched, t_limiter, cj->super->kick1);
-            scheduler_addunlock(sched, t_limiter, cj->super->timestep_limiter);
-          }
-
-          if (with_timestep_sync && with_feedback) {
-            scheduler_addunlock(sched, t_star_feedback,
-                                cj->super->timestep_sync);
-          }
-          if (with_timestep_sync && with_black_holes &&
-              (bcount_i > 0 || bcount_j > 0)) {
-            scheduler_addunlock(sched, t_bh_feedback, cj->super->timestep_sync);
-          }
-        }
-
-      } else /*(cj->nodeID != nodeID) */ {
-        if (with_feedback) {
-#ifdef EXTRA_STAR_LOOPS
-          scheduler_addunlock(sched, cj->hydro.super->stars.sorts,
-                              t_star_prep1);
-#endif
-          scheduler_addunlock(sched, cj->hydro.super->stars.sorts,
-                              t_star_feedback);
-        }
-
-        if (with_black_holes && (bcount_i > 0 || bcount_j > 0)) {
-
-          scheduler_addunlock(sched, t_bh_swallow,
-                              cj->hydro.super->black_holes.swallow_ghost_1);
-        }
-      }
-    }
-
-    /* Otherwise, sub-self interaction? */
-    else if (t_type == task_type_sub_self &&
-             t_subtype == task_subtype_density) {
-
-      const int bcount_i = ci->black_holes.count;
-
-      /* Make all density tasks depend on the drift and sorts. */
-      scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t);
-      scheduler_addunlock(sched, ci->hydro.super->hydro.sorts, t);
-
-      /* Start by constructing the task for the second hydro loop */
-      t_force = scheduler_addtask(sched, task_type_sub_self, task_subtype_force,
-                                  flags, 0, ci, NULL);
-
-      /* and the task for the time-step limiter */
-      if (with_timestep_limiter) {
-        t_limiter = scheduler_addtask(sched, task_type_sub_self,
-                                      task_subtype_limiter, flags, 0, ci, NULL);
-      }
-
-      /* The stellar feedback tasks */
-      if (with_feedback) {
-        t_star_density =
-            scheduler_addtask(sched, task_type_sub_self,
-                              task_subtype_stars_density, flags, 0, ci, NULL);
-        t_star_feedback =
-            scheduler_addtask(sched, task_type_sub_self,
-                              task_subtype_stars_feedback, flags, 0, ci, NULL);
-
-#ifdef EXTRA_STAR_LOOPS
-        t_star_prep1 =
-            scheduler_addtask(sched, task_type_sub_self,
-                              task_subtype_stars_prep1, flags, 0, ci, NULL);
-        t_star_prep2 =
-            scheduler_addtask(sched, task_type_sub_self,
-                              task_subtype_stars_prep2, flags, 0, ci, NULL);
-#endif
-      }
-
-      /* The sink tasks */
-      if (with_sink) {
-        t_sink_swallow =
-            scheduler_addtask(sched, task_type_sub_self,
-                              task_subtype_sink_swallow, flags, 0, ci, NULL);
-        t_sink_do_sink_swallow = scheduler_addtask(
-            sched, task_type_sub_self, task_subtype_sink_do_sink_swallow, flags,
-            0, ci, NULL);
-        t_sink_do_gas_swallow = scheduler_addtask(
-            sched, task_type_sub_self, task_subtype_sink_do_gas_swallow, flags,
-            0, ci, NULL);
-      }
-
-      /* The black hole feedback tasks */
-      if (with_black_holes && bcount_i > 0) {
-        t_bh_density =
-            scheduler_addtask(sched, task_type_sub_self,
-                              task_subtype_bh_density, flags, 0, ci, NULL);
-        t_bh_swallow =
-            scheduler_addtask(sched, task_type_sub_self,
-                              task_subtype_bh_swallow, flags, 0, ci, NULL);
-
-        t_do_gas_swallow =
-            scheduler_addtask(sched, task_type_sub_self,
-                              task_subtype_do_gas_swallow, flags, 0, ci, NULL);
-
-        t_do_bh_swallow =
-            scheduler_addtask(sched, task_type_sub_self,
-                              task_subtype_do_bh_swallow, flags, 0, ci, NULL);
-
-        t_bh_feedback =
-            scheduler_addtask(sched, task_type_sub_self,
-                              task_subtype_bh_feedback, flags, 0, ci, NULL);
-      }
-
-      if (with_rt) {
-        t_rt_gradient =
-            scheduler_addtask(sched, task_type_sub_self,
-                              task_subtype_rt_gradient, flags, 0, ci, NULL);
-        t_rt_transport =
-            scheduler_addtask(sched, task_type_sub_self,
-                              task_subtype_rt_transport, flags, 0, ci, NULL);
-      }
-
-      /* Add the link between the new loop and the cell */
-      engine_addlink(e, &ci->hydro.force, t_force);
-      if (with_timestep_limiter) {
-        engine_addlink(e, &ci->hydro.limiter, t_limiter);
-      }
-      if (with_feedback) {
-        engine_addlink(e, &ci->stars.density, t_star_density);
-        engine_addlink(e, &ci->stars.feedback, t_star_feedback);
-#ifdef EXTRA_STAR_LOOPS
-        engine_addlink(e, &ci->stars.prepare1, t_star_prep1);
-        engine_addlink(e, &ci->stars.prepare2, t_star_prep2);
-#endif
-      }
-      if (with_sink) {
-        engine_addlink(e, &ci->sinks.swallow, t_sink_swallow);
-        engine_addlink(e, &ci->sinks.do_sink_swallow, t_sink_do_sink_swallow);
-        engine_addlink(e, &ci->sinks.do_gas_swallow, t_sink_do_gas_swallow);
-      }
-      if (with_black_holes && bcount_i > 0) {
-        engine_addlink(e, &ci->black_holes.density, t_bh_density);
-        engine_addlink(e, &ci->black_holes.swallow, t_bh_swallow);
-        engine_addlink(e, &ci->black_holes.do_gas_swallow, t_do_gas_swallow);
-        engine_addlink(e, &ci->black_holes.do_bh_swallow, t_do_bh_swallow);
-        engine_addlink(e, &ci->black_holes.feedback, t_bh_feedback);
-      }
-      if (with_rt) {
-        engine_addlink(e, &ci->rt.rt_gradient, t_rt_gradient);
-        engine_addlink(e, &ci->rt.rt_transport, t_rt_transport);
-      }
-
-#ifdef EXTRA_HYDRO_LOOP
-
-      /* Start by constructing the task for the second and third hydro loop */
-      t_gradient = scheduler_addtask(sched, task_type_sub_self,
-                                     task_subtype_gradient, flags, 0, ci, NULL);
-
-      /* Add the link between the new loop and the cell */
-      engine_addlink(e, &ci->hydro.gradient, t_gradient);
-
-      /* Now, build all the dependencies for the hydro for the cells */
-      /* that are local and are not descendant of the same super_hydro-cells
-       */
-      engine_make_hydro_loops_dependencies(sched, t, t_gradient, t_force,
-                                           t_limiter, ci, with_cooling,
-                                           with_timestep_limiter);
-#else
-
-      /* Now, build all the dependencies for the hydro for the cells */
-      /* that are local and are not descendant of the same super_hydro-cells
-       */
-      engine_make_hydro_loops_dependencies(sched, t, t_force, t_limiter, ci,
-                                           with_cooling, with_timestep_limiter);
-#endif
-
-      /* Create the task dependencies */
-      scheduler_addunlock(sched, t_force, ci->hydro.super->hydro.end_force);
-
-      if (with_feedback) {
-
-        if (with_cooling)
-          scheduler_addunlock(sched, ci->hydro.super->hydro.cooling_out,
-                              t_star_density);
-
-        scheduler_addunlock(sched, ci->hydro.super->stars.drift,
-                            t_star_density);
-        scheduler_addunlock(sched, ci->hydro.super->stars.sorts,
-                            t_star_density);
-        scheduler_addunlock(sched, ci->hydro.super->hydro.drift,
-                            t_star_density);
-        scheduler_addunlock(sched, ci->hydro.super->hydro.sorts,
-                            t_star_density);
-        scheduler_addunlock(sched, ci->hydro.super->stars.stars_in,
-                            t_star_density);
-        scheduler_addunlock(sched, t_star_density,
-                            ci->hydro.super->stars.density_ghost);
-#ifdef EXTRA_STAR_LOOPS
-        scheduler_addunlock(sched, ci->hydro.super->stars.density_ghost,
-                            t_star_prep1);
-        scheduler_addunlock(sched, t_star_prep1,
-                            ci->hydro.super->stars.prep1_ghost);
-        scheduler_addunlock(sched, t_star_prep1,
-                            ci->hydro.super->hydro.prep1_ghost);
-        scheduler_addunlock(sched, ci->hydro.super->stars.prep1_ghost,
-                            t_star_prep2);
-        scheduler_addunlock(sched, ci->hydro.super->hydro.prep1_ghost,
-                            t_star_prep2);
-        scheduler_addunlock(sched, t_star_prep2,
-                            ci->hydro.super->stars.prep2_ghost);
-        scheduler_addunlock(sched, ci->hydro.super->stars.prep2_ghost,
-                            t_star_feedback);
-#else
-        scheduler_addunlock(sched, ci->hydro.super->stars.density_ghost,
-                            t_star_feedback);
-#endif
-        scheduler_addunlock(sched, t_star_feedback,
-                            ci->hydro.super->stars.stars_out);
-      }
-
-      if (with_sink) {
-
-        /* Do the sink_swallow */
-        scheduler_addunlock(sched, ci->hydro.super->hydro.drift,
-                            t_sink_swallow);
-        scheduler_addunlock(sched, ci->hydro.super->sinks.drift,
-                            t_sink_swallow);
-        scheduler_addunlock(sched, ci->hydro.super->hydro.sorts,
-                            t_sink_swallow);
-        scheduler_addunlock(sched, ci->hydro.super->sinks.sink_in,
-                            t_sink_swallow);
-        scheduler_addunlock(sched, t_sink_swallow,
-                            ci->hydro.super->sinks.sink_ghost1);
-
-        /* Do the sink_do_gas_swallow */
-        scheduler_addunlock(sched, ci->hydro.super->sinks.sink_ghost1,
-                            t_sink_do_gas_swallow);
-        scheduler_addunlock(sched, t_sink_do_gas_swallow,
-                            ci->hydro.super->sinks.sink_ghost2);
-
-        /* Do the sink_do_sink_swallow */
-        scheduler_addunlock(sched, ci->hydro.super->sinks.sink_ghost2,
-                            t_sink_do_sink_swallow);
-        scheduler_addunlock(sched, t_sink_do_sink_swallow,
-                            ci->hydro.super->sinks.sink_out);
-      }
-
-      if (with_black_holes && bcount_i > 0) {
-
-        if (with_cooling)
-          scheduler_addunlock(sched, ci->hydro.super->hydro.cooling_out,
-                              t_bh_density);
-
-        scheduler_addunlock(sched, ci->hydro.super->black_holes.drift,
-                            t_bh_density);
-        scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t_bh_density);
-        scheduler_addunlock(sched, ci->hydro.super->black_holes.black_holes_in,
-                            t_bh_density);
-        scheduler_addunlock(sched, t_bh_density,
-                            ci->hydro.super->black_holes.density_ghost);
-
-        scheduler_addunlock(sched, ci->hydro.super->black_holes.density_ghost,
-                            t_bh_swallow);
-        scheduler_addunlock(sched, t_bh_swallow,
-                            ci->hydro.super->black_holes.swallow_ghost_1);
-
-        scheduler_addunlock(sched, ci->hydro.super->black_holes.swallow_ghost_1,
-                            t_do_gas_swallow);
-        scheduler_addunlock(sched, t_do_gas_swallow,
-                            ci->hydro.super->black_holes.swallow_ghost_2);
-
-        scheduler_addunlock(sched, ci->hydro.super->black_holes.swallow_ghost_2,
-                            t_do_bh_swallow);
-        scheduler_addunlock(sched, t_do_bh_swallow,
-                            ci->hydro.super->black_holes.swallow_ghost_3);
-
-        scheduler_addunlock(sched, ci->hydro.super->black_holes.swallow_ghost_3,
-                            t_bh_feedback);
-        scheduler_addunlock(sched, t_bh_feedback,
-                            ci->hydro.super->black_holes.black_holes_out);
-      }
-
-      if (with_timestep_limiter) {
-        scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t_limiter);
-        scheduler_addunlock(sched, ci->super->timestep, t_limiter);
-        scheduler_addunlock(sched, t_limiter, ci->super->kick1);
-        scheduler_addunlock(sched, t_limiter, ci->super->timestep_limiter);
-      }
-
-      if (with_timestep_sync && with_feedback) {
-        scheduler_addunlock(sched, t_star_feedback, ci->super->timestep_sync);
-      }
-      if (with_timestep_sync && with_black_holes && bcount_i > 0) {
-        scheduler_addunlock(sched, t_bh_feedback, ci->super->timestep_sync);
-      }
-
-      if (with_rt) {
-        scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t_rt_gradient);
-        scheduler_addunlock(sched, ci->hydro.super->hydro.sorts, t_rt_gradient);
-        scheduler_addunlock(sched, ci->hydro.super->rt.rt_ghost1,
-                            t_rt_gradient);
-        scheduler_addunlock(sched, t_rt_gradient,
-                            ci->hydro.super->rt.rt_ghost2);
-        scheduler_addunlock(sched, ci->hydro.super->rt.rt_ghost2,
-                            t_rt_transport);
-        scheduler_addunlock(sched, t_rt_transport,
-                            ci->hydro.super->rt.rt_transport_out);
-      }
-    }
-
-    /* Otherwise, sub-pair interaction? */
-    else if (t_type == task_type_sub_pair &&
-             t_subtype == task_subtype_density) {
-
-      const int bcount_i = ci->black_holes.count;
-      const int bcount_j = cj->black_holes.count;
-
-      /* Make all density tasks depend on the drift */
-      if (ci->nodeID == nodeID) {
-        scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t);
-      }
-      if ((cj->nodeID == nodeID) && (ci->hydro.super != cj->hydro.super)) {
-        scheduler_addunlock(sched, cj->hydro.super->hydro.drift, t);
-      }
-
-      /* Make all density tasks depend on the sorts */
-      scheduler_addunlock(sched, ci->hydro.super->hydro.sorts, t);
-      if (ci->hydro.super != cj->hydro.super) {
-        scheduler_addunlock(sched, cj->hydro.super->hydro.sorts, t);
-      }
-
-      /* New task for the force */
-      t_force = scheduler_addtask(sched, task_type_sub_pair, task_subtype_force,
-                                  flags, 0, ci, cj);
-
-#ifdef MPI_SYMMETRIC_FORCE_INTERACTION
-      /* The order of operations for an inactive local cell interacting
-       * with an active foreign cell is not guaranteed because the density
-       * (and gradient) iact loops don't exist in that case. So we need
-       * an explicit dependency here to have sorted cells. */
-
-      /* Make all force tasks depend on the sorts */
-      scheduler_addunlock(sched, ci->hydro.super->hydro.sorts, t_force);
-      if (ci->hydro.super != cj->hydro.super) {
-        scheduler_addunlock(sched, cj->hydro.super->hydro.sorts, t_force);
-      }
-#endif
-
-      /* and the task for the time-step limiter */
-      if (with_timestep_limiter) {
-        t_limiter = scheduler_addtask(sched, task_type_sub_pair,
-                                      task_subtype_limiter, flags, 0, ci, cj);
-      }
-
-      /* The stellar feedback tasks */
-      if (with_feedback) {
-        t_star_density =
-            scheduler_addtask(sched, task_type_sub_pair,
-                              task_subtype_stars_density, flags, 0, ci, cj);
-        t_star_feedback =
-            scheduler_addtask(sched, task_type_sub_pair,
-                              task_subtype_stars_feedback, flags, 0, ci, cj);
-
-#ifdef EXTRA_STAR_LOOPS
-        t_star_prep1 =
-            scheduler_addtask(sched, task_type_sub_pair,
-                              task_subtype_stars_prep1, flags, 0, ci, cj);
-        t_star_prep2 =
-            scheduler_addtask(sched, task_type_sub_pair,
-                              task_subtype_stars_prep2, flags, 0, ci, cj);
-#endif
-      }
-
-      /* The sink tasks */
-      if (with_sink) {
-        t_sink_swallow =
-            scheduler_addtask(sched, task_type_sub_pair,
-                              task_subtype_sink_swallow, flags, 0, ci, cj);
-        t_sink_do_sink_swallow = scheduler_addtask(
-            sched, task_type_sub_pair, task_subtype_sink_do_sink_swallow, flags,
-            0, ci, cj);
-        t_sink_do_gas_swallow = scheduler_addtask(
-            sched, task_type_sub_pair, task_subtype_sink_do_gas_swallow, flags,
-            0, ci, cj);
-      }
-
-      /* The black hole feedback tasks */
-      if (with_black_holes && (bcount_i > 0 || bcount_j > 0)) {
-        t_bh_density =
-            scheduler_addtask(sched, task_type_sub_pair,
-                              task_subtype_bh_density, flags, 0, ci, cj);
-        t_bh_swallow =
-            scheduler_addtask(sched, task_type_sub_pair,
-                              task_subtype_bh_swallow, flags, 0, ci, cj);
-        t_do_gas_swallow =
-            scheduler_addtask(sched, task_type_sub_pair,
-                              task_subtype_do_gas_swallow, flags, 0, ci, cj);
-        t_do_bh_swallow =
-            scheduler_addtask(sched, task_type_sub_pair,
-                              task_subtype_do_bh_swallow, flags, 0, ci, cj);
-        t_bh_feedback =
-            scheduler_addtask(sched, task_type_sub_pair,
-                              task_subtype_bh_feedback, flags, 0, ci, cj);
-      }
-
-      if (with_rt) {
-        t_rt_gradient =
-            scheduler_addtask(sched, task_type_sub_pair,
-                              task_subtype_rt_gradient, flags, 0, ci, cj);
-        t_rt_transport =
-            scheduler_addtask(sched, task_type_sub_pair,
-                              task_subtype_rt_transport, flags, 0, ci, cj);
 #ifdef MPI_SYMMETRIC_FORCE_INTERACTION
         /* The order of operations for an inactive local cell interacting
-         * with an active foreign cell is not guaranteed because the gradient
-         * iact loops don't exist in that case. So we need an explicit
-         * dependency here to have sorted cells. */
+         * with an active foreign cell is not guaranteed because the density
+         * (and gradient) iact loops don't exist in that case. So we need
+         * an explicit dependency here to have sorted cells. */
 
         /* Make all force tasks depend on the sorts */
-        if (ci->hydro.super->rt.rt_sorts != NULL)
-          scheduler_addunlock(sched, ci->hydro.super->rt.rt_sorts,
-                              t_rt_transport);
+        scheduler_addunlock(sched, ci->hydro.super->hydro.sorts, t_force);
         if (ci->hydro.super != cj->hydro.super) {
-          if (cj->hydro.super->rt.rt_sorts != NULL)
-            scheduler_addunlock(sched, cj->hydro.super->rt.rt_sorts,
-                                t_rt_transport);
+          scheduler_addunlock(sched, cj->hydro.super->hydro.sorts, t_force);
         }
-        /* We need to ensure that a local inactive cell is sorted before
-         * the interaction in the transport loop. Local cells don't have
-         * an rt_sort task. */
-        if (ci->hydro.super->hydro.sorts != NULL)
-          scheduler_addunlock(sched, ci->hydro.super->hydro.sorts,
-                              t_rt_transport);
-        if ((ci->hydro.super != cj->hydro.super) &&
-            (cj->hydro.super->hydro.sorts != NULL))
-          scheduler_addunlock(sched, cj->hydro.super->hydro.sorts,
-                              t_rt_transport);
-#endif
-      }
-
-      engine_addlink(e, &ci->hydro.force, t_force);
-      engine_addlink(e, &cj->hydro.force, t_force);
-      if (with_timestep_limiter) {
-        engine_addlink(e, &ci->hydro.limiter, t_limiter);
-        engine_addlink(e, &cj->hydro.limiter, t_limiter);
-      }
-      if (with_feedback) {
-        engine_addlink(e, &ci->stars.density, t_star_density);
-        engine_addlink(e, &cj->stars.density, t_star_density);
-        engine_addlink(e, &ci->stars.feedback, t_star_feedback);
-        engine_addlink(e, &cj->stars.feedback, t_star_feedback);
-#ifdef EXTRA_STAR_LOOPS
-        engine_addlink(e, &ci->stars.prepare1, t_star_prep1);
-        engine_addlink(e, &cj->stars.prepare1, t_star_prep1);
-        engine_addlink(e, &ci->stars.prepare2, t_star_prep2);
-        engine_addlink(e, &cj->stars.prepare2, t_star_prep2);
-#endif
-      }
-      if (with_sink) {
-        /* Formation */
-        engine_addlink(e, &ci->sinks.swallow, t_sink_swallow);
-        engine_addlink(e, &cj->sinks.swallow, t_sink_swallow);
-
-        /* Merger */
-        engine_addlink(e, &ci->sinks.do_sink_swallow, t_sink_do_sink_swallow);
-        engine_addlink(e, &cj->sinks.do_sink_swallow, t_sink_do_sink_swallow);
-
-        /* Accretion */
-        engine_addlink(e, &ci->sinks.do_gas_swallow, t_sink_do_gas_swallow);
-        engine_addlink(e, &cj->sinks.do_gas_swallow, t_sink_do_gas_swallow);
-      }
-      if (with_black_holes && (bcount_i > 0 || bcount_j > 0)) {
-        engine_addlink(e, &ci->black_holes.density, t_bh_density);
-        engine_addlink(e, &cj->black_holes.density, t_bh_density);
-        engine_addlink(e, &ci->black_holes.swallow, t_bh_swallow);
-        engine_addlink(e, &cj->black_holes.swallow, t_bh_swallow);
-        engine_addlink(e, &ci->black_holes.do_gas_swallow, t_do_gas_swallow);
-        engine_addlink(e, &cj->black_holes.do_gas_swallow, t_do_gas_swallow);
-        engine_addlink(e, &ci->black_holes.do_bh_swallow, t_do_bh_swallow);
-        engine_addlink(e, &cj->black_holes.do_bh_swallow, t_do_bh_swallow);
-        engine_addlink(e, &ci->black_holes.feedback, t_bh_feedback);
-        engine_addlink(e, &cj->black_holes.feedback, t_bh_feedback);
-      }
-      if (with_rt) {
-        engine_addlink(e, &ci->rt.rt_gradient, t_rt_gradient);
-        engine_addlink(e, &cj->rt.rt_gradient, t_rt_gradient);
-        engine_addlink(e, &ci->rt.rt_transport, t_rt_transport);
-        engine_addlink(e, &cj->rt.rt_transport, t_rt_transport);
-      }
-
-#ifdef EXTRA_HYDRO_LOOP
-
-      /* Start by constructing the task for the second and third hydro loop */
-      t_gradient = scheduler_addtask(sched, task_type_sub_pair,
-                                     task_subtype_gradient, flags, 0, ci, cj);
-
-      /* Add the link between the new loop and both cells */
-      engine_addlink(e, &ci->hydro.gradient, t_gradient);
-      engine_addlink(e, &cj->hydro.gradient, t_gradient);
-
-      /* Now, build all the dependencies for the hydro for the cells */
-      /* that are local and are not descendant of the same super_hydro-cells
-       */
-      if (ci->nodeID == nodeID) {
-        engine_make_hydro_loops_dependencies(sched, t, t_gradient, t_force,
-                                             t_limiter, ci, with_cooling,
-                                             with_timestep_limiter);
-      }
-      if ((cj->nodeID == nodeID) && (ci->hydro.super != cj->hydro.super)) {
-        engine_make_hydro_loops_dependencies(sched, t, t_gradient, t_force,
-                                             t_limiter, cj, with_cooling,
-                                             with_timestep_limiter);
-      }
-#else
-
-      /* Now, build all the dependencies for the hydro for the cells */
-      /* that are local and are not descendant of the same super_hydro-cells
-       */
-      if (ci->nodeID == nodeID) {
-        engine_make_hydro_loops_dependencies(sched, t, t_force, t_limiter, ci,
-                                             with_cooling,
-                                             with_timestep_limiter);
-      }
-      if ((cj->nodeID == nodeID) && (ci->hydro.super != cj->hydro.super)) {
-        engine_make_hydro_loops_dependencies(sched, t, t_force, t_limiter, cj,
-                                             with_cooling,
-                                             with_timestep_limiter);
-      }
 #endif
 
-      if (with_feedback) {
-        scheduler_addunlock(sched, ci->hydro.super->hydro.sorts,
-                            t_star_density);
-        if (ci->hydro.super != cj->hydro.super) {
-          scheduler_addunlock(sched, cj->hydro.super->hydro.sorts,
-                              t_star_density);
-        }
-      }
-
-      if (with_rt) {
-        scheduler_addunlock(sched, ci->hydro.super->hydro.sorts, t_rt_gradient);
-        if (ci->hydro.super != cj->hydro.super) {
-          scheduler_addunlock(sched, cj->hydro.super->hydro.sorts,
-                              t_rt_gradient);
-        }
-      }
-
-      if (ci->nodeID == nodeID) {
-        scheduler_addunlock(sched, t_force, ci->hydro.super->hydro.end_force);
-
-        if (with_feedback) {
-
-          if (with_cooling)
-            scheduler_addunlock(sched, ci->hydro.super->hydro.cooling_out,
-                                t_star_density);
-
-          scheduler_addunlock(sched, ci->hydro.super->stars.sorts,
-                              t_star_density);
-          scheduler_addunlock(sched, ci->hydro.super->stars.drift,
-                              t_star_density);
-          scheduler_addunlock(sched, ci->hydro.super->hydro.drift,
-                              t_star_density);
-          scheduler_addunlock(sched, ci->hydro.super->stars.stars_in,
-                              t_star_density);
-          scheduler_addunlock(sched, t_star_density,
-                              ci->hydro.super->stars.density_ghost);
-#ifdef EXTRA_STAR_LOOPS
-          scheduler_addunlock(sched, ci->hydro.super->stars.density_ghost,
-                              t_star_prep1);
-          scheduler_addunlock(sched, t_star_prep1,
-                              ci->hydro.super->stars.prep1_ghost);
-          scheduler_addunlock(sched, t_star_prep1,
-                              ci->hydro.super->hydro.prep1_ghost);
-          scheduler_addunlock(sched, ci->hydro.super->stars.prep1_ghost,
-                              t_star_prep2);
-          scheduler_addunlock(sched, ci->hydro.super->hydro.prep1_ghost,
-                              t_star_prep2);
-          scheduler_addunlock(sched, t_star_prep2,
-                              ci->hydro.super->stars.prep2_ghost);
-          scheduler_addunlock(sched, ci->hydro.super->stars.prep2_ghost,
-                              t_star_feedback);
-#else
-          scheduler_addunlock(sched, ci->hydro.super->stars.density_ghost,
-                              t_star_feedback);
-#endif
-          scheduler_addunlock(sched, t_star_feedback,
-                              ci->hydro.super->stars.stars_out);
-        }
-
-        if (with_sink) {
-
-          /* Do the sink_swallow */
-          scheduler_addunlock(sched, ci->hydro.super->hydro.drift,
-                              t_sink_swallow);
-          scheduler_addunlock(sched, ci->hydro.super->sinks.drift,
-                              t_sink_swallow);
-          scheduler_addunlock(sched, ci->hydro.super->hydro.sorts,
-                              t_sink_swallow);
-          scheduler_addunlock(sched, ci->hydro.super->sinks.sink_in,
-                              t_sink_swallow);
-          scheduler_addunlock(sched, t_sink_swallow,
-                              ci->hydro.super->sinks.sink_ghost1);
-
-          /* Do the sink_do_gas_swallow */
-          scheduler_addunlock(sched, ci->hydro.super->sinks.sink_ghost1,
-                              t_sink_do_gas_swallow);
-          scheduler_addunlock(sched, t_sink_do_gas_swallow,
-                              ci->hydro.super->sinks.sink_ghost2);
-
-          /* Do the sink_do_sink_swallow */
-          scheduler_addunlock(sched, ci->hydro.super->sinks.sink_ghost2,
-                              t_sink_do_sink_swallow);
-          scheduler_addunlock(sched, t_sink_do_sink_swallow,
-                              ci->hydro.super->sinks.sink_out);
-        }
-
-        if (with_black_holes && (bcount_i > 0 || bcount_j > 0)) {
-
-          if (with_cooling)
-            scheduler_addunlock(sched, ci->hydro.super->hydro.cooling_out,
-                                t_bh_density);
-
-          scheduler_addunlock(sched, ci->hydro.super->black_holes.drift,
-                              t_bh_density);
-          scheduler_addunlock(sched, ci->hydro.super->hydro.drift,
-                              t_bh_density);
-          scheduler_addunlock(
-              sched, ci->hydro.super->black_holes.black_holes_in, t_bh_density);
-          scheduler_addunlock(sched, t_bh_density,
-                              ci->hydro.super->black_holes.density_ghost);
-
-          scheduler_addunlock(sched, ci->hydro.super->black_holes.density_ghost,
-                              t_bh_swallow);
-          scheduler_addunlock(sched, t_bh_swallow,
-                              ci->hydro.super->black_holes.swallow_ghost_1);
-
-          scheduler_addunlock(sched,
-                              ci->hydro.super->black_holes.swallow_ghost_1,
-                              t_do_gas_swallow);
-          scheduler_addunlock(sched, t_do_gas_swallow,
-                              ci->hydro.super->black_holes.swallow_ghost_2);
-
-          scheduler_addunlock(sched,
-                              ci->hydro.super->black_holes.swallow_ghost_2,
-                              t_do_bh_swallow);
-          scheduler_addunlock(sched, t_do_bh_swallow,
-                              ci->hydro.super->black_holes.swallow_ghost_3);
-
-          scheduler_addunlock(sched,
-                              ci->hydro.super->black_holes.swallow_ghost_3,
-                              t_bh_feedback);
-          scheduler_addunlock(sched, t_bh_feedback,
-                              ci->hydro.super->black_holes.black_holes_out);
-        }
-
+        /* and the task for the time-step limiter */
         if (with_timestep_limiter) {
-          scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t_limiter);
-          scheduler_addunlock(sched, ci->super->timestep, t_limiter);
-          scheduler_addunlock(sched, t_limiter, ci->super->kick1);
-          scheduler_addunlock(sched, t_limiter, ci->super->timestep_limiter);
+          t_limiter = scheduler_addtask(sched, task_type_pair,
+                                        task_subtype_limiter, flags, 0, ci, cj);
         }
 
-        if (with_timestep_sync && with_feedback) {
-          scheduler_addunlock(sched, t_star_feedback, ci->super->timestep_sync);
+        /* The stellar feedback tasks */
+        if (with_feedback) {
+          t_star_density =
+              scheduler_addtask(sched, task_type_pair,
+                                task_subtype_stars_density, flags, 0, ci, cj);
+          t_star_feedback =
+              scheduler_addtask(sched, task_type_pair,
+                                task_subtype_stars_feedback, flags, 0, ci, cj);
+#ifdef EXTRA_STAR_LOOPS
+          t_star_prep1 =
+              scheduler_addtask(sched, task_type_pair, task_subtype_stars_prep1,
+                                flags, 0, ci, cj);
+          t_star_prep2 =
+              scheduler_addtask(sched, task_type_pair, task_subtype_stars_prep2,
+                                flags, 0, ci, cj);
+#endif
         }
-        if (with_timestep_sync && with_black_holes &&
-            (bcount_i > 0 || bcount_j > 0)) {
-          scheduler_addunlock(sched, t_bh_feedback, ci->super->timestep_sync);
+
+        /* The sink tasks */
+        if (with_sink) {
+          t_sink_swallow =
+              scheduler_addtask(sched, task_type_pair,
+                                task_subtype_sink_swallow, flags, 0, ci, cj);
+          t_sink_do_sink_swallow = scheduler_addtask(
+              sched, task_type_pair, task_subtype_sink_do_sink_swallow, flags,
+              0, ci, cj);
+          t_sink_do_gas_swallow = scheduler_addtask(
+              sched, task_type_pair, task_subtype_sink_do_gas_swallow, flags, 0,
+              ci, cj);
+        }
+
+        /* The black hole feedback tasks */
+        if (with_black_holes && (bcount_i > 0 || bcount_j > 0)) {
+          t_bh_density = scheduler_addtask(
+              sched, task_type_pair, task_subtype_bh_density, flags, 0, ci, cj);
+          t_bh_swallow = scheduler_addtask(
+              sched, task_type_pair, task_subtype_bh_swallow, flags, 0, ci, cj);
+          t_do_gas_swallow =
+              scheduler_addtask(sched, task_type_pair,
+                                task_subtype_do_gas_swallow, flags, 0, ci, cj);
+          t_do_bh_swallow =
+              scheduler_addtask(sched, task_type_pair,
+                                task_subtype_do_bh_swallow, flags, 0, ci, cj);
+          t_bh_feedback =
+              scheduler_addtask(sched, task_type_pair, task_subtype_bh_feedback,
+                                flags, 0, ci, cj);
         }
 
         if (with_rt) {
-          scheduler_addunlock(sched, ci->hydro.super->hydro.drift,
-                              t_rt_gradient);
-          scheduler_addunlock(sched, ci->hydro.super->rt.rt_ghost1,
-                              t_rt_gradient);
-          scheduler_addunlock(sched, t_rt_gradient,
-                              ci->hydro.super->rt.rt_ghost2);
-          scheduler_addunlock(sched, ci->hydro.super->rt.rt_ghost2,
-                              t_rt_transport);
-          scheduler_addunlock(sched, t_rt_transport,
-                              ci->hydro.super->rt.rt_transport_out);
-        }
-      } else /* ci->nodeID != nodeID */ {
+          t_rt_gradient =
+              scheduler_addtask(sched, task_type_pair, task_subtype_rt_gradient,
+                                flags, 0, ci, cj);
+          t_rt_transport =
+              scheduler_addtask(sched, task_type_pair,
+                                task_subtype_rt_transport, flags, 0, ci, cj);
+#ifdef MPI_SYMMETRIC_FORCE_INTERACTION
+          /* The order of operations for an inactive local cell interacting
+           * with an active foreign cell is not guaranteed because the gradient
+           * iact loops don't exist in that case. So we need an explicit
+           * dependency here to have sorted cells. */
 
-        if (with_feedback) {
-#ifdef EXTRA_STAR_LOOPS
-          scheduler_addunlock(sched, ci->hydro.super->stars.sorts,
-                              t_star_prep1);
-#endif
-          scheduler_addunlock(sched, ci->hydro.super->stars.sorts,
-                              t_star_feedback);
-        }
-        if (with_black_holes && (bcount_i > 0 || bcount_j > 0)) {
-
-          scheduler_addunlock(sched, t_bh_swallow,
-                              ci->hydro.super->black_holes.swallow_ghost_1);
-        }
-      }
-
-      if (cj->nodeID == nodeID) {
-
-        if (ci->hydro.super != cj->hydro.super) {
-
-          scheduler_addunlock(sched, t_force, cj->hydro.super->hydro.end_force);
-
-          if (with_feedback) {
-
-            if (with_cooling)
-              scheduler_addunlock(sched, cj->hydro.super->hydro.cooling_out,
-                                  t_star_density);
-
-            scheduler_addunlock(sched, cj->hydro.super->stars.sorts,
-                                t_star_density);
-            scheduler_addunlock(sched, cj->hydro.super->stars.drift,
-                                t_star_density);
-            scheduler_addunlock(sched, cj->hydro.super->hydro.drift,
-                                t_star_density);
-            scheduler_addunlock(sched, cj->hydro.super->stars.stars_in,
-                                t_star_density);
-            scheduler_addunlock(sched, t_star_density,
-                                cj->hydro.super->stars.density_ghost);
-#ifdef EXTRA_STAR_LOOPS
-            scheduler_addunlock(sched, cj->hydro.super->stars.density_ghost,
-                                t_star_prep1);
-            scheduler_addunlock(sched, t_star_prep1,
-                                cj->hydro.super->stars.prep1_ghost);
-            scheduler_addunlock(sched, t_star_prep1,
-                                cj->hydro.super->hydro.prep1_ghost);
-            scheduler_addunlock(sched, cj->hydro.super->stars.prep1_ghost,
-                                t_star_prep2);
-            scheduler_addunlock(sched, cj->hydro.super->hydro.prep1_ghost,
-                                t_star_prep2);
-            scheduler_addunlock(sched, t_star_prep2,
-                                cj->hydro.super->stars.prep2_ghost);
-            scheduler_addunlock(sched, cj->hydro.super->stars.prep2_ghost,
-                                t_star_feedback);
-#else
-            scheduler_addunlock(sched, cj->hydro.super->stars.density_ghost,
-                                t_star_feedback);
-#endif
-            scheduler_addunlock(sched, t_star_feedback,
-                                cj->hydro.super->stars.stars_out);
-          }
-          if (with_sink) {
-
-            /* Do the sink_swallow */
-            scheduler_addunlock(sched, cj->hydro.super->hydro.drift,
-                                t_sink_swallow);
-            scheduler_addunlock(sched, cj->hydro.super->sinks.drift,
-                                t_sink_swallow);
-            scheduler_addunlock(sched, cj->hydro.super->hydro.sorts,
-                                t_sink_swallow);
-            scheduler_addunlock(sched, cj->hydro.super->sinks.sink_in,
-                                t_sink_swallow);
-            scheduler_addunlock(sched, t_sink_swallow,
-                                cj->hydro.super->sinks.sink_ghost1);
-
-            /* Do the sink_do_gas_swallow */
-            scheduler_addunlock(sched, cj->hydro.super->sinks.sink_ghost1,
-                                t_sink_do_gas_swallow);
-            scheduler_addunlock(sched, t_sink_do_gas_swallow,
-                                cj->hydro.super->sinks.sink_ghost2);
-
-            /* Do the sink_do_sink_swallow */
-            scheduler_addunlock(sched, cj->hydro.super->sinks.sink_ghost2,
-                                t_sink_do_sink_swallow);
-            scheduler_addunlock(sched, t_sink_do_sink_swallow,
-                                cj->hydro.super->sinks.sink_out);
-          }
-
-          if (with_black_holes && (bcount_i > 0 || bcount_j > 0)) {
-
-            if (with_cooling)
-              scheduler_addunlock(sched, cj->hydro.super->hydro.cooling_out,
-                                  t_bh_density);
-
-            scheduler_addunlock(sched, cj->hydro.super->black_holes.drift,
-                                t_bh_density);
-            scheduler_addunlock(sched, cj->hydro.super->hydro.drift,
-                                t_bh_density);
-            scheduler_addunlock(sched,
-                                cj->hydro.super->black_holes.black_holes_in,
-                                t_bh_density);
-            scheduler_addunlock(sched, t_bh_density,
-                                cj->hydro.super->black_holes.density_ghost);
-
-            scheduler_addunlock(sched,
-                                cj->hydro.super->black_holes.density_ghost,
-                                t_bh_swallow);
-            scheduler_addunlock(sched, t_bh_swallow,
-                                cj->hydro.super->black_holes.swallow_ghost_1);
-
-            scheduler_addunlock(sched,
-                                cj->hydro.super->black_holes.swallow_ghost_1,
-                                t_do_gas_swallow);
-            scheduler_addunlock(sched, t_do_gas_swallow,
-                                cj->hydro.super->black_holes.swallow_ghost_2);
-
-            scheduler_addunlock(sched,
-                                cj->hydro.super->black_holes.swallow_ghost_2,
-                                t_do_bh_swallow);
-            scheduler_addunlock(sched, t_do_bh_swallow,
-                                cj->hydro.super->black_holes.swallow_ghost_3);
-
-            scheduler_addunlock(sched,
-                                cj->hydro.super->black_holes.swallow_ghost_3,
-                                t_bh_feedback);
-            scheduler_addunlock(sched, t_bh_feedback,
-                                cj->hydro.super->black_holes.black_holes_out);
-          }
-          if (with_rt) {
-            scheduler_addunlock(sched, cj->hydro.super->hydro.drift,
-                                t_rt_gradient);
-            scheduler_addunlock(sched, cj->hydro.super->rt.rt_ghost1,
-                                t_rt_gradient);
-            scheduler_addunlock(sched, t_rt_gradient,
-                                cj->hydro.super->rt.rt_ghost2);
-            scheduler_addunlock(sched, cj->hydro.super->rt.rt_ghost2,
+          /* Make all force tasks depend on the sorts */
+          if (ci->hydro.super->rt.rt_sorts != NULL)
+            scheduler_addunlock(sched, ci->hydro.super->rt.rt_sorts,
                                 t_rt_transport);
-            scheduler_addunlock(sched, t_rt_transport,
-                                cj->hydro.super->rt.rt_transport_out);
+          if (ci->hydro.super != cj->hydro.super) {
+            if (cj->hydro.super->rt.rt_sorts != NULL)
+              scheduler_addunlock(sched, cj->hydro.super->rt.rt_sorts,
+                                  t_rt_transport);
           }
-
-          if (with_timestep_limiter) {
-            scheduler_addunlock(sched, cj->hydro.super->hydro.drift, t_limiter);
-          }
+          /* We need to ensure that a local inactive cell is sorted before
+           * the interaction in the transport loop. Local cells don't have an
+           * rt_sorts task. */
+          if (ci->hydro.super->hydro.sorts != NULL)
+            scheduler_addunlock(sched, ci->hydro.super->hydro.sorts,
+                                t_rt_transport);
+          if ((ci->hydro.super != cj->hydro.super) &&
+              (cj->hydro.super->hydro.sorts != NULL))
+            scheduler_addunlock(sched, cj->hydro.super->hydro.sorts,
+                                t_rt_transport);
+#endif
         }
 
-        if (ci->super != cj->super) {
-
-          if (with_timestep_limiter) {
-            scheduler_addunlock(sched, cj->super->timestep, t_limiter);
-            scheduler_addunlock(sched, t_limiter, cj->super->kick1);
-            scheduler_addunlock(sched, t_limiter, cj->super->timestep_limiter);
-          }
-
-          if (with_timestep_sync && with_feedback) {
-            scheduler_addunlock(sched, t_star_feedback,
-                                cj->super->timestep_sync);
-          }
-          if (with_timestep_sync && with_black_holes &&
-              (bcount_i > 0 || bcount_j > 0)) {
-            scheduler_addunlock(sched, t_bh_feedback, cj->super->timestep_sync);
-          }
+        engine_addlink(e, &ci->hydro.force, t_force);
+        engine_addlink(e, &cj->hydro.force, t_force);
+        if (with_timestep_limiter) {
+          engine_addlink(e, &ci->hydro.limiter, t_limiter);
+          engine_addlink(e, &cj->hydro.limiter, t_limiter);
         }
-      } else /* cj->nodeID != nodeID */ {
         if (with_feedback) {
+          engine_addlink(e, &ci->stars.density, t_star_density);
+          engine_addlink(e, &cj->stars.density, t_star_density);
+          engine_addlink(e, &ci->stars.feedback, t_star_feedback);
+          engine_addlink(e, &cj->stars.feedback, t_star_feedback);
 #ifdef EXTRA_STAR_LOOPS
-          scheduler_addunlock(sched, cj->hydro.super->stars.sorts,
-                              t_star_prep1);
+          engine_addlink(e, &ci->stars.prepare1, t_star_prep1);
+          engine_addlink(e, &cj->stars.prepare1, t_star_prep1);
+          engine_addlink(e, &ci->stars.prepare2, t_star_prep2);
+          engine_addlink(e, &cj->stars.prepare2, t_star_prep2);
 #endif
-          scheduler_addunlock(sched, cj->hydro.super->stars.sorts,
-                              t_star_feedback);
         }
-
+        if (with_sink) {
+          /* Formation */
+          engine_addlink(e, &ci->sinks.swallow, t_sink_swallow);
+          engine_addlink(e, &cj->sinks.swallow, t_sink_swallow);
+          /* Merger */
+          engine_addlink(e, &ci->sinks.do_sink_swallow, t_sink_do_sink_swallow);
+          engine_addlink(e, &cj->sinks.do_sink_swallow, t_sink_do_sink_swallow);
+          /* Accretion */
+          engine_addlink(e, &ci->sinks.do_gas_swallow, t_sink_do_gas_swallow);
+          engine_addlink(e, &cj->sinks.do_gas_swallow, t_sink_do_gas_swallow);
+        }
         if (with_black_holes && (bcount_i > 0 || bcount_j > 0)) {
-          scheduler_addunlock(sched, t_bh_swallow,
-                              cj->hydro.super->black_holes.swallow_ghost_1);
+          engine_addlink(e, &ci->black_holes.density, t_bh_density);
+          engine_addlink(e, &cj->black_holes.density, t_bh_density);
+          engine_addlink(e, &ci->black_holes.swallow, t_bh_swallow);
+          engine_addlink(e, &cj->black_holes.swallow, t_bh_swallow);
+          engine_addlink(e, &ci->black_holes.do_gas_swallow, t_do_gas_swallow);
+          engine_addlink(e, &cj->black_holes.do_gas_swallow, t_do_gas_swallow);
+          engine_addlink(e, &ci->black_holes.do_bh_swallow, t_do_bh_swallow);
+          engine_addlink(e, &cj->black_holes.do_bh_swallow, t_do_bh_swallow);
+          engine_addlink(e, &ci->black_holes.feedback, t_bh_feedback);
+          engine_addlink(e, &cj->black_holes.feedback, t_bh_feedback);
         }
-      }
-    }
-  }
-}
-
-/**
- * @brief Constructs the top-level pair tasks for the first hydro loop over
- * neighbours
- *
- * Here we construct all the tasks for all possible neighbouring non-empty
- * local cells in the hierarchy. No dependencies are being added thus far.
- * Additional loop over neighbours can later be added by simply duplicating
- * all the tasks created by this function.
- *
- * In the zoom case we only consider zoom cells and periodicity is ignored
- * since the zoom region is never periodic.
- *
- * @param map_data Offset of first two indices disguised as a pointer.
- * @param num_elements Number of cells to traverse.
- * @param extra_data The #engine.
- */
-void engine_make_hydroloop_tasks_mapper(void *map_data, int num_elements,
-                                        void *extra_data) {
-
-  /* Extract the engine pointer. */
-  struct engine *e = (struct engine *)extra_data;
-  const int periodic = !e->s->with_zoom_region ? e->s->periodic : 0;
-  const int with_feedback = (e->policy & engine_policy_feedback);
-  const int with_stars = (e->policy & engine_policy_stars);
-  const int with_sinks = (e->policy & engine_policy_sinks);
-  const int with_black_holes = (e->policy & engine_policy_black_holes);
-
-  struct space *s = e->s;
-  struct scheduler *sched = &e->sched;
-  const int nodeID = e->nodeID;
-  const int *cdim = !s->with_zoom_region ? s->cdim : s->zoom_props->cdim;
-  struct cell *cells = s->cells_top;
-
-  /* Loop through the elements, which are just byte offsets from NULL. */
-  for (int ind = 0; ind < num_elements; ind++) {
-
-    /* Get the cell index. */
-    const int cid = (size_t)(map_data) + ind;
-
-    /* Integer indices of the cell in the top-level grid */
-    const int i = cid / (cdim[1] * cdim[2]);
-    const int j = (cid / cdim[2]) % cdim[1];
-    const int k = cid % cdim[2];
-
-    /* Get the cell */
-    struct cell *ci = &cells[cid];
-
-    /* Skip cells without hydro or star particles */
-    if ((ci->hydro.count == 0) && (!with_stars || ci->stars.count == 0) &&
-        (!with_sinks || ci->sinks.count == 0) &&
-        (!with_black_holes || ci->black_holes.count == 0))
-      continue;
-
-    /* If the cell is local build a self-interaction */
-    if (ci->nodeID == nodeID) {
-      scheduler_addtask(sched, task_type_self, task_subtype_density, 0, 0, ci,
-                        NULL);
-    }
-
-    /* Now loop over all the neighbours of this cell */
-    for (int ii = -1; ii < 2; ii++) {
-      int iii = i + ii;
-      if (!periodic && (iii < 0 || iii >= cdim[0])) continue;
-      iii = (iii + cdim[0]) % cdim[0];
-      for (int jj = -1; jj < 2; jj++) {
-        int jjj = j + jj;
-        if (!periodic && (jjj < 0 || jjj >= cdim[1])) continue;
-        jjj = (jjj + cdim[1]) % cdim[1];
-        for (int kk = -1; kk < 2; kk++) {
-          int kkk = k + kk;
-          if (!periodic && (kkk < 0 || kkk >= cdim[2])) continue;
-          kkk = (kkk + cdim[2]) % cdim[2];
-
-          /* Get the neighbouring cell */
-          const int cjd = cell_getid(cdim, iii, jjj, kkk);
-          struct cell *cj = &cells[cjd];
-
-#ifdef SWIFT_DEBUG_CHECKS
-          /* Ensure we only have zoom cells in the zoom case. */
-          if (s->with_zoom_region &&
-              (ci->type != cell_type_zoom || cj->type != cell_type_zoom)) {
-            error(
-                "Trying to make hydro tasks for non-zoom cells while running a "
-                "zoom! (ci->type=%s, cj->type=%s)",
-                cellID_names[ci->type], cellID_names[cj->type]);
-          }
-#endif
-
-          /* Is that neighbour local and does it have gas or star particles ?
-           */
-          if ((cid >= cjd) ||
-              ((cj->hydro.count == 0) &&
-               (!with_feedback || cj->stars.count == 0) &&
-               (!with_sinks || cj->sinks.count == 0) &&
-               (!with_black_holes || cj->black_holes.count == 0)) ||
-              (ci->nodeID != nodeID && cj->nodeID != nodeID))
-            continue;
-
-          /* Construct the pair task */
-          const int sid = sortlistID[(kk + 1) + 3 * ((jj + 1) + 3 * (ii + 1))];
-          scheduler_addtask(sched, task_type_pair, task_subtype_density, sid, 0,
-                            ci, cj);
-
-#ifdef SWIFT_DEBUG_CHECKS
-#ifdef WITH_MPI
-
-          /* Let's cross-check that we had a proxy for that cell */
-          if (ci->nodeID == nodeID && cj->nodeID != engine_rank) {
-
-            /* Find the proxy for this node */
-            const int proxy_id = e->proxy_ind[cj->nodeID];
-            if (proxy_id < 0)
-              error("No proxy exists for that foreign node %d!", cj->nodeID);
-
-            const struct proxy *p = &e->proxies[proxy_id];
-
-            /* Check whether the cell exists in the proxy */
-            int n = 0;
-            for (n = 0; n < p->nr_cells_in; n++)
-              if (p->cells_in[n] == cj) break;
-            if (n == p->nr_cells_in)
-              error(
-                  "Cell %d not found in the proxy but trying to construct "
-                  "hydro task!",
-                  cjd);
-          } else if (cj->nodeID == nodeID && ci->nodeID != engine_rank) {
-
-            /* Find the proxy for this node */
-            const int proxy_id = e->proxy_ind[ci->nodeID];
-            if (proxy_id < 0)
-              error("No proxy exists for that foreign node %d!", ci->nodeID);
-
-            const struct proxy *p = &e->proxies[proxy_id];
-
-            /* Check whether the cell exists in the proxy */
-            int n = 0;
-            for (n = 0; n < p->nr_cells_in; n++)
-              if (p->cells_in[n] == ci) break;
-            if (n == p->nr_cells_in)
-              error(
-                  "Cell %d not found in the proxy but trying to construct "
-                  "hydro task!",
-                  cid);
-          }
-#endif /* WITH_MPI */
-#endif /* SWIFT_DEBUG_CHECKS */
+        if (with_rt) {
+          engine_addlink(e, &ci->rt.rt_gradient, t_rt_gradient);
+          engine_addlink(e, &cj->rt.rt_gradient, t_rt_gradient);
+          engine_addlink(e, &ci->rt.rt_transport, t_rt_transport);
+          engine_addlink(e, &cj->rt.rt_transport, t_rt_transport);
         }
-      }
-    }
-  }
-}
 
-struct cell_type_pair {
-  struct cell *ci, *cj;
-  int type;
-};
+#ifdef EXTRA_HYDRO_LOOP
 
-/**
- * @brief Recurse down to the super level and add a dependency between
- * rt_advance_cell_time and tend tasks. Note: This function is intended
- * for the sending side, i.e. for local cells.
- *
- * If we're running with RT subcycling, we need to ensure that nothing
- * is sent before the advance cell time task has finished. This may
- * overwrite the correct cell times, particularly so when we're sending
- * over data for non-RT tasks, e.g. for gravity pair tasks. Therefore the
- * send/tend task needs to be unlocked by the rt_advance_cell_time task.
- *
- * The send/tend task is on the top level, while the rt_advance_cell_time
- * task is on the super level. This function simply recurses down to the
- * super level and adds the required dependency.
- *
- * @param c cell to check/recurse into
- * @param tend the send/tend task that needs to be unlocked.
- * @param e the engine
- */
-void engine_addunlock_rt_advance_cell_time_tend(struct cell *c,
-                                                struct task *tend,
-                                                struct engine *e) {
+        /* Start by constructing the task for the second and third hydro loop */
+        t_gradient = scheduler_addtask(sched, task_type_pair,
+                                       task_subtype_gradient, flags, 0, ci, cj);
 
-  /* safety measure */
-  if (!cell_get_flag(c, cell_flag_has_tasks)) return;
-  if (cell_is_empty(c)) return;
+        /* Add the link between the new loop and both cells */
+        engine_addlink(e, &ci->hydro.gradient, t_gradient);
+        engine_addlink(e, &cj->hydro.gradient, t_gradient);
 
-  if (c->super == c) {
-    /* Found the super level cell. Add dependency from rt_advance_cell_time,
-     * if it exists. */
-    if (c->super->rt.rt_advance_cell_time != NULL) {
-      scheduler_addunlock(&e->sched, c->super->rt.rt_advance_cell_time, tend);
-    }
-#ifdef SWIFT_RT_DEBUG_CHECKS
-    else {
-      error("Got local super cell without rt_advance_cell_time task");
-    }
-#endif
-
-  } else {
-    /* descend the tree until you find the super level */
-    if (c->split) {
-      for (int k = 0; k < 8; k++) {
-        if (c->progeny[k] != NULL) {
-          engine_addunlock_rt_advance_cell_time_tend(c->progeny[k], tend, e);
-        }
-      }
-    }
-  }
-}
-
-void engine_addtasks_send_mapper(void *map_data, int num_elements,
-                                 void *extra_data) {
-
-  struct engine *e = (struct engine *)extra_data;
-  const int with_star_formation = (e->policy & engine_policy_star_formation);
-  const int with_limiter = (e->policy & engine_policy_timestep_limiter);
-  const int with_feedback = (e->policy & engine_policy_feedback);
-  const int with_sync = (e->policy & engine_policy_timestep_sync);
-  const int with_rt = (e->policy & engine_policy_rt);
-  struct cell_type_pair *cell_type_pairs = (struct cell_type_pair *)map_data;
-
-#ifdef SWIFT_DEBUG_CHECKS
-  if (e->policy & engine_policy_sinks) {
-    error("TODO");
-  }
-#endif
-
-  for (int k = 0; k < num_elements; k++) {
-    struct cell *ci = cell_type_pairs[k].ci;
-    struct cell *cj = cell_type_pairs[k].cj;
-    const int type = cell_type_pairs[k].type;
-
-#ifdef WITH_MPI
-
-    if (!cell_is_empty(ci)) {
-      /* Add the timestep exchange task */
-      struct task *tend = scheduler_addtask(
-          &e->sched, task_type_send, task_subtype_tend, ci->mpi.tag, 0, ci, cj);
-      scheduler_addunlock(&e->sched, ci->timestep_collect, tend);
-      engine_addlink(e, &ci->mpi.send, tend);
-
-      if (with_rt && (type & proxy_cell_type_hydro))
-        engine_addunlock_rt_advance_cell_time_tend(ci, tend, e);
-    }
-#endif
-
-    /* Add the send tasks for the cells in the proxy that have a hydro
-     * connection. */
-    if ((e->policy & engine_policy_hydro) && (type & proxy_cell_type_hydro))
-      engine_addtasks_send_hydro(e, ci, cj, /*t_xv=*/NULL,
-                                 /*t_rho=*/NULL, /*t_gradient=*/NULL,
-                                 /*t_prep1=*/NULL,
-                                 /*t_limiter=*/NULL, /*t_pack_limiter=*/NULL,
-                                 /*t_rt_gradient=*/NULL,
-                                 /*t_rt_transport=*/NULL, with_feedback,
-                                 with_limiter, with_sync, with_rt);
-
-    /* Add the send tasks for the cells in the proxy that have a stars
-     * connection. */
-    if ((e->policy & engine_policy_feedback) && (type & proxy_cell_type_hydro))
-      engine_addtasks_send_stars(e, ci, cj, /*t_density=*/NULL,
-                                 /*t_prep2=*/NULL,
-                                 /*t_sf_counts=*/NULL, with_star_formation);
-
-    /* Add the send tasks for the cells in the proxy that have a black holes
-     * connection. */
-    if ((e->policy & engine_policy_black_holes) &&
-        (type & proxy_cell_type_hydro))
-      engine_addtasks_send_black_holes(e, ci, cj, /*t_rho=*/NULL,
-                                       /*t_swallow=*/NULL,
-                                       /*t_gas_swallow=*/NULL,
-                                       /*t_feedback=*/NULL);
-
-    /* Add the send tasks for the cells in the proxy that have a gravity
-     * connection. */
-    if ((e->policy & engine_policy_self_gravity) &&
-        (type & proxy_cell_type_gravity))
-      engine_addtasks_send_gravity(e, ci, cj, /*t_grav=*/NULL);
-  }
-}
-
-void engine_addtasks_recv_mapper(void *map_data, int num_elements,
-                                 void *extra_data) {
-
-  struct engine *e = (struct engine *)extra_data;
-  const int with_star_formation = (e->policy & engine_policy_star_formation);
-  const int with_limiter = (e->policy & engine_policy_timestep_limiter);
-  const int with_feedback = (e->policy & engine_policy_feedback);
-  const int with_black_holes = (e->policy & engine_policy_black_holes);
-  const int with_sync = (e->policy & engine_policy_timestep_sync);
-  const int with_rt = (e->policy & engine_policy_rt);
-  struct cell_type_pair *cell_type_pairs = (struct cell_type_pair *)map_data;
-
-#ifdef SWIFT_DEBUG_CHECKS
-  if (e->policy & engine_policy_sinks) {
-    error("TODO");
-  }
-#endif
-
-  for (int k = 0; k < num_elements; k++) {
-    struct cell *ci = cell_type_pairs[k].ci;
-    const int type = cell_type_pairs[k].type;
-    struct task *tend = NULL;
-
-#ifdef WITH_MPI
-    /* Add the timestep exchange task */
-    if (!cell_is_empty(ci)) {
-      tend = scheduler_addtask(&e->sched, task_type_recv, task_subtype_tend,
-                               ci->mpi.tag, 0, ci, NULL);
-      engine_addlink(e, &ci->mpi.recv, tend);
-
-      /* If we're running with RT, there may be foreign cells that
-       * don't receive any actual hydro particles. These cells however
-       * still need to have the "advance_cell_time" and "rt_collect_times"
-       * tasks in order for their time variables to be correct, especially
-       * during syb-cycles, where the cell times aren't communicated at the
-       * end of the step. So we create them now. */
-      if (with_rt) {
-#ifdef SWIFT_RT_DEBUG_CHECKS
-        if (ci->top == NULL) error("Working on a cell with top == NULL??");
-#endif
-
-        /* Create the RT collect times task at the top level, if it hasn't
-         * already. */
-        if (ci->top->rt.rt_collect_times == NULL) {
-          ci->top->rt.rt_collect_times =
-              scheduler_addtask(&e->sched, task_type_rt_collect_times,
-                                task_subtype_none, 0, 0, ci->top, NULL);
-        }
-        /* We don't need rt_collect_times -> tend dependencies. They never
-         * run at the same time. rt_collect_times runs in sub-cycles,
-         * tend runs on normal steps. */
-
-        /* Make sure the timestep task replacements, i.e.
-         * rt_advance_cell_time, exists on the super levels regardless of
-         * proxy type. This needs to be done before engine_addtasks_recv_hydro
-         * so we can set appropriate unlocks there without re-creating tasks.
+        /* Now, build all the dependencies for the hydro for the cells */
+        /* that are local and are not descendant of the same super_hydro-cells
          */
-        engine_addtasks_recv_rt_advance_cell_time(e, ci, tend);
+        if (ci->nodeID == nodeID) {
+          engine_make_hydro_loops_dependencies(sched, t, t_gradient, t_force,
+                                               t_limiter, ci, with_cooling,
+                                               with_timestep_limiter);
+        }
+        if ((cj->nodeID == nodeID) && (ci->hydro.super != cj->hydro.super)) {
+          engine_make_hydro_loops_dependencies(sched, t, t_gradient, t_force,
+                                               t_limiter, cj, with_cooling,
+                                               with_timestep_limiter);
+        }
+#else
+
+        /* Now, build all the dependencies for the hydro for the cells */
+        /* that are local and are not descendant of the same super_hydro-cells
+         */
+        if (ci->nodeID == nodeID) {
+          engine_make_hydro_loops_dependencies(sched, t, t_force, t_limiter, ci,
+                                               with_cooling,
+                                               with_timestep_limiter);
+        }
+        if ((cj->nodeID == nodeID) && (ci->hydro.super != cj->hydro.super)) {
+          engine_make_hydro_loops_dependencies(sched, t, t_force, t_limiter, cj,
+                                               with_cooling,
+                                               with_timestep_limiter);
+        }
+#endif
+
+        if (with_feedback) {
+          scheduler_addunlock(sched, ci->hydro.super->hydro.sorts,
+                              t_star_density);
+
+          if (ci->hydro.super != cj->hydro.super) {
+            scheduler_addunlock(sched, cj->hydro.super->hydro.sorts,
+                                t_star_density);
+          }
+        }
+        if (with_rt) {
+          scheduler_addunlock(sched, ci->hydro.super->hydro.sorts,
+                              t_rt_gradient);
+
+          if (ci->hydro.super != cj->hydro.super) {
+            scheduler_addunlock(sched, cj->hydro.super->hydro.sorts,
+                                t_rt_gradient);
+          }
+        }
+
+        if (ci->nodeID == nodeID) {
+          scheduler_addunlock(sched, t_force, ci->hydro.super->hydro.end_force);
+
+          if (with_feedback) {
+
+            if (with_cooling)
+              scheduler_addunlock(sched, ci->hydro.super->hydro.cooling_out,
+                                  t_star_density);
+
+            scheduler_addunlock(sched, ci->hydro.super->stars.drift,
+                                t_star_density);
+            scheduler_addunlock(sched, ci->hydro.super->stars.sorts,
+                                t_star_density);
+            scheduler_addunlock(sched, ci->hydro.super->hydro.drift,
+                                t_star_density);
+            scheduler_addunlock(sched, ci->hydro.super->stars.stars_in,
+                                t_star_density);
+            scheduler_addunlock(sched, t_star_density,
+                                ci->hydro.super->stars.density_ghost);
+#ifdef EXTRA_STAR_LOOPS
+            scheduler_addunlock(sched, ci->hydro.super->stars.density_ghost,
+                                t_star_prep1);
+            scheduler_addunlock(sched, t_star_prep1,
+                                ci->hydro.super->stars.prep1_ghost);
+            scheduler_addunlock(sched, t_star_prep1,
+                                ci->hydro.super->hydro.prep1_ghost);
+            scheduler_addunlock(sched, ci->hydro.super->stars.prep1_ghost,
+                                t_star_prep2);
+            scheduler_addunlock(sched, ci->hydro.super->hydro.prep1_ghost,
+                                t_star_prep2);
+            scheduler_addunlock(sched, t_star_prep2,
+                                ci->hydro.super->stars.prep2_ghost);
+            scheduler_addunlock(sched, ci->hydro.super->stars.prep2_ghost,
+                                t_star_feedback);
+#else
+            scheduler_addunlock(sched, ci->hydro.super->stars.density_ghost,
+                                t_star_feedback);
+#endif
+            scheduler_addunlock(sched, t_star_feedback,
+                                ci->hydro.super->stars.stars_out);
+          }
+
+          if (with_sink) {
+
+            /* Do the sink_swallow */
+            scheduler_addunlock(sched, ci->hydro.super->hydro.drift,
+                                t_sink_swallow);
+            scheduler_addunlock(sched, ci->hydro.super->sinks.drift,
+                                t_sink_swallow);
+            scheduler_addunlock(sched, ci->hydro.super->hydro.sorts,
+                                t_sink_swallow);
+            scheduler_addunlock(sched, ci->hydro.super->sinks.sink_in,
+                                t_sink_swallow);
+            scheduler_addunlock(sched, t_sink_swallow,
+                                ci->hydro.super->sinks.sink_ghost1);
+
+            /* Do the sink_do_gas_swallow */
+            scheduler_addunlock(sched, ci->hydro.super->sinks.sink_ghost1,
+                                t_sink_do_gas_swallow);
+            scheduler_addunlock(sched, t_sink_do_gas_swallow,
+                                ci->hydro.super->sinks.sink_ghost2);
+
+            /* Do the sink_do_sink_swallow */
+            scheduler_addunlock(sched, ci->hydro.super->sinks.sink_ghost2,
+                                t_sink_do_sink_swallow);
+            scheduler_addunlock(sched, t_sink_do_sink_swallow,
+                                ci->hydro.super->sinks.sink_out);
+          }
+
+          if (with_black_holes && (bcount_i > 0 || bcount_j > 0)) {
+
+            if (with_cooling)
+              scheduler_addunlock(sched, ci->hydro.super->hydro.cooling_out,
+                                  t_bh_density);
+
+            scheduler_addunlock(sched, ci->hydro.super->black_holes.drift,
+                                t_bh_density);
+            scheduler_addunlock(sched, ci->hydro.super->hydro.drift,
+                                t_bh_density);
+            scheduler_addunlock(sched,
+                                ci->hydro.super->black_holes.black_holes_in,
+                                t_bh_density);
+            scheduler_addunlock(sched, t_bh_density,
+                                ci->hydro.super->black_holes.density_ghost);
+
+            scheduler_addunlock(sched,
+                                ci->hydro.super->black_holes.density_ghost,
+                                t_bh_swallow);
+            scheduler_addunlock(sched, t_bh_swallow,
+                                ci->hydro.super->black_holes.swallow_ghost_1);
+
+            scheduler_addunlock(sched,
+                                ci->hydro.super->black_holes.swallow_ghost_1,
+                                t_do_gas_swallow);
+            scheduler_addunlock(sched, t_do_gas_swallow,
+                                ci->hydro.super->black_holes.swallow_ghost_2);
+
+            scheduler_addunlock(sched,
+                                ci->hydro.super->black_holes.swallow_ghost_2,
+                                t_do_bh_swallow);
+            scheduler_addunlock(sched, t_do_bh_swallow,
+                                ci->hydro.super->black_holes.swallow_ghost_3);
+
+            scheduler_addunlock(sched,
+                                ci->hydro.super->black_holes.swallow_ghost_3,
+                                t_bh_feedback);
+            scheduler_addunlock(sched, t_bh_feedback,
+                                ci->hydro.super->black_holes.black_holes_out);
+          }
+
+          if (with_timestep_limiter) {
+            scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t_limiter);
+            scheduler_addunlock(sched, ci->super->timestep, t_limiter);
+            scheduler_addunlock(sched, t_limiter, ci->super->kick1);
+            scheduler_addunlock(sched, t_limiter, ci->super->timestep_limiter);
+          }
+
+          if (with_timestep_sync && with_feedback) {
+            scheduler_addunlock(sched, t_star_feedback,
+                                ci->super->timestep_sync);
+          }
+          if (with_timestep_sync && with_black_holes &&
+              (bcount_i > 0 || bcount_j > 0)) {
+            scheduler_addunlock(sched, t_bh_feedback, ci->super->timestep_sync);
+          }
+
+          if (with_rt) {
+            scheduler_addunlock(sched, ci->hydro.super->hydro.drift,
+                                t_rt_gradient);
+            scheduler_addunlock(sched, ci->hydro.super->rt.rt_ghost1,
+                                t_rt_gradient);
+            scheduler_addunlock(sched, t_rt_gradient,
+                                ci->hydro.super->rt.rt_ghost2);
+            scheduler_addunlock(sched, ci->hydro.super->rt.rt_ghost2,
+                                t_rt_transport);
+            scheduler_addunlock(sched, t_rt_transport,
+                                ci->hydro.super->rt.rt_transport_out);
+          }
+
+        } else /*(ci->nodeID != nodeID) */ {
+          if (with_feedback) {
+#ifdef EXTRA_STAR_LOOPS
+            scheduler_addunlock(sched, ci->hydro.super->stars.sorts,
+                                t_star_prep1);
+#endif
+            scheduler_addunlock(sched, ci->hydro.super->stars.sorts,
+                                t_star_feedback);
+          }
+
+          if (with_black_holes && (bcount_i > 0 || bcount_j > 0)) {
+            scheduler_addunlock(sched, t_bh_swallow,
+                                ci->hydro.super->black_holes.swallow_ghost_1);
+          }
+        }
+
+        if (cj->nodeID == nodeID) {
+
+          if (ci->hydro.super != cj->hydro.super) {
+
+            scheduler_addunlock(sched, t_force,
+                                cj->hydro.super->hydro.end_force);
+
+            if (with_feedback) {
+
+              if (with_cooling)
+                scheduler_addunlock(sched, cj->hydro.super->hydro.cooling_out,
+                                    t_star_density);
+
+              scheduler_addunlock(sched, cj->hydro.super->stars.sorts,
+                                  t_star_density);
+              scheduler_addunlock(sched, cj->hydro.super->stars.drift,
+                                  t_star_density);
+              scheduler_addunlock(sched, cj->hydro.super->hydro.drift,
+                                  t_star_density);
+              scheduler_addunlock(sched, cj->hydro.super->stars.stars_in,
+                                  t_star_density);
+              scheduler_addunlock(sched, t_star_density,
+                                  cj->hydro.super->stars.density_ghost);
+#ifdef EXTRA_STAR_LOOPS
+              scheduler_addunlock(sched, cj->hydro.super->stars.density_ghost,
+                                  t_star_prep1);
+              scheduler_addunlock(sched, t_star_prep1,
+                                  cj->hydro.super->stars.prep1_ghost);
+              scheduler_addunlock(sched, t_star_prep1,
+                                  cj->hydro.super->hydro.prep1_ghost);
+              scheduler_addunlock(sched, cj->hydro.super->stars.prep1_ghost,
+                                  t_star_prep2);
+              scheduler_addunlock(sched, cj->hydro.super->hydro.prep1_ghost,
+                                  t_star_prep2);
+              scheduler_addunlock(sched, t_star_prep2,
+                                  cj->hydro.super->stars.prep2_ghost);
+              scheduler_addunlock(sched, cj->hydro.super->stars.prep2_ghost,
+                                  t_star_feedback);
+#else
+              scheduler_addunlock(sched, cj->hydro.super->stars.density_ghost,
+                                  t_star_feedback);
+#endif
+              scheduler_addunlock(sched, t_star_feedback,
+                                  cj->hydro.super->stars.stars_out);
+            }
+
+            if (with_sink) {
+
+              /* Do the sink_swallow */
+              scheduler_addunlock(sched, cj->hydro.super->hydro.drift,
+                                  t_sink_swallow);
+              scheduler_addunlock(sched, cj->hydro.super->sinks.drift,
+                                  t_sink_swallow);
+              scheduler_addunlock(sched, cj->hydro.super->hydro.sorts,
+                                  t_sink_swallow);
+              scheduler_addunlock(sched, cj->hydro.super->sinks.sink_in,
+                                  t_sink_swallow);
+              scheduler_addunlock(sched, t_sink_swallow,
+                                  cj->hydro.super->sinks.sink_ghost1);
+
+              /* Do the sink_do_gas_swallow */
+              scheduler_addunlock(sched, cj->hydro.super->sinks.sink_ghost1,
+                                  t_sink_do_gas_swallow);
+              scheduler_addunlock(sched, t_sink_do_gas_swallow,
+                                  cj->hydro.super->sinks.sink_ghost2);
+
+              /* Do the sink_do_sink_swallow */
+              scheduler_addunlock(sched, cj->hydro.super->sinks.sink_ghost2,
+                                  t_sink_do_sink_swallow);
+              scheduler_addunlock(sched, t_sink_do_sink_swallow,
+                                  cj->hydro.super->sinks.sink_out);
+            }
+
+            if (with_black_holes && (bcount_i > 0 || bcount_j > 0)) {
+
+              if (with_cooling)
+                scheduler_addunlock(sched, cj->hydro.super->hydro.cooling_out,
+                                    t_bh_density);
+
+              scheduler_addunlock(sched, cj->hydro.super->black_holes.drift,
+                                  t_bh_density);
+              scheduler_addunlock(sched, cj->hydro.super->hydro.drift,
+                                  t_bh_density);
+              scheduler_addunlock(sched,
+                                  cj->hydro.super->black_holes.black_holes_in,
+                                  t_bh_density);
+              scheduler_addunlock(sched, t_bh_density,
+                                  cj->hydro.super->black_holes.density_ghost);
+
+              scheduler_addunlock(sched,
+                                  cj->hydro.super->black_holes.density_ghost,
+                                  t_bh_swallow);
+              scheduler_addunlock(sched, t_bh_swallow,
+                                  cj->hydro.super->black_holes.swallow_ghost_1);
+
+              scheduler_addunlock(sched,
+                                  cj->hydro.super->black_holes.swallow_ghost_1,
+                                  t_do_gas_swallow);
+              scheduler_addunlock(sched, t_do_gas_swallow,
+                                  cj->hydro.super->black_holes.swallow_ghost_2);
+
+              scheduler_addunlock(sched,
+                                  cj->hydro.super->black_holes.swallow_ghost_2,
+                                  t_do_bh_swallow);
+              scheduler_addunlock(sched, t_do_bh_swallow,
+                                  cj->hydro.super->black_holes.swallow_ghost_3);
+
+              scheduler_addunlock(sched,
+                                  cj->hydro.super->black_holes.swallow_ghost_3,
+                                  t_bh_feedback);
+              scheduler_addunlock(sched, t_bh_feedback,
+                                  cj->hydro.super->black_holes.black_holes_out);
+            }
+
+            if (with_rt) {
+              scheduler_addunlock(sched, cj->hydro.super->hydro.drift,
+                                  t_rt_gradient);
+              scheduler_addunlock(sched, cj->hydro.super->rt.rt_ghost1,
+                                  t_rt_gradient);
+              scheduler_addunlock(sched, t_rt_gradient,
+                                  cj->hydro.super->rt.rt_ghost2);
+              scheduler_addunlock(sched, cj->hydro.super->rt.rt_ghost2,
+                                  t_rt_transport);
+              scheduler_addunlock(sched, t_rt_transport,
+                                  cj->hydro.super->rt.rt_transport_out);
+            }
+
+            if (with_timestep_limiter) {
+              scheduler_addunlock(sched, cj->hydro.super->hydro.drift,
+                                  t_limiter);
+            }
+          }
+
+          if (ci->super != cj->super) {
+
+            if (with_timestep_limiter) {
+              scheduler_addunlock(sched, cj->super->timestep, t_limiter);
+              scheduler_addunlock(sched, t_limiter, cj->super->kick1);
+              scheduler_addunlock(sched, t_limiter,
+                                  cj->super->timestep_limiter);
+            }
+
+            if (with_timestep_sync && with_feedback) {
+              scheduler_addunlock(sched, t_star_feedback,
+                                  cj->super->timestep_sync);
+            }
+            if (with_timestep_sync && with_black_holes &&
+                (bcount_i > 0 || bcount_j > 0)) {
+              scheduler_addunlock(sched, t_bh_feedback,
+                                  cj->super->timestep_sync);
+            }
+          }
+
+        } else /*(cj->nodeID != nodeID) */ {
+          if (with_feedback) {
+#ifdef EXTRA_STAR_LOOPS
+            scheduler_addunlock(sched, cj->hydro.super->stars.sorts,
+                                t_star_prep1);
+#endif
+            scheduler_addunlock(sched, cj->hydro.super->stars.sorts,
+                                t_star_feedback);
+          }
+
+          if (with_black_holes && (bcount_i > 0 || bcount_j > 0)) {
+
+            scheduler_addunlock(sched, t_bh_swallow,
+                                cj->hydro.super->black_holes.swallow_ghost_1);
+          }
+        }
+      }
+
+      /* Otherwise, sub-self interaction? */
+      else if (t_type == task_type_sub_self &&
+               t_subtype == task_subtype_density) {
+
+        const int bcount_i = ci->black_holes.count;
+
+        /* Make all density tasks depend on the drift and sorts. */
+        scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t);
+        scheduler_addunlock(sched, ci->hydro.super->hydro.sorts, t);
+
+        /* Start by constructing the task for the second hydro loop */
+        t_force = scheduler_addtask(sched, task_type_sub_self,
+                                    task_subtype_force, flags, 0, ci, NULL);
+
+        /* and the task for the time-step limiter */
+        if (with_timestep_limiter) {
+          t_limiter =
+              scheduler_addtask(sched, task_type_sub_self, task_subtype_limiter,
+                                flags, 0, ci, NULL);
+        }
+
+        /* The stellar feedback tasks */
+        if (with_feedback) {
+          t_star_density =
+              scheduler_addtask(sched, task_type_sub_self,
+                                task_subtype_stars_density, flags, 0, ci, NULL);
+          t_star_feedback = scheduler_addtask(sched, task_type_sub_self,
+                                              task_subtype_stars_feedback,
+                                              flags, 0, ci, NULL);
+
+#ifdef EXTRA_STAR_LOOPS
+          t_star_prep1 =
+              scheduler_addtask(sched, task_type_sub_self,
+                                task_subtype_stars_prep1, flags, 0, ci, NULL);
+          t_star_prep2 =
+              scheduler_addtask(sched, task_type_sub_self,
+                                task_subtype_stars_prep2, flags, 0, ci, NULL);
+#endif
+        }
+
+        /* The sink tasks */
+        if (with_sink) {
+          t_sink_swallow =
+              scheduler_addtask(sched, task_type_sub_self,
+                                task_subtype_sink_swallow, flags, 0, ci, NULL);
+          t_sink_do_sink_swallow = scheduler_addtask(
+              sched, task_type_sub_self, task_subtype_sink_do_sink_swallow,
+              flags, 0, ci, NULL);
+          t_sink_do_gas_swallow = scheduler_addtask(
+              sched, task_type_sub_self, task_subtype_sink_do_gas_swallow,
+              flags, 0, ci, NULL);
+        }
+
+        /* The black hole feedback tasks */
+        if (with_black_holes && bcount_i > 0) {
+          t_bh_density =
+              scheduler_addtask(sched, task_type_sub_self,
+                                task_subtype_bh_density, flags, 0, ci, NULL);
+          t_bh_swallow =
+              scheduler_addtask(sched, task_type_sub_self,
+                                task_subtype_bh_swallow, flags, 0, ci, NULL);
+
+          t_do_gas_swallow = scheduler_addtask(sched, task_type_sub_self,
+                                               task_subtype_do_gas_swallow,
+                                               flags, 0, ci, NULL);
+
+          t_do_bh_swallow =
+              scheduler_addtask(sched, task_type_sub_self,
+                                task_subtype_do_bh_swallow, flags, 0, ci, NULL);
+
+          t_bh_feedback =
+              scheduler_addtask(sched, task_type_sub_self,
+                                task_subtype_bh_feedback, flags, 0, ci, NULL);
+        }
+
+        if (with_rt) {
+          t_rt_gradient =
+              scheduler_addtask(sched, task_type_sub_self,
+                                task_subtype_rt_gradient, flags, 0, ci, NULL);
+          t_rt_transport =
+              scheduler_addtask(sched, task_type_sub_self,
+                                task_subtype_rt_transport, flags, 0, ci, NULL);
+        }
+
+        /* Add the link between the new loop and the cell */
+        engine_addlink(e, &ci->hydro.force, t_force);
+        if (with_timestep_limiter) {
+          engine_addlink(e, &ci->hydro.limiter, t_limiter);
+        }
+        if (with_feedback) {
+          engine_addlink(e, &ci->stars.density, t_star_density);
+          engine_addlink(e, &ci->stars.feedback, t_star_feedback);
+#ifdef EXTRA_STAR_LOOPS
+          engine_addlink(e, &ci->stars.prepare1, t_star_prep1);
+          engine_addlink(e, &ci->stars.prepare2, t_star_prep2);
+#endif
+        }
+        if (with_sink) {
+          engine_addlink(e, &ci->sinks.swallow, t_sink_swallow);
+          engine_addlink(e, &ci->sinks.do_sink_swallow, t_sink_do_sink_swallow);
+          engine_addlink(e, &ci->sinks.do_gas_swallow, t_sink_do_gas_swallow);
+        }
+        if (with_black_holes && bcount_i > 0) {
+          engine_addlink(e, &ci->black_holes.density, t_bh_density);
+          engine_addlink(e, &ci->black_holes.swallow, t_bh_swallow);
+          engine_addlink(e, &ci->black_holes.do_gas_swallow, t_do_gas_swallow);
+          engine_addlink(e, &ci->black_holes.do_bh_swallow, t_do_bh_swallow);
+          engine_addlink(e, &ci->black_holes.feedback, t_bh_feedback);
+        }
+        if (with_rt) {
+          engine_addlink(e, &ci->rt.rt_gradient, t_rt_gradient);
+          engine_addlink(e, &ci->rt.rt_transport, t_rt_transport);
+        }
+
+#ifdef EXTRA_HYDRO_LOOP
+
+        /* Start by constructing the task for the second and third hydro loop */
+        t_gradient =
+            scheduler_addtask(sched, task_type_sub_self, task_subtype_gradient,
+                              flags, 0, ci, NULL);
+
+        /* Add the link between the new loop and the cell */
+        engine_addlink(e, &ci->hydro.gradient, t_gradient);
+
+        /* Now, build all the dependencies for the hydro for the cells */
+        /* that are local and are not descendant of the same super_hydro-cells
+         */
+        engine_make_hydro_loops_dependencies(sched, t, t_gradient, t_force,
+                                             t_limiter, ci, with_cooling,
+                                             with_timestep_limiter);
+#else
+
+        /* Now, build all the dependencies for the hydro for the cells */
+        /* that are local and are not descendant of the same super_hydro-cells
+         */
+        engine_make_hydro_loops_dependencies(sched, t, t_force, t_limiter, ci,
+                                             with_cooling,
+                                             with_timestep_limiter);
+#endif
+
+        /* Create the task dependencies */
+        scheduler_addunlock(sched, t_force, ci->hydro.super->hydro.end_force);
+
+        if (with_feedback) {
+
+          if (with_cooling)
+            scheduler_addunlock(sched, ci->hydro.super->hydro.cooling_out,
+                                t_star_density);
+
+          scheduler_addunlock(sched, ci->hydro.super->stars.drift,
+                              t_star_density);
+          scheduler_addunlock(sched, ci->hydro.super->stars.sorts,
+                              t_star_density);
+          scheduler_addunlock(sched, ci->hydro.super->hydro.drift,
+                              t_star_density);
+          scheduler_addunlock(sched, ci->hydro.super->hydro.sorts,
+                              t_star_density);
+          scheduler_addunlock(sched, ci->hydro.super->stars.stars_in,
+                              t_star_density);
+          scheduler_addunlock(sched, t_star_density,
+                              ci->hydro.super->stars.density_ghost);
+#ifdef EXTRA_STAR_LOOPS
+          scheduler_addunlock(sched, ci->hydro.super->stars.density_ghost,
+                              t_star_prep1);
+          scheduler_addunlock(sched, t_star_prep1,
+                              ci->hydro.super->stars.prep1_ghost);
+          scheduler_addunlock(sched, t_star_prep1,
+                              ci->hydro.super->hydro.prep1_ghost);
+          scheduler_addunlock(sched, ci->hydro.super->stars.prep1_ghost,
+                              t_star_prep2);
+          scheduler_addunlock(sched, ci->hydro.super->hydro.prep1_ghost,
+                              t_star_prep2);
+          scheduler_addunlock(sched, t_star_prep2,
+                              ci->hydro.super->stars.prep2_ghost);
+          scheduler_addunlock(sched, ci->hydro.super->stars.prep2_ghost,
+                              t_star_feedback);
+#else
+          scheduler_addunlock(sched, ci->hydro.super->stars.density_ghost,
+                              t_star_feedback);
+#endif
+          scheduler_addunlock(sched, t_star_feedback,
+                              ci->hydro.super->stars.stars_out);
+        }
+
+        if (with_sink) {
+
+          /* Do the sink_swallow */
+          scheduler_addunlock(sched, ci->hydro.super->hydro.drift,
+                              t_sink_swallow);
+          scheduler_addunlock(sched, ci->hydro.super->sinks.drift,
+                              t_sink_swallow);
+          scheduler_addunlock(sched, ci->hydro.super->hydro.sorts,
+                              t_sink_swallow);
+          scheduler_addunlock(sched, ci->hydro.super->sinks.sink_in,
+                              t_sink_swallow);
+          scheduler_addunlock(sched, t_sink_swallow,
+                              ci->hydro.super->sinks.sink_ghost1);
+
+          /* Do the sink_do_gas_swallow */
+          scheduler_addunlock(sched, ci->hydro.super->sinks.sink_ghost1,
+                              t_sink_do_gas_swallow);
+          scheduler_addunlock(sched, t_sink_do_gas_swallow,
+                              ci->hydro.super->sinks.sink_ghost2);
+
+          /* Do the sink_do_sink_swallow */
+          scheduler_addunlock(sched, ci->hydro.super->sinks.sink_ghost2,
+                              t_sink_do_sink_swallow);
+          scheduler_addunlock(sched, t_sink_do_sink_swallow,
+                              ci->hydro.super->sinks.sink_out);
+        }
+
+        if (with_black_holes && bcount_i > 0) {
+
+          if (with_cooling)
+            scheduler_addunlock(sched, ci->hydro.super->hydro.cooling_out,
+                                t_bh_density);
+
+          scheduler_addunlock(sched, ci->hydro.super->black_holes.drift,
+                              t_bh_density);
+          scheduler_addunlock(sched, ci->hydro.super->hydro.drift,
+                              t_bh_density);
+          scheduler_addunlock(
+              sched, ci->hydro.super->black_holes.black_holes_in, t_bh_density);
+          scheduler_addunlock(sched, t_bh_density,
+                              ci->hydro.super->black_holes.density_ghost);
+
+          scheduler_addunlock(sched, ci->hydro.super->black_holes.density_ghost,
+                              t_bh_swallow);
+          scheduler_addunlock(sched, t_bh_swallow,
+                              ci->hydro.super->black_holes.swallow_ghost_1);
+
+          scheduler_addunlock(sched,
+                              ci->hydro.super->black_holes.swallow_ghost_1,
+                              t_do_gas_swallow);
+          scheduler_addunlock(sched, t_do_gas_swallow,
+                              ci->hydro.super->black_holes.swallow_ghost_2);
+
+          scheduler_addunlock(sched,
+                              ci->hydro.super->black_holes.swallow_ghost_2,
+                              t_do_bh_swallow);
+          scheduler_addunlock(sched, t_do_bh_swallow,
+                              ci->hydro.super->black_holes.swallow_ghost_3);
+
+          scheduler_addunlock(sched,
+                              ci->hydro.super->black_holes.swallow_ghost_3,
+                              t_bh_feedback);
+          scheduler_addunlock(sched, t_bh_feedback,
+                              ci->hydro.super->black_holes.black_holes_out);
+        }
+
+        if (with_timestep_limiter) {
+          scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t_limiter);
+          scheduler_addunlock(sched, ci->super->timestep, t_limiter);
+          scheduler_addunlock(sched, t_limiter, ci->super->kick1);
+          scheduler_addunlock(sched, t_limiter, ci->super->timestep_limiter);
+        }
+
+        if (with_timestep_sync && with_feedback) {
+          scheduler_addunlock(sched, t_star_feedback, ci->super->timestep_sync);
+        }
+        if (with_timestep_sync && with_black_holes && bcount_i > 0) {
+          scheduler_addunlock(sched, t_bh_feedback, ci->super->timestep_sync);
+        }
+
+        if (with_rt) {
+          scheduler_addunlock(sched, ci->hydro.super->hydro.drift,
+                              t_rt_gradient);
+          scheduler_addunlock(sched, ci->hydro.super->hydro.sorts,
+                              t_rt_gradient);
+          scheduler_addunlock(sched, ci->hydro.super->rt.rt_ghost1,
+                              t_rt_gradient);
+          scheduler_addunlock(sched, t_rt_gradient,
+                              ci->hydro.super->rt.rt_ghost2);
+          scheduler_addunlock(sched, ci->hydro.super->rt.rt_ghost2,
+                              t_rt_transport);
+          scheduler_addunlock(sched, t_rt_transport,
+                              ci->hydro.super->rt.rt_transport_out);
+        }
+      }
+
+      /* Otherwise, sub-pair interaction? */
+      else if (t_type == task_type_sub_pair &&
+               t_subtype == task_subtype_density) {
+
+        const int bcount_i = ci->black_holes.count;
+        const int bcount_j = cj->black_holes.count;
+
+        /* Make all density tasks depend on the drift */
+        if (ci->nodeID == nodeID) {
+          scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t);
+        }
+        if ((cj->nodeID == nodeID) && (ci->hydro.super != cj->hydro.super)) {
+          scheduler_addunlock(sched, cj->hydro.super->hydro.drift, t);
+        }
+
+        /* Make all density tasks depend on the sorts */
+        scheduler_addunlock(sched, ci->hydro.super->hydro.sorts, t);
+        if (ci->hydro.super != cj->hydro.super) {
+          scheduler_addunlock(sched, cj->hydro.super->hydro.sorts, t);
+        }
+
+        /* New task for the force */
+        t_force = scheduler_addtask(sched, task_type_sub_pair,
+                                    task_subtype_force, flags, 0, ci, cj);
+
+#ifdef MPI_SYMMETRIC_FORCE_INTERACTION
+        /* The order of operations for an inactive local cell interacting
+         * with an active foreign cell is not guaranteed because the density
+         * (and gradient) iact loops don't exist in that case. So we need
+         * an explicit dependency here to have sorted cells. */
+
+        /* Make all force tasks depend on the sorts */
+        scheduler_addunlock(sched, ci->hydro.super->hydro.sorts, t_force);
+        if (ci->hydro.super != cj->hydro.super) {
+          scheduler_addunlock(sched, cj->hydro.super->hydro.sorts, t_force);
+        }
+#endif
+
+        /* and the task for the time-step limiter */
+        if (with_timestep_limiter) {
+          t_limiter = scheduler_addtask(sched, task_type_sub_pair,
+                                        task_subtype_limiter, flags, 0, ci, cj);
+        }
+
+        /* The stellar feedback tasks */
+        if (with_feedback) {
+          t_star_density =
+              scheduler_addtask(sched, task_type_sub_pair,
+                                task_subtype_stars_density, flags, 0, ci, cj);
+          t_star_feedback =
+              scheduler_addtask(sched, task_type_sub_pair,
+                                task_subtype_stars_feedback, flags, 0, ci, cj);
+
+#ifdef EXTRA_STAR_LOOPS
+          t_star_prep1 =
+              scheduler_addtask(sched, task_type_sub_pair,
+                                task_subtype_stars_prep1, flags, 0, ci, cj);
+          t_star_prep2 =
+              scheduler_addtask(sched, task_type_sub_pair,
+                                task_subtype_stars_prep2, flags, 0, ci, cj);
+#endif
+        }
+
+        /* The sink tasks */
+        if (with_sink) {
+          t_sink_swallow =
+              scheduler_addtask(sched, task_type_sub_pair,
+                                task_subtype_sink_swallow, flags, 0, ci, cj);
+          t_sink_do_sink_swallow = scheduler_addtask(
+              sched, task_type_sub_pair, task_subtype_sink_do_sink_swallow,
+              flags, 0, ci, cj);
+          t_sink_do_gas_swallow = scheduler_addtask(
+              sched, task_type_sub_pair, task_subtype_sink_do_gas_swallow,
+              flags, 0, ci, cj);
+        }
+
+        /* The black hole feedback tasks */
+        if (with_black_holes && (bcount_i > 0 || bcount_j > 0)) {
+          t_bh_density =
+              scheduler_addtask(sched, task_type_sub_pair,
+                                task_subtype_bh_density, flags, 0, ci, cj);
+          t_bh_swallow =
+              scheduler_addtask(sched, task_type_sub_pair,
+                                task_subtype_bh_swallow, flags, 0, ci, cj);
+          t_do_gas_swallow =
+              scheduler_addtask(sched, task_type_sub_pair,
+                                task_subtype_do_gas_swallow, flags, 0, ci, cj);
+          t_do_bh_swallow =
+              scheduler_addtask(sched, task_type_sub_pair,
+                                task_subtype_do_bh_swallow, flags, 0, ci, cj);
+          t_bh_feedback =
+              scheduler_addtask(sched, task_type_sub_pair,
+                                task_subtype_bh_feedback, flags, 0, ci, cj);
+        }
+
+        if (with_rt) {
+          t_rt_gradient =
+              scheduler_addtask(sched, task_type_sub_pair,
+                                task_subtype_rt_gradient, flags, 0, ci, cj);
+          t_rt_transport =
+              scheduler_addtask(sched, task_type_sub_pair,
+                                task_subtype_rt_transport, flags, 0, ci, cj);
+#ifdef MPI_SYMMETRIC_FORCE_INTERACTION
+          /* The order of operations for an inactive local cell interacting
+           * with an active foreign cell is not guaranteed because the gradient
+           * iact loops don't exist in that case. So we need an explicit
+           * dependency here to have sorted cells. */
+
+          /* Make all force tasks depend on the sorts */
+          if (ci->hydro.super->rt.rt_sorts != NULL)
+            scheduler_addunlock(sched, ci->hydro.super->rt.rt_sorts,
+                                t_rt_transport);
+          if (ci->hydro.super != cj->hydro.super) {
+            if (cj->hydro.super->rt.rt_sorts != NULL)
+              scheduler_addunlock(sched, cj->hydro.super->rt.rt_sorts,
+                                  t_rt_transport);
+          }
+          /* We need to ensure that a local inactive cell is sorted before
+           * the interaction in the transport loop. Local cells don't have
+           * an rt_sort task. */
+          if (ci->hydro.super->hydro.sorts != NULL)
+            scheduler_addunlock(sched, ci->hydro.super->hydro.sorts,
+                                t_rt_transport);
+          if ((ci->hydro.super != cj->hydro.super) &&
+              (cj->hydro.super->hydro.sorts != NULL))
+            scheduler_addunlock(sched, cj->hydro.super->hydro.sorts,
+                                t_rt_transport);
+#endif
+        }
+
+        engine_addlink(e, &ci->hydro.force, t_force);
+        engine_addlink(e, &cj->hydro.force, t_force);
+        if (with_timestep_limiter) {
+          engine_addlink(e, &ci->hydro.limiter, t_limiter);
+          engine_addlink(e, &cj->hydro.limiter, t_limiter);
+        }
+        if (with_feedback) {
+          engine_addlink(e, &ci->stars.density, t_star_density);
+          engine_addlink(e, &cj->stars.density, t_star_density);
+          engine_addlink(e, &ci->stars.feedback, t_star_feedback);
+          engine_addlink(e, &cj->stars.feedback, t_star_feedback);
+#ifdef EXTRA_STAR_LOOPS
+          engine_addlink(e, &ci->stars.prepare1, t_star_prep1);
+          engine_addlink(e, &cj->stars.prepare1, t_star_prep1);
+          engine_addlink(e, &ci->stars.prepare2, t_star_prep2);
+          engine_addlink(e, &cj->stars.prepare2, t_star_prep2);
+#endif
+        }
+        if (with_sink) {
+          /* Formation */
+          engine_addlink(e, &ci->sinks.swallow, t_sink_swallow);
+          engine_addlink(e, &cj->sinks.swallow, t_sink_swallow);
+
+          /* Merger */
+          engine_addlink(e, &ci->sinks.do_sink_swallow, t_sink_do_sink_swallow);
+          engine_addlink(e, &cj->sinks.do_sink_swallow, t_sink_do_sink_swallow);
+
+          /* Accretion */
+          engine_addlink(e, &ci->sinks.do_gas_swallow, t_sink_do_gas_swallow);
+          engine_addlink(e, &cj->sinks.do_gas_swallow, t_sink_do_gas_swallow);
+        }
+        if (with_black_holes && (bcount_i > 0 || bcount_j > 0)) {
+          engine_addlink(e, &ci->black_holes.density, t_bh_density);
+          engine_addlink(e, &cj->black_holes.density, t_bh_density);
+          engine_addlink(e, &ci->black_holes.swallow, t_bh_swallow);
+          engine_addlink(e, &cj->black_holes.swallow, t_bh_swallow);
+          engine_addlink(e, &ci->black_holes.do_gas_swallow, t_do_gas_swallow);
+          engine_addlink(e, &cj->black_holes.do_gas_swallow, t_do_gas_swallow);
+          engine_addlink(e, &ci->black_holes.do_bh_swallow, t_do_bh_swallow);
+          engine_addlink(e, &cj->black_holes.do_bh_swallow, t_do_bh_swallow);
+          engine_addlink(e, &ci->black_holes.feedback, t_bh_feedback);
+          engine_addlink(e, &cj->black_holes.feedback, t_bh_feedback);
+        }
+        if (with_rt) {
+          engine_addlink(e, &ci->rt.rt_gradient, t_rt_gradient);
+          engine_addlink(e, &cj->rt.rt_gradient, t_rt_gradient);
+          engine_addlink(e, &ci->rt.rt_transport, t_rt_transport);
+          engine_addlink(e, &cj->rt.rt_transport, t_rt_transport);
+        }
+
+#ifdef EXTRA_HYDRO_LOOP
+
+        /* Start by constructing the task for the second and third hydro loop */
+        t_gradient = scheduler_addtask(sched, task_type_sub_pair,
+                                       task_subtype_gradient, flags, 0, ci, cj);
+
+        /* Add the link between the new loop and both cells */
+        engine_addlink(e, &ci->hydro.gradient, t_gradient);
+        engine_addlink(e, &cj->hydro.gradient, t_gradient);
+
+        /* Now, build all the dependencies for the hydro for the cells */
+        /* that are local and are not descendant of the same super_hydro-cells
+         */
+        if (ci->nodeID == nodeID) {
+          engine_make_hydro_loops_dependencies(sched, t, t_gradient, t_force,
+                                               t_limiter, ci, with_cooling,
+                                               with_timestep_limiter);
+        }
+        if ((cj->nodeID == nodeID) && (ci->hydro.super != cj->hydro.super)) {
+          engine_make_hydro_loops_dependencies(sched, t, t_gradient, t_force,
+                                               t_limiter, cj, with_cooling,
+                                               with_timestep_limiter);
+        }
+#else
+
+        /* Now, build all the dependencies for the hydro for the cells */
+        /* that are local and are not descendant of the same super_hydro-cells
+         */
+        if (ci->nodeID == nodeID) {
+          engine_make_hydro_loops_dependencies(sched, t, t_force, t_limiter, ci,
+                                               with_cooling,
+                                               with_timestep_limiter);
+        }
+        if ((cj->nodeID == nodeID) && (ci->hydro.super != cj->hydro.super)) {
+          engine_make_hydro_loops_dependencies(sched, t, t_force, t_limiter, cj,
+                                               with_cooling,
+                                               with_timestep_limiter);
+        }
+#endif
+
+        if (with_feedback) {
+          scheduler_addunlock(sched, ci->hydro.super->hydro.sorts,
+                              t_star_density);
+          if (ci->hydro.super != cj->hydro.super) {
+            scheduler_addunlock(sched, cj->hydro.super->hydro.sorts,
+                                t_star_density);
+          }
+        }
+
+        if (with_rt) {
+          scheduler_addunlock(sched, ci->hydro.super->hydro.sorts,
+                              t_rt_gradient);
+          if (ci->hydro.super != cj->hydro.super) {
+            scheduler_addunlock(sched, cj->hydro.super->hydro.sorts,
+                                t_rt_gradient);
+          }
+        }
+
+        if (ci->nodeID == nodeID) {
+          scheduler_addunlock(sched, t_force, ci->hydro.super->hydro.end_force);
+
+          if (with_feedback) {
+
+            if (with_cooling)
+              scheduler_addunlock(sched, ci->hydro.super->hydro.cooling_out,
+                                  t_star_density);
+
+            scheduler_addunlock(sched, ci->hydro.super->stars.sorts,
+                                t_star_density);
+            scheduler_addunlock(sched, ci->hydro.super->stars.drift,
+                                t_star_density);
+            scheduler_addunlock(sched, ci->hydro.super->hydro.drift,
+                                t_star_density);
+            scheduler_addunlock(sched, ci->hydro.super->stars.stars_in,
+                                t_star_density);
+            scheduler_addunlock(sched, t_star_density,
+                                ci->hydro.super->stars.density_ghost);
+#ifdef EXTRA_STAR_LOOPS
+            scheduler_addunlock(sched, ci->hydro.super->stars.density_ghost,
+                                t_star_prep1);
+            scheduler_addunlock(sched, t_star_prep1,
+                                ci->hydro.super->stars.prep1_ghost);
+            scheduler_addunlock(sched, t_star_prep1,
+                                ci->hydro.super->hydro.prep1_ghost);
+            scheduler_addunlock(sched, ci->hydro.super->stars.prep1_ghost,
+                                t_star_prep2);
+            scheduler_addunlock(sched, ci->hydro.super->hydro.prep1_ghost,
+                                t_star_prep2);
+            scheduler_addunlock(sched, t_star_prep2,
+                                ci->hydro.super->stars.prep2_ghost);
+            scheduler_addunlock(sched, ci->hydro.super->stars.prep2_ghost,
+                                t_star_feedback);
+#else
+            scheduler_addunlock(sched, ci->hydro.super->stars.density_ghost,
+                                t_star_feedback);
+#endif
+            scheduler_addunlock(sched, t_star_feedback,
+                                ci->hydro.super->stars.stars_out);
+          }
+
+          if (with_sink) {
+
+            /* Do the sink_swallow */
+            scheduler_addunlock(sched, ci->hydro.super->hydro.drift,
+                                t_sink_swallow);
+            scheduler_addunlock(sched, ci->hydro.super->sinks.drift,
+                                t_sink_swallow);
+            scheduler_addunlock(sched, ci->hydro.super->hydro.sorts,
+                                t_sink_swallow);
+            scheduler_addunlock(sched, ci->hydro.super->sinks.sink_in,
+                                t_sink_swallow);
+            scheduler_addunlock(sched, t_sink_swallow,
+                                ci->hydro.super->sinks.sink_ghost1);
+
+            /* Do the sink_do_gas_swallow */
+            scheduler_addunlock(sched, ci->hydro.super->sinks.sink_ghost1,
+                                t_sink_do_gas_swallow);
+            scheduler_addunlock(sched, t_sink_do_gas_swallow,
+                                ci->hydro.super->sinks.sink_ghost2);
+
+            /* Do the sink_do_sink_swallow */
+            scheduler_addunlock(sched, ci->hydro.super->sinks.sink_ghost2,
+                                t_sink_do_sink_swallow);
+            scheduler_addunlock(sched, t_sink_do_sink_swallow,
+                                ci->hydro.super->sinks.sink_out);
+          }
+
+          if (with_black_holes && (bcount_i > 0 || bcount_j > 0)) {
+
+            if (with_cooling)
+              scheduler_addunlock(sched, ci->hydro.super->hydro.cooling_out,
+                                  t_bh_density);
+
+            scheduler_addunlock(sched, ci->hydro.super->black_holes.drift,
+                                t_bh_density);
+            scheduler_addunlock(sched, ci->hydro.super->hydro.drift,
+                                t_bh_density);
+            scheduler_addunlock(sched,
+                                ci->hydro.super->black_holes.black_holes_in,
+                                t_bh_density);
+            scheduler_addunlock(sched, t_bh_density,
+                                ci->hydro.super->black_holes.density_ghost);
+
+            scheduler_addunlock(sched,
+                                ci->hydro.super->black_holes.density_ghost,
+                                t_bh_swallow);
+            scheduler_addunlock(sched, t_bh_swallow,
+                                ci->hydro.super->black_holes.swallow_ghost_1);
+
+            scheduler_addunlock(sched,
+                                ci->hydro.super->black_holes.swallow_ghost_1,
+                                t_do_gas_swallow);
+            scheduler_addunlock(sched, t_do_gas_swallow,
+                                ci->hydro.super->black_holes.swallow_ghost_2);
+
+            scheduler_addunlock(sched,
+                                ci->hydro.super->black_holes.swallow_ghost_2,
+                                t_do_bh_swallow);
+            scheduler_addunlock(sched, t_do_bh_swallow,
+                                ci->hydro.super->black_holes.swallow_ghost_3);
+
+            scheduler_addunlock(sched,
+                                ci->hydro.super->black_holes.swallow_ghost_3,
+                                t_bh_feedback);
+            scheduler_addunlock(sched, t_bh_feedback,
+                                ci->hydro.super->black_holes.black_holes_out);
+          }
+
+          if (with_timestep_limiter) {
+            scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t_limiter);
+            scheduler_addunlock(sched, ci->super->timestep, t_limiter);
+            scheduler_addunlock(sched, t_limiter, ci->super->kick1);
+            scheduler_addunlock(sched, t_limiter, ci->super->timestep_limiter);
+          }
+
+          if (with_timestep_sync && with_feedback) {
+            scheduler_addunlock(sched, t_star_feedback,
+                                ci->super->timestep_sync);
+          }
+          if (with_timestep_sync && with_black_holes &&
+              (bcount_i > 0 || bcount_j > 0)) {
+            scheduler_addunlock(sched, t_bh_feedback, ci->super->timestep_sync);
+          }
+
+          if (with_rt) {
+            scheduler_addunlock(sched, ci->hydro.super->hydro.drift,
+                                t_rt_gradient);
+            scheduler_addunlock(sched, ci->hydro.super->rt.rt_ghost1,
+                                t_rt_gradient);
+            scheduler_addunlock(sched, t_rt_gradient,
+                                ci->hydro.super->rt.rt_ghost2);
+            scheduler_addunlock(sched, ci->hydro.super->rt.rt_ghost2,
+                                t_rt_transport);
+            scheduler_addunlock(sched, t_rt_transport,
+                                ci->hydro.super->rt.rt_transport_out);
+          }
+        } else /* ci->nodeID != nodeID */ {
+
+          if (with_feedback) {
+#ifdef EXTRA_STAR_LOOPS
+            scheduler_addunlock(sched, ci->hydro.super->stars.sorts,
+                                t_star_prep1);
+#endif
+            scheduler_addunlock(sched, ci->hydro.super->stars.sorts,
+                                t_star_feedback);
+          }
+          if (with_black_holes && (bcount_i > 0 || bcount_j > 0)) {
+
+            scheduler_addunlock(sched, t_bh_swallow,
+                                ci->hydro.super->black_holes.swallow_ghost_1);
+          }
+        }
+
+        if (cj->nodeID == nodeID) {
+
+          if (ci->hydro.super != cj->hydro.super) {
+
+            scheduler_addunlock(sched, t_force,
+                                cj->hydro.super->hydro.end_force);
+
+            if (with_feedback) {
+
+              if (with_cooling)
+                scheduler_addunlock(sched, cj->hydro.super->hydro.cooling_out,
+                                    t_star_density);
+
+              scheduler_addunlock(sched, cj->hydro.super->stars.sorts,
+                                  t_star_density);
+              scheduler_addunlock(sched, cj->hydro.super->stars.drift,
+                                  t_star_density);
+              scheduler_addunlock(sched, cj->hydro.super->hydro.drift,
+                                  t_star_density);
+              scheduler_addunlock(sched, cj->hydro.super->stars.stars_in,
+                                  t_star_density);
+              scheduler_addunlock(sched, t_star_density,
+                                  cj->hydro.super->stars.density_ghost);
+#ifdef EXTRA_STAR_LOOPS
+              scheduler_addunlock(sched, cj->hydro.super->stars.density_ghost,
+                                  t_star_prep1);
+              scheduler_addunlock(sched, t_star_prep1,
+                                  cj->hydro.super->stars.prep1_ghost);
+              scheduler_addunlock(sched, t_star_prep1,
+                                  cj->hydro.super->hydro.prep1_ghost);
+              scheduler_addunlock(sched, cj->hydro.super->stars.prep1_ghost,
+                                  t_star_prep2);
+              scheduler_addunlock(sched, cj->hydro.super->hydro.prep1_ghost,
+                                  t_star_prep2);
+              scheduler_addunlock(sched, t_star_prep2,
+                                  cj->hydro.super->stars.prep2_ghost);
+              scheduler_addunlock(sched, cj->hydro.super->stars.prep2_ghost,
+                                  t_star_feedback);
+#else
+              scheduler_addunlock(sched, cj->hydro.super->stars.density_ghost,
+                                  t_star_feedback);
+#endif
+              scheduler_addunlock(sched, t_star_feedback,
+                                  cj->hydro.super->stars.stars_out);
+            }
+            if (with_sink) {
+
+              /* Do the sink_swallow */
+              scheduler_addunlock(sched, cj->hydro.super->hydro.drift,
+                                  t_sink_swallow);
+              scheduler_addunlock(sched, cj->hydro.super->sinks.drift,
+                                  t_sink_swallow);
+              scheduler_addunlock(sched, cj->hydro.super->hydro.sorts,
+                                  t_sink_swallow);
+              scheduler_addunlock(sched, cj->hydro.super->sinks.sink_in,
+                                  t_sink_swallow);
+              scheduler_addunlock(sched, t_sink_swallow,
+                                  cj->hydro.super->sinks.sink_ghost1);
+
+              /* Do the sink_do_gas_swallow */
+              scheduler_addunlock(sched, cj->hydro.super->sinks.sink_ghost1,
+                                  t_sink_do_gas_swallow);
+              scheduler_addunlock(sched, t_sink_do_gas_swallow,
+                                  cj->hydro.super->sinks.sink_ghost2);
+
+              /* Do the sink_do_sink_swallow */
+              scheduler_addunlock(sched, cj->hydro.super->sinks.sink_ghost2,
+                                  t_sink_do_sink_swallow);
+              scheduler_addunlock(sched, t_sink_do_sink_swallow,
+                                  cj->hydro.super->sinks.sink_out);
+            }
+
+            if (with_black_holes && (bcount_i > 0 || bcount_j > 0)) {
+
+              if (with_cooling)
+                scheduler_addunlock(sched, cj->hydro.super->hydro.cooling_out,
+                                    t_bh_density);
+
+              scheduler_addunlock(sched, cj->hydro.super->black_holes.drift,
+                                  t_bh_density);
+              scheduler_addunlock(sched, cj->hydro.super->hydro.drift,
+                                  t_bh_density);
+              scheduler_addunlock(sched,
+                                  cj->hydro.super->black_holes.black_holes_in,
+                                  t_bh_density);
+              scheduler_addunlock(sched, t_bh_density,
+                                  cj->hydro.super->black_holes.density_ghost);
+
+              scheduler_addunlock(sched,
+                                  cj->hydro.super->black_holes.density_ghost,
+                                  t_bh_swallow);
+              scheduler_addunlock(sched, t_bh_swallow,
+                                  cj->hydro.super->black_holes.swallow_ghost_1);
+
+              scheduler_addunlock(sched,
+                                  cj->hydro.super->black_holes.swallow_ghost_1,
+                                  t_do_gas_swallow);
+              scheduler_addunlock(sched, t_do_gas_swallow,
+                                  cj->hydro.super->black_holes.swallow_ghost_2);
+
+              scheduler_addunlock(sched,
+                                  cj->hydro.super->black_holes.swallow_ghost_2,
+                                  t_do_bh_swallow);
+              scheduler_addunlock(sched, t_do_bh_swallow,
+                                  cj->hydro.super->black_holes.swallow_ghost_3);
+
+              scheduler_addunlock(sched,
+                                  cj->hydro.super->black_holes.swallow_ghost_3,
+                                  t_bh_feedback);
+              scheduler_addunlock(sched, t_bh_feedback,
+                                  cj->hydro.super->black_holes.black_holes_out);
+            }
+            if (with_rt) {
+              scheduler_addunlock(sched, cj->hydro.super->hydro.drift,
+                                  t_rt_gradient);
+              scheduler_addunlock(sched, cj->hydro.super->rt.rt_ghost1,
+                                  t_rt_gradient);
+              scheduler_addunlock(sched, t_rt_gradient,
+                                  cj->hydro.super->rt.rt_ghost2);
+              scheduler_addunlock(sched, cj->hydro.super->rt.rt_ghost2,
+                                  t_rt_transport);
+              scheduler_addunlock(sched, t_rt_transport,
+                                  cj->hydro.super->rt.rt_transport_out);
+            }
+
+            if (with_timestep_limiter) {
+              scheduler_addunlock(sched, cj->hydro.super->hydro.drift,
+                                  t_limiter);
+            }
+          }
+
+          if (ci->super != cj->super) {
+
+            if (with_timestep_limiter) {
+              scheduler_addunlock(sched, cj->super->timestep, t_limiter);
+              scheduler_addunlock(sched, t_limiter, cj->super->kick1);
+              scheduler_addunlock(sched, t_limiter,
+                                  cj->super->timestep_limiter);
+            }
+
+            if (with_timestep_sync && with_feedback) {
+              scheduler_addunlock(sched, t_star_feedback,
+                                  cj->super->timestep_sync);
+            }
+            if (with_timestep_sync && with_black_holes &&
+                (bcount_i > 0 || bcount_j > 0)) {
+              scheduler_addunlock(sched, t_bh_feedback,
+                                  cj->super->timestep_sync);
+            }
+          }
+        } else /* cj->nodeID != nodeID */ {
+          if (with_feedback) {
+#ifdef EXTRA_STAR_LOOPS
+            scheduler_addunlock(sched, cj->hydro.super->stars.sorts,
+                                t_star_prep1);
+#endif
+            scheduler_addunlock(sched, cj->hydro.super->stars.sorts,
+                                t_star_feedback);
+          }
+
+          if (with_black_holes && (bcount_i > 0 || bcount_j > 0)) {
+            scheduler_addunlock(sched, t_bh_swallow,
+                                cj->hydro.super->black_holes.swallow_ghost_1);
+          }
+        }
       }
     }
-#endif
-
-    /* Add the recv tasks for the cells in the proxy that have a hydro
-     * connection. */
-    if ((e->policy & engine_policy_hydro) && (type & proxy_cell_type_hydro)) {
-      engine_addtasks_recv_hydro(
-          e, ci, /*t_xv=*/NULL, /*t_rho=*/NULL, /*t_gradient=*/NULL,
-          /*t_prep1=*/NULL, /*t_limiter=*/NULL, /*t_unpack_limiter=*/NULL,
-          /*t_rt_gradient=*/NULL, /*t_rt_transport=*/NULL,
-          /*t_rt_sorts=*/NULL, tend, with_feedback, with_black_holes,
-          with_limiter, with_sync, with_rt);
-    }
-
-    /* Add the recv tasks for the cells in the proxy that have a stars
-     * connection. */
-    if ((e->policy & engine_policy_feedback) && (type & proxy_cell_type_hydro))
-      engine_addtasks_recv_stars(e, ci, /*t_density=*/NULL, /*t_prep2=*/NULL,
-                                 /*t_sf_counts=*/NULL, tend,
-                                 with_star_formation);
-
-    /* Add the recv tasks for the cells in the proxy that have a black holes
-     * connection. */
-    if ((e->policy & engine_policy_black_holes) &&
-        (type & proxy_cell_type_hydro))
-      engine_addtasks_recv_black_holes(e, ci, /*t_rho=*/NULL,
-                                       /*t_swallow=*/NULL,
-                                       /*t_gas_swallow=*/NULL,
-                                       /*t_feedback=*/NULL, tend);
-
-    /* Add the recv tasks for the cells in the proxy that have a gravity
-     * connection. */
-    if ((e->policy & engine_policy_self_gravity) &&
-        (type & proxy_cell_type_gravity))
-      engine_addtasks_recv_gravity(e, ci, /*t_grav=*/NULL, tend);
   }
-}
 
-/**
- * @brief Constructs the top-level self + pair tasks for the FOF loop over
- * neighbours.
- *
- * Here we construct all the tasks for all possible neighbouring non-empty
- * local cells in the hierarchy. No dependencies are being added thus far.
- * Additional loop over neighbours can later be added by simply duplicating
- * all the tasks created by this function.
- *
- * In the zoom case we only consider zoom cells and periodicity is ignored
- * since the zoom region is never periodic.
- *
- * @param map_data Offset of first two indices disguised as a pointer.
- * @param num_elements Number of cells to traverse.
- * @param extra_data The #engine.
- */
-void engine_make_fofloop_tasks_mapper(void *map_data, int num_elements,
-                                      void *extra_data) {
+  /**
+   * @brief Constructs the top-level pair tasks for the first hydro loop over
+   * neighbours
+   *
+   * Here we construct all the tasks for all possible neighbouring non-empty
+   * local cells in the hierarchy. No dependencies are being added thus far.
+   * Additional loop over neighbours can later be added by simply duplicating
+   * all the tasks created by this function.
+   *
+   * In the zoom case we only consider zoom cells and periodicity is ignored
+   * since the zoom region is never periodic.
+   *
+   * @param map_data Offset of first two indices disguised as a pointer.
+   * @param num_elements Number of cells to traverse.
+   * @param extra_data The #engine.
+   */
+  void engine_make_hydroloop_tasks_mapper(void *map_data, int num_elements,
+                                          void *extra_data) {
 
-  /* Extract the engine pointer. */
-  struct engine *e = (struct engine *)extra_data;
+    /* Extract the engine pointer. */
+    struct engine *e = (struct engine *)extra_data;
+    const int periodic = !e->s->with_zoom_region ? e->s->periodic : 0;
+    const int with_feedback = (e->policy & engine_policy_feedback);
+    const int with_stars = (e->policy & engine_policy_stars);
+    const int with_sinks = (e->policy & engine_policy_sinks);
+    const int with_black_holes = (e->policy & engine_policy_black_holes);
 
-  struct space *s = e->s;
-  const int periodic = !s->with_zoom_region ? s->periodic : 0;
-  struct scheduler *sched = &e->sched;
-  const int nodeID = e->nodeID;
-  const int *cdim = !s->with_zoom_region ? s->cdim : s->zoom_props->cdim;
-  struct cell *cells = s->cells_top;
+    struct space *s = e->s;
+    struct scheduler *sched = &e->sched;
+    const int nodeID = e->nodeID;
+    const int *cdim = !s->with_zoom_region ? s->cdim : s->zoom_props->cdim;
+    struct cell *cells = s->cells_top;
 
-  /* Loop through the elements, which are just byte offsets from NULL. */
-  for (int ind = 0; ind < num_elements; ind++) {
+    /* Loop through the elements, which are just byte offsets from NULL. */
+    for (int ind = 0; ind < num_elements; ind++) {
 
-    /* Get the cell index. */
-    const int cid = (size_t)(map_data) + ind;
-    const int i = cid / (cdim[1] * cdim[2]);
-    const int j = (cid / cdim[2]) % cdim[1];
-    const int k = cid % cdim[2];
+      /* Get the cell index. */
+      const int cid = (size_t)(map_data) + ind;
 
-    /* Get the cell */
-    struct cell *ci = &cells[cid];
+      /* Integer indices of the cell in the top-level grid */
+      const int i = cid / (cdim[1] * cdim[2]);
+      const int j = (cid / cdim[2]) % cdim[1];
+      const int k = cid % cdim[2];
 
-    /* Skip cells without gravity particles */
-    if (ci->grav.count == 0) continue;
+      /* Get the cell */
+      struct cell *ci = &cells[cid];
 
-    /* If the cells is local build a self-interaction */
-    if (ci->nodeID == nodeID) {
-      scheduler_addtask(sched, task_type_fof_self, task_subtype_none, 0, 0, ci,
-                        NULL);
-      scheduler_addtask(sched, task_type_fof_attach_self, task_subtype_none, 0,
-                        0, ci, NULL);
-    }
+      /* Skip cells without hydro or star particles */
+      if ((ci->hydro.count == 0) && (!with_stars || ci->stars.count == 0) &&
+          (!with_sinks || ci->sinks.count == 0) &&
+          (!with_black_holes || ci->black_holes.count == 0))
+        continue;
 
-    /* Now loop over all the neighbours of this cell */
-    for (int ii = -1; ii < 2; ii++) {
-      int iii = i + ii;
-      if (!periodic && (iii < 0 || iii >= cdim[0])) continue;
-      iii = (iii + cdim[0]) % cdim[0];
-      for (int jj = -1; jj < 2; jj++) {
-        int jjj = j + jj;
-        if (!periodic && (jjj < 0 || jjj >= cdim[1])) continue;
-        jjj = (jjj + cdim[1]) % cdim[1];
-        for (int kk = -1; kk < 2; kk++) {
-          int kkk = k + kk;
-          if (!periodic && (kkk < 0 || kkk >= cdim[2])) continue;
-          kkk = (kkk + cdim[2]) % cdim[2];
+      /* If the cell is local build a self-interaction */
+      if (ci->nodeID == nodeID) {
+        scheduler_addtask(sched, task_type_self, task_subtype_density, 0, 0, ci,
+                          NULL);
+      }
 
-          /* Get the neighbouring cell */
-          const int cjd = cell_getid(cdim, iii, jjj, kkk);
-          struct cell *cj = &cells[cjd];
+      /* Now loop over all the neighbours of this cell */
+      for (int ii = -1; ii < 2; ii++) {
+        int iii = i + ii;
+        if (!periodic && (iii < 0 || iii >= cdim[0])) continue;
+        iii = (iii + cdim[0]) % cdim[0];
+        for (int jj = -1; jj < 2; jj++) {
+          int jjj = j + jj;
+          if (!periodic && (jjj < 0 || jjj >= cdim[1])) continue;
+          jjj = (jjj + cdim[1]) % cdim[1];
+          for (int kk = -1; kk < 2; kk++) {
+            int kkk = k + kk;
+            if (!periodic && (kkk < 0 || kkk >= cdim[2])) continue;
+            kkk = (kkk + cdim[2]) % cdim[2];
+
+            /* Get the neighbouring cell */
+            const int cjd = cell_getid(cdim, iii, jjj, kkk);
+            struct cell *cj = &cells[cjd];
 
 #ifdef SWIFT_DEBUG_CHECKS
-          /* Ensure we only have zoom cells in the zoom case. */
-          if (s->with_zoom_region &&
-              (ci->type != cell_type_zoom || cj->type != cell_type_zoom)) {
-            error(
-                "Trying to make FOF tasks for non-zoom cells while running a "
-                "zoom! (ci->type=%s, cj->type=%s)",
-                cellID_names[ci->type], cellID_names[cj->type]);
-          }
+            /* Ensure we only have zoom cells in the zoom case. */
+            if (s->with_zoom_region &&
+                (ci->type != cell_type_zoom || cj->type != cell_type_zoom)) {
+              error(
+                  "Trying to make hydro tasks for non-zoom cells while running "
+                  "a "
+                  "zoom! (ci->type=%s, cj->type=%s)",
+                  cellID_names[ci->type], cellID_names[cj->type]);
+            }
 #endif
 
-          /* Does that neighbour have particles ? */
-          if (cid >= cjd || cj->grav.count == 0) continue;
+            /* Is that neighbour local and does it have gas or star particles ?
+             */
+            if ((cid >= cjd) ||
+                ((cj->hydro.count == 0) &&
+                 (!with_feedback || cj->stars.count == 0) &&
+                 (!with_sinks || cj->sinks.count == 0) &&
+                 (!with_black_holes || cj->black_holes.count == 0)) ||
+                (ci->nodeID != nodeID && cj->nodeID != nodeID))
+              continue;
 
-          /* Construct the pair search task only for fully local pairs */
-          if (ci->nodeID == nodeID && cj->nodeID == nodeID)
-            scheduler_addtask(sched, task_type_fof_pair, task_subtype_none, 0,
+            /* Construct the pair task */
+            const int sid =
+                sortlistID[(kk + 1) + 3 * ((jj + 1) + 3 * (ii + 1))];
+            scheduler_addtask(sched, task_type_pair, task_subtype_density, sid,
                               0, ci, cj);
 
-          /* Construct the pair search task for pairs overlapping with the
-           * node
-           */
-          if (ci->nodeID == nodeID || cj->nodeID == nodeID)
-            scheduler_addtask(sched, task_type_fof_attach_pair,
-                              task_subtype_none, 0, 0, ci, cj);
+#ifdef SWIFT_DEBUG_CHECKS
+#ifdef WITH_MPI
+
+            /* Let's cross-check that we had a proxy for that cell */
+            if (ci->nodeID == nodeID && cj->nodeID != engine_rank) {
+
+              /* Find the proxy for this node */
+              const int proxy_id = e->proxy_ind[cj->nodeID];
+              if (proxy_id < 0)
+                error("No proxy exists for that foreign node %d!", cj->nodeID);
+
+              const struct proxy *p = &e->proxies[proxy_id];
+
+              /* Check whether the cell exists in the proxy */
+              int n = 0;
+              for (n = 0; n < p->nr_cells_in; n++)
+                if (p->cells_in[n] == cj) break;
+              if (n == p->nr_cells_in)
+                error(
+                    "Cell %d not found in the proxy but trying to construct "
+                    "hydro task!",
+                    cjd);
+            } else if (cj->nodeID == nodeID && ci->nodeID != engine_rank) {
+
+              /* Find the proxy for this node */
+              const int proxy_id = e->proxy_ind[ci->nodeID];
+              if (proxy_id < 0)
+                error("No proxy exists for that foreign node %d!", ci->nodeID);
+
+              const struct proxy *p = &e->proxies[proxy_id];
+
+              /* Check whether the cell exists in the proxy */
+              int n = 0;
+              for (n = 0; n < p->nr_cells_in; n++)
+                if (p->cells_in[n] == ci) break;
+              if (n == p->nr_cells_in)
+                error(
+                    "Cell %d not found in the proxy but trying to construct "
+                    "hydro task!",
+                    cid);
+            }
+#endif /* WITH_MPI */
+#endif /* SWIFT_DEBUG_CHECKS */
+          }
         }
       }
     }
   }
-}
 
-/**
- * @brief Fill the #space's task list with FOF tasks.
- *
- * @param e The #engine we are working with.
- */
-void engine_make_fof_tasks(struct engine *e) {
+  struct cell_type_pair {
+    struct cell *ci, *cj;
+    int type;
+  };
 
-  struct space *s = e->s;
-  struct scheduler *sched = &e->sched;
-  ticks tic = getticks();
+  /**
+   * @brief Recurse down to the super level and add a dependency between
+   * rt_advance_cell_time and tend tasks. Note: This function is intended
+   * for the sending side, i.e. for local cells.
+   *
+   * If we're running with RT subcycling, we need to ensure that nothing
+   * is sent before the advance cell time task has finished. This may
+   * overwrite the correct cell times, particularly so when we're sending
+   * over data for non-RT tasks, e.g. for gravity pair tasks. Therefore the
+   * send/tend task needs to be unlocked by the rt_advance_cell_time task.
+   *
+   * The send/tend task is on the top level, while the rt_advance_cell_time
+   * task is on the super level. This function simply recurses down to the
+   * super level and adds the required dependency.
+   *
+   * @param c cell to check/recurse into
+   * @param tend the send/tend task that needs to be unlocked.
+   * @param e the engine
+   */
+  void engine_addunlock_rt_advance_cell_time_tend(
+      struct cell * c, struct task * tend, struct engine * e) {
 
-  if (e->restarting) error("Running FOF on a restart step!");
+    /* safety measure */
+    if (!cell_get_flag(c, cell_flag_has_tasks)) return;
+    if (cell_is_empty(c)) return;
 
-  /* Construct a FOF loop over neighbours */
-  if (e->policy & engine_policy_fof) {
-    if (!s->with_zoom_region) {
-      threadpool_map(&e->threadpool, engine_make_fofloop_tasks_mapper, NULL,
-                     s->nr_cells, 1, threadpool_auto_chunk_size, e);
+    if (c->super == c) {
+      /* Found the super level cell. Add dependency from rt_advance_cell_time,
+       * if it exists. */
+      if (c->super->rt.rt_advance_cell_time != NULL) {
+        scheduler_addunlock(&e->sched, c->super->rt.rt_advance_cell_time, tend);
+      }
+#ifdef SWIFT_RT_DEBUG_CHECKS
+      else {
+        error("Got local super cell without rt_advance_cell_time task");
+      }
+#endif
+
     } else {
-      /* In the zoom case we only need to loop over the zoom cells which are the
-       * first nr_zoom_cells pointers in cells_top.  */
-      threadpool_map(&e->threadpool, engine_make_fofloop_tasks_mapper, NULL,
-                     s->zoom_props->nr_zoom_cells, 1,
-                     threadpool_auto_chunk_size, e);
+      /* descend the tree until you find the super level */
+      if (c->split) {
+        for (int k = 0; k < 8; k++) {
+          if (c->progeny[k] != NULL) {
+            engine_addunlock_rt_advance_cell_time_tend(c->progeny[k], tend, e);
+          }
+        }
+      }
     }
   }
 
-  if (e->verbose)
-    message("Making FOF tasks took %.3f %s.",
-            clocks_from_ticks(getticks() - tic), clocks_getunit());
+  void engine_addtasks_send_mapper(void *map_data, int num_elements,
+                                   void *extra_data) {
 
-  tic = getticks();
-
-  /* Split the tasks. */
-  scheduler_splittasks(sched, /*fof_tasks=*/1, e->verbose);
-
-  if (e->verbose)
-    message("Splitting FOF tasks took %.3f %s.",
-            clocks_from_ticks(getticks() - tic), clocks_getunit());
+    struct engine *e = (struct engine *)extra_data;
+    const int with_star_formation = (e->policy & engine_policy_star_formation);
+    const int with_limiter = (e->policy & engine_policy_timestep_limiter);
+    const int with_feedback = (e->policy & engine_policy_feedback);
+    const int with_sync = (e->policy & engine_policy_timestep_sync);
+    const int with_rt = (e->policy & engine_policy_rt);
+    struct cell_type_pair *cell_type_pairs = (struct cell_type_pair *)map_data;
 
 #ifdef SWIFT_DEBUG_CHECKS
-  /* Verify that we are not left with invalid tasks */
-  for (int i = 0; i < e->sched.nr_tasks; ++i) {
-    const struct task *t = &e->sched.tasks[i];
-    if (t->ci == NULL && t->cj != NULL && !t->skip) error("Invalid task");
-  }
+    if (e->policy & engine_policy_sinks) {
+      error("TODO");
+    }
 #endif
 
-  /* Report the number of tasks we actually used */
-  if (e->verbose)
-    message(
-        "Nr. of tasks: %d allocated tasks: %d ratio: %f memory use: %zd MB.",
-        e->sched.nr_tasks, e->sched.size,
-        (float)e->sched.nr_tasks / (float)e->sched.size,
-        e->sched.size * sizeof(struct task) / (1024 * 1024));
+    for (int k = 0; k < num_elements; k++) {
+      struct cell *ci = cell_type_pairs[k].ci;
+      struct cell *cj = cell_type_pairs[k].cj;
+      const int type = cell_type_pairs[k].type;
 
-  if (e->verbose)
-    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
-            clocks_getunit());
-}
+#ifdef WITH_MPI
 
-/**
- * @brief Fill the #space's task list.
- *
- * @param e The #engine we are working with.
- */
-void engine_maketasks(struct engine *e) {
+      if (!cell_is_empty(ci)) {
+        /* Add the timestep exchange task */
+        struct task *tend =
+            scheduler_addtask(&e->sched, task_type_send, task_subtype_tend,
+                              ci->mpi.tag, 0, ci, cj);
+        scheduler_addunlock(&e->sched, ci->timestep_collect, tend);
+        engine_addlink(e, &ci->mpi.send, tend);
 
-  struct space *s = e->s;
-  struct scheduler *sched = &e->sched;
-  struct cell *cells = s->cells_top;
-  const int nr_cells = s->nr_cells;
-  const ticks tic = getticks();
+        if (with_rt && (type & proxy_cell_type_hydro))
+          engine_addunlock_rt_advance_cell_time_tend(ci, tend, e);
+      }
+#endif
 
-  /* Re-set the scheduler. */
-  scheduler_reset(sched, engine_estimate_nr_tasks(e));
+      /* Add the send tasks for the cells in the proxy that have a hydro
+       * connection. */
+      if ((e->policy & engine_policy_hydro) && (type & proxy_cell_type_hydro))
+        engine_addtasks_send_hydro(e, ci, cj, /*t_xv=*/NULL,
+                                   /*t_rho=*/NULL, /*t_gradient=*/NULL,
+                                   /*t_prep1=*/NULL,
+                                   /*t_limiter=*/NULL, /*t_pack_limiter=*/NULL,
+                                   /*t_rt_gradient=*/NULL,
+                                   /*t_rt_transport=*/NULL, with_feedback,
+                                   with_limiter, with_sync, with_rt);
 
-  ticks tic2 = getticks();
+      /* Add the send tasks for the cells in the proxy that have a stars
+       * connection. */
+      if ((e->policy & engine_policy_feedback) &&
+          (type & proxy_cell_type_hydro))
+        engine_addtasks_send_stars(e, ci, cj, /*t_density=*/NULL,
+                                   /*t_prep2=*/NULL,
+                                   /*t_sf_counts=*/NULL, with_star_formation);
 
-  /* Construct the first hydro loop over neighbours */
-  if (e->policy & engine_policy_hydro) {
-    if (!s->with_zoom_region) {
-      threadpool_map(&e->threadpool, engine_make_hydroloop_tasks_mapper, NULL,
-                     s->nr_cells, 1, threadpool_auto_chunk_size, e);
-    } else if (e->policy & engine_policy_hydro && s->with_zoom_region) {
-      /* In the zoom case we only need to loop over the zoom cells which are the
-       * first nr_zoom_cells pointers in cells_top.  */
-      threadpool_map(&e->threadpool, engine_make_hydroloop_tasks_mapper, NULL,
-                     s->zoom_props->nr_zoom_cells, 1,
-                     threadpool_auto_chunk_size, e);
+      /* Add the send tasks for the cells in the proxy that have a black holes
+       * connection. */
+      if ((e->policy & engine_policy_black_holes) &&
+          (type & proxy_cell_type_hydro))
+        engine_addtasks_send_black_holes(e, ci, cj, /*t_rho=*/NULL,
+                                         /*t_swallow=*/NULL,
+                                         /*t_gas_swallow=*/NULL,
+                                         /*t_feedback=*/NULL);
+
+      /* Add the send tasks for the cells in the proxy that have a gravity
+       * connection. */
+      if ((e->policy & engine_policy_self_gravity) &&
+          (type & proxy_cell_type_gravity))
+        engine_addtasks_send_gravity(e, ci, cj, /*t_grav=*/NULL);
     }
   }
 
-  if (e->verbose)
-    message("Making hydro tasks took %.3f %s.",
-            clocks_from_ticks(getticks() - tic2), clocks_getunit());
+  void engine_addtasks_recv_mapper(void *map_data, int num_elements,
+                                   void *extra_data) {
 
-  tic2 = getticks();
-
-  /* Add the self gravity tasks. */
-  if (e->policy & engine_policy_self_gravity && !s->with_zoom_region) {
-    threadpool_map(&e->threadpool, engine_make_self_gravity_tasks_mapper, NULL,
-                   s->nr_cells, 1, threadpool_auto_chunk_size, e);
-  } else if (e->policy & engine_policy_self_gravity && s->with_zoom_region) {
-    /* Call the zoom region specific wrapper. This handles the pair tasks
-     * between each cell grid explicitly. */
-    zoom_engine_make_self_gravity_tasks(s, e);
-  }
-
-  if (e->verbose)
-    message("Making gravity tasks took %.3f %s.",
-            clocks_from_ticks(getticks() - tic2), clocks_getunit());
-
-  /* Add the external gravity tasks. */
-  if (e->policy & engine_policy_external_gravity)
-    engine_make_external_gravity_tasks(e);
-
-  if (e->sched.nr_tasks == 0 && (s->nr_gparts > 0 || s->nr_parts > 0))
-    error("We have particles but no hydro or gravity tasks were created.");
-
-  tic2 = getticks();
-
-  /* Split the tasks. */
-  scheduler_splittasks(sched, /*fof_tasks=*/0, e->verbose);
-
-  if (e->verbose)
-    message("Splitting tasks took %.3f %s.",
-            clocks_from_ticks(getticks() - tic2), clocks_getunit());
+    struct engine *e = (struct engine *)extra_data;
+    const int with_star_formation = (e->policy & engine_policy_star_formation);
+    const int with_limiter = (e->policy & engine_policy_timestep_limiter);
+    const int with_feedback = (e->policy & engine_policy_feedback);
+    const int with_black_holes = (e->policy & engine_policy_black_holes);
+    const int with_sync = (e->policy & engine_policy_timestep_sync);
+    const int with_rt = (e->policy & engine_policy_rt);
+    struct cell_type_pair *cell_type_pairs = (struct cell_type_pair *)map_data;
 
 #ifdef SWIFT_DEBUG_CHECKS
-  /* Verify that we are not left with invalid tasks */
-  for (int i = 0; i < e->sched.nr_tasks; ++i) {
-    const struct task *t = &e->sched.tasks[i];
-    if (t->ci == NULL && t->cj != NULL && !t->skip) error("Invalid task");
-  }
+    if (e->policy & engine_policy_sinks) {
+      error("TODO");
+    }
 #endif
 
-  /* Free the old list of cell-task links. */
-  if (e->links != NULL) swift_free("links", e->links);
-  e->size_links = e->sched.nr_tasks * e->links_per_tasks;
+    for (int k = 0; k < num_elements; k++) {
+      struct cell *ci = cell_type_pairs[k].ci;
+      const int type = cell_type_pairs[k].type;
+      struct task *tend = NULL;
 
-  /* Make sure that we have space for more links than last time. */
-  if (e->size_links < e->nr_links * engine_rebuild_link_alloc_margin)
-    e->size_links = e->nr_links * engine_rebuild_link_alloc_margin;
+#ifdef WITH_MPI
+      /* Add the timestep exchange task */
+      if (!cell_is_empty(ci)) {
+        tend = scheduler_addtask(&e->sched, task_type_recv, task_subtype_tend,
+                                 ci->mpi.tag, 0, ci, NULL);
+        engine_addlink(e, &ci->mpi.recv, tend);
 
-  /* Allocate the new link list */
-  if ((e->links = (struct link *)swift_malloc(
-           "links", sizeof(struct link) * e->size_links)) == NULL)
-    error("Failed to allocate cell-task links.");
-  e->nr_links = 0;
+        /* If we're running with RT, there may be foreign cells that
+         * don't receive any actual hydro particles. These cells however
+         * still need to have the "advance_cell_time" and "rt_collect_times"
+         * tasks in order for their time variables to be correct, especially
+         * during syb-cycles, where the cell times aren't communicated at the
+         * end of the step. So we create them now. */
+        if (with_rt) {
+#ifdef SWIFT_RT_DEBUG_CHECKS
+          if (ci->top == NULL) error("Working on a cell with top == NULL??");
+#endif
 
-  tic2 = getticks();
+          /* Create the RT collect times task at the top level, if it hasn't
+           * already. */
+          if (ci->top->rt.rt_collect_times == NULL) {
+            ci->top->rt.rt_collect_times =
+                scheduler_addtask(&e->sched, task_type_rt_collect_times,
+                                  task_subtype_none, 0, 0, ci->top, NULL);
+          }
+          /* We don't need rt_collect_times -> tend dependencies. They never
+           * run at the same time. rt_collect_times runs in sub-cycles,
+           * tend runs on normal steps. */
 
-  /* Count the number of tasks associated with each cell and
-     store the density tasks in each cell, and make each sort
-     depend on the sorts of its progeny. */
-  threadpool_map(&e->threadpool, engine_count_and_link_tasks_mapper,
-                 sched->tasks, sched->nr_tasks, sizeof(struct task),
-                 threadpool_auto_chunk_size, e);
+          /* Make sure the timestep task replacements, i.e.
+           * rt_advance_cell_time, exists on the super levels regardless of
+           * proxy type. This needs to be done before engine_addtasks_recv_hydro
+           * so we can set appropriate unlocks there without re-creating tasks.
+           */
+          engine_addtasks_recv_rt_advance_cell_time(e, ci, tend);
+        }
+      }
+#endif
 
-  if (e->verbose)
-    message("Counting and linking tasks took %.3f %s.",
-            clocks_from_ticks(getticks() - tic2), clocks_getunit());
+      /* Add the recv tasks for the cells in the proxy that have a hydro
+       * connection. */
+      if ((e->policy & engine_policy_hydro) && (type & proxy_cell_type_hydro)) {
+        engine_addtasks_recv_hydro(
+            e, ci, /*t_xv=*/NULL, /*t_rho=*/NULL, /*t_gradient=*/NULL,
+            /*t_prep1=*/NULL, /*t_limiter=*/NULL, /*t_unpack_limiter=*/NULL,
+            /*t_rt_gradient=*/NULL, /*t_rt_transport=*/NULL,
+            /*t_rt_sorts=*/NULL, tend, with_feedback, with_black_holes,
+            with_limiter, with_sync, with_rt);
+      }
 
-  tic2 = getticks();
+      /* Add the recv tasks for the cells in the proxy that have a stars
+       * connection. */
+      if ((e->policy & engine_policy_feedback) &&
+          (type & proxy_cell_type_hydro))
+        engine_addtasks_recv_stars(e, ci, /*t_density=*/NULL, /*t_prep2=*/NULL,
+                                   /*t_sf_counts=*/NULL, tend,
+                                   with_star_formation);
+
+      /* Add the recv tasks for the cells in the proxy that have a black holes
+       * connection. */
+      if ((e->policy & engine_policy_black_holes) &&
+          (type & proxy_cell_type_hydro))
+        engine_addtasks_recv_black_holes(e, ci, /*t_rho=*/NULL,
+                                         /*t_swallow=*/NULL,
+                                         /*t_gas_swallow=*/NULL,
+                                         /*t_feedback=*/NULL, tend);
+
+      /* Add the recv tasks for the cells in the proxy that have a gravity
+       * connection. */
+      if ((e->policy & engine_policy_self_gravity) &&
+          (type & proxy_cell_type_gravity))
+        engine_addtasks_recv_gravity(e, ci, /*t_grav=*/NULL, tend);
+    }
+  }
+
+  /**
+   * @brief Constructs the top-level self + pair tasks for the FOF loop over
+   * neighbours.
+   *
+   * Here we construct all the tasks for all possible neighbouring non-empty
+   * local cells in the hierarchy. No dependencies are being added thus far.
+   * Additional loop over neighbours can later be added by simply duplicating
+   * all the tasks created by this function.
+   *
+   * In the zoom case we only consider zoom cells and periodicity is ignored
+   * since the zoom region is never periodic.
+   *
+   * @param map_data Offset of first two indices disguised as a pointer.
+   * @param num_elements Number of cells to traverse.
+   * @param extra_data The #engine.
+   */
+  void engine_make_fofloop_tasks_mapper(void *map_data, int num_elements,
+                                        void *extra_data) {
+
+    /* Extract the engine pointer. */
+    struct engine *e = (struct engine *)extra_data;
+
+    struct space *s = e->s;
+    const int periodic = !s->with_zoom_region ? s->periodic : 0;
+    struct scheduler *sched = &e->sched;
+    const int nodeID = e->nodeID;
+    const int *cdim = !s->with_zoom_region ? s->cdim : s->zoom_props->cdim;
+    struct cell *cells = s->cells_top;
+
+    /* Loop through the elements, which are just byte offsets from NULL. */
+    for (int ind = 0; ind < num_elements; ind++) {
+
+      /* Get the cell index. */
+      const int cid = (size_t)(map_data) + ind;
+      const int i = cid / (cdim[1] * cdim[2]);
+      const int j = (cid / cdim[2]) % cdim[1];
+      const int k = cid % cdim[2];
+
+      /* Get the cell */
+      struct cell *ci = &cells[cid];
+
+      /* Skip cells without gravity particles */
+      if (ci->grav.count == 0) continue;
+
+      /* If the cells is local build a self-interaction */
+      if (ci->nodeID == nodeID) {
+        scheduler_addtask(sched, task_type_fof_self, task_subtype_none, 0, 0,
+                          ci, NULL);
+        scheduler_addtask(sched, task_type_fof_attach_self, task_subtype_none,
+                          0, 0, ci, NULL);
+      }
+
+      /* Now loop over all the neighbours of this cell */
+      for (int ii = -1; ii < 2; ii++) {
+        int iii = i + ii;
+        if (!periodic && (iii < 0 || iii >= cdim[0])) continue;
+        iii = (iii + cdim[0]) % cdim[0];
+        for (int jj = -1; jj < 2; jj++) {
+          int jjj = j + jj;
+          if (!periodic && (jjj < 0 || jjj >= cdim[1])) continue;
+          jjj = (jjj + cdim[1]) % cdim[1];
+          for (int kk = -1; kk < 2; kk++) {
+            int kkk = k + kk;
+            if (!periodic && (kkk < 0 || kkk >= cdim[2])) continue;
+            kkk = (kkk + cdim[2]) % cdim[2];
+
+            /* Get the neighbouring cell */
+            const int cjd = cell_getid(cdim, iii, jjj, kkk);
+            struct cell *cj = &cells[cjd];
+
+#ifdef SWIFT_DEBUG_CHECKS
+            /* Ensure we only have zoom cells in the zoom case. */
+            if (s->with_zoom_region &&
+                (ci->type != cell_type_zoom || cj->type != cell_type_zoom)) {
+              error(
+                  "Trying to make FOF tasks for non-zoom cells while running a "
+                  "zoom! (ci->type=%s, cj->type=%s)",
+                  cellID_names[ci->type], cellID_names[cj->type]);
+            }
+#endif
+
+            /* Does that neighbour have particles ? */
+            if (cid >= cjd || cj->grav.count == 0) continue;
+
+            /* Construct the pair search task only for fully local pairs */
+            if (ci->nodeID == nodeID && cj->nodeID == nodeID)
+              scheduler_addtask(sched, task_type_fof_pair, task_subtype_none, 0,
+                                0, ci, cj);
+
+            /* Construct the pair search task for pairs overlapping with the
+             * node
+             */
+            if (ci->nodeID == nodeID || cj->nodeID == nodeID)
+              scheduler_addtask(sched, task_type_fof_attach_pair,
+                                task_subtype_none, 0, 0, ci, cj);
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * @brief Fill the #space's task list with FOF tasks.
+   *
+   * @param e The #engine we are working with.
+   */
+  void engine_make_fof_tasks(struct engine * e) {
+
+    struct space *s = e->s;
+    struct scheduler *sched = &e->sched;
+    ticks tic = getticks();
+
+    if (e->restarting) error("Running FOF on a restart step!");
+
+    /* Construct a FOF loop over neighbours */
+    if (e->policy & engine_policy_fof) {
+      if (!s->with_zoom_region) {
+        threadpool_map(&e->threadpool, engine_make_fofloop_tasks_mapper, NULL,
+                       s->nr_cells, 1, threadpool_auto_chunk_size, e);
+      } else {
+        /* In the zoom case we only need to loop over the zoom cells which are
+         * the first nr_zoom_cells pointers in cells_top.  */
+        threadpool_map(&e->threadpool, engine_make_fofloop_tasks_mapper, NULL,
+                       s->zoom_props->nr_zoom_cells, 1,
+                       threadpool_auto_chunk_size, e);
+      }
+    }
+
+    if (e->verbose)
+      message("Making FOF tasks took %.3f %s.",
+              clocks_from_ticks(getticks() - tic), clocks_getunit());
+
+    tic = getticks();
+
+    /* Split the tasks. */
+    scheduler_splittasks(sched, /*fof_tasks=*/1, e->verbose);
+
+    if (e->verbose)
+      message("Splitting FOF tasks took %.3f %s.",
+              clocks_from_ticks(getticks() - tic), clocks_getunit());
+
+#ifdef SWIFT_DEBUG_CHECKS
+    /* Verify that we are not left with invalid tasks */
+    for (int i = 0; i < e->sched.nr_tasks; ++i) {
+      const struct task *t = &e->sched.tasks[i];
+      if (t->ci == NULL && t->cj != NULL && !t->skip) error("Invalid task");
+    }
+#endif
+
+    /* Report the number of tasks we actually used */
+    if (e->verbose)
+      message(
+          "Nr. of tasks: %d allocated tasks: %d ratio: %f memory use: %zd MB.",
+          e->sched.nr_tasks, e->sched.size,
+          (float)e->sched.nr_tasks / (float)e->sched.size,
+          e->sched.size * sizeof(struct task) / (1024 * 1024));
+
+    if (e->verbose)
+      message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+              clocks_getunit());
+  }
+
+  /**
+   * @brief Fill the #space's task list.
+   *
+   * @param e The #engine we are working with.
+   */
+  void engine_maketasks(struct engine * e) {
+
+    struct space *s = e->s;
+    struct scheduler *sched = &e->sched;
+    struct cell *cells = s->cells_top;
+    const int nr_cells = s->nr_cells;
+    const ticks tic = getticks();
+
+    /* Re-set the scheduler. */
+    scheduler_reset(sched, engine_estimate_nr_tasks(e));
+
+    ticks tic2 = getticks();
+
+    /* Construct the first hydro loop over neighbours */
+    if (e->policy & engine_policy_hydro) {
+      if (!s->with_zoom_region) {
+        threadpool_map(&e->threadpool, engine_make_hydroloop_tasks_mapper, NULL,
+                       s->nr_cells, 1, threadpool_auto_chunk_size, e);
+      } else if (e->policy & engine_policy_hydro && s->with_zoom_region) {
+        /* In the zoom case we only need to loop over the zoom cells which are
+         * the first nr_zoom_cells pointers in cells_top.  */
+        threadpool_map(&e->threadpool, engine_make_hydroloop_tasks_mapper, NULL,
+                       s->zoom_props->nr_zoom_cells, 1,
+                       threadpool_auto_chunk_size, e);
+      }
+    }
+
+    if (e->verbose)
+      message("Making hydro tasks took %.3f %s.",
+              clocks_from_ticks(getticks() - tic2), clocks_getunit());
+
+    tic2 = getticks();
+
+    /* Add the self gravity tasks. */
+    if (e->policy & engine_policy_self_gravity && !s->with_zoom_region) {
+      threadpool_map(&e->threadpool, engine_make_self_gravity_tasks_mapper,
+                     NULL, s->nr_cells, 1, threadpool_auto_chunk_size, e);
+    } else if (e->policy & engine_policy_self_gravity && s->with_zoom_region) {
+      /* Call the zoom region specific wrapper. This handles the pair tasks
+       * between each cell grid explicitly. */
+      zoom_engine_make_self_gravity_tasks(s, e);
+    }
+
+    if (e->verbose)
+      message("Making gravity tasks took %.3f %s.",
+              clocks_from_ticks(getticks() - tic2), clocks_getunit());
+
+    /* Add the external gravity tasks. */
+    if (e->policy & engine_policy_external_gravity)
+      engine_make_external_gravity_tasks(e);
+
+    if (e->sched.nr_tasks == 0 && (s->nr_gparts > 0 || s->nr_parts > 0))
+      error("We have particles but no hydro or gravity tasks were created.");
+
+    tic2 = getticks();
+
+    /* Split the tasks. */
+    scheduler_splittasks(sched, /*fof_tasks=*/0, e->verbose);
+
+    if (e->verbose)
+      message("Splitting tasks took %.3f %s.",
+              clocks_from_ticks(getticks() - tic2), clocks_getunit());
+
+#ifdef SWIFT_DEBUG_CHECKS
+    /* Verify that we are not left with invalid tasks */
+    for (int i = 0; i < e->sched.nr_tasks; ++i) {
+      const struct task *t = &e->sched.tasks[i];
+      if (t->ci == NULL && t->cj != NULL && !t->skip) error("Invalid task");
+    }
+#endif
+
+    /* Free the old list of cell-task links. */
+    if (e->links != NULL) swift_free("links", e->links);
+    e->size_links = e->sched.nr_tasks * e->links_per_tasks;
+
+    /* Make sure that we have space for more links than last time. */
+    if (e->size_links < e->nr_links * engine_rebuild_link_alloc_margin)
+      e->size_links = e->nr_links * engine_rebuild_link_alloc_margin;
+
+    /* Allocate the new link list */
+    if ((e->links = (struct link *)swift_malloc(
+             "links", sizeof(struct link) * e->size_links)) == NULL)
+      error("Failed to allocate cell-task links.");
+    e->nr_links = 0;
+
+    tic2 = getticks();
+
+    /* Count the number of tasks associated with each cell and
+       store the density tasks in each cell, and make each sort
+       depend on the sorts of its progeny. */
+    threadpool_map(&e->threadpool, engine_count_and_link_tasks_mapper,
+                   sched->tasks, sched->nr_tasks, sizeof(struct task),
+                   threadpool_auto_chunk_size, e);
+
+    if (e->verbose)
+      message("Counting and linking tasks took %.3f %s.",
+              clocks_from_ticks(getticks() - tic2), clocks_getunit());
+
+    tic2 = getticks();
 
 /* Re-set the tag counter. MPI tags are defined for top-level cells in
  * cell_set_super_mapper. */
 #ifdef WITH_MPI
-  cell_next_tag = 0;
+    cell_next_tag = 0;
 #endif
 
-  /* Now that the self/pair tasks are at the right level, set the super
-   * pointers. */
-  threadpool_map(&e->threadpool, cell_set_super_mapper, cells, nr_cells,
-                 sizeof(struct cell), threadpool_auto_chunk_size, e);
+    /* Now that the self/pair tasks are at the right level, set the super
+     * pointers. */
+    threadpool_map(&e->threadpool, cell_set_super_mapper, cells, nr_cells,
+                   sizeof(struct cell), threadpool_auto_chunk_size, e);
 
-  if (e->verbose)
-    message("Setting super-pointers took %.3f %s.",
-            clocks_from_ticks(getticks() - tic2), clocks_getunit());
+    if (e->verbose)
+      message("Setting super-pointers took %.3f %s.",
+              clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
-  /* Append hierarchical tasks to each cell. */
-  threadpool_map(&e->threadpool, engine_make_hierarchical_tasks_mapper, cells,
-                 nr_cells, sizeof(struct cell), threadpool_auto_chunk_size, e);
+    /* Append hierarchical tasks to each cell. */
+    threadpool_map(&e->threadpool, engine_make_hierarchical_tasks_mapper, cells,
+                   nr_cells, sizeof(struct cell), threadpool_auto_chunk_size,
+                   e);
 
-  tic2 = getticks();
+    tic2 = getticks();
 
-  /* Run through the tasks and make force tasks for each density task.
-     Each force task depends on the cell ghosts and unlocks the kick task
-     of its super-cell. */
-  if (e->policy & engine_policy_hydro) {
+    /* Run through the tasks and make force tasks for each density task.
+       Each force task depends on the cell ghosts and unlocks the kick task
+       of its super-cell. */
+    if (e->policy & engine_policy_hydro) {
 
-    /* Note that this does not scale well at all so we do not use the
-     * threadpool version here until the reason for this is found.
-     * We call the mapper function directly as if there was only 1 thread
-     * in the pool. */
-    engine_make_extra_hydroloop_tasks_mapper(sched->tasks, sched->nr_tasks, e);
-    /* threadpool_map(&e->threadpool,
-     * engine_make_extra_hydroloop_tasks_mapper, sched->tasks,
-     * sched->nr_tasks, sizeof(struct task), threadpool_auto_chunk_size, e);
-     */
-  }
+      /* Note that this does not scale well at all so we do not use the
+       * threadpool version here until the reason for this is found.
+       * We call the mapper function directly as if there was only 1 thread
+       * in the pool. */
+      engine_make_extra_hydroloop_tasks_mapper(sched->tasks, sched->nr_tasks,
+                                               e);
+      /* threadpool_map(&e->threadpool,
+       * engine_make_extra_hydroloop_tasks_mapper, sched->tasks,
+       * sched->nr_tasks, sizeof(struct task), threadpool_auto_chunk_size, e);
+       */
+    }
 
-  if (e->verbose)
-    message("Making extra hydroloop tasks took %.3f %s.",
-            clocks_from_ticks(getticks() - tic2), clocks_getunit());
+    if (e->verbose)
+      message("Making extra hydroloop tasks took %.3f %s.",
+              clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
-  tic2 = getticks();
+    tic2 = getticks();
 
-  /* Add the dependencies for the gravity stuff */
-  if (e->policy & (engine_policy_self_gravity | engine_policy_external_gravity))
-    engine_link_gravity_tasks(e);
+    /* Add the dependencies for the gravity stuff */
+    if (e->policy &
+        (engine_policy_self_gravity | engine_policy_external_gravity))
+      engine_link_gravity_tasks(e);
 
-  if (e->verbose)
-    message("Linking gravity tasks took %.3f %s.",
-            clocks_from_ticks(getticks() - tic2), clocks_getunit());
+    if (e->verbose)
+      message("Linking gravity tasks took %.3f %s.",
+              clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
-  tic2 = getticks();
+    tic2 = getticks();
 
 #ifdef WITH_MPI
-  /* Add the communication tasks if MPI is being used. */
-  if (e->policy & engine_policy_mpi) {
+    /* Add the communication tasks if MPI is being used. */
+    if (e->policy & engine_policy_mpi) {
 
-    tic2 = getticks();
+      tic2 = getticks();
 
-    /* Loop over the proxies and add the send tasks, which also generates the
-     * cell tags for super-cells. */
-    int max_num_send_cells = 0;
-    for (int pid = 0; pid < e->nr_proxies; pid++)
-      max_num_send_cells += e->proxies[pid].nr_cells_out;
-    struct cell_type_pair *send_cell_type_pairs = NULL;
-    if ((send_cell_type_pairs = (struct cell_type_pair *)malloc(
-             sizeof(struct cell_type_pair) * max_num_send_cells)) == NULL)
-      error("Failed to allocate temporary cell pointer list.");
-    int num_send_cells = 0;
+      /* Loop over the proxies and add the send tasks, which also generates the
+       * cell tags for super-cells. */
+      int max_num_send_cells = 0;
+      for (int pid = 0; pid < e->nr_proxies; pid++)
+        max_num_send_cells += e->proxies[pid].nr_cells_out;
+      struct cell_type_pair *send_cell_type_pairs = NULL;
+      if ((send_cell_type_pairs = (struct cell_type_pair *)malloc(
+               sizeof(struct cell_type_pair) * max_num_send_cells)) == NULL)
+        error("Failed to allocate temporary cell pointer list.");
+      int num_send_cells = 0;
 
-    for (int pid = 0; pid < e->nr_proxies; pid++) {
+      for (int pid = 0; pid < e->nr_proxies; pid++) {
 
-      /* Get a handle on the proxy. */
-      struct proxy *p = &e->proxies[pid];
+        /* Get a handle on the proxy. */
+        struct proxy *p = &e->proxies[pid];
 
-      for (int k = 0; k < p->nr_cells_out; k++) {
-        send_cell_type_pairs[num_send_cells].ci = p->cells_out[k];
-        send_cell_type_pairs[num_send_cells].cj = p->cells_in[0];
-        send_cell_type_pairs[num_send_cells++].type = p->cells_out_type[k];
+        for (int k = 0; k < p->nr_cells_out; k++) {
+          send_cell_type_pairs[num_send_cells].ci = p->cells_out[k];
+          send_cell_type_pairs[num_send_cells].cj = p->cells_in[0];
+          send_cell_type_pairs[num_send_cells++].type = p->cells_out_type[k];
+        }
       }
+
+      threadpool_map(&e->threadpool, engine_addtasks_send_mapper,
+                     send_cell_type_pairs, num_send_cells,
+                     sizeof(struct cell_type_pair), threadpool_auto_chunk_size,
+                     e);
+
+      free(send_cell_type_pairs);
+
+      if (e->verbose)
+        message("Creating send tasks took %.3f %s.",
+                clocks_from_ticks(getticks() - tic2), clocks_getunit());
+
+      tic2 = getticks();
+
+      /* Exchange the cell tags. */
+      proxy_tags_exchange(e->proxies, e->nr_proxies, s);
+
+      if (e->verbose)
+        message("Exchanging cell tags took %.3f %s.",
+                clocks_from_ticks(getticks() - tic2), clocks_getunit());
+
+      tic2 = getticks();
+
+      /* Loop over the proxies and add the recv tasks, which relies on having
+       * the cell tags. */
+      int max_num_recv_cells = 0;
+      for (int pid = 0; pid < e->nr_proxies; pid++)
+        max_num_recv_cells += e->proxies[pid].nr_cells_in;
+      struct cell_type_pair *recv_cell_type_pairs = NULL;
+      if ((recv_cell_type_pairs = (struct cell_type_pair *)malloc(
+               sizeof(struct cell_type_pair) * max_num_recv_cells)) == NULL)
+        error("Failed to allocate temporary cell pointer list.");
+      int num_recv_cells = 0;
+      for (int pid = 0; pid < e->nr_proxies; pid++) {
+
+        /* Get a handle on the proxy. */
+        struct proxy *p = &e->proxies[pid];
+        for (int k = 0; k < p->nr_cells_in; k++) {
+          recv_cell_type_pairs[num_recv_cells].ci = p->cells_in[k];
+          recv_cell_type_pairs[num_recv_cells++].type = p->cells_in_type[k];
+        }
+      }
+      threadpool_map(&e->threadpool, engine_addtasks_recv_mapper,
+                     recv_cell_type_pairs, num_recv_cells,
+                     sizeof(struct cell_type_pair), threadpool_auto_chunk_size,
+                     e);
+      free(recv_cell_type_pairs);
+
+      if (e->verbose)
+        message("Creating recv tasks took %.3f %s.",
+                clocks_from_ticks(getticks() - tic2), clocks_getunit());
     }
 
-    threadpool_map(&e->threadpool, engine_addtasks_send_mapper,
-                   send_cell_type_pairs, num_send_cells,
-                   sizeof(struct cell_type_pair), threadpool_auto_chunk_size,
-                   e);
-
-    free(send_cell_type_pairs);
-
-    if (e->verbose)
-      message("Creating send tasks took %.3f %s.",
-              clocks_from_ticks(getticks() - tic2), clocks_getunit());
-
-    tic2 = getticks();
-
-    /* Exchange the cell tags. */
-    proxy_tags_exchange(e->proxies, e->nr_proxies, s);
-
-    if (e->verbose)
-      message("Exchanging cell tags took %.3f %s.",
-              clocks_from_ticks(getticks() - tic2), clocks_getunit());
-
-    tic2 = getticks();
-
-    /* Loop over the proxies and add the recv tasks, which relies on having
-     * the cell tags. */
-    int max_num_recv_cells = 0;
-    for (int pid = 0; pid < e->nr_proxies; pid++)
-      max_num_recv_cells += e->proxies[pid].nr_cells_in;
-    struct cell_type_pair *recv_cell_type_pairs = NULL;
-    if ((recv_cell_type_pairs = (struct cell_type_pair *)malloc(
-             sizeof(struct cell_type_pair) * max_num_recv_cells)) == NULL)
-      error("Failed to allocate temporary cell pointer list.");
-    int num_recv_cells = 0;
-    for (int pid = 0; pid < e->nr_proxies; pid++) {
-
-      /* Get a handle on the proxy. */
-      struct proxy *p = &e->proxies[pid];
-      for (int k = 0; k < p->nr_cells_in; k++) {
-        recv_cell_type_pairs[num_recv_cells].ci = p->cells_in[k];
-        recv_cell_type_pairs[num_recv_cells++].type = p->cells_in_type[k];
-      }
-    }
-    threadpool_map(&e->threadpool, engine_addtasks_recv_mapper,
-                   recv_cell_type_pairs, num_recv_cells,
-                   sizeof(struct cell_type_pair), threadpool_auto_chunk_size,
-                   e);
-    free(recv_cell_type_pairs);
-
-    if (e->verbose)
-      message("Creating recv tasks took %.3f %s.",
-              clocks_from_ticks(getticks() - tic2), clocks_getunit());
-  }
-
-  /* Allocate memory for foreign particles */
-  engine_allocate_foreign_particles(e, /*fof=*/0);
+    /* Allocate memory for foreign particles */
+    engine_allocate_foreign_particles(e, /*fof=*/0);
 
 #endif
 
-  /* Report the number of tasks we actually used */
-  if (e->verbose)
-    message(
-        "Nr. of tasks: %d allocated tasks: %d ratio: %f memory use: %zd MB.",
-        e->sched.nr_tasks, e->sched.size,
-        (float)e->sched.nr_tasks / (float)e->sched.size,
-        e->sched.size * sizeof(struct task) / (1024 * 1024));
+    /* Report the number of tasks we actually used */
+    if (e->verbose)
+      message(
+          "Nr. of tasks: %d allocated tasks: %d ratio: %f memory use: %zd MB.",
+          e->sched.nr_tasks, e->sched.size,
+          (float)e->sched.nr_tasks / (float)e->sched.size,
+          e->sched.size * sizeof(struct task) / (1024 * 1024));
 
-  /* Report the number of links we actually used */
-  if (e->verbose)
-    message(
-        "Nr. of links: %zd allocated links: %zd ratio: %f memory use: %zd "
-        "MB.",
-        e->nr_links, e->size_links, (float)e->nr_links / (float)e->size_links,
-        e->size_links * sizeof(struct link) / (1024 * 1024));
+    /* Report the number of links we actually used */
+    if (e->verbose)
+      message(
+          "Nr. of links: %zd allocated links: %zd ratio: %f memory use: %zd "
+          "MB.",
+          e->nr_links, e->size_links, (float)e->nr_links / (float)e->size_links,
+          e->size_links * sizeof(struct link) / (1024 * 1024));
 
-  /* Report the values that could have been used */
-  if (e->verbose)
-    message("Actual usage: tasks/cell: %f links/task: %f",
-            (float)e->sched.nr_tasks / s->tot_cells,
-            (float)e->nr_links / e->sched.nr_tasks);
+    /* Report the values that could have been used */
+    if (e->verbose)
+      message("Actual usage: tasks/cell: %f links/task: %f",
+              (float)e->sched.nr_tasks / s->tot_cells,
+              (float)e->nr_links / e->sched.nr_tasks);
 
-  tic2 = getticks();
+    tic2 = getticks();
 
-  /* Set the unlocks per task. */
-  scheduler_set_unlocks(sched);
+    /* Set the unlocks per task. */
+    scheduler_set_unlocks(sched);
 
-  if (e->verbose)
-    message("Setting unlocks took %.3f %s.",
-            clocks_from_ticks(getticks() - tic2), clocks_getunit());
+    if (e->verbose)
+      message("Setting unlocks took %.3f %s.",
+              clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
-  tic2 = getticks();
+    tic2 = getticks();
 
-  /* Rank the tasks. */
-  scheduler_ranktasks(sched);
+    /* Rank the tasks. */
+    scheduler_ranktasks(sched);
 
-  if (e->verbose)
-    message("Ranking the tasks took %.3f %s.",
-            clocks_from_ticks(getticks() - tic2), clocks_getunit());
+    if (e->verbose)
+      message("Ranking the tasks took %.3f %s.",
+              clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
-  /* Weight the tasks. */
-  scheduler_reweight(sched, e->verbose);
+    /* Weight the tasks. */
+    scheduler_reweight(sched, e->verbose);
 
-  /* Set the tasks age. */
-  e->tasks_age = 0;
+    /* Set the tasks age. */
+    e->tasks_age = 0;
 
-  if (e->verbose)
-    message("took %.3f %s (including reweight).",
-            clocks_from_ticks(getticks() - tic), clocks_getunit());
-}
+    if (e->verbose)
+      message("took %.3f %s (including reweight).",
+              clocks_from_ticks(getticks() - tic), clocks_getunit());
+  }
