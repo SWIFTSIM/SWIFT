@@ -1259,27 +1259,12 @@ __attribute__((always_inline)) INLINE static int cell_is_above_diff_grav_depth(
 __attribute__((always_inline)) INLINE static int
 cell_can_split_pair_gravity_task(const struct cell *ci, const struct cell *cj) {
 
-  /* Any task pair including a void cell must be split. */
+  /* Any task pair including a void cell must be split. If we can split both
+   * go ahead. Otherwise we'll split only the void cell (see logic in
+   * scheduler_splittask_gravity.) */
   if (ci->subtype == cell_subtype_void || cj->subtype == cell_subtype_void) {
 
-#ifdef SWIFT_DEBUG_CHECKS
-    /* Ensure both cells are actually split. */
-    if (!(ci->split && cj->split)) {
-      error("Pair containing a void cell includes a pair that is not split.");
-    }
-
-    /* Ensure the non-void cell is above the maximal splitting distance. */
-    if ((ci->subtype == cell_subtype_void &&
-         !cell_is_above_diff_grav_depth(cj)) ||
-        (cj->subtype == cell_subtype_void &&
-         !cell_is_above_diff_grav_depth(ci))) {
-      error(
-          "Pair containing a void cell includes a non-void cell that cannot "
-          "be split.");
-    }
-#endif
-
-    return 1;
+    return ci->split && cj->split;
   }
 
   /* If we have a zoom->neighbour task we just need to check if the cells are
