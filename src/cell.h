@@ -1259,14 +1259,6 @@ __attribute__((always_inline)) INLINE static int cell_is_above_diff_grav_depth(
 __attribute__((always_inline)) INLINE static int
 cell_can_split_pair_gravity_task(const struct cell *ci, const struct cell *cj) {
 
-  /* Any task pair including a void cell must be split. If we can split both
-   * go ahead. Otherwise we'll split only the void cell (see logic in
-   * scheduler_splittask_gravity.) */
-  if (ci->subtype == cell_subtype_void || cj->subtype == cell_subtype_void) {
-
-    return ci->split && cj->split;
-  }
-
   /* If we have a zoom->neighbour task we just need to check if the cells are
    * both split. */
   if ((ci->subtype == cell_subtype_neighbour &&
@@ -1297,10 +1289,6 @@ cell_can_split_pair_gravity_task(const struct cell *ci, const struct cell *cj) {
 __attribute__((always_inline)) INLINE static int
 cell_pair_gravity_task_below_subsize(const struct cell *ci,
                                      const struct cell *cj) {
-  /* If one cell is a void cell we need to split regardless of cell counts. */
-  if (ci->subtype == cell_subtype_void || cj->subtype == cell_subtype_void) {
-    return 0;
-  }
 
   /* Get the cell counts. */
   const long long gcount_i = ci->grav.count;
