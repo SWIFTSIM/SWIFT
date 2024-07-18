@@ -1259,15 +1259,6 @@ __attribute__((always_inline)) INLINE static int cell_is_above_diff_grav_depth(
 __attribute__((always_inline)) INLINE static int
 cell_can_split_pair_gravity_task(const struct cell *ci, const struct cell *cj) {
 
-  /* If we have a zoom->neighbour task we just need to check if the cells are
-   * both split. */
-  if ((ci->subtype == cell_subtype_neighbour &&
-       cj->subtype != cell_subtype_neighbour) ||
-      (ci->subtype != cell_subtype_neighbour &&
-       cj->subtype == cell_subtype_neighbour)) {
-    return ci->split && cj->split;
-  }
-
   /* Any task pair including a void cell must be split. */
   if (ci->subtype == cell_subtype_void || cj->subtype == cell_subtype_void) {
 
@@ -1289,6 +1280,15 @@ cell_can_split_pair_gravity_task(const struct cell *ci, const struct cell *cj) {
 #endif
 
     return 1;
+  }
+
+  /* If we have a zoom->neighbour task we just need to check if the cells are
+   * both split. */
+  if ((ci->subtype == cell_subtype_neighbour &&
+       cj->subtype != cell_subtype_neighbour) ||
+      (ci->subtype != cell_subtype_neighbour &&
+       cj->subtype == cell_subtype_neighbour)) {
+    return ci->split && cj->split;
   }
 
   /* Otherwise, are the cells split and still far from the leaves ? */
