@@ -1683,10 +1683,10 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
       t->flags = 0;
 
       /* Make a task for every other pair of progeny */
-      for (int i = 0; i < 8; i++) {
-        if (cj->progeny[i]->grav.count > 0) {
+      for (int j = 0; j < 8; j++) {
+        if (cj->progeny[j]->grav.count > 0) {
           /* Can we use a M-M interaction here? */
-          if (cell_can_use_pair_mm(ci, cj->progeny[i], e, sp,
+          if (cell_can_use_pair_mm(ci, cj->progeny[j], e, sp,
                                    /*use_rebuild_data=*/1,
                                    /*is_tree_walk=*/1,
                                    /*periodic boundaries*/ sp->periodic,
@@ -1697,7 +1697,7 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
              * this information. The corresponding taks will unpack
              * the information and operate according to the choices
              * made here. */
-            const int flag = i * 8;
+            const int flag = j * 8;
             t->flags |= (1ULL << flag);
 
           } else {
