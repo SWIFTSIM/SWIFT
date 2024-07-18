@@ -20,6 +20,8 @@
  ******************************************************************************/
 
 /* Config parameters. */
+#include "cell.h"
+
 #include <config.h>
 
 /* Some standard headers. */
@@ -1398,6 +1400,22 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
 
     /* Non-splittable task? */
     if ((t->ci == NULL) || (t->type == task_type_pair && t->cj == NULL)) {
+      t->type = task_type_none;
+      t->subtype = task_subtype_none;
+      t->ci = NULL;
+      t->cj = NULL;
+      t->skip = 1;
+      break;
+    }
+
+    /* In a very specific set of circumstances in a zoom simulation we can have
+     * a zoom "top" level cell with 0 particles which enters the task splitting
+     * here and erroneously gets a pair task. Catch that and destroy the task.
+     */
+    if (t->type == task_type_pair &&
+        ((t->ci->subtype != cell_subtype_void &&
+          t->cj->subtype != cell_subtype_void) &&
+         t->ci->grav.count * t->cj->grav.count == 0)) {
       t->type = task_type_none;
       t->subtype = task_subtype_none;
       t->ci = NULL;
