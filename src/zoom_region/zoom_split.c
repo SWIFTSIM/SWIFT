@@ -23,6 +23,7 @@
 /* Local includes */
 #include "cell.h"
 #include "engine.h"
+#include "scheduler.h"
 #include "space.h"
 #include "threadpool.h"
 #include "zoom.h"
