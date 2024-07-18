@@ -1547,7 +1547,7 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
              * this information. The corresponding taks will unpack
              * the information and operate according to the choices
              * made here. */
-            const int flag = i * 8 + j;
+            const int flag = i * 8;
             t->flags |= (1ULL << flag);
 
           } else {
@@ -1591,7 +1591,7 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
              * this information. The corresponding taks will unpack
              * the information and operate according to the choices
              * made here. */
-            const int flag = i * 8 + j;
+            const int flag = i * 8;
             t->flags |= (1ULL << flag);
 
           } else {
