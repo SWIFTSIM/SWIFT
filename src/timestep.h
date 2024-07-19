@@ -175,6 +175,21 @@ __attribute__((always_inline)) INLINE static integertime_t get_part_timestep(
     new_dt_grav = min(new_dt_self_grav, new_dt_ext_grav);
   }
 
+  /* Compute the next timestep (force condition) */
+  float new_dt_force = FLT_MAX;
+  if (e->policy & engine_policy_external_gravity){
+
+    float a[3];
+    a[0] = p->a_hydro[0] + p->gpart->a_grav[0];
+    a[1] = p->a_hydro[1] + p->gpart->a_grav[1];
+    a[2] = p->a_hydro[2] + p->gpart->a_grav[2];
+
+    const float norm_a = sqrtf(a[0] * a[0] + a[1] * a[1] + a[2] * a[2]);
+
+    new_dt_force = norm_a != 0.0f ? 0.25f * sqrtf(p->h / norm_a) : FLT_MAX;
+    
+  };  
+  
   /* Compute the next timestep (forcing terms condition) */
   const float new_dt_forcing = forcing_terms_timestep(
       e->time, e->forcing_terms, e->physical_constants, p, xp);
@@ -195,6 +210,11 @@ __attribute__((always_inline)) INLINE static integertime_t get_part_timestep(
           : FLT_MAX;
 
   new_dt = min(new_dt, dt_h_change);
+
+  /* Apply the force criterion */
+  new_dt = min(new_dt, new_dt_force);
+
+  if (new_dt == new_dt_force) printf("The force criterion was used ! \n");
 
   /* Apply the maximal displacement constraint (FLT_MAX if non-cosmological)*/
   new_dt = min(new_dt, e->dt_max_RMS_displacement);
