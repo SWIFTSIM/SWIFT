@@ -55,8 +55,9 @@ int check_can_long_range(const struct engine *e, struct cell *ci,
 
   if (cj->grav.multipole->m_pole.num_gpart == 0)
     error(
-        "Long range gravity trying to interact with a progeny "
-        "with no particles!");
+        "Long range gravity trying to interact with a progeny (depth=%d, "
+        "type=%s) with no particles! (with mass = %.4e)",
+        cj->depth, cellID_names[cj->type], cj->grav.multipole->m_pole.M_000);
 
 #endif
 
@@ -86,6 +87,17 @@ int check_can_long_range(const struct engine *e, struct cell *ci,
   /* Otherwise, we're in the tree and need to recurse. */
   int k = 0;
   while (k < 8 && can_interact) {
+    /* Need to skip empty progeny, this can only happen in the void cell tree.
+     * Since the leaves of the void cell tree are "top level" zoom cells it is
+     * possible to find a zoom cell with 0 particles at the leaves of a void
+     * cell tree. Note that we are guaranteed to have at least 1 non-zero mass
+     * progeny if we got here.  */
+    if (cj->progeny[k]->grav.multipole->m_pole.M_000 == 0.f) {
+      k++;
+      continue;
+    }
+
+    /* Recurse... */
     can_interact = check_can_long_range(e, ci, cj->progeny[k]);
     k++;
   }
@@ -112,6 +124,9 @@ void runner_do_grav_long_range_recurse(struct runner *r, struct cell *ci,
 
   /* Get this cell's multipole information */
   struct gravity_tensors *const multi_i = ci->grav.multipole;
+
+  /* Skip empty cells. */
+  if (cj->grav.multipole->m_pole.M_000 == 0.f) return;
 
   /* Check whether we can interact at this level. */
   if (check_can_long_range(e, ci, cj)) {
@@ -191,7 +206,7 @@ void runner_do_grav_long_range_uniform_non_periodic(struct runner *r,
       multi_i->pot.interacted = 1;
 
     } /* We are in charge of this pair */
-  }   /* Loop over top-level cells */
+  } /* Loop over top-level cells */
 }
 
 /**
@@ -232,6 +247,9 @@ void runner_do_grav_long_range_zoom_non_periodic(struct runner *r,
     struct cell *cj = &cells[cjd];
     struct gravity_tensors *const multi_j = cj->grav.multipole;
 
+    /* Skip empty cells */
+    if (multi_j->m_pole.M_000 == 0.f) continue;
+
     /* If cj is a void cell interact recursively with the zoom cells. */
     if (cj->subtype == cell_subtype_void) {
       for (int k = 0; k < 8; k++) {
@@ -242,9 +260,6 @@ void runner_do_grav_long_range_zoom_non_periodic(struct runner *r,
 
     /* Avoid self contributions */
     if (top == cj) continue;
-
-    /* Skip empty cells */
-    if (multi_j->m_pole.M_000 == 0.f) continue;
 
     if (cell_can_use_pair_mm(top, cj, e, e->s, /*use_rebuild_data=*/1,
                              /*is_tree_walk=*/0,
@@ -258,7 +273,7 @@ void runner_do_grav_long_range_zoom_non_periodic(struct runner *r,
       multi_i->pot.interacted = 1;
 
     } /* We are in charge of this pair */
-  }   /* Loop over top-level cells */
+  } /* Loop over top-level cells */
 }
 
 /**
@@ -333,6 +348,12 @@ void runner_do_grav_long_range_periodic(struct runner *r, struct cell *ci,
         /* Avoid self contributions  */
         if (top == cj) continue;
 
+        /* Handle on the top-level cell's gravity business*/
+        const struct gravity_tensors *multi_j = cj->grav.multipole;
+
+        /* Skip empty cells */
+        if (multi_j->m_pole.M_000 == 0.f) continue;
+
         /* If this is the void cell we need to interact with zoom cells
          * (only applicable when running a zoom region). */
         if (cj->subtype == cell_subtype_void) {
@@ -343,12 +364,6 @@ void runner_do_grav_long_range_periodic(struct runner *r, struct cell *ci,
           }
           continue;
         }
-
-        /* Handle on the top-level cell's gravity business*/
-        const struct gravity_tensors *multi_j = cj->grav.multipole;
-
-        /* Skip empty cells */
-        if (multi_j->m_pole.M_000 == 0.f) continue;
 
         /* Minimal distance between any pair of particles */
         const double min_radius2 = cell_min_dist2(top, cj, periodic, dim);
@@ -378,9 +393,9 @@ void runner_do_grav_long_range_periodic(struct runner *r, struct cell *ci,
           multi_i->pot.interacted = 1;
 
         } /* We can interact with this cell */
-      }   /* Loop over relevant top-level cells (k) */
-    }     /* Loop over relevant top-level cells (j) */
-  }       /* Loop over relevant top-level cells (i) */
+      } /* Loop over relevant top-level cells (k) */
+    } /* Loop over relevant top-level cells (j) */
+  } /* Loop over relevant top-level cells (i) */
 
   /* When running with a zoom region we also need to loop over useful buffer
    * cells. We can play the same game here walking out only a certain number
@@ -424,6 +439,12 @@ void runner_do_grav_long_range_periodic(struct runner *r, struct cell *ci,
           /* Avoid self contributions  */
           if (top == cj) continue;
 
+          /* Handle on the top-level cell's gravity business*/
+          const struct gravity_tensors *multi_j = cj->grav.multipole;
+
+          /* Skip empty cells */
+          if (multi_j->m_pole.M_000 == 0.f) continue;
+
           /* If this is the void cell we need to interact with the zoom
            * cells.
            */
@@ -435,12 +456,6 @@ void runner_do_grav_long_range_periodic(struct runner *r, struct cell *ci,
             }
             continue;
           }
-
-          /* Handle on the top-level cell's gravity business*/
-          const struct gravity_tensors *multi_j = cj->grav.multipole;
-
-          /* Skip empty cells */
-          if (multi_j->m_pole.M_000 == 0.f) continue;
 
           /* Minimal distance between any pair of particles */
           const double min_radius2 = cell_min_dist2(top, cj, periodic, dim);
@@ -470,10 +485,10 @@ void runner_do_grav_long_range_periodic(struct runner *r, struct cell *ci,
             multi_i->pot.interacted = 1;
 
           } /* We can interact with this cell */
-        }   /* Buffer cell i loop. */
-      }     /* Buffer cell j loop. */
-    }       /* Buffer cell k loop. */
-  }         /* Buffer cells enabled. */
+        } /* Buffer cell i loop. */
+      } /* Buffer cell j loop. */
+    } /* Buffer cell k loop. */
+  } /* Buffer cells enabled. */
 }
 
 /**
@@ -575,7 +590,7 @@ void runner_do_long_range_zoom_periodic(struct runner *r, struct cell *ci,
       multi_i->pot.interacted = 1;
 
     } /* We can interact with this cell. */
-  }   /* Neighbour cell loop. */
+  } /* Neighbour cell loop. */
 }
 
 /**
@@ -660,6 +675,12 @@ void runner_do_grav_long_range_buffer_periodic(struct runner *r,
         /* Avoid self contributions  */
         if (top == cj) continue;
 
+        /* Handle on the top-level cell's gravity business*/
+        const struct gravity_tensors *multi_j = cj->grav.multipole;
+
+        /* Skip empty cells */
+        if (multi_j->m_pole.M_000 == 0.f) continue;
+
         /* If this is the void cell we need to interact with the zoom cells.
          */
         if (cj->subtype == cell_subtype_void) {
@@ -670,12 +691,6 @@ void runner_do_grav_long_range_buffer_periodic(struct runner *r,
           }
           continue;
         }
-
-        /* Handle on the top-level cell's gravity business*/
-        const struct gravity_tensors *multi_j = cj->grav.multipole;
-
-        /* Skip empty cells */
-        if (multi_j->m_pole.M_000 == 0.f) continue;
 
         /* Minimal distance between any pair of particles */
         const double min_radius2 = cell_min_dist2(top, cj, periodic, dim);
@@ -705,9 +720,9 @@ void runner_do_grav_long_range_buffer_periodic(struct runner *r,
           multi_i->pot.interacted = 1;
 
         } /* We can interact with this cell */
-      }   /* Buffer cell i loop. */
-    }     /* Buffer cell j loop. */
-  }       /* Buffer cell k loop. */
+      } /* Buffer cell i loop. */
+    } /* Buffer cell j loop. */
+  } /* Buffer cell k loop. */
 
   /* Finally we can interact with the background cells we need to by walking
    * out only as far as we need to from the empty cells above
@@ -775,9 +790,9 @@ void runner_do_grav_long_range_buffer_periodic(struct runner *r,
           multi_i->pot.interacted = 1;
 
         } /* We can interact with this cell */
-      }   /* Loop over relevant top-level cells (k) */
-    }     /* Loop over relevant top-level cells (j) */
-  }       /* Loop over relevant top-level cells (i) */
+      } /* Loop over relevant top-level cells (k) */
+    } /* Loop over relevant top-level cells (j) */
+  } /* Loop over relevant top-level cells (i) */
 }
 
 /**
