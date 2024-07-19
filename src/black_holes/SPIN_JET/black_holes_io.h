@@ -176,7 +176,7 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
                                                const int with_cosmology) {
 
   /* Say how much we want to write */
-  *num_fields = 59;
+  *num_fields = 62;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_bpart(
@@ -548,6 +548,25 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
       "holes, split by accretion mode. The components correspond to the "
       "radiative energy dumped in the thick, thin and slim disc modes, "
       "respectively.");
+
+  list[59] = io_make_output_field(
+      "LastRepositionVelocities", FLOAT, 1, UNIT_CONV_SPEED, 0.f, bparts,
+      last_repos_vel,
+      "Physical speeds at which the black holes repositioned most recently. "
+      "This is 0 for black holes that have never repositioned, or if the "
+      "simulation has been run without prescribed repositioning speed.");
+
+  list[60] = io_make_output_field(
+      "AccretionBoostFactors", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
+      accretion_boost_factor,
+      "Multiplicative factors by which the Bondi-Hoyle-Lyttleton accretion "
+      "rates have been increased by the density-dependent Booth & Schaye "
+      "(2009) accretion model.");
+
+  list[61] = io_make_output_field_convert_bpart(
+      "GasTemperatures", FLOAT, 1, UNIT_CONV_TEMPERATURE, 0.f, bparts,
+      convert_bpart_gas_temperatures,
+      "Temperature of the gas surrounding the black holes.");
 
 #ifdef DEBUG_INTERACTIONS_BLACK_HOLES
 
