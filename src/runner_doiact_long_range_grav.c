@@ -382,7 +382,7 @@ void runner_do_long_range_zoom_periodic(struct runner *r, struct cell *ci,
   /* We need to test whether we need a long range interaction at the same
    * level we used to define pair interactions (i.e. the top level void
    * cells). Therefore, get the top level void cell. */
-  struct cell *void_top = ci->void_parent->top;
+  struct cell *void_top = ci->top->void_parent->top;
 
   /* Because neighbours are by definition the background cells (or buffer
    * cells) within the mesh distance criterion we only need to check them
@@ -657,7 +657,7 @@ void runner_count_mesh_interactions(struct runner *r, struct cell *ci,
    * at the void cell top level. Therefore, for zoom cells we need to use
    * the top level void cell for considerations. */
   if (ci->type == cell_type_zoom) {
-    top = ci->void_parent->top;
+    top = ci->top->void_parent->top;
   }
 
   /* Loop over all other non-zoom cells and account for the
