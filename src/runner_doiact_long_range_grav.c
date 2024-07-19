@@ -128,11 +128,11 @@ void runner_do_grav_long_range_zoom_non_periodic(struct runner *r,
     struct cell *cj = &cells[cjd];
     struct gravity_tensors *const multi_j = cj->grav.multipole;
 
-    /* Avoid self contributions */
-    if (top == cj) continue;
-
     /* Skip empty cells */
     if (multi_j->m_pole.M_000 == 0.f) continue;
+
+    /* Avoid self contributions */
+    if (top == cj) continue;
 
     if (cell_can_use_pair_mm(top, cj, e, e->s, /*use_rebuild_data=*/1,
                              /*is_tree_walk=*/0,

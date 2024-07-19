@@ -126,7 +126,7 @@ static float space_get_current_hmax(
     h_max = buff;
   }
 #endif
-  if (verbose) message("h_max is %.3e (cell_min=%.3e).", h_max, s->cell_min);
+  if (verbose) message("h_max is %.3e (cell_min=%.3e).", h_max, cell_min);
 
   return h_max;
 }
@@ -143,19 +143,26 @@ static void space_new_cdim_from_hmax(const struct space *s, const float h_max,
 
   /* Get the right minimum cell size. */
   double cell_min;
+  double dim[3];
   if (!s->with_zoom_region) {
     cell_min = s->cell_min;
+    dim[0] = s->dim[0];
+    dim[1] = s->dim[1];
+    dim[2] = s->dim[2];
   } else {
     cell_min = s->zoom_props->cell_min;
+    dim[0] = s->zoom_props->dim[0];
+    dim[1] = s->zoom_props->dim[1];
+    dim[2] = s->zoom_props->dim[2];
   }
 
   /* Compute the new putative cell dimensions. */
-  cdim[0] = (int)floor(s->dim[0] /
-                       fmax(h_max * kernel_gamma * space_stretch, cell_min));
-  cdim[1] = (int)floor(s->dim[1] /
-                       fmax(h_max * kernel_gamma * space_stretch, cell_min));
-  cdim[2] = (int)floor(s->dim[2] /
-                       fmax(h_max * kernel_gamma * space_stretch, cell_min));
+  cdim[0] =
+      (int)floor(dim[0] / fmax(h_max * kernel_gamma * space_stretch, cell_min));
+  cdim[1] =
+      (int)floor(dim[1] / fmax(h_max * kernel_gamma * space_stretch, cell_min));
+  cdim[2] =
+      (int)floor(dim[2] / fmax(h_max * kernel_gamma * space_stretch, cell_min));
 
   /* Check that we have at least 1 cell in each dimension */
   if (cdim[0] == 0 || cdim[1] == 0 || cdim[2] == 0) {
@@ -512,10 +519,18 @@ void space_regrid(struct space *s, int verbose) {
   const ticks tic = getticks();
   const integertime_t ti_current = (s->e != NULL) ? s->e->ti_current : 0;
 
-  /* Get the current h_max. */
-  float h_max = space_get_current_hmax(s, s->local_cells_with_particles_top,
-                                       s->nr_local_cells_with_particles,
-                                       s->nr_cells, s->cell_min, verbose);
+  /* Get the current h_max. (In zoom land we only care about zoom cells.) */
+  float h_max;
+  if (!s->with_zoom_region) {
+    h_max = space_get_current_hmax(s, s->local_cells_with_particles_top,
+                                   s->nr_local_cells_with_particles,
+                                   s->nr_cells, s->cell_min, verbose);
+  } else {
+    h_max = space_get_current_hmax(
+        s, s->zoom_props->local_zoom_cells_with_particles_top,
+        s->zoom_props->nr_local_zoom_cells_with_particles,
+        s->zoom_props->nr_zoom_cells, s->zoom_props->cell_min, verbose);
+  }
 
   /* When running a zoom region if this is our first regrid then we need to get
    * the zoom region geometry before moving on. */
@@ -590,7 +605,7 @@ void space_regrid(struct space *s, int verbose) {
     space_partition_cells(s, oldnodeIDs, oldwidth, oldcdim, no_regrid);
 #endif
 
-  }      /* re-build upper-level cells? */
+  } /* re-build upper-level cells? */
   else { /* Otherwise, just clean up the cells. */
 
     /* Free the old sub-cells, if they were allocated, and reinitialise the top
