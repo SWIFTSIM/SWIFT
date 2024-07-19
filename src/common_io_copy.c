@@ -729,7 +729,9 @@ void io_copy_temp_buffer(void* temp, const struct engine* e,
                      threadpool_auto_chunk_size, (void*)&props);
 
     } else {
-      error("Missing conversion function");
+      
+      if (N != 0 && props.ptr_func != NULL)
+	error("Missing conversion function");
     }
   }
 
