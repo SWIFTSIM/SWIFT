@@ -152,6 +152,40 @@ void los_init(const double dim[3], struct los_props *los_params,
       los_params->range_when_shooting_down_axis[2]);
 }
 
+void los_io_output_check(const struct engine *e) {
+
+  /* What kind of run are we working with? */
+  struct swift_params *params = e->parameter_file;
+  const int with_cosmology = e->policy & engine_policy_cosmology;
+  const int with_cooling = e->policy & engine_policy_cooling;
+  const int with_temperature = e->policy & engine_policy_temperature;
+  const int with_fof = e->policy & engine_policy_fof;
+#ifdef HAVE_VELOCIRAPTOR
+  const int with_stf = (e->policy & engine_policy_structure_finding) &&
+                       (e->s->gpart_group_data != NULL);
+#else
+  const int with_stf = 0;
+#endif
+  const int with_rt = e->policy & engine_policy_rt;
+
+  int num_fields = 0;
+  struct io_props list[100];
+
+  /* Find all the gas output fields */
+  io_select_hydro_fields(e->s->parts, e->s->xparts, with_cosmology, with_cooling,
+                         with_temperature, with_fof, with_stf, with_rt, e,
+                         &num_fields, list);
+
+  /* Loop over each output field */
+  for (int i = 0; i < num_fields; i++) {
+
+    /* Did the user cancel this field? */
+    char field[PARSER_MAX_LINE_SIZE];
+    sprintf(field, "SelectOutputLOS:%.*s", FIELD_BUFFER_SIZE, list[i].name);
+    parser_get_opt_param_int(params, field, 1);
+  }
+}
+
 /**
  *  @brief Create a #line_of_sight object from its attributes
  */

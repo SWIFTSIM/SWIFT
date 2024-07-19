@@ -37,6 +37,7 @@
 
 /* Local headers. */
 #include "fof.h"
+#include "line_of_sight.h"
 #include "mpiuse.h"
 #include "part.h"
 #include "pressure_floor.h"
@@ -792,9 +793,11 @@ void engine_config(int restart, int fof, struct engine *e,
     /* Find the time of the first statistics output */
     engine_compute_next_statistics_time(e);
 
-    /* Find the time of the first line of sight output */
+    /* Find the time of the first line of sight output
+     * and verify the outputs */
     if (e->policy & engine_policy_line_of_sight) {
       engine_compute_next_los_time(e);
+      los_io_output_check(e);
     }
 
     /* Find the time of the first stf output */
