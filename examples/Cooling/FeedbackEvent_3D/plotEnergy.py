@@ -11,7 +11,6 @@ from unyt import Gyr, erg, mh, kb
 
 from makeIC import (
     gamma,
-    initial_density,
     initial_temperature,
     inject_temperature,
     mu,

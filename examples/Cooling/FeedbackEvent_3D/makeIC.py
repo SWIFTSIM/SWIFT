@@ -20,7 +20,7 @@
 from swiftsimio import Writer
 from swiftsimio.units import cosmo_units
 
-from unyt import cm, kpc, mh, msun, K, s, kb
+from unyt import cm, mh, msun, K, s, kb
 
 import h5py
 import numpy as np

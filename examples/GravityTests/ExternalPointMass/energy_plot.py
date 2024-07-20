@@ -2,7 +2,6 @@ import matplotlib
 
 matplotlib.use("Agg")
 from pylab import *
-import h5py
 
 # Plot parameters
 params = {

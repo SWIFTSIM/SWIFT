@@ -13,7 +13,6 @@ Usage:
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-import sys
 import argparse
 from os import path
 

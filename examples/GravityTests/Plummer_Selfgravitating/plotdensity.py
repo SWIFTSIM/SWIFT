@@ -1,7 +1,6 @@
 import numpy as np
 from matplotlib import pyplot as plt
 import argparse
-from scipy.optimize import curve_fit
 import h5py
 
 # Parse user input
