@@ -151,6 +151,9 @@ struct cooling_function_data {
 
   /*! Duration for switching off cooling after an event (e.g. supernovae) */
   double thermal_time;
+
+  /*! Maximal allowed density for cooling (in internal units). */
+  double cooling_density_max;
 };
 
 #endif /* SWIFT_COOLING_PROPERTIES_GRACKLE_H */

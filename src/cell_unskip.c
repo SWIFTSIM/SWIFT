@@ -847,7 +847,7 @@ void cell_activate_subcell_hydro_tasks(struct cell *ci, struct cell *cj,
 
     /* Get the orientation of the pair. */
     double shift[3];
-    const int sid = space_getsid(s->space, &ci, &cj, shift);
+    const int sid = space_getsid_and_swap_cells(s->space, &ci, &cj, shift);
 
     /* recurse? */
     if (cell_can_recurse_in_pair_hydro_task(ci) &&
@@ -959,7 +959,7 @@ void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
 
     /* Get the orientation of the pair. */
     double shift[3];
-    const int sid = space_getsid(s->space, &ci, &cj, shift);
+    const int sid = space_getsid_and_swap_cells(s->space, &ci, &cj, shift);
 
     const int ci_active = cell_need_activating_stars(ci, e, with_star_formation,
                                                      with_star_formation_sink);
@@ -1090,7 +1090,7 @@ void cell_activate_subcell_black_holes_tasks(struct cell *ci, struct cell *cj,
 
     /* Get the orientation of the pair. */
     double shift[3];
-    const int sid = space_getsid(s->space, &ci, &cj, shift);
+    const int sid = space_getsid_and_swap_cells(s->space, &ci, &cj, shift);
 
     const int ci_active = cell_is_active_black_holes(ci, e);
     const int cj_active = cell_is_active_black_holes(cj, e);
@@ -1197,7 +1197,7 @@ void cell_activate_subcell_sinks_tasks(struct cell *ci, struct cell *cj,
   else {
     /* Get the orientation of the pair. */
     double shift[3];
-    const int sid = space_getsid(s->space, &ci, &cj, shift);
+    const int sid = space_getsid_and_swap_cells(s->space, &ci, &cj, shift);
 
     const int ci_active =
         cell_is_active_sinks(ci, e) || cell_is_active_hydro(ci, e);
@@ -1586,7 +1586,7 @@ void cell_activate_subcell_rt_tasks(struct cell *ci, struct cell *cj,
 
     /* Get the orientation of the pair. */
     double shift[3];
-    const int sid = space_getsid(s->space, &ci, &cj, shift);
+    const int sid = space_getsid_and_swap_cells(s->space, &ci, &cj, shift);
 
     /* recurse? */
     if (cell_can_recurse_in_pair_hydro_task(ci) &&
