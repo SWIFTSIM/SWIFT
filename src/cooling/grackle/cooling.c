@@ -64,6 +64,10 @@ gr_float cooling_time(const struct phys_const* phys_const,
                       const struct cooling_function_data* cooling,
                       const struct part* p, struct xpart* xp);
 
+double cooling_get_physical_density(
+    const struct part* p, const struct cosmology* cosmo,
+    const struct cooling_function_data* cooling);
+
 /**
  * @brief Common operations performed on the cooling function at a
  * given time-step or redshift.
@@ -418,6 +422,7 @@ void cooling_print_backend(const struct cooling_function_data* cooling) {
   message("UV background = %d", cooling->with_uv_background);
   message("Metal cooling = %i", cooling->chemistry_data.metal_cooling);
   message("Self Shielding = %i", cooling->self_shielding_method);
+  message("Maximal density = %e", cooling->cooling_density_max);
   if (cooling->self_shielding_method == -1) {
     message("Self Shelding density = %g", cooling->self_shielding_threshold);
   }
@@ -914,7 +919,7 @@ gr_float cooling_new_energy(const struct phys_const* phys_const,
   data.grid_end = grid_end;
 
   /* general particle data */
-  gr_float density = hydro_get_physical_density(p, cosmo);
+  gr_float density = cooling_get_physical_density(p, cosmo, cooling);
   gr_float energy = hydro_get_physical_internal_energy(p, xp, cosmo) +
                     dt_therm * hydro_get_physical_internal_energy_dt(p, cosmo);
   energy = max(energy, hydro_props->minimal_internal_energy);
@@ -992,7 +997,7 @@ gr_float cooling_time(const struct phys_const* phys_const,
   data.grid_end = grid_end;
 
   /* general particle data */
-  gr_float density = hydro_get_physical_density(p, cosmo);
+  gr_float density = cooling_get_physical_density(p, cosmo, cooling);
   gr_float energy = hydro_get_physical_internal_energy(p, xp, cosmo);
   energy = max(energy, hydro_props->minimal_internal_energy);
 
@@ -1339,7 +1344,7 @@ void cooling_init_backend(struct swift_params* parameter_file,
     error("Grackle with multiple particles not implemented");
 
   /* read parameters */
-  cooling_read_parameters(parameter_file, cooling, phys_const);
+  cooling_read_parameters(parameter_file, cooling, phys_const, us);
 
   /* Set up the units system. */
   cooling_init_units(us, phys_const, cooling);
@@ -1390,4 +1395,42 @@ void cooling_struct_restore(struct cooling_function_data* cooling, FILE* stream,
 
   /* Set up grackle */
   cooling_init_grackle(cooling);
+}
+
+/**
+ * @brief Get the density of the #part. If the density is bigger than
+ * cooling_density_max, then we floor the density to this value.
+ *
+ * This function ensures that we pass to grackle a density value that is not
+ * to big to ensure good working of grackle.
+ *
+ * Note: This function is called in cooling_time() and cooling_new_energy().
+ *
+ * @param p #part data.
+ * @param cosmo #cosmology data structure.
+ * @param cooling #cooling_function_data struct.
+ */
+double cooling_get_physical_density(
+    const struct part* p, const struct cosmology* cosmo,
+    const struct cooling_function_data* cooling) {
+
+  const double part_density = hydro_get_physical_density(p, cosmo);
+  const double cooling_max_density = cooling->cooling_density_max;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (cooling_max_density > 0.0 && part_density > cooling_max_density) {
+    warning(
+        "Gas particle %lld physical density (%e) is higher than the maximal "
+        "physical density set in the parameter files (%e).",
+        p->id, part_density, cooling_max_density);
+  }
+#endif
+  /* Maximal density cooling is defined */
+  if (cooling_max_density > 0.0) {
+    return fminf(part_density, cooling_max_density);
+  }
+  /* else ( if cooling_max_density <= 0) we do not want to use a density
+     threshold, then return the part density. */
+
+  return part_density;
 }

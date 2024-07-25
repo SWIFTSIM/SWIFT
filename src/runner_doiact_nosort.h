@@ -20,7 +20,7 @@ void DOPAIR1_NOSORT(struct runner *r, struct cell *ci, struct cell *cj) {
 
   /* Get the relative distance between the pairs, wrapping. */
   double shift[3] = {0.0, 0.0, 0.0};
-  space_getsid(e->s, &ci, &cj, shift);
+  space_getsid_and_swap_cells(e->s, &ci, &cj, shift);
 
   const int count_i = ci->count;
   const int count_j = cj->count;
@@ -145,7 +145,7 @@ void DOPAIR2_NOSORT(struct runner *r, struct cell *ci, struct cell *cj) {
 
   /* Get the relative distance between the pairs, wrapping. */
   double shift[3] = {0.0, 0.0, 0.0};
-  space_getsid(e->s, &ci, &cj, shift);
+  space_getsid_and_swap_cells(e->s, &ci, &cj, shift);
 
   const int count_i = ci->count;
   const int count_j = cj->count;
