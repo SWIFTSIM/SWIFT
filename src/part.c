@@ -364,11 +364,17 @@ void part_verify_links(struct part *parts, struct gpart *gparts,
       const struct bpart *bpart = &bparts[-gparts[k].id_or_neg_offset];
 
       /* Check the reverse link */
-      if (bpart->gpart != &gparts[k]) error("Linking problem ! k=%ld, bpart->gpart=%p  &gparts[k]=%p bpart->id=%lld gparts[k].id_or_neg_offset=%lld gparts[k].time_bin=%d bpart.time_bin=%d gp->x=[%e %e %e] bp->x=[%e %e %e] diff=[%e %e %e]",
-					    k, bpart->gpart, &gparts[k], bpart->id, gparts[k].id_or_neg_offset, gparts[k].time_bin, bpart->time_bin,
-					    gparts[k].x[0], gparts[k].x[1], gparts[k].x[2], bpart->x[0],
-					    bpart->x[1], bpart->x[2], gparts[k].x[0] - bpart->x[0],
-					    gparts[k].x[1] - bpart->x[1], gparts[k].x[2] - bpart->x[2]);
+      if (bpart->gpart != &gparts[k])
+        error(
+            "Linking problem ! k=%ld, bpart->gpart=%p  &gparts[k]=%p "
+            "bpart->id=%lld gparts[k].id_or_neg_offset=%lld "
+            "gparts[k].time_bin=%d bpart.time_bin=%d gp->x=[%e %e %e] "
+            "bp->x=[%e %e %e] diff=[%e %e %e]",
+            k, bpart->gpart, &gparts[k], bpart->id, gparts[k].id_or_neg_offset,
+            gparts[k].time_bin, bpart->time_bin, gparts[k].x[0], gparts[k].x[1],
+            gparts[k].x[2], bpart->x[0], bpart->x[1], bpart->x[2],
+            gparts[k].x[0] - bpart->x[0], gparts[k].x[1] - bpart->x[1],
+            gparts[k].x[2] - bpart->x[2]);
 
       /* Check that the particles are at the same place */
       if (gparts[k].x[0] != bpart->x[0] || gparts[k].x[1] != bpart->x[1] ||

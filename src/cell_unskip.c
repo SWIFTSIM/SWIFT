@@ -2009,7 +2009,7 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
 #ifdef WITH_MPI
   const int with_star_formation = e->policy & engine_policy_star_formation;
 #endif
-  
+
   /* Un-skip the gravity tasks involved with this cell. */
   for (struct link *l = c->grav.grav; l != NULL; l = l->next) {
     struct task *t = l->t;
@@ -2076,7 +2076,6 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
           }
         }
 
-	
       } else if (cj_nodeID != nodeID) {
         /* If the local cell is active, receive data from the foreign cell. */
         if (ci_active)
@@ -2103,7 +2102,7 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
             scheduler_activate_send(s, ci->mpi.send, task_subtype_grav_counts,
                                     cj_nodeID);
           }
-        }       
+        }
       }
 #endif
     }
