@@ -37,6 +37,9 @@ Snapshots:
 
 Scheduler:
   links_per_tasks: 500
+  cell_extra_sparts: 200
+  cell_extra_gparts: 200
+
 
 # Parameters governing the conserved quantities statistics
 Statistics:

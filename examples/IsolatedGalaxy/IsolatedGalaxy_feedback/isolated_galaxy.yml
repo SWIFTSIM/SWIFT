@@ -10,6 +10,11 @@ InternalUnitSystem:
   UnitCurrent_in_cgs:  1             # Amperes
   UnitTemp_in_cgs:     1             # Kelvin
 
+Scheduler:
+  cell_extra_sparts: 1000
+  cell_extra_gparts: 1000
+
+
 # Parameters for the self-gravity scheme
 Gravity:
   eta:          0.025                 # Constant dimensionless multiplier for time integration.

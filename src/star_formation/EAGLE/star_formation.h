@@ -524,7 +524,7 @@ INLINE static int star_formation_should_convert_to_star(
  */
 INLINE static int star_formation_should_spawn_spart(
     struct part* p, struct xpart* xp, const struct star_formation* starform) {
-  return 0;
+  return 8;
 }
 
 /**
@@ -579,10 +579,10 @@ INLINE static void star_formation_copy_properties(
     const int convert_part) {
 
   /* Store the current mass */
-  sp->mass = hydro_get_mass(p);
+  sp->mass = hydro_get_mass(p) / 8.;
 
   /* Store the current mass as the initial mass */
-  sp->mass_init = hydro_get_mass(p);
+  sp->mass_init = hydro_get_mass(p) / 8.;
 
   /* Store either the birth_scale_factor or birth_time depending  */
   if (with_cosmology) {
@@ -613,6 +613,29 @@ INLINE static void star_formation_copy_properties(
   sp->last_enrichment_time = sp->birth_time;
   sp->count_since_last_enrichment = -1;
   sp->number_of_heating_events = 0.;
+
+  const float max_displacement = 0.1;
+  const double delta_x =
+      2.f * random_unit_interval(sp->id, e->ti_current,
+                                 (enum random_number_type)0) -
+      1.f;
+  const double delta_y =
+      2.f * random_unit_interval(sp->id, e->ti_current,
+                                 (enum random_number_type)1) -
+      1.f;
+  const double delta_z =
+      2.f * random_unit_interval(sp->id, e->ti_current,
+                                 (enum random_number_type)2) -
+      1.f;
+
+  sp->x[0] += delta_x * max_displacement * p->h;
+  sp->x[1] += delta_y * max_displacement * p->h;
+  sp->x[2] += delta_z * max_displacement * p->h;
+
+  /* Copy the position to the gpart */
+  sp->gpart->x[0] = sp->x[0];
+  sp->gpart->x[1] = sp->x[1];
+  sp->gpart->x[2] = sp->x[2];
 }
 
 /**
