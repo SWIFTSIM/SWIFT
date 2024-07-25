@@ -421,91 +421,101 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
 
             /* Convert the gas particle to a star particle */
             struct spart *sp = NULL;
-            const int spawn_spart =
+            int spawn_spart =
                 star_formation_should_spawn_spart(p, xp, sf_props);
 
-            /* Are we using a model that actually generates star particles? */
-            if (swift_star_formation_model_creates_stars) {
+            while (spawn_spart) {
 
-              /* Check if we should create a new particle or transform one */
-              if (spawn_spart) {
-                /* Spawn a new spart (+ gpart) */
-                sp = cell_spawn_new_spart_from_part(e, c, p, xp);
-              } else {
-                /* Convert the gas particle to a star particle */
-                sp = cell_convert_part_to_spart(e, c, p, xp);
+              spawn_spart--;
+
+              /* Are we using a model that actually generates star particles? */
+              if (swift_star_formation_model_creates_stars) {
+
+                /* Check if we should create a new particle or transform one */
+                if (spawn_spart) {
+                  /* Spawn a new spart (+ gpart) */
+                  sp = cell_spawn_new_spart_from_part(e, c, p, xp);
+                  message("Spawning star %d from %lld", spawn_spart, p->id);
+                } else {
+                  /* Convert the gas particle to a star particle */
+                  sp = cell_convert_part_to_spart(e, c, p, xp);
+                  message("Converting star %d from %lld", spawn_spart, p->id);
 #ifdef WITH_CSDS
-                /* Write the particle */
-                /* Logs all the fields request by the user */
-                // TODO select only the requested fields
-                csds_log_part(e->csds, p, xp, e, /* log_all */ 1,
-                              csds_flag_change_type, swift_type_stars);
+                  /* Write the particle */
+                  /* Logs all the fields request by the user */
+                  // TODO select only the requested fields
+                  csds_log_part(e->csds, p, xp, e, /* log_all */ 1,
+                                csds_flag_change_type, swift_type_stars);
 #endif
+                }
+
+              } else {
+
+                /* We are in a model where spart don't exist
+                 * --> convert the part to a DM gpart */
+                cell_convert_part_to_gpart(e, c, p, xp);
               }
 
-            } else {
+              /* Did we get a star? (Or did we run out of spare ones?) */
+              if (sp != NULL) {
 
-              /* We are in a model where spart don't exist
-               * --> convert the part to a DM gpart */
-              cell_convert_part_to_gpart(e, c, p, xp);
-            }
+                /* message("We formed a star id=%lld cellID=%lld", sp->id,
+                 * c->cellID); */
 
-            /* Did we get a star? (Or did we run out of spare ones?) */
-            if (sp != NULL) {
+                /* Copy the properties of the gas particle to the star particle
+                 */
+                star_formation_copy_properties(
+                    p, xp, sp, e, sf_props, cosmo, with_cosmology, phys_const,
+                    hydro_props, us, cooling, !spawn_spart);
 
-              /* message("We formed a star id=%lld cellID=%lld", sp->id,
-               * c->cellID); */
+                /* Update the Star formation history */
+                star_formation_logger_log_new_spart(sp, &c->stars.sfh);
 
-              /* Copy the properties of the gas particle to the star particle */
-              star_formation_copy_properties(
-                  p, xp, sp, e, sf_props, cosmo, with_cosmology, phys_const,
-                  hydro_props, us, cooling, !spawn_spart);
+                /* Update the h_max */
+                c->stars.h_max = max(c->stars.h_max, sp->h);
+                c->stars.h_max_active = max(c->stars.h_max_active, sp->h);
 
-              /* Update the Star formation history */
-              star_formation_logger_log_new_spart(sp, &c->stars.sfh);
+                /* Update the displacement information */
+                if (star_formation_need_update_dx_max) {
+                  const float dx2_part = xp->x_diff[0] * xp->x_diff[0] +
+                                         xp->x_diff[1] * xp->x_diff[1] +
+                                         xp->x_diff[2] * xp->x_diff[2];
+                  const float dx2_sort =
+                      xp->x_diff_sort[0] * xp->x_diff_sort[0] +
+                      xp->x_diff_sort[1] * xp->x_diff_sort[1] +
+                      xp->x_diff_sort[2] * xp->x_diff_sort[2];
 
-              /* Update the h_max */
-              c->stars.h_max = max(c->stars.h_max, sp->h);
-              c->stars.h_max_active = max(c->stars.h_max_active, sp->h);
+                  const float dx_part = sqrtf(dx2_part);
+                  const float dx_sort = sqrtf(dx2_sort);
 
-              /* Update the displacement information */
-              if (star_formation_need_update_dx_max) {
-                const float dx2_part = xp->x_diff[0] * xp->x_diff[0] +
-                                       xp->x_diff[1] * xp->x_diff[1] +
-                                       xp->x_diff[2] * xp->x_diff[2];
-                const float dx2_sort = xp->x_diff_sort[0] * xp->x_diff_sort[0] +
-                                       xp->x_diff_sort[1] * xp->x_diff_sort[1] +
-                                       xp->x_diff_sort[2] * xp->x_diff_sort[2];
-
-                const float dx_part = sqrtf(dx2_part);
-                const float dx_sort = sqrtf(dx2_sort);
-
-                /* Note: no need to update quantities further up the tree as
-                   this task is always called at the top-level */
-                c->hydro.dx_max_part = max(c->hydro.dx_max_part, dx_part);
-                c->hydro.dx_max_sort = max(c->hydro.dx_max_sort, dx_sort);
-              }
+                  /* Note: no need to update quantities further up the tree as
+                     this task is always called at the top-level */
+                  c->hydro.dx_max_part = max(c->hydro.dx_max_part, dx_part);
+                  c->hydro.dx_max_sort = max(c->hydro.dx_max_sort, dx_sort);
+                }
 
 #ifdef WITH_CSDS
-              if (spawn_spart) {
-                /* Set to zero the csds data. */
-                csds_part_data_init(&sp->csds_data);
-              } else {
-                /* Copy the properties back to the stellar particle */
-                sp->csds_data = xp->csds_data;
-              }
+                if (spawn_spart) {
+                  /* Set to zero the csds data. */
+                  csds_part_data_init(&sp->csds_data);
+                } else {
+                  /* Copy the properties back to the stellar particle */
+                  sp->csds_data = xp->csds_data;
+                }
 
-              /* Write the s-particle */
-              csds_log_spart(e->csds, sp, e, /* log_all */ 1, csds_flag_create,
-                             /* data */ 0);
+                /* Write the s-particle */
+                csds_log_spart(e->csds, sp, e, /* log_all */ 1,
+                               csds_flag_create,
+                               /* data */ 0);
 #endif
-            } else if (swift_star_formation_model_creates_stars) {
+              } else if (swift_star_formation_model_creates_stars) {
 
-              /* Do something about the fact no star could be formed.
-                 Note that in such cases a tree rebuild to create more free
-                 slots has already been triggered by the function
-                 cell_convert_part_to_spart() */
-              star_formation_no_spart_available(e, p, xp);
+                /* Do something about the fact no star could be formed.
+                   Note that in such cases a tree rebuild to create more free
+                   slots has already been triggered by the function
+                   cell_convert_part_to_spart() */
+                star_formation_no_spart_available(e, p, xp);
+              }
             }
           }
 
