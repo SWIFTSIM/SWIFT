@@ -116,7 +116,7 @@ struct cell_grav {
 
   /*! Is the #multipole data of this cell being used in a sub-cell? */
   int mhold;
-  
+
   /*! Number of M-M tasks that are associated with this cell. */
   short int nr_mm_tasks;
 };
