@@ -853,6 +853,9 @@ float stellar_evolution_compute_initial_mass(
     /* No need to convert from internal units to M_sun because the masses are
        already in solar masses (to avoid numerical errors) */
     m_init = M_IMF_tot;
+  } else {
+    /* single_star case */
+    m_init = sp->sf_data.birth_mass / phys_const->const_solar_mass;
   }
 
   return m_init;
