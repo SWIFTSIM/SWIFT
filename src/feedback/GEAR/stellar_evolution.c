@@ -525,8 +525,9 @@ void stellar_evolution_evolve_spart(
   special treatment. They do not contain stars above the mass that separate the
   IMF into two parts (variable called minimal_discrete_mass in the sink
   module). So, if m_beg_step > minimal_discrete_mass, you don't do feedback.
-  Note that we need to treat separately the first stars and the other stars
-  because they do not have the same minimal_discrete_mass. */
+  Note that the sm structure contains different information for the 'first
+  stars' and the 'late stars'. The right sm data is passed to this function so
+   we do not need any special treatment here. */
   if (sp->feedback_data.star_type == star_population_continuous_IMF) {
     const float minimal_discrete_mass = sm->imf.minimal_discrete_mass;
 
