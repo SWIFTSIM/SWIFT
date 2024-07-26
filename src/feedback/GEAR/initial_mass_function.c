@@ -632,15 +632,23 @@ INLINE double initial_mass_function_sample_power_law(double min_mass,
   return pow(x * (pmax - pmin) + pmin, 1. / exp);
 }
 
-/** @brief
+/** @brief Compute the mass of the continuous and discrete part of the
+ * IMF. Also compute the total mass of the IMF.
  *
- * Note: This function does not verify if it computes the masses for the first
- * stars or not. You need to verify this before this function and pass the
+ * This function is used when we deal with an IMF split into two parts,
+ * e.g. with the sink particles or the stellar feedback.
+ *
+ * Note: This function does not verify wheter it computes the masses for the
+ * first stars or not. You need to verify this before this function and pass the
  * correct values to 'minimal_discrete_mass' and 'stellar_particle_mass'.
  *
+ * Note 2: This function implicitiely assumes M_sun since the IMF data
+ * structures handles the masses in M_sun.
+ *
  * @param imf The #initial_mass_function.
- * @param minimal_discrete_mass
- * @param stellar_particle_mass
+ * @param minimal_discrete_mass Minimal mass for the discrete stars.
+ * @param stellar_particle_mass Mass of th stars particles of the IMF
+ * continuous part.
  * @param (return) M_continuous Mass of the continous part of the IMF.
  * @param (return) M_discrete Mass of the discrete part of the IMF.
  * @param (return) M_tot Total mass of the IMF.
