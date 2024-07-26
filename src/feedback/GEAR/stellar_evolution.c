@@ -824,13 +824,14 @@ void stellar_evolution_clean(struct stellar_model* sm) {
 }
 
 /**
- * @brief Computes the initial mass of a #spart. This function distinguish
+ * @brief Computes the initial mass of a #spart. This function distinguishes
  * between the stellar particle representing a whole IMF and the stellar
  * particles representing only the continuous part.
  *
- * @param sp The particle to compute the initial mass
+ * @param sp The particle for which we compute the initial mass.
  * @param sm The #stellar_model structure.
- * @param phys_const The phy
+ * @param phys_const the physical constants in internal units.
+ * @param (return) m_init Initial mass of the star particle (in M_sun).
  */
 float stellar_evolution_compute_initial_mass(
     const struct spart* restrict sp, const struct stellar_model* sm,
