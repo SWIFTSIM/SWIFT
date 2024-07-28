@@ -103,7 +103,7 @@ INLINE static void convert_sink_target_mass(const struct engine *e,
 }
 
 INLINE static void convert_sink_swallowed_angular_momentum(const struct engine* e,
-                                    const struct sink* sink, double* ret) {
+                                    const struct sink* sink, float* ret) {
   ret[0] = sink->swallowed_angular_momentum[0];
   ret[1] = sink->swallowed_angular_momentum[1];
   ret[2] = sink->swallowed_angular_momentum[2];
@@ -122,7 +122,7 @@ INLINE static void sink_write_particles(const struct sink* sinks,
                                         int with_cosmology) {
 
   /* Say how much we want to write */
-  *num_fields = 7;
+  *num_fields = 9;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_sink(
@@ -155,11 +155,11 @@ INLINE static void sink_write_particles(const struct sink* sinks,
 
   list[7] = io_make_output_field(
 	    "Nstars", INT, 1, UNIT_CONV_NO_UNITS, 0.f, sinks,
-	    n_stars, "Number of stars spawned by the sink");
+	    n_stars, "Number of stars spawned by the sink particles");
 
   // TODO: Check the a_factor parameter. The swallowed momentum is in PHYSICAL units.
   list[8] = io_make_output_field_convert_sink(
-      "swallowed_angular_momentum", FLOAT, 3, UNIT_CONV_LENGTH, 0.f, sinks,
+      "SwallowedAngularMomentum", FLOAT, 3, UNIT_CONV_ANGULAR_MOMENTUM, 0.f, sinks,
       convert_sink_swallowed_angular_momentum, "Physical swallowed angular momentum of the particles");
 
 #ifdef DEBUG_INTERACTIONS_SINKS
