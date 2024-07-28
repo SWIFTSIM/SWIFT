@@ -63,7 +63,7 @@ struct sink {
   /*! Particle time bin */
   timebin_t time_bin;
 
-  /*! number of stars contained in the sink */
+  /*! Number of stars spawned by thi sink */
   int n_stars;
 
   /*! Total (physical) angular momentum accumulated by swallowing particles */
