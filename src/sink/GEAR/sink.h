@@ -458,12 +458,25 @@ INLINE static void sink_copy_properties(
   sink_mark_sink_as_not_swallowed(&sink->merger_data);
 
   /* Additional initialisation */
+  sp->number_of_gas_swallows = 0;
+  sp->number_of_direct_gas_swallows = 0;
+  sp->number_of_sink_swallows = 0;
+  sp->number_of_direct_sink_swallows = 0;
+  sp->swallowed_angular_momentum[0] = 0.f;
+  sp->swallowed_angular_momentum[1] = 0.f;
+  sp->swallowed_angular_momentum[2] = 0.f;
+  sp->n_stars = 0;
+
+  sp->has_IMF_changed_from_popIII_to_popII = 0;
 
   /* setup the target mass for sink star formation */
   sink_update_target_mass(sink, sink_props, e, 0);
 
   /* Copy the chemistry properties */
   chemistry_copy_sink_properties(p, xp, sink);
+
+  /* Note, we do not need to update sp->mass_tot_before_star_spawning because
+     it is performed within the 'sink_init_sink()' function. */
 }
 
 /**
