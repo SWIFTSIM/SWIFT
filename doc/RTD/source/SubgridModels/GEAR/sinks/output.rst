@@ -25,6 +25,14 @@ Sink particles
 |                                       | |                                   |           | | such a star. Such rare behaviour may bias the   |
 |                                       | |                                   |           | | IMF towards high masses.                        |
 +---------------------------------------+-------------------------------------+-----------+---------------------------------------------------+
+| ``Nstars``                            | | Number of stars created by the    | [-]       |                                                   |
+|                                       | | the sink particles                |           |                                                   |
+|                                       | |                                   |           |                                                   |
++---------------------------------------+-------------------------------------+-----------+---------------------------------------------------+
+| ``SwallowedAngularMomentum``          | | Total angular momentum swallowed  | [U_M U_L  |                                                   |
+|                                       | | by the sink particles             |  ^2 U_T   |                                                   |
+|                                       | |                                   |  ^-1]     |                                                   |
++---------------------------------------+-------------------------------------+-----------+---------------------------------------------------+
 | ``MetalMassFractions``                | | Mass fraction of each metal       | [-]       | | Array of length ``N`` for each particles. The   |
 |                                       | | element                           |           | | number of elements ``N`` is determined at       |
 |                                       | |                                   |           | | compile time by ``--with-chemistry=GEAR_N``.    |
