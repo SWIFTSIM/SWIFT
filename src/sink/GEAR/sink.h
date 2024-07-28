@@ -134,6 +134,7 @@ __attribute__((always_inline)) INLINE static void sink_first_init_sink(
   sp->swallowed_angular_momentum[0] = 0.f;
   sp->swallowed_angular_momentum[1] = 0.f;
   sp->swallowed_angular_momentum[2] = 0.f;
+  sp->n_stars = 0;
 
   sp->has_IMF_changed_from_popIII_to_popII = 0;
 
@@ -608,6 +609,9 @@ __attribute__((always_inline)) INLINE static void sink_swallow_sink(
   /* Add all other swallowed particles swallowed by the swallowed sink */
   spi->number_of_sink_swallows += spj->number_of_sink_swallows;
   spi->number_of_gas_swallows += spj->number_of_gas_swallows;
+
+  /* Add the stars spawned by the swallowed sink */
+  spi->n_stars += spj->n_stars;
 
   /* Update the total mass before star spawning */
   spi->mass_tot_before_star_spawning = spi->mass;
