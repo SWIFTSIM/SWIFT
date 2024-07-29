@@ -2484,8 +2484,7 @@ void engine_link_gravity_tasks(struct engine *e) {
         /* Unlock the void cell tree grav down */
         scheduler_addunlock(sched, t, ci->top->void_parent->grav.down_in);
       }
-    }
-    if (cj != NULL && cj->type == cell_type_zoom) {
+    } else if (cj != NULL && cj->type == cell_type_zoom) {
 
       /* Do we have a gravity task? */
       if (t_subtype == task_subtype_grav || t_type == task_type_grav_mm) {
