@@ -26,6 +26,7 @@
 
 /* Local includes */
 #include "cell.h"
+#include "engine.h"
 #include "multipole.h"
 #include "space.h"
 #include "zoom.h"
@@ -1001,7 +1002,7 @@ void zoom_link_void_leaves(struct space *s, struct cell *c) {
  * @param e The engine.
  * @param c The void cell.
  */
-static zoom_init_void_mpoles_recursive(struct engine *e, struct cell *c) {
+static void zoom_init_void_mpoles_recursive(struct engine *e, struct cell *c) {
 
   /* Drift the multipole. */
   cell_drift_multipole(c, e);
