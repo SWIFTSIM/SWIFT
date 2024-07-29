@@ -34,6 +34,7 @@ struct runner;
 struct cell;
 
 void runner_do_grav_down(struct runner *r, struct cell *c, int timer);
+void runner_zoom_do_void_grav_down(struct runner *r, struct cell *c, int timer);
 
 void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj,
                            const int symmetric, const int allow_mpole);

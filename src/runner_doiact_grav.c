@@ -170,6 +170,72 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
 }
 
 /**
+ * @brief Recursively propagate the void cell multipoles down the tree by
+ * applying the L2L kernel.
+ *
+ * This is only ever applied in zoom land when we have void cells above the zoom
+ * region. Void cells are always split until we reach the leaf level where the
+ * zoom cells are attached. The zoom cells are handled by normal
+ * runner_do_grav_down calls.
+ *
+ * @param r The #runner.
+ * @param c The #cell we are working on.
+ * @param timer Are we timing this ?
+ */
+void runner_zoom_do_void_grav_down(struct runner *r, struct cell *c,
+                                   int timer) {
+
+  /* Some constants */
+  const struct engine *e = r->e;
+
+  TIMER_TIC;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->grav.ti_old_multipole != e->ti_current)
+    error("c->multipole not drifted.");
+  if (c->grav.multipole->pot.ti_init != e->ti_current)
+    error("c->field tensor not initialised");
+  if (c->subtype !-cell_subtype_void) error("Not a void cell!");
+#endif
+
+  /* Add the field-tensor to all the 8 progenitors */
+  for (int k = 0; k < 8; ++k) {
+    struct cell *cp = c->progeny[k];
+
+#ifdef SWIFT_DEBUG_CHECKS
+    if (cp->grav.ti_old_multipole != e->ti_current)
+      error("cp->multipole not drifted.");
+    if (cp->grav.multipole->pot.ti_init != e->ti_current)
+      error("cp->field tensor not initialised");
+#endif
+    /* If the tensor received any contribution, push it down */
+    if (c->grav.multipole->pot.interacted) {
+
+      struct grav_tensor shifted_tensor;
+
+      /* Shift the field tensor */
+      gravity_L2L(&shifted_tensor, &c->grav.multipole->pot,
+                  cp->grav.multipole->CoM, c->grav.multipole->CoM);
+
+      /* Add it to this level's tensor */
+      gravity_field_tensors_add(&cp->grav.multipole->pot, &shifted_tensor);
+    }
+
+    /* Recurse but only if the progeny is still a void cell. */
+    if (cp->subtype == cell_subtype_void) {
+      runner_zoom_do_void_grav_down(r, cp, 0);
+    }
+  }
+
+#ifndef SWIFT_TASKS_WITHOUT_ATOMICS
+  /* All done -> unlock the cell */
+  if (lock_unlock(&c->grav.plock) != 0) error("Error unlocking cell");
+#endif
+
+  if (timer) TIMER_TOC(timer_dograv_down);
+}
+
+/**
  * @brief Compute the fully Newtonian gravitational forces from particles
  * one array onto the particles in another array
  *
