@@ -2886,6 +2886,11 @@ int cell_unskip_black_holes_tasks(struct cell *c, struct scheduler *s) {
 int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
 
   struct engine *e = s->space->e;
+#ifdef WITH_MPI
+  const int with_sinks = (e->policy & engine_policy_sinks);
+  const int with_stars = (e->policy & engine_policy_stars);
+  const int with_star_formation_sink = with_sinks && with_stars;
+#endif
   const int with_timestep_sync = (e->policy & engine_policy_timestep_sync);
   const int with_feedback = e->policy & engine_policy_feedback;
   const int nodeID = e->nodeID;
@@ -2999,9 +3004,9 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
 
           /* Receive the foreign parts to compute BH accretion rates and do the
            * swallowing */
-          scheduler_activate_recv(s, ci->mpi.recv, task_subtype_rho);
-          scheduler_activate_recv(s, ci->mpi.recv, task_subtype_sink_part_swallow);
-          scheduler_activate_recv(s, ci->mpi.recv, task_subtype_sink_merger);
+          /* scheduler_activate_recv(s, ci->mpi.recv, task_subtype_rho); */
+          /* scheduler_activate_recv(s, ci->mpi.recv, task_subtype_sink_part_swallow); */
+          /* scheduler_activate_recv(s, ci->mpi.recv, task_subtype_sink_merger); */
 
           /* Send the local BHs to do feedback */
 	  /* Note: No feedback for sinks.
@@ -3022,11 +3027,11 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
           /* scheduler_activate_recv(s, ci->mpi.recv, task_subtype_bpart_feedback); */
 
           /* Send the local part information */
-          scheduler_activate_send(s, cj->mpi.send, task_subtype_rho, ci_nodeID);
-          scheduler_activate_send(s, cj->mpi.send, task_subtype_sink_part_swallow,
-                                  ci_nodeID);
-          scheduler_activate_send(s, cj->mpi.send, task_subtype_sink_merger,
-                                  ci_nodeID);
+          /* scheduler_activate_send(s, cj->mpi.send, task_subtype_rho, ci_nodeID); */
+          /* scheduler_activate_send(s, cj->mpi.send, task_subtype_sink_part_swallow, */
+                                  /* ci_nodeID); */
+          /* scheduler_activate_send(s, cj->mpi.send, task_subtype_sink_merger, */
+                                  /* ci_nodeID); */
 
           /* Drift the cell which will be sent; note that not all sent
              particles will be drifted, only those that are needed. */
@@ -3061,9 +3066,9 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
 
           /* Receive the foreign parts to compute BH accretion rates and do the
            * swallowing */
-          scheduler_activate_recv(s, cj->mpi.recv, task_subtype_rho);
-          scheduler_activate_recv(s, cj->mpi.recv, task_subtype_sink_part_swallow);
-          scheduler_activate_recv(s, cj->mpi.recv, task_subtype_sink_merger);
+          /* scheduler_activate_recv(s, cj->mpi.recv, task_subtype_rho); */
+          /* scheduler_activate_recv(s, cj->mpi.recv, task_subtype_sink_part_swallow); */
+          /* scheduler_activate_recv(s, cj->mpi.recv, task_subtype_sink_merger); */
 
           /* Send the local BHs to do feedback */
           /* scheduler_activate_send(s, ci->mpi.send, task_subtype_bpart_feedback, */
@@ -3079,11 +3084,11 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
           /* scheduler_activate_recv(s, cj->mpi.recv, task_subtype_bpart_feedback); */
 
           /* Send the local part information */
-          scheduler_activate_send(s, ci->mpi.send, task_subtype_rho, cj_nodeID);
-          scheduler_activate_send(s, ci->mpi.send, task_subtype_sink_part_swallow,
-                                  cj_nodeID);
-          scheduler_activate_send(s, ci->mpi.send, task_subtype_sink_merger,
-                                  cj_nodeID);
+          /* scheduler_activate_send(s, ci->mpi.send, task_subtype_rho, cj_nodeID); */
+          /* scheduler_activate_send(s, ci->mpi.send, task_subtype_sink_part_swallow, */
+          /*                         cj_nodeID); */
+          /* scheduler_activate_send(s, ci->mpi.send, task_subtype_sink_merger, */
+          /*                         cj_nodeID); */
 
           /* Drift the cell which will be sent; note that not all sent
              particles will be drifted, only those that are needed. */
