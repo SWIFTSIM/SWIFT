@@ -2,7 +2,7 @@
 set -o xtrace
 
 # Resolution
-N_label=n60
+N_label=n50
 
 # Create the initial particle planets
 python3 make_init_cond.py

@@ -17,8 +17,8 @@ so please let us know if you are interested in using SWIFT
 or have any implementation requests.
 
 You can find an example of creating initial conditions and running an impact
-simulation in ``swiftsim/examples/Planetary/`` under ``DemoInitCond/`` and
-``DemoImpact/``. Check out their `README.md` files for more info.
+simulation in ``swiftsim/examples/Planetary/`` under ``DemoImpactInitCond/``
+and ``DemoImpact/``. Check out their `README.md` files for more info.
 The tabulated equation of state files can be downloaded there using
 ``EoSTables/get_eos_tables.sh``.
 

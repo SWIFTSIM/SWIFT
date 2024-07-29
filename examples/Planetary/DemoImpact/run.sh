@@ -2,7 +2,7 @@
 set -o xtrace
 
 # Resolution
-N_label=n60
+N_label=n50
 
 # Copy or download the initial conditions if they are not present
 if [ ! -e demo_impact_"$N_label".hdf5 ]
