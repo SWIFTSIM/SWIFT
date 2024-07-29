@@ -365,13 +365,13 @@ void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
     scheduler_addunlock(s, ci->hydro.star_formation, t_sf_counts);
   }
   /* HERE SF */
-  if (t_sf_counts == NULL && with_star_formation_sink && (c->hydro.count > 0 || c->sinks.count > 0)) {
+  if (t_sf_counts == NULL && with_star_formation_sink && (ci->hydro.count > 0 || ci->sinks.count > 0)) {
 #ifdef SWIFT_DEBUG_CHECKS
     if (ci->depth != 0)
       error(
 	    "Attaching a sf_count task at a non-top level c->depth=%d "
 	    "c->hydro.count=%d c->sinks.count=%d",
-	    ci->depth, ci->hydro.count, si->sinks.count);
+	    ci->depth, ci->hydro.count, ci->sinks.count);
 #endif
     t_sf_counts = scheduler_addtask(s, task_type_send, task_subtype_sf_counts,
                                     ci->mpi.tag, 0, ci, cj);
@@ -432,7 +432,7 @@ void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
       }
 
       /* HERE SF */
-      if (with_star_formation_sink && (c->hydro.count > 0 || c->sinks.count > 0)) {
+      if (with_star_formation_sink && (ci->hydro.count > 0 || ci->sinks.count > 0)) {
         scheduler_addunlock(s, t_sf_counts, t_density);
 #ifdef EXTRA_STAR_LOOPS
         scheduler_addunlock(s, t_sf_counts, t_prep2);
@@ -451,7 +451,7 @@ void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
     }
 
     /* HERE SF */
-    if (with_star_formation_sink && (c->hydro.count > 0 || c->sinks.count > 0)) {
+    if (with_star_formation_sink && (ci->hydro.count > 0 || ci->sinks.count > 0)) {
       engine_addlink(e, &ci->mpi.send, t_sf_counts);
     }
   }
@@ -1047,7 +1047,6 @@ void engine_addtasks_recv_stars(struct engine *e, struct cell *c,
   if (c->split)
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL)
-	/* HERE */
         engine_addtasks_recv_stars(e, c->progeny[k], t_density, t_prep2,
                                    t_sf_counts, tend, with_star_formation, with_star_formation_sink);
 
