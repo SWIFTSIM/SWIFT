@@ -354,7 +354,7 @@ static void zoom_engine_make_hierarchical_void_tasks_recursive(struct engine *e,
       scheduler_addunlock(s, c->progeny[k]->grav.down_in, c->grav.down_in);
       scheduler_addunlock(s, c->progeny[k]->super->grav.down_in, c->grav.down);
     } else {
-      zoom_engine_make_hierarchical_void_tasks(e, c->progeny[k]);
+      zoom_engine_make_hierarchical_void_tasks_recursive(e, c->progeny[k]);
     }
   }
 }
@@ -376,7 +376,7 @@ void zoom_engine_make_hierarchical_void_tasks(struct engine *e) {
 
   /* Get a handle on the zoom properties. */
   struct space *s = e->s;
-  struct zoom_properties *zoom_props = s->zoom_props;
+  struct zoom_region_properties *zoom_props = s->zoom_props;
   const int nr_void_cells = zoom_props->nr_void_cells;
   struct cell *cells = zoom_props->void_cells_top;
 

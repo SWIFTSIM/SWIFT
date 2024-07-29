@@ -195,7 +195,7 @@ void runner_zoom_do_void_grav_down(struct runner *r, struct cell *c,
     error("c->multipole not drifted.");
   if (c->grav.multipole->pot.ti_init != e->ti_current)
     error("c->field tensor not initialised");
-  if (c->subtype !-cell_subtype_void) error("Not a void cell!");
+  if (c->subtype != cell_subtype_void) error("Not a void cell!");
 #endif
 
   /* Add the field-tensor to all the 8 progenitors */
