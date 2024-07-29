@@ -62,4 +62,7 @@ void zoom_engine_make_self_gravity_tasks(struct space *s, struct engine *e);
 void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
                                                 struct scheduler *s);
 
+/* Void cell tree mutlipole initialisation. */
+void zoom_init_void_mpoles(struct engine *e);
+
 #endif /* SWIFT_ZOOM_H */

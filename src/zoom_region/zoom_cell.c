@@ -355,11 +355,11 @@ void zoom_find_neighbouring_cells(struct space *s, const int verbose) {
                 neighbour_cells_top[zoom_props->nr_neighbour_cells++] = cjd;
               }
             } /* neighbour k loop */
-          }   /* neighbour j loop */
-        }     /* neighbour i loop */
-      }       /* k loop */
-    }         /* j loop */
-  }           /* i loop */
+          } /* neighbour j loop */
+        } /* neighbour i loop */
+      } /* k loop */
+    } /* j loop */
+  } /* i loop */
 
   if (verbose)
     message("%i cells neighbour the zoom region",
@@ -993,4 +993,62 @@ void zoom_link_void_leaves(struct space *s, struct cell *c) {
         nr_gparts_in_zoom, nr_gparts_in_void);
   }
 #endif
+}
+
+/**
+ * @brief Initialise the void cell multipoles recursively.
+ *
+ * @param e The engine.
+ * @param c The void cell.
+ */
+static zoom_init_void_mpoles_recursive(struct engine *e, struct cell *c) {
+
+  /* Drift the multipole. */
+  cell_drift_multipole(c, e);
+
+  /* Reset the gravity acceleration tensors */
+  gravity_field_tensors_init(&c->grav.multipole->pot, e->ti_current);
+
+  /* Recurse? Void cells always exist but are flagged as not split at the
+   * zoom level. */
+  if (c->split) {
+    for (int k = 0; k < 8; k++) {
+      zoom_init_void_mpoles_recursive(e, c->progeny[k]);
+    }
+  }
+}
+
+/**
+ * @brief Initialise the void cell multipoles.
+ *
+ * This function is the same as runner_do_init_grav but we do this separately
+ * for the void cells to avoid having one -> many dependencies in the tasking
+ * which can cause lock ups in the tasking system.
+ *
+ * Specifically, this function will recurse through the void cell hierarchy
+ * drifting the multipole moments and resetting the acceleration tensors.
+ *
+ * @param e The engine.
+ */
+void zoom_init_void_mpoles(struct engine *e) {
+
+  const ticks tic = getticks();
+
+  /* Unpack the space. */
+  struct space *s = e->s;
+
+  /* Get the zoom properties */
+  struct zoom_region_properties *zoom_props = s->zoom_props;
+
+  /* Loop over all void cells and initialise their multipoles. We
+   * do this in a loop because the process is so cheap, there's no point
+   * using a threadpool. */
+  for (int i = 0; i < zoom_props->nr_void_cells; i++) {
+    struct cell *c = &s->cells_top[zoom_props->void_cells_top[i]];
+    zoom_init_void_mpoles_recursive(e, c);
+  }
+
+  if (e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
 }
