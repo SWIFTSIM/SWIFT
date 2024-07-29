@@ -1404,14 +1404,6 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
         scheduler_addunlock(s, c->grav.init, c->grav.init_out);
         scheduler_addunlock(s, c->grav.drift, c->grav.drift_out);
         scheduler_addunlock(s, c->grav.down_in, c->grav.down);
-
-        /* In zoom land we need to add unlocks in the void cell tasks. */
-        if (c->type == cell_type_zoom) {
-
-          /* Unlock this zoom cell's grav down after the void cell grav down. */
-          scheduler_addunlock(s, c->top->void_parent->top->grav.down,
-                              c->grav.down_in);
-        }
       }
     }
   }
@@ -4340,8 +4332,7 @@ void engine_make_hydroloop_tasks_mapper(void *map_data, int num_elements,
           }
 #endif
 
-          /* Is that neighbour local and does it have gas or star particles ?
-           */
+          /* Is that neighbour local and does it have gas or star particles ? */
           if ((cid >= cjd) ||
               ((cj->hydro.count == 0) &&
                (!with_feedback || cj->stars.count == 0) &&
