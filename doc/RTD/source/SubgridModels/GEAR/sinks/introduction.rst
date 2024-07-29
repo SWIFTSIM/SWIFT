@@ -25,3 +25,5 @@ Then, you do not need to do anything special. Sink particles will be created dur
 
 A full list of all relevant parameters of the model is in :ref:`sink_GEAR_parameters`. We also briefly describe the most important parameters which need to be set to run the model, as well as how to run it in different configurations.
 
+.. warning::
+   Currently, MPI is not implemented for the sink particles. If you try to run with MPI, you will encounter an error. We thus recommend configuring Swift with ``--disable-mpi`` to avoid any surprises.
