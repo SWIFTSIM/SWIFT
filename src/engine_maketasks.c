@@ -1404,6 +1404,14 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
         scheduler_addunlock(s, c->grav.init, c->grav.init_out);
         scheduler_addunlock(s, c->grav.drift, c->grav.drift_out);
         scheduler_addunlock(s, c->grav.down_in, c->grav.down);
+
+        /* In zoom land we need to add unlocks in the void cell tasks. */
+        if (c->type == cell_type_zoom) {
+
+          /* Unlock this zoom cell's grav down after the void cell grav down. */
+          scheduler_addunlock(s, c->top->void_parent->top->grav.down,
+                              c->grav.down_in);
+        }
       }
     }
   }
@@ -2471,6 +2479,29 @@ void engine_link_gravity_tasks(struct engine *e) {
         }
       }
     }
+
+    /* If we have a gravity task for a zoom cell we need to add unlocks for the
+     * void cell tree grav down. */
+    if (ci->type == cell_type_zoom) {
+
+      /* Do we have a gravity task? */
+      if (t_subtype == task_subtype_grav ||
+          t_subtype == task_subtype_external_grav ||
+          t_type == task_type_grav_mm) {
+
+        /* Unlock the void cell tree grav down */
+        scheduler_addunlock(sched, t, ci->top->void_parent->grav.down_in);
+      }
+    }
+    if (cj != NULL && cj->type == cell_type_zoom) {
+
+      /* Do we have a gravity task? */
+      if (t_subtype == task_subtype_grav || t_type == task_type_grav_mm) {
+
+        /* Unlock the void cell tree grav down */
+        scheduler_addunlock(sched, t, cj->top->void_parent->grav.down_in);
+      }
+    }
   }
 }
 
@@ -3046,8 +3077,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 #else
 
       /* Now, build all the dependencies for the hydro for the cells */
-      /* that are local and are not descendant of the same super_hydro-cells
-       */
+      /* that are local and are not descendant of the same super_hydro-cells */
       if (ci->nodeID == nodeID) {
         engine_make_hydro_loops_dependencies(sched, t, t_force, t_limiter, ci,
                                              with_cooling,
@@ -4718,8 +4748,8 @@ void engine_make_fof_tasks(struct engine *e) {
       threadpool_map(&e->threadpool, engine_make_fofloop_tasks_mapper, NULL,
                      s->nr_cells, 1, threadpool_auto_chunk_size, e);
     } else {
-      /* In the zoom case we only need to loop over the zoom cells which are the
-       * first nr_zoom_cells pointers in cells_top.  */
+      /* In the zoom case we only need to loop over the zoom cells which are
+       * the first nr_zoom_cells pointers in cells_top.  */
       threadpool_map(&e->threadpool, engine_make_fofloop_tasks_mapper, NULL,
                      s->zoom_props->nr_zoom_cells, 1,
                      threadpool_auto_chunk_size, e);
@@ -4784,8 +4814,8 @@ void engine_maketasks(struct engine *e) {
       threadpool_map(&e->threadpool, engine_make_hydroloop_tasks_mapper, NULL,
                      s->nr_cells, 1, threadpool_auto_chunk_size, e);
     } else if (e->policy & engine_policy_hydro && s->with_zoom_region) {
-      /* In the zoom case we only need to loop over the zoom cells which are the
-       * first nr_zoom_cells pointers in cells_top.  */
+      /* In the zoom case we only need to loop over the zoom cells which are
+       * the first nr_zoom_cells pointers in cells_top.  */
       threadpool_map(&e->threadpool, engine_make_hydroloop_tasks_mapper, NULL,
                      s->zoom_props->nr_zoom_cells, 1,
                      threadpool_auto_chunk_size, e);
