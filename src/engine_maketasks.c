@@ -1859,6 +1859,13 @@ void engine_make_hierarchical_tasks_mapper(void *map_data, int num_elements,
 
   for (int ind = 0; ind < num_elements; ind++) {
     struct cell *c = &((struct cell *)map_data)[ind];
+
+    /* In zoom land we need to handle void cells separately after all other
+     * cells. This is done after this mapper call in engine_maketasks. */
+    if (c->subtype == cell_subtype_void) {
+      continue;
+    }
+
     /* Make the common tasks (time integration) */
     engine_make_hierarchical_tasks_common(e, c);
     /* Add the hydro stuff */
@@ -4876,6 +4883,12 @@ void engine_maketasks(struct engine *e) {
   /* Append hierarchical tasks to each cell. */
   threadpool_map(&e->threadpool, engine_make_hierarchical_tasks_mapper, cells,
                  nr_cells, sizeof(struct cell), threadpool_auto_chunk_size, e);
+
+  /* In zoom land we need to create the void tasks after the zoom tasks have
+   * all been created. */
+  if (e->s->with_zoom_region) {
+    zoom_engine_make_hierarchical_void_tasks(e);
+  }
 
   tic2 = getticks();
 
