@@ -195,7 +195,6 @@ void runner_zoom_do_void_grav_down(struct runner *r, struct cell *c,
     error("c->multipole not drifted.");
   if (c->grav.multipole->pot.ti_init != e->ti_current)
     error("c->field tensor not initialised");
-  if (c->subtype != cell_subtype_void) error("Not a void cell!");
 #endif
 
   /* Add the field-tensor to all the 8 progenitors */
@@ -221,8 +220,9 @@ void runner_zoom_do_void_grav_down(struct runner *r, struct cell *c,
       gravity_field_tensors_add(&cp->grav.multipole->pot, &shifted_tensor);
     }
 
-    /* Recurse but only if the progeny is still a void cell. */
-    if (cp->subtype == cell_subtype_void) {
+    /* Recurse and only stop when we hit the super level which is handled
+     * in the usual way. */
+    if (cp->grav.super != cp) {
       runner_zoom_do_void_grav_down(r, cp, 0);
     }
   }

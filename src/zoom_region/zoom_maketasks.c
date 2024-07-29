@@ -351,7 +351,8 @@ static void zoom_engine_make_hierarchical_void_tasks_recursive(struct engine *e,
    * link the void down to the zoom super down_in and stop recursing. */
   for (int k = 0; k < 8; k++) {
     if (c->progeny[k]->type == cell_type_zoom) {
-      scheduler_addunlock(s, c->progeny[k]->grav.down_in, c->grav.down_in);
+      scheduler_addunlock(s, c->progeny[k]->super->grav.down_in,
+                          c->grav.down_in);
       scheduler_addunlock(s, c->progeny[k]->super->grav.down_in,
                           c->top->grav.down);
     } else {
