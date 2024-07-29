@@ -564,6 +564,7 @@ void proxy_parts_exchange_first(struct proxy *p) {
   p->buff_out[1] = p->nr_gparts_out;
   p->buff_out[2] = p->nr_sparts_out;
   p->buff_out[3] = p->nr_bparts_out;
+  p->buff_out[4] = p->nr_sinks_out;
   if (MPI_Isend(p->buff_out, 4, MPI_INT, p->nodeID,
                 p->mynodeID * proxy_tag_shift + proxy_tag_count, MPI_COMM_WORLD,
                 &p->req_parts_count_out) != MPI_SUCCESS)
@@ -612,6 +613,14 @@ void proxy_parts_exchange_first(struct proxy *p) {
     // message( "isent bpart data (%i) to node %i." , p->nr_bparts_out ,
     // p->nodeID ); fflush(stdout);
   }
+  if (p->nr_sinks_out > 0) {
+    if (MPI_Isend(p->sinks_out, p->nr_sinks_out, sink_mpi_type, p->nodeID,
+                  p->mynodeID * proxy_tag_shift + proxy_tag_sinks,
+                  MPI_COMM_WORLD, &p->req_sinks_out) != MPI_SUCCESS)
+      error("Failed to isend sink data.");
+    // message( "isent sink data (%i) to node %i." , p->nr_sinks_out ,
+    // p->nodeID ); fflush(stdout);
+  }
 
   /* Receive the number of particles. */
   if (MPI_Irecv(p->buff_in, 4, MPI_INT, p->nodeID,
@@ -633,6 +642,7 @@ void proxy_parts_exchange_second(struct proxy *p) {
   p->nr_gparts_in = p->buff_in[1];
   p->nr_sparts_in = p->buff_in[2];
   p->nr_bparts_in = p->buff_in[3];
+  p->nr_sinks_in = p->buff_in[4];
 
   /* Is there enough space in the buffers? */
   if (p->nr_parts_in > p->size_parts_in) {
@@ -674,6 +684,15 @@ void proxy_parts_exchange_second(struct proxy *p) {
              "bparts_in", sizeof(struct bpart) * p->size_bparts_in)) == NULL)
       error("Failed to re-allocate bparts_in buffers.");
   }
+  if (p->nr_sinks_in > p->size_sinks_in) {
+    do {
+      p->size_sinks_in *= proxy_buffgrow;
+    } while (p->nr_sinks_in > p->size_sinks_in);
+    swift_free("sinks_in", p->sinks_in);
+    if ((p->sinks_in = (struct sink *)swift_malloc(
+						     "sinks_in", sizeof(struct sink) * p->size_sinks_in)) == NULL)
+      error("Failed to re-allocate sinks_in buffers.");
+  }
 
   /* Receive the particle buffers. */
   if (p->nr_parts_in > 0) {
@@ -709,6 +728,14 @@ void proxy_parts_exchange_second(struct proxy *p) {
                   MPI_COMM_WORLD, &p->req_bparts_in) != MPI_SUCCESS)
       error("Failed to irecv bpart data.");
     // message( "irecv bpart data (%i) from node %i." , p->nr_bparts_in ,
+    // p->nodeID ); fflush(stdout);
+  }
+  if (p->nr_sinks_in > 0) {
+    if (MPI_Irecv(p->sinks_in, p->nr_sinks_in, sink_mpi_type, p->nodeID,
+                  p->nodeID * proxy_tag_shift + proxy_tag_sinks,
+                  MPI_COMM_WORLD, &p->req_sinks_in) != MPI_SUCCESS)
+      error("Failed to irecv sink data.");
+    // message( "irecv sink data (%i) from node %i." , p->nr_sinks_in ,
     // p->nodeID ); fflush(stdout);
   }
 
@@ -847,6 +874,36 @@ void proxy_bparts_load(struct proxy *p, const struct bpart *bparts, int N) {
 }
 
 /**
+ * @brief Load sinks onto a proxy for exchange.
+ *
+ * @param p The #proxy.
+ * @param sinks Pointer to an array of #sink to send.
+ * @param N The number of sinks.
+ */
+void proxy_sinks_load(struct proxy *p, const struct sink *sinks, int N) {
+
+  /* Is there enough space in the buffer? */
+  if (p->nr_sinks_out + N > p->size_sinks_out) {
+    do {
+      p->size_sinks_out *= proxy_buffgrow;
+    } while (p->nr_sinks_out + N > p->size_sinks_out);
+    struct sink *tp;
+    if ((tp = (struct sink *)swift_malloc(
+             "sinks_out", sizeof(struct sink) * p->size_sinks_out)) == NULL)
+      error("Failed to re-allocate sinks_out buffers.");
+    memcpy(tp, p->sinks_out, sizeof(struct sink) * p->nr_sinks_out);
+    swift_free("sinks_out", p->sinks_out);
+    p->sinks_out = tp;
+  }
+
+  /* Copy the parts and xparts data to the buffer. */
+  memcpy(&p->sinks_out[p->nr_sinks_out], sinks, sizeof(struct sink) * N);
+
+  /* Increase the counters. */
+  p->nr_sinks_out += N;
+}
+
+/**
  * @brief Frees the memory allocated for the particle proxies and sets their
  * size back to the initial state.
  *
@@ -920,6 +977,21 @@ void proxy_free_particle_buffers(struct proxy *p) {
     if ((p->bparts_in = (struct bpart *)swift_malloc(
              "bparts_in", sizeof(struct bpart) * p->size_bparts_in)) == NULL)
       error("Failed to allocate bparts_in buffers.");
+  }
+
+  if (p->size_sinks_out > proxy_buffinit) {
+    swift_free("sinks_out", p->sinks_out);
+    p->size_sinks_out = proxy_buffinit;
+    if ((p->sinks_out = (struct sink *)swift_malloc(
+						      "sinks_out", sizeof(struct sink) * p->size_sinks_out)) == NULL)
+      error("Failed to allocate sinks_out buffers.");
+  }
+  if (p->size_sinks_in > proxy_buffinit) {
+    swift_free("sinks_in", p->sinks_in);
+    p->size_sinks_in = proxy_buffinit;
+    if ((p->sinks_in = (struct sink *)swift_malloc(
+						     "sinks_in", sizeof(struct sink) * p->size_sinks_in)) == NULL)
+      error("Failed to allocate sinks_in buffers.");
   }
 }
 
@@ -1025,6 +1097,22 @@ void proxy_init(struct proxy *p, int mynodeID, int nodeID) {
       error("Failed to allocate bparts_out buffers.");
   }
   p->nr_bparts_out = 0;
+
+  /* Allocate the sinks send and receive buffers, if needed. */
+  if (p->sinks_in == NULL) {
+    p->size_sinks_in = proxy_buffinit;
+    if ((p->sinks_in = (struct sink *)swift_malloc(
+             "sinks_in", sizeof(struct sink) * p->size_sinks_in)) == NULL)
+      error("Failed to allocate sinks_in buffers.");
+  }
+  p->nr_sinks_in = 0;
+  if (p->sinks_out == NULL) {
+    p->size_sinks_out = proxy_buffinit;
+    if ((p->sinks_out = (struct sink *)swift_malloc(
+             "sinks_out", sizeof(struct sink) * p->size_sinks_out)) == NULL)
+      error("Failed to allocate sinks_out buffers.");
+  }
+  p->nr_sinks_out = 0;
 }
 
 /**
@@ -1043,11 +1131,13 @@ void proxy_clean(struct proxy *p) {
   swift_free("gparts_out", p->gparts_out);
   swift_free("sparts_out", p->sparts_out);
   swift_free("bparts_out", p->bparts_out);
+  swift_free("sinks_out", p->sinks_out);
   swift_free("parts_in", p->parts_in);
   swift_free("xparts_in", p->xparts_in);
   swift_free("gparts_in", p->gparts_in);
   swift_free("sparts_in", p->sparts_in);
   swift_free("bparts_in", p->bparts_in);
+  swift_free("sinks_in", p->sinks_in);
 }
 
 /**
