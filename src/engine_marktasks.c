@@ -992,7 +992,18 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           }
 
           /* Propagating new star counts? */
-          if (with_star_formation_sink) error("TODO");
+	  /* HERE SF */
+          if (with_star_formation_sink) {
+	    /* TODO: Check if it is ci_acitve_sinks or hydro */
+	    if (ci_active_sinks && (ci->hydro.count > 0 || ci->sinks.count > 0)) {
+              scheduler_activate_recv(s, ci->mpi.recv, task_subtype_sf_counts);
+            }
+	    /* TODO: Check if it is cj_acitve_sinks or hydro */
+            if (cj_active_sinks && (cj->hydro.count > 0 || cj->sinks.count > 0)) {
+              scheduler_activate_send(s, cj->mpi.send, task_subtype_sf_counts,
+                                      ci_nodeID);
+            }
+	  }
           if (with_star_formation && with_feedback) {
             if (ci_active_hydro && ci->hydro.count > 0) {
               scheduler_activate_recv(s, ci->mpi.recv, task_subtype_sf_counts);
@@ -1094,7 +1105,18 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           }
 
           /* Propagating new star counts? */
-          if (with_star_formation_sink) error("TODO");
+	  /* HERE SF */
+          if (with_star_formation_sink) {
+	    /* TODO: Check if it is cj_acitve_sinks or hydro */
+	    if (cj_active_sinks && (cj->hydro.count > 0 || cj->sinks.count > 0)) {
+              scheduler_activate_recv(s, cj->mpi.recv, task_subtype_sf_counts);
+            }
+	    /* TODO: Check if it is ci_acitve_sinks or hydro */
+            if (ci_active_sinks && (ci->hydro.count > 0 || ci->sinks.count > 0)) {
+              scheduler_activate_send(s, ci->mpi.send, task_subtype_sf_counts,
+                                      cj_nodeID);
+            }
+	  }
           if (with_star_formation && with_feedback) {
             if (cj_active_hydro && cj->hydro.count > 0) {
               scheduler_activate_recv(s, cj->mpi.recv, task_subtype_sf_counts);
