@@ -1331,10 +1331,6 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 #endif
       }
 
-      /***************************************************
-       ***************************************************
-       ***************************************************/
-
       /* Only interested in black hole density tasks as of here. */
       else if (t->subtype == task_subtype_bh_density) {
 
