@@ -1144,15 +1144,28 @@ int engine_estimate_nr_tasks(const struct engine *e) {
 #endif
   }
   if (e->policy & engine_policy_sinks) {
-    /* 1 drift, 2 kicks, 1 time-step, 1 sink formation */
-    n1 += 5;
+    /* 1 drift, 2 kicks, 1 time-step, 1 sink formation     | 5
+       swallow: 1 self + 13 pairs                          | 14
+       do_gas_swallow: 1 self + 13 pairs                   | 14
+       do_sink_swallow: 1 self + 13 pairs                  | 14
+       ghosts: sink_ghost_1, sink_ghost_2                  | 2
+       implicit: sink_in,  sink_out                        | 2 */
+    n1 += 51;
+    n2 += 3;
     if (e->policy & engine_policy_stars) {
       /* 1 star formation */
       n1 += 1;
+#ifdef WITH_MPI
+      /* sf_count: send and recv              | 2 */
+      n1 += 2;
+#endif
     }
 #ifdef WITH_MPI
-    /* TODO MPI */
-    /* n2 += 2; */
+  /* sink_formation_count: send and recv              | 2
+     sink_density: send and recv                      | 2
+     sink_gas_swallow: send and recv                  | 2
+     sink_merger: send and recv                       | 2 */
+    n1 += 8;
 #endif
   }
   if (e->policy & engine_policy_fof) {
