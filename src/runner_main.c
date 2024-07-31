@@ -534,6 +534,8 @@ void *runner_main(void *data) {
             runner_do_recv_spart(r, ci, 0, 1);
           } else if (t->subtype == task_subtype_bpart_rho) {
             runner_do_recv_bpart(r, ci, 1, 1);
+	  } else if (t->subtype == task_subtype_sink_density) {
+            runner_do_recv_sink(r, ci, 1, 1);
           } else if (t->subtype == task_subtype_bpart_feedback) {
             runner_do_recv_bpart(r, ci, 0, 1);
           } else {

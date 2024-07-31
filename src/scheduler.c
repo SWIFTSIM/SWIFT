@@ -2588,6 +2588,13 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           type = bpart_mpi_type;
           buff = t->ci->black_holes.parts;
 
+        } else if (t->subtype == task_subtype_sink_density) {
+
+          count = t->ci->sinks.count;
+          size = count * sizeof(struct sink);
+          type = sink_mpi_type;
+          buff = t->ci->sinks.parts;
+
         } else if (t->subtype == task_subtype_sf_counts) {
 
           count = size = t->ci->mpi.pcell_size * sizeof(struct pcell_sf);
@@ -2688,6 +2695,13 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           size = count * sizeof(struct bpart);
           type = bpart_mpi_type;
           buff = t->ci->black_holes.parts;
+
+        } else if (t->subtype == task_subtype_sink_density) {
+
+          count = t->ci->sinks.count;
+          size = count * sizeof(struct sink);
+          type = sink_mpi_type;
+          buff = t->ci->sinks.parts;
 
         } else if (t->subtype == task_subtype_sf_counts) {
 
