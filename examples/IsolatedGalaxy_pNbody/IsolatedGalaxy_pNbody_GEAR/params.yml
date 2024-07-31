@@ -15,7 +15,7 @@ Scheduler:
 # Parameters governing the time integration
 TimeIntegration:
   time_begin: 0.    # The starting time of the simulation (in internal units).
-  time_end:   0.25  # The end time of the simulation (in internal units).
+  time_end:   0.1   # The end time of the simulation (in internal units).
   dt_min:     1e-10 # The minimal time-step size of the simulation (in internal units).
   dt_max:     0.1  # The maximal time-step size of the simulation (in internal units).
   max_dt_RMS_factor: 0.25  # (Optional) Dimensionless factor for the maximal displacement allowed based on the RMS velocities.
@@ -25,7 +25,7 @@ Snapshots:
   subdir:              snap  # snapshot directory
   basename:            snapshot # Common part of the name of output files
   time_first:          0.    # Time of the first output (in internal units)
-  delta_time:          1e-3  # Time difference between consecutive outputs (in internal units)
+  delta_time:          1e-2  # Time difference between consecutive outputs (in internal units)
   compression:         4
 
 # Parameters governing the conserved quantities statistics

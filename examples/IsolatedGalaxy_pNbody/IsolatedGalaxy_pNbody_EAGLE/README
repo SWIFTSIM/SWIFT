@@ -18,7 +18,7 @@ To run this example with the EAGLE model, SWIFT must be configured with the foll
 
 ./configure --with-chemistry=EAGLE  --with-cooling=EAGLE  --with-stars=EAGLE --with-star-formation=EAGLE --with-feedback=EAGLE --with-tracers=EAGLE
 
-To start the simulation with the GEAR model:
+To start the simulation with the EAGLE model:
 
 ./run.sh
 
