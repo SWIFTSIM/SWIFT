@@ -1233,9 +1233,107 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         if (cell_need_rebuild_for_sinks_pair(cj, ci)) *rebuild_space = 1;
 
 #ifdef WITH_MPI
-        error("TODO");
+	/* Activate the send/recv tasks. */
+        if (ci_nodeID != nodeID) {
+
+          if (ci_active_sinks || cj_active_sinks) {
+            /* We must exchange the foreign sinks no matter the activity status */
+            scheduler_activate_recv(s, ci->mpi.recv, task_subtype_sink_density);
+            scheduler_activate_send(s, cj->mpi.send, task_subtype_sink_density,
+                                    ci_nodeID);
+    
+            /* Drift before you send */
+            if (cj->sinks.count > 0) cell_activate_drift_sink(cj, s);
+          }
+
+          if (cj_active_sinks) {
+
+            /* Receive the foreign parts to compute sink properties and do
+             * the swallowing */
+            scheduler_activate_recv(s, ci->mpi.recv, task_subtype_rho);
+            scheduler_activate_recv(s, ci->mpi.recv, task_subtype_sink_gas_swallow);
+            scheduler_activate_recv(s, ci->mpi.recv, task_subtype_sink_merger);
+
+	    /* We don't send any sink so we don't need to drift. */
+          }
+
+          if (ci_active_sinks) {
+
+            /* Send the local part information */
+            scheduler_activate_send(s, cj->mpi.send, task_subtype_rho,
+                                    ci_nodeID);
+            scheduler_activate_send(s, cj->mpi.send, task_subtype_sink_gas_swallow,
+                                    ci_nodeID);
+            scheduler_activate_send(s, cj->mpi.send, task_subtype_sink_merger,
+                                    ci_nodeID);
+
+            /* Drift the cell which will be sent; note that not all sent
+               particles will be drifted, only those that are needed. */
+            if (cj->hydro.count > 0) cell_activate_drift_part(cj, s);
+          }
+
+	  /* Noet: Verify whether we also need the hydro counts */
+	  if (ci_active_sinks && ci->sinks.count > 0) {
+	    scheduler_activate_recv(s, ci->mpi.recv, task_subtype_sink_formation_counts);
+	  }
+	  if (cj_active_sinks && cj->sinks.count > 0) {
+	    scheduler_activate_send(s, cj->mpi.send, task_subtype_sink_formation_counts,
+				    ci_nodeID);
+	  }
+
+        } else if (cj_nodeID != nodeID) {
+
+          if (ci_active_sinks || cj_active_sinks) {
+            /* We must exchange the foreign BHs no matter the activity status */
+            scheduler_activate_recv(s, cj->mpi.recv, task_subtype_sink_density);
+            scheduler_activate_send(s, ci->mpi.send, task_subtype_sink_density,
+                                    cj_nodeID);
+
+            /* Drift before you send */
+            if (ci->sinks.count > 0) cell_activate_drift_sink(ci, s);
+          }
+
+          if (ci_active_sinks) {
+
+            /* Receive the foreign parts to compute sink properties and do
+             * the swallowing */
+            scheduler_activate_recv(s, cj->mpi.recv, task_subtype_rho);
+            scheduler_activate_recv(s, cj->mpi.recv, task_subtype_sink_gas_swallow);
+            scheduler_activate_recv(s, cj->mpi.recv, task_subtype_sink_merger);
+	    
+	    /* We don't send any sink so we don't need to drift. */
+          }
+
+          if (cj_active_sinks) {
+
+            /* Send the local part information */
+            scheduler_activate_send(s, ci->mpi.send, task_subtype_rho,
+                                    cj_nodeID);
+            scheduler_activate_send(s, ci->mpi.send, task_subtype_sink_gas_swallow,
+                                    cj_nodeID);
+            scheduler_activate_send(s, ci->mpi.send, task_subtype_sink_merger,
+                                    cj_nodeID);
+
+            /* Drift the cell which will be sent; note that not all sent
+               particles will be drifted, only those that are needed. */
+            if (ci->hydro.count > 0) cell_activate_drift_part(ci, s);
+          }
+
+	  /* Noet: Verify whether we also need the hydro counts */
+          if (cj_active_sinks && cj->sinks.count > 0) {
+	    scheduler_activate_recv(s, cj->mpi.recv, task_subtype_sink_formation_counts);
+	  }
+	  if (ci_active_sinks && ci->sinks.count > 0) {
+	    scheduler_activate_send(s, ci->mpi.send, task_subtype_sink_formation_counts,
+				    cj_nodeID);
+	  }
+        }
 #endif
       }
+
+      /***************************************************
+       ***************************************************
+       ***************************************************/
 
       /* Only interested in black hole density tasks as of here. */
       else if (t->subtype == task_subtype_bh_density) {
