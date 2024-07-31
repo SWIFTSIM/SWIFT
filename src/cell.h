@@ -316,6 +316,37 @@ struct pcell_sf {
 };
 
 /**
+ * @brief Cell information to propagate the new counts of sink particles.
+ */
+struct pcell_sink_formation {
+
+  /*! Sink variables */
+  struct {
+
+    /* Distance by which the stars pointer has moved since the last rebuild */
+    ptrdiff_t delta_from_rebuild;
+
+    /* Number of particles in the cell */
+    int count;
+
+    /*! Maximum part movement in this cell since last construction. */
+    float dx_max_part;
+
+  } sinks;
+
+  /*! Grav. variables */
+  struct {
+
+    /* Distance by which the gpart pointer has moved since the last rebuild */
+    ptrdiff_t delta_from_rebuild;
+
+    /* Number of particles in the cell */
+    int count;
+
+  } grav;
+};
+
+/**
  * @brief Bitmasks for the cell flags. Beware when adding flags that you don't
  * exceed the size of the flags variable in the struct cell.
  */
@@ -543,6 +574,8 @@ int cell_pack_multipoles(struct cell *c, struct gravity_tensors *m);
 int cell_unpack_multipoles(struct cell *c, struct gravity_tensors *m);
 int cell_pack_sf_counts(struct cell *c, struct pcell_sf *pcell);
 int cell_unpack_sf_counts(struct cell *c, struct pcell_sf *pcell);
+int cell_pack_sink_formation_counts(struct cell *c, struct pcell_sink_formation *pcell);
+int cell_unpack_sink_formation_counts(struct cell *c, struct pcell_sink_formation *pcell);
 int cell_get_tree_size(struct cell *c);
 int cell_link_parts(struct cell *c, struct part *parts);
 int cell_link_gparts(struct cell *c, struct gpart *gparts);
