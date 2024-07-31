@@ -1688,7 +1688,11 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->subtype == task_subtype_spart_prep2 ||
         t->subtype == task_subtype_sf_counts ||
         t->subtype == task_subtype_rt_gradient ||
-        t->subtype == task_subtype_rt_transport)
+        t->subtype == task_subtype_rt_transport ||
+        t->subtype == task_subtype_sink_formation_counts ||
+	t->subtype == task_subtype_sink_density ||
+	t->subtype == task_subtype_sink_gas_swallow ||
+	t->subtype == task_subtype_sink_merger)
       t->skip = 1;
   }
 
