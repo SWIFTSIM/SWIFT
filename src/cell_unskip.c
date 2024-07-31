@@ -2974,134 +2974,120 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
       if (cell_need_rebuild_for_sinks_pair(cj, ci)) rebuild = 1;
 
 #ifdef WITH_MPI
-      /* HERE */
-      error("TODO");
-      /* Note: Implementation similar to BHs with the following differences:
-	 - Sink do not have density tasks
-	 - Sink do not have feedback tasks
-	 Hence, the sink pair tasks start with swallow task and not with
-	 density ones.
-	 Conversion from BHs to sink for MPI:
-	 - density tasks --> swallow tasks
-	 - feedback tasks --> no task (remove them)
-      */
-
-
       /* Activate the send/recv tasks. */
       if (ci_nodeID != nodeID) {
 
-        if (ci_active || cj_active) {
-          /* We must exchange the foreign sinks no matter the activity status */
-          scheduler_activate_recv(s, ci->mpi.recv, task_subtype_sink_swallow);
-          scheduler_activate_send(s, cj->mpi.send, task_subtype_sink_swallow,
-                                  ci_nodeID);
+	if (ci_active || cj_active) {
+	  /* We must exchange the foreign sinks no matter the activity status */
+	  scheduler_activate_recv(s, ci->mpi.recv, task_subtype_sink_density);
+	  scheduler_activate_send(s, cj->mpi.send, task_subtype_sink_density,
+				  ci_nodeID);
 
-          /* Drift before you send */
-          if (cj->sinks.count > 0) cell_activate_drift_sink(cj, s);
-        }
+	  /* Drift before you send */
+	  if (cj->sinks.count > 0) cell_activate_drift_sink(cj, s);
+	}
 
-        if (cj_active) {
+	if (cj_active) {
 
-          /* Receive the foreign parts to compute BH accretion rates and do the
-           * swallowing */
-          /* scheduler_activate_recv(s, ci->mpi.recv, task_subtype_rho); */
-          /* scheduler_activate_recv(s, ci->mpi.recv, task_subtype_sink_part_swallow); */
-          /* scheduler_activate_recv(s, ci->mpi.recv, task_subtype_sink_merger); */
+	  /* Receive the foreign parts to compute sink properties and do
+	   * the swallowing */
+	  scheduler_activate_recv(s, ci->mpi.recv, task_subtype_rho);
+	  scheduler_activate_recv(s, ci->mpi.recv, task_subtype_sink_gas_swallow);
+	  scheduler_activate_recv(s, ci->mpi.recv, task_subtype_sink_merger);
 
-          /* Send the local BHs to do feedback */
-	  /* Note: No feedback for sinks.
-	     But do we need to send them for something else? For SF maybe? Or
-	     for sink swallowing? Nope, the sinks swallowing is in the
-	     task_subtype_sink_merger.
-	  */
-          /* scheduler_activate_send(s, cj->mpi.send, task_subtype_bpart_feedback, */
-                                  /* ci_nodeID); */
+	  /* We don't send any sink so we don't need to drift. */
+	}
 
-          /* Drift before you send */
-          cell_activate_drift_sink(cj, s);
-        }
+	if (ci_active) {
 
-        if (ci_active) {
+	  /* Send the local part information */
+	  scheduler_activate_send(s, cj->mpi.send, task_subtype_rho,
+				  ci_nodeID);
+	  scheduler_activate_send(s, cj->mpi.send, task_subtype_sink_gas_swallow,
+				  ci_nodeID);
+	  scheduler_activate_send(s, cj->mpi.send, task_subtype_sink_merger,
+				  ci_nodeID);
 
-          /* Receive the foreign BHs for feedback */
-          /* scheduler_activate_recv(s, ci->mpi.recv, task_subtype_bpart_feedback); */
+	  /* Drift the cell which will be sent; note that not all sent
+	     particles will be drifted, only those that are needed. */
+	  if (cj->hydro.count > 0) cell_activate_drift_part(cj, s);
+	}
 
-          /* Send the local part information */
-          /* scheduler_activate_send(s, cj->mpi.send, task_subtype_rho, ci_nodeID); */
-          /* scheduler_activate_send(s, cj->mpi.send, task_subtype_sink_part_swallow, */
-                                  /* ci_nodeID); */
-          /* scheduler_activate_send(s, cj->mpi.send, task_subtype_sink_merger, */
-                                  /* ci_nodeID); */
-
-          /* Drift the cell which will be sent; note that not all sent
-             particles will be drifted, only those that are needed. */
-          if (cj->hydro.count > 0) cell_activate_drift_part(cj, s);
-        }
+	/* Propagating new sink counts? */
+	/* Note: Verify whether we also need the hydro counts */
+	if (ci_active && ci->sinks.count > 0) {
+	  scheduler_activate_recv(s, ci->mpi.recv, task_subtype_sink_formation_counts);
+	}
+	if (cj_active && cj->sinks.count > 0) {
+	  scheduler_activate_send(s, cj->mpi.send, task_subtype_sink_formation_counts,
+				  ci_nodeID);
+	}
 
 	/* Propagating new star counts? */
-	/* HERE SF */
-        if (with_star_formation_sink) {
-          if (ci_active && (ci->hydro.count > 0 || ci->sinks.count > 0)) {
+	if (with_star_formation_sink) {
+          if (ci_active && ci->sinks.count > 0) {
             scheduler_activate_recv(s, ci->mpi.recv, task_subtype_sf_counts);
           }
-          if (cj_active && (cj->hydro.count > 0 || cj->sinks.count > 0)) {
+          if (cj_active && cj->sinks.count > 0) {
             scheduler_activate_send(s, cj->mpi.send, task_subtype_sf_counts,
                                     ci_nodeID);
           }
-        }
+	}
 
       } else if (cj_nodeID != nodeID) {
 
-        if (ci_active || cj_active) {
-          /* We must exchange the foreign BHs no matter the activity status */
-          scheduler_activate_recv(s, cj->mpi.recv, task_subtype_sink_swallow);
-          scheduler_activate_send(s, ci->mpi.send, task_subtype_sink_swallow,
-                                  cj_nodeID);
+	if (ci_active || cj_active) {
+	  /* We must exchange the foreign BHs no matter the activity status */
+	  scheduler_activate_recv(s, cj->mpi.recv, task_subtype_sink_density);
+	  scheduler_activate_send(s, ci->mpi.send, task_subtype_sink_density,
+				  cj_nodeID);
 
-          /* Drift before you send */
-          if (ci->sinks.count > 0) cell_activate_drift_sink(ci, s);
-        }
+	  /* Drift before you send */
+	  if (ci->sinks.count > 0) cell_activate_drift_sink(ci, s);
+	}
 
-        if (ci_active) {
+	if (ci_active) {
 
-          /* Receive the foreign parts to compute BH accretion rates and do the
-           * swallowing */
-          /* scheduler_activate_recv(s, cj->mpi.recv, task_subtype_rho); */
-          /* scheduler_activate_recv(s, cj->mpi.recv, task_subtype_sink_part_swallow); */
-          /* scheduler_activate_recv(s, cj->mpi.recv, task_subtype_sink_merger); */
+	  /* Receive the foreign parts to compute sink properties and do
+	   * the swallowing */
+	  scheduler_activate_recv(s, cj->mpi.recv, task_subtype_rho);
+	  scheduler_activate_recv(s, cj->mpi.recv, task_subtype_sink_gas_swallow);
+	  scheduler_activate_recv(s, cj->mpi.recv, task_subtype_sink_merger);
 
-          /* Send the local BHs to do feedback */
-          /* scheduler_activate_send(s, ci->mpi.send, task_subtype_bpart_feedback, */
-                                  /* cj_nodeID); */
+	  /* We don't send any sink so we don't need to drift. */
+	}
 
-          /* Drift before you send */
-          cell_activate_drift_sink(ci, s);
-        }
+	if (cj_active) {
 
-        if (cj_active) {
+	  /* Send the local part information */
+	  scheduler_activate_send(s, ci->mpi.send, task_subtype_rho,
+				  cj_nodeID);
+	  scheduler_activate_send(s, ci->mpi.send, task_subtype_sink_gas_swallow,
+				  cj_nodeID);
+	  scheduler_activate_send(s, ci->mpi.send, task_subtype_sink_merger,
+				  cj_nodeID);
 
-          /* Receive the foreign BHs for feedback */
-          /* scheduler_activate_recv(s, cj->mpi.recv, task_subtype_bpart_feedback); */
+	  /* Drift the cell which will be sent; note that not all sent
+	     particles will be drifted, only those that are needed. */
+	  if (ci->hydro.count > 0) cell_activate_drift_part(ci, s);
+	}
 
-          /* Send the local part information */
-          /* scheduler_activate_send(s, ci->mpi.send, task_subtype_rho, cj_nodeID); */
-          /* scheduler_activate_send(s, ci->mpi.send, task_subtype_sink_part_swallow, */
-          /*                         cj_nodeID); */
-          /* scheduler_activate_send(s, ci->mpi.send, task_subtype_sink_merger, */
-          /*                         cj_nodeID); */
-
-          /* Drift the cell which will be sent; note that not all sent
-             particles will be drifted, only those that are needed. */
-          if (ci->hydro.count > 0) cell_activate_drift_part(ci, s);
-        }
+	/* Propagating new sink counts? */
+	/* Note: Verify whether we also need the hydro counts */
+	if (cj_active && cj->sinks.count > 0) {
+	  scheduler_activate_recv(s, cj->mpi.recv, task_subtype_sink_formation_counts);
+	}
+	if (ci_active && ci->sinks.count > 0) {
+	  scheduler_activate_send(s, ci->mpi.send, task_subtype_sink_formation_counts,
+				  cj_nodeID);
+	}
 
 	/* Propagating new star counts? */
-	/* HERE SF */
         if (with_star_formation_sink) {
-          if (cj_active && (cj->hydro.count > 0 || cj->sinks.count > 0)) {
+          if (cj_active && cj->sinks.count > 0) {
             scheduler_activate_recv(s, cj->mpi.recv, task_subtype_sf_counts);
           }
-          if (ci_active && (ci->hydro.count > 0 || ci->sinks.count > 0)) {
+          if (ci_active && ci->sinks.count > 0) {
             scheduler_activate_send(s, ci->mpi.send, task_subtype_sf_counts,
                                     cj_nodeID);
           }
