@@ -184,6 +184,50 @@ void cell_unpack_bpart_swallow(struct cell *c,
   }
 }
 
+void cell_pack_sink_gas_swallow(const struct cell *c,
+                            struct sink_part_data *data) {
+
+  const size_t count = c->hydro.count;
+  const struct part *parts = c->hydro.parts;
+
+  for (size_t i = 0; i < count; ++i) {
+    data[i] = parts[i].sink_data;
+  }
+}
+
+void cell_unpack_sink_gas_swallow(struct cell *c,
+                              const struct sink_part_data *data) {
+
+  const size_t count = c->hydro.count;
+  struct part *parts = c->hydro.parts;
+
+  for (size_t i = 0; i < count; ++i) {
+    parts[i].sink_data = data[i];
+  }
+}
+
+void cell_pack_sink_swallow(const struct cell *c,
+                             struct sink_sink_data *data) {
+
+  const size_t count = c->black_holes.count;
+  const struct sink *sinks = c->sinks.parts;
+
+  for (size_t i = 0; i < count; ++i) {
+    data[i] = sinks[i].merger_data;
+  }
+}
+
+void cell_unpack_sink_swallow(struct cell *c,
+                               const struct sink_sink_data *data) {
+
+  const size_t count = c->sinks.count;
+  struct sink *sinks = c->sinks.parts;
+
+  for (size_t i = 0; i < count; ++i) {
+    sinks[i].merger_data = data[i];
+  }
+}
+
 /**
  * @brief Unpack the data of a given cell and its sub-cells.
  *

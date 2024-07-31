@@ -564,6 +564,14 @@ void cell_pack_bpart_swallow(const struct cell *c,
                              struct black_holes_bpart_data *data);
 void cell_unpack_bpart_swallow(struct cell *c,
                                const struct black_holes_bpart_data *data);
+void cell_pack_sink_gas_swallow(const struct cell *c,
+                            struct sink_part_data *data);
+void cell_unpack_sink_gas_swallow(struct cell *c,
+                              const struct sink_part_data *data);
+void cell_pack_sink_swallow(const struct cell *c,
+                             struct sink_sink_data *data);
+void cell_unpack_sink_swallow(struct cell *c,
+                               const struct sink_sink_data *data);
 int cell_pack_tags(const struct cell *c, int *tags);
 int cell_unpack_tags(const int *tags, struct cell *c);
 int cell_pack_end_step(const struct cell *c, struct pcell_step *pcell);

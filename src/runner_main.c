@@ -486,7 +486,11 @@ void *runner_main(void *data) {
             free(t->buff);
           } else if (t->subtype == task_subtype_bpart_merger) {
             free(t->buff);
-          } else if (t->subtype == task_subtype_limiter) {
+          } else if (t->subtype == task_subtype_sink_gas_swallow) {
+            free(t->buff);
+          } else if (t->subtype == task_subtype_sink_merger) {
+            free(t->buff);
+	  } else if (t->subtype == task_subtype_limiter) {
             free(t->buff);
           }
           break;
@@ -521,6 +525,14 @@ void *runner_main(void *data) {
           } else if (t->subtype == task_subtype_bpart_merger) {
             cell_unpack_bpart_swallow(ci,
                                       (struct black_holes_bpart_data *)t->buff);
+            free(t->buff);
+          } else if (t->subtype == task_subtype_sink_gas_swallow) {
+            cell_unpack_sink_gas_swallow(ci,
+                                     (struct sink_part_data *)t->buff);
+            free(t->buff);
+          } else if (t->subtype == task_subtype_sink_merger) {
+            cell_unpack_sink_swallow(ci,
+                                      (struct sink_sink_data *)t->buff);
             free(t->buff);
           } else if (t->subtype == task_subtype_limiter) {
             /* Nothing to do here. Unpacking done in a separate task */
