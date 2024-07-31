@@ -498,6 +498,12 @@ void *runner_main(void *data) {
             cell_unpack_sf_counts(ci, (struct pcell_sf *)t->buff);
             cell_clear_stars_sort_flags(ci, /*clear_unused_flags=*/0);
             free(t->buff);
+	  } else if (t->subtype == task_subtype_sink_formation_counts) {
+            cell_unpack_sink_formation_counts(ci, (struct pcell_sink_formation *)t->buff);
+
+	    /* TODO: Check if we have something to clear for sinks */
+            /* cell_clear_stars_sort_flags(ci, /\*clear_unused_flags=*\/0); */
+            free(t->buff);
           } else if (t->subtype == task_subtype_xv) {
             runner_do_recv_part(r, ci, 1, 1);
           } else if (t->subtype == task_subtype_rho) {

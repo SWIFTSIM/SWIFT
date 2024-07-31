@@ -2593,7 +2593,12 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           count = size = t->ci->mpi.pcell_size * sizeof(struct pcell_sf);
           buff = t->buff = malloc(count);
 
-        } else {
+        } else if (t->subtype == task_subtype_sink_formation_counts) {
+
+          count = size = t->ci->mpi.pcell_size * sizeof(struct pcell_sink_formation);
+          buff = t->buff = malloc(count);
+
+	} else {
           error("Unknown communication sub-type");
         }
 
@@ -2689,6 +2694,12 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           size = count = t->ci->mpi.pcell_size * sizeof(struct pcell_sf);
           buff = t->buff = malloc(size);
           cell_pack_sf_counts(t->ci, (struct pcell_sf *)t->buff);
+
+	} else if (t->subtype == task_subtype_sink_formation_counts) {
+
+          size = count = t->ci->mpi.pcell_size * sizeof(struct pcell_sink_formation);
+          buff = t->buff = malloc(size);
+          cell_pack_sink_formation_counts(t->ci, (struct pcell_sink_formation *)t->buff);
 
         } else {
           error("Unknown communication sub-type");
