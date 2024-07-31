@@ -1150,6 +1150,10 @@ int engine_estimate_nr_tasks(const struct engine *e) {
       /* 1 star formation */
       n1 += 1;
     }
+#ifdef WITH_MPI
+    /* TODO MPI */
+    /* n2 += 2; */
+#endif
   }
   if (e->policy & engine_policy_fof) {
     n1 += 2;
@@ -1185,7 +1189,8 @@ int engine_estimate_nr_tasks(const struct engine *e) {
     struct cell *c = &e->s->cells_top[k];
 
     /* Any cells with particles will have tasks (local & foreign). */
-    int nparts = c->hydro.count + c->grav.count + c->stars.count;
+    /* Note: Why no BH ? */
+    int nparts = c->hydro.count + c->grav.count + c->stars.count + c->sinks.count;
     if (nparts > 0) {
       ntop++;
       ncells++;
