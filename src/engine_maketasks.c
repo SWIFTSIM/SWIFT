@@ -568,6 +568,134 @@ void engine_addtasks_send_black_holes(struct engine *e, struct cell *ci,
 }
 
 /**
+ * @brief Add send tasks for the black holes pairs to a hierarchy of cells.
+ *
+ * TODO: Update the doc of this function.
+ *
+ * @param e The #engine.
+ * @param ci The sending #cell.
+ * @param cj Dummy cell containing the nodeID of the receiving node.
+ * @param t_bh_merger The sink swallow comm. task, if it has already been created.
+ * @param t_sink_gas_swallow The sink gas swallow comm. task, if it has already been
+ * created.
+ */
+void engine_addtasks_send_sinks(struct engine *e, struct cell *ci,
+				struct cell *cj, struct task *t_density,
+				struct task *t_sink_merger,
+				struct task *t_sink_gas_swallow,
+				struct task *t_sink_formation_counts) {
+
+#ifdef WITH_MPI
+  /* Notice the differences with the BHs:
+     - We have a sink_foration task, similar to star_formation and
+     star_formation_sink
+     - We do not have density tasks.
+     - After the  sink_formation task, we have the swallow tasks. BH have the
+     density before the swallow.
+     - We do not have feedback tasks
+     - We have a star_formation_sink tasks */
+
+  struct link *l = NULL;
+  struct scheduler *s = &e->sched;
+  const int nodeID = cj->nodeID;
+
+  /* Early abort (are we below the level where tasks are)? */
+  if (!cell_get_flag(ci, cell_flag_has_tasks)) return;
+
+  /* Note: Do we need to add ci->hydro.counts > 0? */
+  /* Send the new sink counts after sink formation */
+  if (t_sink_formation_counts == NULL && (ci->sinks.count > 0)) {
+#ifdef SWIFT_DEBUG_CHECKS
+    if (ci->depth != 0)
+      error(
+	    "Attaching a sink_formation_count task at a non-top level c->depth=%d "
+	    "c->sinks.count=%d",
+	    ci->depth, ci->sinks.count);
+#endif
+    t_sink_formation_counts = scheduler_addtask(s, task_type_send, task_subtype_sink_formation_counts,
+						ci->mpi.tag, 0, ci, cj);
+    scheduler_addunlock(s, ci->sinks.sink_formation, t_sink_formation_counts);
+  }
+
+  /* Sink do not have density tasks, so we check for the swallow task instead */
+  /* Check if any of the density tasks are for the target node. */
+  for (l = ci->sinks.swallow; l != NULL; l = l->next)
+    if (l->t->ci->nodeID == nodeID ||
+        (l->t->cj != NULL && l->t->cj->nodeID == nodeID))
+      break;
+
+  /* If so, attach send tasks. */
+  if (l != NULL) {
+    /* For sink, we do not have a density tasks. But we need to send the sinks
+       so we call this task t_density. It may be renamed later. */
+    if (t_density == NULL) {
+
+      /* Make sure this cell is tagged. */
+      cell_ensure_tagged(ci);
+
+      /* Create the tasks and their dependencies? */
+      t_density = scheduler_addtask(s, task_type_send, task_subtype_sink_density,
+                                ci->mpi.tag, 0, ci, cj);
+
+      t_sink_gas_swallow = scheduler_addtask(s, task_type_send, task_subtype_sink_gas_swallow,
+                                ci->mpi.tag, 0, ci, cj);
+
+      t_sink_merger = scheduler_addtask(
+          s, task_type_send, task_subtype_sink_merger, ci->mpi.tag, 0, ci, cj);
+
+      /* The send_sinks task should unlock the super_cell's sink exit point
+       * task. */
+      scheduler_addunlock(s, t_sink_merger,
+                          ci->hydro.super->sinks.sink_out);
+
+      /* Ghost before you send */
+      scheduler_addunlock(s, ci->hydro.super->sinks.drift, t_density);
+
+      /* Send the sinks after the sink formation and the sink_formation_counts */
+      scheduler_addunlock(s, ci->hydro.super->sinks.sink_formation, t_density);
+      scheduler_addunlock(s, t_sink_formation_counts, t_density);
+      scheduler_addunlock(s, t_density, ci->hydro.super->sinks.sink_out);
+
+      scheduler_addunlock(s, ci->hydro.super->sinks.sink_ghost1,
+                          t_sink_merger);
+      scheduler_addunlock(s, t_sink_merger,
+                          ci->hydro.super->sinks.sink_out);
+
+      scheduler_addunlock(s, ci->hydro.super->sinks.sink_ghost1,
+                          t_sink_gas_swallow);
+      scheduler_addunlock(s, t_sink_gas_swallow,
+                          ci->hydro.super->sinks.sink_ghost2);
+
+      /* Similar to SF */
+      /* Note: Same as above: do we need hydro.counts > 0? */
+      if (ci->sinks.count > 0) {
+	scheduler_addunlock(s, t_sink_formation_counts, t_density);
+      }
+    }
+
+    engine_addlink(e, &ci->mpi.send, t_density);
+    engine_addlink(e, &ci->mpi.send, t_sink_merger);
+    engine_addlink(e, &ci->mpi.send, t_sink_gas_swallow);
+
+    /* Note: Same as above: do we need hydro.counts > 0? */
+    if (ci->sinks.count > 0) {
+      engine_addlink(e, &ci->mpi.send, t_sink_formation_counts);
+    }
+  }
+
+  /* Recurse? */
+  if (ci->split)
+    for (int k = 0; k < 8; k++)
+      if (ci->progeny[k] != NULL)
+        engine_addtasks_send_sinks(e, ci->progeny[k], cj, t_density, t_sink_merger,
+				   t_sink_gas_swallow, t_sink_formation_counts);
+
+#else
+  error("SWIFT was not compiled with MPI support.");
+#endif
+}
+
+/**
  * @brief Add recv tasks for hydro pairs to a hierarchy of cells.
  *
  * @param e The #engine.
@@ -4404,6 +4532,15 @@ void engine_addtasks_send_mapper(void *map_data, int num_elements,
                                        /*t_swallow=*/NULL,
                                        /*t_gas_swallow=*/NULL,
                                        /*t_feedback=*/NULL);
+
+    /* Add the send tasks for the cells in the proxy that have a sink
+     * connection. */
+    if ((e->policy & engine_policy_sinks) &&
+        (type & proxy_cell_type_hydro))
+      engine_addtasks_send_sinks(e, ci, cj, /*t_density=*/NULL,
+                                       /*t_sink_merger=*/NULL,
+                                       /*t_sink_gas_swallow=*/NULL,
+                                       /*t_sink_formation_count=*/NULL);
 
     /* Add the send tasks for the cells in the proxy that have a gravity
      * connection. */
