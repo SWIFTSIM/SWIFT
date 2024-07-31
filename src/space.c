@@ -149,6 +149,11 @@ void space_free_foreign_parts(struct space *s, const int clear_cell_pointers) {
     s->size_bparts_foreign = 0;
     s->bparts_foreign = NULL;
   }
+  if (s->sinks_foreign != NULL) {
+    swift_free("sinks_foreign", s->sinks_foreign);
+    s->size_sinks_foreign = 0;
+    s->sinks_foreign = NULL;
+  }
   if (clear_cell_pointers) {
     for (int k = 0; k < s->e->nr_proxies; k++) {
       for (int j = 0; j < s->e->proxies[k].nr_cells_in; j++) {
@@ -2434,6 +2439,7 @@ void space_clean(struct space *s) {
   swift_free("sparts_foreign", s->sparts_foreign);
   swift_free("gparts_foreign", s->gparts_foreign);
   swift_free("bparts_foreign", s->bparts_foreign);
+  swift_free("sinks_foreign", s->sinks_foreign);
 #endif
   free(s->cells_sub);
   free(s->multipoles_sub);
@@ -2603,6 +2609,8 @@ void space_struct_restore(struct space *s, FILE *stream) {
   s->size_sparts_foreign = 0;
   s->bparts_foreign = NULL;
   s->size_bparts_foreign = 0;
+  s->sinks_foreign = NULL;
+  s->size_sinks_foreign = 0;
 #endif
 
   /* More things to read. */
