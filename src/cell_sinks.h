@@ -42,6 +42,9 @@ struct cell_sinks {
     /*! Pointer to the #sink data. */
     struct sink *parts;
 
+    /*! Pointer to the #spart data at rebuild time. */
+    struct sink *parts_rebuild;
+
     /*! Linked list of the tasks computing this cell's sink swallow. */
     struct link *swallow;
 

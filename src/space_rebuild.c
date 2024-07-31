@@ -962,6 +962,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 
       /* Store the state at rebuild time */
       c->stars.parts_rebuild = c->stars.parts;
+      c->sinks.parts_rebuild = c->sinks.parts;
       c->grav.parts_rebuild = c->grav.parts;
 
       c->hydro.count_total = c->hydro.count + space_extra_parts;
