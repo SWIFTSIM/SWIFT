@@ -194,6 +194,8 @@ static INLINE void runner_dopair_grav_pp_full_no_cache(
 
   /* Prepare the i cache */
   const int gcount_padded_i = gcount_i - (gcount_i % VEC_SIZE) + VEC_SIZE;
+  if (cache_i->count < gcount_padded_i)
+    gravity_cache_init(cache_i, gcount_padded_i);
   gravity_cache_zero_output(cache_i, gcount_padded_i);
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -391,6 +393,8 @@ static INLINE void runner_dopair_grav_pp_truncated_no_cache(
 
   /* Prepare the i cache */
   const int gcount_padded_i = gcount_i - (gcount_i % VEC_SIZE) + VEC_SIZE;
+  if (cache_i->count < gcount_padded_i)
+    gravity_cache_init(cache_i, gcount_padded_i);
   gravity_cache_zero_output(cache_i, gcount_padded_i);
 
   /* Loop over sink particles */
@@ -1262,14 +1266,6 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj,
   const int gcount_j = cj->grav.count;
   const int gcount_padded_i = gcount_i - (gcount_i % VEC_SIZE) + VEC_SIZE;
   const int gcount_padded_j = gcount_j - (gcount_j % VEC_SIZE) + VEC_SIZE;
-
-#ifdef SWIFT_DEBUG_CHECKS
-  /* Check that we fit in cache */
-  if (gcount_i > ci_cache->count || gcount_j > cj_cache->count)
-    error("Not enough space in the caches! gcount_i=%d gcount_j=%d", gcount_i,
-          gcount_j);
-#endif
-
   const int allow_multipole_i = allow_mpole && ci->grav.count > 1;
   const int allow_multipole_j = allow_mpole && cj->grav.count > 1;
 
@@ -1820,12 +1816,6 @@ void runner_doself_grav_pp(struct runner *r, struct cell *c) {
   const int gcount = c->grav.count;
   const int gcount_padded = gcount - (gcount % VEC_SIZE) + VEC_SIZE;
 
-#ifdef SWIFT_DEBUG_CHECKS
-  /* Check that we fit in cache */
-  if (gcount > ci_cache->count)
-    error("Not enough space in the cache! gcount=%d", gcount);
-#endif
-
   /* Fill the cache */
   gravity_cache_populate_no_mpole(e->max_active_bin, ci_cache, c->grav.parts,
                                   gcount, gcount_padded, loc, c,
@@ -2142,12 +2132,6 @@ void runner_dopair_recursive_grav_pm(struct runner *r, struct cell *ci,
     /* Computed the padded counts */
     const int gcount_i = ci->grav.count;
     const int gcount_padded_i = gcount_i - (gcount_i % VEC_SIZE) + VEC_SIZE;
-
-#ifdef SWIFT_DEBUG_CHECKS
-    /* Check that we fit in cache */
-    if (gcount_i > ci_cache->count)
-      error("Not enough space in the cache! gcount_i=%d", gcount_i);
-#endif
 
     /* Recover the multipole info and the CoM locations */
     const struct multipole *multi_j = &cj->grav.multipole->m_pole;

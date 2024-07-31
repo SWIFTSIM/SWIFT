@@ -48,15 +48,52 @@
 INLINE static void chemistry_copy_star_formation_properties(
     struct part* p, const struct xpart* xp, struct spart* sp) {
 
+  /* gas mass after update */
   float mass = hydro_get_mass(p);
 
   /* Store the chemistry struct in the star particle */
-  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
-    sp->chemistry_data.metal_mass_fraction[i] =
-        p->chemistry_data.smoothed_metal_mass_fraction[i];
+  for (int k = 0; k < GEAR_CHEMISTRY_ELEMENT_COUNT; k++) {
+    sp->chemistry_data.metal_mass_fraction[k] =
+        p->chemistry_data.smoothed_metal_mass_fraction[k];
 
     /* Remove the metals taken by the star. */
-    p->chemistry_data.metal_mass[i] *= mass / (mass + sp->mass);
+    p->chemistry_data.metal_mass[k] *= mass / (mass + sp->mass);
+  }
+}
+
+/**
+ * @brief Copies the chemistry properties of the sink particle over to the
+ * stellar particle.
+ *
+ * @param sink the sink particle with its properties.
+ * @param sp the new star particles.
+ */
+INLINE static void chemistry_copy_sink_properties_to_star(struct sink* sink,
+                                                          struct spart* sp) {
+
+  /* Store the chemistry struct in the star particle */
+  for (int k = 0; k < GEAR_CHEMISTRY_ELEMENT_COUNT; k++) {
+    sp->chemistry_data.metal_mass_fraction[k] =
+        sink->chemistry_data.metal_mass_fraction[k];
+  }
+}
+
+/**
+ * @brief Copies the chemistry properties of the gas particle over to the
+ * sink particle.
+ *
+ * @param p the gas particles.
+ * @param xp the additional properties of the gas particles.
+ * @param sink the new created star particle with its properties.
+ */
+INLINE static void chemistry_copy_sink_properties(const struct part* p,
+                                                  const struct xpart* xp,
+                                                  struct sink* sink) {
+
+  /* Store the chemistry struct in the star particle */
+  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
+    sink->chemistry_data.metal_mass_fraction[i] =
+        p->chemistry_data.smoothed_metal_mass_fraction[i];
   }
 }
 
@@ -438,10 +475,14 @@ __attribute__((always_inline)) INLINE static void chemistry_first_init_spart(
  * @param gas_mass The mass of the gas particle.
  */
 __attribute__((always_inline)) INLINE static void chemistry_add_sink_to_sink(
-    struct chemistry_sink_data* si_data,
-    const struct chemistry_sink_data* sj_data) {
+    struct sink* si, const struct sink* sj, const double mi_old) {
 
-  // To be implemented.
+  for (int k = 0; k < GEAR_CHEMISTRY_ELEMENT_COUNT; k++) {
+    double mk = si->chemistry_data.metal_mass_fraction[k] * mi_old +
+                sj->chemistry_data.metal_mass_fraction[k] * sj->mass;
+
+    si->chemistry_data.metal_mass_fraction[k] = mk / si->mass;
+  }
 }
 
 /**
@@ -452,10 +493,17 @@ __attribute__((always_inline)) INLINE static void chemistry_add_sink_to_sink(
  * @param gas_mass The mass of the gas particle.
  */
 __attribute__((always_inline)) INLINE static void chemistry_add_part_to_sink(
-    struct chemistry_sink_data* sp_data,
-    const struct chemistry_part_data* p_data, const double gas_mass) {
+    struct sink* s, const struct part* p, const double ms_old) {
 
-  // To be implemented.
+  /* gas mass */
+  const float mass = hydro_get_mass(p);
+
+  for (int k = 0; k < GEAR_CHEMISTRY_ELEMENT_COUNT; k++) {
+    double mk = s->chemistry_data.metal_mass_fraction[k] * ms_old +
+                p->chemistry_data.smoothed_metal_mass_fraction[k] * mass;
+
+    s->chemistry_data.metal_mass_fraction[k] = mk / s->mass;
+  }
 }
 
 /**
@@ -562,6 +610,20 @@ chemistry_get_star_total_iron_mass_fraction_for_feedback(
     const struct spart* restrict sp) {
 
   return sp->chemistry_data.metal_mass_fraction[0];
+}
+
+/**
+ * @brief Returns the total iron mass fraction of the
+ * sink particle to be used in feedback/enrichment related routines.
+ * We assume iron to be stored at index 0.
+ *
+ * @param sp Pointer to the particle data.
+ */
+__attribute__((always_inline)) INLINE static double
+chemistry_get_sink_total_iron_mass_fraction_for_feedback(
+    const struct sink* restrict sink) {
+
+  return sink->chemistry_data.metal_mass_fraction[0];
 }
 
 /**

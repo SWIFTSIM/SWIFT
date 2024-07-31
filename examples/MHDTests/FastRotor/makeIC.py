@@ -150,8 +150,8 @@ u = np.ones(N)
 
 rot = np.sqrt((pos[:, 0] - 0.5 * lx) ** 2 + (pos[:, 1] - 0.5 * ly) ** 2)
 
-v[:, 0][rot < R_0] = -v_0 * (pos[:, 1][rot < R_0] - 0.5 * ly) / rot[rot < R_0]
-v[:, 1][rot < R_0] = v_0 * (pos[:, 0][rot < R_0] - 0.5 * lx) / rot[rot < R_0]
+v[:, 0][rot < R_0] = -v_0 * (pos[:, 1][rot < R_0] - 0.5 * ly) / R_0
+v[:, 1][rot < R_0] = v_0 * (pos[:, 0][rot < R_0] - 0.5 * lx) / R_0
 
 B[:, 0] = B_0
 
