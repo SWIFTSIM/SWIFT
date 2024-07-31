@@ -22,7 +22,6 @@
 /* Includes. */
 #include "cell.h"
 #include "part.h"
-#include "sink/GEAR/sink_part.h"
 #include "space.h"
 
 /* Some constants. */
