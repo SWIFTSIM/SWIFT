@@ -446,6 +446,7 @@ void cell_unlink_foreign_particles(struct cell *c) {
   c->hydro.parts = NULL;
   c->stars.parts = NULL;
   c->black_holes.parts = NULL;
+  c->sinks.parts = NULL;
 
   if (c->split) {
     for (int k = 0; k < 8; k++) {
