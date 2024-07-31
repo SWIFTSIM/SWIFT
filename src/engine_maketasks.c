@@ -1282,6 +1282,117 @@ void engine_addtasks_recv_black_holes(struct engine *e, struct cell *c,
 }
 
 /**
+ * @brief Add recv tasks for black_holes pairs to a hierarchy of cells.
+ *
+ * TODO: Update function doc
+ *
+ * @param e The #engine.
+ * @param c The foreign #cell.
+ * @param t_rho The density comm. task, if it has already been created.
+ * @param t_bh_merger The BH swallow comm. task, if it has already been created.
+ * @param t_gas_swallow The gas swallow comm. task, if it has already been
+ * created.
+ * @param t_feedback The recv_feed #task, if it has already been created.
+ * @param tend The top-level time-step communication #task.
+ */
+void engine_addtasks_recv_sinks(struct engine *e, struct cell *c,
+				struct task *t_density,
+				struct task *t_sink_merger,
+				struct task *t_sink_gas_swallow,
+				struct task *t_sink_formation_counts,
+				struct task *const tend) {
+
+  /* HERE */
+#ifdef WITH_MPI
+  struct scheduler *s = &e->sched;
+
+  /* Early abort (are we below the level where tasks are)? */
+  if (!cell_get_flag(c, cell_flag_has_tasks)) return;
+
+  if (t_sink_formation_counts == NULL && c->sinks.count > 0) {
+#ifdef SWIFT_DEBUG_CHECKS
+    if (c->depth != 0)
+      error(
+          "Attaching a sink_formation_count task at a non-top level c->depth=%d "
+          "c->sinks.count=%d",
+          c->depth, c->sinks.count);
+#endif
+    t_sink_formation_counts = scheduler_addtask(s, task_type_recv, task_subtype_sink_formation_counts,
+						c->mpi.tag, 0, c, NULL);
+  }
+
+  /* Have we reached a level where there are any sink tasks ? */
+  if (t_density == NULL && c->sinks.swallow != NULL) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+    /* Make sure this cell has a valid tag. */
+    if (c->mpi.tag < 0) error("Trying to receive from untagged cell.");
+#endif  // SWIFT_DEBUG_CHECKS
+
+    /* Create the tasks. */
+    t_density = scheduler_addtask(s, task_type_recv, task_subtype_sink_density,
+				  c->mpi.tag, 0, c, NULL);
+
+    t_sink_merger = scheduler_addtask(
+        s, task_type_recv, task_subtype_sink_merger, c->mpi.tag, 0, c, NULL);
+
+    t_sink_gas_swallow = scheduler_addtask(
+        s, task_type_recv, task_subtype_sink_gas_swallow, c->mpi.tag, 0, c, NULL);
+
+    if (c->sinks.count > 0) {
+      /* Receive the sinks only once the counts have been received */
+      scheduler_addunlock(s, t_sink_formation_counts, t_density);
+    }
+  }
+
+  if (t_density != NULL) {
+    engine_addlink(e, &c->mpi.recv, t_density);
+    engine_addlink(e, &c->mpi.recv, t_sink_merger);
+    engine_addlink(e, &c->mpi.recv, t_sink_gas_swallow);
+
+    if (c->sinks.count > 0) {
+      engine_addlink(e, &c->mpi.recv, t_sink_formation_counts);
+    }
+
+#ifdef SWIFT_DEBUG_CHECKS
+    if (c->nodeID == e->nodeID) error("Local cell!");
+#endif
+
+    /* Receive the sinks before the swallow loop */
+    for (struct link *l = c->sinks.swallow; l != NULL; l = l->next) {
+      scheduler_addunlock(s, t_density, l->t);
+      scheduler_addunlock(s, l->t, t_sink_gas_swallow);
+      scheduler_addunlock(s, l->t, t_sink_merger);
+    }
+    for (struct link *l = c->hydro.force; l != NULL; l = l->next) {
+      scheduler_addunlock(s, l->t, t_sink_gas_swallow);
+    }
+    for (struct link *l = c->sinks.do_gas_swallow; l != NULL;
+         l = l->next) {
+      scheduler_addunlock(s, t_sink_gas_swallow, l->t);
+    }
+    for (struct link *l = c->sinks.do_sink_swallow; l != NULL;
+         l = l->next) {
+      scheduler_addunlock(s, t_sink_merger, l->t);
+      scheduler_addunlock(s, l->t, tend);
+    }
+  }
+
+  /* Recurse? */
+  if (c->split)
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL)
+        engine_addtasks_recv_sinks(e, c->progeny[k], t_density, t_sink_merger,
+				   t_sink_gas_swallow, t_sink_formation_counts,
+				   tend);
+
+#else
+  error("SWIFT was not compiled with MPI support.");
+#endif
+}
+
+
+/**
  * @brief Add recv tasks for gravity pairs to a hierarchy of cells.
  *
  * @param e The #engine.
@@ -4634,13 +4745,21 @@ void engine_addtasks_recv_mapper(void *map_data, int num_elements,
 
     /* Add the recv tasks for the cells in the proxy that have a black holes
      * connection. */
-    /* HERE */
     if ((e->policy & engine_policy_black_holes) &&
         (type & proxy_cell_type_hydro))
       engine_addtasks_recv_black_holes(e, ci, /*t_rho=*/NULL,
                                        /*t_swallow=*/NULL,
                                        /*t_gas_swallow=*/NULL,
                                        /*t_feedback=*/NULL, tend);
+
+    /* Add the recv tasks for the cells in the proxy that have a black holes
+     * connection. */
+    if ((e->policy & engine_policy_sinks) &&
+        (type & proxy_cell_type_hydro))
+      engine_addtasks_recv_sinks(e, ci, /*t_density=*/NULL,
+                                       /*t_sink_merger*/NULL,
+                                       /*t_sink_gas_swallow=*/NULL,
+                                       /*t_sink_formation_counts=*/NULL, tend);
 
     /* Add the recv tasks for the cells in the proxy that have a gravity
      * connection. */
