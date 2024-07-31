@@ -8,7 +8,7 @@ We show here how to run such initial conditions with the GEAR model, however it 
 
 To generate the initial conditions locally, if pNbody is installed, run:
 
-./makeDisk.py
+../makeDisk.py
 
 If you don't have access to pNbody, you can simply skip this step. The initial conditions will automatically 
 be downloaded when launching the run script (see below).
