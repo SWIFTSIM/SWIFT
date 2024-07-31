@@ -85,7 +85,7 @@ struct proxy {
   int nr_sinks_in, nr_sinks_out;
 
   /* Buffer to hold the incomming/outgoing particle counts. */
-  int buff_out[4], buff_in[4];
+  int buff_out[5], buff_in[5];
 
 /* MPI request handles. */
 #ifdef WITH_MPI
