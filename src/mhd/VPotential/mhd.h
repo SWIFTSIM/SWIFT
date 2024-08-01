@@ -160,9 +160,7 @@ __attribute__((always_inline)) INLINE static float mhd_get_magnetosonic_speed(
   /* Compute effective sound speeds */
   const float cs = p->force.soundspeed;
   const float cs2 = cs * cs;
-  const float afact_ratio = 1.f;
-//      pow(a, (2.f * mhd_comoving_factor + 3.f * hydro_gamma));
-  const float v_A2 = afact_ratio * permeability_inv * B2 / rho;
+  const float v_A2 = permeability_inv * B2 / rho;
   const float c_ms2 = cs2 + v_A2;
 
   return sqrtf(c_ms2);
@@ -262,7 +260,7 @@ __attribute__((always_inline)) INLINE static float hydro_get_dGau_dt(
   /* Parabolic evolution term */
   const float Damping_Term = 4.f * afac2 * v_sig * Gauge / p->h;
   /* Density change term */
-  const float DivV_Term = 1.f * ( hydro_get_div_v(p) - 3.f * c->H ) * Gauge;
+  const float DivV_Term = 0.f * ( hydro_get_div_v(p) - 3.f * c->H ) * Gauge;
   /* Cosmological term */
   const float Hubble_Term = (2.f + mhd_comoving_factor) * c->H * Gauge;
 
@@ -323,7 +321,7 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_gradient(
     struct part *restrict p, struct xpart *restrict xp,
     const struct cosmology *cosmo, const struct hydro_props *hydro_props) {
 
-    //p->force.balsara = 1.f;
+  p->force.balsara = 1.f;
 }
 
 /**
@@ -394,7 +392,13 @@ __attribute__((always_inline)) INLINE static void mhd_end_gradient(
  * @param cosmo The cosmological model.
  */
 __attribute__((always_inline)) INLINE static void mhd_part_has_no_neighbours(
-    struct part *p, struct xpart *xp, const struct cosmology *cosmo) {}
+    struct part *p, struct xpart *xp, const struct cosmology *cosmo) {
+
+  p->mhd_data.divB = 0.0f;
+  p->mhd_data.curl_B[0] = 0.0f;
+  p->mhd_data.curl_B[1] = 0.0f;
+  p->mhd_data.curl_B[2] = 0.0f;
+}
 
 /**
  * @brief Prepare a particle for the force calculation.
@@ -470,7 +474,12 @@ __attribute__((always_inline)) INLINE static void mhd_reset_acceleration(
  * @param cosmo The cosmological model
  */
 __attribute__((always_inline)) INLINE static void mhd_reset_predicted_values(
-    struct part *p, const struct xpart *xp, const struct cosmology *cosmo) {}
+    struct part *p, const struct xpart *xp, const struct cosmology *cosmo) {
+  /* Re-set the predicted magnetic flux densities */
+  p->mhd_data.APred[0] = p->mhd_data.Afull[0];
+  p->mhd_data.APred[1] = p->mhd_data.Afull[1];
+  p->mhd_data.APred[2] = p->mhd_data.Afull[2];
+}
 
 /**
  * @brief Predict additional particle fields forward in time when drifting
@@ -494,14 +503,13 @@ __attribute__((always_inline)) INLINE static void mhd_predict_extra(
     const struct entropy_floor_properties *floor_props, const float mu_0) {
 
   /* Predict the VP magnetic field */  ///// May we need to predict B? XXX
-  //const float afact=cosmo->a * cosmo->a;
-/*  const float afact=1.0f;
+  const float afact=cosmo->a * cosmo->a;
   p->mhd_data.APred[0] += p->mhd_data.dAdt[0] * dt_therm * afact;
   p->mhd_data.APred[1] += p->mhd_data.dAdt[1] * dt_therm * afact;
   p->mhd_data.APred[2] += p->mhd_data.dAdt[2] * dt_therm * afact;
-*/
+  
   float change_Gau =
-      hydro_get_dGau_dt(p, p->mhd_data.Gau, cosmo, mu_0) * dt_therm;
+      hydro_get_dGau_dt(p, p->mhd_data.Gau, cosmo, mu_0) * dt_therm * afact;
   p->mhd_data.Gau += change_Gau;
 }
 
@@ -550,10 +558,13 @@ __attribute__((always_inline)) INLINE static void mhd_kick_extra(
     const struct entropy_floor_properties *floor_props) {
 
   const float afact=1.0f;
-  p->mhd_data.APred[0] += p->mhd_data.dAdt[0] * dt_therm * afact;
-  p->mhd_data.APred[1] += p->mhd_data.dAdt[1] * dt_therm * afact;
-  p->mhd_data.APred[2] += p->mhd_data.dAdt[2] * dt_therm * afact;
+  //p->mhd_data.APred[0] += p->mhd_data.dAdt[0] * dt_therm * afact;
+  //p->mhd_data.APred[1] += p->mhd_data.dAdt[1] * dt_therm * afact;
+  //p->mhd_data.APred[2] += p->mhd_data.dAdt[2] * dt_therm * afact;
 
+  xp->mhd_data.Afull[0] += p->mhd_data.dAdt[0] * dt_therm * afact;
+  xp->mhd_data.Afull[1] += p->mhd_data.dAdt[1] * dt_therm * afact;
+  xp->mhd_data.Afull[2] += p->mhd_data.dAdt[2] * dt_therm * afact;
 }
 
 /**
@@ -581,6 +592,10 @@ __attribute__((always_inline)) INLINE static void mhd_convert_quantities(
   p->mhd_data.APred[0] *= a_fact;
   p->mhd_data.APred[1] *= a_fact;
   p->mhd_data.APred[2] *= a_fact;
+
+  xp->mhd_data.Afull[0] = p->mhd_data.APred[0];
+  xp->mhd_data.Afull[1] = p->mhd_data.APred[1];
+  xp->mhd_data.Afull[2] = p->mhd_data.APred[2];
 }
 
 /**

@@ -53,6 +53,9 @@ struct mhd_part_data {
 /**
  * @brief Particle-carried extra fields for the MHD scheme.
  */
-struct mhd_xpart_data {};
+struct mhd_xpart_data {
+  /*! Full Step Potential field */
+  float Afull[3];
+};
 
 #endif /* SWIFT_VECTOR_POTENTIAL_MHD_STRUCT_H */
