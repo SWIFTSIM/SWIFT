@@ -3025,10 +3025,10 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
 
 	/* Propagating new star counts? */
 	if (with_star_formation_sink) {
-          if (ci_active && ci->sinks.count > 0) {
+          if (ci_active && (ci->hydro.count > 0 || ci->sinks.count > 0)) {
             scheduler_activate_recv(s, ci->mpi.recv, task_subtype_sf_counts);
           }
-          if (cj_active && cj->sinks.count > 0) {
+          if (cj_active && (cj->hydro.count > 0 || cj->sinks.count > 0)) {
             scheduler_activate_send(s, cj->mpi.send, task_subtype_sf_counts,
                                     ci_nodeID);
           }
@@ -3084,10 +3084,10 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
 
 	/* Propagating new star counts? */
         if (with_star_formation_sink) {
-          if (cj_active && cj->sinks.count > 0) {
+          if (cj_active && (cj->hydro.count > 0 || cj->sinks.count > 0)) {
             scheduler_activate_recv(s, cj->mpi.recv, task_subtype_sf_counts);
           }
-          if (ci_active && ci->sinks.count > 0) {
+          if (ci_active && (ci->hydro.count > 0 || ci->sinks.count > 0)) {
             scheduler_activate_send(s, ci->mpi.send, task_subtype_sf_counts,
                                     cj_nodeID);
           }
