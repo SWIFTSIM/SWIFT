@@ -155,6 +155,19 @@ struct stars_props {
 
   /*! Maximal change of h over one time-step */
   float log_max_h_change;
+
+  /*! Maximal time-step length of young stars (internal units) */
+  double max_time_step_young;
+
+  /*! Maximal time-step length of old stars (internal units) */
+  double max_time_step_old;
+
+  /*! Age threshold for the young/old transition (internal units) */
+  double age_threshold;
+
+  /*! Age threshold for the transition to unlimited time-step size (internal
+   * units) */
+  double age_threshold_unlimited;
 };
 
 #endif /* SWIFT_GEAR_STAR_PART_H */
