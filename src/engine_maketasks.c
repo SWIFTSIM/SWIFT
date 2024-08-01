@@ -4591,12 +4591,6 @@ void engine_addtasks_send_mapper(void *map_data, int num_elements,
   const int with_rt = (e->policy & engine_policy_rt);
   struct cell_type_pair *cell_type_pairs = (struct cell_type_pair *)map_data;
 
-#ifdef SWIFT_DEBUG_CHECKS
-  if (e->policy & engine_policy_sinks) {
-    error("TODO");
-  }
-#endif
-
   for (int k = 0; k < num_elements; k++) {
     struct cell *ci = cell_type_pairs[k].ci;
     struct cell *cj = cell_type_pairs[k].cj;
@@ -4675,12 +4669,6 @@ void engine_addtasks_recv_mapper(void *map_data, int num_elements,
   const int with_sync = (e->policy & engine_policy_timestep_sync);
   const int with_rt = (e->policy & engine_policy_rt);
   struct cell_type_pair *cell_type_pairs = (struct cell_type_pair *)map_data;
-
-#ifdef SWIFT_DEBUG_CHECKS
-  if (e->policy & engine_policy_sinks) {
-    error("TODO");
-  }
-#endif
 
   for (int k = 0; k < num_elements; k++) {
     struct cell *ci = cell_type_pairs[k].ci;

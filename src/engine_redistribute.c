@@ -552,10 +552,6 @@ void engine_redistribute_relink_mapper(void *map_data, int num_elements,
 void engine_redistribute(struct engine *e) {
 
 #ifdef WITH_MPI
-  if (e->policy & engine_policy_sinks) {
-    error("Not implemented yet");
-  }
-
   const int nr_nodes = e->nr_nodes;
   const int nodeID = e->nodeID;
   struct space *s = e->s;
