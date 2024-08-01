@@ -645,15 +645,12 @@ void engine_addtasks_send_sinks(struct engine *e, struct cell *ci,
 
       /* The send_sinks task should unlock the super_cell's sink exit point
        * task. */
-      scheduler_addunlock(s, t_sink_merger,
-                          ci->hydro.super->sinks.sink_out);
 
       /* Ghost before you send */
       scheduler_addunlock(s, ci->hydro.super->sinks.drift, t_density);
 
       /* Send the sinks after the sink formation and the sink_formation_counts */
       scheduler_addunlock(s, ci->hydro.super->sinks.sink_formation, t_density);
-      scheduler_addunlock(s, t_sink_formation_counts, t_density);
       scheduler_addunlock(s, t_density, ci->hydro.super->sinks.sink_out);
 
       scheduler_addunlock(s, ci->hydro.super->sinks.sink_ghost1,
