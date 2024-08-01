@@ -981,7 +981,7 @@ void engine_redistribute(struct engine *e) {
                    nodes, nr_nodes, sizeof(int), threadpool_auto_chunk_size,
                    &savelink_data);
   }
-  swift_free("sink_dest", b_dest);
+  swift_free("sink_dest", sink_dest);
   /***************************************************/
 
   /* Get destination of each g-particle */
