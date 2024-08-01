@@ -395,9 +395,9 @@ __attribute__((always_inline)) INLINE static void mhd_part_has_no_neighbours(
     struct part *p, struct xpart *xp, const struct cosmology *cosmo) {
 
   p->mhd_data.divB = 0.0f;
-  p->mhd_data.curl_B[0] = 0.0f;
-  p->mhd_data.curl_B[1] = 0.0f;
-  p->mhd_data.curl_B[2] = 0.0f;
+  p->mhd_data.curlB[0] = 0.0f;
+  p->mhd_data.curlB[1] = 0.0f;
+  p->mhd_data.curlB[2] = 0.0f;
 }
 
 /**
@@ -476,9 +476,9 @@ __attribute__((always_inline)) INLINE static void mhd_reset_acceleration(
 __attribute__((always_inline)) INLINE static void mhd_reset_predicted_values(
     struct part *p, const struct xpart *xp, const struct cosmology *cosmo) {
   /* Re-set the predicted magnetic flux densities */
-  p->mhd_data.APred[0] = p->mhd_data.Afull[0];
-  p->mhd_data.APred[1] = p->mhd_data.Afull[1];
-  p->mhd_data.APred[2] = p->mhd_data.Afull[2];
+  p->mhd_data.APred[0] = xp->mhd_data.Afull[0];
+  p->mhd_data.APred[1] = xp->mhd_data.Afull[1];
+  p->mhd_data.APred[2] = xp->mhd_data.Afull[2];
 }
 
 /**
