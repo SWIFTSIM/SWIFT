@@ -75,7 +75,12 @@ __attribute__((always_inline)) INLINE static float stars_compute_timestep(
      to the stars module (it makes more sense to be with the stars), but this
      require care because the sink module also need to know about this
      star_type. Moving the star type to the stars module simplifies the above
-     since we would know the type of the star. Hence, no flag is needed. */
+     since we would know the type of the star. Hence, no flag is needed.
+
+     The purpose of taking care about the discrete stars is to avoid them
+     having small timesteps when they are already dead. They won't do anything
+     anymore so they don't need to be waken up often.
+  */
 
   /* What age category are we in? */
   if (star_age > stars_properties->age_threshold_unlimited) {
