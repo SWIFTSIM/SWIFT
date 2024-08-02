@@ -64,6 +64,12 @@ struct mhd_part_data {
 
   /* Magnetic force */
   float tot_mag_F[3];
+  /* B advection source */
+  float Adv_B_source[3];
+  /* B total diffusion source */
+  float Diff_B_source[3];
+  /* Laplacian B */
+  float Delta_B[3];
 };
 
 /**
