@@ -36,7 +36,7 @@
  * @param tpid The thread id.
  */
 void zoom_void_split_recursive(struct space *s, struct cell *c,
-                               const intergertime_t ti_current,
+                               const integertime_t ti_current,
                                const short int tpid) {
 
   const int depth = c->depth;
