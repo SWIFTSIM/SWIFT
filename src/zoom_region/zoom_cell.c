@@ -876,10 +876,10 @@ void zoom_link_void_leaves(struct space *s, struct cell *c,
     zoom_cell->void_parent = c;
 
     /* Get dt_min/dt_max. */
-    for (int k = 0; k < zoom_cell->grav.count; k++) {
+    for (int i = 0; i < zoom_cell->grav.count; i++) {
 
       /* When does this particle's time-step start and end? */
-      const timebin_t time_bin = zoom_cell->grav.parts[k].time_bin;
+      const timebin_t time_bin = zoom_cell->grav.parts[i].time_bin;
       const integertime_t ti_end = get_integer_time_end(ti_current, time_bin);
       const integertime_t ti_beg = get_integer_time_begin(ti_current, time_bin);
 
