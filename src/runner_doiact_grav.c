@@ -185,12 +185,13 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
 void runner_zoom_do_void_grav_down(struct runner *r, struct cell *c,
                                    int timer) {
 
-  /* Some constants */
-  const struct engine *e = r->e;
-
   TIMER_TIC;
 
 #ifdef SWIFT_DEBUG_CHECKS
+
+  /* Some constants */
+  const struct engine *e = r->e;
+
   if (c->grav.ti_old_multipole != e->ti_current)
     error("c->multipole not drifted.");
   if (c->grav.multipole->pot.ti_init != e->ti_current)
