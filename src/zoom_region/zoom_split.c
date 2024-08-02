@@ -32,9 +32,11 @@
  *
  * @param s The #space in which the cell lives.
  * @param c The #cell to split recursively.
+ * @param ti_current The current time step.
  * @param tpid The thread id.
  */
 void zoom_void_split_recursive(struct space *s, struct cell *c,
+                               const intergertime_t ti_current,
                                const short int tpid) {
 
   const int depth = c->depth;
@@ -108,7 +110,7 @@ void zoom_void_split_recursive(struct space *s, struct cell *c,
             cp->width[0] / 2, s->zoom_props->width[0]);
 #endif
 
-      zoom_link_void_leaves(s, cp);
+      zoom_link_void_leaves(s, cp, ti_current);
 
     } else {
 
@@ -161,6 +163,7 @@ void zoom_void_space_split(struct space *s, int verbose) {
   struct cell *cells_top = s->cells_top;
   int *void_cells_top = s->zoom_props->void_cells_top;
   int nr_void_cells = s->zoom_props->nr_void_cells;
+  const intergertime_t ti_current = s->e->ti_current;
 
   /* Create the void cell trees and populate their multipoles. This is only
    * a handful of cells so no threadpool. */
@@ -168,7 +171,7 @@ void zoom_void_space_split(struct space *s, int verbose) {
   /* Loop over the void cells */
   for (int ind = 0; ind < nr_void_cells; ind++) {
     struct cell *c = &cells_top[void_cells_top[ind]];
-    zoom_void_split_recursive(s, c, /*tpid*/ 0);
+    zoom_void_split_recursive(s, c, ti_current, /*tpid*/ 0);
   }
 
   if (verbose)

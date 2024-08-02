@@ -45,7 +45,8 @@ void zoom_construct_tl_cells(struct space *s, const integertime_t ti_current,
                              int verbose);
 
 /* Linking zoom cells to void leaves. */
-void zoom_link_void_leaves(struct space *s, struct cell *c);
+void zoom_link_void_leaves(struct space *s, struct cell *c,
+                           const integertime_t ti_current);
 
 /* Space regridding functions. */
 int zoom_need_regrid(const struct space *s, const int new_cdim[3]);
