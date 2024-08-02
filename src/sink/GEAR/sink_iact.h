@@ -52,12 +52,21 @@ __attribute__((always_inline)) INLINE static void runner_iact_sink(
 
   /* if the distance is less than the cut off radius */
   if (r < cut_off_radius) {
-
     /*
      * NOTE: Those lines break MPI
      */
-    float potential_i = pi->gpart->potential;
-    float potential_j = pj->gpart->potential;
+    /* float potential_i = pi->gpart->potential; */
+    /* float potential_j = pj->gpart->potential; */
+
+    /* Bug fix (02.08.2024): Using sink_data.potential solves MPI segfault issue
+       caused by using pi->gpart->potential. Same as runner_iact_nonsym_sink(),
+       the fix was propagated for consistency
+
+       Note to Darwin: Verify that this does not alter the behaviour of sinks
+       without MPI. It should not, as the potential is stored after th egravity
+       computations with sink_store_potential_in_part() function. */
+    float potential_i = pi->sink_data.potential;
+    float potential_j = pj->sink_data.potential;
 
     /* prevent the particle with the largest potential to form a sink */
     if (potential_i > potential_j) {
@@ -97,9 +106,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_sink(
   const float r = sqrtf(r2);
 
   if (r < cut_off_radius) {
+    /* Bug fix (02.08.2024): Using sink_data.potential solves MPI segfault issue
+       caused by using pi->gpart->potential
 
-    float potential_i = pi->gpart->potential;
-    float potential_j = pj->gpart->potential;
+       Note to Darwin: Verify that this does not alter the behaviour of sinks
+       without MPI. It should not, as the potential is stored after th egravity
+       computations with sink_store_potential_in_part() function. */
+    float potential_i = pi->sink_data.potential;
+    float potential_j = pj->sink_data.potential;
 
     /* if the potential is larger
      * prevent the particle to form a sink */
