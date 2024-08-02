@@ -183,8 +183,7 @@ void runner_do_grav_long_range_periodic(struct runner *r, struct cell *ci,
   const int periodic = e->mesh->periodic;
   const double dim[3] = {e->mesh->dim[0], e->mesh->dim[1], e->mesh->dim[2]};
 
-  /* Get the maximum distance at which we can have a non-mesh interaction.
-   */
+  /* Get the maximum distance at which we can have a non-mesh interaction. */
   const double max_distance = e->mesh->r_cut_max;
   const double max_distance2 = max_distance * max_distance;
 
