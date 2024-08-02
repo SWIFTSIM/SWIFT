@@ -302,6 +302,13 @@ struct part {
   float s_fixed;
 #endif
 
+#ifdef MATERIAL_STRENGTH
+  struct sym_matrix stress_tensor_sigma;
+
+  struct sym_matrix deviatoric_stress_tensor_S;
+#endif /* MATERIAL_STRENGTH */
+
+
 } SWIFT_STRUCT_ALIGN;
 
 #endif /* SWIFT_PLANETARY_HYDRO_PART_H */

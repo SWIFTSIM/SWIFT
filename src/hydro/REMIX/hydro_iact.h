@@ -29,6 +29,7 @@
 #include "adiabatic_index.h"
 #include "const.h"
 #include "hydro_kernels.h"
+#include "hydro_misc_utils.h"
 #include "hydro_parameters.h"
 #include "hydro_visc_difn.h"
 #include "math.h"
@@ -280,34 +281,59 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
     G_mean[i] = 0.5f * (Gi[i] - Gj[i]);
   }
 
+  // Get pairwise stress tensor
+  float pairwise_stress_tensor_i[3][3], pairwise_stress_tensor_j[3][3];
+  hydro_get_pairwise_sigma(pairwise_stress_tensor_i, pairwise_stress_tensor_j, pi, pj, pressurei, pressurej);  
+
   // Viscous pressures
   float Qi, Qj;
   float visc_signal_velocity, difn_signal_velocity;
   hydro_set_Qi_Qj(&Qi, &Qj, &visc_signal_velocity, &difn_signal_velocity, pi,
                   pj, dx, a, H);
 
-  /* Pressure terms to be used in evolution equations */
-  float P_i_term = pressurei / (pi->rho * pj->rho);
-  float P_j_term = pressurej / (pi->rho * pj->rho);
-  float Q_i_term = Qi / (pi->rho * pj->rho);
-  float Q_j_term = Qj / (pi->rho * pj->rho);
+    float  sigma_dot_kernel_gradient_i[3], sigma_dot_kernel_gradient_j[3], Q_term_i[3], Q_term_j[3];
+    for (int i = 0; i < 3; i++) {
+        Q_term_i[i] = -Qi * G_mean[i];
+        Q_term_j[i] = -Qj * G_mean[i];
+        
+        sigma_dot_kernel_gradient_i[i] = 0.f;
+        sigma_dot_kernel_gradient_j[i] = 0.f;
+            for (int j = 0; j < 3; j++) {
+            sigma_dot_kernel_gradient_i[i] += pairwise_stress_tensor_i[i][j] * G_mean[j];
+            sigma_dot_kernel_gradient_j[i] += pairwise_stress_tensor_j[i][j] * G_mean[j];
+        }
+    }
 
   /* Use the force Luke! */
   for (int i = 0; i < 3; i++) {
-    pi->a_hydro[i] -=
-        mj * (P_i_term + P_j_term + Q_i_term + Q_j_term) * G_mean[i];
-    pj->a_hydro[i] +=
-        mi * (P_i_term + P_j_term + Q_i_term + Q_j_term) * G_mean[i];
+    pi->a_hydro[i] +=
+        mj * (sigma_dot_kernel_gradient_i[i] + sigma_dot_kernel_gradient_j[i]  + Q_term_i[i] + Q_term_j[i]) / (rhoi * rhoj);
+    pj->a_hydro[i] -=
+        mi * (sigma_dot_kernel_gradient_i[i] + sigma_dot_kernel_gradient_j[i]  + Q_term_i[i] + Q_term_j[i]) / (rhoi * rhoj);
   }
 
+    // Add factors to these for artificial stress
+    const float dv_dot_sigma_dot_kernel_gradient_i = (pi->v[0] - pj->v[0]) * sigma_dot_kernel_gradient_i[0] +
+                                                     (pi->v[1] - pj->v[1]) * sigma_dot_kernel_gradient_i[1] +
+                                                     (pi->v[2] - pj->v[2]) * sigma_dot_kernel_gradient_i[2];
+    const float dv_dot_sigma_dot_kernel_gradient_j = (pi->v[0] - pj->v[0]) * sigma_dot_kernel_gradient_j[0] +
+                                                     (pi->v[1] - pj->v[1]) * sigma_dot_kernel_gradient_j[1] +
+                                                     (pi->v[2] - pj->v[2]) * sigma_dot_kernel_gradient_j[2];
+    const float dv_dot_Q_term_i = (pi->v[0] - pj->v[0]) * Q_term_i[0] +
+                                  (pi->v[1] - pj->v[1]) * Q_term_i[1] +
+                                  (pi->v[2] - pj->v[2]) * Q_term_i[2];
+    const float dv_dot_Q_term_j = (pi->v[0] - pj->v[0]) * Q_term_j[0] +
+                                  (pi->v[1] - pj->v[1]) * Q_term_j[1] +
+                                  (pi->v[2] - pj->v[2]) * Q_term_j[2];
+        
   // v_ij dot kernel gradient term
   const float dvdotG = (pi->v[0] - pj->v[0]) * G_mean[0] +
                        (pi->v[1] - pj->v[1]) * G_mean[1] +
                        (pi->v[2] - pj->v[2]) * G_mean[2];
 
   /* Get the time derivative for u, including the viscosity */
-  float du_dt_i = (P_i_term + Q_i_term) * dvdotG;
-  float du_dt_j = (P_j_term + Q_j_term) * dvdotG;
+  float du_dt_i = -(dv_dot_sigma_dot_kernel_gradient_i + dv_dot_Q_term_i) / (rhoi * rhoj);
+  float du_dt_j = -(dv_dot_sigma_dot_kernel_gradient_j + dv_dot_Q_term_j) / (rhoi * rhoj);
 
   /* Internal energy time derivative */
   pi->u_dt += du_dt_i * mj;
@@ -323,11 +349,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   pi->force.v_sig = max(pi->force.v_sig, v_sig);
   pj->force.v_sig = max(pj->force.v_sig, v_sig);
 
-  pi->drho_dt += mj * (pi->rho / pj->rho) * dvdotG;
-  pj->drho_dt += mi * (pj->rho / pi->rho) * dvdotG;
+  pi->drho_dt += mj * (rhoi / rhoj) * dvdotG;
+  pj->drho_dt += mi * (rhoj / rhoi) * dvdotG;
 
   if ((!pi->is_h_max) && (!pj->is_h_max)) {
-    float mean_rho = 0.5f * (pi->rho + pj->rho);
+    float mean_rho = 0.5f * (rhoi + rhoj);
     float mean_balsara = 0.5f * (pi->force.balsara + pj->force.balsara);
     float mod_G = sqrtf(G_mean[0] * G_mean[0] + G_mean[1] * G_mean[1] +
                         G_mean[2] * G_mean[2]);
@@ -369,10 +395,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 
       // ...
       drho_dt_norm_and_difn_i += -(a_difn_rho + b_difn_rho * mean_balsara) *
-                                 mj * (pi->rho / pj->rho) * v_sig_difn *
+                                 mj * (rhoi / rhoj) * v_sig_difn *
                                  (rhotilde_i - rhotilde_j) * mod_G / mean_rho;
       drho_dt_norm_and_difn_j += -(a_difn_rho + b_difn_rho * mean_balsara) *
-                                 mi * (pj->rho / pi->rho) * v_sig_difn *
+                                 mi * (rhoj / rhoi) * v_sig_difn *
                                  (rhotilde_j - rhotilde_i) * mod_G / mean_rho;
     }
 
@@ -417,6 +443,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Recover some data */
   const float mj = pj->mass;
+  const float rhoi = pi->rho;
   const float rhoj = pj->rho;
   const float pressurei = pi->force.pressure;
   const float pressurej = pj->force.pressure;
@@ -440,31 +467,50 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     G_mean[i] = 0.5f * (Gi[i] - Gj[i]);
   }
 
+  // Get pairwise stress tensor
+  float pairwise_stress_tensor_i[3][3], pairwise_stress_tensor_j[3][3];
+  hydro_get_pairwise_sigma(pairwise_stress_tensor_i, pairwise_stress_tensor_j, pi, pj, pressurei, pressurej);  
+
   // Viscous pressures
   float Qi, Qj;
   float visc_signal_velocity, difn_signal_velocity;
   hydro_set_Qi_Qj(&Qi, &Qj, &visc_signal_velocity, &difn_signal_velocity, pi,
                   pj, dx, a, H);
 
-  /* Pressure terms to be used in evolution equations */
-  float P_i_term = pressurei / (pi->rho * pj->rho);
-  float P_j_term = pressurej / (pi->rho * pj->rho);
-  float Q_i_term = Qi / (pi->rho * pj->rho);
-  float Q_j_term = Qj / (pi->rho * pj->rho);
+    float  sigma_dot_kernel_gradient_i[3], sigma_dot_kernel_gradient_j[3], Q_term_i[3], Q_term_j[3];
+    for (int i = 0; i < 3; i++) {
+        Q_term_i[i] = -Qi * G_mean[i];
+        Q_term_j[i] = -Qj * G_mean[i];
+        
+        sigma_dot_kernel_gradient_i[i] = 0.f;
+        sigma_dot_kernel_gradient_j[i] = 0.f;
+            for (int j = 0; j < 3; j++) {
+            sigma_dot_kernel_gradient_i[i] += pairwise_stress_tensor_i[i][j] * G_mean[j];
+            sigma_dot_kernel_gradient_j[i] += pairwise_stress_tensor_j[i][j] * G_mean[j];
+        }
+    }
 
   /* Use the force Luke! */
   for (int i = 0; i < 3; i++) {
-    pi->a_hydro[i] -=
-        mj * (P_i_term + P_j_term + Q_i_term + Q_j_term) * G_mean[i];
+    pi->a_hydro[i] +=
+        mj * (sigma_dot_kernel_gradient_i[i] + sigma_dot_kernel_gradient_j[i]  + Q_term_i[i] + Q_term_j[i]) / (rhoi * rhoj);
   }
 
+    // Add factors to these for artificial stress
+    const float dv_dot_sigma_dot_kernel_gradient_i = (pi->v[0] - pj->v[0]) * sigma_dot_kernel_gradient_i[0] +
+                                                     (pi->v[1] - pj->v[1]) * sigma_dot_kernel_gradient_i[1] +
+                                                     (pi->v[2] - pj->v[2]) * sigma_dot_kernel_gradient_i[2];
+    const float dv_dot_Q_term_i = (pi->v[0] - pj->v[0]) * Q_term_i[0] +
+                                  (pi->v[1] - pj->v[1]) * Q_term_i[1] +
+                                  (pi->v[2] - pj->v[2]) * Q_term_i[2];
+        
   // v_ij dot kernel gradient term
   const float dvdotG = (pi->v[0] - pj->v[0]) * G_mean[0] +
                        (pi->v[1] - pj->v[1]) * G_mean[1] +
                        (pi->v[2] - pj->v[2]) * G_mean[2];
 
   /* Get the time derivative for u, including the viscosity */
-  float du_dt_i = (P_i_term + Q_i_term) * dvdotG;
+  float du_dt_i = -(dv_dot_sigma_dot_kernel_gradient_i + dv_dot_Q_term_i) / (rhoi * rhoj);
 
   /* Internal energy time derivative */
   pi->u_dt += du_dt_i * mj;
@@ -477,10 +523,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   /* Update the signal velocity. */
   pi->force.v_sig = max(pi->force.v_sig, v_sig);
 
-  pi->drho_dt += mj * (pi->rho / pj->rho) * dvdotG;
+  pi->drho_dt += mj * (rhoi / rhoj) * dvdotG;
 
   if ((!pi->is_h_max) && (!pj->is_h_max)) {
-    float mean_rho = 0.5f * (pi->rho + pj->rho);
+    float mean_rho = 0.5f * (rhoi + rhoj);
     float mean_balsara = 0.5f * (pi->force.balsara + pj->force.balsara);
     float mod_G = sqrtf(G_mean[0] * G_mean[0] + G_mean[1] * G_mean[1] +
                         G_mean[2] * G_mean[2]);
@@ -516,7 +562,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
       // ...
       drho_dt_norm_and_difn_i += -(a_difn_rho + b_difn_rho * mean_balsara) *
-                                 mj * (pi->rho / pj->rho) * v_sig_difn *
+                                 mj * (rhoi / rhoj) * v_sig_difn *
                                  (rhotilde_i - rhotilde_j) * mod_G / mean_rho;
     }
 

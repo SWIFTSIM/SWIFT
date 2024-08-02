@@ -34,6 +34,7 @@
 #include "entropy_floor.h"
 #include "equation_of_state.h"
 #include "hydro_kernels.h"
+#include "hydro_misc_utils.h"
 #include "hydro_parameters.h"
 #include "hydro_properties.h"
 #include "hydro_space.h"
@@ -691,6 +692,12 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   p->force.pressure = pressure;
   p->force.soundspeed = soundspeed;
   p->force.balsara = balsara;
+
+    
+#ifdef MATERIAL_STRENGTH
+  // Set stress_tensor_sigma
+  hydro_set_sigma(p, pressure);
+#endif /* MATERIAL_STRENGTH */
 }
 
 /**
@@ -827,6 +834,12 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   p->force.soundspeed = soundspeed;
 
   p->force.v_sig = max(p->force.v_sig, 2.f * soundspeed);
+
+        
+#ifdef MATERIAL_STRENGTH
+  // Set stress_tensor_sigma (not sure if we also need to do this here)
+  hydro_set_sigma(p, pressure);
+#endif /* MATERIAL_STRENGTH */
 }
 
 /**
