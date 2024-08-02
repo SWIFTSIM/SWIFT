@@ -189,6 +189,8 @@ void engine_fof(struct engine *e, const int dump_results,
   /* Free the foreign particles */
   space_free_foreign_parts(e->s, /*clear pointers=*/1);
 
+  /* Make a list of purely local groups to speed up the attaching */
+  fof_build_list_of_purely_local_groups(e->fof_properties, e->s);
 #endif
 
   /* Finish the operations attaching the attachables to their groups */
