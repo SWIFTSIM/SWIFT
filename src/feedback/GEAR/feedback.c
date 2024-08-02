@@ -59,7 +59,9 @@ void feedback_update_part(struct part* p, struct xpart* xp,
     error("Delta mass smaller than 0");
   }
 
+  /* Update the mass of p, as well as its gpart's friend */
   hydro_set_mass(p, new_mass);
+  p->gpart->mass = p->mass ;
 
   xp->feedback_data.delta_mass = 0;
 

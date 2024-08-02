@@ -135,6 +135,9 @@ void stellar_evolution_compute_continuous_feedback_properties(
   /* Update the mass */
   sp->mass -= sp->feedback_data.mass_ejected;
 
+  /* Update the gpart mass */
+  sp->gpart->mass = sp->mass;
+
   /* Now deal with the metals */
 
   /* Get the SNIa yields */
@@ -227,6 +230,9 @@ void stellar_evolution_compute_discrete_feedback_properties(
 
   /* Update the mass */
   sp->mass -= sp->feedback_data.mass_ejected;
+
+  /* Update the gpart mass */
+  sp->gpart->mass = sp->mass;
 
   /* Get the SNIa yields */
   const float* snia_yields = supernovae_ia_get_yields(&sm->snia);
