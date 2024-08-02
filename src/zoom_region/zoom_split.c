@@ -115,21 +115,21 @@ void zoom_void_split_recursive(struct space *s, struct cell *c,
     } else {
 
       /* Recurse */
-      zoom_void_split_recursive(s, cp, tpid);
+      zoom_void_split_recursive(s, cp, ti_current, tpid);
 
       /* Increase the depth */
       maxdepth = max(maxdepth, cp->maxdepth);
 
       /* Update the gravity time step properties. */
-      ti_gravity_end_min = min(ti_gravity_end_min, cp->ti_gravity_end_min);
-      ti_gravity_beg_max = max(ti_gravity_beg_max, cp->ti_gravity_beg_max);
+      ti_gravity_end_min = min(ti_gravity_end_min, cp->grav.ti_gravity_end_min);
+      ti_gravity_beg_max = max(ti_gravity_beg_max, cp->grav.ti_gravity_beg_max);
     }
   }
 
   /* Update the properties of the void cell. */
   c->maxdepth = maxdepth;
-  c->ti_gravity_end_min = ti_gravity_end_min;
-  c->ti_gravity_beg_max = ti_gravity_beg_max;
+  c->grav.ti_gravity_end_min = ti_gravity_end_min;
+  c->grav.ti_gravity_beg_max = ti_gravity_beg_max;
 
   /* Deal with the multipole */
   if (s->with_self_gravity) {
@@ -163,7 +163,7 @@ void zoom_void_space_split(struct space *s, int verbose) {
   struct cell *cells_top = s->cells_top;
   int *void_cells_top = s->zoom_props->void_cells_top;
   int nr_void_cells = s->zoom_props->nr_void_cells;
-  const intergertime_t ti_current = s->e->ti_current;
+  const integertime_t ti_current = s->e->ti_current;
 
   /* Create the void cell trees and populate their multipoles. This is only
    * a handful of cells so no threadpool. */
