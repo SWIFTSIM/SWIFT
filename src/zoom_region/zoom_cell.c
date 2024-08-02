@@ -801,8 +801,10 @@ void zoom_construct_tl_cells(struct space *s, const integertime_t ti_current,
  *
  * @param s The space.
  * @param c The void cell progeny to link
+ * @param ti_current The current time.
  */
-void zoom_link_void_leaves(struct space *s, struct cell *c) {
+void zoom_link_void_leaves(struct space *s, struct cell *c,
+                           const integertime_t ti_current) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Ensure we have the right kind of cell. */
@@ -820,6 +822,9 @@ void zoom_link_void_leaves(struct space *s, struct cell *c) {
         cellID_names[c->type], subcellID_names[c->subtype]);
   }
 #endif
+
+  /* We need to get the gravity timesteps information from the zoom cells. */
+  integertime_t ti_gravity_end_min = max_nr_timesteps, ti_gravity_beg_max = 0;
 
   /* We need to ensure this bottom level isn't treated like a
    * normal split cell since it's linked into top level "progeny". */
@@ -869,7 +874,23 @@ void zoom_link_void_leaves(struct space *s, struct cell *c) {
 
     /* Flag this void cell "progeny" as the zoom cell's void cell parent. */
     zoom_cell->void_parent = c;
+
+    /* Get dt_min/dt_max. */
+    for (int k = 0; k < zoom_cell->grav.count; k++) {
+
+      /* When does this particle's time-step start and end? */
+      const timebin_t time_bin = zoom_cell->grav.parts[k].time_bin;
+      const integertime_t ti_end = get_integer_time_end(ti_current, time_bin);
+      const integertime_t ti_beg = get_integer_time_begin(ti_current, time_bin);
+
+      ti_gravity_end_min = min(ti_gravity_end_min, ti_end);
+      ti_gravity_beg_max = max(ti_gravity_beg_max, ti_beg);
+    }
   }
+
+  /* Set the gravity timestep information. */
+  c->grav.ti_end_min = ti_gravity_end_min;
+  c->grav.ti_beg_max = ti_gravity_beg_max;
 
   /* Interact the zoom cell multipoles with this cell. */
   if (s->with_self_gravity) {
