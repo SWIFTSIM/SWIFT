@@ -16,9 +16,9 @@ shift_ICs = False
 UI = 1e10
 
 # Physical magnetic field at z=63 corresponding to a comoving seed of 1e-12 Gauss (g/A*s^2), in units of 1e10 M_sun/(1e10 A * (Mpc/ 1e5 km/s))
+z63 = 63.0
 B0_z63 = 1.56908e-3
-z_63 = 63.0
-afact_63 = 1.0 / (z_63 + 1.0)
+afact_z63 = 1.0 / (z63 + 1.0)
 
 # Files to read from and write to
 fileInputName = sys.argv[1]
@@ -37,7 +37,7 @@ N_in = head.attrs["NumPart_Total"][0]
 infile.close()
 
 # re normalize to IC Z (in case the ICs are *not* at z=63)
-B0 = B0 * (afact / afact_63) ** 2.0
+B0 = B0_z63 * (afact / afact_z63) ** 2.0
 
 # Other variables
 wavelen = BoxSize / 10.0
