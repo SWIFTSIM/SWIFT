@@ -2666,6 +2666,21 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           cell_pack_bpart_swallow(t->ci,
                                   (struct black_holes_bpart_data *)t->buff);
 
+        } else if (t->subtype == task_subtype_sink_gas_swallow) {
+
+          size = count =
+              t->ci->hydro.count * sizeof(struct sink_part_data);
+          buff = t->buff = malloc(size);
+          cell_pack_sink_gas_swallow(t->ci, (struct sink_part_data *)buff);
+
+        } else if (t->subtype == task_subtype_sink_merger) {
+
+          size = count =
+              sizeof(struct sink_sink_data) * t->ci->sinks.count;
+          buff = t->buff = malloc(size);
+          cell_pack_sink_swallow(t->ci,
+                                  (struct sink_sink_data *)t->buff);
+
         } else if (t->subtype == task_subtype_xv ||
                    t->subtype == task_subtype_rho ||
                    t->subtype == task_subtype_gradient ||
