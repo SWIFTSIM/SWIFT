@@ -602,7 +602,6 @@ void engine_addtasks_send_sinks(struct engine *e, struct cell *ci,
   /* Early abort (are we below the level where tasks are)? */
   if (!cell_get_flag(ci, cell_flag_has_tasks)) return;
 
-  /* Note: Do we need to add ci->hydro.counts > 0? */
   /* Send the new sink counts after sink formation */
   if (t_sink_formation_counts == NULL && (ci->sinks.count > 0)) {
 #ifdef SWIFT_DEBUG_CHECKS
@@ -643,14 +642,14 @@ void engine_addtasks_send_sinks(struct engine *e, struct cell *ci,
       t_sink_merger = scheduler_addtask(
           s, task_type_send, task_subtype_sink_merger, ci->mpi.tag, 0, ci, cj);
 
-      /* The send_sinks task should unlock the super_cell's sink exit point
-       * task. */
-
-      /* Ghost before you send */
+      /* Drift before you send */
       scheduler_addunlock(s, ci->hydro.super->sinks.drift, t_density);
 
       /* Send the sinks after the sink formation and the sink_formation_counts */
       scheduler_addunlock(s, ci->hydro.super->sinks.sink_formation, t_density);
+
+      /* The send_sinks task should unlock the super_cell's sink exit point
+       * task. */
       scheduler_addunlock(s, t_density, ci->hydro.super->sinks.sink_out);
 
       scheduler_addunlock(s, ci->hydro.super->sinks.sink_ghost1,
@@ -664,7 +663,6 @@ void engine_addtasks_send_sinks(struct engine *e, struct cell *ci,
                           ci->hydro.super->sinks.sink_ghost2);
 
       /* Similar to SF */
-      /* Note: Same as above: do we need hydro.counts > 0? */
       if (ci->sinks.count > 0) {
 	scheduler_addunlock(s, t_sink_formation_counts, t_density);
       }
@@ -674,7 +672,6 @@ void engine_addtasks_send_sinks(struct engine *e, struct cell *ci,
     engine_addlink(e, &ci->mpi.send, t_sink_merger);
     engine_addlink(e, &ci->mpi.send, t_sink_gas_swallow);
 
-    /* Note: Same as above: do we need hydro.counts > 0? */
     if (ci->sinks.count > 0) {
       engine_addlink(e, &ci->mpi.send, t_sink_formation_counts);
     }
@@ -1299,14 +1296,13 @@ void engine_addtasks_recv_sinks(struct engine *e, struct cell *c,
 				struct task *t_sink_formation_counts,
 				struct task *const tend) {
 
-  /* HERE */
 #ifdef WITH_MPI
   struct scheduler *s = &e->sched;
 
   /* Early abort (are we below the level where tasks are)? */
   if (!cell_get_flag(c, cell_flag_has_tasks)) return;
 
-  if (t_sink_formation_counts == NULL && c->sinks.count > 0) {
+  if (t_sink_formation_counts == NULL && (c->sinks.count > 0)) {
 #ifdef SWIFT_DEBUG_CHECKS
     if (c->depth != 0)
       error(
