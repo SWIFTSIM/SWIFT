@@ -43,7 +43,7 @@
  */
 __attribute__((always_inline)) INLINE static void hydro_set_pairwise_stress_tensors(
     float pairwise_stress_tensor_i[3][3], float pairwise_stress_tensor_j[3][3],
-    const struct part *restrict pi, const struct part *restrict pj,
+    const struct part *restrict pi, const struct part *restrict pj, const float r,
     const float pressurei, const float pressurej) {
 
   // Set the default stress tensor with just the pressures, S = -P * I(3)
@@ -61,7 +61,7 @@ __attribute__((always_inline)) INLINE static void hydro_set_pairwise_stress_tens
   }
 
 #ifdef MATERIAL_STRENGTH
-  hydro_set_pairwise_stress_tensors_strength(pi, pj);
+  hydro_set_pairwise_stress_tensors_strength(pairwise_stress_tensor_i, pairwise_stress_tensor_j, pi, pj, r);
 #endif /* MATERIAL_STRENGTH */
 }
 
@@ -326,7 +326,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   // for solid particle pairs with strength
   float pairwise_stress_tensor_i[3][3], pairwise_stress_tensor_j[3][3];
   hydro_set_pairwise_stress_tensors(pairwise_stress_tensor_i, pairwise_stress_tensor_j,
-                                    pi, pj, pressurei, pressurej);
+                                    pi, pj, r, pressurei, pressurej);
 
   // Viscous pressures
   float Qi, Qj;
@@ -404,12 +404,19 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
                              (pi->v[2] - pj->v[2]) * (pi->v[2] - pj->v[2]));
 
     const float alpha_norm = diffusion_global.alpha_norm;
-    float drho_dt_norm_and_difn_i =
+    float drho_dt_norm_and_difn_i = 0.f;
+    float drho_dt_norm_and_difn_j = 0.f;
+    if (pi->phase_state == eos_phase_state_fluid) {
+      drho_dt_norm_and_difn_i +=
         alpha_norm * mj * v_sig_norm * pi->force.vac_switch *
         (pi->m0 * pi->rho_evol - pi->rho_evol) * mod_G / mean_rho;
-    float drho_dt_norm_and_difn_j =
+    }
+      
+    if (pj->phase_state == eos_phase_state_fluid) {    
+      drho_dt_norm_and_difn_j +=
         alpha_norm * mi * v_sig_norm * pj->force.vac_switch *
         (pj->m0 * pj->rho_evol - pj->rho_evol) * mod_G / mean_rho;
+    }
 
     // Diffusion for same materials
     if (pi->mat_id == pj->mat_id) {
@@ -517,7 +524,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   // or set the stress for solid particle pairs with strength
   float pairwise_stress_tensor_i[3][3], pairwise_stress_tensor_j[3][3];
   hydro_set_pairwise_stress_tensors(pairwise_stress_tensor_i, pairwise_stress_tensor_j,
-                                    pi, pj, pressurei, pressurej);
+                                    pi, pj, r, pressurei, pressurej);
 
   // Viscous pressures
   float Qi, Qj;
@@ -586,9 +593,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
                              (pi->v[2] - pj->v[2]) * (pi->v[2] - pj->v[2]));
 
     const float alpha_norm = diffusion_global.alpha_norm;
-    float drho_dt_norm_and_difn_i =
+    float drho_dt_norm_and_difn_i = 0.f;
+    if (pi->phase_state == eos_phase_state_fluid) {
+      drho_dt_norm_and_difn_i +=
         alpha_norm * mj * v_sig_norm * pi->force.vac_switch *
         (pi->m0 * pi->rho_evol - pi->rho_evol) * mod_G / mean_rho;
+    }
 
     // Diffusion for same materials
     if (pi->mat_id == pj->mat_id) {

@@ -40,8 +40,7 @@ import h5py
 
 snap = int(sys.argv[1])
 
-sim = h5py.File("snapshots/cylinders_%04d.hdf5"%snap, "r")
-
+sim = h5py.File("cylinders_%04d.hdf5"%snap, "r")
 
 scheme = sim["/HydroScheme"].attrs["Scheme"]
 kernel = sim["/HydroScheme"].attrs["Kernel function"]
@@ -58,14 +57,12 @@ u = sim["/PartType0/InternalEnergies"][:]
 S = sim["/PartType0/Entropies"][:]
 P = sim["/PartType0/Pressures"][:]
 rho = sim["/PartType0/Densities"][:]
-test = sim["/PartType0/Testing"][:]
 
 fig, ax= plt.subplots(1, 1, figsize=(5, 5))
 
 size = 0.11
 
 func_plotted = rho
-
 
 norm = mpl.colors.Normalize(vmin=np.min(func_plotted),vmax=np.max(func_plotted) )
 # norm = mpl.colors.Normalize(vmin=0.9,vmax=1.1 )

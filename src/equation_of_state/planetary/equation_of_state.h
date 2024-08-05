@@ -1420,20 +1420,6 @@ gas_pressure_from_internal_energy(float density, float u,
       };
       break;
 
-    /* Linear EoS -- user-provided parameters */
-    case eos_planetary_type_linear: {
-      const int i_linear =
-          mat_id - eos_planetary_type_linear * eos_planetary_type_factor;
-#ifdef SWIFT_DEBUG_CHECKS
-      if (eos.linear[i_linear].mat_id != mat_id)
-        error("EoS not enabled. Please set EoS:planetary_use_linear_%d: 1",
-              i_linear);
-#endif
-      return SESAME_pressure_from_internal_energy(density, u,
-                                                  &eos.linear[i_linear]);
-      break;
-    }
-
     /* Generic user-provided custom tables */
     case eos_planetary_type_custom: {
       const int i_custom =
@@ -2826,6 +2812,175 @@ material_phase_state_from_internal_energy(
 }
 
 /**
+ * @brief Returns the shear modulus of a material
+ */
+__attribute__((always_inline)) INLINE static float material_shear_mod(
+    enum eos_planetary_material_id mat_id) {
+
+  const enum eos_planetary_type_id type =
+      (enum eos_planetary_type_id)(mat_id / eos_planetary_type_factor);
+
+  /* Select the material base type */
+  switch (type) {
+
+    /* Ideal gas EoS */
+    case eos_planetary_type_idg:
+
+      /* Select the material of this type */
+      switch (mat_id) {
+        case eos_planetary_id_idg_def:
+          return idg_shear_mod(&eos.idg_def);
+          break;
+
+        default:
+          return -1.f;
+      };
+      break;
+
+    /* Tillotson EoS */
+    case eos_planetary_type_Til:
+
+      /* Select the material of this type */
+      switch (mat_id) {
+        case eos_planetary_id_Til_iron:
+          return Til_shear_mod(&eos.Til_iron);
+          break;
+
+        case eos_planetary_id_Til_granite:
+          return Til_shear_mod(&eos.Til_granite);
+          break;
+
+        case eos_planetary_id_Til_water:
+          return Til_shear_mod(&eos.Til_water);
+          break;
+
+        case eos_planetary_id_Til_basalt:
+          return Til_shear_mod(&eos.Til_basalt);
+          break;
+
+        case eos_planetary_id_Til_ice:
+          return Til_shear_mod(&eos.Til_ice);
+          break;
+
+        default:
+          // Custom user-provided Tillotson
+          if (mat_id >= eos_planetary_Til_custom_base_id) {
+            const int i_custom = mat_id - eos_planetary_Til_custom_base_id;
+            return Til_shear_mod(&eos.Til_custom[i_custom]);
+          } else {
+            return -1.f;
+          }
+      };
+      break;
+
+    /* Hubbard & MacFarlane (1980) EoS */
+    case eos_planetary_type_HM80:
+
+      /* Select the material of this type */
+      switch (mat_id) {
+        case eos_planetary_id_HM80_HHe:
+          return HM80_shear_mod(&eos.HM80_HHe);
+          break;
+
+        case eos_planetary_id_HM80_ice:
+          return HM80_shear_mod(&eos.HM80_ice);
+          break;
+
+        case eos_planetary_id_HM80_rock:
+          return HM80_shear_mod(&eos.HM80_rock);
+          break;
+
+        default:
+          return -1.f;
+      };
+      break;
+
+    /* SESAME EoS */
+    case eos_planetary_type_SESAME:;
+
+      /* Select the material of this type */
+      switch (mat_id) {
+        case eos_planetary_id_SESAME_iron:
+          return SESAME_shear_mod(&eos.SESAME_iron);
+          break;
+
+        case eos_planetary_id_SESAME_basalt:
+          return SESAME_shear_mod(&eos.SESAME_basalt);
+          break;
+
+        case eos_planetary_id_SESAME_water:
+          return SESAME_shear_mod(&eos.SESAME_water);
+          break;
+
+        case eos_planetary_id_SS08_water:
+          return SESAME_shear_mod(&eos.SS08_water);
+          break;
+
+        case eos_planetary_id_AQUA:
+          return SESAME_shear_mod(&eos.AQUA);
+          break;
+
+        case eos_planetary_id_CMS19_H:
+          return SESAME_shear_mod(&eos.CMS19_H);
+          break;
+
+        case eos_planetary_id_CMS19_He:
+          return SESAME_shear_mod(&eos.CMS19_He);
+          break;
+
+        case eos_planetary_id_CD21_HHe:
+          return SESAME_shear_mod(&eos.CD21_HHe);
+          break;
+
+        default:
+          return -1.f;
+      };
+      break;
+
+    /* ANEOS -- using SESAME-style tables */
+    case eos_planetary_type_ANEOS:;
+
+      /* Select the material of this type */
+      switch (mat_id) {
+        case eos_planetary_id_ANEOS_forsterite:
+          return SESAME_shear_mod(&eos.ANEOS_forsterite);
+          break;
+
+        case eos_planetary_id_ANEOS_iron:
+          return SESAME_shear_mod(&eos.ANEOS_iron);
+          break;
+
+        case eos_planetary_id_ANEOS_Fe85Si15:
+          return SESAME_shear_mod(&eos.ANEOS_Fe85Si15);
+          break;
+
+        default:
+          return -1.f;
+      };
+      break;
+
+    /*! Generic user-provided custom tables */
+    case eos_planetary_type_custom: {
+      const int i_custom =
+          mat_id - eos_planetary_type_custom * eos_planetary_type_factor;
+      return SESAME_shear_mod(&eos.custom[i_custom]);
+      break;
+    }
+
+    /*! Linear EoS -- user-provided parameters */
+    case eos_planetary_type_linear: {
+      const int i_linear =
+          mat_id - eos_planetary_type_linear * eos_planetary_type_factor;
+      return linear_shear_mod(&eos.linear[i_linear]);
+      break;
+    }
+
+    default:
+      return -1.f;
+  }
+}
+
+/**
  * @brief Initialize the eos parameters
  *
  * @param e The #eos_parameters
@@ -3047,15 +3202,15 @@ __attribute__((always_inline)) INLINE static void eos_init(
     sprintf(param_name, "EoS:planetary_use_linear_%d", i_linear);
     if (parser_get_opt_param_int(params, param_name, 0)) {
       char linear_file[PARSER_MAX_LINE_SIZE], linear_file_extra[PARSER_MAX_LINE_SIZE];
-      int mat_id = eos_planetary_type_linear + i_linear;
+      int mat_id = eos_planetary_type_linear * eos_planetary_type_factor + i_linear;
 
       sprintf(param_name, "EoS:planetary_linear_%d_param_file", i_linear);
       parser_get_param_string(params, param_name, linear_file);
-      set_linear(&e->linear[i_linear], (enum eos_planetary_material_id)mat_id, linear_file);
+      set_linear_params(&e->linear[i_linear], (enum eos_planetary_material_id)mat_id, linear_file);
 
-      sprintf(param_name, "EoS:planetary_linear_%d_param_file", i_linear);
-      parser_get_param_string(params, param_name, linear_file);
-      set_linear_extra(&e->linear[i_linear], linear_file_extra);
+      sprintf(param_name, "EoS:planetary_linear_%d_param_file_extra", i_linear);
+      parser_get_param_string(params, param_name, linear_file_extra);
+      set_linear_params_extra(&e->linear[i_linear], linear_file_extra);
 
       convert_units_linear(&e->linear[i_linear], us);
     }

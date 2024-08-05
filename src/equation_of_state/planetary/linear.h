@@ -17,8 +17,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_IDEAL_GAS_EQUATION_OF_STATE_H
-#define SWIFT_IDEAL_GAS_EQUATION_OF_STATE_H
+#ifndef SWIFT_LINEAR_EQUATION_OF_STATE_H
+#define SWIFT_LINEAR_EQUATION_OF_STATE_H
 
 /**
  * @file equation_of_state/planetary/linear.h
@@ -36,13 +36,17 @@
 #include "inline.h"
 #include "physical_constants.h"
 
-// Ideal gas parameters
+// Linear EoS parameters
 struct linear_params {
   enum eos_planetary_material_id mat_id;
-  float rho_0, c_s, shear_mod;
+  float rho_0, c_s;
 
   // Extra parameters, e.g. for material strength
   enum eos_phase_state phase_state;
+
+#ifdef MATERIAL_STRENGTH
+  float shear_mod;
+#endif /* MATERIAL_STRENGTH */
 };
 
 /*
@@ -51,8 +55,7 @@ struct linear_params {
     File contents
     -------------
     # header (2 lines)
-    rho_0 (kg/m3)  c_s (m/s)  shear_mod (Pa)
-    phase_state (enum eos_phase_state)
+    rho_0 (kg/m3)  c_s (m/s)
 */
 INLINE static void set_linear_params(struct linear_params *mat,
                                      enum eos_planetary_material_id mat_id,
@@ -69,8 +72,8 @@ INLINE static void set_linear_params(struct linear_params *mat,
 
   // Read parameters (SI)
   int c;
-  c = fscanf(f, "%f %f %f", &mat->rho_0, &mat->c_s, &mat->shear_mod);
-  if (c != 3) error("Failed to read the linear EoS file %s", param_file);
+  c = fscanf(f, "%f %f", &mat->rho_0, &mat->c_s);
+  if (c != 2) error("Failed to read the linear EoS file %s", param_file);
 }
 
 /*
@@ -79,7 +82,7 @@ INLINE static void set_linear_params(struct linear_params *mat,
     File contents
     -------------
     # header (2 lines)
-    phase_state (enum eos_phase_state: fluid=0, solid=1, variable=2)
+    phase_state (enum eos_phase_state: fluid=0, solid=1, variable=2)  shear_mod (Pa)
 */
 INLINE static void set_linear_params_extra(struct linear_params *mat, char *param_file) {
 #ifdef MATERIAL_STRENGTH
@@ -93,10 +96,10 @@ INLINE static void set_linear_params_extra(struct linear_params *mat, char *para
 
   // Read parameters
   int c;
-  c = fscanf(f, "%d", &mat->phase_state);
-  if (c != 1) error("Failed to read the linear EoS file %s", param_file);
+  c = fscanf(f, "%d %f", &mat->phase_state, &mat->shear_mod);
+  if (c != 2) error("Failed to read the linear EoS file %s", param_file);
 #else
-  &mat->phase_state = eos_phase_state_fluid;
+  mat->phase_state = eos_phase_state_fluid;
 #endif /* MATERIAL_STRENGTH */
 }
 
@@ -110,12 +113,16 @@ INLINE static void convert_units_linear(struct linear_params *mat,
   // SI to cgs
   mat->rho_0 *= units_cgs_conversion_factor(&si, UNIT_CONV_DENSITY);
   mat->c_s *= units_cgs_conversion_factor(&si, UNIT_CONV_SPEED);
+#ifdef MATERIAL_STRENGTH    
   mat->shear_mod *= units_cgs_conversion_factor(&si, UNIT_CONV_PRESSURE);
+#endif /* MATERIAL_STRENGTH */
 
   // cgs to internal
   mat->rho_0 /= units_cgs_conversion_factor(us, UNIT_CONV_DENSITY);
   mat->c_s /= units_cgs_conversion_factor(us, UNIT_CONV_SPEED);
+#ifdef MATERIAL_STRENGTH    
   mat->shear_mod /= units_cgs_conversion_factor(us, UNIT_CONV_PRESSURE);
+#endif /* MATERIAL_STRENGTH */
 }
 
 /**
@@ -192,8 +199,9 @@ INLINE static float linear_soundspeed_from_entropy(float density, float entropy,
 INLINE static float linear_entropy_from_internal_energy(
     float density, float u, const struct linear_params *mat) {
 
-  error("This EOS function is not yet implemented!");
-
+#ifdef SWIFT_DEBUG_CHECKS 
+  warning("This EOS function is not yet implemented!");
+#endif
   return 0.f;
 }
 
@@ -294,7 +302,19 @@ INLINE static float linear_phase_state_from_internal_energy(
 
     case eos_phase_state_solid:
       return eos_phase_state_solid;
+
+    default:
+      return eos_phase_state_fluid;
   }
 }
 
-#endif /* SWIFT_IDEAL_GAS_EQUATION_OF_STATE_H */
+// material_shear_mod
+INLINE static float linear_shear_mod(const struct linear_params *mat) {
+#ifdef MATERIAL_STRENGTH
+  return mat->shear_mod;
+#else
+  return 0.f;
+#endif /* MATERIAL_STRENGTH */
+}
+
+#endif /* SWIFT_LINEAR_EQUATION_OF_STATE_H */

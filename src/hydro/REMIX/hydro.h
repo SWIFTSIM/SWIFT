@@ -478,7 +478,7 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->density.wcount_dh = 0.f;
   p->rho = 0.f;
   p->density.rho_dh = 0.f;
-  p->phase_state = material_phase_state_from_internal_energy(p->rho_evol, p->u, p->mat_id);
+  p->phase_state = (enum eos_phase_state)material_phase_state_from_internal_energy(p->rho_evol, p->u, p->mat_id);
 
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
   p->N_density = 1; /* Self contribution */
@@ -707,7 +707,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   p->force.balsara = balsara;
 
 #ifdef MATERIAL_STRENGTH
-  hydro_prepare_force_extra_strength(p);
+  hydro_prepare_force_extra_strength(p, pressure);
 #endif /* MATERIAL_STRENGTH */
 }
 
