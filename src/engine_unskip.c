@@ -216,13 +216,21 @@ static void engine_do_unskip_sinks(struct cell *c, struct engine *e) {
 static void engine_do_unskip_gravity(struct cell *c, struct engine *e) {
 
   /* Early abort (are we below the level where tasks are)? */
-  if (!cell_get_flag(c, cell_flag_has_tasks)) return;
+  if (!cell_get_flag(c, cell_flag_has_tasks)) {
+    if (c->subtype == cell_subtype_void)
+      message("Skipping void cell based on no tasks.");
+    return;
+  }
 
   /* Ignore empty cells but not void cells (in zoom land). */
   if (c->grav.count == 0 && c->subtype != cell_subtype_void) return;
 
   /* Skip inactive cells. */
-  if (!cell_is_active_gravity(c, e)) return;
+  if (!cell_is_active_gravity(c, e)) {
+    if (c->subtype == cell_subtype_void)
+      message("Skipping void cell based on no active gravity.");
+    return;
+  }
 
   /* Recurse */
   if (c->split && cell_is_above_diff_grav_depth(c)) {
