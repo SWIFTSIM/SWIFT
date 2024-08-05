@@ -275,6 +275,15 @@ struct pcell_step {
 
   struct {
 
+    /*! Minimal integer end-of-timestep in this cell (sinks) */
+    integertime_t ti_end_min;
+
+    /*! Maximal distance any #part has travelled since last rebuild */
+    float dx_max_part;
+  } sinks;
+
+  struct {
+
     /*! Minimal integer end-of-timestep in this cell (rt) */
     integertime_t ti_rt_end_min;
 

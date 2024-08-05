@@ -400,6 +400,9 @@ int cell_pack_end_step(const struct cell *c, struct pcell_step *pcells) {
   pcells[0].black_holes.ti_end_min = c->black_holes.ti_end_min;
   pcells[0].black_holes.dx_max_part = c->black_holes.dx_max_part;
 
+  pcells[0].sinks.ti_end_min = c->sinks.ti_end_min;
+  pcells[0].sinks.dx_max_part = c->sinks.dx_max_part;
+
   /* Fill in the progeny, depth-first recursion. */
   int count = 1;
   for (int k = 0; k < 8; k++)
@@ -443,6 +446,9 @@ int cell_unpack_end_step(struct cell *c, const struct pcell_step *pcells) {
 
   c->black_holes.ti_end_min = pcells[0].black_holes.ti_end_min;
   c->black_holes.dx_max_part = pcells[0].black_holes.dx_max_part;
+
+  c->sinks.ti_end_min = pcells[0].sinks.ti_end_min;
+  c->sinks.dx_max_part = pcells[0].sinks.dx_max_part;
 
   /* Fill in the progeny, depth-first recursion. */
   int count = 1;
