@@ -23,21 +23,18 @@ from numpy import *
 # Generates a swift IC file for
 
 # Parameters
-L = 200  # Number of particles on the side
-gamma = 5.0 / 3.0  # Gas adiabatic index
-rho = 1.0  # Gas central density
-P = 2.5  # Gas central pressure
-vx = 0.059
+L = 200             # Number of particles on the side
+rho = 1.0           # Gas central density
+c_s = 85200         # Sound speed
+vx = 0.059 * c_s
 vy = 0.0
 fileOutputName = "cylinders.hdf5"
-L_depth = 15#18#18
+L_depth = 15
 # ---------------------------------------------------
 
 boxsize = 20
 
 numPart_grid = L * L * L_depth
-
-#L_grid = int(sqrt(numPart_grid))
 
 pos_grid = zeros((numPart_grid, 3))
 for i in range(L):
@@ -49,7 +46,6 @@ for i in range(L):
 	    	pos_grid[index, 2] = (k / (float(L))) * boxsize
 h_grid = ones(numPart_grid) * (boxsize / L) * 1.2348
 m_grid = ones(numPart_grid) * rho * (boxsize / L)**3
-u_grid = ones(numPart_grid) * P / (rho * (gamma - 1.0))
 
 
 # Remove the particles not in cylinder
@@ -69,7 +65,6 @@ select_cylinderB = logical_and(
     (pos_grid[:, 0] + initial_offset - boxsize/2)**2 + (pos_grid[:, 1] - boxsize/2)**2 >= inner_r**2,
 )
 
-
 vel = zeros((numPart_grid, 3))
 vel[select_cylinderA, 0] = -vx
 vel[select_cylinderB, 0] = vx
@@ -77,19 +72,17 @@ vel[:, 1] = 0
 
 select_both = logical_or(select_cylinderA, select_cylinderB)
 
-
-
 pos = pos_grid[select_both, :]
 h = h_grid[select_both]
-u = u_grid[select_both]
 m = m_grid[select_both]
 vel = vel[select_both, :]
 
 
 numPart = size(h)
 ids = linspace(1, numPart, numPart)
-mat = zeros(numPart)
+mat = 500 * ones(numPart)
 rho = ones(numPart)
+u = zeros(numPart)
 
 # File
 fileOutput = h5py.File(fileOutputName, "w")
@@ -110,7 +103,7 @@ grp.attrs["Dimension"] = 3
 grp = fileOutput.create_group("/Units")
 grp.attrs["Unit length in cgs (U_L)"] = 1.0
 grp.attrs["Unit mass in cgs (U_M)"] = 1.0
-grp.attrs["Unit time in cgs (U_t)"] = 1/85200.0
+grp.attrs["Unit time in cgs (U_t)"] = 1.0
 grp.attrs["Unit current in cgs (U_I)"] = 1.0
 grp.attrs["Unit temperature in cgs (U_T)"] = 1.0
 
@@ -122,11 +115,11 @@ ds = grp.create_dataset("Velocities", (numPart, 3), "f")
 ds[()] = vel
 ds = grp.create_dataset("Masses", (numPart, 1), "f")
 ds[()] = m.reshape((numPart, 1))
-ds = grp.create_dataset("Densities", (numPart, 1), "f")
+ds = grp.create_dataset("Density", (numPart, 1), "f")
 ds[()] = rho.reshape((numPart, 1))
-ds = grp.create_dataset("SmoothingLengths", (numPart, 1), "f")
+ds = grp.create_dataset("SmoothingLength", (numPart, 1), "f")
 ds[()] = h.reshape((numPart, 1))
-ds = grp.create_dataset("InternalEnergies", (numPart, 1), "f")
+ds = grp.create_dataset("InternalEnergy", (numPart, 1), "f")
 ds[()] = u.reshape((numPart, 1))
 ds = grp.create_dataset("ParticleIDs", (numPart, 1), "L")
 ds[()] = ids.reshape((numPart, 1))

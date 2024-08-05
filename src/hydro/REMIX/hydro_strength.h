@@ -19,6 +19,7 @@
  ******************************************************************************/
 #ifndef SWIFT_PLANETARY_STRENGTH_H
 #define SWIFT_PLANETARY_STRENGTH_H
+#ifdef MATERIAL_STRENGTH
 
 /**
  * @file Planetary/hydro_strength.h
@@ -26,6 +27,8 @@
  */
 
 #include "const.h"
+#include "equation_of_state.h"
+#include "hydro_kernels.h"
 #include "hydro_parameters.h"
 #include "math.h"
 
@@ -54,6 +57,9 @@ __attribute__((always_inline)) INLINE static void hydro_set_stress_tensor(
     p->stress_tensor.xx -= pressure_hat;
     p->stress_tensor.yy -= pressure_hat;
     p->stress_tensor.zz -= pressure_hat;
+
+    // Compute principal stresses
+    sym_matrix_compute_eigenvalues(p->principal_stresses, p->stress_tensor);    
 }
 
 /**
@@ -147,18 +153,90 @@ hydro_end_gradient_extra_strength(struct part *restrict p) {}
  */
 __attribute__((always_inline)) INLINE static void hydro_set_pairwise_stress_tensors_strength(
     float pairwise_stress_tensor_i[3][3], float pairwise_stress_tensor_j[3][3],
-    const struct part *restrict pi, const struct part *restrict pj) {
+    const struct part *restrict pi, const struct part *restrict pj, const float r) {
+    
     // Use the full stress tensor for solid particles
     if ((pi->phase_state == eos_phase_state_solid) &&
         (pj->phase_state == eos_phase_state_solid)) {
-        for (int i = 0; i < 3; i++) {
-            for (int j = 0; j < 3; j++) {
-                pairwise_stress_tensor_i[i][j] = pi->stress_tensor[i][j];
-                pairwise_stress_tensor_j[i][j] = pj->stress_tensor[i][j];
-            }
-        }
 
-        // Artificial stress etc...
+      get_matrix_from_sym_matrix(pairwise_stress_tensor_i, &pi->stress_tensor);
+      get_matrix_from_sym_matrix(pairwise_stress_tensor_j, &pj->stress_tensor);
+
+      // Artificial stress (Monaghan (2000))
+      /*  
+      const float mean_h = 0.5f * (pi->h + pj->h);
+      const float delta_p = 0.5f * (powf(pi->mass / pi->rho, 1/hydro_dimension) + 
+                                    powf(pj->mass / pj->rho, 1/hydro_dimension)); 
+        
+      float wij_delta_p;
+      kernel_eval(delta_p / mean_h, &wij_delta_p);
+    
+      float wij_r;
+      kernel_eval(r / mean_h, &wij_r);
+
+      // This factor should be set in extra parameter file  
+      const float n = 4.f;  
+      const float f_factor = powf(wij_r / wij_delta_p, n);
+    
+      // This factor should be set in extra parameter file
+      const float stress_epsilon = 0.2f;  
+
+      for (int i = 0; i < 3; ++i) {
+        for (int j = 0; j < 3; ++j) {
+          if (pairwise_stress_tensor_i[i][j] > 0) 
+            pairwise_stress_tensor_i[i][j] -= f_factor * stress_epsilon * 
+                                                pairwise_stress_tensor_i[i][j];
+          if (pairwise_stress_tensor_j[i][j] > 0) 
+            pairwise_stress_tensor_j[i][j] -= f_factor * stress_epsilon * 
+                                                pairwise_stress_tensor_j[i][j];
+        }
+      } 
+      */
+
+      // New version that is independent of basis:
+      // Principal stresses are basis-independent  
+      // Adding the same constant to all diagonal elemenets is equivalent in any basis:
+      // M + c*I = P (M + c*I) P^-1 = P M P^-1 + P (c*I) P^-1 = P M P^-1 + c*I
+      // This is a lot easier than e.g. Gray, Monaghan, and Swift (2001)  
+
+
+      const float mean_h = 0.5f * (pi->h + pj->h);
+      const float delta_p = 0.5f * (powf(pi->mass / pi->rho, 1/hydro_dimension) + 
+                                    powf(pj->mass / pj->rho, 1/hydro_dimension)); 
+        
+      float wij_delta_p;
+      kernel_eval(delta_p / mean_h, &wij_delta_p);
+    
+      float wij_r;
+      kernel_eval(r / mean_h, &wij_r);
+
+      // This factor should be set in extra parameter file  
+      const float n = 4.f;  
+      const float f_factor = powf(wij_r / wij_delta_p, n);
+    
+      // This factor should be set in extra parameter file
+      const float stress_epsilon = 0.2f; 
+        
+      float max_principal_stress_i = pi->principal_stresses[0];
+      if (pi->principal_stresses[1] > max_principal_stress_i)
+        max_principal_stress_i = pi->principal_stresses[1];
+      if (pi->principal_stresses[2] > max_principal_stress_i)
+        max_principal_stress_i = pi->principal_stresses[2];  
+
+      float max_principal_stress_j = pj->principal_stresses[0];
+      if (pj->principal_stresses[1] > max_principal_stress_j)
+        max_principal_stress_j = pj->principal_stresses[1];
+      if (pj->principal_stresses[2] > max_principal_stress_j)
+        max_principal_stress_j = pj->principal_stresses[2];    
+
+      for (int i = 0; i < 3; ++i) {
+        if (max_principal_stress_i > 0) 
+            pairwise_stress_tensor_i[i][i] -= f_factor * stress_epsilon * 
+                                                max_principal_stress_i;
+        if (max_principal_stress_j > 0) 
+            pairwise_stress_tensor_j[i][i] -= f_factor * stress_epsilon * 
+                                                max_principal_stress_j;
+      }
     }
 }
 
@@ -169,7 +247,7 @@ __attribute__((always_inline)) INLINE static void hydro_set_pairwise_stress_tens
  * @param p The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void
-hydro_prepare_force_extra_strength(struct part *restrict p) {
+hydro_prepare_force_extra_strength(struct part *restrict p, const float pressure) {
   for (int i = 0; i < 3; ++i) {
     for (int j = 0; j < 3; ++j) {
       p->dv_lin_repr_kernel[i][j] = 0.f;
@@ -198,7 +276,7 @@ hydro_runner_iact_force_extra_strength(struct part *restrict pi,
         pi->dv_lin_repr_kernel[i][j] +=
             (pj->v[j] - pi->v[j]) * Gi[i] * (pj->mass / pj->rho_evol);
         pj->dv_lin_repr_kernel[i][j] +=
-            (pi->v[j] - pj->v[j]) * (-Gj[i]) * (pi->mass / pi->rho_evol);
+            (pi->v[j] - pj->v[j]) * Gj[i] * (pi->mass / pi->rho_evol);
       }
     }
   }
@@ -236,6 +314,8 @@ __attribute__((always_inline)) INLINE static void
 hydro_end_force_extra_strength(struct part *restrict p) {
 
   float strain_rate_tensor[3][3], rotation_rate_tensor[3][3], rotation_term[3][3];
+  float deviatoric_stress_tensor[3][3];
+  get_matrix_from_sym_matrix(deviatoric_stress_tensor, &p->deviatoric_stress_tensor);  
 
   // Set the strain and rotation rates
   for (int i = 0; i < 3; i++) {
@@ -254,23 +334,27 @@ hydro_end_force_extra_strength(struct part *restrict p) {
 
       for (int k = 0; k < 3; k++) {
         // See Dienes 1978 (eqn 4.8)
-        rotation_term[i][j] += p->deviatoric_stress_tensor[i][k] *
+        rotation_term[i][j] += deviatoric_stress_tensor[i][k] *
                                    rotation_rate_tensor[k][j] -
                                rotation_rate_tensor[i][k] *
-                                   p->deviatoric_stress_tensor[k][j];
+                                   deviatoric_stress_tensor[k][j];
       }
     }
   }
 
   // Compute time derivative of the deviatoric stress tensor (Hooke's law)
+  float shear_modulus = material_shear_mod(p->mat_id);
+  float dS_dt[3][3];
   for (int i = 0; i < 3; i++) {
     for (int j = 0; j < 3; j++) {
-      p->dS_dt[i][j] = 2.0f * p->shear_modulus_mu * strain_rate_tensor[i][j] + rotation_term[i][j];
+      dS_dt[i][j] = 2.0f * shear_modulus * strain_rate_tensor[i][j] + rotation_term[i][j];
     }
 
-    p->dS_dt[i][i] -= 2.0f * p->shear_modulus_mu *
+    dS_dt[i][i] -= 2.0f * shear_modulus *
         (strain_rate_tensor[0][0] + strain_rate_tensor[1][1] + strain_rate_tensor[2][2]) / 3.f;
   }
+
+  get_sym_matrix_from_matrix(&p->dS_dt, dS_dt);
 }
 
 /**
@@ -283,17 +367,12 @@ __attribute__((always_inline)) INLINE static void evolve_deviatoric_stress(
 
   if (p->phase_state == eos_phase_state_fluid) {
     // No stress for fluids
-    for (int i = 0; i < 3; i++) {
-      for (int j = 0; j < 3; j++) {
-        p->deviatoric_stress_tensor[i][j] = 0.f;
-      }
-    }
+    zero_sym_matrix(&p->deviatoric_stress_tensor);
+      
   } else {
     // Update solid stress
-    for (int i = 0; i < 3; i++) {
-      for (int j = 0; j < 3; j++) {
-        p->deviatoric_stress_tensor[i][j] += p->dS_dt[i][j] * dt_therm;
-      }
+    for (int i = 0; i < 6; i++) {
+      p->deviatoric_stress_tensor.elements[i] += p->dS_dt.elements[i] * dt_therm;
     }
   }
 }
@@ -310,4 +389,5 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra_strength(
     evolve_deviatoric_stress(p, dt_therm);
 }
 
+#endif /* MATERIAL_STRENGTH */
 #endif /* SWIFT_PLANETARY_STRENGTH_H */

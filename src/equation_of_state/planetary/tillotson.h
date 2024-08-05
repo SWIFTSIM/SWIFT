@@ -957,16 +957,27 @@ INLINE static float Til_phase_state_from_internal_energy(
       return eos_phase_state_solid;
 
     case eos_phase_state_variable:
-      float T;
+    {
+      float T = Til_temperature_from_internal_energy(density, u, mat);
 
-      T = Til_temperature_from_internal_energy(density, u);
-
-      if (temperature > mat->T_melt) {
+      if (T > mat->T_melt) {
           return eos_phase_state_fluid;
       } else {
           return eos_phase_state_solid;
       }
+    }
+
+    default:
+      return eos_phase_state_fluid;
   }
+}
+
+// material_shear_mod
+INLINE static float Til_shear_mod(const struct Til_params *mat) {
+
+  error("This material function is not yet implemented!");
+
+  return 0.f;
 }
 
 #endif /* SWIFT_TILLOTSON_EQUATION_OF_STATE_H */

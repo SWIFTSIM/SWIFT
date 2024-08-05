@@ -272,6 +272,9 @@ struct part {
   /*! Material identifier flag */
   enum eos_planetary_material_id mat_id;
 
+  /*! Phase state flag */
+  enum eos_phase_state phase_state;
+
   /*! Additional Radiative Transfer Data */
   struct rt_part_data rt_data;
 
@@ -306,6 +309,9 @@ struct part {
   // Stress tensor
   struct sym_matrix stress_tensor;
 
+  // Principal stresses (Eigenvalues of stress_tensor)
+  float principal_stresses[3];
+
   // Deviatoric stress tensor
   struct sym_matrix deviatoric_stress_tensor;
 
@@ -314,9 +320,6 @@ struct part {
 
   // Gradient of velocity, calculated using linear-order reproducing kernel.
   float dv_lin_repr_kernel[3][3];
-
-  /*! Phase state flag */
-  enum eos_phase_state phase_state;
 #endif /* MATERIAL_STRENGTH */
 
 } SWIFT_STRUCT_ALIGN;
