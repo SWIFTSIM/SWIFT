@@ -1223,9 +1223,14 @@ void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data) {
  * We use the timestep-related tasks to probe this as these always
  * exist in a cell hierarchy that has any kind of task.
  *
+ * In zoom land we need to count void cells as always having tasks. They won't
+ * ever have a timestep_collect or recv.
+ *
  * @param c The #cell to probe.
  */
 int cell_has_tasks(struct cell *c) {
+  /* Void cells always have at least one task. */
+  if (c->subtype == cell_subtype_void) return 1;
 #ifdef WITH_MPI
   return (c->timestep_collect != NULL || c->mpi.recv != NULL);
 #else
