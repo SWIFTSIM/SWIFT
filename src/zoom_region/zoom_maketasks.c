@@ -298,6 +298,8 @@ void engine_make_self_gravity_tasks_mapper_buffer_bkg(void *map_data,
  * @brief Construct the hierarchical tasks for the void cell tree recursively.
  *
  * This will construct:
+ * - The init for preparing void cell multipoles.
+ * - The init implicit task for the void cells.
  * - The long-range gravity task for the void cells.
  * - The down-pass gravity task for the void cells.
  * - The down-pass implicit task for the void cells.
@@ -316,6 +318,10 @@ static void zoom_engine_make_hierarchical_void_tasks_recursive(struct engine *e,
 
     if (is_self_gravity) {
 
+      /* Initialisation of the multipoles */
+      c->grav.init = scheduler_addtask(s, task_type_init_grav,
+                                       task_subtype_none, 0, 0, c, NULL);
+
       /* Gravity non-neighbouring pm calculations */
       c->grav.long_range = scheduler_addtask(s, task_type_grav_long_range,
                                              task_subtype_none, 0, 0, c, NULL);
@@ -325,13 +331,17 @@ static void zoom_engine_make_hierarchical_void_tasks_recursive(struct engine *e,
                                        task_subtype_none, 0, 0, c, NULL);
 
       /* Implicit tasks for the up and down passes */
+      c->grav.init_out = scheduler_addtask(s, task_type_init_grav_out,
+                                           task_subtype_none, 0, 1, c, NULL);
       c->grav.down_in = scheduler_addtask(s, task_type_grav_down_in,
                                           task_subtype_none, 0, 1, c, NULL);
 
       /* Long-range gravity forces (not the mesh ones!) */
+      scheduler_addunlock(s, c->grav.init, c->grav.long_range);
       scheduler_addunlock(s, c->grav.long_range, c->grav.down);
 
       /* Link in the implicit tasks */
+      scheduler_addunlock(s, c->grav.init, c->grav.init_out);
       scheduler_addunlock(s, c->grav.down_in, c->grav.down);
     }
   } else if (c->subtype == cell_subtype_void) {
@@ -340,9 +350,13 @@ static void zoom_engine_make_hierarchical_void_tasks_recursive(struct engine *e,
 
     if (is_self_gravity) {
 
+      c->grav.init_out = scheduler_addtask(s, task_type_init_grav_out,
+                                           task_subtype_none, 0, 1, c, NULL);
+
       c->grav.down_in = scheduler_addtask(s, task_type_grav_down_in,
                                           task_subtype_none, 0, 1, c, NULL);
 
+      scheduler_addunlock(s, c->parent->grav.init_out, c->grav.init_out);
       scheduler_addunlock(s, c->grav.down_in, c->parent->grav.down_in);
     }
   } else if (c->type == cell_type_zoom && c->grav.super == c) {

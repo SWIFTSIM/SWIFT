@@ -2860,12 +2860,14 @@ int engine_step(struct engine *e) {
      want to lose the data from the tasks) */
   space_reset_ghost_histograms(e->s);
 
-  /* In zoom land we need to get the void cell hierarchy ready without invoking
-   * a complex one -> many set of dependencies between void and zoom cells.
-   * This getting ready involves getting drifting their multipoles. */
-  if (e->s->with_zoom_region && e->policy & engine_policy_self_gravity) {
-    zoom_init_void_mpoles(e);
-  }
+  /* /\* In zoom land we need to get the void cell hierarchy ready without
+   * invoking */
+  /*  * a complex one -> many set of dependencies between void and zoom cells.
+   */
+  /*  * This getting ready involves getting drifting their multipoles. *\/ */
+  /* if (e->s->with_zoom_region && e->policy & engine_policy_self_gravity) { */
+  /*   zoom_init_void_mpoles(e); */
+  /* } */
 
   /* Start all the tasks. */
   TIMER_TIC;
