@@ -1588,11 +1588,17 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
                 const int flag = i * 8 + j;
                 t->flags |= (1ULL << flag);
 
+                message(
+                    "Using M-M interaction for void cell pair at depth %d and "
+                    "%d.",
+                    ci->depth, cj->depth);
+
               } else {
                 /* Ok, we actually have to create a task, if we're at the zoom
                  * level call the normal splitting function. */
                 if (ci->progeny[i]->subtype != cell_subtype_void &&
                     cj->progeny[j]->subtype != cell_subtype_void) {
+                  message("Got to the zoom level.");
                   scheduler_splittask_gravity(
                       scheduler_addtask(s, task_type_pair, task_subtype_grav, 0,
                                         0, ci->progeny[i], cj->progeny[j]),
@@ -1645,6 +1651,9 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
              * made here. */
             const int flag = i * 8;
             t->flags |= (1ULL << flag);
+
+            message("Using M-M interaction for void cell pair at depth %d.",
+                    ci->depth);
 
           } else {
             /* Ok, we actually have to create a task, if we're at the zoom
@@ -1699,6 +1708,9 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
              * made here. */
             const int flag = j * 8;
             t->flags |= (1ULL << flag);
+
+            message("Using M-M interaction for void cell pair at depth %d.",
+                    cj->depth);
 
           } else {
             /* Ok, we actually have to create a task, if we're at the zoom
