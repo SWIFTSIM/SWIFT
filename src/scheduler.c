@@ -1861,6 +1861,10 @@ void scheduler_splittasks_mapper(void *map_data, int num_elements,
   for (int ind = 0; ind < num_elements; ind++) {
     struct task *t = &tasks[ind];
 
+    if (t->ci->subtype == cell_subtype_void ||
+        (t->type == task_type_pair && t->cj->subtype == cell_subtype_void)
+        message("Got a task with a void cell.");
+
     /* Invoke the correct splitting strategy */
     if (t->subtype == task_subtype_density) {
       scheduler_splittask_hydro(t, s);
