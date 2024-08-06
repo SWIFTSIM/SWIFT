@@ -416,8 +416,6 @@ void engine_unskip(struct engine *e) {
   for (int k = 0; k < s->nr_local_cells_with_tasks; k++) {
     struct cell *c = &s->cells_top[local_cells[k]];
 
-    if (c->subtype == cell_subtype_void) message("Got void cell");
-
     if (cell_is_empty(c)) continue;
 
     if ((with_hydro && cell_is_active_hydro(c, e)) ||
