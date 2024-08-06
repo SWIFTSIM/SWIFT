@@ -110,7 +110,7 @@ void zoom_void_split_recursive(struct space *s, struct cell *c,
             cp->width[0] / 2, s->zoom_props->width[0]);
 #endif
 
-      zoom_link_void_leaves(s, cp, ti_current);
+      zoom_link_void_leaves(s, cp);
 
     } else {
 
@@ -119,11 +119,11 @@ void zoom_void_split_recursive(struct space *s, struct cell *c,
 
       /* Increase the depth */
       maxdepth = max(maxdepth, cp->maxdepth);
-
-      /* Update the gravity time step properties. */
-      ti_gravity_end_min = min(ti_gravity_end_min, cp->grav.ti_end_min);
-      ti_gravity_beg_max = max(ti_gravity_beg_max, cp->grav.ti_beg_max);
     }
+
+    /* Update the gravity time step properties. */
+    ti_gravity_end_min = min(ti_gravity_end_min, cp->grav.ti_end_min);
+    ti_gravity_beg_max = max(ti_gravity_beg_max, cp->grav.ti_beg_max);
   }
 
   /* Update the properties of the void cell. */
