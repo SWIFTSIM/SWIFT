@@ -1570,46 +1570,42 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
 
       /* Make a task for every other pair of progeny */
       for (int i = 0; i < 8; i++) {
-        if (ci->progeny[i]->grav.count > 0) {
-          for (int j = 0; j < 8; j++) {
-            if (cj->progeny[j]->grav.count > 0) {
-              /* Can we use a M-M interaction here? */
-              if (cell_can_use_pair_mm(ci->progeny[i], cj->progeny[j], e, sp,
-                                       /*use_rebuild_data=*/1,
-                                       /*is_tree_walk=*/1,
-                                       /*periodic boundaries*/ sp->periodic,
-                                       /*use_mesh*/ sp->periodic)) {
+        for (int j = 0; j < 8; j++) {
+          /* Can we use a M-M interaction here? */
+          if (cell_can_use_pair_mm(ci->progeny[i], cj->progeny[j], e, sp,
+                                   /*use_rebuild_data=*/1,
+                                   /*is_tree_walk=*/1,
+                                   /*periodic boundaries*/ sp->periodic,
+                                   /*use_mesh*/ sp->periodic)) {
 
-                /* Flag this pair as being treated by the M-M task.
-                 * We use the 64 bits in the task->flags field to store
-                 * this information. The corresponding taks will unpack
-                 * the information and operate according to the choices
-                 * made here. */
-                const int flag = i * 8 + j;
-                t->flags |= (1ULL << flag);
+            /* Flag this pair as being treated by the M-M task.
+             * We use the 64 bits in the task->flags field to store
+             * this information. The corresponding taks will unpack
+             * the information and operate according to the choices
+             * made here. */
+            const int flag = i * 8 + j;
+            t->flags |= (1ULL << flag);
 
-                message(
-                    "Using M-M interaction for void cell pair at depth %d and "
-                    "%d.",
-                    ci->depth, cj->depth);
+            message(
+                "Using M-M interaction for void cell pair at depth %d and "
+                "%d.",
+                ci->depth, cj->depth);
 
-              } else {
-                /* Ok, we actually have to create a task, if we're at the zoom
-                 * level call the normal splitting function. */
-                if (ci->progeny[i]->subtype != cell_subtype_void &&
-                    cj->progeny[j]->subtype != cell_subtype_void) {
-                  message("Got to the zoom level.");
-                  scheduler_splittask_gravity(
-                      scheduler_addtask(s, task_type_pair, task_subtype_grav, 0,
-                                        0, ci->progeny[i], cj->progeny[j]),
-                      s);
-                } else {
-                  zoom_scheduler_splittask_gravity_void_pair(
-                      scheduler_addtask(s, task_type_pair, task_subtype_grav, 0,
-                                        0, ci->progeny[i], cj->progeny[j]),
-                      s);
-                }
-              }
+          } else {
+            /* Ok, we actually have to create a task, if we're at the zoom
+             * level call the normal splitting function. */
+            if (ci->progeny[i]->subtype != cell_subtype_void &&
+                cj->progeny[j]->subtype != cell_subtype_void) {
+              message("Got to the zoom level.");
+              scheduler_splittask_gravity(
+                  scheduler_addtask(s, task_type_pair, task_subtype_grav, 0, 0,
+                                    ci->progeny[i], cj->progeny[j]),
+                  s);
+            } else {
+              zoom_scheduler_splittask_gravity_void_pair(
+                  scheduler_addtask(s, task_type_pair, task_subtype_grav, 0, 0,
+                                    ci->progeny[i], cj->progeny[j]),
+                  s);
             }
           }
         }
@@ -1636,39 +1632,37 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
 
       /* Make a task for every other pair of progeny */
       for (int i = 0; i < 8; i++) {
-        if (ci->progeny[i]->grav.count > 0) {
-          /* Can we use a M-M interaction here? */
-          if (cell_can_use_pair_mm(ci->progeny[i], cj, e, sp,
-                                   /*use_rebuild_data=*/1,
-                                   /*is_tree_walk=*/1,
-                                   /*periodic boundaries*/ sp->periodic,
-                                   /*use_mesh*/ sp->periodic)) {
+        /* Can we use a M-M interaction here? */
+        if (cell_can_use_pair_mm(ci->progeny[i], cj, e, sp,
+                                 /*use_rebuild_data=*/1,
+                                 /*is_tree_walk=*/1,
+                                 /*periodic boundaries*/ sp->periodic,
+                                 /*use_mesh*/ sp->periodic)) {
 
-            /* Flag this pair as being treated by the M-M task.
-             * We use the 64 bits in the task->flags field to store
-             * this information. The corresponding taks will unpack
-             * the information and operate according to the choices
-             * made here. */
-            const int flag = i * 8;
-            t->flags |= (1ULL << flag);
+          /* Flag this pair as being treated by the M-M task.
+           * We use the 64 bits in the task->flags field to store
+           * this information. The corresponding taks will unpack
+           * the information and operate according to the choices
+           * made here. */
+          const int flag = i * 8;
+          t->flags |= (1ULL << flag);
 
-            message("Using M-M interaction for void cell pair at depth %d.",
-                    ci->depth);
+          message("Using M-M interaction for void cell pair at depth %d.",
+                  ci->depth);
 
+        } else {
+          /* Ok, we actually have to create a task, if we're at the zoom
+           * level call the normal splitting function. */
+          if (ci->progeny[i]->subtype != cell_subtype_void) {
+            scheduler_splittask_gravity(
+                scheduler_addtask(s, task_type_pair, task_subtype_grav, 0, 0,
+                                  ci->progeny[i], cj),
+                s);
           } else {
-            /* Ok, we actually have to create a task, if we're at the zoom
-             * level call the normal splitting function. */
-            if (ci->progeny[i]->subtype != cell_subtype_void) {
-              scheduler_splittask_gravity(
-                  scheduler_addtask(s, task_type_pair, task_subtype_grav, 0, 0,
-                                    ci->progeny[i], cj),
-                  s);
-            } else {
-              zoom_scheduler_splittask_gravity_void_pair(
-                  scheduler_addtask(s, task_type_pair, task_subtype_grav, 0, 0,
-                                    ci->progeny[i], cj),
-                  s);
-            }
+            zoom_scheduler_splittask_gravity_void_pair(
+                scheduler_addtask(s, task_type_pair, task_subtype_grav, 0, 0,
+                                  ci->progeny[i], cj),
+                s);
           }
         }
       }
@@ -1693,39 +1687,37 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
 
       /* Make a task for every other pair of progeny */
       for (int j = 0; j < 8; j++) {
-        if (cj->progeny[j]->grav.count > 0) {
-          /* Can we use a M-M interaction here? */
-          if (cell_can_use_pair_mm(ci, cj->progeny[j], e, sp,
-                                   /*use_rebuild_data=*/1,
-                                   /*is_tree_walk=*/1,
-                                   /*periodic boundaries*/ sp->periodic,
-                                   /*use_mesh*/ sp->periodic)) {
+        /* Can we use a M-M interaction here? */
+        if (cell_can_use_pair_mm(ci, cj->progeny[j], e, sp,
+                                 /*use_rebuild_data=*/1,
+                                 /*is_tree_walk=*/1,
+                                 /*periodic boundaries*/ sp->periodic,
+                                 /*use_mesh*/ sp->periodic)) {
 
-            /* Flag this pair as being treated by the M-M task.
-             * We use the 64 bits in the task->flags field to store
-             * this information. The corresponding taks will unpack
-             * the information and operate according to the choices
-             * made here. */
-            const int flag = j * 8;
-            t->flags |= (1ULL << flag);
+          /* Flag this pair as being treated by the M-M task.
+           * We use the 64 bits in the task->flags field to store
+           * this information. The corresponding taks will unpack
+           * the information and operate according to the choices
+           * made here. */
+          const int flag = j * 8;
+          t->flags |= (1ULL << flag);
 
-            message("Using M-M interaction for void cell pair at depth %d.",
-                    cj->depth);
+          message("Using M-M interaction for void cell pair at depth %d.",
+                  cj->depth);
 
+        } else {
+          /* Ok, we actually have to create a task, if we're at the zoom
+           * level call the normal splitting function. */
+          if (cj->progeny[j]->subtype != cell_subtype_void) {
+            scheduler_splittask_gravity(
+                scheduler_addtask(s, task_type_pair, task_subtype_grav, 0, 0,
+                                  ci, cj->progeny[j]),
+                s);
           } else {
-            /* Ok, we actually have to create a task, if we're at the zoom
-             * level call the normal splitting function. */
-            if (cj->progeny[j]->subtype != cell_subtype_void) {
-              scheduler_splittask_gravity(
-                  scheduler_addtask(s, task_type_pair, task_subtype_grav, 0, 0,
-                                    ci, cj->progeny[j]),
-                  s);
-            } else {
-              zoom_scheduler_splittask_gravity_void_pair(
-                  scheduler_addtask(s, task_type_pair, task_subtype_grav, 0, 0,
-                                    ci, cj->progeny[j]),
-                  s);
-            }
+            zoom_scheduler_splittask_gravity_void_pair(
+                scheduler_addtask(s, task_type_pair, task_subtype_grav, 0, 0,
+                                  ci, cj->progeny[j]),
+                s);
           }
         }
       }
