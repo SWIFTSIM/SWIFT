@@ -116,7 +116,7 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
       /* The sends should unlock the down pass. */
       scheduler_addunlock(s, t_grav, ci->grav.super->grav.down);
 
-      if (e->policy & engine_policy_star_formation)
+      if (with_star_formation && ci->top->hydro.count > 0)
         scheduler_addunlock(s, t_grav, ci->top->hydro.star_formation);
 
       /* Drift before you send */
@@ -1170,7 +1170,7 @@ void engine_addtasks_recv_gravity(struct engine *e, struct cell *c,
     t_grav = scheduler_addtask(s, task_type_recv, task_subtype_gpart,
                                c->mpi.tag, 0, c, NULL);
 
-    scheduler_addunlock(s, t_grav, t_grav_counts);
+    if (t_grav_counts != NULL) scheduler_addunlock(s, t_grav, t_grav_counts);
   }
 
   /* If we have tasks, link them. */
