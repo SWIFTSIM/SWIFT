@@ -1863,7 +1863,8 @@ void scheduler_splittasks_mapper(void *map_data, int num_elements,
 
     if (t->ci->subtype == cell_subtype_void ||
         (t->type == task_type_pair && t->cj->subtype == cell_subtype_void))
-      message("Got a task with a void cell.");
+      message("Got a task with a void cell. (%s/%s)", taskID_names[t->type],
+              subtaskID_names[t->subtype]);
 
     /* Invoke the correct splitting strategy */
     if (t->subtype == task_subtype_density) {
