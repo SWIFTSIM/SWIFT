@@ -228,11 +228,6 @@ void runner_zoom_do_void_grav_down(struct runner *r, struct cell *c,
     }
   }
 
-#ifndef SWIFT_TASKS_WITHOUT_ATOMICS
-  /* All done -> unlock the cell */
-  if (lock_unlock(&c->grav.plock) != 0) error("Error unlocking cell");
-#endif
-
   if (timer) TIMER_TOC(timer_dograv_down);
 }
 
