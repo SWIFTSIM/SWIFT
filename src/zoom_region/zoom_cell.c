@@ -875,17 +875,9 @@ void zoom_link_void_leaves(struct space *s, struct cell *c,
     /* Flag this void cell "progeny" as the zoom cell's void cell parent. */
     zoom_cell->void_parent = c;
 
-    /* Get dt_min/dt_max. */
-    for (int i = 0; i < zoom_cell->grav.count; i++) {
-
-      /* When does this particle's time-step start and end? */
-      const timebin_t time_bin = zoom_cell->grav.parts[i].time_bin;
-      const integertime_t ti_end = get_integer_time_end(ti_current, time_bin);
-      const integertime_t ti_beg = get_integer_time_begin(ti_current, time_bin);
-
-      ti_gravity_end_min = min(ti_gravity_end_min, ti_end);
-      ti_gravity_beg_max = max(ti_gravity_beg_max, ti_beg);
-    }
+    /* Update the gravity timestep information. */
+    ti_gravity_end_min = min(ti_gravity_end_min, zoom_cell->grav.ti_end_min);
+    ti_gravity_beg_max = max(ti_gravity_beg_max, zoom_cell->grav.ti_beg_max);
   }
 
   /* Set the gravity timestep information. */
