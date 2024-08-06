@@ -556,16 +556,6 @@ int cell_pack_sf_counts(struct cell *restrict c,
 
   if (pcells[0].stars.delta_from_rebuild > 0 && c->depth == 0)
     error("Shifting the top-level pointer is not allowed!");
-
-  /* Grav */
-  if (c->grav.parts_rebuild == NULL)
-    error("Grav. particles array at rebuild is NULL! c->depth=%d", c->depth);
-
-  if (pcells[0].grav.delta_from_rebuild < 0)
-    error("Grav part pointer moved in the wrong direction!");
-
-  if (pcells[0].grav.delta_from_rebuild > 0 && c->depth == 0)
-    error("Shifting the top-level pointer is not allowed!");
 #endif
 
   /* Fill in the progeny, depth-first recursion. */
@@ -601,17 +591,12 @@ int cell_unpack_sf_counts(struct cell *restrict c,
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->stars.parts_rebuild == NULL)
     error("Star particles array at rebuild is NULL!");
-  if (c->grav.parts_rebuild == NULL)
-    error("Grav particles array at rebuild is NULL!");
 #endif
 
   /* Unpack this cell's data. */
   c->stars.count = pcells[0].stars.count;
   c->stars.parts = c->stars.parts_rebuild + pcells[0].stars.delta_from_rebuild;
   c->stars.dx_max_part = pcells[0].stars.dx_max_part;
-
-  // c->grav.count = pcells[0].grav.count;
-  // c->grav.parts = c->grav.parts_rebuild + pcells[0].grav.delta_from_rebuild;
 
   /* Fill in the progeny, depth-first recursion. */
   int count = 1;
