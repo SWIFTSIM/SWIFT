@@ -542,10 +542,6 @@ int cell_pack_sf_counts(struct cell *restrict c,
   pcells[0].stars.count = c->stars.count;
   pcells[0].stars.dx_max_part = c->stars.dx_max_part;
 
-  /* Pack this cell's data. */
-  // pcells[0].grav.delta_from_rebuild = c->grav.parts - c->grav.parts_rebuild;
-  // pcells[0].grav.count = c->grav.count;
-
 #ifdef SWIFT_DEBUG_CHECKS
   /* Stars */
   if (c->stars.parts_rebuild == NULL)
