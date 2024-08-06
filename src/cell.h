@@ -941,6 +941,9 @@ __attribute__((always_inline)) INLINE int cell_getid_from_pos(
 __attribute__((always_inline)) INLINE static int cell_is_empty(
     const struct cell *c) {
 
+  /* Void cells are never empty. */
+  if (c->subtype == cell_subtype_void) return 0;
+
   return (c->hydro.count == 0 && c->grav.count == 0 && c->stars.count == 0 &&
           c->black_holes.count == 0 && c->sinks.count == 0);
 }
