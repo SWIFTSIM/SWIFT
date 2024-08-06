@@ -28,9 +28,10 @@
  * feedback ("stellar population").
  */
 enum star_feedback_type {
-  single_star,             /* particle representing a single star */
-  star_population_no_SNII, /* particle representing a population without SNII */
-  star_population          /* particle representing a population (with SNII) */
+  single_star,                    /* particle representing a single star */
+  star_population_continuous_IMF, /* particle representing a population of the
+                                     continuous part of the IMF */
+  star_population /* particle representing a population with the whole IMF */
 };
 
 /**

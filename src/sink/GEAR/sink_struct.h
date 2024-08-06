@@ -22,6 +22,7 @@
 /**
  * @brief Sink-related fields carried by each *gas* particle.
  */
+#include <sys/types.h>
 struct sink_part_data {
 
   /*! ID of the sink that will swallow this #part. */
