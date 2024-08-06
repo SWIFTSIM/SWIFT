@@ -29,10 +29,6 @@ import woma
 N = 10**5
 N_label = "n%d" % (10 * np.log10(N))
 
-# Earth units
-M_E = 5.9724e24  # kg
-R_E = 6.3710e6  # m
-
 # Plotting options
 font_size = 20
 params = {
@@ -90,6 +86,9 @@ def plot_snapshot(A2_pos, A1_mat_id):
     A1_colour = np.empty(len(A2_pos), dtype=object)
     for id_c, c in Di_id_colour.items():
         A1_colour[A1_mat_id == id_c] = c
+
+    # Earth units
+    R_E = 6.3710e6  # m
 
     # Plot
     ax.scatter(

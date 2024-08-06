@@ -37,10 +37,6 @@ import woma
 N = 10**5
 N_label = "n%d" % (10 * np.log10(N))
 
-# Earth units
-M_E = 5.9724e24  # kg
-R_E = 6.3710e6  # m
-
 # Plotting options
 font_size = 20
 params = {
@@ -57,6 +53,9 @@ def plot_profile_and_particles(profile, A1_r, A1_rho):
     """Plot the particles."""
     plt.figure(figsize=(7, 7))
     ax = plt.gca()
+
+    # Earth units
+    R_E = 6.3710e6  # m
 
     # Profile
     ax.plot(profile.A1_r / R_E, profile.A1_rho)

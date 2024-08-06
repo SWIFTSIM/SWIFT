@@ -30,10 +30,6 @@ import woma
 N = 10**5
 N_label = "n%d" % (10 * np.log10(N))
 
-# Earth units
-M_E = 5.9724e24  # kg
-R_E = 6.3710e6  # m
-
 # Plotting options
 font_size = 20
 params = {
@@ -88,6 +84,10 @@ def plot_snapshot(A2_pos, A1_u):
     ax.set_aspect("equal")
     cax = make_axes_locatable(ax).append_axes("right", size="5%", pad=0.05)
 
+    # Earth units
+    R_E = 6.3710e6  # m
+
+    # Plot
     scat = ax.scatter(
         A2_pos[:, 0] / R_E,
         A2_pos[:, 1] / R_E,
