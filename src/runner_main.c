@@ -194,7 +194,7 @@ void *runner_main(void *data) {
 #endif
 
       if (ci->subtype == cell_subtype_void &&
-          cj->subtype != cell_subtype_void) {
+          (cj == NULL || cj->subtype == cell_subtype_void)) {
         message("Running task %s/%s on void cell.", taskID_names[t->type],
                 subtaskID_names[t->subtype]);
       }
@@ -205,7 +205,7 @@ void *runner_main(void *data) {
                 subtaskID_names[t->subtype]);
       }
 
-      if (ci->subtype == cell_subtype_void &&
+      if (ci->subtype == cell_subtype_void && cj != NULL &&
           cj->subtype == cell_subtype_void) {
         message("Running task %s/%s on void cell.", taskID_names[t->type],
                 subtaskID_names[t->subtype]);
