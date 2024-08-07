@@ -195,20 +195,23 @@ void *runner_main(void *data) {
 
       if (ci->subtype == cell_subtype_void &&
           (cj == NULL || cj->subtype != cell_subtype_void)) {
-        message("Running task %s/%s on ci void (tic=%lld).",
-                taskID_names[t->type], subtaskID_names[t->subtype], t->tic);
+        message("Running task %s/%s on ci void (tic=%lld, toc=%lld).",
+                taskID_names[t->type], subtaskID_names[t->subtype], t->tic,
+                t->toc);
       }
 
       if (cj != NULL && cj->subtype == cell_subtype_void &&
           ci->subtype != cell_subtype_void) {
-        message("Running task %s/%s on void cell (tic=%lld).",
-                taskID_names[t->type], subtaskID_names[t->subtype], t->tic);
+        message("Running task %s/%s on cj void (tic=%lld, toc=%lld).",
+                taskID_names[t->type], subtaskID_names[t->subtype], t->tic,
+                t->toc);
       }
 
       if (ci->subtype == cell_subtype_void && cj != NULL &&
           cj->subtype == cell_subtype_void) {
-        message("Running task %s/%s on void cell (tic=%lld).",
-                taskID_names[t->type], subtaskID_names[t->subtype], t->tic);
+        message("Running task %s/%s on ci->cj voids (tic=%lld, toc=%lld).",
+                taskID_names[t->type], subtaskID_names[t->subtype], t->tic,
+                t->toc);
       }
 
       const ticks task_beg = getticks();
@@ -625,6 +628,27 @@ void *runner_main(void *data) {
           error("Unknown/invalid task type (%d).", t->type);
       }
       r->active_time += (getticks() - task_beg);
+
+      if (ci->subtype == cell_subtype_void &&
+          (cj == NULL || cj->subtype != cell_subtype_void)) {
+        message("Running task %s/%s on ci void (tic=%lld, toc=%lld).",
+                taskID_names[t->type], subtaskID_names[t->subtype], t->tic,
+                t->toc);
+      }
+
+      if (cj != NULL && cj->subtype == cell_subtype_void &&
+          ci->subtype != cell_subtype_void) {
+        message("Running task %s/%s on cj void (tic=%lld, toc=%lld).",
+                taskID_names[t->type], subtaskID_names[t->subtype], t->tic,
+                t->toc);
+      }
+
+      if (ci->subtype == cell_subtype_void && cj != NULL &&
+          cj->subtype == cell_subtype_void) {
+        message("Running task %s/%s on ci->cj voids (tic=%lld, toc=%lld).",
+                taskID_names[t->type], subtaskID_names[t->subtype], t->tic,
+                t->toc);
+      }
 
 /* Mark that we have run this task on these cells */
 #ifdef SWIFT_DEBUG_CHECKS
