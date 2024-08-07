@@ -215,6 +215,10 @@ static void engine_do_unskip_sinks(struct cell *c, struct engine *e) {
  */
 static void engine_do_unskip_gravity(struct cell *c, struct engine *e) {
 
+  if (c->subtype == cell_subtype_void)
+    message(
+        "Unskipping gravity tasks in a void cell at engine_do_unskip_gravity");
+
   /* Early abort (are we below the level where tasks are)? */
   if (!cell_get_flag(c, cell_flag_has_tasks)) {
     if (c->subtype == cell_subtype_void)
