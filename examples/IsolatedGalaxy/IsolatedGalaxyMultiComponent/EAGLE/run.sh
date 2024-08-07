@@ -16,12 +16,6 @@ then
     ./getEagleCoolingTable.sh
 fi
 
-if [ ! -e UV_dust1_CR1_G1_shield1.hdf5 ]
-then
-    echo "Fetching PS2020 cooling tables for the isolated galaxy example..."
-    ./getPS2020CoolingTables.sh
-fi
-
 if [ ! -e yieldtables ] 
 then     
     echo "Fetching EAGLE stellar yield tables for the isolated galaxy example..."
