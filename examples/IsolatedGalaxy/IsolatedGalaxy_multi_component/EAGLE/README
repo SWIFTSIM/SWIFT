@@ -1,10 +1,4 @@
-This example shows how to use initial conditions of an isolated galactic disk generated with the pNbody 
-code (http://lastro.epfl.ch/projects/pNbody/) with Swift.
-In the current example, the galactic disk is composed of an exponential disk, a Plummer bulge,
-a Miyamoto-Nagai gaseous disk all three embedded in an NFW halo.
-The systems is put at equilibrium by solving the Jeans equations.
-
-We show here how to run such initial conditions with the EAGLE model, however it could be used with any other model.
+We show here how to run such initial conditions with the EAGLE model.
 
 To generate the initial conditions locally, if pNbody is installed, run:
 
@@ -12,7 +6,6 @@ To generate the initial conditions locally, if pNbody is installed, run:
 
 If you don't have access to pNbody, you can simply skip this step. The initial conditions will automatically 
 be downloaded when launching the run script (see below).
-
 
 To run this example with the EAGLE model, SWIFT must be configured with the following options:
 
