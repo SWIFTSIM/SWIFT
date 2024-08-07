@@ -158,7 +158,11 @@ def make_task_hist_split(runs, output=""):
                 run.tasks[i].ci_subtype != "Regular"
                 or run.tasks[i].cj_subtype != "Regular"
             ):
-                print(run.tasks[i].ci_subtype, run.tasks[i].cj_subtype)
+                print(
+                    "Getting labels:",
+                    run.tasks[i].ci_subtype,
+                    run.tasks[i].cj_subtype,
+                )
             labels_dict[name][i] = f"{task}:{run.tasks[i].ci_type}"
             if run.tasks[i].ci_subtype != "Regular":
                 labels_dict[name][i] += f"({run.tasks[i].ci_subtype})"
@@ -176,6 +180,9 @@ def make_task_hist_split(runs, output=""):
             sinds = np.argsort(-counts)
         labels = labels[sinds]
         counts = counts[sinds]
+
+        for lab in labels:
+            print(lab)
 
         # Calculate positions for horizontal bars
         positions = np.arange(len(labels))
