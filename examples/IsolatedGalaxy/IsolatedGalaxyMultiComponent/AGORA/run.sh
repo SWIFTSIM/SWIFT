@@ -21,4 +21,4 @@ fi
 
 printf "Running simulation..."
 
-../../../swift --hydro --stars --star-formation --self-gravity --feedback --cooling --threads=14 params.yml 2>&1 | tee output.log 
+../../../../swift --hydro --stars --star-formation --self-gravity --feedback --cooling --threads=14 params.yml 2>&1 | tee output.log 
