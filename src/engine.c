@@ -3016,7 +3016,7 @@ int engine_step(struct engine *e) {
     if (c->subtype == cell_subtype_void) {
       for (struct link *l = c->grav.mm; l != NULL; l = l->next) {
         message("Void cell %d: tic=%lld toc=%lld time=%.3f %s", c->cellID,
-                l->tic, l->toc, clocks_from_ticks(l->toc - l->tic),
+                l->t->tic, l->t->toc, clocks_from_ticks(l->t->toc - l->t->tic),
                 clocks_getunit());
       }
     }
