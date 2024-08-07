@@ -229,7 +229,7 @@ class Task:
         self.cj_type = CELLTYPES[cj_type]
         self.ci_subtype = CELLSUBTYPES[ci_subtype]
         self.cj_subtype = CELLSUBTYPES[cj_subtype]
-        if ci_subtype == 2 or cj_subtype == 2:
+        if ci_subtype != 0 or cj_subtype != 0:
             print(self.ci_subtype, self.cj_subtype)
         self.ci_depth = ci_depth
         self.cj_depth = cj_depth
