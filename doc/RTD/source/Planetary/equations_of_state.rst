@@ -22,9 +22,10 @@ softening is very small.
 
 So far, we have implemented several Tillotson, ANEOS, SESAME,
 and Hubbard \& MacFarlane (1980) materials, with more on the way.
-Custom materials in SESAME-style tables can also be provided.
-The material's ID is set by a somewhat arbitrary base type ID
-(multiplied by 100) plus an individual value:
+Custom Tillotson parameters or custom materials in SESAME-style tables
+can also be provided.
+The material's ID is set by a base type ID (multiplied by 100)
+plus an individual value:
 
 + Ideal gas: ``0``
     + Default (\\(\\gamma\\) set using ``--with-adiabatic-index``, default 5/3): ``0``
@@ -33,6 +34,7 @@ The material's ID is set by a somewhat arbitrary base type ID
     + Granite: ``101``
     + Water: ``102``
     + Basalt: ``103``
+    + Custom user-provided parameters: ``190``, ``191``, ..., ``199``
 + Hubbard \& MacFarlane (1980): ``2``
     + Hydrogen-helium atmosphere: ``200``
     + Ice H20-CH4-NH3 mix: ``201``
@@ -42,6 +44,10 @@ The material's ID is set by a somewhat arbitrary base type ID
     + Basalt (7530): ``301``
     + Water (7154): ``302``
     + Senft \& Stewart (2008) water: ``303``
+    + AQUA, Haldemann, J. et al. (2020) water: ``304``
+    + Chabrier, G. et al. (2019) Hydrogen: ``305``
+    + Chabrier, G. et al. (2019) Helium: ``306``
+    + Chabrier & Debras (2021) H/He mixture Y=0.245 (Jupiter): ``307``
 + ANEOS (in SESAME-style tables): ``4``
     + Forsterite (Stewart et al. 2019): ``400``
     + Iron (Stewart, zenodo.org/record/3866507): ``401``
@@ -53,7 +59,7 @@ The data files for the tabulated EoS can be downloaded using
 the ``examples/Planetary/EoSTables/get_eos_tables.sh`` script.
 
 To enable one or multiple EoS, the corresponding ``planetary_use_*:``
-flag(s) must be set to ``1`` in the parameter file for a simulation,
+flag(s) must be set from ``0`` to ``1`` in the parameter file for a simulation,
 along with the path to any table files, which are set by the
 ``planetary_*_table_file:`` parameters,
 as detailed in :ref:`Parameters_eos` and ``examples/parameter_example.yml``.
@@ -71,7 +77,7 @@ The Tillotson sound speed was derived using
 as described in
 `Kegerreis et al. (2019)  <https://doi.org/10.1093/mnras/stz1606>`_.
 Note that there is a typo in the sign of
-\\(du = T dS - P dV = T dS + (P / \\rho^2) d\\rho \\) in the appendix;
+\\(du = T dS - P dV = T dS + (P / \\rho^2) d\\rho \\) in the printed appendix;
 the correct version was used in the actual derivation.
 
 The ideal gas uses the same equations detailed in :ref:`equation_of_state`.

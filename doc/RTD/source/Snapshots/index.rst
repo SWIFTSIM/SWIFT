@@ -249,6 +249,12 @@ obtained by running SWIFT with the ``-o`` runtime option (See
 :ref:`Output_selection_label` for details). Each field contains a short
 description attribute giving a brief summary of what the quantity represents.
 
+Note that the HDF5 names of some fields differ from the GADGET-2 format for
+initial conditions (see :ref:`Initial_Conditions_label`) that mixes singular
+and plural names, which in snapshots are all plural by default (e.g.
+``InternalEnergies`` in snapshots versus ``InternalEnergy`` in initial
+conditions).
+
 All the individual arrays created by SWIFT have had the Fletcher 32 check-sum
 filter applied by the HDF5 library when writing them. This means that any
 eventual data corruption on the disks will be detected and reported by the

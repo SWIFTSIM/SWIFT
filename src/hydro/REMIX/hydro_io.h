@@ -1,7 +1,8 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2016 Matthieu Schaller (schaller@strw.leidenuniv.nl)
- *               2018 Jacob Kegerreis (jacob.kegerreis@durham.ac.uk).
+ * Copyright (c) 2024 Thomas Sandnes (thomas.d.sandnes@durham.ac.uk)
+ *               2024 Jacob Kegerreis (jacob.kegerreis@durham.ac.uk)
+ *               2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -22,16 +23,7 @@
 
 /**
  * @file Planetary/hydro_io.h
- * @brief Minimal conservative implementation of SPH (i/o routines)
- *
- * The thermal variable is the internal energy (u). Simple constant
- * viscosity term with the Balsara (1995) switch (optional).
- * No thermal conduction term is implemented.
- *
- * This corresponds to equations (43), (44), (45), (101), (103)  and (104) with
- * \f$\beta=3\f$ and \f$\alpha_u=0\f$ of
- * Price, D., Journal of Computational Physics, 2012, Volume 231, Issue 3,
- * pp. 759-794.
+ * @brief REMIX implementation of SPH (Sandnes et al. 2024) i/o routines
  */
 
 #include "adiabatic_index.h"
@@ -56,13 +48,6 @@ INLINE static void hydro_read_particles(struct part* parts,
 #else
   *num_fields = 9;
 #endif
-
-  /* Temporary warning to be printed for a few months after the change */
-  message(
-      "\n # Warning: some required field names for initial conditions were"
-      " tweaked in April 2023 to match the GADGET-2 format that SWIFT follows."
-      " Please update your scripts (e.g. download the latest WoMa package) to"
-      " match. Apologies for any inconvenience!");
 
   /* List what we want to read */
   list[0] = io_make_input_field("Coordinates", DOUBLE, 3, COMPULSORY,
@@ -243,14 +228,6 @@ INLINE static void hydro_write_flavour(hid_t h_grpsph) {
   /* Viscosity and thermal conduction */
   /* Nothing in this minimal model... */
   io_write_attribute_s(h_grpsph, "Thermal Conductivity Model", "No treatment");
-#ifdef PLANETARY_SPH_NO_BALSARA
-  io_write_attribute_s(h_grpsph, "Viscosity Model",
-                       "Minimal treatment as in Monaghan (1992)");
-#else
-  io_write_attribute_s(
-      h_grpsph, "Viscosity Model",
-      "as in Springel (2005), i.e. Monaghan (1992) with Balsara (1995) switch");
-#endif
 }
 
 /**
