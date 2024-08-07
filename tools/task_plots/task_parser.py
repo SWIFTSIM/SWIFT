@@ -213,6 +213,7 @@ class Task:
         self.rank = rank
         self.thread = thread
         self.type = TASKTYPES[type_int]
+        print(f"subtype_int: {subtype_int}, SUBTYPE: {SUBTYPES[subtype_int]}")
         self.subtype = SUBTYPES[subtype_int]
         self.task = (
             self.type + "/" + self.subtype

@@ -2016,9 +2016,6 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
   const int nodeID = e->nodeID;
   int rebuild = 0;
 
-  if (c->subtype == cell_subtype_void)
-    message("Unskipping gravity tasks for void cell ");
-
   /* Un-skip the gravity tasks involved with this cell. */
   for (struct link *l = c->grav.grav; l != NULL; l = l->next) {
     struct task *t = l->t;
