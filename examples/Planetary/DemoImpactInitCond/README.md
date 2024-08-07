@@ -1,14 +1,16 @@
 A demo of making initial conditions for a planetary impact simulation using
-SEAGen and WoMa [1,2], and running standard "settling" simulations. See WoMa's
-documentation and tutorial at https://github.com/srbonilla/WoMa for more info.
+SEAGen and WoMa [1,2], starting by creating separate target and impactor planet 
+models and running standard "settling" simulations. See WoMa's documentation and 
+tutorial at https://github.com/srbonilla/WoMa for more info.
 
 First, the target and impactor planet profiles and particles are generated using
 WoMa. Second, a "settling" simulation is run for each body in isolation to allow
 any final relaxation of the particles to occur. Third, the settled particles are
 loaded and given initial positions and velocities to set up the impact scenario.
 
-The resulting initial conditions are used by the DemoImpact example. See its
-README.md for more info, and to run the impact simulation.
+The resulting initial conditions can be used by the DemoImpact example. See its
+README.md for more info, and to run the impact simulation. Pre-made impact 
+initial conditions can also be downloaded directly.
 
 The set up for these planets and the collision scenario is described in [3] 
 (see S2 and Fig. A1, etc). These bodies use ANEOS equations of state that 

@@ -1,5 +1,4 @@
 #!/bin/bash
-set -o xtrace
 
 # Resolution
 N_label=n50
@@ -13,7 +12,7 @@ then
         cp ../DemoImpactInitCond/demo_impact_"$N_label".hdf5 ./
     else
         echo "Downloading initial conditions..."
-        ./get_init_cond.sh
+        ./getICs.sh
     fi
 fi
 
