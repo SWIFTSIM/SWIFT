@@ -213,7 +213,6 @@ class Task:
         self.rank = rank
         self.thread = thread
         self.type = TASKTYPES[type_int]
-        print(f"subtype_int: {subtype_int}, SUBTYPE: {SUBTYPES[subtype_int]}")
         self.subtype = SUBTYPES[subtype_int]
         self.task = (
             self.type + "/" + self.subtype
@@ -230,6 +229,8 @@ class Task:
         self.cj_type = CELLTYPES[cj_type]
         self.ci_subtype = CELLSUBTYPES[ci_subtype]
         self.cj_subtype = CELLSUBTYPES[cj_subtype]
+        if ci_subtype == 2 or cj_subtype == 2:
+            print(self.ci_subtype, self.cj_subtype)
         self.ci_depth = ci_depth
         self.cj_depth = cj_depth
         self.min_dist = min_dist
