@@ -3010,6 +3010,18 @@ int engine_step(struct engine *e) {
   /* Time in ticks at the end of this step. */
   e->toc_step = getticks();
 
+  /* Loop over void cells and print the tic/toc of their grav mm tasks. */
+  for (int i = 0; i < e->s->nr_cells; i++) {
+    struct cell *c = &e->s->cells_top[i];
+    if (c->subtype == cell_subtype_void) {
+      for (struct link *l = c->grav.mm; l != NULL; l = l->next) {
+        message("Void cell %d: tic=%lld toc=%lld time=%.3f %s", c->cellID,
+                l->tic, l->toc, clocks_from_ticks(l->toc - l->tic),
+                clocks_getunit());
+      }
+    }
+  }
+
   return force_stop;
 }
 

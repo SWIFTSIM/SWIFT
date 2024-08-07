@@ -1394,21 +1394,21 @@ void task_dump_all(struct engine *e, int step) {
     struct task *prev = &e->sched.tasks[l];
     if ((ci != NULL && ci->subtype == cell_subtype_void) &&
         (cj == NULL || cj->subtype != cell_subtype_void)) {
-      message("Running task %s/%s on ci void (tic=%lld, toc=%lld).",
+      message("Logging task %s/%s on ci void (tic=%lld, toc=%lld).",
               taskID_names[prev->type], subtaskID_names[prev->subtype],
               prev->tic, prev->toc);
     }
 
     if ((cj != NULL && cj->subtype == cell_subtype_void) &&
         (ci != NULL && ci->subtype != cell_subtype_void)) {
-      message("Running task %s/%s on cj void (tic=%lld, toc=%lld).",
+      message("Logging task %s/%s on cj void (tic=%lld, toc=%lld).",
               taskID_names[prev->type], subtaskID_names[prev->subtype],
               prev->tic, prev->toc);
     }
 
     if ((ci != NULL && ci->subtype == cell_subtype_void) &&
         (cj != NULL && cj->subtype == cell_subtype_void)) {
-      message("Running task %s/%s on ci->cj voids (tic=%lld, toc=%lld).",
+      message("Logging task %s/%s on ci->cj voids (tic=%lld, toc=%lld).",
               taskID_names[prev->type], subtaskID_names[prev->subtype],
               prev->tic, prev->toc);
     }
