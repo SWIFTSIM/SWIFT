@@ -1399,15 +1399,15 @@ void task_dump_all(struct engine *e, int step) {
               prev->tic, prev->toc);
     }
 
-    if (cj != NULL && cj->subtype == cell_subtype_void &&
+    if ((cj != NULL && cj->subtype == cell_subtype_void) &&
         (ci != NULL && ci->subtype != cell_subtype_void)) {
       message("Running task %s/%s on cj void (tic=%lld, toc=%lld).",
               taskID_names[prev->type], subtaskID_names[prev->subtype],
               prev->tic, prev->toc);
     }
 
-    if (ci->subtype == cell_subtype_void && cj != NULL &&
-        (ci != NULL && cj->subtype == cell_subtype_void)) {
+    if ((ci != NULL && ci->subtype == cell_subtype_void) &&
+        (cj != NULL && cj->subtype == cell_subtype_void)) {
       message("Running task %s/%s on ci->cj voids (tic=%lld, toc=%lld).",
               taskID_names[prev->type], subtaskID_names[prev->subtype],
               prev->tic, prev->toc);
