@@ -37,7 +37,6 @@ Gravity:
   epsilon_fmm:                   0.001     # Tolerance parameter for the adaptive multipole acceptance criterion.
   theta_cr:                      0.7       # Opening angle for the purely gemoetric criterion.
   eta:          0.025               # Constant dimensionless multiplier for time integration.
-  theta:        0.7                 # Opening angle (Multipole acceptance criterion).
   max_physical_baryon_softening: 0.05  # Physical softening length (in internal units)
   max_physical_DM_softening: 0.05  # Physical softening length (in internal units)
   
