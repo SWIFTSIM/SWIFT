@@ -335,5 +335,7 @@ Finally for the ``SNII``, the mass limits are given by ``Mmin`` and ``Mmax``. Fo
 Initial Conditions
 ~~~~~~~~~~~~~~~~~~
 
-Note that if in the initial conditions, the ``birth_scale_factor`` or ``birth_time`` are set
-to a negative value, the stellar particle will provide no feedback.  
+Note that if in the initial conditions, the time of formation of a stellar particle is given (``BirthTime``)
+and set to a negative value, the stellar particle will provide no feedback.
+A similar behavior will be obtained if the parameter ``overwrite_birth_time`` is set to 1 and
+``birth_time`` to -1. 

@@ -239,8 +239,6 @@ INLINE static void stars_props_init(struct stars_props *sp,
     sp->spart_first_init_birth_time =
         parser_get_param_float(params, "Stars:birth_time");
   }
-
-
 }
 
 /**
@@ -264,10 +262,10 @@ INLINE static void stars_props_print(const struct stars_props *sp) {
 
   message("Maximal iterations in ghost task set to %d",
           sp->max_smoothing_iterations);
-          
+
   if (sp->overwrite_birth_time)
     message("Stars' birth time read from the ICs will be overwritten to %f",
-            sp->spart_first_init_birth_time);          
+            sp->spart_first_init_birth_time);
 }
 
 #if defined(HAVE_HDF5)
