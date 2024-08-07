@@ -168,7 +168,7 @@ struct stars_props {
   /*! Age threshold for the transition to unlimited time-step size (internal
    * units) */
   double age_threshold_unlimited;
-  
+
   /*! Are we overwriting the stars' birth time read from the ICs? */
   int overwrite_birth_time;
 
