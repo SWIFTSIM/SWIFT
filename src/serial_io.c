@@ -301,7 +301,7 @@ void prepare_array_serial(
   if (N_total > 0) {
     h_err = H5Pset_chunk(h_prop, rank, chunk_shape);
     if (h_err < 0)
-      error("Error while setting chunk size (%llu, %llu) for field '%s'.",
+      error("Error while setting chunk size (%lu, %lu) for field '%s'.",
             chunk_shape[0], chunk_shape[1], props.name);
   }
 
