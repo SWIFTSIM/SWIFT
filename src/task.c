@@ -1389,9 +1389,9 @@ void task_dump_all(struct engine *e, int step) {
       (unsigned long long)e->toc_step, e->updates, e->g_updates, e->s_updates,
       0, cpufreq, -1, -1, -1, -1, -1, -1, -1.0, -1.0);
   for (int l = 0; l < e->sched.nr_tasks; l++) {
-    struct cell *ci = e->sched.tasks[l].ci;
-    struct cell *cj = e->sched.tasks[l].cj;
-    struct task *prev = &e->sched.tasks[l];
+    /* struct cell *ci = e->sched.tasks[l].ci; */
+    /* struct cell *cj = e->sched.tasks[l].cj; */
+    /* struct task *prev = &e->sched.tasks[l]; */
     /* if ((ci != NULL && ci->subtype == cell_subtype_void) && */
     /*     (cj == NULL || cj->subtype != cell_subtype_void)) { */
     /*   message("Logging task %s/%s on ci void (tic=%lld, toc=%lld).", */
