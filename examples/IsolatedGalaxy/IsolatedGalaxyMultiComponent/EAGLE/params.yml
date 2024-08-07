@@ -8,9 +8,6 @@ InternalUnitSystem:
 
 Scheduler:
   max_top_level_cells: 16
-  cell_extra_gparts:         100         # (Optional) Number of spare gparts per top-level allocated at rebuild time for on-the-fly creation.
-
-
   
 # Parameters governing the time integration
 TimeIntegration:
@@ -43,9 +40,6 @@ Gravity:
   theta:        0.7                 # Opening angle (Multipole acceptance criterion).
   max_physical_baryon_softening: 0.05  # Physical softening length (in internal units)
   max_physical_DM_softening: 0.05  # Physical softening length (in internal units)
-
-
-
   
 # Parameters for the hydrodynamics scheme
 SPH:  
@@ -70,7 +64,6 @@ Stars:
   max_timestep_young_Myr:     0.1   # Maximal time-step length of young stars (in Mega-years).
   max_timestep_old_Myr:       1.0   # Maximal time-step length of old stars (in Mega-years).
   luminosity_filename:   ./photometry
-
 
 # Standard EAGLE cooling options
 EAGLECooling:
@@ -104,19 +97,6 @@ EAGLEChemistry:
   init_abundance_Magnesium: 0.000591 
   init_abundance_Silicon:   0.000683 
   init_abundance_Iron:      0.0011   
-
-# Hernquist potential parameters
-HernquistPotential:
-  useabspos:       0       # 0 -> positions based on centre, 1 -> absolute positions 
-  position:        [0.,0.,0.]    # Location of centre of isothermal potential with respect to centre of the box (if 0) otherwise absolute (if 1) (internal units)
-  idealizeddisk:   1       # Run with an idealized galaxy disk
-  M200:            137.0   # M200 of the galaxy disk
-  h:               0.704   # reduced Hubble constant (value does not specify the used units!)
-  concentration:   9.0     # concentration of the Halo
-  diskfraction:    0.040   # Disk mass fraction
-  bulgefraction:   0.014   # Bulge mass fraction
-  timestep_mult:   0.01    # Dimensionless pre-factor for the time-step condition, basically determines the fraction of the orbital time we use to do the time integration
-  epsilon:         0.35     # Softening size (internal units)
  
 # EAGLE star formation parameters
 EAGLEStarFormation:
