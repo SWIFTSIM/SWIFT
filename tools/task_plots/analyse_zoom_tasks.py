@@ -163,14 +163,16 @@ def make_task_hist_split(runs, output=""):
                     run.tasks[i].ci_subtype,
                     run.tasks[i].cj_subtype,
                 )
-            labels_dict[name][i] = f"{task}:{run.tasks[i].ci_type}"
-            # if run.tasks[i].ci_subtype != "Regular":
-            labels_dict[name][i] += f"({run.tasks[i].ci_subtype})"
+            label = f"{task}:{run.tasks[i].ci_type}"
+            if run.tasks[i].ci_subtype != "Regular":
+                label += f"({run.tasks[i].ci_subtype})"
             if "pair" in task:
-                labels_dict[name][i] += f"->{run.tasks[i].cj_type}"
-                # if run.tasks[i].cj_subtype != "Regular":
-                labels_dict[name][i] += f"({run.tasks[i].cj_subtype})"
-            labels_dict[name][i] += f"@{run.tasks[i].ci_depth}"
+                label += f"->{run.tasks[i].cj_type}"
+                if run.tasks[i].cj_subtype != "Regular":
+                    label += f"({run.tasks[i].cj_subtype})"
+            label += f"@{run.tasks[i].ci_depth}"
+            print(label)
+            labels_dict[name][i] = label
 
     for i, (name, run) in enumerate(runs.items()):
         labels, counts = np.unique(labels_dict[name], return_counts=True)
