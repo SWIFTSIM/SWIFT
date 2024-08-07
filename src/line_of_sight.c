@@ -172,9 +172,9 @@ void los_io_output_check(const struct engine *e) {
   struct io_props list[100];
 
   /* Find all the gas output fields */
-  io_select_hydro_fields(e->s->parts, e->s->xparts, with_cosmology, with_cooling,
-                         with_temperature, with_fof, with_stf, with_rt, e,
-                         &num_fields, list);
+  io_select_hydro_fields(e->s->parts, e->s->xparts, with_cosmology,
+                         with_cooling, with_temperature, with_fof, with_stf,
+                         with_rt, e, &num_fields, list);
 
   /* Loop over each output field */
   for (int i = 0; i < num_fields; i++) {
