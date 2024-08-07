@@ -1389,10 +1389,11 @@ void task_dump_all(struct engine *e, int step) {
       (unsigned long long)e->toc_step, e->updates, e->g_updates, e->s_updates,
       0, cpufreq, -1, -1, -1, -1, -1, -1, -1.0, -1.0);
   for (int l = 0; l < e->sched.nr_tasks; l++) {
-    if (e->sched.tasks[l].ci->subtype == cell_subtype_void ||
+    if ((e->sched.tasks[l].cj != NULL &&
+         e->sched.tasks[l].ci->subtype == cell_subtype_void) ||
         (e->sched.tasks[l].cj != NULL &&
          e->sched.tasks[l].cj->subtype == cell_subtype_void))
-      message("Task %s/%s has a void cell",
+      message("(outside) Task %s/%s has a void cell",
               taskID_names[e->sched.tasks[l].type],
               subtaskID_names[e->sched.tasks[l].subtype]);
     if (!e->sched.tasks[l].implicit && e->sched.tasks[l].tic > e->tic_step) {
@@ -1493,7 +1494,8 @@ void task_dump_stats(const char *dumpfile, struct engine *e,
   for (int l = 0; l < e->sched.nr_tasks; l++) {
     int type = e->sched.tasks[l].type;
 
-    if (e->sched.tasks[l].ci->subtype == cell_subtype_void ||
+    if ((e->sched.tasks[l].cj != NULL &&
+         e->sched.tasks[l].ci->subtype == cell_subtype_void) ||
         (e->sched.tasks[l].cj != NULL &&
          e->sched.tasks[l].cj->subtype == cell_subtype_void))
       message("(outside) Task %s/%s has a void cell",
