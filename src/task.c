@@ -1392,26 +1392,26 @@ void task_dump_all(struct engine *e, int step) {
     struct cell *ci = e->sched.tasks[l].ci;
     struct cell *cj = e->sched.tasks[l].cj;
     struct task *prev = &e->sched.tasks[l];
-    if ((ci != NULL && ci->subtype == cell_subtype_void) &&
-        (cj == NULL || cj->subtype != cell_subtype_void)) {
-      message("Logging task %s/%s on ci void (tic=%lld, toc=%lld).",
-              taskID_names[prev->type], subtaskID_names[prev->subtype],
-              prev->tic, prev->toc);
-    }
+    /* if ((ci != NULL && ci->subtype == cell_subtype_void) && */
+    /*     (cj == NULL || cj->subtype != cell_subtype_void)) { */
+    /*   message("Logging task %s/%s on ci void (tic=%lld, toc=%lld).", */
+    /*           taskID_names[prev->type], subtaskID_names[prev->subtype], */
+    /*           prev->tic, prev->toc); */
+    /* } */
 
-    if ((cj != NULL && cj->subtype == cell_subtype_void) &&
-        (ci != NULL && ci->subtype != cell_subtype_void)) {
-      message("Logging task %s/%s on cj void (tic=%lld, toc=%lld).",
-              taskID_names[prev->type], subtaskID_names[prev->subtype],
-              prev->tic, prev->toc);
-    }
+    /* if ((cj != NULL && cj->subtype == cell_subtype_void) && */
+    /*     (ci != NULL && ci->subtype != cell_subtype_void)) { */
+    /*   message("Logging task %s/%s on cj void (tic=%lld, toc=%lld).", */
+    /*           taskID_names[prev->type], subtaskID_names[prev->subtype], */
+    /*           prev->tic, prev->toc); */
+    /* } */
 
-    if ((ci != NULL && ci->subtype == cell_subtype_void) &&
-        (cj != NULL && cj->subtype == cell_subtype_void)) {
-      message("Logging task %s/%s on ci->cj voids (tic=%lld, toc=%lld).",
-              taskID_names[prev->type], subtaskID_names[prev->subtype],
-              prev->tic, prev->toc);
-    }
+    /* if ((ci != NULL && ci->subtype == cell_subtype_void) && */
+    /*     (cj != NULL && cj->subtype == cell_subtype_void)) { */
+    /*   message("Logging task %s/%s on ci->cj voids (tic=%lld, toc=%lld).", */
+    /*           taskID_names[prev->type], subtaskID_names[prev->subtype], */
+    /*           prev->tic, prev->toc); */
+    /* } */
     if (!e->sched.tasks[l].implicit && e->sched.tasks[l].tic > e->tic_step) {
       if ((e->sched.tasks[l].ci != NULL &&
            e->sched.tasks[l].ci->subtype == cell_subtype_void) ||

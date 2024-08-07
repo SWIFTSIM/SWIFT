@@ -2874,6 +2874,19 @@ int engine_step(struct engine *e) {
   engine_launch(e, "tasks");
   TIMER_TOC(timer_runners);
 
+  /* Loop over void cells and print the tic/toc of their grav mm tasks. */
+  for (int i = 0; i < e->s->nr_cells; i++) {
+    if (e->s->cells_top[i].subtype == cell_subtype_void) {
+      for (int p = 0; p < 8; p++) {
+        struct cell *c = e->s->cells_top[i].progeny[p];
+        for (struct link *l = c->grav.mm; l != NULL; l = l->next) {
+          message("Void cell: tic=%lld toc=%lld time=%.3f %s", l->t->tic,
+                  l->t->toc, clocks_from_ticks(l->t->toc - l->t->tic),
+                  clocks_getunit());
+        }
+      }
+    }
+  }
   /* Now record the CPU times used by the tasks. */
 #ifdef WITH_MPI
   double end_usertime = 0.0;
@@ -3009,20 +3022,6 @@ int engine_step(struct engine *e) {
 
   /* Time in ticks at the end of this step. */
   e->toc_step = getticks();
-
-  /* Loop over void cells and print the tic/toc of their grav mm tasks. */
-  for (int i = 0; i < e->s->nr_cells; i++) {
-    if (e->s->cells_top[i].subtype == cell_subtype_void) {
-      for (int p = 0; p < 8; p++) {
-        struct cell *c = e->s->cells_top[i].progeny[p];
-        for (struct link *l = c->grav.mm; l != NULL; l = l->next) {
-          message("Void cell: tic=%lld toc=%lld time=%.3f %s", l->t->tic,
-                  l->t->toc, clocks_from_ticks(l->t->toc - l->t->tic),
-                  clocks_getunit());
-        }
-      }
-    }
-  }
 
   return force_stop;
 }
