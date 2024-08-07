@@ -154,6 +154,8 @@ def make_task_hist_split(runs, output=""):
     for name, run in runs.items():
         for i in range(run.ntasks):
             task = run.task_labels[i]
+            if task.ci_subtype != "Regular" or task.cj_subtype != "Regular":
+                print(task.ci_subtype, task.cj_subtype)
             labels_dict[name][i] = f"{task}:{run.tasks[i].ci_type}"
             if run.tasks[i].ci_subtype != "Regular":
                 labels_dict[name][i] += f"({run.tasks[i].ci_subtype})"
