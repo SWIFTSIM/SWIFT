@@ -229,6 +229,16 @@ INLINE static void stars_props_init(struct stars_props *sp,
     sp->log_max_h_change = p->log_max_h_change;
   else
     sp->log_max_h_change = logf(powf(max_volume_change, hydro_dimension_inv));
+
+  /* Do we want to overwrite the stars' birth properties? */
+  sp->overwrite_birth_time =
+      parser_get_opt_param_int(params, "Stars:overwrite_birth_time", 0);
+
+  /* Read birth time to set all stars in ICs */
+  if (sp->overwrite_birth_time) {
+    sp->spart_first_init_birth_time =
+        parser_get_param_float(params, "Stars:birth_time");
+  }
 }
 
 /**
@@ -252,6 +262,10 @@ INLINE static void stars_props_print(const struct stars_props *sp) {
 
   message("Maximal iterations in ghost task set to %d",
           sp->max_smoothing_iterations);
+
+  if (sp->overwrite_birth_time)
+    message("Stars' birth time read from the ICs will be overwritten to %f",
+            sp->spart_first_init_birth_time);
 }
 
 #if defined(HAVE_HDF5)
