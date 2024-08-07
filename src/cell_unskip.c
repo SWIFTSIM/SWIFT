@@ -1337,7 +1337,12 @@ int cell_activate_subcell_grav_tasks(struct cell *restrict ci,
     const int do_ci = cell_is_active_gravity(ci, e) && ci->nodeID == nodeID;
     const int do_cj = cell_is_active_gravity(cj, e) && cj->nodeID == nodeID;
     if (!do_ci && !do_cj) return 0;
-    if (ci->grav.count == 0 || cj->grav.count == 0) return 0;
+    if ((ci->grav.count == 0 && ci->subtype != cell_subtype_void) ||
+        (cj->grav.count == 0 && cj->subtype != cell_subtype_void))
+      return 0;
+
+    if (ci->subtype == cell_subtype_void || cj->subtype == cell_subtype_void)
+      message("Void cell in sub_cell_grav_tasks");
 
     /* Atomically drift the multipole in ci */
     lock_lock(&ci->grav.mlock);
@@ -2107,6 +2112,9 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
 #ifdef SWIFT_DEBUG_CHECKS
     if (t->type != task_type_grav_mm) error("Incorrectly linked gravity task!");
 #endif
+
+    if (c->subtype == cell_subtype_void)
+      message("Unskipping grav-mm tasks for void cell at depth %d", c->depth);
 
     /* Only activate tasks that involve a local active cell. */
     if ((ci_active && ci_nodeID == nodeID) ||
