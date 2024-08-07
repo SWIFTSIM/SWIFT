@@ -1,4 +1,4 @@
-These examples show how to run Swifht on initial conditions of a multi-component 
+These examples show how to run Swift on initial conditions of a multi-component 
 isolated galactic disk generated with the pNbody code (http://lastro.epfl.ch/projects/pNbody/).
 
 AGORA  : folder containing information on how to run with the AGORA sub-grid model
