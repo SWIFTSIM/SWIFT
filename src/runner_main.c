@@ -193,21 +193,8 @@ void *runner_main(void *data) {
 
 #endif
 
-      if (ci->subtype == cell_subtype_void &&
-          (cj == NULL || cj->subtype != cell_subtype_void)) {
+      if (ci->subtype == cell_subtype_void) {
         message("Running task %s/%s on ci void (tic=%lld).",
-                taskID_names[t->type], subtaskID_names[t->subtype], t->tic);
-      }
-
-      if (cj != NULL && cj->subtype == cell_subtype_void &&
-          ci->subtype != cell_subtype_void) {
-        message("Running task %s/%s on cj void (tic=%lld).",
-                taskID_names[t->type], subtaskID_names[t->subtype], t->tic);
-      }
-
-      if (ci->subtype == cell_subtype_void && cj != NULL &&
-          cj->subtype == cell_subtype_void) {
-        message("Running task %s/%s on ci->cj voids (tic=%lld).",
                 taskID_names[t->type], subtaskID_names[t->subtype], t->tic);
       }
 
@@ -645,26 +632,12 @@ void *runner_main(void *data) {
       prev = t;
       t = scheduler_done(sched, t);
 
-      if (ci->subtype == cell_subtype_void &&
-          (cj == NULL || cj->subtype != cell_subtype_void)) {
+      if (ci->subtype == cell_subtype_void) {
         message("Running task %s/%s on ci void (tic=%lld, toc=%lld).",
                 taskID_names[prev->type], subtaskID_names[prev->subtype],
                 prev->tic, prev->toc);
       }
 
-      if (cj != NULL && cj->subtype == cell_subtype_void &&
-          ci->subtype != cell_subtype_void) {
-        message("Running task %s/%s on cj void (tic=%lld, toc=%lld).",
-                taskID_names[prev->type], subtaskID_names[prev->subtype],
-                prev->tic, prev->toc);
-      }
-
-      if (ci->subtype == cell_subtype_void && cj != NULL &&
-          cj->subtype == cell_subtype_void) {
-        message("Running task %s/%s on ci->cj voids (tic=%lld, toc=%lld).",
-                taskID_names[prev->type], subtaskID_names[prev->subtype],
-                prev->tic, prev->toc);
-      }
     } /* main loop. */
   }
 
