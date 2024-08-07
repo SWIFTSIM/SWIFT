@@ -168,6 +168,12 @@ struct stars_props {
   /*! Age threshold for the transition to unlimited time-step size (internal
    * units) */
   double age_threshold_unlimited;
+  
+  /*! Are we overwriting the stars' birth time read from the ICs? */
+  int overwrite_birth_time;
+
+  /*! Value to set birth time of stars read from ICs */
+  float spart_first_init_birth_time;
 };
 
 #endif /* SWIFT_GEAR_STAR_PART_H */
