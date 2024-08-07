@@ -318,7 +318,8 @@ __attribute__((always_inline)) INLINE static void hydro_set_Qi_Qj(
         (-alpha * cj * mu_j + beta * mu_j * mu_j);
 
   // Account for alpha being outside brackets in timestep code
-  *visc_signal_velocity = ci + cj - 2.f * beta / alpha * min(mu_i, mu_j);
+  const float viscosity_parameter_factor = (alpha == 0.f) ? 0.f : beta / alpha;
+  *visc_signal_velocity = ci + cj - 2.f * viscosity_parameter_factor * min(mu_i, mu_j);
 
   // ...
   *difn_signal_velocity =
