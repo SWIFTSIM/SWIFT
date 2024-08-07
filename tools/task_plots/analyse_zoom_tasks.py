@@ -155,13 +155,14 @@ def make_task_hist_split(runs, output=""):
         for i in range(run.ntasks):
             task = run.task_labels[i]
             if (
-                run.tasks[i].ci_subtype != "Regular"
-                or run.tasks[i].cj_subtype != "Regular"
+                run.tasks[i].ci_subtype == "Void"
+                or run.tasks[i].cj_subtype == "Void"
             ):
                 print(
                     "Getting labels:",
                     run.tasks[i].ci_subtype,
                     run.tasks[i].cj_subtype,
+                    task,
                 )
             label = f"{task}:{run.tasks[i].ci_type}"
             if run.tasks[i].ci_subtype != "Regular":
@@ -172,8 +173,8 @@ def make_task_hist_split(runs, output=""):
                     label += f"({run.tasks[i].cj_subtype})"
             label += f"@{run.tasks[i].ci_depth}"
             if (
-                run.tasks[i].ci_subtype != "Regular"
-                or run.tasks[i].cj_subtype != "Regular"
+                run.tasks[i].ci_subtype == "Void"
+                or run.tasks[i].cj_subtype == "Void"
             ):
                 print(label)
             labels_dict[name][i] = label
@@ -186,9 +187,6 @@ def make_task_hist_split(runs, output=""):
             sinds = np.argsort(-counts)
         labels = labels[sinds]
         counts = counts[sinds]
-
-        for lab in labels:
-            print(lab)
 
         # Calculate positions for horizontal bars
         positions = np.arange(len(labels))
