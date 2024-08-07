@@ -143,7 +143,7 @@ sigma = sigma.to(UnitVelocity).value
 
 # Generate the particles
 pos = np.random.random([N, 3]) * np.array([L, L, L])
-vel = np.zeros(N)
+vel = np.zeros([N, 3])
 mass = np.ones(N) * m
 u = np.ones(N) * sigma ** 2
 ids = np.arange(N)
