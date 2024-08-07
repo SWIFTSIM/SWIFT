@@ -49,9 +49,9 @@ SPH:
 
 # Parameters related to the initial conditions
 InitialConditions:
-  file_name:  ./galaxy.hdf5     # The file to read
-  periodic:   0                     # Non-periodic BCs
-  shift:    [750,750,750]   # Centre the box
+  file_name:  ./galaxy_multi_component.hdf5     # The file to read
+  periodic:   0                                 # Non-periodic BCs
+  shift:    [750,750,750]                       # Centre the box
 
 # Parameters for the stars neighbour search
 Stars:

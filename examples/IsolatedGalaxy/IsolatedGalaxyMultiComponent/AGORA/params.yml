@@ -45,13 +45,12 @@ SPH:
   CFL_condition:         0.1      # Courant-Friedrich-Levy condition for time integration.
   minimal_temperature:   10.      # Kelvin
   h_max:                 10.      # (Optional) Maximal allowed smoothing length in internal units. Defaults to FLT_MAX if unspecified.
-
+  
 # Parameters related to the initial conditions
 InitialConditions:
-  file_name:  ./galaxy.hdf5     # The file to read
-  periodic:   0                     # Non-periodic BCs
-  shift:    [750,750,750]   # Centre the box
-
+  file_name:  ./galaxy_multi_component.hdf5     # The file to read
+  periodic:   0                                 # Non-periodic BCs
+  shift:    [750,750,750]                       # Centre the box
 
 # Cooling with Grackle 2.0
 GrackleCooling:

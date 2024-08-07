@@ -584,5 +584,5 @@ if hydro:
     nb.u_init = T_gas / (gamma - 1.0) * k / mumh * np.ones(nb.nbody)
 
 # save model
-nb.rename("galaxy.hdf5")
+nb.rename("galaxy_multi_component.hdf5")
 nb.write()

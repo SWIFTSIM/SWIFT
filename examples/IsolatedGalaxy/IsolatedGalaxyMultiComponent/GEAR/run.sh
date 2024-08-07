@@ -3,11 +3,10 @@
 # make run.sh fail if a subcommand fails
 set -e
 
-if [ ! -e galaxy.hdf5 ]
+if [ ! -e galaxy_multi_component.hdf5 ]
 then
     echo "Fetching initial conditions to run the example..."
-    wget http://virgodb.cosma.dur.ac.uk/swift-webstorage/ICs/pNbody_galaxy.hdf5
-    mv pNbody_galaxy.hdf5 galaxy.hdf5
+    wget http://virgodb.cosma.dur.ac.uk/swift-webstorage/ICs/IsolatedGalaxies/galaxy_multi_component.hdf5
 fi
 
 
