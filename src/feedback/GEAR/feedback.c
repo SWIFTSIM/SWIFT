@@ -238,6 +238,9 @@ void feedback_will_do_feedback(
     const struct unit_system* us, const struct phys_const* phys_const,
     const integertime_t ti_current, const double time_base) {
 
+  /* quit if the birth_scale_factor or birth_time is negative */
+  if (sp->birth_scale_factor < 0.0 || sp->birth_time < 0.0) return;
+
   /* quit if the particle contains no SNII */
   if (sp->feedback_data.star_type == star_population_no_SNII) {
     sp->feedback_data.energy_ejected = 0;
@@ -302,6 +305,10 @@ void feedback_will_do_feedback(
  * @param e The #engine.
  */
 int feedback_is_active(const struct spart* sp, const struct engine* e) {
+
+  /* the particle is inactive if its birth_scale_factor or birth_time is
+   * negative */
+  if (sp->birth_scale_factor < 0.0 || sp->birth_time < 0.0) return 0;
 
   return sp->feedback_data.will_do_feedback;
 }

@@ -331,3 +331,11 @@ Finally for the ``SNII``, the mass limits are given by ``Mmin`` and ``Mmax``. Fo
     white_dwarf_mass:  1.38               # Mass of a white dwarf
   GEARSupernovaeII:
   interpolation_size:  200                # Number of elements for the interpolation of the data
+
+Initial Conditions
+~~~~~~~~~~~~~~~~~~
+
+Note that if in the initial conditions, the time of formation of a stellar particle is given (``BirthTime``)
+and set to a negative value, the stellar particle will provide no feedback.
+A similar behavior will be obtained if the parameter ``overwrite_birth_time`` is set to 1 and
+``birth_time`` to -1. 
