@@ -1,0 +1,9 @@
+These examples show how to run Swifht on initial conditions of a multi-component 
+isolated galactic disk generated with the pNbody code (http://lastro.epfl.ch/projects/pNbody/).
+
+AGORA  : folder containing information on how to run with the AGORA sub-grid model
+EAGLE  : folder containing information on how to run with the EAGLE sub-grid model
+GEAR   : folder containing information on how to run with the GEAR  sub-grid model
+
+makeDisk.py : script to generate the ICs with pNbody 
+If pNbody is not installed ICs will be downloaded when running the examples
