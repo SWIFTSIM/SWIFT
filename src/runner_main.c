@@ -194,21 +194,21 @@ void *runner_main(void *data) {
 #endif
 
       if (ci->subtype == cell_subtype_void &&
-          (cj == NULL || cj->subtype == cell_subtype_void)) {
-        message("Running task %s/%s on void cell.", taskID_names[t->type],
-                subtaskID_names[t->subtype]);
+          (cj == NULL || cj->subtype != cell_subtype_void)) {
+        message("Running task %s/%s on ci void (tic=%lld).",
+                taskID_names[t->type], subtaskID_names[t->subtype], t->tic);
       }
 
       if (cj != NULL && cj->subtype == cell_subtype_void &&
           ci->subtype != cell_subtype_void) {
-        message("Running task %s/%s on void cell.", taskID_names[t->type],
-                subtaskID_names[t->subtype]);
+        message("Running task %s/%s on void cell (tic=%lld).",
+                taskID_names[t->type], subtaskID_names[t->subtype], t->tic);
       }
 
       if (ci->subtype == cell_subtype_void && cj != NULL &&
           cj->subtype == cell_subtype_void) {
-        message("Running task %s/%s on void cell.", taskID_names[t->type],
-                subtaskID_names[t->subtype]);
+        message("Running task %s/%s on void cell (tic=%lld).",
+                taskID_names[t->type], subtaskID_names[t->subtype], t->tic);
       }
 
       const ticks task_beg = getticks();
