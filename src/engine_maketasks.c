@@ -1235,6 +1235,13 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
         scheduler_addunlock(s, c->kick1, c->grav.neutrino_weight);
       }
 
+      /* Weighting task for dcdm particles after the last kick */
+      if (e->cosmology->Omega_dcdmdr_0 > 0.) {
+        c->grav.dcdm_weight = scheduler_addtask(
+            s, task_type_dcdm_weight, task_subtype_none, 0, 0, c, NULL);
+        scheduler_addunlock(s, c->kick1, c->grav.dcdm_weight);
+      }
+
 #if defined(WITH_CSDS)
       struct task *kick2_or_csds;
       if (with_csds) {
