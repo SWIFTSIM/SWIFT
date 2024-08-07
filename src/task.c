@@ -1502,9 +1502,13 @@ void task_dump_stats(const char *dumpfile, struct engine *e,
          e->sched.tasks[l].ci->subtype == cell_subtype_void) ||
         (e->sched.tasks[l].cj != NULL &&
          e->sched.tasks[l].cj->subtype == cell_subtype_void))
-      message("(outside) Task %s/%s has a void cell",
-              taskID_names[e->sched.tasks[l].type],
-              subtaskID_names[e->sched.tasks[l].subtype]);
+      message(
+          "(outside) Task %s/%s has a void cell (implicit=%d, "
+          "e->tic_step=%lld, task_tick=%lld, task_toc=%lld)",
+          taskID_names[e->sched.tasks[l].type],
+          subtaskID_names[e->sched.tasks[l].subtype],
+          e->sched.tasks[l].implicit, e->tic_step, e->sched.tasks[l].tic,
+          e->sched.tasks[l].toc);
 
     /* Skip implicit tasks and tasks that have not ran. */
     if (!e->sched.tasks[l].implicit && e->sched.tasks[l].tic > 0) {
