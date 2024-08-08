@@ -303,11 +303,21 @@ struct part {
 #endif
 
 #ifdef MATERIAL_STRENGTH
-  struct sym_matrix stress_tensor_sigma;
+  // Stress tensor
+  struct sym_matrix stress_tensor;
 
-  struct sym_matrix deviatoric_stress_tensor_S;
+  // Deviatoric stress tensor
+  struct sym_matrix deviatoric_stress_tensor;
+
+  // Time derivative of deviatoric stress tensor
+  struct sym_matrix dS_dt;
+
+  // Gradient of velocity, calculated using linear-order reproducing kernel.
+  float dv_lin_repr_kernel[3][3];
+
+  /*! Phase state flag */
+  enum eos_phase_state phase_state;
 #endif /* MATERIAL_STRENGTH */
-
 
 } SWIFT_STRUCT_ALIGN;
 

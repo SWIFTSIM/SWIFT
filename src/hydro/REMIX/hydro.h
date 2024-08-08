@@ -34,10 +34,10 @@
 #include "entropy_floor.h"
 #include "equation_of_state.h"
 #include "hydro_kernels.h"
-#include "hydro_misc_utils.h"
 #include "hydro_parameters.h"
 #include "hydro_properties.h"
 #include "hydro_space.h"
+#include "hydro_strength.h"
 #include "hydro_visc_difn.h"
 #include "kernel_hydro.h"
 #include "minmax.h"
@@ -478,6 +478,7 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->density.wcount_dh = 0.f;
   p->rho = 0.f;
   p->density.rho_dh = 0.f;
+  p->phase_state = material_phase_state_from_internal_energy(p->rho_evol, p->u, p->mat_id);
 
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
   p->N_density = 1; /* Self contribution */
@@ -495,6 +496,9 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
 
   hydro_init_part_extra_kernel(p);
   hydro_init_part_extra_viscosity(p);
+#ifdef MATERIAL_STRENGTH
+  hydro_init_part_extra_strength(p);
+#endif /* MATERIAL_STRENGTH */
 }
 
 /**
@@ -538,6 +542,9 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
 
   hydro_end_density_extra_viscosity(p);
   hydro_end_density_extra_kernel(p);
+#ifdef MATERIAL_STRENGTH
+  hydro_end_density_extra_strength(p);
+#endif /* MATERIAL_STRENGTH */
 }
 
 /**
@@ -598,6 +605,9 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
 
   hydro_prepare_gradient_extra_kernel(p);
   hydro_prepare_gradient_extra_viscosity(p);
+#ifdef MATERIAL_STRENGTH
+  hydro_prepare_gradient_extra_strength(p);
+#endif /* MATERIAL_STRENGTH */
 }
 
 /**
@@ -627,6 +637,9 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
 
   hydro_end_gradient_extra_kernel(p);
   hydro_end_gradient_extra_viscosity(p);
+#ifdef MATERIAL_STRENGTH
+  hydro_end_gradient_extra_strength(p);
+#endif /* MATERIAL_STRENGTH */
 
   // Set the density to be used in the force loop to be the evolved density
   p->rho = p->rho_evol;
@@ -693,10 +706,8 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   p->force.soundspeed = soundspeed;
   p->force.balsara = balsara;
 
-    
 #ifdef MATERIAL_STRENGTH
-  // Set stress_tensor_sigma
-  hydro_set_sigma(p, pressure);
+  hydro_prepare_force_extra_strength(p);
 #endif /* MATERIAL_STRENGTH */
 }
 
@@ -835,10 +846,8 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
 
   p->force.v_sig = max(p->force.v_sig, 2.f * soundspeed);
 
-        
 #ifdef MATERIAL_STRENGTH
-  // Set stress_tensor_sigma (not sure if we also need to do this here)
-  hydro_set_sigma(p, pressure);
+  hydro_predict_extra_strength(p, dt_therm);
 #endif /* MATERIAL_STRENGTH */
 }
 
@@ -916,6 +925,10 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     xp->rho_evol_full = floor_rho;
     p->drho_dt = 0.f;
   }
+
+#ifdef MATERIAL_STRENGTH
+  hydro_end_force_extra_strength(p);
+#endif /* MATERIAL_STRENGTH */
 }
 
 /**

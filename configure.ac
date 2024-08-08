@@ -517,6 +517,18 @@ if test "$planetary_fixed_entropy" = "yes"; then
    AC_DEFINE([PLANETARY_FIXED_ENTROPY],1,[Enable planetary fixed entropy])
 fi
 
+# Check if material strength is on for planetary/REMIX simulations
+AC_ARG_ENABLE([material-strength],
+   [AS_HELP_STRING([--enable-material-strength],
+     [Enable material strength @<:@yes/no@:>@]
+   )],
+   [material_strength="$enableval"],
+   [material_strength="no"]
+)
+if test "$material_strength" = "yes"; then
+   AC_DEFINE([MATERIAL_STRENGTH],1,[Enable material strength])
+fi
+
 # Check whether we have any of the ARM v8.1 tick timers
 AX_ASM_ARM_PMCCNTR
 AX_ASM_ARM_CNTVCT
@@ -1792,7 +1804,7 @@ if test "$ax_cv_c_compiler_vendor" = "clang"; then
       AC_CHECK_LIB([m],[__sincos], [AC_DEFINE([HAVE___SINCOS],1,[The __sincos function is present.])])
       AC_CHECK_LIB([m],[__sincosf], [AC_DEFINE([HAVE___SINCOSF],1,[The __sincosf function is present.])])
 fi
- 
+
 # The aocc compiler has optimized maths libraries that we should use. Check
 # any clang for this support. Note do this after the basic check for maths
 # as we need to make sure -lm follows. Also note needs -Ofast or -ffast-math
@@ -3251,6 +3263,7 @@ AC_MSG_RESULT([
    Boundary particles          : $boundary_particles
    Fixed boundary particles    : $fixed_boundary_particles
    Planetary fixed entropy     : $planetary_fixed_entropy
+   Material strength           : $material_strength
    Ghost statistics            : $ghost_stats
 
    Continuous Sim. Data Stream : $with_csds

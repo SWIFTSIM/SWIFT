@@ -296,8 +296,7 @@ LineOfSight:
   range_when_shooting_down_y: 100. # (Optional) Range along the y-axis of LoS along y (Defaults to the box size).
   range_when_shooting_down_z: 100. # (Optional) Range along the z-axis of LoS along z (Defaults to the box size).
 
-# Parameters related to the equation of state ------------------------------------------
-
+# Parameters related to the equation of state
 EoS:
   isothermal_internal_energy: 20.26784      # Thermal energy per unit mass for the case of isothermal equation of state (in internal units).
   barotropic_vacuum_sound_speed: 2e4        # Vacuum sound speed (in internal units)
@@ -367,6 +366,16 @@ EoS:
   planetary_ANEOS_forsterite_table_file:    ./EoSTables/ANEOS_forsterite_S19.txt
   planetary_ANEOS_iron_table_file:          ./EoSTables/ANEOS_iron_S20.txt
   planetary_ANEOS_Fe85Si15_table_file:      ./EoSTables/ANEOS_Fe85Si15_S20.txt
+  planetary_linear_0_param_file:        ./EoSTables/linear_0.txt
+  planetary_linear_1_param_file:        ./EoSTables/linear_1.txt
+  planetary_linear_2_param_file:        ./EoSTables/linear_2.txt
+  planetary_linear_3_param_file:        ./EoSTables/linear_3.txt
+  planetary_linear_4_param_file:        ./EoSTables/linear_4.txt
+  planetary_linear_5_param_file:        ./EoSTables/linear_5.txt
+  planetary_linear_6_param_file:        ./EoSTables/linear_6.txt
+  planetary_linear_7_param_file:        ./EoSTables/linear_7.txt
+  planetary_linear_8_param_file:        ./EoSTables/linear_8.txt
+  planetary_linear_9_param_file:        ./EoSTables/linear_9.txt
   planetary_custom_0_table_file:    ./EoSTables/custom_0.txt
   planetary_custom_1_table_file:    ./EoSTables/custom_1.txt
   planetary_custom_2_table_file:    ./EoSTables/custom_2.txt
@@ -377,8 +386,58 @@ EoS:
   planetary_custom_7_table_file:    ./EoSTables/custom_7.txt
   planetary_custom_8_table_file:    ./EoSTables/custom_8.txt
   planetary_custom_9_table_file:    ./EoSTables/custom_9.txt
+  # Extra EoS parameter file paths, e.g. for strength or physical viscosity parameters.
+  idg_def_extra_file:       ./EoSTables/idg_def_extra.txt
+  Til_iron_extra_file:      ./EoSTables/Til_iron_extra.txt
+  Til_granite_extra_file:   ./EoSTables/Til_granite_extra.txt
+  Til_water_extra_file:     ./EoSTables/Til_water_extra.txt
+  Til_basalt_extra_file:    ./EoSTables/Til_basalt_extra.txt
+  Til_custom_0_extra_file:      ./EoSTables/Til_custom_0_extra.txt
+  Til_custom_1_extra_file:      ./EoSTables/Til_custom_1_extra.txt
+  Til_custom_2_extra_file:      ./EoSTables/Til_custom_2_extra.txt
+  Til_custom_3_extra_file:      ./EoSTables/Til_custom_3_extra.txt
+  Til_custom_4_extra_file:      ./EoSTables/Til_custom_4_extra.txt
+  Til_custom_5_extra_file:      ./EoSTables/Til_custom_5_extra.txt
+  Til_custom_6_extra_file:      ./EoSTables/Til_custom_6_extra.txt
+  Til_custom_7_extra_file:      ./EoSTables/Til_custom_7_extra.txt
+  Til_custom_8_extra_file:      ./EoSTables/Til_custom_8_extra.txt
+  Til_custom_9_extra_file:      ./EoSTables/Til_custom_9_extra.txt
+  HM80_HHe_extra_file:      ./EoSTables/HM80_HHe_extra.txt
+  HM80_ice_extra_file:      ./EoSTables/HM80_ice_extra.txt
+  HM80_rock_extra_file:     ./EoSTables/HM80_rock_extra.txt
+  SESAME_iron_extra_file:       ./EoSTables/SESAME_iron_2140_extra.txt
+  SESAME_basalt_extra_file:     ./EoSTables/SESAME_basalt_7530_extra.txt
+  SESAME_water_extra_file:      ./EoSTables/SESAME_water_7154_extra.txt
+  SS08_water_extra_file:        ./EoSTables/SS08_water_extra.txt
+  ANEOS_forsterite_extra_file:      ./EoSTables/ANEOS_forsterite_S19_extra.txt
+  ANEOS_iron_extra_file:            ./EoSTables/ANEOS_iron_S20_extra.txt
+  ANEOS_Fe85Si15_extra_file:        ./EoSTables/ANEOS_Fe85Si15_S20_extra.txt
+  linear_0_extra_file:          ./EoSTables/linear_0_extra.txt
+  linear_1_extra_file:          ./EoSTables/linear_1_extra.txt
+  linear_2_extra_file:          ./EoSTables/linear_2_extra.txt
+  linear_3_extra_file:          ./EoSTables/linear_3_extra.txt
+  linear_4_extra_file:          ./EoSTables/linear_4_extra.txt
+  linear_5_extra_file:          ./EoSTables/linear_5_extra.txt
+  linear_6_extra_file:          ./EoSTables/linear_6_extra.txt
+  linear_7_extra_file:          ./EoSTables/linear_7_extra.txt
+  linear_8_extra_file:          ./EoSTables/linear_8_extra.txt
+  linear_9_extra_file:          ./EoSTables/linear_9_extra.txt
+  custom_0_extra_file:      ./EoSTables/custom_0_extra.txt
+  custom_1_extra_file:      ./EoSTables/custom_1_extra.txt
+  custom_2_extra_file:      ./EoSTables/custom_2_extra.txt
+  custom_3_extra_file:      ./EoSTables/custom_3_extra.txt
+  custom_4_extra_file:      ./EoSTables/custom_4_extra.txt
+  custom_5_extra_file:      ./EoSTables/custom_5_extra.txt
+  custom_6_extra_file:      ./EoSTables/custom_6_extra.txt
+  custom_7_extra_file:      ./EoSTables/custom_7_extra.txt
+  custom_8_extra_file:      ./EoSTables/custom_8_extra.txt
+  custom_9_extra_file:      ./EoSTables/custom_9_extra.txt
 
-# Parameters related to external potentials --------------------------------------------
+# Parameters related to material strength
+Strength:
+    use_elasticity:     1   # ...
+
+# Parameters related to external potentials
 
 # Point mass external potentials
 PointMassPotential:
@@ -473,7 +532,7 @@ MWPotential2014Potential:
   r_c_kpc:          1.9                    # Cut-off radius of the bulge (in kpc)
   potential_factors: [0.4367419745056084, 1.002641971008805, 0.022264787598364262] # Coefficients that adjust the strength of the halo (1st component), the disk (2nd component) and the bulge (3rd component)
 
-# Parameters related to forcing terms     ----------------------------------------------
+# Parameters related to forcing terms
 
 # Roberts' flow (Tilgner & Brandenburg, 2008, MNRAS, 391, 1477) where the velocity is imposed
 RobertsFlowForcing:
@@ -485,9 +544,8 @@ RobertsFlowAccelerationForcing:
   u0:              1.5      # Forcing velocity (internal units)
   nu:              1.0      # Viscosity (internal units) to convert velocities to accelerations.
   Vz_factor:       1.0      # (optional) Scaling of the velocity along the z axis
-  
-# Parameters related to entropy floors    ----------------------------------------------
 
+# Parameters related to entropy floors
 EAGLEEntropyFloor:
   Jeans_density_threshold_H_p_cm3: 0.1       # Physical density above which the EAGLE Jeans limiter entropy floor kicks in expressed in Hydrogen atoms per cm^3.
   Jeans_over_density_threshold:    10.       # Overdensity above which the EAGLE Jeans limiter entropy floor can kick in.
@@ -504,14 +562,11 @@ QLAEntropyFloor:
   over_density_threshold:    10.       # Overdensity above which the entropy floor can kick in.
   temperature_norm_K:        8000      # Temperature of the entropy floor at the density threshold expressed in Kelvin.
 
-
-# Parameters related to pressure floors    ----------------------------------------------
-
+# Parameters related to pressure floors
 GEARPressureFloor:
   jeans_factor: 10.       # Number of particles required to suppose a resolved clump and avoid the pressure floor.
 
-
-# Parameters related to cooling function  ----------------------------------------------
+# Parameters related to cooling function
 
 # Constant du/dt cooling function
 ConstCooling:
@@ -572,7 +627,7 @@ GrackleCooling:
   maximal_density_Hpcm3:   1e4                 # Maximal density (in hydrogen atoms/cm^3) for cooling. Higher densities are floored to this value to ensure grackle works properly when interpolating beyond the cloudy_table maximal density. A value < 0 deactivates this parameter.
   HydrogenFractionByMass : 1.                  # Hydrogen fraction by mass (default is 0.76)
   use_radiative_transfer : 1                   # Arrays of ionization and heating rates are provided
-  RT_heating_rate_cgs    : 0                   # heating         rate in units of / nHI_cgs 
+  RT_heating_rate_cgs    : 0                   # heating         rate in units of / nHI_cgs
   RT_HI_ionization_rate_cgs  : 0               # HI ionization   rate in cgs [1/s]
   RT_HeI_ionization_rate_cgs : 0               # HeI ionization  rate in cgs [1/s]
   RT_HeII_ionization_rate_cgs: 0               # HeII ionization rate in cgs [1/s]
@@ -582,10 +637,10 @@ GrackleCooling:
   H2_three_body_rate : 1                       # Specific the H2 formation three body rate (0->5,see Grackle documentation)
   H2_cie_cooling : 0                           # Enable/disable H2 collision-induced emission cooling from Ripamonti & Abel (2004)
   H2_on_dust: 0                                # Flag to enable H2 formation on dust grains
-  local_dust_to_gas_ratio : -1                 # The ratio of total dust mass to gas mass in the local Universe (-1 to use the Grackle default value). 
+  local_dust_to_gas_ratio : -1                 # The ratio of total dust mass to gas mass in the local Universe (-1 to use the Grackle default value).
   cmb_temperature_floor : 1                    # Enable/disable an effective CMB temperature floor
   initial_nHII_to_nH_ratio:    -1              # initial nHII   to nH ratio (number density ratio). Value is ignored if set to -1.
-  initial_nHeI_to_nH_ratio:    -1              # initial nHeI   to nH ratio (number density ratio). Value is ignored if set to -1.  
+  initial_nHeI_to_nH_ratio:    -1              # initial nHeI   to nH ratio (number density ratio). Value is ignored if set to -1.
   initial_nHeII_to_nH_ratio:   -1              # initial nHeII  to nH ratio (number density ratio). Value is ignored if set to -1.
   initial_nHeIII_to_nH_ratio:  -1              # initial nHeIII to nH ratio (number density ratio). Value is ignored if set to -1.
   initial_nDI_to_nH_ratio:     -1              # initial nDI    to nH ratio (number density ratio). Value is ignored if set to -1.
@@ -595,11 +650,7 @@ GrackleCooling:
   initial_nH2II_to_nH_ratio:   -1              # initial nH2II  to nH ratio (number density ratio). Value is ignored if set to -1.
   initial_nHDI_to_nH_ratio:    -1              # initial nHDI   to nH ratio (number density ratio). Value is ignored if set to -1.
 
-
-  
-
-
-# Parameters related to chemistry models  -----------------------------------------------
+# Parameters related to chemistry models
 
 # EAGLE model
 EAGLEChemistry:
@@ -627,8 +678,7 @@ AGORAChemistry:
  solar_abundance_Fe: 0.001771
  solar_abundance_Metals: 0.02
 
-
-# Parameters related to star formation models  -----------------------------------------------
+# Parameters related to star formation models
 
 # EAGLE star formation model (Schaye and Dalla Vecchia 2008)
 EAGLEStarFormation:
@@ -664,7 +714,7 @@ GEARStarFormation:
   min_mass_frac: 0.5                # Minimal mass for a stellar particle as a fraction of the average mass for the stellar particles.
   density_threshold: 1.67e-23       # Density threshold for star formation
 
-# Parameters related to feedback models  -----------------------------------------------
+# Parameters related to feedback models
 
 # EAGLE feedback model
 EAGLEFeedback:
@@ -734,8 +784,7 @@ AGORAFeedback:
   ejected_Fe_mass_in_solar_mass_per_CCSN : 2.63
   ejected_metal_mass_in_solar_mass_per_CCSN : 2.63
 
-
-# Parameters related to AGN models  -----------------------------------------------
+# Parameters related to AGN models
 
 # EAGLE AGN model
 EAGLEAGN:
@@ -843,7 +892,7 @@ SPINJETAGN:
   alpha_acc:                          0.2        # Viscous alpha of the subgrid accretion disks. Likely to be within the 0.1-0.3 range. The main effect is that it sets the transition accretion rate between the thin and thick disk, as dot(m) = 0.2 * alpha^2.
   mdot_crit_ADAF:                     0.01       # The transition normalized accretion rate (Eddington ratio) at which the disc goes from thick (low accretion rates) to thin (high accretion rates). The feedback also changes from kinetic jets to thermal isotropic, respectively.
   seed_spin:                          0.01       # The (randomly-directed) black hole spin assigned to BHs when they are seeded. Should be strictly between 0 and 1.
-  AGN_jet_velocity_model:             Constant   # How AGN jet velocities are calculated. If 'Constant', a single value is used. If 'BlackHoleMass', then an empirical relation between halo mass and black hole mass is used to calculate jet velocities. 'HaloMass' is currently not supported. 
+  AGN_jet_velocity_model:             Constant   # How AGN jet velocities are calculated. If 'Constant', a single value is used. If 'BlackHoleMass', then an empirical relation between halo mass and black hole mass is used to calculate jet velocities. 'HaloMass' is currently not supported.
   v_jet_km_p_s:                       3160.      # Jet velocity to use if 'AGN_jet_velocity_model' is 'Constant'. Units are km/s.
   v_jet_BH_mass_scaling_reference_mass_Msun: 1e9 # The reference mass used in the relation between halo mass and BH mass used to calculate jet velocities. Only used if 'AGN_jet_velocity_model' is 'BlackHoleMass'.
   v_jet_BH_mass_scaling_slope:        0.5        # The slope of the relation between halo mass and BH mass used to calculate jet velocities. Only used if 'AGN_jet_velocity_model' is 'BlackHoleMass'.
@@ -861,17 +910,17 @@ SPINJETAGN:
   accretion_efficiency_slim:          1          # The constant accretion efficiency to use in the slim disc, at super-Eddington rates.
   ADIOS_s:                            0.5        # The exponent of the scaling between accretion efficiency and transition radius of the accretion disc, used if 'accretion_efficiency_mode' is 'Variable'.
   ADIOS_R_in:                         1e4        # The normalisation (the value) of the transition radius of the accretion disc at the critical Eddington ratio (0.01), used if 'accretion_efficiency_mode' is 'Variable'.
-  fix_radiative_efficiency:           0          # Global switch whether to fix the radiative efficiency to a particular value [1], or use a spin-dependant formula [0]. 
+  fix_radiative_efficiency:           0          # Global switch whether to fix the radiative efficiency to a particular value [1], or use a spin-dependant formula [0].
   radiative_efficiency:               0.1        # The constant jet efficiency used if 'fix_radiative_efficiency' is set to 1. Otherwise, this value is used to define the Eddington accretion rate.
   TD_region:                          B          # How to treat the subgrid accretion disk if it is thin, according to the Shakura & Sunyaev (1973) model. If set to B, region b will be used. If set to C, region c will be used.
   include_GRMHD_spindown:             1          # Whether to include high jet spindown rates from GRMHD simulations [1], or use an analytical formula that assumes extraction of energy from the rotational mass/energy of the BH.
   delta_ADAF:                         0.2        # Electron heating parameter, which controls the strength of radiative feedback in thick disks. Should be between 0.1 and 0.5. This parameter is only used if turn_off_secondary_feedback is set to 0.
   include_slim_disk:                  1          # Global switch whether to include super-Eddington accretion, modeled as the slim disk. If set to 0, disks will be considered thin even at very large accretion rates.
   use_jets_in_thin_disc:              1          # Whether to use jets alongside radiation in the thin disc at moderate Eddington ratios.
-  use_ADIOS_winds:                    1          # Whether to include ADIOS winds in the thick disc as thermal isotropic feedback (same channel as thin disc quasar feedback, but with a different efficiency). 
+  use_ADIOS_winds:                    1          # Whether to include ADIOS winds in the thick disc as thermal isotropic feedback (same channel as thin disc quasar feedback, but with a different efficiency).
   slim_disc_wind_factor:              1          # The relative efficiency of slim disc winds at super-Eddington rates. If '1', full winds will be used, while '0' will lead to no winds. Any value in between those can also be used. The wind is implemented in the thermal isotropic feedback channel.
-  
-# Parameters related to the neutrinos --------------------------------------------
+
+# Parameters related to the neutrinos
 Neutrino:
   use_delta_f:                        1          # Use the delta-f method for shot noise reduction
   use_delta_f_mesh_only:              0          # Use the delta-f method, but only in the mesh gravity calculation and outputs
@@ -887,12 +936,11 @@ Neutrino:
   fixed_bg_density: 1                            # For linear response neutrinos, whether to use a fixed present-day background density
   use_model_none: 0                              # Option to use no neutrino model
 
-# Parameters related to extra i/o (X-ray emmisivity)  ----------------------------
-
+# Parameters related to extra i/o (X-ray emmisivity)
 XrayEmissivity:
   xray_table_path:         ./X_Ray_tables.hdf5   # Path to the X-ray emissivity tables
 
-# Parameters related to the sink particles ---------------------------------------
+# Parameters related to the sink particles
 
 # Default sink particles
 DefaultSink:
@@ -900,7 +948,7 @@ DefaultSink:
 
 # GEAR sink particles
 GEARSink:
-  cut_off_radius:        1e-3       # Cut off radius of the sink particles (in internal units). This parameter should be adapted with the resolution. 
+  cut_off_radius:        1e-3       # Cut off radius of the sink particles (in internal units). This parameter should be adapted with the resolution.
   f_acc: 0.8                                  # (Optional) Fraction of the cut_off_radius that determines if a gas particle should be swallowed wihtout additional check. It has to respect 0 <= f_acc <= 1. (Default: 0.8)
   maximal_temperature:        3e10            # Maximal gas temperature for forming a star (in K)
   density_threshold:          1.67e-23        # Minimal gas density for forming a star (in g/cm3 (1.67e-24 =1acc))
@@ -916,8 +964,7 @@ GEARSink:
   sink_formation_overlapping_sink_criterion: 1    # (Optional) Activate the overlapping sink check for sink formation. (Default: 1)
   disable_sink_formation: 0                   # (Optional) Disable sink formation. (Default: 0)
 
-# Parameters related to radiative transfer ---------------------------------------
-
+# Parameters related to radiative transfer
 GEARRT:
   f_reduce_c: 1e-3                                  # reduce the speed of light for the RT solver by multiplying c with this factor
   CFL_condition: 0.9                                # CFL condition for RT, independent of hydro
@@ -979,9 +1026,7 @@ SPHM1RT:
   beta:                   1.245e-15                   # (Conditional) (if useparams=1) The collisional ionization coefficient for hydrogen (cgs)
   reinject:               1                           # (Optional) gather energy around injection radius and re-inject the energy
 
-
-# Parameters related to power spectra --------------------------------------------
-
+# Parameters related to power spectra
 PowerSpectrum:
   grid_side_length:  256                  # Size of the grid used in power spectrum calculation.
   num_folds:         6                    # Number of foldings (1 means no foldings), determines the max k
@@ -992,8 +1037,7 @@ PowerSpectrum:
   output_list:       ./output_list_ps.txt # (Optional) File containing the output times (see documentation in "Parameter File" section)
   requested_spectra: ["matter-matter","cdm-cdm","starBH-starBH","gas-matter","pressure-pressure","matter-pressure", "neutrino0-neutrino1"] # Array of strings indicating which components should be correlated for power spectra
 
-
-# Parameters related to lightcones  -----------------------------------------------
+# Parameters related to lightcones
 # Parameters in the LightconeCommon section apply to all lightcones but can be overridden in the LightconeX sections.
 # Up to 8 Lightcone sections named Lightcone0 to Lightcone7 may be present.
 LightconeCommon:

@@ -1,0 +1,3 @@
+# Material linear EoS
+# rho_0  c_s  shear_mod  (kg/m3, m/s, Pa)
+1.0 852.0 0.22

@@ -1,0 +1,300 @@
+/*******************************************************************************
+ * This file is part of SWIFT.
+ * Copyright (c) 2024 Jacob Kegerreis (jacob.kegerreis@durham.ac.uk)
+ *               2024 Thomas Sandnes (thomas.d.sandnes@durham.ac.uk)
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published
+ * by the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ ******************************************************************************/
+#ifndef SWIFT_IDEAL_GAS_EQUATION_OF_STATE_H
+#define SWIFT_IDEAL_GAS_EQUATION_OF_STATE_H
+
+/**
+ * @file equation_of_state/planetary/linear.h
+ *
+ * Contains the linear EOS functions for
+ * equation_of_state/planetary/equation_of_state.h
+ */
+
+/* Some standard headers. */
+#include <math.h>
+
+/* Local headers. */
+#include "adiabatic_index.h"
+#include "common_io.h"
+#include "inline.h"
+#include "physical_constants.h"
+
+// Ideal gas parameters
+struct linear_params {
+  enum eos_planetary_material_id mat_id;
+  float rho_0, c_s, shear_mod;
+
+  // Extra parameters, e.g. for material strength
+  enum eos_phase_state phase_state;
+};
+
+/*
+    Read the parameters from a file.
+
+    File contents
+    -------------
+    # header (2 lines)
+    rho_0 (kg/m3)  c_s (m/s)  shear_mod (Pa)
+    phase_state (enum eos_phase_state)
+*/
+INLINE static void set_linear_params(struct linear_params *mat,
+                                     enum eos_planetary_material_id mat_id,
+                                     char *param_file) {
+  mat->mat_id = mat_id;
+
+  // Load table contents from file
+  FILE *f = fopen(param_file, "r");
+  if (f == NULL)
+    error("Failed to open the linear EoS file '%s'", param_file);
+
+  // Skip header lines
+  skip_lines(f, 2);
+
+  // Read parameters (SI)
+  int c;
+  c = fscanf(f, "%f %f %f", &mat->rho_0, &mat->c_s, &mat->shear_mod);
+  if (c != 3) error("Failed to read the linear EoS file %s", param_file);
+}
+
+/*
+    Read the extra parameters from a file.
+
+    File contents
+    -------------
+    # header (2 lines)
+    phase_state (enum eos_phase_state: fluid=0, solid=1, variable=2)
+*/
+INLINE static void set_linear_params_extra(struct linear_params *mat, char *param_file) {
+#ifdef MATERIAL_STRENGTH
+  // Load table contents from file
+  FILE *f = fopen(param_file, "r");
+  if (f == NULL)
+    error("Failed to open the linear EoS file '%s'", param_file);
+
+  // Skip header lines
+  skip_lines(f, 2);
+
+  // Read parameters
+  int c;
+  c = fscanf(f, "%d", &mat->phase_state);
+  if (c != 1) error("Failed to read the linear EoS file %s", param_file);
+#else
+  &mat->phase_state = eos_phase_state_fluid;
+#endif /* MATERIAL_STRENGTH */
+}
+
+// Convert to internal units
+INLINE static void convert_units_linear(struct linear_params *mat,
+                                        const struct unit_system *us) {
+
+  struct unit_system si;
+  units_init_si(&si);
+
+  // SI to cgs
+  mat->rho_0 *= units_cgs_conversion_factor(&si, UNIT_CONV_DENSITY);
+  mat->c_s *= units_cgs_conversion_factor(&si, UNIT_CONV_SPEED);
+  mat->shear_mod *= units_cgs_conversion_factor(&si, UNIT_CONV_PRESSURE);
+
+  // cgs to internal
+  mat->rho_0 /= units_cgs_conversion_factor(us, UNIT_CONV_DENSITY);
+  mat->c_s /= units_cgs_conversion_factor(us, UNIT_CONV_SPEED);
+  mat->shear_mod /= units_cgs_conversion_factor(us, UNIT_CONV_PRESSURE);
+}
+
+/**
+ * @brief Returns the internal energy given density and entropy
+ *
+ * Computes \f$u = \frac{A\rho^{\gamma-1} }{\gamma - 1}\f$.
+ *
+ * @param density The density \f$\rho\f$.
+ * @param entropy The entropy \f$A\f$.
+ */
+INLINE static float linear_internal_energy_from_entropy(
+    float density, float entropy, const struct linear_params *mat) {
+
+  error("This EOS function is not yet implemented!");
+
+  return 0.f;
+}
+
+/**
+ * @brief Returns the pressure given density and entropy
+ *
+ * Computes \f$P = A\rho^\gamma\f$.
+ *
+ * @param density The density \f$\rho\f$.
+ * @param entropy The entropy \f$A\f$.
+ */
+INLINE static float linear_pressure_from_entropy(float density, float entropy,
+                                              const struct linear_params *mat) {
+
+  error("This EOS function is not yet implemented!");
+
+  return 0.f;
+}
+
+/**
+ * @brief Returns the entropy given density and pressure.
+ *
+ * Computes \f$A = \frac{P}{\rho^-\gamma}\f$.
+ *
+ * @param density The density \f$\rho\f$.
+ * @param pressure The pressure \f$P\f$.
+ * @return The entropy \f$A\f$.
+ */
+INLINE static float linear_entropy_from_pressure(float density, float pressure,
+                                              const struct linear_params *mat) {
+
+  error("This EOS function is not yet implemented!");
+
+  return 0.f;
+}
+
+/**
+ * @brief Returns the sound speed given density and entropy
+ *
+ * Computes \f$c = \sqrt{\gamma A \rho^{\gamma-1}}\f$.
+ *
+ * @param density The density \f$\rho\f$.
+ * @param entropy The entropy \f$A\f$.
+ */
+INLINE static float linear_soundspeed_from_entropy(float density, float entropy,
+                                                const struct linear_params *mat) {
+
+  return mat->c_s;
+}
+
+/**
+ * @brief Returns the entropy given density and internal energy
+ *
+ * Computes \f$A = (\gamma - 1) u \rho^{1-\gamma}\f$.
+ *
+ * @param density The density \f$\rho\f$
+ * @param u The internal energy \f$u\f$
+ */
+INLINE static float linear_entropy_from_internal_energy(
+    float density, float u, const struct linear_params *mat) {
+
+  error("This EOS function is not yet implemented!");
+
+  return 0.f;
+}
+
+/**
+ * @brief Returns the pressure given density and internal energy
+ *
+ * Computes P = c_s^2 (rho - rho_0).
+ *
+ * @param density The density \f$\rho\f$
+ * @param u The internal energy \f$u\f$
+ */
+INLINE static float linear_pressure_from_internal_energy(
+    float density, float u, const struct linear_params *mat) {
+
+  return mat->c_s * mat->c_s * (density - mat->rho_0);
+}
+
+/**
+ * @brief Returns the internal energy given density and pressure.
+ *
+ * Computes \f$u = \frac{1}{\gamma - 1}\frac{P}{\rho}\f$.
+ *
+ * @param density The density \f$\rho\f$.
+ * @param pressure The pressure \f$P\f$.
+ * @return The internal energy \f$u\f$.
+ */
+INLINE static float linear_internal_energy_from_pressure(
+    float density, float pressure, const struct linear_params *mat) {
+
+  error("This EOS function is not yet implemented!");
+
+  return 0.f;
+}
+
+/**
+ * @brief Returns the sound speed given density and internal energy
+ *
+ * Computes \f$c = \sqrt{\gamma (\gamma - 1) u }\f$.
+ *
+ * @param density The density \f$\rho\f$
+ * @param u The internal energy \f$u\f$
+ */
+INLINE static float linear_soundspeed_from_internal_energy(
+    float density, float u, const struct linear_params *mat) {
+
+  return mat->c_s;
+}
+
+/**
+ * @brief Returns the sound speed given density and pressure
+ *
+ * Computes \f$c = \sqrt{\frac{\gamma P}{\rho} }\f$.
+ *
+ * @param density The density \f$\rho\f$
+ * @param P The pressure \f$P\f$
+ */
+INLINE static float linear_soundspeed_from_pressure(float density, float P,
+                                                 const struct linear_params *mat) {
+
+  return mat->c_s;
+}
+
+// gas_temperature_from_internal_energy
+INLINE static float linear_temperature_from_internal_energy(
+    float density, float u, const struct linear_params *mat) {
+
+  error("This EOS function is not yet implemented!");
+
+  return 0.f;
+}
+
+// gas_density_from_pressure_and_temperature
+INLINE static float linear_density_from_pressure_and_temperature(
+    float P, float T, const struct linear_params *mat) {
+
+  error("This EOS function is not yet implemented!");
+
+  return 0.f;
+}
+
+// gas_density_from_pressure_and_internal_energy
+INLINE static float linear_density_from_pressure_and_internal_energy(
+    float P, float u, float rho_ref, float rho_sph,
+    const struct linear_params *mat) {
+
+  error("This EOS function is not yet implemented!");
+
+  return 0.f;
+}
+
+// material_phase_state_from_internal_energy
+INLINE static float linear_phase_state_from_internal_energy(
+    float density, float u, const struct linear_params *mat) {
+
+  switch (mat->phase_state) {
+    case eos_phase_state_fluid:
+      return eos_phase_state_fluid;
+
+    case eos_phase_state_solid:
+      return eos_phase_state_solid;
+  }
+}
+
+#endif /* SWIFT_IDEAL_GAS_EQUATION_OF_STATE_H */
