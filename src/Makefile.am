@@ -78,6 +78,7 @@ include_HEADERS += lightcone/healpix_util.h lightcone/pixel_index.h
 include_HEADERS += adaptive_softening.h adaptive_softening_iact.h adaptive_softening_struct.h
 include_HEADERS += forcing.h
 include_HEADERS += power_spectrum.h
+include_HEADERS += forcing.h
 include_HEADERS += ghost_stats.h
 
 # source files for EAGLE extra I/O
@@ -209,7 +210,7 @@ AM_SOURCES += $(GEAR_RT_SOURCES)
 
 # Include files for distribution, not installation.
 nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h inline.h kernel_hydro.h kernel_gravity.h 
-nobase_noinst_HEADERS += gravity_iact.h kernel_long_gravity.h vector.h accumulate.h cache.h exp.h log.h
+nobase_noinst_HEADERS += gravity_iact.h kernel_long_gravity.h vector.h accumulate.h cache.h exp.h log.h matrix.h
 nobase_noinst_HEADERS += runner_doiact_nosort.h runner_doiact_hydro.h runner_doiact_stars.h runner_doiact_black_holes.h runner_doiact_grav.h 
 nobase_noinst_HEADERS += runner_doiact_functions_hydro.h runner_doiact_functions_stars.h runner_doiact_functions_black_holes.h 
 nobase_noinst_HEADERS += runner_doiact_functions_limiter.h runner_doiact_limiter.h units.h intrinsics.h minmax.h 
@@ -253,6 +254,9 @@ nobase_noinst_HEADERS += hydro/AnarchyPU/hydro_parameters.h
 nobase_noinst_HEADERS += hydro/SPHENIX/hydro.h hydro/SPHENIX/hydro_iact.h hydro/SPHENIX/hydro_io.h 
 nobase_noinst_HEADERS += hydro/SPHENIX/hydro_debug.h hydro/SPHENIX/hydro_part.h hydro/SPHENIX/hydro_csds.h
 nobase_noinst_HEADERS += hydro/SPHENIX/hydro_parameters.h
+nobase_noinst_HEADERS += hydro/MAGMA/hydro.h hydro/MAGMA/hydro_iact.h hydro/MAGMA/hydro_io.h 
+nobase_noinst_HEADERS += hydro/MAGMA/hydro_debug.h hydro/MAGMA/hydro_part.h
+nobase_noinst_HEADERS += hydro/MAGMA/hydro_parameters.h
 nobase_noinst_HEADERS += hydro/Gasoline/hydro.h hydro/Gasoline/hydro_iact.h hydro/Gasoline/hydro_io.h 
 nobase_noinst_HEADERS += hydro/Gasoline/hydro_debug.h hydro/Gasoline/hydro_part.h
 nobase_noinst_HEADERS += hydro/Gasoline/hydro_parameters.h 
@@ -299,6 +303,12 @@ nobase_noinst_HEADERS += hydro/Shadowswift/voronoi_cell.h
 nobase_noinst_HEADERS += hydro/Shadowswift/hydro_parameters.h 
 nobase_noinst_HEADERS += mhd.h mhd_struct.h mhd_io.h
 nobase_noinst_HEADERS += mhd/None/mhd.h mhd/None/mhd_iact.h mhd/None/mhd_struct.h mhd/None/mhd_io.h mhd/None/mhd_debug.h mhd/None/mhd_parameters.h
+nobase_noinst_HEADERS += mhd/DirectInduction/mhd.h mhd/DirectInduction/mhd_iact.h mhd/DirectInduction/mhd_struct.h
+nobase_noinst_HEADERS += mhd/DirectInduction/mhd_io.h mhd/None/mhd_parameters.h mhd/None/mhd_debug.h
+nobase_noinst_HEADERS += mhd/DInduction/mhd.h mhd/DInduction/mhd_iact.h mhd/DInduction/mhd_struct.h
+nobase_noinst_HEADERS += mhd/DInduction/mhd_io.h mhd/DInduction/mhd_parameters.h mhd/DInduction/mhd_debug.h
+nobase_noinst_HEADERS += mhd/VPotential/mhd.h mhd/VPotential/mhd_iact.h mhd/VPotential/mhd_struct.h
+nobase_noinst_HEADERS += mhd/VPotential/mhd_io.h mhd/VPotential/mhd_parameters.h mhd/VPotential/mhd_debug.h
 nobase_noinst_HEADERS += riemann/riemann_hllc.h riemann/riemann_trrs.h 
 nobase_noinst_HEADERS += riemann/riemann_exact.h riemann/riemann_vacuum.h 
 nobase_noinst_HEADERS += riemann/riemann_checks.h 

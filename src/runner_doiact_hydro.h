@@ -112,7 +112,7 @@
 #define IACT_MHD _IACT_MHD(FUNCTION)
 
 #define GET_MU0() \
-  const double mu_0 = e->physical_constants->const_vacuum_permeability;
+  const float mu_0 = e->physical_constants->const_vacuum_permeability;
 
 #else
 

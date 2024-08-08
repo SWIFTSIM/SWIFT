@@ -41,13 +41,15 @@
  * @param hj Comoving smoothing-length of part*icle j.
  * @param pi First part*icle.
  * @param pj Second part*icle.
+ * @param mu_0 Vaccum permeability in internal units (for the v_sig in the MHD
+ * case).
  * @param a Current scale factor.
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_density(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct part* restrict pi, struct part* restrict pj, const float a,
-    const float H) {
+    struct part* restrict pi, struct part* restrict pj, const float mu_0,
+    const float a, const float H) {
 
   float wi, wj, wi_dx, wj_dx;
   float dv[3], curlvr[3];
@@ -126,13 +128,15 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
  * @param hj Comoving smoothing-length of part*icle j.
  * @param pi First part*icle.
  * @param pj Second part*icle (not updated).
+ * @param mu_0 Vaccum permeability in internal units (for the v_sig in the MHD
+ * case).
  * @param a Current scale factor.
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct part* restrict pi, const struct part* restrict pj, const float a,
-    const float H) {
+    struct part* restrict pi, const struct part* restrict pj, const float mu_0,
+    const float a, const float H) {
 
   float wi, wi_dx;
   float dv[3], curlvr[3];
@@ -192,13 +196,15 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
  * @param hj Comoving smoothing-length of particle j.
  * @param pi Particle i.
  * @param pj Particle j.
+ * @param mu_0 Vaccum permeability in internal units (for the v_sig in the MHD
+ * case).
  * @param a Current scale factor.
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_gradient(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct part* restrict pi, struct part* restrict pj, const float a,
-    const float H) {
+    struct part* restrict pi, struct part* restrict pj, const float mu_0,
+    const float a, const float H) {
 
   /* We need to construct the maximal signal velocity between our particle
    * and all of it's neighbours */
@@ -223,7 +229,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
 
   /* Signal velocity */
   const float new_v_sig =
-      signal_velocity(dx, pi, pj, mu_ij, const_viscosity_beta);
+      signal_velocity(dx, pi, pj, mu_ij, const_viscosity_beta, a, mu_0);
 
   /* Update if we need to */
   pi->viscosity.v_sig = max(pi->viscosity.v_sig, new_v_sig);
@@ -272,13 +278,15 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
  * @param hj Comoving smoothing-length of particle j.
  * @param pi Particle i.
  * @param pj Particle j.
+ * @param mu_0 Vaccum permeability in internal units (for the v_sig in the MHD
+ * case).
  * @param a Current scale factor.
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct part* restrict pi, struct part* restrict pj, const float a,
-    const float H) {
+    struct part* restrict pi, struct part* restrict pj, const float mu_0,
+    const float a, const float H) {
 
   /* We need to construct the maximal signal velocity between our particle
    * and all of it's neighbours */
@@ -303,7 +311,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
 
   /* Signal velocity */
   const float new_v_sig =
-      signal_velocity(dx, pi, pj, mu_ij, const_viscosity_beta);
+      signal_velocity(dx, pi, pj, mu_ij, const_viscosity_beta, a, mu_0);
 
   /* Update if we need to */
   pi->viscosity.v_sig = max(pi->viscosity.v_sig, new_v_sig);
@@ -339,13 +347,15 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
  * @param hj Comoving smoothing-length of part*icle j.
  * @param pi First part*icle.
  * @param pj Second part*icle.
+ * @param mu_0 Vaccum permeability in internal units (for the v_sig in the MHD
+ * case).
  * @param a Current scale factor.
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_force(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct part* restrict pi, struct part* restrict pj, const float a,
-    const float H) {
+    struct part* restrict pi, struct part* restrict pj, const float mu_0,
+    const float a, const float H) {
 
   /* Cosmological factors entering the EoMs */
   const float fac_mu = pow_three_gamma_minus_five_over_two(a);
@@ -393,7 +403,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float mu_ij = fac_mu * r_inv * omega_ij; /* This is 0 or negative */
 
   /* Compute sound speeds and signal velocity */
-  const float v_sig = signal_velocity(dx, pi, pj, mu_ij, const_viscosity_beta);
+  const float v_sig =
+      signal_velocity(dx, pi, pj, mu_ij, const_viscosity_beta, a, mu_0);
 
   /* Variable smoothing length term */
   const float f_ij = 1.f - pi->force.f / mj;
@@ -488,13 +499,15 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
  * @param hj Comoving smoothing-length of part*icle j.
  * @param pi First part*icle.
  * @param pj Second part*icle (not updated).
+ * @param mu_0 Vaccum permeability in internal units (for the v_sig in the MHD
+ * case).
  * @param a Current scale factor.
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct part* restrict pi, const struct part* restrict pj, const float a,
-    const float H) {
+    struct part* restrict pi, const struct part* restrict pj, const float mu_0,
+    const float a, const float H) {
 
   /* Cosmological factors entering the EoMs */
   const float fac_mu = pow_three_gamma_minus_five_over_two(a);
@@ -542,7 +555,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float mu_ij = fac_mu * r_inv * omega_ij; /* This is 0 or negative */
 
   /* Compute sound speeds and signal velocity */
-  const float v_sig = signal_velocity(dx, pi, pj, mu_ij, const_viscosity_beta);
+  const float v_sig =
+      signal_velocity(dx, pi, pj, mu_ij, const_viscosity_beta, a, mu_0);
 
   /* Variable smoothing length term */
   const float f_ij = 1.f - pi->force.f / mj;
