@@ -72,6 +72,9 @@ enum eos_planetary_type_id {
 
   /*! Custom */
   eos_type_custom = 9,
+
+  /*! Custom Tillotson */
+  eos_type_Til_custom = 10,
 };
 
 /**
@@ -232,9 +235,6 @@ enum eos_planetary_material_id {
   eos_mat_id_ANEOS_Fe85Si15 = eos_type_ANEOS * eos_type_factor + eos_unit_id_ANEOS_Fe85Si15,
 };
 
-/* Base material ID for custom Tillotson EoS */
-#define eos_Til_custom_base_id (eos_type_Til * eos_type_factor + 90)
-
 /**
  * @brief Phase state of the material.
  */
@@ -293,13 +293,11 @@ gas_internal_energy_from_entropy(float density, float entropy,
 
     /* Tillotson EoS */
     case eos_type_Til:
-      // Custom user-provided Tillotson
-      if (mat_id >= eos_Til_custom_base_id) {
-        const int i_custom = mat_id - eos_Til_custom_base_id;
-        return Til_internal_energy_from_entropy(density, entropy, &eos.Til_custom[i_custom]);
-      } else {
-        return Til_internal_energy_from_entropy(density, entropy, &eos.Til[unit_id]);
-      }
+      return Til_internal_energy_from_entropy(density, entropy, &eos.Til[unit_id]);
+
+    /* Custom user-provided Tillotson EoS */
+    case eos_type_Til_custom:
+      return Til_internal_energy_from_entropy(density, entropy, &eos.Til_custom[unit_id]);
 
     /* Hubbard & MacFarlane (1980) EoS */
     case eos_type_HM80:
@@ -348,13 +346,11 @@ __attribute__((always_inline)) INLINE static float gas_pressure_from_entropy(
 
     /* Tillotson EoS */
     case eos_type_Til:
-      // Custom user-provided Tillotson
-      if (mat_id >= eos_Til_custom_base_id) {
-        const int i_custom = mat_id - eos_Til_custom_base_id;
-        return Til_pressure_from_entropy(density, entropy, &eos.Til_custom[i_custom]);
-      } else {
-        return Til_pressure_from_entropy(density, entropy, &eos.Til[unit_id]);
-      }
+      return Til_pressure_from_entropy(density, entropy, &eos.Til[unit_id]);
+
+    /* Custom user-provided Tillotson EoS */
+    case eos_type_Til_custom:
+      return Til_pressure_from_entropy(density, entropy, &eos.Til_custom[unit_id]);
 
     /* Hubbard & MacFarlane (1980) EoS */
     case eos_type_HM80:
@@ -404,13 +400,11 @@ __attribute__((always_inline)) INLINE static float gas_entropy_from_pressure(
 
     /* Tillotson EoS */
     case eos_type_Til:
-      // Custom user-provided Tillotson
-      if (mat_id >= eos_Til_custom_base_id) {
-        const int i_custom = mat_id - eos_Til_custom_base_id;
-        return Til_entropy_from_pressure(density, P, &eos.Til_custom[i_custom]);
-      } else {
-        return Til_entropy_from_pressure(density, P, &eos.Til[unit_id]);
-      }
+      return Til_entropy_from_pressure(density, P, &eos.Til[unit_id]);
+
+    /* Custom user-provided Tillotson EoS */
+    case eos_type_Til_custom:
+      return Til_entropy_from_pressure(density, P, &eos.Til_custom[unit_id]);
 
     /* Hubbard & MacFarlane (1980) EoS */
     case eos_type_HM80:
@@ -459,13 +453,11 @@ __attribute__((always_inline)) INLINE static float gas_soundspeed_from_entropy(
 
     /* Tillotson EoS */
     case eos_type_Til:
-      // Custom user-provided Tillotson
-      if (mat_id >= eos_Til_custom_base_id) {
-        const int i_custom = mat_id - eos_Til_custom_base_id;
-        return Til_soundspeed_from_entropy(density, entropy, &eos.Til_custom[i_custom]);
-      } else {
-        return Til_soundspeed_from_entropy(density, entropy, &eos.Til[unit_id]);
-      }
+      return Til_soundspeed_from_entropy(density, entropy, &eos.Til[unit_id]);
+
+    /* Custom user-provided Tillotson EoS */
+    case eos_type_Til_custom:
+      return Til_soundspeed_from_entropy(density, entropy, &eos.Til_custom[unit_id]);
 
     /* Hubbard & MacFarlane (1980) EoS */
     case eos_type_HM80:
@@ -514,13 +506,11 @@ gas_entropy_from_internal_energy(float density, float u,
 
     /* Tillotson EoS */
     case eos_type_Til:
-      // Custom user-provided Tillotson
-      if (mat_id >= eos_Til_custom_base_id) {
-        const int i_custom = mat_id - eos_Til_custom_base_id;
-        return Til_entropy_from_internal_energy(density, u, &eos.Til_custom[i_custom]);
-      } else {
-        return Til_entropy_from_internal_energy(density, u, &eos.Til[unit_id]);
-      }
+      return Til_entropy_from_internal_energy(density, u, &eos.Til[unit_id]);
+
+    /* Custom user-provided Tillotson EoS */
+    case eos_type_Til_custom:
+      return Til_entropy_from_internal_energy(density, u, &eos.Til_custom[unit_id]);
 
     /* Hubbard & MacFarlane (1980) EoS */
     case eos_type_HM80:
@@ -576,19 +566,17 @@ gas_pressure_from_internal_energy(float density, float u,
 
     /* Tillotson EoS */
     case eos_type_Til:
-      // Custom user-provided Tillotson
-      if (mat_id >= eos_Til_custom_base_id) {
-        const int i_custom_ = mat_id - eos_Til_custom_base_id;
-        if (eos.Til_custom[i_custom_].mat_id != mat_id)
-          error("EoS not enabled for custom Tillotson mat_id = %d, "
+      if (eos.Til[unit_id].mat_id != mat_id)
+        error("EoS not enabled for Tillotson mat_id = %d, "
                 "please set the corresponding EoS:planetary_use_: 1", mat_id);
-        break;
-      } else {
-        if (eos.Til[unit_id].mat_id != mat_id)
-          error("EoS not enabled for Tillotson mat_id = %d, "
+      break;
+
+    /* Custom user-provided Tillotson EoS */
+    case eos_type_Til_custom:
+      if (eos.Til_custom[unit_id].mat_id != mat_id)
+        error("EoS not enabled for custom Tillotson mat_id = %d, "
                 "please set the corresponding EoS:planetary_use_: 1", mat_id);
-        break;
-      }
+      break;
 
     /* Hubbard & MacFarlane (1980) EoS */
     case eos_type_HM80:
@@ -640,13 +628,11 @@ gas_pressure_from_internal_energy(float density, float u,
 
     /* Tillotson EoS */
     case eos_type_Til:
-      // Custom user-provided Tillotson
-      if (mat_id >= eos_Til_custom_base_id) {
-        const int i_custom = mat_id - eos_Til_custom_base_id;
-        return Til_pressure_from_internal_energy(density, u, &eos.Til_custom[i_custom]);
-      } else {
-        return Til_pressure_from_internal_energy(density, u, &eos.Til[unit_id]);
-      }
+      return Til_pressure_from_internal_energy(density, u, &eos.Til[unit_id]);
+
+    /* Custom user-provided Tillotson EoS */
+    case eos_type_Til_custom:
+      return Til_pressure_from_internal_energy(density, u, &eos.Til_custom[unit_id]);
 
     /* Hubbard & MacFarlane (1980) EoS */
     case eos_type_HM80:
@@ -699,13 +685,11 @@ gas_internal_energy_from_pressure(float density, float P,
 
     /* Tillotson EoS */
     case eos_type_Til:
-      // Custom user-provided Tillotson
-      if (mat_id >= eos_Til_custom_base_id) {
-        const int i_custom = mat_id - eos_Til_custom_base_id;
-        return Til_internal_energy_from_pressure(density, P, &eos.Til_custom[i_custom]);
-      } else {
-        return Til_internal_energy_from_pressure(density, P, &eos.Til[unit_id]);
-      }
+      return Til_internal_energy_from_pressure(density, P, &eos.Til[unit_id]);
+
+    /* Custom user-provided Tillotson EoS */
+    case eos_type_Til_custom:
+      return Til_internal_energy_from_pressure(density, P, &eos.Til_custom[unit_id]);
 
     /* Hubbard & MacFarlane (1980) EoS */
     case eos_type_HM80:
@@ -755,13 +739,11 @@ gas_soundspeed_from_internal_energy(float density, float u,
 
     /* Tillotson EoS */
     case eos_type_Til:
-      // Custom user-provided Tillotson
-      if (mat_id >= eos_Til_custom_base_id) {
-        const int i_custom = mat_id - eos_Til_custom_base_id;
-        return Til_soundspeed_from_internal_energy(density, u, &eos.Til_custom[i_custom]);
-      } else {
-        return Til_soundspeed_from_internal_energy(density, u, &eos.Til[unit_id]);
-      }
+      return Til_soundspeed_from_internal_energy(density, u, &eos.Til[unit_id]);
+
+    /* Custom user-provided Tillotson EoS */
+    case eos_type_Til_custom:
+      return Til_soundspeed_from_internal_energy(density, u, &eos.Til_custom[unit_id]);
 
     /* Hubbard & MacFarlane (1980) EoS */
     case eos_type_HM80:
@@ -810,13 +792,11 @@ __attribute__((always_inline)) INLINE static float gas_soundspeed_from_pressure(
 
     /* Tillotson EoS */
     case eos_type_Til:
-      // Custom user-provided Tillotson
-      if (mat_id >= eos_Til_custom_base_id) {
-        const int i_custom = mat_id - eos_Til_custom_base_id;
-        return Til_soundspeed_from_pressure(density, P, &eos.Til_custom[i_custom]);
-      } else {
-        return Til_soundspeed_from_pressure(density, P, &eos.Til[unit_id]);
-      }
+      return Til_soundspeed_from_pressure(density, P, &eos.Til[unit_id]);
+
+    /* Custom user-provided Tillotson EoS */
+    case eos_type_Til_custom:
+      return Til_soundspeed_from_pressure(density, P, &eos.Til_custom[unit_id]);
 
     /* Hubbard & MacFarlane (1980) EoS */
     case eos_type_HM80:
@@ -865,13 +845,11 @@ gas_temperature_from_internal_energy(float density, float u,
 
     /* Tillotson EoS */
     case eos_type_Til:
-      // Custom user-provided Tillotson
-      if (mat_id >= eos_Til_custom_base_id) {
-        const int i_custom = mat_id - eos_Til_custom_base_id;
-        return Til_temperature_from_internal_energy(density, u, &eos.Til_custom[i_custom]);
-      } else {
-        return Til_temperature_from_internal_energy(density, u, &eos.Til[unit_id]);
-      }
+      return Til_temperature_from_internal_energy(density, u, &eos.Til[unit_id]);
+
+    /* Custom user-provided Tillotson EoS */
+    case eos_type_Til_custom:
+      return Til_temperature_from_internal_energy(density, u, &eos.Til_custom[unit_id]);
 
     /* Hubbard & MacFarlane (1980) EoS */
     case eos_type_HM80:
@@ -920,13 +898,11 @@ gas_density_from_pressure_and_temperature(
 
     /* Tillotson EoS */
     case eos_type_Til:
-      // Custom user-provided Tillotson
-      if (mat_id >= eos_Til_custom_base_id) {
-        const int i_custom = mat_id - eos_Til_custom_base_id;
-        return Til_density_from_pressure_and_temperature(P, T, &eos.Til_custom[i_custom]);
-      } else {
-        return Til_density_from_pressure_and_temperature(P, T, &eos.Til[unit_id]);
-      }
+      return Til_density_from_pressure_and_temperature(P, T, &eos.Til[unit_id]);
+
+    /* Custom user-provided Tillotson EoS */
+    case eos_type_Til_custom:
+      return Til_density_from_pressure_and_temperature(P, T, &eos.Til_custom[unit_id]);
 
     /* Hubbard & MacFarlane (1980) EoS */
     case eos_type_HM80:
@@ -976,13 +952,11 @@ gas_density_from_pressure_and_internal_energy(
 
     /* Tillotson EoS */
     case eos_type_Til:
-      // Custom user-provided Tillotson
-      if (mat_id >= eos_Til_custom_base_id) {
-        const int i_custom = mat_id - eos_Til_custom_base_id;
-        return Til_density_from_pressure_and_internal_energy(P, u, rho_ref, rho_sph, &eos.Til_custom[i_custom]);
-      } else {
-        return Til_density_from_pressure_and_internal_energy(P, u, rho_ref, rho_sph, &eos.Til[unit_id]);
-      }
+      return Til_density_from_pressure_and_internal_energy(P, u, rho_ref, rho_sph, &eos.Til[unit_id]);
+
+    /* Custom user-provided Tillotson EoS */
+    case eos_type_Til_custom:
+      return Til_density_from_pressure_and_internal_energy(P, u, rho_ref, rho_sph, &eos.Til_custom[unit_id]);
 
     /* Hubbard & MacFarlane (1980) EoS */
     case eos_type_HM80:
@@ -1031,13 +1005,11 @@ material_phase_state_from_internal_energy(
 
     /* Tillotson EoS */
     case eos_type_Til:
-      // Custom user-provided Tillotson
-      if (mat_id >= eos_Til_custom_base_id) {
-        const int i_custom = mat_id - eos_Til_custom_base_id;
-        return Til_phase_state_from_internal_energy(density, u, &eos.Til_custom[i_custom]);
-      } else {
-        return Til_phase_state_from_internal_energy(density, u, &eos.Til[unit_id]);
-      }
+      return Til_phase_state_from_internal_energy(density, u, &eos.Til[unit_id]);
+
+    /* Custom user-provided Tillotson EoS */
+    case eos_type_Til_custom:
+      return Til_phase_state_from_internal_energy(density, u, &eos.Til_custom[unit_id]);
 
     /* Hubbard & MacFarlane (1980) EoS */
     case eos_type_HM80:
@@ -1083,13 +1055,11 @@ __attribute__((always_inline)) INLINE static float material_shear_mod(
 
     /* Tillotson EoS */
     case eos_type_Til:
-      // Custom user-provided Tillotson
-      if (mat_id >= eos_Til_custom_base_id) {
-        const int i_custom = mat_id - eos_Til_custom_base_id;
-        return Til_shear_mod(&eos.Til_custom[i_custom]);
-      } else {
-        return Til_shear_mod(&eos.Til[unit_id]);
-      }
+      return Til_shear_mod(&eos.Til[unit_id]);
+
+    /* Custom user-provided Tillotson EoS */
+    case eos_type_Til_custom:
+      return Til_shear_mod(&eos.Til_custom[unit_id]);
 
     /* Hubbard & MacFarlane (1980) EoS */
     case eos_type_HM80:
@@ -1167,7 +1137,7 @@ __attribute__((always_inline)) INLINE static void eos_init(
     sprintf(param_name, "EoS:planetary_use_Til_custom_%d", i_custom);
     if (parser_get_opt_param_int(params, param_name, 0)) {
       char Til_custom_file[PARSER_MAX_LINE_SIZE];
-      int mat_id = eos_Til_custom_base_id + i_custom;
+      int mat_id = eos_type_Til_custom * eos_type_factor + i_custom;
 
       sprintf(param_name, "EoS:planetary_Til_custom_%d_param_file", i_custom);
       parser_get_param_string(params, param_name, Til_custom_file);
