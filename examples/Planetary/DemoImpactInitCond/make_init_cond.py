@@ -23,7 +23,7 @@ import h5py
 import woma
 
 # Number of particles
-N = 10**6
+N = 10 ** 6
 N_label = "n%d" % (10 * np.log10(N))
 
 # Earth units
