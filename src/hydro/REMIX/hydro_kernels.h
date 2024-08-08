@@ -116,7 +116,8 @@ hydro_end_density_extra_kernel(struct part *restrict p) {
 __attribute__((always_inline)) INLINE static void
 hydro_prepare_gradient_extra_kernel(struct part *restrict p) {
 
-  /* Initialise geometric moment matrices (ij-mean, for linear-order repr. kernel) */
+  /* Initialise geometric moment matrices (ij-mean, for linear-order repr.
+   * kernel) */
   zero_sym_matrix(&p->gradient.m2_bar);
   zero_sym_matrix(&p->gradient.grad_m2_bar[0]);
   zero_sym_matrix(&p->gradient.grad_m2_bar[1]);
@@ -193,8 +194,7 @@ hydro_runner_iact_gradient_extra_kernel(struct part *restrict pi,
     pi->gradient.grad_m0_bar[i] += wi_dx_term[i] * volume_j;
     pj->gradient.grad_m0_bar[i] += wj_dx_term[i] * volume_i;
 
-    pi->gradient.grad_m1_bar_gradhterm[i] +=
-        dx[i] * wi_dx_gradhterm * volume_j;
+    pi->gradient.grad_m1_bar_gradhterm[i] += dx[i] * wi_dx_gradhterm * volume_j;
     pj->gradient.grad_m1_bar_gradhterm[i] +=
         -dx[i] * wj_dx_gradhterm * volume_i;
 
@@ -212,13 +212,15 @@ hydro_runner_iact_gradient_extra_kernel(struct part *restrict pi,
       pj->gradient.m2_bar.elements[i] += dx[j] * dx[k] * wj_term * volume_i;
 
       pi->gradient.grad_m2_bar_gradhterm.elements[i] +=
-            dx[j] * dx[k] * wi_dx_gradhterm * volume_j;
+          dx[j] * dx[k] * wi_dx_gradhterm * volume_j;
       pj->gradient.grad_m2_bar_gradhterm.elements[i] +=
-            dx[j] * dx[k] * wj_dx_gradhterm * volume_i;
+          dx[j] * dx[k] * wj_dx_gradhterm * volume_i;
 
       for (int l = 0; l < 3; l++) {
-        pi->gradient.grad_m2_bar[l].elements[i] += dx[j] * dx[k] * wi_dx_term[l] * volume_j;
-        pj->gradient.grad_m2_bar[l].elements[i] += dx[j] * dx[k] * wj_dx_term[l] * volume_i;
+        pi->gradient.grad_m2_bar[l].elements[i] +=
+            dx[j] * dx[k] * wi_dx_term[l] * volume_j;
+        pj->gradient.grad_m2_bar[l].elements[i] +=
+            dx[j] * dx[k] * wj_dx_term[l] * volume_i;
       }
     }
   }
@@ -258,7 +260,8 @@ hydro_runner_iact_nonsym_gradient_extra_kernel(
   }
 
   // Grad-h term, dW/dh
-  float wi_dx_gradhterm = -0.5f * (hydro_dimension * wi + (r / hi) * wi_dx) * hi_inv_dim_plus_one;
+  float wi_dx_gradhterm =
+      -0.5f * (hydro_dimension * wi + (r / hi) * wi_dx) * hi_inv_dim_plus_one;
 
   // Geometric moments m_0, m_1, and m_2, their gradients and grad-h terms
   pi->gradient.m0_bar += wi_term * volume_j;
@@ -283,10 +286,11 @@ hydro_runner_iact_nonsym_gradient_extra_kernel(
       pi->gradient.m2_bar.elements[i] += dx[j] * dx[k] * wi_term * volume_j;
 
       pi->gradient.grad_m2_bar_gradhterm.elements[i] +=
-            dx[j] * dx[k] * wi_dx_gradhterm * volume_j;
+          dx[j] * dx[k] * wi_dx_gradhterm * volume_j;
 
       for (int l = 0; l < 3; l++) {
-        pi->gradient.grad_m2_bar[l].elements[i] += dx[j] * dx[k] * wi_dx_term[l] * volume_j;
+        pi->gradient.grad_m2_bar[l].elements[i] +=
+            dx[j] * dx[k] * wi_dx_term[l] * volume_j;
       }
     }
   }
@@ -301,8 +305,8 @@ __attribute__((always_inline)) INLINE static void
 hydro_end_gradient_extra_kernel(struct part *restrict p) {
 
   const float h = p->h;
-  const float h_inv = 1.0f / h;                 /* 1/h */
-  const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */
+  const float h_inv = 1.0f / h;                       /* 1/h */
+  const float h_inv_dim = pow_dimension(h_inv);       /* 1/h^d */
   const float h_inv_dim_plus_one = h_inv_dim * h_inv; /* 1/h^(d+1) */
 
   // Volume elements
@@ -315,12 +319,14 @@ hydro_end_gradient_extra_kernel(struct part *restrict p) {
 
   // Multiply dh/dr into grad-h terms
   for (int i = 0; i < 3; i++) {
-    p->gradient.grad_m0_bar[i] += p->gradient.grad_m0_bar_gradhterm * p->dh_norm_kernel[i];
+    p->gradient.grad_m0_bar[i] +=
+        p->gradient.grad_m0_bar_gradhterm * p->dh_norm_kernel[i];
     for (int j = 0; j < 3; j++) {
-      p->gradient.grad_m1_bar[i][j] += p->gradient.grad_m1_bar_gradhterm[j] * p->dh_norm_kernel[i];
+      p->gradient.grad_m1_bar[i][j] +=
+          p->gradient.grad_m1_bar_gradhterm[j] * p->dh_norm_kernel[i];
     }
     for (int k = 0; k < 6; k++) {
-        p->gradient.grad_m2_bar[i].elements[k] +=
+      p->gradient.grad_m2_bar[i].elements[k] +=
           p->gradient.grad_m2_bar_gradhterm.elements[k] * p->dh_norm_kernel[i];
     }
   }
@@ -338,7 +344,7 @@ hydro_prepare_force_extra_kernel(struct part *restrict p) {
 
     // Add second terms to complete the geometric moment gradients
     for (int i = 0; i < 3; i++) {
-        p->gradient.grad_m1_bar[i][i] += p->gradient.m0_bar;
+      p->gradient.grad_m1_bar[i][i] += p->gradient.m0_bar;
     }
 
     p->gradient.grad_m2_bar[0].xx += 2.f * p->gradient.m1_bar[0];
@@ -363,13 +369,17 @@ hydro_prepare_force_extra_kernel(struct part *restrict p) {
     struct sym_matrix m2_bar_inv_mult_grad_m2_bar_mult_m2_bar_inv[3];
     float ABA_mult_m1_bar[3][3];
 
-    sym_matrix_multiply_by_vector(m2_bar_inv_mult_m1_bar, &m2_bar_inv, p->gradient.m1_bar);
+    sym_matrix_multiply_by_vector(m2_bar_inv_mult_m1_bar, &m2_bar_inv,
+                                  p->gradient.m1_bar);
     for (int i = 0; i < 3; i++) {
-        sym_matrix_multiply_by_vector(m2_bar_inv_mult_grad_m1_bar[i], &m2_bar_inv, p->gradient.grad_m1_bar[i]);
-        sym_matrix_multiplication_ABA(&m2_bar_inv_mult_grad_m2_bar_mult_m2_bar_inv[i],
-            &m2_bar_inv, &p->gradient.grad_m2_bar[i]);
-        sym_matrix_multiply_by_vector(
-            ABA_mult_m1_bar[i], &m2_bar_inv_mult_grad_m2_bar_mult_m2_bar_inv[i], p->gradient.m1_bar);
+      sym_matrix_multiply_by_vector(m2_bar_inv_mult_grad_m1_bar[i], &m2_bar_inv,
+                                    p->gradient.grad_m1_bar[i]);
+      sym_matrix_multiplication_ABA(
+          &m2_bar_inv_mult_grad_m2_bar_mult_m2_bar_inv[i], &m2_bar_inv,
+          &p->gradient.grad_m2_bar[i]);
+      sym_matrix_multiply_by_vector(
+          ABA_mult_m1_bar[i], &m2_bar_inv_mult_grad_m2_bar_mult_m2_bar_inv[i],
+          p->gradient.m1_bar);
     }
 
     // Linear-order reproducing kernel's A and B components and gradients
@@ -378,31 +388,33 @@ hydro_prepare_force_extra_kernel(struct part *restrict p) {
     // Calculate A
     A = p->gradient.m0_bar;
     for (int i = 0; i < 3; i++) {
-        A -= m2_bar_inv_mult_m1_bar[i] * p->gradient.m1_bar[i];
+      A -= m2_bar_inv_mult_m1_bar[i] * p->gradient.m1_bar[i];
     }
     A = 1.f / A;
 
     // Calculate B
     for (int i = 0; i < 3; i++) {
-        B[i] = -m2_bar_inv_mult_m1_bar[i];
+      B[i] = -m2_bar_inv_mult_m1_bar[i];
     }
 
     // Calculate grad A
     for (int i = 0; i < 3; i++) {
-        grad_A[i] = p->gradient.grad_m0_bar[i];
+      grad_A[i] = p->gradient.grad_m0_bar[i];
 
-        for (int j = 0; j < 3; j++) {
-            grad_A[i] += -2 * m2_bar_inv_mult_m1_bar[j] * p->gradient.grad_m1_bar[i][j] +
-                         ABA_mult_m1_bar[i][j] * p->gradient.m1_bar[j];
-        }
+      for (int j = 0; j < 3; j++) {
+        grad_A[i] +=
+            -2 * m2_bar_inv_mult_m1_bar[j] * p->gradient.grad_m1_bar[i][j] +
+            ABA_mult_m1_bar[i][j] * p->gradient.m1_bar[j];
+      }
 
-        grad_A[i] *= -A * A;
+      grad_A[i] *= -A * A;
     }
 
     // Calculate grad B
     for (int i = 0; i < 3; i++) {
       for (int j = 0; j < 3; j++) {
-          grad_B[j][i] = -m2_bar_inv_mult_grad_m1_bar[j][i] + ABA_mult_m1_bar[j][i];
+        grad_B[j][i] =
+            -m2_bar_inv_mult_grad_m1_bar[j][i] + ABA_mult_m1_bar[j][i];
       }
     }
 
@@ -423,7 +435,8 @@ hydro_prepare_force_extra_kernel(struct part *restrict p) {
 
     if (hB > offset) {
       float sigma = 0.2f;
-      p->force.vac_switch = expf(-(hB - offset) * (hB - offset) / (2.f * sigma * sigma));
+      p->force.vac_switch =
+          expf(-(hB - offset) * (hB - offset) / (2.f * sigma * sigma));
     }
 
   } else {
@@ -443,7 +456,8 @@ hydro_prepare_force_extra_kernel(struct part *restrict p) {
 /**
  * @brief Set gradient terms for linear-order reproducing kernel.
  *
- * Note `G` here corresponds to `d/dr tilde{mathcal{W}}` in Sandnes et al. (2024)
+ * Note `G` here corresponds to `d/dr tilde{mathcal{W}}` in Sandnes et al.
+ * (2024)
  */
 __attribute__((always_inline)) INLINE static void hydro_set_Gi_Gj_forceloop(
     float Gi[3], float Gj[3], const struct part *restrict pi,
@@ -487,9 +501,11 @@ __attribute__((always_inline)) INLINE static void hydro_set_Gi_Gj_forceloop(
 
     for (int i = 0; i < 3; i++) {
       wi_dx_term[i] =
-          dx[i] * r_inv * 0.5f * (wi_dx * hi_inv_dim_plus_one + wj_dx * hj_inv_dim_plus_one);
+          dx[i] * r_inv * 0.5f *
+          (wi_dx * hi_inv_dim_plus_one + wj_dx * hj_inv_dim_plus_one);
       wj_dx_term[i] =
-          -dx[i] * r_inv * 0.5f * (wi_dx * hi_inv_dim_plus_one + wj_dx * hj_inv_dim_plus_one);
+          -dx[i] * r_inv * 0.5f *
+          (wi_dx * hi_inv_dim_plus_one + wj_dx * hj_inv_dim_plus_one);
 
       wi_dx_term[i] += -0.5f * (hydro_dimension * wi + (r / pi->h) * wi_dx) *
                        hi_inv_dim_plus_one * pi->dh_norm_kernel[i];
@@ -500,13 +516,13 @@ __attribute__((always_inline)) INLINE static void hydro_set_Gi_Gj_forceloop(
       Gj[i] = Aj * wj_dx_term[i] + grad_Aj[i] * wj_term + Aj * Bj[i] * wj_term;
 
       for (int j = 0; j < 3; j++) {
-        Gi[i] += Ai * Bi[j] * dx[j] * wi_dx_term[i]
-                 + grad_Ai[i] * Bi[j] * dx[j] * wi_term
-                 + Ai * grad_Bi[i][j] * dx[j] * wi_term;
+        Gi[i] += Ai * Bi[j] * dx[j] * wi_dx_term[i] +
+                 grad_Ai[i] * Bi[j] * dx[j] * wi_term +
+                 Ai * grad_Bi[i][j] * dx[j] * wi_term;
 
-        Gj[i] += -(Aj * Bj[j] * dx[j] * wj_dx_term[i]
-                   + grad_Aj[i] * Bj[j] * dx[j] * wj_term
-                   + Aj * grad_Bj[i][j] * dx[j] * wj_term);
+        Gj[i] += -(Aj * Bj[j] * dx[j] * wj_dx_term[i] +
+                   grad_Aj[i] * Bj[j] * dx[j] * wj_term +
+                   Aj * grad_Bj[i][j] * dx[j] * wj_term);
       }
     }
 
@@ -524,8 +540,10 @@ __attribute__((always_inline)) INLINE static void hydro_set_Gi_Gj_forceloop(
 
     // Gradients, including vacuum boundary switch
     for (int i = 0; i < 3; i++) {
-      Gi[i] = pi->force.vac_switch * Gi[i] + (1.f - pi->force.vac_switch) * wi_dx_term_vac[i];
-      Gj[i] = pj->force.vac_switch * Gj[i] + (1.f - pj->force.vac_switch) * wj_dx_term_vac[i];
+      Gi[i] = pi->force.vac_switch * Gi[i] +
+              (1.f - pi->force.vac_switch) * wi_dx_term_vac[i];
+      Gj[i] = pj->force.vac_switch * Gj[i] +
+              (1.f - pj->force.vac_switch) * wj_dx_term_vac[i];
     }
 
   } else {

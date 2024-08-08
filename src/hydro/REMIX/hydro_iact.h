@@ -221,7 +221,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
   const float uj = r * hj_inv;
   kernel_deval(uj, &wj, &wj_dx);
 
-  hydro_runner_iact_nonsym_gradient_extra_kernel(pi, pj, dx, wi, wj, wi_dx, wj_dx);
+  hydro_runner_iact_nonsym_gradient_extra_kernel(pi, pj, dx, wi, wj, wi_dx,
+                                                 wj_dx);
   hydro_runner_iact_nonsym_gradient_extra_viscosity(pi, pj, dx, wi, wi_dx);
 }
 
@@ -276,7 +277,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   float Gj[3], Gi[3], G_mean[3];
   hydro_set_Gi_Gj_forceloop(Gi, Gj, pi, pj, dx, wi, wj, wi_dx, wj_dx);
   for (int i = 0; i < 3; i++) {
-      G_mean[i] = 0.5f * (Gi[i] - Gj[i]);
+    G_mean[i] = 0.5f * (Gi[i] - Gj[i]);
   }
 
   // Viscous pressures
@@ -293,8 +294,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 
   /* Use the force Luke! */
   for (int i = 0; i < 3; i++) {
-      pi->a_hydro[i] -= mj * (P_i_term + P_j_term + Q_i_term + Q_j_term) * G_mean[i];
-      pj->a_hydro[i] += mi * (P_i_term + P_j_term + Q_i_term + Q_j_term) * G_mean[i];
+    pi->a_hydro[i] -=
+        mj * (P_i_term + P_j_term + Q_i_term + Q_j_term) * G_mean[i];
+    pj->a_hydro[i] +=
+        mi * (P_i_term + P_j_term + Q_i_term + Q_j_term) * G_mean[i];
   }
 
   // v_ij dot kernel gradient term
@@ -326,18 +329,19 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   if ((!pi->is_h_max) && (!pj->is_h_max)) {
     float mean_rho = 0.5f * (pi->rho + pj->rho);
     float mean_balsara = 0.5f * (pi->force.balsara + pj->force.balsara);
-    float mod_G = sqrtf(G_mean[0] * G_mean[0] + G_mean[1] * G_mean[1] + G_mean[2] * G_mean[2]);
+    float mod_G = sqrtf(G_mean[0] * G_mean[0] + G_mean[1] * G_mean[1] +
+                        G_mean[2] * G_mean[2]);
     float v_sig_norm = sqrtf((pi->v[0] - pj->v[0]) * (pi->v[0] - pj->v[0]) +
                              (pi->v[1] - pj->v[1]) * (pi->v[1] - pj->v[1]) +
                              (pi->v[2] - pj->v[2]) * (pi->v[2] - pj->v[2]));
 
     const float alpha_norm = diffusion_global.alpha_norm;
     float drho_dt_norm_and_difn_i =
-        alpha_norm * mj * v_sig_norm *
-        pi->force.vac_switch * (pi->m0 * pi->rho_evol - pi->rho_evol) * mod_G / mean_rho;
+        alpha_norm * mj * v_sig_norm * pi->force.vac_switch *
+        (pi->m0 * pi->rho_evol - pi->rho_evol) * mod_G / mean_rho;
     float drho_dt_norm_and_difn_j =
-        alpha_norm * mi * v_sig_norm *
-        pj->force.vac_switch * (pj->m0 * pj->rho_evol - pj->rho_evol) * mod_G / mean_rho;
+        alpha_norm * mi * v_sig_norm * pj->force.vac_switch *
+        (pj->m0 * pj->rho_evol - pj->rho_evol) * mod_G / mean_rho;
 
     // Diffusion for same materials
     if (pi->mat_id == pj->mat_id) {
@@ -349,36 +353,39 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 
       // ...
       float utilde_i, utilde_j, rhotilde_i, rhotilde_j;
-      hydro_set_u_rho_difn(&utilde_i, &utilde_j, &rhotilde_i, &rhotilde_j, pi, pj, dx, a, H);
+      hydro_set_u_rho_difn(&utilde_i, &utilde_j, &rhotilde_i, &rhotilde_j, pi,
+                           pj, dx, a, H);
       float v_sig_difn = difn_signal_velocity;
-      float du_dt_difn_i = -(a_difn_u + b_difn_u * mean_balsara) * mj * v_sig_difn *
-                           (utilde_i - utilde_j) * mod_G / mean_rho;
-      float du_dt_difn_j = -(a_difn_u + b_difn_u * mean_balsara) * mi * v_sig_difn *
-                           (utilde_j - utilde_i) * mod_G / mean_rho;
+      float du_dt_difn_i = -(a_difn_u + b_difn_u * mean_balsara) * mj *
+                           v_sig_difn * (utilde_i - utilde_j) * mod_G /
+                           mean_rho;
+      float du_dt_difn_j = -(a_difn_u + b_difn_u * mean_balsara) * mi *
+                           v_sig_difn * (utilde_j - utilde_i) * mod_G /
+                           mean_rho;
 
       // ...
       pi->u_dt += du_dt_difn_i;
       pj->u_dt += du_dt_difn_j;
 
       // ...
-      drho_dt_norm_and_difn_i += -(a_difn_rho + b_difn_rho * mean_balsara) * mj *
-                                 (pi->rho / pj->rho) * v_sig_difn * (rhotilde_i - rhotilde_j) *
-                                 mod_G / mean_rho;
-      drho_dt_norm_and_difn_j += -(a_difn_rho + b_difn_rho * mean_balsara) * mi *
-                                 (pj->rho / pi->rho) * v_sig_difn * (rhotilde_j - rhotilde_i) *
-                                 mod_G / mean_rho;
+      drho_dt_norm_and_difn_i += -(a_difn_rho + b_difn_rho * mean_balsara) *
+                                 mj * (pi->rho / pj->rho) * v_sig_difn *
+                                 (rhotilde_i - rhotilde_j) * mod_G / mean_rho;
+      drho_dt_norm_and_difn_j += -(a_difn_rho + b_difn_rho * mean_balsara) *
+                                 mi * (pj->rho / pi->rho) * v_sig_difn *
+                                 (rhotilde_j - rhotilde_i) * mod_G / mean_rho;
     }
 
     pi->drho_dt += drho_dt_norm_and_difn_i;
     pj->drho_dt += drho_dt_norm_and_difn_j;
   }
 
-  #ifdef SWIFT_HYDRO_DENSITY_CHECKS
-    pi->n_force += wi + wj;
-    pj->n_force += wi + wj;
-    pi->N_force++;
-    pj->N_force++;
-  #endif
+#ifdef SWIFT_HYDRO_DENSITY_CHECKS
+  pi->n_force += wi + wj;
+  pj->n_force += wi + wj;
+  pi->N_force++;
+  pj->N_force++;
+#endif
 }
 
 /**
@@ -430,7 +437,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   float Gj[3], Gi[3], G_mean[3];
   hydro_set_Gi_Gj_forceloop(Gi, Gj, pi, pj, dx, wi, wj, wi_dx, wj_dx);
   for (int i = 0; i < 3; i++) {
-      G_mean[i] = 0.5f * (Gi[i] - Gj[i]);
+    G_mean[i] = 0.5f * (Gi[i] - Gj[i]);
   }
 
   // Viscous pressures
@@ -447,7 +454,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Use the force Luke! */
   for (int i = 0; i < 3; i++) {
-      pi->a_hydro[i] -= mj * (P_i_term + P_j_term + Q_i_term + Q_j_term) * G_mean[i];
+    pi->a_hydro[i] -=
+        mj * (P_i_term + P_j_term + Q_i_term + Q_j_term) * G_mean[i];
   }
 
   // v_ij dot kernel gradient term
@@ -474,7 +482,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   if ((!pi->is_h_max) && (!pj->is_h_max)) {
     float mean_rho = 0.5f * (pi->rho + pj->rho);
     float mean_balsara = 0.5f * (pi->force.balsara + pj->force.balsara);
-    float mod_G = sqrtf(G_mean[0] * G_mean[0] + G_mean[1] * G_mean[1] + G_mean[2] * G_mean[2]);
+    float mod_G = sqrtf(G_mean[0] * G_mean[0] + G_mean[1] * G_mean[1] +
+                        G_mean[2] * G_mean[2]);
 
     float v_sig_norm = sqrtf((pi->v[0] - pj->v[0]) * (pi->v[0] - pj->v[0]) +
                              (pi->v[1] - pj->v[1]) * (pi->v[1] - pj->v[1]) +
@@ -482,8 +491,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
     const float alpha_norm = diffusion_global.alpha_norm;
     float drho_dt_norm_and_difn_i =
-        alpha_norm * mj * v_sig_norm *
-        pi->force.vac_switch * (pi->m0 * pi->rho_evol - pi->rho_evol) * mod_G / mean_rho;
+        alpha_norm * mj * v_sig_norm * pi->force.vac_switch *
+        (pi->m0 * pi->rho_evol - pi->rho_evol) * mod_G / mean_rho;
 
     // Diffusion for same materials
     if (pi->mat_id == pj->mat_id) {
@@ -495,27 +504,29 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
       // ...
       float utilde_i, utilde_j, rhotilde_i, rhotilde_j;
-      hydro_set_u_rho_difn(&utilde_i, &utilde_j, &rhotilde_i, &rhotilde_j, pi, pj, dx, a, H);
+      hydro_set_u_rho_difn(&utilde_i, &utilde_j, &rhotilde_i, &rhotilde_j, pi,
+                           pj, dx, a, H);
       float v_sig_difn = difn_signal_velocity;
-      float du_dt_difn_i = -(a_difn_u + b_difn_u * mean_balsara) * mj * v_sig_difn *
-                           (utilde_i - utilde_j) * mod_G / mean_rho;
+      float du_dt_difn_i = -(a_difn_u + b_difn_u * mean_balsara) * mj *
+                           v_sig_difn * (utilde_i - utilde_j) * mod_G /
+                           mean_rho;
 
       // ...
       pi->u_dt += du_dt_difn_i;
 
       // ...
-      drho_dt_norm_and_difn_i += -(a_difn_rho + b_difn_rho * mean_balsara) * mj *
-                                 (pi->rho / pj->rho) * v_sig_difn * (rhotilde_i - rhotilde_j) *
-                                 mod_G / mean_rho;
+      drho_dt_norm_and_difn_i += -(a_difn_rho + b_difn_rho * mean_balsara) *
+                                 mj * (pi->rho / pj->rho) * v_sig_difn *
+                                 (rhotilde_i - rhotilde_j) * mod_G / mean_rho;
     }
 
     pi->drho_dt += drho_dt_norm_and_difn_i;
   }
 
-  #ifdef SWIFT_HYDRO_DENSITY_CHECKS
-    pi->n_force += wi + wj;
-    pi->N_force++;
-  #endif
+#ifdef SWIFT_HYDRO_DENSITY_CHECKS
+  pi->n_force += wi + wj;
+  pi->N_force++;
+#endif
 }
 
 #endif /* SWIFT_PLANETARY_HYDRO_IACT_H */
