@@ -122,9 +122,9 @@ INLINE static void sink_write_particles(const struct sink* sinks,
   list[2] = io_make_output_field("Masses", FLOAT, 1, UNIT_CONV_MASS, 0.f, sinks,
                                  mass, "Masses of the particles");
 
-  list[3] =
-      io_make_output_field("ParticleIDs", ULONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f,
-                           sinks, id, "Unique ID of the particles");
+  list[3] = io_make_physical_output_field(
+      "ParticleIDs", ULONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f, sinks, id,
+      /*can convert to comoving=*/0, "Unique ID of the particles");
 
 #ifdef DEBUG_INTERACTIONS_SINKS
 

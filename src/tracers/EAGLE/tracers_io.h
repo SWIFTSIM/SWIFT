@@ -104,9 +104,10 @@ __attribute__((always_inline)) INLINE static int tracers_write_particles(
       "Maximal temperatures ever reached by the particles");
 
   if (with_cosmology) {
-    list[1] = io_make_output_field(
+    list[1] = io_make_physical_output_field(
         "MaximalTemperatureScaleFactors", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f,
         xparts, tracers_data.maximum_temperature_scale_factor,
+        /*can convert to comoving=*/0,
         "Scale-factors at which the maximal temperature was reached");
 
   } else {
@@ -137,39 +138,44 @@ __attribute__((always_inline)) INLINE static int tracers_write_particles(
                                  "Total amount of thermal energy from AGN "
                                  "feedback events received by the particles.");
 
-  list[5] = io_make_output_field(
+  list[5] = io_make_physical_output_field(
       "DensitiesBeforeLastAGNEvent", FLOAT, 1, UNIT_CONV_DENSITY, 0.f, xparts,
       tracers_data.density_before_last_AGN_feedback_event,
+      /*can convert to comoving=*/0,
       "Physical density (not subgrid) of the gas fetched before the last AGN "
       "feedback event that hit the particles. -1 if the particles have never "
       "been heated.");
 
-  list[6] = io_make_output_field(
+  list[6] = io_make_physical_output_field(
       "EntropiesBeforeLastAGNEvent", FLOAT, 1, UNIT_CONV_ENTROPY_PER_UNIT_MASS,
       0.f, xparts, tracers_data.entropy_before_last_AGN_feedback_event,
+      /*can convert to comoving=*/0,
       "Physical entropy (not subgrid) per unit mass of the gas fetched before "
       "the last AGN feedback event that hit the particles. -1 if the particles "
       "have never been heated.");
 
-  list[7] = io_make_output_field(
+  list[7] = io_make_physical_output_field(
       "DensitiesAtLastAGNEvent", FLOAT, 1, UNIT_CONV_DENSITY, 0.f, xparts,
       tracers_data.density_at_last_AGN_feedback_event,
+      /*can convert to comoving=*/0,
       "Physical density (not subgrid) of the gas at the last AGN feedback "
       "event that hit the particles. -1 if the particles have never been "
       "heated.");
 
-  list[8] = io_make_output_field(
+  list[8] = io_make_physical_output_field(
       "EntropiesAtLastAGNEvent", FLOAT, 1, UNIT_CONV_ENTROPY_PER_UNIT_MASS, 0.f,
       xparts, tracers_data.entropy_at_last_AGN_feedback_event,
+      /*can convert to comoving=*/0,
       "Physical entropy (not subgrid) per unit mass of the gas at the last AGN "
       "feedback event that hit the particles. -1 if the particles have never "
       "been heated.");
 
   if (with_cosmology) {
 
-    list[9] = io_make_output_field(
+    list[9] = io_make_physical_output_field(
         "LastAGNFeedbackScaleFactors", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f,
         xparts, tracers_data.last_AGN_injection_scale_factor,
+        /*can convert to comoving=*/0,
         "Scale-factors at which the particles were last hit by AGN feedback. "
         "-1 if a particle has never been hit by feedback");
 
@@ -196,19 +202,20 @@ __attribute__((always_inline)) INLINE static int tracers_write_particles(
         "an AGN jet feedback event at some point in the past. "
         "If > 0, contains the number of individual events.");
 
-    list[12] = io_make_output_field("EnergiesReceivedFromJetFeedback", FLOAT, 1,
-                                    UNIT_CONV_ENERGY, 0.f, xparts,
-                                    tracers_data.jet_feedback_energy,
-                                    "Total amount of kinetic energy from AGN "
-                                    "jet feedback events received by the "
-                                    "particles while they were still gas "
-                                    "particles.");
+    list[12] = io_make_physical_output_field(
+        "EnergiesReceivedFromJetFeedback", FLOAT, 1, UNIT_CONV_ENERGY, 0.f,
+        xparts, tracers_data.jet_feedback_energy, /*can convert to comoving=*/0,
+        "Total amount of kinetic energy from AGN "
+        "jet feedback events received by the "
+        "particles while they were still gas "
+        "particles.");
 
     if (with_cosmology) {
 
-      list[13] = io_make_output_field(
+      list[13] = io_make_physical_output_field(
           "LastAGNJetFeedbackScaleFactors", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f,
           xparts, tracers_data.last_AGN_jet_feedback_scale_factor,
+          /*can convert to comoving=*/0,
           "Scale-factors at which the particles were last hit by jet "
           "feedback while they were still gas particles. "
           "-1 if a particle has never been hit by feedback");
@@ -259,9 +266,10 @@ __attribute__((always_inline)) INLINE static int tracers_write_sparticles(
       "converted to stars");
 
   if (with_cosmology) {
-    list[1] = io_make_output_field(
+    list[1] = io_make_physical_output_field(
         "MaximalTemperatureScaleFactors", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f,
         sparts, tracers_data.maximum_temperature_scale_factor,
+        /*can convert to comoving=*/0,
         "Scale-factors at which the maximal temperature was reached");
 
   } else {
@@ -286,39 +294,43 @@ __attribute__((always_inline)) INLINE static int tracers_write_sparticles(
                            "an AGN feedback event at some point in the past "
                            "when the particle was still a gas particle.");
 
-  list[4] = io_make_output_field(
+  list[4] = io_make_physical_output_field(
       "EnergiesReceivedFromAGNFeedback", FLOAT, 1, UNIT_CONV_ENERGY, 0.f,
-      sparts, tracers_data.AGN_feedback_energy,
+      sparts, tracers_data.AGN_feedback_energy, /*can convert to comoving=*/0,
       "Total amount of thermal energy from AGN feedback events received by the "
       "particles when the particle was still a gas particle.");
 
-  list[5] = io_make_output_field(
+  list[5] = io_make_physical_output_field(
       "DensitiesBeforeLastAGNEvent", FLOAT, 1, UNIT_CONV_DENSITY, 0.f, sparts,
       tracers_data.density_before_last_AGN_feedback_event,
+      /*can convert to comoving=*/0,
       "Physical density (not subgrid) of the gas fetched before the last AGN "
       "feedback "
       "event that hit the particles when they were still gas particles. -1 if "
       "the particles have never been heated.");
 
-  list[6] = io_make_output_field(
+  list[6] = io_make_physical_output_field(
       "EntropiesBeforeLastAGNEvent", FLOAT, 1, UNIT_CONV_ENTROPY_PER_UNIT_MASS,
       0.f, sparts, tracers_data.entropy_before_last_AGN_feedback_event,
+      /*can convert to comoving=*/0,
       "Physical entropy (not subgrid) per unit mass of the gas fetched before "
       "the last AGN "
       "feedback event that hit the particles when they were still gas "
       "particles."
       " -1 if the particles have never been heated.");
 
-  list[7] = io_make_output_field(
+  list[7] = io_make_physical_output_field(
       "DensitiesAtLastAGNEvent", FLOAT, 1, UNIT_CONV_DENSITY, 0.f, sparts,
       tracers_data.density_at_last_AGN_feedback_event,
+      /*can convert to comoving=*/0,
       "Physical density (not subgrid) of the gas at the last AGN feedback "
       "event that hit the particles when they were still gas particles. -1 if "
       "the particles have never been heated.");
 
-  list[8] = io_make_output_field(
+  list[8] = io_make_physical_output_field(
       "EntropiesAtLastAGNEvent", FLOAT, 1, UNIT_CONV_ENTROPY_PER_UNIT_MASS, 0.f,
       sparts, tracers_data.entropy_at_last_AGN_feedback_event,
+      /*can convert to comoving=*/0,
       "Physical entropy (not subgrid) per unit mass of the gas at the last AGN "
       "feedback event that hit the particles when they were still gas "
       "particles."
@@ -326,9 +338,10 @@ __attribute__((always_inline)) INLINE static int tracers_write_sparticles(
 
   if (with_cosmology) {
 
-    list[9] = io_make_output_field(
+    list[9] = io_make_physical_output_field(
         "LastAGNFeedbackScaleFactors", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f,
         sparts, tracers_data.last_AGN_injection_scale_factor,
+        /*can convert to comoving=*/0,
         "Scale-factors at which the particles were last hit by AGN feedback "
         "when they were still gas particles. -1 if a particle has never been "
         "hit by feedback");
@@ -368,9 +381,10 @@ __attribute__((always_inline)) INLINE static int tracers_write_sparticles(
 
     if (with_cosmology) {
 
-      list[13] = io_make_output_field(
+      list[13] = io_make_physical_output_field(
           "LastAGNJetFeedbackScaleFactors", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f,
           sparts, tracers_data.last_AGN_jet_feedback_scale_factor,
+          /*can convert to comoving=*/0,
           "Scale-factors at which the particles were last hit by jet "
           "feedback while they were still gas particles. "
           "-1 if a particle has never been hit by feedback");

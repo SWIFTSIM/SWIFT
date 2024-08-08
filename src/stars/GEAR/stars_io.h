@@ -144,18 +144,19 @@ INLINE static void stars_write_particles(const struct spart *sparts,
   list[2] = io_make_output_field("Masses", FLOAT, 1, UNIT_CONV_MASS, 0.f,
                                  sparts, mass, "Masses of the particles");
 
-  list[3] =
-      io_make_output_field("ParticleIDs", LONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f,
-                           sparts, id, "Unique IDs of the particles");
+  list[3] = io_make_physical_output_field(
+      "ParticleIDs", LONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f, sparts, id,
+      /*can convert to comoving=*/0, "Unique IDs of the particles");
 
   list[4] = io_make_output_field(
       "SmoothingLengths", FLOAT, 1, UNIT_CONV_LENGTH, 1.f, sparts, h,
       "Co-moving smoothing lengths (FWHM of the kernel) of the particles");
 
   if (with_cosmology) {
-    list[5] = io_make_output_field(
+    list[5] = io_make_physical_output_field(
         "BirthScaleFactors", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, sparts,
-        birth_scale_factor, "Scale-factors at which the stars were born");
+        birth_scale_factor, /*can convert to comoving=*/0,
+        "Scale-factors at which the stars were born");
   } else {
     list[5] = io_make_output_field("BirthTimes", FLOAT, 1, UNIT_CONV_TIME, 0.f,
                                    sparts, birth_time,
