@@ -799,11 +799,14 @@ void cell_activate_stars_sorts(struct cell *c, int sid, struct scheduler *s) {
  * @param cj The second #cell we recurse in.
  * @param s The task #scheduler.
  * @param with_timestep_limiter Are we running with time-step limiting on?
+ *
+ * @return 1 if anything has been activated at all.
  */
-void cell_activate_subcell_hydro_tasks(struct cell *ci, struct cell *cj,
+int cell_activate_subcell_hydro_tasks(struct cell *ci, struct cell *cj,
                                        struct scheduler *s,
                                        const int with_timestep_limiter) {
   const struct engine *e = s->space->e;
+  int activated_task = 0;
 
   /* Store the current dx_max and h_max values. */
   ci->hydro.dx_max_part_old = ci->hydro.dx_max_part;
@@ -816,18 +819,21 @@ void cell_activate_subcell_hydro_tasks(struct cell *ci, struct cell *cj,
 
   /* Self interaction? */
   if (cj == NULL) {
+
     /* Do anything? */
-    if (ci->hydro.count == 0 || !cell_is_active_hydro(ci, e)) return;
+    if (ci->hydro.count == 0 || !cell_is_active_hydro(ci, e)) return 0;
 
     /* Recurse? */
     if (cell_can_recurse_in_self_hydro_task(ci)) {
       /* Loop over all progenies and pairs of progenies */
       for (int j = 0; j < 8; j++) {
         if (ci->progeny[j] != NULL) {
+	  activated_task += 
           cell_activate_subcell_hydro_tasks(ci->progeny[j], NULL, s,
                                             with_timestep_limiter);
           for (int k = j + 1; k < 8; k++)
             if (ci->progeny[k] != NULL)
+	      activated_task += 
               cell_activate_subcell_hydro_tasks(ci->progeny[j], ci->progeny[k],
                                                 s, with_timestep_limiter);
         }
@@ -836,14 +842,15 @@ void cell_activate_subcell_hydro_tasks(struct cell *ci, struct cell *cj,
       /* We have reached the bottom of the tree: activate drift */
       cell_activate_drift_part(ci, s);
       if (with_timestep_limiter) cell_activate_limiter(ci, s);
+      activated_task = 1;
     }
   }
 
   /* Otherwise, pair interation */
   else {
     /* Should we even bother? */
-    if (!cell_is_active_hydro(ci, e) && !cell_is_active_hydro(cj, e)) return;
-    if (ci->hydro.count == 0 || cj->hydro.count == 0) return;
+    if (!cell_is_active_hydro(ci, e) && !cell_is_active_hydro(cj, e)) return 0;
+    if (ci->hydro.count == 0 || cj->hydro.count == 0) return 0;
 
     /* Get the orientation of the pair. */
     double shift[3];
@@ -852,11 +859,14 @@ void cell_activate_subcell_hydro_tasks(struct cell *ci, struct cell *cj,
     /* recurse? */
     if (cell_can_recurse_in_pair_hydro_task(ci) &&
         cell_can_recurse_in_pair_hydro_task(cj)) {
+      
       const struct cell_split_pair *csp = &cell_split_pairs[sid];
+      
       for (int k = 0; k < csp->count; k++) {
         const int pid = csp->pairs[k].pid;
         const int pjd = csp->pairs[k].pjd;
         if (ci->progeny[pid] != NULL && cj->progeny[pjd] != NULL)
+	  activated_task +=
           cell_activate_subcell_hydro_tasks(ci->progeny[pid], cj->progeny[pjd],
                                             s, with_timestep_limiter);
       }
@@ -883,8 +893,13 @@ void cell_activate_subcell_hydro_tasks(struct cell *ci, struct cell *cj,
       /* Do we need to sort the cells? */
       cell_activate_hydro_sorts(ci, sid, s);
       cell_activate_hydro_sorts(cj, sid, s);
+
+      activated_task = 1;
     }
   } /* Otherwise, pair interation */
+
+  /* Return whether we activated anything at all */
+  return activated_task;
 }
 
 /**
@@ -1644,7 +1659,7 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
     struct cell *ci = t->ci;
     struct cell *cj = t->cj;
     const int ci_active = cell_is_active_hydro(ci, e);
-    const int cj_active = (cj != NULL) ? cell_is_active_hydro(cj, e) : 0;
+    const int cj_active = (cj != NULL) ? cell_is_active_hydro(cj, e) : 0;    
 #ifdef WITH_MPI
     const int ci_nodeID = ci->nodeID;
     const int cj_nodeID = (cj != NULL) ? cj->nodeID : -1;
@@ -1652,6 +1667,7 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
     const int ci_nodeID = nodeID;
     const int cj_nodeID = nodeID;
 #endif
+    int pair_operation_is_active = 0;
 
     /* Only activate tasks that involve a local active cell. */
     if ((ci_active && ci_nodeID == nodeID) ||
@@ -1686,6 +1702,9 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
         /* Check the sorts and activate them if needed. */
         cell_activate_hydro_sorts(ci, t->flags, s);
         cell_activate_hydro_sorts(cj, t->flags, s);
+
+	/* Flag that a pair operation will run */
+	pair_operation_is_active = 1;
       }
 
       /* Store current values of dx_max and h_max. */
@@ -1695,16 +1714,18 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
 
       /* Store current values of dx_max and h_max. */
       else if (t->type == task_type_sub_pair) {
-        cell_activate_subcell_hydro_tasks(ci, cj, s, with_timestep_limiter);
+        pair_operation_is_active =
+	  cell_activate_subcell_hydro_tasks(ci, cj, s, with_timestep_limiter);
       }
     }
 
-    /* Only interested in pair interactions as of here. */
-    if (t->type == task_type_pair || t->type == task_type_sub_pair) {
+    /* Only interested in active pair interactions as of here. */
+    if (pair_operation_is_active) {
+
       /* Check whether there was too much particle motion, i.e. the
          cell neighbour conditions were violated. */
       if (cell_need_rebuild_for_hydro_pair(ci, cj)) rebuild = 1;
-
+      
 #ifdef WITH_MPI
       /* Activate the send/recv tasks. */
       if (ci_nodeID != nodeID) {
