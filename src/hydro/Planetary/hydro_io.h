@@ -58,10 +58,11 @@ INLINE static void hydro_read_particles(struct part* parts,
 #endif
 
   /* Temporary warning to be printed for a few months after the change */
-  message("\n # Warning: some required field names for initial conditions were"
-          " tweaked in July 2024 to match the GADGET-2 format that SWIFT follows."
-          " Please update your scripts (e.g. download the latest WoMa package) to"
-          " match. Apologies for any inconvenience");
+  message(
+      "\n # Warning: some required field names for initial conditions were"
+      " tweaked in July 2024 to match the GADGET-2 format that SWIFT follows."
+      " Please update your scripts (e.g. download the latest WoMa package) to"
+      " match. Apologies for any inconvenience");
 
   /* List what we want to read */
   list[0] = io_make_input_field("Coordinates", DOUBLE, 3, COMPULSORY,
