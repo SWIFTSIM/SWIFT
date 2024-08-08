@@ -306,8 +306,8 @@ void runner_do_star_formation_sink(struct runner *r, struct cell *c,
           /* Sample the IMF to the get next target mass */
           sink_update_target_mass(s, sink_props, e, star_counter);
         } /* Loop over the stars to spawn */
-      }   /* if sink_is_active */
-    }     /* Loop over the particles */
+      } /* if sink_is_active */
+    } /* Loop over the particles */
   }
 
   /* If we formed any stars, the star sorts are now invalid. We need to

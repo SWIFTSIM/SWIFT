@@ -27,7 +27,7 @@
 
 /* Type of gradients to use (GIZMO_SPH only) */
 /* If no option is chosen, no gradients are used (first order scheme) */
-//#define GRADIENTS_SPH
+// #define GRADIENTS_SPH
 #define GRADIENTS_GIZMO
 
 /* Types of slope limiter to use (GIZMO_SPH only) */
@@ -40,11 +40,11 @@
 
 /* Options to control the movement of particles for GIZMO_SPH. */
 /* This option disables particle movement */
-//#define GIZMO_FIX_PARTICLES
+// #define GIZMO_FIX_PARTICLES
 /* Try to keep cells regular by adding a correction velocity. */
-//#define GIZMO_STEER_MOTION
+// #define GIZMO_STEER_MOTION
 /* Use the total energy instead of the thermal energy as conserved variable. */
-//#define GIZMO_TOTAL_ENERGY
+// #define GIZMO_TOTAL_ENERGY
 
 /* Options to control handling of unphysical values (GIZMO_SPH only). */
 /* In GIZMO, mass and energy (and hence density and pressure) can in principle
@@ -53,7 +53,7 @@
    If no options are selected below, we assume (and pray) that this will not
    happen, and add no restrictions to how these variables are treated. */
 /* Check for unphysical values and crash if they occur. */
-//#define GIZMO_UNPHYSICAL_ERROR
+// #define GIZMO_UNPHYSICAL_ERROR
 /* Check for unphysical values and reset them to safe values. */
 #define GIZMO_UNPHYSICAL_RESCUE
 /* Show a warning message if an unphysical value was reset (only works if
@@ -65,9 +65,9 @@
 /* Parameters that control how GIZMO handles pathological particle
    configurations. */
 /* Show a warning message if a pathological configuration has been detected. */
-//#define GIZMO_PATHOLOGICAL_WARNING
+// #define GIZMO_PATHOLOGICAL_WARNING
 /* Crash if a pathological configuration has been detected. */
-//#define GIZMO_PATHOLOGICAL_ERROR
+// #define GIZMO_PATHOLOGICAL_ERROR
 /* Maximum allowed gradient matrix condition number. If the condition number of
    the gradient matrix (defined in equation C1 in Hopkins, 2015) is larger than
    this value, we artificially increase the number of neighbours to get a more
@@ -91,16 +91,16 @@
 
 /* Options to control SHADOWFAX_SPH */
 /* This option disables cell movement */
-//#define SHADOWFAX_FIX_CELLS
+// #define SHADOWFAX_FIX_CELLS
 /* This option enables cell steering, i.e. trying to keep the cells regular by
    adding a correction to the cell velocities.*/
 #define SHADOWFAX_STEER_CELL_MOTION
 /* This option evolves the total energy instead of the thermal energy */
-//#define SHADOWFAX_TOTAL_ENERGY
+// #define SHADOWFAX_TOTAL_ENERGY
 
 /* Source terms */
 #define SOURCETERMS_NONE
-//#define SOURCETERMS_SN_FEEDBACK
+// #define SOURCETERMS_SN_FEEDBACK
 
 /* GRACKLE doesn't really like exact zeroes, so use something
  * comparatively small instead. */
