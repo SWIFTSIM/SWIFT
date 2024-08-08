@@ -101,6 +101,8 @@ hid_t io_hdf5_type(enum IO_DATA_TYPE type) {
       return H5T_NATIVE_DOUBLE;
     case CHAR:
       return H5T_NATIVE_CHAR;
+    case BOOL:
+      return H5T_NATIVE_HBOOL;
     default:
       error("Unknown type");
       return 0;
@@ -468,6 +470,16 @@ void io_write_attribute_f(hid_t grp, const char* name, float data) {
  */
 void io_write_attribute_i(hid_t grp, const char* name, int data) {
   io_write_attribute(grp, name, INT, &data, 1);
+}
+
+/**
+ * @brief Writes a bool value (passed as an int) as an attribute
+ * @param grp The group in which to write
+ * @param name The name of the attribute
+ * @param data The value to write
+ */
+void io_write_attribute_b(hid_t grp, const char* name, int data) {
+  io_write_attribute(grp, name, BOOL, &data, 1);
 }
 
 /**

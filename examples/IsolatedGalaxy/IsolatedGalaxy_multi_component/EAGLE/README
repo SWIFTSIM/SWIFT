@@ -1,0 +1,17 @@
+We show here how to run such initial conditions with the EAGLE model.
+
+To generate the initial conditions locally, if pNbody is installed, run:
+
+../makeDisk.py
+
+If you don't have access to pNbody, you can simply skip this step. The initial conditions will automatically 
+be downloaded when launching the run script (see below).
+
+To run this example with the EAGLE model, SWIFT must be configured with the following options:
+
+./configure --with-chemistry=EAGLE  --with-cooling=EAGLE  --with-stars=EAGLE --with-star-formation=EAGLE --with-feedback=EAGLE --with-tracers=EAGLE
+
+To start the simulation with the EAGLE model:
+
+./run.sh
+

@@ -177,10 +177,13 @@ void feedback_will_do_feedback(
     const int with_cosmology, const struct cosmology* cosmo, const double time,
     const struct unit_system* us, const struct phys_const* phys_const,
     const integertime_t ti_current, const double time_base) {
-
+  
   /* Zero the energy of supernovae */
   sp->feedback_data.energy_ejected = 0;
   sp->feedback_data.will_do_feedback = 0;
+  
+  /* quit if the birth_scale_factor or birth_time is negative */
+  if (sp->birth_scale_factor < 0.0 || sp->birth_time < 0.0) return;
 
   /* Pick the correct table. (if only one table, threshold is < 0) */
   const float metal =
@@ -250,6 +253,10 @@ void feedback_will_do_feedback(
  * @param e The #engine.
  */
 int feedback_is_active(const struct spart* sp, const struct engine* e) {
+
+  /* the particle is inactive if its birth_scale_factor or birth_time is
+   * negative */
+  if (sp->birth_scale_factor < 0.0 || sp->birth_time < 0.0) return 0;
 
   return sp->feedback_data.will_do_feedback;
 }
