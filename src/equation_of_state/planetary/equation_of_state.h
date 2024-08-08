@@ -235,20 +235,6 @@ enum eos_planetary_material_id {
   eos_mat_id_ANEOS_Fe85Si15 = eos_type_ANEOS * eos_type_factor + eos_unit_id_ANEOS_Fe85Si15,
 };
 
-/**
- * @brief Phase state of the material.
- */
-enum eos_phase_state {
-  /*! Always fluid */
-  eos_phase_state_fluid = 0,
-
-  /*! Always solid */
-  eos_phase_state_solid = 1,
-
-  /*! Variable */
-  eos_phase_state_variable = 2,
-};
-
 /* Individual EOS function headers. */
 #include "hm80.h"
 #include "ideal_gas.h"
@@ -257,17 +243,50 @@ enum eos_phase_state {
 #include "linear.h"
 
 /**
+ * @brief Count number of materials of each type
+ */
+enum eos_type_count {
+  eos_count_idg = 1,
+  eos_count_Til = 5,
+  eos_count_Til_custom = 10,
+  eos_count_HM80 = 3,
+  eos_count_SESAME = 8,
+  eos_count_ANEOS = 3,
+  eos_count_linear = 10,
+  eos_count_custom = 10,
+};
+
+/**
+ * @brief Cumulative consecutive base index for each material type.
+ */
+enum eos_type_cumul_count {
+  eos_cumul_count_idg = 0,
+  eos_cumul_count_Til = eos_cumul_count_idg + eos_count_idg,
+  eos_cumul_count_Til_custom = eos_cumul_count_Til + eos_count_Til,
+  eos_cumul_count_HM80 = eos_cumul_count_Til_custom + eos_count_Til_custom,
+  eos_cumul_count_SESAME = eos_cumul_count_HM80 + eos_count_HM80,
+  eos_cumul_count_ANEOS = eos_cumul_count_SESAME + eos_count_SESAME,
+  eos_cumul_count_linear = eos_cumul_count_ANEOS + eos_count_ANEOS,
+  eos_cumul_count_custom = eos_cumul_count_linear + eos_count_linear,
+};
+
+// Total count of materials
+const int eos_count_total = eos_cumul_count_custom + eos_count_custom + 1;
+
+/**
  * @brief The parameters of the equation of state.
  */
 struct eos_parameters {
-  struct idg_params idg[1];
-  struct Til_params Til[5];
-  struct Til_params Til_custom[10];
-  struct HM80_params HM80[3];
-  struct SESAME_params SESAME[8];
-  struct SESAME_params ANEOS[3];
-  struct linear_params linear[10];
-  struct SESAME_params custom[10];
+  struct idg_params idg[eos_count_idg];
+  struct Til_params Til[eos_count_Til];
+  struct Til_params Til_custom[eos_count_Til_custom];
+  struct HM80_params HM80[eos_count_HM80];
+  struct SESAME_params SESAME[eos_count_SESAME];
+  struct SESAME_params ANEOS[eos_count_ANEOS];
+  struct linear_params linear[eos_count_linear];
+  struct SESAME_params custom[eos_count_custom];
+
+  struct mat_params mat_params[eos_count_total];
 };
 
 /**
@@ -984,109 +1003,6 @@ gas_density_from_pressure_and_internal_energy(
 }
 
 /**
- * @brief Returns whether or not the material is in a solid state and not fluid.
- *
- * @param density The density \f$\rho\f$
- * @param u The internal energy \f$u\f$
- */
-__attribute__((always_inline)) INLINE static float
-material_phase_state_from_internal_energy(
-    float density, float u, enum eos_planetary_material_id mat_id) {
-  const enum eos_planetary_type_id type =
-      (enum eos_planetary_type_id)(mat_id / eos_type_factor);
-  const int unit_id = mat_id % eos_type_factor;
-
-  /* Select the material base type */
-  switch (type) {
-
-    /* Ideal gas EoS */
-    case eos_type_idg:
-      return idg_phase_state_from_internal_energy(density, u, &eos.idg[unit_id]);
-
-    /* Tillotson EoS */
-    case eos_type_Til:
-      return Til_phase_state_from_internal_energy(density, u, &eos.Til[unit_id]);
-
-    /* Custom user-provided Tillotson EoS */
-    case eos_type_Til_custom:
-      return Til_phase_state_from_internal_energy(density, u, &eos.Til_custom[unit_id]);
-
-    /* Hubbard & MacFarlane (1980) EoS */
-    case eos_type_HM80:
-      return HM80_phase_state_from_internal_energy(density, u, &eos.HM80[unit_id]);
-
-    /* SESAME EoS */
-    case eos_type_SESAME:
-      return SESAME_phase_state_from_internal_energy(density, u, &eos.SESAME[unit_id]);
-
-    /* ANEOS -- using SESAME-style tables */
-    case eos_type_ANEOS:
-      return SESAME_phase_state_from_internal_energy(density, u, &eos.ANEOS[unit_id]);
-
-    /*! Linear EoS -- user-provided parameters */
-    case eos_type_linear:
-      return linear_phase_state_from_internal_energy(density, u, &eos.linear[unit_id]);
-
-    /*! Generic user-provided custom tables */
-    case eos_type_custom:
-      return SESAME_phase_state_from_internal_energy(density, u, &eos.custom[unit_id]);
-
-    default:
-      return -1.f;
-  }
-}
-
-/**
- * @brief Returns the shear modulus of a material
- */
-__attribute__((always_inline)) INLINE static float material_shear_mod(
-    enum eos_planetary_material_id mat_id) {
-
-  const enum eos_planetary_type_id type =
-      (enum eos_planetary_type_id)(mat_id / eos_type_factor);
-  const int unit_id = mat_id % eos_type_factor;
-
-  /* Select the material base type */
-  switch (type) {
-
-    /* Ideal gas EoS */
-    case eos_type_idg:
-      return idg_shear_mod(&eos.idg[unit_id]);
-
-    /* Tillotson EoS */
-    case eos_type_Til:
-      return Til_shear_mod(&eos.Til[unit_id]);
-
-    /* Custom user-provided Tillotson EoS */
-    case eos_type_Til_custom:
-      return Til_shear_mod(&eos.Til_custom[unit_id]);
-
-    /* Hubbard & MacFarlane (1980) EoS */
-    case eos_type_HM80:
-      return HM80_shear_mod(&eos.HM80[unit_id]);
-
-    /* SESAME EoS */
-    case eos_type_SESAME:
-      return SESAME_shear_mod(&eos.SESAME[unit_id]);
-
-    /* ANEOS -- using SESAME-style tables */
-    case eos_type_ANEOS:
-      return SESAME_shear_mod(&eos.ANEOS[unit_id]);
-
-    /*! Linear EoS -- user-provided parameters */
-    case eos_type_linear:
-      return linear_shear_mod(&eos.linear[unit_id]);
-
-    /*! Generic user-provided custom tables */
-    case eos_type_custom:
-      return SESAME_shear_mod(&eos.custom[unit_id]);
-
-    default:
-      return -1.f;
-  }
-}
-
-/**
  * @brief Initialize the eos parameters
  *
  * @param e The #eos_parameters
@@ -1099,9 +1015,16 @@ __attribute__((always_inline)) INLINE static void eos_init(
   // Prepare any/all requested EoS: Set the parameters and material IDs, load
   // tables etc., and convert to internal units
 
+  char eos_file[PARSER_MAX_LINE_SIZE], mat_params_file[PARSER_MAX_LINE_SIZE];
+  char param_name[PARSER_MAX_LINE_SIZE];
+
   // Ideal gas
   if (parser_get_opt_param_int(params, "EoS:planetary_use_idg_def", 0)) {
     set_idg_def(&e->idg[eos_unit_id_idg_def], eos_mat_id_idg_def);
+
+    sprintf(param_name, "EoS:idg_def_mat_params_file");
+    parser_get_param_string(params, param_name, mat_params_file);
+    set_material_params(&e->mat_params, eos_mat_id_idg_def, mat_params_file, us);
   }
 
   // Tillotson
@@ -1109,216 +1032,284 @@ __attribute__((always_inline)) INLINE static void eos_init(
     set_Til_iron(&e->Til[eos_unit_id_Til_iron], eos_mat_id_Til_iron);
     set_Til_u_cold(&e->Til[eos_unit_id_Til_iron], eos_mat_id_Til_iron);
     convert_units_Til(&e->Til[eos_unit_id_Til_iron], us);
+
+    sprintf(param_name, "EoS:Til_iron_mat_params_file");
+    parser_get_param_string(params, param_name, mat_params_file);
+    set_material_params(&e->mat_params, eos_mat_id_###, mat_params_file, us);
   }
   if (parser_get_opt_param_int(params, "EoS:planetary_use_Til_granite", 0)) {
     set_Til_granite(&e->Til[eos_unit_id_Til_granite], eos_mat_id_Til_granite);
     set_Til_u_cold(&e->Til[eos_unit_id_Til_granite], eos_mat_id_Til_granite);
     convert_units_Til(&e->Til[eos_unit_id_Til_granite], us);
+
+    sprintf(param_name, "EoS:Til_granite_mat_params_file");
+    parser_get_param_string(params, param_name, mat_params_file);
+    set_material_params(&e->mat_params, eos_mat_id_Til_granite, mat_params_file, us);
   }
   if (parser_get_opt_param_int(params, "EoS:planetary_use_Til_water", 0)) {
     set_Til_water(&e->Til[eos_unit_id_Til_water], eos_mat_id_Til_water);
     set_Til_u_cold(&e->Til[eos_unit_id_Til_water], eos_mat_id_Til_water);
     convert_units_Til(&e->Til[eos_unit_id_Til_water], us);
+
+    sprintf(param_name, "EoS:Til_water_mat_params_file");
+    parser_get_param_string(params, param_name, mat_params_file);
+    set_material_params(&e->mat_params, eos_mat_id_Til_water, mat_params_file, us);
   }
   if (parser_get_opt_param_int(params, "EoS:planetary_use_Til_basalt", 0)) {
     set_Til_basalt(&e->Til[eos_unit_id_Til_basalt], eos_mat_id_Til_basalt);
     set_Til_u_cold(&e->Til[eos_unit_id_Til_basalt], eos_mat_id_Til_basalt);
     convert_units_Til(&e->Til[eos_unit_id_Til_basalt], us);
+
+    sprintf(param_name, "EoS:Til_basalt_mat_params_file");
+    parser_get_param_string(params, param_name, mat_params_file);
+    set_material_params(&e->mat_params, eos_mat_id_Til_basalt, mat_params_file, us);
   }
   if (parser_get_opt_param_int(params, "EoS:planetary_use_Til_ice", 0)) {
     set_Til_ice(&e->Til[eos_unit_id_Til_ice], eos_mat_id_Til_ice);
     set_Til_u_cold(&e->Til[eos_unit_id_Til_ice], eos_mat_id_Til_ice);
     convert_units_Til(&e->Til[eos_unit_id_Til_ice], us);
+
+    sprintf(param_name, "EoS:Til_ice_mat_params_file");
+    parser_get_param_string(params, param_name, mat_params_file);
+    set_material_params(&e->mat_params, eos_mat_id_Til_ice, mat_params_file, us);
   }
 
   // Custom user-provided Tillotson
   for (int i_custom = 0; i_custom <= 9; i_custom++) {
-    char param_name[PARSER_MAX_LINE_SIZE];
     sprintf(param_name, "EoS:planetary_use_Til_custom_%d", i_custom);
     if (parser_get_opt_param_int(params, param_name, 0)) {
-      char Til_custom_file[PARSER_MAX_LINE_SIZE];
       int mat_id = eos_type_Til_custom * eos_type_factor + i_custom;
 
       sprintf(param_name, "EoS:planetary_Til_custom_%d_param_file", i_custom);
-      parser_get_param_string(params, param_name, Til_custom_file);
+      parser_get_param_string(params, param_name, eos_file);
 
       set_Til_custom(&e->Til_custom[i_custom],
-                     (enum eos_planetary_material_id)mat_id, Til_custom_file);
+                     (enum eos_planetary_material_id)mat_id, eos_file);
       set_Til_u_cold(&e->Til_custom[i_custom],
                      (enum eos_planetary_material_id)mat_id);
       convert_units_Til(&e->Til_custom[i_custom], us);
+
+      sprintf(param_name, "EoS:Til_custom_%d_mat_params_file", i_custom);
+      parser_get_param_string(params, param_name, mat_params_file);
+      set_material_params(&e->mat_params, mat_id, mat_params_file, us);
     }
   }
 
   // Hubbard & MacFarlane (1980)
   if (parser_get_opt_param_int(params, "EoS:planetary_use_HM80_HHe", 0)) {
-    char HM80_HHe_table_file[PARSER_MAX_LINE_SIZE];
     set_HM80_HHe(&e->HM80[eos_unit_id_HM80_HHe], eos_mat_id_HM80_HHe);
     parser_get_param_string(params, "EoS:planetary_HM80_HHe_table_file",
-                            HM80_HHe_table_file);
-    load_table_HM80(&e->HM80[eos_unit_id_HM80_HHe], HM80_HHe_table_file);
+                            eos_file);
+    load_table_HM80(&e->HM80[eos_unit_id_HM80_HHe], eos_file);
     prepare_table_HM80(&e->HM80[eos_unit_id_HM80_HHe]);
     convert_units_HM80(&e->HM80[eos_unit_id_HM80_HHe], us);
+
+    sprintf(param_name, "EoS:HM80_HHe_mat_params_file");
+    parser_get_param_string(params, param_name, mat_params_file);
+    set_material_params(&e->mat_params, eos_mat_id_HM80_HHe, mat_params_file, us);
   }
   if (parser_get_opt_param_int(params, "EoS:planetary_use_HM80_ice", 0)) {
-    char HM80_ice_table_file[PARSER_MAX_LINE_SIZE];
     set_HM80_ice(&e->HM80[eos_unit_id_HM80_ice], eos_mat_id_HM80_ice);
     parser_get_param_string(params, "EoS:planetary_HM80_ice_table_file",
-                            HM80_ice_table_file);
-    load_table_HM80(&e->HM80[eos_unit_id_HM80_ice], HM80_ice_table_file);
+                            eos_file);
+    load_table_HM80(&e->HM80[eos_unit_id_HM80_ice], eos_file);
     prepare_table_HM80(&e->HM80[eos_unit_id_HM80_ice]);
     convert_units_HM80(&e->HM80[eos_unit_id_HM80_ice], us);
+
+    sprintf(param_name, "EoS:HM80_ice_mat_params_file");
+    parser_get_param_string(params, param_name, mat_params_file);
+    set_material_params(&e->mat_params, eos_mat_id_HM80_ice, mat_params_file, us);
   }
   if (parser_get_opt_param_int(params, "EoS:planetary_use_HM80_rock", 0)) {
-    char HM80_rock_table_file[PARSER_MAX_LINE_SIZE];
     set_HM80_rock(&e->HM80[eos_unit_id_HM80_rock], eos_mat_id_HM80_rock);
     parser_get_param_string(params, "EoS:planetary_HM80_rock_table_file",
-                            HM80_rock_table_file);
-    load_table_HM80(&e->HM80[eos_unit_id_HM80_rock], HM80_rock_table_file);
+                            eos_file);
+    load_table_HM80(&e->HM80[eos_unit_id_HM80_rock], eos_file);
     prepare_table_HM80(&e->HM80[eos_unit_id_HM80_rock]);
     convert_units_HM80(&e->HM80[eos_unit_id_HM80_rock], us);
+
+    sprintf(param_name, "EoS:HM80_rock_mat_params_file");
+    parser_get_param_string(params, param_name, mat_params_file);
+    set_material_params(&e->mat_params, eos_mat_id_HM80_rock, mat_params_file, us);
   }
 
   // SESAME
   if (parser_get_opt_param_int(params, "EoS:planetary_use_SESAME_iron", 0)) {
-    char SESAME_iron_table_file[PARSER_MAX_LINE_SIZE];
     set_SESAME_iron(&e->SESAME[eos_unit_id_SESAME_iron], eos_mat_id_SESAME_iron);
     parser_get_param_string(params, "EoS:planetary_SESAME_iron_table_file",
-                            SESAME_iron_table_file);
-    load_table_SESAME(&e->SESAME[eos_unit_id_SESAME_iron], SESAME_iron_table_file);
+                            eos_file);
+    load_table_SESAME(&e->SESAME[eos_unit_id_SESAME_iron], eos_file);
     prepare_table_SESAME(&e->SESAME[eos_unit_id_SESAME_iron]);
     convert_units_SESAME(&e->SESAME[eos_unit_id_SESAME_iron], us);
+
+    sprintf(param_name, "EoS:SESAME_iron_mat_params_file");
+    parser_get_param_string(params, param_name, mat_params_file);
+    set_material_params(&e->mat_params, eos_mat_id_SESAME_iron, mat_params_file, us);
   }
   if (parser_get_opt_param_int(params, "EoS:planetary_use_SESAME_basalt", 0)) {
-    char SESAME_basalt_table_file[PARSER_MAX_LINE_SIZE];
     set_SESAME_basalt(&e->SESAME[eos_unit_id_SESAME_basalt], eos_mat_id_SESAME_basalt);
     parser_get_param_string(params, "EoS:planetary_SESAME_basalt_table_file",
-                            SESAME_basalt_table_file);
-    load_table_SESAME(&e->SESAME[eos_unit_id_SESAME_basalt], SESAME_basalt_table_file);
+                            eos_file);
+    load_table_SESAME(&e->SESAME[eos_unit_id_SESAME_basalt], eos_file);
     prepare_table_SESAME(&e->SESAME[eos_unit_id_SESAME_basalt]);
     convert_units_SESAME(&e->SESAME[eos_unit_id_SESAME_basalt], us);
+
+    sprintf(param_name, "EoS:SESAME_basalt_mat_params_file");
+    parser_get_param_string(params, param_name, mat_params_file);
+    set_material_params(&e->mat_params, eos_mat_id_SESAME_basalt, mat_params_file, us);
   }
   if (parser_get_opt_param_int(params, "EoS:planetary_use_SESAME_water", 0)) {
-    char SESAME_water_table_file[PARSER_MAX_LINE_SIZE];
     set_SESAME_water(&e->SESAME[eos_unit_id_SESAME_water], eos_mat_id_SESAME_water);
     parser_get_param_string(params, "EoS:planetary_SESAME_water_table_file",
-                            SESAME_water_table_file);
-    load_table_SESAME(&e->SESAME[eos_unit_id_SESAME_water], SESAME_water_table_file);
+                            eos_file);
+    load_table_SESAME(&e->SESAME[eos_unit_id_SESAME_water], eos_file);
     prepare_table_SESAME(&e->SESAME[eos_unit_id_SESAME_water]);
     convert_units_SESAME(&e->SESAME[eos_unit_id_SESAME_water], us);
+
+    sprintf(param_name, "EoS:SESAME_water_mat_params_file");
+    parser_get_param_string(params, param_name, mat_params_file);
+    set_material_params(&e->mat_params, eos_mat_id_SESAME_water, mat_params_file, us);
   }
   if (parser_get_opt_param_int(params, "EoS:planetary_use_SS08_water", 0)) {
-    char SS08_water_table_file[PARSER_MAX_LINE_SIZE];
     set_SS08_water(&e->SS08_water, eos_planetary_id_SS08_water);
     parser_get_param_string(params, "EoS:planetary_SS08_water_table_file",
-                            SS08_water_table_file);
-    load_table_SESAME(&e->SESAME[eos_unit_id_SS08_water], SS08_water_table_file);
+                            eos_file);
+    load_table_SESAME(&e->SESAME[eos_unit_id_SS08_water], eos_file);
     prepare_table_SESAME(&e->SESAME[eos_unit_id_SS08_water]);
     convert_units_SESAME(&e->SESAME[eos_unit_id_SS08_water], us);
+
+    sprintf(param_name, "EoS:SS08_water_mat_params_file");
+    parser_get_param_string(params, param_name, mat_params_file);
+    set_material_params(&e->mat_params, eos_mat_id_SS08_water, mat_params_file, us);
   }
   if (parser_get_opt_param_int(params, "EoS:planetary_use_AQUA", 0)) {
-    char AQUA_table_file[PARSER_MAX_LINE_SIZE];
     set_AQUA(&e->SESAME[eos_unit_id_AQUA], eos_mat_id_AQUA);
     parser_get_param_string(params, "EoS:planetary_AQUA_table_file",
-                            AQUA_table_file);
-    load_table_SESAME(&e->SESAME[eos_unit_id_AQUA], AQUA_table_file);
+                            eos_file);
+    load_table_SESAME(&e->SESAME[eos_unit_id_AQUA], eos_file);
     prepare_table_SESAME(&e->SESAME[eos_unit_id_AQUA]);
     convert_units_SESAME(&e->SESAME[eos_unit_id_AQUA], us);
+
+    sprintf(param_name, "EoS:AQUA_mat_params_file");
+    parser_get_param_string(params, param_name, mat_params_file);
+    set_material_params(&e->mat_params, eos_mat_id_AQUA, mat_params_file, us);
   }
   if (parser_get_opt_param_int(params, "EoS:planetary_use_CMS19_H", 0)) {
-    char CMS19_H_table_file[PARSER_MAX_LINE_SIZE];
     set_CMS19_H(&e->SESAME[eos_unit_id_CMS19_H], eos_mat_id_CMS19_H);
     parser_get_param_string(params, "EoS:planetary_CMS19_H_table_file",
-                            CMS19_H_table_file);
-    load_table_SESAME(&e->SESAME[eos_unit_id_CMS19_H], CMS19_H_table_file);
+                            eos_file);
+    load_table_SESAME(&e->SESAME[eos_unit_id_CMS19_H], eos_file);
     prepare_table_SESAME(&e->SESAME[eos_unit_id_CMS19_H]);
     convert_units_SESAME(&e->SESAME[eos_unit_id_CMS19_H], us);
+
+    sprintf(param_name, "EoS:CMS19_H_mat_params_file");
+    parser_get_param_string(params, param_name, mat_params_file);
+    set_material_params(&e->mat_params, eos_mat_id_CMS19_H, mat_params_file, us);
   }
   if (parser_get_opt_param_int(params, "EoS:planetary_use_CMS19_He", 0)) {
-    char CMS19_He_table_file[PARSER_MAX_LINE_SIZE];
     set_CMS19_He(&e->SESAME[eos_unit_id_CMS19_He], eos_mat_id_CMS19_He);
     parser_get_param_string(params, "EoS:planetary_CMS19_He_table_file",
-                            CMS19_He_table_file);
-    load_table_SESAME(&e->SESAME[eos_unit_id_CMS19_He], CMS19_He_table_file);
+                            eos_file);
+    load_table_SESAME(&e->SESAME[eos_unit_id_CMS19_He], eos_file);
     prepare_table_SESAME(&e->SESAME[eos_unit_id_CMS19_He]);
     convert_units_SESAME(&e->SESAME[eos_unit_id_CMS19_He], us);
+
+    sprintf(param_name, "EoS:CMS19_He_mat_params_file");
+    parser_get_param_string(params, param_name, mat_params_file);
+    set_material_params(&e->mat_params, eos_mat_id_CMS19_He, mat_params_file, us);
   }
   if (parser_get_opt_param_int(params, "EoS:planetary_use_CD21_HHe", 0)) {
-    char CD21_HHe_table_file[PARSER_MAX_LINE_SIZE];
     set_CD21_HHe(&e->SESAME[eos_unit_id_CD21_HHe], eos_mat_id_CD21_HHe);
     parser_get_param_string(params, "EoS:planetary_CD21_HHe_table_file",
-                            CD21_HHe_table_file);
-    load_table_SESAME(&e->SESAME[eos_unit_id_CD21_HHe], CD21_HHe_table_file);
+                            eos_file);
+    load_table_SESAME(&e->SESAME[eos_unit_id_CD21_HHe], eos_file);
     prepare_table_SESAME(&e->SESAME[eos_unit_id_CD21_HHe]);
     convert_units_SESAME(&e->SESAME[eos_unit_id_CD21_HHe], us);
+
+    sprintf(param_name, "EoS:CD21_HHe_mat_params_file");
+    parser_get_param_string(params, param_name, mat_params_file);
+    set_material_params(&e->mat_params, eos_mat_id_CD21_HHe, mat_params_file, us);
   }
 
   // ANEOS -- using SESAME-style tables
   if (parser_get_opt_param_int(params, "EoS:planetary_use_ANEOS_forsterite",
                                0)) {
-    char ANEOS_forsterite_table_file[PARSER_MAX_LINE_SIZE];
     set_ANEOS_forsterite(&e->ANEOS[eos_unit_id_ANEOS_forsterite],
                          eos_mat_id_ANEOS_forsterite);
     parser_get_param_string(params, "EoS:planetary_ANEOS_forsterite_table_file",
-                            ANEOS_forsterite_table_file);
-    load_table_SESAME(&e->ANEOS[eos_unit_id_ANEOS_forsterite], ANEOS_forsterite_table_file);
+                            eos_file);
+    load_table_SESAME(&e->ANEOS[eos_unit_id_ANEOS_forsterite], eos_file);
     prepare_table_SESAME(&e->ANEOS[eos_unit_id_ANEOS_forsterite]);
     convert_units_SESAME(&e->ANEOS[eos_unit_id_ANEOS_forsterite], us);
+
+    sprintf(param_name, "EoS:ANEOS_forsterite_mat_params_file");
+    parser_get_param_string(params, param_name, mat_params_file);
+    set_material_params(&e->mat_params, eos_mat_id_ANEOS_forsterite, mat_params_file, us);
   }
   if (parser_get_opt_param_int(params, "EoS:planetary_use_ANEOS_iron", 0)) {
-    char ANEOS_iron_table_file[PARSER_MAX_LINE_SIZE];
     set_ANEOS_iron(&e->ANEOS[eos_unit_id_ANEOS_iron], eos_mat_id_ANEOS_iron);
     parser_get_param_string(params, "EoS:planetary_ANEOS_iron_table_file",
-                            ANEOS_iron_table_file);
-    load_table_SESAME(&e->ANEOS[eos_unit_id_ANEOS_iron], ANEOS_iron_table_file);
+                            eos_file);
+    load_table_SESAME(&e->ANEOS[eos_unit_id_ANEOS_iron], eos_file);
     prepare_table_SESAME(&e->ANEOS[eos_unit_id_ANEOS_iron]);
     convert_units_SESAME(&e->ANEOS[eos_unit_id_ANEOS_iron], us);
+
+    sprintf(param_name, "EoS:ANEOS_iron_mat_params_file");
+    parser_get_param_string(params, param_name, mat_params_file);
+    set_material_params(&e->mat_params, eos_mat_id_ANEOS_iron, mat_params_file, us);
   }
   if (parser_get_opt_param_int(params, "EoS:planetary_use_ANEOS_Fe85Si15", 0)) {
-    char ANEOS_Fe85Si15_table_file[PARSER_MAX_LINE_SIZE];
     set_ANEOS_Fe85Si15(&e->ANEOS[eos_unit_id_ANEOS_Fe85Si15], eos_mat_id_ANEOS_Fe85Si15);
     parser_get_param_string(params, "EoS:planetary_ANEOS_Fe85Si15_table_file",
-                            ANEOS_Fe85Si15_table_file);
-    load_table_SESAME(&e->ANEOS[eos_unit_id_ANEOS_Fe85Si15], ANEOS_Fe85Si15_table_file);
+                            eos_file);
+    load_table_SESAME(&e->ANEOS[eos_unit_id_ANEOS_Fe85Si15], eos_file);
     prepare_table_SESAME(&e->ANEOS[eos_unit_id_ANEOS_Fe85Si15]);
     convert_units_SESAME(&e->ANEOS[eos_unit_id_ANEOS_Fe85Si15], us);
+
+    sprintf(param_name, "EoS:ANEOS_Fe85Si15_mat_params_file");
+    parser_get_param_string(params, param_name, mat_params_file);
+    set_material_params(&e->mat_params, eos_mat_id_ANEOS_Fe85Si15, mat_params_file, us);
   }
 
   // Linear EoS -- user-provided parameters
   for (int i_linear = 0; i_linear <= 9; i_linear++) {
-    char param_name[PARSER_MAX_LINE_SIZE];
     sprintf(param_name, "EoS:planetary_use_linear_%d", i_linear);
     if (parser_get_opt_param_int(params, param_name, 0)) {
-      char linear_file[PARSER_MAX_LINE_SIZE], linear_file_extra[PARSER_MAX_LINE_SIZE];
       int mat_id = eos_type_linear * eos_type_factor + i_linear;
 
       sprintf(param_name, "EoS:planetary_linear_%d_param_file", i_linear);
-      parser_get_param_string(params, param_name, linear_file);
-      set_linear_params(&e->linear[i_linear], (enum eos_planetary_material_id)mat_id, linear_file);
+      parser_get_param_string(params, param_name, eos_file);
+      set_linear_params(&e->linear[i_linear],
+                        (enum eos_planetary_material_id)mat_id, eos_file);
 
-      sprintf(param_name, "EoS:planetary_linear_%d_param_file_extra", i_linear);
-      parser_get_param_string(params, param_name, linear_file_extra);
-      set_linear_params_extra(&e->linear[i_linear], linear_file_extra);
+      sprintf(param_name, "EoS:linear_%d_mat_params_file", i_linear);
+      parser_get_param_string(params, param_name, mat_params_file);
+      set_material_params(&e->mat_params, mat_id, mat_params_file);
 
       convert_units_linear(&e->linear[i_linear], us);
+
+      sprintf(param_name, "EoS:linear_%d_mat_params_file", i_linear);
+      parser_get_param_string(params, param_name, mat_params_file);
+      set_material_params(&e->mat_params, mat_id, mat_params_file, us);
     }
   }
 
   // Custom generic tables -- using SESAME-style tables
   for (int i_custom = 0; i_custom <= 9; i_custom++) {
-    char param_name[PARSER_MAX_LINE_SIZE];
     sprintf(param_name, "EoS:planetary_use_custom_%d", i_custom);
     if (parser_get_opt_param_int(params, param_name, 0)) {
-      char custom_table_file[PARSER_MAX_LINE_SIZE];
-      int mat_id =
-          eos_type_custom * eos_type_factor + i_custom;
+      int mat_id = eos_type_custom * eos_type_factor + i_custom;
       set_custom(&e->custom[i_custom], (enum eos_planetary_material_id)mat_id);
 
       sprintf(param_name, "EoS:planetary_custom_%d_table_file", i_custom);
-      parser_get_param_string(params, param_name, custom_table_file);
-      load_table_SESAME(&e->custom[i_custom], custom_table_file);
+      parser_get_param_string(params, param_name, eos_file);
+      load_table_SESAME(&e->custom[i_custom], eos_file);
       prepare_table_SESAME(&e->custom[i_custom]);
       convert_units_SESAME(&e->custom[i_custom], us);
+
+      sprintf(param_name, "EoS:custom_%d_mat_params_file", i_custom);
+      parser_get_param_string(params, param_name, mat_params_file);
+      set_material_params(&e->mat_params, mat_id, mat_params_file, us);
     }
   }
 }
