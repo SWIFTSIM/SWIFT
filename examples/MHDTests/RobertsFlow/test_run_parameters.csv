@@ -1,2 +1,16 @@
 Run #	v0	Vz_factor	eta	kv	kb	Lbox	Flow_kind	Scheme	IAfile	monopole_subtraction	artificial_diffusion	hyperbolic_dedner	hyperbolic_dedner_divv	parabolic_dedner	tau_max	min_steps	Forcing_kind	viscosity_alpha	Status	Comment
-example_run	1	1	0.1	1	1	6.2831853	1	FDI	g32			1	0.5	1	30	200	v			Example run. Fill the table with parameters and run run_test_program.py script. The runs with Status = done will be ignored.
+128r1	1	1	0.1	1	1	6.2831853	1	VP	g16			1	0.5	1	100	200	v			Run for critical resistivity 128^3
+128r2	1	1	0.127	1	1	6.2831853	1	VP	g16			1	0.5	1	100	200	v			Run for critical resistivity 128^3
+128r3	1	1	0.154	1	1	6.2831853	1	VP	g16			1	0.5	1	100	200	v			Run for critical resistivity 128^3
+128r4	1	1	0.1811	1	1	6.2831853	1	VP	g16			1	0.5	1	100	200	v			Run for critical resistivity 128^3
+128r5	1	1	0.2	1	1	6.2831853	1	VP	g16			1	0.5	1	100	200	v			Run for critical resistivity 128^3
+128r7	1	1	0.1	1	1	6.2831853	1	FDI	g16			1	0.5	1	100	200	v			Run for critical resistivity 128^3
+128r8	1	1	0.127	1	1	6.2831853	1	FDI	g16			1	0.5	1	100	200	v			Run for critical resistivity 128^3
+128r9	1	1	0.154	1	1	6.2831853	1	FDI	g16			1	0.5	1	100	200	v			Run for critical resistivity 128^3
+128r10	1	1	0.1811	1	1	6.2831853	1	FDI	g16			1	0.5	1	100	200	v			Run for critical resistivity 128^3
+128r11	1	1	0.2	1	1	6.2831853	1	FDI	g16			1	0.5	1	100	200	v			Run for critical resistivity 128^3
+128r13	1	1	0.1	1	1	6.2831853	1	ODI	g16			1	0.5	1	100	200	v			Run for critical resistivity 128^3
+128r14	1	1	0.127	1	1	6.2831853	1	ODI	g16			1	0.5	1	100	200	v			Run for critical resistivity 128^3
+128r15	1	1	0.154	1	1	6.2831853	1	ODI	g16			1	0.5	1	100	200	v			Run for critical resistivity 128^3
+128r16	1	1	0.1811	1	1	6.2831853	1	ODI	g16			1	0.5	1	100	200	v			Run for critical resistivity 128^3
+128r17	1	1	0.2	1	1	6.2831853	1	ODI	g16			1	0.5	1	100	200	v			Run for critical resistivity 128^3

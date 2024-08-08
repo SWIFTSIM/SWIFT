@@ -408,10 +408,11 @@ def move_results(phys_parameters, res_dirname):
         + " ) "
     )
     # show command
+    print('###')
     print('Moving results. Running command:'+command_sandwich)
     # execute
     subprocess.call(command_sandwich, shell=True)
-
+    print('#######\n')
 
 # Main program 
 # - takes the_parameters from the table
@@ -429,7 +430,10 @@ def run_all():
         for i in range(len(the_parameters)):
             if mask[i]:
                 parameters_for_the_run = the_parameters.iloc[[i]]
+                print('### New run')
+                print('Parameters for the run:')
                 print(parameters_for_the_run)
+                print('#######\n')
                 scheme = schemes_dict[parameters_for_the_run["Scheme"].values[0]]
                 forcing = forcing_dict[parameters_for_the_run["Forcing_kind"].values[0]]
                 configure_simulation(scheme, forcing, "quintic-spline", "isothermal-gas")
