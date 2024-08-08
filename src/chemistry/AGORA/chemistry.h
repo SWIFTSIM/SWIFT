@@ -295,8 +295,7 @@ __attribute__((always_inline)) INLINE static void chemistry_first_init_spart(
 
   for (int i = 0; i < AGORA_CHEMISTRY_ELEMENT_COUNT; i++) {
     /* Bug fix (26.07.2024): Check that the initial me metallicities are non
-       negative. Otherwise, star lifetime gets wrong. (And its not physical to
-       have a negative mass fraction) */
+       negative. */
     if (data->initial_metallicities[i] >= 0) {
       /* Use the value from the parameter file */
       sp->chemistry_data.metal_mass_fraction[i] =
