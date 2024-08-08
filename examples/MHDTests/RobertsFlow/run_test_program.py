@@ -143,7 +143,7 @@ def configure_simulation(scheme, forcing, spline, eos, path_to_lib=False):
     # execute
     try:
         result = subprocess.run(command_sandwich, shell=True,capture_output=True, check=True,text=True)
-        print(result.stdout)
+        #print(result.stdout)
         print("SWIFT configuration complete")
     except subprocess.CalledProcessError as e:
         print(f"Command '{e.cmd}' failed with return code {e.returncode}")
@@ -188,7 +188,7 @@ def make_IC(phys_parameters, IAfile):
     # execute
     try:
         result = subprocess.run(command, shell=True,capture_output=True, check=True,text=True)
-        print(result.stdout)
+        #print(result.stdout)
         print("ICs creation complete")
     except subprocess.CalledProcessError as e:
         print(f"Command '{e.cmd}' failed with return code {e.returncode}")
@@ -347,7 +347,7 @@ def run_simulation(phys_parameters, threads):
     # execute
     try:
         result = subprocess.run(command, shell=True,capture_output=True, check=True,text=True)
-        print(result.stdout)
+        #print(result.stdout)
         print("SWIFT run complete")
         move_res = True
     except subprocess.CalledProcessError as e:
