@@ -3308,13 +3308,6 @@ AC_MSG_RESULT([
    Custom icbrtf               : $enable_custom_icbrtf
    Boundary particles          : $boundary_particles
    Fixed boundary particles    : $fixed_boundary_particles
-   Planetary fixed entropy     : $planetary_fixed_entropy
-   Ghost statistics            : $ghost_stats
-   P+ GDF                      : $planetary_gdf
-   P+ imbalance method         : $planetary_imbalance
-   P+ smoothing correction     : $planetary_smoothing_correction
-   P+ matrix method            : $planetary_matrix_inversion
-   P+ quad visc                : $planetary_quad_visc
 
    Continuous Sim. Data Stream : $with_csds
 
