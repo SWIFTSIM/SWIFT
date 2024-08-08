@@ -37,15 +37,15 @@
 #include "equation_of_state.h"
 #include "inline.h"
 #include "physical_constants.h"
+#include "sesame.h"
 #include "units.h"
 
 // Tillotson parameters
 struct Til_params {
-  float rho_0, a, b, A, B, u_0, u_iv, u_cv, alpha, beta, eta_min, eta_zero,
-      P_min;
+  float rho_0, a, b, A, B, u_0, u_iv, u_cv, alpha, beta;
+  float eta_min, eta_zero, P_min, C_V;
   float *A1_u_cold;
-  float CV;
-  float rho_min_A1_u_cold, rho_max_A1_u_cold;
+  float rho_cold_min, rho_cold_max;
   float rho_min, rho_max;
   enum eos_planetary_material_id mat_id;
 };
@@ -67,11 +67,11 @@ INLINE static void set_Til_iron(struct Til_params *mat,
   mat->eta_min = 0.0f;
   mat->eta_zero = 0.0f;
   mat->P_min = 0.01f;
-  mat->CV = 449.f;
-  mat->rho_min_A1_u_cold = 100.f;
-  mat->rho_max_A1_u_cold = 100000.f;
-  mat->rho_min = 1.f;
-  mat->rho_max = 100000.f;
+  mat->C_V = 449.0f;
+  mat->rho_cold_min = 100.0f;
+  mat->rho_cold_max = 1.0e5f;
+  mat->rho_min = 1.0f;
+  mat->rho_max = 1.0e5f;
 }
 INLINE static void set_Til_granite(struct Til_params *mat,
                                    enum eos_planetary_material_id mat_id) {
@@ -89,11 +89,11 @@ INLINE static void set_Til_granite(struct Til_params *mat,
   mat->eta_min = 0.0f;
   mat->eta_zero = 0.0f;
   mat->P_min = 0.01f;
-  mat->CV = 790.f;
-  mat->rho_min_A1_u_cold = 100.f;
-  mat->rho_max_A1_u_cold = 100000.f;
-  mat->rho_min = 1.f;
-  mat->rho_max = 100000.f;
+  mat->C_V = 790.0f;
+  mat->rho_cold_min = 100.0f;
+  mat->rho_cold_max = 1.0e5f;
+  mat->rho_min = 1.0f;
+  mat->rho_max = 1.0e5f;
 }
 INLINE static void set_Til_basalt(struct Til_params *mat,
                                   enum eos_planetary_material_id mat_id) {
@@ -111,11 +111,11 @@ INLINE static void set_Til_basalt(struct Til_params *mat,
   mat->eta_min = 0.0f;
   mat->eta_zero = 0.0f;
   mat->P_min = 0.01f;
-  mat->CV = 790.f;
-  mat->rho_min_A1_u_cold = 100.f;
-  mat->rho_max_A1_u_cold = 100000.f;
-  mat->rho_min = 1.f;
-  mat->rho_max = 100000.f;
+  mat->C_V = 790.0f;
+  mat->rho_cold_min = 100.0f;
+  mat->rho_cold_max = 1.0e5f;
+  mat->rho_min = 1.0f;
+  mat->rho_max = 1.0e5f;
 }
 INLINE static void set_Til_water(struct Til_params *mat,
                                  enum eos_planetary_material_id mat_id) {
@@ -133,11 +133,11 @@ INLINE static void set_Til_water(struct Til_params *mat,
   mat->eta_min = 0.925f;
   mat->eta_zero = 0.875f;
   mat->P_min = 0.01f;
-  mat->CV = 4186.f;
-  mat->rho_min_A1_u_cold = 100.f;
-  mat->rho_max_A1_u_cold = 100000.f;
-  mat->rho_min = 1.f;
-  mat->rho_max = 100000.f;
+  mat->C_V = 4186.0f;
+  mat->rho_cold_min = 100.0f;
+  mat->rho_cold_max = 1.0e5f;
+  mat->rho_min = 1.0f;
+  mat->rho_max = 1.0e5f;
 }
 INLINE static void set_Til_ice(struct Til_params *mat,
                                enum eos_planetary_material_id mat_id) {
@@ -155,11 +155,54 @@ INLINE static void set_Til_ice(struct Til_params *mat,
   mat->eta_min = 0.925f;
   mat->eta_zero = 0.875f;
   mat->P_min = 0.0f;
-  mat->CV = 2093.f;
-  mat->rho_min_A1_u_cold = 100.f;
-  mat->rho_max_A1_u_cold = 100000.f;
-  mat->rho_min = 1.f;
-  mat->rho_max = 100000.f;
+  mat->C_V = 2093.0f;
+  mat->rho_cold_min = 100.0f;
+  mat->rho_cold_max = 1.0e5f;
+  mat->rho_min = 1.0f;
+  mat->rho_max = 1.0e5f;
+}
+
+/*
+    Read the parameters from a file.
+
+    File contents
+    -------------
+    # header (5 lines)
+    rho_0 (kg/m3)  a (-)  b (-)  A (Pa)  B (Pa)
+    u_0 (J)  u_iv (J)  u_cv (J)  alpha (-)  beta (-)
+    eta_min (-)  eta_zero (-)  P_min (Pa)  C_V (J kg^-1 K^-1)
+    rho_cold_min (kg/m3)  rho_cold_max (kg/m3)  rho_min (kg/m3)  rho_max (kg/m3)
+*/
+INLINE static void set_Til_custom(struct Til_params *mat,
+                                  enum eos_planetary_material_id mat_id,
+                                  char *param_file) {
+  mat->mat_id = mat_id;
+
+  // Load table contents from file
+  FILE *f = fopen(param_file, "r");
+  if (f == NULL)
+    error("Failed to open the Tillotson EoS file '%s'", param_file);
+
+  // Skip header lines
+  skip_lines(f, 5);
+
+  // Read parameters (SI)
+  int c;
+  c = fscanf(f, "%f %f %f %f %f", &mat->rho_0, &mat->a, &mat->b, &mat->A,
+             &mat->B);
+  if (c != 5) error("Failed to read the Tillotson EoS file %s", param_file);
+
+  c = fscanf(f, "%f %f %f %f %f", &mat->u_0, &mat->u_iv, &mat->u_cv,
+             &mat->alpha, &mat->beta);
+  if (c != 5) error("Failed to read the Tillotson EoS file %s", param_file);
+
+  c = fscanf(f, "%f %f %f %f", &mat->eta_min, &mat->eta_zero, &mat->P_min,
+             &mat->C_V);
+  if (c != 4) error("Failed to read the Tillotson EoS file %s", param_file);
+
+  c = fscanf(f, "%f %f %f %f", &mat->rho_cold_min, &mat->rho_cold_max,
+             &mat->rho_min, &mat->rho_max);
+  if (c != 4) error("Failed to read the Tillotson EoS file %s", param_file);
 }
 
 // Convert to internal units
@@ -185,11 +228,11 @@ INLINE static void convert_units_Til(struct Til_params *mat,
         units_cgs_conversion_factor(&si, UNIT_CONV_ENERGY_PER_UNIT_MASS);
   }
 
-  mat->CV *= units_cgs_conversion_factor(&si, UNIT_CONV_ENERGY_PER_UNIT_MASS);
+  mat->C_V *= units_cgs_conversion_factor(&si, UNIT_CONV_ENERGY_PER_UNIT_MASS);
   // Entropy units don't work? using internal kelvin
 
-  mat->rho_min_A1_u_cold *= units_cgs_conversion_factor(&si, UNIT_CONV_DENSITY);
-  mat->rho_max_A1_u_cold *= units_cgs_conversion_factor(&si, UNIT_CONV_DENSITY);
+  mat->rho_cold_min *= units_cgs_conversion_factor(&si, UNIT_CONV_DENSITY);
+  mat->rho_cold_max *= units_cgs_conversion_factor(&si, UNIT_CONV_DENSITY);
   mat->rho_min *= units_cgs_conversion_factor(&si, UNIT_CONV_DENSITY);
   mat->rho_max *= units_cgs_conversion_factor(&si, UNIT_CONV_DENSITY);
 
@@ -207,11 +250,11 @@ INLINE static void convert_units_Til(struct Til_params *mat,
         units_cgs_conversion_factor(us, UNIT_CONV_ENERGY_PER_UNIT_MASS);
   }
 
-  mat->CV /= units_cgs_conversion_factor(us, UNIT_CONV_ENERGY_PER_UNIT_MASS);
+  mat->C_V /= units_cgs_conversion_factor(us, UNIT_CONV_ENERGY_PER_UNIT_MASS);
   // Entropy units don't work? using internal kelvin
 
-  mat->rho_min_A1_u_cold /= units_cgs_conversion_factor(us, UNIT_CONV_DENSITY);
-  mat->rho_max_A1_u_cold /= units_cgs_conversion_factor(us, UNIT_CONV_DENSITY);
+  mat->rho_cold_min /= units_cgs_conversion_factor(us, UNIT_CONV_DENSITY);
+  mat->rho_cold_max /= units_cgs_conversion_factor(us, UNIT_CONV_DENSITY);
   mat->rho_min /= units_cgs_conversion_factor(us, UNIT_CONV_DENSITY);
   mat->rho_max /= units_cgs_conversion_factor(us, UNIT_CONV_DENSITY);
 }
@@ -432,8 +475,8 @@ INLINE static float compute_fast_u_cold(float density,
                                         const struct Til_params *mat) {
 
   int N = 10000;
-  float rho_min = mat->rho_min_A1_u_cold;
-  float rho_max = mat->rho_max_A1_u_cold;
+  float rho_min = mat->rho_cold_min;
+  float rho_max = mat->rho_cold_max;
   float drho, u_cold;
   int a, b;
 
@@ -464,7 +507,7 @@ INLINE static float Til_temperature_from_internal_energy(
 
   u_cold = compute_fast_u_cold(density, mat);
 
-  T = (u - u_cold) / (mat->CV);
+  T = (u - u_cold) / (mat->C_V);
   if (T < 0.f) {
     T = 0.f;
   }
@@ -478,7 +521,7 @@ INLINE static float Til_pressure_from_temperature(
 
   float u, P;
 
-  u = compute_fast_u_cold(density, mat) + mat->CV * T;
+  u = compute_fast_u_cold(density, mat) + mat->C_V * T;
   P = Til_pressure_from_internal_energy(density, u, mat);
 
   return P;
