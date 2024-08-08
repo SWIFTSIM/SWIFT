@@ -31,7 +31,7 @@
 #include <string.h>
 
 /* For debugging purposes */
-//#define LOOP_CHECK 1000
+// #define LOOP_CHECK 1000
 
 #ifdef LOOP_CHECK
 /* We need to do the trickery below to get a unique counter for each call to the
@@ -75,7 +75,7 @@ __attribute__((always_inline)) INLINE int check_counter(int *counter,
 
 /* This flag activates a number of expensive geometrical checks that help
    finding bugs. */
-//#define VORONOI3D_EXPENSIVE_CHECKS
+// #define VORONOI3D_EXPENSIVE_CHECKS
 
 /* Tolerance parameter used to decide when to use more precise geometric
    criteria */
