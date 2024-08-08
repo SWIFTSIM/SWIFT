@@ -543,6 +543,8 @@ int cell_pack_multipoles(struct cell *c, struct gravity_tensors *m);
 int cell_unpack_multipoles(struct cell *c, struct gravity_tensors *m);
 int cell_pack_sf_counts(struct cell *c, struct pcell_sf *pcell);
 int cell_unpack_sf_counts(struct cell *c, struct pcell_sf *pcell);
+int cell_pack_grav_counts(struct cell *c, struct pcell_sf *pcell);
+int cell_unpack_grav_counts(struct cell *c, struct pcell_sf *pcell);
 int cell_get_tree_size(struct cell *c);
 int cell_link_parts(struct cell *c, struct part *parts);
 int cell_link_gparts(struct cell *c, struct gpart *gparts);
@@ -666,7 +668,8 @@ struct sink *cell_convert_part_to_sink(struct engine *e, struct cell *c,
                                        struct part *p, struct xpart *xp);
 void cell_reorder_extra_parts(struct cell *c, const ptrdiff_t parts_offset);
 void cell_reorder_extra_gparts(struct cell *c, struct part *parts,
-                               struct spart *sparts, struct sink *sinks);
+                               struct spart *sparts, struct sink *sinks,
+                               struct bpart *bparts);
 void cell_reorder_extra_sparts(struct cell *c, const ptrdiff_t sparts_offset);
 void cell_reorder_extra_sinks(struct cell *c, const ptrdiff_t sinks_offset);
 int cell_can_use_pair_mm(const struct cell *ci, const struct cell *cj,

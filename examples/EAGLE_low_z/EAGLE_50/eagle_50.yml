@@ -27,6 +27,9 @@ TimeIntegration:
 
 Scheduler:
   max_top_level_cells: 16
+  cell_extra_sparts: 1000
+  cell_extra_gparts: 1000
+
 
 # Parameters governing the snapshots
 Snapshots:

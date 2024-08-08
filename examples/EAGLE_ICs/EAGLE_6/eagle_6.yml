@@ -82,10 +82,12 @@ FOF:
 Scheduler:
   max_top_level_cells:   8
   cell_split_size:       200
+  cell_extra_sparts: 100
+  cell_extra_gparts: 100
   
 Restarts:
   onexit:       1
-  delta_hours:  6.0
+  delta_hours:  1
   max_run_time: 71.5                 # Three days minus fergie time
   resubmit_on_exit:   1
   resubmit_command:   ./resub.sh
@@ -144,7 +146,7 @@ PS2020Cooling:
 
 # EAGLE star formation parameters
 EAGLEStarFormation:
-  SF_threshold:                      Subgrid      # Zdep (Schaye 2004) or Subgrid
+  SF_threshold:                      Zdep      # Zdep (Schaye 2004) or Subgrid
   SF_model:                          PressureLaw  # PressureLaw (Schaye et al. 2008) or SchmidtLaw
   KS_normalisation:                  1.515e-4     # The normalization of the Kennicutt-Schmidt law in Msun / kpc^2 / yr.
   KS_exponent:                       1.4          # The exponent of the Kennicutt-Schmidt law.

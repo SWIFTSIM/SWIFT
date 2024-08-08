@@ -968,13 +968,28 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
             clocks_from_ticks(getticks() - tic3), clocks_getunit());
   }
 
+  message("BEFORE REORDER!");
+  part_verify_links(s->parts, s->gparts, s->sinks, s->sparts, s->bparts,
+                    nr_parts, nr_gparts, nr_sinks, nr_sparts, nr_bparts,
+                    verbose);
+
   /* Re-order the extra particles such that they are at the end of their cell's
      memory pool. */
   if (s->with_star_formation || s->with_sink) space_reorder_extras(s, verbose);
 
+  message("BEFORE SPLIT!");
+  part_verify_links(s->parts, s->gparts, s->sinks, s->sparts, s->bparts,
+                    nr_parts, nr_gparts, nr_sinks, nr_sparts, nr_bparts,
+                    verbose);
+
   /* At this point, we have the upper-level cells. Now recursively split each
      cell to get the full AMR grid. */
   space_split(s, verbose);
+
+  message("AFTER SPLIT!");
+  part_verify_links(s->parts, s->gparts, s->sinks, s->sparts, s->bparts,
+                    nr_parts, nr_gparts, nr_sinks, nr_sparts, nr_bparts,
+                    verbose);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that the multipole construction went OK */
