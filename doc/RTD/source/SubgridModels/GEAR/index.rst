@@ -183,7 +183,7 @@ This was a brief overview of the model. More details can be found in :ref:`sink_
 Chemistry
 ~~~~~~~~~
 
-In the chemistry, we are using the smoothed metallicity scheme that consists in using the SPH to smooth the metallicity of each particle over the neighbors. It is worth to point the fact that we are not exchanging any metals but only smoothing it. The parameter ``GEARChemistry:initial_metallicity`` set the (non smoothed) initial mass fraction of each element for all the particles and ``GEARChemistry:scale_initial_metallicity`` use the feedback table to scale the initial metallicity of each element according the Sun's composition.
+In the chemistry, we are using the smoothed metallicity scheme that consists in using the SPH to smooth the metallicity of each particle over the neighbors. It is worth to point the fact that we are not exchanging any metals but only smoothing it. The parameter ``GEARChemistry:initial_metallicity`` set the (non smoothed) initial mass fraction of each element for all the particles and ``GEARChemistry:scale_initial_metallicity`` use the feedback table to scale the initial metallicity of each element according the Sun's composition. If ``GEARChemistry:initial_metallicity`` is negative, then the metallicities are read from the initial conditions.
 
 .. code:: YAML
 
