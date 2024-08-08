@@ -32,6 +32,7 @@
 #include "hydro_parameters.h"
 #include "hydro_visc_difn.h"
 #include "hydro_strength.h"
+#include "material_properties.h"
 #include "math.h"
 #include "minmax.h"
 
@@ -394,6 +395,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   pi->drho_dt += mj * (rhoi / rhoj) * dv_dot_G;
   pj->drho_dt += mi * (rhoj / rhoi) * dv_dot_G;
 
+  // Diffusion and kernel normalising term, if particles are not at h=h_max
   if ((!pi->is_h_max) && (!pj->is_h_max)) {
     float mean_rho = 0.5f * (rhoi + rhoj);
     float mean_balsara = 0.5f * (pi->force.balsara + pj->force.balsara);
@@ -403,19 +405,23 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
                              (pi->v[1] - pj->v[1]) * (pi->v[1] - pj->v[1]) +
                              (pi->v[2] - pj->v[2]) * (pi->v[2] - pj->v[2]));
 
+    // Kernel normalising term (zero for solid particles with strength)
     const float alpha_norm = diffusion_global.alpha_norm;
-    float drho_dt_norm_and_difn_i = 0.f;
-    float drho_dt_norm_and_difn_j = 0.f;
-    if (pi->phase_state == eos_phase_state_fluid) {
-      drho_dt_norm_and_difn_i +=
+    float drho_dt_norm_and_difn_i;
+    float drho_dt_norm_and_difn_j;
+    if (pi->phase_state == mat_phase_state_fluid) {
+      drho_dt_norm_and_difn_i =
         alpha_norm * mj * v_sig_norm * pi->force.vac_switch *
         (pi->m0 * pi->rho_evol - pi->rho_evol) * mod_G / mean_rho;
+    } else {
+        drho_dt_norm_and_difn_i = 0.f;
     }
-      
-    if (pj->phase_state == eos_phase_state_fluid) {    
-      drho_dt_norm_and_difn_j +=
+    if (pj->phase_state == mat_phase_state_fluid) {
+      drho_dt_norm_and_difn_j =
         alpha_norm * mi * v_sig_norm * pj->force.vac_switch *
         (pj->m0 * pj->rho_evol - pj->rho_evol) * mod_G / mean_rho;
+    } else {
+        drho_dt_norm_and_difn_j = 0.f;
     }
 
     // Diffusion for same materials
@@ -594,7 +600,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
     const float alpha_norm = diffusion_global.alpha_norm;
     float drho_dt_norm_and_difn_i = 0.f;
-    if (pi->phase_state == eos_phase_state_fluid) {
+    if (pi->phase_state == mat_phase_state_fluid) {
       drho_dt_norm_and_difn_i +=
         alpha_norm * mj * v_sig_norm * pi->force.vac_switch *
         (pi->m0 * pi->rho_evol - pi->rho_evol) * mod_G / mean_rho;

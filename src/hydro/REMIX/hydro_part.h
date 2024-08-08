@@ -310,7 +310,7 @@ struct part {
   struct sym_matrix stress_tensor;
 
   // Principal stresses (Eigenvalues of stress_tensor)
-  float principal_stresses[3];
+  float principal_stress_eigen[3];
 
   // Deviatoric stress tensor
   struct sym_matrix deviatoric_stress_tensor;

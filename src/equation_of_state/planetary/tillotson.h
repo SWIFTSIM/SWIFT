@@ -35,6 +35,7 @@
 #include "adiabatic_index.h"
 #include "common_io.h"
 #include "equation_of_state.h"
+#include "material_properties.h"
 #include "inline.h"
 #include "physical_constants.h"
 #include "sesame.h"
@@ -48,10 +49,6 @@ struct Til_params {
   float rho_cold_min, rho_cold_max;
   float rho_min, rho_max;
   enum eos_planetary_material_id mat_id;
-
-  // Extra parameters, e.g. for material strength
-  float T_melt;
-  enum eos_phase_state phase_state;
 };
 
 // Parameter values for each material (SI units)
@@ -970,14 +967,6 @@ INLINE static float Til_phase_state_from_internal_energy(
     default:
       return eos_phase_state_fluid;
   }
-}
-
-// material_shear_mod
-INLINE static float Til_shear_mod(const struct Til_params *mat) {
-
-  error("This material function is not yet implemented!");
-
-  return 0.f;
 }
 
 #endif /* SWIFT_TILLOTSON_EQUATION_OF_STATE_H */

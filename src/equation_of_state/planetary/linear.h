@@ -40,13 +40,6 @@
 struct linear_params {
   enum eos_planetary_material_id mat_id;
   float rho_0, c_s;
-
-  // Extra parameters, e.g. for material strength
-  enum eos_phase_state phase_state;
-
-#ifdef MATERIAL_STRENGTH
-  float shear_mod;
-#endif /* MATERIAL_STRENGTH */
 };
 
 /*
@@ -76,33 +69,6 @@ INLINE static void set_linear_params(struct linear_params *mat,
   if (c != 2) error("Failed to read the linear EoS file %s", param_file);
 }
 
-/*
-    Read the extra parameters from a file.
-
-    File contents
-    -------------
-    # header (2 lines)
-    phase_state (enum eos_phase_state: fluid=0, solid=1, variable=2)  shear_mod (Pa)
-*/
-INLINE static void set_linear_params_extra(struct linear_params *mat, char *param_file) {
-#ifdef MATERIAL_STRENGTH
-  // Load table contents from file
-  FILE *f = fopen(param_file, "r");
-  if (f == NULL)
-    error("Failed to open the linear EoS file '%s'", param_file);
-
-  // Skip header lines
-  skip_lines(f, 2);
-
-  // Read parameters
-  int c;
-  c = fscanf(f, "%d %f", &mat->phase_state, &mat->shear_mod);
-  if (c != 2) error("Failed to read the linear EoS file %s", param_file);
-#else
-  mat->phase_state = eos_phase_state_fluid;
-#endif /* MATERIAL_STRENGTH */
-}
-
 // Convert to internal units
 INLINE static void convert_units_linear(struct linear_params *mat,
                                         const struct unit_system *us) {
@@ -113,14 +79,14 @@ INLINE static void convert_units_linear(struct linear_params *mat,
   // SI to cgs
   mat->rho_0 *= units_cgs_conversion_factor(&si, UNIT_CONV_DENSITY);
   mat->c_s *= units_cgs_conversion_factor(&si, UNIT_CONV_SPEED);
-#ifdef MATERIAL_STRENGTH    
+#ifdef MATERIAL_STRENGTH
   mat->shear_mod *= units_cgs_conversion_factor(&si, UNIT_CONV_PRESSURE);
 #endif /* MATERIAL_STRENGTH */
 
   // cgs to internal
   mat->rho_0 /= units_cgs_conversion_factor(us, UNIT_CONV_DENSITY);
   mat->c_s /= units_cgs_conversion_factor(us, UNIT_CONV_SPEED);
-#ifdef MATERIAL_STRENGTH    
+#ifdef MATERIAL_STRENGTH
   mat->shear_mod /= units_cgs_conversion_factor(us, UNIT_CONV_PRESSURE);
 #endif /* MATERIAL_STRENGTH */
 }
@@ -199,7 +165,7 @@ INLINE static float linear_soundspeed_from_entropy(float density, float entropy,
 INLINE static float linear_entropy_from_internal_energy(
     float density, float u, const struct linear_params *mat) {
 
-#ifdef SWIFT_DEBUG_CHECKS 
+#ifdef SWIFT_DEBUG_CHECKS
   warning("This EOS function is not yet implemented!");
 #endif
   return 0.f;
@@ -306,15 +272,6 @@ INLINE static float linear_phase_state_from_internal_energy(
     default:
       return eos_phase_state_fluid;
   }
-}
-
-// material_shear_mod
-INLINE static float linear_shear_mod(const struct linear_params *mat) {
-#ifdef MATERIAL_STRENGTH
-  return mat->shear_mod;
-#else
-  return 0.f;
-#endif /* MATERIAL_STRENGTH */
 }
 
 #endif /* SWIFT_LINEAR_EQUATION_OF_STATE_H */
