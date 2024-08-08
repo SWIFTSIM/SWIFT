@@ -307,7 +307,7 @@ EoS:
   planetary_use_Til_granite:    1           # Tillotson granite, material ID 101
   planetary_use_Til_water:      0           # Tillotson water, material ID 102
   planetary_use_Til_basalt:     0           # Tillotson basalt, material ID 103
-  planetary_use_Til_custom_0:   0           # Tillotson generic user-provided parameters, material IDs 19[0-9]
+  planetary_use_Til_custom_0:   0           # Tillotson generic user-provided parameters, material IDs 100[0-9]
   planetary_use_Til_custom_1:   0
   planetary_use_Til_custom_2:   0
   planetary_use_Til_custom_3:   0
