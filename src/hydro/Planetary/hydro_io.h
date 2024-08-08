@@ -208,9 +208,9 @@ INLINE static void hydro_write_particles(const struct part* parts,
       "InternalEnergies", FLOAT, 1, UNIT_CONV_ENERGY_PER_UNIT_MASS,
       -3.f * hydro_gamma_minus_one, parts, u,
       "Thermal energies per unit mass of the particles");
-  list[5] =
-      io_make_output_field("ParticleIDs", ULONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f,
-                           parts, id, "Unique IDs of the particles");
+  list[5] = io_make_physical_output_field(
+      "ParticleIDs", ULONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f, parts, id,
+      /*can convert to comoving=*/0, "Unique IDs of the particles");
   list[6] = io_make_output_field("Densities", FLOAT, 1, UNIT_CONV_DENSITY, -3.f,
                                  parts, rho, "Densities of the particles");
   list[7] = io_make_output_field_convert_part(
