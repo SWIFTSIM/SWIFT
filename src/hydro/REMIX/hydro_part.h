@@ -203,7 +203,8 @@ struct part {
       /*! Symmetrised kernel geometric moment m2. */
       struct sym_matrix m2_bar;
 
-      /*! Gradient of symmetrised kernel geometric moment m2 (x, y, z components). */
+      /*! Gradient of symmetrised kernel geometric moment m2 (x, y, z
+       * components). */
       struct sym_matrix grad_m2_bar[3];
 
       /*! Contributing term for grad-h component of grad_m2_bar. */

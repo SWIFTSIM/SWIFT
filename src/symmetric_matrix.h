@@ -152,7 +152,7 @@ __attribute__((always_inline)) INLINE static void sym_matrix_invert(
     sym_matrix_print(M);
     error("Error inverting matrix");
   }
-    
+
   M_inv->xx = M_inv_matrix[0][0];
   M_inv->yy = M_inv_matrix[1][1];
   M_inv->zz = M_inv_matrix[2][2];
