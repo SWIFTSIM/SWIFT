@@ -149,8 +149,9 @@ static void memuse_log_reallocate(size_t ind) {
         error("Failed to re-allocate memuse log.");
 
       /* Wait for all writes to the old buffer to complete. */
-      while (memuse_log_done < memuse_log_size)
-        ;
+      while (memuse_log_done < memuse_log_size) {
+        /* Nothing to do here */
+      }
 
       /* Copy to new buffer. */
       memcpy(new_log, memuse_log,
@@ -189,8 +190,9 @@ void memuse_log_allocation(const char *label, void *ptr, int allocated,
   if (ind == memuse_log_size) memuse_log_reallocate(ind);
 
   /* Other threads wait for space. */
-  while (ind > memuse_log_size)
-    ;
+  while (ind > memuse_log_size) {
+    /* Nothing to do here. */
+  }
 
   /* Guard against case when we have already overran the available new
    * space. */

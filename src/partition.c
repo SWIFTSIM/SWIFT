@@ -1417,11 +1417,9 @@ void partition_gather_weights(void *map_data, int num_elements,
 
     /* Get the top-level cells involved. */
     struct cell *ci, *cj;
-    for (ci = t->ci; ci->parent != NULL; ci = ci->parent)
-      ;
+    for (ci = t->ci; ci->parent != NULL; ci = ci->parent);
     if (t->cj != NULL)
-      for (cj = t->cj; cj->parent != NULL; cj = cj->parent)
-        ;
+      for (cj = t->cj; cj->parent != NULL; cj = cj->parent);
     else
       cj = NULL;
 
@@ -2364,11 +2362,9 @@ static void check_weights(struct task *tasks, int nr_tasks,
 
     /* Get the top-level cells involved. */
     struct cell *ci, *cj;
-    for (ci = t->ci; ci->parent != NULL; ci = ci->parent)
-      ;
+    for (ci = t->ci; ci->parent != NULL; ci = ci->parent);
     if (t->cj != NULL)
-      for (cj = t->cj; cj->parent != NULL; cj = cj->parent)
-        ;
+      for (cj = t->cj; cj->parent != NULL; cj = cj->parent);
     else
       cj = NULL;
 
