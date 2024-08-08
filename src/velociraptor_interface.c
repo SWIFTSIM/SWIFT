@@ -504,6 +504,9 @@ void write_orphan_particle_array(hid_t h_file, const char *name,
   io_write_attribute_f(dset_id, "a-scale exponent",
                        props.scale_factor_exponent);
   io_write_attribute_s(dset_id, "Expression for physical CGS units", buffer);
+  io_write_attribute_b(h_data, "Value stored as physical", props.is_physical);
+  io_write_attribute_b(h_data, "Property can be converted to comoving",
+                       props.is_convertible_to_comoving);
 
   /* Write data, if there is any */
   if (nr_flagged_all > 0) {
