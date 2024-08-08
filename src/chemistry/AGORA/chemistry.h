@@ -294,7 +294,15 @@ __attribute__((always_inline)) INLINE static void chemistry_first_init_spart(
     const struct chemistry_global_data* data, struct spart* restrict sp) {
 
   for (int i = 0; i < AGORA_CHEMISTRY_ELEMENT_COUNT; i++) {
-    sp->chemistry_data.metal_mass_fraction[i] = data->initial_metallicities[i];
+    /* Bug fix (26.07.2024): Check that the initial me metallicities are non
+       negative. */
+    if (data->initial_metallicities[i] >= 0) {
+      /* Use the value from the parameter file */
+      sp->chemistry_data.metal_mass_fraction[i] =
+          data->initial_metallicities[i];
+    }
+    /* else : Use the value from the IC. We are reading the metal mass
+       fraction. So do not overwrite the metallicities */
   }
 }
 
