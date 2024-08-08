@@ -126,10 +126,8 @@ INLINE static void rt_convert_conserved_photon_fluxes(
 INLINE static int rt_write_particles(const struct part* parts,
                                      struct io_props* list) {
 
-  /* Note that in the output, we write radiation energy and flux
-   * then we convert these quantities from radiation energy per mass and flux
-   * per mass
-   * */
+  /* Note that in the output, we write radiation energy and flux then we convert
+   * these quantities from radiation energy per mass and flux per mass */
   int num_elements = 4;
 
   list[0] = io_make_output_field_convert_part(
@@ -233,6 +231,8 @@ INLINE static void rt_write_flavour(hid_t h_grp, hid_t h_grp_columns,
   io_write_attribute_f(dset, "h-scale exponent", 0.f);
   io_write_attribute_f(dset, "a-scale exponent", 0.f);
   io_write_attribute_s(dset, "Expression for physical CGS units", buffer);
+  io_write_attribute_b(dset, "Value stored as physical", 1);
+  io_write_attribute_b(dset, "Property can be converted to comoving", 0);
 
   /* Write the actual number this conversion factor corresponds to */
   const double factor =
@@ -334,6 +334,8 @@ INLINE static void rt_write_flavour(hid_t h_grp, hid_t h_grp_columns,
   io_write_attribute_f(dset_cred, "a-scale exponent", 0.f);
   io_write_attribute_s(dset_cred, "Expression for physical CGS units",
                        buffer_cred);
+  io_write_attribute_b(dset_cred, "Value stored as physical", 1);
+  io_write_attribute_b(dset_cred, "Property can be converted to comoving", 0);
 
   /* Write the actual number this conversion factor corresponds to */
   /* TODO Mladen: check cosmology. reduced_speed_of_light is physical only for
