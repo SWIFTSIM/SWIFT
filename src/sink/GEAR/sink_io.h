@@ -122,9 +122,9 @@ INLINE static void sink_write_particles(const struct sink* sinks,
   list[2] = io_make_output_field("Masses", FLOAT, 1, UNIT_CONV_MASS, 0.f, sinks,
                                  mass, "Masses of the particles");
 
-  list[3] =
-      io_make_output_field("ParticleIDs", ULONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f,
-                           sinks, id, "Unique ID of the particles");
+  list[3] = io_make_physical_output_field(
+      "ParticleIDs", ULONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f, sinks, id,
+      /*can convert to comoving=*/0, "Unique ID of the particles");
 
   /* chemistry : this should be in chemistry_io.h */
   list[4] = io_make_output_field(
@@ -132,13 +132,15 @@ INLINE static void sink_write_particles(const struct sink* sinks,
       UNIT_CONV_NO_UNITS, 0.f, sinks, chemistry_data.metal_mass_fraction,
       "Mass fraction of each element");
 
-  list[5] = io_make_output_field(
+  list[5] = io_make_physical_output_field(
       "NumberOfSinkSwallows", INT, 1, UNIT_CONV_NO_UNITS, 0.f, sinks,
-      number_of_sink_swallows, "Total number of sink merger events");
+      number_of_sink_swallows, /*can convert to comoving=*/0,
+      "Total number of sink merger events");
 
-  list[6] = io_make_output_field(
+  list[6] = io_make_physical_output_field(
       "NumberOfGasSwallows", INT, 1, UNIT_CONV_NO_UNITS, 0.f, sinks,
-      number_of_gas_swallows, "Total number of gas merger events");
+      number_of_gas_swallows, /*can convert to comoving=*/0,
+      "Total number of gas merger events");
 
 #ifdef DEBUG_INTERACTIONS_SINKS
 
