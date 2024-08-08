@@ -315,7 +315,7 @@ void DOPAIR_SUBSET_NOSORT(struct runner *r, struct cell *restrict ci,
         IACT_NONSYM(r2, dx, hi, pj->h, pi, pj);
       }
     } /* loop over the parts in cj. */
-  }   /* loop over the parts in ci. */
+  } /* loop over the parts in ci. */
 
   TIMER_TOC(timer_dopair_subset);
 }

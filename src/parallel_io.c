@@ -69,7 +69,7 @@
 #define HDF5_PARALLEL_IO_MAX_BYTES 2147000000LL
 
 /* Are we timing the i/o? */
-//#define IO_SPEED_MEASUREMENT
+// #define IO_SPEED_MEASUREMENT
 
 /* Max number of entries that can be written for a given particle type */
 static const int io_max_size_output_list = 100;

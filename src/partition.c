@@ -1417,13 +1417,17 @@ void partition_gather_weights(void *map_data, int num_elements,
 
     /* Get the top-level cells involved. */
     struct cell *ci, *cj;
-    for (ci = t->ci; ci->parent != NULL; ci = ci->parent)
-      ;
-    if (t->cj != NULL)
-      for (cj = t->cj; cj->parent != NULL; cj = cj->parent)
-        ;
-    else
+    for (ci = t->ci; ci->parent != NULL; ci = ci->parent) {
+      /* Nothing to do here. */
+    }
+
+    if (t->cj != NULL) {
+      for (cj = t->cj; cj->parent != NULL; cj = cj->parent) {
+        /* Nothing to do here. */
+      }
+    } else {
       cj = NULL;
+    }
 
     /* Get the cell IDs. */
     int cid = ci - cells;
@@ -2364,13 +2368,16 @@ static void check_weights(struct task *tasks, int nr_tasks,
 
     /* Get the top-level cells involved. */
     struct cell *ci, *cj;
-    for (ci = t->ci; ci->parent != NULL; ci = ci->parent)
-      ;
-    if (t->cj != NULL)
-      for (cj = t->cj; cj->parent != NULL; cj = cj->parent)
-        ;
-    else
+    for (ci = t->ci; ci->parent != NULL; ci = ci->parent) {
+      /* Nothing to do here */
+    }
+    if (t->cj != NULL) {
+      for (cj = t->cj; cj->parent != NULL; cj = cj->parent) {
+        /* Nothing to do here */
+      }
+    } else {
       cj = NULL;
+    }
 
     /* Get the cell IDs. */
     int cid = ci - cells;
