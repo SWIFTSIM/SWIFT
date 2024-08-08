@@ -137,23 +137,25 @@ def configure_simulation(scheme, forcing, spline, eos, path_to_lib=False):
         + " )"
     )
     # show sandwich
-    print('### Configuring SWIFT. Running command: ',command_sandwich)
+    print('###')
+    print('Configuring SWIFT. Running command: ',command_sandwich)
 
     # execute
     try:
         result = subprocess.run(command_sandwich, shell=True,capture_output=True, check=True,text=True)
         print(result.stdout)
-        print("SWIFT configuration complete ###\n")
+        print("SWIFT configuration complete")
     except subprocess.CalledProcessError as e:
         print(f"Command '{e.cmd}' failed with return code {e.returncode}")
         print(f"Command output: {e.output}")
         print(f"Command stderr: {e.stderr}")
-        print("SWIFT configuration error  ###\n")
+        print("SWIFT configuration error")
         raise
     except Exception as e:
         print(f"An unexpected error occurred: {e}")
-        print("SWIFT configuration problem  ###\n")
+        print("SWIFT configuration problem")
         raise
+    print('#######/n')
 
 # Funciton for making ICfile
 def make_IC(phys_parameters, IAfile):
@@ -181,22 +183,24 @@ def make_IC(phys_parameters, IAfile):
     else:
         command = " python3 " + "make_IC.py"
     # show command
-    print("### Creating ICs for run. Running command: " + command)
+    print('###')
+    print("Creating ICs for run. Running command: " + command)
     # execute
     try:
         result = subprocess.run(command, shell=True,capture_output=True, check=True,text=True)
         print(result.stdout)
-        print("ICs creation complete ###\n")
+        print("ICs creation complete")
     except subprocess.CalledProcessError as e:
         print(f"Command '{e.cmd}' failed with return code {e.returncode}")
         print(f"Command output: {e.output}")
         print(f"Command stderr: {e.stderr}")
-        print("IC creation error  ###\n")
+        print("IC creation error")
         raise
     except Exception as e:
         print(f"An unexpected error occurred: {e}")
-        print("IC creation problem ###\n")
+        print("IC creation problem")
         raise
+    print('#######/n')
 
 # Function for running simulation
 def run_simulation(phys_parameters, threads):
@@ -335,7 +339,8 @@ def run_simulation(phys_parameters, threads):
     )
 
     # show command
-    print("### Running SWIFT. Running command: " + command)
+    print('###')
+    print("Running SWIFT. Running command: " + command)
 
     move_res = False
 
@@ -343,18 +348,19 @@ def run_simulation(phys_parameters, threads):
     try:
         result = subprocess.run(command, shell=True,capture_output=True, check=True,text=True)
         print(result.stdout)
-        print("SWIFT run complete ###\n")
+        print("SWIFT run complete")
         move_res = True
     except subprocess.CalledProcessError as e:
         print(f"Command '{e.cmd}' failed with return code {e.returncode}")
         print(f"Command output: {e.output}")
         print(f"Command stderr: {e.stderr}")
-        print("SWIFT run error  ###\n")
+        print("SWIFT run error")
         raise
     except Exception as e:
         print(f"An unexpected error occurred: {e}")
-        print("SWIFT run problem ###\n")
+        print("SWIFT run problem")
         raise
+    print('#######/n')
     return move_res
 
 # a function that creates the directory for all run data storage
