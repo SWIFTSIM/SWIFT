@@ -316,6 +316,9 @@ static void zoom_engine_make_hierarchical_void_tasks_recursive(struct engine *e,
   /* At the top level we have a few different tasks to make. */
   if (c->subtype == cell_subtype_void && c->top == c) {
 
+    c->timestep_collect = scheduler_addtask(s, task_type_collect,
+                                            task_subtype_none, 0, 0, c, NULL);
+
     if (is_self_gravity) {
 
       /* Initialisation of the multipoles */
@@ -364,6 +367,12 @@ static void zoom_engine_make_hierarchical_void_tasks_recursive(struct engine *e,
     /* Unlock this zoom cell's grav down after the void cell grav down. */
     scheduler_addunlock(s, c->top->void_parent->top->grav.down,
                         c->grav.down_in);
+
+    /* Unlock the void cells timestep collect after the zoom timestep collect.
+     * This ensures we can go down to the super level to update the void cells
+     * timestep infromation. */
+    scheduler_addunlock(s, c->top->timestep_collect,
+                        c->top->void_parent->top->timestep_collect);
   }
 
   /* Recurse but don't go deeper then the zoom super level. */
