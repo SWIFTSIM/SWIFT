@@ -232,6 +232,9 @@ enum eos_planetary_material_id {
   eos_mat_id_ANEOS_Fe85Si15 = eos_type_ANEOS * eos_type_factor + eos_unit_id_ANEOS_Fe85Si15,
 };
 
+/* Base material ID for custom Tillotson EoS */
+#define eos_Til_custom_base_id (eos_type_Til * eos_type_factor + 90)
+
 /**
  * @brief Phase state of the material.
  */
@@ -245,9 +248,6 @@ enum eos_phase_state {
   /*! Variable */
   eos_phase_state_variable = 2,
 };
-
-/* Base material ID for custom Tillotson EoS */
-#define eos_Til_custom_base_id (eos_type_Til * eos_type_factor + 90)
 
 /* Individual EOS function headers. */
 #include "hm80.h"
@@ -560,6 +560,76 @@ gas_pressure_from_internal_energy(float density, float u,
   const enum eos_planetary_type_id type =
       (enum eos_planetary_type_id)(mat_id / eos_type_factor);
   const int unit_id = mat_id % eos_type_factor;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  // Check the corresponding EoS has been initialised for this material ID
+
+  /* Select the material base type */
+  switch (type) {
+
+    /* Ideal gas EoS */
+    case eos_type_idg:
+      if (eos.idg[unit_id].mat_id != mat_id)
+        error("EoS not enabled for ideal gas mat_id = %d, "
+              "please set the corresponding EoS:planetary_use_: 1", mat_id);
+      break;
+
+    /* Tillotson EoS */
+    case eos_type_Til:
+      // Custom user-provided Tillotson
+      if (mat_id >= eos_Til_custom_base_id) {
+        const int i_custom_ = mat_id - eos_Til_custom_base_id;
+        if (eos.Til_custom[i_custom_].mat_id != mat_id)
+          error("EoS not enabled for custom Tillotson mat_id = %d, "
+                "please set the corresponding EoS:planetary_use_: 1", mat_id);
+        break;
+      } else {
+        if (eos.Til[unit_id].mat_id != mat_id)
+          error("EoS not enabled for Tillotson mat_id = %d, "
+                "please set the corresponding EoS:planetary_use_: 1", mat_id);
+        break;
+      }
+
+    /* Hubbard & MacFarlane (1980) EoS */
+    case eos_type_HM80:
+      if (eos.HM80[unit_id].mat_id != mat_id)
+        error("EoS not enabled for HM80 mat_id = %d, "
+              "please set the corresponding EoS:planetary_use_: 1", mat_id);
+      break;
+
+    /* SESAME EoS */
+    case eos_type_SESAME:
+      if (eos.SESAME[unit_id].mat_id != mat_id)
+        error("EoS not enabled for SESAME mat_id = %d, "
+              "please set the corresponding EoS:planetary_use_: 1", mat_id);
+      break;
+
+    /* ANEOS -- using SESAME-style tables */
+    case eos_type_ANEOS:
+      if (eos.ANEOS[unit_id].mat_id != mat_id)
+        error("EoS not enabled for ANEOS mat_id = %d, "
+              "please set the corresponding EoS:planetary_use_: 1", mat_id);
+      break;
+
+    /*! Linear EoS -- user-provided parameters */
+    case eos_type_linear:
+      if (eos.linear[unit_id].mat_id != mat_id)
+        error("EoS not enabled for linear mat_id = %d, "
+              "please set the corresponding EoS:planetary_use_: 1", mat_id);
+      break;
+
+    /*! Generic user-provided custom tables */
+    case eos_type_custom:
+      if (eos.custom[unit_id].mat_id != mat_id)
+        error("EoS not enabled for custom mat_id = %d, "
+              "please set the corresponding EoS:planetary_use_: 1", mat_id);
+      break;
+
+    default:
+      error("Unknown material type! mat_id = %d", mat_id);
+      break;
+  }
+#endif
 
   /* Select the material base type */
   switch (type) {
