@@ -155,7 +155,7 @@ def configure_simulation(scheme, forcing, spline, eos, path_to_lib=False):
         print(f"An unexpected error occurred: {e}")
         print("SWIFT configuration problem")
         raise
-    print('#######/n')
+    print('#######\n')
 
 # Funciton for making ICfile
 def make_IC(phys_parameters, IAfile):
@@ -200,7 +200,7 @@ def make_IC(phys_parameters, IAfile):
         print(f"An unexpected error occurred: {e}")
         print("IC creation problem")
         raise
-    print('#######/n')
+    print('#######\n')
 
 # Function for running simulation
 def run_simulation(phys_parameters, threads):
@@ -360,7 +360,7 @@ def run_simulation(phys_parameters, threads):
         print(f"An unexpected error occurred: {e}")
         print("SWIFT run problem")
         raise
-    print('#######/n')
+    print('#######\n')
     return move_res
 
 # a function that creates the directory for all run data storage
