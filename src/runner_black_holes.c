@@ -211,7 +211,7 @@ void runner_do_gas_swallow(struct runner *r, struct cell *c, int timer) {
               break;
             }
           } /* Loop over foreign BHs */
-        }   /* Is the cell local? */
+        } /* Is the cell local? */
 #endif
 
         /* If we have a local particle, we must have found the BH in one
@@ -221,8 +221,8 @@ void runner_do_gas_swallow(struct runner *r, struct cell *c, int timer) {
                 p->id, swallow_id);
         }
       } /* Part was flagged for swallowing */
-    }   /* Loop over the parts */
-  }     /* Cell is not split */
+    } /* Loop over the parts */
+  } /* Cell is not split */
 }
 
 /**
@@ -449,7 +449,7 @@ void runner_do_bh_swallow(struct runner *r, struct cell *c, int timer) {
               break;
             }
           } /* Loop over foreign BHs */
-        }   /* Is the cell local? */
+        } /* Is the cell local? */
 #endif
 
         /* If we have a local particle, we must have found the BH in one
@@ -460,8 +460,8 @@ void runner_do_bh_swallow(struct runner *r, struct cell *c, int timer) {
         }
 
       } /* Part was flagged for swallowing */
-    }   /* Loop over the parts */
-  }     /* Cell is not split */
+    } /* Loop over the parts */
+  } /* Cell is not split */
 }
 
 /**

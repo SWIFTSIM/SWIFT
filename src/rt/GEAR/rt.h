@@ -256,7 +256,7 @@ __attribute__((always_inline)) INLINE static void rt_split_part(struct part* p,
 __attribute__((always_inline)) INLINE static void rt_part_has_no_neighbours(
     struct part* p) {
   message("WARNING: found particle without neighbours");
-};
+}
 
 /**
  * @brief Exception handle a star part not having any neighbours in ghost task
@@ -272,7 +272,7 @@ __attribute__((always_inline)) INLINE static void rt_spart_has_no_neighbours(
     sp->rt_data.emission_this_step[g] = 0.f;
   }
   message("WARNING: found star without neighbours");
-};
+}
 
 /**
  * @brief Do checks/conversions on particles on startup.
