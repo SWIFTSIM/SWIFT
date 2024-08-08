@@ -108,6 +108,26 @@ INLINE static int chemistry_write_sparticles(const struct spart* sparts,
 }
 
 /**
+ * @brief Specifies which sink fields to write to a dataset
+ *
+ * @param sinks The #sink array.
+ * @param list The list of i/o properties to write.
+ *
+ * @return Returns the number of fields to write.
+ */
+INLINE static int chemistry_write_sinkparticles(const struct sink* sinks,
+                                                struct io_props* list) {
+
+  /* List what we want to write */
+  list[0] = io_make_output_field(
+      "MetalMassFractions", DOUBLE, GEAR_CHEMISTRY_ELEMENT_COUNT,
+      UNIT_CONV_NO_UNITS, 0.f, sinks, chemistry_data.metal_mass_fraction,
+      "Mass fraction of each element");
+
+  return 1;
+}
+
+/**
  * @brief Specifies which black hole particle fields to write to a dataset
  *
  * @param bparts The black hole particle array.
