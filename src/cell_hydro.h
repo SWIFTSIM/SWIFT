@@ -61,11 +61,21 @@ struct cell_hydro {
     /*! Linked list of the tasks computing this cell's hydro density. */
     struct link *density;
 
-    /* Linked list of the tasks computing this cell's hydro gradients. */
+    /*! Linked list of the tasks computing this cell's hydro gradients. */
     struct link *gradient;
 
     /*! Linked list of the tasks computing this cell's hydro forces. */
     struct link *force;
+
+    /*! Linked list of the tasks estimating this cell's hydro gradients. */
+    struct link *slope_estimate;
+
+    /*! Linked list of the tasks limiting this cell's hydro gradient estimates.
+     */
+    struct link *slope_limiter;
+
+    /*! Linked list of the tasks computing this cell's hydro flux exchange. */
+    struct link *flux;
 
     /*! Linked list of the tasks computing this cell's limiter. */
     struct link *limiter;
@@ -85,8 +95,20 @@ struct cell_hydro {
     /*! The extra ghost task for complex hydro schemes */
     struct task *extra_ghost;
 
+    /*! The ghost task for schemes with a grid calculation */
+    struct task *grid_ghost;
+
     /*! The task to end the force calculation */
     struct task *end_force;
+
+    /*! The task ending the gradient calculation. */
+    struct task *slope_estimate_ghost;
+
+    /*! The task ending the gradient limiting procedure. */
+    struct task *slope_limiter_ghost;
+
+    /*! The ghost task related to flux exchange */
+    struct task *flux_ghost;
 
     /*! Dependency implicit task for cooling (in->cooling->out) */
     struct task *cooling_in;

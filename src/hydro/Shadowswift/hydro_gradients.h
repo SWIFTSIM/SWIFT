@@ -1,31 +1,179 @@
-/*******************************************************************************
- * This file is part of SWIFT.
- * Copyright (c) 2016 Bert Vandenbroucke (bert.vandenbroucke@gmail.com)
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published
- * by the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- *
- ******************************************************************************/
+//
+// Created by yuyttenh on 29/03/22.
+//
 
-#ifndef SWIFT_HYDRO_GRADIENTS_H
-#define SWIFT_HYDRO_GRADIENTS_H
+#ifndef SWIFTSIM_SHADOWSWIFT_HYDRO_GRADIENTS_H
+#define SWIFTSIM_SHADOWSWIFT_HYDRO_GRADIENTS_H
+
+#if defined(SHADOWSWIFT_GRADIENTS) | defined(SHADOWSWIFT_MESHLESS_GRADIENTS)
 
 #include "hydro_slope_limiters.h"
 
-#if defined(SHADOWFAX_GRADIENTS)
+/**
+ * @brief Initialize gradient variables.
+ *
+ * @param p Particle.
+ */
+__attribute__((always_inline)) INLINE static void hydro_gradients_init(
+    struct part* p) {
+  p->gradients.rho[0] = 0.0f;
+  p->gradients.rho[1] = 0.0f;
+  p->gradients.rho[2] = 0.0f;
 
-#define HYDRO_GRADIENT_IMPLEMENTATION "Shadowfax gradients (Springel 2010)"
-#include "hydro_gradients_shadowfax.h"
+  p->gradients.v[0][0] = 0.0f;
+  p->gradients.v[0][1] = 0.0f;
+  p->gradients.v[0][2] = 0.0f;
+
+  p->gradients.v[1][0] = 0.0f;
+  p->gradients.v[1][1] = 0.0f;
+  p->gradients.v[1][2] = 0.0f;
+
+  p->gradients.v[2][0] = 0.0f;
+  p->gradients.v[2][1] = 0.0f;
+  p->gradients.v[2][2] = 0.0f;
+
+  p->gradients.P[0] = 0.0f;
+  p->gradients.P[1] = 0.0f;
+  p->gradients.P[2] = 0.0f;
+
+  p->gradients.A[0] = 0.0f;
+  p->gradients.A[1] = 0.0f;
+  p->gradients.A[2] = 0.0f;
+
+#if defined(SHADOWSWIFT_GRADIENTS_WLS) | defined(SHADOWSWIFT_MESHLESS_GRADIENTS)
+  for (int i = 0; i < 3; i++) {
+    for (int j = 0; j < 3; j++) {
+      p->gradients.matrix_wls[i][j] = 0.f;
+    }
+  }
+#endif
+
+#ifdef SHADOWSWIFT_SLOPE_LIMITER_MESHLESS
+  hydro_slope_limiter_prepare(p);
+#endif
+}
+
+/**
+ * @brief Use the gradients for time extrapolation (makes scheme second order in
+ * time).
+ */
+__attribute__((always_inline)) INLINE static void
+hydro_gradients_extrapolate_in_time(const struct part* p, const float* W,
+                                    float dt, float* dW) {
+#ifdef SHADOWSWIFT_EXTRAPOLATE_TIME
+  float drho[3], dvx[3], dvy[3], dvz[3], dP[3], dA[3];
+  hydro_part_get_gradients(p, drho, dvx, dvy, dvz, dP, dA);
+  float v_rel[3];
+  hydro_part_get_relative_fluid_velocity(p, v_rel);
+  const float div_v = dvx[0] + dvy[1] + dvz[2];
+
+  dW[0] -= dt * (W[0] * div_v + v_rel[0] * drho[0] + v_rel[1] * drho[1] +
+                 v_rel[2] * drho[2]);
+
+  if (W[0] != 0.0f) {
+    const float rho_inv = 1.f / W[0];
+    dW[1] -= dt * (v_rel[0] * div_v + rho_inv * dP[0]);
+    dW[2] -= dt * (v_rel[1] * div_v + rho_inv * dP[1]);
+    dW[3] -= dt * (v_rel[2] * div_v + rho_inv * dP[2]);
+  } else {
+    dW[1] = 0.0f;
+    dW[2] = 0.0f;
+    dW[3] = 0.0f;
+  }
+  dW[4] -= dt * (hydro_gamma * W[4] * div_v + v_rel[0] * dP[0] +
+                 v_rel[1] * dP[1] + v_rel[2] * dP[2]);
+  /* See eq. 51 in springel 2010 */
+  dW[5] -= dt * (v_rel[0] * dA[0] + v_rel[1] * dA[1] + v_rel[2] * dA[2]);
+#else
+  dW[0] = 0.f;
+  dW[1] = 0.f;
+  dW[2] = 0.f;
+  dW[3] = 0.f;
+  dW[4] = 0.f;
+  dW[5] = 0.f;
+#endif
+}
+
+/**
+ * @brief Extrapolate the given gradient over the given distance.
+ *
+ * @param gradient Gradient of a quantity.
+ * @param dx Distance vector.
+ * @return Change in the quantity after a displacement along the given distance
+ * vector.
+ */
+__attribute__((always_inline)) INLINE static float
+hydro_gradients_extrapolate_single_quantity(const float* gradient,
+                                            const float* dx) {
+
+  return gradient[0] * dx[0] + gradient[1] * dx[1] + gradient[2] * dx[2];
+}
+
+/**
+ * @brief Extrapolate all the quantities over the given distance.
+ *
+ */
+__attribute__((always_inline)) INLINE static void hydro_gradients_extrapolate(
+    const struct part* p, const float* dx, float* dW) {
+
+  float drho[3], dvx[3], dvy[3], dvz[3], dP[3], dA[3];
+  hydro_part_get_gradients(p, drho, dvx, dvy, dvz, dP, dA);
+
+  dW[0] = hydro_gradients_extrapolate_single_quantity(drho, dx);
+  dW[1] = hydro_gradients_extrapolate_single_quantity(dvx, dx);
+  dW[2] = hydro_gradients_extrapolate_single_quantity(dvy, dx);
+  dW[3] = hydro_gradients_extrapolate_single_quantity(dvz, dx);
+  dW[4] = hydro_gradients_extrapolate_single_quantity(dP, dx);
+  dW[5] = hydro_gradients_extrapolate_single_quantity(dA, dx);
+}
+
+__attribute__((always_inline)) INLINE static void
+hydro_gradients_apply_extrapolation(float* W, const float* restrict dW) {
+  if (-dW[0] > W[0]) {
+#ifdef SHADOWSWIFT_WARNINGS
+    warning(
+        "Gradient extrapolation would lead to unphysical Density! "
+        "Falling back to first order for this particle!");
+#endif
+  } else if (-dW[4] > W[4]) {
+#ifdef SHADOWSWIFT_WARNINGS
+    warning(
+        "Gradient extrapolation would lead to unphysical Pressure! "
+        "Falling back to first order for this particle!");
+#endif
+  } else if (-dW[5] > W[5]) {
+#ifdef SHADOWSWIFT_WARNINGS
+    warning(
+        "Gradient extrapolation would lead to unphysical Entropy! "
+        "Falling back to first order for this particle!");
+#endif
+  } else {
+    W[0] += dW[0];
+    W[1] += dW[1];
+    W[2] += dW[2];
+    W[3] += dW[3];
+    W[4] += dW[4];
+    W[5] += dW[5];
+  }
+}
+
+#ifdef SHADOWSWIFT_MESHLESS_GRADIENTS
+/* Meshless (Gizmo) gradient estimates */
+#include "hydro_gradients_meshless.h"
+
+#else
+#ifndef SHADOWSWIFT_GRADIENTS_WLS
+
+/* Green-Gauss gradient estimates (default) */
+#include "hydro_gradients_shadowswift.h"
+
+#else
+
+/* Weighted least square gradient estimates */
+#include "hydro_gradients_wls.h"
+
+#endif
+#endif
 
 #else
 
@@ -33,7 +181,7 @@
 #define HYDRO_GRADIENT_IMPLEMENTATION "No gradients (first order scheme)"
 
 /**
- * @brief Initialize gradient variables
+ * @brief Initialize gradient variables (no-op).
  *
  * @param p Particle.
  */
@@ -41,34 +189,36 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_init(
     struct part* p) {}
 
 /**
- * @brief Gradient calculations done during the neighbour loop
+ * @brief Update the gradient estimation for a particle using a given
+ * neighbouring particle.
  *
- * @param r2 Squared distance between the two particles.
- * @param dx Distance vector (pi->x - pj->x).
- * @param hi Smoothing length of particle i.
- * @param hj Smoothing length of particle j.
- * @param pi Particle i.
- * @param pj Particle j.
+ * @param pi Particle we are updating.
+ * @param pj Particle we are using to update pi.
  */
-__attribute__((always_inline)) INLINE static void hydro_gradients_collect(
-    float r2, const float* dx, float hi, float hj, struct part* restrict pi,
-    struct part* restrict pj) {}
+__attribute__((always_inline)) INLINE void hydro_slope_estimate_collect(
+    struct part* restrict pi, const struct part* restrict pj,
+    const double* restrict centroid, const double* restrict dx, double r,
+    float surface_area) {}
 
 /**
- * @brief Gradient calculations done during the neighbour loop: non-symmetric
- * version
- *
- * @param r2 Squared distance between the two particles.
- * @param dx Distance vector (pi->x - pj->x).
- * @param hi Smoothing length of particle i.
- * @param hj Smoothing length of particle j.
- * @param pi Particle i.
- * @param pj Particle j.
+ * @brief Extrapolate all the quantities over the given distance.
  */
-__attribute__((always_inline)) INLINE static void
-hydro_gradients_nonsym_collect(float r2, const float* dx, float hi, float hj,
-                               struct part* restrict pi,
-                               const struct part* restrict pj) {}
+__attribute__((always_inline)) INLINE static void hydro_gradients_extrapolate(
+    const struct part* p, const float* dx, float* dW) {
+  dW[0] = 0.f;
+  dW[1] = 0.f;
+  dW[2] = 0.f;
+  dW[3] = 0.f;
+  dW[4] = 0.f;
+  dW[5] = 0.f;
+}
+
+/**
+ * @brief Gradients reconstruction. Empty for no gradients.
+ */
+__attribute__((always_inline)) INLINE static void hydro_gradients_predict(
+    struct part* restrict pi, struct part* restrict pj, const float* dx,
+    float r, const float* xij_i, float dt, float* Wi, float* Wj) {}
 
 /**
  * @brief Finalize the gradient variables after all data have been collected
@@ -77,87 +227,6 @@ hydro_gradients_nonsym_collect(float r2, const float* dx, float hi, float hj,
  */
 __attribute__((always_inline)) INLINE static void hydro_gradients_finalize(
     struct part* p) {}
-
 #endif
 
-/**
- * @brief Gradients reconstruction. Is the same for all gradient types (although
- * gradients_none does nothing, since all gradients are zero -- are they?).
- */
-__attribute__((always_inline)) INLINE static void hydro_gradients_predict(
-    struct part* pi, struct part* pj, float hi, float hj, const float* dx,
-    float r, float* xij_i, float* Wi, float* Wj) {
-
-  float dWi[5], dWj[5];
-  float xij_j[3];
-
-  /* xij_j = real_midpoint - pj->x
-           = xij_i + pi->x - pj->x
-           = xij_i + dx */
-  xij_j[0] = xij_i[0] + dx[0];
-  xij_j[1] = xij_i[1] + dx[1];
-  xij_j[2] = xij_i[2] + dx[2];
-
-  dWi[0] = pi->primitives.gradients.rho[0] * xij_i[0] +
-           pi->primitives.gradients.rho[1] * xij_i[1] +
-           pi->primitives.gradients.rho[2] * xij_i[2];
-  dWi[1] = pi->primitives.gradients.v[0][0] * xij_i[0] +
-           pi->primitives.gradients.v[0][1] * xij_i[1] +
-           pi->primitives.gradients.v[0][2] * xij_i[2];
-  dWi[2] = pi->primitives.gradients.v[1][0] * xij_i[0] +
-           pi->primitives.gradients.v[1][1] * xij_i[1] +
-           pi->primitives.gradients.v[1][2] * xij_i[2];
-  dWi[3] = pi->primitives.gradients.v[2][0] * xij_i[0] +
-           pi->primitives.gradients.v[2][1] * xij_i[1] +
-           pi->primitives.gradients.v[2][2] * xij_i[2];
-  dWi[4] = pi->primitives.gradients.P[0] * xij_i[0] +
-           pi->primitives.gradients.P[1] * xij_i[1] +
-           pi->primitives.gradients.P[2] * xij_i[2];
-
-  dWj[0] = pj->primitives.gradients.rho[0] * xij_j[0] +
-           pj->primitives.gradients.rho[1] * xij_j[1] +
-           pj->primitives.gradients.rho[2] * xij_j[2];
-  dWj[1] = pj->primitives.gradients.v[0][0] * xij_j[0] +
-           pj->primitives.gradients.v[0][1] * xij_j[1] +
-           pj->primitives.gradients.v[0][2] * xij_j[2];
-  dWj[2] = pj->primitives.gradients.v[1][0] * xij_j[0] +
-           pj->primitives.gradients.v[1][1] * xij_j[1] +
-           pj->primitives.gradients.v[1][2] * xij_j[2];
-  dWj[3] = pj->primitives.gradients.v[2][0] * xij_j[0] +
-           pj->primitives.gradients.v[2][1] * xij_j[1] +
-           pj->primitives.gradients.v[2][2] * xij_j[2];
-  dWj[4] = pj->primitives.gradients.P[0] * xij_j[0] +
-           pj->primitives.gradients.P[1] * xij_j[1] +
-           pj->primitives.gradients.P[2] * xij_j[2];
-
-  hydro_slope_limit_face(Wi, Wj, dWi, dWj, xij_i, xij_j, r);
-
-  Wi[0] += dWi[0];
-  Wi[1] += dWi[1];
-  Wi[2] += dWi[2];
-  Wi[3] += dWi[3];
-  Wi[4] += dWi[4];
-
-  Wj[0] += dWj[0];
-  Wj[1] += dWj[1];
-  Wj[2] += dWj[2];
-  Wj[3] += dWj[3];
-  Wj[4] += dWj[4];
-
-  /* Sanity check: if density or pressure becomes negative after the
-     interpolation, just reset them */
-  if (Wi[0] < 0.0f) {
-    Wi[0] -= dWi[0];
-  }
-  if (Wi[4] < 0.0f) {
-    Wi[4] -= dWi[4];
-  }
-  if (Wj[0] < 0.0f) {
-    Wj[0] -= dWj[0];
-  }
-  if (Wj[4] < 0.0f) {
-    Wj[4] -= dWj[4];
-  }
-}
-
-#endif  // SWIFT_HYDRO_GRADIENTS_H
+#endif  // SWIFTSIM_SHADOWSWIFT_HYDRO_GRADIENTS_H

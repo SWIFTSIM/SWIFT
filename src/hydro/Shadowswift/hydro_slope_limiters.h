@@ -1,29 +1,13 @@
-/*******************************************************************************
- * This file is part of SWIFT.
- * Copyright (c) 2016 Bert Vandenbroucke (bert.vandenbroucke@gmail.com)
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published
- * by the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- *
- ******************************************************************************/
+//
+// Created by yuyttenh on 29/03/22.
+//
 
-#ifndef SWIFT_HYDRO_SLOPE_LIMITERS_H
-#define SWIFT_HYDRO_SLOPE_LIMITERS_H
+#ifndef SWIFTSIM_SHADOWSWIFT_HYDRO_SLOPE_LIMITERS_H
+#define SWIFTSIM_SHADOWSWIFT_HYDRO_SLOPE_LIMITERS_H
 
-#include "dimension.h"
-#include "kernel_hydro.h"
+#include <float.h>
 
-#ifdef SHADOWFAX_SLOPE_LIMITER_PER_FACE
+#ifdef SHADOWSWIFT_SLOPE_LIMITER_PER_FACE
 
 #define HYDRO_SLOPE_LIMITER_FACE_IMPLEMENTATION \
   "GIZMO piecewise slope limiter (Hopkins 2015)"
@@ -34,7 +18,7 @@
 #define HYDRO_SLOPE_LIMITER_FACE_IMPLEMENTATION "No piecewise slope limiter"
 
 /**
- * @brief Slope limit the slopes at the interface between two particles
+ * @brief Empty for no piece wise slope limiters.
  *
  * @param Wi Hydrodynamic variables of particle i.
  * @param Wj Hydrodynamic variables of particle j.
@@ -47,42 +31,56 @@
  * @param r Distance between particle i and particle j.
  */
 __attribute__((always_inline)) INLINE static void hydro_slope_limit_face(
-    float *Wi, float *Wj, float *dWi, float *dWj, float *xij_i, float *xij_j,
-    float r) {}
+    float *Wi, float *Wj, float *dWi, float *dWj, const float *xij_i,
+    const float *xij_j, float r) {}
 
 #endif
 
-#ifdef SHADOWFAX_SLOPE_LIMITER_CELL_WIDE
+#ifdef SHADOWSWIFT_SLOPE_LIMITER_CELL_WIDE
 
 #define HYDRO_SLOPE_LIMITER_CELL_IMPLEMENTATION \
   "Cell wide slope limiter (Springel 2010)"
+
 #include "hydro_slope_limiters_cell.h"
+
+#elif defined(SHADOWSWIFT_SLOPE_LIMITER_MESHLESS)
+
+#define HYDRO_SLOPE_LIMITER_CELL_IMPLEMENTATION \
+  "Meshless slope limiter (Gizmo 2015)"
+
+#include "hydro_slope_limiters_meshless.h"
 
 #else
 
 #define HYDRO_SLOPE_LIMITER_CELL_IMPLEMENTATION "No cell wide slope limiter"
 
+#ifndef SHADOWSWIFT_MESHLESS_GRADIENTS
 /**
- * @brief Initialize variables for the cell wide slope limiter
- *
- * @param p Particle.
- */
-__attribute__((always_inline)) INLINE static void hydro_slope_limit_cell_init(
-    struct part *p) {}
-
-/**
- * @brief Collect information for the cell wide slope limiter during the
- * neighbour loop
+ * @brief Empty for no cell wide slope limiters.
  *
  * @param pi Particle i.
  * @param pj Particle j.
- * @param r Distance between particle i and particle j.
+ * @param dx vector pointing from pi to the centroid of the face between pi and
+ * pj.
+ */
+__attribute__((always_inline)) INLINE static void
+hydro_slope_limit_cell_collect(struct part *pi, struct part *pj,
+                               const float *dx) {}
+#else
+/**
+ * @brief Empty for no cell wide slope limiters.
+ *
+ * @param pi Particle i.
+ * @param pj Particle j.
+ * @param dx vector pointing from pi to the centroid of the face between pi and
+ * pj.
  */
 __attribute__((always_inline)) INLINE static void
 hydro_slope_limit_cell_collect(struct part *pi, struct part *pj, float r) {}
+#endif
 
 /**
- * @brief Slope limit cell gradients
+ * @brief Empty for no cell wide slope limiters.
  *
  * @param p Particle.
  */
@@ -91,4 +89,44 @@ __attribute__((always_inline)) INLINE static void hydro_slope_limit_cell(
 
 #endif
 
-#endif  // SWIFT_HYDRO_SLOPE_LIMITERS_H
+/**
+ * @brief Initialize variables for the cell wide slope limiter
+ *
+ * @param p Particle.
+ */
+__attribute__((always_inline)) INLINE static void hydro_slope_limiter_prepare(
+    struct part *p) {
+  p->limiter.rho[0] = p->rho;
+  p->limiter.rho[1] = p->rho;
+  p->limiter.v[0][0] = p->v[0];
+  p->limiter.v[0][1] = p->v[0];
+  p->limiter.v[1][0] = p->v[1];
+  p->limiter.v[1][1] = p->v[1];
+  p->limiter.v[2][0] = p->v[2];
+  p->limiter.v[2][1] = p->v[2];
+  p->limiter.P[0] = p->P;
+  p->limiter.P[1] = p->P;
+  p->limiter.A[0] = p->A;
+  p->limiter.A[1] = p->A;
+
+#ifdef SHADOWSWIFT_SLOPE_LIMITER_MESHLESS
+  p->limiter.r_max = 0.f;
+#endif
+
+#ifdef SHADOWSWIFT_SLOPE_LIMITER_CELL_WIDE
+  p->limiter.extrapolations.rho[0] = 0.f;
+  p->limiter.extrapolations.rho[1] = 0.f;
+  p->limiter.extrapolations.v[0][0] = 0.f;
+  p->limiter.extrapolations.v[0][1] = 0.f;
+  p->limiter.extrapolations.v[1][0] = 0.f;
+  p->limiter.extrapolations.v[1][1] = 0.f;
+  p->limiter.extrapolations.v[2][0] = 0.f;
+  p->limiter.extrapolations.v[2][1] = 0.f;
+  p->limiter.extrapolations.P[0] = 0.f;
+  p->limiter.extrapolations.P[1] = 0.f;
+  p->limiter.extrapolations.A[0] = 0.f;
+  p->limiter.extrapolations.A[1] = 0.f;
+#endif
+}
+
+#endif  // SWIFTSIM_SHADOWSWIFT_HYDRO_SLOPE_LIMITERS_H

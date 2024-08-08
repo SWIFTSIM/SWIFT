@@ -154,7 +154,14 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
       cell_counts[index]++;
 
       /* Compute minimal mass */
+#ifndef MOVING_MESH_HYDRO
       min_mass = min(min_mass, hydro_get_mass(p));
+#else
+      float mass = hydro_get_mass(p);
+      if (mass > 0.f) {
+        min_mass = min(min_mass, mass);
+      }
+#endif
 
       /* Compute sum of velocity norm */
       sum_vel_norm += p->v[0] * p->v[0] + p->v[1] * p->v[1] + p->v[2] * p->v[2];
