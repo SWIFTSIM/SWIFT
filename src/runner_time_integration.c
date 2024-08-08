@@ -1210,7 +1210,7 @@ void runner_do_timestep_collect(struct runner *r, struct cell *c,
 
   /* Early stop if we are at the super level.
    * The time-step task would have set things at this level already */
-  if (c->super == c) return;
+  if (c->super == c && c->subtype != cell_subtype_void) return;
 
   /* Counters for the different quantities. */
   size_t h_updated = 0;
