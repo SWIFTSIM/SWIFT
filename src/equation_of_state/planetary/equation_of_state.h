@@ -1685,7 +1685,7 @@ __attribute__((always_inline)) INLINE static void eos_init(
   }
   if (parser_get_opt_param_int(params, "EoS:planetary_use_SS08_water", 0)) {
     char SS08_water_table_file[PARSER_MAX_LINE_SIZE];
-    set_SS08_water(&e->SESAME_water, eos_planetary_id_SS08_water);
+    set_SS08_water(&e->SS08_water, eos_planetary_id_SS08_water);
     parser_get_param_string(params, "EoS:planetary_SS08_water_table_file",
                             SS08_water_table_file);
     load_table_SESAME(&e->SS08_water, SS08_water_table_file);

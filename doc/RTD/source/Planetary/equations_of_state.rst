@@ -13,6 +13,8 @@ Every SPH particle then requires and carries the additional ``MaterialID`` flag
 from the initial conditions file. This flag indicates the particle's material
 and which EoS it should use.
 
+If you have another EoS that you would like us to add, then just let us know!
+
 It is important to check that the EoS you use are appropriate
 for the conditions in the simulation that you run.
 Please follow the original sources of these EoS for more information and
@@ -24,10 +26,11 @@ So far, we have implemented several Tillotson, ANEOS, SESAME,
 and Hubbard \& MacFarlane (1980) materials, with more on the way.
 Custom materials in SESAME-style tables can also be provided.
 The material's ID is set by a somewhat arbitrary base type ID
-(multiplied by 100) plus an individual value:
+(multiplied by 100) plus an individual value, matching our code for making
+planetary initial conditions, `WoMa  <https://github.com/srbonilla/WoMa>`_:
 
 + Ideal gas: ``0``
-    + Default (\\(\\gamma\\) set using ``--with-adiabatic-index``, default 5/3): ``0``
+    + Default (Set :math:`\gamma` using ``--with-adiabatic-index``, default 5/3): ``0``
 + Tillotson (Melosh, 2007): ``1``
     + Iron: ``100``
     + Granite: ``101``
@@ -61,18 +64,18 @@ as detailed in :ref:`Parameters_eos` and ``examples/parameter_example.yml``.
 Unlike the EoS for an ideal or isothermal gas, these more complicated materials
 do not always include transformations between the internal energy,
 temperature, and entropy. At the moment, we have implemented
-\\(P(\\rho, u)\\) and \\(c_s(\\rho, u)\\) (and more in some cases),
+:math:`P(\rho, u)` and :math:`c_s(\rho, u)` (and more in some cases),
 which is sufficient for the :ref:`planetary_sph` hydro scheme,
 but some materials may thus currently be incompatible with
 e.g. entropy-based schemes.
 
 The Tillotson sound speed was derived using
-\\(c_s^2 = \\left. ( \\partial P / \\partial \\rho ) \\right|_S \\)
+:math:`c_s^2 = \left. ( \partial P / \partial \rho ) \right|_S`
 as described in
 `Kegerreis et al. (2019)  <https://doi.org/10.1093/mnras/stz1606>`_.
 Note that there is a typo in the sign of
-\\(du = T dS - P dV = T dS + (P / \\rho^2) d\\rho \\) in the appendix;
-the correct version was used in the actual derivation.
+:math:`du = T dS - P dV = T dS + (P / \rho^2) d\rho` in the appendix,
+but the correct version was used in the actual derivation.
 
 The ideal gas uses the same equations detailed in :ref:`equation_of_state`.
 
