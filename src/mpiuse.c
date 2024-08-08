@@ -123,8 +123,9 @@ static void mpiuse_log_reallocate(size_t ind) {
       error("Failed to re-allocate MPI use log.");
 
     /* Wait for all writes to the old buffer to complete. */
-    while (mpiuse_log_done < mpiuse_log_size)
-      ;
+    while (mpiuse_log_done < mpiuse_log_size) {
+      /* Nothing to do here */
+    }
 
     /* Copy to new buffer. */
     memcpy(new_log, mpiuse_log,
@@ -159,8 +160,9 @@ void mpiuse_log_allocation(int type, int subtype, void *ptr, int activation,
   if (ind == mpiuse_log_size) mpiuse_log_reallocate(ind);
 
   /* Other threads wait for space. */
-  while (ind > mpiuse_log_size)
-    ;
+  while (ind > mpiuse_log_size) {
+    /* Nothing to do here */
+  }
 
   /* Record the log. */
   mpiuse_log[ind].step = engine_current_step;

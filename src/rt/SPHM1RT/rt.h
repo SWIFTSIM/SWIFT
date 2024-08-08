@@ -103,7 +103,7 @@ __attribute__((always_inline)) INLINE static void rt_reset_part_each_subcycle(
     rt_check_unphysical_state(&rpd->conserved[g].urad, rpd->conserved[g].frad,
                               urad_old, cred);
   }
-};
+}
 
 /**
  * @brief First initialisation of the RT hydro particle data.
@@ -196,7 +196,7 @@ __attribute__((always_inline)) INLINE static void rt_split_part(struct part* p,
 __attribute__((always_inline)) INLINE static void rt_part_has_no_neighbours(
     struct part* p) {
   message("WARNING: found particle without neighbours");
-};
+}
 
 /**
  * @brief Exception handle a star part not having any neighbours in ghost task
@@ -206,7 +206,7 @@ __attribute__((always_inline)) INLINE static void rt_part_has_no_neighbours(
 __attribute__((always_inline)) INLINE static void rt_spart_has_no_neighbours(
     struct spart* sp) {
   message("WARNING: found star without neighbours");
-};
+}
 
 /**
  * @brief Do checks/conversions on particles on startup.
