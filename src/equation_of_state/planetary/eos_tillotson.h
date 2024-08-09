@@ -38,7 +38,6 @@
 #include "equation_of_state.h"
 #include "inline.h"
 #include "physical_constants.h"
-#include "sesame.h"
 #include "units.h"
 #include "utilities.h"
 

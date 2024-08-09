@@ -28,11 +28,11 @@
 
 /* Local headers. */
 #include "eos_setup.h"
-#include "hm80.h"
-#include "ideal_gas.h"
-#include "linear.h"
-#include "sesame.h"
-#include "tillotson.h"
+#include "eos_hm80.h"
+#include "eos_ideal_gas.h"
+#include "eos_linear.h"
+#include "eos_sesame.h"
+#include "eos_tillotson.h"
 
 /**
  * @brief The parameters of the equation of state.
