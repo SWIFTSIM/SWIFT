@@ -33,6 +33,7 @@
 #include "eos_sesame.h"
 #include "eos_setup.h"
 #include "eos_tillotson.h"
+#include "parser.h"
 
 /**
  * @brief The parameters of the equation of state.
@@ -107,41 +108,62 @@ __attribute__((always_inline)) INLINE static int material_index_from_mat_id(
   }
 }
 
-/*
-    Read the extra material parameters from a file. ###change to .yml or
-   something
-
-    File contents
-    -------------
-    # header (2 lines)
-    phase_state (enum mat_phase_state: fluid=0, solid=1, variable=2)  shear_mod
-   (Pa)
-*/
+/**
+ * @brief Load material parameters from a file.
+ */
 INLINE static void set_material_params(struct mat_params *all_mat_params,
                                        enum eos_planetary_material_id mat_id,
                                        char *param_file,
                                        const struct unit_system *us) {
 
   const int mat_index = material_index_from_mat_id(mat_id);
+  struct mat_params *mat_params = &all_mat_params[mat_index];
 
 #ifdef MATERIAL_STRENGTH
-  // Load table contents from file
-  FILE *f = fopen(param_file, "r");
-  if (f == NULL)
-    error("Failed to open the material parameters file '%s'", param_file);
+  // Load parameter file
+  struct swift_params *file_params =
+      (struct swift_params *)malloc(sizeof(struct swift_params));
+  parser_read_file(param_file, file_params);
 
-  // Skip header lines
-  skip_lines(f, 2);
+  // General properties
+  int phase_state = parser_get_opt_param_int(
+      file_params, "Material:phase_state", mat_phase_state_fluid);
+  mat_params->phase_state = (enum mat_phase_state)phase_state;
 
-  // Read parameters
-  int c, phase_state;
-  c = fscanf(f, "%d %f", &phase_state, &all_mat_params[mat_index].shear_mod);
-  if (c != 2)
-    error("Failed to read the material parameters file %s", param_file);
+  // General material strength parameters
+  mat_params->shear_mod =
+      parser_get_opt_param_float(file_params, "Strength:shear_mod", 0.f);
+  mat_params->bulk_mod =
+      parser_get_opt_param_float(file_params, "Strength:bulk_mod", 0.f);
+  mat_params->T_melt =
+      parser_get_opt_param_float(file_params, "Strength:T_melt", 0.f);
+  mat_params->rho_0 =
+      parser_get_opt_param_float(file_params, "Strength:rho_0", 0.f);
 
-  all_mat_params[mat_index].phase_state = (enum mat_phase_state)phase_state;
+  // Specific material-strength schemes
+  // #if defined(STRENGTH_YIELD_###)
+  mat_params->Y_0 =
+      parser_get_opt_param_float(file_params, "StrengthYield_:Y_0", 0.f);
+  mat_params->Y_M =
+      parser_get_opt_param_float(file_params, "StrengthYield_:Y_M", 0.f);
+  mat_params->mu_i =
+      parser_get_opt_param_float(file_params, "StrengthYield_:mu_i", 0.f);
+  mat_params->mu_d =
+      parser_get_opt_param_float(file_params, "StrengthYield_:mu_d", 0.f);
+  mat_params->yield_density_soft_mult_param = parser_get_opt_param_float(
+      file_params, "StrengthYield_:yield_density_soft_mult_param", 0.f);
+  mat_params->yield_density_soft_pow_param = parser_get_opt_param_float(
+      file_params, "StrengthYield_:yield_density_soft_pow_param", 0.f);
+  mat_params->yield_thermal_soft_xi = parser_get_opt_param_float(
+      file_params, "StrengthYield_:yield_thermal_soft_xi", 0.f);
+  mat_params->brittle_to_ductile_pressure = parser_get_opt_param_float(
+      file_params, "StrengthYield_:brittle_to_ductile_pressure", 0.f);
+  mat_params->brittle_to_plastic_pressure = parser_get_opt_param_float(
+      file_params, "StrengthYield_:brittle_to_plastic_pressure", 0.f);
+  // #endif /* STRENGTH_YIELD_### */
+
 #else
-  all_mat_params[mat_index].phase_state = mat_phase_state_fluid;
+  mat_params->phase_state = mat_phase_state_fluid;
 #endif /* MATERIAL_STRENGTH */
 
   // ###convert units!

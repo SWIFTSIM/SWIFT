@@ -192,18 +192,16 @@ material_yield_thermal_soft_xi(enum eos_planetary_material_id mat_id) {
 
 /** @brief Returns the brittle to ductile transition pressure of a material */
 __attribute__((always_inline)) INLINE static float
-material_brittle_to_ductile_transition_pressure(
-    enum eos_planetary_material_id mat_id) {
+material_brittle_to_ductile_pressure(enum eos_planetary_material_id mat_id) {
   const int mat_index = material_index_from_mat_id(mat_id);
-  return eos.all_mat_params[mat_index].brittle_to_ductile_transition_pressure;
+  return eos.all_mat_params[mat_index].brittle_to_ductile_pressure;
 }
 
 /** @brief Returns the brittle to plastic transition pressure of a material */
 __attribute__((always_inline)) INLINE static float
-material_brittle_to_plastic_transition_pressure(
-    enum eos_planetary_material_id mat_id) {
+material_brittle_to_plastic_pressure(enum eos_planetary_material_id mat_id) {
   const int mat_index = material_index_from_mat_id(mat_id);
-  return eos.all_mat_params[mat_index].brittle_to_plastic_transition_pressure;
+  return eos.all_mat_params[mat_index].brittle_to_plastic_pressure;
 }
 // #endif /* STRENGTH_YIELD_### */
 

@@ -1,3 +1,0 @@
-# Material linear EoS
-# phase_state  shear_mod  (enum mat_phase_state: fluid=0, solid=1, variable=2, Pa)
-1 1.5969888e8

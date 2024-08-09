@@ -134,24 +134,23 @@ __attribute__((always_inline)) INLINE static void evolve_damage_shear(
     // do I need this or can it happen when p is negative as well?
     if (pressure > 0) {
       // shear damage
-      float brittle_to_ductile_transition_pressure =
-          material_brittle_to_ductile_transition_pressure(p->mat_id);
-      float brittle_to_plastic_transition_pressure =
-          material_brittle_to_plastic_transition_pressure(p->mat_id);
+      float brittle_to_ductile_pressure =
+          material_brittle_to_ductile_pressure(p->mat_id);
+      float brittle_to_plastic_pressure =
+          material_brittle_to_plastic_pressure(p->mat_id);
 
       float plastic_strain_at_the_point_of_failure_epsilon_f;
-      if (pressure < brittle_to_ductile_transition_pressure) {
+      if (pressure < brittle_to_ductile_pressure) {
 
         // Is this meant to be inear? maybe not clear in paper
         plastic_strain_at_the_point_of_failure_epsilon_f =
-            0.04f * (pressure / brittle_to_ductile_transition_pressure) + 0.01f;
+            0.04f * (pressure / brittle_to_ductile_pressure) + 0.01f;
 
-      } else if (pressure < brittle_to_plastic_transition_pressure) {
+      } else if (pressure < brittle_to_plastic_pressure) {
 
-        float slope = (0.1f - 0.05f) / (brittle_to_plastic_transition_pressure -
-                                        brittle_to_ductile_transition_pressure);
-        float intercept =
-            brittle_to_ductile_transition_pressure - slope * 0.05f;
+        float slope = (0.1f - 0.05f) / (brittle_to_plastic_pressure -
+                                        brittle_to_ductile_pressure);
+        float intercept = brittle_to_ductile_pressure - slope * 0.05f;
 
         plastic_strain_at_the_point_of_failure_epsilon_f =
             slope * pressure + intercept;

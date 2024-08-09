@@ -262,9 +262,9 @@ struct mat_params {
   float yield_density_soft_mult_param;
   float yield_density_soft_pow_param;
   float yield_thermal_soft_xi;
-  float brittle_to_ductile_transition_pressure;
-  float brittle_to_plastic_transition_pressure;
-  // #endif
+  float brittle_to_ductile_pressure;
+  float brittle_to_plastic_pressure;
+  // #endif /* STRENGTH_YIELD_### */
 
 #endif /* MATERIAL_STRENGTH */
 };
