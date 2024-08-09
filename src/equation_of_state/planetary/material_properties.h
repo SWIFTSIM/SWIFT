@@ -176,7 +176,6 @@ __attribute__((always_inline)) INLINE static float material_rho_0(
   const int mat_index = material_index_from_mat_id(mat_id);
   return eos.mat_params[mat_index].rho_0;
 }
-#endif /* MATERIAL_STRENGTH */
 
 // #ifdef STRENGTH_YIELD_###
 /** @brief Returns the Y_0 of a material */
@@ -192,6 +191,7 @@ __attribute__((always_inline)) INLINE static float material_Y_M(
   const int mat_index = material_index_from_mat_id(mat_id);
   return eos.mat_params[mat_index].Y_M;
 }
+
 /** @brief Returns the mu_i of a material */
 __attribute__((always_inline)) INLINE static float material_mu_i(
     enum eos_planetary_material_id mat_id) {
@@ -205,6 +205,7 @@ __attribute__((always_inline)) INLINE static float material_mu_d(
   const int mat_index = material_index_from_mat_id(mat_id);
   return eos.mat_params[mat_index].mu_d;
 }
+
 /** @brief Returns the yield stress density softening multiplication parameter of a material */
 __attribute__((always_inline)) INLINE static float material_yield_density_soft_mult_param(
     enum eos_planetary_material_id mat_id) {
@@ -240,5 +241,7 @@ __attribute__((always_inline)) INLINE static float material_brittle_to_plastic_t
   return eos.mat_params[mat_index].brittle_to_plastic_transition_pressure;
 }
 // #endif /* STRENGTH_YIELD_### */
+
+#endif /* MATERIAL_STRENGTH */
 
 #endif /* SWIFT_PLANETARY_MATERIAL_PROPS_H */
