@@ -364,7 +364,6 @@ void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
                                     ci->mpi.tag, 0, ci, cj);
     scheduler_addunlock(s, ci->hydro.star_formation, t_sf_counts);
   }
-  /* HERE SF */
   if (t_sf_counts == NULL && with_star_formation_sink && (ci->hydro.count > 0 || ci->sinks.count > 0)) {
 #ifdef SWIFT_DEBUG_CHECKS
     if (ci->depth != 0)
@@ -431,7 +430,6 @@ void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
 #endif
       }
 
-      /* HERE SF */
       if (with_star_formation_sink && (ci->hydro.count > 0 || ci->sinks.count > 0)) {
         scheduler_addunlock(s, t_sf_counts, t_density);
 #ifdef EXTRA_STAR_LOOPS
@@ -586,15 +584,6 @@ void engine_addtasks_send_sinks(struct engine *e, struct cell *ci,
 				struct task *t_sink_formation_counts) {
 
 #ifdef WITH_MPI
-  /* Notice the differences with the BHs:
-     - We have a sink_foration task, similar to star_formation and
-     star_formation_sink
-     - We do not have density tasks.
-     - After the  sink_formation task, we have the swallow tasks. BH have the
-     density before the swallow.
-     - We do not have feedback tasks
-     - We have a star_formation_sink tasks */
-
   struct link *l = NULL;
   struct scheduler *s = &e->sched;
   const int nodeID = cj->nodeID;
@@ -603,7 +592,7 @@ void engine_addtasks_send_sinks(struct engine *e, struct cell *ci,
   if (!cell_get_flag(ci, cell_flag_has_tasks)) return;
 
   /* Send the new sink counts after sink formation */
-  if (t_sink_formation_counts == NULL && (ci->sinks.count > 0)) {
+  if (t_sink_formation_counts == NULL && (ci->hydro.count > 0)) {
 #ifdef SWIFT_DEBUG_CHECKS
     if (ci->depth != 0)
       error(
@@ -617,7 +606,7 @@ void engine_addtasks_send_sinks(struct engine *e, struct cell *ci,
   }
 
   /* Sink do not have density tasks, so we check for the swallow task instead */
-  /* Check if any of the density tasks are for the target node. */
+  /* Check if any of the swallow tasks are for the target node. */
   for (l = ci->sinks.swallow; l != NULL; l = l->next)
     if (l->t->ci->nodeID == nodeID ||
         (l->t->cj != NULL && l->t->cj->nodeID == nodeID))
@@ -645,8 +634,15 @@ void engine_addtasks_send_sinks(struct engine *e, struct cell *ci,
       /* Drift before you send */
       scheduler_addunlock(s, ci->hydro.super->sinks.drift, t_density);
 
+      /* Ghost before you send */
+      /* scheduler_addunlock(s, ci->hydro.super->sinks.sink_in, t_density); */
+
       /* Send the sinks after the sink formation and the sink_formation_counts */
-      scheduler_addunlock(s, ci->hydro.super->sinks.sink_formation, t_density);
+      /* scheduler_addunlock(s, ci->hydro.super->sinks.sink_formation, t_density); */
+
+      if (ci->hydro.count > 0) {
+	scheduler_addunlock(s, t_sink_formation_counts, t_density);
+      }
 
       /* The send_sinks task should unlock the super_cell's sink exit point
        * task. */
@@ -662,17 +658,13 @@ void engine_addtasks_send_sinks(struct engine *e, struct cell *ci,
       scheduler_addunlock(s, t_sink_gas_swallow,
                           ci->hydro.super->sinks.sink_ghost2);
 
-      /* Similar to SF */
-      if (ci->sinks.count > 0) {
-	scheduler_addunlock(s, t_sink_formation_counts, t_density);
-      }
     }
 
     engine_addlink(e, &ci->mpi.send, t_density);
     engine_addlink(e, &ci->mpi.send, t_sink_merger);
     engine_addlink(e, &ci->mpi.send, t_sink_gas_swallow);
 
-    if (ci->sinks.count > 0) {
+    if (ci->hydro.count > 0) {
       engine_addlink(e, &ci->mpi.send, t_sink_formation_counts);
     }
   }
@@ -1097,7 +1089,6 @@ void engine_addtasks_recv_stars(struct engine *e, struct cell *c,
 #endif
     }
 
-    /* HERE SF */
     if (with_star_formation_sink && (c->hydro.count > 0 || c->sinks.count > 0)) {
 
       /* Receive the stars only once the counts have been received */
@@ -1118,8 +1109,6 @@ void engine_addtasks_recv_stars(struct engine *e, struct cell *c,
     if (with_star_formation && c->hydro.count > 0) {
       engine_addlink(e, &c->mpi.recv, t_sf_counts);
     }
-
-    /* HERE SF */
     if (with_star_formation_sink && (c->hydro.count > 0 || c->sinks.count > 0)) {
       engine_addlink(e, &c->mpi.recv, t_sf_counts);
     }
@@ -1302,7 +1291,7 @@ void engine_addtasks_recv_sinks(struct engine *e, struct cell *c,
   /* Early abort (are we below the level where tasks are)? */
   if (!cell_get_flag(c, cell_flag_has_tasks)) return;
 
-  if (t_sink_formation_counts == NULL && (c->sinks.count > 0)) {
+  if (t_sink_formation_counts == NULL && (c->hydro.count > 0)) {
 #ifdef SWIFT_DEBUG_CHECKS
     if (c->depth != 0)
       error(
@@ -1332,7 +1321,7 @@ void engine_addtasks_recv_sinks(struct engine *e, struct cell *c,
     t_sink_gas_swallow = scheduler_addtask(
         s, task_type_recv, task_subtype_sink_gas_swallow, c->mpi.tag, 0, c, NULL);
 
-    if (c->sinks.count > 0) {
+    if (c->hydro.count > 0) {
       /* Receive the sinks only once the counts have been received */
       scheduler_addunlock(s, t_sink_formation_counts, t_density);
     }
@@ -1343,7 +1332,7 @@ void engine_addtasks_recv_sinks(struct engine *e, struct cell *c,
     engine_addlink(e, &c->mpi.recv, t_sink_merger);
     engine_addlink(e, &c->mpi.recv, t_sink_gas_swallow);
 
-    if (c->sinks.count > 0) {
+    if (c->hydro.count > 0) {
       engine_addlink(e, &c->mpi.recv, t_sink_formation_counts);
     }
 
@@ -1362,10 +1351,12 @@ void engine_addtasks_recv_sinks(struct engine *e, struct cell *c,
     }
     for (struct link *l = c->sinks.do_gas_swallow; l != NULL;
          l = l->next) {
+      scheduler_addunlock(s, t_density, l->t); /* Is this needed? */
       scheduler_addunlock(s, t_sink_gas_swallow, l->t);
     }
     for (struct link *l = c->sinks.do_sink_swallow; l != NULL;
          l = l->next) {
+      scheduler_addunlock(s, t_density, l->t); /* Is this needed? */
       scheduler_addunlock(s, t_sink_merger, l->t);
       scheduler_addunlock(s, l->t, tend);
     }
