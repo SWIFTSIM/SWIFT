@@ -28,7 +28,6 @@
 
 #include "const.h"
 #include "equation_of_state.h"
-#include "material_properties.h"
 #include "hydro_kernels.h"
 #include "hydro_parameters.h"
 #include "math.h"
@@ -37,15 +36,20 @@
  * @brief Compute the J_2 invariant of the deviatoric stress tensor. ###change to float func
  */
 __attribute__((always_inline)) INLINE static void compute_stress_tensor_J_2(
-    float *J_2, struct sym_matrix *deviatoric_stress_tensor) {
-    J_2 = 0.f;
+    float *J_2, struct sym_matrix *sym_matrix_deviatoric_stress_tensor) {
 
+    float deviatoric_stress_tensor[3][3];
+    get_matrix_from_sym_matrix(deviatoric_stress_tensor, sym_matrix_deviatoric_stress_tensor);
+    *J_2 = 0.f;
     for (int i = 0; i < 3; i++) {
       for (int j = 0; j < 3; j++) {
-        J_2 += 0.5f * deviatoric_stress_tensor[i][j] * deviatoric_stress_tensor[i][j];
+        *J_2 += 0.5f * deviatoric_stress_tensor[i][j] * deviatoric_stress_tensor[j][i];
       }
     }
 }
+
+
+#include "strength_damage.h"
 
 /**
  * @brief Set the (symmetric) stress tensor by combining the deviatoric with the pressure.
@@ -60,7 +64,7 @@ __attribute__((always_inline)) INLINE static void hydro_set_stress_tensor(
     }
 
     float effective_pressure;
-    set_effective_pressure_by_damage(&effective_pressure, pressure, damage);
+    set_effective_pressure_by_damage(&effective_pressure, pressure, p->damage);
 
     p->stress_tensor.xx -= effective_pressure;
     p->stress_tensor.yy -= effective_pressure;
@@ -76,7 +80,8 @@ __attribute__((always_inline)) INLINE static void hydro_set_stress_tensor(
 __attribute__((always_inline)) INLINE static void strength_add_artif_stress(
    float pairwise_stress_tensor_i[3][3], float pairwise_stress_tensor_j[3][3],
    const struct part *restrict pi, const struct part *restrict pj, const float r) {
-#if defined(STRENGTH_STRESS_MON2000)
+//#if defined(STRENGTH_STRESS_MON2000) ###
+/*
     // Artificial stress (Monaghan, 2000)
     const float mean_h = 0.5f * (pi->h + pj->h);
     const float delta_p = 0.5f * (powf(pi->mass / pi->rho, 1.f/hydro_dimension) +
@@ -105,7 +110,8 @@ __attribute__((always_inline)) INLINE static void strength_add_artif_stress(
                                                 pairwise_stress_tensor_j[i][j];
         }
     }
-#elif defined(STRENGTH_STRESS_BASIS_INDP)
+    */
+//#elif defined(STRENGTH_STRESS_BASIS_INDP) ###
     /* New version that is independent of basis:
      * Principal stresses are basis-independent
      * Adding the same constant to all diagonal elemenets is equivalent in any basis:
@@ -148,7 +154,7 @@ __attribute__((always_inline)) INLINE static void strength_add_artif_stress(
           pairwise_stress_tensor_j[i][i] -= artif_stress_f * artif_stress_epsilon *
                                               max_principal_stress_j;
     }
-#endif
+//#endif
 }
 
 /**
@@ -177,7 +183,8 @@ __attribute__((always_inline)) INLINE static void hydro_set_pairwise_stress_tens
  * @param p The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void evolve_deviatoric_stress(
-    struct part *restrict p, const float dt_therm) {
+    struct part *restrict p, const float dt_therm, const float density,
+    const float pressure, const float temperature) {
 
   if (p->phase_state == mat_phase_state_fluid) {
     // No stress for fluids
@@ -188,7 +195,8 @@ __attribute__((always_inline)) INLINE static void evolve_deviatoric_stress(
       p->deviatoric_stress_tensor.elements[i] += p->dS_dt.elements[i] * dt_therm;
     }
     // Yield stress
-    adjust_deviatoric_stress_tensor_by_yield_stress(&p->deviatoric_stress_tensor);
+    adjust_deviatoric_stress_tensor_by_yield_stress(p, &p->deviatoric_stress_tensor,
+      density, pressure, temperature);
   }
 }
 

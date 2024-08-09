@@ -79,16 +79,10 @@ INLINE static void convert_units_linear(struct linear_params *mat,
   // SI to cgs
   mat->rho_0 *= units_cgs_conversion_factor(&si, UNIT_CONV_DENSITY);
   mat->c_s *= units_cgs_conversion_factor(&si, UNIT_CONV_SPEED);
-#ifdef MATERIAL_STRENGTH
-  mat->shear_mod *= units_cgs_conversion_factor(&si, UNIT_CONV_PRESSURE);
-#endif /* MATERIAL_STRENGTH */
 
   // cgs to internal
   mat->rho_0 /= units_cgs_conversion_factor(us, UNIT_CONV_DENSITY);
   mat->c_s /= units_cgs_conversion_factor(us, UNIT_CONV_SPEED);
-#ifdef MATERIAL_STRENGTH
-  mat->shear_mod /= units_cgs_conversion_factor(us, UNIT_CONV_PRESSURE);
-#endif /* MATERIAL_STRENGTH */
 }
 
 /**
@@ -260,17 +254,17 @@ INLINE static float linear_density_from_pressure_and_internal_energy(
 
 // material_phase_state_from_internal_energy
 INLINE static float linear_phase_state_from_internal_energy(
-    float density, float u, const struct linear_params *mat) {
+    float density, float u, const struct mat_params *mat, const struct linear_params *linear_eos) {
 
   switch (mat->phase_state) {
-    case eos_phase_state_fluid:
-      return eos_phase_state_fluid;
+    case mat_phase_state_fluid:
+      return mat_phase_state_fluid;
 
-    case eos_phase_state_solid:
-      return eos_phase_state_solid;
+    case mat_phase_state_solid:
+      return mat_phase_state_solid;
 
     default:
-      return eos_phase_state_fluid;
+      return mat_phase_state_fluid;
   }
 }
 

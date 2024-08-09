@@ -35,7 +35,6 @@
 #include "adiabatic_index.h"
 #include "common_io.h"
 #include "equation_of_state.h"
-#include "material_properties.h"
 #include "inline.h"
 #include "physical_constants.h"
 #include "sesame.h"
@@ -73,7 +72,6 @@ INLINE static void set_Til_iron(struct Til_params *mat,
   mat->rho_cold_max = 1.0e5f;
   mat->rho_min = 1.0f;
   mat->rho_max = 1.0e5f;
-  mat->phase_state = eos_phase_state_fluid;
 }
 INLINE static void set_Til_granite(struct Til_params *mat,
                                    enum eos_planetary_material_id mat_id) {
@@ -96,7 +94,6 @@ INLINE static void set_Til_granite(struct Til_params *mat,
   mat->rho_cold_max = 1.0e5f;
   mat->rho_min = 1.0f;
   mat->rho_max = 1.0e5f;
-  mat->phase_state = eos_phase_state_fluid;
 }
 INLINE static void set_Til_basalt(struct Til_params *mat,
                                   enum eos_planetary_material_id mat_id) {
@@ -119,7 +116,6 @@ INLINE static void set_Til_basalt(struct Til_params *mat,
   mat->rho_cold_max = 1.0e5f;
   mat->rho_min = 1.0f;
   mat->rho_max = 1.0e5f;
-  mat->phase_state = eos_phase_state_fluid;
 }
 INLINE static void set_Til_water(struct Til_params *mat,
                                  enum eos_planetary_material_id mat_id) {
@@ -142,7 +138,6 @@ INLINE static void set_Til_water(struct Til_params *mat,
   mat->rho_cold_max = 1.0e5f;
   mat->rho_min = 1.0f;
   mat->rho_max = 1.0e5f;
-  mat->phase_state = eos_phase_state_fluid;
 }
 INLINE static void set_Til_ice(struct Til_params *mat,
                                enum eos_planetary_material_id mat_id) {
@@ -165,7 +160,6 @@ INLINE static void set_Til_ice(struct Til_params *mat,
   mat->rho_cold_max = 1.0e5f;
   mat->rho_min = 1.0f;
   mat->rho_max = 1.0e5f;
-  mat->phase_state = eos_phase_state_fluid;
 }
 
 /*
@@ -944,28 +938,28 @@ INLINE static float Til_density_from_pressure_and_internal_energy(
 
 // material_phase_state_from_internal_energy
 INLINE static float Til_phase_state_from_internal_energy(
-    float density, float u, const struct Til_params *mat) {
+    float density, float u, const struct mat_params *mat, const struct Til_params *Til_eos) {
 
   switch (mat->phase_state) {
-    case eos_phase_state_fluid:
-      return eos_phase_state_fluid;
+    case mat_phase_state_fluid:
+      return mat_phase_state_fluid;
 
-    case eos_phase_state_solid:
-      return eos_phase_state_solid;
+    case mat_phase_state_solid:
+      return mat_phase_state_solid;
 
-    case eos_phase_state_variable:
+    case mat_phase_state_variable:
     {
-      float T = Til_temperature_from_internal_energy(density, u, mat);
+      float T = Til_temperature_from_internal_energy(density, u, Til_eos);
 
       if (T > mat->T_melt) {
-          return eos_phase_state_fluid;
+          return mat_phase_state_fluid;
       } else {
-          return eos_phase_state_solid;
+          return mat_phase_state_solid;
       }
     }
 
     default:
-      return eos_phase_state_fluid;
+      return mat_phase_state_fluid;
   }
 }
 

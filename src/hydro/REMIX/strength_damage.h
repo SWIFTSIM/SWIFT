@@ -30,6 +30,9 @@
 #include "equation_of_state.h"
 #include "hydro_kernels.h"
 #include "hydro_parameters.h"
+#include "hydro_strength.h"
+#include "strength_stress.h"
+#include "strength_yield.h"
 #include "math.h"
 
 
@@ -39,16 +42,16 @@
  * @param p The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void set_effective_pressure_by_damage(
-    const float *effective_pressure, const float pressure, const float damage) {
+    float *effective_pressure, const float pressure, const float damage) {
 
-#if defined(STRENGTH_DAMAGE_###)
-    effective_pressure = pressure;
+//#if defined(STRENGTH_DAMAGE_###)
+    *effective_pressure = pressure;
 
     // See schafer 2016 for this...
     if (pressure < 0.f) {
-        effective_pressure *= (1.f - p->damage);
+        *effective_pressure *= (1.f - damage);
     }
-#endif
+//#endif
 }
 
 /**
@@ -57,62 +60,58 @@ __attribute__((always_inline)) INLINE static void set_effective_pressure_by_dama
  * @param p The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void evolve_damage_tensile(
-    struct part *restrict p, const float *tensile_damage, const float dt_therm) {
+    struct part *restrict p, float *tensile_damage, const float dt_therm) {
 
-#if defined(STRENGTH_DAMAGE_###)
+// #if defined(STRENGTH_DAMAGE_###)
     // Find max eignenvalue of stress_tensor_sigma:
-    float eigenval1, eigenval2, eigenval3;
-    compute_eigenvalues_symmetric_3x3(&eigenval1, &eigenval2, &eigenval3, p->stress_tensor_sigma);
-    float max_stress_tensor_sigma = eigenval1;
-    if (eigenval2 > max_stress_tensor_sigma)
-        max_stress_tensor_sigma = eigenval2;
-    if (eigenval3 > max_stress_tensor_sigma)
-        max_stress_tensor_sigma = eigenval3;
+    float max_principal_stress = p->principal_stress_eigen[0];
+    if (p->principal_stress_eigen[1] > max_principal_stress)
+      max_principal_stress = p->principal_stress_eigen[1];
+    if (p->principal_stress_eigen[2] > max_principal_stress)
+      max_principal_stress = p->principal_stress_eigen[2];
 
-    p->cbrtD_dt = 0.f;
+    float cbrtD_dt = 0.f;
     // Damage can only accumulate if in tension (this will have to change if we
     // add fracture under compression)
 
     // If there are no flaws, we can not accumulate damage
     if(p->number_of_flaws > 0) {
-        if (max_stress_tensor_sigma > 0.f) {
+        if (max_principal_stress > 0.f) {
             const float shear_mod = material_shear_mod(p->mat_id);
             const float bulk_mod = material_bulk_mod(p->mat_id);
 
             // tensile damage
             const float E = 9.f * bulk_mod * shear_mod / (3.f * bulk_mod + shear_mod);
 
-            p->local_scalar_strain = max_stress_tensor_sigma / ((1.f - p->damage) * E);
+            const float local_scalar_strain = max_principal_stress / ((1.f - p->damage) * E);
 
             int number_of_activated_flaws = 0;
             for (int i = 0; i < p->number_of_flaws; i++) {
-                if (p->local_scalar_strain > p->activation_thresholds_epsilon_act_ij[i]){
+                if (local_scalar_strain > p->activation_thresholds[i]){
                     number_of_activated_flaws += 1;
                 }
             }
-            p->number_of_activated_flaws = max(
-                p->number_of_activated_flaws, number_of_activated_flaws);
 
             // Schafer
             const float longitudinal_wave_speed =
                 sqrtf((bulk_mod + (4.f / 3.f) * (1.f - p->damage) * shear_mod) / p->rho);
             const float crack_velocity = 0.4f * longitudinal_wave_speed;
 
-            p->cbrtD_dt = number_of_activated_flaws * crack_velocity * cbrtf(p->rho / p->mass);
+            cbrtD_dt = number_of_activated_flaws * crack_velocity * cbrtf(p->rho / p->mass);
 
-            float Delta_cbrtD = p->cbrtD_dt * dt_therm;
+            float Delta_cbrtD = cbrtD_dt * dt_therm;
 
             const float max_cbrtD = cbrtf(number_of_activated_flaws / (float)p->number_of_flaws);
-            const float max_Delta_cbrtD = max(0.f, max_cbrtD - cbrtf(tensile_damage));
+            const float max_Delta_cbrtD = max(0.f, max_cbrtD - cbrtf(*tensile_damage));
 
             if (Delta_cbrtD > max_Delta_cbrtD)
                 Delta_cbrtD = max_Delta_cbrtD;
 
-            const float evolved_D_cbrt = cbrtf(tensile_damage) + Delta_cbrtD;
-            tensile_damage = powf(evolved_D_cbrt, 3.f);
+            const float evolved_D_cbrt = cbrtf(*tensile_damage) + Delta_cbrtD;
+            *tensile_damage = powf(evolved_D_cbrt, 3.f);
         }
     }
-#endif
+//#endif
 }
 
 
@@ -122,32 +121,37 @@ __attribute__((always_inline)) INLINE static void evolve_damage_tensile(
  * @param p The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void evolve_damage_shear(
-    struct part *restrict p, const float pressure, const float dt_therm) {
+    struct part *restrict p, float *shear_damage, const float pressure, const float dt_therm) {
 
-#if defined(STRENGTH_DAMAGE_###)
+// #if defined(STRENGTH_DAMAGE_###)
     float J_2;
-    compute_stress_tensor_J_2(&J_2, deviatoric_stress_tensor);
+    compute_stress_tensor_J_2(&J_2, &p->deviatoric_stress_tensor);
 
     // See Collins for this.
-    if (sqrtf(J_2) > p->yield_stress_Y) {
+    if (sqrtf(J_2) > p->yield_stress) {
       // do I need this or can it happen when p is negative as well?
       if (pressure > 0) {
         // shear damage
+        float brittle_to_ductile_transition_pressure =
+                    material_brittle_to_ductile_transition_pressure(p->mat_id);
+        float brittle_to_plastic_transition_pressure =
+                    material_brittle_to_plastic_transition_pressure(p->mat_id);
+
         float plastic_strain_at_the_point_of_failure_epsilon_f;
-        if (pressure < p->brittle_to_ductile_transition_pressure) {
+        if (pressure < brittle_to_ductile_transition_pressure) {
 
           // Is this meant to be inear? maybe not clear in paper
           plastic_strain_at_the_point_of_failure_epsilon_f =
-              0.04f * (pressure / p->brittle_to_ductile_transition_pressure) +
+              0.04f * (pressure / brittle_to_ductile_transition_pressure) +
               0.01f;
 
-        } else if (pressure < p->brittle_to_plastic_transition_pressure) {
+        } else if (pressure < brittle_to_plastic_transition_pressure) {
 
           float slope =
-              (0.1f - 0.05f) / (p->brittle_to_plastic_transition_pressure -
-                                p->brittle_to_ductile_transition_pressure);
+              (0.1f - 0.05f) / (brittle_to_plastic_transition_pressure -
+                                brittle_to_ductile_transition_pressure);
           float intercept =
-              p->brittle_to_ductile_transition_pressure - slope * 0.05f;
+              brittle_to_ductile_transition_pressure - slope * 0.05f;
 
           plastic_strain_at_the_point_of_failure_epsilon_f =
               slope * pressure + intercept;
@@ -157,16 +161,19 @@ __attribute__((always_inline)) INLINE static void evolve_damage_shear(
         }
 
         // Do I need to have rotation terms here?
+        float strain_rate_tensor[3][3];
+       calculate_strain_rate_tensor(p, strain_rate_tensor);
+
         float deviatoric_strain_rate_tensor[3][3];
         for (int i = 0; i < 3; i++) {
           for (int j = 0; j < 3; j++) {
             deviatoric_strain_rate_tensor[i][j] =
-                p->strain_rate_tensor_epsilon_dot[i][j];
+                strain_rate_tensor[i][j];
             if (i == j) {
               deviatoric_strain_rate_tensor[i][j] -=
-                  (p->strain_rate_tensor_epsilon_dot[0][0] +
-                   p->strain_rate_tensor_epsilon_dot[1][1] +
-                   p->strain_rate_tensor_epsilon_dot[2][2]) /
+                  (strain_rate_tensor[0][0] +
+                   strain_rate_tensor[1][1] +
+                   strain_rate_tensor[2][2]) /
                   3.f;
             }
           }
@@ -183,16 +190,16 @@ __attribute__((always_inline)) INLINE static void evolve_damage_shear(
         strain_rate_invariant = sqrtf(strain_rate_invariant);
 
         // can this be negative?
-        shear_damage +=
+        *shear_damage +=
             max(0.f, (strain_rate_invariant /
                       plastic_strain_at_the_point_of_failure_epsilon_f) *
                          dt_therm);
 
-        if (shear_damage > 1.f)
-            shear_damage = 1.f;
+        if (*shear_damage > 1.f)
+            *shear_damage = 1.f;
       }
     }
-#endif
+// #endif
 }
 
 /**

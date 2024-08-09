@@ -273,7 +273,7 @@ struct part {
   enum eos_planetary_material_id mat_id;
 
   /*! Phase state flag */
-  enum eos_phase_state phase_state;
+  enum mat_phase_state phase_state;
 
   /*! Additional Radiative Transfer Data */
   struct rt_part_data rt_data;
@@ -319,7 +319,27 @@ struct part {
   struct sym_matrix dS_dt;
 
   // Gradient of velocity, calculated using linear-order reproducing kernel.
-  float dv_lin_repr_kernel[3][3];
+  float dv_force_loop[3][3];
+
+  // Yield stress
+  float yield_stress;
+
+  // Accumulated damage
+  float damage;
+
+  // Number of flaws for tensile damage accumulation
+  int number_of_flaws;
+
+  // Activation thresholds of flaws for tensile damage accumulation
+  // ### Work out how to set the length of this
+  float activation_thresholds[40];
+
+  // Damage accumulated due to tension
+  float tensile_damage;
+
+  // Damage accumulated due to shear
+  float shear_damage;
+
 #endif /* MATERIAL_STRENGTH */
 
 } SWIFT_STRUCT_ALIGN;

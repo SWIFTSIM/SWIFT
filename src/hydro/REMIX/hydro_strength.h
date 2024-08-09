@@ -28,13 +28,71 @@
 
 #include "const.h"
 #include "equation_of_state.h"
-#include "material_properties.h"
 #include "hydro_kernels.h"
 #include "hydro_parameters.h"
+#include "math.h"
+
+/**
+ * @brief Calculates the strain rate tensor.
+ *
+ * @param p The particle to act upon
+ */
+__attribute__((always_inline)) INLINE static void
+calculate_strain_rate_tensor(struct part *restrict p, float strain_rate_tensor[3][3]) {
+
+  for (int i = 0; i < 3; i++) {
+    for (int j = 0; j < 3; j++) {
+      strain_rate_tensor[i][j] =
+          0.5f * (p->dv_force_loop[i][j] + p->dv_force_loop[j][i]);
+    }
+  }
+}
+
+/**
+ * @brief Calculates the rotation rate tensor.
+ *
+ * @param p The particle to act upon
+ */
+__attribute__((always_inline)) INLINE static void
+calculate_rotation_rate_tensor(struct part *restrict p, float rotation_rate_tensor[3][3]) {
+
+  for (int i = 0; i < 3; i++) {
+    for (int j = 0; j < 3; j++) {
+      rotation_rate_tensor[i][j] =
+          0.5f * (p->dv_force_loop[j][i] - p->dv_force_loop[i][j]);
+    }
+  }
+}
+
+/**
+ * @brief Calculates the rotation term to transform into the co-rotating frame.
+ *
+ * @param p The particle to act upon
+ */
+__attribute__((always_inline)) INLINE static void
+calculate_rotation_term(float rotation_term[3][3], const float rotation_rate_tensor[3][3],
+  const float deviatoric_stress_tensor[3][3]) {
+
+  // Set rotation to transform into the corotating frame
+  for (int i = 0; i < 3; i++) {
+    for (int j = 0; j < 3; j++) {
+      rotation_term[i][j] = 0.f;
+
+      for (int k = 0; k < 3; k++) {
+        // See Dienes 1978 (eqn 4.8)
+        rotation_term[i][j] += deviatoric_stress_tensor[i][k] *
+                                   rotation_rate_tensor[k][j] -
+                               rotation_rate_tensor[i][k] *
+                                   deviatoric_stress_tensor[k][j];
+      }
+    }
+  }
+}
+
+
 #include "strength_stress.h"
 #include "strength_yield.h"
 #include "strength_damage.h"
-#include "math.h"
 
 /**
  * @brief Prepares extra strength parameters for a particle for the density
@@ -130,7 +188,7 @@ __attribute__((always_inline)) INLINE static void
 hydro_prepare_force_extra_strength(struct part *restrict p, const float pressure) {
   for (int i = 0; i < 3; ++i) {
     for (int j = 0; j < 3; ++j) {
-      p->dv_lin_repr_kernel[i][j] = 0.f;
+      p->dv_force_loop[i][j] = 0.f;
     }
   }
 
@@ -153,9 +211,9 @@ hydro_runner_iact_force_extra_strength(struct part *restrict pi,
       (pj->phase_state == mat_phase_state_solid)) {
     for (int i = 0; i < 3; ++i) {
       for (int j = 0; j < 3; ++j) {
-        pi->dv_lin_repr_kernel[i][j] +=
+        pi->dv_force_loop[i][j] +=
             (pj->v[j] - pi->v[j]) * Gi[i] * (pj->mass / pj->rho_evol);
-        pj->dv_lin_repr_kernel[i][j] +=
+        pj->dv_force_loop[i][j] +=
             (pi->v[j] - pj->v[j]) * Gj[i] * (pi->mass / pi->rho_evol);
       }
     }
@@ -178,7 +236,7 @@ hydro_runner_iact_nonsym_force_extra_strength(struct part *restrict pi,
       (pj->phase_state == mat_phase_state_solid)) {
     for (int i = 0; i < 3; ++i) {
       for (int j = 0; j < 3; ++j) {
-        pi->dv_lin_repr_kernel[i][j] +=
+        pi->dv_force_loop[i][j] +=
             (pj->v[j] - pi->v[j]) * Gi[i] * (pj->mass / pj->rho_evol);
       }
     }
@@ -198,29 +256,9 @@ hydro_end_force_extra_strength(struct part *restrict p) {
   get_matrix_from_sym_matrix(deviatoric_stress_tensor, &p->deviatoric_stress_tensor);
 
   // Set the strain and rotation rates
-  for (int i = 0; i < 3; i++) {
-    for (int j = 0; j < 3; j++) {
-      strain_rate_tensor[i][j] =
-          0.5f * (p->dv_lin_repr_kernel[i][j] + p->dv_lin_repr_kernel[j][i]);
-      rotation_rate_tensor[i][j] =
-          0.5f * (p->dv_lin_repr_kernel[j][i] - p->dv_lin_repr_kernel[i][j]);
-    }
-  }
-
-  // Set rotation to transform into the solid body rotation frame
-  for (int i = 0; i < 3; i++) {
-    for (int j = 0; j < 3; j++) {
-      rotation_term[i][j] = 0.f;
-
-      for (int k = 0; k < 3; k++) {
-        // See Dienes 1978 (eqn 4.8)
-        rotation_term[i][j] += deviatoric_stress_tensor[i][k] *
-                                   rotation_rate_tensor[k][j] -
-                               rotation_rate_tensor[i][k] *
-                                   deviatoric_stress_tensor[k][j];
-      }
-    }
-  }
+ calculate_strain_rate_tensor(p, strain_rate_tensor);
+ calculate_rotation_rate_tensor(p, rotation_rate_tensor);
+ calculate_rotation_term(rotation_term, rotation_rate_tensor, deviatoric_stress_tensor);
 
   // Compute time derivative of the deviatoric stress tensor (Hooke's law)
   const float shear_mod = material_shear_mod(p->mat_id);
@@ -244,11 +282,12 @@ hydro_end_force_extra_strength(struct part *restrict p) {
  * @param p The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void hydro_predict_extra_strength(
-    struct part *restrict p, const float dt_therm) {
+    struct part *restrict p, const float dt_therm, const float density,
+    const float pressure, const float temperature) {
 
     evolve_damage(p, pressure, dt_therm);
 
-    evolve_deviatoric_stress(p, dt_therm);
+    evolve_deviatoric_stress(p, dt_therm, density, pressure, temperature);
 }
 
 #endif /* MATERIAL_STRENGTH */

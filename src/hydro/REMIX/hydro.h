@@ -478,7 +478,7 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->density.wcount_dh = 0.f;
   p->rho = 0.f;
   p->density.rho_dh = 0.f;
-  p->phase_state = (enum eos_phase_state)material_phase_state_from_internal_energy(p->rho_evol, p->u, p->mat_id);
+  p->phase_state = (enum mat_phase_state)material_phase_state_from_internal_energy(p->rho_evol, p->u, p->mat_id);
 
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
   p->N_density = 1; /* Self contribution */
@@ -841,13 +841,17 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   const float soundspeed =
       gas_soundspeed_from_internal_energy(p->rho_evol, p->u, p->mat_id);
 
+  /* Compute the new sound speed */
+  const float temperature =
+      gas_temperature_from_internal_energy(p->rho_evol, p->u, p->mat_id);
+
   p->force.pressure = pressure;
   p->force.soundspeed = soundspeed;
 
   p->force.v_sig = max(p->force.v_sig, 2.f * soundspeed);
 
 #ifdef MATERIAL_STRENGTH
-  hydro_predict_extra_strength(p, dt_therm);
+  hydro_predict_extra_strength(p, dt_therm, p->rho_evol, pressure, temperature);
 #endif /* MATERIAL_STRENGTH */
 }
 

@@ -1299,17 +1299,9 @@ INLINE static float SESAME_density_from_pressure_and_internal_energy(
 
 // material_phase_state_from_internal_energy
 INLINE static float SESAME_phase_state_from_internal_energy(
-    float density, float u, const struct SESAME_params *mat) {
+    float density, float u, const struct mat_params *mat, const struct SESAME_params *SESAME_eos) {
 
   error("This EOS function is not yet implemented!");
-
-  return 0.f;
-}
-
-// material_shear_mod
-INLINE static float SESAME_shear_mod(const struct SESAME_params *mat) {
-
-  error("This material function is not yet implemented!");
 
   return 0.f;
 }

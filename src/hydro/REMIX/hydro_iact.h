@@ -32,7 +32,6 @@
 #include "hydro_parameters.h"
 #include "hydro_visc_difn.h"
 #include "hydro_strength.h"
-#include "material_properties.h"
 #include "math.h"
 #include "minmax.h"
 

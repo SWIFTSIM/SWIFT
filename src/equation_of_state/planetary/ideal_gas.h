@@ -206,17 +206,9 @@ INLINE static float idg_density_from_pressure_and_internal_energy(
 
 // material_phase_state_from_internal_energy
 INLINE static float idg_phase_state_from_internal_energy(
-    float density, float u, const struct idg_params *mat) {
+    float density, float u, const struct mat_params *mat, const struct idg_params *idg_eos) {
 
-  return eos_phase_state_fluid;
-}
-
-// material_shear_mod
-INLINE static float idg_shear_mod(const struct idg_params *mat) {
-
-  error("This material function is not yet implemented!");
-
-  return 0.f;
+  return mat_phase_state_fluid;
 }
 
 #endif /* SWIFT_IDEAL_GAS_EQUATION_OF_STATE_H */

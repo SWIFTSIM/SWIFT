@@ -339,17 +339,9 @@ INLINE static float HM80_density_from_pressure_and_internal_energy(
 
 // material_phase_state_from_internal_energy
 INLINE static float HM80_phase_state_from_internal_energy(
-    float density, float u, const struct HM80_params *mat) {
+    float density, float u, const struct mat_params *mat, const struct HM80_params *HM80_eos) {
 
   error("This EOS function is not yet implemented!");
-
-  return 0.f;
-}
-
-// material_shear_mod
-INLINE static float HM80_shear_mod(const struct HM80_params *mat) {
-
-  error("This material function is not yet implemented!");
 
   return 0.f;
 }
