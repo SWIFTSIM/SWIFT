@@ -46,7 +46,7 @@ __attribute__((always_inline)) INLINE static float J_2_from_stress_tensor(
   for (int i = 0; i < 3; i++) {
     for (int j = 0; j < 3; j++) {
       J_2 += 0.5f * deviatoric_stress_tensor[i][j] *
-              deviatoric_stress_tensor[j][i];
+             deviatoric_stress_tensor[j][i];
     }
   }
 

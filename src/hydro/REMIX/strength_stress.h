@@ -31,9 +31,9 @@
 #include "hydro_kernels.h"
 #include "hydro_parameters.h"
 #include "math.h"
+#include "strength_damage.h"
 #include "strength_utilities.h"
 #include "strength_yield.h"
-#include "strength_damage.h"
 
 /**
  * @brief Set the (symmetric) stress tensor by combining the deviatoric with the
@@ -48,7 +48,8 @@ __attribute__((always_inline)) INLINE static void hydro_set_stress_tensor(
     p->stress_tensor.elements[i] = p->deviatoric_stress_tensor.elements[i];
   }
 
-  float effective_pressure = effective_pressure_from_damage(pressure, p->damage);
+  float effective_pressure =
+      effective_pressure_from_damage(pressure, p->damage);
 
   p->stress_tensor.xx -= effective_pressure;
   p->stress_tensor.yy -= effective_pressure;

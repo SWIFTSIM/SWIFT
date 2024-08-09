@@ -37,12 +37,12 @@
 /* Local headers. */
 #include "adiabatic_index.h"
 #include "common_io.h"
+#include "eos_setup.h"
+#include "eos_utilities.h"
 #include "inline.h"
 #include "physical_constants.h"
 #include "restart.h"
 #include "units.h"
-#include "eos_setup.h"
-#include "eos_utilities.h"
 
 /**
  * @brief Returns whether or not the material is in a solid state and not fluid.
@@ -76,7 +76,8 @@ material_phase_state_from_internal_energy(
     /* Custom user-provided Tillotson EoS */
     case eos_type_Til_custom:
       return Til_phase_state_from_internal_energy(
-          density, u, &eos.all_mat_params[mat_index], &eos.all_Til_custom[unit_id]);
+          density, u, &eos.all_mat_params[mat_index],
+          &eos.all_Til_custom[unit_id]);
 
     /* Hubbard & MacFarlane (1980) EoS */
     case eos_type_HM80:

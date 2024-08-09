@@ -88,7 +88,8 @@ __attribute__((always_inline)) INLINE static float compute_yield_stress_intact(
   if (pressure > 0.f) {
     yield_stress_intact = Y_0;
     if (Y_M != Y_0) {
-      yield_stress_intact += mu_i * pressure / (1.f + (mu_i * pressure) / (Y_M - Y_0));
+      yield_stress_intact +=
+          mu_i * pressure / (1.f + (mu_i * pressure) / (Y_M - Y_0));
     }
   }
   // #elif defined(STRENGTH_YIELD_###)
@@ -103,7 +104,8 @@ __attribute__((always_inline)) INLINE static float compute_yield_stress_intact(
  * @param p The particle to act upon
  */
 __attribute__((always_inline)) INLINE static float compute_yield_stress_damaged(
-    struct part *restrict p, const float pressure, const float yield_stress_intact) {
+    struct part *restrict p, const float pressure,
+    const float yield_stress_intact) {
 
   float yield_stress_damaged = 0.f;
 
@@ -163,15 +165,18 @@ __attribute__((always_inline)) INLINE static float compute_yield_stress(
     // From Collins (2004)
 
     float yield_stress_intact = compute_yield_stress_intact(p, pressure);
-    float yield_stress_damaged = compute_yield_stress_damaged(p, pressure, yield_stress_intact);
+    float yield_stress_damaged =
+        compute_yield_stress_damaged(p, pressure, yield_stress_intact);
 
-    yield_stress = adjust_yield_stress_by_density(p, yield_stress_intact, density);
+    yield_stress =
+        adjust_yield_stress_by_density(p, yield_stress_intact, density);
 
     // ...
     yield_stress = (1.f - p->damage) * yield_stress_intact +
                    p->damage * yield_stress_damaged;
 
-    yield_stress = adjust_yield_stress_by_temperature(p, yield_stress, temperature);
+    yield_stress =
+        adjust_yield_stress_by_temperature(p, yield_stress, temperature);
   }
   // #elif defined(STRENGTH_YIELD_###)
   // #endif
@@ -189,8 +194,8 @@ adjust_deviatoric_stress_tensor_by_yield_stress(
     struct part *restrict p, struct sym_matrix *deviatoric_stress_tensor,
     const float density, const float pressure, const float temperature) {
 
-    // Yield stress
-    float yield_stress = compute_yield_stress(p, density, pressure, temperature);
+  // Yield stress
+  float yield_stress = compute_yield_stress(p, density, pressure, temperature);
   /*
 //#if defined(STRENGTH_YIELD_###)
     float J_2 = J_2_from_stress_tensor(deviatoric_stress_tensor);
