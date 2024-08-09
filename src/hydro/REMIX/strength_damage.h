@@ -35,22 +35,23 @@
 #include "strength_utilities.h"
 
 /**
- * @brief Evolves particle tensile damage
+ * @brief Compute the effective pressure from the damage
  *
  * @param p The particle to act upon
  */
-__attribute__((always_inline)) INLINE static void
-set_effective_pressure_by_damage(float *effective_pressure,
-                                 const float pressure, const float damage) {
+__attribute__((always_inline)) INLINE static float
+effective_pressure_from_damage(const float pressure, const float damage) {
+
+  float effective_pressure = pressure;
 
   // #if defined(STRENGTH_DAMAGE_###)
-  *effective_pressure = pressure;
-
   // See schafer 2016 for this...
   if (pressure < 0.f) {
-    *effective_pressure *= (1.f - damage);
+    effective_pressure *= (1.f - damage);
   }
   // #endif
+
+  return effective_pressure;
 }
 
 /**
@@ -126,8 +127,7 @@ __attribute__((always_inline)) INLINE static void evolve_damage_shear(
     const float dt_therm) {
 
   // #if defined(STRENGTH_DAMAGE_###)
-  float J_2;
-  compute_stress_tensor_J_2(&J_2, &p->deviatoric_stress_tensor);
+  float J_2 = J_2_from_stress_tensor(&p->deviatoric_stress_tensor);
 
   // See Collins for this.
   if (sqrtf(J_2) > p->yield_stress) {

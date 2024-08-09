@@ -33,22 +33,24 @@
 #include "math.h"
 
 /**
- * @brief Compute the J_2 invariant of the deviatoric stress tensor. ###change
- * to float func
+ * @brief Compute the J_2 invariant of the deviatoric stress tensor.
  */
-__attribute__((always_inline)) INLINE static void compute_stress_tensor_J_2(
-    float *J_2, struct sym_matrix *sym_matrix_deviatoric_stress_tensor) {
+__attribute__((always_inline)) INLINE static float J_2_from_stress_tensor(
+    struct sym_matrix *sym_matrix_deviatoric_stress_tensor) {
 
   float deviatoric_stress_tensor[3][3];
   get_matrix_from_sym_matrix(deviatoric_stress_tensor,
                              sym_matrix_deviatoric_stress_tensor);
-  *J_2 = 0.f;
+  float J_2 = 0.f;
+
   for (int i = 0; i < 3; i++) {
     for (int j = 0; j < 3; j++) {
-      *J_2 += 0.5f * deviatoric_stress_tensor[i][j] *
+      J_2 += 0.5f * deviatoric_stress_tensor[i][j] *
               deviatoric_stress_tensor[j][i];
     }
   }
+
+  return J_2;
 }
 
 #endif /* MATERIAL_STRENGTH */

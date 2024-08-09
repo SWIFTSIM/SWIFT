@@ -48,8 +48,7 @@ __attribute__((always_inline)) INLINE static void hydro_set_stress_tensor(
     p->stress_tensor.elements[i] = p->deviatoric_stress_tensor.elements[i];
   }
 
-  float effective_pressure;
-  set_effective_pressure_by_damage(&effective_pressure, pressure, p->damage);
+  float effective_pressure = effective_pressure_from_damage(pressure, p->damage);
 
   p->stress_tensor.xx -= effective_pressure;
   p->stress_tensor.yy -= effective_pressure;
