@@ -565,7 +565,11 @@ void proxy_parts_exchange_first(struct proxy *p) {
   p->buff_out[2] = p->nr_sparts_out;
   p->buff_out[3] = p->nr_bparts_out;
   p->buff_out[4] = p->nr_sinks_out;
-  if (MPI_Isend(p->buff_out, 4, MPI_INT, p->nodeID,
+
+  /* WARNING: Document this, maybe use a variable for clarity: if we add a
+     particle type, we must increase the 5->6 (before sinks, it was
+     4->5). Grep 5 in the file and apply the same comment */
+  if (MPI_Isend(p->buff_out, 5, MPI_INT, p->nodeID,
                 p->mynodeID * proxy_tag_shift + proxy_tag_count, MPI_COMM_WORLD,
                 &p->req_parts_count_out) != MPI_SUCCESS)
     error("Failed to isend nr of parts.");
@@ -623,7 +627,9 @@ void proxy_parts_exchange_first(struct proxy *p) {
   }
 
   /* Receive the number of particles. */
-  if (MPI_Irecv(p->buff_in, 4, MPI_INT, p->nodeID,
+  /* WARNING: Document this, maybe use a variable for clarity: if we add a
+     particle type, we must increase the 5->6 (before sinks, it was 4->5) */
+  if (MPI_Irecv(p->buff_in, 5, MPI_INT, p->nodeID,
                 p->nodeID * proxy_tag_shift + proxy_tag_count, MPI_COMM_WORLD,
                 &p->req_parts_count_in) != MPI_SUCCESS)
     error("Failed to irecv nr of parts.");
