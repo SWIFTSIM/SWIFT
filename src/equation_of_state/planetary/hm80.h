@@ -38,6 +38,7 @@
 #include "inline.h"
 #include "physical_constants.h"
 #include "units.h"
+#include "eos_utilities.h"
 
 // Hubbard & MacFarlane (1980) parameters
 struct HM80_params {

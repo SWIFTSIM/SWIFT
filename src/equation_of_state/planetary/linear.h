@@ -35,6 +35,7 @@
 #include "common_io.h"
 #include "inline.h"
 #include "physical_constants.h"
+#include "eos_utilities.h"
 
 // Linear EoS parameters
 struct linear_params {

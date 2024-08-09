@@ -39,6 +39,7 @@
 #include "physical_constants.h"
 #include "sesame.h"
 #include "units.h"
+#include "eos_utilities.h"
 
 // Tillotson parameters
 struct Til_params {

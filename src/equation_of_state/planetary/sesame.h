@@ -39,6 +39,7 @@
 #include "physical_constants.h"
 #include "units.h"
 #include "utilities.h"
+#include "eos_utilities.h"
 
 // SESAME parameters
 struct SESAME_params {
@@ -126,31 +127,6 @@ INLINE static void set_custom(struct SESAME_params *mat,
                               enum eos_planetary_material_id mat_id) {
   mat->mat_id = mat_id;
   mat->version_date = 0;
-}
-
-/*
-    Skip a line while reading a file.
-*/
-INLINE static int skip_line(FILE *f) {
-  int c;
-
-  // Read each character until reaching the end of the line or file
-  do {
-    c = fgetc(f);
-  } while ((c != '\n') && (c != EOF));
-
-  return c;
-}
-
-/*
-    Skip n lines while reading a file.
-*/
-INLINE static int skip_lines(FILE *f, int n) {
-  int c;
-
-  for (int i = 0; i < n; i++) c = skip_line(f);
-
-  return c;
 }
 
 /*
