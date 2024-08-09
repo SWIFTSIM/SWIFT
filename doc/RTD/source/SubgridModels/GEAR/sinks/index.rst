@@ -8,13 +8,10 @@
 Sink particles and star formation in GEAR model
 ===============================================
 
-.. warning::
-  The pages in the GEAR sink sections are under construction. They may be incomplete.
-
-
 .. toctree::
    :caption: Table of Contents
 
    introduction
    theory
    params
+   output
