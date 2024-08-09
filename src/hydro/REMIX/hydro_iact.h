@@ -30,8 +30,8 @@
 #include "const.h"
 #include "hydro_kernels.h"
 #include "hydro_parameters.h"
-#include "hydro_visc_difn.h"
 #include "hydro_strength.h"
+#include "hydro_visc_difn.h"
 #include "math.h"
 #include "minmax.h"
 
@@ -41,27 +41,31 @@
  *
  * @param p The particle to act upon
  */
-__attribute__((always_inline)) INLINE static void hydro_set_pairwise_stress_tensors(
-    float pairwise_stress_tensor_i[3][3], float pairwise_stress_tensor_j[3][3],
-    const struct part *restrict pi, const struct part *restrict pj, const float r,
-    const float pressurei, const float pressurej) {
+__attribute__((always_inline)) INLINE static void
+hydro_set_pairwise_stress_tensors(float pairwise_stress_tensor_i[3][3],
+                                  float pairwise_stress_tensor_j[3][3],
+                                  const struct part *restrict pi,
+                                  const struct part *restrict pj, const float r,
+                                  const float pressurei,
+                                  const float pressurej) {
 
   // Set the default stress tensor with just the pressures, S = -P * I(3)
   for (int i = 0; i < 3; i++) {
     for (int j = 0; j < 3; j++) {
-        if (i == j) {
-            // Only include the pressure if it is positive (i.e. not in tension)
-            pairwise_stress_tensor_i[i][i] = -max(pressurei, 0.f);
-            pairwise_stress_tensor_j[i][i] = -max(pressurej, 0.f);
-        } else {
-            pairwise_stress_tensor_i[i][j] = 0.f;
-            pairwise_stress_tensor_j[i][j] = 0.f;
-        }
+      if (i == j) {
+        // Only include the pressure if it is positive (i.e. not in tension)
+        pairwise_stress_tensor_i[i][i] = -max(pressurei, 0.f);
+        pairwise_stress_tensor_j[i][i] = -max(pressurej, 0.f);
+      } else {
+        pairwise_stress_tensor_i[i][j] = 0.f;
+        pairwise_stress_tensor_j[i][j] = 0.f;
+      }
     }
   }
 
 #ifdef MATERIAL_STRENGTH
-  hydro_set_pairwise_stress_tensors_strength(pairwise_stress_tensor_i, pairwise_stress_tensor_j, pi, pj, r);
+  hydro_set_pairwise_stress_tensors_strength(
+      pairwise_stress_tensor_i, pairwise_stress_tensor_j, pi, pj, r);
 #endif /* MATERIAL_STRENGTH */
 }
 
@@ -261,7 +265,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
   const float uj = r * hj_inv;
   kernel_deval(uj, &wj, &wj_dx);
 
-  hydro_runner_iact_nonsym_gradient_extra_kernel(pi, pj, dx, wi, wj, wi_dx, wj_dx);
+  hydro_runner_iact_nonsym_gradient_extra_kernel(pi, pj, dx, wi, wj, wi_dx,
+                                                 wj_dx);
   hydro_runner_iact_nonsym_gradient_extra_viscosity(pi, pj, dx, wi, wi_dx);
 #ifdef MATERIAL_STRENGTH
   hydro_runner_iact_nonsym_gradient_extra_strength(pi, pj, dx, wi, wi_dx);
@@ -325,8 +330,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   // Convert the pressures into "stress" tensors for fluids, or set the stress
   // for solid particle pairs with strength
   float pairwise_stress_tensor_i[3][3], pairwise_stress_tensor_j[3][3];
-  hydro_set_pairwise_stress_tensors(pairwise_stress_tensor_i, pairwise_stress_tensor_j,
-                                    pi, pj, r, pressurei, pressurej);
+  hydro_set_pairwise_stress_tensors(pairwise_stress_tensor_i,
+                                    pairwise_stress_tensor_j, pi, pj, r,
+                                    pressurei, pressurej);
 
   // Viscous pressures
   float Qi, Qj;
@@ -338,39 +344,41 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   float Q_term_i[3], Q_term_j[3];
   float stress_tensor_term_i[3], stress_tensor_term_j[3];
   for (int i = 0; i < 3; i++) {
-      Q_term_i[i] = -Qi * G_mean[i];
-      Q_term_j[i] = -Qj * G_mean[i];
+    Q_term_i[i] = -Qi * G_mean[i];
+    Q_term_j[i] = -Qj * G_mean[i];
 
-      stress_tensor_term_i[i] = 0.f;
-      stress_tensor_term_j[i] = 0.f;
-      for (int j = 0; j < 3; j++) {
-          stress_tensor_term_i[i] += pairwise_stress_tensor_i[i][j] * G_mean[j];
-          stress_tensor_term_j[i] += pairwise_stress_tensor_j[i][j] * G_mean[j];
-      }
+    stress_tensor_term_i[i] = 0.f;
+    stress_tensor_term_j[i] = 0.f;
+    for (int j = 0; j < 3; j++) {
+      stress_tensor_term_i[i] += pairwise_stress_tensor_i[i][j] * G_mean[j];
+      stress_tensor_term_j[i] += pairwise_stress_tensor_j[i][j] * G_mean[j];
+    }
   }
 
   /* Use the force Luke! */
   for (int i = 0; i < 3; i++) {
-    pi->a_hydro[i] +=
-        mj * (stress_tensor_term_i[i] + stress_tensor_term_j[i] + Q_term_i[i] + Q_term_j[i])
-        / (rhoi * rhoj);
-    pj->a_hydro[i] -=
-        mi * (stress_tensor_term_i[i] + stress_tensor_term_j[i] + Q_term_i[i] + Q_term_j[i])
-        / (rhoi * rhoj);
+    pi->a_hydro[i] += mj *
+                      (stress_tensor_term_i[i] + stress_tensor_term_j[i] +
+                       Q_term_i[i] + Q_term_j[i]) /
+                      (rhoi * rhoj);
+    pj->a_hydro[i] -= mi *
+                      (stress_tensor_term_i[i] + stress_tensor_term_j[i] +
+                       Q_term_i[i] + Q_term_j[i]) /
+                      (rhoi * rhoj);
   }
 
   // Compute dv terms for u and h time derivatives
-  float dv_dot_Q_term_i=0.f, dv_dot_Q_term_j=0.f;
-  float dv_dot_stress_term_i=0.f, dv_dot_stress_term_j=0.f;
-  float dv_dot_G=0.f;
-  for (int i=0; i<3; i++) {
-      dv_dot_Q_term_i += (pi->v[i] - pj->v[i]) * Q_term_i[i];
-      dv_dot_Q_term_j += (pi->v[i] - pj->v[i]) * Q_term_j[i];
+  float dv_dot_Q_term_i = 0.f, dv_dot_Q_term_j = 0.f;
+  float dv_dot_stress_term_i = 0.f, dv_dot_stress_term_j = 0.f;
+  float dv_dot_G = 0.f;
+  for (int i = 0; i < 3; i++) {
+    dv_dot_Q_term_i += (pi->v[i] - pj->v[i]) * Q_term_i[i];
+    dv_dot_Q_term_j += (pi->v[i] - pj->v[i]) * Q_term_j[i];
 
-      dv_dot_stress_term_i += (pi->v[i] - pj->v[i]) * stress_tensor_term_i[i];
-      dv_dot_stress_term_j += (pi->v[i] - pj->v[i]) * stress_tensor_term_j[i];
+    dv_dot_stress_term_i += (pi->v[i] - pj->v[i]) * stress_tensor_term_i[i];
+    dv_dot_stress_term_j += (pi->v[i] - pj->v[i]) * stress_tensor_term_j[i];
 
-      dv_dot_G += (pi->v[i] - pj->v[i]) * G_mean[i];
+    dv_dot_G += (pi->v[i] - pj->v[i]) * G_mean[i];
   }
 
   /* Get the time derivative for u, including the viscosity */
@@ -410,17 +418,17 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
     float drho_dt_norm_and_difn_j;
     if (pi->phase_state == mat_phase_state_fluid) {
       drho_dt_norm_and_difn_i =
-        alpha_norm * mj * v_sig_norm * pi->force.vac_switch *
-        (pi->m0 * pi->rho_evol - pi->rho_evol) * mod_G / mean_rho;
+          alpha_norm * mj * v_sig_norm * pi->force.vac_switch *
+          (pi->m0 * pi->rho_evol - pi->rho_evol) * mod_G / mean_rho;
     } else {
-        drho_dt_norm_and_difn_i = 0.f;
+      drho_dt_norm_and_difn_i = 0.f;
     }
     if (pj->phase_state == mat_phase_state_fluid) {
       drho_dt_norm_and_difn_j =
-        alpha_norm * mi * v_sig_norm * pj->force.vac_switch *
-        (pj->m0 * pj->rho_evol - pj->rho_evol) * mod_G / mean_rho;
+          alpha_norm * mi * v_sig_norm * pj->force.vac_switch *
+          (pj->m0 * pj->rho_evol - pj->rho_evol) * mod_G / mean_rho;
     } else {
-        drho_dt_norm_and_difn_j = 0.f;
+      drho_dt_norm_and_difn_j = 0.f;
     }
 
     // Diffusion for same materials
@@ -528,8 +536,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   // Convert the pressures into "stress" tensors for fluids, S = -P * I(3),
   // or set the stress for solid particle pairs with strength
   float pairwise_stress_tensor_i[3][3], pairwise_stress_tensor_j[3][3];
-  hydro_set_pairwise_stress_tensors(pairwise_stress_tensor_i, pairwise_stress_tensor_j,
-                                    pi, pj, r, pressurei, pressurej);
+  hydro_set_pairwise_stress_tensors(pairwise_stress_tensor_i,
+                                    pairwise_stress_tensor_j, pi, pj, r,
+                                    pressurei, pressurej);
 
   // Viscous pressures
   float Qi, Qj;
@@ -541,34 +550,35 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   float Q_term_i[3], Q_term_j[3];
   float stress_tensor_term_i[3], stress_tensor_term_j[3];
   for (int i = 0; i < 3; i++) {
-      Q_term_i[i] = -Qi * G_mean[i];
-      Q_term_j[i] = -Qj * G_mean[i];
+    Q_term_i[i] = -Qi * G_mean[i];
+    Q_term_j[i] = -Qj * G_mean[i];
 
-      stress_tensor_term_i[i] = 0.f;
-      stress_tensor_term_j[i] = 0.f;
-      for (int j = 0; j < 3; j++) {
-          stress_tensor_term_i[i] += pairwise_stress_tensor_i[i][j] * G_mean[j];
-          stress_tensor_term_j[i] += pairwise_stress_tensor_j[i][j] * G_mean[j];
-      }
+    stress_tensor_term_i[i] = 0.f;
+    stress_tensor_term_j[i] = 0.f;
+    for (int j = 0; j < 3; j++) {
+      stress_tensor_term_i[i] += pairwise_stress_tensor_i[i][j] * G_mean[j];
+      stress_tensor_term_j[i] += pairwise_stress_tensor_j[i][j] * G_mean[j];
+    }
   }
 
   /* Use the force Luke! */
   for (int i = 0; i < 3; i++) {
-    pi->a_hydro[i] +=
-        mj * (stress_tensor_term_i[i] + stress_tensor_term_j[i] + Q_term_i[i] + Q_term_j[i])
-        / (rhoi * rhoj);
+    pi->a_hydro[i] += mj *
+                      (stress_tensor_term_i[i] + stress_tensor_term_j[i] +
+                       Q_term_i[i] + Q_term_j[i]) /
+                      (rhoi * rhoj);
   }
 
   // Compute dv terms for u and h time derivatives
-  float dv_dot_Q_term_i=0.f;
-  float dv_dot_stress_term_i=0.f;
-  float dv_dot_G=0.f;
-  for (int i=0; i<3; i++) {
-      dv_dot_Q_term_i += (pi->v[i] - pj->v[i]) * Q_term_i[i];
+  float dv_dot_Q_term_i = 0.f;
+  float dv_dot_stress_term_i = 0.f;
+  float dv_dot_G = 0.f;
+  for (int i = 0; i < 3; i++) {
+    dv_dot_Q_term_i += (pi->v[i] - pj->v[i]) * Q_term_i[i];
 
-      dv_dot_stress_term_i += (pi->v[i] - pj->v[i]) * stress_tensor_term_i[i];
+    dv_dot_stress_term_i += (pi->v[i] - pj->v[i]) * stress_tensor_term_i[i];
 
-      dv_dot_G += (pi->v[i] - pj->v[i]) * G_mean[i];
+    dv_dot_G += (pi->v[i] - pj->v[i]) * G_mean[i];
   }
 
   /* Get the time derivative for u, including the viscosity */
@@ -601,8 +611,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     float drho_dt_norm_and_difn_i = 0.f;
     if (pi->phase_state == mat_phase_state_fluid) {
       drho_dt_norm_and_difn_i +=
-        alpha_norm * mj * v_sig_norm * pi->force.vac_switch *
-        (pi->m0 * pi->rho_evol - pi->rho_evol) * mod_G / mean_rho;
+          alpha_norm * mj * v_sig_norm * pi->force.vac_switch *
+          (pi->m0 * pi->rho_evol - pi->rho_evol) * mod_G / mean_rho;
     }
 
     // Diffusion for same materials

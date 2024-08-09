@@ -33,128 +33,133 @@
 #include "math.h"
 
 /**
- * @brief Compute the J_2 invariant of the deviatoric stress tensor. ###change to float func
+ * @brief Compute the J_2 invariant of the deviatoric stress tensor. ###change
+ * to float func
  */
 __attribute__((always_inline)) INLINE static void compute_stress_tensor_J_2(
     float *J_2, struct sym_matrix *sym_matrix_deviatoric_stress_tensor) {
 
-    float deviatoric_stress_tensor[3][3];
-    get_matrix_from_sym_matrix(deviatoric_stress_tensor, sym_matrix_deviatoric_stress_tensor);
-    *J_2 = 0.f;
-    for (int i = 0; i < 3; i++) {
-      for (int j = 0; j < 3; j++) {
-        *J_2 += 0.5f * deviatoric_stress_tensor[i][j] * deviatoric_stress_tensor[j][i];
-      }
+  float deviatoric_stress_tensor[3][3];
+  get_matrix_from_sym_matrix(deviatoric_stress_tensor,
+                             sym_matrix_deviatoric_stress_tensor);
+  *J_2 = 0.f;
+  for (int i = 0; i < 3; i++) {
+    for (int j = 0; j < 3; j++) {
+      *J_2 += 0.5f * deviatoric_stress_tensor[i][j] *
+              deviatoric_stress_tensor[j][i];
     }
+  }
 }
-
 
 #include "strength_damage.h"
 
 /**
- * @brief Set the (symmetric) stress tensor by combining the deviatoric with the pressure.
+ * @brief Set the (symmetric) stress tensor by combining the deviatoric with the
+ * pressure.
  *
  * @param p The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void hydro_set_stress_tensor(
     struct part *restrict p, const float pressure) {
 
-    for (int i = 0; i < 6; i++) {
-        p->stress_tensor.elements[i] = p->deviatoric_stress_tensor.elements[i];
-    }
+  for (int i = 0; i < 6; i++) {
+    p->stress_tensor.elements[i] = p->deviatoric_stress_tensor.elements[i];
+  }
 
-    float effective_pressure;
-    set_effective_pressure_by_damage(&effective_pressure, pressure, p->damage);
+  float effective_pressure;
+  set_effective_pressure_by_damage(&effective_pressure, pressure, p->damage);
 
-    p->stress_tensor.xx -= effective_pressure;
-    p->stress_tensor.yy -= effective_pressure;
-    p->stress_tensor.zz -= effective_pressure;
+  p->stress_tensor.xx -= effective_pressure;
+  p->stress_tensor.yy -= effective_pressure;
+  p->stress_tensor.zz -= effective_pressure;
 
-    // Compute principal stresses
-    sym_matrix_compute_eigenvalues(p->principal_stress_eigen, p->stress_tensor);
+  // Compute principal stresses
+  sym_matrix_compute_eigenvalues(p->principal_stress_eigen, p->stress_tensor);
 }
 
 /**
  * @brief Update the pairwise stress tensors with artificial stress.
  */
 __attribute__((always_inline)) INLINE static void strength_add_artif_stress(
-   float pairwise_stress_tensor_i[3][3], float pairwise_stress_tensor_j[3][3],
-   const struct part *restrict pi, const struct part *restrict pj, const float r) {
-//#if defined(STRENGTH_STRESS_MON2000) ###
-/*
-    // Artificial stress (Monaghan, 2000)
-    const float mean_h = 0.5f * (pi->h + pj->h);
-    const float delta_p = 0.5f * (powf(pi->mass / pi->rho, 1.f/hydro_dimension) +
-                                  powf(pj->mass / pj->rho, 1.f/hydro_dimension));
+    float pairwise_stress_tensor_i[3][3], float pairwise_stress_tensor_j[3][3],
+    const struct part *restrict pi, const struct part *restrict pj,
+    const float r) {
+  // #if defined(STRENGTH_STRESS_MON2000) ###
+  /*
+      // Artificial stress (Monaghan, 2000)
+      const float mean_h = 0.5f * (pi->h + pj->h);
+      const float delta_p = 0.5f * (powf(pi->mass /
+     pi->rho, 1.f/hydro_dimension) + powf(pj->mass /
+     pj->rho, 1.f/hydro_dimension));
 
-    float wij_delta_p;
-    kernel_eval(delta_p / mean_h, &wij_delta_p);
+      float wij_delta_p;
+      kernel_eval(delta_p / mean_h, &wij_delta_p);
 
-    float wij_r;
-    kernel_eval(r / mean_h, &wij_r);
+      float wij_r;
+      kernel_eval(r / mean_h, &wij_r);
 
-    // This factor should be set in extra parameter file
-    const float artif_stress_n = 4.f; //### yml
-    const float artif_stress_f = powf(wij_r / wij_delta_p, artif_stress_n);
+      // This factor should be set in extra parameter file
+      const float artif_stress_n = 4.f; //### yml
+      const float artif_stress_f = powf(wij_r / wij_delta_p, artif_stress_n);
 
-    // This factor should be set in extra parameter file
-    const float artif_stress_epsilon = 0.2f; //### yml
+      // This factor should be set in extra parameter file
+      const float artif_stress_epsilon = 0.2f; //### yml
 
-    for (int i = 0; i < 3; ++i) {
-        for (int j = 0; j < 3; ++j) {
-          if (pairwise_stress_tensor_i[i][j] > 0.f)
-            pairwise_stress_tensor_i[i][j] -= artif_stress_f * artif_stress_epsilon *
-                                                pairwise_stress_tensor_i[i][j];
-          if (pairwise_stress_tensor_j[i][j] > 0.f)
-            pairwise_stress_tensor_j[i][j] -= artif_stress_f * artif_stress_epsilon *
-                                                pairwise_stress_tensor_j[i][j];
-        }
-    }
-    */
-//#elif defined(STRENGTH_STRESS_BASIS_INDP) ###
-    /* New version that is independent of basis:
-     * Principal stresses are basis-independent
-     * Adding the same constant to all diagonal elemenets is equivalent in any basis:
-     * M + c*I = P (M + c*I) P^-1 = P M P^-1 + P (c*I) P^-1 = P M P^-1 + c*I
-     * This is a lot easier than e.g. Gray, Monaghan, and Swift (2001) */
-    const float mean_h = 0.5f * (pi->h + pj->h);
-    const float delta_p = 0.5f * (powf(pi->mass / pi->rho, 1.f / hydro_dimension) +
-                                  powf(pj->mass / pj->rho, 1.f / hydro_dimension));
+      for (int i = 0; i < 3; ++i) {
+          for (int j = 0; j < 3; ++j) {
+            if (pairwise_stress_tensor_i[i][j] > 0.f)
+              pairwise_stress_tensor_i[i][j] -= artif_stress_f *
+     artif_stress_epsilon * pairwise_stress_tensor_i[i][j]; if
+     (pairwise_stress_tensor_j[i][j] > 0.f) pairwise_stress_tensor_j[i][j] -=
+     artif_stress_f * artif_stress_epsilon * pairwise_stress_tensor_j[i][j];
+          }
+      }
+      */
+  // #elif defined(STRENGTH_STRESS_BASIS_INDP) ###
+  /* New version that is independent of basis:
+   * Principal stresses are basis-independent
+   * Adding the same constant to all diagonal elemenets is equivalent in any
+   * basis: M + c*I = P (M + c*I) P^-1 = P M P^-1 + P (c*I) P^-1 = P M P^-1 +
+   * c*I This is a lot easier than e.g. Gray, Monaghan, and Swift (2001) */
+  const float mean_h = 0.5f * (pi->h + pj->h);
+  const float delta_p =
+      0.5f * (powf(pi->mass / pi->rho, 1.f / hydro_dimension) +
+              powf(pj->mass / pj->rho, 1.f / hydro_dimension));
 
-    float wij_delta_p;
-    kernel_eval(delta_p / mean_h, &wij_delta_p);
+  float wij_delta_p;
+  kernel_eval(delta_p / mean_h, &wij_delta_p);
 
-    float wij_r;
-    kernel_eval(r / mean_h, &wij_r);
+  float wij_r;
+  kernel_eval(r / mean_h, &wij_r);
 
-    // This factor should be set in extra parameter file
-    const float artif_stress_n = 4.f; //### yml
-    const float artif_stress_f = powf(wij_r / wij_delta_p, artif_stress_n);
+  // This factor should be set in extra parameter file
+  const float artif_stress_n = 4.f;  // ### yml
+  const float artif_stress_f = powf(wij_r / wij_delta_p, artif_stress_n);
 
-    // This factor should be set in extra parameter file
-    const float artif_stress_epsilon = 0.2f; //### yml
+  // This factor should be set in extra parameter file
+  const float artif_stress_epsilon = 0.2f;  // ### yml
 
-    float max_principal_stress_i = pi->principal_stress_eigen[0];
-    if (pi->principal_stress_eigen[1] > max_principal_stress_i)
-      max_principal_stress_i = pi->principal_stress_eigen[1];
-    if (pi->principal_stress_eigen[2] > max_principal_stress_i)
-      max_principal_stress_i = pi->principal_stress_eigen[2];
+  float max_principal_stress_i = pi->principal_stress_eigen[0];
+  if (pi->principal_stress_eigen[1] > max_principal_stress_i)
+    max_principal_stress_i = pi->principal_stress_eigen[1];
+  if (pi->principal_stress_eigen[2] > max_principal_stress_i)
+    max_principal_stress_i = pi->principal_stress_eigen[2];
 
-    float max_principal_stress_j = pj->principal_stress_eigen[0];
-    if (pj->principal_stress_eigen[1] > max_principal_stress_j)
-      max_principal_stress_j = pj->principal_stress_eigen[1];
-    if (pj->principal_stress_eigen[2] > max_principal_stress_j)
-      max_principal_stress_j = pj->principal_stress_eigen[2];
+  float max_principal_stress_j = pj->principal_stress_eigen[0];
+  if (pj->principal_stress_eigen[1] > max_principal_stress_j)
+    max_principal_stress_j = pj->principal_stress_eigen[1];
+  if (pj->principal_stress_eigen[2] > max_principal_stress_j)
+    max_principal_stress_j = pj->principal_stress_eigen[2];
 
-    for (int i = 0; i < 3; ++i) {
-      if (max_principal_stress_i > 0)
-          pairwise_stress_tensor_i[i][i] -= artif_stress_f * artif_stress_epsilon *
-                                              max_principal_stress_i;
-      if (max_principal_stress_j > 0)
-          pairwise_stress_tensor_j[i][i] -= artif_stress_f * artif_stress_epsilon *
-                                              max_principal_stress_j;
-    }
-//#endif
+  for (int i = 0; i < 3; ++i) {
+    if (max_principal_stress_i > 0)
+      pairwise_stress_tensor_i[i][i] -=
+          artif_stress_f * artif_stress_epsilon * max_principal_stress_i;
+    if (max_principal_stress_j > 0)
+      pairwise_stress_tensor_j[i][i] -=
+          artif_stress_f * artif_stress_epsilon * max_principal_stress_j;
+  }
+  // #endif
 }
 
 /**
@@ -162,19 +167,23 @@ __attribute__((always_inline)) INLINE static void strength_add_artif_stress(
  *
  * @param p The particle to act upon
  */
-__attribute__((always_inline)) INLINE static void hydro_set_pairwise_stress_tensors_strength(
-    float pairwise_stress_tensor_i[3][3], float pairwise_stress_tensor_j[3][3],
-    const struct part *restrict pi, const struct part *restrict pj, const float r) {
+__attribute__((always_inline)) INLINE static void
+hydro_set_pairwise_stress_tensors_strength(float pairwise_stress_tensor_i[3][3],
+                                           float pairwise_stress_tensor_j[3][3],
+                                           const struct part *restrict pi,
+                                           const struct part *restrict pj,
+                                           const float r) {
 
-    // Use the full stress tensor for solid particles
-    if ((pi->phase_state == mat_phase_state_solid) &&
-        (pj->phase_state == mat_phase_state_solid)) {
+  // Use the full stress tensor for solid particles
+  if ((pi->phase_state == mat_phase_state_solid) &&
+      (pj->phase_state == mat_phase_state_solid)) {
 
-      get_matrix_from_sym_matrix(pairwise_stress_tensor_i, &pi->stress_tensor);
-      get_matrix_from_sym_matrix(pairwise_stress_tensor_j, &pj->stress_tensor);
+    get_matrix_from_sym_matrix(pairwise_stress_tensor_i, &pi->stress_tensor);
+    get_matrix_from_sym_matrix(pairwise_stress_tensor_j, &pj->stress_tensor);
 
-      strength_add_artif_stress(pairwise_stress_tensor_i, pairwise_stress_tensor_j, pi, pj, r);
-    }
+    strength_add_artif_stress(pairwise_stress_tensor_i,
+                              pairwise_stress_tensor_j, pi, pj, r);
+  }
 }
 
 /**
@@ -192,11 +201,12 @@ __attribute__((always_inline)) INLINE static void evolve_deviatoric_stress(
   } else {
     // Update solid stress
     for (int i = 0; i < 6; i++) {
-      p->deviatoric_stress_tensor.elements[i] += p->dS_dt.elements[i] * dt_therm;
+      p->deviatoric_stress_tensor.elements[i] +=
+          p->dS_dt.elements[i] * dt_therm;
     }
     // Yield stress
-    adjust_deviatoric_stress_tensor_by_yield_stress(p, &p->deviatoric_stress_tensor,
-      density, pressure, temperature);
+    adjust_deviatoric_stress_tensor_by_yield_stress(
+        p, &p->deviatoric_stress_tensor, density, pressure, temperature);
   }
 }
 

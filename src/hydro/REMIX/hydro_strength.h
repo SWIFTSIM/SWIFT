@@ -37,8 +37,8 @@
  *
  * @param p The particle to act upon
  */
-__attribute__((always_inline)) INLINE static void
-calculate_strain_rate_tensor(struct part *restrict p, float strain_rate_tensor[3][3]) {
+__attribute__((always_inline)) INLINE static void calculate_strain_rate_tensor(
+    struct part *restrict p, float strain_rate_tensor[3][3]) {
 
   for (int i = 0; i < 3; i++) {
     for (int j = 0; j < 3; j++) {
@@ -54,7 +54,8 @@ calculate_strain_rate_tensor(struct part *restrict p, float strain_rate_tensor[3
  * @param p The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void
-calculate_rotation_rate_tensor(struct part *restrict p, float rotation_rate_tensor[3][3]) {
+calculate_rotation_rate_tensor(struct part *restrict p,
+                               float rotation_rate_tensor[3][3]) {
 
   for (int i = 0; i < 3; i++) {
     for (int j = 0; j < 3; j++) {
@@ -69,9 +70,9 @@ calculate_rotation_rate_tensor(struct part *restrict p, float rotation_rate_tens
  *
  * @param p The particle to act upon
  */
-__attribute__((always_inline)) INLINE static void
-calculate_rotation_term(float rotation_term[3][3], const float rotation_rate_tensor[3][3],
-  const float deviatoric_stress_tensor[3][3]) {
+__attribute__((always_inline)) INLINE static void calculate_rotation_term(
+    float rotation_term[3][3], const float rotation_rate_tensor[3][3],
+    const float deviatoric_stress_tensor[3][3]) {
 
   // Set rotation to transform into the corotating frame
   for (int i = 0; i < 3; i++) {
@@ -80,19 +81,17 @@ calculate_rotation_term(float rotation_term[3][3], const float rotation_rate_ten
 
       for (int k = 0; k < 3; k++) {
         // See Dienes 1978 (eqn 4.8)
-        rotation_term[i][j] += deviatoric_stress_tensor[i][k] *
-                                   rotation_rate_tensor[k][j] -
-                               rotation_rate_tensor[i][k] *
-                                   deviatoric_stress_tensor[k][j];
+        rotation_term[i][j] +=
+            deviatoric_stress_tensor[i][k] * rotation_rate_tensor[k][j] -
+            rotation_rate_tensor[i][k] * deviatoric_stress_tensor[k][j];
       }
     }
   }
 }
 
-
+#include "strength_damage.h"
 #include "strength_stress.h"
 #include "strength_yield.h"
-#include "strength_damage.h"
 
 /**
  * @brief Prepares extra strength parameters for a particle for the density
@@ -185,7 +184,8 @@ hydro_end_gradient_extra_strength(struct part *restrict p) {}
  * @param p The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void
-hydro_prepare_force_extra_strength(struct part *restrict p, const float pressure) {
+hydro_prepare_force_extra_strength(struct part *restrict p,
+                                   const float pressure) {
   for (int i = 0; i < 3; ++i) {
     for (int j = 0; j < 3; ++j) {
       p->dv_force_loop[i][j] = 0.f;
@@ -251,25 +251,31 @@ hydro_runner_iact_nonsym_force_extra_strength(struct part *restrict pi,
 __attribute__((always_inline)) INLINE static void
 hydro_end_force_extra_strength(struct part *restrict p) {
 
-  float strain_rate_tensor[3][3], rotation_rate_tensor[3][3], rotation_term[3][3];
+  float strain_rate_tensor[3][3], rotation_rate_tensor[3][3],
+      rotation_term[3][3];
   float deviatoric_stress_tensor[3][3];
-  get_matrix_from_sym_matrix(deviatoric_stress_tensor, &p->deviatoric_stress_tensor);
+  get_matrix_from_sym_matrix(deviatoric_stress_tensor,
+                             &p->deviatoric_stress_tensor);
 
   // Set the strain and rotation rates
- calculate_strain_rate_tensor(p, strain_rate_tensor);
- calculate_rotation_rate_tensor(p, rotation_rate_tensor);
- calculate_rotation_term(rotation_term, rotation_rate_tensor, deviatoric_stress_tensor);
+  calculate_strain_rate_tensor(p, strain_rate_tensor);
+  calculate_rotation_rate_tensor(p, rotation_rate_tensor);
+  calculate_rotation_term(rotation_term, rotation_rate_tensor,
+                          deviatoric_stress_tensor);
 
   // Compute time derivative of the deviatoric stress tensor (Hooke's law)
   const float shear_mod = material_shear_mod(p->mat_id);
   float dS_dt[3][3];
   for (int i = 0; i < 3; i++) {
     for (int j = 0; j < 3; j++) {
-      dS_dt[i][j] = 2.0f * shear_mod * strain_rate_tensor[i][j] + rotation_term[i][j];
+      dS_dt[i][j] =
+          2.0f * shear_mod * strain_rate_tensor[i][j] + rotation_term[i][j];
     }
 
     dS_dt[i][i] -= 2.0f * shear_mod *
-        (strain_rate_tensor[0][0] + strain_rate_tensor[1][1] + strain_rate_tensor[2][2]) / 3.f;
+                   (strain_rate_tensor[0][0] + strain_rate_tensor[1][1] +
+                    strain_rate_tensor[2][2]) /
+                   3.f;
   }
 
   get_sym_matrix_from_matrix(&p->dS_dt, dS_dt);
@@ -285,9 +291,9 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra_strength(
     struct part *restrict p, const float dt_therm, const float density,
     const float pressure, const float temperature) {
 
-    evolve_damage(p, pressure, dt_therm);
+  evolve_damage(p, pressure, dt_therm);
 
-    evolve_deviatoric_stress(p, dt_therm, density, pressure, temperature);
+  evolve_deviatoric_stress(p, dt_therm, density, pressure, temperature);
 }
 
 #endif /* MATERIAL_STRENGTH */

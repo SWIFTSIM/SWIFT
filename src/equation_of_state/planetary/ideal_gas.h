@@ -206,7 +206,8 @@ INLINE static float idg_density_from_pressure_and_internal_energy(
 
 // material_phase_state_from_internal_energy
 INLINE static float idg_phase_state_from_internal_energy(
-    float density, float u, const struct mat_params *mat, const struct idg_params *idg_eos) {
+    float density, float u, const struct mat_params *mat,
+    const struct idg_params *idg_eos) {
 
   return mat_phase_state_fluid;
 }

@@ -57,8 +57,7 @@ INLINE static void set_linear_params(struct linear_params *mat,
 
   // Load table contents from file
   FILE *f = fopen(param_file, "r");
-  if (f == NULL)
-    error("Failed to open the linear EoS file '%s'", param_file);
+  if (f == NULL) error("Failed to open the linear EoS file '%s'", param_file);
 
   // Skip header lines
   skip_lines(f, 2);
@@ -109,8 +108,8 @@ INLINE static float linear_internal_energy_from_entropy(
  * @param density The density \f$\rho\f$.
  * @param entropy The entropy \f$A\f$.
  */
-INLINE static float linear_pressure_from_entropy(float density, float entropy,
-                                              const struct linear_params *mat) {
+INLINE static float linear_pressure_from_entropy(
+    float density, float entropy, const struct linear_params *mat) {
 
   error("This EOS function is not yet implemented!");
 
@@ -126,8 +125,8 @@ INLINE static float linear_pressure_from_entropy(float density, float entropy,
  * @param pressure The pressure \f$P\f$.
  * @return The entropy \f$A\f$.
  */
-INLINE static float linear_entropy_from_pressure(float density, float pressure,
-                                              const struct linear_params *mat) {
+INLINE static float linear_entropy_from_pressure(
+    float density, float pressure, const struct linear_params *mat) {
 
   error("This EOS function is not yet implemented!");
 
@@ -142,8 +141,8 @@ INLINE static float linear_entropy_from_pressure(float density, float pressure,
  * @param density The density \f$\rho\f$.
  * @param entropy The entropy \f$A\f$.
  */
-INLINE static float linear_soundspeed_from_entropy(float density, float entropy,
-                                                const struct linear_params *mat) {
+INLINE static float linear_soundspeed_from_entropy(
+    float density, float entropy, const struct linear_params *mat) {
 
   return mat->c_s;
 }
@@ -218,8 +217,8 @@ INLINE static float linear_soundspeed_from_internal_energy(
  * @param density The density \f$\rho\f$
  * @param P The pressure \f$P\f$
  */
-INLINE static float linear_soundspeed_from_pressure(float density, float P,
-                                                 const struct linear_params *mat) {
+INLINE static float linear_soundspeed_from_pressure(
+    float density, float P, const struct linear_params *mat) {
 
   return mat->c_s;
 }
@@ -254,7 +253,8 @@ INLINE static float linear_density_from_pressure_and_internal_energy(
 
 // material_phase_state_from_internal_energy
 INLINE static float linear_phase_state_from_internal_energy(
-    float density, float u, const struct mat_params *mat, const struct linear_params *linear_eos) {
+    float density, float u, const struct mat_params *mat,
+    const struct linear_params *linear_eos) {
 
   switch (mat->phase_state) {
     case mat_phase_state_fluid:

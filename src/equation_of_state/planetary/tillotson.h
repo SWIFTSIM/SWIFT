@@ -938,7 +938,8 @@ INLINE static float Til_density_from_pressure_and_internal_energy(
 
 // material_phase_state_from_internal_energy
 INLINE static float Til_phase_state_from_internal_energy(
-    float density, float u, const struct mat_params *mat, const struct Til_params *Til_eos) {
+    float density, float u, const struct mat_params *mat,
+    const struct Til_params *Til_eos) {
 
 #ifdef MATERIAL_STRENGTH
   switch (mat->phase_state) {
@@ -952,9 +953,9 @@ INLINE static float Til_phase_state_from_internal_energy(
       const float T = Til_temperature_from_internal_energy(density, u, Til_eos);
 
       if (T > mat->T_melt) {
-          return mat_phase_state_fluid;
+        return mat_phase_state_fluid;
       } else {
-          return mat_phase_state_solid;
+        return mat_phase_state_solid;
       }
     }
 
