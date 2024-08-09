@@ -209,7 +209,7 @@ void cell_unpack_sink_gas_swallow(struct cell *c,
 void cell_pack_sink_swallow(const struct cell *c,
                              struct sink_sink_data *data) {
 
-  const size_t count = c->black_holes.count;
+  const size_t count = c->sinks.count;
   const struct sink *sinks = c->sinks.parts;
 
   for (size_t i = 0; i < count; ++i) {
