@@ -32,7 +32,7 @@
 #include "hydro_parameters.h"
 #include "math.h"
 #include "strength_damage.h"
-#include "strength_stress.h"
+#include "strength_utilities.h"
 
 /**
  * @brief Adjust the yield stress depending on the density

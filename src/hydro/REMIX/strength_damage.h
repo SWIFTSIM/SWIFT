@@ -32,8 +32,7 @@
 #include "hydro_parameters.h"
 #include "hydro_strength.h"
 #include "math.h"
-#include "strength_stress.h"
-#include "strength_yield.h"
+#include "strength_utilities.h"
 
 /**
  * @brief Evolves particle tensile damage
