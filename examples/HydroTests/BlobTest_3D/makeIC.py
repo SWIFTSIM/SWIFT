@@ -3,7 +3,6 @@ Creates the BCC ICs for the blob test.
 """
 
 import numpy as np
-import h5py
 
 from unyt import cm, g, s, erg
 from unyt.unit_systems import cgs_unit_system

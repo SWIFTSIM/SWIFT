@@ -22,7 +22,6 @@ import matplotlib
 
 matplotlib.use("Agg")
 from pylab import *
-from scipy import stats
 import h5py
 import numpy as np
 import glob
