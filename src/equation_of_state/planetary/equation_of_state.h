@@ -65,42 +65,42 @@ gas_internal_energy_from_entropy(float density, float entropy,
     /* Ideal gas EoS */
     case eos_type_idg:
       return idg_internal_energy_from_entropy(density, entropy,
-                                              &eos.idg[unit_id]);
+                                              &eos.all_idg[unit_id]);
 
     /* Tillotson EoS */
     case eos_type_Til:
       return Til_internal_energy_from_entropy(density, entropy,
-                                              &eos.Til[unit_id]);
+                                              &eos.all_Til[unit_id]);
 
     /* Custom user-provided Tillotson EoS */
     case eos_type_Til_custom:
       return Til_internal_energy_from_entropy(density, entropy,
-                                              &eos.Til_custom[unit_id]);
+                                              &eos.all_Til_custom[unit_id]);
 
     /* Hubbard & MacFarlane (1980) EoS */
     case eos_type_HM80:
       return HM80_internal_energy_from_entropy(density, entropy,
-                                               &eos.HM80[unit_id]);
+                                               &eos.all_HM80[unit_id]);
 
     /* SESAME EoS */
     case eos_type_SESAME:
       return SESAME_internal_energy_from_entropy(density, entropy,
-                                                 &eos.SESAME[unit_id]);
+                                                 &eos.all_SESAME[unit_id]);
 
     /* ANEOS -- using SESAME-style tables */
     case eos_type_ANEOS:
       return SESAME_internal_energy_from_entropy(density, entropy,
-                                                 &eos.ANEOS[unit_id]);
+                                                 &eos.all_ANEOS[unit_id]);
 
     /*! Linear EoS -- user-provided parameters */
     case eos_type_linear:
       return linear_internal_energy_from_entropy(density, entropy,
-                                                 &eos.linear[unit_id]);
+                                                 &eos.all_linear[unit_id]);
 
     /*! Generic user-provided custom tables */
     case eos_type_custom:
       return SESAME_internal_energy_from_entropy(density, entropy,
-                                                 &eos.custom[unit_id]);
+                                                 &eos.all_custom[unit_id]);
 
     default:
       return -1.f;
@@ -125,40 +125,40 @@ __attribute__((always_inline)) INLINE static float gas_pressure_from_entropy(
 
     /* Ideal gas EoS */
     case eos_type_idg:
-      return idg_pressure_from_entropy(density, entropy, &eos.idg[unit_id]);
+      return idg_pressure_from_entropy(density, entropy, &eos.all_idg[unit_id]);
 
     /* Tillotson EoS */
     case eos_type_Til:
-      return Til_pressure_from_entropy(density, entropy, &eos.Til[unit_id]);
+      return Til_pressure_from_entropy(density, entropy, &eos.all_Til[unit_id]);
 
     /* Custom user-provided Tillotson EoS */
     case eos_type_Til_custom:
       return Til_pressure_from_entropy(density, entropy,
-                                       &eos.Til_custom[unit_id]);
+                                       &eos.all_Til_custom[unit_id]);
 
     /* Hubbard & MacFarlane (1980) EoS */
     case eos_type_HM80:
-      return HM80_pressure_from_entropy(density, entropy, &eos.HM80[unit_id]);
+      return HM80_pressure_from_entropy(density, entropy, &eos.all_HM80[unit_id]);
 
     /* SESAME EoS */
     case eos_type_SESAME:
       return SESAME_pressure_from_entropy(density, entropy,
-                                          &eos.SESAME[unit_id]);
+                                          &eos.all_SESAME[unit_id]);
 
     /* ANEOS -- using SESAME-style tables */
     case eos_type_ANEOS:
       return SESAME_pressure_from_entropy(density, entropy,
-                                          &eos.ANEOS[unit_id]);
+                                          &eos.all_ANEOS[unit_id]);
 
     /*! Linear EoS -- user-provided parameters */
     case eos_type_linear:
       return linear_pressure_from_entropy(density, entropy,
-                                          &eos.linear[unit_id]);
+                                          &eos.all_linear[unit_id]);
 
     /*! Generic user-provided custom tables */
     case eos_type_custom:
       return SESAME_pressure_from_entropy(density, entropy,
-                                          &eos.custom[unit_id]);
+                                          &eos.all_custom[unit_id]);
 
     default:
       return -1.f;
@@ -184,35 +184,35 @@ __attribute__((always_inline)) INLINE static float gas_entropy_from_pressure(
 
     /* Ideal gas EoS */
     case eos_type_idg:
-      return idg_entropy_from_pressure(density, P, &eos.idg[unit_id]);
+      return idg_entropy_from_pressure(density, P, &eos.all_idg[unit_id]);
 
     /* Tillotson EoS */
     case eos_type_Til:
-      return Til_entropy_from_pressure(density, P, &eos.Til[unit_id]);
+      return Til_entropy_from_pressure(density, P, &eos.all_Til[unit_id]);
 
     /* Custom user-provided Tillotson EoS */
     case eos_type_Til_custom:
-      return Til_entropy_from_pressure(density, P, &eos.Til_custom[unit_id]);
+      return Til_entropy_from_pressure(density, P, &eos.all_Til_custom[unit_id]);
 
     /* Hubbard & MacFarlane (1980) EoS */
     case eos_type_HM80:
-      return HM80_entropy_from_pressure(density, P, &eos.HM80[unit_id]);
+      return HM80_entropy_from_pressure(density, P, &eos.all_HM80[unit_id]);
 
     /* SESAME EoS */
     case eos_type_SESAME:
-      return SESAME_entropy_from_pressure(density, P, &eos.SESAME[unit_id]);
+      return SESAME_entropy_from_pressure(density, P, &eos.all_SESAME[unit_id]);
 
     /* ANEOS -- using SESAME-style tables */
     case eos_type_ANEOS:
-      return SESAME_entropy_from_pressure(density, P, &eos.ANEOS[unit_id]);
+      return SESAME_entropy_from_pressure(density, P, &eos.all_ANEOS[unit_id]);
 
     /*! Linear EoS -- user-provided parameters */
     case eos_type_linear:
-      return linear_entropy_from_pressure(density, P, &eos.linear[unit_id]);
+      return linear_entropy_from_pressure(density, P, &eos.all_linear[unit_id]);
 
     /*! Generic user-provided custom tables */
     case eos_type_custom:
-      return SESAME_entropy_from_pressure(density, P, &eos.custom[unit_id]);
+      return SESAME_entropy_from_pressure(density, P, &eos.all_custom[unit_id]);
 
     default:
       return -1.f;
@@ -237,40 +237,40 @@ __attribute__((always_inline)) INLINE static float gas_soundspeed_from_entropy(
 
     /* Ideal gas EoS */
     case eos_type_idg:
-      return idg_soundspeed_from_entropy(density, entropy, &eos.idg[unit_id]);
+      return idg_soundspeed_from_entropy(density, entropy, &eos.all_idg[unit_id]);
 
     /* Tillotson EoS */
     case eos_type_Til:
-      return Til_soundspeed_from_entropy(density, entropy, &eos.Til[unit_id]);
+      return Til_soundspeed_from_entropy(density, entropy, &eos.all_Til[unit_id]);
 
     /* Custom user-provided Tillotson EoS */
     case eos_type_Til_custom:
       return Til_soundspeed_from_entropy(density, entropy,
-                                         &eos.Til_custom[unit_id]);
+                                         &eos.all_Til_custom[unit_id]);
 
     /* Hubbard & MacFarlane (1980) EoS */
     case eos_type_HM80:
-      return HM80_soundspeed_from_entropy(density, entropy, &eos.HM80[unit_id]);
+      return HM80_soundspeed_from_entropy(density, entropy, &eos.all_HM80[unit_id]);
 
     /* SESAME EoS */
     case eos_type_SESAME:
       return SESAME_soundspeed_from_entropy(density, entropy,
-                                            &eos.SESAME[unit_id]);
+                                            &eos.all_SESAME[unit_id]);
 
     /* ANEOS -- using SESAME-style tables */
     case eos_type_ANEOS:
       return SESAME_soundspeed_from_entropy(density, entropy,
-                                            &eos.ANEOS[unit_id]);
+                                            &eos.all_ANEOS[unit_id]);
 
     /*! Linear EoS -- user-provided parameters */
     case eos_type_linear:
       return linear_soundspeed_from_entropy(density, entropy,
-                                            &eos.linear[unit_id]);
+                                            &eos.all_linear[unit_id]);
 
     /*! Generic user-provided custom tables */
     case eos_type_custom:
       return SESAME_soundspeed_from_entropy(density, entropy,
-                                            &eos.custom[unit_id]);
+                                            &eos.all_custom[unit_id]);
 
     default:
       return -1.f;
@@ -295,40 +295,40 @@ gas_entropy_from_internal_energy(float density, float u,
 
     /* Ideal gas EoS */
     case eos_type_idg:
-      return idg_entropy_from_internal_energy(density, u, &eos.idg[unit_id]);
+      return idg_entropy_from_internal_energy(density, u, &eos.all_idg[unit_id]);
 
     /* Tillotson EoS */
     case eos_type_Til:
-      return Til_entropy_from_internal_energy(density, u, &eos.Til[unit_id]);
+      return Til_entropy_from_internal_energy(density, u, &eos.all_Til[unit_id]);
 
     /* Custom user-provided Tillotson EoS */
     case eos_type_Til_custom:
       return Til_entropy_from_internal_energy(density, u,
-                                              &eos.Til_custom[unit_id]);
+                                              &eos.all_Til_custom[unit_id]);
 
     /* Hubbard & MacFarlane (1980) EoS */
     case eos_type_HM80:
-      return HM80_entropy_from_internal_energy(density, u, &eos.HM80[unit_id]);
+      return HM80_entropy_from_internal_energy(density, u, &eos.all_HM80[unit_id]);
 
     /* SESAME EoS */
     case eos_type_SESAME:
       return SESAME_entropy_from_internal_energy(density, u,
-                                                 &eos.SESAME[unit_id]);
+                                                 &eos.all_SESAME[unit_id]);
 
     /* ANEOS -- using SESAME-style tables */
     case eos_type_ANEOS:
       return SESAME_entropy_from_internal_energy(density, u,
-                                                 &eos.ANEOS[unit_id]);
+                                                 &eos.all_ANEOS[unit_id]);
 
     /*! Linear EoS -- user-provided parameters */
     case eos_type_linear:
       return linear_entropy_from_internal_energy(density, u,
-                                                 &eos.linear[unit_id]);
+                                                 &eos.all_linear[unit_id]);
 
     /*! Generic user-provided custom tables */
     case eos_type_custom:
       return SESAME_entropy_from_internal_energy(density, u,
-                                                 &eos.custom[unit_id]);
+                                                 &eos.all_custom[unit_id]);
 
     default:
       return -1.f;
@@ -357,7 +357,7 @@ gas_pressure_from_internal_energy(float density, float u,
 
     /* Ideal gas EoS */
     case eos_type_idg:
-      if (eos.idg[unit_id].mat_id != mat_id)
+      if (eos.all_idg[unit_id].mat_id != mat_id)
         error(
             "EoS not enabled for ideal gas mat_id = %d, "
             "please set the corresponding EoS:planetary_use_: 1",
@@ -366,7 +366,7 @@ gas_pressure_from_internal_energy(float density, float u,
 
     /* Tillotson EoS */
     case eos_type_Til:
-      if (eos.Til[unit_id].mat_id != mat_id)
+      if (eos.all_Til[unit_id].mat_id != mat_id)
         error(
             "EoS not enabled for Tillotson mat_id = %d, "
             "please set the corresponding EoS:planetary_use_: 1",
@@ -375,7 +375,7 @@ gas_pressure_from_internal_energy(float density, float u,
 
     /* Custom user-provided Tillotson EoS */
     case eos_type_Til_custom:
-      if (eos.Til_custom[unit_id].mat_id != mat_id)
+      if (eos.all_Til_custom[unit_id].mat_id != mat_id)
         error(
             "EoS not enabled for custom Tillotson mat_id = %d, "
             "please set the corresponding EoS:planetary_use_: 1",
@@ -384,7 +384,7 @@ gas_pressure_from_internal_energy(float density, float u,
 
     /* Hubbard & MacFarlane (1980) EoS */
     case eos_type_HM80:
-      if (eos.HM80[unit_id].mat_id != mat_id)
+      if (eos.all_HM80[unit_id].mat_id != mat_id)
         error(
             "EoS not enabled for HM80 mat_id = %d, "
             "please set the corresponding EoS:planetary_use_: 1",
@@ -393,7 +393,7 @@ gas_pressure_from_internal_energy(float density, float u,
 
     /* SESAME EoS */
     case eos_type_SESAME:
-      if (eos.SESAME[unit_id].mat_id != mat_id)
+      if (eos.all_SESAME[unit_id].mat_id != mat_id)
         error(
             "EoS not enabled for SESAME mat_id = %d, "
             "please set the corresponding EoS:planetary_use_: 1",
@@ -402,7 +402,7 @@ gas_pressure_from_internal_energy(float density, float u,
 
     /* ANEOS -- using SESAME-style tables */
     case eos_type_ANEOS:
-      if (eos.ANEOS[unit_id].mat_id != mat_id)
+      if (eos.all_ANEOS[unit_id].mat_id != mat_id)
         error(
             "EoS not enabled for ANEOS mat_id = %d, "
             "please set the corresponding EoS:planetary_use_: 1",
@@ -411,7 +411,7 @@ gas_pressure_from_internal_energy(float density, float u,
 
     /*! Linear EoS -- user-provided parameters */
     case eos_type_linear:
-      if (eos.linear[unit_id].mat_id != mat_id)
+      if (eos.all_linear[unit_id].mat_id != mat_id)
         error(
             "EoS not enabled for linear mat_id = %d, "
             "please set the corresponding EoS:planetary_use_: 1",
@@ -420,7 +420,7 @@ gas_pressure_from_internal_energy(float density, float u,
 
     /*! Generic user-provided custom tables */
     case eos_type_custom:
-      if (eos.custom[unit_id].mat_id != mat_id)
+      if (eos.all_custom[unit_id].mat_id != mat_id)
         error(
             "EoS not enabled for custom mat_id = %d, "
             "please set the corresponding EoS:planetary_use_: 1",
@@ -438,40 +438,40 @@ gas_pressure_from_internal_energy(float density, float u,
 
     /* Ideal gas EoS */
     case eos_type_idg:
-      return idg_pressure_from_internal_energy(density, u, &eos.idg[unit_id]);
+      return idg_pressure_from_internal_energy(density, u, &eos.all_idg[unit_id]);
 
     /* Tillotson EoS */
     case eos_type_Til:
-      return Til_pressure_from_internal_energy(density, u, &eos.Til[unit_id]);
+      return Til_pressure_from_internal_energy(density, u, &eos.all_Til[unit_id]);
 
     /* Custom user-provided Tillotson EoS */
     case eos_type_Til_custom:
       return Til_pressure_from_internal_energy(density, u,
-                                               &eos.Til_custom[unit_id]);
+                                               &eos.all_Til_custom[unit_id]);
 
     /* Hubbard & MacFarlane (1980) EoS */
     case eos_type_HM80:
-      return HM80_pressure_from_internal_energy(density, u, &eos.HM80[unit_id]);
+      return HM80_pressure_from_internal_energy(density, u, &eos.all_HM80[unit_id]);
 
     /* SESAME EoS */
     case eos_type_SESAME:
       return SESAME_pressure_from_internal_energy(density, u,
-                                                  &eos.SESAME[unit_id]);
+                                                  &eos.all_SESAME[unit_id]);
 
     /* ANEOS -- using SESAME-style tables */
     case eos_type_ANEOS:
       return SESAME_pressure_from_internal_energy(density, u,
-                                                  &eos.ANEOS[unit_id]);
+                                                  &eos.all_ANEOS[unit_id]);
 
     /*! Linear EoS -- user-provided parameters */
     case eos_type_linear:
       return linear_pressure_from_internal_energy(density, u,
-                                                  &eos.linear[unit_id]);
+                                                  &eos.all_linear[unit_id]);
 
     /*! Generic user-provided custom tables */
     case eos_type_custom:
       return SESAME_pressure_from_internal_energy(density, u,
-                                                  &eos.custom[unit_id]);
+                                                  &eos.all_custom[unit_id]);
 
     default:
       return -1.f;
@@ -500,40 +500,40 @@ gas_internal_energy_from_pressure(float density, float P,
 
     /* Ideal gas EoS */
     case eos_type_idg:
-      return idg_internal_energy_from_pressure(density, P, &eos.idg[unit_id]);
+      return idg_internal_energy_from_pressure(density, P, &eos.all_idg[unit_id]);
 
     /* Tillotson EoS */
     case eos_type_Til:
-      return Til_internal_energy_from_pressure(density, P, &eos.Til[unit_id]);
+      return Til_internal_energy_from_pressure(density, P, &eos.all_Til[unit_id]);
 
     /* Custom user-provided Tillotson EoS */
     case eos_type_Til_custom:
       return Til_internal_energy_from_pressure(density, P,
-                                               &eos.Til_custom[unit_id]);
+                                               &eos.all_Til_custom[unit_id]);
 
     /* Hubbard & MacFarlane (1980) EoS */
     case eos_type_HM80:
-      return HM80_internal_energy_from_pressure(density, P, &eos.HM80[unit_id]);
+      return HM80_internal_energy_from_pressure(density, P, &eos.all_HM80[unit_id]);
 
     /* SESAME EoS */
     case eos_type_SESAME:
       return SESAME_internal_energy_from_pressure(density, P,
-                                                  &eos.SESAME[unit_id]);
+                                                  &eos.all_SESAME[unit_id]);
 
     /* ANEOS -- using SESAME-style tables */
     case eos_type_ANEOS:
       return SESAME_internal_energy_from_pressure(density, P,
-                                                  &eos.ANEOS[unit_id]);
+                                                  &eos.all_ANEOS[unit_id]);
 
     /*! Linear EoS -- user-provided parameters */
     case eos_type_linear:
       return linear_internal_energy_from_pressure(density, P,
-                                                  &eos.linear[unit_id]);
+                                                  &eos.all_linear[unit_id]);
 
     /*! Generic user-provided custom tables */
     case eos_type_custom:
       return SESAME_internal_energy_from_pressure(density, P,
-                                                  &eos.custom[unit_id]);
+                                                  &eos.all_custom[unit_id]);
 
     default:
       return -1.f;
@@ -559,41 +559,41 @@ gas_soundspeed_from_internal_energy(float density, float u,
 
     /* Ideal gas EoS */
     case eos_type_idg:
-      return idg_soundspeed_from_internal_energy(density, u, &eos.idg[unit_id]);
+      return idg_soundspeed_from_internal_energy(density, u, &eos.all_idg[unit_id]);
 
     /* Tillotson EoS */
     case eos_type_Til:
-      return Til_soundspeed_from_internal_energy(density, u, &eos.Til[unit_id]);
+      return Til_soundspeed_from_internal_energy(density, u, &eos.all_Til[unit_id]);
 
     /* Custom user-provided Tillotson EoS */
     case eos_type_Til_custom:
       return Til_soundspeed_from_internal_energy(density, u,
-                                                 &eos.Til_custom[unit_id]);
+                                                 &eos.all_Til_custom[unit_id]);
 
     /* Hubbard & MacFarlane (1980) EoS */
     case eos_type_HM80:
       return HM80_soundspeed_from_internal_energy(density, u,
-                                                  &eos.HM80[unit_id]);
+                                                  &eos.all_HM80[unit_id]);
 
     /* SESAME EoS */
     case eos_type_SESAME:
       return SESAME_soundspeed_from_internal_energy(density, u,
-                                                    &eos.SESAME[unit_id]);
+                                                    &eos.all_SESAME[unit_id]);
 
     /* ANEOS -- using SESAME-style tables */
     case eos_type_ANEOS:
       return SESAME_soundspeed_from_internal_energy(density, u,
-                                                    &eos.ANEOS[unit_id]);
+                                                    &eos.all_ANEOS[unit_id]);
 
     /*! Linear EoS -- user-provided parameters */
     case eos_type_linear:
       return linear_soundspeed_from_internal_energy(density, u,
-                                                    &eos.linear[unit_id]);
+                                                    &eos.all_linear[unit_id]);
 
     /*! Generic user-provided custom tables */
     case eos_type_custom:
       return SESAME_soundspeed_from_internal_energy(density, u,
-                                                    &eos.custom[unit_id]);
+                                                    &eos.all_custom[unit_id]);
 
     default:
       return -1.f;
@@ -618,35 +618,35 @@ __attribute__((always_inline)) INLINE static float gas_soundspeed_from_pressure(
 
     /* Ideal gas EoS */
     case eos_type_idg:
-      return idg_soundspeed_from_pressure(density, P, &eos.idg[unit_id]);
+      return idg_soundspeed_from_pressure(density, P, &eos.all_idg[unit_id]);
 
     /* Tillotson EoS */
     case eos_type_Til:
-      return Til_soundspeed_from_pressure(density, P, &eos.Til[unit_id]);
+      return Til_soundspeed_from_pressure(density, P, &eos.all_Til[unit_id]);
 
     /* Custom user-provided Tillotson EoS */
     case eos_type_Til_custom:
-      return Til_soundspeed_from_pressure(density, P, &eos.Til_custom[unit_id]);
+      return Til_soundspeed_from_pressure(density, P, &eos.all_Til_custom[unit_id]);
 
     /* Hubbard & MacFarlane (1980) EoS */
     case eos_type_HM80:
-      return HM80_soundspeed_from_pressure(density, P, &eos.HM80[unit_id]);
+      return HM80_soundspeed_from_pressure(density, P, &eos.all_HM80[unit_id]);
 
     /* SESAME EoS */
     case eos_type_SESAME:
-      return SESAME_soundspeed_from_pressure(density, P, &eos.SESAME[unit_id]);
+      return SESAME_soundspeed_from_pressure(density, P, &eos.all_SESAME[unit_id]);
 
     /* ANEOS -- using SESAME-style tables */
     case eos_type_ANEOS:
-      return SESAME_soundspeed_from_pressure(density, P, &eos.ANEOS[unit_id]);
+      return SESAME_soundspeed_from_pressure(density, P, &eos.all_ANEOS[unit_id]);
 
     /*! Linear EoS -- user-provided parameters */
     case eos_type_linear:
-      return linear_soundspeed_from_pressure(density, P, &eos.linear[unit_id]);
+      return linear_soundspeed_from_pressure(density, P, &eos.all_linear[unit_id]);
 
     /*! Generic user-provided custom tables */
     case eos_type_custom:
-      return SESAME_soundspeed_from_pressure(density, P, &eos.custom[unit_id]);
+      return SESAME_soundspeed_from_pressure(density, P, &eos.all_custom[unit_id]);
 
     default:
       return -1.f;
@@ -672,42 +672,42 @@ gas_temperature_from_internal_energy(float density, float u,
     /* Ideal gas EoS */
     case eos_type_idg:
       return idg_temperature_from_internal_energy(density, u,
-                                                  &eos.idg[unit_id]);
+                                                  &eos.all_idg[unit_id]);
 
     /* Tillotson EoS */
     case eos_type_Til:
       return Til_temperature_from_internal_energy(density, u,
-                                                  &eos.Til[unit_id]);
+                                                  &eos.all_Til[unit_id]);
 
     /* Custom user-provided Tillotson EoS */
     case eos_type_Til_custom:
       return Til_temperature_from_internal_energy(density, u,
-                                                  &eos.Til_custom[unit_id]);
+                                                  &eos.all_Til_custom[unit_id]);
 
     /* Hubbard & MacFarlane (1980) EoS */
     case eos_type_HM80:
       return HM80_temperature_from_internal_energy(density, u,
-                                                   &eos.HM80[unit_id]);
+                                                   &eos.all_HM80[unit_id]);
 
     /* SESAME EoS */
     case eos_type_SESAME:
       return SESAME_temperature_from_internal_energy(density, u,
-                                                     &eos.SESAME[unit_id]);
+                                                     &eos.all_SESAME[unit_id]);
 
     /* ANEOS -- using SESAME-style tables */
     case eos_type_ANEOS:
       return SESAME_temperature_from_internal_energy(density, u,
-                                                     &eos.ANEOS[unit_id]);
+                                                     &eos.all_ANEOS[unit_id]);
 
     /*! Linear EoS -- user-provided parameters */
     case eos_type_linear:
       return linear_temperature_from_internal_energy(density, u,
-                                                     &eos.linear[unit_id]);
+                                                     &eos.all_linear[unit_id]);
 
     /*! Generic user-provided custom tables */
     case eos_type_custom:
       return SESAME_temperature_from_internal_energy(density, u,
-                                                     &eos.custom[unit_id]);
+                                                     &eos.all_custom[unit_id]);
 
     default:
       return -1.f;
@@ -732,41 +732,41 @@ gas_density_from_pressure_and_temperature(
 
     /* Ideal gas EoS */
     case eos_type_idg:
-      return idg_density_from_pressure_and_temperature(P, T, &eos.idg[unit_id]);
+      return idg_density_from_pressure_and_temperature(P, T, &eos.all_idg[unit_id]);
 
     /* Tillotson EoS */
     case eos_type_Til:
-      return Til_density_from_pressure_and_temperature(P, T, &eos.Til[unit_id]);
+      return Til_density_from_pressure_and_temperature(P, T, &eos.all_Til[unit_id]);
 
     /* Custom user-provided Tillotson EoS */
     case eos_type_Til_custom:
       return Til_density_from_pressure_and_temperature(
-          P, T, &eos.Til_custom[unit_id]);
+          P, T, &eos.all_Til_custom[unit_id]);
 
     /* Hubbard & MacFarlane (1980) EoS */
     case eos_type_HM80:
       return HM80_density_from_pressure_and_temperature(P, T,
-                                                        &eos.HM80[unit_id]);
+                                                        &eos.all_HM80[unit_id]);
 
     /* SESAME EoS */
     case eos_type_SESAME:
       return SESAME_density_from_pressure_and_temperature(P, T,
-                                                          &eos.SESAME[unit_id]);
+                                                          &eos.all_SESAME[unit_id]);
 
     /* ANEOS -- using SESAME-style tables */
     case eos_type_ANEOS:
       return SESAME_density_from_pressure_and_temperature(P, T,
-                                                          &eos.ANEOS[unit_id]);
+                                                          &eos.all_ANEOS[unit_id]);
 
     /*! Linear EoS -- user-provided parameters */
     case eos_type_linear:
       return linear_density_from_pressure_and_temperature(P, T,
-                                                          &eos.linear[unit_id]);
+                                                          &eos.all_linear[unit_id]);
 
     /*! Generic user-provided custom tables */
     case eos_type_custom:
       return SESAME_density_from_pressure_and_temperature(P, T,
-                                                          &eos.custom[unit_id]);
+                                                          &eos.all_custom[unit_id]);
 
     default:
       return -1.f;
@@ -793,42 +793,42 @@ gas_density_from_pressure_and_internal_energy(
     /* Ideal gas EoS */
     case eos_type_idg:
       return idg_density_from_pressure_and_internal_energy(
-          P, u, rho_ref, rho_sph, &eos.idg[unit_id]);
+          P, u, rho_ref, rho_sph, &eos.all_idg[unit_id]);
 
     /* Tillotson EoS */
     case eos_type_Til:
       return Til_density_from_pressure_and_internal_energy(
-          P, u, rho_ref, rho_sph, &eos.Til[unit_id]);
+          P, u, rho_ref, rho_sph, &eos.all_Til[unit_id]);
 
     /* Custom user-provided Tillotson EoS */
     case eos_type_Til_custom:
       return Til_density_from_pressure_and_internal_energy(
-          P, u, rho_ref, rho_sph, &eos.Til_custom[unit_id]);
+          P, u, rho_ref, rho_sph, &eos.all_Til_custom[unit_id]);
 
     /* Hubbard & MacFarlane (1980) EoS */
     case eos_type_HM80:
       return HM80_density_from_pressure_and_internal_energy(
-          P, u, rho_ref, rho_sph, &eos.HM80[unit_id]);
+          P, u, rho_ref, rho_sph, &eos.all_HM80[unit_id]);
 
     /* SESAME EoS */
     case eos_type_SESAME:
       return SESAME_density_from_pressure_and_internal_energy(
-          P, u, rho_ref, rho_sph, &eos.SESAME[unit_id]);
+          P, u, rho_ref, rho_sph, &eos.all_SESAME[unit_id]);
 
     /* ANEOS -- using SESAME-style tables */
     case eos_type_ANEOS:
       return SESAME_density_from_pressure_and_internal_energy(
-          P, u, rho_ref, rho_sph, &eos.ANEOS[unit_id]);
+          P, u, rho_ref, rho_sph, &eos.all_ANEOS[unit_id]);
 
     /*! Linear EoS -- user-provided parameters */
     case eos_type_linear:
       return linear_density_from_pressure_and_internal_energy(
-          P, u, rho_ref, rho_sph, &eos.linear[unit_id]);
+          P, u, rho_ref, rho_sph, &eos.all_linear[unit_id]);
 
     /*! Generic user-provided custom tables */
     case eos_type_custom:
       return SESAME_density_from_pressure_and_internal_energy(
-          P, u, rho_ref, rho_sph, &eos.custom[unit_id]);
+          P, u, rho_ref, rho_sph, &eos.all_custom[unit_id]);
 
     default:
       return -1.f;
@@ -853,62 +853,62 @@ __attribute__((always_inline)) INLINE static void eos_init(
 
   // Ideal gas
   if (parser_get_opt_param_int(params, "EoS:planetary_use_idg_def", 0)) {
-    set_idg_def(&e->idg[eos_unit_id_idg_def], eos_mat_id_idg_def);
+    set_idg_def(&e->all_idg[eos_unit_id_idg_def], eos_mat_id_idg_def);
 
     sprintf(param_name, "EoS:idg_def_mat_params_file");
     parser_get_param_string(params, param_name, mat_params_file);
-    set_material_params(e->mat_params, eos_mat_id_idg_def, mat_params_file, us);
+    set_material_params(e->all_mat_params, eos_mat_id_idg_def, mat_params_file, us);
   }
 
   // Tillotson
   if (parser_get_opt_param_int(params, "EoS:planetary_use_Til_iron", 0)) {
-    set_Til_iron(&e->Til[eos_unit_id_Til_iron], eos_mat_id_Til_iron);
-    set_Til_u_cold(&e->Til[eos_unit_id_Til_iron], eos_mat_id_Til_iron);
-    convert_units_Til(&e->Til[eos_unit_id_Til_iron], us);
+    set_Til_iron(&e->all_Til[eos_unit_id_Til_iron], eos_mat_id_Til_iron);
+    set_Til_u_cold(&e->all_Til[eos_unit_id_Til_iron], eos_mat_id_Til_iron);
+    convert_units_Til(&e->all_Til[eos_unit_id_Til_iron], us);
 
     sprintf(param_name, "EoS:Til_iron_mat_params_file");
     parser_get_param_string(params, param_name, mat_params_file);
-    set_material_params(e->mat_params, eos_mat_id_Til_iron, mat_params_file,
+    set_material_params(e->all_mat_params, eos_mat_id_Til_iron, mat_params_file,
                         us);
   }
   if (parser_get_opt_param_int(params, "EoS:planetary_use_Til_granite", 0)) {
-    set_Til_granite(&e->Til[eos_unit_id_Til_granite], eos_mat_id_Til_granite);
-    set_Til_u_cold(&e->Til[eos_unit_id_Til_granite], eos_mat_id_Til_granite);
-    convert_units_Til(&e->Til[eos_unit_id_Til_granite], us);
+    set_Til_granite(&e->all_Til[eos_unit_id_Til_granite], eos_mat_id_Til_granite);
+    set_Til_u_cold(&e->all_Til[eos_unit_id_Til_granite], eos_mat_id_Til_granite);
+    convert_units_Til(&e->all_Til[eos_unit_id_Til_granite], us);
 
     sprintf(param_name, "EoS:Til_granite_mat_params_file");
     parser_get_param_string(params, param_name, mat_params_file);
-    set_material_params(e->mat_params, eos_mat_id_Til_granite, mat_params_file,
+    set_material_params(e->all_mat_params, eos_mat_id_Til_granite, mat_params_file,
                         us);
   }
   if (parser_get_opt_param_int(params, "EoS:planetary_use_Til_water", 0)) {
-    set_Til_water(&e->Til[eos_unit_id_Til_water], eos_mat_id_Til_water);
-    set_Til_u_cold(&e->Til[eos_unit_id_Til_water], eos_mat_id_Til_water);
-    convert_units_Til(&e->Til[eos_unit_id_Til_water], us);
+    set_Til_water(&e->all_Til[eos_unit_id_Til_water], eos_mat_id_Til_water);
+    set_Til_u_cold(&e->all_Til[eos_unit_id_Til_water], eos_mat_id_Til_water);
+    convert_units_Til(&e->all_Til[eos_unit_id_Til_water], us);
 
     sprintf(param_name, "EoS:Til_water_mat_params_file");
     parser_get_param_string(params, param_name, mat_params_file);
-    set_material_params(e->mat_params, eos_mat_id_Til_water, mat_params_file,
+    set_material_params(e->all_mat_params, eos_mat_id_Til_water, mat_params_file,
                         us);
   }
   if (parser_get_opt_param_int(params, "EoS:planetary_use_Til_basalt", 0)) {
-    set_Til_basalt(&e->Til[eos_unit_id_Til_basalt], eos_mat_id_Til_basalt);
-    set_Til_u_cold(&e->Til[eos_unit_id_Til_basalt], eos_mat_id_Til_basalt);
-    convert_units_Til(&e->Til[eos_unit_id_Til_basalt], us);
+    set_Til_basalt(&e->all_Til[eos_unit_id_Til_basalt], eos_mat_id_Til_basalt);
+    set_Til_u_cold(&e->all_Til[eos_unit_id_Til_basalt], eos_mat_id_Til_basalt);
+    convert_units_Til(&e->all_Til[eos_unit_id_Til_basalt], us);
 
     sprintf(param_name, "EoS:Til_basalt_mat_params_file");
     parser_get_param_string(params, param_name, mat_params_file);
-    set_material_params(e->mat_params, eos_mat_id_Til_basalt, mat_params_file,
+    set_material_params(e->all_mat_params, eos_mat_id_Til_basalt, mat_params_file,
                         us);
   }
   if (parser_get_opt_param_int(params, "EoS:planetary_use_Til_ice", 0)) {
-    set_Til_ice(&e->Til[eos_unit_id_Til_ice], eos_mat_id_Til_ice);
-    set_Til_u_cold(&e->Til[eos_unit_id_Til_ice], eos_mat_id_Til_ice);
-    convert_units_Til(&e->Til[eos_unit_id_Til_ice], us);
+    set_Til_ice(&e->all_Til[eos_unit_id_Til_ice], eos_mat_id_Til_ice);
+    set_Til_u_cold(&e->all_Til[eos_unit_id_Til_ice], eos_mat_id_Til_ice);
+    convert_units_Til(&e->all_Til[eos_unit_id_Til_ice], us);
 
     sprintf(param_name, "EoS:Til_ice_mat_params_file");
     parser_get_param_string(params, param_name, mat_params_file);
-    set_material_params(e->mat_params, eos_mat_id_Til_ice, mat_params_file, us);
+    set_material_params(e->all_mat_params, eos_mat_id_Til_ice, mat_params_file, us);
   }
 
   // Custom user-provided Tillotson
@@ -920,206 +920,206 @@ __attribute__((always_inline)) INLINE static void eos_init(
       sprintf(param_name, "EoS:planetary_Til_custom_%d_param_file", i_custom);
       parser_get_param_string(params, param_name, eos_file);
 
-      set_Til_custom(&e->Til_custom[i_custom],
+      set_Til_custom(&e->all_Til_custom[i_custom],
                      (enum eos_planetary_material_id)mat_id, eos_file);
-      set_Til_u_cold(&e->Til_custom[i_custom],
+      set_Til_u_cold(&e->all_Til_custom[i_custom],
                      (enum eos_planetary_material_id)mat_id);
-      convert_units_Til(&e->Til_custom[i_custom], us);
+      convert_units_Til(&e->all_Til_custom[i_custom], us);
 
       sprintf(param_name, "EoS:Til_custom_%d_mat_params_file", i_custom);
       parser_get_param_string(params, param_name, mat_params_file);
-      set_material_params(e->mat_params, mat_id, mat_params_file, us);
+      set_material_params(e->all_mat_params, mat_id, mat_params_file, us);
     }
   }
 
   // Hubbard & MacFarlane (1980)
   if (parser_get_opt_param_int(params, "EoS:planetary_use_HM80_HHe", 0)) {
-    set_HM80_HHe(&e->HM80[eos_unit_id_HM80_HHe], eos_mat_id_HM80_HHe);
+    set_HM80_HHe(&e->all_HM80[eos_unit_id_HM80_HHe], eos_mat_id_HM80_HHe);
     parser_get_param_string(params, "EoS:planetary_HM80_HHe_table_file",
                             eos_file);
-    load_table_HM80(&e->HM80[eos_unit_id_HM80_HHe], eos_file);
-    prepare_table_HM80(&e->HM80[eos_unit_id_HM80_HHe]);
-    convert_units_HM80(&e->HM80[eos_unit_id_HM80_HHe], us);
+    load_table_HM80(&e->all_HM80[eos_unit_id_HM80_HHe], eos_file);
+    prepare_table_HM80(&e->all_HM80[eos_unit_id_HM80_HHe]);
+    convert_units_HM80(&e->all_HM80[eos_unit_id_HM80_HHe], us);
 
     sprintf(param_name, "EoS:HM80_HHe_mat_params_file");
     parser_get_param_string(params, param_name, mat_params_file);
-    set_material_params(e->mat_params, eos_mat_id_HM80_HHe, mat_params_file,
+    set_material_params(e->all_mat_params, eos_mat_id_HM80_HHe, mat_params_file,
                         us);
   }
   if (parser_get_opt_param_int(params, "EoS:planetary_use_HM80_ice", 0)) {
-    set_HM80_ice(&e->HM80[eos_unit_id_HM80_ice], eos_mat_id_HM80_ice);
+    set_HM80_ice(&e->all_HM80[eos_unit_id_HM80_ice], eos_mat_id_HM80_ice);
     parser_get_param_string(params, "EoS:planetary_HM80_ice_table_file",
                             eos_file);
-    load_table_HM80(&e->HM80[eos_unit_id_HM80_ice], eos_file);
-    prepare_table_HM80(&e->HM80[eos_unit_id_HM80_ice]);
-    convert_units_HM80(&e->HM80[eos_unit_id_HM80_ice], us);
+    load_table_HM80(&e->all_HM80[eos_unit_id_HM80_ice], eos_file);
+    prepare_table_HM80(&e->all_HM80[eos_unit_id_HM80_ice]);
+    convert_units_HM80(&e->all_HM80[eos_unit_id_HM80_ice], us);
 
     sprintf(param_name, "EoS:HM80_ice_mat_params_file");
     parser_get_param_string(params, param_name, mat_params_file);
-    set_material_params(e->mat_params, eos_mat_id_HM80_ice, mat_params_file,
+    set_material_params(e->all_mat_params, eos_mat_id_HM80_ice, mat_params_file,
                         us);
   }
   if (parser_get_opt_param_int(params, "EoS:planetary_use_HM80_rock", 0)) {
-    set_HM80_rock(&e->HM80[eos_unit_id_HM80_rock], eos_mat_id_HM80_rock);
+    set_HM80_rock(&e->all_HM80[eos_unit_id_HM80_rock], eos_mat_id_HM80_rock);
     parser_get_param_string(params, "EoS:planetary_HM80_rock_table_file",
                             eos_file);
-    load_table_HM80(&e->HM80[eos_unit_id_HM80_rock], eos_file);
-    prepare_table_HM80(&e->HM80[eos_unit_id_HM80_rock]);
-    convert_units_HM80(&e->HM80[eos_unit_id_HM80_rock], us);
+    load_table_HM80(&e->all_HM80[eos_unit_id_HM80_rock], eos_file);
+    prepare_table_HM80(&e->all_HM80[eos_unit_id_HM80_rock]);
+    convert_units_HM80(&e->all_HM80[eos_unit_id_HM80_rock], us);
 
     sprintf(param_name, "EoS:HM80_rock_mat_params_file");
     parser_get_param_string(params, param_name, mat_params_file);
-    set_material_params(e->mat_params, eos_mat_id_HM80_rock, mat_params_file,
+    set_material_params(e->all_mat_params, eos_mat_id_HM80_rock, mat_params_file,
                         us);
   }
 
   // SESAME
   if (parser_get_opt_param_int(params, "EoS:planetary_use_SESAME_iron", 0)) {
-    set_SESAME_iron(&e->SESAME[eos_unit_id_SESAME_iron],
+    set_SESAME_iron(&e->all_SESAME[eos_unit_id_SESAME_iron],
                     eos_mat_id_SESAME_iron);
     parser_get_param_string(params, "EoS:planetary_SESAME_iron_table_file",
                             eos_file);
-    load_table_SESAME(&e->SESAME[eos_unit_id_SESAME_iron], eos_file);
-    prepare_table_SESAME(&e->SESAME[eos_unit_id_SESAME_iron]);
-    convert_units_SESAME(&e->SESAME[eos_unit_id_SESAME_iron], us);
+    load_table_SESAME(&e->all_SESAME[eos_unit_id_SESAME_iron], eos_file);
+    prepare_table_SESAME(&e->all_SESAME[eos_unit_id_SESAME_iron]);
+    convert_units_SESAME(&e->all_SESAME[eos_unit_id_SESAME_iron], us);
 
     sprintf(param_name, "EoS:SESAME_iron_mat_params_file");
     parser_get_param_string(params, param_name, mat_params_file);
-    set_material_params(e->mat_params, eos_mat_id_SESAME_iron, mat_params_file,
+    set_material_params(e->all_mat_params, eos_mat_id_SESAME_iron, mat_params_file,
                         us);
   }
   if (parser_get_opt_param_int(params, "EoS:planetary_use_SESAME_basalt", 0)) {
-    set_SESAME_basalt(&e->SESAME[eos_unit_id_SESAME_basalt],
+    set_SESAME_basalt(&e->all_SESAME[eos_unit_id_SESAME_basalt],
                       eos_mat_id_SESAME_basalt);
     parser_get_param_string(params, "EoS:planetary_SESAME_basalt_table_file",
                             eos_file);
-    load_table_SESAME(&e->SESAME[eos_unit_id_SESAME_basalt], eos_file);
-    prepare_table_SESAME(&e->SESAME[eos_unit_id_SESAME_basalt]);
-    convert_units_SESAME(&e->SESAME[eos_unit_id_SESAME_basalt], us);
+    load_table_SESAME(&e->all_SESAME[eos_unit_id_SESAME_basalt], eos_file);
+    prepare_table_SESAME(&e->all_SESAME[eos_unit_id_SESAME_basalt]);
+    convert_units_SESAME(&e->all_SESAME[eos_unit_id_SESAME_basalt], us);
 
     sprintf(param_name, "EoS:SESAME_basalt_mat_params_file");
     parser_get_param_string(params, param_name, mat_params_file);
-    set_material_params(e->mat_params, eos_mat_id_SESAME_basalt,
+    set_material_params(e->all_mat_params, eos_mat_id_SESAME_basalt,
                         mat_params_file, us);
   }
   if (parser_get_opt_param_int(params, "EoS:planetary_use_SESAME_water", 0)) {
-    set_SESAME_water(&e->SESAME[eos_unit_id_SESAME_water],
+    set_SESAME_water(&e->all_SESAME[eos_unit_id_SESAME_water],
                      eos_mat_id_SESAME_water);
     parser_get_param_string(params, "EoS:planetary_SESAME_water_table_file",
                             eos_file);
-    load_table_SESAME(&e->SESAME[eos_unit_id_SESAME_water], eos_file);
-    prepare_table_SESAME(&e->SESAME[eos_unit_id_SESAME_water]);
-    convert_units_SESAME(&e->SESAME[eos_unit_id_SESAME_water], us);
+    load_table_SESAME(&e->all_SESAME[eos_unit_id_SESAME_water], eos_file);
+    prepare_table_SESAME(&e->all_SESAME[eos_unit_id_SESAME_water]);
+    convert_units_SESAME(&e->all_SESAME[eos_unit_id_SESAME_water], us);
 
     sprintf(param_name, "EoS:SESAME_water_mat_params_file");
     parser_get_param_string(params, param_name, mat_params_file);
-    set_material_params(e->mat_params, eos_mat_id_SESAME_water, mat_params_file,
+    set_material_params(e->all_mat_params, eos_mat_id_SESAME_water, mat_params_file,
                         us);
   }
   if (parser_get_opt_param_int(params, "EoS:planetary_use_SS08_water", 0)) {
-    set_SS08_water(&e->SESAME[eos_unit_id_SS08_water], eos_mat_id_SS08_water);
+    set_SS08_water(&e->all_SESAME[eos_unit_id_SS08_water], eos_mat_id_SS08_water);
     parser_get_param_string(params, "EoS:planetary_SS08_water_table_file",
                             eos_file);
-    load_table_SESAME(&e->SESAME[eos_unit_id_SS08_water], eos_file);
-    prepare_table_SESAME(&e->SESAME[eos_unit_id_SS08_water]);
-    convert_units_SESAME(&e->SESAME[eos_unit_id_SS08_water], us);
+    load_table_SESAME(&e->all_SESAME[eos_unit_id_SS08_water], eos_file);
+    prepare_table_SESAME(&e->all_SESAME[eos_unit_id_SS08_water]);
+    convert_units_SESAME(&e->all_SESAME[eos_unit_id_SS08_water], us);
 
     sprintf(param_name, "EoS:SS08_water_mat_params_file");
     parser_get_param_string(params, param_name, mat_params_file);
-    set_material_params(e->mat_params, eos_mat_id_SS08_water, mat_params_file,
+    set_material_params(e->all_mat_params, eos_mat_id_SS08_water, mat_params_file,
                         us);
   }
   if (parser_get_opt_param_int(params, "EoS:planetary_use_AQUA", 0)) {
-    set_AQUA(&e->SESAME[eos_unit_id_AQUA], eos_mat_id_AQUA);
+    set_AQUA(&e->all_SESAME[eos_unit_id_AQUA], eos_mat_id_AQUA);
     parser_get_param_string(params, "EoS:planetary_AQUA_table_file", eos_file);
-    load_table_SESAME(&e->SESAME[eos_unit_id_AQUA], eos_file);
-    prepare_table_SESAME(&e->SESAME[eos_unit_id_AQUA]);
-    convert_units_SESAME(&e->SESAME[eos_unit_id_AQUA], us);
+    load_table_SESAME(&e->all_SESAME[eos_unit_id_AQUA], eos_file);
+    prepare_table_SESAME(&e->all_SESAME[eos_unit_id_AQUA]);
+    convert_units_SESAME(&e->all_SESAME[eos_unit_id_AQUA], us);
 
     sprintf(param_name, "EoS:AQUA_mat_params_file");
     parser_get_param_string(params, param_name, mat_params_file);
-    set_material_params(e->mat_params, eos_mat_id_AQUA, mat_params_file, us);
+    set_material_params(e->all_mat_params, eos_mat_id_AQUA, mat_params_file, us);
   }
   if (parser_get_opt_param_int(params, "EoS:planetary_use_CMS19_H", 0)) {
-    set_CMS19_H(&e->SESAME[eos_unit_id_CMS19_H], eos_mat_id_CMS19_H);
+    set_CMS19_H(&e->all_SESAME[eos_unit_id_CMS19_H], eos_mat_id_CMS19_H);
     parser_get_param_string(params, "EoS:planetary_CMS19_H_table_file",
                             eos_file);
-    load_table_SESAME(&e->SESAME[eos_unit_id_CMS19_H], eos_file);
-    prepare_table_SESAME(&e->SESAME[eos_unit_id_CMS19_H]);
-    convert_units_SESAME(&e->SESAME[eos_unit_id_CMS19_H], us);
+    load_table_SESAME(&e->all_SESAME[eos_unit_id_CMS19_H], eos_file);
+    prepare_table_SESAME(&e->all_SESAME[eos_unit_id_CMS19_H]);
+    convert_units_SESAME(&e->all_SESAME[eos_unit_id_CMS19_H], us);
 
     sprintf(param_name, "EoS:CMS19_H_mat_params_file");
     parser_get_param_string(params, param_name, mat_params_file);
-    set_material_params(e->mat_params, eos_mat_id_CMS19_H, mat_params_file, us);
+    set_material_params(e->all_mat_params, eos_mat_id_CMS19_H, mat_params_file, us);
   }
   if (parser_get_opt_param_int(params, "EoS:planetary_use_CMS19_He", 0)) {
-    set_CMS19_He(&e->SESAME[eos_unit_id_CMS19_He], eos_mat_id_CMS19_He);
+    set_CMS19_He(&e->all_SESAME[eos_unit_id_CMS19_He], eos_mat_id_CMS19_He);
     parser_get_param_string(params, "EoS:planetary_CMS19_He_table_file",
                             eos_file);
-    load_table_SESAME(&e->SESAME[eos_unit_id_CMS19_He], eos_file);
-    prepare_table_SESAME(&e->SESAME[eos_unit_id_CMS19_He]);
-    convert_units_SESAME(&e->SESAME[eos_unit_id_CMS19_He], us);
+    load_table_SESAME(&e->all_SESAME[eos_unit_id_CMS19_He], eos_file);
+    prepare_table_SESAME(&e->all_SESAME[eos_unit_id_CMS19_He]);
+    convert_units_SESAME(&e->all_SESAME[eos_unit_id_CMS19_He], us);
 
     sprintf(param_name, "EoS:CMS19_He_mat_params_file");
     parser_get_param_string(params, param_name, mat_params_file);
-    set_material_params(e->mat_params, eos_mat_id_CMS19_He, mat_params_file,
+    set_material_params(e->all_mat_params, eos_mat_id_CMS19_He, mat_params_file,
                         us);
   }
   if (parser_get_opt_param_int(params, "EoS:planetary_use_CD21_HHe", 0)) {
-    set_CD21_HHe(&e->SESAME[eos_unit_id_CD21_HHe], eos_mat_id_CD21_HHe);
+    set_CD21_HHe(&e->all_SESAME[eos_unit_id_CD21_HHe], eos_mat_id_CD21_HHe);
     parser_get_param_string(params, "EoS:planetary_CD21_HHe_table_file",
                             eos_file);
-    load_table_SESAME(&e->SESAME[eos_unit_id_CD21_HHe], eos_file);
-    prepare_table_SESAME(&e->SESAME[eos_unit_id_CD21_HHe]);
-    convert_units_SESAME(&e->SESAME[eos_unit_id_CD21_HHe], us);
+    load_table_SESAME(&e->all_SESAME[eos_unit_id_CD21_HHe], eos_file);
+    prepare_table_SESAME(&e->all_SESAME[eos_unit_id_CD21_HHe]);
+    convert_units_SESAME(&e->all_SESAME[eos_unit_id_CD21_HHe], us);
 
     sprintf(param_name, "EoS:CD21_HHe_mat_params_file");
     parser_get_param_string(params, param_name, mat_params_file);
-    set_material_params(e->mat_params, eos_mat_id_CD21_HHe, mat_params_file,
+    set_material_params(e->all_mat_params, eos_mat_id_CD21_HHe, mat_params_file,
                         us);
   }
 
   // ANEOS -- using SESAME-style tables
   if (parser_get_opt_param_int(params, "EoS:planetary_use_ANEOS_forsterite",
                                0)) {
-    set_ANEOS_forsterite(&e->ANEOS[eos_unit_id_ANEOS_forsterite],
+    set_ANEOS_forsterite(&e->all_ANEOS[eos_unit_id_ANEOS_forsterite],
                          eos_mat_id_ANEOS_forsterite);
     parser_get_param_string(params, "EoS:planetary_ANEOS_forsterite_table_file",
                             eos_file);
-    load_table_SESAME(&e->ANEOS[eos_unit_id_ANEOS_forsterite], eos_file);
-    prepare_table_SESAME(&e->ANEOS[eos_unit_id_ANEOS_forsterite]);
-    convert_units_SESAME(&e->ANEOS[eos_unit_id_ANEOS_forsterite], us);
+    load_table_SESAME(&e->all_ANEOS[eos_unit_id_ANEOS_forsterite], eos_file);
+    prepare_table_SESAME(&e->all_ANEOS[eos_unit_id_ANEOS_forsterite]);
+    convert_units_SESAME(&e->all_ANEOS[eos_unit_id_ANEOS_forsterite], us);
 
     sprintf(param_name, "EoS:ANEOS_forsterite_mat_params_file");
     parser_get_param_string(params, param_name, mat_params_file);
-    set_material_params(e->mat_params, eos_mat_id_ANEOS_forsterite,
+    set_material_params(e->all_mat_params, eos_mat_id_ANEOS_forsterite,
                         mat_params_file, us);
   }
   if (parser_get_opt_param_int(params, "EoS:planetary_use_ANEOS_iron", 0)) {
-    set_ANEOS_iron(&e->ANEOS[eos_unit_id_ANEOS_iron], eos_mat_id_ANEOS_iron);
+    set_ANEOS_iron(&e->all_ANEOS[eos_unit_id_ANEOS_iron], eos_mat_id_ANEOS_iron);
     parser_get_param_string(params, "EoS:planetary_ANEOS_iron_table_file",
                             eos_file);
-    load_table_SESAME(&e->ANEOS[eos_unit_id_ANEOS_iron], eos_file);
-    prepare_table_SESAME(&e->ANEOS[eos_unit_id_ANEOS_iron]);
-    convert_units_SESAME(&e->ANEOS[eos_unit_id_ANEOS_iron], us);
+    load_table_SESAME(&e->all_ANEOS[eos_unit_id_ANEOS_iron], eos_file);
+    prepare_table_SESAME(&e->all_ANEOS[eos_unit_id_ANEOS_iron]);
+    convert_units_SESAME(&e->all_ANEOS[eos_unit_id_ANEOS_iron], us);
 
     sprintf(param_name, "EoS:ANEOS_iron_mat_params_file");
     parser_get_param_string(params, param_name, mat_params_file);
-    set_material_params(e->mat_params, eos_mat_id_ANEOS_iron, mat_params_file,
+    set_material_params(e->all_mat_params, eos_mat_id_ANEOS_iron, mat_params_file,
                         us);
   }
   if (parser_get_opt_param_int(params, "EoS:planetary_use_ANEOS_Fe85Si15", 0)) {
-    set_ANEOS_Fe85Si15(&e->ANEOS[eos_unit_id_ANEOS_Fe85Si15],
+    set_ANEOS_Fe85Si15(&e->all_ANEOS[eos_unit_id_ANEOS_Fe85Si15],
                        eos_mat_id_ANEOS_Fe85Si15);
     parser_get_param_string(params, "EoS:planetary_ANEOS_Fe85Si15_table_file",
                             eos_file);
-    load_table_SESAME(&e->ANEOS[eos_unit_id_ANEOS_Fe85Si15], eos_file);
-    prepare_table_SESAME(&e->ANEOS[eos_unit_id_ANEOS_Fe85Si15]);
-    convert_units_SESAME(&e->ANEOS[eos_unit_id_ANEOS_Fe85Si15], us);
+    load_table_SESAME(&e->all_ANEOS[eos_unit_id_ANEOS_Fe85Si15], eos_file);
+    prepare_table_SESAME(&e->all_ANEOS[eos_unit_id_ANEOS_Fe85Si15]);
+    convert_units_SESAME(&e->all_ANEOS[eos_unit_id_ANEOS_Fe85Si15], us);
 
     sprintf(param_name, "EoS:ANEOS_Fe85Si15_mat_params_file");
     parser_get_param_string(params, param_name, mat_params_file);
-    set_material_params(e->mat_params, eos_mat_id_ANEOS_Fe85Si15,
+    set_material_params(e->all_mat_params, eos_mat_id_ANEOS_Fe85Si15,
                         mat_params_file, us);
   }
 
@@ -1131,18 +1131,18 @@ __attribute__((always_inline)) INLINE static void eos_init(
 
       sprintf(param_name, "EoS:planetary_linear_%d_param_file", i_linear);
       parser_get_param_string(params, param_name, eos_file);
-      set_linear_params(&e->linear[i_linear],
+      set_linear_params(&e->all_linear[i_linear],
                         (enum eos_planetary_material_id)mat_id, eos_file);
 
       sprintf(param_name, "EoS:linear_%d_mat_params_file", i_linear);
       parser_get_param_string(params, param_name, mat_params_file);
-      set_material_params(e->mat_params, mat_id, mat_params_file, us);
+      set_material_params(e->all_mat_params, mat_id, mat_params_file, us);
 
-      convert_units_linear(&e->linear[i_linear], us);
+      convert_units_linear(&e->all_linear[i_linear], us);
 
       sprintf(param_name, "EoS:linear_%d_mat_params_file", i_linear);
       parser_get_param_string(params, param_name, mat_params_file);
-      set_material_params(e->mat_params, mat_id, mat_params_file, us);
+      set_material_params(e->all_mat_params, mat_id, mat_params_file, us);
     }
   }
 
@@ -1151,17 +1151,17 @@ __attribute__((always_inline)) INLINE static void eos_init(
     sprintf(param_name, "EoS:planetary_use_custom_%d", i_custom);
     if (parser_get_opt_param_int(params, param_name, 0)) {
       int mat_id = eos_type_custom * eos_type_factor + i_custom;
-      set_custom(&e->custom[i_custom], (enum eos_planetary_material_id)mat_id);
+      set_custom(&e->all_custom[i_custom], (enum eos_planetary_material_id)mat_id);
 
       sprintf(param_name, "EoS:planetary_custom_%d_table_file", i_custom);
       parser_get_param_string(params, param_name, eos_file);
-      load_table_SESAME(&e->custom[i_custom], eos_file);
-      prepare_table_SESAME(&e->custom[i_custom]);
-      convert_units_SESAME(&e->custom[i_custom], us);
+      load_table_SESAME(&e->all_custom[i_custom], eos_file);
+      prepare_table_SESAME(&e->all_custom[i_custom]);
+      convert_units_SESAME(&e->all_custom[i_custom], us);
 
       sprintf(param_name, "EoS:custom_%d_mat_params_file", i_custom);
       parser_get_param_string(params, param_name, mat_params_file);
-      set_material_params(e->mat_params, mat_id, mat_params_file, us);
+      set_material_params(e->all_mat_params, mat_id, mat_params_file, us);
     }
   }
 }

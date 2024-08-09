@@ -37,19 +37,21 @@
 /**
  * @brief The parameters of the equation of state.
  *
- * Parameter structs for each EoS type and unit.
+ * Parameter structs for all EoS of each type.
  */
 struct eos_parameters {
-  struct idg_params idg[eos_count_idg];
-  struct Til_params Til[eos_count_Til];
-  struct Til_params Til_custom[eos_count_Til_custom];
-  struct HM80_params HM80[eos_count_HM80];
-  struct SESAME_params SESAME[eos_count_SESAME];
-  struct SESAME_params ANEOS[eos_count_ANEOS];
-  struct linear_params linear[eos_count_linear];
-  struct SESAME_params custom[eos_count_custom];
+  // Primary EoS parameters, with different elements for each EoS type
+  struct idg_params all_idg[eos_count_idg];
+  struct Til_params all_Til[eos_count_Til];
+  struct Til_params all_Til_custom[eos_count_Til_custom];
+  struct HM80_params all_HM80[eos_count_HM80];
+  struct SESAME_params all_SESAME[eos_count_SESAME];
+  struct SESAME_params all_ANEOS[eos_count_ANEOS];
+  struct linear_params all_linear[eos_count_linear];
+  struct SESAME_params all_custom[eos_count_custom];
 
-  struct mat_params mat_params[eos_count_total];
+  // Material parameters, for any EoS type
+  struct mat_params all_mat_params[eos_count_total];
 };
 
 /*! Primary EoS parameter struct */
@@ -115,7 +117,7 @@ __attribute__((always_inline)) INLINE static int material_index_from_mat_id(
     phase_state (enum mat_phase_state: fluid=0, solid=1, variable=2)  shear_mod
    (Pa)
 */
-INLINE static void set_material_params(struct mat_params *mat_params,
+INLINE static void set_material_params(struct mat_params *all_mat_params,
                                        enum eos_planetary_material_id mat_id,
                                        char *param_file,
                                        const struct unit_system *us) {
@@ -133,13 +135,13 @@ INLINE static void set_material_params(struct mat_params *mat_params,
 
   // Read parameters
   int c, phase_state;
-  c = fscanf(f, "%d %f", &phase_state, &mat_params[mat_index].shear_mod);
+  c = fscanf(f, "%d %f", &phase_state, &all_mat_params[mat_index].shear_mod);
   if (c != 2)
     error("Failed to read the material parameters file %s", param_file);
 
-  mat_params[mat_index].phase_state = (enum mat_phase_state)phase_state;
+  all_mat_params[mat_index].phase_state = (enum mat_phase_state)phase_state;
 #else
-  mat_params[mat_index].phase_state = mat_phase_state_fluid;
+  all_mat_params[mat_index].phase_state = mat_phase_state_fluid;
 #endif /* MATERIAL_STRENGTH */
 
   // ###convert units!

@@ -66,42 +66,42 @@ material_phase_state_from_internal_energy(
     /* Ideal gas EoS */
     case eos_type_idg:
       return idg_phase_state_from_internal_energy(
-          density, u, &eos.mat_params[mat_index], &eos.idg[unit_id]);
+          density, u, &eos.all_mat_params[mat_index], &eos.all_idg[unit_id]);
 
     /* Tillotson EoS */
     case eos_type_Til:
       return Til_phase_state_from_internal_energy(
-          density, u, &eos.mat_params[mat_index], &eos.Til[unit_id]);
+          density, u, &eos.all_mat_params[mat_index], &eos.all_Til[unit_id]);
 
     /* Custom user-provided Tillotson EoS */
     case eos_type_Til_custom:
       return Til_phase_state_from_internal_energy(
-          density, u, &eos.mat_params[mat_index], &eos.Til_custom[unit_id]);
+          density, u, &eos.all_mat_params[mat_index], &eos.all_Til_custom[unit_id]);
 
     /* Hubbard & MacFarlane (1980) EoS */
     case eos_type_HM80:
       return HM80_phase_state_from_internal_energy(
-          density, u, &eos.mat_params[mat_index], &eos.HM80[unit_id]);
+          density, u, &eos.all_mat_params[mat_index], &eos.all_HM80[unit_id]);
 
     /* SESAME EoS */
     case eos_type_SESAME:
       return SESAME_phase_state_from_internal_energy(
-          density, u, &eos.mat_params[mat_index], &eos.SESAME[unit_id]);
+          density, u, &eos.all_mat_params[mat_index], &eos.all_SESAME[unit_id]);
 
     /* ANEOS -- using SESAME-style tables */
     case eos_type_ANEOS:
       return SESAME_phase_state_from_internal_energy(
-          density, u, &eos.mat_params[mat_index], &eos.ANEOS[unit_id]);
+          density, u, &eos.all_mat_params[mat_index], &eos.all_ANEOS[unit_id]);
 
     /*! Linear EoS -- user-provided parameters */
     case eos_type_linear:
       return linear_phase_state_from_internal_energy(
-          density, u, &eos.mat_params[mat_index], &eos.linear[unit_id]);
+          density, u, &eos.all_mat_params[mat_index], &eos.all_linear[unit_id]);
 
     /*! Generic user-provided custom tables */
     case eos_type_custom:
       return SESAME_phase_state_from_internal_energy(
-          density, u, &eos.mat_params[mat_index], &eos.custom[unit_id]);
+          density, u, &eos.all_mat_params[mat_index], &eos.all_custom[unit_id]);
 
     default:
       return -1.f;
@@ -113,28 +113,28 @@ material_phase_state_from_internal_energy(
 __attribute__((always_inline)) INLINE static float material_shear_mod(
     enum eos_planetary_material_id mat_id) {
   const int mat_index = material_index_from_mat_id(mat_id);
-  return eos.mat_params[mat_index].shear_mod;
+  return eos.all_mat_params[mat_index].shear_mod;
 }
 
 /** @brief Returns the bulk modulus of a material */
 __attribute__((always_inline)) INLINE static float material_bulk_mod(
     enum eos_planetary_material_id mat_id) {
   const int mat_index = material_index_from_mat_id(mat_id);
-  return eos.mat_params[mat_index].bulk_mod;
+  return eos.all_mat_params[mat_index].bulk_mod;
 }
 
 /** @brief Returns the melting temperature of a material */
 __attribute__((always_inline)) INLINE static float material_T_melt(
     enum eos_planetary_material_id mat_id) {
   const int mat_index = material_index_from_mat_id(mat_id);
-  return eos.mat_params[mat_index].T_melt;
+  return eos.all_mat_params[mat_index].T_melt;
 }
 
 /** @brief Returns the rho_0 of a material */
 __attribute__((always_inline)) INLINE static float material_rho_0(
     enum eos_planetary_material_id mat_id) {
   const int mat_index = material_index_from_mat_id(mat_id);
-  return eos.mat_params[mat_index].rho_0;
+  return eos.all_mat_params[mat_index].rho_0;
 }
 
 // #ifdef STRENGTH_YIELD_###
@@ -142,28 +142,28 @@ __attribute__((always_inline)) INLINE static float material_rho_0(
 __attribute__((always_inline)) INLINE static float material_Y_0(
     enum eos_planetary_material_id mat_id) {
   const int mat_index = material_index_from_mat_id(mat_id);
-  return eos.mat_params[mat_index].Y_0;
+  return eos.all_mat_params[mat_index].Y_0;
 }
 
 /** @brief Returns the Y_M of a material */
 __attribute__((always_inline)) INLINE static float material_Y_M(
     enum eos_planetary_material_id mat_id) {
   const int mat_index = material_index_from_mat_id(mat_id);
-  return eos.mat_params[mat_index].Y_M;
+  return eos.all_mat_params[mat_index].Y_M;
 }
 
 /** @brief Returns the mu_i of a material */
 __attribute__((always_inline)) INLINE static float material_mu_i(
     enum eos_planetary_material_id mat_id) {
   const int mat_index = material_index_from_mat_id(mat_id);
-  return eos.mat_params[mat_index].mu_i;
+  return eos.all_mat_params[mat_index].mu_i;
 }
 
 /** @brief Returns the mu_d of a material */
 __attribute__((always_inline)) INLINE static float material_mu_d(
     enum eos_planetary_material_id mat_id) {
   const int mat_index = material_index_from_mat_id(mat_id);
-  return eos.mat_params[mat_index].mu_d;
+  return eos.all_mat_params[mat_index].mu_d;
 }
 
 /** @brief Returns the yield stress density softening multiplication parameter
@@ -171,7 +171,7 @@ __attribute__((always_inline)) INLINE static float material_mu_d(
 __attribute__((always_inline)) INLINE static float
 material_yield_density_soft_mult_param(enum eos_planetary_material_id mat_id) {
   const int mat_index = material_index_from_mat_id(mat_id);
-  return eos.mat_params[mat_index].yield_density_soft_mult_param;
+  return eos.all_mat_params[mat_index].yield_density_soft_mult_param;
 }
 
 /** @brief Returns the yield stress density softening exponent parameter of a
@@ -179,14 +179,14 @@ material_yield_density_soft_mult_param(enum eos_planetary_material_id mat_id) {
 __attribute__((always_inline)) INLINE static float
 material_yield_density_soft_pow_param(enum eos_planetary_material_id mat_id) {
   const int mat_index = material_index_from_mat_id(mat_id);
-  return eos.mat_params[mat_index].yield_density_soft_pow_param;
+  return eos.all_mat_params[mat_index].yield_density_soft_pow_param;
 }
 
 /** @brief Returns the yield stress thermal softening parameter of a material */
 __attribute__((always_inline)) INLINE static float
 material_yield_thermal_soft_xi(enum eos_planetary_material_id mat_id) {
   const int mat_index = material_index_from_mat_id(mat_id);
-  return eos.mat_params[mat_index].yield_thermal_soft_xi;
+  return eos.all_mat_params[mat_index].yield_thermal_soft_xi;
 }
 
 /** @brief Returns the brittle to ductile transition pressure of a material */
@@ -194,7 +194,7 @@ __attribute__((always_inline)) INLINE static float
 material_brittle_to_ductile_transition_pressure(
     enum eos_planetary_material_id mat_id) {
   const int mat_index = material_index_from_mat_id(mat_id);
-  return eos.mat_params[mat_index].brittle_to_ductile_transition_pressure;
+  return eos.all_mat_params[mat_index].brittle_to_ductile_transition_pressure;
 }
 
 /** @brief Returns the brittle to plastic transition pressure of a material */
@@ -202,7 +202,7 @@ __attribute__((always_inline)) INLINE static float
 material_brittle_to_plastic_transition_pressure(
     enum eos_planetary_material_id mat_id) {
   const int mat_index = material_index_from_mat_id(mat_id);
-  return eos.mat_params[mat_index].brittle_to_plastic_transition_pressure;
+  return eos.all_mat_params[mat_index].brittle_to_plastic_transition_pressure;
 }
 // #endif /* STRENGTH_YIELD_### */
 
