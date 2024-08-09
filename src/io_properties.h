@@ -644,7 +644,7 @@ INLINE static struct io_props io_make_output_field_convert_bpart_(
 #define io_make_physical_output_field_convert_sink(                        \
     name, type, dim, units, a_exponent, sink, convertible, convert, desc)  \
   io_make_output_field_convert_sink_(name, type, dim, units, a_exponent,   \
-                                     sizeof(part[0]), sink, convert, desc, \
+                                     sizeof(sink[0]), sink, convert, desc, \
                                      /*physical=*/1, convertible);
 
 /**
