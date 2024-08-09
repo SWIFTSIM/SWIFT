@@ -37,13 +37,13 @@
 /* Local headers. */
 #include "adiabatic_index.h"
 #include "common_io.h"
-#include "eos_setup.h"
-#include "eos_utilities.h"
 #include "inline.h"
-#include "material_properties.h"
 #include "physical_constants.h"
 #include "restart.h"
 #include "units.h"
+#include "eos_setup.h"
+#include "eos_utilities.h"
+#include "material_properties.h"
 
 /**
  * @brief Returns the internal energy given density and entropy
@@ -105,46 +105,6 @@ gas_internal_energy_from_entropy(float density, float entropy,
     default:
       return -1.f;
   }
-}
-
-/*
-    Read the extra material parameters from a file. ###change to .yml or
-   something
-
-    File contents
-    -------------
-    # header (2 lines)
-    phase_state (enum mat_phase_state: fluid=0, solid=1, variable=2)  shear_mod
-   (Pa)
-*/
-INLINE static void set_material_params(struct mat_params *mat,
-                                       enum eos_planetary_material_id mat_id,
-                                       char *param_file,
-                                       const struct unit_system *us) {
-
-  const int mat_index = material_index_from_mat_id(mat_id);
-
-#ifdef MATERIAL_STRENGTH
-  // Load table contents from file
-  FILE *f = fopen(param_file, "r");
-  if (f == NULL)
-    error("Failed to open the material parameters file '%s'", param_file);
-
-  // Skip header lines
-  skip_lines(f, 2);
-
-  // Read parameters
-  int c, phase_state;
-  c = fscanf(f, "%d %f", &phase_state, &mat[mat_index].shear_mod);
-  if (c != 2)
-    error("Failed to read the material parameters file %s", param_file);
-  mat[mat_index].phase_state = (enum mat_phase_state)phase_state;
-#else
-  mat[mat_index].phase_state = mat_phase_state_fluid;
-#endif /* MATERIAL_STRENGTH */
-
-  // ###convert units!
-  //  us...
 }
 
 /**

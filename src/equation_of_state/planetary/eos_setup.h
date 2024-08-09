@@ -29,7 +29,7 @@
 #define eos_type_factor 100
 
 /**
- * @brief Base type for the planetary equation of state.
+ * @brief Base type IDs for the planetary EoS.
  */
 enum eos_planetary_type_id {
 
@@ -59,7 +59,7 @@ enum eos_planetary_type_id {
 };
 
 /**
- * @brief Within-type unit IDs for the planetary equation of state.
+ * @brief Within-type unit IDs for the planetary EoS.
  */
 enum eos_planetary_unit_id {
 
@@ -138,8 +138,7 @@ enum eos_planetary_unit_id {
 };
 
 /**
- * @brief Material IDs (combined type and unit) for the planetary equation of
- * state.
+ * @brief Material IDs (combined type and unit) for the planetary EoS.
  */
 enum eos_planetary_material_id {
 
@@ -244,7 +243,7 @@ enum mat_phase_state {
 };
 
 /**
- * @brief Material parameters beyond the base EoS
+ * @brief Struct of material parameters beyond the base EoS.
  */
 struct mat_params {
   enum mat_phase_state phase_state;
@@ -271,7 +270,7 @@ struct mat_params {
 };
 
 /**
- * @brief Count number of materials of each type
+ * @brief Count the number of materials of each EoS type.
  */
 enum eos_type_count {
   eos_count_idg = 1,
@@ -285,7 +284,7 @@ enum eos_type_count {
 };
 
 /**
- * @brief Cumulative consecutive base index for each material type.
+ * @brief Cumulative consecutive count (starting index) for each material type.
  */
 enum eos_type_cumul_count {
   eos_cumul_count_idg = 0,
