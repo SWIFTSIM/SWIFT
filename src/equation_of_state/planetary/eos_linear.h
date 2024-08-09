@@ -52,10 +52,10 @@ struct linear_params {
     # header (2 lines)
     rho_0 (kg/m3)  c_s (m/s)
 */
-INLINE static void set_linear_params(struct linear_params *mat,
+INLINE static void set_linear_params(struct linear_params *linear,
                                      enum eos_planetary_material_id mat_id,
                                      char *param_file) {
-  mat->mat_id = mat_id;
+  linear->mat_id = mat_id;
 
   // Load table contents from file
   FILE *f = fopen(param_file, "r");
@@ -66,24 +66,24 @@ INLINE static void set_linear_params(struct linear_params *mat,
 
   // Read parameters (SI)
   int c;
-  c = fscanf(f, "%f %f", &mat->rho_0, &mat->c_s);
+  c = fscanf(f, "%f %f", &linear->rho_0, &linear->c_s);
   if (c != 2) error("Failed to read the linear EoS file %s", param_file);
 }
 
 // Convert to internal units
-INLINE static void convert_units_linear(struct linear_params *mat,
+INLINE static void convert_units_linear(struct linear_params *linear,
                                         const struct unit_system *us) {
 
   struct unit_system si;
   units_init_si(&si);
 
   // SI to cgs
-  mat->rho_0 *= units_cgs_conversion_factor(&si, UNIT_CONV_DENSITY);
-  mat->c_s *= units_cgs_conversion_factor(&si, UNIT_CONV_SPEED);
+  linear->rho_0 *= units_cgs_conversion_factor(&si, UNIT_CONV_DENSITY);
+  linear->c_s *= units_cgs_conversion_factor(&si, UNIT_CONV_SPEED);
 
   // cgs to internal
-  mat->rho_0 /= units_cgs_conversion_factor(us, UNIT_CONV_DENSITY);
-  mat->c_s /= units_cgs_conversion_factor(us, UNIT_CONV_SPEED);
+  linear->rho_0 /= units_cgs_conversion_factor(us, UNIT_CONV_DENSITY);
+  linear->c_s /= units_cgs_conversion_factor(us, UNIT_CONV_SPEED);
 }
 
 /**
@@ -95,7 +95,7 @@ INLINE static void convert_units_linear(struct linear_params *mat,
  * @param entropy The entropy \f$A\f$.
  */
 INLINE static float linear_internal_energy_from_entropy(
-    float density, float entropy, const struct linear_params *mat) {
+    float density, float entropy, const struct linear_params *linear) {
 
   error("This EOS function is not yet implemented!");
 
@@ -111,7 +111,7 @@ INLINE static float linear_internal_energy_from_entropy(
  * @param entropy The entropy \f$A\f$.
  */
 INLINE static float linear_pressure_from_entropy(
-    float density, float entropy, const struct linear_params *mat) {
+    float density, float entropy, const struct linear_params *linear) {
 
   error("This EOS function is not yet implemented!");
 
@@ -128,7 +128,7 @@ INLINE static float linear_pressure_from_entropy(
  * @return The entropy \f$A\f$.
  */
 INLINE static float linear_entropy_from_pressure(
-    float density, float pressure, const struct linear_params *mat) {
+    float density, float pressure, const struct linear_params *linear) {
 
   error("This EOS function is not yet implemented!");
 
@@ -144,9 +144,9 @@ INLINE static float linear_entropy_from_pressure(
  * @param entropy The entropy \f$A\f$.
  */
 INLINE static float linear_soundspeed_from_entropy(
-    float density, float entropy, const struct linear_params *mat) {
+    float density, float entropy, const struct linear_params *linear) {
 
-  return mat->c_s;
+  return linear->c_s;
 }
 
 /**
@@ -158,7 +158,7 @@ INLINE static float linear_soundspeed_from_entropy(
  * @param u The internal energy \f$u\f$
  */
 INLINE static float linear_entropy_from_internal_energy(
-    float density, float u, const struct linear_params *mat) {
+    float density, float u, const struct linear_params *linear) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   warning("This EOS function is not yet implemented!");
@@ -175,9 +175,9 @@ INLINE static float linear_entropy_from_internal_energy(
  * @param u The internal energy \f$u\f$
  */
 INLINE static float linear_pressure_from_internal_energy(
-    float density, float u, const struct linear_params *mat) {
+    float density, float u, const struct linear_params *linear) {
 
-  return mat->c_s * mat->c_s * (density - mat->rho_0);
+  return linear->c_s * linear->c_s * (density - linear->rho_0);
 }
 
 /**
@@ -190,7 +190,7 @@ INLINE static float linear_pressure_from_internal_energy(
  * @return The internal energy \f$u\f$.
  */
 INLINE static float linear_internal_energy_from_pressure(
-    float density, float pressure, const struct linear_params *mat) {
+    float density, float pressure, const struct linear_params *linear) {
 
   error("This EOS function is not yet implemented!");
 
@@ -206,9 +206,9 @@ INLINE static float linear_internal_energy_from_pressure(
  * @param u The internal energy \f$u\f$
  */
 INLINE static float linear_soundspeed_from_internal_energy(
-    float density, float u, const struct linear_params *mat) {
+    float density, float u, const struct linear_params *linear) {
 
-  return mat->c_s;
+  return linear->c_s;
 }
 
 /**
@@ -220,14 +220,14 @@ INLINE static float linear_soundspeed_from_internal_energy(
  * @param P The pressure \f$P\f$
  */
 INLINE static float linear_soundspeed_from_pressure(
-    float density, float P, const struct linear_params *mat) {
+    float density, float P, const struct linear_params *linear) {
 
-  return mat->c_s;
+  return linear->c_s;
 }
 
 // gas_temperature_from_internal_energy
 INLINE static float linear_temperature_from_internal_energy(
-    float density, float u, const struct linear_params *mat) {
+    float density, float u, const struct linear_params *linear) {
 
   error("This EOS function is not yet implemented!");
 
@@ -236,7 +236,7 @@ INLINE static float linear_temperature_from_internal_energy(
 
 // gas_density_from_pressure_and_temperature
 INLINE static float linear_density_from_pressure_and_temperature(
-    float P, float T, const struct linear_params *mat) {
+    float P, float T, const struct linear_params *linear) {
 
   error("This EOS function is not yet implemented!");
 
@@ -246,7 +246,7 @@ INLINE static float linear_density_from_pressure_and_temperature(
 // gas_density_from_pressure_and_internal_energy
 INLINE static float linear_density_from_pressure_and_internal_energy(
     float P, float u, float rho_ref, float rho_sph,
-    const struct linear_params *mat) {
+    const struct linear_params *linear) {
 
   error("This EOS function is not yet implemented!");
 
@@ -255,10 +255,10 @@ INLINE static float linear_density_from_pressure_and_internal_energy(
 
 // material_phase_state_from_internal_energy
 INLINE static float linear_phase_state_from_internal_energy(
-    float density, float u, const struct mat_params *mat,
+    float density, float u, const struct mat_params *linear,
     const struct linear_params *linear_eos) {
 
-  switch (mat->phase_state) {
+  switch (linear->phase_state) {
     case mat_phase_state_fluid:
       return mat_phase_state_fluid;
 
