@@ -781,8 +781,9 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
       /* For black holes, we just use the numbers in the top-level cells */
       count_bparts_in += e->proxies[k].cells_in[j]->black_holes.count;
 
-      /* For sinks, we just use the numbers in the top-level cells */
-      count_sinks_in += e->proxies[k].cells_in[j]->sinks.count;
+      /* For sinks, we just use the numbers in the top-level cells + some
+	 extra space */
+      count_sinks_in += e->proxies[k].cells_in[j]->sinks.count + space_extra_sinks;
     }
   }
 
