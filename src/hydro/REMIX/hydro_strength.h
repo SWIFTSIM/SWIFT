@@ -31,64 +31,7 @@
 #include "hydro_kernels.h"
 #include "hydro_parameters.h"
 #include "math.h"
-
-/**
- * @brief Calculates the strain rate tensor.
- *
- * @param p The particle to act upon
- */
-__attribute__((always_inline)) INLINE static void calculate_strain_rate_tensor(
-    struct part *restrict p, float strain_rate_tensor[3][3]) {
-
-  for (int i = 0; i < 3; i++) {
-    for (int j = 0; j < 3; j++) {
-      strain_rate_tensor[i][j] =
-          0.5f * (p->dv_force_loop[i][j] + p->dv_force_loop[j][i]);
-    }
-  }
-}
-
-/**
- * @brief Calculates the rotation rate tensor.
- *
- * @param p The particle to act upon
- */
-__attribute__((always_inline)) INLINE static void
-calculate_rotation_rate_tensor(struct part *restrict p,
-                               float rotation_rate_tensor[3][3]) {
-
-  for (int i = 0; i < 3; i++) {
-    for (int j = 0; j < 3; j++) {
-      rotation_rate_tensor[i][j] =
-          0.5f * (p->dv_force_loop[j][i] - p->dv_force_loop[i][j]);
-    }
-  }
-}
-
-/**
- * @brief Calculates the rotation term to transform into the co-rotating frame.
- *
- * @param p The particle to act upon
- */
-__attribute__((always_inline)) INLINE static void calculate_rotation_term(
-    float rotation_term[3][3], const float rotation_rate_tensor[3][3],
-    const float deviatoric_stress_tensor[3][3]) {
-
-  // Set rotation to transform into the corotating frame
-  for (int i = 0; i < 3; i++) {
-    for (int j = 0; j < 3; j++) {
-      rotation_term[i][j] = 0.f;
-
-      for (int k = 0; k < 3; k++) {
-        // See Dienes 1978 (eqn 4.8)
-        rotation_term[i][j] +=
-            deviatoric_stress_tensor[i][k] * rotation_rate_tensor[k][j] -
-            rotation_rate_tensor[i][k] * deviatoric_stress_tensor[k][j];
-      }
-    }
-  }
-}
-
+#include "strength_utilities.h"
 #include "strength_damage.h"
 #include "strength_stress.h"
 #include "strength_yield.h"

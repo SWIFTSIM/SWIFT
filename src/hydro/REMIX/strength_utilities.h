@@ -26,9 +26,6 @@
  * @brief REMIX implementation of SPH with material strength
  */
 
-#include "const.h"
-#include "equation_of_state.h"
-#include "hydro_kernels.h"
 #include "hydro_parameters.h"
 #include "math.h"
 
@@ -46,11 +43,68 @@ __attribute__((always_inline)) INLINE static float J_2_from_stress_tensor(
   for (int i = 0; i < 3; i++) {
     for (int j = 0; j < 3; j++) {
       J_2 += 0.5f * deviatoric_stress_tensor[i][j] *
-             deviatoric_stress_tensor[j][i];
+              deviatoric_stress_tensor[j][i];
     }
   }
 
   return J_2;
+}
+
+/**
+ * @brief Calculate the strain rate tensor.
+ *
+ * @param p The particle to act upon
+ */
+__attribute__((always_inline)) INLINE static void calculate_strain_rate_tensor(
+    struct part *restrict p, float strain_rate_tensor[3][3]) {
+
+  for (int i = 0; i < 3; i++) {
+    for (int j = 0; j < 3; j++) {
+      strain_rate_tensor[i][j] =
+          0.5f * (p->dv_force_loop[i][j] + p->dv_force_loop[j][i]);
+    }
+  }
+}
+
+/**
+ * @brief Calculate the rotation rate tensor.
+ *
+ * @param p The particle to act upon
+ */
+__attribute__((always_inline)) INLINE static void
+calculate_rotation_rate_tensor(struct part *restrict p,
+                               float rotation_rate_tensor[3][3]) {
+
+  for (int i = 0; i < 3; i++) {
+    for (int j = 0; j < 3; j++) {
+      rotation_rate_tensor[i][j] =
+          0.5f * (p->dv_force_loop[j][i] - p->dv_force_loop[i][j]);
+    }
+  }
+}
+
+/**
+ * @brief Calculate the rotation term to transform into the co-rotating frame.
+ *
+ * @param p The particle to act upon
+ */
+__attribute__((always_inline)) INLINE static void calculate_rotation_term(
+    float rotation_term[3][3], const float rotation_rate_tensor[3][3],
+    const float deviatoric_stress_tensor[3][3]) {
+
+  // Set rotation to transform into the corotating frame
+  for (int i = 0; i < 3; i++) {
+    for (int j = 0; j < 3; j++) {
+      rotation_term[i][j] = 0.f;
+
+      for (int k = 0; k < 3; k++) {
+        // See Dienes 1978 (eqn 4.8)
+        rotation_term[i][j] +=
+            deviatoric_stress_tensor[i][k] * rotation_rate_tensor[k][j] -
+            rotation_rate_tensor[i][k] * deviatoric_stress_tensor[k][j];
+      }
+    }
+  }
 }
 
 #endif /* MATERIAL_STRENGTH */
