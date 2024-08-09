@@ -2975,9 +2975,9 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
 
 #ifdef WITH_MPI
       /* Activate the send/recv tasks. */
-      if (ci_nodeID != nodeID) {
+	 if (ci_nodeID != nodeID) {
 
-	if (ci_active || cj_active) {
+	if ((ci_active || cj_active)) {
 	  /* We must exchange the foreign sinks no matter the activity status */
 	  scheduler_activate_recv(s, ci->mpi.recv, task_subtype_sink_density);
 	  scheduler_activate_send(s, cj->mpi.send, task_subtype_sink_density,
@@ -3013,18 +3013,20 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
 	  if (cj->hydro.count > 0) cell_activate_drift_part(cj, s);
 	}
 
-	/* Propagating new sink counts? */
-	/* Note: Verify whether we also need the hydro counts */
-	if (ci_active && ci->sinks.count > 0) {
+	/* Why not cj->sinks.count instead? If the other node does not have
+	   any sink, we do not need to receive anything */
+	if (ci_active && cj->hydro.count > 0) {
 	  scheduler_activate_recv(s, ci->mpi.recv, task_subtype_sink_formation_counts);
 	}
-	if (cj_active && cj->sinks.count > 0) {
+	if (cj_active && cj->hydro.count > 0) {
 	  scheduler_activate_send(s, cj->mpi.send, task_subtype_sink_formation_counts,
 				  ci_nodeID);
 	}
 
 	/* Propagating new star counts? */
 	if (with_star_formation_sink) {
+	  /* Why not cj->sinks.count instead? If the other node does not have
+	     any sink, we do not need to receive anything */
           if (ci_active && (ci->hydro.count > 0 || ci->sinks.count > 0)) {
             scheduler_activate_recv(s, ci->mpi.recv, task_subtype_sf_counts);
           }
@@ -3036,8 +3038,8 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
 
       } else if (cj_nodeID != nodeID) {
 
-	if (ci_active || cj_active) {
-	  /* We must exchange the foreign BHs no matter the activity status */
+	if ((ci_active || cj_active)) {
+	  /* We must exchange the foreign sinks no matter the activity status */
 	  scheduler_activate_recv(s, cj->mpi.recv, task_subtype_sink_density);
 	  scheduler_activate_send(s, ci->mpi.send, task_subtype_sink_density,
 				  cj_nodeID);
@@ -3046,6 +3048,7 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
 	  if (ci->sinks.count > 0) cell_activate_drift_sink(ci, s);
 	}
 
+	/* Think carefully if we need the ci or cj count */
 	if (ci_active) {
 
 	  /* Receive the foreign parts to compute sink properties and do
@@ -3072,12 +3075,10 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
 	  if (ci->hydro.count > 0) cell_activate_drift_part(ci, s);
 	}
 
-	/* Propagating new sink counts? */
-	/* Note: Verify whether we also need the hydro counts */
-	if (cj_active && cj->sinks.count > 0) {
+	if (cj_active && ci->hydro.count > 0) {
 	  scheduler_activate_recv(s, cj->mpi.recv, task_subtype_sink_formation_counts);
 	}
-	if (ci_active && ci->sinks.count > 0) {
+	if (ci_active && ci->hydro.count > 0) {
 	  scheduler_activate_send(s, ci->mpi.send, task_subtype_sink_formation_counts,
 				  cj_nodeID);
 	}
