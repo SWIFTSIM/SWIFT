@@ -155,8 +155,9 @@ void pairs_single_density(double *dim, long long int pid,
 
   /* Find "our" part. */
   int k;
-  for (k = 0; k < N && parts[k].id != pid; k++)
-    ;
+  for (k = 0; k < N && parts[k].id != pid; k++) {
+    /* Nothing to do here */
+  }
 
   /* Clear accumulators. */
   if (k == N) error("Part not found.");
@@ -730,8 +731,9 @@ void engine_single_density(const double dim[3], const long long int pid,
 
   /* Find "our" part. */
   int k;
-  for (k = 0; k < N && parts[k].id != pid; k++)
-    ;
+  for (k = 0; k < N && parts[k].id != pid; k++) {
+    /* Nothing to do here */
+  }
 
   if (k == N) error("Part not found.");
   struct part p = parts[k];
@@ -783,8 +785,10 @@ void engine_single_force(double *dim, long long int pid,
   float a = 1.f, H = 0.f;
 
   /* Find "our" part. */
-  for (k = 0; k < N && parts[k].id != pid; k++)
-    ;
+  for (k = 0; k < N && parts[k].id != pid; k++) {
+    /* Nothing to do here */
+  }
+
   if (k == N) error("Part not found.");
   p = parts[k];
 

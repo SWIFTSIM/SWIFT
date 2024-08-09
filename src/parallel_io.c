@@ -69,7 +69,7 @@
 #define HDF5_PARALLEL_IO_MAX_BYTES 2147000000LL
 
 /* Are we timing the i/o? */
-//#define IO_SPEED_MEASUREMENT
+// #define IO_SPEED_MEASUREMENT
 
 /* Max number of entries that can be written for a given particle type */
 static const int io_max_size_output_list = 100;
@@ -479,6 +479,9 @@ void prepare_array_parallel(
   io_write_attribute_f(h_data, "a-scale exponent", props.scale_factor_exponent);
   io_write_attribute_s(h_data, "Expression for physical CGS units", buffer);
   io_write_attribute_s(h_data, "Lossy compression filter", comp_buffer);
+  io_write_attribute_b(h_data, "Value stored as physical", props.is_physical);
+  io_write_attribute_b(h_data, "Property can be converted to comoving",
+                       props.is_convertible_to_comoving);
 
   /* Write the actual number this conversion factor corresponds to */
   const double factor =

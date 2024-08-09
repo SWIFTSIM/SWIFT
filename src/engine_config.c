@@ -312,8 +312,9 @@ void engine_config(int restart, int fof, struct engine *e,
     int skip = 0;
     for (int k = 0; k < nr_affinity_cores; k++) {
       int c;
-      for (c = skip; c < CPU_SETSIZE && !CPU_ISSET(c, entry_affinity); ++c)
-        ;
+      for (c = skip; c < CPU_SETSIZE && !CPU_ISSET(c, entry_affinity); ++c) {
+        /* Nothing to do here */
+      }
       cpuid[k] = c;
       skip = c + 1;
     }
@@ -408,8 +409,8 @@ void engine_config(int restart, int fof, struct engine *e,
     /* Make sure the corresponding policy is set and make space for the proxies
      */
     e->policy |= engine_policy_mpi;
-    if ((e->proxies = (struct proxy *)calloc(sizeof(struct proxy),
-                                             engine_maxproxies)) == NULL)
+    if ((e->proxies = (struct proxy *)calloc(engine_maxproxies,
+                                             sizeof(struct proxy))) == NULL)
       error("Failed to allocate memory for proxies.");
     e->nr_proxies = 0;
 
