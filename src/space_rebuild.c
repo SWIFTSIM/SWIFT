@@ -491,7 +491,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
     size_t nr_gparts_exchanged = s->nr_gparts - nr_gparts;
     size_t nr_sparts_exchanged = s->nr_sparts - nr_sparts;
     size_t nr_bparts_exchanged = s->nr_bparts - nr_bparts;
-    size_t nr_sinks_exchanged = s->nr_bparts - nr_bparts;
+    size_t nr_sinks_exchanged = s->nr_sinks - nr_sinks;
     engine_exchange_strays(s->e, nr_parts, &h_index[nr_parts],
                            &nr_parts_exchanged, nr_gparts, &g_index[nr_gparts],
                            &nr_gparts_exchanged, nr_sparts, &s_index[nr_sparts],
