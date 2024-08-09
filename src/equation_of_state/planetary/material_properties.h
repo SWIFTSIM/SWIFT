@@ -37,6 +37,8 @@
 /* Local headers. */
 #include "adiabatic_index.h"
 #include "common_io.h"
+#include "eos_setup.h"
+#include "eos_utilities.h"
 #include "inline.h"
 #include "physical_constants.h"
 #include "restart.h"

@@ -34,12 +34,12 @@
 /* Local headers. */
 #include "adiabatic_index.h"
 #include "common_io.h"
+#include "eos_setup.h"
 #include "equation_of_state.h"
 #include "inline.h"
 #include "physical_constants.h"
 #include "units.h"
 #include "utilities.h"
-#include "eos_utilities.h"
 
 // SESAME parameters
 struct SESAME_params {

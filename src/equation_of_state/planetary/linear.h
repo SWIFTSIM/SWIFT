@@ -33,9 +33,10 @@
 /* Local headers. */
 #include "adiabatic_index.h"
 #include "common_io.h"
+#include "eos_setup.h"
 #include "inline.h"
 #include "physical_constants.h"
-#include "eos_utilities.h"
+#include "utilities.h"
 
 // Linear EoS parameters
 struct linear_params {

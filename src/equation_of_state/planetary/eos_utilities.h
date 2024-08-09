@@ -26,29 +26,33 @@
  * Utitilies for the planetary equations of state.
  */
 
-/*
-    Skip a line while reading a file.
-*/
-INLINE static int skip_line(FILE *f) {
-  int c;
+/* Local headers. */
+#include "eos_setup.h"
+#include "hm80.h"
+#include "ideal_gas.h"
+#include "linear.h"
+#include "sesame.h"
+#include "tillotson.h"
 
-  // Read each character until reaching the end of the line or file
-  do {
-    c = fgetc(f);
-  } while ((c != '\n') && (c != EOF));
+/**
+ * @brief The parameters of the equation of state.
+ *
+ * Parameter structs for each EoS type and unit.
+ */
+struct eos_parameters {
+  struct idg_params idg[eos_count_idg];
+  struct Til_params Til[eos_count_Til];
+  struct Til_params Til_custom[eos_count_Til_custom];
+  struct HM80_params HM80[eos_count_HM80];
+  struct SESAME_params SESAME[eos_count_SESAME];
+  struct SESAME_params ANEOS[eos_count_ANEOS];
+  struct linear_params linear[eos_count_linear];
+  struct SESAME_params custom[eos_count_custom];
 
-  return c;
-}
+  struct mat_params mat_params[eos_count_total];
+};
 
-/*
-    Skip n lines while reading a file.
-*/
-INLINE static int skip_lines(FILE *f, int n) {
-  int c;
-
-  for (int i = 0; i < n; i++) c = skip_line(f);
-
-  return c;
-}
+/*! Primary EoS parameter struct */
+extern struct eos_parameters eos;
 
 #endif /* SWIFT_PLANETARY_EOS_UTILITIES_H */
