@@ -1627,7 +1627,7 @@ void io_collect_gparts_neutrino_to_write(
  */
 void io_make_snapshot_subdir(const char* dirname) {
 
-  if (strcmp(dirname, ".") != 0 && strnlen(dirname, PARSER_MAX_LINE_SIZE) > 0) {
+  if (strcmp(dirname, ".") != 0 && strnlen(dirname, FILENAME_BUFFER_SIZE) > 0) {
     safe_checkdir(dirname, /*create=*/1);
   }
 }
