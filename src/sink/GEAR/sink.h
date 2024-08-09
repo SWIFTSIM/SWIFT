@@ -393,8 +393,7 @@ INLINE static int sink_is_forming(
   }
 
   message(
-      "Gas particle %lld can form a sink ! Gas velocity: v= (%lf, %lf, %lf).",
-      p->id, p->v[0], p->v[1], p->v[2]);
+      "Gas particle %lld can form a sink !", p->id);
   return 1;
 }
 

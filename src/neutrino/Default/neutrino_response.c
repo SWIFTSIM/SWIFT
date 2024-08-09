@@ -497,7 +497,8 @@ void neutrino_response_apply_neutrino_response_mapper(void *map_data,
         if (u_k < 0 || u_a < 0 || u_k > 1 || u_a > 1 ||
             k_index > wavenumber_length || a_index > timestep_length)
           error("Interpolation out of bounds error: %g %g %g %g %llu %llu\n",
-                u_k, u_a, sqrt(k2), pt_ratio_interp, k_index, a_index);
+                u_k, u_a, sqrt(k2), pt_ratio_interp,
+                (unsigned long long)k_index, (unsigned long long)a_index);
 #endif
 
         /* Apply to the mesh */
