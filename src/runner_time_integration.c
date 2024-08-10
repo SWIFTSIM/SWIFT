@@ -1283,7 +1283,7 @@ void runner_do_timestep_collect(struct runner *r, struct cell *c,
   c->sinks.ti_end_min = ti_sinks_end_min;
   c->sinks.ti_beg_max = ti_sinks_beg_max;
 
-  if (c->subtype == cell_subtype_void) {
+  if (c->subtype == cell_subtype_void || c->type == cell_type_zoom) {
     message(
         "Void cell at depth %d has grav ti_end_min: %lld, grav ti_beg_max: "
         "%lld",
