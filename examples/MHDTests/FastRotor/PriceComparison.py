@@ -36,11 +36,13 @@ data.gas.mass_weighted_densities = data.gas.masses * rho
 
 data.gas.mass_weighted_pressures = data.gas.masses * P
 
-data.gas.mass_weighted_machnum = data.gas.masses * normv  / cs
+data.gas.mass_weighted_machnum = data.gas.masses * normv / cs
 
 data.gas.mass_weighted_Pmag = data.gas.masses * Pmag
 
-common_arguments = dict(data=data, z_slice=0.5 * data.metadata.boxsize[2], resolution=512, parallel=True)
+common_arguments = dict(
+    data=data, z_slice=0.5 * data.metadata.boxsize[2], resolution=512, parallel=True
+)
 
 mass_map = slice_gas(**common_arguments, project="masses")
 
@@ -52,7 +54,9 @@ mass_weighted_pressure_map = slice_gas(
     **common_arguments, project="mass_weighted_pressures"
 )
 
-mass_weighted_machnum_map = slice_gas(**common_arguments, project="mass_weighted_machnum")
+mass_weighted_machnum_map = slice_gas(
+    **common_arguments, project="mass_weighted_machnum"
+)
 
 mass_weighted_Pmag_map = slice_gas(**common_arguments, project="mass_weighted_Pmag")
 
@@ -64,22 +68,14 @@ Pmag_map = mass_weighted_Pmag_map / mass_map
 
 # Plot maps
 plt.rcParams.update({"font.size": 16})
-fig, ax = plt.subplots(2, 2, figsize=(12,12))
+fig, ax = plt.subplots(2, 2, figsize=(12, 12))
 
 levels = 30
 
-a00 = ax[0, 0].contour(
-    density_map.value.T, levels=levels, linewidths=1.0, colors='k',
-)
-a01 = ax[0, 1].contour(
-    pressure_map.value.T, levels=levels, linewidths=1.0, colors='k',
-)
-a10 = ax[1, 0].contour(
-    machnum_map.value.T, levels=levels, linewidths=1.0, colors='k',
-)
-a11 = ax[1, 1].contour(
-    Pmag_map.value.T, levels=levels, linewidths=1.0, colors='k',
-)
+a00 = ax[0, 0].contour(density_map.value.T, levels=levels, linewidths=1.0, colors="k")
+a01 = ax[0, 1].contour(pressure_map.value.T, levels=levels, linewidths=1.0, colors="k")
+a10 = ax[1, 0].contour(machnum_map.value.T, levels=levels, linewidths=1.0, colors="k")
+a11 = ax[1, 1].contour(Pmag_map.value.T, levels=levels, linewidths=1.0, colors="k")
 
 for axi in ax:
     for axii in axi:
