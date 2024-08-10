@@ -2124,8 +2124,11 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
     if (c->kick1 != NULL) scheduler_activate(s, c->kick1);
     if (c->kick2 != NULL) scheduler_activate(s, c->kick2);
     if (c->timestep != NULL) scheduler_activate(s, c->timestep);
-    if (c->top->timestep_collect != NULL)
+    if (c->top->timestep_collect != NULL) {
       scheduler_activate(s, c->top->timestep_collect);
+      if (c->top->subtype == cell_subtype_void)
+        message("Activating timestep collect in void cell!");
+    }
     if (c->grav.down != NULL) scheduler_activate(s, c->grav.down);
     if (c->grav.down_in != NULL) scheduler_activate(s, c->grav.down_in);
     if (c->grav.long_range != NULL) scheduler_activate(s, c->grav.long_range);
