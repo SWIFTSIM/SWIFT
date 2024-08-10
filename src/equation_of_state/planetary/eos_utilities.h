@@ -53,6 +53,8 @@ struct eos_parameters {
 
   // Material parameters, for any EoS type
   struct mat_params all_mat_params[eos_count_total];
+  // Method parameters, same for all EoS type
+  struct method_params method_params;
 };
 
 /*! Primary EoS parameter struct */
@@ -112,6 +114,7 @@ __attribute__((always_inline)) INLINE static int material_index_from_mat_id(
  * @brief Load material parameters from a file.
  */
 INLINE static void set_material_params(struct mat_params *all_mat_params,
+                                       struct method_params *method_params,
                                        enum eos_planetary_material_id mat_id,
                                        char *param_file,
                                        const struct unit_system *us) {
@@ -140,27 +143,48 @@ INLINE static void set_material_params(struct mat_params *all_mat_params,
   mat_params->rho_0 =
       parser_get_opt_param_float(file_params, "Strength:rho_0", 0.f);
 
-  // Specific material-strength schemes
-  // #if defined(STRENGTH_YIELD_###)
-  mat_params->Y_0 =
-      parser_get_opt_param_float(file_params, "StrengthYield_:Y_0", 0.f);
-  mat_params->Y_M =
-      parser_get_opt_param_float(file_params, "StrengthYield_:Y_M", 0.f);
-  mat_params->mu_i =
-      parser_get_opt_param_float(file_params, "StrengthYield_:mu_i", 0.f);
-  mat_params->mu_d =
-      parser_get_opt_param_float(file_params, "StrengthYield_:mu_d", 0.f);
-  mat_params->yield_density_soft_mult_param = parser_get_opt_param_float(
-      file_params, "StrengthYield_:yield_density_soft_mult_param", 0.f);
-  mat_params->yield_density_soft_pow_param = parser_get_opt_param_float(
-      file_params, "StrengthYield_:yield_density_soft_pow_param", 0.f);
-  mat_params->yield_thermal_soft_xi = parser_get_opt_param_float(
-      file_params, "StrengthYield_:yield_thermal_soft_xi", 0.f);
-  mat_params->brittle_to_ductile_pressure = parser_get_opt_param_float(
-      file_params, "StrengthYield_:brittle_to_ductile_pressure", 0.f);
-  mat_params->brittle_to_plastic_pressure = parser_get_opt_param_float(
-      file_params, "StrengthYield_:brittle_to_plastic_pressure", 0.f);
-  // #endif /* STRENGTH_YIELD_### */
+
+  // Specific EoS-independent constants for material-strength schemes
+  #if defined(STRENGTH_STRESS_MON2000) || defined(STRENGTH_STRESS_BASIS_INDP)
+    method_params->artif_stress_n = parser_get_opt_param_float(
+        file_params, "ArtificialStress:n", 0.f);
+    method_params->artif_stress_epsilon = parser_get_opt_param_float(
+        file_params, "ArtificialStress:epsilon", 0.f);
+  #endif /* STRENGTH_STRESS_MON2000 || STRENGTH_STRESS_BASIS_INDP */
+
+  // Specific EoS-dependent constants for material-strength schemes
+  #if defined(STRENGTH_YIELD_BENZ_ASPHAUG)
+    mat_params->Y_0 =
+        parser_get_opt_param_float(file_params, "YieldStress:Y_0", 0.f);
+  #elif defined(STRENGTH_YIELD_COLLINS)
+    mat_params->Y_0 =
+        parser_get_opt_param_float(file_params, "YieldStress:Y_0", 0.f);
+    mat_params->Y_M =
+        parser_get_opt_param_float(file_params, "YieldStress:Y_M", 0.f);
+    mat_params->mu_i =
+        parser_get_opt_param_float(file_params, "YieldStress:mu_i", 0.f);
+    mat_params->mu_d =
+        parser_get_opt_param_float(file_params, "YieldStress:mu_d", 0.f);
+  #endif
+
+  #if defined(STRENGTH_YIELD_THERMAL_SOFTENING)
+    method_params->yield_thermal_soft_xi = parser_get_opt_param_float(
+        file_params, "YieldStress:yield_thermal_soft_xi", 0.f);
+  #endif
+
+  #if defined(STRENGTH_YIELD_DENSITY_SOFTENING)
+    method_params->yield_density_soft_mult_param = parser_get_opt_param_float(
+        file_params, "YieldStress:yield_density_soft_mult_param", 0.f);
+    method_params->yield_density_soft_pow_param = parser_get_opt_param_float(
+        file_params, "YieldStress:yield_density_soft_pow_param", 0.f);
+  #endif
+
+  #if defined(STRENGTH_DAMAGE_SHEAR_COLLINS)
+    mat_params->brittle_to_ductile_pressure = parser_get_opt_param_float(
+        file_params, "DamageShearCollins:brittle_to_ductile_pressure", 0.f);
+    mat_params->brittle_to_plastic_pressure = parser_get_opt_param_float(
+        file_params, "DamageShearCollins:brittle_to_plastic_pressure", 0.f);
+  #endif
 
 #else
   mat_params->phase_state = mat_phase_state_fluid;

@@ -880,7 +880,7 @@ __attribute__((always_inline)) INLINE static void eos_init(
 
     sprintf(param_name, "EoS:idg_def_mat_params_file");
     parser_get_opt_param_string(params, param_name, mat_params_file, "NoFile");
-    set_material_params(e->all_mat_params, eos_mat_id_idg_def, mat_params_file,
+    set_material_params(e->all_mat_params, &e->method_params, eos_mat_id_idg_def, mat_params_file,
                         us);
   }
 
@@ -892,7 +892,7 @@ __attribute__((always_inline)) INLINE static void eos_init(
 
     sprintf(param_name, "EoS:Til_iron_mat_params_file");
     parser_get_opt_param_string(params, param_name, mat_params_file, "NoFile");
-    set_material_params(e->all_mat_params, eos_mat_id_Til_iron, mat_params_file,
+    set_material_params(e->all_mat_params, &e->method_params, eos_mat_id_Til_iron, mat_params_file,
                         us);
   }
   if (parser_get_opt_param_int(params, "EoS:planetary_use_Til_granite", 0)) {
@@ -904,7 +904,7 @@ __attribute__((always_inline)) INLINE static void eos_init(
 
     sprintf(param_name, "EoS:Til_granite_mat_params_file");
     parser_get_opt_param_string(params, param_name, mat_params_file, "NoFile");
-    set_material_params(e->all_mat_params, eos_mat_id_Til_granite,
+    set_material_params(e->all_mat_params, &e->method_params, eos_mat_id_Til_granite,
                         mat_params_file, us);
   }
   if (parser_get_opt_param_int(params, "EoS:planetary_use_Til_water", 0)) {
@@ -914,7 +914,7 @@ __attribute__((always_inline)) INLINE static void eos_init(
 
     sprintf(param_name, "EoS:Til_water_mat_params_file");
     parser_get_opt_param_string(params, param_name, mat_params_file, "NoFile");
-    set_material_params(e->all_mat_params, eos_mat_id_Til_water,
+    set_material_params(e->all_mat_params, &e->method_params, eos_mat_id_Til_water,
                         mat_params_file, us);
   }
   if (parser_get_opt_param_int(params, "EoS:planetary_use_Til_basalt", 0)) {
@@ -924,7 +924,7 @@ __attribute__((always_inline)) INLINE static void eos_init(
 
     sprintf(param_name, "EoS:Til_basalt_mat_params_file");
     parser_get_opt_param_string(params, param_name, mat_params_file, "NoFile");
-    set_material_params(e->all_mat_params, eos_mat_id_Til_basalt,
+    set_material_params(e->all_mat_params, &e->method_params, eos_mat_id_Til_basalt,
                         mat_params_file, us);
   }
   if (parser_get_opt_param_int(params, "EoS:planetary_use_Til_ice", 0)) {
@@ -934,7 +934,7 @@ __attribute__((always_inline)) INLINE static void eos_init(
 
     sprintf(param_name, "EoS:Til_ice_mat_params_file");
     parser_get_opt_param_string(params, param_name, mat_params_file, "NoFile");
-    set_material_params(e->all_mat_params, eos_mat_id_Til_ice, mat_params_file,
+    set_material_params(e->all_mat_params, &e->method_params, eos_mat_id_Til_ice, mat_params_file,
                         us);
   }
 
@@ -956,7 +956,7 @@ __attribute__((always_inline)) INLINE static void eos_init(
       sprintf(param_name, "EoS:Til_custom_%d_mat_params_file", i_custom);
       parser_get_opt_param_string(params, param_name, mat_params_file,
                                   "NoFile");
-      set_material_params(e->all_mat_params, mat_id, mat_params_file, us);
+      set_material_params(e->all_mat_params, &e->method_params, mat_id, mat_params_file, us);
     }
   }
 
@@ -971,7 +971,7 @@ __attribute__((always_inline)) INLINE static void eos_init(
 
     sprintf(param_name, "EoS:HM80_HHe_mat_params_file");
     parser_get_opt_param_string(params, param_name, mat_params_file, "NoFile");
-    set_material_params(e->all_mat_params, eos_mat_id_HM80_HHe, mat_params_file,
+    set_material_params(e->all_mat_params, &e->method_params, eos_mat_id_HM80_HHe, mat_params_file,
                         us);
   }
   if (parser_get_opt_param_int(params, "EoS:planetary_use_HM80_ice", 0)) {
@@ -984,7 +984,7 @@ __attribute__((always_inline)) INLINE static void eos_init(
 
     sprintf(param_name, "EoS:HM80_ice_mat_params_file");
     parser_get_opt_param_string(params, param_name, mat_params_file, "NoFile");
-    set_material_params(e->all_mat_params, eos_mat_id_HM80_ice, mat_params_file,
+    set_material_params(e->all_mat_params, &e->method_params, eos_mat_id_HM80_ice, mat_params_file,
                         us);
   }
   if (parser_get_opt_param_int(params, "EoS:planetary_use_HM80_rock", 0)) {
@@ -997,7 +997,7 @@ __attribute__((always_inline)) INLINE static void eos_init(
 
     sprintf(param_name, "EoS:HM80_rock_mat_params_file");
     parser_get_opt_param_string(params, param_name, mat_params_file, "NoFile");
-    set_material_params(e->all_mat_params, eos_mat_id_HM80_rock,
+    set_material_params(e->all_mat_params, &e->method_params, eos_mat_id_HM80_rock,
                         mat_params_file, us);
   }
 
@@ -1013,7 +1013,7 @@ __attribute__((always_inline)) INLINE static void eos_init(
 
     sprintf(param_name, "EoS:SESAME_iron_mat_params_file");
     parser_get_opt_param_string(params, param_name, mat_params_file, "NoFile");
-    set_material_params(e->all_mat_params, eos_mat_id_SESAME_iron,
+    set_material_params(e->all_mat_params, &e->method_params, eos_mat_id_SESAME_iron,
                         mat_params_file, us);
   }
   if (parser_get_opt_param_int(params, "EoS:planetary_use_SESAME_basalt", 0)) {
@@ -1027,7 +1027,7 @@ __attribute__((always_inline)) INLINE static void eos_init(
 
     sprintf(param_name, "EoS:SESAME_basalt_mat_params_file");
     parser_get_opt_param_string(params, param_name, mat_params_file, "NoFile");
-    set_material_params(e->all_mat_params, eos_mat_id_SESAME_basalt,
+    set_material_params(e->all_mat_params, &e->method_params, eos_mat_id_SESAME_basalt,
                         mat_params_file, us);
   }
   if (parser_get_opt_param_int(params, "EoS:planetary_use_SESAME_water", 0)) {
@@ -1041,7 +1041,7 @@ __attribute__((always_inline)) INLINE static void eos_init(
 
     sprintf(param_name, "EoS:SESAME_water_mat_params_file");
     parser_get_opt_param_string(params, param_name, mat_params_file, "NoFile");
-    set_material_params(e->all_mat_params, eos_mat_id_SESAME_water,
+    set_material_params(e->all_mat_params, &e->method_params, eos_mat_id_SESAME_water,
                         mat_params_file, us);
   }
   if (parser_get_opt_param_int(params, "EoS:planetary_use_SS08_water", 0)) {
@@ -1055,7 +1055,7 @@ __attribute__((always_inline)) INLINE static void eos_init(
 
     sprintf(param_name, "EoS:SS08_water_mat_params_file");
     parser_get_opt_param_string(params, param_name, mat_params_file, "NoFile");
-    set_material_params(e->all_mat_params, eos_mat_id_SS08_water,
+    set_material_params(e->all_mat_params, &e->method_params, eos_mat_id_SS08_water,
                         mat_params_file, us);
   }
   if (parser_get_opt_param_int(params, "EoS:planetary_use_AQUA", 0)) {
@@ -1067,7 +1067,7 @@ __attribute__((always_inline)) INLINE static void eos_init(
 
     sprintf(param_name, "EoS:AQUA_mat_params_file");
     parser_get_opt_param_string(params, param_name, mat_params_file, "NoFile");
-    set_material_params(e->all_mat_params, eos_mat_id_AQUA, mat_params_file,
+    set_material_params(e->all_mat_params, &e->method_params, eos_mat_id_AQUA, mat_params_file,
                         us);
   }
   if (parser_get_opt_param_int(params, "EoS:planetary_use_CMS19_H", 0)) {
@@ -1080,7 +1080,7 @@ __attribute__((always_inline)) INLINE static void eos_init(
 
     sprintf(param_name, "EoS:CMS19_H_mat_params_file");
     parser_get_opt_param_string(params, param_name, mat_params_file, "NoFile");
-    set_material_params(e->all_mat_params, eos_mat_id_CMS19_H, mat_params_file,
+    set_material_params(e->all_mat_params, &e->method_params, eos_mat_id_CMS19_H, mat_params_file,
                         us);
   }
   if (parser_get_opt_param_int(params, "EoS:planetary_use_CMS19_He", 0)) {
@@ -1093,7 +1093,7 @@ __attribute__((always_inline)) INLINE static void eos_init(
 
     sprintf(param_name, "EoS:CMS19_He_mat_params_file");
     parser_get_opt_param_string(params, param_name, mat_params_file, "NoFile");
-    set_material_params(e->all_mat_params, eos_mat_id_CMS19_He, mat_params_file,
+    set_material_params(e->all_mat_params, &e->method_params, eos_mat_id_CMS19_He, mat_params_file,
                         us);
   }
   if (parser_get_opt_param_int(params, "EoS:planetary_use_CD21_HHe", 0)) {
@@ -1106,7 +1106,7 @@ __attribute__((always_inline)) INLINE static void eos_init(
 
     sprintf(param_name, "EoS:CD21_HHe_mat_params_file");
     parser_get_opt_param_string(params, param_name, mat_params_file, "NoFile");
-    set_material_params(e->all_mat_params, eos_mat_id_CD21_HHe, mat_params_file,
+    set_material_params(e->all_mat_params, &e->method_params, eos_mat_id_CD21_HHe, mat_params_file,
                         us);
   }
 
@@ -1123,7 +1123,7 @@ __attribute__((always_inline)) INLINE static void eos_init(
 
     sprintf(param_name, "EoS:ANEOS_forsterite_mat_params_file");
     parser_get_opt_param_string(params, param_name, mat_params_file, "NoFile");
-    set_material_params(e->all_mat_params, eos_mat_id_ANEOS_forsterite,
+    set_material_params(e->all_mat_params, &e->method_params, eos_mat_id_ANEOS_forsterite,
                         mat_params_file, us);
   }
   if (parser_get_opt_param_int(params, "EoS:planetary_use_ANEOS_iron", 0)) {
@@ -1137,7 +1137,7 @@ __attribute__((always_inline)) INLINE static void eos_init(
 
     sprintf(param_name, "EoS:ANEOS_iron_mat_params_file");
     parser_get_opt_param_string(params, param_name, mat_params_file, "NoFile");
-    set_material_params(e->all_mat_params, eos_mat_id_ANEOS_iron,
+    set_material_params(e->all_mat_params, &e->method_params, eos_mat_id_ANEOS_iron,
                         mat_params_file, us);
   }
   if (parser_get_opt_param_int(params, "EoS:planetary_use_ANEOS_Fe85Si15", 0)) {
@@ -1151,7 +1151,7 @@ __attribute__((always_inline)) INLINE static void eos_init(
 
     sprintf(param_name, "EoS:ANEOS_Fe85Si15_mat_params_file");
     parser_get_opt_param_string(params, param_name, mat_params_file, "NoFile");
-    set_material_params(e->all_mat_params, eos_mat_id_ANEOS_Fe85Si15,
+    set_material_params(e->all_mat_params, &e->method_params, eos_mat_id_ANEOS_Fe85Si15,
                         mat_params_file, us);
   }
 
@@ -1169,14 +1169,14 @@ __attribute__((always_inline)) INLINE static void eos_init(
       sprintf(param_name, "EoS:linear_%d_mat_params_file", i_linear);
       parser_get_opt_param_string(params, param_name, mat_params_file,
                                   "NoFile");
-      set_material_params(e->all_mat_params, mat_id, mat_params_file, us);
+      set_material_params(e->all_mat_params, &e->method_params, mat_id, mat_params_file, us);
 
       convert_units_linear(&e->all_linear[i_linear], us);
 
       sprintf(param_name, "EoS:linear_%d_mat_params_file", i_linear);
       parser_get_opt_param_string(params, param_name, mat_params_file,
                                   "NoFile");
-      set_material_params(e->all_mat_params, mat_id, mat_params_file, us);
+      set_material_params(e->all_mat_params, &e->method_params, mat_id, mat_params_file, us);
     }
   }
 
@@ -1197,7 +1197,7 @@ __attribute__((always_inline)) INLINE static void eos_init(
       sprintf(param_name, "EoS:custom_%d_mat_params_file", i_custom);
       parser_get_opt_param_string(params, param_name, mat_params_file,
                                   "NoFile");
-      set_material_params(e->all_mat_params, mat_id, mat_params_file, us);
+      set_material_params(e->all_mat_params, &e->method_params, mat_id, mat_params_file, us);
     }
   }
 }

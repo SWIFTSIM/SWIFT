@@ -321,24 +321,32 @@ struct part {
   // Gradient of velocity, calculated using linear-order reproducing kernel.
   float dv_force_loop[3][3];
 
-  // Yield stress
-  float yield_stress;
+  #if defined(STRENGTH_YIELD_BENZ_ASPHAUG) || defined(STRENGTH_YIELD_COLLINS)
+    // Yield stress
+    float yield_stress;
+  #endif
 
-  // Accumulated damage
-  float damage;
+  #if defined(STRENGTH_DAMAGE_TENSILE_BENZ_ASPHAUG) || defined(STRENGTH_DAMAGE_SHEAR_COLLINS)
+    // Accumulated damage
+    float damage;
+  #endif
 
-  // Number of flaws for tensile damage accumulation
-  int number_of_flaws;
+  #if defined(STRENGTH_DAMAGE_TENSILE_BENZ_ASPHAUG)
+    // Number of flaws for tensile damage accumulation
+    int number_of_flaws;
 
-  // Activation thresholds of flaws for tensile damage accumulation
-  // ### Work out how to set the length of this
-  float activation_thresholds[40];
+    // Activation thresholds of flaws for tensile damage accumulation
+    // ### Work out how to set the length of this
+    float activation_thresholds[40];
 
-  // Damage accumulated due to tension
-  float tensile_damage;
+    // Damage accumulated due to tension
+    float tensile_damage;
+  #endif
 
-  // Damage accumulated due to shear
-  float shear_damage;
+  #if defined(STRENGTH_DAMAGE_SHEAR_COLLINS)
+    // Damage accumulated due to shear
+    float shear_damage;
+  #endif
 
 #endif /* MATERIAL_STRENGTH */
 

@@ -49,7 +49,7 @@ __attribute__((always_inline)) INLINE static void hydro_set_stress_tensor(
   }
 
   float effective_pressure =
-      effective_pressure_from_damage(pressure, p->damage);
+      effective_pressure_from_damage(p, pressure);
 
   p->stress_tensor.xx -= effective_pressure;
   p->stress_tensor.yy -= effective_pressure;
@@ -66,8 +66,7 @@ __attribute__((always_inline)) INLINE static void strength_add_artif_stress(
     float pairwise_stress_tensor_i[3][3], float pairwise_stress_tensor_j[3][3],
     const struct part *restrict pi, const struct part *restrict pj,
     const float r) {
-  // #if defined(STRENGTH_STRESS_MON2000) ###
-  /*
+   #if defined(STRENGTH_STRESS_MON2000)
       // Artificial stress (Monaghan, 2000)
       const float mean_h = 0.5f * (pi->h + pj->h);
       const float delta_p = 0.5f * (powf(pi->mass /
@@ -81,11 +80,11 @@ __attribute__((always_inline)) INLINE static void strength_add_artif_stress(
       kernel_eval(r / mean_h, &wij_r);
 
       // This factor should be set in extra parameter file
-      const float artif_stress_n = 4.f; //### yml
+      const float artif_stress_n = method_artif_stress_n();
       const float artif_stress_f = powf(wij_r / wij_delta_p, artif_stress_n);
 
       // This factor should be set in extra parameter file
-      const float artif_stress_epsilon = 0.2f; //### yml
+      const float artif_stress_epsilon = method_artif_stress_epsilon();
 
       for (int i = 0; i < 3; ++i) {
           for (int j = 0; j < 3; ++j) {
@@ -96,8 +95,7 @@ __attribute__((always_inline)) INLINE static void strength_add_artif_stress(
      artif_stress_f * artif_stress_epsilon * pairwise_stress_tensor_j[i][j];
           }
       }
-      */
-  // #elif defined(STRENGTH_STRESS_BASIS_INDP) ###
+   #elif defined(STRENGTH_STRESS_BASIS_INDP)
   /* New version that is independent of basis:
    * Principal stresses are basis-independent
    * Adding the same constant to all diagonal elemenets is equivalent in any
@@ -115,11 +113,11 @@ __attribute__((always_inline)) INLINE static void strength_add_artif_stress(
   kernel_eval(r / mean_h, &wij_r);
 
   // This factor should be set in extra parameter file
-  const float artif_stress_n = 4.f;  // ### yml
+  const float artif_stress_n = method_artif_stress_n();
   const float artif_stress_f = powf(wij_r / wij_delta_p, artif_stress_n);
 
   // This factor should be set in extra parameter file
-  const float artif_stress_epsilon = 0.2f;  // ### yml
+  const float artif_stress_epsilon = method_artif_stress_epsilon();
 
   float max_principal_stress_i = pi->principal_stress_eigen[0];
   if (pi->principal_stress_eigen[1] > max_principal_stress_i)
@@ -141,7 +139,7 @@ __attribute__((always_inline)) INLINE static void strength_add_artif_stress(
       pairwise_stress_tensor_j[i][i] -=
           artif_stress_f * artif_stress_epsilon * max_principal_stress_j;
   }
-  // #endif
+  #endif
 }
 
 /**

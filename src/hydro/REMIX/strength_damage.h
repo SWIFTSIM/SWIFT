@@ -40,18 +40,39 @@
  * @param p The particle to act upon
  */
 __attribute__((always_inline)) INLINE static float
-effective_pressure_from_damage(const float pressure, const float damage) {
+effective_pressure_from_damage(struct part *restrict p, const float pressure) {
 
   float effective_pressure = pressure;
 
-  // #if defined(STRENGTH_DAMAGE_###)
-  // See schafer 2016 for this...
-  if (pressure < 0.f) {
-    effective_pressure *= (1.f - damage);
-  }
-  // #endif
+  #if defined(STRENGTH_DAMAGE_TENSILE_BENZ_ASPHAUG) || defined(STRENGTH_DAMAGE_SHEAR_COLLINS)
+    // See schafer 2016 for this...
+    if (pressure < 0.f) {
+      effective_pressure *= (1.f - p->damage);
+    }
+  #endif
 
   return effective_pressure;
+}
+
+/**
+ * @brief Adjust the yield stress depending on the damage
+ *
+ * @param p The particle to act upon
+ */
+__attribute__((always_inline)) INLINE static float
+adjust_yield_stress_by_damage(struct part *restrict p,
+  const float yield_stress_intact, const float yield_stress_damaged) {
+
+  float yield_stress = yield_stress_intact;
+
+  #if defined(STRENGTH_YIELD_COLLINS)
+    #if defined(STRENGTH_DAMAGE_TENSILE_BENZ_ASPHAUG) && defined(STRENGTH_DAMAGE_SHEAR_COLLINS)
+        yield_stress = (1.f - p->damage) * yield_stress_intact +
+                   p->damage * yield_stress_damaged;
+    #endif
+  #endif
+
+  return yield_stress;
 }
 
 /**
@@ -62,7 +83,7 @@ effective_pressure_from_damage(const float pressure, const float damage) {
 __attribute__((always_inline)) INLINE static void evolve_damage_tensile(
     struct part *restrict p, float *tensile_damage, const float dt_therm) {
 
-  // #if defined(STRENGTH_DAMAGE_###)
+  #if defined(STRENGTH_DAMAGE_TENSILE_BENZ_ASPHAUG)
   // Find max eignenvalue of stress_tensor_sigma:
   float max_principal_stress = p->principal_stress_eigen[0];
   if (p->principal_stress_eigen[1] > max_principal_stress)
@@ -114,7 +135,7 @@ __attribute__((always_inline)) INLINE static void evolve_damage_tensile(
       *tensile_damage = powf(evolved_D_cbrt, 3.f);
     }
   }
-  // #endif
+  #endif /* STRENGTH_DAMAGE_TENSILE_BENZ_ASPHAUG */
 }
 
 /**
@@ -126,7 +147,7 @@ __attribute__((always_inline)) INLINE static void evolve_damage_shear(
     struct part *restrict p, float *shear_damage, const float pressure,
     const float dt_therm) {
 
-  // #if defined(STRENGTH_DAMAGE_###)
+  #if defined(STRENGTH_DAMAGE_SHEAR_COLLINS)
   float J_2 = J_2_from_stress_tensor(&p->deviatoric_stress_tensor);
 
   // See Collins for this.
@@ -139,11 +160,11 @@ __attribute__((always_inline)) INLINE static void evolve_damage_shear(
       float brittle_to_plastic_pressure =
           material_brittle_to_plastic_pressure(p->mat_id);
 
-      float plastic_strain_at_the_point_of_failure_epsilon_f;
+      float plastic_strain_at_failure;
       if (pressure < brittle_to_ductile_pressure) {
 
         // Is this meant to be inear? maybe not clear in paper
-        plastic_strain_at_the_point_of_failure_epsilon_f =
+        plastic_strain_at_failure =
             0.04f * (pressure / brittle_to_ductile_pressure) + 0.01f;
 
       } else if (pressure < brittle_to_plastic_pressure) {
@@ -152,13 +173,14 @@ __attribute__((always_inline)) INLINE static void evolve_damage_shear(
                                         brittle_to_ductile_pressure);
         float intercept = brittle_to_ductile_pressure - slope * 0.05f;
 
-        plastic_strain_at_the_point_of_failure_epsilon_f =
+        plastic_strain_at_failure =
             slope * pressure + intercept;
 
       } else {
-        plastic_strain_at_the_point_of_failure_epsilon_f = 1.f;
+        plastic_strain_at_failure = 1.f;
       }
 
+      // ### The next part feels like a recalculation of J_2. Double check this
       // Do I need to have rotation terms here?
       float strain_rate_tensor[3][3];
       calculate_strain_rate_tensor(p, strain_rate_tensor);
@@ -189,13 +211,13 @@ __attribute__((always_inline)) INLINE static void evolve_damage_shear(
       // can this be negative?
       *shear_damage +=
           max(0.f, (strain_rate_invariant /
-                    plastic_strain_at_the_point_of_failure_epsilon_f) *
+                    plastic_strain_at_failure) *
                        dt_therm);
 
       if (*shear_damage > 1.f) *shear_damage = 1.f;
     }
   }
-  // #endif
+  #endif /* STRENGTH_DAMAGE_SHEAR_COLLINS */
 }
 
 /**
@@ -206,16 +228,21 @@ __attribute__((always_inline)) INLINE static void evolve_damage_shear(
 __attribute__((always_inline)) INLINE static void evolve_damage(
     struct part *restrict p, const float pressure, const float dt_therm) {
 
-  // ...
-  float tensile_damage = p->tensile_damage;
-  float shear_damage = p->shear_damage;
+  #if defined(STRENGTH_DAMAGE_TENSILE_BENZ_ASPHAUG)
+    evolve_damage_tensile(p, &p->tensile_damage, dt_therm);
+  #endif
 
-  // ...
-  evolve_damage_tensile(p, &tensile_damage, dt_therm);
-  evolve_damage_shear(p, &shear_damage, pressure, dt_therm);
+  #if defined(STRENGTH_DAMAGE_SHEAR_COLLINS)
+    evolve_damage_shear(p, &p->shear_damage, pressure, dt_therm);
+  #endif
 
-  // total damage
-  p->damage = min(1.f, tensile_damage + shear_damage);
+  #if defined(STRENGTH_DAMAGE_TENSILE_BENZ_ASPHAUG) && defined(STRENGTH_DAMAGE_SHEAR_COLLINS)
+    p->damage = min(1.f, p->tensile_damage + p->shear_damage);
+  #elif defined(STRENGTH_DAMAGE_TENSILE_BENZ_ASPHAUG)
+    p->damage = p->tensile_damage;
+  #elif defined(STRENGTH_DAMAGE_SHEAR_COLLINS)
+    p->damage = p->shear_damage;
+  #endif
 }
 
 #endif /* MATERIAL_STRENGTH */

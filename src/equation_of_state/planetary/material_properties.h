@@ -110,6 +110,9 @@ material_phase_state_from_internal_energy(
 }
 
 #ifdef MATERIAL_STRENGTH
+
+// Material parameters
+
 /** @brief Returns the shear modulus of a material */
 __attribute__((always_inline)) INLINE static float material_shear_mod(
     enum eos_planetary_material_id mat_id) {
@@ -138,72 +141,96 @@ __attribute__((always_inline)) INLINE static float material_rho_0(
   return eos.all_mat_params[mat_index].rho_0;
 }
 
-// #ifdef STRENGTH_YIELD_###
-/** @brief Returns the Y_0 of a material */
-__attribute__((always_inline)) INLINE static float material_Y_0(
-    enum eos_planetary_material_id mat_id) {
-  const int mat_index = material_index_from_mat_id(mat_id);
-  return eos.all_mat_params[mat_index].Y_0;
-}
+#if defined(STRENGTH_YIELD_BENZ_ASPHAUG)
+  /** @brief Returns the Y_0 of a material */
+  __attribute__((always_inline)) INLINE static float material_Y_0(
+      enum eos_planetary_material_id mat_id) {
+    const int mat_index = material_index_from_mat_id(mat_id);
+    return eos.all_mat_params[mat_index].Y_0;
+  }
+#elif defined(STRENGTH_YIELD_COLLINS)
+  /** @brief Returns the Y_0 of a material */
+  __attribute__((always_inline)) INLINE static float material_Y_0(
+      enum eos_planetary_material_id mat_id) {
+    const int mat_index = material_index_from_mat_id(mat_id);
+    return eos.all_mat_params[mat_index].Y_0;
+  }
 
-/** @brief Returns the Y_M of a material */
-__attribute__((always_inline)) INLINE static float material_Y_M(
-    enum eos_planetary_material_id mat_id) {
-  const int mat_index = material_index_from_mat_id(mat_id);
-  return eos.all_mat_params[mat_index].Y_M;
-}
+  /** @brief Returns the Y_M of a material */
+  __attribute__((always_inline)) INLINE static float material_Y_M(
+      enum eos_planetary_material_id mat_id) {
+    const int mat_index = material_index_from_mat_id(mat_id);
+    return eos.all_mat_params[mat_index].Y_M;
+  }
 
-/** @brief Returns the mu_i of a material */
-__attribute__((always_inline)) INLINE static float material_mu_i(
-    enum eos_planetary_material_id mat_id) {
-  const int mat_index = material_index_from_mat_id(mat_id);
-  return eos.all_mat_params[mat_index].mu_i;
-}
+  /** @brief Returns the mu_i of a material */
+  __attribute__((always_inline)) INLINE static float material_mu_i(
+      enum eos_planetary_material_id mat_id) {
+    const int mat_index = material_index_from_mat_id(mat_id);
+    return eos.all_mat_params[mat_index].mu_i;
+  }
 
-/** @brief Returns the mu_d of a material */
-__attribute__((always_inline)) INLINE static float material_mu_d(
-    enum eos_planetary_material_id mat_id) {
-  const int mat_index = material_index_from_mat_id(mat_id);
-  return eos.all_mat_params[mat_index].mu_d;
-}
+  /** @brief Returns the mu_d of a material */
+  __attribute__((always_inline)) INLINE static float material_mu_d(
+      enum eos_planetary_material_id mat_id) {
+    const int mat_index = material_index_from_mat_id(mat_id);
+    return eos.all_mat_params[mat_index].mu_d;
+  }
+#endif
 
-/** @brief Returns the yield stress density softening multiplication parameter
- * of a material */
-__attribute__((always_inline)) INLINE static float
-material_yield_density_soft_mult_param(enum eos_planetary_material_id mat_id) {
-  const int mat_index = material_index_from_mat_id(mat_id);
-  return eos.all_mat_params[mat_index].yield_density_soft_mult_param;
-}
+#if defined(STRENGTH_DAMAGE_SHEAR_COLLINS)
+  /** @brief Returns the brittle to ductile transition pressure of a material */
+  __attribute__((always_inline)) INLINE static float
+  material_brittle_to_ductile_pressure(enum eos_planetary_material_id mat_id) {
+    const int mat_index = material_index_from_mat_id(mat_id);
+    return eos.all_mat_params[mat_index].brittle_to_ductile_pressure;
+  }
 
-/** @brief Returns the yield stress density softening exponent parameter of a
- * material */
-__attribute__((always_inline)) INLINE static float
-material_yield_density_soft_pow_param(enum eos_planetary_material_id mat_id) {
-  const int mat_index = material_index_from_mat_id(mat_id);
-  return eos.all_mat_params[mat_index].yield_density_soft_pow_param;
-}
+  /** @brief Returns the brittle to plastic transition pressure of a material */
+  __attribute__((always_inline)) INLINE static float
+  material_brittle_to_plastic_pressure(enum eos_planetary_material_id mat_id) {
+    const int mat_index = material_index_from_mat_id(mat_id);
+    return eos.all_mat_params[mat_index].brittle_to_plastic_pressure;
+  }
+#endif
 
-/** @brief Returns the yield stress thermal softening parameter of a material */
-__attribute__((always_inline)) INLINE static float
-material_yield_thermal_soft_xi(enum eos_planetary_material_id mat_id) {
-  const int mat_index = material_index_from_mat_id(mat_id);
-  return eos.all_mat_params[mat_index].yield_thermal_soft_xi;
-}
+// Method parameters
 
-/** @brief Returns the brittle to ductile transition pressure of a material */
-__attribute__((always_inline)) INLINE static float
-material_brittle_to_ductile_pressure(enum eos_planetary_material_id mat_id) {
-  const int mat_index = material_index_from_mat_id(mat_id);
-  return eos.all_mat_params[mat_index].brittle_to_ductile_pressure;
-}
+#if defined(STRENGTH_STRESS_MON2000) || defined(STRENGTH_STRESS_BASIS_INDP)
+  /** @brief Returns the artificial stress n parameter of a material */
+  __attribute__((always_inline)) INLINE static float method_artif_stress_n(void) {
+    return eos.method_params.artif_stress_n;
+  }
 
-/** @brief Returns the brittle to plastic transition pressure of a material */
-__attribute__((always_inline)) INLINE static float
-material_brittle_to_plastic_pressure(enum eos_planetary_material_id mat_id) {
-  const int mat_index = material_index_from_mat_id(mat_id);
-  return eos.all_mat_params[mat_index].brittle_to_plastic_pressure;
-}
-// #endif /* STRENGTH_YIELD_### */
+  /** @brief Returns the artificial stress epsilon parameter of a material */
+  __attribute__((always_inline)) INLINE static float method_artif_stress_epsilon(void) {
+    return eos.method_params.artif_stress_epsilon;
+  }
+#endif /* STRENGTH_STRESS_MON2000 || STRENGTH_STRESS_BASIS_INDP */
+
+#if defined(STRENGTH_YIELD_THERMAL_SOFTENING)
+  /** @brief Returns the yield stress thermal softening parameter of a material */
+  __attribute__((always_inline)) INLINE static float
+  method_yield_thermal_soft_xi(void) {
+    return eos.method_params.yield_thermal_soft_xi;
+  }
+#endif /* STRENGTH_YIELD_THERMAL_SOFTENING */
+
+#if defined(STRENGTH_YIELD_DENSITY_SOFTENING)
+  /** @brief Returns the yield stress density softening multiplication parameter
+   * of a material */
+  __attribute__((always_inline)) INLINE static float
+  method_yield_density_soft_mult_param(void) {
+    return eos.method_params.yield_density_soft_mult_param;
+  }
+
+  /** @brief Returns the yield stress density softening exponent parameter of a
+   * material */
+  __attribute__((always_inline)) INLINE static float
+  method_yield_density_soft_pow_param(void) {
+    return eos.method_params.yield_density_soft_pow_param;
+  }
+#endif /* STRENGTH_YIELD_DENSITY_SOFTENING */
 
 #endif /* MATERIAL_STRENGTH */
 

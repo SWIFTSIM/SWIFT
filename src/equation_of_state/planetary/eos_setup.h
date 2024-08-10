@@ -254,18 +254,41 @@ struct mat_params {
   float T_melt;
   float rho_0;
 
-  // #if defined(STRENGTH_YIELD_###)
-  float Y_0;
-  float Y_M;
-  float mu_i;
-  float mu_d;
-  float yield_density_soft_mult_param;
-  float yield_density_soft_pow_param;
-  float yield_thermal_soft_xi;
-  float brittle_to_ductile_pressure;
-  float brittle_to_plastic_pressure;
-  // #endif /* STRENGTH_YIELD_### */
+  #if defined(STRENGTH_YIELD_BENZ_ASPHAUG)
+    float Y_0;
+  #elif defined(STRENGTH_YIELD_COLLINS)
+    float Y_0;
+    float Y_M;
+    float mu_i;
+    float mu_d;
+  #endif
 
+  #if defined(STRENGTH_DAMAGE_SHEAR_COLLINS)
+    float brittle_to_ductile_pressure;
+    float brittle_to_plastic_pressure;
+  #endif
+#endif /* MATERIAL_STRENGTH */
+};
+
+/**
+ * @brief Struct of method parameters that are independent of EoS.
+ */
+struct method_params {
+
+#ifdef MATERIAL_STRENGTH
+  #if defined(STRENGTH_STRESS_MON2000) || defined(STRENGTH_STRESS_BASIS_INDP)
+    float artif_stress_n;
+    float artif_stress_epsilon;
+  #endif
+
+  #if defined(STRENGTH_YIELD_THERMAL_SOFTENING)
+    float yield_thermal_soft_xi;
+  #endif
+
+  #if defined(STRENGTH_YIELD_DENSITY_SOFTENING)
+    float yield_density_soft_mult_param;
+    float yield_density_soft_pow_param;
+  #endif
 #endif /* MATERIAL_STRENGTH */
 };
 
