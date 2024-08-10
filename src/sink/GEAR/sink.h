@@ -601,6 +601,10 @@ INLINE static int sink_spawn_star(struct sink* sink, const struct engine* e,
                                   const int with_cosmology,
                                   const struct phys_const* phys_const,
                                   const struct unit_system* restrict us) {
+  /* Exit if we have disabled SF */
+  if (sink_props->disable_star_formation) {
+    return 0;
+  }
 
   if (sink->mass > sink->target_mass * phys_const->const_solar_mass)
     return 1;
