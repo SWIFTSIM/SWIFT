@@ -1209,6 +1209,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         if (cell_need_rebuild_for_sinks_pair(cj, ci)) *rebuild_space = 1;
 
 #ifdef WITH_MPI
+	/* Here sink MPI */
 	/* Activate the send/recv tasks. */
         if (ci_nodeID != nodeID) {
 
@@ -1248,23 +1249,19 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
             if (cj->hydro.count > 0) cell_activate_drift_part(cj, s);
           }
 
-	  /* Noet: Verify whether we also need the hydro counts */
-	  if (ci_active_sinks && ci->sinks.count > 0) {
+	  if (ci_active_sinks && cj->hydro.count > 0) {
 	    scheduler_activate_recv(s, ci->mpi.recv, task_subtype_sink_formation_counts);
 	  }
-	  if (cj_active_sinks && cj->sinks.count > 0) {
+	  if (cj_active_sinks && cj->hydro.count > 0) {
 	    scheduler_activate_send(s, cj->mpi.send, task_subtype_sink_formation_counts,
 				    ci_nodeID);
 	  }
 
 	  /* Propagating new star counts? */
-	  /* HERE SF */
           if (with_star_formation_sink) {
-	    /* TODO: Check if it is ci_acitve_sinks or hydro */
 	    if (ci_active_sinks && (ci->hydro.count > 0 || ci->sinks.count > 0)) {
               scheduler_activate_recv(s, ci->mpi.recv, task_subtype_sf_counts);
             }
-	    /* TODO: Check if it is cj_acitve_sinks or hydro */
             if (cj_active_sinks && (cj->hydro.count > 0 || cj->sinks.count > 0)) {
               scheduler_activate_send(s, cj->mpi.send, task_subtype_sf_counts,
                                       ci_nodeID);
@@ -1310,16 +1307,15 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           }
 
 	  /* Noet: Verify whether we also need the hydro counts */
-          if (cj_active_sinks && cj->sinks.count > 0) {
+          if (cj_active_sinks && ci->hydro.count > 0) {
 	    scheduler_activate_recv(s, cj->mpi.recv, task_subtype_sink_formation_counts);
 	  }
-	  if (ci_active_sinks && ci->sinks.count > 0) {
+	  if (ci_active_sinks && ci->hydro.count > 0) {
 	    scheduler_activate_send(s, ci->mpi.send, task_subtype_sink_formation_counts,
 				    cj_nodeID);
 	  }
 
 	  /* Propagating new star counts? */
-	  /* HERE SF */
           if (with_star_formation_sink) {
 	    if (cj_active_sinks && (cj->hydro.count > 0 || cj->sinks.count > 0)) {
               scheduler_activate_recv(s, cj->mpi.recv, task_subtype_sf_counts);
