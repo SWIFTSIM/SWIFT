@@ -126,6 +126,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_sink(
  *
  * Note: Energies are computed with physical quantities, not the comoving ones.
  *
+ * MPI note: This functions invokes the gpart. Hence, it must be performed only
+ * on the local node (similarly to runner_iact_nonsym_bh_bh_repos()).
+ *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
  * @param ri Comoving cut off radius of particle i.
@@ -226,6 +229,9 @@ runner_iact_nonsym_sinks_sink_swallow(const float r2, const float dx[3],
  * @brief Compute sink-gas swallow interaction (non-symmetric).
  *
  * Note: Energies are computed with physical quantities, not the comoving ones.
+ *
+ * MPI note: This functions invokes the gpart. Hence, it must be performed only
+ * on the local node (similarly to runner_iact_nonsym_bh_gas_repos()).
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
