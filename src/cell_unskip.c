@@ -2975,7 +2975,7 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
 
 #ifdef WITH_MPI
       /* Activate the send/recv tasks. */
-	 if (ci_nodeID != nodeID) {
+      if (ci_nodeID != nodeID) {
 
 	if ((ci_active || cj_active)) {
 	  /* We must exchange the foreign sinks no matter the activity status */
@@ -2987,6 +2987,8 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
 	  if (cj->sinks.count > 0) cell_activate_drift_sink(cj, s);
 	}
 
+	/* TODO: Maybe we need to activate these only if the cell sinks.count >
+	   0. This avoids activating send/recv if we do not need them. */
 	if (cj_active) {
 
 	  /* Receive the foreign parts to compute sink properties and do
@@ -2998,6 +3000,8 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
 	  /* We don't send any sink so we don't need to drift. */
 	}
 
+	/* TODO: Maybe we need to activate these only if the cell sinks.count >
+	   0. This avoids activating send/recv if we do not need them. */
 	if (ci_active) {
 
 	  /* Send the local part information */
@@ -3013,8 +3017,6 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
 	  if (cj->hydro.count > 0) cell_activate_drift_part(cj, s);
 	}
 
-	/* Why not cj->sinks.count instead? If the other node does not have
-	   any sink, we do not need to receive anything */
 	if (ci_active && cj->hydro.count > 0) {
 	  scheduler_activate_recv(s, ci->mpi.recv, task_subtype_sink_formation_counts);
 	}
