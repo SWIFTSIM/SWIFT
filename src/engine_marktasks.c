@@ -1249,7 +1249,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
             if (cj->hydro.count > 0) cell_activate_drift_part(cj, s);
           }
 
-	  if (ci_active_sinks && cj->hydro.count > 0) {
+	  if (ci_active_sinks && ci->hydro.count > 0) {
 	    scheduler_activate_recv(s, ci->mpi.recv, task_subtype_sink_formation_counts);
 	  }
 	  if (cj_active_sinks && cj->hydro.count > 0) {
@@ -1307,7 +1307,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           }
 
 	  /* Noet: Verify whether we also need the hydro counts */
-          if (cj_active_sinks && ci->hydro.count > 0) {
+          if (cj_active_sinks && cj->hydro.count > 0) {
 	    scheduler_activate_recv(s, cj->mpi.recv, task_subtype_sink_formation_counts);
 	  }
 	  if (ci_active_sinks && ci->hydro.count > 0) {

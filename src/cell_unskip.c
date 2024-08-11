@@ -3017,7 +3017,7 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
 	  if (cj->hydro.count > 0) cell_activate_drift_part(cj, s);
 	}
 
-	if (ci_active && cj->hydro.count > 0) {
+	if (ci_active && ci->hydro.count > 0) {
 	  scheduler_activate_recv(s, ci->mpi.recv, task_subtype_sink_formation_counts);
 	}
 	if (cj_active && cj->hydro.count > 0) {
@@ -3077,7 +3077,7 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
 	  if (ci->hydro.count > 0) cell_activate_drift_part(ci, s);
 	}
 
-	if (cj_active && ci->hydro.count > 0) {
+	if (cj_active && cj->hydro.count > 0) {
 	  scheduler_activate_recv(s, cj->mpi.recv, task_subtype_sink_formation_counts);
 	}
 	if (ci_active && ci->hydro.count > 0) {
