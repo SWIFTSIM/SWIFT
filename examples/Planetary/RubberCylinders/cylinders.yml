@@ -9,7 +9,7 @@ InternalUnitSystem:
 # Parameters governing the time integration
 TimeIntegration:
   time_begin: 0.     # The starting time of the simulation (in internal units).
-  time_end:   1000   # The end time of the simulation (in internal units).
+  time_end:   150   # The end time of the simulation (in internal units).
   dt_min:     1e-10  # The minimal time-step size of the simulation (in internal units).
   dt_max:     10.    # The maximal time-step size of the simulation (in internal units).
 
@@ -40,4 +40,4 @@ Scheduler:
 EoS:
     planetary_use_linear_0:    1
     planetary_linear_0_param_file: ./linear_eos_params.txt
-    planetary_linear_0_param_file_extra: ./linear_eos_params_extra.txt
+    linear_0_mat_params_file: ./linear_mat_params.yml

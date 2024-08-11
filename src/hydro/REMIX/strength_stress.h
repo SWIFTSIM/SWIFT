@@ -173,7 +173,7 @@ hydro_set_pairwise_stress_tensors_strength(float pairwise_stress_tensor_i[3][3],
  */
 __attribute__((always_inline)) INLINE static void evolve_deviatoric_stress(
     struct part *restrict p, const float dt_therm, const float density,
-    const float pressure, const float temperature) {
+    const float pressure) {
 
   if (p->phase_state == mat_phase_state_fluid) {
     // No stress for fluids
@@ -186,7 +186,7 @@ __attribute__((always_inline)) INLINE static void evolve_deviatoric_stress(
     }
     // Yield stress
     adjust_deviatoric_stress_tensor_by_yield_stress(
-        p, &p->deviatoric_stress_tensor, density, pressure, temperature);
+        p, &p->deviatoric_stress_tensor, density, pressure);
   }
 }
 

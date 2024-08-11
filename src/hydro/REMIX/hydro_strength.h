@@ -232,11 +232,11 @@ hydro_end_force_extra_strength(struct part *restrict p) {
  */
 __attribute__((always_inline)) INLINE static void hydro_predict_extra_strength(
     struct part *restrict p, const float dt_therm, const float density,
-    const float pressure, const float temperature) {
+    const float pressure) {
 
   evolve_damage(p, pressure, dt_therm);
 
-  evolve_deviatoric_stress(p, dt_therm, density, pressure, temperature);
+  evolve_deviatoric_stress(p, dt_therm, density, pressure);
 }
 
 #endif /* MATERIAL_STRENGTH */

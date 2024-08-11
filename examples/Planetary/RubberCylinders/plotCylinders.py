@@ -64,8 +64,7 @@ size = 0.11
 
 func_plotted = rho
 
-norm = mpl.colors.Normalize(vmin=np.min(func_plotted),vmax=np.max(func_plotted) )
-# norm = mpl.colors.Normalize(vmin=0.9,vmax=1.1 )
+norm = mpl.colors.Normalize(vmin=0.9,vmax=1.1 )
 sm = plt.cm.ScalarMappable(cmap='rainbow', norm=norm)
 sm.set_array([])
 divider = make_axes_locatable(ax)
@@ -78,6 +77,5 @@ ax.set_aspect('equal', 'box')
 ax.set_facecolor((0.8,0.8,0.8))
 ax.set_xlim((0,20))
 ax.set_ylim((0,20))
-
 
 savefig("cylinders_%04d.png"%snap, dpi=200)

@@ -9,7 +9,7 @@ Strength:
     shear_mod:      1.5969888e8     # Shear modulus (Pa)
     bulk_mod:       0               # Bulk modulus (Pa)
     T_melt:         0               # Melting temperature (K)
-    rho_0:          1               # (kg m^-3)
+    rho_0:          1000            # (kg m^-3)
 
 
 # Specific material-strength schemes

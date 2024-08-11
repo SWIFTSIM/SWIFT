@@ -849,10 +849,7 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   p->force.v_sig = max(p->force.v_sig, 2.f * soundspeed);
 
 #ifdef MATERIAL_STRENGTH
-  const float temperature =
-      gas_temperature_from_internal_energy(p->rho_evol, p->u, p->mat_id);
-
-  hydro_predict_extra_strength(p, dt_therm, p->rho_evol, pressure, temperature);
+  hydro_predict_extra_strength(p, dt_therm, p->rho_evol, pressure);
 #endif /* MATERIAL_STRENGTH */
 }
 

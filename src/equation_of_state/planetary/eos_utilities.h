@@ -111,6 +111,58 @@ __attribute__((always_inline)) INLINE static int material_index_from_mat_id(
 }
 
 /**
+ * @brief Convert units of material parameters from SI to internal units.
+ */
+INLINE static void convert_units_material_params(struct mat_params *mat_params,
+                                       struct method_params *method_params,
+                                       const struct unit_system *us) {
+
+   struct unit_system si;
+   units_init_si(&si);
+
+#ifdef MATERIAL_STRENGTH
+   // General material strength parameters
+   // SI to cgs
+   mat_params->shear_mod *= units_cgs_conversion_factor(&si, UNIT_CONV_PRESSURE);
+   mat_params->bulk_mod *= units_cgs_conversion_factor(&si, UNIT_CONV_PRESSURE);
+   mat_params->T_melt *= units_cgs_conversion_factor(&si, UNIT_CONV_TEMPERATURE);
+   mat_params->rho_0 *= units_cgs_conversion_factor(&si, UNIT_CONV_DENSITY);
+
+   // cgs to internal
+   mat_params->shear_mod /= units_cgs_conversion_factor(us, UNIT_CONV_PRESSURE);
+   mat_params->bulk_mod /= units_cgs_conversion_factor(us, UNIT_CONV_PRESSURE);
+   mat_params->T_melt /= units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
+   mat_params->rho_0 /= units_cgs_conversion_factor(us, UNIT_CONV_DENSITY);
+
+   // Specific EoS-dependent constants for material-strength schemes
+   #if defined(STRENGTH_YIELD_BENZ_ASPHAUG)
+     mat_params->Y_0 *= units_cgs_conversion_factor(&si, UNIT_CONV_PRESSURE);
+
+     // cgs to internal
+     mat_params->Y_0 /= units_cgs_conversion_factor(us, UNIT_CONV_PRESSURE);
+   #elif defined(STRENGTH_YIELD_COLLINS)
+     // SI to cgs
+     mat_params->Y_0 *= units_cgs_conversion_factor(&si, UNIT_CONV_PRESSURE);
+     mat_params->Y_M *= units_cgs_conversion_factor(&si, UNIT_CONV_PRESSURE);
+
+     // cgs to internal
+     mat_params->Y_0 /= units_cgs_conversion_factor(us, UNIT_CONV_PRESSURE);
+     mat_params->Y_M /= units_cgs_conversion_factor(us, UNIT_CONV_PRESSURE);
+   #endif
+
+   #if defined(STRENGTH_DAMAGE_SHEAR_COLLINS)
+     // SI to cgs
+     mat_params->brittle_to_ductile_pressure *= units_cgs_conversion_factor(&si, UNIT_CONV_PRESSURE);
+     mat_params->brittle_to_plastic_pressure *= units_cgs_conversion_factor(&si, UNIT_CONV_PRESSURE);
+
+     // cgs to internal
+     mat_params->brittle_to_ductile_pressure /= units_cgs_conversion_factor(us, UNIT_CONV_PRESSURE);
+     mat_params->brittle_to_plastic_pressure /= units_cgs_conversion_factor(us, UNIT_CONV_PRESSURE);
+   #endif
+#endif /* MATERIAL_STRENGTH */
+
+ }
+/**
  * @brief Load material parameters from a file.
  */
 INLINE static void set_material_params(struct mat_params *all_mat_params,
@@ -190,8 +242,9 @@ INLINE static void set_material_params(struct mat_params *all_mat_params,
   mat_params->phase_state = mat_phase_state_fluid;
 #endif /* MATERIAL_STRENGTH */
 
-  // ###convert units!
-  //  us...
+  // Convert units
+  convert_units_material_params(mat_params, method_params, us);
+
 }
 
 #endif /* SWIFT_PLANETARY_EOS_UTILITIES_H */
