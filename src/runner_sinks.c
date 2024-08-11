@@ -184,6 +184,7 @@ void runner_do_nonsym_pair_sinks_naive_swallow(struct runner *r,
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
   const int with_cosmology = e->policy & engine_policy_cosmology;
+  const int si_is_local = ci->nodeID == e->nodeID;
 
   /* Anything to do here? */
   if (ci->sinks.count == 0) return;
@@ -247,9 +248,14 @@ void runner_do_nonsym_pair_sinks_naive_swallow(struct runner *r,
 #endif
 
         if (r2 < ri2) {
-          runner_iact_nonsym_sinks_gas_swallow(
+	  /* MPI note: This function is allowed to access the gpart's data. Hence,
+	     it must be performed only on the local node. (GEAR uses gpart's data,
+	     e.g. to compute potential) */
+	  if (si_is_local) {
+	    runner_iact_nonsym_sinks_gas_swallow(
               r2, dx, ri, hj, si, pj, with_cosmology, cosmo,
               e->gravity_properties, e->sink_properties);
+	  }
         }
       } /* loop over the parts in cj. */
     } /* loop over the sinks in ci. */
@@ -303,9 +309,14 @@ void runner_do_nonsym_pair_sinks_naive_swallow(struct runner *r,
 #endif
 
       if (r2 < ri2 || r2 < rj2) {
-        runner_iact_nonsym_sinks_sink_swallow(r2, dx, ri, rj, si, sj,
+	/* MPI note: This function is allowed to access the gpart's data. Hence,
+	   it must be performed only on the local node. (GEAR uses gpart's data,
+	   e.g. to compute potential) */
+	if (si_is_local) {
+	  runner_iact_nonsym_sinks_sink_swallow(r2, dx, ri, rj, si, sj,
                                               with_cosmology, cosmo,
                                               e->gravity_properties);
+	}
       }
     } /* loop over the sinks in cj. */
   } /* loop over the sinks in ci. */
