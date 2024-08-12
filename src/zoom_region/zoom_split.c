@@ -96,7 +96,7 @@ void zoom_void_split_recursive(struct space *s, struct cell *c,
 #endif
 
     message("cp->depth=%d, s->zoom_props->zoom_cell_depth=%d", cp->depth,
-            s->zoom_props->zoom_cell_depth")
+            s->zoom_props->zoom_cell_depth");
 
     /* If the next level progeny is at the zoom level then we need to
      * link the zoom cells in as the progeny of the void sub-cell. */
