@@ -271,14 +271,27 @@ void engine_make_self_gravity_tasks_mapper_buffer_bkg(void *map_data,
     /* Get the cell */
     struct cell *ci = &cells[cid];
 
-    /* Skip cells without gravity particles */
-    if (ci->grav.count == 0) continue;
+#ifdef SWIFT_DEBUG_CHECKS
+    if (ci->type != cell_type_buffer) {
+      error("Buffer cell is not a buffer cell.");
+    }
+#endif
+
+    /* Skip cells without gravity particles unless they're voids (which is
+     * unlikely but could happen) */
+    if (ci->grav.count == 0 && ci->subtype != cell_subtype_void) continue;
 
     /* Loop over every neighbouring background cells */
     for (int cjd = bkg_offset; cjd < buffer_offset; cjd++) {
 
       /* Get the cell */
       struct cell *cj = &cells[cjd];
+
+#ifdef SWIFT_DEBUG_CHECKS
+      if (cj->type != cell_type_bkg) {
+        error("Background cell is not a background cell.");
+      }
+#endif
 
       /* Avoid empty cells and completely foreign pairs */
       if (cj->grav.count == 0 || (ci->nodeID != nodeID && cj->nodeID != nodeID))
@@ -468,9 +481,6 @@ void zoom_engine_make_self_gravity_tasks(struct space *s, struct engine *e) {
     if (e->verbose)
       message("Making buffer->buffer gravity tasks took %.3f %s.",
               clocks_from_ticks(getticks() - tic), clocks_getunit());
-  }
-
-  if (s->zoom_props->with_buffer_cells) {
 
     tic = getticks();
 
