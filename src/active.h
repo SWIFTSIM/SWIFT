@@ -234,11 +234,6 @@ __attribute__((always_inline)) INLINE static int cell_is_active_gravity(
         e->ti_current * e->time_base, e->cosmology->a);
 #endif
 
-  if (c->subtype == cell_subtype_void && c->grav.ti_end_min != e->ti_current) {
-    message("Void cell is not active for gravity (@ depth %d): %lld %lld",
-            c->depth, c->grav.ti_end_min, e->ti_current);
-  }
-
   return (c->grav.ti_end_min == e->ti_current);
 }
 

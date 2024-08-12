@@ -193,11 +193,6 @@ void *runner_main(void *data) {
 
 #endif
 
-      if (ci->subtype == cell_subtype_void) {
-        message("Running task %s/%s on ci void (tic=%lld).",
-                taskID_names[t->type], subtaskID_names[t->subtype], t->tic);
-      }
-
       const ticks task_beg = getticks();
       /* Different types of tasks... */
       switch (t->type) {
