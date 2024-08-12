@@ -1812,6 +1812,7 @@ void io_select_sink_fields(const struct sink* const sinks,
                            int* const num_fields, struct io_props* const list) {
 
   sink_write_particles(sinks, list, num_fields, with_cosmology);
+  *num_fields += chemistry_write_sinkparticles(sinks, list + *num_fields);
 }
 
 /**

@@ -426,6 +426,26 @@ __attribute__((always_inline)) INLINE static void chemistry_first_init_spart(
 }
 
 /**
+ * @brief Sets the chemistry properties of the sink particles to a valid start
+ * state.
+ *
+ * @param data The global chemistry information.
+ * @param sink Pointer to the sink particle data.
+ */
+__attribute__((always_inline)) INLINE static void chemistry_first_init_sink(
+    const struct chemistry_global_data* data, struct sink* restrict sink) {
+
+  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
+    /* Use the value from the parameter file */
+    if (data->initial_metallicities[i] >= 0) {
+      sink->chemistry_data.metal_mass_fraction[i] =
+          data->initial_metallicities[i];
+    }
+    /* else : read the metallicities from the ICs. */
+  }
+}
+
+/**
  * @brief Initialise the chemistry properties of a black hole with
  * the chemistry properties of the gas it is born from.
  *
