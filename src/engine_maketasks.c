@@ -1396,7 +1396,9 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
 
         /* Long-range gravity forces (not the mesh ones!) */
         scheduler_addunlock(s, c->grav.init, c->grav.long_range);
-        scheduler_addunlock(s, c->grav.long_range, c->grav.down);
+        if (c->type != cell_type_zoom) {
+          scheduler_addunlock(s, c->grav.long_range, c->grav.down);
+        }
         scheduler_addunlock(s, c->grav.down, c->grav.super->grav.end_force);
 
         /* With adaptive softening, force the hydro density to complete first */
