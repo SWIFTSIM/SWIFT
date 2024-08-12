@@ -1839,8 +1839,12 @@ if test "$enable_warn" != "no"; then
     # Add a "choke on warning" flag if it exists
     if test "$enable_warn" = "error"; then
        case "$ax_cv_c_compiler_vendor" in
-          intel | gnu | clang | oneapi)
+          intel | clang | oneapi)
              CFLAGS="$CFLAGS -Werror"
+	  ;;
+	  gnu)
+             #  Fix for issue with IPO and GCC 14
+             CFLAGS="$CFLAGS -Werror -Wno-alloc-size-larger-than"
           ;;
        esac
     fi

@@ -116,7 +116,7 @@ INLINE static int chemistry_write_sparticles(const struct spart* sparts,
  * @return Returns the number of fields to write.
  */
 INLINE static int chemistry_write_sinkparticles(const struct sink* sinks,
-						struct io_props* list) {
+                                                struct io_props* list) {
 
   /* List what we want to write */
   list[0] = io_make_output_field(
@@ -126,7 +126,6 @@ INLINE static int chemistry_write_sinkparticles(const struct sink* sinks,
 
   return 1;
 }
-
 
 /**
  * @brief Specifies which black hole particle fields to write to a dataset

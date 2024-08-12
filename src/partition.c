@@ -364,7 +364,7 @@ struct counts_mapper_data {
       if (cid < lcid) lcid = cid;                                              \
     }                                                                          \
     int nused = ucid - lcid + 1;                                               \
-    if ((lcounts = (double *)calloc(sizeof(double), nused)) == NULL)           \
+    if ((lcounts = (double *)calloc(nused, sizeof(double))) == NULL) \
       error("Failed to allocate counts thread-specific buffer");               \
     for (int k = 0; k < num_elements; k++) {                                   \
       const int cid =                                                          \

@@ -490,7 +490,8 @@ __attribute__((always_inline)) INLINE static void chemistry_first_init_sink(
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
     /* Use the value from the parameter file */
     if (data->initial_metallicities[i] >= 0) {
-      sink->chemistry_data.metal_mass_fraction[i] = data->initial_metallicities[i];
+      sink->chemistry_data.metal_mass_fraction[i] =
+          data->initial_metallicities[i];
     }
     /* else : read the metallicities from the ICs. */
   }

@@ -489,9 +489,7 @@ void space_first_init_sinks_mapper(void *restrict map_data, int count,
 
     /* Note: Here we can add X_first_init_sink() for other modules */
 
-    /* TODO (for Darwin) :
-       1) Add CSDS when it's ready
-       2) Add particle_splitting_mark_part_as_not_split() to sinks. */
+    /* TODO (for Darwin): add CSDS when it's ready */
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (sink[k].gpart && sink[k].gpart->id_or_neg_offset != -(k + delta))

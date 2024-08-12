@@ -115,7 +115,7 @@ INLINE static int chemistry_write_sparticles(const struct spart* sparts,
  * @return Returns the number of fields to write.
  */
 INLINE static int chemistry_write_sinkparticles(const struct sink* sinks,
-						struct io_props* list) {
+                                                struct io_props* list) {
   return 0;
 }
 
