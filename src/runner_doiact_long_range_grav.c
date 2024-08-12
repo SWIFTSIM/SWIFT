@@ -726,7 +726,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
   if (ci->type == cell_type_zoom) {
     error(
         "Zoom cell found in long range gravity task! These should be handled "
-        "by the void cell hierarchy.")
+        "by the void cell hierarchy.");
   }
 #endif
 
