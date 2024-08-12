@@ -273,7 +273,8 @@ void engine_make_self_gravity_tasks_mapper_buffer_bkg(void *map_data,
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (ci->type != cell_type_buffer) {
-      error("Buffer cell is not a buffer cell.");
+      error("Buffer cell is not a buffer cell. (ci->type = %s)",
+            cellID_names[ci->type]);
     }
 #endif
 
@@ -289,7 +290,8 @@ void engine_make_self_gravity_tasks_mapper_buffer_bkg(void *map_data,
 
 #ifdef SWIFT_DEBUG_CHECKS
       if (cj->type != cell_type_bkg) {
-        error("Background cell is not a background cell.");
+        error("Background cell is not a background cell. (cj->type = %s)",
+              cellID_names[cj->type]);
       }
 #endif
 
