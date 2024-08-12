@@ -44,12 +44,12 @@ effective_pressure_from_damage(struct part *restrict p, const float pressure) {
 
   float effective_pressure = pressure;
 
-  #if defined(STRENGTH_DAMAGE_TENSILE_BENZ_ASPHAUG) || defined(STRENGTH_DAMAGE_SHEAR_COLLINS)
+  #ifdef STRENGTH_DAMAGE
     // See schafer 2016 for this...
     if (pressure < 0.f) {
       effective_pressure *= (1.f - p->damage);
     }
-  #endif
+  #endif /* STRENGTH_DAMAGE */
 
   return effective_pressure;
 }
@@ -65,12 +65,10 @@ adjust_yield_stress_by_damage(struct part *restrict p,
 
   float yield_stress = yield_stress_intact;
 
-  #if defined(STRENGTH_YIELD_COLLINS)
-    #if defined(STRENGTH_DAMAGE_TENSILE_BENZ_ASPHAUG) || defined(STRENGTH_DAMAGE_SHEAR_COLLINS)
+  #if defined(STRENGTH_YIELD_COLLINS) && defined(STRENGTH_DAMAGE)
         yield_stress = (1.f - p->damage) * yield_stress_intact +
                    p->damage * yield_stress_damaged;
-    #endif
-  #endif
+  #endif /* STRENGTH_YIELD_COLLINS && STRENGTH_DAMAGE */
 
   return yield_stress;
 }

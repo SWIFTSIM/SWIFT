@@ -505,19 +505,22 @@ elif test "$fixed_boundary_particles" != "no"; then
    AC_DEFINE_UNQUOTED([SWIFT_FIXED_BOUNDARY_PARTICLES], [$enableval] ,[Particles with smaller ID than this will be considered as boundaries.])
 fi
 
-# Check if fixed entropy is on for settling planetary initial conditions
+# Check if fixed entropy is on, e.g. for settling planetary-EoS initial conditions
 AC_ARG_ENABLE([planetary-fixed-entropy],
    [AS_HELP_STRING([--enable-planetary-fixed-entropy],
-     [Force entropies to stay fixed for settling planetary initial conditions @<:@yes/no@:>@]
+     [Force entropies to stay fixed for settling planetary-EoS initial conditions @<:@yes/no@:>@]
    )],
    [planetary_fixed_entropy="$enableval"],
    [planetary_fixed_entropy="no"]
 )
 if test "$planetary_fixed_entropy" = "yes"; then
-   AC_DEFINE([PLANETARY_FIXED_ENTROPY],1,[Enable planetary fixed entropy])
+   AC_DEFINE([PLANETARY_FIXED_ENTROPY], 1, [Enable planetary fixed entropy])
 fi
 
-# Check if material strength is on for planetary/REMIX simulations
+
+#
+# Material strength and related options
+#
 AC_ARG_ENABLE([material-strength],
    [AS_HELP_STRING([--enable-material-strength],
      [Enable material strength @<:@yes/no@:>@]
@@ -526,53 +529,53 @@ AC_ARG_ENABLE([material-strength],
    [material_strength="no"]
 )
 if test "$material_strength" = "yes"; then
-   AC_DEFINE([MATERIAL_STRENGTH],1,[Enable material strength])
+   AC_DEFINE([MATERIAL_STRENGTH], 1, [Enable material strength])
 fi
 
-AC_ARG_ENABLE([strength-stress-mon2000],
-   [AS_HELP_STRING([--enable-strength-stress-mon2000],
-     [Enable Mon2000 artificial stress @<:@yes/no@:>@]
+#  Strength: artificial stress
+AC_ARG_WITH([strength-stress],
+   [AS_HELP_STRING([--with-strength-stress=<stress>],
+      [strength stress @<:@none, mon2000, basis-indp default: none@:>@]
    )],
-   [strength_stress_mon2000="$enableval"],
-   [strength_stress_mon2000="no"]
+   [with_stress="$withval"],
+   [with_stress="none"]
 )
-if test "$strength_stress_mon2000" = "yes"; then
-   AC_DEFINE([STRENGTH_STRESS_MON2000],1,[Enable Mon2000 artificial stress])
-fi
+case "$with_stress" in
+   mon2000)
+      AC_DEFINE([STRENGTH_STRESS_MON2000], [1], [Mon2000 artificial stress])
+   ;;
+   basis-indp)
+      AC_DEFINE([STRENGTH_STRESS_BASIS_INDP], [1], [Basis independent artificial stress])
+   ;;
+   *)
+      AC_MSG_ERROR([Unknown strength stress: $with_stress])
+   ;;
+esac
 
-AC_ARG_ENABLE([strength-stress-basis-indp],
-   [AS_HELP_STRING([--enable-strength-stress-basis-indp],
-     [Enable basis independent artificial stress @<:@yes/no@:>@]
+#  Strength: yield stress
+AC_ARG_WITH([strength-yield],
+   [AS_HELP_STRING([--with-strength-yield=<yield>],
+      [strength yield @<:@none, benz-asphaug, collins default: none@:>@]
    )],
-   [strength_stress_basis_indp="$enableval"],
-   [strength_stress_basis_indp="no"]
+   [with_yield="$withval"],
+   [with_yield="none"]
 )
-if test "$strength_stress_basis_indp" = "yes"; then
-   AC_DEFINE([STRENGTH_STRESS_BASIS_INDP],1,[Enable basis independent artificial stress])
+case "$with_yield" in
+   benz-asphaug)
+      AC_DEFINE([STRENGTH_YIELD_BENZ_ASPHAUG], [1], [Benz and Asphaug yield stress])
+   ;;
+   collins)
+      AC_DEFINE([STRENGTH_YIELD_COLLINS], [1], [Collins yield stress])
+   ;;
+   *)
+      AC_MSG_ERROR([Unknown yield stress: $with_yield])
+   ;;
+esac
+if test "$with_yield" != "none"; then
+   AC_DEFINE([STRENGTH_YIELD_STRESS], [1], [Any yield stress model])
 fi
 
-AC_ARG_ENABLE([strength-yield-benz-asphaug],
-   [AS_HELP_STRING([--enable-strength-yield-benz-asphaug],
-     [Enable Benz and Asphaug yield stress @<:@yes/no@:>@]
-   )],
-   [strength_yield_benz_asphaug="$enableval"],
-   [strength_yield_benz_asphaug="no"]
-)
-if test "$strength_yield_benz_asphaug" = "yes"; then
-   AC_DEFINE([STRENGTH_YIELD_BENZ_ASPHAUG],1,[Enable Benz and Asphaug yield stress])
-fi
-
-AC_ARG_ENABLE([strength-yield-collins],
-   [AS_HELP_STRING([--enable-strength-yield-collins],
-     [Enable Collins yield stress @<:@yes/no@:>@]
-   )],
-   [strength_yield_collins="$enableval"],
-   [strength_yield_collins="no"]
-)
-if test "$strength_yield_collins" = "yes"; then
-   AC_DEFINE([STRENGTH_YIELD_COLLINS],1,[Enable Collins yield stress])
-fi
-
+#  Strength: thermal softening
 AC_ARG_ENABLE([strength-yield-thermal-softening],
    [AS_HELP_STRING([--enable-strength-yield-thermal-softening],
      [Enable thermal softened yield stress @<:@yes/no@:>@]
@@ -581,9 +584,10 @@ AC_ARG_ENABLE([strength-yield-thermal-softening],
    [strength_yield_thermal_softening="no"]
 )
 if test "$strength_yield_thermal_softening" = "yes"; then
-   AC_DEFINE([STRENGTH_YIELD_THERMAL_SOFTENING],1,[Enable thermal softened yield stress])
+   AC_DEFINE([STRENGTH_YIELD_THERMAL_SOFTENING],1,[Enable thermal-softened yield stress])
 fi
 
+#  Strength: density softening
 AC_ARG_ENABLE([strength-yield-density-softening],
    [AS_HELP_STRING([--enable-strength-yield-density-softening],
      [Enable density softened yield stress @<:@yes/no@:>@]
@@ -592,30 +596,35 @@ AC_ARG_ENABLE([strength-yield-density-softening],
    [strength_yield_density_softening="no"]
 )
 if test "$strength_yield_density_softening" = "yes"; then
-   AC_DEFINE([STRENGTH_YIELD_DENSITY_SOFTENING],1,[Enable density softened yield stress])
+   AC_DEFINE([STRENGTH_YIELD_DENSITY_SOFTENING],1,[Enable density-softened yield stress])
 fi
 
-AC_ARG_ENABLE([strength-damage-tensile-benz-asphaug],
-   [AS_HELP_STRING([--enable-strength-damage-tensile-benz-asphaug],
-     [Enable Benz and Asphaug tensile damage @<:@yes/no@:>@]
+#  Strength: damage
+AC_ARG_WITH([strength-damage],
+   [AS_HELP_STRING([--with-strength-damage=<damage>],
+      [strength damage @<:@none, tensile-benz-asphaug, shear-collins default: none@:>@]
    )],
-   [strength_damage_tensile_benz_asphaug="$enableval"],
-   [strength_damage_tensile_benz_asphaug="no"]
+   [with_damage="$withval"],
+   [with_damage="none"]
 )
-if test "$strength_damage_tensile_benz_asphaug" = "yes"; then
-   AC_DEFINE([STRENGTH_DAMAGE_TENSILE_BENZ_ASPHAUG],1,[Enable Benz and Asphaug tensile damage])
+case "$with_damage" in
+   tensile-benz-asphaug)
+      AC_DEFINE([STRENGTH_DAMAGE_TENSILE_BENZ_ASPHAUG], [1], [Benz and Asphaug tensile damage])
+   ;;
+   shear-collins)
+      AC_DEFINE([STRENGTH_DAMAGE_SHEAR_COLLINS], [1], [Collins shear damage])
+   ;;
+   *)
+      AC_MSG_ERROR([Unknown yield stress: $with_damage])
+   ;;
+esac
+if test "$with_damage" != "none"; then
+   AC_DEFINE([STRENGTH_DAMAGE], [1], [Any damage model])
 fi
+#
+# End of material strength and related options
+#
 
-AC_ARG_ENABLE([strength-damage-shear-collins],
-   [AS_HELP_STRING([--enable-strength-damage-shear-collins],
-     [Enable Collins shear damage @<:@yes/no@:>@]
-   )],
-   [strength_damage_shear_collins="$enableval"],
-   [strength_damage_shear_collins="no"]
-)
-if test "$strength_damage_shear_collins" = "yes"; then
-   AC_DEFINE([STRENGTH_DAMAGE_SHEAR_COLLINS],1,[Enable Collins shear damage])
-fi
 
 # Check whether we have any of the ARM v8.1 tick timers
 AX_ASM_ARM_PMCCNTR
