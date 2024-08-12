@@ -157,7 +157,7 @@ def make_task_hist_split(runs, output=""):
             label = f"{task}:{run.tasks[i].ci_type}"
             if run.tasks[i].ci_subtype != "Regular":
                 label += f"({run.tasks[i].ci_subtype})"
-            if "pair" in task:
+            if "pair" in task or "mm" in task:
                 label += f"->{run.tasks[i].cj_type}"
                 if run.tasks[i].cj_subtype != "Regular":
                     label += f"({run.tasks[i].cj_subtype})"
