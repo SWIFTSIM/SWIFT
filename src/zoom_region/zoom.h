@@ -68,4 +68,6 @@ void zoom_init_void_mpoles(struct engine *e);
 /* Void cell gravity task creation. */
 void zoom_engine_make_hierarchical_void_tasks(struct engine *e);
 
+/* Update the void cell gravity timesteps. */
+void zoom_void_timestep_collect(struct engine *e);
 #endif /* SWIFT_ZOOM_H */
