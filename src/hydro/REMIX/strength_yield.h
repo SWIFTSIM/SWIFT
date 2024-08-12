@@ -162,6 +162,12 @@ __attribute__((always_inline)) INLINE static float compute_yield_stress(
       // Constant yield stress
       yield_stress = material_Y_0(p->mat_id);
 
+      yield_stress =
+          adjust_yield_stress_by_density(p, yield_stress_intact, density);
+
+      yield_stress =
+          adjust_yield_stress_by_temperature(p, yield_stress, density);
+
     #elif defined(STRENGTH_YIELD_COLLINS)
       // ...
       float yield_stress_intact = compute_yield_stress_intact(p, pressure);
