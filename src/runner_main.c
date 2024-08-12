@@ -486,7 +486,9 @@ void *runner_main(void *data) {
             free(t->buff);
           } else if (t->subtype == task_subtype_bpart_merger) {
             free(t->buff);
-          } else if (t->subtype == task_subtype_sink_gas_swallow) {
+          } else if (t->subtype == task_subtype_sink_formation_counts) {
+            free(t->buff);
+	  } else if (t->subtype == task_subtype_sink_gas_swallow) {
             free(t->buff);
           } else if (t->subtype == task_subtype_sink_merger) {
             free(t->buff);
