@@ -306,8 +306,8 @@ void runner_do_star_formation_sink(struct runner *r, struct cell *c,
           /* Sample the IMF to the get next target mass */
           sink_update_target_mass(s, sink_props, e, star_counter);
         } /* Loop over the stars to spawn */
-      }   /* if sink_is_active */
-    }     /* Loop over the particles */
+      } /* if sink_is_active */
+    } /* Loop over the particles */
   }
 
   /* If we formed any stars, the star sorts are now invalid. We need to
@@ -858,9 +858,11 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
                 "g-particle (id=%lld, type=%s) did not interact "
                 "gravitationally with all other gparts "
                 "gp->num_interacted=%lld, total_gparts=%lld (local "
-                "num_gparts=%zd inhibited_gparts=%lld)",
+                "num_gparts=%zd inhibited_gparts=%lld, "
+                "num_interacted-total=%lld)",
                 my_id, part_type_names[gp->type], gp->num_interacted,
-                e->total_nr_gparts, e->s->nr_gparts, e->count_inhibited_gparts);
+                e->total_nr_gparts, e->s->nr_gparts, e->count_inhibited_gparts,
+                e->total_nr_gparts - gp->num_interacted);
           }
         }
 #endif
