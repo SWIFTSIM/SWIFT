@@ -1110,6 +1110,8 @@ static void zoom_void_timestep_collect_recursive(struct cell *c) {
  */
 void zoom_void_timestep_collect(struct engine *e) {
 
+  ticks tic = getticks();
+
   /* Get the space and void cells. */
   struct space *s = e->s;
   struct zoom_region_properties *zoom_props = s->zoom_props;
@@ -1131,4 +1133,8 @@ void zoom_void_timestep_collect(struct engine *e) {
     }
   }
 #endif
+
+  if (e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
 }
