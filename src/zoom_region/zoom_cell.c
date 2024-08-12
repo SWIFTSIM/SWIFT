@@ -1101,6 +1101,9 @@ static void zoom_void_timestep_collect_recursive(struct cell *c) {
   /* Store the collected values in the cell. */
   c->grav.ti_end_min = ti_grav_end_min;
   c->grav.ti_beg_max = ti_grav_beg_max;
+
+  message("Void cell is getting a timestep of %d @ depth %d", ti_grav_end_min,
+          c->depth);
 }
 
 /**
