@@ -194,7 +194,7 @@ adjust_deviatoric_stress_tensor_by_yield_stress(
 
   #if defined(STRENGTH_YIELD_BENZ_ASPHAUG)
     // Yield stress
-    float yield_stress = compute_yield_stress(p, density, pressure, temperature);
+    float yield_stress = compute_yield_stress(p, density, pressure);
 
     float J_2 = J_2_from_stress_tensor(deviatoric_stress_tensor);
 

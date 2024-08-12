@@ -66,7 +66,7 @@ adjust_yield_stress_by_damage(struct part *restrict p,
   float yield_stress = yield_stress_intact;
 
   #if defined(STRENGTH_YIELD_COLLINS)
-    #if defined(STRENGTH_DAMAGE_TENSILE_BENZ_ASPHAUG) && defined(STRENGTH_DAMAGE_SHEAR_COLLINS)
+    #if defined(STRENGTH_DAMAGE_TENSILE_BENZ_ASPHAUG) || defined(STRENGTH_DAMAGE_SHEAR_COLLINS)
         yield_stress = (1.f - p->damage) * yield_stress_intact +
                    p->damage * yield_stress_damaged;
     #endif

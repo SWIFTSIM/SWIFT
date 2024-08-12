@@ -1,0 +1,1 @@
+./configure --with-hydro=remix --with-equation-of-state=planetary --with-kernel=wendland-C2 --enable-material-strength --enable-strength-stress-basis-indp --enable-strength-yield-collins --enable-strength-yield-thermal-softening --enable-strength-yield-density-softening --enable-boundary-particles=

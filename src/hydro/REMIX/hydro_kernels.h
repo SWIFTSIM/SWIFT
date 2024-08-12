@@ -361,7 +361,12 @@ hydro_prepare_force_extra_kernel(struct part *restrict p) {
 
     // Inverse of symmetric geometric moment m_2 (bar)
     struct sym_matrix m2_bar_inv;
-    sym_matrix_invert(&m2_bar_inv, &p->gradient.m2_bar);
+    // Make m2_bar dimensionless for calculation of inverse
+    struct sym_matrix m2_bar_over_h2;
+    for (int i = 0; i < 6; i++) m2_bar_over_h2.elements[i] =
+                                p->gradient.m2_bar.elements[i] / (p->h * p->h);
+    sym_matrix_invert(&m2_bar_inv, &m2_bar_over_h2);
+    for (int i = 0; i < 6; i++) m2_bar_inv.elements[i] /= (p->h * p->h);
 
     // Components for constructing linear-order kernel's A and B, and gradients
     float m2_bar_inv_mult_m1_bar[3];
