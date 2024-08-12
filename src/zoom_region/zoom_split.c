@@ -128,6 +128,10 @@ void zoom_void_split_recursive(struct space *s, struct cell *c,
 
   /* Update the properties of the void cell. */
   c->maxdepth = maxdepth;
+  message(
+      "Setting timestep at depth $d to %d (ti_gravity_end_min=%d, "
+      "ti_gravity_beg_max=%d)",
+      depth, ti_current, ti_gravity_end_min, ti_gravity_beg_max);
   c->grav.ti_end_min = ti_gravity_end_min;
   c->grav.ti_beg_max = ti_gravity_beg_max;
 
