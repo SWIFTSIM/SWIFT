@@ -825,6 +825,9 @@ void zoom_link_void_leaves(struct space *s, struct cell *c) {
    * normal split cell since it's linked into top level "progeny". */
   c->split = 0;
 
+  /* Initialise gravity timestep information we need to collect. */
+  integertime_t ti_gravity_end_min = max_nr_timesteps, ti_gravity_beg_max = 0;
+
   /* Loop over the 8 progeny cells which are now the zoom cells. */
   for (int k = 0; k < 8; k++) {
 
@@ -869,7 +872,15 @@ void zoom_link_void_leaves(struct space *s, struct cell *c) {
 
     /* Flag this void cell "progeny" as the zoom cell's void cell parent. */
     zoom_cell->void_parent = c;
+
+    /* Update the gravity timestep information. */
+    ti_gravity_end_min = min(ti_gravity_end_min, zoom_cell->grav.ti_end_min);
+    ti_gravity_beg_max = max(ti_gravity_beg_max, zoom_cell->grav.ti_beg_max);
   }
+
+  /* Update the gravity timestep information. */
+  c->grav.ti_end_min = ti_gravity_end_min;
+  c->grav.ti_beg_max = ti_gravity_beg_max;
 
   /* Interact the zoom cell multipoles with this cell. */
   if (s->with_self_gravity) {

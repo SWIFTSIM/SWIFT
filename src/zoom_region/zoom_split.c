@@ -133,7 +133,7 @@ void zoom_void_split_recursive(struct space *s, struct cell *c,
   message(
       "Setting timestep at depth %d to %lld (ti_gravity_end_min=%lld, "
       "ti_gravity_beg_max=%lld)",
-      depth, ti_current, ti_gravity_end_min, ti_gravity_beg_max);
+      c->depth, ti_current, ti_gravity_end_min, ti_gravity_beg_max);
   c->grav.ti_end_min = ti_gravity_end_min;
   c->grav.ti_beg_max = ti_gravity_beg_max;
 
