@@ -722,7 +722,15 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
   /* Is the space periodic? */
   const int periodic = s->periodic;
 
-  /* anything to do here? */
+#ifdef SWIFT_DEBUG_CHECKS
+  if (ci->type == cell_type_zoom) {
+    error(
+        "Zoom cell found in long range gravity task! These should be handled "
+        "by the void cell hierarchy.")
+  }
+#endif
+
+  /* Anything to do here? */
   if (!cell_is_active_gravity(ci, r->e)) return;
 
   if (ci->nodeID != engine_rank)
