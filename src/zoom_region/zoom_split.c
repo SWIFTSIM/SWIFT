@@ -128,9 +128,12 @@ void zoom_void_split_recursive(struct space *s, struct cell *c,
 
   /* Update the properties of the void cell. */
   c->maxdepth = maxdepth;
+  message(
+      "Setting timestep at depth %d to %lld (ti_gravity_end_min=%lld, "
+      "ti_gravity_beg_max=%lld)",
+      depth, ti_current, ti_gravity_end_min, ti_gravity_beg_max);
   c->grav.ti_end_min = ti_gravity_end_min;
   c->grav.ti_beg_max = ti_gravity_beg_max;
-  message("Setting timestep at depth $d to %lld", depth, c->grav.ti_end_min);
 
   /* Deal with the multipole */
   if (s->with_self_gravity) {
