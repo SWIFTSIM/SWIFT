@@ -302,7 +302,8 @@ void prepare_array_serial(
     h_err = H5Pset_chunk(h_prop, rank, chunk_shape);
     if (h_err < 0)
       error("Error while setting chunk size (%llu, %llu) for field '%s'.",
-            chunk_shape[0], chunk_shape[1], props.name);
+            (unsigned long long)chunk_shape[0],
+            (unsigned long long)chunk_shape[1], props.name);
   }
 
   /* Are we imposing some form of lossy compression filter? */
@@ -356,6 +357,9 @@ void prepare_array_serial(
   io_write_attribute_f(h_data, "a-scale exponent", props.scale_factor_exponent);
   io_write_attribute_s(h_data, "Expression for physical CGS units", buffer);
   io_write_attribute_s(h_data, "Lossy compression filter", comp_buffer);
+  io_write_attribute_b(h_data, "Value stored as physical", props.is_physical);
+  io_write_attribute_b(h_data, "Property can be converted to comoving",
+                       props.is_convertible_to_comoving);
 
   /* Write the actual number this conversion factor corresponds to */
   const double factor =

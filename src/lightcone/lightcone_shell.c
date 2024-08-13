@@ -762,7 +762,7 @@ void healpix_smoothing_mapper(void *map_data, int num_elements,
               } /* Next smoothed map */
             }
           } /* Next pixel in this range */
-        }   /* Next range of pixels */
+        } /* Next range of pixels */
 
         /* Free array of pixel ranges */
         free(range);

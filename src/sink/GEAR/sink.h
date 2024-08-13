@@ -118,6 +118,7 @@ __attribute__((always_inline)) INLINE static void sink_first_init_sink(
   sp->swallowed_angular_momentum[0] = 0.f;
   sp->swallowed_angular_momentum[1] = 0.f;
   sp->swallowed_angular_momentum[2] = 0.f;
+  sp->n_stars = 0;
 
   sink_mark_sink_as_not_swallowed(&sp->merger_data);
 
@@ -364,9 +365,7 @@ INLINE static int sink_is_forming(
     return 0;
   }
 
-#ifdef SWIFT_DEBUG_CHECKS
   message("Gas particle %lld can form a sink !", p->id);
-#endif
   return 1;
 }
 
@@ -399,16 +398,17 @@ INLINE static int sink_should_convert_to_sink(
  * @brief Copies the properties of the gas particle over to the
  * sink particle.
  *
- * Nothing to do here.
- *
- * @param e The #engine
- * @param p the gas particles.
- * @param xp the additional properties of the gas particles.
- * @param sink the new created sink  particle with its properties.
- * @param sink_props the sink properties to use.
- * @param phys_const the physical constants in internal units.
+ * @param p The gas particles.
+ * @param xp The additional properties of the gas particles.
+ * @param sink the new created #sink particle.
+ * @param e The #engine.
+ * @param sink_props The sink properties to use.
  * @param cosmo the cosmological parameters and properties.
  * @param with_cosmology if we run with cosmology.
+ * @param phys_const The physical constants in internal units.
+ * @param hydro_props The hydro properties to use.
+ * @param us The internal unit system.
+ * @param cooling The cooling function to use.
  */
 INLINE static void sink_copy_properties(
     const struct part* p, const struct xpart* xp, struct sink* sink,
@@ -423,18 +423,29 @@ INLINE static void sink_copy_properties(
   sink_init_sink(sink);
 
   /* Set a smoothing length */
-  sink->r_cut = e->sink_properties->cut_off_radius;
+  sink->r_cut = sink_props->cut_off_radius;
 
   /* Flag it as not swallowed */
   sink_mark_sink_as_not_swallowed(&sink->merger_data);
 
   /* Additional initialisation */
+  sink->number_of_gas_swallows = 0;
+  sink->number_of_direct_gas_swallows = 0;
+  sink->number_of_sink_swallows = 0;
+  sink->number_of_direct_sink_swallows = 0;
+  sink->swallowed_angular_momentum[0] = 0.f;
+  sink->swallowed_angular_momentum[1] = 0.f;
+  sink->swallowed_angular_momentum[2] = 0.f;
+  sink->n_stars = 0;
 
   /* setup the target mass for sink star formation */
   sink_update_target_mass(sink, sink_props, e, 0);
 
   /* Copy the chemistry properties */
   chemistry_copy_sink_properties(p, xp, sink);
+
+  /* Note, we do not need to update sp->mass_tot_before_star_spawning because
+     it is performed within the 'sink_init_sink()' function. */
 }
 
 /**
@@ -577,6 +588,9 @@ __attribute__((always_inline)) INLINE static void sink_swallow_sink(
   /* Add all other swallowed particles swallowed by the swallowed sink */
   spi->number_of_sink_swallows += spj->number_of_sink_swallows;
   spi->number_of_gas_swallows += spj->number_of_gas_swallows;
+
+  /* Add the stars spawned by the swallowed sink */
+  spi->n_stars += spj->n_stars;
 
 #ifdef SWIFT_DEBUG_CHECKS
   message("sink %lld swallow sink particle %lld. New mass: %e.", spi->id,
