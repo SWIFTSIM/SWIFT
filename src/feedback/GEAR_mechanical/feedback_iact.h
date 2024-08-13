@@ -26,7 +26,6 @@
 #include "timestep_sync_part.h"
 #include <math.h>
 
-
 /**
  * @brief Density interaction between two particles (non-symmetric).
  *
