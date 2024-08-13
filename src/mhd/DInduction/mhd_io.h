@@ -406,7 +406,7 @@ INLINE static int mhd_write_particles(const struct part* parts,
       "signal_to_noise parameter, default is 10 (if 1 - weak noise filtering, "
       "if 100 - strong noise filtering)");
   list[7] = io_make_output_field_convert_part(
-      "OW_trigger", FLOAT, 1, UNIT_CONV_NO_UNITS, 0, parts, xparts,
+      "OWTrigger", FLOAT, 1, UNIT_CONV_NO_UNITS, 0, parts, xparts,
       calculate_OW_trigger,
       "Trigger, indicates if localy the magnetic field advection is limited by "
       "the "
@@ -415,11 +415,11 @@ INLINE static int mhd_write_particles(const struct part* parts,
       "magnetic field gradients will stay below maximal resolvable gradient"
       "of B/h");
   list[8] = io_make_output_field_convert_part(
-      "total_effective_resistivity", FLOAT, 1, UNIT_CONV_MAGNETIC_DIFFUSIVITY, 0, parts,
+      "TotalEffectiveResistivity", FLOAT, 1, UNIT_CONV_MAGNETIC_DIFFUSIVITY, 0, parts,
       xparts, calculate_effective_resistivity,
       "Shows local value of total resistivity of the code");
   list[9] = io_make_output_field_convert_part(
-      "Rm_local", FLOAT, 1, UNIT_CONV_NO_UNITS, 0, parts, xparts,
+      "RmLocal", FLOAT, 1, UNIT_CONV_NO_UNITS, 0, parts, xparts,
       calculate_Rm_local, "Shows local value of magnetic Reynolds number");
 
   return 10;
