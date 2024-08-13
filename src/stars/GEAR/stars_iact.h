@@ -19,10 +19,6 @@
 #ifndef SWIFT_GEAR_STARS_IACT_H
 #define SWIFT_GEAR_STARS_IACT_H
 
-/* Local includes */
-#include "hydro.h"
-#include "feedback.h"
-
 /**
  * @brief Density interaction between two particles (non-symmetric).
  *
