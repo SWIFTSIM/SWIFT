@@ -17,16 +17,12 @@ ArtificialStress:
     n:             4
     epsilon:       0.2
     
-YieldStressCollins:
+YieldStress:
     Y_0:            200e6
     Y_M:            200e6
     mu_i:           0
     mu_d:           0
-
-YieldStressThermalSoftening:
     yield_thermal_soft_xi:          1.2
-
-YieldStressDensitySoftening:
     yield_density_soft_mult_param:  0.85
     yield_density_soft_pow_param:   4
 

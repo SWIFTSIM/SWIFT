@@ -540,17 +540,19 @@ AC_ARG_WITH([strength-stress],
    [with_stress="$withval"],
    [with_stress="none"]
 )
-case "$with_stress" in
-   mon2000)
-      AC_DEFINE([STRENGTH_STRESS_MON2000], [1], [Mon2000 artificial stress])
-   ;;
-   basis-indp)
-      AC_DEFINE([STRENGTH_STRESS_BASIS_INDP], [1], [Basis independent artificial stress])
-   ;;
-   *)
-      AC_MSG_ERROR([Unknown strength stress: $with_stress])
-   ;;
-esac
+if test "$with_stress" != "none"; then
+   case "$with_stress" in
+      mon2000)
+         AC_DEFINE([STRENGTH_STRESS_MON2000], [1], [Mon2000 artificial stress])
+      ;;
+      basis-indp)
+         AC_DEFINE([STRENGTH_STRESS_BASIS_INDP], [1], [Basis independent artificial stress])
+      ;;
+      *)
+         AC_MSG_ERROR([Unknown strength stress: $with_stress])
+      ;;
+   esac
+fi
 
 #  Strength: yield stress
 AC_ARG_WITH([strength-yield],
@@ -560,18 +562,19 @@ AC_ARG_WITH([strength-yield],
    [with_yield="$withval"],
    [with_yield="none"]
 )
-case "$with_yield" in
-   benz-asphaug)
-      AC_DEFINE([STRENGTH_YIELD_BENZ_ASPHAUG], [1], [Benz and Asphaug yield stress])
-   ;;
-   collins)
-      AC_DEFINE([STRENGTH_YIELD_COLLINS], [1], [Collins yield stress])
-   ;;
-   *)
-      AC_MSG_ERROR([Unknown yield stress: $with_yield])
-   ;;
-esac
 if test "$with_yield" != "none"; then
+   case "$with_yield" in
+      benz-asphaug)
+         AC_DEFINE([STRENGTH_YIELD_BENZ_ASPHAUG], [1], [Benz and Asphaug yield stress])
+      ;;
+      collins)
+         AC_DEFINE([STRENGTH_YIELD_COLLINS], [1], [Collins yield stress])
+      ;;
+      *)
+         AC_MSG_ERROR([Unknown yield stress: $with_yield])
+      ;;
+   esac
+
    AC_DEFINE([STRENGTH_YIELD_STRESS], [1], [Any yield stress model])
 fi
 
@@ -607,18 +610,19 @@ AC_ARG_WITH([strength-damage],
    [with_damage="$withval"],
    [with_damage="none"]
 )
-case "$with_damage" in
-   tensile-benz-asphaug)
-      AC_DEFINE([STRENGTH_DAMAGE_TENSILE_BENZ_ASPHAUG], [1], [Benz and Asphaug tensile damage])
-   ;;
-   shear-collins)
-      AC_DEFINE([STRENGTH_DAMAGE_SHEAR_COLLINS], [1], [Collins shear damage])
-   ;;
-   *)
-      AC_MSG_ERROR([Unknown yield stress: $with_damage])
-   ;;
-esac
 if test "$with_damage" != "none"; then
+   case "$with_damage" in
+      tensile-benz-asphaug)
+         AC_DEFINE([STRENGTH_DAMAGE_TENSILE_BENZ_ASPHAUG], [1], [Benz and Asphaug tensile damage])
+      ;;
+      shear-collins)
+         AC_DEFINE([STRENGTH_DAMAGE_SHEAR_COLLINS], [1], [Collins shear damage])
+      ;;
+      *)
+         AC_MSG_ERROR([Unknown yield stress: $with_damage])
+      ;;
+   esac
+
    AC_DEFINE([STRENGTH_DAMAGE], [1], [Any damage model])
 fi
 #

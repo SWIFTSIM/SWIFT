@@ -90,9 +90,10 @@ __attribute__((always_inline)) INLINE static void strength_add_artif_stress(
           for (int j = 0; j < 3; ++j) {
             if (pairwise_stress_tensor_i[i][j] > 0.f)
               pairwise_stress_tensor_i[i][j] -= artif_stress_f *
-     artif_stress_epsilon * pairwise_stress_tensor_i[i][j]; if
-     (pairwise_stress_tensor_j[i][j] > 0.f) pairwise_stress_tensor_j[i][j] -=
-     artif_stress_f * artif_stress_epsilon * pairwise_stress_tensor_j[i][j];
+                  artif_stress_epsilon * pairwise_stress_tensor_i[i][j]; 
+            if (pairwise_stress_tensor_j[i][j] > 0.f) 
+              pairwise_stress_tensor_j[i][j] -= artif_stress_f * 
+                  artif_stress_epsilon * pairwise_stress_tensor_j[i][j];
           }
       }
    #elif defined(STRENGTH_STRESS_BASIS_INDP)

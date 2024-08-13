@@ -102,11 +102,12 @@ __attribute__((always_inline)) INLINE static float compute_yield_stress_intact(
       const float mu_i = material_mu_i(p->mat_id);
       const float Y_0 = material_Y_0(p->mat_id);
       const float Y_M = material_Y_M(p->mat_id);
+      
+      yield_stress_intact = Y_0;
 
       // Should be able to decrease if negative pressures until yield_stress=0?
       // miluphcuda does this so maybe not wrong?
       if (pressure > 0.f) {
-        yield_stress_intact = Y_0;
         if (Y_M != Y_0) {
           yield_stress_intact +=
               mu_i * pressure / (1.f + (mu_i * pressure) / (Y_M - Y_0));
@@ -163,7 +164,7 @@ __attribute__((always_inline)) INLINE static float compute_yield_stress(
       yield_stress = material_Y_0(p->mat_id);
 
       yield_stress =
-          adjust_yield_stress_by_density(p, yield_stress_intact, density);
+          adjust_yield_stress_by_density(p, yield_stress, density);
 
       yield_stress =
           adjust_yield_stress_by_temperature(p, yield_stress, density);
@@ -174,11 +175,13 @@ __attribute__((always_inline)) INLINE static float compute_yield_stress(
       float yield_stress_damaged =
           compute_yield_stress_damaged(p, pressure, yield_stress_intact);
 
-      yield_stress =
-          adjust_yield_stress_by_density(p, yield_stress_intact, density);
-
       // ...
-      adjust_yield_stress_by_damage(p, yield_stress_intact, yield_stress_damaged);
+      yield_stress = 
+          adjust_yield_stress_by_damage(p, yield_stress_intact, yield_stress_damaged);
+      
+      // ### This was previously only for intact.
+      yield_stress =
+          adjust_yield_stress_by_density(p, yield_stress, density);
 
       yield_stress =
           adjust_yield_stress_by_temperature(p, yield_stress, density);

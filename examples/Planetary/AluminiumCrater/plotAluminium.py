@@ -76,7 +76,7 @@ mat_ids = np.array(mat_ids)
 v = np.array(v)
 ids = np.array(ids)
 
-resolution = 8#16#128
+resolution = 32
 
 mid = 0.5 * (np.max(z) - np.min(z))
 
@@ -95,7 +95,7 @@ ids_midz = ids[mask]
 # Plot the interesting quantities
 fig, ax= plt.subplots(1, 1, figsize=(10, 10))
 
-size = 10#0.05
+size = 1#0.05
 
 cmap = plt.get_cmap('rainbow')
 norm = mpl.colors.Normalize(vmin=np.min(rho),vmax=np.max(rho))
@@ -108,9 +108,8 @@ ax.set_aspect('equal', 'box')
 ax.set_xticks([])
 ax.set_yticks([])
 ax.set_facecolor((0.8,0.8,0.8))
-ax.set_xlim((0,20000))
-ax.set_ylim((0.,20000))
-
+ax.set_xlim((0.25 * np.max(x), 0.75 * np.max(x)))
+ax.set_ylim((0.006,0.02))
 
 sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
 sm.set_array([])

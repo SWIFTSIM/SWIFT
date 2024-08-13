@@ -1,4 +1,4 @@
-./configure --with-hydro=remix --with-equation-of-state=planetary --with-kernel=wendland-C2 --enable-material-strength --enable-strength-stress-basis-indp
+./configure --with-hydro=remix --with-equation-of-state=planetary --with-kernel=wendland-C2 --enable-material-strength --with-strength-stress=basis-indp
 
 
 Units are scaled to:
