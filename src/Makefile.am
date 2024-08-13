@@ -139,7 +139,7 @@ GEAR_FEEDBACK_SOURCES += feedback/GEAR/initial_mass_function.c feedback/GEAR/sup
 endif
 if HAVEGEARMECHANICALFEEDBACK
 # Avoid duplicating files between GEAR and GEAR mechanical
-GEAR_FEEDBACK_SOURCES += feedback/GEAR_mechanical/stellar_evolution.c feedback/GEAR_mechanical/feedback.c
+GEAR_FEEDBACK_SOURCES += feedback/GEAR_mechanical/feedback.c feedback/GEAR/stellar_evolution.c
 GEAR_FEEDBACK_SOURCES += feedback/GEAR/initial_mass_function.c feedback/GEAR/supernovae_ia.c feedback/GEAR/supernovae_ii.c
 endif
 
