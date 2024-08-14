@@ -525,8 +525,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
 
   /* Artificial resistivity */
 
-  const float v_sig_Bi = pi->mhd_data.alpha_AR * permeability_inv * B2i / rhoi; 
-  const float v_sig_Bj = pj->mhd_data.alpha_AR * permeability_inv * B2j / rhoj;
+  const float v_sig_Bi = pi->mhd_data.alpha_AR * sqrtf(permeability_inv * B2i / rhoi); 
+  const float v_sig_Bj = pj->mhd_data.alpha_AR * sqrtf(permeability_inv * B2j / rhoj);
 
   const float art_diff_pref_i = 0.5f * 
                                 (v_sig_Bi * wi_dr * over_rho2_i + v_sig_Bj * wj_dr * over_rho2_j);
@@ -790,8 +790,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
 
   /* Artificial resistivity */
 
-  const float v_sig_Bi = pi->mhd_data.alpha_AR * permeability_inv * B2i / rhoi;
-  const float v_sig_Bj = pj->mhd_data.alpha_AR * permeability_inv * B2j	/ rhoj;
+  const float v_sig_Bi = pi->mhd_data.alpha_AR * sqrtf(permeability_inv * B2i / rhoi);
+  const float v_sig_Bj = pj->mhd_data.alpha_AR * sqrtf(permeability_inv * B2j / rhoj);
   
   const float art_diff_pref = 0.5f * 
                               (v_sig_Bi * wi_dr * over_rho2_i + v_sig_Bj * wj_dr * over_rho2_j);
