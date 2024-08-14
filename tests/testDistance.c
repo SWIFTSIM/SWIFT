@@ -31,8 +31,9 @@ void compute_interaction(struct part *pi, struct part *pj, float mu_0, float a,
                          float H) {
 
   /* Compute the distance between the two particles */
-  const float dx[3] = {pi->x[0] - pj->x[0], pi->x[1] - pj->x[1],
-                       pi->x[2] - pj->x[2]};
+  const float dx[3] = {(float)(pi->x[0] - pj->x[0]),
+                       (float)(pi->x[1] - pj->x[1]),
+                       (float)(pi->x[2] - pj->x[2])};
   const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
   if (r2 < pi->h * pi->h * kernel_gamma2) {
