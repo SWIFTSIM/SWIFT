@@ -32,7 +32,6 @@
 /* Includes. */
 #include "hydro_space.h"
 #include "lock.h"
-#include "minmax.h"
 #include "parser.h"
 #include "part.h"
 #include "space_unique_id.h"
@@ -44,6 +43,9 @@ struct cosmology;
 struct gravity_props;
 struct star_formation;
 struct hydro_props;
+
+/* Do this last to avoid min()/max() being undefined by C++ includes. */
+#include "minmax.h"
 
 /* Some constants. */
 #define space_cellallocchunk 1000
