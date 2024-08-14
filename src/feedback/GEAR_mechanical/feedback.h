@@ -77,8 +77,13 @@ void feedback_clean(struct feedback_props* feedback);
  */
 INLINE static void feedback_write_flavour(struct feedback_props* feedback,
                                           hid_t h_grp) {
-
-  io_write_attribute_s(h_grp, "Feedback Model", "GEAR-mechanical");
+#if FEEDBACK_GEAR_MECHANICAL_MODE == 1
+  io_write_attribute_s(h_grp, "Feedback Model", "GEAR-mechanical_1");
+#elif FEEDBACK_GEAR_MECHANICAL_MODE == 2
+  io_write_attribute_s(h_grp, "Feedback Model", "GEAR-mechanical_2");
+#else
+  error("This function should be called only with one of the GEAR-mechanical feedback mode.");
+#endif
 };
 
 double feedback_compute_scalar_weight(const float r2, const float* dx,
