@@ -47,7 +47,6 @@
 #include "cooling.h"
 #include "engine.h"
 #include "error.h"
-#include "kernel_hydro.h"
 #include "lock.h"
 #include "mhd.h"
 #include "minmax.h"
@@ -61,6 +60,9 @@
 #include "threadpool.h"
 #include "tools.h"
 #include "tracers.h"
+/* Now? */
+#include "kernel_hydro.h"
+
 
 /* Split size. */
 int space_splitsize = space_splitsize_default;

@@ -157,11 +157,11 @@ __attribute__((always_inline)) INLINE static int neutrino_write_particles(
 
   list[1] = io_make_output_field_convert_gpart(
       "MicroscopicMasses", DOUBLE, 1, UNIT_CONV_MASS, 0.f, gparts,
-      convert_gpart_mnu, "Microscopic masses of individual neutrino particles");
+      (void *)convert_gpart_mnu, "Microscopic masses of individual neutrino particles");
 
   list[2] = io_make_output_field_convert_gpart(
       "Weights", DOUBLE, 1, UNIT_CONV_NO_UNITS, 0.f, gparts,
-      convert_gpart_weight, "Statistical weights of neutrino particles");
+      (void *)convert_gpart_weight, "Statistical weights of neutrino particles");
 
   return 3;
 }

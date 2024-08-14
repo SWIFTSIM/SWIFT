@@ -36,6 +36,7 @@
 #include "part.h"
 #include "space_unique_id.h"
 #include "velociraptor_struct.h"
+#include "minmax.h"
 
 /* Avoid cyclic inclusions */
 struct cell;
