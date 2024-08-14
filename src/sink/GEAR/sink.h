@@ -45,18 +45,19 @@ __attribute__((always_inline)) INLINE static float sink_compute_timestep(
 /**
  * @brief Update the target mass of the sink particle.
  *
- * @param e The #engine
  * @param sink the sink particle.
  * @param sink_props the sink properties to use.
  * @param phys_const the physical constants in internal units.
- * @param cosmo the cosmological parameters and properties.
+ * @param e The #engine
+ * @param star_counter The star loop counter.
  */
 INLINE static void sink_update_target_mass(struct sink* sink,
                                            const struct sink_props* sink_props,
-                                           const struct engine* e, int rloop) {
+                                           const struct engine* e,
+                                           int star_counter) {
 
   float random_number = random_unit_interval_part_ID_and_index(
-      sink->id, rloop, e->ti_current, random_number_sink_formation);
+      sink->id, star_counter, e->ti_current, random_number_sink_formation);
 
   const struct feedback_props* feedback_props = e->feedback_props;
 
@@ -86,7 +87,8 @@ INLINE static void sink_update_target_mass(struct sink* sink,
   } else {
     // we are dealing with the discrete part of the IMF
     random_number = random_unit_interval_part_ID_and_index(
-        sink->id, rloop + 1, e->ti_current, random_number_sink_formation);
+        sink->id, star_counter + 1, e->ti_current,
+        random_number_sink_formation);
     double m = initial_mass_function_sample_power_law(
         minimal_discrete_mass, imf->mass_max, imf->exp[imf->n_parts - 1],
         random_number);
@@ -101,8 +103,9 @@ INLINE static void sink_update_target_mass(struct sink* sink,
  * This function is called only once just after the ICs have been
  * read in to do some conversions.
  *
- * @param sp The particle to act upon
+ * @param sp The #sink particle to act upon.
  * @param sink_props The properties of the sink particles scheme.
+ * @param e The #engine
  */
 __attribute__((always_inline)) INLINE static void sink_first_init_sink(
     struct sink* sp, const struct sink_props* sink_props,
@@ -118,6 +121,7 @@ __attribute__((always_inline)) INLINE static void sink_first_init_sink(
   sp->swallowed_angular_momentum[0] = 0.f;
   sp->swallowed_angular_momentum[1] = 0.f;
   sp->swallowed_angular_momentum[2] = 0.f;
+  sp->n_stars = 0;
 
   sink_mark_sink_as_not_swallowed(&sp->merger_data);
 
@@ -131,7 +135,8 @@ __attribute__((always_inline)) INLINE static void sink_first_init_sink(
  * @brief Initialisation of particle data before the hydro density loop.
  * Note: during initalisation (space_init)
  *
- * @param p The particle to act upon
+ * @param p The #part to act upon.
+ * @param sink_props The properties of the sink particles scheme.
  */
 __attribute__((always_inline)) INLINE static void sink_init_part(
     struct part* restrict p, const struct sink_props* sink_props) {
@@ -164,7 +169,7 @@ __attribute__((always_inline)) INLINE static void sink_init_part(
  * @brief Initialisation of sink particle data before sink loops.
  * Note: during initalisation (space_init_sinks)
  *
- * @param sp The particle to act upon
+ * @param sp The #sink particle to act upon.
  */
 __attribute__((always_inline)) INLINE static void sink_init_sink(
     struct sink* sp) {
@@ -186,7 +191,7 @@ __attribute__((always_inline)) INLINE static void sink_init_sink(
 /**
  * @brief Predict additional particle fields forward in time when drifting
  *
- * @param sp The particle
+ * @param sp The #sink.
  * @param dt_drift The drift time-step for positions.
  */
 __attribute__((always_inline)) INLINE static void sink_predict_extra(
@@ -196,7 +201,7 @@ __attribute__((always_inline)) INLINE static void sink_predict_extra(
  * @brief Sets the values to be predicted in the drifts to their values at a
  * kick time
  *
- * @param sp The particle.
+ * @param sp The #sink particle.
  */
 __attribute__((always_inline)) INLINE static void sink_reset_predicted_values(
     struct sink* restrict sp) {}
@@ -204,7 +209,7 @@ __attribute__((always_inline)) INLINE static void sink_reset_predicted_values(
 /**
  * @brief Kick the additional variables
  *
- * @param sp The particle to act upon
+ * @param sp The #sink particle to act upon
  * @param dt The time-step for this kick
  */
 __attribute__((always_inline)) INLINE static void sink_kick_extra(
@@ -216,7 +221,7 @@ __attribute__((always_inline)) INLINE static void sink_kick_extra(
  * Note: This function must be used after having computed the rotational energy
  * per components, i.e. after sink_prepare_part_sink_formation().
  *
- * @param p the gas particle.
+ * @param p The gas particle.
  *
  */
 INLINE static double sink_compute_neighbour_rotation_energy_magnitude(
@@ -232,7 +237,7 @@ INLINE static double sink_compute_neighbour_rotation_energy_magnitude(
 /**
  * @brief Retrieve the physical velocity divergence from the gas particle.
  *
- * @param p the gas particles.
+ * @param p The gas particles.
  *
  */
 INLINE static float sink_get_physical_div_v_from_part(
@@ -276,14 +281,15 @@ INLINE static float sink_get_physical_div_v_from_part(
  * Return 0 if no sink formation should occur.
  * Note: called in runner_do_sink_formation
  *
- * @param sink_props the sink properties to use.
  * @param p the gas particles.
  * @param xp the additional properties of the gas particles.
+ * @param sink_props the sink properties to use.
  * @param phys_const the physical constants in internal units.
  * @param cosmo the cosmological parameters and properties.
  * @param hydro_props The properties of the hydro scheme.
  * @param us The internal system of units.
  * @param cooling The cooling data struct.
+ * @param entropy_floor The entropy_floor properties.
  *
  */
 INLINE static int sink_is_forming(
@@ -364,9 +370,7 @@ INLINE static int sink_is_forming(
     return 0;
   }
 
-#ifdef SWIFT_DEBUG_CHECKS
   message("Gas particle %lld can form a sink !", p->id);
-#endif
   return 1;
 }
 
@@ -399,16 +403,17 @@ INLINE static int sink_should_convert_to_sink(
  * @brief Copies the properties of the gas particle over to the
  * sink particle.
  *
- * Nothing to do here.
- *
- * @param e The #engine
- * @param p the gas particles.
- * @param xp the additional properties of the gas particles.
- * @param sink the new created sink  particle with its properties.
- * @param sink_props the sink properties to use.
- * @param phys_const the physical constants in internal units.
+ * @param p The gas particles.
+ * @param xp The additional properties of the gas particles.
+ * @param sink the new created #sink particle.
+ * @param e The #engine.
+ * @param sink_props The sink properties to use.
  * @param cosmo the cosmological parameters and properties.
  * @param with_cosmology if we run with cosmology.
+ * @param phys_const The physical constants in internal units.
+ * @param hydro_props The hydro properties to use.
+ * @param us The internal unit system.
+ * @param cooling The cooling function to use.
  */
 INLINE static void sink_copy_properties(
     const struct part* p, const struct xpart* xp, struct sink* sink,
@@ -423,18 +428,29 @@ INLINE static void sink_copy_properties(
   sink_init_sink(sink);
 
   /* Set a smoothing length */
-  sink->r_cut = e->sink_properties->cut_off_radius;
+  sink->r_cut = sink_props->cut_off_radius;
 
   /* Flag it as not swallowed */
   sink_mark_sink_as_not_swallowed(&sink->merger_data);
 
   /* Additional initialisation */
+  sink->number_of_gas_swallows = 0;
+  sink->number_of_direct_gas_swallows = 0;
+  sink->number_of_sink_swallows = 0;
+  sink->number_of_direct_sink_swallows = 0;
+  sink->swallowed_angular_momentum[0] = 0.f;
+  sink->swallowed_angular_momentum[1] = 0.f;
+  sink->swallowed_angular_momentum[2] = 0.f;
+  sink->n_stars = 0;
 
   /* setup the target mass for sink star formation */
   sink_update_target_mass(sink, sink_props, e, 0);
 
   /* Copy the chemistry properties */
   chemistry_copy_sink_properties(p, xp, sink);
+
+  /* Note, we do not need to update sp->mass_tot_before_star_spawning because
+     it is performed within the 'sink_init_sink()' function. */
 }
 
 /**
@@ -578,6 +594,9 @@ __attribute__((always_inline)) INLINE static void sink_swallow_sink(
   spi->number_of_sink_swallows += spj->number_of_sink_swallows;
   spi->number_of_gas_swallows += spj->number_of_gas_swallows;
 
+  /* Add the stars spawned by the swallowed sink */
+  spi->n_stars += spj->n_stars;
+
 #ifdef SWIFT_DEBUG_CHECKS
   message("sink %lld swallow sink particle %lld. New mass: %e.", spi->id,
           spj->id, spi->mass);
@@ -587,12 +606,12 @@ __attribute__((always_inline)) INLINE static void sink_swallow_sink(
 /**
  * @brief Should the sink spawn a star particle?
  *
- * @param e The #engine
  * @param sink the sink particle.
- * @param sink_props the sink properties to use.
- * @param phys_const the physical constants in internal units.
- * @param cosmo the cosmological parameters and properties.
- * @param with_cosmology if we run with cosmology.
+ * @param e The #engine
+ * @param sink_props The sink properties to use.
+ * @param cosmo The cosmological parameters and properties.
+ * @param with_cosmology If we run with cosmology.
+ * @param phys_const The physical constants in internal units.
  * @param us The internal unit system.
  */
 INLINE static int sink_spawn_star(struct sink* sink, const struct engine* e,
@@ -612,8 +631,7 @@ INLINE static int sink_spawn_star(struct sink* sink, const struct engine* e,
  * @brief Separate the #spart and #part by randomly moving both of them.
  *
  * @param e The #engine.
- * @param p The #part generating a star.
- * @param xp The #xpart generating a star.
+ * @param si The #sink generating a star.
  * @param sp The new #spart.
  */
 INLINE static void sink_star_formation_separate_particles(
@@ -670,16 +688,18 @@ INLINE static void sink_star_formation_separate_particles(
 }
 
 /**
- * @brief Copy the properties of the sink particle towards the new star.
+ * @brief Copy the properties of the sink particle towards the new star. Also,
+ * give the stars some properties such as position and velocity.
+ *
  * This function also needs to update the sink particle.
  *
- * @param e The #engine
- * @param sink the sink particle.
+ * @param sink The #sink particle.
  * @param sp The star particle.
- * @param sink_props the sink properties to use.
- * @param phys_const the physical constants in internal units.
- * @param cosmo the cosmological parameters and properties.
- * @param with_cosmology if we run with cosmology.
+ * @param e The #engine
+ * @param sink_props The sink properties to use.
+ * @param cosmo The cosmological parameters and properties.
+ * @param with_cosmology If we run with cosmology.
+ * @param phys_const The physical constants in internal units.
  * @param us The internal unit system.
  */
 INLINE static void sink_copy_properties_to_star(
@@ -739,11 +759,12 @@ __attribute__((always_inline)) INLINE static void sink_store_potential_in_part(
  * neighbouring gas particles.
  *
  * @param e The #engine.
- * @param c The #cell.
  * @param p The #part for which we compute the quantities.
  * @param xp The #xpart data of the particle #p.
  * @param pi A neighbouring #part of #p.
  * @param xpi The #xpart data of the particle #pi.
+ * @param cosmo The cosmological parameters and properties.
+ * @param sink_props The sink properties to use.
  */
 INLINE static void sink_prepare_part_sink_formation_gas_criteria(
     struct engine* e, struct part* restrict p, struct xpart* restrict xp,
@@ -849,6 +870,10 @@ INLINE static void sink_prepare_part_sink_formation_gas_criteria(
   p->sink_data.E_rot_neighbours[2] +=
       0.5 * mi * specific_angular_momentum[2] * specific_angular_momentum[2] /
       sqrtf(dx_physical[0] * dx_physical[0] + dx_physical[1] * dx_physical[1]);
+
+  /* Shall we reset the values of the energies for the next timestep? No, it is
+     done in cell_drift.c and space_init.c, for active particles. The
+     potential is set in runner_others.c->runner_do_end_grav_force() */
 }
 
 /**
@@ -856,10 +881,11 @@ INLINE static void sink_prepare_part_sink_formation_gas_criteria(
  * function works on the neighbouring sink particles.
  *
  * @param e The #engine.
- * @param c The #cell.
  * @param p The #part for which we compute the quantities.
  * @param xp The #xpart data of the particle #p.
  * @param si A neighbouring #sink of #p.
+ * @param cosmo The cosmological parameters and properties.
+ * @param sink_props The sink properties to use.
  */
 INLINE static void sink_prepare_part_sink_formation_sink_criteria(
     struct engine* e, struct part* restrict p, struct xpart* restrict xp,

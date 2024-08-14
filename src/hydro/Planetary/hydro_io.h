@@ -60,9 +60,9 @@ INLINE static void hydro_read_particles(struct part* parts,
   /* Temporary warning to be printed for a few months after the change */
   message(
       "\n # Warning: some required field names for initial conditions were"
-      " tweaked in April 2023 to match the GADGET-2 format that SWIFT follows."
+      " tweaked in July 2024 to match the GADGET-2 format that SWIFT follows."
       " Please update your scripts (e.g. download the latest WoMa package) to"
-      " match. Apologies for any inconvenience!");
+      " match. Apologies for any inconvenience");
 
   /* List what we want to read */
   list[0] = io_make_input_field("Coordinates", DOUBLE, 3, COMPULSORY,
@@ -215,9 +215,9 @@ INLINE static void hydro_write_particles(const struct part* parts,
       "InternalEnergies", FLOAT, 1, UNIT_CONV_ENERGY_PER_UNIT_MASS,
       -3.f * hydro_gamma_minus_one, parts, u,
       "Thermal energies per unit mass of the particles");
-  list[5] =
-      io_make_output_field("ParticleIDs", ULONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f,
-                           parts, id, "Unique IDs of the particles");
+  list[5] = io_make_physical_output_field(
+      "ParticleIDs", ULONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f, parts, id,
+      /*can convert to comoving=*/0, "Unique IDs of the particles");
   list[6] = io_make_output_field("Densities", FLOAT, 1, UNIT_CONV_DENSITY, -3.f,
                                  parts, rho, "Densities of the particles");
   list[7] = io_make_output_field_convert_part(

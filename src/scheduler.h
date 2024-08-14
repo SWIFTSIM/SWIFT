@@ -202,8 +202,10 @@ scheduler_activate_send(struct scheduler *s, struct link *link,
   struct link *l = NULL;
   for (l = link;
        l != NULL && !(l->t->cj->nodeID == nodeID && l->t->subtype == subtype);
-       l = l->next)
-    ;
+       l = l->next) {
+    /* Nothing to do here */
+  }
+
   if (l == NULL) {
     error("Missing link to send task.");
   }
@@ -225,8 +227,10 @@ __attribute__((always_inline)) INLINE static struct link *
 scheduler_activate_recv(struct scheduler *s, struct link *link,
                         const enum task_subtypes subtype) {
   struct link *l = NULL;
-  for (l = link; l != NULL && l->t->subtype != subtype; l = l->next)
-    ;
+  for (l = link; l != NULL && l->t->subtype != subtype; l = l->next) {
+    /* Nothing to do here */
+  }
+
   if (l == NULL) {
     error("Missing link to recv task.");
   }
@@ -251,8 +255,10 @@ scheduler_activate_pack(struct scheduler *s, struct link *link,
   struct link *l = NULL;
   for (l = link;
        l != NULL && !(l->t->cj->nodeID == nodeID && l->t->subtype == subtype);
-       l = l->next)
-    ;
+       l = l->next) {
+    /* Nothing to do here */
+  }
+
   if (l == NULL) {
     error("Missing link to pack task.");
   }
@@ -274,8 +280,10 @@ __attribute__((always_inline)) INLINE static struct link *
 scheduler_activate_unpack(struct scheduler *s, struct link *link,
                           enum task_subtypes subtype) {
   struct link *l = NULL;
-  for (l = link; l != NULL && l->t->subtype != subtype; l = l->next)
-    ;
+  for (l = link; l != NULL && l->t->subtype != subtype; l = l->next) {
+    /* Nothing to do here */
+  }
+
   if (l == NULL) {
     error("Missing link to unpack task.");
   }
