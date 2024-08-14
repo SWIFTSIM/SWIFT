@@ -63,7 +63,6 @@
 /* Now? */
 #include "kernel_hydro.h"
 
-
 /* Split size. */
 int space_splitsize = space_splitsize_default;
 int space_subsize_pair_hydro = space_subsize_pair_hydro_default;

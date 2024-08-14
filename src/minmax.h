@@ -138,4 +138,3 @@
     const __typeof__(x) _temp3 = max(_temp1, _temp2); \
     max(_temp3, _u);                                  \
   })
-

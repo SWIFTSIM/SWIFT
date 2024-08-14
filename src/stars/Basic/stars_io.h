@@ -135,9 +135,8 @@ INLINE static void stars_write_particles(const struct spart *sparts,
       (void *)convert_spart_pos, "Co-moving position of the particles");
 
   list[1] = io_make_output_field_convert_spart(
-                                               "Velocities", FLOAT, 3,
-                                               UNIT_CONV_SPEED, 0.f, sparts,
-                                               (void *)convert_spart_vel,
+      "Velocities", FLOAT, 3, UNIT_CONV_SPEED, 0.f, sparts,
+      (void *)convert_spart_vel,
       "Peculiar velocities of the particles. This is a * dx/dt where x is the "
       "co-moving position of the particles.");
 
@@ -154,7 +153,8 @@ INLINE static void stars_write_particles(const struct spart *sparts,
 
   list[5] = io_make_output_field_convert_spart(
       "Potentials", FLOAT, 1, UNIT_CONV_POTENTIAL, -1.f, sparts,
-      (void *)convert_spart_potential, "Gravitational potentials of the particles");
+      (void *)convert_spart_potential,
+      "Gravitational potentials of the particles");
 
 #ifdef DEBUG_INTERACTIONS_STARS
 

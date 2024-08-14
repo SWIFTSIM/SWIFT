@@ -197,11 +197,11 @@ INLINE static void hydro_write_particles(const struct part* parts,
   /* List what we want to write */
   list[0] = io_make_output_field_convert_part(
       "Coordinates", DOUBLE, 3, UNIT_CONV_LENGTH, 1.f, parts, xparts,
-      convert_part_pos, "Co-moving positions of the particles");
+      (void*)convert_part_pos, "Co-moving positions of the particles");
 
   list[1] = io_make_output_field_convert_part(
       "Velocities", FLOAT, 3, UNIT_CONV_SPEED, 0.f, parts, xparts,
-      convert_part_vel,
+      (void*)convert_part_vel,
       "Peculiar velocities of the stars. This is (a * dx/dt) where x is the "
       "co-moving positions of the particles");
 
@@ -227,21 +227,23 @@ INLINE static void hydro_write_particles(const struct part* parts,
 
   list[7] = io_make_output_field_convert_part(
       "Entropies", FLOAT, 1, UNIT_CONV_ENTROPY_PER_UNIT_MASS, 0.f, parts,
-      xparts, convert_S, "Co-moving entropies per unit mass of the particles");
+      xparts, (void*)convert_S,
+      "Co-moving entropies per unit mass of the particles");
 
   list[8] = io_make_output_field_convert_part(
       "Pressures", FLOAT, 1, UNIT_CONV_PRESSURE, -3.f * hydro_gamma, parts,
-      xparts, convert_P, "Co-moving pressures of the particles");
+      xparts, (void*)convert_P, "Co-moving pressures of the particles");
 
   list[9] = io_make_output_field_convert_part(
       "ViscosityParameters", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, parts, xparts,
-      convert_viscosity,
+      (void*)convert_viscosity,
       "Visosity coefficient (alpha_visc) of the particles, multiplied by the "
       "balsara switch");
 
   list[10] = io_make_output_field_convert_part(
       "DiffusionParameters", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, parts, xparts,
-      convert_diffusion, "Diffusion coefficient (alpha_diff) of the particles");
+      (void*)convert_diffusion,
+      "Diffusion coefficient (alpha_diff) of the particles");
 
   list[11] = io_make_output_field(
       "LaplacianInternalEnergies", FLOAT, 1, UNIT_CONV_FREQUENCY_SQUARED,
@@ -267,12 +269,12 @@ INLINE static void hydro_write_particles(const struct part* parts,
 
   list[14] = io_make_output_field_convert_part(
       "Potentials", FLOAT, 1, UNIT_CONV_POTENTIAL, -1.f, parts, xparts,
-      convert_part_potential,
+      (void*)convert_part_potential,
       "Co-moving gravitational potential at position of the particles");
 
   list[15] = io_make_output_field_convert_part(
       "Softenings", FLOAT, 1, UNIT_CONV_LENGTH, 1.f, parts, xparts,
-      convert_part_softening,
+      (void*)convert_part_softening,
       "Co-moving gravitational Plummer-equivalent softenings of the particles");
 }
 

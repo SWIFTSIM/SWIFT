@@ -32,11 +32,11 @@
 /* Includes. */
 #include "hydro_space.h"
 #include "lock.h"
+#include "minmax.h"
 #include "parser.h"
 #include "part.h"
 #include "space_unique_id.h"
 #include "velociraptor_struct.h"
-#include "minmax.h"
 
 /* Avoid cyclic inclusions */
 struct cell;

@@ -132,10 +132,11 @@ INLINE static void darkmatter_write_particles(const struct gpart* gparts,
   /* List what we want to write */
   list[0] = io_make_output_field_convert_gpart(
       "Coordinates", DOUBLE, 3, UNIT_CONV_LENGTH, 1.f, gparts,
-      convert_gpart_pos, "Co-moving position of the particles");
+      (void*)convert_gpart_pos, "Co-moving position of the particles");
 
   list[1] = io_make_output_field_convert_gpart(
-      "Velocities", FLOAT, 3, UNIT_CONV_SPEED, 0.f, gparts, convert_gpart_vel,
+      "Velocities", FLOAT, 3, UNIT_CONV_SPEED, 0.f, gparts,
+      (void*)convert_gpart_vel,
       "Peculiar velocities of the particles. This is a * dx/dt where x is the "
       "co-moving position of the particles.");
 
@@ -148,12 +149,14 @@ INLINE static void darkmatter_write_particles(const struct gpart* gparts,
       "Unique ID of the particles");
 
   list[4] = io_make_output_field_convert_gpart(
-      "Softenings", FLOAT, 1, UNIT_CONV_LENGTH, 1.f, gparts, convert_gpart_soft,
+      "Softenings", FLOAT, 1, UNIT_CONV_LENGTH, 1.f, gparts,
+      (void*)convert_gpart_soft,
       "Co-moving Plummer-equivalent softening lengths of the particles.");
 
   list[5] = io_make_output_field_convert_gpart(
       "Potentials", FLOAT, 1, UNIT_CONV_POTENTIAL, -1.f, gparts,
-      convert_gpart_potential, "Gravitational potentials of the particles");
+      (void*)convert_gpart_potential,
+      "Gravitational potentials of the particles");
 }
 
 #endif /* SWIFT_MULTI_SOFTENING_GRAVITY_IO_H */

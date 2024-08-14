@@ -151,17 +151,19 @@ __attribute__((always_inline)) INLINE static int neutrino_write_particles(
     const struct gpart* gparts, struct io_props* list) {
 
   list[0] = io_make_output_field_convert_gpart(
-      "SampledSpeeds", FLOAT, 1, UNIT_CONV_SPEED, 0.f, gparts, convert_gpart_vi,
+      "SampledSpeeds", FLOAT, 1, UNIT_CONV_SPEED, 0.f, gparts,
+      (void*)convert_gpart_vi,
       "Initial Fermi-Dirac speed sampled at infinity. This is a * |dx/dt| "
       "where x is the co-moving position of the particles.");
 
   list[1] = io_make_output_field_convert_gpart(
       "MicroscopicMasses", DOUBLE, 1, UNIT_CONV_MASS, 0.f, gparts,
-      (void *)convert_gpart_mnu, "Microscopic masses of individual neutrino particles");
+      (void*)convert_gpart_mnu,
+      "Microscopic masses of individual neutrino particles");
 
   list[2] = io_make_output_field_convert_gpart(
       "Weights", DOUBLE, 1, UNIT_CONV_NO_UNITS, 0.f, gparts,
-      (void *)convert_gpart_weight, "Statistical weights of neutrino particles");
+      (void*)convert_gpart_weight, "Statistical weights of neutrino particles");
 
   return 3;
 }

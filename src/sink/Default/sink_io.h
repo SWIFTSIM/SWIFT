@@ -111,15 +111,12 @@ INLINE static void sink_write_particles(const struct sink* sinks,
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_sink(
-                                              "Coordinates", DOUBLE, 3,
-                                              UNIT_CONV_LENGTH, 1.f, sinks,
-                                              (void *)convert_sink_pos,
-      "Co-moving position of the particles");
+      "Coordinates", DOUBLE, 3, UNIT_CONV_LENGTH, 1.f, sinks,
+      (void*)convert_sink_pos, "Co-moving position of the particles");
 
   list[1] = io_make_output_field_convert_sink(
-                                              "Velocities", FLOAT, 3,
-                                              UNIT_CONV_SPEED, 0.f, sinks,
-                                              (void *)convert_sink_vel,
+      "Velocities", FLOAT, 3, UNIT_CONV_SPEED, 0.f, sinks,
+      (void*)convert_sink_vel,
       "Peculiar velocities of the particles. This is a * dx/dt where x is the "
       "co-moving position of the particles.");
 
