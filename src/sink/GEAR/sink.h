@@ -123,6 +123,8 @@ __attribute__((always_inline)) INLINE static void sink_first_init_sink(
   sp->swallowed_angular_momentum[2] = 0.f;
   sp->n_stars = 0;
 
+  sp->has_IMF_changed_from_popIII_to_popII = 0;
+
   sink_mark_sink_as_not_swallowed(&sp->merger_data);
 
   /* Bug fix: Setup the target mass for sink formation after reading the
@@ -442,6 +444,7 @@ INLINE static void sink_copy_properties(
   sink->swallowed_angular_momentum[1] = 0.f;
   sink->swallowed_angular_momentum[2] = 0.f;
   sink->n_stars = 0;
+  sink->has_IMF_changed_from_popIII_to_popII = 0;
 
   /* setup the target mass for sink star formation */
   sink_update_target_mass(sink, sink_props, e, 0);
@@ -740,6 +743,109 @@ INLINE static void sink_copy_properties_to_star(
   /* Copy the progenitor id */
   sp->sf_data.progenitor_id = sink->id;
 }
+
+/**
+ * @brief Update the #sink particle properties before spawning a star.
+ *
+ * In GEAR, we check if the sink had an IMF change from pop III to pop II
+ * during the last gas/sink accretion loops. If so, we draw a new target mass
+ * with the correct IMF so that stars have the right metallicities.
+ *
+ * @param sink The #sink particle.
+ * @param e The #engine
+ * @param sink_props The sink properties to use.
+ * @param phys_const The physical constants in internal units.
+ */
+INLINE static void sink_update_sink_properties_before_star_formation(
+    struct sink* sink, const struct engine* e,
+    const struct sink_props* sink_props, const struct phys_const* phys_const) {
+
+  /* Has the sink accumulated enough metallicity so that the target mass
+     should be updated before spawning stars?
+     Between the last update of the target_mass, the sink may have accreted gas
+     with metallicities that that are higher than those of population III
+     stars. However, the target mass was set with the pop
+     III IMF. */
+
+  const struct feedback_props* feedback_props = e->feedback_props;
+
+  /* Pick the correct table. (if only one table, threshold is < 0) */
+  const float metal =
+      chemistry_get_sink_total_iron_mass_fraction_for_feedback(sink);
+  const float threshold = feedback_props->metallicity_max_first_stars;
+
+  /* If metal < threshold, then the sink generate first star particles. */
+  const int is_first_star = metal < threshold;
+
+  /* If the sink has not changed its IMF yet
+     (has_IMF_changed_from_popIII_to_popII = 0)
+     but is eligible to (sink metal > threshold), get a target_mass of the pop
+     II stars. */
+  if (!(sink->has_IMF_changed_from_popIII_to_popII) && !is_first_star) {
+    sink_update_target_mass(sink, sink_props, e, 0);
+
+    /* Flag the sink to have made the transition of IMF. This ensures that next
+    time we do not update the target_mass because metal > threshold (otherwise
+    we would update it without needing to) */
+    sink->has_IMF_changed_from_popIII_to_popII = 1;
+    message("IMF transition : Sink %lld will now spawn Pop II stars.",
+            sink->id);
+  }
+}
+
+/**
+ * @brief Update the #sink particle properties right after spawning a star.
+ *
+ * In GEAR: Important properties that are updated are the sink mass and the
+ * sink->target_mass to draw the next star mass.
+ *
+ * @param sink The #sink particle that spawed stars.
+ * @param sp The #spart particle spawned.
+ * @param e The #engine
+ * @param sink_props the sink properties to use.
+ * @param phys_const the physical constants in internal units.
+ * @param star_counter The star loop counter.
+ */
+INLINE static void sink_update_sink_properties_during_star_formation(
+    struct sink* sink, const struct spart* sp, const struct engine* e,
+    const struct sink_props* sink_props, const struct phys_const* phys_const,
+    int star_counter) {
+
+  /* count the number of stars spawned by this particle */
+  sink->n_stars++;
+
+  /* Update the mass */
+  sink->mass = sink->mass - sink->target_mass * phys_const->const_solar_mass;
+
+  /* Bug fix: Do not forget to update the sink gpart's mass. */
+  sink->gpart->mass = sink->mass;
+
+  /* This message must be put carefully after giving the star its mass,
+     updated the sink mass and before changing the target_type */
+  message(
+      "%010lld spawn a star (%010lld) with mass %8.2f Msol type=%d  "
+      "star_counter=%03d. Sink remaining mass: %e Msol.",
+      sink->id, sp->id, sp->mass / phys_const->const_solar_mass,
+      sink->target_type, star_counter,
+      sink->mass / phys_const->const_solar_mass);
+
+  /* Sample the IMF to the get next target mass */
+  sink_update_target_mass(sink, sink_props, e, star_counter);
+}
+
+/**
+ * @brief Update the #sink particle properties after star formation.
+ *
+ * In GEAR, this is unused.
+ *
+ * @param sink The #sink particle.
+ * @param e The #engine
+ * @param sink_props The sink properties to use.
+ * @param phys_const The physical constants in internal units.
+ */
+INLINE static void sink_update_sink_properties_after_star_formation(
+    struct sink* sink, const struct engine* e,
+    const struct sink_props* sink_props, const struct phys_const* phys_const) {}
 
 /**
  * @brief Store the gravitational potential of a particle by copying it from
