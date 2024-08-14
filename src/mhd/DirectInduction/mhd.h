@@ -395,12 +395,12 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_force(
   for (int i = 0; i < 3; i++) {
     for (int j = 0; j < 3; j++) {
       grad_B_mean_square +=
-          p->mhd_data.grad_B_tensor[i][j] * p->mhd_data.grad_B_tensor[i][j];
+	p->mhd_data.grad_B_tensor[i][j] * p->mhd_data.grad_B_tensor[i][j];   
     }
   }
 
   p->mhd_data.alpha_AR =
-      normB ? fminf(1.0f, h * sqrtf(grad_B_mean_square) / normB) : 0.0f;
+    normB ? fminf(p->mhd_data.art_diff_beta, fmaxf(h * sqrtf(grad_B_mean_square) / normB, 0.005f)) : 0.0f;
 }
 
 /**
