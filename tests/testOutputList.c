@@ -144,10 +144,12 @@ int main(int argc, char *argv[]) {
 
   /* Pseudo initialization of engine */
   struct engine e;
+  bzero(&e, sizeof(struct engine));
   e.cosmology = &cosmo;
   e.parameter_file = &params;
   e.physical_constants = &phys_const;
   e.internal_units = &us;
+  e.verbose = 1;
 
   int with_assert = 1;
   int without_assert = 0;
