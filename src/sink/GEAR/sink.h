@@ -392,8 +392,7 @@ INLINE static int sink_is_forming(
     return 0;
   }
 
-  message(
-      "Gas particle %lld can form a sink !", p->id);
+  message("Gas particle %lld can form a sink !", p->id);
   return 1;
 }
 
