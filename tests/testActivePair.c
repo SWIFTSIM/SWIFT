@@ -73,6 +73,11 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
     error("couldn't allocate particles, no. of particles: %d", (int)count);
   }
   bzero(cell->hydro.parts, count * sizeof(struct part));
+  if (posix_memalign((void **)&cell->hydro.xparts, part_align,
+                     count * sizeof(struct xpart)) != 0) {
+    error("couldn't allocate x particles, no. of particles: %d", (int)count);
+  }
+  bzero(cell->hydro.xparts, count * sizeof(struct xpart));
 
   /* Construct the parts */
   struct part *part = cell->hydro.parts;
