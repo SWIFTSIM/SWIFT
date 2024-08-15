@@ -62,7 +62,6 @@ void feedback_update_part(struct part* p, struct xpart* xp,
 
   /* Update the mass of p, as well as its gpart's friend */
   hydro_set_mass(p, new_mass);
-  p->gpart->mass = p->mass ;
 
   /* Update the density */
   p->rho *= new_mass / old_mass;
