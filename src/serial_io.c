@@ -980,7 +980,7 @@ void write_output_serial(struct engine* e,
                          const int fof, const int mpi_rank, const int mpi_size,
                          MPI_Comm comm, MPI_Info info) {
 
-  hid_t h_file = 0, h_grp = 0;
+  hid_t h_file = 0, h_grp = 0, h_props = 0;
   int numFiles = 1;
   const struct part* parts = e->s->parts;
   const struct xpart* xparts = e->s->xparts;
@@ -1174,7 +1174,7 @@ void write_output_serial(struct engine* e,
     xmf_write_outputheader(xmfFile, fileName, e->time);
 
     /* Set the minimal API version to avoid issues with advanced features */
-    hid_t h_props = H5Pcreate(H5P_FILE_ACCESS);
+    h_props = H5Pcreate(H5P_FILE_ACCESS);
     herr_t err = H5Pset_libver_bounds(h_props, HDF5_LOWEST_FILE_FORMAT_VERSION,
                                       HDF5_HIGHEST_FILE_FORMAT_VERSION);
     if (err < 0) error("Error setting the hdf5 API version");
@@ -1330,7 +1330,7 @@ void write_output_serial(struct engine* e,
 
     /* Set the minimal API version to avoid issues with advanced features */
     h_props_cells = H5Pcreate(H5P_FILE_ACCESS);
-    herr_t err = H5Pset_libver_bounds(h_props, HDF5_LOWEST_FILE_FORMAT_VERSION,
+    herr_t err = H5Pset_libver_bounds(h_props_cells, HDF5_LOWEST_FILE_FORMAT_VERSION,
                                       HDF5_HIGHEST_FILE_FORMAT_VERSION);
     if (err < 0) error("Error setting the hdf5 API version");
 
@@ -1356,6 +1356,7 @@ void write_output_serial(struct engine* e,
   if (mpi_rank == 0) {
     H5Gclose(h_grp_cells);
     H5Fclose(h_file_cells);
+    H5Pclose(h_props_cells);
   }
 
   /* Now loop over ranks and write the data */
@@ -1365,7 +1366,7 @@ void write_output_serial(struct engine* e,
     if (rank == mpi_rank) {
 
       /* Set the minimal API version to avoid issues with advanced features */
-      hid_t h_props = H5Pcreate(H5P_FILE_ACCESS);
+      h_props = H5Pcreate(H5P_FILE_ACCESS);
       herr_t err =
           H5Pset_libver_bounds(h_props, HDF5_LOWEST_FILE_FORMAT_VERSION,
                                HDF5_HIGHEST_FILE_FORMAT_VERSION);
