@@ -55,6 +55,9 @@ u[:] = P0 / (rho0 * (gamma - 1))
 index = argsort(r)
 u[index[0:N_inject]] = E0 / (N_inject * m[0])
 
+# Add density
+rho = ones(numPart) * rho0
+
 # --------------------------------------------------
 
 # File
@@ -88,5 +91,6 @@ grp.create_dataset("Masses", data=m, dtype="f")
 grp.create_dataset("SmoothingLength", data=h, dtype="f")
 grp.create_dataset("InternalEnergy", data=u, dtype="f")
 grp.create_dataset("ParticleIDs", data=ids, dtype="L")
+grp.create_dataset("Density", data=rho, dtype="f")
 
 file.close()
