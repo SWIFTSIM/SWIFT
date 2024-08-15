@@ -80,17 +80,7 @@ void feedback_update_part(struct part* p, struct xpart* xp,
      feedback that affected p and xp, f_corr = 1. */
   if (e->feedback_props->enable_multiple_SN_momentum_correction_factor
       && xp->feedback_data.number_SN > 1) {
-    const double p_old[3] = {old_mass*xp->v_full[0], old_mass*xp->v_full[1], old_mass*xp->v_full[2]};
-    const double p_old_norm_2 =  p_old[0]*p_old[0] + p_old[1]*p_old[1] + p_old[2]*p_old[2];
-    const double p_tilde_norm_2 = p_old_norm_2*dm/old_mass + 2*(old_mass + dm)*xp->feedback_data.delta_E_kin;
-
-    const double dp[3] = {xp->feedback_data.delta_p[0], xp->feedback_data.delta_p[1], xp->feedback_data.delta_p[2]};
-    const double dp_norm_2 = dp[0]*dp[0] + dp[1]*dp[1] + dp[2]*dp[2];
-    const double p_old_times_dp = p_old[0]*dp[0] + p_old[1]*dp[1] + p_old[2]*dp[2];
-
-    /* Finally compute the corrector factor */
-    const double sqrt_argument = fabs(p_old_times_dp*p_old_times_dp - p_tilde_norm_2*dp_norm_2);
-    const double f_corr = (- p_old_times_dp + sqrt(sqrt_argument))/p_tilde_norm_2;
+    const double f_corr = feedback_compute_momentum_correction_factor_for_multiple_sn_events(p, xp, old_mass, new_mass);
 
     /* Update the xpart accumulated dp */
     xp->feedback_data.delta_p[0] *= f_corr;
@@ -751,4 +741,43 @@ double feedback_get_SN_cooling_radius(const struct spart* restrict sp,
   const double r_cool = pow(3.0*m_ej*second_part/(4.0*M_PI*mean_density), 1.0/3.0);
 
   return r_cool;
+}
+
+/**
+ * @brief Compute a correction factor to ensure energy conservation when
+ * multiple feedback (supernovae) events affect the same #part in a given timestep.
+ *
+ * Note: This function is called in feedback_update_part().
+ *
+ * @param p The #part to correct.
+ * @param xp The #xpart.
+ * @param old_mass The mass before feeback events.
+ * @param new_mass The mass after feeback events.
+ */
+__attribute__((always_inline)) INLINE
+double feedback_compute_momentum_correction_factor_for_multiple_sn_events(struct part* p, struct xpart* xp, double old_mass, double new_mass) {
+  const float dm = xp->feedback_data.delta_mass;
+
+  const double p_old[3] = {old_mass * xp->v_full[0], old_mass * xp->v_full[1],
+			   old_mass * xp->v_full[2]};
+  const double p_old_norm_2 =
+    p_old[0] * p_old[0] + p_old[1] * p_old[1] + p_old[2] * p_old[2];
+  const double p_tilde_norm_2 =
+    p_old_norm_2 * dm / old_mass +
+    2 * (old_mass + dm) * xp->feedback_data.delta_E_kin;
+
+  const double dp[3] = {xp->feedback_data.delta_p[0],
+			xp->feedback_data.delta_p[1],
+			xp->feedback_data.delta_p[2]};
+  const double dp_norm_2 = dp[0] * dp[0] + dp[1] * dp[1] + dp[2] * dp[2];
+  const double p_old_times_dp =
+    p_old[0] * dp[0] + p_old[1] * dp[1] + p_old[2] * dp[2];
+
+  /* Finally compute the corrector factor */
+  const double sqrt_argument =
+    fabs(p_old_times_dp * p_old_times_dp - p_tilde_norm_2 * dp_norm_2);
+  const double f_corr =
+    (-p_old_times_dp + sqrt(sqrt_argument)) / p_tilde_norm_2;
+
+  return f_corr;
 }
