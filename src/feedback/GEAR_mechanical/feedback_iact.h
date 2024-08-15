@@ -474,7 +474,7 @@ runner_iact_nonsym_feedback_apply(
 
 #ifdef SWIFT_DEBUG_CHECKS
   message("beta_1 = %e, beta_2 = %e, psi = %e, psi*p_available = %e, p_available = %e", beta_1, beta_2, psi,  psi*p_available, p_available);
-  message("xsi = %e, p_t = %e, r = %e, r_cool = %e", xsi, p_terminal, r, r_cool);
+  message("xsi = %e, p_t = %e", xsi, p_terminal);
   message("E_ej = %e, E_tot = %e, U_tot = %e, E_kin_tot = %e, p_ej = %e, p_terminal = %e, dU = %e, f_therm = %e", E_ej, E_tot, U_tot, epsilon, p_ej, p_terminal, dU, f_therm);
 #endif /* SWIFT_DEBUG_CHECKS */
 #endif /* FEEDBACK_GEAR_MECHANICAL_MODE == 2 */
@@ -498,14 +498,14 @@ runner_iact_nonsym_feedback_apply(
    * Now we accumulate to verify the conservation of the fluxes.
    ****************************************************************************/
 #ifdef SWIFT_DEBUG_CHECKS
-  si->feedback_data.delta_m_check += dm;
-  si->feedback_data.delta_p_norm_check += sqrt(dp_norm_2);
+  si->feedback_data.fluxes_conservation_check.delta_m += dm;
+  si->feedback_data.fluxes_conservation_check.delta_p_norm += sqrt(dp_norm_2);
 
-  si->feedback_data.delta_p_check[0] += dp[0];
-  si->feedback_data.delta_p_check[1] += dp[1];
-  si->feedback_data.delta_p_check[2] += dp[2];
+  si->feedback_data.fluxes_conservation_check.delta_p[0] += dp[0];
+  si->feedback_data.fluxes_conservation_check.delta_p[1] += dp[1];
+  si->feedback_data.fluxes_conservation_check.delta_p[2] += dp[2];
 
-  message("Conservation check (star %lld): Sum dm_i = %e (m_ej), Sum |dp_i| = %e (p_ej), Sum dp_i = (%e, %e, %e) (0), m_ej = %e, E_ej = %e, p_ej = %e", si->id, si->feedback_data.delta_m_check, si->feedback_data.delta_p_norm_check, si->feedback_data.delta_p_check[0], si->feedback_data.delta_p_check[1], si->feedback_data.delta_p_check[2], m_ej, E_ej, p_ej);
+  message("Conservation check (star %lld): Sum dm_i = %e (m_ej), Sum |dp_i| = %e (p_ej), Sum dp_i = (%e, %e, %e) (0), m_ej = %e, E_ej = %e, p_ej = %e", si->id, si->feedback_data.fluxes_conservation_check.delta_m, si->feedback_data.fluxes_conservation_check.delta_p_norm, si->feedback_data.fluxes_conservation_check.delta_p[0], si->feedback_data.fluxes_conservation_check.delta_p[1], si->feedback_data.fluxes_conservation_check.delta_p[2], m_ej, E_ej, p_ej);
 #endif /* SWIFT_DEBUG_CHECKS */
 }
 

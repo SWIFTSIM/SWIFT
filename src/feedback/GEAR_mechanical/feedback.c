@@ -294,12 +294,12 @@ void feedback_init_spart(struct spart* sp) {
   sp->feedback_data.weighted_gas_metallicity = 0;
 
 #ifdef SWIFT_DEBUG_CHECKS
-  sp->feedback_data.delta_m_check = 0.0;
-  sp->feedback_data.delta_p_norm_check = 0.0;
+  sp->feedback_data.fluxes_conservation_check.delta_m = 0.0;
+  sp->feedback_data.fluxes_conservation_check.delta_p_norm = 0.0;
 
-  sp->feedback_data.delta_p_check[0] = 0 ;
-  sp->feedback_data.delta_p_check[1] = 0 ;
-  sp->feedback_data.delta_p_check[2] = 0 ;
+  sp->feedback_data.fluxes_conservation_check.delta_p[0] = 0 ;
+  sp->feedback_data.fluxes_conservation_check.delta_p[1] = 0 ;
+  sp->feedback_data.fluxes_conservation_check.delta_p[2] = 0 ;
 #endif /* SWIFT_DEBUG_CHECKS */
 }
 
@@ -356,12 +356,12 @@ void feedback_reset_feedback(struct spart* sp,
   sp->feedback_data.weighted_gas_metallicity = 0;
 
 #ifdef SWIFT_DEBUG_CHECKS
-  sp->feedback_data.delta_m_check = 0.0;
-  sp->feedback_data.delta_p_norm_check = 0.0;
+  sp->feedback_data.fluxes_conservation_check.delta_m = 0.0;
+  sp->feedback_data.fluxes_conservation_check.delta_p_norm = 0.0;
 
-  sp->feedback_data.delta_p_check[0] = 0 ;
-  sp->feedback_data.delta_p_check[1] = 0 ;
-  sp->feedback_data.delta_p_check[2] = 0 ;
+  sp->feedback_data.fluxes_conservation_check.delta_p[0] = 0 ;
+  sp->feedback_data.fluxes_conservation_check.delta_p[1] = 0 ;
+  sp->feedback_data.fluxes_conservation_check.delta_p[2] = 0 ;
 #endif /* SWIFT_DEBUG_CHECKS */
 }
 
