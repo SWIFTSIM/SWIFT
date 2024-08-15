@@ -270,7 +270,7 @@ struct part {
   struct sink_part_data sink_data;
 
   /*! Material identifier flag */
-  enum eos_planetary_material_id mat_id;
+  //enum eos_planetary_material_id mat_id;
 
   /*! Additional Radiative Transfer Data */
   struct rt_part_data rt_data;

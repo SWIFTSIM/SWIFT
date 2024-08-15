@@ -344,37 +344,35 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
         (pj->m0 * pj->rho_evol - pj->rho_evol) * mod_G / mean_rho;
 
     // Diffusion for same materials
-    if (pi->mat_id == pj->mat_id) {
-      // Diffusion parameters
-      const float a_difn_rho = diffusion_global.a_difn_rho;
-      const float b_difn_rho = diffusion_global.b_difn_rho;
-      const float a_difn_u = diffusion_global.a_difn_u;
-      const float b_difn_u = diffusion_global.b_difn_u;
+    // Diffusion parameters
+    const float a_difn_rho = diffusion_global.a_difn_rho;
+    const float b_difn_rho = diffusion_global.b_difn_rho;
+    const float a_difn_u = diffusion_global.a_difn_u;
+    const float b_difn_u = diffusion_global.b_difn_u;
 
-      // ...
-      float utilde_i, utilde_j, rhotilde_i, rhotilde_j;
-      hydro_set_u_rho_difn(&utilde_i, &utilde_j, &rhotilde_i, &rhotilde_j, pi,
+    // ...
+    float utilde_i, utilde_j, rhotilde_i, rhotilde_j;
+    hydro_set_u_rho_difn(&utilde_i, &utilde_j, &rhotilde_i, &rhotilde_j, pi,
                            pj, dx, a, H);
-      float v_sig_difn = difn_signal_velocity;
-      float du_dt_difn_i = -(a_difn_u + b_difn_u * mean_balsara) * mj *
+    float v_sig_difn = difn_signal_velocity;
+    float du_dt_difn_i = -(a_difn_u + b_difn_u * mean_balsara) * mj *
                            v_sig_difn * (utilde_i - utilde_j) * mod_G /
                            mean_rho;
-      float du_dt_difn_j = -(a_difn_u + b_difn_u * mean_balsara) * mi *
+    float du_dt_difn_j = -(a_difn_u + b_difn_u * mean_balsara) * mi *
                            v_sig_difn * (utilde_j - utilde_i) * mod_G /
                            mean_rho;
 
-      // ...
-      pi->u_dt += du_dt_difn_i;
-      pj->u_dt += du_dt_difn_j;
+    // ...
+    pi->u_dt += du_dt_difn_i;
+    pj->u_dt += du_dt_difn_j;
 
-      // ...
-      drho_dt_norm_and_difn_i += -(a_difn_rho + b_difn_rho * mean_balsara) *
+    // ...
+    drho_dt_norm_and_difn_i += -(a_difn_rho + b_difn_rho * mean_balsara) *
                                  mj * (pi->rho / pj->rho) * v_sig_difn *
                                  (rhotilde_i - rhotilde_j) * mod_G / mean_rho;
-      drho_dt_norm_and_difn_j += -(a_difn_rho + b_difn_rho * mean_balsara) *
+    drho_dt_norm_and_difn_j += -(a_difn_rho + b_difn_rho * mean_balsara) *
                                  mi * (pj->rho / pi->rho) * v_sig_difn *
                                  (rhotilde_j - rhotilde_i) * mod_G / mean_rho;
-    }
 
     pi->drho_dt += drho_dt_norm_and_difn_i;
     pj->drho_dt += drho_dt_norm_and_difn_j;
@@ -495,30 +493,28 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
         (pi->m0 * pi->rho_evol - pi->rho_evol) * mod_G / mean_rho;
 
     // Diffusion for same materials
-    if (pi->mat_id == pj->mat_id) {
-      // Diffusion parameters
-      const float a_difn_rho = diffusion_global.a_difn_rho;
-      const float b_difn_rho = diffusion_global.b_difn_rho;
-      const float a_difn_u = diffusion_global.a_difn_u;
-      const float b_difn_u = diffusion_global.b_difn_u;
+    // Diffusion parameters
+    const float a_difn_rho = diffusion_global.a_difn_rho;
+    const float b_difn_rho = diffusion_global.b_difn_rho;
+    const float a_difn_u = diffusion_global.a_difn_u;
+    const float b_difn_u = diffusion_global.b_difn_u;
 
-      // ...
-      float utilde_i, utilde_j, rhotilde_i, rhotilde_j;
-      hydro_set_u_rho_difn(&utilde_i, &utilde_j, &rhotilde_i, &rhotilde_j, pi,
+    // ...
+    float utilde_i, utilde_j, rhotilde_i, rhotilde_j;
+    hydro_set_u_rho_difn(&utilde_i, &utilde_j, &rhotilde_i, &rhotilde_j, pi,
                            pj, dx, a, H);
-      float v_sig_difn = difn_signal_velocity;
-      float du_dt_difn_i = -(a_difn_u + b_difn_u * mean_balsara) * mj *
+    float v_sig_difn = difn_signal_velocity;
+    float du_dt_difn_i = -(a_difn_u + b_difn_u * mean_balsara) * mj *
                            v_sig_difn * (utilde_i - utilde_j) * mod_G /
                            mean_rho;
 
-      // ...
-      pi->u_dt += du_dt_difn_i;
+    // ...
+    pi->u_dt += du_dt_difn_i;
 
-      // ...
-      drho_dt_norm_and_difn_i += -(a_difn_rho + b_difn_rho * mean_balsara) *
+    // ...
+    drho_dt_norm_and_difn_i += -(a_difn_rho + b_difn_rho * mean_balsara) *
                                  mj * (pi->rho / pj->rho) * v_sig_difn *
                                  (rhotilde_i - rhotilde_j) * mod_G / mean_rho;
-    }
 
     pi->drho_dt += drho_dt_norm_and_difn_i;
   }

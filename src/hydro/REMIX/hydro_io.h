@@ -44,9 +44,9 @@ INLINE static void hydro_read_particles(struct part* parts,
                                         int* num_fields) {
 
 #ifdef PLANETARY_FIXED_ENTROPY
-  *num_fields = 10;
-#else
   *num_fields = 9;
+#else
+  *num_fields = 8;
 #endif
 
   /* List what we want to read */
@@ -66,10 +66,8 @@ INLINE static void hydro_read_particles(struct part* parts,
                                 UNIT_CONV_ACCELERATION, parts, a_hydro);
   list[7] = io_make_input_field("Density", FLOAT, 1, OPTIONAL,
                                 UNIT_CONV_DENSITY, parts, rho);
-  list[8] = io_make_input_field("MaterialIDs", INT, 1, COMPULSORY,
-                                UNIT_CONV_NO_UNITS, parts, mat_id);
 #ifdef PLANETARY_FIXED_ENTROPY
-  list[9] = io_make_input_field("Entropies", FLOAT, 1, COMPULSORY,
+  list[8] = io_make_input_field("Entropies", FLOAT, 1, COMPULSORY,
                                 UNIT_CONV_PHYSICAL_ENTROPY_PER_UNIT_MASS, parts,
                                 s_fixed);
 #endif
@@ -182,7 +180,7 @@ INLINE static void hydro_write_particles(const struct part* parts,
                                          struct io_props* list,
                                          int* num_fields) {
 
-  *num_fields = 11;
+  *num_fields = 10;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_part(
@@ -208,13 +206,10 @@ INLINE static void hydro_write_particles(const struct part* parts,
   list[7] = io_make_output_field_convert_part(
       "Entropies", FLOAT, 1, UNIT_CONV_ENTROPY_PER_UNIT_MASS, 0.f, parts,
       xparts, convert_S, "Entropies per unit mass of the particles");
-  list[8] =
-      io_make_output_field("MaterialIDs", INT, 1, UNIT_CONV_NO_UNITS, 0.f,
-                           parts, mat_id, "Material IDs of the particles");
-  list[9] = io_make_output_field_convert_part(
+  list[8] = io_make_output_field_convert_part(
       "Pressures", FLOAT, 1, UNIT_CONV_PRESSURE, -3.f * hydro_gamma, parts,
       xparts, convert_P, "Pressures of the particles");
-  list[10] = io_make_output_field_convert_part(
+  list[9] = io_make_output_field_convert_part(
       "Potentials", FLOAT, 1, UNIT_CONV_POTENTIAL, 0.f, parts, xparts,
       convert_part_potential, "Gravitational potentials of the particles");
 }

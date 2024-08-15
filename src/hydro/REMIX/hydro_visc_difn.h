@@ -130,15 +130,13 @@ hydro_runner_iact_gradient_extra_viscosity(struct part *restrict pi,
     pj->dh_norm_kernel[i] += (pi->h - pj->h) * wj_dx_term[i] * volume_i;
 
     // Contributions only from same-material particles for u and rho diffusion
-    if (pi->mat_id == pj->mat_id) {
-      pi->du_norm_kernel[i] += (pj->u - pi->u) * wi_dx_term[i] * volume_j;
-      pj->du_norm_kernel[i] += (pi->u - pj->u) * wj_dx_term[i] * volume_i;
+    pi->du_norm_kernel[i] += (pj->u - pi->u) * wi_dx_term[i] * volume_j;
+    pj->du_norm_kernel[i] += (pi->u - pj->u) * wj_dx_term[i] * volume_i;
 
-      pi->drho_norm_kernel[i] +=
-          (pj->rho_evol - pi->rho_evol) * wi_dx_term[i] * volume_j;
-      pj->drho_norm_kernel[i] +=
-          (pi->rho_evol - pj->rho_evol) * wj_dx_term[i] * volume_i;
-    }
+    pi->drho_norm_kernel[i] +=
+        (pj->rho_evol - pi->rho_evol) * wi_dx_term[i] * volume_j;
+    pj->drho_norm_kernel[i] +=
+        (pi->rho_evol - pj->rho_evol) * wj_dx_term[i] * volume_i;
 
     for (int j = 0; j < 3; j++) {
       pi->dv_norm_kernel[i][j] +=
@@ -180,11 +178,9 @@ hydro_runner_iact_nonsym_gradient_extra_viscosity(
     pi->dh_norm_kernel[i] += (pj->h - pi->h) * wi_dx_term[i] * volume_j;
 
     // Contributions only from same-material particles for u and rho diffusion
-    if (pi->mat_id == pj->mat_id) {
-      pi->du_norm_kernel[i] += (pj->u - pi->u) * wi_dx_term[i] * volume_j;
-      pi->drho_norm_kernel[i] +=
-          (pj->rho_evol - pi->rho_evol) * wi_dx_term[i] * volume_j;
-    }
+    pi->du_norm_kernel[i] += (pj->u - pi->u) * wi_dx_term[i] * volume_j;
+    pi->drho_norm_kernel[i] +=
+        (pj->rho_evol - pi->rho_evol) * wi_dx_term[i] * volume_j;
 
     for (int j = 0; j < 3; j++) {
       pi->dv_norm_kernel[i][j] +=
