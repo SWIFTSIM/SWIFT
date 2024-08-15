@@ -52,13 +52,10 @@ runner_iact_nonsym_feedback_density(const float r2, const float dx[3],
                                     const struct feedback_props *fb_props,
                                     const integertime_t ti_current) {
 
-  /* Compute the feedback w_count here. wcount_feedback != star wcount to take
-     into account that there is a maximal feedback radius */
-
   const float r_max_2 = fb_props->r_max * fb_props->r_max;
 
   /* If the particle is farther than the maximal radius, it does not receive
-     feedback */
+     feedback. Hence, do not count it. */
   if (r2 > r_max_2) {
     return;
   }
@@ -315,7 +312,9 @@ runner_iact_nonsym_feedback_apply(
   /* If the particle is farther than the maximal radius, it does not receive
      feedback */
   if (r2 > r_max_2) {
-    /* warning("Particle %lld has a distance (%e) bigger than r_max = %e. It will not receive the feedback!", pj->id, sqrt(r2), fb_props->r_max); */
+#ifdef SWIFT_DEBUG_CHECKS
+    warning("Particle %lld has a distance (%e) bigger than r_max = %e. It will not receive feedback!", pj->id, sqrt(r2), fb_props->r_max);
+#endif
     return;
   }
 
@@ -326,9 +325,9 @@ runner_iact_nonsym_feedback_apply(
     return;
   }
 
-  /* if (si->feedback_data.mass_ejected < 200e-10) { */
-  /*   return; */
-  /* } */
+  /****************************************************************************
+   * Compute the common properties for both modes
+   ****************************************************************************/
 
   /* Compute the w_j_bar. */
   double w_j_bar[3];
@@ -336,7 +335,7 @@ runner_iact_nonsym_feedback_apply(
   const double w_j_bar_norm_2 = w_j_bar[0]*w_j_bar[0] + w_j_bar[1]*w_j_bar[1] + w_j_bar[2]*w_j_bar[2];
   const double w_j_bar_norm = sqrt(w_j_bar_norm_2);
 
-  /* If p does not contribute, skip the computations to avoid NaN */
+  /* If the particle does not contribute, skip the computations. This avoids 1./0. */
   if (w_j_bar_norm == 0) {
     return;
   }
@@ -345,7 +344,7 @@ runner_iact_nonsym_feedback_apply(
   const float mj = hydro_get_mass(pj);
   const double m_ej = si->feedback_data.mass_ejected;
 
-  /* Distribute mass... (the max avoids to have dm=0 and NaN by dividing by dm) */
+  /* Distribute mass... (the max avoids to have dm=0 and 1.0. divisions) */
   const double dm = max(w_j_bar_norm * m_ej, FLT_MIN);
   const double new_mass = mj + dm;
   xpj->feedback_data.delta_mass += dm;
@@ -356,6 +355,9 @@ runner_iact_nonsym_feedback_apply(
 	w_j_bar_norm * si->feedback_data.metal_mass_ejected[i];
   }
 
+  /****************************************************************************
+   * Now we treat the other fluxes distribution differently for each mode
+   ****************************************************************************/
 #if FEEDBACK_GEAR_MECHANICAL_MODE == 1
   const float internal_energy_snowplow_exponent = -6.5;
 
@@ -417,8 +419,9 @@ runner_iact_nonsym_feedback_apply(
   if (r2 > r_cool*r_cool) {
     const double r = sqrt(r2);
     dU *= pow(r/r_cool, internal_energy_snowplow_exponent);
-
+#ifdef SWIFT_DEBUG_CHECKS
     message("We do not resolve the Sedov-Taylor (r_cool = %e). Rescaling dU.", r_cool);
+#endif /* SWIFT_DEBUG_CHECKS */
   } /* else we do not change dU */
 
 #endif /* FEEDBACK_GEAR_MECHANICAL_MODE == 1 */
@@ -435,9 +438,8 @@ runner_iact_nonsym_feedback_apply(
   const double psi = (sqrt(fabs(beta_2 + beta_1*beta_1)) - beta_1)/beta_2;
 
   /* Now, we take into account for potentially unresolved energy-conserving
-     phase of the SN explosion (xsi != 1 in such cases). If we cannot resolve
-     this phase, we give mostly momentum, but also thermal energy. The thermal
-     energy will be radiated away because of cooling. */
+     phase of the SN explosion (xsi != 1). If we cannot resolve this phase, we
+     give mostly momentum. The thermal energy will be radiated away because of cooling. */
   const double p_available = sqrt(2.0*epsilon*m_ej);
   const double p_terminal = feedback_get_SN_terminal_momentum(si, pj, xpj, phys_const, us);
   const double xsi = min(1, p_terminal/(psi * p_available));
@@ -470,10 +472,11 @@ runner_iact_nonsym_feedback_apply(
 
   const double dp_norm_2 = dp[0]*dp[0] +  dp[1]*dp[1] +  dp[2]*dp[2];
 
-  /* message("beta_1 = %e, beta_2 = %e, psi = %e, psi*p_available = %e, p_available = %e", beta_1, beta_2, psi,  psi*p_available, p_available); */
-  /* message("xsi = %e, p_t = %e, r = %e, r_cool = %e", xsi, p_terminal, r, r_cool); */
-  /* message("E_ej = %e, E_tot = %e, U_tot = %e, E_kin_tot = %e, p_ej = %e, p_terminal = %e, dU = %e, f_therm = %e", E_ej, E_tot, U_tot, epsilon, p_ej, p_terminal, dU, f_therm); */
-
+#ifdef SWIFT_DEBUG_CHECKS
+  message("beta_1 = %e, beta_2 = %e, psi = %e, psi*p_available = %e, p_available = %e", beta_1, beta_2, psi,  psi*p_available, p_available);
+  message("xsi = %e, p_t = %e, r = %e, r_cool = %e", xsi, p_terminal, r, r_cool);
+  message("E_ej = %e, E_tot = %e, U_tot = %e, E_kin_tot = %e, p_ej = %e, p_terminal = %e, dU = %e, f_therm = %e", E_ej, E_tot, U_tot, epsilon, p_ej, p_terminal, dU, f_therm);
+#endif /* SWIFT_DEBUG_CHECKS */
 #endif /* FEEDBACK_GEAR_MECHANICAL_MODE == 2 */
 
   /* Now we can give momentum, thermal and kinetic energy to the xpart. */
@@ -485,14 +488,16 @@ runner_iact_nonsym_feedback_apply(
   xpj->feedback_data.delta_E_kin += dKE;
   xpj->feedback_data.number_SN += 1;
 
-    /* Impose maximal viscosity */
+  /* Impose maximal viscosity */
   hydro_diffusive_feedback_reset(pj);
 
   /* Synchronize the particle on the timeline */
   timestep_sync_part(pj);
 
-  /*-------------------------------------------------------------------------*/
-  /* Verify conservation things */
+  /****************************************************************************
+   * Now we accumulate to verify the conservation of the fluxes.
+   ****************************************************************************/
+#ifdef SWIFT_DEBUG_CHECKS
   si->feedback_data.delta_m_check += dm;
   si->feedback_data.delta_p_norm_check += sqrt(dp_norm_2);
 
@@ -500,8 +505,8 @@ runner_iact_nonsym_feedback_apply(
   si->feedback_data.delta_p_check[1] += dp[1];
   si->feedback_data.delta_p_check[2] += dp[2];
 
-  /* message("Conservation check (star %lld): Sum dm_i = %e (m_ej), Sum |dp_i| = %e (p_ej), Sum dp_i = (%e, %e, %e) (0), m_ej = %e, E_ej = %e, p_ej = %e", si->id, si->feedback_data.delta_m_check, si->feedback_data.delta_p_norm_check, si->feedback_data.delta_p_check[0], si->feedback_data.delta_p_check[1], si->feedback_data.delta_p_check[2], m_ej, E_ej, p_ej); */
-
+  message("Conservation check (star %lld): Sum dm_i = %e (m_ej), Sum |dp_i| = %e (p_ej), Sum dp_i = (%e, %e, %e) (0), m_ej = %e, E_ej = %e, p_ej = %e", si->id, si->feedback_data.delta_m_check, si->feedback_data.delta_p_norm_check, si->feedback_data.delta_p_check[0], si->feedback_data.delta_p_check[1], si->feedback_data.delta_p_check[2], m_ej, E_ej, p_ej);
+#endif /* SWIFT_DEBUG_CHECKS */
 }
 
 #endif /* SWIFT_GEAR_MECHANICAL_FEEDBACK_IACT_H */
