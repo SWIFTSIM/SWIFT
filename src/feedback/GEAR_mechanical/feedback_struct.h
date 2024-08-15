@@ -118,10 +118,9 @@ struct feedback_spart_data {
      properly constructed. */
 #ifdef SWIFT_DEBUG_CHECKS
   struct {
-    double delta_m_check;
-    double delta_p_norm_check;
-    double delta_p_check[3];
-    double delta_p_tot[3];
+    double delta_m;
+    double delta_p_norm;
+    double delta_p[3];
   } fluxes_conservation_check;
 #endif /* SWIFT_DEBUG_CHECKS */
 };
