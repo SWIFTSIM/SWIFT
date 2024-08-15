@@ -121,7 +121,7 @@ void DOSELF1_STARS(struct runner *r, struct cell *c, int timer) {
       if (pj->ti_drift != e->ti_current)
         error("Particle pj not drifted to current time");
 #endif
-
+      /* TODO: Implement a way such that both conditions can be used. */
       /* if (r2 < hig2 && si_active_feedback) { */
       if ((r2 < hig2 || r2 < hj*hj*kernel_gamma2) && si_active_feedback) {
         IACT_STARS(r2, dx, hi, hj, si, pj, a, H);
@@ -258,7 +258,7 @@ void DO_NONSYM_PAIR1_STARS_NAIVE(struct runner *r, struct cell *restrict ci,
       if (pj->ti_drift != e->ti_current)
         error("Particle pj not drifted to current time");
 #endif
-
+      /* TODO: Implement a way such that both conditions can be used. */
       /* if (r2 < hig2 && si_active_feedback) { */
       if ((r2 < hig2 || r2 < hj*hj*kernel_gamma2) && si_active_feedback) {
         IACT_STARS(r2, dx, hi, hj, si, pj, a, H);
@@ -461,6 +461,7 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
 #endif
 
         /* Hit or miss? */
+	/* TODO: Implement a way such that both conditions can be used. */
         /* if (r2 < hig2 && spi_active_feedback) { */
 	if ((r2 < hig2 || r2 < hj*hj*kernel_gamma2) && spi_active_feedback) {
 	  IACT_STARS(r2, dx, hi, hj, spi, pj, a, H);
@@ -622,6 +623,7 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
 #endif
 
         /* Hit or miss? */
+	/* TODO: Implement a way such that both conditions can be used. */
         /* if (r2 < hjg2 && spj_active_feedback) { */
 	if ((r2 < hjg2 || r2 < hi*hi*kernel_gamma2) && spj_active_feedback) {
 
@@ -771,6 +773,7 @@ void DOPAIR1_SUBSET_STARS(struct runner *r, struct cell *restrict ci,
 #endif
 
         /* Hit or miss? */
+	/* TODO: Implement a way such that both conditions can be used. */
         /* if (r2 < hig2) { */
 	if (r2 < hig2 || r2 < hj*hj*kernel_gamma2) {
 
@@ -836,6 +839,7 @@ void DOPAIR1_SUBSET_STARS(struct runner *r, struct cell *restrict ci,
 #endif
 
         /* Hit or miss? */
+	/* TODO: Implement a way such that both conditions can be used. */
         /* if (r2 < hig2) { */
 	if (r2 < hig2 || r2 < hj*hj*kernel_gamma2) {
 
@@ -1026,6 +1030,7 @@ void DOSELF1_SUBSET_STARS(struct runner *r, struct cell *restrict ci,
 #endif
 
       /* Hit or miss? */
+      /* TODO: Implement a way such that both conditions can be used. */
       /* if (r2 < hig2) { */
       if (r2 < hig2 || r2 < hj*hj*kernel_gamma2) {
 
