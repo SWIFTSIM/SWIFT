@@ -65,7 +65,11 @@ struct feedback_xpart_data {
  */
 struct feedback_spart_data {
 
-  /*! Inverse of normalisation factor used for the enrichment. */
+  /* Number of neighbours contributing to feedback */
+  double density_wcount;
+
+  /* Normalisation factor used for the enrichment. Corresponds to the
+     denominator in eq (9) in https://arxiv.org/abs/1707.07010  */
   float enrichment_weight;
 
   /*! Number of Ia supernovae */
@@ -90,33 +94,36 @@ struct feedback_spart_data {
   enum star_feedback_type star_type;
 
   /* Parameters to be accumulated in the feedback loops. Used to compute the
-     vector weights */
+     vector weights (isotropic distribution) */
   double f_plus_num[3];
   double f_plus_denom[3];
   double f_minus_num[3];
   double f_minus_denom[3];
 
   /* Accumulated value for the total energy available in the SN, taking into
-     account gas-star motion */
+     account gas-star motion. This is eq (A4) (lower formula) sum terms in
+     https://arxiv.org/abs/2404.16987, without the 0.5*m_ej. */
   double E_total_accumulator;
 
   /* Parameters to determine the coupled energy, momentum and internal energy
      of the SN */
-  double beta_1_accumulator; /* accumulated value for beta_1 */
-  double beta_2_accumulator; /* accumulated value for beta_2 */
+  double beta_1_accumulator; /* Accumulated value for beta_1 */
+  double beta_2_accumulator; /* Accumulated value for beta_2 */
 
-  /* Sum of the gas properties used to compute the mean of the properties */
+  /* Sum of the weighted gas properties used to compute terminal momentum */
   double weighted_gas_density;
   double weighted_gas_metallicity;
 
-  /* Number of neighbours contributing to feedback */
-  double density_wcount;
-
-  /* Checks that the SN weighting is working (put debugging checks) */
-  double delta_m_check;
-  double delta_p_norm_check;
-  double delta_p_check[3];
-  double delta_p_tot[3];
+  /* Checks that the sum of the fluxes is 0. These ensures the weights are
+     properly constructed. */
+#ifdef SWIFT_DEBUG_CHECKS
+  struct {
+    double delta_m_check;
+    double delta_p_norm_check;
+    double delta_p_check[3];
+    double delta_p_tot[3];
+  } fluxes_conservation_check;
+#endif /* SWIFT_DEBUG_CHECKS */
 };
 
 #endif /* SWIFT_FEEDBACK_STRUCT_GEAR_MECHANICAL_H */
