@@ -268,6 +268,7 @@ double feedback_get_enrichment_timestep(const struct spart* sp,
  * @param sp The particle to act upon
  */
 void feedback_init_spart(struct spart* sp) {
+  sp->feedback_data.density_wcount = 0;
   sp->feedback_data.enrichment_weight = 0.f;
 
   sp->feedback_data.f_plus_num[0] = 0.0;
@@ -291,14 +292,15 @@ void feedback_init_spart(struct spart* sp) {
   sp->feedback_data.beta_2_accumulator = 0;
   sp->feedback_data.weighted_gas_density = 0;
   sp->feedback_data.weighted_gas_metallicity = 0;
-  sp->feedback_data.density_wcount = 0;
 
+#ifdef SWIFT_DEBUG_CHECKS
   sp->feedback_data.delta_m_check = 0.0;
   sp->feedback_data.delta_p_norm_check = 0.0;
 
   sp->feedback_data.delta_p_check[0] = 0 ;
   sp->feedback_data.delta_p_check[1] = 0 ;
   sp->feedback_data.delta_p_check[2] = 0 ;
+#endif /* SWIFT_DEBUG_CHECKS */
 }
 
 /**
@@ -327,6 +329,7 @@ void feedback_init_after_star_formation(
  */
 void feedback_reset_feedback(struct spart* sp,
                              const struct feedback_props* feedback_props) {
+  sp->feedback_data.density_wcount = 0;
   sp->feedback_data.energy_ejected = 0;
   sp->feedback_data.enrichment_weight = 0.f;
 
@@ -351,14 +354,15 @@ void feedback_reset_feedback(struct spart* sp,
   sp->feedback_data.beta_2_accumulator = 0;
   sp->feedback_data.weighted_gas_density = 0;
   sp->feedback_data.weighted_gas_metallicity = 0;
-  sp->feedback_data.density_wcount = 0;
 
+#ifdef SWIFT_DEBUG_CHECKS
   sp->feedback_data.delta_m_check = 0.0;
   sp->feedback_data.delta_p_norm_check = 0.0;
 
   sp->feedback_data.delta_p_check[0] = 0 ;
   sp->feedback_data.delta_p_check[1] = 0 ;
   sp->feedback_data.delta_p_check[2] = 0 ;
+#endif /* SWIFT_DEBUG_CHECKS */
 }
 
 /**
