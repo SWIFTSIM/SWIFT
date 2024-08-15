@@ -1330,8 +1330,9 @@ void write_output_serial(struct engine* e,
 
     /* Set the minimal API version to avoid issues with advanced features */
     h_props_cells = H5Pcreate(H5P_FILE_ACCESS);
-    herr_t err = H5Pset_libver_bounds(h_props_cells, HDF5_LOWEST_FILE_FORMAT_VERSION,
-                                      HDF5_HIGHEST_FILE_FORMAT_VERSION);
+    herr_t err =
+        H5Pset_libver_bounds(h_props_cells, HDF5_LOWEST_FILE_FORMAT_VERSION,
+                             HDF5_HIGHEST_FILE_FORMAT_VERSION);
     if (err < 0) error("Error setting the hdf5 API version");
 
     /* Open the snapshot on rank 0 */
