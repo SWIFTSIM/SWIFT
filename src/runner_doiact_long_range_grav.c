@@ -728,6 +728,9 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
         "Zoom cell found in long range gravity task! These should be handled "
         "by the void cell hierarchy.");
   }
+  if (ci->subtype == cell_subtype_empty) {
+    error("Empty cell found in long range gravity task!");
+  }
 #endif
 
   /* Anything to do here? */
