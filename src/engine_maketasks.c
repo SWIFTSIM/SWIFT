@@ -1400,8 +1400,8 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
         if (c->type != cell_type_zoom) {
           scheduler_addunlock(s, c->grav.init, c->grav.long_range);
           scheduler_addunlock(s, c->grav.long_range, c->grav.down);
-          scheduler_addunlock(s, c->grav.down, c->grav.super->grav.end_force);
         }
+        scheduler_addunlock(s, c->grav.down, c->grav.super->grav.end_force);
 
         /* With adaptive softening, force the hydro density to complete first */
         if (gravity_after_hydro_density && c->hydro.super == c) {
@@ -1411,9 +1411,7 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
         /* Link in the implicit tasks */
         scheduler_addunlock(s, c->grav.init, c->grav.init_out);
         scheduler_addunlock(s, c->grav.drift, c->grav.drift_out);
-        if (c->type != cell_type_zoom) {
-          scheduler_addunlock(s, c->grav.down_in, c->grav.down);
-        }
+        scheduler_addunlock(s, c->grav.down_in, c->grav.down);
       }
     }
   }

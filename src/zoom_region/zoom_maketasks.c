@@ -376,12 +376,9 @@ static void zoom_engine_make_hierarchical_void_tasks_recursive(struct engine *e,
     }
   } else if (c->type == cell_type_zoom && c->grav.super == c) {
 
-    /* /\* Unlock this zoom cell's grav down after the void cell grav down. *\/
-     */
-    /* scheduler_addunlock(s, c->top->void_parent->top->grav.down, */
-    /*                     c->grav.down_in); */
+    /* Unlock this zoom cell's grav down after the void cell grav down. */
     scheduler_addunlock(s, c->top->void_parent->top->grav.down,
-                        c->grav.super->grav.end_force);
+                        c->grav.down_in);
   }
 
   /* Recurse but don't go deeper then the zoom super level. */
