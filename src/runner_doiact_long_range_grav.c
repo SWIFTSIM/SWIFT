@@ -122,7 +122,7 @@ void runner_do_grav_long_range_zoom_non_periodic(struct runner *r,
   /* Since the zoom cells will be handled by the void cell hierarchy we can
    * just loop over all other cells which are not zoom cells. This is
    * trivial since the zoom cells are first in cells_top. */
-  for (int cjd = s->zoom_props->nr_zoom_cells; cjd < s->nr_cells; cjd++) {
+  for (int cjd = s->zoom_props->bkg_cell_offset; cjd < s->nr_cells; cjd++) {
 
     /* Handle on the top-level cell and it's gravity business*/
     struct cell *cj = &cells[cjd];
