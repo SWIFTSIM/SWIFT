@@ -124,12 +124,26 @@ void runner_do_grav_long_range_zoom_non_periodic(struct runner *r,
    * trivial since the zoom cells are first in cells_top. */
   for (int cjd = s->zoom_props->bkg_cell_offset; cjd < s->nr_cells; cjd++) {
 
+#ifdef SWIFT_DEBUG_CHECKS
+    if (cells[cjd].type == cell_type_zoom) {
+      error(
+          "Zoom cell found in long range gravity task! These should be handled "
+          "by the void cell hierarchy.");
+    }
+#endif
+
     /* Handle on the top-level cell and it's gravity business*/
     struct cell *cj = &cells[cjd];
     struct gravity_tensors *const multi_j = cj->grav.multipole;
 
     /* Skip empty cells */
     if (multi_j->m_pole.M_000 == 0.f) continue;
+
+#ifdef SWIFT_DEBUG_CHECKS
+    if (ci->subtype == cell_subtype_empty) {
+      error("Empty cell found in long range gravity task!");
+    }
+#endif
 
     /* Avoid self contributions */
     if (top == cj) continue;
