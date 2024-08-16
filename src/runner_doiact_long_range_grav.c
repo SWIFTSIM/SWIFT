@@ -140,7 +140,7 @@ void runner_do_grav_long_range_zoom_non_periodic(struct runner *r,
     if (multi_j->m_pole.M_000 == 0.f) continue;
 
 #ifdef SWIFT_DEBUG_CHECKS
-    if (ci->subtype == cell_subtype_empty) {
+    if (cj->subtype == cell_subtype_empty) {
       error("Empty cell found in long range gravity task!");
     }
 #endif
