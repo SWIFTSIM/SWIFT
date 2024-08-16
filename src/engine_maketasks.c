@@ -1383,8 +1383,10 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
         }
 
         /* Gravity recursive down-pass */
-        c->grav.down = scheduler_addtask(s, task_type_grav_down,
-                                         task_subtype_none, 0, 0, c, NULL);
+        if (c->type != cell_type_zoom) {
+          c->grav.down = scheduler_addtask(s, task_type_grav_down,
+                                           task_subtype_none, 0, 0, c, NULL);
+        }
 
         /* Implicit tasks for the up and down passes */
         c->grav.drift_out = scheduler_addtask(s, task_type_drift_gpart_out,
