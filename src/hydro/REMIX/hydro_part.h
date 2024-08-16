@@ -67,6 +67,25 @@ struct xpart {
   /*! Evolved density at the last full step. */
   float rho_evol_full;
 
+  /*! Phase state flag at the last full step. */
+  enum mat_phase_state phase_state_full;
+
+  #if defined(MATERIAL_STRENGTH)
+    // Stress tensor
+     struct sym_matrix deviatoric_stress_tensor_full;
+
+    #if defined(STRENGTH_DAMAGE)
+      // Accumulated damage at the last full step
+      float damage_full;
+
+      // Damage accumulated due to tension at the last full step
+      float tensile_damage_full;
+
+      // Damage accumulated due to shear at the last full step
+      float shear_damage_full;
+    #endif
+  #endif
+
   /*! Additional data used to record particle splits */
   struct particle_splitting_data split_data;
 
@@ -321,14 +340,15 @@ struct part {
   // Gradient of velocity, calculated using linear-order reproducing kernel.
   float dv_force_loop[3][3];
 
-  #if defined(STRENGTH_YIELD_BENZ_ASPHAUG) || defined(STRENGTH_YIELD_COLLINS)
-    // Yield stress
-    float yield_stress;
-  #endif
-
-  #if defined(STRENGTH_DAMAGE_TENSILE_BENZ_ASPHAUG) || defined(STRENGTH_DAMAGE_SHEAR_COLLINS)
+  #if defined(STRENGTH_DAMAGE)
     // Accumulated damage
     float damage;
+
+    // Damage accumulated due to tension
+    float tensile_damage;
+
+    // Damage accumulated due to shear
+    float shear_damage;
   #endif
 
   #if defined(STRENGTH_DAMAGE_TENSILE_BENZ_ASPHAUG)
@@ -338,16 +358,7 @@ struct part {
     // Activation thresholds of flaws for tensile damage accumulation
     // ### Work out how to set the length of this
     float activation_thresholds[40];
-
-    // Damage accumulated due to tension
-    float tensile_damage;
   #endif
-
-  #if defined(STRENGTH_DAMAGE_SHEAR_COLLINS)
-    // Damage accumulated due to shear
-    float shear_damage;
-  #endif
-
 #endif /* MATERIAL_STRENGTH */
 
 } SWIFT_STRUCT_ALIGN;

@@ -35,6 +35,7 @@
 __attribute__((always_inline)) INLINE static float J_2_from_stress_tensor(
     struct sym_matrix *sym_matrix_deviatoric_stress_tensor) {
 
+  // ### Does j_2 need to be decreased by a factor of (1 - damage)^2 for B&A?
   float deviatoric_stress_tensor[3][3];
   get_matrix_from_sym_matrix(deviatoric_stress_tensor,
                              sym_matrix_deviatoric_stress_tensor);

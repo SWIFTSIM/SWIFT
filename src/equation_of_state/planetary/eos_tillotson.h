@@ -67,12 +67,16 @@ INLINE static void set_Til_iron(struct Til_params *Til,
   Til->beta = 5.0f;
   Til->eta_min = 0.0f;
   Til->eta_zero = 0.0f;
-  Til->P_min = 0.01f;
   Til->C_V = 449.0f;
   Til->rho_cold_min = 100.0f;
   Til->rho_cold_max = 1.0e5f;
   Til->rho_min = 1.0f;
   Til->rho_max = 1.0e5f;
+#ifdef MATERIAL_STRENGTH
+  Til->P_min = -FLT_MIN;
+#else
+  Til->P_min = 0.01f;
+#endif /* MATERIAL_STRENGTH */
 }
 INLINE static void set_Til_granite(struct Til_params *Til,
                                    enum eos_planetary_material_id mat_id) {
@@ -89,12 +93,16 @@ INLINE static void set_Til_granite(struct Til_params *Til,
   Til->beta = 5.0f;
   Til->eta_min = 0.0f;
   Til->eta_zero = 0.0f;
-  Til->P_min = 0.01f;
   Til->C_V = 790.0f;
   Til->rho_cold_min = 100.0f;
   Til->rho_cold_max = 1.0e5f;
   Til->rho_min = 1.0f;
   Til->rho_max = 1.0e5f;
+#ifdef MATERIAL_STRENGTH
+  Til->P_min = -FLT_MIN;
+#else
+  Til->P_min = 0.01f;
+#endif /* MATERIAL_STRENGTH */
 }
 INLINE static void set_Til_basalt(struct Til_params *Til,
                                   enum eos_planetary_material_id mat_id) {
@@ -111,12 +119,16 @@ INLINE static void set_Til_basalt(struct Til_params *Til,
   Til->beta = 5.0f;
   Til->eta_min = 0.0f;
   Til->eta_zero = 0.0f;
-  Til->P_min = 0.01f;
   Til->C_V = 790.0f;
   Til->rho_cold_min = 100.0f;
   Til->rho_cold_max = 1.0e5f;
   Til->rho_min = 1.0f;
   Til->rho_max = 1.0e5f;
+#ifdef MATERIAL_STRENGTH
+  Til->P_min = -FLT_MIN;
+#else
+  Til->P_min = 0.01f;
+#endif /* MATERIAL_STRENGTH */
 }
 INLINE static void set_Til_water(struct Til_params *Til,
                                  enum eos_planetary_material_id mat_id) {
@@ -133,12 +145,16 @@ INLINE static void set_Til_water(struct Til_params *Til,
   Til->beta = 5.0f;
   Til->eta_min = 0.925f;
   Til->eta_zero = 0.875f;
-  Til->P_min = 0.01f;
   Til->C_V = 4186.0f;
   Til->rho_cold_min = 100.0f;
   Til->rho_cold_max = 1.0e5f;
   Til->rho_min = 1.0f;
   Til->rho_max = 1.0e5f;
+#ifdef MATERIAL_STRENGTH
+  Til->P_min = -FLT_MIN;
+#else
+  Til->P_min = 0.01f;
+#endif /* MATERIAL_STRENGTH */
 }
 INLINE static void set_Til_ice(struct Til_params *Til,
                                enum eos_planetary_material_id mat_id) {
@@ -155,12 +171,16 @@ INLINE static void set_Til_ice(struct Til_params *Til,
   Til->beta = 5.0f;
   Til->eta_min = 0.925f;
   Til->eta_zero = 0.875f;
-  Til->P_min = 0.0f;
   Til->C_V = 2093.0f;
   Til->rho_cold_min = 100.0f;
   Til->rho_cold_max = 1.0e5f;
   Til->rho_min = 1.0f;
   Til->rho_max = 1.0e5f;
+#ifdef MATERIAL_STRENGTH
+  Til->P_min = -FLT_MIN;
+#else
+  Til->P_min = 0.0f;
+#endif /* MATERIAL_STRENGTH */
 }
 
 /*

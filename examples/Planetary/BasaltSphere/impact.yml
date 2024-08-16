@@ -1,0 +1,49 @@
+# Define the system of units to use internally. 
+InternalUnitSystem:
+  UnitMass_in_cgs:     1000   # Grams
+  UnitLength_in_cgs:   100   # Centimeters
+  UnitVelocity_in_cgs: 100   # Centimeters per second
+  UnitCurrent_in_cgs:  1   # Amperes
+  UnitTemp_in_cgs:     1   # Kelvin
+
+# Parameters governing the time integration
+TimeIntegration:
+  time_begin: 0.    # The starting time of the simulation (in internal units).
+  time_end:   1e-4   # The end time of the simulation (in internal units).
+  dt_min:     1e-10  # The minimal time-step size of the simulation (in internal units).
+  dt_max:     1e-4  # The maximal time-step size of the simulation (in internal units).
+
+# Parameters governing the snapshots
+Snapshots:
+  basename:            impact # Common part of the name of output files
+  time_first:          0.     # Time of the first output (in internal units)
+  delta_time:          1e-6   # Time difference between consecutive outputs (in internal units)
+
+# Parameters governing the conserved quantities statistics
+Statistics:
+  delta_time:          1e-4 # Time between statistics output
+
+# Parameters for the hydrodynamics scheme
+SPH:
+  resolution_eta:        1.487    # 1.2348   # Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel).
+  CFL_condition:         0.1      # Courant-Friedrich-Levy condition for time integration.
+  h_max:                 6e-3             # Maximal allowed smoothing length (in internal units).
+   
+# Parameters related to the initial conditions
+InitialConditions:
+  file_name:  ./impact.hdf5     # The file to read
+  periodic:   0
+
+# Parameters for the task scheduling
+Scheduler:
+    max_top_level_cells:    200          # Maximal number of top-level cells in any dimension. The nu
+    
+# Parameters related to the equation of state
+EoS:
+    planetary_use_Til_custom_0:    1
+    planetary_Til_custom_0_param_file: ./Til_basalt_eos_params.txt
+    Til_custom_0_mat_params_file: ./Til_basalt_mat_params.yml
+
+    planetary_use_Til_custom_1:    1
+    planetary_Til_custom_1_param_file: ./Til_lucite_eos_params.txt
+    Til_custom_1_mat_params_file: ./Til_lucite_mat_params.yml

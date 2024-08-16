@@ -1,0 +1,9 @@
+# Tillotson aluminium EoS
+# rho_0 (kg/m3)  a (-)  b (-)  A (Pa)  B (Pa)
+# u_0 (J)  u_iv (J)  u_cv (J)  alpha (-)  beta (-)
+# eta_min (-)  eta_zero (-)  P_min (Pa)  C_V (J kg^-1 K^-1)
+# rho_cold_min (kg/m3)  rho_cold_max (kg/m3)  rho_min (kg/m3)  rho_max (kg/m3)
+  2700.0  0.5  1.5  26.7e9  26.7e9
+  4.87e8  4.72e6  1.82e7  5.0  5.0
+  0.0  0.0  -3.5e9  790.0
+  100.0  1.0e5  1.0  1.0e5

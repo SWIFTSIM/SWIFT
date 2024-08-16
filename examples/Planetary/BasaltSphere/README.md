@@ -1,0 +1,1 @@
+./configure --with-hydro=remix --with-equation-of-state=planetary --with-kernel=wendland-C2 --enable-material-strength --with-strength-stress=basis-indp --with-strength-yield=benz-asphaug --enable-strength-yield-density-softening --with-strength-damage=tensile-benz-asphaug

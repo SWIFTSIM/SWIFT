@@ -1,0 +1,31 @@
+# Material parameters -- linear EoS for rubber cylinders
+
+# General properties
+Material:
+    phase_state:    1               # Base phase state: fluid=0, solid=1, variable=2
+
+# General material strength parameters
+Strength:
+    shear_mod:      73e6       # Shear modulus (Pa)
+    bulk_mod:       10.1e9     # Bulk modulus (Pa)
+    T_melt:         0          # Melting temperature (K)
+    rho_0:          1180       # (kg m^-3)
+
+
+# Specific material-strength schemes
+ArtificialStress:
+    n:             4
+    epsilon:       0.2
+    
+YieldStress:
+    Y_0:            10e6
+    Y_M:            10e6
+    mu_i:           2.0
+    mu_d:           0.8
+    yield_thermal_soft_xi:          1.2
+    yield_density_soft_mult_param:  0.85
+    yield_density_soft_pow_param:   4
+
+DamageShearCollins:
+    brittle_to_ductile_pressure:    0
+    brittle_to_plastic_pressure:    0
