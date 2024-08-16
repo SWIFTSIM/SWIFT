@@ -380,6 +380,8 @@ static void zoom_engine_make_hierarchical_void_tasks_recursive(struct engine *e,
      */
     /* scheduler_addunlock(s, c->top->void_parent->top->grav.down, */
     /*                     c->grav.down_in); */
+    scheduler_addunlock(s, c->top->void_parent->top->grav.down,
+                        c->grav.super->grav.end_force);
   }
 
   /* Recurse but don't go deeper then the zoom super level. */
