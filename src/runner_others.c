@@ -252,6 +252,10 @@ void runner_do_star_formation_sink(struct runner *r, struct cell *c,
         error("TODO");
 #endif
 
+        /* Update the sink properties before spwaning stars */
+        sink_update_sink_properties_before_star_formation(s, e, sink_props,
+                                                          phys_const);
+
         /* Spawn as many stars as necessary
            - loop counter for the random seed.
            - Start by 1 as 0 is used at init (sink_copy_properties) */
@@ -283,31 +287,16 @@ void runner_do_star_formation_sink(struct runner *r, struct cell *c,
           c->stars.h_max = max(c->stars.h_max, sp->h);
           c->stars.h_max_active = max(c->stars.h_max_active, sp->h);
 
-          /* count the number of stars spawned by this particle */
-          s->n_stars++;
-
-          /* Update the mass */
-          s->mass = s->mass - s->target_mass * phys_const->const_solar_mass;
-
-          /* Bug fix: Do not forget to update the sink gpart's mass. */
-          s->gpart->mass = s->mass;
-
-#ifdef SWIFT_DEBUG_CHECKS
-          /* This message must be put carefully after giving the star its mass,
-             updated the sink mass and before changing the target_type */
-          message(
-              "%010lld spawn a star (%010lld) with mass %8.2f Msol type=%d  "
-              "loop=%03d. Sink remaining mass: %e Msol.",
-              s->id, sp->id, sp->mass / phys_const->const_solar_mass,
-              s->target_type, star_counter,
-              s->mass / phys_const->const_solar_mass);
-#endif
-
-          /* Sample the IMF to the get next target mass */
-          sink_update_target_mass(s, sink_props, e, star_counter);
+          /* Update sink properties */
+          sink_update_sink_properties_during_star_formation(
+              s, sp, e, sink_props, phys_const, star_counter);
         } /* Loop over the stars to spawn */
-      }   /* if sink_is_active */
-    }     /* Loop over the particles */
+
+        /* Update the sink after star formation */
+        sink_update_sink_properties_after_star_formation(s, e, sink_props,
+                                                         phys_const);
+      } /* if sink_is_active */
+    } /* Loop over the particles */
   }
 
   /* If we formed any stars, the star sorts are now invalid. We need to

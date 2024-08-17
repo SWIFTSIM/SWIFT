@@ -109,8 +109,8 @@ void runner_doself_sinks_swallow(struct runner *r, struct cell *c, int timer) {
               e->gravity_properties, e->sink_properties);
         }
       } /* loop over the parts in ci. */
-    }   /* loop over the bparts in ci. */
-  }     /* Do we have gas particles in the cell? */
+    } /* loop over the bparts in ci. */
+  } /* Do we have gas particles in the cell? */
 
   /* When doing sink swallowing, we need a quick loop also over the sink
    * neighbours */
@@ -165,7 +165,7 @@ void runner_doself_sinks_swallow(struct runner *r, struct cell *c, int timer) {
                                               e->gravity_properties);
       }
     } /* loop over the sinks in ci. */
-  }   /* loop over the sinks in ci. */
+  } /* loop over the sinks in ci. */
 
   if (timer) TIMER_TOC(timer_doself_sink_swallow);
 }
@@ -252,8 +252,8 @@ void runner_do_nonsym_pair_sinks_naive_swallow(struct runner *r,
               e->gravity_properties, e->sink_properties);
         }
       } /* loop over the parts in cj. */
-    }   /* loop over the sinks in ci. */
-  }     /* Do we have gas particles in the cell? */
+    } /* loop over the sinks in ci. */
+  } /* Do we have gas particles in the cell? */
 
   /* When doing sink swallowing, we need a quick loop also over the sinks
    * neighbours */
@@ -308,7 +308,7 @@ void runner_do_nonsym_pair_sinks_naive_swallow(struct runner *r,
                                               e->gravity_properties);
       }
     } /* loop over the sinks in cj. */
-  }   /* loop over the sinks in ci. */
+  } /* loop over the sinks in ci. */
 }
 
 /**
@@ -682,7 +682,7 @@ void runner_do_sinks_gas_swallow(struct runner *r, struct cell *c, int timer) {
           get_integer_time_begin(ti_current + 1, p->time_bin);
       ti_beg_max = max(ti_beg, ti_beg_max);
     } /* Loop over the parts */
-  }   /* Cell is not split */
+  } /* Cell is not split */
 
   /* Update ti_beg_max. See bug fix above. */
   if (ti_beg_max != c->hydro.ti_beg_max) {
@@ -875,8 +875,8 @@ void runner_do_sinks_sink_swallow(struct runner *r, struct cell *c, int timer) {
         }
 
       } /* Part was flagged for swallowing */
-    }   /* Loop over the parts */
-  }     /* Cell is not split */
+    } /* Loop over the parts */
+  } /* Cell is not split */
 }
 
 /**
