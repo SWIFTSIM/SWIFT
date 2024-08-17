@@ -138,7 +138,6 @@ if test "$enable_ipo" = "yes"; then
       CFLAGS="$CFLAGS -ipo"
       LDFLAGS="$LDFLAGS -ipo"
       AC_CHECK_PROGS([AR], [xiar])
-      AC_CHECK_PROGS([LD], [xild])
       AC_CHECK_PROGS([RANLIB], [llvm-ranlib])
       AC_MSG_RESULT([added oneapi interprocedural optimization support])
    elif test "$ax_cv_c_compiler_vendor" = "gnu"; then
@@ -1588,10 +1587,16 @@ else
    have_chealpix="no"
 fi
 
-# Check for floating-point execeptions
-AC_CHECK_FUNC(feenableexcept, AC_DEFINE([HAVE_FE_ENABLE_EXCEPT],[1],
-    [Defined if the floating-point exception can be enabled using non-standard GNU functions.]))
-
+# Check for floating-point exception support.
+# CLANG based compilers can generate SIMD divides with partially loaded
+# registers so we see a 0/0 NaN which results in an FPE which is not an
+# error. So we do not allow this with those compilers. If you want to do
+# that then beware and use the -ffp-exception-behavior=maytrap flag.
+if test "$ax_cv_c_compiler_vendor" != "oneapi" -a \
+        "$ax_cv_c_compiler_vendor" != "clang"; then
+   AC_CHECK_FUNC(feenableexcept, AC_DEFINE([HAVE_FE_ENABLE_EXCEPT],[1],
+      [Defined if the floating-point exception can be enabled using non-standard GNU functions.]))
+fi
 # Check for setaffinity.
 AC_CHECK_FUNC(pthread_setaffinity_np, AC_DEFINE([HAVE_SETAFFINITY],[1],
     [Defined if pthread_setaffinity_np exists.]) )
