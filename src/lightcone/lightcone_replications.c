@@ -128,8 +128,8 @@ void replication_list_init(struct replication_list *replication_list,
             replication_list->nrep += 1;
           }
         } /* Next replication in z */
-      }   /* Next replication in y */
-    }     /* Next replication in x */
+      } /* Next replication in y */
+    } /* Next replication in x */
 
     /* Allocate storage after first pass */
     if (ipass == 0) {

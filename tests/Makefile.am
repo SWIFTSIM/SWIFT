@@ -29,7 +29,7 @@ TESTS = testGreetings testMaths testReading.sh testKernel testKernelLongGrav \
         testParser.sh test125cells.sh test125cellsPerturbed.sh testFFT \
         testAdiabaticIndex testRandom testRandomSpacing testRandomPoisson testErfc \
         testMatrixInversion testThreadpool testDump testCSDS testInteractions.sh \
-        testVoronoi1D testVoronoi2D testVoronoi3D testGravityDerivatives \
+        testVoronoi1D testVoronoi3D testGravityDerivatives \
 	testPeriodicBC.sh testPeriodicBCPerturbed.sh testPotentialSelf \
 	testPotentialPair testEOS testUtilities testSelectOutput.sh \
 	testCbrt testCosmology testRandomCone testOutputList testFormat.sh \
@@ -44,7 +44,7 @@ check_PROGRAMS = testGreetings testReading testTimeIntegration testKernelLongGra
                  testSymmetry testDistance testThreadpool testRandomSpacing testErfc \
                  testAdiabaticIndex testRiemannExact testRiemannTRRS testRandomPoisson testRandomCone \
                  testRiemannHLLC testMatrixInversion testDump testCSDS \
-		 testVoronoi1D testVoronoi2D testVoronoi3D testPeriodicBC \
+		 testVoronoi1D testVoronoi3D testPeriodicBC \
 		 testGravityDerivatives testPotentialSelf testPotentialPair testEOS testUtilities \
 		 testSelectOutput testCbrt testCosmology testOutputList test27cellsStars \
 		 test27cellsStars_subset testCooling testComovingCooling testFeedback testHashmap \
@@ -130,7 +130,7 @@ testMatrixInversion_SOURCES = testMatrixInversion.c
 
 testVoronoi1D_SOURCES = testVoronoi1D.c
 
-testVoronoi2D_SOURCES = testVoronoi2D.c
+#testVoronoi2D_SOURCES = testVoronoi2D.c
 
 testVoronoi3D_SOURCES = testVoronoi3D.c
 

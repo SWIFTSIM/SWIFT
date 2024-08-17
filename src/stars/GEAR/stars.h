@@ -39,7 +39,57 @@ __attribute__((always_inline)) INLINE static float stars_compute_timestep(
     const int with_cosmology, const struct cosmology* cosmo,
     const double time) {
 
-  return FLT_MAX;
+  /* Background star particles have no time-step limits */
+  if (sp->birth_time == -1.) {
+    return FLT_MAX;
+  }
+
+  /* Star age (in internal units) */
+  double star_age;
+  if (with_cosmology) {
+
+    /* Deal with rounding issues */
+    if (sp->birth_scale_factor >= cosmo->a) {
+      star_age = 0.;
+    } else {
+      star_age = cosmology_get_delta_time_from_scale_factors(
+          cosmo, sp->birth_scale_factor, cosmo->a);
+    }
+  } else {
+    star_age = time - sp->birth_time;
+  }
+
+  /* Note (01.08.2024):
+     The following lines come from the EAGLE model. However, in GEAR, a star
+     particle can now be a stellar population, a single star on a part of a
+     population (continuous IMF).
+     The two populations types are similar in behaviour and I think we can use
+     the code below as-is. However, the single stars must be treated in a
+     different way. They only have one SN feedback. Thus, they can be 'old' only
+     after this explosion. The question is how to do that...
+     Maybe we should flag the stars as being old or young? The discrete stars
+     then will only become old after their SN feedback.
+
+     Notice however that this require knowledge of the star_type, which is
+     currently in the feedback module. I planned to move this from the feedback
+     to the stars module (it makes more sense to be with the stars), but this
+     require care because the sink module also need to know about this
+     star_type. Moving the star type to the stars module simplifies the above
+     since we would know the type of the star. Hence, no flag is needed.
+
+     The purpose of taking care about the discrete stars is to avoid them
+     having small timesteps when they are already dead. They won't do anything
+     anymore so they don't need to be waken up often.
+  */
+
+  /* What age category are we in? */
+  if (star_age > stars_properties->age_threshold_unlimited) {
+    return FLT_MAX;
+  } else if (star_age > stars_properties->age_threshold) {
+    return stars_properties->max_time_step_old;
+  } else {
+    return stars_properties->max_time_step_young;
+  }
 }
 
 /**
@@ -98,6 +148,9 @@ __attribute__((always_inline)) INLINE static void stars_first_init_spart(
     const int with_cosmology, const double scale_factor, const double time) {
 
   sp->time_bin = 0;
+
+  if (stars_properties->overwrite_birth_time)
+    sp->birth_time = stars_properties->spart_first_init_birth_time;
 
   stars_init_spart(sp);
 }

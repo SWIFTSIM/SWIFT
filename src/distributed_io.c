@@ -62,7 +62,7 @@
 #include "xmf.h"
 
 /* Are we timing the i/o? */
-//#define IO_SPEED_MEASUREMENT
+// #define IO_SPEED_MEASUREMENT
 
 /* Max number of entries that can be written for a given particle type */
 static const int io_max_size_output_list = 100;
@@ -239,6 +239,9 @@ void write_distributed_array(
   io_write_attribute_f(h_data, "a-scale exponent", props.scale_factor_exponent);
   io_write_attribute_s(h_data, "Expression for physical CGS units", buffer);
   io_write_attribute_s(h_data, "Lossy compression filter", comp_buffer);
+  io_write_attribute_b(h_data, "Value stored as physical", props.is_physical);
+  io_write_attribute_b(h_data, "Property can be converted to comoving",
+                       props.is_convertible_to_comoving);
 
   /* Write the actual number this conversion factor corresponds to */
   const double factor =
@@ -404,6 +407,9 @@ void write_array_virtual(struct engine* e, hid_t grp, const char* fileName_base,
   io_write_attribute_f(h_data, "a-scale exponent", props.scale_factor_exponent);
   io_write_attribute_s(h_data, "Expression for physical CGS units", buffer);
   io_write_attribute_s(h_data, "Lossy compression filter", comp_buffer);
+  io_write_attribute_b(h_data, "Value stored as physical", props.is_physical);
+  io_write_attribute_b(h_data, "Property can be converted to comoving",
+                       props.is_convertible_to_comoving);
 
   /* Write the actual number this conversion factor corresponds to */
   const double factor =
@@ -502,8 +508,14 @@ void write_virtual_file(struct engine* e, const char* fileName_base,
    * specific output */
   xmf_write_outputheader(xmfFile, fileName, e->time);
 
+  /* Set the minimal API version to avoid issues with advanced features */
+  hid_t h_props = H5Pcreate(H5P_FILE_ACCESS);
+  herr_t err = H5Pset_libver_bounds(h_props, HDF5_LOWEST_FILE_FORMAT_VERSION,
+                                    HDF5_HIGHEST_FILE_FORMAT_VERSION);
+  if (err < 0) error("Error setting the hdf5 API version");
+
   /* Open HDF5 file with the chosen parameters */
-  hid_t h_file = H5Fcreate(fileName, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+  hid_t h_file = H5Fcreate(fileName, H5F_ACC_TRUNC, H5P_DEFAULT, h_props);
   if (h_file < 0) error("Error while opening file '%s'.", fileName);
 
   /* Open header to write simulation properties */
@@ -735,8 +747,9 @@ void write_virtual_file(struct engine* e, const char* fileName_base,
   /* Write LXMF file descriptor */
   xmf_write_outputfooter(xmfFile, e->snapshot_output_count, e->time);
 
-  /* Close the file for now */
+  /* Close the file */
   H5Fclose(h_file);
+  H5Pclose(h_props);
 
 #else
   error(
@@ -996,9 +1009,15 @@ void write_output_distributed(struct engine* e,
     }
   }
 
+  /* Set the minimal API version to avoid issues with advanced features */
+  hid_t h_props = H5Pcreate(H5P_FILE_ACCESS);
+  herr_t err = H5Pset_libver_bounds(h_props, HDF5_LOWEST_FILE_FORMAT_VERSION,
+                                    HDF5_HIGHEST_FILE_FORMAT_VERSION);
+  if (err < 0) error("Error setting the hdf5 API version");
+
   /* Open file */
   /* message("Opening file '%s'.", fileName); */
-  h_file = H5Fcreate(fileName, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+  h_file = H5Fcreate(fileName, H5F_ACC_TRUNC, H5P_DEFAULT, h_props);
   if (h_file < 0) error("Error while opening file '%s'.", fileName);
 
   /* Open header to write simulation properties */
@@ -1484,6 +1503,7 @@ void write_output_distributed(struct engine* e,
 
   /* Close file */
   H5Fclose(h_file);
+  H5Pclose(h_props);
 
 #if H5_VERSION_GE(1, 10, 0)
 
@@ -1506,8 +1526,13 @@ void write_output_distributed(struct engine* e,
     char fileName_virtual[1030];
     sprintf(fileName_virtual, "%s.hdf5", fileName_base);
 
+    h_props = H5Pcreate(H5P_FILE_ACCESS);
+    err = H5Pset_libver_bounds(h_props, HDF5_LOWEST_FILE_FORMAT_VERSION,
+                               HDF5_HIGHEST_FILE_FORMAT_VERSION);
+    if (err < 0) error("Error setting the hdf5 API version");
+
     /* Open the snapshot on rank 0 */
-    h_file_cells = H5Fopen(fileName_virtual, H5F_ACC_RDWR, H5P_DEFAULT);
+    h_file_cells = H5Fopen(fileName_virtual, H5F_ACC_RDWR, h_props);
     if (h_file_cells < 0)
       error("Error while opening file '%s' on rank %d.", fileName_virtual,
             mpi_rank);
@@ -1535,6 +1560,7 @@ void write_output_distributed(struct engine* e,
   if (mpi_rank == 0) {
     H5Gclose(h_grp_cells);
     H5Fclose(h_file_cells);
+    H5Pclose(h_props);
   }
 
 #endif

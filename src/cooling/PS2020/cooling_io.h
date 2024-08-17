@@ -177,18 +177,18 @@ __attribute__((always_inline)) INLINE static int cooling_write_particles(
       "Temperatures", FLOAT, 1, UNIT_CONV_TEMPERATURE, 0.f, parts, xparts,
       convert_part_T, "Temperatures of the gas particles");
 
-  list[1] = io_make_output_field_convert_part(
+  list[1] = io_make_physical_output_field_convert_part(
       "SubgridTemperatures", FLOAT, 1, UNIT_CONV_TEMPERATURE, 0.f, parts,
-      xparts, convert_part_sub_T,
+      xparts, /*can convert to comoving=*/1, convert_part_sub_T,
       "The subgrid temperatures if the particles are within deltaT of the "
       "entropy floor the subgrid temperature is calculated assuming a "
       "pressure equilibrium on the entropy floor, if the particles are "
       "above deltaT of the entropy floor the subgrid temperature is "
       "identical to the SPH temperature.");
 
-  list[2] = io_make_output_field_convert_part(
-      "SubgridPhysicalDensities", FLOAT, 1, UNIT_CONV_DENSITY, 0.f, parts,
-      xparts, convert_part_sub_rho,
+  list[2] = io_make_physical_output_field_convert_part(
+      "SubgridPhysicalDensities", FLOAT, 1, UNIT_CONV_DENSITY, -3.f, parts,
+      xparts, /*can convert to comoving=*/1, convert_part_sub_rho,
       "The subgrid physical density if the particles are within deltaT of the "
       "entropy floor the subgrid density is calculated assuming a pressure "
       "equilibrium on the entropy floor, if the particles are above deltaT "
@@ -222,15 +222,15 @@ __attribute__((always_inline)) INLINE static int cooling_write_particles(
       "floor, by extrapolating to the equilibrium curve assuming constant "
       "pressure.");
 
-  list[6] = io_make_output_field_convert_part(
-      "ElectronNumberDensities", DOUBLE, 1, UNIT_CONV_NUMBER_DENSITY, 0.f,
-      parts, xparts, convert_part_e_density,
+  list[6] = io_make_physical_output_field_convert_part(
+      "ElectronNumberDensities", DOUBLE, 1, UNIT_CONV_NUMBER_DENSITY, -3.f,
+      parts, xparts, /*can convert to comoving=*/1, convert_part_e_density,
       "Electron number densities in the physical frame computed based on the "
       "cooling tables. This is 0 for star-forming particles.");
 
-  list[7] = io_make_output_field_convert_part(
+  list[7] = io_make_physical_output_field_convert_part(
       "ComptonYParameters", DOUBLE, 1, UNIT_CONV_AREA, 0.f, parts, xparts,
-      convert_part_y_compton,
+      /*can convert to comoving=*/0, convert_part_y_compton,
       "Compton y parameters in the physical frame computed based on the "
       "cooling tables. This is 0 for star-forming particles.");
 
