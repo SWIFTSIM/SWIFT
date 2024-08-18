@@ -29,15 +29,15 @@
 #define proxy_buffinit 100
 
 /* Proxy tag arithmetic. */
-#define proxy_tag_shift 8
+#define proxy_tag_shift 9
 #define proxy_tag_count 0
 #define proxy_tag_parts 1
 #define proxy_tag_xparts 2
 #define proxy_tag_gparts 3
 #define proxy_tag_sparts 4
 #define proxy_tag_bparts 5
-#define proxy_tag_cells 6
-#define proxy_tag_sinks 7
+#define proxy_tag_sinks 6
+#define proxy_tag_cells 7
 
 /**
  * @brief The different reasons a cell can be in a proxy
