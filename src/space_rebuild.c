@@ -514,6 +514,8 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
       error("Number of sparts changing after repartition");
     if (s->nr_gparts != nr_gparts)
       error("Number of gparts changing after repartition");
+    if (s->nr_sinks != nr_sinks)
+      error("Number of sinks changing after repartition");
 #endif
   }
 
