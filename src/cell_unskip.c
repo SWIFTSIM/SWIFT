@@ -2973,6 +2973,11 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
       if (cell_need_rebuild_for_sinks_pair(ci, cj)) rebuild = 1;
       if (cell_need_rebuild_for_sinks_pair(cj, ci)) rebuild = 1;
 
+      if (ci_active)
+        scheduler_activate(s, ci->hydro.super->sinks.sink_ghost1);
+      if (cj_active)
+        scheduler_activate(s, cj->hydro.super->sinks.sink_ghost1);
+
 #ifdef WITH_MPI
       /* Activate the send/recv tasks. */
       if (ci_nodeID != nodeID) {
