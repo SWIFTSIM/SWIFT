@@ -55,6 +55,7 @@
 #include "restart.h"
 #include "rt.h"
 #include "sort_part.h"
+#include "sink.h"
 #include "space_unique_id.h"
 #include "star_formation.h"
 #include "stars.h"
@@ -2325,6 +2326,31 @@ void space_check_bpart_swallow_mapper(void *map_data, int nr_bparts,
 }
 
 /**
+ * @brief #threadpool mapper function for the sink swallow debugging check
+ */
+void space_check_sink_swallow_mapper(void *map_data, int nr_sinks,
+                                      void *extra_data) {
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Unpack the data */
+  struct sink *restrict sinks = (struct sink *)map_data;
+
+  /* Verify that all particles have been swallowed or are untouched */
+  for (int k = 0; k < nr_sinks; k++) {
+
+    if (sinks[k].time_bin == time_bin_inhibited) continue;
+
+    const long long swallow_id =
+        sink_get_sink_swallow_id(&sinks[k].merger_data);
+
+    if (swallow_id != -1)
+      error("Sink particle has not been swallowed! id=%lld", sinks[k].id);
+  }
+#else
+  error("Calling debugging code without debugging flag activated.");
+#endif
+}
+
+/**
  * @brief Checks that all particles have their swallow flag in a "no swallow"
  * state.
  *
@@ -2341,6 +2367,10 @@ void space_check_swallow(struct space *s) {
 
   threadpool_map(&s->e->threadpool, space_check_bpart_swallow_mapper, s->bparts,
                  s->nr_bparts, sizeof(struct bpart), threadpool_auto_chunk_size,
+                 /*extra_data=*/NULL);
+
+  threadpool_map(&s->e->threadpool, space_check_sink_swallow_mapper, s->sinks,
+                 s->nr_sinks, sizeof(struct sink), threadpool_auto_chunk_size,
                  /*extra_data=*/NULL);
 #else
   error("Calling debugging code without debugging flag activated.");
