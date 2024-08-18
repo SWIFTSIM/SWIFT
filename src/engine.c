@@ -860,9 +860,12 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
                        sizeof(struct sink) * s->size_sinks_foreign) != 0)
       error("Failed to allocate foreign sink data.");
     bzero(s->sinks_foreign, s->size_sinks_foreign * sizeof(struct sink));
+
+    /* Note: If you ever see a sink particle with id = -666, the following
+       lines is the ones that sets the ID to this value. */
     for (size_t i = 0; i < s->size_sinks_foreign; ++i) {
       s->sinks_foreign[i].time_bin = time_bin_not_created;
-      s->sinks_foreign[i].id = -43;
+      s->sinks_foreign[i].id = -666;
     }
   }
 
