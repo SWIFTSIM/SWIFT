@@ -759,9 +759,10 @@ int main(int argc, char *argv[]) {
                              perturbation, h_pert, swiftOutputFileName,
                              bruteForceOutputFileName, serial_inter_func,
                              vec_inter_func, init, finalise);
-
+#ifdef WITH_VECTORIZATION
   cache_clean(&runner->ci_cache);
   cache_clean(&runner->cj_cache);
+#endif
   free(runner);
   return 0;
 }
