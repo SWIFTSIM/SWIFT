@@ -91,6 +91,7 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
   }
 
   /* Put the parts into the corresponding proxies. */
+  message("Put Npart = %lld into its proxies", *Npart);
   for (size_t k = 0; k < *Npart; k++) {
 
     /* Ignore the particles we want to get rid of (inhibited, ...). */
@@ -136,6 +137,7 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
   }
 
   /* Put the sparts into the corresponding proxies. */
+  message("Put Nspart = %lld into its proxies, offset_spart = %i", *Nspart, offset_sparts);
   for (size_t k = 0; k < *Nspart; k++) {
 
     /* Ignore the particles we want to get rid of (inhibited, ...). */
@@ -220,8 +222,9 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
   }
 
   /* Put the sinks into the corresponding proxies. */
+  message("Put Nsink = %lld into its proxies, offset_sink = %i", *Nsink, offset_sinks);
   for (size_t k = 0; k < *Nsink; k++) {
-
+    message("sink... k = %lld", k);
     /* Ignore the particles we want to get rid of (inhibited, ...). */
     if (ind_sink[k] == -1) continue;
 
@@ -251,6 +254,7 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
 #endif
 
     /* Load the sink into the proxy */
+    message("Loading the sink into the proxy");
     proxy_sinks_load(&e->proxies[pid], &s->sinks[offset_sinks + k], 1);
 
 #ifdef WITH_CSDS
@@ -261,6 +265,7 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
   }
 
   /* Put the gparts into the corresponding proxies. */
+  message("Put Ngpart = %lld into its proxies", *Ngpart);
   for (size_t k = 0; k < *Ngpart; k++) {
 
     /* Ignore the particles we want to get rid of (inhibited, ...). */
@@ -340,6 +345,7 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
     count_sparts_in += e->proxies[k].nr_sparts_in;
     count_bparts_in += e->proxies[k].nr_bparts_in;
     count_sinks_in += e->proxies[k].nr_sinks_in;
+    message("Counting entering particles, k = %i, nr_proxies = %d", k, e->nr_proxies);
   }
   if (e->verbose) {
 
