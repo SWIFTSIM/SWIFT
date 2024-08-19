@@ -34,7 +34,7 @@
 __attribute__((always_inline)) INLINE static float mhd_get_magnetic_energy(
     const struct part *p, const struct xpart *xp, const float mu_0, const float a) {
 
-  const float afact = pow(a,2.f*mhd_comoving_factor);
+  const float afact = pow(a,2.f * mhd_comoving_factor);
 
   const float b2 = p->mhd_data.BPred[0] * p->mhd_data.BPred[0] +
                    p->mhd_data.BPred[1] * p->mhd_data.BPred[1] +
@@ -249,10 +249,9 @@ __attribute__((always_inline)) INLINE static float hydro_get_dGau_dt(
     const struct part *restrict p, const float Gauge, const struct cosmology *c,
     const float mu0) {
 
-  const float v_sig = mhd_get_magnetosonic_speed(p, c->a, mu0);
-  //const float afac1 = pow(c->a, 2.f * c->a_factor_sound_speed);
-  //const float afac2 = pow(c->a, (c->a_factor_sound_speed - 1.f));
-  const float afac1 = pow(c->a_factor_sound_speed, 2.f);
+  //const float v_sig = mhd_get_magnetosonic_speed(p, c->a, mu0);
+  const float v_sig = 2.f*p->viscosity.v_sig;
+  const float afac1 = pow(c->a_factor_sound_speed, 2.f) * c->a * c->a;
   const float afac2 = c->a_factor_sound_speed * c->a;
   // Everything is with a2 for the time integration
   /* Hyperbolic term */
@@ -260,11 +259,11 @@ __attribute__((always_inline)) INLINE static float hydro_get_dGau_dt(
   /* Parabolic evolution term */
   const float Damping_Term = 4.f * afac2 * v_sig * Gauge / p->h;
   /* Density change term */
-  const float DivV_Term = 0.f * ( hydro_get_div_v(p) - 3.f * c->H ) * Gauge;
+  const float DivV_Term = c->a * c->a * ( hydro_get_div_v(p) - 3.f * c->H ) * Gauge;
   /* Cosmological term */
   const float Hubble_Term = (2.f + mhd_comoving_factor) * c->H * c->a * c->a * Gauge;
 
-  return (-Source_Term - Damping_Term - DivV_Term - Hubble_Term);
+  return (- Source_Term - Damping_Term - DivV_Term - Hubble_Term);
 }
 
 /**
@@ -527,7 +526,7 @@ __attribute__((always_inline)) INLINE static void mhd_end_force(
     struct part *p, const struct cosmology *cosmo,
     const struct hydro_props *hydro_props, const float mu_0) {
 
-  float a_fac = mhd_comoving_factor * cosmo->a * cosmo->a * cosmo->H;
+  float a_fac = (mhd_comoving_factor + 2.f) * cosmo->a * cosmo->a * cosmo->H;
   p->mhd_data.dAdt[0] -= a_fac * p->mhd_data.APred[0];
   p->mhd_data.dAdt[1] -= a_fac * p->mhd_data.APred[1];
   p->mhd_data.dAdt[2] -= a_fac * p->mhd_data.APred[2];
@@ -578,8 +577,8 @@ __attribute__((always_inline)) INLINE static void mhd_kick_extra(
 __attribute__((always_inline)) INLINE static void mhd_convert_quantities(
     struct part *p, struct xpart *xp, const struct cosmology *cosmo,
     const struct hydro_props *hydro_props) {
-
-  const float a_fact = pow(cosmo->a, -mhd_comoving_factor - 1.f);
+	
+  const float a_fact = pow(cosmo->a, - mhd_comoving_factor - 1.f);
   /* Set Restitivity Eta */
   p->mhd_data.resistive_eta = hydro_props->mhd.mhd_eta;
 
