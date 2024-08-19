@@ -7,6 +7,14 @@
 #    CLANG_FORMAT_CMD=clang-format ./format.sh
 clang=${CLANG_FORMAT_CMD:="clang-format-18"}
 
+# Only works in a git checkout. Eat error and just make a report
+# so we don't break CI.
+git status > /dev/null 2>&1
+if test "$?" != "0"; then
+   echo "Not operating in a git checkout. Cannot procede."
+   exit
+fi
+
 # Formatting command
 cmd="$clang -style=file $(git ls-files | grep '\.[ch]$')"
 
