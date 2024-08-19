@@ -636,7 +636,8 @@ void runner_do_sinks_gas_swallow(struct runner *r, struct cell *c, int timer) {
 
             /* If the gas particle is local, remove it */
             if (c->nodeID == e->nodeID) {
-
+	      message("Sink %lld removing gas particle %lld (local sink case)",
+                      sp->id, p->id);
               lock_lock(&e->s->lock);
 
               /* Re-check that the particle has not been removed
@@ -846,7 +847,7 @@ void runner_do_sinks_sink_swallow(struct runner *r, struct cell *c, int timer) {
 
 #ifdef SWIFT_DEBUG_CHECKS
         if (cell_sp->ti_drift != e->ti_current)
-          error("Trying to swallow an un-drifted particle.");
+          error("Trying to swallow an un-drifted particle %lld.", cell_sp->id);
 #endif
 
         /* ID of the sink swallowing this particle */
@@ -885,8 +886,8 @@ void runner_do_sinks_sink_swallow(struct runner *r, struct cell *c, int timer) {
             if (lock_unlock(&s->lock) != 0)
               error("Failed to unlock the space.");
 
-            // message("sink %lld swallowing sink particle %lld", sp->id,
-            // cell_sp->id);
+            message("sink %lld swallowing sink particle %lld (local sink case)", sp->id,
+            cell_sp->id);
 
             /* If the sink particle is local, remove it */
             if (c->nodeID == e->nodeID) {
@@ -931,7 +932,7 @@ void runner_do_sinks_sink_swallow(struct runner *r, struct cell *c, int timer) {
                 break;
               }
 
-              message("Sink %lld removing sink particle %lld (foreign sink case)",
+              message("Sink %lld swallowing sink particle %lld (foreign sink case)",
                       sink->id, cell_sp->id);
 
               /* Finally, remove the gas particle from the system */
