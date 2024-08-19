@@ -176,7 +176,7 @@ runner_iact_nonsym_sinks_sink_swallow(const float r2, const float dx[3],
 
   /* Compute the Newtonian or truncated potential the sink exherts onto the
      gas particle */
-  const float eps = gravity_get_softening(si->gpart, grav_props);
+  const float eps = 1e-4; //gravity_get_softening(si->gpart, grav_props);
   const float eps2 = eps * eps;
   const float eps_inv = 1.f / eps;
   const float eps_inv3 = eps_inv * eps_inv * eps_inv;
@@ -218,6 +218,8 @@ runner_iact_nonsym_sinks_sink_swallow(const float r2, const float dx[3],
       sj->merger_data.swallow_mass = si->mass;
     }
   }
+
+  message("Sink %lld swallows sink %lld", si->id, sj->id);
 
 #ifdef DEBUG_INTERACTIONS_SINKS
   /* Update ngb counters */
@@ -326,7 +328,7 @@ runner_iact_nonsym_sinks_gas_swallow(const float r2, const float dx[3],
 
     /* Compute the Newtonian or truncated potential the sink exherts onto the
        gas particle */
-    const float eps = gravity_get_softening(si->gpart, grav_props);
+    const float eps = 1e-4 ; //gravity_get_softening(si->gpart, grav_props);
     const float eps2 = eps * eps;
     const float eps_inv = 1.f / eps;
     const float eps_inv3 = eps_inv * eps_inv * eps_inv;
@@ -357,7 +359,11 @@ runner_iact_nonsym_sinks_gas_swallow(const float r2, const float dx[3],
     /* Since this pair gas-sink is the most bounf, keep track of the
        E_mec_bound and set the swallow_id accordingly */
     pj->sink_data.E_mec_bound = E_mec_sink_part;
+
+    /* This line makes the MPI code crash with "undrifted sink particle"... */
     pj->sink_data.swallow_id = si->id;
+
+    message("Sink %lld swallows gas particle %lld", si->id, pj->id);
   }
 
 #ifdef DEBUG_INTERACTIONS_SINKS
