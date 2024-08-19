@@ -82,6 +82,10 @@ struct sink {
    * by merged-in sinks) */
   int number_of_direct_gas_swallows;
 
+  /*! Flag to determine if a sink has already changed its IMF from pop III to
+     pop II. */
+  int has_IMF_changed_from_popIII_to_popII;
+
   /*! Chemistry information (e.g. metal content at birth, swallowed metal
    * content, etc.) */
   struct chemistry_sink_data chemistry_data;

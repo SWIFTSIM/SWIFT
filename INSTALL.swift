@@ -99,7 +99,7 @@ before you can build it.
 
 
  - HDF5:
-	A HDF5 library (v. 1.8.x or higher) is required to read and
+	A HDF5 library (v. 1.10.x or higher) is required to read and
         write particle data. One of the commands "h5cc" or "h5pcc"
         should be available. If "h5pcc" is located then a parallel
         HDF5 built for the version of MPI located should be

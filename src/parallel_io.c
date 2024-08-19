@@ -1191,8 +1191,14 @@ void prepare_file(struct engine* e, const char* fileName,
   /* Prepare the XMF file for the new entry */
   xmfFile = xmf_prepare_file(xmfFileName);
 
+  /* Set the minimal API version to avoid issues with advanced features */
+  hid_t h_props = H5Pcreate(H5P_FILE_ACCESS);
+  herr_t err = H5Pset_libver_bounds(h_props, HDF5_LOWEST_FILE_FORMAT_VERSION,
+                                    HDF5_HIGHEST_FILE_FORMAT_VERSION);
+  if (err < 0) error("Error setting the hdf5 API version");
+
   /* Open HDF5 file with the chosen parameters */
-  hid_t h_file = H5Fcreate(fileName, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+  hid_t h_file = H5Fcreate(fileName, H5F_ACC_TRUNC, H5P_DEFAULT, h_props);
   if (h_file < 0) error("Error while opening file '%s'.", fileName);
 
   /* Write the part of the XMF file corresponding to this
@@ -1430,6 +1436,7 @@ void prepare_file(struct engine* e, const char* fileName,
 
   /* Close the file for now */
   H5Fclose(h_file);
+  H5Pclose(h_props);
 }
 
 /**
@@ -1684,6 +1691,11 @@ void write_output_parallel(struct engine* e,
 
   /* Prepare some file-access properties */
   hid_t plist_id = H5Pcreate(H5P_FILE_ACCESS);
+
+  /* Set the minimal API version to avoid issues with advanced features */
+  herr_t err = H5Pset_libver_bounds(plist_id, HDF5_LOWEST_FILE_FORMAT_VERSION,
+                                    HDF5_HIGHEST_FILE_FORMAT_VERSION);
+  if (err < 0) error("Error setting the hdf5 API version");
 
   /* Set some MPI-IO parameters */
   // MPI_Info_set(info, "IBM_largeblock_io", "true");
