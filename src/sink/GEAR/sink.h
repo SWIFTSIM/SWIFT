@@ -152,7 +152,8 @@ __attribute__((always_inline)) INLINE static void sink_init_part(
   cpd->E_rot_neighbours[0] = 0.f;
   cpd->E_rot_neighbours[1] = 0.f;
   cpd->E_rot_neighbours[2] = 0.f;
-  cpd->potential = 0.f;
+  /* cpd->potential = 0.f; */ /* The value was given by
+     sink_store_potential_in_part() */
   cpd->E_mec_bound = 0.f; /* Gravitationally bound particles will have
                              E_mec_bound < 0. This is checked before comparing
                              any other value with this one. So no need to put

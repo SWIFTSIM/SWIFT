@@ -64,7 +64,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_sink(
 
        Note to Darwin: Verify that this does not alter the behaviour of sinks
        without MPI. It should not, as the potential is stored after th egravity
-       computations with sink_store_potential_in_part() function. */
+       computations with sink_store_potential_in_part() function.*/
+
+    /* WARNING: This is 0 when the function is called... unless we do not init
+       the value to 0 in sink_init_part().
+       ---> Study the consequences of this choice. */
     float potential_i = pi->sink_data.potential;
     float potential_j = pj->sink_data.potential;
 
