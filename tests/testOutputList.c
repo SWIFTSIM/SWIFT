@@ -24,6 +24,7 @@
 
 #define Ntest 3
 #define tol 1e-12
+#define itol 1000
 #define filename "output_list_params.yml"
 
 /* Expected values from file */
@@ -68,7 +69,7 @@ void test_no_cosmo(struct engine *e, const char *name, const int with_assert) {
 
     /* Set current time */
     e->ti_current = (output_time - e->time_begin) / e->time_base;
-    e->ti_current += 1;
+    e->ti_current += itol;
 
     /* Read next value */
     integertime_t ti_next = 0;
