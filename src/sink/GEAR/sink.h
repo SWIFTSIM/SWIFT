@@ -62,30 +62,32 @@ INLINE static void sink_update_target_mass(struct sink* sink,
   const struct feedback_props* feedback_props = e->feedback_props;
 
   /* Pick the correct table. (if only one table, threshold is < 0) */
-
   const float metal =
       chemistry_get_sink_total_iron_mass_fraction_for_feedback(sink);
   const float threshold = feedback_props->metallicity_max_first_stars;
 
+  /* If metal < threshold, then the sink generates first star particles. */
+  const int is_first_star = metal < threshold;
   const struct stellar_model* model;
   double minimal_discrete_mass;
 
-  if (metal >= threshold) {
+  /* Take the correct values if your are a first star or not. */
+  if (!is_first_star) /* (metal >= threshold)*/ {
     model = &feedback_props->stellar_model;
-    minimal_discrete_mass = sink_props->minimal_discrete_mass_first_stars;
+    minimal_discrete_mass = sink_props->minimal_discrete_mass;
   } else {
     model = &feedback_props->stellar_model_first_stars;
-    minimal_discrete_mass = sink_props->minimal_discrete_mass;
+    minimal_discrete_mass = sink_props->minimal_discrete_mass_first_stars;
   }
 
   const struct initial_mass_function* imf = &model->imf;
 
   if (random_number < imf->sink_Pc) {
-    // we are dealing with the continous part of the IMF
-    sink->target_mass = imf->sink_stellar_particle_mass;
-    sink->target_type = star_population_no_SNII;
+    /* We are dealing with the continous part of the IMF. */
+    sink->target_mass = imf->stellar_particle_mass;
+    sink->target_type = star_population_continuous_IMF;
   } else {
-    // we are dealing with the discrete part of the IMF
+    /* We are dealing with the discrete part of the IMF. */
     random_number = random_unit_interval_part_ID_and_index(
         sink->id, star_counter + 1, e->ti_current,
         random_number_sink_formation);
@@ -721,14 +723,13 @@ INLINE static void sink_copy_properties_to_star(
   sp->feedback_data.star_type = (enum star_feedback_type)sink->target_type;
 
   /* Initialize the feedback */
-  if (sp->feedback_data.star_type == single_star)
-    feedback_init_after_star_formation(sp, e->feedback_props);
+  feedback_init_after_star_formation(sp, e->feedback_props, sink->target_type);
 
   /* sph smoothing */
   sp->h = sink->r_cut;
 
-  /* mass at birth */
-  sp->sf_data.birth_mass = sp->mass;
+  /* Note: The sink module need to be compiled with GEAR SF as we store data
+     in the SF struct. However, we do not need to run with --star-formation */
 
   /* Store either the birth_scale_factor or birth_time depending  */
   if (with_cosmology) {
