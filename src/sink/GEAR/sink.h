@@ -461,8 +461,6 @@ INLINE static void sink_copy_properties(
   sink->n_stars = 0;
   sink->has_IMF_changed_from_popIII_to_popII = 0;
 
-  sink->has_IMF_changed_from_popIII_to_popII = 0;
-
   /* setup the target mass for sink star formation */
   sink_update_target_mass(sink, sink_props, e, 0);
 
