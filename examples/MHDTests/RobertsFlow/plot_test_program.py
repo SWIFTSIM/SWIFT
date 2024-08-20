@@ -5,8 +5,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 results_directory_name = "test_results/"
-tau_max = 60
-take_last = int(0.5 / (5e-2))
+tau_max = 100
+take_last = int(90 / (5e-2))
 
 
 def load_test_run_parameters():
