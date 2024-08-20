@@ -68,14 +68,12 @@ INLINE static void sink_update_target_mass(struct sink* sink,
   const struct feedback_props* feedback_props = e->feedback_props;
 
   /* Pick the correct table. (if only one table, threshold is < 0) */
-
   const float metal =
       chemistry_get_sink_total_iron_mass_fraction_for_feedback(sink);
   const float threshold = feedback_props->metallicity_max_first_stars;
 
-  /* If metal < threshold, then the sink generate first star particles. */
+  /* If metal < threshold, then the sink generates first star particles. */
   const int is_first_star = metal < threshold;
-
   const struct stellar_model* model;
   double minimal_discrete_mass;
 
@@ -83,12 +81,9 @@ INLINE static void sink_update_target_mass(struct sink* sink,
   if (!is_first_star) /* (metal >= threshold)*/ {
     model = &feedback_props->stellar_model;
     minimal_discrete_mass = sink_props->minimal_discrete_mass;
-    /* Old code: minimal_discrete_mass =
-     * sink_props->minimal_discrete_mass_first_stars;*/
   } else {
     model = &feedback_props->stellar_model_first_stars;
     minimal_discrete_mass = sink_props->minimal_discrete_mass_first_stars;
-    /* Old code: minimal_discrete_mass = sink_props->minimal_discrete_mass; */
   }
 
   const struct initial_mass_function* imf = &model->imf;

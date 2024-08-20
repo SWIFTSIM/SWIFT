@@ -171,11 +171,11 @@ void feedback_will_do_feedback(
     const int with_cosmology, const struct cosmology* cosmo, const double time,
     const struct unit_system* us, const struct phys_const* phys_const,
     const integertime_t ti_current, const double time_base) {
-  
+
   /* Zero the energy of supernovae */
   sp->feedback_data.energy_ejected = 0;
   sp->feedback_data.will_do_feedback = 0;
-  
+
   /* quit if the birth_scale_factor or birth_time is negative */
   if (sp->birth_scale_factor < 0.0 || sp->birth_time < 0.0) return;
 
@@ -296,8 +296,8 @@ void feedback_init_spart(struct spart* sp) {
  * @param star_type The stellar particle type.
  */
 void feedback_init_after_star_formation(
-     struct spart* sp, const struct feedback_props* feedback_props,
-     enum star_feedback_type star_type) {
+    struct spart* sp, const struct feedback_props* feedback_props,
+    enum star_feedback_type star_type) {
 
   feedback_init_spart(sp);
 

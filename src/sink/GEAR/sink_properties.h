@@ -155,7 +155,6 @@ INLINE static void sink_props_init_probabilities(
   if (Mc == 0) {
     imf->sink_Pc = 0;
     imf->stellar_particle_mass = 0;
-
     message("probability of the continuous part    : %g", 0.);
     message("probability of the discrete   part    : %g", 1.);
     return;
