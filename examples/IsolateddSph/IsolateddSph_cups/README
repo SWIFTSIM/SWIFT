@@ -1,0 +1,18 @@
+We show here how to run such initial conditions with Swift.
+
+To generate the initial conditions locally, if pNbody is installed, run:
+
+ic_gen_2_slopes+plummer -q --Rmin 1e-3 --Rmax 50  --M200 5.0e9 --c 12  --alpha 1 --beta 3 --Mtot 1e7 -a 0.5 --ptype1 4 --ptype2 1  --mass1 8000 --mass2  8000   -t swift -o dSph_cusp.hdf5
+
+If you don't have access to pNbody, you can simply skip this step. The initial conditions will automatically 
+be downloaded when launching the run script (see below).
+
+
+To run this example, SWIFT must be configured with the following options:
+
+./configure
+
+To start the simulation:
+
+./run.sh
+
