@@ -65,7 +65,7 @@ struct initial_mass_function {
   float sink_Pc;
 
   /*! Stellar mass of the continous part of the IMF (in solar mass). */
-  float sink_stellar_particle_mass;
+  float stellar_particle_mass;
 };
 
 /**

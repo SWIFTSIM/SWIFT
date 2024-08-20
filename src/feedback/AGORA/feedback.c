@@ -244,14 +244,18 @@ void feedback_init_spart(struct spart* sp) {
 }
 
 /**
- * @brief Reset the feedback field when the spart is not
- * in a correct state for feeedback_will_do_feedback.
+ * @brief Prepare the feedback fields after a star is born.
  *
- * This function is called in the timestep task.
+ * This function is called in the functions sink_copy_properties_to_star() and
+ * star_formation_copy_properties().
+ *
+ * @param sp The #spart to act upon.
+ * @param feedback_props The feedback perties to use.
+ * @param star_type The stellar particle type.
  */
 void feedback_init_after_star_formation(
-    struct spart* sp, const struct feedback_props* feedback_props) {
-  feedback_init_spart(sp);
+    struct spart* sp, const struct feedback_props* feedback_props,
+    enum star_feedback_type star_type) {
 
   /* Zero the energy of supernovae */
   sp->feedback_data.energy_ejected = 0;
@@ -261,6 +265,10 @@ void feedback_init_after_star_formation(
 
   /* The particle is not idle */
   sp->feedback_data.idle = 0;
+
+  /* Give to the star its appropriate type: single star, continuous IMF star or
+     single population star */
+  sp->feedback_data.star_type = star_type;
 }
 
 /**
