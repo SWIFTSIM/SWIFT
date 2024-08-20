@@ -239,6 +239,121 @@ INLINE static void calculate_R3(const struct engine* e, const struct part* p,
   }
 }
 
+INLINE static void calculate_OW_trigger(const struct engine* e,
+                                        const struct part* p,
+                                        const struct xpart* xp, float* ret) {
+
+  /* Calculate overwinding trigger */
+
+  /* Get advection and diffusion sources in induction equation*/
+
+  const float Adv_A[3] = {p->mhd_data.Adv_A_source[0],
+                          p->mhd_data.Adv_A_source[1],
+                          p->mhd_data.Adv_A_source[2]};
+
+  const float Abs_Adv_A =
+      sqrtf(Adv_A[0] * Adv_A[0] + Adv_A[1] * Adv_A[1] + Adv_A[2] * Adv_A[2]);
+
+  const float Diff_A[3] = {p->mhd_data.Diff_A_source[0],
+                           p->mhd_data.Diff_A_source[1],
+                           p->mhd_data.Diff_A_source[2]};
+
+  const float Abs_Diff_A = sqrtf(Diff_A[0] * Diff_A[0] + Diff_A[1] * Diff_A[1] +
+                                 Diff_A[2] * Diff_A[2]);
+
+  /* Estimating local magnetic Reynolds number*/
+
+  const float Rm_local = Abs_Adv_A / (Abs_Diff_A + FLT_MIN);
+
+  /* Accounting for advection direction*/
+
+  const float Cos_Adv_Diff =
+      (Diff_A[0] * Adv_A[0] + Diff_A[1] * Adv_A[1] + Diff_A[2] * Adv_A[2]) /
+      (Abs_Adv_A * Abs_Diff_A + FLT_MIN);
+
+  const float sign_prefactor = 0.5 * (1 - Cos_Adv_Diff);
+
+  /* Calculating ratio of local laplacian to largest resolvable laplacian*/
+
+  const float Delta_A[3] = {p->mhd_data.Delta_A[0], p->mhd_data.Delta_A[1],
+                            p->mhd_data.Delta_A[2]};
+
+  const float Abs_Delta_A =
+      sqrtf(Delta_A[0] * Delta_A[0] + Delta_A[1] * Delta_A[1] +
+            Delta_A[2] * Delta_A[2]);
+
+  const float A[3] = {p->mhd_data.APred[0], p->mhd_data.APred[1],
+                      p->mhd_data.APred[2]};
+  const float Aabs = sqrtf(A[0] * A[0] + A[1] * A[1] + A[2] * A[2]);
+
+  const float Max_Delta_A = 2 * Aabs / (p->h * p->h + FLT_MIN);
+
+  const float Laplace_ratio = Abs_Delta_A / (Max_Delta_A + FLT_MIN);
+
+  /* Overwinding triger value */
+
+  ret[0] = Rm_local * sign_prefactor * Laplace_ratio;
+}
+
+INLINE static void calculate_effective_resistivity(const struct engine* e,
+                                                   const struct part* p,
+                                                   const struct xpart* xp,
+                                                   float* ret) {
+
+  /* Calculate effective resistivity of the code (physical+numerical) */
+
+  /* Get diffusion source and laplacian */
+
+  const float Diff_A[3] = {p->mhd_data.Diff_A_source[0],
+                           p->mhd_data.Diff_A_source[1],
+                           p->mhd_data.Diff_A_source[2]};
+
+  const float Abs_Diff_A = sqrtf(Diff_A[0] * Diff_A[0] + Diff_A[1] * Diff_A[1] +
+                                 Diff_A[2] * Diff_A[2]);
+
+  const float Delta_A[3] = {p->mhd_data.Delta_A[0], p->mhd_data.Delta_A[1],
+                            p->mhd_data.Delta_A[2]};
+
+  const float Abs_Delta_A =
+      sqrtf(Delta_A[0] * Delta_A[0] + Delta_A[1] * Delta_A[1] +
+            Delta_A[2] * Delta_A[2]);
+
+  /* Effective resistivity */
+
+  const float effective_resistivity = Abs_Diff_A / (Abs_Delta_A + FLT_MIN);
+
+  ret[0] = effective_resistivity;
+}
+
+INLINE static void calculate_Rm_local(const struct engine* e,
+                                      const struct part* p,
+                                      const struct xpart* xp, float* ret) {
+
+  /* Calculate local magnetic Reynolds number */
+
+  /* Get advection and diffusion sources in induction equation*/
+
+  const float Adv_A[3] = {p->mhd_data.Adv_A_source[0],
+                          p->mhd_data.Adv_A_source[1],
+                          p->mhd_data.Adv_A_source[2]};
+
+  const float Abs_Adv_A =
+      sqrtf(Adv_A[0] * Adv_A[0] + Adv_A[1] * Adv_A[1] + Adv_A[2] * Adv_A[2]);
+
+  const float Diff_A[3] = {p->mhd_data.Diff_A_source[0],
+                           p->mhd_data.Diff_A_source[1],
+                           p->mhd_data.Diff_A_source[2]};
+
+  const float Abs_Diff_A = sqrtf(Diff_A[0] * Diff_A[0] + Diff_A[1] * Diff_A[1] +
+                                 Diff_A[2] * Diff_A[2]);
+
+  /* Estimating local magnetic Reynolds number*/
+
+  const float Rm_local = Abs_Adv_A / (Abs_Diff_A + FLT_MIN);
+
+  ret[0] = Rm_local;
+}
+
 /**
  * @brief Specifies which particle fields to write to a dataset
  *
@@ -303,8 +418,24 @@ INLINE static int mhd_write_particles(const struct part* parts,
       "gradient scale. Sensetivity to particle noise depends on "
       "signal_to_noise parameter, default is 10 (if 1 - weak noise filtering, "
       "if 100 - strong noise filtering)");
+  list[9] = io_make_output_field_convert_part(
+      "OWTrigger", FLOAT, 1, UNIT_CONV_NO_UNITS, 0, parts, xparts,
+      calculate_OW_trigger,
+      "Trigger, indicates if localy the magnetic field advection is limited by "
+      "the "
+      "resolution of the simulation. If total magnetic diffusion is large "
+      "enough, the "
+      "magnetic field gradients will stay below maximal resolvable gradient"
+      "of B/h");
+  list[10] = io_make_output_field_convert_part(
+      "TotalEffectiveResistivity", FLOAT, 1, UNIT_CONV_MAGNETIC_DIFFUSIVITY, 0, parts,
+      xparts, calculate_effective_resistivity,
+      "Shows local value of total resistivity of the code");
+  list[11] = io_make_output_field_convert_part(
+      "RmLocal", FLOAT, 1, UNIT_CONV_NO_UNITS, 0, parts, xparts,
+      calculate_Rm_local, "Shows local value of magnetic Reynolds number");
 
-  return 9;
+  return 12;
 }
 
 /**

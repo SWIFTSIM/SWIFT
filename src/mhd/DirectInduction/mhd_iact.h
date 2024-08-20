@@ -584,6 +584,24 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   pj->mhd_data.B_over_rho_dt[0] += mi * Qj * grad_psi_j * dx[0];
   pj->mhd_data.B_over_rho_dt[1] += mi * Qj * grad_psi_j * dx[1];
   pj->mhd_data.B_over_rho_dt[2] += mi * Qj * grad_psi_j * dx[2];
+
+  /* Save induction sources */
+
+  const float dB_dt_pref_Lap_i = 2.0f * r_inv / rhoj;
+  const float dB_dt_pref_Lap_j = 2.0f * r_inv / rhoi;
+
+  for (int i = 0; i < 3; i++) {
+    pi->mhd_data.Adv_B_source[i] += mj * dB_dt_pref_i * dB_dt_i[i];
+    pj->mhd_data.Adv_B_source[i] += mi * dB_dt_pref_j * dB_dt_j[i];
+    pi->mhd_data.Adv_B_source[i] -= mj * Qi * grad_psi_i * dx[i];
+    pj->mhd_data.Adv_B_source[i] += mi * Qj * grad_psi_j * dx[i];
+    pi->mhd_data.Diff_B_source[i] += mj * dB_dt_pref_PR_i * wi_dr * dB[i];
+    pj->mhd_data.Diff_B_source[i] -= mi * dB_dt_pref_PR_j * wj_dr * dB[i];
+    pi->mhd_data.Diff_B_source[i] += mj * art_diff_pref_i * dB[i];
+    pj->mhd_data.Diff_B_source[i] -= mi * art_diff_pref_j * dB[i];
+    pi->mhd_data.Delta_B[i] += mj * dB_dt_pref_Lap_i * wi_dr * dB[i];
+    pj->mhd_data.Delta_B[i] -= mi * dB_dt_pref_Lap_j * wj_dr * dB[i];
+  }
 }
 
 /**
@@ -828,6 +846,17 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   pi->mhd_data.B_over_rho_dt[0] -= mj * Qi * grad_psi_i * dx[0];
   pi->mhd_data.B_over_rho_dt[1] -= mj * Qi * grad_psi_i * dx[1];
   pi->mhd_data.B_over_rho_dt[2] -= mj * Qi * grad_psi_i * dx[2];
+
+  /* Save induction sources */
+  const float dB_dt_pref_Lap = 2.0f * r_inv / rhoj;
+
+  for (int i = 0; i < 3; i++) {
+    pi->mhd_data.Adv_B_source[i] += mj * dB_dt_pref_i * dB_dt_i[i];
+    pi->mhd_data.Adv_B_source[i] -= mj * Qi * grad_psi_i * dx[i];
+    pi->mhd_data.Diff_B_source[i] += mj * dB_dt_pref_PR * wi_dr * dB[i];
+    pi->mhd_data.Diff_B_source[i] += mj * art_diff_pref * dB[i];
+    pi->mhd_data.Delta_B[i] += mj * dB_dt_pref_Lap * wi_dr * dB[i];
+  }
 }
 
 #endif /* SWIFT_DIRECT_INDUCTION_MHD_H */
