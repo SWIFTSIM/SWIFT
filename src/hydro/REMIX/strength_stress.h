@@ -99,23 +99,17 @@ __attribute__((always_inline)) INLINE static void strength_add_artif_stress(
    * Adding the same constant to all diagonal elemenets is equivalent in any
    * basis: M + c*I = P (M + c*I) P^-1 = P M P^-1 + P (c*I) P^-1 = P M P^-1 +
    * c*I This is a lot easier than e.g. Gray, Monaghan, and Swift (2001) */
-  const float mean_h = 0.5f * (pi->h + pj->h);
-  const float delta_p =
-      0.5f * (powf(pi->mass / pi->rho, 1.f / hydro_dimension) +
-              powf(pj->mass / pj->rho, 1.f / hydro_dimension));
 
-  float wij_delta_p;
-  kernel_eval(delta_p / mean_h, &wij_delta_p);
+  // ### hardcoded for now so it works with Planetary (WC2)
+  const float eta_crit = 1.f / 1.487;//viscosity_global.eta_crit;
+  float eta_ab = min(r / pi->h, r / pj->h);
 
-  float wij_r;
-  kernel_eval(r / mean_h, &wij_r);
-
-  // This factor should be set in extra parameter file
-  const float artif_stress_n = method_artif_stress_n();
-  const float artif_stress_f = powf(wij_r / wij_delta_p, artif_stress_n);
-
-  // This factor should be set in extra parameter file
-  const float artif_stress_epsilon = method_artif_stress_epsilon();
+  float artif_stress_f = 0.f;
+  if (eta_ab < eta_crit) {
+    // ### hardcoded for now so it works with Planetary    
+    artif_stress_f = 1.f - expf(-(eta_ab - eta_crit) * (eta_ab - eta_crit) /
+                   0.04f);// hydro_slope_limiter_exp_denom);
+  }
 
   float max_principal_stress_i = pi->principal_stress_eigen[0];
   if (pi->principal_stress_eigen[1] > max_principal_stress_i)
@@ -132,10 +126,10 @@ __attribute__((always_inline)) INLINE static void strength_add_artif_stress(
   for (int i = 0; i < 3; ++i) {
     if (max_principal_stress_i > 0)
       pairwise_stress_tensor_i[i][i] -=
-          artif_stress_f * artif_stress_epsilon * max_principal_stress_i;
+          artif_stress_f * max_principal_stress_i;
     if (max_principal_stress_j > 0)
       pairwise_stress_tensor_j[i][i] -=
-          artif_stress_f * artif_stress_epsilon * max_principal_stress_j;
+          artif_stress_f * max_principal_stress_j;
   }
   #endif
 }
