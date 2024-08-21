@@ -129,7 +129,7 @@ INLINE static void stars_write_particles(const struct spart *sparts,
                                          const int with_cosmology) {
 
   /* Say how much we want to write */
-  *num_fields = 7;
+  *num_fields = 8;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_spart(
@@ -166,6 +166,12 @@ INLINE static void stars_write_particles(const struct spart *sparts,
   list[6] = io_make_output_field_convert_spart(
       "Potentials", FLOAT, 1, UNIT_CONV_POTENTIAL, -1.f, sparts,
       convert_spart_potential, "Gravitational potentials of the particles");
+
+  list[7] =
+      io_make_output_field("StellarParticleType", CHAR, 1, UNIT_CONV_NO_UNITS,
+                           0.f, sparts, star_type,
+                           "Type of stellar particle: 0=single star ; 1=stellar"
+                           " cont. IMF part.  ; 2=normal");
 
 #ifdef DEBUG_INTERACTIONS_STARS
 
