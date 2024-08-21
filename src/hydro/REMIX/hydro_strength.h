@@ -28,7 +28,6 @@
 
 #include "const.h"
 #include "equation_of_state.h"
-#include "hydro_kernels.h"
 #include "hydro_parameters.h"
 #include "math.h"
 #include "strength_utilities.h"

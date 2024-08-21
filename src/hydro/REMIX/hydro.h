@@ -815,12 +815,12 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   const float h = p->h;
   const float h_inv = 1.0f / h;                 /* 1/h */
   const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */
-  const float floor_rho = p->mass * kernel_root * h_inv_dim;
-  p->rho_evol = max(p->rho_evol, floor_rho);
+  const float min_rho = p->mass * kernel_root * h_inv_dim;
+  p->rho_evol = max(p->rho_evol, min_rho);
 
   /* Check against absolute minimum */
   const float min_u =
-      hydro_props->minimal_internal_energy / cosmo->a_factor_internal_energy;
+      max(hydro_props->minimal_internal_energy / cosmo->a_factor_internal_energy, FLT_MIN);
 
   p->u = max(p->u, min_u);
 
@@ -839,9 +839,6 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
     p->rho *= expf(w2);
 
   p->rho = p->rho_evol;
-
-  const float floor_u = FLT_MIN;
-  p->u = max(p->u, floor_u);
 
   /* Compute the new pressure */
   const float pressure =
