@@ -19,6 +19,7 @@
 #ifndef SWIFT_GEAR_SINK_PART_H
 #define SWIFT_GEAR_SINK_PART_H
 
+#include "stars/GEAR/stars_stellar_type.h"
 #include "timeline.h"
 
 #define sink_need_unique_id 1
@@ -55,7 +56,7 @@ struct sink {
   float target_mass;
 
   /*! Sink target stellar type */
-  enum star_feedback_type target_type;
+  enum stellar_type target_type;
 
   /*! Particle time bin */
   timebin_t time_bin;

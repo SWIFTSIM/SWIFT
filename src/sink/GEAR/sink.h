@@ -30,6 +30,7 @@
 #include "random.h"
 #include "sink_part.h"
 #include "sink_properties.h"
+#include "stars/GEAR/stars_stellar_type.h"
 
 /**
  * @brief Computes the time-step of a given sink particle.
@@ -720,7 +721,7 @@ INLINE static void sink_copy_properties_to_star(
   sp->gpart->mass = sp->mass;
 
   /* set feedback type */
-  sp->feedback_data.star_type = (enum star_feedback_type)sink->target_type;
+  sp->star_type = sink->target_type;
 
   /* Initialize the feedback */
   feedback_init_after_star_formation(sp, e->feedback_props, sink->target_type);
