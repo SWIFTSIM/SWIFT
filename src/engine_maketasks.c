@@ -1351,12 +1351,10 @@ void engine_addtasks_recv_sinks(struct engine *e, struct cell *c,
     }
     for (struct link *l = c->sinks.do_gas_swallow; l != NULL;
          l = l->next) {
-      scheduler_addunlock(s, t_density, l->t); /* Is this needed? */
       scheduler_addunlock(s, t_sink_gas_swallow, l->t);
     }
     for (struct link *l = c->sinks.do_sink_swallow; l != NULL;
          l = l->next) {
-      scheduler_addunlock(s, t_density, l->t); /* Is this needed? */
       scheduler_addunlock(s, t_sink_merger, l->t);
       scheduler_addunlock(s, l->t, tend);
     }
