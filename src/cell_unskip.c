@@ -2906,6 +2906,11 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
     struct task *t = l->t;
     struct cell *ci = t->ci;
     struct cell *cj = t->cj;
+    const int ci_active =
+        cell_is_active_sinks(ci, e) || cell_is_active_hydro(ci, e);
+
+    const int cj_active = (cj != NULL) && (cell_is_active_sinks(cj, e) ||
+                                           cell_is_active_hydro(cj, e));
 #ifdef WITH_MPI
     const int ci_nodeID = ci->nodeID;
     const int cj_nodeID = (cj != NULL) ? cj->nodeID : -1;
@@ -2913,12 +2918,6 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
     const int ci_nodeID = nodeID;
     const int cj_nodeID = nodeID;
 #endif
-
-    const int ci_active =
-        cell_is_active_sinks(ci, e) || cell_is_active_hydro(ci, e);
-
-    const int cj_active = (cj != NULL) && (cell_is_active_sinks(cj, e) ||
-                                           cell_is_active_hydro(cj, e));
 
     /* Only activate tasks that involve a local active cell. */
     if ((ci_active || cj_active) &&
@@ -2955,18 +2954,19 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
       else if (t->type == task_type_sub_pair) {
         cell_activate_subcell_sinks_tasks(ci, cj, s, with_timestep_sync);
       }
+
+      if (t->type == task_type_pair || t->type == task_type_sub_pair) {
+        /* Activate sink_in for each cell that is part of
+         * a pair task as to not miss any dependencies */
+        if (ci_nodeID == nodeID)
+          scheduler_activate(s, ci->hydro.super->sinks.sink_in);
+        if (cj_nodeID == nodeID)
+          scheduler_activate(s, cj->hydro.super->sinks.sink_in);
+      }
     }
 
     /* Only interested in pair interactions as of here. */
     if (t->type == task_type_pair || t->type == task_type_sub_pair) {
-
-      /* Activate sink_in for each cell that is part of
-       * a pair task as to not miss any dependencies */
-      if (ci_nodeID == nodeID)
-        scheduler_activate(s, ci->hydro.super->sinks.sink_in);
-
-      if (cj_nodeID == nodeID)
-        scheduler_activate(s, cj->hydro.super->sinks.sink_in);
 
       /* Check whether there was too much particle motion, i.e. the
          cell neighbour conditions were violated. */
@@ -2989,7 +2989,8 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
 				  ci_nodeID);
 
 	  /* Drift before you send */
-	  if (cj->sinks.count > 0) cell_activate_drift_sink(cj, s);
+	  /* if (cj->sinks.count > 0) */
+	  cell_activate_drift_sink(cj, s);
 	}
 
 	/* TODO: Maybe we need to activate these only if the cell sinks.count >
@@ -3052,7 +3053,8 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
 				  cj_nodeID);
 
 	  /* Drift before you send */
-	  if (ci->sinks.count > 0) cell_activate_drift_sink(ci, s);
+	  /* if (ci->sinks.count > 0) */
+	  cell_activate_drift_sink(ci, s);
 	}
 
 	/* Think carefully if we need the ci or cj count */
