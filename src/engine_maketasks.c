@@ -448,7 +448,6 @@ void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
       engine_addlink(e, &ci->mpi.send, t_sf_counts);
     }
 
-    /* HERE SF */
     if (with_star_formation_sink && (ci->hydro.count > 0 || ci->sinks.count > 0)) {
       engine_addlink(e, &ci->mpi.send, t_sf_counts);
     }
@@ -1050,7 +1049,6 @@ void engine_addtasks_recv_stars(struct engine *e, struct cell *c,
                                     c->mpi.tag, 0, c, NULL);
   }
 
-  /* HERE SF */
   if (t_sf_counts == NULL && with_star_formation_sink && (c->hydro.count > 0 || c->sinks.count > 0)) {
 #ifdef SWIFT_DEBUG_CHECKS
     if (c->depth != 0)
@@ -1185,7 +1183,6 @@ void engine_addtasks_recv_black_holes(struct engine *e, struct cell *c,
                                       struct task *t_feedback,
                                       struct task *const tend) {
 
-  /* HERE */
 #ifdef WITH_MPI
   struct scheduler *s = &e->sched;
 
