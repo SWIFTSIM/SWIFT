@@ -740,7 +740,7 @@ void proxy_parts_exchange_second(struct proxy *p) {
     message( "irecv gpart data (%i) from node %i." , p->nr_gparts_in ,
     p->nodeID ); fflush(stdout);
     for (int k = 0; k < p->nr_gparts_out; k++)
-      message("receiving gparts %lli, x=[%.3e %.3e %.3e], h=%.3e, from node %i.",
+      message("receiving gparts %lli, x=[%.3e %.3e %.3e], from node %i.",
               p->gparts_in[k].id_or_neg_offset, p->gparts_in[k].x[0], p->gparts_in[k].x[1],
               p->gparts_in[k].x[2], p->nodeID);
   }
