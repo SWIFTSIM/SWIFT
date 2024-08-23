@@ -91,7 +91,7 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
   }
 
   /* Put the parts into the corresponding proxies. */
-  message("Put Npart = %lld into its proxies", *Npart);
+  message("Put Npart = %lu into its proxies", *Npart);
   for (size_t k = 0; k < *Npart; k++) {
 
     /* Ignore the particles we want to get rid of (inhibited, ...). */
@@ -137,7 +137,7 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
   }
 
   /* Put the sparts into the corresponding proxies. */
-  message("Put Nspart = %lld into its proxies, offset_spart = %i", *Nspart, offset_sparts);
+  message("Put Nspart = %lu into its proxies, offset_spart = %lu", *Nspart, offset_sparts);
   for (size_t k = 0; k < *Nspart; k++) {
 
     /* Ignore the particles we want to get rid of (inhibited, ...). */
@@ -222,9 +222,9 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
   }
 
   /* Put the sinks into the corresponding proxies. */
-  message("Put Nsink = %lld into its proxies, offset_sink = %i", *Nsink, offset_sinks);
+  message("Put Nsink = %lu into its proxies, offset_sink = %lu", *Nsink, offset_sinks);
   for (size_t k = 0; k < *Nsink; k++) {
-    message("sink... k = %lld", k);
+    message("sink... k = %lu, id = %lld", k,  s->sinks[offset_sinks + k].id);
     /* Ignore the particles we want to get rid of (inhibited, ...). */
     if (ind_sink[k] == -1) continue;
 
@@ -265,7 +265,7 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
   }
 
   /* Put the gparts into the corresponding proxies. */
-  message("Put Ngpart = %lld into its proxies", *Ngpart);
+  message("Put Ngpart = %lu into its proxies", *Ngpart);
   for (size_t k = 0; k < *Ngpart; k++) {
 
     /* Ignore the particles we want to get rid of (inhibited, ...). */
