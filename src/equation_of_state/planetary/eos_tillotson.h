@@ -65,8 +65,8 @@ INLINE static void set_Til_iron(struct Til_params *Til,
   Til->u_cv = 8.67e6f;
   Til->alpha = 5.0f;
   Til->beta = 5.0f;
-  Til->eta_min = 0.0f;
-  Til->eta_zero = 0.0f;
+  Til->eta_min = 0.925f;
+  Til->eta_zero = 0.875f;
   Til->C_V = 449.0f;
   Til->rho_cold_min = 100.0f;
   Til->rho_cold_max = 1.0e5f;
@@ -91,8 +91,8 @@ INLINE static void set_Til_granite(struct Til_params *Til,
   Til->u_cv = 1.8e7f;
   Til->alpha = 5.0f;
   Til->beta = 5.0f;
-  Til->eta_min = 0.0f;
-  Til->eta_zero = 0.0f;
+  Til->eta_min = 0.925f;
+  Til->eta_zero = 0.875f;
   Til->C_V = 790.0f;
   Til->rho_cold_min = 100.0f;
   Til->rho_cold_max = 1.0e5f;
@@ -117,8 +117,8 @@ INLINE static void set_Til_basalt(struct Til_params *Til,
   Til->u_cv = 1.82e7f;
   Til->alpha = 5.0f;
   Til->beta = 5.0f;
-  Til->eta_min = 0.0f;
-  Til->eta_zero = 0.0f;
+  Til->eta_min = 0.925f;
+  Til->eta_zero = 0.875f;
   Til->C_V = 790.0f;
   Til->rho_cold_min = 100.0f;
   Til->rho_cold_max = 1.0e5f;
