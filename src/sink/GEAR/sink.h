@@ -30,7 +30,6 @@
 #include "random.h"
 #include "sink_part.h"
 #include "sink_properties.h"
-#include "stars/GEAR/stars_stellar_type.h"
 
 /**
  * @brief Computes the time-step of a given sink particle.

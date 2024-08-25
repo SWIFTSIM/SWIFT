@@ -24,7 +24,7 @@
 #include "feedback_properties.h"
 #include "hydro_properties.h"
 #include "part.h"
-#include "stars/GEAR/stars_stellar_type.h"
+#include "stars.h"
 #include "units.h"
 
 /**

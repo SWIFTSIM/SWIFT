@@ -19,7 +19,6 @@
 #ifndef SWIFT_GEAR_SINK_PART_H
 #define SWIFT_GEAR_SINK_PART_H
 
-#include "stars/GEAR/stars_stellar_type.h"
 #include "timeline.h"
 
 #define sink_need_unique_id 1

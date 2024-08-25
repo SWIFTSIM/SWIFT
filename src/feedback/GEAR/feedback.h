@@ -26,7 +26,8 @@
 #include "part.h"
 #include "stellar_evolution.h"
 #include "units.h"
-#include "stars/GEAR/stars_stellar_type.h"
+#include "stars.h"
+
 
 #include <strings.h>
 
