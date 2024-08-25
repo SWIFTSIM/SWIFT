@@ -22,6 +22,7 @@
 /* Local includes */
 #include "gravity.h"
 #include "gravity_iact.h"
+#include "sink.h"
 #include "sink_properties.h"
 
 /**
@@ -204,21 +205,8 @@ runner_iact_nonsym_sinks_sink_swallow(
     runner_iact_grav_pp_full(r2, eps2, eps_inv, eps_inv3, sj_mass, &dummy,
                              &pot_ji);
 
-    const double Omega_r = cosmo->Omega_r + cosmo->Omega_nu;
-    const double Omega_m = cosmo->Omega_cdm + cosmo->Omega_b;
-    const double Omega_l = cosmo->Omega_lambda;
-    const double w0 = cosmo->w_0;
-    const double wa = cosmo->w_a;
-    const double a_inv = cosmo->a_inv;
-
-    const double w_DE =
-        w0 + wa * (1. - a);  // cosmology_dark_energy_EoS(a, w0, wa);
-    const double w_tilde = (a - 1.) * wa - (1. + w0 + wa) * log(a);
-    const double density_sum = Omega_m * a_inv * a_inv * a_inv +
-                               2.0 * Omega_r * a_inv * a_inv * a_inv * a_inv +
-                               Omega_l * exp(3. * w_tilde) * (1 + w_DE);
     // w_tilde(a, w0, wa)
-    const double a_dot_dot = -H * H / 2.0 * density_sum;
+    const double a_dot_dot = sink_compute_a_dot_dot(cosmo);
 
     /* Compute the physical potential energies :
        E_pot_phys = G*pot_grav*a^(-1) + c(a). */
@@ -370,21 +358,7 @@ runner_iact_nonsym_sinks_gas_swallow(const float r2, const float dx[3],
     runner_iact_grav_pp_full(r2, eps2, eps_inv, eps_inv3, sink_mass, &dummy,
                              &pot_ij);
 
-    const double Omega_r = cosmo->Omega_r + cosmo->Omega_nu;
-    const double Omega_m = cosmo->Omega_cdm + cosmo->Omega_b;
-    const double Omega_l = cosmo->Omega_lambda;
-    const double w0 = cosmo->w_0;
-    const double wa = cosmo->w_a;
-    const double a_inv = cosmo->a_inv;
-
-    const double w_DE =
-        w0 + wa * (1. - a);  // cosmology_dark_energy_EoS(a, w0, wa);
-    const double w_tilde = (a - 1.) * wa - (1. + w0 + wa) * log(a);
-    const double density_sum = Omega_m * a_inv * a_inv * a_inv +
-                               2.0 * Omega_r * a_inv * a_inv * a_inv * a_inv +
-                               Omega_l * exp(3. * w_tilde) * (1 + w_DE);
-    // w_tilde(a, w0, wa)
-    const double a_dot_dot = -H * H / 2.0 * density_sum;
+    const double a_dot_dot = sink_compute_a_dot_dot(cosmo);
 
     /* Compute the physical potential energy that the sink exerts in the gas :
                        E_pot_phys = G*pot_grav*a^(-1) + c(a). */
