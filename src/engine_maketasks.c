@@ -2070,7 +2070,7 @@ void engine_gravity_make_task_loop(struct engine *e, int cid, const int cdim[3],
         struct cell *cj = &cells[cjd];
 
 #ifdef SWIFT_DEBUG_CHECKS
-        /* Ensure both cells are zoom cells */
+        /* Ensure both cells are the same type of cells */
         if (ci->type != cj->type) {
           error(
               "Cell %d and cell %d are not the same cell type! "

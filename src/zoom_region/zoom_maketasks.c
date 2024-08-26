@@ -278,8 +278,7 @@ void engine_make_self_gravity_tasks_mapper_buffer_bkg(void *map_data,
     }
 #endif
 
-    /* Skip cells without gravity particles unless they're voids (which is
-     * unlikely but could happen) */
+    /* Skip cells without gravity particles unless they're voids. */
     if (ci->grav.count == 0 && ci->subtype != cell_subtype_void) continue;
 
     /* Loop over every neighbouring background cells */
