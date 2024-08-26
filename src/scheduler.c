@@ -1638,8 +1638,10 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
            * this information. The corresponding taks will unpack
            * the information and operate according to the choices
            * made here. */
-          const int flag = i * 8;
-          t->flags |= (1ULL << flag);
+          for (int j = 0; j < 8; j++) {
+            const int flag = i * 8 + j;
+            t->flags |= (1ull << flag);
+          }
 
         } else {
           /* Ok, we actually have to create a task, if we're at the zoom
@@ -1690,8 +1692,10 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
            * this information. The corresponding taks will unpack
            * the information and operate according to the choices
            * made here. */
-          const int flag = j * 8;
-          t->flags |= (1ULL << flag);
+          for (int i = 0; i < 8; i++) {
+            const int flag = i * 8 + j;
+            t->flags |= (1ull << flag);
+          }
 
         } else {
           /* Ok, we actually have to create a task, if we're at the zoom
