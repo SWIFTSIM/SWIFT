@@ -225,8 +225,6 @@ void runner_zoom_do_void_grav_down(struct runner *r, struct cell *c,
      * in the usual way. */
     if (cp->grav.super != cp) {
       runner_zoom_do_void_grav_down(r, cp, 0);
-    } else {
-      runner_do_grav_down(r, cp, 0);
     }
   }
 
