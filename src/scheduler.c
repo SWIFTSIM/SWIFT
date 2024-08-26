@@ -1578,6 +1578,12 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
         for (int j = 0; j < 8; j++) {
           if (cj->progeny[j] == NULL) continue;
 
+          /* Skip empty non-void cells. */
+          if ((ci->subtype != cell_subtype_void && ci->grav.count == 0) ||
+              (cj->subtype != cell_subtype_void && cj->grav.count == 0)) {
+            continue;
+          }
+
           /* Can we use a M-M interaction here? */
           if (cell_can_use_pair_mm(ci->progeny[i], cj->progeny[j], e, sp,
                                    /*use_rebuild_data=*/1,
@@ -1668,6 +1674,14 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
         /* We actually have to create a task, if we're at the zoom
          * level call the normal splitting function. */
         for (int i = 0; i < 8; i++) {
+          /* But, skip empty non-voids. */
+          if ((ci->progeny[i]->subtype != cell_subtype_void &&
+               ci->progeny[i]->grav.count == 0) ||
+              (cj->subtype != cell_subtype_void && cj->grav.count == 0)) {
+            continue;
+          }
+
+          /* Make the task and call the appropriate splitter. */
           if (ci->progeny[i]->subtype != cell_subtype_void) {
             scheduler_splittask_gravity(
                 scheduler_addtask(s, task_type_pair, task_subtype_grav, 0, 0,
@@ -1722,6 +1736,14 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
         /* We actually have to create a task, if we're at the zoom
          * level call the normal splitting function. */
         for (int j = 0; j < 8; j++) {
+          /* But, skip empty non-voids. */
+          if ((cj->progeny[j]->subtype != cell_subtype_void &&
+               cj->progeny[j]->grav.count == 0) ||
+              (ci->subtype != cell_subtype_void && ci->grav.count == 0)) {
+            continue;
+          }
+
+          /* Make the task and call the appropriate splitter. */
           if (cj->progeny[j]->subtype != cell_subtype_void) {
             scheduler_splittask_gravity(
                 scheduler_addtask(s, task_type_pair, task_subtype_grav, 0, 0,
