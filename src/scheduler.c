@@ -1579,8 +1579,10 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
           if (cj->progeny[j] == NULL) continue;
 
           /* Skip empty non-void cells. */
-          if ((ci->subtype != cell_subtype_void && ci->grav.count == 0) ||
-              (cj->subtype != cell_subtype_void && cj->grav.count == 0)) {
+          if ((ci->progeny[i]->subtype != cell_subtype_void &&
+               ci->progeny[i]->grav.count == 0) ||
+              (cj->progeny[j]->subtype != cell_subtype_void &&
+               cj->progeny[j]->grav.count == 0)) {
             continue;
           }
 
