@@ -21,13 +21,13 @@
 #include "feedback.h"
 
 /* Local includes */
+#include "../GEAR/stellar_evolution.h"
 #include "cosmology.h"
 #include "engine.h"
 #include "error.h"
 #include "feedback_properties.h"
 #include "hydro_properties.h"
 #include "part.h"
-#include "../GEAR/stellar_evolution.h"
 #include "units.h"
 
 #include <strings.h>
@@ -40,7 +40,7 @@
  * @param e The #engine.
  */
 void feedback_update_part(struct part* p, struct xpart* xp,
-			  const struct engine* e) {
+                          const struct engine* e) {
 
   /* Did the particle receive a supernovae */
   if (xp->feedback_data.delta_mass == 0) return;
@@ -77,9 +77,11 @@ void feedback_update_part(struct part* p, struct xpart* xp,
   /* Compute correction therm to account for multiple feedback events. This
      terms allows to recover energy conservation. If there is only one
      feedback that affected p and xp, f_corr = 1. */
-  if (e->feedback_props->enable_multiple_SN_momentum_correction_factor
-      && xp->feedback_data.number_SN > 1) {
-    const double f_corr = feedback_compute_momentum_correction_factor_for_multiple_sn_events(p, xp, old_mass, new_mass);
+  if (e->feedback_props->enable_multiple_SN_momentum_correction_factor &&
+      xp->feedback_data.number_SN > 1) {
+    const double f_corr =
+        feedback_compute_momentum_correction_factor_for_multiple_sn_events(
+            p, xp, old_mass, new_mass);
 
     /* Update the xpart accumulated dp */
     xp->feedback_data.delta_p[0] *= f_corr;
@@ -383,9 +385,9 @@ void feedback_init_spart(struct spart* sp) {
   sp->feedback_data.fluxes_conservation_check.delta_m = 0.0;
   sp->feedback_data.fluxes_conservation_check.delta_p_norm = 0.0;
 
-  sp->feedback_data.fluxes_conservation_check.delta_p[0] = 0 ;
-  sp->feedback_data.fluxes_conservation_check.delta_p[1] = 0 ;
-  sp->feedback_data.fluxes_conservation_check.delta_p[2] = 0 ;
+  sp->feedback_data.fluxes_conservation_check.delta_p[0] = 0;
+  sp->feedback_data.fluxes_conservation_check.delta_p[1] = 0;
+  sp->feedback_data.fluxes_conservation_check.delta_p[2] = 0;
 #endif /* SWIFT_DEBUG_CHECKS */
 }
 
@@ -415,7 +417,6 @@ void feedback_init_after_star_formation(
      single population star */
   sp->feedback_data.star_type = star_type;
 }
-
 
 /**
  * @brief Prepares a star's feedback field before computing what
@@ -455,9 +456,9 @@ void feedback_reset_feedback(struct spart* sp,
   sp->feedback_data.fluxes_conservation_check.delta_m = 0.0;
   sp->feedback_data.fluxes_conservation_check.delta_p_norm = 0.0;
 
-  sp->feedback_data.fluxes_conservation_check.delta_p[0] = 0 ;
-  sp->feedback_data.fluxes_conservation_check.delta_p[1] = 0 ;
-  sp->feedback_data.fluxes_conservation_check.delta_p[2] = 0 ;
+  sp->feedback_data.fluxes_conservation_check.delta_p[0] = 0;
+  sp->feedback_data.fluxes_conservation_check.delta_p[1] = 0;
+  sp->feedback_data.fluxes_conservation_check.delta_p[2] = 0;
 #endif /* SWIFT_DEBUG_CHECKS */
 }
 
@@ -520,7 +521,7 @@ void feedback_prepare_feedback(struct spart* restrict sp,
                                const struct phys_const* phys_const,
                                const double star_age_beg_step, const double dt,
                                const double time, const integertime_t ti_begin,
-                               const int with_cosmology) {  }
+                               const int with_cosmology) {}
 
 /**
  * @brief Write a feedback struct to the given FILE as a stream of bytes.
@@ -571,10 +572,9 @@ void feedback_clean(struct feedback_props* feedback) {
   }
 }
 
-
 /**
  * @brief Compute the scalar weight for the feedback. This scalar weight is
- * used to compute the vector weight. 
+ * used to compute the vector weight.
  *
  * This function need to be called in loop 1.
  *
@@ -586,81 +586,80 @@ void feedback_clean(struct feedback_props* feedback) {
  * @param hj Comoving smoothing-length of particle j.
  * @param si First (star) particle.
  * @param pj Second (gas) particle.
- * @param dx_ij_plus (return) Projection vector plus. Pointer to array of size 3.
- * @param dx_ij_minus (return) Projection vector minus. Pointer to array of size 3.
+ * @param dx_ij_plus (return) Projection vector plus. Pointer to array of
+ * size 3.
+ * @param dx_ij_minus (return) Projection vector minus. Pointer to array of
+ * size 3.
  * @param scalar_weigth_j (return) Scalar weight.
  */
-__attribute__((always_inline)) INLINE
-void feedback_compute_scalar_weight(const float r2, const float *dx,
-				      const float hi, const float hj,
-				      const struct spart *restrict si,
-				      const struct part *restrict pj,
-				      double* dx_ij_plus,
-				      double* dx_ij_minus,
-				      double* scalar_weight_j) {
+__attribute__((always_inline)) INLINE void feedback_compute_scalar_weight(
+    const float r2, const float* dx, const float hi, const float hj,
+    const struct spart* restrict si, const struct part* restrict pj,
+    double* dx_ij_plus, double* dx_ij_minus, double* scalar_weight_j) {
 
   const float r = sqrtf(r2);
 
   /* Kernel derivatives evaluation */
-  const float u_ij = r/hi;
-  const float u_jj = r/hj;
+  const float u_ij = r / hi;
+  const float u_jj = r / hj;
   float dW_ij_dr_j, dW_jj_dr_j, dummy_W;
 
   kernel_deval(u_ij, &dummy_W, &dW_ij_dr_j);
   kernel_deval(u_jj, &dummy_W, &dW_jj_dr_j);
 
-  dW_ij_dr_j *= pow_dimension_plus_one(1.0/hi); /* 1/h_i^(d+1) */
-  dW_jj_dr_j *= pow_dimension_plus_one(1.0/hj); /* 1/h_j^(d+1) */
+  dW_ij_dr_j *= pow_dimension_plus_one(1.0 / hi); /* 1/h_i^(d+1) */
+  dW_jj_dr_j *= pow_dimension_plus_one(1.0 / hj); /* 1/h_j^(d+1) */
 
   /* Ensure they are positive (norm of the gradient) */
-  dW_ij_dr_j = fabsf(dW_ij_dr_j); 
+  dW_ij_dr_j = fabsf(dW_ij_dr_j);
   dW_jj_dr_j = fabsf(dW_jj_dr_j);
 
   /* Compute the projection vectors */
-  dx_ij_plus[0] = max(dx[0], 0.0)/r;
-  dx_ij_plus[1] = max(dx[1], 0.0)/r;
-  dx_ij_plus[2]	= max(dx[2], 0.0)/r;
+  dx_ij_plus[0] = max(dx[0], 0.0) / r;
+  dx_ij_plus[1] = max(dx[1], 0.0) / r;
+  dx_ij_plus[2] = max(dx[2], 0.0) / r;
 
-  dx_ij_minus[0] = min(dx[0], 0.0)/r;
-  dx_ij_minus[1] = min(dx[1], 0.0)/r;
-  dx_ij_minus[2] = min(dx[2], 0.0)/r;
+  dx_ij_minus[0] = min(dx[0], 0.0) / r;
+  dx_ij_minus[1] = min(dx[1], 0.0) / r;
+  dx_ij_minus[2] = min(dx[2], 0.0) / r;
 
   /* This is simply dx/r, i.e the unit vector of dx */
   const double dx_ij_hat[3] = {(dx_ij_plus[0] + dx_ij_minus[0]),
-			       (dx_ij_plus[1] + dx_ij_minus[1]),
-			       (dx_ij_plus[2] + dx_ij_minus[2])};
+                               (dx_ij_plus[1] + dx_ij_minus[1]),
+                               (dx_ij_plus[2] + dx_ij_minus[2])};
 
-
-  /* The star wcount has been computed in the feedback density loop. It need to be
-   * multiplied by 1/h^d.
-   * The gas wcount cannot be retrived from here. So we approximate it using
-   * rho/mass. */
-  const double n_bar_i = si->feedback_data.density_wcount *  pow_dimension(1.0/hi);
-  const double n_bar_j = pj->rho/pj->mass;
-  const double n_bar_i_2_inv = 1.0/(n_bar_i*n_bar_i);
-  const double n_bar_j_2_inv = 1.0/(n_bar_j*n_bar_j);
+  /* The star wcount has been computed in the feedback density loop. It need to
+   * be multiplied by 1/h^d. The gas wcount cannot be retrived from here. So we
+   * approximate it using rho/mass. */
+  const double n_bar_i =
+      si->feedback_data.density_wcount * pow_dimension(1.0 / hi);
+  const double n_bar_j = pj->rho / pj->mass;
+  const double n_bar_i_2_inv = 1.0 / (n_bar_i * n_bar_i);
+  const double n_bar_j_2_inv = 1.0 / (n_bar_j * n_bar_j);
 
   /* Compute the face orientation vector */
-  const double A_j[3] = {(n_bar_i_2_inv * dW_ij_dr_j + n_bar_j_2_inv * dW_jj_dr_j)*dx_ij_hat[0],
-			 (n_bar_i_2_inv * dW_ij_dr_j + n_bar_j_2_inv * dW_jj_dr_j)*dx_ij_hat[1],
-			 (n_bar_i_2_inv * dW_ij_dr_j + n_bar_j_2_inv * dW_jj_dr_j)*dx_ij_hat[2]};
+  const double A_j[3] = {
+      (n_bar_i_2_inv * dW_ij_dr_j + n_bar_j_2_inv * dW_jj_dr_j) * dx_ij_hat[0],
+      (n_bar_i_2_inv * dW_ij_dr_j + n_bar_j_2_inv * dW_jj_dr_j) * dx_ij_hat[1],
+      (n_bar_i_2_inv * dW_ij_dr_j + n_bar_j_2_inv * dW_jj_dr_j) * dx_ij_hat[2]};
 
   /* Prepare the computation of the scalar weight */
-  const double number_1 = A_j[0]*dx_ij_hat[0] +  A_j[1]*dx_ij_hat[1] + A_j[2]*dx_ij_hat[2];
+  const double number_1 =
+      A_j[0] * dx_ij_hat[0] + A_j[1] * dx_ij_hat[1] + A_j[2] * dx_ij_hat[2];
   const double number_2 = M_PI * r2;
-  const double denom = sqrt(1 + number_1/number_2);
+  const double denom = sqrt(1 + number_1 / number_2);
 
-  /* Finally compute the scalar weight = solid angle fraction the gas j occupy around the star. */
-  *scalar_weight_j = 0.5*(1.0 - 1.0/denom) ;
+  /* Finally compute the scalar weight = solid angle fraction the gas j occupy
+   * around the star. */
+  *scalar_weight_j = 0.5 * (1.0 - 1.0 / denom);
 }
-
 
 /**
  * @brief Compute the non-normalized vector weight for the feedback.
  *
  * This function need to be called after loop 1 (in loop 2 and final feedback
  * computations), i.e. it needs the accumulation of scalar weights to properly
- * compute the vector weights. 
+ * compute the vector weights.
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (si - pj).
@@ -672,50 +671,68 @@ void feedback_compute_scalar_weight(const float r2, const float *dx,
  * @param f_minus_i (return) Vector factor f_minus. Pointer to array of size 3.
  * @param w_j (return) Non-noralized vector weight. Pointer to array of size 3.
  */
-__attribute__((always_inline)) INLINE
-void feedback_compute_vector_weight_non_normalized(const float r2, const float *dx,
-						     const float hi, const float hj,
-						     const struct spart *restrict si,
-						     const struct part *restrict pj,
-						     double* f_plus_i,
-						     double* f_minus_i,
-						     double* w_j) {
+__attribute__((always_inline)) INLINE void
+feedback_compute_vector_weight_non_normalized(const float r2, const float* dx,
+                                              const float hi, const float hj,
+                                              const struct spart* restrict si,
+                                              const struct part* restrict pj,
+                                              double* f_plus_i,
+                                              double* f_minus_i, double* w_j) {
   double dx_ij_plus[3], dx_ij_minus[3], scalar_weight_j;
-  feedback_compute_scalar_weight(r2, dx, hi, hj, si, pj,dx_ij_plus, dx_ij_minus, &scalar_weight_j);
+  feedback_compute_scalar_weight(r2, dx, hi, hj, si, pj, dx_ij_plus,
+                                 dx_ij_minus, &scalar_weight_j);
 
   /* Now, that we have accumulated the sums, we can compute the f_plus and
      f_minus */
-  const double value_plus[3] = {1 + (si->feedback_data.f_plus_num[0]*si->feedback_data.f_plus_num[0])/(si->feedback_data.f_plus_denom[0]*si->feedback_data.f_plus_denom[0]),
-		     1 + (si->feedback_data.f_plus_num[1]*si->feedback_data.f_plus_num[1])/(si->feedback_data.f_plus_denom[1]*si->feedback_data.f_plus_denom[1]),
-		     1 + (si->feedback_data.f_plus_num[2]*si->feedback_data.f_plus_num[2])/(si->feedback_data.f_plus_denom[2]*si->feedback_data.f_plus_denom[2])};
+  const double value_plus[3] = {
+      1 + (si->feedback_data.f_plus_num[0] * si->feedback_data.f_plus_num[0]) /
+              (si->feedback_data.f_plus_denom[0] *
+               si->feedback_data.f_plus_denom[0]),
+      1 + (si->feedback_data.f_plus_num[1] * si->feedback_data.f_plus_num[1]) /
+              (si->feedback_data.f_plus_denom[1] *
+               si->feedback_data.f_plus_denom[1]),
+      1 + (si->feedback_data.f_plus_num[2] * si->feedback_data.f_plus_num[2]) /
+              (si->feedback_data.f_plus_denom[2] *
+               si->feedback_data.f_plus_denom[2])};
 
   /* Compute the vector factor f_plus */
-  f_plus_i[0] = sqrt(0.5*value_plus[0]);
-  f_plus_i[1] = sqrt(0.5*value_plus[1]);
-  f_plus_i[2] = sqrt(0.5*value_plus[2]);
+  f_plus_i[0] = sqrt(0.5 * value_plus[0]);
+  f_plus_i[1] = sqrt(0.5 * value_plus[1]);
+  f_plus_i[2] = sqrt(0.5 * value_plus[2]);
 
-  const double value_minus[3] = {1 + (si->feedback_data.f_minus_num[0]*si->feedback_data.f_minus_num[0])/(si->feedback_data.f_minus_denom[0]*si->feedback_data.f_minus_denom[0]),
-		     1 + (si->feedback_data.f_minus_num[1]*si->feedback_data.f_minus_num[1])/(si->feedback_data.f_minus_denom[1]*si->feedback_data.f_minus_denom[1]),
-		     1 + (si->feedback_data.f_minus_num[2]*si->feedback_data.f_minus_num[2])/(si->feedback_data.f_minus_denom[2]*si->feedback_data.f_minus_denom[2])};
+  const double value_minus[3] = {1 + (si->feedback_data.f_minus_num[0] *
+                                      si->feedback_data.f_minus_num[0]) /
+                                         (si->feedback_data.f_minus_denom[0] *
+                                          si->feedback_data.f_minus_denom[0]),
+                                 1 + (si->feedback_data.f_minus_num[1] *
+                                      si->feedback_data.f_minus_num[1]) /
+                                         (si->feedback_data.f_minus_denom[1] *
+                                          si->feedback_data.f_minus_denom[1]),
+                                 1 + (si->feedback_data.f_minus_num[2] *
+                                      si->feedback_data.f_minus_num[2]) /
+                                         (si->feedback_data.f_minus_denom[2] *
+                                          si->feedback_data.f_minus_denom[2])};
 
   /* Compute the vector factor f_minus */
-  f_minus_i[0] = sqrt(0.5*value_minus[0]);
-  f_minus_i[1] = sqrt(0.5*value_minus[1]);
-  f_minus_i[2] = sqrt(0.5*value_minus[2]);
+  f_minus_i[0] = sqrt(0.5 * value_minus[0]);
+  f_minus_i[1] = sqrt(0.5 * value_minus[1]);
+  f_minus_i[2] = sqrt(0.5 * value_minus[2]);
 
   /* Now compute the vector weight (non-normalized) */
-  w_j[0] = scalar_weight_j*(dx_ij_plus[0]*f_plus_i[0] + dx_ij_minus[0]*f_minus_i[0]);
-  w_j[1] = scalar_weight_j*(dx_ij_plus[1]*f_plus_i[1] + dx_ij_minus[1]*f_minus_i[1]);
-  w_j[2] = scalar_weight_j*(dx_ij_plus[2]*f_plus_i[2] + dx_ij_minus[2]*f_minus_i[2]);
+  w_j[0] = scalar_weight_j *
+           (dx_ij_plus[0] * f_plus_i[0] + dx_ij_minus[0] * f_minus_i[0]);
+  w_j[1] = scalar_weight_j *
+           (dx_ij_plus[1] * f_plus_i[1] + dx_ij_minus[1] * f_minus_i[1]);
+  w_j[2] = scalar_weight_j *
+           (dx_ij_plus[2] * f_plus_i[2] + dx_ij_minus[2] * f_minus_i[2]);
 }
-
 
 /**
  * @brief Compute the non-normalized vector weight for the feedback.
  *
  * This function need to be called after loop 2, i.e. it needs the accumulation
  * of f_plus and f_minus numerator and denominator to properly compute the
- * noramlized vector weights. 
+ * noramlized vector weights.
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (si - pj).
@@ -727,19 +744,20 @@ void feedback_compute_vector_weight_non_normalized(const float r2, const float *
  * @param f_minus_i (return) Vector factor f_minus. Pointer to array of size 3.
  * @param w_j (return) Non-noralized vector weight. Pointer to array of size 3.
  */
-__attribute__((always_inline)) INLINE
-void feedback_compute_vector_weight_normalized(const float r2, const float *dx,
-						     const float hi, const float hj,
-						     const struct spart *restrict si,
-						     const struct part *restrict pj,
-						     double* w_j_bar) {
+__attribute__((always_inline)) INLINE void
+feedback_compute_vector_weight_normalized(const float r2, const float* dx,
+                                          const float hi, const float hj,
+                                          const struct spart* restrict si,
+                                          const struct part* restrict pj,
+                                          double* w_j_bar) {
   double f_plus_i[3], f_minus_i[3], w_j[3];
-  feedback_compute_vector_weight_non_normalized(r2, dx, hi, hj, si, pj, f_plus_i, f_minus_i, w_j);
+  feedback_compute_vector_weight_non_normalized(r2, dx, hi, hj, si, pj,
+                                                f_plus_i, f_minus_i, w_j);
 
   /* The normalized vector weight */
-  w_j_bar[0] = w_j[0]/si->feedback_data.enrichment_weight;
-  w_j_bar[1] = w_j[1]/si->feedback_data.enrichment_weight;
-  w_j_bar[2] = w_j[2]/si->feedback_data.enrichment_weight;
+  w_j_bar[0] = w_j[0] / si->feedback_data.enrichment_weight;
+  w_j_bar[1] = w_j[1] / si->feedback_data.enrichment_weight;
+  w_j_bar[2] = w_j[2] / si->feedback_data.enrichment_weight;
 }
 
 /**
@@ -749,7 +767,7 @@ void feedback_compute_vector_weight_normalized(const float r2, const float *dx,
  * This function is used if we do not resolve the enery-conserving phase.
  *
  * Note: This function compute the terminal momentum in the same way as in
- * Fire-3 (PAPERS).
+ * Fire-3 (https://arxiv.org/abs/2404.16987).
  *
  * @param sp Star particle undergoing SN explosion.
  * @param p Gas particle receiving the terminal momentum.
@@ -757,12 +775,10 @@ void feedback_compute_vector_weight_normalized(const float r2, const float *dx,
  * @param phys_const The #phys_const.
  * @param us The #unit_system.
  */
-__attribute__((always_inline)) INLINE
-double feedback_get_SN_terminal_momentum(const struct spart* restrict sp,
-                                         const struct part* restrict p,
-                                         const struct xpart* restrict xp,
-                                         const struct phys_const* phys_const,
-                                         const struct unit_system* us) {
+__attribute__((always_inline)) INLINE double feedback_get_SN_terminal_momentum(
+    const struct spart* restrict sp, const struct part* restrict p,
+    const struct xpart* restrict xp, const struct phys_const* phys_const,
+    const struct unit_system* us) {
 
   /* Terminal momentum 0 (in internal units) */
   const double p_terminal_0 =
@@ -793,7 +809,9 @@ double feedback_get_SN_terminal_momentum(const struct spart* restrict sp,
   /* Get number density factor in cgs */
   const double m_p_cgs = phys_const->const_proton_mass *
                          units_cgs_conversion_factor(us, UNIT_CONV_MASS);
-  const double density_mean = sp->feedback_data.weighted_gas_density * units_cgs_conversion_factor(us, UNIT_CONV_DENSITY) / m_p_cgs;
+  const double density_mean =
+      sp->feedback_data.weighted_gas_density *
+      units_cgs_conversion_factor(us, UNIT_CONV_DENSITY) / m_p_cgs;
 
   double density_factor = 0.0;
 
@@ -808,7 +826,6 @@ double feedback_get_SN_terminal_momentum(const struct spart* restrict sp,
                       metallicity_factor * velocity_factor;
   return p_terminal;
 }
-
 
 /**
  * @brief Compute the terminal momentum of a SN explosion. This is the momentum
@@ -825,24 +842,25 @@ double feedback_get_SN_terminal_momentum(const struct spart* restrict sp,
  * @param phys_const The #phys_const.
  * @param us The #unit_system.
  */
-__attribute__((always_inline)) INLINE
-double feedback_get_SN_cooling_radius(const struct spart* restrict sp,
-				      double p_SN_initial,
-				      double p_terminal) {
+__attribute__((always_inline)) INLINE double feedback_get_SN_cooling_radius(
+    const struct spart* restrict sp, double p_SN_initial, double p_terminal) {
 
   const double m_ej = sp->feedback_data.mass_ejected;
-  const double mean_density =  sp->feedback_data.weighted_gas_density;
+  const double mean_density = sp->feedback_data.weighted_gas_density;
 
   /* Compute the cooling radius */
-  const double second_part = p_terminal*p_terminal/(p_SN_initial*p_SN_initial) - 1;
-  const double r_cool = pow(3.0*m_ej*second_part/(4.0*M_PI*mean_density), 1.0/3.0);
+  const double second_part =
+      p_terminal * p_terminal / (p_SN_initial * p_SN_initial) - 1;
+  const double r_cool =
+      pow(3.0 * m_ej * second_part / (4.0 * M_PI * mean_density), 1.0 / 3.0);
 
   return r_cool;
 }
 
 /**
  * @brief Compute a correction factor to ensure energy conservation when
- * multiple feedback (supernovae) events affect the same #part in a given timestep.
+ * multiple feedback (supernovae) events affect the same #part in a given
+ * timestep.
  *
  * Note: This function is called in feedback_update_part().
  *
@@ -851,30 +869,31 @@ double feedback_get_SN_cooling_radius(const struct spart* restrict sp,
  * @param old_mass The mass before feeback events.
  * @param new_mass The mass after feeback events.
  */
-__attribute__((always_inline)) INLINE
-double feedback_compute_momentum_correction_factor_for_multiple_sn_events(struct part* p, struct xpart* xp, double old_mass, double new_mass) {
+__attribute__((always_inline)) INLINE double
+feedback_compute_momentum_correction_factor_for_multiple_sn_events(
+    struct part* p, struct xpart* xp, double old_mass, double new_mass) {
   const float dm = xp->feedback_data.delta_mass;
 
   const double p_old[3] = {old_mass * xp->v_full[0], old_mass * xp->v_full[1],
-			   old_mass * xp->v_full[2]};
+                           old_mass * xp->v_full[2]};
   const double p_old_norm_2 =
-    p_old[0] * p_old[0] + p_old[1] * p_old[1] + p_old[2] * p_old[2];
+      p_old[0] * p_old[0] + p_old[1] * p_old[1] + p_old[2] * p_old[2];
   const double p_tilde_norm_2 =
-    p_old_norm_2 * dm / old_mass +
-    2 * (old_mass + dm) * xp->feedback_data.delta_E_kin;
+      p_old_norm_2 * dm / old_mass +
+      2 * (old_mass + dm) * xp->feedback_data.delta_E_kin;
 
   const double dp[3] = {xp->feedback_data.delta_p[0],
-			xp->feedback_data.delta_p[1],
-			xp->feedback_data.delta_p[2]};
+                        xp->feedback_data.delta_p[1],
+                        xp->feedback_data.delta_p[2]};
   const double dp_norm_2 = dp[0] * dp[0] + dp[1] * dp[1] + dp[2] * dp[2];
   const double p_old_times_dp =
-    p_old[0] * dp[0] + p_old[1] * dp[1] + p_old[2] * dp[2];
+      p_old[0] * dp[0] + p_old[1] * dp[1] + p_old[2] * dp[2];
 
   /* Finally compute the corrector factor */
   const double sqrt_argument =
-    fabs(p_old_times_dp * p_old_times_dp - p_tilde_norm_2 * dp_norm_2);
+      fabs(p_old_times_dp * p_old_times_dp - p_tilde_norm_2 * dp_norm_2);
   const double f_corr =
-    (-p_old_times_dp + sqrt(sqrt_argument)) / p_tilde_norm_2;
+      (-p_old_times_dp + sqrt(sqrt_argument)) / p_tilde_norm_2;
 
   return f_corr;
 }

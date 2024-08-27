@@ -89,8 +89,8 @@ runner_iact_nonsym_feedback_apply(
     const float r2, const float dx[3], const float hi, const float hj,
     struct spart *si, struct part *pj, struct xpart *xpj,
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
-    const struct feedback_props *fb_props, const struct phys_const* phys_const,
-    const struct unit_system* us, const integertime_t ti_current) {
+    const struct feedback_props *fb_props, const struct phys_const *phys_const,
+    const struct unit_system *us, const integertime_t ti_current) {
 
   const double e_sn = si->feedback_data.energy_ejected;
 

@@ -123,28 +123,28 @@ void DOSELF1_STARS(struct runner *r, struct cell *c, int timer) {
 #endif
       /* TODO: Implement a way such that both conditions can be used. */
       /* if (r2 < hig2 && si_active_feedback) { */
-      if ((r2 < hig2 || r2 < hj*hj*kernel_gamma2) && si_active_feedback) {
+      if ((r2 < hig2 || r2 < hj * hj * kernel_gamma2) && si_active_feedback) {
         IACT_STARS(r2, dx, hi, hj, si, pj, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
         runner_iact_nonsym_feedback_density(r2, dx, hi, hj, si, pj, NULL, cosmo,
                                             e->feedback_props, ti_current);
 #elif (FUNCTION_TASK_LOOP == TASK_LOOP_STARS_PREP1)
         runner_iact_nonsym_feedback_prep1(r2, dx, hi, hj, si, pj, NULL, cosmo,
-					  e->feedback_props, ti_current);
+                                          e->feedback_props, ti_current);
 #elif (FUNCTION_TASK_LOOP == TASK_LOOP_STARS_PREP2)
         runner_iact_nonsym_feedback_prep2(r2, dx, hi, hj, si, pj, NULL, cosmo,
-					  e->feedback_props, ti_current);
+                                          e->feedback_props, ti_current);
 #elif (FUNCTION_TASK_LOOP == TASK_LOOP_STARS_PREP3)
         runner_iact_nonsym_feedback_prep3(r2, dx, hi, hj, si, pj, NULL, cosmo,
-					  e->feedback_props, ti_current);
+                                          e->feedback_props, ti_current);
 #elif (FUNCTION_TASK_LOOP == TASK_LOOP_STARS_PREP4)
         runner_iact_nonsym_feedback_prep4(r2, dx, hi, hj, si, pj, NULL, cosmo,
-					  e->feedback_props, ti_current);
+                                          e->feedback_props, ti_current);
 #elif (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
-        runner_iact_nonsym_feedback_apply(r2, dx, hi, hj, si, pj, xpj, cosmo,
-                                          e->hydro_properties,
-                                          e->feedback_props, e->physical_constants,
-					  e->internal_units, ti_current);
+        runner_iact_nonsym_feedback_apply(
+            r2, dx, hi, hj, si, pj, xpj, cosmo, e->hydro_properties,
+            e->feedback_props, e->physical_constants, e->internal_units,
+            ti_current);
 #endif
       }
       if (r2 < hig2 && with_rt) {
@@ -260,7 +260,7 @@ void DO_NONSYM_PAIR1_STARS_NAIVE(struct runner *r, struct cell *restrict ci,
 #endif
       /* TODO: Implement a way such that both conditions can be used. */
       /* if (r2 < hig2 && si_active_feedback) { */
-      if ((r2 < hig2 || r2 < hj*hj*kernel_gamma2) && si_active_feedback) {
+      if ((r2 < hig2 || r2 < hj * hj * kernel_gamma2) && si_active_feedback) {
         IACT_STARS(r2, dx, hi, hj, si, pj, a, H);
 
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
@@ -268,7 +268,7 @@ void DO_NONSYM_PAIR1_STARS_NAIVE(struct runner *r, struct cell *restrict ci,
                                             e->feedback_props, ti_current);
 #elif (FUNCTION_TASK_LOOP == TASK_LOOP_STARS_PREP1)
         runner_iact_nonsym_feedback_prep1(r2, dx, hi, hj, si, pj, NULL, cosmo,
-					  e->feedback_props, ti_current);
+                                          e->feedback_props, ti_current);
 #elif (FUNCTION_TASK_LOOP == TASK_LOOP_STARS_PREP2)
         runner_iact_nonsym_feedback_prep2(r2, dx, hi, hj, si, pj, NULL, cosmo,
                                           e->feedback_props, ti_current);
@@ -279,10 +279,10 @@ void DO_NONSYM_PAIR1_STARS_NAIVE(struct runner *r, struct cell *restrict ci,
         runner_iact_nonsym_feedback_prep4(r2, dx, hi, hj, si, pj, NULL, cosmo,
                                           e->feedback_props, ti_current);
 #elif (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
-        runner_iact_nonsym_feedback_apply(r2, dx, hi, hj, si, pj, xpj, cosmo,
-                                          e->hydro_properties,
-                                          e->feedback_props, e->physical_constants,
-					  e->internal_units, ti_current);
+        runner_iact_nonsym_feedback_apply(
+            r2, dx, hi, hj, si, pj, xpj, cosmo, e->hydro_properties,
+            e->feedback_props, e->physical_constants, e->internal_units,
+            ti_current);
 #endif
       }
       if (r2 < hig2 && with_rt) {
@@ -461,10 +461,11 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
 #endif
 
         /* Hit or miss? */
-	/* TODO: Implement a way such that both conditions can be used. */
+        /* TODO: Implement a way such that both conditions can be used. */
         /* if (r2 < hig2 && spi_active_feedback) { */
-	if ((r2 < hig2 || r2 < hj*hj*kernel_gamma2) && spi_active_feedback) {
-	  IACT_STARS(r2, dx, hi, hj, spi, pj, a, H);
+        if ((r2 < hig2 || r2 < hj * hj * kernel_gamma2) &&
+            spi_active_feedback) {
+          IACT_STARS(r2, dx, hi, hj, spi, pj, a, H);
 
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
           runner_iact_nonsym_feedback_density(r2, dx, hi, hj, spi, pj, NULL,
@@ -472,21 +473,25 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
                                               ti_current);
 #elif (FUNCTION_TASK_LOOP == TASK_LOOP_STARS_PREP1)
           runner_iact_nonsym_feedback_prep1(r2, dx, hi, hj, spi, pj, NULL,
-                                            cosmo, e->feedback_props, ti_current);
+                                            cosmo, e->feedback_props,
+                                            ti_current);
 #elif (FUNCTION_TASK_LOOP == TASK_LOOP_STARS_PREP2)
           runner_iact_nonsym_feedback_prep2(r2, dx, hi, hj, spi, pj, NULL,
-                                            cosmo, e->feedback_props, ti_current);
+                                            cosmo, e->feedback_props,
+                                            ti_current);
 #elif (FUNCTION_TASK_LOOP == TASK_LOOP_STARS_PREP3)
           runner_iact_nonsym_feedback_prep3(r2, dx, hi, hj, spi, pj, NULL,
-                                            cosmo, e->feedback_props, ti_current);
+                                            cosmo, e->feedback_props,
+                                            ti_current);
 #elif (FUNCTION_TASK_LOOP == TASK_LOOP_STARS_PREP4)
           runner_iact_nonsym_feedback_prep4(r2, dx, hi, hj, spi, pj, NULL,
-                                            cosmo, e->feedback_props, ti_current);
+                                            cosmo, e->feedback_props,
+                                            ti_current);
 #elif (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
-          runner_iact_nonsym_feedback_apply(r2, dx, hi, hj, spi, pj, xpj, cosmo,
-                                            e->hydro_properties,
-                                            e->feedback_props, e->physical_constants,
-					    e->internal_units, ti_current);
+          runner_iact_nonsym_feedback_apply(
+              r2, dx, hi, hj, spi, pj, xpj, cosmo, e->hydro_properties,
+              e->feedback_props, e->physical_constants, e->internal_units,
+              ti_current);
 #endif
         }
         if (r2 < hig2 && with_rt) {
@@ -623,9 +628,10 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
 #endif
 
         /* Hit or miss? */
-	/* TODO: Implement a way such that both conditions can be used. */
+        /* TODO: Implement a way such that both conditions can be used. */
         /* if (r2 < hjg2 && spj_active_feedback) { */
-	if ((r2 < hjg2 || r2 < hi*hi*kernel_gamma2) && spj_active_feedback) {
+        if ((r2 < hjg2 || r2 < hi * hi * kernel_gamma2) &&
+            spj_active_feedback) {
 
           IACT_STARS(r2, dx, hj, hi, spj, pi, a, H);
 
@@ -635,21 +641,25 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
                                               ti_current);
 #elif (FUNCTION_TASK_LOOP == TASK_LOOP_STARS_PREP1)
           runner_iact_nonsym_feedback_prep1(r2, dx, hj, hi, spj, pi, NULL,
-                                            cosmo, e->feedback_props, ti_current);
+                                            cosmo, e->feedback_props,
+                                            ti_current);
 #elif (FUNCTION_TASK_LOOP == TASK_LOOP_STARS_PREP2)
           runner_iact_nonsym_feedback_prep2(r2, dx, hj, hi, spj, pi, NULL,
-                                            cosmo, e->feedback_props, ti_current);
+                                            cosmo, e->feedback_props,
+                                            ti_current);
 #elif (FUNCTION_TASK_LOOP == TASK_LOOP_STARS_PREP3)
           runner_iact_nonsym_feedback_prep3(r2, dx, hj, hi, spj, pi, NULL,
-                                            cosmo, e->feedback_props, ti_current);
+                                            cosmo, e->feedback_props,
+                                            ti_current);
 #elif (FUNCTION_TASK_LOOP == TASK_LOOP_STARS_PREP4)
           runner_iact_nonsym_feedback_prep4(r2, dx, hj, hi, spj, pi, NULL,
-                                            cosmo, e->feedback_props, ti_current);
+                                            cosmo, e->feedback_props,
+                                            ti_current);
 #elif (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
-          runner_iact_nonsym_feedback_apply(r2, dx, hj, hi, spj, pi, xpi, cosmo,
-                                            e->hydro_properties,
-                                            e->feedback_props, e->physical_constants,
-					    e->internal_units, ti_current);
+          runner_iact_nonsym_feedback_apply(
+              r2, dx, hj, hi, spj, pi, xpi, cosmo, e->hydro_properties,
+              e->feedback_props, e->physical_constants, e->internal_units,
+              ti_current);
 #endif
         }
         if (r2 < hjg2 && with_rt) {
@@ -773,9 +783,9 @@ void DOPAIR1_SUBSET_STARS(struct runner *r, struct cell *restrict ci,
 #endif
 
         /* Hit or miss? */
-	/* TODO: Implement a way such that both conditions can be used. */
+        /* TODO: Implement a way such that both conditions can be used. */
         /* if (r2 < hig2) { */
-	if (r2 < hig2 || r2 < hj*hj*kernel_gamma2) {
+        if (r2 < hig2 || r2 < hj * hj * kernel_gamma2) {
 
           IACT_STARS(r2, dx, hi, hj, spi, pj, a, H);
 
@@ -839,9 +849,9 @@ void DOPAIR1_SUBSET_STARS(struct runner *r, struct cell *restrict ci,
 #endif
 
         /* Hit or miss? */
-	/* TODO: Implement a way such that both conditions can be used. */
+        /* TODO: Implement a way such that both conditions can be used. */
         /* if (r2 < hig2) { */
-	if (r2 < hig2 || r2 < hj*hj*kernel_gamma2) {
+        if (r2 < hig2 || r2 < hj * hj * kernel_gamma2) {
 
           IACT_STARS(r2, dx, hi, hj, spi, pj, a, H);
 
@@ -941,7 +951,7 @@ void DOPAIR1_SUBSET_STARS_NAIVE(struct runner *r, struct cell *restrict ci,
 #endif
       /* Hit or miss? */
       /* if (r2 < hig2) { */
-      if (r2 < hig2 || r2 < hj*hj*kernel_gamma2) {
+      if (r2 < hig2 || r2 < hj * hj * kernel_gamma2) {
         IACT_STARS(r2, dx, hi, hj, spi, pj, a, H);
 
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
@@ -1032,7 +1042,7 @@ void DOSELF1_SUBSET_STARS(struct runner *r, struct cell *restrict ci,
       /* Hit or miss? */
       /* TODO: Implement a way such that both conditions can be used. */
       /* if (r2 < hig2) { */
-      if (r2 < hig2 || r2 < hj*hj*kernel_gamma2) {
+      if (r2 < hig2 || r2 < hj * hj * kernel_gamma2) {
 
         IACT_STARS(r2, dx, hi, pj->h, spi, pj, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)

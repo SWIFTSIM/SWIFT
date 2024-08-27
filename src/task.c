@@ -589,8 +589,8 @@ void task_unlock(struct task *t) {
       } else if ((subtype == task_subtype_stars_density) ||
                  (subtype == task_subtype_stars_prep1) ||
                  (subtype == task_subtype_stars_prep2) ||
-		 (subtype == task_subtype_stars_prep3) ||
-		 (subtype == task_subtype_stars_prep4) ||
+                 (subtype == task_subtype_stars_prep3) ||
+                 (subtype == task_subtype_stars_prep4) ||
                  (subtype == task_subtype_stars_feedback)) {
         cell_sunlocktree(ci);
         cell_unlocktree(ci);
@@ -632,8 +632,8 @@ void task_unlock(struct task *t) {
       } else if ((subtype == task_subtype_stars_density) ||
                  (subtype == task_subtype_stars_prep1) ||
                  (subtype == task_subtype_stars_prep2) ||
-		 (subtype == task_subtype_stars_prep3) ||
-		 (subtype == task_subtype_stars_prep4) ||
+                 (subtype == task_subtype_stars_prep3) ||
+                 (subtype == task_subtype_stars_prep4) ||
                  (subtype == task_subtype_stars_feedback)) {
         cell_sunlocktree(ci);
         cell_sunlocktree(cj);
@@ -831,8 +831,8 @@ int task_lock(struct task *t) {
       } else if ((subtype == task_subtype_stars_density) ||
                  (subtype == task_subtype_stars_prep1) ||
                  (subtype == task_subtype_stars_prep2) ||
-		 (subtype == task_subtype_stars_prep3) ||
-		 (subtype == task_subtype_stars_prep4) ||
+                 (subtype == task_subtype_stars_prep3) ||
+                 (subtype == task_subtype_stars_prep4) ||
                  (subtype == task_subtype_stars_feedback)) {
         if (ci->stars.hold) return 0;
         if (ci->hydro.hold) return 0;
@@ -917,8 +917,8 @@ int task_lock(struct task *t) {
       } else if ((subtype == task_subtype_stars_density) ||
                  (subtype == task_subtype_stars_prep1) ||
                  (subtype == task_subtype_stars_prep2) ||
-		 (subtype == task_subtype_stars_prep3) ||
-		 (subtype == task_subtype_stars_prep4) ||
+                 (subtype == task_subtype_stars_prep3) ||
+                 (subtype == task_subtype_stars_prep4) ||
                  (subtype == task_subtype_stars_feedback)) {
         /* Lock the stars and the gas particles in both cells */
         if (ci->stars.hold || cj->stars.hold) return 0;

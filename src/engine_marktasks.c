@@ -1624,8 +1624,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
              t_type == task_type_stars_prep_ghost1 ||
              t_type == task_type_hydro_prep_ghost1 ||
              t_type == task_type_stars_prep_ghost2 ||
-	     t_type == task_type_stars_prep_ghost3 ||
-	     t_type == task_type_stars_prep_ghost4) {
+             t_type == task_type_stars_prep_ghost3 ||
+             t_type == task_type_stars_prep_ghost4) {
       if (cell_need_activating_stars(t->ci, e, with_star_formation,
                                      with_star_formation_sink))
         scheduler_activate(s, t);

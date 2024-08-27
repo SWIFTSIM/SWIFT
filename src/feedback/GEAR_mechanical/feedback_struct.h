@@ -58,7 +58,6 @@ struct feedback_xpart_data {
 
   /* Number of supernovae affecting this particle */
   int number_SN;
-
 };
 
 /**

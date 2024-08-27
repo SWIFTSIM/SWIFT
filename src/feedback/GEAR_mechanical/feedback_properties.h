@@ -19,10 +19,10 @@
 #ifndef SWIFT_GEAR_MECHANICAL_FEEDBACK_PROPERTIES_H
 #define SWIFT_GEAR_MECHANICAL_FEEDBACK_PROPERTIES_H
 
-#include "chemistry.h"
-#include "hydro_properties.h"
 #include "../GEAR/stellar_evolution.h"
 #include "../GEAR/stellar_evolution_struct.h"
+#include "chemistry.h"
+#include "hydro_properties.h"
 
 /**
  * @brief Properties of the GEAR feedback model.
@@ -85,7 +85,8 @@ __attribute__((always_inline)) INLINE static void feedback_props_print(
   }
 
   /* Print the feedback properties */
-  message("Supernovae efficiency = %.2g", feedback_props->supernovae_efficiency);
+  message("Supernovae efficiency = %.2g",
+          feedback_props->supernovae_efficiency);
   message("Yields table = %s", feedback_props->stellar_model.yields_table);
 
   /* Print the stellar model */
@@ -119,7 +120,8 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
     const struct hydro_props* hydro_props, const struct cosmology* cosmo) {
 
   /* Supernovae energy efficiency */
-  fp->supernovae_efficiency = parser_get_param_double(params, "GEARFeedback:supernovae_efficiency");
+  fp->supernovae_efficiency =
+      parser_get_param_double(params, "GEARFeedback:supernovae_efficiency");
 
   /* filename of the chemistry tables. */
   parser_get_param_string(params, "GEARFeedback:yields_table",

@@ -19,12 +19,12 @@
 #ifndef SWIFT_FEEDBACK_GEAR_MECHANICAL_H
 #define SWIFT_FEEDBACK_GEAR_MECHANICAL_H
 
+#include "../GEAR/stellar_evolution.h"
 #include "cosmology.h"
 #include "error.h"
 #include "feedback_properties.h"
 #include "hydro_properties.h"
 #include "part.h"
-#include "../GEAR/stellar_evolution.h"
 #include "units.h"
 
 #include <strings.h>
@@ -49,9 +49,9 @@ double feedback_get_enrichment_timestep(const struct spart* sp,
                                         const double dt_star);
 void feedback_init_spart(struct spart* sp);
 
-void feedback_init_after_star_formation(struct spart* sp,
-					const struct feedback_props* feedback_props,
-					enum star_feedback_type star_type);
+void feedback_init_after_star_formation(
+    struct spart* sp, const struct feedback_props* feedback_props,
+    enum star_feedback_type star_type);
 void feedback_reset_feedback(struct spart* sp,
                              const struct feedback_props* feedback_props);
 void feedback_first_init_spart(struct spart* sp,
@@ -83,27 +83,29 @@ INLINE static void feedback_write_flavour(struct feedback_props* feedback,
 #elif FEEDBACK_GEAR_MECHANICAL_MODE == 2
   io_write_attribute_s(h_grp, "Feedback Model", "GEAR-mechanical_2");
 #else
-  error("This function should be called only with one of the GEAR-mechanical feedback mode.");
+  error(
+      "This function should be called only with one of the GEAR-mechanical "
+      "feedback mode.");
 #endif
 };
 
 void feedback_compute_scalar_weight(const float r2, const float* dx,
-				    const float hi, const float hj,
-				    const struct spart* restrict si,
-				    const struct part* restrict pj,
-				    double* dx_ij_plus, double* dx_ij_minus,
-				    double* scalar_weight_j );
+                                    const float hi, const float hj,
+                                    const struct spart* restrict si,
+                                    const struct part* restrict pj,
+                                    double* dx_ij_plus, double* dx_ij_minus,
+                                    double* scalar_weight_j);
 
 void feedback_compute_vector_weight_non_normalized(
     const float r2, const float* dx, const float hi, const float hj,
     const struct spart* restrict si, const struct part* restrict pj,
     double* f_plus_i, double* f_minus_i, double* w_j);
 
-void feedback_compute_vector_weight_normalized(const float r2, const float *dx,
-					       const float hi, const float hj,
-					       const struct spart *restrict si,
-					       const struct part *restrict pj,
-					       double* w_j_bar);
+void feedback_compute_vector_weight_normalized(const float r2, const float* dx,
+                                               const float hi, const float hj,
+                                               const struct spart* restrict si,
+                                               const struct part* restrict pj,
+                                               double* w_j_bar);
 
 double feedback_get_SN_terminal_momentum(const struct spart* restrict sp,
                                          const struct part* restrict p,
@@ -114,5 +116,6 @@ double feedback_get_SN_terminal_momentum(const struct spart* restrict sp,
 double feedback_get_SN_cooling_radius(const struct spart* restrict sp,
                                       double p_SN_initial, double p_terminal);
 
-double feedback_compute_momentum_correction_factor_for_multiple_sn_events(struct part* p, struct xpart* xp, double old_mass, double new_mass);
+double feedback_compute_momentum_correction_factor_for_multiple_sn_events(
+    struct part* p, struct xpart* xp, double old_mass, double new_mass);
 #endif /* SWIFT_FEEDBACK_GEAR_MECHANICAL_H */

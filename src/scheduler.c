@@ -2010,8 +2010,8 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         else if (t->subtype == task_subtype_stars_density ||
                  t->subtype == task_subtype_stars_prep1 ||
                  t->subtype == task_subtype_stars_prep2 ||
-		 t->subtype == task_subtype_stars_prep3 ||
-		 t->subtype == task_subtype_stars_prep4 ||
+                 t->subtype == task_subtype_stars_prep3 ||
+                 t->subtype == task_subtype_stars_prep4 ||
                  t->subtype == task_subtype_stars_feedback)
           cost = 1.f * wscale * scount_i * count_i;
         else if (t->subtype == task_subtype_sink_swallow ||
@@ -2051,7 +2051,7 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         } else if (t->subtype == task_subtype_stars_density ||
                    t->subtype == task_subtype_stars_prep1 ||
                    t->subtype == task_subtype_stars_prep2 ||
-		   t->subtype == task_subtype_stars_prep3 ||
+                   t->subtype == task_subtype_stars_prep3 ||
                    t->subtype == task_subtype_stars_prep4 ||
                    t->subtype == task_subtype_stars_feedback) {
           if (t->ci->nodeID != nodeID)
@@ -2128,8 +2128,8 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         if (t->subtype == task_subtype_stars_density ||
             t->subtype == task_subtype_stars_prep1 ||
             t->subtype == task_subtype_stars_prep2 ||
-	    t->subtype == task_subtype_stars_prep3 ||
-	    t->subtype == task_subtype_stars_prep4 ||
+            t->subtype == task_subtype_stars_prep3 ||
+            t->subtype == task_subtype_stars_prep4 ||
             t->subtype == task_subtype_stars_feedback) {
           if (t->ci->nodeID != nodeID) {
             cost = 3.f * (wscale * count_i) * scount_j * sid_scale[t->flags];
@@ -2207,8 +2207,8 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         if (t->subtype == task_subtype_stars_density ||
             t->subtype == task_subtype_stars_prep1 ||
             t->subtype == task_subtype_stars_prep2 ||
-	    t->subtype == task_subtype_stars_prep3 ||
-	    t->subtype == task_subtype_stars_prep4 ||
+            t->subtype == task_subtype_stars_prep3 ||
+            t->subtype == task_subtype_stars_prep4 ||
             t->subtype == task_subtype_stars_feedback) {
           cost = 1.f * (wscale * scount_i) * count_i;
         } else if (t->subtype == task_subtype_sink_swallow ||

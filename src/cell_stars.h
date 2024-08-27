@@ -72,12 +72,12 @@ struct cell_stars {
      * feedback. */
     struct link *prepare2;
 
-    /*! Linked list of the tasks computing this cell's star 3st prep for mechanical
-     * feedback. */
+    /*! Linked list of the tasks computing this cell's star 3st prep for
+     * mechanical feedback. */
     struct link *prepare3;
 
-    /*! Linked list of the tasks computing this cell's star 4nd prep for mechanical
-     * feedback. */
+    /*! Linked list of the tasks computing this cell's star 4nd prep for
+     * mechanical feedback. */
     struct link *prepare4;
 
     /*! Linked list of the tasks computing this cell's star feedback. */
