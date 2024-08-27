@@ -578,6 +578,8 @@ void feedback_clean(struct feedback_props* feedback) {
  *
  * This function need to be called in loop 1.
  *
+ * Note: i = star, j = gas.
+ *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (si - pj).
  * @param hi Comoving smoothing-length of particle i.
@@ -586,15 +588,16 @@ void feedback_clean(struct feedback_props* feedback) {
  * @param pj Second (gas) particle.
  * @param dx_ij_plus (return) Projection vector plus. Pointer to array of size 3.
  * @param dx_ij_minus (return) Projection vector minus. Pointer to array of size 3.
- * @param scalar_weigth (return) Scalar weight.
+ * @param scalar_weigth_j (return) Scalar weight.
  */
 __attribute__((always_inline)) INLINE
-double feedback_compute_scalar_weight(const float r2, const float *dx,
+void feedback_compute_scalar_weight(const float r2, const float *dx,
 				      const float hi, const float hj,
 				      const struct spart *restrict si,
 				      const struct part *restrict pj,
 				      double* dx_ij_plus,
-				      double* dx_ij_minus) {
+				      double* dx_ij_minus,
+				      double* scalar_weight_j) {
 
   const float r = sqrtf(r2);
 
@@ -632,25 +635,23 @@ double feedback_compute_scalar_weight(const float r2, const float *dx,
    * multiplied by 1/h^d.
    * The gas wcount cannot be retrived from here. So we approximate it using
    * rho/mass. */
-  double n_bar_i = si->feedback_data.density_wcount *  pow_dimension(1.0/hi);
-  double n_bar_j = pj->rho/pj->mass;
-  double n_bar_i_2_inv = 1.0/(n_bar_i*n_bar_i);
-  double n_bar_j_2_inv = 1.0/(n_bar_j*n_bar_j);
+  const double n_bar_i = si->feedback_data.density_wcount *  pow_dimension(1.0/hi);
+  const double n_bar_j = pj->rho/pj->mass;
+  const double n_bar_i_2_inv = 1.0/(n_bar_i*n_bar_i);
+  const double n_bar_j_2_inv = 1.0/(n_bar_j*n_bar_j);
 
   /* Compute the face orientation vector */
-  double A_j[3] = {(n_bar_i_2_inv * dW_ij_dr_j + n_bar_j_2_inv * dW_jj_dr_j)*dx_ij_hat[0],
-		   (n_bar_i_2_inv * dW_ij_dr_j + n_bar_j_2_inv * dW_jj_dr_j)*dx_ij_hat[1],
-		   (n_bar_i_2_inv * dW_ij_dr_j + n_bar_j_2_inv * dW_jj_dr_j)*dx_ij_hat[2]};
+  const double A_j[3] = {(n_bar_i_2_inv * dW_ij_dr_j + n_bar_j_2_inv * dW_jj_dr_j)*dx_ij_hat[0],
+			 (n_bar_i_2_inv * dW_ij_dr_j + n_bar_j_2_inv * dW_jj_dr_j)*dx_ij_hat[1],
+			 (n_bar_i_2_inv * dW_ij_dr_j + n_bar_j_2_inv * dW_jj_dr_j)*dx_ij_hat[2]};
 
   /* Prepare the computation of the scalar weight */
-  double number_1 = A_j[0]*dx_ij_hat[0] +  A_j[1]*dx_ij_hat[1] + A_j[2]*dx_ij_hat[2];
-  double number_2 = M_PI * r2;  
-  double denom = sqrt(1 + number_1/number_2);
+  const double number_1 = A_j[0]*dx_ij_hat[0] +  A_j[1]*dx_ij_hat[1] + A_j[2]*dx_ij_hat[2];
+  const double number_2 = M_PI * r2;
+  const double denom = sqrt(1 + number_1/number_2);
 
   /* Finally compute the scalar weight = solid angle fraction the gas j occupy around the star. */
-  double scalar_weight_j = 0.5*(1.0 - 1.0/denom) ;
-
-  return scalar_weight_j;
+  *scalar_weight_j = 0.5*(1.0 - 1.0/denom) ;
 }
 
 
@@ -679,10 +680,8 @@ void feedback_compute_vector_weight_non_normalized(const float r2, const float *
 						     double* f_plus_i,
 						     double* f_minus_i,
 						     double* w_j) {
-  double dx_ij_plus[3];
-  double dx_ij_minus[3];
-  double scalar_weight_j = feedback_compute_scalar_weight(r2, dx, hi, hj, si, pj,
-							  dx_ij_plus, dx_ij_minus);
+  double dx_ij_plus[3], dx_ij_minus[3], scalar_weight_j;
+  feedback_compute_scalar_weight(r2, dx, hi, hj, si, pj,dx_ij_plus, dx_ij_minus, &scalar_weight_j);
 
   /* Now, that we have accumulated the sums, we can compute the f_plus and
      f_minus */
