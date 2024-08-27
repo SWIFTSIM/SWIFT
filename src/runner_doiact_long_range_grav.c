@@ -122,7 +122,15 @@ void runner_do_grav_long_range_zoom_non_periodic(struct runner *r,
   /* Since the zoom cells will be handled by the void cell hierarchy we can
    * just loop over all other cells which are not zoom cells. This is
    * trivial since the zoom cells are first in cells_top. */
-  for (int cjd = 0; cjd < s->nr_cells; cjd++) {
+  for (int cjd = s->zoom_props->bkg_cell_offset; cjd < s->nr_cells; cjd++) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+    if (cells[cjd].type == cell_type_zoom) {
+      error(
+          "Zoom cell found in long range gravity task! These should be handled "
+          "by the void cell hierarchy.");
+    }
+#endif
 
     /* Skip void cells */
     if (cells[cjd].subtype == cell_subtype_void) continue;
@@ -130,15 +138,6 @@ void runner_do_grav_long_range_zoom_non_periodic(struct runner *r,
     /* Handle on the top-level cell and it's gravity business*/
     struct cell *cj = &cells[cjd];
     struct gravity_tensors *const multi_j = cj->grav.multipole;
-
-    /* If we have a zoom cell get the top level void cell. Otherwise,
-     * top_j is cj. */
-    struct cell *top_j;
-    if (cj->type == cell_type_zoom) {
-      top_j = cj->top->void_parent->top;
-    } else {
-      top_j = cj;
-    }
 
     /* Skip empty cells */
     if (multi_j->m_pole.M_000 == 0.f) continue;
@@ -150,9 +149,9 @@ void runner_do_grav_long_range_zoom_non_periodic(struct runner *r,
 #endif
 
     /* Avoid self contributions */
-    if (top == top_j) continue;
+    if (top == cj) continue;
 
-    if (cell_can_use_pair_mm(top, top_j, e, e->s, /*use_rebuild_data=*/1,
+    if (cell_can_use_pair_mm(top, cj, e, e->s, /*use_rebuild_data=*/1,
                              /*is_tree_walk=*/0,
                              /*periodic boundaries*/ s->periodic,
                              /*use_mesh*/ s->periodic)) {
