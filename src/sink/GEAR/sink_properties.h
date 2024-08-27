@@ -145,7 +145,7 @@ INLINE static void sink_props_init_probabilities(
   /* if no continous part, return */
   if (Mc == 0) {
     imf->sink_Pc = 0;
-    imf->stellar_particle_mass = 0;
+    imf->stellar_particle_mass_Msun = 0;
     message("probability of the continuous part    : %g", 0.);
     message("probability of the discrete   part    : %g", 1.);
     return;
@@ -155,7 +155,7 @@ INLINE static void sink_props_init_probabilities(
   double Pc = 1 / (1 + Nd);
   double Pd = 1 - Pc;
   imf->sink_Pc = Pc;
-  imf->stellar_particle_mass = Mc;
+  imf->stellar_particle_mass_Msun = Mc;
 
   message("probability of the continuous part     : %g", Pc);
   message("probability of the discrete   part     : %g", Pd);
