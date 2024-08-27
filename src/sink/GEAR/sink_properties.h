@@ -105,8 +105,8 @@ INLINE static void sink_props_init_probabilities(
 
     /* Give the IMF the minimal discrete mass and the stellar_particle_mass
        (in M_sun). */
-    imf->minimal_discrete_mass = minimal_discrete_mass;
-    imf->stellar_particle_mass = stellar_particle_mass;
+    imf->minimal_discrete_mass_Msun = minimal_discrete_mass;
+    imf->stellar_particle_mass_Msun = stellar_particle_mass;
   } else {
     /* This is already in M_sun */
     minimal_discrete_mass = sp->minimal_discrete_mass_first_stars;
@@ -118,8 +118,8 @@ INLINE static void sink_props_init_probabilities(
 
     /* Give the IMF the minimal discrete mass and the stellar_particle_mass
        (in M_sun). */
-    imf->minimal_discrete_mass = minimal_discrete_mass;
-    imf->stellar_particle_mass = stellar_particle_mass;
+    imf->minimal_discrete_mass_Msun = minimal_discrete_mass;
+    imf->stellar_particle_mass_Msun = stellar_particle_mass;
   }
 
   /* sanity check */
@@ -132,8 +132,7 @@ INLINE static void sink_props_init_probabilities(
   /* Compute the IMF mass (in solar mass) below the minimal IMF discrete mass
      (continuous part). */
   double Mtot, Md, Mc;
-  initial_mass_function_compute_Mc_Md_Mtot(
-      imf, minimal_discrete_mass, stellar_particle_mass, &Mc, &Md, &Mtot);
+  initial_mass_function_compute_Mc_Md_Mtot(imf, &Mc, &Md, &Mtot);
 
   /* Compute the number of stars in the continuous part of the IMF */
   double Nc = initial_mass_function_get_imf_number_fraction(
@@ -154,7 +153,7 @@ INLINE static void sink_props_init_probabilities(
   /* if no continous part, return */
   if (Mc == 0) {
     imf->sink_Pc = 0;
-    imf->stellar_particle_mass = 0;
+    imf->stellar_particle_mass_Msun = 0;
     message("probability of the continuous part    : %g", 0.);
     message("probability of the discrete   part    : %g", 1.);
     return;
