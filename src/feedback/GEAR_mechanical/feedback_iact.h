@@ -474,7 +474,7 @@ runner_iact_nonsym_feedback_apply(
   const double xsi = min(1, p_terminal / (psi * p_available));
 
   /* Finally, the ejected velocity is */
-  double p_ej = psi * xsi * p_available;
+  const double p_ej = psi * xsi * p_available;
 
   /* Now, we can compute dp */
   const double dp[3] = {w_j_bar[0] * p_ej, w_j_bar[1] * p_ej,
