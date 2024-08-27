@@ -532,15 +532,15 @@ int cell_unpack_multipoles(struct cell *restrict c,
  *
  * @return The number of packed cells.
  */
-int cell_pack_sf_counts(struct cell *restrict c,
-                        struct pcell_sf *restrict pcells) {
+int cell_pack_sf_counts(struct cell * c,
+                        struct pcell_sf_stars * pcells) {
 
 #ifdef WITH_MPI
 
   /* Pack this cell's data. */
-  pcells[0].stars.delta_from_rebuild = c->stars.parts - c->stars.parts_rebuild;
-  pcells[0].stars.count = c->stars.count;
-  pcells[0].stars.dx_max_part = c->stars.dx_max_part;
+  pcells[0].delta_from_rebuild = c->stars.parts - c->stars.parts_rebuild;
+  pcells[0].count = c->stars.count;
+  pcells[0].dx_max_part = c->stars.dx_max_part;
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Stars */
@@ -579,8 +579,8 @@ int cell_pack_sf_counts(struct cell *restrict c,
  *
  * @return The number of cells created.
  */
-int cell_unpack_sf_counts(struct cell *restrict c,
-                          struct pcell_sf *restrict pcells) {
+int cell_unpack_sf_counts(struct cell * c,
+                          struct pcell_sf_stars * pcells) {
 
 #ifdef WITH_MPI
 
@@ -590,9 +590,9 @@ int cell_unpack_sf_counts(struct cell *restrict c,
 #endif
 
   /* Unpack this cell's data. */
-  c->stars.count = pcells[0].stars.count;
-  c->stars.parts = c->stars.parts_rebuild + pcells[0].stars.delta_from_rebuild;
-  c->stars.dx_max_part = pcells[0].stars.dx_max_part;
+  c->stars.count = pcells[0].count;
+  c->stars.parts = c->stars.parts_rebuild + pcells[0].delta_from_rebuild;
+  c->stars.dx_max_part = pcells[0].dx_max_part;
 
   /* Fill in the progeny, depth-first recursion. */
   int count = 1;
@@ -619,14 +619,14 @@ int cell_unpack_sf_counts(struct cell *restrict c,
  *
  * @return The number of packed cells.
  */
-int cell_pack_grav_counts(struct cell *restrict c,
-                          struct pcell_sf *restrict pcells) {
+int cell_pack_grav_counts(struct cell * c,
+                          struct pcell_sf_grav * pcells) {
 
 #ifdef WITH_MPI
 
   /* Pack this cell's data. */
-  pcells[0].grav.delta_from_rebuild = c->grav.parts - c->grav.parts_rebuild;
-  pcells[0].grav.count = c->grav.count;
+  pcells[0].delta_from_rebuild = c->grav.parts - c->grav.parts_rebuild;
+  pcells[0].count = c->grav.count;
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Grav */
@@ -665,8 +665,8 @@ int cell_pack_grav_counts(struct cell *restrict c,
  *
  * @return The number of cells created.
  */
-int cell_unpack_grav_counts(struct cell *restrict c,
-                            struct pcell_sf *restrict pcells) {
+int cell_unpack_grav_counts(struct cell * c,
+                            struct pcell_sf_grav * pcells) {
 
 #ifdef WITH_MPI
 
@@ -676,8 +676,8 @@ int cell_unpack_grav_counts(struct cell *restrict c,
 #endif
 
   /* Unpack this cell's data. */
-  c->grav.count = pcells[0].grav.count;
-  c->grav.parts = c->grav.parts_rebuild + pcells[0].grav.delta_from_rebuild;
+  c->grav.count = pcells[0].count;
+  c->grav.parts = c->grav.parts_rebuild + pcells[0].delta_from_rebuild;
 
   /* Fill in the progeny, depth-first recursion. */
   int count = 1;

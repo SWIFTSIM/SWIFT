@@ -285,34 +285,30 @@ struct pcell_step {
 };
 
 /**
- * @brief Cell information to propagate the new counts of star particles.
+ * @brief Cell information to propagate the new counts of star particles (star variables).
  */
-struct pcell_sf {
+struct pcell_sf_stars {
 
-  /*! Stars variables */
-  struct {
+  /* Distance by which the stars pointer has moved since the last rebuild */
+  ptrdiff_t delta_from_rebuild;
 
-    /* Distance by which the stars pointer has moved since the last rebuild */
-    ptrdiff_t delta_from_rebuild;
+  /* Number of particles in the cell */
+  int count;
 
-    /* Number of particles in the cell */
-    int count;
+  /*! Maximum part movement in this cell since last construction. */
+  float dx_max_part;
+};
 
-    /*! Maximum part movement in this cell since last construction. */
-    float dx_max_part;
+/**
+ * @brief Cell information to propagate the new counts of star particles (grav variables).
+ */
+struct pcell_sf_grav {
 
-  } stars;
+  /* Distance by which the gpart pointer has moved since the last rebuild */
+  ptrdiff_t delta_from_rebuild;
 
-  /*! Grav. variables */
-  struct {
-
-    /* Distance by which the gpart pointer has moved since the last rebuild */
-    ptrdiff_t delta_from_rebuild;
-
-    /* Number of particles in the cell */
-    int count;
-
-  } grav;
+  /* Number of particles in the cell */
+  int count;
 };
 
 /**
@@ -541,10 +537,10 @@ void cell_pack_timebin(const struct cell *const c, timebin_t *const t);
 void cell_unpack_timebin(struct cell *const c, timebin_t *const t);
 int cell_pack_multipoles(struct cell *c, struct gravity_tensors *m);
 int cell_unpack_multipoles(struct cell *c, struct gravity_tensors *m);
-int cell_pack_sf_counts(struct cell *c, struct pcell_sf *pcell);
-int cell_unpack_sf_counts(struct cell *c, struct pcell_sf *pcell);
-int cell_pack_grav_counts(struct cell *c, struct pcell_sf *pcell);
-int cell_unpack_grav_counts(struct cell *c, struct pcell_sf *pcell);
+int cell_pack_sf_counts(struct cell *c, struct pcell_sf_stars *pcell);
+int cell_unpack_sf_counts(struct cell *c, struct pcell_sf_stars *pcell);
+int cell_pack_grav_counts(struct cell *c, struct pcell_sf_grav *pcell);
+int cell_unpack_grav_counts(struct cell *c, struct pcell_sf_grav *pcell);
 int cell_get_tree_size(struct cell *c);
 int cell_link_parts(struct cell *c, struct part *parts);
 int cell_link_gparts(struct cell *c, struct gpart *gparts);
