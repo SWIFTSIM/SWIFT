@@ -65,7 +65,7 @@ extern int engine_rank;
             ##__VA_ARGS__);                                                \
     memdump(engine_rank);                                                  \
     fflush(stderr);                                                        \
-    abort();                                                               \
+    MPI_Abort(MPI_COMM_WORLD, -1);                                         \
   })
 #else
 extern int engine_rank;
@@ -99,7 +99,7 @@ extern int engine_rank;
     fprintf(stderr, "%s\n\n", buf);                                        \
     memdump(engine_rank);                                                  \
     fflush(stderr);                                                        \
-    abort();                                                               \
+    MPI_Abort(MPI_COMM_WORLD, -1);                                         \
   })
 
 #define mpi_error_string(res, s, ...)                                      \

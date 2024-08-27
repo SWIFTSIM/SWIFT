@@ -1378,7 +1378,7 @@ void DOPAIR1_BRANCH(struct runner *r, struct cell *ci, struct cell *cj) {
             1.0e-4 * max(fabsf(d), ci->hydro.dx_max_sort_old) &&
         fabsf(d - sort_i[pid].d) - ci->hydro.dx_max_sort >
             ci->width[0] * 1.0e-10)
-      warning(
+      error(
           "particle shift diff exceeds dx_max_sort in cell ci. ci->nodeID=%d "
           "cj->nodeID=%d d=%e sort_i[pid].d=%e ci->hydro.dx_max_sort=%e "
           "ci->hydro.dx_max_sort_old=%e",
@@ -1396,7 +1396,7 @@ void DOPAIR1_BRANCH(struct runner *r, struct cell *ci, struct cell *cj) {
             1.0e-4 * max(fabsf(d), cj->hydro.dx_max_sort_old) &&
         (fabsf(d - sort_j[pjd].d) - cj->hydro.dx_max_sort) >
             cj->width[0] * 1.0e-10)
-      warning(
+      error(
           "particle shift diff exceeds dx_max_sort in cell cj. cj->nodeID=%d "
           "ci->nodeID=%d d=%e sort_j[pjd].d=%e cj->hydro.dx_max_sort=%e "
           "cj->hydro.dx_max_sort_old=%e",
@@ -2023,7 +2023,7 @@ void DOPAIR2_BRANCH(struct runner *r, struct cell *ci, struct cell *cj) {
             1.0e-4 * max(fabsf(d), ci->hydro.dx_max_sort_old) &&
         fabsf(d - sort_i[pid].d) - ci->hydro.dx_max_sort >
             ci->width[0] * 1.0e-10)
-      warning(
+      error(
           "particle shift diff exceeds dx_max_sort in cell ci. ci->nodeID=%d "
           "cj->nodeID=%d d=%e sort_i[pid].d=%e ci->hydro.dx_max_sort=%e "
           "ci->hydro.dx_max_sort_old=%e",
@@ -2041,7 +2041,7 @@ void DOPAIR2_BRANCH(struct runner *r, struct cell *ci, struct cell *cj) {
             1.0e-4 * max(fabsf(d), cj->hydro.dx_max_sort_old) &&
         fabsf(d - sort_j[pjd].d) - cj->hydro.dx_max_sort >
             cj->width[0] * 1.0e-10)
-      warning(
+      error(
           "particle shift diff exceeds dx_max_sort in cell cj. cj->nodeID=%d "
           "ci->nodeID=%d d=%e sort_j[pjd].d=%e cj->hydro.dx_max_sort=%e "
           "cj->hydro.dx_max_sort_old=%e",
