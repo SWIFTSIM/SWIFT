@@ -437,8 +437,6 @@ void stellar_evolution_evolve_individual_star(
  * @param star_age_beg_step The age of the star at the star of the time-step in
  * internal units.
  * @param dt The time-step size of this star in internal units.
- * @param star_metal Metallicity of the #spart.
- * @param first_star_threshold Metallicity limit for the first stars.
  */
 void stellar_evolution_evolve_spart(
     struct spart* restrict sp, const struct stellar_model* sm,
