@@ -868,7 +868,7 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
                 "gravitationally with all other gparts "
                 "gp->num_interacted=%lld, total_gparts=%lld (local "
                 "num_gparts=%zd inhibited_gparts=%lld, "
-                "total-gp->num_interacted=%lld, c->type=%s, c->subtype=%s, "
+                "(total-gp->num_interacted)=%lld, c->type=%s, c->subtype=%s, "
                 "c->depth=%d)",
                 my_id, part_type_names[gp->type], gp->num_interacted,
                 e->total_nr_gparts, e->s->nr_gparts, e->count_inhibited_gparts,
