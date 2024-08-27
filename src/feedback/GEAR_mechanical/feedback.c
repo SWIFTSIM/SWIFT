@@ -793,9 +793,7 @@ double feedback_get_SN_terminal_momentum(const struct spart* restrict sp,
   /* Get number density factor in cgs */
   const double m_p_cgs = phys_const->const_proton_mass *
                          units_cgs_conversion_factor(us, UNIT_CONV_MASS);
-  double density_mean = sp->feedback_data.weighted_gas_density;
-  density_mean = density_mean *
-                 units_cgs_conversion_factor(us, UNIT_CONV_DENSITY) / m_p_cgs;
+  const double density_mean = sp->feedback_data.weighted_gas_density * units_cgs_conversion_factor(us, UNIT_CONV_DENSITY) / m_p_cgs;
 
   double density_factor = 0.0;
 
