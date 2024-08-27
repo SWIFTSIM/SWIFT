@@ -414,6 +414,14 @@ void zoom_engine_make_hierarchical_void_tasks(struct engine *e) {
 
   /* Loop through the void cells and make the hierarchical tasks. */
   for (int i = 0; i < nr_void_cells; i++) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+    /* Ensure we have a void cell. */
+    if (cells[void_cells[i]].subtype != cell_subtype_void) {
+      error("Cell is not a void cell.");
+    }
+#endif
+
     zoom_engine_make_hierarchical_void_tasks_recursive(e,
                                                        &cells[void_cells[i]]);
   }
