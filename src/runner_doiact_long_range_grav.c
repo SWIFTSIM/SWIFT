@@ -132,9 +132,6 @@ void runner_do_grav_long_range_zoom_non_periodic(struct runner *r,
     }
 #endif
 
-    /* Skip void cells */
-    if (cells[cjd].subtype == cell_subtype_void) continue;
-
     /* Handle on the top-level cell and it's gravity business*/
     struct cell *cj = &cells[cjd];
     struct gravity_tensors *const multi_j = cj->grav.multipole;
