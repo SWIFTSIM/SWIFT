@@ -209,6 +209,16 @@ void feedback_will_do_feedback(
 
   /* A single star */
   if (sp->feedback_data.star_type == single_star) {
+    /* If the star has completely exploded, do not continue. This will also
+       avoid NaN values in the liftetime if the mass is set to 0. Correction
+       (28.04.2024): A bug fix in the mass of the star (see stellar_evolution.c
+       in stellar_evolution_compute_X_feedback_properties, X=discrete,
+       continuous) has changed the mass of the star from 0 to
+       discrete_star_minimal_gravity_mass. Hence the fix is propagated here. */
+    if (sp->mass <= model->discrete_star_minimal_gravity_mass) {
+      return;
+    }
+
     /* Now, compute the stellar evolution state for individual star particles.
      */
     stellar_evolution_evolve_individual_star(sp, model, cosmo, us, phys_const,

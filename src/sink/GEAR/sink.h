@@ -84,7 +84,7 @@ INLINE static void sink_update_target_mass(struct sink* sink,
 
   if (random_number < imf->sink_Pc) {
     /* We are dealing with the continous part of the IMF. */
-    sink->target_mass = imf->stellar_particle_mass;
+    sink->target_mass = imf->stellar_particle_mass_Msun;
     sink->target_type = star_population_continuous_IMF;
   } else {
     /* We are dealing with the discrete part of the IMF. */

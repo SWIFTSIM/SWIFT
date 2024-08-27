@@ -67,4 +67,8 @@ void initial_mass_function_clean(struct initial_mass_function *imf);
 double initial_mass_function_sample_power_law(double min_mass, double max_mass,
                                               double exp, double x);
 
+void initial_mass_function_compute_Mc_Md_Mtot(
+    const struct initial_mass_function *imf, double *M_continuous,
+    double *M_discrete, double *M_tot);
+
 #endif  // SWIFT_INITIAL_MASS_FUNCTION_GEAR_H
