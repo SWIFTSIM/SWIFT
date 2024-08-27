@@ -761,8 +761,6 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
   struct cell *top = ci;
   while (top->parent != NULL) top = top->parent;
 
-  return;
-
   /* Call the appropriate interaction function. */
   if (periodic) {
     switch (top->type) {
