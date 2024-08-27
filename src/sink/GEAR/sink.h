@@ -795,7 +795,8 @@ INLINE static void sink_copy_properties_to_star(
   star_formation_set_spart_birth_mass(sp, sp->mass);
 
   /* Store either the birth_scale_factor or birth_time */
-  star_formation_set_spart_birth_time_or_scale_factor(sp, e->time, cosmo->a, with_cosmology);
+  star_formation_set_spart_birth_time_or_scale_factor(sp, e->time, cosmo->a,
+                                                      with_cosmology);
 
   /* Copy the progenitor id */
   star_formation_set_spart_progenitor_id(sp, sink->id);

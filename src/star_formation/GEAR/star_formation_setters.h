@@ -27,7 +27,6 @@
  * implementation details to the outer world. Keep the code clean and lean.
  */
 
-
 /**
  * @brief Set the birth density of a star particle.
  *
@@ -35,7 +34,9 @@
  * @param birth_density Birth density of the star.
  */
 
-__attribute__((always_inline)) INLINE void star_formation_set_spart_birth_density(struct spart *restrict sp, const float birth_density) {
+__attribute__((always_inline)) INLINE void
+star_formation_set_spart_birth_density(struct spart *restrict sp,
+                                       const float birth_density) {
   sp->sf_data.birth_density = birth_density;
 }
 
@@ -46,7 +47,9 @@ __attribute__((always_inline)) INLINE void star_formation_set_spart_birth_densit
  * @param birth_temperature Birth temperature of the star.
  */
 
-__attribute__((always_inline)) INLINE void star_formation_set_spart_birth_temperature(struct spart *restrict sp, const float birth_temperature) {
+__attribute__((always_inline)) INLINE void
+star_formation_set_spart_birth_temperature(struct spart *restrict sp,
+                                           const float birth_temperature) {
   sp->sf_data.birth_temperature = birth_temperature;
 }
 
@@ -57,7 +60,8 @@ __attribute__((always_inline)) INLINE void star_formation_set_spart_birth_temper
  * @param birth_mass Birth mass of the star.
  */
 
-__attribute__((always_inline)) INLINE void star_formation_set_spart_birth_mass(struct spart *restrict sp, const float birth_mass) {
+__attribute__((always_inline)) INLINE void star_formation_set_spart_birth_mass(
+    struct spart *restrict sp, const float birth_mass) {
   sp->sf_data.birth_mass = birth_mass;
 }
 
@@ -68,7 +72,9 @@ __attribute__((always_inline)) INLINE void star_formation_set_spart_birth_mass(s
  * @param progenitor_id The id of the particle creating sp.
  */
 
-__attribute__((always_inline)) INLINE void star_formation_set_spart_progenitor_id(struct spart *restrict sp, const long long progenitor_id) {
+__attribute__((always_inline)) INLINE void
+star_formation_set_spart_progenitor_id(struct spart *restrict sp,
+                                       const long long progenitor_id) {
   sp->sf_data.progenitor_id = progenitor_id;
 }
 
@@ -81,7 +87,10 @@ __attribute__((always_inline)) INLINE void star_formation_set_spart_progenitor_i
  * @param with_cosmology If we run with cosmology.
  */
 
-__attribute__((always_inline)) INLINE void star_formation_set_spart_birth_time_or_scale_factor(struct spart *restrict sp, const float birth_time, const float birth_scale_factor, const int with_cosmology) {
+__attribute__((always_inline)) INLINE void
+star_formation_set_spart_birth_time_or_scale_factor(
+    struct spart *restrict sp, const float birth_time,
+    const float birth_scale_factor, const int with_cosmology) {
   if (with_cosmology) {
     sp->birth_scale_factor = birth_scale_factor;
   } else {
