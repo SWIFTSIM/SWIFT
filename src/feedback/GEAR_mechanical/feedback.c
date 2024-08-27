@@ -586,6 +586,7 @@ void feedback_clean(struct feedback_props* feedback) {
  * @param pj Second (gas) particle.
  * @param dx_ij_plus (return) Projection vector plus. Pointer to array of size 3.
  * @param dx_ij_minus (return) Projection vector minus. Pointer to array of size 3.
+ * @param scalar_weigth (return) Scalar weight.
  */
 __attribute__((always_inline)) INLINE
 double feedback_compute_scalar_weight(const float r2, const float *dx,
