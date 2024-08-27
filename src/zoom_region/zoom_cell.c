@@ -821,9 +821,9 @@ void zoom_link_void_leaves(struct space *s, struct cell *c) {
   }
 #endif
 
-  /* We need to ensure this bottom level isn't treated like a
-   * normal split cell since it's linked into top level "progeny". */
-  c->split = 0;
+  /* /\* We need to ensure this bottom level isn't treated like a */
+  /*  * normal split cell since it's linked into top level "progeny". *\/ */
+  /* c->split = 0; */
 
   /* Initialise gravity timestep information we need to collect. */
   integertime_t ti_gravity_end_min = max_nr_timesteps, ti_gravity_beg_max = 0;
