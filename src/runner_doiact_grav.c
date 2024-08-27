@@ -187,8 +187,6 @@ void runner_zoom_do_void_grav_down(struct runner *r, struct cell *c,
 
   TIMER_TIC;
 
-  return;
-
 #ifdef SWIFT_DEBUG_CHECKS
 
   /* Some constants */
