@@ -1089,34 +1089,4 @@ INLINE static void sink_prepare_part_sink_formation_sink_criteria(
   }
 }
 
-/**
- * @brief Compute the second derivative of the scale-factor.
- *
- * @param cosmo The cosmological parameters and properties.
- * @param (return) a_dot_dot  The second derivative of the scale-factor.
- */
-// TODO : Move this function and some other to a different file to keep this one
-// clean
-//Maybe put it in cosmo.h
-__attribute__((always_inline)) INLINE static double
-sink_compute_a_dot_dot(const struct cosmology *cosmo) {
-  const float a = cosmo->a;
-  const float H = cosmo->H;
-  const double Omega_r = cosmo->Omega_r + cosmo->Omega_nu;
-  const double Omega_m = cosmo->Omega_cdm + cosmo->Omega_b;
-  const double Omega_l = cosmo->Omega_lambda;
-  const double w0 = cosmo->w_0;
-  const double wa = cosmo->w_a;
-  const double a_inv = cosmo->a_inv;
-
-  const double w_DE = cosmology_dark_energy_EoS(a, w0, wa);
-    /* w0 + wa * (1. - a);  // cosmology_dark_energy_EoS(a, w0, wa); */
-  const double w_tilde = w_tilde(a, w0, wa); //(a - 1.) * wa - (1. + w0 + wa) * log(a);
-  const double density_sum = Omega_m * a_inv * a_inv * a_inv +
-    2.0 * Omega_r * a_inv * a_inv * a_inv * a_inv +
-    Omega_l * exp(3. * w_tilde) * (1 + w_DE);
-  const double a_dot_dot = -H * H / 2.0 * density_sum;
-  return a_dot_dot;
-}
-
 #endif /* SWIFT_GEAR_SINK_H */

@@ -1473,6 +1473,33 @@ double cosmology_get_scale_factor(const struct cosmology *c, double t) {
 }
 
 /**
+ * @brief Compute the second derivative of the scale-factor.
+ *
+ * @param cosmo The cosmological parameters and properties.
+ * @param (return) a_dot_dot  The second derivative of the scale-factor.
+ */
+__attribute__((always_inline)) INLINE double
+cosmology_compute_a_dot_dot(const struct cosmology *c) {
+  const float a = c->a;
+  const float H = c->H;
+  const double Omega_r = c->Omega_r + c->Omega_nu;
+  const double Omega_m = c->Omega_cdm + c->Omega_b;
+  const double Omega_l = c->Omega_lambda;
+  const double w0 = c->w_0;
+  const double wa = c->w_a;
+  const double a_inv = c->a_inv;
+
+  const double w_DE = cosmology_dark_energy_EoS(a, w0, wa);
+    /* w0 + wa * (1. - a);  // cosmology_dark_energy_EoS(a, w0, wa); */
+  const double w_tilde_var = w_tilde(a, w0, wa); //(a - 1.) * wa - (1. + w0 + wa) * log(a);
+  const double density_sum = Omega_m * a_inv * a_inv * a_inv +
+    2.0 * Omega_r * a_inv * a_inv * a_inv * a_inv +
+    Omega_l * exp(3. * w_tilde_var) * (1 + w_DE);
+  const double a_dot_dot = -H * H / 2.0 * density_sum;
+  return a_dot_dot;
+}
+
+/**
  * @brief Prints the #cosmology model to stdout.
  */
 void cosmology_print(const struct cosmology *c) {

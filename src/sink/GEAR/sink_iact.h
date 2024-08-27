@@ -20,6 +20,7 @@
 #define SWIFT_GEAR_SINKS_IACT_H
 
 /* Local includes */
+#include "cosmology.h"
 #include "gravity.h"
 #include "gravity_iact.h"
 #include "sink.h"
@@ -206,7 +207,7 @@ runner_iact_nonsym_sinks_sink_swallow(
                              &pot_ji);
 
     // w_tilde(a, w0, wa)
-    const double a_dot_dot = sink_compute_a_dot_dot(cosmo);
+    const double a_dot_dot = cosmology_compute_a_dot_dot(cosmo);
 
     /* Compute the physical potential energies :
        E_pot_phys = G*pot_grav*a^(-1) + c(a). */
@@ -358,7 +359,7 @@ runner_iact_nonsym_sinks_gas_swallow(const float r2, const float dx[3],
     runner_iact_grav_pp_full(r2, eps2, eps_inv, eps_inv3, sink_mass, &dummy,
                              &pot_ij);
 
-    const double a_dot_dot = sink_compute_a_dot_dot(cosmo);
+    const double a_dot_dot = cosmology_compute_a_dot_dot(cosmo);
 
     /* Compute the physical potential energy that the sink exerts in the gas :
                        E_pot_phys = G*pot_grav*a^(-1) + c(a). */
