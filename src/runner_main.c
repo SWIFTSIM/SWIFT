@@ -553,7 +553,6 @@ void *runner_main(void *data) {
           } else {
             runner_do_grav_down(r, t->ci, 1);
           }
-          runner_do_grav_down(r, t->ci, 1);
           break;
         case task_type_grav_long_range:
           runner_do_grav_long_range(r, t->ci, 1);
