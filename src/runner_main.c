@@ -550,7 +550,7 @@ void *runner_main(void *data) {
           /* Call the appropriate grav down for the cell type. */
           if (t->ci->subtype == cell_subtype_void) {
             runner_zoom_do_void_grav_down(r, t->ci, 1);
-          } else {
+          } else if (t->ci->type != cell_type_zoom) {
             runner_do_grav_down(r, t->ci, 1);
           }
           break;
