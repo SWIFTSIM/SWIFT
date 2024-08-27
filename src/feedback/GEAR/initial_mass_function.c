@@ -626,3 +626,43 @@ INLINE double initial_mass_function_sample_power_law(double min_mass,
   double pmax = pow(max_mass, exp);
   return pow(x * (pmax - pmin) + pmin, 1. / exp);
 }
+
+/** @brief Compute the mass of the continuous and discrete part of the
+ * IMF. Also compute the total mass of the IMF.
+ *
+ * This function is used when we deal with an IMF split into two parts,
+ * e.g. with the sink particles or the stellar feedback.
+ *
+ * Note: This function does not verify wheter it computes the masses for the
+ * first stars or not. You need to verify this before this function and pass the
+ * correct values to 'minimal_discrete_mass_Msun' and 'stellar_particle_mass'.
+ *
+ * Note 2: This function implicitiely assumes M_sun since the IMF data
+ * structures handles the masses in M_sun.
+ *
+ * @param imf The #initial_mass_function.
+ * @param (return) M_continuous Mass of the continous part of the IMF.
+ * @param (return) M_discrete Mass of the discrete part of the IMF.
+ * @param (return) M_tot Total mass of the IMF.
+ */
+void initial_mass_function_compute_Mc_Md_Mtot(
+    const struct initial_mass_function *imf, double *M_continuous,
+    double *M_discrete, double *M_tot) {
+
+  /* f_continuous is the imf mass fraction of the continuous part (of the IMF).
+   */
+  const double f_continuous = initial_mass_function_get_imf_mass_fraction(
+      imf, imf->mass_min, imf->minimal_discrete_mass_Msun);
+
+  /* Determine Mc and Md the masses of the continuous and discrete parts of the
+     IMF, as well as Mtot the total mass of the IMF. */
+  if (f_continuous > 0) {
+    *M_tot = imf->stellar_particle_mass_Msun / f_continuous;
+    *M_discrete = *M_tot - imf->stellar_particle_mass_Msun;
+    *M_continuous = imf->stellar_particle_mass_Msun;
+  } else {
+    *M_tot = imf->stellar_particle_mass_Msun;
+    *M_discrete = *M_tot;
+    *M_continuous = 0;
+  }
+}
