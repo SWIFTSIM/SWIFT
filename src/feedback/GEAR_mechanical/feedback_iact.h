@@ -80,6 +80,9 @@ runner_iact_nonsym_feedback_density(const float r2, const float dx[3],
  * @brief Prepare the feedback by computing the required quantities (loop 1).
  * Used for updating properties of star particles required for the feedback.
  *
+ * In GEAR, compute the first quantities required for the enrichment vector
+ * weights.
+ *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (si - pj).
  * @param hi Comoving smoothing-length of particle i.
@@ -134,7 +137,8 @@ runner_iact_nonsym_feedback_prep1(const float r2, const float dx[3],
  * @brief Prepare the feedback by computing the required quantities (loop 2).
  * Used for updating properties of star particles required for the feedback.
  *
- * In GEAR, we update the enrichment weight.
+ * In GEAR, compute the second quantities required for the enrichment vector
+ * weights.
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (si - pj).
@@ -176,6 +180,9 @@ runner_iact_nonsym_feedback_prep2(const float r2, const float dx[3],
 #if FEEDBACK_GEAR_MECHANICAL_MODE == 2
 /**
  * @brief Prepare the feedback by computing the required quantities (loop 3).
+ *
+ * Only for mechanical feedback 2. Accumulate values to compute quantities that
+ * take into account the star-gas motion.
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (si - pj).
@@ -253,6 +260,9 @@ runner_iact_nonsym_feedback_prep3(const float r2, const float dx[3],
 
 /**
  * @brief Prepare the feedback by computing the required quantities (loop 4).
+ *
+ * Note: Not used.
+ * TODO: Probably to be removed later.
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (si - pj).
