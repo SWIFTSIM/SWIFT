@@ -1560,12 +1560,8 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
     struct cell *ci = t->ci;
     struct cell *cj = t->cj;
 
-    /* If both are void cells just split both at once. Also split both if one
-     * is a void cell and the other is split. */
-    if ((ci->subtype == cell_subtype_void &&
-         cj->subtype == cell_subtype_void) ||
-        (ci->subtype == cell_subtype_void && cj->split) ||
-        (ci->split && cj->subtype == cell_subtype_void)) {
+    /* If both are void cells just split both at once. */
+    if (ci->subtype == cell_subtype_void && cj->subtype == cell_subtype_void) {
       /* Turn the task into a M-M task that will take care of all the
        * progeny pairs */
       t->type = task_type_grav_mm;
@@ -1638,7 +1634,7 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
      * on to split into the progeny on the void side and try again. */
 
     /* If ci is a void cell we must split it regardless. */
-    else if (ci->subtype == cell_subtype_void) {
+    else if (ci->subtype == cell_subtype_void && cj->grav.count > 0) {
       /* Turn the task into a M-M task that will take care of all the
        * progeny pairs */
       t->type = task_type_grav_mm;
@@ -1676,12 +1672,6 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
         /* We actually have to create a task, if we're at the zoom
          * level call the normal splitting function. */
         for (int i = 0; i < 8; i++) {
-          /* But, skip empty non-voids. */
-          if ((ci->progeny[i]->subtype != cell_subtype_void &&
-               ci->progeny[i]->grav.count == 0) ||
-              (cj->subtype != cell_subtype_void && cj->grav.count == 0)) {
-            continue;
-          }
 
           /* Make the task and call the appropriate splitter. */
           if (ci->progeny[i]->subtype != cell_subtype_void) {
@@ -1700,7 +1690,7 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
     }
 
     /* If cj is a void cell we must split it regardless. */
-    else if (cj->subtype == cell_subtype_void) {
+    else if (cj->subtype == cell_subtype_void && ci->grav.count > 0) {
       /* Turn the task into a M-M task that will take care of all the
        * progeny pairs */
       t->type = task_type_grav_mm;
@@ -1738,12 +1728,6 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
         /* We actually have to create a task, if we're at the zoom
          * level call the normal splitting function. */
         for (int j = 0; j < 8; j++) {
-          /* But, skip empty non-voids. */
-          if ((cj->progeny[j]->subtype != cell_subtype_void &&
-               cj->progeny[j]->grav.count == 0) ||
-              (ci->subtype != cell_subtype_void && ci->grav.count == 0)) {
-            continue;
-          }
 
           /* Make the task and call the appropriate splitter. */
           if (cj->progeny[j]->subtype != cell_subtype_void) {
@@ -1759,6 +1743,15 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
           }
         }
       }
+    } else {
+      /* Otherwise we've split too far and need to kill off the task. This
+       * shouldn't be possible (and would be wasteful) but catch it for
+       * now. */
+      t->type = task_type_none;
+      t->subtype = task_subtype_none;
+      t->ci = NULL;
+      t->cj = NULL;
+      t->skip = 1;
     }
   }
 
