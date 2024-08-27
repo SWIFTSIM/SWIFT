@@ -101,15 +101,17 @@ struct feedback_spart_data {
   double f_minus_num[3];
   double f_minus_denom[3];
 
-  /* Accumulated value for the total energy available in the SN, taking into
-     account gas-star motion. This is eq (A4) (lower formula) sum terms in
-     https://arxiv.org/abs/2404.16987, without the 0.5*m_ej. */
-  double E_total_accumulator;
+  struct {
+    /* Accumulated value for the total energy available in the SN, taking into
+       account gas-star motion. This is eq (A4) (lower formula) sum terms in
+       https://arxiv.org/abs/2404.16987, without the 0.5*m_ej. */
+    double E_total;
 
-  /* Parameters to determine the coupled energy, momentum and internal energy
-     of the SN */
-  double beta_1_accumulator; /* Accumulated value for beta_1 */
-  double beta_2_accumulator; /* Accumulated value for beta_2 */
+    /* Parameters to determine the coupled energy, momentum and internal energy
+       of the SN */
+    double beta_1; /* Accumulated value for beta_1 */
+    double beta_2; /* Accumulated value for beta_2 */
+  } accumulator;
 
   /* Sum of the weighted gas properties used to compute terminal momentum */
   double weighted_gas_density;

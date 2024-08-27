@@ -373,9 +373,9 @@ void feedback_init_spart(struct spart* sp) {
   sp->feedback_data.f_minus_denom[1] = 0.0;
   sp->feedback_data.f_minus_denom[2] = 0.0;
 
-  sp->feedback_data.E_total_accumulator = 0;
-  sp->feedback_data.beta_1_accumulator = 0;
-  sp->feedback_data.beta_2_accumulator = 0;
+  sp->feedback_data.accumulator.E_total = 0;
+  sp->feedback_data.accumulator.beta_1 = 0;
+  sp->feedback_data.accumulator.beta_2 = 0;
   sp->feedback_data.weighted_gas_density = 0;
   sp->feedback_data.weighted_gas_metallicity = 0;
 
@@ -445,9 +445,9 @@ void feedback_reset_feedback(struct spart* sp,
   sp->feedback_data.f_minus_denom[1] = 0.0;
   sp->feedback_data.f_minus_denom[2] = 0.0;
 
-  sp->feedback_data.E_total_accumulator = 0;
-  sp->feedback_data.beta_1_accumulator = 0;
-  sp->feedback_data.beta_2_accumulator = 0;
+  sp->feedback_data.accumulator.E_total = 0;
+  sp->feedback_data.accumulator.beta_1 = 0;
+  sp->feedback_data.accumulator.beta_2 = 0;
   sp->feedback_data.weighted_gas_density = 0;
   sp->feedback_data.weighted_gas_metallicity = 0;
 

@@ -233,14 +233,14 @@ runner_iact_nonsym_feedback_prep3(const float r2, const float dx[3],
   const double w_prime_ij = w_j_bar_norm / (1 + dm/mj);
 
   /* Notice that we will multiply by 0.5*m_ej later on */
-  si->feedback_data.E_total_accumulator += w_prime_ij*v_ij_norm_2;
+  si->feedback_data.accumulator.E_total += w_prime_ij*v_ij_norm_2;
 
   /* Notice that we need the small epsilon (total available kinetic energy) to
      finish the computation of this. The small epsilon is determined by E_tot */
-  si->feedback_data.beta_1_accumulator += w_prime_ij*v_ij_times_w_j_bar_hat;
+  si->feedback_data.accumulator.beta_1 += w_prime_ij*v_ij_times_w_j_bar_hat;
 
   /* Notice that we will multiply by m_ej later on */
-  si->feedback_data.beta_2_accumulator += w_prime_ij*w_j_bar_norm/mj;
+  si->feedback_data.accumulator.beta_2 += w_prime_ij*w_j_bar_norm/mj;
 
 
   /* Compute the weigthed average of the gas properties around the star with
@@ -429,10 +429,10 @@ runner_iact_nonsym_feedback_apply(
   const double f_kin_0 = fb_props->f_kin_0;
 
   /* ... momentum */
-  const double E_tot = E_ej + 0.5*m_ej*si->feedback_data.E_total_accumulator;
+  const double E_tot = E_ej + 0.5*m_ej*si->feedback_data.accumulator.E_total;
   const double epsilon = f_kin_0 * E_tot; /* coupled kinetic energy */
-  const double beta_1 = sqrt(m_ej/(2.0*epsilon))*si->feedback_data.beta_1_accumulator;
-  const double beta_2 = m_ej * si->feedback_data.beta_2_accumulator;
+  const double beta_1 = sqrt(m_ej/(2.0*epsilon))*si->feedback_data.accumulator.beta_1;
+  const double beta_2 = m_ej * si->feedback_data.accumulator.beta_2;
 
   /* Compute the PdV work, taking into account gas in/outflows */
   const double psi = (sqrt(fabs(beta_2 + beta_1*beta_1)) - beta_1)/beta_2;
