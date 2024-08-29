@@ -56,6 +56,7 @@ struct mhd_part_data {
 struct mhd_xpart_data {
   /*! Full Step Potential field */
   float Afull[3];
+  float Gau_full;
 };
 
 #endif /* SWIFT_VECTOR_POTENTIAL_MHD_STRUCT_H */

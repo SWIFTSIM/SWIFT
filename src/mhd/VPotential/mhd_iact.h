@@ -60,25 +60,35 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_density(
 
   /* Now we need to compute the div terms */
   const float r_inv = r ? 1.0f / r : 0.0f;
-  const float faci = mj * wi_dx * r_inv;
-  const float facj = mi * wj_dx * r_inv;
+  // const float faci = mj * wi_dx * r_inv;
+  // const float facj = mi * wj_dx * r_inv;
+  const float faci = wi_dx * r_inv;
+  const float facj = wj_dx * r_inv;
 
   double dA[3];
   for (int i = 0; i < 3; ++i)
-    dA[i] = pi->mhd_data.APred[i] - pj->mhd_data.APred[i];
+    dA[i] = faci * pi->mhd_data.APred[i] + facj * pj->mhd_data.APred[i];
+    ///dA[i] = pi->mhd_data.APred[i] - pj->mhd_data.APred[i];
 
   const double dAdr = dA[0] * dx[0] + dA[1] * dx[1] + dA[2] * dx[2];
-  pi->mhd_data.divA -= faci * dAdr;
-  pj->mhd_data.divA -= facj * dAdr;
+  /// pi->mhd_data.divA -= faci * dAdr;
+  ///pj->mhd_data.divA -= facj * dAdr;
+  pi->mhd_data.divA -= mj * dAdr;
+  pj->mhd_data.divA += mi * dAdr;
   /////
   // bi = dj ak - dk aj
   // bj = dk ai - di ak
   // bk = di aj - dj ai
   //
   for (int i = 0; i < 3; ++i) {
-    pi->mhd_data.BPred[i] += faci * (dA[(i + 1) % 3] * dx[(i + 2) % 3] -
+    /*pi->mhd_data.BPred[i] += faci * (dA[(i + 1) % 3] * dx[(i + 2) % 3] -
                                      dA[(i + 2) % 3] * dx[(i + 1) % 3]);
     pj->mhd_data.BPred[i] += facj * (dA[(i + 1) % 3] * dx[(i + 2) % 3] -
+                                     dA[(i + 2) % 3] * dx[(i + 1) % 3]);
+*/ 
+    pi->mhd_data.BPred[i] += mj * (dA[(i + 1) % 3] * dx[(i + 2) % 3] -
+                                     dA[(i + 2) % 3] * dx[(i + 1) % 3]);
+    pj->mhd_data.BPred[i] -= mi * (dA[(i + 1) % 3] * dx[(i + 2) % 3] -
                                      dA[(i + 2) % 3] * dx[(i + 1) % 3]);
   }
 }
@@ -104,30 +114,42 @@ runner_iact_nonsym_mhd_density(const float r2, const float dx[3],
                                const double mu_0, const float a,
                                const float H) {
   float wi, wi_dx;
+  float wj, wj_dx;
 
   const float r = sqrtf(r2);
 
   /* Get the mass. */
   const float mj = pj->mass;
+  //const float mi = pi->mass;
 
   /* Compute density of pi. */
   const float hi_inv = 1.f / hi;
   const float ui = r * hi_inv;
+  const float hj_inv = 1.f / hj;
+  const float uj = r * hj_inv;
 
   kernel_deval(ui, &wi, &wi_dx);
+  kernel_deval(uj, &wj, &wj_dx);
 
   /* Now we need to compute the div terms */
   const float r_inv = r ? 1.0f / r : 0.0f;
-  const float faci = mj * wi_dx * r_inv;
+  //const float faci = mj * wi_dx * r_inv;
+  //const float facj = mi * wj_dx * r_inv;
+  const float faci = wi_dx * r_inv;
+  const float facj = wj_dx * r_inv;
 
   double dA[3];
   for (int i = 0; i < 3; ++i)
-    dA[i] = pi->mhd_data.APred[i] - pj->mhd_data.APred[i];
+    dA[i] = faci * pi->mhd_data.APred[i] + facj * pj->mhd_data.APred[i];
+//    dA[i] = pi->mhd_data.APred[i] - pj->mhd_data.APred[i];
 
   const double dAdr = dA[0] * dx[0] + dA[1] * dx[1] + dA[2] * dx[2];
-  pi->mhd_data.divA -= faci * dAdr;
+//  pi->mhd_data.divA -= faci * dAdr;
+  pi->mhd_data.divA -= mj * dAdr;
   for (int i = 0; i < 3; ++i)
-    pi->mhd_data.BPred[i] += faci * (dA[(i + 1) % 3] * dx[(i + 2) % 3] -
+    //pi->mhd_data.BPred[i] += faci * (dA[(i + 1) % 3] * dx[(i + 2) % 3] -
+    //                                 dA[(i + 2) % 3] * dx[(i + 1) % 3]);
+    pi->mhd_data.BPred[i] += mj * (dA[(i + 1) % 3] * dx[(i + 2) % 3] -
                                      dA[(i + 2) % 3] * dx[(i + 1) % 3]);
 }
 
@@ -444,6 +466,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   dv[0] = pi->v[0] - pj->v[0];
   dv[1] = pi->v[1] - pj->v[1];
   dv[2] = pi->v[2] - pj->v[2];
+ 
   const float sourceAi = dv[0] * pi->mhd_data.APred[0] +
                          dv[1] * pi->mhd_data.APred[1] +
                          dv[2] * pi->mhd_data.APred[2];
@@ -451,12 +474,16 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
                          dv[1] * pj->mhd_data.APred[1] +
                          dv[2] * pj->mhd_data.APred[2];
 
-  float SAi = sourceAi + a * a * (pi->mhd_data.Gau - pj->mhd_data.Gau);
-  float SAj = sourceAj + a * a * (pi->mhd_data.Gau - pj->mhd_data.Gau);
+//  float SAi = sourceAi + a * a * (pi->mhd_data.Gau - pj->mhd_data.Gau);
+//  float SAj = sourceAj + a * a * (pi->mhd_data.Gau - pj->mhd_data.Gau);
 
   for (int i = 0; i < 3; i++) {
-    pi->mhd_data.dAdt[i] += mj * mag_VPIndi * SAi * dx[i];
-    pj->mhd_data.dAdt[i] += mi * mag_VPIndj * SAj * dx[i];
+//    pi->mhd_data.dAdt[i] += mj * mag_VPIndi * SAi * dx[i];
+//    pj->mhd_data.dAdt[i] += mi * mag_VPIndj * SAj * dx[i];
+    pi->mhd_data.dAdt[i] += mj * mag_VPIndi * sourceAi * dx[i];
+    pj->mhd_data.dAdt[i] += mi * mag_VPIndj * sourceAj * dx[i];
+    pi->mhd_data.dAdt[i] += mj * a * a * (mag_VPIndi * pi->mhd_data.Gau + mag_VPIndj * pj->mhd_data.Gau) * dx[i];
+    pi->mhd_data.dAdt[i] -= mi * a * a * (mag_VPIndi * pi->mhd_data.Gau + mag_VPIndj * pj->mhd_data.Gau) * dx[i];
   }
   /// DISSSIPATION
   const float mag_Disi =
@@ -572,6 +599,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
 
   /////////////////////////// VP INDUCTION
   const float mag_VPIndi = wi_dr * r_inv / rhoi;
+  const float mag_VPIndj = wj_dr * r_inv / rhoj;
   // Normal Gauge
   double dA[3];
   for (int i = 0; i < 3; i++)
@@ -580,13 +608,16 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   dv[0] = pi->v[0] - pj->v[0];
   dv[1] = pi->v[1] - pj->v[1];
   dv[2] = pi->v[2] - pj->v[2];
+  
   const float sourceAi = dv[0] * pi->mhd_data.APred[0] +
                          dv[1] * pi->mhd_data.APred[1] +
                          dv[2] * pi->mhd_data.APred[2];
 
-  float SAi = sourceAi + a * a * (pi->mhd_data.Gau - pj->mhd_data.Gau);
+ // float SAi = sourceAi + a * a * (pi->mhd_data.Gau - pj->mhd_data.Gau);
   for (int i = 0; i < 3; i++)
-    pi->mhd_data.dAdt[i] += mj * mag_VPIndi * SAi * dx[i];
+    pi->mhd_data.dAdt[i] += mj * mag_VPIndi * sourceAi * dx[i];
+  for (int i = 0; i < 3; i++)
+    pi->mhd_data.dAdt[i] += mj * a * a * (mag_VPIndi * pi->mhd_data.Gau + mag_VPIndj * pj->mhd_data.Gau) * dx[i];
   /// DISSSIPATION
   const float mag_Disi =
       (wi_dr + wj_dr) / 2.f * r_inv * rhoi / (rho_ij * rho_ij);

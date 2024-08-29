@@ -123,15 +123,22 @@ __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
     const struct hydro_props *hydro_properties, const struct cosmology *cosmo,
     const float mu_0) {
 
+  //const float afac_divB = pow(cosmo->a, -mhd_comoving_factor - 0.5f); //(cosmo->a / cosmo->a_factor_sound_speed);
   const float afac_divB = (cosmo->a / cosmo->a_factor_sound_speed);
   const float afac_resistive = cosmo->a * cosmo->a;
   /* Dt from 1/DivOperator(Alfven speed) */
 
+  float dt_divA =
+      p->mhd_data.divA != 0.0f
+          ? afac_divB * hydro_properties->CFL_condition * p->h *
+                sqrtf(p->rho / (p->mhd_data.divA * p->mhd_data.divA) * mu_0)
+          : FLT_MAX;
   float dt_divB =
       p->mhd_data.divB != 0.0f
           ? afac_divB * hydro_properties->CFL_condition *
                 sqrtf(p->rho / (p->mhd_data.divB * p->mhd_data.divB) * mu_0)
           : FLT_MAX;
+  dt_divB = fminf(dt_divA, dt_divB);
   const float resistive_eta = p->mhd_data.resistive_eta;
   const float dt_eta = resistive_eta != 0.0f
                            ? afac_resistive * hydro_properties->CFL_condition *
@@ -246,11 +253,12 @@ __attribute__((always_inline)) INLINE static float mhd_signal_velocity(
  * @param Gauge Gauge
  */
 __attribute__((always_inline)) INLINE static float hydro_get_dGau_dt(
-    const struct part *restrict p, const float Gauge, const struct cosmology *c,
-    const float mu0) {
+    const struct part *restrict p, const float Gauge, const struct cosmology *c)
+//  ,  const float mu0) 
+    {
 
   //const float v_sig = mhd_get_magnetosonic_speed(p, c->a, mu0);
-  const float v_sig = 2.f*p->viscosity.v_sig;
+  const float v_sig = p->viscosity.v_sig;
   const float afac1 = pow(c->a_factor_sound_speed, 2.f) * c->a * c->a;
   const float afac2 = c->a_factor_sound_speed * c->a;
   // Everything is with a2 for the time integration
@@ -259,9 +267,9 @@ __attribute__((always_inline)) INLINE static float hydro_get_dGau_dt(
   /* Parabolic evolution term */
   const float Damping_Term = 4.f * afac2 * v_sig * Gauge / p->h;
   /* Density change term */
-  const float DivV_Term = c->a * c->a * ( hydro_get_div_v(p) - 3.f * c->H ) * Gauge;
+  const float DivV_Term =  hydro_get_div_v(p) * Gauge * c->a * c->a ;
   /* Cosmological term */
-  const float Hubble_Term = (2.f + mhd_comoving_factor) * c->H * c->a * c->a * Gauge;
+  const float Hubble_Term = (2.f + mhd_comoving_factor + 3.f) * c->H * c->a * c->a * Gauge;
 
   return (- Source_Term - Damping_Term - DivV_Term - Hubble_Term);
 }
@@ -472,11 +480,15 @@ __attribute__((always_inline)) INLINE static void mhd_reset_acceleration(
  * @param cosmo The cosmological model
  */
 __attribute__((always_inline)) INLINE static void mhd_reset_predicted_values(
-    struct part *p, const struct xpart *xp, const struct cosmology *cosmo) {
+    struct part *p, struct xpart *xp, const struct cosmology *cosmo) {
   /* Re-set the predicted magnetic flux densities */
-  p->mhd_data.APred[0] = xp->mhd_data.Afull[0];
-  p->mhd_data.APred[1] = xp->mhd_data.Afull[1];
-  p->mhd_data.APred[2] = xp->mhd_data.Afull[2];
+  //p->mhd_data.APred[0] = xp->mhd_data.Afull[0];
+  //p->mhd_data.APred[1] = xp->mhd_data.Afull[1];
+  //p->mhd_data.APred[2] = xp->mhd_data.Afull[2];
+  p->mhd_data.Gau = xp->mhd_data.Gau_full;
+  xp->mhd_data.Afull[0] = p->mhd_data.APred[0] ;
+  xp->mhd_data.Afull[1] = p->mhd_data.APred[1] ;
+  xp->mhd_data.Afull[2] = p->mhd_data.APred[2] ;
 }
 
 /**
@@ -495,19 +507,23 @@ __attribute__((always_inline)) INLINE static void mhd_reset_predicted_values(
  * @param mu_0 The vacuum magnetic permeability.
  */
 __attribute__((always_inline)) INLINE static void mhd_predict_extra(
-    struct part *p, const struct xpart *xp, const float dt_drift,
+    struct part *p, struct xpart *xp, const float dt_drift,
     const float dt_therm, const struct cosmology *cosmo,
     const struct hydro_props *hydro_props,
     const struct entropy_floor_properties *floor_props, const float mu_0) {
 
   /* Predict the VP magnetic field */  ///// May we need to predict B? XXX
-  p->mhd_data.APred[0] += p->mhd_data.dAdt[0] * dt_therm;
-  p->mhd_data.APred[1] += p->mhd_data.dAdt[1] * dt_therm;
-  p->mhd_data.APred[2] += p->mhd_data.dAdt[2] * dt_therm;
+  //p->mhd_data.APred[0] += p->mhd_data.dAdt[0] * dt_therm;
+  //p->mhd_data.APred[1] += p->mhd_data.dAdt[1] * dt_therm;
+  //p->mhd_data.APred[2] += p->mhd_data.dAdt[2] * dt_therm;
+  xp->mhd_data.Afull[0] += p->mhd_data.dAdt[0] * dt_therm;
+  xp->mhd_data.Afull[1] += p->mhd_data.dAdt[1] * dt_therm;
+  xp->mhd_data.Afull[2] += p->mhd_data.dAdt[2] * dt_therm;
   
   float change_Gau =
-      hydro_get_dGau_dt(p, p->mhd_data.Gau, cosmo, mu_0) * dt_therm;
-  p->mhd_data.Gau += change_Gau;
+      hydro_get_dGau_dt(p, p->mhd_data.Gau, cosmo) * dt_therm;
+  float delim = fabs(change_Gau/p->mhd_data.Gau) < 0.25f ?  1.f : 0.25f * fabs(p->mhd_data.Gau / change_Gau);
+  p->mhd_data.Gau += change_Gau * delim;
 }
 
 /**
@@ -553,11 +569,30 @@ __attribute__((always_inline)) INLINE static void mhd_kick_extra(
     const float dt_hydro, const float dt_kick_corr,
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const struct entropy_floor_properties *floor_props) {
+  // Slope delimiter
+  /*const float dAdt_2 = 
+	  p->mhd_data.dAdt[0] * p->mhd_data.dAdt[0] +
+	  p->mhd_data.dAdt[1] * p->mhd_data.dAdt[1] +
+	  p->mhd_data.dAdt[2] * p->mhd_data.dAdt[2] ;
+  const float Afull_2 = 
+	  xp->mhd_data.Afull[0] * xp->mhd_data.Afull[0] +
+	  xp->mhd_data.Afull[1] * xp->mhd_data.Afull[1] +
+	  xp->mhd_data.Afull[2] * xp->mhd_data.Afull[2];
+  float delim = dAdt_2 * dt_therm * dt_therm / Afull_2 < 1.0f  ? 1.f : sqrt(Afull_2 / dAdt_2) / dt_therm ;
+  */
+  float delim = 1.f;
+  //xp->mhd_data.Afull[0] += p->mhd_data.dAdt[0] * dt_therm * delim;
+  //xp->mhd_data.Afull[1] += p->mhd_data.dAdt[1] * dt_therm * delim;
+  //xp->mhd_data.Afull[2] += p->mhd_data.dAdt[2] * dt_therm * delim;
+  p->mhd_data.APred[0] += p->mhd_data.dAdt[0] * dt_therm * delim;
+  p->mhd_data.APred[1] += p->mhd_data.dAdt[1] * dt_therm * delim;
+  p->mhd_data.APred[2] += p->mhd_data.dAdt[2] * dt_therm * delim;
 
-
-  xp->mhd_data.Afull[0] += p->mhd_data.dAdt[0] * dt_therm;
-  xp->mhd_data.Afull[1] += p->mhd_data.dAdt[1] * dt_therm;
-  xp->mhd_data.Afull[2] += p->mhd_data.dAdt[2] * dt_therm;
+  float change_Gau =
+      hydro_get_dGau_dt(p, xp->mhd_data.Gau_full, cosmo) * dt_therm;
+  delim = fabs(change_Gau/xp->mhd_data.Gau_full) < 0.25f ?  1.f : 0.25f * fabs(xp->mhd_data.Gau_full / change_Gau);
+  xp->mhd_data.Gau_full += change_Gau * delim;
+   
 }
 
 /**
@@ -589,6 +624,10 @@ __attribute__((always_inline)) INLINE static void mhd_convert_quantities(
   xp->mhd_data.Afull[0] = p->mhd_data.APred[0];
   xp->mhd_data.Afull[1] = p->mhd_data.APred[1];
   xp->mhd_data.Afull[2] = p->mhd_data.APred[2];
+  
+  xp->mhd_data.Gau_full = 0.f;
+  p->mhd_data.Gau = 0.f;
+
 }
 
 /**
