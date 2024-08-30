@@ -341,14 +341,12 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_gradient(
 __attribute__((always_inline)) INLINE static void mhd_reset_gradient(
     struct part *p) {
   p->mhd_data.divA = 0.f;
-  for (int i = 0; i < 3; i++) p->mhd_data.BPred[i] = 0.f;
-
   p->mhd_data.divB = 0.f;
+  //for (int i = 0; i < 3; i++) p->mhd_data.BPred[i] = 0.f;
 
-  //p->mhd_data.BSmooth[0] = 0.f;
-  //p->mhd_data.BSmooth[1] = 0.f;
-  //p->mhd_data.BSmooth[2] = 0.f;
-  //  p->mhd_data.GauSmooth = 0.f;
+  p->mhd_data.BSmooth[0] = 0.f;
+  p->mhd_data.BSmooth[1] = 0.f;
+  p->mhd_data.BSmooth[2] = 0.f;
   //p->mhd_data.Q0 = 0.f;  // XXX make union for clarification
 
   /* Curl B*/
@@ -380,6 +378,8 @@ __attribute__((always_inline)) INLINE static void mhd_end_gradient(
 
   //for (int i = 0; i < 3; i++)
   //  p->mhd_data.BPred[i] = p->mhd_data.BSmooth[i] / p->mhd_data.Q0;
+  for (int i = 0; i < 3; i++)
+    p->mhd_data.BPred[i] = p->mhd_data.BSmooth[i];
 
   /* Add self contribution */
   p->mhd_data.mean_SPH_err += p->mass * kernel_root;
