@@ -567,13 +567,13 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 
   /* Re-allocate the index array for the sinks if needed.. */
   if (s->nr_sinks + 1 > sink_index_size) {
-    int *bind_new;
-    if ((bind_new = (int *)swift_malloc(
+    int *sink_ind_new;
+    if ((sink_ind_new = (int *)swift_malloc(
              "sink_index", sizeof(int) * (s->nr_sinks + 1))) == NULL)
       error("Failed to allocate temporary sink-particle indices.");
-    memcpy(bind_new, sink_index, sizeof(int) * nr_sinks);
+    memcpy(sink_ind_new, sink_index, sizeof(int) * nr_sinks);
     swift_free("sink_index", sink_index);
-    sink_index = bind_new;
+    sink_index = sink_ind_new;
   }
 
   const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
@@ -621,7 +621,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   }
   nr_bparts = s->nr_bparts;
 
-    /* Assign each received sink to its cell. */
+  /* Assign each received sink to its cell. */
   for (size_t k = nr_sinks; k < s->nr_sinks; k++) {
     const struct sink *const sink = &s->sinks[k];
     sink_index[k] =
@@ -749,14 +749,14 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
       error("Inhibited particle sorted into a cell!");
 
     /* New cell index */
-    const int new_bind =
+    const int new_sink_ind =
         cell_getid(s->cdim, sink->x[0] * s->iwidth[0],
                    sink->x[1] * s->iwidth[1], sink->x[2] * s->iwidth[2]);
 
     /* New cell of this sink */
-    const struct cell *c = &s->cells_top[new_bind];
+    const struct cell *c = &s->cells_top[new_sink_ind];
 
-    if (sink_index[k] != new_bind)
+    if (sink_index[k] != new_sink_ind)
       error("sink's new cell index not matching sorted index.");
 
     if (sink->x[0] < c->loc[0] || sink->x[0] > c->loc[0] + c->width[0] ||
