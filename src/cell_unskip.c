@@ -3107,32 +3107,6 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
     }
   }
 
-  /* Un-skip the do_sink_swallow tasks involved with this cell. */
-  for (struct link *l = c->sinks.do_sink_swallow; l != NULL; l = l->next) {
-    struct task *t = l->t;
-    struct cell *ci = t->ci;
-    struct cell *cj = t->cj;
-#ifdef WITH_MPI
-    const int ci_nodeID = ci->nodeID;
-    const int cj_nodeID = (cj != NULL) ? cj->nodeID : -1;
-#else
-    const int ci_nodeID = nodeID;
-    const int cj_nodeID = nodeID;
-#endif
-
-    const int ci_active =
-        cell_is_active_sinks(ci, e) || cell_is_active_hydro(ci, e);
-
-    const int cj_active = (cj != NULL) && (cell_is_active_sinks(cj, e) ||
-                                           cell_is_active_hydro(cj, e));
-
-    /* Only activate tasks that involve a local active cell. */
-    if ((ci_active || cj_active) &&
-        (ci_nodeID == nodeID || cj_nodeID == nodeID)) {
-      scheduler_activate(s, t);
-    }
-  }
-
   /* Un-skip the do_gas_swallow tasks involved with this cell. */
   for (struct link *l = c->sinks.do_gas_swallow; l != NULL; l = l->next) {
     struct task *t = l->t;
