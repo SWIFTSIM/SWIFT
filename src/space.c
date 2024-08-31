@@ -2787,8 +2787,8 @@ void space_write_cell(const struct space *s, FILE *f, const struct cell *c) {
 
   /* Write line for current cell */
   fprintf(f, "%lld,%lld,%i,", c->cellID, parent, c->nodeID);
-  fprintf(f, "%i,%i,%i,%s,%s,%g,%g,%g,%g,%g,%g, ", c->hydro.count,
-          c->stars.count, c->grav.count, superID, hydro_superID, c->loc[0],
+  fprintf(f, "%i,%i,%i,%i,%s,%s,%g,%g,%g,%g,%g,%g, ", c->hydro.count,
+          c->stars.count, c->grav.count, c->sinks.count, superID, hydro_superID, c->loc[0],
           c->loc[1], c->loc[2], c->width[0], c->width[1], c->width[2]);
   fprintf(f, "%g, %g, %i, %i\n", c->hydro.h_max, c->stars.h_max, c->depth,
           c->maxdepth);
@@ -2821,7 +2821,7 @@ void space_write_cell_hierarchy(const struct space *s, int j) {
   if (engine_rank == 0) {
     fprintf(f, "name,parent,mpi_rank,");
     fprintf(f,
-            "hydro_count,stars_count,gpart_count,super,hydro_super,"
+            "hydro_count,stars_count,gpart_count,sinks_count,super,hydro_super,"
             "loc1,loc2,loc3,width1,width2,width3,");
     fprintf(f, "hydro_h_max,stars_h_max,depth,maxdepth\n");
 
