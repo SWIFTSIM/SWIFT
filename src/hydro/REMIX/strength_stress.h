@@ -66,9 +66,7 @@ __attribute__((always_inline)) INLINE static void strength_add_artif_stress(
    #if defined(STRENGTH_STRESS_MON2000)
       // Artificial stress (Monaghan, 2000)
       const float mean_h = 0.5f * (pi->h + pj->h);
-      const float delta_p = 0.5f * (powf(pi->mass /
-     pi->rho, 1.f/hydro_dimension) + powf(pj->mass /
-     pj->rho, 1.f/hydro_dimension));
+      const float delta_p = mean_h / 1.487; // ### hardcoded for now
 
       float wij_delta_p;
       kernel_eval(delta_p / mean_h, &wij_delta_p);
