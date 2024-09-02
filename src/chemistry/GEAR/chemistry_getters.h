@@ -19,21 +19,8 @@
 #ifndef SWIFT_GEAR_CHEMISTRY_GETTERS_H
 #define SWIFT_GEAR_CHEMISTRY_GETTERS_H
 
+#include "const.h"
 
-/**
- * @brief Reset the chemistry fluxes for the given particle.
- * TODO
- * @param p Particle.
- */
-__attribute__((always_inline)) INLINE static void chemistry_part_reset_chemistry_fluxes(
-    struct part* restrict p) {
-
-  struct chemistry_part_data *chd = &p->chemistry_data;
-
-  chd->flux.diffusion[0] = 0.0f;
-  chd->flux.diffusion[1] = 0.0f;
-  chd->flux.diffusion[2] = 0.0f;
-}
 
 /**
  * @brief Get a 1-element state vector U containing the metal mass density
@@ -45,10 +32,10 @@ __attribute__((always_inline)) INLINE static void chemistry_part_reset_chemistry
  */
 __attribute__((always_inline)) INLINE static void
 chemistry_part_get_diffusion_state_vector(const struct part *restrict p, int group,
-                                   float U) {
+                                   float* U) {
 
   /* The state vector is 1D and contains the metal density. */
-  U = p->chemistry_data.metal_mass[g] / p->chemistry_data.geometry.volume;
+  *U = p->chemistry_data.metal_mass[group] / p->chemistry_data.geometry.volume;
 }
 
 /**
@@ -66,9 +53,9 @@ __attribute__((always_inline)) INLINE static void chemistry_part_get_diffusion_f
   /* For isotropic diffusion, \grad U = \nabla \otimes q = \grad n_Z */
   /* TODO: We should slope-limit nabla_otimes_1. Is the slope-limited value
      stored inside this variable already? */
-  F_diff[0] = kappa * p->chemistry_data.gradient[metal].nabla_otimes_q[0];
-  F_diff[1] = kappa * p->chemistry_data.gradient[metal].nabla_otimes_q[1];
-  F_diff[2] = kappa * p->chemistry_data.gradient[metal].nabla_otimes_q[2];
+  F_diff[0] = kappa * p->chemistry_data.gradients[metal].nabla_otimes_q[0];
+  F_diff[1] = kappa * p->chemistry_data.gradients[metal].nabla_otimes_q[1];
+  F_diff[2] = kappa * p->chemistry_data.gradients[metal].nabla_otimes_q[2];
 }
 
 /**
@@ -82,9 +69,22 @@ __attribute__((always_inline)) INLINE static void chemistry_part_get_gradients(
     const struct part *restrict p, int metal, float dF[3]) {
 
   /* For isotropic diffusion, \grad U = \nabla \otimes q = \grad n_Z */
-  dF[0] = p->chemistry_data.gradient[metal].nabla_otimes_q[0];
-  dF[1] = p->chemistry_data.gradient[metal].nabla_otimes_q[1];
-  dF[2] = p->chemistry_data.gradient[metal].nabla_otimes_q[2];
+  dF[0] = p->chemistry_data.gradients[metal].nabla_otimes_q[0];
+  dF[1] = p->chemistry_data.gradients[metal].nabla_otimes_q[1];
+  dF[2] = p->chemistry_data.gradients[metal].nabla_otimes_q[2];
+}
+
+
+/**
+ * @brief Check if the gradient matrix for this particle is well behaved.
+ *
+ * @param p Particle.
+ * @return 1 if the gradient matrix is well behaved, 0 otherwise.
+ */
+__attribute__((always_inline)) INLINE static int
+chemistry_part_geometry_well_behaved(const struct part* restrict p) {
+
+  return p->chemistry_data.geometry.wcorr > const_gizmo_min_wcorr;
 }
 
 #endif /* SWIFT_GEAR_CHEMISTRY_GETTERS_H  */

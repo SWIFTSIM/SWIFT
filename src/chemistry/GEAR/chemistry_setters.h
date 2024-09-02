@@ -65,9 +65,9 @@ __attribute__((always_inline)) INLINE static void chemistry_part_update_gradient
 
   struct chemistry_part_data *chd = &p->chemistry_data;
 
-  chd->gradient[g].nabla_otimes_q[0] += dF[0];
-  chd->gradient[g].nabla_otimes_q[1] += dF[1];
-  chd->gradient[g].nabla_otimes_q[2] += dF[2];
+  chd->gradients[g].nabla_otimes_q[0] += dF[0];
+  chd->gradients[g].nabla_otimes_q[1] += dF[1];
+  chd->gradients[g].nabla_otimes_q[2] += dF[2];
 }
 
 /**

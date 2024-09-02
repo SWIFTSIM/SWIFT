@@ -23,35 +23,6 @@
 #include "chemistry_unphysical.h"
 
 /**
- * @brief Reset the hydrodynamical fluxes for the given particle.
- *
- * @param p Particle.
- */
-__attribute__((always_inline)) INLINE static void hydro_part_reset_hydro_fluxes(
-    struct part* restrict p) {
-
-  p->flux.momentum[0] = 0.0f;
-  p->flux.momentum[1] = 0.0f;
-  p->flux.momentum[2] = 0.0f;
-  p->flux.energy = 0.0f;
-}
-
-/**
- * @brief Get the fluxes for the given particle.
- *
- * @param p Particle.
- * @param flux Fluxes for the particle (array of size 5 or more).
- */
-__attribute__((always_inline)) INLINE static void hydro_part_get_fluxes(
-    const struct part* restrict p, float* flux) {
-
-  flux[1] = p->flux.momentum[0];
-  flux[2] = p->flux.momentum[1];
-  flux[3] = p->flux.momentum[2];
-  flux[4] = p->flux.energy;
-}
-
-/**
  * @brief Compute the flux for the Riemann problem with the given left and right
  * state, and interface normal, surface area and velocity.
  *

@@ -25,6 +25,7 @@
 
 /* Local headers. */
 #include "minmax.h"
+#include "sign.h"
 
 
 /**
@@ -103,7 +104,7 @@ chemistry_slope_limit_face_quantity(float phi_i, float phi_j, float phi_mid0,
  * @param xij_j Relative position vector of the interface w.r.t. partilce j.
  * @param r Distance between particle i and particle j.
  */
-__attribute__((always_inline)) INLINE static void hydro_slope_limit_face(
+__attribute__((always_inline)) INLINE static void chemistry_slope_limit_face(
     float *Wi, float *Wj, float *dWi, float *dWj, const float xij_i[3],
     const float *xij_j, float r) {
 
@@ -115,10 +116,10 @@ __attribute__((always_inline)) INLINE static void hydro_slope_limit_face(
 
   const float r_inv = (r > 0.0f) ? 1.0f / r : 0.0f;
 
-  dWi = chemistry_slope_limit_face_quantity(Wi[0], Wj[0], Wi[0] + dWi[0],
+  *dWi = chemistry_slope_limit_face_quantity(Wi[0], Wj[0], Wi[0] + dWi[0],
                                            xij_i_norm, r_inv);
 
-  dWj = chemistry_slope_limit_face_quantity(Wj[0], Wi[0], Wj[0] + dWj[0],
+  *dWj = chemistry_slope_limit_face_quantity(Wj[0], Wi[0], Wj[0] + dWj[0],
                                            xij_j_norm, r_inv);
 }
 

@@ -62,7 +62,7 @@ struct chemistry_part_data {
   struct {
     /* This is \nabla \otimes \vec{q}. It is used to compute the diffusion flux */
     double nabla_otimes_q[3];
-  } gradient[GEAR_CHEMISTRY_ELEMENT_COUNT];
+  } gradients[GEAR_CHEMISTRY_ELEMENT_COUNT];
 
   /* Diffusion uses a first order reconstruction of nabla_otimes_q. Hence, we do not need a slope
      limiter for it. However, when we reconstruct U, we need Grad U =
