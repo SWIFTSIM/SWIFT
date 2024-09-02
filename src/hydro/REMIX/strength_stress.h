@@ -65,14 +65,14 @@ __attribute__((always_inline)) INLINE static void strength_add_artif_stress(
     const float r) {
    #if defined(STRENGTH_STRESS_MON2000)
       // Artificial stress (Monaghan, 2000)
-      const float mean_h = 0.5f * (pi->h + pj->h);
-      const float delta_p = mean_h / 1.487; // ### hardcoded for now
+      const float max_h = max(pi->h, pj->h);
+      const float delta_p = max_h / 1.487; // ### hardcoded for now
 
       float wij_delta_p;
-      kernel_eval(delta_p / mean_h, &wij_delta_p);
+      kernel_eval(delta_p / max_h, &wij_delta_p);
 
       float wij_r;
-      kernel_eval(r / mean_h, &wij_r);
+      kernel_eval(r / max_h, &wij_r);
 
       // This factor should be set in extra parameter file
       const float artif_stress_n = method_artif_stress_n();
