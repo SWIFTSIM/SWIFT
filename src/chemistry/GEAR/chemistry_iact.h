@@ -342,11 +342,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_chemistry_fluxes_c
   const float mindt =
       (chj->flux_dt > 0.f) ? fminf(chi->flux_dt, chj->flux_dt) : chi->flux_dt;
 
-  for (int i = 0; i <  GEAR_CHEMISTRY_ELEMENT_COUNT; g++) {
+  for (int g = 0; g <  GEAR_CHEMISTRY_ELEMENT_COUNT; g++) {
 
     /* Diddusion state to be used to compute the flux */
     float Ui, Uj;
-    chemistry_gradients_predict(pi, pj, Ui, Uj, g, dx, r, xij_i);
+    chemistry_gradients_predict(pi, pj, &Ui, &Uj, g, dx, r, xij_i);
 
     /* No need to check for unphysical quantities, they
      * haven't been touched since
@@ -362,7 +362,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_chemistry_fluxes_c
 
     /* TODO: Solve the Riemann problem */
     float totflux;
-    chemistry_compute_flux(Ui, Uj, n_unit, Anorm, F_diff_i, F_diff_j, totflux);
+    chemistry_compute_flux(pi, pj, Ui, Uj, n_unit, Anorm, F_diff_i, F_diff_j, totflux);
 
     /* TODO : See wheter we need to store flux.diffusion. I don't think so, we
        habe kapaa, and nabla_otimes_q.
@@ -412,7 +412,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_diffusion(
     const float H, const float time_base, const integertime_t t_current,
     const struct cosmology *cosmo, const int with_cosmology) {
 
-  runner_iact_fluxes_common(r2, dx, hi, hj, pi, pj, 1, a, H);
+  runner_iact_chemistry_fluxes_common(r2, dx, hi, hj, pi, pj, 1, a, H);
 }
 
 /**
@@ -440,7 +440,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_diffusion(
     const float H, const float time_base, const integertime_t t_current,
     const struct cosmology *cosmo, const int with_cosmology) {
 
-  runner_iact_fluxes_common(r2, dx, hi, hj, pi, pj, 0, a, H);
+  runner_iact_chemistry_fluxes_common(r2, dx, hi, hj, pi, pj, 0, a, H);
 }
 
 #endif /* SWIFT_GEAR_CHEMISTRY_IACT_H */

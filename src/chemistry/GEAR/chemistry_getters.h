@@ -20,6 +20,7 @@
 #define SWIFT_GEAR_CHEMISTRY_GETTERS_H
 
 #include "const.h"
+#include "part.h"
 
 
 /**

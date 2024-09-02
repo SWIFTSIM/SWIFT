@@ -40,7 +40,7 @@ void DOPAIR1_NAIVE(struct runner *r, struct cell *restrict ci,
 
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
-#if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE) || (FUNCTION_TASK_LOOP == TASK_LOOP_GRADIENT)
   const double time_base = e->time_base;
   const integertime_t t_current = e->ti_current;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
@@ -154,7 +154,7 @@ void DOPAIR1_NAIVE(struct runner *r, struct cell *restrict ci,
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_GRADIENT)
 	runner_iact_nonsym_gradient_diffusion(r2, dx, hj, hi, pj, pi, a, H, time_base,
-					      t_current, cosmo, with_cosmolog);
+					      t_current, cosmo, with_cosmology);
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
         runner_iact_nonsym_timebin(r2, dx, hj, hi, pj, pi, a, H);
@@ -183,7 +183,7 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
 
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
-#if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE) || (FUNCTION_TASK_LOOP == TASK_LOOP_GRADIENT)
   const double time_base = e->time_base;
   const integertime_t t_current = e->ti_current;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
@@ -319,7 +319,7 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_GRADIENT)
 	  runner_iact_nonsym_gradient_diffusion(r2, dx, hj, hi, pj, pi, a, H, time_base,
-					 t_current, cosmo, with_cosmology):
+						t_current, cosmo, with_cosmology);
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
           runner_iact_nonsym_timebin(r2, dx, hj, hi, pj, pi, a, H);
@@ -347,7 +347,7 @@ void DOSELF1_NAIVE(struct runner *r, struct cell *restrict c) {
 
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
-#if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE) || (FUNCTION_TASK_LOOP == TASK_LOOP_GRADIENT)
   const double time_base = e->time_base;
   const integertime_t t_current = e->ti_current;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
@@ -500,7 +500,7 @@ void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
 
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
-#if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE) || (FUNCTION_TASK_LOOP == TASK_LOOP_GRADIENT)
   const double time_base = e->time_base;
   const integertime_t t_current = e->ti_current;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
@@ -662,7 +662,7 @@ void DOPAIR_SUBSET_NAIVE(struct runner *r, struct cell *restrict ci,
 
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
-#if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE) || (FUNCTION_TASK_LOOP == TASK_LOOP_GRADIENT)
   const double time_base = e->time_base;
   const integertime_t t_current = e->ti_current;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
@@ -768,7 +768,7 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
 
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
-#if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE) || (FUNCTION_TASK_LOOP == TASK_LOOP_GRADIENT)
   const double time_base = e->time_base;
   const integertime_t t_current = e->ti_current;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
@@ -1013,7 +1013,7 @@ void DOSELF_SUBSET(struct runner *r, struct cell *restrict ci,
 
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
-#if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE) || (FUNCTION_TASK_LOOP == TASK_LOOP_GRADIENT)
   const double time_base = e->time_base;
   const integertime_t t_current = e->ti_current;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
@@ -1136,7 +1136,7 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
 
   const struct engine *restrict e = r->e;
   const struct cosmology *restrict cosmo = e->cosmology;
-#if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE) || (FUNCTION_TASK_LOOP == TASK_LOOP_GRADIENT)
   const double time_base = e->time_base;
   const integertime_t t_current = e->ti_current;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
@@ -1274,6 +1274,7 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_GRADIENT)
 	  runner_iact_nonsym_gradient_diffusion(r2, dx, hi, hj, pi, pj, a, H, time_base,
 						t_current, cosmo, with_cosmology);
+#endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
           runner_iact_nonsym_timebin(r2, dx, hi, hj, pi, pj, a, H);
           runner_iact_nonsym_rt_timebin(r2, dx, hi, hj, pi, pj, a, H);
@@ -1499,7 +1500,7 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
 
   const struct engine *restrict e = r->e;
   const struct cosmology *restrict cosmo = e->cosmology;
-#if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE) || (FUNCTION_TASK_LOOP == TASK_LOOP_GRADIENT)
   const double time_base = e->time_base;
   const integertime_t t_current = e->ti_current;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
@@ -2166,7 +2167,7 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
 
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
-#if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)|| (FUNCTION_TASK_LOOP == TASK_LOOP_GRADIENT)
   const double time_base = e->time_base;
   const integertime_t t_current = e->ti_current;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
@@ -2428,7 +2429,7 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
 
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
-#if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE) || (FUNCTION_TASK_LOOP == TASK_LOOP_GRADIENT)
   const double time_base = e->time_base;
   const integertime_t t_current = e->ti_current;
   const int with_cosmology = (e->policy & engine_policy_cosmology);

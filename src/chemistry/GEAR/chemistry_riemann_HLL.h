@@ -36,7 +36,8 @@
  * @param flux_half (return) the resulting flux at the interface
  */
 __attribute__((always_inline)) INLINE static void chemistry_riemann_solve_for_flux(
-    const struct part* restrict p, const float UL, const float UR, const float* n_unit,
+    const struct part* restrict pi, const struct part* restrict pj, const float UL,
+    const float UR, const float n_unit[3],
     const float Anorm, const float F_diff_i[3], const float F_diff_j[3], float metal_flux) {
 										   
     /* const float UL[4], const float UR[4], const float FLnorm, */

@@ -23,6 +23,7 @@
 #include "chemistry_getters.h"
 #include "chemistry_setters.h"
 #include "chemistry_slope_limiter.h"
+#include "kernel_hydro.h"
 
 /**
  * @brief Initialize gradient variables
