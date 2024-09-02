@@ -353,15 +353,16 @@ __attribute__((always_inline)) INLINE static void runner_iact_chemistry_fluxes_c
      * rt_injection_update_photon_densities */
 
     /* Get the diffusion flux */
-    float F_diff[3];
-    chemistry_part_get_diffusion_flux(p, g, F_diff);
-
+    float F_diff_i[3], F_diff_j[3];
+    chemistry_part_get_diffusion_flux(pi, g, F_diff_i);
+    chemistry_part_get_diffusion_flux(pj, g, F_diff_j);
+    
     /* Note: F_diff_R and F_diff_L are computed with a first order
        reconstruction */
 
     /* TODO: Solve the Riemann problem */
     float totflux;
-    chemistry_compute_flux(Ui, Uj, n_unit, Anorm, F_diff, totflux);
+    chemistry_compute_flux(Ui, Uj, n_unit, Anorm, F_diff_i, F_diff_j, totflux);
 
     /* TODO : See wheter we need to store flux.diffusion. I don't think so, we
        habe kapaa, and nabla_otimes_q.

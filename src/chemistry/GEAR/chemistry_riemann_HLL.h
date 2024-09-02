@@ -36,26 +36,25 @@
  * @param flux_half (return) the resulting flux at the interface
  */
 __attribute__((always_inline)) INLINE static void chemistry_riemann_solve_for_flux(
-    const struct part* restrict p
-    const float UL, const float UR, const float* n_unit,
-    const float Anorm, float F_diff[3], float metal_flux) {
+    const struct part* restrict p, const float UL, const float UR, const float* n_unit,
+    const float Anorm, const float F_diff_i[3], const float F_diff_j[3], float metal_flux) {
 										   
     /* const float UL[4], const float UR[4], const float FLnorm, */
     /* const float FRnorm, float hyperFluxL[4][3], float hyperFluxR[4][3], */
     /* const float n_unit[3], float flux_half[4]) { */
 
-  /* Compute lambda_+/- */
-  const float lminus = min3(lambdaLmin, lambdaRmin, 0.f);
-  const float lplus = max3(lambdaLmax, lambdaRmax, 0.f);
+  /* /\* Compute lambda_+/- *\/ */
+  /* const float lminus = min3(lambdaLmin, lambdaRmin, 0.f); */
+  /* const float lplus = max3(lambdaLmax, lambdaRmax, 0.f); */
 
-  /* Sanity check: This should give the same results as GLF solver */
-  if (lminus == 0.f && lplus == 0.f) {
-    flux_half[0] = 0.f;
-    flux_half[1] = 0.f;
-    flux_half[2] = 0.f;
-    flux_half[3] = 0.f;
-    return;
-  }
+  /* /\* Sanity check: This should give the same results as GLF solver *\/ */
+  /* if (lminus == 0.f && lplus == 0.f) { */
+  /*   flux_half[0] = 0.f; */
+  /*   flux_half[1] = 0.f; */
+  /*   flux_half[2] = 0.f; */
+  /*   flux_half[3] = 0.f; */
+  /*   return; */
+  /* } */
 
   /* Compute F_diff_ij^* */
 

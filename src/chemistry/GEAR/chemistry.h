@@ -372,7 +372,7 @@ __attribute__((always_inline)) INLINE static void chemistry_end_density(
   /* Some smoothing length multiples. */
   const float h = p->h;
   const float h_inv = 1.0f / h;                       /* 1/h */
-  const float ihdim = pow_dimension(f_inv);
+  const float ihdim = pow_dimension(h_inv);
   const float factor = pow_dimension(h_inv) / p->rho; /* 1 / h^d * rho */
 
   struct chemistry_part_data* cpd = &p->chemistry_data;
@@ -522,16 +522,16 @@ chemistry_part_has_no_neighbours(struct part* restrict p,
   }
 
   /* Update geometry data */
-  p->chemistry_data->geometry.volume = 1.0f;
-  p->chemistry_data->geometry.matrix_E[0][0] = 1.0f;
-  p->chemistry_data->geometry.matrix_E[0][1] = 0.0f;
-  p->chemistry_data->geometry.matrix_E[0][2] = 0.0f;
-  p->chemistry_data->geometry.matrix_E[1][0] = 0.0f;
-  p->chemistry_data->geometry.matrix_E[1][1] = 1.0f;
-  p->chemistry_data->geometry.matrix_E[1][2] = 0.0f;
-  p->chemistry_data->geometry.matrix_E[2][0] = 0.0f;
-  p->chemistry_data->geometry.matrix_E[2][1] = 0.0f;
-  p->chemistry_data->geometry.matrix_E[2][2] = 1.0f;
+  p->chemistry_data.geometry.volume = 1.0f;
+  p->chemistry_data.geometry.matrix_E[0][0] = 1.0f;
+  p->chemistry_data.geometry.matrix_E[0][1] = 0.0f;
+  p->chemistry_data.geometry.matrix_E[0][2] = 0.0f;
+  p->chemistry_data.geometry.matrix_E[1][0] = 0.0f;
+  p->chemistry_data.geometry.matrix_E[1][1] = 1.0f;
+  p->chemistry_data.geometry.matrix_E[1][2] = 0.0f;
+  p->chemistry_data.geometry.matrix_E[2][0] = 0.0f;
+  p->chemistry_data.geometry.matrix_E[2][1] = 0.0f;
+  p->chemistry_data.geometry.matrix_E[2][2] = 1.0f;
 }
 
 /**
@@ -659,10 +659,6 @@ __attribute__((always_inline)) INLINE static void chemistry_add_sink_to_sink(
  */
 __attribute__((always_inline)) INLINE static void chemistry_add_part_to_sink(
     struct sink* s, const struct part* p, const double ms_old) {
-
-  /* gas mass */
-  const float mass = hydro_get_mass(p);
-
   for (int k = 0; k < GEAR_CHEMISTRY_ELEMENT_COUNT; k++) {
     double mk = s->chemistry_data.metal_mass_fraction[k] * ms_old +
                 p->chemistry_data.metal_mass[k];
@@ -920,11 +916,11 @@ __attribute__((always_inline)) INLINE static void chemistry_kick_extra(
     float dt_kick_corr, const struct cosmology* cosmo,
     const struct hydro_props* hydro_props) {
 
-  if (p->chemistry_data.flux.dt > 0.0f) {
+  if (p->chemistry_data.flux_dt > 0.0f) {
     /* invalidate the particle time step. It is considered to be inactive until
        dt is set again in hydro_prepare_force() */
-    p->chemistry_data.flux.dt = -1.0f;
-  } else if (p->chemistry_data.flux.dt == 0.0f) {
+    p->chemistry_data.flux_dt = -1.0f;
+  } else if (p->chemistry_data.flux_dt == 0.0f) {
     /* something tricky happens at the beginning of the simulation: the flux
        exchange is done for all particles, but using a time step of 0. This
        in itself is not a problem. However, it causes some issues with the
@@ -933,7 +929,7 @@ __attribute__((always_inline)) INLINE static void chemistry_kick_extra(
        the actual time step in hydro_prepare_force(). We have to make sure it
        is properly set to -1 here, so that inactive particles are indeed found
        to be inactive during the flux loop. */
-    p->chemistry_data.flux.dt = -1.0f;
+    p->chemistry_data.flux_dt = -1.0f;
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
