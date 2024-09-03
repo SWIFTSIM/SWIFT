@@ -502,6 +502,31 @@ __attribute__((always_inline)) INLINE static void chemistry_end_force(
     const int with_cosmology, const double time, const double dt) {}
 
 /**
+ * @brief Prepare a particle for the force calculation.
+ *
+ * This function is called in the ghost task to convert some quantities coming
+ * from the density loop over neighbours into quantities ready to be used in the
+ * force loop over neighbours. Quantities are typically read from the density
+ * sub-structure and written to the force sub-structure.
+ * Examples of calculations done here include the calculation of viscosity term
+ * constants, thermal conduction terms, hydro conversions, etc.
+ *
+ * @param p The particle to act upon
+ * @param xp The extended particle data to act upon
+ * @param cosmo The current cosmological model.
+ * @param dt_alpha The time-step used to evolve non-cosmological quantities such
+ *                 as the artificial viscosity.
+ * @param dt_therm The time-step used to evolve hydrodynamical quantities.
+ */
+__attribute__((always_inline)) INLINE static void chemistry_prepare_force(
+    struct part* restrict p, struct xpart* restrict xp,
+    const struct cosmology* cosmo, const float dt_alpha,
+    const float dt_therm) {
+  p->chemistry_data.flux_dt = dt_therm;
+}
+
+
+/**
  * @brief Sets all particle fields to sensible values when the #part has 0 ngbs.
  *
  * @param p The particle to act upon
