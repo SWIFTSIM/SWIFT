@@ -34,6 +34,7 @@
 #include "chemistry_flux.h"
 #include "error.h"
 #include "hydro.h"
+#include "kernel_hydro.h"
 #include "parser.h"
 #include "part.h"
 #include "physical_constants.h"
@@ -348,7 +349,8 @@ __attribute__((always_inline)) INLINE static void chemistry_init_part(
   cpd->geometry.matrix_E[2][1] = 0.0f;
   cpd->geometry.matrix_E[2][2] = 0.0f;
 
-  /* Something to do with the slope limiter ? */
+  /* Recompute the diffusion coefficient */
+  p->chemistry_data.kappa = kernel_gamma2*p->h*p->h;
 
   /* Init the gradient */
   chemistry_gradients_init(p);
