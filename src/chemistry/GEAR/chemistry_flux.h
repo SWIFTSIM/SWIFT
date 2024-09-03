@@ -20,7 +20,30 @@
 #define SWIFT_GEAR_CHEMISTRY_FLUX_H
 
 #include "chemistry_riemann_HLL.h"
-#include "chemistry_unphysical.h"
+/* #include "chemistry_unphysical.h" */
+
+/**
+ * @brief Reset the hydrodynamical fluxes for the given particle.
+ *
+ * @param p Particle.
+ */
+__attribute__((always_inline)) INLINE static void chemistry_part_reset_chemistry_fluxes(
+    struct part* restrict p) {
+
+  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; ++i) {
+    p->chemistry_data.diffusion_flux[i] = 0.0;
+  }
+}
+
+/**
+ * @brief Get the fluxes for the given particle.
+ *
+ * @param p Particle.
+ * @param flux Fluxes for the particle (array of size 5 or more).
+ */
+__attribute__((always_inline)) INLINE void chemistry_part_get_fluxes(const struct part* restrict p, int metal, double* flux) {
+  *flux = p->chemistry_data.diffusion_flux[metal];
+}
 
 /**
  * @brief Compute the flux for the Riemann problem with the given left and right
@@ -35,18 +58,14 @@
  */
 __attribute__((always_inline)) INLINE static void chemistry_compute_flux(
       const struct part* restrict pi, const struct part* restrict pj,
-      const float UL, const float UR, const float n_unit[3],
-      const float Anorm, const float F_diff_i[3], const float F_diff_j[3], float metal_flux) {
+      const float UL, const float UR, const float n_unit[3], int g,
+      const float Anorm, const float F_diff_i[3], const float F_diff_j[3], float* metal_flux) {
 
-  /* TODO */
   /* While solving the Riemann problem, we shall get a scalar because of the
      scalar product betwee F_diff_ij^* and A_ij */
-  /* Note: We should give the particle to the riemann solver, because we need
-     to compute lambda_+/- from the particles' properties */  
-  
-  chemistry_riemann_solve_for_flux(pi, pj, UL, UR, n_unit, Anorm, F_diff_i, F_diff_j, metal_flux);
+  chemistry_riemann_solve_for_flux(pi, pj, UL, UR, n_unit, g, Anorm, F_diff_i, F_diff_j, metal_flux);
 
-  metal_flux *= Anorm;
+  *metal_flux *= Anorm;
 }
 
 
