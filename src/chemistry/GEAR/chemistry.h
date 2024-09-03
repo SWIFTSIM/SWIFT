@@ -577,7 +577,11 @@ __attribute__((always_inline)) INLINE static float chemistry_timestep(
     const struct unit_system* restrict us,
     const struct hydro_props* hydro_props,
     const struct chemistry_global_data* cd, const struct part* restrict p) {
-  return FLT_MAX;
+
+  /* K = kappa * I_3. The norm is the Froebenius norm */
+  /* const float norm_K = sqrtf(3*p->chemistry_data.kappa*p->chemistry_data.kappa); */
+  /* const float norm_q = p->chemistry_data.kappa; */
+  return kernel_gamma2 * p->h*p->h / (sqrtf(3) * fabs(p->chemistry_data.kappa));
 }
 
 /**
