@@ -28,14 +28,20 @@
 #include "sign.h"
 
 
-/**
- *@TODO: ADD MINMOD
- */
-
 /* Note: We do not need to slope limit the cell and the gradients, because we
    perform a first order reconstruction of nabla_otimes_q. If we were to use a
    first order reconstruction, then we would need the cell limiters. */
 
+/**
+ * The minmod slope limiter.
+ *
+ * @param a Left slope
+ * @param b Right slope
+ */
+__attribute__((always_inline)) INLINE static double chemistry_limiter_minmod(double a, double b) {
+  /* Write this more explicitely (taken from Gizmo) */
+  return (a>0) ? ((b<0) ? 0 : min(a, b)) : ((b>=0) ? 0 : max(a, b));
+}
 
 /**
  * @brief Slope limit a single quantity at the interface
