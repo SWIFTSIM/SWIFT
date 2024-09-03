@@ -31,6 +31,7 @@
 /* Local includes. */
 #include "chemistry_struct.h"
 #include "chemistry_gradients.h"
+#include "chemistry_flux.h"
 #include "error.h"
 #include "hydro.h"
 #include "parser.h"
@@ -946,7 +947,19 @@ __attribute__((always_inline)) INLINE static void chemistry_kick_extra(
     const struct hydro_props* hydro_props) {
 
   if (p->chemistry_data.flux_dt > 0.0f) {
-    /* invalidate the particle time step. It is considered to be inactive until
+
+    for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; ++i) {
+      double flux;
+      chemistry_part_get_fluxes(p, i, &flux);
+
+      /* Update the conserved variable */
+      p->chemistry_data.metal_mass[i] += flux;
+    }
+
+    /* Reset the fluxes, so that they do not get used again in kick1 */
+    chemistry_part_reset_chemistry_fluxes(p);
+
+    /* Invalidate the particle time-step. It is considered to be inactive until
        dt is set again in hydro_prepare_force() */
     p->chemistry_data.flux_dt = -1.0f;
   } else if (p->chemistry_data.flux_dt == 0.0f) {
@@ -964,13 +977,17 @@ __attribute__((always_inline)) INLINE static void chemistry_kick_extra(
 #ifdef SWIFT_DEBUG_CHECKS
   /* Note that this check will only have effect if no GIZMO_UNPHYSICAL option
      was selected. */
-  for (int k = 0; k < GEAR_CHEMISTRY_ELEMENT_COUNT; k++) {
-    if (p->chemistry_data.metal_mass[k] < 0.) {
-      error(
-	    "Negative metal_ mass after conserved variables update (mass: %g, metal: %i)!",
-	    p->chemistry_data.metal_mass[k], k);
-    }
+  if (p->chemistry_data.flux_dt > 0.0f) {
+    message("Active part, id = %lld, mass = %e, metal_massl[0] = %e, metal_fraction = %e", p->id,
+	    p->mass, p->chemistry_data.metal_mass[0], p->chemistry_data.metal_mass[0]/p->mass);
   }
+  /* for (int k = 0; k < GEAR_CHEMISTRY_ELEMENT_COUNT; k++) { */
+  /*   if (p->chemistry_data.metal_mass[k] < 0.) { */
+  /*     warning( */
+  /* 	    "Negative metal_ mass after conserved variables update (id = %lld, mass: %g, metal: %i)!", */
+  /* 	    p->id, p->chemistry_data.metal_mass[k], k); */
+  /*   } */
+  /* } */
 #endif
 
   /* Reset wcorr */
