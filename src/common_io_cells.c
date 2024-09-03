@@ -202,7 +202,7 @@ void io_write_array(hid_t h_grp, const int n, const int dim, const void* array,
                     const char* array_content) {
 
   /* Create memory space */
-  const hsize_t shape[2] = {(hsize_t)n, dim};
+  const hsize_t shape[2] = {(hsize_t)n, (hsize_t)dim};
   hid_t h_space = H5Screate(H5S_SIMPLE);
   if (h_space < 0)
     error("Error while creating data space for %s %s", name, array_content);
@@ -214,7 +214,7 @@ void io_write_array(hid_t h_grp, const int n, const int dim, const void* array,
   /* Dataset type */
   hid_t h_type = H5Tcopy(io_hdf5_type(type));
 
-  const hsize_t chunk[2] = {(1024 > n ? n : 1024), dim};
+  const hsize_t chunk[2] = {(hsize_t)(1024 > n ? n : 1024), (hsize_t)dim};
   hid_t h_prop = H5Pcreate(H5P_DATASET_CREATE);
   h_err = H5Pset_chunk(h_prop, dim > 1 ? 2 : 1, chunk);
   if (h_err < 0)

@@ -62,7 +62,7 @@ __attribute__((always_inline)) INLINE static int velociraptor_write_parts(
 
   list[0] = io_make_output_field_convert_part(
       "VELOCIraptorGroupIDs", LONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f, parts,
-      xparts, velociraptor_convert_part_groupID,
+      xparts, (void*)velociraptor_convert_part_groupID,
       "Group IDs of the particles in the VELOCIraptor catalogue");
 
   return 1;
@@ -83,7 +83,7 @@ __attribute__((always_inline)) INLINE static int velociraptor_write_sparts(
 
   list[0] = io_make_output_field_convert_spart(
       "VELOCIraptorGroupIDs", LONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f, sparts,
-      velociraptor_convert_spart_groupID,
+      (void*)velociraptor_convert_spart_groupID,
       "Group IDs of the particles in the VELOCIraptor catalogue");
 
   return 1;
@@ -94,7 +94,7 @@ __attribute__((always_inline)) INLINE static int velociraptor_write_bparts(
 
   list[0] = io_make_output_field_convert_bpart(
       "VELOCIraptorGroupIDs", LONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
-      velociraptor_convert_bpart_groupID,
+      (void*)velociraptor_convert_bpart_groupID,
       "Group IDs of the particles in the VELOCIraptor catalogue");
 
   return 1;

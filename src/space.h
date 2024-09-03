@@ -44,6 +44,9 @@ struct gravity_props;
 struct star_formation;
 struct hydro_props;
 
+/* Do this last to avoid min()/max() being undefined by C++ includes. */
+#include "minmax.h"
+
 /* Some constants. */
 #define space_cellallocchunk 1000
 #define space_splitsize_default 400

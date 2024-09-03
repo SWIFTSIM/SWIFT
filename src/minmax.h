@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_MINMAX_H
-#define SWIFT_MINMAX_H
+
+/* Always include as c++config.h undefines min() and max(). */
 
 /**
  * @brief Minimum of two numbers
@@ -138,5 +138,3 @@
     const __typeof__(x) _temp3 = max(_temp1, _temp2); \
     max(_temp3, _u);                                  \
   })
-
-#endif /* SWIFT_MINMAX_H */

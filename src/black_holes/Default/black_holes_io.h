@@ -134,10 +134,11 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
   /* List what we want to write */
   list[0] = io_make_output_field_convert_bpart(
       "Coordinates", DOUBLE, 3, UNIT_CONV_LENGTH, 1.f, bparts,
-      convert_bpart_pos, "Co-moving position of the particles");
+      (void*)convert_bpart_pos, "Co-moving position of the particles");
 
   list[1] = io_make_output_field_convert_bpart(
-      "Velocities", FLOAT, 3, UNIT_CONV_SPEED, 0.f, bparts, convert_bpart_vel,
+      "Velocities", FLOAT, 3, UNIT_CONV_SPEED, 0.f, bparts,
+      (void*)convert_bpart_vel,
       "Peculiar velocities of the particles. This is a * dx/dt where x is the "
       "co-moving position of the particles.");
 
@@ -154,7 +155,8 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
 
   list[5] = io_make_output_field_convert_bpart(
       "Potentials", FLOAT, 1, UNIT_CONV_POTENTIAL, -1.f, bparts,
-      convert_bpart_potential, "Gravitational potentials of the particles");
+      (void*)convert_bpart_potential,
+      "Gravitational potentials of the particles");
 
 #ifdef DEBUG_INTERACTIONS_BLACK_HOLES
 

@@ -462,8 +462,7 @@ int main(int argc, char *argv[]) {
 
 #ifndef HAVE_FE_ENABLE_EXCEPT
   if (with_fp_exceptions) {
-    pretime_message("Error: no support for floating point exceptions.");
-    return 1;
+    pretime_message("Warning: no support for floating point exceptions.");
   }
 #endif
 

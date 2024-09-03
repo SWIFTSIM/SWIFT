@@ -231,7 +231,8 @@ static INLINE void runner_dopair_grav_pp_full_no_cache(
     /* Now, we can start the interactions for that particle */
 
     /* Distance to the Multipole */
-    const float CoM_j[3] = {multi_j->CoM[0], multi_j->CoM[1], multi_j->CoM[2]};
+    const float CoM_j[3] = {(float)multi_j->CoM[0], (float)multi_j->CoM[1],
+                            (float)multi_j->CoM[2]};
     const float dx_multi = CoM_j[0] - x_i;
     const float dy_multi = CoM_j[1] - y_i;
     const float dz_multi = CoM_j[2] - z_i;
@@ -426,7 +427,8 @@ static INLINE void runner_dopair_grav_pp_truncated_no_cache(
     /* Now, we can start the interactions for that particle */
 
     /* Distance to the Multipole */
-    const float CoM_j[3] = {multi_j->CoM[0], multi_j->CoM[1], multi_j->CoM[2]};
+    const float CoM_j[3] = {(float)multi_j->CoM[0], (float)multi_j->CoM[1],
+                            (float)multi_j->CoM[2]};
     float dx_multi = CoM_j[0] - x_i;
     float dy_multi = CoM_j[1] - y_i;
     float dz_multi = CoM_j[2] - z_i;

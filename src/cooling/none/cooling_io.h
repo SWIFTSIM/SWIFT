@@ -67,7 +67,7 @@ __attribute__((always_inline)) INLINE static int cooling_write_particles(
 
   list[0] = io_make_output_field_convert_part(
       "Temperatures", FLOAT, 1, UNIT_CONV_TEMPERATURE, 0.f, parts, xparts,
-      convert_part_T, "Temperature of the particles");
+      (void*)convert_part_T, "Temperature of the particles");
   return 1;
 }
 
