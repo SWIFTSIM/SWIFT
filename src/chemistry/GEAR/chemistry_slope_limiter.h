@@ -55,42 +55,42 @@ __attribute__((always_inline)) INLINE static double chemistry_limiter_minmod(dou
  * @return The slope limited difference between the quantity at the particle
  * position and the quantity at the interface position.
  */
-__attribute__((always_inline)) INLINE static float
-chemistry_slope_limit_face_quantity(float phi_i, float phi_j, float phi_mid0,
+__attribute__((always_inline)) INLINE static double
+chemistry_slope_limit_face_quantity(double phi_i, double phi_j, double phi_mid0,
                                 float xij_norm, float r_inv) {
 
-  const float psi1 = 0.5f;
-  const float psi2 = 0.25f;
+  const double psi1 = 0.5;
+  const double psi2 = 0.25;
 
-  const float delta1 = psi1 * fabsf(phi_i - phi_j);
-  const float delta2 = psi2 * fabsf(phi_i - phi_j);
+  const double delta1 = psi1 * fabs(phi_i - phi_j);
+  const double delta2 = psi2 * fabs(phi_i - phi_j);
 
-  const float phimin = min(phi_i, phi_j);
-  const float phimax = max(phi_i, phi_j);
+  const double phimin = min(phi_i, phi_j);
+  const double phimax = max(phi_i, phi_j);
 
-  const float phibar = phi_i + xij_norm * r_inv * (phi_j - phi_i);
+  const double phibar = phi_i + xij_norm * r_inv * (phi_j - phi_i);
 
-  float phiplus, phiminus, phi_mid;
+  double phiplus, phiminus, phi_mid;
 
   if (same_signf(phimax + delta1, phimax)) {
     phiplus = phimax + delta1;
   } else {
     phiplus =
-        (phimax != 0.0f) ? phimax / (1.0f + delta1 / fabsf(phimax)) : 0.0f;
+        (phimax != 0.0f) ? phimax / (1.0f + delta1 / fabs(phimax)) : 0.0f;
   }
 
   if (same_signf(phimin - delta1, phimin)) {
     phiminus = phimin - delta1;
   } else {
     phiminus =
-        (phimin != 0.0f) ? phimin / (1.0f + delta1 / fabsf(phimin)) : 0.0f;
+        (phimin != 0.0f) ? phimin / (1.0f + delta1 / fabs(phimin)) : 0.0f;
   }
 
   if (phi_i < phi_j) {
-    const float temp = min(phibar + delta2, phi_mid0);
+    const double temp = min(phibar + delta2, phi_mid0);
     phi_mid = max(phiminus, temp);
   } else {
-    const float temp = max(phibar - delta2, phi_mid0);
+    const double temp = max(phibar - delta2, phi_mid0);
     phi_mid = min(phiplus, temp);
   }
 
@@ -111,7 +111,7 @@ chemistry_slope_limit_face_quantity(float phi_i, float phi_j, float phi_mid0,
  * @param r Distance between particle i and particle j.
  */
 __attribute__((always_inline)) INLINE static void chemistry_slope_limit_face(
-    float *Wi, float *Wj, float *dWi, float *dWj, const float xij_i[3],
+    double *Wi, double *Wj, double *dWi, double *dWj, const float xij_i[3],
     const float *xij_j, float r) {
 
   const float xij_i_norm =

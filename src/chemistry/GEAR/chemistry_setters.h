@@ -42,7 +42,7 @@ __attribute__((always_inline)) INLINE static void chemistry_part_reset_gradients
  * @param p Particle.
  */
 __attribute__((always_inline)) INLINE static void chemistry_part_set_gradients(
-   struct part* restrict p, int g, const float gradF[3]) {
+   struct part* restrict p, int g, const double gradF[3]) {
 
   struct chemistry_part_data *chd = &p->chemistry_data;
 
@@ -61,7 +61,7 @@ __attribute__((always_inline)) INLINE static void chemistry_part_set_gradients(
  * @param dF gradient of the flux component
  */
 __attribute__((always_inline)) INLINE static void chemistry_part_update_gradients(
-    struct part *restrict p, int g, float dF[3]) {
+    struct part *restrict p, int g, double dF[3]) {
 
   struct chemistry_part_data *chd = &p->chemistry_data;
 

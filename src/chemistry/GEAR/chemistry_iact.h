@@ -345,7 +345,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_chemistry_fluxes_c
   for (int g = 0; g <  GEAR_CHEMISTRY_ELEMENT_COUNT; g++) {
 
     /* Diddusion state to be used to compute the flux */
-    float Ui, Uj;
+    double Ui, Uj;
     chemistry_gradients_predict(pi, pj, &Ui, &Uj, g, dx, r, xij_i);
 
     /* No need to check for unphysical quantities, they
@@ -353,7 +353,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_chemistry_fluxes_c
      * rt_injection_update_photon_densities */
 
     /* Get the diffusion flux */
-    float F_diff_i[3], F_diff_j[3];
+    double F_diff_i[3], F_diff_j[3];
     chemistry_part_compute_diffusion_flux(pi, g, F_diff_i);
     chemistry_part_compute_diffusion_flux(pj, g, F_diff_j);
     
@@ -361,7 +361,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_chemistry_fluxes_c
        reconstruction */
 
     /* TODO: Solve the Riemann problem */
-    float totflux;
+    double totflux;
     chemistry_compute_flux(pi, pj, Ui, Uj, n_unit, g, Anorm, F_diff_i, F_diff_j, &totflux);
 
     /* TODO: When solving the riemann problem, the d(V_i U_i)/dt = - Sum_j

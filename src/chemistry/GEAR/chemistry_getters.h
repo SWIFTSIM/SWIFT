@@ -32,7 +32,7 @@
  */
 __attribute__((always_inline)) INLINE static void
 chemistry_part_get_diffusion_state_vector(const struct part *restrict p, int group,
-                                   float* U) {
+                                   double* U) {
 
   /* The state vector is 1D and contains the metal density. */
   *U = p->chemistry_data.metal_mass[group] / p->chemistry_data.geometry.volume;
@@ -48,7 +48,7 @@ chemistry_part_get_diffusion_state_vector(const struct part *restrict p, int gro
  * @param F_diff (return) Array to write diffusion flux component into
  */
 __attribute__((always_inline)) INLINE static void chemistry_part_compute_diffusion_flux(
-    const struct part *restrict p, int metal, float F_diff[3]) {
+    const struct part *restrict p, int metal, double F_diff[3]) {
 
   const double kappa = p->chemistry_data.kappa;
 
@@ -68,7 +68,7 @@ __attribute__((always_inline)) INLINE static void chemistry_part_compute_diffusi
  * @param dFx (return) Array to write flux component gradient into
  */
 __attribute__((always_inline)) INLINE static void chemistry_part_get_gradients(
-    const struct part *restrict p, int metal, float dF[3]) {
+    const struct part *restrict p, int metal, double dF[3]) {
 
   /* For isotropic diffusion, \grad U = \nabla \otimes q = \grad n_Z */
   dF[0] = p->chemistry_data.gradients[metal].nabla_otimes_q[0];

@@ -58,8 +58,8 @@ __attribute__((always_inline)) INLINE void chemistry_part_get_fluxes(const struc
  */
 __attribute__((always_inline)) INLINE static void chemistry_compute_flux(
       const struct part* restrict pi, const struct part* restrict pj,
-      const float UL, const float UR, const float n_unit[3], int g,
-      const float Anorm, const float F_diff_i[3], const float F_diff_j[3], float* metal_flux) {
+      const double UL, const double UR, const float n_unit[3], int g,
+      const float Anorm, const double F_diff_i[3], const double F_diff_j[3], double* metal_flux) {
 
   /* While solving the Riemann problem, we shall get a scalar because of the
      scalar product betwee F_diff_ij^* and A_ij */

@@ -116,13 +116,13 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_collect(
 
   for (int g = 0; g < GEAR_CHEMISTRY_ELEMENT_COUNT; g++) {
 
-    float Ui, Uj;
+    double Ui, Uj;
     chemistry_part_get_diffusion_state_vector(pi, g, &Ui);
     chemistry_part_get_diffusion_state_vector(pj, g, &Uj);
-    const float dU = Ui - Uj;
+    const double dU = Ui - Uj;
 
     /* First to the gradients of pi (i.e. grad n = nabla otimes q = grad U) */
-    float dF_i[3];
+    double dF_i[3];
 
     /* Compute gradients for pi */
     /* there is a sign difference w.r.t. eqn. (6) because of the inverse
@@ -134,7 +134,7 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_collect(
     chemistry_part_update_gradients(pi, g, dF_i);
 
     /* Now do the gradients of pj */
-    float dF_j[3];
+    double dF_j[3];
 
     /* We don't need a sign change here: both the dx and the dU
      * should switch their sign, resulting in no net change */
@@ -201,12 +201,12 @@ chemistry_gradients_nonsym_collect(float r2, const float* dx, float hi,
 
   for (int g = 0; g < GEAR_CHEMISTRY_ELEMENT_COUNT; g++) {
 
-    float Ui, Uj;
+    double Ui, Uj;
     chemistry_part_get_diffusion_state_vector(pi, g, &Ui);
     chemistry_part_get_diffusion_state_vector(pj, g, &Uj);
-    const float dU = Ui - Uj;
+    const double dU = Ui - Uj;
 
-    float dF_i[3];
+    double dF_i[3];
 
     /* Compute gradients for pi */
     /* there is a sign difference w.r.t. eqn. (6) because of the inverse
@@ -254,8 +254,8 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_finalise(
  * @return Change in the quantity after a displacement along the given distance
  * vector.
  */
-__attribute__((always_inline)) INLINE static float chemistry_gradients_extrapolate(
-    const float gradient[3], const float dx[3]) {
+__attribute__((always_inline)) INLINE static double chemistry_gradients_extrapolate(
+    const double gradient[3], const float dx[3]) {
   return gradient[0] * dx[0] + gradient[1] * dx[1] + gradient[2] * dx[2];
 }
 
@@ -280,8 +280,8 @@ __attribute__((always_inline)) INLINE static float chemistry_gradients_extrapola
  * @param xij_i Position of the "interface" w.r.t. position of particle i
  */
 __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
-    const struct part *restrict pi, const struct part *restrict pj, float* Ui,
-    float* Uj, int group, const float *dx, const float r,
+    const struct part *restrict pi, const struct part *restrict pj, double* Ui,
+    double* Uj, int group, const float *dx, const float r,
     const float xij_i[3]) {
 
   chemistry_part_get_diffusion_state_vector(pi, group, Ui);
@@ -290,8 +290,8 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
    * they haven't been touched since the call
    * to rt_injection_update_photon_density */
 
-  float dF_i[3];
-  float dF_j[3];
+  double dF_i[3];
+  double dF_j[3];
   chemistry_part_get_gradients(pi, group, dF_i);
   chemistry_part_get_gradients(pj, group, dF_j);
 
@@ -301,8 +301,8 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
   const float xij_j[3] = {xij_i[0] + dx[0], xij_i[1] + dx[1], xij_i[2] + dx[2]};
 
   /* Linear reconstruction of U_R and U_L */
-  float dUi = chemistry_gradients_extrapolate(dF_i, xij_i);
-  float dUj = chemistry_gradients_extrapolate(dF_j, xij_j);
+  double dUi = chemistry_gradients_extrapolate(dF_i, xij_i);
+  double dUj = chemistry_gradients_extrapolate(dF_j, xij_j);
 
   /* Apply the slope limiter at this interface */
   chemistry_slope_limit_face(Ui, Uj, &dUi, &dUj, xij_i, xij_j, r);
