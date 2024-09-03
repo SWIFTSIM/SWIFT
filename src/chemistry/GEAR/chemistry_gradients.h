@@ -50,7 +50,7 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_init(
  * @param pj Particle j.
  */
 __attribute__((always_inline)) INLINE static void chemistry_gradients_collect(
-    float r2, const float* dx, float hi, float hj, struct part* restrict pi,
+    float r2, const float* dx, float hi, float hj, struct part *restrict pi,
     struct part* restrict pj) {
 
   struct chemistry_part_data *chi = &pi->chemistry_data;
@@ -159,8 +159,8 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_collect(
  */
 __attribute__((always_inline)) INLINE static void
 chemistry_gradients_nonsym_collect(float r2, const float* dx, float hi,
-                                   float hj, struct part* restrict pi,
-                                   struct part* restrict pj) {
+                                   float hj, struct part *restrict pi,
+                                   struct part * restrict pj) {
 
   struct chemistry_part_data *chi = &pi->chemistry_data;
 
