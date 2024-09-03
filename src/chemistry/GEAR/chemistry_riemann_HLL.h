@@ -21,6 +21,8 @@
 
 #include "hydro.h"
 
+#define SIGN(x) ((x) > 0 ? 1 : ((x) < 0 ? -1 : 0))
+
 /**
  * @brief Check if the given input states are vacuum or will generate vacuum
  */
@@ -57,9 +59,9 @@ __attribute__((always_inline)) INLINE static int chemistry_riemann_is_vacuum(
  * @param flux_half (return) the resulting flux at the interface
  */
 __attribute__((always_inline)) INLINE static void chemistry_riemann_solve_for_flux(
-    const struct part* restrict pi, const struct part* restrict pj, const float UL,
-    const float UR, const float n_unit[3], int g,
-    const float Anorm, const float F_diff_L[3], const float F_diff_R[3], float* metal_flux) {
+    const struct part* restrict pi, const struct part* restrict pj, const double UL,
+    const double UR, const float n_unit[3], int g,
+    const float Anorm, const double F_diff_L[3], const double F_diff_R[3], double* metal_flux) {
 										   
   /* Handle pure vacuum */
   if (!UL && !UR) {
@@ -121,40 +123,68 @@ __attribute__((always_inline)) INLINE static void chemistry_riemann_solve_for_fl
   const float lambda_plus = max(uL, uR) + c_fast;
   const float lambda_minus = min(uL, UR) - c_fast;
 
-  /* Compute r */
-  /* const float nabla_o_q_L[3] = {0.0, 0.0, 0.0}; */
-  /* const float nabla_o_q_R[3] = {0, 0, 0};  */
-  /* const float grad_otimes_q_star[3] = {0.5*(nabla_o_q_L[0] + nabla_o_q_R[0]), */
-  /* 				       0.5*(nabla_o_q_L[1] + nabla_o_q_R[1]), */
-  /* 				       0.5*(nabla_o_q_L[2] + nabla_o_q_R[2])}; */
+  /* Compute alpha */
+  const float K_star_norm = 0.5 * sqrtf(3.0) * (pi->chemistry_data.kappa + pj->chemistry_data.kappa);
+  const float dx[3] = {pj->x[0] - pi->x[0], pj->x[1] - pi->x[1], pj->x[1] - pi->x[1]};
+  const float dx_norm_2 = dx[0]*dx[0] + dx[1]*dx[1] + dx[2]*dx[2];
+  const float dx_norm = sqrtf(dx_norm_2);
+  const float r = dx_norm/K_star_norm * (0.5*fabs(vR - vL) + Sstar);
+  const float r_term = (0.2 + r )/ (0.2 + r + r*r);
+  const float norm_term = 1.0 / sqrtf(3.0);
+  const float alpha = norm_term * r_term;
 
-  /* const float K_star_norm = sqrtf(3.0) * (pi->chemistry_data.kappa + pj->chemistry_data.kappa)/2.f; */
-  /* const float dx[3] = {pj->x[0] - pi->x[0], pj->x[1] - pi->x[1], pj->x[1] - pi->x[1]}; */
-  /* const float dx_norm = dx[0]*dx[0] + dx[1]*dx[1] + dx[2]*dx[2]; */
-  /* const float r = dx_norm/K_star_norm * (0.5*labs(vR - vL) + Sstar); */
-  /* const float r_term = (0.2 + r )/ (0.2 + r + r*r); */
-  /* const float norm_term = 0.0; */
-  /* const float alpha = r_term * norm_term ; */
-  const float alpha = 1.0;
-
+  /* Compute F_HLL */
   const float dU = UR - UL;
   const float one_over_dl = 1.f / (lambda_plus - lambda_minus);
 
   /* Project to reduce to a 1D Problem with 1 quantity */
-  const float Flux_L = F_diff_L[0]*n_unit[0] + F_diff_L[1]*n_unit[1] + F_diff_L[2]*n_unit[2];
-  const float Flux_R = F_diff_R[0]*n_unit[0] + F_diff_R[1]*n_unit[1] + F_diff_R[2]*n_unit[2];
+  const double Flux_L = F_diff_L[0]*n_unit[0] + F_diff_L[1]*n_unit[1] + F_diff_L[2]*n_unit[2];
+  const double Flux_R = F_diff_R[0]*n_unit[0] + F_diff_R[1]*n_unit[1] + F_diff_R[2]*n_unit[2];
+  const double F_U = alpha*lambda_plus*lambda_minus*dU*one_over_dl;
+  const double F_2 = (lambda_plus*Flux_L - lambda_minus*Flux_R)*one_over_dl;
 
-  /* Compute F_diff_ij^* */
-  const float flux_hll  = (lambda_plus*Flux_L - lambda_minus*Flux_R + alpha*lambda_plus*lambda_minus*dU)*one_over_dl;
+  /* TODO: psi must be a user-defined parameter */
+  const double psi = 0.1;
+  const double flux_hll = chemistry_limiter_minmod((1+psi)*F_2, F_2 + F_U);
 
-  if (SL >= 0) {
-    *metal_flux = Flux_L;
-  } else if (SL <= 0 && SR >= 0) {
+  /* Compute the direct fluxes */
+  const double qj = pj->chemistry_data.metal_mass[g] / pj->chemistry_data.geometry.volume;
+  const double qi = pi->chemistry_data.metal_mass[g] / pi->chemistry_data.geometry.volume;
+  const double dq = qj - qi;
+  const double nabla_o_q_dir[3] = {dx[0]* dq / dx_norm_2,
+				   dx[1]* dq / dx_norm_2,
+				   dx[2]* dq / dx_norm_2};
+  const double kappa_mean = 0.5*(pi->chemistry_data.kappa + pj->chemistry_data.kappa);
+  const double F_A_left_side[3] = {- kappa_mean * nabla_o_q_dir[0],
+				   - kappa_mean * nabla_o_q_dir[1],
+				   - kappa_mean * nabla_o_q_dir[2]};
+  const double F_A_right_side[3] = { Anorm*dx[0]/dx_norm, Anorm*dx[1]/dx_norm, Anorm*dx[2]/dx_norm };
+
+  const double F_times_A_dir = F_A_left_side[0]*F_A_right_side[0] + F_A_left_side[1]*F_A_right_side[1] + F_A_left_side[2]*F_A_right_side[2];
+
+  /* Get F_HLL * A_ij */
+  const double F_HLL_times_A = flux_hll*Anorm;
+
+  /* Now, choose the righ flux to get F_diff_ij^* */
+
+  // TODO: This must be user-defined */
+  const double epsilon = 0.5;
+  if ((SIGN(F_times_A_dir) != SIGN(F_HLL_times_A))
+      && fabs(F_times_A_dir) > epsilon*fabs(F_HLL_times_A)) {
+    *metal_flux = 0;
+  } else {
     *metal_flux = flux_hll;
-  } else /* SR <= 0 */ {
-    *metal_flux = Flux_R;
   }
 
+  /* Simple HLL */
+  /* Compute F_diff_ij^* */
+  /* if (SL >= 0) { */
+    /* *metal_flux = Flux_L; */
+  /* } else if (SL <= 0 && SR >= 0) { */
+    /* *metal_flux = flux_hll; */
+  /* } else /\* SR <= 0 *\/ { */
+    /* *metal_flux = Flux_R; */
+  /* } */
 }
 
 
