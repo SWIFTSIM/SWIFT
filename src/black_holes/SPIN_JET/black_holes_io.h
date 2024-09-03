@@ -227,7 +227,8 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
   list[9] = io_make_output_field(
       "EnergyReservoirs", FLOAT, 1, UNIT_CONV_ENERGY, 0.f, bparts,
       energy_reservoir,
-      "Physcial energy contained in the feedback reservoir of the particles");
+      "Physcial energy contained in the thermal feedback reservoir of the "
+      "particles");
 
   list[10] = io_make_output_field(
       "AccretionRates", FLOAT, 1, UNIT_CONV_MASS_PER_UNIT_TIME, 0.f, bparts,
@@ -393,14 +394,15 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
   list[32] = io_make_physical_output_field(
       "NumberOfAGNEvents", INT, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
       AGN_number_of_AGN_events, /*can convert to comoving=*/1,
-      "Integer number of AGN events the black hole has had so far"
-      " (the number of time steps the BH did AGN feedback)");
+      "Integer number of heating AGN events the black hole has had so far"
+      " (the number of time steps the BH did thermal AGN feedback)");
 
   if (with_cosmology) {
     list[33] = io_make_physical_output_field(
         "LastAGNFeedbackScaleFactors", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f,
         bparts, last_AGN_event_scale_factor, /*can convert to comoving=*/0,
-        "Scale-factors at which the black holes last had an AGN event.");
+        "Scale-factors at which the black holes last had a thermal AGN "
+        "event.");
   } else {
     list[33] = io_make_output_field(
         "LastAGNFeedbackTimes", FLOAT, 1, UNIT_CONV_TIME, 0.f, bparts,
@@ -417,8 +419,9 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
   list[35] = io_make_output_field(
       "AGNTotalInjectedEnergies", FLOAT, 1, UNIT_CONV_ENERGY, 0.f, bparts,
       AGN_cumulative_energy,
-      "Total (cumulative) physical energies injected into gas particles "
-      "in AGN feedback, including the effects of both radiation and winds.");
+      "Total (cumulative) physical thermal energies injected into gas "
+      "particles in thermal AGN feedback, including the effects of both "
+      "radiation and winds.");
 
   list[36] = io_make_output_field_convert_bpart(
       "Potentials", FLOAT, 1, UNIT_CONV_POTENTIAL, -1.f, bparts,
@@ -440,7 +443,9 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
 
   list[40] = io_make_output_field(
       "RadiativeEfficiencies", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
-      radiative_efficiency, "AGN luminosity divided by accretion rate.");
+      radiative_efficiency,
+      "The radiative efficiencies of the BHs, i.e. the "
+      "AGN luminosity divided by accretion rate.");
 
   list[41] = io_make_output_field("CosAccretionDiskAngle", FLOAT, 1,
                                   UNIT_CONV_NO_UNITS, 0.f, bparts,
