@@ -453,12 +453,13 @@ __attribute__((always_inline)) INLINE static void chemistry_end_density(
  
   /* Check that the metal masses are physical */
   for (int g = 0; g < GEAR_CHEMISTRY_ELEMENT_COUNT; g++) {
-    float Q = p->chemistry_data.metal_mass[g];
+    /* float Q = p->chemistry_data.metal_mass[g]; */
+    /* p->chemistry_data.metal_mass[g] = Q ; //\* p->chemistry_data.volume; */
 
 #ifdef SWIFT_DEBUG_CHECKS
-    if (Q < 0.) {
-      error("Metal mass %i is negative!", g);
-    }
+    /* if (Q < 0.) { */
+    /*   error("Metal mass is negative! (id = %lld, mass = %e, metal: %i, )", p->id, p->chemistry_data.metal_mass[g], g); */
+    /* } */
 
     if (volume == 0.) {
       error("Volume is 0!");
@@ -613,8 +614,14 @@ __attribute__((always_inline)) INLINE static void chemistry_first_init_part(
           data->initial_metallicities[i] * hydro_get_mass(p);
     }
   }
-
+  p->chemistry_data.kappa = 1;
   chemistry_init_part(p, data);
+
+  /* we cannot initialize wcorr in init_part, as init_part gets called every
+     time the density loop is repeated, and the whole point of storing wcorr
+     is to have a way of remembering that we need more neighbours for this
+     particle */
+  p->chemistry_data.geometry.wcorr = 1.0f;
 }
 
 /**
