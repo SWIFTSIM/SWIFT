@@ -128,7 +128,7 @@ __attribute__((always_inline)) INLINE static void chemistry_riemann_solve_for_fl
   const float dx[3] = {pj->x[0] - pi->x[0], pj->x[1] - pi->x[1], pj->x[1] - pi->x[1]};
   const float dx_norm_2 = dx[0]*dx[0] + dx[1]*dx[1] + dx[2]*dx[2];
   const float dx_norm = sqrtf(dx_norm_2);
-  const float r = dx_norm/K_star_norm * (0.5*fabs(vR - vL) + Sstar);
+  const float r = dx_norm/K_star_norm * (0.5*fabs(uR - uL) + Sstar);
   const float r_term = (0.2 + r )/ (0.2 + r + r*r);
   const float norm_term = 1.0 / sqrtf(3.0);
   const float alpha = norm_term * r_term;
