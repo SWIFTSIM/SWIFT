@@ -988,15 +988,6 @@ __attribute__((always_inline)) INLINE static void chemistry_kick_extra(
     p->chemistry_data.flux_dt = -1.0f;
   }
 
-/* #ifdef SWIFT_DEBUG_CHECKS */
-  /* Note that this check will only have effect if no GIZMO_UNPHYSICAL option
-     was selected. */
-  /* if (p->chemistry_data.flux_dt > 0.0f) { */
-  /*   message("Active part, id = %lld, mass = %e, metal_massl[0] = %e, metal_fraction = %e", p->id, */
-  /* 	    p->mass, p->chemistry_data.metal_mass[0], p->chemistry_data.metal_mass[0]/p->mass); */
-  /* } */
-/* #endif */
-
   /* Sanity checks. We don't want negative metal masses. */
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; ++i) {
     const double n_metal_old = p->chemistry_data.metal_mass[i];
