@@ -455,23 +455,16 @@ __attribute__((always_inline)) INLINE static void chemistry_end_density(
  
   /* Check that the metal masses are physical */
   for (int g = 0; g < GEAR_CHEMISTRY_ELEMENT_COUNT; g++) {
-    /* float Q = p->chemistry_data.metal_mass[g]; */
-    /* p->chemistry_data.metal_mass[g] = Q ; //\* p->chemistry_data.volume; */
+    double n_metal_old = p->chemistry_data.metal_mass[g];
 
 #ifdef SWIFT_DEBUG_CHECKS
-    /* if (Q < 0.) { */
-    /*   error("Metal mass is negative! (id = %lld, mass = %e, metal: %i, )", p->id, p->chemistry_data.metal_mass[g], g); */
-    /* } */
-
     if (volume == 0.) {
       error("Volume is 0!");
     }
 #endif
 
     /* Sanity checks */
-    /* TODO */
-  /* gizmo_check_physical_quantities("density", "pressure", W[0], W[1], W[2], W[3], */
-  /*                                 W[4]); */
+    chemistry_check_unphysical_state(&p->chemistry_data.metal_mass[g], n_metal_old, /*callloc=*/0);
   }
 }
 
@@ -983,21 +976,20 @@ __attribute__((always_inline)) INLINE static void chemistry_kick_extra(
     p->chemistry_data.flux_dt = -1.0f;
   }
 
-#ifdef SWIFT_DEBUG_CHECKS
+/* #ifdef SWIFT_DEBUG_CHECKS */
   /* Note that this check will only have effect if no GIZMO_UNPHYSICAL option
      was selected. */
-  if (p->chemistry_data.flux_dt > 0.0f) {
-    message("Active part, id = %lld, mass = %e, metal_massl[0] = %e, metal_fraction = %e", p->id,
-	    p->mass, p->chemistry_data.metal_mass[0], p->chemistry_data.metal_mass[0]/p->mass);
-  }
-  /* for (int k = 0; k < GEAR_CHEMISTRY_ELEMENT_COUNT; k++) { */
-  /*   if (p->chemistry_data.metal_mass[k] < 0.) { */
-  /*     warning( */
-  /* 	    "Negative metal_ mass after conserved variables update (id = %lld, mass: %g, metal: %i)!", */
-  /* 	    p->id, p->chemistry_data.metal_mass[k], k); */
-  /*   } */
+  /* if (p->chemistry_data.flux_dt > 0.0f) { */
+  /*   message("Active part, id = %lld, mass = %e, metal_massl[0] = %e, metal_fraction = %e", p->id, */
+  /* 	    p->mass, p->chemistry_data.metal_mass[0], p->chemistry_data.metal_mass[0]/p->mass); */
   /* } */
-#endif
+/* #endif */
+
+  /* Sanity checks. We don't want negative metal masses. */
+  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; ++i) {
+    const double n_metal_old = p->chemistry_data.metal_mass[i];
+    chemistry_check_unphysical_state(&p->chemistry_data.metal_mass[i], n_metal_old, /*callloc=*/2);
+  }
 
   /* Reset wcorr */
   p->chemistry_data.geometry.wcorr = 1.0f;
