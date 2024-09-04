@@ -85,14 +85,14 @@ __attribute__((always_inline)) INLINE static void chemistry_compute_flux(
                         vi[2] + (vi[2] - vj[2]) * xfac};
 
   float WL[5] = { pi->rho,
-		  pi->v[0] - vij[0],
-		  pi->v[1] - vij[1],
-		  pi->v[2] - vij[2],
+		  vi[0] - vij[0],
+		  vi[1] - vij[1],
+		  vi[2] - vij[2],
 		  hydro_get_comoving_pressure(pi) };
   float WR[5] = { pj->rho,
-		  pj->v[0] - vij[0],
-		  pj->v[1] - vij[1],
-		  pj->v[2] - vij[2],
+		  vj[0] - vij[0],
+		  vj[1] - vij[1],
+		  vj[2] - vij[2],
 		  hydro_get_comoving_pressure(pj) };
 
 
