@@ -302,7 +302,7 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
   const float xij_j[3] = {xij_i[0] + dx[0], xij_i[1] + dx[1], xij_i[2] + dx[2]};
 
   /* Linear reconstruction of U_R and U_L */
-  double dUi = chemistry_gradients_extrapolate(dF_i, xij_i)
+  double dUi = chemistry_gradients_extrapolate(dF_i, xij_i);
   double dUj = chemistry_gradients_extrapolate(dF_j, xij_j);
 
   /* Apply the slope limiter at this interface */
