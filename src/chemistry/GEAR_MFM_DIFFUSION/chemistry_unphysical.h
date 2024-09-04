@@ -31,6 +31,10 @@
  * @brief check for and correct if needed unphysical
  * values for a diffusion state.
  *
+ * Check that the metal density does not exceed the particle mass. To do so, we
+ * whould check all metallicities at the same time. We should also ensure that
+ * the sum of the metallicities does not exceed the particle mass.
+ *
  * @param metal_density pointer to the radiation energy density
  * @param n_old metal density before change to check. Set = 0 if not available
  * @param callloc integer indentifier where this function was called from
