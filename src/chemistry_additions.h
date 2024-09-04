@@ -38,6 +38,8 @@
 #include "./chemistry/EAGLE/chemistry_additions.h"
 #elif defined(CHEMISTRY_GEAR)
 #include "./chemistry/GEAR/chemistry_additions.h"
+#elif defined(CHEMISTRY_GEAR_MFM_DIFFUSION)
+#include "./chemistry/GEAR_MFM_DIFFUSION/chemistry_additions.h"
 #elif defined(CHEMISTRY_NONE)
 #include "./chemistry/none/chemistry_additions.h"
 #elif defined(CHEMISTRY_NONE)
