@@ -41,6 +41,16 @@
 #include "units.h"
 
 /**
+ * @brief TODO
+ *
+ * @param p Particle.
+ */
+__attribute__((always_inline)) INLINE static double
+chemistry_part_compute_diffusion_coefficient(struct part* restrict p) {
+  return kernel_gamma2*p->h*p->h;
+}
+
+/**
  * @brief Copies the chemistry properties of the gas particle over to the
  * star particle.
  *
@@ -349,8 +359,10 @@ __attribute__((always_inline)) INLINE static void chemistry_init_part(
   cpd->geometry.matrix_E[2][1] = 0.0f;
   cpd->geometry.matrix_E[2][2] = 0.0f;
 
-  /* Recompute the diffusion coefficient */
-  p->chemistry_data.kappa = kernel_gamma2*p->h*p->h;
+  /* Update the diffusion coefficient for the new loops */
+  /* TODO: This might be moved to the end of density or gradient, if we want to
+     use a shear tensor using grad velocity */
+  p->chemistry_data.kappa = chemistry_part_compute_diffusion_coefficient(p);
 
   /* Init the gradient */
   chemistry_gradients_init(p);
@@ -609,7 +621,7 @@ __attribute__((always_inline)) INLINE static void chemistry_first_init_part(
           data->initial_metallicities[i] * hydro_get_mass(p);
     }
   }
-  p->chemistry_data.kappa = 1;
+  p->chemistry_data.kappa = chemistry_part_compute_diffusion_coefficient(p);
   chemistry_init_part(p, data);
 
   /* we cannot initialize wcorr in init_part, as init_part gets called every
