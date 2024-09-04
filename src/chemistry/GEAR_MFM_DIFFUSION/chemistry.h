@@ -724,7 +724,7 @@ chemistry_transfer_part_to_bpart(struct chemistry_bpart_data* bp_data,
                                  struct chemistry_part_data* p_data,
                                  const double nibble_mass,
                                  const double nibble_fraction) {
-  error("To be implemented.");
+  error("No BH yet in GEAR");
 }
 
 /**
@@ -738,7 +738,7 @@ chemistry_transfer_part_to_bpart(struct chemistry_bpart_data* bp_data,
 __attribute__((always_inline)) INLINE static void chemistry_add_bpart_to_bpart(
     struct chemistry_bpart_data* bp_data,
     const struct chemistry_bpart_data* swallowed_data) {
-  error("Loic: to be implemented");
+  error("No BH yet in GEAR");
 }
 
 /**
@@ -860,7 +860,7 @@ chemistry_get_total_metal_mass_fraction_for_cooling(
  */
 __attribute__((always_inline)) INLINE static double const*
 chemistry_get_metal_mass_fraction_for_cooling(const struct part* restrict p) {
-
+  /* HERE */
   return p->chemistry_data.smoothed_metal_mass_fraction;
 }
 
@@ -889,7 +889,7 @@ chemistry_get_total_metal_mass_fraction_for_star_formation(
 __attribute__((always_inline)) INLINE static double const*
 chemistry_get_metal_mass_fraction_for_star_formation(
     const struct part* restrict p) {
-
+  /* HERE */
   return p->chemistry_data.smoothed_metal_mass_fraction;
 }
 
@@ -927,7 +927,7 @@ chemistry_get_star_total_metal_mass_for_stats(const struct spart* restrict sp) {
  */
 __attribute__((always_inline)) INLINE static float
 chemistry_get_bh_total_metal_mass_for_stats(const struct bpart* restrict bp) {
-  error("Not implemented");
+  error("No BH yet in GEAR");
   return 0.f;
 }
 
