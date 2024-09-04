@@ -20,6 +20,7 @@
 #define SWIFT_GEAR_CHEMISTRY_GRADIENTS_H
 
 /* #include "hydro_slope_limiters.h" */
+#include "chemistry_unphysical.h"
 #include "chemistry_getters.h"
 #include "chemistry_setters.h"
 #include "chemistry_slope_limiter.h"
@@ -301,7 +302,7 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
   const float xij_j[3] = {xij_i[0] + dx[0], xij_i[1] + dx[1], xij_i[2] + dx[2]};
 
   /* Linear reconstruction of U_R and U_L */
-  double dUi = chemistry_gradients_extrapolate(dF_i, xij_i);
+  double dUi = chemistry_gradients_extrapolate(dF_i, xij_i)
   double dUj = chemistry_gradients_extrapolate(dF_j, xij_j);
 
   /* Apply the slope limiter at this interface */
@@ -311,8 +312,8 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
   *Uj += dUj;
 
   /* Check and correct unphysical extrapolated states */
-  /* chemistry_check_unphysical_state(Ui, &Ui, /\*e_old=*\/0.f, /\*callloc=*\/1); */
-  /* chemistry_check_unphysical_state(Uj, &Uj, /\*e_old=*\/0.f, /\*callloc=*\/1); */
+  chemistry_check_unphysical_state(Ui, /*n_old=*/0.f, /*callloc=*/1);
+  chemistry_check_unphysical_state(Uj, /*n_old=*/0.f, /*callloc=*/1);
 }
 
 #endif /* SWIFT_GEAR_CHEMISTRY_GRADIENTS_H */

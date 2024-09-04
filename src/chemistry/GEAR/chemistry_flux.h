@@ -19,6 +19,8 @@
 #ifndef SWIFT_GEAR_CHEMISTRY_FLUX_H
 #define SWIFT_GEAR_CHEMISTRY_FLUX_H
 
+#include "chemistry_unphysical.h"
+#include "chemistry_getters.h"
 #include "chemistry_riemann_HLL.h"
 /* #include "chemistry_unphysical.h" */
 
