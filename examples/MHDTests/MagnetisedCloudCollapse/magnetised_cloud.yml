@@ -38,10 +38,10 @@ SPH:
 # Parameters for MHD scheme
 MHD:
   monopole_subtraction:   1.0
-  artificial_diffusion:   0.1
-  hyperbolic_dedner:      1.0
-  hyperbolic_dedner_divv: 0.5
-  parabolic_dedner:       1.0
+  artificial_diffusion:   0.0
+  hyperbolic_dedner:      0.0
+  hyperbolic_dedner_divv: 0.0
+  parabolic_dedner:       0.0
   resistive_eta:          0.0
 
 # Parameters for the self-gravity scheme
@@ -50,14 +50,15 @@ Gravity:
   MAC:                adaptive
   theta_cr:           0.7
   epsilon_fmm:        0.001
-  max_physical_baryon_softening: 0.000004    # Physical softening length (in internal units).
+  max_physical_baryon_softening: 0.00001    # Physical softening length (in internal units).
+  mesh_side_length:   32
 
 # Parameters related to the initial conditions
 InitialConditions:
   file_name:  ./magnetised_cloud.hdf5       # The file to read
-  periodic:   0
+  periodic:   1
 
 # Parameters related to the barotropic equation of state
 EoS:
-  barotropic_vacuum_sound_speed:   0.2           # Internal system of units (aka. km/s)
-  barotropic_core_density:         1.477e9       # 6.77e-10 # Internal system of units (aka. pc**3 / Msun)
+  barotropic_vacuum_sound_speed:   0.2             # Internal system of units (aka. km/s)
+  barotropic_core_density:         1.47756194451e8 # Internal system of units (aka. pc**3 / Msun)

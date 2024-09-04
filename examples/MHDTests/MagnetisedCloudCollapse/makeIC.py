@@ -39,32 +39,38 @@ parser.add_argument(
 args = vars(parser.parse_args())
 
 # Parameters
-Rcloud = 4.63e16
-Lbox = 4.0 * Rcloud
+Rcloud = 4.628516371e16
+Lbox = 10.0 * Rcloud
 
 gamma = 5.0 / 3.0  # Gas adiabatic index
 
 M = 1.99e33  # total mass of the sphere
-Omega = 2 * pi / (4.7e5 * 3.156e7)
-B0 = 1.06347231e-5  # 0.05923863
+Omega = 2 * pi / (4.7e5 * 3.1536e7)
+
+mu_fid = 10.0
+Bini_fid = 6.1e-7
+
+mu = 5
+Bini = Bini_fid * (mu_fid / mu)
 
 cs0 = 2e4
-inv_rho_c = 1e13
+inv_rho_c = 1e14
 
 volume_cloud = (4 / 3) * pi * Rcloud ** 3
 volume_cloud_box = (2 * Rcloud) ** 3
 volume_sim_box = Lbox ** 3
 
 rho_in = M / volume_cloud
-rho_out = 0.01 * rho_in
+rho_out = rho_in / 360
 
-P = rho_in * cs0 * cs0 * sqrt(1.0 + (rho_in * inv_rho_c) ** (4 / 3))
+P_in = rho_in * cs0 * cs0 * sqrt(1.0 + (rho_in * inv_rho_c) ** (4 / 3))
+P_out = rho_out * cs0 * cs0 * sqrt(1.0 + (rho_out * inv_rho_c) ** (4 / 3))
 
 fileName = "magnetised_cloud.hdf5"
 
 numPart_in_side = int(args["nparts"])
 numPart_out_side = int(
-    floor(numPart_in_side * cbrt(0.01 * volume_sim_box / volume_cloud_box))
+    floor(numPart_in_side * cbrt(volume_sim_box / volume_cloud_box / 360))
 )
 
 # Position cloud particles
@@ -81,24 +87,6 @@ z = z.flatten()
 
 r = stack((x, y, z), axis=1)
 pos_in = r[r[:, 0] ** 2 + r[:, 1] ** 2 + r[:, 2] ** 2 < Rcloud ** 2]
-
-############
-"""
-rot_angle      = 2 * pi * random.random()
-print(rot_angle)
-rot_vector     = random.random(3)
-rot_vector_hat = rot_vector / linalg.norm(rot_vector)
-print(rot_vector_hat)
-
-rotation       = Rotation.from_rotvec(rot_angle * rot_vector_hat)
-rotation_matrix = rotation.as_matrix()
-
-print(rotation_matrix)
-
-pos_in = matmul(rotation_matrix, pos_in.T).T
-print(pos_in.shape)
-"""
-############
 
 numPart_in = int(pos_in.shape[0])
 
@@ -160,36 +148,11 @@ ids = linspace(1, numPart, numPart)
 m = ones(numPart) * M / numPart_in
 
 u = ones(numPart)
-u[:numPart_in] *= P / ((gamma - 1) * rho_in)
-u[numPart_in:] *= P / ((gamma - 1) * rho_out)
+u[:numPart_in] *= P_in / ((gamma - 1) * rho_in)
+u[numPart_in:] *= P_out / ((gamma - 1) * rho_out)
 
 B = zeros((numPart, 3))
-A = zeros((numPart, 3))
-B[:, 2] = B0
-
-"""
-Nvort = 10
-Bini = B0
-Aini = B0 / (2.0 * pi * Nvort) * Lbox
-B[:, 0] = Bini * (
-    sin(2.0 * pi * pos[:, 2] / Lbox * Nvort) + cos(2.0 * pi * pos[:, 1] / Lbox * Nvort)
-)
-B[:, 1] = Bini * (
-    sin(2.0 * pi * pos[:, 0] / Lbox * Nvort) + cos(2.0 * pi * pos[:, 2] / Lbox * Nvort)
-)
-B[:, 2] = Bini * (
-    sin(2.0 * pi * pos[:, 1] / Lbox * Nvort) + cos(2.0 * pi * pos[:, 0] / Lbox * Nvort)
-)
-A[:, 0] = Aini * (
-    sin(2.0 * pi * pos[:, 2] / Lbox * Nvort) + cos(2.0 * pi * pos[:, 1] / Lbox * Nvort)
-)
-A[:, 1] = Aini * (
-    sin(2.0 * pi * pos[:, 0] / Lbox * Nvort) + cos(2.0 * pi * pos[:, 2] / Lbox * Nvort)
-)
-A[:, 2] = Aini * (
-    sin(2.0 * pi * pos[:, 1] / Lbox * Nvort) + cos(2.0 * pi * pos[:, 0] / Lbox * Nvort)
-)
-"""
+B[:, 2] = Bini
 
 epsilon_lim = cbrt(M / (numPart_in * 1e-11)) / 3.086e18
 print(epsilon_lim)
@@ -232,6 +195,5 @@ grp.create_dataset("SmoothingLength", data=h, dtype="f")
 grp.create_dataset("InternalEnergy", data=u, dtype="f")
 grp.create_dataset("ParticleIDs", data=ids, dtype="L")
 grp.create_dataset("MagneticFluxDensities", data=B, dtype="f")
-grp.create_dataset("MagneticVectorPotentials", data=A, dtype="f")
 
 file.close()
