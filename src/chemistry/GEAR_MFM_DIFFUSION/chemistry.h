@@ -33,6 +33,7 @@
 #include "chemistry_struct.h"
 #include "chemistry_gradients.h"
 #include "chemistry_flux.h"
+#include "chemistry_setters.h"
 #include "error.h"
 #include "hydro.h"
 #include "kernel_hydro.h"
@@ -40,16 +41,6 @@
 #include "part.h"
 #include "physical_constants.h"
 #include "units.h"
-
-/**
- * @brief TODO
- *
- * @param p Particle.
- */
-__attribute__((always_inline)) INLINE static double
-chemistry_part_compute_diffusion_coefficient(struct part* restrict p) {
-  return kernel_gamma2*p->h*p->h;
-}
 
 /**
  * @brief Copies the chemistry properties of the gas particle over to the

@@ -19,6 +19,8 @@
 #ifndef SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_SETTERS_H
 #define SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_SETTERS_H
 
+#include "kernel_hydro.h"
+
 /**
  * @brief Set the gradients for the given particle to zero.
  *
@@ -88,5 +90,14 @@ chemistry_part_normalise_gradients(struct part* restrict p, int g, const float n
   chd->gradients[g].nabla_otimes_q[2] *= norm;
 }
 
+/**
+ * @brief Compute the diffusion coefficient of the particle.
+ *
+ * @param p Particle.
+ */
+__attribute__((always_inline)) INLINE static double
+chemistry_part_compute_diffusion_coefficient(struct part* restrict p) {
+  return kernel_gamma2*p->h*p->h;
+}
 
 #endif /* SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_SETTERS_H */
