@@ -33,15 +33,37 @@
    first order reconstruction, then we would need the cell limiters. */
 
 /**
- * The minmod slope limiter.
+ * The minmod limiter.
  *
  * @param a Left slope
  * @param b Right slope
  */
-__attribute__((always_inline)) INLINE static double chemistry_limiter_minmod(double a, double b) {
+__attribute__((always_inline)) INLINE static double chemistry_minmod(double a, double b) {
   /* Write this more explicitely (taken from Gizmo) */
   return (a>0) ? ((b<0) ? 0 : min(a, b)) : ((b>=0) ? 0 : max(a, b));
 }
+
+/**
+ * the minmod slope limiter.
+ *
+ * @param dQi left slope
+ * @param dQj right slope
+ */
+__attribute__((always_inline)) INLINE static void chemistry_limiter_minmod(
+    double* dQi, double* dQj) {
+
+  if (*dQi * *dQj > 0.f) {
+    if (fabs(*dQi) < fabs(*dQj)) {
+      *dQj = *dQi;
+    } else {
+      *dQi = *dQj;
+    }
+  } else {
+    *dQi = 0.f;
+    *dQj = 0.f;
+  }
+}
+
 
 /**
  * @brief Slope limit a single quantity at the interface
@@ -114,19 +136,24 @@ __attribute__((always_inline)) INLINE static void chemistry_slope_limit_face(
     double *Wi, double *Wj, double *dWi, double *dWj, const float xij_i[3],
     const float *xij_j, float r) {
 
-  const float xij_i_norm =
-      sqrtf(xij_i[0] * xij_i[0] + xij_i[1] * xij_i[1] + xij_i[2] * xij_i[2]);
+  /* const float xij_i_norm = */
+  /*     sqrtf(xij_i[0] * xij_i[0] + xij_i[1] * xij_i[1] + xij_i[2] * xij_i[2]); */
 
-  const float xij_j_norm =
-      sqrtf(xij_j[0] * xij_j[0] + xij_j[1] * xij_j[1] + xij_j[2] * xij_j[2]);
+  /* const float xij_j_norm = */
+  /*     sqrtf(xij_j[0] * xij_j[0] + xij_j[1] * xij_j[1] + xij_j[2] * xij_j[2]); */
 
-  const float r_inv = (r > 0.0f) ? 1.0f / r : 0.0f;
+  /* const float r_inv = (r > 0.0f) ? 1.0f / r : 0.0f; */
 
-  *dWi = chemistry_slope_limit_face_quantity(Wi[0], Wj[0], Wi[0] + dWi[0],
-                                           xij_i_norm, r_inv);
+  /* *dWi = chemistry_slope_limit_face_quantity(Wi[0], Wj[0], Wi[0] + dWi[0], */
+  /*                                          xij_i_norm, r_inv); */
 
-  *dWj = chemistry_slope_limit_face_quantity(Wj[0], Wi[0], Wj[0] + dWj[0],
-                                           xij_j_norm, r_inv);
+  /* *dWj = chemistry_slope_limit_face_quantity(Wj[0], Wi[0], Wj[0] + dWj[0], */
+  /*                                          xij_j_norm, r_inv); */
+
+  /* Test to see whether it is better to use the minmode or the GIZMO style
+     limiter */
+  chemistry_limiter_minmod(dWi, dWj);
+
 }
 
 
