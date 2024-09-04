@@ -47,7 +47,7 @@ __attribute__((always_inline)) INLINE static void chemistry_check_unphysical_sta
 #ifdef SWIFT_DEBUG_CHECKS
   float ratio = -1.f;
   char print = 0;
-  if (n_old == 0.) {
+  if (n_old == 0.0) {
     if (*metal_density < -1.e-20) print = 1;
   } else {
     /* TODO: understadn that and transpose to chemistry */
@@ -66,8 +66,8 @@ __attribute__((always_inline)) INLINE static void chemistry_check_unphysical_sta
     error("Got inf/nan metal density diffusion case %d | %.6e ",
           callloc, *metal_density);
 
-  if (*metal_density <= 0.f) {
-    *metal_density = 0.f;
+  if (*metal_density < 0.0) {
+    *metal_density = 0.0;
     return;
   }
 }
