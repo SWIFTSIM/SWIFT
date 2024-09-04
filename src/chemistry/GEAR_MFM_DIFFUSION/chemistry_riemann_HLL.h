@@ -141,6 +141,9 @@ __attribute__((always_inline)) INLINE static void chemistry_riemann_solve_for_fl
   const double psi = 0.1;
   const double flux_hll = chemistry_minmod((1+psi)*F_2, F_2 + F_U);
 
+  /****************************************************************************
+   * Hopkins 2017 implementation of HLL
+   * This leads to NaN quickly. There is probably a bug. To be investigated */
   /* Compute the direct fluxes */
   const double qj = pj->chemistry_data.metal_mass[g] / pj->chemistry_data.geometry.volume;
   const double qi = pi->chemistry_data.metal_mass[g] / pi->chemistry_data.geometry.volume;
@@ -161,7 +164,7 @@ __attribute__((always_inline)) INLINE static void chemistry_riemann_solve_for_fl
 
   /* Now, choose the righ flux to get F_diff_ij^* */
   /* TODO: This must be user-defined *\/ */
-  const double epsilon = 0.5;
+  const double epsilon = 0.0;
   if ((SIGN(F_times_A_dir) != SIGN(F_HLL_times_A))
       && fabs(F_times_A_dir) > epsilon*fabs(F_HLL_times_A)) {
     *metal_flux = 0;
@@ -169,8 +172,10 @@ __attribute__((always_inline)) INLINE static void chemistry_riemann_solve_for_fl
     *metal_flux = flux_hll;
   }
 
-  /* Simple HLL */
-  /* Compute F_diff_ij^* */
+  /***************************************************************************
+   * Simple HLL (compute F_diff_ij^*)
+   * It is more stable than the Hokins version (04.09.2024) */
+  /* This works. However, we need to study the artificial diffusion. */
   /* if (SL >= 0) { */
   /*   *metal_flux = Flux_L; */
   /* } else if (SL <= 0 && SR >= 0) { */
