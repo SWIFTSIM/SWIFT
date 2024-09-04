@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_GEAR_CHEMISTRY_SETTERS_H
-#define SWIFT_GEAR_CHEMISTRY_SETTERS_H
+#ifndef SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_SETTERS_H
+#define SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_SETTERS_H
 
 /**
  * @brief Set the gradients for the given particle to zero.
@@ -89,4 +89,4 @@ chemistry_part_normalise_gradients(struct part* restrict p, int g, const float n
 }
 
 
-#endif /* SWIFT_GEAR_CHEMISTRY_SETTERS_H */
+#endif /* SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_SETTERS_H */

@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_CHEMISTRY_NONE_CHEMISTRY_CSDS_H
-#define SWIFT_CHEMISTRY_NONE_CHEMISTRY_CSDS_H
+#ifndef SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_CSDS_H
+#define SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_CSDS_H
 
 /* Other Includes */
 #include "csds_io.h"
@@ -92,4 +92,4 @@ INLINE static int csds_chemistry_define_fields_sparts(
 }
 
 #endif  // WITH_CSDS
-#endif  // SWIFT_CHEMISTRY_NONE_CHEMISTRY_CSDS_H
+#endif  // SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_CSDS_H

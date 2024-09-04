@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_CHEMISTRY_GEAR_DEBUG_H
-#define SWIFT_CHEMISTRY_GEAR_DEBUG_H
+#ifndef SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_DEBUG_H
+#define SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_DEBUG_H
 
 __attribute__((always_inline)) INLINE static void chemistry_debug_particle(
     const struct part* p, const struct xpart* xp) {

@@ -1,6 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2016 Matthieu Schaller (schaller@strw.leidenuniv.nl)
+ *               2024 Roduit Darwin (darwin.roduit@epfl.ch)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,11 +17,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_CHEMISTRY_GEAR_H
-#define SWIFT_CHEMISTRY_GEAR_H
+#ifndef SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_H
+#define SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_H
 
 /**
- * @file src/chemistry/GEAR/chemistry.h
+ * @file src/chemistry/GEAR_MFM_DIFFUSION/chemistry.h
  */
 
 /* Some standard headers. */
@@ -998,4 +999,4 @@ __attribute__((always_inline)) INLINE static void chemistry_kick_extra(
   p->chemistry_data.geometry.wcorr = 1.0f;
 }
 
-#endif /* SWIFT_CHEMISTRY_GEAR_H */
+#endif /* SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_H */

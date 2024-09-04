@@ -16,9 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_GEAR_CHEMISTRY_SLOPE_LIMITER_H
-#define SWIFT_GEAR_CHEMISTRY_SLOPE_LIMITER_H
-
+#ifndef SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_SLOPE_LIMITER_H
+#define SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_SLOPE_LIMITER_H
 
 /* Some standard headers. */
 #include <float.h>
@@ -29,8 +28,10 @@
 
 
 /* Note: We do not need to slope limit the cell and the gradients, because we
-   perform a first order reconstruction of nabla_otimes_q. If we were to use a
-   first order reconstruction, then we would need the cell limiters. */
+   perform a first order reconstruction of nabla_otimes_q (= grad
+   metal_density). If we were to use a first order reconstruction, then we
+   would need the cell limiters. But the first order reconstruction requires
+   an additional neighbour loop and is probably less stable. */
 
 /**
  * The minmod limiter.
@@ -63,7 +64,6 @@ __attribute__((always_inline)) INLINE static void chemistry_limiter_minmod(
     *dQj = 0.f;
   }
 }
-
 
 /**
  * @brief Slope limit a single quantity at the interface
@@ -158,4 +158,4 @@ __attribute__((always_inline)) INLINE static void chemistry_slope_limit_face(
 
 
 
-#endif /*  SWIFT_GEAR_CHEMISTRY_SLOPE_LIMITER_H */
+#endif /*  SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_SLOPE_LIMITER_H */

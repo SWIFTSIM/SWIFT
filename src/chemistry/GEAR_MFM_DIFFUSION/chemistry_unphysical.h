@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_GEAR_CHEMISTRY_UNPHYSICAL_H
-#define SWIFT_GEAR_CHEMISTRY_UNPHYSICAL_H
+#ifndef SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_UNPHYSICAL_H
+#define SWIFT_CHEMiSTRY_GEAR_MFM_DIFFUSION_UNPHYSICAL_H
 
 #include "error.h"
 #include "inline.h"
@@ -105,4 +105,4 @@ chemistry_check_unphysical_diffusion_flux(double flux[3]) {
   }
 }
 
-#endif /* SWIFT_GEAR_CHEMISTRY_UNPHYSICAL_H */
+#endif /* SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_UNPHYSICAL_H */

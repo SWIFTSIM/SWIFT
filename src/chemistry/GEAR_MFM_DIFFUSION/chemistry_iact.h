@@ -1,7 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
- *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
+ * Copyright (c) 2024 Roduit Darwin (darwin.roduit@epfl.ch)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -17,14 +16,14 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_GEAR_CHEMISTRY_IACT_H
-#define SWIFT_GEAR_CHEMISTRY_IACT_H
+#ifndef SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_IACT_H
+#define SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_IACT_H
 
 #include "chemistry_flux.h"
 #include "chemistry_gradients.h"
 
 /**
- * @file GEAR/chemistry_iact.h
+ * @file GEAR_MFM_DIFFUSION/chemistry_iact.h
  * @brief Smooth metal interaction functions following the GEAR version of
  * smooth metalicity.
  *
@@ -424,4 +423,4 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_diffusion(
   runner_iact_chemistry_fluxes_common(r2, dx, hi, hj, pi, pj, 0, a, H);
 }
 
-#endif /* SWIFT_GEAR_CHEMISTRY_IACT_H */
+#endif /* SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_IACT_H */

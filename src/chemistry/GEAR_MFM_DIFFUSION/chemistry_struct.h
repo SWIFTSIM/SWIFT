@@ -1,6 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2016 Matthieu Schaller (schaller@strw.leidenuniv.nl)
+ *               2024 Roduit Darwin (darwin.roduit@epfl.ch)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,8 +17,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_CHEMISTRY_STRUCT_GEAR_H
-#define SWIFT_CHEMISTRY_STRUCT_GEAR_H
+#ifndef SWIFT_CHEMISTRY_STRUCT_GEAR_MFM_DIFFUSION_H
+#define SWIFT_CHEMISTRY_STRUCT_GEAR_MFM_DIFFUSION_H
 
 #define GEAR_LABELS_SIZE 10  // redumndant with the one defined in
 
@@ -115,4 +116,4 @@ struct chemistry_sink_data {
   double metal_mass_fraction[GEAR_CHEMISTRY_ELEMENT_COUNT];
 };
 
-#endif /* SWIFT_CHEMISTRY_STRUCT_GEAR_H */
+#endif /* SWIFT_CHEMISTRY_STRUCT_GEAR_MFM_DIFFUSION_H */

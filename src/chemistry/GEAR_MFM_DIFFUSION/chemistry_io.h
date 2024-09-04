@@ -1,6 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2016 Matthieu Schaller (schaller@strw.leidenuniv.nl)
+ *               2024 Roduit Darwin (darwin.roduit@epfl.ch)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,8 +17,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_CHEMISTRY_IO_GEAR_H
-#define SWIFT_CHEMISTRY_IO_GEAR_H
+#ifndef SWIFT_CHEMISTRY_IO_GEAR_MFM_DIFFUSION_H
+#define SWIFT_CHEMISTRY_IO_GEAR_MFM_DIFFUSION_H
 
 #include "chemistry_struct.h"
 #include "engine.h"
@@ -200,4 +201,4 @@ INLINE static void chemistry_write_flavour(hid_t h_grp, hid_t h_grp_columns,
 }
 #endif
 
-#endif /* SWIFT_CHEMISTRY_IO_GEAR_H */
+#endif /* SWIFT_CHEMISTRY_IO_GEAR_MFM_DIFFUSION_H */

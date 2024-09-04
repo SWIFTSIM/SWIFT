@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_GEAR_CHEMISTRY_GRADIENTS_H
-#define SWIFT_GEAR_CHEMISTRY_GRADIENTS_H
+#ifndef SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_GRADIENTS_H
+#define SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_GRADIENTS_H
 
 /* #include "hydro_slope_limiters.h" */
 #include "chemistry_unphysical.h"
@@ -316,4 +316,4 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
   chemistry_check_unphysical_state(Uj, /*n_old=*/0.f, /*callloc=*/1);
 }
 
-#endif /* SWIFT_GEAR_CHEMISTRY_GRADIENTS_H */
+#endif /* SWIFT_CHEMISTRY_GEAR_CHEMISTRY_GRADIENTS_H */

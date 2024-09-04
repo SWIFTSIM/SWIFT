@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_GEAR_CHEMISTRY_RIEMANN_HLL_H
-#define SWIFT_GEAR_CHEMISTRY_RIEMANN_HLL_H
+#ifndef SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_RIEMANN_HLL_H
+#define SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_RIEMANN_HLL_H
 
 #include "hydro.h"
 
@@ -181,4 +181,4 @@ __attribute__((always_inline)) INLINE static void chemistry_riemann_solve_for_fl
 }
 
 
-#endif /* SWIFT_GEAR_CHEMISTRY_RIEMANN_HLL_H */
+#endif /* SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_RIEMANN_HLL_H */

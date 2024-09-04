@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_GEAR_CHEMISTRY_GETTERS_H
-#define SWIFT_GEAR_CHEMISTRY_GETTERS_H
+#ifndef SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_GETTERS_H
+#define SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_GETTERS_H
 
 #include "const.h"
 #include "part.h"
@@ -89,4 +89,4 @@ chemistry_part_geometry_well_behaved(const struct part* restrict p) {
   return p->chemistry_data.geometry.wcorr > const_gizmo_min_wcorr;
 }
 
-#endif /* SWIFT_GEAR_CHEMISTRY_GETTERS_H  */
+#endif /* SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_GETTERS_H  */
