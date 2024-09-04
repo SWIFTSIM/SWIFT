@@ -17,7 +17,7 @@
  *
  ******************************************************************************/
 #ifndef SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_UNPHYSICAL_H
-#define SWIFT_CHEMiSTRY_GEAR_MFM_DIFFUSION_UNPHYSICAL_H
+#define SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_UNPHYSICAL_H
 
 #include "error.h"
 #include "inline.h"
