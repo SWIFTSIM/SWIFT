@@ -30,25 +30,12 @@
 
 /* Local includes. */
 #include "chemistry_struct.h"
-#include "chemistry_gradients.h"
-#include "chemistry_flux.h"
 #include "error.h"
 #include "hydro.h"
-#include "kernel_hydro.h"
 #include "parser.h"
 #include "part.h"
 #include "physical_constants.h"
 #include "units.h"
-
-/**
- * @brief TODO
- *
- * @param p Particle.
- */
-__attribute__((always_inline)) INLINE static double
-chemistry_part_compute_diffusion_coefficient(struct part* restrict p) {
-  return kernel_gamma2*p->h*p->h;
-}
 
 /**
  * @brief Copies the chemistry properties of the gas particle over to the
@@ -66,7 +53,8 @@ INLINE static void chemistry_copy_star_formation_properties(
 
   /* Store the chemistry struct in the star particle */
   for (int k = 0; k < GEAR_CHEMISTRY_ELEMENT_COUNT; k++) {
-    sp->chemistry_data.metal_mass_fraction[k] = p->chemistry_data.metal_mass[k] / mass;
+    sp->chemistry_data.metal_mass_fraction[k] =
+        p->chemistry_data.smoothed_metal_mass_fraction[k];
 
     /* Remove the metals taken by the star. */
     p->chemistry_data.metal_mass[k] *= mass / (mass + sp->mass);
@@ -105,7 +93,7 @@ INLINE static void chemistry_copy_sink_properties(const struct part* p,
   /* Store the chemistry struct in the star particle */
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
     sink->chemistry_data.metal_mass_fraction[i] =
-        p->chemistry_data.metal_mass[i] / p->mass;
+        p->chemistry_data.smoothed_metal_mass_fraction[i];
   }
 }
 
@@ -118,7 +106,7 @@ INLINE static void chemistry_copy_sink_properties(const struct part* p,
 static INLINE void chemistry_print_backend(
     const struct chemistry_global_data* data) {
 
-  message("Chemistry function is 'Gear MFM diffusion'.");
+  message("Chemistry function is 'Gear'.");
 }
 
 /**
@@ -346,26 +334,6 @@ __attribute__((always_inline)) INLINE static void chemistry_init_part(
     /* Reset the smoothed metallicity */
     cpd->smoothed_metal_mass_fraction[i] = 0.f;
   }
-
-  /* Reset the geometry matrix */
-  cpd->geometry.volume = 0.0f;
-  cpd->geometry.matrix_E[0][0] = 0.0f;
-  cpd->geometry.matrix_E[0][1] = 0.0f;
-  cpd->geometry.matrix_E[0][2] = 0.0f;
-  cpd->geometry.matrix_E[1][0] = 0.0f;
-  cpd->geometry.matrix_E[1][1] = 0.0f;
-  cpd->geometry.matrix_E[1][2] = 0.0f;
-  cpd->geometry.matrix_E[2][0] = 0.0f;
-  cpd->geometry.matrix_E[2][1] = 0.0f;
-  cpd->geometry.matrix_E[2][2] = 0.0f;
-
-  /* Update the diffusion coefficient for the new loops */
-  /* TODO: This might be moved to the end of density or gradient, if we want to
-     use a shear tensor using grad velocity */
-  p->chemistry_data.kappa = chemistry_part_compute_diffusion_coefficient(p);
-
-  /* Init the gradient */
-  chemistry_gradients_init(p);
 }
 
 /**
@@ -387,12 +355,10 @@ __attribute__((always_inline)) INLINE static void chemistry_end_density(
   /* Some smoothing length multiples. */
   const float h = p->h;
   const float h_inv = 1.0f / h;                       /* 1/h */
-  const float ihdim = pow_dimension(h_inv);
   const float factor = pow_dimension(h_inv) / p->rho; /* 1 / h^d * rho */
 
   struct chemistry_part_data* cpd = &p->chemistry_data;
 
-  /* First finish the smoothed metallicites */
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
     /* Final operation on the density (add self-contribution). */
     cpd->smoothed_metal_mass_fraction[i] += cpd->metal_mass[i] * kernel_root;
@@ -400,104 +366,6 @@ __attribute__((always_inline)) INLINE static void chemistry_end_density(
     /* Finish the calculation by inserting the missing h-factors */
     cpd->smoothed_metal_mass_fraction[i] *= factor;
   }
-
-  /* Final operation on the geometry. */
-  /* We multiply with the smoothing kernel normalization ih3 and calculate the
-   * volume */
-  const float volume_inv = ihdim * (p->chemistry_data.geometry.volume + kernel_root);
-  const float volume = 1.0f / volume_inv;
-  p->chemistry_data.geometry.volume = volume;
-
-  /* we multiply with the smoothing kernel normalization */
-  p->chemistry_data.geometry.matrix_E[0][0] *= ihdim;
-  p->chemistry_data.geometry.matrix_E[0][1] *= ihdim;
-  p->chemistry_data.geometry.matrix_E[0][2] *= ihdim;
-  p->chemistry_data.geometry.matrix_E[1][0] *= ihdim;
-  p->chemistry_data.geometry.matrix_E[1][1] *= ihdim;
-  p->chemistry_data.geometry.matrix_E[1][2] *= ihdim;
-  p->chemistry_data.geometry.matrix_E[2][0] *= ihdim;
-  p->chemistry_data.geometry.matrix_E[2][1] *= ihdim;
-  p->chemistry_data.geometry.matrix_E[2][2] *= ihdim;
-
-  /* Check the condition number to see if we have a stable geometry. */
-  const float condition_number_E =
-      p->chemistry_data.geometry.matrix_E[0][0] * p->chemistry_data.geometry.matrix_E[0][0] +
-      p->chemistry_data.geometry.matrix_E[0][1] * p->chemistry_data.geometry.matrix_E[0][1] +
-      p->chemistry_data.geometry.matrix_E[0][2] * p->chemistry_data.geometry.matrix_E[0][2] +
-      p->chemistry_data.geometry.matrix_E[1][0] * p->chemistry_data.geometry.matrix_E[1][0] +
-      p->chemistry_data.geometry.matrix_E[1][1] * p->chemistry_data.geometry.matrix_E[1][1] +
-      p->chemistry_data.geometry.matrix_E[1][2] * p->chemistry_data.geometry.matrix_E[1][2] +
-      p->chemistry_data.geometry.matrix_E[2][0] * p->chemistry_data.geometry.matrix_E[2][0] +
-      p->chemistry_data.geometry.matrix_E[2][1] * p->chemistry_data.geometry.matrix_E[2][1] +
-      p->chemistry_data.geometry.matrix_E[2][2] * p->chemistry_data.geometry.matrix_E[2][2];
-
-  float condition_number = 0.0f;
-  if (invert_dimension_by_dimension_matrix(p->chemistry_data.geometry.matrix_E) != 0) {
-    /* something went wrong in the inversion; force bad condition number */
-    condition_number = const_gizmo_max_condition_number + 1.0f;
-  } else {
-    const float condition_number_Einv =
-        p->chemistry_data.geometry.matrix_E[0][0] * p->chemistry_data.geometry.matrix_E[0][0] +
-        p->chemistry_data.geometry.matrix_E[0][1] * p->chemistry_data.geometry.matrix_E[0][1] +
-        p->chemistry_data.geometry.matrix_E[0][2] * p->chemistry_data.geometry.matrix_E[0][2] +
-        p->chemistry_data.geometry.matrix_E[1][0] * p->chemistry_data.geometry.matrix_E[1][0] +
-        p->chemistry_data.geometry.matrix_E[1][1] * p->chemistry_data.geometry.matrix_E[1][1] +
-        p->chemistry_data.geometry.matrix_E[1][2] * p->chemistry_data.geometry.matrix_E[1][2] +
-        p->chemistry_data.geometry.matrix_E[2][0] * p->chemistry_data.geometry.matrix_E[2][0] +
-        p->chemistry_data.geometry.matrix_E[2][1] * p->chemistry_data.geometry.matrix_E[2][1] +
-        p->chemistry_data.geometry.matrix_E[2][2] * p->chemistry_data.geometry.matrix_E[2][2];
-
-    condition_number =
-        hydro_dimension_inv * sqrtf(condition_number_E * condition_number_Einv);
-  }
-
-  if (condition_number > const_gizmo_max_condition_number &&
-      p->chemistry_data.geometry.wcorr > const_gizmo_min_wcorr) {
-#ifdef GIZMO_PATHOLOGICAL_ERROR
-    error("Condition number larger than %g (%g)!",
-          const_gizmo_max_condition_number, condition_number);
-#endif
-#ifdef GIZMO_PATHOLOGICAL_WARNING
-    message("Condition number too large: %g (> %g, p->id: %llu)!",
-            condition_number, const_gizmo_max_condition_number, p->id);
-#endif
-    /* add a correction to the number of neighbours for this particle */
-    p->chemistry_data.geometry.wcorr = const_gizmo_w_correction_factor * p->chemistry_data.geometry.wcorr;
-  }
- 
-  /* Check that the metal masses are physical */
-  for (int g = 0; g < GEAR_CHEMISTRY_ELEMENT_COUNT; g++) {
-    double n_metal_old = p->chemistry_data.metal_mass[g];
-
-#ifdef SWIFT_DEBUG_CHECKS
-    if (volume == 0.) {
-      error("Volume is 0!");
-    }
-#endif
-
-    /* Sanity checks */
-    chemistry_check_unphysical_state(&p->chemistry_data.metal_mass[g], n_metal_old, /*callloc=*/0);
-  }
-}
-
-/**
- * @brief Finishes the gradient calculation.
- *
- * TODO: Add it at the right place in the code.
- *
- * Just a wrapper around chemistry_gradients_finalize, which can be an empty method,
- * in which case no gradients are used.
- *
- * This method also initializes the force loop variables.
- *
- * @param p The particle to act upon.
- */
-__attribute__((always_inline)) INLINE static void chemistry_end_gradient(
-    struct part* p) {
-  chemistry_gradients_finalise(p);
-
-  /* Do not reset the gradients here. We need nabla_otimes_q to compute the
-     chemistry timestep */
 }
 
 /**
@@ -509,31 +377,6 @@ __attribute__((always_inline)) INLINE static void chemistry_end_gradient(
 __attribute__((always_inline)) INLINE static void chemistry_end_force(
     struct part* restrict p, const struct cosmology* cosmo,
     const int with_cosmology, const double time, const double dt) {}
-
-/**
- * @brief Prepare a particle for the force calculation.
- *
- * This function is called in the ghost task to convert some quantities coming
- * from the density loop over neighbours into quantities ready to be used in the
- * force loop over neighbours. Quantities are typically read from the density
- * sub-structure and written to the force sub-structure.
- * Examples of calculations done here include the calculation of viscosity term
- * constants, thermal conduction terms, hydro conversions, etc.
- *
- * @param p The particle to act upon
- * @param xp The extended particle data to act upon
- * @param cosmo The current cosmological model.
- * @param dt_alpha The time-step used to evolve non-cosmological quantities such
- *                 as the artificial viscosity.
- * @param dt_therm The time-step used to evolve hydrodynamical quantities.
- */
-__attribute__((always_inline)) INLINE static void chemistry_prepare_force(
-    struct part* restrict p, struct xpart* restrict xp,
-    const struct cosmology* cosmo, const float dt_alpha,
-    const float dt_therm) {
-  p->chemistry_data.flux_dt = dt_therm;
-}
-
 
 /**
  * @brief Sets all particle fields to sensible values when the #part has 0 ngbs.
@@ -554,18 +397,6 @@ chemistry_part_has_no_neighbours(struct part* restrict p,
     p->chemistry_data.smoothed_metal_mass_fraction[i] =
         p->chemistry_data.metal_mass[i] / hydro_get_mass(p);
   }
-
-  /* Update geometry data */
-  p->chemistry_data.geometry.volume = 1.0f;
-  p->chemistry_data.geometry.matrix_E[0][0] = 1.0f;
-  p->chemistry_data.geometry.matrix_E[0][1] = 0.0f;
-  p->chemistry_data.geometry.matrix_E[0][2] = 0.0f;
-  p->chemistry_data.geometry.matrix_E[1][0] = 0.0f;
-  p->chemistry_data.geometry.matrix_E[1][1] = 1.0f;
-  p->chemistry_data.geometry.matrix_E[1][2] = 0.0f;
-  p->chemistry_data.geometry.matrix_E[2][0] = 0.0f;
-  p->chemistry_data.geometry.matrix_E[2][1] = 0.0f;
-  p->chemistry_data.geometry.matrix_E[2][2] = 1.0f;
 }
 
 /**
@@ -586,11 +417,7 @@ __attribute__((always_inline)) INLINE static float chemistry_timestep(
     const struct unit_system* restrict us,
     const struct hydro_props* hydro_props,
     const struct chemistry_global_data* cd, const struct part* restrict p) {
-
-  /* K = kappa * I_3. The norm is the Froebenius norm */
-  /* const float norm_K = sqrtf(3*p->chemistry_data.kappa*p->chemistry_data.kappa); */
-  /* const float norm_q = p->chemistry_data.kappa; */
-  return kernel_gamma2 * p->h*p->h / (sqrtf(3) * fabs(p->chemistry_data.kappa));
+  return FLT_MAX;
 }
 
 /**
@@ -621,14 +448,8 @@ __attribute__((always_inline)) INLINE static void chemistry_first_init_part(
           data->initial_metallicities[i] * hydro_get_mass(p);
     }
   }
-  p->chemistry_data.kappa = chemistry_part_compute_diffusion_coefficient(p);
-  chemistry_init_part(p, data);
 
-  /* we cannot initialize wcorr in init_part, as init_part gets called every
-     time the density loop is repeated, and the whole point of storing wcorr
-     is to have a way of remembering that we need more neighbours for this
-     particle */
-  p->chemistry_data.geometry.wcorr = 1.0f;
+  chemistry_init_part(p, data);
 }
 
 /**
@@ -703,9 +524,13 @@ __attribute__((always_inline)) INLINE static void chemistry_add_sink_to_sink(
  */
 __attribute__((always_inline)) INLINE static void chemistry_add_part_to_sink(
     struct sink* s, const struct part* p, const double ms_old) {
+
+  /* gas mass */
+  const float mass = hydro_get_mass(p);
+
   for (int k = 0; k < GEAR_CHEMISTRY_ELEMENT_COUNT; k++) {
     double mk = s->chemistry_data.metal_mass_fraction[k] * ms_old +
-                p->chemistry_data.metal_mass[k];
+                p->chemistry_data.smoothed_metal_mass_fraction[k] * mass;
 
     s->chemistry_data.metal_mass_fraction[k] = mk / s->mass;
   }
@@ -855,14 +680,12 @@ chemistry_get_total_metal_mass_fraction_for_cooling(
     const struct part* restrict p) {
 
   return p->chemistry_data
-      .metal_mass[GEAR_CHEMISTRY_ELEMENT_COUNT - 1]/p->mass;
+      .smoothed_metal_mass_fraction[GEAR_CHEMISTRY_ELEMENT_COUNT - 1];
 }
 
 /**
  * @brief Returns the abundance array (metal mass fractions) of the
  * gas particle to be used in cooling related routines.
- *
- * @TODO: This must be changed
  *
  * @param p Pointer to the particle data.
  */
@@ -883,14 +706,12 @@ chemistry_get_total_metal_mass_fraction_for_star_formation(
     const struct part* restrict p) {
 
   return p->chemistry_data
-      .metal_mass[GEAR_CHEMISTRY_ELEMENT_COUNT - 1]/p->mass;
+      .smoothed_metal_mass_fraction[GEAR_CHEMISTRY_ELEMENT_COUNT - 1];
 }
 
 /**
  * @brief Returns the abundance array (metal mass fractions) of the
  * gas particle to be used in star formation related routines.
- *
- * TODO: Take care of this...
  *
  * @param p Pointer to the particle data.
  */
@@ -937,74 +758,6 @@ __attribute__((always_inline)) INLINE static float
 chemistry_get_bh_total_metal_mass_for_stats(const struct bpart* restrict bp) {
   error("Not implemented");
   return 0.f;
-}
-
-
-/**
- * @brief Extra operations done during the kick. This needs to be
- * done before the particle mass is updated in the hydro_kick_extra.
- *
- * @TODO
- *
- * @param p Particle to act upon.
- * @param dt_therm Thermal energy time-step @f$\frac{dt}{a^2}@f$.
- * @param dt_grav Gravity time-step @f$\frac{dt}{a}@f$.
- * @param dt_hydro Hydro acceleration time-step
- * @f$\frac{dt}{a^{3(\gamma{}-1)}}@f$.
- * @param dt_kick_corr Gravity correction time-step @f$adt@f$.
- * @param cosmo Cosmology.
- * @param hydro_props Additional hydro properties.
- */
-__attribute__((always_inline)) INLINE static void chemistry_kick_extra(
-    struct part* p, float dt_therm, float dt_grav, float dt_hydro,
-    float dt_kick_corr, const struct cosmology* cosmo,
-    const struct hydro_props* hydro_props) {
-
-  if (p->chemistry_data.flux_dt > 0.0f) {
-
-    for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; ++i) {
-      double flux;
-      chemistry_part_get_fluxes(p, i, &flux);
-
-      /* Update the conserved variable */
-      p->chemistry_data.metal_mass[i] += flux;
-    }
-
-    /* Reset the fluxes, so that they do not get used again in kick1 */
-    chemistry_part_reset_chemistry_fluxes(p);
-
-    /* Invalidate the particle time-step. It is considered to be inactive until
-       dt is set again in hydro_prepare_force() */
-    p->chemistry_data.flux_dt = -1.0f;
-  } else if (p->chemistry_data.flux_dt == 0.0f) {
-    /* something tricky happens at the beginning of the simulation: the flux
-       exchange is done for all particles, but using a time step of 0. This
-       in itself is not a problem. However, it causes some issues with the
-       initialisation of flux.dt for inactive particles, since this value will
-       remain 0 until the particle is active again, and its flux.dt is set to
-       the actual time step in hydro_prepare_force(). We have to make sure it
-       is properly set to -1 here, so that inactive particles are indeed found
-       to be inactive during the flux loop. */
-    p->chemistry_data.flux_dt = -1.0f;
-  }
-
-/* #ifdef SWIFT_DEBUG_CHECKS */
-  /* Note that this check will only have effect if no GIZMO_UNPHYSICAL option
-     was selected. */
-  /* if (p->chemistry_data.flux_dt > 0.0f) { */
-  /*   message("Active part, id = %lld, mass = %e, metal_massl[0] = %e, metal_fraction = %e", p->id, */
-  /* 	    p->mass, p->chemistry_data.metal_mass[0], p->chemistry_data.metal_mass[0]/p->mass); */
-  /* } */
-/* #endif */
-
-  /* Sanity checks. We don't want negative metal masses. */
-  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; ++i) {
-    const double n_metal_old = p->chemistry_data.metal_mass[i];
-    chemistry_check_unphysical_state(&p->chemistry_data.metal_mass[i], n_metal_old, /*callloc=*/2);
-  }
-
-  /* Reset wcorr */
-  p->chemistry_data.geometry.wcorr = 1.0f;
 }
 
 #endif /* SWIFT_CHEMISTRY_GEAR_H */
