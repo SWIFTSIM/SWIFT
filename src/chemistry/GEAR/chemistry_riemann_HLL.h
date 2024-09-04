@@ -60,58 +60,52 @@ __attribute__((always_inline)) INLINE static int chemistry_riemann_is_vacuum(
  */
 __attribute__((always_inline)) INLINE static void chemistry_riemann_solve_for_flux(
     const struct part* restrict pi, const struct part* restrict pj, const double UL,
-    const double UR, const float n_unit[3], int g,
-    const float Anorm, const double F_diff_L[3], const double F_diff_R[3], double* metal_flux) {
-										   
+    const double UR, const float WL[5], const float WR[5], const double F_diff_L[3],
+    const double F_diff_R[3], const float Anorm, const float n_unit[3], int g,
+    double* metal_flux) {
+
   /* Handle pure vacuum */
   if (!UL && !UR) {
     *metal_flux = 0.0f;
     return;
   }
-
-  const float rhoL = pi->rho;
-  const float rhoR = pj->rho;
-  const float vL[3] = {pi->v[0], pi->v[1], pi->v[2]};
-  const float vR[3] = {pj->v[0], pj->v[1], pj->v[2]};
-  const float PL = hydro_get_comoving_pressure(pi);
-  const float PR = hydro_get_comoving_pressure(pj);
   
   /* STEP 0: obtain velocity in interface frame */
-  const float uL = vL[0] * n_unit[0] + vL[1] * n_unit[1] + vL[2] * n_unit[2];
-  const float uR = vR[0] * n_unit[0] + vR[1] * n_unit[1] + vR[2] * n_unit[2];
-  const float aL = sqrtf(hydro_gamma * PR / rhoL);
-  const float aR = sqrtf(hydro_gamma * PR / rhoR);
+  const float uL = WL[1] * n_unit[0] + WL[2] * n_unit[1] + WL[3] * n_unit[2];
+  const float uR = WR[0] * n_unit[0] + WR[1] * n_unit[1] + WR[3] * n_unit[2];
+  const float aL = sqrtf(hydro_gamma * WL[4] / WL[0]);
+  const float aR = sqrtf(hydro_gamma * WR[4] / WR[0]);
 
   /* Handle vacuum: vacuum does not require iteration and is always exact */
-  if (chemistry_riemann_is_vacuum(rhoL, rhoR, uL, uR, aL, aR)) {
+  if (chemistry_riemann_is_vacuum(WL[0], WR[0], uL, uR, aL, aR)) {
     *metal_flux = 0.0f;
     return;
   }
 
   /* STEP 1: pressure estimate */
-  const float rhobar = rhoL + rhoR;
+  const float rhobar = WL[0] + WR[0];
   const float abar = aL + aR;
   const float pPVRS =
-    0.5f * ((PL + PR) - 0.25f * (uR - uL) * rhobar * abar);
+    0.5f * ((WL[4] + WR[4]) - 0.25f * (uR - uL) * rhobar * abar);
   const float pstar = max(0.f, pPVRS);
 
   /* STEP 2: wave speed estimates
      all these speeds are along the interface normal, since uL and uR are */
   float qL = 1.0f;
-  if (pstar > PL && PL > 0.0f) {
+  if (pstar > WL[4] && WL[4] > 0.0f) {
     qL = sqrtf(1.0f + 0.5f * hydro_gamma_plus_one * hydro_one_over_gamma *
-	       (pstar / PL - 1.0f));
+	       (pstar / WL[4] - 1.0f));
   }
   float qR = 1.0f;
-  if (pstar > PR && PR > 0.0f) {
+  if (pstar > WR[4] && WR[4] > 0.0f) {
     qR = sqrtf(1.0f + 0.5f * hydro_gamma_plus_one * hydro_one_over_gamma *
-	       (pstar / PR - 1.0f));
+	       (pstar / WR[4] - 1.0f));
   }
   const float SLmuL = -aL * qL;
   const float SRmuR = aR * qR;
   const float Sstar =
-    (PR - PL + rhoL * uL * SLmuL - rhoR * uR * SRmuR) /
-    (rhoL * SLmuL - rhoR * SRmuR);
+    (WR[4] - WL[4] + WL[0] * uL * SLmuL - WR[0] * uR * SRmuR) /
+    (WL[0] * SLmuL - WR[0] * SRmuR);
 
   const float SL = uL - aL * qL;
   const float SR = uR - aR * qR;
@@ -134,7 +128,7 @@ __attribute__((always_inline)) INLINE static void chemistry_riemann_solve_for_fl
   const float alpha = norm_term * r_term;
 
   /* Compute F_HLL */
-  const float dU = UR - UL;
+  const double dU = UR - UL;
   const float one_over_dl = 1.f / (lambda_plus - lambda_minus);
 
   /* Project to reduce to a 1D Problem with 1 quantity */
@@ -145,7 +139,7 @@ __attribute__((always_inline)) INLINE static void chemistry_riemann_solve_for_fl
 
   /* TODO: psi must be a user-defined parameter */
   const double psi = 0.1;
-  const double flux_hll = chemistry_limiter_minmod((1+psi)*F_2, F_2 + F_U);
+  const double flux_hll = chemistry_minmod((1+psi)*F_2, F_2 + F_U);
 
   /* Compute the direct fluxes */
   const double qj = pj->chemistry_data.metal_mass[g] / pj->chemistry_data.geometry.volume;
@@ -166,8 +160,7 @@ __attribute__((always_inline)) INLINE static void chemistry_riemann_solve_for_fl
   const double F_HLL_times_A = flux_hll*Anorm;
 
   /* Now, choose the righ flux to get F_diff_ij^* */
-
-  // TODO: This must be user-defined */
+  /* TODO: This must be user-defined *\/ */
   const double epsilon = 0.5;
   if ((SIGN(F_times_A_dir) != SIGN(F_HLL_times_A))
       && fabs(F_times_A_dir) > epsilon*fabs(F_HLL_times_A)) {
@@ -179,11 +172,11 @@ __attribute__((always_inline)) INLINE static void chemistry_riemann_solve_for_fl
   /* Simple HLL */
   /* Compute F_diff_ij^* */
   /* if (SL >= 0) { */
-    /* *metal_flux = Flux_L; */
+  /*   *metal_flux = Flux_L; */
   /* } else if (SL <= 0 && SR >= 0) { */
-    /* *metal_flux = flux_hll; */
+  /*   *metal_flux = flux_hll; */
   /* } else /\* SR <= 0 *\/ { */
-    /* *metal_flux = Flux_R; */
+  /*   *metal_flux = Flux_R; */
   /* } */
 }
 

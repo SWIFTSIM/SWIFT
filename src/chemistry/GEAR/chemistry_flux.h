@@ -75,9 +75,31 @@ __attribute__((always_inline)) INLINE static void chemistry_compute_flux(
   chemistry_check_unphysical_diffusion_flux(F_diff_j);
 #endif
 
+  /* Get the hydro W_L and W_R */
+  float vi[3] = {pi->v[0], pi->v[1], pi->v[2]};
+  float vj[3] = {pj->v[0], pj->v[1], pj->v[2]};
+
+  const float xfac = -pi->h / (pi->h + pj->h);
+  const float vij[3] = {vi[0] + (vi[0] - vj[0]) * xfac,
+                        vi[1] + (vi[1] - vj[1]) * xfac,
+                        vi[2] + (vi[2] - vj[2]) * xfac};
+
+  float WL[5] = { pi->rho,
+		  pi->v[0] - vij[0],
+		  pi->v[1] - vij[1],
+		  pi->v[2] - vij[2],
+		  hydro_get_comoving_pressure(pi) };
+  float WR[5] = { pj->rho,
+		  pj->v[0] - vij[0],
+		  pj->v[1] - vij[1],
+		  pj->v[2] - vij[2],
+		  hydro_get_comoving_pressure(pj) };
+
+
   /* While solving the Riemann problem, we shall get a scalar because of the
      scalar product betwee F_diff_ij^* and A_ij */
-  chemistry_riemann_solve_for_flux(pi, pj, UL, UR, n_unit, g, Anorm, F_diff_i, F_diff_j, metal_flux);
+  chemistry_riemann_solve_for_flux(pi, pj, UL, UR, WL, WR, F_diff_i, F_diff_j,
+				   Anorm, n_unit, g, metal_flux);
 
   *metal_flux *= Anorm;
 }
