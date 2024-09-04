@@ -343,30 +343,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_chemistry_fluxes_c
       (chj->flux_dt > 0.f) ? fminf(chi->flux_dt, chj->flux_dt) : chi->flux_dt;
 
   for (int g = 0; g <  GEAR_CHEMISTRY_ELEMENT_COUNT; g++) {
-
-    /* Diddusion state to be used to compute the flux */
+    /* Diffusion state to be used to compute the flux */
     double Ui, Uj;
     chemistry_gradients_predict(pi, pj, &Ui, &Uj, g, dx, r, xij_i);
 
-    /* No need to check for unphysical quantities, they
-     * haven't been touched since
-     * rt_injection_update_photon_densities */
-
-    /* Get the diffusion flux */
-    double F_diff_i[3], F_diff_j[3];
-    chemistry_part_compute_diffusion_flux(pi, g, F_diff_i);
-    chemistry_part_compute_diffusion_flux(pj, g, F_diff_j);
-    
-    /* Note: F_diff_R and F_diff_L are computed with a first order
-       reconstruction */
-
-    /* TODO: Solve the Riemann problem */
+    /* Solve the 1D Riemann problem at the interface A_ij */
     double totflux;
-    chemistry_compute_flux(pi, pj, Ui, Uj, n_unit, g, Anorm, F_diff_i, F_diff_j, &totflux);
-
-    /* TODO: When solving the riemann problem, the d(V_i U_i)/dt = - Sum_j
-       F_ij_diff^* \dot A_ij muste give a scalar = metal_mass !
-    */
+    chemistry_compute_flux(pi, pj, Ui, Uj, n_unit, Anorm, g, &totflux);
 
     /* When solving the Riemann problem, we assume pi is left state, and
      * pj is right state. The sign convention is that a positive total
@@ -383,18 +366,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_chemistry_fluxes_c
       chi->diffusion_flux[g] -= totflux * mindt;
     }
   }
-
-  /* if (pi->id == 0 || pj->id == 0) { */
-  /*   message("i id = %lld, g = 0, metal_mass = %e, conserved = %e, grad n = (%e, %e, %e), mindt = %e", pi->id, */
-  /* 	    chi->metal_mass[0], chi->conserved[0].metal_density, */
-  /* 	    chi->gradients[0].nabla_otimes_q[0], chi->gradients[0].nabla_otimes_q[1], */
-  /* 	    chi->gradients[0].nabla_otimes_q[2], mindt); */
-  /*   message("j id = %lld, g = 0, metal_mass = %e, conserved = %e,  grad n = (%e, %e, %e), mindt = %e", pj->id, */
-  /* 	    chj->metal_mass[0], chj->conserved[0].metal_density, */
-  /* 	    chj->gradients[0].nabla_otimes_q[0], chj->gradients[0].nabla_otimes_q[1], */
-  /* 	    chj->gradients[0].nabla_otimes_q[2], mindt); */
-  /* } */
-
 }
 
 /**
