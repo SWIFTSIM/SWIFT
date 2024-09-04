@@ -60,8 +60,20 @@ __attribute__((always_inline)) INLINE void chemistry_part_get_fluxes(const struc
  */
 __attribute__((always_inline)) INLINE static void chemistry_compute_flux(
       const struct part* restrict pi, const struct part* restrict pj,
-      const double UL, const double UR, const float n_unit[3], int g,
-      const float Anorm, const double F_diff_i[3], const double F_diff_j[3], double* metal_flux) {
+      const double UL, const double UR, const float n_unit[3],
+      const float Anorm, int g, double* metal_flux) {
+
+  /* Note: F_diff_R and F_diff_L are computed with a first order
+	 reconstruction */
+  /* Get the diffusion flux */
+  double F_diff_i[3], F_diff_j[3];
+  chemistry_part_compute_diffusion_flux(pi, g, F_diff_i);
+  chemistry_part_compute_diffusion_flux(pj, g, F_diff_j);
+
+#ifdef SWIFT_DEBUG_CHECKS
+  chemistry_check_unphysical_diffusion_flux(F_diff_i);
+  chemistry_check_unphysical_diffusion_flux(F_diff_j);
+#endif
 
   /* While solving the Riemann problem, we shall get a scalar because of the
      scalar product betwee F_diff_ij^* and A_ij */
