@@ -62,7 +62,7 @@ __attribute__((always_inline)) INLINE static void chemistry_riemann_solve_for_fl
     const struct part* restrict pi, const struct part* restrict pj, const double UL,
     const double UR, const float WL[5], const float WR[5], const double F_diff_L[3],
     const double F_diff_R[3], const float Anorm, const float n_unit[3], int g,
-    double* metal_flux) {
+    double* metal_flux, const struct chemistry_global_data* chemistry_data) {
 
   /* Handle pure vacuum */
   if (!UL && !UR) {
@@ -138,51 +138,51 @@ __attribute__((always_inline)) INLINE static void chemistry_riemann_solve_for_fl
   const double F_2 = (lambda_plus*Flux_L - lambda_minus*Flux_R)*one_over_dl;
 
   /* TODO: psi must be a user-defined parameter */
-  const double psi = 0.1;
-  const double flux_hll = chemistry_minmod((1+psi)*F_2, F_2 + F_U);
+  const double flux_hll = chemistry_minmod((1+chemistry_data->hll_riemann_solver_psi)*F_2, F_2 + F_U);
 
-  /****************************************************************************
-   * Hopkins 2017 implementation of HLL
-   * This leads to NaN quickly. There is probably a bug. To be investigated */
-  /* Compute the direct fluxes */
-  const double qj = pj->chemistry_data.metal_mass[g] / pj->chemistry_data.geometry.volume;
-  const double qi = pi->chemistry_data.metal_mass[g] / pi->chemistry_data.geometry.volume;
-  const double dq = qj - qi;
-  const double nabla_o_q_dir[3] = {dx[0]* dq / dx_norm_2,
-				   dx[1]* dq / dx_norm_2,
-				   dx[2]* dq / dx_norm_2};
-  const double kappa_mean = 0.5*(pi->chemistry_data.kappa + pj->chemistry_data.kappa);
-  const double F_A_left_side[3] = {- kappa_mean * nabla_o_q_dir[0],
-				   - kappa_mean * nabla_o_q_dir[1],
-				   - kappa_mean * nabla_o_q_dir[2]};
-  const double F_A_right_side[3] = { Anorm*dx[0]/dx_norm, Anorm*dx[1]/dx_norm, Anorm*dx[2]/dx_norm };
+  if (chemistry_data->use_hokpins2017_hll_riemann_solver) {
+    /****************************************************************************
+     * Hopkins 2017 implementation of HLL
+     * This leads to NaN quickly. There is probably a bug. To be investigated */
+    /* Compute the direct fluxes */
+    const double qj = pj->chemistry_data.metal_mass[g] / pj->chemistry_data.geometry.volume;
+    const double qi = pi->chemistry_data.metal_mass[g] / pi->chemistry_data.geometry.volume;
+    const double dq = qj - qi;
+    const double nabla_o_q_dir[3] = {dx[0]* dq / dx_norm_2,
+				     dx[1]* dq / dx_norm_2,
+				     dx[2]* dq / dx_norm_2};
+    const double kappa_mean = 0.5*(pi->chemistry_data.kappa + pj->chemistry_data.kappa);
+    const double F_A_left_side[3] = {- kappa_mean * nabla_o_q_dir[0],
+				     - kappa_mean * nabla_o_q_dir[1],
+				     - kappa_mean * nabla_o_q_dir[2]};
+    const double F_A_right_side[3] = { Anorm*dx[0]/dx_norm, Anorm*dx[1]/dx_norm, Anorm*dx[2]/dx_norm };
 
-  const double F_times_A_dir = F_A_left_side[0]*F_A_right_side[0] + F_A_left_side[1]*F_A_right_side[1] + F_A_left_side[2]*F_A_right_side[2];
+    const double F_times_A_dir = F_A_left_side[0]*F_A_right_side[0] + F_A_left_side[1]*F_A_right_side[1] + F_A_left_side[2]*F_A_right_side[2];
 
-  /* Get F_HLL * A_ij */
-  const double F_HLL_times_A = flux_hll*Anorm;
+    /* Get F_HLL * A_ij */
+    const double F_HLL_times_A = flux_hll*Anorm;
 
-  /* Now, choose the righ flux to get F_diff_ij^* */
-  /* TODO: This must be user-defined *\/ */
-  const double epsilon = 0.0;
-  if ((SIGN(F_times_A_dir) != SIGN(F_HLL_times_A))
-      && fabs(F_times_A_dir) > epsilon*fabs(F_HLL_times_A)) {
-    *metal_flux = 0;
+    /* Now, choose the righ flux to get F_diff_ij^* */
+    const double epsilon = chemistry_data->hll_riemann_solver_epsilon;
+    if ((SIGN(F_times_A_dir) != SIGN(F_HLL_times_A))
+	&& fabs(F_times_A_dir) > epsilon*fabs(F_HLL_times_A)) {
+      *metal_flux = 0;
+    } else {
+      *metal_flux = flux_hll;
+    }
   } else {
-    *metal_flux = flux_hll;
+    /***************************************************************************
+     * Simple HLL (compute F_diff_ij^*)
+     * It is more stable than the Hokins version (04.09.2024) */
+    /* This works. However, we need to study the artificial diffusion. */
+    if (SL >= 0) {
+      *metal_flux = Flux_L;
+    } else if (SL <= 0 && SR >= 0) {
+      *metal_flux = flux_hll;
+    } else /* SR <= 0 */ {
+      *metal_flux = Flux_R;
+    }
   }
-
-  /***************************************************************************
-   * Simple HLL (compute F_diff_ij^*)
-   * It is more stable than the Hokins version (04.09.2024) */
-  /* This works. However, we need to study the artificial diffusion. */
-  /* if (SL >= 0) { */
-  /*   *metal_flux = Flux_L; */
-  /* } else if (SL <= 0 && SR >= 0) { */
-  /*   *metal_flux = flux_hll; */
-  /* } else /\* SR <= 0 *\/ { */
-  /*   *metal_flux = Flux_R; */
-  /* } */
 }
 
 
