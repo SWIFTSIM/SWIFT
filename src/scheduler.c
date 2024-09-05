@@ -1487,7 +1487,7 @@ static void scheduler_splittask_grid_hydro(struct task *t,
       /* Get the sort ID, use space_getsid and not t->flags
          to make sure we get ci and cj swapped if needed. */
       double shift[3];
-      const int sid = space_getsid(s->space, &ci, &cj, shift);
+      const int sid = space_getsid_and_swap_cells(s->space, &ci, &cj, shift);
 
 #ifdef SWIFT_DEBUG_CHECKS
       if (sid != t->flags)
@@ -1769,7 +1769,7 @@ static void scheduler_splittask_grid(struct task *t, struct scheduler *s) {
          * correct for it. */
         double shift[3];
         struct cell *ci_old = ci;
-        const int sid = space_getsid(s->space, &ci, &cj, shift);
+        const int sid = space_getsid_and_swap_cells(s->space, &ci, &cj, shift);
         int flipped = ci != ci_old;
 
         /* Loop over the sub-cell pairs for the current sid and add new tasks

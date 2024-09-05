@@ -128,7 +128,7 @@ void DOPAIR(struct runner *restrict r, struct cell *ci, struct cell *cj,
     /* Retrieve SID and shift */
     struct cell *ci_old = ci;
     double shift[3];
-    int sid = space_getsid(e->s, &ci, &cj, shift);
+    int sid = space_getsid_and_swap_cells(e->s, &ci, &cj, shift);
     int flipped = ci != ci_old;
 
     struct cell_split_pair *csp = &cell_split_pairs[sid];
@@ -155,7 +155,7 @@ void DOPAIR(struct runner *restrict r, struct cell *ci, struct cell *cj,
   struct cell *ci_temp = ci;
   struct cell *cj_temp = cj;
   double shift[3];
-  int sid = space_getsid(e->s, &ci_temp, &cj_temp, shift);
+  int sid = space_getsid_and_swap_cells(e->s, &ci_temp, &cj_temp, shift);
 
   /* Correct shift and sid if flipped */
   if (ci != ci_temp) {

@@ -3480,7 +3480,7 @@ int cell_unskip_grid_tasks(struct cell *c, struct scheduler *s) {
           struct cell *ci_temp = ci;
           struct cell *cj_temp = cj;
           double shift[3];
-          int sid = space_getsid(s->space, &ci_temp, &cj_temp, shift);
+          int sid = space_getsid_and_swap_cells(s->space, &ci_temp, &cj_temp, shift);
           if (ci == ci_temp) sid = 26 - sid;
           ci->grid.send_flags |= 1 << sid;
         }

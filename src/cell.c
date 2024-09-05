@@ -1423,7 +1423,7 @@ void cell_grid_set_pair_completeness(struct cell *restrict ci,
         struct cell *cj_sub = cj->progeny[pairs.pairs[i].pjd];
         if (ci_sub == NULL || cj_sub == NULL) continue;
         double shift[3];
-        int sid_sub = space_getsid(e->s, &ci_sub, &cj_sub, shift);
+        int sid_sub = space_getsid_and_swap_cells(e->s, &ci_sub, &cj_sub, shift);
 #ifdef SWIFT_DEBUG_CHECKS
         assert(sid_sub == pairs.pairs[i].sid);
 #endif

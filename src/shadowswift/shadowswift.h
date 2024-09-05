@@ -188,7 +188,7 @@ cell_add_ghost_parts_grid_pair(struct delaunay *d, struct cell *c,
   double shift[3] = {0.0, 0.0, 0.0};
   struct cell *ci_temp = c;
   struct cell *cj_temp = c_in;
-  int sid = space_getsid(e->s, &ci_temp, &cj_temp, shift);
+  int sid = space_getsid_and_swap_cells(e->s, &ci_temp, &cj_temp, shift);
   const int flipped = c != ci_temp;
 
 #ifdef SHADOWSWIFT_BVH

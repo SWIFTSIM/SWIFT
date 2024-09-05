@@ -58,7 +58,7 @@ void DOPAIR1(struct runner *restrict r, struct cell *ci, struct cell *cj,
   struct cell *ci_old = ci;
   struct cell *cj_old = cj;
   double shift[3];
-  int sid = space_getsid(e->s, &ci_old, &cj_old, shift);
+  int sid = space_getsid_and_swap_cells(e->s, &ci_old, &cj_old, shift);
   int flipped = ci != ci_old;
 
   /* Recurse? If the cells have been flipped in the branch function, ci might
