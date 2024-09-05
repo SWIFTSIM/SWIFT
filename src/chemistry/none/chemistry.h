@@ -99,6 +99,16 @@ __attribute__((always_inline)) INLINE static void chemistry_end_density(
     const struct cosmology* cosmo) {}
 
 /**
+ * @brief Finishes the gradient calculation.
+ *
+ * Nothing to do here.
+ *
+ * @param p The particle to act upon.
+ */
+__attribute__((always_inline)) INLINE static void chemistry_end_gradient(
+    struct part* p) {}
+
+/**
  * @brief Updates to the chemistry data after the hydro force loop.
  *
  * Nothing to do here.

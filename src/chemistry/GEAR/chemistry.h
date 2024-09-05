@@ -369,6 +369,16 @@ __attribute__((always_inline)) INLINE static void chemistry_end_density(
 }
 
 /**
+ * @brief Finishes the gradient calculation.
+ *
+ * Nothing to do here.
+ *
+ * @param p The particle to act upon.
+ */
+__attribute__((always_inline)) INLINE static void chemistry_end_gradient(
+    struct part* p) {}
+
+/**
  * @brief Updates to the chemistry data after the hydro force loop.
  *
  * @param p The particle to act upon.
@@ -377,6 +387,22 @@ __attribute__((always_inline)) INLINE static void chemistry_end_density(
 __attribute__((always_inline)) INLINE static void chemistry_end_force(
     struct part* restrict p, const struct cosmology* cosmo,
     const int with_cosmology, const double time, const double dt) {}
+
+/**
+ * @brief Prepare a particle for the force calculation.
+ *
+ * Nothing to do here.
+ *
+ * @param p The particle to act upon
+ * @param xp The extended particle data to act upon
+ * @param cosmo The current cosmological model.
+ * @param dt_alpha The time-step used to evolve non-cosmological quantities such
+ *                 as the artificial viscosity.
+ * @param dt_therm The time-step used to evolve hydrodynamical quantities.
+ */
+__attribute__((always_inline)) INLINE static void chemistry_prepare_force(
+    struct part* restrict p, struct xpart* restrict xp,
+    const struct cosmology* cosmo, const float dt_alpha, const float dt_therm) {}
 
 /**
  * @brief Sets all particle fields to sensible values when the #part has 0 ngbs.
