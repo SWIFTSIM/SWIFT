@@ -29,15 +29,16 @@
  * @param xp the #xpart.
  */
 __attribute__((always_inline)) INLINE static float mhd_get_magnetic_energy(
-    const struct part *p, const struct xpart *xp, const float mu_0) {
+    const struct part *p, const struct xpart *xp) {
 
   const float rho = p->rho;
   const float B_over_rho2 =
       p->mhd_data.B_over_rho[0] * p->mhd_data.B_over_rho[0] +
       p->mhd_data.B_over_rho[1] * p->mhd_data.B_over_rho[1] +
       p->mhd_data.B_over_rho[2] * p->mhd_data.B_over_rho[2];
-  return 0.5f * p->mass * B_over_rho2 * rho / mu_0;
+  return 0.5f * p->mass * B_over_rho2 * rho;
 }
+
 /**
  * @brief Returns the magnetic field squared contained in the particle.
  *
@@ -46,15 +47,16 @@ __attribute__((always_inline)) INLINE static float mhd_get_magnetic_energy(
  */
 
 __attribute__((always_inline)) INLINE static float mhd_get_Bms(
-    const struct part *p, const struct xpart *xp) {
+  const struct part *p, const struct xpart *xp, const float mu_0) {
 
   const float rho = p->rho;
   const float B_over_rho2 =
       p->mhd_data.B_over_rho[0] * p->mhd_data.B_over_rho[0] +
       p->mhd_data.B_over_rho[1] * p->mhd_data.B_over_rho[1] +
       p->mhd_data.B_over_rho[2] * p->mhd_data.B_over_rho[2];
-  return B_over_rho2 * rho * rho;
+  return B_over_rho2 * rho * rho * mu_0;
 }
+
 /**
  * @brief Returns the magnetic field divergence of a particle.
  *
@@ -107,7 +109,7 @@ __attribute__((always_inline)) INLINE static float mhd_get_divB_error(
       p->mhd_data.B_over_rho[1] * p->mhd_data.B_over_rho[1] +
       p->mhd_data.B_over_rho[2] * p->mhd_data.B_over_rho[2];
   return fabs(p->mhd_data.divB) * p->h /
-         (sqrtf(B_over_rho2 * rho * rho) + 1.e-18);
+         (sqrtf(B_over_rho2 * rho * rho));
 }
 
 /**
@@ -136,7 +138,7 @@ __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
       dt_B_factor != 0.f
           ? hydro_properties->CFL_condition * cosmo->a /
                 cosmo->a_factor_sound_speed *
-                sqrtf(p->rho * mu_0 / (dt_B_factor * dt_B_factor))
+                sqrtf(p->rho / (dt_B_factor * dt_B_factor))
           : FLT_MAX;
 
   const float dt_eta = p->mhd_data.resistive_eta != 0.f
@@ -164,12 +166,10 @@ __attribute__((always_inline)) INLINE static float mhd_get_magnetosonic_speed(
   /* B squared */
   const float B2 = B[0] * B[0] + B[1] * B[1] + B[2] * B[2];
 
-  const float permeability_inv = 1 / mu_0;
-
   /* Compute effective sound speeds */
   const float cs = p->force.soundspeed;
   const float cs2 = cs * cs;
-  const float v_A2 = permeability_inv * B2 / rho;
+  const float v_A2 = B2 / rho;
   const float c_ms2 = cs2 + v_A2;
 
   return sqrtf(c_ms2);
@@ -197,14 +197,13 @@ mhd_get_fast_magnetosonic_wave_phase_velocity(const float dx[3],
 
   /* B dot r. */
   const float Br = B[0] * dx[0] + B[1] * dx[1] + B[2] * dx[2];
-  const float permeability_inv = 1 / mu_0;
-
+  
   /* Compute effective sound speeds */
   const float cs = p->force.soundspeed;
   const float cs2 = cs * cs;
   const float c_ms = mhd_get_magnetosonic_speed(p, a, mu_0);
   const float c_ms2 = c_ms * c_ms;
-  const float projection_correction = c_ms2 * c_ms2 - 4.0f * permeability_inv *
+  const float projection_correction = c_ms2 * c_ms2 - 4.0f * 
                                                           cs2 * Br * r_inv *
                                                           Br * r_inv / rho;
 
@@ -595,18 +594,24 @@ __attribute__((always_inline)) INLINE static void mhd_kick_extra(
  */
 __attribute__((always_inline)) INLINE static void mhd_convert_quantities(
     struct part *p, struct xpart *xp, const struct cosmology *cosmo,
-    const struct hydro_props *hydro_props) {
+    const struct hydro_props *hydro_props, const float mu_0) {
+
   /* Set Restitivity Eta */
   p->mhd_data.resistive_eta = hydro_props->mhd.mhd_eta;
   /* Set Monopole subtraction factor */
   p->mhd_data.monopole_beta = hydro_props->mhd.monopole_subtraction;
   /* Set Artificial Difussion */
   p->mhd_data.art_diff_beta = hydro_props->mhd.art_diffusion;
-
+ 
   /* Convert B into B/rho */
   p->mhd_data.B_over_rho[0] /= p->rho;
   p->mhd_data.B_over_rho[1] /= p->rho;
   p->mhd_data.B_over_rho[2] /= p->rho;
+
+  /* Convert B/rho into code B/rho */
+  p->mhd_data.B_over_rho[0] /= sqrtf(mu_0);
+  p->mhd_data.B_over_rho[1] /= sqrtf(mu_0);
+  p->mhd_data.B_over_rho[2] /= sqrtf(mu_0);
 
   /* Convert to co-moving B/rho */
   p->mhd_data.B_over_rho[0] *= pow(cosmo->a, 1.5f * hydro_gamma);

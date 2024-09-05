@@ -776,7 +776,7 @@ void space_convert_quantities_mapper(void *restrict map_data, int count,
     if (parts[k].time_bin <= num_time_bins) {
       hydro_convert_quantities(&parts[k], &xparts[k], cosmo, hydro_props,
                                floor);
-      mhd_convert_quantities(&parts[k], &xparts[k], cosmo, hydro_props);
+      mhd_convert_quantities(&parts[k], &xparts[k], cosmo, hydro_props, s->e->physical_constants->const_vacuum_permeability);
     }
   }
 }

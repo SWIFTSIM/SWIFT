@@ -293,7 +293,7 @@ void shotnoiseterms(const struct cell* c, double* tot12,
       const struct part* p = &parts[-gparts[i].id_or_neg_offset];
       const struct xpart* xp = &xparts[-gparts[i].id_or_neg_offset];
       quantity1 =
-          mhd_get_magnetic_energy(p, xp, phys_const->const_vacuum_permeability);
+          mhd_get_magnetic_energy(p, xp);
 
     } else {
 
@@ -342,7 +342,7 @@ void shotnoiseterms(const struct cell* c, double* tot12,
         const struct part* p = &parts[-gparts[i].id_or_neg_offset];
         const struct xpart* xp = &xparts[-gparts[i].id_or_neg_offset];
         quantity2 = mhd_get_magnetic_energy(
-            p, xp, phys_const->const_vacuum_permeability);
+            p, xp);
 
       } else {
 
@@ -664,7 +664,7 @@ void cell_to_powgrid(const struct cell* c, double* rho, const int N,
       const struct part* p = &parts[-gparts[i].id_or_neg_offset];
       const struct xpart* xp = &xparts[-gparts[i].id_or_neg_offset];
       quantity =
-          mhd_get_magnetic_energy(p, xp, phys_const->const_vacuum_permeability);
+          mhd_get_magnetic_energy(p, xp);
 
     } else {
 

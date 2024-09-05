@@ -41,9 +41,11 @@ INLINE static int mhd_read_particles(struct part* parts,
 INLINE static void convert_B(const struct engine* e, const struct part* p,
                              const struct xpart* xp, float* ret) {
 
-  ret[0] = xp->mhd_data.B_over_rho_full[0] * p->rho;
-  ret[1] = xp->mhd_data.B_over_rho_full[1] * p->rho;
-  ret[2] = xp->mhd_data.B_over_rho_full[2] * p->rho;
+  const float mu_0 = e->physical_constants->const_vacuum_permeability;
+  
+  ret[0] = xp->mhd_data.B_over_rho_full[0] * p->rho * sqrtf(mu_0);
+  ret[1] = xp->mhd_data.B_over_rho_full[1] * p->rho * sqrtf(mu_0);
+  ret[2] = xp->mhd_data.B_over_rho_full[2] * p->rho * sqrtf(mu_0);
 }
 
 /**

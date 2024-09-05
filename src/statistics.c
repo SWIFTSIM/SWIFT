@@ -248,7 +248,7 @@ void stats_collect_part_mapper(void *map_data, int nr_parts, void *extra_data) {
     stats.entropy += m * entropy;
 
     /* Collect magnetic energy */
-    stats.E_mag += mhd_get_magnetic_energy(p, xp, mu_0);
+    stats.E_mag += mhd_get_magnetic_energy(p, xp);
 
     /* Collect helicity */
     stats.H_mag += mhd_get_magnetic_helicity(p, xp);
@@ -258,7 +258,7 @@ void stats_collect_part_mapper(void *map_data, int nr_parts, void *extra_data) {
     stats.divB_error += mhd_get_divB_error(p, xp);
 
     /* Collect square of magnetic field vector norm */
-    stats.Brms += mhd_get_Bms(p, xp);
+    stats.Brms += mhd_get_Bms(p, xp, mu_0);
   }
 
   /* Now write back to memory */
