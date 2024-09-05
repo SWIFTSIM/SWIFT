@@ -73,12 +73,13 @@ struct voronoi_pair {
 
   /* We store either the index of the right particle *or* the actual sid
    * (direction) of the face, we never need both */
-  union{
-    /*! idx of the particle on the right of this pair in its respective swift cell
-   * if that cell is the same as the cell holding this Voronoi tesselation (i.e.
-   * the particle is local) or in the super cell of its respective swift cell if
-   * that swift cell is foreign. For local particles, this is also the index of
-   * the corresponding cell in this voronoi tesselation. */
+  union {
+    /*! idx of the particle on the right of this pair in its respective swift
+     * cell if that cell is the same as the cell holding this Voronoi
+     * tesselation (i.e. the particle is local) or in the super cell of its
+     * respective swift cell if that swift cell is foreign. For local particles,
+     * this is also the index of the corresponding cell in this voronoi
+     * tesselation. */
     int right_idx;
 
     /*! Real sid of this pair (boundary faces are stored under sid 27) */
@@ -150,7 +151,7 @@ inline static void voronoi_check_grid(struct voronoi *v,
                                       const struct delaunay *d,
                                       const struct part *parts);
 inline static void voronoi_finalize(struct voronoi *v, const struct delaunay *d,
-                                    struct part *parts, int* face_sids);
+                                    struct part *parts, int *face_sids);
 inline static void voronoi_destroy(struct voronoi *restrict v);
 
 inline static struct voronoi *voronoi_malloc(int number_of_cells, double dmin) {
@@ -546,7 +547,7 @@ inline static void voronoi_build(struct voronoi *v, struct delaunay *d,
  * @param face_sids The array of the sids under which the faces must be stored
  */
 inline static void voronoi_finalize(struct voronoi *v, const struct delaunay *d,
-                                    struct part *parts, int* face_sids) {
+                                    struct part *parts, int *face_sids) {
   /* Set some trackers */
   /* The running counts of faces of each sid that are in the correct location */
   int counts[28];

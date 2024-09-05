@@ -364,7 +364,7 @@ cell_add_ghost_parts_grid_pair(struct delaunay *d, struct cell *c,
           break;
         }
       } /* Loop over unconverged particles in ci */
-    }   /* Loop over particles in cj */
+    } /* Loop over particles in cj */
   } else {
     /* ci on the left */
 
@@ -426,8 +426,8 @@ cell_add_ghost_parts_grid_pair(struct delaunay *d, struct cell *c,
           break;
         }
       } /* Loop over unconverged particles in ci */
-    }   /* Loop over particles in cj */
-  }     /* Flipped? */
+    } /* Loop over particles in cj */
+  } /* Flipped? */
 #endif
   /* Signal that this side has been processed (partially) */
   d->sid_is_inside_face_mask |= 1 << sid;

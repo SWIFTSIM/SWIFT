@@ -1423,7 +1423,8 @@ void cell_grid_set_pair_completeness(struct cell *restrict ci,
         struct cell *cj_sub = cj->progeny[pairs.pairs[i].pjd];
         if (ci_sub == NULL || cj_sub == NULL) continue;
         double shift[3];
-        int sid_sub = space_getsid_and_swap_cells(e->s, &ci_sub, &cj_sub, shift);
+        int sid_sub =
+            space_getsid_and_swap_cells(e->s, &ci_sub, &cj_sub, shift);
 #ifdef SWIFT_DEBUG_CHECKS
         assert(sid_sub == pairs.pairs[i].sid);
 #endif
@@ -1450,14 +1451,12 @@ void cell_grid_set_pair_completeness(struct cell *restrict ci,
      * We need to use atomics here, since multiple threads may change this at
      * the same time. */
     if (ci_local) {
-      atomic_and(
-          &ci->grid.complete,
-          !cell_need_rebuild_for_grid_construction_pair(ci, cj));
+      atomic_and(&ci->grid.complete,
+                 !cell_need_rebuild_for_grid_construction_pair(ci, cj));
     }
     if (cj_local) {
-      atomic_and(
-          &cj->grid.complete,
-          !cell_need_rebuild_for_grid_construction_pair(cj, ci));
+      atomic_and(&cj->grid.complete,
+                 !cell_need_rebuild_for_grid_construction_pair(cj, ci));
     }
   }
 }
@@ -1532,7 +1531,7 @@ void cell_set_grid_completeness_mapper(void *map_data, int num_elements,
         }
       }
     } /* Now loop over all the neighbours of this cell */
-  }   /* Loop through the elements, which are just byte offsets from NULL. */
+  } /* Loop through the elements, which are just byte offsets from NULL. */
 }
 
 void cell_set_grid_construction_level(struct cell *c,

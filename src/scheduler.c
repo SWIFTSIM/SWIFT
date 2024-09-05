@@ -1819,8 +1819,8 @@ static void scheduler_splittask_grid(struct task *t, struct scheduler *s) {
           }
         }
       } /* Pair interaction? */
-    }   /* Splittable? */
-  }     /* Redo? */
+    } /* Splittable? */
+  } /* Redo? */
 }
 
 /**

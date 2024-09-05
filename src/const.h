@@ -108,7 +108,7 @@
 #endif
 
 /*! @brief Option controlling output of grids */
-//#define SHADOWSWIFT_OUTPUT_GRIDS
+// #define SHADOWSWIFT_OUTPUT_GRIDS
 
 /* Options controlling acceleration strategies*/
 /*! @brief Option enabling a more relaxed completeness criterion */
@@ -133,7 +133,7 @@
 
 /* Options controlling particle movement */
 /*! @brief This option disables cell movement */
-//#define SHADOWSWIFT_FIX_PARTICLES
+// #define SHADOWSWIFT_FIX_PARTICLES
 /*! @brief This option enables cell steering, i.e. trying to keep the cells
  * regular by adding a correction to the cell velocities.*/
 #ifndef SHADOWSWIFT_FIX_PARTICLES
