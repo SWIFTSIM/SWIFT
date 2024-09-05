@@ -31,8 +31,8 @@
  * @param U Pointer to the array in which the result needs to be stored
  */
 __attribute__((always_inline)) INLINE static void
-chemistry_part_get_diffusion_state_vector(const struct part *restrict p, int group,
-                                   double* U) {
+chemistry_part_get_diffusion_state_vector(const struct part *restrict p,
+                                          int group, double *U) {
 
   /* The state vector is 1D and contains the metal density. */
   *U = p->chemistry_data.metal_mass[group] / p->chemistry_data.geometry.volume;
@@ -47,18 +47,18 @@ chemistry_part_get_diffusion_state_vector(const struct part *restrict p, int gro
  * @param metal Index of metal specie
  * @param F_diff (return) Array to write diffusion flux component into
  */
-__attribute__((always_inline)) INLINE static void chemistry_part_compute_diffusion_flux(
-    const struct part *restrict p, int metal, double F_diff[3]) {
+__attribute__((always_inline)) INLINE static void
+chemistry_part_compute_diffusion_flux(const struct part *restrict p, int metal,
+                                      double F_diff[3]) {
 
   const double kappa = p->chemistry_data.kappa;
 
   /* For isotropic diffusion, \grad U = \nabla \otimes q = \grad n_Z.
      Note: K = kappa * I_3 for isotropic diffusion. */
-  F_diff[0] = - kappa * p->chemistry_data.gradients[metal].nabla_otimes_q[0];
-  F_diff[1] = - kappa * p->chemistry_data.gradients[metal].nabla_otimes_q[1];
-  F_diff[2] = - kappa * p->chemistry_data.gradients[metal].nabla_otimes_q[2];
+  F_diff[0] = -kappa * p->chemistry_data.gradients[metal].nabla_otimes_q[0];
+  F_diff[1] = -kappa * p->chemistry_data.gradients[metal].nabla_otimes_q[1];
+  F_diff[2] = -kappa * p->chemistry_data.gradients[metal].nabla_otimes_q[2];
 }
-
 
 /**
  * @brief Get the gradients of metal mass density a given metal group.
@@ -76,7 +76,6 @@ __attribute__((always_inline)) INLINE static void chemistry_part_get_gradients(
   dF[2] = p->chemistry_data.gradients[metal].nabla_otimes_q[2];
 }
 
-
 /**
  * @brief Check if the gradient matrix for this particle is well behaved.
  *
@@ -84,7 +83,7 @@ __attribute__((always_inline)) INLINE static void chemistry_part_get_gradients(
  * @return 1 if the gradient matrix is well behaved, 0 otherwise.
  */
 __attribute__((always_inline)) INLINE static int
-chemistry_part_geometry_well_behaved(const struct part* restrict p) {
+chemistry_part_geometry_well_behaved(const struct part *restrict p) {
 
   return p->chemistry_data.geometry.wcorr > const_gizmo_min_wcorr;
 }

@@ -30,10 +30,10 @@
 #include <string.h>
 
 /* Local includes. */
-#include "chemistry_struct.h"
-#include "chemistry_gradients.h"
 #include "chemistry_flux.h"
+#include "chemistry_gradients.h"
 #include "chemistry_setters.h"
+#include "chemistry_struct.h"
 #include "error.h"
 #include "hydro.h"
 #include "kernel_hydro.h"
@@ -63,7 +63,8 @@ INLINE static void chemistry_copy_star_formation_properties(
 
   /* Store the chemistry struct in the star particle */
   for (int k = 0; k < GEAR_CHEMISTRY_ELEMENT_COUNT; k++) {
-    sp->chemistry_data.metal_mass_fraction[k] = p->chemistry_data.metal_mass[k] / mass;
+    sp->chemistry_data.metal_mass_fraction[k] =
+        p->chemistry_data.metal_mass[k] / mass;
 
     /* Remove the metals taken by the star. */
     p->chemistry_data.metal_mass[k] *= mass / (mass + sp->mass);
@@ -326,14 +327,20 @@ static INLINE void chemistry_init_backend(struct swift_params* parameter_file,
 
   /***************************************************************************/
   /* Read parameters for the Riemann solver */
-  data->hll_riemann_solver_psi = parser_get_opt_param_float(parameter_file, "GEARChemistry:hll_riemann_solver_psi", DEFAULT_PSI_RIEMANN_SOLVER);
+  data->hll_riemann_solver_psi = parser_get_opt_param_float(
+      parameter_file, "GEARChemistry:hll_riemann_solver_psi",
+      DEFAULT_PSI_RIEMANN_SOLVER);
 
   data->use_hokpins2017_hll_riemann_solver = parser_get_opt_param_float(
-									parameter_file, "GEARChemistry:use_hokpins2017_hll_riemann_solver", DEFAULT_USE_HOPKINS2017_HLL_RIEMANN_SOLVER);
+      parameter_file, "GEARChemistry:use_hokpins2017_hll_riemann_solver",
+      DEFAULT_USE_HOPKINS2017_HLL_RIEMANN_SOLVER);
 
-  data->hll_riemann_solver_epsilon = parser_get_opt_param_float(parameter_file, "GEARChemistry:hll_riemann_solver_epsilon", DEFAULT_EPSILON_RIEMANN_SOLVER);
+  data->hll_riemann_solver_epsilon = parser_get_opt_param_float(
+      parameter_file, "GEARChemistry:hll_riemann_solver_epsilon",
+      DEFAULT_EPSILON_RIEMANN_SOLVER);
 
-  if ((data->hll_riemann_solver_epsilon > 1) || (data->hll_riemann_solver_epsilon < 0)) {
+  if ((data->hll_riemann_solver_epsilon > 1) ||
+      (data->hll_riemann_solver_epsilon < 0)) {
     error("hll_riemann_solver_epsilon must respect 0 <= epsilon <= 1!");
   }
 }
@@ -396,7 +403,7 @@ __attribute__((always_inline)) INLINE static void chemistry_end_density(
 
   /* Some smoothing length multiples. */
   const float h = p->h;
-  const float h_inv = 1.0f / h;                       /* 1/h */
+  const float h_inv = 1.0f / h; /* 1/h */
   const float ihdim = pow_dimension(h_inv);
   const float factor = pow_dimension(h_inv) / p->rho; /* 1 / h^d * rho */
 
@@ -414,7 +421,8 @@ __attribute__((always_inline)) INLINE static void chemistry_end_density(
   /* Final operation on the geometry. */
   /* We multiply with the smoothing kernel normalization ih3 and calculate the
    * volume */
-  const float volume_inv = ihdim * (p->chemistry_data.geometry.volume + kernel_root);
+  const float volume_inv =
+      ihdim * (p->chemistry_data.geometry.volume + kernel_root);
   const float volume = 1.0f / volume_inv;
   p->chemistry_data.geometry.volume = volume;
 
@@ -431,31 +439,50 @@ __attribute__((always_inline)) INLINE static void chemistry_end_density(
 
   /* Check the condition number to see if we have a stable geometry. */
   const float condition_number_E =
-      p->chemistry_data.geometry.matrix_E[0][0] * p->chemistry_data.geometry.matrix_E[0][0] +
-      p->chemistry_data.geometry.matrix_E[0][1] * p->chemistry_data.geometry.matrix_E[0][1] +
-      p->chemistry_data.geometry.matrix_E[0][2] * p->chemistry_data.geometry.matrix_E[0][2] +
-      p->chemistry_data.geometry.matrix_E[1][0] * p->chemistry_data.geometry.matrix_E[1][0] +
-      p->chemistry_data.geometry.matrix_E[1][1] * p->chemistry_data.geometry.matrix_E[1][1] +
-      p->chemistry_data.geometry.matrix_E[1][2] * p->chemistry_data.geometry.matrix_E[1][2] +
-      p->chemistry_data.geometry.matrix_E[2][0] * p->chemistry_data.geometry.matrix_E[2][0] +
-      p->chemistry_data.geometry.matrix_E[2][1] * p->chemistry_data.geometry.matrix_E[2][1] +
-      p->chemistry_data.geometry.matrix_E[2][2] * p->chemistry_data.geometry.matrix_E[2][2];
+      p->chemistry_data.geometry.matrix_E[0][0] *
+          p->chemistry_data.geometry.matrix_E[0][0] +
+      p->chemistry_data.geometry.matrix_E[0][1] *
+          p->chemistry_data.geometry.matrix_E[0][1] +
+      p->chemistry_data.geometry.matrix_E[0][2] *
+          p->chemistry_data.geometry.matrix_E[0][2] +
+      p->chemistry_data.geometry.matrix_E[1][0] *
+          p->chemistry_data.geometry.matrix_E[1][0] +
+      p->chemistry_data.geometry.matrix_E[1][1] *
+          p->chemistry_data.geometry.matrix_E[1][1] +
+      p->chemistry_data.geometry.matrix_E[1][2] *
+          p->chemistry_data.geometry.matrix_E[1][2] +
+      p->chemistry_data.geometry.matrix_E[2][0] *
+          p->chemistry_data.geometry.matrix_E[2][0] +
+      p->chemistry_data.geometry.matrix_E[2][1] *
+          p->chemistry_data.geometry.matrix_E[2][1] +
+      p->chemistry_data.geometry.matrix_E[2][2] *
+          p->chemistry_data.geometry.matrix_E[2][2];
 
   float condition_number = 0.0f;
-  if (invert_dimension_by_dimension_matrix(p->chemistry_data.geometry.matrix_E) != 0) {
+  if (invert_dimension_by_dimension_matrix(
+          p->chemistry_data.geometry.matrix_E) != 0) {
     /* something went wrong in the inversion; force bad condition number */
     condition_number = const_gizmo_max_condition_number + 1.0f;
   } else {
     const float condition_number_Einv =
-        p->chemistry_data.geometry.matrix_E[0][0] * p->chemistry_data.geometry.matrix_E[0][0] +
-        p->chemistry_data.geometry.matrix_E[0][1] * p->chemistry_data.geometry.matrix_E[0][1] +
-        p->chemistry_data.geometry.matrix_E[0][2] * p->chemistry_data.geometry.matrix_E[0][2] +
-        p->chemistry_data.geometry.matrix_E[1][0] * p->chemistry_data.geometry.matrix_E[1][0] +
-        p->chemistry_data.geometry.matrix_E[1][1] * p->chemistry_data.geometry.matrix_E[1][1] +
-        p->chemistry_data.geometry.matrix_E[1][2] * p->chemistry_data.geometry.matrix_E[1][2] +
-        p->chemistry_data.geometry.matrix_E[2][0] * p->chemistry_data.geometry.matrix_E[2][0] +
-        p->chemistry_data.geometry.matrix_E[2][1] * p->chemistry_data.geometry.matrix_E[2][1] +
-        p->chemistry_data.geometry.matrix_E[2][2] * p->chemistry_data.geometry.matrix_E[2][2];
+        p->chemistry_data.geometry.matrix_E[0][0] *
+            p->chemistry_data.geometry.matrix_E[0][0] +
+        p->chemistry_data.geometry.matrix_E[0][1] *
+            p->chemistry_data.geometry.matrix_E[0][1] +
+        p->chemistry_data.geometry.matrix_E[0][2] *
+            p->chemistry_data.geometry.matrix_E[0][2] +
+        p->chemistry_data.geometry.matrix_E[1][0] *
+            p->chemistry_data.geometry.matrix_E[1][0] +
+        p->chemistry_data.geometry.matrix_E[1][1] *
+            p->chemistry_data.geometry.matrix_E[1][1] +
+        p->chemistry_data.geometry.matrix_E[1][2] *
+            p->chemistry_data.geometry.matrix_E[1][2] +
+        p->chemistry_data.geometry.matrix_E[2][0] *
+            p->chemistry_data.geometry.matrix_E[2][0] +
+        p->chemistry_data.geometry.matrix_E[2][1] *
+            p->chemistry_data.geometry.matrix_E[2][1] +
+        p->chemistry_data.geometry.matrix_E[2][2] *
+            p->chemistry_data.geometry.matrix_E[2][2];
 
     condition_number =
         hydro_dimension_inv * sqrtf(condition_number_E * condition_number_Einv);
@@ -472,9 +499,10 @@ __attribute__((always_inline)) INLINE static void chemistry_end_density(
             condition_number, const_gizmo_max_condition_number, p->id);
 #endif
     /* add a correction to the number of neighbours for this particle */
-    p->chemistry_data.geometry.wcorr = const_gizmo_w_correction_factor * p->chemistry_data.geometry.wcorr;
+    p->chemistry_data.geometry.wcorr =
+        const_gizmo_w_correction_factor * p->chemistry_data.geometry.wcorr;
   }
- 
+
   /* Check that the metal masses are physical */
   for (int g = 0; g < GEAR_CHEMISTRY_ELEMENT_COUNT; g++) {
     double n_metal_old = p->chemistry_data.metal_mass[g];
@@ -486,7 +514,8 @@ __attribute__((always_inline)) INLINE static void chemistry_end_density(
 #endif
 
     /* Sanity checks */
-    chemistry_check_unphysical_state(&p->chemistry_data.metal_mass[g], n_metal_old, /*callloc=*/0);
+    chemistry_check_unphysical_state(&p->chemistry_data.metal_mass[g],
+                                     n_metal_old, /*callloc=*/0);
   }
 }
 
@@ -495,8 +524,8 @@ __attribute__((always_inline)) INLINE static void chemistry_end_density(
  *
  * TODO: Add it at the right place in the code.
  *
- * Just a wrapper around chemistry_gradients_finalize, which can be an empty method,
- * in which case no gradients are used.
+ * Just a wrapper around chemistry_gradients_finalize, which can be an empty
+ * method, in which case no gradients are used.
  *
  * This method also initializes the force loop variables.
  *
@@ -539,11 +568,9 @@ __attribute__((always_inline)) INLINE static void chemistry_end_force(
  */
 __attribute__((always_inline)) INLINE static void chemistry_prepare_force(
     struct part* restrict p, struct xpart* restrict xp,
-    const struct cosmology* cosmo, const float dt_alpha,
-    const float dt_therm) {
+    const struct cosmology* cosmo, const float dt_alpha, const float dt_therm) {
   p->chemistry_data.flux_dt = dt_therm;
 }
-
 
 /**
  * @brief Sets all particle fields to sensible values when the #part has 0 ngbs.
@@ -598,9 +625,11 @@ __attribute__((always_inline)) INLINE static float chemistry_timestep(
     const struct chemistry_global_data* cd, const struct part* restrict p) {
 
   /* K = kappa * I_3. The norm is the Froebenius norm */
-  /* const float norm_K = sqrtf(3*p->chemistry_data.kappa*p->chemistry_data.kappa); */
+  /* const float norm_K =
+   * sqrtf(3*p->chemistry_data.kappa*p->chemistry_data.kappa); */
   /* const float norm_q = p->chemistry_data.kappa; */
-  return kernel_gamma2 * p->h*p->h / (sqrtf(3) * fabs(p->chemistry_data.kappa));
+  return kernel_gamma2 * p->h * p->h /
+         (sqrtf(3) * fabs(p->chemistry_data.kappa));
 }
 
 /**
@@ -864,8 +893,8 @@ __attribute__((always_inline)) INLINE static double
 chemistry_get_total_metal_mass_fraction_for_cooling(
     const struct part* restrict p) {
 
-  return p->chemistry_data
-      .metal_mass[GEAR_CHEMISTRY_ELEMENT_COUNT - 1]/p->mass;
+  return p->chemistry_data.metal_mass[GEAR_CHEMISTRY_ELEMENT_COUNT - 1] /
+         p->mass;
 }
 
 /**
@@ -892,8 +921,8 @@ __attribute__((always_inline)) INLINE static double
 chemistry_get_total_metal_mass_fraction_for_star_formation(
     const struct part* restrict p) {
 
-  return p->chemistry_data
-      .metal_mass[GEAR_CHEMISTRY_ELEMENT_COUNT - 1]/p->mass;
+  return p->chemistry_data.metal_mass[GEAR_CHEMISTRY_ELEMENT_COUNT - 1] /
+         p->mass;
 }
 
 /**
@@ -949,7 +978,6 @@ chemistry_get_bh_total_metal_mass_for_stats(const struct bpart* restrict bp) {
   return 0.f;
 }
 
-
 /**
  * @brief Extra operations done during the kick. This needs to be
  * done before the particle mass is updated in the hydro_kick_extra.
@@ -1001,7 +1029,8 @@ __attribute__((always_inline)) INLINE static void chemistry_kick_extra(
   /* Sanity checks. We don't want negative metal masses. */
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; ++i) {
     const double n_metal_old = p->chemistry_data.metal_mass[i];
-    chemistry_check_unphysical_state(&p->chemistry_data.metal_mass[i], n_metal_old, /*callloc=*/2);
+    chemistry_check_unphysical_state(&p->chemistry_data.metal_mass[i],
+                                     n_metal_old, /*callloc=*/2);
   }
 
   /* Reset wcorr */

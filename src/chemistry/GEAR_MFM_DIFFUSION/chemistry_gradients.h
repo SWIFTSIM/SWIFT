@@ -20,10 +20,10 @@
 #define SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_GRADIENTS_H
 
 /* #include "hydro_slope_limiters.h" */
-#include "chemistry_unphysical.h"
 #include "chemistry_getters.h"
 #include "chemistry_setters.h"
 #include "chemistry_slope_limiter.h"
+#include "chemistry_unphysical.h"
 #include "kernel_hydro.h"
 
 /**
@@ -32,16 +32,15 @@
  * @param p Particle.
  */
 __attribute__((always_inline)) INLINE static void chemistry_gradients_init(
-    struct part* p) {
-  
+    struct part *p) {
+
   chemistry_part_reset_gradients(p);
 }
-
 
 /**
  * @brief Gradient calculations done during the neighbour loop
  *
- * We compute grad \otimes q. 
+ * We compute grad \otimes q.
  *
  * @param r2 Squared distance between the two particles.
  * @param dx Distance vector (pi->x - pj->x).
@@ -51,12 +50,12 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_init(
  * @param pj Particle j.
  */
 __attribute__((always_inline)) INLINE static void chemistry_gradients_collect(
-    float r2, const float* dx, float hi, float hj, struct part *restrict pi,
-    struct part* restrict pj) {
+    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
+    struct part *restrict pj) {
 
   struct chemistry_part_data *chi = &pi->chemistry_data;
   struct chemistry_part_data *chj = &pj->chemistry_data;
-  
+
   /* Get r and 1/r. */
   const float r = sqrtf(r2);
   const float r_inv = 1.0f / r;
@@ -159,9 +158,9 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_collect(
  * @param pj Particle j.
  */
 __attribute__((always_inline)) INLINE static void
-chemistry_gradients_nonsym_collect(float r2, const float* dx, float hi,
+chemistry_gradients_nonsym_collect(float r2, const float *dx, float hi,
                                    float hj, struct part *restrict pi,
-                                   struct part * restrict pj) {
+                                   struct part *restrict pj) {
 
   struct chemistry_part_data *chi = &pi->chemistry_data;
 
@@ -188,11 +187,11 @@ chemistry_gradients_nonsym_collect(float r2, const float* dx, float hi,
   float psii_tilde[3];
   if (chemistry_part_geometry_well_behaved(pi)) {
     psii_tilde[0] =
-      wi * (Bi[0][0] * dx[0] + Bi[0][1] * dx[1] + Bi[0][2] * dx[2]);
+        wi * (Bi[0][0] * dx[0] + Bi[0][1] * dx[1] + Bi[0][2] * dx[2]);
     psii_tilde[1] =
-      wi * (Bi[1][0] * dx[0] + Bi[1][1] * dx[1] + Bi[1][2] * dx[2]);
+        wi * (Bi[1][0] * dx[0] + Bi[1][1] * dx[1] + Bi[1][2] * dx[2]);
     psii_tilde[2] =
-      wi * (Bi[2][0] * dx[0] + Bi[2][1] * dx[1] + Bi[2][2] * dx[2]);
+        wi * (Bi[2][0] * dx[0] + Bi[2][1] * dx[1] + Bi[2][2] * dx[2]);
   } else {
     const float norm = -wi_dx * r_inv;
     psii_tilde[0] = norm * dx[0];
@@ -226,9 +225,9 @@ chemistry_gradients_nonsym_collect(float r2, const float* dx, float hi,
  * @param p Particle.
  */
 __attribute__((always_inline)) INLINE static void chemistry_gradients_finalise(
-    struct part* p) {
+    struct part *p) {
 
-    /* add kernel normalization to gradients */
+  /* add kernel normalization to gradients */
   const float h = p->h;
   const float h_inv = 1.0f / h;
 
@@ -255,8 +254,8 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_finalise(
  * @return Change in the quantity after a displacement along the given distance
  * vector.
  */
-__attribute__((always_inline)) INLINE static double chemistry_gradients_extrapolate(
-    const double gradient[3], const float dx[3]) {
+__attribute__((always_inline)) INLINE static double
+chemistry_gradients_extrapolate(const double gradient[3], const float dx[3]) {
   return gradient[0] * dx[0] + gradient[1] * dx[1] + gradient[2] * dx[2];
 }
 
@@ -281,8 +280,8 @@ __attribute__((always_inline)) INLINE static double chemistry_gradients_extrapol
  * @param xij_i Position of the "interface" w.r.t. position of particle i
  */
 __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
-    const struct part *restrict pi, const struct part *restrict pj, double* Ui,
-    double* Uj, int group, const float *dx, const float r,
+    const struct part *restrict pi, const struct part *restrict pj, double *Ui,
+    double *Uj, int group, const float *dx, const float r,
     const float xij_i[3]) {
 
   chemistry_part_get_diffusion_state_vector(pi, group, Ui);

@@ -713,8 +713,7 @@ void runner_do_end_hydro_force(struct runner *r, struct cell *c, int timer) {
           hydro_reset_acceleration(p);
           mhd_reset_acceleration(p);
 
-	  chemistry_prepare_force(p, xp, cosmo, dt_alpha,dt_therm);
-
+          chemistry_prepare_force(p, xp, cosmo, dt_alpha, dt_therm);
 
 #if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH)
 

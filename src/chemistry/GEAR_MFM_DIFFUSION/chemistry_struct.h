@@ -49,7 +49,6 @@ struct chemistry_global_data {
   /*! The epsilon in eq (14). This is a tolerance parameter. So, it must be 0
       <= epsilon <= 1. */
   float hll_riemann_solver_epsilon;
-
 };
 
 /**
@@ -57,7 +56,8 @@ struct chemistry_global_data {
  */
 struct chemistry_part_data {
 
-  /*! Total mass of element in a particle. This is the primitive variable * volume. */
+  /*! Total mass of element in a particle. This is the primitive variable *
+   * volume. */
   double metal_mass[GEAR_CHEMISTRY_ELEMENT_COUNT];
 
 #ifdef HYDRO_DOES_MASS_FLUX
@@ -78,13 +78,15 @@ struct chemistry_part_data {
 
   /* Gradients. */
   struct {
-    /* This is \nabla \otimes \vec{q}. It is used to compute the diffusion flux */
+    /* This is \nabla \otimes \vec{q}. It is used to compute the diffusion flux
+     */
     double nabla_otimes_q[3];
   } gradients[GEAR_CHEMISTRY_ELEMENT_COUNT];
 
-  /* Diffusion uses a first order reconstruction of nabla_otimes_q. Hence, we do not need a slope
-     limiter for it. However, when we reconstruct U, we need Grad U =
-     nabla_otimes_q. Thus, we need a slope limitier for U = metal_mass/volume. */
+  /* Diffusion uses a first order reconstruction of nabla_otimes_q. Hence, we do
+     not need a slope limiter for it. However, when we reconstruct U, we need
+     Grad U = nabla_otimes_q. Thus, we need a slope limitier for U =
+     metal_mass/volume. */
 
   /* Geometrical quantities used for MFM hydro. */
   struct {

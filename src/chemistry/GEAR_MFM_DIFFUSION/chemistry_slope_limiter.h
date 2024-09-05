@@ -26,7 +26,6 @@
 #include "minmax.h"
 #include "sign.h"
 
-
 /* Note: We do not need to slope limit the cell and the gradients, because we
    perform a first order reconstruction of nabla_otimes_q (= grad
    metal_density). If we were to use a first order reconstruction, then we
@@ -39,9 +38,10 @@
  * @param a Left slope
  * @param b Right slope
  */
-__attribute__((always_inline)) INLINE static double chemistry_minmod(double a, double b) {
+__attribute__((always_inline)) INLINE static double chemistry_minmod(double a,
+                                                                     double b) {
   /* Write this more explicitely (taken from Gizmo) */
-  return (a>0) ? ((b<0) ? 0 : min(a, b)) : ((b>=0) ? 0 : max(a, b));
+  return (a > 0) ? ((b < 0) ? 0 : min(a, b)) : ((b >= 0) ? 0 : max(a, b));
 }
 
 /**
@@ -51,7 +51,7 @@ __attribute__((always_inline)) INLINE static double chemistry_minmod(double a, d
  * @param dQj right slope
  */
 __attribute__((always_inline)) INLINE static void chemistry_limiter_minmod(
-    double* dQi, double* dQj) {
+    double *dQi, double *dQj) {
 
   if (*dQi * *dQj > 0.f) {
     if (fabs(*dQi) < fabs(*dQj)) {
@@ -79,7 +79,7 @@ __attribute__((always_inline)) INLINE static void chemistry_limiter_minmod(
  */
 __attribute__((always_inline)) INLINE static double
 chemistry_slope_limit_face_quantity(double phi_i, double phi_j, double phi_mid0,
-                                float xij_norm, float r_inv) {
+                                    float xij_norm, float r_inv) {
 
   const double psi1 = 0.5;
   const double psi2 = 0.25;
@@ -97,8 +97,7 @@ chemistry_slope_limit_face_quantity(double phi_i, double phi_j, double phi_mid0,
   if (same_signf(phimax + delta1, phimax)) {
     phiplus = phimax + delta1;
   } else {
-    phiplus =
-        (phimax != 0.0f) ? phimax / (1.0f + delta1 / fabs(phimax)) : 0.0f;
+    phiplus = (phimax != 0.0f) ? phimax / (1.0f + delta1 / fabs(phimax)) : 0.0f;
   }
 
   if (same_signf(phimin - delta1, phimin)) {
@@ -145,17 +144,14 @@ __attribute__((always_inline)) INLINE static void chemistry_slope_limit_face(
   const float r_inv = (r > 0.0f) ? 1.0f / r : 0.0f;
 
   *dWi = chemistry_slope_limit_face_quantity(Wi[0], Wj[0], Wi[0] + dWi[0],
-                                           xij_i_norm, r_inv);
+                                             xij_i_norm, r_inv);
 
   *dWj = chemistry_slope_limit_face_quantity(Wj[0], Wi[0], Wj[0] + dWj[0],
-                                           xij_j_norm, r_inv);
+                                             xij_j_norm, r_inv);
 
   /* Test to see whether it is better to use the minmode or the GIZMO style
      limiter */
   /* chemistry_limiter_minmod(dWi, dWj); */
-
 }
-
-
 
 #endif /*  SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_SLOPE_LIMITER_H */

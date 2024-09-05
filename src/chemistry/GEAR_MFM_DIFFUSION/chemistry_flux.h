@@ -19,9 +19,9 @@
 #ifndef SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_FLUX_H
 #define SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_FLUX_H
 
-#include "chemistry_unphysical.h"
 #include "chemistry_getters.h"
 #include "chemistry_riemann_HLL.h"
+#include "chemistry_unphysical.h"
 /* #include "chemistry_unphysical.h" */
 
 /**
@@ -29,8 +29,8 @@
  *
  * @param p Particle.
  */
-__attribute__((always_inline)) INLINE static void chemistry_part_reset_chemistry_fluxes(
-    struct part* restrict p) {
+__attribute__((always_inline)) INLINE static void
+chemistry_part_reset_chemistry_fluxes(struct part* restrict p) {
 
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; ++i) {
     p->chemistry_data.diffusion_flux[i] = 0.0;
@@ -47,7 +47,8 @@ __attribute__((always_inline)) INLINE static void chemistry_part_reset_chemistry
  * @param metal Metal index.
  * @param flux Fluxes for the particle (array of size 1).
  */
-__attribute__((always_inline)) INLINE void chemistry_part_get_fluxes(const struct part* restrict p, int metal, double* flux) {
+__attribute__((always_inline)) INLINE void chemistry_part_get_fluxes(
+    const struct part* restrict p, int metal, double* flux) {
   *flux = p->chemistry_data.diffusion_flux[metal];
 }
 
@@ -63,13 +64,13 @@ __attribute__((always_inline)) INLINE void chemistry_part_get_fluxes(const struc
  * @param fluxes Array to store the result in (of size 5 or more).
  */
 __attribute__((always_inline)) INLINE static void chemistry_compute_flux(
-      const struct part* restrict pi, const struct part* restrict pj,
-      const double UL, const double UR, const float n_unit[3],
-      const float Anorm, int g, double* metal_flux,
-      const struct chemistry_global_data* chemistry_data) {
+    const struct part* restrict pi, const struct part* restrict pj,
+    const double UL, const double UR, const float n_unit[3], const float Anorm,
+    int g, double* metal_flux,
+    const struct chemistry_global_data* chemistry_data) {
 
   /* Note: F_diff_R and F_diff_L are computed with a first order
-	 reconstruction */
+         reconstruction */
   /* Get the diffusion flux */
   double F_diff_i[3], F_diff_j[3];
   chemistry_part_compute_diffusion_flux(pi, g, F_diff_i);
@@ -89,25 +90,18 @@ __attribute__((always_inline)) INLINE static void chemistry_compute_flux(
                         vi[1] + (vi[1] - vj[1]) * xfac,
                         vi[2] + (vi[2] - vj[2]) * xfac};
 
-  float WL[5] = { pi->rho,
-		  vi[0] - vij[0],
-		  vi[1] - vij[1],
-		  vi[2] - vij[2],
-		  hydro_get_comoving_pressure(pi) };
-  float WR[5] = { pj->rho,
-		  vj[0] - vij[0],
-		  vj[1] - vij[1],
-		  vj[2] - vij[2],
-		  hydro_get_comoving_pressure(pj) };
-
+  float WL[5] = {pi->rho, vi[0] - vij[0], vi[1] - vij[1], vi[2] - vij[2],
+                 hydro_get_comoving_pressure(pi)};
+  float WR[5] = {pj->rho, vj[0] - vij[0], vj[1] - vij[1], vj[2] - vij[2],
+                 hydro_get_comoving_pressure(pj)};
 
   /* While solving the Riemann problem, we shall get a scalar because of the
      scalar product betwee F_diff_ij^* and A_ij */
   chemistry_riemann_solve_for_flux(pi, pj, UL, UR, WL, WR, F_diff_i, F_diff_j,
-				   Anorm, n_unit, g, metal_flux, chemistry_data);
+                                   Anorm, n_unit, g, metal_flux,
+                                   chemistry_data);
 
   *metal_flux *= Anorm;
 }
-
 
 #endif /* SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_FLUX_H  */

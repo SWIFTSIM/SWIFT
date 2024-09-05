@@ -26,12 +26,12 @@
  *
  * @param p Particle.
  */
-__attribute__((always_inline)) INLINE static void chemistry_part_reset_gradients(
-    struct part* restrict p) {
+__attribute__((always_inline)) INLINE static void
+chemistry_part_reset_gradients(struct part *restrict p) {
 
   struct chemistry_part_data *chd = &p->chemistry_data;
 
-  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {      
+  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
     chd->gradients[i].nabla_otimes_q[0] = 0.0f;
     chd->gradients[i].nabla_otimes_q[1] = 0.0f;
     chd->gradients[i].nabla_otimes_q[2] = 0.0f;
@@ -44,7 +44,7 @@ __attribute__((always_inline)) INLINE static void chemistry_part_reset_gradients
  * @param p Particle.
  */
 __attribute__((always_inline)) INLINE static void chemistry_part_set_gradients(
-   struct part* restrict p, int g, const double gradF[3]) {
+    struct part *restrict p, int g, const double gradF[3]) {
 
   struct chemistry_part_data *chd = &p->chemistry_data;
 
@@ -62,8 +62,8 @@ __attribute__((always_inline)) INLINE static void chemistry_part_set_gradients(
  * @param dE energy density gradient
  * @param dF gradient of the flux component
  */
-__attribute__((always_inline)) INLINE static void chemistry_part_update_gradients(
-    struct part *restrict p, int g, double dF[3]) {
+__attribute__((always_inline)) INLINE static void
+chemistry_part_update_gradients(struct part *restrict p, int g, double dF[3]) {
 
   struct chemistry_part_data *chd = &p->chemistry_data;
 
@@ -81,7 +81,8 @@ __attribute__((always_inline)) INLINE static void chemistry_part_update_gradient
  * @param norm Normalisation factor.
  */
 __attribute__((always_inline)) INLINE static void
-chemistry_part_normalise_gradients(struct part* restrict p, int g, const float norm) {
+chemistry_part_normalise_gradients(struct part *restrict p, int g,
+                                   const float norm) {
 
   struct chemistry_part_data *chd = &p->chemistry_data;
 
@@ -96,8 +97,8 @@ chemistry_part_normalise_gradients(struct part* restrict p, int g, const float n
  * @param p Particle.
  */
 __attribute__((always_inline)) INLINE static double
-chemistry_part_compute_diffusion_coefficient(struct part* restrict p) {
-  return kernel_gamma2*p->h*p->h;
+chemistry_part_compute_diffusion_coefficient(struct part *restrict p) {
+  return kernel_gamma2 * p->h * p->h;
 }
 
 #endif /* SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_SETTERS_H */

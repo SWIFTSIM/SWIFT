@@ -39,8 +39,9 @@
  * @param n_old metal density before change to check. Set = 0 if not available
  * @param callloc integer indentifier where this function was called from
  */
-__attribute__((always_inline)) INLINE static void chemistry_check_unphysical_state(
-    double* metal_density, const double n_old, int callloc) {
+__attribute__((always_inline)) INLINE static void
+chemistry_check_unphysical_state(double* metal_density, const double n_old,
+                                 int callloc) {
 
   /* Check for negative metal densities */
   /* Note to self for printouts: Maximal allowable F = E * c.
@@ -63,12 +64,12 @@ __attribute__((always_inline)) INLINE static void chemistry_check_unphysical_sta
   /* callloc = 1 is gradient extrapolation. Don't print out those. */
   if (callloc == 1) print = 0;
   if (print)
-    message("Fixing unphysical metal density case %d | %.6e | %.6e",
-            callloc, *metal_density, ratio);
+    message("Fixing unphysical metal density case %d | %.6e | %.6e", callloc,
+            *metal_density, ratio);
 #endif
   if (isinf(*metal_density) || isnan(*metal_density))
-    error("Got inf/nan metal density diffusion case %d | %.6e ",
-          callloc, *metal_density);
+    error("Got inf/nan metal density diffusion case %d | %.6e ", callloc,
+          *metal_density);
 
   if (*metal_density < 0.0) {
     *metal_density = 0.0;

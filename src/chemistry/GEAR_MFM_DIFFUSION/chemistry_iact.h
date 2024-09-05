@@ -158,10 +158,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_chemistry(
  * @param with_cosmology Are we running with cosmology?
  *
  */
-__attribute__((always_inline)) INLINE static void runner_iact_gradient_diffusion(
-    const float r2, const float dx[3], const float hi, const float hj,
-    struct part *restrict pi, struct part *restrict pj, const float a,
-    const float H) {
+__attribute__((always_inline)) INLINE static void
+runner_iact_gradient_diffusion(const float r2, const float dx[3],
+                               const float hi, const float hj,
+                               struct part *restrict pi,
+                               struct part *restrict pj, const float a,
+                               const float H) {
   chemistry_gradients_collect(r2, dx, hi, hj, pi, pj);
 }
 
@@ -184,13 +186,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient_diffusion
  * @param with_cosmology Are we running with cosmology?
  *
  */
-__attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient_diffusion(
-    const float r2, const float dx[3], const float hi, const float hj,
-    struct part *restrict pi, struct part *restrict pj, const float a,
-    const float H) {
+__attribute__((always_inline)) INLINE static void
+runner_iact_nonsym_gradient_diffusion(const float r2, const float dx[3],
+                                      const float hi, const float hj,
+                                      struct part *restrict pi,
+                                      struct part *restrict pj, const float a,
+                                      const float H) {
   chemistry_gradients_nonsym_collect(r2, dx, hi, hj, pi, pj);
 }
-
 
 /**
  * @brief Common part of the flux calculation between particle i and j
@@ -220,10 +223,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient_di
  * @param a Current scale factor.
  * @param H Current Hubble parameter.
  */
-__attribute__((always_inline)) INLINE static void runner_iact_chemistry_fluxes_common(
+__attribute__((always_inline)) INLINE static void
+runner_iact_chemistry_fluxes_common(
     const float r2, const float dx[3], const float hi, const float hj,
     struct part *restrict pi, struct part *restrict pj, int mode, const float a,
-    const float H, const struct chemistry_global_data* chemistry_data) {
+    const float H, const struct chemistry_global_data *chemistry_data) {
 
   struct chemistry_part_data *chi = &pi->chemistry_data;
   struct chemistry_part_data *chj = &pj->chemistry_data;
@@ -337,14 +341,15 @@ __attribute__((always_inline)) INLINE static void runner_iact_chemistry_fluxes_c
   const float mindt =
       (chj->flux_dt > 0.f) ? fminf(chi->flux_dt, chj->flux_dt) : chi->flux_dt;
 
-  for (int g = 0; g <  GEAR_CHEMISTRY_ELEMENT_COUNT; g++) {
+  for (int g = 0; g < GEAR_CHEMISTRY_ELEMENT_COUNT; g++) {
     /* Diffusion state to be used to compute the flux */
     double Ui, Uj;
     chemistry_gradients_predict(pi, pj, &Ui, &Uj, g, dx, r, xij_i);
 
     /* Solve the 1D Riemann problem at the interface A_ij */
     double totflux;
-    chemistry_compute_flux(pi, pj, Ui, Uj, n_unit, Anorm, g, &totflux, chemistry_data);
+    chemistry_compute_flux(pi, pj, Ui, Uj, n_unit, Anorm, g, &totflux,
+                           chemistry_data);
 
     /* When solving the Riemann problem, we assume pi is left state, and
      * pj is right state. The sign convention is that a positive total
@@ -387,9 +392,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_diffusion(
     struct part *restrict pi, struct part *restrict pj, const float a,
     const float H, const float time_base, const integertime_t t_current,
     const struct cosmology *cosmo, const int with_cosmology,
-    const struct chemistry_global_data* chemistry_data) {
+    const struct chemistry_global_data *chemistry_data) {
 
-  runner_iact_chemistry_fluxes_common(r2, dx, hi, hj, pi, pj, 1, a, H, chemistry_data);
+  runner_iact_chemistry_fluxes_common(r2, dx, hi, hj, pi, pj, 1, a, H,
+                                      chemistry_data);
 }
 
 /**
@@ -416,9 +422,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_diffusion(
     struct part *restrict pi, struct part *restrict pj, const float a,
     const float H, const float time_base, const integertime_t t_current,
     const struct cosmology *cosmo, const int with_cosmology,
-    const struct chemistry_global_data* chemistry_data) {
+    const struct chemistry_global_data *chemistry_data) {
 
-  runner_iact_chemistry_fluxes_common(r2, dx, hi, hj, pi, pj, 0, a, H, chemistry_data);
+  runner_iact_chemistry_fluxes_common(r2, dx, hi, hj, pi, pj, 0, a, H,
+                                      chemistry_data);
 }
 
 #endif /* SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_IACT_H */
