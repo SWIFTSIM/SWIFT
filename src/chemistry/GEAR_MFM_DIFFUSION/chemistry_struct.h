@@ -35,6 +35,21 @@ struct chemistry_global_data {
 
   /*! Name of the different elements */
   char elements_name[GEAR_CHEMISTRY_ELEMENT_COUNT * GEAR_LABELS_SIZE];
+
+  /***************************************************************************/
+  /* HLL Riemann solver parameters
+   * See Hopkins 2017 (https://arxiv.org/abs/1602.07703) */
+
+  /*! The psi in eq (7) */
+  float hll_riemann_solver_psi;
+
+  /*! Use "usual" HLL or Hopkins 2017 modified HLL */
+  int use_hokpins2017_hll_riemann_solver;
+
+  /*! The epsilon in eq (14). This is a tolerance parameter. So, it must be 0
+      <= epsilon <= 1. */
+  float hll_riemann_solver_epsilon;
+
 };
 
 /**
