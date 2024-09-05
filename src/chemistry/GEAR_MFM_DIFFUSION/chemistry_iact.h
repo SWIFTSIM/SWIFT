@@ -227,7 +227,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient_di
 __attribute__((always_inline)) INLINE static void runner_iact_chemistry_fluxes_common(
     const float r2, const float dx[3], const float hi, const float hj,
     struct part *restrict pi, struct part *restrict pj, int mode, const float a,
-    const float H) {
+    const float H, const struct chemistry_global_data* chemistry_data) {
 
   struct chemistry_part_data *chi = &pi->chemistry_data;
   struct chemistry_part_data *chj = &pj->chemistry_data;
@@ -348,7 +348,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_chemistry_fluxes_c
 
     /* Solve the 1D Riemann problem at the interface A_ij */
     double totflux;
-    chemistry_compute_flux(pi, pj, Ui, Uj, n_unit, Anorm, g, &totflux);
+    chemistry_compute_flux(pi, pj, Ui, Uj, n_unit, Anorm, g, &totflux, chemistry_data);
 
     /* When solving the Riemann problem, we assume pi is left state, and
      * pj is right state. The sign convention is that a positive total
@@ -390,9 +390,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_diffusion(
     const float r2, const float dx[3], const float hi, const float hj,
     struct part *restrict pi, struct part *restrict pj, const float a,
     const float H, const float time_base, const integertime_t t_current,
-    const struct cosmology *cosmo, const int with_cosmology) {
+    const struct cosmology *cosmo, const int with_cosmology,
+    const struct chemistry_global_data* chemistry_data) {
 
-  runner_iact_chemistry_fluxes_common(r2, dx, hi, hj, pi, pj, 1, a, H);
+  runner_iact_chemistry_fluxes_common(r2, dx, hi, hj, pi, pj, 1, a, H, chemistry_data);
 }
 
 /**
@@ -418,9 +419,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_diffusion(
     const float r2, const float dx[3], const float hi, const float hj,
     struct part *restrict pi, struct part *restrict pj, const float a,
     const float H, const float time_base, const integertime_t t_current,
-    const struct cosmology *cosmo, const int with_cosmology) {
+    const struct cosmology *cosmo, const int with_cosmology,
+    const struct chemistry_global_data* chemistry_data) {
 
-  runner_iact_chemistry_fluxes_common(r2, dx, hi, hj, pi, pj, 0, a, H);
+  runner_iact_chemistry_fluxes_common(r2, dx, hi, hj, pi, pj, 0, a, H, chemistry_data);
 }
 
 #endif /* SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_IACT_H */

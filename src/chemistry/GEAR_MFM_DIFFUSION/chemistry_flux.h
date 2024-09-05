@@ -25,7 +25,7 @@
 /* #include "chemistry_unphysical.h" */
 
 /**
- * @brief Reset the hydrodynamical fluxes for the given particle.
+ * @brief Reset the diffusion fluxes for the given particle.
  *
  * @param p Particle.
  */
@@ -38,10 +38,14 @@ __attribute__((always_inline)) INLINE static void chemistry_part_reset_chemistry
 }
 
 /**
- * @brief Get the fluxes for the given particle.
+ * @brief Get the diffusion fluxes for the given particle.
+ *
+ * Notice that this function returns the solution to the Riemann problem. Hence
+ * the flux is 1D.
  *
  * @param p Particle.
- * @param flux Fluxes for the particle (array of size 5 or more).
+ * @param metal Metal index.
+ * @param flux Fluxes for the particle (array of size 1).
  */
 __attribute__((always_inline)) INLINE void chemistry_part_get_fluxes(const struct part* restrict p, int metal, double* flux) {
   *flux = p->chemistry_data.diffusion_flux[metal];
@@ -61,7 +65,8 @@ __attribute__((always_inline)) INLINE void chemistry_part_get_fluxes(const struc
 __attribute__((always_inline)) INLINE static void chemistry_compute_flux(
       const struct part* restrict pi, const struct part* restrict pj,
       const double UL, const double UR, const float n_unit[3],
-      const float Anorm, int g, double* metal_flux) {
+      const float Anorm, int g, double* metal_flux,
+      const struct chemistry_global_data* chemistry_data) {
 
   /* Note: F_diff_R and F_diff_L are computed with a first order
 	 reconstruction */
@@ -99,7 +104,7 @@ __attribute__((always_inline)) INLINE static void chemistry_compute_flux(
   /* While solving the Riemann problem, we shall get a scalar because of the
      scalar product betwee F_diff_ij^* and A_ij */
   chemistry_riemann_solve_for_flux(pi, pj, UL, UR, WL, WR, F_diff_i, F_diff_j,
-				   Anorm, n_unit, g, metal_flux);
+				   Anorm, n_unit, g, metal_flux, chemistry_data);
 
   *metal_flux *= Anorm;
 }
