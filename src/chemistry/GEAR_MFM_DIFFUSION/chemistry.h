@@ -381,7 +381,7 @@ __attribute__((always_inline)) INLINE static void chemistry_init_part(
      use a shear tensor using grad velocity */
   p->chemistry_data.kappa = chemistry_part_compute_diffusion_coefficient(p);
 
-  /* Init the gradient */
+  /* Init the gradient for the next loops */
   chemistry_gradients_init(p);
 }
 
@@ -522,21 +522,14 @@ __attribute__((always_inline)) INLINE static void chemistry_end_density(
 /**
  * @brief Finishes the gradient calculation.
  *
- * TODO: Add it at the right place in the code.
- *
  * Just a wrapper around chemistry_gradients_finalize, which can be an empty
  * method, in which case no gradients are used.
- *
- * This method also initializes the force loop variables.
  *
  * @param p The particle to act upon.
  */
 __attribute__((always_inline)) INLINE static void chemistry_end_gradient(
     struct part* p) {
   chemistry_gradients_finalise(p);
-
-  /* Do not reset the gradients here. We need nabla_otimes_q to compute the
-     chemistry timestep */
 }
 
 /**
@@ -552,12 +545,7 @@ __attribute__((always_inline)) INLINE static void chemistry_end_force(
 /**
  * @brief Prepare a particle for the force calculation.
  *
- * This function is called in the ghost task to convert some quantities coming
- * from the density loop over neighbours into quantities ready to be used in the
- * force loop over neighbours. Quantities are typically read from the density
- * sub-structure and written to the force sub-structure.
- * Examples of calculations done here include the calculation of viscosity term
- * constants, thermal conduction terms, hydro conversions, etc.
+ * In GEAR MFM diffusion, we update the flux timestep.
  *
  * @param p The particle to act upon
  * @param xp The extended particle data to act upon
