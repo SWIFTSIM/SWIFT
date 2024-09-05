@@ -184,6 +184,50 @@ void cell_unpack_bpart_swallow(struct cell *c,
   }
 }
 
+void cell_pack_sink_gas_swallow(const struct cell *c,
+                            struct sink_part_data *data) {
+
+  const size_t count = c->hydro.count;
+  const struct part *parts = c->hydro.parts;
+
+  for (size_t i = 0; i < count; ++i) {
+    data[i] = parts[i].sink_data;
+  }
+}
+
+void cell_unpack_sink_gas_swallow(struct cell *c,
+                              const struct sink_part_data *data) {
+
+  const size_t count = c->hydro.count;
+  struct part *parts = c->hydro.parts;
+
+  for (size_t i = 0; i < count; ++i) {
+    parts[i].sink_data = data[i];
+  }
+}
+
+void cell_pack_sink_swallow(const struct cell *c,
+                             struct sink_sink_data *data) {
+
+  const size_t count = c->sinks.count;
+  const struct sink *sinks = c->sinks.parts;
+
+  for (size_t i = 0; i < count; ++i) {
+    data[i] = sinks[i].merger_data;
+  }
+}
+
+void cell_unpack_sink_swallow(struct cell *c,
+                               const struct sink_sink_data *data) {
+
+  const size_t count = c->sinks.count;
+  struct sink *sinks = c->sinks.parts;
+
+  for (size_t i = 0; i < count; ++i) {
+    sinks[i].merger_data = data[i];
+  }
+}
+
 /**
  * @brief Unpack the data of a given cell and its sub-cells.
  *
@@ -258,6 +302,7 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
       temp->hydro.count = 0;
       temp->grav.count = 0;
       temp->stars.count = 0;
+      temp->sinks.count = 0;
       temp->loc[0] = c->loc[0];
       temp->loc[1] = c->loc[1];
       temp->loc[2] = c->loc[2];
@@ -274,6 +319,7 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
       temp->hydro.dx_max_sort = 0.f;
       temp->stars.dx_max_part = 0.f;
       temp->stars.dx_max_sort = 0.f;
+      temp->sinks.dx_max_part = 0.f;
       temp->black_holes.dx_max_part = 0.f;
       temp->nodeID = c->nodeID;
       temp->parent = c;
@@ -356,6 +402,9 @@ int cell_pack_end_step(const struct cell *c, struct pcell_step *pcells) {
   pcells[0].black_holes.ti_end_min = c->black_holes.ti_end_min;
   pcells[0].black_holes.dx_max_part = c->black_holes.dx_max_part;
 
+  pcells[0].sinks.ti_end_min = c->sinks.ti_end_min;
+  pcells[0].sinks.dx_max_part = c->sinks.dx_max_part;
+
   /* Fill in the progeny, depth-first recursion. */
   int count = 1;
   for (int k = 0; k < 8; k++)
@@ -399,6 +448,9 @@ int cell_unpack_end_step(struct cell *c, const struct pcell_step *pcells) {
 
   c->black_holes.ti_end_min = pcells[0].black_holes.ti_end_min;
   c->black_holes.dx_max_part = pcells[0].black_holes.dx_max_part;
+
+  c->sinks.ti_end_min = pcells[0].sinks.ti_end_min;
+  c->sinks.dx_max_part = pcells[0].sinks.dx_max_part;
 
   /* Fill in the progeny, depth-first recursion. */
   int count = 1;
@@ -618,6 +670,113 @@ int cell_unpack_sf_counts(struct cell *restrict c,
   for (int k = 0; k < 8; k++)
     if (c->progeny[k] != NULL) {
       count += cell_unpack_sf_counts(c->progeny[k], &pcells[count]);
+    }
+
+  /* Return the number of packed values. */
+  return count;
+
+#else
+  error("SWIFT was not compiled with MPI support.");
+  return 0;
+#endif
+}
+
+
+/**
+ * @brief Pack the counts for sink formation of the given cell and all it's
+ * sub-cells.
+ *
+ * @param c The #cell.
+ * @param pcells (output) The multipole information we pack into
+ *
+ * @return The number of packed cells.
+ */
+int cell_pack_sink_formation_counts(struct cell *restrict c,
+                        struct pcell_sink_formation *restrict pcells) {
+
+#ifdef WITH_MPI
+
+  /* Pack this cell's data. */
+  pcells[0].sinks.delta_from_rebuild = c->sinks.parts - c->sinks.parts_rebuild;
+  pcells[0].sinks.count = c->sinks.count;
+  pcells[0].sinks.dx_max_part = c->sinks.dx_max_part;
+
+  /* Pack this cell's data. */
+  pcells[0].grav.delta_from_rebuild = c->grav.parts - c->grav.parts_rebuild;
+  pcells[0].grav.count = c->grav.count;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Sinks */
+  if (c->sinks.parts_rebuild == NULL)
+    error("Sink particles array at rebuild is NULL! c->depth=%d", c->depth);
+
+  if (pcells[0].sinks.delta_from_rebuild < 0)
+    error("Sinks part pointer moved in the wrong direction!");
+
+  if (pcells[0].sinks.delta_from_rebuild > 0 && c->depth == 0)
+    error("Shifting the top-level pointer is not allowed!");
+
+  /* Grav */
+  if (c->grav.parts_rebuild == NULL)
+    error("Grav. particles array at rebuild is NULL! c->depth=%d", c->depth);
+
+  if (pcells[0].grav.delta_from_rebuild < 0)
+    error("Grav part pointer moved in the wrong direction!");
+
+  if (pcells[0].grav.delta_from_rebuild > 0 && c->depth == 0)
+    error("Shifting the top-level pointer is not allowed!");
+#endif
+
+  /* Fill in the progeny, depth-first recursion. */
+  int count = 1;
+  for (int k = 0; k < 8; k++)
+    if (c->progeny[k] != NULL) {
+      count += cell_pack_sink_formation_counts(c->progeny[k], &pcells[count]);
+    }
+
+  /* Return the number of packed values. */
+  return count;
+
+#else
+  error("SWIFT was not compiled with MPI support.");
+  return 0;
+#endif
+}
+
+/**
+ * @brief Unpack the counts for sink formation of a given cell and its
+ * sub-cells.
+ *
+ * @param c The #cell
+ * @param pcells The multipole information to unpack
+ *
+ * @return The number of cells created.
+ */
+int cell_unpack_sink_formation_counts(struct cell *restrict c,
+                          struct pcell_sink_formation *restrict pcells) {
+
+#ifdef WITH_MPI
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->sinks.parts_rebuild == NULL)
+    error("Sink particles array at rebuild is NULL!");
+  if (c->grav.parts_rebuild == NULL)
+    error("Grav particles array at rebuild is NULL!");
+#endif
+
+  /* Unpack this cell's data. */
+  c->sinks.count = pcells[0].sinks.count;
+  c->sinks.parts = c->sinks.parts_rebuild + pcells[0].sinks.delta_from_rebuild;
+  c->sinks.dx_max_part = pcells[0].sinks.dx_max_part;
+
+  c->grav.count = pcells[0].grav.count;
+  c->grav.parts = c->grav.parts_rebuild + pcells[0].grav.delta_from_rebuild;
+
+  /* Fill in the progeny, depth-first recursion. */
+  int count = 1;
+  for (int k = 0; k < 8; k++)
+    if (c->progeny[k] != NULL) {
+      count += cell_unpack_sink_formation_counts(c->progeny[k], &pcells[count]);
     }
 
   /* Return the number of packed values. */

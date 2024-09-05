@@ -518,13 +518,6 @@ int main(int argc, char *argv[]) {
   }
 #endif
 
-#ifdef WITH_MPI
-  if (with_sinks) {
-    pretime_message("Error: sink particles are not available yet with MPI.");
-    return 1;
-  }
-#endif
-
   if (with_sinks && with_star_formation) {
     pretime_message(
         "Error: The sink particles are not supposed to be run with star "

@@ -754,13 +754,14 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
   const int with_hydro = e->policy & engine_policy_hydro;
   const int with_stars = e->policy & engine_policy_stars;
   const int with_black_holes = e->policy & engine_policy_black_holes;
+  const int with_sinks = e->policy & engine_policy_sinks;
   struct space *s = e->s;
   ticks tic = getticks();
 
   /* Count the number of particles we need to import and re-allocate
      the buffer if needed. */
   size_t count_parts_in = 0, count_gparts_in = 0, count_sparts_in = 0,
-         count_bparts_in = 0;
+    count_bparts_in = 0, count_sinks_in = 0;
   for (int k = 0; k < nr_proxies; k++) {
     for (int j = 0; j < e->proxies[k].nr_cells_in; j++) {
 
@@ -779,6 +780,10 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
 
       /* For black holes, we just use the numbers in the top-level cells */
       count_bparts_in += e->proxies[k].cells_in[j]->black_holes.count;
+
+      /* For sinks, we just use the numbers in the top-level cells + some
+	 extra space */
+      count_sinks_in += e->proxies[k].cells_in[j]->sinks.count + space_extra_sinks;
     }
   }
 
@@ -844,28 +849,51 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
       error("Failed to allocate foreign bpart data.");
   }
 
+    /* Allocate space for the foreign particles we will receive */
+  size_t old_size_sinks_foreign = s->size_sinks_foreign;
+  if (!fof && count_sinks_in > s->size_sinks_foreign) {
+    if (s->sinks_foreign != NULL)
+      swift_free("sinks_foreign", s->sinks_foreign);
+    s->size_sinks_foreign = engine_foreign_alloc_margin * count_sinks_in;
+    if (swift_memalign("sinks_foreign", (void **)&s->sinks_foreign,
+                       sink_align,
+                       sizeof(struct sink) * s->size_sinks_foreign) != 0)
+      error("Failed to allocate foreign sink data.");
+    bzero(s->sinks_foreign, s->size_sinks_foreign * sizeof(struct sink));
+
+    /* Note: If you ever see a sink particle with id = -666, the following
+       lines is the ones that sets the ID to this value. */
+    for (size_t i = 0; i < s->size_sinks_foreign; ++i) {
+      s->sinks_foreign[i].time_bin = time_bin_not_created;
+      s->sinks_foreign[i].id = -666;
+    }
+  }
+
   if (e->verbose) {
     message(
-        "Allocating %zd/%zd/%zd/%zd foreign part/gpart/spart/bpart "
-        "(%zd/%zd/%zd/%zd MB)",
+        "Allocating %zd/%zd/%zd/%zd/%zd foreign part/gpart/spart/bpart/sink "
+        "(%zd/%zd/%zd/%zd/%zd MB)",
         s->size_parts_foreign, s->size_gparts_foreign, s->size_sparts_foreign,
-        s->size_bparts_foreign,
+        s->size_bparts_foreign, s->size_sinks_foreign,
         s->size_parts_foreign * sizeof(struct part) / (1024 * 1024),
         s->size_gparts_foreign * sizeof(struct gpart) / (1024 * 1024),
         s->size_sparts_foreign * sizeof(struct spart) / (1024 * 1024),
-        s->size_bparts_foreign * sizeof(struct bpart) / (1024 * 1024));
+        s->size_bparts_foreign * sizeof(struct bpart) / (1024 * 1024),
+	s->size_sinks_foreign * sizeof(struct sink) / (1024 * 1024));
 
     if ((s->size_parts_foreign - old_size_parts_foreign) > 0 ||
         (s->size_gparts_foreign - old_size_gparts_foreign) > 0 ||
         (s->size_sparts_foreign - old_size_sparts_foreign) > 0 ||
-        (s->size_bparts_foreign - old_size_bparts_foreign) > 0) {
+        (s->size_bparts_foreign - old_size_bparts_foreign) > 0  ||
+        (s->size_sinks_foreign - old_size_sinks_foreign) > 0) {
       message(
-          "Re-allocations %zd/%zd/%zd/%zd part/gpart/spart/bpart "
-          "(%zd/%zd/%zd/%zd MB)",
+          "Re-allocations %zd/%zd/%zd/%zd/%zd part/gpart/spart/bpart/sink "
+          "(%zd/%zd/%zd/%zd/%zd MB)",
           (s->size_parts_foreign - old_size_parts_foreign),
           (s->size_gparts_foreign - old_size_gparts_foreign),
           (s->size_sparts_foreign - old_size_sparts_foreign),
           (s->size_bparts_foreign - old_size_bparts_foreign),
+	  (s->size_sinks_foreign - old_size_sinks_foreign),
           (s->size_parts_foreign - old_size_parts_foreign) *
               sizeof(struct part) / (1024 * 1024),
           (s->size_gparts_foreign - old_size_gparts_foreign) *
@@ -873,7 +901,9 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
           (s->size_sparts_foreign - old_size_sparts_foreign) *
               sizeof(struct spart) / (1024 * 1024),
           (s->size_bparts_foreign - old_size_bparts_foreign) *
-              sizeof(struct bpart) / (1024 * 1024));
+	  sizeof(struct bpart) / (1024 * 1024),
+	  (s->size_sinks_foreign - old_size_sinks_foreign) *
+              sizeof(struct sink) / (1024 * 1024));
     }
   }
 
@@ -882,6 +912,7 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
   struct gpart *gparts = s->gparts_foreign;
   struct spart *sparts = s->sparts_foreign;
   struct bpart *bparts = s->bparts_foreign;
+  struct sink *sinks = s->sinks_foreign;
   for (int k = 0; k < nr_proxies; k++) {
     for (int j = 0; j < e->proxies[k].nr_cells_in; j++) {
 
@@ -913,6 +944,14 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
         cell_link_bparts(e->proxies[k].cells_in[j], bparts);
         bparts = &bparts[e->proxies[k].cells_in[j]->black_holes.count];
       }
+
+      if (!fof && with_sinks) {
+
+        /* For stars, we just use the numbers in the top-level cells */
+        cell_link_sinks(e->proxies[k].cells_in[j], sinks);
+        sinks = &sinks[e->proxies[k].cells_in[j]->sinks.count +
+                         space_extra_sinks];
+      }
     }
   }
 
@@ -921,6 +960,7 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
   s->nr_gparts_foreign = gparts - s->gparts_foreign;
   s->nr_sparts_foreign = sparts - s->sparts_foreign;
   s->nr_bparts_foreign = bparts - s->bparts_foreign;
+  s->nr_sinks_foreign = sinks - s->sinks_foreign;
 
   if (e->verbose)
     message("Recursively linking foreign arrays took %.3f %s.",
@@ -1108,12 +1148,29 @@ int engine_estimate_nr_tasks(const struct engine *e) {
 #endif
   }
   if (e->policy & engine_policy_sinks) {
-    /* 1 drift, 2 kicks, 1 time-step, 1 sink formation */
-    n1 += 5;
+    /* 1 drift, 2 kicks, 1 time-step, 1 sink formation     | 5
+       swallow: 1 self + 13 pairs                          | 14
+       do_gas_swallow: 1 self + 13 pairs                   | 14
+       do_sink_swallow: 1 self + 13 pairs                  | 14
+       ghosts: sink_ghost_1, sink_ghost_2                  | 2
+       implicit: sink_in,  sink_out                        | 2 */
+    n1 += 51;
+    n2 += 3;
     if (e->policy & engine_policy_stars) {
       /* 1 star formation */
       n1 += 1;
+#ifdef WITH_MPI
+      /* sf_count: send and recv              | 2 */
+      n1 += 2;
+#endif
     }
+#ifdef WITH_MPI
+  /* sink_formation_count: send and recv              | 2
+     sink_density: send and recv                      | 2
+     sink_gas_swallow: send and recv                  | 2
+     sink_merger: send and recv                       | 2 */
+    n1 += 8;
+#endif
   }
   if (e->policy & engine_policy_fof) {
     n1 += 2;
@@ -1149,7 +1206,8 @@ int engine_estimate_nr_tasks(const struct engine *e) {
     struct cell *c = &e->s->cells_top[k];
 
     /* Any cells with particles will have tasks (local & foreign). */
-    int nparts = c->hydro.count + c->grav.count + c->stars.count;
+    /* Note: Why no BH ? */
+    int nparts = c->hydro.count + c->grav.count + c->stars.count + c->sinks.count;
     if (nparts > 0) {
       ntop++;
       ncells++;
@@ -1373,42 +1431,42 @@ void engine_rebuild(struct engine *e, const int repartitioned,
   engine_unskip(e);
   if (e->forcerebuild) error("engine_unskip faled after a rebuild!");
 
-#ifdef SWIFT_DEBUG_CHECKS
+/* #ifdef SWIFT_DEBUG_CHECKS */
 
-  /* Reset all the tasks */
-  for (int i = 0; i < e->sched.nr_tasks; ++i) {
-    e->sched.tasks[i].skip = 1;
-  }
-  for (int i = 0; i < e->sched.active_count; ++i) {
-    e->sched.tid_active[i] = -1;
-  }
-  e->sched.active_count = 0;
-  for (int i = 0; i < e->s->nr_cells; ++i) {
-    cell_clear_unskip_flags(&e->s->cells_top[i]);
-  }
+/*   /\* Reset all the tasks *\/ */
+/*   for (int i = 0; i < e->sched.nr_tasks; ++i) { */
+/*     e->sched.tasks[i].skip = 1; */
+/*   } */
+/*   for (int i = 0; i < e->sched.active_count; ++i) { */
+/*     e->sched.tid_active[i] = -1; */
+/*   } */
+/*   e->sched.active_count = 0; */
+/*   for (int i = 0; i < e->s->nr_cells; ++i) { */
+/*     cell_clear_unskip_flags(&e->s->cells_top[i]); */
+/*   } */
 
-  /* Now run the (legacy) marktasks */
-  activate_by_unskip = 0;
-  engine_marktasks(e);
+/*   /\* Now run the (legacy) marktasks *\/ */
+/*   activate_by_unskip = 0; */
+/*   engine_marktasks(e); */
 
-  /* Verify that the two task activation procedures match */
-  for (int i = 0; i < e->sched.nr_tasks; ++i) {
-    struct task *t = &e->sched.tasks[i];
+/*   /\* Verify that the two task activation procedures match *\/ */
+/*   for (int i = 0; i < e->sched.nr_tasks; ++i) { */
+/*     struct task *t = &e->sched.tasks[i]; */
 
-    if (t->activated_by_unskip && !t->activated_by_marktask) {
-      error("Task %s/%s activated by unskip and not by marktask!",
-            taskID_names[t->type], subtaskID_names[t->subtype]);
-    }
+/*     if (t->activated_by_unskip && !t->activated_by_marktask) { */
+/*       error("Task %s/%s activated by unskip and not by marktask!", */
+/*             taskID_names[t->type], subtaskID_names[t->subtype]); */
+/*     } */
 
-    if (!t->activated_by_unskip && t->activated_by_marktask) {
-      error("Task %s/%s activated by marktask and not by unskip!",
-            taskID_names[t->type], subtaskID_names[t->subtype]);
-    }
+/*     if (!t->activated_by_unskip && t->activated_by_marktask) { */
+/*       error("Task %s/%s activated by marktask and not by unskip!", */
+/*             taskID_names[t->type], subtaskID_names[t->subtype]); */
+/*     } */
 
-    t->activated_by_marktask = 0;
-    t->activated_by_unskip = 0;
-  }
-#endif
+/*     t->activated_by_marktask = 0; */
+/*     t->activated_by_unskip = 0; */
+/*   } */
+/* #endif */
 
   /* Print the status of the system */
   if (e->verbose) engine_print_task_counts(e);
@@ -1688,7 +1746,11 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->subtype == task_subtype_spart_prep2 ||
         t->subtype == task_subtype_sf_counts ||
         t->subtype == task_subtype_rt_gradient ||
-        t->subtype == task_subtype_rt_transport)
+        t->subtype == task_subtype_rt_transport ||
+        t->subtype == task_subtype_sink_formation_counts ||
+	t->subtype == task_subtype_sink_density ||
+	t->subtype == task_subtype_sink_gas_swallow ||
+	t->subtype == task_subtype_sink_merger)
       t->skip = 1;
   }
 

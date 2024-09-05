@@ -384,6 +384,7 @@ void cell_split(struct cell *c, const ptrdiff_t parts_offset,
     c->progeny[k]->sinks.count = bucket_count[k];
     c->progeny[k]->sinks.count_total = c->progeny[k]->sinks.count;
     c->progeny[k]->sinks.parts = &c->sinks.parts[bucket_offset[k]];
+    c->progeny[k]->sinks.parts_rebuild = c->progeny[k]->sinks.parts;
   }
 
   /* Finally, do the same song and dance for the gparts. */

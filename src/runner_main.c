@@ -486,7 +486,13 @@ void *runner_main(void *data) {
             free(t->buff);
           } else if (t->subtype == task_subtype_bpart_merger) {
             free(t->buff);
-          } else if (t->subtype == task_subtype_limiter) {
+          } else if (t->subtype == task_subtype_sink_formation_counts) {
+            free(t->buff);
+	  } else if (t->subtype == task_subtype_sink_gas_swallow) {
+            free(t->buff);
+          } else if (t->subtype == task_subtype_sink_merger) {
+            free(t->buff);
+	  } else if (t->subtype == task_subtype_limiter) {
             free(t->buff);
           }
           break;
@@ -497,6 +503,12 @@ void *runner_main(void *data) {
           } else if (t->subtype == task_subtype_sf_counts) {
             cell_unpack_sf_counts(ci, (struct pcell_sf *)t->buff);
             cell_clear_stars_sort_flags(ci, /*clear_unused_flags=*/0);
+            free(t->buff);
+	  } else if (t->subtype == task_subtype_sink_formation_counts) {
+            cell_unpack_sink_formation_counts(ci, (struct pcell_sink_formation *)t->buff);
+
+	    /* TODO: Check if we have something to clear for sinks */
+            /* cell_clear_stars_sort_flags(ci, /\*clear_unused_flags=*\/0); */
             free(t->buff);
           } else if (t->subtype == task_subtype_xv) {
             runner_do_recv_part(r, ci, 1, 1);
@@ -516,6 +528,14 @@ void *runner_main(void *data) {
             cell_unpack_bpart_swallow(ci,
                                       (struct black_holes_bpart_data *)t->buff);
             free(t->buff);
+          } else if (t->subtype == task_subtype_sink_gas_swallow) {
+            cell_unpack_sink_gas_swallow(ci,
+                                     (struct sink_part_data *)t->buff);
+            free(t->buff);
+          } else if (t->subtype == task_subtype_sink_merger) {
+            cell_unpack_sink_swallow(ci,
+                                      (struct sink_sink_data *)t->buff);
+            free(t->buff);
           } else if (t->subtype == task_subtype_limiter) {
             /* Nothing to do here. Unpacking done in a separate task */
           } else if (t->subtype == task_subtype_gpart) {
@@ -528,6 +548,8 @@ void *runner_main(void *data) {
             runner_do_recv_spart(r, ci, 0, 1);
           } else if (t->subtype == task_subtype_bpart_rho) {
             runner_do_recv_bpart(r, ci, 1, 1);
+	  } else if (t->subtype == task_subtype_sink_density) {
+            runner_do_recv_sink(r, ci, 1, 1);
           } else if (t->subtype == task_subtype_bpart_feedback) {
             runner_do_recv_bpart(r, ci, 0, 1);
           } else {

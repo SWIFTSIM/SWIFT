@@ -950,6 +950,8 @@ void engine_config(int restart, int fof, struct engine *e,
         params, "Scheduler:cell_extra_gparts", space_extra_gparts_default);
     space_extra_bparts = parser_get_opt_param_int(
         params, "Scheduler:cell_extra_bparts", space_extra_bparts_default);
+    space_extra_sinks = parser_get_opt_param_int(
+        params, "Scheduler:cell_extra_sinks", space_extra_sinks_default);
 
     /* Do we want any spare particles for on the fly creation?
        This condition should be the same than in space.c */

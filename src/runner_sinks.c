@@ -104,7 +104,7 @@ void runner_doself_sinks_swallow(struct runner *r, struct cell *c, int timer) {
 #endif
 
         if (r2 < ri2) {
-          runner_iact_nonsym_sinks_gas_swallow(
+	    runner_iact_nonsym_sinks_gas_swallow(
               r2, dx, ri, hj, si, pj, with_cosmology, cosmo,
               e->gravity_properties, e->sink_properties);
         }
@@ -160,7 +160,7 @@ void runner_doself_sinks_swallow(struct runner *r, struct cell *c, int timer) {
 #endif
 
       if (r2 < ri2 || r2 < rj2) {
-        runner_iact_nonsym_sinks_sink_swallow(r2, dx, ri, rj, si, sj,
+	  runner_iact_nonsym_sinks_sink_swallow(r2, dx, ri, rj, si, sj,
                                               with_cosmology, cosmo,
                                               e->gravity_properties);
       }
@@ -247,7 +247,11 @@ void runner_do_nonsym_pair_sinks_naive_swallow(struct runner *r,
 #endif
 
         if (r2 < ri2) {
-          runner_iact_nonsym_sinks_gas_swallow(
+	  /* MPI note: This function is allowed to access the gpart's data. Hence,
+	     it must be performed only on the local node. (GEAR uses gpart's data,
+	     e.g. to compute potential) */
+	    /* BUG: This causes my undrifted sink problems below... */
+	    runner_iact_nonsym_sinks_gas_swallow(
               r2, dx, ri, hj, si, pj, with_cosmology, cosmo,
               e->gravity_properties, e->sink_properties);
         }
@@ -303,7 +307,10 @@ void runner_do_nonsym_pair_sinks_naive_swallow(struct runner *r,
 #endif
 
       if (r2 < ri2 || r2 < rj2) {
-        runner_iact_nonsym_sinks_sink_swallow(r2, dx, ri, rj, si, sj,
+	/* MPI note: This function is allowed to access the gpart's data. Hence,
+	   it must be performed only on the local node. (GEAR uses gpart's data,
+	   e.g. to compute potential) */
+	  runner_iact_nonsym_sinks_sink_swallow(r2, dx, ri, rj, si, sj,
                                               with_cosmology, cosmo,
                                               e->gravity_properties);
       }
@@ -546,7 +553,8 @@ void runner_do_sinks_gas_swallow(struct runner *r, struct cell *c, int timer) {
   struct sink *sinks = s->sinks;
   const size_t nr_sink = s->nr_sinks;
 #ifdef WITH_MPI
-  error("MPI is not implemented yet for sink particles.");
+  struct sink *sinks_foreign = s->sinks_foreign;
+  const size_t nr_sinks_foreign = s->nr_sinks_foreign;
 #endif
 
   struct part *parts = c->hydro.parts;
@@ -628,7 +636,8 @@ void runner_do_sinks_gas_swallow(struct runner *r, struct cell *c, int timer) {
 
             /* If the gas particle is local, remove it */
             if (c->nodeID == e->nodeID) {
-
+	      message("Sink %lld removing gas particle %lld (local sink case)",
+                      sp->id, p->id);
               lock_lock(&e->s->lock);
 
               /* Re-check that the particle has not been removed
@@ -655,7 +664,41 @@ void runner_do_sinks_gas_swallow(struct runner *r, struct cell *c, int timer) {
         } /* Loop over local sinks */
 
 #ifdef WITH_MPI
-        error("MPI is not implemented yet for sink particles.");
+
+        /* We could also be in the case of a local gas particle being
+         * swallowed by a foreign sink. In this case, we won't update the
+         * sink but just remove the particle from the local list. */
+        if (c->nodeID == e->nodeID && !found) {
+
+          /* Let's look for the foreign hungry black hole */
+          for (size_t i = 0; i < nr_sinks_foreign; ++i) {
+
+            /* Get a handle on the sink. */
+            struct sink *sink = &sinks_foreign[i];
+
+            if (sink->id == sink_id) {
+
+              message("Sink %lld removing gas particle %lld (foreign sink case)",
+                      sink->id, p->id);
+
+              lock_lock(&e->s->lock);
+
+              /* Re-check that the particle has not been removed
+               * by another thread before we do the deed. */
+              if (!part_is_inhibited(p, e)) {
+
+                /* Finally, remove the gas particle from the system */
+                cell_remove_part(e, c, p, xp);
+              }
+
+              if (lock_unlock(&e->s->lock) != 0)
+                error("Failed to unlock the space!");
+
+              found = 1;
+              break;
+            }
+          } /* Loop over foreign sinks */
+        }   /* Is the cell local? */
 #endif
 
         /* If we have a local particle, we must have found the sink in one
@@ -758,7 +801,8 @@ void runner_do_sinks_sink_swallow(struct runner *r, struct cell *c, int timer) {
   struct sink *sinks = s->sinks;
   const size_t nr_sink = s->nr_sinks;
 #ifdef WITH_MPI
-  error("MPI is not implemented yet for sink particles.");
+  struct sink *sinks_foreign = s->sinks_foreign;
+  const size_t nr_sinks_foreign = s->nr_sinks_foreign;
 #endif
 
   struct sink *cell_sinks = c->sinks.parts;
@@ -803,7 +847,7 @@ void runner_do_sinks_sink_swallow(struct runner *r, struct cell *c, int timer) {
 
 #ifdef SWIFT_DEBUG_CHECKS
         if (cell_sp->ti_drift != e->ti_current)
-          error("Trying to swallow an un-drifted particle.");
+          error("Trying to swallow an un-drifted particle %lld.", cell_sp->id);
 #endif
 
         /* ID of the sink swallowing this particle */
@@ -842,8 +886,8 @@ void runner_do_sinks_sink_swallow(struct runner *r, struct cell *c, int timer) {
             if (lock_unlock(&s->lock) != 0)
               error("Failed to unlock the space.");
 
-            // message("sink %lld swallowing sink particle %lld", sp->id,
-            // cell_sp->id);
+            message("sink %lld swallowing sink particle %lld (local sink case)", sp->id,
+            cell_sp->id);
 
             /* If the sink particle is local, remove it */
             if (c->nodeID == e->nodeID) {
@@ -864,7 +908,41 @@ void runner_do_sinks_sink_swallow(struct runner *r, struct cell *c, int timer) {
         } /* Loop over local sinks */
 
 #ifdef WITH_MPI
-        error("MPI is not implemented yet for sink particles.");
+
+        /* We could also be in the case of a local sink particle being
+         * swallowed by a foreign sink. In this case, we won't update the
+         * foreign sink but just remove the particle from the local list. */
+        if (c->nodeID == e->nodeID && !found) {
+
+          /* Let's look for the foreign hungry sink */
+          for (size_t i = 0; i < nr_sinks_foreign; ++i) {
+
+            /* Get a handle on the sink. */
+            struct sink *sink = &sinks_foreign[i];
+
+            if (sink->id == sink_id) {
+
+              /* Is the swallowing sink itself flagged for swallowing by
+                 another sink? */
+              if (sink_get_sink_swallow_id(&sink->merger_data) != -1) {
+
+                /* Pretend it was found and abort */
+                sink_mark_sink_as_not_swallowed(&cell_sp->merger_data);
+                found = 1;
+                break;
+              }
+
+              message("Sink %lld swallowing sink particle %lld (foreign sink case)",
+                      sink->id, cell_sp->id);
+
+              /* Finally, remove the gas particle from the system */
+              cell_remove_sink(e, c, cell_sp);
+
+              found = 1;
+              break;
+            }
+          } /* Loop over foreign sinks */
+        }   /* Is the cell local? */
 #endif
 
         /* If we have a local particle, we must have found the sink in one

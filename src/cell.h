@@ -275,6 +275,15 @@ struct pcell_step {
 
   struct {
 
+    /*! Minimal integer end-of-timestep in this cell (sinks) */
+    integertime_t ti_end_min;
+
+    /*! Maximal distance any #part has travelled since last rebuild */
+    float dx_max_part;
+  } sinks;
+
+  struct {
+
     /*! Minimal integer end-of-timestep in this cell (rt) */
     integertime_t ti_rt_end_min;
 
@@ -302,6 +311,37 @@ struct pcell_sf {
     float dx_max_part;
 
   } stars;
+
+  /*! Grav. variables */
+  struct {
+
+    /* Distance by which the gpart pointer has moved since the last rebuild */
+    ptrdiff_t delta_from_rebuild;
+
+    /* Number of particles in the cell */
+    int count;
+
+  } grav;
+};
+
+/**
+ * @brief Cell information to propagate the new counts of sink particles.
+ */
+struct pcell_sink_formation {
+
+  /*! Sink variables */
+  struct {
+
+    /* Distance by which the stars pointer has moved since the last rebuild */
+    ptrdiff_t delta_from_rebuild;
+
+    /* Number of particles in the cell */
+    int count;
+
+    /*! Maximum part movement in this cell since last construction. */
+    float dx_max_part;
+
+  } sinks;
 
   /*! Grav. variables */
   struct {
@@ -533,6 +573,14 @@ void cell_pack_bpart_swallow(const struct cell *c,
                              struct black_holes_bpart_data *data);
 void cell_unpack_bpart_swallow(struct cell *c,
                                const struct black_holes_bpart_data *data);
+void cell_pack_sink_gas_swallow(const struct cell *c,
+                            struct sink_part_data *data);
+void cell_unpack_sink_gas_swallow(struct cell *c,
+                              const struct sink_part_data *data);
+void cell_pack_sink_swallow(const struct cell *c,
+                             struct sink_sink_data *data);
+void cell_unpack_sink_swallow(struct cell *c,
+                               const struct sink_sink_data *data);
 int cell_pack_tags(const struct cell *c, int *tags);
 int cell_unpack_tags(const int *tags, struct cell *c);
 int cell_pack_end_step(const struct cell *c, struct pcell_step *pcell);
@@ -543,11 +591,14 @@ int cell_pack_multipoles(struct cell *c, struct gravity_tensors *m);
 int cell_unpack_multipoles(struct cell *c, struct gravity_tensors *m);
 int cell_pack_sf_counts(struct cell *c, struct pcell_sf *pcell);
 int cell_unpack_sf_counts(struct cell *c, struct pcell_sf *pcell);
+int cell_pack_sink_formation_counts(struct cell *c, struct pcell_sink_formation *pcell);
+int cell_unpack_sink_formation_counts(struct cell *c, struct pcell_sink_formation *pcell);
 int cell_get_tree_size(struct cell *c);
 int cell_link_parts(struct cell *c, struct part *parts);
 int cell_link_gparts(struct cell *c, struct gpart *gparts);
 int cell_link_sparts(struct cell *c, struct spart *sparts);
 int cell_link_bparts(struct cell *c, struct bpart *bparts);
+int cell_link_sinks(struct cell *c, struct sink *sinks);
 int cell_link_foreign_parts(struct cell *c, struct part *parts);
 int cell_link_foreign_gparts(struct cell *c, struct gpart *gparts);
 void cell_unlink_foreign_particles(struct cell *c);

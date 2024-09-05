@@ -164,6 +164,10 @@ const char *subtaskID_names[task_subtype_count] = {
     "sink_do_gas_swallow",
     "rt_gradient",
     "rt_transport",
+    "sink_formation_counts",
+    "sink_density",
+    "sink_gas_swallow",
+    "sink_merger",
 };
 
 const char *task_category_names[task_category_count] = {
