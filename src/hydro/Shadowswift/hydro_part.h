@@ -244,6 +244,10 @@ struct part {
   /*! Geometric information associated with this particle */
   struct {
 
+    /*! Flags indicating to which neighbouring cells this particle has already
+     * been added. */
+    unsigned long delaunay_flags;
+
     /*! Voronoi cell volume. */
     float volume;
 
@@ -258,10 +262,6 @@ struct part {
 
     /*! Estimate of the minimal distance from centroid to a face */
     float min_face_dist;
-
-    /*! Flags indicating to which neighbouring cells this particle has already
-     * been added. */
-    unsigned long delaunay_flags;
 
     /*! Index of this particle in the delaunay tesselation (only valid if it is
      * active) */
@@ -290,38 +290,40 @@ struct part {
 
   } timestepvars;
 
-  /* Unused in the ShadowSWIFT scheme */
-  struct {
+  union {
+    /* Specific stuff for the gravity-hydro coupling. */
+    struct {
 
-    /* Derivative of particle number density. */
-    float wcount_dh;
+      /*! Timestep of first half kick of this timestep (gravity) */
+      float dt;
 
-    /* Particle number density. */
-    float wcount;
+      /*! Timestep of first half kick for the kinetic energy correction */
+      float dt_corr;
 
-  } density;
+      /*! Current value of the mass flux vector. */
+      float mflux[3];
 
-  /* Unused in the ShadowSWIFT scheme. */
-  struct {
+    } gravity;
 
-    /* Needed to drift the primitive variables. */
-    float h_dt;
+    /* Unused in the ShadowSWIFT scheme, put in union to save space */
+    struct {
 
-  } force;
+      /* Derivative of particle number density. */
+      float wcount_dh;
 
-  /* Specific stuff for the gravity-hydro coupling. */
-  struct {
+      /* Particle number density. */
+      float wcount;
 
-    /*! Timestep of first half kick of this timestep (gravity) */
-    float dt;
+    } density;
 
-    /*! Timestep of first half kick for the potential energy correction */
-    float dt_corr;
+    /* Unused in the ShadowSWIFT scheme. */
+    struct {
 
-    /*! Current value of the mass flux vector. */
-    float mflux[3];
+      /* Needed to drift the primitive variables. */
+      float h_dt;
 
-  } gravity;
+    } force;
+  };
 
   /*! Chemistry information */
   struct chemistry_part_data chemistry_data;
