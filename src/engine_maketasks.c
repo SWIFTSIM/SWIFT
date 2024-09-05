@@ -2034,8 +2034,10 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
   if ((c->nodeID == e->nodeID) && (star_resort_cell == NULL) &&
       (c->depth == engine_star_resort_task_depth || c->hydro.super == c)) {
 
-    /* Star formation */
-    if (with_feedback && c->hydro.count > 0 && with_star_formation) {
+    /* If star formation from gas or sinks has happened, we need to resort */
+    if (with_feedback && ((c->hydro.count > 0 && with_star_formation) ||
+                          ((c->hydro.count > 0 || c->sinks.count > 0) &&
+                           with_star_formation_sink))) {
 
       /* Record this is the level where we re-sort */
       star_resort_cell = c;
@@ -2043,22 +2045,20 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
       c->hydro.stars_resort = scheduler_addtask(
           s, task_type_stars_resort, task_subtype_none, 0, 0, c, NULL);
 
-      scheduler_addunlock(s, c->top->hydro.star_formation,
-                          c->hydro.stars_resort);
-    }
-
-    /* Star formation from sinks */
-    if (with_feedback && with_star_formation_sink &&
-        (c->hydro.count > 0 || c->sinks.count > 0)) {
-
-      /* Record this is the level where we re-sort */
-      star_resort_cell = c;
-
-      c->hydro.stars_resort = scheduler_addtask(
-          s, task_type_stars_resort, task_subtype_none, 0, 0, c, NULL);
-
-      scheduler_addunlock(s, c->top->sinks.star_formation_sink,
-                          c->hydro.stars_resort);
+      /* Now add the relevant unlocks */
+      /* If we can make stars, we should wait until SF is done before resorting
+       */
+      if (with_star_formation && c->hydro.count > 0) {
+        scheduler_addunlock(s, c->top->hydro.star_formation,
+                            c->hydro.stars_resort);
+      }
+      /* If we can make sinks or spawn from existing ones, we should wait until
+      SF is done before resorting */
+      if (with_star_formation_sink &&
+          (c->hydro.count > 0 || c->sinks.count > 0)) {
+        scheduler_addunlock(s, c->top->sinks.star_formation_sink,
+                            c->hydro.stars_resort);
+      }
     }
   }
 
@@ -2218,13 +2218,9 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
         scheduler_addunlock(s, c->stars.stars_out, c->super->timestep);
 
         /* Star formation*/
-        if (with_feedback && c->hydro.count > 0 && with_star_formation) {
-          scheduler_addunlock(s, star_resort_cell->hydro.stars_resort,
-                              c->stars.stars_in);
-        }
-        /* Star formation from sinks */
-        if (with_feedback && with_star_formation_sink &&
-            (c->hydro.count > 0 || c->sinks.count > 0)) {
+        if (with_feedback && ((c->hydro.count > 0 && with_star_formation) ||
+                              ((c->hydro.count > 0 || c->sinks.count > 0) &&
+                               with_star_formation_sink))) {
           scheduler_addunlock(s, star_resort_cell->hydro.stars_resort,
                               c->stars.stars_in);
         }

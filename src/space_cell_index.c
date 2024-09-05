@@ -80,7 +80,7 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
   const double ih_z = s->iwidth[2];
 
   /* Init the local count buffer. */
-  int *cell_counts = (int *)calloc(sizeof(int), s->nr_cells);
+  int *cell_counts = (int *)calloc(s->nr_cells, sizeof(int));
   if (cell_counts == NULL)
     error("Failed to allocate temporary cell count buffer.");
 
@@ -214,7 +214,7 @@ void space_gparts_get_cell_index_mapper(void *map_data, int nr_gparts,
   const double ih_z = s->iwidth[2];
 
   /* Init the local count buffer. */
-  int *cell_counts = (int *)calloc(sizeof(int), s->nr_cells);
+  int *cell_counts = (int *)calloc(s->nr_cells, sizeof(int));
   if (cell_counts == NULL)
     error("Failed to allocate temporary cell count buffer.");
 
@@ -346,7 +346,7 @@ void space_sparts_get_cell_index_mapper(void *map_data, int nr_sparts,
   const double ih_z = s->iwidth[2];
 
   /* Init the local count buffer. */
-  int *cell_counts = (int *)calloc(sizeof(int), s->nr_cells);
+  int *cell_counts = (int *)calloc(s->nr_cells, sizeof(int));
   if (cell_counts == NULL)
     error("Failed to allocate temporary cell count buffer.");
 
@@ -474,7 +474,7 @@ void space_bparts_get_cell_index_mapper(void *map_data, int nr_bparts,
   const double ih_z = s->iwidth[2];
 
   /* Init the local count buffer. */
-  int *cell_counts = (int *)calloc(sizeof(int), s->nr_cells);
+  int *cell_counts = (int *)calloc(s->nr_cells, sizeof(int));
   if (cell_counts == NULL)
     error("Failed to allocate temporary cell count buffer.");
 
@@ -602,7 +602,7 @@ void space_sinks_get_cell_index_mapper(void *map_data, int nr_sinks,
   const double ih_z = s->iwidth[2];
 
   /* Init the local count buffer. */
-  int *cell_counts = (int *)calloc(sizeof(int), s->nr_cells);
+  int *cell_counts = (int *)calloc(s->nr_cells, sizeof(int));
   if (cell_counts == NULL)
     error("Failed to allocate temporary cell count buffer.");
 
