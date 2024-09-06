@@ -34,7 +34,7 @@
  */
 __attribute__((always_inline)) INLINE static void runner_iact_mhd_density(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct part *restrict pi, struct part *restrict pj, const double mu_0,
+    struct part *restrict pi, struct part *restrict pj, const float mu_0,
     const float a, const float H) {}
 
 /**
@@ -55,7 +55,7 @@ runner_iact_nonsym_mhd_density(const float r2, const float dx[3],
                                const float hi, const float hj,
                                struct part *restrict pi,
                                const struct part *restrict pj,
-                               const double mu_0, const float a,
+                               const float mu_0, const float a,
                                const float H) {}
 
 /**
@@ -78,7 +78,7 @@ runner_iact_nonsym_mhd_density(const float r2, const float dx[3],
  */
 __attribute__((always_inline)) INLINE static void runner_iact_mhd_gradient(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct part *restrict pi, struct part *restrict pj, const double mu_0,
+    struct part *restrict pi, struct part *restrict pj, const float mu_0,
     const float a, const float H) {
 
   /* Define kernel variables */
@@ -192,7 +192,7 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
                                 const float hi, const float hj,
                                 struct part *restrict pi,
                                 const struct part *restrict pj,
-                                const double mu_0, const float a,
+                                const float mu_0, const float a,
                                 const float H) {
 
   /* Define kernel variables */
@@ -288,7 +288,7 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
  */
 __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct part *restrict pi, struct part *restrict pj, const double mu_0,
+    struct part *restrict pi, struct part *restrict pj, const float mu_0,
     const float a, const float H) {
 
   /* Get r and 1/r. */
@@ -344,7 +344,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   const float psi_over_ch_i = pi->mhd_data.psi_over_ch;
   const float psi_over_ch_j = pj->mhd_data.psi_over_ch;
 
-  const double permeability_inv = 1.f / mu_0;
+  const float permeability_inv = 1.f / mu_0;
 
   /* Get the kernel for hi. */
   const float hi_inv = 1.0f / hi;
@@ -668,7 +668,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct part *restrict pi, const struct part *restrict pj, const double mu_0,
+    struct part *restrict pi, const struct part *restrict pj, const float mu_0,
     const float a, const float H) {
 
   /* Get r and 1/r. */
@@ -722,7 +722,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   const float psi_over_ch_i = pi->mhd_data.psi_over_ch;
   const float psi_over_ch_j = pj->mhd_data.psi_over_ch;
 
-  const double permeability_inv = 1.0f / mu_0;
+  const float permeability_inv = 1.0f / mu_0;
 
   /* Get the kernel for hi. */
   const float hi_inv = 1.0f / hi;
