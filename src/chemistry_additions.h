@@ -30,7 +30,7 @@
 /* Config parameters. */
 #include <config.h>
 
-#ifdef HYDRO_DOES_MASS_FLUX
+#if defined (HYDRO_DOES_MASS_FLUX)
 /* Import the right chemistry definition */
 #if defined(CHEMISTRY_AGORA)
 #include "./chemistry/AGORA/chemistry_additions.h"
@@ -39,7 +39,7 @@
 #elif defined(CHEMISTRY_GEAR)
 #include "./chemistry/GEAR/chemistry_additions.h"
 #elif defined(CHEMISTRY_GEAR_MFM_DIFFUSION)
-#include "./chemistry/GEAR_MFM_DIFFUSION/chemistry_additions.h"
+/* #include "./chemistry/GEAR_MFM_DIFFUSION/chemistry_additions.h" */
 #elif defined(CHEMISTRY_NONE)
 #include "./chemistry/none/chemistry_additions.h"
 #elif defined(CHEMISTRY_NONE)
@@ -47,6 +47,8 @@
 #else
 #error "Metal advection unimpmlemented for selected chemistry scheme!"
 #endif
+#elif defined(CHEMISTRY_GEAR_MFM_DIFFUSION)
+#include "./chemistry/GEAR_MFM_DIFFUSION/chemistry_additions.h"
 #else
 /**
  * @brief Extra operations done during the kick. This needs to be
@@ -61,10 +63,10 @@
  * @param cosmo Cosmology.
  * @param hydro_props Additional hydro properties.
  */
-/* __attribute__((always_inline)) INLINE static void chemistry_kick_extra( */
-/*     struct part* p, float dt_therm, float dt_grav, float dt_hydro, */
-/*     float dt_kick_corr, const struct cosmology* cosmo, */
-/*     const struct hydro_props* hydro_props) {} */
+__attribute__((always_inline)) INLINE static void chemistry_kick_extra(
+    struct part* p, float dt_therm, float dt_grav, float dt_hydro,
+    float dt_kick_corr, const struct cosmology* cosmo,
+    const struct hydro_props* hydro_props) {}
 
 /**
  * @brief update metal mass fluxes between two interacting particles during
