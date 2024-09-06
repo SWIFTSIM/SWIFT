@@ -246,7 +246,7 @@ lightcone_check_particle_crosses(
         lightcone_buffer_map_update(props, e, gp, a_cross, x_cross);
 
     } /* Next periodic replication*/
-  }   /* Next lightcone */
+  } /* Next lightcone */
 }
 
 #endif /* SWIFT_LIGHTCONE_CROSSING_H */

@@ -80,6 +80,11 @@ struct feedback_spart_data {
   char will_do_feedback;
 
   /* Feedback type in function of the star particle type */
+  /* Note for Darwin (July 2024): Ideally, I'd like to move this to the star
+  module and not the feedback. The type of the stellar particle is more related
+  to the star than the feedback. Furthermore, this type may be used in other
+  modules, e.g. RT, star formation, etc. This type is already used by the sink
+  module. */
   enum star_feedback_type star_type;
 };
 

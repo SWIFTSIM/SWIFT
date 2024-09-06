@@ -54,9 +54,6 @@ struct sink {
   /*! Particle time bin */
   timebin_t time_bin;
 
-  /*! Number of stars contained in the sink */
-  int n_stars;
-
 #ifdef SWIFT_DEBUG_CHECKS
 
   /* Time of the last drift */

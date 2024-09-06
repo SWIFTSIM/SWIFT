@@ -35,10 +35,11 @@
  *        parameter file.
  **/
 const char* lossy_compression_schemes_names[compression_level_count] = {
-    "off",        "on",          "DScale1",   "DScale2",    "DScale3",
-    "DScale4",    "DScale5",     "DScale6",   "DMantissa9", "DMantissa13",
-    "FMantissa9", "FMantissa13", "HalfFloat", "BFloat16",   "Nbit32",
-    "Nbit36",     "Nbit40",      "Nbit44",    "Nbit48",     "Nbit56"};
+    "off",         "on",         "DScale1",     "DScale2",    "DScale3",
+    "DScale4",     "DScale5",    "DScale6",     "DMantissa9", "DMantissa13",
+    "DMantissa21", "FMantissa9", "FMantissa13", "HalfFloat",  "BFloat16",
+    "Nbit32",      "Nbit36",     "Nbit40",      "Nbit44",     "Nbit48",
+    "Nbit56"};
 
 /**
  * @brief Returns the lossy compression scheme given its name
@@ -149,7 +150,7 @@ void set_hdf5_lossy_compression(hid_t* h_prop, hid_t* h_type,
     /* Double numbers with 9-bits mantissa and 11-bits exponent
      *
      * This has a relative accuracy of log10(2^(9+1)) = 3.01 decimal digits
-     * and the same range as a regular float.
+     * and the same range as a regular double.
      *
      * This leads to a compression ratio of 3.05 */
 
@@ -205,7 +206,7 @@ void set_hdf5_lossy_compression(hid_t* h_prop, hid_t* h_type,
     /* Double numbers with 13-bits mantissa and 11-bits exponent
      *
      * This has a relative accuracy of log10(2^(13+1)) = 4.21 decimal digits
-     * and the same range as a regular float.
+     * and the same range as a regular double.
      *
      * This leads to a compression ratio of 2.56 */
 
@@ -227,6 +228,62 @@ void set_hdf5_lossy_compression(hid_t* h_prop, hid_t* h_type,
 
     H5Tclose(*h_type);
     *h_type = H5Tcopy(H5T_NATIVE_FLOAT);
+    hid_t h_err = H5Tset_fields(*h_type, s_pos, e_pos, e_size, m_pos, m_size);
+    if (h_err < 0)
+      error("Error while setting type properties for field '%s'.", field_name);
+
+    h_err = H5Tset_offset(*h_type, offset);
+    if (h_err < 0)
+      error("Error while setting type offset properties for field '%s'.",
+            field_name);
+
+    h_err = H5Tset_precision(*h_type, precision);
+    if (h_err < 0)
+      error("Error while setting type precision properties for field '%s'.",
+            field_name);
+
+    h_err = H5Tset_size(*h_type, size);
+    if (h_err < 0)
+      error("Error while setting type size properties for field '%s'.",
+            field_name);
+
+    h_err = H5Tset_ebias(*h_type, bias);
+    if (h_err < 0)
+      error("Error while setting type bias properties for field '%s'.",
+            field_name);
+
+    h_err = H5Pset_nbit(*h_prop);
+    if (h_err < 0)
+      error("Error while setting n-bit filter for field '%s'.", field_name);
+  }
+
+  else if (comp == compression_write_d_mantissa_21) {
+
+    /* Double numbers with 21-bits mantissa and 11-bits exponent
+     *
+     * This has a relative accuracy of log10(2^(21+1)) = 6.62 decimal digits
+     * and the same range as a regular double.
+     *
+     * This leads to a compression ratio of 1.93 */
+
+    /* Note a regular IEEE-754 double has:
+     * - size = 8
+     * - m_size = 52
+     * - e_size = 11
+     * i.e. 52 + 11 + 1 (the sign bit) == 64 bits (== 8 bytes) */
+
+    const int size = 8;
+    const int m_size = 21;
+    const int e_size = 11;
+    const int offset = 0;
+    const int precision = m_size + e_size + 1;
+    const int e_pos = offset + m_size;
+    const int s_pos = e_pos + e_size;
+    const int m_pos = offset;
+    const int bias = (1 << (e_size - 1)) - 1;
+
+    H5Tclose(*h_type);
+    *h_type = H5Tcopy(H5T_NATIVE_DOUBLE);
     hid_t h_err = H5Tset_fields(*h_type, s_pos, e_pos, e_size, m_pos, m_size);
     if (h_err < 0)
       error("Error while setting type properties for field '%s'.", field_name);

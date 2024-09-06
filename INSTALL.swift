@@ -99,7 +99,7 @@ before you can build it.
 
 
  - HDF5:
-	A HDF5 library (v. 1.8.x or higher) is required to read and
+	A HDF5 library (v. 1.10.x or higher) is required to read and
         write particle data. One of the commands "h5cc" or "h5pcc"
         should be available. If "h5pcc" is located then a parallel
         HDF5 built for the version of MPI located should be
@@ -191,7 +191,7 @@ before you can build it.
                              ==================
 
 The SWIFT source code uses a variation of 'Google' style. The script
-'format.sh' in the root directory applies the clang-format-13 tool with our
+'format.sh' in the root directory applies the clang-format-18 tool with our
 style choices to all the SWIFT C source file. Please apply the formatting
 script to the files before submitting a merge request.
 
