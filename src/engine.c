@@ -23,8 +23,6 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "task.h"
-
 #include <config.h>
 
 /* Some standard headers. */
@@ -951,29 +949,10 @@ void engine_do_tasks_count_mapper(void *map_data, int num_elements,
 
   /* Add task counts locally */
   for (int k = 0; k < num_elements; k++) {
-    if (tasks[k].skip) {
+    if (tasks[k].skip)
       local_counts[task_type_count] += 1;
-      if (tasks[k].type == task_type_grav_mm) {
-        message(
-            "Task %s is skipped is a MM task "
-            "(ci->type=%s, ci->subtype=%s, cj->type=%s, cj->subtype=%s)",
-            taskID_names[tasks[k].type], cellID_names[tasks[k].ci->type],
-            subcellID_names[tasks[k].ci->subtype],
-            cellID_names[tasks[k].cj->type],
-            subcellID_names[tasks[k].cj->subtype]);
-      } else if (tasks[k].type == task_type_pair &&
-                 tasks[k].subtype == task_subtype_grav) {
-        message(
-            "Task %s is skipped is a pair task "
-            "(ci->type=%s, ci->subtype=%s, cj->type=%s, cj->subtype=%s)",
-            taskID_names[tasks[k].type], cellID_names[tasks[k].ci->type],
-            subcellID_names[tasks[k].ci->subtype],
-            cellID_names[tasks[k].cj->type],
-            subcellID_names[tasks[k].cj->subtype]);
-      }
-    } else {
+    else
       local_counts[(int)tasks[k].type] += 1;
-    }
   }
 
   /* Update the global counts */
@@ -1064,10 +1043,7 @@ void engine_print_task_counts(const struct engine *e) {
       const struct task *t = &tasks[i];
 
       /* Skip skipped tasks. */
-      if (t->skip) {
-
-        continue;
-      }
+      if (t->skip) continue;
 
       /* Skip non-pairs. */
       if (t->type != task_type_pair) continue;
