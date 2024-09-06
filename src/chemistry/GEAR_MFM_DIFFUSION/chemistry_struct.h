@@ -36,6 +36,12 @@ struct chemistry_global_data {
   /*! Name of the different elements */
   char elements_name[GEAR_CHEMISTRY_ELEMENT_COUNT * GEAR_LABELS_SIZE];
 
+  /*! Diffusion normalisation constant: \kappa \propto C */
+  float diffusion_coefficient;
+
+  /*! Is the diffusion isotropic? */
+  int use_isotropic_diffusion;
+
   /***************************************************************************/
   /* HLL Riemann solver parameters
    * See Hopkins 2017 (https://arxiv.org/abs/1602.07703) */

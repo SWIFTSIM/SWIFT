@@ -43,6 +43,8 @@
 #include "units.h"
 
 /* Some constants */
+#define DEFAULT_DIFFUSION_NORMALISATION 1
+#define DEFAULT_USE_ISOTROPIC_DIFFUSION 0
 #define DEFAULT_PSI_RIEMANN_SOLVER 0.1
 #define DEFAULT_USE_HOPKINS2017_HLL_RIEMANN_SOLVER 0
 #define DEFAULT_EPSILON_RIEMANN_SOLVER 0.5
@@ -324,6 +326,15 @@ static INLINE void chemistry_init_backend(struct swift_params* parameter_file,
     chemistry_read_elements(parameter_file, data);
   }
 #endif
+
+  /***************************************************************************/
+  data->diffusion_coefficient = parser_get_opt_param_float(
+      parameter_file, "GEARChemistry:diffusion_coefficient",
+      DEFAULT_DIFFUSION_NORMALISATION);
+
+  data->use_isotropic_diffusion = parser_get_opt_param_float(
+      parameter_file, "GEARChemistry:use_isotropic_diffusion",
+      DEFAULT_USE_ISOTROPIC_DIFFUSION);
 
   /***************************************************************************/
   /* Read parameters for the Riemann solver */
