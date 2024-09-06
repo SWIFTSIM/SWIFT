@@ -98,7 +98,8 @@ chemistry_part_normalise_gradients(struct part *restrict p, int g,
  * @param p Particle.
  */
 __attribute__((always_inline)) INLINE static double
-chemistry_part_compute_diffusion_coefficient(struct part *restrict p, const struct chemistry_global_data* data) {
+chemistry_part_compute_diffusion_coefficient(
+    struct part *restrict p, const struct chemistry_global_data *data) {
 
   if (data->use_isotropic_diffusion) {
     return data->diffusion_coefficient;

@@ -82,10 +82,10 @@ __attribute__((always_inline)) INLINE static void chemistry_kick_extra(
   /* Only if we have mass fluxes to deal with */
 #ifdef HYDRO_DOES_MASS_FLUX
   /* Do MFV advection */
-  chemistry_kick_extra_mass_fluxes(p, dt_therm, dt_grav, dt_hydro, dt_kick_corr, cosmo, hydro_props);
+  chemistry_kick_extra_mass_fluxes(p, dt_therm, dt_grav, dt_hydro, dt_kick_corr,
+                                   cosmo, hydro_props);
 #endif
 }
-
 
 #ifdef HYDRO_DOES_MASS_FLUX
 
@@ -114,10 +114,11 @@ __attribute__((always_inline)) INLINE static void chemistry_reset_mass_fluxes(
  * @param cosmo Cosmology.
  * @param hydro_props Additional hydro properties.
  */
-__attribute__((always_inline)) INLINE static void chemistry_kick_extra_mass_fluxes(
-    struct part* p, float dt_therm, float dt_grav, float dt_hydro,
-    float dt_kick_corr, const struct cosmology* cosmo,
-    const struct hydro_props* hydro_props) {
+__attribute__((always_inline)) INLINE static void
+chemistry_kick_extra_mass_fluxes(struct part* p, float dt_therm, float dt_grav,
+                                 float dt_hydro, float dt_kick_corr,
+                                 const struct cosmology* cosmo,
+                                 const struct hydro_props* hydro_props) {
   /* For hydro schemes that exchange mass fluxes between the particles,
    * we want to advect the metals. */
   if (p->flux.dt > 0.) {

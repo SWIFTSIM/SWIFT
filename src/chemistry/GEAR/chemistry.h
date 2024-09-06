@@ -402,7 +402,8 @@ __attribute__((always_inline)) INLINE static void chemistry_end_force(
  */
 __attribute__((always_inline)) INLINE static void chemistry_prepare_force(
     struct part* restrict p, struct xpart* restrict xp,
-    const struct cosmology* cosmo, const float dt_alpha, const float dt_therm) {}
+    const struct cosmology* cosmo, const float dt_alpha, const float dt_therm) {
+}
 
 /**
  * @brief Sets all particle fields to sensible values when the #part has 0 ngbs.
