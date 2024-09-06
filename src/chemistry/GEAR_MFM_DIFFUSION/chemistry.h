@@ -390,7 +390,7 @@ __attribute__((always_inline)) INLINE static void chemistry_init_part(
   /* Update the diffusion coefficient for the new loops */
   /* TODO: This might be moved to the end of density or gradient, if we want to
      use a shear tensor using grad velocity */
-  p->chemistry_data.kappa = chemistry_part_compute_diffusion_coefficient(p);
+  p->chemistry_data.kappa = chemistry_part_compute_diffusion_coefficient(p, cd);
 
   /* Init the gradient for the next loops */
   chemistry_gradients_init(p);
@@ -659,7 +659,8 @@ __attribute__((always_inline)) INLINE static void chemistry_first_init_part(
           data->initial_metallicities[i] * hydro_get_mass(p);
     }
   }
-  p->chemistry_data.kappa = chemistry_part_compute_diffusion_coefficient(p);
+
+  /* Init the part chemistry data */
   chemistry_init_part(p, data);
 
   /* we cannot initialize wcorr in init_part, as init_part gets called every

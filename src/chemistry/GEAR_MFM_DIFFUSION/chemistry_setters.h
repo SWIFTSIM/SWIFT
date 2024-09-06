@@ -19,6 +19,7 @@
 #ifndef SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_SETTERS_H
 #define SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_SETTERS_H
 
+#include "chemistry_struct.h"
 #include "kernel_hydro.h"
 
 /**
@@ -97,8 +98,13 @@ chemistry_part_normalise_gradients(struct part *restrict p, int g,
  * @param p Particle.
  */
 __attribute__((always_inline)) INLINE static double
-chemistry_part_compute_diffusion_coefficient(struct part *restrict p) {
-  return kernel_gamma2 * p->h * p->h;
+chemistry_part_compute_diffusion_coefficient(struct part *restrict p, const struct chemistry_global_data* data) {
+
+  if (data->use_isotropic_diffusion) {
+    return data->diffusion_coefficient;
+  } else {
+    return data->diffusion_coefficient * kernel_gamma2 * p->h * p->h;
+  }
 }
 
 #endif /* SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_SETTERS_H */
