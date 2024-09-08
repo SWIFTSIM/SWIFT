@@ -97,9 +97,9 @@ INLINE static void convert_sink_vel(const struct engine* e,
 INLINE static void convert_sink_target_mass(const struct engine* e,
                                             const struct sink* sink,
                                             float* ret) {
-  /* Recall that the target_mass is in M_sun in the code. We nee to convert it
-     to internal units for consistency in the output. */
-  ret[0] = sink->target_mass * e->physical_constants->const_solar_mass;
+  /* Recall that the target_mass_Msun is in M_sun in the code. We nee to convert
+     it to internal units for consistency in the output. */
+  ret[0] = sink->target_mass_Msun * e->physical_constants->const_solar_mass;
 }
 
 INLINE static void convert_sink_swallowed_angular_momentum(
