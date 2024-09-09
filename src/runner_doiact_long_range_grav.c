@@ -768,6 +768,9 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
       case cell_type_regular:
         runner_do_grav_long_range_periodic(r, ci, top, s->cells_top);
         break;
+      case cell_type_zoom:
+        runner_do_long_range_zoom_periodic(r, ci, top);
+        break;
       case cell_type_buffer:
         runner_do_grav_long_range_buffer_periodic(r, ci, top);
         break;
@@ -784,6 +787,9 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
 
       case cell_type_regular:
         runner_do_grav_long_range_uniform_non_periodic(r, ci, top);
+        break;
+      case cell_type_zoom:
+        runner_do_grav_long_range_zoom_non_periodic(r, ci, top);
         break;
       case cell_type_buffer:
         runner_do_grav_long_range_zoom_non_periodic(r, ci, top);
