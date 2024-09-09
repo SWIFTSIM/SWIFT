@@ -172,9 +172,9 @@ void los_io_output_check(const struct engine *e) {
   struct io_props list[100];
 
   /* Find all the gas output fields */
-  io_select_hydro_fields(e->s->parts, e->s->xparts, with_cosmology, with_cooling,
-                         with_temperature, with_fof, with_stf, with_rt, e,
-                         &num_fields, list);
+  io_select_hydro_fields(e->s->parts, e->s->xparts, with_cosmology,
+                         with_cooling, with_temperature, with_fof, with_stf,
+                         with_rt, e, &num_fields, list);
 
   /* Loop over each output field */
   for (int i = 0; i < num_fields; i++) {
@@ -410,6 +410,9 @@ void write_los_hdf5_dataset(const struct io_props props, const size_t N,
   io_write_attribute_f(h_data, "a-scale exponent", props.scale_factor_exponent);
   io_write_attribute_s(h_data, "Expression for physical CGS units", buffer);
   io_write_attribute_s(h_data, "Lossy compression filter", comp_buffer);
+  io_write_attribute_b(h_data, "Value stored as physical", props.is_physical);
+  io_write_attribute_b(h_data, "Property can be converted to comoving",
+                       props.is_convertible_to_comoving);
 
   /* Write the actual number this conversion factor corresponds to */
   const double factor =
@@ -767,14 +770,21 @@ void do_line_of_sight(struct engine *e) {
 #endif
 
   /* Node 0 creates the HDF5 file. */
-  hid_t h_file = -1, h_grp = -1;
+  hid_t h_file = -1, h_grp = -1, h_props = -1;
   char fileName[256], groupName[200];
 
   if (e->nodeID == 0) {
     sprintf(fileName, "%s_%04i.hdf5", LOS_params->basename,
             e->los_output_count);
     if (verbose) message("Creating LOS file: %s", fileName);
-    h_file = H5Fcreate(fileName, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+
+    /* Set the minimal API version to avoid issues with advanced features */
+    h_props = H5Pcreate(H5P_FILE_ACCESS);
+    hid_t err = H5Pset_libver_bounds(h_props, HDF5_LOWEST_FILE_FORMAT_VERSION,
+                                     HDF5_HIGHEST_FILE_FORMAT_VERSION);
+    if (err < 0) error("Error setting the hdf5 API version");
+
+    h_file = H5Fcreate(fileName, H5F_ACC_TRUNC, H5P_DEFAULT, h_props);
     if (h_file < 0) error("Error while opening file '%s'.", fileName);
   }
 
@@ -1079,6 +1089,7 @@ void do_line_of_sight(struct engine *e) {
 
     /* Close HDF5 file */
     H5Fclose(h_file);
+    H5Pclose(h_props);
   }
 
   /* Up the LOS counter. */
