@@ -1761,6 +1761,14 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
       }
     }
 
+    else {
+      error(
+          "Unexpected cell types in "
+          "zoom_scheduler_splittask_gravity_void_pair (%s/%s, %s/%s)",
+          cellID_names[ci->subtype], subcellID_names[ci->subtype],
+          cellID_names[cj->subtype], subcellID_names[cj->subtype]);
+    }
+
     /* If we didn't get a pair something bad happened! */
   } else {
     error(
