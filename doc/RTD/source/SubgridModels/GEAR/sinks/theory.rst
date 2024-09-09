@@ -63,7 +63,7 @@ The primary criteria required to transform a gas particle into a sink are:
 1. the density of a given particle :math:`i` is bigger than a user-defined threshold density: :math:`\rho_i > \rho_{\text{threshold}}` ;
 2. the temperature of a given particle is smaller than a user-defined threshold temperature: :math:`T_i < T_{\text{threshold}}`. 
 
-The first criterion is common but not the second one. This is checked to ensure that sink particles, and thus stars, are not generated in hot regions. The parameters for those threshold quantities are respectively called ``density_threshold`` and ``maximal_temperature``.
+The first criterion is common but not the second one. This is checked to ensure that sink particles, and thus stars, are not generated in hot regions. The parameters for those threshold quantities are respectively called ``density_threshold_g_per_cm3`` and ``maximal_temperature``.
 
 Then, further criteria are checked. They are always checked for gas particles within the accretion radius :math:`r_{\text{acc}}` (also called the cut-off radius) of a given gas particle :math:`i`. Such gas particles are called *neighbours*.
 
@@ -176,12 +176,12 @@ IMF sampling
 Now remains one critical question: how are stars formed in this scheme? Simply, by sampling an IMF. 
 In our scheme, population III stars and population II have two different IMFs. For the sake of simplicity, in the following presentation, we consider only the case of population II stars. However, this can be easily generalized to population III. 
 
-Consider an IMF such as the one above. We split it into two parts at ``minimal_discrete_masss``. The reason behind this is that we want to spawn star particles that represent *individual* (massive) stars, i.e. they are "discrete". However, for computational reasons, we cannot afford to spawn every star of the IMF as a single particle. Since the IMF is dominated by low-mass stars (< 8 :math:`M_\odot` and even smaller) that do not end up in supernovae, we would have lots of "passive" stars. 
+Consider an IMF such as the one above. We split it into two parts at ``minimal_discrete_mass_Msun``. The reason behind this is that we want to spawn star particles that represent *individual* (massive) stars, i.e. they are "discrete". However, for computational reasons, we cannot afford to spawn every star of the IMF as a single particle. Since the IMF is dominated by low-mass stars (< 8 :math:`M_\odot` and even smaller) that do not end up in supernovae, we would have lots of "passive" stars.
 
 .. note::
    Recall that currently (April 2024), GEAR only implements SNIa and SNII as stellar feedback. Stars that do not undergo supernovae phases are "passive" in the current implementation. 
 
-As a result, we group all those low-mass stars in one stellar particle of mass ``stellar_particle_mass``. Such star particles are called "continuous", contrary to the "discrete" individual stars.  With all that information, we can compute the number of stars in the continuous part of the IMF (called :math:`N_c`) and in the discrete part (called :math:`N_d`). Finally, we can compute the probabilities of each part, respectively called :math:`P_c` and :math:`P_d`. Notice that the mathematical derivation is given in the theory latex files. 
+As a result, we group all those low-mass stars in one stellar particle of mass ``stellar_particle_mass_Msun``. Such star particles are called "continuous", contrary to the "discrete" individual stars.  With all that information, we can compute the number of stars in the continuous part of the IMF (called :math:`N_c`) and in the discrete part (called :math:`N_d`). Finally, we can compute the probabilities of each part, respectively called :math:`P_c` and :math:`P_d`. Notice that the mathematical derivation is given in the theory latex files.
 
 Thus, the algorithm to sample the IMF and five the sink their ``target_mass`` is the following :
 
