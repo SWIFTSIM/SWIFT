@@ -379,8 +379,6 @@ static void zoom_engine_make_hierarchical_void_tasks_recursive(struct engine *e,
        * down_in. */
       if (c->top == c) {
         scheduler_addunlock(s, c->grav.down_in, c->void_parent->grav.down_in);
-      } else {
-        scheduler_addunlock(s, c->grav.down_in, c->parent->grav.down_in);
       }
 
       /* If we're at the super level, unlock the zoom super cell's grav down
