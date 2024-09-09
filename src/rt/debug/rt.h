@@ -180,7 +180,7 @@ __attribute__((always_inline)) INLINE static void rt_part_has_no_neighbours(
  * @param sp The #spart.
  */
 __attribute__((always_inline)) INLINE static void rt_spart_has_no_neighbours(
-    struct spart* sp){};
+    struct spart* sp) {};
 
 /**
  * @brief Do checks/conversions on particles on startup.
