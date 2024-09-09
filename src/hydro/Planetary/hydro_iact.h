@@ -397,12 +397,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 
   float dv_dot_stress_term_i = 0.f, dv_dot_stress_term_j = 0.f;
   float dv_dot_visc = 0.f;
-  float dv_dot_G = 0.f;
+  float dv_dot_G_i = 0.f;
+  float dv_dot_G_j = 0.f;  
   for (int i = 0; i < 3; i++) {
     dv_dot_stress_term_i += (pi->v[i] - pj->v[i]) * stress_tensor_term_i[i];
     dv_dot_stress_term_j += -(pi->v[i] - pj->v[i]) * stress_tensor_term_j[i];
     dv_dot_visc += (pi->v[i] - pj->v[i]) * visc_acc_term[i];
-    dv_dot_G += (pi->v[i] - pj->v[i]) * G_mean[i];
+    dv_dot_G_i += (pi->v[i] - pj->v[i]) * Gi[i];
+    dv_dot_G_j += (pj->v[i] - pi->v[i]) * Gj[i];
   }
 
   /* Get the time derivative for u. */
@@ -429,8 +431,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   pj->force.v_sig = max(pj->force.v_sig, v_sig);
 
 #if defined(MATERIAL_STRENGTH)    
-  pi->drho_dt += mj * dv_dot_G;
-  pj->drho_dt += mi * dv_dot_G;
+  pi->drho_dt += mj * dv_dot_G_i;
+  pj->drho_dt += mi * dv_dot_G_j;
     
   hydro_runner_iact_force_extra_strength(pi, pj, dx, Gi, Gj);
 #endif /* MATERIAL_STRENGTH */    
@@ -556,11 +558,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   float dv_dot_stress_term_i = 0.f;
   float dv_dot_visc = 0.f;
-  float dv_dot_G = 0.f;
+  float dv_dot_G_i = 0.f;
   for (int i = 0; i < 3; i++) {
     dv_dot_stress_term_i += (pi->v[i] - pj->v[i]) * stress_tensor_term_i[i];
     dv_dot_visc += (pi->v[i] - pj->v[i]) * visc_acc_term[i];
-    dv_dot_G += (pi->v[i] - pj->v[i]) * G_mean[i];
+    dv_dot_G_i += (pi->v[i] - pj->v[i]) * Gi[i];
   }
 
   /* Get the time derivative for u. */
@@ -582,7 +584,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   pi->force.v_sig = max(pi->force.v_sig, v_sig);
 
 #if defined(MATERIAL_STRENGTH)    
-  pi->drho_dt += mj * dv_dot_G;
+  pi->drho_dt += mj * dv_dot_G_i;
 
   hydro_runner_iact_nonsym_force_extra_strength(pi, pj, dx, Gi);
 #endif /* MATERIAL_STRENGTH */       
