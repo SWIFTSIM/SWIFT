@@ -19,7 +19,7 @@ Gravity:
 # Parameters governing the time integration (Set dt_min and dt_max to the same value for a fixed time-step run.)
 TimeIntegration:
   time_begin:        0.     # The starting time of the simulation (in internal units).
-  time_end:          8.5e-3 # The end time of the simulation (in internal units).
+  time_end:          12e-3 # The end time of the simulation (in internal units).
   dt_min:            1e-10  # The minimal time-step size of the simulation (in internal units).
   dt_max:            1e-3   # The maximal time-step size of the simulation (in internal units).
 
@@ -89,11 +89,10 @@ GEARSink:
   f_acc: 0.4
   maximal_temperature:  3e4                   # Upper limit to the temperature of a star forming particle
   density_threshold_g_per_cm3:   1.67e-24     # Density threashold in g/cm3 (1.67e-24 =1acc)
-  size_of_calibration_sample: 100000          # Size of the calibration sample
-  stellar_particle_mass_Msun: 8               # Mass of the stellar particle representing the low mass stars, in solar mass
+  stellar_particle_mass_Msun: 21               # Mass of the stellar particle representing the low mass stars, in solar mass
   minimal_discrete_mass_Msun: 8               # Minimal mass of stars represented by discrete particles, in solar mass
-  stellar_particle_mass_first_stars_Msun: 13  # Mass of the stellar particle representing the low mass stars, in solar mass
-  minimal_discrete_mass_first_stars_Msun: 13  # Minimal mass of stars represented by discrete particles, in solar mass
+  stellar_particle_mass_first_stars_Msun: 20  # Mass of the stellar particle representing the low mass stars, in solar mass
+  minimal_discrete_mass_first_stars_Msun: 8  # Minimal mass of stars represented by discrete particles, in solar mass
   star_spawning_sigma_factor: 0.1               #  Factor to rescale the velocity dispersion of the stars when they are spawned. (Default: 0.2)
   sink_formation_contracting_gas_criterion: 0     # (Optional) Activate the contracting gas check for sink formation. (Default: 1)
   sink_formation_smoothing_length_criterion: 0    # (Optional) Activate the smoothing length check for sink formation. (Default: 1)
