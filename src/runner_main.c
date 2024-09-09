@@ -551,7 +551,7 @@ void *runner_main(void *data) {
           if (t->ci->subtype == cell_subtype_void) {
             message("Runner %d: Doing void grav down", r->cpuid);
             runner_zoom_do_void_grav_down(r, t->ci, 1);
-          } else if (t->ci->type != cell_type_zoom) {
+          } else {
             runner_do_grav_down(r, t->ci, 1);
           }
           break;
