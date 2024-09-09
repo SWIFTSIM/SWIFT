@@ -59,7 +59,7 @@
 #include "units.h"
 
 /* Whether to dump the replication list */
-//#define DUMP_REPLICATIONS
+// #define DUMP_REPLICATIONS
 #ifdef DUMP_REPLICATIONS
 static int output_nr = 0;
 #endif
@@ -864,7 +864,7 @@ void lightcone_flush_particle_buffers(struct lightcone_props *props, double a,
   if ((types_to_flush > 0) || (end_file && props->file_needs_finalizing)) {
 
     /* We have data to flush, so open or create the output file */
-    hid_t file_id;
+    hid_t file_id, h_props;
     char fname[FILENAME_BUFFER_SIZE];
     if (props->start_new_file) {
 
@@ -873,8 +873,14 @@ void lightcone_flush_particle_buffers(struct lightcone_props *props, double a,
       particle_file_name(fname, FILENAME_BUFFER_SIZE, props->subdir,
                          props->basename, props->current_file, engine_rank);
 
+      h_props = H5Pcreate(H5P_FILE_ACCESS);
+      herr_t err =
+          H5Pset_libver_bounds(h_props, HDF5_LOWEST_FILE_FORMAT_VERSION,
+                               HDF5_HIGHEST_FILE_FORMAT_VERSION);
+      if (err < 0) error("Error setting the hdf5 API version");
+
       /* Create the file */
-      file_id = H5Fcreate(fname, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+      file_id = H5Fcreate(fname, H5F_ACC_TRUNC, H5P_DEFAULT, h_props);
       if (file_id < 0) error("Unable to create new lightcone file: %s", fname);
 
       /* This new file has not been finalized yet */
@@ -924,10 +930,16 @@ void lightcone_flush_particle_buffers(struct lightcone_props *props, double a,
 
     } else {
 
+      h_props = H5Pcreate(H5P_FILE_ACCESS);
+      herr_t err =
+          H5Pset_libver_bounds(h_props, HDF5_LOWEST_FILE_FORMAT_VERSION,
+                               HDF5_HIGHEST_FILE_FORMAT_VERSION);
+      if (err < 0) error("Error setting the hdf5 API version");
+
       /* Re-open an existing file */
       particle_file_name(fname, FILENAME_BUFFER_SIZE, props->subdir,
                          props->basename, props->current_file, engine_rank);
-      file_id = H5Fopen(fname, H5F_ACC_RDWR, H5P_DEFAULT);
+      file_id = H5Fopen(fname, H5F_ACC_RDWR, h_props);
       if (file_id < 0)
         error("Unable to open current lightcone file: %s", fname);
     }
@@ -969,6 +981,7 @@ void lightcone_flush_particle_buffers(struct lightcone_props *props, double a,
 
     /* We're done updating the output file */
     H5Fclose(file_id);
+    H5Pclose(h_props);
   }
 
   /* If we need to start a new file next time, record this */
@@ -1100,6 +1113,12 @@ void lightcone_dump_completed_shells(struct lightcone_props *props,
 
         /* Create the output file for this shell */
         hid_t fapl_id = H5Pcreate(H5P_FILE_ACCESS);
+
+        /* Set the minimal API version to avoid issues with advanced features */
+        herr_t err =
+            H5Pset_libver_bounds(fapl_id, HDF5_LOWEST_FILE_FORMAT_VERSION,
+                                 HDF5_HIGHEST_FILE_FORMAT_VERSION);
+        if (err < 0) error("Error setting the hdf5 API version");
 
         /* Set MPI collective mode, if necessary */
         int collective = 0;
@@ -1710,8 +1729,13 @@ void lightcone_write_index(struct lightcone_props *props,
     check_snprintf(fname, FILENAME_BUFFER_SIZE, "%s/%s_index.hdf5",
                    props->subdir, props->basename);
 
+    hid_t h_props = H5Pcreate(H5P_FILE_ACCESS);
+    herr_t err = H5Pset_libver_bounds(h_props, HDF5_LOWEST_FILE_FORMAT_VERSION,
+                                      HDF5_HIGHEST_FILE_FORMAT_VERSION);
+    if (err < 0) error("Error setting the hdf5 API version");
+
     /* Create the file */
-    hid_t file_id = H5Fcreate(fname, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+    hid_t file_id = H5Fcreate(fname, H5F_ACC_TRUNC, H5P_DEFAULT, h_props);
 
     /* Write number of MPI ranks and number of files */
     hid_t group_id =
@@ -1755,6 +1779,7 @@ void lightcone_write_index(struct lightcone_props *props,
 
     H5Gclose(group_id);
     H5Fclose(file_id);
+    H5Pclose(h_props);
   }
 
   free(current_file_on_rank);

@@ -488,7 +488,7 @@ void io_copy_temp_buffer(void* temp, const struct engine* e,
 
   } else { /* Converting particle to data */
 
-    if (props.convert_part_f != NULL) {
+    if (props.type == FLOAT && props.parts != NULL) {
 
       /* Prepare some parameters */
       float* temp_f = (float*)temp;
@@ -500,7 +500,7 @@ void io_copy_temp_buffer(void* temp, const struct engine* e,
                      io_convert_part_f_mapper, temp_f, N, copySize,
                      threadpool_auto_chunk_size, (void*)&props);
 
-    } else if (props.convert_part_i != NULL) {
+    } else if (props.type == INT && props.parts != NULL) {
 
       /* Prepare some parameters */
       int* temp_i = (int*)temp;
@@ -512,7 +512,7 @@ void io_copy_temp_buffer(void* temp, const struct engine* e,
                      io_convert_part_i_mapper, temp_i, N, copySize,
                      threadpool_auto_chunk_size, (void*)&props);
 
-    } else if (props.convert_part_d != NULL) {
+    } else if (props.type == DOUBLE && props.parts != NULL) {
 
       /* Prepare some parameters */
       double* temp_d = (double*)temp;
@@ -524,7 +524,7 @@ void io_copy_temp_buffer(void* temp, const struct engine* e,
                      io_convert_part_d_mapper, temp_d, N, copySize,
                      threadpool_auto_chunk_size, (void*)&props);
 
-    } else if (props.convert_part_l != NULL) {
+    } else if (props.type == LONGLONG && props.parts != NULL) {
 
       /* Prepare some parameters */
       long long* temp_l = (long long*)temp;
@@ -536,7 +536,7 @@ void io_copy_temp_buffer(void* temp, const struct engine* e,
                      io_convert_part_l_mapper, temp_l, N, copySize,
                      threadpool_auto_chunk_size, (void*)&props);
 
-    } else if (props.convert_gpart_f != NULL) {
+    } else if (props.type == FLOAT && props.gparts != NULL) {
 
       /* Prepare some parameters */
       float* temp_f = (float*)temp;
@@ -548,7 +548,7 @@ void io_copy_temp_buffer(void* temp, const struct engine* e,
                      io_convert_gpart_f_mapper, temp_f, N, copySize,
                      threadpool_auto_chunk_size, (void*)&props);
 
-    } else if (props.convert_gpart_i != NULL) {
+    } else if (props.type == INT && props.gparts != NULL) {
 
       /* Prepare some parameters */
       int* temp_i = (int*)temp;
@@ -560,7 +560,7 @@ void io_copy_temp_buffer(void* temp, const struct engine* e,
                      io_convert_gpart_i_mapper, temp_i, N, copySize,
                      threadpool_auto_chunk_size, (void*)&props);
 
-    } else if (props.convert_gpart_d != NULL) {
+    } else if (props.type == DOUBLE && props.gparts != NULL) {
 
       /* Prepare some parameters */
       double* temp_d = (double*)temp;
@@ -572,7 +572,7 @@ void io_copy_temp_buffer(void* temp, const struct engine* e,
                      io_convert_gpart_d_mapper, temp_d, N, copySize,
                      threadpool_auto_chunk_size, (void*)&props);
 
-    } else if (props.convert_gpart_l != NULL) {
+    } else if (props.type == LONGLONG && props.gparts != NULL) {
 
       /* Prepare some parameters */
       long long* temp_l = (long long*)temp;
@@ -584,7 +584,7 @@ void io_copy_temp_buffer(void* temp, const struct engine* e,
                      io_convert_gpart_l_mapper, temp_l, N, copySize,
                      threadpool_auto_chunk_size, (void*)&props);
 
-    } else if (props.convert_spart_f != NULL) {
+    } else if (props.type == FLOAT && props.sparts != NULL) {
 
       /* Prepare some parameters */
       float* temp_f = (float*)temp;
@@ -596,7 +596,7 @@ void io_copy_temp_buffer(void* temp, const struct engine* e,
                      io_convert_spart_f_mapper, temp_f, N, copySize,
                      threadpool_auto_chunk_size, (void*)&props);
 
-    } else if (props.convert_spart_i != NULL) {
+    } else if (props.type == INT && props.sparts != NULL) {
 
       /* Prepare some parameters */
       int* temp_i = (int*)temp;
@@ -608,7 +608,7 @@ void io_copy_temp_buffer(void* temp, const struct engine* e,
                      io_convert_spart_i_mapper, temp_i, N, copySize,
                      threadpool_auto_chunk_size, (void*)&props);
 
-    } else if (props.convert_spart_d != NULL) {
+    } else if (props.type == DOUBLE && props.sparts != NULL) {
 
       /* Prepare some parameters */
       double* temp_d = (double*)temp;
@@ -620,7 +620,7 @@ void io_copy_temp_buffer(void* temp, const struct engine* e,
                      io_convert_spart_d_mapper, temp_d, N, copySize,
                      threadpool_auto_chunk_size, (void*)&props);
 
-    } else if (props.convert_spart_l != NULL) {
+    } else if (props.type == LONGLONG && props.sparts != NULL) {
 
       /* Prepare some parameters */
       long long* temp_l = (long long*)temp;
@@ -632,7 +632,7 @@ void io_copy_temp_buffer(void* temp, const struct engine* e,
                      io_convert_spart_l_mapper, temp_l, N, copySize,
                      threadpool_auto_chunk_size, (void*)&props);
 
-    } else if (props.convert_sink_f != NULL) {
+    } else if (props.type == FLOAT && props.sinks != NULL) {
 
       /* Prepare some parameters */
       float* temp_f = (float*)temp;
@@ -644,7 +644,7 @@ void io_copy_temp_buffer(void* temp, const struct engine* e,
                      io_convert_sink_f_mapper, temp_f, N, copySize,
                      threadpool_auto_chunk_size, (void*)&props);
 
-    } else if (props.convert_sink_i != NULL) {
+    } else if (props.type == INT && props.sinks != NULL) {
 
       /* Prepare some parameters */
       int* temp_i = (int*)temp;
@@ -656,7 +656,7 @@ void io_copy_temp_buffer(void* temp, const struct engine* e,
                      io_convert_sink_i_mapper, temp_i, N, copySize,
                      threadpool_auto_chunk_size, (void*)&props);
 
-    } else if (props.convert_sink_d != NULL) {
+    } else if (props.type == DOUBLE && props.sinks != NULL) {
 
       /* Prepare some parameters */
       double* temp_d = (double*)temp;
@@ -668,7 +668,7 @@ void io_copy_temp_buffer(void* temp, const struct engine* e,
                      io_convert_sink_d_mapper, temp_d, N, copySize,
                      threadpool_auto_chunk_size, (void*)&props);
 
-    } else if (props.convert_sink_l != NULL) {
+    } else if (props.type == LONGLONG && props.sinks != NULL) {
 
       /* Prepare some parameters */
       long long* temp_l = (long long*)temp;
@@ -680,7 +680,7 @@ void io_copy_temp_buffer(void* temp, const struct engine* e,
                      io_convert_sink_l_mapper, temp_l, N, copySize,
                      threadpool_auto_chunk_size, (void*)&props);
 
-    } else if (props.convert_bpart_f != NULL) {
+    } else if (props.type == FLOAT && props.bparts != NULL) {
 
       /* Prepare some parameters */
       float* temp_f = (float*)temp;
@@ -692,7 +692,7 @@ void io_copy_temp_buffer(void* temp, const struct engine* e,
                      io_convert_bpart_f_mapper, temp_f, N, copySize,
                      threadpool_auto_chunk_size, (void*)&props);
 
-    } else if (props.convert_bpart_i != NULL) {
+    } else if (props.type == INT && props.bparts != NULL) {
 
       /* Prepare some parameters */
       int* temp_i = (int*)temp;
@@ -704,7 +704,7 @@ void io_copy_temp_buffer(void* temp, const struct engine* e,
                      io_convert_bpart_i_mapper, temp_i, N, copySize,
                      threadpool_auto_chunk_size, (void*)&props);
 
-    } else if (props.convert_bpart_d != NULL) {
+    } else if (props.type == DOUBLE && props.bparts != NULL) {
 
       /* Prepare some parameters */
       double* temp_d = (double*)temp;
@@ -716,7 +716,7 @@ void io_copy_temp_buffer(void* temp, const struct engine* e,
                      io_convert_bpart_d_mapper, temp_d, N, copySize,
                      threadpool_auto_chunk_size, (void*)&props);
 
-    } else if (props.convert_bpart_l != NULL) {
+    } else if (props.type == LONGLONG && props.bparts != NULL) {
 
       /* Prepare some parameters */
       long long* temp_l = (long long*)temp;
@@ -729,7 +729,9 @@ void io_copy_temp_buffer(void* temp, const struct engine* e,
                      threadpool_auto_chunk_size, (void*)&props);
 
     } else {
-      error("Missing conversion function");
+
+      if (N != 0 && props.ptr_func != NULL)
+        error("Missing conversion function");
     }
   }
 

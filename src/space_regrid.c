@@ -388,7 +388,7 @@ void space_regrid(struct space *s, int verbose) {
     // message( "rebuilding upper-level cells took %.3f %s." ,
     // clocks_from_ticks(double)(getticks() - tic), clocks_getunit());
 
-  }      /* re-build upper-level cells? */
+  } /* re-build upper-level cells? */
   else { /* Otherwise, just clean up the cells. */
 
     /* Free the old cells, if they were allocated. */
