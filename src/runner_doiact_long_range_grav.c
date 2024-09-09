@@ -761,6 +761,11 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
   struct cell *top = ci;
   while (top->parent != NULL) top = top->parent;
 
+  /* If we have a zoom cell the true top cell is a void cell. */
+  if (top->type == cell_type_zoom) {
+    top = top->void_parent->top;
+  }
+
   /* Call the appropriate interaction function. */
   if (periodic) {
     switch (top->type) {
