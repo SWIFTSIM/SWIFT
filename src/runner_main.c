@@ -552,6 +552,10 @@ void *runner_main(void *data) {
           /*   message("Runner %d: Doing void grav down", r->cpuid); */
           /*   runner_zoom_do_void_grav_down(r, t->ci, 1); */
           /* } else { */
+          if (t->ci->type == cell_type_zoom) {
+            message("Runner %d: skipping zoom grav down", r->cpuid);
+            break;
+          }
           runner_do_grav_down(r, t->ci, 1);
           /* } */
           break;
