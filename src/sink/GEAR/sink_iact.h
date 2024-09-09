@@ -179,7 +179,7 @@ runner_iact_nonsym_sinks_sink_swallow(const float r2, const float dx[3],
   const float E_mec_sj = E_kin_rel + E_pot_ji;
 
   /* Now, check if one is bound to the other */
-  if ((E_mec_si > 0) && (E_mec_sj > 0)) {
+  if ((E_mec_si > 0) || (E_mec_sj > 0)) {
     return;
   }
 
