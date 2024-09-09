@@ -1551,7 +1551,7 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
  */
 static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
                                                        struct scheduler *s) {
-  const struct space *sp = s->space;
+  /* const struct space *sp = s->space; */
   /* struct engine *e = sp->e; */
 
   /* Pair interaction? */
