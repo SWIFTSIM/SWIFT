@@ -549,9 +549,16 @@ void *runner_main(void *data) {
         case task_type_grav_down:
           /* Call the appropriate grav down for the cell type. */
           if (t->ci->subtype == cell_subtype_void) {
-            message("Runner %d: Doing void grav down", r->cpuid);
+            message("Runner %d: Doing void grav down (%ulld)", r->cpuid,
+                    t->ci->cellID);
             runner_zoom_do_void_grav_down(r, t->ci, 1);
+            message("Runner %d: Done void grav down (%ulld)", r->cpuid,
+                    t->ci->cellID);
           } else {
+            if (t->ci->type == cell_type_zoom) {
+              message("Runner %d: Doing zoom grav down (%ulld)", r->cpuid,
+                      t->ci->top->void_parent->top->cellID);
+            }
             runner_do_grav_down(r, t->ci, 1);
           }
           break;
