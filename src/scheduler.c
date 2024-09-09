@@ -1561,7 +1561,8 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
     struct cell *cj = t->cj;
 
     /* If both are void cells just split both at once. */
-    if (ci->subtype == cell_subtype_void && cj->subtype == cell_subtype_void) {
+    if ((ci->subtype == cell_subtype_void || ci->split) &&
+        (cj->subtype == cell_subtype_void || cj->split)) {
       /* Turn the task into a M-M task that will take care of all the
        * progeny pairs */
       t->type = task_type_grav_mm;
@@ -1586,7 +1587,7 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
           if (cell_can_use_pair_mm(ci->progeny[i], cj->progeny[j], e, sp,
                                    /*use_rebuild_data=*/1,
                                    /*is_tree_walk=*/1,
-                                   /*periodic boundaries*/ sp->periodic,
+                                   /*periodic boundaries*/ 0,
                                    /*use_mesh*/ sp->periodic)) {
 
             /* Flag this pair as being treated by the M-M task.
@@ -1600,8 +1601,8 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
           } else {
             /* Ok, we actually have to create a task, if we're at the zoom
              * level call the normal splitting function. */
-            if (ci->progeny[i]->type == cell_type_zoom &&
-                cj->progeny[j]->type == cell_type_zoom) {
+            if (ci->progeny[i]->subtype != cell_subtype_void &&
+                cj->progeny[j]->subtype != cell_subtype_void) {
               scheduler_splittask_gravity(
                   scheduler_addtask(s, task_type_pair, task_subtype_grav, 0, 0,
                                     ci->progeny[i], cj->progeny[j]),
