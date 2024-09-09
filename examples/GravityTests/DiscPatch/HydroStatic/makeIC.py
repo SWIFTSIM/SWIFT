@@ -21,10 +21,8 @@
 ##############################################################################
 
 import h5py
-import sys
 import numpy as np
 import math
-import random
 
 # Generates a disc-patch in hydrostatic equilibrium
 #

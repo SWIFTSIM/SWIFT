@@ -3,9 +3,7 @@ from swiftsimio.visualisation.volume_render import render_gas
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
-import os
-from unyt import s, pc, Myr, kb, mp, cm, K, erg, g, G, km
-import h5py
+from unyt import s, kb, mp
 import glob
 
 
