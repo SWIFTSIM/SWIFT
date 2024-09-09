@@ -365,15 +365,35 @@ static void zoom_engine_make_hierarchical_void_tasks_recursive(struct engine *e,
       scheduler_addunlock(s, c->parent->grav.init_out, c->grav.init_out);
       scheduler_addunlock(s, c->grav.down_in, c->parent->grav.down_in);
     }
-  } else if (c->type == cell_type_zoom && c->grav.super == c) {
+  } else if (c->type == cell_type_zoom) {
 
-    /* Unlock this zoom cell's grav down after the void cell grav down. */
-    scheduler_addunlock(s, c->top->void_parent->top->grav.down,
-                        c->grav.down_in);
+    /* Below the zoom top level we just need to link in the down implicit
+     * tasks and handle the down unlocks between levels. */
+
+    if (is_self_gravity) {
+
+      c->grav.down_in = scheduler_addtask(s, task_type_grav_down_in,
+                                          task_subtype_none, 0, 1, c, NULL);
+
+      /* If we are at the zoom top level we need to link in the void parent
+       * down_in. */
+      if (c->top == c) {
+        scheduler_addunlock(s, c->grav.down_in, c->void_parent->grav.down_in);
+      } else {
+        scheduler_addunlock(s, c->grav.down_in, c->parent->grav.down_in);
+      }
+
+      /* If we're at the super level, unlock the zoom super cell's grav down
+       * after the void cell grav down. Afterwards we're done recursing. */
+      if (c->type == cell_type_zoom && c->grav.super == c) {
+        scheduler_addunlock(s, c->top->void_parent->top->grav.down,
+                            c->grav.down_in);
+      }
+    }
   }
 
   /* Recurse but don't go deeper then the zoom super level. */
-  if (!(c->type == cell_type_zoom && c->grav.super == c)) {
+  if (c->subtype == cell_subtype_void || c->grav.super == NULL) {
     for (int k = 0; k < 8; k++) {
       if (c->progeny[k] != NULL) {
         zoom_engine_make_hierarchical_void_tasks_recursive(e, c->progeny[k]);
