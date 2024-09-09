@@ -773,9 +773,6 @@ INLINE static void sink_copy_properties_to_star(
   sp->mass = sink->target_mass_Msun * phys_const->const_solar_mass;
   sp->gpart->mass = sp->mass;
 
-  /* set feedback type */
-  sp->star_type = sink->target_type;
-
   /* Give a new velocity to the stars */
   sink_star_formation_give_new_velocity(e, sink, sp, sink_props);
 
