@@ -67,8 +67,9 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
   /* Some constants */
   const struct engine *e = r->e;
 
-  message("Doing gravity down on %s/%s cell at depth %d", cellID_names[c->type],
-          subcellID_names[c->subtype], c->depth);
+  if (c->type == cell_type_zoom)
+    message("Doing gravity down on %s/%s cell at depth %d",
+            cellID_names[c->type], subcellID_names[c->subtype], c->depth);
 
   TIMER_TIC;
 
