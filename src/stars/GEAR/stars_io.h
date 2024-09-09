@@ -21,6 +21,7 @@
 
 #include "io_properties.h"
 #include "kick.h"
+#include "stars/GEAR/stars_stellar_type.h"
 #include "stars_part.h"
 
 /**
@@ -35,7 +36,7 @@ INLINE static void stars_read_particles(struct spart *sparts,
                                         int *num_fields) {
 
   /* Say how much we want to read */
-  *num_fields = 6;
+  *num_fields = 7;
 
   /* List what we want to read */
   list[0] = io_make_input_field("Coordinates", DOUBLE, 3, COMPULSORY,
@@ -50,6 +51,11 @@ INLINE static void stars_read_particles(struct spart *sparts,
                                 UNIT_CONV_LENGTH, sparts, h);
   list[5] = io_make_input_field("BirthTime", FLOAT, 1, OPTIONAL, UNIT_CONV_MASS,
                                 sparts, birth_time);
+
+  /* By default, stars are set to star_population */
+  list[6] = io_make_input_field_default("StellarParticleType", INT, 1, OPTIONAL,
+                                        UNIT_CONV_NO_UNITS, sparts,
+                                        star_type, star_population);
 }
 
 INLINE static void convert_spart_pos(const struct engine *e,
