@@ -118,6 +118,7 @@ def process_info(run_data, the_key, toplot=True, tosave=True):
             + "_<s>="
             + growth_rate_str
         )
+        print(the_name)
         if toplot:
             ax[0].plot(Time, B)
             #ax[1].plot(Time, divB, label=the_name)
@@ -139,8 +140,8 @@ def process_info(run_data, the_key, toplot=True, tosave=True):
         ax[0].set_yscale("log")
         # ax[1].set_yscale("log")
         #ax[1].set_yscale("log")
-        ax[0].set_ylim(1e-2,1e1)
-        ax[1].set_ylim(-0.1,0.1)
+        ax[0].set_ylim(1e-2,1e3)
+        ax[1].set_ylim(-0.15,0.15)
         ax[0].grid()
         ax[1].grid()
         # ax[0].set_xlim(0,10)
@@ -154,7 +155,6 @@ def process_info(run_data, the_key, toplot=True, tosave=True):
         run_data['divB_err'] = divergence_errors
         run_data['divB_err_err'] = divergence_errors_err
         run_data.to_csv(the_key["Scheme"]+'_results.csv',sep="\t")
-
 
 def sort_and_plot(run_data, the_key):
     selected_runs = select_runs_to_plot(run_data, the_key)
@@ -183,7 +183,7 @@ run_data = load_test_run_parameters()
 #run_data = run_data[mask]
 
 # fill selected range of runs to plot
-run_data = run_data[:]#36:126]
+run_data = run_data[6:]#36:126]
 print(run_data)
 sort_and_plot(run_data, sort_key1)
 #sort_and_plot(run_data, sort_key2)

@@ -2509,7 +2509,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
       multi_i->pot.interacted = 1;
 
     } /* We are in charge of this pair */
-  }   /* Loop over top-level cells */
+  } /* Loop over top-level cells */
 
   if (timer) TIMER_TOC(timer_dograv_long_range);
 }

@@ -1,0 +1,9 @@
+These examples show how to run Swift on initial conditions of a two-component (gravity-only)
+dwarf model generated with the pNbody code (http://lastro.epfl.ch/projects/pNbody/).
+
+In the current example, the dwarf galaxy is composed of a Plummer spheroid 
+embedded in a cuspy or cored halo.
+The systems is put at equilibrium by sampling a distribution function obtained from the Eddington equation.
+
+IsolateddSph_cusp  : folder containing information on how to run with the cuspy dark halo
+IsolateddSph_core  : folder containing information on how to run with the cored dark halo
