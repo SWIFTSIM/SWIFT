@@ -51,8 +51,11 @@ struct sink {
   /*! Sink particle mass */
   float mass;
 
-  /*! Sink target mass */
-  float target_mass;
+  /*! Sink target mass. In Msun. */
+  float target_mass_Msun;
+
+  /*! Mass of the sink before starting the star spawning loop */
+  float mass_tot_before_star_spawning;
 
   /*! Mass of the sink before starting the star spawning loop */
   float mass_tot_before_star_spawning;
@@ -63,7 +66,7 @@ struct sink {
   /*! Particle time bin */
   timebin_t time_bin;
 
-  /*! Number of stars spawned by thi sink */
+  /*! Number of stars spawned by this sink */
   int n_stars;
 
   /*! Total (physical) angular momentum accumulated by swallowing particles */

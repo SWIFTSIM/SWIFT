@@ -75,22 +75,23 @@ INLINE static void sink_update_target_mass(struct sink* sink,
   /* If metal < threshold, then the sink generates first star particles. */
   const int is_first_star = metal < threshold;
   const struct stellar_model* model;
-  double minimal_discrete_mass;
+  double minimal_discrete_mass_Msun;
 
   /* Take the correct values if your are a first star or not. */
   if (!is_first_star) /* (metal >= threshold)*/ {
     model = &feedback_props->stellar_model;
-    minimal_discrete_mass = sink_props->minimal_discrete_mass;
+    minimal_discrete_mass_Msun = sink_props->minimal_discrete_mass_Msun;
   } else {
     model = &feedback_props->stellar_model_first_stars;
-    minimal_discrete_mass = sink_props->minimal_discrete_mass_first_stars;
+    minimal_discrete_mass_Msun =
+        sink_props->minimal_discrete_mass_first_stars_Msun;
   }
 
   const struct initial_mass_function* imf = &model->imf;
 
   if (random_number < imf->sink_Pc) {
     /* We are dealing with the continous part of the IMF. */
-    sink->target_mass = imf->stellar_particle_mass_Msun;
+    sink->target_mass_Msun = imf->stellar_particle_mass_Msun;
     sink->target_type = star_population_continuous_IMF;
   } else {
     /* We are dealing with the discrete part of the IMF. */
@@ -98,9 +99,9 @@ INLINE static void sink_update_target_mass(struct sink* sink,
         sink->id, star_counter + 1, e->ti_current,
         random_number_sink_formation);
     double m = initial_mass_function_sample_power_law(
-        minimal_discrete_mass, imf->mass_max, imf->exp[imf->n_parts - 1],
+        minimal_discrete_mass_Msun, imf->mass_max, imf->exp[imf->n_parts - 1],
         random_number);
-    sink->target_mass = m;
+    sink->target_mass_Msun = m;
     sink->target_type = single_star;
   }
 }
@@ -136,8 +137,8 @@ __attribute__((always_inline)) INLINE static void sink_first_init_sink(
   sink_mark_sink_as_not_swallowed(&sp->merger_data);
 
   /* Bug fix: Setup the target mass for sink formation after reading the
-     ICs. Otherwise sink->target_mass = 0.0 and a sink present in the IC spawn
-     a star of mass 0.0... */
+     ICs. Otherwise sink->target_mass_Msun = 0.0 and a sink present in the IC
+     spawn a star of mass 0.0... */
   sink_update_target_mass(sp, sink_props, e, 0);
 
   /* Initialize to the mass of the sink */
@@ -643,7 +644,7 @@ INLINE static int sink_spawn_star(struct sink* sink, const struct engine* e,
                                   const struct phys_const* phys_const,
                                   const struct unit_system* restrict us) {
 
-  if (sink->mass > sink->target_mass * phys_const->const_solar_mass)
+  if (sink->mass > sink->target_mass_Msun * phys_const->const_solar_mass)
     return 1;
   else
     return 0;
@@ -770,7 +771,7 @@ INLINE static void sink_copy_properties_to_star(
   sink_star_formation_give_new_position(e, sink, sp);
 
   /* Set the mass (do not forget the sink's gpart friend!) */
-  sp->mass = sink->target_mass * phys_const->const_solar_mass;
+  sp->mass = sink->target_mass_Msun * phys_const->const_solar_mass;
   sp->gpart->mass = sp->mass;
 
   /* Give a new velocity to the stars */
@@ -825,8 +826,8 @@ INLINE static void sink_update_sink_properties_before_star_formation(
 
   /* Has the sink accumulated enough metallicity so that the target mass
      should be updated before spawning stars?
-     Between the last update of the target_mass, the sink may have accreted gas
-     with metallicities that that are higher than those of population III
+     Between the last update of the target_mass_Msun, the sink may have accreted
+     gas with metallicities that that are higher than those of population III
      stars. However, the target mass was set with the pop
      III IMF. */
 
@@ -842,14 +843,14 @@ INLINE static void sink_update_sink_properties_before_star_formation(
 
   /* If the sink has not changed its IMF yet
      (has_IMF_changed_from_popIII_to_popII = 0)
-     but is eligible to (sink metal > threshold), get a target_mass of the pop
-     II stars. */
+     but is eligible to (sink metal > threshold), get a target_mass_Msun of the
+     pop II stars. */
   if (!(sink->has_IMF_changed_from_popIII_to_popII) && !is_first_star) {
     sink_update_target_mass(sink, sink_props, e, 0);
 
     /* Flag the sink to have made the transition of IMF. This ensures that next
-    time we do not update the target_mass because metal > threshold (otherwise
-    we would update it without needing to) */
+    time we do not update the target_mass_Msun because metal > threshold
+    (otherwise we would update it without needing to) */
     sink->has_IMF_changed_from_popIII_to_popII = 1;
     message("IMF transition : Sink %lld will now spawn Pop II stars.",
             sink->id);
@@ -860,7 +861,7 @@ INLINE static void sink_update_sink_properties_before_star_formation(
  * @brief Update the #sink particle properties right after spawning a star.
  *
  * In GEAR: Important properties that are updated are the sink mass and the
- * sink->target_mass to draw the next star mass.
+ * sink->target_mass_Msun to draw the next star mass.
  *
  * @param sink The #sink particle that spawed stars.
  * @param sp The #spart particle spawned.
@@ -878,7 +879,8 @@ INLINE static void sink_update_sink_properties_during_star_formation(
   sink->n_stars++;
 
   /* Update the mass */
-  sink->mass = sink->mass - sink->target_mass * phys_const->const_solar_mass;
+  sink->mass =
+      sink->mass - sink->target_mass_Msun * phys_const->const_solar_mass;
 
   /* Bug fix: Do not forget to update the sink gpart's mass. */
   sink->gpart->mass = sink->mass;
