@@ -1,0 +1,18 @@
+We show here how to run such initial conditions with the GEAR model.
+
+To generate the initial conditions locally, if pNbody is installed, run:
+
+../makeDisk.py
+
+If you don't have access to pNbody, you can simply skip this step. The initial conditions will automatically 
+be downloaded when launching the run script (see below).
+
+
+To run this example with the GEAR model, SWIFT must be configured with the following options:
+
+./configure --with-chemistry=GEAR_10  --with-cooling=grackle_0 --with-pressure-floor=GEAR  --with-stars=GEAR --with-star-formation=GEAR --with-feedback=GEAR --with-grackle=${GRACKLE_ROOT}
+
+To start the simulation with the GEAR model:
+
+./run.sh
+

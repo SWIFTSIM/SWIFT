@@ -320,7 +320,7 @@ INLINE static void star_formation_copy_properties(
     const int convert_part) {
 
   /* Initialize the feedback */
-  feedback_init_after_star_formation(sp, e->feedback_props);
+  feedback_init_after_star_formation(sp, e->feedback_props, star_population);
 
   /* Store the current mass */
   const float mass_gas = hydro_get_mass(p);
