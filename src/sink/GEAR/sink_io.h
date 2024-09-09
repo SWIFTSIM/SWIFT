@@ -94,6 +94,21 @@ INLINE static void convert_sink_vel(const struct engine* e,
   ret[2] *= cosmo->a_inv;
 }
 
+INLINE static void convert_sink_target_mass(const struct engine* e,
+                                            const struct sink* sink,
+                                            float* ret) {
+  /* Recall that the target_mass is in M_sun in the code. We nee to convert it
+     to internal units for consistency in the output. */
+  ret[0] = sink->target_mass * e->physical_constants->const_solar_mass;
+}
+
+INLINE static void convert_sink_swallowed_angular_momentum(
+    const struct engine* e, const struct sink* sink, float* ret) {
+  ret[0] = sink->swallowed_angular_momentum[0];
+  ret[1] = sink->swallowed_angular_momentum[1];
+  ret[2] = sink->swallowed_angular_momentum[2];
+}
+
 /**
  * @brief Specifies which sink-particle fields to write to a dataset
  *
@@ -107,7 +122,7 @@ INLINE static void sink_write_particles(const struct sink* sinks,
                                         int with_cosmology) {
 
   /* Say how much we want to write */
-  *num_fields = 7;
+  *num_fields = 9;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_sink(
@@ -122,23 +137,37 @@ INLINE static void sink_write_particles(const struct sink* sinks,
   list[2] = io_make_output_field("Masses", FLOAT, 1, UNIT_CONV_MASS, 0.f, sinks,
                                  mass, "Masses of the particles");
 
-  list[3] =
-      io_make_output_field("ParticleIDs", ULONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f,
-                           sinks, id, "Unique ID of the particles");
+  list[3] = io_make_physical_output_field(
+      "ParticleIDs", ULONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f, sinks, id,
+      /*can convert to comoving=*/0, "Unique ID of the particles");
 
-  /* chemistry : this should be in chemistry_io.h */
-  list[4] = io_make_output_field(
-      "MetalMassFractions", DOUBLE, GEAR_CHEMISTRY_ELEMENT_COUNT,
-      UNIT_CONV_NO_UNITS, 0.f, sinks, chemistry_data.metal_mass_fraction,
-      "Mass fraction of each element");
-
-  list[5] = io_make_output_field(
+  list[4] = io_make_physical_output_field(
       "NumberOfSinkSwallows", INT, 1, UNIT_CONV_NO_UNITS, 0.f, sinks,
-      number_of_sink_swallows, "Total number of sink merger events");
+      number_of_sink_swallows, /*can convert to comoving=*/0,
+      "Total number of sink merger events");
 
-  list[6] = io_make_output_field(
+  list[5] = io_make_physical_output_field(
       "NumberOfGasSwallows", INT, 1, UNIT_CONV_NO_UNITS, 0.f, sinks,
-      number_of_gas_swallows, "Total number of gas merger events");
+      number_of_gas_swallows, /*can convert to comoving=*/0,
+      "Total number of gas merger events");
+
+  list[6] = io_make_output_field_convert_sink(
+      "TargetMass", FLOAT, 1, UNIT_CONV_MASS, 0.f, sinks,
+      convert_sink_target_mass, "Sink target mass to spawn star particles");
+
+  list[7] = io_make_physical_output_field(
+      "Nstars", INT, 1, UNIT_CONV_NO_UNITS, 0.f, sinks, n_stars,
+      /*can convert to comoving=*/0,
+      "Number of stars spawned by the sink particles");
+
+  /* Note: Since the swallowed momentum is computed with the physical velocity,
+     i.e. including the Hubble flow term, it is not convertible to comoving
+     frame. */
+  list[8] = io_make_physical_output_field_convert_sink(
+      "SwallowedAngularMomentum", FLOAT, 3, UNIT_CONV_ANGULAR_MOMENTUM, 0.f,
+      sinks,
+      /*can convert to comoving=*/0, convert_sink_swallowed_angular_momentum,
+      "Physical swallowed angular momentum of the particles");
 
 #ifdef DEBUG_INTERACTIONS_SINKS
 

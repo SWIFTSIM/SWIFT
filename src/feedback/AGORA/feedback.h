@@ -59,7 +59,8 @@ __attribute__((always_inline)) INLINE static void feedback_reset_part(
 void feedback_init_spart(struct spart* sp);
 
 void feedback_init_after_star_formation(
-    struct spart* sp, const struct feedback_props* feedback_props);
+    struct spart* sp, const struct feedback_props* feedback_props,
+    enum star_feedback_type star_type);
 
 /**
  * @brief Should we do feedback for this star?
