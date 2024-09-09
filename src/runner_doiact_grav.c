@@ -223,10 +223,8 @@ void runner_zoom_do_void_grav_down(struct runner *r, struct cell *c,
 
     /* Recurse and only stop when we hit the super level in the zoom
      * cell tree which is handled in the usual way. */
-    if (cp->subtype == cell_subtype_void) {
+    if (cp->subtype == cell_subtype_void || cp->grav.super != cp) {
       runner_zoom_do_void_grav_down(r, cp, 0);
-    } else {
-      runner_do_grav_down(r, cp, 0);
     }
   }
 
