@@ -127,9 +127,6 @@ Recommended parameters for the AGORA model should be:
 
 
 
-
-
-
 .. _agora_pressure_floor:
 
 Pressure Floor
@@ -138,4 +135,12 @@ Pressure Floor
 The AGORA model uses precisely the same pressure floor than the :ref:`GEAR model <gear_pressure_floor>`.
 
 
+.. _agora_initial_conditions:
 
+Initial Conditions
+~~~~~~~~~~~~~~~~~~
+
+Note that if in the initial conditions, the time of formation of a stellar particle is given (``BirthTime``)
+and set to a negative value, the stellar particle will provide no feedback.
+A similar behavior will be obtained if the parameter ``overwrite_birth_time`` is set to 1 and
+``birth_time`` to -1. 
