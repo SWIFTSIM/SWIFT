@@ -76,7 +76,7 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
     error("c->field tensor not initialised");
 #endif
 
-  if (c->split) {
+  if (c->split || c->subtype == cell_subtype_void) {
 
     /* Node case */
 

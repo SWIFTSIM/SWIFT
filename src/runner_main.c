@@ -548,12 +548,12 @@ void *runner_main(void *data) {
 #endif
         case task_type_grav_down:
           /* Call the appropriate grav down for the cell type. */
-          if (t->ci->subtype == cell_subtype_void) {
-            message("Runner %d: Doing void grav down", r->cpuid);
-            runner_zoom_do_void_grav_down(r, t->ci, 1);
-          } else {
-            runner_do_grav_down(r, t->ci, 1);
-          }
+          /* if (t->ci->subtype == cell_subtype_void) { */
+          /*   message("Runner %d: Doing void grav down", r->cpuid); */
+          /*   runner_zoom_do_void_grav_down(r, t->ci, 1); */
+          /* } else { */
+          runner_do_grav_down(r, t->ci, 1);
+          /* } */
           break;
         case task_type_grav_long_range:
           runner_do_grav_long_range(r, t->ci, 1);
