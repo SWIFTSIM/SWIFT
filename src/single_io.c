@@ -365,6 +365,9 @@ void write_array_single(const struct engine* e, hid_t grp, const char* fileName,
   io_write_attribute_f(h_data, "a-scale exponent", props.scale_factor_exponent);
   io_write_attribute_s(h_data, "Expression for physical CGS units", buffer);
   io_write_attribute_s(h_data, "Lossy compression filter", comp_buffer);
+  io_write_attribute_b(h_data, "Value stored as physical", props.is_physical);
+  io_write_attribute_b(h_data, "Property can be converted to comoving",
+                       props.is_convertible_to_comoving);
 
   /* Write the actual number this conversion factor corresponds to */
   const double factor =
@@ -987,41 +990,15 @@ void write_output_single(struct engine* e,
 
   };
 
-  /* Number of particles in the zoom region */
-  long long N_total_zoom[swift_type_count];
-  memcpy(N_total_zoom, N_total, swift_type_count * sizeof(long long));
-  if (e->s->with_zoom_region) {
-
-    N_total_zoom[swift_type_gas] = io_count_gas_in_zoom_to_write(
-        e->s, subsample[swift_type_gas], subsample_fraction[swift_type_gas],
-        e->snapshot_output_count);
-    N_total_zoom[swift_type_dark_matter] =
-        io_count_dark_matter_in_zoom_to_write(
-            e->s, subsample[swift_type_dark_matter],
-            subsample_fraction[swift_type_dark_matter],
-            e->snapshot_output_count);
-    N_total_zoom[swift_type_dark_matter_background] =
-        io_count_background_dark_matter_in_zoom_to_write(
-            e->s, subsample[swift_type_dark_matter_background],
-            subsample_fraction[swift_type_dark_matter_background],
-            e->snapshot_output_count);
-    N_total_zoom[swift_type_sink] = io_count_sinks_in_zoom_to_write(
-        e->s, subsample[swift_type_sink], subsample_fraction[swift_type_sink],
-        e->snapshot_output_count);
-    N_total_zoom[swift_type_stars] = io_count_stars_in_zoom_to_write(
-        e->s, subsample[swift_type_stars], subsample_fraction[swift_type_stars],
-        e->snapshot_output_count);
-    N_total_zoom[swift_type_black_hole] = io_count_black_holes_in_zoom_to_write(
-        e->s, subsample[swift_type_black_hole],
-        subsample_fraction[swift_type_black_hole], e->snapshot_output_count);
-    N_total_zoom[swift_type_neutrino] = io_count_neutrinos_in_zoom_to_write(
-        e->s, subsample[swift_type_neutrino],
-        subsample_fraction[swift_type_neutrino], e->snapshot_output_count);
-  }
+  /* Set the minimal API version to avoid issues with advanced features */
+  hid_t h_props = H5Pcreate(H5P_FILE_ACCESS);
+  herr_t err = H5Pset_libver_bounds(h_props, HDF5_LOWEST_FILE_FORMAT_VERSION,
+                                    HDF5_HIGHEST_FILE_FORMAT_VERSION);
+  if (err < 0) error("Error setting the hdf5 API version");
 
   /* Open file */
   /* message("Opening file '%s'.", fileName); */
-  h_file = H5Fcreate(fileName, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+  h_file = H5Fcreate(fileName, H5F_ACC_TRUNC, H5P_DEFAULT, h_props);
   if (h_file < 0) error("Error while opening file '%s'.", fileName);
 
   /* Open header to write simulation properties */
@@ -1542,6 +1519,7 @@ void write_output_single(struct engine* e,
 
   /* Close file */
   H5Fclose(h_file);
+  H5Pclose(h_props);
 
   e->snapshot_output_count++;
   if (e->snapshot_invoke_stf) e->stf_output_count++;

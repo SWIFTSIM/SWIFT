@@ -804,8 +804,8 @@ void pow_from_grid_mapper(void* map_data, const int num, void* extra) {
                          (powgridft[index][0] * powgridft2[index][0] +
                           powgridft[index][1] * powgridft2[index][1]));
       } /* Loop over z */
-    }   /* Loop over y */
-  }     /* Loop over z */
+    } /* Loop over y */
+  } /* Loop over z */
 }
 
 /**
