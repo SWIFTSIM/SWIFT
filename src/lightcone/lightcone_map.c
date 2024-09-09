@@ -284,6 +284,8 @@ void lightcone_map_write(struct lightcone_map *map, const hid_t loc_id,
   io_write_attribute_f(dset_id, "h-scale exponent", 0.f);
   io_write_attribute_f(dset_id, "a-scale exponent", 0.f);
   io_write_attribute_s(dset_id, "Expression for physical CGS units", buffer);
+  io_write_attribute_b(dset_id, "Value stored as physical", 0);
+  io_write_attribute_b(dset_id, "Property can be converted to comoving", 1);
 
   /* Write the actual number this conversion factor corresponds to */
   const double cgs_factor =
