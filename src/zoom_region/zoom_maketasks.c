@@ -381,10 +381,8 @@ static void zoom_engine_make_hierarchical_void_tasks_recursive(struct engine *e,
       /* If we are at the zoom top level we need to link in the void parent
        * down_in. */
       if (c->top == c) {
-        message("Linking void parent grav down for zoom cell @ %d.", c->depth);
         scheduler_addunlock(s, c->grav.down_in, c->void_parent->grav.down_in);
       } else {
-        message("Linking parent grav down for zoom cell @ %d.", c->depth);
         scheduler_addunlock(s, c->grav.down_in, c->parent->grav.down_in);
       }
 
@@ -392,7 +390,6 @@ static void zoom_engine_make_hierarchical_void_tasks_recursive(struct engine *e,
        * after the void cell grav down and long range tasks. Afterwards we're
        * done recursing. */
       if (c->grav.super == c) {
-        message("Unlocking grav down for super cell @ %d.", c->depth);
         /* scheduler_addunlock(s, c->top->void_parent->top->grav.down, */
         /*                     c->grav.down); */
         scheduler_addunlock(s, c->grav.long_range,
