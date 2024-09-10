@@ -1418,6 +1418,7 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
           if (c->top->void_parent->grav.super != NULL) {
 
             /* zoom.long_range -> void.down */
+            message("Adding unlock from zoom.long_range to void.down");
             scheduler_addunlock(s, c->grav.long_range,
                                 c->top->void_parent->grav.super->grav.down);
 
