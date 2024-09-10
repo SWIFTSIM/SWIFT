@@ -372,9 +372,8 @@ static void zoom_engine_make_hierarchical_void_tasks_recursive(struct engine *e,
 
     if (is_self_gravity) {
 
-      /* Only create the down in for non super cells (the super task is made
-       * in engine_make_hierarchical_tasks_gravity). */
-      if (c->grav.super == NULL) {
+      /* Only create the down in if it doesn't exist. */
+      if (c->grav.down_in == NULL) {
         c->grav.down_in = scheduler_addtask(s, task_type_grav_down_in,
                                             task_subtype_none, 0, 1, c, NULL);
       }
