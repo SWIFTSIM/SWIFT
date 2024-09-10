@@ -1180,6 +1180,12 @@ void cell_set_super_gravity(struct cell *c, struct cell *super_gravity) {
   if (super_gravity != NULL && c->subtype == cell_subtype_void)
     message("Void cell has a super-gravity cell!");
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (super_gravity != NULL && super_gravity->subtype == cell_subtype_void &&
+      c->type == cell_type_zoom)
+    error("Zoom cell has a super-gravity void cell!");
+#endif
+
   /* Recurse */
   if (c->split)
     for (int k = 0; k < 8; k++)
