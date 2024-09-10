@@ -1561,10 +1561,11 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
     struct cell *cj = t->cj;
 
     /* If both are void cells just split both at once. */
-    if ((ci->subtype == cell_subtype_void ||
-         (ci->split && cell_is_above_diff_grav_depth(ci))) &&
-        (cj->subtype == cell_subtype_void ||
-         (cj->split && cell_is_above_diff_grav_depth(cj)))) {
+    /* if ((ci->subtype == cell_subtype_void || */
+    /*      (ci->split && cell_is_above_diff_grav_depth(ci))) && */
+    /*     (cj->subtype == cell_subtype_void || */
+    /*      (cj->split && cell_is_above_diff_grav_depth(cj)))) { */
+    if (ci->subtype == cell_subtype_void && cj->subtype == cell_subtype_void) {
       /* Turn the task into a M-M task that will take care of all the
        * progeny pairs */
       t->type = task_type_grav_mm;
