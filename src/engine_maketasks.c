@@ -1408,6 +1408,24 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
         scheduler_addunlock(s, c->grav.init, c->grav.init_out);
         scheduler_addunlock(s, c->grav.drift, c->grav.drift_out);
         scheduler_addunlock(s, c->grav.down_in, c->grav.down);
+
+        /* In zoom land we also need to link the void cells grav down to
+         * the zoom cell down and long range task. */
+        if (c->type == cell_type_zoom) {
+
+          /* Ensure the void super exists (Otherwise there's nothing to worry
+           * about). */
+          if (c->top->void_parent->grav.super != NULL) {
+
+            /* zoom.long_range -> void.down */
+            scheduler_addunlock(s, c->grav.long_range,
+                                c->top->void_parent->grav.super->grav.down);
+
+            /* void.down -> zoom.down */
+            scheduler_addunlock(s, c->top->void_parent->grav.super->grav.down,
+                                c->grav.down);
+          }
+        }
       }
     }
   }
@@ -4882,15 +4900,14 @@ void engine_maketasks(struct engine *e) {
     message("Setting super-pointers took %.3f %s.",
             clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
-  /* Append hierarchical tasks to each cell. */
-  threadpool_map(&e->threadpool, engine_make_hierarchical_tasks_mapper, cells,
-                 nr_cells, sizeof(struct cell), threadpool_auto_chunk_size, e);
-
-  /* In zoom land we need to create the void tasks after the zoom tasks have
-   * all been created. */
+  /* In zoom land we need to create the void tasks before all others. */
   if (e->s->with_zoom_region) {
     zoom_engine_make_hierarchical_void_tasks(e);
   }
+
+  /* Append hierarchical tasks to each cell. */
+  threadpool_map(&e->threadpool, engine_make_hierarchical_tasks_mapper, cells,
+                 nr_cells, sizeof(struct cell), threadpool_auto_chunk_size, e);
 
   tic2 = getticks();
 
