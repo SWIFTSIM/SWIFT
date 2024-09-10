@@ -373,9 +373,14 @@ static void zoom_engine_make_hierarchical_void_tasks_recursive(struct engine *e,
     if (is_self_gravity) {
 
       /* If we're at the super level, unlock the zoom super cell's grav down
-       * after the void cell grav down and long range tasks. */
+       * after the void cell grav down. */
       scheduler_addunlock(s, c->top->void_parent->grav.super->grav.down,
                           c->grav.down);
+
+      /* We also need to unlock the void cell grav down after the zoom cell
+       * long range task is complete. */
+      scheduler_addunlock(s, c->grav.long_range,
+                          c->top->void_parent->grav.super->grav.down);
     }
   }
 
