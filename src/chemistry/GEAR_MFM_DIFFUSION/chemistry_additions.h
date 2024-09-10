@@ -71,9 +71,9 @@ __attribute__((always_inline)) INLINE static void chemistry_kick_extra(
 
   /* Sanity checks. We don't want negative metal masses. */
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; ++i) {
-    const double n_metal_old = p->chemistry_data.metal_mass[i];
+    const double m_metal_old = p->chemistry_data.metal_mass[i];
     chemistry_check_unphysical_state(&p->chemistry_data.metal_mass[i],
-                                     n_metal_old, /*callloc=*/2);
+                                     m_metal_old, p->mass, /*callloc=*/2);
   }
 
   /* Reset wcorr */

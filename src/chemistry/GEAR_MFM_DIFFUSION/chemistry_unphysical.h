@@ -40,39 +40,39 @@
  * @param callloc integer indentifier where this function was called from
  */
 __attribute__((always_inline)) INLINE static void
-chemistry_check_unphysical_state(double* metal_density, const double n_old,
+chemistry_check_unphysical_state(double* metal_mass, const double mZ_old, const double gas_mass,
                                  int callloc) {
 
-  /* Check for negative metal densities */
-  /* Note to self for printouts: Maximal allowable F = E * c.
-   * In some cases, e.g. while cooling, we don't modify the fluxes,
-   * so you can get an estimate of what the photon energy used to be
-   * by dividing the printed out fluxes by the speed of light in
-   * code units */
+  /* Check for negative metal densities/masses */
 #ifdef SWIFT_DEBUG_CHECKS
-  float ratio = -1.f;
+  /* float ratio = -1.f; */
   char print = 0;
-  if (n_old == 0.0) {
-    if (*metal_density < -1.e-20) print = 1;
-  } else {
-    /* TODO: understadn that and transpose to chemistry */
-    /* if (fabs(*metal_density) > 1.e-30) { */
-    /*   if (*energy_density < -1.e-20 * fabs(e_old)) print = 1; */
-    /*   ratio = fabsf(*energy_density / e_old); */
-    /* } */
+  if (mZ_old == 0.0) {
+    if (*metal_mass < -1.e-20) print = 1;
   }
   /* callloc = 1 is gradient extrapolation. Don't print out those. */
   if (callloc == 1) print = 0;
   if (print)
-    message("Fixing unphysical metal density case %d | %.6e | %.6e", callloc,
-            *metal_density, ratio);
+    error("Fixing unphysical metal density/mass case %d | %.6e | %.6e", callloc,
+            *metal_mass, mZ_old);
 #endif
-  if (isinf(*metal_density) || isnan(*metal_density))
-    error("Got inf/nan metal density diffusion case %d | %.6e ", callloc,
-          *metal_density);
+  if (isinf(*metal_mass) || isnan(*metal_mass))
+    error("Got inf/nan metal density/mass diffusion case %d | %.6e ", callloc,
+          *metal_mass);
 
-  if (*metal_density < 0.0) {
-    *metal_density = 0.0;
+  if (*metal_mass < 0.0) {
+    *metal_mass = 0.0;
+    return;
+  }
+
+  if (*metal_mass > gas_mass) {
+    error("Metal mass bigger than gas mass ! case %d | %e | %e", callloc,
+	  *metal_mass, mZ_old);
+    if (mZ_old <= gas_mass) {
+      *metal_mass = mZ_old;
+    } else {
+      *metal_mass = 0.0;
+    }
     return;
   }
 }

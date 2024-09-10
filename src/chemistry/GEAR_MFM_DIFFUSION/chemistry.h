@@ -516,17 +516,15 @@ __attribute__((always_inline)) INLINE static void chemistry_end_density(
 
   /* Check that the metal masses are physical */
   for (int g = 0; g < GEAR_CHEMISTRY_ELEMENT_COUNT; g++) {
-    double n_metal_old = p->chemistry_data.metal_mass[g];
+    double m_metal_old = p->chemistry_data.metal_mass[g];
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (volume == 0.) {
       error("Volume is 0!");
     }
 #endif
-
-    /* Sanity checks */
     chemistry_check_unphysical_state(&p->chemistry_data.metal_mass[g],
-                                     n_metal_old, /*callloc=*/0);
+                                     m_metal_old, p->mass, /*callloc=*/g+3);
   }
 }
 
