@@ -1421,6 +1421,10 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
                                   c->top->void_parent->grav.super->grav.down);
             }
 
+            /* zoom.down_in -> void.down */
+            scheduler_addunlock(s, c->grav.down_in,
+                                c->top->void_parent->grav.super->grav.down);
+
             /* void.down -> zoom.down */
             scheduler_addunlock(s, c->top->void_parent->grav.super->grav.down,
                                 c->grav.down);
