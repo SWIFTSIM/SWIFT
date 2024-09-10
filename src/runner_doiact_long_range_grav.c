@@ -789,6 +789,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
         runner_do_grav_long_range_uniform_non_periodic(r, ci, top);
         break;
       case cell_type_zoom:
+        message("Is the long range task actually running?");
         runner_do_grav_long_range_zoom_non_periodic(r, ci, top);
         break;
       case cell_type_buffer:
