@@ -761,10 +761,6 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
     top = top->void_parent->top;
   }
 
-  if (ci->subtype == cell_subtype_void) {
-    message("Void cell found in long range gravity task!");
-  }
-
   /* Call the appropriate interaction function. */
   if (periodic) {
     switch (ci->type) {
