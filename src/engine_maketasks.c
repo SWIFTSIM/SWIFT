@@ -1185,12 +1185,6 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
   const int with_csds = e->policy & engine_policy_csds;
 #endif
 
-#ifdef SWIFT_DEBUG_CHECKS
-  /* Ensure we haven't got a void cell which is a super. */
-  if (c->subtype == cell_subtype_void && c->super == c)
-    error("Void cell is a super-cell! This shouldn't ever be the case.");
-#endif
-
   /* Are we at the top-level? */
   if (c->top == c && c->nodeID == e->nodeID) {
 
