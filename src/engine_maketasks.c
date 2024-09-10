@@ -2335,15 +2335,6 @@ void engine_link_gravity_tasks(struct engine *e) {
     const enum task_types t_type = t->type;
     const enum task_subtypes t_subtype = t->subtype;
 
-    if (ci->subtype == cell_subtype_void) {
-      message("Linking task %s/%s to void cell", taskID_names[t_type],
-              subtaskID_names[t_subtype]);
-    }
-    if (cj != NULL && cj->subtype == cell_subtype_void) {
-      message("Linking task %s/%s to void cell", taskID_names[t_type],
-              subtaskID_names[t_subtype]);
-    }
-
     /* Pointers to the parent cells for tasks going up and down the tree
      * In the case where we are at the super-level we don't
      * want the parent as no tasks are defined above that level. */
