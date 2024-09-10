@@ -225,8 +225,8 @@ void runner_zoom_do_void_grav_down(struct runner *r, struct cell *c,
      * cell tree which is handled in the usual way. */
     if (cp->subtype == cell_subtype_void || cp->grav.super != cp) {
       runner_zoom_do_void_grav_down(r, cp, 0);
-    } else {
-      runner_do_grav_down(r, cp, 0);
+    } else if (cp->type == cell_type_zoom && cp->grav.super == cp) {
+      message("Reached the super cell in the zoom tree during down.");
     }
   }
 

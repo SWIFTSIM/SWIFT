@@ -390,8 +390,8 @@ static void zoom_engine_make_hierarchical_void_tasks_recursive(struct engine *e,
        * after the void cell grav down and long range tasks. Afterwards we're
        * done recursing. */
       if (c->grav.super == c) {
-        /* scheduler_addunlock(s, c->top->void_parent->top->grav.down, */
-        /*                     c->grav.down); */
+        scheduler_addunlock(s, c->top->void_parent->top->grav.down,
+                            c->grav.down);
         scheduler_addunlock(s, c->grav.long_range,
                             c->top->void_parent->grav.super->grav.down);
 
