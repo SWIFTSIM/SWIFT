@@ -763,7 +763,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
 
   /* Call the appropriate interaction function. */
   if (periodic) {
-    switch (top->type) {
+    switch (ci->type) {
 
       case cell_type_regular:
         runner_do_grav_long_range_periodic(r, ci, top, s->cells_top);
@@ -784,7 +784,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
     }
   } else {
 
-    switch (top->type) {
+    switch (ci->type) {
 
       case cell_type_regular:
         runner_do_grav_long_range_uniform_non_periodic(r, ci, top);
