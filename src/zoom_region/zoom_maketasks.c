@@ -336,6 +336,10 @@ static void zoom_engine_make_hierarchical_void_tasks_recursive(struct engine *e,
       c->grav.init = scheduler_addtask(s, task_type_init_grav,
                                        task_subtype_none, 0, 0, c, NULL);
 
+      /* Gravity non-neighbouring pm calculations. */
+      c->grav.long_range = scheduler_addtask(s, task_type_grav_long_range,
+                                             task_subtype_none, 0, 0, c, NULL);
+
       /* Gravity recursive down-pass */
       c->grav.down = scheduler_addtask(s, task_type_grav_down,
                                        task_subtype_none, 0, 0, c, NULL);
@@ -345,6 +349,10 @@ static void zoom_engine_make_hierarchical_void_tasks_recursive(struct engine *e,
                                            task_subtype_none, 0, 1, c, NULL);
       c->grav.down_in = scheduler_addtask(s, task_type_grav_down_in,
                                           task_subtype_none, 0, 1, c, NULL);
+
+      /* Long-range gravity forces (not the mesh ones!) */
+      scheduler_addunlock(s, c->grav.init, c->grav.long_range);
+      scheduler_addunlock(s, c->grav.long_range, c->grav.down);
 
       /* Link in the implicit tasks */
       scheduler_addunlock(s, c->grav.init, c->grav.init_out);
