@@ -2484,28 +2484,6 @@ void engine_link_gravity_tasks(struct engine *e) {
         }
       }
     }
-
-    /* If we have a gravity task for a zoom cell we need to add unlocks for the
-     * void cell tree grav down. */
-    if (ci->type == cell_type_zoom) {
-
-      /* Do we have a gravity task? */
-      if (t_subtype == task_subtype_grav ||
-          t_subtype == task_subtype_external_grav ||
-          t_type == task_type_grav_mm) {
-
-        /* Unlock the void cell tree grav down */
-        scheduler_addunlock(sched, t, ci->top->void_parent->grav.down_in);
-      }
-    } else if (cj != NULL && cj->type == cell_type_zoom) {
-
-      /* Do we have a gravity task? */
-      if (t_subtype == task_subtype_grav || t_type == task_type_grav_mm) {
-
-        /* Unlock the void cell tree grav down */
-        scheduler_addunlock(sched, t, cj->top->void_parent->grav.down_in);
-      }
-    }
   }
 }
 
