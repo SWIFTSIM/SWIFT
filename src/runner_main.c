@@ -555,8 +555,6 @@ void *runner_main(void *data) {
           }
           break;
         case task_type_grav_long_range:
-          if (t->ci->type == cell_type_zoom)
-            message("Got a zoom cell for long range gravity.");
           runner_do_grav_long_range(r, t->ci, 1);
           break;
         case task_type_grav_mm:
