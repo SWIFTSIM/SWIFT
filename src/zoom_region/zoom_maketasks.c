@@ -397,6 +397,11 @@ static void zoom_engine_make_hierarchical_void_tasks_recursive(struct engine *e,
                             c->grav.down);
         scheduler_addunlock(s, c->grav.long_range,
                             c->top->void_parent->top->grav.down);
+
+        /* We also need to unlock the zoom's end_force after the void cells
+         * down. */
+        scheduler_addunlock(s, c->top->void_parent->top->grav.down,
+                            c->grav.super->grav.end_force);
       }
     }
   }
