@@ -1177,6 +1177,9 @@ void cell_set_super_gravity(struct cell *c, struct cell *super_gravity) {
   /* Set the super-cell */
   c->grav.super = super_gravity;
 
+  if (super_gravity != NULL && c->subtype == cell_subtype_void)
+    message("Void cell has a super-gravity cell!");
+
   /* Recurse */
   if (c->split)
     for (int k = 0; k < 8; k++)
