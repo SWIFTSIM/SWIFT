@@ -105,7 +105,7 @@ void engine_make_self_gravity_tasks_mapper_bkg_cells(void *map_data,
     /* Create a self task, and loop over neighbouring cells making pair tasks
      * where appropriate. */
     engine_gravity_make_task_loop(e, (size_t)(map_data) + ind, cdim, cells,
-                                  periodic, use_mesh, delta_m + 1, delta_p + 1);
+                                  periodic, use_mesh, delta_m, delta_p);
   }
 }
 
