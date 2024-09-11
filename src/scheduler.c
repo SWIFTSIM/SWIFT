@@ -1601,15 +1601,15 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
     t->subtype = task_subtype_none;
     t->flags = 0;
 
-    /* Can we do an mm between all progenies? */
-    if (cell_can_use_pair_mm(ci, cj, e, sp,
-                             /*use_rebuild_data=*/1,
-                             /*is_tree_walk=*/1,
-                             /*periodic boundaries*/ 0,
-                             /*use_mesh*/ sp->periodic)) {
-      t->flags = 0xFFFFFFFFFFFFFFFFULL;
-      return;
-    }
+    /* /\* Can we do an mm between all progenies? *\/ */
+    /* if (cell_can_use_pair_mm(ci, cj, e, sp, */
+    /*                          /\*use_rebuild_data=*\/1, */
+    /*                          /\*is_tree_walk=*\/1, */
+    /*                          /\*periodic boundaries*\/ 0, */
+    /*                          /\*use_mesh*\/ sp->periodic)) { */
+    /*   t->flags = 0xFFFFFFFFFFFFFFFFULL; */
+    /*   return; */
+    /* } */
 
     /* Make a task for every other pair of progeny */
     for (int i = 0; i < 8; i++) {
