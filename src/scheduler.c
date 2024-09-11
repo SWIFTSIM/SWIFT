@@ -1629,8 +1629,6 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
       struct cell *cpi;
       if (ci->subtype == cell_subtype_void) {
         cpi = ci->progeny[i];
-      } else if (ci->split && cell_is_above_diff_grav_depth(ci)) {
-        cpi = ci->progeny[i];
       } else {
         cpi = ci;
       }
@@ -1641,8 +1639,6 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
          * just the cell itself. */
         struct cell *cpj;
         if (cj->subtype == cell_subtype_void) {
-          cpj = cj->progeny[j];
-        } else if (cj->split && cell_is_above_diff_grav_depth(cj)) {
           cpj = cj->progeny[j];
         } else {
           cpj = cj;
