@@ -1565,13 +1565,23 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
       return;
     }
 
-    /* Kill of this task, we'll turn it into pairs of progeny that may be
-     * able to use MM tasks. */
+    /* Kill of this task. TODO: use the same redo logic as above to reduce
+     * the number of skipped tasks. */
     t->type = task_type_none;
     t->subtype = task_subtype_none;
     t->ci = NULL;
     t->cj = NULL;
     t->skip = 1;
+
+    /* Create a self for all progeny. */
+    for (int i = 0; i < 8; i++) {
+      if (ci->progeny[i] != NULL) {
+        zoom_scheduler_splittask_gravity_void_pair(
+            scheduler_addtask(s, task_type_self, t->subtype, 0, 0,
+                              ci->progeny[i], NULL),
+            s);
+      }
+    }
 
     for (int j = 0; j < 8; j++) {
       for (int k = j + 1; k < 8; k++) {
