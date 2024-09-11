@@ -119,8 +119,8 @@ void runner_do_grav_long_range_zoom_non_periodic(struct runner *r,
   /* Recover the list of top-level cells */
   struct cell *cells = e->s->cells_top;
 
-  int tested_gparts = 0;
-  int interacted_gparts = 0;
+  size_t tested_gparts = 0;
+  size_t interacted_gparts = 0;
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (top->type == cell_type_zoom) {
@@ -182,11 +182,11 @@ void runner_do_grav_long_range_zoom_non_periodic(struct runner *r,
   /* Ensure we at leasted against all possible gparts. */
   if (tested_gparts != e->s->nr_gparts) {
     error(
-        "Not all gparts were tested in long range gravity task! (tested: %d, "
+        "Not all gparts were tested in long range gravity task! (tested: %ld, "
         "total: %ld)",
         tested_gparts, e->s->nr_gparts);
   }
-  message("%s/%s - tested_gparts: %d, interacted_gparts: %d",
+  message("%s/%s - tested_gparts: %ld, interacted_gparts: %ld",
           cellID_names[ci->type], subcellID_names[ci->subtype], tested_gparts,
           interacted_gparts);
 #endif
