@@ -1652,48 +1652,46 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
                                  /*periodic boundaries*/ 0,
                                  /*use_mesh*/ sp->periodic)) {
 
-          /* Flag this pair as being treated by the M-M task.
-           * We use the 64 bits in the task->flags field to store
-           * this information. The corresponding tasks will unpack
-           * the information and operate according to the choices
-           * made here. */
-          for (int j = 0; j < 8; j++) {
-            const int flag = i * 8 + j;
-            t->flags |= (1ULL << flag);
-          }
-        } else {
-          zoom_scheduler_splittask_gravity_void_pair(
-              scheduler_addtask(s, task_type_pair, task_subtype_grav, 0, 0,
-                                ci->progeny[i], cj),
-              s);
+          /* Since we aren't in the progeny of cj just make an mm task with
+           * a negative flag (which will flag for the right mm function
+           * to be used). */
+          scheduler_addtask(s, task_type_grav_mm, task_subtype_none, -1, 0,
+                            ci->progeny[i], cj),
         }
       }
-    } else {
-      for (int i = 0; i < 8; i++) {
+      else {
         zoom_scheduler_splittask_gravity_void_pair(
-            scheduler_addtask(s, task_type_pair, task_subtype_grav, 0, 0, ci,
-                              cj->progeny[i]),
+            scheduler_addtask(s, task_type_pair, task_subtype_grav, 0, 0,
+                              ci->progeny[i], cj),
             s);
       }
     }
-
-    /* Can none of the progenies use M-M calculations? */
-    if (t->flags == 0) {
-      t->type = task_type_none;
-      t->subtype = task_subtype_none;
-      t->ci = NULL;
-      t->cj = NULL;
-      t->skip = 1;
+  } else {
+    for (int i = 0; i < 8; i++) {
+      zoom_scheduler_splittask_gravity_void_pair(
+          scheduler_addtask(s, task_type_pair, task_subtype_grav, 0, 0, ci,
+                            cj->progeny[i]),
+          s);
     }
   }
 
-  /* If we didn't get a pair something bad happened! */
-  else {
-    error(
-        "Task type %s/%s not supported in "
-        "zoom_scheduler_splittask_gravity_void_pair",
-        taskID_names[t->type], subtaskID_names[t->subtype]);
+  /* Can none of the progenies use M-M calculations? */
+  if (t->flags == 0) {
+    t->type = task_type_none;
+    t->subtype = task_subtype_none;
+    t->ci = NULL;
+    t->cj = NULL;
+    t->skip = 1;
   }
+}
+
+/* If we didn't get a pair something bad happened! */
+else {
+  error(
+      "Task type %s/%s not supported in "
+      "zoom_scheduler_splittask_gravity_void_pair",
+      taskID_names[t->type], subtaskID_names[t->subtype]);
+}
 }
 
 /**
