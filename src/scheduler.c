@@ -1572,8 +1572,8 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
         (cj->subtype == cell_subtype_void ||
          (cj->split && cell_is_above_diff_grav_depth(cj)))) {
 
-      message("ci=%s/%s cj=%s/%s @ %d/%d", cellID_names[ci->subtype],
-              subcellID_names[ci->subtype], cellID_names[cj->subtype],
+      message("ci=%s/%s cj=%s/%s @ %d/%d", cellID_names[ci->type],
+              subcellID_names[ci->subtype], cellID_names[cj->type],
               subcellID_names[cj->subtype], ci->depth, cj->depth);
 
       /* Turn the task into a M-M task that will take care of all the
