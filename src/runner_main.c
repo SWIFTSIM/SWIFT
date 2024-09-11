@@ -258,7 +258,8 @@ void *runner_main(void *data) {
           else if (t->subtype == task_subtype_limiter)
             runner_dopair1_branch_limiter(r, ci, cj);
           else if (t->subtype == task_subtype_grav)
-            runner_dopair_recursive_grav(r, ci, cj, 1);
+            break;
+          /* runner_dopair_recursive_grav(r, ci, cj, 1); */
           else if (t->subtype == task_subtype_stars_density)
             runner_dopair_branch_stars_density(r, ci, cj);
 #ifdef EXTRA_STAR_LOOPS
@@ -553,6 +554,7 @@ void *runner_main(void *data) {
           runner_do_grav_long_range(r, t->ci, 1);
           break;
         case task_type_grav_mm:
+          break;
           runner_dopair_grav_mm_progenies(r, t->flags, t->ci, t->cj);
           break;
         case task_type_cooling:

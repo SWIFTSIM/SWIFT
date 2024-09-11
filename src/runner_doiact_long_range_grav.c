@@ -156,6 +156,8 @@ void runner_do_grav_long_range_zoom_non_periodic(struct runner *r,
 
     /* Avoid self contributions */
     if (top == cj) continue;
+    runner_dopair_grav_mm_nonsym(r, ci, cj);
+    continue;
 
     if (cell_can_use_pair_mm(top, cj, e, e->s, /*use_rebuild_data=*/1,
                              /*is_tree_walk=*/0,
