@@ -85,14 +85,9 @@ __attribute__((always_inline)) INLINE static void chemistry_compute_flux(
   float vi[3] = {pi->v[0], pi->v[1], pi->v[2]};
   float vj[3] = {pj->v[0], pj->v[1], pj->v[2]};
 
-  const float xfac = -pi->h / (pi->h + pj->h);
-  const float vij[3] = {vi[0] + (vi[0] - vj[0]) * xfac,
-                        vi[1] + (vi[1] - vj[1]) * xfac,
-                        vi[2] + (vi[2] - vj[2]) * xfac};
-
-  float WL[5] = {pi->rho, vi[0] - vij[0], vi[1] - vij[1], vi[2] - vij[2],
+  float WL[5] = {pi->rho, vi[0], vi[1], vi[2],
                  hydro_get_comoving_pressure(pi)};
-  float WR[5] = {pj->rho, vj[0] - vij[0], vj[1] - vij[1], vj[2] - vij[2],
+  float WR[5] = {pj->rho, vj[0], vj[1], vj[2],
                  hydro_get_comoving_pressure(pj)};
 
   /* While solving the Riemann problem, we shall get a scalar because of the
