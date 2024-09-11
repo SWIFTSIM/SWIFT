@@ -1600,8 +1600,6 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
     t->type = task_type_grav_mm;
     t->subtype = task_subtype_none;
     t->flags = 0;
-    t->flags = 0xFFFFFFFFFFFFFFFFULL;
-    return;
 
     /* Can we do an mm between all progenies? */
     if (cell_can_use_pair_mm(ci, cj, e, sp,
