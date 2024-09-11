@@ -1587,16 +1587,6 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
       for (int i = 0; i < 8; i++) {
         for (int j = 0; j < 8; j++) {
 
-          /* Skip empty non-void cells (these only exist because the zoom cell
-           * leaves of the void cells are top levell cells and thus can be
-           * empty). */
-          if ((ci->progeny[i]->subtype != cell_subtype_void &&
-               ci->progeny[i]->grav.count == 0) ||
-              (cj->progeny[j]->subtype != cell_subtype_void &&
-               cj->progeny[j]->grav.count == 0)) {
-            continue;
-          }
-
           /* Can we use a M-M interaction here? */
           if (cell_can_use_pair_mm(ci->progeny[i], cj->progeny[j], e, sp,
                                    /*use_rebuild_data=*/1,
