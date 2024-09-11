@@ -1374,7 +1374,6 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
         if (c->top->type != cell_type_zoom ||
             (c->top->type == cell_type_zoom &&
              c->top->void_parent->grav.super == NULL)) {
-          /* if (c->top->type != cell_type_zoom) { */
           c->grav.long_range = scheduler_addtask(
               s, task_type_grav_long_range, task_subtype_none, 0, 0, c, NULL);
         }
