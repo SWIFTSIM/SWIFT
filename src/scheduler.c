@@ -1657,41 +1657,39 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
            * to be used). */
           scheduler_addtask(s, task_type_grav_mm, task_subtype_none, -1, 0,
                             ci->progeny[i], cj);
+        } else {
+          zoom_scheduler_splittask_gravity_void_pair(
+              scheduler_addtask(s, task_type_pair, task_subtype_grav, 0, 0,
+                                ci->progeny[i], cj),
+              s);
         }
       }
-      else {
+    } else {
+      for (int i = 0; i < 8; i++) {
         zoom_scheduler_splittask_gravity_void_pair(
-            scheduler_addtask(s, task_type_pair, task_subtype_grav, 0, 0,
-                              ci->progeny[i], cj),
+            scheduler_addtask(s, task_type_pair, task_subtype_grav, 0, 0, ci,
+                              cj->progeny[i]),
             s);
       }
     }
-  } else {
-    for (int i = 0; i < 8; i++) {
-      zoom_scheduler_splittask_gravity_void_pair(
-          scheduler_addtask(s, task_type_pair, task_subtype_grav, 0, 0, ci,
-                            cj->progeny[i]),
-          s);
+
+    /* Can none of the progenies use M-M calculations? */
+    if (t->flags == 0) {
+      t->type = task_type_none;
+      t->subtype = task_subtype_none;
+      t->ci = NULL;
+      t->cj = NULL;
+      t->skip = 1;
     }
   }
 
-  /* Can none of the progenies use M-M calculations? */
-  if (t->flags == 0) {
-    t->type = task_type_none;
-    t->subtype = task_subtype_none;
-    t->ci = NULL;
-    t->cj = NULL;
-    t->skip = 1;
+  /* If we didn't get a pair something bad happened! */
+  else {
+    error(
+        "Task type %s/%s not supported in "
+        "zoom_scheduler_splittask_gravity_void_pair",
+        taskID_names[t->type], subtaskID_names[t->subtype]);
   }
-}
-
-/* If we didn't get a pair something bad happened! */
-else {
-  error(
-      "Task type %s/%s not supported in "
-      "zoom_scheduler_splittask_gravity_void_pair",
-      taskID_names[t->type], subtaskID_names[t->subtype]);
-}
 }
 
 /**
