@@ -1629,6 +1629,8 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
       struct cell *cpi;
       if (ci->subtype == cell_subtype_void) {
         cpi = ci->progeny[i];
+      } else if (ci->split && cell_is_above_diff_grav_depth(ci)) {
+        cpi = ci->progeny[i];
       } else {
         cpi = ci;
       }
@@ -1639,6 +1641,8 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
          * just the cell itself. */
         struct cell *cpj;
         if (cj->subtype == cell_subtype_void) {
+          cpj = cj->progeny[j];
+        } else if (cj->split && cell_is_above_diff_grav_depth(cj)) {
           cpj = cj->progeny[j];
         } else {
           cpj = cj;
@@ -1651,8 +1655,7 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
         }
 
         /* Can we use a M-M interaction here? */
-        if (ci != cpi && cj != cpj &&
-            cell_can_use_pair_mm(cpi, cpj, e, sp,
+        if (cell_can_use_pair_mm(cpi, cpj, e, sp,
                                  /*use_rebuild_data=*/1,
                                  /*is_tree_walk=*/1,
                                  /*periodic boundaries*/ 0,
