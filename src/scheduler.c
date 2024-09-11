@@ -1626,13 +1626,8 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
                                    /*periodic boundaries*/ 0,
                                    /*use_mesh*/ sp->periodic)) {
 
-            /* Flag this pair as being treated by the M-M task.
-             * We use the 64 bits in the task->flags field to store
-             * this information. The corresponding tasks will unpack
-             * the information and operate according to the choices
-             * made here. */
-            const int flag = i * 8 + j;
-            t->flags |= (1ULL << flag);
+            scheduler_addtask(s, task_type_grav_mm, task_subtype_none, -2, 0,
+                              cpi, cpj);
 
           } else {
             zoom_scheduler_splittask_gravity_void_pair(
