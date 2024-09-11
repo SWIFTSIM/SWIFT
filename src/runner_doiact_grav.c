@@ -2000,7 +2000,7 @@ void runner_dopair_grav_mm_progenies(struct runner *r, const long long flags,
 
   /* If the flag is negative we have an mm task not defined at the progeny
    * level. */
-  if (flags < 0) {
+  if (flags == -1) {
     runner_dopair_grav_mm(r, ci, cj);
     return;
   }
