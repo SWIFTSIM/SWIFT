@@ -1615,11 +1615,31 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
     /* Handle each individual splitting case. */
     if (ci->subtype == cell_subtype_void && cj->subtype == cell_subtype_void) {
       for (int i = 0; i < 8; i++) {
+        struct cell *cpi = ci->progeny[i];
         for (int j = 0; j < 8; j++) {
-          zoom_scheduler_splittask_gravity_void_pair(
-              scheduler_addtask(s, task_type_pair, task_subtype_grav, 0, 0,
-                                ci->progeny[i], cj->progeny[j]),
-              s);
+          struct cell *cpj = cj->progeny[j];
+
+          /* Can we use a M-M interaction here? */
+          if (cell_can_use_pair_mm(cpi, cpj, e, sp,
+                                   /*use_rebuild_data=*/1,
+                                   /*is_tree_walk=*/1,
+                                   /*periodic boundaries*/ 0,
+                                   /*use_mesh*/ sp->periodic)) {
+
+            /* Flag this pair as being treated by the M-M task.
+             * We use the 64 bits in the task->flags field to store
+             * this information. The corresponding tasks will unpack
+             * the information and operate according to the choices
+             * made here. */
+            const int flag = i * 8 + j;
+            t->flags |= (1ULL << flag);
+
+          } else {
+            zoom_scheduler_splittask_gravity_void_pair(
+                scheduler_addtask(s, task_type_pair, task_subtype_grav, 0, 0,
+                                  ci->progeny[i], cj->progeny[j]),
+                s);
+          }
         }
       }
     } else if (ci->subtype == cell_subtype_void) {
@@ -1631,6 +1651,11 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
               s);
         }
       }
+      t->type = task_type_none;
+      t->subtype = task_subtype_none;
+      t->ci = NULL;
+      t->cj = NULL;
+      t->skip = 1;
     } else {
       for (int i = 0; i < 8; i++) {
         if (cj->progeny[i] != NULL) {
@@ -1640,12 +1665,12 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
               s);
         }
       }
+      t->type = task_type_none;
+      t->subtype = task_subtype_none;
+      t->ci = NULL;
+      t->cj = NULL;
+      t->skip = 1;
     }
-    t->type = task_type_none;
-    t->subtype = task_subtype_none;
-    t->ci = NULL;
-    t->cj = NULL;
-    t->skip = 1;
     return;
 
     /* /\* Can we do an mm between all progenies? *\/ */
