@@ -66,7 +66,7 @@ chemistry_riemann_solve_for_flux(
     const double UL, const double UR, const float WL[5], const float WR[5],
     const double F_diff_L[3], const double F_diff_R[3], const float Anorm,
     const float n_unit[3], int g, double* metal_flux,
-    const struct chemistry_global_data* chemistry_data) {
+    const struct chemistry_global_data* chem_data) {
 
   /* Handle pure vacuum */
   if (!UL && !UR) {
@@ -120,12 +120,11 @@ chemistry_riemann_solve_for_flux(
   const float c_fast = max3(SL, SR, Sstar);
 
   /* Approximate lambda_plus and lambda_minus */
-  /* const float lambda_plus = max(uL, uR) + c_fast; */
-  /* const float lambda_minus = min(uL, UR) - c_fast; */
+  const float lambda_plus = max(uL, uR) + c_fast;
+  const float lambda_minus = min(uL, UR) - c_fast;
 
-  /* These give better isotropic diffusion in high-resolution tests*/
-  const float lambda_plus = fabsf(uL - uR) + c_fast;
-  const float lambda_minus = - lambda_plus;
+  /* const float lambda_plus = fabsf(uL - uR) + c_fast; */
+  /* const float lambda_minus = - lambda_plus; */
 
   /* Compute alpha */
   const float K_star_norm =
@@ -154,9 +153,9 @@ chemistry_riemann_solve_for_flux(
 
   /* TODO: psi must be a user-defined parameter */
   const double flux_hll = chemistry_minmod(
-      (1 + chemistry_data->hll_riemann_solver_psi) * F_2, F_2 + F_U);
+      (1 + chem_data->hll_riemann_solver_psi) * F_2, F_2 + F_U);
 
-  if (chemistry_data->use_hokpins2017_hll_riemann_solver) {
+  if (chem_data->use_hokpins2017_hll_riemann_solver) {
     /****************************************************************************
      * Hopkins 2017 implementation of HLL
      * This can lead to metal masses bigger than the particle mass. There is
@@ -187,7 +186,7 @@ chemistry_riemann_solve_for_flux(
     const double F_HLL_times_A = flux_hll * Anorm;
 
     /* Now, choose the righ flux to get F_diff_ij^* */
-    const double epsilon = chemistry_data->hll_riemann_solver_epsilon;
+    const double epsilon = chem_data->hll_riemann_solver_epsilon;
     if ((SIGN(F_times_A_dir) != SIGN(F_HLL_times_A)) &&
         fabs(F_times_A_dir) > epsilon * fabs(F_HLL_times_A)) {
       *metal_flux = 0;
