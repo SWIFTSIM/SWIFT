@@ -28,12 +28,14 @@
  * @param xp the #xpart.
  */
 __attribute__((always_inline)) INLINE static float mhd_get_magnetic_energy(
-    const struct part *p, const struct xpart *xp, const float mu_0) {
+    const struct part *p, const struct xpart *xp, const float mu_0, const float a) {
+
+  const float afact = pow(a,2.f*mhd_comoving_factor);
 
   const float b2 = p->mhd_data.BPred[0] * p->mhd_data.BPred[0] +
                    p->mhd_data.BPred[1] * p->mhd_data.BPred[1] +
                    p->mhd_data.BPred[2] * p->mhd_data.BPred[2];
-  return 0.5f * b2 / mu_0 * p->mass / p->rho;
+  return 0.5f * afact * b2 / mu_0 * p->mass / p->rho;
 }
 /**
  * @brief Returns the magnetic field squared contained in the particle.
@@ -563,12 +565,14 @@ __attribute__((always_inline)) INLINE static void mhd_kick_extra(
 __attribute__((always_inline)) INLINE static void mhd_convert_quantities(
     struct part *p, struct xpart *xp, const struct cosmology *cosmo,
     const struct hydro_props *hydro_props) {
+
+  const float a_fact = pow(cosmo->a, -mhd_comoving_factor);
   /* Set Restitivity Eta */
   p->mhd_data.resistive_eta = hydro_props->mhd.mhd_eta;
 
-  p->mhd_data.BPred[0] *= pow(cosmo->a, -mhd_comoving_factor);
-  p->mhd_data.BPred[1] *= pow(cosmo->a, -mhd_comoving_factor);
-  p->mhd_data.BPred[2] *= pow(cosmo->a, -mhd_comoving_factor);
+  p->mhd_data.BPred[0] *= a_fact;
+  p->mhd_data.BPred[1] *= a_fact;
+  p->mhd_data.BPred[2] *= a_fact;
 
   xp->mhd_data.Bfld_full[0] = p->mhd_data.BPred[0];
   xp->mhd_data.Bfld_full[1] = p->mhd_data.BPred[1];
@@ -588,9 +592,6 @@ __attribute__((always_inline)) INLINE static void mhd_convert_quantities(
 __attribute__((always_inline)) INLINE static void mhd_first_init_part(
     struct part *restrict p, struct xpart *restrict xp,
     const struct mhd_global_data *mhd_data, const double Lsize) {
-
-  p->mhd_data.phi = 0.f;
-
   mhd_reset_acceleration(p);
   mhd_init_part(p);
 }
