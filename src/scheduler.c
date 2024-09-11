@@ -1565,6 +1565,14 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
       return;
     }
 
+    /* Kill of this task, we'll turn it into pairs of progeny that may be
+     * able to use MM tasks. */
+    t->type = task_type_none;
+    t->subtype = task_subtype_none;
+    t->ci = NULL;
+    t->cj = NULL;
+    t->skip = 1;
+
     for (int j = 0; j < 8; j++) {
       for (int k = j + 1; k < 8; k++) {
         zoom_scheduler_splittask_gravity_void_pair(
