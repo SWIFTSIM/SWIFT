@@ -951,13 +951,6 @@ void engine_do_tasks_count_mapper(void *map_data, int num_elements,
 
   /* Add task counts locally */
   for (int k = 0; k < num_elements; k++) {
-    if (tasks[k].skip && (tasks[k].type == task_type_grav_down ||
-                          tasks[k].type == task_type_grav_mm ||
-                          tasks[k].type == task_type_grav_long_range ||
-                          tasks[k].subtype == task_subtype_grav)) {
-      message("Skipping task %s/%s", taskID_names[tasks[k].type],
-              subtaskID_names[tasks[k].subtype]);
-    }
     if (tasks[k].skip)
       local_counts[task_type_count] += 1;
     else
