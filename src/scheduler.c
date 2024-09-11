@@ -1644,21 +1644,17 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
       }
     } else if (ci->subtype == cell_subtype_void) {
       for (int i = 0; i < 8; i++) {
-        if (ci->progeny[i] != NULL) {
-          zoom_scheduler_splittask_gravity_void_pair(
-              scheduler_addtask(s, task_type_pair, task_subtype_grav, 0, 0,
-                                ci->progeny[i], cj),
-              s);
-        }
+        zoom_scheduler_splittask_gravity_void_pair(
+            scheduler_addtask(s, task_type_pair, task_subtype_grav, 0, 0,
+                              ci->progeny[i], cj),
+            s);
       }
     } else {
       for (int i = 0; i < 8; i++) {
-        if (cj->progeny[i] != NULL) {
-          zoom_scheduler_splittask_gravity_void_pair(
-              scheduler_addtask(s, task_type_pair, task_subtype_grav, 0, 0, ci,
-                                cj->progeny[i]),
-              s);
-        }
+        zoom_scheduler_splittask_gravity_void_pair(
+            scheduler_addtask(s, task_type_pair, task_subtype_grav, 0, 0, ci,
+                              cj->progeny[i]),
+            s);
       }
     }
 
