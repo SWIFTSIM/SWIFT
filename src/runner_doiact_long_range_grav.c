@@ -119,6 +119,9 @@ void runner_do_grav_long_range_zoom_non_periodic(struct runner *r,
   /* Recover the list of top-level cells */
   struct cell *cells = e->s->cells_top;
 
+  int tested_gparts = 0;
+  int interacted_gparts = 0;
+
 #ifdef SWIFT_DEBUG_CHECKS
   if (top->type == cell_type_zoom) {
     error(
@@ -154,6 +157,8 @@ void runner_do_grav_long_range_zoom_non_periodic(struct runner *r,
     }
 #endif
 
+    tested_gparts += multi_j->m_pole.num_gpart;
+
     /* Avoid self contributions */
     if (top == cj) continue;
 
@@ -165,11 +170,26 @@ void runner_do_grav_long_range_zoom_non_periodic(struct runner *r,
       runner_dopair_grav_mm_nonsym(r, ci, cj);
       // runner_dopair_recursive_grav_pm(r, ci, cj);
 
+      interacted_gparts += multi_j->m_pole.num_gpart;
+
       /* Record that this multipole received a contribution */
       multi_i->pot.interacted = 1;
 
     } /* We are in charge of this pair */
   } /* Loop over top-level cells */
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Ensure we at leasted against all possible gparts. */
+  if (tested_gparts != e->s->nr_gparts) {
+    error(
+        "Not all gparts were tested in long range gravity task! (tested: %d, "
+        "total: %d)",
+        tested_gparts, e->s->nr_gparts);
+  }
+  message("%s/%s - tested_gparts: %d, interacted_gparts: %d",
+          cellID_names[ci->type], subcellID_names[ci->subtype], tested_gparts,
+          interacted_gparts);
+#endif
 }
 
 /**
