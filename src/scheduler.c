@@ -1565,6 +1565,11 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
          (ci->split && cell_is_above_diff_grav_depth(ci))) &&
         (cj->subtype == cell_subtype_void ||
          (cj->split && cell_is_above_diff_grav_depth(cj)))) {
+
+      message("ci=%s/%s cj=%s/%s @ %d/%d", cellID_names[ci->subtype],
+              subcellID_names[ci->subtype], cellID_names[cj->subtype],
+              subcellID_names[cj->subtype], ci->depth, cj->depth);
+
       /* Turn the task into a M-M task that will take care of all the
        * progeny pairs */
       t->type = task_type_grav_mm;
@@ -1637,6 +1642,9 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
 
     /* If ci is a void cell we must split it regardless. */
     else if (ci->subtype == cell_subtype_void) {
+      message("Only ci is a void cell (cj=%s/%s @ %d/%d",
+              cellID_names[cj->subtype], subcellID_names[cj->subtype],
+              ci->depth, cj->depth);
 
       /* Can we use a M-M interaction here? */
       if (cell_can_use_pair_mm(ci, cj, e, sp,
@@ -1690,6 +1698,9 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
 
     /* If cj is a void cell we must split it regardless. */
     else if (cj->subtype == cell_subtype_void) {
+      message("Only cj is a void cell (ci=%s/%s @ %d/%d",
+              cellID_names[ci->subtype], subcellID_names[ci->subtype],
+              ci->depth, cj->depth);
 
       /* Can we use a M-M interaction here? */
       if (cell_can_use_pair_mm(ci, cj, e, sp,
