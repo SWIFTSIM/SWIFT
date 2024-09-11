@@ -854,6 +854,7 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
             else
               my_id = gp->id_or_neg_offset;
 
+#ifdef SWIFT_GRAVITY_FORCE_CHECKS
             message(
                 "Interaction breakdown: num_interacted_m2p=%lld "
                 "num_interacted_m2l=%lld num_interacted_pm=%lld "
@@ -862,6 +863,7 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
                 gp->num_interacted_m2p, gp->num_interacted_m2l,
                 gp->num_interacted_pm, gp->num_interacted_p2p,
                 gp->num_interacted, e->total_nr_gparts);
+#endif
 
             error(
                 "g-particle (id=%lld, type=%s) did not interact "
