@@ -120,11 +120,11 @@ chemistry_riemann_solve_for_flux(
   const float c_fast = max3(SL, SR, Sstar);
 
   /* Approximate lambda_plus and lambda_minus */
-  const float lambda_plus = max(uL, uR) + c_fast;
-  const float lambda_minus = min(uL, UR) - c_fast;
+  /* const float lambda_plus = max(uL, uR) + c_fast; */
+  /* const float lambda_minus = min(uL, UR) - c_fast; */
 
-  /* const float lambda_plus = fabsf(uL - uR) + c_fast; */
-  /* const float lambda_minus = - lambda_plus; */
+  const float lambda_plus = fabsf(uL - uR) + c_fast;
+  const float lambda_minus = - lambda_plus;
 
   /* Compute alpha */
   const float K_star_norm =
