@@ -1576,7 +1576,7 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
   } /* Self interaction */
 
   /* Pair interaction? */
-  if (t->type == task_type_pair) {
+  else if (t->type == task_type_pair) {
     /* Get a handle on the cells involved. */
     struct cell *ci = t->ci;
     struct cell *cj = t->cj;
@@ -1651,9 +1651,9 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
   /* If we didn't get a pair something bad happened! */
   else {
     error(
-        "Task type %d not supported in "
+        "Task type %s/%s not supported in "
         "zoom_scheduler_splittask_gravity_void_pair",
-        t->type);
+        taskID_names[t->type], subtaskID_names[t->subtype]);
   }
 }
 
