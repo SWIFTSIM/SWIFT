@@ -1554,6 +1554,27 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
   const struct space *sp = s->space;
   struct engine *e = sp->e;
 
+  /* Self-interaction? */
+  if (t->type == task_type_self) {
+    /* Get a handle on the cell involved. */
+    const struct cell *ci = t->ci;
+
+    /* If this cell is not a void cell redirect to the normal splitter. */
+    if (ci->subtype != cell_subtype_void) {
+      scheduler_splittask_gravity(t, s);
+      return;
+    }
+
+    for (int j = 0; j < 8; j++) {
+      for (int k = j + 1; k < 8; k++) {
+        zoom_scheduler_splittask_gravity_void_pair(
+            scheduler_addtask(s, task_type_pair, t->subtype, sub_sid_flag[j][k],
+                              0, ci->progeny[j], ci->progeny[k]),
+            s);
+      }
+    }
+  } /* Self interaction */
+
   /* Pair interaction? */
   if (t->type == task_type_pair) {
     /* Get a handle on the cells involved. */
@@ -1749,9 +1770,11 @@ void scheduler_splittasks_mapper(void *map_data, int num_elements,
     /* Invoke the correct splitting strategy */
     if (t->subtype == task_subtype_density) {
       scheduler_splittask_hydro(t, s);
-    } else if (t->type == task_type_pair &&
-               (t->ci->subtype == cell_subtype_void ||
-                t->cj->subtype == cell_subtype_void)) {
+    } else if ((t->type == task_type_self &&
+                t->ci->subtype == cell_subtype_void) ||
+               (t->type == task_type_pair &&
+                (t->ci->subtype == cell_subtype_void ||
+                 t->cj->subtype == cell_subtype_void))) {
       zoom_scheduler_splittask_gravity_void_pair(t, s);
     } else if (t->subtype == task_subtype_external_grav) {
       scheduler_splittask_gravity(t, s);
