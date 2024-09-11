@@ -172,7 +172,9 @@ void runner_do_grav_long_range_zoom_non_periodic(struct runner *r,
       runner_dopair_grav_mm_nonsym(r, ci, cj);
       // runner_dopair_recursive_grav_pm(r, ci, cj);
 
+#ifdef SWIFT_DEBUG_CHECKS
       interacted_gparts += multi_j->m_pole.num_gpart;
+#endif
 
       /* Record that this multipole received a contribution */
       multi_i->pot.interacted = 1;
