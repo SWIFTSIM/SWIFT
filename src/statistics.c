@@ -858,7 +858,7 @@ void stats_write_file_header(FILE *file, const struct unit_system *restrict us,
   fprintf(file, "#      Unit = %e gram\n", us->UnitMass_in_cgs);
   fprintf(file, "#      Unit = %e Msun\n", 1. / phys_const->const_solar_mass);
   fprintf(file,
-          "# (34) Total Magnetic Energy in the simulation"
+          "# (34) Total Physical Magnetic Energy in the simulation"
           "(B2/(2*mu0)) integrated over the simulation volume). \n");
   fprintf(file, "#      Unit = %e erg\n",
           units_cgs_conversion_factor(us, UNIT_CONV_ENERGY));
