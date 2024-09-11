@@ -321,10 +321,10 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
 
   /* If the new masses have been changed, update the state vectors */
   if (m_Zi != m_Zi_old) {
-    *Ui = m_Zi / pi->chemistry_data.geometry.volume;
+    *Ui = pi->rho * m_Zi / pi->mass;
   }
   if (m_Zj != m_Zj_old) {
-    *Uj = m_Zj / pj->chemistry_data.geometry.volume;
+    *Uj = pj->rho * m_Zj / pj->mass;
   }
 }
 

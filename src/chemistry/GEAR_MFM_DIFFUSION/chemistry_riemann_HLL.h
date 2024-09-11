@@ -163,11 +163,9 @@ chemistry_riemann_solve_for_flux(
      * probably a bug. To be investigated */
     /* Compute the direct fluxes */
     const double qj =
-        /* pj->chemistry_data.metal_mass[g] / pj->chemistry_data.geometry.volume; */
            pj->rho*pj->chemistry_data.metal_mass[g] / pj->mass;
 
     const double qi =
-        /* pi->chemistry_data.metal_mass[g] / pi->chemistry_data.geometry.volume; */
            pi->rho*pi->chemistry_data.metal_mass[g] / pi->mass;
     const double dq = qj - qi;
     const double nabla_o_q_dir[3] = {
