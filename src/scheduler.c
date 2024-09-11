@@ -1636,8 +1636,8 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
 
           /* } else { */
           zoom_scheduler_splittask_gravity_void_pair(
-              scheduler_addtask(s, task_type_pair, task_subtype_grav, 0, 0,
-                                ci->progeny[i], cj->progeny[j]),
+              scheduler_addtask(s, task_type_pair, task_subtype_grav, 0, 0, cpi,
+                                cpj),
               s);
         }
         /* } */
