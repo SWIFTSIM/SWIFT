@@ -1612,6 +1612,33 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
     t->subtype = task_subtype_none;
     t->flags = 0;
 
+    /* If ci is a void cell split it. */
+    if (ci->subtype == cell_subtype_void) {
+      for (int i = 0; i < 8; i++) {
+        if (ci->progeny[i] != NULL) {
+          zoom_scheduler_splittask_gravity_void_pair(
+              scheduler_addtask(s, task_type_pair, task_subtype_grav, 0, 0,
+                                ci->progeny[i], cj),
+              s);
+        }
+      }
+    } else {
+      for (int i = 0; i < 8; i++) {
+        if (cj->progeny[i] != NULL) {
+          zoom_scheduler_splittask_gravity_void_pair(
+              scheduler_addtask(s, task_type_pair, task_subtype_grav, 0, 0, ci,
+                                cj->progeny[i]),
+              s);
+        }
+      }
+    }
+    t->type = task_type_none;
+    t->subtype = task_subtype_none;
+    t->ci = NULL;
+    t->cj = NULL;
+    t->skip = 1;
+    return;
+
     /* /\* Can we do an mm between all progenies? *\/ */
     /* if (cell_can_use_pair_mm(ci, cj, e, sp, */
     /*                          /\*use_rebuild_data=*\/1, */
