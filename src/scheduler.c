@@ -1615,15 +1615,11 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
     /* Handle each individual splitting case. */
     if (ci->subtype == cell_subtype_void && cj->subtype == cell_subtype_void) {
       for (int i = 0; i < 8; i++) {
-        if (ci->progeny[i] != NULL) {
-          for (int j = 0; j < 8; j++) {
-            if (cj->progeny[j] != NULL) {
-              zoom_scheduler_splittask_gravity_void_pair(
-                  scheduler_addtask(s, task_type_pair, task_subtype_grav, 0, 0,
-                                    ci->progeny[i], cj->progeny[j]),
-                  s);
-            }
-          }
+        for (int j = 0; j < 8; j++) {
+          zoom_scheduler_splittask_gravity_void_pair(
+              scheduler_addtask(s, task_type_pair, task_subtype_grav, 0, 0,
+                                ci->progeny[i], cj->progeny[j]),
+              s);
         }
       }
     } else if (ci->subtype == cell_subtype_void) {
