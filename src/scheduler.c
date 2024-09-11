@@ -1656,7 +1656,7 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
            * a negative flag (which will flag for the right mm function
            * to be used). */
           scheduler_addtask(s, task_type_grav_mm, task_subtype_none, -1, 0,
-                            ci->progeny[i], cj),
+                            ci->progeny[i], cj);
         }
       }
       else {
