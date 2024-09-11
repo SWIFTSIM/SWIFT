@@ -41,41 +41,6 @@ __attribute__((always_inline)) INLINE static void chemistry_kick_extra(
     float dt_kick_corr, const struct cosmology* cosmo,
     const struct hydro_props* hydro_props) {
 
-  if (p->chemistry_data.flux_dt > 0.0f) {
-
-    for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; ++i) {
-      double flux;
-      chemistry_part_get_fluxes(p, i, &flux);
-
-      /* Update the conserved variable */
-      p->chemistry_data.metal_mass[i] += flux;
-    }
-
-    /* Reset the fluxes, so that they do not get used again in kick1 */
-    chemistry_part_reset_chemistry_fluxes(p);
-
-    /* Invalidate the particle time-step. It is considered to be inactive until
-       dt is set again in hydro_prepare_force() */
-    p->chemistry_data.flux_dt = -1.0f;
-  } else if (p->chemistry_data.flux_dt == 0.0f) {
-    /* something tricky happens at the beginning of the simulation: the flux
-       exchange is done for all particles, but using a time step of 0. This
-       in itself is not a problem. However, it causes some issues with the
-       initialisation of flux.dt for inactive particles, since this value will
-       remain 0 until the particle is active again, and its flux.dt is set to
-       the actual time step in hydro_prepare_force(). We have to make sure it
-       is properly set to -1 here, so that inactive particles are indeed found
-       to be inactive during the flux loop. */
-    p->chemistry_data.flux_dt = -1.0f;
-  }
-
-  /* Sanity checks. We don't want negative metal masses. */
-  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; ++i) {
-    const double m_metal_old = p->chemistry_data.metal_mass[i];
-    chemistry_check_unphysical_state(&p->chemistry_data.metal_mass[i],
-                                     m_metal_old, p->mass, /*callloc=*/2);
-  }
-
   /* Reset wcorr */
   p->chemistry_data.geometry.wcorr = 1.0f;
 

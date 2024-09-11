@@ -547,7 +547,30 @@ __attribute__((always_inline)) INLINE static void chemistry_end_gradient(
  */
 __attribute__((always_inline)) INLINE static void chemistry_end_force(
     struct part* restrict p, const struct cosmology* cosmo,
-    const int with_cosmology, const double time, const double dt) {}
+    const int with_cosmology, const double time, const double dt) {
+
+  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; ++i) {
+    double flux;
+    chemistry_part_get_fluxes(p, i, &flux);
+
+    /* Update the conserved variable */
+    p->chemistry_data.metal_mass[i] += flux;
+  }
+
+  /* Reset the fluxes, so that they do not get used again in kick1 */
+  chemistry_part_reset_chemistry_fluxes(p);
+
+  /* Invalidate the particle time-step. It is considered to be inactive until
+     dt is set again in hydro_prepare_force() */
+  p->chemistry_data.flux_dt = -1.0f;
+
+  /* Sanity checks. We don't want negative metal masses. */
+  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; ++i) {
+    const double m_metal_old = p->chemistry_data.metal_mass[i];
+    chemistry_check_unphysical_state(&p->chemistry_data.metal_mass[i],
+                                     m_metal_old, p->mass, /*callloc=*/2);
+  }
+}
 
 /**
  * @brief Prepare a particle for the force calculation.
