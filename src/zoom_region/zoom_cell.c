@@ -351,6 +351,13 @@ void zoom_find_neighbouring_cells(struct space *s, const int verbose) {
               if (cj->subtype != cell_subtype_void &&
                   cj->subtype != cell_subtype_neighbour) {
 
+#ifdef SWIFT_DEBUG_CHECKS
+                /* Ensure we are relabeling a possible neighbour. */
+                if (cj->type == cell_type_zoom) {
+                  error("Labelling a zoom cell as a neighbour!");
+                }
+#endif
+
                 /* Record that we've found a neighbour. */
                 cj->subtype = cell_subtype_neighbour;
                 neighbour_cells_top[zoom_props->nr_neighbour_cells++] = cjd;
