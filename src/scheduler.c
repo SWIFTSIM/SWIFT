@@ -1655,7 +1655,7 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
           /* Since we aren't in the progeny of cj just make an mm task with
            * a negative flag (which will flag for the right mm function
            * to be used). */
-          scheduler_addtask(s, task_type_grav_mm, task_subtype_none, -1, 0,
+          scheduler_addtask(s, task_type_grav_mm, task_subtype_none, -2, 0,
                             ci->progeny[i], cj);
         } else {
           zoom_scheduler_splittask_gravity_void_pair(
@@ -1665,11 +1665,26 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
         }
       }
     } else {
-      for (int i = 0; i < 8; i++) {
-        zoom_scheduler_splittask_gravity_void_pair(
-            scheduler_addtask(s, task_type_pair, task_subtype_grav, 0, 0, ci,
-                              cj->progeny[i]),
-            s);
+      for (int j = 0; j < 8; j++) {
+
+        /* Can we use a M-M interaction here? */
+        if (cell_can_use_pair_mm(ci, cj->progeny[j], e, sp,
+                                 /*use_rebuild_data=*/1,
+                                 /*is_tree_walk=*/1,
+                                 /*periodic boundaries*/ 0,
+                                 /*use_mesh*/ sp->periodic)) {
+
+          /* Since we aren't in the progeny of cj just make an mm task with
+           * a negative flag (which will flag for the right mm function
+           * to be used). */
+          scheduler_addtask(s, task_type_grav_mm, task_subtype_none, -2, 0, ci,
+                            cj->progeny[j]);
+        } else {
+          zoom_scheduler_splittask_gravity_void_pair(
+              scheduler_addtask(s, task_type_pair, task_subtype_grav, 0, 0, ci,
+                                cj->progeny[j]),
+              s);
+        }
       }
     }
 
