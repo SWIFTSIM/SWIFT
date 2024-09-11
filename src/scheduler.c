@@ -1627,14 +1627,12 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
       /* Get the progeny. If we are in an unsplittable non-void cell this is
        * just the cell itself. */
       struct cell *cpi;
-      int ci_mm_ok = 1;
       if (ci->subtype == cell_subtype_void) {
         cpi = ci->progeny[i];
       } else if (ci->split && cell_is_above_diff_grav_depth(ci)) {
         cpi = ci->progeny[i];
       } else {
         cpi = ci;
-        ci_mm_ok = 0;
       }
 
       for (int j = 0; j < 8; j++) {
@@ -1642,18 +1640,22 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
         /* Get the progeny. If we are in an unsplittable non-void cell this is
          * just the cell itself. */
         struct cell *cpj;
-        int cj_mm_ok = 1;
         if (cj->subtype == cell_subtype_void) {
           cpj = cj->progeny[j];
         } else if (cj->split && cell_is_above_diff_grav_depth(cj)) {
           cpj = cj->progeny[j];
         } else {
           cpj = cj;
-          cj_mm_ok = 0;
+        }
+
+        if (cpj == cj && cpi == ci) {
+          error("Got an unsplittable pair task (%s/%s->%s/%s)",
+                cellID_names[ci->type], subcellID_names[ci->subtype],
+                cellID_names[cj->type], subcellID_names[cj->subtype]);
         }
 
         /* Can we use a M-M interaction here? */
-        if (ci_mm_ok & cj_mm_ok &&
+        if (ci != cpi && cj != cpj &&
             cell_can_use_pair_mm(cpi, cpj, e, sp,
                                  /*use_rebuild_data=*/1,
                                  /*is_tree_walk=*/1,
