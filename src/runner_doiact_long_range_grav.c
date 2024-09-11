@@ -120,7 +120,7 @@ void runner_do_grav_long_range_zoom_non_periodic(struct runner *r,
   struct cell *cells = e->s->cells_top;
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (top.type == cell_type_zoom) {
+  if (top->type == cell_type_zoom) {
     error(
         "Zoom top cell found in long range gravity task! These should be "
         "handled "
