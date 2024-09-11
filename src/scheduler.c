@@ -1565,14 +1565,6 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
       return;
     }
 
-    /* Kill of this task. TODO: use the same redo logic as above to reduce
-     * the number of skipped tasks. */
-    t->type = task_type_none;
-    t->subtype = task_subtype_none;
-    t->ci = NULL;
-    t->cj = NULL;
-    t->skip = 1;
-
     /* Create a self for all progeny. */
     for (int i = 0; i < 8; i++) {
       if (ci->progeny[i] != NULL) {
@@ -1591,6 +1583,15 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
             s);
       }
     }
+
+    /* Kill of this task. TODO: use the same redo logic as above to reduce
+     * the number of skipped tasks. */
+    t->type = task_type_none;
+    t->subtype = task_subtype_none;
+    t->ci = NULL;
+    t->cj = NULL;
+    t->skip = 1;
+
   } /* Self interaction */
 
   /* Pair interaction? */
