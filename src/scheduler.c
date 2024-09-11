@@ -1623,7 +1623,7 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
           if (cell_can_use_pair_mm(cpi, cpj, e, sp,
                                    /*use_rebuild_data=*/1,
                                    /*is_tree_walk=*/1,
-                                   /*periodic boundaries*/ 0,
+                                   /*periodic boundaries*/ sp->periodic,
                                    /*use_mesh*/ sp->periodic)) {
 
             scheduler_addtask(s, task_type_grav_mm, task_subtype_none, -2, 0,
@@ -1644,7 +1644,7 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
         if (cell_can_use_pair_mm(ci->progeny[i], cj, e, sp,
                                  /*use_rebuild_data=*/1,
                                  /*is_tree_walk=*/1,
-                                 /*periodic boundaries*/ 0,
+                                 /*periodic boundaries*/ sp->periodic,
                                  /*use_mesh*/ sp->periodic)) {
 
           /* Since we aren't in the progeny of cj just make an mm task with
@@ -1666,7 +1666,7 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
         if (cell_can_use_pair_mm(ci, cj->progeny[j], e, sp,
                                  /*use_rebuild_data=*/1,
                                  /*is_tree_walk=*/1,
-                                 /*periodic boundaries*/ 0,
+                                 /*periodic boundaries*/ sp->periodic,
                                  /*use_mesh*/ sp->periodic)) {
 
           /* Since we aren't in the progeny of cj just make an mm task with
