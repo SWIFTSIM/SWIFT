@@ -1560,18 +1560,6 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
     struct cell *ci = t->ci;
     struct cell *cj = t->cj;
 
-    /* Zoom->zoom interactions with the same top level zoom cell are
-     * handled by the self. */
-    if ((ci->type == cell_type_zoom && cj->type == cell_type_zoom) &&
-        (ci->top == cj->top)) {
-      t->type = task_type_none;
-      t->subtype = task_subtype_none;
-      t->ci = NULL;
-      t->cj = NULL;
-      t->skip = 1;
-      return;
-    }
-
     /* If neither cell is a void cell, redirect to the normal splitter. */
     if (ci->subtype != cell_subtype_void && cj->subtype != cell_subtype_void) {
       scheduler_splittask_gravity(t, s);
