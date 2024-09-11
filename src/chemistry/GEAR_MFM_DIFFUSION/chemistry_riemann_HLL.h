@@ -76,9 +76,11 @@ chemistry_riemann_solve_for_flux(
 
   /* STEP 0: obtain velocity in interface frame */
   const float uL = WL[1] * n_unit[0] + WL[2] * n_unit[1] + WL[3] * n_unit[2];
-  const float uR = WR[0] * n_unit[0] + WR[1] * n_unit[1] + WR[3] * n_unit[2];
-  const float aL = sqrtf(hydro_gamma * WL[4] / WL[0]);
-  const float aR = sqrtf(hydro_gamma * WR[4] / WR[0]);
+  const float uR = WR[1] * n_unit[0] + WR[2] * n_unit[1] + WR[3] * n_unit[2];
+  const float rhoLinv = (WL[0] > 0.0f) ? 1.0f / WL[0] : 0.0f;
+  const float rhoRinv = (WR[0] > 0.0f) ? 1.0f / WR[0] : 0.0f;
+  const float aL = sqrtf(hydro_gamma * WL[4] / rhoLinv);
+  const float aR = sqrtf(hydro_gamma * WR[4] / rhoRinv);
 
   /* Handle vacuum: vacuum does not require iteration and is always exact */
   if (chemistry_riemann_is_vacuum(WL[0], WR[0], uL, uR, aL, aR)) {
@@ -118,14 +120,18 @@ chemistry_riemann_solve_for_flux(
   const float c_fast = max3(SL, SR, Sstar);
 
   /* Approximate lambda_plus and lambda_minus */
-  const float lambda_plus = max(uL, uR) + c_fast;
-  const float lambda_minus = min(uL, UR) - c_fast;
+  /* const float lambda_plus = max(uL, uR) + c_fast; */
+  /* const float lambda_minus = min(uL, UR) - c_fast; */
+
+  /* These give better isotropic diffusion in high-resolution tests*/
+  const float lambda_plus = fabsf(uL - uR) + c_fast;
+  const float lambda_minus = - lambda_plus;
 
   /* Compute alpha */
   const float K_star_norm =
       0.5 * sqrtf(3.0) * (pi->chemistry_data.kappa + pj->chemistry_data.kappa);
   const float dx[3] = {pj->x[0] - pi->x[0], pj->x[1] - pi->x[1],
-                       pj->x[1] - pi->x[1]};
+                       pj->x[2] - pi->x[2]};
   const float dx_norm_2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
   const float dx_norm = sqrtf(dx_norm_2);
   const float r = dx_norm / K_star_norm * (0.5 * fabs(uR - uL) + Sstar);
@@ -153,12 +159,16 @@ chemistry_riemann_solve_for_flux(
   if (chemistry_data->use_hokpins2017_hll_riemann_solver) {
     /****************************************************************************
      * Hopkins 2017 implementation of HLL
-     * This leads to NaN quickly. There is probably a bug. To be investigated */
+     * This can lead to metal masses bigger than the particle mass. There is
+     * probably a bug. To be investigated */
     /* Compute the direct fluxes */
     const double qj =
-        pj->chemistry_data.metal_mass[g] / pj->chemistry_data.geometry.volume;
+        /* pj->chemistry_data.metal_mass[g] / pj->chemistry_data.geometry.volume; */
+           pj->rho*pj->chemistry_data.metal_mass[g] / pj->mass;
+
     const double qi =
-        pi->chemistry_data.metal_mass[g] / pi->chemistry_data.geometry.volume;
+        /* pi->chemistry_data.metal_mass[g] / pi->chemistry_data.geometry.volume; */
+           pi->rho*pi->chemistry_data.metal_mass[g] / pi->mass;
     const double dq = qj - qi;
     const double nabla_o_q_dir[3] = {
         dx[0] * dq / dx_norm_2, dx[1] * dq / dx_norm_2, dx[2] * dq / dx_norm_2};
