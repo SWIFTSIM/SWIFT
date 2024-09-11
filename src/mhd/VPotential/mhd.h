@@ -32,12 +32,14 @@
  * @param xp the #xpart.
  */
 __attribute__((always_inline)) INLINE static float mhd_get_magnetic_energy(
-    const struct part *p, const struct xpart *xp, const float mu_0) {
+    const struct part *p, const struct xpart *xp, const float mu_0, const float a) {
+
+  const float afact = pow(a,2.f * mhd_comoving_factor);
 
   const float b2 = p->mhd_data.BPred[0] * p->mhd_data.BPred[0] +
                    p->mhd_data.BPred[1] * p->mhd_data.BPred[1] +
                    p->mhd_data.BPred[2] * p->mhd_data.BPred[2];
-  return 0.5f * b2 / mu_0 * p->mass / p->rho;
+  return 0.5f * afact * b2 / mu_0 * p->mass / p->rho;
 }
 /**
  * @brief Returns the magnetic field squared contained in the particle.
@@ -158,9 +160,7 @@ __attribute__((always_inline)) INLINE static float mhd_get_magnetosonic_speed(
   /* Compute effective sound speeds */
   const float cs = p->force.soundspeed;
   const float cs2 = cs * cs;
-  const float afact_ratio =
-      pow(a, (2.f * mhd_comoving_factor + 3.f * hydro_gamma));
-  const float v_A2 = afact_ratio * permeability_inv * B2 / rho;
+  const float v_A2 = permeability_inv * B2 / rho;
   const float c_ms2 = cs2 + v_A2;
 
   return sqrtf(c_ms2);
@@ -457,7 +457,6 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_force(
   /* Re normalize the correction in the momentum from the DivB errors*/
   p->mhd_data.Q0 =
       ACC_corr > ACC_mhd ? p->mhd_data.Q0 * ACC_mhd / ACC_corr : p->mhd_data.Q0;
-  //     p->mhd_data.Q0 = 0.0f;
 }
 
 /**

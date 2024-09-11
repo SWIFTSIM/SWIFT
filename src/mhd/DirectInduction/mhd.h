@@ -29,14 +29,17 @@
  * @param xp the #xpart.
  */
 __attribute__((always_inline)) INLINE static float mhd_get_magnetic_energy(
+    const struct part *p, const struct xpart *xp, const float mu_0, const float a) {
     const struct part *p, const struct xpart *xp, const float mu_0) {
 
   const float rho = p->rho;
+  // convert to physical
+  const float a_fact = pow(a , -3.f * hydro_gamma);
   const float B_over_rho2 =
       p->mhd_data.B_over_rho[0] * p->mhd_data.B_over_rho[0] +
       p->mhd_data.B_over_rho[1] * p->mhd_data.B_over_rho[1] +
       p->mhd_data.B_over_rho[2] * p->mhd_data.B_over_rho[2];
-  return 0.5f * p->mass * B_over_rho2 * rho / mu_0;
+  return 0.5f * a_fact* p->mass * B_over_rho2 * rho / mu_0;
 }
 /**
  * @brief Returns the magnetic field squared contained in the particle.
