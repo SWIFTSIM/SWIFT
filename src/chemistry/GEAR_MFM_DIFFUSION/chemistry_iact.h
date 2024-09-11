@@ -351,7 +351,7 @@ runner_iact_chemistry_fluxes_common(
     /* Update V*U. */
     chi->diffusion_flux[g] -= totflux * mindt;
     if (mode == 1 || (chj->flux_dt < 0.f)) {
-      chi->diffusion_flux[g] += totflux * mindt;
+      chj->diffusion_flux[g] += totflux * mindt;
     }
   }
 }
