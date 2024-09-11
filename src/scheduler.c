@@ -1567,10 +1567,11 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
     }
 
     /* If both are void cells just split both at once. */
-    if ((ci->subtype == cell_subtype_void ||
-         (ci->split && cell_is_above_diff_grav_depth(ci))) &&
-        (cj->subtype == cell_subtype_void ||
-         (cj->split && cell_is_above_diff_grav_depth(cj)))) {
+    /* if ((ci->subtype == cell_subtype_void || */
+    /*      (ci->split && cell_is_above_diff_grav_depth(ci))) && */
+    /*     (cj->subtype == cell_subtype_void || */
+    /*      (cj->split && cell_is_above_diff_grav_depth(cj)))) { */
+    if (ci->subtype == cell_subtype_void && cj->subtype == cell_subtype_void) {
 
       message("ci=%s/%s cj=%s/%s @ %d/%d", cellID_names[ci->type],
               subcellID_names[ci->subtype], cellID_names[cj->type],
