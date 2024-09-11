@@ -119,6 +119,15 @@ void runner_do_grav_long_range_zoom_non_periodic(struct runner *r,
   /* Recover the list of top-level cells */
   struct cell *cells = e->s->cells_top;
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (top.type == cell_type_zoom) {
+    error(
+        "Zoom top cell found in long range gravity task! These should be "
+        "handled "
+        "by the void cell hierarchy.");
+  }
+#endif
+
   /* Since the zoom cells will be handled by the void cell hierarchy we can
    * just loop over all other cells which are not zoom cells. This is
    * trivial since the zoom cells are first in cells_top. */
