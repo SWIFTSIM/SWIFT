@@ -22,7 +22,8 @@
 /* #include "hydro_slope_limiters.h" */
 #include "chemistry_getters.h"
 #include "chemistry_setters.h"
-#include "chemistry_slope_limiter.h"
+#include "chemistry_slope_limiters_face.h"
+#include "chemistry_slope_limiters_cell.h"
 #include "chemistry_unphysical.h"
 #include "kernel_hydro.h"
 
