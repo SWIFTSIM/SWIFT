@@ -22,6 +22,8 @@
 #include "chemistry_flux.h"
 #include "chemistry_gradients.h"
 
+#define GIZMO_VOLUME_CORRECTION
+
 /**
  * @file GEAR_MFM_DIFFUSION/chemistry_iact.h
  * @brief Diffusion of metals with MFM.
