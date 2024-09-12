@@ -26,12 +26,6 @@
 #include "minmax.h"
 #include "sign.h"
 
-/* Note: We do not need to slope limit the cell and the gradients, because we
-   perform a first order reconstruction of nabla_otimes_q (= grad
-   metal_density). If we were to use a first order reconstruction, then we
-   would need the cell limiters. But the first order reconstruction requires
-   an additional neighbour loop and is probably less stable. */
-
 /**
  * The minmod limiter.
  *
@@ -45,7 +39,7 @@ __attribute__((always_inline)) INLINE static double chemistry_minmod(double a,
 }
 
 /**
- * the minmod slope limiter.
+ * The minmod slope limiter.
  *
  * @param dQi left slope
  * @param dQj right slope
