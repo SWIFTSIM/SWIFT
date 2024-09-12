@@ -20,7 +20,7 @@
 #define SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_RIEMANN_HLL_H
 
 #include "chemistry_getters.h"
-#include "chemistry_slope_limiter.h"
+#include "chemistry_slope_limiters_face.h"
 #include "hydro.h"
 
 /* TODO: Put this in the sign.h file and define for double. */
@@ -163,13 +163,8 @@ chemistry_riemann_solve_for_flux(
     /****************************************************************************
      * Hopkins 2017 implementation of HLL */
     /* Compute the direct fluxes */
-    const double qj =
-      /* pj->rho*pj->chemistry_data.metal_mass[g] / hydro_get_mass(pj); */
-      pj->chemistry_data.metal_mass[g] / chemistry_part_get_volume(pj);
-
-    const double qi =
-      /* pi->rho*pi->chemistry_data.metal_mass[g] / hydro_get_mass(pi); */
-      pi->chemistry_data.metal_mass[g] / chemistry_part_get_volume(pi);
+    const double qi = chemistry_part_get_metal_density(pi, g);
+    const double qj = chemistry_part_get_metal_density(pj, g);
     const double dq = qj - qi;
     const double nabla_o_q_dir[3] = {
         dx[0] * dq / dx_norm_2, dx[1] * dq / dx_norm_2, dx[2] * dq / dx_norm_2};
