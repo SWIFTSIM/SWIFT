@@ -85,6 +85,7 @@ __attribute__((always_inline)) INLINE static void chemistry_compute_flux(
   float vi[3] = {pi->v[0], pi->v[1], pi->v[2]};
   float vj[3] = {pj->v[0], pj->v[1], pj->v[2]};
 
+  /* These varibales were not predicted and reconstructed. */
   float WL[5] = {pi->rho, vi[0], vi[1], vi[2],
                  hydro_get_comoving_pressure(pi)};
   float WR[5] = {pj->rho, vj[0], vj[1], vj[2],
