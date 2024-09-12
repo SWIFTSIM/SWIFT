@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_SLOPE_LIMITER_H
-#define SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_SLOPE_LIMITER_H
+#ifndef SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_SLOPE_LIMITERS_FACE_H
+#define SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_SLOPE_LIMITERS_FACE_H
 
 /* Some standard headers. */
 #include <float.h>
@@ -148,4 +148,4 @@ __attribute__((always_inline)) INLINE static void chemistry_slope_limit_face(
   /* chemistry_limiter_minmod(dWi, dWj); */
 }
 
-#endif /*  SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_SLOPE_LIMITER_H */
+#endif /* SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_SLOPE_LIMITERS_FACE_H */
