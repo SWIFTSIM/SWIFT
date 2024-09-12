@@ -80,12 +80,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_chemistry(
   for (int k = 0; k < 3; k++)
     for (int l = 0; l < 3; l++)
       chj->geometry.matrix_E[k][l] += dx[k] * dx[l] * wj;
-
-  /* Compute contribution to the smooth metallicity */
-  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
-    chi->smoothed_metal_mass_fraction[i] += chj->metal_mass[i] * wi;
-    chj->smoothed_metal_mass_fraction[i] += chi->metal_mass[i] * wj;
-  }
 }
 
 /**
@@ -109,7 +103,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_chemistry(
     const float H) {
 
   struct chemistry_part_data *chi = &pi->chemistry_data;
-  const struct chemistry_part_data *chj = &pj->chemistry_data;
 
   float wi, wi_dx;
 
@@ -125,11 +118,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_chemistry(
   for (int k = 0; k < 3; k++)
     for (int l = 0; l < 3; l++)
       chi->geometry.matrix_E[k][l] += dx[k] * dx[l] * wi;
-
-  /* Compute contribution to the smooth metallicity */
-  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
-    chi->smoothed_metal_mass_fraction[i] += chj->metal_mass[i] * wi;
-  }
 }
 
 /**

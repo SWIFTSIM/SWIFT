@@ -369,11 +369,6 @@ __attribute__((always_inline)) INLINE static void chemistry_init_part(
 
   struct chemistry_part_data* cpd = &p->chemistry_data;
 
-  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
-    /* Reset the smoothed metallicity */
-    cpd->smoothed_metal_mass_fraction[i] = 0.f;
-  }
-
   /* Reset the geometry matrix */
   cpd->geometry.volume = 0.0f;
   cpd->geometry.matrix_E[0][0] = 0.0f;
@@ -396,8 +391,7 @@ __attribute__((always_inline)) INLINE static void chemistry_init_part(
 /**
  * @brief Finishes the smooth metal calculation.
  *
- * Multiplies the smoothed metallicity and number of neighbours by the
- * appropiate constants and add the self-contribution term.
+ * End MFM geometry computations
  *
  * This function requires the #hydro_end_density to have been called.
  *
@@ -413,18 +407,6 @@ __attribute__((always_inline)) INLINE static void chemistry_end_density(
   const float h = p->h;
   const float h_inv = 1.0f / h; /* 1/h */
   const float ihdim = pow_dimension(h_inv);
-  const float factor = pow_dimension(h_inv) / p->rho; /* 1 / h^d * rho */
-
-  struct chemistry_part_data* cpd = &p->chemistry_data;
-
-  /* First finish the smoothed metallicites */
-  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
-    /* Final operation on the density (add self-contribution). */
-    cpd->smoothed_metal_mass_fraction[i] += cpd->metal_mass[i] * kernel_root;
-
-    /* Finish the calculation by inserting the missing h-factors */
-    cpd->smoothed_metal_mass_fraction[i] *= factor;
-  }
 
   /* Final operation on the geometry. */
   /* We multiply with the smoothing kernel normalization ih3 and calculate the
@@ -601,12 +583,6 @@ chemistry_part_has_no_neighbours(struct part* restrict p,
                                  struct xpart* restrict xp,
                                  const struct chemistry_global_data* cd,
                                  const struct cosmology* cosmo) {
-
-  /* Set the smoothed fractions with the non smoothed fractions */
-  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
-    p->chemistry_data.smoothed_metal_mass_fraction[i] =
-        p->chemistry_data.metal_mass[i] / hydro_get_mass(p);
-  }
 
   /* Update geometry data */
   p->chemistry_data.geometry.volume = 1.0f;
@@ -924,8 +900,8 @@ chemistry_get_total_metal_mass_fraction_for_cooling(
  */
 __attribute__((always_inline)) INLINE static double const*
 chemistry_get_metal_mass_fraction_for_cooling(const struct part* restrict p) {
-  /* HERE */
-  return p->chemistry_data.smoothed_metal_mass_fraction;
+  error("This function is not used in GEAR");
+  return p->chemistry_data.metal_mass;
 }
 
 /**
@@ -937,7 +913,6 @@ chemistry_get_metal_mass_fraction_for_cooling(const struct part* restrict p) {
 __attribute__((always_inline)) INLINE static double
 chemistry_get_total_metal_mass_fraction_for_star_formation(
     const struct part* restrict p) {
-
   return p->chemistry_data.metal_mass[GEAR_CHEMISTRY_ELEMENT_COUNT - 1] / hydro_get_mass(p);
 }
 
@@ -952,8 +927,8 @@ chemistry_get_total_metal_mass_fraction_for_star_formation(
 __attribute__((always_inline)) INLINE static double const*
 chemistry_get_metal_mass_fraction_for_star_formation(
     const struct part* restrict p) {
-  /* HERE */
-  return p->chemistry_data.smoothed_metal_mass_fraction;
+  error("This function is not used in GEAR");
+  return p->chemistry_data.metal_mass;
 }
 
 /**

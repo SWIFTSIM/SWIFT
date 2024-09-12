@@ -27,10 +27,6 @@ __attribute__((always_inline)) INLINE static void chemistry_debug_particle(
     warning("[PID%lld] metal_mass[%i]: %.3e", p->id, i,
             p->chemistry_data.metal_mass[i]);
   }
-  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
-    warning("[PID%lld] smoothed_metal_mass_fraction[%i]: %.3e", p->id, i,
-            p->chemistry_data.smoothed_metal_mass_fraction[i]);
-  }
 }
 
 #endif /* SWIFT_CHEMISTRY_GEAR_DEBUG_H */

@@ -72,14 +72,6 @@ struct chemistry_part_data {
   double metal_mass_fluxes[GEAR_CHEMISTRY_ELEMENT_COUNT];
 #endif
 
-  /*! Smoothed fraction of the particle mass in a given element */
-  double smoothed_metal_mass_fraction[GEAR_CHEMISTRY_ELEMENT_COUNT];
-
-  /* This is U.  */
-  /* struct { */
-  /*   double metal_density; */
-  /* } conserved[GEAR_CHEMISTRY_ELEMENT_COUNT]; */
-
   double diffusion_flux[GEAR_CHEMISTRY_ELEMENT_COUNT];
 
   /* Gradients. */

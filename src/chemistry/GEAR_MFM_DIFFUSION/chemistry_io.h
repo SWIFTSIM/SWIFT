@@ -74,18 +74,12 @@ INLINE static int chemistry_write_particles(const struct part* parts,
                                             const int with_cosmology) {
 
   /* List what we want to write */
-  list[0] = io_make_output_field(
-      "SmoothedMetalMassFractions", DOUBLE, GEAR_CHEMISTRY_ELEMENT_COUNT,
-      UNIT_CONV_NO_UNITS, 0.f, parts,
-      chemistry_data.smoothed_metal_mass_fraction,
-      "Mass fraction of each element smoothed over the neighbors");
-
-  list[1] = io_make_output_field_convert_part(
+  list[0] = io_make_output_field_convert_part(
       "MetalMassFractions", DOUBLE, GEAR_CHEMISTRY_ELEMENT_COUNT,
       UNIT_CONV_NO_UNITS, 0.f, parts, xparts, convert_gas_metals,
       "Mass fraction of each element");
 
-  return 2;
+  return 1;
 }
 
 /**
