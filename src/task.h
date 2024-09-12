@@ -25,6 +25,10 @@
 
 #include <config.h>
 
+#ifdef WITH_MPI
+#include <mpi.h>
+#endif
+
 /* Includes. */
 #include "align.h"
 #include "cycle.h"
