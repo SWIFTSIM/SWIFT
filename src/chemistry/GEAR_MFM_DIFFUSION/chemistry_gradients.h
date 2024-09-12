@@ -316,15 +316,15 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
   double m_Zj = *Uj*pj->chemistry_data.geometry.volume;
 
   /* Check and correct unphysical extrapolated states */
-  chemistry_check_unphysical_state(&m_Zi, /*m_old=*/0.f, pi->mass, /*callloc=*/1);
-  chemistry_check_unphysical_state(&m_Zj, /*m_old=*/0.f, pj->mass, /*callloc=*/1);
+  chemistry_check_unphysical_state(&m_Zi, /*m_old=*/0.f, hydro_get_mass(pi), /*callloc=*/1);
+  chemistry_check_unphysical_state(&m_Zj, /*m_old=*/0.f, hydro_get_mass(pj), /*callloc=*/1);
 
   /* If the new masses have been changed, update the state vectors */
   if (m_Zi != m_Zi_old) {
-    *Ui = pi->rho * m_Zi / pi->mass;
+    *Ui = pi->rho * m_Zi / hydro_get_mass(pi);
   }
   if (m_Zj != m_Zj_old) {
-    *Uj = pj->rho * m_Zj / pj->mass;
+    *Uj = pj->rho * m_Zj / hydro_get_mass(pj);
   }
 }
 

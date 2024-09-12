@@ -162,10 +162,10 @@ chemistry_riemann_solve_for_flux(
      * probably a bug. To be investigated */
     /* Compute the direct fluxes */
     const double qj =
-           pj->rho*pj->chemistry_data.metal_mass[g] / pj->mass;
+      pj->rho*pj->chemistry_data.metal_mass[g] / hydro_get_mass(pj);
 
     const double qi =
-           pi->rho*pi->chemistry_data.metal_mass[g] / pi->mass;
+      pi->rho*pi->chemistry_data.metal_mass[g] / hydro_get_mass(pi);
     const double dq = qj - qi;
     const double nabla_o_q_dir[3] = {
         dx[0] * dq / dx_norm_2, dx[1] * dq / dx_norm_2, dx[2] * dq / dx_norm_2};

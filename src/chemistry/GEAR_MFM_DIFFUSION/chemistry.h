@@ -105,7 +105,7 @@ INLINE static void chemistry_copy_sink_properties(const struct part* p,
   /* Store the chemistry struct in the star particle */
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
     sink->chemistry_data.metal_mass_fraction[i] =
-        p->chemistry_data.metal_mass[i] / p->mass;
+      p->chemistry_data.metal_mass[i] / hydro_get_mass(p);
   }
 }
 
@@ -117,7 +117,6 @@ INLINE static void chemistry_copy_sink_properties(const struct part* p,
  */
 static INLINE void chemistry_print_backend(
     const struct chemistry_global_data* data) {
-
   message("Chemistry function is 'Gear MFM diffusion'.");
 }
 
@@ -522,7 +521,7 @@ __attribute__((always_inline)) INLINE static void chemistry_end_density(
     }
 #endif
     chemistry_check_unphysical_state(&p->chemistry_data.metal_mass[g],
-                                     m_metal_old, p->mass, /*callloc=*/g+3);
+                                     m_metal_old, hydro_get_mass(p), /*callloc=*/g+3);
   }
 }
 
@@ -568,7 +567,7 @@ __attribute__((always_inline)) INLINE static void chemistry_end_force(
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; ++i) {
     const double m_metal_old = p->chemistry_data.metal_mass[i];
     chemistry_check_unphysical_state(&p->chemistry_data.metal_mass[i],
-                                     m_metal_old, p->mass, /*callloc=*/2);
+                                     m_metal_old, hydro_get_mass(p), /*callloc=*/2);
   }
 }
 
@@ -913,7 +912,7 @@ chemistry_get_total_metal_mass_fraction_for_cooling(
     const struct part* restrict p) {
 
   return p->chemistry_data.metal_mass[GEAR_CHEMISTRY_ELEMENT_COUNT - 1] /
-         p->mass;
+    hydro_get_mass(p);
 }
 
 /**
@@ -940,8 +939,7 @@ __attribute__((always_inline)) INLINE static double
 chemistry_get_total_metal_mass_fraction_for_star_formation(
     const struct part* restrict p) {
 
-  return p->chemistry_data.metal_mass[GEAR_CHEMISTRY_ELEMENT_COUNT - 1] /
-         p->mass;
+  return p->chemistry_data.metal_mass[GEAR_CHEMISTRY_ELEMENT_COUNT - 1] / hydro_get_mass(p);
 }
 
 /**
