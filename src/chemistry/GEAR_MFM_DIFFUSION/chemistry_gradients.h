@@ -134,7 +134,7 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_collect(
     dF_i[2] = dU * psii_tilde[2];
 
     chemistry_part_update_gradients(pi, g, dF_i);
-    chemistry_slope_limit_cell_collect(pi, pj, g);
+    chemistry_slope_limit_cell_collect(pi, pj, r, g);
 
     /* Now do the gradients of pj */
     double dF_j[3];
@@ -146,7 +146,7 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_collect(
     dF_j[2] = dU * psij_tilde[2];
 
     chemistry_part_update_gradients(pj, g, dF_j);
-    chemistry_slope_limit_cell_collect(pj, pi, g);
+    chemistry_slope_limit_cell_collect(pj, pi, r, g);
   }
 }
 
@@ -220,7 +220,7 @@ chemistry_gradients_nonsym_collect(float r2, const float *dx, float hi,
     dF_i[2] = dU * psii_tilde[2];
 
     chemistry_part_update_gradients(pi, g, dF_i);
-    chemistry_slope_limit_cell_collect(pi, pj, g);
+    chemistry_slope_limit_cell_collect(pi, pj, r, g);
   }
 }
 
