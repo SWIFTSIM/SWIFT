@@ -758,7 +758,8 @@ int engine_get_proxy_type(const struct cell *cells, const int i, const int j,
                           const int with_hydro, const int with_gravity,
                           const int cid, const int cjd, const double dim[3],
                           const int periodic, const double r_max,
-                          const double max_mesh_dist2, const double theta_crit);
+                          const double max_mesh_dist2, const double theta_crit,
+                          const int do_direct_check);
 void engine_add_proxy(struct engine *e, struct cell *cells,
                       struct proxy *proxies, const int cid, const int cjd,
                       const int proxy_type, const int nodeID);

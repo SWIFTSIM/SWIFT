@@ -19,6 +19,7 @@
 
 /* Local includes. */
 #include "engine.h"
+#include "proxy.h"
 #include "zoom.h"
 
 /**
