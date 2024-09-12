@@ -752,6 +752,16 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
 void engine_rebuild(struct engine *e, int redistributed, int clean_h_values);
 void engine_repartition(struct engine *e);
 void engine_repartition_trigger(struct engine *e);
+int engine_get_proxy_type(const struct cell *cells, const int i, const int j,
+                          const int k, const int iii, const int jjj,
+                          const int kkk, const int cdim[3],
+                          const int with_hydro, const int with_gravity,
+                          const int cid, const int cjd, const double dim[3],
+                          const int periodic, const double r_max,
+                          const double max_mesh_dist2, const double theta_crit);
+void engine_add_proxy(struct engine *e, struct cell *cells,
+                      struct proxy *proxies, const int cid, const int cjd,
+                      const int proxy_type, const int nodeID);
 void engine_makeproxies(struct engine *e);
 void engine_redistribute(struct engine *e);
 void engine_print_policy(struct engine *e);
