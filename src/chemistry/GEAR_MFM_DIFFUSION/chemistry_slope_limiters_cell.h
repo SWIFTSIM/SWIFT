@@ -19,10 +19,8 @@
 #ifndef SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_SLOPE_LIMITERS_CELL_H
 #define SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_SLOPE_LIMITERS_CELL_H
 
-#include "chemistry/GEAR_MFM_DIFFUSION/chemistry_setters.h"
 #include "hydro.h"
 #include "chemistry_getters.h"
-#include "rt_additions.h"
 
 /**
  * @file src/rt/GEAR/rt_slope_limiters_cell.h
