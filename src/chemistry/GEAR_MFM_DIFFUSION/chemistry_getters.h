@@ -24,9 +24,22 @@
 #include "part.h"
 
 /**
+ * @brief Get a  metal density from a specific metal group.
+ *
+ * @param p Particle.
+ * @param group Index of photon group
+ * @param U Pointer to the array in which the result needs to be stored
+ */
+__attribute__((always_inline)) INLINE static double
+chemistry_part_get_metal_density(const struct part *restrict p, int group) {
+  return p->chemistry_data.metal_mass[group] / p->chemistry_data.geometry.volume;
+}
+
+/**
  * @brief Get a 1-element state vector U containing the metal mass density
  * a specific metal group.
  *
+ * @TODO: Rewrite this to remove the pointer... We can use return instead.
  * @param p Particle.
  * @param group Index of photon group
  * @param U Pointer to the array in which the result needs to be stored
@@ -36,8 +49,7 @@ chemistry_part_get_diffusion_state_vector(const struct part *restrict p,
                                           int group, double *U) {
 
   /* The state vector is 1D and contains the metal density. */
-  /* *U = p->rho * p->chemistry_data.metal_mass[group] / hydro_get_mass(p); */
-  *U = p->chemistry_data.metal_mass[group] / p->chemistry_data.geometry.volume;
+  *U =chemistry_part_get_metal_density(p, group);
 
 }
 
