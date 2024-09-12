@@ -24,15 +24,13 @@
 
 /**
  * @file GEAR_MFM_DIFFUSION/chemistry_iact.h
- * @brief Smooth metal interaction functions following the GEAR version of
- * smooth metalicity.
+ * @brief Diffusion of metals with MFM.
  *
- * The interactions computed here are the ones presented in Wiersma, Schaye et
- * al. 2009
- */
+ * The description of the algorithms for diffusion are given in Hopkins 2017
+ * (https://arxiv.org/abs/1602.07703) */
 
 /**
- * @brief do chemistry computation after the runner_iact_density (symmetric
+ * @brief Do chemistry computation after the runner_iact_density (symmetric
  * version)
  *
  * Compute MFM geometry variables if needed.
@@ -64,28 +62,22 @@ __attribute__((always_inline)) INLINE static void runner_iact_chemistry(
   const float xi = r * hi_inv;
   kernel_deval(xi, &wi, &wi_dx);
 
-  /* these are eqns. (1) and (2) in the summary */
+  /* These are eqns. (1) and (2) in the summary */
   chi->geometry.volume += wi;
   for (int k = 0; k < 3; k++)
     for (int l = 0; l < 3; l++)
       chi->geometry.matrix_E[k][l] += dx[k] * dx[l] * wi;
-
-  /* In MFM, there is nothing to do */
-  /* hydro_velocities_update_centroid_left(pi, dx, wi); */
 
   /* Compute density of pj. */
   const float hj_inv = 1.0f / hj;
   const float xj = r * hj_inv;
   kernel_deval(xj, &wj, &wj_dx);
 
-  /* these are eqns. (1) and (2) in the summary */
+  /* These are eqns. (1) and (2) in the summary */
   chj->geometry.volume += wj;
   for (int k = 0; k < 3; k++)
     for (int l = 0; l < 3; l++)
       chj->geometry.matrix_E[k][l] += dx[k] * dx[l] * wj;
-
-  /* In MFM, there is nothing to do */
-  /* hydro_velocities_update_centroid_right(pj, dx, wj); */
 
   /* Compute contribution to the smooth metallicity */
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
@@ -95,8 +87,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_chemistry(
 }
 
 /**
- * @brief do chemistry computation after the runner_iact_density (non symmetric
+ * @brief Do chemistry computation after the runner_iact_density (non symmetric
  * version)
+ *
+ * Compute MFM geometry variables if needed.
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
@@ -130,9 +124,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_chemistry(
     for (int l = 0; l < 3; l++)
       chi->geometry.matrix_E[k][l] += dx[k] * dx[l] * wi;
 
-  /* In MFM, there is nothing to do */
-  /* hydro_velocities_update_centroid_left(pi, dx, wi); */
-
   /* Compute contribution to the smooth metallicity */
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
     chi->smoothed_metal_mass_fraction[i] += chj->metal_mass[i] * wi;
@@ -140,8 +131,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_chemistry(
 }
 
 /**
- * @brief do metal diffusion computation in the <GRADIENT LOOP>
- * (symmetric version)
+ * @brief Do metal diffusion computation in the gradient loop (symmetric
+ * version)
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
@@ -162,8 +153,8 @@ runner_iact_gradient_diffusion(const float r2, const float dx[3],
 }
 
 /**
- * @brief do metal diffusion computation in the <GRADIENT LOOP>
- * (nonsymmetric version)
+ * @brief Do metal diffusion computation in the gradient loop (nonsymmetric
+ * version)
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
@@ -184,13 +175,13 @@ runner_iact_nonsym_gradient_diffusion(const float r2, const float dx[3],
 }
 
 /**
- * @brief Common part of the flux calculation between particle i and j
+ * @brief Common part of the flux calculation between particle i and j.
  *
  * Since the only difference between the symmetric and non-symmetric version
  * of the flux calculation  is in the update of the conserved variables at the
  * very end (which is not done for particle j if mode is 0), both
- * runner_iact_force and runner_iact_nonsym_force call this method, with an
- * appropriate mode.
+ * runner_iact_diffusion() and runner_iact_diffusion() call this method, with
+ * an appropriate mode.
  *
  * This method calculates the surface area of the interface between particle i
  * and particle j, as well as the interface position and velocity. These are
