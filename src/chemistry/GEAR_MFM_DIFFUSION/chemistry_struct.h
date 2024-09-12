@@ -89,10 +89,12 @@ struct chemistry_part_data {
     double nabla_otimes_q[3];
   } gradients[GEAR_CHEMISTRY_ELEMENT_COUNT];
 
-  /* Diffusion uses a first order reconstruction of nabla_otimes_q. Hence, we do
-     not need a slope limiter for it. However, when we reconstruct U, we need
-     Grad U = nabla_otimes_q. Thus, we need a slope limitier for U =
-     metal_mass/volume. */
+  struct {
+    double metal_density[2];
+  } limiter[GEAR_CHEMISTRY_ELEMENT_COUNT];
+
+  /* we only need one maxr. Hence, put it outside the limiter struct */
+  float limiter_maxr;
 
   /* Geometrical quantities used for MFM hydro. */
   struct {
