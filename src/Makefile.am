@@ -441,7 +441,9 @@ nobase_noinst_HEADERS += chemistry/GEAR_MFM_DIFFUSION/chemistry_getters.h
 nobase_noinst_HEADERS += chemistry/GEAR_MFM_DIFFUSION/chemistry_gradients.h
 nobase_noinst_HEADERS += chemistry/GEAR_MFM_DIFFUSION/chemistry_riemann_HLL.h
 nobase_noinst_HEADERS += chemistry/GEAR_MFM_DIFFUSION/chemistry_setters.h
-nobase_noinst_HEADERS += chemistry/GEAR_MFM_DIFFUSION/chemistry_slope_limiters_face.h
+nobase_noinst_HEADERS +=
+chemistry/GEAR_MFM_DIFFUSION/chemistry_slope_limiters_face.h
+nobase_noinst_HEADERS += chemistry/GEAR_MFM_DIFFUSION/chemistry_slope_limiters_cell.h
 nobase_noinst_HEADERS += chemistry/GEAR_MFM_DIFFUSION/chemistry_unphysical.h
 nobase_noinst_HEADERS += chemistry/GEAR_DIFFUSION/chemistry.h
 nobase_noinst_HEADERS += chemistry/GEAR_DIFFUSION/chemistry_io.h
