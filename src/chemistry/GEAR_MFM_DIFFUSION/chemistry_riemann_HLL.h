@@ -19,6 +19,7 @@
 #ifndef SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_RIEMANN_HLL_H
 #define SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_RIEMANN_HLL_H
 
+#include "chemistry_getters.h"
 #include "chemistry_slope_limiter.h"
 #include "hydro.h"
 
@@ -160,15 +161,15 @@ chemistry_riemann_solve_for_flux(
 
   if (chem_data->use_hokpins2017_hll_riemann_solver) {
     /****************************************************************************
-     * Hopkins 2017 implementation of HLL
-     * This can lead to metal masses bigger than the particle mass. There is
-     * probably a bug. To be investigated */
+     * Hopkins 2017 implementation of HLL */
     /* Compute the direct fluxes */
     const double qj =
-      pj->rho*pj->chemistry_data.metal_mass[g] / hydro_get_mass(pj);
+      /* pj->rho*pj->chemistry_data.metal_mass[g] / hydro_get_mass(pj); */
+      pj->chemistry_data.metal_mass[g] / chemistry_part_get_volume(pj);
 
     const double qi =
-      pi->rho*pi->chemistry_data.metal_mass[g] / hydro_get_mass(pi);
+      /* pi->rho*pi->chemistry_data.metal_mass[g] / hydro_get_mass(pi); */
+      pi->chemistry_data.metal_mass[g] / chemistry_part_get_volume(pi);
     const double dq = qj - qi;
     const double nabla_o_q_dir[3] = {
         dx[0] * dq / dx_norm_2, dx[1] * dq / dx_norm_2, dx[2] * dq / dx_norm_2};

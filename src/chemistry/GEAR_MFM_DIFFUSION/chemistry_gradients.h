@@ -327,10 +327,12 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
 
   /* If the new masses have been changed, update the state vectors */
   if (m_Zi != m_Zi_old) {
-    *Ui = pi->rho * m_Zi / hydro_get_mass(pi);
+    /* *Ui = pi->rho * m_Zi / hydro_get_mass(pi); */
+    *Ui = m_Zi / pi->chemistry_data.geometry.volume;
   }
   if (m_Zj != m_Zj_old) {
-    *Uj = pj->rho * m_Zj / hydro_get_mass(pj);
+    /* *Uj = pj->rho * m_Zj / hydro_get_mass(pj); */
+    *Uj = m_Zj / pj->chemistry_data.geometry.volume;
   }
 }
 

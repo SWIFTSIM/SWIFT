@@ -36,7 +36,8 @@ chemistry_part_get_diffusion_state_vector(const struct part *restrict p,
                                           int group, double *U) {
 
   /* The state vector is 1D and contains the metal density. */
-  *U = p->rho * p->chemistry_data.metal_mass[group] / hydro_get_mass(p);
+  /* *U = p->rho * p->chemistry_data.metal_mass[group] / hydro_get_mass(p); */
+  *U = p->chemistry_data.metal_mass[group] / p->chemistry_data.geometry.volume;
 
 }
 
