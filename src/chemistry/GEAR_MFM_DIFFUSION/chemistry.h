@@ -466,11 +466,10 @@ __attribute__((always_inline)) INLINE static void chemistry_end_density(
       p->chemistry_data.geometry.matrix_E[2][2] *
           p->chemistry_data.geometry.matrix_E[2][2];
 
-  float condition_number = 0.0f;
   if (invert_dimension_by_dimension_matrix(
           p->chemistry_data.geometry.matrix_E) != 0) {
     /* something went wrong in the inversion; force bad condition number */
-    condition_number = const_gizmo_max_condition_number + 1.0f;
+    p->chemistry_data.geometry.condition_number = const_gizmo_max_condition_number + 1.0f;
   } else {
     const float condition_number_Einv =
         p->chemistry_data.geometry.matrix_E[0][0] *
@@ -492,11 +491,11 @@ __attribute__((always_inline)) INLINE static void chemistry_end_density(
         p->chemistry_data.geometry.matrix_E[2][2] *
             p->chemistry_data.geometry.matrix_E[2][2];
 
-    condition_number =
+     p->chemistry_data.geometry.condition_number =
         hydro_dimension_inv * sqrtf(condition_number_E * condition_number_Einv);
   }
 
-  if (condition_number > const_gizmo_max_condition_number &&
+  if (p->chemistry_data.geometry.condition_number > const_gizmo_max_condition_number &&
       p->chemistry_data.geometry.wcorr > const_gizmo_min_wcorr) {
 #ifdef GIZMO_PATHOLOGICAL_ERROR
     error("Condition number larger than %g (%g)!",

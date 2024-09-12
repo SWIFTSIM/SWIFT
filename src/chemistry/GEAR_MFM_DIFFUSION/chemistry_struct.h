@@ -107,6 +107,8 @@ struct chemistry_part_data {
     /* Correction factor for wcount. */
     float wcorr;
 
+    /* Condition number of matrix_E (eq C1) */
+    float condition_number;
   } geometry;
 
   /* Particle chemistry time-step. */
