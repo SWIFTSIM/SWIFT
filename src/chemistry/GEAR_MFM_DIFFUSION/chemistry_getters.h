@@ -79,6 +79,16 @@ __attribute__((always_inline)) INLINE static void chemistry_part_get_gradients(
 }
 
 /**
+ * @brief Get the particle volume.
+ *
+ * @param p Particle.
+ */
+__attribute__((always_inline)) INLINE static float
+chemistry_part_get_volume(const struct part *restrict p) {
+ return p->chemistry_data.geometry.volume;
+}
+
+/**
  * @brief Check if the gradient matrix for this particle is well behaved.
  *
  * @param p Particle.
