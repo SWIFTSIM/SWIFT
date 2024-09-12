@@ -44,7 +44,7 @@
  * @param iii The i index of the second cell.
  * @param jjj The j index of the second cell.
  * @param kkk The k index of the second cell.
- * @
+ * @param c
  *
  * @returns proxy_type The proxy type for this pair.
  */
@@ -54,8 +54,8 @@ int engine_get_proxy_type(const struct cell *cells, const int i, const int j,
                           const int with_hydro, const int with_gravity,
                           const int cid, const int cjd, const double dim[3],
                           const int periodic, const double r_max,
-                          const double max_mesh_dist2,
-                          const double theta_crit) {
+                          const double max_mesh_dist2, const double theta_crit,
+                          const int do_direct_check) {
   int proxy_type = 0;
 
   /* In the hydro case, only care about direct neighbours */
@@ -66,12 +66,13 @@ int engine_get_proxy_type(const struct cell *cells, const int i, const int j,
 
     /* This is super-ugly but checks for direct neighbours */
     /* with periodic BC */
-    if (((abs(i - iii) <= 1 || abs(i - iii - cdim[0]) <= 1 ||
-          abs(i - iii + cdim[0]) <= 1) &&
-         (abs(j - jjj) <= 1 || abs(j - jjj - cdim[1]) <= 1 ||
-          abs(j - jjj + cdim[1]) <= 1) &&
-         (abs(k - kkk) <= 1 || abs(k - kkk - cdim[2]) <= 1 ||
-          abs(k - kkk + cdim[2]) <= 1)))
+    if (do_direct_check &&
+        (((abs(i - iii) <= 1 || abs(i - iii - cdim[0]) <= 1 ||
+           abs(i - iii + cdim[0]) <= 1) &&
+          (abs(j - jjj) <= 1 || abs(j - jjj - cdim[1]) <= 1 ||
+           abs(j - jjj + cdim[1]) <= 1) &&
+          (abs(k - kkk) <= 1 || abs(k - kkk - cdim[2]) <= 1 ||
+           abs(k - kkk + cdim[2]) <= 1))))
       proxy_type |= (int)proxy_cell_type_hydro;
   }
 
@@ -83,12 +84,13 @@ int engine_get_proxy_type(const struct cell *cells, const int i, const int j,
 
     /* This is super-ugly but checks for direct neighbours */
     /* with periodic BC */
-    if (((abs(i - iii) <= 1 || abs(i - iii - cdim[0]) <= 1 ||
-          abs(i - iii + cdim[0]) <= 1) &&
-         (abs(j - jjj) <= 1 || abs(j - jjj - cdim[1]) <= 1 ||
-          abs(j - jjj + cdim[1]) <= 1) &&
-         (abs(k - kkk) <= 1 || abs(k - kkk - cdim[2]) <= 1 ||
-          abs(k - kkk + cdim[2]) <= 1))) {
+    if (do_direct_check &&
+        (((abs(i - iii) <= 1 || abs(i - iii - cdim[0]) <= 1 ||
+           abs(i - iii + cdim[0]) <= 1) &&
+          (abs(j - jjj) <= 1 || abs(j - jjj - cdim[1]) <= 1 ||
+           abs(j - jjj + cdim[1]) <= 1) &&
+          (abs(k - kkk) <= 1 || abs(k - kkk - cdim[2]) <= 1 ||
+           abs(k - kkk + cdim[2]) <= 1)))) {
 
       proxy_type |= (int)proxy_cell_type_gravity;
     } else {
@@ -334,7 +336,8 @@ void engine_makeproxies(struct engine *e) {
               /* Get the proxy type. */
               int proxy_type = engine_get_proxy_type(
                   cells, i, j, k, iii, jjj, kkk, cdim, with_hydro, with_gravity,
-                  cid, cjd, dim, periodic, r_max, max_mesh_dist2, theta_crit);
+                  cid, cjd, dim, periodic, r_max, max_mesh_dist2, theta_crit,
+                  /*do_direct_check*/ 1);
 
               /* Abort if not in range at all */
               if (proxy_type == proxy_cell_type_none) continue;
