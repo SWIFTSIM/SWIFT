@@ -58,7 +58,7 @@ __attribute__((always_inline)) INLINE static void chemistry_slope_limit_cell_ini
  * @param r Distance between particle i and particle j.
  */
 __attribute__((always_inline)) INLINE static void
-chemistr_slope_limit_cell_collect(struct part* pi, struct part* pj, float r, int g) {
+chemistry_slope_limit_cell_collect(struct part* pi, struct part* pj, float r, int g) {
 
   struct chemistry_part_data* chdi = &pi->chemistry_data;
 
@@ -119,7 +119,7 @@ __attribute__((always_inline)) INLINE static void chemistry_slope_limit_quantity
  *
  * @param p Particle.
  */
-__attribute__((always_inline)) INLINE static void rt_slope_limit_cell(
+__attribute__((always_inline)) INLINE static void chemistry_slope_limit_cell(
     struct part* p) {
 
   const float maxr = p->chemistry_data.limiter_maxr;
