@@ -32,7 +32,8 @@
  */
 __attribute__((always_inline)) INLINE static double
 chemistry_part_get_metal_density(const struct part *restrict p, int group) {
-  return p->chemistry_data.metal_mass[group] / p->chemistry_data.geometry.volume;
+  return p->chemistry_data.metal_mass[group] /
+         p->chemistry_data.geometry.volume;
 }
 
 /**
@@ -49,8 +50,7 @@ chemistry_part_get_diffusion_state_vector(const struct part *restrict p,
                                           int group, double *U) {
 
   /* The state vector is 1D and contains the metal density. */
-  *U =chemistry_part_get_metal_density(p, group);
-
+  *U = chemistry_part_get_metal_density(p, group);
 }
 
 /**
@@ -96,9 +96,9 @@ __attribute__((always_inline)) INLINE static void chemistry_part_get_gradients(
  *
  * @param p Particle.
  */
-__attribute__((always_inline)) INLINE static float
-chemistry_part_get_volume(const struct part *restrict p) {
- return p->chemistry_data.geometry.volume;
+__attribute__((always_inline)) INLINE static float chemistry_part_get_volume(
+    const struct part *restrict p) {
+  return p->chemistry_data.geometry.volume;
 }
 
 /**

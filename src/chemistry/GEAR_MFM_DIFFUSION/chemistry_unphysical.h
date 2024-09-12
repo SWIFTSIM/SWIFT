@@ -40,8 +40,8 @@
  * @param callloc integer indentifier where this function was called from
  */
 __attribute__((always_inline)) INLINE static void
-chemistry_check_unphysical_state(double* metal_mass, const double mZ_old, const double gas_mass,
-                                 int callloc) {
+chemistry_check_unphysical_state(double* metal_mass, const double mZ_old,
+                                 const double gas_mass, int callloc) {
 
   /* Check for negative metal densities/masses */
 #ifdef SWIFT_DEBUG_CHECKS
@@ -54,7 +54,7 @@ chemistry_check_unphysical_state(double* metal_mass, const double mZ_old, const 
   if (callloc == 1) print = 0;
   if (print)
     error("Fixing unphysical metal density/mass case %d | %.6e | %.6e", callloc,
-            *metal_mass, mZ_old);
+          *metal_mass, mZ_old);
 #endif
   if (isinf(*metal_mass) || isnan(*metal_mass))
     error("Got inf/nan metal density/mass diffusion case %d | %.6e ", callloc,
@@ -67,7 +67,7 @@ chemistry_check_unphysical_state(double* metal_mass, const double mZ_old, const 
 
   if (*metal_mass > gas_mass) {
     error("Metal mass bigger than gas mass ! case %d | %e | %e", callloc,
-	  *metal_mass, mZ_old);
+          *metal_mass, mZ_old);
     if (mZ_old <= gas_mass) {
       *metal_mass = mZ_old;
     } else {

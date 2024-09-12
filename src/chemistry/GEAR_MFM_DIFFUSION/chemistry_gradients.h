@@ -22,8 +22,8 @@
 /* #include "hydro_slope_limiters.h" */
 #include "chemistry_getters.h"
 #include "chemistry_setters.h"
-#include "chemistry_slope_limiters_face.h"
 #include "chemistry_slope_limiters_cell.h"
+#include "chemistry_slope_limiters_face.h"
 #include "chemistry_unphysical.h"
 #include "kernel_hydro.h"
 
@@ -317,14 +317,16 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
   *Ui += dUi;
   *Uj += dUj;
 
-  const double m_Zi_old = *Ui*pi->chemistry_data.geometry.volume;
-  const double m_Zj_old = *Uj*pj->chemistry_data.geometry.volume;
-  double m_Zi = *Ui*pi->chemistry_data.geometry.volume;
-  double m_Zj = *Uj*pj->chemistry_data.geometry.volume;
+  const double m_Zi_old = *Ui * pi->chemistry_data.geometry.volume;
+  const double m_Zj_old = *Uj * pj->chemistry_data.geometry.volume;
+  double m_Zi = *Ui * pi->chemistry_data.geometry.volume;
+  double m_Zj = *Uj * pj->chemistry_data.geometry.volume;
 
   /* Check and correct unphysical extrapolated states */
-  chemistry_check_unphysical_state(&m_Zi, /*m_old=*/0.f, hydro_get_mass(pi), /*callloc=*/1);
-  chemistry_check_unphysical_state(&m_Zj, /*m_old=*/0.f, hydro_get_mass(pj), /*callloc=*/1);
+  chemistry_check_unphysical_state(&m_Zi, /*m_old=*/0.f, hydro_get_mass(pi),
+                                   /*callloc=*/1);
+  chemistry_check_unphysical_state(&m_Zj, /*m_old=*/0.f, hydro_get_mass(pj),
+                                   /*callloc=*/1);
 
   /* If the new masses have been changed, update the state vectors */
   if (m_Zi != m_Zi_old) {

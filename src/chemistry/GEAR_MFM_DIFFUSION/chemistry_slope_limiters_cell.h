@@ -19,8 +19,8 @@
 #ifndef SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_SLOPE_LIMITERS_CELL_H
 #define SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_SLOPE_LIMITERS_CELL_H
 
-#include "hydro.h"
 #include "chemistry_getters.h"
+#include "hydro.h"
 
 #define GIZMO_SLOPE_LIMITER_BETA_MIN 1.0
 #define GIZMO_SLOPE_LIMITER_BETA_MAX 2.0
@@ -39,10 +39,10 @@
  *
  * @param p Particle.
  */
-__attribute__((always_inline)) INLINE static void chemistry_slope_limit_cell_init(
-    struct part* p) {
+__attribute__((always_inline)) INLINE static void
+chemistry_slope_limit_cell_init(struct part* p) {
 
-  for (int i=0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
+  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
     p->chemistry_data.limiter[i].metal_density[0] = FLT_MAX;
     p->chemistry_data.limiter[i].metal_density[1] = -FLT_MAX;
   }
@@ -60,20 +60,22 @@ __attribute__((always_inline)) INLINE static void chemistry_slope_limit_cell_ini
  * @param i Metal.
  */
 __attribute__((always_inline)) INLINE static void
-chemistry_slope_limit_cell_collect(struct part* pi, struct part* pj, float r, int i) {
+chemistry_slope_limit_cell_collect(struct part* pi, struct part* pj, float r,
+                                   int i) {
 
   struct chemistry_part_data* chdi = &pi->chemistry_data;
 
   /* Basic slope limiter: collect the maximal and the minimal value for the
    * primitive variables among the ngbs */
-  chdi->limiter[i].metal_density[0] = min(chemistry_part_get_metal_density(pi, i),
-                                           chdi->limiter[i].metal_density[0]);
-  chdi->limiter[i].metal_density[1] = max(chemistry_part_get_metal_density(pj, i),
-                                           chdi->limiter[i].metal_density[1]);
+  chdi->limiter[i].metal_density[0] =
+      min(chemistry_part_get_metal_density(pi, i),
+          chdi->limiter[i].metal_density[0]);
+  chdi->limiter[i].metal_density[1] =
+      max(chemistry_part_get_metal_density(pj, i),
+          chdi->limiter[i].metal_density[1]);
 
   pi->chemistry_data.limiter_maxr = max(r, pi->chemistry_data.limiter_maxr);
 }
-
 
 /**
  * @brief Slope-limit the given quantity. Result will be written directly
@@ -88,19 +90,24 @@ chemistry_slope_limit_cell_collect(struct part* pi, struct part* pj, float r, in
  * @param valmin the minimal value amongst all neighbours of the quantity
  * @param valmax the maximal value amongst all neighbours of the quantity
  */
-__attribute__((always_inline)) INLINE static void chemistry_slope_limit_quantity(
-    double gradient[3], const float maxr, const double value, const double valmin,
-    const double valmax, const float condition_number) {
+__attribute__((always_inline)) INLINE static void
+chemistry_slope_limit_quantity(double gradient[3], const float maxr,
+                               const double value, const double valmin,
+                               const double valmax,
+                               const float condition_number) {
 
-  double gradtrue = sqrtf(gradient[0] * gradient[0] + gradient[1] * gradient[1] +
-                         gradient[2] * gradient[2]);
+  double gradtrue =
+      sqrtf(gradient[0] * gradient[0] + gradient[1] * gradient[1] +
+            gradient[2] * gradient[2]);
   if (gradtrue != 0.0) {
     gradtrue *= maxr;
     const double gradtrue_inv = 1.0 / gradtrue;
     const double gradmax = valmax - value;
     const double gradmin = value - valmin;
-    const double beta_2 = min(1.0, const_gizmo_max_condition_number/condition_number);
-    const double beta = max(GIZMO_SLOPE_LIMITER_BETA_MIN, GIZMO_SLOPE_LIMITER_BETA_MAX*beta_2);
+    const double beta_2 =
+        min(1.0, const_gizmo_max_condition_number / condition_number);
+    const double beta = max(GIZMO_SLOPE_LIMITER_BETA_MIN,
+                            GIZMO_SLOPE_LIMITER_BETA_MAX * beta_2);
     /* const double beta = 1.0;  */
     const double min_temp =
         min(gradmax * gradtrue_inv, gradmin * gradtrue_inv) * beta;
@@ -124,12 +131,13 @@ __attribute__((always_inline)) INLINE static void chemistry_slope_limit_cell(
   struct chemistry_part_data* chd = &p->chemistry_data;
 
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
-    chemistry_slope_limit_quantity(/*gradient=*/ chd->gradients[i].nabla_otimes_q,
-				   /*maxr=    */ maxr,
-				   /*value=   */ chemistry_part_get_metal_density(p, i),
-				   /*valmin=  */ chd->limiter[i].metal_density[0],
-				   /*valmax=  */ chd->limiter[i].metal_density[1],
-				   /*condition_number*/ chd->geometry.condition_number);
+    chemistry_slope_limit_quantity(
+        /*gradient=*/chd->gradients[i].nabla_otimes_q,
+        /*maxr=    */ maxr,
+        /*value=   */ chemistry_part_get_metal_density(p, i),
+        /*valmin=  */ chd->limiter[i].metal_density[0],
+        /*valmax=  */ chd->limiter[i].metal_density[1],
+        /*condition_number*/ chd->geometry.condition_number);
   }
 }
 

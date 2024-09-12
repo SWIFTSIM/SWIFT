@@ -105,7 +105,7 @@ INLINE static void chemistry_copy_sink_properties(const struct part* p,
   /* Store the chemistry struct in the star particle */
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
     sink->chemistry_data.metal_mass_fraction[i] =
-      p->chemistry_data.metal_mass[i] / hydro_get_mass(p);
+        p->chemistry_data.metal_mass[i] / hydro_get_mass(p);
   }
 }
 
@@ -451,7 +451,8 @@ __attribute__((always_inline)) INLINE static void chemistry_end_density(
   if (invert_dimension_by_dimension_matrix(
           p->chemistry_data.geometry.matrix_E) != 0) {
     /* something went wrong in the inversion; force bad condition number */
-    p->chemistry_data.geometry.condition_number = const_gizmo_max_condition_number + 1.0f;
+    p->chemistry_data.geometry.condition_number =
+        const_gizmo_max_condition_number + 1.0f;
   } else {
     const float condition_number_Einv =
         p->chemistry_data.geometry.matrix_E[0][0] *
@@ -473,11 +474,12 @@ __attribute__((always_inline)) INLINE static void chemistry_end_density(
         p->chemistry_data.geometry.matrix_E[2][2] *
             p->chemistry_data.geometry.matrix_E[2][2];
 
-     p->chemistry_data.geometry.condition_number =
+    p->chemistry_data.geometry.condition_number =
         hydro_dimension_inv * sqrtf(condition_number_E * condition_number_Einv);
   }
 
-  if (p->chemistry_data.geometry.condition_number > const_gizmo_max_condition_number &&
+  if (p->chemistry_data.geometry.condition_number >
+          const_gizmo_max_condition_number &&
       p->chemistry_data.geometry.wcorr > const_gizmo_min_wcorr) {
 #ifdef GIZMO_PATHOLOGICAL_ERROR
     error("Condition number larger than %g (%g)!",
@@ -502,7 +504,8 @@ __attribute__((always_inline)) INLINE static void chemistry_end_density(
     }
 #endif
     chemistry_check_unphysical_state(&p->chemistry_data.metal_mass[g],
-                                     m_metal_old, hydro_get_mass(p), /*callloc=*/g+3);
+                                     m_metal_old, hydro_get_mass(p),
+                                     /*callloc=*/g + 3);
   }
 }
 
@@ -548,7 +551,8 @@ __attribute__((always_inline)) INLINE static void chemistry_end_force(
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; ++i) {
     const double m_metal_old = p->chemistry_data.metal_mass[i];
     chemistry_check_unphysical_state(&p->chemistry_data.metal_mass[i],
-                                     m_metal_old, hydro_get_mass(p), /*callloc=*/2);
+                                     m_metal_old, hydro_get_mass(p),
+                                     /*callloc=*/2);
   }
 }
 
@@ -887,7 +891,7 @@ chemistry_get_total_metal_mass_fraction_for_cooling(
     const struct part* restrict p) {
 
   return p->chemistry_data.metal_mass[GEAR_CHEMISTRY_ELEMENT_COUNT - 1] /
-    hydro_get_mass(p);
+         hydro_get_mass(p);
 }
 
 /**
@@ -913,7 +917,8 @@ chemistry_get_metal_mass_fraction_for_cooling(const struct part* restrict p) {
 __attribute__((always_inline)) INLINE static double
 chemistry_get_total_metal_mass_fraction_for_star_formation(
     const struct part* restrict p) {
-  return p->chemistry_data.metal_mass[GEAR_CHEMISTRY_ELEMENT_COUNT - 1] / hydro_get_mass(p);
+  return p->chemistry_data.metal_mass[GEAR_CHEMISTRY_ELEMENT_COUNT - 1] /
+         hydro_get_mass(p);
 }
 
 /**
