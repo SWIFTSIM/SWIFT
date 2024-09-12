@@ -22,6 +22,7 @@
 #include "chemistry_slope_limiter.h"
 #include "hydro.h"
 
+/* TODO: Put this in the sign.h file and define for double. */
 #define SIGN(x) ((x) > 0 ? 1 : ((x) < 0 ? -1 : 0))
 
 /**
