@@ -58,10 +58,6 @@ void zoom_void_space_split(struct space *s, int verbose);
 /* Task creation functions. */
 void zoom_engine_make_self_gravity_tasks(struct space *s, struct engine *e);
 
-/* Void task splitting. */
-void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
-                                                struct scheduler *s);
-
 /* Void cell tree mutlipole initialisation. */
 void zoom_init_void_mpoles(struct engine *e);
 
