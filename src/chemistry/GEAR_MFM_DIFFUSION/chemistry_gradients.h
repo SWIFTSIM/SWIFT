@@ -35,6 +35,7 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_init(
     struct part *p) {
 
   chemistry_part_reset_gradients(p);
+  chemistry_slope_limit_cell_init(p);
 }
 
 /**
@@ -132,6 +133,7 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_collect(
     dF_i[2] = dU * psii_tilde[2];
 
     chemistry_part_update_gradients(pi, g, dF_i);
+    chemistry_slope_limit_cell_collect(pi, pj, g);
 
     /* Now do the gradients of pj */
     double dF_j[3];
@@ -143,6 +145,7 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_collect(
     dF_j[2] = dU * psij_tilde[2];
 
     chemistry_part_update_gradients(pj, g, dF_j);
+    chemistry_slope_limit_cell_collect(pj, pi, g);
   }
 }
 
@@ -216,6 +219,7 @@ chemistry_gradients_nonsym_collect(float r2, const float *dx, float hi,
     dF_i[2] = dU * psii_tilde[2];
 
     chemistry_part_update_gradients(pi, g, dF_i);
+    chemistry_slope_limit_cell_collect(pi, pj, g);
   }
 }
 
@@ -244,6 +248,8 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_finalise(
   for (int g = 0; g < GEAR_CHEMISTRY_ELEMENT_COUNT; g++) {
     chemistry_part_normalise_gradients(p, g, norm);
   }
+
+  chemistry_slope_limit_cell(p);
 }
 
 /**
