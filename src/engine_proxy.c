@@ -32,6 +32,7 @@
 
 /* Local headers. */
 #include "proxy.h"
+#include "zoom_region/zoom.h"
 
 /**
  * @brief Get the type of proxy needed for a pair of cells.
@@ -215,6 +216,13 @@ void engine_add_proxy(struct engine *e, struct cell *cells,
 void engine_makeproxies(struct engine *e) {
 
 #ifdef WITH_MPI
+
+  /* If we're in zoom land redirect to the zoom specific function. */
+  if (e->s->with_zoom_region) {
+    zoom_makeproxies(e);
+    return;
+  }
+
   /* Let's time this */
   const ticks tic = getticks();
 
