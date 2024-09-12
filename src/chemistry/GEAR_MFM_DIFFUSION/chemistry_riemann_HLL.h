@@ -120,11 +120,13 @@ chemistry_riemann_solve_for_flux(
   const float c_fast = max3(SL, SR, Sstar);
 
   /* Approximate lambda_plus and lambda_minus */
-  /* const float lambda_plus = max(uL, uR) + c_fast; */
-  /* const float lambda_minus = min(uL, UR) - c_fast; */
-
   const float lambda_plus = fabsf(uL - uR) + c_fast;
   const float lambda_minus = - lambda_plus;
+
+  if (lambda_plus == 0.f && lambda_minus == 0.f) {
+    *metal_flux = 0.f;
+    return;
+  }
 
   /* Compute alpha */
   const float K_star_norm =
@@ -195,16 +197,8 @@ chemistry_riemann_solve_for_flux(
     }
   } else {
     /***************************************************************************
-     * Simple HLL (compute F_diff_ij^*)
-     * It is more stable than the Hokins version (04.09.2024) */
-    /* This works. However, we need to study the artificial diffusion. */
-    if (SL >= 0) {
-      *metal_flux = Flux_L;
-    } else if (SL <= 0 && SR >= 0) {
-      *metal_flux = flux_hll;
-    } else /* SR <= 0 */ {
-      *metal_flux = Flux_R;
-    }
+     * Simple HLL (compute F_diff_ij^*) */
+    *metal_flux = flux_hll;
   }
 }
 
