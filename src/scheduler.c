@@ -3,6 +3,7 @@
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
  *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *               2016 Peter W. Draper (p.w.draper@durham.ac.uk)
+ *               2024 Will Roper (w.roper@sussex.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -83,7 +84,9 @@ static void scheduler_extend_unlocks(struct scheduler *s) {
     error("Failed to re-allocate unlocks.");
 
   /* Wait for all writes to the old buffer to complete. */
-  while (s->completed_unlock_writes < s->size_unlocks);
+  while (s->completed_unlock_writes < s->size_unlocks) {
+    /* Nothing to do here. */
+  }
 
   /* Copy the buffers. */
   memcpy(unlocks_new, s->unlocks, sizeof(struct task *) * s->size_unlocks);
@@ -124,7 +127,9 @@ void scheduler_addunlock(struct scheduler *s, struct task *ta,
 #endif
 
   /* Wait for there to actually be space at my index. */
-  while (ind > s->size_unlocks);
+  while (ind > s->size_unlocks) {
+    /* Nothing to do here. */
+  }
 
   /* Guard against case when more than (old) s->size_unlocks unlocks
    * are now pending. */

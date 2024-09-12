@@ -46,19 +46,19 @@ struct sink_props {
   int size_of_calibration_sample;
 
   /*! Mass of the stellar particle representing the low mass stars
-   * (continuous IMF sampling). */
-  float stellar_particle_mass;
+   * (continuous IMF sampling). In M_sun. */
+  float stellar_particle_mass_Msun;
 
-  /*! Minimal mass of stars represented by discrete particles */
-  float minimal_discrete_mass;
+  /*! Minimal mass of stars represented by discrete particles. In M_sun. */
+  float minimal_discrete_mass_Msun;
 
   /*! Mass of the stellar particle representing the low mass stars
-   * (continuous IMF sampling). First stars */
-  float stellar_particle_mass_first_stars;
+   * (continuous IMF sampling). In M_sun. First stars */
+  float stellar_particle_mass_first_stars_Msun;
 
-  /*! Minimal mass of stars represented by discrete particles.
+  /*! Minimal mass of stars represented by discrete particles. In M_sun.
    * First stars. */
-  float minimal_discrete_mass_first_stars;
+  float minimal_discrete_mass_first_stars_Msun;
 
   /*! Sink formation criteria selecter : some criteria can be left out.  */
   char sink_formation_contracting_gas_criterion;
@@ -70,6 +70,10 @@ struct sink_props {
   /* Disable sink formation? (e.g. used in sink accretion tests). Default: 0
      (keep sink formation) */
   uint8_t disable_sink_formation;
+
+  /* Factor to rescale the velocity dispersion of the stars when they are
+     spawned */
+  double star_spawning_sigma_factor;
 };
 
 /**
@@ -94,13 +98,13 @@ INLINE static void sink_props_init_probabilities(
   float stellar_particle_mass;
 
   if (!first_stars) {
-    minimal_discrete_mass = sp->minimal_discrete_mass;
+    minimal_discrete_mass = sp->minimal_discrete_mass_Msun;
     stellar_particle_mass =
-        sp->stellar_particle_mass / phys_const->const_solar_mass;
+        sp->stellar_particle_mass_Msun / phys_const->const_solar_mass;
   } else {
-    minimal_discrete_mass = sp->minimal_discrete_mass_first_stars;
-    stellar_particle_mass =
-        sp->stellar_particle_mass_first_stars / phys_const->const_solar_mass;
+    minimal_discrete_mass = sp->minimal_discrete_mass_first_stars_Msun;
+    stellar_particle_mass = sp->stellar_particle_mass_first_stars_Msun /
+                            phys_const->const_solar_mass;
   }
 
   /* sanity check */
@@ -145,7 +149,7 @@ INLINE static void sink_props_init_probabilities(
   /* if no continous part, return */
   if (Mc == 0) {
     imf->sink_Pc = 0;
-    imf->sink_stellar_particle_mass = 0;
+    imf->stellar_particle_mass_Msun = 0;
     message("probability of the continuous part    : %g", 0.);
     message("probability of the discrete   part    : %g", 1.);
     return;
@@ -155,7 +159,7 @@ INLINE static void sink_props_init_probabilities(
   double Pc = 1 / (1 + Nd);
   double Pd = 1 - Pc;
   imf->sink_Pc = Pc;
-  imf->sink_stellar_particle_mass = Mc;
+  imf->stellar_particle_mass_Msun = Mc;
 
   message("probability of the continuous part     : %g", Pc);
   message("probability of the discrete   part     : %g", Pd);
@@ -179,13 +183,14 @@ INLINE static void sink_props_init(struct sink_props *sp,
 
   /* Default values */
   const float default_f_acc = 0.8;
-
+  const float default_star_spawning_sigma_factor = 0.2;
   const char default_disable_sink_formation = 0; /* Sink formation is
                                                      activated */
 
   /* By default all current implemented criteria are active */
   const uint8_t default_sink_formation_criterion_all = 1;
 
+  /* Read the parameters from the parameter file */
   sp->cut_off_radius =
       parser_get_param_float(params, "GEARSink:cut_off_radius");
 
@@ -204,22 +209,26 @@ INLINE static void sink_props_init(struct sink_props *sp,
       parser_get_param_float(params, "GEARSink:maximal_temperature");
 
   sp->density_threshold =
-      parser_get_param_float(params, "GEARSink:density_threshold");
+      parser_get_param_float(params, "GEARSink:density_threshold_g_per_cm3");
 
   sp->size_of_calibration_sample =
       parser_get_param_int(params, "GEARSink:size_of_calibration_sample");
 
-  sp->stellar_particle_mass =
-      parser_get_param_float(params, "GEARSink:stellar_particle_mass");
+  sp->stellar_particle_mass_Msun =
+      parser_get_param_float(params, "GEARSink:stellar_particle_mass_Msun");
 
-  sp->minimal_discrete_mass =
-      parser_get_param_float(params, "GEARSink:minimal_discrete_mass");
+  sp->minimal_discrete_mass_Msun =
+      parser_get_param_float(params, "GEARSink:minimal_discrete_mass_Msun");
 
-  sp->stellar_particle_mass_first_stars = parser_get_param_float(
-      params, "GEARSink:stellar_particle_mass_first_stars");
+  sp->stellar_particle_mass_first_stars_Msun = parser_get_param_float(
+      params, "GEARSink:stellar_particle_mass_first_stars_Msun");
 
-  sp->minimal_discrete_mass_first_stars = parser_get_param_float(
-      params, "GEARSink:minimal_discrete_mass_first_stars");
+  sp->minimal_discrete_mass_first_stars_Msun = parser_get_param_float(
+      params, "GEARSink:minimal_discrete_mass_first_stars_Msun");
+
+  sp->star_spawning_sigma_factor =
+      parser_get_opt_param_float(params, "GEARSink:star_spawning_sigma_factor",
+                                 default_star_spawning_sigma_factor);
 
   /* Sink formation criterion parameters (all active by default) */
   sp->sink_formation_contracting_gas_criterion = parser_get_opt_param_int(
@@ -253,8 +262,8 @@ INLINE static void sink_props_init(struct sink_props *sp,
 
   sp->density_threshold /= units_cgs_conversion_factor(us, UNIT_CONV_DENSITY);
 
-  sp->stellar_particle_mass *= phys_const->const_solar_mass;
-  sp->stellar_particle_mass_first_stars *= phys_const->const_solar_mass;
+  sp->stellar_particle_mass_Msun *= phys_const->const_solar_mass;
+  sp->stellar_particle_mass_first_stars_Msun *= phys_const->const_solar_mass;
 
   /* here, we need to differenciate between the stellar models */
   struct initial_mass_function *imf;
@@ -278,13 +287,15 @@ INLINE static void sink_props_init(struct sink_props *sp,
   message("size_of_calibration_sample        = %d",
           sp->size_of_calibration_sample);
 
-  message("stellar_particle_mass             = %g", sp->stellar_particle_mass);
-  message("minimal_discrete_mass             = %g", sp->minimal_discrete_mass);
+  message("stellar_particle_mass             = %g",
+          sp->stellar_particle_mass_Msun);
+  message("minimal_discrete_mass             = %g",
+          sp->minimal_discrete_mass_Msun);
 
   message("stellar_particle_mass_first_stars = %g",
-          sp->stellar_particle_mass_first_stars);
+          sp->stellar_particle_mass_first_stars_Msun);
   message("minimal_discrete_mass_first_stars = %g",
-          sp->minimal_discrete_mass_first_stars);
+          sp->minimal_discrete_mass_first_stars_Msun);
 
   /* Print information about the functionalities */
   message("disable_sink_formation = %d", sp->disable_sink_formation);

@@ -183,7 +183,7 @@ This was a brief overview of the model. More details can be found in :ref:`sink_
 Chemistry
 ~~~~~~~~~
 
-In the chemistry, we are using the smoothed metallicity scheme that consists in using the SPH to smooth the metallicity of each particle over the neighbors. It is worth to point the fact that we are not exchanging any metals but only smoothing it. The parameter ``GEARChemistry:initial_metallicity`` set the (non smoothed) initial mass fraction of each element for all the particles and ``GEARChemistry:scale_initial_metallicity`` use the feedback table to scale the initial metallicity of each element according the Sun's composition.
+In the chemistry, we are using the smoothed metallicity scheme that consists in using the SPH to smooth the metallicity of each particle over the neighbors. It is worth to point the fact that we are not exchanging any metals but only smoothing it. The parameter ``GEARChemistry:initial_metallicity`` set the (non smoothed) initial mass fraction of each element for all the particles and ``GEARChemistry:scale_initial_metallicity`` use the feedback table to scale the initial metallicity of each element according the Sun's composition. If ``GEARChemistry:initial_metallicity`` is negative, then the metallicities are read from the initial conditions.
 
 .. code:: YAML
 
@@ -331,3 +331,11 @@ Finally for the ``SNII``, the mass limits are given by ``Mmin`` and ``Mmax``. Fo
     white_dwarf_mass:  1.38               # Mass of a white dwarf
   GEARSupernovaeII:
   interpolation_size:  200                # Number of elements for the interpolation of the data
+
+Initial Conditions
+~~~~~~~~~~~~~~~~~~
+
+Note that if in the initial conditions, the time of formation of a stellar particle is given (``BirthTime``)
+and set to a negative value, the stellar particle will provide no feedback.
+A similar behavior will be obtained if the parameter ``overwrite_birth_time`` is set to 1 and
+``birth_time`` to -1. 

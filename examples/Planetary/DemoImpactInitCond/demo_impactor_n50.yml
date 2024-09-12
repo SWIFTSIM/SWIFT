@@ -7,22 +7,23 @@ InternalUnitSystem:
     UnitTemp_in_cgs:        1           # Kelvin
 
 # Parameters related to the initial conditions
-InitialConditions:      
-    file_name:  earth_impact.hdf5       # The initial conditions file to read
+InitialConditions:
+    file_name:  demo_impactor_n50.hdf5  # The initial conditions file to read
     periodic:   0                       # Are we running with periodic ICs?
 
 # Parameters governing the time integration
 TimeIntegration:
     time_begin:     0                   # The starting time of the simulation (in internal units).
-    time_end:       36000               # The end time of the simulation (in internal units).
+    time_end:       10000               # The end time of the simulation (in internal units).
     dt_min:         0.000001            # The minimal time-step size of the simulation (in internal units).
     dt_max:         1000                # The maximal time-step size of the simulation (in internal units).
 
 # Parameters governing the snapshots
 Snapshots:
-    basename:           earth_impact    # Common part of the name of output files
+    subdir:             snapshots       # Sub-directory in which to write the snapshots. Defaults to "" (i.e. the directory where SWIFT is run).
+    basename:           demo_impactor_n50  # Common part of the name of output files
     time_first:         0               # Time of the first output (in internal units)
-    delta_time:         1000            # Time difference between consecutive outputs (in internal units)
+    delta_time:         2000            # Time difference between consecutive outputs (in internal units)
 
 # Parameters governing the conserved quantities statistics
 Statistics:
@@ -38,7 +39,7 @@ SPH:
     resolution_eta:     1.2348          # Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel).
     delta_neighbours:   0.1             # The tolerance for the targetted number of neighbours.
     CFL_condition:      0.2             # Courant-Friedrich-Levy condition for time integration.
-    h_max:              1.2             # Maximal allowed smoothing length (in internal units).
+    h_max:              1.0             # Maximal allowed smoothing length (in internal units).
     viscosity_alpha:    1.5             # Override for the initial value of the artificial viscosity.
 
 # Parameters for the self-gravity scheme
@@ -47,14 +48,13 @@ Gravity:
     MAC:                            adaptive    # Choice of mulitpole acceptance criterion: 'adaptive' OR 'geometric'.
     epsilon_fmm:                    0.001       # Tolerance parameter for the adaptive multipole acceptance criterion.
     theta_cr:                       0.5         # Opening angle for the purely gemoetric criterion.
-    max_physical_baryon_softening:  0.05        # Physical softening length (in internal units).
-
-# Parameters for the task scheduling
-Scheduler:
-    max_top_level_cells:    16          # Maximal number of top-level cells in any dimension. The nu
+    max_physical_baryon_softening:  0.16        # Physical softening length (in internal units).
 
 # Parameters related to the equation of state
 EoS:
     # Select which planetary EoS material(s) to enable for use.
-    planetary_use_Til_iron:       1     # Tillotson iron, material ID 100
-    planetary_use_Til_granite:    1     # Tillotson granite, material ID 101
+    planetary_use_ANEOS_forsterite:   1     # ANEOS forsterite (Stewart et al. 2019), material ID 400
+    planetary_use_ANEOS_Fe85Si15:     1     # ANEOS Fe85Si15 (Stewart 2020), material ID 402
+    # Tablulated EoS file paths.
+    planetary_ANEOS_forsterite_table_file:  ../EoSTables/ANEOS_forsterite_S19.txt
+    planetary_ANEOS_Fe85Si15_table_file:    ../EoSTables/ANEOS_Fe85Si15_S20.txt
