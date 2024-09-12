@@ -451,18 +451,6 @@ void zoom_engine_make_self_gravity_tasks(struct space *s, struct engine *e) {
 
   ticks tic = getticks();
 
-  /* /\* Zoom -> Zoom *\/ */
-  /* threadpool_map( */
-  /*     &e->threadpool, engine_make_self_gravity_tasks_mapper_zoom_cells, NULL,
-   */
-  /*     s->zoom_props->nr_zoom_cells, 1, threadpool_auto_chunk_size, e); */
-
-  /* if (e->verbose) */
-  /*   message("Making zoom->zoom gravity tasks took %.3f %s.", */
-  /*           clocks_from_ticks(getticks() - tic), clocks_getunit()); */
-
-  tic = getticks();
-
   /* Background -> Background */
   threadpool_map(&e->threadpool,
                  engine_make_self_gravity_tasks_mapper_bkg_cells, NULL,
