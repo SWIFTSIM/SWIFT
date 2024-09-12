@@ -60,7 +60,8 @@ __attribute__((always_inline)) INLINE static void chemistry_limiter_minmod(
 }
 
 /**
- * @brief Slope limit a single quantity at the interface
+ * @brief Slope limit a single quantity at the interface using Gizmo
+ * slope-limiter.
  *
  * @param phi_i Value of the quantity at the particle position.
  * @param phi_j Value of the quantity at the neighbouring particle position.
