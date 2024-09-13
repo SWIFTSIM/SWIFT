@@ -48,19 +48,25 @@ __attribute__((always_inline)) INLINE static int chemistry_riemann_is_vacuum(
 }
 
 /**
- * @brief Solve the Riemann problem for the RT equations and return the
+ * @brief Solve the Riemann problem for the diffusion equations and return the
  * flux at the interface.
  *
- * @param UL left state (radiation energy density, flux)
- * @param UR right state (radiation energy density, flux)
- * @param FLnorm the norm of the radiation flux of the left state
- * @param FRnorm the norm of the radiation flux of the right state
- * @param hyperFluxL the flux of the hyperbolic conservation law of the left
- * state
+ * @param pi Left particle
+ * @param pj Right particle
+ * @param UL left diffusion state (metal density)
+ * @param UR right diffusion state (metal density)
+ * @param WL Left state hydrodynamics primitve variables (density, velocity[3],
+ * pressure)
+ * @param WR Right state hydrodynamics primitve variables (density,
+ * velocity[3], pressure)
+ * @param F_diff_L The diffusion flux of the left
+ * @param F_diff_R The diffusion flux of the right
+ * @param Anorm Norm of the face between the left and right particles
  * @param hyperFluxR the flux of the hyperbolic conservation law of the right
  * state
- * @param n_unit the unit vector perpendicular to the "intercell" surface.
- * @param flux_half (return) the resulting flux at the interface
+ * @param n_unit The unit vector perpendicular to the "intercell" surface.
+ * @param metal_flux (return) The resulting flux at the interface
+ * @param chem_data Chemistry data.
  */
 __attribute__((always_inline)) INLINE static void
 chemistry_riemann_solve_for_flux(
