@@ -141,7 +141,7 @@ def process_info(run_data, the_key, toplot=True, tosave=True):
         # ax[1].set_yscale("log")
         #ax[1].set_yscale("log")
         #ax[0].set_ylim(1e-2,1e3)
-        ax[1].set_ylim(-0.15,0.15)
+        ax[1].set_ylim(-0.3,0.3)
         ax[0].grid()
         ax[1].grid()
         # ax[0].set_xlim(0,10)

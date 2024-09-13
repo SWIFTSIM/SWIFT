@@ -98,7 +98,7 @@ def rms_vec(vec):
 
 
 # see available fields in snapshot
-# print(data.metadata.gas_properties.field_names)
+#print(data.metadata.gas_properties.field_names)
 print(data.metadata)
 a = data.metadata.cosmology["Scale-factor"][0]
 z_to_display = np.round(data.metadata.cosmology["Redshift"][0], 1)
@@ -125,6 +125,12 @@ R0 = data.gas.r0
 R1 = data.gas.r1
 R2 = data.gas.r2
 R3 = data.gas.r3
+
+OW = data.gas.owtrigger
+eta = data.gas.total_effective_resistivity
+
+print(f'Mean OW trigger value is {np.mean(OW.value)}')
+print(f'Mean effective resistivity is {np.mean(eta.value)*eta.units}')
 
 print(x[0], B[0], rho[0])
 
@@ -402,6 +408,7 @@ R0 = prepare_sliced_quantity(R0)
 R1 = prepare_sliced_quantity(R1)
 R2 = prepare_sliced_quantity(R2)
 R3 = prepare_sliced_quantity(R3)
+OW = prepare_sliced_quantity(OW)
 
 # mask error metrics
 reg_err = reg_err * R0.units
@@ -658,7 +665,7 @@ if to_plot == "|B|_rho_|v|_R0":
     vx = vx.value
     vy = vy.value
 
-    fig, ax = plt.subplots(1, 4, sharex=True, figsize=(6 * 4, 5))
+    fig, ax = plt.subplots(1, 5, sharex=True, figsize=(6 * 5, 5))
 
     make_density_plot(
         Babs.reshape((dimx, dimy)),
@@ -704,6 +711,18 @@ if to_plot == "|B|_rho_|v|_R0":
         # log_sc=False,
         cmap=prefered_color,
     )
+    make_density_plot(
+        OW.reshape((dimx, dimy)),
+        1e-1,
+        1e1,
+        0,
+        4,
+        "OW",
+        c_res=cpts,
+        log_sc=True,
+        cmap='bwr',
+    )
+
     ax[0].streamplot(
         new_x,
         new_y,

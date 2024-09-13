@@ -1,5 +1,11 @@
 Run #	v0	Vz_factor	eta	kv	kb	Lbox	Flow_kind	Scheme	IAfile	monopole_subtraction	artificial_diffusion	hyperbolic_dedner	hyperbolic_dedner_divv	parabolic_dedner	tau_max	min_steps	Forcing_kind	viscosity_alpha	Status	Comment
-AR_old1	1	1	0.0	1	1	6.2831853	1	ODI	g32		7.0	1	0.5	1	100	200	v		done	Old AR prescription run
-AR_old2	1	1	0.0	1	1	6.2831853	1	ODI	g32		1.0	1	0.5	1	100	200	v		done	Old AR prescription run
-AR_old3	1	1	0.0	1	1	6.2831853	1	ODI	g32		0.5	1	0.5	1	100	200	v		done	Old AR prescription run
-AR_old4	1	1	0.0	1	1	6.2831853	1	ODI	g32		0.1	1	0.5	1	100	200	v		done	Old AR prescription run
+Test_ARold1	1	1	0	1	1	6.2831853	1	ODI	g32		50.0	1	0.5	1	100	200	v		done	Old AR prescription run
+Test_ARold2	1	1	0	1	1	6.2831853	1	ODI	g32		10.0	1	0.5	1	100	200	v		done	Old AR prescription run
+Test_ARold3	1	1	0	1	1	6.2831853	1	ODI	g32		5.0	1	0.5	1	100	200	v		done	Old AR prescription run
+Test_ARold4	1	1	0	1	1	6.2831853	1	ODI	g32		1.0	1	0.5	1	100	200	v		done	Old AR prescription run
+Test_ARold5	1	1	0	1	1	6.2831853	1	ODI	g32		0.5	1	0.5	1	100	200	v		done	Old AR prescription run
+Test_ARold6	1	1	0	1	1	6.2831853	1	ODI	g32		0.0	1	0.5	1	100	200	v		done	Old AR prescription run
+Test_ARold7	1	1	0	1	1	6.2831853	1	ODI	g32		1000.0	1	0.5	1	100	200	v		done	Old AR prescription run
+Test_ARold8	1	1	0	1	1	6.2831853	1	ODI	g32		10000.0	1	0.5	1	100	200	v		done	Old AR prescription run
+Test_ARold9	1	1	0	1	1	6.2831853	1	ODI	g32		10000000.0	1	0.5	1	100	200	v		done	Old AR prescription run, AR value based on AR=1 run OW=4000000
+Test_ARold10	1	1	0	1	1	6.2831853	1	ODI	g32		10000000.0	1	0.5	1	100	200	v		done	Old AR prescription run, AR switch off

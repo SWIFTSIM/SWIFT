@@ -16,7 +16,7 @@ prefered_color = "magma"
 cpts = 100
 
 
-to_plot = "B"  # 'B' or 'A' or 'errors'
+to_plot = "Badd"  # 'B' or 'A' or 'errors'
 
 with h5py.File(filename, "r") as handle:
     gamma = handle["HydroScheme"].attrs["Adiabatic index"][0]
@@ -91,7 +91,7 @@ def rms_vec(vec):
 
 
 # see available fields in snapshot
-print(data.metadata.gas_properties.field_names)
+#print(data.metadata.gas_properties.field_names)
 
 # Get physical quantities
 x = data.gas.coordinates[:, 0].value
@@ -108,13 +108,23 @@ R1 = data.gas.r1.value
 R2 = data.gas.r2.value
 R3 = data.gas.r3.value
 
+OW = data.gas.owtrigger
+eta = data.gas.total_effective_resistivity
+
+ar = data.gas.alpha_ar
+
+print('effective_resistivity, max, min, mean:',np.max(eta),np.min(eta), np.mean(eta))
+print('OWtrigger, max, min, mean:',np.max(OW),np.min(OW),np.mean(OW))
+print('alpha_ar, max, min, mean:',np.max(ar),np.min(ar),np.mean(ar))
+
+
 # Get RMS values
 Brms = rms_vec(B)
 vrms = rms_vec(v)
 if to_plot == "A":
     A = data.gas.magnetic_vector_potentials.value
     Arms = rms_vec(A)
-print(vrms)
+print('vrms=',vrms)
 # Print Brms
 # print(f'Brms = {Brms}')
 
@@ -178,6 +188,10 @@ R0 = prepare_sliced_quantity(R0)
 R1 = prepare_sliced_quantity(R1)
 R2 = prepare_sliced_quantity(R2)
 R3 = prepare_sliced_quantity(R3)
+
+OW = prepare_sliced_quantity(OW)
+eta = prepare_sliced_quantity(eta)
+
 
 # mask error metrics
 R0[R0 < reg_err] = reg_err
@@ -415,6 +429,109 @@ if to_plot == "B":
         linewidth=0.5,
         arrowsize=0.8,
     )
+
+if to_plot == "Badd":
+    Bx = B[:, 0] / Brms
+    By = B[:, 1] / Brms
+    Bz = B[:, 2] / Brms
+
+    Babs = abs_vec(B)/Brms
+
+    fig, ax = plt.subplots(1, 5, sharex=True, figsize=(6 * 5, 5))
+    make_density_plot(
+        Bx.reshape((dimx, dimy)),
+        -1.0,
+        1.0,
+        0,
+        0,
+        "$B_x$/$B_{rms}$",
+        c_res=cpts,
+        log_sc=False,
+        cmap=prefered_color,
+    )
+    make_density_plot(
+        By.reshape((dimx, dimy)),
+        -1.0,
+        1.0,
+        0,
+        1,
+        "$B_y$/$B_{rms}$",
+        c_res=cpts,
+        log_sc=False,
+        cmap=prefered_color,
+    )
+    make_density_plot(
+        Bz.reshape((dimx, dimy)),
+        -1.0,
+        1.0,
+        0,
+        2,
+        "$B_z$/$B_{rms}$",
+        c_res=cpts,
+        log_sc=False,
+        cmap=prefered_color,
+    )
+
+    vx = v[:, 0] / vrms
+    vy = v[:, 1] / vrms
+    vz = v[:, 2] / vrms
+
+    make_density_plot(
+        OW.reshape((dimx, dimy)),
+        1e-1,
+        1e1,
+        0,
+        3,
+        "OW",
+        c_res=cpts,
+        log_sc=True,
+        cmap='bwr',
+    )
+    make_density_plot(
+        eta.reshape((dimx, dimy)),
+        min(eta),
+        max(eta),
+        0,
+        4,
+        "eta_{eff}",
+        c_res=cpts,
+        log_sc=True,
+        cmap=prefered_color,
+    )
+
+
+    ax[0].streamplot(
+        new_x,
+        new_y,
+        np.transpose(Bx.reshape((dimx, dimy))),
+        np.transpose(By.reshape((dimx, dimy))),
+        color="w",
+        density=2.0,
+        linewidth=0.5,
+        arrowsize=0.8,
+    )
+    ax[1].streamplot(
+        new_x,
+        new_y,
+        np.transpose(Bx.reshape((dimx, dimy))),
+        np.transpose(By.reshape((dimx, dimy))),
+        color="w",
+        density=2.0,
+        linewidth=0.5,
+        arrowsize=0.8,
+    )
+    ax[2].streamplot(
+        new_x,
+        new_y,
+        np.transpose(Bx.reshape((dimx, dimy))),
+        np.transpose(By.reshape((dimx, dimy))),
+        color="w",
+        density=2.0,
+        linewidth=0.5,
+        arrowsize=0.8,
+    )
+
+
 
 if to_plot == "errors":
 
