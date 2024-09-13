@@ -947,19 +947,13 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
        * reporting to the user. */
       switch (c->type) {
         case cell_type_zoom:
-          zoom_cell_particles +=
-              (c->hydro.count + c->grav.count + c->stars.count +
-               c->sinks.count + c->black_holes.count);
+          zoom_cell_particles += c->grav.count;
           break;
         case cell_type_buffer:
-          buffer_cell_particles +=
-              (c->hydro.count + c->grav.count + c->stars.count +
-               c->sinks.count + c->black_holes.count);
+          buffer_cell_particles += c->grav.count;
           break;
         case cell_type_bkg:
-          bkg_cell_particles +=
-              (c->hydro.count + c->grav.count + c->stars.count +
-               c->sinks.count + c->black_holes.count);
+          bkg_cell_particles += c->grav.count;
           break;
         case cell_type_regular:
           /* Only check this case when debugging. With a zoom region we
