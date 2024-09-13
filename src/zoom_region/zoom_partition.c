@@ -20,6 +20,10 @@
 /* Config */
 #include <config.h>
 
+/* Standard includes. */
+#include <stdlib.h>
+#include <string.h>
+
 /* Local includes. */
 #include "cell.h"
 #include "partition.h"
@@ -39,7 +43,7 @@
  *
  *  Each cell grid will be partitioned onto the grid separately. This will
  *  not result in anything close to an optimal partitioning, but it will
- *  suffice given a grid is far from optimal in the uniform case too.
+ *  suffice given the relative cost between the cell grids.
  *
  *  @param initial_partition The initial partition data.
  *  @param nr_nodes The number of nodes.
@@ -108,3 +112,76 @@ void partition_zoom_grid(struct partition *initial_partition, int nr_nodes,
                              (ind[1] + initial_partition->grid[1] * ind[2]);
   }
 }
+
+#ifdef WITH_MPI
+/**
+ * @brief Partition the space using a vectorised list of sample positions.
+ *
+ * Like the grid approach this will apply the vector independently to each
+ * cell grid. This will not result in anything close to an optimal partitioning,
+ * but it will suffice given the relative cost between the cell grids.
+ *
+ * @param nr_nodes The number of nodes.
+ * @param s The #space.
+ */
+void partition_zoom_vector(int nr_nodes, struct space *s) {
+
+  /* Vectorised selection, guaranteed to work for samples less than the
+   * number of cells, but not very clumpy in the selection of regions. */
+  int *samplecells = NULL;
+  if ((samplecells = (int *)malloc(sizeof(int) * nr_nodes * 3)) == NULL)
+    error("Failed to allocate samplecells");
+
+  /* Do the zoom cells... */
+  if (nodeID == 0) {
+    pick_vector(s->zoom_props->cdim, nr_nodes, samplecells);
+  }
+
+  /* Share the samplecells around all the nodes. */
+  int res = MPI_Bcast(samplecells, nr_nodes * 3, MPI_INT, 0, MPI_COMM_WORLD);
+  if (res != MPI_SUCCESS)
+    mpi_error(res, "Failed to bcast the partition sample zoom cells.");
+
+  /* And apply to our zoom cells */
+  split_vector(s->zoom_props->zoom_cells_top, s->zoom_props->cdim, nr_nodes,
+               samplecells);
+
+  /* Clear out the samplecells. */
+  bzero(samplecells, sizeof(int) * nr_nodes * 3);
+
+  /* Do the buffer cells if we have any... */
+  if (s->zoom_props->with_buffer_cells) {
+    if (nodeID == 0) {
+      pick_vector(s->zoom_props->buffer_cdim, nr_nodes, samplecells);
+    }
+
+    /* Share the samplecells around all the nodes. */
+    res = MPI_Bcast(samplecells, nr_nodes * 3, MPI_INT, 0, MPI_COMM_WORLD);
+    if (res != MPI_SUCCESS)
+      mpi_error(res, "Failed to bcast the partition sample buffer cells.");
+
+    /* And apply to our buffer cells */
+    split_vector(s->zoom_props->buffer_cells_top, s->zoom_props->buffer_cdim,
+                 nr_nodes, samplecells);
+
+    /* Clear out the samplecells. */
+    bzero(samplecells, sizeof(int) * nr_nodes * 3);
+  }
+
+  /* Finally do the background cells... */
+  if (nodeID == 0) {
+    pick_vector(s->cdim, nr_nodes, samplecells);
+  }
+
+  /* Share the samplecells around all the nodes. */
+  res = MPI_Bcast(samplecells, nr_nodes * 3, MPI_INT, 0, MPI_COMM_WORLD);
+  if (res != MPI_SUCCESS)
+    mpi_error(res, "Failed to bcast the partition sample background cells.");
+
+  /* And apply to our background cells */
+  split_vector(s->zoom_props->bkg_cells_top, s->cdim, nr_nodes, samplecells);
+
+  /* We're done */
+  free(samplecells);
+}
+#endif

@@ -74,4 +74,5 @@ void zoom_makeproxies(struct engine *e);
 /* Partition functions. */
 void partition_zoom_grid(struct partition *initial_partition, int nr_nodes,
                          struct space *s);
+void partition_zoom_vector(int nr_nodes, struct space *s);
 #endif /* SWIFT_ZOOM_H */

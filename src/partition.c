@@ -142,8 +142,8 @@ static void partition_uniform_grid(struct partition *initial_partition,
  *  @param nr_nodes The number of nodes.
  *  @param s The #space.
  */
-void partition_grid(struct partition *initial_partition, int nr_nodes,
-                    struct space *s) {
+static void partition_grid(struct partition *initial_partition, int nr_nodes,
+                           struct space *s) {
 
   /* Use the appropriate partitioning function. */
   if (!s->with_zoom_region) {
@@ -164,14 +164,14 @@ void partition_grid(struct partition *initial_partition, int nr_nodes,
  *  expected regions using a single step. Vectorisation is guaranteed
  *  to work, providing there are more cells than regions.
  *
- *  @param s the space.
- *  @param nregions the number of regions
- *  @param samplecells the list of sample cell positions, size of 3*nregions
+ *  @param cdim The dimensions of the cell space.
+ *  @param nregions The number of regions
+ *  @param samplecells The list of sample cell positions, size of 3*nregions
  */
-static void pick_vector(struct space *s, int nregions, int *samplecells) {
+void pick_vector(const int cdim[3], const int nregions, int *samplecells) {
 
   /* Get length of space and divide up. */
-  int length = s->cdim[0] * s->cdim[1] * s->cdim[2];
+  int length = cdim[0] * cdim[1] * cdim[2];
   if (nregions > length) {
     error("Too few cells (%d) for this number of regions (%d)", length,
           nregions);
@@ -182,9 +182,9 @@ static void pick_vector(struct space *s, int nregions, int *samplecells) {
   int m = 0;
   int l = 0;
 
-  for (int i = 0; i < s->cdim[0]; i++) {
-    for (int j = 0; j < s->cdim[1]; j++) {
-      for (int k = 0; k < s->cdim[2]; k++) {
+  for (int i = 0; i < cdim[0]; i++) {
+    for (int j = 0; j < cdim[1]; j++) {
+      for (int k = 0; k < cdim[2]; k++) {
         if (n == 0 && l < nregions) {
           samplecells[m++] = i;
           samplecells[m++] = j;
@@ -205,12 +205,18 @@ static void pick_vector(struct space *s, int nregions, int *samplecells) {
  *
  * Using the sample positions as seeds pick cells that are geometrically
  * closest and apply the partition to the space.
+ *
+ * @param cells_top The top level cells to partition.
+ * @param cdim The dimensions of the cell space.
+ * @param nregions The number of regions.
+ * @param samplecells The list of sample cell positions, size of 3*nregions.
  */
-static void split_vector(struct space *s, int nregions, int *samplecells) {
+void split_vector(struct cell *cells_top, const int cdim[3], const int nregions,
+                  int *samplecells) {
   int n = 0;
-  for (int i = 0; i < s->cdim[0]; i++) {
-    for (int j = 0; j < s->cdim[1]; j++) {
-      for (int k = 0; k < s->cdim[2]; k++) {
+  for (int i = 0; i < cdim[0]; i++) {
+    for (int j = 0; j < cdim[1]; j++) {
+      for (int k = 0; k < cdim[2]; k++) {
         int select = -1;
         float rsqmax = FLT_MAX;
         int m = 0;
@@ -224,9 +230,63 @@ static void split_vector(struct space *s, int nregions, int *samplecells) {
             select = l;
           }
         }
-        s->cells_top[n++].nodeID = select;
+        cells_top[n++].nodeID = select;
       }
     }
+  }
+}
+#endif
+
+#ifdef WITH_MPI
+/**
+ * @brief Partition the space using a vectorised list of sample positions.
+ *
+ * This function handles uniform volumes (i.e. a normal simulations with no
+ * zoom regions).
+ *
+ * @param nr_nodes The number of nodes.
+ * @param s The #space.
+ */
+static void partition_uniform_vector(int nr_nodes, struct space *s) {
+
+  /* Vectorised selection, guaranteed to work for samples less than the
+   * number of cells, but not very clumpy in the selection of regions. */
+  int *samplecells = NULL;
+  if ((samplecells = (int *)malloc(sizeof(int) * nr_nodes * 3)) == NULL)
+    error("Failed to allocate samplecells");
+
+  if (nodeID == 0) {
+    pick_vector(s->cdim, nr_nodes, samplecells);
+  }
+
+  /* Share the samplecells around all the nodes. */
+  int res = MPI_Bcast(samplecells, nr_nodes * 3, MPI_INT, 0, MPI_COMM_WORLD);
+  if (res != MPI_SUCCESS)
+    mpi_error(res, "Failed to bcast the partition sample cells.");
+
+  /* And apply to our cells */
+  split_vector(s->cells_top, s->cdim, nr_nodes, samplecells);
+  free(samplecells);
+}
+#endif
+
+#ifdef WITH_MPI
+/**
+ * @brief Partition the space using a vectorised list of sample positions.
+ *
+ * This is a wrapper which will run the appropriate partitioning function
+ * depending on whether the space has a zoom region or not.
+ *
+ * @param nr_nodes The number of nodes.
+ * @param s The #space.
+ */
+static void partition_vector(int nr_nodes, struct space *s) {
+
+  /* Use the appropriate partitioning function. */
+  if (!s->with_zoom_region) {
+    partition_uniform_vector(nr_nodes, s);
+  } else {
+    partition_zoom_vector(nr_nodes, s);
   }
 }
 #endif
@@ -2041,15 +2101,6 @@ void partition_initial_partition(struct partition *initial_partition,
     /* And apply to our cells */
     split_metis(s, nr_nodes, celllist);
 
-    /* It's not known if this can fail, but check for this before
-     * proceeding. */
-    if (!check_complete(s, (nodeID == 0), nr_nodes)) {
-      if (nodeID == 0)
-        message("METIS initial partition failed, using a vectorised partition");
-      initial_partition->type = INITPART_VECTORIZE;
-      partition_initial_partition(initial_partition, nodeID, nr_nodes, s);
-    }
-
     if (weights_v != NULL) free(weights_v);
     if (weights_e != NULL) free(weights_e);
     free(celllist);
@@ -2060,24 +2111,8 @@ void partition_initial_partition(struct partition *initial_partition,
   } else if (initial_partition->type == INITPART_VECTORIZE) {
 
 #if defined(WITH_MPI)
-    /* Vectorised selection, guaranteed to work for samples less than the
-     * number of cells, but not very clumpy in the selection of regions. */
-    int *samplecells = NULL;
-    if ((samplecells = (int *)malloc(sizeof(int) * nr_nodes * 3)) == NULL)
-      error("Failed to allocate samplecells");
-
-    if (nodeID == 0) {
-      pick_vector(s, nr_nodes, samplecells);
-    }
-
-    /* Share the samplecells around all the nodes. */
-    int res = MPI_Bcast(samplecells, nr_nodes * 3, MPI_INT, 0, MPI_COMM_WORLD);
-    if (res != MPI_SUCCESS)
-      mpi_error(res, "Failed to bcast the partition sample cells.");
-
-    /* And apply to our cells */
-    split_vector(s, nr_nodes, samplecells);
-    free(samplecells);
+    /* Partition the space using the vector method. */
+    partition_vector(nr_nodes, s);
 #else
     error("SWIFT was not compiled with MPI support");
 #endif
