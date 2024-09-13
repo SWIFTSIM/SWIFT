@@ -28,6 +28,11 @@
 #include "kernel_hydro.h"
 
 /**
+ * @file src/chemistry/GEAR_MFM_diffusion/chemistry_gradients.h
+ * @brief Main header file for the GEAR MFM diffusion scheme gradients
+ */
+
+/**
  * @brief Initialize gradient variables
  *
  * @param p Particle.
@@ -40,9 +45,9 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_init(
 }
 
 /**
- * @brief Gradient calculations done during the neighbour loop
+ * @brief Gradient calculations done during the gradient loop
  *
- * We compute grad \otimes q.
+ * We compute \nabla \otimes q.
  *
  * @param r2 Squared distance between the two particles.
  * @param dx Distance vector (pi->x - pj->x).
@@ -123,7 +128,7 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_collect(
     chemistry_part_get_diffusion_state_vector(pj, g, &Uj);
     const double dU = Ui - Uj;
 
-    /* First to the gradients of pi (i.e. grad n = nabla otimes q = grad U) */
+    /* First to the gradients of pi (i.e. \grad n = \nabla \otimes q = \grad U) */
     double dF_i[3];
 
     /* Compute gradients for pi */
@@ -151,7 +156,7 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_collect(
 }
 
 /**
- * @brief Gradient calculations done during the neighbour loop: non-symmetric
+ * @brief Gradient calculations done during the gradient loop: non-symmetric
  * version
  *
  * @param r2 Squared distance between the two particles.
@@ -250,6 +255,7 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_finalise(
     chemistry_part_normalise_gradients(p, g, norm);
   }
 
+  /* Limit the cell gradients */
   chemistry_slope_limit_cell(p);
 }
 
@@ -270,7 +276,7 @@ chemistry_gradients_extrapolate(const double gradient[3], const float dx[3]) {
  * @brief Gradients reconstruction. Predict the value at point x_ij given
  * current values at particle positions and gradients at particle positions.
  *
- * Only reconstruct U_R and U_L. We do not use a liner reconstuction for
+ * Only reconstruct U_R and U_L. We do not use a linear reconstuction for
  * nabla_otimes_q_L/R, we simply use nabla_otimes_q_L/R = nabla_otimes_q_i/j,
  * i.e. first order reconstruction.
  *
@@ -280,7 +286,7 @@ chemistry_gradients_extrapolate(const double gradient[3], const float dx[3]) {
  * particle i
  * @param Uj (return) Resulting predicted and limited diffusion state of
  * particle j
- * @param group which photon group to use
+ * @param group which metal to use
  * @param dx Comoving distance vector between the particles (dx = pi->x -
  * pj->x).
  * @param r Comoving distance between particle i and particle j.
@@ -295,7 +301,7 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
   chemistry_part_get_diffusion_state_vector(pj, group, Uj);
   /* No need to check unphysical state here:
    * they haven't been touched since the call
-   * to rt_injection_update_photon_density */
+   * to chemistry_end_density() */
 
   double dF_i[3];
   double dF_j[3];

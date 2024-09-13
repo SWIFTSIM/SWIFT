@@ -59,18 +59,17 @@ __attribute__((always_inline)) INLINE static void chemistry_part_set_gradients(
  * given contributions.
  *
  * @param p Particle
- * @param g photon group index to update (0 <= g < RT_NGROUPS)
- * @param dE energy density gradient
- * @param dF gradient of the flux component
+ * @param metal metal specie index to update (0 <= metal < GEAR_CHEMISTRY_ELEMENT_COUNT)
+ * @param dF gradient of the diffusion flux
  */
 __attribute__((always_inline)) INLINE static void
-chemistry_part_update_gradients(struct part *restrict p, int g, double dF[3]) {
+chemistry_part_update_gradients(struct part *restrict p, int metal, double dF[3]) {
 
   struct chemistry_part_data *chd = &p->chemistry_data;
 
-  chd->gradients[g].nabla_otimes_q[0] += dF[0];
-  chd->gradients[g].nabla_otimes_q[1] += dF[1];
-  chd->gradients[g].nabla_otimes_q[2] += dF[2];
+  chd->gradients[metal].nabla_otimes_q[0] += dF[0];
+  chd->gradients[metal].nabla_otimes_q[1] += dF[1];
+  chd->gradients[metal].nabla_otimes_q[2] += dF[2];
 }
 
 /**
@@ -78,18 +77,18 @@ chemistry_part_update_gradients(struct part *restrict p, int g, double dF[3]) {
  * normalisation factor.
  *
  * @param p Particle.
- * @param g photon group index to update (0 <= g < RT_NGROUPS)
+ * @param metal metal group index to update (0 <= metal < GEAR_CHEMISTRY_ELEMENT_COUNT)
  * @param norm Normalisation factor.
  */
 __attribute__((always_inline)) INLINE static void
-chemistry_part_normalise_gradients(struct part *restrict p, int g,
+chemistry_part_normalise_gradients(struct part *restrict p, int metal,
                                    const float norm) {
 
   struct chemistry_part_data *chd = &p->chemistry_data;
 
-  chd->gradients[g].nabla_otimes_q[0] *= norm;
-  chd->gradients[g].nabla_otimes_q[1] *= norm;
-  chd->gradients[g].nabla_otimes_q[2] *= norm;
+  chd->gradients[metal].nabla_otimes_q[0] *= norm;
+  chd->gradients[metal].nabla_otimes_q[1] *= norm;
+  chd->gradients[metal].nabla_otimes_q[2] *= norm;
 }
 
 /**
