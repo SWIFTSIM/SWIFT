@@ -133,7 +133,7 @@ void partition_zoom_vector(int nr_nodes, struct space *s) {
     error("Failed to allocate samplecells");
 
   /* Do the zoom cells... */
-  if (nodeID == 0) {
+  if (s->e->nodeID == 0) {
     pick_vector(s->zoom_props->cdim, nr_nodes, samplecells);
   }
 
@@ -151,7 +151,7 @@ void partition_zoom_vector(int nr_nodes, struct space *s) {
 
   /* Do the buffer cells if we have any... */
   if (s->zoom_props->with_buffer_cells) {
-    if (nodeID == 0) {
+    if (s->e->nodeID == 0) {
       pick_vector(s->zoom_props->buffer_cdim, nr_nodes, samplecells);
     }
 
@@ -169,7 +169,7 @@ void partition_zoom_vector(int nr_nodes, struct space *s) {
   }
 
   /* Finally do the background cells... */
-  if (nodeID == 0) {
+  if (s->e->nodeID == 0) {
     pick_vector(s->cdim, nr_nodes, samplecells);
   }
 

@@ -255,7 +255,7 @@ static void partition_uniform_vector(int nr_nodes, struct space *s) {
   if ((samplecells = (int *)malloc(sizeof(int) * nr_nodes * 3)) == NULL)
     error("Failed to allocate samplecells");
 
-  if (nodeID == 0) {
+  if (s->e->nodeID == 0) {
     pick_vector(s->cdim, nr_nodes, samplecells);
   }
 
