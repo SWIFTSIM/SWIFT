@@ -54,7 +54,7 @@ void partition_zoom_grid(struct partition *initial_partition, int nr_nodes,
     error("Grid size does not match number of nodes.");
 
   /* Run through the zoom cells and set their nodeID. */
-  for (int k = 0; k < s->zoom_props->nr_cells; k++) {
+  for (int k = 0; k < s->zoom_props->nr_zoom_cells; k++) {
 
     /* Get the cell. */
     struct cell *c = &s->zoom_props->zoom_cells_top[k];
