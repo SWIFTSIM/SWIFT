@@ -435,19 +435,19 @@ struct zoom_region_properties {
   /*! Number of zoom cells */
   int nr_zoom_cells;
 
-  /*! Pointers the the top level zoom cells. */
+  /*! Pointers to the top level zoom cells. */
   struct cell *zoom_cells_top;
 
   /*! Number of background cells */
   int nr_bkg_cells;
 
-  /*! Pointers the the top level background cells. */
+  /*! Pointers to the top level background cells. */
   struct cell *bkg_cells_top;
 
   /*! Number of neighbour top-level bkg cells */
   int nr_buffer_cells;
 
-  /*! Pointers the the top level buffer cells. */
+  /*! Pointers to the top level buffer cells. */
   struct cell *buffer_cells_top;
 
   /*! Number of particles in zoom cells */
