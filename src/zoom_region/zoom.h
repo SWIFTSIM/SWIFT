@@ -30,6 +30,7 @@ struct cell;
 struct engine;
 struct task;
 struct scheduler;
+struct partition;
 
 /* Define a constant for the background task depth. */
 #define zoom_bkg_subdepth_diff_grav_default 4
@@ -69,4 +70,8 @@ void zoom_void_timestep_collect(struct engine *e);
 
 /* Zoom proxy creation. */
 void zoom_makeproxies(struct engine *e);
+
+/* Partition functions. */
+void partition_zoom_grid(struct partition *initial_partition, int nr_nodes,
+                         struct space *s);
 #endif /* SWIFT_ZOOM_H */

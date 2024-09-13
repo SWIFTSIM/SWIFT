@@ -2,6 +2,7 @@
  * This file is part of SWIFT.
  * Copyright (c) 2016 Peter W. Draper (p.w.draper@durham.ac.uk)
  *                    Pedro Gonnet (pedro.gonnet@durham.ac.uk)
+ *               2024 Will Roper (w.roper@sussex.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -63,6 +64,7 @@
 #include "space.h"
 #include "threadpool.h"
 #include "tools.h"
+#include "zoom_region/zoom.h"
 
 /* Simple descriptions of initial partition types for reports. */
 const char *initial_partition_name[] = {
@@ -90,6 +92,66 @@ static double repartition_costs[task_type_count][task_subtype_count];
 #if defined(WITH_MPI)
 static int repart_init_fixed_costs(void);
 #endif
+
+/*  Grid support */
+/*  ============ */
+
+/**
+ *  @brief Partition the space using a simple grid.
+ *
+ *  Using the sample positions as seeds pick cells that are geometrically
+ *  closest and apply the partition to the space.
+ *
+ *  This is the function used for a uniform volume (i.e. a normal simulation
+ *  with no zoom regions).
+ *
+ *  @param initial_partition The initial partition data.
+ *  @param nr_nodes The number of nodes.
+ *  @param s The #space.
+ */
+static void partition_uniform_grid(struct partition *initial_partition,
+                                   int nr_nodes, struct space *s) {
+
+  /* If we've got the wrong number of nodes, fail. */
+  if (nr_nodes != initial_partition->grid[0] * initial_partition->grid[1] *
+                      initial_partition->grid[2])
+    error("Grid size does not match number of nodes.");
+
+  /* Run through the cells and set their nodeID. */
+  int ind[3];
+  for (int k = 0; k < s->nr_cells; k++) {
+    struct cell *c = &s->cells_top[k];
+    for (int j = 0; j < 3; j++) {
+      ind[j] = c->loc[j] / s->dim[j] * initial_partition->grid[j];
+    }
+    c->nodeID = ind[0] + initial_partition->grid[0] *
+                             (ind[1] + initial_partition->grid[1] * ind[2]);
+  }
+}
+
+/**
+ *  @brief Partition the space using a simple grid.
+ *
+ *  Using the sample positions as seeds pick cells that are geometrically
+ *  closest and apply the partition to the space.
+ *
+ *  This function is a wrapper that will select the correct grid
+ * partitioning between a uniform volume or the zoom specific partitioning.
+ *
+ *  @param initial_partition The initial partition data.
+ *  @param nr_nodes The number of nodes.
+ *  @param s The #space.
+ */
+void partition_grid(struct partition *initial_partition, int nr_nodes,
+                    struct space *s) {
+
+  /* Use the appropriate partitioning function. */
+  if (!s->with_zoom_region) {
+    partition_uniform_grid(initial_partition, nr_nodes, s);
+  } else {
+    partition_zoom_grid(initial_partition, nr_nodes, s);
+  }
+}
 
 /*  Vectorisation support */
 /*  ===================== */
@@ -1922,32 +1984,9 @@ void partition_initial_partition(struct partition *initial_partition,
 
   /* Geometric grid partitioning. */
   if (initial_partition->type == INITPART_GRID) {
-    int j, k;
-    int ind[3];
-    struct cell *c;
 
-    /* If we've got the wrong number of nodes, fail. */
-    if (nr_nodes != initial_partition->grid[0] * initial_partition->grid[1] *
-                        initial_partition->grid[2])
-      error("Grid size does not match number of nodes.");
-
-    /* Run through the cells and set their nodeID. */
-    for (k = 0; k < s->nr_cells; k++) {
-      c = &s->cells_top[k];
-      for (j = 0; j < 3; j++)
-        ind[j] = c->loc[j] / s->dim[j] * initial_partition->grid[j];
-      c->nodeID = ind[0] + initial_partition->grid[0] *
-                               (ind[1] + initial_partition->grid[1] * ind[2]);
-    }
-
-    /* The grid technique can fail, so check for this before proceeding. */
-    if (!check_complete(s, (nodeID == 0), nr_nodes)) {
-      if (nodeID == 0)
-        message("Grid initial partition failed, using a vectorised partition");
-      initial_partition->type = INITPART_VECTORIZE;
-      partition_initial_partition(initial_partition, nodeID, nr_nodes, s);
-      return;
-    }
+    /* Partition the space using a grid. */
+    partition_grid(initial_partition, nr_nodes, s);
 
   } else if (initial_partition->type == INITPART_METIS_WEIGHT ||
              initial_partition->type == INITPART_METIS_WEIGHT_EDGE ||
@@ -2042,6 +2081,19 @@ void partition_initial_partition(struct partition *initial_partition,
 #else
     error("SWIFT was not compiled with MPI support");
 #endif
+  }
+
+  /* Check we haven't failed. If we have fallback to the vectoried selection
+   * method above. Obviously don't fall back to vectorised if we're already
+   * trying that! */
+  if (initial_partition->type != INITPART_VECTORIZE &&
+      (!check_complete(s, (nodeID == 0), nr_nodes))) {
+    if (nodeID == 0)
+      message("Partition failed (%s), using a vectorised partition",
+              initial_partition_name[initial_partition->type]);
+    initial_partition->type = INITPART_VECTORIZE;
+    partition_initial_partition(initial_partition, nodeID, nr_nodes, s);
+    return;
   }
 
   if (s->e->verbose)
