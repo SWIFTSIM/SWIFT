@@ -27,6 +27,14 @@
 #include "sign.h"
 
 /**
+ * @file src/chemistry/GEAR_MFM_FIDDUSION/chemistry_slope_limiters_face.h
+ * @brief File containing routines concerning the face slope
+ * limiter for the GEAR MFM diffusion scheme, i.e. limiting the actual
+ * interparticle flux.
+ *
+ * */
+
+/**
  * The minmod limiter.
  *
  * @param a Left slope
@@ -116,18 +124,18 @@ chemistry_slope_limit_face_quantity(double phi_i, double phi_j, double phi_mid0,
 /**
  * @brief Slope limit the slopes at the interface between two particles
  *
- * @param Wi Chemistry variables of particle i.
- * @param Wj Chemistry variables of particle j.
- * @param dWi Difference between the chemistry variables of particle i at the
+ * @param Ui Chemistry variables of particle i.
+ * @param Uj Chemistry variables of particle j.
+ * @param dUi Difference between the chemistry variables of particle i at the
  * position of particle i and at the interface position.
- * @param dWj Difference between the chemistry variables of particle j at the
+ * @param dUj Difference between the chemistry variables of particle j at the
  * position of particle j and at the interface position.
  * @param xij_i Relative position vector of the interface w.r.t. particle i.
  * @param xij_j Relative position vector of the interface w.r.t. partilce j.
  * @param r Distance between particle i and particle j.
  */
 __attribute__((always_inline)) INLINE static void chemistry_slope_limit_face(
-    double *Wi, double *Wj, double *dWi, double *dWj, const float xij_i[3],
+    double *Ui, double *Uj, double *dUi, double *dUj, const float xij_i[3],
     const float *xij_j, float r) {
 
   /* const float xij_i_norm = */
@@ -138,15 +146,15 @@ __attribute__((always_inline)) INLINE static void chemistry_slope_limit_face(
 
   /* const float r_inv = (r > 0.0f) ? 1.0f / r : 0.0f; */
 
-  /* *dWi = chemistry_slope_limit_face_quantity(Wi[0], Wj[0], Wi[0] + dWi[0], */
+  /* *dUi = chemistry_slope_limit_face_quantity(Ui[0], Uj[0], Ui[0] + dUi[0], */
   /*                                            xij_i_norm, r_inv); */
 
-  /* *dWj = chemistry_slope_limit_face_quantity(Wj[0], Wi[0], Wj[0] + dWj[0], */
+  /* *dUj = chemistry_slope_limit_face_quantity(Uj[0], Ui[0], Uj[0] + dUj[0], */
   /*                                            xij_j_norm, r_inv); */
 
   /* Test to see whether it is better to use the minmode or the GIZMO style
      limiter */
-  chemistry_limiter_minmod(dWi, dWj);
+  chemistry_limiter_minmod(dUi, dUj);
 }
 
 #endif /* SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_SLOPE_LIMITERS_FACE_H */
