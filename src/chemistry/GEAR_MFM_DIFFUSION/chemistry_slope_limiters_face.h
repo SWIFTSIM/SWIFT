@@ -116,11 +116,11 @@ chemistry_slope_limit_face_quantity(double phi_i, double phi_j, double phi_mid0,
 /**
  * @brief Slope limit the slopes at the interface between two particles
  *
- * @param Wi Hydrodynamic variables of particle i.
- * @param Wj Hydrodynamic variables of particle j.
- * @param dWi Difference between the hydrodynamic variables of particle i at the
+ * @param Wi Chemistry variables of particle i.
+ * @param Wj Chemistry variables of particle j.
+ * @param dWi Difference between the chemistry variables of particle i at the
  * position of particle i and at the interface position.
- * @param dWj Difference between the hydrodynamic variables of particle j at the
+ * @param dWj Difference between the chemistry variables of particle j at the
  * position of particle j and at the interface position.
  * @param xij_i Relative position vector of the interface w.r.t. particle i.
  * @param xij_j Relative position vector of the interface w.r.t. partilce j.
