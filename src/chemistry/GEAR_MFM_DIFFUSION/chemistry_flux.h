@@ -22,7 +22,6 @@
 #include "chemistry_getters.h"
 #include "chemistry_riemann_HLL.h"
 #include "chemistry_unphysical.h"
-/* #include "chemistry_unphysical.h" */
 
 /**
  * @brief Reset the diffusion fluxes for the given particle.
