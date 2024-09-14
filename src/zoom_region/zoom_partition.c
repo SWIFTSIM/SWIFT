@@ -74,7 +74,6 @@ void partition_zoom_grid(struct partition *initial_partition, int nr_nodes,
     /* Convert the grid index into the node ID. */
     c->nodeID = ind[0] + initial_partition->grid[0] *
                              (ind[1] + initial_partition->grid[1] * ind[2]);
-    message("Zoom cell %d is on node %d", k, c->nodeID);
   }
 
   /* Run through the background cells and set their nodeID. */
@@ -92,7 +91,6 @@ void partition_zoom_grid(struct partition *initial_partition, int nr_nodes,
     /* Convert the grid index into the node ID. */
     c->nodeID = ind[0] + initial_partition->grid[0] *
                              (ind[1] + initial_partition->grid[1] * ind[2]);
-    message("Background cell %d is on node %d", k, c->nodeID);
   }
 
   /* Run through the buffer cells and set their nodeID. (We don't always
@@ -114,7 +112,6 @@ void partition_zoom_grid(struct partition *initial_partition, int nr_nodes,
     /* Convert the grid index into the node ID. */
     c->nodeID = ind[0] + initial_partition->grid[0] *
                              (ind[1] + initial_partition->grid[1] * ind[2]);
-    message("Buffer cell %d is on node %d", k, c->nodeID);
   }
 }
 
