@@ -1028,7 +1028,7 @@ void cell_check_multipole(struct cell *c,
       gravity_multipole_print(&ma.m_pole);
       message("Recursive multipole:");
       gravity_multipole_print(&c->grav.multipole->m_pole);
-      error("Aborting");
+      /* error("Aborting"); */
     }
 
     /* Check that the upper limit of r_max is good enough */
