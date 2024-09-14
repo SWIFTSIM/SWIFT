@@ -640,7 +640,7 @@ chemistry_part_has_no_neighbours(struct part* restrict p,
 /**
  * @brief Computes the chemistry-related time-step constraint.
  *
- * No constraints in the GEAR model (no diffusion) --> FLT_MAX
+ * Parabolic constraint proportional to h^2 or supertimestepping.
  *
  * @param phys_const The physical constants in internal units.
  * @param cosmo The current cosmological model.
@@ -656,12 +656,39 @@ __attribute__((always_inline)) INLINE static float chemistry_timestep(
     const struct hydro_props* hydro_props,
     const struct chemistry_global_data* cd, const struct part* restrict p) {
 
-  /* K = kappa * I_3. The norm is the Froebenius norm */
-  /* const float norm_K =
-   * sqrtf(3*p->chemistry_data.kappa*p->chemistry_data.kappa); */
-  /* const float norm_q = p->chemistry_data.kappa; */
-  return kernel_gamma2 * p->h * p->h /
-         (sqrtf(3) * fabs(p->chemistry_data.kappa));
+  struct chemistry_part_data chd = p->chemistry_data;
+
+  if (cd->use_supertimestepping) {
+    float substep = 0.0;
+
+    /* Have we finished substepping? */
+    if (chd.timesteps.current_substep <= cd->N_substeps) {
+      /* Warning: Pay attention to the order: first get the substep and then
+	 increment it. Otherwise, the substep value is wrong */
+
+      /* Get the next substep */
+      substep =  chemistry_compute_subtimestep(p, cd);
+
+      /* Then, increment the current_substep */
+      ++chd.timesteps.current_substep;
+    } else {
+      /* We have completed the supertimestep. */
+      /* Get the next supertep */
+      chd.timesteps.super_timestep = chemistry_compute_supertimestep(p, cd);
+
+      /* Reset the current_substep to 1 */
+      chd.timesteps.current_substep = 1;
+
+      /* Compute the current substep */
+      substep = chemistry_compute_subtimestep(p, cd);
+
+      /* Increment the current_substep */
+      ++chd.timesteps.current_substep;
+    }
+    return substep;
+  } else {
+    return  chemistry_compute_parabolic_timestep(p);
+  }
 }
 
 /**
@@ -701,6 +728,13 @@ __attribute__((always_inline)) INLINE static void chemistry_first_init_part(
      is to have a way of remembering that we need more neighbours for this
      particle */
   p->chemistry_data.geometry.wcorr = 1.0f;
+
+  /* Supertimestepping ----*/
+  /* Set the substep to 1 */
+  p->chemistry_data.timesteps.current_substep = 1.0;
+
+  /* Get the next supertep */
+  p->chemistry_data.timesteps.super_timestep = chemistry_compute_supertimestep(p, data);
 }
 
 /**
