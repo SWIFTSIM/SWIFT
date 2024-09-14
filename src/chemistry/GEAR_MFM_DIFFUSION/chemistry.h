@@ -48,6 +48,10 @@
 #define DEFAULT_PSI_RIEMANN_SOLVER 0.1
 #define DEFAULT_USE_HOPKINS2017_HLL_RIEMANN_SOLVER 0
 #define DEFAULT_EPSILON_RIEMANN_SOLVER 0.5
+#define DEFAULT_USE_SUPERTIMESTEPPING 0
+#define DEFAULT_N_SUBSTEPS 5
+#define DEFAULT_NU_SUPERTIMESTEPPPING 0.04
+#define DEFAULT_C_CFL_CHEMISTRY_SUPERTIMESTEPPPING 0.4
 
 /**
  * @brief Copies the chemistry properties of the gas particle over to the
@@ -353,6 +357,26 @@ static INLINE void chemistry_init_backend(struct swift_params* parameter_file,
       (data->hll_riemann_solver_epsilon < 0)) {
     error("hll_riemann_solver_epsilon must respect 0 <= epsilon <= 1!");
   }
+
+  /***************************************************************************/
+  /* Supertimestepping */
+  data->use_supertimestepping = parser_get_opt_param_float(
+      parameter_file, "GEARChemistry:use_supertimestepping",
+      DEFAULT_USE_SUPERTIMESTEPPING);
+
+  message("Supertimestepping = %i", data->use_supertimestepping);
+
+  data->N_substeps = parser_get_opt_param_float(
+      parameter_file, "GEARChemistry:N_substeps",
+      DEFAULT_N_SUBSTEPS);
+
+  data->nu = parser_get_opt_param_float(
+      parameter_file, "GEARChemistry:nu_supertimestepping",
+      DEFAULT_NU_SUPERTIMESTEPPPING);
+
+  data->C_CFL_chemistry = parser_get_opt_param_float(
+      parameter_file, "GEARChemistry:C_CFL_chemistry",
+      DEFAULT_C_CFL_CHEMISTRY_SUPERTIMESTEPPPING);
 }
 
 /**
