@@ -2376,7 +2376,8 @@ void engine_link_gravity_tasks(struct engine *e) {
     if (t_type == task_type_self && t_subtype == task_subtype_grav) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-      if (ci_nodeID != nodeID) error("Non-local self task");
+      if (ci_nodeID != nodeID && ci->subtype != cell_subtype_void)
+        error("Non-local self task");
 #endif
 
       /* drift ---+-> gravity --> grav_down */
@@ -2390,7 +2391,8 @@ void engine_link_gravity_tasks(struct engine *e) {
     if (t_type == task_type_self && t_subtype == task_subtype_external_grav) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-      if (ci_nodeID != nodeID) error("Non-local self task");
+      if (ci_nodeID != nodeID && ci->subtype != cell_subtype_void)
+        error("Non-local self task");
 #endif
 
       /* drift -----> gravity --> end_gravity_force */
