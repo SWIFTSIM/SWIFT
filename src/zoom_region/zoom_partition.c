@@ -67,7 +67,8 @@ void partition_zoom_grid(struct partition *initial_partition, int nr_nodes,
     /* Compute it's ijk grid index. */
     int ind[3];
     for (int j = 0; j < 3; j++) {
-      ind[j] = c->loc[j] / s->zoom_props->dim[j] * initial_partition->grid[j];
+      ind[j] = (c->loc[j] - s->zoom_props->region_lower_bounds[j]) /
+               s->zoom_props->dim[j] * initial_partition->grid[j];
     }
 
     /* Convert the grid index into the node ID. */
@@ -105,7 +106,7 @@ void partition_zoom_grid(struct partition *initial_partition, int nr_nodes,
     int ind[3];
     for (int j = 0; j < 3; j++) {
       ind[j] =
-          c->loc[j] /
+          (c->loc[j] - s->zoom_props->buffer_lower_bounds[j]) /
           (s->zoom_props->buffer_width[j] * s->zoom_props->buffer_cdim[j]) *
           initial_partition->grid[j];
     }
