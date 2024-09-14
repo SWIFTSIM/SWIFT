@@ -55,6 +55,16 @@ struct chemistry_global_data {
   /*! The epsilon in eq (14). This is a tolerance parameter. So, it must be 0
       <= epsilon <= 1. */
   float hll_riemann_solver_epsilon;
+
+  /***************************************************************************/
+  /* Supertimestepping */
+  int use_supertimestepping;
+
+  int N_substeps;
+
+  float nu;
+
+  float C_CFL_chemistry;
 };
 
 /**
@@ -110,6 +120,11 @@ struct chemistry_part_data {
 
   /* Isotropic diffusion coefficient. */
   float kappa;
+
+  struct {
+    int current_substep;
+    float super_timestep;
+  } timesteps;
 };
 
 /**
