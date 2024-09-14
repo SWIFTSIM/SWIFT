@@ -113,4 +113,109 @@ chemistry_part_geometry_well_behaved(const struct part *restrict p) {
   return p->chemistry_data.geometry.wcorr > const_gizmo_min_wcorr;
 }
 
+/**
+ * @brief Get matrix K Frobenius norm.
+ *
+ * @param p Particle.
+ */
+__attribute__((always_inline)) INLINE static double chemistry_compute_matrix_K_norm(
+    const struct part *restrict p) {
+  /* For isotropic cases: K = \kappa * I_3 */
+  return sqrtf(3.0)*fabsf(p->chemistry_data.kappa);
+}
+
+
+/**
+ * @brief Compute the particle parabolic timestep proportional to h^2.
+ *
+ * @param p Particle.
+ */
+__attribute__((always_inline)) INLINE static float chemistry_compute_parabolic_timestep(
+    const struct part *restrict p) {
+
+  const struct chemistry_part_data chd = p->chemistry_data;
+
+  /* Note: The State vector is U = (metal_density_1, metal_density_2, etc),
+     which is also = q. Hence, the last term in eq (15) is unity. */
+
+  float norm_q = 0.0;
+  float norm_nabla_otimes_q = 0.0;
+  float expression = 0.0;
+  const float norm_matrix_K = chemistry_compute_matrix_K_norm(p);
+  const float delta_x = kernel_gamma*p->h;
+
+  /* Compute the norms */
+  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
+    norm_q += p->chemistry_data.metal_mass[i]*p->chemistry_data.metal_mass[i];
+
+    for (int j = 0; j < 3; j++) {
+      /* Compute the Froebnius norm of \nabla \otimes q */
+      norm_nabla_otimes_q  += chd.gradients[i].nabla_otimes_q[j]*chd.gradients[i].nabla_otimes_q[j];
+    }
+  }
+
+  /* Take the sqrt and divide by the volume to get a density */
+  norm_q = sqrtf(norm_q) / chd.geometry.volume;
+
+  /* Take the sqrt to get the norm */
+  norm_nabla_otimes_q = sqrtf(norm_nabla_otimes_q);
+
+  /* Finish the computations */
+  expression = norm_nabla_otimes_q / norm_q + 1.0/delta_x;
+
+  return 1.0/(norm_matrix_K*expression*expression);
+}
+
+
+/**
+ * @brief Compute the particle supertimestep proportional to h.
+ *
+ * @param p Particle.
+ */
+__attribute__((always_inline)) INLINE static float chemistry_compute_supertimestep(
+										   const struct part *restrict p, const struct chemistry_global_data* cd) {
+
+  const struct chemistry_part_data chd = p->chemistry_data;
+
+  /* Note: The State vector is U = (metal_density_1, metal_density_2, etc),
+     which is also = q. Hence, the last term in eq (15) is unity. */
+
+  float norm_U = 0.0;
+  float norm_nabla_otimes_q = 0.0;
+  const float norm_matrix_K =  chemistry_compute_parabolic_timestep(p);
+  const float delta_x = kernel_gamma*p->h;
+
+  /* Compute the norms */
+  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
+    norm_U += p->chemistry_data.metal_mass[i]*p->chemistry_data.metal_mass[i];
+
+    for (int j = 0; j < 3; j++) {
+      /* Compute the Froebnius norm of \nabla \otimes q */
+      norm_nabla_otimes_q  += chd.gradients[i].nabla_otimes_q[j]*chd.gradients[i].nabla_otimes_q[j];
+    }
+  }
+
+  /* Take the sqrt and divide by the volume to get a density */
+  norm_U = sqrtf(norm_U) / chd.geometry.volume;
+
+  /* Take the sqrt to get the norm */
+  norm_nabla_otimes_q = sqrtf(norm_nabla_otimes_q);
+
+  return cd->C_CFL_chemistry * delta_x * norm_U / (norm_matrix_K * norm_nabla_otimes_q);
+}
+
+
+/**
+ * @brief Compute the particle supertimestep proportional to h.
+ *
+ * @param p Particle.
+ */
+__attribute__((always_inline)) INLINE static float chemistry_compute_subtimestep(
+										 const struct part *restrict p, const struct chemistry_global_data* cd) {
+  const struct chemistry_part_data chd = p->chemistry_data;
+  const float cos_argument = M_PI*(2.0*chd.timesteps.current_substep - 1.0) / (2.0*cd->N_substeps);
+  const float expression = (1+cd->nu) - (1-cd->nu)*cos(cos_argument);
+  return chd.timesteps.super_timestep / expression;
+}
+
 #endif /* SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_GETTERS_H  */
