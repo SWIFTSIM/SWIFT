@@ -1570,7 +1570,8 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
 
     /* There's nothing to do if we reach the zoom level and have found a
      * foreign cell, just kill the task. */
-    if (ci->subtype != cell_subtype_void && ci->nodeID != e->nodeID) {
+    if (ci->subtype != cell_subtype_void &&
+        (ci->nodeID != e->nodeID || ci->grav.count == 0)) {
       t->type = task_type_none;
       t->subtype = task_subtype_none;
       t->ci = NULL;
@@ -1621,7 +1622,8 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
     /* There's nothing to do if we reach the zoom level and have found only
      * foreign cells, just kill the task. */
     if (ci->subtype != cell_subtype_void && cj->subtype != cell_subtype_void &&
-        ci->nodeID != e->nodeID && cj->nodeID != e->nodeID) {
+        ((ci->nodeID != e->nodeID && cj->nodeID != e->nodeID) ||
+         (ci->grav.count == 0 && cj->grav.count == 0))) {
       t->type = task_type_none;
       t->subtype = task_subtype_none;
       t->ci = NULL;
