@@ -2051,6 +2051,9 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
       }
     }
 
+    if (ci->subtype == cell_subtype_void || (cj != NULL && cj->subtype == cell_subtype_void)
+        message("Found a void cell while looping over gravity tasks! This should not happen!");
+
     if (t->type == task_type_pair) {
 #ifdef WITH_MPI
       /* Activate the send/recv tasks. */
