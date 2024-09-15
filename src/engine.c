@@ -1080,6 +1080,16 @@ void engine_print_task_counts(const struct engine *e) {
               nr_zoom_bkg++;
               break;
             default:
+              message(
+                  "ci->type=%s, ci->subtype=%s, ci->nodeID=%d, "
+                  "ci->grav.count=%d",
+                  cellID_names[t->ci->type], subcellID_names[t->ci->subtype],
+                  t->ci->nodeID, t->ci->grav.count);
+              message(
+                  "cj->type=%s, cj->subtype=%s, cj->nodeID=%d, "
+                  "cj->grav.count=%d",
+                  cellID_names[t->cj->type], subcellID_names[t->cj->subtype],
+                  t->cj->nodeID, t->cj->grav.count);
               error("Unknown cell type %s/%s (t->type=%s, t->subtype=%s)",
                     cellID_names[t->cj->type], subcellID_names[t->cj->subtype],
                     taskID_names[t->type], subtaskID_names[t->subtype]);
