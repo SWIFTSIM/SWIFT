@@ -5091,4 +5091,11 @@ void engine_maketasks(struct engine *e) {
   if (e->verbose)
     message("took %.3f %s (including reweight).",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
+
+  for (int i = 0; i < e->s->nr_cells; i++) {
+    struct cell *c = &e->s->cells_top[i];
+    if (c->type == cell_type_regular)
+      message("Cell %dis regular? %s/%s", i, cellID_names[c->type],
+              subcellID_names[c->subtype]);
+  }
 }
