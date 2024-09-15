@@ -1595,10 +1595,7 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
       for (int k = j + 1; k < 8; k++) {
 
         /* Skip non-existant or foreign progeny. */
-        if (ci->progeny[j] == NULL || ci->progeny[k] == NULL ||
-            (ci->progeny[j]->nodeID != e->nodeID &&
-             ci->progeny[k]->nodeID != e->nodeID))
-          continue;
+        if (ci->progeny[j] == NULL || ci->progeny[k] == NULL) continue;
         zoom_scheduler_splittask_gravity_void_pair(
             scheduler_addtask(s, task_type_pair, t->subtype, sub_sid_flag[j][k],
                               0, ci->progeny[j], ci->progeny[k]),
