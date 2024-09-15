@@ -1573,6 +1573,8 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
       scheduler_splittask_gravity(t, s);
       return;
     } else if (ci->subtype != cell_subtype_void) {
+
+      /* Nothing to do if we reached the zoom level and found a foreign cell. */
       t->type = task_type_none;
       t->subtype = task_subtype_none;
       t->ci = NULL;
@@ -1621,8 +1623,20 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
     struct cell *cj = t->cj;
 
     /* If neither cell is a void cell, redirect to the normal splitter. */
-    if (ci->subtype != cell_subtype_void && cj->subtype != cell_subtype_void) {
+    if (ci->subtype != cell_subtype_void && cj->subtype != cell_subtype_void &&
+        (ci->nodeID == e->nodeID || cj->nodeID == e->nodeID)) {
       scheduler_splittask_gravity(t, s);
+      return;
+    } else if (ci->subtype != cell_subtype_void ||
+               cj->subtype != cell_subtype_void) {
+
+      /* Nothing to do if we reached the zoom level and found two foreign
+       * cells. */
+      t->type = task_type_none;
+      t->subtype = task_subtype_none;
+      t->ci = NULL;
+      t->cj = NULL;
+      t->skip = 1;
       return;
     }
 
