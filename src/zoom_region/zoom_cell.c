@@ -882,8 +882,8 @@ void zoom_link_void_leaves(struct space *s, struct cell *c) {
 
     message(
         "zoom_cell->nodeID=%d, c->nodeID=%d, e->nodeID=%d, "
-        "zoom_cell->grav.ti_end_min=%d, zoom_cell->grav.ti_beg_max=%d, "
-        "c->grav.ti_end_min=%d, c->grav.ti_beg_max=%d",
+        "zoom_cell->grav.ti_end_min=%lld, zoom_cell->grav.ti_beg_max=%lld, "
+        "c->grav.ti_end_min=%lld, c->grav.ti_beg_max=%lld",
         zoom_cell->nodeID, c->nodeID, s->e->nodeID, zoom_cell->grav.ti_end_min,
         zoom_cell->grav.ti_beg_max, c->grav.ti_end_min, c->grav.ti_beg_max);
 
