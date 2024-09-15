@@ -425,8 +425,10 @@ void engine_unskip(struct engine *e) {
 
     /* Activate the top-level timestep exchange */
 #ifdef WITH_MPI
-    scheduler_activate_all_subtype(&e->sched, c->mpi.send, task_subtype_tend);
-    scheduler_activate_all_subtype(&e->sched, c->mpi.recv, task_subtype_tend);
+    if (c->subtype != cell_subtype_void) {
+      scheduler_activate_all_subtype(&e->sched, c->mpi.send, task_subtype_tend);
+      scheduler_activate_all_subtype(&e->sched, c->mpi.recv, task_subtype_tend);
+    }
 #endif
   }
 
