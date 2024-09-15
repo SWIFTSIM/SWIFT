@@ -4470,6 +4470,11 @@ void engine_addtasks_send_mapper(void *map_data, int num_elements,
     struct cell *cj = cell_type_pairs[k].cj;
     const int type = cell_type_pairs[k].type;
 
+    /* Skip void cells, they'll never need a send. */
+    if (ci->subtype == cell_subtype_void ||
+        (cj != NULL && cj->subtype == cell_subtype_void))
+      continue;
+
 #ifdef WITH_MPI
 
     if (!cell_is_empty(ci)) {
@@ -4541,6 +4546,11 @@ void engine_addtasks_recv_mapper(void *map_data, int num_elements,
     struct cell *ci = cell_type_pairs[k].ci;
     const int type = cell_type_pairs[k].type;
     struct task *tend = NULL;
+
+    /* Skip void cells, they'll never need a send. */
+    if (ci->subtype == cell_subtype_void ||
+        (cj != NULL && cj->subtype == cell_subtype_void))
+      continue;
 
 #ifdef WITH_MPI
     /* Add the timestep exchange task */
