@@ -880,8 +880,12 @@ void zoom_link_void_leaves(struct space *s, struct cell *c) {
     /* Flag this void cell "progeny" as the zoom cell's void cell parent. */
     zoom_cell->void_parent = c;
 
-    message("zoom_cell->nodeID=%d, c->nodeID=%d, e->nodeID=%d",
-            zoom_cell->nodeID, c->nodeID, s->e->nodeID);
+    message(
+        "zoom_cell->nodeID=%d, c->nodeID=%d, e->nodeID=%d, "
+        "zoom_cell->grav.ti_end_min=%d, zoom_cell->grav.ti_beg_max=%d, "
+        "c->grav.ti_end_min=%d, c->grav.ti_beg_max=%d",
+        zoom_cell->nodeID, c->nodeID, s->e->nodeID, zoom_cell->grav.ti_end_min,
+        zoom_cell->grav.ti_beg_max, c->grav.ti_end_min, c->grav.ti_beg_max);
 
     /* Update the gravity timestep information (only for a local zoom_cell). */
     if (zoom_cell->nodeID == c->nodeID) {
