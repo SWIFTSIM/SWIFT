@@ -4547,10 +4547,8 @@ void engine_addtasks_recv_mapper(void *map_data, int num_elements,
     const int type = cell_type_pairs[k].type;
     struct task *tend = NULL;
 
-    /* Skip void cells, they'll never need a send. */
-    if (ci->subtype == cell_subtype_void ||
-        (cj != NULL && cj->subtype == cell_subtype_void))
-      continue;
+    /* Skip void cells, they'll never need a recv. */
+    if (ci->subtype == cell_subtype_void) continue;
 
 #ifdef WITH_MPI
     /* Add the timestep exchange task */
