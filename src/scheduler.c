@@ -1568,11 +1568,9 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
     /* Get a handle on the cell involved. */
     const struct cell *ci = t->ci;
 
-    /* If this cell is not a void cell redirect to the normal splitter. */
-    if (ci->subtype != cell_subtype_void && ci->nodeID == e->nodeID) {
-      scheduler_splittask_gravity(t, s);
-      return;
-    } else if (ci->subtype != cell_subtype_void) {
+    /* There's nothing to do if we reach the zoom level and have found a
+     * foreign cell, just kill the task. */
+    if (ci->subtype != cell_subtype_void && ci->nodeID != e->nodeID) {
       t->type = task_type_none;
       t->subtype = task_subtype_none;
       t->ci = NULL;
@@ -1581,24 +1579,22 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
       return;
     }
 
+    /* If this cell is not a void cell redirect to the normal splitter. */
+    if (ci->subtype != cell_subtype_void) {
+      scheduler_splittask_gravity(t, s);
+      return;
+    }
+
     /* Create a self for all progeny. */
     for (int i = 0; i < 8; i++) {
-      if (ci->progeny[i] != NULL) {
-        zoom_scheduler_splittask_gravity_void_pair(
-            scheduler_addtask(s, task_type_self, t->subtype, 0, 0,
-                              ci->progeny[i], NULL),
-            s);
-      }
+      zoom_scheduler_splittask_gravity_void_pair(
+          scheduler_addtask(s, task_type_self, t->subtype, 0, 0, ci->progeny[i],
+                            NULL),
+          s);
     }
 
     for (int j = 0; j < 8; j++) {
       for (int k = j + 1; k < 8; k++) {
-
-        /* Skip non-existant or foreign progeny. */
-        if (ci->progeny[j] == NULL || ci->progeny[k] == NULL ||
-            (ci->progeny[j]->nodeID != e->nodeID &&
-             ci->progeny[k]->nodeID != e->nodeID))
-          continue;
         zoom_scheduler_splittask_gravity_void_pair(
             scheduler_addtask(s, task_type_pair, t->subtype, sub_sid_flag[j][k],
                               0, ci->progeny[j], ci->progeny[k]),
@@ -1622,6 +1618,18 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
     struct cell *ci = t->ci;
     struct cell *cj = t->cj;
 
+    /* There's nothing to do if we reach the zoom level and have found only
+     * foreign cells, just kill the task. */
+    if (ci->subtype != cell_subtype_void && cj->subtype != cell_subtype_void &&
+        ci->nodeID != e->nodeID && cj->nodeID != e->nodeID) {
+      t->type = task_type_none;
+      t->subtype = task_subtype_none;
+      t->ci = NULL;
+      t->cj = NULL;
+      t->skip = 1;
+      return;
+    }
+
     /* If neither cell is a void cell, redirect to the normal splitter. */
     if (ci->subtype != cell_subtype_void && cj->subtype != cell_subtype_void) {
       scheduler_splittask_gravity(t, s);
@@ -1640,11 +1648,6 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
         struct cell *cpi = ci->progeny[i];
         for (int j = 0; j < 8; j++) {
           struct cell *cpj = cj->progeny[j];
-
-          /* Skip non-existant or foreign progeny. */
-          if (cpi == NULL || cpj == NULL ||
-              (cpi->nodeID != e->nodeID && cpj->nodeID != e->nodeID))
-            continue;
 
           /* Can we use a M-M interaction here? */
           if (cell_can_use_pair_mm(cpi, cpj, e, sp,
@@ -1667,11 +1670,6 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
     } else if (ci->subtype == cell_subtype_void) {
       for (int i = 0; i < 8; i++) {
 
-        /* Skip non-existant or foreign progeny. */
-        if (ci->progeny[i] == NULL || cj == NULL ||
-            (ci->progeny[i]->nodeID != e->nodeID && cj->nodeID != e->nodeID))
-          continue;
-
         /* Can we use a M-M interaction here? */
         if (cell_can_use_pair_mm(ci->progeny[i], cj, e, sp,
                                  /*use_rebuild_data=*/1,
@@ -1693,11 +1691,6 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
       }
     } else {
       for (int j = 0; j < 8; j++) {
-
-        /* Skip non-existant or foreign progeny. */
-        if (ci == NULL || cj->progeny[j] == NULL ||
-            (ci->nodeID != e->nodeID && cj->progeny[j]->nodeID != e->nodeID))
-          continue;
 
         /* Can we use a M-M interaction here? */
         if (cell_can_use_pair_mm(ci, cj->progeny[j], e, sp,
@@ -2098,8 +2091,8 @@ void scheduler_ranktasks(struct scheduler *s) {
       struct task *t = &tasks[tid[j]];
       t->rank = rank;
       /* message( "task %i of type %s has rank %i." , i ,
-          (t->type == task_type_self) ? "self" : (t->type == task_type_pair) ?
-         "pair" : "sort" , rank ); */
+          (t->type == task_type_self) ? "self" : (t->type == task_type_pair)
+         ? "pair" : "sort" , rank ); */
       for (int k = 0; k < t->nr_unlock_tasks; k++) {
         struct task *u = t->unlock_tasks[k];
         if (--u->wait == 0) {
