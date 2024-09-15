@@ -2051,11 +2051,13 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
       }
     }
 
+#ifdef SWIFT_DEBUG_CHECKS
     if (ci->subtype == cell_subtype_void ||
         (cj != NULL && cj->subtype == cell_subtype_void))
-      message(
+      error(
           "Found a void cell while looping over gravity tasks! This should not "
           "happen!");
+#endif
 
     if (t->type == task_type_pair) {
 #ifdef WITH_MPI
