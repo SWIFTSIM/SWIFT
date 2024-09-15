@@ -1057,7 +1057,7 @@ void engine_print_task_counts(const struct engine *e) {
         nr_void_pairs++;
       }
 
-      /* Count a nieghbour pair if ci and cj are the combination of a zoom and
+      /* Count a neighbour pair if ci and cj are the combination of a zoom and
        * neighbour cell. */
       if ((t->ci->type == cell_type_zoom &&
            t->cj->subtype == cell_subtype_neighbour) ||
@@ -1080,7 +1080,7 @@ void engine_print_task_counts(const struct engine *e) {
               nr_zoom_bkg++;
               break;
             default:
-              error("Unknown cell type %d", t->cj->type);
+              error("Unknown cell type %s", cellID_names[t->cj->type]);
           }
           break;
         case cell_type_buffer:
@@ -1095,7 +1095,7 @@ void engine_print_task_counts(const struct engine *e) {
               nr_buffer_bkg++;
               break;
             default:
-              error("Unknown cell type %d", t->cj->type);
+              error("Unknown cell type %s", cellID_names[t->cj->type]);
           }
           break;
         case cell_type_bkg:
@@ -1110,7 +1110,7 @@ void engine_print_task_counts(const struct engine *e) {
               nr_bkg_bkg++;
               break;
             default:
-              error("Unknown cell type %d", t->cj->type);
+              error("Unknown cell type %s", cellID_names[t->cj->type]);
           }
           break;
         case cell_type_regular:
@@ -1119,7 +1119,7 @@ void engine_print_task_counts(const struct engine *e) {
               "be no regular cells in zoom simulations.");
           break;
         default:
-          error("Unknown cell type %d", t->ci->type);
+          error("Unknown cell type %s", cellID_names[t->ci->type]);
       }
     }
 
