@@ -232,7 +232,7 @@ __attribute__((always_inline)) INLINE static int cell_is_active_gravity(
         "e->ti_current=%lld (t=%e, a=%e) (c->type=%s, c->subtype=%s)",
         c->grav.ti_end_min, c->grav.ti_end_min * e->time_base, e->ti_current,
         e->ti_current * e->time_base, e->cosmology->a, cellID_names[c->type],
-        cell_subtype_names[c->subtype]);
+        subcellID_names[c->subtype]);
 #endif
   /* Void cells always active test. */
   if (c->subtype == cell_subtype_void) return 1;
