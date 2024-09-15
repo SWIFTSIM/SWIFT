@@ -202,44 +202,44 @@ void partition_zoom_vector(int nr_nodes, struct space *s) {
  */
 void zoom_partition_voids(struct space *s, int nodeID) {
 
-  /* All void cells are local. */
-  for (int k = 0; k < s->nr_cells; k++) {
-    if (s->cells_top[k].subtype == cell_subtype_void) {
-      s->cells_top[k].nodeID = nodeID;
-    }
-  }
-
-  /* /\* Run through the zoom cells. *\/ */
-  /* for (int k = 0; k < s->zoom_props->nr_zoom_cells; k++) { */
-
-  /*   /\* Get the cell. *\/ */
-  /*   struct cell *c = &s->cells_top[k]; */
-
-  /*   /\* Skip foreign cells. *\/ */
-  /*   if (c->nodeID != nodeID) continue; */
-
-  /*   /\* Find the top level void cell index. *\/ */
-  /*   int vid; */
-  /*   if (s->zoom_props->with_buffer_cells) { */
-  /*     vid = cell_getid_offset(s->zoom_props->buffer_cdim, */
-  /*                             s->zoom_props->buffer_cell_offset, */
-  /*                             (c->loc[0] + (c->width[0] / 2)) - */
-  /*                                 s->zoom_props->buffer_lower_bounds[0], */
-  /*                             (c->loc[1] + (c->width[1] / 2)) - */
-  /*                                 s->zoom_props->buffer_lower_bounds[1], */
-  /*                             (c->loc[2] + (c->width[2] / 2)) - */
-  /*                                 s->zoom_props->buffer_lower_bounds[2]); */
-  /*   } else { */
-  /*     vid = cell_getid_offset(s->cdim, s->zoom_props->bkg_cell_offset, */
-  /*                             c->loc[0] + (c->width[0] / 2), */
-  /*                             c->loc[1] + (c->width[1] / 2), */
-  /*                             c->loc[2] + (c->width[2] / 2)); */
+  /* /\* All void cells are local. *\/ */
+  /* for (int k = 0; k < s->nr_cells; k++) { */
+  /*   if (s->cells_top[k].subtype == cell_subtype_void) { */
+  /*     s->cells_top[k].nodeID = nodeID; */
   /*   } */
-
-  /*   /\* Get the void cell. *\/ */
-  /*   struct cell *vc = &s->cells_top[vid]; */
-
-  /*   /\* Set the void cell's nodeID. *\/ */
-  /*   vc->nodeID = nodeID; */
   /* } */
+
+  /* Run through the zoom cells. */
+  for (int k = 0; k < s->zoom_props->nr_zoom_cells; k++) {
+
+    /* Get the cell. */
+    struct cell *c = &s->cells_top[k];
+
+    /* Skip foreign cells. */
+    if (c->nodeID != nodeID) continue;
+
+    /* Find the top level void cell index. */
+    int vid;
+    if (s->zoom_props->with_buffer_cells) {
+      vid = cell_getid_offset(s->zoom_props->buffer_cdim,
+                              s->zoom_props->buffer_cell_offset,
+                              (c->loc[0] + (c->width[0] / 2)) -
+                                  s->zoom_props->buffer_lower_bounds[0],
+                              (c->loc[1] + (c->width[1] / 2)) -
+                                  s->zoom_props->buffer_lower_bounds[1],
+                              (c->loc[2] + (c->width[2] / 2)) -
+                                  s->zoom_props->buffer_lower_bounds[2]);
+    } else {
+      vid = cell_getid_offset(s->cdim, s->zoom_props->bkg_cell_offset,
+                              c->loc[0] + (c->width[0] / 2),
+                              c->loc[1] + (c->width[1] / 2),
+                              c->loc[2] + (c->width[2] / 2));
+    }
+
+    /* Get the void cell. */
+    struct cell *vc = &s->cells_top[vid];
+
+    /* Set the void cell's nodeID. */
+    vc->nodeID = nodeID;
+  }
 }
