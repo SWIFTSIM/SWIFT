@@ -80,6 +80,10 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
   struct scheduler *s = &e->sched;
   const int nodeID = cj->nodeID;
 
+  /* Skip void cells, they'll never need a send. */
+  if (ci->subtype == cell_subtype_void || cj->subtype == cell_subtype_void)
+    return;
+
   /* Early abort (are we below the level where tasks are)? */
   if (!cell_get_flag(ci, cell_flag_has_tasks)) return;
 
@@ -1120,6 +1124,9 @@ void engine_addtasks_recv_gravity(struct engine *e, struct cell *c,
 
 #ifdef WITH_MPI
   struct scheduler *s = &e->sched;
+
+  /* Skip void cells, they'll never need a recv. */
+  if (c->subtype == cell_subtype_void) return;
 
   /* Early abort (are we below the level where tasks are)? */
   if (!cell_get_flag(c, cell_flag_has_tasks)) return;
