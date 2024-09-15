@@ -208,8 +208,8 @@ void zoom_void_space_split(struct space *s, int verbose) {
     if (c->grav.ti_end_min < ti_current || c->grav.ti_beg_max > ti_current)
       error(
           "Void cell has a time zone that doesn't include the current time "
-          "step! (c->grav.ti_end_min=%d, c->grav.ti_beg_max=%d, "
-          "ti_current=%d)",
+          "step! (c->grav.ti_end_min=%lld, c->grav.ti_beg_max=%lld, "
+          "ti_current=%lld)",
           c->grav.ti_end_min, c->grav.ti_beg_max, ti_current);
   }
 
