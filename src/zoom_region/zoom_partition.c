@@ -206,7 +206,7 @@ void zoom_partition_voids(struct space *s, int nodeID) {
   for (int k = 0; k < s->zoom_props->nr_zoom_cells; k++) {
 
     /* Get the cell. */
-    struct cell *c = &s->zoom_props->zoom_cells_top[k];
+    struct cell *c = &s->cells_top[k];
 
     /* Skip foreign cells. */
     if (c->nodeID != nodeID) continue;
