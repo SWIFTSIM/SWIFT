@@ -1968,6 +1968,11 @@ void engine_make_pair_gravity_task(struct engine *e, struct scheduler *sched,
 #ifdef SWIFT_DEBUG_CHECKS
 #ifdef WITH_MPI
 
+  /* We never have void cell proxies (they're at the zoom level), so there's
+   * no point doing the below check if a void cell is involved. */
+  if (ci->subtype == cell_subtype_void || cj->subtype == cell_subtype_void)
+    return;
+
   /* Let's cross-check that we had a proxy for that cell */
   if (ci->nodeID == nodeID && cj->nodeID != engine_rank) {
 
