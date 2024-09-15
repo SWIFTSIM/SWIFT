@@ -2073,7 +2073,13 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
 
         /* Is the foreign cell active and will need stuff from us? */
         if (ci_active) {
-
+          message(
+              "Sending particles from %d to %d (ci->grav.count=%d, "
+              "ci->type=%s, "
+              "ci->subtype=%s, cj->grav.count=%d, cj->type=%s, cj->subtype=%s)",
+              ci_nodeID, cj_nodeID, ci->grav.count, cellID_names[c->type],
+              subcellID_names[ci->subtype], cj->grav.count,
+              cellID_names[cj->type], subcellID_names[cj->subtype]);
           scheduler_activate_send(s, cj->mpi.send, task_subtype_gpart,
                                   ci_nodeID);
 
@@ -2091,6 +2097,13 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
         /* Is the foreign cell active and will need stuff from us? */
         if (cj_active) {
 
+          message(
+              "Sending particles from %d to %d (ci->grav.count=%d, "
+              "ci->type=%s, "
+              "ci->subtype=%s, cj->grav.count=%d, cj->type=%s, cj->subtype=%s)",
+              ci_nodeID, cj_nodeID, ci->grav.count, cellID_names[c->type],
+              subcellID_names[ci->subtype], cj->grav.count,
+              cellID_names[cj->type], subcellID_names[cj->subtype]);
           scheduler_activate_send(s, ci->mpi.send, task_subtype_gpart,
                                   cj_nodeID);
 
