@@ -214,10 +214,14 @@ void zoom_partition_voids(struct space *s, int nodeID) {
     /* Find the top level void cell index. */
     int vid;
     if (s->zoom_props->with_buffer_cells) {
-      vid = cell_getid_offset(
-          s->zoom_props->buffer_cdim, s->zoom_props->buffer_cell_offset,
-          c->loc[0] + (c->width[0] / 2), c->loc[1] + (c->width[1] / 2),
-          c->loc[2] + (c->width[2] / 2));
+      vid = cell_getid_offset(s->zoom_props->buffer_cdim,
+                              s->zoom_props->buffer_cell_offset,
+                              (c->loc[0] + (c->width[0] / 2)) -
+                                  s->zoom_props->buffer_lower_bounds[0],
+                              (c->loc[1] + (c->width[1] / 2)) -
+                                  s->zoom_props->buffer_lower_bounds[1],
+                              (c->loc[2] + (c->width[2] / 2)) -
+                                  s->zoom_props->buffer_lower_bounds[2]);
     } else {
       vid = cell_getid_offset(s->cdim, s->zoom_props->bkg_cell_offset,
                               c->loc[0] + (c->width[0] / 2),
