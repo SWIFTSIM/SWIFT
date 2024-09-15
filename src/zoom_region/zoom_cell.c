@@ -885,8 +885,10 @@ void zoom_link_void_leaves(struct space *s, struct cell *c) {
     ti_gravity_beg_max = max(ti_gravity_beg_max, zoom_cell->grav.ti_beg_max);
 
     if (zoom_cell->grav.ti_end_min == -1) {
-      message("ti_gravity_end_min == -1 zoom_cell->nodeID=%d, c->nodeID=%d",
-              zoom_cell->nodeID, c->nodeID);
+      message(
+          "ti_gravity_end_min == -1 zoom_cell->nodeID=%d, c->nodeID=%d, "
+          "c->grav.count=%d",
+          zoom_cell->nodeID, c->nodeID, c->grav.count);
     }
   }
 
