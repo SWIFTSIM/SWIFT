@@ -197,6 +197,11 @@ void cell_unpack_bpart_swallow(struct cell *c,
  */
 int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
                 struct space *restrict s, const int with_gravity) {
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->subtype == cell_subtype_void) {
+    error("Unpacking a void cell shouldn't happen!");
+  }
+#endif
 #ifdef WITH_MPI
 
   /* Unpack the current pcell. */
