@@ -95,12 +95,18 @@ void zoom_makeproxies(struct engine *e) {
       icdim[2] = s->cdim[2];
     }
 
+    /* Void cells are never proxies. */
+    if (cells[cid].type == cell_type_void) continue;
+
     /* Once we have finished all zoom cells (start of the array) we will no
      * longer need to consider hydro. */
     if (cells[cid].type != cell_type_zoom && with_hydro) with_hydro = 0;
 
     /* Loop over the prospective neighbours. */
     for (int cjd = cid + 1; cjd < s->nr_cells; cjd++) {
+
+      /* Void cells are never proxies. */
+      if (cells[cjd].type == cell_type_void) continue;
 
       /* Early abort (both same node) -> Nigel is happy */
       if (cells[cid].nodeID == nodeID && cells[cjd].nodeID == nodeID) continue;
