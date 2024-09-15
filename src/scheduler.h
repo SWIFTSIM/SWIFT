@@ -207,7 +207,7 @@ scheduler_activate_send(struct scheduler *s, struct link *link,
   }
 
   if (l == NULL) {
-    error("Missing link to send task.");
+    error("Missing link to send task. (subtype=%s)", taskID_names[subtype]);
   }
   scheduler_activate(s, l->t);
   return l;
@@ -232,7 +232,7 @@ scheduler_activate_recv(struct scheduler *s, struct link *link,
   }
 
   if (l == NULL) {
-    error("Missing link to recv task.");
+    error("Missing link to recv task. (subtype=%s)", taskID_names[subtype]);
   }
   scheduler_activate(s, l->t);
   return l;
