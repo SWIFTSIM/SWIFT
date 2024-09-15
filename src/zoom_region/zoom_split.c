@@ -202,5 +202,16 @@ void zoom_void_space_split(struct space *s, int verbose) {
         "void multipole (nr_gparts_in_void=%d, nr_gparts_in_zoom=%d)",
         nr_gparts_in_void, nr_gparts_in_zoom);
 
+  /* Ensure all void cells are in a sensible time zone. */
+  for (int i = 0; i < nr_void_cells; i++) {
+    struct cell *c = &cells_top[void_cells_top[i]];
+    if (c->grav.ti_end_min < ti_current || c->grav.ti_beg_max > ti_current)
+      error(
+          "Void cell has a time zone that doesn't include the current time "
+          "step! (c->grav.ti_end_min=%d, c->grav.ti_beg_max=%d, "
+          "ti_current=%d)",
+          c->grav.ti_end_min, c->grav.ti_beg_max, ti_current);
+  }
+
 #endif
 }
