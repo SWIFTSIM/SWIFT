@@ -100,6 +100,78 @@ struct cell_split_pair {
 extern struct cell_split_pair cell_split_pairs[13];
 
 /**
+ * @brief Names of the cell types.
+ */
+extern const char *cellID_names[];
+
+/**
+ * @brief Names of the cell sub-types.
+ */
+extern const char *subcellID_names[];
+
+/**
+ * @brief What type of top level cell is this cell?
+ *
+ * All cells are cell_type_regular when running a periodic box. The other types
+ * are never used in a periodic box and conversely, cell_type_regular cells are
+ * never used when running with a zoom region.
+ *
+ * When running with a zoom region:
+ *
+ * - Background cells are low resolution cells covering the majority of
+ *   the volume. The zoom region fills a number of these cells in the centre
+ *   of the volume (when buffer cells are not used, see below).
+ * - Buffer cells are only used when explicitly turned on by the user. These
+ *   are a high resolution type of background cell (but are lower resolution
+ *   than zoom cells) that are used to pad the volume between the zoom region
+ *   and the background cells containing the zoom region.
+ * - Zoom cells are the high resolution cells that cover the zoom region
+ *   (nested inside the central background/buffer cell/s).
+ */
+enum cell_types {
+  cell_type_regular, /* A standard top level cell (for non-zoom boxes). */
+  cell_type_zoom,    /* A zoom cell (only applicable for zooms). */
+  cell_type_buffer,  /* A buffer cell (only applicable for zooms). */
+  cell_type_bkg,     /* A background cell (only applicable for zooms). */
+} __attribute__((__packed__));
+
+/**
+ * @brief What subtype of top level cell is this cell?
+ *
+ * When running a periodic box, cells can only have regular_sub type.
+ *
+ * When running with a zoom region:
+ *
+ * - Zoom cells can only be cell_subtype_regular.
+ * - Buffer cells (if turned on) can be neighbours if they are within the
+ *   gravity criterion of the zoom region or void cells if they contain the
+ *   zoom region. Otherwise, they are cell_subtype_regular.
+ * - Like buffer cells, background cells can be neighbours if they are within
+ *   the gravity criterion of the zoom region or void cells if they contain the
+ *   zoom region, but only if buffer cells are not turned on. If buffer cells
+ *   are turned on, a background cell can be cell_subtype_empty if it contains
+ *   nested buffer cells (only background cells can be empty). Otherwise, they
+ *   are cell_subtype_regular.
+ *
+ * All cell types serve a function but only cell_subtype_neighbour and
+ * cell_subtype_regular can get tasks.
+ *
+ * Void cells do not contain any pointers to particles but carry multipoles and
+ * particle counts based on the nested zoom cells.
+ *
+ * Empty cells do not contain anything, they should not feature in any
+ * calculation and only exist to ensure the cell grids are maintained.
+ */
+enum cell_subtypes {
+  cell_subtype_regular,   /* A normal cell. */
+  cell_subtype_neighbour, /* A cell within the gravity criterion of the zoom
+                             region. */
+  cell_subtype_void,      /* A cell containing the zoom region (void cell). */
+  cell_subtype_empty      /* An empty cell (background cells containing buffer
+                             cells). */
+} __attribute__((__packed__));
+
+/**
  * @brief Packed cell for information correct at rebuild time.
  *
  * Contains all the information for a tree walk in a non-local cell.
@@ -229,6 +301,12 @@ struct pcell {
   /*! Relative indices of the cell's progeny. */
   int progeny[8];
 
+  /*! Cell type. */
+  enum cell_types type;
+
+  /*! Cell sub-type. */
+  enum cell_subtypes subtype;
+
 #ifdef SWIFT_DEBUG_CHECKS
   /* Cell ID (for debugging) */
   unsigned long long cellID;
@@ -346,78 +424,6 @@ enum cell_flags {
   cell_flag_do_rt_sub_sort = (1UL << 22),  /* same as hydro_sub_sort for RT */
   cell_flag_rt_requests_sort = (1UL << 23) /* was this sort requested by RT? */
 };
-
-/**
- * @brief Names of the cell types.
- */
-extern const char *cellID_names[];
-
-/**
- * @brief Names of the cell sub-types.
- */
-extern const char *subcellID_names[];
-
-/**
- * @brief What type of top level cell is this cell?
- *
- * All cells are cell_type_regular when running a periodic box. The other types
- * are never used in a periodic box and conversely, cell_type_regular cells are
- * never used when running with a zoom region.
- *
- * When running with a zoom region:
- *
- * - Background cells are low resolution cells covering the majority of
- *   the volume. The zoom region fills a number of these cells in the centre
- *   of the volume (when buffer cells are not used, see below).
- * - Buffer cells are only used when explicitly turned on by the user. These
- *   are a high resolution type of background cell (but are lower resolution
- *   than zoom cells) that are used to pad the volume between the zoom region
- *   and the background cells containing the zoom region.
- * - Zoom cells are the high resolution cells that cover the zoom region
- *   (nested inside the central background/buffer cell/s).
- */
-enum cell_types {
-  cell_type_regular, /* A standard top level cell (for non-zoom boxes). */
-  cell_type_zoom,    /* A zoom cell (only applicable for zooms). */
-  cell_type_buffer,  /* A buffer cell (only applicable for zooms). */
-  cell_type_bkg,     /* A background cell (only applicable for zooms). */
-} __attribute__((__packed__));
-
-/**
- * @brief What subtype of top level cell is this cell?
- *
- * When running a periodic box, cells can only have regular_sub type.
- *
- * When running with a zoom region:
- *
- * - Zoom cells can only be cell_subtype_regular.
- * - Buffer cells (if turned on) can be neighbours if they are within the
- *   gravity criterion of the zoom region or void cells if they contain the
- *   zoom region. Otherwise, they are cell_subtype_regular.
- * - Like buffer cells, background cells can be neighbours if they are within
- *   the gravity criterion of the zoom region or void cells if they contain the
- *   zoom region, but only if buffer cells are not turned on. If buffer cells
- *   are turned on, a background cell can be cell_subtype_empty if it contains
- *   nested buffer cells (only background cells can be empty). Otherwise, they
- *   are cell_subtype_regular.
- *
- * All cell types serve a function but only cell_subtype_neighbour and
- * cell_subtype_regular can get tasks.
- *
- * Void cells do not contain any pointers to particles but carry multipoles and
- * particle counts based on the nested zoom cells.
- *
- * Empty cells do not contain anything, they should not feature in any
- * calculation and only exist to ensure the cell grids are maintained.
- */
-enum cell_subtypes {
-  cell_subtype_regular,   /* A normal cell. */
-  cell_subtype_neighbour, /* A cell within the gravity criterion of the zoom
-                             region. */
-  cell_subtype_void,      /* A cell containing the zoom region (void cell). */
-  cell_subtype_empty      /* An empty cell (background cells containing buffer
-                             cells). */
-} __attribute__((__packed__));
 
 /**
  * @brief Cell within the tree structure.

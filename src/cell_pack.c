@@ -68,6 +68,10 @@ int cell_pack(struct cell *restrict c, struct pcell *restrict pc,
   pc->black_holes.count = c->black_holes.count;
   pc->maxdepth = c->maxdepth;
 
+  /* Pack up the cell type too. */
+  pc->type = c->type;
+  pc->subtype = c->subtype;
+
   /* Copy the Multipole related information */
   if (with_gravity) {
     const struct gravity_tensors *mp = c->grav.multipole;
@@ -231,6 +235,10 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
   c->sinks.count = pc->sinks.count;
   c->black_holes.count = pc->black_holes.count;
   c->maxdepth = pc->maxdepth;
+
+  /* Unpack the cell type too. */
+  c->type = pc->type;
+  c->subtype = pc->subtype;
 
 #ifdef SWIFT_DEBUG_CHECKS
   c->cellID = pc->cellID;
