@@ -49,25 +49,14 @@ void zoom_makeproxies(struct engine *e) {
 
   /* Some info about the domain */
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
-  const int periodic = s->periodic;
-  const double cell_width[3] = {cells[0].width[0], cells[0].width[1],
-                                cells[0].width[2]};
+  int periodic = s->periodic;
 
   /* Get some info about the physics */
   int with_hydro = (e->policy & engine_policy_hydro);
-  const int with_gravity = (e->policy & engine_policy_self_gravity);
+  int with_gravity = (e->policy & engine_policy_self_gravity);
   const double theta_crit = e->gravity_properties->theta_crit;
   const double max_mesh_dist = e->mesh->r_cut_max;
   const double max_mesh_dist2 = max_mesh_dist * max_mesh_dist;
-
-  /* Distance between centre of the cell and corners */
-  const double r_diag2 = cell_width[0] * cell_width[0] +
-                         cell_width[1] * cell_width[1] +
-                         cell_width[2] * cell_width[2];
-  const double r_diag = 0.5 * sqrt(r_diag2);
-
-  /* Maximal distance from shifted CoM to any corner */
-  const double r_max = 2 * r_diag;
 
   /* Prepare the proxies and the proxy index. */
   if (e->proxy_ind == NULL)
@@ -120,6 +109,15 @@ void zoom_makeproxies(struct engine *e) {
 
       /* We need a proxy, one cell is foreign (Like Nigel and his wife).*/
 
+      /* Distance between centre of the cell and corners */
+      const double r_diag2 = cells[cid].width[0] * cells[cjd].width[0] +
+                             cells[cid].width[1] * cells[cjd].width[1] +
+                             cells[cid].width[2] * cells[cjd].width[2];
+      const double r_diag = 0.5 * sqrt(r_diag2);
+
+      /* Maximal distance from shifted CoM to any corner */
+      const double r_max = 2 * r_diag;
+
       /* Get the right cdim. */
       int jcdim[3];
       int joffset;
@@ -138,6 +136,14 @@ void zoom_makeproxies(struct engine *e) {
         jcdim[1] = s->cdim[1];
         jcdim[2] = s->cdim[2];
         joffset = s->zoom_props->bkg_cell_offset;
+      }
+
+      /* Get the right periodic flag. */
+      if (cells[cid].type != cell_type_bkg &&
+          cells[cjd].type != cell_type_bkg) {
+        periodic = 0;
+      } else {
+        periodic = s->periodic;
       }
 
       /* Integer indices of the cells in the top-level grid */
