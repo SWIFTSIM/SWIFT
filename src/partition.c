@@ -2118,6 +2118,12 @@ void partition_initial_partition(struct partition *initial_partition,
 #endif
   }
 
+  /* In zoom land we need to handle the void cells (these are always local
+   * if they have a single local zoom progeny somewhere in their tree). */
+  if (s->with_zoom_region) {
+    zoom_partition_voids(s, nodeID);
+  }
+
   /* Check we haven't failed. If we have fallback to the vectoried selection
    * method above. Obviously don't fall back to vectorised if we're already
    * trying that! */
