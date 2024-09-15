@@ -1080,7 +1080,9 @@ void engine_print_task_counts(const struct engine *e) {
               nr_zoom_bkg++;
               break;
             default:
-              error("Unknown cell type %s", cellID_names[t->cj->type]);
+              error("Unknown cell type %s (t->type=%s, t->subtype=%s)",
+                    cellID_names[t->cj->type], taskID_names[t->type],
+                    subtaskID_names[t->subtype]);
           }
           break;
         case cell_type_buffer:
@@ -1095,7 +1097,9 @@ void engine_print_task_counts(const struct engine *e) {
               nr_buffer_bkg++;
               break;
             default:
-              error("Unknown cell type %s", cellID_names[t->cj->type]);
+              error("Unknown cell type %s (t->type=%s, t->subtype=%s)",
+                    cellID_names[t->cj->type], taskID_names[t->type],
+                    subtaskID_names[t->subtype]);
           }
           break;
         case cell_type_bkg:
@@ -1110,7 +1114,9 @@ void engine_print_task_counts(const struct engine *e) {
               nr_bkg_bkg++;
               break;
             default:
-              error("Unknown cell type %s", cellID_names[t->cj->type]);
+              error("Unknown cell type %s (t->type=%s, t->subtype=%s)",
+                    cellID_names[t->cj->type], taskID_names[t->type],
+                    subtaskID_names[t->subtype]);
           }
           break;
         case cell_type_regular:
@@ -1119,7 +1125,9 @@ void engine_print_task_counts(const struct engine *e) {
               "be no regular cells in zoom simulations.");
           break;
         default:
-          error("Unknown cell type %s", cellID_names[t->ci->type]);
+          error("Unknown cell type %s (t->type=%s, t->subtype=%s)",
+                cellID_names[t->ci->type], taskID_names[t->type],
+                subtaskID_names[t->subtype]);
       }
     }
 
