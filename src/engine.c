@@ -1080,9 +1080,9 @@ void engine_print_task_counts(const struct engine *e) {
               nr_zoom_bkg++;
               break;
             default:
-              error("Unknown cell type %s (t->type=%s, t->subtype=%s)",
-                    cellID_names[t->cj->type], taskID_names[t->type],
-                    subtaskID_names[t->subtype]);
+              error("Unknown cell type %s/%s (t->type=%s, t->subtype=%s)",
+                    cellID_names[t->cj->type], subcellID_names[t->cj->subtype],
+                    taskID_names[t->type], subtaskID_names[t->subtype]);
           }
           break;
         case cell_type_buffer:
