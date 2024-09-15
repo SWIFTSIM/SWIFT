@@ -449,13 +449,6 @@ void zoom_engine_make_hierarchical_void_tasks(struct engine *e) {
  */
 void zoom_engine_make_self_gravity_tasks(struct space *s, struct engine *e) {
 
-  for (int i = 0; i < s->zoom_props->nr_zoom_cells; i++) {
-    message("cell %d: %s/%s, nodeID=%d void_parent->nodeID=%d", i,
-            cellID_names[s->cells_top[i].type],
-            subcellID_names[s->cells_top[i].subtype], s->cells_top[i].nodeID,
-            s->cells_top[i].void_parent->top->nodeID);
-  }
-
   ticks tic = getticks();
 
   /* Background -> Background */
