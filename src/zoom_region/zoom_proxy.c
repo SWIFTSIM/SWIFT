@@ -81,18 +81,22 @@ void zoom_makeproxies(struct engine *e) {
 
     /* Get the right cdim. */
     int icdim[3];
+    int ioffset;
     if (cells[cid].type == cell_type_zoom) {
       icdim[0] = s->zoom_props->cdim[0];
       icdim[1] = s->zoom_props->cdim[1];
       icdim[2] = s->zoom_props->cdim[2];
+      ioffset = 0;
     } else if (cells[cid].type == cell_type_buffer) {
       icdim[0] = s->zoom_props->buffer_cdim[0];
       icdim[1] = s->zoom_props->buffer_cdim[1];
       icdim[2] = s->zoom_props->buffer_cdim[2];
+      ioffset = s->zoom_props->buffer_cell_offset;
     } else {
       icdim[0] = s->cdim[0];
       icdim[1] = s->cdim[1];
       icdim[2] = s->cdim[2];
+      ioffset = s->zoom_props->bkg_cell_offset;
     }
 
     /* Void cells are never proxies. */
@@ -118,27 +122,31 @@ void zoom_makeproxies(struct engine *e) {
 
       /* Get the right cdim. */
       int jcdim[3];
+      int joffset;
       if (cells[cjd].type == cell_type_zoom) {
         jcdim[0] = s->zoom_props->cdim[0];
         jcdim[1] = s->zoom_props->cdim[1];
         jcdim[2] = s->zoom_props->cdim[2];
+        joffset = 0;
       } else if (cells[cjd].type == cell_type_buffer) {
         jcdim[0] = s->zoom_props->buffer_cdim[0];
         jcdim[1] = s->zoom_props->buffer_cdim[1];
         jcdim[2] = s->zoom_props->buffer_cdim[2];
+        joffset = s->zoom_props->buffer_cell_offset;
       } else {
         jcdim[0] = s->cdim[0];
         jcdim[1] = s->cdim[1];
         jcdim[2] = s->cdim[2];
+        joffset = s->zoom_props->bkg_cell_offset;
       }
 
       /* Integer indices of the cells in the top-level grid */
-      const int i = cid / (icdim[1] * icdim[2]);
-      const int j = (cid / icdim[2]) % icdim[1];
-      const int k = cid % icdim[2];
-      const int ii = cjd / (jcdim[1] * jcdim[2]);
-      const int jj = (cjd / jcdim[2]) % jcdim[1];
-      const int kk = cjd % jcdim[2];
+      const int i = (cid - ioffset) / (icdim[1] * icdim[2]);
+      const int j = ((cid - ioffset) / icdim[2]) % icdim[1];
+      const int k = (cid - ioffset) % icdim[2];
+      const int ii = (cjd - joffset) / (jcdim[1] * jcdim[2]);
+      const int jj = ((cjd - joffset) / jcdim[2]) % jcdim[1];
+      const int kk = (cjd - joffset) % jcdim[2];
 
       /* Get the proxy type. We only need to do the direct check if both
        * cells are the same type. Note, the cdim is only used if
