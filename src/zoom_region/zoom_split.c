@@ -125,6 +125,11 @@ void zoom_void_split_recursive(struct space *s, struct cell *c,
     ti_gravity_beg_max = max(ti_gravity_beg_max, cp->grav.ti_beg_max);
   }
 
+  if (ti_gravity_end_min == -1) {
+    message("No gravity time steps found in void cell @ depth %d on rank %d",
+            depth, s->e->nodeID);
+  }
+
   /* Update the properties of the void cell. */
   c->maxdepth = maxdepth;
   c->grav.ti_end_min = ti_gravity_end_min;
