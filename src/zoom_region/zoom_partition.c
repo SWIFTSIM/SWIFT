@@ -203,7 +203,7 @@ void partition_zoom_vector(int nr_nodes, struct space *s) {
 void zoom_partition_voids(struct space *s, int nodeID) {
 
   /* All void cells are local. */
-  for (int k = 0; k < s->nr_void_cells; k++) {
+  for (int k = 0; k < s->zoom_props->nr_void_cells; k++) {
     s->cells_top[s->zoom_props->void_cells_top[k]] = nodeID;
   }
 
