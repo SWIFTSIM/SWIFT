@@ -2059,6 +2059,10 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
           "happen!");
 #endif
 
+    if (ci->grav.count == 0 || (cj != NULL && cj->grav.count == 0))
+      message(
+          "Found a cell with no particles while looping over gravity tasks!");
+
     if (t->type == task_type_pair) {
 #ifdef WITH_MPI
       /* Activate the send/recv tasks. */
