@@ -157,8 +157,7 @@ void zoom_make_zoom_proxies(struct engine *e) {
 
           /* Get the cell. */
           struct cell *cj =
-              &s->zoom_props
-                   ->cells_top[s->zoom_props->neighbour_cells_top[cjd]];
+              &s->cells_top[s->zoom_props->neighbour_cells_top[cjd]];
 
           /* Early abort (both same node) */
           if (cells[cid].nodeID == nodeID && cj->nodeID == nodeID) continue;
@@ -334,8 +333,9 @@ void zoom_make_bkg_proxies(struct engine *e) {
 
           /* Get the proxy type. */
           int proxy_type = engine_get_proxy_type(
-              cells, i, j, k, iii, jjj, kkk, cdim, with_hydro, with_gravity,
-              cid, cjd, dim, periodic, r_max, max_mesh_dist2, theta_crit,
+              cells, i, j, k, /*iii*/ 0, /*jjj*/ 0, /*kkk*/ 0, cdim, with_hydro,
+              with_gravity, cid, cjd, dim, periodic, r_max, max_mesh_dist2,
+              theta_crit,
               /*do_direct_check*/ 0);
 
           /* Abort if not in range at all */
