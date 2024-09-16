@@ -1963,13 +1963,17 @@ static void engine_check_proxy_exists(struct engine *e, struct cell *ci,
 
   /* Recurse to the zoom level if we are in a void cell. */
   if (ci->subtype == cell_subtype_void) {
-    for (int i = 0; i < 8; i++)
-      if (ci->progeny[i] != NULL)
+    for (int i = 0; i < 8; i++) {
+      if (ci->progeny[i] != NULL) {
         engine_check_proxy_exists(e, ci->progeny[i], cj);
+      }
+    }
   } else if (cj->subtype == cell_subtype_void) {
-    for (int i = 0; i < 8; i++)
-      if (cj->progeny[i] != NULL)
+    for (int i = 0; i < 8; i++) {
+      if (cj->progeny[i] != NULL) {
         engine_check_proxy_exists(e, ci, cj->progeny[i]);
+      }
+    }
   } else {
 
     const int nodeID = e->nodeID;
@@ -1997,8 +2001,11 @@ static void engine_check_proxy_exists(struct engine *e, struct cell *ci,
       if (n == p->nr_cells_in)
         error(
             "Cell %d not found in the proxy but trying to construct "
-            "grav task!",
-            cjd);
+            "grav task! (cj->type=%s, cj->subtype=%s, cj->nodeID=%d, "
+            "ci->type=%s, ci->subtype=%s, ci->nodeID=%d)",
+            cjd, cellID_names[cj->type], subcellID_names[cj->subtype],
+            cj->nodeID, cellID_names[ci->type], subcellID_names[ci->subtype],
+            ci->nodeID);
     } else if (cj->nodeID == nodeID && ci->nodeID != engine_rank) {
 
       /* Find the proxy for this node */
@@ -2017,8 +2024,11 @@ static void engine_check_proxy_exists(struct engine *e, struct cell *ci,
       if (n == p->nr_cells_in)
         error(
             "Cell %d not found in the proxy but trying to construct "
-            "grav task!",
-            cid);
+            "grav task! (ci->type=%s, ci->subtype=%s, ci->nodeID=%d, "
+            "cj->type=%s, cj->subtype=%s, cj->nodeID=%d)",
+            cid, cellID_names[ci->type], subcellID_names[ci->subtype],
+            ci->nodeID, cellID_names[cj->type], subcellID_names[cj->subtype],
+            cj->nodeID);
     }
   }
 }
