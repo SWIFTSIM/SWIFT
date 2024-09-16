@@ -169,7 +169,7 @@ static void zoom_make_proxies_recursive(struct engine *e, struct cell *ci,
         (ci->type == cell_type_bkg && cj->type == cell_type_bkg) ? s->periodic
                                                                  : 0,
         r_max, max_mesh_dist2, theta_crit,
-        /*do_direct_check*/ ci->type == cj->type);
+        /*do_direct_check*/ 1);
 
     /* Abort if not in range at all */
     if (proxy_type == proxy_cell_type_none) return;
