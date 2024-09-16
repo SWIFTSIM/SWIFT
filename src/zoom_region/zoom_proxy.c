@@ -153,7 +153,7 @@ void zoom_make_zoom_proxies(struct engine *e) {
         }
 
         /* We also need a proxy for all neighbouring cells. */
-        for (int cjd = 0; cjd < s->zoom_props->nr_neighbour_cells) {
+        for (int cjd = 0; cjd < s->zoom_props->nr_neighbour_cells; cjd++) {
 
           /* Get the cell. */
           struct cell *cj =
@@ -320,7 +320,7 @@ void zoom_make_bkg_proxies(struct engine *e) {
         r_diag = 0.5 * sqrt(r_diag2);
         double buff_bkg_r_max = (r_max / 2) + r_diag;
 
-        for (int cjd = 0; cjd < s->zoom_props->nr_buffer_cells) {
+        for (int cjd = 0; cjd < s->zoom_props->nr_buffer_cells; cjd++) {
 
           /* Get the cell. */
           struct cell *cj = s->zoom_props->buffer_cells_top[cjd];
