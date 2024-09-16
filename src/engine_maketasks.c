@@ -1972,6 +1972,12 @@ static void engine_check_proxy_exists(struct engine *e, struct cell *ci,
         engine_check_proxy_exists(e, ci, cj->progeny[i]);
   } else {
 
+    const int nodeID = e->nodeID;
+
+    /* Get the ijk coordinates of the cells. */
+    const int cid = (int)(ci - e->s->cells_top);
+    const int cjd = (int)(cj - e->s->cells_top);
+
     /* Let's cross-check that we had a proxy for that cell */
     if (ci->nodeID == nodeID && cj->nodeID != engine_rank) {
 

@@ -38,6 +38,11 @@
  */
 int cell_pack(struct cell *restrict c, struct pcell *restrict pc,
               const int with_gravity) {
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->subtype == cell_subtype_void) {
+    error("Unpacking a void cell shouldn't happen!");
+  }
+#endif
 #ifdef WITH_MPI
 
   /* Start by packing the data of the current cell. */
