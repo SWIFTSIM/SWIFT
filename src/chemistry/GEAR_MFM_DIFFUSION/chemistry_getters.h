@@ -215,7 +215,7 @@ __attribute__((always_inline)) INLINE static float chemistry_compute_subtimestep
   const struct chemistry_part_data chd = p->chemistry_data;
   const float cos_argument = M_PI*(2.0*chd.timesteps.current_substep - 1.0) / (2.0*cd->N_substeps);
   const float expression = (1+cd->nu) - (1-cd->nu)*cos(cos_argument);
-  return chd.timesteps.super_timestep / expression;
+  return chd.timesteps.explicit_timestep / expression;
 }
 
 #endif /* SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_GETTERS_H  */
