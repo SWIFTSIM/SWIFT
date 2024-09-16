@@ -309,40 +309,43 @@ void zoom_make_bkg_proxies(struct engine *e) {
           }
         }
 
-        /* We also need a proxy for all buffer cells (if they exist). To do this
-         * we need the combined r_max. */
-        r_diag2 = s->zoom_props->buffer_cells_top[0].width[0] *
-                      s->zoom_props->buffer_cells_top[0].width[0] +
-                  s->zoom_props->buffer_cells_top[1].width[1] *
-                      s->zoom_props->buffer_cells_top[1].width[1] +
-                  s->zoom_props->buffer_cells_top[2].width[2] *
-                      s->zoom_props->buffer_cells_top[2].width[2];
-        r_diag = 0.5 * sqrt(r_diag2);
-        double buff_bkg_r_max = (r_max / 2) + r_diag;
+        /* We also need a proxy for all buffer cells (if they exist). */
+        if (s->zoom_props->with_buffer_cells) {
 
-        for (int cjd = 0; cjd < s->zoom_props->nr_buffer_cells; cjd++) {
+          /* We need the combined r_max. */
+          r_diag2 = s->zoom_props->buffer_cells_top[0].width[0] *
+                        s->zoom_props->buffer_cells_top[0].width[0] +
+                    s->zoom_props->buffer_cells_top[1].width[1] *
+                        s->zoom_props->buffer_cells_top[1].width[1] +
+                    s->zoom_props->buffer_cells_top[2].width[2] *
+                        s->zoom_props->buffer_cells_top[2].width[2];
+          r_diag = 0.5 * sqrt(r_diag2);
+          double buff_bkg_r_max = (r_max / 2) + r_diag;
 
-          /* Get the cell. */
-          struct cell *cj = &s->zoom_props->buffer_cells_top[cjd];
+          for (int cjd = 0; cjd < s->zoom_props->nr_buffer_cells; cjd++) {
 
-          /* Early abort (both same node) */
-          if (cells[cid].nodeID == nodeID && cj->nodeID == nodeID) continue;
+            /* Get the cell. */
+            struct cell *cj = &s->zoom_props->buffer_cells_top[cjd];
 
-          /* Early abort (both foreign node) */
-          if (cells[cid].nodeID != nodeID && cj->nodeID != nodeID) continue;
+            /* Early abort (both same node) */
+            if (cells[cid].nodeID == nodeID && cj->nodeID == nodeID) continue;
 
-          /* Get the proxy type. */
-          int proxy_type = engine_get_proxy_type(
-              cells, i, j, k, /*iii*/ 0, /*jjj*/ 0, /*kkk*/ 0, cdim, with_hydro,
-              with_gravity, cid, cjd, dim, periodic, buff_bkg_r_max,
-              max_mesh_dist2, theta_crit,
-              /*do_direct_check*/ 0);
+            /* Early abort (both foreign node) */
+            if (cells[cid].nodeID != nodeID && cj->nodeID != nodeID) continue;
 
-          /* Abort if not in range at all */
-          if (proxy_type == proxy_cell_type_none) continue;
+            /* Get the proxy type. */
+            int proxy_type = engine_get_proxy_type(
+                cells, i, j, k, /*iii*/ 0, /*jjj*/ 0, /*kkk*/ 0, cdim,
+                with_hydro, with_gravity, cid, cjd, dim, periodic,
+                buff_bkg_r_max, max_mesh_dist2, theta_crit,
+                /*do_direct_check*/ 0);
 
-          /* Ok, we need to add a proxy. */
-          engine_add_proxy(e, cells, proxies, cid, cjd, proxy_type, nodeID);
+            /* Abort if not in range at all */
+            if (proxy_type == proxy_cell_type_none) continue;
+
+            /* Ok, we need to add a proxy. */
+            engine_add_proxy(e, cells, proxies, cid, cjd, proxy_type, nodeID);
+          }
         }
       }
     }
