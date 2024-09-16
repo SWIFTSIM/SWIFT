@@ -123,6 +123,23 @@ struct hydro_props {
   /*! Are we generating random IDs when splitting particles? */
   int generate_random_ids;
 
+  int use_jets;
+  float launching_height;
+  float dt_jet;
+  float dt_jet_ratio;
+  float box_centre;
+  long long max_id;
+  float jet_power;
+  float v_jet;
+  float jet_duration;
+  int constant_density;
+  int assume_equipartition;
+  float opening_angle;
+  int launch_parallel;
+  int launch_spread;
+  int use_2d;
+  int launch_flat;
+
   /* ------ Viscosity and diffusion ---------------- */
 
   /*! Artificial viscosity parameters */

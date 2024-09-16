@@ -150,6 +150,10 @@ struct part {
   /*! Gradient of geometric moment m_0. */
   float grad_m0[3];
 
+  int timestep_counter;
+  int hit_by_jet_feedback;
+  int num_unkicked_ngbs;
+
   /* Store density/force specific stuff. */
   union {
 
@@ -301,6 +305,8 @@ struct part {
   /* Fixed specific entropy */
   float s_fixed;
 #endif
+
+float rho_sph;
 
 } SWIFT_STRUCT_ALIGN;
 
