@@ -334,8 +334,8 @@ void zoom_make_bkg_proxies(struct engine *e) {
           /* Get the proxy type. */
           int proxy_type = engine_get_proxy_type(
               cells, i, j, k, /*iii*/ 0, /*jjj*/ 0, /*kkk*/ 0, cdim, with_hydro,
-              with_gravity, cid, cjd, dim, periodic, r_max, max_mesh_dist2,
-              theta_crit,
+              with_gravity, cid, cjd, dim, periodic, buff_bkg_r_max,
+              max_mesh_dist2, theta_crit,
               /*do_direct_check*/ 0);
 
           /* Abort if not in range at all */
