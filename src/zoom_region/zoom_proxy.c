@@ -80,7 +80,6 @@ static void zoom_make_proxies_recursive(struct engine *e, struct cell *ci,
     int icdim[3], jcdim[3];
     double ilower_bounds[3];
     double jlower_bounds[3];
-    int ioffset, joffset;
     if (ci->type == cell_type_zoom) {
       icdim[0] = s->zoom_props->cdim[0];
       icdim[1] = s->zoom_props->cdim[1];
@@ -88,7 +87,6 @@ static void zoom_make_proxies_recursive(struct engine *e, struct cell *ci,
       ilower_bounds[0] = s->zoom_props->region_lower_bounds[0];
       ilower_bounds[1] = s->zoom_props->region_lower_bounds[1];
       ilower_bounds[2] = s->zoom_props->region_lower_bounds[2];
-      ioffset = 0;
     } else if (ci->type == cell_type_buffer) {
       icdim[0] = s->zoom_props->buffer_cdim[0];
       icdim[1] = s->zoom_props->buffer_cdim[1];
@@ -96,7 +94,6 @@ static void zoom_make_proxies_recursive(struct engine *e, struct cell *ci,
       ilower_bounds[0] = s->zoom_props->buffer_lower_bounds[0];
       ilower_bounds[1] = s->zoom_props->buffer_lower_bounds[1];
       ilower_bounds[2] = s->zoom_props->buffer_lower_bounds[2];
-      ioffset = s->zoom_props->buffer_cell_offset;
     } else {
       icdim[0] = s->cdim[0];
       icdim[1] = s->cdim[1];
@@ -104,7 +101,6 @@ static void zoom_make_proxies_recursive(struct engine *e, struct cell *ci,
       ilower_bounds[0] = 0.0;
       ilower_bounds[1] = 0.0;
       ilower_bounds[2] = 0.0;
-      ioffset = s->zoom_props->bkg_cell_offset;
     }
     if (cj->type == cell_type_zoom) {
       jcdim[0] = s->zoom_props->cdim[0];
@@ -113,7 +109,6 @@ static void zoom_make_proxies_recursive(struct engine *e, struct cell *ci,
       jlower_bounds[0] = s->zoom_props->region_lower_bounds[0];
       jlower_bounds[1] = s->zoom_props->region_lower_bounds[1];
       jlower_bounds[2] = s->zoom_props->region_lower_bounds[2];
-      joffset = 0;
     } else if (cj->type == cell_type_buffer) {
       jcdim[0] = s->zoom_props->buffer_cdim[0];
       jcdim[1] = s->zoom_props->buffer_cdim[1];
@@ -121,7 +116,6 @@ static void zoom_make_proxies_recursive(struct engine *e, struct cell *ci,
       jlower_bounds[0] = s->zoom_props->buffer_lower_bounds[0];
       jlower_bounds[1] = s->zoom_props->buffer_lower_bounds[1];
       jlower_bounds[2] = s->zoom_props->buffer_lower_bounds[2];
-      joffset = s->zoom_props->buffer_cell_offset;
     } else {
       jcdim[0] = s->cdim[0];
       jcdim[1] = s->cdim[1];
@@ -129,7 +123,6 @@ static void zoom_make_proxies_recursive(struct engine *e, struct cell *ci,
       jlower_bounds[0] = 0.0;
       jlower_bounds[1] = 0.0;
       jlower_bounds[2] = 0.0;
-      joffset = s->zoom_props->bkg_cell_offset;
     }
 
     /* Get the i, j, k coordinates for each cell. */
