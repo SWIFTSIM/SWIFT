@@ -18,9 +18,167 @@
  ******************************************************************************/
 
 /* Local includes. */
+#include "cell.h"
 #include "engine.h"
 #include "proxy.h"
 #include "zoom.h"
+
+/** @brief Recursive function to make proxies.
+ *
+ * If a void cell is passed then it will be split until we reach the zoom
+ * region, otherwise we get all the information we need to test if we need
+ * a proxy and then make it if we need to.
+ *
+ *
+ * @param e The #engine.
+ * @param ci The first cell.
+ * @param cj The second cell.
+ * @param max_mesh_dist2 The maximum mesh distance squared.
+ * @param theta_crit The critical opening angle.
+ * @param with_hydro Whether hydro is enabled.
+ * @param with_gravity Whether gravity is enabled.
+ */
+static void zoom_make_proxies_recursive(struct engine *e, struct cell *ci,
+                                        struct cell *cj, double max_mesh_dist2,
+                                        double theta_crit, int with_hydro,
+                                        int with_gravity) {
+
+  /* Unpack the space. */
+  const struct space *s = e->s;
+
+  /* Get the proxies. */
+  struct proxy *proxies = e->proxies;
+
+  /* If ci or cj are void cells we need to recurse. */
+  if (ci->subtype == cell_subtype_void) {
+    for (int i = 0; i < 8; i++) {
+      zoom_make_void_proxies_recursive(e, ci->progeny[i], cj, max_mesh_dist2,
+                                       theta_crit, with_hydro, with_gravity);
+    }
+  } else if (cj->subtype == cell_subtype_void) {
+    for (int j = 0; j < 8; j++) {
+      zoom_make_void_proxies_recursive(e, ci, cj->progeny[j], max_mesh_dist2,
+                                       theta_crit, with_hydro, with_gravity);
+    }
+  } else {
+
+    /* Get the right cdims and bounds for this pair. */
+    int icdim[3], jcdim[3];
+    double ilower_bounds[3];
+    double jlower_bounds[3];
+    int ioffset, joffset;
+    if (ci->type == cell_type_zoom) {
+      icdim[0] = s->zoom_props->cdim[0];
+      icdim[1] = s->zoom_props->cdim[1];
+      icdim[2] = s->zoom_props->cdim[2];
+      ilower_bounds[0] = s->zoom_props->region_lower_bounds[0];
+      ilower_bounds[1] = s->zoom_props->region_lower_bounds[1];
+      ilower_bounds[2] = s->zoom_props->region_lower_bounds[2];
+      ioffset = 0;
+    } else if (ci->type == cell_type_buffer) {
+      icdim[0] = s->zoom_props->buffer_cdim[0];
+      icdim[1] = s->zoom_props->buffer_cdim[1];
+      icdim[2] = s->zoom_props->buffer_cdim[2];
+      ilower_bounds[0] = s->zoom_props->buffer_lower_bounds[0];
+      ilower_bounds[1] = s->zoom_props->buffer_lower_bounds[1];
+      ilower_bounds[2] = s->zoom_props->buffer_lower_bounds[2];
+      ioffset = s->zoom_props->buffer_cell_offset;
+    } else {
+      icdim[0] = s->cdim[0];
+      icdim[1] = s->cdim[1];
+      icdim[2] = s->cdim[2];
+      ilower_bounds[0] = 0.0;
+      ilower_bounds[1] = 0.0;
+      ilower_bounds[2] = 0.0;
+      ioffset = s->zoom_props->bkg_cell_offset;
+    }
+    if (cj->type == cell_type_zoom) {
+      jcdim[0] = s->zoom_props->cdim[0];
+      jcdim[1] = s->zoom_props->cdim[1];
+      jcdim[2] = s->zoom_props->cdim[2];
+      jlower_bounds[0] = s->zoom_props->region_lower_bounds[0];
+      jlower_bounds[1] = s->zoom_props->region_lower_bounds[1];
+      jlower_bounds[2] = s->zoom_props->region_lower_bounds[2];
+      joffset = 0;
+    } else if (cj->type == cell_type_buffer) {
+      jcdim[0] = s->zoom_props->buffer_cdim[0];
+      jcdim[1] = s->zoom_props->buffer_cdim[1];
+      jcdim[2] = s->zoom_props->buffer_cdim[2];
+      jlower_bounds[0] = s->zoom_props->buffer_lower_bounds[0];
+      jlower_bounds[1] = s->zoom_props->buffer_lower_bounds[1];
+      jlower_bounds[2] = s->zoom_props->buffer_lower_bounds[2];
+      joffset = s->zoom_props->buffer_cell_offset;
+    } else {
+      jcdim[0] = s->cdim[0];
+      jcdim[1] = s->cdim[1];
+      jcdim[2] = s->cdim[2];
+      jlower_bounds[0] = 0.0;
+      jlower_bounds[1] = 0.0;
+      jlower_bounds[2] = 0.0;
+      joffset = s->zoom_props->bkg_cell_offset;
+    }
+
+    /* Get the i, j, k coordinates for each cell. */
+    const int i = (ci->loc[0] - ilower_bounds[0]) / ci->width[0];
+    const int j = (ci->loc[1] - ilower_bounds[1]) / ci->width[1];
+    const int k = (ci->loc[2] - ilower_bounds[2]) / ci->width[2];
+    const int ii = (cj->loc[0] - jlower_bounds[0]) / cj->width[0];
+    const int jj = (cj->loc[1] - jlower_bounds[1]) / cj->width[1];
+    const int kk = (cj->loc[2] - jlower_bounds[2]) / cj->width[2];
+
+    /* Early abort (both same node) -> Nigel is happy */
+    if (ci->nodeID == nodeID && cj->nodeID == nodeID) continue;
+
+    /* Early abort (both foreign node) -> Nigel is angry */
+    if (ci->nodeID != nodeID && cj->nodeID != nodeID) continue;
+
+    /* We need a proxy, one cell is foreign (Like Nigel and his wife).*/
+
+    /* Calculate the maximum distance based on the diagonal distance of the
+     * pair. */
+    const double ir_diag2 = ci->width[0] * ci->width[0] +
+                            ci->width[1] * ci->width[1] +
+                            ci->width[2] * ci->width[2];
+    const double ir_diag = 0.5 * sqrt(ir_diag2);
+    const double jr_diag2 = cj->width[0] * cj->width[0] +
+                            cj->width[1] * cj->width[1] +
+                            cj->width[2] * cj->width[2];
+    const double jr_diag = 0.5 * sqrt(jr_diag2);
+
+    /* Calculate the maximum distance between the cells. */
+    const double r_max = ir_diag + jr_diag;
+
+    /* Get the right periodic flag. (Only the background is ever periodic) */
+    if (ci->type != cell_type_bkg && cj->type != cell_type_bkg) {
+      periodic = 0;
+    } else {
+      periodic = s->periodic;
+    }
+
+    /* Get the indices for each cell. */
+    const int cid = cell_getid_offset(icdim, ioffset, i, j, k);
+    const int cjd = cell_getid_offset(jcdim, joffset, ii, jj, kk);
+
+    /* Get the proxy type. We only need to do the direct check if both
+     * cells are the same type. Note, the cdim is only used if
+     * icdim == jcdim and we're doing a direct check. */
+    int proxy_type = engine_get_proxy_type(
+        s->cells_top, i, j, k, ii, jj, kk, icdim,
+        (ci->type == cell_type_zoom && cj->type == cell_type_zoom) ? with_hydro
+                                                                   : 0,
+        with_gravity, cid, cjd, s->dim,
+        (ci->type != cell_type_bkg && cj->type != cell_type_bkg) ? 0
+                                                                 : s->periodic,
+        r_max, max_mesh_dist2, theta_crit,
+        /*do_direct_check*/ ci->type == cj->type);
+
+    /* Abort if not in range at all */
+    if (proxy_type == proxy_cell_type_none) continue;
+
+    /* Ok, we need to add a proxy. */
+    engine_add_proxy(e, cells, proxies, cid, cjd, proxy_type, e->nodeID);
+  }
+}
 
 /**
  * @brief Create and fill the proxies.
@@ -40,16 +198,10 @@ void zoom_makeproxies(struct engine *e) {
   const ticks tic = getticks();
 
   /* Useful local information */
-  const int nodeID = e->nodeID;
   const struct space *s = e->s;
 
   /* Handle on the cells and proxies */
   struct cell *cells = s->cells_top;
-  struct proxy *proxies = e->proxies;
-
-  /* Some info about the domain */
-  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
-  int periodic = s->periodic;
 
   /* Get some info about the physics */
   int with_hydro = (e->policy & engine_policy_hydro);
@@ -68,111 +220,12 @@ void zoom_makeproxies(struct engine *e) {
   /* Loop over the cells */
   for (int cid = 0; cid < s->nr_cells; cid++) {
 
-    /* Get the right cdim. */
-    int icdim[3];
-    int ioffset;
-    if (cells[cid].type == cell_type_zoom) {
-      icdim[0] = s->zoom_props->cdim[0];
-      icdim[1] = s->zoom_props->cdim[1];
-      icdim[2] = s->zoom_props->cdim[2];
-      ioffset = 0;
-    } else if (cells[cid].type == cell_type_buffer) {
-      icdim[0] = s->zoom_props->buffer_cdim[0];
-      icdim[1] = s->zoom_props->buffer_cdim[1];
-      icdim[2] = s->zoom_props->buffer_cdim[2];
-      ioffset = s->zoom_props->buffer_cell_offset;
-    } else {
-      icdim[0] = s->cdim[0];
-      icdim[1] = s->cdim[1];
-      icdim[2] = s->cdim[2];
-      ioffset = s->zoom_props->bkg_cell_offset;
-    }
-
-    /* Void cells are never proxies. */
-    if (cells[cid].subtype == cell_subtype_void) continue;
-
-    /* Once we have finished all zoom cells (start of the array) we will no
-     * longer need to consider hydro. */
-    if (cells[cid].type != cell_type_zoom && with_hydro) with_hydro = 0;
-
-    /* Calculate the r_diag for ci. */
-    const double ir_diag2 = cells[cid].width[0] * cells[cid].width[0] +
-                            cells[cid].width[1] * cells[cid].width[1] +
-                            cells[cid].width[2] * cells[cid].width[2];
-    const double ir_diag = 0.5 * sqrt(ir_diag2);
-
     /* Loop over the prospective neighbours. */
     for (int cjd = cid + 1; cjd < s->nr_cells; cjd++) {
 
-      /* Void cells are never proxies. */
-      if (cells[cjd].subtype == cell_subtype_void) continue;
-
-      /* Early abort (both same node) -> Nigel is happy */
-      if (cells[cid].nodeID == nodeID && cells[cjd].nodeID == nodeID) continue;
-
-      /* Early abort (both foreign node) -> Nigel is angry */
-      if (cells[cid].nodeID != nodeID && cells[cjd].nodeID != nodeID) continue;
-
-      /* We need a proxy, one cell is foreign (Like Nigel and his wife).*/
-
-      /* Calculate the r_diag for cj. */
-      const double jr_diag2 = cells[cjd].width[0] * cells[cjd].width[0] +
-                              cells[cjd].width[1] * cells[cjd].width[1] +
-                              cells[cjd].width[2] * cells[cjd].width[2];
-      const double jr_diag = 0.5 * sqrt(jr_diag2);
-
-      /* Calculate the maximum distance between the cells. */
-      const double r_max = ir_diag + jr_diag;
-
-      /* Get the right cdim. */
-      int jcdim[3];
-      int joffset;
-      if (cells[cjd].type == cell_type_zoom) {
-        jcdim[0] = s->zoom_props->cdim[0];
-        jcdim[1] = s->zoom_props->cdim[1];
-        jcdim[2] = s->zoom_props->cdim[2];
-        joffset = 0;
-      } else if (cells[cjd].type == cell_type_buffer) {
-        jcdim[0] = s->zoom_props->buffer_cdim[0];
-        jcdim[1] = s->zoom_props->buffer_cdim[1];
-        jcdim[2] = s->zoom_props->buffer_cdim[2];
-        joffset = s->zoom_props->buffer_cell_offset;
-      } else {
-        jcdim[0] = s->cdim[0];
-        jcdim[1] = s->cdim[1];
-        jcdim[2] = s->cdim[2];
-        joffset = s->zoom_props->bkg_cell_offset;
-      }
-
-      /* Get the right periodic flag. */
-      if (cells[cid].type != cell_type_bkg &&
-          cells[cjd].type == cell_type_bkg) {
-        periodic = 0;
-      } else {
-        periodic = s->periodic;
-      }
-
-      /* Integer indices of the cells in the top-level grid */
-      const int i = (cid - ioffset) / (icdim[1] * icdim[2]);
-      const int j = ((cid - ioffset) / icdim[2]) % icdim[1];
-      const int k = (cid - ioffset) % icdim[2];
-      const int ii = (cjd - joffset) / (jcdim[1] * jcdim[2]);
-      const int jj = ((cjd - joffset) / jcdim[2]) % jcdim[1];
-      const int kk = (cjd - joffset) % jcdim[2];
-
-      /* Get the proxy type. We only need to do the direct check if both
-       * cells are the same type. Note, the cdim is only used if
-       * icdim == jcdim and we're doing a direct check. */
-      int proxy_type = engine_get_proxy_type(
-          cells, i, j, k, ii, jj, kk, icdim, with_hydro, with_gravity, cid, cjd,
-          dim, periodic, r_max, max_mesh_dist2, theta_crit,
-          /*do_direct_check*/ cells[cid].type == cells[cjd].type);
-
-      /* Abort if not in range at all */
-      if (proxy_type == proxy_cell_type_none) continue;
-
-      /* Ok, we need to add a proxy. */
-      engine_add_proxy(e, cells, proxies, cid, cjd, proxy_type, nodeID);
+      /* Test these cells. */
+      zoom_make_proxies_recursive(e, &cells[cid], &cells[cjd], max_mesh_dist2,
+                                  theta_crit, with_hydro, with_gravity);
     }
   }
 
