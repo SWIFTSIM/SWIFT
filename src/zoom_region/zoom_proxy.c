@@ -157,7 +157,8 @@ void zoom_make_zoom_proxies(struct engine *e) {
 
           /* Get the cell. */
           struct cell *cj =
-              s->zoom_props->cells_top[s->zoom_props->neighbour_cells_top[cjd]];
+              &s->zoom_props
+                   ->cells_top[s->zoom_props->neighbour_cells_top[cjd]];
 
           /* Early abort (both same node) */
           if (cells[cid].nodeID == nodeID && cj->nodeID == nodeID) continue;
@@ -311,19 +312,19 @@ void zoom_make_bkg_proxies(struct engine *e) {
 
         /* We also need a proxy for all buffer cells (if they exist). To do this
          * we need the combined r_max. */
-        r_diag2 = s->zoom_props->buffer_cells_top[0].width *
-                      s->zoom_props->buffer_cells_top[0].width +
-                  s->zoom_props->buffer_cells_top[1].width *
-                      s->zoom_props->buffer_cells_top[1].width +
-                  s->zoom_props->buffer_cells_top[2].width *
-                      s->zoom_props->buffer_cells_top[2].width;
+        r_diag2 = s->zoom_props->buffer_cells_top[0].width[0] *
+                      s->zoom_props->buffer_cells_top[0].width[0] +
+                  s->zoom_props->buffer_cells_top[1].width[1] *
+                      s->zoom_props->buffer_cells_top[1].width[1] +
+                  s->zoom_props->buffer_cells_top[2].width[2] *
+                      s->zoom_props->buffer_cells_top[2].width[2];
         r_diag = 0.5 * sqrt(r_diag2);
         double buff_bkg_r_max = (r_max / 2) + r_diag;
 
         for (int cjd = 0; cjd < s->zoom_props->nr_buffer_cells; cjd++) {
 
           /* Get the cell. */
-          struct cell *cj = s->zoom_props->buffer_cells_top[cjd];
+          struct cell *cj = &s->zoom_props->buffer_cells_top[cjd];
 
           /* Early abort (both same node) */
           if (cells[cid].nodeID == nodeID && cj->nodeID == nodeID) continue;
