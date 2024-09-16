@@ -166,8 +166,8 @@ static void zoom_make_proxies_recursive(struct engine *e, struct cell *ci,
         (ci->type == cell_type_zoom && cj->type == cell_type_zoom) ? with_hydro
                                                                    : 0,
         with_gravity, cid, cjd, s->dim,
-        (ci->type != cell_type_bkg && cj->type != cell_type_bkg) ? 0
-                                                                 : s->periodic,
+        (ci->type == cell_type_bkg && cj->type == cell_type_bkg) ? s->periodic
+                                                                 : 0,
         r_max, max_mesh_dist2, theta_crit,
         /*do_direct_check*/ ci->type == cj->type);
 
