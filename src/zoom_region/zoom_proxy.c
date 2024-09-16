@@ -155,8 +155,8 @@ static void zoom_make_proxies_recursive(struct engine *e, struct cell *ci,
     const double r_max = 4 * (ir_diag + jr_diag);
 
     /* Get the indices for each cell. */
-    const int cid = cell_getid_offset(icdim, ioffset, i, j, k);
-    const int cjd = cell_getid_offset(jcdim, joffset, ii, jj, kk);
+    const int cid = (int)(ci - s->cells_top);
+    const int cjd = (int)(cj - s->cells_top);
 
     /* Get the proxy type. We only need to do the direct check if both
      * cells are the same type. Note, the cdim is only used if
