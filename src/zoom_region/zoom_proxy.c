@@ -23,33 +23,6 @@
 #include "zoom.h"
 
 /**
- * @brief Create and fill the proxies.
- *
- * This is the zoom specific form of engine_makeproxies. Unlike the uniform
- * box proxies we don't ahead of time know exactly which cells will end up
- * having direct interactions. Instead we just need to make sure all that
- * could interact do have a proxy so we use a brute force loop over all
- * possible pairs of cells.
- *
- * @param e The #engine.
- */
-void zoom_makeproxies(struct engine *e) {
-
-#ifdef WITH_MPI
-  /* Do the zoom cells. */
-  zoom_make_zoom_proxies(e);
-
-  /* Do the background cells. */
-  zoom_make_bkg_proxies(e);
-
-  /* Do the buffer cells (if we have them). */
-  if (e->s->zoom_props->with_buffer_cells) zoom_make_buffer_proxies(e);
-#else
-  error("SWIFT was not compiled with MPI support.");
-#endif
-}
-
-/**
  * @brief Create and fill the zoom proxies.
  *
  * Handles:
@@ -518,5 +491,32 @@ void zoom_make_buffer_proxies(struct engine *e) {
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
+#endif
+}
+
+/**
+ * @brief Create and fill the proxies.
+ *
+ * This is the zoom specific form of engine_makeproxies. Unlike the uniform
+ * box proxies we don't ahead of time know exactly which cells will end up
+ * having direct interactions. Instead we just need to make sure all that
+ * could interact do have a proxy so we use a brute force loop over all
+ * possible pairs of cells.
+ *
+ * @param e The #engine.
+ */
+void zoom_makeproxies(struct engine *e) {
+
+#ifdef WITH_MPI
+  /* Do the zoom cells. */
+  zoom_make_zoom_proxies(e);
+
+  /* Do the background cells. */
+  zoom_make_bkg_proxies(e);
+
+  /* Do the buffer cells (if we have them). */
+  if (e->s->zoom_props->with_buffer_cells) zoom_make_buffer_proxies(e);
+#else
+  error("SWIFT was not compiled with MPI support.");
 #endif
 }
