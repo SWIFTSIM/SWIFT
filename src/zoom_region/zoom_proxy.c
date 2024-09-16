@@ -23,6 +23,7 @@
 #include "proxy.h"
 #include "zoom.h"
 
+#ifdef WITH_MPI
 /** @brief Recursive function to make proxies.
  *
  * If a void cell is passed then it will be split until we reach the zoom
@@ -42,8 +43,6 @@ static void zoom_make_proxies_recursive(struct engine *e, struct cell *ci,
                                         struct cell *cj, double max_mesh_dist2,
                                         double theta_crit, int with_hydro,
                                         int with_gravity) {
-
-#ifdef WITH_MPI
 
   /* Unpack the space. */
   const struct space *s = e->s;
@@ -176,8 +175,8 @@ static void zoom_make_proxies_recursive(struct engine *e, struct cell *ci,
     /* Ok, we need to add a proxy. */
     engine_add_proxy(e, s->cells_top, proxies, cid, cjd, proxy_type, e->nodeID);
   }
-#endif
 }
+#endif
 
 /**
  * @brief Create and fill the proxies.
