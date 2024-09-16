@@ -56,13 +56,13 @@ static void zoom_make_proxies_recursive(struct engine *e, struct cell *ci,
   /* If ci or cj are void cells we need to recurse. */
   if (ci->subtype == cell_subtype_void) {
     for (int i = 0; i < s->zoom_props->nr_zoom_cells; i++) {
-      zoom_make_proxies_recursive(e, s->zoom_props->zoom_cells_top[i], cj,
+      zoom_make_proxies_recursive(e, &s->zoom_props->zoom_cells_top[i], cj,
                                   max_mesh_dist2, theta_crit, with_hydro,
                                   with_gravity);
     }
   } else if (cj->subtype == cell_subtype_void) {
     for (int j = 0; j < s->zoom_props->nr_zoom_cells; j++) {
-      zoom_make_proxies_recursive(e, ci, s->zoom_props->zoom_cells_top[j],
+      zoom_make_proxies_recursive(e, ci, &s->zoom_props->zoom_cells_top[j],
                                   max_mesh_dist2, theta_crit, with_hydro,
                                   with_gravity);
     }
