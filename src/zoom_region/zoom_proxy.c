@@ -152,7 +152,7 @@ static void zoom_make_proxies_recursive(struct engine *e, struct cell *ci,
     const double jr_diag = 0.5 * sqrt(jr_diag2);
 
     /* Calculate the maximum distance between the cells. */
-    const double r_max = ir_diag + jr_diag;
+    const double r_max = 2 * ir_diag + jr_diag;
 
     /* Get the indices for each cell. */
     const int cid = cell_getid_offset(icdim, ioffset, i, j, k);
