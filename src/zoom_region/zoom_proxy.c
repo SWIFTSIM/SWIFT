@@ -43,6 +43,8 @@ static void zoom_make_proxies_recursive(struct engine *e, struct cell *ci,
                                         double theta_crit, int with_hydro,
                                         int with_gravity) {
 
+#ifdef WITH_MPI
+
   /* Unpack the space. */
   const struct space *s = e->s;
 
@@ -64,6 +66,14 @@ static void zoom_make_proxies_recursive(struct engine *e, struct cell *ci,
                                   theta_crit, with_hydro, with_gravity);
     }
   } else {
+
+    /* Early abort (both same node) -> Nigel is happy */
+    if (ci->nodeID == nodeID && cj->nodeID == nodeID) return;
+
+    /* Early abort (both foreign node) -> Nigel is angry */
+    if (ci->nodeID != nodeID && cj->nodeID != nodeID) return;
+
+    /* We might need a proxy, one cell is foreign (Like Nigel and his wife).*/
 
     /* Get the right cdims and bounds for this pair. */
     int icdim[3], jcdim[3];
@@ -129,14 +139,6 @@ static void zoom_make_proxies_recursive(struct engine *e, struct cell *ci,
     const int jj = (cj->loc[1] - jlower_bounds[1]) / cj->width[1];
     const int kk = (cj->loc[2] - jlower_bounds[2]) / cj->width[2];
 
-    /* Early abort (both same node) -> Nigel is happy */
-    if (ci->nodeID == nodeID && cj->nodeID == nodeID) continue;
-
-    /* Early abort (both foreign node) -> Nigel is angry */
-    if (ci->nodeID != nodeID && cj->nodeID != nodeID) continue;
-
-    /* We need a proxy, one cell is foreign (Like Nigel and his wife).*/
-
     /* Calculate the maximum distance based on the diagonal distance of the
      * pair. */
     const double ir_diag2 = ci->width[0] * ci->width[0] +
@@ -150,13 +152,6 @@ static void zoom_make_proxies_recursive(struct engine *e, struct cell *ci,
 
     /* Calculate the maximum distance between the cells. */
     const double r_max = ir_diag + jr_diag;
-
-    /* Get the right periodic flag. (Only the background is ever periodic) */
-    if (ci->type != cell_type_bkg && cj->type != cell_type_bkg) {
-      periodic = 0;
-    } else {
-      periodic = s->periodic;
-    }
 
     /* Get the indices for each cell. */
     const int cid = cell_getid_offset(icdim, ioffset, i, j, k);
@@ -176,11 +171,12 @@ static void zoom_make_proxies_recursive(struct engine *e, struct cell *ci,
         /*do_direct_check*/ ci->type == cj->type);
 
     /* Abort if not in range at all */
-    if (proxy_type == proxy_cell_type_none) continue;
+    if (proxy_type == proxy_cell_type_none) return;
 
     /* Ok, we need to add a proxy. */
-    engine_add_proxy(e, cells, proxies, cid, cjd, proxy_type, e->nodeID);
+    engine_add_proxy(e, s->cells_top, proxies, cid, cjd, proxy_type, e->nodeID);
   }
+#endif
 }
 
 /**
