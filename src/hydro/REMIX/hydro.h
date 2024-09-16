@@ -417,9 +417,10 @@ hydro_set_v_sig_based_on_velocity_kick(struct part *p,
   /* Sound speed */
   const float soundspeed = hydro_get_comoving_soundspeed(p);
 
+  // const float viscosity_parameter_factor = (alpha == 0.f) ? 0.f : beta / alpha;
   /* Update the signal velocity */
   p->force.v_sig =
-      max(2.f * soundspeed, p->force.v_sig + planetary_quad_visc_beta * dv);
+      max(2.f * soundspeed, p->force.v_sig + 2 * dv);
 }
 
 __attribute__((always_inline)) INLINE static void hydro_set_velocity1(
@@ -1024,7 +1025,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
 
       
       if (delta_x>0) {
-        sin_theta = sin_theta;
+        sin_theta = 1.f * sin_theta;
       }
       if (delta_x<0) {
         sin_theta = -1.*sin_theta;
