@@ -2015,9 +2015,9 @@ static void engine_check_proxy_exists(struct engine *e, struct cell *ci,
             cid);
     }
   }
+}
 #endif /* WITH_MPI */
 #endif /* SWIFT_DEBUG_CHECKS */
-}
 
 /**
  * @brief Constructs a top-level pair gravity task between two cells.
