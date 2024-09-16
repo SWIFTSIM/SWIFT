@@ -169,10 +169,12 @@ void zoom_makeproxies(struct engine *e) {
           /*do_direct_check*/ cells[cid].type == cells[cjd].type);
 
       /* Abort if not in range at all */
-      if (proxy_type == proxy_cell_type_none) continue;
+      if (proxy_type == proxy_cell_type_none)
+        message("No proxy between %d and %d.", cid, cjd);
 
       /* Ok, we need to add a proxy. */
-      engine_add_proxy(e, cells, proxies, cid, cjd, proxy_type, nodeID);
+      engine_add_proxy(e, cells, proxies, cid, cjd, proxy_cell_type_gravity,
+                       nodeID);
     }
   }
 
