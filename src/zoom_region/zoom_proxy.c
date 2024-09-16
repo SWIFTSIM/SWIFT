@@ -46,19 +46,22 @@ static void zoom_make_proxies_recursive(struct engine *e, struct cell *ci,
   /* Unpack the space. */
   const struct space *s = e->s;
 
+  /* Get the nodeID for this rank. */
+  const int nodeID = e->nodeID;
+
   /* Get the proxies. */
   struct proxy *proxies = e->proxies;
 
   /* If ci or cj are void cells we need to recurse. */
   if (ci->subtype == cell_subtype_void) {
     for (int i = 0; i < 8; i++) {
-      zoom_make_void_proxies_recursive(e, ci->progeny[i], cj, max_mesh_dist2,
-                                       theta_crit, with_hydro, with_gravity);
+      zoom_make_proxies_recursive(e, ci->progeny[i], cj, max_mesh_dist2,
+                                  theta_crit, with_hydro, with_gravity);
     }
   } else if (cj->subtype == cell_subtype_void) {
     for (int j = 0; j < 8; j++) {
-      zoom_make_void_proxies_recursive(e, ci, cj->progeny[j], max_mesh_dist2,
-                                       theta_crit, with_hydro, with_gravity);
+      zoom_make_proxies_recursive(e, ci, cj->progeny[j], max_mesh_dist2,
+                                  theta_crit, with_hydro, with_gravity);
     }
   } else {
 
