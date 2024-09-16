@@ -1947,6 +1947,8 @@ int engine_gravity_need_cell_pair_task(struct engine *e, struct cell *ci,
                                /*is_tree_walk=*/0, periodic, use_mesh);
 }
 
+#ifdef SWIFT_DEBUG_CHECKS
+#ifdef WITH_MPI
 /**
  * @brief Check whether we have the proxy for the foreign cell.
  *
@@ -1958,9 +1960,6 @@ int engine_gravity_need_cell_pair_task(struct engine *e, struct cell *ci,
  */
 static void engine_check_proxy_exists(struct engine *e, struct cell *ci,
                                       struct cell *cj) {
-
-#ifdef SWIFT_DEBUG_CHECKS
-#ifdef WITH_MPI
 
   /* Recurse to the zoom level if we are in a void cell. */
   if (ci->subtype == cell_subtype_void) {
