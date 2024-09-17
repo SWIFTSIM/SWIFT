@@ -32,6 +32,7 @@
 /**
  * Do the exchange of one type of particles with all the other nodes.
  *
+ * @param e the current #engine
  * @param label a label for the memory allocations of this particle type.
  * @param counts 2D array with the counts of particles to exchange with
  *               each other node.
@@ -49,7 +50,8 @@
  * @result new particle data constructed from all the exchanges with the
  *         given alignment.
  */
-static void *engine_do_redistribute(const char *label, int *counts, char *parts,
+static void *engine_do_redistribute(struct engine *e, const char *label,
+                                    int *counts, char *parts,
                                     size_t new_nr_parts, size_t sizeofparts,
                                     size_t alignsize, MPI_Datatype mpi_type,
                                     int nr_nodes, int nodeID, int syncredist) {
@@ -89,9 +91,10 @@ static void *engine_do_redistribute(const char *label, int *counts, char *parts,
           /*  Just copy our own parts */
           if (counts[ind_send] > 0) {
             if (j == nodeID) {
-              memcpy(&parts_new[offset_recv * sizeofparts],
-                     &parts[offset_send * sizeofparts],
-                     sizeofparts * counts[ind_recv]);
+              threadpool_memcpy(&e->threadpool,
+                                &parts_new[offset_recv * sizeofparts],
+                                &parts[offset_send * sizeofparts],
+                                sizeofparts * counts[ind_recv]);
               offset_send += counts[ind_send];
               offset_recv += counts[ind_recv];
             } else {
@@ -177,8 +180,9 @@ static void *engine_do_redistribute(const char *label, int *counts, char *parts,
           if (k == nodeID) {
             int receiving = counts[ind_recv] - recvd;
             if (receiving > chunk) receiving = chunk;
-            memcpy(&parts_new[offset_recv * sizeofparts],
-                   &parts[offset_send * sizeofparts], sizeofparts * receiving);
+            threadpool_memcpy(
+                &e->threadpool, &parts_new[offset_recv * sizeofparts],
+                &parts[offset_send * sizeofparts], sizeofparts * receiving);
           } else {
             /* Otherwise send it. */
             int res =
@@ -1037,7 +1041,7 @@ void engine_redistribute(struct engine *e) {
 
   /* SPH particles. */
   void *new_parts = engine_do_redistribute(
-      "parts", counts, (char *)s->parts, nr_parts_new, sizeof(struct part),
+      e, "parts", counts, (char *)s->parts, nr_parts_new, sizeof(struct part),
       part_align, part_mpi_type, nr_nodes, nodeID, e->syncredist);
   swift_free("parts", s->parts);
   s->parts = (struct part *)new_parts;
@@ -1045,15 +1049,16 @@ void engine_redistribute(struct engine *e) {
   s->size_parts = engine_redistribute_alloc_margin * nr_parts_new;
 
   /* Extra SPH particle properties. */
-  new_parts = engine_do_redistribute(
-      "xparts", counts, (char *)s->xparts, nr_parts_new, sizeof(struct xpart),
-      xpart_align, xpart_mpi_type, nr_nodes, nodeID, e->syncredist);
+  new_parts =
+      engine_do_redistribute(e, "xparts", counts, (char *)s->xparts,
+                             nr_parts_new, sizeof(struct xpart), xpart_align,
+                             xpart_mpi_type, nr_nodes, nodeID, e->syncredist);
   swift_free("xparts", s->xparts);
   s->xparts = (struct xpart *)new_parts;
 
   /* Gravity particles. */
   new_parts =
-      engine_do_redistribute("gparts", g_counts, (char *)s->gparts,
+      engine_do_redistribute(e, "gparts", g_counts, (char *)s->gparts,
                              nr_gparts_new, sizeof(struct gpart), gpart_align,
                              gpart_mpi_type, nr_nodes, nodeID, e->syncredist);
   swift_free("gparts", s->gparts);
@@ -1063,7 +1068,7 @@ void engine_redistribute(struct engine *e) {
 
   /* Star particles. */
   new_parts =
-      engine_do_redistribute("sparts", s_counts, (char *)s->sparts,
+      engine_do_redistribute(e, "sparts", s_counts, (char *)s->sparts,
                              nr_sparts_new, sizeof(struct spart), spart_align,
                              spart_mpi_type, nr_nodes, nodeID, e->syncredist);
   swift_free("sparts", s->sparts);
@@ -1073,7 +1078,7 @@ void engine_redistribute(struct engine *e) {
 
   /* Black holes particles. */
   new_parts =
-      engine_do_redistribute("bparts", b_counts, (char *)s->bparts,
+      engine_do_redistribute(e, "bparts", b_counts, (char *)s->bparts,
                              nr_bparts_new, sizeof(struct bpart), bpart_align,
                              bpart_mpi_type, nr_nodes, nodeID, e->syncredist);
   swift_free("bparts", s->bparts);
