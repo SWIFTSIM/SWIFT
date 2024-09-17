@@ -118,20 +118,19 @@ chemistry_part_geometry_well_behaved(const struct part *restrict p) {
  *
  * @param p Particle.
  */
-__attribute__((always_inline)) INLINE static double chemistry_compute_matrix_K_norm(
-    const struct part *restrict p) {
+__attribute__((always_inline)) INLINE static double
+chemistry_compute_matrix_K_norm(const struct part *restrict p) {
   /* For isotropic cases: K = \kappa * I_3 */
-  return sqrtf(3.0)*fabsf(p->chemistry_data.kappa);
+  return sqrtf(3.0) * fabsf(p->chemistry_data.kappa);
 }
-
 
 /**
  * @brief Compute the particle parabolic timestep proportional to h^2.
  *
  * @param p Particle.
  */
-__attribute__((always_inline)) INLINE static float chemistry_compute_parabolic_timestep(
-    const struct part *restrict p) {
+__attribute__((always_inline)) INLINE static float
+chemistry_compute_parabolic_timestep(const struct part *restrict p) {
 
   const struct chemistry_part_data chd = p->chemistry_data;
 
@@ -142,15 +141,16 @@ __attribute__((always_inline)) INLINE static float chemistry_compute_parabolic_t
   float norm_nabla_otimes_q = 0.0;
   float expression = 0.0;
   const float norm_matrix_K = chemistry_compute_matrix_K_norm(p);
-  const float delta_x = kernel_gamma*p->h;
+  const float delta_x = kernel_gamma * p->h;
 
   /* Compute the norms */
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
-    norm_q += p->chemistry_data.metal_mass[i]*p->chemistry_data.metal_mass[i];
+    norm_q += p->chemistry_data.metal_mass[i] * p->chemistry_data.metal_mass[i];
 
     for (int j = 0; j < 3; j++) {
       /* Compute the Froebnius norm of \nabla \otimes q */
-      norm_nabla_otimes_q  += chd.gradients[i].nabla_otimes_q[j]*chd.gradients[i].nabla_otimes_q[j];
+      norm_nabla_otimes_q += chd.gradients[i].nabla_otimes_q[j] *
+                             chd.gradients[i].nabla_otimes_q[j];
     }
   }
 
@@ -161,19 +161,19 @@ __attribute__((always_inline)) INLINE static float chemistry_compute_parabolic_t
   norm_nabla_otimes_q = sqrtf(norm_nabla_otimes_q);
 
   /* Finish the computations */
-  expression = norm_nabla_otimes_q / norm_q + 1.0/delta_x;
+  expression = norm_nabla_otimes_q / norm_q + 1.0 / delta_x;
 
-  return 1.0/(norm_matrix_K*expression*expression);
+  return 1.0 / (norm_matrix_K * expression * expression);
 }
-
 
 /**
  * @brief Compute the particle supertimestep proportional to h.
  *
  * @param p Particle.
  */
-__attribute__((always_inline)) INLINE static float chemistry_compute_supertimestep(
-										   const struct part *restrict p, const struct chemistry_global_data* cd) {
+__attribute__((always_inline)) INLINE static float
+chemistry_compute_supertimestep(const struct part *restrict p,
+                                const struct chemistry_global_data *cd) {
 
   const struct chemistry_part_data chd = p->chemistry_data;
 
@@ -182,16 +182,17 @@ __attribute__((always_inline)) INLINE static float chemistry_compute_supertimest
 
   float norm_U = 0.0;
   float norm_nabla_otimes_q = 0.0;
-  const float norm_matrix_K =  chemistry_compute_parabolic_timestep(p);
-  const float delta_x = kernel_gamma*p->h;
+  const float norm_matrix_K = chemistry_compute_parabolic_timestep(p);
+  const float delta_x = kernel_gamma * p->h;
 
   /* Compute the norms */
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
-    norm_U += p->chemistry_data.metal_mass[i]*p->chemistry_data.metal_mass[i];
+    norm_U += p->chemistry_data.metal_mass[i] * p->chemistry_data.metal_mass[i];
 
     for (int j = 0; j < 3; j++) {
       /* Compute the Froebnius norm of \nabla \otimes q */
-      norm_nabla_otimes_q  += chd.gradients[i].nabla_otimes_q[j]*chd.gradients[i].nabla_otimes_q[j];
+      norm_nabla_otimes_q += chd.gradients[i].nabla_otimes_q[j] *
+                             chd.gradients[i].nabla_otimes_q[j];
     }
   }
 
@@ -201,20 +202,23 @@ __attribute__((always_inline)) INLINE static float chemistry_compute_supertimest
   /* Take the sqrt to get the norm */
   norm_nabla_otimes_q = sqrtf(norm_nabla_otimes_q);
 
-  return cd->C_CFL_chemistry * delta_x * norm_U / (norm_matrix_K * norm_nabla_otimes_q);
+  return cd->C_CFL_chemistry * delta_x * norm_U /
+         (norm_matrix_K * norm_nabla_otimes_q);
 }
-
 
 /**
  * @brief Compute the particle supertimestep proportional to h.
  *
  * @param p Particle.
  */
-__attribute__((always_inline)) INLINE static float chemistry_compute_subtimestep(
-										 const struct part *restrict p, const struct chemistry_global_data* cd) {
+__attribute__((always_inline)) INLINE static float
+chemistry_compute_subtimestep(const struct part *restrict p,
+                              const struct chemistry_global_data *cd) {
   const struct chemistry_part_data chd = p->chemistry_data;
-  const float cos_argument = M_PI*(2.0*chd.timesteps.current_substep - 1.0) / (2.0*cd->N_substeps);
-  const float expression = (1+cd->nu) - (1-cd->nu)*cos(cos_argument);
+  const float cos_argument = M_PI *
+                             (2.0 * chd.timesteps.current_substep - 1.0) /
+                             (2.0 * cd->N_substeps);
+  const float expression = (1 + cd->nu) - (1 - cd->nu) * cos(cos_argument);
   return chd.timesteps.explicit_timestep / expression;
 }
 

@@ -59,11 +59,13 @@ __attribute__((always_inline)) INLINE static void chemistry_part_set_gradients(
  * given contributions.
  *
  * @param p Particle
- * @param metal metal specie index to update (0 <= metal < GEAR_CHEMISTRY_ELEMENT_COUNT)
+ * @param metal metal specie index to update (0 <= metal <
+ * GEAR_CHEMISTRY_ELEMENT_COUNT)
  * @param dF gradient of the diffusion flux
  */
 __attribute__((always_inline)) INLINE static void
-chemistry_part_update_gradients(struct part *restrict p, int metal, double dF[3]) {
+chemistry_part_update_gradients(struct part *restrict p, int metal,
+                                double dF[3]) {
 
   struct chemistry_part_data *chd = &p->chemistry_data;
 
@@ -77,7 +79,8 @@ chemistry_part_update_gradients(struct part *restrict p, int metal, double dF[3]
  * normalisation factor.
  *
  * @param p Particle.
- * @param metal metal group index to update (0 <= metal < GEAR_CHEMISTRY_ELEMENT_COUNT)
+ * @param metal metal group index to update (0 <= metal <
+ * GEAR_CHEMISTRY_ELEMENT_COUNT)
  * @param norm Normalisation factor.
  */
 __attribute__((always_inline)) INLINE static void

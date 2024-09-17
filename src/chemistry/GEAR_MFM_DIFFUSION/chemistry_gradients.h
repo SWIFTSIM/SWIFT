@@ -128,7 +128,8 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_collect(
     chemistry_part_get_diffusion_state_vector(pj, g, &Uj);
     const double dU = Ui - Uj;
 
-    /* First to the gradients of pi (i.e. \grad n = \nabla \otimes q = \grad U) */
+    /* First to the gradients of pi (i.e. \grad n = \nabla \otimes q = \grad U)
+     */
     double dF_i[3];
 
     /* Compute gradients for pi */

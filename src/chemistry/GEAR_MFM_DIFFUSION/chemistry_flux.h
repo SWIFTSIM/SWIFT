@@ -65,8 +65,7 @@ __attribute__((always_inline)) INLINE void chemistry_part_get_fluxes(
 __attribute__((always_inline)) INLINE static void chemistry_compute_flux(
     const struct part* restrict pi, const struct part* restrict pj,
     const double UL, const double UR, const float n_unit[3], const float Anorm,
-    int g, double* metal_flux,
-    const struct chemistry_global_data* chem_data) {
+    int g, double* metal_flux, const struct chemistry_global_data* chem_data) {
 
   /* Note: F_diff_R and F_diff_L are computed with a first order
          reconstruction */
@@ -100,8 +99,7 @@ __attribute__((always_inline)) INLINE static void chemistry_compute_flux(
   /* While solving the Riemann problem, we shall get a scalar because of the
      scalar product betwee F_diff_ij^* and A_ij */
   chemistry_riemann_solve_for_flux(pi, pj, UL, UR, WL, WR, F_diff_i, F_diff_j,
-                                   Anorm, n_unit, g, metal_flux,
-                                   chem_data);
+                                   Anorm, n_unit, g, metal_flux, chem_data);
 
   *metal_flux *= Anorm;
 }

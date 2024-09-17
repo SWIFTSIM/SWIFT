@@ -367,12 +367,11 @@ static INLINE void chemistry_init_backend(struct swift_params* parameter_file,
   message("Supertimestepping = %i", data->use_supertimestepping);
 
   data->N_substeps = parser_get_opt_param_float(
-      parameter_file, "GEARChemistry:N_substeps",
-      DEFAULT_N_SUBSTEPS);
+      parameter_file, "GEARChemistry:N_substeps", DEFAULT_N_SUBSTEPS);
 
-  data->nu = parser_get_opt_param_float(
-      parameter_file, "GEARChemistry:nu_supertimestepping",
-      DEFAULT_NU_SUPERTIMESTEPPPING);
+  data->nu = parser_get_opt_param_float(parameter_file,
+                                        "GEARChemistry:nu_supertimestepping",
+                                        DEFAULT_NU_SUPERTIMESTEPPPING);
 
   data->C_CFL_chemistry = parser_get_opt_param_float(
       parameter_file, "GEARChemistry:C_CFL_chemistry",
@@ -664,10 +663,10 @@ __attribute__((always_inline)) INLINE static float chemistry_timestep(
     /* Have we finished substepping? */
     if (chd.timesteps.current_substep <= cd->N_substeps) {
       /* Warning: Pay attention to the order: first get the substep and then
-	 increment it. Otherwise, the substep value is wrong */
+         increment it. Otherwise, the substep value is wrong */
 
       /* Get the next substep */
-      substep =  chemistry_compute_subtimestep(p, cd);
+      substep = chemistry_compute_subtimestep(p, cd);
 
       /* Then, increment the current_substep */
       ++chd.timesteps.current_substep;
@@ -689,7 +688,7 @@ __attribute__((always_inline)) INLINE static float chemistry_timestep(
     }
     return substep;
   } else {
-    return  chemistry_compute_parabolic_timestep(p);
+    return chemistry_compute_parabolic_timestep(p);
   }
 }
 
@@ -733,16 +732,15 @@ __attribute__((always_inline)) INLINE static void chemistry_first_init_part(
 
   /* Supertimestepping ----*/
   /* Get the explicit timestep */
-  p->chemistry_data.timesteps.explicit_timestep = chemistry_compute_parabolic_timestep(p);
+  p->chemistry_data.timesteps.explicit_timestep =
+      chemistry_compute_parabolic_timestep(p);
 
   /* Set the substep to 1 */
   p->chemistry_data.timesteps.current_substep = 1.0;
 
   /* Get the next superstep */
-  p->chemistry_data.timesteps.super_timestep = chemistry_compute_supertimestep(p, data);
-
-
-
+  p->chemistry_data.timesteps.super_timestep =
+      chemistry_compute_supertimestep(p, data);
 }
 
 /**
