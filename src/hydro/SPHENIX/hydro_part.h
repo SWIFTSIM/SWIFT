@@ -129,6 +129,11 @@ struct part {
   /*! Particle density. */
   float rho;
 
+  int timestep_counter;
+  int hit_by_jet_feedback;
+  int num_unkicked_ngbs;
+
+
   /* Store viscosity information in a separate struct. */
   struct {
 

@@ -72,10 +72,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   const float ui = r * hi_inv;
   kernel_deval(ui, &wi, &wi_dx);
 
-  if (pi->id < 1e7 && pi->hit_by_jet_feedback==0) {
-    pj->num_unkicked_ngbs += 1;
-  }
-
   pi->rho += mj * wi;
   if (pj->id < 1e7 && pj->hit_by_jet_feedback==0) {
     pi->num_unkicked_ngbs += 1;
