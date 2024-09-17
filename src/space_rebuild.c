@@ -69,6 +69,8 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   /* Allocate extra space for particles that will be created */
   if (s->with_star_formation || s->with_sink) space_allocate_extras(s, verbose);
 
+  message("Post-allocate-extras, Nstars %ld", s->nr_sparts);
+
   struct cell *cells_top = s->cells_top;
   const integertime_t ti_current = (s->e != NULL) ? s->e->ti_current : 0;
   const int local_nodeID = s->e->nodeID;
