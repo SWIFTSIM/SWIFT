@@ -78,6 +78,8 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   size_t nr_bparts = s->nr_bparts;
   size_t nr_sinks = s->nr_sinks;
 
+  message("Nstars %ld", nr_sparts);
+
   /* The number of particles we allocated memory for */
   size_t size_parts = s->size_parts;
   size_t size_gparts = s->size_gparts;
@@ -143,14 +145,6 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
     cell_spart_counts[i] = 0;
     cell_bpart_counts[i] = 0;
     cell_sink_counts[i] = 0;
-  }
-  for (int i = 0; i < s->nr_cells; i++) {
-    if (cells_top[i].type == cell_type_zoom) continue;
-    message(
-        "Cell %i has %i parts, %i gparts, %i sparts, %i bparts and %i "
-        "sinks.",
-        i, cell_part_counts[i], cell_gpart_counts[i], cell_spart_counts[i],
-        cell_bpart_counts[i], cell_sink_counts[i]);
   }
 
   /* Run through the particles and get their cell index. */
