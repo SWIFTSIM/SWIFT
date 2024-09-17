@@ -167,6 +167,15 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
                                &count_inhibited_sinks, &count_extra_sinks,
                                verbose);
 
+  for (int i = 0; i < s->nr_cells; i++) {
+    if (cells_top[i].type == cell_type_zoom) continue;
+    message(
+        "Cell %i has %i parts, %i gparts, %i sparts, %i bparts and %i "
+        "sinks.",
+        i, cell_part_counts[i], cell_gpart_counts[i], cell_spart_counts[i],
+        cell_bpart_counts[i], cell_sink_counts[i]);
+  }
+
 #ifdef SWIFT_DEBUG_CHECKS
   /* Some safety checks */
   if (repartitioned && count_inhibited_parts)
