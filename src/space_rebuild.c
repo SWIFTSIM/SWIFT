@@ -144,6 +144,14 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
     cell_bpart_counts[i] = 0;
     cell_sink_counts[i] = 0;
   }
+  for (int i = 0; i < s->nr_cells; i++) {
+    if (cells_top[i].type == cell_type_zoom) continue;
+    message(
+        "Cell %i has %i parts, %i gparts, %i sparts, %i bparts and %i "
+        "sinks.",
+        i, cell_part_counts[i], cell_gpart_counts[i], cell_spart_counts[i],
+        cell_bpart_counts[i], cell_sink_counts[i]);
+  }
 
   /* Run through the particles and get their cell index. */
   if (nr_parts > 0)
@@ -166,15 +174,6 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
     space_sinks_get_cell_index(s, sink_index, cell_sink_counts,
                                &count_inhibited_sinks, &count_extra_sinks,
                                verbose);
-
-  for (int i = 0; i < s->nr_cells; i++) {
-    if (cells_top[i].type == cell_type_zoom) continue;
-    message(
-        "Cell %i has %i parts, %i gparts, %i sparts, %i bparts and %i "
-        "sinks.",
-        i, cell_part_counts[i], cell_gpart_counts[i], cell_spart_counts[i],
-        cell_bpart_counts[i], cell_sink_counts[i]);
-  }
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Some safety checks */
