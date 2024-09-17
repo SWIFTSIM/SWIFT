@@ -1634,7 +1634,6 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
 
     /* If neither cell is a void cell, redirect to the normal splitter. */
     if (ci->subtype != cell_subtype_void && cj->subtype != cell_subtype_void) {
-      message("ci->nodeID, cj->nodeID: %d, %d", ci->nodeID, cj->nodeID);
       scheduler_splittask_gravity(t, s);
       return;
     }
