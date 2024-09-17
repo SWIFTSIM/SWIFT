@@ -61,8 +61,10 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   last_leaf_cell_id = 1ULL;
 #endif
 
+  message("Pre-regrid, Nstars %ld", s->nr_sparts);
   /* Re-grid if necessary, or just re-set the cell data. */
   space_regrid(s, verbose);
+  message("Post-regrid, Nstars %ld", s->nr_sparts);
 
   /* Allocate extra space for particles that will be created */
   if (s->with_star_formation || s->with_sink) space_allocate_extras(s, verbose);
@@ -77,8 +79,6 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   size_t nr_sparts = s->nr_sparts;
   size_t nr_bparts = s->nr_bparts;
   size_t nr_sinks = s->nr_sinks;
-
-  message("Nstars %ld", nr_sparts);
 
   /* The number of particles we allocated memory for */
   size_t size_parts = s->size_parts;
