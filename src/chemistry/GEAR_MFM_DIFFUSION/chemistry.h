@@ -731,16 +731,9 @@ __attribute__((always_inline)) INLINE static void chemistry_first_init_part(
   p->chemistry_data.geometry.wcorr = 1.0f;
 
   /* Supertimestepping ----*/
-  /* Get the explicit timestep */
-  p->chemistry_data.timesteps.explicit_timestep =
-      chemistry_compute_parabolic_timestep(p);
-
-  /* Set the substep to 1 */
-  p->chemistry_data.timesteps.current_substep = 1.0;
-
-  /* Get the next superstep */
-  p->chemistry_data.timesteps.super_timestep =
-      chemistry_compute_supertimestep(p, data);
+  /* Set the substep to N_substep so that we can compute everything in timestep
+     for the first time.  */
+  p->chemistry_data.timesteps.current_substep = data->N_substeps;
 }
 
 /**

@@ -153,9 +153,14 @@ chemistry_compute_parabolic_timestep(const struct part *restrict p) {
                              chd.gradients[i].nabla_otimes_q[j];
     }
   }
-
   /* Take the sqrt and divide by the volume to get a density */
   norm_q = sqrtf(norm_q) / chd.geometry.volume;
+
+  /* If the norm of q (metal density = 0), then use the following formula */
+  if (norm_q == 0) {
+    warning("norm q = 0");
+    return delta_x*delta_x / norm_matrix_K;
+  }
 
   /* Take the sqrt to get the norm */
   norm_nabla_otimes_q = sqrtf(norm_nabla_otimes_q);
@@ -220,6 +225,24 @@ chemistry_compute_subtimestep(const struct part *restrict p,
                              (2.0 * cd->N_substeps);
   const float expression = (1 + cd->nu) - (1 - cd->nu) * cos(cos_argument);
   return chd.timesteps.explicit_timestep / expression;
+}
+
+/**
+ * @brief Compute the particle supertimestep proportional to h.
+ *
+ * @param p Particle.
+ */
+__attribute__((always_inline)) INLINE static float
+chemistry_compute_minimal_timestep_from_all_modules(const struct part *restrict p,
+                              const struct chemistry_global_data *cd) {
+  /* Don't do this. Create a fct that does get_part_timestep() first part
+     (without integer time conversion) without chemistry. Then call
+     chemistry_timestep(), do supertimestepping here. Finally, take the
+     min. See how we can get around to not go below the min timestep and above
+     the mac timestep.
+  */
+
+  return 0.0;
 }
 
 #endif /* SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_GETTERS_H  */
