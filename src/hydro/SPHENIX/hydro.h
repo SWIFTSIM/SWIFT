@@ -451,6 +451,52 @@ hydro_diffusive_feedback_reset(struct part *restrict p) {
   p->diffusion.alpha = hydro_props_default_diffusion_alpha_feedback_reset;
 }
 
+__attribute__((always_inline)) INLINE static void hydro_set_velocity1(
+    struct part *restrict p, const struct cosmology *cosmo, float v_new1) {
+
+  p->v[0] = v_new1 * cosmo->a_inv;
+}
+
+__attribute__((always_inline)) INLINE static void hydro_set_velocity2(
+    struct part *restrict p, const struct cosmology *cosmo, float v_new2) {
+
+  p->v[1] = v_new2 * cosmo->a_inv;
+}
+
+__attribute__((always_inline)) INLINE static void hydro_set_velocity3(
+    struct part *restrict p, const struct cosmology *cosmo, float v_new3) {
+
+  p->v[2] = v_new3 * cosmo->a_inv;
+}
+
+__attribute__((always_inline)) INLINE static void
+hydro_set_physical_velocity1(struct part *p, struct xpart *xp,
+                                   const struct cosmology *cosmo,
+                                   const float v_new1) {
+
+  xp->v_full[0] = v_new1 * cosmo->a_inv;
+  p->gpart->v_full[0] = xp->v_full[0];
+}
+
+__attribute__((always_inline)) INLINE static void
+hydro_set_physical_velocity2(struct part *p, struct xpart *xp,
+                                   const struct cosmology *cosmo,
+                                   const float v_new2) {
+
+  xp->v_full[1] = v_new2 * cosmo->a_inv;
+  p->gpart->v_full[1] = xp->v_full[1];
+}
+
+__attribute__((always_inline)) INLINE static void
+hydro_set_physical_velocity3(struct part *p, struct xpart *xp,
+                                   const struct cosmology *cosmo,
+                                   const float v_new3) {
+
+  xp->v_full[2] = v_new3 * cosmo->a_inv;
+  p->gpart->v_full[2] = xp->v_full[2];
+}
+
+
 /**
  * @brief Computes the hydro time-step of a given particle
  *
@@ -1112,7 +1158,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     struct part *restrict p, struct xpart *restrict xp, float dt_therm,
     float dt_grav, float dt_grav_mesh, float dt_hydro, float dt_kick_corr,
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
-    const struct entropy_floor_properties *floor_props) {
+    const struct entropy_floor_properties *floor_props,const double time) {
 
   /* Integrate the internal energy forward in time */
   const float delta_u = p->u_dt * dt_therm;
@@ -1174,7 +1220,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
 
       
       if (delta_x>0) {
-        sin_theta = sin_theta;
+        sin_theta = 1.f * sin_theta;
       }
       if (delta_x<0) {
         sin_theta = -1.*sin_theta;
@@ -1210,7 +1256,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
         const double u_new_jet = u_init_jet + delta_u_jet;
 
         hydro_set_physical_internal_energy(p, xp, cosmo, u_new_jet);
-        hydro_set_drifted_physical_internal_energy(p, cosmo, u_new_jet);
+        hydro_set_drifted_physical_internal_energy(p, cosmo, /*pfloor=*/NULL,u_new_jet);
       }
 
       float v_norm = sqrt(v_new[0]*v_new[0]+v_new[1]*v_new[1]);
@@ -1312,7 +1358,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
         const double u_new_jet = u_init_jet + delta_u_jet;
 
         hydro_set_physical_internal_energy(p, xp, cosmo, u_new_jet);
-        hydro_set_drifted_physical_internal_energy(p, cosmo, u_new_jet);
+        hydro_set_drifted_physical_internal_energy(p, cosmo, /*pfloor=*/NULL,u_new_jet);
       }
 
       double v_norm = sqrt(v_new[0]*v_new[0] + v_new[1]*v_new[1] + v_new[2]*v_new[2]);
