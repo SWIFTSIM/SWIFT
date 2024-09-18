@@ -54,8 +54,11 @@ void space_allocate_extras(struct space *s, int verbose) {
       space_extra_sinks == 0)
     return;
 
-  /* The top-level cells */
-  const struct cell *cells = s->cells_top;
+  /* The top-level cells (in zoom land we only need the zoom cells). */
+  const struct cell *cells =
+      (s->with_zoom_region) ? s->zoom_props->zoom_cells_top : s->cells_top;
+  const int nr_cells =
+      (s->with_zoom_region) ? s->zoom_props->nr_zoom_cells : s->nr_cells;
 
   /* The current number of particles (including spare ones) */
   size_t nr_parts = s->nr_parts;
@@ -78,13 +81,13 @@ void space_allocate_extras(struct space *s, int verbose) {
   size_t size_bparts = s->size_bparts;
   size_t size_sinks = s->size_sinks;
 
-  int *local_cells = (int *)malloc(sizeof(int) * s->nr_cells);
+  int *local_cells = (int *)malloc(sizeof(int) * nr_cells);
   if (local_cells == NULL)
     error("Failed to allocate list of local top-level cells");
 
   /* List the local cells */
   size_t nr_local_cells = 0;
-  for (int i = 0; i < s->nr_cells; ++i) {
+  for (int i = 0; i < nr_cells; ++i) {
     if (s->cells_top[i].nodeID == local_nodeID) {
       local_cells[nr_local_cells] = i;
       ++nr_local_cells;
@@ -187,7 +190,7 @@ void space_allocate_extras(struct space *s, int verbose) {
     for (size_t i = 0; i < nr_actual_gparts + expected_num_extra_gparts; ++i) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-      if (current_cell == s->nr_cells)
+      if (current_cell == nr_cells)
         error("Cell counter beyond the maximal nr. cells.");
 #endif
 
@@ -286,7 +289,7 @@ void space_allocate_extras(struct space *s, int verbose) {
     for (size_t i = 0; i < nr_actual_parts + expected_num_extra_parts; ++i) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-      if (current_cell == s->nr_cells)
+      if (current_cell == nr_cells)
         error("Cell counter beyond the maximal nr. cells.");
 #endif
 
@@ -374,7 +377,7 @@ void space_allocate_extras(struct space *s, int verbose) {
     for (size_t i = 0; i < nr_actual_sinks + expected_num_extra_sinks; ++i) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-      if (current_cell == s->nr_cells)
+      if (current_cell == nr_cells)
         error("Cell counter beyond the maximal nr. cells.");
 #endif
 
@@ -463,7 +466,7 @@ void space_allocate_extras(struct space *s, int verbose) {
     for (size_t i = 0; i < nr_actual_sparts + expected_num_extra_sparts; ++i) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-      if (current_cell == s->nr_cells)
+      if (current_cell == nr_cells)
         error("Cell counter beyond the maximal nr. cells.");
 #endif
 
@@ -552,7 +555,7 @@ void space_allocate_extras(struct space *s, int verbose) {
     for (size_t i = 0; i < nr_actual_bparts + expected_num_extra_bparts; ++i) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-      if (current_cell == s->nr_cells)
+      if (current_cell == nr_cells)
         error("Cell counter beyond the maximal nr. cells.");
 #endif
 
