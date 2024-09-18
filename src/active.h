@@ -176,6 +176,10 @@ cell_are_part_drifted_rt_sub_cycle(const struct cell *c,
 __attribute__((always_inline)) INLINE static int cell_is_active_hydro(
     const struct cell *c, const struct engine *e) {
 
+  /* When in zoom land only zooms cells can ever be active for hydro. When
+   * not in zoom land we only have regular cells which can be active. */
+  if (c->type != cell_type_regular && c->type != cell_type_zoom) return 0;
+
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->hydro.ti_end_min < e->ti_current)
     error(
