@@ -74,6 +74,8 @@ void space_allocate_extras(struct space *s, int verbose) {
   size_t nr_actual_bparts = nr_bparts - s->nr_extra_bparts;
   size_t nr_actual_sinks = nr_sinks - s->nr_extra_sinks;
 
+  message("actual sparts: %ld", nr_actual_sparts);
+
   /* The number of particles we allocated memory for (MPI overhead) */
   size_t size_parts = s->size_parts;
   size_t size_gparts = s->size_gparts;
@@ -447,6 +449,10 @@ void space_allocate_extras(struct space *s, int verbose) {
       /* Update the counter */
       s->size_sparts = size_sparts;
     }
+    message("actual sparts: %ld", nr_actual_sparts);
+    message("expected sparts: %ld", expected_num_extra_sparts);
+    message("nr_local_cells: %ld", nr_local_cells);
+    message("nr_sparts: %ld", nr_sparts);
 
     /* Turn some of the allocated spares into particles we can use */
     for (size_t i = nr_sparts; i < nr_actual_sparts + expected_num_extra_sparts;
