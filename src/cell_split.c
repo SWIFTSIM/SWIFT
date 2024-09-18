@@ -471,6 +471,10 @@ void cell_split(struct cell *c, const ptrdiff_t parts_offset,
  * first #part in the global array in the space structure (for re-linking).
  */
 void cell_reorder_extra_parts(struct cell *c, const ptrdiff_t parts_offset) {
+
+  /* Only consider regular or zoom cells. */
+  if (c->type != cell_type_regular || c->type != cell_type_zoom) return;
+
   struct part *parts = c->hydro.parts;
   struct xpart *xparts = c->hydro.xparts;
   const int count_real = c->hydro.count;
@@ -524,6 +528,10 @@ void cell_reorder_extra_parts(struct cell *c, const ptrdiff_t parts_offset) {
  * re-linking).
  */
 void cell_reorder_extra_sparts(struct cell *c, const ptrdiff_t sparts_offset) {
+
+  /* Only consider regular or zoom cells. */
+  if (c->type != cell_type_regular || c->type != cell_type_zoom) return;
+
   struct spart *sparts = c->stars.parts;
   const int count_real = c->stars.count;
 
@@ -580,6 +588,10 @@ void cell_reorder_extra_sparts(struct cell *c, const ptrdiff_t sparts_offset) {
  * re-linking).
  */
 void cell_reorder_extra_sinks(struct cell *c, const ptrdiff_t sinks_offset) {
+
+  /* Only consider regular or zoom cells. */
+  if (c->type != cell_type_regular || c->type != cell_type_zoom) return;
+
   struct sink *sinks = c->sinks.parts;
   const int count_real = c->sinks.count;
 
