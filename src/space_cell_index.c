@@ -410,10 +410,8 @@ void space_sparts_get_cell_index_mapper(void *map_data, int nr_sparts,
       ind[k] = index;
       cell_counts[index]++;
       ++count_extra_spart;
-      message("Counting extra spart %d (%ld)", index, count_extra_spart);
 
     } else {
-      message("We think we have a genuine spart.");
       /* List its top-level cell index */
       ind[k] = index;
       cell_counts[index]++;
