@@ -394,6 +394,11 @@ void space_sparts_get_cell_index_mapper(void *map_data, int nr_sparts,
         pos_y < 0. || pos_z < 0.)
       error("Particle outside of simulation box. p->x=[%e %e %e]", pos_x, pos_y,
             pos_z);
+
+    /* But in zoom land we don't need to make sure only zoom cells have
+     * sparts. */
+    if (s->with_zoom_region && s->cells_top[index].type != cell_type_zoom)
+      error("Non-zoom cell has sparts.");
 #endif
 
     /* Is this particle to be removed? */
@@ -407,6 +412,7 @@ void space_sparts_get_cell_index_mapper(void *map_data, int nr_sparts,
       ++count_extra_spart;
 
     } else {
+      message("We think we have a genuine spart.");
       /* List its top-level cell index */
       ind[k] = index;
       cell_counts[index]++;
