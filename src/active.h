@@ -269,6 +269,10 @@ __attribute__((always_inline)) INLINE static int cell_is_active_gravity_mm(
 __attribute__((always_inline)) INLINE static int cell_is_active_stars(
     const struct cell *c, const struct engine *e) {
 
+  /* When in zoom land only zooms cells can ever have stars. When
+   * not in zoom land we only have regular cells which can be active. */
+  if (c->type != cell_type_regular && c->type != cell_type_zoom) return 0;
+
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->stars.ti_end_min < e->ti_current)
     error(
@@ -332,6 +336,10 @@ __attribute__((always_inline)) INLINE static int cell_need_activating_stars(
  */
 __attribute__((always_inline)) INLINE static int cell_is_active_black_holes(
     const struct cell *c, const struct engine *e) {
+
+  /* When in zoom land only zooms cells can ever have black holes. When
+   * not in zoom land we only have regular cells which can be active. */
+  if (c->type != cell_type_regular && c->type != cell_type_zoom) return 0;
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->black_holes.ti_end_min < e->ti_current)
