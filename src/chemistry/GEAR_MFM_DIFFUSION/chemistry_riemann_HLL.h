@@ -127,50 +127,51 @@ chemistry_riemann_solve_for_flux(
   /* Get the fastet wavespeed */
   const float c_fast = max3(SL, SR, Sstar);
 
-  /* Approximate lambda_plus and lambda_minus */
-  const float lambda_plus = max(uL, uR) + c_fast;
-  const float lambda_minus = min(uL, uR) - c_fast;
-
-  /* const float lambda_plus = fabsf(uL - uR) + c_fast; */
-  /* const float lambda_minus = - lambda_plus; */
+  /* Approximate lambda_plus and lambda_minus. Use velocity difference. */
+  const float lambda_plus = fabsf(uL - uR) + c_fast;
+  const float lambda_minus = - lambda_plus;
 
   if (lambda_plus == 0.f && lambda_minus == 0.f) {
     *metal_flux = 0.f;
     return;
   }
 
-  /* Compute alpha */
-  const float K_star_norm =
-      0.5 * sqrtf(3.0) * (pi->chemistry_data.kappa + pj->chemistry_data.kappa);
-  const float dx[3] = {pj->x[0] - pi->x[0], pj->x[1] - pi->x[1],
-                       pj->x[2] - pi->x[2]};
-  const float dx_norm_2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
-  const float dx_norm = sqrtf(dx_norm_2);
-  const float r = dx_norm / K_star_norm * (0.5 * fabs(uR - uL) + Sstar);
-  const float r_term = (0.2 + r) / (0.2 + r + r * r);
-  const float norm_term = 1.0 / sqrtf(3.0);
-  const float alpha = norm_term * r_term;
+  /* Project the fluxes to reduce to a 1D Problem with 1 quantity */
+  const double Flux_L = F_diff_L[0] * n_unit[0] + F_diff_L[1] * n_unit[1] +
+    F_diff_L[2] * n_unit[2];
+  const double Flux_R = F_diff_R[0] * n_unit[0] + F_diff_R[1] * n_unit[1] +
+    F_diff_R[2] * n_unit[2];
 
   /* Compute F_HLL */
   const double dU = UR - UL;
   const float one_over_dl = 1.f / (lambda_plus - lambda_minus);
-
-  /* Project to reduce to a 1D Problem with 1 quantity */
-  const double Flux_L = F_diff_L[0] * n_unit[0] + F_diff_L[1] * n_unit[1] +
-                        F_diff_L[2] * n_unit[2];
-  const double Flux_R = F_diff_R[0] * n_unit[0] + F_diff_R[1] * n_unit[1] +
-                        F_diff_R[2] * n_unit[2];
-  const double F_U = alpha * lambda_plus * lambda_minus * dU * one_over_dl;
   const double F_2 =
-      (lambda_plus * Flux_L - lambda_minus * Flux_R) * one_over_dl;
-
-  /* TODO: psi must be a user-defined parameter */
-  const double flux_hll = chemistry_minmod(
-      (1 + chem_data->hll_riemann_solver_psi) * F_2, F_2 + F_U);
+    (lambda_plus * Flux_L - lambda_minus * Flux_R) * one_over_dl;
+  double F_U = lambda_plus * lambda_minus * dU * one_over_dl;
 
   if (chem_data->use_hokpins2017_hll_riemann_solver) {
     /****************************************************************************
      * Hopkins 2017 implementation of HLL */
+    const float K_star_norm =
+      0.5 * sqrtf(3.0) * fabsf(pi->chemistry_data.kappa + pj->chemistry_data.kappa);
+    const float dx[3] = {pj->x[0] - pi->x[0], pj->x[1] - pi->x[1],
+			 pj->x[2] - pi->x[2]};
+    const float dx_norm_2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+    const float dx_norm = sqrtf(dx_norm_2);
+    const float r = dx_norm / K_star_norm * (0.5 * fabs(uR - uL) + Sstar);
+    const float r_term = (0.2 + r) / (0.2 + r + r * r);
+    const float norm_term = 1.0 / sqrtf(3.0);
+    const float alpha = norm_term * r_term;
+
+    /* Multiply by alpha in Hopkins' HLL version */
+    /* This is needed, this ensures we are not overdiffusing */
+    F_U *= alpha;
+
+    /* The minmod is too restrictive in the diffusion */
+    /* const double flux_hll = chemistry_minmod( */
+					     /* (1 + chem_data->hll_riemann_solver_psi) * F_2, F_2 + F_U); */
+    const float flux_hll = F_2 + F_U;
+
     /* Compute the direct fluxes */
     const double qi = chemistry_part_get_metal_density(pi, g);
     const double qj = chemistry_part_get_metal_density(pj, g);
@@ -204,7 +205,7 @@ chemistry_riemann_solve_for_flux(
   } else {
     /***************************************************************************
      * Simple HLL (compute F_diff_ij^*) */
-    *metal_flux = flux_hll;
+    *metal_flux = F_2 + F_U;
   }
 }
 
