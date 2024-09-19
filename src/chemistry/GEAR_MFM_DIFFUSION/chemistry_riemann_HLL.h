@@ -85,47 +85,12 @@ chemistry_riemann_solve_for_flux(
   /* STEP 0: obtain velocity in interface frame */
   const float uL = WL[1] * n_unit[0] + WL[2] * n_unit[1] + WL[3] * n_unit[2];
   const float uR = WR[1] * n_unit[0] + WR[2] * n_unit[1] + WR[3] * n_unit[2];
-  const float rhoLinv = (WL[0] > 0.0f) ? 1.0f / WL[0] : 0.0f;
-  const float rhoRinv = (WR[0] > 0.0f) ? 1.0f / WR[0] : 0.0f;
-  const float aL = sqrtf(hydro_gamma * WL[4] / rhoLinv);
-  const float aR = sqrtf(hydro_gamma * WR[4] / rhoRinv);
 
-  /* Handle vacuum: vacuum does not require iteration and is always exact */
-  if (chemistry_riemann_is_vacuum(WL[0], WR[0], uL, uR, aL, aR)) {
-    *metal_flux = 0.0f;
-    return;
-  }
-
-  /* STEP 1: pressure estimate */
-  const float rhobar = WL[0] + WR[0];
-  const float abar = aL + aR;
-  const float pPVRS =
-      0.5f * ((WL[4] + WR[4]) - 0.25f * (uR - uL) * rhobar * abar);
-  const float pstar = max(0.f, pPVRS);
-
-  /* STEP 2: wave speed estimates
-     all these speeds are along the interface normal, since uL and uR are */
-  float qL = 1.0f;
-  if (pstar > WL[4] && WL[4] > 0.0f) {
-    qL = sqrtf(1.0f + 0.5f * hydro_gamma_plus_one * hydro_one_over_gamma *
-                          (pstar / WL[4] - 1.0f));
-  }
-  float qR = 1.0f;
-  if (pstar > WR[4] && WR[4] > 0.0f) {
-    qR = sqrtf(1.0f + 0.5f * hydro_gamma_plus_one * hydro_one_over_gamma *
-                          (pstar / WR[4] - 1.0f));
-  }
-  const float SLmuL = -aL * qL;
-  const float SRmuR = aR * qR;
-  const float Sstar =
-      (WR[4] - WL[4] + WL[0] * uL * SLmuL - WR[0] * uR * SRmuR) /
-      (WL[0] * SLmuL - WR[0] * SRmuR);
-
-  const float SL = uL - aL * qL;
-  const float SR = uR - aR * qR;
-
-  /* Get the fastet wavespeed */
-  const float c_fast = max3(SL, SR, Sstar);
+  /* Get the fastet speed of sound */
+  /* Think about comoving vs physical units */
+  const float c_s_L = hydro_get_comoving_soundspeed(pi);
+  const float c_s_R = hydro_get_comoving_soundspeed(pj);
+  const float c_fast = max(c_s_L, c_s_R);
 
   /* Approximate lambda_plus and lambda_minus. Use velocity difference. */
   const float lambda_plus = fabsf(uL - uR) + c_fast;
@@ -159,10 +124,14 @@ chemistry_riemann_solve_for_flux(
                          pj->x[2] - pi->x[2]};
     const float dx_norm_2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
     const float dx_norm = sqrtf(dx_norm_2);
-    const float r = dx_norm / K_star_norm * (0.5 * fabs(uR - uL) + Sstar);
+    const float c_fast_star = 0.5*(c_s_L + c_s_R);
+    const float r = dx_norm / K_star_norm * (0.5 * fabs(uR - uL) + c_fast_star);
     const float r_term = (0.2 + r) / (0.2 + r + r * r);
     const float norm_term = 1.0 / sqrtf(3.0);
     const float alpha = norm_term * r_term;
+
+    /* Notice that the norm(U) and norm(q) are for U = (metal_1, metal_2,
+       etc), the same for norm(grad otimes q) */
 
     /* Multiply by alpha in Hopkins' HLL version */
     /* This is needed, this ensures we are not overdiffusing */
@@ -197,7 +166,7 @@ chemistry_riemann_solve_for_flux(
 
     /* Now, choose the righ flux to get F_diff_ij^* */
     const double epsilon = chem_data->hll_riemann_solver_epsilon;
-    if ((SIGN(F_times_A_dir) != SIGN(F_HLL_times_A)) &&
+    if (F_times_A_dir * F_HLL_times_A < 0 &&
         fabs(F_times_A_dir) > epsilon * fabs(F_HLL_times_A)) {
       *metal_flux = 0;
     } else {
