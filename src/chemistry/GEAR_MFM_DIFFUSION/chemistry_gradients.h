@@ -90,6 +90,7 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_collect(
   const float qj = r * hj_inv;
   kernel_deval(qj, &wj, &wj_dx);
 
+  /*****************************************/
   /* Compute psi tilde */
   float psii_tilde[3];
   if (chemistry_part_geometry_well_behaved(pi)) {
@@ -121,6 +122,8 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_collect(
     psij_tilde[2] = norm * dx[2];
   }
 
+  /*****************************************/
+  /* Update diffusion gradients */
   for (int g = 0; g < GEAR_CHEMISTRY_ELEMENT_COUNT; g++) {
 
     double Ui, Uj;
@@ -139,8 +142,7 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_collect(
     dF_i[1] = dU * psii_tilde[1];
     dF_i[2] = dU * psii_tilde[2];
 
-    chemistry_part_update_gradients(pi, g, dF_i);
-    chemistry_slope_limit_cell_collect(pi, pj, r, g);
+    chemistry_part_update_diffusion_gradients(pi, g, dF_i);
 
     /* Now do the gradients of pj */
     double dF_j[3];
@@ -151,9 +153,48 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_collect(
     dF_j[1] = dU * psij_tilde[1];
     dF_j[2] = dU * psij_tilde[2];
 
-    chemistry_part_update_gradients(pj, g, dF_j);
-    chemistry_slope_limit_cell_collect(pj, pi, r, g);
+    chemistry_part_update_diffusion_gradients(pj, g, dF_j);
   }
+
+  /*****************************************/
+  /* Update velocity gradients */
+  const float dv[5] = {pi->v[0] - pj->v[0], pi->v[1] - pj->v[1],
+                       pi->v[2] - pj->v[2]};
+
+  /* Compute velocity gradients for pi */
+  float dvx_i[3], dvy_i[3], dvz_i[3];
+
+  dvx_i[0] = dv[0] * psii_tilde[0];
+  dvx_i[1] = dv[0] * psii_tilde[1];
+  dvx_i[2] = dv[0] * psii_tilde[2];
+  dvy_i[0] = dv[1] * psii_tilde[0];
+  dvy_i[1] = dv[1] * psii_tilde[1];
+  dvy_i[2] = dv[1] * psii_tilde[2];
+  dvz_i[0] = dv[2] * psii_tilde[0];
+  dvz_i[1] = dv[2] * psii_tilde[1];
+  dvz_i[2] = dv[2] * psii_tilde[2];
+
+  chemistry_part_update_velocity_gradients(pi, dvx_i, dvy_i, dvz_i);
+
+  /* Compute velocity gradients for pj */
+  float dvx_j[3], dvy_j[3], dvz_j[3];
+
+  dvx_j[0] = dv[0] * psii_tilde[0];
+  dvx_j[1] = dv[0] * psii_tilde[1];
+  dvx_j[2] = dv[0] * psii_tilde[2];
+  dvy_j[0] = dv[1] * psii_tilde[0];
+  dvy_j[1] = dv[1] * psii_tilde[1];
+  dvy_j[2] = dv[1] * psii_tilde[2];
+  dvz_j[0] = dv[2] * psii_tilde[0];
+  dvz_j[1] = dv[2] * psii_tilde[1];
+  dvz_j[2] = dv[2] * psii_tilde[2];
+
+  chemistry_part_update_velocity_gradients(pj, dvx_j, dvy_j, dvz_j);
+
+  /*****************************************/
+  /* Collect the cell's min and max for the slope limiter. */
+  chemistry_slope_limit_cell_collect(pi, pj, r);
+  chemistry_slope_limit_cell_collect(pj, pi, r);
 }
 
 /**
@@ -193,6 +234,7 @@ chemistry_gradients_nonsym_collect(float r2, const float *dx, float hi,
   /* factor 1/omega for psi is swallowed in matrix */
   kernel_deval(qi, &wi, &wi_dx);
 
+  /*****************************************/
   /* Compute psi tilde */
   float psii_tilde[3];
   if (chemistry_part_geometry_well_behaved(pi)) {
@@ -209,6 +251,8 @@ chemistry_gradients_nonsym_collect(float r2, const float *dx, float hi,
     psii_tilde[2] = norm * dx[2];
   }
 
+  /*****************************************/
+  /* Update diffusion gradients */
   for (int g = 0; g < GEAR_CHEMISTRY_ELEMENT_COUNT; g++) {
 
     double Ui, Uj;
@@ -225,9 +269,32 @@ chemistry_gradients_nonsym_collect(float r2, const float *dx, float hi,
     dF_i[1] = dU * psii_tilde[1];
     dF_i[2] = dU * psii_tilde[2];
 
-    chemistry_part_update_gradients(pi, g, dF_i);
-    chemistry_slope_limit_cell_collect(pi, pj, r, g);
+    chemistry_part_update_diffusion_gradients(pi, g, dF_i);
   }
+
+  /*****************************************/
+  /* Update velocity gradients */
+  const float dv[5] = {pi->v[0] - pj->v[0], pi->v[1] - pj->v[1],
+                       pi->v[2] - pj->v[2]};
+
+  /* Compute velocity gradients for pi */
+  float dvx_i[3], dvy_i[3], dvz_i[3];
+
+  dvx_i[0] = dv[0] * psii_tilde[0];
+  dvx_i[1] = dv[0] * psii_tilde[1];
+  dvx_i[2] = dv[0] * psii_tilde[2];
+  dvy_i[0] = dv[1] * psii_tilde[0];
+  dvy_i[1] = dv[1] * psii_tilde[1];
+  dvy_i[2] = dv[1] * psii_tilde[2];
+  dvz_i[0] = dv[2] * psii_tilde[0];
+  dvz_i[1] = dv[2] * psii_tilde[1];
+  dvz_i[2] = dv[2] * psii_tilde[2];
+
+  chemistry_part_update_velocity_gradients(pi, dvx_i, dvy_i, dvz_i);
+
+  /*****************************************/
+  /* Collect the cell's min and max for the slope limiter. */
+  chemistry_slope_limit_cell_collect(pi, pj, r);
 }
 
 /**
@@ -252,9 +319,8 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_finalise(
     norm = hinvdimp1 * volume;
   }
 
-  for (int g = 0; g < GEAR_CHEMISTRY_ELEMENT_COUNT; g++) {
-    chemistry_part_normalise_gradients(p, g, norm);
-  }
+  /* Normalise the gradients */
+  chemistry_part_normalise_gradients(p, norm);
 
   /* Limit the cell gradients */
   chemistry_slope_limit_cell(p);
@@ -270,6 +336,20 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_finalise(
  */
 __attribute__((always_inline)) INLINE static double
 chemistry_gradients_extrapolate(const double gradient[3], const float dx[3]) {
+  return gradient[0] * dx[0] + gradient[1] * dx[1] + gradient[2] * dx[2];
+}
+
+/**
+ * @brief Extrapolate the given gradient over the given distance. Float version.
+ *
+ * @param gradient Gradient of a quantity.
+ * @param dx Distance vector.
+ * @return Change in the quantity after a displacement along the given distance
+ * vector.
+ */
+__attribute__((always_inline)) INLINE static float
+chemistry_gradients_extrapolate_float(const float gradient[3],
+                                      const float dx[3]) {
   return gradient[0] * dx[0] + gradient[1] * dx[1] + gradient[2] * dx[2];
 }
 
@@ -306,8 +386,8 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
 
   double dF_i[3];
   double dF_j[3];
-  chemistry_part_get_gradients(pi, group, dF_i);
-  chemistry_part_get_gradients(pj, group, dF_j);
+  chemistry_part_get_diffusion_gradients(pi, group, dF_i);
+  chemistry_part_get_diffusion_gradients(pj, group, dF_j);
 
   /* Compute interface position (relative to pj, since we don't need the actual
    * position) eqn. (8)
@@ -344,6 +424,59 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
     /* *Uj = pj->rho * m_Zj / hydro_get_mass(pj); */
     *Uj = m_Zj / pj->chemistry_data.geometry.volume;
   }
+}
+
+/**
+ * @brief Velocity gradients reconstruction. Predict the value at point x_ij
+ * given current values at particle positions and gradients at particle
+ * positions.
+ *
+ * @param pi Particle i
+ * @param pj Particle j
+ * @param Wi (return) Resulting predicted and limited state of particle i.
+ * @param Wj (return) Resulting predicted and limited state of particle j.
+ * @param dx Comoving distance vector between the particles (dx = pi->x -
+ * pj->x).
+ * @param r Comoving distance between particle i and particle j.
+ * @param xij_i Position of the "interface" w.r.t. position of particle i
+ */
+__attribute__((always_inline)) INLINE static void
+chemistry_gradients_predict_velocity(struct part *restrict pi,
+                                     struct part *restrict pj, float hi,
+                                     float hj, const float dx[3], float r,
+                                     const float xij_i[3], float Wi[5],
+                                     float Wj[5]) {
+
+  /* Perform gradient reconstruction in space and time */
+  /* Compute interface position (relative to pj, since we don't need the actual
+   * position) eqn. (8) */
+  const float xij_j[3] = {xij_i[0] + dx[0], xij_i[1] + dx[1], xij_i[2] + dx[2]};
+
+  float dvx_i[3], dvy_i[3], dvz_i[3];
+  float dvx_j[3], dvy_j[3], dvz_j[3];
+  chemistry_part_get_velocity_gradients(pi, dvx_i, dvy_i, dvz_i);
+  chemistry_part_get_velocity_gradients(pj, dvx_j, dvy_j, dvz_j);
+
+  float dvi[3];
+  dvi[0] = chemistry_gradients_extrapolate_float(dvx_i, xij_i);
+  dvi[1] = chemistry_gradients_extrapolate_float(dvy_i, xij_i);
+  dvi[2] = chemistry_gradients_extrapolate_float(dvz_i, xij_i);
+
+  float dvj[3];
+  dvj[0] = chemistry_gradients_extrapolate_float(dvx_j, xij_j);
+  dvj[1] = chemistry_gradients_extrapolate_float(dvy_j, xij_j);
+  dvj[2] = chemistry_gradients_extrapolate_float(dvz_j, xij_j);
+
+  /* Apply the slope limiter at this interface */
+  chemistry_slope_limit_face_velocity(Wi, Wj, dvi, dvj, xij_i, xij_j, r);
+
+  Wi[1] += dvi[0];
+  Wi[2] += dvi[1];
+  Wi[3] += dvi[2];
+
+  Wj[1] += dvj[0];
+  Wj[2] += dvj[1];
+  Wj[3] += dvj[2];
 }
 
 #endif /* SWIFT_CHEMISTRY_GEAR_CHEMISTRY_GRADIENTS_H */
