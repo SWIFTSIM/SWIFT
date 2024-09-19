@@ -159,4 +159,100 @@ __attribute__((always_inline)) INLINE static void chemistry_slope_limit_face(
   chemistry_limiter_minmod(dUi, dUj);
 }
 
+/**
+ * @brief Slope limit a single quantity at the interface
+ *
+ * @param phi_i Value of the quantity at the particle position.
+ * @param phi_j Value of the quantity at the neighbouring particle position.
+ * @param phi_mid0 Extrapolated value of the quantity at the interface position.
+ * @param xij_norm Distance between the particle position and the interface
+ * position.
+ * @param r Distance between the particle and its neighbour.
+ * @return The slope limited difference between the quantity at the particle
+ * position and the quantity at the interface position.
+ */
+__attribute__((always_inline)) INLINE static float
+chemistry_slope_limit_face_quantity_float(float phi_i, float phi_j,
+                                          float phi_mid0, float xij_norm,
+                                          float r_inv) {
+
+  const float psi1 = 0.5f;
+  const float psi2 = 0.25f;
+
+  const float delta1 = psi1 * fabsf(phi_i - phi_j);
+  const float delta2 = psi2 * fabsf(phi_i - phi_j);
+
+  const float phimin = min(phi_i, phi_j);
+  const float phimax = max(phi_i, phi_j);
+
+  const float phibar = phi_i + xij_norm * r_inv * (phi_j - phi_i);
+
+  float phiplus, phiminus, phi_mid;
+
+  if (same_signf(phimax + delta1, phimax)) {
+    phiplus = phimax + delta1;
+  } else {
+    phiplus =
+        (phimax != 0.0f) ? phimax / (1.0f + delta1 / fabsf(phimax)) : 0.0f;
+  }
+
+  if (same_signf(phimin - delta1, phimin)) {
+    phiminus = phimin - delta1;
+  } else {
+    phiminus =
+        (phimin != 0.0f) ? phimin / (1.0f + delta1 / fabsf(phimin)) : 0.0f;
+  }
+
+  if (phi_i < phi_j) {
+    const float temp = min(phibar + delta2, phi_mid0);
+    phi_mid = max(phiminus, temp);
+  } else {
+    const float temp = max(phibar - delta2, phi_mid0);
+    phi_mid = min(phiplus, temp);
+  }
+
+  return phi_mid - phi_i;
+}
+
+/**
+ * @brief Slope limit the slopes at the interface between two particles
+ *
+ * @param Wi Hydrodynamic variables of particle i.
+ * @param Wj Hydrodynamic variables of particle j.
+ * @param dWi Difference between the hydrodynamic variables of particle i at the
+ * position of particle i and at the interface position.
+ * @param dWj Difference between the hydrodynamic variables of particle j at the
+ * position of particle j and at the interface position.
+ * @param xij_i Relative position vector of the interface w.r.t. particle i.
+ * @param xij_j Relative position vector of the interface w.r.t. partilce j.
+ * @param r Distance between particle i and particle j.
+ */
+__attribute__((always_inline)) INLINE static void
+chemistry_slope_limit_face_velocity(float *Wi, float *Wj, float *dWi,
+                                    float *dWj, const float *xij_i,
+                                    const float *xij_j, float r) {
+
+  const float xij_i_norm =
+      sqrtf(xij_i[0] * xij_i[0] + xij_i[1] * xij_i[1] + xij_i[2] * xij_i[2]);
+
+  const float xij_j_norm =
+      sqrtf(xij_j[0] * xij_j[0] + xij_j[1] * xij_j[1] + xij_j[2] * xij_j[2]);
+
+  const float r_inv = (r > 0.0f) ? 1.0f / r : 0.0f;
+
+  dWi[0] = chemistry_slope_limit_face_quantity_float(
+      Wi[1], Wj[1], Wi[1] + dWi[0], xij_i_norm, r_inv);
+  dWi[1] = chemistry_slope_limit_face_quantity_float(
+      Wi[2], Wj[2], Wi[2] + dWi[1], xij_i_norm, r_inv);
+  dWi[2] = chemistry_slope_limit_face_quantity_float(
+      Wi[3], Wj[3], Wi[3] + dWi[2], xij_i_norm, r_inv);
+
+  dWj[0] = chemistry_slope_limit_face_quantity_float(
+      Wj[1], Wi[1], Wj[1] + dWj[0], xij_j_norm, r_inv);
+  dWj[1] = chemistry_slope_limit_face_quantity_float(
+      Wj[2], Wi[2], Wj[2] + dWj[1], xij_j_norm, r_inv);
+  dWj[2] = chemistry_slope_limit_face_quantity_float(
+      Wj[3], Wi[3], Wj[3] + dWj[2], xij_j_norm, r_inv);
+}
+
 #endif /* SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_SLOPE_LIMITERS_FACE_H */
