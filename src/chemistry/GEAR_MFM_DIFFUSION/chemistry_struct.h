@@ -86,19 +86,28 @@ struct chemistry_part_data {
 
   /* Gradients. */
   struct {
-    /* This is \nabla \otimes \vec{q}. It is used to compute the diffusion flux
+    /* Gradient of the metals. It is used to compute the diffusion flux.
      */
-    double nabla_otimes_q[3];
-  } gradients[GEAR_CHEMISTRY_ELEMENT_COUNT];
+    double nabla_otimes_q[GEAR_CHEMISTRY_ELEMENT_COUNT][3];
+
+    /* Fluid velocity gradients. */
+    float v[3][3];
+
+  } gradients;
 
   struct {
-    double metal_density[2];
-  } limiter[GEAR_CHEMISTRY_ELEMENT_COUNT];
+    /* Extreme values of the fluid metal_density among the neighbours. */
+    double metal_density[GEAR_CHEMISTRY_ELEMENT_COUNT][2];
 
-  /* we only need one maxr. Hence, put it outside the limiter struct */
-  float limiter_maxr;
+    /* Extreme values of the fluid velocity among the neighbours. */
+    float v[3][2];
 
-  /* Geometrical quantities used for MFM hydro. */
+    /* Maximal distance to all neighbouring faces. */
+    float maxr;
+
+  } limiter;
+
+  /* Geometrical quantities used for MFM/V hydro. */
   struct {
 
     /* Volume of the particle. */
@@ -113,6 +122,7 @@ struct chemistry_part_data {
 
     /* Condition number of matrix_E (eq C1) */
     float condition_number;
+
   } geometry;
 
   /* Particle chemistry time-step. */
