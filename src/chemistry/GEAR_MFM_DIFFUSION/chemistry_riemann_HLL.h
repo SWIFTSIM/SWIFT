@@ -129,7 +129,7 @@ chemistry_riemann_solve_for_flux(
 
   /* Approximate lambda_plus and lambda_minus. Use velocity difference. */
   const float lambda_plus = fabsf(uL - uR) + c_fast;
-  const float lambda_minus = - lambda_plus;
+  const float lambda_minus = -lambda_plus;
 
   if (lambda_plus == 0.f && lambda_minus == 0.f) {
     *metal_flux = 0.f;
@@ -138,24 +138,25 @@ chemistry_riemann_solve_for_flux(
 
   /* Project the fluxes to reduce to a 1D Problem with 1 quantity */
   const double Flux_L = F_diff_L[0] * n_unit[0] + F_diff_L[1] * n_unit[1] +
-    F_diff_L[2] * n_unit[2];
+                        F_diff_L[2] * n_unit[2];
   const double Flux_R = F_diff_R[0] * n_unit[0] + F_diff_R[1] * n_unit[1] +
-    F_diff_R[2] * n_unit[2];
+                        F_diff_R[2] * n_unit[2];
 
   /* Compute F_HLL */
   const double dU = UR - UL;
   const float one_over_dl = 1.f / (lambda_plus - lambda_minus);
   const double F_2 =
-    (lambda_plus * Flux_L - lambda_minus * Flux_R) * one_over_dl;
+      (lambda_plus * Flux_L - lambda_minus * Flux_R) * one_over_dl;
   double F_U = lambda_plus * lambda_minus * dU * one_over_dl;
 
   if (chem_data->use_hokpins2017_hll_riemann_solver) {
     /****************************************************************************
      * Hopkins 2017 implementation of HLL */
     const float K_star_norm =
-      0.5 * sqrtf(3.0) * fabsf(pi->chemistry_data.kappa + pj->chemistry_data.kappa);
+        0.5 * sqrtf(3.0) *
+        fabsf(pi->chemistry_data.kappa + pj->chemistry_data.kappa);
     const float dx[3] = {pj->x[0] - pi->x[0], pj->x[1] - pi->x[1],
-			 pj->x[2] - pi->x[2]};
+                         pj->x[2] - pi->x[2]};
     const float dx_norm_2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
     const float dx_norm = sqrtf(dx_norm_2);
     const float r = dx_norm / K_star_norm * (0.5 * fabs(uR - uL) + Sstar);
@@ -169,7 +170,7 @@ chemistry_riemann_solve_for_flux(
 
     /* The minmod is too restrictive in the diffusion */
     /* const double flux_hll = chemistry_minmod( */
-					     /* (1 + chem_data->hll_riemann_solver_psi) * F_2, F_2 + F_U); */
+    /* (1 + chem_data->hll_riemann_solver_psi) * F_2, F_2 + F_U); */
     const float flux_hll = F_2 + F_U;
 
     /* Compute the direct fluxes */
