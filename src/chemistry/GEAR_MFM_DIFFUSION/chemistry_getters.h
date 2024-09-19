@@ -70,9 +70,9 @@ chemistry_part_compute_diffusion_flux(const struct part *restrict p, int metal,
 
   /* For isotropic diffusion, \grad U = \nabla \otimes q = \grad n_Z.
      Note: K = kappa * I_3 for isotropic diffusion. */
-  F_diff[0] = -kappa * p->chemistry_data.gradients[metal].nabla_otimes_q[0];
-  F_diff[1] = -kappa * p->chemistry_data.gradients[metal].nabla_otimes_q[1];
-  F_diff[2] = -kappa * p->chemistry_data.gradients[metal].nabla_otimes_q[2];
+  F_diff[0] = -kappa * p->chemistry_data.gradients.nabla_otimes_q[metal][0];
+  F_diff[1] = -kappa * p->chemistry_data.gradients.nabla_otimes_q[metal][1];
+  F_diff[2] = -kappa * p->chemistry_data.gradients.nabla_otimes_q[metal][2];
 }
 
 /**
@@ -80,15 +80,42 @@ chemistry_part_compute_diffusion_flux(const struct part *restrict p, int metal,
  *
  * @param p Particle.
  * @param metal Index of metal specie
- * @param dFx (return) Array to write flux component gradient into
+ * @param dvx x velocity gradient (of size 3 or more).
+ * @param dvy y velocity gradient (of size 3 or more).
+ * @param dvz z velocity gradient (of size 3 or more).
  */
-__attribute__((always_inline)) INLINE static void chemistry_part_get_gradients(
-    const struct part *restrict p, int metal, double dF[3]) {
+__attribute__((always_inline)) INLINE static void
+chemistry_part_get_diffusion_gradients(const struct part *restrict p, int metal,
+                                       double dF[3]) {
 
   /* For isotropic diffusion, \grad U = \nabla \otimes q = \grad n_Z */
-  dF[0] = p->chemistry_data.gradients[metal].nabla_otimes_q[0];
-  dF[1] = p->chemistry_data.gradients[metal].nabla_otimes_q[1];
-  dF[2] = p->chemistry_data.gradients[metal].nabla_otimes_q[2];
+  dF[0] = p->chemistry_data.gradients.nabla_otimes_q[metal][0];
+  dF[1] = p->chemistry_data.gradients.nabla_otimes_q[metal][1];
+  dF[2] = p->chemistry_data.gradients.nabla_otimes_q[metal][2];
+}
+
+/**
+ * @brief Get the velocity gradients.
+ *
+ * @param p Particle.
+ * @param dvx x velocity gradient (of size 3 or more).
+ * @param dvy y velocity gradient (of size 3 or more).
+ * @param dvz z velocity gradient (of size 3 or more).
+ */
+__attribute__((always_inline)) INLINE static void
+chemistry_part_get_velocity_gradients(const struct part *restrict p,
+                                      float dvx[3], float dvy[3],
+                                      float dvz[3]) {
+
+  dvx[0] = p->chemistry_data.gradients.v[0][0];
+  dvx[1] = p->chemistry_data.gradients.v[0][1];
+  dvx[2] = p->chemistry_data.gradients.v[0][2];
+  dvy[0] = p->chemistry_data.gradients.v[1][0];
+  dvy[1] = p->chemistry_data.gradients.v[1][1];
+  dvy[2] = p->chemistry_data.gradients.v[1][2];
+  dvz[0] = p->chemistry_data.gradients.v[2][0];
+  dvz[1] = p->chemistry_data.gradients.v[2][1];
+  dvz[2] = p->chemistry_data.gradients.v[2][2];
 }
 
 /**
@@ -149,8 +176,8 @@ chemistry_compute_parabolic_timestep(const struct part *restrict p) {
 
     for (int j = 0; j < 3; j++) {
       /* Compute the Froebnius norm of \nabla \otimes q */
-      norm_nabla_otimes_q += chd.gradients[i].nabla_otimes_q[j] *
-                             chd.gradients[i].nabla_otimes_q[j];
+      norm_nabla_otimes_q += chd.gradients.nabla_otimes_q[i][j] *
+                             chd.gradients.nabla_otimes_q[i][j];
     }
   }
   /* Take the sqrt and divide by the volume to get a density */
@@ -158,8 +185,8 @@ chemistry_compute_parabolic_timestep(const struct part *restrict p) {
 
   /* If the norm of q (metal density = 0), then use the following formula */
   if (norm_q == 0) {
-    warning("norm q = 0");
-    return delta_x*delta_x / norm_matrix_K;
+    /* warning("norm q = 0"); */
+    return delta_x * delta_x / norm_matrix_K;
   }
 
   /* Take the sqrt to get the norm */
@@ -196,8 +223,8 @@ chemistry_compute_supertimestep(const struct part *restrict p,
 
     for (int j = 0; j < 3; j++) {
       /* Compute the Froebnius norm of \nabla \otimes q */
-      norm_nabla_otimes_q += chd.gradients[i].nabla_otimes_q[j] *
-                             chd.gradients[i].nabla_otimes_q[j];
+      norm_nabla_otimes_q += chd.gradients.nabla_otimes_q[i][j] *
+                             chd.gradients.nabla_otimes_q[i][j];
     }
   }
 
@@ -233,8 +260,8 @@ chemistry_compute_subtimestep(const struct part *restrict p,
  * @param p Particle.
  */
 __attribute__((always_inline)) INLINE static float
-chemistry_compute_minimal_timestep_from_all_modules(const struct part *restrict p,
-                              const struct chemistry_global_data *cd) {
+chemistry_compute_minimal_timestep_from_all_modules(
+    const struct part *restrict p, const struct chemistry_global_data *cd) {
   /* Don't do this. Create a fct that does get_part_timestep() first part
      (without integer time conversion) without chemistry. Then call
      chemistry_timestep(), do supertimestepping here. Finally, take the
