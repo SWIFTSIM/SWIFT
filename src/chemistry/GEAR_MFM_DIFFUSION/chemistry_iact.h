@@ -296,7 +296,7 @@ runner_iact_chemistry_fluxes_common(
   }
 #endif
 
-  /* compute the normal vector of the interface */
+  /* Compute the normal vector of the interface */
   const float n_unit[3] = {A[0] * Anorm_inv, A[1] * Anorm_inv,
                            A[2] * Anorm_inv};
 
@@ -310,14 +310,44 @@ runner_iact_chemistry_fluxes_common(
   const float mindt =
       (chj->flux_dt > 0.f) ? fminf(chi->flux_dt, chj->flux_dt) : chi->flux_dt;
 
+  /*****************************************/
+  /* Predict the velocity at the interface to compute fluxes */
+  /* Get the hydro W_L and W_R */
+  float vi[3] = {pi->v[0], pi->v[1], pi->v[2]};
+  float vj[3] = {pj->v[0], pj->v[1], pj->v[2]};
+
+  /* Compute interface velocity */
+  const float vij[3] = {vi[0] + (vi[0] - vj[0]) * xfac,
+                        vi[1] + (vi[1] - vj[1]) * xfac,
+                        vi[2] + (vi[2] - vj[2]) * xfac};
+
+  /* Get the primitive variable of Euler eq */
+  float Wi[5] = {pi->rho, vi[0], vi[1], vi[2], hydro_get_comoving_pressure(pi)};
+  float Wj[5] = {pj->rho, vj[0], vj[1], vj[2], hydro_get_comoving_pressure(pj)};
+
+  chemistry_gradients_predict_velocity(pi, pj, hi, hj, dx, r, xij_i, Wi, Wj);
+
+  /* Boost the primitive variables to the frame of reference of the interface */
+  /* Note that velocities are indices 1-3 in W */
+  /* Note: This is necessary to properly follow the fluid motion. */
+  Wi[1] -= vij[0];
+  Wi[2] -= vij[1];
+  Wi[3] -= vij[2];
+  Wj[1] -= vij[0];
+  Wj[2] -= vij[1];
+  Wj[3] -= vij[2];
+
+  /*****************************************/
+  /* Now solve the Riemann problem for each metal specie */
   for (int g = 0; g < GEAR_CHEMISTRY_ELEMENT_COUNT; g++) {
-    /* Diffusion state to be used to compute the flux */
+
+    /* Predict the diffusion state at the interface to compute fluxes */
     double Ui, Uj;
     chemistry_gradients_predict(pi, pj, &Ui, &Uj, g, dx, r, xij_i);
 
     /* Solve the 1D Riemann problem at the interface A_ij */
     double totflux;
-    chemistry_compute_flux(pi, pj, Ui, Uj, n_unit, Anorm, g, &totflux,
+    chemistry_compute_flux(pi, pj, Ui, Uj, Wi, Wj, n_unit, Anorm, g, &totflux,
                            chem_data);
 
     /* When solving the Riemann problem, we assume pi is left state, and
