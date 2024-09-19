@@ -55,52 +55,39 @@ __attribute__((always_inline)) INLINE void chemistry_part_get_fluxes(
  * @brief Compute the flux for the Riemann problem with the given left and right
  * state, and interface normal, surface area and velocity.
  *
+ * @param pi The #part pi.
+ * @param pj The #part pj.
+ * @param UL Left diffusion state variables.
+ * @param UR Right diffusion state variables.
  * @param WL Left state variables.
  * @param WR Right state variables.
  * @param n_unit Unit vector of the interface.
- * @param vLR Velocity of the interface.
  * @param Anorm Surface area of the interface.
- * @param fluxes Array to store the result in (of size 5 or more).
+ * @param metal Metal specie.
+ * @param metal_flux Array to store the result in (of size 1).
  */
 __attribute__((always_inline)) INLINE static void chemistry_compute_flux(
     const struct part* restrict pi, const struct part* restrict pj,
-    const double UL, const double UR, const float n_unit[3], const float Anorm,
-    int g, double* metal_flux, const struct chemistry_global_data* chem_data) {
+    const double UL, const double UR, const float WL[5], const float WR[5],
+    const float n_unit[3], const float Anorm, int metal, double* metal_flux,
+    const struct chemistry_global_data* chem_data) {
 
   /* Note: F_diff_R and F_diff_L are computed with a first order
          reconstruction */
   /* Get the diffusion flux */
   double F_diff_i[3], F_diff_j[3];
-  chemistry_part_compute_diffusion_flux(pi, g, F_diff_i);
-  chemistry_part_compute_diffusion_flux(pj, g, F_diff_j);
+  chemistry_part_compute_diffusion_flux(pi, metal, F_diff_i);
+  chemistry_part_compute_diffusion_flux(pj, metal, F_diff_j);
 
 #ifdef SWIFT_DEBUG_CHECKS
   chemistry_check_unphysical_diffusion_flux(F_diff_i);
   chemistry_check_unphysical_diffusion_flux(F_diff_j);
 #endif
 
-  /* Get the hydro W_L and W_R */
-  float vi[3] = {pi->v[0], pi->v[1], pi->v[2]};
-  float vj[3] = {pj->v[0], pj->v[1], pj->v[2]};
-  const float xfac = -pi->h / (pi->h + pj->h);
-
-  /* Compute interface velocity */
-  /* eqn. (9) */
-  const float vij[3] = {vi[0] + (vi[0] - vj[0]) * xfac,
-                        vi[1] + (vi[1] - vj[1]) * xfac,
-                        vi[2] + (vi[2] - vj[2]) * xfac};
-
-  /* Boost the velocitie to the interface frame
-   * Note: This is necessary to properly follow the fluid motion. */
-  float WL[5] = {pi->rho, vi[0] - vij[0], vi[1] - vij[1], vi[2] - vij[2],
-                 hydro_get_comoving_pressure(pi)};
-  float WR[5] = {pj->rho, vj[0] - vij[0], vj[1] - vij[1], vj[2] - vij[2],
-                 hydro_get_comoving_pressure(pj)};
-
   /* While solving the Riemann problem, we shall get a scalar because of the
      scalar product betwee F_diff_ij^* and A_ij */
   chemistry_riemann_solve_for_flux(pi, pj, UL, UR, WL, WR, F_diff_i, F_diff_j,
-                                   Anorm, n_unit, g, metal_flux, chem_data);
+                                   Anorm, n_unit, metal, metal_flux, chem_data);
 
   *metal_flux *= Anorm;
 }
