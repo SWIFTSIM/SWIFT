@@ -43,11 +43,18 @@ __attribute__((always_inline)) INLINE static void
 chemistry_slope_limit_cell_init(struct part* p) {
 
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
-    p->chemistry_data.limiter[i].metal_density[0] = FLT_MAX;
-    p->chemistry_data.limiter[i].metal_density[1] = -FLT_MAX;
+    p->chemistry_data.limiter.metal_density[i][0] = FLT_MAX;
+    p->chemistry_data.limiter.metal_density[i][1] = -FLT_MAX;
   }
 
-  p->chemistry_data.limiter_maxr = -FLT_MAX;
+  p->chemistry_data.limiter.v[0][0] = FLT_MAX;
+  p->chemistry_data.limiter.v[0][1] = -FLT_MAX;
+  p->chemistry_data.limiter.v[1][0] = FLT_MAX;
+  p->chemistry_data.limiter.v[1][1] = -FLT_MAX;
+  p->chemistry_data.limiter.v[2][0] = FLT_MAX;
+  p->chemistry_data.limiter.v[2][1] = -FLT_MAX;
+
+  p->chemistry_data.limiter.maxr = -FLT_MAX;
 }
 
 /**
@@ -57,24 +64,37 @@ chemistry_slope_limit_cell_init(struct part* p) {
  * @param pi Particle i.
  * @param pj Particle j.
  * @param r Distance between particle i and particle j
- * @param i Metal.
  */
 __attribute__((always_inline)) INLINE static void
-chemistry_slope_limit_cell_collect(struct part* pi, struct part* pj, float r,
-                                   int i) {
+chemistry_slope_limit_cell_collect(struct part* pi, struct part* pj, float r) {
 
   struct chemistry_part_data* chdi = &pi->chemistry_data;
 
   /* Basic slope limiter: collect the maximal and the minimal value for the
    * primitive variables among the ngbs */
-  chdi->limiter[i].metal_density[0] =
-      min(chemistry_part_get_metal_density(pi, i),
-          chdi->limiter[i].metal_density[0]);
-  chdi->limiter[i].metal_density[1] =
-      max(chemistry_part_get_metal_density(pj, i),
-          chdi->limiter[i].metal_density[1]);
+  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
+    chdi->limiter.metal_density[i][0] =
+        min(chemistry_part_get_metal_density(pi, i),
+            chdi->limiter.metal_density[i][0]);
+    chdi->limiter.metal_density[i][1] =
+        max(chemistry_part_get_metal_density(pj, i),
+            chdi->limiter.metal_density[i][1]);
+  }
 
-  pi->chemistry_data.limiter_maxr = max(r, pi->chemistry_data.limiter_maxr);
+  pi->chemistry_data.limiter.v[0][0] =
+      min(pj->v[0], pi->chemistry_data.limiter.v[0][0]);
+  pi->chemistry_data.limiter.v[0][1] =
+      max(pj->v[0], pi->chemistry_data.limiter.v[0][1]);
+  pi->chemistry_data.limiter.v[1][0] =
+      min(pj->v[1], pi->chemistry_data.limiter.v[1][0]);
+  pi->chemistry_data.limiter.v[1][1] =
+      max(pj->v[1], pi->chemistry_data.limiter.v[1][1]);
+  pi->chemistry_data.limiter.v[2][0] =
+      min(pj->v[2], pi->chemistry_data.limiter.v[2][0]);
+  pi->chemistry_data.limiter.v[2][1] =
+      max(pj->v[2], pi->chemistry_data.limiter.v[2][1]);
+
+  pi->chemistry_data.limiter.maxr = max(r, pi->chemistry_data.limiter.maxr);
 }
 
 /**
@@ -82,7 +102,7 @@ chemistry_slope_limit_cell_collect(struct part* pi, struct part* pj, float r,
  * to double gradient[3].
  *
  * TODO: Experiment with the value of beta. For now, take stability over
- * diffusivity.
+ * diffusivity with beta=1.
  *
  * @param gradient the gradient of the quantity
  * @param maxr maximal distance to any neighbour of the particle
@@ -108,7 +128,7 @@ chemistry_slope_limit_quantity(double gradient[3], const float maxr,
         min(1.0, const_gizmo_max_condition_number / condition_number);
     const double beta = max(GIZMO_SLOPE_LIMITER_BETA_MIN,
                             GIZMO_SLOPE_LIMITER_BETA_MAX * beta_2);
-    /* const double beta = 1.0;  */
+    /* const double beta = 1.0; /\* Choose stability *\/ */
     const double min_temp =
         min(gradmax * gradtrue_inv, gradmin * gradtrue_inv) * beta;
     const double alpha = min(1.0, min_temp);
@@ -127,18 +147,55 @@ chemistry_slope_limit_quantity(double gradient[3], const float maxr,
 __attribute__((always_inline)) INLINE static void chemistry_slope_limit_cell(
     struct part* p) {
 
-  const float maxr = p->chemistry_data.limiter_maxr;
   struct chemistry_part_data* chd = &p->chemistry_data;
+  const float N_cond = chd->geometry.condition_number;
+  const float maxr = chd->limiter.maxr;
+  const float vxlim[2] = {chd->limiter.v[0][0], chd->limiter.v[0][1]};
+  const float vylim[2] = {chd->limiter.v[1][0], chd->limiter.v[1][1]};
+  const float vzlim[2] = {chd->limiter.v[2][0], chd->limiter.v[2][1]};
 
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
     chemistry_slope_limit_quantity(
-        /*gradient=*/chd->gradients[i].nabla_otimes_q,
+        /*gradient=*/chd->gradients.nabla_otimes_q[i],
         /*maxr=    */ maxr,
         /*value=   */ chemistry_part_get_metal_density(p, i),
-        /*valmin=  */ chd->limiter[i].metal_density[0],
-        /*valmax=  */ chd->limiter[i].metal_density[1],
-        /*condition_number*/ chd->geometry.condition_number);
+        /*valmin=  */ chd->limiter.metal_density[i][0],
+        /*valmax=  */ chd->limiter.metal_density[i][1],
+        /*condition_number*/ N_cond);
   }
+
+  /* Use doubles sice chemistry_slope_limit_quantity() accepts double arrays. */
+  double gradvx[3], gradvy[3], gradvz[3];
+
+  /* Get the velocity gradients and cast them as double */
+  gradvx[0] = p->chemistry_data.gradients.v[0][0];
+  gradvx[1] = p->chemistry_data.gradients.v[0][1];
+  gradvx[2] = p->chemistry_data.gradients.v[0][2];
+  gradvy[0] = p->chemistry_data.gradients.v[1][0];
+  gradvy[1] = p->chemistry_data.gradients.v[1][1];
+  gradvy[2] = p->chemistry_data.gradients.v[1][2];
+  gradvz[0] = p->chemistry_data.gradients.v[2][0];
+  gradvz[1] = p->chemistry_data.gradients.v[2][1];
+  gradvz[2] = p->chemistry_data.gradients.v[2][2];
+
+  /* Slope limit the velocity gradient */
+  chemistry_slope_limit_quantity(gradvx, maxr, p->v[0], vxlim[0], vxlim[1],
+                                 N_cond);
+  chemistry_slope_limit_quantity(gradvy, maxr, p->v[1], vylim[0], vylim[1],
+                                 N_cond);
+  chemistry_slope_limit_quantity(gradvz, maxr, p->v[2], vzlim[0], vzlim[1],
+                                 N_cond);
+
+  /* Set the velocity gradient values */
+  p->chemistry_data.gradients.v[0][0] = gradvx[0];
+  p->chemistry_data.gradients.v[0][1] = gradvx[1];
+  p->chemistry_data.gradients.v[0][2] = gradvx[2];
+  p->chemistry_data.gradients.v[1][0] = gradvy[0];
+  p->chemistry_data.gradients.v[1][1] = gradvy[1];
+  p->chemistry_data.gradients.v[1][2] = gradvy[2];
+  p->chemistry_data.gradients.v[2][0] = gradvz[0];
+  p->chemistry_data.gradients.v[2][1] = gradvz[1];
+  p->chemistry_data.gradients.v[2][2] = gradvz[2];
 }
 
 #endif /* SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_SLOPE_LIMITERS_CELL_H */
