@@ -42,8 +42,14 @@
  */
 __attribute__((always_inline)) INLINE static double chemistry_minmod(double a,
                                                                      double b) {
-  /* Write this more explicitely (taken from Gizmo) */
-  return (a > 0) ? ((b < 0) ? 0 : min(a, b)) : ((b >= 0) ? 0 : max(a, b));
+
+  if (a>0 && b>0) {
+    return min(a,b);
+  } else if (a < 0 && b < 0) {
+    return max(a,b);
+  } else {
+    return 0.0;
+  }
 }
 
 /**
