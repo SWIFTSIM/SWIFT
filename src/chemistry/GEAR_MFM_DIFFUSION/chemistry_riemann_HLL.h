@@ -124,8 +124,7 @@ chemistry_riemann_solve_for_flux(
                          pj->x[2] - pi->x[2]};
     const float dx_norm_2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
     const float dx_norm = sqrtf(dx_norm_2);
-    const float c_fast_star = 0.5*(c_s_L + c_s_R);
-    const float r = dx_norm / K_star_norm * (0.5 * fabs(uR - uL) + c_fast_star);
+    const float r = dx_norm / K_star_norm * (0.5 * fabs(uR - uL) + c_fast);
     const float r_term = (0.2 + r) / (0.2 + r + r * r);
     const float norm_term = 1.0 / sqrtf(3.0);
     const float alpha = norm_term * r_term;
@@ -137,10 +136,13 @@ chemistry_riemann_solve_for_flux(
     /* This is needed, this ensures we are not overdiffusing */
     F_U *= alpha;
 
+    double flux_hll = 0.0;
     /* The minmod is too restrictive in the diffusion */
-    /* const double flux_hll = chemistry_minmod( */
-    /* (1 + chem_data->hll_riemann_solver_psi) * F_2, F_2 + F_U); */
-    const float flux_hll = F_2 + F_U;
+    if (chem_data->hll_riemann_solver_psi < 0) {
+      flux_hll = chemistry_minmod((1 + chem_data->hll_riemann_solver_psi) * F_2, F_2 + F_U);
+    } else {
+      flux_hll = F_2 + F_U;
+    }
 
     /* Compute the direct fluxes */
     const double qi = chemistry_part_get_metal_density(pi, g);
