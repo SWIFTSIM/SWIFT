@@ -589,6 +589,9 @@ __attribute__((always_inline)) INLINE static void chemistry_end_force(
                                      m_metal_old, hydro_get_mass(p),
                                      /*callloc=*/2);
   }
+
+  /* Reset wcorr */
+  p->chemistry_data.geometry.wcorr = 1.0f;
 }
 
 /**
