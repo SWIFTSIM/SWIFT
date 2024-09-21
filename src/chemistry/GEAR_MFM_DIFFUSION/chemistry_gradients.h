@@ -443,11 +443,11 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
  * @param xij_i Position of the "interface" w.r.t. position of particle i
  */
 __attribute__((always_inline)) INLINE static void
-chemistry_gradients_predict_velocity(struct part *restrict pi,
-                                     struct part *restrict pj, float hi,
-                                     float hj, const float dx[3], float r,
-                                     const float xij_i[3], float Wi[5],
-                                     float Wj[5]) {
+chemistry_gradients_predict_hydro(struct part *restrict pi,
+				  struct part *restrict pj, float hi,
+				  float hj, const float dx[3], float r,
+				  const float xij_i[3], float Wi[5],
+				  float Wj[5]) {
 
   /* Perform gradient reconstruction in space and time */
   /* Compute interface position (relative to pj, since we don't need the actual
@@ -456,8 +456,8 @@ chemistry_gradients_predict_velocity(struct part *restrict pi,
 
   float dvx_i[3], dvy_i[3], dvz_i[3];
   float dvx_j[3], dvy_j[3], dvz_j[3];
-  chemistry_part_get_velocity_gradients(pi, dvx_i, dvy_i, dvz_i);
-  chemistry_part_get_velocity_gradients(pj, dvx_j, dvy_j, dvz_j);
+  chemistry_part_get_hydro_gradients(pi, dvx_i, dvy_i, dvz_i);
+  chemistry_part_get_hydro_gradients(pj, dvx_j, dvy_j, dvz_j);
 
   float dvi[3];
   dvi[0] = chemistry_gradients_extrapolate_float(dvx_i, xij_i);
@@ -470,7 +470,7 @@ chemistry_gradients_predict_velocity(struct part *restrict pi,
   dvj[2] = chemistry_gradients_extrapolate_float(dvz_j, xij_j);
 
   /* Apply the slope limiter at this interface */
-  chemistry_slope_limit_face_velocity(Wi, Wj, dvi, dvj, xij_i, xij_j, r);
+  chemistry_slope_limit_face_hydro(Wi, Wj, dvi, dvj, xij_i, xij_j, r);
 
   Wi[1] += dvi[0];
   Wi[2] += dvi[1];
