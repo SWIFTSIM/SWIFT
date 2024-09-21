@@ -372,23 +372,31 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
     double *Uj, int group, const float *dx, const float r,
     const float xij_i[3]) {
 
+  const struct chemistry_part_data chi = pi->chemistry_data;
+  const struct chemistry_part_data chj = pj->chemistry_data;
+
   chemistry_part_get_diffusion_state_vector(pi, group, Ui);
   chemistry_part_get_diffusion_state_vector(pj, group, Uj);
   /* No need to check unphysical state here:
    * they haven't been touched since the call
    * to chemistry_end_density() */
 
+  /* Get grad U = grad (rho*Z) = Z*grad_rho + rho*grad_Z */
+  const float Delta_rho = max(pi->rho, pj->rho) - min(pi->rho, pj->rho);
+  const float grad_rho[3] = { Delta_rho*dx[0] / (r*r),
+			      Delta_rho*dx[1] / (r*r),
+			      Delta_rho*dx[2] / (r*r)};
   double dF_i[3];
   double dF_j[3];
-  chemistry_part_get_diffusion_gradients(pi, group, dF_i);
-  chemistry_part_get_diffusion_gradients(pj, group, dF_j);
+  chemistry_part_get_diffusion_gradients(pi, group, grad_rho, dF_i);
+  chemistry_part_get_diffusion_gradients(pj, group, grad_rho, dF_j);
 
   /* Compute interface position (relative to pj, since we don't need the actual
    * position) eqn. (8)
    * Do it this way in case dx contains periodicity corrections already */
   const float xij_j[3] = {xij_i[0] + dx[0], xij_i[1] + dx[1], xij_i[2] + dx[2]};
 
-  /* Linear reconstruction of U_R and U_L */
+  /* Linear reconstruction of U_R and U_L (rho*Z) */
   double dUi = chemistry_gradients_extrapolate(dF_i, xij_i);
   double dUj = chemistry_gradients_extrapolate(dF_j, xij_j);
 
@@ -398,10 +406,12 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
   *Ui += dUi;
   *Uj += dUj;
 
-  const double m_Zi_old = *Ui * pi->chemistry_data.geometry.volume;
-  const double m_Zj_old = *Uj * pj->chemistry_data.geometry.volume;
-  double m_Zi = *Ui * pi->chemistry_data.geometry.volume;
-  double m_Zj = *Uj * pj->chemistry_data.geometry.volume;
+  /* Check we have physical masses and that we are not overshooting the
+     particle's mass */
+  const double m_Zi_old = *Ui * chi.geometry.volume;
+  const double m_Zj_old = *Uj * chj.geometry.volume;
+  double m_Zi = m_Zi_old;
+  double m_Zj = m_Zj_old;
 
   /* Check and correct unphysical extrapolated states */
   chemistry_check_unphysical_state(&m_Zi, /*m_old=*/0.f, hydro_get_mass(pi),
@@ -411,12 +421,10 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
 
   /* If the new masses have been changed, update the state vectors */
   if (m_Zi != m_Zi_old) {
-    /* *Ui = pi->rho * m_Zi / hydro_get_mass(pi); */
-    *Ui = m_Zi / pi->chemistry_data.geometry.volume;
+    *Ui = m_Zi / chi.geometry.volume;
   }
   if (m_Zj != m_Zj_old) {
-    /* *Uj = pj->rho * m_Zj / hydro_get_mass(pj); */
-    *Uj = m_Zj / pj->chemistry_data.geometry.volume;
+    *Uj = m_Zj / chj.geometry.volume;
   }
 }
 
