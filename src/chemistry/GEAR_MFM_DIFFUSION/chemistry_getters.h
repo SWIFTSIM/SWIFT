@@ -37,7 +37,7 @@ chemistry_part_get_metal_density(const struct part *restrict p, int metal) {
 }
 
 /**
- * @brief Get a  metal density from a specific metal group.
+ * @brief Get a  metal mass fraction from a specific metal group.
  *
  * @param p Particle.
  * @param metal Index of metal specie
