@@ -127,8 +127,8 @@ chemistry_part_get_diffusion_gradients(const struct part *restrict p, int metal,
  * @param dvz z velocity gradient (of size 3 or more).
  */
 __attribute__((always_inline)) INLINE static void
-chemistry_part_get_hydro_gradients(const struct part *restrict p, float drho[3],
-                                   float dvx[3], float dvy[3], float dvz[3]) {
+chemistry_part_get_hydro_gradients(const struct part *restrict p, float dvx[3],
+				   float dvy[3], float dvz[3]) {
 
   dvx[0] = p->chemistry_data.gradients.v[0][0];
   dvx[1] = p->chemistry_data.gradients.v[0][1];

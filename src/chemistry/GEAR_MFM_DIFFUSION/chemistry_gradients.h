@@ -19,7 +19,6 @@
 #ifndef SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_GRADIENTS_H
 #define SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_GRADIENTS_H
 
-/* #include "hydro_slope_limiters.h" */
 #include "chemistry_getters.h"
 #include "chemistry_setters.h"
 #include "chemistry_slope_limiters_cell.h"
