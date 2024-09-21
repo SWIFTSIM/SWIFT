@@ -232,8 +232,8 @@ chemistry_slope_limit_face_quantity_float(float phi_i, float phi_j,
  * @param r Distance between particle i and particle j.
  */
 __attribute__((always_inline)) INLINE static void
-chemistry_slope_limit_face_velocity(float *Wi, float *Wj, float *dWi,
-                                    float *dWj, const float *xij_i,
+chemistry_slope_limit_face_hydro(float *Wi, float *Wj, float *dvi,
+                                    float *dvj, const float *xij_i,
                                     const float *xij_j, float r) {
 
   const float xij_i_norm =
@@ -244,19 +244,19 @@ chemistry_slope_limit_face_velocity(float *Wi, float *Wj, float *dWi,
 
   const float r_inv = (r > 0.0f) ? 1.0f / r : 0.0f;
 
-  dWi[0] = chemistry_slope_limit_face_quantity_float(
-      Wi[1], Wj[1], Wi[1] + dWi[0], xij_i_norm, r_inv);
-  dWi[1] = chemistry_slope_limit_face_quantity_float(
-      Wi[2], Wj[2], Wi[2] + dWi[1], xij_i_norm, r_inv);
-  dWi[2] = chemistry_slope_limit_face_quantity_float(
-      Wi[3], Wj[3], Wi[3] + dWi[2], xij_i_norm, r_inv);
+  dvi[0] = chemistry_slope_limit_face_quantity_float(
+      Wi[1], Wj[1], Wi[1] + dvi[0], xij_i_norm, r_inv);
+  dvi[1] = chemistry_slope_limit_face_quantity_float(
+      Wi[2], Wj[2], Wi[2] + dvi[1], xij_i_norm, r_inv);
+  dvi[2] = chemistry_slope_limit_face_quantity_float(
+      Wi[3], Wj[3], Wi[3] + dvi[2], xij_i_norm, r_inv);
 
-  dWj[0] = chemistry_slope_limit_face_quantity_float(
-      Wj[1], Wi[1], Wj[1] + dWj[0], xij_j_norm, r_inv);
-  dWj[1] = chemistry_slope_limit_face_quantity_float(
-      Wj[2], Wi[2], Wj[2] + dWj[1], xij_j_norm, r_inv);
-  dWj[2] = chemistry_slope_limit_face_quantity_float(
-      Wj[3], Wi[3], Wj[3] + dWj[2], xij_j_norm, r_inv);
+  dvj[0] = chemistry_slope_limit_face_quantity_float(
+      Wj[1], Wi[1], Wj[1] + dvj[0], xij_j_norm, r_inv);
+  dvj[1] = chemistry_slope_limit_face_quantity_float(
+      Wj[2], Wi[2], Wj[2] + dvj[1], xij_j_norm, r_inv);
+  dvj[2] = chemistry_slope_limit_face_quantity_float(
+      Wj[3], Wi[3], Wj[3] + dvj[2], xij_j_norm, r_inv);
 }
 
 #endif /* SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_SLOPE_LIMITERS_FACE_H */
