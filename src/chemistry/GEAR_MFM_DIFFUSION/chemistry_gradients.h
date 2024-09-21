@@ -170,22 +170,22 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_collect(
   dvz_i[1] = dv[2] * psii_tilde[1];
   dvz_i[2] = dv[2] * psii_tilde[2];
 
-  chemistry_part_update_velocity_gradients(pi, dvx_i, dvy_i, dvz_i);
+  chemistry_part_update_hydro_gradients(pi, dvx_i, dvy_i, dvz_i);
 
   /* Compute velocity gradients for pj */
   float dvx_j[3], dvy_j[3], dvz_j[3];
 
-  dvx_j[0] = dv[0] * psii_tilde[0];
-  dvx_j[1] = dv[0] * psii_tilde[1];
-  dvx_j[2] = dv[0] * psii_tilde[2];
-  dvy_j[0] = dv[1] * psii_tilde[0];
-  dvy_j[1] = dv[1] * psii_tilde[1];
-  dvy_j[2] = dv[1] * psii_tilde[2];
-  dvz_j[0] = dv[2] * psii_tilde[0];
-  dvz_j[1] = dv[2] * psii_tilde[1];
-  dvz_j[2] = dv[2] * psii_tilde[2];
+  dvx_j[0] = dv[0] * psij_tilde[0];
+  dvx_j[1] = dv[0] * psij_tilde[1];
+  dvx_j[2] = dv[0] * psij_tilde[2];
+  dvy_j[0] = dv[1] * psij_tilde[0];
+  dvy_j[1] = dv[1] * psij_tilde[1];
+  dvy_j[2] = dv[1] * psij_tilde[2];
+  dvz_j[0] = dv[2] * psij_tilde[0];
+  dvz_j[1] = dv[2] * psij_tilde[1];
+  dvz_j[2] = dv[2] * psij_tilde[2];
 
-  chemistry_part_update_velocity_gradients(pj, dvx_j, dvy_j, dvz_j);
+  chemistry_part_update_hydro_gradients(pj, dvx_j, dvy_j, dvz_j);
 
   /*****************************************/
   /* Collect the cell's min and max for the slope limiter. */
@@ -284,7 +284,7 @@ chemistry_gradients_nonsym_collect(float r2, const float *dx, float hi,
   dvz_i[1] = dv[2] * psii_tilde[1];
   dvz_i[2] = dv[2] * psii_tilde[2];
 
-  chemistry_part_update_velocity_gradients(pi, dvx_i, dvy_i, dvz_i);
+  chemistry_part_update_hydro_gradients(pi, dvx_i, dvy_i, dvz_i);
 
   /*****************************************/
   /* Collect the cell's min and max for the slope limiter. */
