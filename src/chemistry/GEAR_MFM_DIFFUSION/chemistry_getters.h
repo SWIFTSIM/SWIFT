@@ -181,43 +181,44 @@ chemistry_compute_matrix_K_norm(const struct part *restrict p) {
 __attribute__((always_inline)) INLINE static float
 chemistry_compute_parabolic_timestep(const struct part *restrict p) {
 
+  /* Note: The State vector is U = (rho*Z_1,rho*Z_2, ...), and q = (Z_1, Z_2,
+     ...). Hence, the term norm(U)/norm(q) in eq (15) is abs(rho). */
   const struct chemistry_part_data chd = p->chemistry_data;
-
-  /* Note: The State vector is U = (metal_density_1, metal_density_2, etc),
-     which is also = q. Hence, the last term in eq (15) is unity. */
-
-  float norm_q = 0.0;
-  float norm_nabla_otimes_q = 0.0;
-  float expression = 0.0;
   const float norm_matrix_K = chemistry_compute_matrix_K_norm(p);
   const float delta_x = kernel_gamma * p->h;
+  const float norm_U_over_norm_q = fabs(p->rho);
+
+  /* Some helpful variables */
+  float norm_q = 0.0;
+  float norm_nabla_q = 0.0;
+  float expression = 0.0;
 
   /* Compute the norms */
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
-    norm_q += p->chemistry_data.metal_mass[i] * p->chemistry_data.metal_mass[i];
+    norm_q += chemistry_part_get_metal_mass_fraction(p, i)*chemistry_part_get_metal_mass_fraction(p, i);
 
     for (int j = 0; j < 3; j++) {
       /* Compute the Froebnius norm of \nabla \otimes q */
-      norm_nabla_otimes_q += chd.gradients.nabla_otimes_q[i][j] *
+      norm_nabla_q += chd.gradients.nabla_otimes_q[i][j] *
                              chd.gradients.nabla_otimes_q[i][j];
     }
   }
-  /* Take the sqrt and divide by the volume to get a density */
-  norm_q = sqrtf(norm_q) / chd.geometry.volume;
+  /* Take the sqrt */
+  norm_q = sqrtf(norm_q);
+  norm_nabla_q = sqrtf(norm_nabla_q);
 
-  /* If the norm of q (metal density = 0), then use the following formula */
+  /* If the norm of q (metal density = 0), then use the following
+     expression. Notice that if norm q = 0, the true timestep muste be 0... */
   if (norm_q == 0) {
     /* warning("norm q = 0"); */
-    return delta_x * delta_x / norm_matrix_K;
+    return delta_x * delta_x / norm_matrix_K * norm_U_over_norm_q;
   }
 
-  /* Take the sqrt to get the norm */
-  norm_nabla_otimes_q = sqrtf(norm_nabla_otimes_q);
-
   /* Finish the computations */
-  expression = norm_nabla_otimes_q / norm_q + 1.0 / delta_x;
+  expression = norm_q*delta_x / (norm_nabla_q*delta_x + norm_q);
 
-  return 1.0 / (norm_matrix_K * expression * expression);
+  /* return delta_x * delta_x / norm_matrix_K * norm_U_over_norm_q; */
+  return expression*expression / norm_matrix_K * norm_U_over_norm_q;
 }
 
 /**
