@@ -120,6 +120,14 @@ chemistry_riemann_solve_for_flux(
     const float K_star_norm =
         0.5 * sqrtf(3.0) *
         fabsf(pi->chemistry_data.kappa + pj->chemistry_data.kappa);
+
+    /* If the diffusion matrix is null, don't exchange flux. This can happen
+       in the first timestep when the density is not yet computed. */
+    if (K_star_norm == 0.0) {
+      *metal_flux = 0;
+      return;
+    }
+
     const float dx[3] = {pj->x[0] - pi->x[0], pj->x[1] - pi->x[1],
                          pj->x[2] - pi->x[2]};
     const float dx_norm_2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
