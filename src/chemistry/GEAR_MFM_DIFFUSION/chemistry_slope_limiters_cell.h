@@ -74,7 +74,7 @@ chemistry_slope_limit_cell_collect(struct part* pi, struct part* pj, float r) {
    * primitive variables among the ngbs */
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
     chdi->limiter.metal_density[i][0] =
-        min(chemistry_part_get_metal_density(pi, i),
+        min(chemistry_part_get_metal_density(pj, i),
             chdi->limiter.metal_density[i][0]);
     chdi->limiter.metal_density[i][1] =
         max(chemistry_part_get_metal_density(pj, i),
