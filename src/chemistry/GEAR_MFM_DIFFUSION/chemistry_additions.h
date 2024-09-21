@@ -16,11 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-
 #ifndef SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_ADDITIONS_H
 #define SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_ADDITIONS_H
-
-#ifdef HYDRO_DOES_MASS_FLUX
 
 /**
  * @brief Resets the metal mass fluxes for schemes that use them.
@@ -48,7 +45,7 @@ __attribute__((always_inline)) INLINE static void chemistry_reset_mass_fluxes(
  * @param hydro_props Additional hydro properties.
  */
 __attribute__((always_inline)) INLINE static void
-chemistry_kick_extra_mass_fluxes(struct part* p, float dt_therm, float dt_grav,
+chemistry_kick_extra(struct part* p, float dt_therm, float dt_grav,
                                  float dt_hydro, float dt_kick_corr,
                                  const struct cosmology* cosmo,
                                  const struct hydro_props* hydro_props) {
@@ -149,39 +146,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_chemistry_fluxes(
       }
     }
   }
-}
-#endif /* HYDRO_DOES_MASS_FLUX */
-
-/**
- * @brief Extra operations done during the kick. This needs to be
- * done before the particle mass is updated in the hydro_kick_extra.
- *
- * This is called for the GEAR MFM diffusion. If we also have mass advection,
- * we also do it here.
- *
- * @param p Particle to act upon.
- * @param dt_therm Thermal energy time-step @f$\frac{dt}{a^2}@f$.
- * @param dt_grav Gravity time-step @f$\frac{dt}{a}@f$.
- * @param dt_hydro Hydro acceleration time-step
- * @f$\frac{dt}{a^{3(\gamma{}-1)}}@f$.
- * @param dt_kick_corr Gravity correction time-step @f$adt@f$.
- * @param cosmo Cosmology.
- * @param hydro_props Additional hydro properties.
- */
-__attribute__((always_inline)) INLINE static void chemistry_kick_extra(
-    struct part* p, float dt_therm, float dt_grav, float dt_hydro,
-    float dt_kick_corr, const struct cosmology* cosmo,
-    const struct hydro_props* hydro_props) {
-
-  /* Reset wcorr */
-  p->chemistry_data.geometry.wcorr = 1.0f;
-
-  /* Only if we have mass fluxes to deal with */
-#ifdef HYDRO_DOES_MASS_FLUX
-  /* Do MFV advection */
-  chemistry_kick_extra_mass_fluxes(p, dt_therm, dt_grav, dt_hydro, dt_kick_corr,
-                                   cosmo, hydro_props);
-#endif
 }
 
 #endif  // SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_ADDITIONS_H
