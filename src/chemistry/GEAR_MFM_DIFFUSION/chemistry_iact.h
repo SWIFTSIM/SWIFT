@@ -325,7 +325,7 @@ runner_iact_chemistry_fluxes_common(
   float Wi[5] = {pi->rho, vi[0], vi[1], vi[2], hydro_get_comoving_pressure(pi)};
   float Wj[5] = {pj->rho, vj[0], vj[1], vj[2], hydro_get_comoving_pressure(pj)};
 
-  chemistry_gradients_predict_velocity(pi, pj, hi, hj, dx, r, xij_i, Wi, Wj);
+  chemistry_gradients_predict_hydro(pi, pj, hi, hj, dx, r, xij_i, Wi, Wj);
 
   /* Boost the primitive variables to the frame of reference of the interface */
   /* Note that velocities are indices 1-3 in W */
