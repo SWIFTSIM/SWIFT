@@ -100,12 +100,22 @@ chemistry_part_compute_diffusion_flux(const struct part *restrict p, int metal,
  */
 __attribute__((always_inline)) INLINE static void
 chemistry_part_get_diffusion_gradients(const struct part *restrict p, int metal,
-                                       double dF[3]) {
+				       const float grad_rho[3], double dF[3]) {
+
+  const struct chemistry_part_data chd = p->chemistry_data;
+
+  /* We have U = rho_Z and q = Z.
+     But we computed Grad Z and not Grad (rho*Z).
+     However, Grad (rho*Z) = Z*Grad_rho + rho*Grad_Z
+     We can estimate grad_rho = (rho_max_ij - rho_min_ij) * dx[3] / (r*r). */
 
   /* For isotropic diffusion, \grad U = \nabla \otimes q = \grad n_Z */
-  dF[0] = p->chemistry_data.gradients.nabla_otimes_q[metal][0];
-  dF[1] = p->chemistry_data.gradients.nabla_otimes_q[metal][1];
-  dF[2] = p->chemistry_data.gradients.nabla_otimes_q[metal][2];
+  dF[0] = chd.gradients.nabla_otimes_q[metal][0]*p->rho
+                + grad_rho[0]*chd.metal_mass[metal];
+  dF[1] = chd.gradients.nabla_otimes_q[metal][1]*p->rho
+                + grad_rho[1]*chd.metal_mass[metal];
+  dF[2] = chd.gradients.nabla_otimes_q[metal][2]*p->rho
+                + grad_rho[2]*chd.metal_mass[metal];
 }
 
 /**
