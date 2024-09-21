@@ -80,7 +80,7 @@ chemistry_part_compute_diffusion_flux(const struct part *restrict p, int metal,
 
   const double kappa = p->chemistry_data.kappa;
 
-  /* For isotropic diffusion, \grad U = \nabla \otimes q = \grad n_Z.
+  /* For isotropic diffusion, \nabla \otimes q = \grad n_Z.
      Note: K = kappa * I_3 for isotropic diffusion. */
   F_diff[0] = -kappa * p->chemistry_data.gradients.nabla_otimes_q[metal][0];
   F_diff[1] = -kappa * p->chemistry_data.gradients.nabla_otimes_q[metal][1];
@@ -89,6 +89,8 @@ chemistry_part_compute_diffusion_flux(const struct part *restrict p, int metal,
 
 /**
  * @brief Get the gradients of metal mass density a given metal group.
+ *
+ * Get grad U = grad rho_Z.
  *
  * @param p Particle.
  * @param metal Index of metal specie
@@ -148,7 +150,6 @@ __attribute__((always_inline)) INLINE static float chemistry_part_get_volume(
  */
 __attribute__((always_inline)) INLINE static int
 chemistry_part_geometry_well_behaved(const struct part *restrict p) {
-
   return p->chemistry_data.geometry.wcorr > const_gizmo_min_wcorr;
 }
 
