@@ -43,10 +43,10 @@
 __attribute__((always_inline)) INLINE static double chemistry_minmod(double a,
                                                                      double b) {
 
-  if (a>0 && b>0) {
-    return min(a,b);
+  if (a > 0 && b > 0) {
+    return min(a, b);
   } else if (a < 0 && b < 0) {
-    return max(a,b);
+    return max(a, b);
   } else {
     return 0.0;
   }
@@ -232,9 +232,9 @@ chemistry_slope_limit_face_quantity_float(float phi_i, float phi_j,
  * @param r Distance between particle i and particle j.
  */
 __attribute__((always_inline)) INLINE static void
-chemistry_slope_limit_face_hydro(float *Wi, float *Wj, float *dvi,
-                                    float *dvj, const float *xij_i,
-                                    const float *xij_j, float r) {
+chemistry_slope_limit_face_hydro(float *Wi, float *Wj, float *dvi, float *dvj,
+                                 const float *xij_i, const float *xij_j,
+                                 float r) {
 
   const float xij_i_norm =
       sqrtf(xij_i[0] * xij_i[0] + xij_i[1] * xij_i[1] + xij_i[2] * xij_i[2]);

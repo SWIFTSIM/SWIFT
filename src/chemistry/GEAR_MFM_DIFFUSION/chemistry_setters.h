@@ -97,7 +97,7 @@ chemistry_part_update_diffusion_gradients(struct part *restrict p, int metal,
  */
 __attribute__((always_inline)) INLINE static void
 chemistry_part_update_hydro_gradients(struct part *restrict p, float dvx[3],
-				      float dvy[3], float dvz[3]) {
+                                      float dvy[3], float dvz[3]) {
 
   struct chemistry_part_data *chd = &p->chemistry_data;
 
@@ -152,7 +152,7 @@ chemistry_part_compute_diffusion_coefficient(
 
   if (data->use_isotropic_diffusion) {
     /* Now we need to take into account the density since q = Z and U = rho_Z */
-    return data->diffusion_coefficient*p->rho;
+    return data->diffusion_coefficient * p->rho;
   } else {
     return data->diffusion_coefficient * kernel_gamma2 * p->h * p->h * p->rho;
   }

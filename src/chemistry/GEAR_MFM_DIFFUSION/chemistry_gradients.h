@@ -124,8 +124,8 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_collect(
   /*****************************************/
   /* Update diffusion gradients */
   for (int g = 0; g < GEAR_CHEMISTRY_ELEMENT_COUNT; g++) {
-    const double Zi = pi->chemistry_data.metal_mass[g]/hydro_get_mass(pi);
-    const double Zj = pj->chemistry_data.metal_mass[g]/hydro_get_mass(pj);
+    const double Zi = pi->chemistry_data.metal_mass[g] / hydro_get_mass(pi);
+    const double Zj = pj->chemistry_data.metal_mass[g] / hydro_get_mass(pj);
     const double dZ = Zi - Zj;
 
     /* First do pi (i.e. \grad n = \nabla \otimes q = \grad U) */
@@ -382,9 +382,9 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
 
   /* Get grad U = grad (rho*Z) = Z*grad_rho + rho*grad_Z */
   const float Delta_rho = max(pi->rho, pj->rho) - min(pi->rho, pj->rho);
-  const float grad_rho[3] = { Delta_rho*dx[0] / (r*r),
-			      Delta_rho*dx[1] / (r*r),
-			      Delta_rho*dx[2] / (r*r)};
+  const float grad_rho[3] = {Delta_rho * dx[0] / (r * r),
+                             Delta_rho * dx[1] / (r * r),
+                             Delta_rho * dx[2] / (r * r)};
   double dF_i[3];
   double dF_j[3];
   chemistry_part_get_diffusion_gradients(pi, group, grad_rho, dF_i);
@@ -443,10 +443,10 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
  */
 __attribute__((always_inline)) INLINE static void
 chemistry_gradients_predict_hydro(struct part *restrict pi,
-				  struct part *restrict pj, float hi,
-				  float hj, const float dx[3], float r,
-				  const float xij_i[3], float Wi[5],
-				  float Wj[5]) {
+                                  struct part *restrict pj, float hi, float hj,
+                                  const float dx[3], float r,
+                                  const float xij_i[3], float Wi[5],
+                                  float Wj[5]) {
 
   /* Perform gradient reconstruction in space and time */
   /* Compute interface position (relative to pj, since we don't need the actual

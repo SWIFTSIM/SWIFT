@@ -44,7 +44,8 @@ chemistry_part_get_metal_density(const struct part *restrict p, int metal) {
  * @param U Pointer to the array in which the result needs to be stored
  */
 __attribute__((always_inline)) INLINE static double
-chemistry_part_get_metal_mass_fraction(const struct part *restrict p, int metal) {
+chemistry_part_get_metal_mass_fraction(const struct part *restrict p,
+                                       int metal) {
   return p->chemistry_data.metal_mass[metal] / hydro_get_mass(p);
 }
 
@@ -100,7 +101,7 @@ chemistry_part_compute_diffusion_flux(const struct part *restrict p, int metal,
  */
 __attribute__((always_inline)) INLINE static void
 chemistry_part_get_diffusion_gradients(const struct part *restrict p, int metal,
-				       const float grad_rho[3], double dF[3]) {
+                                       const float grad_rho[3], double dF[3]) {
 
   const struct chemistry_part_data chd = p->chemistry_data;
 
@@ -110,12 +111,12 @@ chemistry_part_get_diffusion_gradients(const struct part *restrict p, int metal,
      We can estimate grad_rho = (rho_max_ij - rho_min_ij) * dx[3] / (r*r). */
 
   /* For isotropic diffusion, \grad U = \nabla \otimes q = \grad n_Z */
-  dF[0] = chd.gradients.nabla_otimes_q[metal][0]*p->rho
-                + grad_rho[0]*chd.metal_mass[metal];
-  dF[1] = chd.gradients.nabla_otimes_q[metal][1]*p->rho
-                + grad_rho[1]*chd.metal_mass[metal];
-  dF[2] = chd.gradients.nabla_otimes_q[metal][2]*p->rho
-                + grad_rho[2]*chd.metal_mass[metal];
+  dF[0] = chd.gradients.nabla_otimes_q[metal][0] * p->rho +
+          grad_rho[0] * chd.metal_mass[metal];
+  dF[1] = chd.gradients.nabla_otimes_q[metal][1] * p->rho +
+          grad_rho[1] * chd.metal_mass[metal];
+  dF[2] = chd.gradients.nabla_otimes_q[metal][2] * p->rho +
+          grad_rho[2] * chd.metal_mass[metal];
 }
 
 /**
@@ -128,7 +129,7 @@ chemistry_part_get_diffusion_gradients(const struct part *restrict p, int metal,
  */
 __attribute__((always_inline)) INLINE static void
 chemistry_part_get_hydro_gradients(const struct part *restrict p, float dvx[3],
-				   float dvy[3], float dvz[3]) {
+                                   float dvy[3], float dvz[3]) {
 
   dvx[0] = p->chemistry_data.gradients.v[0][0];
   dvx[1] = p->chemistry_data.gradients.v[0][1];
@@ -195,12 +196,13 @@ chemistry_compute_parabolic_timestep(const struct part *restrict p) {
 
   /* Compute the norms */
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
-    norm_q += chemistry_part_get_metal_mass_fraction(p, i)*chemistry_part_get_metal_mass_fraction(p, i);
+    norm_q += chemistry_part_get_metal_mass_fraction(p, i) *
+              chemistry_part_get_metal_mass_fraction(p, i);
 
     for (int j = 0; j < 3; j++) {
       /* Compute the Froebnius norm of \nabla \otimes q */
       norm_nabla_q += chd.gradients.nabla_otimes_q[i][j] *
-                             chd.gradients.nabla_otimes_q[i][j];
+                      chd.gradients.nabla_otimes_q[i][j];
     }
   }
   /* Take the sqrt */
@@ -215,10 +217,10 @@ chemistry_compute_parabolic_timestep(const struct part *restrict p) {
   }
 
   /* Finish the computations */
-  expression = norm_q*delta_x / (norm_nabla_q*delta_x + norm_q);
+  expression = norm_q * delta_x / (norm_nabla_q * delta_x + norm_q);
 
   /* return delta_x * delta_x / norm_matrix_K * norm_U_over_norm_q; */
-  return expression*expression / norm_matrix_K * norm_U_over_norm_q;
+  return expression * expression / norm_matrix_K * norm_U_over_norm_q;
 }
 
 /**

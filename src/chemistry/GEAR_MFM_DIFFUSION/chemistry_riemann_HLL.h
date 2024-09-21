@@ -149,14 +149,16 @@ chemistry_riemann_solve_for_flux(
 
     /* Our definition of dx is opposite to the one for reconstruction, hence
        the minus sign. */
-    const double grad_dot_dx = - grad_q[0]*dx[0] - grad_q[1]*dx[1] - grad_q[2]*dx[2];
+    const double grad_dot_dx =
+        -grad_q[0] * dx[0] - grad_q[1] * dx[1] - grad_q[2] * dx[2];
     const double q_star = (Z_L - Z_R) + grad_dot_dx;
 
     /* Now compute alpha to reduce numerical diffusion below physical
        diffusion. */
-    const double c_fast_star = 0.5*(c_s_L + c_s_R);
+    const double c_fast_star = 0.5 * (c_s_L + c_s_R);
     const double v_HLL = 0.5 * fabs(uR - uL) + c_fast_star;
-    const double r = v_HLL*dx_norm*fabs(q_star)/ (K_star_norm*fabs(U_star));
+    const double r =
+        v_HLL * dx_norm * fabs(q_star) / (K_star_norm * fabs(U_star));
     const double r_term = (0.2 + r) / (0.2 + r + r * r);
     const double norm_term = 1.0 / sqrtf(3.0);
     const double alpha = norm_term * r_term;
@@ -169,7 +171,8 @@ chemistry_riemann_solve_for_flux(
     /* Simple trick while testing to verify how numerical diffusion affects the
        results */
     if (chem_data->hll_riemann_solver_psi >= 0) {
-      flux_hll = chemistry_minmod((1 + chem_data->hll_riemann_solver_psi) * F_2, F_2 + F_U);
+      flux_hll = chemistry_minmod((1 + chem_data->hll_riemann_solver_psi) * F_2,
+                                  F_2 + F_U);
     } else {
       flux_hll = F_2 + F_U;
     }
@@ -178,9 +181,8 @@ chemistry_riemann_solve_for_flux(
     const double qi = chemistry_part_get_metal_mass_fraction(pi, g);
     const double qj = chemistry_part_get_metal_mass_fraction(pj, g);
     const double dq = qj - qi;
-    const double nabla_o_q_dir[3] = {dx[0] * dq / dx_norm_2,
-				     dx[1] * dq / dx_norm_2,
-				     dx[2] * dq / dx_norm_2};
+    const double nabla_o_q_dir[3] = {
+        dx[0] * dq / dx_norm_2, dx[1] * dq / dx_norm_2, dx[2] * dq / dx_norm_2};
     const double kappa_mean =
         0.5 * (pi->chemistry_data.kappa + pj->chemistry_data.kappa);
     const double F_A_left_side[3] = {-kappa_mean * nabla_o_q_dir[0],
