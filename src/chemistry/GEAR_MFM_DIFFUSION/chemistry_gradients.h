@@ -125,22 +125,18 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_collect(
   /*****************************************/
   /* Update diffusion gradients */
   for (int g = 0; g < GEAR_CHEMISTRY_ELEMENT_COUNT; g++) {
+    const double Zi = pi->chemistry_data.metal_mass[g]/hydro_get_mass(pi);
+    const double Zj = pj->chemistry_data.metal_mass[g]/hydro_get_mass(pj);
+    const double dZ = Zi - Zj;
 
-    double Ui, Uj;
-    chemistry_part_get_diffusion_state_vector(pi, g, &Ui);
-    chemistry_part_get_diffusion_state_vector(pj, g, &Uj);
-    const double dU = Ui - Uj;
-
-    /* First to the gradients of pi (i.e. \grad n = \nabla \otimes q = \grad U)
-     */
+    /* First do pi (i.e. \grad n = \nabla \otimes q = \grad U) */
     double dF_i[3];
 
-    /* Compute gradients for pi */
-    /* there is a sign difference w.r.t. eqn. (6) because of the inverse
+    /* There is a sign difference w.r.t. eqn. (6) because of the inverse
      * definition of dx */
-    dF_i[0] = dU * psii_tilde[0];
-    dF_i[1] = dU * psii_tilde[1];
-    dF_i[2] = dU * psii_tilde[2];
+    dF_i[0] = dZ * psii_tilde[0];
+    dF_i[1] = dZ * psii_tilde[1];
+    dF_i[2] = dZ * psii_tilde[2];
 
     chemistry_part_update_diffusion_gradients(pi, g, dF_i);
 
@@ -149,9 +145,9 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_collect(
 
     /* We don't need a sign change here: both the dx and the dU
      * should switch their sign, resulting in no net change */
-    dF_j[0] = dU * psij_tilde[0];
-    dF_j[1] = dU * psij_tilde[1];
-    dF_j[2] = dU * psij_tilde[2];
+    dF_j[0] = dZ * psij_tilde[0];
+    dF_j[1] = dZ * psij_tilde[1];
+    dF_j[2] = dZ * psij_tilde[2];
 
     chemistry_part_update_diffusion_gradients(pj, g, dF_j);
   }
@@ -254,20 +250,18 @@ chemistry_gradients_nonsym_collect(float r2, const float *dx, float hi,
   /*****************************************/
   /* Update diffusion gradients */
   for (int g = 0; g < GEAR_CHEMISTRY_ELEMENT_COUNT; g++) {
-
-    double Ui, Uj;
-    chemistry_part_get_diffusion_state_vector(pi, g, &Ui);
-    chemistry_part_get_diffusion_state_vector(pj, g, &Uj);
-    const double dU = Ui - Uj;
+    const double Zi = pi->chemistry_data.metal_mass[g] / hydro_get_mass(pi);
+    const double Zj = pj->chemistry_data.metal_mass[g] / hydro_get_mass(pj);
+    const double dZ = Zi - Zj;
 
     double dF_i[3];
 
     /* Compute gradients for pi */
-    /* there is a sign difference w.r.t. eqn. (6) because of the inverse
+    /* There is a sign difference w.r.t. eqn. (6) because of the inverse
      * definition of dx */
-    dF_i[0] = dU * psii_tilde[0];
-    dF_i[1] = dU * psii_tilde[1];
-    dF_i[2] = dU * psii_tilde[2];
+    dF_i[0] = dZ * psii_tilde[0];
+    dF_i[1] = dZ * psii_tilde[1];
+    dF_i[2] = dZ * psii_tilde[2];
 
     chemistry_part_update_diffusion_gradients(pi, g, dF_i);
   }
