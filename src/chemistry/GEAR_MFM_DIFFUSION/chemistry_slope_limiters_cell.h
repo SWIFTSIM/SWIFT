@@ -168,15 +168,15 @@ __attribute__((always_inline)) INLINE static void chemistry_slope_limit_cell(
   double gradvx[3], gradvy[3], gradvz[3];
 
   /* Get the velocity gradients and cast them as double */
-  gradvx[0] = p->chemistry_data.gradients.v[0][0];
-  gradvx[1] = p->chemistry_data.gradients.v[0][1];
-  gradvx[2] = p->chemistry_data.gradients.v[0][2];
-  gradvy[0] = p->chemistry_data.gradients.v[1][0];
-  gradvy[1] = p->chemistry_data.gradients.v[1][1];
-  gradvy[2] = p->chemistry_data.gradients.v[1][2];
-  gradvz[0] = p->chemistry_data.gradients.v[2][0];
-  gradvz[1] = p->chemistry_data.gradients.v[2][1];
-  gradvz[2] = p->chemistry_data.gradients.v[2][2];
+  gradvx[0] = chd->gradients.v[0][0];
+  gradvx[1] = chd->gradients.v[0][1];
+  gradvx[2] = chd->gradients.v[0][2];
+  gradvy[0] = chd->gradients.v[1][0];
+  gradvy[1] = chd->gradients.v[1][1];
+  gradvy[2] = chd->gradients.v[1][2];
+  gradvz[0] = chd->gradients.v[2][0];
+  gradvz[1] = chd->gradients.v[2][1];
+  gradvz[2] = chd->gradients.v[2][2];
 
   /* Slope limit the velocity gradient */
   chemistry_slope_limit_quantity(gradvx, maxr, p->v[0], vxlim[0], vxlim[1],
@@ -187,15 +187,15 @@ __attribute__((always_inline)) INLINE static void chemistry_slope_limit_cell(
                                  N_cond);
 
   /* Set the velocity gradient values */
-  p->chemistry_data.gradients.v[0][0] = gradvx[0];
-  p->chemistry_data.gradients.v[0][1] = gradvx[1];
-  p->chemistry_data.gradients.v[0][2] = gradvx[2];
-  p->chemistry_data.gradients.v[1][0] = gradvy[0];
-  p->chemistry_data.gradients.v[1][1] = gradvy[1];
-  p->chemistry_data.gradients.v[1][2] = gradvy[2];
-  p->chemistry_data.gradients.v[2][0] = gradvz[0];
-  p->chemistry_data.gradients.v[2][1] = gradvz[1];
-  p->chemistry_data.gradients.v[2][2] = gradvz[2];
+  chd->gradients.v[0][0] = gradvx[0];
+  chd->gradients.v[0][1] = gradvx[1];
+  chd->gradients.v[0][2] = gradvx[2];
+  chd->gradients.v[1][0] = gradvy[0];
+  chd->gradients.v[1][1] = gradvy[1];
+  chd->gradients.v[1][2] = gradvy[2];
+  chd->gradients.v[2][0] = gradvz[0];
+  chd->gradients.v[2][1] = gradvz[1];
+  chd->gradients.v[2][2] = gradvz[2];
 }
 
 #endif /* SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_SLOPE_LIMITERS_CELL_H */
