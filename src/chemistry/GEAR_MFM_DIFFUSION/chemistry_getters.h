@@ -37,6 +37,18 @@ chemistry_part_get_metal_density(const struct part *restrict p, int metal) {
 }
 
 /**
+ * @brief Get a  metal density from a specific metal group.
+ *
+ * @param p Particle.
+ * @param metal Index of metal specie
+ * @param U Pointer to the array in which the result needs to be stored
+ */
+__attribute__((always_inline)) INLINE static double
+chemistry_part_get_metal_mass_fraction(const struct part *restrict p, int metal) {
+  return p->chemistry_data.metal_mass[metal] / hydro_get_mass(p);
+}
+
+/**
  * @brief Get a 1-element state vector U containing the metal mass density
  * a specific metal group.
  *
