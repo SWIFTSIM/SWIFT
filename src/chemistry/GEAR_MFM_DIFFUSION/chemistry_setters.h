@@ -80,6 +80,7 @@ chemistry_part_update_diffusion_gradients(struct part *restrict p, int metal,
 
   struct chemistry_part_data *chd = &p->chemistry_data;
 
+  /* Now this is grad Z (and not grad rho_Z) */
   chd->gradients.nabla_otimes_q[metal][0] += dF[0];
   chd->gradients.nabla_otimes_q[metal][1] += dF[1];
   chd->gradients.nabla_otimes_q[metal][2] += dF[2];
@@ -150,9 +151,10 @@ chemistry_part_compute_diffusion_coefficient(
     struct part *restrict p, const struct chemistry_global_data *data) {
 
   if (data->use_isotropic_diffusion) {
-    return data->diffusion_coefficient;
+    /* Now we need to take into account the density since q = Z and U = rho_Z */
+    return data->diffusion_coefficient*p->rho;
   } else {
-    return data->diffusion_coefficient * kernel_gamma2 * p->h * p->h;
+    return data->diffusion_coefficient * kernel_gamma2 * p->h * p->h * p->rho;
   }
 }
 
