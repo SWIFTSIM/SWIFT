@@ -139,13 +139,15 @@ chemistry_part_get_diffusion_gradients(const struct part *restrict p, int metal,
      However, Grad (rho*Z) = Z*Grad_rho + rho*Grad_Z
      We can estimate grad_rho = (rho_max_ij - rho_min_ij) * dx[3] / (r*r). */
 
+  const double Z = chemistry_part_get_metal_mass_fraction(p, metal);
+
   /* For isotropic diffusion, \grad U = \nabla \otimes q = \grad n_Z */
   dF[0] = chd.gradients.nabla_otimes_q[metal][0] * p->rho +
-          grad_rho[0] * chd.metal_mass[metal];
+          grad_rho[0] * Z;
   dF[1] = chd.gradients.nabla_otimes_q[metal][1] * p->rho +
-          grad_rho[1] * chd.metal_mass[metal];
+          grad_rho[1] * Z;
   dF[2] = chd.gradients.nabla_otimes_q[metal][2] * p->rho +
-          grad_rho[2] * chd.metal_mass[metal];
+          grad_rho[2] * Z;
 }
 
 /**
