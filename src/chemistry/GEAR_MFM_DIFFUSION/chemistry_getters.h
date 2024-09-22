@@ -216,12 +216,17 @@ chemistry_compute_parabolic_timestep(const struct part *restrict p) {
   const struct chemistry_part_data chd = p->chemistry_data;
   const float norm_matrix_K = chemistry_compute_matrix_K_norm(p);
   const float delta_x = kernel_gamma * p->h;
-  const float norm_U_over_norm_q = fabs(p->rho);
+  const float norm_U_over_norm_q = fabs(chemistry_part_get_density(p));
 
   /* Some helpful variables */
   float norm_q = 0.0;
   float norm_nabla_q = 0.0;
   float expression = 0.0;
+
+  /* Prevent pathological cases */
+  if (norm_matrix_K == 0.0) {
+    return FLT_MAX;
+  }
 
   /* Compute the norms */
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
@@ -268,7 +273,7 @@ chemistry_compute_supertimestep(const struct part *restrict p,
 
   float norm_U = 0.0;
   float norm_nabla_otimes_q = 0.0;
-  const float norm_matrix_K = chemistry_compute_parabolic_timestep(p);
+  const float norm_matrix_K = chemistry_compute_matrix_K_norm(p);
   const float delta_x = kernel_gamma * p->h;
 
   /* Compute the norms */
@@ -287,6 +292,11 @@ chemistry_compute_supertimestep(const struct part *restrict p,
 
   /* Take the sqrt to get the norm */
   norm_nabla_otimes_q = sqrtf(norm_nabla_otimes_q);
+
+  /* Prevent pathological cases */
+  if (norm_matrix_K == 0.0 || norm_nabla_otimes_q == 0.0) {
+    return FLT_MAX;
+  }
 
   return cd->C_CFL_chemistry * delta_x * norm_U /
          (norm_matrix_K * norm_nabla_otimes_q);
