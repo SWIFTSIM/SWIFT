@@ -135,6 +135,7 @@ struct chemistry_part_data {
     int current_substep;
     float super_timestep;
     float explicit_timestep;
+    float substep;
   } timesteps;
 };
 
