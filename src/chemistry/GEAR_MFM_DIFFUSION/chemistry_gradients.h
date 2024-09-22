@@ -371,8 +371,8 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
     double *Uj, int group, const float *dx, const float r,
     const float xij_i[3]) {
 
-  const struct chemistry_part_data chi = pi->chemistry_data;
-  const struct chemistry_part_data chj = pj->chemistry_data;
+  const struct chemistry_part_data *chi = &pi->chemistry_data;
+  const struct chemistry_part_data *chj = &pj->chemistry_data;
 
   chemistry_part_get_diffusion_state_vector(pi, group, Ui);
   chemistry_part_get_diffusion_state_vector(pj, group, Uj);
@@ -407,8 +407,8 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
 
   /* Check we have physical masses and that we are not overshooting the
      particle's mass */
-  const double m_Zi_old = *Ui * chi.geometry.volume;
-  const double m_Zj_old = *Uj * chj.geometry.volume;
+  const double m_Zi_old = *Ui * chi->geometry.volume;
+  const double m_Zj_old = *Uj * chj->geometry.volume;
   double m_Zi = m_Zi_old;
   double m_Zj = m_Zj_old;
 
@@ -420,10 +420,10 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
 
   /* If the new masses have been changed, update the state vectors */
   if (m_Zi != m_Zi_old) {
-    *Ui = m_Zi / chi.geometry.volume;
+    *Ui = m_Zi / chi->geometry.volume;
   }
   if (m_Zj != m_Zj_old) {
-    *Uj = m_Zj / chj.geometry.volume;
+    *Uj = m_Zj / chj->geometry.volume;
   }
 }
 
