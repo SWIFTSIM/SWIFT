@@ -21,6 +21,7 @@
 
 #include "const.h"
 #include "hydro.h"
+#include "kernel_hydro.h"
 #include "part.h"
 
 /**
@@ -61,9 +62,37 @@ chemistry_part_get_metal_mass_fraction(const struct part *restrict p,
 __attribute__((always_inline)) INLINE static void
 chemistry_part_get_diffusion_state_vector(const struct part *restrict p,
                                           int metal, double *U) {
-
   /* The state vector is 1D and contains the metal density. */
   *U = chemistry_part_get_metal_density(p, metal);
+}
+
+/**
+ * @brief Get particle density.
+ *
+ * This function must be used for sensitive operations like computing
+ * timesteps. At the beggining of a simulation, it can happen that the
+ * particle's density is 0 (e.g. not read from ICs) and not yet updated. Since
+ * timesteps computations and the diffusion coefficient require the density, we
+ * need to estimate it. Otherwise we have null timesteps. This is particularly
+ * true with MFM SPH.
+ *
+ * @param p Particle.
+ */
+__attribute__((always_inline)) INLINE static float
+chemistry_part_get_density(const struct part *restrict p) {
+  float rho = p->rho;
+
+  if (rho == 0.0) {
+    const float r_cubed = kernel_gamma*kernel_gamma*kernel_gamma*p->h*p->h*p->h;
+    const float volume = 4.0/3.0 * M_PI * r_cubed;
+    rho = hydro_get_mass(p) / volume;
+
+    if (rho == 0.0) {
+      rho = FLT_MIN;
+      error("Density cannot be null!");
+    }
+  }
+  return rho;
 }
 
 /**
