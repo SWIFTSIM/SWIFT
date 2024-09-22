@@ -35,6 +35,9 @@ IA_dict = {
     "g16": "glassCube_16.hdf5",
     "g32": "glassCube_32.hdf5",
     "g64": "glassCube_64.hdf5",
+    "g128": "glassCube_128.hdf5",
+    "g24": "glassCube_24.hdf5",
+    "g48": "glassCube_48.hdf5",
     "s16": "stacked_16.hdf5",
     "s24": "stacked_24.hdf5",
     "s32": "stacked_32.hdf5",
@@ -58,7 +61,7 @@ IA_dict = {
 forcing_dict = {"v": "roberts-flow", "a": "roberts-flow-acceleration"}
 
 # Number of threads
-threads = 18
+threads = 4
 
 # Where to store results
 results_directory_name = "test_results"
@@ -99,7 +102,7 @@ def configure_simulation(scheme, forcing, spline, eos, path_to_lib=False):
 
     # if specific path to some libraries is needed, set this up here
     if path_to_lib == True:
-        path_to_libraries = " --with-fftw=/opt/homebrew/Cellar/fftw/3.3.10_1/ --with-gsl=/opt/homebrew/Cellar/gsl/2.7.1/ --with-hdf5=/opt/homebrew/Cellar/hdf5/1.14.2/bin/h5cc"
+        path_to_libraries = " --with-fftw=/opt/homebrew/Cellar/fftw/3.3.10_1/ --with-gsl=/opt/homebrew/Cellar/gsl/2.7.1/ --with-hdf5=/opt/homebrew/Cellar/hdf5/1.14.3/"
     else:
         path_to_libraries = ""
 
@@ -137,12 +140,25 @@ def configure_simulation(scheme, forcing, spline, eos, path_to_lib=False):
         + " )"
     )
     # show sandwich
-    print(command_sandwich)
-    # execute
-    subprocess.call(command_sandwich, shell=True)
-    # maybe shoud addd some try except here
-    print("configuring swift complete")
+    print('###')
+    print('Configuring SWIFT. Running command: ',command_sandwich)
 
+    # execute
+    try:
+        result = subprocess.run(command_sandwich, shell=True,capture_output=True, check=True,text=True)
+        #print(result.stdout)
+        print("SWIFT configuration complete")
+    except subprocess.CalledProcessError as e:
+        print(f"Command '{e.cmd}' failed with return code {e.returncode}")
+        print(f"Command output: {e.output}")
+        print(f"Command stderr: {e.stderr}")
+        print("SWIFT configuration error")
+        raise
+    except Exception as e:
+        print(f"An unexpected error occurred: {e}")
+        print("SWIFT configuration problem")
+        raise
+    print('#######\n')
 
 # Funciton for making ICfile
 def make_IC(phys_parameters, IAfile):
@@ -170,14 +186,24 @@ def make_IC(phys_parameters, IAfile):
     else:
         command = " python3 " + "make_IC.py"
     # show command
-    print("Script sends command: " + command)
+    print('###')
+    print("Creating ICs for run. Running command: " + command)
     # execute
     try:
-        subprocess.run(command, shell=True, check=True)
-        print("created ICs")
+        result = subprocess.run(command, shell=True,capture_output=True, check=True,text=True)
+        #print(result.stdout)
+        print("ICs creation complete")
+    except subprocess.CalledProcessError as e:
+        print(f"Command '{e.cmd}' failed with return code {e.returncode}")
+        print(f"Command output: {e.output}")
+        print(f"Command stderr: {e.stderr}")
+        print("IC creation error")
+        raise
     except Exception as e:
-        print("Error: " + str(e))
-
+        print(f"An unexpected error occurred: {e}")
+        print("IC creation problem")
+        raise
+    print('#######\n')
 
 # Function for running simulation
 def run_simulation(phys_parameters, threads):
@@ -199,8 +225,8 @@ def run_simulation(phys_parameters, threads):
     parabolic_dedner = phys_parameters["parabolic_dedner"].values[0]
 
     # get timestep parameters
-    tau_max = phys_parameters["tau_max"].values[0]
-    min_steps = phys_parameters["min_steps"].values[0]
+    t_max = phys_parameters["t_max"].values[0]
+    max_dt = phys_parameters["max_dt"].values[0]
 
     with_hydro = " --hydro"
 
@@ -210,12 +236,12 @@ def run_simulation(phys_parameters, threads):
     timeI_pref = " -P TimeIntegration:"
     set_time_end = ""
     set_dt_max = ""
-    if tau_max != None:
-        t_c = Lbox / (2 * np.pi * kv * v0)
-        time_end = tau_max * t_c
+    if max_dt != None:
+        #t_c = Lbox / (2 * np.pi * kv * v0)
+        time_end = t_max
         set_time_end = timeI_pref + "time_end:" + str(time_end)
-        if min_steps != None:
-            dt_max = time_end / min_steps
+        if max_dt != None:
+            dt_max = max_dt
             set_dt_max = timeI_pref + "dt_max:" + str(dt_max)
 
     set_timeI_par = set_time_end + set_dt_max
@@ -314,11 +340,31 @@ def run_simulation(phys_parameters, threads):
         + parameter_file
         + write_output_file
     )
-    # show command
-    print(command)
-    # execute
-    subprocess.call(command, shell=True)
 
+    # show command
+    print('###')
+    print("Running SWIFT. Running command: " + command)
+
+    move_res = False
+
+    # execute
+    try:
+        result = subprocess.run(command, shell=True,capture_output=True, check=True,text=True)
+        #print(result.stdout)
+        print("SWIFT run complete")
+        move_res = True
+    except subprocess.CalledProcessError as e:
+        print(f"Command '{e.cmd}' failed with return code {e.returncode}")
+        print(f"Command output: {e.output}")
+        print(f"Command stderr: {e.stderr}")
+        print("SWIFT run error")
+        raise
+    except Exception as e:
+        print(f"An unexpected error occurred: {e}")
+        print("SWIFT run problem")
+        raise
+    print('#######\n')
+    return move_res
 
 # a function that creates the directory for all run data storage
 def create_results_directory(res_dirname):
@@ -365,34 +411,69 @@ def move_results(phys_parameters, res_dirname):
         + " ) "
     )
     # show command
-    print(command_sandwich)
+    print('###')
+    print('Moving results. Running command:'+command_sandwich)
     # execute
     subprocess.call(command_sandwich, shell=True)
+    print('#######\n')
 
+# Main program 
+# - takes the_parameters from the table
+# - creates ICs
+# - configures code
+# - executes runs row by row
+# - stores the output data
 
-# main program that takes the_parameters from table, creates ICs, configures code and executes each row and stores data
 def run_all():
     the_parameters = read_parameter_csv("test_run_parameters.csv")
     create_results_directory(results_directory_name)
     # prepare_glass()
-    for i in range(len(the_parameters)):
-        if mask[i]:
-            parameters_for_the_run = the_parameters.iloc[[i]]
-            print(parameters_for_the_run)
-            scheme = schemes_dict[parameters_for_the_run["Scheme"].values[0]]
-            forcing = forcing_dict[parameters_for_the_run["Forcing_kind"].values[0]]
-            configure_simulation(scheme, forcing, "quintic-spline", "isothermal-gas")
+   # execute
+    try:
+        for i in range(len(the_parameters)):
+            if mask[i]:
+                parameters_for_the_run = the_parameters.iloc[[i]]
+                print('### New run')
+                print('Parameters for the run:')
+                print(parameters_for_the_run)
+                print('#######\n')
+                scheme = schemes_dict[parameters_for_the_run["Scheme"].values[0]]
+                forcing = forcing_dict[parameters_for_the_run["Forcing_kind"].values[0]]
+                configure_simulation(scheme, forcing, "quintic-spline", "isothermal-gas")
 
-            IAfile = IA_dict[parameters_for_the_run["IAfile"].values[0]]
-            make_IC(parameters_for_the_run, IAfile)
+                IAfile = IA_dict[parameters_for_the_run["IAfile"].values[0]]
+                make_IC(parameters_for_the_run, IAfile)
 
-            run_simulation(parameters_for_the_run, threads)
+                move_res = run_simulation(parameters_for_the_run, threads)
 
-            move_results(parameters_for_the_run, results_directory_name)
+                if move_res:
+                    move_results(parameters_for_the_run, results_directory_name)
 
-            update_parameter_csv(the_parameters, i)
+                update_parameter_csv(the_parameters, i)
+    except Exception as e:
+        print(f"An unexpected error occurred: {e}")
 
 
-# code execution
 ###################################################################################################
-run_all()
+
+if __name__ == "__main__":
+
+    import argparse as ap
+
+    parser = ap.ArgumentParser(description="Run SWIFT")
+
+    parser.add_argument(
+        "-T",
+        "--threads",
+        help="how many threads to use for a run",
+        default=4,
+        type=int,
+    )
+
+    args = parser.parse_args()
+
+    # Number of threads
+    threads = args.threads
+
+    # Run test program
+    run_all() 

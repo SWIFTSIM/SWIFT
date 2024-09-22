@@ -331,7 +331,7 @@ if __name__ == "__main__":
         "-ft",
         "--field_type",
         help="How to generate a field: one_mode, several_modes or random",
-        default="random",  #'load_from_file',#'random',
+        default="one_mode",  #'load_from_file',#'random',
         type=str,
     )
     parser.add_argument(
