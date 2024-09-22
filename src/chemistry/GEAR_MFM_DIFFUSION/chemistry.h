@@ -553,15 +553,18 @@ __attribute__((always_inline)) INLINE static void chemistry_end_gradient(
  */
 __attribute__((always_inline)) INLINE static void chemistry_end_force(
     struct part* restrict p, const struct cosmology* cosmo,
-    const int with_cosmology, const double time, const double dt) {
+    const int with_cosmology, const double time, const double dt,
+    const struct chemistry_global_data* cd) {
 
-  if (p->chemistry_data.flux_dt != 0.0f) {
+  struct chemistry_part_data *chd = &p->chemistry_data;
+
+  if (chd->flux_dt != 0.0f) {
     for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; ++i) {
       double flux;
       chemistry_part_get_fluxes(p, i, &flux);
 
       /* Update the conserved variable */
-      p->chemistry_data.metal_mass[i] += flux;
+      chd->metal_mass[i] += flux;
     }
 
     /* Reset the fluxes, so that they do not get used again in kick1 */
@@ -569,7 +572,7 @@ __attribute__((always_inline)) INLINE static void chemistry_end_force(
 
     /* Invalidate the particle time-step. It is considered to be inactive until
        dt is set again in hydro_prepare_force() */
-    p->chemistry_data.flux_dt = -1.0f;
+    chd->flux_dt = -1.0f;
   } else /* (p->chemistry_data.flux_dt == 0.0f) */ {
     /* something tricky happens at the beginning of the simulation: the flux
        exchange is done for all particles, but using a time step of 0. This
@@ -579,19 +582,58 @@ __attribute__((always_inline)) INLINE static void chemistry_end_force(
        the actual time step in hydro_prepare_force(). We have to make sure it
        is properly set to -1 here, so that inactive particles are indeed found
        to be inactive during the flux loop. */
-    p->chemistry_data.flux_dt = -1.0f;
+    chd->flux_dt = -1.0f;
   }
 
   /* Sanity checks. We don't want negative metal masses. */
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; ++i) {
-    const double m_metal_old = p->chemistry_data.metal_mass[i];
-    chemistry_check_unphysical_state(&p->chemistry_data.metal_mass[i],
-                                     m_metal_old, hydro_get_mass(p),
-                                     /*callloc=*/2);
+    const double m_metal_old = chd->metal_mass[i];
+    chemistry_check_unphysical_state(&chd->metal_mass[i], m_metal_old, hydro_get_mass(p), /*callloc=*/2);
   }
 
   /* Reset wcorr */
   p->chemistry_data.geometry.wcorr = 1.0f;
+
+  /* If we are doing supertimestepping, compute the next timestep here. Since
+     we are modifying the particle's properties, we do the computations
+     here. In chemistry_timestep(), we cannot modify the part's properties
+     since it is passed as const. */
+  if (cd->use_supertimestepping) {
+
+    /* Get the minimal timestep */
+    /* const float min_dt = chemistry_compute_minimal_timestep_from_all_modules(p, cd); */
+
+    /* Have we finished substepping? */
+    if (chd->timesteps.current_substep <= cd->N_substeps) {
+      /* message("%lld doing substep %d", p->id, chd->timesteps.current_substep); */
+      /* Warning: Pay attention to the order: first get the substep and then
+         increment it. Otherwise, the substep value is wrong */
+
+      /* Get the next substep */
+      chd->timesteps.substep = chemistry_compute_subtimestep(p, cd);
+
+      /* Then, increment the current_substep */
+      if (chd->timesteps.substep > 0.0) ++chd->timesteps.current_substep;
+    } else {
+      /* message("Computing next supertimestep"); */
+      /* We have completed the supertimestep. */
+      chd->timesteps.explicit_timestep = chemistry_compute_parabolic_timestep(p);
+
+      /* Get the next supertep */
+      chd->timesteps.super_timestep = chemistry_compute_supertimestep(p, cd);
+
+      /* Reset the current_substep to 1 */
+      chd->timesteps.current_substep = 1;
+
+      /* Compute the current substep */
+      chd->timesteps.substep = chemistry_compute_subtimestep(p, cd);
+
+      /* message("Explicit timestep = %e, Supertimestep = %e, substep = %e, current_substep = %d", chd->timesteps.explicit_timestep, chd->timesteps.super_timestep, chd->timesteps.substep, chd->timesteps.current_substep); */
+
+      /* Increment the current_substep */
+      if (chd->timesteps.substep > 0.0) ++chd->timesteps.current_substep;
+    }
+  }
 }
 
 /**
@@ -658,38 +700,11 @@ __attribute__((always_inline)) INLINE static float chemistry_timestep(
     const struct hydro_props* hydro_props,
     const struct chemistry_global_data* cd, const struct part* restrict p) {
 
-  struct chemistry_part_data chd = p->chemistry_data;
+  const struct chemistry_part_data *chd = &p->chemistry_data;
 
-  if (cd->use_supertimestepping) {
-    float substep = 0.0;
-
-    /* Have we finished substepping? */
-    if (chd.timesteps.current_substep <= cd->N_substeps) {
-      /* Warning: Pay attention to the order: first get the substep and then
-         increment it. Otherwise, the substep value is wrong */
-
-      /* Get the next substep */
-      substep = chemistry_compute_subtimestep(p, cd);
-
-      /* Then, increment the current_substep */
-      ++chd.timesteps.current_substep;
-    } else {
-      /* We have completed the supertimestep. */
-      chd.timesteps.explicit_timestep = chemistry_compute_parabolic_timestep(p);
-
-      /* Get the next supertep */
-      chd.timesteps.super_timestep = chemistry_compute_supertimestep(p, cd);
-
-      /* Reset the current_substep to 1 */
-      chd.timesteps.current_substep = 1;
-
-      /* Compute the current substep */
-      substep = chemistry_compute_subtimestep(p, cd);
-
-      /* Increment the current_substep */
-      ++chd.timesteps.current_substep;
-    }
-    return substep;
+  /* If the substep is 0 for some reason, use the parabolic timestep instead */
+  if (cd->use_supertimestepping && chd->timesteps.substep != 0.0) {
+    return chd->timesteps.substep;
   } else {
     return chemistry_compute_parabolic_timestep(p);
   }
@@ -734,9 +749,9 @@ __attribute__((always_inline)) INLINE static void chemistry_first_init_part(
   p->chemistry_data.geometry.wcorr = 1.0f;
 
   /* Supertimestepping ----*/
-  /* Set the substep to N_substep so that we can compute everything in timestep
+  /* Set the substep to N_substep +1 so that we can compute everything in timestep
      for the first time.  */
-  p->chemistry_data.timesteps.current_substep = data->N_substeps;
+  p->chemistry_data.timesteps.current_substep = data->N_substeps + 1;
 }
 
 /**
