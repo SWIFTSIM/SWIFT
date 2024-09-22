@@ -310,12 +310,12 @@ chemistry_compute_supertimestep(const struct part *restrict p,
 __attribute__((always_inline)) INLINE static float
 chemistry_compute_subtimestep(const struct part *restrict p,
                               const struct chemistry_global_data *cd) {
-  const struct chemistry_part_data chd = p->chemistry_data;
+  const struct chemistry_part_data *chd = &p->chemistry_data;
   const float cos_argument = M_PI *
-                             (2.0 * chd.timesteps.current_substep - 1.0) /
+                             (2.0 * chd->timesteps.current_substep - 1.0) /
                              (2.0 * cd->N_substeps);
   const float expression = (1 + cd->nu) - (1 - cd->nu) * cos(cos_argument);
-  return chd.timesteps.explicit_timestep / expression;
+  return chd->timesteps.explicit_timestep / expression;
 }
 
 /**
