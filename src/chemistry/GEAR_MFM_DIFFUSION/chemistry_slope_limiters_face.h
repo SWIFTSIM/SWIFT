@@ -34,23 +34,6 @@
  *
  * */
 
-/**
- * The minmod limiter.
- *
- * @param a Left slope
- * @param b Right slope
- */
-__attribute__((always_inline)) INLINE static double chemistry_minmod(double a,
-                                                                     double b) {
-
-  if (a > 0 && b > 0) {
-    return min(a, b);
-  } else if (a < 0 && b < 0) {
-    return max(a, b);
-  } else {
-    return 0.0;
-  }
-}
 
 /**
  * The minmod slope limiter.

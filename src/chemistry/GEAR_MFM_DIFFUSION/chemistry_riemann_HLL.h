@@ -20,8 +20,24 @@
 #define SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_RIEMANN_HLL_H
 
 #include "chemistry_getters.h"
-#include "chemistry_slope_limiters_face.h"
 #include "hydro.h"
+
+/**
+ * The minmod limiter.
+ *
+ * @param a Left slope
+ * @param b Right slope
+ */
+__attribute__((always_inline)) INLINE static double
+chemistry_rieman_solver_minmod(double a, double b) {
+  if (a > 0 && b > 0) {
+    return min(a, b);
+  } else if (a < 0 && b < 0) {
+    return max(a, b);
+  } else {
+    return 0.0;
+  }
+}
 
 /**
  * @brief Solve the Riemann problem for the diffusion equations and return the
@@ -151,7 +167,7 @@ chemistry_riemann_solve_for_flux(
     /* Simple trick while testing to verify how numerical diffusion affects the
        results */
     if (chem_data->hll_riemann_solver_psi >= 0) {
-      flux_hll = chemistry_minmod((1 + chem_data->hll_riemann_solver_psi) * F_2,
+      flux_hll = chemistry_rieman_solver_minmod((1 + chem_data->hll_riemann_solver_psi) * F_2,
                                   F_2 + F_U);
     } else {
       flux_hll = F_2 + F_U;
