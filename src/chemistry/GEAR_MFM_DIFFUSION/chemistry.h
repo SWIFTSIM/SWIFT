@@ -376,6 +376,13 @@ static INLINE void chemistry_init_backend(struct swift_params* parameter_file,
   data->C_CFL_chemistry = parser_get_opt_param_float(
       parameter_file, "GEARChemistry:C_CFL_chemistry",
       DEFAULT_C_CFL_CHEMISTRY_SUPERTIMESTEPPPING);
+
+  /***************************************************************************/
+  /* Print the parameters we use */
+  message("Diffusion coefficient:      %e", data->diffusion_coefficient);
+  message("HLL Riemann solver psi:     %e", data->hll_riemann_solver_psi);
+  message("HLL Riemann solver epsilon: %e", data->hll_riemann_solver_epsilon);
+
 }
 
 /**
