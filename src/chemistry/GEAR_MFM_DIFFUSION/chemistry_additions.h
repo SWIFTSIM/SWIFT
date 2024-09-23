@@ -44,11 +44,10 @@ __attribute__((always_inline)) INLINE static void chemistry_reset_mass_fluxes(
  * @param cosmo Cosmology.
  * @param hydro_props Additional hydro properties.
  */
-__attribute__((always_inline)) INLINE static void
-chemistry_kick_extra(struct part* p, float dt_therm, float dt_grav,
-                                 float dt_hydro, float dt_kick_corr,
-                                 const struct cosmology* cosmo,
-                                 const struct hydro_props* hydro_props) {
+__attribute__((always_inline)) INLINE static void chemistry_kick_extra(
+    struct part* p, float dt_therm, float dt_grav, float dt_hydro,
+    float dt_kick_corr, const struct cosmology* cosmo,
+    const struct hydro_props* hydro_props) {
   /* For hydro schemes that exchange mass fluxes between the particles,
    * we want to advect the metals. */
   if (p->flux.dt > 0.) {

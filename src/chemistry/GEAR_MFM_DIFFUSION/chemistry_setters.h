@@ -19,8 +19,8 @@
 #ifndef SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_SETTERS_H
 #define SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_SETTERS_H
 
-#include "chemistry_struct.h"
 #include "chemistry_getters.h"
+#include "chemistry_struct.h"
 #include "hydro.h"
 #include "kernel_hydro.h"
 

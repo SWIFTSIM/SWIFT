@@ -115,8 +115,8 @@ chemistry_riemann_solve_for_flux(
   double F_U = lambda_plus * lambda_minus * dU * one_over_dl;
 
   const float K_star_norm =
-    0.5 * sqrtf(3.0) *
-    fabsf(pi->chemistry_data.kappa + pj->chemistry_data.kappa);
+      0.5 * sqrtf(3.0) *
+      fabsf(pi->chemistry_data.kappa + pj->chemistry_data.kappa);
 
   /* If the diffusion matrix is null, don't exchange flux. This can happen
      in the first timestep when the density is not yet computed. */
@@ -127,7 +127,7 @@ chemistry_riemann_solve_for_flux(
 
   /* Get some convenient variables */
   const float dx[3] = {pj->x[0] - pi->x[0], pj->x[1] - pi->x[1],
-		       pj->x[2] - pi->x[2]};
+                       pj->x[2] - pi->x[2]};
   const float dx_norm_2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
   const float dx_norm = sqrtf(dx_norm_2);
 
@@ -147,7 +147,7 @@ chemistry_riemann_solve_for_flux(
   /* Our definition of dx is opposite to the one for reconstruction, hence
      the minus sign. */
   const double grad_dot_dx =
-    -grad_q[0] * dx[0] - grad_q[1] * dx[1] - grad_q[2] * dx[2];
+      -grad_q[0] * dx[0] - grad_q[1] * dx[1] - grad_q[2] * dx[2];
   const double q_star = (Z_L - Z_R) + grad_dot_dx;
 
   /* Now compute alpha to reduce numerical diffusion below physical
@@ -155,7 +155,7 @@ chemistry_riemann_solve_for_flux(
   const double c_fast_star = 0.5 * (c_s_L + c_s_R);
   const double v_HLL = 0.5 * fabs(uR - uL) + c_fast_star;
   const double r =
-    v_HLL * dx_norm * fabs(q_star) / (K_star_norm * fabs(U_star));
+      v_HLL * dx_norm * fabs(q_star) / (K_star_norm * fabs(U_star));
   const double r_term = (0.2 + r) / (0.2 + r + r * r);
   const double norm_term = 1.0 / sqrtf(3.0);
   const double alpha = norm_term * r_term;

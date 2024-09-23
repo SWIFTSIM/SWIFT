@@ -556,7 +556,7 @@ __attribute__((always_inline)) INLINE static void chemistry_end_force(
     const int with_cosmology, const double time, const double dt,
     const struct chemistry_global_data* cd) {
 
-  struct chemistry_part_data *chd = &p->chemistry_data;
+  struct chemistry_part_data* chd = &p->chemistry_data;
 
   if (chd->flux_dt != 0.0f) {
     for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; ++i) {
@@ -588,7 +588,8 @@ __attribute__((always_inline)) INLINE static void chemistry_end_force(
   /* Sanity checks. We don't want negative metal masses. */
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; ++i) {
     const double m_metal_old = chd->metal_mass[i];
-    chemistry_check_unphysical_state(&chd->metal_mass[i], m_metal_old, hydro_get_mass(p), /*callloc=*/2);
+    chemistry_check_unphysical_state(&chd->metal_mass[i], m_metal_old,
+                                     hydro_get_mass(p), /*callloc=*/2);
   }
 
   /* Reset wcorr */
@@ -601,11 +602,11 @@ __attribute__((always_inline)) INLINE static void chemistry_end_force(
   if (cd->use_supertimestepping) {
 
     /* Get the minimal timestep */
-    /* const float min_dt = chemistry_compute_minimal_timestep_from_all_modules(p, cd); */
+    /* const float min_dt =
+     * chemistry_compute_minimal_timestep_from_all_modules(p, cd); */
 
     /* Have we finished substepping? */
     if (chd->timesteps.current_substep <= cd->N_substeps) {
-      /* message("%lld doing substep %d", p->id, chd->timesteps.current_substep); */
       /* Warning: Pay attention to the order: first get the substep and then
          increment it. Otherwise, the substep value is wrong */
 
@@ -615,9 +616,9 @@ __attribute__((always_inline)) INLINE static void chemistry_end_force(
       /* Then, increment the current_substep */
       if (chd->timesteps.substep > 0.0) ++chd->timesteps.current_substep;
     } else {
-      /* message("Computing next supertimestep"); */
       /* We have completed the supertimestep. */
-      chd->timesteps.explicit_timestep = chemistry_compute_parabolic_timestep(p);
+      chd->timesteps.explicit_timestep =
+          chemistry_compute_parabolic_timestep(p);
 
       /* Get the next supertep */
       chd->timesteps.super_timestep = chemistry_compute_supertimestep(p, cd);
@@ -627,8 +628,6 @@ __attribute__((always_inline)) INLINE static void chemistry_end_force(
 
       /* Compute the current substep */
       chd->timesteps.substep = chemistry_compute_subtimestep(p, cd);
-
-      /* message("Explicit timestep = %e, Supertimestep = %e, substep = %e, current_substep = %d", chd->timesteps.explicit_timestep, chd->timesteps.super_timestep, chd->timesteps.substep, chd->timesteps.current_substep); */
 
       /* Increment the current_substep */
       if (chd->timesteps.substep > 0.0) ++chd->timesteps.current_substep;
@@ -700,7 +699,7 @@ __attribute__((always_inline)) INLINE static float chemistry_timestep(
     const struct hydro_props* hydro_props,
     const struct chemistry_global_data* cd, const struct part* restrict p) {
 
-  const struct chemistry_part_data *chd = &p->chemistry_data;
+  const struct chemistry_part_data* chd = &p->chemistry_data;
 
   /* If the substep is 0 for some reason, use the parabolic timestep instead */
   if (cd->use_supertimestepping && chd->timesteps.substep != 0.0) {
@@ -749,8 +748,8 @@ __attribute__((always_inline)) INLINE static void chemistry_first_init_part(
   p->chemistry_data.geometry.wcorr = 1.0f;
 
   /* Supertimestepping ----*/
-  /* Set the substep to N_substep +1 so that we can compute everything in timestep
-     for the first time.  */
+  /* Set the substep to N_substep +1 so that we can compute everything in
+     timestep for the first time.  */
   p->chemistry_data.timesteps.current_substep = data->N_substeps + 1;
 }
 

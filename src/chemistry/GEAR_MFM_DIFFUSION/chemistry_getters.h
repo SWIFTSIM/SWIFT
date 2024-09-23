@@ -78,13 +78,14 @@ chemistry_part_get_diffusion_state_vector(const struct part *restrict p,
  *
  * @param p Particle.
  */
-__attribute__((always_inline)) INLINE static float
-chemistry_part_get_density(const struct part *restrict p) {
+__attribute__((always_inline)) INLINE static float chemistry_part_get_density(
+    const struct part *restrict p) {
   float rho = p->rho;
 
   if (rho == 0.0) {
-    const float r_cubed = kernel_gamma*kernel_gamma*kernel_gamma*p->h*p->h*p->h;
-    const float volume = 4.0/3.0 * M_PI * r_cubed;
+    const float r_cubed =
+        kernel_gamma * kernel_gamma * kernel_gamma * p->h * p->h * p->h;
+    const float volume = 4.0 / 3.0 * M_PI * r_cubed;
     rho = hydro_get_mass(p) / volume;
 
     if (rho == 0.0) {
@@ -142,12 +143,9 @@ chemistry_part_get_diffusion_gradients(const struct part *restrict p, int metal,
   const double Z = chemistry_part_get_metal_mass_fraction(p, metal);
 
   /* For isotropic diffusion, \grad U = \nabla \otimes q = \grad n_Z */
-  dF[0] = chd.gradients.nabla_otimes_q[metal][0] * p->rho +
-          grad_rho[0] * Z;
-  dF[1] = chd.gradients.nabla_otimes_q[metal][1] * p->rho +
-          grad_rho[1] * Z;
-  dF[2] = chd.gradients.nabla_otimes_q[metal][2] * p->rho +
-          grad_rho[2] * Z;
+  dF[0] = chd.gradients.nabla_otimes_q[metal][0] * p->rho + grad_rho[0] * Z;
+  dF[1] = chd.gradients.nabla_otimes_q[metal][1] * p->rho + grad_rho[1] * Z;
+  dF[2] = chd.gradients.nabla_otimes_q[metal][2] * p->rho + grad_rho[2] * Z;
 }
 
 /**
