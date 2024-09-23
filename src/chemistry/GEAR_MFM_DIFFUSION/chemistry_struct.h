@@ -88,7 +88,7 @@ struct chemistry_part_data {
   struct {
     /* Gradient of the metals. It is used to compute the diffusion flux.
      */
-    double nabla_otimes_q[GEAR_CHEMISTRY_ELEMENT_COUNT][3];
+    double Z[GEAR_CHEMISTRY_ELEMENT_COUNT][3];
 
     /* Fluid velocity gradients. */
     float v[3][3];

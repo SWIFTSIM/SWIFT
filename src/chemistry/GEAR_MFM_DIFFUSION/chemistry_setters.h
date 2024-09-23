@@ -35,9 +35,9 @@ chemistry_part_reset_gradients(struct part *restrict p) {
   struct chemistry_part_data *chd = &p->chemistry_data;
 
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
-    chd->gradients.nabla_otimes_q[i][0] = 0.0f;
-    chd->gradients.nabla_otimes_q[i][1] = 0.0f;
-    chd->gradients.nabla_otimes_q[i][2] = 0.0f;
+    chd->gradients.Z[i][0] = 0.0f;
+    chd->gradients.Z[i][1] = 0.0f;
+    chd->gradients.Z[i][2] = 0.0f;
   }
 
   chd->gradients.v[0][0] = 0.0f;
@@ -62,9 +62,9 @@ chemistry_part_set_diffusion_gradients(struct part *restrict p, int metal,
 
   struct chemistry_part_data *chd = &p->chemistry_data;
 
-  chd->gradients.nabla_otimes_q[metal][0] = gradF[0];
-  chd->gradients.nabla_otimes_q[metal][1] = gradF[1];
-  chd->gradients.nabla_otimes_q[metal][2] = gradF[2];
+  chd->gradients.Z[metal][0] = gradF[0];
+  chd->gradients.Z[metal][1] = gradF[1];
+  chd->gradients.Z[metal][2] = gradF[2];
 }
 
 /**
@@ -83,9 +83,9 @@ chemistry_part_update_diffusion_gradients(struct part *restrict p, int metal,
   struct chemistry_part_data *chd = &p->chemistry_data;
 
   /* Now this is grad Z (and not grad rho_Z) */
-  chd->gradients.nabla_otimes_q[metal][0] += dF[0];
-  chd->gradients.nabla_otimes_q[metal][1] += dF[1];
-  chd->gradients.nabla_otimes_q[metal][2] += dF[2];
+  chd->gradients.Z[metal][0] += dF[0];
+  chd->gradients.Z[metal][1] += dF[1];
+  chd->gradients.Z[metal][2] += dF[2];
 }
 
 /**
@@ -127,9 +127,9 @@ chemistry_part_normalise_gradients(struct part *restrict p, const float norm) {
   struct chemistry_part_data *chd = &p->chemistry_data;
 
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
-    chd->gradients.nabla_otimes_q[i][0] *= norm;
-    chd->gradients.nabla_otimes_q[i][1] *= norm;
-    chd->gradients.nabla_otimes_q[i][2] *= norm;
+    chd->gradients.Z[i][0] *= norm;
+    chd->gradients.Z[i][1] *= norm;
+    chd->gradients.Z[i][2] *= norm;
   }
 
   chd->gradients.v[0][0] *= norm;

@@ -156,7 +156,7 @@ __attribute__((always_inline)) INLINE static void chemistry_slope_limit_cell(
 
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
     chemistry_slope_limit_quantity(
-        /*gradient=*/chd->gradients.nabla_otimes_q[i],
+        /*gradient=*/chd->gradients.Z[i],
         /*maxr=    */ maxr,
         /*value=   */ chemistry_get_metal_density(p, i),
         /*valmin=  */ chd->limiter.metal_density[i][0],

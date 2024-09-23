@@ -134,9 +134,9 @@ chemistry_compute_diffusion_flux(const struct part *restrict p, int metal,
 
   /* For isotropic diffusion, \nabla \otimes q = \grad n_Z.
      Note: K = kappa * I_3 for isotropic diffusion. */
-  F_diff[0] = -kappa * p->chemistry_data.gradients.nabla_otimes_q[metal][0];
-  F_diff[1] = -kappa * p->chemistry_data.gradients.nabla_otimes_q[metal][1];
-  F_diff[2] = -kappa * p->chemistry_data.gradients.nabla_otimes_q[metal][2];
+  F_diff[0] = -kappa * p->chemistry_data.gradients.Z[metal][0];
+  F_diff[1] = -kappa * p->chemistry_data.gradients.Z[metal][1];
+  F_diff[2] = -kappa * p->chemistry_data.gradients.Z[metal][2];
 }
 
 /**
@@ -164,9 +164,9 @@ chemistry_get_diffusion_gradients(const struct part *restrict p, int metal,
   const double Z = chemistry_get_metal_mass_fraction(p, metal);
 
   /* For isotropic diffusion, \grad U = \nabla \otimes q = \grad n_Z */
-  dF[0] = chd.gradients.nabla_otimes_q[metal][0] * p->rho + grad_rho[0] * Z;
-  dF[1] = chd.gradients.nabla_otimes_q[metal][1] * p->rho + grad_rho[1] * Z;
-  dF[2] = chd.gradients.nabla_otimes_q[metal][2] * p->rho + grad_rho[2] * Z;
+  dF[0] = chd.gradients.Z[metal][0] * p->rho + grad_rho[0] * Z;
+  dF[1] = chd.gradients.Z[metal][1] * p->rho + grad_rho[1] * Z;
+  dF[2] = chd.gradients.Z[metal][2] * p->rho + grad_rho[2] * Z;
 }
 
 /**
@@ -258,8 +258,8 @@ chemistry_compute_parabolic_timestep(const struct part *restrict p) {
 
     for (int j = 0; j < 3; j++) {
       /* Compute the Froebnius norm of \nabla \otimes q */
-      norm_nabla_q += chd.gradients.nabla_otimes_q[i][j] *
-                      chd.gradients.nabla_otimes_q[i][j];
+      norm_nabla_q += chd.gradients.Z[i][j] *
+                      chd.gradients.Z[i][j];
     }
   }
   /* Take the sqrt */
@@ -305,8 +305,8 @@ chemistry_compute_supertimestep(const struct part *restrict p,
 
     for (int j = 0; j < 3; j++) {
       /* Compute the Froebnius norm of \nabla \otimes q */
-      norm_nabla_otimes_q += chd.gradients.nabla_otimes_q[i][j] *
-                             chd.gradients.nabla_otimes_q[i][j];
+      norm_nabla_otimes_q += chd.gradients.Z[i][j] *
+                             chd.gradients.Z[i][j];
     }
   }
 

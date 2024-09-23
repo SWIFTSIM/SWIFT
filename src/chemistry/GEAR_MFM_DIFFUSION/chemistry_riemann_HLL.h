@@ -132,9 +132,9 @@ chemistry_riemann_solve_for_flux(
      and UR in chemistry_gradients_predict(), but not q. We have everything to
      do so now. */
   double grad_q[3];
-  grad_q[0] = pi->chemistry_data.gradients.nabla_otimes_q[g][0];
-  grad_q[1] = pi->chemistry_data.gradients.nabla_otimes_q[g][1];
-  grad_q[2] = pi->chemistry_data.gradients.nabla_otimes_q[g][2];
+  grad_q[0] = pi->chemistry_data.gradients.Z[g][0];
+  grad_q[1] = pi->chemistry_data.gradients.Z[g][1];
+  grad_q[2] = pi->chemistry_data.gradients.Z[g][2];
 
   /* Our definition of dx is opposite to the one for reconstruction, hence
      the minus sign. */
