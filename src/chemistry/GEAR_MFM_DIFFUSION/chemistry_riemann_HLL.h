@@ -24,27 +24,6 @@
 #include "hydro.h"
 
 /**
- * @brief Check if the given input states are vacuum or will generate vacuum
- */
-__attribute__((always_inline)) INLINE static int chemistry_riemann_is_vacuum(
-    const float rhoL, const float rhoR, float vL, float vR, float aL,
-    float aR) {
-
-  /* vacuum */
-  if (!rhoL || !rhoR) return 1;
-
-  /* vacuum generation */
-  else if (hydro_two_over_gamma_minus_one * aL +
-               hydro_two_over_gamma_minus_one * aR <=
-           vR - vL)
-    return 1;
-
-  /* no vacuum */
-  else
-    return 0;
-}
-
-/**
  * @brief Solve the Riemann problem for the diffusion equations and return the
  * flux at the interface.
  *
