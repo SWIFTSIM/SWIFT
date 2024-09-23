@@ -114,57 +114,61 @@ chemistry_riemann_solve_for_flux(
       (lambda_plus * Flux_L - lambda_minus * Flux_R) * one_over_dl;
   double F_U = lambda_plus * lambda_minus * dU * one_over_dl;
 
+  const float K_star_norm =
+    0.5 * sqrtf(3.0) *
+    fabsf(pi->chemistry_data.kappa + pj->chemistry_data.kappa);
+
+  /* If the diffusion matrix is null, don't exchange flux. This can happen
+     in the first timestep when the density is not yet computed. */
+  if (K_star_norm == 0.0) {
+    *metal_flux = 0;
+    return;
+  }
+
+  /* Get some convenient variables */
+  const float dx[3] = {pj->x[0] - pi->x[0], pj->x[1] - pi->x[1],
+		       pj->x[2] - pi->x[2]};
+  const float dx_norm_2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+  const float dx_norm = sqrtf(dx_norm_2);
+
+  /* Get U_star */
+  const double U_star = UL - UR;
+  const double Z_L = chemistry_part_get_metal_mass_fraction(pj, g);
+  const double Z_R = chemistry_part_get_metal_mass_fraction(pi, g);
+
+  /* Reconstruct q_star at the interface. Note that we have reconstructed UL
+     and UR in chemistry_gradients_predict(), but not q. We have everything to
+     do so now. */
+  double grad_q[3];
+  grad_q[0] = pi->chemistry_data.gradients.nabla_otimes_q[g][0];
+  grad_q[1] = pi->chemistry_data.gradients.nabla_otimes_q[g][1];
+  grad_q[2] = pi->chemistry_data.gradients.nabla_otimes_q[g][2];
+
+  /* Our definition of dx is opposite to the one for reconstruction, hence
+     the minus sign. */
+  const double grad_dot_dx =
+    -grad_q[0] * dx[0] - grad_q[1] * dx[1] - grad_q[2] * dx[2];
+  const double q_star = (Z_L - Z_R) + grad_dot_dx;
+
+  /* Now compute alpha to reduce numerical diffusion below physical
+     diffusion. */
+  const double c_fast_star = 0.5 * (c_s_L + c_s_R);
+  const double v_HLL = 0.5 * fabs(uR - uL) + c_fast_star;
+  const double r =
+    v_HLL * dx_norm * fabs(q_star) / (K_star_norm * fabs(U_star));
+  const double r_term = (0.2 + r) / (0.2 + r + r * r);
+  const double norm_term = 1.0 / sqrtf(3.0);
+  const double alpha = norm_term * r_term;
+
+  /* Multiply by alpha to limit numerical diffusion. */
+  /* message("F_U = %e", F_U); */
+  if (U_star != 0.0) {
+    F_U *= alpha;
+  }
+
   if (chem_data->use_hokpins2017_hll_riemann_solver) {
     /****************************************************************************
      * Hopkins 2017 implementation of HLL */
-    const float K_star_norm =
-        0.5 * sqrtf(3.0) *
-        fabsf(pi->chemistry_data.kappa + pj->chemistry_data.kappa);
-
-    /* If the diffusion matrix is null, don't exchange flux. This can happen
-       in the first timestep when the density is not yet computed. */
-    if (K_star_norm == 0.0) {
-      *metal_flux = 0;
-      return;
-    }
-
-    /* Get some convenient variables */
-    const float dx[3] = {pj->x[0] - pi->x[0], pj->x[1] - pi->x[1],
-                         pj->x[2] - pi->x[2]};
-    const float dx_norm_2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
-    const float dx_norm = sqrtf(dx_norm_2);
-
-    /* Get U_star */
-    const double U_star = UL - UR;
-    const double Z_L = chemistry_part_get_metal_mass_fraction(pj, g);
-    const double Z_R = chemistry_part_get_metal_mass_fraction(pi, g);
-
-    /* Reconstruct q_star at the interface. Note that we have reconstructed UL
-       and UR in chemistry_gradients_predict(), but not q. We have everything to
-       do so now. */
-    double grad_q[3];
-    grad_q[0] = pi->chemistry_data.gradients.nabla_otimes_q[g][0];
-    grad_q[1] = pi->chemistry_data.gradients.nabla_otimes_q[g][1];
-    grad_q[2] = pi->chemistry_data.gradients.nabla_otimes_q[g][2];
-
-    /* Our definition of dx is opposite to the one for reconstruction, hence
-       the minus sign. */
-    const double grad_dot_dx =
-        -grad_q[0] * dx[0] - grad_q[1] * dx[1] - grad_q[2] * dx[2];
-    const double q_star = (Z_L - Z_R) + grad_dot_dx;
-
-    /* Now compute alpha to reduce numerical diffusion below physical
-       diffusion. */
-    const double c_fast_star = 0.5 * (c_s_L + c_s_R);
-    const double v_HLL = 0.5 * fabs(uR - uL) + c_fast_star;
-    const double r =
-        v_HLL * dx_norm * fabs(q_star) / (K_star_norm * fabs(U_star));
-    const double r_term = (0.2 + r) / (0.2 + r + r * r);
-    const double norm_term = 1.0 / sqrtf(3.0);
-    const double alpha = norm_term * r_term;
-
-    /* Multiply by alpha to limit numerical diffusion. */
-    F_U *= alpha;
 
     double flux_hll = 0.0;
 
@@ -176,6 +180,8 @@ chemistry_riemann_solve_for_flux(
     } else {
       flux_hll = F_2 + F_U;
     }
+
+    /* message("flux_hll = %e, alpha = %e, F_U = %e, F_2 = %e, K_star_norm = %e, U_star = %e", flux_hll, alpha, F_U, F_2, K_star_norm, U_star); */
 
     /* Compute the direct fluxes */
     const double qi = chemistry_part_get_metal_mass_fraction(pi, g);
