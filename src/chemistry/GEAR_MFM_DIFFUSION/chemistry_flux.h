@@ -29,7 +29,7 @@
  * @param p Particle.
  */
 __attribute__((always_inline)) INLINE static void
-chemistry_part_reset_chemistry_fluxes(struct part* restrict p) {
+chemistry_reset_chemistry_fluxes(struct part* restrict p) {
 
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; ++i) {
     p->chemistry_data.diffusion_flux[i] = 0.0;
@@ -46,7 +46,7 @@ chemistry_part_reset_chemistry_fluxes(struct part* restrict p) {
  * @param metal Metal index.
  * @param flux Fluxes for the particle (array of size 1).
  */
-__attribute__((always_inline)) INLINE void chemistry_part_get_fluxes(
+__attribute__((always_inline)) INLINE void chemistry_get_fluxes(
     const struct part* restrict p, int metal, double* flux) {
   *flux = p->chemistry_data.diffusion_flux[metal];
 }
@@ -76,8 +76,8 @@ __attribute__((always_inline)) INLINE static void chemistry_compute_flux(
          reconstruction */
   /* Get the diffusion flux */
   double F_diff_i[3], F_diff_j[3];
-  chemistry_part_compute_diffusion_flux(pi, metal, F_diff_i);
-  chemistry_part_compute_diffusion_flux(pj, metal, F_diff_j);
+  chemistry_compute_diffusion_flux(pi, metal, F_diff_i);
+  chemistry_compute_diffusion_flux(pj, metal, F_diff_j);
 
 #ifdef SWIFT_DEBUG_CHECKS
   chemistry_check_unphysical_diffusion_flux(F_diff_i);

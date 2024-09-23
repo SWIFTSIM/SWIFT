@@ -235,8 +235,8 @@ runner_iact_chemistry_fluxes_common(
   /* eqn. (7) */
   float Anorm2 = 0.0f;
   float A[3];
-  if (chemistry_part_geometry_well_behaved(pi) &&
-      chemistry_part_geometry_well_behaved(pj)) {
+  if (chemistry_geometry_well_behaved(pi) &&
+      chemistry_geometry_well_behaved(pj)) {
     /* in principle, we use Vi and Vj as weights for the left and right
      * contributions to the generalized surface vector.
      * However, if Vi and Vj are very different (because they have very

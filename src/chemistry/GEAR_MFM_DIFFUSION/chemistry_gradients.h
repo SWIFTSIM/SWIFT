@@ -92,7 +92,7 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_collect(
   /*****************************************/
   /* Compute psi tilde */
   float psii_tilde[3];
-  if (chemistry_part_geometry_well_behaved(pi)) {
+  if (chemistry_geometry_well_behaved(pi)) {
     psii_tilde[0] =
         wi * (Bi[0][0] * dx[0] + Bi[0][1] * dx[1] + Bi[0][2] * dx[2]);
     psii_tilde[1] =
@@ -107,7 +107,7 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_collect(
   }
 
   float psij_tilde[3];
-  if (chemistry_part_geometry_well_behaved(pj)) {
+  if (chemistry_geometry_well_behaved(pj)) {
     psij_tilde[0] =
         wi * (Bj[0][0] * dx[0] + Bj[0][1] * dx[1] + Bj[0][2] * dx[2]);
     psij_tilde[1] =
@@ -124,8 +124,8 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_collect(
   /*****************************************/
   /* Update diffusion gradients */
   for (int g = 0; g < GEAR_CHEMISTRY_ELEMENT_COUNT; g++) {
-    const double Zi = pi->chemistry_data.metal_mass[g] / hydro_get_mass(pi);
-    const double Zj = pj->chemistry_data.metal_mass[g] / hydro_get_mass(pj);
+    const double Zi = chemistry_get_metal_mass_fraction(pi, g);
+    const double Zj = chemistry_get_metal_mass_fraction(pj, g);
     const double dZ = Zi - Zj;
 
     /* First do pi (i.e. \grad n = \nabla \otimes q = \grad U) */
@@ -232,7 +232,7 @@ chemistry_gradients_nonsym_collect(float r2, const float *dx, float hi,
   /*****************************************/
   /* Compute psi tilde */
   float psii_tilde[3];
-  if (chemistry_part_geometry_well_behaved(pi)) {
+  if (chemistry_geometry_well_behaved(pi)) {
     psii_tilde[0] =
         wi * (Bi[0][0] * dx[0] + Bi[0][1] * dx[1] + Bi[0][2] * dx[2]);
     psii_tilde[1] =
@@ -249,8 +249,8 @@ chemistry_gradients_nonsym_collect(float r2, const float *dx, float hi,
   /*****************************************/
   /* Update diffusion gradients */
   for (int g = 0; g < GEAR_CHEMISTRY_ELEMENT_COUNT; g++) {
-    const double Zi = pi->chemistry_data.metal_mass[g] / hydro_get_mass(pi);
-    const double Zj = pj->chemistry_data.metal_mass[g] / hydro_get_mass(pj);
+    const double Zi = chemistry_get_metal_mass_fraction(pi, g);
+    const double Zj = chemistry_get_metal_mass_fraction(pj, g);
     const double dZ = Zi - Zj;
 
     double dF_i[3];
@@ -303,13 +303,12 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_finalise(
   const float h_inv = 1.0f / h;
 
   float norm;
-  if (chemistry_part_geometry_well_behaved(p)) {
+  if (chemistry_geometry_well_behaved(p)) {
     const float hinvdim = pow_dimension(h_inv);
     norm = hinvdim;
   } else {
     const float hinvdimp1 = pow_dimension_plus_one(h_inv);
-    const float volume = p->chemistry_data.geometry.volume;
-    norm = hinvdimp1 * volume;
+    norm = hinvdimp1 * chemistry_get_volume(p);
   }
 
   /* Normalise the gradients */
@@ -374,8 +373,8 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
   const struct chemistry_part_data *chi = &pi->chemistry_data;
   const struct chemistry_part_data *chj = &pj->chemistry_data;
 
-  chemistry_part_get_diffusion_state_vector(pi, group, Ui);
-  chemistry_part_get_diffusion_state_vector(pj, group, Uj);
+  chemistry_get_diffusion_state_vector(pi, group, Ui);
+  chemistry_get_diffusion_state_vector(pj, group, Uj);
   /* No need to check unphysical state here:
    * they haven't been touched since the call
    * to chemistry_end_density() */
@@ -387,8 +386,8 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
                              Delta_rho * dx[2] / (r * r)};
   double dF_i[3];
   double dF_j[3];
-  chemistry_part_get_diffusion_gradients(pi, group, grad_rho, dF_i);
-  chemistry_part_get_diffusion_gradients(pj, group, grad_rho, dF_j);
+  chemistry_get_diffusion_gradients(pi, group, grad_rho, dF_i);
+  chemistry_get_diffusion_gradients(pj, group, grad_rho, dF_j);
 
   /* Compute interface position (relative to pj, since we don't need the actual
    * position) eqn. (8)
@@ -420,10 +419,10 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
 
   /* If the new masses have been changed, update the state vectors */
   if (m_Zi != m_Zi_old) {
-    *Ui = m_Zi / chi->geometry.volume;
+    *Ui = m_Zi / chemistry_get_volume(pi);
   }
   if (m_Zj != m_Zj_old) {
-    *Uj = m_Zj / chj->geometry.volume;
+    *Uj = m_Zj / chemistry_get_volume(pj);
   }
 }
 
@@ -455,8 +454,8 @@ chemistry_gradients_predict_hydro(struct part *restrict pi,
 
   float dvx_i[3], dvy_i[3], dvz_i[3];
   float dvx_j[3], dvy_j[3], dvz_j[3];
-  chemistry_part_get_hydro_gradients(pi, dvx_i, dvy_i, dvz_i);
-  chemistry_part_get_hydro_gradients(pj, dvx_j, dvy_j, dvz_j);
+  chemistry_get_hydro_gradients(pi, dvx_i, dvy_i, dvz_i);
+  chemistry_get_hydro_gradients(pj, dvx_j, dvy_j, dvz_j);
 
   float dvi[3];
   dvi[0] = chemistry_gradients_extrapolate_float(dvx_i, xij_i);

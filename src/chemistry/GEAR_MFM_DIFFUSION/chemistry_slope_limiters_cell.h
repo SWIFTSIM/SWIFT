@@ -74,10 +74,10 @@ chemistry_slope_limit_cell_collect(struct part* pi, struct part* pj, float r) {
    * primitive variables among the ngbs */
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
     chdi->limiter.metal_density[i][0] =
-        min(chemistry_part_get_metal_density(pj, i),
+        min(chemistry_get_metal_density(pj, i),
             chdi->limiter.metal_density[i][0]);
     chdi->limiter.metal_density[i][1] =
-        max(chemistry_part_get_metal_density(pj, i),
+        max(chemistry_get_metal_density(pj, i),
             chdi->limiter.metal_density[i][1]);
   }
 
@@ -158,7 +158,7 @@ __attribute__((always_inline)) INLINE static void chemistry_slope_limit_cell(
     chemistry_slope_limit_quantity(
         /*gradient=*/chd->gradients.nabla_otimes_q[i],
         /*maxr=    */ maxr,
-        /*value=   */ chemistry_part_get_metal_density(p, i),
+        /*value=   */ chemistry_get_metal_density(p, i),
         /*valmin=  */ chd->limiter.metal_density[i][0],
         /*valmax=  */ chd->limiter.metal_density[i][1],
         /*condition_number*/ N_cond);

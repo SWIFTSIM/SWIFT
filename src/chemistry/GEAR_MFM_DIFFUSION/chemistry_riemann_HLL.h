@@ -133,8 +133,8 @@ chemistry_riemann_solve_for_flux(
 
   /* Get U_star */
   const double U_star = UL - UR;
-  const double Z_L = chemistry_part_get_metal_mass_fraction(pj, g);
-  const double Z_R = chemistry_part_get_metal_mass_fraction(pi, g);
+  const double Z_L = chemistry_get_metal_mass_fraction(pj, g);
+  const double Z_R = chemistry_get_metal_mass_fraction(pi, g);
 
   /* Reconstruct q_star at the interface. Note that we have reconstructed UL
      and UR in chemistry_gradients_predict(), but not q. We have everything to
@@ -182,8 +182,8 @@ chemistry_riemann_solve_for_flux(
     }
 
     /* Compute the direct fluxes */
-    const double qi = chemistry_part_get_metal_mass_fraction(pi, g);
-    const double qj = chemistry_part_get_metal_mass_fraction(pj, g);
+    const double qi = chemistry_get_metal_mass_fraction(pi, g);
+    const double qj = chemistry_get_metal_mass_fraction(pj, g);
     const double dq = qj - qi;
     const double nabla_o_q_dir[3] = {
         dx[0] * dq / dx_norm_2, dx[1] * dq / dx_norm_2, dx[2] * dq / dx_norm_2};

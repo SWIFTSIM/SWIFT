@@ -24,6 +24,28 @@
 #include "kernel_hydro.h"
 #include "part.h"
 
+
+/**
+ * @brief Check if the gradient matrix for this particle is well behaved.
+ *
+ * @param p Particle.
+ * @return 1 if the gradient matrix is well behaved, 0 otherwise.
+ */
+__attribute__((always_inline)) INLINE static int
+chemistry_geometry_well_behaved(const struct part *restrict p) {
+  return p->chemistry_data.geometry.wcorr > const_gizmo_min_wcorr;
+}
+
+/**
+ * @brief Get the particle volume.
+ *
+ * @param p Particle.
+ */
+__attribute__((always_inline)) INLINE static float chemistry_get_volume(
+    const struct part *restrict p) {
+  return p->chemistry_data.geometry.volume;
+}
+
 /**
  * @brief Get a  metal density from a specific metal group.
  *
@@ -32,9 +54,8 @@
  * @param U Pointer to the array in which the result needs to be stored
  */
 __attribute__((always_inline)) INLINE static double
-chemistry_part_get_metal_density(const struct part *restrict p, int metal) {
-  return p->chemistry_data.metal_mass[metal] /
-         p->chemistry_data.geometry.volume;
+chemistry_get_metal_density(const struct part *restrict p, int metal) {
+  return p->chemistry_data.metal_mass[metal] / chemistry_get_volume(p);
 }
 
 /**
@@ -45,7 +66,7 @@ chemistry_part_get_metal_density(const struct part *restrict p, int metal) {
  * @param U Pointer to the array in which the result needs to be stored
  */
 __attribute__((always_inline)) INLINE static double
-chemistry_part_get_metal_mass_fraction(const struct part *restrict p,
+chemistry_get_metal_mass_fraction(const struct part *restrict p,
                                        int metal) {
   return p->chemistry_data.metal_mass[metal] / hydro_get_mass(p);
 }
@@ -60,10 +81,10 @@ chemistry_part_get_metal_mass_fraction(const struct part *restrict p,
  * @param U Pointer to the array in which the result needs to be stored
  */
 __attribute__((always_inline)) INLINE static void
-chemistry_part_get_diffusion_state_vector(const struct part *restrict p,
+chemistry_get_diffusion_state_vector(const struct part *restrict p,
                                           int metal, double *U) {
   /* The state vector is 1D and contains the metal density. */
-  *U = chemistry_part_get_metal_density(p, metal);
+  *U = chemistry_get_metal_density(p, metal);
 }
 
 /**
@@ -78,7 +99,7 @@ chemistry_part_get_diffusion_state_vector(const struct part *restrict p,
  *
  * @param p Particle.
  */
-__attribute__((always_inline)) INLINE static float chemistry_part_get_density(
+__attribute__((always_inline)) INLINE static float chemistry_get_density(
     const struct part *restrict p) {
   float rho = p->rho;
 
@@ -106,7 +127,7 @@ __attribute__((always_inline)) INLINE static float chemistry_part_get_density(
  * @param F_diff (return) Array to write diffusion flux component into
  */
 __attribute__((always_inline)) INLINE static void
-chemistry_part_compute_diffusion_flux(const struct part *restrict p, int metal,
+chemistry_compute_diffusion_flux(const struct part *restrict p, int metal,
                                       double F_diff[3]) {
 
   const double kappa = p->chemistry_data.kappa;
@@ -130,7 +151,7 @@ chemistry_part_compute_diffusion_flux(const struct part *restrict p, int metal,
  * @param dvz z velocity gradient (of size 3 or more).
  */
 __attribute__((always_inline)) INLINE static void
-chemistry_part_get_diffusion_gradients(const struct part *restrict p, int metal,
+chemistry_get_diffusion_gradients(const struct part *restrict p, int metal,
                                        const float grad_rho[3], double dF[3]) {
 
   const struct chemistry_part_data chd = p->chemistry_data;
@@ -140,7 +161,7 @@ chemistry_part_get_diffusion_gradients(const struct part *restrict p, int metal,
      However, Grad (rho*Z) = Z*Grad_rho + rho*Grad_Z
      We can estimate grad_rho = (rho_max_ij - rho_min_ij) * dx[3] / (r*r). */
 
-  const double Z = chemistry_part_get_metal_mass_fraction(p, metal);
+  const double Z = chemistry_get_metal_mass_fraction(p, metal);
 
   /* For isotropic diffusion, \grad U = \nabla \otimes q = \grad n_Z */
   dF[0] = chd.gradients.nabla_otimes_q[metal][0] * p->rho + grad_rho[0] * Z;
@@ -157,7 +178,7 @@ chemistry_part_get_diffusion_gradients(const struct part *restrict p, int metal,
  * @param dvz z velocity gradient (of size 3 or more).
  */
 __attribute__((always_inline)) INLINE static void
-chemistry_part_get_hydro_gradients(const struct part *restrict p, float dvx[3],
+chemistry_get_hydro_gradients(const struct part *restrict p, float dvx[3],
                                    float dvy[3], float dvz[3]) {
 
   dvx[0] = p->chemistry_data.gradients.v[0][0];
@@ -172,33 +193,12 @@ chemistry_part_get_hydro_gradients(const struct part *restrict p, float dvx[3],
 }
 
 /**
- * @brief Get the particle volume.
- *
- * @param p Particle.
- */
-__attribute__((always_inline)) INLINE static float chemistry_part_get_volume(
-    const struct part *restrict p) {
-  return p->chemistry_data.geometry.volume;
-}
-
-/**
- * @brief Check if the gradient matrix for this particle is well behaved.
- *
- * @param p Particle.
- * @return 1 if the gradient matrix is well behaved, 0 otherwise.
- */
-__attribute__((always_inline)) INLINE static int
-chemistry_part_geometry_well_behaved(const struct part *restrict p) {
-  return p->chemistry_data.geometry.wcorr > const_gizmo_min_wcorr;
-}
-
-/**
  * @brief Get matrix K Frobenius norm.
  *
  * @param p Particle.
  */
 __attribute__((always_inline)) INLINE static double
-chemistry_compute_matrix_K_norm(const struct part *restrict p) {
+chemistry_get_matrix_K_norm(const struct part *restrict p) {
   /* For isotropic cases: K = \kappa * I_3 */
   return sqrtf(3.0) * fabsf(p->chemistry_data.kappa);
 }
@@ -214,9 +214,9 @@ chemistry_compute_parabolic_timestep(const struct part *restrict p) {
   /* Note: The State vector is U = (rho*Z_1,rho*Z_2, ...), and q = (Z_1, Z_2,
      ...). Hence, the term norm(U)/norm(q) in eq (15) is abs(rho). */
   const struct chemistry_part_data chd = p->chemistry_data;
-  const float norm_matrix_K = chemistry_compute_matrix_K_norm(p);
+  const float norm_matrix_K = chemistry_get_matrix_K_norm(p);
   const float delta_x = kernel_gamma * p->h;
-  const float norm_U_over_norm_q = fabs(chemistry_part_get_density(p));
+  const float norm_U_over_norm_q = fabs(chemistry_get_density(p));
 
   /* Some helpful variables */
   float norm_q = 0.0;
@@ -230,8 +230,8 @@ chemistry_compute_parabolic_timestep(const struct part *restrict p) {
 
   /* Compute the norms */
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
-    norm_q += chemistry_part_get_metal_mass_fraction(p, i) *
-              chemistry_part_get_metal_mass_fraction(p, i);
+    norm_q += chemistry_get_metal_mass_fraction(p, i) *
+              chemistry_get_metal_mass_fraction(p, i);
 
     for (int j = 0; j < 3; j++) {
       /* Compute the Froebnius norm of \nabla \otimes q */
@@ -273,7 +273,7 @@ chemistry_compute_supertimestep(const struct part *restrict p,
 
   float norm_U = 0.0;
   float norm_nabla_otimes_q = 0.0;
-  const float norm_matrix_K = chemistry_compute_matrix_K_norm(p);
+  const float norm_matrix_K = chemistry_get_matrix_K_norm(p);
   const float delta_x = kernel_gamma * p->h;
 
   /* Compute the norms */
