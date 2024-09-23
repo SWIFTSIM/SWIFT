@@ -54,66 +54,6 @@
 #define DEFAULT_C_CFL_CHEMISTRY_SUPERTIMESTEPPPING 0.4
 
 /**
- * @brief Copies the chemistry properties of the gas particle over to the
- * star particle.
- *
- * @param p the gas particles.
- * @param xp the additional properties of the gas particles.
- * @param sp the new created star particle with its properties.
- */
-INLINE static void chemistry_copy_star_formation_properties(
-    struct part* p, const struct xpart* xp, struct spart* sp) {
-
-  /* gas mass after update */
-  float mass = hydro_get_mass(p);
-
-  /* Store the chemistry struct in the star particle */
-  for (int k = 0; k < GEAR_CHEMISTRY_ELEMENT_COUNT; k++) {
-    sp->chemistry_data.metal_mass_fraction[k] =
-        p->chemistry_data.metal_mass[k] / mass;
-
-    /* Remove the metals taken by the star. */
-    p->chemistry_data.metal_mass[k] *= mass / (mass + sp->mass);
-  }
-}
-
-/**
- * @brief Copies the chemistry properties of the sink particle over to the
- * stellar particle.
- *
- * @param sink the sink particle with its properties.
- * @param sp the new star particles.
- */
-INLINE static void chemistry_copy_sink_properties_to_star(struct sink* sink,
-                                                          struct spart* sp) {
-
-  /* Store the chemistry struct in the star particle */
-  for (int k = 0; k < GEAR_CHEMISTRY_ELEMENT_COUNT; k++) {
-    sp->chemistry_data.metal_mass_fraction[k] =
-        sink->chemistry_data.metal_mass_fraction[k];
-  }
-}
-
-/**
- * @brief Copies the chemistry properties of the gas particle over to the
- * sink particle.
- *
- * @param p the gas particles.
- * @param xp the additional properties of the gas particles.
- * @param sink the new created star particle with its properties.
- */
-INLINE static void chemistry_copy_sink_properties(const struct part* p,
-                                                  const struct xpart* xp,
-                                                  struct sink* sink) {
-
-  /* Store the chemistry struct in the star particle */
-  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
-    sink->chemistry_data.metal_mass_fraction[i] =
-        p->chemistry_data.metal_mass[i] / hydro_get_mass(p);
-  }
-}
-
-/**
  * @brief Prints the properties of the chemistry model to stdout.
  *
  * @brief The #chemistry_global_data containing information about the current
@@ -382,40 +322,35 @@ static INLINE void chemistry_init_backend(struct swift_params* parameter_file,
   message("Diffusion coefficient:      %e", data->diffusion_coefficient);
   message("HLL Riemann solver psi:     %e", data->hll_riemann_solver_psi);
   message("HLL Riemann solver epsilon: %e", data->hll_riemann_solver_epsilon);
-
 }
 
 /**
- * @brief Prepares a particle for the smooth metal calculation.
+ * @brief Computes the chemistry-related time-step constraint.
  *
- * Zeroes all the relevant arrays in preparation for the sums taking place in
- * the various smooth metallicity tasks
+ * Parabolic constraint proportional to h^2 or supertimestepping.
  *
- * @param p The particle to act upon
- * @param cd #chemistry_global_data containing chemistry informations.
+ * @param phys_const The physical constants in internal units.
+ * @param cosmo The current cosmological model.
+ * @param us The internal system of units.
+ * @param hydro_props The properties of the hydro scheme.
+ * @param cd The global properties of the chemistry scheme.
+ * @param p Pointer to the particle data.
  */
-__attribute__((always_inline)) INLINE static void chemistry_init_part(
-    struct part* restrict p, const struct chemistry_global_data* cd) {
+__attribute__((always_inline)) INLINE static float chemistry_timestep(
+    const struct phys_const* restrict phys_const,
+    const struct cosmology* restrict cosmo,
+    const struct unit_system* restrict us,
+    const struct hydro_props* hydro_props,
+    const struct chemistry_global_data* cd, const struct part* restrict p) {
 
-  struct chemistry_part_data* cpd = &p->chemistry_data;
+  const struct chemistry_part_data* chd = &p->chemistry_data;
 
-  /* Reset the geometry matrix */
-  cpd->geometry.volume = 0.0f;
-  cpd->geometry.matrix_E[0][0] = 0.0f;
-  cpd->geometry.matrix_E[0][1] = 0.0f;
-  cpd->geometry.matrix_E[0][2] = 0.0f;
-  cpd->geometry.matrix_E[1][0] = 0.0f;
-  cpd->geometry.matrix_E[1][1] = 0.0f;
-  cpd->geometry.matrix_E[1][2] = 0.0f;
-  cpd->geometry.matrix_E[2][0] = 0.0f;
-  cpd->geometry.matrix_E[2][1] = 0.0f;
-  cpd->geometry.matrix_E[2][2] = 0.0f;
-
-  /* Update the diffusion coefficient for the new loops */
-  p->chemistry_data.kappa = chemistry_part_compute_diffusion_coefficient(p, cd);
-
-  /* Init the gradient for the next loops */
-  chemistry_gradients_init(p);
+  /* If the substep is 0 for some reason, use the parabolic timestep instead */
+  if (cd->use_supertimestepping && chd->timesteps.substep != 0.0) {
+    return chd->timesteps.substep;
+  } else {
+    return chemistry_compute_parabolic_timestep(p);
+  }
 }
 
 /**
@@ -442,7 +377,7 @@ __attribute__((always_inline)) INLINE static void chemistry_end_density(
   /* We multiply with the smoothing kernel normalization ih3 and calculate the
    * volume */
   const float volume_inv =
-      ihdim * (p->chemistry_data.geometry.volume + kernel_root);
+      ihdim * (chemistry_get_volume(p) + kernel_root);
   const float volume = 1.0f / volume_inv;
   p->chemistry_data.geometry.volume = volume;
 
@@ -553,6 +488,24 @@ __attribute__((always_inline)) INLINE static void chemistry_end_gradient(
 }
 
 /**
+ * @brief Prepare a particle for the force calculation.
+ *
+ * In GEAR MFM diffusion, we update the flux timestep.
+ *
+ * @param p The particle to act upon
+ * @param xp The extended particle data to act upon
+ * @param cosmo The current cosmological model.
+ * @param dt_alpha The time-step used to evolve non-cosmological quantities such
+ *                 as the artificial viscosity.
+ * @param dt_therm The time-step used to evolve hydrodynamical quantities.
+ */
+__attribute__((always_inline)) INLINE static void chemistry_prepare_force(
+    struct part* restrict p, struct xpart* restrict xp,
+    const struct cosmology* cosmo, const float dt_alpha, const float dt_therm) {
+  p->chemistry_data.flux_dt = dt_therm;
+}
+
+/**
  * @brief Updates to the chemistry data after the hydro force loop.
  *
  * @param p The particle to act upon.
@@ -568,14 +521,14 @@ __attribute__((always_inline)) INLINE static void chemistry_end_force(
   if (chd->flux_dt != 0.0f) {
     for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; ++i) {
       double flux;
-      chemistry_part_get_fluxes(p, i, &flux);
+      chemistry_get_fluxes(p, i, &flux);
 
       /* Update the conserved variable */
       chd->metal_mass[i] += flux;
     }
 
     /* Reset the fluxes, so that they do not get used again in kick1 */
-    chemistry_part_reset_chemistry_fluxes(p);
+    chemistry_reset_chemistry_fluxes(p);
 
     /* Invalidate the particle time-step. It is considered to be inactive until
        dt is set again in hydro_prepare_force() */
@@ -643,24 +596,6 @@ __attribute__((always_inline)) INLINE static void chemistry_end_force(
 }
 
 /**
- * @brief Prepare a particle for the force calculation.
- *
- * In GEAR MFM diffusion, we update the flux timestep.
- *
- * @param p The particle to act upon
- * @param xp The extended particle data to act upon
- * @param cosmo The current cosmological model.
- * @param dt_alpha The time-step used to evolve non-cosmological quantities such
- *                 as the artificial viscosity.
- * @param dt_therm The time-step used to evolve hydrodynamical quantities.
- */
-__attribute__((always_inline)) INLINE static void chemistry_prepare_force(
-    struct part* restrict p, struct xpart* restrict xp,
-    const struct cosmology* cosmo, const float dt_alpha, const float dt_therm) {
-  p->chemistry_data.flux_dt = dt_therm;
-}
-
-/**
  * @brief Sets all particle fields to sensible values when the #part has 0 ngbs.
  *
  * @param p The particle to act upon
@@ -688,32 +623,36 @@ chemistry_part_has_no_neighbours(struct part* restrict p,
 }
 
 /**
- * @brief Computes the chemistry-related time-step constraint.
+ * @brief Prepares a particle for the smooth metal calculation.
  *
- * Parabolic constraint proportional to h^2 or supertimestepping.
+ * Zeroes all the relevant arrays in preparation for the sums taking place in
+ * the various smooth metallicity tasks
  *
- * @param phys_const The physical constants in internal units.
- * @param cosmo The current cosmological model.
- * @param us The internal system of units.
- * @param hydro_props The properties of the hydro scheme.
- * @param cd The global properties of the chemistry scheme.
- * @param p Pointer to the particle data.
+ * @param p The particle to act upon
+ * @param cd #chemistry_global_data containing chemistry informations.
  */
-__attribute__((always_inline)) INLINE static float chemistry_timestep(
-    const struct phys_const* restrict phys_const,
-    const struct cosmology* restrict cosmo,
-    const struct unit_system* restrict us,
-    const struct hydro_props* hydro_props,
-    const struct chemistry_global_data* cd, const struct part* restrict p) {
+__attribute__((always_inline)) INLINE static void chemistry_init_part(
+    struct part* restrict p, const struct chemistry_global_data* cd) {
 
-  const struct chemistry_part_data* chd = &p->chemistry_data;
+  struct chemistry_part_data* cpd = &p->chemistry_data;
 
-  /* If the substep is 0 for some reason, use the parabolic timestep instead */
-  if (cd->use_supertimestepping && chd->timesteps.substep != 0.0) {
-    return chd->timesteps.substep;
-  } else {
-    return chemistry_compute_parabolic_timestep(p);
-  }
+  /* Reset the geometry matrix */
+  cpd->geometry.volume = 0.0f;
+  cpd->geometry.matrix_E[0][0] = 0.0f;
+  cpd->geometry.matrix_E[0][1] = 0.0f;
+  cpd->geometry.matrix_E[0][2] = 0.0f;
+  cpd->geometry.matrix_E[1][0] = 0.0f;
+  cpd->geometry.matrix_E[1][1] = 0.0f;
+  cpd->geometry.matrix_E[1][2] = 0.0f;
+  cpd->geometry.matrix_E[2][0] = 0.0f;
+  cpd->geometry.matrix_E[2][1] = 0.0f;
+  cpd->geometry.matrix_E[2][2] = 0.0f;
+
+  /* Update the diffusion coefficient for the new loops */
+  p->chemistry_data.kappa = chemistry_compute_diffusion_coefficient(p, cd);
+
+  /* Init the gradient for the next loops */
+  chemistry_gradients_init(p);
 }
 
 /**
@@ -802,6 +741,66 @@ __attribute__((always_inline)) INLINE static void chemistry_first_init_sink(
           data->initial_metallicities[i];
     }
     /* else : read the metallicities from the ICs. */
+  }
+}
+
+/**
+ * @brief Copies the chemistry properties of the gas particle over to the
+ * star particle.
+ *
+ * @param p the gas particles.
+ * @param xp the additional properties of the gas particles.
+ * @param sp the new created star particle with its properties.
+ */
+INLINE static void chemistry_copy_star_formation_properties(
+    struct part* p, const struct xpart* xp, struct spart* sp) {
+
+  /* gas mass after update */
+  float mass = hydro_get_mass(p);
+
+  /* Store the chemistry struct in the star particle */
+  for (int k = 0; k < GEAR_CHEMISTRY_ELEMENT_COUNT; k++) {
+    sp->chemistry_data.metal_mass_fraction[k] =
+        p->chemistry_data.metal_mass[k] / mass;
+
+    /* Remove the metals taken by the star. */
+    p->chemistry_data.metal_mass[k] *= mass / (mass + sp->mass);
+  }
+}
+
+/**
+ * @brief Copies the chemistry properties of the sink particle over to the
+ * stellar particle.
+ *
+ * @param sink the sink particle with its properties.
+ * @param sp the new star particles.
+ */
+INLINE static void chemistry_copy_sink_properties_to_star(struct sink* sink,
+                                                          struct spart* sp) {
+
+  /* Store the chemistry struct in the star particle */
+  for (int k = 0; k < GEAR_CHEMISTRY_ELEMENT_COUNT; k++) {
+    sp->chemistry_data.metal_mass_fraction[k] =
+        sink->chemistry_data.metal_mass_fraction[k];
+  }
+}
+
+/**
+ * @brief Copies the chemistry properties of the gas particle over to the
+ * sink particle.
+ *
+ * @param p the gas particles.
+ * @param xp the additional properties of the gas particles.
+ * @param sink the new created star particle with its properties.
+ */
+INLINE static void chemistry_copy_sink_properties(const struct part* p,
+                                                  const struct xpart* xp,
+                                                  struct sink* sink) {
+
+  /* Store the chemistry struct in the star particle */
+  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
+    sink->chemistry_data.metal_mass_fraction[i] =
+        p->chemistry_data.metal_mass[i] / hydro_get_mass(p);
   }
 }
 
