@@ -181,8 +181,6 @@ chemistry_riemann_solve_for_flux(
       flux_hll = F_2 + F_U;
     }
 
-    /* message("flux_hll = %e, alpha = %e, F_U = %e, F_2 = %e, K_star_norm = %e, U_star = %e", flux_hll, alpha, F_U, F_2, K_star_norm, U_star); */
-
     /* Compute the direct fluxes */
     const double qi = chemistry_part_get_metal_mass_fraction(pi, g);
     const double qj = chemistry_part_get_metal_mass_fraction(pj, g);
