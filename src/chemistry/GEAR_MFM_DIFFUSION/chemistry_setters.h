@@ -143,27 +143,4 @@ chemistry_part_normalise_gradients(struct part *restrict p, const float norm) {
   chd->gradients.v[2][2] *= norm;
 }
 
-/**
- * @brief Compute the diffusion coefficient of the particle.
- *
- * Note: The diffusion coefficient depends on the particle's density. If the
- * density is 0, then the coefficient is 0 as well and the timestep for
- * chemistry will be 0.
- *
- * @param p Particle.
- */
-__attribute__((always_inline)) INLINE static double
-chemistry_compute_diffusion_coefficient(
-    struct part *restrict p, const struct chemistry_global_data *data) {
-
-  float rho = chemistry_get_density(p);
-
-  if (data->use_isotropic_diffusion) {
-    /* Now we need to take into account the density since q = Z and U = rho_Z */
-    return data->diffusion_coefficient * rho;
-  } else {
-    return data->diffusion_coefficient * kernel_gamma2 * p->h * p->h * rho;
-  }
-}
-
 #endif /* SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_SETTERS_H */
