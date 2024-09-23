@@ -23,9 +23,6 @@
 #include "chemistry_slope_limiters_face.h"
 #include "hydro.h"
 
-/* TODO: Put this in the sign.h file and define for double. */
-#define SIGN(x) ((x) > 0 ? 1 : ((x) < 0 ? -1 : 0))
-
 /**
  * @brief Check if the given input states are vacuum or will generate vacuum
  */
