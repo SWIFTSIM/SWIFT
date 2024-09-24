@@ -74,7 +74,9 @@ chemistry_riemann_solve_for_flux(
     return;
   }
 
-  /* STEP 0: obtain velocity in interface frame */
+  /****************************************************************************/
+  /* Estimate the eigenvalue of the Jacobian matrix dF/dU */
+  /* Obtain velocity in interface frame */
   const float uL = WL[1] * n_unit[0] + WL[2] * n_unit[1] + WL[3] * n_unit[2];
   const float uR = WR[1] * n_unit[0] + WR[2] * n_unit[1] + WR[3] * n_unit[2];
 
@@ -93,67 +95,105 @@ chemistry_riemann_solve_for_flux(
     return;
   }
 
-  /* Project the fluxes to reduce to a 1D Problem with 1 quantity */
-  const double Flux_L = F_diff_L[0] * n_unit[0] + F_diff_L[1] * n_unit[1] +
-                        F_diff_L[2] * n_unit[2];
-  const double Flux_R = F_diff_R[0] * n_unit[0] + F_diff_R[1] * n_unit[1] +
-                        F_diff_R[2] * n_unit[2];
+  /****************************************************************************/
+  /* Compute the flux artificial diffusion coefficient alpha */
+  /* Compute diffusion matrix K_star = 0.5*(KR + KL) */
+  double KR[3][3], KL[3][3], K_star[3][3];
+  chemistry_get_matrix_K(pi, pi->chemistry_data.kappa, KR, chem_data);
+  chemistry_get_matrix_K(pi, pj->chemistry_data.kappa, KL, chem_data);
 
-  /* Compute F_HLL */
-  const double dU = UR - UL;
-  const float one_over_dl = 1.f / (lambda_plus - lambda_minus);
-  const double F_2 =
-      (lambda_plus * Flux_L - lambda_minus * Flux_R) * one_over_dl;
-  double F_U = lambda_plus * lambda_minus * dU * one_over_dl;
+  /* Init K_star to 0.0. Do it better in the future... */
+  chemistry_get_matrix_K(pi, 0.0, K_star, chem_data);
 
-  const float K_star_norm =
-      0.5 * sqrtf(3.0) *
-      fabsf(pi->chemistry_data.kappa + pj->chemistry_data.kappa);
+  for (int i = 0 ; i < 3 ; ++i) {
+    for (int j = 0 ; j < 3 ; ++j) {
+      K_star[i][j] += 0.5*(KR[i][j] + KL[i][j]);
+    }
+  }
+
+  const double norm_K_star = chemistry_get_matrix_norm(K_star);
 
   /* If the diffusion matrix is null, don't exchange flux. This can happen
      in the first timestep when the density is not yet computed. */
-  if (K_star_norm == 0.0) {
+  if (norm_K_star == 0.0) {
     *metal_flux = 0;
     return;
   }
 
-  /* Get some convenient variables */
+  /* Define some convenient variables */
   const float dx[3] = {pj->x[0] - pi->x[0], pj->x[1] - pi->x[1],
                        pj->x[2] - pi->x[2]};
   const float dx_norm_2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
   const float dx_norm = sqrtf(dx_norm_2);
 
   /* Get U_star */
-  const double U_star = UL - UR;
-  const double Z_L = chemistry_get_metal_mass_fraction(pj, g);
-  const double Z_R = chemistry_get_metal_mass_fraction(pi, g);
+  const double U_star = UL - UR;;
 
   /* Reconstruct q_star at the interface. Note that we have reconstructed UL
      and UR in chemistry_gradients_predict(), but not q. We have everything to
      do so now. */
+  const double Z_L = chemistry_get_metal_mass_fraction(pj, g);
+  const double Z_R = chemistry_get_metal_mass_fraction(pi, g);
   double grad_q[3];
   grad_q[0] = pi->chemistry_data.gradients.Z[g][0];
   grad_q[1] = pi->chemistry_data.gradients.Z[g][1];
   grad_q[2] = pi->chemistry_data.gradients.Z[g][2];
 
+  /* grad_q[0] = 0.5*(pi->chemistry_data.gradients.Z[g][0] + pj->chemistry_data.gradients.Z[g][0]); */
+  /* grad_q[1] = 0.5*(pi->chemistry_data.gradients.Z[g][1] + pj->chemistry_data.gradients.Z[g][1]); */
+  /* grad_q[2] = 0.5*(pi->chemistry_data.gradients.Z[g][2] + pj->chemistry_data.gradients.Z[g][2]); */
+
+  const double norm_grad_q_star = sqrtf(grad_q[0]*grad_q[0] + grad_q[1]*grad_q[1] + grad_q[2]*grad_q[2]);
+
   /* Our definition of dx is opposite to the one for reconstruction, hence
      the minus sign. */
   const double grad_dot_dx =
-      -grad_q[0] * dx[0] - grad_q[1] * dx[1] - grad_q[2] * dx[2];
+    - (grad_q[0] * dx[0] + grad_q[1] * dx[1] + grad_q[2] * dx[2]);
   const double q_star = (Z_L - Z_R) + grad_dot_dx;
+
+  /* Compute norm(K_star * grad_q_star) */
+  float norm_K_star_times_grad_q_star = 0.0;
+  float matrix_product = 0.0;
+
+  for (int i = 0 ; i < 3 ; ++i) {
+    /* Reset the temporary var */
+    matrix_product = 0.0;
+    for (int j = 0 ; j < 3 ; ++j) {
+      /* Compute (K_star * grad_q_star)_i = Sum_j (K_star)_ij (grad_q_star)_j */
+      matrix_product = K_star[i][j] * grad_q[j];
+    }
+    /* Add the product to the norm squared */
+    norm_K_star_times_grad_q_star += matrix_product*matrix_product;
+  }
+  norm_K_star_times_grad_q_star = sqrtf(norm_K_star_times_grad_q_star);
 
   /* Now compute alpha to reduce numerical diffusion below physical
      diffusion. */
   const double c_fast_star = 0.5 * (c_s_L + c_s_R);
   const double v_HLL = 0.5 * fabs(uR - uL) + c_fast_star;
   const double r =
-      v_HLL * dx_norm * fabs(q_star) / (K_star_norm * fabs(U_star));
+      v_HLL * dx_norm * fabs(q_star) / (norm_K_star * fabs(U_star));
   const double r_term = (0.2 + r) / (0.2 + r + r * r);
-  const double norm_term = 1.0 / sqrtf(3.0);
+  const double norm_term = norm_K_star_times_grad_q_star / (norm_K_star * norm_grad_q_star);
   const double alpha = norm_term * r_term;
 
+  /****************************************************************************/
+  /* Now compute the HLL flux */
+  /* Project the fluxes to reduce to a 1D Problem with 1 quantity */
+  const double Flux_L = F_diff_L[0] * n_unit[0] + F_diff_L[1] * n_unit[1] +
+                        F_diff_L[2] * n_unit[2];
+  const double Flux_R = F_diff_R[0] * n_unit[0] + F_diff_R[1] * n_unit[1] +
+                        F_diff_R[2] * n_unit[2];
+
+  /* Compute variables to determine F_HLL */
+  const double dU = UR - UL;
+  const float one_over_dl = 1.f / (lambda_plus - lambda_minus);
+  const double F_2 =
+      (lambda_plus * Flux_L - lambda_minus * Flux_R) * one_over_dl;
+  double F_U = lambda_plus * lambda_minus * dU * one_over_dl;
+
   /* Multiply by alpha to limit numerical diffusion. */
-  /* message("F_U = %e", F_U); */
+  /* Prevent pathological cases (alpha = Nan) */
   if (U_star != 0.0) {
     F_U *= alpha;
   }
