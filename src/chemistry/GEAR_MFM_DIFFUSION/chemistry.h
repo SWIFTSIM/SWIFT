@@ -30,6 +30,7 @@
 #include <string.h>
 
 /* Local includes. */
+#include "chemistry_getters.h"
 #include "chemistry_flux.h"
 #include "chemistry_gradients.h"
 #include "chemistry_setters.h"
@@ -501,8 +502,12 @@ __attribute__((always_inline)) INLINE static void chemistry_end_gradient(
  */
 __attribute__((always_inline)) INLINE static void chemistry_prepare_force(
     struct part* restrict p, struct xpart* restrict xp,
-    const struct cosmology* cosmo, const float dt_alpha, const float dt_therm) {
+    const struct cosmology* cosmo, const float dt_alpha, const float dt_therm,
+    const struct chemistry_global_data* cd) {
   p->chemistry_data.flux_dt = dt_therm;
+
+  /* Update the diffusion coefficient for the new loops */
+  p->chemistry_data.kappa = chemistry_compute_diffusion_coefficient(p, cd);
 }
 
 /**
@@ -648,8 +653,7 @@ __attribute__((always_inline)) INLINE static void chemistry_init_part(
   cpd->geometry.matrix_E[2][1] = 0.0f;
   cpd->geometry.matrix_E[2][2] = 0.0f;
 
-  /* Update the diffusion coefficient for the new loops */
-  p->chemistry_data.kappa = chemistry_compute_diffusion_coefficient(p, cd);
+  /* Note: DON'T call p->rho here. It is basically 0. */
 
   /* Init the gradient for the next loops */
   chemistry_gradients_init(p);
