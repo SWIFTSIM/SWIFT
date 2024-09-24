@@ -76,8 +76,8 @@ __attribute__((always_inline)) INLINE static void chemistry_compute_flux(
          reconstruction */
   /* Get the diffusion flux */
   double F_diff_i[3], F_diff_j[3];
-  chemistry_compute_diffusion_flux(pi, metal, F_diff_i);
-  chemistry_compute_diffusion_flux(pj, metal, F_diff_j);
+  chemistry_compute_diffusion_flux(pi, metal, chem_data, F_diff_i);
+  chemistry_compute_diffusion_flux(pj, metal, chem_data, F_diff_j);
 
 #ifdef SWIFT_DEBUG_CHECKS
   chemistry_check_unphysical_diffusion_flux(F_diff_i);
