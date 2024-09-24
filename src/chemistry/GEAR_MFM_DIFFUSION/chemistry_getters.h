@@ -19,6 +19,7 @@
 #ifndef SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_GETTERS_H
 #define SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_GETTERS_H
 
+#include "chemistry_struct.h"
 #include "const.h"
 #include "hydro.h"
 #include "kernel_hydro.h"
@@ -117,6 +118,90 @@ __attribute__((always_inline)) INLINE static float chemistry_get_density(
 }
 
 /**
+ * @brief Get matrix K Frobenius norm.
+ *
+ * @param p Particle.
+ */
+__attribute__((always_inline)) INLINE static void
+chemistry_get_matrix_K(const struct part *restrict p, double kappa, double K[3][3],
+		       const struct chemistry_global_data *chem_data) {
+  if (chem_data->diffusion_mode == isotropic_constant ||
+      chem_data->diffusion_mode == isotropic_smagorinsky) {
+    /* K = kappa * I */
+    for (int i = 0 ; i < 3 ; ++i) {
+      for (int j = 0 ; j < 3 ; ++j) {
+	K[i][j] = 0.0;
+      }
+    }
+    K[0][0] = kappa;
+    K[1][1] = kappa;
+    K[2][2] = kappa;
+  } else {
+    /* K = kappa * S */
+    for (int i = 0 ; i < 3 ; ++i) {
+      for (int j = 0 ; j < 3 ; ++j) {
+	K[i][j] = kappa * (p->chemistry_data.filtered.grad_v_tilde[i][j] +  p->chemistry_data.filtered.grad_v_tilde[j][i]);
+      }
+    }
+  }
+}
+
+/**
+ * @brief Get matrix K Frobenius norm.
+ *
+ * @param p Particle.
+ */
+__attribute__((always_inline)) INLINE static double
+chemistry_get_matrix_norm(const double K[3][3]) {
+  float norm = 0.0;
+  for (int i = 0 ; i < 3 ; ++i) {
+    for (int j = 0 ; j < 3 ; ++j) {
+      norm += K[i][j] * K[i][j];
+    }
+  }
+  return sqrtf(norm);
+}
+
+/**
+ * @brief Compute the diffusion coefficient of the particle.
+ *
+ * This must be called in chemistry_prepare_force() to have the values of the density and the
+ * matrix S (which depends on grad_v_tilde).
+ *
+ * Note: The diffusion coefficient depends on the particle's density. If the
+ * density is 0, then the coefficient is 0 as well and the timestep for
+ * chemistry will be 0.
+ *
+ * @param p Particle.
+ */
+__attribute__((always_inline)) INLINE static double
+chemistry_compute_diffusion_coefficient(
+    struct part *restrict p, const struct chemistry_global_data *chem_data) {
+
+  float rho = chemistry_get_density(p);
+
+  if (chem_data->diffusion_mode == isotropic_constant) {
+    return chem_data->diffusion_coefficient;
+  } else if (chem_data->diffusion_mode == isotropic_smagorinsky) {
+    /* Compute K with kappa = 1 ==> get matrix S */
+    double S[3][3];
+    chemistry_get_matrix_K(p, 1.0, S, chem_data);
+
+    /* In the smagorinsky model, we remove the trace from S */
+    const double trace = S[0][0] + S[1][1] + S[2][2];
+
+    S[0][0] -= trace;
+    S[1][1] -= trace;
+    S[2][2] -= trace;
+
+    return chem_data->diffusion_coefficient * kernel_gamma2 * p->h * p->h * rho * chemistry_get_matrix_norm(S);
+  } else {
+    /* Note that this is multiplied by the matrix S to get the full matrix K */
+    return chem_data->diffusion_coefficient * kernel_gamma2 * p->h * p->h * rho;
+  }
+}
+
+/**
  * @brief Compute the diffusion flux of given metal group.
  *
  * F_diss = - K * \nabla \otimes q
@@ -127,15 +212,32 @@ __attribute__((always_inline)) INLINE static float chemistry_get_density(
  */
 __attribute__((always_inline)) INLINE static void
 chemistry_compute_diffusion_flux(const struct part *restrict p, int metal,
-                                      double F_diff[3]) {
+				 const struct chemistry_global_data *chem_data,
+				 double F_diff[3]) {
 
   const double kappa = p->chemistry_data.kappa;
 
-  /* For isotropic diffusion, \nabla \otimes q = \grad n_Z.
-     Note: K = kappa * I_3 for isotropic diffusion. */
-  F_diff[0] = -kappa * p->chemistry_data.gradients.Z[metal][0];
-  F_diff[1] = -kappa * p->chemistry_data.gradients.Z[metal][1];
-  F_diff[2] = -kappa * p->chemistry_data.gradients.Z[metal][2];
+  if (chem_data->diffusion_mode == isotropic_constant ||
+      chem_data->diffusion_mode == isotropic_smagorinsky) {
+    /* Isotropic diffusion: K = kappa * I_3 for isotropic diffusion. */
+    F_diff[0] = -kappa * p->chemistry_data.gradients.Z[metal][0];
+    F_diff[1] = -kappa * p->chemistry_data.gradients.Z[metal][1];
+    F_diff[2] = -kappa * p->chemistry_data.gradients.Z[metal][2];
+  } else {
+    F_diff[0] = 0.0;
+    F_diff[1] = 0.0;
+    F_diff[2] = 0.0;
+
+  /* Compute diffusion matrix K_star = 0.5*(KR + KL) */
+    double K[3][3];
+    chemistry_get_matrix_K(p, p->chemistry_data.kappa, K, chem_data);
+
+    for (int i = 0 ; i < 3 ; ++i) {
+      for (int j = 0 ; j < 3 ; ++j) {
+	F_diff[i] += K[i][j] * p->chemistry_data.gradients.Z[metal][j];
+      }
+    } /* End of matrix multiplication */
+  } /* end of if else diffusion_mode */
 }
 
 /**
@@ -151,9 +253,9 @@ chemistry_compute_diffusion_flux(const struct part *restrict p, int metal,
  */
 __attribute__((always_inline)) INLINE static void
 chemistry_get_diffusion_gradients(const struct part *restrict p, int metal,
-                                       const float grad_rho[3], double dF[3]) {
+				  const float grad_rho[3], double dF[3]) {
 
-  const struct chemistry_part_data chd = p->chemistry_data;
+  const struct chemistry_part_data *chd = &p->chemistry_data;
 
   /* We have U = rho_Z and q = Z.
      But we computed Grad Z and not Grad (rho*Z).
@@ -163,9 +265,9 @@ chemistry_get_diffusion_gradients(const struct part *restrict p, int metal,
   const double Z = chemistry_get_metal_mass_fraction(p, metal);
 
   /* For isotropic diffusion, \grad U = \nabla \otimes q = \grad n_Z */
-  dF[0] = chd.gradients.Z[metal][0] * p->rho + grad_rho[0] * Z;
-  dF[1] = chd.gradients.Z[metal][1] * p->rho + grad_rho[1] * Z;
-  dF[2] = chd.gradients.Z[metal][2] * p->rho + grad_rho[2] * Z;
+  dF[0] = chd->gradients.Z[metal][0] * p->rho + grad_rho[0] * Z;
+  dF[1] = chd->gradients.Z[metal][1] * p->rho + grad_rho[1] * Z;
+  dF[2] = chd->gradients.Z[metal][2] * p->rho + grad_rho[2] * Z;
 }
 
 /**
@@ -192,54 +294,27 @@ chemistry_get_hydro_gradients(const struct part *restrict p, float dvx[3],
 }
 
 /**
- * @brief Compute the diffusion coefficient of the particle.
- *
- * Note: The diffusion coefficient depends on the particle's density. If the
- * density is 0, then the coefficient is 0 as well and the timestep for
- * chemistry will be 0.
- *
- * @param p Particle.
- */
-__attribute__((always_inline)) INLINE static double
-chemistry_compute_diffusion_coefficient(
-    struct part *restrict p, const struct chemistry_global_data *data) {
-
-  float rho = chemistry_get_density(p);
-
-  if (data->use_isotropic_diffusion) {
-    return data->diffusion_coefficient;
-  } else {
-    return data->diffusion_coefficient * kernel_gamma2 * p->h * p->h * rho;
-  }
-}
-
-/**
- * @brief Get matrix K Frobenius norm.
- *
- * @param p Particle.
- */
-__attribute__((always_inline)) INLINE static double
-chemistry_get_matrix_K_norm(const struct part *restrict p) {
-  /* For isotropic cases: K = \kappa * I_3 */
-  return sqrtf(3.0) * fabsf(p->chemistry_data.kappa);
-}
-
-/**
  * @brief Compute the particle parabolic timestep proportional to h^2.
  *
  * @param p Particle.
  */
 __attribute__((always_inline)) INLINE static float
-chemistry_compute_parabolic_timestep(const struct part *restrict p) {
+chemistry_compute_parabolic_timestep(const struct part *restrict p,
+				     const struct chemistry_global_data *chem_data) {
+
+  const struct chemistry_part_data *chd = &p->chemistry_data;
+
+  /* Compute diffusion matrix K */
+  double K[3][3];
+  chemistry_get_matrix_K(p, chd->kappa, K, chem_data);
+  const float norm_matrix_K = chemistry_get_matrix_norm(K);
 
   /* Note: The State vector is U = (rho*Z_1,rho*Z_2, ...), and q = (Z_1, Z_2,
      ...). Hence, the term norm(U)/norm(q) in eq (15) is abs(rho). */
-  const struct chemistry_part_data chd = p->chemistry_data;
-  const float norm_matrix_K = chemistry_get_matrix_K_norm(p);
-  const float delta_x = kernel_gamma * p->h;
   const float norm_U_over_norm_q = fabs(chemistry_get_density(p));
 
   /* Some helpful variables */
+  const float delta_x = kernel_gamma * p->h;
   float norm_q = 0.0;
   float norm_nabla_q = 0.0;
   float expression = 0.0;
@@ -255,11 +330,12 @@ chemistry_compute_parabolic_timestep(const struct part *restrict p) {
               chemistry_get_metal_mass_fraction(p, i);
 
     for (int j = 0; j < 3; j++) {
-      /* Compute the Froebnius norm of \nabla \otimes q */
-      norm_nabla_q += chd.gradients.Z[i][j] *
-                      chd.gradients.Z[i][j];
+      /* Compute the Frobenius norm of \nabla \otimes q = Grad Z */
+      norm_nabla_q += chd->gradients.Z[i][j] *
+                      chd->gradients.Z[i][j];
     }
   }
+
   /* Take the sqrt */
   norm_q = sqrtf(norm_q);
   norm_nabla_q = sqrtf(norm_nabla_q);
@@ -267,14 +343,12 @@ chemistry_compute_parabolic_timestep(const struct part *restrict p) {
   /* If the norm of q (metal density = 0), then use the following
      expression. Notice that if norm q = 0, the true timestep muste be 0... */
   if (norm_q == 0) {
-    /* warning("norm q = 0"); */
     return delta_x * delta_x / norm_matrix_K * norm_U_over_norm_q;
   }
 
   /* Finish the computations */
   expression = norm_q * delta_x / (norm_nabla_q * delta_x + norm_q);
 
-  /* return delta_x * delta_x / norm_matrix_K * norm_U_over_norm_q; */
   return expression * expression / norm_matrix_K * norm_U_over_norm_q;
 }
 
@@ -307,29 +381,33 @@ __attribute__((always_inline)) INLINE static float
 chemistry_compute_CFL_supertimestep(const struct part *restrict p,
 				    const struct chemistry_global_data *cd) {
 
-  const struct chemistry_part_data chd = p->chemistry_data;
+  const struct chemistry_part_data *chd = &p->chemistry_data;
 
-  /* Note: The State vector is U = (metal_density_1, metal_density_2, etc),
-     which is also = q. Hence, the last term in eq (15) is unity. */
+  /* Compute diffusion matrix K */
+  double K[3][3];
+  chemistry_get_matrix_K(p, chd->kappa, K, cd);
+  const float norm_matrix_K = chemistry_get_matrix_norm(K);
 
+  /* Some helpful variables */
+  const float delta_x = kernel_gamma * p->h;
+
+  /* Note: The State vector is U = (rho*Z_1,rho*Z_2, ...). */
   float norm_U = 0.0;
   float norm_nabla_otimes_q = 0.0;
-  const float norm_matrix_K = chemistry_get_matrix_K_norm(p);
-  const float delta_x = kernel_gamma * p->h;
 
   /* Compute the norms */
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
     norm_U += p->chemistry_data.metal_mass[i] * p->chemistry_data.metal_mass[i];
 
     for (int j = 0; j < 3; j++) {
-      /* Compute the Froebnius norm of \nabla \otimes q */
-      norm_nabla_otimes_q += chd.gradients.Z[i][j] *
-                             chd.gradients.Z[i][j];
+      /* Compute the Frobenius norm of \nabla \otimes q */
+      norm_nabla_otimes_q += chd->gradients.Z[i][j] *
+                             chd->gradients.Z[i][j];
     }
   }
 
   /* Take the sqrt and divide by the volume to get a density */
-  norm_U = sqrtf(norm_U) / chd.geometry.volume;
+  norm_U = sqrtf(norm_U) / chemistry_get_volume(p);
 
   /* Take the sqrt to get the norm */
   norm_nabla_otimes_q = sqrtf(norm_nabla_otimes_q);
