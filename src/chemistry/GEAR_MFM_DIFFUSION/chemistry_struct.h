@@ -23,6 +23,15 @@
 #define GEAR_LABELS_SIZE 10  // redumndant with the one defined in
 
 /**
+ * @brief The diffusion mode
+ */
+enum chemistry_diffusion_mode {
+  isotropic_constant,
+  isotropic_smagorinsky, /* Smagorinsky turbulent diffusion \propto |S| */
+  anisotropic_gradient /* Rennehan (2021) model \propto S */
+};
+
+/**
  * @brief Global chemical abundance information.
  */
 struct chemistry_global_data {
@@ -44,7 +53,7 @@ struct chemistry_global_data {
 
   /*! Diffusion mode. 0: isotropic with constant coefficient, 1: Smagorinsky
       isotrpoic diffusion, 2: anistropic diffusion with the shear tensor. */
-  int diffusion_mode;
+  enum chemistry_diffusion_mode diffusion_mode;
 
   /***************************************************************************/
   /* HLL Riemann solver parameters
