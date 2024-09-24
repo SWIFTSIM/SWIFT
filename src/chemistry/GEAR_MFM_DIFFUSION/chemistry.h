@@ -343,12 +343,13 @@ __attribute__((always_inline)) INLINE static float chemistry_timestep(
     const struct cosmology* restrict cosmo,
     const struct unit_system* restrict us,
     const struct hydro_props* hydro_props,
-    const struct chemistry_global_data* cd, const struct part* restrict p) {
+    const struct chemistry_global_data* chem_data,
+    const struct part* restrict p) {
 
-  if (cd->use_supertimestepping) {
+  if (chem_data->use_supertimestepping) {
     return FLT_MAX;
   } else {
-    return chemistry_compute_parabolic_timestep(p);
+    return chemistry_compute_parabolic_timestep(p, chem_data);
   }
 }
 
@@ -384,7 +385,7 @@ chemistry_compute_supertimestep(const struct phys_const* restrict phys_const,
       /* Then, increment the current_substep */
       if (substep > 0.0) ++chd->timesteps.current_substep;
     } else {
-      const float parabolic_explicit_timestep = chemistry_compute_parabolic_timestep(p);
+      const float parabolic_explicit_timestep = chemistry_compute_parabolic_timestep(p, cd);
 
       /* Get the supertimestep from CFL condition */
       float super_timestep = chemistry_compute_CFL_supertimestep(p, cd);
@@ -427,7 +428,7 @@ chemistry_compute_supertimestep(const struct phys_const* restrict phys_const,
     } else {
       /* Reset the supertimestepping */
       chd->timesteps.current_substep = cd->N_substeps + 1;
-      return chemistry_compute_parabolic_timestep(p);
+      return chemistry_compute_parabolic_timestep(p, cd);
     }
   } else {
     return FLT_MAX;
