@@ -344,13 +344,92 @@ __attribute__((always_inline)) INLINE static float chemistry_timestep(
     const struct hydro_props* hydro_props,
     const struct chemistry_global_data* cd, const struct part* restrict p) {
 
-  const struct chemistry_part_data* chd = &p->chemistry_data;
-
-  /* If the substep is 0 for some reason, use the parabolic timestep instead */
-  if (cd->use_supertimestepping && chd->timesteps.substep != 0.0) {
-    return chd->timesteps.substep;
+  if (cd->use_supertimestepping) {
+    return FLT_MAX;
   } else {
     return chemistry_compute_parabolic_timestep(p);
+  }
+}
+
+/**
+ * @brief Compute the particle supertimestep proportional to h.
+ *
+ * This is equation (10) in Alexiades, Amiez and Gremaud (1996).
+ *
+ * @param p Particle.
+ */
+__attribute__((always_inline)) INLINE static float
+chemistry_compute_supertimestep(const struct phys_const* restrict phys_const,
+    const struct cosmology* restrict cosmo,
+    const struct unit_system* restrict us,
+    const struct hydro_props* hydro_props,
+    const struct chemistry_global_data* cd, struct part* restrict p,
+    float min_dt_part) {
+
+  struct chemistry_part_data* chd = &p->chemistry_data;
+
+  /* Do not use supertimestepping in the fake timestep */
+  if (cd->use_supertimestepping && p->time_bin != 0) {
+    float substep = 0.0;
+
+    /* Have we finished substepping? */
+    if (chd->timesteps.current_substep <= cd->N_substeps) {
+      /* What happens if min_dt_part < substep ? Then, we will integrate with
+	 min_dt_part and continue the cycle as if we had done the substep */
+
+      /* Get the next substep */
+      substep = chemistry_compute_subtimestep(p, cd, chd->timesteps.current_substep);
+
+      /* Then, increment the current_substep */
+      if (substep > 0.0) ++chd->timesteps.current_substep;
+    } else {
+      const float parabolic_explicit_timestep = chemistry_compute_parabolic_timestep(p);
+
+      /* Get the supertimestep from CFL condition */
+      float super_timestep = chemistry_compute_CFL_supertimestep(p, cd);
+
+      /* If the hydro timestep is smaller than the parabolic timestep, then
+	 don't start supertimestepping. Do parabolic timestep instead.
+	 Same if the CFL timestep is smaller than the parabolic timestep. */
+      if (min_dt_part <= parabolic_explicit_timestep || super_timestep <= parabolic_explicit_timestep) {
+	/* message("hydro_timestep = %e, supertimestep = %e, parabolic_timestep = %e", min_dt_part, super_timestep, parabolic_explicit_timestep); */
+	return parabolic_explicit_timestep;
+      }
+      /* Now we have min_dt_part and super_timestep > parabolic_time_step. So,
+	 it is worth doing supertimestepping. */
+
+      /* Update the explicit timestep to correspond to the chosen supertimestep */
+      const float N = cd->N_substeps;
+      const float nu = cd->nu;
+      const float nu_plus_term = pow(1 + sqrtf(nu), 2.0*N);
+      const float nu_minus_term = pow(1 - sqrtf(nu), 2.0*N);
+      const float factor = N / sqrt(nu) * (nu_plus_term - nu_minus_term) / (nu_plus_term + nu_minus_term);
+      const float new_explicit_timestep = super_timestep/factor;
+
+      /* Take the biggest explicit timestep. We don't want to have smaller
+	 supertimesteps than necessary. */
+      chd->timesteps.explicit_timestep = max(parabolic_explicit_timestep, new_explicit_timestep);
+
+      /* Reset the current_substep to 1 */
+      chd->timesteps.current_substep = 1;
+
+      /* Compute the current substep */
+      substep = chemistry_compute_subtimestep(p, cd, chd->timesteps.current_substep);
+
+      /* Increment the current_substep */
+      if (substep > 0.0) ++chd->timesteps.current_substep;
+    }
+
+    /* Do not return a 0 timestep... */
+    if (substep != 0.0) {
+      return substep;
+    } else {
+      /* Reset the supertimestepping */
+      chd->timesteps.current_substep = cd->N_substeps + 1;
+      return chemistry_compute_parabolic_timestep(p);
+    }
+  } else {
+    return FLT_MAX;
   }
 }
 
@@ -559,45 +638,6 @@ __attribute__((always_inline)) INLINE static void chemistry_end_force(
 
   /* Reset wcorr */
   p->chemistry_data.geometry.wcorr = 1.0f;
-
-  /* If we are doing supertimestepping, compute the next timestep here. Since
-     we are modifying the particle's properties, we do the computations
-     here. In chemistry_timestep(), we cannot modify the part's properties
-     since it is passed as const. */
-  if (cd->use_supertimestepping) {
-
-    /* Get the minimal timestep */
-    /* const float min_dt =
-     * chemistry_compute_minimal_timestep_from_all_modules(p, cd); */
-
-    /* Have we finished substepping? */
-    if (chd->timesteps.current_substep <= cd->N_substeps) {
-      /* Warning: Pay attention to the order: first get the substep and then
-         increment it. Otherwise, the substep value is wrong */
-
-      /* Get the next substep */
-      chd->timesteps.substep = chemistry_compute_subtimestep(p, cd);
-
-      /* Then, increment the current_substep */
-      if (chd->timesteps.substep > 0.0) ++chd->timesteps.current_substep;
-    } else {
-      /* We have completed the supertimestep. */
-      chd->timesteps.explicit_timestep =
-          chemistry_compute_parabolic_timestep(p);
-
-      /* Get the next supertep */
-      chd->timesteps.super_timestep = chemistry_compute_supertimestep(p, cd);
-
-      /* Reset the current_substep to 1 */
-      chd->timesteps.current_substep = 1;
-
-      /* Compute the current substep */
-      chd->timesteps.substep = chemistry_compute_subtimestep(p, cd);
-
-      /* Increment the current_substep */
-      if (chd->timesteps.substep > 0.0) ++chd->timesteps.current_substep;
-    }
-  }
 }
 
 /**

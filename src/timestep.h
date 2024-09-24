@@ -140,7 +140,7 @@ __attribute__((always_inline)) INLINE static integertime_t get_gpart_timestep(
  * @param new_dti_rt The new radiation integer time step.
  */
 __attribute__((always_inline)) INLINE static integertime_t get_part_timestep(
-    const struct part *restrict p, const struct xpart *restrict xp,
+    struct part *restrict p, const struct xpart *restrict xp,
     const struct engine *restrict e, const integertime_t new_dti_rt) {
 
   /* Compute the next timestep (hydro condition) */
@@ -197,6 +197,14 @@ __attribute__((always_inline)) INLINE static integertime_t get_part_timestep(
 
   /* Apply the maximal displacement constraint (FLT_MAX if non-cosmological)*/
   new_dt = min(new_dt, e->dt_max_RMS_displacement);
+
+  /* Get the supertimestep size */
+  const float new_dt_supertimestep_chemistry =
+    chemistry_compute_supertimestep(e->physical_constants, e->cosmology,
+				    e->internal_units, e->hydro_properties,
+				    e->chemistry, p, new_dt);
+
+  new_dt = min(new_dt, new_dt_supertimestep_chemistry);
 
   /* Apply cosmology correction (This is 1 if non-cosmological) */
   new_dt *= e->cosmology->time_step_factor;
