@@ -24,7 +24,6 @@
 #include "kernel_hydro.h"
 #include "part.h"
 
-
 /**
  * @brief Check if the gradient matrix for this particle is well behaved.
  *
@@ -208,8 +207,7 @@ chemistry_compute_diffusion_coefficient(
   float rho = chemistry_get_density(p);
 
   if (data->use_isotropic_diffusion) {
-    /* Now we need to take into account the density since q = Z and U = rho_Z */
-    return data->diffusion_coefficient * rho;
+    return data->diffusion_coefficient;
   } else {
     return data->diffusion_coefficient * kernel_gamma2 * p->h * p->h * rho;
   }
