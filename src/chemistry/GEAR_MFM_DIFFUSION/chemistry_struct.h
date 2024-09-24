@@ -112,6 +112,9 @@ struct chemistry_part_data {
     /* Extreme values of the fluid velocity among the neighbours. */
     float v[3][2];
 
+    /* Extreme values of the filtered velocity among the neighbours. */
+    float v_tilde[3][2];
+
     /* Maximal distance to all neighbouring faces. */
     float maxr;
 
@@ -140,6 +143,20 @@ struct chemistry_part_data {
 
   /* Isotropic diffusion coefficient. */
   float kappa;
+
+  /* Density of the previous timestep */
+  float rho_prev;
+
+  /* Here are the filtered quantities, i.e. "smoothed" over the resolution scale */
+  struct {
+    float rho;
+
+    /* rho * v*/
+    float rho_v[3];
+
+    /* v_tilde = filtered(rho_v) / filtered(rho) */
+    float grad_v_tilde[3][3];
+  } filtered;
 
   struct {
     int current_substep;
