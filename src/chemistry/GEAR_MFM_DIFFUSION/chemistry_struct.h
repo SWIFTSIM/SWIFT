@@ -36,11 +36,15 @@ struct chemistry_global_data {
   /*! Name of the different elements */
   char elements_name[GEAR_CHEMISTRY_ELEMENT_COUNT * GEAR_LABELS_SIZE];
 
+  /***************************************************************************/
+  /* Parameter related to diffusion model */
+
   /*! Diffusion normalisation constant: \kappa \propto C */
   float diffusion_coefficient;
 
-  /*! Is the diffusion isotropic? */
-  int use_isotropic_diffusion;
+  /*! Diffusion mode. 0: isotropic with constant coefficient, 1: Smagorinsky
+      isotrpoic diffusion, 2: anistropic diffusion with the shear tensor. */
+  int diffusion_mode;
 
   /***************************************************************************/
   /* HLL Riemann solver parameters
