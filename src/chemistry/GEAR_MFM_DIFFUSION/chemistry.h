@@ -304,8 +304,6 @@ static INLINE void chemistry_init_backend(struct swift_params* parameter_file,
       parameter_file, "GEARChemistry:use_supertimestepping",
       DEFAULT_USE_SUPERTIMESTEPPING);
 
-  message("Supertimestepping = %i", data->use_supertimestepping);
-
   data->N_substeps = parser_get_opt_param_int(
       parameter_file, "GEARChemistry:N_substeps", DEFAULT_N_SUBSTEPS);
 
@@ -319,9 +317,13 @@ static INLINE void chemistry_init_backend(struct swift_params* parameter_file,
 
   /***************************************************************************/
   /* Print the parameters we use */
+  message("Diffusion mode:             %u", data->diffusion_mode);
   message("Diffusion coefficient:      %e", data->diffusion_coefficient);
   message("HLL Riemann solver psi:     %e", data->hll_riemann_solver_psi);
   message("HLL Riemann solver epsilon: %e", data->hll_riemann_solver_epsilon);
+  message("Use supertimestepping:      %d", data->use_supertimestepping);
+  message("N_substeps:                 %d", data->N_substeps);
+  message("nu:                         %e", data->nu);
 }
 
 /**
