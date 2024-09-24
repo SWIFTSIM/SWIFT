@@ -46,7 +46,6 @@
 /* Some constants */
 #define FILTERING_SMOOTHING_FACTOR 0.8
 #define DEFAULT_DIFFUSION_NORMALISATION 1
-#define DEFAULT_USE_ISOTROPIC_DIFFUSION 0
 #define DEFAULT_PSI_RIEMANN_SOLVER 0.1
 #define DEFAULT_USE_HOPKINS2017_HLL_RIEMANN_SOLVER 0
 #define DEFAULT_EPSILON_RIEMANN_SOLVER 0.5
@@ -277,9 +276,8 @@ static INLINE void chemistry_init_backend(struct swift_params* parameter_file,
       parameter_file, "GEARChemistry:diffusion_coefficient",
       DEFAULT_DIFFUSION_NORMALISATION);
 
-  data->use_isotropic_diffusion = parser_get_opt_param_float(
-      parameter_file, "GEARChemistry:use_isotropic_diffusion",
-      DEFAULT_USE_ISOTROPIC_DIFFUSION);
+  data->diffusion_mode = parser_get_param_int(
+      parameter_file, "GEARChemistry:diffusion_mode");
 
   /***************************************************************************/
   /* Read parameters for the Riemann solver */
@@ -287,7 +285,7 @@ static INLINE void chemistry_init_backend(struct swift_params* parameter_file,
       parameter_file, "GEARChemistry:hll_riemann_solver_psi",
       DEFAULT_PSI_RIEMANN_SOLVER);
 
-  data->use_hokpins2017_hll_riemann_solver = parser_get_opt_param_float(
+  data->use_hokpins2017_hll_riemann_solver = parser_get_opt_param_int(
       parameter_file, "GEARChemistry:use_hokpins2017_hll_riemann_solver",
       DEFAULT_USE_HOPKINS2017_HLL_RIEMANN_SOLVER);
 
@@ -302,13 +300,13 @@ static INLINE void chemistry_init_backend(struct swift_params* parameter_file,
 
   /***************************************************************************/
   /* Supertimestepping */
-  data->use_supertimestepping = parser_get_opt_param_float(
+  data->use_supertimestepping = parser_get_opt_param_int(
       parameter_file, "GEARChemistry:use_supertimestepping",
       DEFAULT_USE_SUPERTIMESTEPPING);
 
   message("Supertimestepping = %i", data->use_supertimestepping);
 
-  data->N_substeps = parser_get_opt_param_float(
+  data->N_substeps = parser_get_opt_param_int(
       parameter_file, "GEARChemistry:N_substeps", DEFAULT_N_SUBSTEPS);
 
   data->nu = parser_get_opt_param_float(parameter_file,
