@@ -49,6 +49,16 @@ chemistry_part_reset_gradients(struct part *restrict p) {
   chd->gradients.v[2][0] = 0.0f;
   chd->gradients.v[2][1] = 0.0f;
   chd->gradients.v[2][2] = 0.0f;
+
+  chd->filtered.grad_v_tilde[0][0] = 0.0f;
+  chd->filtered.grad_v_tilde[0][1] = 0.0f;
+  chd->filtered.grad_v_tilde[0][2] = 0.0f;
+  chd->filtered.grad_v_tilde[1][0] = 0.0f;
+  chd->filtered.grad_v_tilde[1][1] = 0.0f;
+  chd->filtered.grad_v_tilde[1][2] = 0.0f;
+  chd->filtered.grad_v_tilde[2][0] = 0.0f;
+  chd->filtered.grad_v_tilde[2][1] = 0.0f;
+  chd->filtered.grad_v_tilde[2][2] = 0.0f;
 }
 
 /**
@@ -99,7 +109,8 @@ chemistry_part_update_diffusion_gradients(struct part *restrict p, int metal,
  */
 __attribute__((always_inline)) INLINE static void
 chemistry_part_update_hydro_gradients(struct part *restrict p, float dvx[3],
-                                      float dvy[3], float dvz[3]) {
+                                      float dvy[3], float dvz[3], float dvx_tilde[3],
+                                      float dvy_tilde[3], float dvz_tilde[3]) {
 
   struct chemistry_part_data *chd = &p->chemistry_data;
 
@@ -112,6 +123,16 @@ chemistry_part_update_hydro_gradients(struct part *restrict p, float dvx[3],
   chd->gradients.v[2][0] += dvz[0];
   chd->gradients.v[2][1] += dvz[1];
   chd->gradients.v[2][2] += dvz[2];
+
+  chd->filtered.grad_v_tilde[0][0] += dvx_tilde[0];
+  chd->filtered.grad_v_tilde[0][1] += dvx_tilde[1];
+  chd->filtered.grad_v_tilde[0][2] += dvx_tilde[2];
+  chd->filtered.grad_v_tilde[1][0] += dvy_tilde[0];
+  chd->filtered.grad_v_tilde[1][1] += dvy_tilde[1];
+  chd->filtered.grad_v_tilde[1][2] += dvy_tilde[2];
+  chd->filtered.grad_v_tilde[2][0] += dvz_tilde[0];
+  chd->filtered.grad_v_tilde[2][1] += dvz_tilde[1];
+  chd->filtered.grad_v_tilde[2][2] += dvz_tilde[2];
 }
 
 /**
@@ -141,6 +162,16 @@ chemistry_part_normalise_gradients(struct part *restrict p, const float norm) {
   chd->gradients.v[2][0] *= norm;
   chd->gradients.v[2][1] *= norm;
   chd->gradients.v[2][2] *= norm;
+
+  chd->filtered.grad_v_tilde[0][0] *= norm;
+  chd->filtered.grad_v_tilde[0][1] *= norm;
+  chd->filtered.grad_v_tilde[0][2] *= norm;
+  chd->filtered.grad_v_tilde[1][0] *= norm;
+  chd->filtered.grad_v_tilde[1][1] *= norm;
+  chd->filtered.grad_v_tilde[1][2] *= norm;
+  chd->filtered.grad_v_tilde[2][0] *= norm;
+  chd->filtered.grad_v_tilde[2][1] *= norm;
+  chd->filtered.grad_v_tilde[2][2] *= norm;
 }
 
 #endif /* SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_SETTERS_H */
