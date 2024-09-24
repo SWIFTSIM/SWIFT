@@ -281,11 +281,31 @@ chemistry_compute_parabolic_timestep(const struct part *restrict p) {
 /**
  * @brief Compute the particle supertimestep proportional to h.
  *
+ * This is equation (10) in Alexiades, Amiez and Gremaud (1996).
+ *
  * @param p Particle.
  */
 __attribute__((always_inline)) INLINE static float
-chemistry_compute_supertimestep(const struct part *restrict p,
-                                const struct chemistry_global_data *cd) {
+chemistry_get_supertimestep(const struct part *restrict p,
+			    const struct chemistry_global_data *cd,
+			    float timestep_explicit) {
+  const float N = cd->N_substeps;
+  const float nu = cd->nu;
+  const float nu_plus_term = pow(1 + sqrtf(nu), 2.0*N);
+  const float nu_minus_term = pow(1 - sqrtf(nu), 2.0*N);
+  const float left_term = (nu_plus_term - nu_minus_term) / (nu_plus_term + nu_minus_term);
+  return timestep_explicit * N / (2.0 * sqrt(nu)) * left_term;
+}
+
+/**
+ * @brief Compute the particle supertimestep with using a CFL-like condition,
+ * proportioanl to h.
+ *
+ * @param p Particle.
+ */
+__attribute__((always_inline)) INLINE static float
+chemistry_compute_CFL_supertimestep(const struct part *restrict p,
+				    const struct chemistry_global_data *cd) {
 
   const struct chemistry_part_data chd = p->chemistry_data;
 
@@ -330,31 +350,14 @@ chemistry_compute_supertimestep(const struct part *restrict p,
  */
 __attribute__((always_inline)) INLINE static float
 chemistry_compute_subtimestep(const struct part *restrict p,
-                              const struct chemistry_global_data *cd) {
+                              const struct chemistry_global_data *cd,
+			      int current_substep_number) {
   const struct chemistry_part_data *chd = &p->chemistry_data;
   const float cos_argument = M_PI *
-                             (2.0 * chd->timesteps.current_substep - 1.0) /
+                             (2.0 * current_substep_number - 1.0) /
                              (2.0 * cd->N_substeps);
   const float expression = (1 + cd->nu) - (1 - cd->nu) * cos(cos_argument);
   return chd->timesteps.explicit_timestep / expression;
-}
-
-/**
- * @brief Compute the particle supertimestep proportional to h.
- *
- * @param p Particle.
- */
-__attribute__((always_inline)) INLINE static float
-chemistry_compute_minimal_timestep_from_all_modules(
-    const struct part *restrict p, const struct chemistry_global_data *cd) {
-  /* Don't do this. Create a fct that does get_part_timestep() first part
-     (without integer time conversion) without chemistry. Then call
-     chemistry_timestep(), do supertimestepping here. Finally, take the
-     min. See how we can get around to not go below the min timestep and above
-     the mac timestep.
-  */
-
-  return 0.0;
 }
 
 #endif /* SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_GETTERS_H  */
