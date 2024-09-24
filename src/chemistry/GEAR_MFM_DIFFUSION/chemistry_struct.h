@@ -62,12 +62,18 @@ struct chemistry_global_data {
 
   /***************************************************************************/
   /* Supertimestepping */
+
+  /*! Do we want to use supertimestepping? */
   int use_supertimestepping;
 
+  /* Number of substeps */
   int N_substeps;
 
+  /* Nu parameter */
   float nu;
 
+  /* CFL coefficient for integration on timesteps larger than the parabolic
+     timestep */
   float C_CFL_chemistry;
 };
 
