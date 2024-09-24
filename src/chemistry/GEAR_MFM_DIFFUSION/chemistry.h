@@ -44,6 +44,7 @@
 #include "units.h"
 
 /* Some constants */
+#define FILTERING_SMOOTHING_FACTOR 0.8
 #define DEFAULT_DIFFUSION_NORMALISATION 1
 #define DEFAULT_USE_ISOTROPIC_DIFFUSION 0
 #define DEFAULT_PSI_RIEMANN_SOLVER 0.1
@@ -448,6 +449,22 @@ __attribute__((always_inline)) INLINE static void chemistry_end_density(
     struct part* restrict p, const struct chemistry_global_data* cd,
     const struct cosmology* cosmo) {
 
+  /*****************************************/
+  /* Finish computations on the filtered quantities */
+  /* Multiply by the smoothing factor */
+  p->chemistry_data.filtered.rho *= FILTERING_SMOOTHING_FACTOR;
+  p->chemistry_data.filtered.rho_v[0] *= FILTERING_SMOOTHING_FACTOR;
+  p->chemistry_data.filtered.rho_v[1] *= FILTERING_SMOOTHING_FACTOR;
+  p->chemistry_data.filtered.rho_v[2] *= FILTERING_SMOOTHING_FACTOR;
+
+  /* Add self term */
+  p->chemistry_data.filtered.rho += p->chemistry_data.rho_prev;
+  p->chemistry_data.filtered.rho_v[0] += p->chemistry_data.rho_prev*p->v[0];
+  p->chemistry_data.filtered.rho_v[1] += p->chemistry_data.rho_prev*p->v[1];
+  p->chemistry_data.filtered.rho_v[2] += p->chemistry_data.rho_prev*p->v[2];
+
+  /*****************************************/
+  /* Finish computations on the MF gemotry quantities */
   /* Some smoothing length multiples. */
   const float h = p->h;
   const float h_inv = 1.0f / h; /* 1/h */
@@ -638,6 +655,9 @@ __attribute__((always_inline)) INLINE static void chemistry_end_force(
 
   /* Reset wcorr */
   p->chemistry_data.geometry.wcorr = 1.0f;
+
+  /* Store the density of the current timestep for the next timestep */
+  p->chemistry_data.rho_prev = p->rho;
 }
 
 /**

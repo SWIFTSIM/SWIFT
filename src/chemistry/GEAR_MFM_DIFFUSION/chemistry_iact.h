@@ -64,6 +64,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_chemistry(
   const float xi = r * hi_inv;
   kernel_deval(xi, &wi, &wi_dx);
 
+  /*****************************************/
+  /* Compute the geometrical matrix B */
   /* These are eqns. (1) and (2) in the summary */
   chi->geometry.volume += wi;
   for (int k = 0; k < 3; k++)
@@ -80,6 +82,32 @@ __attribute__((always_inline)) INLINE static void runner_iact_chemistry(
   for (int k = 0; k < 3; k++)
     for (int l = 0; l < 3; l++)
       chj->geometry.matrix_E[k][l] += dx[k] * dx[l] * wj;
+
+  /*****************************************/
+  /* Compute the filtered quantities */
+
+  /* Some smoothing length multiples. */
+  float h_bar_ij = 0.5*(pi->h + pj->h);
+  const float h_inv_bar = 1.0f / h_bar_ij;             /* 1/h */
+  const float h_inv_dim = pow_dimension(h_inv_bar);    /* 1/h^d */
+
+  float rho_i = chi->rho_prev;
+  float rho_j = chj->rho_prev;
+  float rho_mean = 0.5*(rho_i + rho_j);
+  float w_filtered;
+  kernel_eval(r*h_inv_bar, &w_filtered);
+
+  chi->filtered.rho += hydro_get_mass(pj)/rho_mean * (rho_j - rho_i)*w_filtered * h_inv_dim;
+  chj->filtered.rho -= hydro_get_mass(pi)/rho_mean * (rho_j - rho_i)*w_filtered * h_inv_dim;
+
+  chi->filtered.rho_v[0] += hydro_get_mass(pj)/rho_mean * (rho_j*pj->v[0] - rho_i*pi->v[0])*w_filtered * h_inv_dim;
+  chi->filtered.rho_v[1] += hydro_get_mass(pj)/rho_mean * (rho_j*pj->v[1] - rho_i*pi->v[1])*w_filtered * h_inv_dim;
+  chi->filtered.rho_v[2] += hydro_get_mass(pj)/rho_mean * (rho_j*pj->v[2] - rho_i*pi->v[2])*w_filtered * h_inv_dim;
+
+  chj->filtered.rho_v[0] -= hydro_get_mass(pi)/rho_mean * (rho_j*pj->v[0] - rho_i*pi->v[0])*w_filtered * h_inv_dim;
+  chj->filtered.rho_v[1] -= hydro_get_mass(pi)/rho_mean * (rho_j*pj->v[1] - rho_i*pi->v[1])*w_filtered * h_inv_dim;
+  chj->filtered.rho_v[2] -= hydro_get_mass(pi)/rho_mean * (rho_j*pj->v[2] - rho_i*pi->v[2])*w_filtered * h_inv_dim;
+
 }
 
 /**
@@ -113,11 +141,33 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_chemistry(
   const float xi = r * hi_inv;
   kernel_deval(xi, &wi, &wi_dx);
 
+  /*****************************************/
+  /* Compute the geometrical matrix B */
   /* these are eqns. (1) and (2) in the summary */
   chi->geometry.volume += wi;
   for (int k = 0; k < 3; k++)
     for (int l = 0; l < 3; l++)
       chi->geometry.matrix_E[k][l] += dx[k] * dx[l] * wi;
+
+  /*****************************************/
+  /* Compute the filtered quantities */
+
+  /* Some smoothing length multiples. */
+  float h_bar_ij = 0.5*(pi->h + pj->h);
+  const float h_inv_bar = 1.0f / h_bar_ij;             /* 1/h */
+  const float h_inv_dim = pow_dimension(h_inv_bar);    /* 1/h^d */
+
+  float rho_i = chi->rho_prev;
+  float rho_j = pj->chemistry_data.rho_prev;
+  float rho_mean = 0.5*(rho_i + rho_j);
+  float w_filtered;
+  kernel_eval(r/h_bar_ij, &w_filtered);
+
+  chi->filtered.rho += hydro_get_mass(pj)/rho_mean * (rho_j - rho_i)*w_filtered * h_inv_dim;
+
+  chi->filtered.rho_v[0] += hydro_get_mass(pj)/rho_mean * (rho_j*pj->v[0] - rho_i*pi->v[0])*w_filtered * h_inv_dim;
+  chi->filtered.rho_v[1] += hydro_get_mass(pj)/rho_mean * (rho_j*pj->v[1] - rho_i*pi->v[1])*w_filtered * h_inv_dim;
+  chi->filtered.rho_v[2] += hydro_get_mass(pj)/rho_mean * (rho_j*pj->v[2] - rho_i*pi->v[2])*w_filtered * h_inv_dim;
 }
 
 /**
