@@ -526,6 +526,8 @@ chemistry_gradients_predict_hydro(struct part *restrict pi,
   Wj[1] += dvj[0];
   Wj[2] += dvj[1];
   Wj[3] += dvj[2];
+
+  /* Note: We do not reconstruct v_tilde at the interace */
 }
 
 #endif /* SWIFT_CHEMISTRY_GEAR_CHEMISTRY_GRADIENTS_H */
