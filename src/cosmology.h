@@ -311,6 +311,8 @@ double cosmology_scale_factor_at_comoving_distance(const struct cosmology *c,
                                                    double r);
 
 double cosmology_get_time_since_big_bang(const struct cosmology *c, double a);
+double cosmology_compute_a_dot_dot(const struct cosmology *c);
+
 void cosmology_init(struct swift_params *params, const struct unit_system *us,
                     const struct phys_const *phys_const, struct cosmology *c);
 

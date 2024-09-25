@@ -560,6 +560,8 @@ void runner_do_sink_formation(struct runner *r, struct cell *c) {
   const double time_base = e->time_base;
   const integertime_t ti_current = e->ti_current;
 
+  /* const double time = e->time; */
+
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->nodeID != e->nodeID)
     error("Running sink formation task on a foreign node!");

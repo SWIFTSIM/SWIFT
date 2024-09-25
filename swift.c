@@ -1153,6 +1153,13 @@ int main(int argc, char *argv[]) {
 
     /* Initialise the sink properties */
     if (with_sinks) {
+      /* Note (02.07.2024, Darwin): I added this because the GEAR sink
+      crashes with a memory error without feedback. This is clearer this
+      way. Let's see during the merge request if I'll move that into the GEAR
+      module. */
+      if (!with_feedback) /* Forbid swift to run without feedback model if sink
+                             is on. */
+        error("ERROR: Running with sink but without feedback.");
       sink_props_init(&sink_properties, &feedback_properties, &prog_const, &us,
                       params, &cosmo);
     } else

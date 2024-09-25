@@ -41,7 +41,12 @@ INLINE static int star_formation_read_particles(struct spart* sparts,
   list[0] = io_make_input_field("BirthMass", FLOAT, 1, OPTIONAL, UNIT_CONV_MASS,
                                 sparts, sf_data.birth_mass);
 
-  return 1;
+  /* By default, stars are set to star_population */
+  list[1] = io_make_input_field_default("StellarParticleType", INT, 1, OPTIONAL,
+                                        UNIT_CONV_NO_UNITS, sparts,
+                                        feedback_data.star_type, 2);
+
+  return 2;
 }
 
 /**
@@ -94,11 +99,11 @@ star_formation_write_sparticles(const struct spart* sparts,
       "ProgenitorIDs", LONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f, sparts,
       sf_data.progenitor_id, "Unique IDs of the progenitor particle");
 
-  list[4] =
-      io_make_output_field("StellarParticleType", CHAR, 1, UNIT_CONV_NO_UNITS,
-                           0.f, sparts, feedback_data.star_type,
-                           "Type of stellar particle: 0=single star ; 1=stellar"
-                           " part. without SNII ; 2=normal");
+  list[4] = io_make_output_field(
+      "StellarParticleType", INT, 1, UNIT_CONV_NO_UNITS, 0.f, sparts,
+      feedback_data.star_type,
+      "Type of stellar particle: 0=single star ; 1=continuous"
+      " IMF part. without SNII ; 2=normal");
 
   return 5;
 }
