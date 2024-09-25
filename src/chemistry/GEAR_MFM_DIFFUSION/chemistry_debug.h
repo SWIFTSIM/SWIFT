@@ -19,6 +19,9 @@
 #ifndef SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_DEBUG_H
 #define SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_DEBUG_H
 
+#include "error.h"
+#include "hydro.h"
+
 __attribute__((always_inline)) INLINE static void chemistry_debug_particle(
     const struct part* p, const struct xpart* xp) {
 
