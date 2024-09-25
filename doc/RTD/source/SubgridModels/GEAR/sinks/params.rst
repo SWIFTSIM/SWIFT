@@ -53,7 +53,7 @@ The full section is:
      cut_off_radius:        1e-3                 # Cut off radius of the sink particles (in internal units).
      f_acc: 0.8                                  # (Optional) Fraction of the cut_off_radius that determines if a gas particle should be swallowed wihtout additional check. (Default: 0.8)
      maximal_temperature:        3e3             # Maximal gas temperature for forming a star (in K)
-     density_threshold_g_per_cm3: 1.67e-21            # Minimal gas density for forming a star (in g/cm3 (1.67e-24 =1acc))
+     density_threshold_g_per_cm3: 1.67e-21       # Minimal gas density for forming a star (in g/cm3 (1.67e-24 =1acc))
      stellar_particle_mass_Msun:      20              # Mass of the stellar particle representing the low mass stars (continuous IMF sampling) (in solar mass)
      minimal_discrete_mass_Msun:      8               # Minimal mass of stars represented by discrete particles (in solar mass)
      stellar_particle_mass_first_stars_Msun: 20       # Mass of the stellar particle representing the low mass stars (continuous IMF sampling) (in solar mass). First stars

@@ -90,44 +90,23 @@ INLINE static void sink_props_init_probabilities(
   float mass_min = imf->mass_min;
   float mass_max = imf->mass_max;
 
-  float minimal_discrete_mass;
-  float stellar_particle_mass;
-
   /* Treat separately the cases of first star or not. */
   if (!first_stars) {
-    /* This is already in M_sun */
-    minimal_discrete_mass = sp->minimal_discrete_mass_Msun;
-
-    /* This needs to be converted to M_sun (because was converted to internal
-       units in sink_init_props()). */
-    stellar_particle_mass =
-        sp->stellar_particle_mass_Msun / phys_const->const_solar_mass;
-
-    /* Give the IMF the minimal discrete mass and the stellar_particle_mass
-       (in M_sun). */
-    imf->minimal_discrete_mass_Msun = minimal_discrete_mass;
-    imf->stellar_particle_mass_Msun = stellar_particle_mass;
+    imf->minimal_discrete_mass_Msun = sp->minimal_discrete_mass_Msun;
+    imf->stellar_particle_mass_Msun = sp->stellar_particle_mass_Msun;
   } else {
-    /* This is already in M_sun */
-    minimal_discrete_mass = sp->minimal_discrete_mass_first_stars_Msun;
-
-    /* This needs to be converted to M_sun (because was converted to internal
-       units in sink_init_props()). */
-    stellar_particle_mass =
-        sp->stellar_particle_mass_first_stars_Msun / phys_const->const_solar_mass;
-
-    /* Give the IMF the minimal discrete mass and the stellar_particle_mass
-       (in M_sun). */
-    imf->minimal_discrete_mass_Msun = minimal_discrete_mass;
-    imf->stellar_particle_mass_Msun = stellar_particle_mass;
+    imf->minimal_discrete_mass_Msun =
+        sp->minimal_discrete_mass_first_stars_Msun;
+    imf->stellar_particle_mass_Msun =
+        sp->stellar_particle_mass_first_stars_Msun;
   }
 
-  /* sanity check */
-  if (minimal_discrete_mass < imf->mass_limits[imf->n_parts - 1])
+  /* Sanity check */
+  if (imf->minimal_discrete_mass_Msun < imf->mass_limits[imf->n_parts - 1])
     error(
         "minimal_discrete_mass (=%8.3f) cannot be smaller than the mass limit "
         "(=%8.3f) of the last IMF segment,",
-        minimal_discrete_mass, imf->mass_limits[imf->n_parts - 1]);
+        imf->minimal_discrete_mass_Msun, imf->mass_limits[imf->n_parts - 1]);
 
   /* Compute the IMF mass (in solar mass) below the minimal IMF discrete mass
      (continuous part). */
@@ -136,12 +115,12 @@ INLINE static void sink_props_init_probabilities(
 
   /* Compute the number of stars in the continuous part of the IMF */
   double Nc = initial_mass_function_get_imf_number_fraction(
-                  imf, mass_min, minimal_discrete_mass) *
+                  imf, mass_min, imf->minimal_discrete_mass_Msun) *
               Mtot;
 
   /* Compute the number of stars in the discrete part of the IMF */
   double Nd = initial_mass_function_get_imf_number_fraction(
-                  imf, minimal_discrete_mass, mass_max) *
+                  imf, imf->minimal_discrete_mass_Msun, mass_max) *
               Mtot;
 
   message("Mass of the continuous part (in M_sun) : %g", Mc);
@@ -266,16 +245,6 @@ INLINE static void sink_props_init(struct sink_props *sp,
 
   sp->density_threshold /= units_cgs_conversion_factor(us, UNIT_CONV_DENSITY);
 
-  /* Those variables are used to give the message output below in consistent
-     units, i.e. in M_sun. */
-  const double stellar_particle_mass_M_sun = sp->stellar_particle_mass_Msun;
-  const double stellar_particle_mass_first_stars_M_sun =
-      sp->stellar_particle_mass_Msun;
-
-  /* Convert from M_sun to internal units */
-  sp->stellar_particle_mass_Msun *= phys_const->const_solar_mass;
-  sp->stellar_particle_mass_first_stars_Msun *= phys_const->const_solar_mass;
-
   /* here, we need to differenciate between the stellar models */
   struct initial_mass_function *imf;
   struct stellar_model *sm;
@@ -299,12 +268,12 @@ INLINE static void sink_props_init(struct sink_props *sp,
           sp->density_threshold);
 
   message("stellar_particle_mass (in M_sun)             = %g",
-          stellar_particle_mass_M_sun);
+          sp->stellar_particle_mass_Msun);
   message("minimal_discrete_mass (in M_sun)             = %g",
           sp->minimal_discrete_mass_Msun);
 
   message("stellar_particle_mass_first_stars (in M_sun) = %g",
-          stellar_particle_mass_first_stars_M_sun);
+          sp->stellar_particle_mass_first_stars_Msun);
   message("minimal_discrete_mass_first_stars (in M_sun) = %g",
           sp->minimal_discrete_mass_first_stars_Msun);
 
