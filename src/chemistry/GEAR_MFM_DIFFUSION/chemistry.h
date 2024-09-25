@@ -654,6 +654,20 @@ __attribute__((always_inline)) INLINE static void chemistry_end_force(
                                      hydro_get_mass(p), /*callloc=*/2);
   }
 
+  /* Verify that the total metal mass does not exceed the part's mass */
+  double sum = 0.;
+  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT - 1; i++) {
+    sum += p->chemistry_data.metal_mass[i];
+  }
+  const double total_metal_mass =
+    p->chemistry_data.metal_mass[GEAR_CHEMISTRY_ELEMENT_COUNT - 1];
+  /* if (sum > total_metal_mass) */
+  /*   error( */
+  /*       "Sum of element-wise metal masses grew larger than total metal " */
+  /*       "mass!"); */
+  if (total_metal_mass > hydro_get_mass(p))
+    error("Total metal mass grew larger than the particle mass!");
+
   /* Reset wcorr */
   p->chemistry_data.geometry.wcorr = 1.0f;
 
