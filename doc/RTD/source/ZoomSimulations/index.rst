@@ -17,6 +17,7 @@ To get started running a zoom simulation see the :doc:`general <../GettingStarte
    terminology
    cell_structures
    running_a_zoom
+   zoom_gravtasks
    zoom_hydrodynamics
    zoom_partitioning
    zoom_snapshots
