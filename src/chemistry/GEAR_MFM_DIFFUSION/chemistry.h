@@ -30,8 +30,8 @@
 #include <string.h>
 
 /* Local includes. */
-#include "chemistry_getters.h"
 #include "chemistry_flux.h"
+#include "chemistry_getters.h"
 #include "chemistry_gradients.h"
 #include "chemistry_setters.h"
 #include "chemistry_struct.h"
@@ -276,8 +276,8 @@ static INLINE void chemistry_init_backend(struct swift_params* parameter_file,
       parameter_file, "GEARChemistry:diffusion_coefficient",
       DEFAULT_DIFFUSION_NORMALISATION);
 
-  data->diffusion_mode = parser_get_param_int(
-      parameter_file, "GEARChemistry:diffusion_mode");
+  data->diffusion_mode =
+      parser_get_param_int(parameter_file, "GEARChemistry:diffusion_mode");
 
   /***************************************************************************/
   /* Read parameters for the Riemann solver */
@@ -362,11 +362,11 @@ __attribute__((always_inline)) INLINE static float chemistry_timestep(
  */
 __attribute__((always_inline)) INLINE static float
 chemistry_compute_supertimestep(const struct phys_const* restrict phys_const,
-    const struct cosmology* restrict cosmo,
-    const struct unit_system* restrict us,
-    const struct hydro_props* hydro_props,
-    const struct chemistry_global_data* cd, struct part* restrict p,
-    float min_dt_part) {
+                                const struct cosmology* restrict cosmo,
+                                const struct unit_system* restrict us,
+                                const struct hydro_props* hydro_props,
+                                const struct chemistry_global_data* cd,
+                                struct part* restrict p, float min_dt_part) {
 
   struct chemistry_part_data* chd = &p->chemistry_data;
 
@@ -377,46 +377,54 @@ chemistry_compute_supertimestep(const struct phys_const* restrict phys_const,
     /* Have we finished substepping? */
     if (chd->timesteps.current_substep <= cd->N_substeps) {
       /* What happens if min_dt_part < substep ? Then, we will integrate with
-	 min_dt_part and continue the cycle as if we had done the substep */
+         min_dt_part and continue the cycle as if we had done the substep */
 
       /* Get the next substep */
-      substep = chemistry_compute_subtimestep(p, cd, chd->timesteps.current_substep);
+      substep =
+          chemistry_compute_subtimestep(p, cd, chd->timesteps.current_substep);
 
       /* Then, increment the current_substep */
       if (substep > 0.0) ++chd->timesteps.current_substep;
     } else {
-      const float parabolic_explicit_timestep = chemistry_compute_parabolic_timestep(p, cd);
+      const float parabolic_explicit_timestep =
+          chemistry_compute_parabolic_timestep(p, cd);
 
       /* Get the supertimestep from CFL condition */
       float super_timestep = chemistry_compute_CFL_supertimestep(p, cd);
 
       /* If the hydro timestep is smaller than the parabolic timestep, then
-	 don't start supertimestepping. Do parabolic timestep instead.
-	 Same if the CFL timestep is smaller than the parabolic timestep. */
-      if (min_dt_part <= parabolic_explicit_timestep || super_timestep <= parabolic_explicit_timestep) {
-	/* message("hydro_timestep = %e, supertimestep = %e, parabolic_timestep = %e", min_dt_part, super_timestep, parabolic_explicit_timestep); */
-	return parabolic_explicit_timestep;
+         don't start supertimestepping. Do parabolic timestep instead.
+         Same if the CFL timestep is smaller than the parabolic timestep. */
+      if (min_dt_part <= parabolic_explicit_timestep ||
+          super_timestep <= parabolic_explicit_timestep) {
+        /* message("hydro_timestep = %e, supertimestep = %e, parabolic_timestep
+         * = %e", min_dt_part, super_timestep, parabolic_explicit_timestep); */
+        return parabolic_explicit_timestep;
       }
       /* Now we have min_dt_part and super_timestep > parabolic_time_step. So,
-	 it is worth doing supertimestepping. */
+         it is worth doing supertimestepping. */
 
-      /* Update the explicit timestep to correspond to the chosen supertimestep */
+      /* Update the explicit timestep to correspond to the chosen supertimestep
+       */
       const float N = cd->N_substeps;
       const float nu = cd->nu;
-      const float nu_plus_term = pow(1 + sqrtf(nu), 2.0*N);
-      const float nu_minus_term = pow(1 - sqrtf(nu), 2.0*N);
-      const float factor = N / sqrt(nu) * (nu_plus_term - nu_minus_term) / (nu_plus_term + nu_minus_term);
-      const float new_explicit_timestep = super_timestep/factor;
+      const float nu_plus_term = pow(1 + sqrtf(nu), 2.0 * N);
+      const float nu_minus_term = pow(1 - sqrtf(nu), 2.0 * N);
+      const float factor = N / sqrt(nu) * (nu_plus_term - nu_minus_term) /
+                           (nu_plus_term + nu_minus_term);
+      const float new_explicit_timestep = super_timestep / factor;
 
       /* Take the biggest explicit timestep. We don't want to have smaller
-	 supertimesteps than necessary. */
-      chd->timesteps.explicit_timestep = max(parabolic_explicit_timestep, new_explicit_timestep);
+         supertimesteps than necessary. */
+      chd->timesteps.explicit_timestep =
+          max(parabolic_explicit_timestep, new_explicit_timestep);
 
       /* Reset the current_substep to 1 */
       chd->timesteps.current_substep = 1;
 
       /* Compute the current substep */
-      substep = chemistry_compute_subtimestep(p, cd, chd->timesteps.current_substep);
+      substep =
+          chemistry_compute_subtimestep(p, cd, chd->timesteps.current_substep);
 
       /* Increment the current_substep */
       if (substep > 0.0) ++chd->timesteps.current_substep;
@@ -460,9 +468,9 @@ __attribute__((always_inline)) INLINE static void chemistry_end_density(
 
   /* Add self term */
   p->chemistry_data.filtered.rho += p->chemistry_data.rho_prev;
-  p->chemistry_data.filtered.rho_v[0] += p->chemistry_data.rho_prev*p->v[0];
-  p->chemistry_data.filtered.rho_v[1] += p->chemistry_data.rho_prev*p->v[1];
-  p->chemistry_data.filtered.rho_v[2] += p->chemistry_data.rho_prev*p->v[2];
+  p->chemistry_data.filtered.rho_v[0] += p->chemistry_data.rho_prev * p->v[0];
+  p->chemistry_data.filtered.rho_v[1] += p->chemistry_data.rho_prev * p->v[1];
+  p->chemistry_data.filtered.rho_v[2] += p->chemistry_data.rho_prev * p->v[2];
 
   /*****************************************/
   /* Finish computations on the MF geometry quantities */
@@ -474,8 +482,7 @@ __attribute__((always_inline)) INLINE static void chemistry_end_density(
   /* Final operation on the geometry. */
   /* We multiply with the smoothing kernel normalization ih3 and calculate the
    * volume */
-  const float volume_inv =
-      ihdim * (chemistry_get_volume(p) + kernel_root);
+  const float volume_inv = ihdim * (chemistry_get_volume(p) + kernel_root);
   const float volume = 1.0f / volume_inv;
   p->chemistry_data.geometry.volume = volume;
 
@@ -660,7 +667,7 @@ __attribute__((always_inline)) INLINE static void chemistry_end_force(
     sum += p->chemistry_data.metal_mass[i];
   }
   const double total_metal_mass =
-    p->chemistry_data.metal_mass[GEAR_CHEMISTRY_ELEMENT_COUNT - 1];
+      p->chemistry_data.metal_mass[GEAR_CHEMISTRY_ELEMENT_COUNT - 1];
   /* if (sum > total_metal_mass) */
   /*   error( */
   /*       "Sum of element-wise metal masses grew larger than total metal " */

@@ -81,12 +81,10 @@ chemistry_slope_limit_cell_collect(struct part* pi, struct part* pj, float r) {
   /* Basic slope limiter: collect the maximal and the minimal value for the
    * primitive variables among the ngbs */
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
-    chi->limiter.metal_density[i][0] =
-        min(chemistry_get_metal_density(pj, i),
-            chi->limiter.metal_density[i][0]);
-    chi->limiter.metal_density[i][1] =
-        max(chemistry_get_metal_density(pj, i),
-            chi->limiter.metal_density[i][1]);
+    chi->limiter.metal_density[i][0] = min(chemistry_get_metal_density(pj, i),
+                                           chi->limiter.metal_density[i][0]);
+    chi->limiter.metal_density[i][1] = max(chemistry_get_metal_density(pj, i),
+                                           chi->limiter.metal_density[i][1]);
   }
 
   chi->limiter.v[0][0] = min(pj->v[0], chi->limiter.v[0][0]);
@@ -96,12 +94,18 @@ chemistry_slope_limit_cell_collect(struct part* pi, struct part* pj, float r) {
   chi->limiter.v[2][0] = min(pj->v[2], chi->limiter.v[2][0]);
   chi->limiter.v[2][1] = max(pj->v[2], chi->limiter.v[2][1]);
 
-  chi->limiter.v_tilde[0][0] = min(chj->filtered.rho_v[0]/chj->filtered.rho, chi->limiter.v_tilde[0][0]);
-  chi->limiter.v_tilde[0][1] = max(chj->filtered.rho_v[0]/chj->filtered.rho, chi->limiter.v_tilde[0][1]);
-  chi->limiter.v_tilde[1][0] = min(chj->filtered.rho_v[1]/chj->filtered.rho, chi->limiter.v_tilde[1][0]);
-  chi->limiter.v_tilde[1][1] = max(chj->filtered.rho_v[1]/chj->filtered.rho, chi->limiter.v_tilde[1][1]);
-  chi->limiter.v_tilde[2][0] = min(chj->filtered.rho_v[2]/chj->filtered.rho, chi->limiter.v_tilde[2][0]);
-  chi->limiter.v_tilde[2][1] = max(chj->filtered.rho_v[2]/chj->filtered.rho, chi->limiter.v_tilde[2][1]);
+  chi->limiter.v_tilde[0][0] = min(chj->filtered.rho_v[0] / chj->filtered.rho,
+                                   chi->limiter.v_tilde[0][0]);
+  chi->limiter.v_tilde[0][1] = max(chj->filtered.rho_v[0] / chj->filtered.rho,
+                                   chi->limiter.v_tilde[0][1]);
+  chi->limiter.v_tilde[1][0] = min(chj->filtered.rho_v[1] / chj->filtered.rho,
+                                   chi->limiter.v_tilde[1][0]);
+  chi->limiter.v_tilde[1][1] = max(chj->filtered.rho_v[1] / chj->filtered.rho,
+                                   chi->limiter.v_tilde[1][1]);
+  chi->limiter.v_tilde[2][0] = min(chj->filtered.rho_v[2] / chj->filtered.rho,
+                                   chi->limiter.v_tilde[2][0]);
+  chi->limiter.v_tilde[2][1] = max(chj->filtered.rho_v[2] / chj->filtered.rho,
+                                   chi->limiter.v_tilde[2][1]);
 
   chi->limiter.maxr = max(r, chi->limiter.maxr);
 }
@@ -162,12 +166,15 @@ __attribute__((always_inline)) INLINE static void chemistry_slope_limit_cell(
   const float vxlim[2] = {chd->limiter.v[0][0], chd->limiter.v[0][1]};
   const float vylim[2] = {chd->limiter.v[1][0], chd->limiter.v[1][1]};
   const float vzlim[2] = {chd->limiter.v[2][0], chd->limiter.v[2][1]};
-  const float vx_tilde_lim[2] = {chd->limiter.v_tilde[0][0], chd->limiter.v_tilde[0][1]};
-  const float vy_tilde_lim[2] = {chd->limiter.v_tilde[1][0], chd->limiter.v_tilde[1][1]};
-  const float vz_tilde_lim[2] = {chd->limiter.v_tilde[2][0], chd->limiter.v_tilde[2][1]};
-  const float v_tilde[3] = {chd->filtered.rho_v[0]/chd->filtered.rho,
-			    chd->filtered.rho_v[1]/chd->filtered.rho,
-			    chd->filtered.rho_v[2]/chd->filtered.rho};
+  const float vx_tilde_lim[2] = {chd->limiter.v_tilde[0][0],
+                                 chd->limiter.v_tilde[0][1]};
+  const float vy_tilde_lim[2] = {chd->limiter.v_tilde[1][0],
+                                 chd->limiter.v_tilde[1][1]};
+  const float vz_tilde_lim[2] = {chd->limiter.v_tilde[2][0],
+                                 chd->limiter.v_tilde[2][1]};
+  const float v_tilde[3] = {chd->filtered.rho_v[0] / chd->filtered.rho,
+                            chd->filtered.rho_v[1] / chd->filtered.rho,
+                            chd->filtered.rho_v[2] / chd->filtered.rho};
 
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
     chemistry_slope_limit_quantity(
@@ -180,7 +187,8 @@ __attribute__((always_inline)) INLINE static void chemistry_slope_limit_cell(
   }
 
   /* Use doubles sice chemistry_slope_limit_quantity() accepts double arrays. */
-  double gradvx[3], gradvy[3], gradvz[3], gradvx_tilde[3], gradvy_tilde[3], gradvz_tilde[3];
+  double gradvx[3], gradvy[3], gradvz[3], gradvx_tilde[3], gradvy_tilde[3],
+      gradvz_tilde[3];
 
   /* Get the velocity gradients and cast them as double */
   gradvx[0] = chd->gradients.v[0][0];
@@ -210,12 +218,12 @@ __attribute__((always_inline)) INLINE static void chemistry_slope_limit_cell(
                                  N_cond);
   chemistry_slope_limit_quantity(gradvz, maxr, p->v[2], vzlim[0], vzlim[1],
                                  N_cond);
-  chemistry_slope_limit_quantity(gradvx_tilde, maxr, v_tilde[0], vx_tilde_lim[0], vxlim[1],
-                                 N_cond);
-  chemistry_slope_limit_quantity(gradvy_tilde, maxr, v_tilde[1], vy_tilde_lim[0], vylim[1],
-                                 N_cond);
-  chemistry_slope_limit_quantity(gradvz_tilde, maxr, v_tilde[2], vz_tilde_lim[0], vzlim[1],
-                                 N_cond);
+  chemistry_slope_limit_quantity(gradvx_tilde, maxr, v_tilde[0],
+                                 vx_tilde_lim[0], vxlim[1], N_cond);
+  chemistry_slope_limit_quantity(gradvy_tilde, maxr, v_tilde[1],
+                                 vy_tilde_lim[0], vylim[1], N_cond);
+  chemistry_slope_limit_quantity(gradvz_tilde, maxr, v_tilde[2],
+                                 vz_tilde_lim[0], vzlim[1], N_cond);
 
   /* Set the velocity gradient values */
   chd->gradients.v[0][0] = gradvx[0];

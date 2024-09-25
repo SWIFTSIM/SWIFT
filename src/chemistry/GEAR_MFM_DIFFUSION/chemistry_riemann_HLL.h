@@ -19,8 +19,8 @@
 #ifndef SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_RIEMANN_HLL_H
 #define SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_RIEMANN_HLL_H
 
-#include "chemistry_struct.h"
 #include "chemistry_getters.h"
+#include "chemistry_struct.h"
 #include "hydro.h"
 
 /**
@@ -106,9 +106,9 @@ chemistry_riemann_solve_for_flux(
   /* Init K_star to 0.0. Do it better in the future... */
   chemistry_get_matrix_K(pi, 0.0, K_star, chem_data);
 
-  for (int i = 0 ; i < 3 ; ++i) {
-    for (int j = 0 ; j < 3 ; ++j) {
-      K_star[i][j] += 0.5*(KR[i][j] + KL[i][j]);
+  for (int i = 0; i < 3; ++i) {
+    for (int j = 0; j < 3; ++j) {
+      K_star[i][j] += 0.5 * (KR[i][j] + KL[i][j]);
     }
   }
 
@@ -128,7 +128,8 @@ chemistry_riemann_solve_for_flux(
   const float dx_norm = sqrtf(dx_norm_2);
 
   /* Get U_star */
-  const double U_star = UL - UR;;
+  const double U_star = UL - UR;
+  ;
 
   /* Reconstruct q_star at the interface. Note that we have reconstructed UL
      and UR in chemistry_gradients_predict(), but not q. We have everything to
@@ -136,29 +137,33 @@ chemistry_riemann_solve_for_flux(
   const double Z_L = chemistry_get_metal_mass_fraction(pj, g);
   const double Z_R = chemistry_get_metal_mass_fraction(pi, g);
   double grad_q[3];
-  grad_q[0] = 0.5*(pi->chemistry_data.gradients.Z[g][0] + pj->chemistry_data.gradients.Z[g][0]);
-  grad_q[1] = 0.5*(pi->chemistry_data.gradients.Z[g][1] + pj->chemistry_data.gradients.Z[g][1]);
-  grad_q[2] = 0.5*(pi->chemistry_data.gradients.Z[g][2] + pj->chemistry_data.gradients.Z[g][2]);
+  grad_q[0] = 0.5 * (pi->chemistry_data.gradients.Z[g][0] +
+                     pj->chemistry_data.gradients.Z[g][0]);
+  grad_q[1] = 0.5 * (pi->chemistry_data.gradients.Z[g][1] +
+                     pj->chemistry_data.gradients.Z[g][1]);
+  grad_q[2] = 0.5 * (pi->chemistry_data.gradients.Z[g][2] +
+                     pj->chemistry_data.gradients.Z[g][2]);
 
   /* Our definition of dx is opposite to the one for reconstruction, hence
      the minus sign. */
   const double grad_dot_dx =
-    - 1.0*(grad_q[0] * dx[0] + grad_q[1] * dx[1] + grad_q[2] * dx[2]);
-  const double q_star = chemistry_rieman_solver_minmod((Z_L - Z_R) + grad_dot_dx, Z_L - Z_R);
+      -1.0 * (grad_q[0] * dx[0] + grad_q[1] * dx[1] + grad_q[2] * dx[2]);
+  const double q_star =
+      chemistry_rieman_solver_minmod((Z_L - Z_R) + grad_dot_dx, Z_L - Z_R);
 
   /* Compute norm(K_star * grad_q_star) */
   float norm_K_star_times_grad_q_star = 0.0;
   float matrix_product = 0.0;
 
-  for (int i = 0 ; i < 3 ; ++i) {
+  for (int i = 0; i < 3; ++i) {
     /* Reset the temporary var */
     matrix_product = 0.0;
-    for (int j = 0 ; j < 3 ; ++j) {
+    for (int j = 0; j < 3; ++j) {
       /* Compute (K_star * grad_q_star)_i = Sum_j (K_star)_ij (grad_q_star)_j */
       matrix_product = K_star[i][j] * grad_q[j];
     }
     /* Add the product to the norm squared */
-    norm_K_star_times_grad_q_star += matrix_product*matrix_product;
+    norm_K_star_times_grad_q_star += matrix_product * matrix_product;
   }
   norm_K_star_times_grad_q_star = sqrtf(norm_K_star_times_grad_q_star);
 
@@ -170,8 +175,10 @@ chemistry_riemann_solve_for_flux(
       v_HLL * dx_norm * fabs(q_star) / (norm_K_star * fabs(U_star));
   const double r_term = (0.2 + r) / (0.2 + r + r * r);
 
-  const double norm_grad_q_star = sqrtf(grad_q[0]*grad_q[0] + grad_q[1]*grad_q[1] + grad_q[2]*grad_q[2]);
-  double norm_term = norm_K_star_times_grad_q_star / (norm_K_star * norm_grad_q_star);
+  const double norm_grad_q_star = sqrtf(
+      grad_q[0] * grad_q[0] + grad_q[1] * grad_q[1] + grad_q[2] * grad_q[2]);
+  double norm_term =
+      norm_K_star_times_grad_q_star / (norm_K_star * norm_grad_q_star);
 
   /* This behaviour is physically not the correct one. The correct physical
      behaviour is undetermined: we have 0/0 */
@@ -215,8 +222,8 @@ chemistry_riemann_solve_for_flux(
     /* Simple trick while testing to verify how numerical diffusion affects the
        results */
     if (chem_data->hll_riemann_solver_psi >= 0) {
-      flux_hll = chemistry_rieman_solver_minmod((1 + chem_data->hll_riemann_solver_psi) * F_2,
-                                  F_2 + F_U);
+      flux_hll = chemistry_rieman_solver_minmod(
+          (1 + chem_data->hll_riemann_solver_psi) * F_2, F_2 + F_U);
     } else {
       flux_hll = F_2 + F_U;
     }

@@ -87,28 +87,42 @@ __attribute__((always_inline)) INLINE static void runner_iact_chemistry(
   /* Compute the filtered quantities */
 
   /* Some smoothing length multiples. */
-  float h_bar_ij = 0.5*(pi->h + pj->h);
-  const float h_inv_bar = 1.0f / h_bar_ij;             /* 1/h */
-  const float h_inv_dim = pow_dimension(h_inv_bar);    /* 1/h^d */
+  float h_bar_ij = 0.5 * (pi->h + pj->h);
+  const float h_inv_bar = 1.0f / h_bar_ij;          /* 1/h */
+  const float h_inv_dim = pow_dimension(h_inv_bar); /* 1/h^d */
 
   float rho_i = chi->rho_prev;
   float rho_j = chj->rho_prev;
-  float rho_mean = 0.5*(rho_i + rho_j);
+  float rho_mean = 0.5 * (rho_i + rho_j);
   float w_filtered;
-  kernel_eval(r*h_inv_bar, &w_filtered);
+  kernel_eval(r * h_inv_bar, &w_filtered);
 
   /* Avoid 0 division */
   if (rho_mean != 0) {
-    chi->filtered.rho += hydro_get_mass(pj)/rho_mean * (rho_j - rho_i)*w_filtered * h_inv_dim;
-    chj->filtered.rho -= hydro_get_mass(pi)/rho_mean * (rho_j - rho_i)*w_filtered * h_inv_dim;
+    chi->filtered.rho += hydro_get_mass(pj) / rho_mean * (rho_j - rho_i) *
+                         w_filtered * h_inv_dim;
+    chj->filtered.rho -= hydro_get_mass(pi) / rho_mean * (rho_j - rho_i) *
+                         w_filtered * h_inv_dim;
 
-    chi->filtered.rho_v[0] += hydro_get_mass(pj)/rho_mean * (rho_j*pj->v[0] - rho_i*pi->v[0])*w_filtered * h_inv_dim;
-    chi->filtered.rho_v[1] += hydro_get_mass(pj)/rho_mean * (rho_j*pj->v[1] - rho_i*pi->v[1])*w_filtered * h_inv_dim;
-    chi->filtered.rho_v[2] += hydro_get_mass(pj)/rho_mean * (rho_j*pj->v[2] - rho_i*pi->v[2])*w_filtered * h_inv_dim;
+    chi->filtered.rho_v[0] += hydro_get_mass(pj) / rho_mean *
+                              (rho_j * pj->v[0] - rho_i * pi->v[0]) *
+                              w_filtered * h_inv_dim;
+    chi->filtered.rho_v[1] += hydro_get_mass(pj) / rho_mean *
+                              (rho_j * pj->v[1] - rho_i * pi->v[1]) *
+                              w_filtered * h_inv_dim;
+    chi->filtered.rho_v[2] += hydro_get_mass(pj) / rho_mean *
+                              (rho_j * pj->v[2] - rho_i * pi->v[2]) *
+                              w_filtered * h_inv_dim;
 
-    chj->filtered.rho_v[0] -= hydro_get_mass(pi)/rho_mean * (rho_j*pj->v[0] - rho_i*pi->v[0])*w_filtered * h_inv_dim;
-    chj->filtered.rho_v[1] -= hydro_get_mass(pi)/rho_mean * (rho_j*pj->v[1] - rho_i*pi->v[1])*w_filtered * h_inv_dim;
-    chj->filtered.rho_v[2] -= hydro_get_mass(pi)/rho_mean * (rho_j*pj->v[2] - rho_i*pi->v[2])*w_filtered * h_inv_dim;
+    chj->filtered.rho_v[0] -= hydro_get_mass(pi) / rho_mean *
+                              (rho_j * pj->v[0] - rho_i * pi->v[0]) *
+                              w_filtered * h_inv_dim;
+    chj->filtered.rho_v[1] -= hydro_get_mass(pi) / rho_mean *
+                              (rho_j * pj->v[1] - rho_i * pi->v[1]) *
+                              w_filtered * h_inv_dim;
+    chj->filtered.rho_v[2] -= hydro_get_mass(pi) / rho_mean *
+                              (rho_j * pj->v[2] - rho_i * pi->v[2]) *
+                              w_filtered * h_inv_dim;
   }
 }
 
@@ -155,22 +169,29 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_chemistry(
   /* Compute the filtered quantities */
 
   /* Some smoothing length multiples. */
-  float h_bar_ij = 0.5*(pi->h + pj->h);
-  const float h_inv_bar = 1.0f / h_bar_ij;             /* 1/h */
-  const float h_inv_dim = pow_dimension(h_inv_bar);    /* 1/h^d */
+  float h_bar_ij = 0.5 * (pi->h + pj->h);
+  const float h_inv_bar = 1.0f / h_bar_ij;          /* 1/h */
+  const float h_inv_dim = pow_dimension(h_inv_bar); /* 1/h^d */
 
   float rho_i = chi->rho_prev;
   float rho_j = pj->chemistry_data.rho_prev;
-  float rho_mean = 0.5*(rho_i + rho_j);
+  float rho_mean = 0.5 * (rho_i + rho_j);
   float w_filtered;
-  kernel_eval(r/h_bar_ij, &w_filtered);
+  kernel_eval(r / h_bar_ij, &w_filtered);
 
   if (rho_mean != 0) {
-    chi->filtered.rho += hydro_get_mass(pj)/rho_mean * (rho_j - rho_i)*w_filtered * h_inv_dim;
+    chi->filtered.rho += hydro_get_mass(pj) / rho_mean * (rho_j - rho_i) *
+                         w_filtered * h_inv_dim;
 
-    chi->filtered.rho_v[0] += hydro_get_mass(pj)/rho_mean * (rho_j*pj->v[0] - rho_i*pi->v[0])*w_filtered * h_inv_dim;
-    chi->filtered.rho_v[1] += hydro_get_mass(pj)/rho_mean * (rho_j*pj->v[1] - rho_i*pi->v[1])*w_filtered * h_inv_dim;
-    chi->filtered.rho_v[2] += hydro_get_mass(pj)/rho_mean * (rho_j*pj->v[2] - rho_i*pi->v[2])*w_filtered * h_inv_dim;
+    chi->filtered.rho_v[0] += hydro_get_mass(pj) / rho_mean *
+                              (rho_j * pj->v[0] - rho_i * pi->v[0]) *
+                              w_filtered * h_inv_dim;
+    chi->filtered.rho_v[1] += hydro_get_mass(pj) / rho_mean *
+                              (rho_j * pj->v[1] - rho_i * pi->v[1]) *
+                              w_filtered * h_inv_dim;
+    chi->filtered.rho_v[2] += hydro_get_mass(pj) / rho_mean *
+                              (rho_j * pj->v[2] - rho_i * pi->v[2]) *
+                              w_filtered * h_inv_dim;
   }
 }
 

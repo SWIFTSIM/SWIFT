@@ -34,10 +34,8 @@ __attribute__((always_inline)) INLINE static void chemistry_debug_particle(
 
 __attribute__((always_inline)) INLINE static void chemistry_debug_print_matrix(
     const double K[3][3]) {
-      message("K = [[%e %e %e], [%e %e %e], [%e %e %e]]",
-	    K[0][0], K[0][1], K[0][2],
-	    K[1][0], K[1][1], K[1][2],
-	    K[2][0], K[2][1], K[2][2]);
+  message("K = [[%e %e %e], [%e %e %e], [%e %e %e]]", K[0][0], K[0][1], K[0][2],
+          K[1][0], K[1][1], K[1][2], K[2][0], K[2][1], K[2][2]);
 }
 
 #endif /* SWIFT_CHEMISTRY_GEAR_DEBUG_H */

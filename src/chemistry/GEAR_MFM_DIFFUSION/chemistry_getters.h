@@ -53,8 +53,8 @@ __attribute__((always_inline)) INLINE static float chemistry_get_volume(
  * @param metal Index of metal specie
  * @param U Pointer to the array in which the result needs to be stored
  */
-__attribute__((always_inline)) INLINE static double
-chemistry_get_metal_density(const struct part *restrict p, int metal) {
+__attribute__((always_inline)) INLINE static double chemistry_get_metal_density(
+    const struct part *restrict p, int metal) {
   return p->chemistry_data.metal_mass[metal] / chemistry_get_volume(p);
 }
 
@@ -66,8 +66,7 @@ chemistry_get_metal_density(const struct part *restrict p, int metal) {
  * @param U Pointer to the array in which the result needs to be stored
  */
 __attribute__((always_inline)) INLINE static double
-chemistry_get_metal_mass_fraction(const struct part *restrict p,
-                                       int metal) {
+chemistry_get_metal_mass_fraction(const struct part *restrict p, int metal) {
   return p->chemistry_data.metal_mass[metal] / hydro_get_mass(p);
 }
 
@@ -81,8 +80,8 @@ chemistry_get_metal_mass_fraction(const struct part *restrict p,
  * @param U Pointer to the array in which the result needs to be stored
  */
 __attribute__((always_inline)) INLINE static void
-chemistry_get_diffusion_state_vector(const struct part *restrict p,
-                                          int metal, double *U) {
+chemistry_get_diffusion_state_vector(const struct part *restrict p, int metal,
+                                     double *U) {
   /* The state vector is 1D and contains the metal density. */
   *U = chemistry_get_metal_density(p, metal);
 }
@@ -122,15 +121,15 @@ __attribute__((always_inline)) INLINE static float chemistry_get_density(
  *
  * @param p Particle.
  */
-__attribute__((always_inline)) INLINE static void
-chemistry_get_matrix_K(const struct part *restrict p, double kappa, double K[3][3],
-		       const struct chemistry_global_data *chem_data) {
+__attribute__((always_inline)) INLINE static void chemistry_get_matrix_K(
+    const struct part *restrict p, double kappa, double K[3][3],
+    const struct chemistry_global_data *chem_data) {
   if (chem_data->diffusion_mode == isotropic_constant ||
       chem_data->diffusion_mode == isotropic_smagorinsky) {
     /* K = kappa * I */
-    for (int i = 0 ; i < 3 ; ++i) {
-      for (int j = 0 ; j < 3 ; ++j) {
-	K[i][j] = 0.0;
+    for (int i = 0; i < 3; ++i) {
+      for (int j = 0; j < 3; ++j) {
+        K[i][j] = 0.0;
       }
     }
     K[0][0] = kappa;
@@ -138,9 +137,10 @@ chemistry_get_matrix_K(const struct part *restrict p, double kappa, double K[3][
     K[2][2] = kappa;
   } else {
     /* K = kappa * S */
-    for (int i = 0 ; i < 3 ; ++i) {
-      for (int j = 0 ; j < 3 ; ++j) {
-	K[i][j] = kappa * (p->chemistry_data.filtered.grad_v_tilde[i][j] +  p->chemistry_data.filtered.grad_v_tilde[j][i]);
+    for (int i = 0; i < 3; ++i) {
+      for (int j = 0; j < 3; ++j) {
+        K[i][j] = kappa * (p->chemistry_data.filtered.grad_v_tilde[i][j] +
+                           p->chemistry_data.filtered.grad_v_tilde[j][i]);
       }
     }
   }
@@ -151,11 +151,11 @@ chemistry_get_matrix_K(const struct part *restrict p, double kappa, double K[3][
  *
  * @param p Particle.
  */
-__attribute__((always_inline)) INLINE static double
-chemistry_get_matrix_norm(const double K[3][3]) {
+__attribute__((always_inline)) INLINE static double chemistry_get_matrix_norm(
+    const double K[3][3]) {
   float norm = 0.0;
-  for (int i = 0 ; i < 3 ; ++i) {
-    for (int j = 0 ; j < 3 ; ++j) {
+  for (int i = 0; i < 3; ++i) {
+    for (int j = 0; j < 3; ++j) {
       norm += K[i][j] * K[i][j];
     }
   }
@@ -165,8 +165,8 @@ chemistry_get_matrix_norm(const double K[3][3]) {
 /**
  * @brief Compute the diffusion coefficient of the particle.
  *
- * This must be called in chemistry_prepare_force() to have the values of the density and the
- * matrix S (which depends on grad_v_tilde).
+ * This must be called in chemistry_prepare_force() to have the values of the
+ * density and the matrix S (which depends on grad_v_tilde).
  *
  * Note: The diffusion coefficient depends on the particle's density. If the
  * density is 0, then the coefficient is 0 as well and the timestep for
@@ -198,7 +198,8 @@ chemistry_compute_diffusion_coefficient(
     S[1][1] -= trace;
     S[2][2] -= trace;
 
-    return chem_data->diffusion_coefficient * kernel_gamma2 * p->h * p->h * rho * chemistry_get_matrix_norm(S);
+    return chem_data->diffusion_coefficient * kernel_gamma2 * p->h * p->h *
+           rho * chemistry_get_matrix_norm(S);
   } else {
     /* Note that this is multiplied by the matrix S to get the full matrix K */
     return chem_data->diffusion_coefficient * kernel_gamma2 * p->h * p->h * rho;
@@ -216,8 +217,8 @@ chemistry_compute_diffusion_coefficient(
  */
 __attribute__((always_inline)) INLINE static void
 chemistry_compute_diffusion_flux(const struct part *restrict p, int metal,
-				 const struct chemistry_global_data *chem_data,
-				 double F_diff[3]) {
+                                 const struct chemistry_global_data *chem_data,
+                                 double F_diff[3]) {
 
   const double kappa = p->chemistry_data.kappa;
 
@@ -232,13 +233,13 @@ chemistry_compute_diffusion_flux(const struct part *restrict p, int metal,
     F_diff[1] = 0.0;
     F_diff[2] = 0.0;
 
-  /* Compute diffusion matrix K_star = 0.5*(KR + KL) */
+    /* Compute diffusion matrix K_star = 0.5*(KR + KL) */
     double K[3][3];
     chemistry_get_matrix_K(p, p->chemistry_data.kappa, K, chem_data);
 
-    for (int i = 0 ; i < 3 ; ++i) {
-      for (int j = 0 ; j < 3 ; ++j) {
-	F_diff[i] += K[i][j] * p->chemistry_data.gradients.Z[metal][j];
+    for (int i = 0; i < 3; ++i) {
+      for (int j = 0; j < 3; ++j) {
+        F_diff[i] += K[i][j] * p->chemistry_data.gradients.Z[metal][j];
       }
     } /* End of matrix multiplication */
   } /* end of if else diffusion_mode */
@@ -257,7 +258,7 @@ chemistry_compute_diffusion_flux(const struct part *restrict p, int metal,
  */
 __attribute__((always_inline)) INLINE static void
 chemistry_get_diffusion_gradients(const struct part *restrict p, int metal,
-				  const float grad_rho[3], double dF[3]) {
+                                  const float grad_rho[3], double dF[3]) {
 
   const struct chemistry_part_data *chd = &p->chemistry_data;
 
@@ -282,9 +283,8 @@ chemistry_get_diffusion_gradients(const struct part *restrict p, int metal,
  * @param dvy y velocity gradient (of size 3 or more).
  * @param dvz z velocity gradient (of size 3 or more).
  */
-__attribute__((always_inline)) INLINE static void
-chemistry_get_hydro_gradients(const struct part *restrict p, float dvx[3],
-                                   float dvy[3], float dvz[3]) {
+__attribute__((always_inline)) INLINE static void chemistry_get_hydro_gradients(
+    const struct part *restrict p, float dvx[3], float dvy[3], float dvz[3]) {
 
   dvx[0] = p->chemistry_data.gradients.v[0][0];
   dvx[1] = p->chemistry_data.gradients.v[0][1];
@@ -303,8 +303,9 @@ chemistry_get_hydro_gradients(const struct part *restrict p, float dvx[3],
  * @param p Particle.
  */
 __attribute__((always_inline)) INLINE static float
-chemistry_compute_parabolic_timestep(const struct part *restrict p,
-				     const struct chemistry_global_data *chem_data) {
+chemistry_compute_parabolic_timestep(
+    const struct part *restrict p,
+    const struct chemistry_global_data *chem_data) {
 
   const struct chemistry_part_data *chd = &p->chemistry_data;
 
@@ -335,8 +336,7 @@ chemistry_compute_parabolic_timestep(const struct part *restrict p,
 
     for (int j = 0; j < 3; j++) {
       /* Compute the Frobenius norm of \nabla \otimes q = Grad Z */
-      norm_nabla_q += chd->gradients.Z[i][j] *
-                      chd->gradients.Z[i][j];
+      norm_nabla_q += chd->gradients.Z[i][j] * chd->gradients.Z[i][j];
     }
   }
 
@@ -363,15 +363,15 @@ chemistry_compute_parabolic_timestep(const struct part *restrict p,
  *
  * @param p Particle.
  */
-__attribute__((always_inline)) INLINE static float
-chemistry_get_supertimestep(const struct part *restrict p,
-			    const struct chemistry_global_data *cd,
-			    float timestep_explicit) {
+__attribute__((always_inline)) INLINE static float chemistry_get_supertimestep(
+    const struct part *restrict p, const struct chemistry_global_data *cd,
+    float timestep_explicit) {
   const float N = cd->N_substeps;
   const float nu = cd->nu;
-  const float nu_plus_term = pow(1 + sqrtf(nu), 2.0*N);
-  const float nu_minus_term = pow(1 - sqrtf(nu), 2.0*N);
-  const float left_term = (nu_plus_term - nu_minus_term) / (nu_plus_term + nu_minus_term);
+  const float nu_plus_term = pow(1 + sqrtf(nu), 2.0 * N);
+  const float nu_minus_term = pow(1 - sqrtf(nu), 2.0 * N);
+  const float left_term =
+      (nu_plus_term - nu_minus_term) / (nu_plus_term + nu_minus_term);
   return timestep_explicit * N / (2.0 * sqrt(nu)) * left_term;
 }
 
@@ -383,7 +383,7 @@ chemistry_get_supertimestep(const struct part *restrict p,
  */
 __attribute__((always_inline)) INLINE static float
 chemistry_compute_CFL_supertimestep(const struct part *restrict p,
-				    const struct chemistry_global_data *cd) {
+                                    const struct chemistry_global_data *cd) {
 
   const struct chemistry_part_data *chd = &p->chemistry_data;
 
@@ -405,8 +405,7 @@ chemistry_compute_CFL_supertimestep(const struct part *restrict p,
 
     for (int j = 0; j < 3; j++) {
       /* Compute the Frobenius norm of \nabla \otimes q */
-      norm_nabla_otimes_q += chd->gradients.Z[i][j] *
-                             chd->gradients.Z[i][j];
+      norm_nabla_otimes_q += chd->gradients.Z[i][j] * chd->gradients.Z[i][j];
     }
   }
 
@@ -433,11 +432,10 @@ chemistry_compute_CFL_supertimestep(const struct part *restrict p,
 __attribute__((always_inline)) INLINE static float
 chemistry_compute_subtimestep(const struct part *restrict p,
                               const struct chemistry_global_data *cd,
-			      int current_substep_number) {
+                              int current_substep_number) {
   const struct chemistry_part_data *chd = &p->chemistry_data;
-  const float cos_argument = M_PI *
-                             (2.0 * current_substep_number - 1.0) /
-                             (2.0 * cd->N_substeps);
+  const float cos_argument =
+      M_PI * (2.0 * current_substep_number - 1.0) / (2.0 * cd->N_substeps);
   const float expression = (1 + cd->nu) - (1 - cd->nu) * cos(cos_argument);
   return chd->timesteps.explicit_timestep / expression;
 }

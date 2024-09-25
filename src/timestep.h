@@ -199,10 +199,9 @@ __attribute__((always_inline)) INLINE static integertime_t get_part_timestep(
   new_dt = min(new_dt, e->dt_max_RMS_displacement);
 
   /* Get the supertimestep size */
-  const float new_dt_supertimestep_chemistry =
-    chemistry_compute_supertimestep(e->physical_constants, e->cosmology,
-				    e->internal_units, e->hydro_properties,
-				    e->chemistry, p, new_dt);
+  const float new_dt_supertimestep_chemistry = chemistry_compute_supertimestep(
+      e->physical_constants, e->cosmology, e->internal_units,
+      e->hydro_properties, e->chemistry, p, new_dt);
 
   new_dt = min(new_dt, new_dt_supertimestep_chemistry);
 

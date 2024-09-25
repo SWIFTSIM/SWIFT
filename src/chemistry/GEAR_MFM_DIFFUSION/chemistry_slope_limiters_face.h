@@ -34,7 +34,6 @@
  *
  * */
 
-
 /**
  * The minmod slope limiter.
  *
@@ -128,10 +127,12 @@ __attribute__((always_inline)) INLINE static void chemistry_slope_limit_face(
     const float *xij_j, float r) {
 
   /* const float xij_i_norm = */
-  /*     sqrtf(xij_i[0] * xij_i[0] + xij_i[1] * xij_i[1] + xij_i[2] * xij_i[2]); */
+  /*     sqrtf(xij_i[0] * xij_i[0] + xij_i[1] * xij_i[1] + xij_i[2] * xij_i[2]);
+   */
 
   /* const float xij_j_norm = */
-  /*     sqrtf(xij_j[0] * xij_j[0] + xij_j[1] * xij_j[1] + xij_j[2] * xij_j[2]); */
+  /*     sqrtf(xij_j[0] * xij_j[0] + xij_j[1] * xij_j[1] + xij_j[2] * xij_j[2]);
+   */
 
   /* const float r_inv = (r > 0.0f) ? 1.0f / r : 0.0f; */
 

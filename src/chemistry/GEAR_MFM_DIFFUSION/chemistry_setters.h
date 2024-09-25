@@ -109,8 +109,9 @@ chemistry_part_update_diffusion_gradients(struct part *restrict p, int metal,
  */
 __attribute__((always_inline)) INLINE static void
 chemistry_part_update_hydro_gradients(struct part *restrict p, float dvx[3],
-                                      float dvy[3], float dvz[3], float dvx_tilde[3],
-                                      float dvy_tilde[3], float dvz_tilde[3]) {
+                                      float dvy[3], float dvz[3],
+                                      float dvx_tilde[3], float dvy_tilde[3],
+                                      float dvz_tilde[3]) {
 
   struct chemistry_part_data *chd = &p->chemistry_data;
 

@@ -28,7 +28,7 @@
 enum chemistry_diffusion_mode {
   isotropic_constant,
   isotropic_smagorinsky, /* Smagorinsky turbulent diffusion \propto |S| */
-  anisotropic_gradient /* Rennehan (2021) model \propto S */
+  anisotropic_gradient   /* Rennehan (2021) model \propto S */
 };
 
 /**
@@ -156,7 +156,8 @@ struct chemistry_part_data {
   /* Density of the previous timestep */
   float rho_prev;
 
-  /* Here are the filtered quantities, i.e. "smoothed" over the resolution scale */
+  /* Here are the filtered quantities, i.e. "smoothed" over the resolution scale
+   */
   struct {
     float rho;
 
