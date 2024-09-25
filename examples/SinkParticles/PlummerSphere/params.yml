@@ -1,7 +1,7 @@
 # Define the system of units to use internally.
 InternalUnitSystem:
-  UnitMass_in_cgs:     1.988409870698051e+43   # 10^10 solar masses 
-  UnitLength_in_cgs:   3.0856775814913673e+21  # 1 kpc 
+  UnitMass_in_cgs:     1.988409870698051e+43   # 10^10 solar masses
+  UnitLength_in_cgs:   3.0856775814913673e+21  # 1 kpc
   UnitVelocity_in_cgs: 1e5   # km/s
   UnitCurrent_in_cgs:  1   # Amperes
   UnitTemp_in_cgs:     1   # Kelvin
@@ -18,23 +18,23 @@ Gravity:
 
 # Parameters governing the time integration (Set dt_min and dt_max to the same value for a fixed time-step run.)
 TimeIntegration:
-  time_begin:        0.    # The starting time of the simulation (in internal units).
-  time_end:          1.2e-02    # The end time of the simulation (in internal units).
+  time_begin:        0.     # The starting time of the simulation (in internal units).
+  time_end:          12e-3 # The end time of the simulation (in internal units).
   dt_min:            1e-10  # The minimal time-step size of the simulation (in internal units).
-  dt_max:            1e-2  # The maximal time-step size of the simulation (in internal units).
+  dt_max:            1e-3   # The maximal time-step size of the simulation (in internal units).
 
 # Parameters governing the snapshots
 Snapshots:
   subdir: snap
   basename:   snapshot      # Common part of the name of output files
-  time_first: 0.          # (Optional) Time of the first output if non-cosmological time-integration (in internal units)
-  delta_time: 1e-3        # Time difference between consecutive outputs (in internal units)
+  time_first: 0.            # (Optional) Time of the first output if non-cosmological time-integration (in internal units)
+  delta_time: 1e-3          # Time difference between consecutive outputs (in internal units)
 
 Scheduler:
   cell_extra_gparts: 10000      # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
   cell_extra_sinks: 10000       # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
   cell_extra_sparts: 10000      # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
-  max_top_level_cells: 3      #
+  max_top_level_cells: 3
 
 # Parameters governing the conserved quantities statistics
 Statistics:
@@ -85,18 +85,18 @@ GEARFeedback:
 
 
 GEARSink:
-  cut_off_radius: 1e-2                  # Cut off radius of all the sinks in internal units.
+  cut_off_radius: 1e-2                        # Cut off radius of all the sinks in internal units.
   f_acc: 0.4
-  maximal_temperature:  3e4            # Upper limit to the temperature of a star forming particle
-  density_threshold:   1.67e-24        # Density threashold in g/cm3 (1.67e-24 =1acc)
-  size_of_calibration_sample: 100000   # Size of the calibration sample  
-  stellar_particle_mass: 8             # Mass of the stellar particle representing the low mass stars, in solar mass
-  minimal_discrete_mass: 8              # Minimal mass of stars represented by discrete particles, in solar mass
-  stellar_particle_mass_first_stars: 13  # Mass of the stellar particle representing the low mass stars, in solar mass
-  minimal_discrete_mass_first_stars: 13 # Minimal mass of stars represented by discrete particles, in solar mass
-  sink_formation_contracting_gas_check: 0
-  sink_formation_smoothing_length_check: 0
-  sink_formation_jeans_instability_check: 0
-  sink_formation_bound_state_check: 0
-  sink_formation_overlapping_sink_criterion: 0
-
+  maximal_temperature:  3e4                   # Upper limit to the temperature of a star forming particle
+  density_threshold_g_per_cm3:   1.67e-24     # Density threashold in g/cm3 (1.67e-24 =1acc)
+  stellar_particle_mass_Msun: 21               # Mass of the stellar particle representing the low mass stars, in solar mass
+  minimal_discrete_mass_Msun: 8               # Minimal mass of stars represented by discrete particles, in solar mass
+  stellar_particle_mass_first_stars_Msun: 20  # Mass of the stellar particle representing the low mass stars, in solar mass
+  minimal_discrete_mass_first_stars_Msun: 8  # Minimal mass of stars represented by discrete particles, in solar mass
+  star_spawning_sigma_factor: 0.1               #  Factor to rescale the velocity dispersion of the stars when they are spawned. (Default: 0.2)
+  sink_formation_contracting_gas_criterion: 0     # (Optional) Activate the contracting gas check for sink formation. (Default: 1)
+  sink_formation_smoothing_length_criterion: 0    # (Optional) Activate the smoothing length check for sink formation. (Default: 1)
+  sink_formation_jeans_instability_criterion: 0   # (Optional) Activate the two Jeans instability checks for sink formation. (Default: 1)
+  sink_formation_bound_state_criterion: 0         # (Optional) Activate the bound state check for sink formation. (Default: 1)
+  sink_formation_overlapping_sink_criterion: 0    # (Optional) Activate the overlapping sink check for sink formation. (Default: 1)
+  disable_sink_formation: 0                       # (Optional) Disable sink formation. (Default: 0)

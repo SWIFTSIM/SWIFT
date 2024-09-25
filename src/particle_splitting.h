@@ -36,7 +36,7 @@
  */
 __attribute__((always_inline)) INLINE static void
 particle_splitting_mark_part_as_not_split(
-    struct particle_splitting_data* restrict splitting_data, int id) {
+    struct particle_splitting_data* restrict splitting_data, long long id) {
 
   splitting_data->progenitor_id = id;
   splitting_data->split_tree = 0;

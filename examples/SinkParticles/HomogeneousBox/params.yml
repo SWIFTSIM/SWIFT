@@ -84,15 +84,14 @@ GEARFeedback:
 
 
 GEARSink:
-  cut_off_radius: 5e-3                  # Cut off radius of all the sinks in internal units.
+  cut_off_radius: 5e-3                       # Cut off radius of all the sinks in internal units.
   f_acc: 0.1
-  maximal_temperature:  100            # Upper limit to the temperature of a star forming particle
-  density_threshold:   1.67e-23        # Density threashold in g/cm3 (1.67e-24 =1acc)
-  size_of_calibration_sample: 100000   # Size of the calibration sample  
-  stellar_particle_mass: 50             # Mass of the stellar particle representing the low mass stars, in solar mass
-  minimal_discrete_mass: 8              # Minimal mass of stars represented by discrete particles, in solar mass
-  stellar_particle_mass_first_stars: 50  # Mass of the stellar particle representing the low mass stars, in solar mass
-  minimal_discrete_mass_first_stars: 8   # Minimal mass of stars represented by discrete particles, in solar mass
+  maximal_temperature:  100                  # Upper limit to the temperature of a star forming particle
+  density_threshold_g_per_cm3:   1.67e-23    # Density threashold in g/cm3 (1.67e-24 =1acc)
+  stellar_particle_mass_Msun: 50             # Mass of the stellar particle representing the low mass stars, in solar mass
+  minimal_discrete_mass_Msun: 8              # Minimal mass of stars represented by discrete particles, in solar mass
+  stellar_particle_mass_first_stars_Msun: 50  # Mass of the stellar particle representing the low mass stars, in solar mass
+  minimal_discrete_mass_first_stars_Msun: 8   # Minimal mass of stars represented by discrete particles, in solar mass
   star_spawning_sigma_factor: 0.5        # Factor to rescale the velocity dispersion of the stars when they are spawned. (Default: 0.2)
   sink_formation_contracting_gas_criterion: 1     # (Optional) Activate the contracting gas check for sink formation. (Default: 1)
   sink_formation_smoothing_length_criterion: 1    # (Optional) Activate the smoothing length check for sink formation. (Default: 1)
