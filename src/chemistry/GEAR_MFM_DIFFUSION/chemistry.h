@@ -997,15 +997,12 @@ chemistry_get_metal_mass_fraction_for_feedback(const struct part* restrict p) {
  * @brief Returns the total metallicity (metal mass fraction) of the
  * gas particle to be used in feedback/enrichment related routines.
  *
- * This is unused in GEAR. --> return 0
- *
  * @param p Pointer to the particle data.
  */
 __attribute__((always_inline)) INLINE static float
 chemistry_get_total_metal_mass_fraction_for_feedback(
     const struct part* restrict p) {
-  error("Not implemented");
-  return 0.f;
+  return p->chemistry_data.metal_mass_fraction[GEAR_CHEMISTRY_ELEMENT_COUNT - 1] / hydro_get_mass(p);
 }
 
 /**
