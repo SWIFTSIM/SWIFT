@@ -19,6 +19,7 @@
 #ifndef SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_RIEMANN_HLL_H
 #define SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_RIEMANN_HLL_H
 
+#include "chemistry_struct.h"
 #include "chemistry_getters.h"
 #include "hydro.h"
 
@@ -135,21 +136,15 @@ chemistry_riemann_solve_for_flux(
   const double Z_L = chemistry_get_metal_mass_fraction(pj, g);
   const double Z_R = chemistry_get_metal_mass_fraction(pi, g);
   double grad_q[3];
-  grad_q[0] = pi->chemistry_data.gradients.Z[g][0];
-  grad_q[1] = pi->chemistry_data.gradients.Z[g][1];
-  grad_q[2] = pi->chemistry_data.gradients.Z[g][2];
-
-  /* grad_q[0] = 0.5*(pi->chemistry_data.gradients.Z[g][0] + pj->chemistry_data.gradients.Z[g][0]); */
-  /* grad_q[1] = 0.5*(pi->chemistry_data.gradients.Z[g][1] + pj->chemistry_data.gradients.Z[g][1]); */
-  /* grad_q[2] = 0.5*(pi->chemistry_data.gradients.Z[g][2] + pj->chemistry_data.gradients.Z[g][2]); */
-
-  const double norm_grad_q_star = sqrtf(grad_q[0]*grad_q[0] + grad_q[1]*grad_q[1] + grad_q[2]*grad_q[2]);
+  grad_q[0] = 0.5*(pi->chemistry_data.gradients.Z[g][0] + pj->chemistry_data.gradients.Z[g][0]);
+  grad_q[1] = 0.5*(pi->chemistry_data.gradients.Z[g][1] + pj->chemistry_data.gradients.Z[g][1]);
+  grad_q[2] = 0.5*(pi->chemistry_data.gradients.Z[g][2] + pj->chemistry_data.gradients.Z[g][2]);
 
   /* Our definition of dx is opposite to the one for reconstruction, hence
      the minus sign. */
   const double grad_dot_dx =
-    - (grad_q[0] * dx[0] + grad_q[1] * dx[1] + grad_q[2] * dx[2]);
-  const double q_star = (Z_L - Z_R) + grad_dot_dx;
+    - 1.0*(grad_q[0] * dx[0] + grad_q[1] * dx[1] + grad_q[2] * dx[2]);
+  const double q_star = chemistry_rieman_solver_minmod((Z_L - Z_R) + grad_dot_dx, Z_L - Z_R);
 
   /* Compute norm(K_star * grad_q_star) */
   float norm_K_star_times_grad_q_star = 0.0;
@@ -174,8 +169,22 @@ chemistry_riemann_solve_for_flux(
   const double r =
       v_HLL * dx_norm * fabs(q_star) / (norm_K_star * fabs(U_star));
   const double r_term = (0.2 + r) / (0.2 + r + r * r);
-  const double norm_term = norm_K_star_times_grad_q_star / (norm_K_star * norm_grad_q_star);
-  const double alpha = norm_term * r_term;
+
+  const double norm_grad_q_star = sqrtf(grad_q[0]*grad_q[0] + grad_q[1]*grad_q[1] + grad_q[2]*grad_q[2]);
+  double norm_term = norm_K_star_times_grad_q_star / (norm_K_star * norm_grad_q_star);
+
+  /* This behaviour is physically not the correct one. The correct physical
+     behaviour is undetermined: we have 0/0 */
+  if (norm_grad_q_star == 0.0) {
+    norm_term = 1.0;
+  }
+
+  double alpha = norm_term * r_term;
+
+  /* Treat pathological cases (physical solutions to the equation) */
+  if (U_star == 0.0 || norm_K_star == 0.0) {
+    alpha = 0.0;
+  }
 
   /****************************************************************************/
   /* Now compute the HLL flux */
@@ -193,10 +202,9 @@ chemistry_riemann_solve_for_flux(
   double F_U = lambda_plus * lambda_minus * dU * one_over_dl;
 
   /* Multiply by alpha to limit numerical diffusion. */
-  /* Prevent pathological cases (alpha = Nan) */
-  if (U_star != 0.0) {
-    F_U *= alpha;
-  }
+  /* Prevent pathological cases (alpha = Nan). This case should have been
+     taken care of above. */
+  F_U *= alpha;
 
   if (chem_data->use_hokpins2017_hll_riemann_solver) {
     /****************************************************************************
