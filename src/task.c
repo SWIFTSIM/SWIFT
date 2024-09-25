@@ -100,6 +100,8 @@ const char *taskID_names[task_type_count] = {
     "stars_prep_ghost1",
     "hydro_prep_ghost1",
     "stars_prep_ghost2",
+    "stars_prep_ghost3",
+    "stars_prep_ghost4",
     "stars_sort",
     "stars_resort",
     "bh_in",
@@ -147,9 +149,13 @@ const char *subtaskID_names[task_subtype_count] = {
     "spart_density",
     "part_prep1",
     "spart_prep2",
+    "part_prep3",
+    "spart_prep4",
     "stars_density",
     "stars_prep1",
     "stars_prep2",
+    "stars_prep3",
+    "stars_prep4",
     "stars_feedback",
     "sf_counts",
     "bpart_rho",
@@ -583,6 +589,8 @@ void task_unlock(struct task *t) {
       } else if ((subtype == task_subtype_stars_density) ||
                  (subtype == task_subtype_stars_prep1) ||
                  (subtype == task_subtype_stars_prep2) ||
+                 (subtype == task_subtype_stars_prep3) ||
+                 (subtype == task_subtype_stars_prep4) ||
                  (subtype == task_subtype_stars_feedback)) {
         cell_sunlocktree(ci);
         cell_unlocktree(ci);
@@ -624,6 +632,8 @@ void task_unlock(struct task *t) {
       } else if ((subtype == task_subtype_stars_density) ||
                  (subtype == task_subtype_stars_prep1) ||
                  (subtype == task_subtype_stars_prep2) ||
+                 (subtype == task_subtype_stars_prep3) ||
+                 (subtype == task_subtype_stars_prep4) ||
                  (subtype == task_subtype_stars_feedback)) {
         cell_sunlocktree(ci);
         cell_sunlocktree(cj);
@@ -821,6 +831,8 @@ int task_lock(struct task *t) {
       } else if ((subtype == task_subtype_stars_density) ||
                  (subtype == task_subtype_stars_prep1) ||
                  (subtype == task_subtype_stars_prep2) ||
+                 (subtype == task_subtype_stars_prep3) ||
+                 (subtype == task_subtype_stars_prep4) ||
                  (subtype == task_subtype_stars_feedback)) {
         if (ci->stars.hold) return 0;
         if (ci->hydro.hold) return 0;
@@ -905,6 +917,8 @@ int task_lock(struct task *t) {
       } else if ((subtype == task_subtype_stars_density) ||
                  (subtype == task_subtype_stars_prep1) ||
                  (subtype == task_subtype_stars_prep2) ||
+                 (subtype == task_subtype_stars_prep3) ||
+                 (subtype == task_subtype_stars_prep4) ||
                  (subtype == task_subtype_stars_feedback)) {
         /* Lock the stars and the gas particles in both cells */
         if (ci->stars.hold || cj->stars.hold) return 0;
@@ -1158,6 +1172,12 @@ void task_get_group_name(int type, int subtype, char *cluster) {
       break;
     case task_subtype_stars_prep2:
       strcpy(cluster, "StarsKickPrep2");
+      break;
+    case task_subtype_stars_prep3:
+      strcpy(cluster, "StarsKickPrep3");
+      break;
+    case task_subtype_stars_prep4:
+      strcpy(cluster, "StarsKickPrep4");
       break;
     case task_subtype_stars_feedback:
       strcpy(cluster, "StarsFeedback");
@@ -1714,6 +1734,8 @@ enum task_categories task_get_category(const struct task *t) {
     case task_type_stars_prep_ghost1:
     case task_type_hydro_prep_ghost1:
     case task_type_stars_prep_ghost2:
+    case task_type_stars_prep_ghost3:
+    case task_type_stars_prep_ghost4:
       return task_category_feedback;
 
     case task_type_bh_density_ghost:
@@ -1767,6 +1789,8 @@ enum task_categories task_get_category(const struct task *t) {
         case task_subtype_stars_density:
         case task_subtype_stars_prep1:
         case task_subtype_stars_prep2:
+        case task_subtype_stars_prep3:
+        case task_subtype_stars_prep4:
         case task_subtype_stars_feedback:
           return task_category_feedback;
 

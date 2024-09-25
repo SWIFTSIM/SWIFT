@@ -32,6 +32,8 @@
 #define feedback_use_newborn_stars 0
 #elif defined(FEEDBACK_GEAR)
 #define feedback_use_newborn_stars 1
+#elif defined(FEEDBACK_GEAR_MECHANICAL)
+#define feedback_use_newborn_stars 1
 #elif defined(FEEDBACK_AGORA)
 #define feedback_use_newborn_stars 1
 #else

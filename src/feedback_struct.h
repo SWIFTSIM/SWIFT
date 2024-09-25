@@ -36,6 +36,8 @@
 #include "./feedback/EAGLE_kinetic/feedback_struct.h"
 #elif defined(FEEDBACK_GEAR)
 #include "./feedback/GEAR/feedback_struct.h"
+#elif defined(FEEDBACK_GEAR_MECHANICAL)
+#include "./feedback/GEAR_mechanical/feedback_struct.h"
 #elif defined(FEEDBACK_AGORA)
 #include "./feedback/AGORA/feedback_struct.h"
 #else

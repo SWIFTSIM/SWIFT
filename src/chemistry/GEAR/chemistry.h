@@ -308,7 +308,7 @@ static INLINE void chemistry_init_backend(struct swift_params* parameter_file,
     chemistry_scale_initial_metallicities(parameter_file, data);
   }
   /* We do not care about the solar abundances without feedback */
-#ifdef FEEDBACK_GEAR
+#if defined(FEEDBACK_GEAR) || FEEDBACK_GEAR_MECHANICAL_MODE >= 1
   else {
     chemistry_read_solar_abundances(parameter_file, data);
     chemistry_read_elements(parameter_file, data);
@@ -637,8 +637,8 @@ chemistry_get_metal_mass_fraction_for_feedback(const struct part* restrict p) {
 __attribute__((always_inline)) INLINE static float
 chemistry_get_total_metal_mass_fraction_for_feedback(
     const struct part* restrict p) {
-  error("Not implemented");
-  return 0.f;
+  return p->chemistry_data
+      .smoothed_metal_mass_fraction[GEAR_CHEMISTRY_ELEMENT_COUNT - 1];
 }
 
 /**

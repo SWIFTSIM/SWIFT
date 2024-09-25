@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2022 Bert Vandenbroucke (bert.vandenbroucke@gmail.com)
+ * Copyright (c) 2022 Bert Vandenbroucke (bert.vandenbroucke@gmail.com)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,27 +16,21 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_FEEDBACK_DEBUG_H
-#define SWIFT_FEEDBACK_DEBUG_H
+#ifndef SWIFT_FEEDBACK_GEAR_MECHANICAL_DEBUG_H
+#define SWIFT_FEEDBACK_GEAR_MECHANICAL_DEBUG_H
 
-/* Config parameters. */
-#include <config.h>
+__attribute__((always_inline)) INLINE static void feedback_debug_particle(
+    const struct part* p, const struct xpart* xp) {
 
-/* Import the debug routines of the right feedback definition */
-#if defined(FEEDBACK_NONE)
-#include "./feedback/none/feedback_debug.h"
-#elif defined(FEEDBACK_EAGLE_THERMAL)
-#include "./feedback/EAGLE_thermal/feedback_debug.h"
-#elif defined(FEEDBACK_EAGLE_KINETIC)
-#include "./feedback/EAGLE_kinetic/feedback_debug.h"
-#elif defined(FEEDBACK_GEAR)
-#include "./feedback/GEAR/feedback_debug.h"
-#elif defined(FEEDBACK_GEAR_MECHANICAL)
-#include "./feedback/GEAR_mechanical/feedback_debug.h"
-#elif defined(FEEDBACK_AGORA)
-#include "./feedback/AGORA/feedback_debug.h"
-#else
-#error "Invalid choice of feedback model"
-#endif
+  if (xp != NULL) {
+    warning("[PID%lld] feedback_xpart_data:", p->id);
+    warning(
+        "[PID%lld] delta_mass = %.3e, delta_u = %.3e, delta_p = [%.3e, %.3e, "
+        "%.3e]",
+        p->id, xp->feedback_data.delta_mass, xp->feedback_data.delta_u,
+        xp->feedback_data.delta_p[0], xp->feedback_data.delta_p[1],
+        xp->feedback_data.delta_p[2]);
+  }
+}
 
-#endif /* SWIFT_FEEDBACK_DEBUG_H */
+#endif /* SWIFT_FEEDBACK_GEAR_MECHANICAL_DEBUG_H */
