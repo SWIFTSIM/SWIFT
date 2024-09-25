@@ -419,9 +419,6 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
     double *Uj, int group, const float *dx, const float r,
     const float xij_i[3]) {
 
-  const struct chemistry_part_data *chi = &pi->chemistry_data;
-  const struct chemistry_part_data *chj = &pj->chemistry_data;
-
   chemistry_get_diffusion_state_vector(pi, group, Ui);
   chemistry_get_diffusion_state_vector(pj, group, Uj);
   /* No need to check unphysical state here:
@@ -455,8 +452,8 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
 
   /* Check we have physical masses and that we are not overshooting the
      particle's mass */
-  const double m_Zi_old = *Ui * chi->geometry.volume;
-  const double m_Zj_old = *Uj * chj->geometry.volume;
+  double m_Zi_old = *Ui * chemistry_get_volume(pi);
+  double m_Zj_old = *Uj * chemistry_get_volume(pj);
   double m_Zi = m_Zi_old;
   double m_Zj = m_Zj_old;
 
