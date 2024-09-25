@@ -178,7 +178,11 @@ __attribute__((always_inline)) INLINE static double
 chemistry_compute_diffusion_coefficient(
     struct part *restrict p, const struct chemistry_global_data *chem_data) {
 
-  float rho = chemistry_get_density(p);
+  float rho = p->chemistry_data.filtered.rho;
+
+  if (rho == 0.0) {
+    rho = chemistry_get_density(p);
+  }
 
   if (chem_data->diffusion_mode == isotropic_constant) {
     return chem_data->diffusion_coefficient;
