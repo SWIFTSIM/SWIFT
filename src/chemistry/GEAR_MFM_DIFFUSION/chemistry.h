@@ -465,7 +465,7 @@ __attribute__((always_inline)) INLINE static void chemistry_end_density(
   p->chemistry_data.filtered.rho_v[2] += p->chemistry_data.rho_prev*p->v[2];
 
   /*****************************************/
-  /* Finish computations on the MF gemotry quantities */
+  /* Finish computations on the MF geometry quantities */
   /* Some smoothing length multiples. */
   const float h = p->h;
   const float h_inv = 1.0f / h; /* 1/h */
@@ -692,7 +692,9 @@ chemistry_part_has_no_neighbours(struct part* restrict p,
  * @brief Prepares a particle for the smooth metal calculation.
  *
  * Zeroes all the relevant arrays in preparation for the sums taking place in
- * the various smooth metallicity tasks
+ * the various smooth metallicity tasks.
+ *
+ * Warning: DON'T call p->rho here. It is basically 0.
  *
  * @param p The particle to act upon
  * @param cd #chemistry_global_data containing chemistry informations.
@@ -714,7 +716,10 @@ __attribute__((always_inline)) INLINE static void chemistry_init_part(
   cpd->geometry.matrix_E[2][1] = 0.0f;
   cpd->geometry.matrix_E[2][2] = 0.0f;
 
-  /* Note: DON'T call p->rho here. It is basically 0. */
+  cpd->filtered.rho = 0.0;
+  cpd->filtered.rho_v[0] = 0.0;
+  cpd->filtered.rho_v[1] = 0.0;
+  cpd->filtered.rho_v[2] = 0.0;
 
   /* Init the gradient for the next loops */
   chemistry_gradients_init(p);
