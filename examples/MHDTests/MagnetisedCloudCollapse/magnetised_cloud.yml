@@ -10,35 +10,30 @@ InternalUnitSystem:
 TimeIntegration:
   time_begin: 0.         # The starting time of the simulation (in internal units).
   time_end:   0.05       # The end time of the simulation (in internal units).
-  dt_min:     1e-12      # The minimal time-step size of the simulation (in internal units).
+  dt_min:     1e-14      # The minimal time-step size of the simulation (in internal units).
   dt_max:     1e-3       # The maximal time-step size of the simulation (in internal units).
 
 # Parameters governing the snapshots
 Snapshots:
   basename:            magnetised_cloud # Common part of the name of output files
   time_first:          0.               # Time of the first output (in internal units)
-  delta_time:          0.0005           # Time difference between consecutive outputs (in internal units)
+  delta_time:          0.0025           # Time difference between consecutive outputs (in internal units)
   compression:         1
-  UnitLength_in_cgs:   1.  # Use cm in outputs
-  UnitMass_in_cgs:     1.  # Use grams in outputs
-  UnitVelocity_in_cgs: 1.  # Use cm/s in outputs
-  UnitCurrent_in_cgs:  1.  # Use Ampere in outputs
-  UnitTemp_in_cgs:     1.  # Use Kelvin in outputs
 
 # Parameters governing the conserved quantities statistics
 Statistics:
-  delta_time:          0.0001 # Time between statistics output
+  delta_time:          0.00001 # Time between statistics output
 
 # Parameters for the hydrodynamics scheme
 SPH:
   resolution_eta:        1.2348   # Target h in units of the mean inter-particle separation
-  CFL_condition:         0.075    # Courant-Friedrich-Levy condition for time integration.
-  h_max:		 0.01
+  CFL_condition:         0.1      # Courant-Friedrich-Levy condition for time integration.
+  h_max:		 0.1
 
 # Parameters for MHD scheme
 MHD:
   monopole_subtraction:   1.0
-  artificial_diffusion:   0.1
+  artificial_diffusion:   1.0
   hyperbolic_dedner:      1.0
   hyperbolic_dedner_divv: 0.5
   parabolic_dedner:       1.0
@@ -50,14 +45,15 @@ Gravity:
   MAC:                adaptive
   theta_cr:           0.7
   epsilon_fmm:        0.001
-  max_physical_baryon_softening: 0.000004    # Physical softening length (in internal units).
+  max_physical_baryon_softening: 0.00001    # Physical softening length (in internal units).
+  mesh_side_length:   64
 
 # Parameters related to the initial conditions
 InitialConditions:
   file_name:  ./magnetised_cloud.hdf5       # The file to read
-  periodic:   0
+  periodic:   1
 
 # Parameters related to the barotropic equation of state
 EoS:
-  barotropic_vacuum_sound_speed:   0.2           # Internal system of units (aka. km/s)
-  barotropic_core_density:         1.477e9       # 6.77e-10 # Internal system of units (aka. pc**3 / Msun)
+  barotropic_vacuum_sound_speed:   0.2             # Internal system of units (aka. km/s)
+  barotropic_core_density:         1.47756194451e8 # Internal system of units (aka. Msun / pc**3)
