@@ -367,8 +367,12 @@ chemistry_compute_parabolic_timestep(
     return delta_x * delta_x / norm_matrix_K * norm_U_over_norm_q;
   }
 
-  /* Finish the computations */
+  /* Compute the expression in the square bracket in eq (15). Notice that I
+     rewrote it to avoid division by 0 when norm_nabla_1 = 0. */
   expression = norm_q * delta_x / (norm_nabla_q * delta_x + norm_q);
+
+  /* This trick comes from Gizmo. This is a mix between eq (15) and eq (D1) */
+  expression = max(expression, delta_x);
 
   return expression * expression / norm_matrix_K * norm_U_over_norm_q;
 }
