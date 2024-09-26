@@ -117,7 +117,22 @@ __attribute__((always_inline)) INLINE static float chemistry_get_density(
 }
 
 /**
- * @brief Get matrix K Frobenius norm.
+ * @brief Get the shear tensor.
+ *
+ * @param p Particle.
+ */
+__attribute__((always_inline)) INLINE static void chemistry_get_shear_tensor(
+    const struct part *restrict p, double S[3][3]) {
+  for (int i = 0; i < 3; ++i) {
+    for (int j = 0; j < 3; ++j) {
+      S[i][j] = 0.5 * (p->chemistry_data.filtered.grad_v_tilde[i][j] +
+                       p->chemistry_data.filtered.grad_v_tilde[j][i]);
+    }
+  }
+}
+
+/**
+ * @brief Get the diffusion matrix K.
  *
  * @param p Particle.
  */
@@ -137,10 +152,10 @@ __attribute__((always_inline)) INLINE static void chemistry_get_matrix_K(
     K[2][2] = kappa;
   } else {
     /* K = kappa * S */
+    chemistry_get_shear_tensor(p, K);
     for (int i = 0; i < 3; ++i) {
       for (int j = 0; j < 3; ++j) {
-        K[i][j] = kappa * (p->chemistry_data.filtered.grad_v_tilde[i][j] +
-                           p->chemistry_data.filtered.grad_v_tilde[j][i]);
+        K[i][j] *= kappa;
       }
     }
   }
@@ -187,9 +202,8 @@ chemistry_compute_diffusion_coefficient(
   if (chem_data->diffusion_mode == isotropic_constant) {
     return chem_data->diffusion_coefficient;
   } else if (chem_data->diffusion_mode == isotropic_smagorinsky) {
-    /* Compute K with kappa = 1 ==> get matrix S */
     double S[3][3];
-    chemistry_get_matrix_K(p, 1.0, S, chem_data);
+    chemistry_get_shear_tensor(p, S);
 
     /* In the smagorinsky model, we remove the trace from S */
     const double trace = S[0][0] + S[1][1] + S[2][2];
@@ -224,16 +238,17 @@ chemistry_compute_diffusion_flux(const struct part *restrict p, int metal,
 
   if (chem_data->diffusion_mode == isotropic_constant ||
       chem_data->diffusion_mode == isotropic_smagorinsky) {
-    /* Isotropic diffusion: K = kappa * I_3 for isotropic diffusion. */
+    /* Isotropic diffusion: K = kappa * I_3. */
     F_diff[0] = -kappa * p->chemistry_data.gradients.Z[metal][0];
     F_diff[1] = -kappa * p->chemistry_data.gradients.Z[metal][1];
     F_diff[2] = -kappa * p->chemistry_data.gradients.Z[metal][2];
   } else {
+    /* Initialise to the flux to 0 */
     F_diff[0] = 0.0;
     F_diff[1] = 0.0;
     F_diff[2] = 0.0;
 
-    /* Compute diffusion matrix K_star = 0.5*(KR + KL) */
+    /* Compute diffusion matrix K */
     double K[3][3];
     chemistry_get_matrix_K(p, p->chemistry_data.kappa, K, chem_data);
 
@@ -350,8 +365,12 @@ chemistry_compute_parabolic_timestep(
     return delta_x * delta_x / norm_matrix_K * norm_U_over_norm_q;
   }
 
-  /* Finish the computations */
+  /* Compute the expression in the square bracket in eq (15). Notice that I
+     rewrote it to avoid division by 0 when norm_nabla_1 = 0. */
   expression = norm_q * delta_x / (norm_nabla_q * delta_x + norm_q);
+
+  /* This trick comes from Gizmo. This is a mix between eq (15) and eq (D1) */
+  expression = max(expression, delta_x);
 
   return expression * expression / norm_matrix_K * norm_U_over_norm_q;
 }
