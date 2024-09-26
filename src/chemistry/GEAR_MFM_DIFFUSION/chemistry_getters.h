@@ -154,10 +154,10 @@ __attribute__((always_inline)) INLINE static void chemistry_get_matrix_K(
     K[2][2] = kappa;
   } else {
     /* K = kappa * S */
+    chemistry_get_shear_tensor(p, K);
     for (int i = 0; i < 3; ++i) {
       for (int j = 0; j < 3; ++j) {
-        K[i][j] = kappa * (p->chemistry_data.filtered.grad_v_tilde[i][j] +
-                           p->chemistry_data.filtered.grad_v_tilde[j][i]);
+        K[i][j] *= kappa;
       }
     }
   }
@@ -204,9 +204,8 @@ chemistry_compute_diffusion_coefficient(
   if (chem_data->diffusion_mode == isotropic_constant) {
     return chem_data->diffusion_coefficient;
   } else if (chem_data->diffusion_mode == isotropic_smagorinsky) {
-    /* Compute K with kappa = 1 ==> get matrix S */
     double S[3][3];
-    chemistry_get_matrix_K(p, 1.0, S, chem_data);
+    chemistry_get_shear_tensor(p, S);
 
     /* In the smagorinsky model, we remove the trace from S */
     const double trace = S[0][0] + S[1][1] + S[2][2];
