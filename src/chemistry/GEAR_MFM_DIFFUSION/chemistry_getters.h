@@ -240,16 +240,17 @@ chemistry_compute_diffusion_flux(const struct part *restrict p, int metal,
 
   if (chem_data->diffusion_mode == isotropic_constant ||
       chem_data->diffusion_mode == isotropic_smagorinsky) {
-    /* Isotropic diffusion: K = kappa * I_3 for isotropic diffusion. */
+    /* Isotropic diffusion: K = kappa * I_3. */
     F_diff[0] = -kappa * p->chemistry_data.gradients.Z[metal][0];
     F_diff[1] = -kappa * p->chemistry_data.gradients.Z[metal][1];
     F_diff[2] = -kappa * p->chemistry_data.gradients.Z[metal][2];
   } else {
+    /* Initialise to the flux to 0 */
     F_diff[0] = 0.0;
     F_diff[1] = 0.0;
     F_diff[2] = 0.0;
 
-    /* Compute diffusion matrix K_star = 0.5*(KR + KL) */
+    /* Compute diffusion matrix K */
     double K[3][3];
     chemistry_get_matrix_K(p, p->chemistry_data.kappa, K, chem_data);
 
