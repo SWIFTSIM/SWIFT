@@ -22,37 +22,24 @@ import argparse as ap
 from numpy import *
 from scipy.spatial.transform import Rotation
 
-parser = ap.ArgumentParser(
-    description="Generates a swift IC file for the Magnetised Cloud collapse"
-)
-
-parser.add_argument(
-    "-n",
-    "--nparts",
-    help="""
-         Number of particles on a side of the cube out of which we cut the dense collapsing sphere.
-         """,
-    required=False,
-    default=64,
-)
-
-args = vars(parser.parse_args())
+# Constants
+G   = 4.300918e-03
+mu0 = 1.950089e-06
+c1  = 0.53
 
 # Parameters
 Rcloud = 4.628516371e16
 Lbox = 10.0 * Rcloud
 
-gamma = 5.0 / 3.0  # Gas adiabatic index
+gamma = 4.0 / 3.0  # Gas adiabatic index
 
 M = 1.99e33  # total mass of the sphere
+T = 4.7e5    # initial orbital period in years
 Omega = 2 * pi / (4.7e5 * 3.1536e7)
 
-mu_fid = 10.0
-Bini_fid = 6.1e-7
-
-mu = 5
-Bini = Bini_fid * (mu_fid / mu)
-
+mu   = 10
+Bini = 3.0 / c1 * sqrt(mu0 * G / 5.0) * M / (Rcloud * Rcloud) * 1 / mu
+    
 cs0 = 2e4
 inv_rho_c = 1e14
 
@@ -61,95 +48,73 @@ volume_cloud_box = (2 * Rcloud) ** 3
 volume_sim_box = Lbox ** 3
 
 rho_in = M / volume_cloud
-rho_out = rho_in / 360
+rho_out_to_rho_in = 1 / 360
+rho_out = rho_out_to_rho_in * rho_in
 
-P_in = rho_in * cs0 * cs0 * sqrt(1.0 + (rho_in * inv_rho_c) ** (4 / 3))
-P_out = rho_out * cs0 * cs0 * sqrt(1.0 + (rho_out * inv_rho_c) ** (4 / 3))
+P_in  = rho_in * cs0 * cs0 * sqrt(1.0 + (rho_in * inv_rho_c) ** gamma)
+P_out = rho_out * cs0 * cs0 * sqrt(1.0 + (rho_out * inv_rho_c) ** gamma)
 
 fileName = "magnetised_cloud.hdf5"
 
-numPart_in_side = int(args["nparts"])
-numPart_out_side = int(
-    floor(numPart_in_side * cbrt(volume_sim_box / volume_cloud_box / 360))
-)
+glass = h5py.File("glassCube_128.hdf5", "r")
+pos_gf = glass["/PartType0/Coordinates"][:, :]
+h_gf   = glass["/PartType0/SmoothingLength"][:]
 
-# Position cloud particles
+cloud_box_side = 2.0 *	Rcloud
+atmosphere_box_side = (1.0 / cbrt(rho_out_to_rho_in)) * cloud_box_side
 
-x_ = linspace(-Rcloud, Rcloud, num=numPart_in_side, endpoint=True)
-y_ = linspace(-Rcloud, Rcloud, num=numPart_in_side, endpoint=True)
-z_ = linspace(-Rcloud, Rcloud, num=numPart_in_side, endpoint=True)
+pos_in = cloud_box_side * pos_gf 
+h_in   = cloud_box_side * h_gf
 
-x, y, z = meshgrid(x_, y_, z_, indexing="ij")
+pos_in -= 0.5 * cloud_box_side
 
-x = x.flatten()
-y = y.flatten()
-z = z.flatten()
+mask_in = pos_in[:,0]**2 + pos_in[:,1]**2 + pos_in[:,2]**2 < Rcloud * Rcloud
 
-r = stack((x, y, z), axis=1)
-pos_in = r[r[:, 0] ** 2 + r[:, 1] ** 2 + r[:, 2] ** 2 < Rcloud ** 2]
+pos_in = pos_in[mask_in]
+h_in = h_in[mask_in]
 
-numPart_in = int(pos_in.shape[0])
+numPart_in = int(len(h_in))
 
-phi = arctan2(pos_in[:, 1], pos_in[:, 0])
+pos_out = atmosphere_box_side * pos_gf
+h_out   = atmosphere_box_side * h_gf
+
+pos_out -= 0.5 * atmosphere_box_side
+
+mask_out = (pos_out[:,0]**2 + pos_out[:,1]**2 + pos_out[:,2]**2 > Rcloud * Rcloud) & (abs(pos_out[:,0]) < 0.5 * Lbox) & (abs(pos_out[:,1]) < 0.5 * Lbox) & (abs(pos_out[:,2]) < 0.5 * Lbox)
+
+pos_out = pos_out[mask_out]
+h_out = h_out[mask_out]
+
+pos = concatenate((pos_in, pos_out), axis=0)
+h = concatenate((h_in, h_out), axis=0)
+
+numPart = int(len(h))
+
+mask = pos[:,0] ** 2 + pos[:,1] ** 2 + pos[:,2] ** 2 < Rcloud * Rcloud  
+
+x = pos[:,0]
+y = pos[:,1]
+
+R = sqrt(x * x + y * y)
+
+phi = arctan2(y, x)
 cos_phi = cos(phi)
 sin_phi = sin(phi)
 
-R = sqrt(pos_in[:, 0] ** 2 + pos_in[:, 1] ** 2)
-
-# Shift particles to put the sphere in the centre of the box
-pos_in += array([0.5 * Lbox, 0.5 * Lbox, 0.5 * Lbox])
-
-# Position diffuse atmosphere particles
-
-step = Lbox / (numPart_out_side - 1)
-x_ = arange(0.0, Lbox, step) + step / 2  # , endpoint=True)
-y_ = arange(0.0, Lbox, step) + step / 2  # , endpoint=True)
-z_ = arange(0.0, Lbox, step) + step / 2  # , endpoint=True)
-
-x, y, z = meshgrid(x_, y_, z_, indexing="ij")
-
-x = x.flatten()
-y = y.flatten()
-z = z.flatten()
-
-pos_out = stack((x, y, z), axis=1)
-pos_out = pos_out[
-    (pos_out[:, 0] - 0.5 * Lbox) ** 2
-    + (pos_out[:, 1] - 0.5 * Lbox) ** 2
-    + (pos_out[:, 2] - 0.5 * Lbox) ** 2
-    > Rcloud ** 2
-]
-numPart_out = int(pos_out.shape[0])
-
-# Aggregate all particles
-pos = concatenate((pos_in, pos_out), axis=0)
-
-numPart = int(pos.shape[0])
-
-print(
-    "The number of partciles in the cloud is %d, down from %d"
-    % (numPart_in, numPart_in_side ** 3)
-)
-print(
-    "The number of particles in the ambient medium is %d, down from %d"
-    % (numPart_out, numPart_out_side ** 3)
-)
-print("The total number of particles is %d" % numPart)
-
-h = ones(numPart) * 2.0 * Rcloud / numPart ** (1.0 / 3.0)
-
 # Solid rotation for cloud particles
 v = zeros((numPart, 3))
-v[:numPart_in, 0] = -Omega * R * sin_phi
-v[:numPart_in, 1] = Omega * R * cos_phi
+v[mask][:, 0] = -Omega * R[mask] * sin_phi[mask]
+v[mask][:, 1] = Omega * R[mask] * cos_phi[mask]
+
+pos += 0.5 * Lbox
 
 # Other attributes
 ids = linspace(1, numPart, numPart)
 m = ones(numPart) * M / numPart_in
 
 u = ones(numPart)
-u[:numPart_in] *= P_in / ((gamma - 1) * rho_in)
-u[numPart_in:] *= P_out / ((gamma - 1) * rho_out)
+u[mask] *= P_in / ((gamma - 1) * rho_in)
+u[~mask] *= P_out / ((gamma - 1) * rho_out)
 
 B = zeros((numPart, 3))
 B[:, 2] = Bini
