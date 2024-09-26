@@ -57,6 +57,3 @@ InitialConditions:
 EoS:
   barotropic_vacuum_sound_speed:   0.2             # Internal system of units (aka. km/s)
   barotropic_core_density:         1.47756194451e8 # Internal system of units (aka. Msun / pc**3)
-
-Scheduler:
-  max_top_level_cells: 128

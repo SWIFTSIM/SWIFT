@@ -27,22 +27,24 @@ G   = 4.300918e-03
 mu0 = 1.950089e-06
 c1  = 0.53
 
-# Parameters
+# Parameters (taken from Hopkins 2016)
 Rcloud = 4.628516371e16
 Lbox = 10.0 * Rcloud
 
 gamma = 4.0 / 3.0  # Gas adiabatic index
 
-M = 1.99e33  # total mass of the sphere
-T = 4.7e5    # initial orbital period in years
-Omega = 2 * pi / (T * 3.1536e7)
+M = 1.99e33                          # total mass of the sphere
+T = 4.7e5                            # initial orbital period in years
+Omega = 2 * pi / (T * 3.1536e7)      # initial angular frequency of cloud 
 
-mu   = 10
+mu   = 10                            # mass to magnetic field flux through sphere, normalised to a critical value for collapse. Refer to e.g. Henebelle & Fromang 2008 for details.
 Bini = 3.0 / c1 * sqrt(mu0 * G / 5.0) * M / (Rcloud * Rcloud) * 1 / mu
-    
+
+# Barotropic EoS parameters
 cs0 = 2e4
 inv_rho_c = 1e14
 
+# Attributes of cloud and ambient medium
 volume_cloud = (4 / 3) * pi * Rcloud ** 3
 volume_cloud_box = (2 * Rcloud) ** 3
 volume_sim_box = Lbox ** 3
@@ -54,12 +56,14 @@ rho_out = rho_out_to_rho_in * rho_in
 P_in  = rho_in * cs0 * cs0 * sqrt(1.0 + (rho_in * inv_rho_c) ** gamma)
 P_out = rho_out * cs0 * cs0 * sqrt(1.0 + (rho_out * inv_rho_c) ** gamma)
 
+# Read glass files
 fileName = "magnetised_cloud.hdf5"
 
 glass = h5py.File("glassCube_128.hdf5", "r")
 pos_gf = glass["/PartType0/Coordinates"][:, :]
 h_gf   = glass["/PartType0/SmoothingLength"][:]
 
+# Position cloud and ambient medium particles
 cloud_box_side = 2.0 *	Rcloud
 atmosphere_box_side = (1.0 / cbrt(rho_out_to_rho_in)) * cloud_box_side
 
@@ -90,6 +94,7 @@ h = concatenate((h_in, h_out), axis=0)
 
 numPart = int(len(h))
 
+# Solid body rotation for cloud particles
 mask = pos[:,0] ** 2 + pos[:,1] ** 2 + pos[:,2] ** 2 < Rcloud * Rcloud  
 
 x = pos[:,0]
@@ -101,7 +106,6 @@ phi = arctan2(y, x)
 cos_phi = cos(phi)
 sin_phi = sin(phi)
 
-# Solid rotation for cloud particles
 v = zeros((numPart, 3))
 v[mask][:, 0] = -Omega * R[mask] * sin_phi[mask]
 v[mask][:, 1] = Omega * R[mask] * cos_phi[mask]
@@ -125,8 +129,6 @@ print(
     "The softening length you need to correctly resolve densities up to 1e-11 g cm^-3 is %f pc"
     % epsilon_lim
 )
-
-# --------------------------------------------------
 
 # File
 file = h5py.File(fileName, "w")
