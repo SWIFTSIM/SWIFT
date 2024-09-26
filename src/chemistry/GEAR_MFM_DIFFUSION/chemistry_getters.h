@@ -116,7 +116,6 @@ __attribute__((always_inline)) INLINE static float chemistry_get_density(
   return rho;
 }
 
-
 /**
  * @brief Get the shear tensor.
  *
@@ -124,14 +123,13 @@ __attribute__((always_inline)) INLINE static float chemistry_get_density(
  */
 __attribute__((always_inline)) INLINE static void chemistry_get_shear_tensor(
     const struct part *restrict p, double S[3][3]) {
-    for (int i = 0; i < 3; ++i) {
-      for (int j = 0; j < 3; ++j) {
-        S[i][j] = 0.5*(p->chemistry_data.filtered.grad_v_tilde[i][j] +
-		       p->chemistry_data.filtered.grad_v_tilde[j][i]);
-      }
+  for (int i = 0; i < 3; ++i) {
+    for (int j = 0; j < 3; ++j) {
+      S[i][j] = 0.5 * (p->chemistry_data.filtered.grad_v_tilde[i][j] +
+                       p->chemistry_data.filtered.grad_v_tilde[j][i]);
     }
+  }
 }
-
 
 /**
  * @brief Get the diffusion matrix K.

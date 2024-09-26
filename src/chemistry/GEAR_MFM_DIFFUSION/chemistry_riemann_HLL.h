@@ -19,8 +19,8 @@
 #ifndef SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_RIEMANN_HLL_H
 #define SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_RIEMANN_HLL_H
 
-#include "chemistry_gradients.h"
 #include "chemistry_getters.h"
+#include "chemistry_gradients.h"
 #include "chemistry_struct.h"
 #include "hydro.h"
 
@@ -30,8 +30,8 @@
  * @param a Left slope
  * @param b Right slope
  */
-__attribute__((always_inline)) INLINE static double
-chemistry_riemann_minmod(double a, double b) {
+__attribute__((always_inline)) INLINE static double chemistry_riemann_minmod(
+    double a, double b) {
   if (a > 0 && b > 0) {
     return min(a, b);
   } else if (a < 0 && b < 0) {
@@ -42,10 +42,9 @@ chemistry_riemann_minmod(double a, double b) {
 }
 
 __attribute__((always_inline)) INLINE static void
-chemistry_riemann_compute_K_star(const struct part *restrict pi,
-				 const struct part *restrict pj,
-				 double K_star[3][3],
-				 const struct chemistry_global_data* chem_data) {
+chemistry_riemann_compute_K_star(
+    const struct part *restrict pi, const struct part *restrict pj,
+    double K_star[3][3], const struct chemistry_global_data *chem_data) {
   double KR[3][3], KL[3][3];
   chemistry_get_matrix_K(pi, pi->chemistry_data.kappa, KR, chem_data);
   chemistry_get_matrix_K(pi, pj->chemistry_data.kappa, KL, chem_data);
@@ -60,23 +59,23 @@ chemistry_riemann_compute_K_star(const struct part *restrict pi,
   }
 }
 
-__attribute__((always_inline)) INLINE static void
-chemistry_riemann_predict_Z(const struct part *restrict pi, const struct part *restrict pj,
-			    double *Zi, double *Zj, int group) {
+__attribute__((always_inline)) INLINE static void chemistry_riemann_predict_Z(
+    const struct part *restrict pi, const struct part *restrict pj, double *Zi,
+    double *Zj, int group) {
 
   const float dx[3] = {pi->x[0] - pj->x[0], pi->x[1] - pj->x[1],
                        pi->x[2] - pj->x[2]};
-  const float r = sqrtf(dx[0]*dx[0] + dx[1]*dx[1] + dx[2]* dx[2]);
+  const float r = sqrtf(dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]);
   const float xfac = -pi->h / (pi->h + pj->h);
   const float xij_i[3] = {xfac * dx[0], xfac * dx[1], xfac * dx[2]};
   const float xij_j[3] = {xij_i[0] + dx[0], xij_i[1] + dx[1], xij_i[2] + dx[2]};
 
   const double grad_Z_i[3] = {pi->chemistry_data.gradients.Z[group][0],
-			      pi->chemistry_data.gradients.Z[group][1],
-			      pi->chemistry_data.gradients.Z[group][2]};
+                              pi->chemistry_data.gradients.Z[group][1],
+                              pi->chemistry_data.gradients.Z[group][2]};
   const double grad_Z_j[3] = {pj->chemistry_data.gradients.Z[group][0],
-			      pj->chemistry_data.gradients.Z[group][1],
-			      pj->chemistry_data.gradients.Z[group][2]};
+                              pj->chemistry_data.gradients.Z[group][1],
+                              pj->chemistry_data.gradients.Z[group][2]};
 
   double dZi = chemistry_gradients_extrapolate(grad_Z_i, xij_i);
   double dZj = chemistry_gradients_extrapolate(grad_Z_j, xij_j);
@@ -88,10 +87,11 @@ chemistry_riemann_predict_Z(const struct part *restrict pi, const struct part *r
 }
 
 __attribute__((always_inline)) INLINE static double
-chemistry_riemann_compute_alpha(double c_s_R, double c_s_L, double uR, double uL,
-				double dx_norm, double q_star, double U_star,
-				const double K_star[3][3], double norm_K_star,
-				const double grad_q_star[3]) {
+chemistry_riemann_compute_alpha(double c_s_R, double c_s_L, double uR,
+                                double uL, double dx_norm, double q_star,
+                                double U_star, const double K_star[3][3],
+                                double norm_K_star,
+                                const double grad_q_star[3]) {
   /* Compute norm(K_star * grad_q_star) */
   double norm_K_star_times_grad_q_star = 0.0;
   double matrix_product = 0.0;
@@ -114,8 +114,11 @@ chemistry_riemann_compute_alpha(double c_s_R, double c_s_L, double uR, double uL
       v_HLL * dx_norm * fabs(q_star) / (norm_K_star * fabs(U_star));
   const double r_term = (0.2 + r) / (0.2 + r + r * r);
 
-  const double norm_grad_q_star = sqrtf(grad_q_star[0] * grad_q_star[0] + grad_q_star[1] * grad_q_star[1] + grad_q_star[2] * grad_q_star[2]);
-  double norm_term = norm_K_star_times_grad_q_star / (norm_K_star * norm_grad_q_star);
+  const double norm_grad_q_star =
+      sqrtf(grad_q_star[0] * grad_q_star[0] + grad_q_star[1] * grad_q_star[1] +
+            grad_q_star[2] * grad_q_star[2]);
+  double norm_term =
+      norm_K_star_times_grad_q_star / (norm_K_star * norm_grad_q_star);
   double alpha = norm_term * r_term;
 
   /* This behaviour is physically not the correct one. The correct physical
@@ -129,7 +132,7 @@ chemistry_riemann_compute_alpha(double c_s_R, double c_s_L, double uR, double uL
     alpha = 0.0;
   }
 
- return alpha;
+  return alpha;
 }
 
 /**
@@ -155,11 +158,11 @@ chemistry_riemann_compute_alpha(double c_s_R, double c_s_L, double uR, double uL
  */
 __attribute__((always_inline)) INLINE static void
 chemistry_riemann_solve_for_flux(
-    const struct part* restrict pi, const struct part* restrict pj,
+    const struct part *restrict pi, const struct part *restrict pj,
     const double UL, const double UR, const float WL[5], const float WR[5],
     const double F_diff_L[3], const double F_diff_R[3], const float Anorm,
-    const float n_unit[3], int g, double* metal_flux,
-    const struct chemistry_global_data* chem_data) {
+    const float n_unit[3], int g, double *metal_flux,
+    const struct chemistry_global_data *chem_data) {
 
   /* Handle pure vacuum */
   if (!UL && !UR) {
@@ -203,7 +206,7 @@ chemistry_riemann_solve_for_flux(
   }
 
   /* Get U_star */
-  const double U_star = 0.5*(UR + UL);
+  const double U_star = 0.5 * (UR + UL);
 
   /* Reconstruct ZR and ZL at the interface. Note that we have reconstructed UL
      and UR in chemistry_gradients_predict(), but not q. We have everything to
@@ -213,12 +216,15 @@ chemistry_riemann_solve_for_flux(
   chemistry_riemann_predict_Z(pi, pj, &ZR, &ZL, g);
 
   /* Now compute q_star and grad_q_star */
-  const double q_star = 0.5*(ZR + ZL);
-  double grad_q_star[3] = {0.5 * (pi->chemistry_data.gradients.Z[g][0] + pj->chemistry_data.gradients.Z[g][0]),
-			   0.5 * (pi->chemistry_data.gradients.Z[g][1] + pj->chemistry_data.gradients.Z[g][1]),
-			   0.5 * (pi->chemistry_data.gradients.Z[g][2] + pj->chemistry_data.gradients.Z[g][2])};
+  const double q_star = 0.5 * (ZR + ZL);
+  double grad_q_star[3] = {0.5 * (pi->chemistry_data.gradients.Z[g][0] +
+                                  pj->chemistry_data.gradients.Z[g][0]),
+                           0.5 * (pi->chemistry_data.gradients.Z[g][1] +
+                                  pj->chemistry_data.gradients.Z[g][1]),
+                           0.5 * (pi->chemistry_data.gradients.Z[g][2] +
+                                  pj->chemistry_data.gradients.Z[g][2])};
 
-    /* Define some convenient variables */
+  /* Define some convenient variables */
   const float dx[3] = {pj->x[0] - pi->x[0], pj->x[1] - pi->x[1],
                        pj->x[2] - pi->x[2]};
   const float dx_norm_2 = sqrtf(dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]);
@@ -226,7 +232,9 @@ chemistry_riemann_solve_for_flux(
 
   /* Now compute alpha to reduce numerical diffusion below physical
      diffusion. */
-  const double alpha = chemistry_riemann_compute_alpha(c_s_R, c_s_R, uR, uL, dx_norm, q_star, U_star, K_star, norm_K_star, grad_q_star);
+  const double alpha =
+      chemistry_riemann_compute_alpha(c_s_R, c_s_R, uR, uL, dx_norm, q_star,
+                                      U_star, K_star, norm_K_star, grad_q_star);
 
   /****************************************************************************/
   /* Now compute the HLL flux */

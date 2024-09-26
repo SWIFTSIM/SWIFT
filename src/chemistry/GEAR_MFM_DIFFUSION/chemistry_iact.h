@@ -19,8 +19,8 @@
 #ifndef SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_IACT_H
 #define SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_IACT_H
 
-#include "chemistry_getters.h"
 #include "chemistry_flux.h"
+#include "chemistry_getters.h"
 #include "chemistry_gradients.h"
 
 #define GIZMO_VOLUME_CORRECTION
@@ -426,17 +426,17 @@ runner_iact_chemistry_fluxes_common(
     chemistry_compute_flux(pi, pj, Ui, Uj, Wi, Wj, n_unit, Anorm, g, &totflux,
                            chem_data);
 
-    if (fabs(totflux*mindt) > 0.0) {
+    if (fabs(totflux * mindt) > 0.0) {
       const double mi = hydro_get_mass(pi);
       const double mj = hydro_get_mass(pj);
       const double Zi = chemistry_get_metal_mass_fraction(pi, g);
       const double Zj = chemistry_get_metal_mass_fraction(pj, g);
-      const double min_m_Z = min(mi, mj)*fabs(Zi-Zj);
-      const double max_m_Z = max(mi*Zi, mj*Zj);
+      const double min_m_Z = min(mi, mj) * fabs(Zi - Zj);
+      const double max_m_Z = max(mi * Zi, mj * Zj);
       double m_Z_lim = 0.25 * min(min_m_Z, max_m_Z);
 
-      if (fabs(totflux*mindt) > m_Z_lim) {
-	totflux *= m_Z_lim/fabs(totflux);
+      if (fabs(totflux * mindt) > m_Z_lim) {
+        totflux *= m_Z_lim / fabs(totflux);
       }
     }
 

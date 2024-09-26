@@ -1002,7 +1002,8 @@ chemistry_get_metal_mass_fraction_for_feedback(const struct part* restrict p) {
 __attribute__((always_inline)) INLINE static float
 chemistry_get_total_metal_mass_fraction_for_feedback(
     const struct part* restrict p) {
-  return p->chemistry_data.metal_mass[GEAR_CHEMISTRY_ELEMENT_COUNT - 1] / hydro_get_mass(p);
+  return p->chemistry_data.metal_mass[GEAR_CHEMISTRY_ELEMENT_COUNT - 1] /
+         hydro_get_mass(p);
 }
 
 /**
