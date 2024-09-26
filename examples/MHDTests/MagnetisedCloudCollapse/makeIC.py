@@ -35,7 +35,7 @@ gamma = 4.0 / 3.0  # Gas adiabatic index
 
 M = 1.99e33  # total mass of the sphere
 T = 4.7e5    # initial orbital period in years
-Omega = 2 * pi / (4.7e5 * 3.1536e7)
+Omega = 2 * pi / (T * 3.1536e7)
 
 mu   = 10
 Bini = 3.0 / c1 * sqrt(mu0 * G / 5.0) * M / (Rcloud * Rcloud) * 1 / mu
