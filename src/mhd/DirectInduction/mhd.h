@@ -33,13 +33,12 @@ __attribute__((always_inline)) INLINE static float mhd_get_magnetic_energy(
 
   const float rho = p->rho;
   // convert to physical
-  //const float afact = pow(cosmo->a, -1.5f * *hydro_gamma);
-  const float afact = pow(a , -3.f * hydro_gamma);
+  const float a_fact = pow(a , -3.f * hydro_gamma);
   const float B_over_rho2 =
       p->mhd_data.B_over_rho[0] * p->mhd_data.B_over_rho[0] +
       p->mhd_data.B_over_rho[1] * p->mhd_data.B_over_rho[1] +
       p->mhd_data.B_over_rho[2] * p->mhd_data.B_over_rho[2];
-  return 0.5f * p->mass * B_over_rho2 * rho / mu_0 * afact;
+  return 0.5f * a_fact* p->mass * B_over_rho2 * rho / mu_0;
 }
 /**
  * @brief Returns the magnetic field squared contained in the particle.
@@ -467,6 +466,12 @@ __attribute__((always_inline)) INLINE static void mhd_reset_acceleration(
   /* Save forces*/
   for (int k = 0; k < 3; k++) {
     p->mhd_data.tot_mag_F[k] = 0.0f;
+  }
+  /* Save induction sources*/
+  for (int k = 0; k < 3; k++) {
+    p->mhd_data.Adv_B_source[k] = 0.0f;
+    p->mhd_data.Diff_B_source[k] = 0.0f;
+    p->mhd_data.Delta_B[k] = 0.0f;
   }
 }
 

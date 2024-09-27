@@ -210,8 +210,8 @@ def run_simulation(phys_parameters, threads):
     parabolic_dedner = phys_parameters["parabolic_dedner"].values[0]
 
     # get timestep parameters
-    tau_max = phys_parameters["tau_max"].values[0]
-    min_steps = phys_parameters["min_steps"].values[0]
+    t_max = phys_parameters["t_max"].values[0]
+    max_dt = phys_parameters["max_dt"].values[0]
 
     with_hydro = " --hydro"
 
@@ -221,12 +221,12 @@ def run_simulation(phys_parameters, threads):
     timeI_pref = " -P TimeIntegration:"
     set_time_end = ""
     set_dt_max = ""
-    if tau_max != None:
-        t_c = Lbox / (2 * np.pi * kv * v0)
-        time_end = tau_max * t_c
+    if t_max != None:
+        #t_c = Lbox / (2 * np.pi * kv * v0)
+        time_end = t_max
         set_time_end = timeI_pref + "time_end:" + str(time_end)
-        if min_steps != None:
-            dt_max = time_end / min_steps
+        if max_dt != None:
+            dt_max = max_dt
             set_dt_max = timeI_pref + "dt_max:" + str(dt_max)
 
     set_timeI_par = set_time_end + set_dt_max

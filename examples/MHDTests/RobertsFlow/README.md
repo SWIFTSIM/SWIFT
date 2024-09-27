@@ -14,8 +14,8 @@ test_run_parameters.csv has the following parameters:
 8) Scheme - MHD scheme to configure for a run
 9) IAfile - initial arrangement file. g32 means glassCube32.hdf5
 10) monopole_subtraction, artificial_diffusion, hyperbolic_dedner, hyperbolic_dedner_divv, parabolic_dedner - parameters for Direct induction schemes
-11) tau_max - maximal simulation time in units of circulation time, t_c = 1/(k_0 v_0)
-12) min_steps - minimal number of timesteps in simulation
+11) t_max - maximal simulation time
+12) max_dt - maximal timestep size
 13) Forcing_kind - forcing regime for RobertsFlow dynamo. If 'v' was picked, RobertsFlow is in kinematic regime (that is B field does not affect the flow). If 'a' was picked, RobertsFlow is driven by external force proportional to artificial viscosity.
 14) viscosity_alpha - determines the magnitude of the external force
 15) Status - the script employs this column to see what runs to ignore (ignores the runs that are filled with 'done')
