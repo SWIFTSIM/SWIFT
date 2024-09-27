@@ -163,12 +163,14 @@ INLINE static int rt_write_particles(const struct part* parts,
 
   list[0] = io_make_physical_output_field_convert_part(
       "PhotonEnergies", FLOAT, RT_NGROUPS, UNIT_CONV_ENERGY, 0, parts,
-      /*xparts=*/NULL, rt_convert_radiation_energies,
-      /*convertible to comoving=*/1, "Photon Energies (all groups)");
+      /*xparts=*/NULL,
+      /*convertible to comoving=*/1, rt_convert_radiation_energies,
+      "Photon Energies (all groups)");
+
   list[1] = io_make_physical_output_field_convert_part(
       "PhotonFluxes", FLOAT, 3 * RT_NGROUPS, UNIT_CONV_RADIATION_FLUX, 0, parts,
-      /*xparts=*/NULL, rt_convert_radiation_fluxes,
-      /*convertible to comoving=*/1,
+      /*xparts=*/NULL,
+      /*convertible to comoving=*/1, rt_convert_radiation_fluxes,
       "Photon Fluxes (all groups; x, y, and z coordinates)");
   list[2] = io_make_output_field_convert_part(
       "IonMassFractions", FLOAT, 5, UNIT_CONV_NO_UNITS, 0, parts,

@@ -264,8 +264,8 @@ struct redist_mapper_data {
     int *dest =                                                                \
         mydata->dest + (ptrdiff_t)(parts - (struct TYPE *)mydata->base);       \
     int *lcounts = NULL;                                                       \
-    if ((lcounts = (int *)calloc(                                              \
-             sizeof(int), mydata->nr_nodes * mydata->nr_nodes)) == NULL)       \
+    if ((lcounts = (int *)calloc(mydata->nr_nodes * mydata->nr_nodes,          \
+                                 sizeof(int))) == NULL)                        \
       error("Failed to allocate counts thread-specific buffer");               \
     for (int k = 0; k < num_elements; k++) {                                   \
       for (int j = 0; j < 3; j++) {                                            \
