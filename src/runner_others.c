@@ -279,8 +279,7 @@ void runner_do_star_formation_sink(struct runner *r, struct cell *c,
                 "Too many stars in the cell tree leaf! The sorting task will "
                 "not be able to perform its duties. Possible solutions: (1) "
                 "The code need to be run with different star formation "
-                "parameters to reduce the number of star particles created. "
-                "OR "
+                "parameters to reduce the number of star particles created. OR "
                 "(2) The size of the sorting stack must be increased in "
                 "runner_sort.c.");
 
@@ -594,8 +593,7 @@ void runner_do_sink_formation(struct runner *r, struct cell *c) {
       /* Only work on active particles */
       if (part_is_active(p, e)) {
 
-        /* Loop over all particles to find the neighbours within r_acc. Then,
-         */
+        /* Loop over all particles to find the neighbours within r_acc. Then, */
         /* compute all quantities you need to decide to form a sink or not. */
         runner_do_prepare_part_sink_formation(r, c, p, xp);
 
