@@ -604,6 +604,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
     pi->mhd_data.Diff_A_source[i] += mj * 8.0 * pi->mhd_data.resistive_eta * mag_Disi * dA[i];
     pi->mhd_data.Delta_A[i] += mj * 8.0 * mag_Disi * dA[i];
   }
-}
+
 }
 #endif /* SWIFT_VECTOR_POTENTIAL_MHD_H */
