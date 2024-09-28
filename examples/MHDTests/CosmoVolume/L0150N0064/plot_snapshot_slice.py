@@ -23,7 +23,7 @@ prefered_color = "magma"
 cpts = 100
 
 
-to_plot = "|B|_rho_|v|_R0"  # 'B' or 'A' or 'errors' or |B|_rho_|v|_R0
+to_plot = "|B|_R0_OW"  # 'B' or 'A' or 'errors' or |B|_rho_|v|_R0
 
 with h5py.File(filename, "r") as handle:
     gamma = handle["HydroScheme"].attrs["Adiabatic index"][0]
@@ -98,10 +98,10 @@ def rms_vec(vec):
 
 
 # see available fields in snapshot
-# print(data.metadata.gas_properties.field_names)
-print(data.metadata)
-a = data.metadata.cosmology["Scale-factor"][0]
-z_to_display = np.round(data.metadata.cosmology["Redshift"][0], 1)
+print(data.metadata.gas_properties.field_names)
+print(data.metadata.a)
+a = data.metadata.a
+z_to_display = np.round(data.metadata.z, 1)
 box_size_physical = a * data.metadata.boxsize
 # print('Scale factor, a=',a)
 print("z = ", z_to_display)
@@ -125,6 +125,13 @@ R0 = data.gas.r0
 R1 = data.gas.r1
 R2 = data.gas.r2
 R3 = data.gas.r3
+
+OW = data.gas.owtriggers
+eta = data.gas.total_effective_resistivities.to_physical()
+
+print(f'Mean OW: {np.mean(OW)}, Max OW: {np.max(OW)}, Min OW: {np.min(OW)}')
+print(f'Mean eta: {np.mean(eta.value)*eta.units}, Max eta: {np.max(eta.value)*eta.units}, Min eta: {np.min(eta.value)*eta.units}')
+
 
 print(x[0], B[0], rho[0])
 
@@ -403,6 +410,9 @@ R1 = prepare_sliced_quantity(R1)
 R2 = prepare_sliced_quantity(R2)
 R3 = prepare_sliced_quantity(R3)
 
+OW = prepare_sliced_quantity(OW)
+eta = prepare_sliced_quantity(eta)
+
 # mask error metrics
 reg_err = reg_err * R0.units
 R0[R0 < reg_err] = reg_err
@@ -454,6 +464,7 @@ def make_density_plot(
     ax[j].set_ylim(min(new_y), max(new_y))
     ax[j].yaxis.set_major_formatter(FormatStrFormatter("%.1f"))
     ax[j].xaxis.set_major_formatter(FormatStrFormatter("%.1f"))
+    ax[j].set_aspect('equal')
     return 0
 
 
@@ -795,3 +806,258 @@ if to_plot == "errors":
     ax[2].set_title("$z_{slice}/L_{box}$=" + slice_height)
     fig.tight_layout()
     plt.savefig(sys.argv[2], dpi=100)
+
+
+# Plot combination of Absolute values of B, v, plot density and classical error metric
+if to_plot == "|B|_rho_|v|_R0_OW":
+
+    # get quantities to plot
+    Babs = abs_vec(B) / Brms
+    vabs = abs_vec(v) / vrms
+    rho = rho / rho_mean
+    Bx = B[:, 0]
+    By = B[:, 1]
+    vx = v[:, 0]
+    vy = v[:, 1]
+
+    # save units
+    B_units = Babs.units
+    v_units = vabs.units
+    rho_units = rho.units
+
+    # convert quantities to numbers before plotting
+    Babs = Babs.value
+    rho = rho.value
+    vabs = vabs.value
+    R0 = R0.value
+    Bx = Bx.value
+    By = By.value
+    vx = vx.value
+    vy = vy.value
+
+    fig, ax = plt.subplots(1, 5, sharex=True, figsize=(6 * 5, 5))
+
+    make_density_plot(
+        Babs.reshape((dimx, dimy)),
+        1e-4,
+        1e2,
+        0,
+        0,
+        "$|B|/B_{rms}$",
+        c_res=cpts,
+        # log_sc=False,
+        cmap=prefered_color,
+    )
+    make_density_plot(
+        rho.reshape((dimx, dimy)),
+        1e-4,
+        1e2,
+        0,
+        1,
+        " $rho$ / <rho>",
+        c_res=cpts,
+        # log_sc=False,
+        cmap=prefered_color,
+    )
+    make_density_plot(
+        vabs.reshape((dimx, dimy)),
+        1e-1,
+        1e1,
+        0,
+        2,
+        "$|v|/v_{rms}$",
+        c_res=cpts,
+        # log_sc=False,
+        cmap=prefered_color,
+    )
+    make_density_plot(
+        R0.reshape((dimx, dimy)),
+        reg_err,
+        1.0,
+        0,
+        3,
+        "$R_0$",
+        c_res=cpts,
+        # log_sc=False,
+        cmap=prefered_color,
+    )
+    make_density_plot(
+        OW.reshape((dimx, dimy)),
+        1e-1,
+        1e1,
+        0,
+        4,
+        "$OWTrigger$",
+        c_res=cpts,
+        # log_sc=False,
+        cmap='bwr'
+    )
+    ax[0].streamplot(
+        new_x,
+        new_y,
+        np.transpose(Bx.reshape((dimx, dimy))),
+        np.transpose(By.reshape((dimx, dimy))),
+        color="w",
+        density=4.0,
+        linewidth=0.1,
+        arrowsize=0.2,
+    )
+    ax[2].streamplot(
+        new_x,
+        new_y,
+        np.transpose(vx.reshape((dimx, dimy))),
+        np.transpose(vy.reshape((dimx, dimy))),
+        color="w",
+        density=2.0,
+        linewidth=0.25,
+        arrowsize=0.4,
+    )
+    ax[0].set_title(f"Nneigh={int(neighbours[0]):}, Npart={len(data.gas.coordinates):}")
+    ax[1].set_title(f"z={z_to_display:}")
+    ax[2].set_title("$z_{slice}/L_{box}$=" + slice_height)
+    fig.tight_layout()
+    plt.savefig(sys.argv[2], dpi=300)
+
+# Plot all error metrics
+if to_plot == "errors":
+
+    # save units
+
+    # convert everything to numbers before plotting
+    R0 = R0.value
+    R1 = R1.value
+    R2 = R2.value
+    R3 = R3.value
+
+    fig, ax = plt.subplots(
+        1, 4, sharex=True, figsize=(24, 5)
+    )  # for 3 plts 18 for 4 plts use 24
+
+    make_density_plot(
+        R0.reshape((dimx, dimy)),
+        reg_err,
+        1.0,
+        0,
+        0,
+        "$R_0$",
+        c_res=cpts,
+        # log_sc=False,
+        cmap=prefered_color,
+    )
+    make_density_plot(
+        R1.reshape((dimx, dimy)),
+        reg_err,
+        1.0,
+        0,
+        1,
+        "$R_1$",
+        c_res=cpts,
+        # log_sc=False,
+        cmap=prefered_color,
+    )
+    make_density_plot(
+        R2.reshape((dimx, dimy)),
+        reg_err,
+        1.0,
+        0,
+        2,
+        "$R_2$",
+        c_res=cpts,
+        # log_sc=False,
+        cmap=prefered_color,
+    )
+    make_density_plot(
+        R3.reshape((dimx, dimy)),
+        reg_err,
+        1.0,
+        0,
+        3,
+        "$R_3$",
+        c_res=cpts,
+        log_sc=False,
+        cmap=prefered_color,
+    )
+    ax[0].set_title(f"Nneigh={int(neighbours[0]):}, Npart={len(data.gas.coordinates):}")
+    ax[1].set_title(f"z={z_to_display:}")
+    ax[2].set_title("$z_{slice}/L_{box}$=" + slice_height)
+    fig.tight_layout()
+    plt.savefig(sys.argv[2], dpi=100)
+
+
+# Plot combination of Absolute values of B, v, plot density and classical error metric
+if to_plot == "|B|_R0_OW":
+
+    # get quantities to plot
+    Babs = abs_vec(B) / Brms
+    vabs = abs_vec(v) / vrms
+    rho = rho / rho_mean
+    Bx = B[:, 0]
+    By = B[:, 1]
+    vx = v[:, 0]
+    vy = v[:, 1]
+
+    # save units
+    B_units = Babs.units
+    v_units = vabs.units
+    rho_units = rho.units
+
+    # convert quantities to numbers before plotting
+    Babs = Babs.value
+    rho = rho.value
+    vabs = vabs.value
+    R0 = R0.value
+    Bx = Bx.value
+    By = By.value
+
+    fig, ax = plt.subplots(1, 3, sharex=True, figsize=(6 * 3, 5))
+
+    make_density_plot(
+        Babs.reshape((dimx, dimy)),
+        1e-4,
+        1e2,
+        0,
+        0,
+        "$|B|/B_{rms}$",
+        c_res=cpts,
+        # log_sc=False,
+        cmap=prefered_color,
+    )
+    make_density_plot(
+        R0.reshape((dimx, dimy)),
+        reg_err,
+        1.0,
+        0,
+        1,
+        "$R_0$",
+        c_res=cpts,
+        # log_sc=False,
+        cmap=prefered_color,
+    )
+    make_density_plot(
+        OW.reshape((dimx, dimy)),
+        1e-1,
+        1e1,
+        0,
+        2,
+        "$OWTrigger$",
+        c_res=cpts,
+        # log_sc=False,
+        cmap='bwr'
+    )
+    ax[0].streamplot(
+        new_x,
+        new_y,
+        np.transpose(Bx.reshape((dimx, dimy))),
+        np.transpose(By.reshape((dimx, dimy))),
+        color="w",
+        density=4.0,
+        linewidth=0.1,
+        arrowsize=0.2,
+    )
+    ax[0].set_title(f"Nneigh={int(neighbours[0]):}, Npart={len(data.gas.coordinates):}")
+    ax[1].set_title(f"z={z_to_display:}")
+    ax[2].set_title("$z_{slice}/L_{box}$=" + slice_height)
+    fig.tight_layout()
+    plt.savefig(sys.argv[2], dpi=300)
+
+
