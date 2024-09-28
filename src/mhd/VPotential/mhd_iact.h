@@ -457,6 +457,18 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
     pj->mhd_data.dAdt[i] -=
         mi * 8.0 * pj->mhd_data.resistive_eta * mag_Disj * dA[i];
   }
+
+  /* Save induction sources */
+  for (int i = 0; i < 3; i++) {
+    pi->mhd_data.Adv_A_source[i] += mj * mag_VPIndi * SAi * dx[i];
+    pj->mhd_data.Adv_A_source[i] += mi * mag_VPIndj * SAj * dx[i];
+    pi->mhd_data.Diff_A_source[i] +=
+        mj * 8.0 * pi->mhd_data.resistive_eta * mag_Disi * dA[i];
+    pj->mhd_data.Diff_A_source[i] -=
+        mi * 8.0 * pj->mhd_data.resistive_eta * mag_Disj * dA[i];
+    pi->mhd_data.Delta_A[i] += mj * 8.0 * mag_Disi * dA[i];
+    pj->mhd_data.Delta_A[i] -= mi * 8.0 * mag_Disj * dA[i];
+  }
 }
 
 /**
@@ -585,5 +597,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   for (int i = 0; i < 3; i++)
     pi->mhd_data.dAdt[i] +=
         mj * 8.0 * pi->mhd_data.resistive_eta * mag_Disi * dA[i];
+  /* Save induction sources */
+  for (int i = 0; i < 3; i++) {
+    pi->mhd_data.Adv_A_source[i] += mj * mag_VPIndi * SAi * dx[i];
+    pi->mhd_data.Diff_A_source[i] +=
+        mj * 8.0 * pi->mhd_data.resistive_eta * mag_Disi * dA[i];
+    pi->mhd_data.Delta_A[i] += mj * 8.0 * mag_Disi * dA[i];
+  }
 }
 #endif /* SWIFT_VECTOR_POTENTIAL_MHD_H */
