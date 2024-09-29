@@ -634,28 +634,41 @@ void engine_addtasks_send_sinks(struct engine *e, struct cell *ci,
       scheduler_addunlock(s, ci->hydro.super->sinks.drift, t_density);
 
       /* Ghost before you send */
-      /* scheduler_addunlock(s, ci->hydro.super->sinks.sink_in, t_density); */
-
-      /* Send the sinks after the sink formation and the sink_formation_counts */
-      /* scheduler_addunlock(s, ci->hydro.super->sinks.sink_formation, t_density); */
+      scheduler_addunlock(s, ci->hydro.super->sinks.sink_in, t_density);
 
       if (ci->hydro.count > 0) {
 	scheduler_addunlock(s, t_sink_formation_counts, t_density);
       }
 
-      /* The send_sinks task should unlock the super_cell's sink exit point
-       * task. */
-      scheduler_addunlock(s, t_density, ci->hydro.super->sinks.sink_out);
+      /* Unlock sink_ghost1 adter sending */
+      scheduler_addunlock(s, t_density, ci->hydro.super->sinks.sink_ghost1);
 
+      /* Ghost1 before you send the sink gas swallow */
       scheduler_addunlock(s, ci->hydro.super->sinks.sink_ghost1,
+                          t_sink_gas_swallow);
+
+      /* Unlock sink_ghost2 after sending */
+      scheduler_addunlock(s, t_sink_gas_swallow,
+                          ci->hydro.super->sinks.sink_ghost2);
+
+      /* Ghost2 before you send the sink merger */
+      scheduler_addunlock(s, ci->hydro.super->sinks.sink_ghost1,
+			  t_sink_merger);
+      scheduler_addunlock(s, ci->hydro.super->sinks.sink_ghost2,
                           t_sink_merger);
+
+      /* Unlock the sink exit point after sending */
       scheduler_addunlock(s, t_sink_merger,
                           ci->hydro.super->sinks.sink_out);
 
-      scheduler_addunlock(s, ci->hydro.super->sinks.sink_ghost1,
-                          t_sink_gas_swallow);
-      scheduler_addunlock(s, t_sink_gas_swallow,
-                          ci->hydro.super->sinks.sink_ghost2);
+      /* Now create the dependencies
+	 send_sink_density --> send_sink_gas_swallow -->
+	 send_sink_merger. These dependencies ensure we do not send before the
+	 previous send task was done. They also ensure that if the sink_ghost
+	 or sink_do_gas*/
+      scheduler_addunlock(s, t_density, t_sink_gas_swallow);
+      scheduler_addunlock(s, t_sink_gas_swallow, t_sink_merger);
+
 
     }
 
