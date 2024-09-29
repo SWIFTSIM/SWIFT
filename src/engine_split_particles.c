@@ -319,7 +319,8 @@ void engine_split_gas_particles(struct engine *e) {
 
   /* Verify that nothing wrong happened with the IDs */
   if (data_count.max_id > e->max_parts_id) {
-    error("Found a gas particle with an ID larger than the current max!");
+    error("Found a gas particle with an ID (%lld) larger than the current max (%lld)!",
+	  data_count.max_id, e->max_parts_id);
   }
 
   /* Be verbose about this. This is an important event */
