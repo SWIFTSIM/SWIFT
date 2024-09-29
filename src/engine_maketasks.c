@@ -1331,6 +1331,15 @@ void engine_addtasks_recv_sinks(struct engine *e, struct cell *c,
     t_sink_gas_swallow = scheduler_addtask(
         s, task_type_recv, task_subtype_sink_gas_swallow, c->mpi.tag, 0, c, NULL);
 
+    /* Now create the dependencies
+       recv_sink_density --> recv_sink_gas_swallow -->
+       recv_sink_merger. These dependencies ensure we do not recv before the
+       previous recv task was done. They also ensure that if the sink_ghost
+       or sink_do_gas/sink_swallow are missing, one of the recv is not without
+       any upper dependency. */
+    scheduler_addunlock(s, t_density, t_sink_gas_swallow);
+    scheduler_addunlock(s, t_sink_gas_swallow, t_sink_merger);
+
     if (c->hydro.count > 0) {
       /* Receive the sinks only once the counts have been received */
       scheduler_addunlock(s, t_sink_formation_counts, t_density);
