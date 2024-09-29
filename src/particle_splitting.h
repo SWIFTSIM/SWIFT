@@ -53,11 +53,19 @@ particle_splitting_mark_part_as_not_split(
  *           the splitting event.
  * @param sdj second particle_splitting_data* resulting from
  *           the splitting event.
+ * @param id_i ID of the first particle.
+ * @param id_j ID of the first particle.
+ * @param extra_split_logger File pointer (opened) where to log
+ *           the resetting of the split counters.
  */
 __attribute__((always_inline)) INLINE static void
 particle_splitting_update_binary_tree(
     struct particle_splitting_data* restrict sdi,
-    struct particle_splitting_data* restrict sdj) {
+    struct particle_splitting_data* restrict sdj,
+    const long long id_i,
+    const long long id_j,
+    FILE* extra_split_logger,
+    swift_lock_type *file_lock) {
 
   /* Update the binary tree */
   sdj->split_tree |= 1LL << sdj->split_count;
@@ -72,10 +80,34 @@ particle_splitting_update_binary_tree(
    * Warning is only printed once for each particle */
   if (sdi->split_count == 8 * sizeof(sdi->split_tree)) {
     message(
-        "Warning: Particle with progenitor ID %lld with binary tree %lld has "
+        "Warning: Particle (%lld) with progenitor ID %lld with binary tree %lld has "
         "been split over the maximum %zu times, making its binary tree "
         "invalid.",
-        sdi->progenitor_id, sdi->split_tree, sizeof(sdi->split_tree));
+        id_i, sdi->progenitor_id, sdi->split_tree, sizeof(sdi->split_tree));
+
+    
+    /* Log the old state before reseting. Use the lock to prevent multiple threads
+     * from writing at the same time. */
+    lock_lock(file_lock);
+    fprintf(extra_split_logger, "%d %lld %lld %lld\n",
+	    engine_current_step,id_i, sdi->progenitor_id, sdi->split_tree);
+    fprintf(extra_split_logger, "%d %lld %lld %lld\n",
+	    engine_current_step, id_j, sdj->progenitor_id, sdj->split_tree);
+    fflush(extra_split_logger);
+
+    /* Release the lock and continue in parallel */
+    if (lock_unlock(file_lock) != 0)
+        error("Impossible to unlock particle splitting");
+    
+    /* Reset both counters and trees */
+    sdi->split_count = 0;
+    sdj->split_count = 0;
+    sdi->split_tree = 0LL;
+    sdj->split_tree = 0LL;
+
+    /* Set both particles as new progenitors of their descendants */
+    sdi->progenitor_id = id_i;
+    sdj->progenitor_id = id_j;
   }
 }
 
