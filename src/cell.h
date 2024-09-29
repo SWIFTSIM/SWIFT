@@ -285,7 +285,8 @@ struct pcell_step {
 };
 
 /**
- * @brief Cell information to propagate the new counts of star particles (star variables).
+ * @brief Cell information to propagate the new counts of star particles (star
+ * variables).
  */
 struct pcell_sf_stars {
 
@@ -300,7 +301,8 @@ struct pcell_sf_stars {
 };
 
 /**
- * @brief Cell information to propagate the new counts of star particles (grav variables).
+ * @brief Cell information to propagate the new counts of star particles (grav
+ * variables).
  */
 struct pcell_sf_grav {
 

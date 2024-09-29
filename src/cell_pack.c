@@ -532,8 +532,7 @@ int cell_unpack_multipoles(struct cell *restrict c,
  *
  * @return The number of packed cells.
  */
-int cell_pack_sf_counts(struct cell * c,
-                        struct pcell_sf_stars * pcells) {
+int cell_pack_sf_counts(struct cell *c, struct pcell_sf_stars *pcells) {
 
 #ifdef WITH_MPI
 
@@ -579,8 +578,7 @@ int cell_pack_sf_counts(struct cell * c,
  *
  * @return The number of cells created.
  */
-int cell_unpack_sf_counts(struct cell * c,
-                          struct pcell_sf_stars * pcells) {
+int cell_unpack_sf_counts(struct cell *c, struct pcell_sf_stars *pcells) {
 
 #ifdef WITH_MPI
 
@@ -619,8 +617,7 @@ int cell_unpack_sf_counts(struct cell * c,
  *
  * @return The number of packed cells.
  */
-int cell_pack_grav_counts(struct cell * c,
-                          struct pcell_sf_grav * pcells) {
+int cell_pack_grav_counts(struct cell *c, struct pcell_sf_grav *pcells) {
 
 #ifdef WITH_MPI
 
@@ -665,8 +662,7 @@ int cell_pack_grav_counts(struct cell * c,
  *
  * @return The number of cells created.
  */
-int cell_unpack_grav_counts(struct cell * c,
-                            struct pcell_sf_grav * pcells) {
+int cell_unpack_grav_counts(struct cell *c, struct pcell_sf_grav *pcells) {
 
 #ifdef WITH_MPI
 
