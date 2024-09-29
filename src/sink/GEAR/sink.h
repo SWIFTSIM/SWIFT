@@ -21,6 +21,11 @@
 
 #include <float.h>
 
+/* Put pragma if gsl around here */
+#ifdef HAVE_LIBGSL
+#include <gsl/gsl_cdf.h>
+#endif
+
 /* Local includes */
 #include "active.h"
 #include "chemistry.h"
@@ -69,22 +74,23 @@ INLINE static void sink_update_target_mass(struct sink* sink,
   /* If metal < threshold, then the sink generates first star particles. */
   const int is_first_star = metal < threshold;
   const struct stellar_model* model;
-  double minimal_discrete_mass;
+  double minimal_discrete_mass_Msun;
 
   /* Take the correct values if your are a first star or not. */
   if (!is_first_star) /* (metal >= threshold)*/ {
     model = &feedback_props->stellar_model;
-    minimal_discrete_mass = sink_props->minimal_discrete_mass;
+    minimal_discrete_mass_Msun = sink_props->minimal_discrete_mass_Msun;
   } else {
     model = &feedback_props->stellar_model_first_stars;
-    minimal_discrete_mass = sink_props->minimal_discrete_mass_first_stars;
+    minimal_discrete_mass_Msun =
+        sink_props->minimal_discrete_mass_first_stars_Msun;
   }
 
   const struct initial_mass_function* imf = &model->imf;
 
   if (random_number < imf->sink_Pc) {
     /* We are dealing with the continous part of the IMF. */
-    sink->target_mass = imf->stellar_particle_mass_Msun;
+    sink->target_mass_Msun = imf->stellar_particle_mass_Msun;
     sink->target_type = star_population_continuous_IMF;
   } else {
     /* We are dealing with the discrete part of the IMF. */
@@ -92,9 +98,9 @@ INLINE static void sink_update_target_mass(struct sink* sink,
         sink->id, star_counter + 1, e->ti_current,
         random_number_sink_formation);
     double m = initial_mass_function_sample_power_law(
-        minimal_discrete_mass, imf->mass_max, imf->exp[imf->n_parts - 1],
+        minimal_discrete_mass_Msun, imf->mass_max, imf->exp[imf->n_parts - 1],
         random_number);
-    sink->target_mass = m;
+    sink->target_mass_Msun = m;
     sink->target_type = single_star;
   }
 }
@@ -130,9 +136,12 @@ __attribute__((always_inline)) INLINE static void sink_first_init_sink(
   sink_mark_sink_as_not_swallowed(&sp->merger_data);
 
   /* Bug fix: Setup the target mass for sink formation after reading the
-     ICs. Otherwise sink->target_mass = 0.0 and a sink present in the IC spawn
-     a star of mass 0.0... */
+     ICs. Otherwise sink->target_mass_Msun = 0.0 and a sink present in the IC
+     spawn a star of mass 0.0... */
   sink_update_target_mass(sp, sink_props, e, 0);
+
+  /* Initialize to the mass of the sink */
+  sp->mass_tot_before_star_spawning = sp->mass;
 }
 
 /**
@@ -177,6 +186,10 @@ __attribute__((always_inline)) INLINE static void sink_init_part(
  */
 __attribute__((always_inline)) INLINE static void sink_init_sink(
     struct sink* sp) {
+
+  /* Reset to the mass of the sink */
+  sp->mass_tot_before_star_spawning = sp->mass;
+
 #ifdef DEBUG_INTERACTIONS_SINKS
   for (int i = 0; i < MAX_NUM_OF_NEIGHBOURS_SINKS; ++i)
     sp->ids_ngbs_accretion[i] = -1;
@@ -535,6 +548,9 @@ __attribute__((always_inline)) INLINE static void sink_swallow_part(
   sp->number_of_gas_swallows++;
   sp->number_of_direct_gas_swallows++;
 
+  /* Update the total mass before star spawning */
+  sp->mass_tot_before_star_spawning = sp->mass;
+
 #ifdef SWIFT_DEBUG_CHECKS
   const float dr = sqrt(dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]);
   message(
@@ -602,10 +618,11 @@ __attribute__((always_inline)) INLINE static void sink_swallow_sink(
   /* Add the stars spawned by the swallowed sink */
   spi->n_stars += spj->n_stars;
 
-#ifdef SWIFT_DEBUG_CHECKS
+  /* Update the total mass before star spawning */
+  spi->mass_tot_before_star_spawning = spi->mass;
+
   message("sink %lld swallow sink particle %lld. New mass: %e.", spi->id,
           spj->id, spi->mass);
-#endif
 }
 
 /**
@@ -626,21 +643,25 @@ INLINE static int sink_spawn_star(struct sink* sink, const struct engine* e,
                                   const struct phys_const* phys_const,
                                   const struct unit_system* restrict us) {
 
-  if (sink->mass > sink->target_mass * phys_const->const_solar_mass)
+  if (sink->mass > sink->target_mass_Msun * phys_const->const_solar_mass)
     return 1;
   else
     return 0;
 }
 
 /**
- * @brief Separate the #spart and #part by randomly moving both of them.
+ * @brief Give the #spart a new position.
+ *
+ * In GEAR: Positions are set by randomly sampling coordinates in an homogeneous
+ * sphere centered on the #sink with radius  the sink's r_cut.
  *
  * @param e The #engine.
  * @param si The #sink generating a star.
- * @param sp The new #spart.
+ * @param sp The #spart generated.
  */
-INLINE static void sink_star_formation_separate_particles(
-    const struct engine* e, struct sink* si, struct spart* sp) {
+INLINE static void sink_star_formation_give_new_position(const struct engine* e,
+                                                         struct sink* si,
+                                                         struct spart* sp) {
 #ifdef SWIFT_DEBUG_CHECKS
   if (si->x[0] != sp->x[0] || si->x[1] != sp->x[1] || si->x[2] != sp->x[2]) {
     error(
@@ -650,46 +671,78 @@ INLINE static void sink_star_formation_separate_particles(
   }
 #endif
 
-  /* Move a bit the particle in order to avoid
-     division by 0.
-  */
-  const float max_displacement = 0.1;
-  const double delta_x =
-      2.f * random_unit_interval(si->id, e->ti_current,
-                                 (enum random_number_type)0) -
-      1.f;
-  const double delta_y =
-      2.f * random_unit_interval(si->id, e->ti_current,
-                                 (enum random_number_type)1) -
-      1.f;
-  const double delta_z =
-      2.f * random_unit_interval(si->id, e->ti_current,
-                                 (enum random_number_type)2) -
-      1.f;
+  /* Put the star randomly within the accretion radius of the sink */
+  const double phi =
+      2 * M_PI *
+      random_unit_interval(sp->id, e->ti_current, (enum random_number_type)3);
+  const double r = si->r_cut * random_unit_interval(sp->id, e->ti_current,
+                                                    (enum random_number_type)4);
+  const double cos_theta =
+      1.0 - 2.0 * random_unit_interval(sp->id, e->ti_current,
+                                       (enum random_number_type)5);
+  const double sin_theta = sqrt(1.0 - cos_theta * cos_theta);
 
-  sp->x[0] += delta_x * max_displacement * si->r_cut;
-  sp->x[1] += delta_y * max_displacement * si->r_cut;
-  sp->x[2] += delta_z * max_displacement * si->r_cut;
+  double new_pos[3] = {r * sin_theta * cos(phi), r * sin_theta * sin(phi),
+                       r * cos_theta};
 
-  /* Copy the position to the gpart */
+  /* Assign this new position to the star and its gpart */
+  sp->x[0] += new_pos[0];
+  sp->x[1] += new_pos[1];
+  sp->x[2] += new_pos[2];
   sp->gpart->x[0] = sp->x[0];
   sp->gpart->x[1] = sp->x[1];
   sp->gpart->x[2] = sp->x[2];
+}
 
-  /* Do the sink particle. */
-  const double mass_ratio = sp->mass / si->mass;
-  const double dx[3] = {mass_ratio * delta_x * max_displacement * si->r_cut,
-                        mass_ratio * delta_y * max_displacement * si->r_cut,
-                        mass_ratio * delta_z * max_displacement * si->r_cut};
+/**
+ * @brief Give a velocity to the #spart.
+ *
+ * In GEAR: Currently, a gaussian centered on 0 is used. The standard deviation
+ * is computed based on the local gravitational dynamics of the system.
+ *
+ * @param e The #engine.
+ * @param si The #sink generating a star.
+ * @param sp The new #spart.
+ * @param sink_props The sink properties to use.
+ */
+INLINE static void sink_star_formation_give_new_velocity(
+    const struct engine* e, struct sink* si, struct spart* sp,
+    const struct sink_props* sink_props) {
 
-  si->x[0] -= dx[0];
-  si->x[1] -= dx[1];
-  si->x[2] -= dx[2];
+#ifdef HAVE_LIBGSL
+  /* Those intermediate variables are the values that will be given to the star
+     and subtracted from the sink. */
+  double v_given[3] = {0.0, 0.0, 0.0};
+  const double G_newton = e->physical_constants->const_newton_G;
+  const double sigma_2 =
+      G_newton * si->mass_tot_before_star_spawning / si->r_cut;
+  const double sigma = sink_props->star_spawning_sigma_factor * sqrt(sigma_2);
 
-  /* Copy the position to the gpart */
-  si->gpart->x[0] = si->x[0];
-  si->gpart->x[1] = si->x[1];
-  si->gpart->x[2] = si->x[2];
+  for (int i = 0; i < 3; ++i) {
+
+    /* Draw a random value in unform interval (0, 1] */
+    const double random_number = random_unit_interval_part_ID_and_index(
+        sp->id, i, e->ti_current, (enum random_number_type)1);
+
+    /* Sample a gaussian with mu=0 and sigma=sigma */
+    double v_i_random = gsl_cdf_gaussian_Pinv(random_number, sigma);
+    v_given[i] = v_i_random;
+  }
+
+  /* Update the star velocity. Do not forget to update the gpart velocity */
+  sp->v[0] = si->v[0] + v_given[0];
+  sp->v[1] = si->v[1] + v_given[1];
+  sp->v[2] = si->v[2] + v_given[2];
+  sp->gpart->v_full[0] = sp->v[0];
+  sp->gpart->v_full[1] = sp->v[1];
+  sp->gpart->v_full[2] = sp->v[2];
+  message(
+      "New star velocity: v = (%lf %lf %lf). Sink velocity: v = (%lf %lf %lf). "
+      "Sigma = %lf",
+      sp->v[0], sp->v[1], sp->v[2], si->v[0], si->v[1], si->v[2], sigma);
+#else
+  error("Code not compiled with GSL. Can't compute Star new velocity.");
+#endif
 }
 
 /**
@@ -713,20 +766,27 @@ INLINE static void sink_copy_properties_to_star(
     const int with_cosmology, const struct phys_const* phys_const,
     const struct unit_system* restrict us) {
 
-  sink_star_formation_separate_particles(e, sink, sp);
+  /* Give the stars a new position */
+  sink_star_formation_give_new_position(e, sink, sp);
 
-  /* set the mass */
-  sp->mass = sink->target_mass * phys_const->const_solar_mass;
+  /* Set the mass (do not forget the sink's gpart friend!) */
+  sp->mass = sink->target_mass_Msun * phys_const->const_solar_mass;
   sp->gpart->mass = sp->mass;
 
-  /* set feedback type */
-  sp->feedback_data.star_type = (enum star_feedback_type)sink->target_type;
+  /* Give a new velocity to the stars */
+  sink_star_formation_give_new_velocity(e, sink, sp, sink_props);
+
+  /* Sph smoothing length */
+  sp->h = sink->r_cut;
+
+  /* Feedback related initialisation */
+  /* ------------------------------- */
 
   /* Initialize the feedback */
   feedback_init_after_star_formation(sp, e->feedback_props, sink->target_type);
 
-  /* sph smoothing */
-  sp->h = sink->r_cut;
+  /* Star formation related initalisation */
+  /* ------------------------------------ */
 
   /* Note: The sink module need to be compiled with GEAR SF as we store data
      in the SF struct. However, we do not need to run with --star-formation */
@@ -763,8 +823,8 @@ INLINE static void sink_update_sink_properties_before_star_formation(
 
   /* Has the sink accumulated enough metallicity so that the target mass
      should be updated before spawning stars?
-     Between the last update of the target_mass, the sink may have accreted gas
-     with metallicities that that are higher than those of population III
+     Between the last update of the target_mass_Msun, the sink may have accreted
+     gas with metallicities that that are higher than those of population III
      stars. However, the target mass was set with the pop
      III IMF. */
 
@@ -780,14 +840,14 @@ INLINE static void sink_update_sink_properties_before_star_formation(
 
   /* If the sink has not changed its IMF yet
      (has_IMF_changed_from_popIII_to_popII = 0)
-     but is eligible to (sink metal > threshold), get a target_mass of the pop
-     II stars. */
+     but is eligible to (sink metal > threshold), get a target_mass_Msun of the
+     pop II stars. */
   if (!(sink->has_IMF_changed_from_popIII_to_popII) && !is_first_star) {
     sink_update_target_mass(sink, sink_props, e, 0);
 
     /* Flag the sink to have made the transition of IMF. This ensures that next
-    time we do not update the target_mass because metal > threshold (otherwise
-    we would update it without needing to) */
+    time we do not update the target_mass_Msun because metal > threshold
+    (otherwise we would update it without needing to) */
     sink->has_IMF_changed_from_popIII_to_popII = 1;
     message("IMF transition : Sink %lld will now spawn Pop II stars.",
             sink->id);
@@ -798,7 +858,7 @@ INLINE static void sink_update_sink_properties_before_star_formation(
  * @brief Update the #sink particle properties right after spawning a star.
  *
  * In GEAR: Important properties that are updated are the sink mass and the
- * sink->target_mass to draw the next star mass.
+ * sink->target_mass_Msun to draw the next star mass.
  *
  * @param sink The #sink particle that spawed stars.
  * @param sp The #spart particle spawned.
@@ -816,7 +876,8 @@ INLINE static void sink_update_sink_properties_during_star_formation(
   sink->n_stars++;
 
   /* Update the mass */
-  sink->mass = sink->mass - sink->target_mass * phys_const->const_solar_mass;
+  sink->mass =
+      sink->mass - sink->target_mass_Msun * phys_const->const_solar_mass;
 
   /* Bug fix: Do not forget to update the sink gpart's mass. */
   sink->gpart->mass = sink->mass;
