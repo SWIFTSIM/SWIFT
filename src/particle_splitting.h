@@ -89,9 +89,9 @@ particle_splitting_update_binary_tree(
     /* Log the old state before reseting. Use the lock to prevent multiple threads
      * from writing at the same time. */
     lock_lock(file_lock);
-    fprintf(extra_split_logger, "%d %lld %lld %lld\n",
-	    engine_current_step,id_i, sdi->progenitor_id, sdi->split_tree);
-    fprintf(extra_split_logger, "%d %lld %lld %lld\n",
+    fprintf(extra_split_logger, "  %12d %20lld %20lld %20lld\n",
+	    engine_current_step, id_i, sdi->progenitor_id, sdi->split_tree);
+    fprintf(extra_split_logger, "  %12d %20lld %20lld %20lld\n",
 	    engine_current_step, id_j, sdj->progenitor_id, sdj->split_tree);
     fflush(extra_split_logger);
 
