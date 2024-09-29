@@ -61,7 +61,7 @@ struct data_split {
   long long offset_id;
   long long *count_id;
   swift_lock_type lock;
-  FILE* extra_split_logger;
+  FILE *extra_split_logger;
 };
 
 /**
@@ -184,14 +184,10 @@ void engine_split_gas_particle_split_mapper(void *restrict map_data, int count,
       }
 
       /* Update splitting tree */
-      particle_splitting_update_binary_tree(&xp->split_data,
-                                            &global_xparts[k_parts].split_data,
-					    p->id,
-					    global_parts[k_parts].id,
-					    data->extra_split_logger,
-					    &data->lock);
+      particle_splitting_update_binary_tree(
+          &xp->split_data, &global_xparts[k_parts].split_data, p->id,
+          global_parts[k_parts].id, data->extra_split_logger, &data->lock);
 
-      
       /* Re-link everything */
       if (with_gravity) {
         global_parts[k_parts].gpart = &global_gparts[k_gparts];
@@ -319,8 +315,10 @@ void engine_split_gas_particles(struct engine *e) {
 
   /* Verify that nothing wrong happened with the IDs */
   if (data_count.max_id > e->max_parts_id) {
-    error("Found a gas particle with an ID (%lld) larger than the current max (%lld)!",
-	  data_count.max_id, e->max_parts_id);
+    error(
+        "Found a gas particle with an ID (%lld) larger than the current max "
+        "(%lld)!",
+        data_count.max_id, e->max_parts_id);
   }
 
   /* Be verbose about this. This is an important event */
@@ -442,13 +440,19 @@ void engine_split_gas_particles(struct engine *e) {
 
   char extra_split_logger_filename[256];
   sprintf(extra_split_logger_filename, "splits/splits_%04d.txt", engine_rank);
-  FILE* extra_split_logger = fopen(extra_split_logger_filename, "a");
-  
+  FILE *extra_split_logger = fopen(extra_split_logger_filename, "a");
+
   /* Loop over the particles again to split them */
   long long local_count_id = 0;
-  struct data_split data_split = {
-      e,         mass_threshold, generate_random_ids, &k_parts,
-      &k_gparts, offset_id,      &local_count_id,     0, extra_split_logger};
+  struct data_split data_split = {e,
+                                  mass_threshold,
+                                  generate_random_ids,
+                                  &k_parts,
+                                  &k_gparts,
+                                  offset_id,
+                                  &local_count_id,
+                                  0,
+                                  extra_split_logger};
   lock_init(&data_split.lock);
   threadpool_map(&e->threadpool, engine_split_gas_particle_split_mapper,
                  s->parts, nr_parts_old, sizeof(struct part), 0, &data_split);
@@ -473,7 +477,7 @@ void engine_split_gas_particles(struct engine *e) {
 
   /* Close the logger file */
   fclose(extra_split_logger);
-  
+
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
@@ -482,8 +486,7 @@ void engine_split_gas_particles(struct engine *e) {
 void engine_init_split_gas_particles(struct engine *e) {
 
   /* Create the directory to host the logs */
-  if (engine_rank == 0)
-    safe_checkdir("splits", /*create=*/1);
+  if (engine_rank == 0) safe_checkdir("splits", /*create=*/1);
 
 #ifdef WITH_MPI
   MPI_Barrier(MPI_COMM_WORLD);
@@ -492,10 +495,10 @@ void engine_init_split_gas_particles(struct engine *e) {
   /* Create the logger files and add a header */
   char extra_split_logger_filename[256];
   sprintf(extra_split_logger_filename, "splits/splits_%04d.txt", engine_rank);
-  FILE* extra_split_logger = fopen(extra_split_logger_filename, "w");
-  fprintf(extra_split_logger, "# %12s %20s %20s %20s\n",
-	  "Step", "ID", "Progenitor", "Tree");
-  
+  FILE *extra_split_logger = fopen(extra_split_logger_filename, "w");
+  fprintf(extra_split_logger, "# %12s %20s %20s %20s\n", "Step", "ID",
+          "Progenitor", "Tree");
+
   /* Close everything for now */
   fclose(extra_split_logger);
 }
