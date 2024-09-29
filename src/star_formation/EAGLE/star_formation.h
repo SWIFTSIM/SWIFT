@@ -66,7 +66,7 @@ enum star_formation_threshold {
  */
 struct star_formation {
 
-  /* SF law ------------------------------------------------------------*/
+  /* SF law --------------------------------------------------------------- */
 
   /*! Which SF law are we using? */
   enum star_formation_law SF_law;
@@ -183,6 +183,11 @@ struct star_formation {
     double nH_threshold;
 
   } subgrid_thresh;
+
+  /* Number of stars to form per event -----------------------------------  */
+
+  /* Number of stars to form */
+  int num_stars_per_gas_particle;
 };
 
 /**
@@ -524,7 +529,7 @@ INLINE static int star_formation_should_convert_to_star(
  */
 INLINE static int star_formation_should_spawn_spart(
     struct part* p, struct xpart* xp, const struct star_formation* starform) {
-  return 8;
+  return starform->num_stars_per_gas_particle;
 }
 
 /**
@@ -579,10 +584,10 @@ INLINE static void star_formation_copy_properties(
     const int convert_part) {
 
   /* Store the current mass */
-  sp->mass = hydro_get_mass(p) / 8.;
+  sp->mass = hydro_get_mass(p) / starform->num_stars_per_gas_particle;
 
   /* Store the current mass as the initial mass */
-  sp->mass_init = hydro_get_mass(p) / 8.;
+  sp->mass_init = hydro_get_mass(p) / starform->num_stars_per_gas_particle;
 
   /* Store either the birth_scale_factor or birth_time depending  */
   if (with_cosmology) {
@@ -614,28 +619,33 @@ INLINE static void star_formation_copy_properties(
   sp->count_since_last_enrichment = -1;
   sp->number_of_heating_events = 0.;
 
-  const float max_displacement = 0.1;
-  const double delta_x =
-      2.f * random_unit_interval(sp->id, e->ti_current,
-                                 (enum random_number_type)0) -
-      1.f;
-  const double delta_y =
-      2.f * random_unit_interval(sp->id, e->ti_current,
-                                 (enum random_number_type)1) -
-      1.f;
-  const double delta_z =
-      2.f * random_unit_interval(sp->id, e->ti_current,
-                                 (enum random_number_type)2) -
-      1.f;
+  /* If we are spawning more than 1 star per gas particle --> add some small
+   * displacement */
+  if (starform->num_stars_per_gas_particle > 1) {
 
-  sp->x[0] += delta_x * max_displacement * p->h;
-  sp->x[1] += delta_y * max_displacement * p->h;
-  sp->x[2] += delta_z * max_displacement * p->h;
+    const float max_displacement = 0.1;
+    const double delta_x =
+        2.f * random_unit_interval(sp->id, e->ti_current,
+                                   (enum random_number_type)0) -
+        1.f;
+    const double delta_y =
+        2.f * random_unit_interval(sp->id, e->ti_current,
+                                   (enum random_number_type)1) -
+        1.f;
+    const double delta_z =
+        2.f * random_unit_interval(sp->id, e->ti_current,
+                                   (enum random_number_type)2) -
+        1.f;
 
-  /* Copy the position to the gpart */
-  sp->gpart->x[0] = sp->x[0];
-  sp->gpart->x[1] = sp->x[1];
-  sp->gpart->x[2] = sp->x[2];
+    sp->x[0] += delta_x * max_displacement * p->h;
+    sp->x[1] += delta_y * max_displacement * p->h;
+    sp->x[2] += delta_z * max_displacement * p->h;
+
+    /* Copy the position to the gpart */
+    sp->gpart->x[0] = sp->x[0];
+    sp->gpart->x[1] = sp->x[1];
+    sp->gpart->x[2] = sp->x[2];
+  }
 }
 
 /**
@@ -872,6 +882,14 @@ INLINE static void starformation_init_backend(
   } else {
     error("Invalid SF threshold model: '%s'", temp_SF);
   }
+
+  /* Read the number of stars to form per gas particle */
+  starform->num_stars_per_gas_particle = parser_get_opt_param_int(
+      parameter_file, "EAGLEStarFormation:num_of_stars_per_gas_particle", 1);
+  if (starform->num_stars_per_gas_particle < 1)
+    error(
+        "The number of star particles formed per gas particle in a star "
+        "formation event must be >0 !!");
 }
 
 /**
