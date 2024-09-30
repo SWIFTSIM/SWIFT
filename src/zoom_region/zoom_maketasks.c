@@ -274,11 +274,8 @@ void engine_make_self_gravity_tasks_mapper_buffer_bkg(void *map_data,
  *
  * This is a wrapper around the various mappers defined above for all the
  * possible combinations of cell types including:
- * - zoom->zoom
  * - bkg->bkg
- * - zoom->bkg (if buffer cells are not used)
  * - buffer->buffer (if buffer cells are used)
- * - zoom->buffer (if buffer cells are used)
  * - buffer->bkg (if buffer cells are used)
  *
  * This replaces the function in engine_maketasks when running with a zoom
