@@ -1875,6 +1875,13 @@ void engine_make_hierarchical_tasks_mapper(void *map_data, int num_elements,
 
   for (int ind = 0; ind < num_elements; ind++) {
     struct cell *c = &((struct cell *)map_data)[ind];
+
+    /* In zoom land we need to handle void cells separately after all other
+     * cells. This is done after this mapper call in engine_maketasks. */
+    if (c->subtype == cell_subtype_void) {
+      continue;
+    }
+
     /* Make the common tasks (time integration) */
     engine_make_hierarchical_tasks_common(e, c);
     /* Add the hydro stuff */
@@ -2042,8 +2049,8 @@ void engine_gravity_make_task_loop(struct engine *e, int cid, const int cdim[3],
   /* Skip cells without gravity particles unless they are void cells. */
   if (ci->grav.count == 0 && ci->subtype != cell_subtype_void) return;
 
-  /* If the cell is local build a self-interaction (but not for void cells) */
-  if (ci->nodeID == nodeID && ci->subtype != cell_subtype_void) {
+  /* If the cell is local build a self-interaction. */
+  if (ci->nodeID == nodeID) {
     scheduler_addtask(sched, task_type_self, task_subtype_grav, 0, 0, ci, NULL);
   }
 
@@ -2073,7 +2080,7 @@ void engine_gravity_make_task_loop(struct engine *e, int cid, const int cdim[3],
         struct cell *cj = &cells[cjd];
 
 #ifdef SWIFT_DEBUG_CHECKS
-        /* Ensure both cells are zoom cells */
+        /* Ensure both cells are the same type of cells */
         if (ci->type != cj->type) {
           error(
               "Cell %d and cell %d are not the same cell type! "
@@ -4874,6 +4881,12 @@ void engine_maketasks(struct engine *e) {
   if (e->verbose)
     message("Setting super-pointers took %.3f %s.",
             clocks_from_ticks(getticks() - tic2), clocks_getunit());
+
+  /* In zoom land we need to create the hierarchical void tasks before all
+   * others. */
+  if (e->s->with_zoom_region) {
+    zoom_engine_make_hierarchical_void_tasks(e);
+  }
 
   /* Append hierarchical tasks to each cell. */
   threadpool_map(&e->threadpool, engine_make_hierarchical_tasks_mapper, cells,
