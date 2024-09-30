@@ -3027,7 +3027,6 @@ case "$with_rt" in
       if test "$number_group" = "0"; then
           AC_MSG_ERROR([GEAR-RT: Cannot work with zero photon groups])
       fi
-
       if ! test $number_group -eq $number_group; then
           # abuse -eq to check whether $number_group is an integer. -eq
           # only works with those.

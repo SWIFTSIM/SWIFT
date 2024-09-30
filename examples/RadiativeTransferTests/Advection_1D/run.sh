@@ -13,7 +13,7 @@ fi
 # mpirun -n 4 ../../../swift_mpi \
 ../../../swift \
     --hydro \
-    --threads=2 \
+    --threads=4 \
     --verbose=0  \
     --radiation \
     --stars \

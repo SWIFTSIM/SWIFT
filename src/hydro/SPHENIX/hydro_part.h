@@ -115,14 +115,8 @@ struct part {
   /*! Particle acceleration. */
   float a_hydro[3];
 
-  union {
-    /*! Particle mass. */
-    float mass;
-
-    struct {
-      float mass;
-    } conserved;
-  };
+  /*! Particle mass. */
+  float mass;
 
   /*! Particle smoothing length. */
   float h;

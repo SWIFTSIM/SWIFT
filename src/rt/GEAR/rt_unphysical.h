@@ -177,6 +177,7 @@ rt_check_unphysical_hyperbolic_flux(float flux[4][3]) {
 __attribute__((always_inline)) INLINE static void
 rt_check_unphysical_mass_fractions(struct part* restrict p) {
 
+
   /* For now, catch either mass or rho being zero. At the moment, they are not
    * necessarily both zero. For example, an unphysical check may zero out both
    * mass and density when it becomes negative in a hydro step. Once that
@@ -185,7 +186,7 @@ rt_check_unphysical_mass_fractions(struct part* restrict p) {
    * inactive particles however remains zero until the particle is active
    * again. See issue #833. */
 
-  if (p->conserved.mass <= 0.f || p->rho <= 0.f) {
+  if (hydro_get_mass(p) <= 0.f || p->rho <= 0.f) {
     /* Deal with unphysical situations and vacuum. */
     p->rt_data.tchem.mass_fraction_HI = RT_GEAR_TINY_MASS_FRACTION;
     p->rt_data.tchem.mass_fraction_HII = RT_GEAR_TINY_MASS_FRACTION;
