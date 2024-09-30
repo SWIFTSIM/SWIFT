@@ -2090,19 +2090,19 @@ void engine_gravity_make_task_loop(struct engine *e, int cid, const int cdim[3],
         /* Avoid duplicates. */
         if (cid >= cjd) continue;
 
-        /* Avoid empty cells. Completely foreign pairs also get
-         * the Nigel treatment (AKA are kicked out of the union/we skip
-         * them). Unless they are void cells, Nigels a fan of those (and
-         * we need to make tasks for them to be later split even if they are
-         * empty and foreign). */
-        if (cj->subtype != cell_subtype_void &&
-            (cj->grav.count == 0 ||
-             (ci->nodeID != nodeID && cj->nodeID != nodeID)))
+        /* Avoid empty cells (except voids). */
+        if (cj->grav.count == 0 && cj->subtype != cell_subtype_void) continue;
+
+        /* Completely foreign pairs also get the Nigel treatment (AKA are kicked
+         * out of the union/we skip them). Unless they are void cells, Nigels a
+         * fan of those (and we need to make tasks for them to be later split
+         * even if they are empty and foreign). */
+        if ((ci->nodeID != nodeID && cj->nodeID != nodeID) &&
+            cj->subtype != cell_subtype_void)
           continue;
 
         /* Do we need a pair interaction for these cells? */
         if (engine_gravity_need_cell_pair_task(e, ci, cj, periodic, use_mesh)) {
-
           /* Ok, we need to add a direct pair calculation */
           engine_make_pair_gravity_task(e, sched, ci, cj, nodeID, cid, cjd);
         }
