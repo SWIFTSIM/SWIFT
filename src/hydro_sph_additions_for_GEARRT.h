@@ -10,7 +10,9 @@
 __attribute__((always_inline)) INLINE static int
 hydro_part_geometry_well_behaved(const struct part* restrict p) {
 
+#ifdef RT_GEAR
   return p->geometry.wcorr > const_gizmo_min_wcorr;
+#endif
 }
 
 /**
@@ -20,9 +22,11 @@ hydro_part_geometry_well_behaved(const struct part* restrict p) {
 __attribute__((always_inline)) INLINE static void
 hydro_velocities_reset_centroids(struct part* restrict p) {
 
+#ifdef RT_GEAR
   p->geometry.centroid[0] = 0.0f;
   p->geometry.centroid[1] = 0.0f;
   p->geometry.centroid[2] = 0.0f;
+#endif
 }
 
 /**
@@ -37,10 +41,12 @@ __attribute__((always_inline)) INLINE static void
 hydro_velocities_normalise_centroid(struct part* restrict p,
                                     const float wcount) {
 
+#ifdef RT_GEAR
   const float norm = kernel_norm / wcount;
   p->geometry.centroid[0] *= norm;
   p->geometry.centroid[1] *= norm;
   p->geometry.centroid[2] *= norm;
+#endif
 }
 
 /**
@@ -56,9 +62,11 @@ __attribute__((always_inline)) INLINE static void
 hydro_velocities_update_centroid_left(struct part* restrict p, const float* dx,
                                       const float w) {
 
+#ifdef RT_GEAR
   p->geometry.centroid[0] -= dx[0] * w;
   p->geometry.centroid[1] -= dx[1] * w;
   p->geometry.centroid[2] -= dx[2] * w;
+#endif
 }
 
 /**
@@ -74,12 +82,13 @@ __attribute__((always_inline)) INLINE static void
 hydro_velocities_update_centroid_right(struct part* restrict p, const float* dx,
                                        const float w) {
 
+#ifdef RT_GEAR
   p->geometry.centroid[0] += dx[0] * w;
   p->geometry.centroid[1] += dx[1] * w;
   p->geometry.centroid[2] += dx[2] * w;
+#endif
 }
 
-// TODO: Maybe move this into rt_additions.h
 __attribute__((always_inline)) INLINE static void
 gearrt_density_accumulate_geometry_and_matrix(struct part* restrict pi,
                                               const float wi,

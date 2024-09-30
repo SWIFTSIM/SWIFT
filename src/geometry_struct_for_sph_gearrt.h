@@ -4,7 +4,7 @@
 /* Geometrical quantities used for hydro. */
 struct geometry_struct_for_rt {
 
-#ifndef RT_NONE
+#ifdef RT_GEAR
   /* Volume of the particle. */
   float volume;
 

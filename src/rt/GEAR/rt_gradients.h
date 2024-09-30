@@ -20,8 +20,6 @@
 #ifndef SWIFT_RT_GRADIENTS_GEAR_H
 #define SWIFT_RT_GRADIENTS_GEAR_H
 
-/* better safe than sorry */
-
 #include "hydro.h" /* needed for hydro_part_geometry_well_behaved() */
 #include "rt_getters.h"
 /* #include "rt_slope_limiters_cell.h" [> skipped for now <] */
