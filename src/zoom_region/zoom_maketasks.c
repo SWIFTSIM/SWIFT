@@ -52,9 +52,9 @@
  * @param num_elements Number of cells to traverse.
  * @param extra_data The #engine.
  */
-static void engine_make_self_gravity_tasks_mapper_bkg_cells(void *map_data,
-                                                            int num_elements,
-                                                            void *extra_data) {
+void engine_make_self_gravity_tasks_mapper_bkg_cells(void *map_data,
+                                                     int num_elements,
+                                                     void *extra_data) {
 
   struct engine *e = (struct engine *)extra_data;
   struct space *s = e->s;
@@ -128,8 +128,9 @@ static void engine_make_self_gravity_tasks_mapper_bkg_cells(void *map_data,
  * @param num_elements Number of cells to traverse.
  * @param extra_data The #engine.
  */
-static void engine_make_self_gravity_tasks_mapper_buffer_cells(
-    void *map_data, int num_elements, void *extra_data) {
+void engine_make_self_gravity_tasks_mapper_buffer_cells(void *map_data,
+                                                        int num_elements,
+                                                        void *extra_data) {
 
   struct engine *e = (struct engine *)extra_data;
   struct space *s = e->s;
@@ -193,9 +194,9 @@ static void engine_make_self_gravity_tasks_mapper_buffer_cells(
  * @param num_elements Number of cells to traverse.
  * @param extra_data The #engine.
  */
-static void engine_make_self_gravity_tasks_mapper_buffer_bkg(void *map_data,
-                                                             int num_elements,
-                                                             void *extra_data) {
+void engine_make_self_gravity_tasks_mapper_buffer_bkg(void *map_data,
+                                                      int num_elements,
+                                                      void *extra_data) {
 
   /* Useful local information */
   struct engine *e = (struct engine *)extra_data;
@@ -335,8 +336,8 @@ void zoom_engine_make_self_gravity_tasks(struct space *s, struct engine *e) {
  * @param e The #engine.
  * @param c The #cell.
  */
-static void zoom_engine_make_hierarchical_void_tasks_recursive(struct engine *e,
-                                                               struct cell *c) {
+void zoom_engine_make_hierarchical_void_tasks_recursive(struct engine *e,
+                                                        struct cell *c) {
 
   struct scheduler *s = &e->sched;
   const int is_self_gravity = (e->policy & engine_policy_self_gravity);
