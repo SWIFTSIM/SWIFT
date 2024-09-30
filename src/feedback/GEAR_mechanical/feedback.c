@@ -294,7 +294,7 @@ void feedback_will_do_feedback(
       star_age_beg_step < 0 ? 0 : star_age_beg_step;
 
   /* A single star */
-  if (sp->feedback_data.star_type == single_star) {
+  if (sp->star_type == single_star) {
     /* Now, compute the stellar evolution state for individual star particles.
      */
     stellar_evolution_evolve_individual_star(sp, model, cosmo, us, phys_const,
@@ -403,7 +403,7 @@ void feedback_init_spart(struct spart* sp) {
  */
 void feedback_init_after_star_formation(
     struct spart* sp, const struct feedback_props* feedback_props,
-    enum star_feedback_type star_type) {
+    enum stellar_type star_type) {
 
   feedback_init_spart(sp);
 
@@ -415,7 +415,7 @@ void feedback_init_after_star_formation(
 
   /* Give to the star its appropriate type: single star, continuous IMF star or
      single population star */
-  sp->feedback_data.star_type = star_type;
+  sp->star_type = star_type;
 }
 
 /**
