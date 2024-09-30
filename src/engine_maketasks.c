@@ -2049,7 +2049,7 @@ void engine_gravity_make_task_loop(struct engine *e, int cid, const int cdim[3],
   /* Skip cells without gravity particles unless they are void cells. */
   if (ci->grav.count == 0 && ci->subtype != cell_subtype_void) return;
 
-  /* If the cell is local build a self-interaction. */
+  /* If the cell is local build a self-interaction */
   if (ci->nodeID == nodeID) {
     scheduler_addtask(sched, task_type_self, task_subtype_grav, 0, 0, ci, NULL);
   }
