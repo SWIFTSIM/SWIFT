@@ -175,50 +175,6 @@ void engine_make_self_gravity_tasks_mapper_buffer_cells(void *map_data,
 }
 
 /**
- * @brief Constructs the top-level self gravity tasks zoom cells.
- *
- * All local top-level zoom cells get a self task if they contain particles.
- *
- * zoom pair tasks are created during task splitting as the pair tasks
- * including void cells are split into smaller tasks. This is done so we can
- * make the most of any possible void mm interactions above the zoom level in
- * the cell tree.
- *
- * @param map_data Offset of first two indices disguised as a pointer.
- * @param num_elements Number of cells to traverse.
- * @param extra_data The #engine.
- */
-void engine_make_self_gravity_tasks_mapper_zoom_cells(void *map_data,
-                                                      int num_elements,
-                                                      void *extra_data) {
-
-  struct engine *e = (struct engine *)extra_data;
-  struct scheduler *sched = &e->sched;
-  const int nodeID = e->nodeID;
-  struct space *s = e->s;
-  struct cell *cells = s->zoom_props->zoom_cells_top;
-
-  /* Loop through the elements, which are just byte offsets from NULL. */
-  for (int ind = 0; ind < num_elements; ind++) {
-
-    /* Get the cell index. */
-    const int cid = (size_t)(map_data) + ind;
-
-    /* Get the cell */
-    struct cell *c = &cells[cid];
-
-    /* Skip cells without gravity particles. */
-    if (c->grav.count == 0) return;
-
-    /* If the cell is local build a self-interaction */
-    if (c->nodeID == nodeID) {
-      scheduler_addtask(sched, task_type_self, task_subtype_grav, 0, 0, c,
-                        NULL);
-    }
-  }
-}
-
-/**
  * @brief Constructs the top-level tasks for the short-range gravity
  * and long-range gravity interactions between natural level cells
  * and zoom level cells.
