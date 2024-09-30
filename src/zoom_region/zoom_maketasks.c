@@ -415,7 +415,7 @@ void zoom_engine_make_hierarchical_void_tasks(struct engine *e) {
   struct space *s = e->s;
   struct zoom_region_properties *zoom_props = s->zoom_props;
   const int nr_void_cells = zoom_props->nr_void_cells;
-  const int *void_cells = zoom_props->void_cells_top;
+  const int *void_cells = zoom_props->void_cell_indices;
   struct cell *cells = s->cells_top;
 
   /* Loop through the void cells and make the hierarchical tasks. */

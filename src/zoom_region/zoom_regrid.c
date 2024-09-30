@@ -78,7 +78,7 @@ void zoom_prepare_cells(struct space *s, const int zoom_cdim[3], int verbose) {
                s->zoom_props->local_bkg_cells_with_particles_top);
     swift_free("local_buffer_cell_with_particless_top",
                s->zoom_props->local_buffer_cells_with_particles_top);
-    swift_free("void_cells_top", s->zoom_props->void_cells_top);
+    swift_free("void_cell_indices", s->zoom_props->void_cell_indices);
     swift_free("neighbour_cells_top", s->zoom_props->neighbour_cells_top);
 
     /* Setting the new zoom cdim (this is the only property that isn't

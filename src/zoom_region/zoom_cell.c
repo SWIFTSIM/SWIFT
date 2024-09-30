@@ -124,11 +124,11 @@ void zoom_find_void_cells(struct space *s, const int verbose) {
   }
 
   /* Allocate the indices of void cells */
-  if (swift_memalign("void_cells_top", (void **)&s->zoom_props->void_cells_top,
-                     SWIFT_STRUCT_ALIGNMENT,
-                     target_void_count * sizeof(int)) != 0)
+  if (swift_memalign(
+          "void_cell_indices", (void **)&s->zoom_props->void_cell_indices,
+          SWIFT_STRUCT_ALIGNMENT, target_void_count * sizeof(int)) != 0)
     error("Failed to allocate indices of local top-level background cells.");
-  bzero(s->zoom_props->void_cells_top, target_void_count * sizeof(int));
+  bzero(s->zoom_props->void_cell_indices, target_void_count * sizeof(int));
 
   /* Loop over the background/buffer cells and find cells containing
    * the zoom region. */
@@ -140,7 +140,7 @@ void zoom_find_void_cells(struct space *s, const int verbose) {
     /* Label this cell if it contains the zoom region. */
     if (zoom_cell_inside_zoom_region(c, s)) {
       c->subtype = cell_subtype_void;
-      zoom_props->void_cells_top[zoom_props->nr_void_cells++] = cid;
+      zoom_props->void_cell_indices[zoom_props->nr_void_cells++] = cid;
     }
   }
 
@@ -156,7 +156,7 @@ void zoom_find_void_cells(struct space *s, const int verbose) {
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check the void cells are in the right place. */
   for (int i = 0; i < zoom_props->nr_void_cells; i++) {
-    const int cid = zoom_props->void_cells_top[i];
+    const int cid = zoom_props->void_cell_indices[i];
     if (cid < offset || cid >= offset + ncells)
       error("Void cell index is out of range (cid=%d, offset=%d, ncells=%d)",
             cid, offset, ncells);
@@ -1081,18 +1081,18 @@ void zoom_void_timestep_collect(struct engine *e) {
   struct space *s = e->s;
   struct zoom_region_properties *zoom_props = s->zoom_props;
   const int nr_void_cells = zoom_props->nr_void_cells;
-  const int *void_cells_top = zoom_props->void_cells_top;
+  const int *void_cell_indices = zoom_props->void_cell_indices;
 
   /* Loop over all void cells and collect the timesteps. */
   for (int i = 0; i < nr_void_cells; i++) {
-    struct cell *c = &s->cells_top[void_cells_top[i]];
+    struct cell *c = &s->cells_top[void_cell_indices[i]];
     zoom_void_timestep_collect_recursive(c);
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Ensure the void cells have the right timesteps. */
   for (int i = 0; i < nr_void_cells; i++) {
-    struct cell *c = &s->cells_top[void_cells_top[i]];
+    struct cell *c = &s->cells_top[void_cell_indices[i]];
     if (c->grav.ti_end_min != e->ti_current) {
       error("Void cell has not been updated with a timestep!");
     }
