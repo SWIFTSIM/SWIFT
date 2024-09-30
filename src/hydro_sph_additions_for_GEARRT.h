@@ -12,6 +12,8 @@ hydro_part_geometry_well_behaved(const struct part* restrict p) {
 
 #ifdef RT_GEAR
   return p->geometry.wcorr > const_gizmo_min_wcorr;
+#else
+  return 0;
 #endif
 }
 
