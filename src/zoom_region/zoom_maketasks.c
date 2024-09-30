@@ -52,9 +52,9 @@
  * @param num_elements Number of cells to traverse.
  * @param extra_data The #engine.
  */
-void engine_make_self_gravity_tasks_mapper_bkg_cells(void *map_data,
-                                                     int num_elements,
-                                                     void *extra_data) {
+static void engine_make_self_gravity_tasks_mapper_bkg_cells(void *map_data,
+                                                            int num_elements,
+                                                            void *extra_data) {
 
   struct engine *e = (struct engine *)extra_data;
   struct space *s = e->s;
@@ -128,9 +128,8 @@ void engine_make_self_gravity_tasks_mapper_bkg_cells(void *map_data,
  * @param num_elements Number of cells to traverse.
  * @param extra_data The #engine.
  */
-void engine_make_self_gravity_tasks_mapper_buffer_cells(void *map_data,
-                                                        int num_elements,
-                                                        void *extra_data) {
+static void engine_make_self_gravity_tasks_mapper_buffer_cells(
+    void *map_data, int num_elements, void *extra_data) {
 
   struct engine *e = (struct engine *)extra_data;
   struct space *s = e->s;
@@ -194,9 +193,9 @@ void engine_make_self_gravity_tasks_mapper_buffer_cells(void *map_data,
  * @param num_elements Number of cells to traverse.
  * @param extra_data The #engine.
  */
-void engine_make_self_gravity_tasks_mapper_buffer_bkg(void *map_data,
-                                                      int num_elements,
-                                                      void *extra_data) {
+static void engine_make_self_gravity_tasks_mapper_buffer_bkg(void *map_data,
+                                                             int num_elements,
+                                                             void *extra_data) {
 
   /* Useful local information */
   struct engine *e = (struct engine *)extra_data;
@@ -402,6 +401,8 @@ static void zoom_engine_make_hierarchical_void_tasks_recursive(struct engine *e,
  * @brief Construct the hierarchical tasks for the void cell tree.
  *
  * This will construct:
+ * - The init for preparing void cell multipoles.
+ * - The init implicit task for the void cells.
  * - The long-range gravity task for the void cells.
  * - The down-pass gravity task for the void cells.
  * - The down-pass implicit task for the void cells.
