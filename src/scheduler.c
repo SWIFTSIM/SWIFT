@@ -83,7 +83,9 @@ static void scheduler_extend_unlocks(struct scheduler *s) {
     error("Failed to re-allocate unlocks.");
 
   /* Wait for all writes to the old buffer to complete. */
-  while (s->completed_unlock_writes < s->size_unlocks);
+  while (s->completed_unlock_writes < s->size_unlocks) {
+    /* Nothing to do here. */
+  }
 
   /* Copy the buffers. */
   memcpy(unlocks_new, s->unlocks, sizeof(struct task *) * s->size_unlocks);
@@ -124,7 +126,9 @@ void scheduler_addunlock(struct scheduler *s, struct task *ta,
 #endif
 
   /* Wait for there to actually be space at my index. */
-  while (ind > s->size_unlocks);
+  while (ind > s->size_unlocks) {
+    /* Nothing to do here. */
+  }
 
   /* Guard against case when more than (old) s->size_unlocks unlocks
    * are now pending. */

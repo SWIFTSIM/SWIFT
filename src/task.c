@@ -1324,7 +1324,6 @@ void task_dump_all(struct engine *e, int step) {
           " %03d 0 0 0 0 %lld %lld %lld %lld %lld 0 0 %lld 0 0 0 0 0 0 0 0\n",
           engine_rank, (long long int)e->tic_step, (long long int)e->toc_step,
           e->updates, e->g_updates, e->s_updates, cpufreq);
-      int count = 0;
       for (int l = 0; l < e->sched.nr_tasks; l++) {
         if (!e->sched.tasks[l].implicit &&
             e->sched.tasks[l].tic > e->tic_step) {
@@ -1364,7 +1363,6 @@ void task_dump_all(struct engine *e, int step) {
                                          e->s->dim)
                   : -1);
         }
-        count++;
       }
       fclose(file_thread);
     }

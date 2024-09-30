@@ -252,6 +252,10 @@ void runner_do_star_formation_sink(struct runner *r, struct cell *c,
         error("TODO");
 #endif
 
+        /* Update the sink properties before spwaning stars */
+        sink_update_sink_properties_before_star_formation(s, e, sink_props,
+                                                          phys_const);
+
         /* Spawn as many stars as necessary
            - loop counter for the random seed.
            - Start by 1 as 0 is used at init (sink_copy_properties) */
@@ -283,29 +287,14 @@ void runner_do_star_formation_sink(struct runner *r, struct cell *c,
           c->stars.h_max = max(c->stars.h_max, sp->h);
           c->stars.h_max_active = max(c->stars.h_max_active, sp->h);
 
-          /* count the number of stars spawned by this particle */
-          s->n_stars++;
-
-          /* Update the mass */
-          s->mass = s->mass - s->target_mass * phys_const->const_solar_mass;
-
-          /* Bug fix: Do not forget to update the sink gpart's mass. */
-          s->gpart->mass = s->mass;
-
-#ifdef SWIFT_DEBUG_CHECKS
-          /* This message must be put carefully after giving the star its mass,
-             updated the sink mass and before changing the target_type */
-          message(
-              "%010lld spawn a star (%010lld) with mass %8.2f Msol type=%d  "
-              "loop=%03d. Sink remaining mass: %e Msol.",
-              s->id, sp->id, sp->mass / phys_const->const_solar_mass,
-              s->target_type, star_counter,
-              s->mass / phys_const->const_solar_mass);
-#endif
-
-          /* Sample the IMF to the get next target mass */
-          sink_update_target_mass(s, sink_props, e, star_counter);
+          /* Update sink properties */
+          sink_update_sink_properties_during_star_formation(
+              s, sp, e, sink_props, phys_const, star_counter);
         } /* Loop over the stars to spawn */
+
+        /* Update the sink after star formation */
+        sink_update_sink_properties_after_star_formation(s, e, sink_props,
+                                                         phys_const);
       } /* if sink_is_active */
     } /* Loop over the particles */
   }
@@ -467,7 +456,8 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
               /* message("We formed a star id=%lld cellID=%lld", sp->id,
                * c->cellID); */
 
-              /* Copy the properties of the gas particle to the star particle */
+              /* Copy the properties of the gas particle to the star particle
+               */
               star_formation_copy_properties(
                   p, xp, sp, e, sf_props, cosmo, with_cosmology, phys_const,
                   hydro_props, us, cooling, !spawn_spart);
@@ -640,7 +630,8 @@ void runner_do_sink_formation(struct runner *r, struct cell *c) {
             /* Did we get a sink? (Or did we run out of spare ones?) */
             if (sink != NULL) {
 
-              /* Copy the properties of the gas particle to the star particle */
+              /* Copy the properties of the gas particle to the star particle
+               */
               sink_copy_properties(p, xp, sink, e, sink_props, cosmo,
                                    with_cosmology, phys_const, hydro_props, us,
                                    cooling);
