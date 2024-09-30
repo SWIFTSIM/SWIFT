@@ -76,7 +76,8 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
     error("c->field tensor not initialised");
 #endif
 
-  if (c->split) {
+  /* Is the cell not a leaf? */
+  if (c->split || c->subtype == cell_subtype_void) {
 
     /* Node case */
 
@@ -107,7 +108,9 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
         }
 
         /* Recurse */
-        runner_do_grav_down(r, cp, 0);
+        if (cp->grav.super != cp) {
+          runner_do_grav_down(r, cp, 0);
+        }
       }
     }
 
@@ -1995,6 +1998,12 @@ void runner_dopair_grav_mm_progenies(struct runner *r, const long long flags,
   /* Clear the flags */
   runner_clear_grav_flags(ci, e);
   runner_clear_grav_flags(cj, e);
+
+  /* If the flag is -2 we have an mm task not defined at the progeny level. */
+  if (flags == -2) {
+    runner_dopair_grav_mm(r, ci, cj);
+    return;
+  }
 
   /* Loop over all pairs of progenies */
   for (int i = 0; i < 8; i++) {
