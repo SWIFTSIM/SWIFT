@@ -40,13 +40,7 @@ INLINE static int star_formation_read_particles(struct spart* sparts,
   /* List what we want to read */
   list[0] = io_make_input_field("BirthMass", FLOAT, 1, OPTIONAL, UNIT_CONV_MASS,
                                 sparts, sf_data.birth_mass);
-
-  /* By default, stars are set to star_population */
-  list[1] = io_make_input_field("StellarParticleType", INT, 1, OPTIONAL,
-				UNIT_CONV_NO_UNITS, sparts,
-				feedback_data.star_type);
-
-  return 2;
+  return 1;
 }
 
 /**
