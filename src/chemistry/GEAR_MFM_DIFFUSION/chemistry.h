@@ -361,7 +361,7 @@ __attribute__((always_inline)) INLINE static float chemistry_timestep(
  * @param p Particle.
  */
 __attribute__((always_inline)) INLINE static float
-chemistry_compute_supertimestep(const struct phys_const* restrict phys_const,
+chemistry_supertimestep(const struct phys_const* restrict phys_const,
                                 const struct cosmology* restrict cosmo,
                                 const struct unit_system* restrict us,
                                 const struct hydro_props* hydro_props,
