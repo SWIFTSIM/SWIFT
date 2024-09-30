@@ -297,7 +297,7 @@ void feedback_init_spart(struct spart* sp) {
  */
 void feedback_init_after_star_formation(
     struct spart* sp, const struct feedback_props* feedback_props,
-    enum stellar_type star_type) {
+    const enum stellar_type star_type) {
 
   feedback_init_spart(sp);
 
