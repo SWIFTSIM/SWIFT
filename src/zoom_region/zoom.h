@@ -28,8 +28,6 @@ struct swift_params;
 struct space;
 struct cell;
 struct engine;
-struct task;
-struct scheduler;
 
 /* Define a constant for the background task depth. */
 #define zoom_bkg_subdepth_diff_grav_default 4
