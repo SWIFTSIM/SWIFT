@@ -28,6 +28,8 @@ struct swift_params;
 struct space;
 struct cell;
 struct engine;
+struct task;
+struct scheduler;
 
 /* Define a constant for the background task depth. */
 #define zoom_bkg_subdepth_diff_grav_default 4
@@ -56,4 +58,12 @@ void zoom_void_space_split(struct space *s, int verbose);
 /* Task creation functions. */
 void zoom_engine_make_self_gravity_tasks(struct space *s, struct engine *e);
 
+/* Void cell tree mutlipole initialisation. */
+void zoom_init_void_mpoles(struct engine *e);
+
+/* Void cell gravity task creation. */
+void zoom_engine_make_hierarchical_void_tasks(struct engine *e);
+
+/* Update the void cell gravity timesteps. */
+void zoom_void_timestep_collect(struct engine *e);
 #endif /* SWIFT_ZOOM_H */
