@@ -1394,6 +1394,13 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
   const struct space *sp = s->space;
   struct engine *e = sp->e;
 
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Ensure we haven't got a task including a void cell. */
+  if (t->ci->subtype == cell_subtype_void ||
+      (t->type == task_type_pair && t->cj->subtype == cell_subtype_void))
+    error("Got a task with a void cell.");
+#endif
+
   /* Iterate on this task until we're done with it. */
   int redo = 1;
   while (redo) {
