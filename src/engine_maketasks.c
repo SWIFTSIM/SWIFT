@@ -1875,7 +1875,7 @@ void engine_make_hierarchical_tasks_mapper(void *map_data, int num_elements,
     struct cell *c = &((struct cell *)map_data)[ind];
 
     /* In zoom land we need to handle void cells separately after all other
-     * cells. This is done after this mapper call in engine_maketasks. */
+     * cells. This is done before this mapper call in engine_maketasks. */
     if (c->subtype == cell_subtype_void) {
       continue;
     }
