@@ -34,6 +34,7 @@
 #include "kernel_gravity.h"
 #include "kernel_long_gravity.h"
 #include "restart.h"
+#include "space.h"
 
 #define gravity_props_default_a_smooth 1.25f
 #define gravity_props_default_r_cut_max 4.5f
@@ -101,6 +102,7 @@ void gravity_props_init(struct gravity_props *p, struct swift_params *params,
       error("Mesh too small given r_cut_max. Should be at least %d cells wide.",
             (int)(2. * p->a_smooth * p->r_cut_max_ratio) + 1);
 
+    /* Check the mesh */
     if (p->mesh_size < max3(cdim[0], cdim[1], cdim[2]))
       error(
           "Mesh too small given the number of top-level cells. Should be at "
@@ -255,6 +257,13 @@ void gravity_props_init(struct gravity_props *p, struct swift_params *params,
 
   p->max_adaptive_softening *= kernel_gravity_softening_plummer_equivalent;
   p->min_adaptive_softening *= kernel_gravity_softening_plummer_equivalent;
+
+  /* The types to check for in the exact gravity N^2 debugging */
+  for (int i = 0; i < swift_type_count; ++i)
+    p->exact_gravity_to_check_types[i] = 1;
+  parser_get_opt_param_int_array(params, "Gravity:exact_gravity_check_types",
+                                 swift_type_count,
+                                 p->exact_gravity_to_check_types);
 
   /* Copy over the gravitational constant */
   p->G_Newton = phys_const->const_newton_G;

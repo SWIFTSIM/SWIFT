@@ -1473,8 +1473,7 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
       }
 
       /* Should this task be split-up? */
-      if (cell_can_split_pair_gravity_task(ci) &&
-          cell_can_split_pair_gravity_task(cj)) {
+      if (cell_can_split_pair_gravity_task(ci, cj)) {
         const long long gcount_i = ci->grav.count;
         const long long gcount_j = cj->grav.count;
 
@@ -1497,7 +1496,9 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
                   /* Can we use a M-M interaction here? */
                   if (cell_can_use_pair_mm(ci->progeny[i], cj->progeny[j], e,
                                            sp, /*use_rebuild_data=*/1,
-                                           /*is_tree_walk=*/1)) {
+                                           /*is_tree_walk=*/1,
+                                           /*periodic boundaries*/ sp->periodic,
+                                           /*use_mesh*/ sp->periodic)) {
 
                     /* Flag this pair as being treated by the M-M task.
                      * We use the 64 bits in the task->flags field to store

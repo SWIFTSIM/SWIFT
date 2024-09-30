@@ -166,6 +166,7 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force,
   const int with_cosmology = (e->policy & engine_policy_cosmology);
   const float hydro_h_max = e->hydro_properties->h_max;
   const float hydro_h_min = e->hydro_properties->h_min;
+  const int convert_at_h_max = e->hydro_properties->convert_at_h_max;
   const integertime_t ti_old_part = c->hydro.ti_old_part;
   const integertime_t ti_current = e->ti_current;
   struct part *const parts = c->hydro.parts;
@@ -328,9 +329,91 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force,
         }
       }
 
+      /* When running a zoom, we need to convert hydro particles that have
+       * exited the zoom region to dark matter.  */
+      if (e->s->with_zoom_region) {
+
+        /* Get the zoom region bounds. */
+        const double *lower = e->s->zoom_props->region_lower_bounds;
+        const double *upper = e->s->zoom_props->region_upper_bounds;
+
+        /* Did the particle leave the zoom region? If so the cell returned by
+         * cell_getid will be beyond the zoom cells in cells_top. */
+        if ((p->x[0] < lower[0]) || (p->x[0] > upper[0]) ||  // x
+            (p->x[1] < lower[1]) || (p->x[1] > upper[1]) ||  // y
+            (p->x[2] < lower[2]) || (p->x[2] > upper[2])) {  // z
+
+          lock_lock(&e->s->lock);
+
+          /* Re-check that the particle has not been removed
+           * by another thread before we do the deed. */
+          if (!part_is_inhibited(p, e)) {
+
+#ifdef WITH_CSDS
+            if (e->policy & engine_policy_csds) {
+              /* Log the particle one last time. */
+              csds_log_part(e->csds, p, xp, e, /* log_all */ 1,
+                            csds_flag_delete, /* data */ 0);
+            }
+#endif
+
+            /* Convert the particle to dark matter */
+            cell_convert_part_to_gpart(e, c, p, xp);
+
+            /* Increment the number of wanderers */
+            atomic_inc(&e->s->zoom_props->nr_wanderers);
+
+            warning(
+                "part %lld converted to dark matter after leaving the zoom "
+                "region.",
+                p->id);
+          }
+
+          if (lock_unlock(&e->s->lock) != 0)
+            error("Failed to unlock the space!");
+
+          continue;
+        }
+      }
+
       /* Limit h to within the allowed range */
       p->h = min(p->h, hydro_h_max);
       p->h = max(p->h, hydro_h_min);
+
+      /* Is the particle isolated enough to reach hmax? If so we will
+       * convert it to dark matter to avoid long running neighbour searches
+       * for particles we don't care about. If a particle reaches h_max it's
+       * already likely to be at the extremes of the pressureless boundary. */
+      if (convert_at_h_max && p->h == hydro_h_max) {
+
+        lock_lock(&e->s->lock);
+
+        /* Re-check that the particle has not been removed
+         * by another thread before we do the deed. */
+        if (!part_is_inhibited(p, e)) {
+
+#ifdef WITH_CSDS
+          if (e->policy & engine_policy_csds) {
+            /* Log the particle one last time. */
+            csds_log_part(e->csds, p, xp, e, /* log_all */ 1, csds_flag_delete,
+                          /* data */ 0);
+          }
+#endif
+
+          /* Convert the particle to dark matter */
+          cell_convert_part_to_gpart(e, c, p, xp);
+
+          /* Increment the number of wanderers */
+          atomic_inc(&e->s->zoom_props->nr_wanderers);
+
+          warning("part %lld converted to dark matter after reaching h_max",
+                  p->id);
+        }
+
+        if (lock_unlock(&e->s->lock) != 0) error("Failed to unlock the space!");
+
+        continue;
+      }
 
       /* Compute (square of) motion since last cell construction */
       const float dx2 = xp->x_diff[0] * xp->x_diff[0] +
@@ -587,6 +670,7 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force,
   const int with_cosmology = (e->policy & engine_policy_cosmology);
   const float stars_h_max = e->hydro_properties->h_max;
   const float stars_h_min = e->hydro_properties->h_min;
+  const int convert_at_h_max = e->hydro_properties->convert_at_h_max;
   const integertime_t ti_old_spart = c->stars.ti_old_part;
   const integertime_t ti_current = e->ti_current;
   struct spart *const sparts = c->stars.parts;
@@ -721,9 +805,91 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force,
         }
       }
 
+      /* When running a zoom, we need to convert hydro particles that have
+       * exited the zoom region to dark matter.  */
+      if (e->s->with_zoom_region) {
+
+        /* Get the zoom region bounds. */
+        const double *lower = e->s->zoom_props->region_lower_bounds;
+        const double *upper = e->s->zoom_props->region_upper_bounds;
+
+        /* Did the particle leave the zoom region? If so the cell returned by
+         * cell_getid will be beyond the zoom cells in cells_top. */
+        if ((sp->x[0] < lower[0]) || (sp->x[0] > upper[0]) ||  // x
+            (sp->x[1] < lower[1]) || (sp->x[1] > upper[1]) ||  // y
+            (sp->x[2] < lower[2]) || (sp->x[2] > upper[2])) {  // z
+
+          lock_lock(&e->s->lock);
+
+          /* Re-check that the particle has not been removed
+           * by another thread before we do the deed. */
+          if (!spart_is_inhibited(sp, e)) {
+
+#ifdef WITH_CSDS
+            if (e->policy & engine_policy_csds) {
+              /* Log the particle one last time. */
+              csds_log_spart(e->csds, sp, e, /* log_all */ 1, csds_flag_delete,
+                             /* data */ 0);
+            }
+#endif
+
+            /* Convert the particle to dark matter */
+            cell_convert_spart_to_gpart(e, c, sp);
+
+            /* Increment the number of wanderers */
+            atomic_inc(&e->s->zoom_props->nr_wanderers);
+
+            warning(
+                "spart %lld converted to dark matter after leaving the zoom "
+                "region.",
+                sp->id);
+          }
+
+          if (lock_unlock(&e->s->lock) != 0)
+            error("Failed to unlock the space!");
+
+          continue;
+        }
+      }
+
       /* Limit h to within the allowed range */
       sp->h = min(sp->h, stars_h_max);
       sp->h = max(sp->h, stars_h_min);
+
+      /* Is the particle isolated enough to reach hmax? If so we can
+       * convert it to dark matter to avoid long running neighbour searches
+       * for particles we don't care about. If a particle reaches h_max it's
+       * already unphysical. */
+      if (convert_at_h_max && sp->h == stars_h_max) {
+
+        lock_lock(&e->s->lock);
+
+        /* Re-check that the particle has not been removed
+         * by another thread before we do the deed. */
+        if (!spart_is_inhibited(sp, e)) {
+
+#ifdef WITH_CSDS
+          if (e->policy & engine_policy_csds) {
+            /* Log the particle one last time. */
+            csds_log_spart(e->csds, sp, e, /* log_all */ 1, csds_flag_delete,
+                           /* data */ 0);
+          }
+#endif
+
+          /* Convert the particle to dark matter */
+          cell_convert_spart_to_gpart(e, c, sp);
+
+          /* Increment the number of wanderers */
+          atomic_inc(&e->s->zoom_props->nr_wanderers);
+
+          warning("spart %lld converted to dark matter after reaching h_max",
+                  sp->id);
+        }
+
+        if (lock_unlock(&e->s->lock) != 0) error("Failed to unlock the space!");
+
+        continue;
+      }
 
       /* Compute (square of) motion since last cell construction */
       const float dx2 = sp->x_diff[0] * sp->x_diff[0] +
@@ -792,6 +958,7 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force,
   const int with_cosmology = (e->policy & engine_policy_cosmology);
   const float black_holes_h_max = e->hydro_properties->h_max;
   const float black_holes_h_min = e->hydro_properties->h_min;
+  const int convert_at_h_max = e->hydro_properties->convert_at_h_max;
   const integertime_t ti_old_bpart = c->black_holes.ti_old_part;
   const integertime_t ti_current = e->ti_current;
   struct bpart *const bparts = c->black_holes.parts;
@@ -925,9 +1092,89 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force,
         }
       }
 
+      /* When running a zoom, we need to convert hydro particles that have
+       * exited the zoom region to dark matter.  */
+      if (e->s->with_zoom_region) {
+
+        /* Get the zoom region bounds. */
+        const double *lower = e->s->zoom_props->region_lower_bounds;
+        const double *upper = e->s->zoom_props->region_upper_bounds;
+
+        /* Did the particle leave the zoom region? If so the cell returned by
+         * cell_getid will be beyond the zoom cells in cells_top. */
+        if ((bp->x[0] < lower[0]) || (bp->x[0] > upper[0]) ||  // x
+            (bp->x[1] < lower[1]) || (bp->x[1] > upper[1]) ||  // y
+            (bp->x[2] < lower[2]) || (bp->x[2] > upper[2])) {  // z
+
+          lock_lock(&e->s->lock);
+
+          /* Re-check that the particle has not been removed
+           * by another thread before we do the deed. */
+          if (!bpart_is_inhibited(bp, e)) {
+
+#ifdef WITH_CSDS
+            if (e->policy & engine_policy_csds) {
+              error("Logging of black hole particles is not yet implemented.");
+            }
+#endif
+
+            /* Convert the particle to dark matter */
+            cell_convert_bpart_to_gpart(e, c, bp);
+
+            /* Increment the number of wanderers */
+            atomic_inc(&e->s->zoom_props->nr_wanderers);
+
+            warning(
+                "bpart %lld converted to dark matter after leaving the zoom "
+                "region.",
+                bp->id);
+          }
+
+          if (lock_unlock(&e->s->lock) != 0)
+            error("Failed to unlock the space!");
+
+          continue;
+        }
+      }
+
       /* Limit h to within the allowed range */
       bp->h = min(bp->h, black_holes_h_max);
       bp->h = max(bp->h, black_holes_h_min);
+
+      /* Is the particle isolated enough to reach hmax? If so we can
+       * convert it to dark matter to avoid long running neighbour searches
+       * for particles we don't care about. If a particle reaches h_max it's
+       * already unphysical. */
+      if (convert_at_h_max && bp->h == black_holes_h_max) {
+
+        lock_lock(&e->s->lock);
+
+        /* Re-check that the particle has not been removed
+         * by another thread before we do the deed. */
+        if (!bpart_is_inhibited(bp, e)) {
+
+#ifdef WITH_CSDS
+          if (e->policy & engine_policy_csds) {
+            /* Log the particle one last time. */
+            csds_log_bpart(e->csds, bp, e, /* log_all */ 1, csds_flag_delete,
+                           /* data */ 0);
+          }
+#endif
+
+          /* Convert the particle to dark matter */
+          cell_convert_bpart_to_gpart(e, c, bp);
+
+          /* Increment the number of wanderers */
+          atomic_inc(&e->s->zoom_props->nr_wanderers);
+
+          warning("bpart %lld converted to dark matter after reaching h_max",
+                  bp->id);
+        }
+
+        if (lock_unlock(&e->s->lock) != 0) error("Failed to unlock the space!");
+
+        continue;
+      }
 
       /* Compute (square of) motion since last cell construction */
       const float dx2 = bp->x_diff[0] * bp->x_diff[0] +
@@ -1100,6 +1347,50 @@ void cell_drift_sink(struct cell *c, const struct engine *e, int force) {
 
             /* Remove the particle entirely */
             cell_remove_sink(e, c, sink);
+          }
+
+          if (lock_unlock(&e->s->lock) != 0)
+            error("Failed to unlock the space!");
+
+          continue;
+        }
+      }
+
+      /* When running a zoom, we remove sinks that exit the zoom region. */
+      if (e->s->with_zoom_region) {
+
+        /* Get the zoom region bounds. */
+        const double *lower = e->s->zoom_props->region_lower_bounds;
+        const double *upper = e->s->zoom_props->region_upper_bounds;
+
+        /* Did the particle leave the zoom region? If so the cell returned by
+         * cell_getid will be beyond the zoom cells in cells_top. */
+        if ((sink->x[0] < lower[0]) || (sink->x[0] > upper[0]) ||  // x
+            (sink->x[1] < lower[1]) || (sink->x[1] > upper[1]) ||  // y
+            (sink->x[2] < lower[2]) || (sink->x[2] > upper[2])) {  // z
+
+          lock_lock(&e->s->lock);
+
+          /* Re-check that the particle has not been removed
+           * by another thread before we do the deed. */
+          if (!sink_is_inhibited(sink, e)) {
+
+#ifdef WITH_CSDS
+            if (e->policy & engine_policy_csds) {
+              error("Logging of sink particles is not yet implemented.");
+            }
+#endif
+
+            /* Remove the particle entirely */
+            cell_remove_sink(e, c, sink);
+
+            /* Increment the number of wanderers */
+            atomic_inc(&e->s->zoom_props->nr_wanderers);
+
+            warning(
+                "sink %lld converted to dark matter after leaving the zoom "
+                "region.",
+                sink->id);
           }
 
           if (lock_unlock(&e->s->lock) != 0)

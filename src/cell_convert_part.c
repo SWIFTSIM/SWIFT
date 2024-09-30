@@ -799,6 +799,55 @@ struct gpart *cell_convert_part_to_gpart(const struct engine *e, struct cell *c,
 }
 
 /**
+ * @brief "Remove" a bpart particle from the calculation and convert its gpart
+ * friend to a dark matter particle.
+ *
+ * Note that the #bpart is not destroyed. The pointer is still valid
+ * after this call and the properties of the #bpart are not altered
+ * apart from the time-bin and #gpart pointer.
+ * The particle is inhibited and will officially be removed at the next
+ * rebuild.
+ *
+ * @param e The #engine running on this node.
+ * @param c The #cell from which to remove the particle.
+ * @param bp The #bpart to remove.
+ *
+ * @return Pointer to the #gpart the #bpart has become. It carries the
+ * ID of the #bpart and has a dark matter type.
+ */
+struct gpart *cell_convert_bpart_to_gpart(const struct engine *e,
+                                          struct cell *c, struct bpart *bp) {
+  /* Quick cross-check */
+  if (c->nodeID != e->nodeID)
+    error("Can't remove a particle in a foreign cell.");
+
+  if (bp->gpart == NULL)
+    error("Trying to convert spart without gpart friend to dark matter!");
+
+  /* Get a handle */
+  struct gpart *gp = bp->gpart;
+
+  /* Mark the particle as inhibited */
+  bp->time_bin = time_bin_inhibited;
+
+  /* Un-link the spart */
+  bp->gpart = NULL;
+
+  /* Mark the gpart as dark matter */
+  gp->type = swift_type_dark_matter;
+  gp->id_or_neg_offset = bp->id;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  gp->ti_kick = bp->ti_kick;
+#endif
+
+  /* Update the space-wide counters */
+  atomic_inc(&e->s->nr_inhibited_bparts);
+
+  return gp;
+}
+
+/**
  * @brief "Remove" a spart particle from the calculation and convert its gpart
  * friend to a dark matter particle.
  *

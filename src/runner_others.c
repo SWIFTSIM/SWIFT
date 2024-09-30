@@ -456,7 +456,8 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
               /* message("We formed a star id=%lld cellID=%lld", sp->id,
                * c->cellID); */
 
-              /* Copy the properties of the gas particle to the star particle */
+              /* Copy the properties of the gas particle to the star particle
+               */
               star_formation_copy_properties(
                   p, xp, sp, e, sf_props, cosmo, with_cosmology, phys_const,
                   hydro_props, us, cooling, !spawn_spart);
@@ -629,7 +630,8 @@ void runner_do_sink_formation(struct runner *r, struct cell *c) {
             /* Did we get a sink? (Or did we run out of spare ones?) */
             if (sink != NULL) {
 
-              /* Copy the properties of the gas particle to the star particle */
+              /* Copy the properties of the gas particle to the star particle
+               */
               sink_copy_properties(p, xp, sink, e, sink_props, cosmo,
                                    with_cosmology, phys_const, hydro_props, us,
                                    cooling);

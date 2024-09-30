@@ -26,14 +26,18 @@ INLINE static void convert_gpart_pos(const struct engine* e,
                                      const struct gpart* gp, double ret[3]) {
 
   const struct space* s = e->s;
+  ret[0] = gp->x[0];
+  ret[1] = gp->x[1];
+  ret[2] = gp->x[2];
+  if (s->with_zoom_region) {
+    ret[0] -= s->zoom_props->zoom_shift[0];
+    ret[1] -= s->zoom_props->zoom_shift[1];
+    ret[2] -= s->zoom_props->zoom_shift[2];
+  }
   if (s->periodic) {
-    ret[0] = box_wrap(gp->x[0], 0.0, s->dim[0]);
-    ret[1] = box_wrap(gp->x[1], 0.0, s->dim[1]);
-    ret[2] = box_wrap(gp->x[2], 0.0, s->dim[2]);
-  } else {
-    ret[0] = gp->x[0];
-    ret[1] = gp->x[1];
-    ret[2] = gp->x[2];
+    ret[0] = box_wrap(ret[0], 0.0, s->dim[0]);
+    ret[1] = box_wrap(ret[1], 0.0, s->dim[1]);
+    ret[2] = box_wrap(ret[2], 0.0, s->dim[2]);
   }
   if (e->snapshot_use_delta_from_edge) {
     ret[0] = min(ret[0], s->dim[0] - e->snapshot_delta_from_edge);

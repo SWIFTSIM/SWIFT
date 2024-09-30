@@ -57,6 +57,7 @@ SPH:
   diffusion_beta:                    0.01     # (Optional) Override the decay/rise rate tuning parameter for the thermal diffusion.
   diffusion_alpha_max:               1.0      # (Optional) Override the maximal thermal diffusion coefficient that is allowed for a given particle.
   diffusion_alpha_min:               0.0      # (Optional) Override the minimal thermal diffusion coefficient that is allowed for a given particle.
+  convert_particles_at_h_max:         1        # Flag for whether to convert SPH particles which reach h_max to dark matter (this can help with long running neighbour searches by removing non-physical particles limited by h_max)
 
 # Parameters of the stars
 Stars:
@@ -101,7 +102,8 @@ Gravity:
   a_smooth:                      1.25      # (Optional) Smoothing scale in top-level cell sizes to smooth the long-range forces over (this is the default value).
   r_cut_max:                     4.5       # (Optional) Cut-off in number of top-level cells beyond which no FMM forces are computed (this is the default value).
   r_cut_min:                     0.1       # (Optional) Cut-off in number of top-level cells below which no truncation of FMM forces are performed (this is the default value).
-
+  exact_gravity_check_types:     [0, 1, 0, 0, 0, 0, 0] # (Optional) What particle types to check for in the exact gravity N^2 algorithm. (defaults to all types)
+  
 # Parameters when running with SWIFT_GRAVITY_FORCE_CHECKS 
 ForceChecks:
   only_when_all_active: 1  # (Optional) Only compute exact forces during timesteps when all gparts are active (default: 0).
@@ -1014,3 +1016,12 @@ Lightcone1:
   min_z_for_gas_filtering:    0.025  # Filter gas particles above this redshift, output all below
   min_temp_for_filtered_gas:  1.0e5  # Above min_z_for_gas_filtering only output gas with temperature above this
   min_nh_for_filtered_gas:    1.0e-6 # Above min_z_for_gas_filtering only output gas with nh/(1+z)^4 above this
+
+# Parameters defining a zoom region (only used for running zoom simulations with --zoom runtime flag)
+ZoomRegion:
+  region_pad_factor: 1.1            # How much larger the zoom region will be than the high res particle distribution in the ICs?
+  zoom_top_level_cells: 16          # How many top level cells should the zoom region be resolved with? (superceeds Scheduler:max_top_level_cells which is unused when a zoom region is turned on)
+  bkg_top_level_cells: 22           # How many cells should the background be resolved with?
+  region_buffer_cell_ratio: 2       # (Optional) How many buffer cells should be in the zoom region? (if 0 buffer cells are ignored) (default: 0)
+  neighbour_max_tree_depth: 2       # (Optional) The depth of the cell trees neighbouring the zoom region (default: -1)
+  bkg_subdepth_diff_grav: 3         # The minimum difference between the leaf depth and the task depth for background cells.

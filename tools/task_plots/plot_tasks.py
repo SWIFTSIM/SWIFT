@@ -302,7 +302,7 @@ data = pl.loadtxt(infile)
 
 #  Do we have an MPI file?
 full_step = data[0, :]
-if full_step.size == 13:
+if full_step.size == 21:
     print("# MPI mode")
     mpimode = True
     if ranks == None:
@@ -326,7 +326,7 @@ else:
     toccol = 5
 
 #  Get CPU_CLOCK to convert ticks into milliseconds.
-CPU_CLOCK = float(full_step[-1]) / 1000.0
+CPU_CLOCK = float(full_step[-7]) / 1000.0
 if args.verbose:
     print("# CPU frequency:", CPU_CLOCK * 1000.0)
 
@@ -392,7 +392,6 @@ for rank in ranks:
             start_t = mintic
         end_t = (toc_step - start_t) / CPU_CLOCK
     else:
-
         if mintic < 0:
             start_t = float(tic_step)
         else:
@@ -454,7 +453,6 @@ for rank in ranks:
         ax.set_xlim(-delta_t * 0.01 / CPU_CLOCK, delta_t * 1.01 / CPU_CLOCK)
         ax.set_ylim(0.5, nethread + 1.0)
         for i in range(nethread):
-
             #  Collect ranges and colours into arrays.
             tictocs = []
             colours = []

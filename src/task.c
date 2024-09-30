@@ -1319,15 +1319,18 @@ void task_dump_all(struct engine *e, int step) {
 
       /* Add some information to help with the plots and conversion of ticks to
        * seconds. */
-      fprintf(file_thread, " %03d 0 0 0 0 %lld %lld %lld %lld %lld 0 0 %lld\n",
-              engine_rank, (long long int)e->tic_step,
-              (long long int)e->toc_step, e->updates, e->g_updates,
-              e->s_updates, cpufreq);
+      fprintf(
+          file_thread,
+          " %03d 0 0 0 0 %lld %lld %lld %lld %lld 0 0 %lld 0 0 0 0 0 0 0 0\n",
+          engine_rank, (long long int)e->tic_step, (long long int)e->toc_step,
+          e->updates, e->g_updates, e->s_updates, cpufreq);
       for (int l = 0; l < e->sched.nr_tasks; l++) {
         if (!e->sched.tasks[l].implicit &&
             e->sched.tasks[l].tic > e->tic_step) {
           fprintf(
-              file_thread, " %03i %i %i %i %i %lli %lli %i %i %i %i %lli %i\n",
+              file_thread,
+              " %03i %i %i %i %i %lli %lli %i %i %i %i %lli %i %i %i %i %i %i "
+              "%i %f %f\n",
               engine_rank, e->sched.tasks[l].rid, e->sched.tasks[l].type,
               e->sched.tasks[l].subtype, (e->sched.tasks[l].cj == NULL),
               (long long int)e->sched.tasks[l].tic,
@@ -1340,12 +1343,29 @@ void task_dump_all(struct engine *e, int step) {
                                              : 0,
               (e->sched.tasks[l].cj != NULL) ? e->sched.tasks[l].cj->grav.count
                                              : 0,
-              e->sched.tasks[l].flags, e->sched.tasks[l].sid);
+              e->sched.tasks[l].flags, e->sched.tasks[l].sid,
+              (e->sched.tasks[l].ci != NULL) ? e->sched.tasks[l].ci->type : -1,
+              (e->sched.tasks[l].cj != NULL) ? e->sched.tasks[l].cj->type : -1,
+              (e->sched.tasks[l].ci != NULL) ? e->sched.tasks[l].ci->subtype
+                                             : -1,
+              (e->sched.tasks[l].cj != NULL) ? e->sched.tasks[l].cj->subtype
+                                             : -1,
+              (e->sched.tasks[l].ci != NULL) ? e->sched.tasks[l].ci->depth : -1,
+              (e->sched.tasks[l].cj != NULL) ? e->sched.tasks[l].cj->depth : -1,
+              (e->sched.tasks[l].ci != NULL && e->sched.tasks[l].cj != NULL)
+                  ? cell_min_dist2(e->sched.tasks[l].ci, e->sched.tasks[l].cj,
+                                   e->s->periodic, e->s->dim)
+                  : -1,
+              (e->sched.tasks[l].ci != NULL && e->sched.tasks[l].cj != NULL)
+                  ? cell_mpole_CoM_dist2(e->sched.tasks[l].ci->grav.multipole,
+                                         e->sched.tasks[l].cj->grav.multipole,
+                                         /*use_rebuild_data*/ 1, e->s->periodic,
+                                         e->s->dim)
+                  : -1);
         }
       }
       fclose(file_thread);
     }
-
     /* And we wait for all to synchronize. */
     MPI_Barrier(MPI_COMM_WORLD);
   }
@@ -1360,14 +1380,17 @@ void task_dump_all(struct engine *e, int step) {
 
   /* Add some information to help with the plots and conversion of ticks to
    * seconds. */
-  fprintf(file_thread, " %d %d %d %d %lld %lld %lld %lld %lld %d %lld\n", -2,
-          -1, -1, 1, (unsigned long long)e->tic_step,
-          (unsigned long long)e->toc_step, e->updates, e->g_updates,
-          e->s_updates, 0, cpufreq);
+  fprintf(
+      file_thread,
+      " %d %d %d %d %lld %lld %lld %lld %lld %d %lld %i %i %i %i %i %i %f %f\n",
+      -2, -1, -1, 1, (unsigned long long)e->tic_step,
+      (unsigned long long)e->toc_step, e->updates, e->g_updates, e->s_updates,
+      0, cpufreq, -1, -1, -1, -1, -1, -1, -1.0, -1.0);
   for (int l = 0; l < e->sched.nr_tasks; l++) {
     if (!e->sched.tasks[l].implicit && e->sched.tasks[l].tic > e->tic_step) {
       fprintf(
-          file_thread, " %i %i %i %i %lli %lli %i %i %i %i %i\n",
+          file_thread,
+          " %i %i %i %i %lli %lli %i %i %i %i %i %i %i %i %i %i %i %f %f\n",
           e->sched.tasks[l].rid, e->sched.tasks[l].type,
           e->sched.tasks[l].subtype, (e->sched.tasks[l].cj == NULL),
           (unsigned long long)e->sched.tasks[l].tic,
@@ -1378,7 +1401,23 @@ void task_dump_all(struct engine *e, int step) {
                                          : e->sched.tasks[l].cj->hydro.count,
           (e->sched.tasks[l].ci == NULL) ? 0 : e->sched.tasks[l].ci->grav.count,
           (e->sched.tasks[l].cj == NULL) ? 0 : e->sched.tasks[l].cj->grav.count,
-          e->sched.tasks[l].sid);
+          e->sched.tasks[l].sid,
+          (e->sched.tasks[l].ci != NULL) ? e->sched.tasks[l].ci->type : -1,
+          (e->sched.tasks[l].cj != NULL) ? e->sched.tasks[l].cj->type : -1,
+          (e->sched.tasks[l].ci != NULL) ? e->sched.tasks[l].ci->subtype : -1,
+          (e->sched.tasks[l].cj != NULL) ? e->sched.tasks[l].cj->subtype : -1,
+          (e->sched.tasks[l].ci != NULL) ? e->sched.tasks[l].ci->depth : -1,
+          (e->sched.tasks[l].cj != NULL) ? e->sched.tasks[l].cj->depth : -1,
+          (e->sched.tasks[l].ci != NULL && e->sched.tasks[l].cj != NULL)
+              ? cell_min_dist2(e->sched.tasks[l].ci, e->sched.tasks[l].cj,
+                               e->s->periodic, e->s->dim)
+              : -1,
+          (e->sched.tasks[l].ci != NULL && e->sched.tasks[l].cj != NULL)
+              ? cell_mpole_CoM_dist2(e->sched.tasks[l].ci->grav.multipole,
+                                     e->sched.tasks[l].cj->grav.multipole,
+                                     /*use_rebuild_data*/ 1, e->s->periodic,
+                                     e->s->dim)
+              : -1);
     }
   }
   fclose(file_thread);
