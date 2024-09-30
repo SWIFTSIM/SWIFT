@@ -271,14 +271,28 @@ void engine_make_self_gravity_tasks_mapper_buffer_bkg(void *map_data,
     /* Get the cell */
     struct cell *ci = &cells[cid];
 
-    /* Skip cells without gravity particles */
-    if (ci->grav.count == 0) continue;
+#ifdef SWIFT_DEBUG_CHECKS
+    if (ci->type != cell_type_buffer) {
+      error("Buffer cell is not a buffer cell. (ci->type = %s)",
+            cellID_names[ci->type]);
+    }
+#endif
+
+    /* Skip cells without gravity particles unless they're voids. */
+    if (ci->grav.count == 0 && ci->subtype != cell_subtype_void) continue;
 
     /* Loop over every neighbouring background cells */
     for (int cjd = bkg_offset; cjd < buffer_offset; cjd++) {
 
       /* Get the cell */
       struct cell *cj = &cells[cjd];
+
+#ifdef SWIFT_DEBUG_CHECKS
+      if (cj->type != cell_type_bkg) {
+        error("Background cell is not a background cell. (cj->type = %s)",
+              cellID_names[cj->type]);
+      }
+#endif
 
       /* Avoid empty cells and completely foreign pairs */
       if (cj->grav.count == 0 || (ci->nodeID != nodeID && cj->nodeID != nodeID))
@@ -292,6 +306,122 @@ void engine_make_self_gravity_tasks_mapper_buffer_bkg(void *map_data,
       }
     }
   }
+}
+
+/**
+ * @brief Construct the hierarchical tasks for the void cell tree recursively.
+ *
+ * This will construct:
+ * - The init for preparing void cell multipoles.
+ * - The init implicit task for the void cells.
+ * - The long-range gravity task for the void cells.
+ * - The down-pass gravity task for the void cells.
+ * - The down-pass implicit task for the void cells.
+ *
+ * @param e The #engine.
+ * @param c The #cell.
+ */
+static void zoom_engine_make_hierarchical_void_tasks_recursive(struct engine *e,
+                                                               struct cell *c) {
+
+  struct scheduler *s = &e->sched;
+  const int is_self_gravity = (e->policy & engine_policy_self_gravity);
+
+  /* At the top level we have a few different tasks to make. */
+  if (c->grav.super == c) {
+
+    if (is_self_gravity) {
+
+      /* Initialisation of the multipoles */
+      c->grav.init = scheduler_addtask(s, task_type_init_grav,
+                                       task_subtype_none, 0, 0, c, NULL);
+
+      /* Gravity non-neighbouring pm calculations. */
+      c->grav.long_range = scheduler_addtask(s, task_type_grav_long_range,
+                                             task_subtype_none, 0, 0, c, NULL);
+
+      /* Gravity recursive down-pass */
+      c->grav.down = scheduler_addtask(s, task_type_grav_down,
+                                       task_subtype_none, 0, 0, c, NULL);
+
+      /* Implicit tasks for the up and down passes */
+      c->grav.init_out = scheduler_addtask(s, task_type_init_grav_out,
+                                           task_subtype_none, 0, 1, c, NULL);
+      c->grav.down_in = scheduler_addtask(s, task_type_grav_down_in,
+                                          task_subtype_none, 0, 1, c, NULL);
+
+      /* Long-range gravity forces (not the mesh ones!) */
+      scheduler_addunlock(s, c->grav.init, c->grav.long_range);
+      scheduler_addunlock(s, c->grav.long_range, c->grav.down);
+
+      /* Link in the implicit tasks */
+      scheduler_addunlock(s, c->grav.init, c->grav.init_out);
+      scheduler_addunlock(s, c->grav.down_in, c->grav.down);
+    }
+  } else if (c->grav.super != NULL) {
+
+    /* Below the top level we just need to link in the implicit tasks. */
+
+    if (is_self_gravity) {
+
+      c->grav.init_out = scheduler_addtask(s, task_type_init_grav_out,
+                                           task_subtype_none, 0, 1, c, NULL);
+
+      c->grav.down_in = scheduler_addtask(s, task_type_grav_down_in,
+                                          task_subtype_none, 0, 1, c, NULL);
+
+      scheduler_addunlock(s, c->parent->grav.init_out, c->grav.init_out);
+      scheduler_addunlock(s, c->grav.down_in, c->parent->grav.down_in);
+    }
+  }
+
+  /* Recurse but don't go deeper then the zoom super level. */
+  for (int k = 0; k < 8; k++) {
+    if (c->progeny[k] != NULL && c->progeny[k]->subtype == cell_subtype_void) {
+      zoom_engine_make_hierarchical_void_tasks_recursive(e, c->progeny[k]);
+    }
+  }
+}
+
+/**
+ * @brief Construct the hierarchical tasks for the void cell tree.
+ *
+ * This will construct:
+ * - The long-range gravity task for the void cells.
+ * - The down-pass gravity task for the void cells.
+ * - The down-pass implicit task for the void cells.
+ *
+ * @param e The #engine.
+ * @param c The #cell.
+ */
+void zoom_engine_make_hierarchical_void_tasks(struct engine *e) {
+
+  ticks tic = getticks();
+
+  /* Get a handle on the zoom properties. */
+  struct space *s = e->s;
+  struct zoom_region_properties *zoom_props = s->zoom_props;
+  const int nr_void_cells = zoom_props->nr_void_cells;
+  const int *void_cells = zoom_props->void_cells_top;
+  struct cell *cells = s->cells_top;
+
+  /* Loop through the void cells and make the hierarchical tasks. */
+  for (int i = 0; i < nr_void_cells; i++) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+    /* Ensure we have a void cell. */
+    if (cells[void_cells[i]].subtype != cell_subtype_void) {
+      error("Cell is not a void cell.");
+    }
+#endif
+
+    zoom_engine_make_hierarchical_void_tasks_recursive(e,
+                                                       &cells[void_cells[i]]);
+  }
+
+  if (e->verbose)
+    message("Making void cell tree tasks took %.3f %s.",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
 }
 
 /**
@@ -321,17 +451,6 @@ void zoom_engine_make_self_gravity_tasks(struct space *s, struct engine *e) {
 
   ticks tic = getticks();
 
-  /* Zoom -> Zoom */
-  threadpool_map(
-      &e->threadpool, engine_make_self_gravity_tasks_mapper_zoom_cells, NULL,
-      s->zoom_props->nr_zoom_cells, 1, threadpool_auto_chunk_size, e);
-
-  if (e->verbose)
-    message("Making zoom->zoom gravity tasks took %.3f %s.",
-            clocks_from_ticks(getticks() - tic), clocks_getunit());
-
-  tic = getticks();
-
   /* Background -> Background */
   threadpool_map(&e->threadpool,
                  engine_make_self_gravity_tasks_mapper_bkg_cells, NULL,
@@ -353,9 +472,6 @@ void zoom_engine_make_self_gravity_tasks(struct space *s, struct engine *e) {
     if (e->verbose)
       message("Making buffer->buffer gravity tasks took %.3f %s.",
               clocks_from_ticks(getticks() - tic), clocks_getunit());
-  }
-
-  if (s->zoom_props->with_buffer_cells) {
 
     tic = getticks();
 
