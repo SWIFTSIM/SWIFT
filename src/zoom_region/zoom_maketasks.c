@@ -341,7 +341,8 @@ static void zoom_engine_make_hierarchical_void_tasks_recursive(struct engine *e,
   struct scheduler *s = &e->sched;
   const int is_self_gravity = (e->policy & engine_policy_self_gravity);
 
-  /* At the top level we have a few different tasks to make. */
+  /* At the super level we have a few different tasks to make. (We don't need
+   * any tasks above the super level) */
   if (c->grav.super == c) {
 
     if (is_self_gravity) {
@@ -374,8 +375,7 @@ static void zoom_engine_make_hierarchical_void_tasks_recursive(struct engine *e,
     }
   } else if (c->grav.super != NULL) {
 
-    /* Below the top level we just need to link in the implicit tasks. */
-
+    /* Below the super level we just need to link in the implicit tasks. */
     if (is_self_gravity) {
 
       c->grav.init_out = scheduler_addtask(s, task_type_init_grav_out,
