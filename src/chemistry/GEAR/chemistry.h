@@ -386,7 +386,8 @@ __attribute__((always_inline)) INLINE static void chemistry_end_gradient(
  */
 __attribute__((always_inline)) INLINE static void chemistry_end_force(
     struct part* restrict p, const struct cosmology* cosmo,
-    const int with_cosmology, const double time, const double dt) {}
+    const int with_cosmology, const double time, const double dt,
+    const struct chemistry_global_data* cd) {}
 
 /**
  * @brief Prepare a particle for the force calculation.
@@ -402,7 +403,8 @@ __attribute__((always_inline)) INLINE static void chemistry_end_force(
  */
 __attribute__((always_inline)) INLINE static void chemistry_prepare_force(
     struct part* restrict p, struct xpart* restrict xp,
-    const struct cosmology* cosmo, const float dt_alpha, const float dt_therm) {
+    const struct cosmology* cosmo, const float dt_alpha, const float dt_therm,
+    const struct chemistry_global_data* cd) {
 }
 
 /**
@@ -444,6 +446,23 @@ __attribute__((always_inline)) INLINE static float chemistry_timestep(
     const struct unit_system* restrict us,
     const struct hydro_props* hydro_props,
     const struct chemistry_global_data* cd, const struct part* restrict p) {
+  return FLT_MAX;
+}
+
+/**
+ * @brief Compute the particle supertimestep proportional to h.
+ *
+ * In GEAR, we don't have supertimestep.
+ *
+ * @param p Particle.
+ */
+__attribute__((always_inline)) INLINE static float
+chemistry_supertimestep(const struct phys_const* restrict phys_const,
+			const struct cosmology* restrict cosmo,
+			const struct unit_system* restrict us,
+			const struct hydro_props* hydro_props,
+			const struct chemistry_global_data* cd,
+			struct part* restrict p, float min_dt_part) {
   return FLT_MAX;
 }
 
