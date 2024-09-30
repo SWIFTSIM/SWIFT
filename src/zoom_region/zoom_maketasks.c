@@ -341,52 +341,48 @@ static void zoom_engine_make_hierarchical_void_tasks_recursive(struct engine *e,
   struct scheduler *s = &e->sched;
   const int is_self_gravity = (e->policy & engine_policy_self_gravity);
 
+  /* Nothing to do if there's no gravity. */
+  if (!is_self_gravity) return;
+
   /* At the super level we have a few different tasks to make. (We don't need
    * any tasks above the super level) */
   if (c->grav.super == c) {
 
-    if (is_self_gravity) {
+    /* Initialisation of the multipoles */
+    c->grav.init = scheduler_addtask(s, task_type_init_grav, task_subtype_none,
+                                     0, 0, c, NULL);
 
-      /* Initialisation of the multipoles */
-      c->grav.init = scheduler_addtask(s, task_type_init_grav,
-                                       task_subtype_none, 0, 0, c, NULL);
+    /* Gravity non-neighbouring pm calculations. */
+    c->grav.long_range = scheduler_addtask(s, task_type_grav_long_range,
+                                           task_subtype_none, 0, 0, c, NULL);
 
-      /* Gravity non-neighbouring pm calculations. */
-      c->grav.long_range = scheduler_addtask(s, task_type_grav_long_range,
-                                             task_subtype_none, 0, 0, c, NULL);
+    /* Gravity recursive down-pass */
+    c->grav.down = scheduler_addtask(s, task_type_grav_down, task_subtype_none,
+                                     0, 0, c, NULL);
 
-      /* Gravity recursive down-pass */
-      c->grav.down = scheduler_addtask(s, task_type_grav_down,
-                                       task_subtype_none, 0, 0, c, NULL);
+    /* Implicit tasks for the up and down passes */
+    c->grav.init_out = scheduler_addtask(s, task_type_init_grav_out,
+                                         task_subtype_none, 0, 1, c, NULL);
+    c->grav.down_in = scheduler_addtask(s, task_type_grav_down_in,
+                                        task_subtype_none, 0, 1, c, NULL);
 
-      /* Implicit tasks for the up and down passes */
-      c->grav.init_out = scheduler_addtask(s, task_type_init_grav_out,
-                                           task_subtype_none, 0, 1, c, NULL);
-      c->grav.down_in = scheduler_addtask(s, task_type_grav_down_in,
-                                          task_subtype_none, 0, 1, c, NULL);
+    /* Long-range gravity forces (not the mesh ones!) */
+    scheduler_addunlock(s, c->grav.init, c->grav.long_range);
+    scheduler_addunlock(s, c->grav.long_range, c->grav.down);
 
-      /* Long-range gravity forces (not the mesh ones!) */
-      scheduler_addunlock(s, c->grav.init, c->grav.long_range);
-      scheduler_addunlock(s, c->grav.long_range, c->grav.down);
-
-      /* Link in the implicit tasks */
-      scheduler_addunlock(s, c->grav.init, c->grav.init_out);
-      scheduler_addunlock(s, c->grav.down_in, c->grav.down);
-    }
+    /* Link in the implicit tasks */
+    scheduler_addunlock(s, c->grav.init, c->grav.init_out);
+    scheduler_addunlock(s, c->grav.down_in, c->grav.down);
   } else if (c->grav.super != NULL) {
 
     /* Below the super level we just need to link in the implicit tasks. */
-    if (is_self_gravity) {
+    c->grav.init_out = scheduler_addtask(s, task_type_init_grav_out,
+                                         task_subtype_none, 0, 1, c, NULL);
+    c->grav.down_in = scheduler_addtask(s, task_type_grav_down_in,
+                                        task_subtype_none, 0, 1, c, NULL);
 
-      c->grav.init_out = scheduler_addtask(s, task_type_init_grav_out,
-                                           task_subtype_none, 0, 1, c, NULL);
-
-      c->grav.down_in = scheduler_addtask(s, task_type_grav_down_in,
-                                          task_subtype_none, 0, 1, c, NULL);
-
-      scheduler_addunlock(s, c->parent->grav.init_out, c->grav.init_out);
-      scheduler_addunlock(s, c->grav.down_in, c->parent->grav.down_in);
-    }
+    scheduler_addunlock(s, c->parent->grav.init_out, c->grav.init_out);
+    scheduler_addunlock(s, c->grav.down_in, c->parent->grav.down_in);
   }
 
   /* Recurse but don't go deeper then the zoom super level. */
