@@ -1,0 +1,75 @@
+# Define the parameters of the zoom region
+ZoomRegion:
+  region_pad_factor: 1.1            # How much larger the zoom region will be than the high res particle distribution in the ICs?
+  zoom_top_level_cells: 16          # How many top level cells should the zoom region be resolved with? (superceeds Scheduler:max_top_level_cells which is unused when a zoom region is turned on)
+  bkg_top_level_cells: 22           # How many cells should the background be resolved with?
+  region_buffer_cell_ratio: 2       # How many buffer cells should be in the zoom region? (if 0 buffer cells are ignored)
+  neighbour_max_tree_depth: 2       # The depth of the cell trees neighbouring the zoom region
+  bkg_subdepth_diff_grav: 3         # The minimum difference between the leaf depth and the task depth for background cells.
+
+# Define the system of units to use internally. 
+InternalUnitSystem:
+  UnitMass_in_cgs:     1.98841e43    # 10^10 M_sun in grams
+  UnitLength_in_cgs:   3.08567758e24 # Mpc in centimeters
+  UnitVelocity_in_cgs: 1e5           # km/s in centimeters per second
+  UnitCurrent_in_cgs:  1             # Amperes
+  UnitTemp_in_cgs:     1             # Kelvin
+
+# Cosmological parameters
+Cosmology:
+  h:              0.6777        # Reduced Hubble constant
+  a_begin:        0.9090909     # Initial scale-factor of the simulation
+  a_end:          1.0           # Final scale factor of the simulation
+  Omega_cdm:      0.2587481     # Cold Dark Matter density parameter
+  Omega_lambda:   0.693         # Dark-energy density parameter
+  Omega_b:        0.0482519     # Baryon density parameter
+
+# Parameters governing the time integration
+TimeIntegration:
+  time_begin: 0.    # The starting time of the simulation (in internal units).
+  time_end:   1e-2  # The end time of the simulation (in internal units).
+  dt_min:     1e-10 # The minimal time-step size of the simulation (in internal units).
+  dt_max:     1e-2  # The maximal time-step size of the simulation (in internal units).
+
+# Parameters governing the snapshots
+Snapshots:
+  basename:            zoom_example
+  scale_factor_first:  0.92  # Scale-factor of the first snaphot (cosmological run)
+  time_first:          0.01  # Time of the first output (non-cosmological run) (in internal units)
+  delta_time:          1.10  # Time difference between consecutive outputs (in internal units)
+  compression:         1
+
+# Parameters governing the conserved quantities statistics
+Statistics:
+  scale_factor_first:  0.92 # Scale-factor of the first stat dump (cosmological run)
+  time_first:          0.01 # Time of the first stat dump (non-cosmological run) (in internal units)
+  delta_time:          1.05 # Time between statistics output
+
+# Parameters for the self-gravity scheme
+Gravity:
+  eta:                      0.025     # Constant dimensionless multiplier for time integration.
+  MAC:                      adaptive
+  epsilon_fmm:              0.001
+  theta_cr:                 0.7       # Opening angle (Multipole acceptance criterion)
+  mesh_side_length:         512
+  comoving_DM_softening:         0.0026994 # Comoving DM softening length (in internal units).
+  max_physical_DM_softening:     0.0007    # Max physical DM softening length (in internal units).
+
+# Parameters related to the initial conditions
+InitialConditions:
+  file_name:  zoom_ics.hdf5
+  periodic:   1
+  cleanup_h_factors: 1               # Remove the h-factors inherited from Gadget
+  cleanup_velocity_factors: 1        # Remove the sqrt(a) factor in the velocities inherited from Gadget
+
+# Parameters for the hydrodynamics scheme
+SPH:
+  resolution_eta:                    1.2348   # Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel).
+  h_min_ratio:                       0.01     # Minimal smoothing length in units of softening.
+  h_max:                             0.5      # Maximal smoothing length in co-moving internal units.
+  CFL_condition:                     0.2      # Courant-Friedrich-Levy condition for time integration.
+  minimal_temperature:               100.0    # (internal units)
+  initial_temperature:               268.7    # (internal units)
+  particle_splitting:                1        # Particle splitting is ON
+  particle_splitting_mass_threshold: 7e-4     # (internal units, i.e. 7e6 Msun ~ 4x initial gas particle mass)
+  convert_particles_at_h_max:         1        # Flag for whether to convert SPH particles which reach h_max to dark matter (this can help with long running neighbour searches by removing non-physical particles limited by h_max)

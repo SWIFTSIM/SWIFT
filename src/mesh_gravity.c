@@ -294,6 +294,57 @@ void cell_gpart_to_mesh_CIC_mapper(void* map_data, int num, void* extra) {
 }
 
 /**
+ * @brief Threadpool mapper function for the mesh CIC assignment of a zoom cell.
+ *
+ * This wraps the cell_gpart_to_mesh_CIC_mapper function to provide correct
+ * labelling in threadpool outputs.
+ *
+ * @param map_data A chunk of the list of local cells.
+ * @param num The number of cells in the chunk.
+ * @param extra The information about the mesh and cells.
+ */
+void zoom_cell_gpart_to_mesh_CIC_mapper(void* map_data, int num, void* extra) {
+
+  /* Call the wrapped function. */
+  cell_gpart_to_mesh_CIC_mapper(map_data, num, extra);
+}
+
+/**
+ * @brief Threadpool mapper function for the mesh CIC assignment of a background
+ * cell.
+ *
+ * This wraps the cell_gpart_to_mesh_CIC_mapper function to provide correct
+ * labelling in threadpool outputs.
+ *
+ * @param map_data A chunk of the list of local cells.
+ * @param num The number of cells in the chunk.
+ * @param extra The information about the mesh and cells.
+ */
+void bkg_cell_gpart_to_mesh_CIC_mapper(void* map_data, int num, void* extra) {
+
+  /* Call the wrapped function. */
+  cell_gpart_to_mesh_CIC_mapper(map_data, num, extra);
+}
+
+/**
+ * @brief Threadpool mapper function for the mesh CIC assignment of a buffer
+ * cell.
+ *
+ * This wraps the cell_gpart_to_mesh_CIC_mapper function to provide correct
+ * labelling in threadpool outputs.
+ *
+ * @param map_data A chunk of the list of local cells.
+ * @param num The number of cells in the chunk.
+ * @param extra The information about the mesh and cells.
+ */
+void buffer_cell_gpart_to_mesh_CIC_mapper(void* map_data, int num,
+                                          void* extra) {
+
+  /* Call the wrapped function. */
+  cell_gpart_to_mesh_CIC_mapper(map_data, num, extra);
+}
+
+/**
  * @brief Computes the potential on a gpart from a given mesh using the CIC
  * method.
  *
@@ -492,6 +543,57 @@ void cell_mesh_to_gpart_CIC_mapper(void* map_data, int num, void* extra) {
     /* Assign this cell's content to the mesh */
     cell_mesh_to_gpart_CIC(c, potential, N, fac, const_G, dim);
   }
+}
+
+/**
+ * @brief Threadpool mapper function for the mesh CIC assignment of a zoom cell.
+ *
+ * This wraps the cell_mesh_to_gpart_CIC_mapper function to provide correct
+ * labelling in threadpool outputs.
+ *
+ * @param map_data A chunk of the list of local cells.
+ * @param num The number of cells in the chunk.
+ * @param extra The information about the mesh and cells.
+ */
+void zoom_cell_mesh_to_gpart_CIC_mapper(void* map_data, int num, void* extra) {
+
+  /* Call the wrapped function. */
+  cell_mesh_to_gpart_CIC_mapper(map_data, num, extra);
+}
+
+/**
+ * @brief Threadpool mapper function for the mesh CIC assignment of a background
+ * cell.
+ *
+ * This wraps the cell_mesh_to_gpart_CIC_mapper function to provide correct
+ * labelling in threadpool outputs.
+ *
+ * @param map_data A chunk of the list of local cells.
+ * @param num The number of cells in the chunk.
+ * @param extra The information about the mesh and cells.
+ */
+void bkg_cell_mesh_to_gpart_CIC_mapper(void* map_data, int num, void* extra) {
+
+  /* Call the wrapped function. */
+  cell_mesh_to_gpart_CIC_mapper(map_data, num, extra);
+}
+
+/**
+ * @brief Threadpool mapper function for the mesh CIC assignment of a buffer
+ * cell.
+ *
+ * This wraps the cell_mesh_to_gpart_CIC_mapper function to provide correct
+ * labelling in threadpool outputs.
+ *
+ * @param map_data A chunk of the list of local cells.
+ * @param num The number of cells in the chunk.
+ * @param extra The information about the mesh and cells.
+ */
+void buffer_cell_mesh_to_gpart_CIC_mapper(void* map_data, int num,
+                                          void* extra) {
+
+  /* Call the wrapped function. */
+  cell_mesh_to_gpart_CIC_mapper(map_data, num, extra);
 }
 
 /**
@@ -908,7 +1010,8 @@ void compute_potential_global(struct pm_mesh* mesh, const struct space* s,
   if (nr_local_cells == 0) {
 
     /* We don't have a cell infrastructure in place so we need to
-     * directly loop over the particles */
+     * directly loop over the particles (which we can do both for a uniform
+     * box and a zoom simulation). */
     threadpool_map(tp, gpart_to_mesh_CIC_mapper, s->gparts, s->nr_gparts,
                    sizeof(struct gpart), threadpool_auto_chunk_size,
                    (void*)&data);
@@ -916,10 +1019,36 @@ void compute_potential_global(struct pm_mesh* mesh, const struct space* s,
   } else { /* Normal case */
 
     /* Do a parallel CIC mesh assignment of the gparts but only using
-     * the local top-level cells */
-    threadpool_map(tp, cell_gpart_to_mesh_CIC_mapper, (void*)local_cells,
-                   nr_local_cells, sizeof(int), threadpool_auto_chunk_size,
-                   (void*)&data);
+     * the local top-level cells (in zoom land we need to split this
+     * loop over the different cell types to balance the threadpool). */
+    if (!s->with_zoom_region) {
+      threadpool_map(tp, cell_gpart_to_mesh_CIC_mapper, (void*)local_cells,
+                     nr_local_cells, sizeof(int), 1, (void*)&data);
+    } else {
+
+      /* Unpack zoom props. */
+      struct zoom_region_properties* zprops = s->zoom_props;
+
+      /* Zoom cells. */
+      threadpool_map(tp, zoom_cell_gpart_to_mesh_CIC_mapper,
+                     (void*)zprops->local_zoom_cells_top,
+                     zprops->nr_local_zoom_cells, sizeof(int),
+                     threadpool_auto_chunk_size, (void*)&data);
+
+      /* Background cells. */
+      threadpool_map(tp, bkg_cell_gpart_to_mesh_CIC_mapper,
+                     (void*)zprops->local_bkg_cells_top,
+                     zprops->nr_local_bkg_cells, sizeof(int),
+                     threadpool_auto_chunk_size, (void*)&data);
+
+      /* Buffer cells (if present) */
+      if (s->zoom_props->with_buffer_cells) {
+        threadpool_map(tp, buffer_cell_gpart_to_mesh_CIC_mapper,
+                       (void*)zprops->local_buffer_cells_top,
+                       zprops->nr_local_buffer_cells, sizeof(int),
+                       threadpool_auto_chunk_size, (void*)&data);
+      }
+    }
   }
 
   if (verbose)
@@ -1011,7 +1140,8 @@ void compute_potential_global(struct pm_mesh* mesh, const struct space* s,
   if (nr_local_cells == 0) {
 
     /* We don't have a cell infrastructure in place so we need to
-     * directly loop over the particles */
+     * directly loop over the particles (which we can do both for a uniform
+     * box and a zoom simulation). */
     threadpool_map(tp, mesh_to_gpart_CIC_mapper, s->gparts, s->nr_gparts,
                    sizeof(struct gpart), threadpool_auto_chunk_size,
                    (void*)&data);
@@ -1019,10 +1149,37 @@ void compute_potential_global(struct pm_mesh* mesh, const struct space* s,
   } else { /* Normal case */
 
     /* Do a parallel CIC mesh interpolation onto the gparts but only using
-       the local top-level cells */
-    threadpool_map(tp, cell_mesh_to_gpart_CIC_mapper, (void*)local_cells,
-                   nr_local_cells, sizeof(int), threadpool_auto_chunk_size,
-                   (void*)&data);
+     * the local top-level cells (in zoom land we need to split this
+     * loop over the different cell types to balance the threadpool). */
+    if (!s->with_zoom_region) {
+      threadpool_map(tp, cell_mesh_to_gpart_CIC_mapper, (void*)local_cells,
+                     nr_local_cells, sizeof(int), threadpool_auto_chunk_size,
+                     (void*)&data);
+    } else {
+
+      /* Unpack zoom props. */
+      struct zoom_region_properties* zprops = s->zoom_props;
+
+      /* Zoom cells. */
+      threadpool_map(tp, zoom_cell_mesh_to_gpart_CIC_mapper,
+                     (void*)zprops->local_zoom_cells_top,
+                     zprops->nr_local_zoom_cells, sizeof(int),
+                     threadpool_auto_chunk_size, (void*)&data);
+
+      /* Background cells. */
+      threadpool_map(tp, bkg_cell_mesh_to_gpart_CIC_mapper,
+                     (void*)zprops->local_bkg_cells_top,
+                     zprops->nr_local_bkg_cells, sizeof(int),
+                     threadpool_auto_chunk_size, (void*)&data);
+
+      /* Buffer cells (if present) */
+      if (s->zoom_props->with_buffer_cells) {
+        threadpool_map(tp, buffer_cell_mesh_to_gpart_CIC_mapper,
+                       (void*)zprops->local_buffer_cells_top,
+                       zprops->nr_local_buffer_cells, sizeof(int),
+                       threadpool_auto_chunk_size, (void*)&data);
+      }
+    }
   }
 
   if (verbose)

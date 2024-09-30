@@ -79,6 +79,7 @@ include_HEADERS += adaptive_softening.h adaptive_softening_iact.h adaptive_softe
 include_HEADERS += forcing.h
 include_HEADERS += power_spectrum.h
 include_HEADERS += ghost_stats.h
+include_HEADERS += zoom_region/zoom.h
 
 # source files for EAGLE extra I/O
 EAGLE_EXTRA_IO_SOURCES=
@@ -157,6 +158,10 @@ SPHM1RT_RT_SOURCES += rt/SPHM1RT/rt_rate_equations.c
 SPHM1RT_RT_SOURCES += rt/SPHM1RT/rt_cooling.c
 endif
 
+# source files for Zoom support
+ZOOM_REGION_SOURCES = zoom_region/zoom_init.c zoom_region/zoom_cell.c \
+    zoom_region/zoom_regrid.c zoom_region/zoom_maketasks.c zoom_region/zoom_split.c
+
 # Common source files
 AM_SOURCES = space.c space_rebuild.c space_regrid.c space_unique_id.c 
 AM_SOURCES += space_sort.c space_split.c space_extras.c space_first_init.c space_init.c 
@@ -206,6 +211,7 @@ AM_SOURCES += $(AGORA_FEEDBACK_SOURCES)
 AM_SOURCES += $(PS2020_COOLING_SOURCES)
 AM_SOURCES += $(SPHM1RT_RT_SOURCES)
 AM_SOURCES += $(GEAR_RT_SOURCES)
+AM_SOURCES += $(ZOOM_REGION_SOURCES)
 
 # Include files for distribution, not installation.
 nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h inline.h kernel_hydro.h kernel_gravity.h 
@@ -508,12 +514,12 @@ nobase_noinst_HEADERS += neutrino/Default/neutrino_properties.h neutrino/Default
 nobase_noinst_HEADERS += neutrino/Default/neutrino_response.h
 
 # Sources and special flags for the gravity library
-libgrav_la_SOURCES = runner_doiact_grav.c
+libgrav_la_SOURCES = runner_doiact_grav.c runner_doiact_long_range_grav.c
 libgrav_la_CFLAGS = $(AM_CFLAGS) $(GRAVITY_CFLAGS)
 libgrav_la_LDFLAGS = $(AM_LDFLAGS) $(EXTRA_LIBS)
 
 # Sources and special flags for the gravity MPI library
-libgrav_mpi_la_SOURCES = runner_doiact_grav.c
+libgrav_mpi_la_SOURCES = runner_doiact_grav.c runner_doiact_long_range_grav.c
 libgrav_mpi_la_CFLAGS = $(AM_CFLAGS) $(GRAVITY_CFLAGS) -DWITH_MPI
 libgrav_mpi_la_LDFLAGS = $(AM_LDFLAGS) $(MPI_LIBS) $(EXTRA_LIBS)
 

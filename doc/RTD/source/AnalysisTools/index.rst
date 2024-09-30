@@ -31,7 +31,7 @@ This feature will create an individual file for each step specified by the ``Sch
 Using this feature has several requirements:
 
 - You need to compile SWIFT including either ``--enable-debugging-checks`` or ``--enable-cell-graph``. Otherwise, cells won't have IDs.
-- There is a limit on how many cell IDs SWIFT can handle while enforcing them to be reproducibly unique. That limit is up to 32 top level cells in any dimension, and up to 16 levels of depth. If any of these thresholds are exceeded, the cells will still have unique cell IDs, but the actual IDs will most likely vary between any two runs.
+- There is a limit on how many cell IDs SWIFT can handle while enforcing them to be reproducibly unique. That limit is up to 32 top level cells in any dimension, and up to 16 levels of depth. If any of these thresholds are exceeded, the cells will still have unique cell IDs, but the actual IDs will most likely vary between any two runs. This is exacerbated when running with a zoom region. With a zoom region the number of cells in the zoom and background cell grids (and buffer cell grid if enabled) must be less than ``32**3`` for the cell IDs to be reproducibly unique.
 
 To plot the task dependencies, you can use the same script as before: ``tools/plot_task_dependencies.py``. The dependency graph now may have some tasks with a pink-ish background colour: These tasks represent dependencies that are unlocked by some other task which is executed for the requested cell, but the cell itself doesn't have an (active) task of that type itself in that given step.
 

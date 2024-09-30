@@ -173,6 +173,41 @@ long long IO_COUNT_PARTICLES_TO_WRITE(sinks, sink);
 long long IO_COUNT_PARTICLES_TO_WRITE(black_holes, bpart);
 long long IO_COUNT_PARTICLES_TO_WRITE(neutrinos, neutrinos);
 
+/**
+ * @brief Count the number of local non-inhibited particles to write.
+ *
+ * Takes into account downsampling.
+ *
+ * @param s The #space.
+ * @param subsample Are we subsampling?
+ * @param subsample_ratio The fraction of particle to keep when subsampling.
+ * @param snap_num The snapshot number to use as random seed.
+ */
+#define IO_COUNT_PARTICLES_IN_ZOOM_TO_WRITE(NAME, TYPE)                        \
+  io_count_##NAME##_in_zoom_to_write(                                          \
+      const struct space* s, const int subsample, const float subsample_ratio, \
+      const int snap_num) {                                                    \
+    long long count = 0;                                                       \
+    const struct zoom_region_properties* props = s->zoom_props;                \
+    for (int i = 0; i < props->nr_local_zoom_cells; ++i) {                     \
+      double dummy1[3], dummy2[3];                                             \
+      const struct cell* c =                                                   \
+          &props->zoom_cells_top[props->local_zoom_cells_top[i]];              \
+      count += cell_count_non_inhibited_##TYPE(c, subsample, subsample_ratio,  \
+                                               snap_num, dummy1, dummy2);      \
+    }                                                                          \
+    return count;                                                              \
+  }
+
+long long IO_COUNT_PARTICLES_IN_ZOOM_TO_WRITE(gas, part);
+long long IO_COUNT_PARTICLES_IN_ZOOM_TO_WRITE(dark_matter, dark_matter);
+long long IO_COUNT_PARTICLES_IN_ZOOM_TO_WRITE(background_dark_matter,
+                                              background_dark_matter);
+long long IO_COUNT_PARTICLES_IN_ZOOM_TO_WRITE(stars, spart);
+long long IO_COUNT_PARTICLES_IN_ZOOM_TO_WRITE(sinks, sink);
+long long IO_COUNT_PARTICLES_IN_ZOOM_TO_WRITE(black_holes, bpart);
+long long IO_COUNT_PARTICLES_IN_ZOOM_TO_WRITE(neutrinos, neutrinos);
+
 #if defined(HAVE_HDF5)
 
 #include <hdf5.h>
@@ -259,6 +294,10 @@ void io_write_array(hid_t h_grp, const int n, const int dim, const void* array,
  * @param dim The box size.
  * @param cells_top The top-level cells.
  * @param nr_cells The number of top-level cells.
+ * @param width The width of the cells.
+ * @param shift The overall shift that was applied by the zoom code to the
+ * particles.
+ * @param nodeID The node we are on.
  * @param distributed Is this a distributed snapshot?
  * @param subsample Are we subsampling the different particle types?
  * @param subsample_fraction The fraction of particles to keep when subsampling.
@@ -274,8 +313,8 @@ void io_write_array(hid_t h_grp, const int n, const int dim, const void* array,
  */
 void io_write_cell_offsets(hid_t h_grp, const int cdim[3], const double dim[3],
                            const struct cell* cells_top, const int nr_cells,
-                           const double width[3], const int nodeID,
-                           const int distributed,
+                           const double width[3], const double shift[3],
+                           const int nodeID, const int distributed,
                            const int subsample[swift_type_count],
                            const float subsample_fraction[swift_type_count],
                            const int snap_num,
@@ -391,6 +430,11 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3], const double dim[3],
       centres[i * 3 + 0] = cells_top[i].loc[0] + cell_width[0] * 0.5;
       centres[i * 3 + 1] = cells_top[i].loc[1] + cell_width[1] * 0.5;
       centres[i * 3 + 2] = cells_top[i].loc[2] + cell_width[2] * 0.5;
+
+      /* Undo the zoom shift */
+      centres[i * 3 + 0] -= shift[0];
+      centres[i * 3 + 1] -= shift[1];
+      centres[i * 3 + 2] -= shift[2];
 
       /* Finish by box wrapping to match what is done to the particles */
       centres[i * 3 + 0] = box_wrap(centres[i * 3 + 0], 0.0, dim[0]);
@@ -596,6 +640,11 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3], const double dim[3],
       cell_width[2] *= factor;
     }
 
+    /* Compute the location of the origin */
+    const double origin[3] = {centres[0] - cell_width[0] / 2.,
+                              centres[1] - cell_width[1] / 2.,
+                              centres[2] - cell_width[2] / 2.};
+
     /* Write some meta-information first */
     hid_t h_subgrp =
         H5Gcreate(h_grp, "Meta-data", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
@@ -603,6 +652,7 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3], const double dim[3],
     io_write_attribute(h_subgrp, "nr_cells", INT, &nr_cells, 1);
     io_write_attribute(h_subgrp, "size", DOUBLE, cell_width, 3);
     io_write_attribute(h_subgrp, "dimension", INT, cdim, 3);
+    io_write_attribute(h_subgrp, "Origin", DOUBLE, origin, 3);
     H5Gclose(h_subgrp);
 
     /* Write the centres to the group */

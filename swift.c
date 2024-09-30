@@ -198,6 +198,7 @@ int main(int argc, char *argv[]) {
   int with_line_of_sight = 0;
   int with_rt = 0;
   int with_power = 0;
+  int with_zoom_region = 0;
   int verbose = 0;
   int nr_threads = 1;
   int nr_pool_threads = -1;
@@ -270,6 +271,8 @@ int main(int argc, char *argv[]) {
       OPT_BOOLEAN('R', "radiation", &with_rt, "Run with radiative transfer.",
                   NULL, 0, 0),
       OPT_BOOLEAN(0, "power", &with_power, "Run with power spectrum outputs.",
+                  NULL, 0, 0),
+      OPT_BOOLEAN('z', "zoom", &with_zoom_region, "Run with a zoom region.",
                   NULL, 0, 0),
 
       OPT_GROUP("  Simulation meta-options:\n"),
@@ -1373,7 +1376,7 @@ int main(int argc, char *argv[]) {
                periodic, replicate, remap_ids, generate_gas_in_ics, with_hydro,
                with_self_gravity, with_star_formation, with_sinks,
                with_DM_particles, with_DM_background_particles, with_neutrinos,
-               talking, dry_run, nr_nodes);
+               with_zoom_region, talking, dry_run, nr_nodes);
 
     /* Initialise the line of sight properties. */
     if (with_line_of_sight) los_init(s.dim, &los_properties, params);
@@ -1397,12 +1400,13 @@ int main(int argc, char *argv[]) {
 
     /* Initialise the gravity properties */
     bzero(&gravity_properties, sizeof(struct gravity_props));
-    if (with_self_gravity)
+    if (with_self_gravity) {
       gravity_props_init(&gravity_properties, params, &prog_const, &cosmo,
                          with_cosmology, with_external_gravity,
                          with_baryon_particles, with_DM_particles,
                          with_neutrinos, with_DM_background_particles, periodic,
                          s.dim, s.cdim);
+    }
 
     /* Initialize the neutrino response if used */
     bzero(&neutrino_response, sizeof(struct neutrino_response));

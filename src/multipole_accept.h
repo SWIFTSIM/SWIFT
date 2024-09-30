@@ -212,6 +212,8 @@ __attribute__((nonnull, pure)) INLINE static int gravity_M2L_accept_symmetric(
  * This uses conservative assumptions to guarantee that all the possible cell
  * pair interactions that need a direct interaction are below this distance.
  *
+ * This function assumes the cells in question are the same size.
+ *
  * @param props The properties of the gravity scheme.
  * @param size The size of the multipoles (here the cell size).
  * @param max_softening The maximal softening accross all particles.

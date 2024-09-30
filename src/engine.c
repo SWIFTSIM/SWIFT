@@ -105,6 +105,7 @@
 #include "tools.h"
 #include "units.h"
 #include "velociraptor_interface.h"
+#include "zoom_region/zoom.h"
 
 const char *engine_policy_names[] = {"none",
                                      "rand",
@@ -549,6 +550,11 @@ void engine_exchange_top_multipoles(struct engine *e) {
 
   /* Let's check that what we received makes sense */
   for (int i = 0; i < e->s->nr_cells; ++i) {
+
+    /* Skip the void cells, avoids double counting zoom cells. (Only applicable
+     * to zoom sims) */
+    if (e->s->cells_top[i].subtype == cell_subtype_void) continue;
+
     const struct gravity_tensors *m = &e->s->multipoles_top[i];
     counter += m->m_pole.num_gpart;
     if (m->m_pole.num_gpart < 0) {
@@ -1010,6 +1016,7 @@ void engine_print_task_counts(const struct engine *e) {
   printf("%s engine_print_task_counts: task counts are [ %s=%i",
          clocks_get_timesincestart(), taskID_names[0], counts[0]);
 #endif
+
   for (int k = 1; k < task_type_count; k++)
     printf(" %s=%i", taskID_names[k], counts[k]);
   printf(" skipped=%i ]\n", counts[task_type_count]);
@@ -1019,6 +1026,120 @@ void engine_print_task_counts(const struct engine *e) {
   message("nr_sink = %zu.", e->s->nr_sinks);
   message("nr_sparts = %zu.", e->s->nr_sparts);
   message("nr_bparts = %zu.", e->s->nr_bparts);
+
+  /* In zoom land its helpful to print the pair types. */
+  if (e->s->with_zoom_region) {
+    /* Initialise counts; */
+    int nr_zoom_zoom = 0;
+    int nr_zoom_buffer = 0;
+    int nr_zoom_bkg = 0;
+    int nr_buffer_buffer = 0;
+    int nr_buffer_bkg = 0;
+    int nr_bkg_bkg = 0;
+    int nr_zoom_neighbour = 0;
+    int nr_void_pairs = 0; /* Should always be 0! */
+    /* Loop over tasks. */
+    for (int i = 0; i < nr_tasks; i++) {
+      const struct task *t = &tasks[i];
+
+      /* Skip skipped tasks. */
+      if (t->skip) continue;
+
+      /* Skip non-pairs. */
+      if (t->type != task_type_pair) continue;
+
+      /* If either ci or cj are void cells count them. (again this should never
+       * happen!) */
+      if (t->ci->subtype == cell_subtype_void ||
+          t->cj->subtype == cell_subtype_void) {
+        nr_void_pairs++;
+      }
+
+      /* Count a nieghbour pair if ci and cj are the combination of a zoom and
+       * neighbour cell. */
+      if ((t->ci->type == cell_type_zoom &&
+           t->cj->subtype == cell_subtype_neighbour) ||
+          (t->cj->type == cell_type_zoom &&
+           t->ci->subtype == cell_subtype_neighbour)) {
+        nr_zoom_neighbour++;
+      }
+
+      /* Count the pair types. */
+      switch (t->ci->type) {
+        case cell_type_zoom:
+          switch (t->cj->type) {
+            case cell_type_zoom:
+              nr_zoom_zoom++;
+              break;
+            case cell_type_buffer:
+              nr_zoom_buffer++;
+              break;
+            case cell_type_bkg:
+              nr_zoom_bkg++;
+              break;
+            default:
+              error("Unknown cell type %d", t->cj->type);
+          }
+          break;
+        case cell_type_buffer:
+          switch (t->cj->type) {
+            case cell_type_zoom:
+              nr_zoom_buffer++;
+              break;
+            case cell_type_buffer:
+              nr_buffer_buffer++;
+              break;
+            case cell_type_bkg:
+              nr_buffer_bkg++;
+              break;
+            default:
+              error("Unknown cell type %d", t->cj->type);
+          }
+          break;
+        case cell_type_bkg:
+          switch (t->cj->type) {
+            case cell_type_zoom:
+              nr_zoom_bkg++;
+              break;
+            case cell_type_buffer:
+              nr_buffer_bkg++;
+              break;
+            case cell_type_bkg:
+              nr_bkg_bkg++;
+              break;
+            default:
+              error("Unknown cell type %d", t->cj->type);
+          }
+          break;
+        case cell_type_regular:
+          error(
+              "Regular cell found in zoom simulation pair task! There should "
+              "be no regular cells in zoom simulations.");
+          break;
+        default:
+          error("Unknown cell type %d", t->ci->type);
+      }
+    }
+
+    /* Print the pair types. */
+#ifdef WITH_MPI
+    printf(
+        "[%04i] %s engine_print_task_counts: pair task type counts are [ "
+        "zoom<->zoom=%i zoom<->buffer=%i zoom<->bkg=%i buffer<->buffer=%i "
+        "buffer<->bkg=%i bkg<->bkg=%i zoom<->neighbour=%i void_pairs=%i ]\n",
+        e->nodeID, clocks_get_timesincestart(), nr_zoom_zoom, nr_zoom_buffer,
+        nr_zoom_bkg, nr_buffer_buffer, nr_buffer_bkg, nr_bkg_bkg,
+        nr_zoom_neighbour, nr_void_pairs);
+#else
+    printf(
+        "%s engine_print_task_counts: pair task type counts are [ "
+        "zoom<->zoom=%i zoom<->buffer=%i zoom<->bkg=%i buffer<->buffer=%i "
+        "buffer<->bkg=%i bkg<->bkg=%i zoom<->neighbour=%i void_pairs=%i ]\n",
+        clocks_get_timesincestart(), nr_zoom_zoom, nr_zoom_buffer, nr_zoom_bkg,
+        nr_buffer_buffer, nr_buffer_bkg, nr_bkg_bkg, nr_zoom_neighbour,
+        nr_void_pairs);
+#endif
+  }
 
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
@@ -1321,6 +1442,11 @@ void engine_rebuild(struct engine *e, const int repartitioned,
   engine_exchange_cells(e);
 #endif
 
+  if (e->s->with_zoom_region) {
+    /* Construct the void cell tree. */
+    zoom_void_space_split(e->s, e->verbose);
+  }
+
 #ifdef SWIFT_DEBUG_CHECKS
 
   /* Let's check that what we received makes sense */
@@ -1328,6 +1454,11 @@ void engine_rebuild(struct engine *e, const int repartitioned,
     long long counter = 0;
 
     for (int i = 0; i < e->s->nr_cells; ++i) {
+
+      /* Skip the void cells, avoids double counting zoom cells. (Only
+       * applicable to zoom sims) */
+      if (e->s->cells_top[i].subtype == cell_subtype_void) continue;
+
       const struct gravity_tensors *m = &e->s->multipoles_top[i];
       counter += m->m_pole.num_gpart;
     }
@@ -2147,8 +2278,14 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   /* Check that we have the correct total mass in the top-level multipoles */
   long long num_gpart_mpole = 0;
   if (e->policy & engine_policy_self_gravity) {
-    for (int i = 0; i < e->s->nr_cells; ++i)
+    for (int i = 0; i < e->s->nr_cells; ++i) {
+
+      /* Skip void cells. */
+      if (e->s->cells_top[i].subtype == cell_subtype_void) continue;
+
       num_gpart_mpole += e->s->cells_top[i].grav.multipole->m_pole.num_gpart;
+    }
+
     if (num_gpart_mpole != e->total_nr_gparts)
       error(
           "Top-level multipoles don't contain the total number of gpart "
@@ -2635,8 +2772,11 @@ int engine_step(struct engine *e) {
   /* Check that we have the correct total mass in the top-level multipoles */
   long long num_gpart_mpole = 0;
   if (e->policy & engine_policy_self_gravity) {
-    for (int i = 0; i < e->s->nr_cells; ++i)
+    for (int i = 0; i < e->s->nr_cells; ++i) {
+      /* Skip void cells. */
+      if (e->s->cells_top[i].subtype == cell_subtype_void) continue;
       num_gpart_mpole += e->s->cells_top[i].grav.multipole->m_pole.num_gpart;
+    }
     if (num_gpart_mpole != e->total_nr_gparts)
       error(
           "Multipoles don't contain the total number of gpart mpoles=%lld "
