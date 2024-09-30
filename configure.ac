@@ -3027,6 +3027,7 @@ case "$with_rt" in
       if test "$number_group" = "0"; then
           AC_MSG_ERROR([GEAR-RT: Cannot work with zero photon groups])
       fi
+
       if ! test $number_group -eq $number_group; then
           # abuse -eq to check whether $number_group is an integer. -eq
           # only works with those.
@@ -3037,9 +3038,14 @@ case "$with_rt" in
           AC_DEFINE([SWIFT_RT_DEBUG_CHECKS], [1], [additional debugging checks for RT])
       fi
 
-      if test "$with_hydro" != "gizmo-mfv"; then
-          AC_MSG_ERROR([GEAR-RT: Cannot work without gizmo-mfv hydro. Compile using --with-hydro=gizmo-mfv])
-      fi
+      case "$with_hydro" in
+          "gizmo-mfv" | "sphenix")
+          # allowed.
+        ;;
+        *)
+          AC_MSG_ERROR([GEAR-RT: Cannot work without gizmo-mfv or sphenix hydro. Compile using --with-hydro=gizmo-mfv or --with-hydro=sphenix])
+        ;;
+      esac
 
       if test "$with_rt_riemann_solver" = "none"; then
           AC_MSG_ERROR([GEAR-RT: You need to select an RT Riemann solver (--with-rt-riemann-solver=...)])
