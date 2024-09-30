@@ -1368,7 +1368,11 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
         c->grav.init = scheduler_addtask(s, task_type_init_grav,
                                          task_subtype_none, 0, 0, c, NULL);
 
-        /* Gravity non-neighbouring pm calculations. */
+        /* Gravity non-neighbouring pm calculations */
+        /* When running a zoom we only want to create long range tasks for
+         * non-zoom cells and zoom cells where there are no grav_mm tasks in the
+         * void cell tree (if this is the case then there will be no void super
+         * level). */
         if (c->top->type != cell_type_zoom ||
             (c->top->type == cell_type_zoom &&
              c->top->void_parent->grav.super == NULL)) {
