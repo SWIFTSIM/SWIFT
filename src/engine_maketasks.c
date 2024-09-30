@@ -1404,6 +1404,26 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
         scheduler_addunlock(s, c->grav.init, c->grav.init_out);
         scheduler_addunlock(s, c->grav.drift, c->grav.drift_out);
         scheduler_addunlock(s, c->grav.down_in, c->grav.down);
+
+        /* In zoom land we also need to link the void cells grav down to
+         * the zoom cell down and long range task. */
+        if (c->type == cell_type_zoom) {
+
+          /* Ensure the void super exists (Otherwise there's nothing to worry
+           * about). */
+          if (c->top->void_parent->grav.super != NULL) {
+
+            /* zoom.long_range -> void.down */
+            if (c->grav.long_range != NULL) {
+              scheduler_addunlock(s, c->grav.long_range,
+                                  c->top->void_parent->grav.super->grav.down);
+            }
+
+            /* void.down -> zoom.down */
+            scheduler_addunlock(s, c->top->void_parent->grav.super->grav.down,
+                                c->grav.down);
+          }
+        }
       }
     }
   }
