@@ -309,6 +309,68 @@ void engine_make_self_gravity_tasks_mapper_buffer_bkg(void *map_data,
 }
 
 /**
+ * @brief Constructs the top-level tasks for the short-range gravity
+ * and long-range gravity interactions for all combinations of cell types.
+ *
+ * - All top level cells get a self task.
+ * - All pairs within range according to the multipole acceptance
+ *   criterion get a pair task.
+ *
+ * This is a wrapper around the various mappers defined above for all the
+ * possible combinations of cell types including:
+ * - zoom->zoom
+ * - bkg->bkg
+ * - zoom->bkg (if buffer cells are not used)
+ * - buffer->buffer (if buffer cells are used)
+ * - zoom->buffer (if buffer cells are used)
+ * - buffer->bkg (if buffer cells are used)
+ *
+ * This replaces the function in engine_maketasks when running with a zoom
+ * region.
+ *
+ * @param s The #space.
+ * @param e The #engine.
+ */
+void zoom_engine_make_self_gravity_tasks(struct space *s, struct engine *e) {
+
+  ticks tic = getticks();
+
+  /* Background -> Background */
+  threadpool_map(&e->threadpool,
+                 engine_make_self_gravity_tasks_mapper_bkg_cells, NULL,
+                 s->zoom_props->nr_bkg_cells, 1, threadpool_auto_chunk_size, e);
+
+  if (e->verbose)
+    message("Making bkg->bkg gravity tasks took %.3f %s.",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
+
+  if (s->zoom_props->with_buffer_cells) {
+
+    tic = getticks();
+
+    /* Buffer -> Buffer (only if we have a buffer region). */
+    threadpool_map(
+        &e->threadpool, engine_make_self_gravity_tasks_mapper_buffer_cells,
+        NULL, s->zoom_props->nr_buffer_cells, 1, threadpool_auto_chunk_size, e);
+
+    if (e->verbose)
+      message("Making buffer->buffer gravity tasks took %.3f %s.",
+              clocks_from_ticks(getticks() - tic), clocks_getunit());
+
+    tic = getticks();
+
+    /* Buffer -> Background (only if we have a buffer region). */
+    threadpool_map(
+        &e->threadpool, engine_make_self_gravity_tasks_mapper_buffer_bkg, NULL,
+        s->zoom_props->nr_buffer_cells, 1, threadpool_auto_chunk_size, e);
+
+    if (e->verbose)
+      message("Making buffer->bkg gravity tasks took %.3f %s.",
+              clocks_from_ticks(getticks() - tic), clocks_getunit());
+  }
+}
+
+/**
  * @brief Construct the hierarchical tasks for the void cell tree recursively.
  *
  * This will construct:
@@ -422,66 +484,4 @@ void zoom_engine_make_hierarchical_void_tasks(struct engine *e) {
   if (e->verbose)
     message("Making void cell tree tasks took %.3f %s.",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
-}
-
-/**
- * @brief Constructs the top-level tasks for the short-range gravity
- * and long-range gravity interactions for all combinations of cell types.
- *
- * - All top level cells get a self task.
- * - All pairs within range according to the multipole acceptance
- *   criterion get a pair task.
- *
- * This is a wrapper around the various mappers defined above for all the
- * possible combinations of cell types including:
- * - zoom->zoom
- * - bkg->bkg
- * - zoom->bkg (if buffer cells are not used)
- * - buffer->buffer (if buffer cells are used)
- * - zoom->buffer (if buffer cells are used)
- * - buffer->bkg (if buffer cells are used)
- *
- * This replaces the function in engine_maketasks when running with a zoom
- * region.
- *
- * @param s The #space.
- * @param e The #engine.
- */
-void zoom_engine_make_self_gravity_tasks(struct space *s, struct engine *e) {
-
-  ticks tic = getticks();
-
-  /* Background -> Background */
-  threadpool_map(&e->threadpool,
-                 engine_make_self_gravity_tasks_mapper_bkg_cells, NULL,
-                 s->zoom_props->nr_bkg_cells, 1, threadpool_auto_chunk_size, e);
-
-  if (e->verbose)
-    message("Making bkg->bkg gravity tasks took %.3f %s.",
-            clocks_from_ticks(getticks() - tic), clocks_getunit());
-
-  if (s->zoom_props->with_buffer_cells) {
-
-    tic = getticks();
-
-    /* Buffer -> Buffer (only if we have a buffer region). */
-    threadpool_map(
-        &e->threadpool, engine_make_self_gravity_tasks_mapper_buffer_cells,
-        NULL, s->zoom_props->nr_buffer_cells, 1, threadpool_auto_chunk_size, e);
-
-    if (e->verbose)
-      message("Making buffer->buffer gravity tasks took %.3f %s.",
-              clocks_from_ticks(getticks() - tic), clocks_getunit());
-
-    tic = getticks();
-
-    /* Buffer -> Background (only if we have a buffer region). */
-    threadpool_map(
-        &e->threadpool, engine_make_self_gravity_tasks_mapper_buffer_bkg, NULL,
-        s->zoom_props->nr_buffer_cells, 1, threadpool_auto_chunk_size, e);
-
-    if (e->verbose)
-      message("Making buffer->bkg gravity tasks took %.3f %s.",
-              clocks_from_ticks(getticks() - tic), clocks_getunit());
-  }
 }
