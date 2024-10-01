@@ -12,8 +12,8 @@
  * @brief Reset the variables used to store the centroid; used for the velocity
  * correction.
  */
-__attribute__((always_inline)) INLINE static void
-fvpm_reset_centroids(struct part* restrict p) {}
+__attribute__((always_inline)) INLINE static void fvpm_reset_centroids(
+    struct part* restrict p) {}
 
 /**
  * @brief Normalise the centroids after the density loop.
@@ -23,8 +23,8 @@ fvpm_reset_centroids(struct part* restrict p) {}
  * it is clear from the code that wcount needs to be normalised by the time it
  * is used here.
  */
-__attribute__((always_inline)) INLINE static void
-fvpm_normalise_centroid(struct part* restrict p, const float wcount) {}
+__attribute__((always_inline)) INLINE static void fvpm_normalise_centroid(
+    struct part* restrict p, const float wcount) {}
 
 /**
  * @brief Update the centroid with the given contribution, assuming the particle
@@ -35,9 +35,8 @@ fvpm_normalise_centroid(struct part* restrict p, const float wcount) {}
  * - pj->x).
  * @param w Kernel value at position pj->x.
  */
-__attribute__((always_inline)) INLINE static void
-fvpm_update_centroid_left(struct part* restrict p, const float* dx,
-                                      const float w) {}
+__attribute__((always_inline)) INLINE static void fvpm_update_centroid_left(
+    struct part* restrict p, const float* dx, const float w) {}
 
 /**
  * @brief Update the centroid with the given contribution, assuming the particle
@@ -48,11 +47,8 @@ fvpm_update_centroid_left(struct part* restrict p, const float* dx,
  * - pj->x).
  * @param w Kernel value at position pi->x.
  */
-__attribute__((always_inline)) INLINE static void
-fvpm_update_centroid_right(struct part* restrict p, const float* dx,
-                                       const float w) {}
-
-
+__attribute__((always_inline)) INLINE static void fvpm_update_centroid_right(
+    struct part* restrict p, const float* dx, const float w) {}
 
 /**
  * @brief Check if the gradient matrix for this particle is well behaved.
@@ -65,18 +61,15 @@ fvpm_part_geometry_well_behaved(const struct part* restrict p) {
   return 0;
 }
 
-
 /**
  * @brief Collect the data needed for the matrix construction.
  */
 __attribute__((always_inline)) INLINE static void
-fvpm_accumulate_geometry_and_matrix(struct part* restrict pi,
-                                              const float wi,
-                                              const float dx[3]) {}
+fvpm_accumulate_geometry_and_matrix(struct part* restrict pi, const float wi,
+                                    const float dx[3]) {}
 
 __attribute__((always_inline)) INLINE static void fvpm_geometry_init(
     struct part* restrict p) {}
-
 
 /**
  * @brief Finish the computation of the matrix.
@@ -86,6 +79,5 @@ __attribute__((always_inline)) INLINE static void fvpm_geometry_init(
  */
 __attribute__((always_inline)) INLINE static void
 fvpm_compute_volume_and_matrix(struct part* restrict p, const float ihdim) {}
-
 
 #endif /* SWIFT_FVPM_GEOMETRY_NONE_H */

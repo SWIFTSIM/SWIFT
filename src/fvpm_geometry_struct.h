@@ -29,5 +29,4 @@
 #include "./fvpm_geometry/None/fvpm_geometry_struct.h"
 #endif
 
-
 #endif /* SWIFT_FVPM_GEOMETRY_STRUCT_H */

@@ -1,8 +1,9 @@
 #ifndef SWIFT_FVPM_GEOMETRY_GIZMO_H
 #define SWIFT_FVPM_GEOMETRY_GIZMO_H
 
-#include <config.h>
 #include "part.h"
+
+#include <config.h>
 
 /**
  * @file fvpm_geometry.h
@@ -14,11 +15,11 @@
  */
 
 #if defined(RT_GEAR) && defined(GIZMO_MFM_SPH)
-  /* Some functions clash here. MFM resets and does some geometry centroid
-   * stuff, while GEAR-RT, which uses MFV, doesn't. So we'd need to split the
-   * functions for RT and for hydro use.
-   * However, it is very unlikely we'll ever actually use that combination,
-   * so leaving it as-is for now. */
+/* Some functions clash here. MFM resets and does some geometry centroid
+ * stuff, while GEAR-RT, which uses MFV, doesn't. So we'd need to split the
+ * functions for RT and for hydro use.
+ * However, it is very unlikely we'll ever actually use that combination,
+ * so leaving it as-is for now. */
 #error "Combining GIZMO MFM and GEAR-RT not implemented yet."
 #endif
 
@@ -27,7 +28,6 @@
 #elif defined(GIZMO_MFM_SPH)
 #include "./MFM/fvpm_geometry.h"
 #endif
-
 
 /**
  * @brief Check if the gradient matrix for this particle is well behaved.
@@ -41,14 +41,12 @@ fvpm_part_geometry_well_behaved(const struct part* restrict p) {
   return p->geometry.wcorr > const_gizmo_min_wcorr;
 }
 
-
 /**
  * @brief Collect the data needed for the matrix construction.
  */
 __attribute__((always_inline)) INLINE static void
-fvpm_accumulate_geometry_and_matrix(struct part* restrict pi,
-                                              const float wi,
-                                              const float dx[3]) {
+fvpm_accumulate_geometry_and_matrix(struct part* restrict pi, const float wi,
+                                    const float dx[3]) {
   /* these are eqns. (1) and (2) in the Gizmo theory summary */
   pi->geometry.volume += wi;
   for (int k = 0; k < 3; k++)

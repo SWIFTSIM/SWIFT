@@ -25,9 +25,9 @@
 #ifndef SWIFT_GIZMO_MFM_HYDRO_GRADIENTS_H
 #define SWIFT_GIZMO_MFM_HYDRO_GRADIENTS_H
 
+#include "fvpm_geometry.h"
 #include "hydro_getters.h"
 #include "hydro_setters.h"
-#include "fvpm_geometry.h"
 
 __attribute__((always_inline)) INLINE static void hydro_gradients_init(
     struct part *p) {

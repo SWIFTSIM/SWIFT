@@ -177,7 +177,6 @@ rt_check_unphysical_hyperbolic_flux(float flux[4][3]) {
 __attribute__((always_inline)) INLINE static void
 rt_check_unphysical_mass_fractions(struct part* restrict p) {
 
-
   /* For now, catch either mass or rho being zero. At the moment, they are not
    * necessarily both zero. For example, an unphysical check may zero out both
    * mass and density when it becomes negative in a hydro step. Once that

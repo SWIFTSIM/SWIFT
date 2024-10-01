@@ -5,8 +5,8 @@
  * @brief Reset the variables used to store the centroid; used for the velocity
  * correction.
  */
-__attribute__((always_inline)) INLINE static void
-fvpm_reset_centroids(struct part* restrict p) {}
+__attribute__((always_inline)) INLINE static void fvpm_reset_centroids(
+    struct part* restrict p) {}
 
 /**
  * @brief Normalise the centroids after the density loop.
@@ -16,8 +16,8 @@ fvpm_reset_centroids(struct part* restrict p) {}
  * it is clear from the code that wcount needs to be normalised by the time it
  * is used here.
  */
-__attribute__((always_inline)) INLINE static void
-fvpm_normalise_centroid(struct part* restrict p, const float wcount) {}
+__attribute__((always_inline)) INLINE static void fvpm_normalise_centroid(
+    struct part* restrict p, const float wcount) {}
 
 /**
  * @brief Update the centroid with the given contribution, assuming the particle
@@ -28,9 +28,8 @@ fvpm_normalise_centroid(struct part* restrict p, const float wcount) {}
  * - pj->x).
  * @param w Kernel value at position pj->x.
  */
-__attribute__((always_inline)) INLINE static void
-fvpm_update_centroid_left(struct part* restrict p, const float* dx,
-                                      const float w) {}
+__attribute__((always_inline)) INLINE static void fvpm_update_centroid_left(
+    struct part* restrict p, const float* dx, const float w) {}
 
 /**
  * @brief Update the centroid with the given contribution, assuming the particle
@@ -41,9 +40,7 @@ fvpm_update_centroid_left(struct part* restrict p, const float* dx,
  * - pj->x).
  * @param w Kernel value at position pi->x.
  */
-__attribute__((always_inline)) INLINE static void
-fvpm_update_centroid_right(struct part* restrict p, const float* dx,
-                                       const float w) {}
-
+__attribute__((always_inline)) INLINE static void fvpm_update_centroid_right(
+    struct part* restrict p, const float* dx, const float w) {}
 
 #endif /* SWIFT_FVPM_GEOMETRY_GIZMO_MFM_H */

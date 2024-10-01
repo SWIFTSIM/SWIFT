@@ -9,6 +9,6 @@
  */
 
 /* Geometrical quantities used for hydro. */
-struct fvpm_geometry_struct { };
+struct fvpm_geometry_struct {};
 
 #endif /* SWIFT_FVPM_GEOMETRY_STRUCT_NONE_H */
