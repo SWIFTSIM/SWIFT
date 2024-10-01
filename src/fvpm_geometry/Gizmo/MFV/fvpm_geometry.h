@@ -2,7 +2,6 @@
 #define SWIFT_FVPM_GEOMETRY_GIZMO_MFV_H
 
 #include "const.h"
-#include "part.h"
 
 /**
  * @brief Reset the variables used to store the centroid; used for the velocity

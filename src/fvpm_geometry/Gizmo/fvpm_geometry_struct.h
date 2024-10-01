@@ -2,7 +2,7 @@
 #define SWIFT_FVPM_GEOMETRY_STRUCT_GIZMO_H
 
 /**
- * @file fvpm_geometry_struct.h
+ * @file Gizmo/fvpm_geometry_struct.h
  * @brief Struct related to the Gizmo FVPM geometry particle data collection,
  * in particular the collection of the data required for the matrix needed
  * for gradients.

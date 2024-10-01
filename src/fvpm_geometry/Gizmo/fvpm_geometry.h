@@ -1,12 +1,13 @@
 #ifndef SWIFT_FVPM_GEOMETRY_GIZMO_H
 #define SWIFT_FVPM_GEOMETRY_GIZMO_H
 
-#include "part.h"
-
 #include <config.h>
 
+#include "const.h"
+#include "part.h"
+
 /**
- * @file fvpm_geometry.h
+ * @file Gizmo/fvpm_geometry.h
  * @brief Functions related to the Gizmo FVPM geometry struct collection,
  * in particular the collection of the data required for the matrix needed
  * for gradients.
