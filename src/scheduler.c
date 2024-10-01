@@ -1687,42 +1687,56 @@ static void zoom_scheduler_splittask_gravity_void_self(struct task *t,
   const struct space *sp = s->space;
   struct engine *e = sp->e;
 
-  /* Get a handle on the cell involved. */
-  const struct cell *ci = t->ci;
+  /* Iterate on this task until we're done with it. */
+  while (1) {
 
-  /* If this cell is not a void cell redirect to the normal splitter. */
-  if (ci->subtype != cell_subtype_void) {
-    scheduler_splittask_gravity(t, s);
-    return;
-  }
+    /* Non-splittable task? */
+    if ((t->ci == NULL) || (t->type == task_type_pair && t->cj == NULL)) {
+      t->type = task_type_none;
+      t->subtype = task_subtype_none;
+      t->ci = NULL;
+      t->cj = NULL;
+      t->skip = 1;
+      break;
+    }
 
-  /* Create a self for all progeny. */
-  for (int i = 0; i < 8; i++) {
-    if (ci->progeny[i] != NULL) {
+    /* Get a handle on the cell involved. */
+    const struct cell *ci = t->ci;
+
+    /* If this cell is not a void cell redirect to the normal splitter. */
+    if (ci->subtype != cell_subtype_void) {
+      scheduler_splittask_gravity(t, s);
+      break;
+    }
+
+    /* Foreign task? */
+    if (ci->nodeID != e->nodeID) {
+      t->skip = 1;
+      break;
+    }
+
+    /* Reuse the task we already have. */
+    t->ci = ci->progeny[0];
+    cell_set_flag(t->ci, cell_flag_has_tasks);
+
+    /* Create a self for all progeny beyond the first. */
+    for (int i = 1; i < 8; i++) {
       zoom_scheduler_splittask_gravity_void_self(
           scheduler_addtask(s, task_type_self, t->subtype, 0, 0, ci->progeny[i],
                             NULL),
           s);
     }
-  }
 
-  /* Create pair tasks for all pairs of progeny. */
-  for (int j = 0; j < 8; j++) {
-    for (int k = j + 1; k < 8; k++) {
-      zoom_scheduler_splittask_gravity_void_pair(
-          scheduler_addtask(s, task_type_pair, t->subtype, sub_sid_flag[j][k],
-                            0, ci->progeny[j], ci->progeny[k]),
-          s);
+    /* Create pair tasks for all pairs of progeny. */
+    for (int j = 0; j < 8; j++) {
+      for (int k = j + 1; k < 8; k++) {
+        zoom_scheduler_splittask_gravity_void_pair(
+            scheduler_addtask(s, task_type_pair, t->subtype, sub_sid_flag[j][k],
+                              0, ci->progeny[j], ci->progeny[k]),
+            s);
+      }
     }
   }
-
-  /* Kill of this task. TODO: use the same redo logic as above to reduce
-   * the number of skipped tasks. */
-  t->type = task_type_none;
-  t->subtype = task_subtype_none;
-  t->ci = NULL;
-  t->cj = NULL;
-  t->skip = 1;
 }
 
 /**
