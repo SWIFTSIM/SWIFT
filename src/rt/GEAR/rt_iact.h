@@ -19,6 +19,7 @@
 #ifndef SWIFT_RT_IACT_GEAR_H
 #define SWIFT_RT_IACT_GEAR_H
 
+#include "fvpm_geometry.h"
 #include "rt_debugging.h"
 #include "rt_flux.h"
 #include "rt_gradients.h"
@@ -254,8 +255,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_flux_common(
   /* eqn. (7) */
   float Anorm2 = 0.0f;
   float A[3];
-  if (hydro_part_geometry_well_behaved(pi) &&
-      hydro_part_geometry_well_behaved(pj)) {
+  if (fvpm_part_geometry_well_behaved(pi) &&
+      fvpm_part_geometry_well_behaved(pj)) {
     /* in principle, we use Vi and Vj as weights for the left and right
      * contributions to the generalized surface vector.
      * However, if Vi and Vj are very different (because they have very
