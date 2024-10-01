@@ -22,7 +22,7 @@
 /* Config parameters. */
 #include <config.h>
 
-/* Import the right hydro particle definition */
+/* Import the right geometry struct definition */
 #if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH) || defined(RT_GEAR)
 #include "./fvpm_geometry/Gizmo/fvpm_geometry_struct.h"
 #else

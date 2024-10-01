@@ -22,7 +22,7 @@
 /* Config parameters. */
 #include <config.h>
 
-/* Import the right FVPM geometry definition */
+/* Import the right FVPM geometry functions */
 #if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH) || defined(RT_GEAR)
 #include "./fvpm_geometry/Gizmo/fvpm_geometry.h"
 #else

@@ -1,5 +1,5 @@
-#ifndef GIZMO_FVPM_MFV_GEOMETRY_H
-#define GIZMO_FVPM_MFV_GEOMETRY_H
+#ifndef SWIFT_FVPM_GEOMETRY_GIZMO_MFV_H
+#define SWIFT_FVPM_GEOMETRY_GIZMO_MFV_H
 
 #include "const.h"
 #include "part.h"
@@ -68,4 +68,4 @@ fvpm_update_centroid_right(struct part* restrict p, const float* dx, const float
   p->geometry.centroid[2] += dx[2] * w;
 }
 
-#endif /* GIZMO_FVPM_MFV_GEOMETRY_H */
+#endif /* SWIFT_FVPM_GEOMETRY_GIZMO_MFV_H */

@@ -1,5 +1,5 @@
-#ifndef GIZMO_FVPM_MFM_GEOMETRY_H
-#define GIZMO_FVPM_MFM_GEOMETRY_H
+#ifndef SWIFT_FVPM_GEOMETRY_GIZMO_MFM_H
+#define SWIFT_FVPM_GEOMETRY_GIZMO_MFM_H
 
 /**
  * @brief Reset the variables used to store the centroid; used for the velocity
@@ -46,4 +46,4 @@ hydro_velocities_update_centroid_right(struct part* restrict p, const float* dx,
                                        const float w) {}
 
 
-#endif /* GIZMO_FVPM_MFM_GEOMETRY_H */
+#endif /* SWIFT_FVPM_GEOMETRY_GIZMO_MFM_H */

@@ -1,5 +1,5 @@
-#ifndef FVPM_GEOMETRY_STRUCT_H
-#define FVPM_GEOMETRY_STRUCT_H
+#ifndef SWIFT_FVPM_GEOMETRY_STRUCT_GIZMO_H
+#define SWIFT_FVPM_GEOMETRY_STRUCT_GIZMO_H
 
 /**
  * @file fvpm_geometry_struct.h
@@ -27,4 +27,4 @@ struct fvpm_geometry_struct {
   float wcorr;
 };
 
-#endif
+#endif /* SWIFT_FVPM_GEOMETRY_STRUCT_GIZMO_H */

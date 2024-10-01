@@ -1,5 +1,5 @@
-#ifndef GIZMO_FVPM_GEOMETRY_H
-#define GIZMO_FVPM_GEOMETRY_H
+#ifndef SWIFT_FVPM_GEOMETRY_GIZMO_H
+#define SWIFT_FVPM_GEOMETRY_GIZMO_H
 
 #include <config.h>
 #include "part.h"
@@ -151,4 +151,4 @@ fvpm_compute_volume_and_matrix(struct part* restrict p, const float ihdim) {
   }
 }
 
-#endif /* GIZMO_FVPM_GEOMETRY_H */
+#endif /* SWIFT_FVPM_GEOMETRY_GIZMO_H */
