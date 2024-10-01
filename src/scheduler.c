@@ -20,8 +20,6 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "cell.h"
-
 #include <config.h>
 
 /* Some standard headers. */
@@ -1697,32 +1695,10 @@ static void zoom_scheduler_splittask_gravity_void_self(struct task *t,
 #endif
 
   /* Iterate on this task until we're done with it. */
-  while (1) {
-
-    /* Non-splittable task? */
-    if (t->ci == NULL) {
-      t->type = task_type_none;
-      t->subtype = task_subtype_none;
-      t->ci = NULL;
-      t->cj = NULL;
-      t->skip = 1;
-      break;
-    }
+  while (t->ci->subtype == cell_subtype_void) {
 
     /* Get a handle on the cell involved. */
     const struct cell *ci = t->ci;
-
-    /* If this cell is not a void cell redirect to the normal splitter. */
-    if (ci->subtype != cell_subtype_void) {
-      scheduler_splittask_gravity(t, s);
-      break;
-    }
-
-    /* Foreign task? */
-    if (ci->nodeID != e->nodeID) {
-      t->skip = 1;
-      break;
-    }
 
     /* Reuse the task we already have. */
     t->ci = ci->progeny[0];
@@ -1746,6 +1722,9 @@ static void zoom_scheduler_splittask_gravity_void_self(struct task *t,
       }
     }
   }
+
+  /* Now we're not in a void cell we can just call the normal splitter.  */
+  scheduler_splittask_gravity(t, s);
 }
 
 /**
@@ -3082,13 +3061,13 @@ void scheduler_check_deadlock(struct scheduler *s) {
   ticks last = s->last_successful_task_fetch;
 
   if (last == 0LL) {
-    /* Ensure that the first check each engine_launch doesn't fail. There is
-     * no guarantee how long it will take from the point where
+    /* Ensure that the first check each engine_launch doesn't fail. There is no
+     * guarantee how long it will take from the point where
      * last_successful_task_fetch was reset to get to this point. A poorly
-     * chosen scheduler->deadlock_waiting_time_ms may abort a big run in
-     * places where there is no deadlock. Better safe than sorry, so at
-     * start-up, the last successful task fetch time is marked as 0. So we
-     * just exit without checking the time. */
+     * chosen scheduler->deadlock_waiting_time_ms may abort a big run in places
+     * where there is no deadlock. Better safe than sorry, so at start-up, the
+     * last successful task fetch time is marked as 0. So we just exit without
+     * checking the time. */
     while (atomic_cas(&s->last_successful_task_fetch, last, now) != last) {
       now = getticks();
       last = s->last_successful_task_fetch;
@@ -3105,8 +3084,7 @@ void scheduler_check_deadlock(struct scheduler *s) {
 
   if (idle_time > s->deadlock_waiting_time_ms) {
     message(
-        "Detected what looks like a deadlock after %g ms of no new task "
-        "being "
+        "Detected what looks like a deadlock after %g ms of no new task being "
         "fetched from queues. Dumping diagnostic data.",
         idle_time);
     engine_dump_diagnostic_data(s->e);
