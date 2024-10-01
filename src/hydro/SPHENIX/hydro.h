@@ -1043,14 +1043,6 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   else
     p->h *= expf(w1);
 
-  // TODO: WE NEED TO CHECK WHETHER WE NEED THIS FOR SPH + RT.
-  // GIZMO DOES THIS. SPH DOESN'T.
-  /* Limit the smoothing length correction (and make sure it is always
-     positive). */
-  /* if (h_corr < 2.0f && h_corr > 0.0f) { */
-  /*   p->h *= h_corr; */
-  /* } */
-
   /* Predict density and weighted pressure */
   const float w2 = -hydro_dimension * w1;
   if (fabsf(w2) < 0.2f) {
