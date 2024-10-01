@@ -1644,7 +1644,6 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
       /* Can we use a M-M interaction here? */
       if (cell_can_use_pair_mm(ci, cj->progeny[j], e, sp,
                                /*use_rebuild_data=*/1,
-                               m
                                /*is_tree_walk=*/1,
                                /*periodic boundaries*/ sp->periodic,
                                /*use_mesh*/ sp->periodic)) {
