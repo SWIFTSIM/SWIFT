@@ -1692,37 +1692,41 @@ static void zoom_scheduler_splittask_gravity_void_self(struct task *t,
   }
 #endif
 
-  /* Iterate on this task until we're done with it. */
-  while (t->ci->subtype == cell_subtype_void) {
+  /* Get a handle on the cell involved. */
+  const struct cell *ci = t->ci;
 
-    /* Get a handle on the cell involved. */
-    const struct cell *ci = t->ci;
+  /* If this cell is not a void cell redirect to the normal splitter. */
+  if (ci->subtype != cell_subtype_void) {
+    scheduler_splittask_gravity(t, s);
+    return;
+  }
 
-    /* Reuse the task we already have. */
-    t->ci = ci->progeny[0];
-    cell_set_flag(t->ci, cell_flag_has_tasks);
-
-    /* Create a self for all progeny beyond the first. */
-    for (int i = 1; i < 8; i++) {
-      zoom_scheduler_splittask_gravity_void_self(
+  /* Create a self for all progeny. */
+  for (int i = 0; i < 8; i++) {
+    if (ci->progeny[i] != NULL) {
+      zoom_scheduler_splittask_gravity_void_pair(
           scheduler_addtask(s, task_type_self, t->subtype, 0, 0, ci->progeny[i],
                             NULL),
           s);
     }
+  }
 
-    /* Create pair tasks for all pairs of progeny. */
-    for (int j = 0; j < 8; j++) {
-      for (int k = j + 1; k < 8; k++) {
-        zoom_scheduler_splittask_gravity_void_pair(
-            scheduler_addtask(s, task_type_pair, t->subtype, sub_sid_flag[j][k],
-                              0, ci->progeny[j], ci->progeny[k]),
-            s);
-      }
+  for (int j = 0; j < 8; j++) {
+    for (int k = j + 1; k < 8; k++) {
+      zoom_scheduler_splittask_gravity_void_pair(
+          scheduler_addtask(s, task_type_pair, t->subtype, sub_sid_flag[j][k],
+                            0, ci->progeny[j], ci->progeny[k]),
+          s);
     }
   }
 
-  /* Now we're not in a void cell we can just call the normal splitter.  */
-  scheduler_splittask_gravity(t, s);
+  /* Kill of this task. TODO: use the same redo logic as above to reduce
+   * the number of skipped tasks. */
+  t->type = task_type_none;
+  t->subtype = task_subtype_none;
+  t->ci = NULL;
+  t->cj = NULL;
+  t->skip = 1;
 }
 
 /**
