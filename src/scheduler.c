@@ -1685,7 +1685,6 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
 static void zoom_scheduler_splittask_gravity_void_self(struct task *t,
                                                        struct scheduler *s) {
   const struct space *sp = s->space;
-  struct engine *e = sp->e;
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Ensure we have a self task. */
