@@ -125,11 +125,11 @@ void zoom_find_void_cells(struct space *s, const int verbose) {
   }
 
   /* Allocate the indices of void cells */
-  if (swift_memalign("void_cells_top", (void **)&s->zoom_props->void_cells_top,
-                     SWIFT_STRUCT_ALIGNMENT,
-                     target_void_count * sizeof(int)) != 0)
+  if (swift_memalign(
+          "void_cell_indices", (void **)&s->zoom_props->void_cell_indices,
+          SWIFT_STRUCT_ALIGNMENT, target_void_count * sizeof(int)) != 0)
     error("Failed to allocate indices of local top-level background cells.");
-  bzero(s->zoom_props->void_cells_top, target_void_count * sizeof(int));
+  bzero(s->zoom_props->void_cell_indices, target_void_count * sizeof(int));
 
   /* Loop over the background/buffer cells and find cells containing
    * the zoom region. */
@@ -141,7 +141,7 @@ void zoom_find_void_cells(struct space *s, const int verbose) {
     /* Label this cell if it contains the zoom region. */
     if (zoom_cell_inside_zoom_region(c, s)) {
       c->subtype = cell_subtype_void;
-      zoom_props->void_cells_top[zoom_props->nr_void_cells++] = cid;
+      zoom_props->void_cell_indices[zoom_props->nr_void_cells++] = cid;
     }
   }
 
@@ -157,7 +157,7 @@ void zoom_find_void_cells(struct space *s, const int verbose) {
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check the void cells are in the right place. */
   for (int i = 0; i < zoom_props->nr_void_cells; i++) {
-    const int cid = zoom_props->void_cells_top[i];
+    const int cid = zoom_props->void_cell_indices[i];
     if (cid < offset || cid >= offset + ncells)
       error("Void cell index is out of range (cid=%d, offset=%d, ncells=%d)",
             cid, offset, ncells);
@@ -1015,87 +1015,30 @@ void zoom_link_void_leaves(struct space *s, struct cell *c) {
 }
 
 /**
- * @brief Initialise the void cell multipoles recursively.
- *
- * @param e The engine.
- * @param c The void cell.
- */
-static void zoom_init_void_mpoles_recursive(struct engine *e, struct cell *c) {
-
-  /* Drift the multipole. */
-  cell_drift_multipole(c, e);
-
-  /* Reset the gravity acceleration tensors */
-  gravity_field_tensors_init(&c->grav.multipole->pot, e->ti_current);
-
-  /* Recurse? Void cells always exist but are flagged as not split at the
-   * zoom level. */
-  if (c->split) {
-    for (int k = 0; k < 8; k++) {
-      zoom_init_void_mpoles_recursive(e, c->progeny[k]);
-    }
-  }
-}
-
-/**
- * @brief Initialise the void cell multipoles.
- *
- * This function is the same as runner_do_init_grav but we do this separately
- * for the void cells to avoid having one -> many dependencies in the tasking
- * which can cause lock ups in the tasking system.
- *
- * Specifically, this function will recurse through the void cell hierarchy
- * drifting the multipole moments and resetting the acceleration tensors.
- *
- * @param e The engine.
- */
-void zoom_init_void_mpoles(struct engine *e) {
-
-  const ticks tic = getticks();
-
-  /* Unpack the space. */
-  struct space *s = e->s;
-
-  /* Get the zoom properties */
-  struct zoom_region_properties *zoom_props = s->zoom_props;
-
-  /* Loop over all void cells and initialise their multipoles. We
-   * do this in a loop because the process is so cheap, there's no point
-   * using a threadpool. */
-  for (int i = 0; i < zoom_props->nr_void_cells; i++) {
-    struct cell *c = &s->cells_top[zoom_props->void_cells_top[i]];
-    zoom_init_void_mpoles_recursive(e, c);
-  }
-
-  if (e->verbose)
-    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
-            clocks_getunit());
-}
-
-/**
  * @brief Collect the timestep from the zoom region to the void level.
  *
  * This will recurse to the void leaves and grab the timestep from the zoom
  * cells, populating the void cell tree as it goes.
  *
- * Note that only grav.ti_end_min and grav.ti_beg_max are updated for void cells
- * since void cells only take part in multipole gravity. We don't need any
- * other timestep information.
- *
  * @param c The #cell.
  */
 static void zoom_void_timestep_collect_recursive(struct cell *c) {
 
-  /* Define the gravity timestep info we'll be collecting. */
+  /* Define the timestep info we'll be collecting. */
+  integertime_t ti_hydro_end_min = max_nr_timesteps, ti_hydro_beg_max = 0;
+  integertime_t ti_rt_end_min = max_nr_timesteps, ti_rt_beg_max = 0;
   integertime_t ti_grav_end_min = max_nr_timesteps, ti_grav_beg_max = 0;
+  integertime_t ti_stars_end_min = max_nr_timesteps, ti_stars_beg_max = 0;
+  integertime_t ti_black_holes_end_min = max_nr_timesteps,
+                ti_black_holes_beg_max = 0;
+  integertime_t ti_sinks_end_min = max_nr_timesteps, ti_sinks_beg_max = 0;
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Ensure we have the right kind of cell. */
   if (c->subtype != cell_subtype_void) {
     error(
         "Trying to update timesteps on cell which isn't a void cell! "
-        "(c->type=%s, "
-        "c->subtype=%s)",
+        "(c->type=%s, c->subtype=%s)",
         cellID_names[c->type], subcellID_names[c->subtype]);
   }
 #endif
@@ -1111,14 +1054,36 @@ static void zoom_void_timestep_collect_recursive(struct cell *c) {
       }
 
       /* And update */
+      ti_hydro_end_min = min(ti_hydro_end_min, cp->hydro.ti_end_min);
+      ti_hydro_beg_max = max(ti_hydro_beg_max, cp->hydro.ti_beg_max);
+      ti_rt_end_min = min(cp->rt.ti_rt_end_min, ti_rt_end_min);
+      ti_rt_beg_max = max(cp->rt.ti_rt_beg_max, ti_rt_beg_max);
       ti_grav_end_min = min(ti_grav_end_min, cp->grav.ti_end_min);
       ti_grav_beg_max = max(ti_grav_beg_max, cp->grav.ti_beg_max);
+      ti_stars_end_min = min(ti_stars_end_min, cp->stars.ti_end_min);
+      ti_stars_beg_max = max(ti_stars_beg_max, cp->stars.ti_beg_max);
+      ti_black_holes_end_min =
+          min(ti_black_holes_end_min, cp->black_holes.ti_end_min);
+      ti_black_holes_beg_max =
+          max(ti_black_holes_beg_max, cp->black_holes.ti_beg_max);
+      ti_sinks_end_min = min(ti_sinks_end_min, cp->sinks.ti_end_min);
+      ti_sinks_beg_max = max(ti_sinks_beg_max, cp->sinks.ti_beg_max);
     }
   }
 
   /* Store the collected values in the cell. */
+  c->hydro.ti_end_min = ti_hydro_end_min;
+  c->hydro.ti_beg_max = ti_hydro_beg_max;
+  c->rt.ti_rt_end_min = ti_rt_end_min;
+  c->rt.ti_rt_beg_max = ti_rt_beg_max;
   c->grav.ti_end_min = ti_grav_end_min;
   c->grav.ti_beg_max = ti_grav_beg_max;
+  c->stars.ti_end_min = ti_stars_end_min;
+  c->stars.ti_beg_max = ti_stars_beg_max;
+  c->black_holes.ti_end_min = ti_black_holes_end_min;
+  c->black_holes.ti_beg_max = ti_black_holes_beg_max;
+  c->sinks.ti_end_min = ti_sinks_end_min;
+  c->sinks.ti_beg_max = ti_sinks_beg_max;
 }
 
 /**
@@ -1134,18 +1099,18 @@ void zoom_void_timestep_collect(struct engine *e) {
   struct space *s = e->s;
   struct zoom_region_properties *zoom_props = s->zoom_props;
   const int nr_void_cells = zoom_props->nr_void_cells;
-  const int *void_cells_top = zoom_props->void_cells_top;
+  const int *void_cell_indices = zoom_props->void_cell_indices;
 
   /* Loop over all void cells and collect the timesteps. */
   for (int i = 0; i < nr_void_cells; i++) {
-    struct cell *c = &s->cells_top[void_cells_top[i]];
+    struct cell *c = &s->cells_top[void_cell_indices[i]];
     zoom_void_timestep_collect_recursive(c);
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Ensure the void cells have the right timesteps. */
   for (int i = 0; i < nr_void_cells; i++) {
-    struct cell *c = &s->cells_top[void_cells_top[i]];
+    struct cell *c = &s->cells_top[void_cell_indices[i]];
     if (c->grav.ti_end_min != e->ti_current) {
       error("Void cell has not been updated with a timestep!");
     }

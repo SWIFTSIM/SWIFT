@@ -1370,7 +1370,11 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
         c->grav.init = scheduler_addtask(s, task_type_init_grav,
                                          task_subtype_none, 0, 0, c, NULL);
 
-        /* Gravity non-neighbouring pm calculations. */
+        /* Gravity non-neighbouring pm calculations */
+        /* When running a zoom we only want to create long range tasks for
+         * non-zoom cells and zoom cells where there are no grav_mm tasks in the
+         * void cell tree (if this is the case then there will be no void super
+         * level). */
         if (c->top->type != cell_type_zoom ||
             (c->top->type == cell_type_zoom &&
              c->top->void_parent->grav.super == NULL)) {
@@ -1414,12 +1418,6 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
           /* Ensure the void super exists (Otherwise there's nothing to worry
            * about). */
           if (c->top->void_parent->grav.super != NULL) {
-
-            /* zoom.long_range -> void.down */
-            if (c->grav.long_range != NULL) {
-              scheduler_addunlock(s, c->grav.long_range,
-                                  c->top->void_parent->grav.super->grav.down);
-            }
 
             /* void.down -> zoom.down */
             scheduler_addunlock(s, c->top->void_parent->grav.super->grav.down,
@@ -2094,19 +2092,25 @@ void engine_gravity_make_task_loop(struct engine *e, int cid, const int cdim[3],
         /* Avoid duplicates. */
         if (cid >= cjd) continue;
 
-        /* Avoid empty cells. Completely foreign pairs also get
-         * the Nigel treatment (AKA are kicked out of the union/we skip
-         * them). Unless they are void cells, Nigels a fan of those (and
-         * we need to make tasks for them to be later split even if they are
-         * empty and foreign). */
-        if (cj->subtype != cell_subtype_void &&
-            (cj->grav.count == 0 ||
-             (ci->nodeID != nodeID && cj->nodeID != nodeID)))
+        /* Avoid empty cells (except voids). */
+        if (cj->grav.count == 0 && cj->subtype != cell_subtype_void) continue;
+
+        /* Completely foreign pairs also get the Nigel treatment (AKA are kicked
+         * out of the union/we skip them). Unless they are void cells, Nigels a
+         * fan of those (and we need to make tasks for them to be later split
+         * even if they are empty and foreign). */
+        /* TODO: Once we have the partitioning sorted it would be far better
+         * to know exactly which void cells contain local zoom progeny. We
+         * only actually need to make tasks for void cells with at least one
+         * local zoom cell within their tree. This could be achieved with a
+         * flag of some form. */
+        if ((ci->nodeID != nodeID && cj->nodeID != nodeID) &&
+            (ci->subtype != cell_subtype_void &&
+             cj->subtype != cell_subtype_void))
           continue;
 
         /* Do we need a pair interaction for these cells? */
         if (engine_gravity_need_cell_pair_task(e, ci, cj, periodic, use_mesh)) {
-
           /* Ok, we need to add a direct pair calculation */
           engine_make_pair_gravity_task(e, sched, ci, cj, nodeID, cid, cjd);
         }
@@ -4896,7 +4900,8 @@ void engine_maketasks(struct engine *e) {
     message("Setting super-pointers took %.3f %s.",
             clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
-  /* In zoom land we need to create the void tasks before all others. */
+  /* In zoom land we need to create the hierarchical void tasks before all
+   * others. */
   if (e->s->with_zoom_region) {
     zoom_engine_make_hierarchical_void_tasks(e);
   }

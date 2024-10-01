@@ -2456,7 +2456,7 @@ void space_clean(struct space *s) {
                s->zoom_props->local_bkg_cells_with_particles_top);
     swift_free("local_buffer_cell_with_particless_top",
                s->zoom_props->local_buffer_cells_with_particles_top);
-    swift_free("void_cells_top", s->zoom_props->void_cells_top);
+    swift_free("void_cell_indices", s->zoom_props->void_cell_indices);
     swift_free("neighbour_cells_top", s->zoom_props->neighbour_cells_top);
     free(s->zoom_props);
   }

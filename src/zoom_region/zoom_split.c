@@ -160,7 +160,7 @@ void zoom_void_space_split(struct space *s, int verbose) {
 
   /* Unpack some useful information. */
   struct cell *cells_top = s->cells_top;
-  int *void_cells_top = s->zoom_props->void_cells_top;
+  int *void_cell_indices = s->zoom_props->void_cell_indices;
   int nr_void_cells = s->zoom_props->nr_void_cells;
   const integertime_t ti_current = s->e->ti_current;
 
@@ -194,7 +194,7 @@ void zoom_void_space_split(struct space *s, int verbose) {
   int nr_gparts_in_void = 0;
   for (int i = 0; i < nr_void_cells; i++)
     nr_gparts_in_void +=
-        s->multipoles_top[s->zoom_props->void_cells_top[i]].m_pole.num_gpart;
+        s->multipoles_top[s->zoom_props->void_cell_indices[i]].m_pole.num_gpart;
 
   if (nr_gparts_in_void != nr_gparts_in_zoom)
     error(
