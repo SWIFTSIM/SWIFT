@@ -2098,7 +2098,8 @@ void engine_gravity_make_task_loop(struct engine *e, int cid, const int cdim[3],
          * fan of those (and we need to make tasks for them to be later split
          * even if they are empty and foreign). */
         if ((ci->nodeID != nodeID && cj->nodeID != nodeID) &&
-            cj->subtype != cell_subtype_void)
+            (ci->subtype != cell_subtype_void &&
+             cj->subtype != cell_subtype_void))
           continue;
 
         /* Do we need a pair interaction for these cells? */
