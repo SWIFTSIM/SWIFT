@@ -422,10 +422,9 @@ void runner_do_long_range_zoom_periodic(struct runner *r, struct cell *ci,
   /* Get the mutlipole of the cell we are interacting. */
   struct gravity_tensors *const multi_i = ci->grav.multipole;
 
-  /* We need to test whether we need a long range interaction at the same
-   * level we used to define pair interactions (i.e. the top level void
-   * cells). Therefore, get the top level void cell. */
-  struct cell *void_top = ci->top->void_parent->top;
+  /* Get the void cells. */
+  const int nr_voids = s->zoom_props->nr_void_cells;
+  const int *void_cells = s->zoom_props->void_cell_indices;
 
   /* Because neighbours are by definition the background cells (or buffer
    * cells) within the mesh distance criterion we only need to check them
