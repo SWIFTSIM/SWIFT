@@ -169,7 +169,7 @@ void zoom_void_space_split(struct space *s, int verbose) {
 
   /* Loop over the void cells */
   for (int ind = 0; ind < nr_void_cells; ind++) {
-    struct cell *c = &cells_top[void_cells_top[ind]];
+    struct cell *c = &cells_top[void_cell_indices[ind]];
     zoom_void_split_recursive(s, c, ti_current, /*tpid*/ 0);
   }
 
