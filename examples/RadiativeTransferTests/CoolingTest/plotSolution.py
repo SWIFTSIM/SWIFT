@@ -184,7 +184,7 @@ def get_snapshot_data(snaplist):
     firstdata = swiftsimio.load(snaplist[0])
     with_rt = True
     try:
-        ngroups = int(firstdata.metadata.subgrid_scheme["PhotonGroupNumber"])
+        ngroups = int(firstdata.metadata.subgrid_scheme["PhotonGroupNumber"][0])
     except KeyError:
         # allow to read in solutions with only cooling, without RT
         with_rt = False
