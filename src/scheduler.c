@@ -1704,7 +1704,7 @@ static void zoom_scheduler_splittask_gravity_void_self(struct task *t,
   /* Create a self for all progeny. */
   for (int i = 0; i < 8; i++) {
     if (ci->progeny[i] != NULL) {
-      zoom_scheduler_splittask_gravity_void_pair(
+      zoom_scheduler_splittask_gravity_void_self(
           scheduler_addtask(s, task_type_self, t->subtype, 0, 0, ci->progeny[i],
                             NULL),
           s);
