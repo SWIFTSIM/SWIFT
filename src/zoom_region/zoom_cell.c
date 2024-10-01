@@ -1020,8 +1020,7 @@ static void zoom_void_timestep_collect_recursive(struct cell *c) {
   if (c->subtype != cell_subtype_void) {
     error(
         "Trying to update timesteps on cell which isn't a void cell! "
-        "(c->type=%s, "
-        "c->subtype=%s)",
+        "(c->type=%s, c->subtype=%s)",
         cellID_names[c->type], subcellID_names[c->subtype]);
   }
 #endif
