@@ -138,7 +138,7 @@ struct part {
   } conserved;
 
   /*! Geometrical quantities used for hydro. */
-  struct fvmp_geometry_struct geometry;
+  struct fvpm_geometry_struct geometry;
 
   /*! Variables used for timestep calculation. */
   struct {

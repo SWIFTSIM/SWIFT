@@ -29,7 +29,7 @@ fvpm_normalise_centroid(struct part* restrict p, const float wcount) {}
  * @param w Kernel value at position pj->x.
  */
 __attribute__((always_inline)) INLINE static void
-hydro_velocities_update_centroid_left(struct part* restrict p, const float* dx,
+fvpm_update_centroid_left(struct part* restrict p, const float* dx,
                                       const float w) {}
 
 /**
@@ -42,7 +42,7 @@ hydro_velocities_update_centroid_left(struct part* restrict p, const float* dx,
  * @param w Kernel value at position pi->x.
  */
 __attribute__((always_inline)) INLINE static void
-hydro_velocities_update_centroid_right(struct part* restrict p, const float* dx,
+fvpm_update_centroid_right(struct part* restrict p, const float* dx,
                                        const float w) {}
 
 
