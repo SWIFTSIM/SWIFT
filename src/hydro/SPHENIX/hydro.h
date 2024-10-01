@@ -643,6 +643,7 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   p->viscosity.div_v *= h_inv_dim_plus_one * rho_inv * a_inv2;
   p->viscosity.div_v += cosmo->H * hydro_dimension;
 
+  /* Finish matrix and volume computations for FVPM Radiative Transfer */
   fvpm_compute_volume_and_matrix(p, h_inv_dim);
 
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
