@@ -1877,7 +1877,7 @@ void engine_make_hierarchical_tasks_mapper(void *map_data, int num_elements,
     struct cell *c = &((struct cell *)map_data)[ind];
 
     /* In zoom land we need to handle void cells separately after all other
-     * cells.This is done before this mapper call in engine_maketasks. */
+     * cells. This is done before this mapper call in engine_maketasks. */
     if (c->subtype == cell_subtype_void) {
       continue;
     }
@@ -2099,6 +2099,11 @@ void engine_gravity_make_task_loop(struct engine *e, int cid, const int cdim[3],
          * out of the union/we skip them). Unless they are void cells, Nigels a
          * fan of those (and we need to make tasks for them to be later split
          * even if they are empty and foreign). */
+        /* TODO: Once we have the partitioning sorted it would be far better
+         * to know exactly which void cells contain local zoom progeny. We
+         * only actually need to make tasks for void cells with at least one
+         * local zoom cell within their tree. This could be achieved with a
+         * flag of some form. */
         if ((ci->nodeID != nodeID && cj->nodeID != nodeID) &&
             (ci->subtype != cell_subtype_void &&
              cj->subtype != cell_subtype_void))
