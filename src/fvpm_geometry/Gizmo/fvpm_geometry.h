@@ -1,5 +1,33 @@
-#ifndef HYDRO_SPH_ADDITIONS_FOR_GEARRT_H
-#define HYDRO_SPH_ADDITIONS_FOR_GEARRT_H
+#ifndef GIZMO_FVPM_GEOMETRY_H
+#define GIZMO_FVPM_GEOMETRY_H
+
+#include <config.h>
+#include "part.h"
+
+/**
+ * @file fvpm_geometry.h
+ * @brief Functions related to the Gizmo FVPM geometry struct collection,
+ * in particular the collection of the data required for the matrix needed
+ * for gradients.
+ * This was moved here so we can cleanly couple GEAR-RT on top of SPH
+ * hydrodynamics while avoiding code replication.
+ */
+
+#if defined(RT_GEAR) && defined(GIZMO_MFM_SPH)
+  /* Some functions clash here. MFM resets and does some geometry centroid
+   * stuff, while GEAR-RT, which uses MFV, doesn't. So we'd need to split the
+   * functions for RT and for hydro use.
+   * However, it is very unlikely we'll ever actually use that combination,
+   * so leaving it as-is for now. */
+#error "Combining GIZMO MFM and GEAR-RT not implemented yet."
+#endif
+
+#if defined(GIZMO_MFV_SPH) || defined(RT_GEAR)
+#include "./MFV/fvpm_geometry.h"
+#elif defined(GIZMO_MFM_SPH)
+#include "./MFM/fvpm_geometry.h"
+#endif
+
 
 /**
  * @brief Check if the gradient matrix for this particle is well behaved.
@@ -8,107 +36,28 @@
  * @return 1 if the gradient matrix is well behaved, 0 otherwise.
  */
 __attribute__((always_inline)) INLINE static int
-hydro_part_geometry_well_behaved(const struct part* restrict p) {
+fvpm_part_geometry_well_behaved(const struct part* restrict p) {
 
-#ifdef RT_GEAR
   return p->geometry.wcorr > const_gizmo_min_wcorr;
-#else
-  return 0;
-#endif
 }
+
 
 /**
- * @brief Reset the variables used to store the centroid; used for the velocity
- * correction.
+ * @brief Collect the data needed for the matrix construction.
  */
 __attribute__((always_inline)) INLINE static void
-hydro_velocities_reset_centroids(struct part* restrict p) {
-
-#ifdef RT_GEAR
-  p->geometry.centroid[0] = 0.0f;
-  p->geometry.centroid[1] = 0.0f;
-  p->geometry.centroid[2] = 0.0f;
-#endif
-}
-
-/**
- * @brief Normalise the centroids after the density loop.
- *
- * @param p Particle.
- * @param wcount Wcount for the particle. This is an explicit argument, so that
- * it is clear from the code that wcount needs to be normalised by the time it
- * is used here.
- */
-__attribute__((always_inline)) INLINE static void
-hydro_velocities_normalise_centroid(struct part* restrict p,
-                                    const float wcount) {
-
-#ifdef RT_GEAR
-  const float norm = kernel_norm / wcount;
-  p->geometry.centroid[0] *= norm;
-  p->geometry.centroid[1] *= norm;
-  p->geometry.centroid[2] *= norm;
-#endif
-}
-
-/**
- * @brief Update the centroid with the given contribution, assuming the particle
- * acts as the left particle in the neighbour interaction.
- *
- * @param p Particle (pi).
- * @param dx Distance vector between the particle and its neighbour (dx = pi->x
- * - pj->x).
- * @param w Kernel value at position pj->x.
- */
-__attribute__((always_inline)) INLINE static void
-hydro_velocities_update_centroid_left(struct part* restrict p, const float* dx,
-                                      const float w) {
-
-#ifdef RT_GEAR
-  p->geometry.centroid[0] -= dx[0] * w;
-  p->geometry.centroid[1] -= dx[1] * w;
-  p->geometry.centroid[2] -= dx[2] * w;
-#endif
-}
-
-/**
- * @brief Update the centroid with the given contribution, assuming the particle
- * acts as the right particle in the neighbour interaction.
- *
- * @param p Particle (pj).
- * @param dx Distance vector between the particle and its neighbour (dx = pi->x
- * - pj->x).
- * @param w Kernel value at position pi->x.
- */
-__attribute__((always_inline)) INLINE static void
-hydro_velocities_update_centroid_right(struct part* restrict p, const float* dx,
-                                       const float w) {
-
-#ifdef RT_GEAR
-  p->geometry.centroid[0] += dx[0] * w;
-  p->geometry.centroid[1] += dx[1] * w;
-  p->geometry.centroid[2] += dx[2] * w;
-#endif
-}
-
-__attribute__((always_inline)) INLINE static void
-gearrt_density_accumulate_geometry_and_matrix(struct part* restrict pi,
+fvpm_accumulate_geometry_and_matrix(struct part* restrict pi,
                                               const float wi,
                                               const float dx[3]) {
-#ifdef RT_GEAR
-  /* these are eqns. (1) and (2) in the summary */
+  /* these are eqns. (1) and (2) in the Gizmo theory summary */
   pi->geometry.volume += wi;
   for (int k = 0; k < 3; k++)
     for (int l = 0; l < 3; l++)
       pi->geometry.matrix_E[k][l] += dx[k] * dx[l] * wi;
-
-  hydro_velocities_update_centroid_left(pi, dx, wi);
-#endif
 }
 
-__attribute__((always_inline)) INLINE static void gearrt_geometry_init(
+__attribute__((always_inline)) INLINE static void fvpm_geometry_init(
     struct part* restrict p) {
-#ifdef RT_GEAR
 
   p->geometry.volume = 0.0f;
   p->geometry.matrix_E[0][0] = 0.0f;
@@ -122,14 +71,17 @@ __attribute__((always_inline)) INLINE static void gearrt_geometry_init(
   p->geometry.matrix_E[2][2] = 0.0f;
 
   /* reset the centroid variables used for the velocity correction in MFV */
-  hydro_velocities_reset_centroids(p);
-#endif
+  fvpm_reset_centroids(p);
 }
 
+/**
+ * @brief Finish the computation of the matrix.
+ *
+ * @param p the particle to work on
+ * @param ihdim 1/h^{dim}
+ */
 __attribute__((always_inline)) INLINE static void
-gearrt_compute_volume_and_matrix(struct part* restrict p, const float ihdim) {
-
-#ifdef RT_GEAR
+fvpm_compute_volume_and_matrix(struct part* restrict p, const float ihdim) {
 
   /* Final operation on the geometry. */
   /* we multiply with the smoothing kernel normalization ih3 and calculate the
@@ -150,7 +102,7 @@ gearrt_compute_volume_and_matrix(struct part* restrict p, const float ihdim) {
   p->geometry.matrix_E[2][2] *= ihdim;
 
   /* normalise the centroids for MFV */
-  hydro_velocities_normalise_centroid(p, p->density.wcount);
+  fvpm_normalise_centroid(p, p->density.wcount);
 
   /* Check the condition number to see if we have a stable geometry. */
   const float condition_number_E =
@@ -197,7 +149,6 @@ gearrt_compute_volume_and_matrix(struct part* restrict p, const float ihdim) {
     /* add a correction to the number of neighbours for this particle */
     p->geometry.wcorr = const_gizmo_w_correction_factor * p->geometry.wcorr;
   }
-#endif
 }
 
-#endif
+#endif /* GIZMO_FVPM_GEOMETRY_H */

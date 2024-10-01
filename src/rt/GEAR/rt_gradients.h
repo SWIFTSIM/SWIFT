@@ -20,7 +20,7 @@
 #ifndef SWIFT_RT_GRADIENTS_GEAR_H
 #define SWIFT_RT_GRADIENTS_GEAR_H
 
-#include "hydro.h" /* needed for hydro_part_geometry_well_behaved() */
+#include "fvpm_geometry.h"
 #include "rt_getters.h"
 /* #include "rt_slope_limiters_cell.h" [> skipped for now <] */
 #include "rt_slope_limiters_face.h"
@@ -101,7 +101,7 @@ __attribute__((always_inline)) INLINE static void rt_finalise_gradient_part(
   const float h_inv = 1.0f / h;
 
   float norm;
-  if (hydro_part_geometry_well_behaved(p)) {
+  if (fvpm_part_geometry_well_behaved(p)) {
     const float hinvdim = pow_dimension(h_inv);
     norm = hinvdim;
   } else {
@@ -178,7 +178,7 @@ __attribute__((always_inline)) INLINE static void rt_gradients_collect(
 
   /* Compute psi tilde */
   float psii_tilde[3];
-  if (hydro_part_geometry_well_behaved(pi)) {
+  if (fvpm_part_geometry_well_behaved(pi)) {
     psii_tilde[0] =
         wi * (Bi[0][0] * dx[0] + Bi[0][1] * dx[1] + Bi[0][2] * dx[2]);
     psii_tilde[1] =
@@ -193,7 +193,7 @@ __attribute__((always_inline)) INLINE static void rt_gradients_collect(
   }
 
   float psij_tilde[3];
-  if (hydro_part_geometry_well_behaved(pj)) {
+  if (fvpm_part_geometry_well_behaved(pj)) {
     psij_tilde[0] =
         wi * (Bj[0][0] * dx[0] + Bj[0][1] * dx[1] + Bj[0][2] * dx[2]);
     psij_tilde[1] =
@@ -306,7 +306,7 @@ __attribute__((always_inline)) INLINE static void rt_gradients_nonsym_collect(
 
   /* Compute psi tilde */
   float psii_tilde[3];
-  if (hydro_part_geometry_well_behaved(pi)) {
+  if (fvpm_part_geometry_well_behaved(pi)) {
     psii_tilde[0] =
         wi * (Bi[0][0] * dx[0] + Bi[0][1] * dx[1] + Bi[0][2] * dx[2]);
     psii_tilde[1] =
