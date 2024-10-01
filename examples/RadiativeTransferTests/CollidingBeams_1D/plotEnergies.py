@@ -51,7 +51,7 @@ except IndexError:
 
 def get_snapshot_list(snapshot_basename="output"):
     """
-    Find the snapshot(s) that are to be plotted 
+    Find the snapshot(s) that are to be plotted
     and return their names as list """
 
     snaplist = []
@@ -119,13 +119,13 @@ def get_photon_energies(snaplist):
     returns:
 
         snap_nrs : list of integers of snapshot numbers
-        energy_sums: np.array(shape=(len snaplist, ngroups)) of 
+        energy_sums: np.array(shape=(len snaplist, ngroups)) of
             total photon energies per group per snapshot
     """
 
     data = swiftsimio.load(snaplist[0])
     meta = data.metadata
-    ngroups = int(meta.subgrid_scheme["PhotonGroupNumber"])
+    ngroups = int(meta.subgrid_scheme["PhotonGroupNumber"][0])
 
     energy_sums = np.zeros((len(snaplist), ngroups))
     snap_nrs = np.zeros(len(snaplist), dtype=int)
