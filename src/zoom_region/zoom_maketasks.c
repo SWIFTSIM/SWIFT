@@ -340,10 +340,9 @@ void zoom_engine_make_hierarchical_void_tasks_recursive(struct engine *e,
                                                         struct cell *c) {
 
   struct scheduler *s = &e->sched;
-  const int is_self_gravity = (e->policy & engine_policy_self_gravity);
 
   /* Nothing to do if there's no gravity. */
-  if (!is_self_gravity) return;
+  if (e->policy & engine_policy_self_gravity) return;
 
   /* At the super level we have a few different tasks to make. (We don't need
    * any tasks above the super level) */
