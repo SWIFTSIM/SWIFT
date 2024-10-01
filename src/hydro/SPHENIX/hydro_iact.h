@@ -28,6 +28,7 @@
 
 #include "adaptive_softening_iact.h"
 #include "adiabatic_index.h"
+#include "fvpm_geometry.h"
 #include "hydro_parameters.h"
 #include "minmax.h"
 #include "signal_velocity.h"
@@ -70,7 +71,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   pi->density.wcount_dh -= (hydro_dimension * wi + ui * wi_dx);
   adaptive_softening_add_correction_term(pi, ui, hi_inv, mj);
 
-  gearrt_density_accumulate_geometry_and_matrix(pi, wi, dx);
+  /* Collect data for FVPM matrix construction */
+  fvpm_accumulate_geometry_and_matrix(pi, wi, dx);
+  fvpm_update_centroid_left(pi, dx, wi);
 
   /* Compute density of pj. */
   const float hj_inv = 1.f / hj;
@@ -83,7 +86,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   pj->density.wcount_dh -= (hydro_dimension * wj + uj * wj_dx);
   adaptive_softening_add_correction_term(pj, uj, hj_inv, mi);
 
-  gearrt_density_accumulate_geometry_and_matrix(pj, wj, dx);
+  /* Collect data for FVPM matrix construction */
+  fvpm_accumulate_geometry_and_matrix(pj, wj, dx);
+  fvpm_update_centroid_right(pj, dx, wj);
 
   /* Now we need to compute the div terms */
   const float r_inv = r ? 1.0f / r : 0.0f;
@@ -157,7 +162,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   pi->density.wcount_dh -= (hydro_dimension * wi + ui * wi_dx);
   adaptive_softening_add_correction_term(pi, ui, h_inv, mj);
 
-  gearrt_density_accumulate_geometry_and_matrix(pi, wi, dx);
+  /* Collect data for FVPM matrix construction */
+  fvpm_accumulate_geometry_and_matrix(pi, wi, dx);
+  fvpm_update_centroid_left(pi, dx, wi);
 
   const float r_inv = r ? 1.0f / r : 0.0f;
   const float faci = mj * wi_dx * r_inv;

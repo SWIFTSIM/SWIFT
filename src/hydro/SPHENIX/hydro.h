@@ -36,7 +36,7 @@
 #include "hydro_parameters.h"
 #include "hydro_properties.h"
 #include "hydro_space.h"
-#include "hydro_sph_additions_for_GEARRT.h"
+#include "fvpm_geometry.h"
 #include "kernel_hydro.h"
 #include "minmax.h"
 #include "pressure_floor.h"
@@ -593,7 +593,8 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->limited_part = 0;
 #endif
 
-  gearrt_geometry_init(p);
+  /* Init geometry for FVPM Radiative Transfer */
+  fvpm_geometry_init(p);
 }
 
 /**
@@ -642,7 +643,7 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   p->viscosity.div_v *= h_inv_dim_plus_one * rho_inv * a_inv2;
   p->viscosity.div_v += cosmo->H * hydro_dimension;
 
-  gearrt_compute_volume_and_matrix(p, h_inv_dim);
+  fvpm_compute_volume_and_matrix(p, h_inv_dim);
 
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
   p->n_density += kernel_root;

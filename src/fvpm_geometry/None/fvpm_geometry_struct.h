@@ -5,9 +5,7 @@
  * @file fvpm_geometry_struct.h
  * @brief Struct related to the Gizmo FVPM geometry particle data collection,
  * in particular the collection of the data required for the matrix needed
- * for gradients.
- * This was moved here so we can cleanly couple GEAR-RT on top of SPH
- * hydrodynamics while avoiding code replication.
+ * for gradients. Empty definitions for when FVPM are unused.
  */
 
 /* Geometrical quantities used for hydro. */

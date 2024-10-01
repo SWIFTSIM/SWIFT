@@ -32,7 +32,7 @@
 #include "cooling_struct.h"
 #include "csds.h"
 #include "feedback_struct.h"
-#include "geometry_struct_for_sph_gearrt.h"
+#include "fvpm_geometry_struct.h"
 #include "mhd_struct.h"
 #include "particle_splitting_struct.h"
 #include "pressure_floor_struct.h"
@@ -311,7 +311,8 @@ struct part {
   char limited_part;
 #endif
 
-  struct geometry_struct_for_rt geometry;
+  /*! Geometrical quantities used for Finite Volume Particle Method RT. */
+  struct fvpm_geometry_struct geometry;
 
 } SWIFT_STRUCT_ALIGN;
 
