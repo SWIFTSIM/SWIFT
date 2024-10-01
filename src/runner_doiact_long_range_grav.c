@@ -534,7 +534,7 @@ void runner_do_long_range_zoom_periodic(struct runner *r, struct cell *ci,
 
   /* Get the void cells. */
   const int nr_voids = s->zoom_props->nr_void_cells;
-  const int *void_cells = s->zoom_props->void_cells_top;
+  const int *void_cells = s->zoom_props->void_cell_indices;
 
   /* Now loop over the void cells.  */
   for (int k = 0; k < nr_voids; k++) {
