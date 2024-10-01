@@ -1689,6 +1689,13 @@ static void zoom_scheduler_splittask_gravity_void_self(struct task *t,
   const struct space *sp = s->space;
   struct engine *e = sp->e;
 
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Ensure we have a pair task. */
+  if (t->type != task_type_self) {
+    error("Got a non-pair task (t->type=%s)", taskID_names[t->type]);
+  }
+#endif
+
   /* Iterate on this task until we're done with it. */
   while (1) {
 
