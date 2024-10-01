@@ -56,4 +56,9 @@ void zoom_void_space_split(struct space *s, int verbose);
 /* Task creation functions. */
 void zoom_engine_make_self_gravity_tasks(struct space *s, struct engine *e);
 
+/* Void cell gravity task creation. */
+void zoom_engine_make_hierarchical_void_tasks(struct engine *e);
+
+/* Update the void cell gravity timesteps. */
+void zoom_void_timestep_collect(struct engine *e);
 #endif /* SWIFT_ZOOM_H */
