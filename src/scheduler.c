@@ -1573,7 +1573,7 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
 #ifdef SWIFT_DEBUG_CHECKS
   /* Ensure we have a pair task. */
   if (t->type != task_type_pair) {
-    error("Got a non-pair task (t->type=%d)", t->type);
+    error("Got a non-pair task (t->type=%s)", taskID_names[t->type]);
   }
 #endif
 
@@ -1690,9 +1690,9 @@ static void zoom_scheduler_splittask_gravity_void_self(struct task *t,
   struct engine *e = sp->e;
 
 #ifdef SWIFT_DEBUG_CHECKS
-  /* Ensure we have a pair task. */
+  /* Ensure we have a self task. */
   if (t->type != task_type_self) {
-    error("Got a non-pair task (t->type=%s)", taskID_names[t->type]);
+    error("Got a non-self task (t->type=%s)", taskID_names[t->type]);
   }
 #endif
 
@@ -1700,7 +1700,7 @@ static void zoom_scheduler_splittask_gravity_void_self(struct task *t,
   while (1) {
 
     /* Non-splittable task? */
-    if ((t->ci == NULL) || (t->type == task_type_pair && t->cj == NULL)) {
+    if (t->ci == NULL) {
       t->type = task_type_none;
       t->subtype = task_subtype_none;
       t->ci = NULL;
