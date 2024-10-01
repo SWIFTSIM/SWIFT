@@ -1861,12 +1861,6 @@ void scheduler_splittasks_mapper(void *map_data, int num_elements,
     /* Invoke the correct splitting strategy */
     if (t->subtype == task_subtype_density) {
       scheduler_splittask_hydro(t, s);
-    } else if ((t->type == task_type_self &&
-                t->ci->subtype == cell_subtype_void) ||
-               (t->type == task_type_pair &&
-                (t->ci->subtype == cell_subtype_void ||
-                 t->cj->subtype == cell_subtype_void))) {
-      zoom_scheduler_splittask_gravity_void_pair(t, s);
     } else if (t->subtype == task_subtype_external_grav) {
       scheduler_splittask_gravity(t, s);
     } else if (t->type == task_type_self &&
