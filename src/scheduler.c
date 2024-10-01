@@ -1698,7 +1698,7 @@ static void zoom_scheduler_splittask_gravity_void_self(struct task *t,
   while (1) {
 
     /* Non-splittable task? */
-    if ((t->ci == NULL) || (t->type == task_type_pair && t->cj == NULL)) {
+    if (t->ci == NULL) {
       t->type = task_type_none;
       t->subtype = task_subtype_none;
       t->ci = NULL;
