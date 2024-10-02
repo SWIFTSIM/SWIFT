@@ -615,26 +615,20 @@ void space_regrid(struct space *s, int verbose) {
 #ifdef SWIFT_DEBUG_CHECKS
     /* Check the cell types counts against what we have now. */
     int nr_zoom_cells = 0;
-    int nr_buffer_cells = 0;
     int nr_bkg_cells = 0;
     for (int k = 0; k < s->nr_cells; k++) {
       if (s->cells_top[k].type == cell_type_zoom) {
         nr_zoom_cells++;
-      } else if (s->cells_top[k].type == cell_type_buffer) {
-        nr_buffer_cells++;
       } else if (s->cells_top[k].type == cell_type_bkg) {
         nr_bkg_cells++;
       }
     }
-    if (s->with_zoom_region &&
-        (nr_zoom_cells != s->zoom_props->nr_zoom_cells ||
-         nr_buffer_cells != s->zoom_props->nr_buffer_cells ||
-         nr_bkg_cells != s->zoom_props->nr_bkg_cells)) {
+    if (s->with_zoom_region && (nr_zoom_cells != s->zoom_props->nr_zoom_cells ||
+                                nr_bkg_cells != s->zoom_props->nr_bkg_cells)) {
       error(
-          "The number of zoom cells (%d), buffer cells (%d) or background "
-          "cells (%d) does not match the expected values (%d, %d, %d).",
-          nr_zoom_cells, nr_buffer_cells, nr_bkg_cells,
-          s->zoom_props->nr_zoom_cells, s->zoom_props->nr_buffer_cells,
+          "The number of zoom cells (%d) or background cells (%d) does not "
+          "match the expected values (%d, %d).",
+          nr_zoom_cells, nr_bkg_cells, s->zoom_props->nr_zoom_cells,
           s->zoom_props->nr_bkg_cells);
     }
 
