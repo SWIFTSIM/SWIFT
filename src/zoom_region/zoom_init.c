@@ -243,7 +243,8 @@ void zoom_get_cell_props(struct space *s, double ini_max_dim) {
     s->zoom_props->iwidth[i] = 1.0 / s->zoom_props->width[i];
 
     /* Set the zoom cdim. */
-    s->zoom_props->cdim[i] = s->zoom_props->dim[i] * s->zoom_props->iwidth[i];
+    s->zoom_props->cdim[i] =
+        (int)(s->zoom_props->dim[i] * s->zoom_props->iwidth[i] * 1.0001);
   }
 }
 
@@ -432,10 +433,10 @@ void zoom_region_init(struct space *s, const int verbose) {
   s->cell_min = 0.99 * dmax / s->cdim[0];
 
   /* Store cell numbers and offsets. */
-  s->zoom_props->nr_zoom_cells = s->zoom_props->bkg_cell_offset;
-  s->zoom_props->nr_bkg_cells = s->cdim[0] * s->cdim[1] * s->cdim[2];
   s->zoom_props->bkg_cell_offset =
       s->zoom_props->cdim[0] * s->zoom_props->cdim[1] * s->zoom_props->cdim[2];
+  s->zoom_props->nr_zoom_cells = s->zoom_props->bkg_cell_offset;
+  s->zoom_props->nr_bkg_cells = s->cdim[0] * s->cdim[1] * s->cdim[2];
 
   /* Report what we have done */
   if (verbose) {
