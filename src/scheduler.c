@@ -1576,8 +1576,8 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
 #endif
 
   /* Get a handle on the cells involved. */
-  struct cell *ci = t->ci;
-  struct cell *cj = t->cj;
+  struct cell *restrict ci = t->ci;
+  struct cell *restrict cj = t->cj;
 
   /* If neither cell is a void cell, redirect to the normal splitter. */
   if (ci->subtype != cell_subtype_void && cj->subtype != cell_subtype_void) {
