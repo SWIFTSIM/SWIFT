@@ -437,9 +437,6 @@ struct zoom_region_properties {
   /*! The indices of the neighbour top-level bkg  cells */
   int *void_cell_indices;
 
-  /*! Number of empty top-level cells (cells containing the buffer region) */
-  int nr_empty_cells;
-
   /*! Number of *local* top-level zoom cells */
   int nr_local_zoom_cells;
 
@@ -453,12 +450,6 @@ struct zoom_region_properties {
   int *local_bkg_cells_top;
 
   /*! Number of *local* top-level zoom cells */
-  int nr_local_buffer_cells;
-
-  /*! The indices of the *local* top-level background cells */
-  int *local_buffer_cells_top;
-
-  /*! Number of *local* top-level zoom cells */
   int nr_local_zoom_cells_with_particles;
 
   /*! The indices of the *local* top-level zoom cells */
@@ -469,12 +460,6 @@ struct zoom_region_properties {
 
   /*! The indices of the *local* top-level background cells */
   int *local_bkg_cells_with_particles_top;
-
-  /*! Number of *local* top-level zoom cells */
-  int nr_local_buffer_cells_with_particles;
-
-  /*! The indices of the *local* top-level background cells */
-  int *local_buffer_cells_with_particles_top;
 
   /*! Number of baryonic particles that have left the zoom region and been
    * converted to dark matter */
