@@ -1624,6 +1624,8 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
           }
 
         } else {
+
+          /* Can't use an M-M so let's make a pair task. */
           zoom_scheduler_splittask_gravity_void_pair(
               scheduler_addtask(s, task_type_pair, task_subtype_grav, 0, 0, cpi,
                                 cpj),
@@ -1660,6 +1662,8 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
         }
 
       } else {
+
+        /* Can't use an M-M so let's make a pair task. */
         zoom_scheduler_splittask_gravity_void_pair(
             scheduler_addtask(s, task_type_pair, task_subtype_grav, 0, 0,
                               ci->progeny[i], cj),
@@ -1682,8 +1686,8 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
           /* We can make use of the old task. Flag that it is between
            * cpi and cpj not their progeny with -2. */
           t->flags = -2;
-          t->ci = cpi;
-          t->cj = cpj;
+          t->ci = ci;
+          t->cj = cj->progeny[j];
 
         } else {
 
@@ -1694,6 +1698,8 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
                             cj->progeny[j]);
         }
       } else {
+
+        /* Can't use an M-M so let's make a pair task. */
         zoom_scheduler_splittask_gravity_void_pair(
             scheduler_addtask(s, task_type_pair, task_subtype_grav, 0, 0, ci,
                               cj->progeny[j]),
