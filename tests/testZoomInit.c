@@ -125,112 +125,36 @@ int main(int argc, char *argv[]) {
          500);
 
   /* Ensure the cell boundaries line up. */
-  if (s->zoom_props->with_buffer_cells) {
-    int found_bkg_bufferi_low = 0;
-    int found_bkg_bufferj_low = 0;
-    int found_bkg_bufferk_low = 0;
-    int found_bkg_bufferi_up = 0;
-    int found_bkg_bufferj_up = 0;
-    int found_bkg_bufferk_up = 0;
-    for (int i = 0; i < s->cdim[0]; i++) {
-      for (int j = 0; j < s->cdim[1]; j++) {
-        for (int k = 0; k < s->cdim[2]; k++) {
 
-          if (s->width[0] * i == s->zoom_props->buffer_lower_bounds[0])
-            found_bkg_bufferi_low = 1;
-          if (s->width[1] * j == s->zoom_props->buffer_lower_bounds[1])
-            found_bkg_bufferj_low = 1;
-          if (s->width[2] * k == s->zoom_props->buffer_lower_bounds[2])
-            found_bkg_bufferk_low = 1;
+  /* Check the background and zoom cells align. */
+  int found_bkg_zoomi_low = 0;
+  int found_bkg_zoomj_low = 0;
+  int found_bkg_zoomk_low = 0;
+  int found_bkg_zoomi_up = 0;
+  int found_bkg_zoomj_up = 0;
+  int found_bkg_zoomk_up = 0;
+  for (int i = 0; i < s->cdim[0]; i++) {
+    for (int j = 0; j < s->cdim[1]; j++) {
+      for (int k = 0; k < s->cdim[2]; k++) {
+        if (s->width[0] * i == s->zoom_props->region_lower_bounds[0])
+          found_bkg_zoomi_low = 1;
+        if (s->width[1] * j == s->zoom_props->region_lower_bounds[1])
+          found_bkg_zoomj_low = 1;
+        if (s->width[2] * k == s->zoom_props->region_lower_bounds[2])
+          found_bkg_zoomk_low = 1;
 
-          if (s->width[0] * i == s->zoom_props->buffer_upper_bounds[0])
-            found_bkg_bufferi_up = 1;
-          if (s->width[1] * j == s->zoom_props->buffer_upper_bounds[1])
-            found_bkg_bufferj_up = 1;
-          if (s->width[2] * k == s->zoom_props->buffer_upper_bounds[2])
-            found_bkg_bufferk_up = 1;
-        }
+        if (s->width[0] * i == s->zoom_props->region_upper_bounds[0])
+          found_bkg_zoomi_up = 1;
+        if (s->width[1] * j == s->zoom_props->region_upper_bounds[1])
+          found_bkg_zoomj_up = 1;
+        if (s->width[2] * k == s->zoom_props->region_upper_bounds[2])
+          found_bkg_zoomk_up = 1;
       }
     }
-    /* Did we find the boundaries?. */
-    assert(found_bkg_bufferi_low && found_bkg_bufferj_low &&
-           found_bkg_bufferk_low && found_bkg_bufferi_up &&
-           found_bkg_bufferj_up && found_bkg_bufferk_up);
-
-    /* And for the zoom cells. */
-    int found_buffer_zoomi_low = 0;
-    int found_buffer_zoomj_low = 0;
-    int found_buffer_zoomk_low = 0;
-    int found_buffer_zoomi_up = 0;
-    int found_buffer_zoomj_up = 0;
-    int found_buffer_zoomk_up = 0;
-    for (int i = 0; i < s->zoom_props->buffer_cdim[0]; i++) {
-      for (int j = 0; j < s->zoom_props->buffer_cdim[1]; j++) {
-        for (int k = 0; k < s->zoom_props->buffer_cdim[2]; k++) {
-          if (s->zoom_props->buffer_lower_bounds[0] +
-                  s->zoom_props->buffer_width[0] * i ==
-              s->zoom_props->region_lower_bounds[0])
-            found_buffer_zoomi_low = 1;
-          if (s->zoom_props->buffer_lower_bounds[0] +
-                  s->zoom_props->buffer_width[1] * j ==
-              s->zoom_props->region_lower_bounds[1])
-            found_buffer_zoomj_low = 1;
-          if (s->zoom_props->buffer_lower_bounds[0] +
-                  s->zoom_props->buffer_width[2] * k ==
-              s->zoom_props->region_lower_bounds[2])
-            found_buffer_zoomk_low = 1;
-
-          if (s->zoom_props->buffer_lower_bounds[0] +
-                  s->zoom_props->buffer_width[0] * i ==
-              s->zoom_props->region_upper_bounds[0])
-            found_buffer_zoomi_up = 1;
-          if (s->zoom_props->buffer_lower_bounds[0] +
-                  s->zoom_props->buffer_width[1] * j ==
-              s->zoom_props->region_upper_bounds[1])
-            found_buffer_zoomj_up = 1;
-          if (s->zoom_props->buffer_lower_bounds[0] +
-                  s->zoom_props->buffer_width[2] * k ==
-              s->zoom_props->region_upper_bounds[2])
-            found_buffer_zoomk_up = 1;
-        }
-      }
-    }
-    /* Did we find the boundaries?. */
-    assert(found_buffer_zoomi_low && found_buffer_zoomj_low &&
-           found_buffer_zoomk_low && found_buffer_zoomi_up &&
-           found_buffer_zoomj_up && found_buffer_zoomk_up);
-  } else {
-
-    /* Check the background and zoom cells align. */
-    int found_bkg_zoomi_low = 0;
-    int found_bkg_zoomj_low = 0;
-    int found_bkg_zoomk_low = 0;
-    int found_bkg_zoomi_up = 0;
-    int found_bkg_zoomj_up = 0;
-    int found_bkg_zoomk_up = 0;
-    for (int i = 0; i < s->cdim[0]; i++) {
-      for (int j = 0; j < s->cdim[1]; j++) {
-        for (int k = 0; k < s->cdim[2]; k++) {
-          if (s->width[0] * i == s->zoom_props->region_lower_bounds[0])
-            found_bkg_zoomi_low = 1;
-          if (s->width[1] * j == s->zoom_props->region_lower_bounds[1])
-            found_bkg_zoomj_low = 1;
-          if (s->width[2] * k == s->zoom_props->region_lower_bounds[2])
-            found_bkg_zoomk_low = 1;
-
-          if (s->width[0] * i == s->zoom_props->region_upper_bounds[0])
-            found_bkg_zoomi_up = 1;
-          if (s->width[1] * j == s->zoom_props->region_upper_bounds[1])
-            found_bkg_zoomj_up = 1;
-          if (s->width[2] * k == s->zoom_props->region_upper_bounds[2])
-            found_bkg_zoomk_up = 1;
-        }
-      }
-    }
-    /* Did we find the boundaries?. */
-    assert(found_bkg_zoomi_low && found_bkg_zoomj_low && found_bkg_zoomk_low &&
-           found_bkg_zoomi_up && found_bkg_zoomj_up && found_bkg_zoomk_up);
   }
+  /* Did we find the boundaries?. */
+  assert(found_bkg_zoomi_low && found_bkg_zoomj_low && found_bkg_zoomk_low &&
+         found_bkg_zoomi_up && found_bkg_zoomj_up && found_bkg_zoomk_up);
 
   free(s->gparts);
   free(s->zoom_props);
