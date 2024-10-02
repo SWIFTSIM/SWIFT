@@ -933,23 +933,6 @@ void bkg_space_split_mapper(void *map_data, int num_cells, void *extra_data) {
 }
 
 /**
- * @brief A wrapper for #threadpool mapper function to split background cells if
- * they contain too many particles.
- *
- * The threadpools are split to ensure efficient parallelisation over each cell
- * grid. This wrapper enables better labelling of these split threadpools when
- * threadpool debugging is enabled.
- *
- * @param map_data Pointer towards the top-cells.
- * @param num_cells The number of cells to treat.
- * @param extra_data Pointers to the #space.
- */
-void buffer_space_split_mapper(void *map_data, int num_cells,
-                               void *extra_data) {
-  space_split_mapper(map_data, num_cells, extra_data);
-}
-
-/**
  * @brief A wrapper for #threadpool mapper function to split zoom cells if they
  * contain too many particles.
  *
@@ -1008,21 +991,6 @@ void space_split(struct space *s, int verbose) {
     if (verbose)
       message("Zoom cell tree and multipole construction took %.3f %s.",
               clocks_from_ticks(getticks() - tic), clocks_getunit());
-
-    if (s->zoom_props->with_buffer_cells) {
-
-      tic = getticks();
-
-      /* Create the background cell trees and populate their multipoles. */
-      threadpool_map(&s->e->threadpool, buffer_space_split_mapper,
-                     s->zoom_props->local_buffer_cells_with_particles_top,
-                     s->zoom_props->nr_local_buffer_cells_with_particles,
-                     sizeof(int), threadpool_uniform_chunk_size, s);
-
-      if (verbose)
-        message("Buffer cell tree and multipole construction took %.3f %s.",
-                clocks_from_ticks(getticks() - tic), clocks_getunit());
-    }
 
     tic = getticks();
 
