@@ -32,30 +32,10 @@
 #include "zoom.h"
 
 /**
- * @brief Is this cell within the buffer region?
- *
- * @param c The #cell.
- * @param s The #space.
- */
-__attribute__((always_inline)) INLINE static int zoom_cell_inside_buffer_region(
-    const struct cell *c, const struct space *s) {
-
-  /* Get the middle of the cell (since the cell grids align this eliminates
-   * any issues from rounding). */
-  const double mid[3] = {c->loc[0] + 0.5 * c->width[0],
-                         c->loc[1] + 0.5 * c->width[1],
-                         c->loc[2] + 0.5 * c->width[2]};
-
-  return ((mid[0] > s->zoom_props->buffer_lower_bounds[0]) &&
-          (mid[0] < s->zoom_props->buffer_upper_bounds[0]) &&
-          (mid[1] > s->zoom_props->buffer_lower_bounds[1]) &&
-          (mid[1] < s->zoom_props->buffer_upper_bounds[1]) &&
-          (mid[2] > s->zoom_props->buffer_lower_bounds[2]) &&
-          (mid[2] < s->zoom_props->buffer_upper_bounds[2]));
-}
-
-/**
  * @brief Is this cell within the zoom region?
+ *
+ * This will test if there is any overlap whatsoever between the zoom boundaries
+ * and the cell boundaries.
  *
  * @param c The #cell.
  * @param s The #space.
@@ -63,18 +43,43 @@ __attribute__((always_inline)) INLINE static int zoom_cell_inside_buffer_region(
 __attribute__((always_inline)) INLINE static int zoom_cell_inside_zoom_region(
     const struct cell *c, const struct space *s) {
 
-  /* Get the middle of the cell (since the cell grids align this eliminates
-   * any issues from rounding). */
-  const double mid[3] = {c->loc[0] + 0.5 * c->width[0],
-                         c->loc[1] + 0.5 * c->width[1],
-                         c->loc[2] + 0.5 * c->width[2]};
+  /* /\* Get the middle of the cell (since the cell grids align this eliminates
+   */
+  /*  * any issues from rounding). *\/ */
+  /* const double mid[3] = {c->loc[0] + 0.5 * c->width[0], */
+  /*                        c->loc[1] + 0.5 * c->width[1], */
+  /*                        c->loc[2] + 0.5 * c->width[2]}; */
 
-  return ((mid[0] > s->zoom_props->region_lower_bounds[0]) &&
-          (mid[0] < s->zoom_props->region_upper_bounds[0]) &&
-          (mid[1] > s->zoom_props->region_lower_bounds[1]) &&
-          (mid[1] < s->zoom_props->region_upper_bounds[1]) &&
-          (mid[2] > s->zoom_props->region_lower_bounds[2]) &&
-          (mid[2] < s->zoom_props->region_upper_bounds[2]));
+  /* return ((mid[0] > s->zoom_props->region_lower_bounds[0]) && */
+  /*         (mid[0] < s->zoom_props->region_upper_bounds[0]) && */
+  /*         (mid[1] > s->zoom_props->region_lower_bounds[1]) && */
+  /*         (mid[1] < s->zoom_props->region_upper_bounds[1]) && */
+  /*         (mid[2] > s->zoom_props->region_lower_bounds[2]) && */
+  /*         (mid[2] < s->zoom_props->region_upper_bounds[2])); */
+
+  /* Cell boundaries */
+  const double cell_min[3] = {c->loc[0], c->loc[1], c->loc[2]};
+  const double cell_max[3] = {c->loc[0] + c->width[0], c->loc[1] + c->width[1],
+                              c->loc[2] + c->width[2]};
+
+  /* Zoom region boundaries */
+  const double zoom_min[3] = {s->zoom_props->region_lower_bounds[0],
+                              s->zoom_props->region_lower_bounds[1],
+                              s->zoom_props->region_lower_bounds[2]};
+  const double zoom_max[3] = {s->zoom_props->region_upper_bounds[0],
+                              s->zoom_props->region_upper_bounds[1],
+                              s->zoom_props->region_upper_bounds[2]};
+
+  /* Calculate overlap in each dimension */
+  const double overlap_x =
+      fmin(cell_max[0], zoom_max[0]) - fmax(cell_min[0], zoom_min[0]);
+  const double overlap_y =
+      fmin(cell_max[1], zoom_max[1]) - fmax(cell_min[1], zoom_min[1]);
+  const double overlap_z =
+      fmin(cell_max[2], zoom_max[2]) - fmax(cell_min[2], zoom_min[2]);
+
+  /* Check if overlap lengths are positive */
+  return (overlap_x > 0.0 && overlap_y > 0.0 && overlap_z > 0.0);
 }
 
 /**
