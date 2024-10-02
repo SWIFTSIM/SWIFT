@@ -379,7 +379,6 @@ extern const char *subcellID_names[];
 enum cell_types {
   cell_type_regular, /* A standard top level cell (for non-zoom boxes). */
   cell_type_zoom,    /* A zoom cell (only applicable for zooms). */
-  cell_type_buffer,  /* A buffer cell (only applicable for zooms). */
   cell_type_bkg,     /* A background cell (only applicable for zooms). */
 } __attribute__((__packed__));
 
@@ -415,8 +414,6 @@ enum cell_subtypes {
   cell_subtype_neighbour, /* A cell within the gravity criterion of the zoom
                              region. */
   cell_subtype_void,      /* A cell containing the zoom region (void cell). */
-  cell_subtype_empty      /* An empty cell (background cells containing buffer
-                             cells). */
 } __attribute__((__packed__));
 
 /**

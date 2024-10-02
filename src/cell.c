@@ -145,19 +145,17 @@ struct cell_split_pair cell_split_pairs[13] = {
       {7, 6, 12}}}};
 
 /* Cell names. */
-const char *cellID_names[4] = {
+const char *cellID_names[3] = {
     "Regular",
     "Zoom",
-    "Buffer",
     "Background",
 };
 
 /* Sub-cell names. */
-const char *subcellID_names[4] = {
+const char *subcellID_names[3] = {
     "Regular",
     "Neighbour",
     "Void",
-    "Empty",
 };
 
 /**

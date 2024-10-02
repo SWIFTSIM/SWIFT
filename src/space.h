@@ -375,28 +375,12 @@ struct zoom_region_properties {
   /*! Inverse width of the top level zoom cells. */
   double iwidth[3];
 
-  /*! Do we have buffer cells?. */
-  int with_buffer_cells;
-
-  /*! The ratio between the zoom region dim and buffer cell width . */
-  int region_buffer_ratio;
-
-  /*! Width of the neighbour top level zoom cells. */
-  double buffer_width[3];
-
-  /*! Inverse width of the neighbour top level zoom cells. */
-  double buffer_iwidth[3];
-
   /*! Space dimensions in number of top level zoom cells. */
   int cdim[3];
 
   /*! The target number of top level background cells where we perform
    *  background->background interactions, set by the user. */
   int bkg_cdim[3];
-
-  /*! The target number of top level neighbour cells the size of
-   *  the zoom region. */
-  int buffer_cdim[3];
 
   /*! The minimum top-level zoom cell width allowed. */
   double cell_min;
@@ -414,12 +398,6 @@ struct zoom_region_properties {
   /*! Vector outlining the zoom region lower boundaries. */
   double region_lower_bounds[3];
 
-  /*! Vector outlining the neighbour region upper boundaries. */
-  double buffer_upper_bounds[3];
-
-  /*! Vector outlining the neighbour region lower boundaries. */
-  double buffer_lower_bounds[3];
-
   /*! The depth of the zoom cells within a void cell tree. */
   int zoom_cell_depth;
 
@@ -428,9 +406,6 @@ struct zoom_region_properties {
 
   /*! Offset in the top level cell list background/natural cells start from. */
   int bkg_cell_offset;
-
-  /*! Offset in the top level cell list background/natural cells start from. */
-  int buffer_cell_offset;
 
   /*! Number of zoom cells */
   int nr_zoom_cells;
@@ -443,12 +418,6 @@ struct zoom_region_properties {
 
   /*! Pointers the the top level background cells. */
   struct cell *bkg_cells_top;
-
-  /*! Number of neighbour top-level bkg cells */
-  int nr_buffer_cells;
-
-  /*! Pointers the the top level buffer cells. */
-  struct cell *buffer_cells_top;
 
   /*! Number of particles in zoom cells */
   size_t nr_zoom_cell_particles;
