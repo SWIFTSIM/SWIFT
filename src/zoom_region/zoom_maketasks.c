@@ -111,161 +111,6 @@ void engine_make_self_gravity_tasks_mapper_bkg_cells(void *map_data,
 
 /**
  * @brief Constructs the top-level tasks for the short-range gravity
- * and long-range gravity interactions for the buffer cells.
- *
- * This mapper only considers buffer->buffer interactions.
- *
- * - All top-cells get a self task.
- * - All pairs within range according to the multipole acceptance
- *   criterion get a pair task.
- *
- * This will create pair tasks between void cells and buffer cells.
- * These pair tasks will be split into smallerrtasks during task splitting to
- * make the most of any possible void mm interactions above the zoom level in
- * the cell tree.
- *
- * @param map_data Offset of first two indices disguised as a pointer.
- * @param num_elements Number of cells to traverse.
- * @param extra_data The #engine.
- */
-void engine_make_self_gravity_tasks_mapper_buffer_cells(void *map_data,
-                                                        int num_elements,
-                                                        void *extra_data) {
-
-  struct engine *e = (struct engine *)extra_data;
-  struct space *s = e->s;
-  const int cdim[3] = {s->zoom_props->buffer_cdim[0],
-                       s->zoom_props->buffer_cdim[1],
-                       s->zoom_props->buffer_cdim[2]};
-  struct cell *cells = s->zoom_props->buffer_cells_top;
-
-  /* We always use the mesh if the volume is periodic. */
-  const int use_mesh = s->periodic;
-
-  /* The buffer region is never periodic at it's boundaries. */
-  const int periodic = 0;
-
-  /* Compute maximal distance where we can expect a direct interaction */
-  const float distance = gravity_M2L_min_accept_distance(
-      e->gravity_properties, sqrtf(3) * cells[0].width[0], s->max_softening,
-      s->min_a_grav, s->max_mpole_power, periodic);
-
-  /* Convert the maximal search distance to a number of cells
-   * Define a lower and upper delta in case things are not symmetric */
-  /* NOTE: The 2 in the max below may not be necessary but does insure some
-   * safety buffer. */
-  const int delta = max((int)(sqrt(3) * distance / cells[0].width[0]) + 1, 2);
-  int delta_m = delta;
-  int delta_p = delta;
-
-  /* Special case where every cell is in range of every other one */
-  if (delta > cdim[0]) {
-    delta_m = cdim[0];
-    delta_p = cdim[0];
-  }
-
-  /* Loop through the elements, which are just byte offsets from NULL. */
-  for (int ind = 0; ind < num_elements; ind++) {
-
-    /* Create a self task, and loop over neighbouring cells making pair tasks
-     * where appropriate. */
-    engine_gravity_make_task_loop(e, (size_t)(map_data) + ind, cdim, cells,
-                                  periodic, use_mesh, delta_m, delta_p);
-  }
-}
-
-/**
- * @brief Constructs the top-level tasks for the short-range gravity
- * and long-range gravity interactions between natural level cells
- * and zoom level cells.
- *
- * This mapper only consider buffer->bkg interactions. It will only be called
- * if buffer cells are used. This is also the only place we create tasks
- * between different cell types since these will not be covered by splitting
- * a cell hierarchy (zoom cells lie within the void cell tree, buffer cells
- * do not lie within a background cell tree).
- *
- * - All top-cells get a self task.
- * - All pairs of differing sized cells within range according to
- *   the multipole acceptance criterion get a pair task.
- *
- *
- * @param map_data Offset of first two indices disguised as a pointer.
- * @param num_elements Number of cells to traverse.
- * @param extra_data The #engine.
- */
-void engine_make_self_gravity_tasks_mapper_buffer_bkg(void *map_data,
-                                                      int num_elements,
-                                                      void *extra_data) {
-
-  /* Useful local information */
-  struct engine *e = (struct engine *)extra_data;
-  struct space *s = e->s;
-  struct scheduler *sched = &e->sched;
-  const int nodeID = e->nodeID;
-
-  /* Some info about the zoom domain */
-  const int buffer_offset = s->zoom_props->buffer_cell_offset;
-  const int bkg_offset = s->zoom_props->bkg_cell_offset;
-
-  /* We always use the mesh if the volume is periodic. */
-  const int use_mesh = s->periodic;
-
-  /* We need to account for periodic boundary conditions when background cells
-   * are involved. */
-  const int periodic = s->periodic;
-
-  /* Handle on the cells and proxies */
-  struct cell *cells = s->cells_top;
-
-  /* Loop through the elements, which are just byte offsets from NULL. */
-  for (int ind = 0; ind < num_elements; ind++) {
-
-    /* Get the cell index. */
-    const int cid = (size_t)(map_data) + ind + buffer_offset;
-
-    /* Get the cell */
-    struct cell *ci = &cells[cid];
-
-#ifdef SWIFT_DEBUG_CHECKS
-    if (ci->type != cell_type_buffer) {
-      error("Buffer cell is not a buffer cell. (ci->type = %s)",
-            cellID_names[ci->type]);
-    }
-#endif
-
-    /* Skip cells without gravity particles unless they're voids. */
-    if (ci->grav.count == 0 && ci->subtype != cell_subtype_void) continue;
-
-    /* Loop over every neighbouring background cells */
-    for (int cjd = bkg_offset; cjd < buffer_offset; cjd++) {
-
-      /* Get the cell */
-      struct cell *cj = &cells[cjd];
-
-#ifdef SWIFT_DEBUG_CHECKS
-      if (cj->type != cell_type_bkg) {
-        error("Background cell is not a background cell. (cj->type = %s)",
-              cellID_names[cj->type]);
-      }
-#endif
-
-      /* Avoid empty cells and completely foreign pairs */
-      if (cj->grav.count == 0 || (ci->nodeID != nodeID && cj->nodeID != nodeID))
-        continue;
-
-      /* Do we need a pair interaction for these cells? */
-      if (engine_gravity_need_cell_pair_task(e, ci, cj, periodic, use_mesh)) {
-
-        /* Ok, we need to add a direct pair calculation */
-        engine_make_pair_gravity_task(e, sched, ci, cj, nodeID, cid, cjd);
-      }
-    }
-  }
-}
-
-/**
- * @brief Constructs the top-level tasks for the short-range gravity
  * and long-range gravity interactions for all combinations of cell types.
  *
  * - All top level cells get a self task.
@@ -288,7 +133,8 @@ void zoom_engine_make_self_gravity_tasks(struct space *s, struct engine *e) {
 
   ticks tic = getticks();
 
-  /* Background -> Background */
+  /* Background -> Background (which will later be split into zoom->zoom
+   * and zoom->bkg tasks during task splitting). */
   threadpool_map(&e->threadpool,
                  engine_make_self_gravity_tasks_mapper_bkg_cells, NULL,
                  s->zoom_props->nr_bkg_cells, 1, threadpool_auto_chunk_size, e);
@@ -296,31 +142,6 @@ void zoom_engine_make_self_gravity_tasks(struct space *s, struct engine *e) {
   if (e->verbose)
     message("Making bkg->bkg gravity tasks took %.3f %s.",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
-
-  if (s->zoom_props->with_buffer_cells) {
-
-    tic = getticks();
-
-    /* Buffer -> Buffer (only if we have a buffer region). */
-    threadpool_map(
-        &e->threadpool, engine_make_self_gravity_tasks_mapper_buffer_cells,
-        NULL, s->zoom_props->nr_buffer_cells, 1, threadpool_auto_chunk_size, e);
-
-    if (e->verbose)
-      message("Making buffer->buffer gravity tasks took %.3f %s.",
-              clocks_from_ticks(getticks() - tic), clocks_getunit());
-
-    tic = getticks();
-
-    /* Buffer -> Background (only if we have a buffer region). */
-    threadpool_map(
-        &e->threadpool, engine_make_self_gravity_tasks_mapper_buffer_bkg, NULL,
-        s->zoom_props->nr_buffer_cells, 1, threadpool_auto_chunk_size, e);
-
-    if (e->verbose)
-      message("Making buffer->bkg gravity tasks took %.3f %s.",
-              clocks_from_ticks(getticks() - tic), clocks_getunit());
-  }
 }
 
 /**
