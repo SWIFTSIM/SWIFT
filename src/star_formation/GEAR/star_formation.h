@@ -34,6 +34,7 @@
 #include "physical_constants.h"
 #include "random.h"
 #include "star_formation_struct.h"
+#include "stars.h"
 #include "units.h"
 
 #define star_formation_need_update_dx_max 1
