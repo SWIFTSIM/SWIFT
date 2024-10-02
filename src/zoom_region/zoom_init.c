@@ -48,7 +48,7 @@ int zoom_bkg_subdepth_diff_grav = zoom_bkg_subdepth_diff_grav_default;
 void zoom_parse_params(struct swift_params *params,
                        struct zoom_region_properties *props) {
   /* Set the zoom cell depth in the background cells. */
-  int zoom_cell_depth =
+  props->zoom_cell_depth =
       parser_get_param_int(params, "ZoomRegion:zoom_top_level_depth");
 
   /* Set the target background cdim. */
