@@ -409,9 +409,10 @@ void zoom_region_init(struct space *s, const int verbose) {
   padding region. */
   if ((s->zoom_props->region_pad_factor / input_pad_factor) >= 2)
     error(
-        "WARNING: The pad region has to be 2x larger than requested."
+        "The pad region has to be 2x larger than requested (%d). "
         "Either increase ZoomRegion:region_pad_factor or increase the "
-        "number of background cells.");
+        "number of background cells.",
+        s->zoom_props->region_pad_factor);
 
   /* If we didn't get an explicit neighbour cell depth we'll use the zoom
    * depth. */
