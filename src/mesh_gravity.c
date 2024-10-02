@@ -327,24 +327,6 @@ void bkg_cell_gpart_to_mesh_CIC_mapper(void* map_data, int num, void* extra) {
 }
 
 /**
- * @brief Threadpool mapper function for the mesh CIC assignment of a buffer
- * cell.
- *
- * This wraps the cell_gpart_to_mesh_CIC_mapper function to provide correct
- * labelling in threadpool outputs.
- *
- * @param map_data A chunk of the list of local cells.
- * @param num The number of cells in the chunk.
- * @param extra The information about the mesh and cells.
- */
-void buffer_cell_gpart_to_mesh_CIC_mapper(void* map_data, int num,
-                                          void* extra) {
-
-  /* Call the wrapped function. */
-  cell_gpart_to_mesh_CIC_mapper(map_data, num, extra);
-}
-
-/**
  * @brief Computes the potential on a gpart from a given mesh using the CIC
  * method.
  *
@@ -573,24 +555,6 @@ void zoom_cell_mesh_to_gpart_CIC_mapper(void* map_data, int num, void* extra) {
  * @param extra The information about the mesh and cells.
  */
 void bkg_cell_mesh_to_gpart_CIC_mapper(void* map_data, int num, void* extra) {
-
-  /* Call the wrapped function. */
-  cell_mesh_to_gpart_CIC_mapper(map_data, num, extra);
-}
-
-/**
- * @brief Threadpool mapper function for the mesh CIC assignment of a buffer
- * cell.
- *
- * This wraps the cell_mesh_to_gpart_CIC_mapper function to provide correct
- * labelling in threadpool outputs.
- *
- * @param map_data A chunk of the list of local cells.
- * @param num The number of cells in the chunk.
- * @param extra The information about the mesh and cells.
- */
-void buffer_cell_mesh_to_gpart_CIC_mapper(void* map_data, int num,
-                                          void* extra) {
 
   /* Call the wrapped function. */
   cell_mesh_to_gpart_CIC_mapper(map_data, num, extra);
@@ -1040,14 +1004,6 @@ void compute_potential_global(struct pm_mesh* mesh, const struct space* s,
                      (void*)zprops->local_bkg_cells_top,
                      zprops->nr_local_bkg_cells, sizeof(int),
                      threadpool_auto_chunk_size, (void*)&data);
-
-      /* Buffer cells (if present) */
-      if (s->zoom_props->with_buffer_cells) {
-        threadpool_map(tp, buffer_cell_gpart_to_mesh_CIC_mapper,
-                       (void*)zprops->local_buffer_cells_top,
-                       zprops->nr_local_buffer_cells, sizeof(int),
-                       threadpool_auto_chunk_size, (void*)&data);
-      }
     }
   }
 
@@ -1171,14 +1127,6 @@ void compute_potential_global(struct pm_mesh* mesh, const struct space* s,
                      (void*)zprops->local_bkg_cells_top,
                      zprops->nr_local_bkg_cells, sizeof(int),
                      threadpool_auto_chunk_size, (void*)&data);
-
-      /* Buffer cells (if present) */
-      if (s->zoom_props->with_buffer_cells) {
-        threadpool_map(tp, buffer_cell_mesh_to_gpart_CIC_mapper,
-                       (void*)zprops->local_buffer_cells_top,
-                       zprops->nr_local_buffer_cells, sizeof(int),
-                       threadpool_auto_chunk_size, (void*)&data);
-      }
     }
   }
 
