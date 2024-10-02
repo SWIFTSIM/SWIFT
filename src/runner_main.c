@@ -20,8 +20,6 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "cell.h"
-
 #include <config.h>
 
 /* MPI headers. */
