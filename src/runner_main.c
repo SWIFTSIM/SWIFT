@@ -33,7 +33,6 @@
 /* Local headers. */
 #include "engine.h"
 #include "feedback.h"
-#include "runner_doiact_sinks.h"
 #include "scheduler.h"
 #include "space_getsid.h"
 #include "timers.h"
@@ -111,6 +110,12 @@
 #define FUNCTION feedback
 #define FUNCTION_TASK_LOOP TASK_LOOP_FEEDBACK
 #include "runner_doiact_black_holes.h"
+#include "runner_doiact_undef.h"
+
+/* Import the sink swallow loop functions. */
+#define FUNCTION swallow
+#define FUNCTION_TASK_LOOP TASK_LOOP_SWALLOW
+#include "runner_doiact_sinks.h"
 #include "runner_doiact_undef.h"
 
 /* Import the RT gradient loop functions */
