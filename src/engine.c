@@ -2938,6 +2938,13 @@ int engine_step(struct engine *e) {
   e->sink_updates_since_rebuild += e->collect_group1.sink_updated;
   e->b_updates_since_rebuild += e->collect_group1.b_updated;
 
+  /* In zoom land we need to update the void tree timesteps. The number of
+   * void cells is guranteed to be small so this is cheap enough to do
+   * outside the tasking. */
+  if (e->s->with_zoom_region) {
+    zoom_void_timestep_collect(e);
+  }
+
   /* Check if we updated all of the particles on this step */
   if ((e->collect_group1.updated == e->total_nr_parts) &&
       (e->collect_group1.g_updated == e->total_nr_gparts) &&
