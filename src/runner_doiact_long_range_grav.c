@@ -162,8 +162,8 @@ void runner_do_grav_long_range_zoom_non_periodic(struct runner *r,
   if (tested_gparts != e->s->nr_gparts) {
     error(
         "Not all gparts were tested in long range gravity task! (tested: %ld, "
-        "interacted: %ld, total: %ld)",
-        tested_gparts, interacted_gparts, e->s->nr_gparts);
+        "total: %ld)",
+        tested_gparts, e->s->nr_gparts);
   }
 #endif
 }
