@@ -76,6 +76,10 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
     error("c->field tensor not initialised");
 #endif
 
+  /* Is the cell not a leaf? */
+  /* Note: In zoom land we have void cells whose leaves have split = 0 to
+   * differentiate them from the zoom cell tree they link in to. Despite
+   * this void cells are always split. */
   if (c->split || c->subtype == cell_subtype_void) {
 
     /* Node case */
@@ -106,13 +110,15 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
           gravity_field_tensors_add(&cp->grav.multipole->pot, &shifted_tensor);
         }
 
-        /* Recurse */
+        /* Recurse, but only if we haven't reached the super level. This can
+         * only happen in zoom land when recursing from the void cells to
+         * the zoom cells. From the zoom super onwards to the leaves is handled
+         * by the zoom super down call. */
         if (cp->grav.super != cp) {
           runner_do_grav_down(r, cp, 0);
         }
       }
     }
-
   } else {
 
     /* Leaf case */
@@ -1998,8 +2004,10 @@ void runner_dopair_grav_mm_progenies(struct runner *r, const long long flags,
   runner_clear_grav_flags(ci, e);
   runner_clear_grav_flags(cj, e);
 
-  /* If the flag is -2 we have an mm task not defined at the progeny
-   * level. */
+  /* A flag of -2 means we have an mm task directly between 2 cells not a
+   * combination of their progeny. */
+  /* TODO: do this better, surely we can define them based on progeny and
+   * limit the number of MM tasks!? */
   if (flags == -2) {
     runner_dopair_grav_mm(r, ci, cj);
     return;

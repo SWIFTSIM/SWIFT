@@ -1576,8 +1576,8 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
 #endif
 
   /* Get a handle on the cells involved. */
-  struct cell *ci = t->ci;
-  struct cell *cj = t->cj;
+  struct cell *restrict ci = t->ci;
+  struct cell *restrict cj = t->cj;
 
   /* If neither cell is a void cell, redirect to the normal splitter. */
   if (ci->subtype != cell_subtype_void && cj->subtype != cell_subtype_void) {
@@ -1585,8 +1585,8 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
     return;
   }
 
-  /* Turn the task into a M-M task that will take care of all the
-   * progeny pairs */
+  /* Turn the task into a M-M task that will take care of the first
+   * progeny pair (if we can use an M-M task). */
   t->type = task_type_grav_mm;
   t->subtype = task_subtype_none;
   t->flags = 0;
@@ -1605,10 +1605,27 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
                                  /*periodic boundaries*/ sp->periodic,
                                  /*use_mesh*/ sp->periodic)) {
 
-          scheduler_addtask(s, task_type_grav_mm, task_subtype_none, -2, 0, cpi,
-                            cpj);
+          /* Can we reuse the orignal task or do we need to make a new one? */
+          if (t->flags == 0) {
+
+            /* We can make use of the old task. Flag that it is between
+             * cpi and cpj not their progeny with -2. */
+            t->flags = -2;
+            t->ci = cpi;
+            t->cj = cpj;
+
+          } else {
+
+            /* We've already used to original task, make a new one for this
+             * progeny pair. Flag that it is between cpi and cpj not their
+             * progeny with -2. */
+            scheduler_addtask(s, task_type_grav_mm, task_subtype_none, -2, 0,
+                              cpi, cpj);
+          }
 
         } else {
+
+          /* Can't use an M-M so let's make a pair task. */
           zoom_scheduler_splittask_gravity_void_pair(
               scheduler_addtask(s, task_type_pair, task_subtype_grav, 0, 0, cpi,
                                 cpj),
@@ -1626,12 +1643,27 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
                                /*periodic boundaries*/ sp->periodic,
                                /*use_mesh*/ sp->periodic)) {
 
-        /* Since we aren't in the progeny of cj just make an mm task with
-         * a negative flag (which will flag for the right mm function
-         * to be used). */
-        scheduler_addtask(s, task_type_grav_mm, task_subtype_none, -2, 0,
-                          ci->progeny[i], cj);
+        /* Can we reuse the orignal task or do we need to make a new one? */
+        if (t->flags == 0) {
+
+          /* We can make use of the old task. Flag that it is between
+           * cpi and cpj not their progeny with -2. */
+          t->flags = -2;
+          t->ci = ci->progeny[i];
+          t->cj = cj;
+
+        } else {
+
+          /* We've already used to original task, make a new one for this
+           * progeny pair. Flag that it is between cpi and cpj not their
+           * progeny with -2. */
+          scheduler_addtask(s, task_type_grav_mm, task_subtype_none, -2, 0,
+                            ci->progeny[i], cj);
+        }
+
       } else {
+
+        /* Can't use an M-M so let's make a pair task. */
         zoom_scheduler_splittask_gravity_void_pair(
             scheduler_addtask(s, task_type_pair, task_subtype_grav, 0, 0,
                               ci->progeny[i], cj),
@@ -1648,12 +1680,26 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
                                /*periodic boundaries*/ sp->periodic,
                                /*use_mesh*/ sp->periodic)) {
 
-        /* Since we aren't in the progeny of cj just make an mm task with
-         * a negative flag (which will flag for the right mm function
-         * to be used). */
-        scheduler_addtask(s, task_type_grav_mm, task_subtype_none, -2, 0, ci,
-                          cj->progeny[j]);
+        /* Can we reuse the orignal task or do we need to make a new one? */
+        if (t->flags == 0) {
+
+          /* We can make use of the old task. Flag that it is between
+           * cpi and cpj not their progeny with -2. */
+          t->flags = -2;
+          t->ci = ci;
+          t->cj = cj->progeny[j];
+
+        } else {
+
+          /* We've already used to original task, make a new one for this
+           * progeny pair. Flag that it is between cpi and cpj not their
+           * progeny with -2. */
+          scheduler_addtask(s, task_type_grav_mm, task_subtype_none, -2, 0, ci,
+                            cj->progeny[j]);
+        }
       } else {
+
+        /* Can't use an M-M so let's make a pair task. */
         zoom_scheduler_splittask_gravity_void_pair(
             scheduler_addtask(s, task_type_pair, task_subtype_grav, 0, 0, ci,
                               cj->progeny[j]),

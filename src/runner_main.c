@@ -190,7 +190,6 @@ void *runner_main(void *data) {
       t->ti_run = e->ti_current;
       /* Store the task that will be running (for debugging only) */
       r->t = t;
-
 #endif
 
       const ticks task_beg = getticks();
