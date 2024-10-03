@@ -77,6 +77,9 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
 #endif
 
   /* Is the cell not a leaf? */
+  /* Note: In zoom land we have void cells whose leaves have split = 0 to
+   * differentiate them from the zoom cell tree they link in to. Despite this
+   * void cells are always split. */
   if (c->split || c->subtype == cell_subtype_void) {
 
     /* Node case */
