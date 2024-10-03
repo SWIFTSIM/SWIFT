@@ -172,107 +172,6 @@ void runner_do_grav_long_range_zoom_non_periodic(struct runner *r,
  * @brief Performs M-M interactions between a given top-level cell and all other
  * top level cells not interacted with via pair tasks or the mesh.
  *
- * This is used when running a uniform box, the space is periodic and there is a
- * mesh, therefore we only interact with cells that are closer than the mesh
- * interaction distance but further than the direct interaction distance.
- *
- * This function will be "clever" and only loop over the parts of the
- * top-level grid that are not covered by the mesh. Add some buffer for
- * safety.
- *
- * @param r The thread #runner.
- * @param ci The #cell of interest.
- * @param top The top-level parent of the #cell of interest.
- */
-void runner_do_grav_long_range_uniform_periodic(struct runner *r,
-                                                struct cell *ci,
-                                                struct cell *top) {
-
-  struct engine *e = r->e;
-  struct space *s = e->s;
-  struct cell *cells = s->cells_top;
-  const int periodic = e->mesh->periodic;
-  const double dim[3] = {e->mesh->dim[0], e->mesh->dim[1], e->mesh->dim[2]};
-
-  /* Get the maximum distance at which we can have a non-mesh interaction. */
-  const double max_distance = e->mesh->r_cut_max;
-  const double max_distance2 = max_distance * max_distance;
-
-  /* Get the mutlipole of the cell we are interacting. */
-  struct gravity_tensors *const multi_i = ci->grav.multipole;
-
-  /* Get the (i,j,k) location of the top-level cell in the grid. */
-  int top_i = top->loc[0] * s->iwidth[0];
-  int top_j = top->loc[1] * s->iwidth[1];
-  int top_k = top->loc[2] * s->iwidth[2];
-
-  /* Maximal distance any interaction can take place before the mesh kicks in,
-   * rounded up to the next integer */
-  int d =
-      ceil(max_distance * max3(s->iwidth[0], s->iwidth[1], s->iwidth[2])) + 1;
-
-  /* Loop over plausibly useful cells */
-  for (int ii = top_i - d; ii <= top_i + d; ++ii) {
-    for (int jj = top_j - d; jj <= top_j + d; ++jj) {
-      for (int kk = top_k - d; kk <= top_k + d; ++kk) {
-
-        /* Box wrap */
-        const int iii = (ii + s->cdim[0]) % s->cdim[0];
-        const int jjj = (jj + s->cdim[1]) % s->cdim[1];
-        const int kkk = (kk + s->cdim[2]) % s->cdim[2];
-
-        /* Get the cell */
-        const int cell_index = cell_getid(s->cdim, iii, jjj, kkk);
-
-        /* Handle on the top-level cell */
-        struct cell *cj = &cells[cell_index];
-
-        /* Avoid self contributions  */
-        if (top == cj) continue;
-
-        /* Handle on the top-level cell's gravity business*/
-        const struct gravity_tensors *multi_j = cj->grav.multipole;
-
-        /* Skip empty cells */
-        if (multi_j->m_pole.M_000 == 0.f) continue;
-
-        /* Minimal distance between any pair of particles */
-        const double min_radius2 = cell_min_dist2(top, cj, periodic, dim);
-
-        /* Are we beyond the distance where the truncated forces are 0 ?*/
-        if (min_radius2 > max_distance2) {
-
-          /* Record that this multipole received a contribution */
-          multi_i->pot.interacted = 1;
-
-          /* We are done here. */
-          continue;
-        }
-
-        /* Shall we interact with this cell? */
-        if (cell_can_use_pair_mm(top, cj, e, e->s, /*use_rebuild_data=*/1,
-                                 /*is_tree_walk=*/0,
-                                 /*periodic boundaries*/ s->periodic,
-                                 /*use_mesh*/ s->periodic)) {
-
-          /* Call the PM interaction function on the active sub-cells of ci
-           */
-          runner_dopair_grav_mm_nonsym(r, ci, cj);
-          // runner_dopair_recursive_grav_pm(r, ci, cj);
-
-          /* Record that this multipole received a contribution */
-          multi_i->pot.interacted = 1;
-
-        } /* We can interact with this cell */
-      } /* Loop over relevant top-level cells (k) */
-    } /* Loop over relevant top-level cells (j) */
-  } /* Loop over relevant top-level cells (i) */
-}
-
-/**
- * @brief Performs M-M interactions between a given top-level cell and all other
- * top level cells not interacted with via pair tasks or the mesh.
- *
  * This is used when running a zoom simulation, the space is periodic and there
  * is a mesh, therefore we only interact with cells that are closer than the
  * mesh interaction distance but further than the direct interaction distance.
@@ -461,6 +360,107 @@ void runner_do_grav_long_range_zoom_periodic(struct runner *r, struct cell *ci,
       } /* Buffer cell j loop. */
     } /* Buffer cell k loop. */
   } /* Buffer cells enabled. */
+}
+
+/**
+ * @brief Performs M-M interactions between a given top-level cell and all other
+ * top level cells not interacted with via pair tasks or the mesh.
+ *
+ * This is used when running a uniform box, the space is periodic and there is a
+ * mesh, therefore we only interact with cells that are closer than the mesh
+ * interaction distance but further than the direct interaction distance.
+ *
+ * This function will be "clever" and only loop over the parts of the
+ * top-level grid that are not covered by the mesh. Add some buffer for
+ * safety.
+ *
+ * @param r The thread #runner.
+ * @param ci The #cell of interest.
+ * @param top The top-level parent of the #cell of interest.
+ */
+void runner_do_grav_long_range_uniform_periodic(struct runner *r,
+                                                struct cell *ci,
+                                                struct cell *top) {
+
+  struct engine *e = r->e;
+  struct space *s = e->s;
+  struct cell *cells = s->cells_top;
+  const int periodic = e->mesh->periodic;
+  const double dim[3] = {e->mesh->dim[0], e->mesh->dim[1], e->mesh->dim[2]};
+
+  /* Get the maximum distance at which we can have a non-mesh interaction. */
+  const double max_distance = e->mesh->r_cut_max;
+  const double max_distance2 = max_distance * max_distance;
+
+  /* Get the mutlipole of the cell we are interacting. */
+  struct gravity_tensors *const multi_i = ci->grav.multipole;
+
+  /* Get the (i,j,k) location of the top-level cell in the grid. */
+  int top_i = top->loc[0] * s->iwidth[0];
+  int top_j = top->loc[1] * s->iwidth[1];
+  int top_k = top->loc[2] * s->iwidth[2];
+
+  /* Maximal distance any interaction can take place before the mesh kicks in,
+   * rounded up to the next integer */
+  int d =
+      ceil(max_distance * max3(s->iwidth[0], s->iwidth[1], s->iwidth[2])) + 1;
+
+  /* Loop over plausibly useful cells */
+  for (int ii = top_i - d; ii <= top_i + d; ++ii) {
+    for (int jj = top_j - d; jj <= top_j + d; ++jj) {
+      for (int kk = top_k - d; kk <= top_k + d; ++kk) {
+
+        /* Box wrap */
+        const int iii = (ii + s->cdim[0]) % s->cdim[0];
+        const int jjj = (jj + s->cdim[1]) % s->cdim[1];
+        const int kkk = (kk + s->cdim[2]) % s->cdim[2];
+
+        /* Get the cell */
+        const int cell_index = cell_getid(s->cdim, iii, jjj, kkk);
+
+        /* Handle on the top-level cell */
+        struct cell *cj = &cells[cell_index];
+
+        /* Avoid self contributions  */
+        if (top == cj) continue;
+
+        /* Handle on the top-level cell's gravity business*/
+        const struct gravity_tensors *multi_j = cj->grav.multipole;
+
+        /* Skip empty cells */
+        if (multi_j->m_pole.M_000 == 0.f) continue;
+
+        /* Minimal distance between any pair of particles */
+        const double min_radius2 = cell_min_dist2(top, cj, periodic, dim);
+
+        /* Are we beyond the distance where the truncated forces are 0 ?*/
+        if (min_radius2 > max_distance2) {
+
+          /* Record that this multipole received a contribution */
+          multi_i->pot.interacted = 1;
+
+          /* We are done here. */
+          continue;
+        }
+
+        /* Shall we interact with this cell? */
+        if (cell_can_use_pair_mm(top, cj, e, e->s, /*use_rebuild_data=*/1,
+                                 /*is_tree_walk=*/0,
+                                 /*periodic boundaries*/ s->periodic,
+                                 /*use_mesh*/ s->periodic)) {
+
+          /* Call the PM interaction function on the active sub-cells of ci
+           */
+          runner_dopair_grav_mm_nonsym(r, ci, cj);
+          // runner_dopair_recursive_grav_pm(r, ci, cj);
+
+          /* Record that this multipole received a contribution */
+          multi_i->pot.interacted = 1;
+
+        } /* We can interact with this cell */
+      } /* Loop over relevant top-level cells (k) */
+    } /* Loop over relevant top-level cells (j) */
+  } /* Loop over relevant top-level cells (i) */
 }
 
 /**
