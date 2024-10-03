@@ -120,31 +120,14 @@ void runner_do_grav_long_range_zoom_non_periodic(struct runner *r,
   struct cell *cells = e->s->cells_top;
 
 #ifdef SWIFT_DEBUG_CHECKS
-
   /* Define counters used to count gparts. */
   size_t tested_gparts = 0;
-  size_t interacted_gparts = 0;
-
-  if (top->type == cell_type_zoom) {
-    error(
-        "Zoom top cell found in long range gravity task! These should be "
-        "handled "
-        "by the void cell hierarchy.");
-  }
 #endif
 
   /* Since the zoom cells will be handled by the void cell hierarchy we can
    * just loop over all other cells which are not zoom cells. This is
    * trivial since the zoom cells are first in cells_top. */
   for (int cjd = s->zoom_props->bkg_cell_offset; cjd < s->nr_cells; cjd++) {
-
-#ifdef SWIFT_DEBUG_CHECKS
-    if (cells[cjd].type == cell_type_zoom) {
-      error(
-          "Zoom cell found in long range gravity task! These should be handled "
-          "by the void cell hierarchy.");
-    }
-#endif
 
     /* Handle on the top-level cell and it's gravity business*/
     struct cell *cj = &cells[cjd];
@@ -154,10 +137,6 @@ void runner_do_grav_long_range_zoom_non_periodic(struct runner *r,
     if (multi_j->m_pole.M_000 == 0.f) continue;
 
 #ifdef SWIFT_DEBUG_CHECKS
-    if (cj->subtype == cell_subtype_empty) {
-      error("Empty cell found in long range gravity task!");
-    }
-
     tested_gparts += multi_j->m_pole.num_gpart;
 #endif
 
@@ -171,10 +150,6 @@ void runner_do_grav_long_range_zoom_non_periodic(struct runner *r,
       /* Call the PM interaction function on the active sub-cells of ci */
       runner_dopair_grav_mm_nonsym(r, ci, cj);
       // runner_dopair_recursive_grav_pm(r, ci, cj);
-
-#ifdef SWIFT_DEBUG_CHECKS
-      interacted_gparts += multi_j->m_pole.num_gpart;
-#endif
 
       /* Record that this multipole received a contribution */
       multi_i->pot.interacted = 1;
@@ -786,7 +761,8 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
   struct cell *top = ci;
   while (top->parent != NULL) top = top->parent;
 
-  /* If we have a zoom cell the true top cell is a void cell. */
+  /* If we have a zoom cell the true top level cell where we defined the
+   * interactions is the top level void parent cell. */
   if (top->type == cell_type_zoom) {
     top = top->void_parent->top;
   }
