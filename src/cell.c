@@ -1177,13 +1177,10 @@ void cell_set_super_gravity(struct cell *c, struct cell *super_gravity) {
   /* Set the super-cell */
   c->grav.super = super_gravity;
 
-  if (super_gravity != NULL && c->subtype == cell_subtype_void)
-    message("Void cell has a super-gravity cell!");
-
 #ifdef SWIFT_DEBUG_CHECKS
   if (super_gravity != NULL && super_gravity->subtype == cell_subtype_void &&
       c->type == cell_type_zoom)
-    error("Zoom cell has a super-gravity void cell!");
+    error("Zoom cell has a super-gravity void cell this should never happen!");
 #endif
 
   /* Recurse */
@@ -1232,14 +1229,15 @@ void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data) {
  * We use the timestep-related tasks to probe this as these always
  * exist in a cell hierarchy that has any kind of task.
  *
- * In zoom land we need to count void cells as always having tasks. They won't
- * ever have a timestep_collect or recv.
+ * In zoom land void cells will never have a timestep_collect or recv, they
+ * will always have an init if they have any tasks at all though.
  *
  * @param c The #cell to probe.
  */
 int cell_has_tasks(struct cell *c) {
-  /* Void cells always have at least one task. */
-  if (c->subtype == cell_subtype_void) return 1;
+  /* Void cells always have an init if they have any tasks at all but will
+   * never have a timestep collect. */
+  if (c->subtype == cell_subtype_void && c->grav.init) return 1;
 #ifdef WITH_MPI
   return (c->timestep_collect != NULL || c->mpi.recv != NULL);
 #else
