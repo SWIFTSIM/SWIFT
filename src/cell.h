@@ -1274,30 +1274,6 @@ cell_can_split_pair_gravity_task(const struct cell *ci, const struct cell *cj) {
 }
 
 /**
- * @brief Can a pair gravity task be split into smaller sub-tasks
- * based on the number of particles in the cells?
- *
- * If the product of the number of particles (the number of interactions) is
- * smaller than space_subsize_pair_grav a task will not be split since it is
- * already small enough and this function will return 1.
- *
- * Void cells will always be split regardless of the number of particles.
- *
- * @param ci The first #cell.
- * @param cj The second #cell.
- */
-__attribute__((always_inline)) INLINE static int
-cell_pair_gravity_task_below_subsize(const struct cell *ci,
-                                     const struct cell *cj) {
-
-  /* Get the cell counts. */
-  const long long gcount_i = ci->grav.count;
-  const long long gcount_j = cj->grav.count;
-
-  return gcount_i * gcount_j < ((long long)space_subsize_pair_grav);
-}
-
-/**
  * @brief Can a self gravity task associated with a cell be split into smaller
  * sub-tasks.
  *
