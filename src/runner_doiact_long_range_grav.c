@@ -741,12 +741,6 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
   /* Is the space periodic? */
   const int periodic = s->periodic;
 
-#ifdef SWIFT_DEBUG_CHECKS
-  if (ci->subtype == cell_subtype_empty) {
-    error("Empty cell found in long range gravity task!");
-  }
-#endif
-
   /* Anything to do here? */
   if (!cell_is_active_gravity(ci, r->e)) return;
 
