@@ -546,12 +546,6 @@ void DOSUB_SELF1_SINK(struct runner *r, struct cell *ci,
                            cell_is_active_sinks(ci, e);
 #endif
 
-  /* Should we even bother?
-   * In the swallow case we care about sink-sink and sink-gas
-   * interactions. */
-
-  const int should_do_ci = ci->sinks.count != 0 && cell_is_active_sinks(ci, e);
-
   if (!should_do_ci) return;
 
   /* Recurse? */
@@ -563,7 +557,7 @@ void DOSUB_SELF1_SINK(struct runner *r, struct cell *ci,
         DOSUB_SELF1_SINK(r, ci->progeny[k], 0);
         for (int j = k + 1; j < 8; j++)
           if (ci->progeny[j] != NULL)
-            DOSUB_SELF1_SINK(r, ci->progeny[k], ci->progeny[j],
+            DOSUB_PAIR1_SINK(r, ci->progeny[k], ci->progeny[j],
                                             0);
       }
   }

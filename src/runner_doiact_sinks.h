@@ -60,10 +60,10 @@
 #define _TIMER_DOSUB_PAIR_SINK(f) PASTE(timer_dosub_pair_sinks, f)
 #define TIMER_DOSUB_PAIR_SINK _TIMER_DOSUB_PAIR_SINK(FUNCTION)
 
-#define _IACT_SINK_GAS(f) PASTE(runner_iact_nonsym_sink_gas, f)
+#define _IACT_SINK_GAS(f) PASTE(runner_iact_nonsym_sinks_gas, f)
 #define IACT_SINK_GAS _IACT_SINK_GAS(FUNCTION)
 
-#define _IACT_SINK_SINK(f) PASTE(runner_iact_nonsym_sink_sink, f)
+#define _IACT_SINK_SINK(f) PASTE(runner_iact_nonsym_sinks_sink, f)
 #define IACT_SINK_SINK _IACT_SINK_SINK(FUNCTION)
 
 /* The sinks don't have the "interaction subset" stuff that the BHs do, but someday? */
