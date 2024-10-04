@@ -106,11 +106,3 @@ void DOSUB_SELF1_SINK(struct runner *r, struct cell *ci, int gettimer);
 void DOSUB_PAIR1_SINK(struct runner *r, struct cell *ci, struct cell *cj,
                     int gettimer);
 
-
-/* JD: I feel like this should be declared somewhere else?? I've moved
-the declarations of swallowing functions into runner.h for consistency with the BHs
-but not sure where to put this. 
-*/
-void runner_do_prepare_part_sink_formation(struct runner *r, struct cell *c,
-                                           struct part *restrict p,
-                                           struct xpart *restrict xp);

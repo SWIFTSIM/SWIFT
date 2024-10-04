@@ -142,6 +142,9 @@ void runner_do_bh_swallow_pair(struct runner *r, struct cell *ci,
 void runner_do_star_formation(struct runner *r, struct cell *c, int timer);
 void runner_do_star_formation_sink(struct runner *r, struct cell *c, int timer);
 void runner_do_sink_formation(struct runner *r, struct cell *c);
+void runner_do_prepare_part_sink_formation(struct runner *r, struct cell *c,
+                                           struct part *restrict p,
+                                           struct xpart *restrict xp);
 void runner_do_sinks_gas_swallow_self(struct runner *r, struct cell *c,
                                       int timer);
 void runner_do_sinks_gas_swallow_pair(struct runner *r, struct cell *ci,
