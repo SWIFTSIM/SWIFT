@@ -242,10 +242,13 @@ int main(int argc, char *argv[]) {
                   "Run with self-gravity.", NULL, 0, 0),
       OPT_BOOLEAN('M', "multipole-reconstruction", &with_mpole_reconstruction,
                   "Reconstruct the multipoles every time-step.", NULL, 0, 0),
-      OPT_BOOLEAN('s', "mmhydro", &with_grid_hydro,
+#ifdef MOVING_MESH_HYDRO
+      OPT_BOOLEAN('s', "hydro", &with_grid_hydro,
                   "Run with moving-mesh hydrodynamics.", NULL, 0, 0),
+#else
       OPT_BOOLEAN('s', "hydro", &with_hydro,
                   "Run with smoothed particle hydrodynamics.", NULL, 0, 0),
+#endif
       OPT_BOOLEAN('S', "stars", &with_stars, "Run with stars.", NULL, 0, 0),
       OPT_BOOLEAN('B', "black-holes", &with_black_holes,
                   "Run with black holes.", NULL, 0, 0),
@@ -275,8 +278,6 @@ int main(int argc, char *argv[]) {
                   NULL, 0, 0),
       OPT_BOOLEAN(0, "power", &with_power, "Run with power spectrum outputs.",
                   NULL, 0, 0),
-      OPT_BOOLEAN(0, "moving-mesh", &with_grid,
-                  "Run with moving mesh construction.", NULL, 0, 0),
 
       OPT_GROUP("  Simulation meta-options:\n"),
       OPT_BOOLEAN(0, "quick-lyman-alpha", &with_qla,
