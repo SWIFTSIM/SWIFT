@@ -498,6 +498,34 @@ void engine_exchange_cells(struct engine *e) {
 }
 
 /**
+ * @brief Exchange extra information for the grid construction with other nodes.
+ *
+ * @param e The #engine.
+ */
+void engine_exchange_grid_extra(struct engine *e) {
+
+#ifdef WITH_MPI
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (!(e->policy & engine_policy_grid))
+    error("Not running with grid, but trying to exchange grid information!");
+#endif
+
+  const ticks tic = getticks();
+
+  /* Exchange the grid info with neighbouring ranks. */
+  proxy_grid_extra_exchange(e->proxies, e->nr_proxies, e->s);
+
+  if (e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
+
+#else
+  error("SWIFT was not compiled with MPI support.");
+#endif
+}
+
+/**
  * @brief Exchanges the top-level multipoles between all the nodes
  * such that every node has a multipole for each top-level cell.
  *

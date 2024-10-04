@@ -68,6 +68,8 @@ int cell_pack(struct cell *restrict c, struct pcell *restrict pc,
   pc->black_holes.count = c->black_holes.count;
   pc->maxdepth = c->maxdepth;
 
+  pc->grid.self_completeness = c->grid.self_completeness;
+
   /* Copy the Multipole related information */
   if (with_gravity) {
     const struct gravity_tensors *mp = c->grav.multipole;
@@ -129,6 +131,47 @@ int cell_pack_tags(const struct cell *c, int *tags) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->mpi.pcell_size != count) error("Inconsistent tag and pcell count!");
+#endif  // SWIFT_DEBUG_CHECKS
+
+  /* Return the number of packed tags used. */
+  return count;
+
+#else
+  error("SWIFT was not compiled with MPI support.");
+  return 0;
+#endif
+}
+
+/**
+ * @brief Pack the extra grid info of the given cell and all it's sub-cells.
+ *
+ * @param c The #cell.
+ * @param info Pointer to an array of packed extra grid info (construction
+ * levels).
+ *
+ * @return The number of packed tags.
+ */
+int cell_pack_grid_extra(const struct cell *c,
+                         enum grid_construction_level *info) {
+#ifdef WITH_MPI
+
+  /* Start by packing the construction level of the current cell. */
+  if (c->grid.construction_level == NULL) {
+    info[0] = above_construction_level;
+  } else if (c->grid.construction_level == c) {
+    info[0] = on_construction_level;
+  } else {
+    info[0] = below_construction_level;
+  }
+
+  /* Fill in the progeny, depth-first recursion. */
+  int count = 1;
+  for (int k = 0; k < 8; k++)
+    if (c->progeny[k] != NULL)
+      count += cell_pack_grid_extra(c->progeny[k], &info[count]);
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->mpi.pcell_size != count) error("Inconsistent info and pcell count!");
 #endif  // SWIFT_DEBUG_CHECKS
 
   /* Return the number of packed tags used. */
@@ -227,6 +270,8 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
   c->black_holes.count = pc->black_holes.count;
   c->maxdepth = pc->maxdepth;
 
+  c->grid.self_completeness = pc->grid.self_completeness;
+
 #ifdef SWIFT_DEBUG_CHECKS
   c->cellID = pc->cellID;
 #endif
@@ -318,6 +363,62 @@ int cell_unpack_tags(const int *tags, struct cell *restrict c) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->mpi.pcell_size != count) error("Inconsistent tag and pcell count!");
+#endif  // SWIFT_DEBUG_CHECKS
+
+  /* Return the total number of unpacked tags. */
+  return count;
+
+#else
+  error("SWIFT was not compiled with MPI support.");
+  return 0;
+#endif
+}
+
+/**
+ * @brief Unpack the extra grid info of a given cell and its sub-cells.
+ *
+ * @param tags An array of extra grid info (construction levels).
+ * @param c The #cell in which to unpack the tags.
+ *
+ * @return The number of tags created.
+ */
+int cell_unpack_grid_extra(const enum grid_construction_level *info,
+                           struct cell *c, struct cell *construction_level) {
+#ifdef WITH_MPI
+
+  /* Unpack the current pcell. */
+  if (info[0] == on_construction_level) {
+    construction_level = c;
+  } else if (info[0] == above_construction_level) {
+#ifdef SWIFT_DEBUG_CHECKS
+    if (construction_level != NULL)
+      error(
+          "Above construction level, but construction level cell pointer is "
+          "not NULL!");
+#endif
+  } else {
+#ifdef SWIFT_DEBUG_CHECKS
+    if (info[0] != below_construction_level)
+      error("Invalid construction level!");
+    if (construction_level == NULL || construction_level == c)
+      error("Invalid construction level cell pointer!");
+#endif
+  }
+
+  c->grid.construction_level = construction_level;
+
+  /* Number of new cells created. */
+  int count = 1;
+
+  /* Fill the progeny recursively, depth-first. */
+  for (int k = 0; k < 8; k++)
+    if (c->progeny[k] != NULL) {
+      count += cell_unpack_grid_extra(&info[count], c->progeny[k],
+                                      construction_level);
+    }
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->mpi.pcell_size != count) error("Inconsistent info and pcell count!");
 #endif  // SWIFT_DEBUG_CHECKS
 
   /* Return the total number of unpacked tags. */
