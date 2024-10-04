@@ -21,6 +21,7 @@
 
 #include "io_properties.h"
 #include "kick.h"
+#include "stars/GEAR/stars_stellar_type.h"
 #include "stars_part.h"
 
 /**
@@ -35,7 +36,7 @@ INLINE static void stars_read_particles(struct spart *sparts,
                                         int *num_fields) {
 
   /* Say how much we want to read */
-  *num_fields = 6;
+  *num_fields = 7;
 
   /* List what we want to read */
   list[0] = io_make_input_field("Coordinates", DOUBLE, 3, COMPULSORY,
@@ -50,6 +51,11 @@ INLINE static void stars_read_particles(struct spart *sparts,
                                 UNIT_CONV_LENGTH, sparts, h);
   list[5] = io_make_input_field("BirthTime", FLOAT, 1, OPTIONAL, UNIT_CONV_MASS,
                                 sparts, birth_time);
+
+  /* By default, stars are set to star_population */
+  list[6] = io_make_input_field("StellarParticleType", INT, 1, COMPULSORY,
+				UNIT_CONV_NO_UNITS, sparts,
+				star_type);
 }
 
 INLINE static void convert_spart_pos(const struct engine *e,
@@ -129,7 +135,7 @@ INLINE static void stars_write_particles(const struct spart *sparts,
                                          const int with_cosmology) {
 
   /* Say how much we want to write */
-  *num_fields = 7;
+  *num_fields = 8;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_spart(
@@ -166,6 +172,12 @@ INLINE static void stars_write_particles(const struct spart *sparts,
   list[6] = io_make_output_field_convert_spart(
       "Potentials", FLOAT, 1, UNIT_CONV_POTENTIAL, -1.f, sparts,
       convert_spart_potential, "Gravitational potentials of the particles");
+
+  list[7] =
+      io_make_output_field("StellarParticleTypes", CHAR, 1, UNIT_CONV_NO_UNITS,
+                           0.f, sparts, star_type,
+                           "Type of stellar particle: 0=single star ; 1=stellar"
+                           " cont. IMF part.  ; 2=normal");
 
 #ifdef DEBUG_INTERACTIONS_STARS
 
