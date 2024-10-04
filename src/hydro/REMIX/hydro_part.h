@@ -308,6 +308,9 @@ struct part {
 
 float rho_sph;
 
+// temporary
+int max_id;
+
 } SWIFT_STRUCT_ALIGN;
 
 #endif /* SWIFT_PLANETARY_HYDRO_PART_H */

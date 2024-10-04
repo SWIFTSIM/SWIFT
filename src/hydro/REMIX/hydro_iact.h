@@ -176,6 +176,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
     float r2, const float *dx, float hi, float hj, struct part *restrict pi,
     struct part *restrict pj, float a, float H) {
 
+if (pi->id > pi->max_id && pj->id > pj->max_id) {
+
   float wi, wj, wi_dx, wj_dx;
 
   /* Get r. */
@@ -193,6 +195,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
 
   hydro_runner_iact_gradient_extra_kernel(pi, pj, dx, wi, wj, wi_dx, wj_dx);
   hydro_runner_iact_gradient_extra_viscosity(pi, pj, dx, wi, wj, wi_dx, wj_dx);
+}
 }
 
 /**
@@ -215,6 +218,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
     float r2, const float *dx, float hi, float hj, struct part *restrict pi,
     struct part *restrict pj, float a, float H) {
 
+if (pi->id > pi->max_id && pj->id > pj->max_id) {
+
   float wi, wj, wi_dx, wj_dx;
 
   /* Get r. */
@@ -234,6 +239,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
                                                  wj_dx);
   hydro_runner_iact_nonsym_gradient_extra_viscosity(pi, pj, dx, wi, wi_dx);
 }
+}
 
 /**
  * @brief Force interaction between two particles.
@@ -251,6 +257,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
     const float r2, const float dx[3], const float hi, const float hj,
     struct part *restrict pi, struct part *restrict pj, const float a,
     const float H) {
+
+if (pi->id > pi->max_id && pj->id > pj->max_id) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (pi->time_bin >= time_bin_inhibited)
@@ -396,6 +404,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   pj->N_force++;
 #endif
 }
+}
 
 /**
  * @brief Force interaction between two particles (non-symmetric).
@@ -413,6 +422,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     const float r2, const float dx[3], const float hi, const float hj,
     struct part *restrict pi, const struct part *restrict pj, const float a,
     const float H) {
+
+if (pi->id > pi->max_id && pj->id > pj->max_id) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (pi->time_bin >= time_bin_inhibited)
@@ -536,6 +547,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   pi->n_force += wi + wj;
   pi->N_force++;
 #endif
+}
 }
 
 #endif /* SWIFT_PLANETARY_HYDRO_IACT_H */

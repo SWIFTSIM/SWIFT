@@ -543,6 +543,7 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->density.wcount_dh = 0.f;
   p->rho = 0.f;
   p->density.rho_dh = 0.f;
+  p->num_unkicked_ngbs = 0;
 
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
   p->N_density = 1; /* Self contribution */
@@ -552,7 +553,6 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->rho_exact = 0.f;
   p->n_density = 0.f;
   p->n_density_exact = 0.f;
-  p->num_unkicked_ngbs = 0;
   p->n_force = 0.f;
   p->n_force_exact = 0.f;
   p->inhibited_exact = 0;
@@ -659,6 +659,8 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const struct pressure_floor_props *pressure_floor) {
 
+    p->max_id = hydro_props->max_id;
+    
   if (p->h > 0.999f * hydro_props->h_max) {
     p->is_h_max = 1;
   } else {
@@ -677,9 +679,11 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
     p->m0 = 1.f;
 
   }
-
+  
+if (p->id > p->max_id) {
   hydro_prepare_gradient_extra_kernel(p);
   hydro_prepare_gradient_extra_viscosity(p);
+}
 }
 
 /**
@@ -706,9 +710,10 @@ __attribute__((always_inline)) INLINE static void hydro_reset_gradient(
  */
 __attribute__((always_inline)) INLINE static void hydro_end_gradient(
     struct part *p) {
-
+if (p->id > p->max_id) {
   hydro_end_gradient_extra_kernel(p);
   hydro_end_gradient_extra_viscosity(p);
+}
 
   // Set the density to be used in the force loop to be the evolved density
   p->rho = p->rho_evol;
@@ -737,8 +742,10 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const struct pressure_floor_props *pressure_floor, const float dt_alpha,
     const float dt_therm) {
-
+    
+if (p->id > p->max_id) {
   hydro_prepare_force_extra_kernel(p);
+}
 
 #ifdef PLANETARY_FIXED_ENTROPY
   /* Override the internal energy to satisfy the fixed entropy */
