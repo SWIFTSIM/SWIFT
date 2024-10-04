@@ -1362,8 +1362,21 @@ void cell_grid_update_self_completeness(struct cell *c, int force) {
 
 void cell_grid_set_self_completeness_mapper(void *map_data, int num_elements,
                                             void *extra_data) {
+  /* Extract the engine pointer. */
+  struct engine *e = (struct engine *)extra_data;
+  const int periodic = e->s->periodic;
+
+  struct space *s = e->s;
+  const int nodeID = e->nodeID;
+  struct cell *cells = s->cells_top;
+
+  /* Loop through the elements, which are just byte offsets from NULL. */
   for (int ind = 0; ind < num_elements; ind++) {
-    struct cell *c = &((struct cell *)map_data)[ind];
+    /* Get the cell index. */
+    const int cid = (size_t)(map_data) + ind;
+
+    /* Get the cell */
+    struct cell *c = &cells[cid];
 
     /* A top level cell can be empty in 1D and 2D simulations, just skip it */
     if (c->hydro.count == 0) {
