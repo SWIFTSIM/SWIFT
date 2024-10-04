@@ -66,38 +66,6 @@
 #define _IACT_SINK_SINK(f) PASTE(runner_iact_nonsym_sinks_sink, f)
 #define IACT_SINK_SINK _IACT_SINK_SINK(FUNCTION)
 
-/* The sinks don't have the "interaction subset" stuff that the BHs do, but someday? */
-
-// #define _DOPAIR1_SUBSET_SINK(f) PASTE(runner_dopair_subset_sinks, f)
-// #define DOPAIR1_SUBSET_SINK _DOPAIR1_SUBSET_SINK(FUNCTION)
-
-// #define _DOPAIR1_SUBSET_SINK_NAIVE(f) PASTE(runner_dopair_subset_sinks_naive, f)
-// #define DOPAIR1_SUBSET_SINK_NAIVE _DOPAIR1_SUBSET_SINK_NAIVE(FUNCTION)
-
-// #define _DOSELF1_SUBSET_SINK(f) PASTE(runner_doself_subset_sinks, f)
-// #define DOSELF1_SUBSET_SINK _DOSELF1_SUBSET_SINK(FUNCTION)
-
-// #define _DOSELF1_SUBSET_BRANCH_SINK(f) PASTE(runner_doself_subset_branch_sinks, f)
-// #define DOSELF1_SUBSET_BRANCH_SINK _DOSELF1_SUBSET_BRANCH_SINK(FUNCTION)
-
-// #define _DOPAIR1_SUBSET_BRANCH_SINK(f) PASTE(runner_dopair_subset_branch_sinks, f)
-// #define DOPAIR1_SUBSET_BRANCH_SINK _DOPAIR1_SUBSET_BRANCH_SINK(FUNCTION)
-
-// #define _DOSUB_SUBSET_SINK(f) PASTE(runner_dosub_subset_sinks, f)
-// #define DOSUB_SUBSET_SINK _DOSUB_SUBSET_SINK(FUNCTION)
-
-// void DOSELF1_SUBSET_BRANCH_SINK(struct runner *r, struct cell *restrict ci,
-//                               struct bpart *restrict bparts, int *restrict ind,
-//                               const int bcount);
-
-// void DOPAIR1_SUBSET_BRANCH_SINK(struct runner *r, struct cell *restrict ci,
-//                               struct bpart *restrict bparts_i,
-//                               int *restrict ind, int const bcount,
-//                               struct cell *restrict cj);
-
-// void DOSUB_SUBSET_SINK(struct runner *r, struct cell *ci, struct bpart *bparts,
-//                      int *ind, const int bcount, struct cell *cj, int gettimer);
-
 
 void DOSELF1_BRANCH_SINK(struct runner *r, struct cell *c);
 void DOPAIR1_BRANCH_SINK(struct runner *r, struct cell *ci, struct cell *cj);
