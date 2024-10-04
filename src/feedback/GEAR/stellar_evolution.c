@@ -125,7 +125,7 @@ void stellar_evolution_sn_apply_ejected_mass(struct spart* restrict sp,
       sp->feedback_data.mass_ejected = 0;
 
       /* Bug fix: Reset energy to avoid injecting anything in the
-	 runner_iact_nonsym_feedback_apply() */
+         runner_iact_nonsym_feedback_apply() */
       sp->feedback_data.energy_ejected = 0;
       return;
     } else {
@@ -148,7 +148,7 @@ void stellar_evolution_sn_apply_ejected_mass(struct spart* restrict sp,
       sp->feedback_data.mass_ejected = 0;
 
       /* Bug fix: Reset energy to avoid injecting anything in the
-	 runner_iact_nonsym_feedback_apply() */
+         runner_iact_nonsym_feedback_apply() */
       sp->feedback_data.energy_ejected = 0;
       return;
     }
@@ -818,8 +818,7 @@ float stellar_evolution_compute_initial_mass(
     case single_star:
       return sp->sf_data.birth_mass / phys_const->const_solar_mass;
     default: {
-      error("This star_type (%d) is not implemented!",
-            sp->star_type);
+      error("This star_type (%d) is not implemented!", sp->star_type);
       return -1.0;
     }
   }
