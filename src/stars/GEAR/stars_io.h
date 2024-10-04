@@ -54,8 +54,7 @@ INLINE static void stars_read_particles(struct spart *sparts,
 
   /* By default, stars are set to star_population */
   list[6] = io_make_input_field("StellarParticleType", INT, 1, COMPULSORY,
-				UNIT_CONV_NO_UNITS, sparts,
-				star_type);
+                                UNIT_CONV_NO_UNITS, sparts, star_type);
 }
 
 INLINE static void convert_spart_pos(const struct engine *e,
