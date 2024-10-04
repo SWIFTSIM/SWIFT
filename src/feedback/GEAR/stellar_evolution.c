@@ -124,7 +124,7 @@ void stellar_evolution_sn_apply_ejected_mass(struct spart* restrict sp,
       sp->feedback_data.number_snii = 0;
       sp->feedback_data.mass_ejected = 0;
 
-      /* Bug fix: Reset energy to avoid injecting anything in the
+      /* Reset energy to avoid injecting anything in the
          runner_iact_nonsym_feedback_apply() */
       sp->feedback_data.energy_ejected = 0;
       return;
@@ -147,7 +147,7 @@ void stellar_evolution_sn_apply_ejected_mass(struct spart* restrict sp,
       sp->feedback_data.number_snii = 0;
       sp->feedback_data.mass_ejected = 0;
 
-      /* Bug fix: Reset energy to avoid injecting anything in the
+      /* Reset energy to avoid injecting anything in the
          runner_iact_nonsym_feedback_apply() */
       sp->feedback_data.energy_ejected = 0;
       return;
