@@ -26,6 +26,8 @@
 #include "part.h"
 #include "stellar_evolution.h"
 #include "units.h"
+#include "stars.h"
+
 
 #include <strings.h>
 
@@ -50,7 +52,8 @@ double feedback_get_enrichment_timestep(const struct spart* sp,
 void feedback_init_spart(struct spart* sp);
 
 void feedback_init_after_star_formation(
-    struct spart* sp, const struct feedback_props* feedback_props);
+    struct spart* sp, const struct feedback_props* feedback_props,
+    enum stellar_type star_type);
 void feedback_reset_feedback(struct spart* sp,
                              const struct feedback_props* feedback_props);
 void feedback_first_init_spart(struct spart* sp,

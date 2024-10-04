@@ -74,7 +74,7 @@ mpl.rcParams["text.usetex"] = True
 
 def get_snapshot_list(snapshot_basename="output"):
     """
-    Find the snapshot(s) that are to be plotted 
+    Find the snapshot(s) that are to be plotted
     and return their names as list
     """
 
@@ -114,9 +114,9 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
     Create the actual plot.
 
     filename: file to work with
-    energy_boundaries:  list of [E_min, E_max] for each photon group. 
+    energy_boundaries:  list of [E_min, E_max] for each photon group.
                         If none, limits are set automatically.
-    flux_boundaries:    list of [F_min, F_max] for each photon group. 
+    flux_boundaries:    list of [F_min, F_max] for each photon group.
                         If none, limits are set automatically.
     """
 
@@ -126,7 +126,7 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
     data = swiftsimio.load(filename)
     meta = data.metadata
 
-    ngroups = int(meta.subgrid_scheme["PhotonGroupNumber"])
+    ngroups = int(meta.subgrid_scheme["PhotonGroupNumber"][0])
     xlabel_units_str = meta.boxsize.units.latex_representation()
 
     global imshow_kwargs
@@ -320,7 +320,7 @@ def get_minmax_vals(snaplist):
         data = swiftsimio.load(filename)
         meta = data.metadata
 
-        ngroups = int(meta.subgrid_scheme["PhotonGroupNumber"])
+        ngroups = int(meta.subgrid_scheme["PhotonGroupNumber"][0])
         emin_group = []
         emax_group = []
         fluxmin_group = []

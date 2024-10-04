@@ -23,19 +23,18 @@ The ``f_acc`` parameter is optional. Its default value is :math:`0.8`. Its value
 The next two mandatory parameters are:
 
 * the gas maximal temperature to form a sink:``maximal_temperature``,
-* the gas threshold density to form a sink:``density_threshold``.
+* the gas threshold density to form a sink:``density_threshold_g_per_cm3``.
 
 These two parameters govern the first two criteria of the sink formation scheme. If these criteria are not passed, sink particles are not created. If they are passed, the code performs further checks to form sink particles. Some of those criteria checks can be disabled, as explained below.
 
 The next set of parameters deals with the sampling of the IMF and the representation of star particles:
 
-* size of the calibration sample used to determine the probabilities to form stellar particles with mass ``stellar_particle_mass``: ``size_of_calibration_sample``,
-* minimal mass of stars represented by discrete particles: ``minimal_discrete_mass``,
-* mass of the stellar particle representing the continuous part of the IMF: ``stellar_particle_mass``,
-* minimal mass of the first stars represented by discrete particles: ``minimal_discrete_mass_first_stars``,
-* mass of the stellar particle (first stars) representing the continuous part of the IMF:: ``stellar_particle_mass_first_stars``.
+* minimal mass of stars represented by discrete particles: ``minimal_discrete_mass_Msun``,
+* mass of the stellar particle representing the continuous part of the IMF: ``stellar_particle_mass_Msun``,
+* minimal mass of the first stars represented by discrete particles: ``minimal_discrete_mass_first_stars_Msun``,
+* mass of the stellar particle (first stars) representing the continuous part of the IMF:: ``stellar_particle_mass_first_stars_Msun``.
 
-With sink particles, star particles can represent either a single star or a population of stars in the low mass part of the IMF (continuous IMF sampling). The stars in the continuous part of the IMF are put together in a particle of mass ``stellar_particle_mass`` or ``stellar_particle_mass_first_stars``, while individual stars in the discrete part have their mass sampled from the IMF. The limit between the continuous and discrete sampling of the IMF is controlled by  ``minimal_discrete_mass`` and ``minimal_discrete_mass_first_stars``.
+With sink particles, star particles can represent either a single star or a population of stars in the low mass part of the IMF (continuous IMF sampling). The stars in the continuous part of the IMF are put together in a particle of mass ``stellar_particle_mass_Msun`` or ``stellar_particle_mass_first_stars_Msun``, while individual stars in the discrete part have their mass sampled from the IMF. The limit between the continuous and discrete sampling of the IMF is controlled by  ``minimal_discrete_mass_Msun`` and ``minimal_discrete_mass_first_stars_Msun``.
 
 The next set of parameters controls the sink formation scheme. More details are provided in the GEAR documentation. Here is a brief overview:
 
@@ -57,12 +56,11 @@ The full section is:
      cut_off_radius:        1e-3                 # Cut off radius of the sink particles (in internal units).
      f_acc: 0.8                                  # (Optional) Fraction of the cut_off_radius that determines if a gas particle should be swallowed wihtout additional check. (Default: 0.8)
      maximal_temperature:        3e3             # Maximal gas temperature for forming a star (in K)
-     density_threshold:          1.67e-21        # Minimal gas density for forming a star (in g/cm3 (1.67e-24 =1acc))
-     size_of_calibration_sample: 100000          # Size of the calibration sample used to determine the probabilities to form stellar particles with mass stellar_particle_mass
-     stellar_particle_mass:      20              # Mass of the stellar particle representing the low mass stars (continuous IMF sampling) (in solar mass)
-     minimal_discrete_mass:      8               # Minimal mass of stars represented by discrete particles (in solar mass)
-     stellar_particle_mass_first_stars: 20       # Mass of the stellar particle representing the low mass stars (continuous IMF sampling) (in solar mass). First stars
-     minimal_discrete_mass_first_stars: 8        # Minimal mass of stars represented by discrete particles (in solar mass). First stars
+     density_threshold_g_per_cm3: 1.67e-21       # Minimal gas density for forming a star (in g/cm3 (1.67e-24 =1acc))
+     stellar_particle_mass_Msun:      20              # Mass of the stellar particle representing the low mass stars (continuous IMF sampling) (in solar mass)
+     minimal_discrete_mass_Msun:      8               # Minimal mass of stars represented by discrete particles (in solar mass)
+     stellar_particle_mass_first_stars_Msun: 20       # Mass of the stellar particle representing the low mass stars (continuous IMF sampling) (in solar mass). First stars
+     minimal_discrete_mass_first_stars_Msun: 8        # Minimal mass of stars represented by discrete particles (in solar mass). First stars
      sink_formation_contracting_gas_criterion: 1     # (Optional) Activate the contracting gas criterion for sink formation. (Default: 1)
      sink_formation_smoothing_length_criterion: 1    # (Optional) Activate the smoothing length criterion for sink formation. (Default: 1)
      sink_formation_jeans_instability_criterion: 1   # (Optional) Activate the two Jeans instability criteria for sink formation. (Default: 1)
@@ -79,11 +77,11 @@ On the contrary, if you set a too high cut-off radius, then sinks will accrete a
 
 ``runner_others.c:runner_do_star_formation_sink():274: Too many stars in the cell tree leaf! The sorting task will not be able to perform its duties. Possible solutions: (1) The code need to be run with different star formation parameters to reduce the number of star particles created. OR (2) The size of the sorting stack must be increased in runner_sort.c.``
 
-This problem can be mitigated by choosing a higher value of ``stellar_particle_mass`` and ``stellar_particle_mass_first_stars``, or higher values of ``minimal_discrete_mass`` and ``minimal_discrete_mass_first_stars``. Of course, this comes at the price of having fewer individual stars. Finally, all parameters will depend on your needs.
+This problem can be mitigated by choosing a higher value of ``stellar_particle_mass_Msun`` and ``stellar_particle_mass_first_stars_Msun``, or higher values of ``minimal_discrete_mass_Msun`` and ``minimal_discrete_mass_first_stars_Msun``. Of course, this comes at the price of having fewer individual stars. Finally, all parameters will depend on your needs.
 
 *If you do not want to change your parameters*, you can increase the ``sort_stack_size`` variable at the beginning ``runner_sort.c``. The default value is 10 in powers of 2 (so the stack size is 1024 particles). Increase it to the desired value. Be careful to not overestimate this.
 
 Notice that this model does not have parameters to control the star formation rate of the sink. The SFR is self-regulated by the gas/sink accretion and other feedback mechanisms. Supernovae tend to create bubbles of lower density at the site of star formation, removing the gas and preventing further gas accretion. However, the sink might run into this stack size problem by the time the first supernovae explode. Other pre-stellar feedback mechanisms could do the job earlier, though they are not implemented in GEAR.
 
 .. note:: 
-   We provide a piece of general advice: do some calibration on low-resolution simulations. This will help to see what works and what does not work. Keep in mind that you might want to put a higher ``stellar_particle_mass_X`` at the beginning to avoid spawning too many stars. For the high-resolution simulations, you then can lower the particle's mass.
+   We provide a piece of general advice: do some calibration on low-resolution simulations. This will help to see what works and what does not work. Keep in mind that you might want to put a higher ``stellar_particle_mass_X_Msun`` at the beginning to avoid spawning too many stars. For the high-resolution simulations, you then can lower the particle's mass.

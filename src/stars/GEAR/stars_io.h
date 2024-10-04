@@ -21,6 +21,7 @@
 
 #include "io_properties.h"
 #include "kick.h"
+#include "stars/GEAR/stars_stellar_type.h"
 #include "stars_part.h"
 
 /**
@@ -35,7 +36,7 @@ INLINE static void stars_read_particles(struct spart *sparts,
                                         int *num_fields) {
 
   /* Say how much we want to read */
-  *num_fields = 6;
+  *num_fields = 7;
 
   /* List what we want to read */
   list[0] = io_make_input_field("Coordinates", DOUBLE, 3, COMPULSORY,
@@ -50,6 +51,11 @@ INLINE static void stars_read_particles(struct spart *sparts,
                                 UNIT_CONV_LENGTH, sparts, h);
   list[5] = io_make_input_field("BirthTime", FLOAT, 1, OPTIONAL, UNIT_CONV_MASS,
                                 sparts, birth_time);
+
+  /* By default, stars are set to star_population */
+  list[6] = io_make_input_field("StellarParticleType", INT, 1, COMPULSORY,
+				UNIT_CONV_NO_UNITS, sparts,
+				star_type);
 }
 
 INLINE static void convert_spart_pos(const struct engine *e,
@@ -129,7 +135,7 @@ INLINE static void stars_write_particles(const struct spart *sparts,
                                          const int with_cosmology) {
 
   /* Say how much we want to write */
-  *num_fields = 7;
+  *num_fields = 8;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_spart(
@@ -144,18 +150,19 @@ INLINE static void stars_write_particles(const struct spart *sparts,
   list[2] = io_make_output_field("Masses", FLOAT, 1, UNIT_CONV_MASS, 0.f,
                                  sparts, mass, "Masses of the particles");
 
-  list[3] =
-      io_make_output_field("ParticleIDs", LONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f,
-                           sparts, id, "Unique IDs of the particles");
+  list[3] = io_make_physical_output_field(
+      "ParticleIDs", LONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f, sparts, id,
+      /*can convert to comoving=*/0, "Unique IDs of the particles");
 
   list[4] = io_make_output_field(
       "SmoothingLengths", FLOAT, 1, UNIT_CONV_LENGTH, 1.f, sparts, h,
       "Co-moving smoothing lengths (FWHM of the kernel) of the particles");
 
   if (with_cosmology) {
-    list[5] = io_make_output_field(
+    list[5] = io_make_physical_output_field(
         "BirthScaleFactors", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, sparts,
-        birth_scale_factor, "Scale-factors at which the stars were born");
+        birth_scale_factor, /*can convert to comoving=*/0,
+        "Scale-factors at which the stars were born");
   } else {
     list[5] = io_make_output_field("BirthTimes", FLOAT, 1, UNIT_CONV_TIME, 0.f,
                                    sparts, birth_time,
@@ -165,6 +172,12 @@ INLINE static void stars_write_particles(const struct spart *sparts,
   list[6] = io_make_output_field_convert_spart(
       "Potentials", FLOAT, 1, UNIT_CONV_POTENTIAL, -1.f, sparts,
       convert_spart_potential, "Gravitational potentials of the particles");
+
+  list[7] =
+      io_make_output_field("StellarParticleTypes", CHAR, 1, UNIT_CONV_NO_UNITS,
+                           0.f, sparts, star_type,
+                           "Type of stellar particle: 0=single star ; 1=stellar"
+                           " cont. IMF part.  ; 2=normal");
 
 #ifdef DEBUG_INTERACTIONS_STARS
 
@@ -229,6 +242,47 @@ INLINE static void stars_props_init(struct stars_props *sp,
     sp->log_max_h_change = p->log_max_h_change;
   else
     sp->log_max_h_change = logf(powf(max_volume_change, hydro_dimension_inv));
+
+  /* Maximal time-step lengths */
+  const double Myr_internal_units =
+      1e6 * phys_const->const_year *
+      units_cgs_conversion_factor(us, UNIT_CONV_TIME);
+
+  const double max_time_step_young_Myr = parser_get_opt_param_float(
+      params, "Stars:max_timestep_young_Myr", FLT_MAX);
+  const double max_time_step_old_Myr =
+      parser_get_opt_param_float(params, "Stars:max_timestep_old_Myr", FLT_MAX);
+  const double age_threshold_Myr = parser_get_opt_param_float(
+      params, "Stars:timestep_age_threshold_Myr", FLT_MAX);
+  const double age_threshold_unlimited_Myr = parser_get_opt_param_float(
+      params, "Stars:timestep_age_threshold_unlimited_Myr", 0.);
+
+  /* Check for consistency */
+  if (age_threshold_unlimited_Myr != 0. && age_threshold_Myr != FLT_MAX) {
+    if (age_threshold_unlimited_Myr < age_threshold_Myr)
+      error(
+          "The age threshold for unlimited stellar time-step sizes (%e Myr) is "
+          "smaller than the transition threshold from young to old ages (%e "
+          "Myr)",
+          age_threshold_unlimited_Myr, age_threshold_Myr);
+  }
+
+  /* Convert to internal units */
+  sp->max_time_step_young = max_time_step_young_Myr * Myr_internal_units;
+  sp->max_time_step_old = max_time_step_old_Myr * Myr_internal_units;
+  sp->age_threshold = age_threshold_Myr * Myr_internal_units;
+  sp->age_threshold_unlimited =
+      age_threshold_unlimited_Myr * Myr_internal_units;
+
+  /* Do we want to overwrite the stars' birth properties? */
+  sp->overwrite_birth_time =
+      parser_get_opt_param_int(params, "Stars:overwrite_birth_time", 0);
+
+  /* Read birth time to set all stars in ICs */
+  if (sp->overwrite_birth_time) {
+    sp->spart_first_init_birth_time =
+        parser_get_param_float(params, "Stars:birth_time");
+  }
 }
 
 /**
@@ -252,6 +306,10 @@ INLINE static void stars_props_print(const struct stars_props *sp) {
 
   message("Maximal iterations in ghost task set to %d",
           sp->max_smoothing_iterations);
+
+  if (sp->overwrite_birth_time)
+    message("Stars' birth time read from the ICs will be overwritten to %f",
+            sp->spart_first_init_birth_time);
 }
 
 #if defined(HAVE_HDF5)

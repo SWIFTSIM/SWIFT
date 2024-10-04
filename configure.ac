@@ -138,7 +138,6 @@ if test "$enable_ipo" = "yes"; then
       CFLAGS="$CFLAGS -ipo"
       LDFLAGS="$LDFLAGS -ipo"
       AC_CHECK_PROGS([AR], [xiar])
-      AC_CHECK_PROGS([LD], [xild])
       AC_CHECK_PROGS([RANLIB], [llvm-ranlib])
       AC_MSG_RESULT([added oneapi interprocedural optimization support])
    elif test "$ax_cv_c_compiler_vendor" = "gnu"; then
@@ -1588,9 +1587,25 @@ else
    have_chealpix="no"
 fi
 
-# Check for floating-point execeptions
-AC_CHECK_FUNC(feenableexcept, AC_DEFINE([HAVE_FE_ENABLE_EXCEPT],[1],
-    [Defined if the floating-point exception can be enabled using non-standard GNU functions.]))
+# Check for floating-point exception trapping support.
+#
+# We do not allow this to be enabled when optimizing as compilers do operations
+# which are unsafe for speed. This can result in FPEs on valid vector
+# operations when additional padding is used. This has been seen on clang and
+# GCC based compilers.
+if test "$enable_opt" != "yes"; then
+   if test "$ax_cv_c_compiler_vendor" != "oneapi"; then
+      AC_CHECK_FUNC(feenableexcept, AC_DEFINE([HAVE_FE_ENABLE_EXCEPT],[1],
+         [Defined if floating-point exceptions can be trapped.]))
+   else
+      #  Default optimization for Intel is too high , -O2, so we also need
+      #  to have debugging enabled which uses -O0 as well.
+      if test "$ax_enable_debug" != "no"; then
+         AC_CHECK_FUNC(feenableexcept, AC_DEFINE([HAVE_FE_ENABLE_EXCEPT],[1],
+            [Defined if floating-point exceptions can be trapped.]))
+      fi
+   fi
+fi
 
 # Check for setaffinity.
 AC_CHECK_FUNC(pthread_setaffinity_np, AC_DEFINE([HAVE_SETAFFINITY],[1],
@@ -1839,8 +1854,12 @@ if test "$enable_warn" != "no"; then
     # Add a "choke on warning" flag if it exists
     if test "$enable_warn" = "error"; then
        case "$ax_cv_c_compiler_vendor" in
-          intel | gnu | clang | oneapi)
+          intel | clang | oneapi)
              CFLAGS="$CFLAGS -Werror"
+	  ;;
+	  gnu)
+             #  Fix for issue with IPO and GCC 14
+             CFLAGS="$CFLAGS -Werror -Wno-alloc-size-larger-than"
           ;;
        esac
     fi

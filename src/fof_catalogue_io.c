@@ -258,6 +258,9 @@ void write_virtual_fof_hdf5_array(
   io_write_attribute_f(h_data, "a-scale exponent", props.scale_factor_exponent);
   io_write_attribute_s(h_data, "Expression for physical CGS units", buffer);
   io_write_attribute_s(h_data, "Lossy compression filter", comp_buffer);
+  io_write_attribute_b(h_data, "Value stored as physical", props.is_physical);
+  io_write_attribute_b(h_data, "Property can be converted to comoving",
+                       props.is_convertible_to_comoving);
 
   /* Write the actual number this conversion factor corresponds to */
   const double factor =
@@ -302,8 +305,14 @@ void write_fof_virtual_file(const struct fof_props* props,
   sprintf(file_name_base, "%s/%s", subdir_name, base);
   sprintf(file_name, "%s/%s.hdf5", subdir_name, base);
 
+  /* Set the minimal API version to avoid issues with advanced features */
+  hid_t h_props = H5Pcreate(H5P_FILE_ACCESS);
+  herr_t err = H5Pset_libver_bounds(h_props, HDF5_LOWEST_FILE_FORMAT_VERSION,
+                                    HDF5_HIGHEST_FILE_FORMAT_VERSION);
+  if (err < 0) error("Error setting the hdf5 API version");
+
   /* Open HDF5 file with the chosen parameters */
-  hid_t h_file = H5Fcreate(file_name, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+  hid_t h_file = H5Fcreate(file_name, H5F_ACC_TRUNC, H5P_DEFAULT, h_props);
   if (h_file < 0) error("Error while opening file '%s'.", file_name);
 
   /* Start by writing the header */
@@ -316,7 +325,8 @@ void write_fof_virtual_file(const struct fof_props* props,
   struct io_props output_prop;
   output_prop = io_make_output_field_("Masses", DOUBLE, 1, UNIT_CONV_MASS, 0.f,
                                       (char*)props->group_mass, sizeof(double),
-                                      "FOF group masses");
+                                      "FOF group masses", /*physical=*/0,
+                                      /*convertible_to_comoving=*/1);
   write_virtual_fof_hdf5_array(e, h_grp, file_name_base, "Groups", output_prop,
                                num_groups_total, N_counts,
                                compression_write_lossless, e->internal_units,
@@ -324,14 +334,17 @@ void write_fof_virtual_file(const struct fof_props* props,
   output_prop =
       io_make_output_field_("Centres", DOUBLE, 3, UNIT_CONV_LENGTH, 1.f,
                             (char*)props->group_centre_of_mass,
-                            3 * sizeof(double), "FOF group centres of mass");
+                            3 * sizeof(double), "FOF group centres of mass",
+                            /*physical=*/0, /*convertible_to_comoving=*/1);
   write_virtual_fof_hdf5_array(e, h_grp, file_name_base, "Groups", output_prop,
                                num_groups_total, N_counts,
                                compression_write_lossless, e->internal_units,
                                e->snapshot_units);
-  output_prop = io_make_output_field_(
-      "GroupIDs", LONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f,
-      (char*)props->group_index, sizeof(size_t), "FOF group IDs");
+  output_prop =
+      io_make_output_field_("GroupIDs", LONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f,
+                            (char*)props->group_index, sizeof(size_t),
+                            "FOF group IDs", /*physical=*/1,
+                            /*convertible_to_comoving=*/0);
   write_virtual_fof_hdf5_array(e, h_grp, file_name_base, "Groups", output_prop,
                                num_groups_total, N_counts,
                                compression_write_lossless, e->internal_units,
@@ -339,7 +352,8 @@ void write_fof_virtual_file(const struct fof_props* props,
   output_prop =
       io_make_output_field_("Sizes", LONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f,
                             (char*)props->final_group_size, sizeof(long long),
-                            "FOF group length (number of particles)");
+                            "FOF group length (number of particles)",
+                            /*physical=*/1, /*convertible_to_comoving=*/0);
   write_virtual_fof_hdf5_array(e, h_grp, file_name_base, "Groups", output_prop,
                                num_groups_total, N_counts,
                                compression_write_lossless, e->internal_units,
@@ -348,6 +362,7 @@ void write_fof_virtual_file(const struct fof_props* props,
   /* Close everything */
   H5Gclose(h_grp);
   H5Fclose(h_file);
+  H5Pclose(h_props);
 #endif
 }
 
@@ -476,6 +491,9 @@ void write_fof_hdf5_array(
   io_write_attribute_f(h_data, "a-scale exponent", props.scale_factor_exponent);
   io_write_attribute_s(h_data, "Expression for physical CGS units", buffer);
   io_write_attribute_s(h_data, "Lossy compression filter", comp_buffer);
+  io_write_attribute_b(h_data, "Value stored as physical", props.is_physical);
+  io_write_attribute_b(h_data, "Property can be converted to comoving",
+                       props.is_convertible_to_comoving);
 
   /* Write the actual number this conversion factor corresponds to */
   const double factor =
@@ -522,7 +540,13 @@ void write_fof_hdf5_catalogue(const struct fof_props* props,
           e->snapshot_output_count);
 #endif
 
-  hid_t h_file = H5Fcreate(file_name, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+  /* Set the minimal API version to avoid issues with advanced features */
+  hid_t h_props = H5Pcreate(H5P_FILE_ACCESS);
+  herr_t err = H5Pset_libver_bounds(h_props, HDF5_LOWEST_FILE_FORMAT_VERSION,
+                                    HDF5_HIGHEST_FILE_FORMAT_VERSION);
+  if (err < 0) error("Error setting the hdf5 API version");
+
+  hid_t h_file = H5Fcreate(file_name, H5F_ACC_TRUNC, H5P_DEFAULT, h_props);
   if (h_file < 0) error("Error while opening file '%s'.", file_name);
 
   /* Compute the number of groups */
@@ -549,27 +573,32 @@ void write_fof_hdf5_catalogue(const struct fof_props* props,
   struct io_props output_prop;
   output_prop = io_make_output_field_("Masses", DOUBLE, 1, UNIT_CONV_MASS, 0.f,
                                       (char*)props->group_mass, sizeof(double),
-                                      "FOF group masses");
+                                      "FOF group masses", /*physical=*/0,
+                                      /*convertible_to_comoving=*/1);
   write_fof_hdf5_array(e, h_grp, file_name, "Groups", output_prop,
                        num_groups_local, compression_write_lossless,
                        e->internal_units, e->snapshot_units);
   output_prop =
       io_make_output_field_("Centres", DOUBLE, 3, UNIT_CONV_LENGTH, 1.f,
                             (char*)props->group_centre_of_mass,
-                            3 * sizeof(double), "FOF group centres of mass");
+                            3 * sizeof(double), "FOF group centres of mass",
+                            /*physical=*/0, /*convertible_to_comoving=*/1);
   write_fof_hdf5_array(e, h_grp, file_name, "Groups", output_prop,
                        num_groups_local, compression_write_lossless,
                        e->internal_units, e->snapshot_units);
-  output_prop = io_make_output_field_(
-      "GroupIDs", LONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f,
-      (char*)props->group_index, sizeof(size_t), "FOF group IDs");
+  output_prop =
+      io_make_output_field_("GroupIDs", LONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f,
+                            (char*)props->group_index, sizeof(size_t),
+                            "FOF group IDs", /*physical=*/1,
+                            /*convertible_to_comoving=*/0);
   write_fof_hdf5_array(e, h_grp, file_name, "Groups", output_prop,
                        num_groups_local, compression_write_lossless,
                        e->internal_units, e->snapshot_units);
   output_prop =
       io_make_output_field_("Sizes", LONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f,
                             (char*)props->final_group_size, sizeof(long long),
-                            "FOF group length (number of particles)");
+                            "FOF group length (number of particles)",
+                            /*physical=*/1, /*convertible_to_comoving=*/0);
   write_fof_hdf5_array(e, h_grp, file_name, "Groups", output_prop,
                        num_groups_local, compression_write_lossless,
                        e->internal_units, e->snapshot_units);
@@ -577,6 +606,7 @@ void write_fof_hdf5_catalogue(const struct fof_props* props,
   /* Close everything */
   H5Gclose(h_grp);
   H5Fclose(h_file);
+  H5Pclose(h_props);
 
 #ifdef WITH_MPI
 #if H5_VERSION_GE(1, 10, 0)

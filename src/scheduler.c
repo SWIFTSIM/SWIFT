@@ -81,8 +81,9 @@ static void scheduler_extend_unlocks(struct scheduler *s) {
     error("Failed to re-allocate unlocks.");
 
   /* Wait for all writes to the old buffer to complete. */
-  while (s->completed_unlock_writes < s->size_unlocks)
-    ;
+  while (s->completed_unlock_writes < s->size_unlocks) {
+    /* Nothing to do here. */
+  }
 
   /* Copy the buffers. */
   memcpy(unlocks_new, s->unlocks, sizeof(struct task *) * s->size_unlocks);
@@ -123,8 +124,9 @@ void scheduler_addunlock(struct scheduler *s, struct task *ta,
 #endif
 
   /* Wait for there to actually be space at my index. */
-  while (ind > s->size_unlocks)
-    ;
+  while (ind > s->size_unlocks) {
+    /* Nothing to do here. */
+  }
 
   /* Guard against case when more than (old) s->size_unlocks unlocks
    * are now pending. */
@@ -1281,10 +1283,10 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
         break;
       }
 
-      /* Get the sort ID, use space_getsid and not t->flags
+      /* Get the sort ID, use space_getsid_and_swap_cells and not t->flags
          to make sure we get ci and cj swapped if needed. */
       double shift[3];
-      const int sid = space_getsid(s->space, &ci, &cj, shift);
+      const int sid = space_getsid_and_swap_cells(s->space, &ci, &cj, shift);
 
 #ifdef SWIFT_DEBUG_CHECKS
       if (sid != t->flags)
@@ -1374,11 +1376,12 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
                     scheduler_addtask(s, task_type_pair, t->subtype, 0, 0,
                                       ci->progeny[j], cj->progeny[k]);
                 scheduler_splittask_hydro(tl, s);
-                tl->flags = space_getsid(s->space, &t->ci, &t->cj, shift);
+                tl->flags = space_getsid_and_swap_cells(s->space, &t->ci,
+                                                        &t->cj, shift);
               }
       }
     } /* pair interaction? */
-  }   /* iterate over the current task. */
+  } /* iterate over the current task. */
 }
 
 /**
@@ -1453,9 +1456,9 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
                         s);
 
           } /* Self-gravity only */
-        }   /* Make tasks explicitly */
-      }     /* Cell is split */
-    }       /* Self interaction */
+        } /* Make tasks explicitly */
+      } /* Cell is split */
+    } /* Self interaction */
 
     /* Pair interaction? */
     else if (t->type == task_type_pair) {
@@ -1528,7 +1531,7 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
         } /* Split the pair */
       }
     } /* pair interaction? */
-  }   /* iterate over the current task. */
+  } /* iterate over the current task. */
 }
 
 /**
