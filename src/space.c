@@ -72,6 +72,7 @@ int space_subsize_pair_grav = space_subsize_pair_grav_default;
 int space_subsize_self_grav = space_subsize_self_grav_default;
 int space_subdepth_diff_grav = space_subdepth_diff_grav_default;
 int space_maxsize = space_maxsize_default;
+int space_grid_split_threshold = space_grid_split_threshold_default;
 
 /*! Number of extra #part we allocate memory for per top-level cell */
 int space_extra_parts = space_extra_parts_default;
@@ -1246,6 +1247,8 @@ void space_init(struct space *s, struct swift_params *params,
                                space_subsize_self_grav_default);
   space_splitsize = parser_get_opt_param_int(
       params, "Scheduler:cell_split_size", space_splitsize_default);
+  space_grid_split_threshold = parser_get_opt_param_int(
+      params, "Scheduler:grid_split_threshold", space_grid_split_threshold);
   space_subdepth_diff_grav =
       parser_get_opt_param_int(params, "Scheduler:cell_subdepth_diff_grav",
                                space_subdepth_diff_grav_default);
