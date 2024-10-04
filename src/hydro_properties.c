@@ -47,6 +47,12 @@
 #define hydro_props_default_min_temp 0.f
 #define hydro_props_default_H_ionization_temperature 1e4
 
+/*! Artificial viscosity parameters */
+struct viscosity_global_data viscosity_global;
+
+/*! Thermal diffusion parameters */
+struct diffusion_global_data diffusion_global;
+
 /**
  * @brief Initialize the global properties of the hydro scheme.
  *
