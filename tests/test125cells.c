@@ -119,8 +119,6 @@ void set_energy_state(struct part *part, enum pressure_field press, float size,
   part->u = pressure / (hydro_gamma_minus_one * density);
 #elif defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH)
   part->conserved.energy = pressure / (hydro_gamma_minus_one * density);
-#elif defined(SHADOWFAX_SPH)
-  part->primitives.P = pressure;
 #else
   error("Need to define pressure here !");
 #endif
@@ -225,25 +223,6 @@ void reset_particles(struct cell *c, struct hydro_space *hs,
     hydro_init_part(p, hs);
     adaptive_softening_init_part(p);
     mhd_init_part(p);
-
-#if defined(SHADOWFAX_SPH)
-    float volume = p->conserved.mass / density;
-    p->cell.volume = volume;
-    p->primitives.rho = density;
-    p->primitives.v[0] = p->v[0];
-    p->primitives.v[1] = p->v[1];
-    p->primitives.v[2] = p->v[2];
-    p->conserved.momentum[0] = p->conserved.mass * p->v[0];
-    p->conserved.momentum[1] = p->conserved.mass * p->v[1];
-    p->conserved.momentum[2] = p->conserved.mass * p->v[2];
-    p->conserved.energy =
-        p->primitives.P / hydro_gamma_minus_one * volume +
-        0.5f *
-            (p->conserved.momentum[0] * p->conserved.momentum[0] +
-             p->conserved.momentum[1] * p->conserved.momentum[1] +
-             p->conserved.momentum[2] * p->conserved.momentum[2]) /
-            p->conserved.mass;
-#endif
   }
 }
 
@@ -304,7 +283,7 @@ struct cell *make_cell(size_t n, const double offset[3], double size, double h,
         part->h = size * h / (float)n;
         h_max = fmax(h_max, part->h);
 
-#if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH) || defined(SHADOWFAX_SPH)
+#if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH)
         part->conserved.mass = density * volume / count;
 #else
         part->mass = density * volume / count;
@@ -394,8 +373,8 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
             hydro_get_comoving_density(&main_cell->hydro.parts[pid]),
 #if defined(MINIMAL_SPH) || defined(PLANETARY_SPH) ||    \
     defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH) ||  \
-    defined(SHADOWFAX_SPH) || defined(HOPKINS_PU_SPH) || \
-    defined(HOPKINS_PU_SPH_MONAGHAN) || defined(GASOLINE_SPH)
+    defined(HOPKINS_PU_SPH) || defined(HOPKINS_PU_SPH_MONAGHAN) || \
+    defined(GASOLINE_SPH)
             0.f,
 #elif defined(ANARCHY_PU_SPH) || defined(SPHENIX_SPH) || defined(PHANTOM_SPH)
             main_cell->hydro.parts[pid].viscosity.div_v,

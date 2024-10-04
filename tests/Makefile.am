@@ -29,26 +29,24 @@ TESTS = testGreetings testMaths testReading.sh testKernel testKernelLongGrav \
         testParser.sh test125cells.sh test125cellsPerturbed.sh testFFT \
         testAdiabaticIndex testRandom testRandomSpacing testRandomPoisson testErfc \
         testMatrixInversion testThreadpool testDump testCSDS testInteractions.sh \
-        testVoronoi1D testVoronoi3D testGravityDerivatives \
-	testPeriodicBC.sh testPeriodicBCPerturbed.sh testPotentialSelf \
-	testPotentialPair testEOS testUtilities testSelectOutput.sh \
-	testCbrt testCosmology testRandomCone testOutputList testFormat.sh \
-	test27cellsStars.sh test27cellsStarsPerturbed.sh testHydroMPIrules \
+        testGravityDerivatives testPeriodicBC.sh testPeriodicBCPerturbed.sh \
+        testPotentialSelf testPotentialPair testEOS testUtilities testSelectOutput.sh \
+        testCbrt testCosmology testRandomCone testOutputList testFormat.sh \
+        test27cellsStars.sh test27cellsStarsPerturbed.sh testHydroMPIrules \
         testAtomic testGravitySpeed testNeutrinoCosmology.sh testNeutrinoFermiDirac \
-	testLog testDistance testTimeline
+	    testLog testDistance testTimeline
 
 # List of test programs to compile
 check_PROGRAMS = testGreetings testReading testTimeIntegration testKernelLongGrav \
 		 testActivePair test27cells test27cells_subset test125cells testParser \
-                 testKernel testFFT testInteractions testMaths testRandom testExp \
-                 testSymmetry testDistance testThreadpool testRandomSpacing testErfc \
-                 testAdiabaticIndex testRiemannExact testRiemannTRRS testRandomPoisson testRandomCone \
-                 testRiemannHLLC testMatrixInversion testDump testCSDS \
-		 testVoronoi1D testVoronoi3D testPeriodicBC \
-		 testGravityDerivatives testPotentialSelf testPotentialPair testEOS testUtilities \
-		 testSelectOutput testCbrt testCosmology testOutputList test27cellsStars \
-		 test27cellsStars_subset testCooling testComovingCooling testFeedback testHashmap \
-                 testAtomic testHydroMPIrules testGravitySpeed testNeutrinoCosmology \
+         testKernel testFFT testInteractions testMaths testRandom testExp \
+         testSymmetry testDistance testThreadpool testRandomSpacing testErfc \
+         testAdiabaticIndex testRiemannExact testRiemannTRRS testRandomPoisson testRandomCone \
+         testRiemannHLLC testMatrixInversion testDump testCSDS \
+		 testPeriodicBC testGravityDerivatives testPotentialSelf testPotentialPair testEOS \
+		 testUtilities testSelectOutput testCbrt testCosmology testOutputList \
+		 test27cellsStars test27cellsStars_subset testCooling testComovingCooling testFeedback \
+		 testHashmap testAtomic testHydroMPIrules testGravitySpeed testNeutrinoCosmology \
 		 testNeutrinoFermiDirac testLog testTimeline
 
 # Rebuild tests when SWIFT is updated.
@@ -128,12 +126,6 @@ testRiemannHLLC_SOURCES = testRiemannHLLC.c
 
 testMatrixInversion_SOURCES = testMatrixInversion.c
 
-testVoronoi1D_SOURCES = testVoronoi1D.c
-
-#testVoronoi2D_SOURCES = testVoronoi2D.c
-
-testVoronoi3D_SOURCES = testVoronoi3D.c
-
 testThreadpool_SOURCES = testThreadpool.c
 
 testDump_SOURCES = testDump.c
@@ -172,15 +164,15 @@ testHydroMPIrules = testHydroMPIrules.c
 
 # Files necessary for distribution
 EXTRA_DIST = testReading.sh makeInput.py testActivePair.sh \
-	     test27cells.sh test27cellsPerturbed.sh testParser.sh testPeriodicBC.sh \
-	     testPeriodicBCPerturbed.sh test125cells.sh test125cellsPerturbed.sh testParserInput.yaml \
-	     difffloat.py tolerance_125_normal.dat tolerance_125_perturbed.dat \
+             test27cells.sh test27cellsPerturbed.sh testParser.sh testPeriodicBC.sh \
+             testPeriodicBCPerturbed.sh test125cells.sh test125cellsPerturbed.sh testParserInput.yaml \
+             difffloat.py tolerance_125_normal.dat tolerance_125_perturbed.dat \
              tolerance_27_normal.dat tolerance_27_perturbed.dat tolerance_27_perturbed_h.dat tolerance_27_perturbed_h2.dat \
-	     tolerance_testInteractions.dat tolerance_pair_active.dat tolerance_pair_force_active.dat \
-	     fft_params.yml tolerance_periodic_BC_normal.dat tolerance_periodic_BC_perturbed.dat \
-	     testEOS.sh testEOS_plot.sh testSelectOutput.sh selectOutput.yml \
+             tolerance_testInteractions.dat tolerance_pair_active.dat tolerance_pair_force_active.dat \
+             fft_params.yml tolerance_periodic_BC_normal.dat tolerance_periodic_BC_perturbed.dat \
+             testEOS.sh testEOS_plot.sh testSelectOutput.sh selectOutput.yml \
              output_list_params.yml output_list_time.txt output_list_redshift.txt \
              output_list_scale_factor.txt testEOS.sh testEOS_plot.sh \
-	     test27cellsStars.sh test27cellsStarsPerturbed.sh star_tolerance_27_normal.dat \
-	     star_tolerance_27_perturbed.dat star_tolerance_27_perturbed_h.dat star_tolerance_27_perturbed_h2.dat \
-	     testNeutrinoCosmology.dat testNeutrinoCosmology.sh
+             test27cellsStars.sh test27cellsStarsPerturbed.sh star_tolerance_27_normal.dat \
+             star_tolerance_27_perturbed.dat star_tolerance_27_perturbed_h.dat star_tolerance_27_perturbed_h2.dat \
+             testNeutrinoCosmology.dat testNeutrinoCosmology.sh

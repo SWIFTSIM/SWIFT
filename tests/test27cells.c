@@ -153,14 +153,8 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
         h_max = fmaxf(h_max, part->h);
         part->id = ++(*partId);
 
-#if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH) || defined(SHADOWFAX_SPH)
+#if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH)
         part->conserved.mass = density * volume / count;
-
-#ifdef SHADOWFAX_SPH
-        double anchor[3] = {0., 0., 0.};
-        double side[3] = {1., 1., 1.};
-        voronoi_cell_init(&part->cell, part->x, anchor, side);
-#endif
 
 #else
         part->mass = density * volume / count;
@@ -220,18 +214,8 @@ void clean_up(struct cell *ci) {
  * @brief Initializes all particles field to be ready for a density calculation
  */
 void zero_particle_fields(struct cell *c) {
-#ifdef SHADOWFAX_SPH
-  struct hydro_space hs;
-  hs.anchor[0] = 0.;
-  hs.anchor[1] = 0.;
-  hs.anchor[2] = 0.;
-  hs.side[0] = 1.;
-  hs.side[1] = 1.;
-  hs.side[2] = 1.;
-  struct hydro_space *hspointer = &hs;
-#else
   struct hydro_space *hspointer = NULL;
-#endif
+
   for (int pid = 0; pid < c->hydro.count; pid++) {
     hydro_init_part(&c->hydro.parts[pid], hspointer);
     adaptive_softening_init_part(&c->hydro.parts[pid]);
@@ -282,7 +266,7 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
             main_cell->hydro.parts[pid].v[0], main_cell->hydro.parts[pid].v[1],
             main_cell->hydro.parts[pid].v[2],
             hydro_get_comoving_density(&main_cell->hydro.parts[pid]),
-#if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH) || defined(SHADOWFAX_SPH)
+#if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH)
             0.f,
 #elif defined(HOPKINS_PU_SPH) || defined(HOPKINS_PU_SPH_MONAGHAN) || \
     defined(ANARCHY_PU_SPH)
@@ -331,7 +315,7 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
               cj->hydro.parts[pjd].v[0], cj->hydro.parts[pjd].v[1],
               cj->hydro.parts[pjd].v[2],
               hydro_get_comoving_density(&cj->hydro.parts[pjd]),
-#if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH) || defined(SHADOWFAX_SPH)
+#if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH)
               0.f,
 #else
               main_cell->hydro.parts[pjd].density.rho_dh,

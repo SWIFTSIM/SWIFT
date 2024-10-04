@@ -78,7 +78,7 @@ struct part *make_particles(size_t count, double *offset, double spacing,
   p->h = h;
   p->id = ++(*partId);
 
-#if !defined(GIZMO_MFV_SPH) && !defined(SHADOWFAX_SPH)
+#if !defined(GIZMO_MFV_SPH)
   p->mass = 1.0f;
 #endif
 
@@ -99,7 +99,7 @@ struct part *make_particles(size_t count, double *offset, double spacing,
 
     p->h = h;
     p->id = ++(*partId);
-#if !defined(GIZMO_SPH) && !defined(SHADOWFAX_SPH)
+#if !defined(GIZMO_SPH)
     p->mass = 1.0f;
 #endif
   }
@@ -111,11 +111,11 @@ struct part *make_particles(size_t count, double *offset, double spacing,
  */
 void prepare_force(struct part *parts, size_t count) {
 
-#if !defined(GIZMO_MFV_SPH) && !defined(SHADOWFAX_SPH) &&            \
-    !defined(MINIMAL_SPH) && !defined(PLANETARY_SPH) &&              \
-    !defined(HOPKINS_PU_SPH) && !defined(HOPKINS_PU_SPH_MONAGHAN) && \
-    !defined(ANARCHY_PU_SPH) && !defined(SPHENIX_SPH) &&             \
-    !defined(PHANTOM_SPH) && !defined(GASOLINE_SPH)
+#if !defined(GIZMO_MFV_SPH) && !defined(MINIMAL_SPH) && \
+    !defined(PLANETARY_SPH) && !defined(HOPKINS_PU_SPH) && \
+    !defined(HOPKINS_PU_SPH_MONAGHAN) && !defined(ANARCHY_PU_SPH) && \
+    !defined(SPHENIX_SPH) && !defined(PHANTOM_SPH) && \
+    !defined(GASOLINE_SPH)
   struct part *p;
   for (size_t i = 0; i < count; ++i) {
     p = &parts[i];
@@ -143,7 +143,7 @@ void dump_indv_particle_fields(char *fileName, struct part *p) {
           p->id, p->x[0], p->x[1], p->x[2], p->v[0], p->v[1], p->v[2], p->h,
           hydro_get_comoving_density(p),
 #if defined(MINIMAL_SPH) || defined(PLANETARY_SPH) || \
-    defined(SHADOWFAX_SPH) || defined(PHANTOM_SPH) || defined(GASOLINE_SPH)
+    defined(PHANTOM_SPH) || defined(GASOLINE_SPH)
           0.f,
 #else
           p->density.div_v,
