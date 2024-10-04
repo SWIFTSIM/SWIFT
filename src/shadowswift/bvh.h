@@ -38,7 +38,7 @@ enum direction { X_axis, Y_axis, Z_axis };
  * less.
  * NOTE: Must be at least two.
  */
-#define BVH_DATA_SIZE 3
+#define BVH_DATA_SIZE 2
 
 /**
  * @brief A node of a BVH.
@@ -363,7 +363,7 @@ inline static void flat_bvh_populate(bvh_t *bvh, const struct part *parts,
  * @param bvh The #flat_bvh to search
  * @param parts The #part stored in this bvh.
  * @param x, y, z The candidate position
- * @param r2 The square of the safety radius.
+ * @param r2 The square of the candidate safety radius.
  * @returns The index of the "hit", i.e.: the particle that contains the
  * candidate position in it's search radius and is itself contained in the
  * safety radius of the candidate position. If no hit is found, -1 is returned.

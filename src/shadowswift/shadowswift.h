@@ -195,11 +195,15 @@ cell_add_ghost_parts_grid_pair(struct delaunay *d, struct cell *c,
   /* Pick out the sorted lists of the incoming particles */
   const struct sort_entry *restrict sort_in = cell_get_hydro_sorts(c_in, sid);
 
-  /* Has the neighbouring cell already finished it's construction? */
+  /* Has the neighbouring cell already finished it's construction?
+   * NOTE: We have task dependencies in place ensuring that cell's whose
+   * construction level is lower, will finish construction before neighbouring
+   * cells with a higher construction level. */
   const int c_in_local = c_in->nodeID == e->nodeID;
+  const int c_in_active = cell_is_active_hydro(c_in, e);
   const int c_in_finished_construction =
-      c_in_local ? c_in->grid.construction_level == NULL ||
-                       (cell_is_active_hydro(c_in, e) &&
+      c_in_local ? c_in_active &&
+                       (c_in->grid.construction_level == NULL ||
                         c_in->grid.construction_level->grid.construction->skip)
                  : 0;
 
@@ -237,13 +241,13 @@ cell_add_ghost_parts_grid_pair(struct delaunay *d, struct cell *c,
       /* If c_in is above its construction level and p is active, we already
        * know the safety radius of p and can discard it if it does not contain
        * the neighbour. */
-      double h2;
+      double r2;
       if (c_in_finished_construction && part_is_active(p, e))
-        h2 = p->geometry.search_radius * p->geometry.search_radius;
+        r2 = p->geometry.search_radius * p->geometry.search_radius;
       else
-        h2 = DBL_MAX;
+        r2 = DBL_MAX;
       /* Find a bvh_hit if any. */
-      int ngb_id = flat_bvh_hit(bvh, parts, p_x, p_y, p_z, h2);
+      int ngb_id = flat_bvh_hit(bvh, parts, p_x, p_y, p_z, r2);
       if (ngb_id >= 0) {
         /* Add the new ghost vertex */
         delaunay_add_ghost_vertex(d, p_x, p_y, p_z, sid, p_idx,
@@ -277,13 +281,13 @@ cell_add_ghost_parts_grid_pair(struct delaunay *d, struct cell *c,
       /* If c_in is above its construction level and p is active, we already
        * know the safety radius of p and can discard it if it does not contain
        * the neighbour. */
-      double h2;
+      double r2;
       if (c_in_finished_construction && part_is_active(p, e))
-        h2 = p->geometry.search_radius * p->geometry.search_radius;
+        r2 = p->geometry.search_radius * p->geometry.search_radius;
       else
-        h2 = DBL_MAX;
+        r2 = DBL_MAX;
       /* Find a bvh_hit if any. */
-      int ngb_id = flat_bvh_hit(bvh, parts, p_x, p_y, p_z, h2);
+      int ngb_id = flat_bvh_hit(bvh, parts, p_x, p_y, p_z, r2);
       if (ngb_id >= 0) {
         /* Add the new ghost vertex */
         delaunay_add_ghost_vertex(d, p_x, p_y, p_z, sid, p_idx,

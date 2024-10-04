@@ -56,7 +56,7 @@ __attribute__((always_inline)) INLINE static void hydro_part_get_fluxes(
  * @param Anorm Surface area of the interface.
  * @param fluxes Array to store the result in (of size 5 or more).
  * @return The maximal mach number of the signal speed of the shockwaves in the
- * solution of the Riemann problem (if any).
+ * solution of the Riemann problem (if any) or zero.
  */
 __attribute__((always_inline)) INLINE static float hydro_compute_flux(
     const float* WL, const float* WR, const float* n_unit, const float* vLR,

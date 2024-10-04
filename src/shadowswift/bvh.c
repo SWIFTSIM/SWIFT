@@ -63,7 +63,7 @@ int flat_bvh_hit_rec(const bvh_t *bvh, int node_id, struct part *parts,
   double dx[3] = {p->x[0] - x, p->x[1] - y, p->x[2] - z};
   double dx2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
   if (dx2 <= r2 && dx2 < hit_r2) return pid;
-    /* Else check subtrees */
+  /* Else check subtrees */
 #endif
   int hit = flat_bvh_hit_rec(bvh, node->children.left, parts, x, y, z, r2);
   if (hit == -1) {
