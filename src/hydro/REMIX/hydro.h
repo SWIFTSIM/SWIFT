@@ -544,6 +544,7 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->rho = 0.f;
   p->density.rho_dh = 0.f;
   p->num_unkicked_ngbs = 0;
+  p->num_noninteracting_ngbs = 0.f;  
 
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
   p->N_density = 1; /* Self contribution */
@@ -743,9 +744,19 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
     const struct pressure_floor_props *pressure_floor, const float dt_alpha,
     const float dt_therm) {
     
-if (p->id > p->max_id) {
+if (p->id > p->max_id && p->num_noninteracting_ngbs == 0) {
   hydro_prepare_force_extra_kernel(p);
-}
+} else {
+    p->force.A = 1.f;
+    p->force.vac_switch = 1.f;
+    for (int i = 0; i < 3; i++) {
+      p->force.B[i] = 0.f;
+      p->force.grad_A[i] = 0.f;
+      for (int j = 0; j < 3; j++) {
+        p->force.grad_B[i][j] = 0.f;
+      }
+    }
+  }
 
 #ifdef PLANETARY_FIXED_ENTROPY
   /* Override the internal energy to satisfy the fixed entropy */
