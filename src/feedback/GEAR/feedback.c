@@ -208,7 +208,7 @@ void feedback_will_do_feedback(
       star_age_beg_step < 0 ? 0 : star_age_beg_step;
 
   /* A single star */
-  if (sp->feedback_data.star_type == single_star) {
+  if (sp->star_type == single_star) {
     /* If the star has completely exploded, do not continue. This will also
        avoid NaN values in the liftetime if the mass is set to 0. Correction
        (28.04.2024): A bug fix in the mass of the star (see stellar_evolution.c
@@ -297,7 +297,7 @@ void feedback_init_spart(struct spart* sp) {
  */
 void feedback_init_after_star_formation(
     struct spart* sp, const struct feedback_props* feedback_props,
-    enum star_feedback_type star_type) {
+    const enum stellar_type star_type) {
 
   feedback_init_spart(sp);
 
@@ -309,7 +309,7 @@ void feedback_init_after_star_formation(
 
   /* Give to the star its appropriate type: single star, continuous IMF star or
      single population star */
-  sp->feedback_data.star_type = star_type;
+  sp->star_type = star_type;
 }
 
 /**

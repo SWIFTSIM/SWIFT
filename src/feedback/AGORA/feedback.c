@@ -255,7 +255,7 @@ void feedback_init_spart(struct spart* sp) {
  */
 void feedback_init_after_star_formation(
     struct spart* sp, const struct feedback_props* feedback_props,
-    enum star_feedback_type star_type) {
+    const enum stellar_type star_type) {
 
   /* Zero the energy of supernovae */
   sp->feedback_data.energy_ejected = 0;
@@ -268,7 +268,7 @@ void feedback_init_after_star_formation(
 
   /* Give to the star its appropriate type: single star, continuous IMF star or
      single population star */
-  sp->feedback_data.star_type = star_type;
+  sp->star_type = star_type;
 }
 
 /**
