@@ -166,7 +166,7 @@ runner_iact_nonsym_sinks_sink_swallow(
 
   } else {
 
-    /* Relative velocity between th sinks */
+    /* Relative velocity between the sinks */
     const float dv[3] = {sj->v[0] - si->v[0], sj->v[1] - si->v[1],
                          sj->v[2] - si->v[2]};
 
@@ -206,12 +206,11 @@ runner_iact_nonsym_sinks_sink_swallow(
     runner_iact_grav_pp_full(r2, eps2, eps_inv, eps_inv3, sj_mass, &dummy,
                              &pot_ji);
 
-    // w_tilde(a, w0, wa)
     const double a_dot_dot = cosmology_compute_a_dot_dot(cosmo);
 
     /* Compute the physical potential energies :
-       E_pot_phys = G*pot_grav*a^(-1) + c(a). */
-    /* The normalization is c(a) = -a_dot*a*r^2/2.0. */
+                           E_pot_phys = G*pot_grav*a^(-1) + c(a).
+       The normalization is c(a) = -a_dot*a*r^2/2.0. */
     const double constant = -a_dot_dot * a * r2 / 2.0;
     const float E_pot_ij =
         grav_props->G_Newton * pot_ij * cosmo->a_inv + constant;
@@ -293,7 +292,7 @@ runner_iact_nonsym_sinks_gas_swallow(const float r2, const float dx[3],
     /* f_acc*r_acc <= r <= r_acc, we perform other checks */
   } else if ((r >= f_acc_r_acc) && (r < ri)) {
 
-    /* Relative velocity between th sinks */
+    /* Relative velocity between the sinks */
     const float dv[3] = {pj->v[0] - si->v[0], pj->v[1] - si->v[1],
                          pj->v[2] - si->v[2]};
 
@@ -319,7 +318,7 @@ runner_iact_nonsym_sinks_gas_swallow(const float r2, const float dx[3],
                                   dx[2] * cosmo->a};
     const float r_physical = r * cosmo->a;
 
-    /* Momentum check */
+    /* Momentum check------------------------------------------------------- */
     /* Relative momentum of the gas */
     const float specific_angular_momentum_gas[3] = {
         dx_physical[1] * dv_physical[2] - dx_physical[2] * dv_physical[1],
@@ -344,7 +343,7 @@ runner_iact_nonsym_sinks_gas_swallow(const float r2, const float dx[3],
       return;
     }
 
-    /* Energy check */
+    /* Energy check--------------------------------------------------------- */
     /* Kinetic energy of the gas */
     float E_kin_relative_gas = 0.5f * dv_physical_squared;
 
@@ -362,8 +361,8 @@ runner_iact_nonsym_sinks_gas_swallow(const float r2, const float dx[3],
     const double a_dot_dot = cosmology_compute_a_dot_dot(cosmo);
 
     /* Compute the physical potential energy that the sink exerts in the gas :
-                       E_pot_phys = G*pot_grav*a^(-1) + c(a). */
-    /* The normalization is c(a) = a_dot*a*r^2/2.0. */
+                       E_pot_phys = G*pot_grav*a^(-1) + c(a).
+       The normalization is c(a) = a_dot*a*r^2/2.0. */
     const float E_pot_gas =
         grav_props->G_Newton * pot_ij * cosmo->a_inv - a_dot_dot * a * r2 / 2.0;
 
@@ -377,7 +376,7 @@ runner_iact_nonsym_sinks_gas_swallow(const float r2, const float dx[3],
     /* To be accreted, the gas must be gravitationally bound to the sink. */
     if (E_mec_sink_part >= 0) return;
 
-    /* Most bound pair check */
+    /* Most bound pair check------------------------------------------------ */
     /* The pair gas-sink must be the most bound among all sinks */
     if (E_mec_sink_part >= pj->sink_data.E_mec_bound) {
       return;
