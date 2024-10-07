@@ -210,7 +210,7 @@ runner_iact_nonsym_sinks_sink_swallow(
 
     /* Compute the physical potential energies :
                            E_pot_phys = G*pot_grav*a^(-1) + c(a).
-       The normalization is c(a) = -a_dot*a*r^2/2.0. */
+       The normalization is c(a) = -a_dot_dot*a*r^2/2.0. */
     const double constant = -a_dot_dot * a * r2 / 2.0;
     const float E_pot_ij =
         grav_props->G_Newton * pot_ij * cosmo->a_inv + constant;
@@ -362,7 +362,7 @@ runner_iact_nonsym_sinks_gas_swallow(const float r2, const float dx[3],
 
     /* Compute the physical potential energy that the sink exerts in the gas :
                        E_pot_phys = G*pot_grav*a^(-1) + c(a).
-       The normalization is c(a) = a_dot*a*r^2/2.0. */
+       The normalization is c(a) = a_dot_dot*a*r^2/2.0. */
     const float E_pot_gas =
         grav_props->G_Newton * pot_ij * cosmo->a_inv - a_dot_dot * a * r2 / 2.0;
 
