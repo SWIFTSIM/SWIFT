@@ -38,6 +38,8 @@ The self-completeness flag should be invalidated when drifting the particles.
 
 Once the self-completeness flags have been set, and communicated over MPI if necessary, each cell's completeness (\texttt{true} or \texttt{false}) is initialized according to its self-completeness flag. We then recursively check all pairs of neighbouring cells and invalidate the completeness flag of a cell as soon as one of its neighbours is not self-complete. Note that technically, the cell might in theory still be complete at this point (i.e. only depend on particles from its neighbouring cells), but there is no easy way to check this in practice, so we impose this slightly more stringent constraint.
 
+If the \texttt{SHADOWSWIFT\_RELAXED\_COMPLETENESS} directive is defined, we use a slightly more relaxed condition. We only invalidate the completeness of a SWIFT cell \texttt{ci}, if it has a neighbouring cell \texttt{cj} that is not self-complete \emph{and} the maximal search radius of any particle in \texttt{ci} is smaller than half the width of \texttt{cj}, indicating there are still enough particles close-by to completely determine \texttt{ci}'s Voronoi grid and consider the pair (\texttt{ci}, \texttt{cj}) complete.
+
 
 \subsection{Setting the construction level based on completeness} \label{sec:construction-level}
 
