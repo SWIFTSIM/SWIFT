@@ -81,18 +81,22 @@ particle_splitting_update_binary_tree(
         "Warning: Particle (%lld) with progenitor ID %lld with binary tree %lld has been split over the maximum %zu times, making its binary tree invalid.",
         id_i, sdi->progenitor_id, sdi->split_tree, sizeof(sdi->split_tree));
 
-    /* Log the old state before reseting. Use the lock to prevent multiple
-     * threads from writing at the same time. */
-    lock_lock(file_lock);
-    fprintf(extra_split_logger, "  %12d %20lld %20lld %20d %20lld\n",
-            engine_current_step, id_i, sdi->progenitor_id, sdj->split_count, sdi->split_tree);
-    fprintf(extra_split_logger, "  %12d %20lld %20lld %20d %20lld\n",
-            engine_current_step, id_j, sdj->progenitor_id, sdj->split_count, sdj->split_tree);
-    fflush(extra_split_logger);
-
-    /* Release the lock and continue in parallel */
-    if (lock_unlock(file_lock) != 0)
-      error("Impossible to unlock particle splitting");
+    /* Are we logging this? */
+    if (extra_split_logger != NULL) {
+    
+      /* Log the old state before reseting. Use the lock to prevent multiple
+       * threads from writing at the same time. */
+      lock_lock(file_lock);
+      fprintf(extra_split_logger, "  %12d %20lld %20lld %20d %20lld\n",
+	      engine_current_step, id_i, sdi->progenitor_id, sdj->split_count, sdi->split_tree);
+      fprintf(extra_split_logger, "  %12d %20lld %20lld %20d %20lld\n",
+	      engine_current_step, id_j, sdj->progenitor_id, sdj->split_count, sdj->split_tree);
+      fflush(extra_split_logger);
+      
+      /* Release the lock and continue in parallel */
+      if (lock_unlock(file_lock) != 0)
+	error("Impossible to unlock particle splitting");
+    }
 
     /* Reset both counters and trees */
     sdi->split_tree = 0LL;
