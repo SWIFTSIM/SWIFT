@@ -54,6 +54,9 @@ struct gpart {
   /*! Particle mass. */
   float mass;
 
+  /*! Initial particle mass. */
+  float mass_ini;
+
   /*! Norm of the acceleration at the previous step. */
   float old_a_grav_norm;
 
