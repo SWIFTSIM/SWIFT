@@ -187,7 +187,7 @@ runner_iact_nonsym_sinks_sink_swallow(
                                       dv_physical[1] * dv_physical[1] +
                                       dv_physical[2] * dv_physical[2];
 
-    /* Kinetic energy of the gas */
+    /* Kinetic energy per unit mass of the gas */
     const float E_kin_rel = 0.5f * dv_physical_squared;
 
     /* Compute the Newtonian or softened potential the sink exherts onto the
@@ -205,7 +205,7 @@ runner_iact_nonsym_sinks_sink_swallow(
     runner_iact_grav_pp_full(r2, eps2, eps_inv, eps_inv3, sj_mass, &dummy,
                              &pot_ji);
 
-    /* Compute the physical potential energies :
+    /* Compute the physical potential energies per unit mass :
                            E_pot_phys = G*pot_grav*a^(-1) + c(a).
        The normalization is c(a) = 0. */
     const float E_pot_ij =
@@ -213,7 +213,7 @@ runner_iact_nonsym_sinks_sink_swallow(
     const float E_pot_ji =
         grav_props->G_Newton * pot_ji * cosmo->a_inv;
 
-    /* Mechanical energy of the pair i-j and j-i */
+    /* Mechanical energy per unit mass of the pair i-j and j-i */
     const float E_mec_si = E_kin_rel + E_pot_ij;
     const float E_mec_sj = E_kin_rel + E_pot_ji;
 
@@ -340,7 +340,7 @@ runner_iact_nonsym_sinks_gas_swallow(const float r2, const float dx[3],
     }
 
     /* Energy check--------------------------------------------------------- */
-    /* Kinetic energy of the gas */
+    /* Kinetic energy per unit mass of the gas */
     float E_kin_relative_gas = 0.5f * dv_physical_squared;
 
     /* Compute the Newtonian or softened potential the sink exherts onto the
@@ -354,17 +354,18 @@ runner_iact_nonsym_sinks_gas_swallow(const float r2, const float dx[3],
     runner_iact_grav_pp_full(r2, eps2, eps_inv, eps_inv3, sink_mass, &dummy,
                              &pot_ij);
 
-    /* Compute the physical potential energy that the sink exerts in the gas :
+    /* Compute the physical potential energy per unit mass  that the sink
+       exerts in the gas :
                        E_pot_phys = G*pot_grav*a^(-1) + c(a).
        The normalization is c(a) = 0. */
     const float E_pot_gas =
         grav_props->G_Newton * pot_ij * cosmo->a_inv;
 
-    /* Update: Add thermal energy to avoid the sink to swallow hot gas regions
-     */
+    /* Update: Add thermal energy per unit mass  to avoid the sink to swallow
+       hot gas regions */
     const float E_therm = hydro_get_drifted_physical_internal_energy(pj, cosmo);
 
-    /* Energy of the pair sink-gas */
+    /* Energy per unit mass of the pair sink-gas */
     const float E_mec_sink_part = E_kin_relative_gas + E_pot_gas + E_therm;
 
     /* To be accreted, the gas must be gravitationally bound to the sink. */
