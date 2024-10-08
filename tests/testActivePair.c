@@ -105,15 +105,8 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
         part->id = ++(*partId);
 
 /* Set the mass */
-#if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH) || defined(SHADOWFAX_SPH)
+#if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH)
         part->conserved.mass = density * volume / count;
-
-#ifdef SHADOWFAX_SPH
-        double anchor[3] = {0., 0., 0.};
-        double side[3] = {1., 1., 1.};
-        voronoi_cell_init(&part->cell, part->x, anchor, side);
-#endif /* SHADOWFAX_SPH */
-
 #else
         part->mass = density * volume / count;
 #endif
