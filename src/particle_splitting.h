@@ -132,9 +132,7 @@ INLINE static int particle_splitting_write_particles(const struct part* parts,
       "SplitCounts", UINT8, 1, UNIT_CONV_NO_UNITS, 0.f, xparts,
       split_data.split_count,
       "Number of times this particle has been split. Note that both particles "
-      "that take part in the splitting have counter incremented, so the "
-      "number of splitting events in an entire simulation is half of the sum "
-      "of all of these numbers.");
+      "that take part in the splitting have counter incremented.");
 
   list[2] = io_make_output_field(
       "SplitTrees", LONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f, xparts,
