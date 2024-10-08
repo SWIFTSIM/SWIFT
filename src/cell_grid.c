@@ -26,8 +26,8 @@
 
 /* Local headers */
 #include "engine.h"
-#include "space_getsid.h"
 #include "error.h"
+#include "space_getsid.h"
 
 /**
  * @brief Recursively free grid memory for cell.

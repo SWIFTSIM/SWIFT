@@ -371,8 +371,8 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
             main_cell->hydro.parts[pid].v[0], main_cell->hydro.parts[pid].v[1],
             main_cell->hydro.parts[pid].v[2], main_cell->hydro.parts[pid].h,
             hydro_get_comoving_density(&main_cell->hydro.parts[pid]),
-#if defined(MINIMAL_SPH) || defined(PLANETARY_SPH) ||    \
-    defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH) ||  \
+#if defined(MINIMAL_SPH) || defined(PLANETARY_SPH) ||              \
+    defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH) ||            \
     defined(HOPKINS_PU_SPH) || defined(HOPKINS_PU_SPH_MONAGHAN) || \
     defined(GASOLINE_SPH)
             0.f,
