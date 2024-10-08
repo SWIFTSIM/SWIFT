@@ -65,19 +65,11 @@ particle_splitting_update_binary_tree(
     const long long id_j, FILE* extra_split_logger,
     swift_lock_type* file_lock) {
 
-  /* Update the binary tree */
-  sdj->split_tree |= 1LL << sdj->split_count;
-
-  /* Increase counters on both; sdi implicitly has a zero
-   * in the relevant spot in its binary tree */
-  sdj->split_count++;
-  sdi->split_count++;
-
   /* Print warnings if we have split these particles more
    * than the number of times the tree can accommodate.
    * Warning is only printed once for each particle */
-  if (sdi->split_count > 1 &&
-      sdi->split_count % (8 * sizeof(sdi->split_tree)) == 1) {
+  if (sdi->split_count > 0 &&
+      sdi->split_count % (8 * sizeof(sdi->split_tree)) == 0) {
     message(
         "Warning: Particle (%lld) with progenitor ID %lld with binary tree "
         "%lld has been split over the maximum %zu times, making its binary "
@@ -91,11 +83,8 @@ particle_splitting_update_binary_tree(
        * threads from writing at the same time. */
       lock_lock(file_lock);
       fprintf(extra_split_logger, "  %12d %20lld %20lld %20d %20lld\n",
-              engine_current_step, id_i, sdi->progenitor_id, sdj->split_count,
+              engine_current_step, id_i, sdi->progenitor_id, sdi->split_count,
               sdi->split_tree);
-      fprintf(extra_split_logger, "  %12d %20lld %20lld %20d %20lld\n",
-              engine_current_step, id_j, sdj->progenitor_id, sdj->split_count,
-              sdj->split_tree);
       fflush(extra_split_logger);
 
       /* Release the lock and continue in parallel */
@@ -108,9 +97,17 @@ particle_splitting_update_binary_tree(
     sdj->split_tree = 0LL;
 
     /* Set both particles as having particle i as their progenitor */
-    sdj->progenitor_id = sdi->progenitor_id;
-    // sdi->progenitor_id = sdi->progenitor_id;
+    sdi->progenitor_id = id_i;
+    sdj->progenitor_id = id_i;
   }
+
+  /* Update the binary tree */
+  sdj->split_tree |= 1LL << sdj->split_count % (8 * sizeof(sdi->split_tree));
+
+  /* Increase counters on both; sdi implicitly has a zero
+   * in the relevant spot in its binary tree */
+  sdj->split_count++;
+  sdi->split_count++;
 }
 
 /**
@@ -178,8 +175,7 @@ INLINE static int particle_splitting_write_sparticles(
       split_data.split_count,
       "Number of times the gas particle that turned into this star particle "
       "was split. Note that both particles that take part in the splitting "
-      "have this counter incremented, so the number of splitting events in an "
-      "entire simulation is half of the sum of all of these numbers.");
+      "have their counter incremented.");
 
   list[2] = io_make_output_field(
       "SplitTrees", LONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f, sparts,
@@ -215,8 +211,7 @@ INLINE static int particle_splitting_write_bparticles(
       split_data.split_count,
       "Number of times the gas particle that became this BH seed "
       "was split. Note that both particles that take part in the splitting "
-      "have this counter incremented, so the number of splitting events in an "
-      "entire simulation is half of the sum of all of these numbers.");
+      "have their counter incremented.");
 
   list[2] = io_make_output_field(
       "SplitTrees", LONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
