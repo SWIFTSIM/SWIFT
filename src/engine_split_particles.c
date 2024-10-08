@@ -496,8 +496,8 @@ void engine_init_split_gas_particles(struct engine *e) {
   char extra_split_logger_filename[256];
   sprintf(extra_split_logger_filename, "splits/splits_%04d.txt", engine_rank);
   FILE *extra_split_logger = fopen(extra_split_logger_filename, "w");
-  fprintf(extra_split_logger, "# %12s %20s %20s %20s\n", "Step", "ID",
-          "Progenitor", "Tree");
+  fprintf(extra_split_logger, "# %12s %20s %20s %20s %20s\n", "Step", "ID",
+          "Progenitor", "Count", "Tree");
 
   /* Close everything for now */
   fclose(extra_split_logger);
