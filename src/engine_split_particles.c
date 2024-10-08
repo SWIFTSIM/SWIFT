@@ -439,23 +439,18 @@ void engine_split_gas_particles(struct engine *e) {
   size_t k_gparts = s->nr_gparts;
 
   FILE *extra_split_logger = NULL;
-  if (e->hydro_properties->log_extra_splits_in_file) { 
+  if (e->hydro_properties->log_extra_splits_in_file) {
     char extra_split_logger_filename[256];
     sprintf(extra_split_logger_filename, "splits/splits_%04d.txt", engine_rank);
     fopen(extra_split_logger_filename, "a");
   }
-    
+
   /* Loop over the particles again to split them */
   long long local_count_id = 0;
-  struct data_split data_split = {e,
-                                  mass_threshold,
-                                  generate_random_ids,
-                                  &k_parts,
-                                  &k_gparts,
-                                  offset_id,
-                                  &local_count_id,
-                                  /*lock=*/0,
-                                  extra_split_logger};
+  struct data_split data_split = {
+      e,          mass_threshold,    generate_random_ids, &k_parts,
+      &k_gparts,  offset_id,         &local_count_id,
+      /*lock=*/0, extra_split_logger};
   lock_init(&data_split.lock);
 
   threadpool_map(&e->threadpool, engine_split_gas_particle_split_mapper,
@@ -480,8 +475,7 @@ void engine_split_gas_particles(struct engine *e) {
 #endif
 
   /* Close the logger file */
-  if (e->hydro_properties->log_extra_splits_in_file)
-  fclose(extra_split_logger);
+  if (e->hydro_properties->log_extra_splits_in_file) fclose(extra_split_logger);
 
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
@@ -491,21 +485,21 @@ void engine_split_gas_particles(struct engine *e) {
 void engine_init_split_gas_particles(struct engine *e) {
 
   if (e->hydro_properties->log_extra_splits_in_file) {
-  
+
     /* Create the directory to host the logs */
     if (engine_rank == 0) safe_checkdir("splits", /*create=*/1);
-    
+
 #ifdef WITH_MPI
     MPI_Barrier(MPI_COMM_WORLD);
 #endif
-    
+
     /* Create the logger files and add a header */
     char extra_split_logger_filename[256];
     sprintf(extra_split_logger_filename, "splits/splits_%04d.txt", engine_rank);
     FILE *extra_split_logger = fopen(extra_split_logger_filename, "w");
     fprintf(extra_split_logger, "# %12s %20s %20s %20s %20s\n", "Step", "ID",
-	    "Progenitor", "Count", "Tree");
-    
+            "Progenitor", "Count", "Tree");
+
     /* Close everything for now */
     fclose(extra_split_logger);
   }
