@@ -21,6 +21,9 @@
 #ifndef SWIFTSIM_SHADOWSWIFT_VORONOI_H
 #define SWIFTSIM_SHADOWSWIFT_VORONOI_H
 
+/* Local includes */
+#include "inline.h"
+
 struct voronoi {
   int pair_count[27];
 };

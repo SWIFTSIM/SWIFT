@@ -21,8 +21,16 @@
 #ifndef SWIFTSIM_CELL_GRID_H
 #define SWIFTSIM_CELL_GRID_H
 
+/* Config parameters. */
+#include <config.h>
+
+/* Includes. */
+#include <stddef.h>
+
+/* Local includes */
 #include "const.h"
 #include "shadowswift/voronoi.h"
+#include "timeline.h"
 
 /*! @brief Enum indicating the completeness for the Voronoi mesh of this cell.
  *
