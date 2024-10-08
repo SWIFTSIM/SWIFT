@@ -142,27 +142,26 @@ runner_iact_nonsym_sinks_sink_swallow(
 
   const float r = sqrtf(r2);
   const float f_acc_r_acc_i = sink_properties->f_acc * ri;
-  const float f_acc_r_acc_j = sink_properties->f_acc * rj;
 
-  /* If the sink i falls within f_acc*r_acc_i, it is accreted without further
-     check */
+  /* If the sink j falls within f_acc*r_acc of sink i, then the
+     lightest is accreted on the most massive without further check.
+     Note that this is a non-symmetric interaction. So, we do not need to check
+     for the f_acc*r_acc_j case here. */
   if (r < f_acc_r_acc_i) {
-    /* Check if a sink particle has not been already marked to be swallowed by
-       another sink particle. */
-    if (sj->merger_data.swallow_id < si->id) {
-      sj->merger_data.swallow_id = si->id;
+    /* The sink with the smaller mass will be merged onto the one with the
+     * larger mass.
+     * To avoid rounding issues, we additionally check for IDs if the sink
+     * have the exact same mass. */
+    if ((sj->mass < si->mass) || (sj->mass == si->mass && sj->id < si->id)) {
+      /* This particle is swallowed by the sink with the largest mass of all the
+       * candidates wanting to swallow it (we use IDs to break ties)*/
+      if ((sj->merger_data.swallow_mass < si->mass) ||
+          (sj->merger_data.swallow_mass == si->mass &&
+           sj->merger_data.swallow_id < si->id)) {
+        sj->merger_data.swallow_id = si->id;
+        sj->merger_data.swallow_mass = si->mass;
+      }
     }
-
-    /* If the sink j falls within f_acc*r_acc_j, it is accreted without further
-       check */
-  } else if (r < f_acc_r_acc_j) {
-
-    /* Check if a sink particle has not been already marked to be swallowed by
-       another sink particle. */
-    if (si->merger_data.swallow_id < sj->id) {
-      si->merger_data.swallow_id = sj->id;
-    }
-
   } else {
 
     /* Relative velocity between the sinks */
