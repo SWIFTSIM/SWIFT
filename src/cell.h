@@ -1033,7 +1033,7 @@ cell_need_rebuild_for_hydro_pair(const struct cell *ci, const struct cell *cj) {
  * @return Whether completeness of #ci is invalidated by the pair (#ci, #cj).
  */
 __attribute__((always_inline, nonnull)) INLINE static int
-cell_pair_invalidates_completeness(struct cell *ci, struct cell *cj) {
+cell_grid_pair_invalidates_completeness(struct cell *ci, struct cell *cj) {
 
   /* Check completeness criteria */
   /* NOTE: Both completeness flags should already be updated at this point */
