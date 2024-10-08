@@ -3,7 +3,7 @@
 \section{Setting the construction level for the Voronoi grid}
 
 Like (almost) everything, the construction of the Voronoi grid in SWIFT happens at the granularity of SWIFT cells. 
-No global, Voronoi grid is constructed, but parts of the Voronoi grid are constructed independently for SWIFT cells ensuring that neighbouring cells' Voronoi grids mesh together properly.
+No global Voronoi grid is constructed, but parts of the Voronoi grid are constructed independently for SWIFT cells ensuring that neighbouring cells' Voronoi grids mesh together properly.
 
 The chosen construction algorithm, stores the grid information in a cell-global data structure (earlier attempts storing the grid information in the particles resulted in an unusably large memory overhead and very slow performance). 
 This means that the Voronoi grid must be stored at some unique level in the AMR tree of SWIFT cells at every location.
@@ -57,15 +57,3 @@ Ideally, to have the most flexibility when setting the construction level, \text
     \label{fig:construction-level}
 \end{figure}
 
-\section{Current status (merging in master)}
-The following is implemented/being merged:
-\begin{itemize}
-    \item Setting completeness of cells 
-    \item Communicating completeness over MPI
-    \item Setting Construction level
-\end{itemize}
-The following is not yet being merged:
-\begin{itemize}
-    \item Invalidating completeness on drifting
-    \item Creating and scheduling tasks for grid construction
-\end{itemize}
