@@ -81,6 +81,7 @@
    gradient matrix and use SPH gradients instead. */
 #define const_gizmo_min_wcorr 0.5f
 
+/* Options controlling ShadowSWIFT */
 /* Options controlling acceleration strategies*/
 /*! @brief Option enabling a more relaxed completeness criterion */
 #define SHADOWSWIFT_RELAXED_COMPLETENESS
