@@ -20,7 +20,6 @@
 #define SWIFT_GEAR_SINKS_IACT_H
 
 /* Local includes */
-#include "cosmology.h"
 #include "gravity.h"
 #include "gravity_iact.h"
 #include "sink.h"
