@@ -190,7 +190,7 @@ runner_iact_nonsym_sinks_sink_swallow(
     /* Kinetic energy of the gas */
     const float E_kin_rel = 0.5f * dv_physical_squared;
 
-    /* Compute the Newtonian or truncated potential the sink exherts onto the
+    /* Compute the Newtonian or softened potential the sink exherts onto the
        gas particle */
     const float eps = gravity_get_softening(si->gpart, grav_props);
     const float eps2 = eps * eps;
@@ -343,7 +343,7 @@ runner_iact_nonsym_sinks_gas_swallow(const float r2, const float dx[3],
     /* Kinetic energy of the gas */
     float E_kin_relative_gas = 0.5f * dv_physical_squared;
 
-    /* Compute the Newtonian or truncated potential the sink exherts onto the
+    /* Compute the Newtonian or softened potential the sink exherts onto the
        gas particle */
     const float eps = gravity_get_softening(si->gpart, grav_props);
     const float eps2 = eps * eps;
