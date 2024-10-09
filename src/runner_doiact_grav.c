@@ -76,7 +76,11 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
     error("c->field tensor not initialised");
 #endif
 
-  if (c->split) {
+  /* Is the cell not a leaf? */
+  /* Note: In zoom land we have void cells whose leaves have split = 0 to
+   * differentiate them from the zoom cell tree they link in to. Despite this
+   * void cells are always split. */
+  if (c->split || c->subtype == cell_subtype_void) {
 
     /* Node case */
 
@@ -106,8 +110,16 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
           gravity_field_tensors_add(&cp->grav.multipole->pot, &shifted_tensor);
         }
 
-        /* Recurse */
-        runner_do_grav_down(r, cp, 0);
+        /* Recurse, but only if we haven't reached the super level. This can
+         * can only happen in zoom land when recursing from the void cells to
+         * the zoom cells. From the zoom super onwards to the leaves is
+         * handled by the zoom super down call.
+         * In a non-zoom simulation the down is defined at the super level,
+         * so you can never hit another down when recursing. Only the
+         * void->zoom cell tree can have two super levels.  */
+        if (cp->grav.super != cp) {
+          runner_do_grav_down(r, cp, 0);
+        }
       }
     }
 
@@ -1951,9 +1963,8 @@ static INLINE void runner_dopair_grav_mm_symmetric(struct runner *r,
  * @param ci The first #cell.
  * @param cj The second #cell.
  */
-static INLINE void runner_dopair_grav_mm(struct runner *r,
-                                         struct cell *restrict ci,
-                                         struct cell *restrict cj) {
+void runner_dopair_grav_mm(struct runner *r, struct cell *restrict ci,
+                           struct cell *restrict cj) {
 
   const struct engine *e = r->e;
 

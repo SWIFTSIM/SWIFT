@@ -189,9 +189,11 @@ void *runner_main(void *data) {
       /* Store the task that will be running (for debugging only) */
       r->t = t;
 
-      /* Ensure a void cell never enters here with a task, if it has something
-       * has gone awfully wrong. */
-      if (ci->subtype == cell_subtype_void) {
+      /* Ensure void cells only have one of their allowed tasks. */
+      if (ci->subtype == cell_subtype_void &&
+          !(t->type == task_type_grav_down || t->type == task_type_grav_mm ||
+            t->type == task_type_grav_long_range ||
+            t->type == task_type_init_grav)) {
         error("Void cell with task (%s/%s).", taskID_names[t->type],
               subtaskID_names[t->subtype]);
       }
@@ -557,7 +559,15 @@ void *runner_main(void *data) {
           runner_do_grav_long_range(r, t->ci, 1);
           break;
         case task_type_grav_mm:
-          runner_dopair_grav_mm_progenies(r, t->flags, t->ci, t->cj);
+          /* A flag of -2 means we have an mm task directly between 2 cells not
+           * a combination of their progeny. */
+          /* TODO: do this better, surely we can define them based on progeny
+           * and limit the number of MM tasks!? */
+          if (t->flags == -2) {
+            runner_dopair_grav_mm(r, t->ci, t->cj);
+          } else {
+            runner_dopair_grav_mm_progenies(r, t->flags, t->ci, t->cj);
+          }
           break;
         case task_type_cooling:
           runner_do_cooling(r, t->ci, 1);
