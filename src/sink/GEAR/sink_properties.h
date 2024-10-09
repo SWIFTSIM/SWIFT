@@ -167,7 +167,7 @@ INLINE static void sink_props_init(struct sink_props *sp,
 
   /* If we do not run with feedback, abort and print an error */
   if (!with_feedback)
-    error("ERROR: Running with sink but without feedback. GEAR sink model needs"" to be run with --feedback");
+    error("ERROR: Running with sink but without feedback. GEAR sink model needs to be run with --sink and --feedback");
 
   /* Default values */
   const float default_f_acc = 0.8;
