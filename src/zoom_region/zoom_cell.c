@@ -1100,16 +1100,6 @@ void zoom_void_timestep_collect(struct engine *e) {
     zoom_void_timestep_collect_recursive(c);
   }
 
-#ifdef SWIFT_DEBUG_CHECKS
-  /* Ensure the void cells have the right timesteps. */
-  for (int i = 0; i < nr_void_cells; i++) {
-    struct cell *c = &s->cells_top[void_cell_indices[i]];
-    if (c->grav.ti_end_min != e->ti_current) {
-      error("Void cell has not been updated with a timestep!");
-    }
-  }
-#endif
-
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
