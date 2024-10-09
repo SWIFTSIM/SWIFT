@@ -1,6 +1,22 @@
-//
-// Created by yuyttenh on 24/03/22.
-//
+/*******************************************************************************
+ * This file is part of SWIFT.
+ * Copyright (c) 2024 Matthieu Schaller (schaller@strw.leidenuniv.nl)
+ *                             Yolan Uyttenhove (Yolan.Uyttenhove@UGent.be)
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published
+ * by the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ ******************************************************************************/
 
 #ifndef SWIFTSIM_SHADOWSWIFT_VORONOI_H
 #define SWIFTSIM_SHADOWSWIFT_VORONOI_H
@@ -14,7 +30,7 @@
 #endif
 
 /*! @brief Whether to store cell-face connections. */
-//#define VORONOI_STORE_CELL_FACE_CONNECTIONS
+// #define VORONOI_STORE_CELL_FACE_CONNECTIONS
 
 /*! @brief Activate runtime assertions. */
 #ifdef SWIFT_DEBUG_CHECKS
@@ -25,11 +41,13 @@
 // #define VORONOI_CHECKS
 
 /*! @brief The minimal relative face size in 1D of voronoi faces */
-#define MIN_REL_FACE_SIZE 1e-12
+#define MIN_REL_FACE_SIZE 0.0
 
-/*! @brief The maximum number of iterations over neighbours while constructing
- * a voronoi cell */
-#define VORONOI_CONSTRUCTION_MAX_NGB_ITER 10000
+/*! @brief The maximum number of vertices on a voronoi face (3D) */
+#define VORONOI_CONSTRUCTION_MAX_FACES 1000
+
+/*! @brief The maximum number of vertices on a voronoi face (3D) */
+#define VORONOI_CONSTRUCTION_MAX_FACE_VERTICES 1000
 
 /**
  *@brief Evaluate the given condition and abort if it evaluates to true.

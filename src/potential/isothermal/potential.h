@@ -97,7 +97,7 @@ __attribute__((always_inline)) INLINE static float external_gravity_timestep(
   return potential->timestep_mult * sqrtf(a_2 / dota_2);
 }
 
-/**
+/**c
  * @brief Computes the gravitational acceleration from an isothermal potential.
  *
  * Note that the accelerations are multiplied by Newton's G constant
@@ -138,7 +138,7 @@ __attribute__((always_inline)) INLINE static void external_gravity_acceleration(
  * @brief Computes the gravitational potential energy of a particle in an
  * isothermal potential.
  *
- * phi = -0.5 * vrot^2 * ln(r^2 + epsilon^2)
+ * phi = 0.5 * vrot^2 * ln(r^2 + epsilon^2)
  *
  * @param time The current time (unused here).
  * @param potential The #external_potential used in the run.
@@ -154,7 +154,7 @@ external_gravity_get_potential_energy(
   const float dy = g->x[1] - potential->x[1];
   const float dz = g->x[2] - potential->x[2];
 
-  return potential->vrot * potential->vrot *
+  return 0.5f * potential->vrot * potential->vrot *
          logf(dx * dx + dy * dy + dz * dz + potential->epsilon2);
 }
 

@@ -5,7 +5,7 @@
 #ifndef SWIFTSIM_GITLAB_TETRAHEDRON_H
 #define SWIFTSIM_GITLAB_TETRAHEDRON_H
 
-typedef uint8_t tetrahedron_flags_t;
+typedef unsigned char tetrahedron_flags_t;
 enum tetrahedron_flags {
   tetrahedron_flag_none = 0,
   tetrahedron_flag_has_vertex = (1 << 0),
@@ -30,17 +30,6 @@ enum tetrahedron_flags {
  * 2. index_in_neighbours follows the same ordering as neighbours
  */
 struct tetrahedron {
-  /*! @brief Indices in the associated delaunay tesselation of the particles
-   * that make up the tetrahedron. */
-  int vertices[4];
-
-  /*! @brief Indices of the neighbour tetrahedra. */
-  int neighbours[4];
-
-  /*! @brief Index of this tetrahedron in the neighbour lists of its neighbours.
-   * */
-  int index_in_neighbour[4];
-
   /*! @brief The circumcenter of this tetrahedron. Used for Voronoi
    * construction.
    * During the construction of the Delaunay tesselation, this might also be
@@ -48,12 +37,23 @@ struct tetrahedron {
    * relative to the first vertex of this tetrahedron */
   double circumcenter[3];
 
+  /*! @brief Indices in the associated delaunay tesselation of the particles
+   * that make up the tetrahedron. */
+  int vertices[4];
+
+  /*! @brief Indices of the neighbour tetrahedra. */
+  int neighbours[4];
+
   /*! @brief The circumradius of this tetrahedron (in rescaled coordinates). */
   float circumradius2;
 
+  /*! @brief Index of this tetrahedron in the neighbour lists of its neighbours.
+   * */
+  unsigned char index_in_neighbour[4];
+
   /*! @brief Indicates whether or not a tetrahedron is active (or has been
    * invalidated) */
-  uint8_t active;
+  unsigned char active;
 
   tetrahedron_flags_t _flags;
 };

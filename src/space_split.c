@@ -439,7 +439,7 @@ void space_split_recursive(struct space *s, struct cell *c,
       gravity_multipole_compute_power(&c->grav.multipole->m_pole);
 
     } /* Deal with gravity */
-  }   /* Split or let it be? */
+  } /* Split or let it be? */
 
   /* Otherwise, collect the data from the particles this cell. */
   else {

@@ -1,13 +1,45 @@
-//
-// Created by yuyttenh on 21/03/22.
-//
+/*******************************************************************************
+ * This file is part of SWIFT.
+ * Copyright (c) 2024 Matthieu Schaller (schaller@strw.leidenuniv.nl)
+ *                             Yolan Uyttenhove (Yolan.Uyttenhove@UGent.be)
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published
+ * by the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ ******************************************************************************/
 
 #ifndef SWIFTSIM_CELL_GRID_H
 #define SWIFTSIM_CELL_GRID_H
 
+/* Config parameters. */
+#include <config.h>
+
+/* Includes. */
+#include <stddef.h>
+
+/* Local includes */
 #include "const.h"
 #include "shadowswift/voronoi.h"
+#include "timeline.h"
 
+/*! @brief Enum indicating the completeness for the Voronoi mesh of this cell.
+ *
+ * A cell is considered complete when it and its neighbours on the same level in
+ * the AMR have at least one particle in every 1/27th cube of the cell (obtained
+ * by dividing cells in three along all axes).
+ *
+ * The Voronoi grid can safely be constructed on any level where the cell is
+ * complete. */
 enum grid_completeness {
   grid_invalidated_completeness = 0,
   grid_complete,
@@ -61,10 +93,12 @@ struct pcell_faces {
   struct voronoi_pair faces[];
 };
 
+/*! @brief Enum used to indicate whether a cell is above, below or on the
+ * construction level. Only used in the packed cell representation */
 enum grid_construction_level {
-  above_construction_level,
-  on_construction_level,
-  below_construction_level
+  grid_above_construction_level,
+  grid_on_construction_level,
+  grid_below_construction_level
 };
 
 #endif  // SWIFTSIM_CELL_GRID_H

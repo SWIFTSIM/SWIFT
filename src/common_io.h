@@ -31,6 +31,8 @@
 #define PARTICLE_GROUP_BUFFER_SIZE 50
 #define FILENAME_BUFFER_SIZE 150
 #define IO_BUFFER_ALIGNMENT 1024
+#define HDF5_LOWEST_FILE_FORMAT_VERSION H5F_LIBVER_V18
+#define HDF5_HIGHEST_FILE_FORMAT_VERSION H5F_LIBVER_LATEST
 
 /* Avoid cyclic inclusion problems */
 struct cell;
@@ -66,6 +68,7 @@ enum IO_DATA_TYPE {
   FLOAT,
   DOUBLE,
   CHAR,
+  BOOL,
   SIZE_T,
 };
 
@@ -95,6 +98,7 @@ void io_write_attribute(hid_t grp, const char* name, enum IO_DATA_TYPE type,
 void io_write_attribute_d(hid_t grp, const char* name, double data);
 void io_write_attribute_f(hid_t grp, const char* name, float data);
 void io_write_attribute_i(hid_t grp, const char* name, int data);
+void io_write_attribute_b(hid_t grp, const char* name, int data);
 void io_write_attribute_l(hid_t grp, const char* name, long data);
 void io_write_attribute_ll(hid_t grp, const char* name, long long data);
 void io_write_attribute_s(hid_t grp, const char* name, const char* str);

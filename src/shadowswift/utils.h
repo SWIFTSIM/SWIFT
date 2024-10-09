@@ -20,24 +20,33 @@ static inline int sgn(double x) {
 }
 
 /**
- * @brief Check whether two doubles are equal up to the given precision.
+ * @brief Check whether two doubles are equal up to the given (relative)
+ * precision.
  *
  * @param double1
  * @param double2
- * @param precision
+ * @param precision: Number of decimal digits that should match
  * @return 1 for equality 0 else.
  */
 inline static int double_cmp(double double1, double double2,
-                             unsigned long precision) {
+                             const unsigned int precision) {
+  /* Rescale the floating point values so that they are between 1. and 2. */
+  double1 /= 1ull << (int)(log2(fabs(double1)));
+  double2 /= 1ull << (int)(log2(fabs(double2)));
+  unsigned long long precision_fac = 1;
+  for (unsigned int i = 0; i < precision; i++) {
+    precision_fac *= 10;
+  }
+
   long long1, long2;
   if (double1 > 0)
-    long1 = (long)(double1 * precision + .5);
+    long1 = (long)(double1 * precision_fac + .5);
   else
-    long1 = (long)(double1 * precision - .5);
+    long1 = (long)(double1 * precision_fac - .5);
   if (double2 > 0)
-    long2 = (long)(double2 * precision + .5);
+    long2 = (long)(double2 * precision_fac + .5);
   else
-    long2 = (long)(double2 * precision - .5);
+    long2 = (long)(double2 * precision_fac - .5);
   return (long1 == long2);
 }
 

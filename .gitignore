@@ -65,6 +65,9 @@ examples/*/*/yieldtables.tar.gz
 examples/*/*/yieldtables
 examples/*/*/photometry.tar.gz
 examples/*/*/photometry
+examples/*/*/plots
+examples/*/*/snapshots
+examples/*/*/restart
 examples/Cooling/CoolingRates/cooling_rates
 examples/Cooling/CoolingRates/cooling_element_*.dat
 examples/Cooling/CoolingRates/cooling_output.dat

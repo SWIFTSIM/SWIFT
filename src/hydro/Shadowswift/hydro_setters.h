@@ -19,7 +19,18 @@
 #ifndef SWIFT_SHADOWSWIFT_HYDRO_SETTERS_H
 #define SWIFT_SHADOWSWIFT_HYDRO_SETTERS_H
 
+#include "hydro_unphysical.h"
 #include "pressure_floor.h"
+
+/**
+ * @brief Reset the extra timestep variables
+ */
+__attribute__((always_inline)) INLINE static void hydro_reset_timestep_vars(
+    struct part* p) {
+  p->timestepvars.vmax = 0.f;
+  p->timestepvars.mach_number = 0.f;
+  p->timestepvars.Ekin = 0.f;
+}
 
 /**
  * @brief Set the primitive variables for the given particle to the given
@@ -33,28 +44,7 @@
 __attribute__((always_inline)) INLINE static void
 hydro_part_set_primitive_variables(struct part* restrict p, float* W) {
 
-  if (W[0] < 0.) {
-#ifdef SHADOWSWIFT_WARNINGS
-    warning("Negative density! Resetting to 0...");
-#endif
-    W[0] = 0.f;
-  }
-
-  if (W[4] < 0.) {
-#ifdef SHADOWSWIFT_WARNINGS
-    warning("Negative pressure! Resetting to 0...");
-#endif
-    W[4] = 0.f;
-  }
-
-  if (W[5] < 0.) {
-#ifdef SHADOWSWIFT_WARNINGS
-    warning("Negative entropic function (A)! Resetting to 0...");
-#endif
-    W[5] = 0.f;
-  }
-
-  /* Check for vacuum. */
+  /* Check for vacuum or unphysical quantities. */
   /* Note: This is not quite physical, since in theory P==0 does not strictly
    * imply vacuum. however, P==0 while rho!=0 does mean that something went
    * wrong with the internal energy computation. To avoid divisions by 0 in the
@@ -62,18 +52,9 @@ hydro_part_set_primitive_variables(struct part* restrict p, float* W) {
    * conserved quantities are unchanged, the code stays manifestly conservative,
    * but the fluxes computed for this particle in the next time-step will
    * probably not be very accurate. */
-  if (W[0] == 0.f || W[4] == 0.f) {
-#ifdef SHADOWSWIFT_WARNINGS
-    if (W[0] != 0.f)
-      warning("Particle with P==0, but rho!=0! Resetting to vacuum...");
-#endif
-    W[0] = 0.f;
-    W[1] = 0.f;
-    W[2] = 0.f;
-    W[3] = 0.f;
-    W[4] = 0.f;
-    W[5] = 0.f;
-  }
+  shadowswift_check_physical_quantities("density", "pressure",
+                                        "entropic function (A)", W[0], W[1],
+                                        W[2], W[3], W[4], W[5]);
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (W[0] != W[0]) error("NaN density!");
@@ -108,6 +89,11 @@ hydro_part_set_conserved_variables(struct part* restrict p, const float* Q) {
   p->conserved.momentum[2] = Q[3];
   p->conserved.energy = Q[4];
   p->conserved.entropy = Q[5];
+
+  shadowswift_check_physical_quantities(
+      "mass", "energy", "entropy", p->conserved.mass, p->conserved.momentum[0],
+      p->conserved.momentum[1], p->conserved.momentum[2], p->conserved.energy,
+      p->conserved.entropy);
 }
 
 /**

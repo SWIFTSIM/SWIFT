@@ -153,6 +153,8 @@ const char* timers_names[timer_count] = {
     "do_slope_estimate_ghost",
     "do_slope_limiter_ghost",
     "do_flux_ghost",
+    "do_sync",
+    "neutrino_weighting",
 };
 
 /* File to store the timers */

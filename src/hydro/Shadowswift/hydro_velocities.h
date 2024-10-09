@@ -65,6 +65,27 @@ hydro_set_velocity_from_momentum(const float* restrict momentum,
 }
 
 /**
+ * @brief Applies a hydrodynamical half kick to the genererator velocity.
+ *
+ * Note: The fluid velocity is updated in the drift, we apply a hydro kick to
+ * the generator velocity.
+ * The gravity half kick is applied elsewhere.
+ *
+ * @param p The #part to kick
+ * @param xp THe #xpart
+ * @param dt The kick timestep for thermodynamical quantities.
+ */
+__attribute__((always_inline)) INLINE static void
+hydro_generator_velocity_half_kick(struct part* p, struct xpart* xp, float dt) {
+  if (p->rho > 0.f) {
+    float rho_inv = 1.f / p->rho;
+    xp->v_full[0] -= dt * p->gradients.P[0] * rho_inv;
+    xp->v_full[1] -= dt * p->gradients.P[1] * rho_inv;
+    xp->v_full[2] -= dt * p->gradients.P[2] * rho_inv;
+  }
+}
+
+/**
  * @brief Set the velocity of a ShadowSWIFT particle, based on the values of its
  * primitive variables and the geometry of its voronoi cell.
  *
@@ -89,10 +110,10 @@ __attribute__((always_inline)) INLINE static void hydro_velocities_set(
 
   if (!fix_particle && p->conserved.mass > 0.0f && p->rho > 0.0f) {
 
-    /* Normal case: calculate particle velocity from momentum. */
-    const float inverse_mass = 1.0f / p->conserved.mass;
-    hydro_set_velocity_from_momentum(p->conserved.momentum, inverse_mass,
-                                     p->rho, v);
+    /* Normal case: use (kicked) fluid velocity. */
+    v[0] = xp->v_full[0];
+    v[1] = xp->v_full[1];
+    v[2] = xp->v_full[2];
 
 #ifdef SHADOWSWIFT_STEER_MOTION
     /* Add a correction to the velocity to keep particle positions close enough
@@ -114,6 +135,7 @@ __attribute__((always_inline)) INLINE static void hydro_velocities_set(
        distance to the centroid. */
     if (d > 0.9f * etaR || d > p->geometry.min_face_dist) {
       float fac = xi * soundspeed / d;
+#ifdef SHADOWSWIFT_STEERING_COLD_FLOWS
       /* In very cold flows, the sound speed may be significantly slower than
        * the actual speed of the particles, rendering this scheme ineffective.
        * In this case, use a criterion based on the timestep instead */
@@ -121,6 +143,7 @@ __attribute__((always_inline)) INLINE static void hydro_velocities_set(
           p->v[0] * p->v[0] + p->v[1] * p->v[1] + p->v[2] * p->v[2]) {
         fac = fmaxf(fac, 0.1f * xi / dt);
       }
+#endif
       if (d < 1.1f * etaR) {
         fac *= 5.0f * (d - 0.9f * etaR) / etaR;
       }

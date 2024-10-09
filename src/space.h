@@ -79,7 +79,7 @@ struct hydro_props;
 #define space_stretch 1.10f
 #define space_maxreldx 0.1f
 #ifdef MOVING_MESH
-#define space_regrid_search_radius_fac 2.f
+#define space_regrid_search_radius_fac 3.f
 #endif
 
 /* Maximum allowed depth of cell splits. */

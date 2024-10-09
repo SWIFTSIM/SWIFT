@@ -27,7 +27,7 @@
 
 /* Type of gradients to use (GIZMO_SPH only) */
 /* If no option is chosen, no gradients are used (first order scheme) */
-//#define GRADIENTS_SPH
+// #define GRADIENTS_SPH
 #define GRADIENTS_GIZMO
 
 /* Types of slope limiter to use (GIZMO_SPH only) */
@@ -40,11 +40,11 @@
 
 /* Options to control the movement of particles for GIZMO_SPH. */
 /* This option disables particle movement */
-//#define GIZMO_FIX_PARTICLES
+// #define GIZMO_FIX_PARTICLES
 /* Try to keep cells regular by adding a correction velocity. */
-//#define GIZMO_STEER_MOTION
+// #define GIZMO_STEER_MOTION
 /* Use the total energy instead of the thermal energy as conserved variable. */
-//#define GIZMO_TOTAL_ENERGY
+// #define GIZMO_TOTAL_ENERGY
 
 /* Options to control handling of unphysical values (GIZMO_SPH only). */
 /* In GIZMO, mass and energy (and hence density and pressure) can in principle
@@ -53,7 +53,7 @@
    If no options are selected below, we assume (and pray) that this will not
    happen, and add no restrictions to how these variables are treated. */
 /* Check for unphysical values and crash if they occur. */
-//#define GIZMO_UNPHYSICAL_ERROR
+// #define GIZMO_UNPHYSICAL_ERROR
 /* Check for unphysical values and reset them to safe values. */
 #define GIZMO_UNPHYSICAL_RESCUE
 /* Show a warning message if an unphysical value was reset (only works if
@@ -65,9 +65,9 @@
 /* Parameters that control how GIZMO handles pathological particle
    configurations. */
 /* Show a warning message if a pathological configuration has been detected. */
-//#define GIZMO_PATHOLOGICAL_WARNING
+// #define GIZMO_PATHOLOGICAL_WARNING
 /* Crash if a pathological configuration has been detected. */
-//#define GIZMO_PATHOLOGICAL_ERROR
+// #define GIZMO_PATHOLOGICAL_ERROR
 /* Maximum allowed gradient matrix condition number. If the condition number of
    the gradient matrix (defined in equation C1 in Hopkins, 2015) is larger than
    this value, we artificially increase the number of neighbours to get a more
@@ -108,7 +108,7 @@
 #endif
 
 /*! @brief Option controlling output of grids */
-//#define SHADOWSWIFT_OUTPUT_GRIDS
+// #define SHADOWSWIFT_OUTPUT_GRIDS
 
 /* Options controlling acceleration strategies*/
 /*! @brief Option enabling a more relaxed completeness criterion */
@@ -118,27 +118,35 @@
  * searching */
 #define SHADOWSWIFT_BVH
 #ifdef SHADOWSWIFT_BVH
-/*! @brief Option to insert parts by BFO of the BVH during grid construction. */
-#define SHADOWSWIFT_BVH_INSERT_BFO
 #define BVH_MEDIAN_SPLIT 0
 #define BVH_MIDPOINT_SPLIT 1
 /*! @brief The splitting method used during the BVH construction */
 #define BVH_SPLITTING_METHOD BVH_MEDIAN_SPLIT
+/*! @brief Option to insert parts by BFO of the BVH during grid construction. */
+#define SHADOWSWIFT_BVH_INSERT_BFO
 #endif
+#ifndef SHADOWSWIFT_BVH_INSERT_BFO
 /*! @brief Option to enable the hilbert order insertion during the grid
  * construction */
-#ifndef SHADOWSWIFT_BVH_INSERT_BFO
-//#define SHADOWSWIFT_HILBERT_ORDERING
+#define SHADOWSWIFT_HILBERT_ORDERING
 #endif
 
 /* Options controlling particle movement */
 /*! @brief This option disables cell movement */
-//#define SHADOWSWIFT_FIX_PARTICLES
+// #define SHADOWSWIFT_FIX_PARTICLES
 /*! @brief This option enables cell steering, i.e. trying to keep the cells
  * regular by adding a correction to the cell velocities.*/
 #ifndef SHADOWSWIFT_FIX_PARTICLES
 #define SHADOWSWIFT_STEER_MOTION
+#ifdef SHADOWSWIFT_STEER_MOTION
+#define SHADOWSWIFT_STEERING_COLD_FLOWS
 #endif
+#endif
+/* Options controlling thermal energy evolution */
+#define THERMAL_ENERGY_SWITCH_SPRINGEL 1
+#define THERMAL_ENERGY_SWITCH_SPRINGEL_MACH 2
+#define THERMAL_ENERGY_SWITCH_ASENSIO 3
+#define SHADOWSWIFT_THERMAL_ENERGY_SWITCH THERMAL_ENERGY_SWITCH_SPRINGEL
 
 /*! @brief This option enables boundary conditions for non-periodic ShadowSWIFT
  * runs */
@@ -151,7 +159,7 @@
 
 /* Options controlling behaviour of the code when unphysical situations are
  * encountered */
-#ifdef SWIF_DEBUG_CHECKS
+#ifdef SWIFT_DEBUG_CHECKS
 /*! @brief Whether to show or hide ShadowSWIFT specific warnings*/
 #define SHADOWSWIFT_WARNINGS
 #endif
@@ -170,7 +178,7 @@
 
 /* Source terms */
 #define SOURCETERMS_NONE
-//#define SOURCETERMS_SN_FEEDBACK
+// #define SOURCETERMS_SN_FEEDBACK
 
 /* GRACKLE doesn't really like exact zeroes, so use something
  * comparatively small instead. */
