@@ -38,8 +38,9 @@
  * handled by a pair task are interacted with here in this long range
  * gravity function.
  *
- * This function is used when running a non-periodic uniform box and just loops
- * over every other cell with particles and interacts with them.
+ * This function is used when running a non-periodic uniform box (i.e. non-zoom
+ * simulation) and just loops over every other cell with particles and interacts
+ * with them.
  *
  * @param r The thread #runner.
  * @param ci The #cell of interest.
