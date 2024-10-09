@@ -25,6 +25,7 @@
 #ifndef SWIFT_GIZMO_MFM_HYDRO_GRADIENTS_H
 #define SWIFT_GIZMO_MFM_HYDRO_GRADIENTS_H
 
+#include "fvpm_geometry.h"
 #include "hydro_getters.h"
 #include "hydro_setters.h"
 
@@ -78,7 +79,7 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_collect(
                        Wi[3] - Wj[3], Wi[4] - Wj[4]};
 
   float wiBidx[3];
-  if (hydro_part_geometry_well_behaved(pi)) {
+  if (fvpm_part_geometry_well_behaved(pi)) {
     wiBidx[0] = wi * (Bi[0][0] * dx[0] + Bi[0][1] * dx[1] + Bi[0][2] * dx[2]);
     wiBidx[1] = wi * (Bi[1][0] * dx[0] + Bi[1][1] * dx[1] + Bi[1][2] * dx[2]);
     wiBidx[2] = wi * (Bi[2][0] * dx[0] + Bi[2][1] * dx[1] + Bi[2][2] * dx[2]);
@@ -123,7 +124,7 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_collect(
   kernel_deval(xj, &wj, &wj_dx);
 
   float wjBjdx[3];
-  if (hydro_part_geometry_well_behaved(pj)) {
+  if (fvpm_part_geometry_well_behaved(pj)) {
 
     wjBjdx[0] = wj * (Bj[0][0] * dx[0] + Bj[0][1] * dx[1] + Bj[0][2] * dx[2]);
     wjBjdx[1] = wj * (Bj[1][0] * dx[0] + Bj[1][1] * dx[1] + Bj[1][2] * dx[2]);
@@ -205,7 +206,7 @@ hydro_gradients_nonsym_collect(float r2, const float *dx, float hi, float hj,
                        Wi[3] - Wj[3], Wi[4] - Wj[4]};
 
   float wiBidx[3];
-  if (hydro_part_geometry_well_behaved(pi)) {
+  if (fvpm_part_geometry_well_behaved(pi)) {
     wiBidx[0] = wi * (Bi[0][0] * dx[0] + Bi[0][1] * dx[1] + Bi[0][2] * dx[2]);
     wiBidx[1] = wi * (Bi[1][0] * dx[0] + Bi[1][1] * dx[1] + Bi[1][2] * dx[2]);
     wiBidx[2] = wi * (Bi[2][0] * dx[0] + Bi[2][1] * dx[1] + Bi[2][2] * dx[2]);
@@ -259,7 +260,7 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_finalize(
   const float ihdim = pow_dimension(h_inv);
 
   float norm;
-  if (hydro_part_geometry_well_behaved(p)) {
+  if (fvpm_part_geometry_well_behaved(p)) {
     norm = ihdim;
   } else {
     const float ihdimp1 = pow_dimension_plus_one(h_inv);
