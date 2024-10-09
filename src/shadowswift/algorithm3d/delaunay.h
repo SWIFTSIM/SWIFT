@@ -321,8 +321,8 @@ inline static void delaunay_reset(struct delaunay* restrict d,
    * a loss of precision in the integer arithmetic, though... A better solution
    * would possibly be to start from 5 tetrahedra forming a cube (box_side would
    * have to be 5 in that case). */
-  double box_side = max(cell_width[0], cell_width[1]);
-  box_side = 15. * max(box_side, cell_width[2]);
+  double box_side = fmax(cell_width[0], cell_width[1]);
+  box_side = 15. * fmax(box_side, cell_width[2]);
   /* subtract a few DBL_EPSILON to make sure converted values are in the range
    * [1, 2[ instead of [1,2] (unlike Springel, 2010) */
   d->inverse_side = (1. - 8. * DBL_EPSILON) / box_side;
@@ -2326,7 +2326,7 @@ inline static void delaunay_get_search_radii(struct delaunay* restrict d,
       delaunay_assert(tet->_flags == tetrahedron_flag_has_vertex);
       /* Before doing anything, reset the flag of this tet */
       tet->_flags = tetrahedron_flag_none;
-      max_circumradius2 = max(max_circumradius2, delaunay_get_radius2(d, tet));
+      max_circumradius2 = fmax(max_circumradius2, delaunay_get_radius2(d, tet));
       delaunay_assert(sqrt(max_circumradius2) * d->inverse_side < 1000.);
     }
     r[i] = 2. * sqrt(max_circumradius2);

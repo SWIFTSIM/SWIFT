@@ -3472,7 +3472,7 @@ int cell_unskip_grid_tasks(struct cell *c, struct scheduler *s) {
            * rebuild will be triggered on another node if necessary */
           cell_grid_update_self_completeness(cj, 0);
         }
-        rebuild = cell_need_rebuild_for_grid_construction_pair(ci, cj);
+        rebuild = cell_grid_pair_invalidates_completeness(ci, cj);
 
 #if WITH_MPI
         /* Do we need to send the voronoi faces to cj's node for this sid? */

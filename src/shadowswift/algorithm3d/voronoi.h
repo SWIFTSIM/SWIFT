@@ -5,6 +5,8 @@
 #ifndef SWIFTSIM_SHADOWSWIFT_VORONOI_3D_H
 #define SWIFTSIM_SHADOWSWIFT_VORONOI_3D_H
 
+#include <string.h>
+
 #include "part.h"
 #include "shadowswift/algorithm3d/delaunay.h"
 #include "shadowswift/algorithm3d/geometry.h"
