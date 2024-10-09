@@ -33,6 +33,7 @@
 #include "part.h"
 #include "physical_constants.h"
 #include "random.h"
+#include "star_formation_setters.h"
 #include "star_formation_struct.h"
 #include "stars.h"
 #include "units.h"
