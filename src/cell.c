@@ -1362,8 +1362,21 @@ void cell_grid_update_self_completeness(struct cell *c, int force) {
 
 void cell_grid_set_self_completeness_mapper(void *map_data, int num_elements,
                                             void *extra_data) {
+  /* Extract the engine pointer. */
+  struct engine *e = (struct engine *)extra_data;
+  const int periodic = e->s->periodic;
+
+  struct space *s = e->s;
+  const int nodeID = e->nodeID;
+  struct cell *cells = s->cells_top;
+
+  /* Loop through the elements, which are just byte offsets from NULL. */
   for (int ind = 0; ind < num_elements; ind++) {
-    struct cell *c = &((struct cell *)map_data)[ind];
+    /* Get the cell index. */
+    const int cid = (size_t)(map_data) + ind;
+
+    /* Get the cell */
+    struct cell *c = &cells[cid];
 
     /* A top level cell can be empty in 1D and 2D simulations, just skip it */
     if (c->hydro.count == 0) {
@@ -1423,7 +1436,8 @@ void cell_grid_set_pair_completeness(struct cell *restrict ci,
         struct cell *cj_sub = cj->progeny[pairs.pairs[i].pjd];
         if (ci_sub == NULL || cj_sub == NULL) continue;
         double shift[3];
-        int sid_sub = space_getsid(e->s, &ci_sub, &cj_sub, shift);
+        int sid_sub =
+            space_getsid_and_swap_cells(e->s, &ci_sub, &cj_sub, shift);
 #ifdef SWIFT_DEBUG_CHECKS
         assert(sid_sub == pairs.pairs[i].sid);
 #endif
@@ -1450,14 +1464,12 @@ void cell_grid_set_pair_completeness(struct cell *restrict ci,
      * We need to use atomics here, since multiple threads may change this at
      * the same time. */
     if (ci_local) {
-      atomic_and(
-          &ci->grid.complete,
-          !cell_need_rebuild_for_grid_construction_pair(ci, cj));
+      atomic_and(&ci->grid.complete,
+                 !cell_grid_pair_invalidates_completeness(ci, cj));
     }
     if (cj_local) {
-      atomic_and(
-          &cj->grid.complete,
-          !cell_need_rebuild_for_grid_construction_pair(cj, ci));
+      atomic_and(&cj->grid.complete,
+                 !cell_grid_pair_invalidates_completeness(cj, ci));
     }
   }
 }
@@ -1532,7 +1544,7 @@ void cell_set_grid_completeness_mapper(void *map_data, int num_elements,
         }
       }
     } /* Now loop over all the neighbours of this cell */
-  }   /* Loop through the elements, which are just byte offsets from NULL. */
+  } /* Loop through the elements, which are just byte offsets from NULL. */
 }
 
 void cell_set_grid_construction_level(struct cell *c,

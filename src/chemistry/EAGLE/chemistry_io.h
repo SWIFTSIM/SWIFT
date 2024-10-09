@@ -215,6 +215,19 @@ INLINE static int chemistry_write_sparticles(const struct spart* sparts,
 }
 
 /**
+ * @brief Specifies which sink fields to write to a dataset
+ *
+ * @param sinks The #sink array.
+ * @param list The list of i/o properties to write.
+ *
+ * @return Returns the number of fields to write.
+ */
+INLINE static int chemistry_write_sinkparticles(const struct sink* sinks,
+                                                struct io_props* list) {
+  return 0;
+}
+
+/**
  * @brief Specifies which black hole particle fields to write to a dataset
  *
  * @param bparts The black hole particle array.

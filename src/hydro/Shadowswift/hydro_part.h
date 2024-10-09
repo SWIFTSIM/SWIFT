@@ -244,6 +244,10 @@ struct part {
   /*! Geometric information associated with this particle */
   struct {
 
+    /*! Flags indicating to which neighbouring cells this particle has already
+     * been added. */
+    unsigned long delaunay_flags;
+
     /*! Voronoi cell volume. */
     float volume;
 
@@ -259,10 +263,6 @@ struct part {
     /*! Estimate of the minimal distance from centroid to a face */
     float min_face_dist;
 
-    /*! Flags indicating to which neighbouring cells this particle has already
-     * been added. */
-    unsigned long delaunay_flags;
-
     /*! Index of this particle in the delaunay tesselation (only valid if it is
      * active) */
     int delaunay_vertex;
@@ -275,43 +275,55 @@ struct part {
 
   struct {
 
-    /* Signal velocity */
+    /*! Signal velocity */
     float vmax;
 
-    /* Maximal value of the kinetic energy among the neighbours */
+    /*! Maximal value of the kinetic energy among the neighbours */
     float Ekin;
 
-    /* Last kick applied to this particle. */
+    /*! Maximal mach number of the signal speed of shock waves in Riemann
+     * problems across faces of this particle */
+    float mach_number;
+
+    /*! Last kick type applied to this particle. */
     enum kick_type last_kick;
 
   } timestepvars;
 
-  /* Unused in the ShadowSWIFT scheme */
-  struct {
+  union {
+    /* Specific stuff for the gravity-hydro coupling. */
+    struct {
 
-    /* Derivative of particle number density. */
-    float wcount_dh;
+      /*! Timestep of first half kick of this timestep (gravity) */
+      float dt;
 
-    /* Particle number density. */
-    float wcount;
+      /*! Timestep of first half kick for the kinetic energy correction */
+      float dt_corr;
 
-  } density;
+      /*! Current value of the mass flux vector. */
+      float mflux[3];
 
-  /* Unused in the ShadowSWIFT scheme. */
-  struct {
+    } gravity;
 
-    /* Needed to drift the primitive variables. */
-    float h_dt;
+    /* Unused in the ShadowSWIFT scheme, put in union to save space */
+    struct {
 
-  } force;
+      /* Derivative of particle number density. */
+      float wcount_dh;
 
-  /* Specific stuff for the gravity-hydro coupling. */
-  struct {
+      /* Particle number density. */
+      float wcount;
 
-    /* Current value of the mass flux vector. */
-    float mflux[3];
+    } density;
 
-  } gravity;
+    /* Unused in the ShadowSWIFT scheme. */
+    struct {
+
+      /* Needed to drift the primitive variables. */
+      float h_dt;
+
+    } force;
+  };
 
   /*! Chemistry information */
   struct chemistry_part_data chemistry_data;

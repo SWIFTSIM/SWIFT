@@ -323,8 +323,8 @@ inline static void delaunay_reset(struct delaunay* restrict d,
    * a loss of precision in the integer arithmetic, though... A better solution
    * would possibly be to start from 5 tetrahedra forming a cube (box_side would
    * have to be 5 in that case). */
-  double box_side = max(cell_width[0], cell_width[1]);
-  box_side = 15. * max(box_side, cell_width[2]);
+  double box_side = fmax(cell_width[0], cell_width[1]);
+  box_side = 15. * fmax(box_side, cell_width[2]);
   /* subtract a few DBL_EPSILON to make sure converted values are in the range
    * [1, 2[ instead of [1,2] (unlike Springel, 2010) */
   d->inverse_side = (1. - 8. * DBL_EPSILON) / box_side;
@@ -399,6 +399,7 @@ inline static void delaunay_destroy(struct delaunay* restrict d) {
   swift_free("delaunay", d->tetrahedra);
   int_lifo_queue_destroy(&d->tetrahedra_containing_vertex);
   int_lifo_queue_destroy(&d->free_tetrahedron_indices);
+  swift_free("delaunay", d->flagged_tetrahedra);
   geometry3d_destroy(&d->geometry);
   swift_free("delaunay", d->ghost_cell_sids);
   gsl_rng_free(d->rng);
@@ -2265,8 +2266,8 @@ inline static void delaunay_compute_circumcenters(
     const double r3 =
         sqrt((cx - v3r[0]) * (cx - v3r[0]) + (cy - v3r[1]) * (cy - v3r[1]) +
              (cz - v3r[2]) * (cz - v3r[2]));
-    delaunay_assert(double_cmp(r0, r1, 1e5) && double_cmp(r0, r2, 1e5) &&
-                    double_cmp(r0, r3, 1e5));
+    delaunay_assert(double_cmp(r0, r1, 6) && double_cmp(r0, r2, 6) &&
+                    double_cmp(r0, r3, 6));
 #endif
   }
 }
@@ -2287,6 +2288,9 @@ inline static void delaunay_flag_vertex_tetrahedra(struct delaunay* restrict d,
 
     /* Push its unvisited neighbours to the queue */
     struct tetrahedron* tet = &d->tetrahedra[tet_idx];
+    delaunay_assert(
+        tet->vertices[0] == vertex_idx || tet->vertices[1] == vertex_idx ||
+        tet->vertices[2] == vertex_idx || tet->vertices[3] == vertex_idx);
     for (int i = 0; i < 4; i++) {
       if (tet->vertices[i] == vertex_idx) continue;
       /* Only add unflagged neighbours and flag them */
@@ -2330,7 +2334,8 @@ inline static void delaunay_get_search_radii(struct delaunay* restrict d,
       delaunay_assert(tet->_flags == tetrahedron_flag_has_vertex);
       /* Before doing anything, reset the flag of this tet */
       tet->_flags = tetrahedron_flag_none;
-      max_circumradius2 = max(max_circumradius2, delaunay_get_radius2(d, tet));
+      max_circumradius2 = fmax(max_circumradius2, delaunay_get_radius2(d, tet));
+      delaunay_assert(sqrt(max_circumradius2) * d->inverse_side < 1000.);
     }
     r[i] = 2. * sqrt(max_circumradius2);
 

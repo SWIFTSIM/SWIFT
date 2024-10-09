@@ -1,0 +1,38 @@
+# Intro
+This example is a non cosmological homogeneous box with gas only. The cooling and small perturbations fragment the box into small compact regions that create sink particles. As the sinks accrete gas, they star spawning stars. As the first stars explode in supernovae, the first sink particles cannot accrete gas anymore. The simulations runs 282 Myr until the first stars explode and remove the gas.
+
+The default level is 5 (N_particle = 2^(3*level)). It is quick. If you want to try the example with higher levels, we recommend using HPC facilities.
+
+This example tests the impact of different parameters on the sink formation (e.g. cut_off_radius, density_threshold, ...), accretion and star spawning. It also test the effects of feedback (e.g. supernovae_efficiency) and cooling (equilibrium cooling with grackle_0 mode versu non equilibrium cooling with grackle_X, X = 1, 2 or 3) on the sink particles and star formation.
+
+This example allows you to play with the sink parameters to see how they impact the simulation. You can also change parameters in the feedback, the cooling, etc.
+
+# Configure
+To run this example with GEAR model,
+
+'''
+./configure --disable-mpi --with-chemistry=GEAR_10 --with-cooling=grackle_0 --with-stars=GEAR --with-star-formation=GEAR --with-feedback=GEAR --with-sink=GEAR --with-kernel=wendland-C2 --with-adaptive-softening --with-grackle=path/to/grackle
+
+and then
+
+make -j
+
+You can remove the adaptive softening. In this case, you may need to change the default `max_physical_baryon_softening` value.
+
+Other sink models can be probed by changing swift configuration and adding the relevant parameters in params.yml.
+
+# ICs
+The run.sh script calls `makeIC.py' script with default values. You can experiment by changing the ICs. Run `python3 makeIC.py --help` to get the list of parameters.
+
+# Run
+Type run.sh, and let's go!
+
+# Changing the cooling
+You can change grackle mode to 1,2, or 3 if you want. You may also want to change the simulation end time.
+
+For grackle_0 (equilibrium mode), the first sink form roughly at 0.260 (internal units). The end time is 0.282 Myr. The simulation runs in ~ 2 minutes.
+
+Notice that, for grackle_X with X from 1 to 3, the level 5 simulation does not have enough particles to run for long times. At 0.5 Gyr, swift ends because there are not enough particles per top-level cell. However, note how different the collapse from grackle_0 is!
+
+# For sink debugging
+This example was used to debug the sink's tasks and other sink-related bugs. The level (N_part = 2^(3*level)) was 8 during this debugging phase.

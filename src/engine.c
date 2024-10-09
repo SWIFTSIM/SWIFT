@@ -328,7 +328,7 @@ void engine_repartition_trigger(struct engine *e) {
           e->usertime_last_step, e->systime_last_step, (double)resident,
           e->local_deadtime / (e->nr_threads * e->wallclock_time)};
       double timemems[e->nr_nodes * 4];
-      MPI_Gather(&timemem, 4, MPI_DOUBLE, timemems, 4, MPI_DOUBLE, 0,
+      MPI_Gather(timemem, 4, MPI_DOUBLE, timemems, 4, MPI_DOUBLE, 0,
                  MPI_COMM_WORLD);
       if (e->nodeID == 0) {
 
@@ -1345,7 +1345,7 @@ void engine_rebuild(struct engine *e, const int repartitioned,
                 MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, &e->s->max_softening, 1, MPI_FLOAT, MPI_MAX,
                 MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, &e->s->max_mpole_power,
+  MPI_Allreduce(MPI_IN_PLACE, e->s->max_mpole_power,
                 SELF_GRAVITY_MULTIPOLE_ORDER + 1, MPI_FLOAT, MPI_MAX,
                 MPI_COMM_WORLD);
 #endif
@@ -1373,8 +1373,8 @@ void engine_rebuild(struct engine *e, const int repartitioned,
 
   /* Set the initial completeness flag for the moving mesh (before exchange) */
   if (e->policy & engine_policy_grid) {
-    cell_grid_set_self_completeness_mapper(e->s->cells_top, e->s->nr_cells,
-                                           NULL);
+    threadpool_map(&e->threadpool, cell_grid_set_self_completeness_mapper, NULL,
+                   e->s->nr_cells, 1, threadpool_auto_chunk_size, e);
   }
 
 /* If in parallel, exchange the cell structure, top-level and neighbouring
@@ -1409,7 +1409,7 @@ void engine_rebuild(struct engine *e, const int repartitioned,
   }
 #endif
 
-  /* Set the grid construction level, is needed before splitting */
+  /* Set the grid construction level, is needed before splitting the tasks */
   if (e->policy & engine_policy_grid) {
     /* Set the completeness and construction level */
     threadpool_map(&e->threadpool, cell_set_grid_completeness_mapper, NULL,
@@ -2021,7 +2021,10 @@ void engine_run_rt_sub_cycles(struct engine *e) {
     e->max_active_bin_subcycle = get_max_active_bin(e->ti_current_subcycle);
     e->min_active_bin_subcycle =
         get_min_active_bin(e->ti_current_subcycle, ti_subcycle_old);
-    /* TODO: add rt_props_update() for cosmological thermochemistry*/
+
+    /* Update rt properties */
+    rt_props_update(e->rt_props, e->internal_units, e->cosmology);
+
     if (e->policy & engine_policy_cosmology) {
       double time_old = time;
       cosmology_update(
@@ -2169,6 +2172,9 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
       (e->policy & engine_policy_temperature))
     cooling_update(e->physical_constants, e->cosmology, e->pressure_floor_props,
                    e->cooling_func, e->s, e->time);
+
+  if (e->policy & engine_policy_rt)
+    rt_props_update(e->rt_props, e->internal_units, e->cosmology);
 
 #ifdef WITH_CSDS
   if (e->policy & engine_policy_csds) {
@@ -2602,6 +2608,10 @@ int engine_step(struct engine *e) {
   if (e->policy & engine_policy_hydro)
     hydro_props_update(e->hydro_properties, e->gravity_properties,
                        e->cosmology);
+
+  /* Update the rt properties */
+  if (e->policy & engine_policy_rt)
+    rt_props_update(e->rt_props, e->internal_units, e->cosmology);
 
   /* Check for any snapshot triggers */
   engine_io_check_snapshot_triggers(e);
@@ -3141,8 +3151,9 @@ void engine_pin(void) {
   threadpool_set_affinity_mask(entry_affinity);
 
   int pin;
-  for (pin = 0; pin < CPU_SETSIZE && !CPU_ISSET(pin, entry_affinity); ++pin)
-    ;
+  for (pin = 0; pin < CPU_SETSIZE && !CPU_ISSET(pin, entry_affinity); ++pin) {
+    /* Nothing to do here */
+  }
 
   cpu_set_t affinity;
   CPU_ZERO(&affinity);
@@ -3729,6 +3740,9 @@ void engine_recompute_displacement_constraint(struct engine *e) {
 
     /* Apply the dimensionless factor */
     e->dt_max_RMS_displacement = dt * e->max_RMS_displacement_factor;
+    if (e->dt_max_RMS_displacement == 0.f) {
+      error("Setting dt_max_RMS_displacement to 0!");
+    }
 
     if (e->verbose)
       message("max_dt_RMS_displacement = %e", e->dt_max_RMS_displacement);
@@ -4085,7 +4099,7 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
   struct rt_props *rt_properties =
       (struct rt_props *)malloc(sizeof(struct rt_props));
   rt_struct_restore(rt_properties, stream, e->physical_constants,
-                    e->internal_units);
+                    e->internal_units, cosmo);
   e->rt_props = rt_properties;
 
   struct black_holes_props *black_holes_properties =

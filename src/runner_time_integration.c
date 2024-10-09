@@ -1706,6 +1706,8 @@ void runner_do_rt_advance_cell_time(struct runner *r, struct cell *c,
 void runner_do_collect_rt_times(struct runner *r, struct cell *c,
                                 const int timer) {
 
+  TIMER_TIC;
+
   const struct engine *e = r->e;
   size_t rt_updated = 0;
 

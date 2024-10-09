@@ -25,7 +25,7 @@
 #include "engine.h"
 #include "star_formation.h"
 
-#define xray_table_date_string 20230110
+#define xray_table_date_string 20240406
 
 #define xray_emission_N_temperature 46
 #define xray_emission_N_density 71
@@ -140,9 +140,9 @@ INLINE static void read_xray_header(struct xray_properties *xrays,
   hid_t dataset = H5Dopen(tempfile_id, "Date_String", H5P_DEFAULT);
   herr_t status = H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL,
                           H5P_DEFAULT, &datestring);
-  if (status < 0) printf("error reading the date string");
+  if (status < 0) error("error reading the date string");
   status = H5Dclose(dataset);
-  if (status < 0) printf("error closing dataset");
+  if (status < 0) error("error closing dataset");
   if (datestring != xray_table_date_string)
     error(
         "The table and code version do not match, please use table version %i",
@@ -156,9 +156,9 @@ INLINE static void read_xray_header(struct xray_properties *xrays,
   dataset = H5Dopen(tempfile_id, "Bins/Temperature_bins", H5P_DEFAULT);
   status = H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
                    xrays->Temperatures);
-  if (status < 0) printf("error reading temperatures");
+  if (status < 0) error("error reading temperatures");
   status = H5Dclose(dataset);
-  if (status < 0) printf("error closing dataset");
+  if (status < 0) error("error closing dataset");
 
   /* Read density bins */
   if (posix_memalign((void **)&xrays->Densities, SWIFT_STRUCT_ALIGNMENT,
@@ -168,9 +168,9 @@ INLINE static void read_xray_header(struct xray_properties *xrays,
   dataset = H5Dopen(tempfile_id, "Bins/Density_bins", H5P_DEFAULT);
   status = H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
                    xrays->Densities);
-  if (status < 0) printf("error reading densities");
+  if (status < 0) error("error reading densities");
   status = H5Dclose(dataset);
-  if (status < 0) printf("error closing dataset");
+  if (status < 0) error("error closing dataset");
 
   /* Read Helium bins */
   if (posix_memalign((void **)&xrays->He_bins, SWIFT_STRUCT_ALIGNMENT,
@@ -180,9 +180,9 @@ INLINE static void read_xray_header(struct xray_properties *xrays,
   dataset = H5Dopen(tempfile_id, "Bins/He_bins", H5P_DEFAULT);
   status = H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
                    xrays->He_bins);
-  if (status < 0) printf("error reading Helium massfractions");
+  if (status < 0) error("error reading Helium massfractions");
   status = H5Dclose(dataset);
-  if (status < 0) printf("error closing dataset");
+  if (status < 0) error("error closing dataset");
 
   /* Read solar metallicity */
   if (posix_memalign((void **)&xrays->Log10_solar_metallicity,
@@ -193,9 +193,9 @@ INLINE static void read_xray_header(struct xray_properties *xrays,
   dataset = H5Dopen(tempfile_id, "Bins/Solar_metallicities", H5P_DEFAULT);
   status = H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
                    xrays->Log10_solar_metallicity);
-  if (status < 0) printf("error reading solar metalicities");
+  if (status < 0) error("error reading solar metalicities");
   status = H5Dclose(dataset);
-  if (status < 0) printf("error closing dataset");
+  if (status < 0) error("error closing dataset");
 
   /* Get Solar metallicities from log solar metallicities */
   if (posix_memalign((void **)&xrays->Solar_metallicity, SWIFT_STRUCT_ALIGNMENT,
@@ -213,9 +213,9 @@ INLINE static void read_xray_header(struct xray_properties *xrays,
   dataset = H5Dopen(tempfile_id, "Bins/Redshift_bins", H5P_DEFAULT);
   status = H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
                    xrays->Redshifts);
-  if (status < 0) printf("error reading redshift bins");
+  if (status < 0) error("error reading redshift bins");
   status = H5Dclose(dataset);
-  if (status < 0) printf("error closing dataset");
+  if (status < 0) error("error closing dataset");
 
   /* Read element mass */
   if (posix_memalign((void **)&xrays->element_mass, SWIFT_STRUCT_ALIGNMENT,
@@ -225,9 +225,9 @@ INLINE static void read_xray_header(struct xray_properties *xrays,
   dataset = H5Dopen(tempfile_id, "Bins/Element_masses", H5P_DEFAULT);
   status = H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
                    xrays->element_mass);
-  if (status < 0) printf("error reading element masses");
+  if (status < 0) error("error reading element masses");
   status = H5Dclose(dataset);
-  if (status < 0) printf("error closing dataset");
+  if (status < 0) error("error closing dataset");
 }
 
 /**
@@ -262,9 +262,9 @@ INLINE static void read_xray_table(struct xray_properties *xrays,
   herr_t status =
       H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
               xrays->emissivity_erosita_low_intrinsic_photons);
-  if (status < 0) printf("error reading X-Ray table\n");
+  if (status < 0) error("error reading X-Ray table\n");
   status = H5Dclose(dataset);
-  if (status < 0) printf("error closing dataset");
+  if (status < 0) error("error closing dataset");
 
   /* erosita-high intrinsic photons */
   if (swift_memalign("xrays_table_erosita_high_photons",
@@ -281,9 +281,9 @@ INLINE static void read_xray_table(struct xray_properties *xrays,
   dataset = H5Dopen(file_id, "erosita-high/photons_intrinsic", H5P_DEFAULT);
   status = H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
                    xrays->emissivity_erosita_high_intrinsic_photons);
-  if (status < 0) printf("error reading X-Ray table\n");
+  if (status < 0) error("error reading X-Ray table\n");
   status = H5Dclose(dataset);
-  if (status < 0) printf("error closing dataset");
+  if (status < 0) error("error closing dataset");
 
   /* ROSAT intrinsic photons */
   if (swift_memalign("xray_table_ROSAT_photons",
@@ -298,9 +298,9 @@ INLINE static void read_xray_table(struct xray_properties *xrays,
   dataset = H5Dopen(file_id, "ROSAT/photons_intrinsic", H5P_DEFAULT);
   status = H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
                    xrays->emissivity_ROSAT_intrinsic_photons);
-  if (status < 0) printf("error reading X-Ray table\n");
+  if (status < 0) error("error reading X-Ray table\n");
   status = H5Dclose(dataset);
-  if (status < 0) printf("error closing dataset");
+  if (status < 0) error("error closing dataset");
 
   // erosita-low intrinsic energies
   if (swift_memalign("xrays_table_erosita_low_energies",
@@ -317,9 +317,9 @@ INLINE static void read_xray_table(struct xray_properties *xrays,
   dataset = H5Dopen(file_id, "erosita-low/energies_intrinsic", H5P_DEFAULT);
   status = H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
                    xrays->emissivity_erosita_low_intrinsic_energies);
-  if (status < 0) printf("error reading X-Ray table\n");
+  if (status < 0) error("error reading X-Ray table\n");
   status = H5Dclose(dataset);
-  if (status < 0) printf("error closing dataset");
+  if (status < 0) error("error closing dataset");
 
   /* erosita-high intrinsic energies */
   if (swift_memalign(
@@ -337,9 +337,9 @@ INLINE static void read_xray_table(struct xray_properties *xrays,
   dataset = H5Dopen(file_id, "erosita-high/energies_intrinsic", H5P_DEFAULT);
   status = H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
                    xrays->emissivity_erosita_high_intrinsic_energies);
-  if (status < 0) printf("error reading X-Ray table\n");
+  if (status < 0) error("error reading X-Ray table\n");
   status = H5Dclose(dataset);
-  if (status < 0) printf("error closing dataset");
+  if (status < 0) error("error closing dataset");
 
   /* ROSAT intrinsic energies */
   if (swift_memalign("xray_table_ROSAT_energies",
@@ -355,13 +355,13 @@ INLINE static void read_xray_table(struct xray_properties *xrays,
   dataset = H5Dopen(file_id, "ROSAT/energies_intrinsic", H5P_DEFAULT);
   status = H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
                    xrays->emissivity_ROSAT_intrinsic_energies);
-  if (status < 0) printf("error reading X-Ray table\n");
+  if (status < 0) error("error reading X-Ray table\n");
   status = H5Dclose(dataset);
-  if (status < 0) printf("error closing dataset");
+  if (status < 0) error("error closing dataset");
 
   /* Close file */
   status = H5Fclose(file_id);
-  if (status < 0) printf("error closing file");
+  if (status < 0) error("error closing file");
 }
 
 /**

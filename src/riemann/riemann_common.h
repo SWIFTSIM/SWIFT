@@ -5,6 +5,35 @@
 #ifndef SWIFT_RIEMANN_COMMON_H
 #define SWIFT_RIEMANN_COMMON_H
 
+/**
+ * @brief Compute the maximal mach number of the shock waves in the Riemann
+ * problem (if any).
+ *
+ * @param WL The left state vector
+ * @param WR The right state vector
+ * @param P_star The middle state pressure.
+ * @returns The maximal mach number.
+ */
+__attribute__((always_inline)) INLINE static float riemann_get_max_mach_number(
+    const float* restrict WL, const float* restrict WR, float P_star) {
+  float mach = 0.f;
+
+  /* left shock? */
+  if (P_star > WL[4]) {
+    float p_frac = P_star / WL[4];
+    mach = fmaxf(mach, sqrtf(hydro_gamma_plus_one_over_two_gamma * p_frac +
+                             hydro_gamma_minus_one_over_two_gamma));
+  }
+  /* right shock? */
+  if (P_star > WR[4]) {
+    float p_frac = P_star / WR[4];
+    mach = fmaxf(mach, sqrtf(hydro_gamma_plus_one_over_two_gamma * p_frac +
+                             hydro_gamma_minus_one_over_two_gamma));
+  }
+
+  return mach;
+}
+
 __attribute__((always_inline)) INLINE static void riemann_flux_from_half_state(
     const float* Whalf, const float* vij, const float* n_unit, float* totflux) {
 

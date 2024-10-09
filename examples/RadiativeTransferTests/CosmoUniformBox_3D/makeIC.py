@@ -9,14 +9,14 @@ from swiftsimio.units import cosmo_units
 # Unit system we're working with
 unitsystem = cosmo_units
 
-# Box is 100 Mpc in each direction
+# Box is 260 Mpc in each direction
 boxsize = 260 * unyt.Mpc
 boxsize = boxsize.to(unitsystem["length"])
 
 reduced_speed_of_light_fraction = 1.0
 
 # Number of photon groups
-nPhotonGroups = 1
+nPhotonGroups = 11
 
 # Number of particles in each dimension
 # Total number of particles is thus n_p^3
@@ -104,15 +104,16 @@ if __name__ in ("__main__"):
     nparts = header.attrs["NumPart_ThisFile"][0]
     parts = F["/PartType0"]
 
-    # Generate initial conditions
-    E, fluxes = initial_condition(unitsystem)
+    for i in range(nPhotonGroups):
+        # Generate initial conditions
+        E, fluxes = initial_condition(unitsystem)
 
-    # Create photon energy data entry
-    dsetname = "PhotonEnergiesGroup1"
-    energydata = np.zeros((nparts), dtype=np.float32)
-    parts.create_dataset(dsetname, data=E)
+        # Create photon energy data entry
+        dsetname = f"PhotonEnergiesGroup{i+1}"
+        energydata = np.zeros((nparts), dtype=np.float32)
+        parts.create_dataset(dsetname, data=E)
 
-    # Create photon fluxes data entry
-    dsetname = "PhotonFluxesGroup1"
-    fluxdata = np.zeros((nparts, 3), dtype=np.float32)
-    parts.create_dataset(dsetname, data=fluxes)
+        # Create photon fluxes data entry
+        dsetname = f"PhotonFluxesGroup{i+1}"
+        fluxdata = np.zeros((nparts, 3), dtype=np.float32)
+        parts.create_dataset(dsetname, data=fluxes)

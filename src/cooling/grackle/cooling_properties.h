@@ -103,6 +103,36 @@ struct cooling_function_data {
   /*! Hydrogen fraction by mass */
   float HydrogenFractionByMass;
 
+  /*! initial nHII to nH ratio (number density ratio) */
+  float initial_nHII_to_nH_ratio;
+
+  /*! initial nHeI to nH ratio (number density ratio) */
+  float initial_nHeI_to_nH_ratio;
+
+  /*! initial nHeII to nH ratio (number density ratio) */
+  float initial_nHeII_to_nH_ratio;
+
+  /*! initial nHeIII to nH ratio (number density ratio) */
+  float initial_nHeIII_to_nH_ratio;
+
+  /*! initial nDI to nH ratio (number density ratio) */
+  float initial_nDI_to_nH_ratio;
+
+  /*! initial nDII to nH ratio (number density ratio) */
+  float initial_nDII_to_nH_ratio;
+
+  /*! initial nHM to nH ratio (number density ratio) */
+  float initial_nHM_to_nH_ratio;
+
+  /*! initial nH2I to nH ratio (number density ratio) */
+  float initial_nH2I_to_nH_ratio;
+
+  /*! initial nH2II to nH ratio (number density ratio) */
+  float initial_nH2II_to_nH_ratio;
+
+  /*! initial nHDI to nH ratio (number density ratio) */
+  float initial_nHDI_to_nH_ratio;
+
   /*! Self shielding method (1 -> 3 for grackle's ones, 0 for none and -1 for
    * GEAR) */
   int self_shielding_method;
@@ -121,6 +151,9 @@ struct cooling_function_data {
 
   /*! Duration for switching off cooling after an event (e.g. supernovae) */
   double thermal_time;
+
+  /*! Maximal allowed density for cooling (in internal units). */
+  double cooling_density_max;
 };
 
 #endif /* SWIFT_COOLING_PROPERTIES_GRACKLE_H */

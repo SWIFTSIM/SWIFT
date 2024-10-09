@@ -63,7 +63,7 @@ int flat_bvh_hit_rec(const bvh_t *bvh, int node_id, struct part *parts,
   double dx[3] = {p->x[0] - x, p->x[1] - y, p->x[2] - z};
   double dx2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
   if (dx2 <= r2 && dx2 < hit_r2) return pid;
-    /* Else check subtrees */
+  /* Else check subtrees */
 #endif
   int hit = flat_bvh_hit_rec(bvh, node->children.left, parts, x, y, z, r2);
   if (hit == -1) {
@@ -215,11 +215,20 @@ void flat_bvh_populate_rec(bvh_t *bvh, int node_id, const struct part *parts,
   /* Update fields of this node */
   node->children.left = left_id;
   node->children.right = right_id;
-#ifdef SHADOWSWIFT_BVH_INSERT_BFO
-  node->data[BVH_DATA_SIZE] = pid_central;
-#endif
   node->is_leaf = 0;
   bbox_wrap(&bvh->nodes[left_id].bbox, &bvh->nodes[right_id].bbox, &node->bbox);
+#ifdef SHADOWSWIFT_BVH_INSERT_BFO
+  /* Store the central part separately and make sure it is contained in the
+   * bbox */
+  node->data[BVH_DATA_SIZE] = pid_central;
+  const struct part *p_central = &parts[pid_central];
+  bbox_t bbox_part;
+  for (int i = 0; i < 3; i++) {
+    bbox_part.anchor[i] = p_central->x[i] - p_central->geometry.search_radius;
+    bbox_part.opposite[i] = p_central->x[i] + p_central->geometry.search_radius;
+  }
+  bbox_wrap(&node->bbox, &bbox_part, &node->bbox);
+#endif
 #ifdef SWIFT_DEBUG_CHECKS
   if (node->is_leaf) {
     assert(node->data[BVH_DATA_SIZE] <= BVH_DATA_SIZE);

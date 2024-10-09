@@ -73,6 +73,11 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
     error("couldn't allocate particles, no. of particles: %d", (int)count);
   }
   bzero(cell->hydro.parts, count * sizeof(struct part));
+  if (posix_memalign((void **)&cell->hydro.xparts, part_align,
+                     count * sizeof(struct xpart)) != 0) {
+    error("couldn't allocate x particles, no. of particles: %d", (int)count);
+  }
+  bzero(cell->hydro.xparts, count * sizeof(struct xpart));
 
   /* Construct the parts */
   struct part *part = cell->hydro.parts;
@@ -100,15 +105,8 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
         part->id = ++(*partId);
 
 /* Set the mass */
-#if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH) || defined(SHADOWFAX_SPH)
+#if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH)
         part->conserved.mass = density * volume / count;
-
-#ifdef SHADOWFAX_SPH
-        double anchor[3] = {0., 0., 0.};
-        double side[3] = {1., 1., 1.};
-        voronoi_cell_init(&part->cell, part->x, anchor, side);
-#endif /* SHADOWFAX_SPH */
-
 #else
         part->mass = density * volume / count;
 #endif
@@ -176,6 +174,8 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
 
 void clean_up(struct cell *ci) {
   cell_free_hydro_sorts(ci);
+  free(ci->hydro.parts);
+  free(ci->hydro.xparts);
   free(ci);
 }
 
@@ -557,6 +557,7 @@ int main(int argc, char *argv[]) {
   struct gravity_props gravity_props;
   struct hydro_props hydro_props;
   struct pressure_floor_props pressure_floor;
+  struct sink_props sink_props;
   struct phys_const prog_const;
   struct runner *runner;
   static long long partId = 0;
@@ -650,6 +651,8 @@ int main(int argc, char *argv[]) {
   bzero(&gravity_props, sizeof(struct gravity_props));
   gravity_props.G_Newton = 1.;
   engine.gravity_properties = &gravity_props;
+  bzero(&sink_props, sizeof(struct sink_props));
+  engine.sink_properties = &sink_props;
 
   if (posix_memalign((void **)&runner, SWIFT_STRUCT_ALIGNMENT,
                      sizeof(struct runner)) != 0) {
@@ -749,5 +752,10 @@ int main(int argc, char *argv[]) {
                              perturbation, h_pert, swiftOutputFileName,
                              bruteForceOutputFileName, serial_inter_func,
                              vec_inter_func, init, finalise);
+#ifdef WITH_VECTORIZATION
+  cache_clean(&runner->ci_cache);
+  cache_clean(&runner->cj_cache);
+#endif
+  free(runner);
   return 0;
 }

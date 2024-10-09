@@ -172,6 +172,24 @@ void feedback_will_do_feedback(
     const struct unit_system* us, const struct phys_const* phys_const,
     const integertime_t ti_current, const double time_base) {
 
+  /* Zero the energy of supernovae */
+  sp->feedback_data.energy_ejected = 0;
+  sp->feedback_data.will_do_feedback = 0;
+
+  /* quit if the birth_scale_factor or birth_time is negative */
+  if (sp->birth_scale_factor < 0.0 || sp->birth_time < 0.0) return;
+
+  /* Pick the correct table. (if only one table, threshold is < 0) */
+  const float metal =
+      chemistry_get_star_total_iron_mass_fraction_for_feedback(sp);
+  const float threshold = feedback_props->metallicity_max_first_stars;
+
+  /* If metal < threshold, then  sp is a first star particle. */
+  const int is_first_star = metal < threshold;
+  const struct stellar_model* model =
+      is_first_star ? &feedback_props->stellar_model_first_stars
+                    : &feedback_props->stellar_model;
+
   /* Compute the times */
   double star_age_beg_step = 0;
   double dt_enrichment = 0;
@@ -179,35 +197,43 @@ void feedback_will_do_feedback(
   compute_time(sp, with_cosmology, cosmo, &star_age_beg_step, &dt_enrichment,
                &ti_begin, ti_current, time_base, time);
 
-  /* Zero the energy of supernovae */
-  sp->feedback_data.energy_ejected = 0;
-  sp->feedback_data.will_do_feedback = 0;
-
 #ifdef SWIFT_DEBUG_CHECKS
   if (sp->birth_time == -1.) error("Evolving a star particle that should not!");
   if (star_age_beg_step + dt_enrichment < 0) {
     error("Negative age for a star");
   }
 #endif
-
   /* Ensure that the age is positive (rounding errors) */
   const double star_age_beg_step_safe =
       star_age_beg_step < 0 ? 0 : star_age_beg_step;
 
-  /* Pick the correct table. (if only one table, threshold is < 0) */
-  const float metal =
-      chemistry_get_star_total_iron_mass_fraction_for_feedback(sp);
-  const float threshold = feedback_props->metallicity_max_first_stars;
+  /* A single star */
+  if (sp->star_type == single_star) {
+    /* If the star has completely exploded, do not continue. This will also
+       avoid NaN values in the liftetime if the mass is set to 0. Correction
+       (28.04.2024): A bug fix in the mass of the star (see stellar_evolution.c
+       in stellar_evolution_compute_X_feedback_properties, X=discrete,
+       continuous) has changed the mass of the star from 0 to
+       discrete_star_minimal_gravity_mass. Hence the fix is propagated here. */
+    if (sp->mass <= model->discrete_star_minimal_gravity_mass) {
+      return;
+    }
 
-  const struct stellar_model* model =
-      metal < threshold ? &feedback_props->stellar_model_first_stars
-                        : &feedback_props->stellar_model;
+    /* Now, compute the stellar evolution state for individual star particles.
+     */
+    stellar_evolution_evolve_individual_star(sp, model, cosmo, us, phys_const,
+                                             ti_begin, star_age_beg_step_safe,
+                                             dt_enrichment);
+  } else {
+    /* Compute the stellar evolution including SNe energy. This function treats
+       the case of particles representing the whole IMF (star_type =
+       star_population) and the particles representing only the continuous part
+       of the IMF (star_type = star_population_continuous_IMF) */
+    stellar_evolution_evolve_spart(sp, model, cosmo, us, phys_const, ti_begin,
+                                   star_age_beg_step_safe, dt_enrichment);
+  }
 
-  /* Compute the stellar evolution including SNe energy */
-  stellar_evolution_evolve_spart(sp, model, cosmo, us, phys_const, ti_begin,
-                                 star_age_beg_step_safe, dt_enrichment);
-
-  /* apply the energy efficiency factor */
+  /* Apply the energy efficiency factor */
   sp->feedback_data.energy_ejected *= feedback_props->supernovae_efficiency;
 
   /* Set the particle as doing some feedback */
@@ -221,6 +247,10 @@ void feedback_will_do_feedback(
  * @param e The #engine.
  */
 int feedback_is_active(const struct spart* sp, const struct engine* e) {
+
+  /* the particle is inactive if its birth_scale_factor or birth_time is
+   * negative */
+  if (sp->birth_scale_factor < 0.0 || sp->birth_time < 0.0) return 0;
 
   return sp->feedback_data.will_do_feedback;
 }
@@ -256,13 +286,19 @@ void feedback_init_spart(struct spart* sp) {
 }
 
 /**
- * @brief Reset the feedback field when the spart is not
- * in a correct state for feeedback_will_do_feedback.
+ * @brief Prepare the feedback fields after a star is born.
  *
- * This function is called in the timestep task.
+ * This function is called in the functions sink_copy_properties_to_star() and
+ * star_formation_copy_properties().
+ *
+ * @param sp The #spart to act upon.
+ * @param feedback_props The feedback perties to use.
+ * @param star_type The stellar particle type.
  */
 void feedback_init_after_star_formation(
-    struct spart* sp, const struct feedback_props* feedback_props) {
+    struct spart* sp, const struct feedback_props* feedback_props,
+    const enum stellar_type star_type) {
+
   feedback_init_spart(sp);
 
   /* Zero the energy of supernovae */
@@ -270,6 +306,10 @@ void feedback_init_after_star_formation(
 
   /* Activate the feedback loop for the first step */
   sp->feedback_data.will_do_feedback = 1;
+
+  /* Give to the star its appropriate type: single star, continuous IMF star or
+     single population star */
+  sp->star_type = star_type;
 }
 
 /**

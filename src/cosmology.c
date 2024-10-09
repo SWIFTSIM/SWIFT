@@ -832,11 +832,10 @@ void cosmology_init_tables(struct cosmology *c) {
     if (frac_error > max_error_distance) max_error_distance = frac_error;
   }
 
-  message("Max fractional error in a to age of universe round trip = %16.8e\n",
+  message("Max fractional error in a to age of universe round trip = %16.8e",
           max_error_time);
-  message(
-      "Max fractional error in a to comoving distance round trip = %16.8e\n",
-      max_error_distance);
+  message("Max fractional error in a to comoving distance round trip = %16.8e",
+          max_error_distance);
 
 #endif /* SWIFT_DEBUG_CHECKS */
 

@@ -234,9 +234,11 @@ void proxy_grid_extra_exchange(struct proxy *proxies, int num_proxies,
   enum grid_construction_level *extra_info_in = NULL;
   enum grid_construction_level *extra_info_out = NULL;
   if (swift_memalign("extra_info_in", (void **)&extra_info_in,
-                     SWIFT_CACHE_ALIGNMENT, sizeof(int) * count_in) != 0 ||
+                     SWIFT_CACHE_ALIGNMENT,
+                     sizeof(enum grid_construction_level) * count_in) != 0 ||
       swift_memalign("extra_info_out", (void **)&extra_info_out,
-                     SWIFT_CACHE_ALIGNMENT, sizeof(int) * count_out) != 0)
+                     SWIFT_CACHE_ALIGNMENT,
+                     sizeof(enum grid_construction_level) * count_out) != 0)
     error("Failed to allocate extra info buffers.");
 
   /* Pack the local grid info. */

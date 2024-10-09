@@ -8,9 +8,9 @@ To compile SWIFT, you will need the following libraries:
 HDF5
 ~~~~
 
-Version 1.8.x or higher is required. Input and output files are stored as HDF5
+Version 1.10.x or higher is required. Input and output files are stored as HDF5
 and are compatible with the GADGET-2 specification. A parallel-HDF5 build
-and HDF5 > 1.10.x is recommended when running over MPI.
+and HDF5 >= 1.12.x is recommended when running over MPI.
 
 MPI
 ~~~

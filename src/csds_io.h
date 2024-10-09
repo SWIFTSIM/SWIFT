@@ -165,12 +165,10 @@ struct csds_field {
  * @param conversion_func The conversion function.
  * @param field_size The size of the field to write.
  */
-#define csds_define_field_from_function_hydro(csds_field, field_name,     \
-                                              conversion_func, size)      \
-  {                                                                       \
-    csds_define_field_from_function_general(csds_field, field_name,       \
-                                            conversion_func, size, hydro) \
-  }
+#define csds_define_field_from_function_hydro(csds_field, field_name, \
+                                              conversion_func, size)  \
+  {csds_define_field_from_function_general(csds_field, field_name,    \
+                                           conversion_func, size, hydro)}
 
 /**
  * @brief Define a field from a function for stars.
@@ -180,12 +178,10 @@ struct csds_field {
  * @param conversion_func The conversion function.
  * @param field_size The size of the field to write.
  */
-#define csds_define_field_from_function_stars(csds_field, field_name,     \
-                                              conversion_func, size)      \
-  {                                                                       \
-    csds_define_field_from_function_general(csds_field, field_name,       \
-                                            conversion_func, size, stars) \
-  }
+#define csds_define_field_from_function_stars(csds_field, field_name, \
+                                              conversion_func, size)  \
+  {csds_define_field_from_function_general(csds_field, field_name,    \
+                                           conversion_func, size, stars)}
 
 /**
  * @brief Define a field from a function for gravity.
@@ -195,12 +191,10 @@ struct csds_field {
  * @param conversion_func The conversion function.
  * @param field_size The size of the field to write.
  */
-#define csds_define_field_from_function_gravity(csds_field, field_name,  \
-                                                conversion_func, size)   \
-  {                                                                      \
-    csds_define_field_from_function_general(csds_field, field_name,      \
-                                            conversion_func, size, grav) \
-  }
+#define csds_define_field_from_function_gravity(csds_field, field_name, \
+                                                conversion_func, size)  \
+  {csds_define_field_from_function_general(csds_field, field_name,      \
+                                           conversion_func, size, grav)}
 
 void csds_write_description(struct csds_writer *log, struct engine *e);
 

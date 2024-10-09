@@ -55,12 +55,15 @@ __attribute__((always_inline)) INLINE static void hydro_part_get_fluxes(
  * @param vLR Velocity of the interface.
  * @param Anorm Surface area of the interface.
  * @param fluxes Array to store the result in (of size 5 or more).
+ * @return The maximal mach number of the signal speed of the shockwaves in the
+ * solution of the Riemann problem (if any) or zero.
  */
-__attribute__((always_inline)) INLINE static void hydro_compute_flux(
+__attribute__((always_inline)) INLINE static float hydro_compute_flux(
     const float* WL, const float* WR, const float* n_unit, const float* vLR,
     const float Anorm, float* fluxes) {
 
-  riemann_solve_for_flux(WL, WR, n_unit, vLR, fluxes);
+  const float P_star = riemann_solve_for_flux(WL, WR, n_unit, vLR, fluxes);
+  const float mach_number = riemann_get_max_mach_number(WL, WR, P_star);
   float entropy_flux;
   if (fluxes[0] > 0.f) {
     entropy_flux = fluxes[0] * WL[5];
@@ -74,6 +77,8 @@ __attribute__((always_inline)) INLINE static void hydro_compute_flux(
   fluxes[3] *= Anorm;
   fluxes[4] *= Anorm;
   fluxes[5] = Anorm * entropy_flux;
+
+  return mach_number;
 }
 
 /**
@@ -81,11 +86,12 @@ __attribute__((always_inline)) INLINE static void hydro_compute_flux(
  * assuming the particle is to the left of the interparticle interface.
  *
  * @param p Particle.
- * @param fluxes Fluxes accross the interface.
+ * @param fluxes Time integrated fluxes across the interface.
  * @param dx Vector pointing from right particle to left particle.
  */
 __attribute__((always_inline)) INLINE static void hydro_part_update_fluxes_left(
-    struct part* restrict p, const float* fluxes, const float* dx) {
+    struct part* restrict p, const float* restrict fluxes,
+    const float* restrict dx) {
 
   p->gravity.mflux[0] += fluxes[0] * dx[0];
   p->gravity.mflux[1] += fluxes[0] * dx[1];
@@ -110,12 +116,13 @@ __attribute__((always_inline)) INLINE static void hydro_part_update_fluxes_left(
  * assuming the particle is to the right of the interparticle interface.
  *
  * @param p Particle.
- * @param fluxes Fluxes accross the interface.
+ * @param fluxes Time integrated fluxes across the interface.
  * @param dx Vector pointing from right particle to left particle.
  */
 __attribute__((always_inline)) INLINE static void
-hydro_part_update_fluxes_right(struct part* restrict p, const float* fluxes,
-                               const float* dx) {
+hydro_part_update_fluxes_right(struct part* restrict p,
+                               const float* restrict fluxes,
+                               const float* restrict dx) {
 
   p->gravity.mflux[0] += fluxes[0] * dx[0];
   p->gravity.mflux[1] += fluxes[0] * dx[1];

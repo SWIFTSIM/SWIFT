@@ -62,7 +62,7 @@ void space_init_parts_mapper(void *restrict map_data, int count,
     tracers_after_init(&parts[k], &xparts[k], e->internal_units,
                        e->physical_constants, with_cosmology, e->cosmology,
                        e->hydro_properties, e->cooling_func, e->time);
-    sink_init_part(&parts[k]);
+    sink_init_part(&parts[k], e->sink_properties);
   }
 }
 

@@ -34,6 +34,7 @@
 #include "physical_constants.h"
 #include "random.h"
 #include "star_formation_struct.h"
+#include "stars.h"
 #include "units.h"
 
 #define star_formation_need_update_dx_max 1
@@ -320,7 +321,7 @@ INLINE static void star_formation_copy_properties(
     const int convert_part) {
 
   /* Initialize the feedback */
-  feedback_init_after_star_formation(sp, e->feedback_props);
+  feedback_init_after_star_formation(sp, e->feedback_props, star_population);
 
   /* Store the current mass */
   const float mass_gas = hydro_get_mass(p);

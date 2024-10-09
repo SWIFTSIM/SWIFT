@@ -173,13 +173,13 @@ void engine_split_gas_particle_split_mapper(void *restrict map_data, int count,
       }
 
       /* Update splitting tree */
-      particle_splitting_update_binary_tree(&global_xparts[k_parts].split_data,
-                                            &xp->split_data);
+      particle_splitting_update_binary_tree(&xp->split_data,
+                                            &global_xparts[k_parts].split_data);
 
       /* Update the IDs. */
       if (generate_random_ids) {
         /* The gas IDs are always odd, so we multiply by two here to
-         * repsect the parity. */
+         * respect the parity. */
         global_parts[k_parts].id += 2 * (long long)rand_r(&seedp);
       } else {
         global_parts[k_parts].id = offset_id + 2 * atomic_inc(count_id);
