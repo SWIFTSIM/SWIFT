@@ -917,10 +917,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
     cell_assign_top_level_cell_index(c, s);
 #endif
 
-    /* Is this cell local and does it have particles? (Void cells are always
-     * local). */
-    const int is_local =
-        (c->nodeID == engine_rank) || (c->subtype == cell_subtype_void);
+    const int is_local = (c->nodeID == engine_rank);
     const int has_particles =
         (c->hydro.count > 0) || (c->grav.count > 0) || (c->stars.count > 0) ||
         (c->black_holes.count > 0) || (c->sinks.count > 0);

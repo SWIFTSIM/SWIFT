@@ -1884,12 +1884,6 @@ void scheduler_splittasks_mapper(void *map_data, int num_elements,
     /* Invoke the correct splitting strategy */
     if (t->subtype == task_subtype_density) {
       scheduler_splittask_hydro(t, s);
-    } else if ((t->type == task_type_self &&
-                t->ci->subtype == cell_subtype_void) ||
-               (t->type == task_type_pair &&
-                (t->ci->subtype == cell_subtype_void ||
-                 t->cj->subtype == cell_subtype_void))) {
-      zoom_scheduler_splittask_gravity_void_pair(t, s);
     } else if (t->subtype == task_subtype_external_grav) {
       scheduler_splittask_gravity(t, s);
     } else if (t->type == task_type_self &&
@@ -3111,13 +3105,13 @@ void scheduler_check_deadlock(struct scheduler *s) {
   ticks last = s->last_successful_task_fetch;
 
   if (last == 0LL) {
-    /* Ensure that the first check each engine_launch doesn't fail. There is
-     * no guarantee how long it will take from the point where
+    /* Ensure that the first check each engine_launch doesn't fail. There is no
+     * guarantee how long it will take from the point where
      * last_successful_task_fetch was reset to get to this point. A poorly
-     * chosen scheduler->deadlock_waiting_time_ms may abort a big run in
-     * places where there is no deadlock. Better safe than sorry, so at
-     * start-up, the last successful task fetch time is marked as 0. So we
-     * just exit without checking the time. */
+     * chosen scheduler->deadlock_waiting_time_ms may abort a big run in places
+     * where there is no deadlock. Better safe than sorry, so at start-up, the
+     * last successful task fetch time is marked as 0. So we just exit without
+     * checking the time. */
     while (atomic_cas(&s->last_successful_task_fetch, last, now) != last) {
       now = getticks();
       last = s->last_successful_task_fetch;
@@ -3134,8 +3128,7 @@ void scheduler_check_deadlock(struct scheduler *s) {
 
   if (idle_time > s->deadlock_waiting_time_ms) {
     message(
-        "Detected what looks like a deadlock after %g ms of no new task "
-        "being "
+        "Detected what looks like a deadlock after %g ms of no new task being "
         "fetched from queues. Dumping diagnostic data.",
         idle_time);
     engine_dump_diagnostic_data(s->e);
