@@ -31,6 +31,7 @@
  * @param pj Second particle.
  * @param a Current scale factor.
  * @param H Current Hubble parameter.
+ * @param cut_off_radius Sink cut off radius.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_sink(
     const float r2, const float dx[3], const float hi, const float hj,
@@ -49,6 +50,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_sink(
  * @param pj Second particle (not updated).
  * @param a Current scale factor.
  * @param H Current Hubble parameter.
+ * @param cut_off_radius Sink cut off radius.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_sink(
     const float r2, const float dx[3], const float hi, const float hj,
@@ -64,15 +66,18 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_sink(
  * @param rj Comoving cut off radius of particle j.
  * @param si First sink particle.
  * @param sj Second sink particle.
+ * @param with_cosmology if we run with cosmology.
+ * @param cosmo The cosmological parameters and properties.
+ * @param grav_props The gravity scheme parameters and properties.
+ * @param sink_props the sink properties to use.
  */
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_sinks_sink_swallow(const float r2, const float dx[3],
-                                      const float ri, const float rj,
-                                      struct sink *restrict si,
-                                      struct sink *restrict sj,
-                                      const int with_cosmology,
-                                      const struct cosmology *cosmo,
-                                      const struct gravity_props *grav_props) {}
+runner_iact_nonsym_sinks_sink_swallow(
+    const float r2, const float dx[3], const float ri, const float rj,
+    struct sink *restrict si, struct sink *restrict sj,
+    const int with_cosmology, const struct cosmology *cosmo,
+    const struct gravity_props *grav_props,
+    const struct sink_props *sink_properties) {}
 
 /**
  * @brief Compute sink-gas swallow interaction (non-symmetric).
@@ -83,6 +88,10 @@ runner_iact_nonsym_sinks_sink_swallow(const float r2, const float dx[3],
  * @param hj Comoving smoothing-length of particle j.
  * @param si First sink particle.
  * @param pj Second particle.
+ * @param with_cosmology if we run with cosmology.
+ * @param cosmo The cosmological parameters and properties.
+ * @param grav_props The gravity scheme parameters and properties.
+ * @param sink_props the sink properties to use.
  */
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_sinks_gas_swallow(const float r2, const float dx[3],

@@ -48,6 +48,7 @@ struct hydro_props;
 #define space_cellallocchunk 1000
 #define space_splitsize_default 400
 #define space_maxsize_default 8000000
+#define space_grid_split_threshold_default 400
 #define space_extra_parts_default 0
 #define space_extra_gparts_default 0
 #define space_extra_sparts_default 100
@@ -72,6 +73,7 @@ struct hydro_props;
  * restore these. */
 extern int space_splitsize;
 extern int space_maxsize;
+extern int space_grid_split_threshold;
 extern int space_subsize_pair_hydro;
 extern int space_subsize_self_hydro;
 extern int space_subsize_pair_stars;
