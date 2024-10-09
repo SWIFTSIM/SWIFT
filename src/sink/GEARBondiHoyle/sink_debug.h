@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2020 Loic Hausammann (loic.hausammann@epfl.ch)
+ * Copyright (c) 2022 Bert Vandenbroucke (bert.vandenbroucke@gmail.com)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,20 +16,15 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_SINK_IO_H
-#define SWIFT_SINK_IO_H
+#ifndef SWIFT_SINK_GEARBONDIHOYLE_DEBUG_H
+#define SWIFT_SINK_GEARBONDIHOYLE_DEBUG_H
 
-#include <config.h>
+__attribute__((always_inline)) INLINE static void sink_debug_particle(
+    const struct part* p, const struct xpart* xp) {
 
-/* Load the correct sink type */
-#if defined(SINK_NONE)
-#include "./sink/Default/sink_io.h"
-#elif defined(SINK_GEAR)
-#include "./sink/GEAR/sink_io.h"
-#elif defined(SINK_GEARBONDIHOYLE)
-#include "./sink/GEARBondiHoyle/sink_io.h"
-#else
-#error "Invalid choice of sink model"
-#endif
+  warning("[PID%lld] sink_part_data:", p->id);
+  warning("[PID%lld] swallow_id = %lld, can_form_sink = %d", p->id,
+          p->sink_data.swallow_id, p->sink_data.can_form_sink);
+}
 
-#endif /* SWIFT_SINK_IO_H */
+#endif /* SWIFT_SINK_GEAR_DEBUG_H */

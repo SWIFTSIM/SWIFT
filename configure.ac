@@ -2782,6 +2782,9 @@ case "$with_sink" in
    GEAR)
     AC_DEFINE([SINK_GEAR], [1], [GEAR sink particle model])
     ;;
+   GEARBONDIHOYLE)
+    AC_DEFINE([SINK_GEARBONDIHOYLE], [1], [GEAR sink particle model with bondi-hoyle testing])
+    ;;
     *)
       AC_MSG_ERROR([Unknown sink particle model model: $with_sink])
    ;;
