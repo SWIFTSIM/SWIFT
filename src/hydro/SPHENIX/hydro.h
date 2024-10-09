@@ -38,6 +38,7 @@
 #include "hydro_properties.h"
 #include "hydro_space.h"
 #include "kernel_hydro.h"
+#include "mhd.h"
 #include "minmax.h"
 #include "pressure_floor.h"
 
@@ -857,7 +858,8 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
       cosmo->a_factor_sound_speed;
 
   const float sound_crossing_time_inverse =
-      soundspeed_physical * kernel_support_physical_inv;
+    mhd_get_magnetosonic_speed(p,1.0f,1.0f) * kernel_support_physical_inv;  
+    // soundspeed_physical * kernel_support_physical_inv;
 
   /* Construct time differential of div.v implicitly following the ANARCHY spec
    */
