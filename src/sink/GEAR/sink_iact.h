@@ -20,7 +20,6 @@
 #define SWIFT_GEAR_SINKS_IACT_H
 
 /* Local includes */
-#include "cosmology.h"
 #include "gravity.h"
 #include "gravity_iact.h"
 #include "sink.h"
@@ -143,30 +142,29 @@ runner_iact_nonsym_sinks_sink_swallow(
 
   const float r = sqrtf(r2);
   const float f_acc_r_acc_i = sink_properties->f_acc * ri;
-  const float f_acc_r_acc_j = sink_properties->f_acc * rj;
 
-  /* If the sink i falls within f_acc*r_acc_i, it is accreted without further
-     check */
+  /* If the sink j falls within f_acc*r_acc of sink i, then the
+     lightest is accreted on the most massive without further check.
+     Note that this is a non-symmetric interaction. So, we do not need to check
+     for the f_acc*r_acc_j case here. */
   if (r < f_acc_r_acc_i) {
-    /* Check if a sink particle has not been already marked to be swallowed by
-       another sink particle. */
-    if (sj->merger_data.swallow_id < si->id) {
-      sj->merger_data.swallow_id = si->id;
+    /* The sink with the smaller mass will be merged onto the one with the
+     * larger mass.
+     * To avoid rounding issues, we additionally check for IDs if the sink
+     * have the exact same mass. */
+    if ((sj->mass < si->mass) || (sj->mass == si->mass && sj->id < si->id)) {
+      /* This particle is swallowed by the sink with the largest mass of all the
+       * candidates wanting to swallow it (we use IDs to break ties)*/
+      if ((sj->merger_data.swallow_mass < si->mass) ||
+          (sj->merger_data.swallow_mass == si->mass &&
+           sj->merger_data.swallow_id < si->id)) {
+        sj->merger_data.swallow_id = si->id;
+        sj->merger_data.swallow_mass = si->mass;
+      }
     }
-
-    /* If the sink j falls within f_acc*r_acc_j, it is accreted without further
-       check */
-  } else if (r < f_acc_r_acc_j) {
-
-    /* Check if a sink particle has not been already marked to be swallowed by
-       another sink particle. */
-    if (si->merger_data.swallow_id < sj->id) {
-      si->merger_data.swallow_id = sj->id;
-    }
-
   } else {
 
-    /* Relative velocity between th sinks */
+    /* Relative velocity between the sinks */
     const float dv[3] = {sj->v[0] - si->v[0], sj->v[1] - si->v[1],
                          sj->v[2] - si->v[2]};
 
@@ -188,10 +186,10 @@ runner_iact_nonsym_sinks_sink_swallow(
                                       dv_physical[1] * dv_physical[1] +
                                       dv_physical[2] * dv_physical[2];
 
-    /* Kinetic energy of the gas */
+    /* Kinetic energy per unit mass of the gas */
     const float E_kin_rel = 0.5f * dv_physical_squared;
 
-    /* Compute the Newtonian or truncated potential the sink exherts onto the
+    /* Compute the Newtonian or softened potential the sink exherts onto the
        gas particle */
     const float eps = gravity_get_softening(si->gpart, grav_props);
     const float eps2 = eps * eps;
@@ -206,19 +204,13 @@ runner_iact_nonsym_sinks_sink_swallow(
     runner_iact_grav_pp_full(r2, eps2, eps_inv, eps_inv3, sj_mass, &dummy,
                              &pot_ji);
 
-    // w_tilde(a, w0, wa)
-    const double a_dot_dot = cosmology_compute_a_dot_dot(cosmo);
+    /* Compute the physical potential energies per unit mass :
+                           E_pot_phys = G*pot_grav*a^(-1) + c(a).
+       The normalization is c(a) = 0. */
+    const float E_pot_ij = grav_props->G_Newton * pot_ij * cosmo->a_inv;
+    const float E_pot_ji = grav_props->G_Newton * pot_ji * cosmo->a_inv;
 
-    /* Compute the physical potential energies :
-       E_pot_phys = G*pot_grav*a^(-1) + c(a). */
-    /* The normalization is c(a) = -a_dot*a*r^2/2.0. */
-    const double constant = -a_dot_dot * a * r2 / 2.0;
-    const float E_pot_ij =
-        grav_props->G_Newton * pot_ij * cosmo->a_inv + constant;
-    const float E_pot_ji =
-        grav_props->G_Newton * pot_ji * cosmo->a_inv + constant;
-
-    /* Mechanical energy of the pair i-j and j-i */
+    /* Mechanical energy per unit mass of the pair i-j and j-i */
     const float E_mec_si = E_kin_rel + E_pot_ij;
     const float E_mec_sj = E_kin_rel + E_pot_ji;
 
@@ -293,7 +285,7 @@ runner_iact_nonsym_sinks_gas_swallow(const float r2, const float dx[3],
     /* f_acc*r_acc <= r <= r_acc, we perform other checks */
   } else if ((r >= f_acc_r_acc) && (r < ri)) {
 
-    /* Relative velocity between th sinks */
+    /* Relative velocity between the sinks */
     const float dv[3] = {pj->v[0] - si->v[0], pj->v[1] - si->v[1],
                          pj->v[2] - si->v[2]};
 
@@ -319,7 +311,7 @@ runner_iact_nonsym_sinks_gas_swallow(const float r2, const float dx[3],
                                   dx[2] * cosmo->a};
     const float r_physical = r * cosmo->a;
 
-    /* Momentum check */
+    /* Momentum check------------------------------------------------------- */
     /* Relative momentum of the gas */
     const float specific_angular_momentum_gas[3] = {
         dx_physical[1] * dv_physical[2] - dx_physical[2] * dv_physical[1],
@@ -344,11 +336,11 @@ runner_iact_nonsym_sinks_gas_swallow(const float r2, const float dx[3],
       return;
     }
 
-    /* Energy check */
-    /* Kinetic energy of the gas */
+    /* Energy check--------------------------------------------------------- */
+    /* Kinetic energy per unit mass of the gas */
     float E_kin_relative_gas = 0.5f * dv_physical_squared;
 
-    /* Compute the Newtonian or truncated potential the sink exherts onto the
+    /* Compute the Newtonian or softened potential the sink exherts onto the
        gas particle */
     const float eps = gravity_get_softening(si->gpart, grav_props);
     const float eps2 = eps * eps;
@@ -359,25 +351,23 @@ runner_iact_nonsym_sinks_gas_swallow(const float r2, const float dx[3],
     runner_iact_grav_pp_full(r2, eps2, eps_inv, eps_inv3, sink_mass, &dummy,
                              &pot_ij);
 
-    const double a_dot_dot = cosmology_compute_a_dot_dot(cosmo);
+    /* Compute the physical potential energy per unit mass  that the sink
+       exerts in the gas :
+                       E_pot_phys = G*pot_grav*a^(-1) + c(a).
+       The normalization is c(a) = 0. */
+    const float E_pot_gas = grav_props->G_Newton * pot_ij * cosmo->a_inv;
 
-    /* Compute the physical potential energy that the sink exerts in the gas :
-                       E_pot_phys = G*pot_grav*a^(-1) + c(a). */
-    /* The normalization is c(a) = a_dot*a*r^2/2.0. */
-    const float E_pot_gas =
-        grav_props->G_Newton * pot_ij * cosmo->a_inv - a_dot_dot * a * r2 / 2.0;
-
-    /* Update: Add thermal energy to avoid the sink to swallow hot gas regions
-     */
+    /* Update: Add thermal energy per unit mass  to avoid the sink to swallow
+       hot gas regions */
     const float E_therm = hydro_get_drifted_physical_internal_energy(pj, cosmo);
 
-    /* Energy of the pair sink-gas */
+    /* Energy per unit mass of the pair sink-gas */
     const float E_mec_sink_part = E_kin_relative_gas + E_pot_gas + E_therm;
 
     /* To be accreted, the gas must be gravitationally bound to the sink. */
     if (E_mec_sink_part >= 0) return;
 
-    /* Most bound pair check */
+    /* Most bound pair check------------------------------------------------ */
     /* The pair gas-sink must be the most bound among all sinks */
     if (E_mec_sink_part >= pj->sink_data.E_mec_bound) {
       return;
