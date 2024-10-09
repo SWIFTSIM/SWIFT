@@ -170,6 +170,177 @@ void runner_do_grav_long_range_zoom_non_periodic(struct runner *r,
 }
 
 /**
+ * @brief Accumalate the number of particle mesh interactions for debugging
+ * purposes.
+ *
+ * @param s The #space.
+ * @param cells The top-level cells.
+ * @param top The current top-level cell.
+ * @param periodic Is the space periodic?
+ * @param dim The dimensions of the space.
+ * @param max_distance2 The maximum distance for a pair or mm interaction.
+ */
+void runner_count_mesh_interactions(struct runner *r, struct cell *ci,
+                                    struct cell *top) {
+
+#if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_GRAVITY_FORCE_CHECKS)
+
+  struct engine *e = r->e;
+  struct space *s = e->s;
+  struct cell *cells = s->cells_top;
+  const int periodic = e->mesh->periodic;
+  const double dim[3] = {e->mesh->dim[0], e->mesh->dim[1], e->mesh->dim[2]};
+
+  /* Get the maximum distance at which we can have a non-mesh interaction. */
+  const double max_distance = e->mesh->r_cut_max;
+  const double max_distance2 = max_distance * max_distance;
+
+  /* Get the mutlipole of the cell we are interacting. */
+  struct gravity_tensors *const multi_i = ci->grav.multipole;
+
+  /* We need to treat zoom cells and background/buffer cells differently
+   * when counting interactions since we've made all interactions choices
+   * at the void cell top level. Therefore, for zoom cells we need to use
+   * the top level void cell for considerations. */
+  if (ci->type == cell_type_zoom) {
+    top = ci->top->void_parent->top;
+  }
+
+  /* Loop over all other non-zoom cells and account for the
+   * mesh contribution. */
+  for (int n = s->zoom_props->bkg_cell_offset; n < s->nr_cells; n++) {
+
+    /* Handle on the top-level cell and it's gravity business*/
+    struct cell *cj = &cells[n];
+    struct gravity_tensors *const multi_j = cj->grav.multipole;
+
+    /* Avoid self contributions */
+    if (top == cj) continue;
+
+    /* Skip empty cells */
+    if (multi_j->m_pole.M_000 == 0.f) continue;
+
+    /* Minimal distance between any pair of particles */
+    const double min_radius2 = cell_min_dist2(top, cj, periodic, dim);
+
+    /* Are we beyond the distance where the truncated forces are 0 ?*/
+    if (min_radius2 > max_distance2) {
+#ifdef SWIFT_DEBUG_CHECKS
+      /* Need to account for the interactions we missed */
+      accumulate_add_ll(&multi_i->pot.num_interacted,
+                        multi_j->m_pole.num_gpart);
+#endif
+
+#ifdef SWIFT_GRAVITY_FORCE_CHECKS
+      /* Need to account for the interactions we missed */
+      accumulate_add_ll(&multi_i->pot.num_interacted_pm,
+                        multi_j->m_pole.num_gpart);
+#endif
+      /* Record that this multipole received a contribution */
+      multi_i->pot.interacted = 1;
+    }
+  }
+#else
+  error(
+      "This function should not be called without debugging checks or "
+      "force checks enabled!");
+#endif
+}
+
+/**
+ * @brief Performs all M-M interactions between a given top-level cell and
+ * all the other top-levels that are far enough.
+ *
+ * This function is the main long-range gravity function. It is called by
+ * the runner and will call the appropriate interaction function for the
+ * given cell type/space periodicity.
+ *
+ * @param r The thread #runner.
+ * @param ci The #cell of interest.
+ * @param timer Are we timing this ?
+ */
+void runner_do_grav_long_range(struct runner *r, struct cell *ci,
+                               const int timer) {
+
+  TIMER_TIC;
+
+  struct space *s = r->e->s;
+
+  /* Is the space periodic? */
+  const int periodic = s->periodic;
+
+  /* Anything to do here? */
+  if (!cell_is_active_gravity(ci, r->e)) return;
+
+  if (ci->nodeID != engine_rank)
+    error("Non-local cell in long-range gravity task!");
+
+  /* Check multipole has been drifted */
+  if (ci->grav.ti_old_multipole < r->e->ti_current)
+    cell_drift_multipole(ci, r->e);
+
+  /* Find this cell's top-level (great-)parent */
+  struct cell *top = ci;
+  while (top->parent != NULL) top = top->parent;
+
+  /* If we have a zoom cell the true top level cell where we defined the
+   * interactions is the top level void parent cell. */
+  if (top->type == cell_type_zoom) {
+    top = top->void_parent->top;
+  }
+
+  /* Call the appropriate interaction function based on the type of the
+   * cell in question. */
+  if (periodic) {
+    switch (ci->type) {
+
+      case cell_type_regular:
+        runner_do_grav_long_range_uniform_periodic(r, ci, top);
+        break;
+      case cell_type_zoom:
+        runner_do_grav_long_range_zoom_periodic(r, ci, top);
+        break;
+      case cell_type_buffer:
+        runner_do_grav_long_range_zoom_periodic(r, ci, top);
+        break;
+      case cell_type_bkg:
+        runner_do_grav_long_range_zoom_periodic(r, ci, top);
+        break;
+      default:
+        error("Unknown cell type in long-range gravity task!");
+    }
+  } else {
+
+    switch (ci->type) {
+
+      case cell_type_regular:
+        runner_do_grav_long_range_uniform_non_periodic(r, ci, top);
+        break;
+      case cell_type_zoom:
+        runner_do_grav_long_range_zoom_non_periodic(r, ci, top);
+        break;
+      case cell_type_buffer:
+        runner_do_grav_long_range_zoom_non_periodic(r, ci, top);
+        break;
+      case cell_type_bkg:
+        runner_do_grav_long_range_zoom_non_periodic(r, ci, top);
+        break;
+      default:
+        error("Unknown cell type in long-range gravity task!");
+    }
+  }
+
+#if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_GRAVITY_FORCE_CHECKS)
+  /* Count the number of mesh interactions if using the mesh. */
+  if (periodic) {
+    runner_count_mesh_interactions(r, ci, top);
+  }
+#endif
+
+  if (timer) TIMER_TOC(timer_dograv_long_range);
+}
+
+/**
  * @brief Performs M-M interactions between a given top-level cell and all other
  * top level cells not interacted with via pair tasks or the mesh.
  *
@@ -462,175 +633,4 @@ void runner_do_grav_long_range_uniform_periodic(struct runner *r,
       } /* Loop over relevant top-level cells (k) */
     } /* Loop over relevant top-level cells (j) */
   } /* Loop over relevant top-level cells (i) */
-}
-
-/**
- * @brief Accumalate the number of particle mesh interactions for debugging
- * purposes.
- *
- * @param s The #space.
- * @param cells The top-level cells.
- * @param top The current top-level cell.
- * @param periodic Is the space periodic?
- * @param dim The dimensions of the space.
- * @param max_distance2 The maximum distance for a pair or mm interaction.
- */
-void runner_count_mesh_interactions(struct runner *r, struct cell *ci,
-                                    struct cell *top) {
-
-#if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_GRAVITY_FORCE_CHECKS)
-
-  struct engine *e = r->e;
-  struct space *s = e->s;
-  struct cell *cells = s->cells_top;
-  const int periodic = e->mesh->periodic;
-  const double dim[3] = {e->mesh->dim[0], e->mesh->dim[1], e->mesh->dim[2]};
-
-  /* Get the maximum distance at which we can have a non-mesh interaction. */
-  const double max_distance = e->mesh->r_cut_max;
-  const double max_distance2 = max_distance * max_distance;
-
-  /* Get the mutlipole of the cell we are interacting. */
-  struct gravity_tensors *const multi_i = ci->grav.multipole;
-
-  /* We need to treat zoom cells and background/buffer cells differently
-   * when counting interactions since we've made all interactions choices
-   * at the void cell top level. Therefore, for zoom cells we need to use
-   * the top level void cell for considerations. */
-  if (ci->type == cell_type_zoom) {
-    top = ci->top->void_parent->top;
-  }
-
-  /* Loop over all other non-zoom cells and account for the
-   * mesh contribution. */
-  for (int n = s->zoom_props->bkg_cell_offset; n < s->nr_cells; n++) {
-
-    /* Handle on the top-level cell and it's gravity business*/
-    struct cell *cj = &cells[n];
-    struct gravity_tensors *const multi_j = cj->grav.multipole;
-
-    /* Avoid self contributions */
-    if (top == cj) continue;
-
-    /* Skip empty cells */
-    if (multi_j->m_pole.M_000 == 0.f) continue;
-
-    /* Minimal distance between any pair of particles */
-    const double min_radius2 = cell_min_dist2(top, cj, periodic, dim);
-
-    /* Are we beyond the distance where the truncated forces are 0 ?*/
-    if (min_radius2 > max_distance2) {
-#ifdef SWIFT_DEBUG_CHECKS
-      /* Need to account for the interactions we missed */
-      accumulate_add_ll(&multi_i->pot.num_interacted,
-                        multi_j->m_pole.num_gpart);
-#endif
-
-#ifdef SWIFT_GRAVITY_FORCE_CHECKS
-      /* Need to account for the interactions we missed */
-      accumulate_add_ll(&multi_i->pot.num_interacted_pm,
-                        multi_j->m_pole.num_gpart);
-#endif
-      /* Record that this multipole received a contribution */
-      multi_i->pot.interacted = 1;
-    }
-  }
-#else
-  error(
-      "This function should not be called without debugging checks or "
-      "force checks enabled!");
-#endif
-}
-
-/**
- * @brief Performs all M-M interactions between a given top-level cell and
- * all the other top-levels that are far enough.
- *
- * This function is the main long-range gravity function. It is called by
- * the runner and will call the appropriate interaction function for the
- * given cell type/space periodicity.
- *
- * @param r The thread #runner.
- * @param ci The #cell of interest.
- * @param timer Are we timing this ?
- */
-void runner_do_grav_long_range(struct runner *r, struct cell *ci,
-                               const int timer) {
-
-  TIMER_TIC;
-
-  struct space *s = r->e->s;
-
-  /* Is the space periodic? */
-  const int periodic = s->periodic;
-
-  /* Anything to do here? */
-  if (!cell_is_active_gravity(ci, r->e)) return;
-
-  if (ci->nodeID != engine_rank)
-    error("Non-local cell in long-range gravity task!");
-
-  /* Check multipole has been drifted */
-  if (ci->grav.ti_old_multipole < r->e->ti_current)
-    cell_drift_multipole(ci, r->e);
-
-  /* Find this cell's top-level (great-)parent */
-  struct cell *top = ci;
-  while (top->parent != NULL) top = top->parent;
-
-  /* If we have a zoom cell the true top level cell where we defined the
-   * interactions is the top level void parent cell. */
-  if (top->type == cell_type_zoom) {
-    top = top->void_parent->top;
-  }
-
-  /* Call the appropriate interaction function based on the type of the
-   * cell in question. */
-  if (periodic) {
-    switch (ci->type) {
-
-      case cell_type_regular:
-        runner_do_grav_long_range_uniform_periodic(r, ci, top);
-        break;
-      case cell_type_zoom:
-        runner_do_grav_long_range_zoom_periodic(r, ci, top);
-        break;
-      case cell_type_buffer:
-        runner_do_grav_long_range_zoom_periodic(r, ci, top);
-        break;
-      case cell_type_bkg:
-        runner_do_grav_long_range_zoom_periodic(r, ci, top);
-        break;
-      default:
-        error("Unknown cell type in long-range gravity task!");
-    }
-  } else {
-
-    switch (ci->type) {
-
-      case cell_type_regular:
-        runner_do_grav_long_range_uniform_non_periodic(r, ci, top);
-        break;
-      case cell_type_zoom:
-        runner_do_grav_long_range_zoom_non_periodic(r, ci, top);
-        break;
-      case cell_type_buffer:
-        runner_do_grav_long_range_zoom_non_periodic(r, ci, top);
-        break;
-      case cell_type_bkg:
-        runner_do_grav_long_range_zoom_non_periodic(r, ci, top);
-        break;
-      default:
-        error("Unknown cell type in long-range gravity task!");
-    }
-  }
-
-#if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_GRAVITY_FORCE_CHECKS)
-  /* Count the number of mesh interactions if using the mesh. */
-  if (periodic) {
-    runner_count_mesh_interactions(r, ci, top);
-  }
-#endif
-
-  if (timer) TIMER_TOC(timer_dograv_long_range);
 }
