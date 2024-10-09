@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2016 Bert Vandenbroucke (bert.vandenbroucke@gmail.com).
+ * Copyright (c) 2024 Mladen Ivkovic (mladen.ivkovic@hotmail.com)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,33 +16,17 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
+#ifndef SWIFT_FVPM_GEOMETRY_STRUCT_H
+#define SWIFT_FVPM_GEOMETRY_STRUCT_H
 
-#ifndef SWIFT_VORONOIXD_CELL_H
-#define SWIFT_VORONOIXD_CELL_H
+/* Config parameters. */
+#include <config.h>
 
-/* 1D Voronoi cell */
-struct voronoi_cell {
+/* Import the right geometry struct definition */
+#if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH) || defined(RT_GEAR)
+#include "./fvpm_geometry/Gizmo/fvpm_geometry_struct.h"
+#else
+#include "./fvpm_geometry/None/fvpm_geometry_struct.h"
+#endif
 
-  /* The position of the generator of the cell. */
-  double x;
-
-  /* The position of the left neighbour of the cell. */
-  double xL;
-
-  /* The position of the right neighbour of the cell. */
-  double xR;
-
-  /* The particle ID of the left neighbour. */
-  unsigned long long idL;
-
-  /* The particle ID of the right neighbour. */
-  unsigned long long idR;
-
-  /* The "volume" of the 1D cell. */
-  float volume;
-
-  /* The centroid of the cell. */
-  float centroid;
-};
-
-#endif  // SWIFT_VORONOIXD_CELL_H
+#endif /* SWIFT_FVPM_GEOMETRY_STRUCT_H */
