@@ -1373,8 +1373,8 @@ void engine_rebuild(struct engine *e, const int repartitioned,
 
   /* Set the initial completeness flag for the moving mesh (before exchange) */
   if (e->policy & engine_policy_grid) {
-    cell_grid_set_self_completeness_mapper(e->s->cells_top, e->s->nr_cells,
-                                           NULL);
+    threadpool_map(&e->threadpool, cell_grid_set_self_completeness_mapper, NULL,
+                   e->s->nr_cells, 1, threadpool_auto_chunk_size, e);
   }
 
 /* If in parallel, exchange the cell structure, top-level and neighbouring
@@ -1750,7 +1750,9 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->type == task_type_rt_ghost2 || t->type == task_type_rt_tchem ||
         t->type == task_type_rt_advance_cell_time ||
         t->type == task_type_neutrino_weight || t->type == task_type_csds ||
-        t->subtype == task_subtype_force ||
+        t->type == task_type_slope_estimate_ghost ||
+        t->type == task_type_slope_limiter_ghost ||
+        t->type == task_type_flux_ghost || t->subtype == task_subtype_force ||
         t->subtype == task_subtype_limiter ||
         t->subtype == task_subtype_gradient ||
         t->subtype == task_subtype_stars_prep1 ||
@@ -1773,7 +1775,10 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->subtype == task_subtype_spart_prep2 ||
         t->subtype == task_subtype_sf_counts ||
         t->subtype == task_subtype_rt_gradient ||
-        t->subtype == task_subtype_rt_transport)
+        t->subtype == task_subtype_rt_transport ||
+        t->subtype == task_subtype_flux ||
+        t->subtype == task_subtype_slope_estimate ||
+        t->subtype == task_subtype_slope_limiter)
       t->skip = 1;
   }
 

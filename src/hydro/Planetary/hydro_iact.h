@@ -485,4 +485,25 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   pi->force.v_sig = max(pi->force.v_sig, v_sig);
 }
 
+/**
+ * @brief Unused in this scheme.
+ */
+__attribute__((always_inline)) INLINE static void runner_iact_slope_estimate(
+    struct part *pi, struct part *pj, double const *centroid,
+    float surface_area, const double *shift, int symmetric) {}
+
+/**
+ * @brief Unused in this scheme.
+ */
+__attribute__((always_inline)) INLINE static void runner_iact_slope_limiter(
+    struct part *pi, struct part *pj, double const *centroid,
+    float surface_area, const double *shift, int symmetric) {}
+
+/**
+ * @brief Unused in this scheme.
+ */
+__attribute__((always_inline)) INLINE static void runner_iact_flux_exchange(
+    struct part *pi, struct part *pj, double const *centroid,
+    float surface_area, const double *shift, int symmetric) {}
+
 #endif /* SWIFT_PLANETARY_HYDRO_IACT_H */
