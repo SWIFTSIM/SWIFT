@@ -1963,9 +1963,8 @@ static INLINE void runner_dopair_grav_mm_symmetric(struct runner *r,
  * @param ci The first #cell.
  * @param cj The second #cell.
  */
-static INLINE void runner_dopair_grav_mm(struct runner *r,
-                                         struct cell *restrict ci,
-                                         struct cell *restrict cj) {
+void runner_dopair_grav_mm(struct runner *r, struct cell *restrict ci,
+                           struct cell *restrict cj) {
 
   const struct engine *e = r->e;
 
@@ -2007,15 +2006,6 @@ void runner_dopair_grav_mm_progenies(struct runner *r, const long long flags,
   /* Clear the flags */
   runner_clear_grav_flags(ci, e);
   runner_clear_grav_flags(cj, e);
-
-  /* A flag of -2 means we have an mm task directly between 2 cells not a
-   * combination of their progeny. */
-  /* TODO: do this better, surely we can define them based on progeny and
-   * limit the number of MM tasks!? */
-  if (flags == -2) {
-    runner_dopair_grav_mm(r, ci, cj);
-    return;
-  }
 
   /* Loop over all pairs of progenies */
   for (int i = 0; i < 8; i++) {
