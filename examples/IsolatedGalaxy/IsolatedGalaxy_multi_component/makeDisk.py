@@ -586,3 +586,16 @@ if hydro:
 # save model
 nb.rename("galaxy_multi_component.hdf5")
 nb.write()
+
+#%%
+#Add the StellarParticleType attribute to the dataset
+import h5py as h5
+import numpy as np
+
+nb_star = nb.select("stars")
+N_star = np.sum(nb_star.npart)
+star_tpe = 2 # Single population stars
+star_type = np.ones(N_star)*star_tpe
+
+with  h5.File("galaxy_multi_component.hdf5", "r+") as f:
+    f["PartType4"].create_dataset("StellarParticleType", data=star_type)
