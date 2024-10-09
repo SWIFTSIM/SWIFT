@@ -51,9 +51,7 @@ In the following, we always refer to physical quantities. In non-cosmological si
 * :math:`u_p = u_c/a^{3(\gamma -1)}`
 
 
-Here, :math:`H` is the Hubble constant at any redshift, :math:`c(a)` is the potential normalization constant and :math:`\gamma` the gas adiabatic index.
-
-Notice that the potential normalization constant has been chosen to be :math:`c(a) = - \ddot{a} a  \mathbf{x}_c^2 / 2`.
+Here, :math:`H` is the Hubble constant at any redshift, :math:`c(a)` is the potential normalization constant and :math:`\gamma` the gas adiabatic index. Notice that the potential normalization constant has been chosen to be :math:`c(a) = 0`.
 
 
 Sink formation
