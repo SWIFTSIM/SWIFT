@@ -195,6 +195,8 @@ rt_tchem_get_gas_temperature(const struct part* restrict p,
 __attribute__((always_inline)) INLINE static void
 rt_tchem_set_particle_quantities_for_test(struct part* restrict p) {
 
+#ifdef GIZMO_MFV_SPH
+
   /* Set the values that you actually want. Needs to be in internal units.*/
   /* 1 hydrogen_atom_mass / cm^3 / (1.98848e18 g/IMU * 3.0857e15cm/ILU^3) */
   /* float density = 2.471e+04; */
@@ -218,6 +220,12 @@ rt_tchem_set_particle_quantities_for_test(struct part* restrict p) {
   /* This assumes zero velocity */
   p->conserved.energy = p->conserved.mass * internal_energy;
   hydro_set_internal_energy(p, internal_energy);
+
+#else
+
+  error("This isn't implemented for SPH yet.");
+
+#endif
 }
 
 /**
