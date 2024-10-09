@@ -17,11 +17,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_H
-#define SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_H
+#ifndef SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_H
+#define SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_H
 
 /**
- * @file src/chemistry/GEAR_MFM_DIFFUSION/chemistry.h
+ * @file src/chemistry/GEAR_MF_DIFFUSION/chemistry.h
  */
 
 /* Some standard headers. */
@@ -62,7 +62,7 @@
  */
 static INLINE void chemistry_print_backend(
     const struct chemistry_global_data* data) {
-  message("Chemistry function is 'Gear MFM diffusion'.");
+  message("Chemistry function is 'Gear MF diffusion'.");
 }
 
 /**
@@ -446,7 +446,7 @@ chemistry_supertimestep(const struct phys_const* restrict phys_const,
 /**
  * @brief Finishes the smooth metal calculation.
  *
- * End MFM geometry computations
+ * End MF geometry computations
  *
  * This function requires the #hydro_end_density to have been called.
  *
@@ -595,7 +595,7 @@ __attribute__((always_inline)) INLINE static void chemistry_end_gradient(
 /**
  * @brief Prepare a particle for the force calculation.
  *
- * In GEAR MFM diffusion, we update the flux timestep.
+ * In GEAR MF diffusion, we update the flux timestep.
  *
  * @param p The particle to act upon
  * @param xp The extended particle data to act upon
@@ -1155,4 +1155,4 @@ chemistry_get_bh_total_metal_mass_for_stats(const struct bpart* restrict bp) {
   return 0.f;
 }
 
-#endif /* SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_H */
+#endif /* SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_H */

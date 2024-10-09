@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_RIEMANN_HLL_H
-#define SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_RIEMANN_HLL_H
+#ifndef SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_RIEMANN_HLL_H
+#define SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_RIEMANN_HLL_H
 
 #include "chemistry_getters.h"
 #include "chemistry_gradients.h"
@@ -305,4 +305,4 @@ chemistry_riemann_solve_for_flux(
   }
 }
 
-#endif /* SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_RIEMANN_HLL_H */
+#endif /* SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_RIEMANN_HLL_H */

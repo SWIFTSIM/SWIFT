@@ -17,8 +17,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_CHEMISTRY_IO_GEAR_MFM_DIFFUSION_H
-#define SWIFT_CHEMISTRY_IO_GEAR_MFM_DIFFUSION_H
+#ifndef SWIFT_CHEMISTRY_IO_GEAR_MF_DIFFUSION_H
+#define SWIFT_CHEMISTRY_IO_GEAR_MF_DIFFUSION_H
 
 #include "chemistry_struct.h"
 #include "engine.h"
@@ -195,4 +195,4 @@ INLINE static void chemistry_write_flavour(hid_t h_grp, hid_t h_grp_columns,
 }
 #endif
 
-#endif /* SWIFT_CHEMISTRY_IO_GEAR_MFM_DIFFUSION_H */
+#endif /* SWIFT_CHEMISTRY_IO_GEAR_MF_DIFFUSION_H */

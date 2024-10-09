@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_SETTERS_H
-#define SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_SETTERS_H
+#ifndef SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_SETTERS_H
+#define SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_SETTERS_H
 
 #include "chemistry_getters.h"
 #include "chemistry_struct.h"
@@ -175,4 +175,4 @@ chemistry_part_normalise_gradients(struct part *restrict p, const float norm) {
   chd->filtered.grad_v_tilde[2][2] *= norm;
 }
 
-#endif /* SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_SETTERS_H */
+#endif /* SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_SETTERS_H */

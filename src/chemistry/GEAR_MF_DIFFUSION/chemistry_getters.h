@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_GETTERS_H
-#define SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_GETTERS_H
+#ifndef SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_GETTERS_H
+#define SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_GETTERS_H
 
 #include "chemistry_struct.h"
 #include "const.h"
@@ -459,4 +459,4 @@ chemistry_compute_subtimestep(const struct part *restrict p,
   return chd->timesteps.explicit_timestep / expression;
 }
 
-#endif /* SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_GETTERS_H  */
+#endif /* SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_GETTERS_H  */

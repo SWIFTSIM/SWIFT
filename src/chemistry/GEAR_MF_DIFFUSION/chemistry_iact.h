@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_IACT_H
-#define SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_IACT_H
+#ifndef SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_IACT_H
+#define SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_IACT_H
 
 #include "chemistry_flux.h"
 #include "chemistry_getters.h"
@@ -26,7 +26,7 @@
 #define GIZMO_VOLUME_CORRECTION
 
 /**
- * @file GEAR_MFM_DIFFUSION/chemistry_iact.h
+ * @file GEAR_MF_DIFFUSION/chemistry_iact.h
  * @brief Diffusion of metals with MFM.
  *
  * The description of the algorithms for diffusion are given in Hopkins 2017
@@ -517,4 +517,4 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_diffusion(
                                       chem_data);
 }
 
-#endif /* SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_IACT_H */
+#endif /* SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_IACT_H */

@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_SLOPE_LIMITERS_CELL_H
-#define SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_SLOPE_LIMITERS_CELL_H
+#ifndef SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_SLOPE_LIMITERS_CELL_H
+#define SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_SLOPE_LIMITERS_CELL_H
 
 #include "chemistry_getters.h"
 #include "hydro.h"
@@ -247,4 +247,4 @@ __attribute__((always_inline)) INLINE static void chemistry_slope_limit_cell(
   chd->filtered.grad_v_tilde[2][2] = gradvz_tilde[2];
 }
 
-#endif /* SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_SLOPE_LIMITERS_CELL_H */
+#endif /* SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_SLOPE_LIMITERS_CELL_H */
