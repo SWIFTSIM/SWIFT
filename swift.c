@@ -1168,7 +1168,7 @@ int main(int argc, char *argv[]) {
     /* Initialise the sink properties */
     if (with_sinks) {
       sink_props_init(&sink_properties, &feedback_properties, &prog_const, &us,
-                      params, &cosmo);
+                      params, &cosmo, with_feedback);
     } else
       bzero(&sink_properties, sizeof(struct sink_props));
 
