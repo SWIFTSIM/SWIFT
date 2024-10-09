@@ -85,7 +85,6 @@ __attribute__((always_inline)) INLINE static void forcing_terms_apply(
   const float u0 = terms->u0;
   const float Vz_factor = terms->Vz_factor;
   const double k0 = (2. * M_PI / L) * terms->kv;
-  const double kf = M_SQRT2 * k0;
   double v_Rob[3];
 
   /* Switching between different kinds of flows */

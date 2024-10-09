@@ -165,6 +165,9 @@ void hydro_props_init(struct hydro_props *p,
   /* Same for the thermal diffusion parameters */
   diffusion_init(params, us, phys_const, &(p->diffusion));
 
+  /* Same for the MHD parameters */
+  mhd_init(params, us, phys_const, &(p->mhd));
+
   /* Compute the initial energy (Note the temp. read is in internal units)
    */
   /* u_init = k_B T_init / (mu m_p (gamma - 1)) */
@@ -273,6 +276,7 @@ void hydro_props_print(const struct hydro_props *p) {
 
   /* Same for MHD */
   message("MHD scheme: %s.", MHD_IMPLEMENTATION);
+  mhd_print(&(p->mhd));
 
   // MATTHIEU: Temporary location for this planetary SPH i/o business.
 
@@ -337,6 +341,10 @@ void hydro_props_print_snapshot(hid_t h_grpsph, const struct hydro_props *p) {
 
   /* Same for the diffusion */
   diffusion_print_snapshot(h_grpsph, &(p->diffusion));
+
+  /* Write out the implementation-dependent MHD parameters
+   * (see mhd/SCHEME/mhd_parameters.h for this implementation) */
+  mhd_print_snapshot(h_grpsph, &(p->mhd));
 }
 #endif
 
