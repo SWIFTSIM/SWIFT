@@ -163,11 +163,13 @@ INLINE static void sink_props_init(struct sink_props *sp,
                                    const struct unit_system *us,
                                    struct swift_params *params,
                                    const struct cosmology *cosmo,
-				   const int with_feedback) {
+                                   const int with_feedback) {
 
   /* If we do not run with feedback, abort and print an error */
   if (!with_feedback)
-    error("ERROR: Running with sink but without feedback. GEAR sink model needs to be run with --sink and --feedback");
+    error(
+        "ERROR: Running with sink but without feedback. GEAR sink model needs "
+        "to be run with --sink and --feedback");
 
   /* Default values */
   const float default_f_acc = 0.8;
