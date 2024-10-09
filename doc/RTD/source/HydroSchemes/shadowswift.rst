@@ -5,9 +5,10 @@ ShadowSWIFT (moving mesh hydrodynamics)
 =======================================
 
 .. warning::
-    The moving mesh hydrodynamics is still in development and might not fully function as expected.
+    The moving mesh hydrodynamics solver is currently in the process of being merged into master and will **NOT**
+    work on the master branch. To use it, compile the code using the ``moving_mesh`` branch.
 
-This is an implementation of the moving mesh finite volume method for hydrodynamics in SWIFT.
+This is an implementation of the moving-mesh finite-volume method for hydrodynamics in SWIFT.
 To use this scheme, a Riemann solver is also needed. Configure SWIFT as follows:
 
 .. code-block:: bash
@@ -27,11 +28,12 @@ SWIFT is supported in this scheme.
 
 -   Cosmological time-integration is supported.
 
--   There is an experimental implementation of cooling (**treat results with caution!**)
+-   Cooling and chemistry are supported, with the exception of the ``GEAR_diffusion`` chemistry scheme. Metals are
+    properly according to mass fluxes.
 
 -   Choice between periodic, reflective, open, inflow and vacuum boundary conditions (for non-periodic boundary
     conditions, the desired variant must be selected in ``const.h``). Additionally, reflective boundary conditions
-    are applied to swift boundary particles. Configure with ``--with-boundary-particles=<N>`` to use this (e.g. to
+    are applied to SWIFT's boundary particles. Configure with ``--with-boundary-particles=<N>`` to use this (e.g. to
     simulate walls).
 
 
@@ -41,6 +43,6 @@ These are currently the main limitations of the ShadowSWIFT hydro scheme:
 
 -   Unlike SPH the cells of the moving mesh must form a partition of the entire simulation volume. This means that there
     cannot be empty SWIFT cells and vacuum must be explicitly represented by zero (or negligible) mass particles.
--   Star formation/stellar feedback is not supported yet.
--   Chemistry schemes do not take mass fluxes into account properly.
--   Some challenging test cases (e.g. Zel'dovich pancake) might not finish succesfully.
+-   Most other subgrid physics, most notably, star formation and stellar feedback are not supported yet.
+-   No MHD schemes are supported.
+-   No radiative-transfer schemes are supported.

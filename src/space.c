@@ -2471,6 +2471,9 @@ void space_struct_dump(struct space *s, FILE *stream) {
                        "space_splitsize", "space_splitsize");
   restart_write_blocks(&space_maxsize, sizeof(int), 1, stream, "space_maxsize",
                        "space_maxsize");
+  restart_write_blocks(&space_grid_split_threshold, sizeof(int), 1, stream,
+                       "space_grid_split_threshold",
+                       "space_grid_split_threshold");
   restart_write_blocks(&space_subsize_pair_hydro, sizeof(int), 1, stream,
                        "space_subsize_pair_hydro", "space_subsize_pair_hydro");
   restart_write_blocks(&space_subsize_self_hydro, sizeof(int), 1, stream,
@@ -2556,6 +2559,8 @@ void space_struct_restore(struct space *s, FILE *stream) {
                       "space_splitsize");
   restart_read_blocks(&space_maxsize, sizeof(int), 1, stream, NULL,
                       "space_maxsize");
+  restart_read_blocks(&space_grid_split_threshold, sizeof(int), 1, stream, NULL,
+                      "space_grid_split_threshold");
   restart_read_blocks(&space_subsize_pair_hydro, sizeof(int), 1, stream, NULL,
                       "space_subsize_pair_hydro");
   restart_read_blocks(&space_subsize_self_hydro, sizeof(int), 1, stream, NULL,

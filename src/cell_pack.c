@@ -157,11 +157,11 @@ int cell_pack_grid_extra(const struct cell *c,
 
   /* Start by packing the construction level of the current cell. */
   if (c->grid.construction_level == NULL) {
-    info[0] = above_construction_level;
+    info[0] = grid_above_construction_level;
   } else if (c->grid.construction_level == c) {
-    info[0] = on_construction_level;
+    info[0] = grid_on_construction_level;
   } else {
-    info[0] = below_construction_level;
+    info[0] = grid_below_construction_level;
   }
 
   /* Fill in the progeny, depth-first recursion. */
@@ -387,9 +387,9 @@ int cell_unpack_grid_extra(const enum grid_construction_level *info,
 #ifdef WITH_MPI
 
   /* Unpack the current pcell. */
-  if (info[0] == on_construction_level) {
+  if (info[0] == grid_on_construction_level) {
     construction_level = c;
-  } else if (info[0] == above_construction_level) {
+  } else if (info[0] == grid_above_construction_level) {
 #ifdef SWIFT_DEBUG_CHECKS
     if (construction_level != NULL)
       error(
@@ -398,7 +398,7 @@ int cell_unpack_grid_extra(const enum grid_construction_level *info,
 #endif
   } else {
 #ifdef SWIFT_DEBUG_CHECKS
-    if (info[0] != below_construction_level)
+    if (info[0] != grid_below_construction_level)
       error("Invalid construction level!");
     if (construction_level == NULL || construction_level == c)
       error("Invalid construction level cell pointer!");

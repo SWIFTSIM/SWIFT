@@ -1409,7 +1409,7 @@ void engine_rebuild(struct engine *e, const int repartitioned,
   }
 #endif
 
-  /* Set the grid construction level, is needed before splitting */
+  /* Set the grid construction level, is needed before splitting the tasks */
   if (e->policy & engine_policy_grid) {
     /* Set the completeness and construction level */
     threadpool_map(&e->threadpool, cell_set_grid_completeness_mapper, NULL,
