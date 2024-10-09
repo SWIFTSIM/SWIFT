@@ -690,34 +690,38 @@ inline static int geometry3d_in_sphere_adaptive(struct geometry3d* restrict g,
       geometry3d_in_sphere(a->x_f64, b->x_f64, c->x_f64, d->x_f64, e->x_f64,
                            circumcenter, circumradius2);
 #endif
-#ifdef SWIFT_DEBUG_CHECKS
-  /* Check that the distance to the other 2 vertices is approximately equal to
-   * the circumradius */
-  const double dx_b[] = {b->x_f64[0] - a->x_f64[0] - circumcenter[0],
-                         b->x_f64[1] - a->x_f64[1] - circumcenter[1],
-                         b->x_f64[2] - a->x_f64[2] - circumcenter[2]};
-  const double dx_c[] = {c->x_f64[0] - a->x_f64[0] - circumcenter[0],
-                         c->x_f64[1] - a->x_f64[1] - circumcenter[1],
-                         c->x_f64[2] - a->x_f64[2] - circumcenter[2]};
-  const double dx_d[] = {d->x_f64[0] - a->x_f64[0] - circumcenter[0],
-                         d->x_f64[1] - a->x_f64[1] - circumcenter[1],
-                         d->x_f64[2] - a->x_f64[2] - circumcenter[2]};
-  const float r2_b = dx_b[0] * dx_b[0] + dx_b[1] * dx_b[1] + dx_b[2] * dx_b[2];
-  const float r2_c = dx_c[0] * dx_c[0] + dx_c[1] * dx_c[1] + dx_c[2] * dx_c[2];
-  const float r2_d = dx_d[0] * dx_d[0] + dx_d[1] * dx_d[1] + dx_d[2] * dx_d[2];
-  if (fabsf(r2_b - *circumradius2) > 1e-5f * r2_b ||
-      fabsf(r2_c - *circumradius2) > 1e-5f * r2_c ||
-      fabsf(r2_d - *circumradius2) > 1e-5f * r2_d)
-    error("Circumcenter not equidistant from all vertices of the tetrahedron!");
-#endif
   if (result == 0) {
+    /* Circumcenter result might be inaccurate, reset circumradius. */
+    *circumradius2 = -1.;
+    /* Do exact test */
     result = geometry3d_in_sphere_exact(g, a->x_u64, b->x_u64, c->x_u64,
                                         d->x_u64, e->x_u64);
   } else {
-#if defined(SWIFT_DEBUG_CHECKS) && defined(DELAUNAY_3D_HAND_VEC)
-    int result_normal = geometry3d_in_sphere(ad, b->x_f64, c->x_f64, d->x_f64,
-                                             e->x_f64, circumcenter);
-    assert(result == result_normal);
+#ifdef SWIFT_DEBUG_CHECKS
+//#ifdef DELAUNAY_3D_HAND_VEC
+//    int result_normal = geometry3d_in_sphere(a->x_f64, b->x_f64, c->x_f64, d->x_f64,
+//                                             e->x_f64, circumcenter, circumradius2);
+//    assert(result == result_normal);
+//#endif
+
+    /* Check that the distance to the other 2 vertices is approximately equal to
+     * the circumradius */
+    const double dx_b[] = {b->x_f64[0] - a->x_f64[0] - circumcenter[0],
+                           b->x_f64[1] - a->x_f64[1] - circumcenter[1],
+                           b->x_f64[2] - a->x_f64[2] - circumcenter[2]};
+    const double dx_c[] = {c->x_f64[0] - a->x_f64[0] - circumcenter[0],
+                           c->x_f64[1] - a->x_f64[1] - circumcenter[1],
+                           c->x_f64[2] - a->x_f64[2] - circumcenter[2]};
+    const double dx_d[] = {d->x_f64[0] - a->x_f64[0] - circumcenter[0],
+                           d->x_f64[1] - a->x_f64[1] - circumcenter[1],
+                           d->x_f64[2] - a->x_f64[2] - circumcenter[2]};
+    const float r2_b = dx_b[0] * dx_b[0] + dx_b[1] * dx_b[1] + dx_b[2] * dx_b[2];
+    const float r2_c = dx_c[0] * dx_c[0] + dx_c[1] * dx_c[1] + dx_c[2] * dx_c[2];
+    const float r2_d = dx_d[0] * dx_d[0] + dx_d[1] * dx_d[1] + dx_d[2] * dx_d[2];
+    if (fabsf(r2_b - *circumradius2) > 1e-5f * r2_b ||
+        fabsf(r2_c - *circumradius2) > 1e-5f * r2_c ||
+        fabsf(r2_d - *circumradius2) > 1e-5f * r2_d)
+      error("Circumcenter not equidistant from all vertices of the tetrahedron!");
 #endif
   }
 

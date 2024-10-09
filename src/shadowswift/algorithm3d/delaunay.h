@@ -1549,6 +1549,12 @@ inline static void delaunay_one_to_four_flip(struct delaunay* d, int v, int t) {
   tetrahedron_swap_neighbour(&d->tetrahedra[ngbs[2]], idx_in_ngbs[2], t1, 2);
   tetrahedron_swap_neighbour(&d->tetrahedra[ngbs[3]], idx_in_ngbs[3], t, 3);
 
+  /* Sanity checks */
+  delaunay_tetrahedron_sanity_checks(d, t);
+  delaunay_tetrahedron_sanity_checks(d, t1);
+  delaunay_tetrahedron_sanity_checks(d, t2);
+  delaunay_tetrahedron_sanity_checks(d, t3);
+
   /* enqueue all new/updated tetrahedra for delaunay checks */
   delaunay_assert(d->tetrahedra_to_check.values[0] == t);
   int_lifo_queue_push(&d->tetrahedra_to_check, t1);
@@ -1676,10 +1682,18 @@ inline static void delaunay_two_to_six_flip(struct delaunay* d, int v,
   tetrahedron_swap_neighbour(&d->tetrahedra[ngbs[4]], idx_in_ngbs[4], t[0], 3);
   tetrahedron_swap_neighbour(&d->tetrahedra[ngbs[5]], idx_in_ngbs[5], tn3, 2);
 
+  /* Sanity checks */
+  delaunay_tetrahedron_sanity_checks(d, t[0]);
+  delaunay_tetrahedron_sanity_checks(d, t[1]);
+  delaunay_tetrahedron_sanity_checks(d, tn2);
+  delaunay_tetrahedron_sanity_checks(d, tn3);
+  delaunay_tetrahedron_sanity_checks(d, tn4);
+  delaunay_tetrahedron_sanity_checks(d, tn5);
+
   /* Add new/updated tetrahedra to queue for checking */
-  delaunay_assert(d->tetrahedra_to_check.values[0] == t[0])
-      delaunay_assert(d->tetrahedra_to_check.values[1] == t[1])
-          int_lifo_queue_push(&d->tetrahedra_to_check, tn2);
+  delaunay_assert(d->tetrahedra_to_check.values[0] == t[0]);
+  delaunay_assert(d->tetrahedra_to_check.values[1] == t[1]);
+  int_lifo_queue_push(&d->tetrahedra_to_check, tn2);
   int_lifo_queue_push(&d->tetrahedra_to_check, tn3);
   int_lifo_queue_push(&d->tetrahedra_to_check, tn4);
   int_lifo_queue_push(&d->tetrahedra_to_check, tn5);
@@ -1850,24 +1864,10 @@ inline static void delaunay_n_to_2n_flip(struct delaunay* d, int v,
                                tn1, 1);
   }
 
-#ifdef DELAUNAY_CHECKS
-  for (int j = 0; j < 2 * n; j++) {
-    /* Check neighbour relations */
-    int t_idx = tn[j];
-    struct tetrahedron* this_t = &d->tetrahedra[t_idx];
-    for (int i = 0; i < 4; i++) {
-      struct tetrahedron* t_ngb = &d->tetrahedra[this_t->neighbours[i]];
-      int idx_in_t_ngb = this_t->index_in_neighbour[i];
-      if (t_ngb->neighbours[idx_in_t_ngb] != t_idx) {
-        error("Wrong neighbour relation!");
-      }
-    }
-  }
-#endif
-
   /* add new/updated tetrahedra to the queue for checking */
   int_lifo_queue_reset(&d->tetrahedra_to_check);
   for (int j = 0; j < 2 * n; j++) {
+    delaunay_tetrahedron_sanity_checks(d, tn[j]);
     int_lifo_queue_push(&d->tetrahedra_to_check, tn[j]);
   }
 }
@@ -1979,6 +1979,11 @@ inline static void delaunay_two_to_three_flip(struct delaunay* restrict d,
   tetrahedron_swap_neighbour(&d->tetrahedra[ngbs[3]], idx_in_ngb[3], t1, 1);
   tetrahedron_swap_neighbour(&d->tetrahedra[ngbs[4]], idx_in_ngb[4], t0, 3);
   tetrahedron_swap_neighbour(&d->tetrahedra[ngbs[5]], idx_in_ngb[5], t0, 2);
+
+  /* Sanity checks */
+  delaunay_tetrahedron_sanity_checks(d, t0);
+  delaunay_tetrahedron_sanity_checks(d, t1);
+  delaunay_tetrahedron_sanity_checks(d, t2);
 
   /* add new/updated tetrahedrons to queue */
   int_lifo_queue_push(&d->tetrahedra_to_check, t0);
@@ -2156,6 +2161,12 @@ inline static void delaunay_four_to_four_flip(struct delaunay* restrict d,
   tetrahedron_swap_neighbour(&d->tetrahedra[ngbs[6]], idx_in_ngb[6], t2, 2);
   tetrahedron_swap_neighbour(&d->tetrahedra[ngbs[7]], idx_in_ngb[7], t0, 1);
 
+  /* Sanity checks */
+  delaunay_tetrahedron_sanity_checks(d, t0);
+  delaunay_tetrahedron_sanity_checks(d, t1);
+  delaunay_tetrahedron_sanity_checks(d, t2);
+  delaunay_tetrahedron_sanity_checks(d, t3);
+
   /* append updated tetrahedra to queue for checking */
   int_lifo_queue_push(&d->tetrahedra_to_check, t0);
   int_lifo_queue_push(&d->tetrahedra_to_check, t1);
@@ -2280,6 +2291,10 @@ inline static int delaunay_three_to_two_flip(struct delaunay* restrict d,
   tetrahedron_swap_neighbour(&d->tetrahedra[ngbs[3]], idx_in_ngb[3], t0, 1);
   tetrahedron_swap_neighbour(&d->tetrahedra[ngbs[4]], idx_in_ngb[4], t0, 3);
   tetrahedron_swap_neighbour(&d->tetrahedra[ngbs[5]], idx_in_ngb[5], t1, 2);
+
+  /* Sanity checks */
+  delaunay_tetrahedron_sanity_checks(d, t0);
+  delaunay_tetrahedron_sanity_checks(d, t1);
 
   /* add updated tetrahedra to queue */
   int_lifo_queue_push(&d->tetrahedra_to_check, t0);
@@ -2411,13 +2426,17 @@ inline static int delaunay_check_and_fix_tetrahedron(struct delaunay* d,
   delaunay_tetrahedron_sanity_checks(d, ngb);
 #endif
 
-  /* Is this tetrahedron stil valid?
+  /* Is this tetrahedron still valid?
    * NOTE: Whether this tetrahedron is invalidated by the top of its neighbour
    * is equivalent to whether the neighbour is invalidated by v. */
   const int is_valid = delaunay_tetrahedron_is_regular(d, ngb, v);
-  if (is_valid) return -1;
+  if (is_valid) {
+    delaunay_log("Tetrahedron %i is valid!", t);
+    return -1;
+  }
 
   /* Tetrahedron was invalidated. */
+  delaunay_log("Tetrahedron %i was invalidated by adding vertex %i", t, v);
   /* Figure out which flip is needed to restore the tetrahedra */
   /* Get the vertices to perform the orientation tests */
   const delaunay_vertex_t* v0 = &d->rescaled_vertices[v0_idx];
@@ -2426,18 +2445,6 @@ inline static int delaunay_check_and_fix_tetrahedron(struct delaunay* d,
   const delaunay_vertex_t* v3 = &d->rescaled_vertices[v3_idx];
   const delaunay_vertex_t* v4 = &d->rescaled_vertices[v4_idx];
 
-  const int test = geometry3d_in_sphere_adaptive(&d->geometry, v0, v1, v2, v3,
-                                                 v4, tetrahedron->circumcenter,
-                                                 &tetrahedron->circumradius2);
-
-  if (test >= 0) {
-    delaunay_log("Tetrahedron %i is valid!", t);
-    return -1;
-  }
-
-  delaunay_assert(test < 0);
-  delaunay_log("Tetrahedron %i was invalidated by adding vertex %i", t, v);
-  /* Figure out which flip is needed to restore the tetrahedra */
 #ifdef DELAUNAY_3D_HAND_VEC
   int tests[4];
   geometry3d_orient_4(&d->geometry, v0, v1, v2, v3, v4, tests);
@@ -2522,11 +2529,12 @@ inline static int delaunay_check_and_fix_tetrahedron(struct delaunay* d,
           d, t, ngb, other_ngb, top, d->tetrahedra[t].index_in_neighbour[top],
           i);
     } else {
-      delaunay_log("3 to 2 with %i and %i flip not possible!", t, ngb);
       /* This needs to be fixed by a later flip */
-      return -1;
+      delaunay_log("3 to 2 with %i and %i flip not possible!", t, ngb);
     }
   }
+  /* No freed tetrahedron to return if reaching this point */
+  return -1;
 }
 
 /**
