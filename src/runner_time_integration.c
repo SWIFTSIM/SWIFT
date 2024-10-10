@@ -1335,7 +1335,7 @@ static void runner_zoom_do_void_timestep_collect(struct runner *r,
        * zoom cell's timestep_collect task which is guranteed to happen
        * before the void timestep_collect). */
       if (cp->type != cell_type_zoom) {
-        zoom_void_timestep_collect_recursive(cp);
+        runner_zoom_do_void_timestep_collect(r, cp, 0);
       }
 
       /* And update */
