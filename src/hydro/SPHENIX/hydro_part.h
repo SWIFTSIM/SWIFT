@@ -163,15 +163,15 @@ struct part {
 
   /* Store density/force specific stuff. */
 
-  union {
-    /**
-     * @brief Structure for the variables only used in the density loop over
-     * neighbours.
-     *
-     * Quantities in this sub-structure should only be accessed in the density
-     * loop over neighbours and the ghost task.
-     */
-    struct {
+  //  union {
+  /**
+   * @brief Structure for the variables only used in the density loop over
+   * neighbours.
+   *
+   * Quantities in this sub-structure should only be accessed in the density
+   * loop over neighbours and the ghost task.
+   */
+  struct {
 
     /*! Neighbour number count. */
     float wcount;
