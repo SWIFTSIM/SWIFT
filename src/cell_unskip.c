@@ -1292,7 +1292,9 @@ int cell_activate_subcell_grav_tasks(struct cell *restrict ci,
   if (cj == NULL) {
 
     /* Do anything? */
-    if (ci->grav.count == 0 || !cell_is_active_gravity(ci, e)) return 1;
+    if ((ci->grav.count == 0 && ci->subtype != cell_subtype_void) ||
+        !cell_is_active_gravity(ci, e))
+      return 1;
 
     /* Has it already been processed? */
     if (cell_get_flag(ci, cell_flag_unskip_self_grav_processed)) return 1;
@@ -1370,7 +1372,8 @@ int cell_activate_subcell_grav_tasks(struct cell *restrict ci,
     }
 
     /* Otherwise, if we are at the bottom, activate the gpart drifts. */
-    else if (!ci->split && !cj->split) {
+    else if (!ci->split && !cj->split && !(ci->subtype == cell_subtype_void) &&
+             !(cj->subtype == cell_subtype_void)) {
 
       /* Activate the drifts if the cells are local. */
       if (cell_is_active_gravity(ci, e) || cell_is_active_gravity(cj, e)) {
