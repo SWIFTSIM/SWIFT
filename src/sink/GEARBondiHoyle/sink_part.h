@@ -51,9 +51,6 @@ struct sink {
   /*! Sink particle mass */
   float mass;
 
-  /*! Sink particle mass at start of timestep */
-  float mass_at_start_of_step;
-
   /*! Sink target mass. In Msun. */
   float target_mass_Msun;
 
@@ -65,6 +62,9 @@ struct sink {
 
   /*! Instantaneous accretion rate */
   float accretion_rate;
+
+  /*! Mass accreted in this timestep (used for swallowing) */
+  float mass_accreted_this_timestep;
 
   /*! Density of the gas surrounding the black hole. */
   float rho_gas;

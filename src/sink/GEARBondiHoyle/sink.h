@@ -198,7 +198,7 @@ __attribute__((always_inline)) INLINE static void sink_init_sink(
   sp->ngb_mass = 0.f;
   sp->num_ngbs = 0;
   sp->accretion_rate = 0.f;
-  sp->mass_at_start_of_step = sp->mass;
+  sp->mass_accreted_this_timestep = 0;
 
 #ifdef DEBUG_INTERACTIONS_SINKS
   for (int i = 0; i < MAX_NUM_OF_NEIGHBOURS_SINKS; ++i)
@@ -329,7 +329,7 @@ __attribute__((always_inline)) INLINE static void sink_prepare_swallow(
 
 
   /* Integrate forward in time */
-  si->mass += accr_rate * dt;
+  si->mass_accreted_this_timestep += accr_rate * dt;
 
   /* Let's try enabling nibbling later */
   // if (props->use_nibbling) {
