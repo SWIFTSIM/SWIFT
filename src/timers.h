@@ -109,6 +109,7 @@ enum {
   timer_do_extra_ghost,
   timer_do_stars_ghost,
   timer_do_black_holes_ghost,
+  timer_do_sinks_ghost,
   timer_dorecv_part,
   timer_dorecv_gpart,
   timer_dorecv_spart,

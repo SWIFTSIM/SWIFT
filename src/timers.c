@@ -109,6 +109,7 @@ const char* timers_names[timer_count] = {
     "do_extra_ghost",
     "do_stars_ghost",
     "do_black_holes_ghost",
+    "do_sinks_ghost",
     "dorecv_part",
     "dorecv_gpart",
     "dorecv_spart",
