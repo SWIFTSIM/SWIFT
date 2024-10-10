@@ -348,15 +348,13 @@ void zoom_engine_make_hierarchical_void_tasks_recursive(struct engine *e,
    * any tasks above the super level) */
   if (c->grav.super == c) {
 
-    message("Making hierarchical void tasks at depth %d.", c->depth);
-
     /* Initialisation of the multipoles */
     c->grav.init = scheduler_addtask(s, task_type_init_grav, task_subtype_none,
                                      0, 0, c, NULL);
 
-    /* Gravity non-neighbouring pm calculations. */
-    c->grav.long_range = scheduler_addtask(s, task_type_grav_long_range,
-                                           task_subtype_none, 0, 0, c, NULL);
+    // /* Gravity non-neighbouring pm calculations. */
+    // c->grav.long_range = scheduler_addtask(s, task_type_grav_long_range,
+    //                                        task_subtype_none, 0, 0, c, NULL);
 
     /* Gravity recursive down-pass */
     c->grav.down = scheduler_addtask(s, task_type_grav_down, task_subtype_none,
