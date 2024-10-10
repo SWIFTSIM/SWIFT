@@ -196,7 +196,7 @@ void *runner_main(void *data) {
       if (ci->subtype == cell_subtype_void &&
           !(t->type == task_type_grav_down || t->type == task_type_grav_mm ||
             t->type == task_type_grav_long_range ||
-            t->type == task_type_init_grav)) {
+            t->type == task_type_init_grav || t->type == task_type_collect)) {
         error("Void cell with task (%s/%s).", taskID_names[t->type],
               subtaskID_names[t->subtype]);
       }
