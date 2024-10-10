@@ -825,6 +825,16 @@ void zoom_link_void_leaves(struct space *s, struct cell *c) {
    * normal split cell since it's linked into top level "progeny". */
   c->split = 0;
 
+  /* Initialise the timestep information we need to collect. */
+  integertime_t ti_hydro_end_min = max_nr_timesteps, ti_hydro_beg_max = 0;
+  integertime_t ti_rt_end_min = max_nr_timesteps, ti_rt_beg_max = 0;
+  integertime_t ti_rt_min_step_size = max_nr_timesteps;
+  integertime_t ti_gravity_end_min = max_nr_timesteps, ti_gravity_beg_max = 0;
+  integertime_t ti_stars_end_min = max_nr_timesteps, ti_stars_beg_max = 0;
+  integertime_t ti_sinks_end_min = max_nr_timesteps, ti_sinks_beg_max = 0;
+  integertime_t ti_black_holes_end_min = max_nr_timesteps,
+                ti_black_holes_beg_max = 0;
+
   /* Loop over the 8 progeny cells which are now the zoom cells. */
   for (int k = 0; k < 8; k++) {
 
@@ -869,7 +879,40 @@ void zoom_link_void_leaves(struct space *s, struct cell *c) {
 
     /* Flag this void cell "progeny" as the zoom cell's void cell parent. */
     zoom_cell->void_parent = c;
+
+    /* Update the timestep information. */
+    ti_hydro_end_min = min(ti_hydro_end_min, zoom_cell->hydro.ti_end_min);
+    ti_hydro_beg_max = max(ti_hydro_beg_max, zoom_cell->hydro.ti_beg_max);
+    ti_rt_end_min = min(ti_rt_end_min, zoom_cell->rt.ti_rt_end_min);
+    ti_rt_beg_max = max(ti_rt_beg_max, zoom_cell->rt.ti_rt_beg_max);
+    ti_rt_min_step_size =
+        min(ti_rt_min_step_size, zoom_cell->rt.ti_rt_min_step_size);
+    ti_gravity_end_min = min(ti_gravity_end_min, zoom_cell->grav.ti_end_min);
+    ti_gravity_beg_max = max(ti_gravity_beg_max, zoom_cell->grav.ti_beg_max);
+    ti_stars_end_min = min(ti_stars_end_min, zoom_cell->stars.ti_end_min);
+    ti_stars_beg_max = max(ti_stars_beg_max, zoom_cell->stars.ti_beg_max);
+    ti_sinks_end_min = min(ti_sinks_end_min, zoom_cell->sinks.ti_end_min);
+    ti_sinks_beg_max = max(ti_sinks_beg_max, zoom_cell->sinks.ti_beg_max);
+    ti_black_holes_end_min =
+        min(ti_black_holes_end_min, zoom_cell->black_holes.ti_end_min);
+    ti_black_holes_beg_max =
+        max(ti_black_holes_beg_max, zoom_cell->black_holes.ti_beg_max);
   }
+
+  /* Update the timestep information. */
+  c->hydro.ti_end_min = ti_hydro_end_min;
+  c->hydro.ti_beg_max = ti_hydro_beg_max;
+  c->rt.ti_rt_end_min = ti_rt_end_min;
+  c->rt.ti_rt_beg_max = ti_rt_beg_max;
+  c->rt.ti_rt_min_step_size = ti_rt_min_step_size;
+  c->grav.ti_end_min = ti_gravity_end_min;
+  c->grav.ti_beg_max = ti_gravity_beg_max;
+  c->stars.ti_end_min = ti_stars_end_min;
+  c->stars.ti_beg_max = ti_stars_beg_max;
+  c->sinks.ti_end_min = ti_sinks_end_min;
+  c->sinks.ti_beg_max = ti_sinks_beg_max;
+  c->black_holes.ti_end_min = ti_black_holes_end_min;
+  c->black_holes.ti_beg_max = ti_black_holes_beg_max;
 
   /* Interact the zoom cell multipoles with this cell. */
   if (s->with_self_gravity) {
@@ -1088,16 +1131,6 @@ void zoom_void_timestep_collect(struct engine *e) {
     struct cell *c = &s->cells_top[void_cell_indices[i]];
     zoom_void_timestep_collect_recursive(c);
   }
-
-#ifdef SWIFT_DEBUG_CHECKS
-  /* Ensure the void cells have the right timesteps. */
-  for (int i = 0; i < nr_void_cells; i++) {
-    struct cell *c = &s->cells_top[void_cell_indices[i]];
-    if (c->grav.ti_end_min != e->ti_current) {
-      error("Void cell has not been updated with a timestep!");
-    }
-  }
-#endif
 
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),

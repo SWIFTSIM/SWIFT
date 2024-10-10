@@ -2226,6 +2226,20 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
     const enum task_types t_type = t->type;
     const enum task_subtypes t_subtype = t->subtype;
 
+    /* It's possible in zoom land that we have spawned a pair task during
+     * splitting where one of the cells is a top level zoom cell with
+     * 0 particles. This is rare but just in case lets check and kill it
+     * off if needed. */
+    if (t_type == task_type_pair &&
+        (ci->grav.count == 0 || cj->grav.count == 0)) {
+      t->type = task_type_none;
+      t->subtype = task_subtype_none;
+      t->ci = NULL;
+      t->cj = NULL;
+      t->skip = 1;
+      continue;
+    }
+
     /* Link sort tasks to all the higher sort task. */
     if (t_type == task_type_sort) {
       for (struct cell *finger = t->ci->parent; finger != NULL;
