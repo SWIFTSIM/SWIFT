@@ -367,8 +367,8 @@ void zoom_engine_make_hierarchical_void_tasks_recursive(struct engine *e,
                                         task_subtype_none, 0, 1, c, NULL);
 
     /* Long-range gravity forces (not the mesh ones!) */
-    scheduler_addunlock(s, c->grav.init, c->grav.long_range);
-    scheduler_addunlock(s, c->grav.long_range, c->grav.down);
+    // scheduler_addunlock(s, c->grav.init, c->grav.long_range);
+    // scheduler_addunlock(s, c->grav.long_range, c->grav.down);
 
     /* Link in the implicit tasks */
     scheduler_addunlock(s, c->grav.init, c->grav.init_out);
