@@ -555,6 +555,8 @@ void space_list_useful_top_level_cells(struct space *s) {
     struct cell *c = &s->cells_top[i];
 
     if (cell_has_tasks(c)) {
+      if (c->subtype == cell_subtype_void)
+        message("Void cell is local with tasks");
       s->local_cells_with_tasks_top[s->nr_local_cells_with_tasks] = i;
       s->nr_local_cells_with_tasks++;
     }
