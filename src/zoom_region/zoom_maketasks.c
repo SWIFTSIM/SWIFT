@@ -434,7 +434,7 @@ void zoom_engine_make_hierarchical_void_tasks(struct engine *e) {
      * void cells. We do this here because, unlike normal top level cells
      * there are no other top level tasks to make for void cells. */
     if (c->nodeID == e->nodeID) {
-      c->timestep_collect = scheduler_addtask(s, task_type_collect,
+      c->timestep_collect = scheduler_addtask(e->sched, task_type_collect,
                                               task_subtype_none, 0, 0, c, NULL);
     }
 
