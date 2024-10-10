@@ -1303,9 +1303,8 @@ void runner_do_timestep_collect(struct runner *r, struct cell *c,
  * @param c The void #cell.
  * @param timer Are we timing this?
  */
-static void runner_zoom_do_void_timestep_collect(struct runner *r,
-                                                 struct cell *c,
-                                                 const int timer) {
+void runner_zoom_do_void_timestep_collect(struct runner *r, struct cell *c,
+                                          const int timer) {
 
   /* Define the timestep info we'll be collecting. */
   integertime_t ti_hydro_end_min = max_nr_timesteps, ti_hydro_beg_max = 0;

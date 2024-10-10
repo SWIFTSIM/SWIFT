@@ -61,7 +61,6 @@ void zoom_engine_make_self_gravity_tasks(struct space *s, struct engine *e);
 void zoom_engine_make_hierarchical_void_tasks(struct engine *e);
 
 /* Update the void cell gravity timesteps. */
-static void runner_zoom_do_void_timestep_collect(struct runner *r,
-                                                 struct cell *c,
-                                                 const int timer);
+void runner_zoom_do_void_timestep_collect(struct runner *r, struct cell *c,
+                                          const int timer);
 #endif /* SWIFT_ZOOM_H */
