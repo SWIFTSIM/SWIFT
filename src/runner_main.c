@@ -20,8 +20,6 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "zoom_region/zoom.h"
-
 #include <config.h>
 
 /* MPI headers. */
@@ -483,10 +481,10 @@ void *runner_main(void *data) {
           runner_do_sync(r, ci, 0, 1);
           break;
         case task_type_collect:
-          if (ci->subtype == cell_subtype_void) {
-            runner_zoom_do_void_timestep_collect(r, ci, 1);
-          } else {
+          if (!(ci->subtype == cell_subtype_void)) {
             runner_do_timestep_collect(r, ci, 1);
+          } else {
+            runner_zoom_do_void_timestep_collect(r, ci, 1);
           }
           break;
         case task_type_rt_collect_times:
