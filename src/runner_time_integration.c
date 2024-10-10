@@ -38,7 +38,7 @@
 #include "timestep_limiter.h"
 #include "timestep_sync.h"
 #include "tracers.h"
-#include "zoom.h"
+#include "zoom_region/zoom.h"
 
 /**
  * @brief Initialize the multipoles before the gravity calculation.
