@@ -1299,9 +1299,13 @@ void runner_do_timestep_collect(struct runner *r, struct cell *c,
  * This will recurse to the void leaves (top level zoom cells) and grab the
  * timestep from the zoom cells, populating the void cell tree as it goes.
  *
- * @param c The #cell.
+ * @param r The runner thread.
+ * @param c The void #cell.
+ * @param timer Are we timing this?
  */
-static void runner_zoom_do_void_timestep_collect(struct cell *c) {
+static void runner_zoom_do_void_timestep_collect(struct runner *r,
+                                                 struct cell *c,
+                                                 const int timer) {
 
   /* Define the timestep info we'll be collecting. */
   integertime_t ti_hydro_end_min = max_nr_timesteps, ti_hydro_beg_max = 0;

@@ -20,6 +20,8 @@
  ******************************************************************************/
 
 /* Config parameters. */
+#include "zoom_region/zoom.h"
+
 #include <config.h>
 
 /* MPI headers. */
@@ -37,6 +39,7 @@
 #include "scheduler.h"
 #include "space_getsid.h"
 #include "timers.h"
+#include "zoom.h"
 
 /* Import the gravity loop functions. */
 #include "runner_doiact_grav.h"
@@ -480,7 +483,11 @@ void *runner_main(void *data) {
           runner_do_sync(r, ci, 0, 1);
           break;
         case task_type_collect:
-          runner_do_timestep_collect(r, ci, 1);
+          if (ci->subtype == cell_subtype_void) {
+            runner_zoom_do_void_timestep_collect(r, ci, 1);
+          } else {
+            runner_do_timestep_collect(r, ci, 1);
+          }
           break;
         case task_type_rt_collect_times:
           runner_do_collect_rt_times(r, ci, 1);
