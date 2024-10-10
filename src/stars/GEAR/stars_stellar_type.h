@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2016 Bert Vandenbroucke (bert.vandenbroucke@gmail.com).
+ * Copyright (c) 2024 Darwin Roduit (darwin.roduit@epfl.ch)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,18 +16,26 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
+#ifndef SWIFT_STARS_GEAR_STELLAR_TYPE_H
+#define SWIFT_STARS_GEAR_STELLAR_TYPE_H
 
-#ifndef SWIFT_VORONOI_CELL_H
-#define SWIFT_VORONOI_CELL_H
+/**
+ * @file src/stars/GEAR/stars_stellar_type.h
+ * @brief header file concerning the stellar type of the star particle.
+ **/
 
-#if defined(HYDRO_DIMENSION_1D)
-#include "voronoi1d_cell.h"
-#elif defined(HYDRO_DIMENSION_2D)
-#include "voronoi2d_cell.h"
-#elif defined(HYDRO_DIMENSION_3D)
-#include "voronoi3d_cell.h"
-#else
-#error "You have to select a dimension for the hydro!"
-#endif
+/**
+ * @brief The stellar type.
+ *
+ * Star particles can represent a single star ("single_star"), a stellar
+ * population from a continuous IMF or a stellar population from a whole IMF.
+ */
+enum stellar_type {
+  single_star = 0,                /* particle representing a single star */
+  star_population_continuous_IMF, /* particle representing a population of the
+                                     continuous part of the IMF */
+  star_population, /* particle representing a population with the whole IMF */
+  stellar_type_count
+};
 
-#endif  // SWIFT_VORONOI_CELL_H
+#endif /* SWIFT_STARS_GEAR_STELLAR_TYPE_H */

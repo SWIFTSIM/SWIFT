@@ -75,7 +75,7 @@ def parse_args():
 
 def get_snapshot_list(snapshot_basename="output"):
     """
-    Find the snapshot(s) that are to be plotted 
+    Find the snapshot(s) that are to be plotted
     and return their names as list
     """
 
@@ -114,9 +114,9 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
     Create the actual plot.
 
     filename: file to work with
-    energy_boundaries:  list of [E_min, E_max] for each photon group. 
+    energy_boundaries:  list of [E_min, E_max] for each photon group.
                         If none, limits are set automatically.
-    flux_boundaries:    list of [F_min, F_max] for each photon group. 
+    flux_boundaries:    list of [F_min, F_max] for each photon group.
                         If none, limits are set automatically.
     """
 
