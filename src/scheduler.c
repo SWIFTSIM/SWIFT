@@ -1598,12 +1598,12 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
       for (int j = 0; j < 8; j++) {
         struct cell *cpj = cj->progeny[j];
 
-        /* If we have reached a top level cell with 0 particles,
-         * skip the pair. */
-        if ((cpi->subtype != cell_subtype_void && cpi->grav.count == 0) ||
-            (cpj->subtype != cell_subtype_void && cpj->grav.count == 0)) {
-          continue;
-        }
+        // /* If we have reached a top level cell with 0 particles,
+        //  * skip the pair. */
+        // if ((cpi->subtype != cell_subtype_void && cpi->grav.count == 0) ||
+        //     (cpj->subtype != cell_subtype_void && cpj->grav.count == 0)) {
+        //   continue;
+        // }
 
         /* Can we use a M-M interaction here? */
         if (cell_can_use_pair_mm(cpi, cpj, e, sp,
