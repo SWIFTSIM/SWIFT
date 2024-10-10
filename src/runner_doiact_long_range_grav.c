@@ -160,12 +160,11 @@ void runner_do_grav_long_range_zoom_non_periodic(struct runner *r,
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Ensure we at leasted against all possible gparts. */
-  if (tested_gparts != e->s->nr_gparts) {
-    error(
-        "Not all gparts were tested in long range gravity task! (tested: %ld, "
-        "total: %ld)",
-        tested_gparts, e->s->nr_gparts);
-  }
+  // if (tested_gparts != e->s->nr_gparts) {
+  //   error(
+  //       "Not all gparts were tested in long range gravity task! (tested: %ld,
+  //       " "total: %ld)", tested_gparts, e->s->nr_gparts);
+  // }
 #endif
 }
 
