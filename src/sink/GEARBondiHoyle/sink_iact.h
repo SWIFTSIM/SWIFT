@@ -161,10 +161,6 @@ runner_iact_nonsym_sink_gas_density(
     const float H = cosmo->H;
     const float a2H = a * a * H;
 
-    /* Calculate the velocity with the Hubble flow */
-    const float v_plus_H_flow[3] = {a2H * dx[0] + dv[0], a2H * dx[1] + dv[1],
-                                    a2H * dx[2] + dv[2]};
-
     /* Contribution to the smoothed velocity (gas w.r.t. black hole) */
     si->velocity_gas[0] += mj * dv[0];
     si->velocity_gas[1] += mj * dv[1];
