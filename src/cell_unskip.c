@@ -1337,7 +1337,14 @@ int cell_activate_subcell_grav_tasks(struct cell *restrict ci,
     const int do_ci = cell_is_active_gravity(ci, e) && ci->nodeID == nodeID;
     const int do_cj = cell_is_active_gravity(cj, e) && cj->nodeID == nodeID;
     if (!do_ci && !do_cj) return 0;
-    if (ci->grav.count == 0 || cj->grav.count == 0) return 0;
+
+    /* Return 0 for empty pairs. */
+    /* Not for void cells though. These need to be considered regardless of the
+     * fact they are "empty" in terms of particles because they contain the zoom
+     * region when running a zoom simulation). */
+    if ((ci->grav.count == 0 && ci->subtype != cell_subtype_void) ||
+        (cj->grav.count == 0 && cj->subtype != cell_subtype_void))
+      return 0;
 
     /* Atomically drift the multipole in ci */
     lock_lock(&ci->grav.mlock);
