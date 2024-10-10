@@ -39,7 +39,7 @@
 #include "scheduler.h"
 #include "space_getsid.h"
 #include "timers.h"
-#include "zoom.h"
+#include "zoom_region/zoom.h"
 
 /* Import the gravity loop functions. */
 #include "runner_doiact_grav.h"
