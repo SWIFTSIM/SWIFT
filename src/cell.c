@@ -1232,13 +1232,9 @@ void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data) {
  * We use the timestep-related tasks to probe this as these always
  * exist in a cell hierarchy that has any kind of task.
  *
- * In zoom land void cells will never have a timestep_collect or recv, they
- * will always have a grav_init if they have any tasks at all though.
- *
  * @param c The #cell to probe.
  */
 int cell_has_tasks(struct cell *c) {
-  if (c->subtype == cell_subtype_void && c->grav.init) return 1;
 #ifdef WITH_MPI
   return (c->timestep_collect != NULL || c->mpi.recv != NULL);
 #else
