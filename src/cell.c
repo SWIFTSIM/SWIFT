@@ -1238,7 +1238,7 @@ void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data) {
  * @param c The #cell to probe.
  */
 int cell_has_tasks(struct cell *c) {
-  if (c->subtype == cell_subtype_void && c->grav.init) return 1;
+  if (c->subtype == cell_subtype_void) return 1;
 #ifdef WITH_MPI
   return (c->timestep_collect != NULL || c->mpi.recv != NULL);
 #else
