@@ -8,7 +8,10 @@ InternalUnitSystem:
 
 Scheduler:
   max_top_level_cells: 16
-  cell_extra_gparts:         100         # (Optional) Number of spare gparts per top-level allocated at rebuild time for on-the-fly creation.
+  cell_extra_gparts:   1000      # (Optional) Number of spare gparts per top-level allocated at rebuild time for on-the-fly creation.
+  cell_extra_sinks:    1000      # (Optional) Number of spare sinks per top-level allocated at rebuild time for on-the-fly creation.
+  cell_extra_sparts:   1000      # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
+
   
 # Parameters governing the time integration
 TimeIntegration:
@@ -73,6 +76,24 @@ GEARStarFormation:
   n_stars_per_particle: 4
   min_mass_frac: 0.5
   density_threshold:   1.67e-25   # Density threashold in g/cm3
+
+GEARSink:
+  cut_off_radius: 5e-3                       # Cut off radius of all the sinks in internal units.
+  f_acc: 0.1
+  maximal_temperature:  1e4                  # Upper limit to the temperature of a star forming particle
+  density_threshold_g_per_cm3:   1.67e-24    # Density threashold in g/cm3 (1.67e-24 =1acc)
+  stellar_particle_mass_Msun: 1e5            # Mass of the stellar particle representing the low mass stars, in solar mass
+  minimal_discrete_mass_Msun: 30             # Minimal mass of stars represented by discrete particles, in solar mass
+  stellar_particle_mass_first_stars_Msun: 1e5 # Mass of the stellar particle representing the low mass stars, in solar mass
+  minimal_discrete_mass_first_stars_Msun: 30 # Minimal mass of stars represented by discrete particles, in solar mass
+  star_spawning_sigma_factor: 0.5             # Factor to rescale the velocity dispersion of the stars when they are spawned. (Default: 0.2)
+  sink_formation_contracting_gas_criterion: 1     # (Optional) Activate the contracting gas check for sink formation. (Default: 1)
+  sink_formation_smoothing_length_criterion: 0    # (Optional) Activate the smoothing length check for sink formation. (Default: 1)
+  sink_formation_jeans_instability_criterion: 1   # (Optional) Activate the two Jeans instability checks for sink formation. (Default: 1)
+  sink_formation_bound_state_criterion: 1         # (Optional) Activate the bound state check for sink formation. (Default: 1)
+  sink_formation_overlapping_sink_criterion: 1    # (Optional) Activate the overlapping sink check for sink formation. (Default: 1)
+  disable_sink_formation: 0                       # (Optional) Disable sink formation. (Default: 0)
+
 
 GEARPressureFloor:
   jeans_factor: 10

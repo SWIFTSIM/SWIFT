@@ -863,7 +863,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           (ci_nodeID == nodeID && cj_nodeID != nodeID && !ci_active_rt &&
            cj_active_rt)) {
 
-#if defined(WITH_MPI) && defined(MPI_SYMMETRIC_FORCE_INTERACTION)
+#if defined(WITH_MPI) && defined(MPI_SYMMETRIC_FORCE_INTERACTION_RT)
         if (t_subtype == task_subtype_rt_transport) {
 
           scheduler_activate(s, t);
@@ -1389,7 +1389,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
                                       task_subtype_rt_transport);
             }
           } else if (ci_active_rt) {
-#ifdef MPI_SYMMETRIC_FORCE_INTERACTION
+#ifdef MPI_SYMMETRIC_FORCE_INTERACTION_RT
             /* If the local cell is inactive and the remote cell is active, we
              * still need to receive stuff to be able to do the force
              * interaction on this node as well. */
@@ -1409,7 +1409,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
                                       task_subtype_rt_transport, ci_nodeID);
             }
           } else if (cj_active_rt) {
-#ifdef MPI_SYMMETRIC_FORCE_INTERACTION
+#ifdef MPI_SYMMETRIC_FORCE_INTERACTION_RT
             /* If the foreign cell is inactive, but the local cell is active,
              * we still need to send stuff to be able to do the force
              * interaction on both nodes */
@@ -1434,7 +1434,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
                                       task_subtype_rt_transport);
             }
           } else if (cj_active_rt) {
-#ifdef MPI_SYMMETRIC_FORCE_INTERACTION
+#ifdef MPI_SYMMETRIC_FORCE_INTERACTION_RT
             /* If the local cell is inactive and the remote cell is active, we
              * still need to receive stuff to be able to do the force
              * interaction on this node as well. */
@@ -1456,7 +1456,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
                                       task_subtype_rt_transport, cj_nodeID);
             }
           } else if (ci_active_rt) {
-#ifdef MPI_SYMMETRIC_FORCE_INTERACTION
+#ifdef MPI_SYMMETRIC_FORCE_INTERACTION_RT
             /* If the foreign cell is inactive, but the local cell is active,
              * we still need to send stuff to be able to do the force
              * interaction on both nodes */

@@ -155,13 +155,21 @@ INLINE static void sink_props_init_probabilities(
  * @param us The internal unit system.
  * @param params The parsed parameters.
  * @param cosmo The cosmological model.
+ * @param with_feedback Are we running with feedback?
  */
 INLINE static void sink_props_init(struct sink_props *sp,
                                    struct feedback_props *fp,
                                    const struct phys_const *phys_const,
                                    const struct unit_system *us,
                                    struct swift_params *params,
-                                   const struct cosmology *cosmo) {
+                                   const struct cosmology *cosmo,
+                                   const int with_feedback) {
+
+  /* If we do not run with feedback, abort and print an error */
+  if (!with_feedback)
+    error(
+        "ERROR: Running with sink but without feedback. GEAR sink model needs "
+        "to be run with --sink and --feedback");
 
   /* Default values */
   const float default_f_acc = 0.8;

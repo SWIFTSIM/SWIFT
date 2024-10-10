@@ -35,6 +35,7 @@
 #include "random.h"
 #include "sink_part.h"
 #include "sink_properties.h"
+#include "star_formation.h"
 
 /**
  * @brief Computes the time-step of a given sink particle.
@@ -791,18 +792,20 @@ INLINE static void sink_copy_properties_to_star(
   /* Note: The sink module need to be compiled with GEAR SF as we store data
      in the SF struct. However, we do not need to run with --star-formation */
 
-  /* Store either the birth_scale_factor or birth_time depending  */
-  if (with_cosmology) {
-    sp->birth_scale_factor = cosmo->a;
-  } else {
-    sp->birth_time = e->time;
-  }
+  /* Mass at birth */
+  star_formation_set_spart_birth_mass(sp, sp->mass);
 
-  /* Copy the chemistry properties */
-  chemistry_copy_sink_properties_to_star(sink, sp);
+  /* Store either the birth_scale_factor or birth_time */
+  star_formation_set_spart_birth_time_or_scale_factor(sp, e->time, cosmo->a,
+                                                      with_cosmology);
 
   /* Copy the progenitor id */
-  sp->sf_data.progenitor_id = sink->id;
+  star_formation_set_spart_progenitor_id(sp, sink->id);
+
+  /* Copy the chemistry properties */
+  /* ----------------------------- */
+
+  chemistry_copy_sink_properties_to_star(sink, sp);
 }
 
 /**
