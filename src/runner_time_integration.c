@@ -38,6 +38,7 @@
 #include "timestep_limiter.h"
 #include "timestep_sync.h"
 #include "tracers.h"
+#include "zoom_region/zoom.h"
 
 /**
  * @brief Initialize the multipoles before the gravity calculation.
@@ -1289,6 +1290,84 @@ void runner_do_timestep_collect(struct runner *r, struct cell *c,
   c->black_holes.updated = b_updated;
   c->sinks.updated = si_updated;
   c->rt.updated = rt_updated;
+}
+
+/**
+ * @brief Recursively collect the timestep from the zoom top level to the void
+ * cell tree.
+ *
+ * This will recurse to the void leaves (top level zoom cells) and grab the
+ * timestep from the zoom cells, populating the void cell tree as it goes.
+ *
+ * @param r The runner thread.
+ * @param c The void #cell.
+ * @param timer Are we timing this?
+ */
+void runner_zoom_do_void_timestep_collect(struct runner *r, struct cell *c,
+                                          const int timer) {
+
+  /* Define the timestep info we'll be collecting. */
+  integertime_t ti_hydro_end_min = max_nr_timesteps, ti_hydro_beg_max = 0;
+  integertime_t ti_rt_end_min = max_nr_timesteps, ti_rt_beg_max = 0;
+  integertime_t ti_grav_end_min = max_nr_timesteps, ti_grav_beg_max = 0;
+  integertime_t ti_stars_end_min = max_nr_timesteps, ti_stars_beg_max = 0;
+  integertime_t ti_black_holes_end_min = max_nr_timesteps,
+                ti_black_holes_beg_max = 0;
+  integertime_t ti_sinks_end_min = max_nr_timesteps, ti_sinks_beg_max = 0;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Ensure we have the right kind of cell. */
+  if (c->subtype != cell_subtype_void) {
+    error(
+        "Trying to update timesteps on cell which isn't a void cell! "
+        "(c->type=%s, c->subtype=%s)",
+        cellID_names[c->type], subcellID_names[c->subtype]);
+  }
+#endif
+
+  /* Collect the values from the progeny. */
+  for (int k = 0; k < 8; k++) {
+    struct cell *cp = c->progeny[k];
+    if (cp != NULL) {
+
+      /* Recurse, if we haven't hit the zoom level (this is handled by the
+       * zoom cell's timestep_collect task which is guranteed to happen
+       * before the void timestep_collect). */
+      if (cp->type != cell_type_zoom) {
+        runner_zoom_do_void_timestep_collect(r, cp, 0);
+      }
+
+      /* And update */
+      ti_hydro_end_min = min(ti_hydro_end_min, cp->hydro.ti_end_min);
+      ti_hydro_beg_max = max(ti_hydro_beg_max, cp->hydro.ti_beg_max);
+      ti_rt_end_min = min(cp->rt.ti_rt_end_min, ti_rt_end_min);
+      ti_rt_beg_max = max(cp->rt.ti_rt_beg_max, ti_rt_beg_max);
+      ti_grav_end_min = min(ti_grav_end_min, cp->grav.ti_end_min);
+      ti_grav_beg_max = max(ti_grav_beg_max, cp->grav.ti_beg_max);
+      ti_stars_end_min = min(ti_stars_end_min, cp->stars.ti_end_min);
+      ti_stars_beg_max = max(ti_stars_beg_max, cp->stars.ti_beg_max);
+      ti_black_holes_end_min =
+          min(ti_black_holes_end_min, cp->black_holes.ti_end_min);
+      ti_black_holes_beg_max =
+          max(ti_black_holes_beg_max, cp->black_holes.ti_beg_max);
+      ti_sinks_end_min = min(ti_sinks_end_min, cp->sinks.ti_end_min);
+      ti_sinks_beg_max = max(ti_sinks_beg_max, cp->sinks.ti_beg_max);
+    }
+  }
+
+  /* Store the collected values in the cell. */
+  c->hydro.ti_end_min = ti_hydro_end_min;
+  c->hydro.ti_beg_max = ti_hydro_beg_max;
+  c->rt.ti_rt_end_min = ti_rt_end_min;
+  c->rt.ti_rt_beg_max = ti_rt_beg_max;
+  c->grav.ti_end_min = ti_grav_end_min;
+  c->grav.ti_beg_max = ti_grav_beg_max;
+  c->stars.ti_end_min = ti_stars_end_min;
+  c->stars.ti_beg_max = ti_stars_beg_max;
+  c->black_holes.ti_end_min = ti_black_holes_end_min;
+  c->black_holes.ti_beg_max = ti_black_holes_beg_max;
+  c->sinks.ti_end_min = ti_sinks_end_min;
+  c->sinks.ti_beg_max = ti_sinks_beg_max;
 }
 
 /**

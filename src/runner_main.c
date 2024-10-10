@@ -37,6 +37,7 @@
 #include "scheduler.h"
 #include "space_getsid.h"
 #include "timers.h"
+#include "zoom_region/zoom.h"
 
 /* Import the gravity loop functions. */
 #include "runner_doiact_grav.h"
@@ -193,7 +194,7 @@ void *runner_main(void *data) {
       if (ci->subtype == cell_subtype_void &&
           !(t->type == task_type_grav_down || t->type == task_type_grav_mm ||
             t->type == task_type_grav_long_range ||
-            t->type == task_type_init_grav)) {
+            t->type == task_type_init_grav || t->type == task_type_collect)) {
         error("Void cell with task (%s/%s).", taskID_names[t->type],
               subtaskID_names[t->subtype]);
       }
@@ -480,7 +481,11 @@ void *runner_main(void *data) {
           runner_do_sync(r, ci, 0, 1);
           break;
         case task_type_collect:
-          runner_do_timestep_collect(r, ci, 1);
+          if (!(ci->subtype == cell_subtype_void)) {
+            runner_do_timestep_collect(r, ci, 1);
+          } else {
+            runner_zoom_do_void_timestep_collect(r, ci, 1);
+          }
           break;
         case task_type_rt_collect_times:
           runner_do_collect_rt_times(r, ci, 1);

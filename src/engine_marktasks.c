@@ -1621,7 +1621,9 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       t->ci->black_holes.updated = 0;
       t->ci->rt.updated = 0; /* this is different from time-step */
 
-      if (!cell_is_empty(t->ci)) {
+      /* Only have a timestep collect task if the cell isn't empty or if
+       * the cell is a void cell when running a zoom simulation. */
+      if (!cell_is_empty(t->ci) || t->ci->subtype == cell_subtype_void) {
         if (cell_is_active_hydro(t->ci, e) ||
             cell_is_active_gravity(t->ci, e) ||
             cell_is_active_stars(t->ci, e) || cell_is_active_sinks(t->ci, e) ||
