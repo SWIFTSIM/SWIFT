@@ -394,6 +394,7 @@ nobase_noinst_HEADERS += star_formation/EAGLE/star_formation_debug.h
 nobase_noinst_HEADERS += star_formation/GEAR/star_formation.h star_formation/GEAR/star_formation_struct.h
 nobase_noinst_HEADERS += star_formation/GEAR/star_formation_io.h star_formation/GEAR/star_formation_iact.h 
 nobase_noinst_HEADERS += star_formation/GEAR/star_formation_csds.h star_formation/GEAR/star_formation_debug.h
+nobase_noinst_HEADERS += star_formation/GEAR/star_formation_setters.h
 nobase_noinst_HEADERS += star_formation/EAGLE/star_formation_logger.h star_formation/EAGLE/star_formation_logger_struct.h 
 nobase_noinst_HEADERS += star_formation/GEAR/star_formation_logger.h star_formation/GEAR/star_formation_logger_struct.h 
 nobase_noinst_HEADERS += star_formation/none/star_formation_logger.h star_formation/none/star_formation_logger_struct.h 

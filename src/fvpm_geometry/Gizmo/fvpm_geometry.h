@@ -1,10 +1,10 @@
 #ifndef SWIFT_FVPM_GEOMETRY_GIZMO_H
 #define SWIFT_FVPM_GEOMETRY_GIZMO_H
 
-#include <config.h>
-
 #include "const.h"
 #include "part.h"
+
+#include <config.h>
 
 /**
  * @file Gizmo/fvpm_geometry.h
