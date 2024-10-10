@@ -32,13 +32,16 @@
  *
  * @param s The #space in which the cell lives.
  * @param c The #cell to split recursively.
+ * @param ti_current The current time step.
  * @param tpid The thread id.
  */
 void zoom_void_split_recursive(struct space *s, struct cell *c,
+                               const integertime_t ti_current,
                                const short int tpid) {
 
   const int depth = c->depth;
   int maxdepth = 0;
+  integertime_t ti_gravity_end_min = max_nr_timesteps, ti_gravity_beg_max = 0;
 
   /* Set the top level void cell tpid. Doing it here ensures top level void
    * cells have the same tpid as their progeny. */
@@ -110,14 +113,22 @@ void zoom_void_split_recursive(struct space *s, struct cell *c,
       zoom_link_void_leaves(s, cp);
 
     } else {
-
       /* Recurse */
-      zoom_void_split_recursive(s, cp, tpid);
+      zoom_void_split_recursive(s, cp, ti_current, tpid);
 
       /* Increase the depth */
       maxdepth = max(maxdepth, cp->maxdepth);
     }
+
+    /* Update the gravity time step properties. */
+    ti_gravity_end_min = min(ti_gravity_end_min, cp->grav.ti_end_min);
+    ti_gravity_beg_max = max(ti_gravity_beg_max, cp->grav.ti_beg_max);
   }
+
+  /* Update the properties of the void cell. */
+  c->maxdepth = maxdepth;
+  c->grav.ti_end_min = ti_gravity_end_min;
+  c->grav.ti_beg_max = ti_gravity_beg_max;
 
   /* Deal with the multipole */
   if (s->with_self_gravity) {
@@ -151,6 +162,7 @@ void zoom_void_space_split(struct space *s, int verbose) {
   struct cell *cells_top = s->cells_top;
   int *void_cell_indices = s->zoom_props->void_cell_indices;
   int nr_void_cells = s->zoom_props->nr_void_cells;
+  const integertime_t ti_current = s->e->ti_current;
 
   /* Create the void cell trees and populate their multipoles. This is only
    * a handful of cells so no threadpool. */
@@ -158,7 +170,7 @@ void zoom_void_space_split(struct space *s, int verbose) {
   /* Loop over the void cells */
   for (int ind = 0; ind < nr_void_cells; ind++) {
     struct cell *c = &cells_top[void_cell_indices[ind]];
-    zoom_void_split_recursive(s, c, /*tpid*/ 0);
+    zoom_void_split_recursive(s, c, ti_current, /*tpid*/ 0);
   }
 
   if (verbose)

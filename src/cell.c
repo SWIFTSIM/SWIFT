@@ -1177,6 +1177,12 @@ void cell_set_super_gravity(struct cell *c, struct cell *super_gravity) {
   /* Set the super-cell */
   c->grav.super = super_gravity;
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (super_gravity != NULL && super_gravity->subtype == cell_subtype_void &&
+      c->type == cell_type_zoom)
+    error("Zoom cell has a void cell super-gravity pointer!");
+#endif
+
   /* Recurse */
   if (c->split)
     for (int k = 0; k < 8; k++)
@@ -1223,9 +1229,13 @@ void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data) {
  * We use the timestep-related tasks to probe this as these always
  * exist in a cell hierarchy that has any kind of task.
  *
+ * In zoom land void cells will never have a timestep_collect or recv, they
+ * will always have a grav_init if they have any tasks at all though.
+ *
  * @param c The #cell to probe.
  */
 int cell_has_tasks(struct cell *c) {
+  if (c->subtype == cell_subtype_void && c->grav.init) return 1;
 #ifdef WITH_MPI
   return (c->timestep_collect != NULL || c->mpi.recv != NULL);
 #else
