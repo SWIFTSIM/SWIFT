@@ -128,7 +128,7 @@ void runner_do_grav_long_range_zoom_non_periodic(struct runner *r,
   /* Since the zoom cells will be handled by the void cell hierarchy we can
    * just loop over all other cells which are not zoom cells. This is
    * trivial since the zoom cells are first in cells_top. */
-  for (int cjd = 0; cjd < s->nr_cells; cjd++) {
+  for (int cjd = s->zoom_props->bkg_cell_offset; cjd < s->nr_cells; cjd++) {
 
     /* Handle on the top-level cell and it's gravity business*/
     struct cell *cj = &cells[cjd];
@@ -161,7 +161,6 @@ void runner_do_grav_long_range_zoom_non_periodic(struct runner *r,
 #ifdef SWIFT_DEBUG_CHECKS
   /* Ensure we at leasted against all possible gparts. */
   if (tested_gparts != e->s->nr_gparts) {
-    return;
     error(
         "Not all gparts were tested in long range gravity task! (tested: %ld, "
         "total: %ld)",
