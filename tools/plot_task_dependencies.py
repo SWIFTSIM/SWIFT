@@ -20,6 +20,7 @@ task_colours = {
     "gravity": "red3",
     "RT": "springgreen",
     "sink": "lightseagreen",
+    "grid": "cornflowerblue",
 }
 
 
@@ -157,6 +158,8 @@ def get_task_colour(taskname):
         colour = task_colours["RT"]
     elif task_is_sink(taskname):
         colour = task_colours["sink"]
+    elif task_is_grid(taskname):
+        colour = task_colours["grid"]
 
     return colour
 
@@ -217,6 +220,8 @@ def task_is_hydro(name):
     if "force" in name and "grav" not in name:
         return True
     if "xv" in name and "bpart" not in name:
+        return True
+    if "flux" in name:
         return True
 
     task_name = [
@@ -283,6 +288,17 @@ def task_is_sink(name):
         return True
     return False
 
+def task_is_grid(name):
+    """
+    Does the task concern the Voronoi grid construction?
+
+    Parameters
+    ----------
+
+    name: str
+        Task name
+    """
+    return "grid" in name
 
 def get_function_calls(name):
     txt = None
@@ -744,5 +760,5 @@ if __name__ == "__main__":
         print("You will find the graph in %s" % png_output)
 
         if args.with_calls:
-            print("We recommand to use the python package xdot available on pypi:")
+            print("We recommend to use the python package xdot available on pypi:")
             print("  python3 -m xdot %s" % dot_output)

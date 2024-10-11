@@ -183,7 +183,7 @@ const char *task_category_names[task_category_count] = {
     "limiter",     "sync",     "time integration",
     "mpi",         "pack",     "fof",
     "others",      "neutrino", "sink",
-    "RT",          "CSDS"};
+    "RT",          "CSDS",     "grid construction"};
 
 #ifdef WITH_MPI
 /* MPI communicators for the subtypes. */
@@ -1210,6 +1210,12 @@ void task_get_group_name(int type, int subtype, char *cluster) {
     case task_subtype_sink_do_gas_swallow:
       strcpy(cluster, "DoGasSwallow");
       break;
+    case task_subtype_flux:
+      strcpy(cluster, "FluxExchange");
+      break;
+    case task_subtype_grid_sync:
+      strcpy(cluster, "GridConstruction");
+      break;
     default:
       strcpy(cluster, "None");
       break;
@@ -1718,6 +1724,9 @@ enum task_categories task_get_category(const struct task *t) {
     case task_type_ghost:
     case task_type_extra_ghost:
     case task_type_end_hydro_force:
+    case task_type_flux_ghost:
+    case task_type_slope_estimate_ghost:
+    case task_type_slope_limiter_ghost:
       return task_category_hydro;
 
     case task_type_stars_ghost:
@@ -1756,6 +1765,10 @@ enum task_categories task_get_category(const struct task *t) {
     case task_type_neutrino_weight:
       return task_category_neutrino;
 
+    case task_type_grid_construction:
+    case task_type_grid_ghost:
+      return task_category_grid;
+
     case task_type_self:
     case task_type_pair:
     case task_type_sub_self:
@@ -1765,6 +1778,9 @@ enum task_categories task_get_category(const struct task *t) {
         case task_subtype_density:
         case task_subtype_gradient:
         case task_subtype_force:
+        case task_subtype_flux:
+        case task_subtype_slope_estimate:
+        case task_subtype_slope_limiter:
           return task_category_hydro;
 
         case task_subtype_limiter:
@@ -1795,6 +1811,9 @@ enum task_categories task_get_category(const struct task *t) {
         case task_subtype_rt_gradient:
         case task_subtype_rt_transport:
           return task_category_rt;
+
+        case task_subtype_grid_sync:
+          return task_category_grid;
 
         default:
           return task_category_others;
