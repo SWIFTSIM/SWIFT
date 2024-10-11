@@ -1993,14 +1993,10 @@ void runner_dopair_grav_mm(struct runner *r, struct cell *restrict ci,
   /* Interact! */
   if (do_i && do_j) {
     runner_dopair_grav_mm_symmetric(r, ci, cj);
-    ci->grav.multipole->pot.interacted = 1;
-    cj->grav.multipole->pot.interacted = 1;
   } else if (do_i) {
     runner_dopair_grav_mm_nonsym(r, ci, cj);
-    ci->grav.multipole->pot.interacted = 1;
   } else if (do_j) {
     runner_dopair_grav_mm_nonsym(r, cj, ci);
-    cj->grav.multipole->pot.interacted = 1;
   }
 }
 
