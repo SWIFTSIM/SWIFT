@@ -28,6 +28,7 @@
 #include "black_holes_struct.h"
 #include "chemistry_struct.h"
 #include "cooling_struct.h"
+#include "const.h"
 #include "feedback_struct.h"
 #include "mhd_struct.h"
 #include "particle_splitting_struct.h"
