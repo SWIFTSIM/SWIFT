@@ -782,6 +782,9 @@ void engine_gravity_make_task_loop(struct engine *e, int cid, const int cdim[3],
                                    struct cell *cells, const int periodic,
                                    const int use_mesh, const int delta_m,
                                    const int delta_p);
+void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c);
+void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
+                                          struct cell *star_resort_cell);
 
 /* Function prototypes, engine_maketasks.c. */
 void engine_make_fof_tasks(struct engine *e);
