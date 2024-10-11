@@ -1991,12 +1991,17 @@ void runner_dopair_grav_mm(struct runner *r, struct cell *restrict ci,
   if (cj->grav.ti_old_multipole < e->ti_current) cell_drift_multipole(cj, e);
 
   /* Interact! */
-  if (do_i && do_j)
+  if (do_i && do_j) {
     runner_dopair_grav_mm_symmetric(r, ci, cj);
-  else if (do_i)
+    ci->grav.multipole->pot.interacted = 1;
+    cj->grav.multipole->pot.interacted = 1;
+  } else if (do_i) {
     runner_dopair_grav_mm_nonsym(r, ci, cj);
-  else if (do_j)
+    ci->grav.multipole->pot.interacted = 1;
+  } else if (do_j) {
     runner_dopair_grav_mm_nonsym(r, cj, ci);
+    cj->grav.multipole->pot.interacted = 1;
+  }
 }
 
 /**
