@@ -1992,10 +1992,6 @@ void runner_dopair_grav_mm(struct runner *r, struct cell *restrict ci,
   if (ci->grav.ti_old_multipole < e->ti_current) cell_drift_multipole(ci, e);
   if (cj->grav.ti_old_multipole < e->ti_current) cell_drift_multipole(cj, e);
 
-  message("running MM interacted: ci-interacted=%c, cj-interacted=%c",
-          ci->grav.multipole->pot.interacted,
-          cj->grav.multipole->pot.interacted);
-
   /* Interact! */
   if (do_i && do_j) {
     runner_dopair_grav_mm_symmetric(r, ci, cj);
@@ -2004,6 +2000,12 @@ void runner_dopair_grav_mm(struct runner *r, struct cell *restrict ci,
   } else if (do_j) {
     runner_dopair_grav_mm_nonsym(r, cj, ci);
   }
+
+  if (ci->subtype == cell_subtype_void ||
+      (ci->type == cell_type_zoom && ci->grav.super == NULL))
+    message("running MM interacted: ci-interacted=%c, cj-interacted=%c",
+            ci->grav.multipole->pot.interacted,
+            cj->grav.multipole->pot.interacted);
 }
 
 /**
