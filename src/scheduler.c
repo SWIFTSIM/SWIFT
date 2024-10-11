@@ -2329,6 +2329,12 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
           cost = 1.f * wscale * count_i * count_i;
         else if (t->subtype == task_subtype_rt_transport)
           cost = 1.f * wscale * count_i * count_i;
+        else if (t->subtype == task_subtype_grid_sync)
+          cost = 0.f;
+        else if (t->subtype == task_subtype_slope_estimate ||
+                 t->subtype == task_subtype_slope_limiter ||
+                 t->subtype == task_subtype_flux)
+          cost = 1.f * (wscale * count_i) * count_i;
         else
           error("Untreated sub-type for selfs: %s",
                 subtaskID_names[t->subtype]);
@@ -2406,6 +2412,12 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
           cost = 1.f * wscale * count_i * count_j;
         } else if (t->subtype == task_subtype_rt_transport) {
           cost = 1.f * wscale * count_i * count_j;
+        } else if (t->subtype == task_subtype_grid_sync) {
+          cost = 0.f;
+        } else if (t->subtype == task_subtype_slope_estimate ||
+                   t->subtype == task_subtype_slope_limiter ||
+                   t->subtype == task_subtype_flux) {
+          cost = 1.f * (wscale * count_i) * count_j * sid_scale[t->flags];
         } else {
           error("Untreated sub-type for pairs: %s",
                 subtaskID_names[t->subtype]);
@@ -2631,6 +2643,13 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
           cost = 5.f * (wscale * count_i) * count_i;
         else
           cost = 1e9;
+        break;
+      case task_type_grid_construction:
+      case task_type_grid_ghost:
+      case task_type_slope_estimate_ghost:
+      case task_type_slope_limiter_ghost:
+      case task_type_flux_ghost:
+        if (t->ci == t->ci->hydro.super) cost = wscale * count_i;
         break;
       default:
         cost = 0;
