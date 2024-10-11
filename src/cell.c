@@ -1102,11 +1102,13 @@ void cell_clear_unskip_flags(struct cell *c) {
  * tree.
  * @param with_hydro Are we running with hydrodynamics on?
  * @param with_grav Are we running with gravity on?
+ * @param with_grid Are we running with grid construction on?
  */
 void cell_set_super(struct cell *c, struct cell *super, const int with_hydro,
-                    const int with_grav) {
+                    const int with_grav, const int with_grid) {
   /* Are we in a cell which is either the hydro or gravity super? */
   if (super == NULL && ((with_hydro && c->hydro.super != NULL) ||
+                        (with_grid && c->grid.super != NULL) ||
                         (with_grav && c->grav.super != NULL)))
     super = c;
 
@@ -1117,7 +1119,7 @@ void cell_set_super(struct cell *c, struct cell *super, const int with_hydro,
   if (c->split)
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL)
-        cell_set_super(c->progeny[k], super, with_hydro, with_grav);
+        cell_set_super(c->progeny[k], super, with_hydro, with_grav, with_grid);
 }
 
 /**
@@ -1139,6 +1141,48 @@ void cell_set_super_hydro(struct cell *c, struct cell *super_hydro) {
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL)
         cell_set_super_hydro(c->progeny[k], super_hydro);
+}
+
+/**
+ * @brief Set the super-cell pointers for all cells in a hierarchy.
+ *
+ * @param c The top-level #cell to play with.
+ * @param super_hydro Pointer to the deepest cell with tasks in this part of
+ * the tree.
+ */
+void cell_set_super_grid_hydro(struct cell *c, struct cell *super_hydro) {
+  /* Are we in a cell with some kind of self/pair task ? */
+  if (super_hydro == NULL && c->hydro.flux != NULL) super_hydro = c;
+
+  /* Set the super-cell */
+  c->hydro.super = super_hydro;
+
+  /* Recurse */
+  if (c->split)
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL)
+        cell_set_super_grid_hydro(c->progeny[k], super_hydro);
+}
+
+/**
+ * @brief Set the super-cell pointers for all cells in a hierarchy.
+ *
+ * @param c The top-level #cell to play with.
+ * @param super_grid Pointer to the deepest cell with tasks in this part of
+ * the tree.
+ */
+void cell_set_super_grid(struct cell *c, struct cell *super_grid) {
+  /* Are we in a cell with some kind of self/pair task ? */
+  if (super_grid == NULL && c->grid.sync_out != NULL) super_grid = c;
+
+  /* Set the super-cell */
+  c->grid.super = super_grid;
+
+  /* Recurse */
+  if (c->split)
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL)
+        cell_set_super_grid(c->progeny[k], super_grid);
 }
 
 /**
@@ -1174,6 +1218,8 @@ void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data) {
   const struct engine *e = (const struct engine *)extra_data;
 
   const int with_hydro = (e->policy & engine_policy_hydro);
+  const int with_grid_hydro = (e->policy & engine_policy_grid_hydro);
+  const int with_grid = (e->policy & engine_policy_grid);
   const int with_grav = (e->policy & engine_policy_self_gravity) ||
                         (e->policy & engine_policy_external_gravity);
 
@@ -1187,12 +1233,16 @@ void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data) {
 
     /* Super-pointer for hydro */
     if (with_hydro) cell_set_super_hydro(c, NULL);
+    if (with_grid_hydro) cell_set_super_grid_hydro(c, NULL);
+
+    /* Super-pointer for grid construction */
+    if (with_grid) cell_set_super_grid(c, NULL);
 
     /* Super-pointer for gravity */
     if (with_grav) cell_set_super_gravity(c, NULL);
 
     /* Super-pointer for common operations */
-    cell_set_super(c, NULL, with_hydro, with_grav);
+    cell_set_super(c, NULL, with_hydro | with_grid_hydro, with_grav, with_grid);
   }
 }
 
