@@ -76,6 +76,10 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
     error("c->field tensor not initialised");
 #endif
 
+  if (c->subtype == cell_subtype_void) {
+    message("Doing grav down on void cell.");
+  }
+
   /* Is the cell not a leaf? */
   /* Note: In zoom land we have void cells whose leaves have split = 0 to
    * differentiate them from the zoom cell tree they link in to. Despite this
@@ -90,6 +94,10 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
 
       /* Do we have a progenitor with any active g-particles ? */
       if (cp != NULL && cell_is_active_gravity(cp, e)) {
+
+        if (c->subtype == cell_subtype_void && cp->type == cell_type_zoom) {
+          message("Void zoom progeny is active.");
+        }
 
 #ifdef SWIFT_DEBUG_CHECKS
         if (cp->grav.ti_old_multipole != e->ti_current)
@@ -2010,9 +2018,6 @@ void runner_dopair_grav_mm_progenies(struct runner *r, const long long flags,
   /* Clear the flags */
   runner_clear_grav_flags(ci, e);
   runner_clear_grav_flags(cj, e);
-
-  if (ci->subtype == cell_subtype_void || cj->subtype == cell_subtype_void)
-    message("Void cell in M-M interaction");
 
   /* Loop over all pairs of progenies */
   for (int i = 0; i < 8; i++) {
