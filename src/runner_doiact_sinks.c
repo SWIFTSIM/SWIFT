@@ -24,7 +24,7 @@
 
 /* Local headers. */
 #include "active.h"
-// #include "sink.h"
+#include "sink.h"
 #include "sink_iact.h"
 #include "cell.h"
 #include "engine.h"
@@ -32,11 +32,11 @@
 #include "space_getsid.h"
 #include "timers.h"
 
-// /* Import the black hole density loop functions. */
-// #define FUNCTION density
-// #define FUNCTION_TASK_LOOP TASK_LOOP_DENSITY
-// #include "runner_doiact_functions_black_holes.h"
-// #include "runner_doiact_undef.h"
+/* Import the sink density loop functions. */
+#define FUNCTION density
+#define FUNCTION_TASK_LOOP TASK_LOOP_DENSITY
+#include "runner_doiact_functions_sinks.h"
+#include "runner_doiact_undef.h"
 
 /* Import the sink swallow loop functions. */
 #define FUNCTION swallow
