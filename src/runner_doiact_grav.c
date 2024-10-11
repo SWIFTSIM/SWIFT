@@ -1982,6 +1982,11 @@ void runner_dopair_grav_mm(struct runner *r, struct cell *restrict ci,
 
   const struct engine *e = r->e;
 
+  if (ci->subtype == cell_subtype_void && ci->nodeID != e->nodeID)
+    error("Void cell with remote nodeID in mm interaction");
+  if (cj->subtype == cell_subtype_void && cj->nodeID != e->nodeID)
+    error("Void cell with remote nodeID in mm interaction");
+
   /* What do we need to do? */
   const int do_i =
       cell_is_active_gravity_mm(ci, e) && (ci->nodeID == e->nodeID);
@@ -2045,7 +2050,7 @@ void runner_dopair_grav_mm_progenies(struct runner *r, const long long flags,
             if ((ci->subtype == cell_subtype_void ||
                  cj->subtype == cell_subtype_void) &&
                 (cpi->type == cell_type_zoom || cpj->type == cell_type_zoom))
-              error("Void cell with zoom progeny in mm interaction");
+              message("Void cell with zoom progeny in mm interaction");
           }
         }
       }
