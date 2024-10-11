@@ -28,6 +28,9 @@
 #include "inline.h"
 #include "kernel_hydro.h"
 
+struct gpart;
+struct part;
+
 #ifdef ADAPTIVE_SOFTENING
 
 /* Force the gravity tasks to take place after the density loop */
