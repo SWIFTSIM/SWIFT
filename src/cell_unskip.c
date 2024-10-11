@@ -3373,3 +3373,47 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s,
 
   return rebuild;
 }
+
+/**
+ * @brief Un-skips all the moving mesh hydro tasks associated with a given cell
+ * and checks if the space needs to be rebuilt.
+ *
+ * @param c the #cell.
+ * @param s the #scheduler.
+ *
+ * @return 1 If the space needs rebuilding. 0 otherwise.
+ */
+int cell_unskip_grid_hydro_tasks(struct cell *c, struct scheduler *s) {
+  struct engine *e = s->space->e;
+  const int with_timestep_limiter = e->policy & engine_policy_timestep_limiter;
+  const int nodeID = e->nodeID;
+
+#ifdef WITH_MPI
+  if (e->policy & engine_policy_sinks)
+    error("Currently, moving mesh hydro schemes do not support sinks!");
+#endif
+  int rebuild = 0;
+
+  /* TODO unskip interaction tasks */
+
+  /* Anything to do here? If c is inactive, we do not need to activate any self
+   * or ghost tasks and any pair tasks will be activated from the neighbouring
+   * active cell if necessary. */
+  if (!cell_is_active_hydro(c, e)) return rebuild;
+
+  /* Unskip all the other task types. */
+  if (c->nodeID == nodeID && cell_is_active_hydro(c, e)) {
+    for (struct link *l = c->hydro.limiter; l != NULL; l = l->next)
+      scheduler_activate(s, l->t);
+    if (c->hydro.cooling_in != NULL) cell_activate_cooling(c, s, e);
+    if (c->kick1 != NULL) scheduler_activate(s, c->kick1);
+    if (c->kick2 != NULL) scheduler_activate(s, c->kick2);
+    if (c->timestep != NULL) scheduler_activate(s, c->timestep);
+    if (c->top->timestep_collect != NULL)
+      scheduler_activate(s, c->top->timestep_collect);
+
+    /* TODO add other task types here as well */
+  }
+
+  return rebuild;
+}
