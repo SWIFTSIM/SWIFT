@@ -30,6 +30,7 @@
 #include "dimension.h"
 #include "entropy_floor.h"
 #include "equation_of_state.h"
+#include "hydro_getters.h"
 #include "hydro_parameters.h"
 #include "hydro_properties.h"
 #include "hydro_space.h"
@@ -38,21 +39,6 @@
 #include "pressure_floor.h"
 
 #include <float.h>
-
-/**
- * @brief Returns the comoving internal energy of a particle at the last
- * time the particle was kicked.
- *
- * @param p The particle of interest
- * @param xp The extended data of the particle of interest.
- */
-__attribute__((always_inline)) INLINE static float
-hydro_get_comoving_internal_energy(const struct part *restrict p,
-                                   const struct xpart *restrict xp) {
-
-  error("Empty implementation");
-  return -1.f;
-}
 
 /**
  * @brief Returns the physical internal energy of a particle at the last
@@ -123,20 +109,6 @@ __attribute__((always_inline)) INLINE static float hydro_get_comoving_pressure(
  */
 __attribute__((always_inline)) INLINE static float hydro_get_physical_pressure(
     const struct part *restrict p, const struct cosmology *cosmo) {
-
-  error("Empty implementation");
-  return -1.f;
-}
-
-/**
- * @brief Returns the comoving entropy of a particle at the last
- * time the particle was kicked.
- *
- * @param p The particle of interest.
- * @param xp The extended data of the particle of interest.
- */
-__attribute__((always_inline)) INLINE static float hydro_get_comoving_entropy(
-    const struct part *restrict p, const struct xpart *restrict xp) {
 
   error("Empty implementation");
   return -1.f;
@@ -232,18 +204,6 @@ __attribute__((always_inline)) INLINE static float hydro_get_comoving_density(
  */
 __attribute__((always_inline)) INLINE static float hydro_get_physical_density(
     const struct part *restrict p, const struct cosmology *cosmo) {
-
-  error("Empty implementation");
-  return -1.f;
-}
-
-/**
- * @brief Returns the mass of a particle
- *
- * @param p The particle of interest
- */
-__attribute__((always_inline)) INLINE static float hydro_get_mass(
-    const struct part *restrict p) {
 
   error("Empty implementation");
   return -1.f;

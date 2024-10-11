@@ -1,6 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2020 Matthieu Schaller (schaller@strw.leidenuniv.nl)
+ *               2024 Yolan Uyttenhove (Yolan.Uyttenhove@UGent.be)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,12 +17,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_NONE_HYDRO_PART_H
-#define SWIFT_NONE_HYDRO_PART_H
+#ifndef SWIFT_SHADOWSWIFT_HYDRO_PART_H
+#define SWIFT_SHADOWSWIFT_HYDRO_PART_H
 
 /**
  * @file Shadowswift/hydro_part.h
- * @brief Empty implementation
+ * @brief ShadowSWIFT hydrodynamics scheme (Moving mesh)
  */
 
 #include "black_holes_struct.h"
@@ -36,6 +37,13 @@
 #include "star_formation_struct.h"
 #include "timestep_limiter_struct.h"
 #include "tracers_struct.h"
+
+enum kick_type {
+  KICK1,
+  KICK2,
+  ROLLBACK,
+  RESTORE_AFTER_ROLLBACK,
+};
 
 /**
  * @brief Particle fields not needed during the SPH loops over neighbours.
@@ -58,19 +66,22 @@ struct xpart {
   /*! Gravitational acceleration at the last full step. */
   float a_grav[3];
 
+  /*! Internal energy at the last full step. */
+  float u_full;
+
   /*! Additional data used to record particle splits */
   struct particle_splitting_data split_data;
 
   /*! Additional data used to record cooling information */
   struct cooling_xpart_data cooling_data;
 
-  /* Additional data used by the tracers */
+  /*! Additional data used by the tracers */
   struct tracers_xpart_data tracers_data;
 
-  /* Additional data used by the tracers */
+  /*! Additional data used by the tracers */
   struct star_formation_xpart_data sf_data;
 
-  /* Additional data used by the feedback */
+  /*! Additional data used by the feedback */
   struct feedback_xpart_data feedback_data;
 
   /*! Additional data used by the MHD scheme */
@@ -96,56 +107,223 @@ struct part {
   /*! Particle position. */
   double x[3];
 
-  /*! Particle predicted velocity. */
-  float v[3];
-
   /*! Particle acceleration. */
   float a_hydro[3];
 
-  /*! Particle mass. */
-  float mass;
-
-  /*! Particle smoothing length. */
+  /*! Particle smoothing length. This is used for neighbour loops that do not
+   * use the Voronoi mesh. */
   float h;
 
   /*! Particle density */
   float rho;
 
-  /* Store density/force specific stuff. */
-  union {
+  /*! Fluid velocity. */
+  float v[3];
 
-    /**
-     * @brief Structure for the variables only used in the density loop over
-     * neighbours.
-     *
-     * Quantities in this sub-structure should only be accessed in the density
-     * loop over neighbours and the ghost task.
-     */
+  /*! Particle velocity */
+  float v_full[3];
+
+  /*! Pressure. */
+  float P;
+
+  /*! Entropic function */
+  float A;
+
+  /*! Fluid thermal energy (not per unit mass!). */
+  float thermal_energy;
+
+  /*! Gradients of the primitive variables. */
+  struct {
+
+    /*! Density gradients. */
+    float rho[3];
+
+    /*! Fluid velocity gradients. */
+    float v[3][3];
+
+    /*! Pressure gradients. */
+    float P[3];
+
+    /*! Entropic function gradients */
+    float A[3];
+
+#if defined(SHADOWSWIFT_GRADIENTS_WLS) || \
+    defined(SHADOWSWIFT_MESHLESS_GRADIENTS)
+    /* Matrix to invert during gradient calculation */
+    float matrix_wls[3][3];
+#endif
+
+  } gradients;
+
+  /*! Quantities needed by the slope limiter. */
+  struct {
+
+    /* Extreme values of the density among the neighbours. */
+    float rho[2];
+
+    /* Extreme values of the fluid velocity among the neighbours. */
+    float v[3][2];
+
+    /* Extreme values of the pressure among the neighbours. */
+    float P[2];
+
+    /* Extreme values of the entropic function among the neighbours */
+    float A[2];
+
+#ifdef SHADOWSWIFT_SLOPE_LIMITER_MESHLESS
+    /* Maximal distance to any of the neighbours */
+    /* TODO: Use the maximal distance from the _centroid_ to any of the faces
+     * instead? */
+    float r_max;
+#endif
+
+#ifdef SHADOWSWIFT_SLOPE_LIMITER_CELL_WIDE
     struct {
 
-      /*! Neighbour number count. */
+      /* Extreme values of the extrapolated density towards the neighbours. */
+      float rho[2];
+
+      /* Extreme values of the extrapolated fluid velocity towards the
+       * neighbours. */
+      float v[3][2];
+
+      /* Extreme values of the extrapolated pressure towards the neighbours. */
+      float P[2];
+
+      /* Extreme values of the extrapolated entropic function towards the
+       * neighbours.*/
+      float A[2];
+
+    } extrapolations;
+#endif
+
+  } limiter;
+
+#ifdef SHADOWSWIFT_EXTRAPOLATE_TIME
+  /*! Time extrapolations of primitive variables (cumulative over timestep) */
+  float dW_time[6];
+#endif
+
+  /*! The conserved hydrodynamical variables. */
+  struct {
+
+    /*! Fluid mass */
+    float mass;
+
+    /*! Fluid momentum. */
+    float momentum[3];
+
+    /*! Fluid total energy. */
+    float energy;
+
+    /*! This is related to the thermodynamical entropy (see Springel 2010 eq.
+     * 49).
+     * Note that this is in general *not* conserved, but conservation of
+     * entropy may be given precedence in smooth cold flows */
+    float entropy;
+
+  } conserved;
+
+  /*! Fluxes. */
+  struct {
+
+    /*! Mass flux. */
+    float mass;
+
+    /*! Momentum flux. */
+    float momentum[3];
+
+    /*! Energy flux. */
+    float energy;
+
+    /*! Entropy flux. */
+    float entropy;
+
+    /*! Timestep for flux calculation. */
+    float dt;
+
+#ifdef SWIFT_DEBUG_CHECKS
+    /*! Flux counter, should be conserved */
+    long count;
+#endif
+
+  } flux;
+
+  /*! Geometric information associated with this particle */
+  struct {
+
+    /*! Flags indicating to which neighbouring cells this particle has already
+     * been added. */
+    unsigned long delaunay_flags;
+
+    /*! Voronoi cell volume. */
+    float volume;
+
+    /*! Voronoi cell centroid, relative to this particles position. */
+    float centroid[3];
+
+    /*! Number of faces of this voronoi cell. */
+    int nface;
+
+    /*! cell_pair_connections offset in voronoi tesselation */
+    int pair_connections_offset;
+
+    /*! Estimate of the minimal distance from centroid to a face */
+    float min_face_dist;
+
+    /*! Index of this particle in the delaunay tesselation (only valid if it is
+     * active) */
+    int delaunay_vertex;
+
+    /*! Search radius of this particle. This will approximately be equal to
+     * the safety radius of the voronoi cell of this particle. */
+    float search_radius;
+
+  } geometry;
+
+  struct {
+
+    /*! Signal velocity */
+    float vmax;
+
+    /*! Maximal value of the kinetic energy among the neighbours */
+    float Ekin;
+
+    /*! Maximal mach number of the signal speed of shock waves in Riemann
+     * problems across faces of this particle */
+    float mach_number;
+
+    /*! Last kick type applied to this particle. */
+    enum kick_type last_kick;
+
+  } timestepvars;
+
+  union {
+    /*! Specific stuff for the gravity-hydro coupling. */
+    struct {
+
+      /*! Timestep of first half kick of this timestep (gravity) */
+      float dt;
+
+      /*! Timestep of first half kick for the kinetic energy correction */
+      float dt_corr;
+
+      /*! Current value of the mass flux vector. */
+      float mflux[3];
+
+    } gravity;
+
+    /* Unused in the ShadowSWIFT scheme, put in union to save space */
+    struct {
       float wcount;
-
-      /*! Derivative of the neighbour number with respect to h. */
       float wcount_dh;
-
-      /*! Derivative of the density with respect to h. */
       float rho_dh;
-
     } density;
 
-    /**
-     * @brief Structure for the variables only used in the force loop over
-     * neighbours.
-     *
-     * Quantities in this sub-structure should only be accessed in the force
-     * loop over neighbours and the ghost, drift and kick tasks.
-     */
+    /* Unused in the ShadowSWIFT scheme. */
     struct {
-
       /*! Time derivative of smoothing length  */
       float h_dt;
-
     } force;
   };
 
@@ -194,4 +372,4 @@ struct part {
 
 } SWIFT_STRUCT_ALIGN;
 
-#endif /* SWIFT_NONE_HYDRO_PART_H */
+#endif /* SWIFT_SHADOWSWIFT_HYDRO_PART_H */
