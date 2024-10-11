@@ -2040,7 +2040,12 @@ void runner_dopair_grav_mm_progenies(struct runner *r, const long long flags,
           const int flag = i * 8 + j;
 
           /* Did we agree to use an M-M interaction here at the last rebuild? */
-          if (flags & (1ULL << flag)) runner_dopair_grav_mm(r, cpi, cpj);
+          if (flags & (1ULL << flag)) {
+            runner_dopair_grav_mm(r, cpi, cpj);
+            if (c->subtype == cell_subtype_void &&
+                (cpi->type == cell_type_zoom || cpj->type == cell_type_zoom))
+              error("Void cell with zoom progeny in mm interaction");
+          }
         }
       }
     }
