@@ -499,7 +499,7 @@ void zoom_engine_make_hierarchical_gravity_tasks_recursive(
   }
 
   /* We are below the super-cell but not below the maximal splitting depth */
-  else if ((c->grav.super != NULL) && cell_is_above_diff_grav_depth(c) &&
+  else if (c->grav.super != NULL && cell_is_above_diff_grav_depth(c) &&
            is_self_gravity) {
 
     /* Local tasks only... */
@@ -521,7 +521,8 @@ void zoom_engine_make_hierarchical_gravity_tasks_recursive(
   }
 
   /* Recurse but not below the maximal splitting depth */
-  if (c->split && cell_is_above_diff_grav_depth(c)) {
+  if ((c->split || c->subtype == cell_subtype_void) &&
+      cell_is_above_diff_grav_depth(c)) {
     for (int k = 0; k < 8; k++) {
       if (c->progeny[k] != NULL) {
         zoom_engine_make_hierarchical_gravity_tasks_recursive(e, c->progeny[k],
