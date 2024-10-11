@@ -1373,8 +1373,8 @@ void engine_rebuild(struct engine *e, const int repartitioned,
 
   /* Set the initial completeness flag for the moving mesh (before exchange) */
   if (e->policy & engine_policy_grid) {
-    cell_grid_set_self_completeness_mapper(e->s->cells_top, e->s->nr_cells,
-                                           NULL);
+    threadpool_map(&e->threadpool, cell_grid_set_self_completeness_mapper, NULL,
+                   e->s->nr_cells, 1, threadpool_auto_chunk_size, e);
   }
 
 /* If in parallel, exchange the cell structure, top-level and neighbouring
