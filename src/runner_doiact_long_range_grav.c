@@ -557,6 +557,11 @@ void runner_count_mesh_interactions(struct runner *r, struct cell *ci,
 void runner_do_grav_long_range(struct runner *r, struct cell *ci,
                                const int timer) {
 
+  if (ci->type == cell_type_zoom)
+    message("Zoom cell in long-range gravity task!");
+  if (ci->subtype == cell_subtype_void)
+    message("Void cell in long-range gravity task!");
+
   TIMER_TIC;
 
   struct space *s = r->e->s;
