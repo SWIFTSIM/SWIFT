@@ -107,8 +107,7 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
           error("cp->field tensor not initialised");
 #endif
         /* If the tensor received any contribution, push it down */
-        if (c->grav.multipole->pot.interacted ||
-            c->subtype == cell_subtype_void || c->grav.super == NULL) {
+        if (c->grav.multipole->pot.interacted) {
 
           struct grav_tensor shifted_tensor;
 

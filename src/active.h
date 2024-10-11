@@ -247,6 +247,8 @@ __attribute__((always_inline)) INLINE static int cell_is_active_gravity(
 __attribute__((always_inline)) INLINE static int cell_is_active_gravity_mm(
     const struct cell *c, const struct engine *e) {
 
+  if (c->subtype == cell_subtype_void) return 1;
+
   return (c->grav.ti_end_min == e->ti_current);
 }
 
