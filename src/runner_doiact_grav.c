@@ -2011,14 +2011,20 @@ void runner_dopair_grav_mm(struct runner *r, struct cell *restrict ci,
     runner_dopair_grav_mm_nonsym(r, cj, ci);
   }
 
-  if (ci->subtype == cell_subtype_void)
-    message("running MM interacted: ci-interacted=%c, cj-interacted=%c",
-            ci->grav.multipole->pot.interacted,
-            cj->grav.multipole->pot.interacted);
-  if (cj->subtype == cell_subtype_void)
-    message("running MM interacted: ci-interacted=%c, cj-interacted=%c",
-            ci->grav.multipole->pot.interacted,
-            cj->grav.multipole->pot.interacted);
+  if (do_i && !ci->grav.multipole->pot.interacted)
+    error(
+        "cell was meant to be interacted with but was not (ci->type=%s, "
+        "ci->subtype=%s, c->depth=%d, c->nodeID=%d, "
+        "c->grav.ti_old_multipole=%lld)",
+        cellID_names[ci->type], subcellID_names[ci->subtype], ci->depth,
+        ci->nodeID, ci->grav.ti_old_multipole);
+  if (do_j && !cj->grav.multipole->pot.interacted)
+    error(
+        "cell was meant to be interacted with but was not (cj->type=%s, "
+        "cj->subtype=%s, c->depth=%d, c->nodeID=%d, "
+        "c->grav.ti_old_multipole=%lld)",
+        cellID_names[cj->type], subcellID_names[cj->subtype], cj->depth,
+        cj->nodeID, cj->grav.ti_old_multipole);
 }
 
 /**
