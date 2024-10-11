@@ -77,7 +77,7 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
 #endif
 
   if (c->subtype == cell_subtype_void) {
-    message("Doing grav down on void cell.");
+    message("Doing grav down on void cell. (depth=%d)", c->depth);
   }
 
   /* Is the cell not a leaf? */
@@ -131,9 +131,9 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
          * In a non-zoom simulation the down is defined at the super level,
          * so you can never hit another down when recursing. Only the
          * void->zoom cell tree can have two super levels.  */
-        if (cp->grav.super != cp) {
-          runner_do_grav_down(r, cp, 0);
-        }
+        // if (cp->grav.super != cp) {
+        runner_do_grav_down(r, cp, 0);
+        // }
       }
     }
 
