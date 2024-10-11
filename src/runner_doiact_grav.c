@@ -1994,9 +1994,9 @@ void runner_dopair_grav_mm(struct runner *r, struct cell *restrict ci,
       cell_is_active_gravity_mm(cj, e) && (cj->nodeID == e->nodeID);
 
   if (!do_i && !do_j)
-    message("No active multipole in mm interaction (%s/%s, %s/%s)",
-            cellID_names[ci->type], subcellID_names[ci->subtype],
-            cellID_names[cj->type], subcellID_names[cj->subtype]);
+    error("No active multipole in mm interaction (%s/%s, %s/%s)",
+          cellID_names[ci->type], subcellID_names[ci->subtype],
+          cellID_names[cj->type], subcellID_names[cj->subtype]);
 
   /* Do we need drifting first? */
   if (ci->grav.ti_old_multipole < e->ti_current) cell_drift_multipole(ci, e);
@@ -2011,13 +2011,11 @@ void runner_dopair_grav_mm(struct runner *r, struct cell *restrict ci,
     runner_dopair_grav_mm_nonsym(r, cj, ci);
   }
 
-  if (ci->subtype == cell_subtype_void ||
-      (ci->type == cell_type_zoom && ci->void_parent != NULL))
+  if (ci->subtype == cell_subtype_void)
     message("running MM interacted: ci-interacted=%c, cj-interacted=%c",
             ci->grav.multipole->pot.interacted,
             cj->grav.multipole->pot.interacted);
-  if (cj->subtype == cell_subtype_void ||
-      (cj->type == cell_type_zoom && cj->void_parent != NULL))
+  if (cj->subtype == cell_subtype_void)
     message("running MM interacted: ci-interacted=%c, cj-interacted=%c",
             ci->grav.multipole->pot.interacted,
             cj->grav.multipole->pot.interacted);
