@@ -80,6 +80,14 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
     message("Doing grav down on void cell. (depth=%d)", c->depth);
   }
 
+  if (c->type == cell_type_zoom && c->grav.super == NULL) {
+    message("Doing grav down on zoom above super cell. (depth=%d)", c->depth);
+  }
+
+  if (c->type == cell_type_zoom && c->grav.super == c && c->depth == 0) {
+    message("Doing grav down on zoom super cell. (depth=%d)", c->depth);
+  }
+
   /* Is the cell not a leaf? */
   /* Note: In zoom land we have void cells whose leaves have split = 0 to
    * differentiate them from the zoom cell tree they link in to. Despite this
@@ -1993,7 +2001,7 @@ void runner_dopair_grav_mm(struct runner *r, struct cell *restrict ci,
   const int do_j =
       cell_is_active_gravity_mm(cj, e) && (cj->nodeID == e->nodeID);
 
-  if (!do_i && !do_j)
+  if (!do_i || !do_j)
     error("No active multipole in mm interaction (%s/%s, %s/%s)",
           cellID_names[ci->type], subcellID_names[ci->subtype],
           cellID_names[cj->type], subcellID_names[cj->subtype]);
