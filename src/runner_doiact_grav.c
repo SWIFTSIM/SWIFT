@@ -108,6 +108,10 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
 
           /* Add it to this level's tensor */
           gravity_field_tensors_add(&cp->grav.multipole->pot, &shifted_tensor);
+
+          if (c->subtype == cell_subtype_void && cp->type == cell_type_zoom) {
+            message("Adding field tensor from void to zoom cell.");
+          }
         }
 
         /* Recurse, but only if we haven't reached the super level. This can
@@ -2006,6 +2010,9 @@ void runner_dopair_grav_mm_progenies(struct runner *r, const long long flags,
   /* Clear the flags */
   runner_clear_grav_flags(ci, e);
   runner_clear_grav_flags(cj, e);
+
+  if (ci->subtype == cell_subtype_void || cj->subtype == cell_subtype_void)
+    message("Void cell in M-M interaction");
 
   /* Loop over all pairs of progenies */
   for (int i = 0; i < 8; i++) {
