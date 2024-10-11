@@ -1190,15 +1190,6 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
         c->black_holes.count > 0 || c->sinks.count > 0) {
       c->timestep_collect = scheduler_addtask(s, task_type_collect,
                                               task_subtype_none, 0, 0, c, NULL);
-
-      /* When running a zoom simulation we need to have the zoom
-       * timestep_collect unlock the top level void cell's timestep_collect.
-       * This ensures the zoom cell timestep information is up to date before
-       * the parent void cell collects it. */
-      if (c->type == cell_type_zoom) {
-        scheduler_addunlock(s, c->timestep_collect,
-                            c->void_parent->top->timestep_collect);
-      }
     }
 
     if (with_star_formation && c->hydro.count > 0) {
@@ -1859,6 +1850,10 @@ void engine_make_hierarchical_tasks_mapper(void *map_data, int num_elements,
   for (int ind = 0; ind < num_elements; ind++) {
     struct cell *c = &((struct cell *)map_data)[ind];
 
+    /* Skip zoom cells, they're handled during recursion through the void cell
+     * tree. */
+    if (c->type == cell_type_zoom) continue;
+
     /* Void cells need to be redirected to their own hierarchical task function.
      * They have no other tasks beyond those made in this function. This also
      * handles the zoom tasks as it recurses. */
@@ -1873,9 +1868,6 @@ void engine_make_hierarchical_tasks_mapper(void *map_data, int num_elements,
     /* Add the hydro stuff */
     if (with_hydro)
       engine_make_hierarchical_tasks_hydro(e, c, /*star_resort_cell=*/NULL);
-
-    /* In zoom land we're done with zoom cells now. */
-    if (c->type == cell_type_zoom) continue;
 
     /* And the gravity stuff */
     if (with_self_gravity || with_ext_gravity)

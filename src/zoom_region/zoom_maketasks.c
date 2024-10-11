@@ -341,14 +341,31 @@ void zoom_engine_make_hierarchical_gravity_tasks_recursive(
     struct engine *e, struct cell *c, struct cell *void_super) {
 
   struct scheduler *s = &e->sched;
+  const int with_hydro = (e->policy & engine_policy_hydro);
   const int is_self_gravity = (e->policy & engine_policy_self_gravity);
   const int stars_only_gravity =
       (e->policy & engine_policy_stars) && !(e->policy & engine_policy_hydro);
+
+  /* If we have a top level zoom cell, first call the other hierarchical
+   * functions. */
+  if (c->type == cell_type_zoom && c->type == cell_type_zoom) {
+    engine_make_hierarchical_tasks_common(e, c);
+    if (with_hydro)
+      engine_make_hierarchical_tasks_hydro(e, c, /*star_resort_cell=*/NULL);
+  }
 
   /* At the top level of a void cell we need to make a timestep_collect task. */
   if (c->top == c && c->subtype == cell_subtype_void) {
     c->timestep_collect = scheduler_addtask(s, task_type_collect,
                                             task_subtype_none, 0, 0, c, NULL);
+  }
+
+  /* We also need to add an unlock for the void timestep collect to ensure
+   * the zoom timestep collect is done first. The zoom timestep collect is
+   * guaranteed to be made by now. */
+  if (c->top == c && c->type == cell_type_zoom) {
+    scheduler_addunlock(s, c->timestep_collect,
+                        c->top->void_parent->top->timestep_collect);
   }
 
   /* At the void super level we have a few different tasks to make. (We don't
