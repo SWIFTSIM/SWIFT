@@ -67,6 +67,8 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
   /* Some constants */
   const struct engine *e = r->e;
 
+  if (c->type == cell_type_zoom && timer) return;
+
   TIMER_TIC;
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -125,11 +127,6 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
 
           /* Add it to this level's tensor */
           gravity_field_tensors_add(&cp->grav.multipole->pot, &shifted_tensor);
-
-          if (c->grav.super == c) {
-            message("Adding field tensor to super level (%s/%s)",
-                    cellID_names[cp->type], subcellID_names[cp->subtype]);
-          }
         }
 
         /* Recurse, but only if we haven't reached the super level. This can
@@ -139,9 +136,9 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
          * In a non-zoom simulation the down is defined at the super level,
          * so you can never hit another down when recursing. Only the
          * void->zoom cell tree can have two super levels.  */
-        if (cp->grav.super != cp) {
-          runner_do_grav_down(r, cp, 0);
-        }
+        // if (cp->grav.super != cp) {
+        runner_do_grav_down(r, cp, 0);
+        // }
       }
     }
 
