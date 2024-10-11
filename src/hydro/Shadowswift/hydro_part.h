@@ -172,8 +172,6 @@ struct part {
 
 #ifdef SHADOWSWIFT_SLOPE_LIMITER_MESHLESS
     /* Maximal distance to any of the neighbours */
-    /* TODO: Use the maximal distance from the _centroid_ to any of the faces
-     * instead? */
     float r_max;
 #endif
 
