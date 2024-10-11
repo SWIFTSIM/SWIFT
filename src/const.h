@@ -82,6 +82,26 @@
 #define const_gizmo_min_wcorr 0.5f
 
 /* Options controlling ShadowSWIFT */
+/* Option to enable gradients for ShadowSWIFT */
+/* If disabled, no gradients are used (first order scheme) */
+#define SHADOWSWIFT_MESHLESS_GRADIENTS
+#ifndef SHADOWSWIFT_MESHLESS_GRADIENTS
+#define SHADOWSWIFT_GRADIENTS
+#endif
+/* Always activate the slope limiters if we use gradients (the scheme becomes
+ * unstable otherwise) */
+#ifdef SHADOWSWIFT_GRADIENTS
+/*! @brief Option controlling which type of gradient calculation is used */
+#define SHADOWSWIFT_GRADIENTS_WLS
+/* Always activate the slope limiters if we use gradients (the scheme becomes
+ * unstable otherwise) */
+#define SHADOWSWIFT_SLOPE_LIMITER_PER_FACE
+#define SHADOWSWIFT_SLOPE_LIMITER_CELL_WIDE
+#endif
+#ifdef SHADOWSWIFT_MESHLESS_GRADIENTS
+#define SHADOWSWIFT_SLOPE_LIMITER_PER_FACE
+#define SHADOWSWIFT_SLOPE_LIMITER_MESHLESS
+#endif
 /* Options controlling acceleration strategies*/
 /*! @brief Option enabling a more relaxed completeness criterion */
 #define SHADOWSWIFT_RELAXED_COMPLETENESS
