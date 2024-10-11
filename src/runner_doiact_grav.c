@@ -95,8 +95,9 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
       /* Do we have a progenitor with any active g-particles ? */
       if (cp != NULL && cell_is_active_gravity(cp, e)) {
 
-        if (c->subtype == cell_subtype_void && cp->type == cell_type_zoom) {
-          message("Void zoom progeny is active.");
+        if (cp->grav.super == cp) {
+          message("Got to the super level (%s/%s)", cellID_names[cp->type],
+                  subcellID_names[cp->subtype]);
         }
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -117,8 +118,9 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
           /* Add it to this level's tensor */
           gravity_field_tensors_add(&cp->grav.multipole->pot, &shifted_tensor);
 
-          if (c->subtype == cell_subtype_void && cp->type == cell_type_zoom) {
-            message("Adding field tensor from void to zoom cell.");
+          if (cp->grav.super == cp) {
+            message("Adding field tensor to super level (%s/%s)",
+                    cellID_names[cp->type], subcellID_names[cp->subtype]);
           }
         }
 
