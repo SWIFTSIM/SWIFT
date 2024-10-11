@@ -126,7 +126,7 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
           /* Add it to this level's tensor */
           gravity_field_tensors_add(&cp->grav.multipole->pot, &shifted_tensor);
 
-          if (cp->grav.super == cp) {
+          if (c->grav.super == c) {
             message("Adding field tensor to super level (%s/%s)",
                     cellID_names[cp->type], subcellID_names[cp->subtype]);
           }
