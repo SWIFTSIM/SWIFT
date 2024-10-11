@@ -490,8 +490,13 @@ void zoom_engine_make_hierarchical_gravity_tasks_recursive(
   }
 
   /* Below the void super level we just need to hook in the impoicit tasks */
-  else if (c->grav.super != NULL && c->subtype == cell_subtype_void &&
-           is_self_gravity) {
+  else if (void_super != NULL && is_self_gravity) {
+
+    if (c->type == cell_type_zoom && c->grav.super != NULL) {
+      c->grav.drift_out = scheduler_addtask(s, task_type_drift_gpart_out,
+                                            task_subtype_none, 0, 1, c, NULL);
+      scheduler_addunlock(s, parent->grav.drift_out, c->grav.drift_out);
+    }
 
     /* Below the super level we just need to link in the implicit tasks. */
     c->grav.init_out = scheduler_addtask(s, task_type_init_grav_out,
@@ -501,28 +506,6 @@ void zoom_engine_make_hierarchical_gravity_tasks_recursive(
 
     scheduler_addunlock(s, parent->grav.init_out, c->grav.init_out);
     scheduler_addunlock(s, c->grav.down_in, parent->grav.down_in);
-  }
-
-  /* We are below the super-cell but not below the maximal splitting depth */
-  else if (c->grav.super != NULL && cell_is_above_diff_grav_depth(c) &&
-           is_self_gravity) {
-
-    /* Local tasks only... */
-    if (c->nodeID == e->nodeID) {
-
-      c->grav.drift_out = scheduler_addtask(s, task_type_drift_gpart_out,
-                                            task_subtype_none, 0, 1, c, NULL);
-
-      c->grav.init_out = scheduler_addtask(s, task_type_init_grav_out,
-                                           task_subtype_none, 0, 1, c, NULL);
-
-      c->grav.down_in = scheduler_addtask(s, task_type_grav_down_in,
-                                          task_subtype_none, 0, 1, c, NULL);
-
-      scheduler_addunlock(s, parent->grav.init_out, c->grav.init_out);
-      scheduler_addunlock(s, parent->grav.drift_out, c->grav.drift_out);
-      scheduler_addunlock(s, c->grav.down_in, parent->grav.down_in);
-    }
   }
 
   /* Recurse but not below the maximal splitting depth */
