@@ -58,7 +58,8 @@ void zoom_void_space_split(struct space *s, int verbose);
 void zoom_engine_make_self_gravity_tasks(struct space *s, struct engine *e);
 
 /* Void cell gravity task creation. */
-void zoom_engine_make_hierarchical_void_tasks(struct engine *e);
+void zoom_engine_make_hierarchical_gravity_tasks_recursive(
+    struct engine *e, struct cell *c, struct cell *void_super);
 
 /* Update the void cell gravity timesteps. */
 void runner_zoom_do_void_timestep_collect(struct runner *r, struct cell *c,
