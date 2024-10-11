@@ -79,6 +79,11 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
   const int with_star_formation_sink = with_sinks && with_stars;
   const int with_feedback = e->policy & engine_policy_feedback;
 
+  if (e->policy & engine_policy_grid_hydro)
+    warning("Skipping moving mesh hydro tasks for now!");
+  if (e->policy & engine_policy_grid)
+    warning("Skipping grid construction tasks for now!");
+
   for (int ind = 0; ind < num_elements; ind++) {
 
     /* Get basic task information */
@@ -145,7 +150,9 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       }
 
       else if (t_type == task_type_self && t_subtype == task_subtype_gradient) {
-        if (ci_active_hydro) scheduler_activate(s, t);
+        /* TODO: Dont activate moving mesh hydro tasks for now */
+        if (ci_active_hydro && !(e->policy & engine_policy_grid_hydro))
+          scheduler_activate(s, t);
       }
 
       else if (t_type == task_type_sub_self &&
@@ -365,6 +372,14 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         if (ci_active_rt) scheduler_activate(s, t);
       }
 
+      else if (t_subtype == task_subtype_grid_sync ||
+               t_subtype == task_subtype_flux ||
+               t_subtype == task_subtype_slope_estimate ||
+               t_subtype == task_subtype_slope_limiter) {
+        /* TODO: Skipping activation of grid construction and moving mesh hydro
+         * tasks for now! */
+      }
+
 #ifdef SWIFT_DEBUG_CHECKS
       else {
         error("Invalid task type / sub-type encountered");
@@ -411,12 +426,13 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
       /* Only activate tasks that involve a local active cell. */
       if ((t_subtype == task_subtype_density ||
-           t_subtype == task_subtype_gradient ||
+           (t_subtype == task_subtype_gradient &&
+            !(e->policy & engine_policy_grid_hydro)) ||
            t_subtype == task_subtype_limiter ||
            t_subtype == task_subtype_force) &&
           ((ci_active_hydro && ci_nodeID == nodeID) ||
            (cj_active_hydro && cj_nodeID == nodeID))) {
-
+        /* TODO: dont activate moving mesh hydro tasks for now! */
         scheduler_activate(s, t);
 
         /* Set the correct sorting flags */
@@ -1500,8 +1516,11 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
     }
 
     /* Hydro ghost tasks ? */
-    else if (t_type == task_type_ghost || t_type == task_type_extra_ghost ||
+    else if (t_type == task_type_ghost ||
+             (t_type == task_type_extra_ghost &&
+              !(e->policy & engine_policy_grid_hydro)) ||
              t_type == task_type_ghost_in || t_type == task_type_ghost_out) {
+      /* TODO: not activating moving mesh hydro tasks for now! */
       if (cell_is_active_hydro(t->ci, e)) scheduler_activate(s, t);
     }
 

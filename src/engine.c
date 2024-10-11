@@ -1456,7 +1456,7 @@ void engine_rebuild(struct engine *e, const int repartitioned,
   activate_by_unskip = 1;
 #endif
   engine_unskip(e);
-  if (e->forcerebuild) error("engine_unskip faled after a rebuild!");
+  if (e->forcerebuild) error("engine_unskip failed after a rebuild!");
 
 #ifdef SWIFT_DEBUG_CHECKS
 
