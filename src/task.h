@@ -120,6 +120,11 @@ enum task_types {
   task_type_rt_advance_cell_time,
   task_type_rt_sort,
   task_type_rt_collect_times,
+  task_type_grid_construction,
+  task_type_grid_ghost,
+  task_type_slope_estimate_ghost,
+  task_type_slope_limiter_ghost,
+  task_type_flux_ghost,
   task_type_count
 } __attribute__((packed));
 
@@ -131,6 +136,9 @@ enum task_subtypes {
   task_subtype_density,
   task_subtype_gradient,
   task_subtype_force,
+  task_subtype_slope_estimate,
+  task_subtype_slope_limiter,
+  task_subtype_flux,
   task_subtype_limiter,
   task_subtype_grav,
   task_subtype_external_grav,
@@ -160,6 +168,8 @@ enum task_subtypes {
   task_subtype_sink_do_gas_swallow,
   task_subtype_rt_gradient,
   task_subtype_rt_transport,
+  task_subtype_grid_sync,
+  task_subtype_faces,
   task_subtype_count
 } __attribute__((packed));
 

@@ -127,6 +127,11 @@ const char *taskID_names[task_type_count] = {
     "rt_advance_cell_time",
     "rt_sorts",
     "rt_collect_times",
+    "grid_construction",
+    "grid_ghost",
+    "slope_estimate_ghost",
+    "slope_limiter_ghost",
+    "flux_ghost",
 };
 
 /* Sub-task type names. */
@@ -135,6 +140,9 @@ const char *subtaskID_names[task_subtype_count] = {
     "density",
     "gradient",
     "force",
+    "slope_estimate",
+    "slope_limiter",
+    "flux",
     "limiter",
     "grav",
     "external_grav",
@@ -164,6 +172,8 @@ const char *subtaskID_names[task_subtype_count] = {
     "sink_do_gas_swallow",
     "rt_gradient",
     "rt_transport",
+    "grid_sync",
+    "faces",
 };
 
 const char *task_category_names[task_category_count] = {
