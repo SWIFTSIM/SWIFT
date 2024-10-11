@@ -368,6 +368,10 @@ void zoom_engine_make_hierarchical_gravity_tasks_recursive(
                         c->top->void_parent->top->timestep_collect);
   }
 
+  /* Get the right parent, either the normal parent or when at the top level
+   * of the zoom region, the void parent. */
+  struct cell *parent = c->top == c ? c->void_parent : c->parent;
+
   /* At the void super level we have a few different tasks to make. (We don't
    * need any tasks above the super level) */
   if (c->grav.super == c && c->subtype == cell_subtype_void &&
@@ -474,6 +478,7 @@ void zoom_engine_make_hierarchical_gravity_tasks_recursive(
         scheduler_addunlock(s, c->grav.init, c->grav.init_out);
         scheduler_addunlock(s, c->grav.drift, c->grav.drift_out);
         scheduler_addunlock(s, c->grav.down_in, c->grav.down);
+        scheduler_addunlock(s, c->grav.down_in, parent->grav.down_in);
 
         /* The void down needs to preceed the zoom down. */
         if (void_super != NULL) {
@@ -494,8 +499,8 @@ void zoom_engine_make_hierarchical_gravity_tasks_recursive(
     c->grav.down_in = scheduler_addtask(s, task_type_grav_down_in,
                                         task_subtype_none, 0, 1, c, NULL);
 
-    scheduler_addunlock(s, c->parent->grav.init_out, c->grav.init_out);
-    scheduler_addunlock(s, c->grav.down_in, c->parent->grav.down_in);
+    scheduler_addunlock(s, parent->grav.init_out, c->grav.init_out);
+    scheduler_addunlock(s, c->grav.down_in, parent->grav.down_in);
   }
 
   /* We are below the super-cell but not below the maximal splitting depth */
@@ -514,9 +519,9 @@ void zoom_engine_make_hierarchical_gravity_tasks_recursive(
       c->grav.down_in = scheduler_addtask(s, task_type_grav_down_in,
                                           task_subtype_none, 0, 1, c, NULL);
 
-      scheduler_addunlock(s, c->parent->grav.init_out, c->grav.init_out);
-      scheduler_addunlock(s, c->parent->grav.drift_out, c->grav.drift_out);
-      scheduler_addunlock(s, c->grav.down_in, c->parent->grav.down_in);
+      scheduler_addunlock(s, parent->grav.init_out, c->grav.init_out);
+      scheduler_addunlock(s, parent->grav.drift_out, c->grav.drift_out);
+      scheduler_addunlock(s, c->grav.down_in, parent->grav.down_in);
     }
   }
 
