@@ -297,29 +297,29 @@ struct part {
 
   } timestepvars;
 
+  /*! Specific stuff for the gravity-hydro coupling. */
+  struct {
+
+    /*! Timestep of first half kick of this timestep (gravity) */
+    float dt;
+
+    /*! Timestep of first half kick for the kinetic energy correction */
+    float dt_corr;
+
+    /*! Current value of the mass flux vector. */
+    float mflux[3];
+
+  } gravity;
+
+  /* Unused in the ShadowSWIFT scheme, put in union to save (a small amount of)
+   * space */
   union {
-    /*! Specific stuff for the gravity-hydro coupling. */
-    struct {
-
-      /*! Timestep of first half kick of this timestep (gravity) */
-      float dt;
-
-      /*! Timestep of first half kick for the kinetic energy correction */
-      float dt_corr;
-
-      /*! Current value of the mass flux vector. */
-      float mflux[3];
-
-    } gravity;
-
-    /* Unused in the ShadowSWIFT scheme, put in union to save space */
     struct {
       float wcount;
       float wcount_dh;
       float rho_dh;
     } density;
 
-    /* Unused in the ShadowSWIFT scheme. */
     struct {
       /*! Time derivative of smoothing length  */
       float h_dt;
