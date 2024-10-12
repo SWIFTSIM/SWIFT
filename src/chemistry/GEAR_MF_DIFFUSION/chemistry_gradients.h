@@ -71,8 +71,8 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_collect(
 
   for (int k = 0; k < 3; k++) {
     for (int l = 0; l < 3; l++) {
-      Bi[k][l] = chi->geometry.matrix_E[k][l];
-      Bj[k][l] = chj->geometry.matrix_E[k][l];
+      Bi[k][l] = pi->geometry.matrix_E[k][l];
+      Bj[k][l] = pj->geometry.matrix_E[k][l];
     }
   }
 
@@ -92,7 +92,7 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_collect(
   /*****************************************/
   /* Compute psi tilde */
   float psii_tilde[3];
-  if (chemistry_geometry_well_behaved(pi)) {
+  if (fvpm_part_geometry_well_behaved(pi)) {
     psii_tilde[0] =
         wi * (Bi[0][0] * dx[0] + Bi[0][1] * dx[1] + Bi[0][2] * dx[2]);
     psii_tilde[1] =
@@ -107,7 +107,7 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_collect(
   }
 
   float psij_tilde[3];
-  if (chemistry_geometry_well_behaved(pj)) {
+  if (fvpm_part_geometry_well_behaved(pj)) {
     psij_tilde[0] =
         wi * (Bj[0][0] * dx[0] + Bj[0][1] * dx[1] + Bj[0][2] * dx[2]);
     psij_tilde[1] =
@@ -252,7 +252,7 @@ chemistry_gradients_nonsym_collect(float r2, const float *dx, float hi,
 
   for (int k = 0; k < 3; k++) {
     for (int l = 0; l < 3; l++) {
-      Bi[k][l] = chi->geometry.matrix_E[k][l];
+      Bi[k][l] = pi->geometry.matrix_E[k][l];
     }
   }
 
@@ -266,7 +266,7 @@ chemistry_gradients_nonsym_collect(float r2, const float *dx, float hi,
   /*****************************************/
   /* Compute psi tilde */
   float psii_tilde[3];
-  if (chemistry_geometry_well_behaved(pi)) {
+  if (fvpm_part_geometry_well_behaved(pi)) {
     psii_tilde[0] =
         wi * (Bi[0][0] * dx[0] + Bi[0][1] * dx[1] + Bi[0][2] * dx[2]);
     psii_tilde[1] =
@@ -358,12 +358,12 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_finalise(
   const float h_inv = 1.0f / h;
 
   float norm;
-  if (chemistry_geometry_well_behaved(p)) {
+  if (fvpm_part_geometry_well_behaved(p)) {
     const float hinvdim = pow_dimension(h_inv);
     norm = hinvdim;
   } else {
     const float hinvdimp1 = pow_dimension_plus_one(h_inv);
-    norm = hinvdimp1 * chemistry_get_volume(p);
+    norm = hinvdimp1 * p->geometry.volume;
   }
 
   /* Normalise the gradients */
@@ -458,8 +458,8 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
 
   /* Check we have physical masses and that we are not overshooting the
      particle's mass */
-  double m_Zi_old = *Ui * chemistry_get_volume(pi);
-  double m_Zj_old = *Uj * chemistry_get_volume(pj);
+  double m_Zi_old = *Ui * pi->geometry.volume;
+  double m_Zj_old = *Uj * pj->geometry.volume;
   double m_Zi = m_Zi_old;
   double m_Zj = m_Zj_old;
 
@@ -471,10 +471,10 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
 
   /* If the new masses have been changed, update the state vectors */
   if (m_Zi != m_Zi_old) {
-    *Ui = m_Zi / chemistry_get_volume(pi);
+    *Ui = m_Zi / pi->geometry.volume;
   }
   if (m_Zj != m_Zj_old) {
-    *Uj = m_Zj / chemistry_get_volume(pj);
+    *Uj = m_Zj / pj->geometry.volume;
   }
 }
 
@@ -530,7 +530,8 @@ chemistry_gradients_predict_hydro(struct part *restrict pi,
   Wj[2] += dvj[1];
   Wj[3] += dvj[2];
 
-  /* Note: We do not reconstruct v_tilde at the interace */
+  /* Note: We do not reconstruct v_tilde at the interace since it is not use
+     during the Riemann problem. */
 }
 
 #endif /* SWIFT_CHEMISTRY_GEAR_CHEMISTRY_GRADIENTS_H */

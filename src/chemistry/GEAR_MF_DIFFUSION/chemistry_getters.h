@@ -26,27 +26,6 @@
 #include "part.h"
 
 /**
- * @brief Check if the gradient matrix for this particle is well behaved.
- *
- * @param p Particle.
- * @return 1 if the gradient matrix is well behaved, 0 otherwise.
- */
-__attribute__((always_inline)) INLINE static int
-chemistry_geometry_well_behaved(const struct part *restrict p) {
-  return p->chemistry_data.geometry.wcorr > const_gizmo_min_wcorr;
-}
-
-/**
- * @brief Get the particle volume.
- *
- * @param p Particle.
- */
-__attribute__((always_inline)) INLINE static float chemistry_get_volume(
-    const struct part *restrict p) {
-  return p->chemistry_data.geometry.volume;
-}
-
-/**
  * @brief Get a  metal density from a specific metal group.
  *
  * @param p Particle.
@@ -55,7 +34,7 @@ __attribute__((always_inline)) INLINE static float chemistry_get_volume(
  */
 __attribute__((always_inline)) INLINE static double chemistry_get_metal_density(
     const struct part *restrict p, int metal) {
-  return p->chemistry_data.metal_mass[metal] / chemistry_get_volume(p);
+  return p->chemistry_data.metal_mass[metal] / p->geometry.volume;
 }
 
 /**
@@ -429,7 +408,7 @@ chemistry_compute_CFL_supertimestep(const struct part *restrict p,
   }
 
   /* Take the sqrt and divide by the volume to get a density */
-  norm_U = sqrtf(norm_U) / chemistry_get_volume(p);
+  norm_U = sqrtf(norm_U) / p->geometry.volume;
 
   /* Take the sqrt to get the norm */
   norm_nabla_otimes_q = sqrtf(norm_nabla_otimes_q);

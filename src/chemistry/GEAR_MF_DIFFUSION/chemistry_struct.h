@@ -129,23 +129,8 @@ struct chemistry_part_data {
 
   } limiter;
 
-  /* Geometrical quantities used for MFM/V hydro. */
-  struct {
-
-    /* Volume of the particle. */
-    float volume;
-
-    /* Geometrical shear matrix used to calculate second order accurate
-       gradients */
-    float matrix_E[3][3];
-
-    /* Correction factor for wcount. */
-    float wcorr;
-
-    /* Condition number of matrix_E (eq C1) */
-    float condition_number;
-
-  } geometry;
+  /* Condition number of matrix_E (eq C1) */
+  float geometry_condition_number;
 
   /* Particle chemistry time-step. */
   float flux_dt;

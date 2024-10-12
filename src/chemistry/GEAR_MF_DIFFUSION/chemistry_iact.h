@@ -55,34 +55,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_chemistry(
   struct chemistry_part_data *chi = &pi->chemistry_data;
   struct chemistry_part_data *chj = &pj->chemistry_data;
 
-  float wi, wj, wi_dx, wj_dx;
-
   /* Get r */
   const float r = sqrtf(r2);
-
-  /* Compute density of pi. */
-  const float hi_inv = 1.0f / hi;
-  const float xi = r * hi_inv;
-  kernel_deval(xi, &wi, &wi_dx);
-
-  /*****************************************/
-  /* Compute the geometrical matrix B */
-  /* These are eqns. (1) and (2) in the summary */
-  chi->geometry.volume += wi;
-  for (int k = 0; k < 3; k++)
-    for (int l = 0; l < 3; l++)
-      chi->geometry.matrix_E[k][l] += dx[k] * dx[l] * wi;
-
-  /* Compute density of pj. */
-  const float hj_inv = 1.0f / hj;
-  const float xj = r * hj_inv;
-  kernel_deval(xj, &wj, &wj_dx);
-
-  /* These are eqns. (1) and (2) in the summary */
-  chj->geometry.volume += wj;
-  for (int k = 0; k < 3; k++)
-    for (int l = 0; l < 3; l++)
-      chj->geometry.matrix_E[k][l] += dx[k] * dx[l] * wj;
 
   /*****************************************/
   /* Compute the filtered quantities */
@@ -149,22 +123,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_chemistry(
 
   struct chemistry_part_data *chi = &pi->chemistry_data;
 
-  float wi, wi_dx;
-
   /* Get r and h inverse. */
   const float r = sqrtf(r2);
-
-  const float hi_inv = 1.0f / hi;
-  const float xi = r * hi_inv;
-  kernel_deval(xi, &wi, &wi_dx);
-
-  /*****************************************/
-  /* Compute the geometrical matrix B */
-  /* these are eqns. (1) and (2) in the summary */
-  chi->geometry.volume += wi;
-  for (int k = 0; k < 3; k++)
-    for (int l = 0; l < 3; l++)
-      chi->geometry.matrix_E[k][l] += dx[k] * dx[l] * wi;
 
   /*****************************************/
   /* Compute the filtered quantities */
@@ -286,12 +246,12 @@ runner_iact_chemistry_fluxes_common(
   float Bj[3][3];
   for (int k = 0; k < 3; k++) {
     for (int l = 0; l < 3; l++) {
-      Bi[k][l] = chi->geometry.matrix_E[k][l];
-      Bj[k][l] = chj->geometry.matrix_E[k][l];
+      Bi[k][l] = pi->geometry.matrix_E[k][l];
+      Bj[k][l] = pj->geometry.matrix_E[k][l];
     }
   }
-  const float Vi = chi->geometry.volume;
-  const float Vj = chj->geometry.volume;
+  const float Vi = pi->geometry.volume;
+  const float Vj = pj->geometry.volume;
 
   /* Compute kernel of pi. */
   float wi, wi_dx;
@@ -311,8 +271,8 @@ runner_iact_chemistry_fluxes_common(
   /* eqn. (7) */
   float Anorm2 = 0.0f;
   float A[3];
-  if (chemistry_geometry_well_behaved(pi) &&
-      chemistry_geometry_well_behaved(pj)) {
+  if (fvpm_part_geometry_well_behaved(pi) &&
+      fvpm_part_geometry_well_behaved(pj)) {
     /* in principle, we use Vi and Vj as weights for the left and right
      * contributions to the generalized surface vector.
      * However, if Vi and Vj are very different (because they have very
