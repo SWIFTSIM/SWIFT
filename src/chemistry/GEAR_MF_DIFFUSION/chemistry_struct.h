@@ -17,8 +17,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_CHEMISTRY_STRUCT_GEAR_MFM_DIFFUSION_H
-#define SWIFT_CHEMISTRY_STRUCT_GEAR_MFM_DIFFUSION_H
+#ifndef SWIFT_CHEMISTRY_STRUCT_GEAR_MF_DIFFUSION_H
+#define SWIFT_CHEMISTRY_STRUCT_GEAR_MF_DIFFUSION_H
 
 #define GEAR_LABELS_SIZE 10  // redumndant with the one defined in
 
@@ -129,23 +129,8 @@ struct chemistry_part_data {
 
   } limiter;
 
-  /* Geometrical quantities used for MFM/V hydro. */
-  struct {
-
-    /* Volume of the particle. */
-    float volume;
-
-    /* Geometrical shear matrix used to calculate second order accurate
-       gradients */
-    float matrix_E[3][3];
-
-    /* Correction factor for wcount. */
-    float wcorr;
-
-    /* Condition number of matrix_E (eq C1) */
-    float condition_number;
-
-  } geometry;
+  /* Condition number of matrix_E (eq C1) */
+  float geometry_condition_number;
 
   /* Particle chemistry time-step. */
   float flux_dt;
@@ -197,4 +182,4 @@ struct chemistry_sink_data {
   double metal_mass_fraction[GEAR_CHEMISTRY_ELEMENT_COUNT];
 };
 
-#endif /* SWIFT_CHEMISTRY_STRUCT_GEAR_MFM_DIFFUSION_H */
+#endif /* SWIFT_CHEMISTRY_STRUCT_GEAR_MF_DIFFUSION_H */

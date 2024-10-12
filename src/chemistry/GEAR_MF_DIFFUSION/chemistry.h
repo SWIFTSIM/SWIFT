@@ -17,11 +17,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_H
-#define SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_H
+#ifndef SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_H
+#define SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_H
 
 /**
- * @file src/chemistry/GEAR_MFM_DIFFUSION/chemistry.h
+ * @file src/chemistry/GEAR_MF_DIFFUSION/chemistry.h
  */
 
 /* Some standard headers. */
@@ -47,7 +47,7 @@
 #define FILTERING_SMOOTHING_FACTOR 0.8
 #define DEFAULT_DIFFUSION_NORMALISATION 1
 #define DEFAULT_PSI_RIEMANN_SOLVER 0.1
-#define DEFAULT_USE_HOPKINS2017_HLL_RIEMANN_SOLVER 0
+#define DEFAULT_USE_HOPKINS2017_HLL_RIEMANN_SOLVER 1
 #define DEFAULT_EPSILON_RIEMANN_SOLVER 0.5
 #define DEFAULT_USE_SUPERTIMESTEPPING 0
 #define DEFAULT_N_SUBSTEPS 5
@@ -62,7 +62,7 @@
  */
 static INLINE void chemistry_print_backend(
     const struct chemistry_global_data* data) {
-  message("Chemistry function is 'Gear MFM diffusion'.");
+  message("Chemistry function is 'Gear MF diffusion'.");
 }
 
 /**
@@ -446,7 +446,7 @@ chemistry_supertimestep(const struct phys_const* restrict phys_const,
 /**
  * @brief Finishes the smooth metal calculation.
  *
- * End MFM geometry computations
+ * End MF geometry computations
  *
  * This function requires the #hydro_end_density to have been called.
  *
@@ -474,94 +474,48 @@ __attribute__((always_inline)) INLINE static void chemistry_end_density(
 
   /*****************************************/
   /* Finish computations on the MF geometry quantities */
-  /* Some smoothing length multiples. */
-  const float h = p->h;
-  const float h_inv = 1.0f / h; /* 1/h */
-  const float ihdim = pow_dimension(h_inv);
 
-  /* Final operation on the geometry. */
-  /* We multiply with the smoothing kernel normalization ih3 and calculate the
-   * volume */
-  const float volume_inv = ihdim * (chemistry_get_volume(p) + kernel_root);
-  const float volume = 1.0f / volume_inv;
-  p->chemistry_data.geometry.volume = volume;
+  /* Store a copy of the matrix to avoid modifying it when computing its
+     inverse */
+  float matrix_E[3][3];
+  matrix_E[0][0] = p->geometry.matrix_E[0][0];
+  matrix_E[0][1] = p->geometry.matrix_E[0][1];
+  matrix_E[0][2] = p->geometry.matrix_E[0][2];
 
-  /* we multiply with the smoothing kernel normalization */
-  p->chemistry_data.geometry.matrix_E[0][0] *= ihdim;
-  p->chemistry_data.geometry.matrix_E[0][1] *= ihdim;
-  p->chemistry_data.geometry.matrix_E[0][2] *= ihdim;
-  p->chemistry_data.geometry.matrix_E[1][0] *= ihdim;
-  p->chemistry_data.geometry.matrix_E[1][1] *= ihdim;
-  p->chemistry_data.geometry.matrix_E[1][2] *= ihdim;
-  p->chemistry_data.geometry.matrix_E[2][0] *= ihdim;
-  p->chemistry_data.geometry.matrix_E[2][1] *= ihdim;
-  p->chemistry_data.geometry.matrix_E[2][2] *= ihdim;
+  matrix_E[1][0] = p->geometry.matrix_E[1][0];
+  matrix_E[1][1] = p->geometry.matrix_E[1][1];
+  matrix_E[1][2] = p->geometry.matrix_E[1][2];
 
-  /* Check the condition number to see if we have a stable geometry. */
-  const float condition_number_E =
-      p->chemistry_data.geometry.matrix_E[0][0] *
-          p->chemistry_data.geometry.matrix_E[0][0] +
-      p->chemistry_data.geometry.matrix_E[0][1] *
-          p->chemistry_data.geometry.matrix_E[0][1] +
-      p->chemistry_data.geometry.matrix_E[0][2] *
-          p->chemistry_data.geometry.matrix_E[0][2] +
-      p->chemistry_data.geometry.matrix_E[1][0] *
-          p->chemistry_data.geometry.matrix_E[1][0] +
-      p->chemistry_data.geometry.matrix_E[1][1] *
-          p->chemistry_data.geometry.matrix_E[1][1] +
-      p->chemistry_data.geometry.matrix_E[1][2] *
-          p->chemistry_data.geometry.matrix_E[1][2] +
-      p->chemistry_data.geometry.matrix_E[2][0] *
-          p->chemistry_data.geometry.matrix_E[2][0] +
-      p->chemistry_data.geometry.matrix_E[2][1] *
-          p->chemistry_data.geometry.matrix_E[2][1] +
-      p->chemistry_data.geometry.matrix_E[2][2] *
-          p->chemistry_data.geometry.matrix_E[2][2];
+  matrix_E[2][0] = p->geometry.matrix_E[2][0];
+  matrix_E[2][1] = p->geometry.matrix_E[2][1];
+  matrix_E[2][2] = p->geometry.matrix_E[2][2];
 
-  if (invert_dimension_by_dimension_matrix(
-          p->chemistry_data.geometry.matrix_E) != 0) {
+  const float condition_number_E_inv = matrix_E[0][0] * matrix_E[0][0] +
+    matrix_E[0][1] * matrix_E[0][1] +
+    matrix_E[0][2] * matrix_E[0][2] +
+    matrix_E[1][0] * matrix_E[1][0] +
+    matrix_E[1][1] * matrix_E[1][1] +
+    matrix_E[1][2] * matrix_E[1][2] +
+    matrix_E[2][0] * matrix_E[2][0] +
+    matrix_E[2][1] * matrix_E[2][1] +
+    matrix_E[2][2] * matrix_E[2][2];
+
+  if (invert_dimension_by_dimension_matrix(matrix_E) != 0) {
     /* something went wrong in the inversion; force bad condition number */
-    p->chemistry_data.geometry.condition_number =
-        const_gizmo_max_condition_number + 1.0f;
+    p->chemistry_data.geometry_condition_number = const_gizmo_max_condition_number + 1.0f;
   } else {
-    const float condition_number_Einv =
-        p->chemistry_data.geometry.matrix_E[0][0] *
-            p->chemistry_data.geometry.matrix_E[0][0] +
-        p->chemistry_data.geometry.matrix_E[0][1] *
-            p->chemistry_data.geometry.matrix_E[0][1] +
-        p->chemistry_data.geometry.matrix_E[0][2] *
-            p->chemistry_data.geometry.matrix_E[0][2] +
-        p->chemistry_data.geometry.matrix_E[1][0] *
-            p->chemistry_data.geometry.matrix_E[1][0] +
-        p->chemistry_data.geometry.matrix_E[1][1] *
-            p->chemistry_data.geometry.matrix_E[1][1] +
-        p->chemistry_data.geometry.matrix_E[1][2] *
-            p->chemistry_data.geometry.matrix_E[1][2] +
-        p->chemistry_data.geometry.matrix_E[2][0] *
-            p->chemistry_data.geometry.matrix_E[2][0] +
-        p->chemistry_data.geometry.matrix_E[2][1] *
-            p->chemistry_data.geometry.matrix_E[2][1] +
-        p->chemistry_data.geometry.matrix_E[2][2] *
-            p->chemistry_data.geometry.matrix_E[2][2];
+    const float condition_number_E = matrix_E[0][0] * matrix_E[0][0] +
+      matrix_E[0][1] * matrix_E[0][1] +
+      matrix_E[0][2] * matrix_E[0][2] +
+      matrix_E[1][0] * matrix_E[1][0] +
+      matrix_E[1][1] * matrix_E[1][1] +
+      matrix_E[1][2] * matrix_E[1][2] +
+      matrix_E[2][0] * matrix_E[2][0] +
+      matrix_E[2][1] * matrix_E[2][1] +
+      matrix_E[2][2] * matrix_E[2][2];
 
-    p->chemistry_data.geometry.condition_number =
-        hydro_dimension_inv * sqrtf(condition_number_E * condition_number_Einv);
-  }
-
-  if (p->chemistry_data.geometry.condition_number >
-          const_gizmo_max_condition_number &&
-      p->chemistry_data.geometry.wcorr > const_gizmo_min_wcorr) {
-#ifdef GIZMO_PATHOLOGICAL_ERROR
-    error("Condition number larger than %g (%g)!",
-          const_gizmo_max_condition_number, condition_number);
-#endif
-#ifdef GIZMO_PATHOLOGICAL_WARNING
-    message("Condition number too large: %g (> %g, p->id: %llu)!",
-            condition_number, const_gizmo_max_condition_number, p->id);
-#endif
-    /* add a correction to the number of neighbours for this particle */
-    p->chemistry_data.geometry.wcorr =
-        const_gizmo_w_correction_factor * p->chemistry_data.geometry.wcorr;
+    p->chemistry_data.geometry_condition_number =
+      hydro_dimension_inv * sqrtf(condition_number_E * condition_number_E_inv);
   }
 
   /* Check that the metal masses are physical */
@@ -569,7 +523,7 @@ __attribute__((always_inline)) INLINE static void chemistry_end_density(
     double m_metal_old = p->chemistry_data.metal_mass[g];
 
 #ifdef SWIFT_DEBUG_CHECKS
-    if (volume == 0.) {
+    if (p->geometry.volume == 0.) {
       error("Volume is 0!");
     }
 #endif
@@ -595,7 +549,7 @@ __attribute__((always_inline)) INLINE static void chemistry_end_gradient(
 /**
  * @brief Prepare a particle for the force calculation.
  *
- * In GEAR MFM diffusion, we update the flux timestep.
+ * In GEAR MF diffusion, we update the flux timestep.
  *
  * @param p The particle to act upon
  * @param xp The extended particle data to act upon
@@ -676,7 +630,7 @@ __attribute__((always_inline)) INLINE static void chemistry_end_force(
     error("Total metal mass grew larger than the particle mass!");
 
   /* Reset wcorr */
-  p->chemistry_data.geometry.wcorr = 1.0f;
+  p->geometry.wcorr = 1.0f;
 
   /* Store the density of the current timestep for the next timestep */
   p->chemistry_data.rho_prev = p->rho;
@@ -696,17 +650,20 @@ chemistry_part_has_no_neighbours(struct part* restrict p,
                                  const struct chemistry_global_data* cd,
                                  const struct cosmology* cosmo) {
 
-  /* Update geometry data */
-  p->chemistry_data.geometry.volume = 1.0f;
-  p->chemistry_data.geometry.matrix_E[0][0] = 1.0f;
-  p->chemistry_data.geometry.matrix_E[0][1] = 0.0f;
-  p->chemistry_data.geometry.matrix_E[0][2] = 0.0f;
-  p->chemistry_data.geometry.matrix_E[1][0] = 0.0f;
-  p->chemistry_data.geometry.matrix_E[1][1] = 1.0f;
-  p->chemistry_data.geometry.matrix_E[1][2] = 0.0f;
-  p->chemistry_data.geometry.matrix_E[2][0] = 0.0f;
-  p->chemistry_data.geometry.matrix_E[2][1] = 0.0f;
-  p->chemistry_data.geometry.matrix_E[2][2] = 1.0f;
+  /* Re-set problematic values */
+  p->geometry.volume = 1.0f;
+  p->geometry.matrix_E[0][0] = 1.0f;
+  p->geometry.matrix_E[0][1] = 0.0f;
+  p->geometry.matrix_E[0][2] = 0.0f;
+  p->geometry.matrix_E[1][0] = 0.0f;
+  p->geometry.matrix_E[1][1] = 1.0f;
+  p->geometry.matrix_E[1][2] = 0.0f;
+  p->geometry.matrix_E[2][0] = 0.0f;
+  p->geometry.matrix_E[2][1] = 0.0f;
+  p->geometry.matrix_E[2][2] = 1.0f;
+
+  /* reset the centroid to disable MFV velocity corrections for this particle */
+  fvpm_reset_centroids(p);
 }
 
 /**
@@ -724,18 +681,6 @@ __attribute__((always_inline)) INLINE static void chemistry_init_part(
     struct part* restrict p, const struct chemistry_global_data* cd) {
 
   struct chemistry_part_data* cpd = &p->chemistry_data;
-
-  /* Reset the geometry matrix */
-  cpd->geometry.volume = 0.0f;
-  cpd->geometry.matrix_E[0][0] = 0.0f;
-  cpd->geometry.matrix_E[0][1] = 0.0f;
-  cpd->geometry.matrix_E[0][2] = 0.0f;
-  cpd->geometry.matrix_E[1][0] = 0.0f;
-  cpd->geometry.matrix_E[1][1] = 0.0f;
-  cpd->geometry.matrix_E[1][2] = 0.0f;
-  cpd->geometry.matrix_E[2][0] = 0.0f;
-  cpd->geometry.matrix_E[2][1] = 0.0f;
-  cpd->geometry.matrix_E[2][2] = 0.0f;
 
   cpd->filtered.rho = 0.0;
   cpd->filtered.rho_v[0] = 0.0;
@@ -782,7 +727,7 @@ __attribute__((always_inline)) INLINE static void chemistry_first_init_part(
      time the density loop is repeated, and the whole point of storing wcorr
      is to have a way of remembering that we need more neighbours for this
      particle */
-  p->chemistry_data.geometry.wcorr = 1.0f;
+  p->geometry.wcorr = 1.0f;
 
   /* Supertimestepping ----*/
   /* Set the substep to N_substep +1 so that we can compute everything in
@@ -1155,4 +1100,4 @@ chemistry_get_bh_total_metal_mass_for_stats(const struct bpart* restrict bp) {
   return 0.f;
 }
 
-#endif /* SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_H */
+#endif /* SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_H */

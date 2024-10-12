@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_SLOPE_LIMITERS_CELL_H
-#define SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_SLOPE_LIMITERS_CELL_H
+#ifndef SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_SLOPE_LIMITERS_CELL_H
+#define SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_SLOPE_LIMITERS_CELL_H
 
 #include "chemistry_getters.h"
 #include "hydro.h"
@@ -161,7 +161,7 @@ __attribute__((always_inline)) INLINE static void chemistry_slope_limit_cell(
     struct part* p) {
 
   struct chemistry_part_data* chd = &p->chemistry_data;
-  const float N_cond = chd->geometry.condition_number;
+  const float N_cond = chd->geometry_condition_number;
   const float maxr = chd->limiter.maxr;
   const float vxlim[2] = {chd->limiter.v[0][0], chd->limiter.v[0][1]};
   const float vylim[2] = {chd->limiter.v[1][0], chd->limiter.v[1][1]};
@@ -247,4 +247,4 @@ __attribute__((always_inline)) INLINE static void chemistry_slope_limit_cell(
   chd->filtered.grad_v_tilde[2][2] = gradvz_tilde[2];
 }
 
-#endif /* SWIFT_CHEMISTRY_GEAR_MFM_DIFFUSION_SLOPE_LIMITERS_CELL_H */
+#endif /* SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_SLOPE_LIMITERS_CELL_H */
