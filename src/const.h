@@ -81,22 +81,10 @@
    gradient matrix and use SPH gradients instead. */
 #define const_gizmo_min_wcorr 0.5f
 
-/* Types of gradients to use for SHADOWFAX_SPH */
-/* If no option is chosen, no gradients are used (first order scheme) */
-#define SHADOWFAX_GRADIENTS
-
-/* SHADOWFAX_SPH slope limiters */
-#define SHADOWFAX_SLOPE_LIMITER_PER_FACE
-#define SHADOWFAX_SLOPE_LIMITER_CELL_WIDE
-
-/* Options to control SHADOWFAX_SPH */
-/* This option disables cell movement */
-// #define SHADOWFAX_FIX_CELLS
-/* This option enables cell steering, i.e. trying to keep the cells regular by
-   adding a correction to the cell velocities.*/
-#define SHADOWFAX_STEER_CELL_MOTION
-/* This option evolves the total energy instead of the thermal energy */
-// #define SHADOWFAX_TOTAL_ENERGY
+/* Options controlling ShadowSWIFT */
+/* Options controlling acceleration strategies*/
+/*! @brief Option enabling a more relaxed completeness criterion */
+#define SHADOWSWIFT_RELAXED_COMPLETENESS
 
 /* Source terms */
 #define SOURCETERMS_NONE

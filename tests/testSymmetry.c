@@ -39,13 +39,6 @@ void print_bytes(void *p, size_t len) {
 
 void test(void) {
 
-#if defined(SHADOWFAX_SPH)
-  /* Initialize the Voronoi simulation box */
-  double box_anchor[3] = {-2.0f, -2.0f, -2.0f};
-  double box_side[3] = {6.0f, 6.0f, 6.0f};
-/*  voronoi_set_box(box_anchor, box_side);*/
-#endif
-
   /* Start with some values for the cosmological parameters */
   const float a = (float)random_uniform(0.8, 1.);
   const float H = 1.f;
@@ -71,59 +64,6 @@ void test(void) {
   pj.id = 2ll;
   pi.time_bin = 1;
   pj.time_bin = 1;
-
-#if defined(SHADOWFAX_SPH)
-  /* Give the primitive variables sensible values, since the Riemann solver does
-     not like negative densities and pressures */
-  pi.primitives.rho = random_uniform(0.1f, 1.0f);
-  pi.primitives.v[0] = random_uniform(-10.0f, 10.0f);
-  pi.primitives.v[1] = random_uniform(-10.0f, 10.0f);
-  pi.primitives.v[2] = random_uniform(-10.0f, 10.0f);
-  pi.primitives.P = random_uniform(0.1f, 1.0f);
-  pj.primitives.rho = random_uniform(0.1f, 1.0f);
-  pj.primitives.v[0] = random_uniform(-10.0f, 10.0f);
-  pj.primitives.v[1] = random_uniform(-10.0f, 10.0f);
-  pj.primitives.v[2] = random_uniform(-10.0f, 10.0f);
-  pj.primitives.P = random_uniform(0.1f, 1.0f);
-  /* make gradients zero */
-  pi.primitives.gradients.rho[0] = 0.0f;
-  pi.primitives.gradients.rho[1] = 0.0f;
-  pi.primitives.gradients.rho[2] = 0.0f;
-  pi.primitives.gradients.v[0][0] = 0.0f;
-  pi.primitives.gradients.v[0][1] = 0.0f;
-  pi.primitives.gradients.v[0][2] = 0.0f;
-  pi.primitives.gradients.v[1][0] = 0.0f;
-  pi.primitives.gradients.v[1][1] = 0.0f;
-  pi.primitives.gradients.v[1][2] = 0.0f;
-  pi.primitives.gradients.v[2][0] = 0.0f;
-  pi.primitives.gradients.v[2][1] = 0.0f;
-  pi.primitives.gradients.v[2][2] = 0.0f;
-  pi.primitives.gradients.P[0] = 0.0f;
-  pi.primitives.gradients.P[1] = 0.0f;
-  pi.primitives.gradients.P[2] = 0.0f;
-  pj.primitives.gradients.rho[0] = 0.0f;
-  pj.primitives.gradients.rho[1] = 0.0f;
-  pj.primitives.gradients.rho[2] = 0.0f;
-  pj.primitives.gradients.v[0][0] = 0.0f;
-  pj.primitives.gradients.v[0][1] = 0.0f;
-  pj.primitives.gradients.v[0][2] = 0.0f;
-  pj.primitives.gradients.v[1][0] = 0.0f;
-  pj.primitives.gradients.v[1][1] = 0.0f;
-  pj.primitives.gradients.v[1][2] = 0.0f;
-  pj.primitives.gradients.v[2][0] = 0.0f;
-  pj.primitives.gradients.v[2][1] = 0.0f;
-  pj.primitives.gradients.v[2][2] = 0.0f;
-  pj.primitives.gradients.P[0] = 0.0f;
-  pj.primitives.gradients.P[1] = 0.0f;
-  pj.primitives.gradients.P[2] = 0.0f;
-
-  /* set time step to reasonable value */
-  pi.force.dt = 0.001;
-  pj.force.dt = 0.001;
-
-  voronoi_cell_init(&pi.cell, pi.x, box_anchor, box_side);
-  voronoi_cell_init(&pj.cell, pj.x, box_anchor, box_side);
-#endif
 
 #if defined(GIZMO_MFV_SPH)
   /* Give the primitive variables sensible values, since the Riemann solver does

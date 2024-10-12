@@ -171,7 +171,7 @@ def get_snap_data(prefix="output", skip_snap_zero=False, skip_last_snap=False):
             "Compile swift --with-rt=GEAR_N",
         )
 
-    ngroups = int(firstfile.metadata.subgrid_scheme["PhotonGroupNumber"])
+    ngroups = int(firstfile.metadata.subgrid_scheme["PhotonGroupNumber"][0])
     rundata.ngroups = ngroups
 
     luminosity_model = firstfile.metadata.parameters["GEARRT:stellar_luminosity_model"]

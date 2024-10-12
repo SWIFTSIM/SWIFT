@@ -24,10 +24,9 @@
 #include "feedback_properties.h"
 #include "hydro_properties.h"
 #include "part.h"
+#include "stars.h"
 #include "stellar_evolution.h"
 #include "units.h"
-#include "stars.h"
-
 
 #include <strings.h>
 
