@@ -360,13 +360,13 @@ __attribute__((always_inline)) INLINE static float chemistry_timestep(
  *
  * @param p Particle.
  */
-__attribute__((always_inline)) INLINE static float
-chemistry_supertimestep(const struct phys_const* restrict phys_const,
-                                const struct cosmology* restrict cosmo,
-                                const struct unit_system* restrict us,
-                                const struct hydro_props* hydro_props,
-                                const struct chemistry_global_data* cd,
-                                struct part* restrict p, float min_dt_part) {
+__attribute__((always_inline)) INLINE static float chemistry_supertimestep(
+    const struct phys_const* restrict phys_const,
+    const struct cosmology* restrict cosmo,
+    const struct unit_system* restrict us,
+    const struct hydro_props* hydro_props,
+    const struct chemistry_global_data* cd, struct part* restrict p,
+    float min_dt_part) {
 
   struct chemistry_part_data* chd = &p->chemistry_data;
 
@@ -490,32 +490,28 @@ __attribute__((always_inline)) INLINE static void chemistry_end_density(
   matrix_E[2][1] = p->geometry.matrix_E[2][1];
   matrix_E[2][2] = p->geometry.matrix_E[2][2];
 
-  const float condition_number_E_inv = matrix_E[0][0] * matrix_E[0][0] +
-    matrix_E[0][1] * matrix_E[0][1] +
-    matrix_E[0][2] * matrix_E[0][2] +
-    matrix_E[1][0] * matrix_E[1][0] +
-    matrix_E[1][1] * matrix_E[1][1] +
-    matrix_E[1][2] * matrix_E[1][2] +
-    matrix_E[2][0] * matrix_E[2][0] +
-    matrix_E[2][1] * matrix_E[2][1] +
-    matrix_E[2][2] * matrix_E[2][2];
+  const float condition_number_E_inv =
+      matrix_E[0][0] * matrix_E[0][0] + matrix_E[0][1] * matrix_E[0][1] +
+      matrix_E[0][2] * matrix_E[0][2] + matrix_E[1][0] * matrix_E[1][0] +
+      matrix_E[1][1] * matrix_E[1][1] + matrix_E[1][2] * matrix_E[1][2] +
+      matrix_E[2][0] * matrix_E[2][0] + matrix_E[2][1] * matrix_E[2][1] +
+      matrix_E[2][2] * matrix_E[2][2];
 
   if (invert_dimension_by_dimension_matrix(matrix_E) != 0) {
     /* something went wrong in the inversion; force bad condition number */
-    p->chemistry_data.geometry_condition_number = const_gizmo_max_condition_number + 1.0f;
+    p->chemistry_data.geometry_condition_number =
+        const_gizmo_max_condition_number + 1.0f;
   } else {
-    const float condition_number_E = matrix_E[0][0] * matrix_E[0][0] +
-      matrix_E[0][1] * matrix_E[0][1] +
-      matrix_E[0][2] * matrix_E[0][2] +
-      matrix_E[1][0] * matrix_E[1][0] +
-      matrix_E[1][1] * matrix_E[1][1] +
-      matrix_E[1][2] * matrix_E[1][2] +
-      matrix_E[2][0] * matrix_E[2][0] +
-      matrix_E[2][1] * matrix_E[2][1] +
-      matrix_E[2][2] * matrix_E[2][2];
+    const float condition_number_E =
+        matrix_E[0][0] * matrix_E[0][0] + matrix_E[0][1] * matrix_E[0][1] +
+        matrix_E[0][2] * matrix_E[0][2] + matrix_E[1][0] * matrix_E[1][0] +
+        matrix_E[1][1] * matrix_E[1][1] + matrix_E[1][2] * matrix_E[1][2] +
+        matrix_E[2][0] * matrix_E[2][0] + matrix_E[2][1] * matrix_E[2][1] +
+        matrix_E[2][2] * matrix_E[2][2];
 
     p->chemistry_data.geometry_condition_number =
-      hydro_dimension_inv * sqrtf(condition_number_E * condition_number_E_inv);
+        hydro_dimension_inv *
+        sqrtf(condition_number_E * condition_number_E_inv);
   }
 
   /* Check that the metal masses are physical */

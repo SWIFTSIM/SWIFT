@@ -122,14 +122,19 @@ __attribute__((always_inline)) INLINE static void chemistry_get_shear_tensor(
  * This needs to be checked.
  *
  * @param S (return) Pointer to a 3x3 matrix shear tensor.
-*/
-__attribute__((always_inline)) INLINE static void chemistry_regularize_shear_tensor(double S[3][3]) {
+ */
+__attribute__((always_inline)) INLINE static void
+chemistry_regularize_shear_tensor(double S[3][3]) {
 #ifdef HAVE_LIBGSL
-  /* Create the necessary GSL objects to hold the eigenvalues and eigenvectors */
-  gsl_matrix *S_matrix = gsl_matrix_alloc(3, 3); // Matrix for input/output S
-  gsl_vector *eigenvalues = gsl_vector_alloc(3); // Vector to hold the eigenvalues
-  gsl_matrix *eigenvectors = gsl_matrix_alloc(3, 3); // Matrix to hold the eigenvectors
-  gsl_eigen_symmv_workspace *workspace = gsl_eigen_symmv_alloc(3); // Workspace for eigen computation
+  /* Create the necessary GSL objects to hold the eigenvalues and eigenvectors
+   */
+  gsl_matrix *S_matrix = gsl_matrix_alloc(3, 3);  // Matrix for input/output S
+  gsl_vector *eigenvalues =
+      gsl_vector_alloc(3);  // Vector to hold the eigenvalues
+  gsl_matrix *eigenvectors =
+      gsl_matrix_alloc(3, 3);  // Matrix to hold the eigenvectors
+  gsl_eigen_symmv_workspace *workspace =
+      gsl_eigen_symmv_alloc(3);  // Workspace for eigen computation
 
   /* Fill S_matrix with the values from S */
   for (int i = 0; i < 3; i++) {
@@ -138,22 +143,25 @@ __attribute__((always_inline)) INLINE static void chemistry_regularize_shear_ten
     }
   }
 
-  /* Compute the eigenvalues and eigenvectors. S is symmetric by construction. */
+  /* Compute the eigenvalues and eigenvectors. S is symmetric by construction.
+   */
   gsl_eigen_symmv(S_matrix, eigenvalues, eigenvectors, workspace);
 
   /* Zero-initialize the matrix S to store S_minus */
   double S_minus[3][3] = {{0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}};
 
-  /* Compute S_ij^minus using the sum of min(0, lambda^(k)) * e_i^(k) * e_j^(k) */
+  /* Compute S_ij^minus using the sum of min(0, lambda^(k)) * e_i^(k) * e_j^(k)
+   */
   for (int k = 0; k < 3; k++) {
-    double lambda_k = gsl_vector_get(eigenvalues, k); // Get the k-th eigenvalue
-    double lambda_k_minus = min(0, lambda_k); // Take min(0, lambda^(k))
+    double lambda_k =
+        gsl_vector_get(eigenvalues, k);        // Get the k-th eigenvalue
+    double lambda_k_minus = min(0, lambda_k);  // Take min(0, lambda^(k))
 
     for (int i = 0; i < 3; i++) {
       for (int j = 0; j < 3; j++) {
-	double e_ik = gsl_matrix_get(eigenvectors, i, k);
-	double e_jk = gsl_matrix_get(eigenvectors, j, k);
-	S_minus[i][j] += lambda_k_minus * e_ik * e_jk;
+        double e_ik = gsl_matrix_get(eigenvectors, i, k);
+        double e_jk = gsl_matrix_get(eigenvectors, j, k);
+        S_minus[i][j] += lambda_k_minus * e_ik * e_jk;
       }
     }
   }
@@ -171,7 +179,9 @@ __attribute__((always_inline)) INLINE static void chemistry_regularize_shear_ten
   gsl_matrix_free(eigenvectors);
   gsl_eigen_symmv_free(workspace);
 #else
-    error("Code not compiled with GSL. Can't compute eigenvalues of the filtered shear tensor.");
+  error(
+      "Code not compiled with GSL. Can't compute eigenvalues of the filtered "
+      "shear tensor.");
 #endif
 }
 
@@ -201,7 +211,8 @@ __attribute__((always_inline)) INLINE static void chemistry_get_matrix_K(
 
     /* This takes way too much time. Comment it for now */
     /* Now regularize the shear tensor by considering only the negative
-       eigenvalues (Balarac et al. (2013)). This is now called the S_minus matrix. */
+       eigenvalues (Balarac et al. (2013)). This is now called the S_minus
+       matrix. */
     /* chemistry_regularize_shear_tensor(K); */
 
     /* K = kappa * S_minus */

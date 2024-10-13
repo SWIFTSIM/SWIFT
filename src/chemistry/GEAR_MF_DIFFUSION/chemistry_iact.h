@@ -68,12 +68,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_chemistry(
 
   float rho_i = chi->rho_prev;
   float rho_j = chj->rho_prev;
-  float rho_mean = 2* rho_i * rho_j / (rho_i + rho_j); /* harmonic mean */
+  float rho_mean = 2 * rho_i * rho_j / (rho_i + rho_j); /* harmonic mean */
   float w_filtered;
   kernel_eval(r * h_inv_bar, &w_filtered);
 
   /* Avoid 0 division */
-  if (rho_mean != 0  && !isnan(rho_mean)) {
+  if (rho_mean != 0 && !isnan(rho_mean)) {
     chi->filtered.rho += hydro_get_mass(pj) / rho_mean * (rho_j - rho_i) *
                          w_filtered * h_inv_dim;
     chj->filtered.rho -= hydro_get_mass(pi) / rho_mean * (rho_j - rho_i) *
@@ -136,7 +136,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_chemistry(
 
   float rho_i = chi->rho_prev;
   float rho_j = pj->chemistry_data.rho_prev;
-  float rho_mean = 2* rho_i * rho_j / (rho_i + rho_j); /* harmonic mean */
+  float rho_mean = 2 * rho_i * rho_j / (rho_i + rho_j); /* harmonic mean */
   float w_filtered;
   kernel_eval(r / h_bar_ij, &w_filtered);
 

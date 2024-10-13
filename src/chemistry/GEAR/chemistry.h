@@ -404,8 +404,7 @@ __attribute__((always_inline)) INLINE static void chemistry_end_force(
 __attribute__((always_inline)) INLINE static void chemistry_prepare_force(
     struct part* restrict p, struct xpart* restrict xp,
     const struct cosmology* cosmo, const float dt_alpha, const float dt_therm,
-    const struct chemistry_global_data* cd) {
-}
+    const struct chemistry_global_data* cd) {}
 
 /**
  * @brief Sets all particle fields to sensible values when the #part has 0 ngbs.
@@ -456,13 +455,13 @@ __attribute__((always_inline)) INLINE static float chemistry_timestep(
  *
  * @param p Particle.
  */
-__attribute__((always_inline)) INLINE static float
-chemistry_supertimestep(const struct phys_const* restrict phys_const,
-			const struct cosmology* restrict cosmo,
-			const struct unit_system* restrict us,
-			const struct hydro_props* hydro_props,
-			const struct chemistry_global_data* cd,
-			struct part* restrict p, float min_dt_part) {
+__attribute__((always_inline)) INLINE static float chemistry_supertimestep(
+    const struct phys_const* restrict phys_const,
+    const struct cosmology* restrict cosmo,
+    const struct unit_system* restrict us,
+    const struct hydro_props* hydro_props,
+    const struct chemistry_global_data* cd, struct part* restrict p,
+    float min_dt_part) {
   return FLT_MAX;
 }
 
