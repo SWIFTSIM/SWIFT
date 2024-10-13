@@ -146,6 +146,8 @@ struct chemistry_part_data {
   struct {
     float rho;
 
+    float rho_prev;
+
     /* rho * v*/
     float rho_v[3];
 
