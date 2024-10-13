@@ -54,48 +54,61 @@ __attribute__((always_inline)) INLINE static void runner_iact_chemistry(
 
   struct chemistry_part_data *chi = &pi->chemistry_data;
   struct chemistry_part_data *chj = &pj->chemistry_data;
-
-  /* Get r */
   const float r = sqrtf(r2);
 
   /*****************************************/
   /* Compute the filtered quantities */
 
+  /* Compute the filtered rho = same as rho in SPH but with h_bar instead of h,
+     where h_bar = compact support of the kernel*/
+  float hi_bar = hi*kernel_gamma;
+  float hj_bar = hj*kernel_gamma;
+  float wi_bar, wj_bar;
+  kernel_eval(r/hi_bar, &wi_bar);
+  kernel_eval(r/hj_bar, &wj_bar);
+
+  /* j contributes to i and vice-versa */
+  chi->filtered.rho += hydro_get_mass(pj) * wi_bar;
+  chj->filtered.rho += hydro_get_mass(pi) * wj_bar;
+
   /* Some smoothing length multiples. */
-  float h_bar_ij = 0.5 * (pi->h + pj->h);
+  float h_bar_ij = 0.5 * (hi_bar + hj_bar); /* arithmetic mean */
   const float h_inv_bar = 1.0f / h_bar_ij;          /* 1/h */
   const float h_inv_dim = pow_dimension(h_inv_bar); /* 1/h^d */
 
-  float rho_i = chi->rho_prev;
-  float rho_j = chj->rho_prev;
-  float rho_mean = 2 * rho_i * rho_j / (rho_i + rho_j); /* harmonic mean */
+  /* Take the previous value of bar{rho} since we are computing it now */
+  float rho_i_bar = chi->filtered.rho_prev;
+  float rho_j_bar = chj->filtered.rho_prev;
+  float rho_bar_mean = 2 * rho_i_bar * rho_j_bar / (rho_i_bar + rho_j_bar); /* harmonic mean */
   float w_filtered;
   kernel_eval(r * h_inv_bar, &w_filtered);
 
-  /* Avoid 0 division */
-  if (rho_mean != 0 && !isnan(rho_mean)) {
-    chi->filtered.rho += hydro_get_mass(pj) / rho_mean * (rho_j - rho_i) *
-                         w_filtered * h_inv_dim;
-    chj->filtered.rho -= hydro_get_mass(pi) / rho_mean * (rho_j - rho_i) *
-                         w_filtered * h_inv_dim;
+  /* Take the previous value of rho since it is being computed in the density
+     loop */
+  float rho_i = chi->rho_prev;
+  float rho_j = chj->rho_prev;
 
-    chi->filtered.rho_v[0] += hydro_get_mass(pj) / rho_mean *
+  /* Avoid 0 division and NaN */
+  if (rho_bar_mean != 0 && !isnan(rho_bar_mean)) {
+    /* Now compute the filtered rho*v */
+    chi->filtered.rho_v[0] += hydro_get_mass(pj) / rho_bar_mean *
                               (rho_j * pj->v[0] - rho_i * pi->v[0]) *
                               w_filtered * h_inv_dim;
-    chi->filtered.rho_v[1] += hydro_get_mass(pj) / rho_mean *
+    chi->filtered.rho_v[1] += hydro_get_mass(pj) / rho_bar_mean *
                               (rho_j * pj->v[1] - rho_i * pi->v[1]) *
                               w_filtered * h_inv_dim;
-    chi->filtered.rho_v[2] += hydro_get_mass(pj) / rho_mean *
+    chi->filtered.rho_v[2] += hydro_get_mass(pj) / rho_bar_mean *
                               (rho_j * pj->v[2] - rho_i * pi->v[2]) *
                               w_filtered * h_inv_dim;
 
-    chj->filtered.rho_v[0] -= hydro_get_mass(pi) / rho_mean *
+    /* Notice the - since the subtraction must be inverted */
+    chj->filtered.rho_v[0] -= hydro_get_mass(pi) / rho_bar_mean *
                               (rho_j * pj->v[0] - rho_i * pi->v[0]) *
                               w_filtered * h_inv_dim;
-    chj->filtered.rho_v[1] -= hydro_get_mass(pi) / rho_mean *
+    chj->filtered.rho_v[1] -= hydro_get_mass(pi) / rho_bar_mean *
                               (rho_j * pj->v[1] - rho_i * pi->v[1]) *
                               w_filtered * h_inv_dim;
-    chj->filtered.rho_v[2] -= hydro_get_mass(pi) / rho_mean *
+    chj->filtered.rho_v[2] -= hydro_get_mass(pi) / rho_bar_mean *
                               (rho_j * pj->v[2] - rho_i * pi->v[2]) *
                               w_filtered * h_inv_dim;
   }
@@ -122,35 +135,51 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_chemistry(
     const float H) {
 
   struct chemistry_part_data *chi = &pi->chemistry_data;
-
-  /* Get r and h inverse. */
+  const struct chemistry_part_data *chj = &pj->chemistry_data;
   const float r = sqrtf(r2);
 
   /*****************************************/
   /* Compute the filtered quantities */
+    /*****************************************/
+  /* Compute the filtered quantities */
+
+  /* Compute the filtered rho = same as rho in SPH but with h_bar instead of h,
+     where h_bar = compact support of the kernel*/
+  float hi_bar = hi*kernel_gamma;
+  float hj_bar = hj*kernel_gamma;
+  float wi_bar;
+  kernel_eval(r/hi_bar, &wi_bar);
+
+  /* j contributes to i */
+  chi->filtered.rho += hydro_get_mass(pj) * wi_bar;
 
   /* Some smoothing length multiples. */
-  float h_bar_ij = 0.5 * (pi->h + pj->h);
+  float h_bar_ij = 0.5 * (hi_bar + hj_bar); /* arithmetic mean */
   const float h_inv_bar = 1.0f / h_bar_ij;          /* 1/h */
   const float h_inv_dim = pow_dimension(h_inv_bar); /* 1/h^d */
 
-  float rho_i = chi->rho_prev;
-  float rho_j = pj->chemistry_data.rho_prev;
-  float rho_mean = 2 * rho_i * rho_j / (rho_i + rho_j); /* harmonic mean */
+  /* Take the previous value of bar{rho} since we are computing it now */
+  float rho_i_bar = chi->filtered.rho_prev;
+  float rho_j_bar = chj->filtered.rho_prev;
+  float rho_bar_mean = 2 * rho_i_bar * rho_j_bar / (rho_i_bar + rho_j_bar); /* harmonic mean */
   float w_filtered;
-  kernel_eval(r / h_bar_ij, &w_filtered);
+  kernel_eval(r * h_inv_bar, &w_filtered);
 
-  if (rho_mean != 0 && !isnan(rho_mean)) {
-    chi->filtered.rho += hydro_get_mass(pj) / rho_mean * (rho_j - rho_i) *
-                         w_filtered * h_inv_dim;
+  /* Take the previous value of rho since it is being computed in the density
+     loop */
+  float rho_i = chi->rho_prev;
+  float rho_j = chj->rho_prev;
 
-    chi->filtered.rho_v[0] += hydro_get_mass(pj) / rho_mean *
+  /* Avoid 0 division and NaN */
+  if (rho_bar_mean != 0 && !isnan(rho_bar_mean)) {
+    /* Now compute the filtered rho*v */
+    chi->filtered.rho_v[0] += hydro_get_mass(pj) / rho_bar_mean *
                               (rho_j * pj->v[0] - rho_i * pi->v[0]) *
                               w_filtered * h_inv_dim;
-    chi->filtered.rho_v[1] += hydro_get_mass(pj) / rho_mean *
+    chi->filtered.rho_v[1] += hydro_get_mass(pj) / rho_bar_mean *
                               (rho_j * pj->v[1] - rho_i * pi->v[1]) *
                               w_filtered * h_inv_dim;
-    chi->filtered.rho_v[2] += hydro_get_mass(pj) / rho_mean *
+    chi->filtered.rho_v[2] += hydro_get_mass(pj) / rho_bar_mean *
                               (rho_j * pj->v[2] - rho_i * pi->v[2]) *
                               w_filtered * h_inv_dim;
   }

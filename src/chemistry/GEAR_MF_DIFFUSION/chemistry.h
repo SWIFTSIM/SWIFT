@@ -461,16 +461,22 @@ __attribute__((always_inline)) INLINE static void chemistry_end_density(
   /*****************************************/
   /* Finish computations on the filtered quantities */
   /* Multiply by the smoothing factor */
-  p->chemistry_data.filtered.rho *= FILTERING_SMOOTHING_FACTOR;
   p->chemistry_data.filtered.rho_v[0] *= FILTERING_SMOOTHING_FACTOR;
   p->chemistry_data.filtered.rho_v[1] *= FILTERING_SMOOTHING_FACTOR;
   p->chemistry_data.filtered.rho_v[2] *= FILTERING_SMOOTHING_FACTOR;
 
   /* Add self term */
-  p->chemistry_data.filtered.rho += p->rho;
-  p->chemistry_data.filtered.rho_v[0] += p->rho * p->v[0];
-  p->chemistry_data.filtered.rho_v[1] += p->rho * p->v[1];
-  p->chemistry_data.filtered.rho_v[2] += p->rho * p->v[2];
+  p->chemistry_data.filtered.rho += hydro_get_mass(p) * kernel_root;
+  p->chemistry_data.filtered.rho_v[0] += p->chemistry_data.filtered.rho_prev * p->v[0];
+  p->chemistry_data.filtered.rho_v[1] += p->chemistry_data.filtered.rho_prev * p->v[1];
+  p->chemistry_data.filtered.rho_v[2] += p->chemistry_data.filtered.rho_prev * p->v[2];
+
+  /* Insert missing h-factor to rho. For rho*v, notice that the h-factors were
+     already given in the density loop since they depend on bar{h_ij}. */
+  const float h = p->h;
+  const float h_inv = 1.0f / h;                       /* 1/h */
+  const float h_inv_dim = pow_dimension(h_inv);       /* 1/h^d */
+  p->chemistry_data.filtered.rho *= h_inv_dim;
 
   /*****************************************/
   /* Finish computations on the MF geometry quantities */
@@ -630,6 +636,12 @@ __attribute__((always_inline)) INLINE static void chemistry_end_force(
 
   /* Store the density of the current timestep for the next timestep */
   p->chemistry_data.rho_prev = chemistry_get_density(p);
+  p->chemistry_data.filtered.rho_prev = p->chemistry_data.filtered.rho;
+
+  /* Take care of the case where \bar{rho_prev} = 0 */
+  if (p->chemistry_data.filtered.rho_prev == 0) {
+    p->chemistry_data.filtered.rho_prev = p->chemistry_data.rho_prev;
+  }
 }
 
 /**
