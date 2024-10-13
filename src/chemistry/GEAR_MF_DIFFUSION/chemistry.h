@@ -629,7 +629,7 @@ __attribute__((always_inline)) INLINE static void chemistry_end_force(
   p->geometry.wcorr = 1.0f;
 
   /* Store the density of the current timestep for the next timestep */
-  p->chemistry_data.rho_prev = p->rho;
+  p->chemistry_data.rho_prev = chemistry_get_density(p);
 }
 
 /**

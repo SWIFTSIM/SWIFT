@@ -84,7 +84,7 @@ chemistry_get_diffusion_state_vector(const struct part *restrict p, int metal,
  */
 __attribute__((always_inline)) INLINE static float chemistry_get_density(
     const struct part *restrict p) {
-  float rho = p->rho;
+  float rho = hydro_get_comoving_density(p);
 
   if (rho == 0.0) {
     const float r_cubed =
