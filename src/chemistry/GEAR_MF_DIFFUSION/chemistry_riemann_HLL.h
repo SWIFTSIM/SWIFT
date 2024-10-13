@@ -47,7 +47,7 @@ chemistry_riemann_compute_K_star(
     double K_star[3][3], const struct chemistry_global_data *chem_data) {
   double KR[3][3], KL[3][3];
   chemistry_get_matrix_K(pi, pi->chemistry_data.kappa, KR, chem_data);
-  chemistry_get_matrix_K(pi, pj->chemistry_data.kappa, KL, chem_data);
+  chemistry_get_matrix_K(pj, pj->chemistry_data.kappa, KL, chem_data);
 
   /* Init K_star to 0.0. Do it better in the future... */
   chemistry_get_matrix_K(pi, 0.0, K_star, chem_data);
