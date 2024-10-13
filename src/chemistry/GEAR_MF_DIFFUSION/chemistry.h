@@ -467,10 +467,10 @@ __attribute__((always_inline)) INLINE static void chemistry_end_density(
   p->chemistry_data.filtered.rho_v[2] *= FILTERING_SMOOTHING_FACTOR;
 
   /* Add self term */
-  p->chemistry_data.filtered.rho += p->chemistry_data.rho_prev;
-  p->chemistry_data.filtered.rho_v[0] += p->chemistry_data.rho_prev * p->v[0];
-  p->chemistry_data.filtered.rho_v[1] += p->chemistry_data.rho_prev * p->v[1];
-  p->chemistry_data.filtered.rho_v[2] += p->chemistry_data.rho_prev * p->v[2];
+  p->chemistry_data.filtered.rho += p->rho;
+  p->chemistry_data.filtered.rho_v[0] += p->rho * p->v[0];
+  p->chemistry_data.filtered.rho_v[1] += p->rho * p->v[1];
+  p->chemistry_data.filtered.rho_v[2] += p->rho * p->v[2];
 
   /*****************************************/
   /* Finish computations on the MF geometry quantities */
