@@ -209,7 +209,8 @@ __attribute__((always_inline)) INLINE static void chemistry_get_matrix_K(
     /* Get the full shear tensor */
     chemistry_get_shear_tensor(p, K);
 
-    /* This takes way too much time. Comment it for now */
+    /* This takes way too much time, probably because we allocate and
+       deallocate the workspace too often. Comment it for now */
     /* Now regularize the shear tensor by considering only the negative
        eigenvalues (Balarac et al. (2013)). This is now called the S_minus
        matrix. */
