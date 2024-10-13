@@ -68,7 +68,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_chemistry(
 
   float rho_i = chi->rho_prev;
   float rho_j = chj->rho_prev;
-  float rho_mean = 0.5 * (rho_i + rho_j);
+  float rho_mean = 2* rho_i * rho_j / (rho_i + rho_j); /* harmonic mean */
   float w_filtered;
   kernel_eval(r * h_inv_bar, &w_filtered);
 
@@ -136,7 +136,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_chemistry(
 
   float rho_i = chi->rho_prev;
   float rho_j = pj->chemistry_data.rho_prev;
-  float rho_mean = 0.5 * (rho_i + rho_j);
+  float rho_mean = 2* rho_i * rho_j / (rho_i + rho_j); /* harmonic mean */
   float w_filtered;
   kernel_eval(r / h_bar_ij, &w_filtered);
 
