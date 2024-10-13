@@ -73,7 +73,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_chemistry(
   kernel_eval(r * h_inv_bar, &w_filtered);
 
   /* Avoid 0 division */
-  if (rho_mean != 0) {
+  if (rho_mean != 0  && !isnan(rho_mean)) {
     chi->filtered.rho += hydro_get_mass(pj) / rho_mean * (rho_j - rho_i) *
                          w_filtered * h_inv_dim;
     chj->filtered.rho -= hydro_get_mass(pi) / rho_mean * (rho_j - rho_i) *
@@ -140,7 +140,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_chemistry(
   float w_filtered;
   kernel_eval(r / h_bar_ij, &w_filtered);
 
-  if (rho_mean != 0) {
+  if (rho_mean != 0 && !isnan(rho_mean)) {
     chi->filtered.rho += hydro_get_mass(pj) / rho_mean * (rho_j - rho_i) *
                          w_filtered * h_inv_dim;
 
