@@ -360,13 +360,13 @@ __attribute__((always_inline)) INLINE static float chemistry_timestep(
  *
  * @param p Particle.
  */
-__attribute__((always_inline)) INLINE static float
-chemistry_supertimestep(const struct phys_const* restrict phys_const,
-                                const struct cosmology* restrict cosmo,
-                                const struct unit_system* restrict us,
-                                const struct hydro_props* hydro_props,
-                                const struct chemistry_global_data* cd,
-                                struct part* restrict p, float min_dt_part) {
+__attribute__((always_inline)) INLINE static float chemistry_supertimestep(
+    const struct phys_const* restrict phys_const,
+    const struct cosmology* restrict cosmo,
+    const struct unit_system* restrict us,
+    const struct hydro_props* hydro_props,
+    const struct chemistry_global_data* cd, struct part* restrict p,
+    float min_dt_part) {
 
   struct chemistry_part_data* chd = &p->chemistry_data;
 
@@ -461,16 +461,25 @@ __attribute__((always_inline)) INLINE static void chemistry_end_density(
   /*****************************************/
   /* Finish computations on the filtered quantities */
   /* Multiply by the smoothing factor */
-  p->chemistry_data.filtered.rho *= FILTERING_SMOOTHING_FACTOR;
   p->chemistry_data.filtered.rho_v[0] *= FILTERING_SMOOTHING_FACTOR;
   p->chemistry_data.filtered.rho_v[1] *= FILTERING_SMOOTHING_FACTOR;
   p->chemistry_data.filtered.rho_v[2] *= FILTERING_SMOOTHING_FACTOR;
 
   /* Add self term */
-  p->chemistry_data.filtered.rho += p->chemistry_data.rho_prev;
-  p->chemistry_data.filtered.rho_v[0] += p->chemistry_data.rho_prev * p->v[0];
-  p->chemistry_data.filtered.rho_v[1] += p->chemistry_data.rho_prev * p->v[1];
-  p->chemistry_data.filtered.rho_v[2] += p->chemistry_data.rho_prev * p->v[2];
+  p->chemistry_data.filtered.rho += hydro_get_mass(p) * kernel_root;
+  p->chemistry_data.filtered.rho_v[0] +=
+      p->chemistry_data.filtered.rho_prev * p->v[0];
+  p->chemistry_data.filtered.rho_v[1] +=
+      p->chemistry_data.filtered.rho_prev * p->v[1];
+  p->chemistry_data.filtered.rho_v[2] +=
+      p->chemistry_data.filtered.rho_prev * p->v[2];
+
+  /* Insert missing h-factor to rho. For rho*v, notice that the h-factors were
+     already given in the density loop since they depend on bar{h_ij}. */
+  const float h = p->h;
+  const float h_inv = 1.0f / h;                 /* 1/h */
+  const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */
+  p->chemistry_data.filtered.rho *= h_inv_dim;
 
   /*****************************************/
   /* Finish computations on the MF geometry quantities */
@@ -490,32 +499,28 @@ __attribute__((always_inline)) INLINE static void chemistry_end_density(
   matrix_E[2][1] = p->geometry.matrix_E[2][1];
   matrix_E[2][2] = p->geometry.matrix_E[2][2];
 
-  const float condition_number_E_inv = matrix_E[0][0] * matrix_E[0][0] +
-    matrix_E[0][1] * matrix_E[0][1] +
-    matrix_E[0][2] * matrix_E[0][2] +
-    matrix_E[1][0] * matrix_E[1][0] +
-    matrix_E[1][1] * matrix_E[1][1] +
-    matrix_E[1][2] * matrix_E[1][2] +
-    matrix_E[2][0] * matrix_E[2][0] +
-    matrix_E[2][1] * matrix_E[2][1] +
-    matrix_E[2][2] * matrix_E[2][2];
+  const float condition_number_E_inv =
+      matrix_E[0][0] * matrix_E[0][0] + matrix_E[0][1] * matrix_E[0][1] +
+      matrix_E[0][2] * matrix_E[0][2] + matrix_E[1][0] * matrix_E[1][0] +
+      matrix_E[1][1] * matrix_E[1][1] + matrix_E[1][2] * matrix_E[1][2] +
+      matrix_E[2][0] * matrix_E[2][0] + matrix_E[2][1] * matrix_E[2][1] +
+      matrix_E[2][2] * matrix_E[2][2];
 
   if (invert_dimension_by_dimension_matrix(matrix_E) != 0) {
     /* something went wrong in the inversion; force bad condition number */
-    p->chemistry_data.geometry_condition_number = const_gizmo_max_condition_number + 1.0f;
+    p->chemistry_data.geometry_condition_number =
+        const_gizmo_max_condition_number + 1.0f;
   } else {
-    const float condition_number_E = matrix_E[0][0] * matrix_E[0][0] +
-      matrix_E[0][1] * matrix_E[0][1] +
-      matrix_E[0][2] * matrix_E[0][2] +
-      matrix_E[1][0] * matrix_E[1][0] +
-      matrix_E[1][1] * matrix_E[1][1] +
-      matrix_E[1][2] * matrix_E[1][2] +
-      matrix_E[2][0] * matrix_E[2][0] +
-      matrix_E[2][1] * matrix_E[2][1] +
-      matrix_E[2][2] * matrix_E[2][2];
+    const float condition_number_E =
+        matrix_E[0][0] * matrix_E[0][0] + matrix_E[0][1] * matrix_E[0][1] +
+        matrix_E[0][2] * matrix_E[0][2] + matrix_E[1][0] * matrix_E[1][0] +
+        matrix_E[1][1] * matrix_E[1][1] + matrix_E[1][2] * matrix_E[1][2] +
+        matrix_E[2][0] * matrix_E[2][0] + matrix_E[2][1] * matrix_E[2][1] +
+        matrix_E[2][2] * matrix_E[2][2];
 
     p->chemistry_data.geometry_condition_number =
-      hydro_dimension_inv * sqrtf(condition_number_E * condition_number_E_inv);
+        hydro_dimension_inv *
+        sqrtf(condition_number_E * condition_number_E_inv);
   }
 
   /* Check that the metal masses are physical */
@@ -633,7 +638,13 @@ __attribute__((always_inline)) INLINE static void chemistry_end_force(
   p->geometry.wcorr = 1.0f;
 
   /* Store the density of the current timestep for the next timestep */
-  p->chemistry_data.rho_prev = p->rho;
+  p->chemistry_data.rho_prev = chemistry_get_density(p);
+  p->chemistry_data.filtered.rho_prev = p->chemistry_data.filtered.rho;
+
+  /* Take care of the case where \bar{rho_prev} = 0 */
+  if (p->chemistry_data.filtered.rho_prev == 0) {
+    p->chemistry_data.filtered.rho_prev = p->chemistry_data.rho_prev;
+  }
 }
 
 /**

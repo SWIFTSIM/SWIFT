@@ -25,6 +25,11 @@
 #include "kernel_hydro.h"
 #include "part.h"
 
+#ifdef HAVE_LIBGSL
+#include <gsl/gsl_eigen.h>
+#include <gsl/gsl_matrix.h>
+#endif
+
 /**
  * @brief Get a  metal density from a specific metal group.
  *
@@ -79,7 +84,7 @@ chemistry_get_diffusion_state_vector(const struct part *restrict p, int metal,
  */
 __attribute__((always_inline)) INLINE static float chemistry_get_density(
     const struct part *restrict p) {
-  float rho = p->rho;
+  float rho = hydro_get_comoving_density(p);
 
   if (rho == 0.0) {
     const float r_cubed =
@@ -99,6 +104,7 @@ __attribute__((always_inline)) INLINE static float chemistry_get_density(
  * @brief Get the shear tensor.
  *
  * @param p Particle.
+ * @param S (return) Pointer to a 3x3 matrix.
  */
 __attribute__((always_inline)) INLINE static void chemistry_get_shear_tensor(
     const struct part *restrict p, double S[3][3]) {
@@ -111,12 +117,81 @@ __attribute__((always_inline)) INLINE static void chemistry_get_shear_tensor(
 }
 
 /**
+ * @brief Regularize the shear tensor as described in Balarac et al. (2013).
+ *
+ * This needs to be checked.
+ *
+ * @param S (return) Pointer to a 3x3 matrix shear tensor.
+ */
+__attribute__((always_inline)) INLINE static void
+chemistry_regularize_shear_tensor(double S[3][3]) {
+#ifdef HAVE_LIBGSL
+  /* Create the necessary GSL objects to hold the eigenvalues and eigenvectors
+   */
+  gsl_matrix *S_matrix = gsl_matrix_alloc(3, 3);  // Matrix for input/output S
+  gsl_vector *eigenvalues =
+      gsl_vector_alloc(3);  // Vector to hold the eigenvalues
+  gsl_matrix *eigenvectors =
+      gsl_matrix_alloc(3, 3);  // Matrix to hold the eigenvectors
+  gsl_eigen_symmv_workspace *workspace =
+      gsl_eigen_symmv_alloc(3);  // Workspace for eigen computation
+
+  /* Fill S_matrix with the values from S */
+  for (int i = 0; i < 3; i++) {
+    for (int j = 0; j < 3; j++) {
+      gsl_matrix_set(S_matrix, i, j, S[i][j]);
+    }
+  }
+
+  /* Compute the eigenvalues and eigenvectors. S is symmetric by construction.
+   */
+  gsl_eigen_symmv(S_matrix, eigenvalues, eigenvectors, workspace);
+
+  /* Zero-initialize the matrix S to store S_minus */
+  double S_minus[3][3] = {{0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}};
+
+  /* Compute S_ij^minus using the sum of min(0, lambda^(k)) * e_i^(k) * e_j^(k)
+   */
+  for (int k = 0; k < 3; k++) {
+    double lambda_k =
+        gsl_vector_get(eigenvalues, k);        // Get the k-th eigenvalue
+    double lambda_k_minus = min(0, lambda_k);  // Take min(0, lambda^(k))
+
+    for (int i = 0; i < 3; i++) {
+      for (int j = 0; j < 3; j++) {
+        double e_ik = gsl_matrix_get(eigenvectors, i, k);
+        double e_jk = gsl_matrix_get(eigenvectors, j, k);
+        S_minus[i][j] += lambda_k_minus * e_ik * e_jk;
+      }
+    }
+  }
+
+  // Copy S_minus back into S (overwriting it)
+  for (int i = 0; i < 3; i++) {
+    for (int j = 0; j < 3; j++) {
+      S[i][j] = S_minus[i][j];
+    }
+  }
+
+  // Free the allocated memory
+  gsl_matrix_free(S_matrix);
+  gsl_vector_free(eigenvalues);
+  gsl_matrix_free(eigenvectors);
+  gsl_eigen_symmv_free(workspace);
+#else
+  error(
+      "Code not compiled with GSL. Can't compute eigenvalues of the filtered "
+      "shear tensor.");
+#endif
+}
+
+/**
  * @brief Get the diffusion matrix K.
  *
  * @param p Particle.
  */
 __attribute__((always_inline)) INLINE static void chemistry_get_matrix_K(
-    const struct part *restrict p, double kappa, double K[3][3],
+    const struct part *restrict p, double K[3][3],
     const struct chemistry_global_data *chem_data) {
   if (chem_data->diffusion_mode == isotropic_constant ||
       chem_data->diffusion_mode == isotropic_smagorinsky) {
@@ -126,15 +201,25 @@ __attribute__((always_inline)) INLINE static void chemistry_get_matrix_K(
         K[i][j] = 0.0;
       }
     }
-    K[0][0] = kappa;
-    K[1][1] = kappa;
-    K[2][2] = kappa;
+    K[0][0] = p->chemistry_data.kappa;
+    K[1][1] = p->chemistry_data.kappa;
+    K[2][2] = p->chemistry_data.kappa;
+
   } else {
-    /* K = kappa * S */
+    /* Get the full shear tensor */
     chemistry_get_shear_tensor(p, K);
+
+    /* This takes way too much time, probably because we allocate and
+       deallocate the workspace too often. Comment it for now */
+    /* Now regularize the shear tensor by considering only the negative
+       eigenvalues (Balarac et al. (2013)). This is now called the S_minus
+       matrix. */
+    /* chemistry_regularize_shear_tensor(K); */
+
+    /* K = kappa * S_minus */
     for (int i = 0; i < 3; ++i) {
       for (int j = 0; j < 3; ++j) {
-        K[i][j] *= kappa;
+        K[i][j] *= p->chemistry_data.kappa;
       }
     }
   }
@@ -229,7 +314,7 @@ chemistry_compute_diffusion_flux(const struct part *restrict p, int metal,
 
     /* Compute diffusion matrix K */
     double K[3][3];
-    chemistry_get_matrix_K(p, p->chemistry_data.kappa, K, chem_data);
+    chemistry_get_matrix_K(p, K, chem_data);
 
     for (int i = 0; i < 3; ++i) {
       for (int j = 0; j < 3; ++j) {
@@ -305,7 +390,7 @@ chemistry_compute_parabolic_timestep(
 
   /* Compute diffusion matrix K */
   double K[3][3];
-  chemistry_get_matrix_K(p, chd->kappa, K, chem_data);
+  chemistry_get_matrix_K(p, K, chem_data);
   const float norm_matrix_K = chemistry_get_matrix_norm(K);
 
   /* Note: The State vector is U = (rho*Z_1,rho*Z_2, ...), and q = (Z_1, Z_2,
@@ -387,7 +472,7 @@ chemistry_compute_CFL_supertimestep(const struct part *restrict p,
 
   /* Compute diffusion matrix K */
   double K[3][3];
-  chemistry_get_matrix_K(p, chd->kappa, K, cd);
+  chemistry_get_matrix_K(p, K, cd);
   const float norm_matrix_K = chemistry_get_matrix_norm(K);
 
   /* Some helpful variables */
