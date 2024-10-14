@@ -4878,12 +4878,6 @@ void engine_maketasks(struct engine *e) {
     message("Setting super-pointers took %.3f %s.",
             clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
-  /* In zoom land we need to create the hierarchical void tasks before all
-   * others. */
-  if (e->s->with_zoom_region) {
-    zoom_engine_make_hierarchical_void_tasks(e);
-  }
-
   /* Append hierarchical tasks to each cell. */
   /* When running a zoom simulation we only need to loop over the cells above
    * the zoom regions since zoom cells are handled during recursion. */
