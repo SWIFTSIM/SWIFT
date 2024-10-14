@@ -222,7 +222,7 @@ static void engine_do_unskip_gravity(struct cell *c, struct engine *e) {
   if (c->grav.count == 0 && c->subtype != cell_subtype_void) return;
 
   if (c->subtype == cell_subtype_void) {
-    mssg("Unskipping gravity tasks in a void cell.");
+    message("Unskipping gravity tasks in a void cell.");
   }
 
   /* Skip inactive cells. */
