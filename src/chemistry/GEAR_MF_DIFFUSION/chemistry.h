@@ -467,15 +467,18 @@ __attribute__((always_inline)) INLINE static void chemistry_end_density(
 
   /* Add self term */
   p->chemistry_data.filtered.rho += hydro_get_mass(p) * kernel_root;
-  p->chemistry_data.filtered.rho_v[0] += p->chemistry_data.filtered.rho_prev * p->v[0];
-  p->chemistry_data.filtered.rho_v[1] += p->chemistry_data.filtered.rho_prev * p->v[1];
-  p->chemistry_data.filtered.rho_v[2] += p->chemistry_data.filtered.rho_prev * p->v[2];
+  p->chemistry_data.filtered.rho_v[0] +=
+      p->chemistry_data.filtered.rho_prev * p->v[0];
+  p->chemistry_data.filtered.rho_v[1] +=
+      p->chemistry_data.filtered.rho_prev * p->v[1];
+  p->chemistry_data.filtered.rho_v[2] +=
+      p->chemistry_data.filtered.rho_prev * p->v[2];
 
   /* Insert missing h-factor to rho. For rho*v, notice that the h-factors were
      already given in the density loop since they depend on bar{h_ij}. */
   const float h = p->h;
-  const float h_inv = 1.0f / h;                       /* 1/h */
-  const float h_inv_dim = pow_dimension(h_inv);       /* 1/h^d */
+  const float h_inv = 1.0f / h;                 /* 1/h */
+  const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */
   p->chemistry_data.filtered.rho *= h_inv_dim;
 
   /*****************************************/

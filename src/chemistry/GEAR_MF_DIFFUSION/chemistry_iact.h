@@ -61,25 +61,26 @@ __attribute__((always_inline)) INLINE static void runner_iact_chemistry(
 
   /* Compute the filtered rho = same as rho in SPH but with h_bar instead of h,
      where h_bar = compact support of the kernel*/
-  float hi_bar = hi*kernel_gamma;
-  float hj_bar = hj*kernel_gamma;
+  float hi_bar = hi * kernel_gamma;
+  float hj_bar = hj * kernel_gamma;
   float wi_bar, wj_bar;
-  kernel_eval(r/hi_bar, &wi_bar);
-  kernel_eval(r/hj_bar, &wj_bar);
+  kernel_eval(r / hi_bar, &wi_bar);
+  kernel_eval(r / hj_bar, &wj_bar);
 
   /* j contributes to i and vice-versa */
   chi->filtered.rho += hydro_get_mass(pj) * wi_bar;
   chj->filtered.rho += hydro_get_mass(pi) * wj_bar;
 
   /* Some smoothing length multiples. */
-  float h_bar_ij = 0.5 * (hi_bar + hj_bar); /* arithmetic mean */
+  float h_bar_ij = 0.5 * (hi_bar + hj_bar);         /* arithmetic mean */
   const float h_inv_bar = 1.0f / h_bar_ij;          /* 1/h */
   const float h_inv_dim = pow_dimension(h_inv_bar); /* 1/h^d */
 
   /* Take the previous value of bar{rho} since we are computing it now */
   float rho_i_bar = chi->filtered.rho_prev;
   float rho_j_bar = chj->filtered.rho_prev;
-  float rho_bar_mean = 2 * rho_i_bar * rho_j_bar / (rho_i_bar + rho_j_bar); /* harmonic mean */
+  float rho_bar_mean =
+      2 * rho_i_bar * rho_j_bar / (rho_i_bar + rho_j_bar); /* harmonic mean */
   float w_filtered;
   kernel_eval(r * h_inv_bar, &w_filtered);
 
@@ -140,28 +141,29 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_chemistry(
 
   /*****************************************/
   /* Compute the filtered quantities */
-    /*****************************************/
+  /*****************************************/
   /* Compute the filtered quantities */
 
   /* Compute the filtered rho = same as rho in SPH but with h_bar instead of h,
      where h_bar = compact support of the kernel*/
-  float hi_bar = hi*kernel_gamma;
-  float hj_bar = hj*kernel_gamma;
+  float hi_bar = hi * kernel_gamma;
+  float hj_bar = hj * kernel_gamma;
   float wi_bar;
-  kernel_eval(r/hi_bar, &wi_bar);
+  kernel_eval(r / hi_bar, &wi_bar);
 
   /* j contributes to i */
   chi->filtered.rho += hydro_get_mass(pj) * wi_bar;
 
   /* Some smoothing length multiples. */
-  float h_bar_ij = 0.5 * (hi_bar + hj_bar); /* arithmetic mean */
+  float h_bar_ij = 0.5 * (hi_bar + hj_bar);         /* arithmetic mean */
   const float h_inv_bar = 1.0f / h_bar_ij;          /* 1/h */
   const float h_inv_dim = pow_dimension(h_inv_bar); /* 1/h^d */
 
   /* Take the previous value of bar{rho} since we are computing it now */
   float rho_i_bar = chi->filtered.rho_prev;
   float rho_j_bar = chj->filtered.rho_prev;
-  float rho_bar_mean = 2 * rho_i_bar * rho_j_bar / (rho_i_bar + rho_j_bar); /* harmonic mean */
+  float rho_bar_mean =
+      2 * rho_i_bar * rho_j_bar / (rho_i_bar + rho_j_bar); /* harmonic mean */
   float w_filtered;
   kernel_eval(r * h_inv_bar, &w_filtered);
 
