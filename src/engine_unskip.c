@@ -221,6 +221,10 @@ static void engine_do_unskip_gravity(struct cell *c, struct engine *e) {
   /* Ignore empty cells but not void cells (in zoom land). */
   if (c->grav.count == 0 && c->subtype != cell_subtype_void) return;
 
+  if (c->subtype == cell_subtype_void) {
+    mssg("Unskipping gravity tasks in a void cell.");
+  }
+
   /* Skip inactive cells. */
   if (!cell_is_active_gravity(c, e)) return;
 
