@@ -1369,16 +1369,8 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
                                          task_subtype_none, 0, 0, c, NULL);
 
         /* Gravity non-neighbouring pm calculations */
-        /* When running a zoom we only want to create long range tasks for
-         * non-zoom cells and zoom cells where there are no grav_mm tasks in the
-         * void cell tree (if this is the case then there will be no void super
-         * level). */
-        if (c->top->type != cell_type_zoom ||
-            (c->top->type == cell_type_zoom &&
-             c->top->void_parent->grav.super == NULL)) {
-          c->grav.long_range = scheduler_addtask(
-              s, task_type_grav_long_range, task_subtype_none, 0, 0, c, NULL);
-        }
+        c->grav.long_range = scheduler_addtask(
+            s, task_type_grav_long_range, task_subtype_none, 0, 0, c, NULL);
 
         /* Gravity recursive down-pass */
         c->grav.down = scheduler_addtask(s, task_type_grav_down,
@@ -1393,10 +1385,8 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
                                             task_subtype_none, 0, 1, c, NULL);
 
         /* Long-range gravity forces (not the mesh ones!) */
-        if (c->grav.long_range != NULL) {
-          scheduler_addunlock(s, c->grav.init, c->grav.long_range);
-          scheduler_addunlock(s, c->grav.long_range, c->grav.down);
-        }
+        scheduler_addunlock(s, c->grav.init, c->grav.long_range);
+        scheduler_addunlock(s, c->grav.long_range, c->grav.down);
         scheduler_addunlock(s, c->grav.down, c->grav.super->grav.end_force);
 
         /* With adaptive softening, force the hydro density to complete first */
@@ -1408,20 +1398,6 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
         scheduler_addunlock(s, c->grav.init, c->grav.init_out);
         scheduler_addunlock(s, c->grav.drift, c->grav.drift_out);
         scheduler_addunlock(s, c->grav.down_in, c->grav.down);
-
-        /* In zoom land we also need to link the void cells grav down to
-         * the zoom cell down and long range task. */
-        if (c->type == cell_type_zoom) {
-
-          /* Ensure the void super exists (Otherwise there's nothing to worry
-           * about). */
-          if (c->top->void_parent->grav.super != NULL) {
-
-            /* void.down -> zoom.down */
-            scheduler_addunlock(s, c->top->void_parent->grav.super->grav.down,
-                                c->grav.down);
-          }
-        }
       }
     }
   }
@@ -1874,9 +1850,11 @@ void engine_make_hierarchical_tasks_mapper(void *map_data, int num_elements,
   for (int ind = 0; ind < num_elements; ind++) {
     struct cell *c = &((struct cell *)map_data)[ind];
 
-    /* In zoom land we need to handle void cells separately after all other
-     * cells. This is done before this mapper call in engine_maketasks. */
+    /* In zoom land any cell in or above the zoom region is handled separately.
+     * This will recurse through the void cell tree and the common and hydro
+     * methods below at any top level cells reached in the nested grids. */
     if (c->subtype == cell_subtype_void) {
+      zoom_engine_make_hierarchical_tasks_recursive(e, c, NULL);
       continue;
     }
 
@@ -4907,8 +4885,18 @@ void engine_maketasks(struct engine *e) {
   }
 
   /* Append hierarchical tasks to each cell. */
-  threadpool_map(&e->threadpool, engine_make_hierarchical_tasks_mapper, cells,
-                 nr_cells, sizeof(struct cell), threadpool_auto_chunk_size, e);
+  /* When running a zoom simulation we only need to loop over the cells above
+   * the zoom regions since zoom cells are handled during recursion. */
+  if (!e->s->with_zoom_region) {
+    threadpool_map(&e->threadpool, engine_make_hierarchical_tasks_mapper, cells,
+                   nr_cells, sizeof(struct cell), threadpool_auto_chunk_size,
+                   e);
+  } else {
+    threadpool_map(&e->threadpool, engine_make_hierarchical_tasks_mapper,
+                   &cells[e->s->zoom_props->nr_zoom_cells],
+                   s->nr_cells - s->zoom_props->nr_zoom_cells,
+                   sizeof(struct cell), threadpool_auto_chunk_size, e);
+  }
 
   tic2 = getticks();
 
