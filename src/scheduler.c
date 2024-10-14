@@ -1595,8 +1595,13 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
   if (ci->subtype == cell_subtype_void && cj->subtype == cell_subtype_void) {
     for (int i = 0; i < 8; i++) {
       struct cell *cpi = ci->progeny[i];
+
+      if (cpi->subtype != cell_subtype_void && cpi->grav.count == 0) continue;
+
       for (int j = 0; j < 8; j++) {
         struct cell *cpj = cj->progeny[j];
+
+        if (cpj->subtype != cell_subtype_void && cpj->grav.count == 0) continue;
 
         /* Can we use a M-M interaction here? */
         if (cell_can_use_pair_mm(cpi, cpj, e, sp,
