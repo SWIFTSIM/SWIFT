@@ -313,6 +313,10 @@ void engine_do_unskip_mapper(void *map_data, int num_elements,
     /* Handle on the cell */
     struct cell *const c = &cells_top[local_cells[ind]];
 
+    if (c->subtype == cell_subtype_void) {
+      message("Unskipping gravity tasks in a void cell.");
+    }
+
     /* In what copy of the global list are we?
      * This gives us the broad type of task we are working on. */
     const ptrdiff_t delta = &local_cells[ind] - list_base;
