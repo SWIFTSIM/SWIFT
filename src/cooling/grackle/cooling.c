@@ -218,11 +218,17 @@ void cooling_first_init_part(const struct phys_const* phys_const,
 
   /* Compute nH (formally divided by the gas density and assuming the proton
    * mass to be one) */
-  double nH = grackle_data->HydrogenFractionByMass;
+  double nH = 1.0;
+  if (grackle_data != NULL) {
+    nH = grackle_data->HydrogenFractionByMass;
+  }
 
   /* Compute nHe (formally divided by the gas density and assuming the proton
    * mass to be one) */
-  double nHe = (1.f - grackle_data->HydrogenFractionByMass) / 4.f;
+  double nHe = 0.0;
+  if (grackle_data != NULL) {
+    nHe = (1.f - grackle_data->HydrogenFractionByMass) / 4.f;
+  }
 
   /* Electron density */
   double ne = zero;
@@ -330,9 +336,12 @@ void cooling_first_init_part(const struct phys_const* phys_const,
   if (cooling->initial_nDI_to_nH_ratio >= 0.f) {
     double nDI = nH * cooling->initial_nDI_to_nH_ratio;
     xp->cooling_data.DI_frac = nDI * 2.f;
-  } else
-    xp->cooling_data.DI_frac = grackle_data->DeuteriumToHydrogenRatio *
-                               grackle_data->HydrogenFractionByMass;
+  } else {
+    if (grackle_data != NULL) {
+      xp->cooling_data.DI_frac = grackle_data->DeuteriumToHydrogenRatio *
+                                 grackle_data->HydrogenFractionByMass;
+    }
+  }
 
   Xtot += xp->cooling_data.DI_frac;
 
