@@ -25,6 +25,7 @@
 #include <math.h>
 
 /* Local includes. */
+#include "adaptive_softening.h"
 #include "cell.h"
 #include "engine.h"
 #include "gravity_properties.h"
