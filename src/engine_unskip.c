@@ -221,10 +221,6 @@ static void engine_do_unskip_gravity(struct cell *c, struct engine *e) {
   /* Ignore empty cells but not void cells (in zoom land). */
   if (c->grav.count == 0 && c->subtype != cell_subtype_void) return;
 
-  if (c->subtype == cell_subtype_void) {
-    message("Unskipping gravity tasks in a void cell.");
-  }
-
   /* Skip inactive cells. */
   if (!cell_is_active_gravity(c, e)) return;
 
@@ -312,10 +308,6 @@ void engine_do_unskip_mapper(void *map_data, int num_elements,
 
     /* Handle on the cell */
     struct cell *const c = &cells_top[local_cells[ind]];
-
-    if (c->subtype == cell_subtype_void) {
-      message("Unskipping gravity tasks in a void cell.");
-    }
 
     /* In what copy of the global list are we?
      * This gives us the broad type of task we are working on. */

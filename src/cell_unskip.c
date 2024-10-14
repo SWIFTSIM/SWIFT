@@ -2115,9 +2115,6 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
     if (t->type != task_type_grav_mm) error("Incorrectly linked gravity task!");
 #endif
 
-    if (c->subtype == cell_subtype_void)
-      message("Activating MM task for void cell!");
-
     /* Only activate tasks that involve a local active cell. */
     if ((ci_active && ci_nodeID == nodeID) ||
         (cj_active && cj_nodeID == nodeID)) {
