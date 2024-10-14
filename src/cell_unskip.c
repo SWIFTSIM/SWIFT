@@ -1407,7 +1407,7 @@ int cell_activate_subcell_grav_tasks(struct cell *restrict ci,
 
       if (ri_max > rj_max) {
 
-        if (ci->split || ci->subtype == cell_subtype_void) {
+        if (ci->split) {
 
           /* Loop over ci's children, activate what is needed and
            * collect the number of cells that have been fully processed */
@@ -1428,7 +1428,7 @@ int cell_activate_subcell_grav_tasks(struct cell *restrict ci,
 
           return cell_done;
 
-        } else if (cj->split || cj->subtype == cell_subtype_void) {
+        } else if (cj->split) {
 
           /* Loop over cj's children, activate what is needed and
            * collect the number of cells that have been fully processed */
@@ -1458,7 +1458,7 @@ int cell_activate_subcell_grav_tasks(struct cell *restrict ci,
 
       } else if (rj_max >= ri_max) {
 
-        if (cj->split || cj->subtype == cell_subtype_void) {
+        if (cj->split) {
 
           /* Loop over cj's children, activate what is needed and
            * collect the number of cells that have been fully processed */
@@ -1479,7 +1479,7 @@ int cell_activate_subcell_grav_tasks(struct cell *restrict ci,
 
           return cell_done;
 
-        } else if (ci->split || ci->subtype == cell_subtype_void) {
+        } else if (ci->split) {
 
           /* Loop over ci's children, activate what is needed and
            * collect the number of cells that have been fully processed */
@@ -2114,6 +2114,9 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
 #ifdef SWIFT_DEBUG_CHECKS
     if (t->type != task_type_grav_mm) error("Incorrectly linked gravity task!");
 #endif
+
+    if (c->subtype == cell_subtype_void)
+      message("Activating MM task for void cell!");
 
     /* Only activate tasks that involve a local active cell. */
     if ((ci_active && ci_nodeID == nodeID) ||
