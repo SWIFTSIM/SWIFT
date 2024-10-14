@@ -371,9 +371,9 @@ void zoom_engine_make_hierarchical_tasks_recursive(struct engine *e,
     c->grav.init = scheduler_addtask(s, task_type_init_grav, task_subtype_none,
                                      0, 0, c, NULL);
 
-    // /* Gravity non-neighbouring pm calculations. */
-    // c->grav.long_range = scheduler_addtask(s, task_type_grav_long_range,
-    //                                        task_subtype_none, 0, 0, c, NULL);
+    /* Gravity non-neighbouring pm calculations. */
+    c->grav.long_range = scheduler_addtask(s, task_type_grav_long_range,
+                                           task_subtype_none, 0, 0, c, NULL);
 
     /* Gravity recursive down-pass */
     c->grav.down = scheduler_addtask(s, task_type_grav_down, task_subtype_none,
@@ -386,8 +386,8 @@ void zoom_engine_make_hierarchical_tasks_recursive(struct engine *e,
                                         task_subtype_none, 0, 1, c, NULL);
 
     /* Long-range gravity forces (not the mesh ones!) */
-    // scheduler_addunlock(s, c->grav.init, c->grav.long_range);
-    // scheduler_addunlock(s, c->grav.long_range, c->grav.down);
+    scheduler_addunlock(s, c->grav.init, c->grav.long_range);
+    scheduler_addunlock(s, c->grav.long_range, c->grav.down);
 
     /* Link in the implicit tasks */
     scheduler_addunlock(s, c->grav.init, c->grav.init_out);
@@ -432,10 +432,10 @@ void zoom_engine_make_hierarchical_tasks_recursive(struct engine *e,
          * non-zoom cells and zoom cells where there are no grav_mm tasks in the
          * void cell tree (if this is the case then there will be no void super
          * level). */
-        // if (void_super == NULL) {
-        c->grav.long_range = scheduler_addtask(
-            s, task_type_grav_long_range, task_subtype_none, 0, 0, c, NULL);
-        // }
+        if (void_super == NULL) {
+          c->grav.long_range = scheduler_addtask(
+              s, task_type_grav_long_range, task_subtype_none, 0, 0, c, NULL);
+        }
 
         /* Gravity recursive down-pass */
         c->grav.down = scheduler_addtask(s, task_type_grav_down,
