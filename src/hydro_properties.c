@@ -207,6 +207,9 @@ void hydro_props_init(struct hydro_props *p,
 
     p->generate_random_ids = parser_get_opt_param_int(
         params, "SPH:particle_splitting_generate_random_ids", 0);
+
+    p->log_extra_splits_in_file = parser_get_opt_param_int(
+        params, "SPH:particle_splitting_log_extra_splits", 0);
   }
 }
 

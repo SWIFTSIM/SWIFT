@@ -468,10 +468,6 @@ void runner_do_prepare_part_sink_formation(struct runner *r, struct cell *c,
                                                   sink_props);
   } /* End of gas neighbour loop */
 
-  /* Shall we reset the values of the energies for the next timestep? No, it is
-     done in cell_drift.c and space_init.c, for active particles. The
-     potential is set in runner_others.c->runner_do_end_grav_force() */
-
   /* Check that we are not forming a sink in the accretion radius of another
      one. The new sink may be swallowed by the older one.) */
   const int scount = c->sinks.count;

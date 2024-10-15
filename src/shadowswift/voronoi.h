@@ -1,6 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2016 Bert Vandenbroucke (bert.vandenbroucke@gmail.com).
+ * Copyright (c) 2024 Matthieu Schaller (schaller@strw.leidenuniv.nl)
+ *                             Yolan Uyttenhove (Yolan.Uyttenhove@UGent.be)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -17,17 +18,19 @@
  *
  ******************************************************************************/
 
-#ifndef SWIFT_VORONOI_CELL_H
-#define SWIFT_VORONOI_CELL_H
+#ifndef SWIFTSIM_SHADOWSWIFT_VORONOI_H
+#define SWIFTSIM_SHADOWSWIFT_VORONOI_H
 
-#if defined(HYDRO_DIMENSION_1D)
-#include "voronoi1d_cell.h"
-#elif defined(HYDRO_DIMENSION_2D)
-#include "voronoi2d_cell.h"
-#elif defined(HYDRO_DIMENSION_3D)
-#include "voronoi3d_cell.h"
-#else
-#error "You have to select a dimension for the hydro!"
-#endif
+/* Local includes */
+#include "inline.h"
 
-#endif  // SWIFT_VORONOI_CELL_H
+struct voronoi {
+  int pair_count[27];
+};
+
+struct voronoi_pair {};
+
+__attribute__((always_inline)) INLINE static void voronoi_destroy(
+    struct voronoi* v) {}
+
+#endif  // SWIFTSIM_SHADOWSWIFT_VORONOI_H
