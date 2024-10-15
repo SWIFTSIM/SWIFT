@@ -108,6 +108,32 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_sink(
 }
 
 /**
+ * @brief Density interaction between two particles (non-symmetric).
+ *
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (pi - pj).
+ * @param ri Comoving cut off radius of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param si First particle (sink).
+ * @param pj Second particle (gas, not updated).
+ * @param xpj The extended data of the second particle (not updated).
+ * @param with_cosmology Are we doing a cosmological run?
+ * @param cosmo The cosmological model.
+ * @param grav_props The properties of the gravity scheme (softening, G, ...).
+ * @param ti_current Current integer time value (for random numbers).
+ * @param time current physical time in the simulation
+ */
+__attribute__((always_inline)) INLINE static void
+runner_iact_nonsym_sink_gas_density(
+    const float r2, const float dx[3], const float ri, const float hj,
+    struct sink *si, const struct part *pj, const struct xpart *xpj,
+    const int with_cosmology, const struct cosmology *cosmo,
+    const struct gravity_props *grav_props,
+    const struct sink_props *sink_props,
+    const struct entropy_floor_properties *floor_props,
+    const integertime_t ti_current, const double time) {}
+
+/**
  * @brief Compute sink-sink swallow interaction (non-symmetric).
  *
  * Note: Energies are computed with physical quantities, not the comoving ones.
