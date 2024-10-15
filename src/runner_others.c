@@ -426,7 +426,7 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
                 star_formation_number_spart_to_convert(p, xp, sf_props);
 
 #ifdef SWIFT_DEBUG_CHECKS
-            if (n_spart_convert > 1 or n_spart_convert < 0)
+            if (n_spart_convert > 1 || n_spart_convert < 0)
               error("Invalid number of sparts to convert");
 #endif
 

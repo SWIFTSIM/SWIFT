@@ -546,10 +546,10 @@ int cell_pack_sf_counts(struct cell *c, struct pcell_sf_stars *pcells) {
   if (c->stars.parts_rebuild == NULL)
     error("Star particles array at rebuild is NULL! c->depth=%d", c->depth);
 
-  if (pcells[0].stars.delta_from_rebuild < 0)
+  if (pcells[0].delta_from_rebuild < 0)
     error("Stars part pointer moved in the wrong direction!");
 
-  if (pcells[0].stars.delta_from_rebuild > 0 && c->depth == 0)
+  if (pcells[0].delta_from_rebuild > 0 && c->depth == 0)
     error("Shifting the top-level pointer is not allowed!");
 #endif
 
@@ -630,10 +630,10 @@ int cell_pack_grav_counts(struct cell *c, struct pcell_sf_grav *pcells) {
   if (c->grav.parts_rebuild == NULL)
     error("Grav. particles array at rebuild is NULL! c->depth=%d", c->depth);
 
-  if (pcells[0].grav.delta_from_rebuild < 0)
+  if (pcells[0].delta_from_rebuild < 0)
     error("Grav part pointer moved in the wrong direction!");
 
-  if (pcells[0].grav.delta_from_rebuild > 0 && c->depth == 0)
+  if (pcells[0].delta_from_rebuild > 0 && c->depth == 0)
     error("Shifting the top-level pointer is not allowed!");
 #endif
 
