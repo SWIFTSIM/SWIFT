@@ -924,6 +924,21 @@ __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const struct pressure_floor_props *pressure_floor) {
 
+  /* Convert the physcial internal energy to the comoving one. */
+  /* u' = a^(3(g-1)) u */
+  const float factor = 1.f / cosmo->a_factor_internal_energy;
+  p->u *= factor;
+  xp->u_full = p->u;
+
+  /* Apply the minimal energy limit */
+  const float min_comoving_energy =
+      hydro_props->minimal_internal_energy / cosmo->a_factor_internal_energy;
+  if (xp->u_full < min_comoving_energy) {
+    xp->u_full = min_comoving_energy;
+    p->u = min_comoving_energy;
+    p->u_dt = 0.f;
+  }	
+
   /* Compute the pressure */
   const float pressure =
       gas_pressure_from_internal_energy(p->rho_evol, p->u);

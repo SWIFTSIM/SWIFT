@@ -209,6 +209,10 @@ __attribute__((always_inline)) INLINE static void hydro_set_Qi_Qj(
   const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
   const float r = sqrtf(r2);
 
+  /* Cosmology terms for the signal velocity */
+  const float fac_mu = pow_three_gamma_minus_five_over_two(a);
+  const float a2_Hubble = a * a * H;
+
   const float hi_inv = 1.0f / pi->h;
   const float hj_inv = 1.0f / pj->h;
 
@@ -294,12 +298,12 @@ __attribute__((always_inline)) INLINE static void hydro_set_Qi_Qj(
 
   /* Finally assemble eq 15 in Rosswog 2020 */
   float mu_i =
-      min(0.f, ((vtilde_i[0] - vtilde_j[0]) * dx[0] +
+      fac_mu * min(0.f, ((vtilde_i[0] - vtilde_j[0]) * dx[0] +
                 (vtilde_i[1] - vtilde_j[1]) * dx[1] +
-                (vtilde_i[2] - vtilde_j[2]) * dx[2]) *
+                (vtilde_i[2] - vtilde_j[2]) * dx[2] + a2_Hubble * r2) *
                    hi_inv / (r2 * hi_inv * hi_inv + epsilon * epsilon));
   float mu_j =
-      min(0.f, ((vtilde_i[0] - vtilde_j[0]) * dx[0] +
+      fac_mu * min(0.f, ((vtilde_i[0] - vtilde_j[0]) * dx[0] +
                 (vtilde_i[1] - vtilde_j[1]) * dx[1] +
                 (vtilde_i[2] - vtilde_j[2]) * dx[2]) *
                    hj_inv / (r2 * hj_inv * hj_inv + epsilon * epsilon));
@@ -319,9 +323,9 @@ __attribute__((always_inline)) INLINE static void hydro_set_Qi_Qj(
 
   // ...
   *difn_signal_velocity =
-      sqrtf((vtilde_i[0] - vtilde_j[0]) * (vtilde_i[0] - vtilde_j[0]) +
+      (sqrtf((vtilde_i[0] - vtilde_j[0]) * (vtilde_i[0] - vtilde_j[0]) +
             (vtilde_i[1] - vtilde_j[1]) * (vtilde_i[1] - vtilde_j[1]) +
-            (vtilde_i[2] - vtilde_j[2]) * (vtilde_i[2] - vtilde_j[2]));
+            (vtilde_i[2] - vtilde_j[2]) * (vtilde_i[2] - vtilde_j[2])) + a2_Hubble * r) * fac_mu;
 }
 
 __attribute__((always_inline)) INLINE static void hydro_set_u_rho_difn(
