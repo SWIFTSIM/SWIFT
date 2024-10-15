@@ -152,7 +152,8 @@ void DOSELF1_SINK(struct runner *r, struct cell *c, int timer) {
       if (r2 < ri2 || r2 < rj2) {
         IACT_SINK_SINK(r2, dx, ri, rj, si, sj,
                                               with_cosmology, cosmo,
-                                              e->gravity_properties);
+                                              e->gravity_properties,
+                                              e->sink_properties);
       }
     } /* loop over the sinks in ci. */
   } /* loop over the sinks in ci. */
@@ -304,7 +305,8 @@ void DO_NONSYM_PAIR1_SINK_NAIVE(struct runner *r,
       if (r2 < ri2 || r2 < rj2) {
         IACT_SINK_SINK(r2, dx, ri, rj, si, sj,
                                               with_cosmology, cosmo,
-                                              e->gravity_properties);
+                                              e->gravity_properties,
+                                              e->sink_properties);
       }
     } /* loop over the sinks in cj. */
   } /* loop over the sinks in ci. */

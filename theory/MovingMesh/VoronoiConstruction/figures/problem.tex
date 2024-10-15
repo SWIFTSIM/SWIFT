@@ -1,0 +1,22 @@
+\begin{tikzpicture}[scale=3]
+    \draw[step=1.0,black,thin] (0,0) grid (4,3);
+    \draw[line width=1pt, blue] (1,1) -- (2,1) -- (2,2) -- (1,2) -- (1,1);
+    \path coordinate (a) at (1.9, 1.9)
+          coordinate (b) at (2.5, 1.1)
+          coordinate (c) at (2.5, 2.7)
+          coordinate (d) at (2.6,0.35)
+          coordinate (e) at (1.5,0.4)
+          coordinate (f) at (0.3,0.3)
+          coordinate (g) at (0.5,1.5)
+          coordinate (h) at (0.7,2.3)
+          coordinate (i) at (1.5,2.8);
+    \fill [radius=0.75pt] (a) circle[] node[left=1pt] {A} (b) circle[] node[left=1pt] {B} (c) circle[] node[left=1pt] {C} (d) circle[] (e) circle[] (f) circle[] (g) circle[] (h) circle[] (i) circle;
+    \node[circle through 3 points={a}{b}{c},draw=red]{};
+    \draw [black, line width=1pt] (a) -- (b) -- (c) -- (a);
+    \draw [gray] (b) -- (d) -- (e) -- (b);
+    \draw [gray] (b) -- (d) -- (e) -- (b);
+    \draw [gray] (a) -- (e) -- (g) -- (f) -- (e);
+    \draw [gray] (a) -- (g) -- (h) -- (a);
+    \draw [gray] (h) -- (i) -- (a);
+    \draw [gray] (i) -- (c);
+\end{tikzpicture}
