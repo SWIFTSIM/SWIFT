@@ -101,7 +101,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       const int ci_active_black_holes =
           ci->black_holes.count > 0 && cell_is_active_black_holes(ci, e);
       const int ci_active_sinks =
-          cell_is_active_sinks(ci, e) || ci_active_hydro;
+          ci->sinks.count > 0 && cell_is_active_sinks(ci, e);
       const int ci_active_stars = cell_need_activating_stars(
           ci, e, with_star_formation, with_star_formation_sink);
       const int ci_active_rt = cell_is_rt_active(ci, e);
@@ -211,15 +211,34 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         if (ci_active_stars) scheduler_activate(s, t);
       }
 
+      /* Activate the sink density */
+      else if (t_type == task_type_self &&
+               t_subtype == task_subtype_sink_density) {
+        if (ci_active_sinks) {
+          scheduler_activate(s, t);
+          cell_activate_drift_part(ci, s);
+          cell_activate_drift_sink(ci, s);
+
+          // Why do this here???
+          // cell_activate_sink_formation_tasks(ci->top, s);
+          if (with_timestep_sync) cell_activate_sync_part(ci, s);
+        }
+      }
+
+      else if (t_type == task_type_sub_self &&
+               t_subtype == task_subtype_sink_density) {
+        if (ci_active_sinks) {
+          scheduler_activate(s, t);
+          cell_activate_subcell_sinks_tasks(ci, NULL, s,
+                                                  with_timestep_sync);
+        }
+      }
+
       /* Activate the sink swallow task */
       else if (t_type == task_type_self &&
                t_subtype == task_subtype_sink_swallow) {
         if (ci_active_sinks) {
           scheduler_activate(s, t);
-          cell_activate_drift_part(ci, s);
-          cell_activate_drift_sink(ci, s);
-          cell_activate_sink_formation_tasks(ci->top, s);
-          if (with_timestep_sync) cell_activate_sync_part(ci, s);
         }
       }
 
@@ -227,7 +246,6 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
                t_subtype == task_subtype_sink_swallow) {
         if (ci_active_sinks) {
           scheduler_activate(s, t);
-          cell_activate_subcell_sinks_tasks(ci, NULL, s, with_timestep_sync);
         }
       }
 
@@ -397,9 +415,9 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           cj->black_holes.count > 0 && cell_is_active_black_holes(cj, e);
 
       const int ci_active_sinks =
-          cell_is_active_sinks(ci, e) || ci_active_hydro;
+          ci->sinks.count > 0 && cell_is_active_sinks(ci, e);
       const int cj_active_sinks =
-          cell_is_active_sinks(cj, e) || cj_active_hydro;
+          cj->sinks.count > 0 && cell_is_active_sinks(cj, e);
 
       const int ci_active_stars = cell_need_activating_stars(
           ci, e, with_star_formation, with_star_formation_sink);
@@ -705,7 +723,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
       /* Sink tasks */
 
-      else if ((t_subtype == task_subtype_sink_swallow ||
+      else if ((t_subtype == task_subtype_sink_density ||
+                t_subtype == task_subtype_sink_swallow ||
                 t_subtype == task_subtype_sink_do_sink_swallow ||
                 t_subtype == task_subtype_sink_do_gas_swallow) &&
                (ci_active_sinks || cj_active_sinks) &&
@@ -713,19 +732,47 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
         scheduler_activate(s, t);
 
-        /* New implementation based on bh */
-        /* Set the correct drifting flags and sink_formation */
-        if (t_type == task_type_pair &&
-            t_subtype == task_subtype_sink_swallow) {
-          if (ci_nodeID == nodeID) cell_activate_drift_sink(ci, s);
-          if (ci_nodeID == nodeID) cell_activate_drift_part(ci, s);
-          if (ci_nodeID == nodeID)
-            cell_activate_sink_formation_tasks(ci->top, s);
+        /* Set the correct drifting flags and activate sink formation */
+        /* JD: this was originally done on the sink_swallow task but following the BHs I presume
+        * it now needs to be done on the density, as the first task. */
+        if (t_type == task_type_pair && t_subtype == task_subtype_sink_density) {
 
-          if (cj_nodeID == nodeID) cell_activate_drift_part(cj, s);
+          /* Note we need to drift *both* sink cells to deal with sink<->sink swallows
+           * But we only need to drift the gas cell if the *other* cell has an
+           * active sink */
+          if (ci_nodeID == nodeID) cell_activate_drift_sink(ci, s);
+          if (ci_nodeID == nodeID && cj_active_sinks)
+            cell_activate_drift_part(ci, s);
+
+          // Why activate sink formation in the density/swallow task???
+          // if (ci_nodeID == nodeID)
+          //   cell_activate_sink_formation_tasks(ci->top, s);
+
+          if (cj_nodeID == nodeID && ci_active_sinks)
+            cell_activate_drift_part(cj, s);
           if (cj_nodeID == nodeID) cell_activate_drift_sink(cj, s);
-          if (cj_nodeID == nodeID)
-            cell_activate_sink_formation_tasks(cj->top, s);
+
+          // Why activate sink formation in the density/swallow task???
+          // if (cj_nodeID == nodeID)
+          //   cell_activate_sink_formation_tasks(cj->top, s);
+
+          /* This happens for the BHs but wasn't in original sink code. Should we include it? */
+          if (ci_nodeID == nodeID && cj_active_sinks &&
+              with_timestep_sync)
+            cell_activate_sync_part(ci, s);
+          if (cj_nodeID == nodeID && ci_active_sinks &&
+              with_timestep_sync)
+            cell_activate_sync_part(cj, s);
+        }
+
+        else if (t_type == task_type_sub_pair &&
+                 t_subtype == task_subtype_sink_density) {
+          cell_activate_subcell_sinks_tasks(ci, cj, s,
+                                                  with_timestep_sync);
+        }
+
+        if ((t_type == task_type_pair || t_type == task_type_sub_pair) &&
+            t_subtype == task_subtype_sink_density) {
 
           /* Activate sink_in for each cell that is part of
            * a pair task as to not miss any dependencies */
@@ -736,25 +783,16 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         }
 
         if ((t_type == task_type_pair || t_type == task_type_sub_pair) &&
-            t_subtype == task_subtype_sink_do_sink_swallow) {
+            t_subtype == task_subtype_sink_do_gas_swallow) {
+
           /* Add sink_out dependencies for each cell that is part of
            * a pair/sub_pair task as to not miss any dependencies */
+          /* JD: this is a change from the original code but the BHs and stars
+           * do this in their final task, so I thought it should be consistent */
           if (ci_nodeID == nodeID)
             scheduler_activate(s, ci->hydro.super->sinks.sink_out);
           if (cj_nodeID == nodeID)
             scheduler_activate(s, cj->hydro.super->sinks.sink_out);
-        }
-
-        /* Store current values of dx_max and h_max. */
-        else if (t_type == task_type_sub_pair &&
-                 t_subtype == task_subtype_sink_swallow) {
-          cell_activate_subcell_sinks_tasks(ci, cj, s, with_timestep_sync);
-          /* Activate sinks_in for each cell that is part of
-           * a sub_pair task as to not miss any dependencies */
-          if (ci_nodeID == nodeID)
-            scheduler_activate(s, ci->hydro.super->sinks.sink_in);
-          if (cj_nodeID == nodeID)
-            scheduler_activate(s, cj->hydro.super->sinks.sink_in);
         }
       }
 
@@ -1203,8 +1241,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 #endif
       }
 
-      /* Only interested in sink_swallow tasks as of here. */
-      else if (t->subtype == task_subtype_sink_swallow) {
+      /* Only interested in sink density tasks as of here. */
+      else if (t->subtype == task_subtype_sink_density) {
 
         /* Too much particle movement? */
         if (cell_need_rebuild_for_sinks_pair(ci, cj)) *rebuild_space = 1;
@@ -1571,9 +1609,10 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
     /* Sink implicit tasks? */
     else if (t_type == task_type_sink_in || t_type == task_type_sink_out ||
+             t_type == task_type_sink_density_ghost ||
              t_type == task_type_sink_ghost1 ||
              t_type == task_type_sink_ghost2) {
-      if (cell_is_active_sinks(t->ci, e) || cell_is_active_hydro(t->ci, e))
+      if (cell_is_active_sinks(t->ci, e))
         scheduler_activate(s, t);
     }
 
@@ -1654,7 +1693,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
     /* Subgrid tasks: star formation from sinks */
     else if (t_type == task_type_star_formation_sink) {
-      if (cell_is_active_hydro(t->ci, e) || cell_is_active_sinks(t->ci, e)) {
+      if (cell_is_active_sinks(t->ci, e)) {
         cell_activate_star_formation_sink_tasks(t->ci, s, with_feedback);
         cell_activate_super_sink_drifts(t->ci, s);
       }
