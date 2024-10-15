@@ -296,8 +296,9 @@ call::
 
 
 
-The next step is to activate your task
-in ``engine_marktasks_mapper`` in ``engine_marktasks.c``::
+The next step is to activate your task in the relevant section of
+ ``cell_unskip.c`` (things are split by the type of particles the
+ tasks run on)::
 
 
   /* Single-cell task? */
