@@ -26,11 +26,13 @@
  *        with added SPHENIX physics (Borrow 2020) (particle definition)
  */
 
+#include "adaptive_softening_struct.h"
 #include "black_holes_struct.h"
 #include "chemistry_struct.h"
 #include "cooling_struct.h"
 #include "csds.h"
 #include "feedback_struct.h"
+#include "fvpm_geometry_struct.h"
 #include "mhd_struct.h"
 #include "particle_splitting_struct.h"
 #include "pressure_floor_struct.h"
@@ -160,8 +162,8 @@ struct part {
   } diffusion;
 
   /* Store density/force specific stuff. */
-  union {
 
+  union {
     /**
      * @brief Structure for the variables only used in the density loop over
      * neighbours.
@@ -214,6 +216,9 @@ struct part {
 
     } force;
   };
+
+  /*! Additional data used for adaptive softening */
+  struct adaptive_softening_part_data adaptive_softening_data;
 
   /*! Additional data used by the MHD scheme */
   struct mhd_part_data mhd_data;
@@ -305,6 +310,9 @@ struct part {
   /*! Has this particle been woken up by the limiter? */
   char limited_part;
 #endif
+
+  /*! Geometrical quantities used for Finite Volume Particle Method RT. */
+  struct fvpm_geometry_struct geometry;
 
 } SWIFT_STRUCT_ALIGN;
 

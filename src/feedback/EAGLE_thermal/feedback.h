@@ -208,7 +208,8 @@ __attribute__((always_inline)) INLINE static void feedback_prepare_feedback(
     const int with_cosmology) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (sp->birth_time == -1.) error("Evolving a star particle that should not!");
+  if (sp->birth_time == -1. && dt > 0.)
+    error("Evolving a star particle that should not!");
 #endif
 
   /* Start by finishing the loops over neighbours */
@@ -217,7 +218,8 @@ __attribute__((always_inline)) INLINE static void feedback_prepare_feedback(
   const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */
 
   sp->feedback_data.to_collect.ngb_rho *= h_inv_dim;
-  const float rho_inv = 1.f / sp->feedback_data.to_collect.ngb_rho;
+  const float rho = sp->feedback_data.to_collect.ngb_rho;
+  const float rho_inv = rho != 0.f ? 1.f / rho : 0.f;
   sp->feedback_data.to_collect.ngb_Z *= h_inv_dim * rho_inv;
 
   /* Compute amount of enrichment and feedback that needs to be done in this

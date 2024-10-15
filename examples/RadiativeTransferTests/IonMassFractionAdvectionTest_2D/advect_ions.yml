@@ -13,7 +13,7 @@ InternalUnitSystem:
 TimeIntegration:
   max_nr_rt_subcycles: 1
   time_begin: 0.    # The starting time of the simulation (in internal units).
-  time_end:   0.01   # end time: radiation reaches edge of box
+  time_end:   1   # end time: radiation reaches edge of box
   dt_min:     1.e-12 # The minimal time-step size of the simulation (in internal units).
   dt_max:     1.e-03  # The maximal time-step size of the simulation (in internal units).
 
@@ -22,7 +22,7 @@ TimeIntegration:
 Snapshots:
   basename:            output # Common part of the name of output files
   time_first:          0.     # Time of the first output (in internal units)
-  delta_time:          0.001 # Time between snapshots
+  delta_time:          0.1 # Time between snapshots
 
 # Parameters governing the conserved quantities statistics
 Statistics:

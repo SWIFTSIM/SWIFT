@@ -46,6 +46,11 @@ struct chemistry_part_data {
   /*! Total mass of element in a particle. */
   double metal_mass[AGORA_CHEMISTRY_ELEMENT_COUNT];
 
+#ifdef HYDRO_DOES_MASS_FLUX
+  /*! Mass fluxes of the metals in a given element */
+  double metal_mass_fluxes[AGORA_CHEMISTRY_ELEMENT_COUNT];
+#endif
+
   /*! Smoothed fraction of the particle mass in a given element */
   double smoothed_metal_mass_fraction[AGORA_CHEMISTRY_ELEMENT_COUNT];
 };

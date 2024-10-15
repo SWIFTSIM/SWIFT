@@ -525,7 +525,7 @@ int main(int argc, char *argv[]) {
   N_long[swift_type_black_hole] = Nbpart;
   N_long[swift_type_neutrino] = Nnupart;
   N_long[swift_type_count] = Ngpart;
-  MPI_Allreduce(&N_long, &N_total, swift_type_count + 1, MPI_LONG_LONG_INT,
+  MPI_Allreduce(N_long, N_total, swift_type_count + 1, MPI_LONG_LONG_INT,
                 MPI_SUM, MPI_COMM_WORLD);
 #else
   N_total[swift_type_gas] = Ngas;
@@ -613,7 +613,7 @@ int main(int argc, char *argv[]) {
   N_long[swift_type_stars] = s.nr_sparts;
   N_long[swift_type_black_hole] = s.nr_bparts;
   N_long[swift_type_neutrino] = s.nr_nuparts;
-  MPI_Allreduce(&N_long, &N_total, swift_type_count + 1, MPI_LONG_LONG_INT,
+  MPI_Allreduce(N_long, N_total, swift_type_count + 1, MPI_LONG_LONG_INT,
                 MPI_SUM, MPI_COMM_WORLD);
 #else
   N_total[swift_type_gas] = s.nr_parts;
@@ -777,6 +777,7 @@ int main(int argc, char *argv[]) {
   free(output_options);
 
 #ifdef WITH_MPI
+  partition_clean(&initial_partition, &reparttype);
   if ((res = MPI_Finalize()) != MPI_SUCCESS)
     error("call to MPI_Finalize failed with error %i.", res);
 #endif

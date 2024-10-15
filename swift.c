@@ -177,6 +177,10 @@ int main(int argc, char *argv[]) {
   int with_cooling = 0;
   int with_self_gravity = 0;
   int with_hydro = 0;
+#ifdef MOVING_MESH
+  int with_grid_hydro = 0;
+  int with_grid = 0;
+#endif
   int with_stars = 0;
   int with_fof = 0;
   int with_lightcone = 0;
@@ -409,6 +413,11 @@ int main(int argc, char *argv[]) {
     with_cooling = 1;
     with_feedback = 1;
   }
+#ifdef MOVING_MESH
+  if (with_hydro) {
+    with_grid = 1;
+  }
+#endif
 
   /* Deal with thread numbers */
   if (nr_threads <= 0)
@@ -669,9 +678,6 @@ int main(int argc, char *argv[]) {
   }
   if (with_rt && with_cooling) {
     error("Error: Cannot use radiative transfer and cooling simultaneously.");
-  }
-  if (with_rt && with_cosmology) {
-    error("Error: Cannot use run radiative transfer with cosmology (yet).");
   }
 #endif /* idfef RT_NONE */
 
@@ -1078,6 +1084,11 @@ int main(int argc, char *argv[]) {
 #ifdef NONE_SPH
       error("Can't run with hydro when compiled without a hydro model!");
 #endif
+#ifdef MOVING_MESH
+      warning(
+          "Moving mesh hydrodynamics is in the process of being merged and "
+          "will not perform as expected right now!");
+#endif
     }
     if (with_stars) {
 #ifdef STARS_NONE
@@ -1156,7 +1167,8 @@ int main(int argc, char *argv[]) {
 
     /* Initialise the sink properties */
     if (with_sinks) {
-      sink_props_init(&sink_properties, &prog_const, &us, params, &cosmo);
+      sink_props_init(&sink_properties, &feedback_properties, &prog_const, &us,
+                      params, &cosmo, with_feedback);
     } else
       bzero(&sink_properties, sizeof(struct sink_props));
 
@@ -1285,7 +1297,7 @@ int main(int argc, char *argv[]) {
       if (!dry_run && gparts[k].id_or_neg_offset == 0 &&
           (gparts[k].type == swift_type_dark_matter ||
            gparts[k].type == swift_type_dark_matter_background))
-        error("SWIFT does not allow the ID 0.");
+        error("SWIFT does not allow the ID 0 for dark matter.");
     if (!with_stars && !dry_run) {
       for (size_t k = 0; k < Ngpart; ++k)
         if (gparts[k].type == swift_type_stars) error("Linking problem");
@@ -1324,7 +1336,7 @@ int main(int argc, char *argv[]) {
     N_long[swift_type_dark_matter] =
         with_gravity ? Ngpart - Ngpart_background - Nbaryons - Nnupart : 0;
 
-    MPI_Allreduce(&N_long, &N_total, swift_type_count + 1, MPI_LONG_LONG_INT,
+    MPI_Allreduce(N_long, N_total, swift_type_count + 1, MPI_LONG_LONG_INT,
                   MPI_SUM, MPI_COMM_WORLD);
 #else
     N_total[swift_type_gas] = Ngas;
@@ -1449,7 +1461,7 @@ int main(int argc, char *argv[]) {
     N_long[swift_type_sink] = s.nr_sinks;
     N_long[swift_type_black_hole] = s.nr_bparts;
     N_long[swift_type_neutrino] = s.nr_nuparts;
-    MPI_Allreduce(&N_long, &N_total, swift_type_count + 1, MPI_LONG_LONG_INT,
+    MPI_Allreduce(N_long, N_total, swift_type_count + 1, MPI_LONG_LONG_INT,
                   MPI_SUM, MPI_COMM_WORLD);
 #else
     N_total[swift_type_gas] = s.nr_parts;
@@ -1509,7 +1521,12 @@ int main(int argc, char *argv[]) {
     if (with_drift_all) engine_policies |= engine_policy_drift_all;
     if (with_mpole_reconstruction)
       engine_policies |= engine_policy_reconstruct_mpoles;
+#ifndef MOVING_MESH
     if (with_hydro) engine_policies |= engine_policy_hydro;
+#else
+    if (with_hydro) engine_policies |= engine_policy_grid_hydro;
+    if (with_grid) engine_policies |= engine_policy_grid;
+#endif
     if (with_self_gravity) engine_policies |= engine_policy_self_gravity;
     if (with_external_gravity)
       engine_policies |= engine_policy_external_gravity;
@@ -1935,6 +1952,7 @@ int main(int argc, char *argv[]) {
   free(output_options);
 
 #ifdef WITH_MPI
+  partition_clean(&initial_partition, &reparttype);
   if ((res = MPI_Finalize()) != MPI_SUCCESS)
     error("call to MPI_Finalize failed with error %i.", res);
 #endif

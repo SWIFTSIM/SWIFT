@@ -72,19 +72,19 @@ __attribute__((always_inline)) INLINE static int
 star_formation_write_sparticles(const struct spart* sparts,
                                 struct io_props* list) {
 
-  list[0] = io_make_output_field(
+  list[0] = io_make_physical_output_field(
       "BirthDensities", FLOAT, 1, UNIT_CONV_DENSITY, 0.f, sparts,
-      sf_data.birth_density,
+      sf_data.birth_density, /*can convert to comoving=*/0,
       "Physical densities at the time of birth of the gas particles that "
       "turned into stars (note that "
       "we store the physical density at the birth redshift, no conversion is "
       "needed)");
 
-  list[1] =
-      io_make_output_field("BirthTemperatures", FLOAT, 1, UNIT_CONV_TEMPERATURE,
-                           0.f, sparts, sf_data.birth_temperature,
-                           "Temperatures at the time of birth of the gas "
-                           "particles that turned into stars");
+  list[1] = io_make_physical_output_field(
+      "BirthTemperatures", FLOAT, 1, UNIT_CONV_TEMPERATURE, 0.f, sparts,
+      sf_data.birth_temperature, /*can convert to comoving=*/0,
+      "Temperatures at the time of birth of the gas "
+      "particles that turned into stars");
 
   list[2] = io_make_output_field("BirthMasses", FLOAT, 1, UNIT_CONV_MASS, 0.f,
                                  sparts, sf_data.birth_mass,

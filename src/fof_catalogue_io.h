@@ -25,7 +25,7 @@
 #ifdef WITH_FOF
 
 void write_fof_hdf5_catalogue(const struct fof_props *props,
-                              const size_t num_groups, const struct engine *e);
+                              long long num_groups, const struct engine *e);
 
 #endif /* WITH_FOF */
 

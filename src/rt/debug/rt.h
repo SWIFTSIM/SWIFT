@@ -172,7 +172,7 @@ __attribute__((always_inline)) INLINE static void rt_split_part(struct part* p,
 __attribute__((always_inline)) INLINE static void rt_part_has_no_neighbours(
     struct part* p) {
   message("WARNING: found particle without neighbours");
-};
+}
 
 /**
  * @brief Exception handle a star part not having any neighbours in ghost task
@@ -180,7 +180,7 @@ __attribute__((always_inline)) INLINE static void rt_part_has_no_neighbours(
  * @param sp The #spart.
  */
 __attribute__((always_inline)) INLINE static void rt_spart_has_no_neighbours(
-    struct spart* sp){};
+    struct spart* sp) {}
 
 /**
  * @brief Do checks/conversions on particles on startup.
@@ -300,9 +300,8 @@ __attribute__((always_inline)) INLINE static void rt_end_gradient(
  * @param cosmo #cosmology data structure.
  */
 __attribute__((always_inline)) INLINE static void rt_finalise_transport(
-    struct part* restrict p, const double dt,
+    struct part* restrict p, struct rt_props* rtp, const double dt,
     const struct cosmology* restrict cosmo) {
-
   rt_debug_sequence_check(p, 3, __func__);
 
   if (p->rt_data.debug_calls_iact_transport_interaction == 0)

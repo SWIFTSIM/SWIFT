@@ -123,7 +123,7 @@ void DOPAIR1_NAIVE(struct runner *r, struct cell *restrict ci,
       }
 
     } /* loop over the parts in cj. */
-  }   /* loop over the parts in ci. */
+  } /* loop over the parts in ci. */
 
   TIMER_TOC(TIMER_DOPAIR);
 }
@@ -216,7 +216,7 @@ void DOSELF1_NAIVE(struct runner *r, struct cell *restrict c) {
         IACT_NONSYM(r2, dx, hj, hi, pj, pi, a, H);
       }
     } /* loop over the parts in cj. */
-  }   /* loop over the parts in ci. */
+  } /* loop over the parts in ci. */
 
   TIMER_TOC(TIMER_DOSELF);
 }
@@ -355,8 +355,8 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
           IACT_NONSYM(r2, dx, hi, hj, pi, pj, a, H);
         }
       } /* loop over the parts in cj. */
-    }   /* loop over the parts in ci. */
-  }     /* Cell ci is active */
+    } /* loop over the parts in ci. */
+  } /* Cell ci is active */
 
   if (cell_is_starting_hydro(cj, e)) {
 
@@ -439,8 +439,8 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
           IACT_NONSYM(r2, dx, hj, hi, pj, pi, a, H);
         }
       } /* loop over the parts in ci. */
-    }   /* loop over the parts in cj. */
-  }     /* Cell cj is active */
+    } /* loop over the parts in cj. */
+  } /* Cell cj is active */
 
   TIMER_TOC(TIMER_DOPAIR);
 }
@@ -470,7 +470,7 @@ void DOPAIR1_BRANCH(struct runner *r, struct cell *ci, struct cell *cj) {
 
   /* Get the sort ID. */
   double shift[3] = {0.0, 0.0, 0.0};
-  const int sid = space_getsid(e->s, &ci, &cj, shift);
+  const int sid = space_getsid_and_swap_cells(e->s, &ci, &cj, shift);
 
   /* Have the cells been sorted? */
   if (!(ci->hydro.sorted & (1 << sid)) ||
@@ -730,7 +730,7 @@ void DOSUB_PAIR1(struct runner *r, struct cell *ci, struct cell *cj,
 
   /* Get the type of pair and flip ci/cj if needed. */
   double shift[3];
-  const int sid = space_getsid(s, &ci, &cj, shift);
+  const int sid = space_getsid_and_swap_cells(s, &ci, &cj, shift);
 
   /* Should we even bother? */
   const int do_i = cell_get_flag(ci, cell_flag_do_hydro_limiter);

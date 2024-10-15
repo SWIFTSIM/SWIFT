@@ -1,0 +1,6 @@
+Runs a uniform box with radiation initially present. No further radiation 
+sources are present, and the gas should heat up and ionize, while the
+radiation fields should decrease at the same rate.
+
+To run with GEAR-RT, compile swift with:
+    --with-rt=GEAR_3 --with-rt-riemann-solver=GLF --with-hydro=gizmo-mfv --with-riemann-solver=hllc --with-stars=GEAR --with-feedback=none --with-grackle=$GRACKLE_ROOT

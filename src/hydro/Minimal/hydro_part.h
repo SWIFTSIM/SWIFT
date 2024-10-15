@@ -32,6 +32,7 @@
  * Physics, 2012, Volume 231, Issue 3, pp. 759-794.
  */
 
+#include "adaptive_softening_struct.h"
 #include "black_holes_struct.h"
 #include "chemistry_struct.h"
 #include "cooling_struct.h"
@@ -185,6 +186,9 @@ struct part {
 
     } force;
   };
+
+  /*! Additional data used for adaptive softening */
+  struct adaptive_softening_part_data adaptive_softening_data;
 
   /*! Additional data used by the MHD scheme */
   struct mhd_part_data mhd_data;
