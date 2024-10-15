@@ -123,6 +123,10 @@ struct hydro_props {
   /*! Are we generating random IDs when splitting particles? */
   int generate_random_ids;
 
+  /*! Are we logging the particle splits beyond the limit in a file before
+   * reseting? */
+  int log_extra_splits_in_file;
+
   /* ------ Viscosity and diffusion ---------------- */
 
   /*! Artificial viscosity parameters */
