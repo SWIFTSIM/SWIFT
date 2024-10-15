@@ -208,7 +208,6 @@ INLINE static void gravity_cache_populate(
   if (gcount_padded < gcount) error("Invalid padded cache size. Too small.");
   if (gcount_padded % VEC_SIZE != 0)
     error("Padded gravity cache size invalid. Not a multiple of SIMD length.");
-    error("Size of the gravity cache is not large enough.");
   if (cell->nodeID != engine_rank) error("Populating from a foreign cell!");
 #endif
 
@@ -413,7 +412,6 @@ INLINE static void gravity_cache_populate_no_mpole(
   if (gcount_padded < gcount) error("Invalid padded cache size. Too small.");
   if (gcount_padded % VEC_SIZE != 0)
     error("Padded gravity cache size invalid. Not a multiple of SIMD length.");
-    error("Size of the gravity cache is not large enough.");
   if (cell->nodeID != engine_rank) error("Populating from a foreign cell!");
 #endif
 

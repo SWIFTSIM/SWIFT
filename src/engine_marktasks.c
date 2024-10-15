@@ -1343,8 +1343,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
             scheduler_activate_pack(s, cj->mpi.pack, task_subtype_gpart,
                                     ci_nodeID);
 
-            struct link *l = scheduler_activate_send(
-                s, cj->mpi.send, task_subtype_gpart, ci_nodeID);
+            scheduler_activate_send(s, cj->mpi.send, task_subtype_gpart,
+                                    ci_nodeID);
 
             /* Drift the cell which will be sent at the level at which it is
                sent, i.e. drift the cell specified in the send task (l->t)
@@ -1364,8 +1364,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
             scheduler_activate_pack(s, ci->mpi.pack, task_subtype_gpart,
                                     cj_nodeID);
 
-            struct link *l = scheduler_activate_send(
-                s, ci->mpi.send, task_subtype_gpart, cj_nodeID);
+            scheduler_activate_send(s, ci->mpi.send, task_subtype_gpart,
+                                    cj_nodeID);
 
             /* Drift the cell which will be sent at the level at which it is
                sent, i.e. drift the cell specified in the send task (l->t)
