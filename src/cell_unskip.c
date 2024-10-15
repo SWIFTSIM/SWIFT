@@ -3125,43 +3125,6 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
     if (c->csds != NULL) scheduler_activate(s, c->csds);
 #endif
   }
-
-
-
-//   /* Unskip all the other task types. */
-//   if (c->nodeID == nodeID &&
-//       (cell_is_active_sinks(c, e) || cell_is_active_hydro(c, e))) {
-
-//     if (c->top->sinks.sink_formation != NULL) {
-//       cell_activate_sink_formation_tasks(c->top, s);
-//       cell_activate_super_sink_drifts(c->top, s);
-//     }
-
-//     if (cell_is_active_sinks(c, e)) {
-
-//       if (c->sinks.sink_in != NULL) scheduler_activate(s, c->sinks.sink_in);
-//       if (c->sinks.density_ghost != NULL)
-//         scheduler_activate(s, c->sinks.density_ghost);
-//       if (c->sinks.sink_ghost1 != NULL)
-//         scheduler_activate(s, c->sinks.sink_ghost1);
-//       if (c->sinks.sink_ghost2 != NULL)
-//         scheduler_activate(s, c->sinks.sink_ghost2);
-//       if (c->sinks.sink_out != NULL) scheduler_activate(s, c->sinks.sink_out);
-//       if (c->top->sinks.star_formation_sink != NULL) {
-//         cell_activate_star_formation_sink_tasks(c->top, s, with_feedback);
-//         cell_activate_super_sink_drifts(c->top, s);
-//       }
-//     }
-//     if (c->kick1 != NULL) scheduler_activate(s, c->kick1);
-//     if (c->kick2 != NULL) scheduler_activate(s, c->kick2);
-//     if (c->timestep != NULL) scheduler_activate(s, c->timestep);
-//     if (c->top->timestep_collect != NULL)
-//       scheduler_activate(s, c->top->timestep_collect);
-// #ifdef WITH_CSDS
-//     if (c->csds != NULL) scheduler_activate(s, c->csds);
-// #endif
-//   }
-
   return rebuild;
 }
 
