@@ -435,7 +435,8 @@ hydro_prepare_force_extra_kernel(struct part *restrict p) {
 
     // Vacuum-boundary proximity switch
     p->force.vac_switch = 1.f;
-    float hB = p->h * sqrtf(B[0] * B[0] + B[1] * B[1] + B[2] * B[2]);
+    //float hB = p->h * sqrtf(B[0] * B[0] + B[1] * B[1] + B[2] * B[2]);
+    float hB = 0.f;
     float offset = 0.8f;
 
     if (hB > offset) {
