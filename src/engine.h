@@ -779,6 +779,7 @@ int engine_marktasks(struct engine *e);
 
 /* Function prototypes, engine_split_particles.c. */
 void engine_split_gas_particles(struct engine *e);
+void engine_init_split_gas_particles(struct engine *e);
 
 #ifdef HAVE_SETAFFINITY
 cpu_set_t *engine_entry_affinity(void);
