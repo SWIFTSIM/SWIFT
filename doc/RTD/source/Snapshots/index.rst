@@ -249,6 +249,12 @@ obtained by running SWIFT with the ``-o`` runtime option (See
 :ref:`Output_selection_label` for details). Each field contains a short
 description attribute giving a brief summary of what the quantity represents.
 
+Note that the HDF5 names of some fields differ from the GADGET-2 format for
+initial condition files (see :ref:`Initial_Conditions_label`) that mixes
+singular and plural names, which in snapshot files are all plural by default 
+(e.g. ``InternalEnergies`` in snapshots versus ``InternalEnergy`` in initial
+conditions).
+
 All the individual arrays created by SWIFT have had the Fletcher 32 check-sum
 filter applied by the HDF5 library when writing them. This means that any
 eventual data corruption on the disks will be detected and reported by the
@@ -267,7 +273,9 @@ part designed for users to directly read and in part for machine
 reading of the information. Each field contains the exponent of the
 scale-factor, reduced Hubble constant [#f2]_ and each of the 5 base units
 that is required to convert the field values to physical CGS
-units. These fields are:
+units. The base assumption is that all fields are written in the
+co-moving frame (see below for exceptions).
+These fields are:
 
 +----------------------+---------------------------------------+
 | Meta-data field name | Description                           |
@@ -323,6 +331,12 @@ case of the densities and assuming the usual system of units
 
 In the case of a non-cosmological simulation, these two expressions
 are identical since :math:`a=1`.
+
+In some special cases, the fields cannot be meaningfully expressed as
+co-moving quantities. In these exceptional circumstances, we set the
+value of the attribute ``Value stored as physical`` to ``1``. And we
+additionally set the attribute ``Property can be converted to
+comoving`` to ``0``.
 
 Particle splitting metadata
 ---------------------------

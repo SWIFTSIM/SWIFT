@@ -1034,6 +1034,9 @@ void cell_clean(struct cell *c) {
   /* Stars */
   cell_free_stars_sorts(c);
 
+  /* Grid */
+  cell_free_grid(c);
+
   /* Recurse */
   for (int k = 0; k < 8; k++)
     if (c->progeny[k]) cell_clean(c->progeny[k]);

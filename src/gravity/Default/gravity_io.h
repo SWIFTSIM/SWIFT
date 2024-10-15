@@ -135,9 +135,10 @@ INLINE static void darkmatter_write_particles(const struct gpart* gparts,
   list[2] = io_make_output_field("Masses", FLOAT, 1, UNIT_CONV_MASS, 0.f,
                                  gparts, mass, "Masses of the particles");
 
-  list[3] = io_make_output_field(
+  list[3] = io_make_physical_output_field(
       "ParticleIDs", ULONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f, gparts,
-      id_or_neg_offset, "Unique ID of the particles");
+      id_or_neg_offset, /*can convert to comoving=*/0,
+      "Unique ID of the particles");
 
   list[4] = io_make_output_field_convert_gpart(
       "Potentials", FLOAT, 1, UNIT_CONV_POTENTIAL, -1.f, gparts,

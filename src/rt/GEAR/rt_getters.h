@@ -29,17 +29,32 @@
  */
 
 /**
- * @brief Get the radiation energy densities of a particle.
+ * @brief Get the comoving radiation energy densities of a particle.
  *
  * @param p Particle.
  * @param E (return) Pointer to the array in which the result needs to be stored
  */
 __attribute__((always_inline)) INLINE static void
-rt_part_get_radiation_energy_density(const struct part *restrict p,
-                                     float E[RT_NGROUPS]) {
+rt_part_get_comoving_radiation_energy_density(const struct part *restrict p,
+                                              float E[RT_NGROUPS]) {
 
   for (int g = 0; g < RT_NGROUPS; g++) {
     E[g] = p->rt_data.radiation[g].energy_density;
+  }
+}
+
+/**
+ * @brief Get the physical radiation energy densities of a particle
+ *
+ * @param p Particle.
+ * @param E (return) Pointer to the array in which the result needs to be stored
+ */
+__attribute__((always_inline)) INLINE static void
+rt_part_get_physical_radiation_energy_density(const struct part *restrict p,
+                                              float E[RT_NGROUPS],
+                                              const struct cosmology *cosmo) {
+  for (int g = 0; g < RT_NGROUPS; g++) {
+    E[g] = cosmo->a3_inv * p->rt_data.radiation[g].energy_density;
   }
 }
 

@@ -383,16 +383,4 @@ hydro_get_physical_internal_energy_dt(const struct part* restrict p,
          cosmo->a_factor_internal_energy;
 }
 
-/**
- * @brief Check if the gradient matrix for this particle is well behaved.
- *
- * @param p Particle.
- * @return 1 if the gradient matrix is well behaved, 0 otherwise.
- */
-__attribute__((always_inline)) INLINE static int
-hydro_part_geometry_well_behaved(const struct part* restrict p) {
-
-  return p->geometry.wcorr > const_gizmo_min_wcorr;
-}
-
 #endif /* SWIFT_GIZMO_HYDRO_GETTERS_H */

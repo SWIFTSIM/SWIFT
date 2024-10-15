@@ -74,13 +74,14 @@ INLINE static double neutrino_mass_factor(
   const double eV_mass = eV / (c * c);  // 1 eV/c^2 in internal mass units
   const double prefactor = (1.5 * M_ZETA_3) / (M_PI * M_PI);
   const double T_nu = cosmo->T_nu_0;
+  const int N_nu = cosmo->N_nu;
 
   /* Compute the comoving number density per flavour */
   const double kThc = k_b * T_nu / (hbar * c);
   const double n = prefactor * kThc * kThc * kThc;
 
   /* Compute the conversion factor per flavour */
-  const double mass_factor = nr_nuparts / (n * volume);
+  const double mass_factor = nr_nuparts / (n * volume * N_nu);
 
   /* Convert to eV */
   const double mass_factor_eV = mass_factor / eV_mass;

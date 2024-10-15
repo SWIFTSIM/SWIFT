@@ -1232,7 +1232,7 @@ void csds_struct_restore(struct csds_writer *log, FILE *stream) {
 
   /* Restore the pointers */
   for (int i = 0; i < swift_type_count; i++) {
-    if (log->field_pointers == NULL) continue;
+    if (log->field_pointers[i] == NULL) continue;
 
     log->field_pointers[i] =
         log->list_fields + (log->field_pointers[i] - old_list_fields);

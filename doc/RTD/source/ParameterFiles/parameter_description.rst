@@ -576,6 +576,26 @@ specified, SWIFT will start and use the birth times specified in the
 ICs. If no values are given in the ICs, the stars' birth times will be
 zeroed, which can cause issues depending on the type of run performed.
 
+.. _Parameters_Sinks:
+
+Sinks
+-----
+
+Currently, there are two models for the sink particles, the Default model and the GEAR one. Their parameters are described below. To choose a model, configure the code with ``--with-sink=<model>``, where ``<model>`` can be ``none`` or ``GEAR``. To run with sink particles, add the option ``--sinks``.
+Below you will find the description of the ``none`` which is the default model. For ``GEAR`` model, please refer to :ref:`sink_GEAR_model`.
+
+By default, the code is configured with ``--with-sink=none``. Then, the ``DefaultSink`` section is used to set parameters that describe the sinks in this model. The unique parameter is the sink accretion radius (also called cut-off radius): ``cut_off_radius``.
+
+Note that this model does not create sink particles or accrete gas. 
+
+The full section is:
+
+.. code:: YAML
+
+  DefaultSink:
+    cut_off_radius:        1e-3       # Cut off radius of the sink particles (in internal units). This parameter should be adapted with the resolution..
+
+
 .. _Parameters_time_integration:
 
 Time Integration

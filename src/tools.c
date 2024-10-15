@@ -53,7 +53,8 @@
 #include "periodic.h"
 #include "pressure_floor_iact.h"
 #include "runner.h"
-#include "sink.h"
+#include "sink_iact.h"
+#include "sink_properties.h"
 #include "star_formation_iact.h"
 #include "stars.h"
 
@@ -154,8 +155,9 @@ void pairs_single_density(double *dim, long long int pid,
 
   /* Find "our" part. */
   int k;
-  for (k = 0; k < N && parts[k].id != pid; k++)
-    ;
+  for (k = 0; k < N && parts[k].id != pid; k++) {
+    /* Nothing to do here */
+  }
 
   /* Clear accumulators. */
   if (k == N) error("Part not found.");
@@ -242,7 +244,7 @@ void pairs_all_density(struct runner *r, struct cell *ci, struct cell *cj) {
         runner_iact_nonsym_pressure_floor(r2, dx, hi, pj->h, pi, pj, a, H);
         runner_iact_nonsym_star_formation(r2, dx, hi, pj->h, pi, pj, a, H);
         runner_iact_nonsym_sink(r2, dx, hi, pj->h, pi, pj, a, H,
-                                e->sink_properties);
+                                e->sink_properties->cut_off_radius);
       }
     }
   }
@@ -278,7 +280,7 @@ void pairs_all_density(struct runner *r, struct cell *ci, struct cell *cj) {
         runner_iact_nonsym_pressure_floor(r2, dx, hj, pi->h, pj, pi, a, H);
         runner_iact_nonsym_star_formation(r2, dx, hj, pi->h, pj, pi, a, H);
         runner_iact_nonsym_sink(r2, dx, hj, pi->h, pj, pi, a, H,
-                                e->sink_properties);
+                                e->sink_properties->cut_off_radius);
       }
     }
   }
@@ -558,7 +560,7 @@ void self_all_density(struct runner *r, struct cell *ci) {
         runner_iact_nonsym_pressure_floor(r2, dxi, hi, hj, pi, pj, a, H);
         runner_iact_nonsym_star_formation(r2, dxi, hi, hj, pi, pj, a, H);
         runner_iact_nonsym_sink(r2, dxi, hi, hj, pi, pj, a, H,
-                                e->sink_properties);
+                                e->sink_properties->cut_off_radius);
       }
 
       /* Hit or miss? */
@@ -574,7 +576,7 @@ void self_all_density(struct runner *r, struct cell *ci) {
         runner_iact_nonsym_pressure_floor(r2, dxi, hj, hi, pj, pi, a, H);
         runner_iact_nonsym_star_formation(r2, dxi, hj, hi, pj, pi, a, H);
         runner_iact_nonsym_sink(r2, dxi, hj, hi, pj, pi, a, H,
-                                e->sink_properties);
+                                e->sink_properties->cut_off_radius);
       }
     }
   }
@@ -729,8 +731,9 @@ void engine_single_density(const double dim[3], const long long int pid,
 
   /* Find "our" part. */
   int k;
-  for (k = 0; k < N && parts[k].id != pid; k++)
-    ;
+  for (k = 0; k < N && parts[k].id != pid; k++) {
+    /* Nothing to do here */
+  }
 
   if (k == N) error("Part not found.");
   struct part p = parts[k];
@@ -782,8 +785,10 @@ void engine_single_force(double *dim, long long int pid,
   float a = 1.f, H = 0.f;
 
   /* Find "our" part. */
-  for (k = 0; k < N && parts[k].id != pid; k++)
-    ;
+  for (k = 0; k < N && parts[k].id != pid; k++) {
+    /* Nothing to do here */
+  }
+
   if (k == N) error("Part not found.");
   p = parts[k];
 

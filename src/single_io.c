@@ -365,6 +365,9 @@ void write_array_single(const struct engine* e, hid_t grp, const char* fileName,
   io_write_attribute_f(h_data, "a-scale exponent", props.scale_factor_exponent);
   io_write_attribute_s(h_data, "Expression for physical CGS units", buffer);
   io_write_attribute_s(h_data, "Lossy compression filter", comp_buffer);
+  io_write_attribute_b(h_data, "Value stored as physical", props.is_physical);
+  io_write_attribute_b(h_data, "Property can be converted to comoving",
+                       props.is_convertible_to_comoving);
 
   /* Write the actual number this conversion factor corresponds to */
   const double factor =
@@ -987,9 +990,15 @@ void write_output_single(struct engine* e,
 
   };
 
+  /* Set the minimal API version to avoid issues with advanced features */
+  hid_t h_props = H5Pcreate(H5P_FILE_ACCESS);
+  herr_t err = H5Pset_libver_bounds(h_props, HDF5_LOWEST_FILE_FORMAT_VERSION,
+                                    HDF5_HIGHEST_FILE_FORMAT_VERSION);
+  if (err < 0) error("Error setting the hdf5 API version");
+
   /* Open file */
   /* message("Opening file '%s'.", fileName); */
-  h_file = H5Fcreate(fileName, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+  h_file = H5Fcreate(fileName, H5F_ACC_TRUNC, H5P_DEFAULT, h_props);
   if (h_file < 0) error("Error while opening file '%s'.", fileName);
 
   /* Open header to write simulation properties */
@@ -1478,6 +1487,7 @@ void write_output_single(struct engine* e,
 
   /* Close file */
   H5Fclose(h_file);
+  H5Pclose(h_props);
 
   e->snapshot_output_count++;
   if (e->snapshot_invoke_stf) e->stf_output_count++;

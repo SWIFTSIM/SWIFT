@@ -14,6 +14,8 @@ from scipy.optimize import curve_fit as cf
 snapshot_base = "output"  # snapshot basename
 plot_physical_quantities = True
 
+nPhotonGroups = 11
+
 mpl.rcParams["text.usetex"] = True
 
 
@@ -65,11 +67,12 @@ def plot_param_over_time(
         meta = data.metadata
 
         # Read comoving quantities
-        energy = getattr(data.gas.photon_energies, "group1")
+        energy = data.gas.photon_energies.group1
+        for i in range(nPhotonGroups - 1):
+            energy += getattr(data.gas.photon_energies, f"group{i+2}")
         mass = data.gas.masses
         rho = data.gas.densities
         vol = mass / rho
-
         energy_density = energy / vol
 
         if plot_physical_quantities:
@@ -83,29 +86,17 @@ def plot_param_over_time(
                     * np.sum(physical_energy_density)
                     / physical_energy_density.shape[0]
                 )
-                analytic_exponent[1] = -3.0
-            elif param == "volume":
-                plot_param[1].append(1 * np.sum(physical_vol) / physical_vol.shape[0])
-                analytic_exponent[1] = 3.0
+                analytic_exponent[1] = -4.0
             elif param == "total energy":
                 plot_param[1].append(1 * np.sum(physical_energy))
-                analytic_exponent[1] = 0.0
-            elif param == "mass":
-                plot_param[1].append(1 * np.sum(physical_mass))
-                analytic_exponent[1] = 0.0
+                analytic_exponent[1] = -1.0
 
         if param == "energy density":
             plot_param[0].append(1 * np.sum(energy_density) / energy_density.shape[0])
-            analytic_exponent[0] = 0.0
-        elif param == "volume":
-            plot_param[0].append(1 * np.sum(vol) / vol.shape[0])
-            analytic_exponent[0] = 0.0
+            analytic_exponent[0] = -1.0
         elif param == "total energy":
             plot_param[0].append(1 * np.sum(energy))
-            analytic_exponent[0] = 0.0
-        elif param == "mass":
-            plot_param[0].append(1 * np.sum(mass))
-            analytic_exponent[0] = 0.0
+            analytic_exponent[0] = -1.0
 
         scale_factor.append(meta.scale_factor)
 
@@ -117,18 +108,10 @@ def plot_param_over_time(
         titles = ["Comoving energy density", "Physical energy density"]
         ylabel = "Average energy density"
         figname = f"output_energy_density_over_time-{redshift_domain}.png"
-    elif param == "volume":
-        titles = ["Comoving particle volume", "Physical particle volume"]
-        ylabel = "Average particle volume"
-        figname = f"output_volume_over_time-{redshift_domain}.png"
     elif param == "total energy":
         titles = ["Comoving total energy", "Physical total energy"]
         ylabel = "Total energy"
         figname = f"output_total_energy_over_time-{redshift_domain}.png"
-    elif param == "mass":
-        titles = ["Comoving total mass", "Physical total mass"]
-        ylabel = "Total mass"
-        figname = f"output_total_mass_over_time-{redshift_domain}.png"
 
     for i in range(1 + plot_physical_quantities):
         ax = fig.add_subplot(1, (1 + plot_physical_quantities), (1 + i))
@@ -147,7 +130,7 @@ def plot_param_over_time(
         )
 
         ax.legend()
-        ax.set_title(titles[i])
+        ax.set_title(titles[i] + " sum of all groups")
 
         ax.set_xlabel("Scale factor")
         secax = ax.secondary_xaxis("top", functions=(a2z, z2a))
@@ -187,10 +170,9 @@ if __name__ in ("__main__"):
         sys.exit(1)
 
     snaplist = get_snapshot_list(snapshot_base + f"_{redshift_domain}")
-
     if len(snaplist) < 1:
         print("No snapshots found!")
         exit(1)
 
-    for param in ["energy density", "volume", "total energy", "mass"]:
+    for param in ["energy density", "total energy"]:
         plot_param_over_time(snaplist, param, redshift_domain)

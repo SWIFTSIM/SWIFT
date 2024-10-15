@@ -606,8 +606,9 @@ black_hole_accretion_efficiency(struct bpart* bp,
          * we also need to use the raw (unsuppressed) Eddington ratio here,
          * hence the multiplication by accretion efficiencies. Note that the
          * units of the transition radius here are in R_G. */
-        float R_tr = 10.f * props->mdot_crit_ADAF * props->mdot_crit_ADAF *
-                     bp->accretion_efficiency * bp->accretion_efficiency /
+        float R_tr = props->ADIOS_R_in * props->mdot_crit_ADAF *
+                     props->mdot_crit_ADAF * bp->accretion_efficiency *
+                     bp->accretion_efficiency /
                      (bp->eddington_fraction * bp->eddington_fraction);
 
         /* We need to also compute the Bondi radius (in units of R_G), which
@@ -796,8 +797,9 @@ black_hole_radiative_efficiency(struct bpart* bp,
       /* Add contribution of truncated thin disc from larger radii */
       if (props->accretion_efficiency_mode ==
           BH_accretion_efficiency_variable) {
-        float R_tr = 10.f * props->mdot_crit_ADAF * props->mdot_crit_ADAF *
-                     bp->accretion_efficiency * bp->accretion_efficiency /
+        float R_tr = props->ADIOS_R_in * props->mdot_crit_ADAF *
+                     props->mdot_crit_ADAF * bp->accretion_efficiency *
+                     bp->accretion_efficiency /
                      (bp->eddington_fraction * bp->eddington_fraction);
         R_tr = fmaxf(10.f, R_tr);
         rad_eff += 1.f - sqrtf(1. - 2.f / (3.f * R_tr));

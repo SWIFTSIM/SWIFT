@@ -15,7 +15,7 @@ zdomain="h"
 
 # Do we have a cmdline argument provided?
 if [ $# -gt 0 ]; then
-    case "$1" in 
+    case "$1" in
     -l | -low | --l | --low | l | ./rt_advection1D_low_redshift.yml | rt_advection1D_low_redshift | rt_advection1D_low_redshift.yml )
         ymlfile=rt_advection1D_low_redshift.yml
 	zdomain="l"

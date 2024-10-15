@@ -1,0 +1,11 @@
+Runs a uniform cosmological box with imposed abundances for a set of
+elements entering the Grackle cooling. 
+The simulation is run  with the Grackle thermochemistry, down to redhift 0
+where the resulting abundances are compared with predictions.
+
+To run, configure swift with:
+  ./configure --with-cooling=grackle_3 --with-grackle=$GRACKLE_ROOT
+
+
+Note : the script getPrimordialAbundances.py helps in the setting of the
+initial abundances.

@@ -1,0 +1,65 @@
+MetaData:
+  run_name: Heating Test
+
+# Define the system of units to use internally. 
+InternalUnitSystem:
+  UnitMass_in_cgs:     1.98848e33    # 1 M_sun in grams
+  UnitLength_in_cgs:   3.08567758e18 # 1 pc in cm
+  UnitVelocity_in_cgs: 1e5           # 1 km/s in cm/s
+  UnitCurrent_in_cgs:  1             # Amperes
+  UnitTemp_in_cgs:     1             # Kelvin
+
+
+# Parameters governing the time integration
+TimeIntegration:
+  max_nr_rt_subcycles: 1
+  time_begin: 0.     # The starting time of the simulation (in internal units).
+  dt_min:     1.0208453377e-08  # 0.01 yr
+  dt_max:     0.0010208453      # 1 kyr
+  time_end:   4.10084           # 4 Myr
+
+
+# Parameters governing the snapshots
+Snapshots:
+  basename:            output # Common part of the name of output files
+  scale_factor_first:  0.00990099     # Time of the first output (in internal units)
+  output_list_on:      0  # (Optional) Enable the output list
+  output_list:         snaplist.txt # (Optional) File containing the output times (see documentation in "Parameter File" section)
+  delta_time:          1.001
+
+# Parameters governing the conserved quantities statistics
+Statistics:
+  time_first:          0.00990099
+  delta_time:          1.001
+
+# Parameters for the hydrodynamics scheme
+SPH:
+  resolution_eta:        1.2348   # Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel).
+  CFL_condition:         0.6      # Courant-Friedrich-Levy condition for time integration.
+  minimal_temperature:   10.      # Kelvin
+
+# Parameters related to the initial conditions
+InitialConditions:
+  file_name:  ./heating_test.hdf5  # The file to read
+  periodic:   1                     # periodic ICs
+
+GEARRT:
+  f_reduce_c: 1e-6                                  # We don't care about the radiation propagation in this test, so let's speed things up
+  CFL_condition: 0.9                                # CFL condition for RT, independent of hydro
+  photon_groups_Hz: [3.288e15, 5.945e15, 13.157e15] # Lower photon frequency group bin edges in Hz. Needs to have exactly N elements, where N is the configured number of bins --with-RT=GEAR_N
+  stellar_luminosity_model: const                   # Which model to use to determine the stellar luminosities.
+  const_stellar_luminosities_LSol: [1., 1., 1.]     # (Conditional) constant star luminosities for each photon frequency group to use if stellar_luminosity_model:const is set, in units of Solar Luminosity.
+  set_equilibrium_initial_ionization_mass_fractions: 0   # (Optional) set the initial ionization fractions depending on gas temperature assuming ionization equilibrium.
+  hydrogen_mass_fraction:   0.76                    # total hydrogen mass fraction
+  stellar_spectrum_type: 1                          # Which radiation spectrum to use. 0: constant from 0 until some max frequency set by stellar_spectrum_const_max_frequency_Hz. 1: blackbody spectrum.
+  stellar_spectrum_blackbody_temperature_K: 1.e5    # (Conditional) if stellar_spectrum_type=1, use this temperature (in K) for the blackbody spectrum. 
+  case_B_recombination: 0                           # (Optional) use case B recombination interaction rates.
+
+Cosmology:        # Planck13 (EAGLE flavour)
+  a_begin:        0.00990099  # z~100
+  a_end:          0.011      # z~90
+  h:              0.6777
+  Omega_cdm:      0.2587481
+  Omega_lambda:   0.693
+  Omega_b:        0.0482519
+

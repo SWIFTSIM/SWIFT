@@ -7,3 +7,12 @@ on the options to cancel the h-factors and a-factors at reading time.
 
 MD5 checksum of the ICs:
 08736c3101fd738e22f5159f78e6022b  small_cosmo_volume.hdf5
+
+# How to run with CSDS
+
+To enable the CSDS, add --enable-csds --enable-python when
+configuring swift.
+
+In `run_csds.sh`, update `velociraptor_path` to the location
+of velociraptor on your system. Then, use `./run_csds.sh` and
+let's go!

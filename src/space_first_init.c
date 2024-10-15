@@ -451,6 +451,7 @@ void space_first_init_sinks_mapper(void *restrict map_data, int count,
   const struct space *restrict s = (struct space *)extra_data;
   const struct engine *e = s->e;
   const struct sink_props *props = e->sink_properties;
+  const struct chemistry_global_data *chemistry = e->chemistry;
 
 #ifdef SWIFT_DEBUG_CHECKS
   const ptrdiff_t delta = sink - s->sinks;
@@ -480,7 +481,15 @@ void space_first_init_sinks_mapper(void *restrict map_data, int count,
   /* Initialise the rest */
   for (int k = 0; k < count; k++) {
 
-    sink_first_init_sink(&sink[k], props);
+    /* Initialize the sinks */
+    sink_first_init_sink(&sink[k], props, e);
+
+    /* Also initialize the chemistry */
+    chemistry_first_init_sink(chemistry, &sink[k]);
+
+    /* Note: Here we can add X_first_init_sink() for other modules */
+
+    /* TODO (for Darwin): add CSDS when it's ready */
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (sink[k].gpart && sink[k].gpart->id_or_neg_offset != -(k + delta))

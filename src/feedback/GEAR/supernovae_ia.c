@@ -192,7 +192,7 @@ void supernovae_ia_read_yields(struct supernovae_ia *snia,
   io_read_array_attribute(group_id, "data", FLOAT, yields, nval);
 
   /* Read the labels */
-  char *labels = malloc(nval * GEAR_LABELS_SIZE);
+  char *labels = (char *)calloc(nval, GEAR_LABELS_SIZE);
   io_read_string_array_attribute(group_id, "elts", labels, nval,
                                  GEAR_LABELS_SIZE);
 

@@ -215,7 +215,7 @@ void compute_neutrino_diagnostics(
                     ppi_sum, mass_sum, weight2_sum};
   double total_sums[7];
 
-  MPI_Reduce(&sums, &total_sums, 7, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+  MPI_Reduce(sums, total_sums, 7, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 
   double total_p = total_sums[0];
   double total_p2 = total_sums[1];

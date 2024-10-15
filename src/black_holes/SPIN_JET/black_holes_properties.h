@@ -417,9 +417,13 @@ struct black_holes_props {
    *  the slim disc regime (at super-Eddington ratios). */
   float accretion_efficiency_slim;
 
-  /*! Expontent to use for scaling of accretion efficiency with transition
+  /*! Exponent to use for scaling of accretion efficiency with transition
    *  radius in the thick disc. */
   float ADIOS_s;
+
+  /*! The radius of the thick inner ADIOS disc at the critical transition
+   *  Eddington ratio, in gravitational units */
+  float ADIOS_R_in;
 
   /* Whether or not we want to use wind feedback in the ADAF/ADIOS regime
      (at low Eddington ratios). */
@@ -1095,11 +1099,18 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
     bp->accretion_efficiency_mode = BH_accretion_efficiency_variable;
     bp->ADIOS_s = parser_get_param_float(params, "SPINJETAGN:ADIOS_s");
 
-    if ((bp->ADIOS_s < 0) || (bp->ADIOS_s > 1)) {
+    if ((bp->ADIOS_s < 0.f) || (bp->ADIOS_s > 1.f)) {
       error(
           "The ADIOS_s parameter must be between 0 and 1, "
           "(inclusive), not %f",
           bp->ADIOS_s);
+    }
+
+    bp->ADIOS_R_in = parser_get_param_float(params, "SPINJETAGN:ADIOS_R_in");
+
+    if (bp->ADIOS_R_in <= 1.f) {
+      error("The ADIOS_R_in parameter must be larger than 1, not %f",
+            bp->ADIOS_s);
     }
   } else {
     error("The accretion efficiency model must be Constant or Variable, not %s",

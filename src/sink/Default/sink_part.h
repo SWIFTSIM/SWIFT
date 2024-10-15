@@ -64,6 +64,10 @@ struct sink {
 
 #endif
 
+  /*! Chemistry information (e.g. metal content at birth, swallowed metal
+   * content, etc.) */
+  struct chemistry_sink_data chemistry_data;
+
   /*! sink merger information (e.g. merging ID) */
   struct sink_sink_data merger_data;
 

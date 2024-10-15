@@ -188,6 +188,39 @@ def L_adv(x, alpha):
     ) / eta(x, alpha)
 
 
+def jet_eff(f_Edd, a):
+    horizon_ang_vel = abs(a) / (2.0 * (1.0 + np.sqrt(1 - a * a)))
+    phi = -20.2 * a ** 3 - 14.9 * a ** 2 + 34.0 * a + 52.6
+    phi = phi * (f_Edd / 1.88) ** 1.29 / (1 + (f_Edd / 1.88) ** 1.29)
+    return (
+        0.05
+        / (4.0 * np.pi)
+        * phi ** 2
+        * horizon_ang_vel ** 2
+        * (1.0 + 1.38 * horizon_ang_vel ** 2 - 9.2 * horizon_ang_vel ** 4)
+    )
+
+
+def s_HD(f_Edd, a):
+    xi = f_Edd * 0.017
+    s_min = 0.86 - 1.94 * a
+    L_ISCO = 0.385 * (1.0 + 2.0 * np.sqrt(3.0 * r_isco(a) - 2.0))
+    s_thin = L_ISCO - 2.0 * a * (1.0 - eps_NT(a))
+    return (s_thin + s_min * xi) / (1 + xi)
+
+
+def s(f_Edd, a):
+    horizon_ang_vel = abs(a) / (2.0 * (1.0 + np.sqrt(1 - a * a)))
+    k_EM = 0.23 * np.ones(np.size(a))
+    k_EM[a > 0] = np.minimum(0.1 + 0.5 * a[a > 0], 0.35 * np.ones(np.size(a[a > 0])))
+
+    s_EM = (
+        -1 * a / abs(a) * jet_eff(f_Edd, a) * (1.0 / (k_EM * horizon_ang_vel) - 2.0 * a)
+    )
+
+    return s_HD(f_Edd, a) + s_EM
+
+
 a = np.arange(-1, 1, 0.0001)
 mdotcrit1 = m_dot_crit1(a, 0.5)
 mdotcrit2 = m_dot_crit2(a, 0.5)
@@ -196,6 +229,7 @@ m_a_75 = [find_root(x, 0.75) for x in a]
 m_a_50 = [find_root(x, 0.5) for x in a]
 
 import matplotlib
+import pylab
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -204,17 +238,17 @@ import matplotlib.gridspec as gridspec
 fig = plt.figure(figsize=(8, 6))
 
 plt.style.use("classic")
-plt.fill_between(a, [0.0001 for x in a], [0.028 for x in a], color="blue", alpha=0.2)
-plt.fill_between(a, [0.028 for x in a], mdotcrit1, color="red", alpha=0.2)
-plt.fill_between(a, mdotcrit1, [375 for x in a], color="orange", alpha=0.2)
-plt.ylabel("$\dot{m}$", fontsize=24, usetex=True)
+plt.fill_between(a, [0.0001 for x in a], [0.01 for x in a], color="blue", alpha=0.2)
+plt.fill_between(a, [0.01 for x in a], [1 for x in a], color="red", alpha=0.2)
+plt.fill_between(a, [1 for x in a], [375 for x in a], color="orange", alpha=0.2)
+plt.ylabel("$f_\mathrm{Edd}$", fontsize=24, usetex=True)
 plt.xlabel("$a$", fontsize=24, usetex=True)
 plt.tick_params(axis="y", right=True, direction="in")
 plt.yscale("log")
-plt.axis([-1, 1, 0.001, 100])
-plt.text(-0.22, 0.004, "Thick disc", fontsize=20)
-plt.text(-0.2, 0.33, "Thin disc", fontsize=20)
-plt.text(-0.2, 18, "Slim disc", fontsize=20)
+plt.axis([-1, 1, 0.0001, 100])
+plt.text(-0.22, 0.0008, "Thick disk", fontsize=20)
+plt.text(-0.2, 0.08, "Thin disk", fontsize=20)
+plt.text(-0.2, 8, "Slim disk", fontsize=20)
 plt.minorticks_on()
 plt.tick_params(
     axis="x",
@@ -260,6 +294,7 @@ plt.tick_params(
 plt.savefig("modes.png", bbox_inches="tight")
 plt.close()
 
+a = np.arange(-1, 1, 0.0001)
 phi = -20.2 * a ** 3 - 14.9 * a ** 2 + 34.0 * a + 52.6
 horizon_ang_vel = a / (2 * (1 + np.sqrt(1 - a ** 2)))
 jet_factor = (
@@ -271,14 +306,14 @@ jet_factor = (
     * horizon_ang_vel ** 2
     * (1.0 + 1.38 * horizon_ang_vel ** 2 - 9.2 * horizon_ang_vel ** 4)
 )
-Z1_j = np.array(
+Z_1 = np.array(
     [
         1 + (1 - x ** 2) ** 0.333 * ((1 + abs(x)) ** 0.333 + (1 - abs(x)) ** 0.333)
         for x in a
     ]
 )
-Z2_j = np.array(np.sqrt(3 * a ** 2 + Z1_j ** 2))
-r_iso = 3 + Z2_j - np.sign(np.array(a)) * np.sqrt((3 - Z1_j) * (3 + Z1_j + 2 * Z2_j))
+Z_2 = np.array(np.sqrt(3 * a ** 2 + Z_1 ** 2))
+r_iso = 3 + Z_2 - np.sign(np.array(a)) * np.sqrt((3 - Z_1) * (3 + Z_1 + 2 * Z_2))
 eps_TD = 1 - np.sqrt(1 - 2 / (3 * r_iso))
 eps_ADAF1 = 0.144 * (6 / r_iso) * eps_TD * min(1, 0.028 / 0.0044)
 eps_ADAF2 = 0.144 * (6 / r_iso) * eps_TD * min(1, 0.001 / 0.0044)
@@ -286,6 +321,7 @@ Jet_ADAF = jet_factor * 0.3
 Jet_SD = 0.22 * jet_factor
 Jet_TD1 = 10 ** -3 * 0.1 ** (-0.1) * 100 ** 0.2 * 10 ** (2 * 0.1) * jet_factor
 Jet_TD2 = 10 ** -3 * 0.1 ** (-0.1) * 10 ** (-1 * 0.1) * jet_factor
+
 eps_SD1 = (
     1
     / 10
@@ -317,41 +353,82 @@ mdot_bh_TD1 = (1 - Jet_TD1 / 4.447) * (1 - eps_TD - Jet_TD1)
 mdot_bh_TD2 = (1 - Jet_TD2 / 4.447) * (1 - eps_TD - Jet_TD2)
 
 
-fig = plt.figure(figsize=(18, 4))
-fig.subplots_adjust(wspace=0, hspace=0, top=1, bottom=0)
-gs = gridspec.GridSpec(1, 3, width_ratios=[1, 1, 1])
+def omega(spin):
+    return spin / (2 * (1 + np.sqrt(1 - spin ** 2)))
+
+
+fig = plt.figure(figsize=(13, 4))
+fig.subplots_adjust(top=1, bottom=0, wspace=0.25)
+gs = gridspec.GridSpec(1, 2, width_ratios=[1, 1])
 plt.style.use("classic")
 
 plt.subplot(gs[0])
 plt.plot(
     a,
-    eps_ADAF2,
+    100 * 0.005 * (1 + 3 * (phi / 50) ** 2 * (horizon_ang_vel / 0.2) ** 2),
     linewidth=2,
-    label="$\epsilon_\mathrm{rad}(\dot{m}<0.0044)$",
+    label="$\epsilon_\mathrm{wind,thick}$",
+    color="blue",
+)
+plt.plot(
+    a,
+    100 * 0.1 * (1 - np.sqrt(1 - 2 / (3 * r_iso))),
+    linewidth=2,
+    label="$\epsilon_\mathrm{f}\epsilon_\mathrm{rad,NT}$ $\mathrm{(thin}$ $\mathrm{disc})$",
     color="red",
 )
 plt.plot(
     a,
-    eps_ADAF1,
-    linewidth=2,
-    label="$\epsilon_\mathrm{rad}(\dot{m}=0.028)$",
-    color="red",
-    linestyle="--",
+    100
+    * 0.0635
+    * (1 + ((1 / 1.88) ** 1.29 / (1 + (1 / 1.88) ** 1.29) * phi / 50) ** 2)
+    * np.maximum((1 - 8 * omega(a) ** 2 + 1 * omega(a)), np.zeros(np.size(a))),
+    linestyle=":",
+    linewidth=1.5,
+    label="$\epsilon_\mathrm{wind,slim},$ $f_\mathrm{Edd}=1$",
+    color="orange",
 )
-plt.plot(a, 0.97 * Jet_ADAF, linewidth=2, label="$\epsilon_\mathrm{jet}$", color="blue")
+plt.plot(
+    a,
+    100
+    * 0.0635
+    * (1 + ((10 / 1.88) ** 1.29 / (1 + (10 / 1.88) ** 1.29) * phi / 50) ** 2)
+    * np.maximum((1 - 8 * omega(a) ** 2 + 1 * omega(a)), np.zeros(np.size(a))),
+    linestyle="-.",
+    linewidth=1.5,
+    label="$\epsilon_\mathrm{wind,slim},$ $f_\mathrm{Edd}=10$",
+    color="orange",
+)
+plt.plot(
+    a,
+    100
+    * 0.0635
+    * (1 + ((100 / 1.88) ** 1.29 / (1 + (100 / 1.88) ** 1.29) * phi / 50) ** 2)
+    * np.maximum((1 - 8 * omega(a) ** 2 + 1 * omega(a)), np.zeros(np.size(a))),
+    linestyle="--",
+    linewidth=1.5,
+    label="$\epsilon_\mathrm{wind,slim},$ $f_\mathrm{Edd}=100$",
+    color="orange",
+)
+plt.plot(
+    a,
+    100
+    * 0.0635
+    * (1 + ((1000 / 1.88) ** 1.29 / (1 + (1000 / 1.88) ** 1.29) * phi / 50) ** 2)
+    * np.maximum((1 - 8 * omega(a) ** 2 + 1 * omega(a)), np.zeros(np.size(a))),
+    linestyle="-",
+    linewidth=1.5,
+    label="$\epsilon_\mathrm{wind,slim},$ $f_\mathrm{Edd}=1000$",
+    color="orange",
+)
+
 plt.fill_between(a, eps_ADAF1, eps_ADAF2, color="red", alpha=0.2)
-plt.ylabel("$\epsilon_\mathrm{feedback}$", fontsize=24, usetex=True)
+plt.ylabel("$\epsilon_\mathrm{wind}$ $[\%]$", fontsize=24, usetex=True)
 plt.xlabel("$a$", fontsize=24, usetex=True)
 plt.tick_params(axis="y", right=True, direction="in")
-plt.legend(loc="upper left", prop={"size": 13})
-plt.xticks([-1, -0.5, 0, 0.5, 1], [-1, -0.5, 0, 0.5, 1])
-plt.yticks(
-    [0.0001, 0.001, 0.01, 0.1, 1, 10, 100],
-    ["", 10 ** (-3), 10 ** (-2), 10 ** (-1), 10 ** (-0), 10 ** (1), 10 ** (2)],
-)
+pylab.legend(loc="upper left", prop={"size": 12}, ncol=2)
 plt.minorticks_on()
-plt.axis([-1, 1, 0.0001, 10])
-plt.yscale("log")
+plt.axis([-1, 1, 0, 25])
 plt.tick_params(
     axis="x",
     direction="in",
@@ -392,97 +469,58 @@ plt.tick_params(
     which="minor",
     labelsize=16,
 )
-plt.title("Thick disc", fontsize=16)
+plt.title("Wind efficiency", fontsize=16)
 
 plt.subplot(gs[1])
-plt.plot(a, 0.97 * eps_TD, linewidth=2, label="$\epsilon_\mathrm{rad}$", color="red")
 plt.plot(
-    a,
-    Jet_TD2,
-    linewidth=2,
-    label="$\epsilon_\mathrm{jet}(\dot{m}=0.028,M_\mathrm{BH}=10^9 \mathrm{M}_\odot)$",
-    color="blue",
+    a, 100 * Jet_ADAF, linewidth=2, label="$\epsilon_\mathrm{jet,thick}$", color="blue"
 )
 plt.plot(
     a,
-    Jet_TD1,
-    linewidth=2,
-    label="$\epsilon_\mathrm{jet}(\dot{m}=1,M_\mathrm{BH}=10^6 \mathrm{M}_\odot)$",
-    color="blue",
-    linestyle="--",
-)
-plt.fill_between(a, Jet_TD1, Jet_TD2, color="blue", alpha=0.2)
-plt.xlabel("$a$", fontsize=24, usetex=True)
-plt.tick_params(axis="y", right=True, direction="in")
-plt.yscale("log")
-plt.legend(loc="upper left", prop={"size": 13})
-plt.xticks([-1, -0.5, 0, 0.5, 1], ["", -0.5, 0, 0.5, 1])
-plt.axis([-1, 1, 0.0001, 10])
-plt.yticks([0.001, 0.01, 0.1, 1, 10], ["", "", "", "", ""])
-plt.minorticks_on()
-plt.tick_params(
-    axis="x",
-    direction="in",
-    bottom=True,
-    top=True,
-    length=8,
-    width=1.2,
-    which="major",
-    labelsize=16,
-)
-plt.tick_params(
-    axis="y",
-    direction="in",
-    left=True,
-    right=True,
-    length=8,
-    width=1.2,
-    which="major",
-    labelsize=16,
-)
-plt.tick_params(
-    axis="x",
-    direction="in",
-    bottom=True,
-    top=True,
-    length=4,
-    width=0.9,
-    which="minor",
-    labelsize=16,
-)
-plt.tick_params(
-    axis="y",
-    direction="in",
-    left=True,
-    right=True,
-    length=4,
-    width=0.9,
-    which="minor",
-    labelsize=16,
-)
-plt.title("Thin disc", fontsize=16)
-
-plt.subplot(gs[2])
-plt.plot(
-    a, eps_SD1, linewidth=2, label="$\epsilon_\mathrm{rad}(\dot{m}=1)$", color="red"
-)
-plt.plot(
-    a,
-    eps_SD2,
-    linewidth=2,
-    label="$\epsilon_\mathrm{rad}(\dot{m}=50)$",
+    100 * Jet_ADAF * ((0.01 / 1.88) ** 1.29 / (1 + (0.01 / 1.88) ** 1.29)) ** 2,
+    linewidth=1.5,
+    linestyle=":",
+    label="$\epsilon_\mathrm{jet,thin},$ $f_\mathrm{Edd}=0.01$",
     color="red",
-    linestyle="--",
 )
-plt.plot(a, Jet_SD, linewidth=2, label="$\epsilon_\mathrm{jet}$", color="blue")
-plt.fill_between(a, eps_SD1, eps_SD2, color="red", alpha=0.2)
+plt.plot(
+    a,
+    100 * Jet_ADAF * ((0.1 / 1.88) ** 1.29 / (1 + (0.1 / 1.88) ** 1.29)) ** 2,
+    linewidth=1.5,
+    linestyle="-.",
+    label="$\epsilon_\mathrm{jet,thin},$ $f_\mathrm{Edd}=0.1$",
+    color="red",
+)
+plt.plot(
+    a,
+    100 * Jet_ADAF * ((1 / 1.88) ** 1.29 / (1 + (1 / 1.88) ** 1.29)) ** 2,
+    linewidth=1.5,
+    linestyle="--",
+    label="$\epsilon_\mathrm{jet,thin},$ $f_\mathrm{Edd}=1$",
+    color="red",
+)
+plt.plot(
+    a,
+    100 * Jet_ADAF * ((10 / 1.88) ** 1.29 / (1 + (10 / 1.88) ** 1.29)) ** 2,
+    linewidth=1.5,
+    linestyle="--",
+    label="$\epsilon_\mathrm{jet,slim},$ $f_\mathrm{Edd}=10$",
+    color="orange",
+)
+plt.plot(
+    a,
+    100 * Jet_ADAF * ((100 / 1.88) ** 1.29 / (1 + (100 / 1.88) ** 1.29)) ** 2 - 2,
+    linewidth=1.5,
+    linestyle="-",
+    label="$\epsilon_\mathrm{jet,slim},$ $f_\mathrm{Edd}=100$",
+    color="orange",
+)
+
+plt.ylabel("$\epsilon_\mathrm{jet}$ $[\%]$", fontsize=24, usetex=True)
 plt.xlabel("$a$", fontsize=24, usetex=True)
 plt.tick_params(axis="y", right=True, direction="in")
-plt.yscale("log")
-plt.legend(loc="upper left", prop={"size": 13})
-plt.xticks([-1, -0.5, 0, 0.5, 1], ["", -0.5, 0, 0.5, 1])
-plt.axis([-1, 1, 0.0001, 10])
-plt.yticks([0.001, 0.01, 0.1, 1, 10], ["", "", "", "", ""])
+pylab.legend(loc="upper left", prop={"size": 15})
+plt.axis([-1, 1, 0, 200])
 plt.minorticks_on()
 plt.tick_params(
     axis="x",
@@ -524,7 +562,7 @@ plt.tick_params(
     which="minor",
     labelsize=16,
 )
-plt.title("Slim disc", fontsize=16)
+plt.title("Jet efficiency", fontsize=16)
 
 plt.savefig("efficiencies.png", bbox_inches="tight")
 
@@ -670,73 +708,75 @@ da_SD_Benson = (
 )
 
 
-fig = plt.figure(figsize=(18, 4))
-fig.subplots_adjust(wspace=0, hspace=0, top=1, bottom=0)
-gs = gridspec.GridSpec(1, 3, width_ratios=[1, 1, 1])
+fig = plt.figure(figsize=(7, 5))
 plt.style.use("classic")
 
-plt.subplot(gs[0])
-plt.plot(a, da_TD_acc_only, linewidth=2, label="Accretion only", color="black")
-plt.plot(a, da_TD_Benson, linewidth=1.5, label="Jet spindown included", color="blue")
-plt.plot(a, [0 for x in a], linewidth=1.5, color="black", linestyle="--")
-plt.ylabel("$\mathrm{d}a/\mathrm{d}\ln M_\mathrm{BH,0}$", fontsize=24, usetex=True)
-plt.xlabel("$a$", fontsize=24, usetex=True)
-plt.tick_params(axis="y", right=True, direction="in")
-plt.legend(loc="lower left", prop={"size": 15})
-plt.minorticks_on()
-plt.axis([-1, 1, -4, 7])
-plt.tick_params(
-    axis="x",
-    direction="in",
-    bottom=True,
-    top=True,
-    length=8,
-    width=1.2,
-    which="major",
-    labelsize=16,
+z1 = np.array(
+    [
+        1 + (1 - x ** 2) ** 0.333 * ((1 + abs(x)) ** 0.333 + (1 - abs(x)) ** 0.333)
+        for x in a
+    ]
 )
-plt.tick_params(
-    axis="y",
-    direction="in",
-    left=True,
-    right=True,
-    length=8,
-    width=1.2,
-    which="major",
-    labelsize=16,
+z2 = np.array(np.sqrt(3 * a ** 2 + z1 ** 2))
+r_iso = 3 + z2 - np.sign(np.array(a)) * np.sqrt((3 - z1) * (3 + z1 + 2 * z2))
+da_TD_acc_only = 2 / 3 * 1 / np.sqrt(3) * (
+    1 + 2 * np.sqrt(3 * r_iso - 2)
+) - 2 * a * np.sqrt(1 - 2 / (3 * r_iso))
+da_ADAF_Narayan = (
+    0.45 - 12.53 * a - 7.8 * a ** 2 + 9.44 * a ** 3 + 5.71 * a ** 4 - 4.03 * a ** 5
 )
-plt.tick_params(
-    axis="x",
-    direction="in",
-    bottom=True,
-    top=True,
-    length=4,
-    width=0.9,
-    which="minor",
-    labelsize=16,
-)
-plt.tick_params(
-    axis="y",
-    direction="in",
-    left=True,
-    right=True,
-    length=4,
-    width=0.9,
-    which="minor",
-    labelsize=16,
-)
-plt.title("Thin disc", fontsize=16)
 
-plt.subplot(gs[1])
-plt.plot(a, da_ADAF_acc_only, linewidth=2, label="Accretion only", color="black")
-plt.plot(a, da_ADAF_Benson, linewidth=1.5, label="Jet spindown included", color="blue")
-plt.plot(a, [0 for x in a], linewidth=1.5, color="black", linestyle="--")
+plt.plot(a, da_ADAF_Narayan, linewidth=2, label="Thick disk", color="blue")
+plt.plot(
+    a,
+    s(0.01, a),
+    linewidth=2,
+    label="Thin disk, $f_\mathrm{Edd}=0.01$",
+    linestyle=":",
+    color="red",
+)
+plt.plot(
+    a,
+    s(0.1, a),
+    linewidth=2,
+    label="Thin disk, $f_\mathrm{Edd}=0.1$",
+    linestyle="-.",
+    color="red",
+)
+plt.plot(
+    a,
+    s(1, a),
+    linewidth=2,
+    label="Thin disk, $f_\mathrm{Edd}=1$",
+    linestyle="--",
+    color="red",
+)
+plt.plot(
+    a,
+    s(10, a),
+    linewidth=2,
+    label="Slim disk, $f_\mathrm{Edd}=10$",
+    linestyle="--",
+    color="orange",
+)
+plt.plot(
+    a,
+    s(100, a),
+    linewidth=2,
+    label="Slim disk, $f_\mathrm{Edd}=100$",
+    linestyle="-",
+    color="orange",
+)
+plt.plot(a, [0 for x in a], linewidth=1.0, color="black", linestyle="--")
+plt.plot([-0.0001, 0.0001], [-200, 200], linewidth=1.0, color="black", linestyle="--")
+plt.ylabel(
+    "$\mathrm{d}a/(\mathrm{d} M_\mathrm{BH,0}/M_\mathrm{BH})$", fontsize=24, usetex=True
+)
 plt.xlabel("$a$", fontsize=24, usetex=True)
 plt.tick_params(axis="y", right=True, direction="in")
-plt.xticks([-1.0, -0.5, 0.0, 0.5, 1.0], ["", -0.5, 0.0, 0.5, 1.0])
-plt.yticks([-8, -6, -4, -2, 0, 2, 4, 6, 8], ["", "", "", "", "", "", "", "", ""])
+pylab.legend(loc="lower left", prop={"size": 13})
 plt.minorticks_on()
-plt.axis([-1, 1, -4, 7])
+plt.axis([-1, 1, -10, 10])
 plt.tick_params(
     axis="x",
     direction="in",
@@ -777,58 +817,5 @@ plt.tick_params(
     which="minor",
     labelsize=16,
 )
-plt.title("Thick disc", fontsize=16)
-
-plt.subplot(gs[2])
-plt.plot(a, da_SD_acc_only, linewidth=2, label="Accretion only", color="black")
-plt.plot(a, da_SD_Benson, linewidth=1.5, label="Jet spindown included", color="blue")
-plt.plot(a, [0 for x in a], linewidth=1.5, color="black", linestyle="--")
-plt.xlabel("$a$", fontsize=24, usetex=True)
-plt.tick_params(axis="y", right=True, direction="in")
-plt.xticks([-1.0, -0.5, 0.0, 0.5, 1.0], ["", -0.5, 0.0, 0.5, 1.0])
-plt.yticks([-8, -6, -4, -2, 0, 2, 4, 6, 8], ["", "", "", "", "", "", "", "", ""])
-plt.minorticks_on()
-plt.axis([-1, 1, -4, 7])
-plt.tick_params(
-    axis="x",
-    direction="in",
-    bottom=True,
-    top=True,
-    length=8,
-    width=1.2,
-    which="major",
-    labelsize=16,
-)
-plt.tick_params(
-    axis="y",
-    direction="in",
-    left=True,
-    right=True,
-    length=8,
-    width=1.2,
-    which="major",
-    labelsize=16,
-)
-plt.tick_params(
-    axis="x",
-    direction="in",
-    bottom=True,
-    top=True,
-    length=4,
-    width=0.9,
-    which="minor",
-    labelsize=16,
-)
-plt.tick_params(
-    axis="y",
-    direction="in",
-    left=True,
-    right=True,
-    length=4,
-    width=0.9,
-    which="minor",
-    labelsize=16,
-)
-plt.title("Slim disc", fontsize=16)
 
 plt.savefig("spinup.png", bbox_inches="tight")
