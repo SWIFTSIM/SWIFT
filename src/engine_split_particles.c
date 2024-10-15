@@ -33,6 +33,7 @@
 #include "random.h"
 #include "rt.h"
 #include "star_formation.h"
+#include "tools.h"
 #include "tracers.h"
 
 const int particle_split_factor = 2;
@@ -60,6 +61,7 @@ struct data_split {
   long long offset_id;
   long long *count_id;
   swift_lock_type lock;
+  FILE *extra_split_logger;
 };
 
 /**
@@ -172,10 +174,6 @@ void engine_split_gas_particle_split_mapper(void *restrict map_data, int count,
         memcpy(&global_gparts[k_gparts], gp, sizeof(struct gpart));
       }
 
-      /* Update splitting tree */
-      particle_splitting_update_binary_tree(&xp->split_data,
-                                            &global_xparts[k_parts].split_data);
-
       /* Update the IDs. */
       if (generate_random_ids) {
         /* The gas IDs are always odd, so we multiply by two here to
@@ -184,6 +182,11 @@ void engine_split_gas_particle_split_mapper(void *restrict map_data, int count,
       } else {
         global_parts[k_parts].id = offset_id + 2 * atomic_inc(count_id);
       }
+
+      /* Update splitting tree */
+      particle_splitting_update_binary_tree(
+          &xp->split_data, &global_xparts[k_parts].split_data, p->id,
+          global_parts[k_parts].id, data->extra_split_logger, &data->lock);
 
       /* Re-link everything */
       if (with_gravity) {
@@ -312,7 +315,10 @@ void engine_split_gas_particles(struct engine *e) {
 
   /* Verify that nothing wrong happened with the IDs */
   if (data_count.max_id > e->max_parts_id) {
-    error("Found a gas particle with an ID larger than the current max!");
+    error(
+        "Found a gas particle with an ID (%lld) larger than the current max "
+        "(%lld)!",
+        data_count.max_id, e->max_parts_id);
   }
 
   /* Be verbose about this. This is an important event */
@@ -432,12 +438,22 @@ void engine_split_gas_particles(struct engine *e) {
   size_t k_parts = s->nr_parts;
   size_t k_gparts = s->nr_gparts;
 
+  FILE *extra_split_logger = NULL;
+  if (e->hydro_properties->log_extra_splits_in_file) {
+    char extra_split_logger_filename[256];
+    sprintf(extra_split_logger_filename, "splits/splits_%04d.txt", engine_rank);
+    extra_split_logger = fopen(extra_split_logger_filename, "a");
+    if (extra_split_logger == NULL) error("Error opening split logger file!");
+  }
+
   /* Loop over the particles again to split them */
   long long local_count_id = 0;
   struct data_split data_split = {
-      e,         mass_threshold, generate_random_ids, &k_parts,
-      &k_gparts, offset_id,      &local_count_id,     0};
+      e,          mass_threshold,    generate_random_ids, &k_parts,
+      &k_gparts,  offset_id,         &local_count_id,
+      /*lock=*/0, extra_split_logger};
   lock_init(&data_split.lock);
+
   threadpool_map(&e->threadpool, engine_split_gas_particle_split_mapper,
                  s->parts, nr_parts_old, sizeof(struct part), 0, &data_split);
   if (lock_destroy(&data_split.lock) != 0) error("Error destroying lock");
@@ -459,7 +475,33 @@ void engine_split_gas_particles(struct engine *e) {
   }
 #endif
 
+  /* Close the logger file */
+  if (e->hydro_properties->log_extra_splits_in_file) fclose(extra_split_logger);
+
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
+}
+
+void engine_init_split_gas_particles(struct engine *e) {
+
+  if (e->hydro_properties->log_extra_splits_in_file) {
+
+    /* Create the directory to host the logs */
+    if (engine_rank == 0) safe_checkdir("splits", /*create=*/1);
+
+#ifdef WITH_MPI
+    MPI_Barrier(MPI_COMM_WORLD);
+#endif
+
+    /* Create the logger files and add a header */
+    char extra_split_logger_filename[256];
+    sprintf(extra_split_logger_filename, "splits/splits_%04d.txt", engine_rank);
+    FILE *extra_split_logger = fopen(extra_split_logger_filename, "w");
+    fprintf(extra_split_logger, "# %12s %20s %20s %20s %20s\n", "Step", "ID",
+            "Progenitor", "Count", "Tree");
+
+    /* Close everything for now */
+    fclose(extra_split_logger);
+  }
 }
