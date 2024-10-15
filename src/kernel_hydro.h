@@ -391,6 +391,40 @@ __attribute__((always_inline)) INLINE static void kernel_eval_dWdx(
   *dW_dx = dw_dx * kernel_constant * kernel_gamma_inv_dim_plus_one;
 }
 
+#ifdef WENDLAND_C2_KERNEL
+
+/**
+ * Computes dphi/dh for the chosen kernel.
+ *
+ * This corresponds to Appendix A of Price & Monaghan 2007, MNRAS, 374, 4
+ * but for a Wendland-C2 kernel.
+ *
+ * Assumes r < H (i.e. u < kernel_gamma)
+ *
+ * @param u The ratio r / h.
+ * @param h_inv 1 / h.
+ */
+__attribute__((always_inline, const)) INLINE static float potential_dh(
+    const float u, const float h_inv) {
+
+  /* Ratio of r to kernel support
+   * Recall that in our definition the kernel edge is H = kernel_gamma * h. */
+  const float q = fminf(u * kernel_gamma_inv, 1.f);
+
+  /* -24 q^7 + 105 q^6 -168 q^5 + 105 q^4 - 21 q^2 */
+  float dphi_dh = -24.f * q + 105.f;
+  dphi_dh = dphi_dh * q - 168.f;
+  dphi_dh = dphi_dh * q + 105.f;
+  dphi_dh = dphi_dh * q;
+  dphi_dh = dphi_dh * q - 21.f;
+  dphi_dh = dphi_dh * q;
+  dphi_dh = dphi_dh * q;
+
+  return dphi_dh * h_inv * h_inv * kernel_gamma_inv * 0.25f;
+}
+
+#endif
+
 /* -------------------------------------------------------------------------
  */
 

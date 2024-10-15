@@ -477,6 +477,17 @@ __attribute__((nonnull)) INLINE static int gravity_multipole_equal(
   const double v2 = ma->vel[0] * ma->vel[0] + ma->vel[1] * ma->vel[1] +
                     ma->vel[2] * ma->vel[2];
 
+#ifdef SWIFT_DEBUG_CHECKS
+  const int size = ma->num_gpart;
+
+  if (ma->num_gpart != mb->num_gpart) {
+    message("Number of particles does not match!");
+    return 0;
+  }
+#else
+  const int size = 1;
+#endif
+
   /* Check maximal softening */
   if (fabsf(ma->max_softening - mb->max_softening) /
           fabsf(ma->max_softening + mb->max_softening) >
@@ -494,21 +505,21 @@ __attribute__((nonnull)) INLINE static int gravity_multipole_equal(
   }
 
   /* Check bulk velocity (if non-zero and component > 1% of norm)*/
-  if (fabsf(ma->vel[0] + mb->vel[0]) > 1e-10 &&
+  if (fabsf(ma->vel[0] + mb->vel[0]) > 1e-10 * size &&
       (ma->vel[0] * ma->vel[0]) > 0.0001 * v2 &&
       fabsf(ma->vel[0] - mb->vel[0]) / fabsf(ma->vel[0] + mb->vel[0]) >
           tolerance) {
     message("v[0] different");
     return 0;
   }
-  if (fabsf(ma->vel[1] + mb->vel[1]) > 1e-10 &&
+  if (fabsf(ma->vel[1] + mb->vel[1]) > 1e-10 * size &&
       (ma->vel[1] * ma->vel[1]) > 0.0001 * v2 &&
       fabsf(ma->vel[1] - mb->vel[1]) / fabsf(ma->vel[1] + mb->vel[1]) >
           tolerance) {
     message("v[1] different");
     return 0;
   }
-  if (fabsf(ma->vel[2] + mb->vel[2]) > 1e-10 &&
+  if (fabsf(ma->vel[2] + mb->vel[2]) > 1e-10 * size &&
       (ma->vel[2] * ma->vel[2]) > 0.0001 * v2 &&
       fabsf(ma->vel[2] - mb->vel[2]) / fabsf(ma->vel[2] + mb->vel[2]) >
           tolerance) {

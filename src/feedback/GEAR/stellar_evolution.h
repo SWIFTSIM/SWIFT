@@ -46,6 +46,12 @@ void stellar_evolution_compute_discrete_feedback_properties(
     const float m_end_step, const float m_init, const int number_snia,
     const int number_snii);
 
+void stellar_evolution_evolve_individual_star(
+    struct spart* restrict sp, const struct stellar_model* sm,
+    const struct cosmology* cosmo, const struct unit_system* us,
+    const struct phys_const* phys_const, const integertime_t ti_begin,
+    const double star_age_beg_step, const double dt);
+
 void stellar_evolution_evolve_spart(
     struct spart* restrict sp, const struct stellar_model* sm,
     const struct cosmology* cosmo, const struct unit_system* us,
@@ -69,5 +75,9 @@ void stellar_evolution_dump(const struct stellar_model* sm, FILE* stream);
 void stellar_evolution_restore(struct stellar_model* sm, FILE* stream);
 
 void stellar_evolution_clean(struct stellar_model* sm);
+
+float stellar_evolution_compute_initial_mass(
+    const struct spart* restrict sp, const struct stellar_model* sm,
+    const struct phys_const* phys_consts);
 
 #endif  // SWIFT_STELLAR_EVOLUTION_GEAR_H

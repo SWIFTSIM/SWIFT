@@ -1,0 +1,26 @@
+2D advection test for radiative transfer.
+
+Test that your method is TVD and the propagation speed of the photons is
+correct. The ICs set up four photon groups: 
+- The first is a top hat function initial distribution where outside values
+  are zero, advecting along the x direction
+- The second is a top hat function initial distribution where outside values
+  are nonzero. This distinction is important to test because photon energies 
+  can't be negative, so these cases need to be tested individually. This
+  group advects along the y direction
+- the third is a smooth Gaussian advecting diagonally.
+- the fourth is a circle in the center advecting radially.
+
+This way, you can test multiple initial condition scenarios simultaneously. 
+There are no stars to act as sources. Also make sure that you choose your
+photon frequencies in a way that doesn't interact with gas!
+
+The ICs are created to be compatible with GEAR_RT. Recommended configuration:
+    --with-rt=GEAR_4 --with-rt-riemann-solver=GLF --with-hydro-dimension=2 --with-hydro=gizmo-mfv \
+     --with-riemann-solver=hllc --with-stars=GEAR --with-feedback=none --with-grackle=$GRACKLE_ROOT
+
+    
+
+Note that if you want to use a reduced speed of light for this test, you also 
+need to adapt the fluxes in the initial conditions! They are generated assuming
+that the speed of light is not reduced.

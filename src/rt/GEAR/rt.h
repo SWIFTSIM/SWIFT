@@ -256,7 +256,7 @@ __attribute__((always_inline)) INLINE static void rt_split_part(struct part* p,
 __attribute__((always_inline)) INLINE static void rt_part_has_no_neighbours(
     struct part* p) {
   message("WARNING: found particle without neighbours");
-};
+}
 
 /**
  * @brief Exception handle a star part not having any neighbours in ghost task
@@ -272,7 +272,7 @@ __attribute__((always_inline)) INLINE static void rt_spart_has_no_neighbours(
     sp->rt_data.emission_this_step[g] = 0.f;
   }
   message("WARNING: found star without neighbours");
-};
+}
 
 /**
  * @brief Do checks/conversions on particles on startup.
@@ -402,8 +402,7 @@ __attribute__((always_inline)) INLINE static double rt_part_dt(
     const double time_base, const int with_cosmology,
     const struct cosmology* cosmo) {
   if (with_cosmology) {
-    error("GEAR RT with cosmology not implemented yet! :(");
-    return 0.f;
+    return cosmology_get_delta_time(cosmo, ti_beg, ti_end);
   } else {
     return (ti_end - ti_beg) * time_base;
   }
@@ -463,7 +462,7 @@ __attribute__((always_inline)) INLINE static void rt_end_gradient(
  * @param cosmo #cosmology data structure.
  */
 __attribute__((always_inline)) INLINE static void rt_finalise_transport(
-    struct part* restrict p, const double dt,
+    struct part* restrict p, struct rt_props* rtp, const double dt,
     const struct cosmology* restrict cosmo) {
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
@@ -481,14 +480,36 @@ __attribute__((always_inline)) INLINE static void rt_finalise_transport(
   struct rt_part_data* restrict rtd = &p->rt_data;
   const float Vinv = 1.f / p->geometry.volume;
 
+  /* Do not redshift if we have a constant spectrum (type == 0) */
+  const float redshift_factor =
+      (rtp->stellar_spectrum_type == 0) ? 0. : cosmo->H * dt;
+
   for (int g = 0; g < RT_NGROUPS; g++) {
     const float e_old = rtd->radiation[g].energy_density;
+
     /* Note: in this scheme, we're updating d/dt (U * V) + sum F * A * dt = 0.
      * So we'll need the division by the volume here. */
+
     rtd->radiation[g].energy_density += rtd->flux[g].energy * Vinv;
+    rtd->radiation[g].energy_density -=
+        rtd->radiation[g].energy_density *
+        redshift_factor;  // Energy lost due to redshift
+
     rtd->radiation[g].flux[0] += rtd->flux[g].flux[0] * Vinv;
+    rtd->radiation[g].flux[0] -=
+        rtd->radiation[g].flux[0] *
+        redshift_factor;  // Energy lost due to redshift
+
     rtd->radiation[g].flux[1] += rtd->flux[g].flux[1] * Vinv;
+    rtd->radiation[g].flux[1] -=
+        rtd->radiation[g].flux[1] *
+        redshift_factor;  // Energy lost due to redshift
+
     rtd->radiation[g].flux[2] += rtd->flux[g].flux[2] * Vinv;
+    rtd->radiation[g].flux[2] -=
+        rtd->radiation[g].flux[2] *
+        redshift_factor;  // Energy lost due to redshift
+
     rt_check_unphysical_state(&rtd->radiation[g].energy_density,
                               rtd->radiation[g].flux, e_old, /*callloc=*/4);
   }
@@ -558,6 +579,8 @@ __attribute__((always_inline)) INLINE static void rt_kick_extra(
     p->rt_data.debug_kicked += 1;
   }
 #endif
+
+#ifdef GIZMO_MFV_SPH
 
   /* Note: We need to mimick here what Gizmo does for the mass fluxes.
    * The relevant time scale is the hydro time step for the mass fluxes,
@@ -631,6 +654,8 @@ __attribute__((always_inline)) INLINE static void rt_kick_extra(
     /* Don't update actual particle mass, that'll be done in the
      * hydro_kick_extra calls */
   }
+
+#endif
 
   rt_check_unphysical_mass_fractions(p);
 }

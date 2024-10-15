@@ -132,14 +132,8 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
         h_max = fmax(h_max, part->h);
         part->id = ++(*partId);
 
-#if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH) || defined(SHADOWFAX_SPH)
+#if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH)
         part->conserved.mass = density * volume / count;
-
-#ifdef SHADOWFAX_SPH
-        double anchor[3] = {0., 0., 0.};
-        double side[3] = {1., 1., 1.};
-        voronoi_cell_init(&part->cell, part->x, anchor, side);
-#endif
 
 #else
         part->mass = density * volume / count;
@@ -200,15 +194,21 @@ void clean_up(struct cell *ci) {
 void zero_particle_fields(struct cell *c) {
   for (int pid = 0; pid < c->hydro.count; pid++) {
     hydro_init_part(&c->hydro.parts[pid], NULL);
+    adaptive_softening_init_part(&c->hydro.parts[pid]);
+    mhd_init_part(&c->hydro.parts[pid]);
   }
 }
 
 /**
  * @brief Ends the loop by adding the appropriate coefficients
  */
-void end_calculation(struct cell *c, const struct cosmology *cosmo) {
+void end_calculation(struct cell *c, const struct cosmology *cosmo,
+                     const struct gravity_props *gravity_props) {
+
   for (int pid = 0; pid < c->hydro.count; pid++) {
     hydro_end_density(&c->hydro.parts[pid], cosmo);
+    adaptive_softening_end_density(&c->hydro.parts[pid], gravity_props);
+    mhd_end_density(&c->hydro.parts[pid], cosmo);
   }
 }
 
@@ -239,7 +239,7 @@ void dump_particle_fields(char *fileName, struct cell *main_cell, int i, int j,
             main_cell->hydro.parts[pid].v[0], main_cell->hydro.parts[pid].v[1],
             main_cell->hydro.parts[pid].v[2],
             hydro_get_comoving_density(&main_cell->hydro.parts[pid]),
-#if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH) || defined(SHADOWFAX_SPH)
+#if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH)
             0.f,
 #else
             main_cell->hydro.parts[pid].density.rho_dh,
@@ -336,7 +336,8 @@ void test_boundary_conditions(struct cell **cells, struct runner *runner,
   DOSELF1(runner, main_cell);
 
   /* Let's get physical ! */
-  end_calculation(main_cell, runner->e->cosmology);
+  end_calculation(main_cell, runner->e->cosmology,
+                  runner->e->gravity_properties);
 
   /* Dump particles from the main cell. */
   dump_particle_fields(swiftOutputFileName, main_cell, loc_i, loc_j, loc_k);
@@ -370,7 +371,8 @@ void test_boundary_conditions(struct cell **cells, struct runner *runner,
   self_all_density(runner, main_cell);
 
   /* Let's get physical ! */
-  end_calculation(main_cell, runner->e->cosmology);
+  end_calculation(main_cell, runner->e->cosmology,
+                  runner->e->gravity_properties);
 
   /* Dump */
   dump_particle_fields(bruteForceOutputFileName, main_cell, loc_i, loc_j,
@@ -511,6 +513,15 @@ int main(int argc, char *argv[]) {
 
   struct pressure_floor_props pressure_floor;
   engine.pressure_floor_props = &pressure_floor;
+
+  struct sink_props sink_props;
+  bzero(&sink_props, sizeof(struct sink_props));
+  engine.sink_properties = &sink_props;
+
+  struct gravity_props gravity_props;
+  bzero(&gravity_props, sizeof(struct gravity_props));
+  gravity_props.G_Newton = 1.f;
+  engine.gravity_properties = &gravity_props;
 
   /* Construct some cells */
   struct cell *cells[dim * dim * dim];

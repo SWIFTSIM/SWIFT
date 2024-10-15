@@ -207,7 +207,7 @@ INLINE static void hydro_write_particles(const struct part* parts,
       "co-moving positions of the particles");
 
   list[2] =
-      io_make_output_field("Masses", FLOAT, 1, UNIT_CONV_MASS, 1.f, parts,
+      io_make_output_field("Masses", FLOAT, 1, UNIT_CONV_MASS, 0.f, parts,
                            conserved.mass, "Co-moving masses of the particles");
 
   list[3] = io_make_output_field(
@@ -216,12 +216,12 @@ INLINE static void hydro_write_particles(const struct part* parts,
 
   list[4] = io_make_output_field_convert_part(
       "InternalEnergies", FLOAT, 1, UNIT_CONV_ENERGY_PER_UNIT_MASS,
-      3.f * hydro_gamma_minus_one, parts, xparts, convert_u,
+      -3.f * hydro_gamma_minus_one, parts, xparts, convert_u,
       "Co-moving thermal energies per unit mass of the particles");
 
-  list[5] =
-      io_make_output_field("ParticleIDs", ULONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f,
-                           parts, id, "Unique IDs of the particles");
+  list[5] = io_make_physical_output_field(
+      "ParticleIDs", ULONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f, parts, id,
+      /*can convert to comoving=*/0, "Unique IDs of the particles");
 
   list[6] = io_make_output_field("Densities", FLOAT, 1, UNIT_CONV_DENSITY, -3.f,
                                  parts, rho,

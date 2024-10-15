@@ -51,10 +51,19 @@ struct sink {
   /*! Sink particle mass */
   float mass;
 
+  /*! Sink target mass. In Msun. */
+  float target_mass_Msun;
+
+  /*! Mass of the sink before starting the star spawning loop */
+  float mass_tot_before_star_spawning;
+
+  /*! Sink target stellar type */
+  enum stellar_type target_type;
+
   /*! Particle time bin */
   timebin_t time_bin;
 
-  /*! number of stars contained in the sink */
+  /*! Number of stars spawned by this sink */
   int n_stars;
 
   /*! Total (physical) angular momentum accumulated by swallowing particles */
@@ -75,6 +84,10 @@ struct sink {
   /*! Total number of gas particles swallowed (excluding particles swallowed
    * by merged-in sinks) */
   int number_of_direct_gas_swallows;
+
+  /*! Flag to determine if a sink has already changed its IMF from pop III to
+     pop II. */
+  int has_IMF_changed_from_popIII_to_popII;
 
   /*! Chemistry information (e.g. metal content at birth, swallowed metal
    * content, etc.) */

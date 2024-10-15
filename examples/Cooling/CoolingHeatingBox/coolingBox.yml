@@ -60,6 +60,7 @@ GrackleCooling:
   RT_HeI_ionization_rate_cgs : 0               # HeI ionization  rate in cgs [1/s]
   RT_HeII_ionization_rate_cgs: 0               # HeII ionization rate in cgs [1/s]
   RT_H2_dissociation_rate_cgs: 0               # H2 dissociation rate in cgs [1/s]
+  maximal_density_Hpcm3:  -1                   # Maximal density (in hydrogen atoms/cm^3) for cooling. Higher densities are floored to this value to ensure grackle works properly when interpolating beyond the cloudy_table maximal density. A value < 0 deactivates this parameter.
   
 
 GEARChemistry:

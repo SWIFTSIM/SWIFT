@@ -695,6 +695,57 @@ void engine_io(struct engine *e) {
 }
 
 /**
+ * @brief Set the value of the recording trigger windows based
+ * on the user's desires and the time to the next snapshot.
+ *
+ * @param e The #engine.
+ */
+void engine_set_and_verify_snapshot_triggers(struct engine *e) {
+
+  /* Time until the next snapshot */
+  double time_to_next_snap;
+  if (e->policy & engine_policy_cosmology) {
+    time_to_next_snap = cosmology_get_delta_time(e->cosmology, e->ti_current,
+                                                 e->ti_next_snapshot);
+  } else {
+    time_to_next_snap = (e->ti_next_snapshot - e->ti_current) * e->time_base;
+  }
+
+  /* Do we need to reduce any of the recording trigger times?
+   * Or can we set them with the user's desired range? */
+  for (int k = 0; k < num_snapshot_triggers_part; ++k) {
+    if (e->snapshot_recording_triggers_desired_part[k] > 0) {
+      if (e->snapshot_recording_triggers_desired_part[k] > time_to_next_snap) {
+        e->snapshot_recording_triggers_part[k] = time_to_next_snap;
+      } else {
+        e->snapshot_recording_triggers_part[k] =
+            e->snapshot_recording_triggers_desired_part[k];
+      }
+    }
+  }
+  for (int k = 0; k < num_snapshot_triggers_spart; ++k) {
+    if (e->snapshot_recording_triggers_desired_spart[k] > 0) {
+      if (e->snapshot_recording_triggers_desired_spart[k] > time_to_next_snap) {
+        e->snapshot_recording_triggers_spart[k] = time_to_next_snap;
+      } else {
+        e->snapshot_recording_triggers_spart[k] =
+            e->snapshot_recording_triggers_desired_spart[k];
+      }
+    }
+  }
+  for (int k = 0; k < num_snapshot_triggers_bpart; ++k) {
+    if (e->snapshot_recording_triggers_desired_bpart[k] > 0) {
+      if (e->snapshot_recording_triggers_desired_bpart[k] > time_to_next_snap) {
+        e->snapshot_recording_triggers_bpart[k] = time_to_next_snap;
+      } else {
+        e->snapshot_recording_triggers_bpart[k] =
+            e->snapshot_recording_triggers_desired_bpart[k];
+      }
+    }
+  }
+}
+
+/**
  * @brief Computes the next time (on the time line) for a dump
  *
  * @param e The #engine.
@@ -705,6 +756,8 @@ void engine_compute_next_snapshot_time(struct engine *e) {
   if (e->output_list_snapshots) {
     output_list_read_next_time(e->output_list_snapshots, e, "snapshots",
                                &e->ti_next_snapshot);
+
+    engine_set_and_verify_snapshot_triggers(e);
     return;
   }
 
@@ -762,49 +815,8 @@ void engine_compute_next_snapshot_time(struct engine *e) {
         message("Next snapshot time set to t=%e.", next_snapshot_time);
     }
 
-    /* Time until the next snapshot */
-    double time_to_next_snap;
-    if (e->policy & engine_policy_cosmology) {
-      time_to_next_snap = cosmology_get_delta_time(e->cosmology, e->ti_current,
-                                                   e->ti_next_snapshot);
-    } else {
-      time_to_next_snap = (e->ti_next_snapshot - e->ti_current) * e->time_base;
-    }
-
-    /* Do we need to reduce any of the recording trigger times? */
-    for (int k = 0; k < num_snapshot_triggers_part; ++k) {
-      if (e->snapshot_recording_triggers_desired_part[k] > 0) {
-        if (e->snapshot_recording_triggers_desired_part[k] >
-            time_to_next_snap) {
-          e->snapshot_recording_triggers_part[k] = time_to_next_snap;
-        } else {
-          e->snapshot_recording_triggers_part[k] =
-              e->snapshot_recording_triggers_desired_part[k];
-        }
-      }
-    }
-    for (int k = 0; k < num_snapshot_triggers_spart; ++k) {
-      if (e->snapshot_recording_triggers_desired_spart[k] > 0) {
-        if (e->snapshot_recording_triggers_desired_spart[k] >
-            time_to_next_snap) {
-          e->snapshot_recording_triggers_spart[k] = time_to_next_snap;
-        } else {
-          e->snapshot_recording_triggers_spart[k] =
-              e->snapshot_recording_triggers_desired_spart[k];
-        }
-      }
-    }
-    for (int k = 0; k < num_snapshot_triggers_bpart; ++k) {
-      if (e->snapshot_recording_triggers_desired_bpart[k] > 0) {
-        if (e->snapshot_recording_triggers_desired_bpart[k] >
-            time_to_next_snap) {
-          e->snapshot_recording_triggers_bpart[k] = time_to_next_snap;
-        } else {
-          e->snapshot_recording_triggers_bpart[k] =
-              e->snapshot_recording_triggers_desired_bpart[k];
-        }
-      }
-    }
+    /* Set the recording triggers accordingly for the next output */
+    engine_set_and_verify_snapshot_triggers(e);
   }
 }
 

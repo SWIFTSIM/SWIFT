@@ -78,7 +78,7 @@ __attribute__((always_inline)) INLINE static void gravity_foreign_fof_copy(
  * @param gp The particle of interest
  */
 __attribute__((always_inline)) INLINE static float gravity_get_mass(
-    const struct gpart* restrict gp) {
+    const struct gpart* gp) {
 
   return gp->mass;
 }
@@ -90,7 +90,7 @@ __attribute__((always_inline)) INLINE static float gravity_get_mass(
  * @param grav_props The global gravity properties.
  */
 __attribute__((always_inline)) INLINE static float gravity_get_softening(
-    const struct gpart* gp, const struct gravity_props* restrict grav_props) {
+    const struct gpart* gp, const struct gravity_props* grav_props) {
   return gp->epsilon;
 }
 
@@ -113,7 +113,7 @@ gravity_get_softening_foreign(const struct gpart_foreign* gp,
  * @param pot The contribution to add.
  */
 __attribute__((always_inline)) INLINE static void
-gravity_add_comoving_potential(struct gpart* restrict gp, const float pot) {
+gravity_add_comoving_potential(struct gpart* gp, const float pot) {
 
 #ifndef SWIFT_GRAVITY_NO_POTENTIAL
   gp->potential += pot;
@@ -127,8 +127,7 @@ gravity_add_comoving_potential(struct gpart* restrict gp, const float pot) {
  * @param pot The contribution to add.
  */
 __attribute__((always_inline)) INLINE static void
-gravity_add_comoving_mesh_potential(struct gpart* restrict gp,
-                                    const float pot) {
+gravity_add_comoving_mesh_potential(struct gpart* gp, const float pot) {
 
 #ifndef SWIFT_GRAVITY_NO_POTENTIAL
   gp->potential_mesh += pot;
@@ -141,7 +140,7 @@ gravity_add_comoving_mesh_potential(struct gpart* restrict gp,
  * @param gp The particle of interest
  */
 __attribute__((always_inline)) INLINE static float
-gravity_get_comoving_potential(const struct gpart* restrict gp) {
+gravity_get_comoving_potential(const struct gpart* gp) {
 
 #ifndef SWIFT_GRAVITY_NO_POTENTIAL
   return gp->potential;
@@ -156,7 +155,7 @@ gravity_get_comoving_potential(const struct gpart* restrict gp) {
  * @param gp The particle of interest
  */
 __attribute__((always_inline)) INLINE static float
-gravity_get_comoving_mesh_potential(const struct gpart* restrict gp) {
+gravity_get_comoving_mesh_potential(const struct gpart* gp) {
 
 #ifndef SWIFT_GRAVITY_NO_POTENTIAL
   return gp->potential_mesh;
@@ -172,7 +171,7 @@ gravity_get_comoving_mesh_potential(const struct gpart* restrict gp) {
  * @param cosmo The cosmological model.
  */
 __attribute__((always_inline)) INLINE static float
-gravity_get_physical_potential(const struct gpart* restrict gp,
+gravity_get_physical_potential(const struct gpart* gp,
                                const struct cosmology* cosmo) {
 
 #ifndef SWIFT_GRAVITY_NO_POTENTIAL
@@ -195,7 +194,7 @@ gravity_get_physical_potential(const struct gpart* restrict gp,
 __attribute__((always_inline)) INLINE static float
 gravity_compute_timestep_self(const struct gpart* const gp,
                               const float a_hydro[3],
-                              const struct gravity_props* restrict grav_props,
+                              const struct gravity_props* grav_props,
                               const struct cosmology* cosmo) {
 
   /* Get physical acceleration (gravity contribution) */
@@ -360,7 +359,9 @@ __attribute__((always_inline)) INLINE static void gravity_predict_extra(
       gp->epsilon = grav_props->epsilon_baryon_cur;
       break;
     case swift_type_gas:
+#ifndef ADAPTIVE_SOFTENING
       gp->epsilon = grav_props->epsilon_baryon_cur;
+#endif
       break;
     case swift_type_black_hole:
       gp->epsilon = grav_props->epsilon_baryon_cur;
@@ -426,7 +427,9 @@ __attribute__((always_inline)) INLINE static void gravity_first_init_gpart(
       gp->epsilon = grav_props->epsilon_baryon_cur;
       break;
     case swift_type_gas:
+#ifndef ADAPTIVE_SOFTENING
       gp->epsilon = grav_props->epsilon_baryon_cur;
+#endif
       break;
     case swift_type_black_hole:
       gp->epsilon = grav_props->epsilon_baryon_cur;

@@ -1,0 +1,14 @@
+Strömgen Sphere example in 3D
+-----------------------------
+
+This directory contains the following example:
+    -   run a propagation test of photons emitted from a single 
+        central source in an otherwise uniform box.
+        To run this example, use the provided `runPropagationTest.sh` script.
+        This script will then make use of the `makePropagationTestIC.py` and
+        `plotPhotonPropagationCheck.py` script.
+             
+
+To use the GEAR RT model, compile with :
+    --with-rt=GEAR_1 --with-rt-riemann-solver=GLF --with-hydro=gizmo-mfv --with-riemann-solver=hllc --with-stars=GEAR --with-feedback=none --with-grackle=$GRACKLE_ROOT
+

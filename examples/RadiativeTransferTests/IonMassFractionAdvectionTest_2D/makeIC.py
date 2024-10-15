@@ -43,7 +43,7 @@ if __name__ == "__main__":
 
     # Set up metadata
     unitL = unyt.Mpc
-    edgelen = 2 * 15 * 1e-3 * unitL  # 30 kpc
+    edgelen = 1 * unyt.Mpc
     edgelen = edgelen.to(unitL)
     boxsize = np.array([1.0, 1.0, 0.0]) * edgelen
 

@@ -37,6 +37,7 @@
 
 /* Local headers. */
 #include "fof.h"
+#include "line_of_sight.h"
 #include "mpiuse.h"
 #include "part.h"
 #include "pressure_floor.h"
@@ -311,8 +312,9 @@ void engine_config(int restart, int fof, struct engine *e,
     int skip = 0;
     for (int k = 0; k < nr_affinity_cores; k++) {
       int c;
-      for (c = skip; c < CPU_SETSIZE && !CPU_ISSET(c, entry_affinity); ++c)
-        ;
+      for (c = skip; c < CPU_SETSIZE && !CPU_ISSET(c, entry_affinity); ++c) {
+        /* Nothing to do here */
+      }
       cpuid[k] = c;
       skip = c + 1;
     }
@@ -407,8 +409,8 @@ void engine_config(int restart, int fof, struct engine *e,
     /* Make sure the corresponding policy is set and make space for the proxies
      */
     e->policy |= engine_policy_mpi;
-    if ((e->proxies = (struct proxy *)calloc(sizeof(struct proxy),
-                                             engine_maxproxies)) == NULL)
+    if ((e->proxies = (struct proxy *)calloc(engine_maxproxies,
+                                             sizeof(struct proxy))) == NULL)
       error("Failed to allocate memory for proxies.");
     e->nr_proxies = 0;
 
@@ -792,9 +794,11 @@ void engine_config(int restart, int fof, struct engine *e,
     /* Find the time of the first statistics output */
     engine_compute_next_statistics_time(e);
 
-    /* Find the time of the first line of sight output */
+    /* Find the time of the first line of sight output
+     * and verify the outputs */
     if (e->policy & engine_policy_line_of_sight) {
       engine_compute_next_los_time(e);
+      los_io_output_check(e);
     }
 
     /* Find the time of the first stf output */

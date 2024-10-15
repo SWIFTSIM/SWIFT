@@ -158,6 +158,16 @@ INLINE static void convert_part_potential(const struct engine* e,
     ret[0] = 0.f;
 }
 
+INLINE static void convert_part_softening(const struct engine* e,
+                                          const struct part* p,
+                                          const struct xpart* xp, float* ret) {
+  if (p->gpart != NULL)
+    ret[0] = kernel_gravity_softening_plummer_equivalent_inv *
+             gravity_get_softening(p->gpart, e->gravity_properties);
+  else
+    ret[0] = 0.f;
+}
+
 INLINE static void convert_viscosity(const struct engine* e,
                                      const struct part* p,
                                      const struct xpart* xp, float* ret) {
@@ -182,7 +192,7 @@ INLINE static void hydro_write_particles(const struct part* parts,
                                          struct io_props* list,
                                          int* num_fields) {
 
-  *num_fields = 15;
+  *num_fields = 16;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_part(
@@ -207,9 +217,9 @@ INLINE static void hydro_write_particles(const struct part* parts,
       -3.f * hydro_gamma_minus_one, parts, u,
       "Co-moving thermal energies per unit mass of the particles");
 
-  list[5] =
-      io_make_output_field("ParticleIDs", ULONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f,
-                           parts, id, "Unique IDs of the particles");
+  list[5] = io_make_physical_output_field(
+      "ParticleIDs", ULONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f, parts, id,
+      /*can convert to comoving=*/0, "Unique IDs of the particles");
 
   list[6] = io_make_output_field("Densities", FLOAT, 1, UNIT_CONV_DENSITY, -3.f,
                                  parts, rho,
@@ -259,6 +269,11 @@ INLINE static void hydro_write_particles(const struct part* parts,
       "Potentials", FLOAT, 1, UNIT_CONV_POTENTIAL, -1.f, parts, xparts,
       convert_part_potential,
       "Co-moving gravitational potential at position of the particles");
+
+  list[15] = io_make_output_field_convert_part(
+      "Softenings", FLOAT, 1, UNIT_CONV_LENGTH, 1.f, parts, xparts,
+      convert_part_softening,
+      "Co-moving gravitational Plummer-equivalent softenings of the particles");
 }
 
 /**

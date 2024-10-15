@@ -34,29 +34,30 @@ Cosmology:
 
 # Parameters for the hydrodynamics scheme
 SPH:
-  resolution_eta:                    1.2348   # Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel).
-  CFL_condition:                     0.1      # Courant-Friedrich-Levy condition for time integration.
-  use_mass_weighted_num_ngb:         0        # (Optional) Are we using the mass-weighted definition of the number of neighbours?
-  h_tolerance:                       1e-4     # (Optional) Relative accuracy of the Netwon-Raphson scheme for the smoothing lengths.
-  h_max:                             10.      # (Optional) Maximal allowed smoothing length in internal units. Defaults to FLT_MAX if unspecified.
-  h_min_ratio:                       0.       # (Optional) Minimal allowed smoothing length in units of the softening. Defaults to 0 if unspecified.
-  max_volume_change:                 1.4      # (Optional) Maximal allowed change of kernel volume over one time-step.
-  max_ghost_iterations:              30       # (Optional) Maximal number of iterations allowed to converge towards the smoothing length.
-  particle_splitting:                1        # (Optional) Are we splitting particles that are too massive (default: 0)
-  particle_splitting_mass_threshold: 7e-4     # (Optional) Mass threshold for particle splitting (in internal units)
-  generate_random_ids:               0        # (Optional) When creating new particles via splitting, generate ids at random (1) or use new IDs beyond the current range (0) (default: 0)
-  initial_temperature:               0        # (Optional) Initial temperature (in internal units) to set the gas particles at start-up. Value is ignored if set to 0.
-  minimal_temperature:               0        # (Optional) Minimal temperature (in internal units) allowed for the gas particles. Value is ignored if set to 0.
-  H_mass_fraction:                   0.755    # (Optional) Hydrogen mass fraction used for initial conversion from temp to internal energy. Default value is derived from the physical constants.
-  H_ionization_temperature:          1e4      # (Optional) Temperature of the transition from neutral to ionized Hydrogen for primoridal gas.
-  viscosity_alpha:                   0.8      # (Optional) Override for the initial value of the artificial viscosity. In schemes that have a fixed AV, this remains as alpha throughout the run.
-  viscosity_alpha_max:               2.0      # (Optional) Maximal value for the artificial viscosity in schemes that allow alpha to vary.
-  viscosity_alpha_min:               0.1      # (Optional) Minimal value for the artificial viscosity in schemes that allow alpha to vary.
-  viscosity_length:                  0.1      # (Optional) Decay length for the artificial viscosity in schemes that allow alpha to vary.
-  diffusion_alpha:                   0.0      # (Optional) Override the initial value for the thermal diffusion coefficient in schemes with thermal diffusion.
-  diffusion_beta:                    0.01     # (Optional) Override the decay/rise rate tuning parameter for the thermal diffusion.
-  diffusion_alpha_max:               1.0      # (Optional) Override the maximal thermal diffusion coefficient that is allowed for a given particle.
-  diffusion_alpha_min:               0.0      # (Optional) Override the minimal thermal diffusion coefficient that is allowed for a given particle.
+  resolution_eta:                      1.2348   # Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel).
+  CFL_condition:                       0.1      # Courant-Friedrich-Levy condition for time integration.
+  use_mass_weighted_num_ngb:           0        # (Optional) Are we using the mass-weighted definition of the number of neighbours?
+  h_tolerance:                         1e-4     # (Optional) Relative accuracy of the Netwon-Raphson scheme for the smoothing lengths.
+  h_max:                               10.      # (Optional) Maximal allowed smoothing length in internal units. Defaults to FLT_MAX if unspecified.
+  h_min_ratio:                         0.       # (Optional) Minimal allowed smoothing length in units of the softening. Defaults to 0 if unspecified.
+  max_volume_change:                   1.4      # (Optional) Maximal allowed change of kernel volume over one time-step.
+  max_ghost_iterations:                30       # (Optional) Maximal number of iterations allowed to converge towards the smoothing length.
+  particle_splitting:                  1        # (Optional) Are we splitting particles that are too massive (default: 0)
+  particle_splitting_mass_threshold:   7e-4     # (Optional) Mass threshold for particle splitting (in internal units)
+  particle_splitting_log_extra_splits: 0        # (Optional) Are we logging the splits beyond the maximal allowed into files? (default: 0)
+  generate_random_ids:                 0        # (Optional) When creating new particles via splitting, generate ids at random (1) or use new IDs beyond the current range (0) (default: 0)
+  initial_temperature:                 0        # (Optional) Initial temperature (in internal units) to set the gas particles at start-up. Value is ignored if set to 0.
+  minimal_temperature:                 0        # (Optional) Minimal temperature (in internal units) allowed for the gas particles. Value is ignored if set to 0.
+  H_mass_fraction:                     0.755    # (Optional) Hydrogen mass fraction used for initial conversion from temp to internal energy. Default value is derived from the physical constants.
+  H_ionization_temperature:            1e4      # (Optional) Temperature of the transition from neutral to ionized Hydrogen for primoridal gas.
+  viscosity_alpha:                     0.8      # (Optional) Override for the initial value of the artificial viscosity. In schemes that have a fixed AV, this remains as alpha throughout the run.
+  viscosity_alpha_max:                 2.0      # (Optional) Maximal value for the artificial viscosity in schemes that allow alpha to vary.
+  viscosity_alpha_min:                 0.1      # (Optional) Minimal value for the artificial viscosity in schemes that allow alpha to vary.
+  viscosity_length:                    0.1      # (Optional) Decay length for the artificial viscosity in schemes that allow alpha to vary.
+  diffusion_alpha:                     0.0      # (Optional) Override the initial value for the thermal diffusion coefficient in schemes with thermal diffusion.
+  diffusion_beta:                      0.01     # (Optional) Override the decay/rise rate tuning parameter for the thermal diffusion.
+  diffusion_alpha_max:                 1.0      # (Optional) Override the maximal thermal diffusion coefficient that is allowed for a given particle.
+  diffusion_alpha_min:                 0.0      # (Optional) Override the minimal thermal diffusion coefficient that is allowed for a given particle.
 
 # Parameters of the stars
 Stars:
@@ -94,6 +95,8 @@ Gravity:
   comoving_nu_softening:         0.0026994 # Comoving Plummer-equivalent softening length for neutrino particles (in internal units).
   max_physical_nu_softening:     0.0007    # Maximal Plummer-equivalent softening length in physical coordinates for neutrino particles (in internal units).
   softening_ratio_background:    0.04      # Fraction of the mean inter-particle separation to use as Plummer-equivalent softening for the background DM particles.
+  max_adaptive_softening:        FLT_MAX   # (Optional) Maximal Plummer-equivalent co-moving adaptive softening (in internal units).
+  min_adaptive_softening:        0.        # (Optional) Minimal Plummer-equivalent co-moving adaptive softening (in internal units).
   rebuild_frequency:             0.01      # (Optional) Frequency of the gravity-tree rebuild in units of the number of g-particles (this is the default value).
   rebuild_active_fraction:       1.01      # (Optional) Fraction of active gravity particles needed to trigger a gravity-tree rebuild (not triggered by this if > 1, which is the default value).
   a_smooth:                      1.25      # (Optional) Smoothing scale in top-level cell sizes to smooth the long-range forces over (this is the default value).
@@ -135,6 +138,7 @@ Scheduler:
   cell_sub_size_pair_grav:   256000000 # (Optional) Maximal number of interactions per sub-pair gravity task  (this is the default value).
   cell_sub_size_self_grav:   32000     # (Optional) Maximal number of interactions per sub-self gravity task  (this is the default value).
   cell_split_size:           400       # (Optional) Maximal number of particles per cell (this is the default value).
+  grid_split_threshold:      400       # (Optional) Maximal number of particles per cell at construction level of Voronoi grid (this is the default value).
   cell_subdepth_diff_grav:   4         # (Optional) Maximal depth difference between leaves and a cell that gravity tasks can be pushed down to (this is the default value).
   cell_extra_parts:          0         # (Optional) Number of spare parts per top-level allocated at rebuild time for on-the-fly creation.
   cell_extra_gparts:         0         # (Optional) Number of spare gparts per top-level allocated at rebuild time for on-the-fly creation.
@@ -539,6 +543,7 @@ GrackleCooling:
   thermal_time_myr: 5                          # (optional) Time (in Myr) for adiabatic cooling after a feedback event.
   self_shielding_method: -1                    # (optional) Grackle (1->3 for Grackle's ones, 0 for none and -1 for GEAR)
   self_shielding_threshold_atom_per_cm3: 0.007 # Required only with GEAR's self shielding. Density threshold of the self shielding
+  maximal_density_Hpcm3:   1e4                 # Maximal density (in hydrogen atoms/cm^3) for cooling. Higher densities are floored to this value to ensure grackle works properly when interpolating beyond the cloudy_table maximal density. A value < 0 deactivates this parameter.
   HydrogenFractionByMass : 1.                  # Hydrogen fraction by mass (default is 0.76)
   use_radiative_transfer : 1                   # Arrays of ionization and heating rates are provided
   RT_heating_rate_cgs    : 0                   # heating         rate in units of / nHI_cgs 
@@ -553,6 +558,18 @@ GrackleCooling:
   H2_on_dust: 0                                # Flag to enable H2 formation on dust grains
   local_dust_to_gas_ratio : -1                 # The ratio of total dust mass to gas mass in the local Universe (-1 to use the Grackle default value). 
   cmb_temperature_floor : 1                    # Enable/disable an effective CMB temperature floor
+  initial_nHII_to_nH_ratio:    -1              # initial nHII   to nH ratio (number density ratio). Value is ignored if set to -1.
+  initial_nHeI_to_nH_ratio:    -1              # initial nHeI   to nH ratio (number density ratio). Value is ignored if set to -1.  
+  initial_nHeII_to_nH_ratio:   -1              # initial nHeII  to nH ratio (number density ratio). Value is ignored if set to -1.
+  initial_nHeIII_to_nH_ratio:  -1              # initial nHeIII to nH ratio (number density ratio). Value is ignored if set to -1.
+  initial_nDI_to_nH_ratio:     -1              # initial nDI    to nH ratio (number density ratio). Value is ignored if set to -1.
+  initial_nDII_to_nH_ratio:    -1              # initial nDII   to nH ratio (number density ratio). Value is ignored if set to -1.
+  initial_nHM_to_nH_ratio:     -1              # initial nHM    to nH ratio (number density ratio). Value is ignored if set to -1.
+  initial_nH2I_to_nH_ratio:    -1              # initial nH2I   to nH ratio (number density ratio). Value is ignored if set to -1.
+  initial_nH2II_to_nH_ratio:   -1              # initial nH2II  to nH ratio (number density ratio). Value is ignored if set to -1.
+  initial_nHDI_to_nH_ratio:    -1              # initial nHDI   to nH ratio (number density ratio). Value is ignored if set to -1.
+
+
   
 
 
@@ -573,7 +590,7 @@ EAGLEChemistry:
 
 # GEAR chemistry model (Revaz and Jablonka 2018)
 GEARChemistry:
-  initial_metallicity: 1         # Initial metallicity of the gas (mass fraction)
+  initial_metallicity: 1         # Initial metallicity of the gas (mass fraction). If < 0, then read the metallicities from the initial conditions. This applies to all particles.
   scale_initial_metallicity: 1   # Should we scale the initial metallicity with the solar one?
   diffusion_coefficient: 1e-3    # Coefficient for the diffusion (see Shen et al. 2010; differs by gamma^2 due to h^2).
 
@@ -675,11 +692,14 @@ EAGLEFeedback:
 # GEAR feedback model
 GEARFeedback:
   supernovae_energy_erg: 0.1e51                            # Energy released by a single supernovae.
+  supernovae_efficiency: 0.1                               # Supernovae energy efficiency, used for both SNIa and SNII. The energy released effectively is E_sn = supernovae_efficiency*E_sn
   yields_table: chemistry-AGB+OMgSFeZnSrYBaEu-16072013.h5  # Table containing the yields.
   yields_table_first_stars: chemistry-PopIII.hdf5          # Table containing the yields of the first stars.
   metallicity_max_first_stars: -1                          # Maximal metallicity (in mass fraction) for a first star (-1 to deactivate).
+  imf_transition_metallicity: -5                           # Maximal metallicity ([Fe/H]) for a first star (0 to deactivate).
   discrete_yields: 0                                       # Should we use discrete yields or the IMF integrated one?
   elements: [Fe, Mg, O, S, Zn, Sr, Y, Ba, Eu]              # Elements to read in the yields table. The number of element should be one less than the number of elements (N) requested during the configuration (--with-chemistry=GEAR_N).
+  discrete_star_minimal_gravity_mass_Msun: 0.1             # Minimal gravity mass after a discrete star completely explodes. In M_sun. (Default: 0.1)
 
 # AGORA feedback model
 AGORAFeedback:
@@ -798,35 +818,35 @@ SPINJETAGN:
   include_jets:                       1          # Global switch whether to include jet feedback [1] or not [0].
   turn_off_radiative_feedback:        0          # Global switch whether to turn off radiative (thermal) feedback [1] or not [0]. This should only be used if 'include_jets' is set to 1, since we want feedback in some form or another.
   alpha_acc:                          0.2        # Viscous alpha of the subgrid accretion disks. Likely to be within the 0.1-0.3 range. The main effect is that it sets the transition accretion rate between the thin and thick disk, as dot(m) = 0.2 * alpha^2.
-  mdot_crit_ADAF:                     0.03       # The transition normalized accretion rate (Eddington ratio) at which the disc goes from thick (low accretion rates) to thin (high accretion rates). The feedback also changes from kinetic jets to thermal isotropic, respectively.
+  mdot_crit_ADAF:                     0.01       # The transition normalized accretion rate (Eddington ratio) at which the disc goes from thick (low accretion rates) to thin (high accretion rates). The feedback also changes from kinetic jets to thermal isotropic, respectively.
   seed_spin:                          0.01       # The (randomly-directed) black hole spin assigned to BHs when they are seeded. Should be strictly between 0 and 1.
   AGN_jet_velocity_model:             Constant   # How AGN jet velocities are calculated. If 'Constant', a single value is used. If 'BlackHoleMass', then an empirical relation between halo mass and black hole mass is used to calculate jet velocities. 'HaloMass' is currently not supported. 
   v_jet_km_p_s:                       3160.      # Jet velocity to use if 'AGN_jet_velocity_model' is 'Constant'. Units are km/s.
-  v_jet_cs_ratio:                     10.        # This sets the jet velocity to v_jet_cs_ratio times the sound speed of the hot gas of the parent halo the black hole is in. This is used if 'AGN_jet_velocity_model' is 'BlackHoleMass'.
-  v_jet_BH_mass_scaling_reference_mass_Msun: 3.4e3 # The reference mass used in the relation between halo mass and BH mass used to calculate jet velocities. Only used if 'AGN_jet_velocity_model' is 'BlackHoleMass'.
-  v_jet_BH_mass_scaling_slope:        0.65       # The slope of the relation between halo mass and BH mass used to calculate jet velocities. Only used if 'AGN_jet_velocity_model' is 'BlackHoleMass'.
-  v_jet_mass_loading:                 400.       # The constant mass loading to use if 'AGN_jet_velocity_model' is 'MassLoading'.
-  v_jet_xi:                           1.         # The numerical multiplier by which the jet velocity formula is scaled, if 'AGN_jet_velocity_model' is 'Local'. If a value of 1 is used, the formulas are used as derived, i.e. they are not rescaled.
+  v_jet_BH_mass_scaling_reference_mass_Msun: 1e9 # The reference mass used in the relation between halo mass and BH mass used to calculate jet velocities. Only used if 'AGN_jet_velocity_model' is 'BlackHoleMass'.
+  v_jet_BH_mass_scaling_slope:        0.5        # The slope of the relation between halo mass and BH mass used to calculate jet velocities. Only used if 'AGN_jet_velocity_model' is 'BlackHoleMass'.
   v_jet_min_km_p_s:                   500        # The minimal jet velocity. This is used if 'AGN_jet_velocity_model' is 'BlackHoleMass', 'MassLoading' or 'Local'.
-  v_jet_max_km_p_s:                   1e5        # The maximal jet velocity. This is used if 'AGN_jet_velocity_model' is 'BlackHoleMass', 'MassLoading' or 'Local'.
-  temperature_hot_gas_min_K:          1e4        # The minimum temperature (in Kelvin) of hot gas to include in the calculation of the hot gas sound speed around the BH. This is only used if 'AGN_jet_velocity_model' or 'AGN_heating_temperature_model' is 'Local'.
+  v_jet_max_km_p_s:                   1e4        # The maximal jet velocity. This is used if 'AGN_jet_velocity_model' is 'BlackHoleMass', 'MassLoading' or 'Local'.
   opening_angle_in_degrees:           7.5        # The half-opening angle of the jet in degrees. Should use values < 15 unless for tests.
   N_jet:                              2          # Target number of particles to kick as part of a single jet feedback event. Should be a multiple of 2 to ensure approximate momentum conservation (we always kick particles in pairs, one from each 'side' of the BH, relative to the spin vector).
-  AGN_jet_feedback_model:             MinimumDistance   # Which particles to kick from the black hole smoothing kernels. Should be 'SpinAxis', 'MinimumDistance', 'MaximumDistance' or 'MinimumDensity'
+  AGN_jet_feedback_model:             MinimumDistance # Which particles to kick from the black hole smoothing kernels. Should be 'SpinAxis', 'MinimumDistance', 'MaximumDistance' or 'MinimumDensity'
   eps_f_jet:                          1.         # Coupling efficiency for jet feedback. No reason to expect this to be less than 1.
   fix_jet_efficiency:                 0          # Global switch whether to fix jet efficiency to a particular value [1], or use a spin-dependant formula [0].
   jet_efficiency:                     0.1        # The constant jet efficiency used if 'fix_jet_efficiency' is set to 1.
   fix_jet_direction:                  0          # Global switch whether to fix the jet direction to be along the z-axis, instead of along the spin vector.
-  accretion_efficiency:               0.1        # The accretion efficiency (suppression factor of the accretion rate) to use in the thick disc (ADAF), to represent the effects of subgrid winds that take away most of the mass flowing through the accretion disc.
+  accretion_efficiency_mode:          Variable   # How the accretion efficiencies are calculated for the thick accretion disc. If 'Constant', the value of 'accretion_efficiency_thick' will be used. If 'Variable', the accretion efficiency will scale with Eddington ratio.
+  accretion_efficiency_thick:         0.01       # The accretion efficiency (suppression factor of the accretion rate) to use in the thick disc (ADAF), to represent the effects of subgrid ADIOS winds that take away most of the mass flowing through the accretion disc.
+  accretion_efficiency_slim:          1          # The constant accretion efficiency to use in the slim disc, at super-Eddington rates.
+  ADIOS_s:                            0.5        # The exponent of the scaling between accretion efficiency and transition radius of the accretion disc, used if 'accretion_efficiency_mode' is 'Variable'.
+  ADIOS_R_in:                         1e4        # The normalisation (the value) of the transition radius of the accretion disc at the critical Eddington ratio (0.01), used if 'accretion_efficiency_mode' is 'Variable'.
   fix_radiative_efficiency:           0          # Global switch whether to fix the radiative efficiency to a particular value [1], or use a spin-dependant formula [0]. 
   radiative_efficiency:               0.1        # The constant jet efficiency used if 'fix_radiative_efficiency' is set to 1. Otherwise, this value is used to define the Eddington accretion rate.
   TD_region:                          B          # How to treat the subgrid accretion disk if it is thin, according to the Shakura & Sunyaev (1973) model. If set to B, region b will be used. If set to C, region c will be used.
   include_GRMHD_spindown:             1          # Whether to include high jet spindown rates from GRMHD simulations [1], or use an analytical formula that assumes extraction of energy from the rotational mass/energy of the BH.
-  turn_off_secondary_feedback:        1          # If set to 1, there will be only radiative (thermal) feedback in the thin disk mode, and only jets in the thick disk mode.
-  jet_h_r_slope:                      1.         # The slope of the dependence of jet efficiency on aspect ratio of the subgrid accretion disk, H/R. Default value is 1, and another reasonable value is 0 (same jet efficiency for all disks). Reality could be anything in between. This parameter is only used if turn_off_secondary_feedback is set to 0.
   delta_ADAF:                         0.2        # Electron heating parameter, which controls the strength of radiative feedback in thick disks. Should be between 0.1 and 0.5. This parameter is only used if turn_off_secondary_feedback is set to 0.
-  include_slim_disk:                  0          # Global switch whether to include super-Eddington accretion, modeled as the slim disk. If set to 0, disks will be considered thin even at very large accretion rates.
-
+  include_slim_disk:                  1          # Global switch whether to include super-Eddington accretion, modeled as the slim disk. If set to 0, disks will be considered thin even at very large accretion rates.
+  use_jets_in_thin_disc:              1          # Whether to use jets alongside radiation in the thin disc at moderate Eddington ratios.
+  use_ADIOS_winds:                    1          # Whether to include ADIOS winds in the thick disc as thermal isotropic feedback (same channel as thin disc quasar feedback, but with a different efficiency). 
+  slim_disc_wind_factor:              1          # The relative efficiency of slim disc winds at super-Eddington rates. If '1', full winds will be used, while '0' will lead to no winds. Any value in between those can also be used. The wind is implemented in the thermal isotropic feedback channel.
   
 # Parameters related to the neutrinos --------------------------------------------
 Neutrino:
@@ -857,7 +877,21 @@ DefaultSink:
 
 # GEAR sink particles
 GEARSink:
-  cut_off_radius:        1e-3       # Cut off radius of the sink particles (in internal units). This parameter should be adapted with the resolution.
+  cut_off_radius:        1e-3       # Cut off radius of the sink particles (in internal units). This parameter should be adapted with the resolution. 
+  f_acc: 0.8                                  # (Optional) Fraction of the cut_off_radius that determines if a gas particle should be swallowed wihtout additional check. It has to respect 0 <= f_acc <= 1. (Default: 0.8)
+  maximal_temperature:        3e10            # Maximal gas temperature for forming a star (in K)
+  density_threshold_g_per_cm3:          1.67e-23        # Minimal gas density for forming a star (in g/cm3 (1.67e-24 =1acc))
+  stellar_particle_mass_Msun: 20              # Mass of the stellar particle representing the low mass stars (continuous IMF sampling) (in solar mass)
+  minimal_discrete_mass_Msun: 8               # Minimal mass of stars represented by discrete particles (in solar mass)
+  stellar_particle_mass_first_stars_Msun: 20       # Mass of the stellar particle representing the low mass stars (continuous IMF sampling) (in solar mass). First stars
+  minimal_discrete_mass_first_stars_Msun: 8        # Minimal mass of stars represented by discrete particles (in solar mass). First stars
+  star_spawning_sigma_factor: 0.2                 # Factor to rescale the velocity dispersion of the stars when they are spawned. (Default: 0.2)
+  sink_formation_contracting_gas_criterion: 1     # (Optional) Activate the contracting gas check for sink formation. (Default: 1)
+  sink_formation_smoothing_length_criterion: 1    # (Optional) Activate the smoothing length check for sink formation. (Default: 1)
+  sink_formation_jeans_instability_criterion: 1   # (Optional) Activate the two Jeans instability checks for sink formation. (Default: 1)
+  sink_formation_bound_state_criterion: 1         # (Optional) Activate the bound state check for sink formation. (Default: 1)
+  sink_formation_overlapping_sink_criterion: 1    # (Optional) Activate the overlapping sink check for sink formation. (Default: 1)
+  disable_sink_formation: 0                   # (Optional) Disable sink formation. (Default: 0)
 
 # Parameters related to radiative transfer ---------------------------------------
 
@@ -930,6 +964,7 @@ PowerSpectrum:
   num_folds:         6                    # Number of foldings (1 means no foldings), determines the max k
   fold_factor:       4                    # (Optional) factor by which to reduce the box along each side each folding (default: 4)
   window_order:      3                    # (Optional) order of the mass assignment scheme (default: 3, TSC)
+  shift_centre_small_k_bins: 1            # (Optional) Correct the centre of the bins with a small k to account for the small number of modes entering the bin.
   output_list_on:    0                    # (Optional) Enable the output list
   output_list:       ./output_list_ps.txt # (Optional) File containing the output times (see documentation in "Parameter File" section)
   requested_spectra: ["matter-matter","cdm-cdm","starBH-starBH","gas-matter","pressure-pressure","matter-pressure", "neutrino0-neutrino1"] # Array of strings indicating which components should be correlated for power spectra

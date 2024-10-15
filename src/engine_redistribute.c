@@ -264,8 +264,8 @@ struct redist_mapper_data {
     int *dest =                                                            \
         mydata->dest + (ptrdiff_t)(parts - (struct TYPE *)mydata->base);   \
     int *lcounts = NULL;                                                   \
-    if ((lcounts = (int *)calloc(                                          \
-             sizeof(int), mydata->nr_nodes * mydata->nr_nodes)) == NULL)   \
+    if ((lcounts = (int *)calloc(mydata->nr_nodes * mydata->nr_nodes,      \
+                                 sizeof(int))) == NULL)                    \
       error("Failed to allocate counts thread-specific buffer");           \
     for (int k = 0; k < num_elements; k++) {                               \
       for (int j = 0; j < 3; j++) {                                        \
@@ -648,7 +648,7 @@ void engine_redistribute(struct engine *e) {
   /* Allocate temporary arrays to store the counts of particles to be sent
    * and the destination of each particle */
   int *counts;
-  if ((counts = (int *)calloc(sizeof(int), nr_nodes * nr_nodes)) == NULL)
+  if ((counts = (int *)calloc(nr_nodes * nr_nodes, sizeof(int))) == NULL)
     error("Failed to allocate counts temporary buffer.");
 
   int *dest;
@@ -727,7 +727,7 @@ void engine_redistribute(struct engine *e) {
 
   /* Get destination of each s-particle */
   int *s_counts;
-  if ((s_counts = (int *)calloc(sizeof(int), nr_nodes * nr_nodes)) == NULL)
+  if ((s_counts = (int *)calloc(nr_nodes * nr_nodes, sizeof(int))) == NULL)
     error("Failed to allocate s_counts temporary buffer.");
 
   int *s_dest;
@@ -793,7 +793,7 @@ void engine_redistribute(struct engine *e) {
 
   /* Get destination of each b-particle */
   int *b_counts;
-  if ((b_counts = (int *)calloc(sizeof(int), nr_nodes * nr_nodes)) == NULL)
+  if ((b_counts = (int *)calloc(nr_nodes * nr_nodes, sizeof(int))) == NULL)
     error("Failed to allocate b_counts temporary buffer.");
 
   int *b_dest;
@@ -859,7 +859,7 @@ void engine_redistribute(struct engine *e) {
 
   /* Get destination of each g-particle */
   int *g_counts;
-  if ((g_counts = (int *)calloc(sizeof(int), nr_nodes * nr_nodes)) == NULL)
+  if ((g_counts = (int *)calloc(nr_nodes * nr_nodes, sizeof(int))) == NULL)
     error("Failed to allocate g_gcount temporary buffer.");
 
   int *g_dest;

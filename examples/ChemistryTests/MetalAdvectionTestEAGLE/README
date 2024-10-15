@@ -1,0 +1,16 @@
+Metal advection test for the EAGLE chemistry scheme
+
+In some schemes, like the meshless (gizmo) scheme, particles exchange 
+masses via fluxes. This example tests whether the metals are correctly
+advected with those mass fluxes (for the EAGLE chemistry scheme)
+
+To run this test, compile with:
+    --with-hydro-dimension=2 --with-hydro=gizmo-mfv --with-riemann-solver=hllc --with-chemistry=EAGLE
+
+Due to the nature of this test, not much mass will be exchanged when running in Lagrangian mode,
+and hence not much advection will happen.
+To be able to see the effect of the advection, the hydrodynamics must be run in Eulerian mode.
+E.g. for gizmo-mvf: uncomment `#define GIZMO_FIX_PARTICLES` in src/const.h.
+
+Expected output when running in Eulerian mode is that the profiles should maintain their shape,
+but edges will be blurred due to numerical diffusion.

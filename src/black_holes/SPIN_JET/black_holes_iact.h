@@ -1062,10 +1062,11 @@ runner_iact_nonsym_bh_gas_feedback(
           bi->id, pj->id, xpj->v_full[0], xpj->v_full[1], xpj->v_full[2]);
 #endif
 
-      /* Store the jet energy */
+      /* Store the jet energy and other variables of interest */
       const double delta_energy_jet = delta_u_jet * hydro_get_mass(pj);
       tracers_after_jet_feedback(pj, xpj, with_cosmology, cosmo->a, time,
-                                 delta_energy_jet, vel_kick);
+                                 delta_energy_jet, vel_kick, bi->accretion_mode,
+                                 bi->id);
 
       /* Impose maximal viscosity */
       hydro_diffusive_feedback_reset(pj);

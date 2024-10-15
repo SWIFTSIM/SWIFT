@@ -35,6 +35,7 @@
 #elif defined(STARS_GEAR)
 #include "./stars/GEAR/stars.h"
 #include "./stars/GEAR/stars_iact.h"
+#include "./stars/GEAR/stars_stellar_type.h"
 #else
 #error "Invalid choice of star model"
 #endif

@@ -152,6 +152,40 @@ void los_init(const double dim[3], struct los_props *los_params,
       los_params->range_when_shooting_down_axis[2]);
 }
 
+void los_io_output_check(const struct engine *e) {
+
+  /* What kind of run are we working with? */
+  struct swift_params *params = e->parameter_file;
+  const int with_cosmology = e->policy & engine_policy_cosmology;
+  const int with_cooling = e->policy & engine_policy_cooling;
+  const int with_temperature = e->policy & engine_policy_temperature;
+  const int with_fof = e->policy & engine_policy_fof;
+#ifdef HAVE_VELOCIRAPTOR
+  const int with_stf = (e->policy & engine_policy_structure_finding) &&
+                       (e->s->gpart_group_data != NULL);
+#else
+  const int with_stf = 0;
+#endif
+  const int with_rt = e->policy & engine_policy_rt;
+
+  int num_fields = 0;
+  struct io_props list[100];
+
+  /* Find all the gas output fields */
+  io_select_hydro_fields(e->s->parts, e->s->xparts, with_cosmology,
+                         with_cooling, with_temperature, with_fof, with_stf,
+                         with_rt, e, &num_fields, list);
+
+  /* Loop over each output field */
+  for (int i = 0; i < num_fields; i++) {
+
+    /* Did the user cancel this field? */
+    char field[PARSER_MAX_LINE_SIZE];
+    sprintf(field, "SelectOutputLOS:%.*s", FIELD_BUFFER_SIZE, list[i].name);
+    parser_get_opt_param_int(params, field, 1);
+  }
+}
+
 /**
  *  @brief Create a #line_of_sight object from its attributes
  */
@@ -376,6 +410,9 @@ void write_los_hdf5_dataset(const struct io_props props, const size_t N,
   io_write_attribute_f(h_data, "a-scale exponent", props.scale_factor_exponent);
   io_write_attribute_s(h_data, "Expression for physical CGS units", buffer);
   io_write_attribute_s(h_data, "Lossy compression filter", comp_buffer);
+  io_write_attribute_b(h_data, "Value stored as physical", props.is_physical);
+  io_write_attribute_b(h_data, "Property can be converted to comoving",
+                       props.is_convertible_to_comoving);
 
   /* Write the actual number this conversion factor corresponds to */
   const double factor =
@@ -733,14 +770,21 @@ void do_line_of_sight(struct engine *e) {
 #endif
 
   /* Node 0 creates the HDF5 file. */
-  hid_t h_file = -1, h_grp = -1;
+  hid_t h_file = -1, h_grp = -1, h_props = -1;
   char fileName[256], groupName[200];
 
   if (e->nodeID == 0) {
     sprintf(fileName, "%s_%04i.hdf5", LOS_params->basename,
             e->los_output_count);
     if (verbose) message("Creating LOS file: %s", fileName);
-    h_file = H5Fcreate(fileName, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+
+    /* Set the minimal API version to avoid issues with advanced features */
+    h_props = H5Pcreate(H5P_FILE_ACCESS);
+    hid_t err = H5Pset_libver_bounds(h_props, HDF5_LOWEST_FILE_FORMAT_VERSION,
+                                     HDF5_HIGHEST_FILE_FORMAT_VERSION);
+    if (err < 0) error("Error setting the hdf5 API version");
+
+    h_file = H5Fcreate(fileName, H5F_ACC_TRUNC, H5P_DEFAULT, h_props);
     if (h_file < 0) error("Error while opening file '%s'.", fileName);
   }
 
@@ -1045,6 +1089,7 @@ void do_line_of_sight(struct engine *e) {
 
     /* Close HDF5 file */
     H5Fclose(h_file);
+    H5Pclose(h_props);
   }
 
   /* Up the LOS counter. */

@@ -65,7 +65,7 @@ int current_fof_attach_type;
 int current_fof_ignore_type;
 
 /* Are we timing calculating group properties in the FOF? */
-//#define WITHOUT_GROUP_PROPS
+// #define WITHOUT_GROUP_PROPS
 
 /**
  * @brief Properties of a group used for black hole seeding
@@ -92,6 +92,27 @@ size_t node_offset;
 #ifdef SWIFT_DEBUG_CHECKS
 static integertime_t ti_current;
 #endif
+
+void fof_set_current_types(const struct fof_props *props) {
+
+  /* Initialize the FoF linking mode */
+  current_fof_linking_type = 0;
+  for (int i = 0; i < swift_type_count; ++i)
+    if (props->fof_linking_types[i]) {
+      current_fof_linking_type |= (1 << (i + 1));
+    }
+
+  /* Initialize the FoF attaching mode */
+  current_fof_attach_type = 0;
+  for (int i = 0; i < swift_type_count; ++i)
+    if (props->fof_attach_types[i]) {
+      current_fof_attach_type |= (1 << (i + 1));
+    }
+
+  /* Construct the combined mask of ignored particles */
+  current_fof_ignore_type =
+      ~(current_fof_linking_type | current_fof_attach_type);
+}
 
 /**
  * @brief Initialise the properties of the FOF code.
@@ -176,23 +197,8 @@ void fof_init(struct fof_props *props, struct swift_params *params,
       error("FOF can't use a type (%s) as both linking and attaching type!",
             part_type_names[i]);
 
-  /* Initialize the FoF linking mode */
-  current_fof_linking_type = 0;
-  for (int i = 0; i < swift_type_count; ++i)
-    if (props->fof_linking_types[i]) {
-      current_fof_linking_type |= (1 << (i + 1));
-    }
-
-  /* Initialize the FoF attaching mode */
-  current_fof_attach_type = 0;
-  for (int i = 0; i < swift_type_count; ++i)
-    if (props->fof_attach_types[i]) {
-      current_fof_attach_type |= (1 << (i + 1));
-    }
-
-  /* Construct the combined mask of ignored particles */
-  current_fof_ignore_type =
-      ~(current_fof_linking_type | current_fof_attach_type);
+  /* Set the current FOF types */
+  fof_set_current_types(props);
 
   /* Report what we do */
   if (engine_rank == 0) {
@@ -1216,6 +1222,8 @@ static INLINE void add_foreign_link_to_list(
 
     message("Re-allocating local group links from %d to %d elements.",
             *local_link_count, new_size);
+
+    if (new_size < 0) error("Overflow in size of list of foreign links");
   }
 
   /* Store the particle group properties for communication. */
@@ -2342,8 +2350,8 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
         }
 
       } /* Foreign root */
-    }   /* Particle is in a group */
-  }     /* Loop over particles */
+    } /* Particle is in a group */
+  } /* Loop over particles */
 
   size_t nsend = map.size;
   struct fof_mass_send_hashmap hashmap_mass_send = {NULL, 0};
@@ -3391,6 +3399,122 @@ void fof_link_attachable_particles(struct fof_props *props,
 }
 
 /**
+ * @brief Construct an array indicating whether a given root does not appear
+ * in the global list of fragments to link.
+ *
+ * Nothing to do here if not running with MPI or if there are no attacheables.
+ *
+ * @param props The properties fof the FOF scheme.
+ * @param s The #space we work with.
+ */
+void fof_build_list_of_purely_local_groups(struct fof_props *props,
+                                           const struct space *s) {
+
+  /* Is there anything to attach?
+   * (The array we construct here is only useful with attacheables)*/
+  if (!current_fof_attach_type) return;
+
+#ifdef WITH_MPI
+
+  struct engine *e = s->e;
+
+  /* Abort if only one node */
+  if (e->nr_nodes == 1) return;
+
+  /* Local copy of the variable set in the mapper */
+  const size_t nr_gparts = s->nr_gparts;
+  size_t *restrict group_index = props->group_index;
+  const int group_link_count = props->group_link_count;
+
+  /* Sum the total number of links across MPI domains over each MPI rank. */
+  int global_group_link_count = 0;
+  MPI_Allreduce(&group_link_count, &global_group_link_count, 1, MPI_INT,
+                MPI_SUM, MPI_COMM_WORLD);
+
+  if (global_group_link_count < 0)
+    error("Overflow of the size of the global list of foregin links");
+
+  struct fof_mpi *global_group_links = NULL;
+  int *displ = NULL, *group_link_counts = NULL;
+
+  if (swift_memalign("fof_global_group_links", (void **)&global_group_links,
+                     SWIFT_STRUCT_ALIGNMENT,
+                     global_group_link_count * sizeof(struct fof_mpi)) != 0)
+    error("Error while allocating memory for the global list of group links");
+
+  if (posix_memalign((void **)&group_link_counts, SWIFT_STRUCT_ALIGNMENT,
+                     e->nr_nodes * sizeof(int)) != 0)
+    error(
+        "Error while allocating memory for the number of group links on each "
+        "MPI rank");
+
+  if (posix_memalign((void **)&displ, SWIFT_STRUCT_ALIGNMENT,
+                     e->nr_nodes * sizeof(int)) != 0)
+    error(
+        "Error while allocating memory for the displacement in memory for the "
+        "global group link list");
+
+  /* Gather the total number of links on each rank. */
+  MPI_Allgather(&group_link_count, 1, MPI_INT, group_link_counts, 1, MPI_INT,
+                MPI_COMM_WORLD);
+
+  /* Set the displacements into the global link list using the link counts from
+   * each rank */
+  displ[0] = 0;
+  for (int i = 1; i < e->nr_nodes; i++) {
+    displ[i] = displ[i - 1] + group_link_counts[i - 1];
+    if (displ[i] < 0) error("Number of group links overflowing!");
+  }
+
+  /* Gather the global link list on all ranks. */
+  MPI_Allgatherv(props->group_links, group_link_count, fof_mpi_type,
+                 global_group_links, group_link_counts, displ, fof_mpi_type,
+                 MPI_COMM_WORLD);
+
+  /* Clean up memory. */
+  free(group_link_counts);
+  free(displ);
+
+  /* We now have a list of all the fragment connections.
+   * We can iterate over the *local* groups to identify the ones which
+   * are *not* appearing in the list */
+
+  if (posix_memalign((void **)&props->is_purely_local, SWIFT_STRUCT_ALIGNMENT,
+                     nr_gparts * sizeof(char)) != 0)
+    error("Error while allocating memory for the list of purely local groups");
+
+  /* Start by pretending every group is purely local */
+  for (size_t i = 0; i < nr_gparts; ++i) props->is_purely_local[i] = 1;
+
+  /* Now loop over the list of inter-rank connections and flag each halo present
+   * in the list */
+  for (int k = 0; k < global_group_link_count; ++k) {
+
+    const size_t group_i = global_group_links[k].group_i;
+    const size_t group_j = global_group_links[k].group_j;
+
+    const size_t root_i =
+        fof_find_global(group_i - node_offset, group_index, nr_gparts);
+    const size_t root_j =
+        fof_find_global(group_j - node_offset, group_index, nr_gparts);
+
+    if (is_local(root_i, nr_gparts)) {
+      const size_t local_root = root_i - node_offset;
+      props->is_purely_local[local_root] = 0;
+    }
+
+    if (is_local(root_j, nr_gparts)) {
+      const size_t local_root = root_j - node_offset;
+      props->is_purely_local[local_root] = 0;
+    }
+  }
+
+  /* Clean up the last allocated array */
+  swift_free("fof_global_group_links", global_group_links);
+#endif
+}
+
+/**
  * @brief Process all the attachable-linkable connections to add the
  * attachables to the groups they belong to.
  *
@@ -3406,14 +3530,15 @@ void fof_finalise_attachables(struct fof_props *props, const struct space *s) {
 
   const size_t nr_gparts = s->nr_gparts;
 
-  char *found_attachable_link = props->found_attachable_link;
-  size_t *restrict group_index = props->group_index;
+  char *restrict found_attachable_link = props->found_attachable_link;
   size_t *restrict attach_index = props->attach_index;
+  size_t *restrict group_index = props->group_index;
   size_t *restrict group_size = props->group_size;
 
 #ifdef WITH_MPI
 
   /* Get pointers to global arrays. */
+  char *restrict is_purely_local = props->is_purely_local;
   int *restrict group_links_size = &props->group_links_size;
   int *restrict group_link_count = &props->group_link_count;
   struct fof_mpi **group_links = &props->group_links;
@@ -3430,16 +3555,30 @@ void fof_finalise_attachables(struct fof_props *props, const struct space *s) {
       const size_t root_i =
           fof_find_global(group_index[i] - node_offset, group_index, nr_gparts);
 
-      /* Update the size of the group the particle belongs to */
+      /* Update the size of the group the particle belongs to.
+       * The strategy emploed depends on where the root and particles are. */
       if (is_local(root_j, nr_gparts)) {
 
         const size_t local_root = root_j - node_offset;
 
-        group_index[i] = local_root + node_offset;
-        group_size[local_root]++;
+        if (is_purely_local[local_root]) { /* All parties involved are local */
 
-      } else {
+          /* We can directly attack the list of groups */
+          group_index[i] = local_root + node_offset;
+          group_size[local_root]++;
 
+        } else { /* Group is involved in some cross-boundaries mixing */
+
+          /* Add to the list of links to be resolved globally later */
+          add_foreign_link_to_list(group_link_count, group_links_size,
+                                   group_links, group_links, root_i, root_j,
+                                   /*size_i=*/1,
+                                   /*size_j=*/2);
+        }
+
+      } else { /* Root is foreign */
+
+        /* Add to the list of links to be resolved globally later */
         add_foreign_link_to_list(group_link_count, group_links_size,
                                  group_links, group_links, root_i, root_j,
                                  /*size_i=*/1,
@@ -3447,6 +3586,9 @@ void fof_finalise_attachables(struct fof_props *props, const struct space *s) {
       }
     }
   }
+
+  /* We can free the list of purely local groups */
+  free(props->is_purely_local);
 
 #else /* not WITH_MPI */
 
@@ -3515,6 +3657,9 @@ void fof_link_foreign_fragments(struct fof_props *props,
   int global_group_link_count = 0;
   MPI_Allreduce(&group_link_count, &global_group_link_count, 1, MPI_INT,
                 MPI_SUM, MPI_COMM_WORLD);
+
+  if (global_group_link_count < 0)
+    error("Overflow of the size of the global list of foreign links");
 
   struct fof_mpi *global_group_links = NULL;
   int *displ = NULL, *group_link_counts = NULL;
@@ -4140,7 +4285,7 @@ void fof_compute_group_props(struct fof_props *props,
   /* Dump group data. */
   if (dump_results) {
 #ifdef HAVE_HDF5
-    write_fof_hdf5_catalogue(props, num_groups_local, s->e);
+    write_fof_hdf5_catalogue(props, (long long)num_groups_local, s->e);
 #else
     error("Can't dump hdf5 catalogues with hdf5 switched off!");
 #endif
@@ -4231,6 +4376,8 @@ void fof_struct_restore(struct fof_props *props, FILE *stream) {
 
   restart_read_blocks((void *)props, sizeof(struct fof_props), 1, stream, NULL,
                       "fof_props");
+
+  fof_set_current_types(props);
 }
 
 #endif /* WITH_FOF */

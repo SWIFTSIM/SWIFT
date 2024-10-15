@@ -39,19 +39,14 @@ void print_bytes(void *p, size_t len) {
 
 void test(void) {
 
-#if defined(SHADOWFAX_SPH)
-  /* Initialize the Voronoi simulation box */
-  double box_anchor[3] = {-2.0f, -2.0f, -2.0f};
-  double box_side[3] = {6.0f, 6.0f, 6.0f};
-/*  voronoi_set_box(box_anchor, box_side);*/
-#endif
-
   /* Start with some values for the cosmological parameters */
   const float a = (float)random_uniform(0.8, 1.);
   const float H = 1.f;
   const float mu_0 = 4. * M_PI;
   const integertime_t ti_current = 1;
   const double time_base = 1e-5;
+  /* sink cut-off radius */
+  const float rcut = 0.5;
 
   /* Create two random particles (don't do this at home !) */
   struct part pi, pj;
@@ -69,59 +64,6 @@ void test(void) {
   pj.id = 2ll;
   pi.time_bin = 1;
   pj.time_bin = 1;
-
-#if defined(SHADOWFAX_SPH)
-  /* Give the primitive variables sensible values, since the Riemann solver does
-     not like negative densities and pressures */
-  pi.primitives.rho = random_uniform(0.1f, 1.0f);
-  pi.primitives.v[0] = random_uniform(-10.0f, 10.0f);
-  pi.primitives.v[1] = random_uniform(-10.0f, 10.0f);
-  pi.primitives.v[2] = random_uniform(-10.0f, 10.0f);
-  pi.primitives.P = random_uniform(0.1f, 1.0f);
-  pj.primitives.rho = random_uniform(0.1f, 1.0f);
-  pj.primitives.v[0] = random_uniform(-10.0f, 10.0f);
-  pj.primitives.v[1] = random_uniform(-10.0f, 10.0f);
-  pj.primitives.v[2] = random_uniform(-10.0f, 10.0f);
-  pj.primitives.P = random_uniform(0.1f, 1.0f);
-  /* make gradients zero */
-  pi.primitives.gradients.rho[0] = 0.0f;
-  pi.primitives.gradients.rho[1] = 0.0f;
-  pi.primitives.gradients.rho[2] = 0.0f;
-  pi.primitives.gradients.v[0][0] = 0.0f;
-  pi.primitives.gradients.v[0][1] = 0.0f;
-  pi.primitives.gradients.v[0][2] = 0.0f;
-  pi.primitives.gradients.v[1][0] = 0.0f;
-  pi.primitives.gradients.v[1][1] = 0.0f;
-  pi.primitives.gradients.v[1][2] = 0.0f;
-  pi.primitives.gradients.v[2][0] = 0.0f;
-  pi.primitives.gradients.v[2][1] = 0.0f;
-  pi.primitives.gradients.v[2][2] = 0.0f;
-  pi.primitives.gradients.P[0] = 0.0f;
-  pi.primitives.gradients.P[1] = 0.0f;
-  pi.primitives.gradients.P[2] = 0.0f;
-  pj.primitives.gradients.rho[0] = 0.0f;
-  pj.primitives.gradients.rho[1] = 0.0f;
-  pj.primitives.gradients.rho[2] = 0.0f;
-  pj.primitives.gradients.v[0][0] = 0.0f;
-  pj.primitives.gradients.v[0][1] = 0.0f;
-  pj.primitives.gradients.v[0][2] = 0.0f;
-  pj.primitives.gradients.v[1][0] = 0.0f;
-  pj.primitives.gradients.v[1][1] = 0.0f;
-  pj.primitives.gradients.v[1][2] = 0.0f;
-  pj.primitives.gradients.v[2][0] = 0.0f;
-  pj.primitives.gradients.v[2][1] = 0.0f;
-  pj.primitives.gradients.v[2][2] = 0.0f;
-  pj.primitives.gradients.P[0] = 0.0f;
-  pj.primitives.gradients.P[1] = 0.0f;
-  pj.primitives.gradients.P[2] = 0.0f;
-
-  /* set time step to reasonable value */
-  pi.force.dt = 0.001;
-  pj.force.dt = 0.001;
-
-  voronoi_cell_init(&pi.cell, pi.x, box_anchor, box_side);
-  voronoi_cell_init(&pj.cell, pj.x, box_anchor, box_side);
-#endif
 
 #if defined(GIZMO_MFV_SPH)
   /* Give the primitive variables sensible values, since the Riemann solver does
@@ -200,6 +142,7 @@ void test(void) {
   runner_iact_chemistry(r2, dx, pi.h, pj.h, &pi, &pj, a, H);
   runner_iact_pressure_floor(r2, dx, pi.h, pj.h, &pi, &pj, a, H);
   runner_iact_star_formation(r2, dx, pi.h, pj.h, &pi, &pj, a, H);
+  runner_iact_sink(r2, dx, pi.h, pj.h, &pi, &pj, a, H, rcut);
 
   /* Call the non-symmetric version */
   runner_iact_nonsym_density(r2, dx, pi2.h, pj2.h, &pi2, &pj2, a, H);
@@ -207,6 +150,7 @@ void test(void) {
   runner_iact_nonsym_chemistry(r2, dx, pi2.h, pj2.h, &pi2, &pj2, a, H);
   runner_iact_nonsym_pressure_floor(r2, dx, pi2.h, pj2.h, &pi2, &pj2, a, H);
   runner_iact_nonsym_star_formation(r2, dx, pi2.h, pj2.h, &pi2, &pj2, a, H);
+  runner_iact_nonsym_sink(r2, dx, pi2.h, pj2.h, &pi2, &pj2, a, H, rcut);
   dx[0] = -dx[0];
   dx[1] = -dx[1];
   dx[2] = -dx[2];
@@ -215,6 +159,7 @@ void test(void) {
   runner_iact_nonsym_chemistry(r2, dx, pj2.h, pi2.h, &pj2, &pi2, a, H);
   runner_iact_nonsym_pressure_floor(r2, dx, pj2.h, pi2.h, &pj2, &pi2, a, H);
   runner_iact_nonsym_star_formation(r2, dx, pj2.h, pi2.h, &pj2, &pi2, a, H);
+  runner_iact_nonsym_sink(r2, dx, pj2.h, pi2.h, &pj2, &pi2, a, H, rcut);
 
   /* Check that the particles are the same */
   i_not_ok = memcmp(&pi, &pi2, sizeof(struct part));
