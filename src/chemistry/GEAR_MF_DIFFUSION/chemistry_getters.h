@@ -21,6 +21,7 @@
 
 #include "chemistry_struct.h"
 #include "const.h"
+#include "cosmology.h"
 #include "hydro.h"
 #include "kernel_hydro.h"
 #include "part.h"
@@ -112,6 +113,10 @@ __attribute__((always_inline)) INLINE static void chemistry_get_physical_shear_t
     for (int j = 0; j < 3; ++j) {
       S[i][j] = 0.5 * (p->chemistry_data.filtered.grad_v_tilde[i][j] +
                        p->chemistry_data.filtered.grad_v_tilde[j][i]);
+
+      /* Convert to physical units.
+	 In Swift, v_peculiar = v_c / a ; grad_p = a^{-1} grad_c. */
+      S[i][j] *= cosmo->a2_inv;
     }
   }
 }
@@ -322,9 +327,9 @@ chemistry_compute_physical_diffusion_flux(const struct part *restrict p, int met
   if (chem_data->diffusion_mode == isotropic_constant ||
       chem_data->diffusion_mode == isotropic_smagorinsky) {
     /* Isotropic diffusion: K = kappa * I_3. */
-    F_diff[0] = -kappa * p->chemistry_data.gradients.Z[metal][0];
-    F_diff[1] = -kappa * p->chemistry_data.gradients.Z[metal][1];
-    F_diff[2] = -kappa * p->chemistry_data.gradients.Z[metal][2];
+    F_diff[0] = -kappa * p->chemistry_data.gradients.Z[metal][0]*cosmo->a_inv;
+    F_diff[1] = -kappa * p->chemistry_data.gradients.Z[metal][1]*cosmo->a_inv;
+    F_diff[2] = -kappa * p->chemistry_data.gradients.Z[metal][2]*cosmo->a_inv;
   } else {
     /* Initialise to the flux to 0 */
     F_diff[0] = 0.0;
@@ -337,7 +342,7 @@ chemistry_compute_physical_diffusion_flux(const struct part *restrict p, int met
 
     for (int i = 0; i < 3; ++i) {
       for (int j = 0; j < 3; ++j) {
-        F_diff[i] += K[i][j] * p->chemistry_data.gradients.Z[metal][j];
+        F_diff[i] += K[i][j] * p->chemistry_data.gradients.Z[metal][j]*cosmo->a_inv;
       }
     } /* End of matrix multiplication */
   } /* end of if else diffusion_mode */
