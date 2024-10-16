@@ -349,7 +349,7 @@ __attribute__((always_inline)) INLINE static float chemistry_timestep(
   if (chem_data->use_supertimestepping) {
     return FLT_MAX;
   } else {
-    return chemistry_compute_parabolic_timestep(p, chem_data);
+    return chemistry_compute_parabolic_timestep(p, chem_data, cosmo);
   }
 }
 
@@ -387,10 +387,10 @@ __attribute__((always_inline)) INLINE static float chemistry_supertimestep(
       if (substep > 0.0) ++chd->timesteps.current_substep;
     } else {
       const float parabolic_explicit_timestep =
-          chemistry_compute_parabolic_timestep(p, cd);
+	chemistry_compute_parabolic_timestep(p, cd, cosmo);
 
       /* Get the supertimestep from CFL condition */
-      float super_timestep = chemistry_compute_CFL_supertimestep(p, cd);
+      float super_timestep = chemistry_compute_CFL_supertimestep(p, cd, cosmo);
 
       /* If the hydro timestep is smaller than the parabolic timestep, then
          don't start supertimestepping. Do parabolic timestep instead.
@@ -436,7 +436,7 @@ __attribute__((always_inline)) INLINE static float chemistry_supertimestep(
     } else {
       /* Reset the supertimestepping */
       chd->timesteps.current_substep = cd->N_substeps + 1;
-      return chemistry_compute_parabolic_timestep(p, cd);
+      return chemistry_compute_parabolic_timestep(p, cd, cosmo);
     }
   } else {
     return FLT_MAX;
@@ -570,7 +570,7 @@ __attribute__((always_inline)) INLINE static void chemistry_prepare_force(
   p->chemistry_data.flux_dt = dt_therm;
 
   /* Update the diffusion coefficient for the new loops */
-  p->chemistry_data.kappa = chemistry_compute_diffusion_coefficient(p, cd);
+  p->chemistry_data.kappa = chemistry_compute_diffusion_coefficient(p, cd, cosmo);
 }
 
 /**
@@ -638,7 +638,7 @@ __attribute__((always_inline)) INLINE static void chemistry_end_force(
   p->geometry.wcorr = 1.0f;
 
   /* Store the density of the current timestep for the next timestep */
-  p->chemistry_data.rho_prev = chemistry_get_density(p);
+  p->chemistry_data.rho_prev = chemistry_get_comoving_density(p);
   p->chemistry_data.filtered.rho_prev = p->chemistry_data.filtered.rho;
 
   /* Take care of the case where \bar{rho_prev} = 0 */
