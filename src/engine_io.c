@@ -1326,7 +1326,7 @@ void engine_io_check_snapshot_triggers(struct engine *e) {
           total_time =
               cosmology_get_delta_time(e->cosmology, ti_begin, ti_next_snap);
         } else {
-          total_time = (e->ti_next_snapshot - ti_begin) * e->time_base;
+          total_time = (ti_next_snap - ti_begin) * e->time_base;
         }
 
         /* Time to deduct = time since the start of the step - trigger time */
@@ -1384,10 +1384,10 @@ void engine_io_check_snapshot_triggers(struct engine *e) {
         /* Time from the start of the particle's step to the snapshot */
         double total_time;
         if (with_cosmology) {
-          total_time = cosmology_get_delta_time(e->cosmology, ti_begin,
-                                                e->ti_next_snapshot);
+          total_time =
+              cosmology_get_delta_time(e->cosmology, ti_begin, ti_next_snap);
         } else {
-          total_time = (e->ti_next_snapshot - ti_begin) * e->time_base;
+          total_time = (ti_next_snap - ti_begin) * e->time_base;
         }
 
         /* Time to deduct = time since the start of the step - trigger time */
@@ -1444,10 +1444,10 @@ void engine_io_check_snapshot_triggers(struct engine *e) {
         /* Time from the start of the particle's step to the snapshot */
         double total_time;
         if (with_cosmology) {
-          total_time = cosmology_get_delta_time(e->cosmology, ti_begin,
-                                                e->ti_next_snapshot);
+          total_time =
+              cosmology_get_delta_time(e->cosmology, ti_begin, ti_next_snap);
         } else {
-          total_time = (e->ti_next_snapshot - ti_begin) * e->time_base;
+          total_time = (ti_next_snap - ti_begin) * e->time_base;
         }
 
         /* Time to deduct = time since the start of the step - trigger time */
