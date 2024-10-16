@@ -502,7 +502,7 @@ __attribute__((always_inline)) INLINE static void chemistry_first_init_sink(
  *
  * @param si_data The black hole data to add to.
  * @param sj_data The gas data to use.
- * @param gas_mass The mass of the gas particle.
+ * @param mi_old The mass of the #sink i before accreting the #part p.
  */
 __attribute__((always_inline)) INLINE static void chemistry_add_sink_to_sink(
     struct sink* si, const struct sink* sj, const double mi_old) {
@@ -520,7 +520,7 @@ __attribute__((always_inline)) INLINE static void chemistry_add_sink_to_sink(
  *
  * @param sp_data The sink data to add to.
  * @param p_data The gas data to use.
- * @param gas_mass The mass of the gas particle.
+ * @param ms_old The mass of the #sink before accreting the #part p.
  */
 __attribute__((always_inline)) INLINE static void chemistry_add_part_to_sink(
     struct sink* s, const struct part* p, const double ms_old) {
