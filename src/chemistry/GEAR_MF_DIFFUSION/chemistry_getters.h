@@ -100,6 +100,59 @@ __attribute__((always_inline)) INLINE static float chemistry_get_comoving_densit
 }
 
 /**
+ * @brief Compute the physical diffusion coefficient of the particle.
+ *
+ * This must be called in chemistry_prepare_force() to have the values of the
+ * density and the matrix S (which depends on grad_v_tilde).
+ *
+ * Note: The diffusion coefficient depends on the particle's density. If the
+ * density is 0, then the coefficient is 0 as well and the timestep for
+ * chemistry will be 0.
+ *
+ * @param p Particle.
+ * @param cosmo The current cosmological model.
+ */
+__attribute__((always_inline)) INLINE static double
+chemistry_compute_diffusion_coefficient(
+  struct part *restrict p, const struct chemistry_global_data *chem_data,
+  const struct cosmology *cosmo) {
+
+  float rho = p->chemistry_data.filtered.rho;
+
+  /* In case the filtered density is 0, e.g. during the fake-timestep,
+     approximate the density */
+  if (rho == 0.0) {
+    rho = chemistry_get_comoving_density(p);
+  }
+
+  /* Convert density to physical units. */
+  rho *= cosmo->a3_inv;
+
+  /* Convert smoothing length to physical units */
+  const double h2_p = cosmo->a*cosmo->a * p->h * p->h;
+
+  if (chem_data->diffusion_mode == isotropic_constant) {
+    return chem_data->diffusion_coefficient;
+  } else if (chem_data->diffusion_mode == isotropic_smagorinsky) {
+    /* Get the physical shear tensor */
+    double S[3][3];
+    chemistry_get_physical_shear_tensor(p, S, cosmo);
+
+    /* In the smagorinsky model, we remove the trace from S */
+    const double trace = S[0][0] + S[1][1] + S[2][2];
+
+    S[0][0] -= trace;
+    S[1][1] -= trace;
+    S[2][2] -= trace;
+
+    return chem_data->diffusion_coefficient * kernel_gamma2 * h2_p * rho * chemistry_get_matrix_norm(S);
+  } else {
+    /* Note that this is multiplied by the matrix S to get the full matrix K */
+    return chem_data->diffusion_coefficient * kernel_gamma2 * h2_p * rho;
+  }
+}
+
+/**
  * @brief Get the physical shear tensor.
  *
  * @param p Particle.
@@ -245,105 +298,6 @@ __attribute__((always_inline)) INLINE static double chemistry_get_matrix_norm(
     }
   }
   return sqrtf(norm);
-}
-
-/**
- * @brief Compute the physical diffusion coefficient of the particle.
- *
- * This must be called in chemistry_prepare_force() to have the values of the
- * density and the matrix S (which depends on grad_v_tilde).
- *
- * Note: The diffusion coefficient depends on the particle's density. If the
- * density is 0, then the coefficient is 0 as well and the timestep for
- * chemistry will be 0.
- *
- * @param p Particle.
- * @param cosmo The current cosmological model.
- */
-__attribute__((always_inline)) INLINE static double
-chemistry_compute_diffusion_coefficient(
-  struct part *restrict p, const struct chemistry_global_data *chem_data,
-  const struct cosmology *cosmo) {
-
-  float rho = p->chemistry_data.filtered.rho;
-
-  /* In case the filtered density is 0, e.g. during the fake-timestep,
-     approximate the density */
-  if (rho == 0.0) {
-    rho = chemistry_get_comoving_density(p);
-  }
-
-  /* Convert density to physical units. */
-  rho *= cosmo->a3_inv;
-
-  /* Convert smoothing length to physical units */
-  const double h2_p = cosmo->a*cosmo->a * p->h * p->h;
-
-  if (chem_data->diffusion_mode == isotropic_constant) {
-    return chem_data->diffusion_coefficient;
-  } else if (chem_data->diffusion_mode == isotropic_smagorinsky) {
-    /* Get the physical shear tensor */
-    double S[3][3];
-    chemistry_get_physical_shear_tensor(p, S, cosmo);
-
-    /* In the smagorinsky model, we remove the trace from S */
-    const double trace = S[0][0] + S[1][1] + S[2][2];
-
-    S[0][0] -= trace;
-    S[1][1] -= trace;
-    S[2][2] -= trace;
-
-    return chem_data->diffusion_coefficient * kernel_gamma2 * h2_p * rho * chemistry_get_matrix_norm(S);
-  } else {
-    /* Note that this is multiplied by the matrix S to get the full matrix K */
-    return chem_data->diffusion_coefficient * kernel_gamma2 * h2_p * rho;
-  }
-}
-
-/**
- * @brief Compute the diffusion flux of given metal group.
- *
- * F_diss = - K * \nabla \otimes q
- *
- * @param p Particle.
- * @param metal Index of metal specie
- * @param F_diff (return) Array to write diffusion flux component into
- */
-__attribute__((always_inline)) INLINE static void
-chemistry_compute_physical_diffusion_flux(const struct part *restrict p, int metal,
-					  double F_diff[3],
-					  const struct chemistry_global_data *chem_data,
-					  const struct cosmology* cosmo) {
-
-  /* In physical units */
-  const double kappa = p->chemistry_data.kappa;
-
-  /* The gradient needs to be converted to physical units:
-                                 grad_p = a^{-1} * grad_c.
-     The metallicity is already physical (Z_p = Z_c = Z). */
-
-  if (chem_data->diffusion_mode == isotropic_constant ||
-      chem_data->diffusion_mode == isotropic_smagorinsky) {
-    /* Isotropic diffusion: K = kappa * I_3. */
-    F_diff[0] = -kappa * p->chemistry_data.gradients.Z[metal][0]*cosmo->a_inv;
-    F_diff[1] = -kappa * p->chemistry_data.gradients.Z[metal][1]*cosmo->a_inv;
-    F_diff[2] = -kappa * p->chemistry_data.gradients.Z[metal][2]*cosmo->a_inv;
-  } else {
-    /* Initialise to the flux to 0 */
-    F_diff[0] = 0.0;
-    F_diff[1] = 0.0;
-    F_diff[2] = 0.0;
-
-    /* Compute diffusion matrix K */
-    double K[3][3];
-    chemistry_get_physical_matrix_K(p, K, chem_data, cosmo);
-
-    for (int i = 0; i < 3; ++i) {
-      for (int j = 0; j < 3; ++j) {
-        F_diff[i] += K[i][j] * p->chemistry_data.gradients.Z[metal][j]*cosmo->a_inv;
-      }
-    } /* End of matrix multiplication */
-  } /* end of if else diffusion_mode */
 }
 
 /**
