@@ -229,20 +229,22 @@ chemistry_riemann_solve_for_flux(
   double ZL = chemistry_get_metal_mass_fraction(pj, g);
   chemistry_riemann_predict_Z(pi, pj, &ZR, &ZL, g, cosmo);
 
-  /* Now compute q_star and grad_q_star */
+  /* Now compute q_star and grad_q_star. Convert the gradient to physical
+     units by dividing by a. Z is physical. */
   const double q_star = 0.5 * (ZR + ZL);
-  double grad_q_star[3] = {0.5 * (pi->chemistry_data.gradients.Z[g][0] +
-                                  pj->chemistry_data.gradients.Z[g][0]),
-                           0.5 * (pi->chemistry_data.gradients.Z[g][1] +
-                                  pj->chemistry_data.gradients.Z[g][1]),
-                           0.5 * (pi->chemistry_data.gradients.Z[g][2] +
-                                  pj->chemistry_data.gradients.Z[g][2])};
+  double grad_q_star[3] = {0.5 * cosmo->a_inv * (pi->chemistry_data.gradients.Z[g][0] +
+						 pj->chemistry_data.gradients.Z[g][0]),
+                           0.5 * cosmo->a_inv * (pi->chemistry_data.gradients.Z[g][1] +
+						 pj->chemistry_data.gradients.Z[g][1]),
+                           0.5 * cosmo->a_inv * (pi->chemistry_data.gradients.Z[g][2] +
+						 pj->chemistry_data.gradients.Z[g][2])};
 
-  /* Define some convenient variables */
-  const float dx[3] = {pj->x[0] - pi->x[0], pj->x[1] - pi->x[1],
-                       pj->x[2] - pi->x[2]};
-  const float dx_norm_2 = sqrtf(dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]);
-  const float dx_norm = sqrtf(dx_norm_2);
+  /* Define some convenient variables. Convert to physical: add a for the norm */
+  const float dx_p[3] = {(pj->x[0] - pi->x[0])*cosmo->a,
+			 (pj->x[1] - pi->x[1])*cosmo->a,
+			 (pj->x[2] - pi->x[2])*cosmo->a};
+  const float dx_p_norm_2 = sqrtf(dx_p[0] * dx_p[0] + dx_p[1] * dx_p[1] + dx_p[2] * dx_p[2]);
+  const float dx_p_norm = sqrtf(dx_p_norm_2);
 
   /* Now compute alpha to reduce numerical diffusion below physical
      diffusion. */
