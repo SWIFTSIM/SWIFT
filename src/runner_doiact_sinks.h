@@ -1,6 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2020 Loic Hausammann (loic.hausammann@epfl.ch)
+ *               2024 Jonathan Davies (j.j.davies@ljmu.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -24,53 +25,53 @@
 
 #define PASTE(x, y) x##_##y
 
-#define _DOSELF1_SINK(f) PASTE(runner_doself_sinks, f)
-#define DOSELF1_SINK _DOSELF1_SINK(FUNCTION)
+#define _DOSELF1_SINKS(f) PASTE(runner_doself_sinks, f)
+#define DOSELF1_SINKS _DOSELF1_SINKS(FUNCTION)
 
-#define _DO_SYM_PAIR1_SINK(f) PASTE(runner_do_sym_pair_sinks, f)
-#define DO_SYM_PAIR1_SINK _DO_SYM_PAIR1_SINK(FUNCTION)
+#define _DO_SYM_PAIR1_SINKS(f) PASTE(runner_do_sym_pair_sinks, f)
+#define DO_SYM_PAIR1_SINKS _DO_SYM_PAIR1_SINKS(FUNCTION)
 
-#define _DO_NONSYM_PAIR1_SINK_NAIVE(f) PASTE(runner_do_nonsym_pair_sinks_naive, f)
-#define DO_NONSYM_PAIR1_SINK_NAIVE _DO_NONSYM_PAIR1_SINK_NAIVE(FUNCTION)
+#define _DO_NONSYM_PAIR1_SINKS_NAIVE(f) PASTE(runner_do_nonsym_pair_sinks_naive, f)
+#define DO_NONSYM_PAIR1_SINKS_NAIVE _DO_NONSYM_PAIR1_SINKS_NAIVE(FUNCTION)
 
-#define _DOPAIR1_SINK_NAIVE(f) PASTE(runner_dopair_sinks_naive, f)
-#define DOPAIR1_SINK_NAIVE _DOPAIR1_SINK_NAIVE(FUNCTION)
+#define _DOPAIR1_SINKS_NAIVE(f) PASTE(runner_dopair_sinks_naive, f)
+#define DOPAIR1_SINKS_NAIVE _DOPAIR1_SINKS_NAIVE(FUNCTION)
 
-#define _DOSELF1_BRANCH_SINK(f) PASTE(runner_doself_branch_sinks, f)
-#define DOSELF1_BRANCH_SINK _DOSELF1_BRANCH_SINK(FUNCTION)
+#define _DOSELF1_BRANCH_SINKS(f) PASTE(runner_doself_branch_sinks, f)
+#define DOSELF1_BRANCH_SINKS _DOSELF1_BRANCH_SINKS(FUNCTION)
 
-#define _DOPAIR1_BRANCH_SINK(f) PASTE(runner_dopair_branch_sinks, f)
-#define DOPAIR1_BRANCH_SINK _DOPAIR1_BRANCH_SINK(FUNCTION)
+#define _DOPAIR1_BRANCH_SINKS(f) PASTE(runner_dopair_branch_sinks, f)
+#define DOPAIR1_BRANCH_SINKS _DOPAIR1_BRANCH_SINKS(FUNCTION)
 
-#define _DOSUB_PAIR1_SINK(f) PASTE(runner_dosub_pair_sinks, f)
-#define DOSUB_PAIR1_SINK _DOSUB_PAIR1_SINK(FUNCTION)
+#define _DOSUB_PAIR1_SINKS(f) PASTE(runner_dosub_pair_sinks, f)
+#define DOSUB_PAIR1_SINKS _DOSUB_PAIR1_SINKS(FUNCTION)
 
-#define _DOSUB_SELF1_SINK(f) PASTE(runner_dosub_self_sinks, f)
-#define DOSUB_SELF1_SINK _DOSUB_SELF1_SINK(FUNCTION)
+#define _DOSUB_SELF1_SINKS(f) PASTE(runner_dosub_self_sinks, f)
+#define DOSUB_SELF1_SINKS _DOSUB_SELF1_SINKS(FUNCTION)
 
-#define _TIMER_DOSELF_SINK(f) PASTE(timer_doself_sinks, f)
-#define TIMER_DOSELF_SINK _TIMER_DOSELF_SINK(FUNCTION)
+#define _TIMER_DOSELF_SINKS(f) PASTE(timer_doself_sinks, f)
+#define TIMER_DOSELF_SINKS _TIMER_DOSELF_SINKS(FUNCTION)
 
-#define _TIMER_DOPAIR_SINK(f) PASTE(timer_dopair_sinks, f)
-#define TIMER_DOPAIR_SINK _TIMER_DOPAIR_SINK(FUNCTION)
+#define _TIMER_DOPAIR_SINKS(f) PASTE(timer_dopair_sinks, f)
+#define TIMER_DOPAIR_SINKS _TIMER_DOPAIR_SINKS(FUNCTION)
 
-#define _TIMER_DOSUB_SELF_SINK(f) PASTE(timer_dosub_self_sinks, f)
-#define TIMER_DOSUB_SELF_SINK _TIMER_DOSUB_SELF_SINK(FUNCTION)
+#define _TIMER_DOSUB_SELF_SINKS(f) PASTE(timer_dosub_self_sinks, f)
+#define TIMER_DOSUB_SELF_SINKS _TIMER_DOSUB_SELF_SINKS(FUNCTION)
 
-#define _TIMER_DOSUB_PAIR_SINK(f) PASTE(timer_dosub_pair_sinks, f)
-#define TIMER_DOSUB_PAIR_SINK _TIMER_DOSUB_PAIR_SINK(FUNCTION)
+#define _TIMER_DOSUB_PAIR_SINKS(f) PASTE(timer_dosub_pair_sinks, f)
+#define TIMER_DOSUB_PAIR_SINKS _TIMER_DOSUB_PAIR_SINKS(FUNCTION)
 
-#define _IACT_SINK_GAS(f) PASTE(runner_iact_nonsym_sinks_gas, f)
-#define IACT_SINK_GAS _IACT_SINK_GAS(FUNCTION)
+#define _IACT_SINKS_GAS(f) PASTE(runner_iact_nonsym_sinks_gas, f)
+#define IACT_SINKS_GAS _IACT_SINKS_GAS(FUNCTION)
 
-#define _IACT_SINK_SINK(f) PASTE(runner_iact_nonsym_sinks_sink, f)
-#define IACT_SINK_SINK _IACT_SINK_SINK(FUNCTION)
+#define _IACT_SINKS_SINK(f) PASTE(runner_iact_nonsym_sinks_sink, f)
+#define IACT_SINKS_SINK _IACT_SINKS_SINK(FUNCTION)
 
 
-void DOSELF1_BRANCH_SINK(struct runner *r, struct cell *c);
-void DOPAIR1_BRANCH_SINK(struct runner *r, struct cell *ci, struct cell *cj);
+void DOSELF1_BRANCH_SINKS(struct runner *r, struct cell *c);
+void DOPAIR1_BRANCH_SINKS(struct runner *r, struct cell *ci, struct cell *cj);
 
-void DOSUB_SELF1_SINK(struct runner *r, struct cell *ci, int gettimer);
-void DOSUB_PAIR1_SINK(struct runner *r, struct cell *ci, struct cell *cj,
+void DOSUB_SELF1_SINKS(struct runner *r, struct cell *ci, int gettimer);
+void DOSUB_PAIR1_SINKS(struct runner *r, struct cell *ci, struct cell *cj,
                     int gettimer);
 
