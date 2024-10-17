@@ -183,14 +183,17 @@ chemistry_riemann_solve_for_flux(
 
   /****************************************************************************/
   /* Estimate the eigenvalue of the Jacobian matrix dF/dU */
+  /* Everything is in physical units here */
+
   /* Obtain velocity in interface frame */
   const float uL = WL[1] * n_unit[0] + WL[2] * n_unit[1] + WL[3] * n_unit[2];
   const float uR = WR[1] * n_unit[0] + WR[2] * n_unit[1] + WR[3] * n_unit[2];
 
   /* Get the fastet speed of sound */
   /* Think about comoving vs physical units */
-  const float c_s_L = hydro_get_comoving_soundspeed(pi);
-  const float c_s_R = hydro_get_comoving_soundspeed(pj);
+  /* Use physical soundspeed */
+  const float c_s_L = hydro_get_physical_soundspeed(pi, cosmo);
+  const float c_s_R = hydro_get_physical_soundspeed(pj, cosmo);
   const float c_fast = max(c_s_L, c_s_R);
 
   /* Approximate lambda_plus and lambda_minus. Use velocity difference. */
