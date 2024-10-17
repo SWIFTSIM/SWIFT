@@ -430,24 +430,11 @@ void DOSUB_PAIR1_SINKS(struct runner *r, struct cell *ci,
   struct space *s = r->e->s;
   const struct engine *e = r->e;
 
-  /* Should we even bother?
-   * In the swallow case we care about sink-sink and sink-gas
-   * interactions.
-   * In all other cases only sink-gas so we can abort if there is
-   * is no gas in the cell
-   * ^^ this is from BHs - do we care about sink-sink density interactions? */
-#if (FUNCTION_TASK_LOOP == TASK_LOOP_SWALLOW)
+  /* Should we even bother? */
   const int should_do_ci =
       ci->sinks.count != 0 && cell_is_active_sinks(ci, e);
   const int should_do_cj =
       cj->sinks.count != 0 && cell_is_active_sinks(cj, e);
-#else
-  const int should_do_ci = ci->sinks.count != 0 && cj->hydro.count != 0 &&
-                           cell_is_active_sinks(ci, e);
-  const int should_do_cj = cj->sinks.count != 0 && ci->hydro.count != 0 &&
-                           cell_is_active_sinks(cj, e);
-
-#endif
 
   if (!should_do_ci && !should_do_cj) return;
 
@@ -530,19 +517,9 @@ void DOSUB_SELF1_SINKS(struct runner *r, struct cell *ci,
     error("This function should not be called on foreign cells");
 #endif
 
-    /* Should we even bother?
-     * In the swallow case we care about BH-BH and BH-gas
-     * interactions.
-     * In all other cases only BH-gas so we can abort if there is
-     * is no gas in the cell 
-     * NB - same concern as above */
-#if (FUNCTION_TASK_LOOP == TASK_LOOP_SWALLOW)
+  /* Should we even bother? */
   const int should_do_ci =
       ci->sinks.count != 0 && cell_is_active_sinks(ci, e);
-#else
-  const int should_do_ci = ci->sinks.count != 0 && ci->hydro.count != 0 &&
-                           cell_is_active_sinks(ci, e);
-#endif
 
   if (!should_do_ci) return;
 
