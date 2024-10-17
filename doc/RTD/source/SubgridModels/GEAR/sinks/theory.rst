@@ -1,7 +1,7 @@
 .. Sink particles in GEAR model
    Darwin Roduit, 17 April 2024
 
-.. sink_GEAR_model:
+.. _sink_GEAR_model_summary:
 
 Model summary
 -------------
@@ -51,9 +51,7 @@ In the following, we always refer to physical quantities. In non-cosmological si
 * :math:`u_p = u_c/a^{3(\gamma -1)}`
 
 
-Here, :math:`H` is the Hubble constant at any redshift, :math:`c(a)` is the potential normalization constant and :math:`\gamma` the gas adiabatic index.
-
-Notice that the potential normalization constant has been chosen to be :math:`c(a) = - \ddot{a} a  \mathbf{x}_c^2 / 2`.
+Here, :math:`H` is the Hubble constant at any redshift, :math:`c(a)` is the potential normalization constant and :math:`\gamma` the gas adiabatic index. Notice that the potential normalization constant has been chosen to be :math:`c(a) = 0`.
 
 
 Sink formation
@@ -116,7 +114,7 @@ Some comments about the criteria:
 
 The third criterion is mainly here to prevent two sink particles from forming at a distance smaller than the sink accretion radius. Since we allow sinks to merge, such a situation raises the question of which sink should swallow the other. This can depend on the order of the tasks, which is not a desirable property. As a result, this criterion is enforced.
 
-The tenth criterion prevents the formation of spurious sinks. Experiences have shown that removing gas within the accretion radius biases the hydro density estimates: the gas feels a force toward the sink. At some point, there is an equilibrium and gas particles accumulate at the edge of the accretion radius, which can then spawn sink particles that do not fall onto the primary sink and never merge. Moreover, the physical reason behind this criterion is that a sink represents a region of collapse. As a result, there is no need to have many sinks occupying the same space volume. They would compete for gas accretion without necessarily merging. This cirterion is particularly meaningful in cosmological simulations to ensure proper sampling of the IMF. *This criterion can be disabled*.
+The tenth criterion prevents the formation of spurious sinks. Experiences have shown that removing gas within the accretion radius biases the hydro density estimates: the gas feels a force toward the sink. At some point, there is an equilibrium and gas particles accumulate at the edge of the accretion radius, which can then spawn sink particles that do not fall onto the primary sink and never merge. Moreover, the physical reason behind this criterion is that a sink represents a region of collapse. As a result, there is no need to have many sinks occupying the same space volume. They would compete for gas accretion without necessarily merging. This criterion is particularly meaningful in cosmological simulations to ensure proper sampling of the IMF. *This criterion can be disabled*.
 
 .. note::
   However, notice that contrary to  `Bate et al. <https://ui.adsabs.harvard.edu/abs/1995MNRAS.277..362B/abstract>`_, no boundary conditions for sink particles are introduced in the hydrodynamics calculations.
@@ -152,7 +150,7 @@ Once a gas is eligible for accretion, its properties are assigned to the sink. T
 
 * :math:`\displaystyle \mathbf{v}_{s, c} = \frac{m_s \mathbf{v}_{s, c} + m_i \mathbf{v}_{i, c}}{m_s + m_i}`,
 * Swallowed physical angular momentum:  :math:`\mathbf{L}_{\text{acc}} = \mathbf{L}_{\text{acc}} + m_i( \mathbf{x}_{s, p} - \mathbf{x}_{i, p}) \times ( \mathbf{v}_{s, p} - \mathbf{x}_{i, p})`,
-* :math:`X_{Z, s} = X_{Z,i} m_i + X_{Z,s} m_s`, the metal mass fraction for each element,
+* :math:`X_{Z, s} = \dfrac{X_{Z,i} m_i + X_{Z,s} m_s}{m_s + m_i}`, the metal mass fraction for each element,
 * :math:`m_s = m_s + m_i`.
 
 .. figure:: sink_overlapping.png

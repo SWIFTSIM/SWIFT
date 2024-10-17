@@ -82,9 +82,6 @@ This problem can be mitigated by choosing a higher value of ``stellar_particle_m
 
 *If you do not want to change your parameters*, you can increase the ``sort_stack_size`` variable at the beginning ``runner_sort.c``. The default value is 10 in powers of 2 (so the stack size is 1024 particles). Increase it to the desired value. Be careful to not overestimate this.
 
-.. note::
-   If you use adaptive gravitational softening for the gas, then the ``cut_off_radius`` is only limited by the minimal smoothing length you set, if any.
-
 Guide to choose the the accretion radius or the density threshold
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
