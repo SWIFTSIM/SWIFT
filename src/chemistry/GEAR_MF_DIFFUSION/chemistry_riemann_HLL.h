@@ -286,12 +286,7 @@ chemistry_riemann_solve_for_flux(
 
   /* Simple trick while testing to verify how numerical diffusion affects the
      results */
-  if (chem_data->hll_riemann_solver_psi >= 0) {
-    flux_hll = chemistry_riemann_minmod(
-					(1 + chem_data->hll_riemann_solver_psi) * F_2, F_2 + F_U);
-  } else {
-    flux_hll = F_2 + F_U;
-  }
+  flux_hll = chemistry_riemann_minmod((1 + chem_data->hll_riemann_solver_psi) * F_2, F_2 + F_U);
 
   /* Compute the direct fluxes */
   const double qi = chemistry_get_metal_mass_fraction(pi, g);

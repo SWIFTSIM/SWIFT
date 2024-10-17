@@ -285,6 +285,10 @@ static INLINE void chemistry_init_backend(struct swift_params* parameter_file,
       parameter_file, "GEARChemistry:hll_riemann_solver_psi",
       DEFAULT_PSI_RIEMANN_SOLVER);
 
+   if ((data->hll_riemann_solver_psi < 0)) {
+    error("hll_riemann_solver_psi must be positive!");
+  }
+
   data->hll_riemann_solver_epsilon = parser_get_opt_param_float(
       parameter_file, "GEARChemistry:hll_riemann_solver_epsilon",
       DEFAULT_EPSILON_RIEMANN_SOLVER);
