@@ -57,12 +57,12 @@ __attribute__((always_inline)) INLINE void chemistry_get_fluxes(
  *
  * @param pi The #part pi.
  * @param pj The #part pj.
- * @param UL Left diffusion state variables.
- * @param UR Right diffusion state variables.
- * @param WL Left state variables.
- * @param WR Right state variables.
+ * @param UL Left diffusion state variables (in physical units).
+ * @param UR Right diffusion state variables (in physical units).
+ * @param WL Left state variables (in physical units).
+ * @param WR Right state variables (in physical units).
  * @param n_unit Unit vector of the interface.
- * @param Anorm Surface area of the interface.
+ * @param Anorm Surface area of the interface (in physical units).
  * @param metal Metal specie.
  * @param metal_flux Array to store the result in (of size 1).
  */
@@ -70,14 +70,15 @@ __attribute__((always_inline)) INLINE static void chemistry_compute_flux(
     const struct part* restrict pi, const struct part* restrict pj,
     const double UL, const double UR, const float WL[5], const float WR[5],
     const float n_unit[3], const float Anorm, int metal, double* metal_flux,
-    const struct chemistry_global_data* chem_data) {
+    const struct chemistry_global_data* chem_data,
+    const struct cosmology* cosmo) {
 
   /* Note: F_diff_R and F_diff_L are computed with a first order
          reconstruction */
   /* Get the diffusion flux */
   double F_diff_i[3], F_diff_j[3];
-  chemistry_compute_diffusion_flux(pi, metal, chem_data, F_diff_i);
-  chemistry_compute_diffusion_flux(pj, metal, chem_data, F_diff_j);
+  chemistry_compute_physical_diffusion_flux(pi, metal, F_diff_i, chem_data, cosmo);
+  chemistry_compute_physical_diffusion_flux(pj, metal, F_diff_j, chem_data, cosmo);
 
 #ifdef SWIFT_DEBUG_CHECKS
   chemistry_check_unphysical_diffusion_flux(F_diff_i);
@@ -87,8 +88,10 @@ __attribute__((always_inline)) INLINE static void chemistry_compute_flux(
   /* While solving the Riemann problem, we shall get a scalar because of the
      scalar product betwee F_diff_ij^* and A_ij */
   chemistry_riemann_solve_for_flux(pi, pj, UL, UR, WL, WR, F_diff_i, F_diff_j,
-                                   Anorm, n_unit, metal, metal_flux, chem_data);
+                                   Anorm, n_unit, metal, metal_flux, chem_data,
+				   cosmo);
 
+  /* Anorm_physical = a^2 A_comoving. Hence we are missing a a^2 factor. */
   *metal_flux *= Anorm;
 }
 
