@@ -44,10 +44,11 @@ __attribute__((always_inline)) INLINE static double chemistry_riemann_minmod(
 __attribute__((always_inline)) INLINE static void
 chemistry_riemann_compute_K_star(
     const struct part *restrict pi, const struct part *restrict pj,
-    double K_star[3][3], const struct chemistry_global_data *chem_data) {
+    double K_star[3][3], const struct chemistry_global_data *chem_data,
+    const struct cosmology* cosmo) {
   double KR[3][3], KL[3][3];
-  chemistry_get_matrix_K(pi, KR, chem_data);
-  chemistry_get_matrix_K(pj, KL, chem_data);
+  chemistry_get_physical_matrix_K(pi, KR, chem_data, cosmo);
+  chemistry_get_physical_matrix_K(pj, KL, chem_data, cosmo);
 
   /* Init K_star to 0.0. */
   for (int i = 0; i < 3; ++i) {
