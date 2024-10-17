@@ -431,6 +431,15 @@ void space_init_sparts(struct space *s, int verbose);
 void space_init_bparts(struct space *s, int verbose);
 void space_init_sinks(struct space *s, int verbose);
 void space_after_snap_tracer(struct space *s, int verbose);
+void space_mark_cell_as_updated(
+    struct space *s, struct cell *c, const integertime_t ti_hydro_end_min,
+    const integertime_t ti_hydro_beg_max, const integertime_t ti_rt_end_min,
+    const integertime_t ti_rt_beg_max, const integertime_t ti_gravity_end_min,
+    const integertime_t ti_gravity_beg_max,
+    const integertime_t ti_stars_end_min, const integertime_t ti_stars_beg_max,
+    const integertime_t ti_sinks_end_min, const integertime_t ti_sinks_beg_max,
+    const integertime_t ti_black_holes_end_min,
+    const integertime_t ti_black_holes_beg_max);
 void space_convert_quantities(struct space *s, int verbose);
 void space_convert_rt_quantities(struct space *s, int verbose);
 void space_post_init_parts(struct space *s, int verbose);

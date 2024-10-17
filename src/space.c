@@ -2414,6 +2414,45 @@ void space_after_snap_tracer(struct space *s, int verbose) {
 }
 
 /**
+ * @brief Verifies whether a (top level) cell's time-step is different
+ * from the arguments passed in and update the space list of updates
+ * accordingly.
+ */
+void space_mark_cell_as_updated(
+    struct space *s, struct cell *c, const integertime_t ti_hydro_end_min,
+    const integertime_t ti_hydro_beg_max, const integertime_t ti_rt_end_min,
+    const integertime_t ti_rt_beg_max, const integertime_t ti_gravity_end_min,
+    const integertime_t ti_gravity_beg_max,
+    const integertime_t ti_stars_end_min, const integertime_t ti_stars_beg_max,
+    const integertime_t ti_sinks_end_min, const integertime_t ti_sinks_beg_max,
+    const integertime_t ti_black_holes_end_min,
+    const integertime_t ti_black_holes_beg_max) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c != c->top) error("Function can only be called at the top level!");
+#endif
+
+  /* Has anything changed? */
+  char changed = 0;
+  changed += c->hydro.ti_end_min != ti_hydro_end_min;
+  changed += c->hydro.ti_beg_max != ti_hydro_beg_max;
+  changed += c->rt.ti_rt_end_min != ti_rt_end_min;
+  changed += c->rt.ti_rt_beg_max != ti_rt_beg_max;
+  changed += c->grav.ti_end_min != ti_gravity_end_min;
+  changed += c->grav.ti_beg_max != ti_gravity_beg_max;
+  changed += c->stars.ti_end_min != ti_stars_end_min;
+  changed += c->stars.ti_beg_max != ti_stars_beg_max;
+  changed += c->black_holes.ti_end_min != ti_black_holes_end_min;
+  changed += c->black_holes.ti_beg_max != ti_black_holes_beg_max;
+  changed += c->sinks.ti_end_min != ti_sinks_end_min;
+  changed += c->sinks.ti_beg_max != ti_sinks_beg_max;
+
+  /* Store in the top-level array whether anything changed */
+  const size_t delta = c - s->cells_top;
+  s->cells_top_updated[delta] += changed ? 1 : 0;
+}
+
+/**
  * @brief Frees up the memory allocated for this #space
  */
 void space_clean(struct space *s) {

@@ -1257,8 +1257,6 @@ int engine_estimate_nr_tasks(const struct engine *e) {
 void engine_rebuild(struct engine *e, const int repartitioned,
                     const int clean_smoothing_length_values) {
 
-  message("REBUILD!!!!");
-
   const ticks tic = getticks();
 
   /* Clear the forcerebuild flag, whatever it was. */
@@ -1906,28 +1904,9 @@ void engine_synchronize_times(struct engine *e) {
 
 #ifdef WITH_MPI
 
-  if (1) {  // engine_rank == 0) {
-
-    int sum = 0;
-    for (int i = 0; i < e->s->nr_cells; ++i) {
-      sum += e->s->cells_top_updated[i];
-    }
-    message("Sum: %d", sum);
-  }
-
   /* Collect which top-level cells have been updated */
   MPI_Allreduce(MPI_IN_PLACE, e->s->cells_top_updated, e->s->nr_cells, MPI_CHAR,
                 MPI_SUM, MPI_COMM_WORLD);
-
-  if (1) {  // engine_rank == 0) {
-
-    int sum = 0;
-    for (int i = 0; i < e->s->nr_cells; ++i) {
-      sum += e->s->cells_top_updated[i];
-    }
-
-    message("Sum: %d", sum);
-  }
 
   /* TODO: Loop only over the sub-set of cells we need */
   for (int i = 0; i < e->s->nr_cells; ++i) {
@@ -2239,6 +2218,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   }
 #endif
 
+  /* Zero the list of cells that have had their time-step updated */
   bzero(e->s->cells_top_updated, e->s->nr_cells * sizeof(char));
 
   /* Now, launch the calculation */
@@ -2329,6 +2309,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   scheduler_write_cell_dependencies(&e->sched, e->verbose, e->step);
   if (e->nodeID == 0) scheduler_write_task_level(&e->sched, e->step);
 
+  /* Zero the list of cells that have had their time-step updated */
   bzero(e->s->cells_top_updated, e->s->nr_cells * sizeof(char));
 
   /* Run the 0th time-step */
@@ -2337,7 +2318,9 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   TIMER_TOC2(timer_runners);
 
   /* When running over MPI, synchronize top-level cells */
+#ifdef WITH_MPI
   engine_synchronize_times(e);
+#endif
 
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
   /* Run the brute-force hydro calculation for some parts */
@@ -2863,6 +2846,7 @@ int engine_step(struct engine *e) {
      want to lose the data from the tasks) */
   space_reset_ghost_histograms(e->s);
 
+  /* Zero the list of cells that have had their time-step updated */
   bzero(e->s->cells_top_updated, e->s->nr_cells * sizeof(char));
 
   /* Start all the tasks. */
