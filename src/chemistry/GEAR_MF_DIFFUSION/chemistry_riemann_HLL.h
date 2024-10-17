@@ -209,7 +209,7 @@ chemistry_riemann_solve_for_flux(
   /* Compute the flux artificial diffusion coefficient alpha */
   /* Compute diffusion matrix K_star = 0.5*(KR + KL) */
   double K_star[3][3];
-  chemistry_riemann_compute_K_star(pi, pj, K_star, chem_data);
+  chemistry_riemann_compute_K_star(pi, pj, K_star, chem_data, cosmo);
   const double norm_K_star = chemistry_get_matrix_norm(K_star);
 
   /* If the diffusion matrix is null, don't exchange flux. This can happen
@@ -219,7 +219,7 @@ chemistry_riemann_solve_for_flux(
     return;
   }
 
-  /* Get U_star */
+  /* Get U_star. Already in physical units. */
   const double U_star = 0.5 * (UR + UL);
 
   /* Reconstruct ZR and ZL at the interface. Note that we have reconstructed UL
@@ -227,7 +227,7 @@ chemistry_riemann_solve_for_flux(
      do so now. */
   double ZR = chemistry_get_metal_mass_fraction(pi, g);
   double ZL = chemistry_get_metal_mass_fraction(pj, g);
-  chemistry_riemann_predict_Z(pi, pj, &ZR, &ZL, g);
+  chemistry_riemann_predict_Z(pi, pj, &ZR, &ZL, g, cosmo);
 
   /* Now compute q_star and grad_q_star */
   const double q_star = 0.5 * (ZR + ZL);
