@@ -61,10 +61,10 @@ __attribute__((always_inline)) INLINE void chemistry_get_fluxes(
  * @param F_diff (return) Array to write diffusion flux component into
  */
 __attribute__((always_inline)) INLINE static void
-chemistry_compute_physical_diffusion_flux(const struct part *restrict p, int metal,
-					  double F_diff[3],
-					  const struct chemistry_global_data *chem_data,
-					  const struct cosmology* cosmo) {
+chemistry_compute_physical_diffusion_flux(
+    const struct part* restrict p, int metal, double F_diff[3],
+    const struct chemistry_global_data* chem_data,
+    const struct cosmology* cosmo) {
 
   /* In physical units */
   const double kappa = p->chemistry_data.kappa;
@@ -76,9 +76,9 @@ chemistry_compute_physical_diffusion_flux(const struct part *restrict p, int met
   if (chem_data->diffusion_mode == isotropic_constant ||
       chem_data->diffusion_mode == isotropic_smagorinsky) {
     /* Isotropic diffusion: K = kappa * I_3. */
-    F_diff[0] = -kappa * p->chemistry_data.gradients.Z[metal][0]*cosmo->a_inv;
-    F_diff[1] = -kappa * p->chemistry_data.gradients.Z[metal][1]*cosmo->a_inv;
-    F_diff[2] = -kappa * p->chemistry_data.gradients.Z[metal][2]*cosmo->a_inv;
+    F_diff[0] = -kappa * p->chemistry_data.gradients.Z[metal][0] * cosmo->a_inv;
+    F_diff[1] = -kappa * p->chemistry_data.gradients.Z[metal][1] * cosmo->a_inv;
+    F_diff[2] = -kappa * p->chemistry_data.gradients.Z[metal][2] * cosmo->a_inv;
   } else {
     /* Initialise to the flux to 0 */
     F_diff[0] = 0.0;
@@ -91,7 +91,8 @@ chemistry_compute_physical_diffusion_flux(const struct part *restrict p, int met
 
     for (int i = 0; i < 3; ++i) {
       for (int j = 0; j < 3; ++j) {
-        F_diff[i] += K[i][j] * p->chemistry_data.gradients.Z[metal][j]*cosmo->a_inv;
+        F_diff[i] +=
+            K[i][j] * p->chemistry_data.gradients.Z[metal][j] * cosmo->a_inv;
       }
     } /* End of matrix multiplication */
   } /* end of if else diffusion_mode */
@@ -123,8 +124,10 @@ __attribute__((always_inline)) INLINE static void chemistry_compute_flux(
          reconstruction */
   /* Get the diffusion flux */
   double F_diff_i[3], F_diff_j[3];
-  chemistry_compute_physical_diffusion_flux(pi, metal, F_diff_i, chem_data, cosmo);
-  chemistry_compute_physical_diffusion_flux(pj, metal, F_diff_j, chem_data, cosmo);
+  chemistry_compute_physical_diffusion_flux(pi, metal, F_diff_i, chem_data,
+                                            cosmo);
+  chemistry_compute_physical_diffusion_flux(pj, metal, F_diff_j, chem_data,
+                                            cosmo);
 
 #ifdef SWIFT_DEBUG_CHECKS
   chemistry_check_unphysical_diffusion_flux(F_diff_i);
@@ -135,7 +138,7 @@ __attribute__((always_inline)) INLINE static void chemistry_compute_flux(
      scalar product betwee F_diff_ij^* and A_ij */
   chemistry_riemann_solve_for_flux(pi, pj, UL, UR, WL, WR, F_diff_i, F_diff_j,
                                    Anorm, n_unit, metal, metal_flux, chem_data,
-				   cosmo);
+                                   cosmo);
 
   /* Anorm_physical = a^2 A_comoving. Hence we are missing a a^2 factor. */
   *metal_flux *= Anorm;
