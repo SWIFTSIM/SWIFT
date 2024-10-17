@@ -55,7 +55,6 @@ __attribute__((always_inline)) INLINE static double chemistry_get_physical_metal
   return cosmo->a3_inv*chemistry_get_comoving_metal_density(p, metal);
 }
 
-
 /**
  * @brief Get a  metal mass fraction from a specific metal group.
  *
@@ -110,59 +109,6 @@ __attribute__((always_inline)) INLINE static float chemistry_get_comoving_densit
     }
   }
   return rho;
-}
-
-/**
- * @brief Compute the physical diffusion coefficient of the particle.
- *
- * This must be called in chemistry_prepare_force() to have the values of the
- * density and the matrix S (which depends on grad_v_tilde).
- *
- * Note: The diffusion coefficient depends on the particle's density. If the
- * density is 0, then the coefficient is 0 as well and the timestep for
- * chemistry will be 0.
- *
- * @param p Particle.
- * @param cosmo The current cosmological model.
- */
-__attribute__((always_inline)) INLINE static double
-chemistry_compute_diffusion_coefficient(
-  struct part *restrict p, const struct chemistry_global_data *chem_data,
-  const struct cosmology *cosmo) {
-
-  float rho = p->chemistry_data.filtered.rho;
-
-  /* In case the filtered density is 0, e.g. during the fake-timestep,
-     approximate the density */
-  if (rho == 0.0) {
-    rho = chemistry_get_comoving_density(p);
-  }
-
-  /* Convert density to physical units. */
-  rho *= cosmo->a3_inv;
-
-  /* Convert smoothing length to physical units */
-  const double h2_p = cosmo->a*cosmo->a * p->h * p->h;
-
-  if (chem_data->diffusion_mode == isotropic_constant) {
-    return chem_data->diffusion_coefficient;
-  } else if (chem_data->diffusion_mode == isotropic_smagorinsky) {
-    /* Get the physical shear tensor */
-    double S[3][3];
-    chemistry_get_physical_shear_tensor(p, S, cosmo);
-
-    /* In the smagorinsky model, we remove the trace from S */
-    const double trace = S[0][0] + S[1][1] + S[2][2];
-
-    S[0][0] -= trace;
-    S[1][1] -= trace;
-    S[2][2] -= trace;
-
-    return chem_data->diffusion_coefficient * kernel_gamma2 * h2_p * rho * chemistry_get_matrix_norm(S);
-  } else {
-    /* Note that this is multiplied by the matrix S to get the full matrix K */
-    return chem_data->diffusion_coefficient * kernel_gamma2 * h2_p * rho;
-  }
 }
 
 /**
@@ -311,6 +257,59 @@ __attribute__((always_inline)) INLINE static double chemistry_get_matrix_norm(
     }
   }
   return sqrtf(norm);
+}
+
+/**
+ * @brief Compute the physical diffusion coefficient of the particle.
+ *
+ * This must be called in chemistry_prepare_force() to have the values of the
+ * density and the matrix S (which depends on grad_v_tilde).
+ *
+ * Note: The diffusion coefficient depends on the particle's density. If the
+ * density is 0, then the coefficient is 0 as well and the timestep for
+ * chemistry will be 0.
+ *
+ * @param p Particle.
+ * @param cosmo The current cosmological model.
+ */
+__attribute__((always_inline)) INLINE static double
+chemistry_compute_diffusion_coefficient(
+  struct part *restrict p, const struct chemistry_global_data *chem_data,
+  const struct cosmology *cosmo) {
+
+  float rho = p->chemistry_data.filtered.rho;
+
+  /* In case the filtered density is 0, e.g. during the fake-timestep,
+     approximate the density */
+  if (rho == 0.0) {
+    rho = chemistry_get_comoving_density(p);
+  }
+
+  /* Convert density to physical units. */
+  rho *= cosmo->a3_inv;
+
+  /* Convert smoothing length to physical units */
+  const double h2_p = cosmo->a*cosmo->a * p->h * p->h;
+
+  if (chem_data->diffusion_mode == isotropic_constant) {
+    return chem_data->diffusion_coefficient;
+  } else if (chem_data->diffusion_mode == isotropic_smagorinsky) {
+    /* Get the physical shear tensor */
+    double S[3][3];
+    chemistry_get_physical_shear_tensor(p, S, cosmo);
+
+    /* In the smagorinsky model, we remove the trace from S */
+    const double trace = S[0][0] + S[1][1] + S[2][2];
+
+    S[0][0] -= trace;
+    S[1][1] -= trace;
+    S[2][2] -= trace;
+
+    return chem_data->diffusion_coefficient * kernel_gamma2 * h2_p * rho * chemistry_get_matrix_norm(S);
+  } else {
+    /* Note that this is multiplied by the matrix S to get the full matrix K */
+    return chem_data->diffusion_coefficient * kernel_gamma2 * h2_p * rho;
+  }
 }
 
 /**
