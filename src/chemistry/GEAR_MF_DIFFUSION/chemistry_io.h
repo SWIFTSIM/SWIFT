@@ -58,6 +58,13 @@ INLINE static void convert_gas_metals(const struct engine* e,
   }
 }
 
+INLINE static void convert_chemistry_diffusion_coefficient(const struct engine* e,
+							   const struct part* p,
+							   const struct xpart* xp, double* ret) {
+
+  *ret = p->chemistry_data.kappa;
+}
+
 /**
  * @brief Specifies which particle fields to write to a dataset
  *
@@ -69,9 +76,9 @@ INLINE static void convert_gas_metals(const struct engine* e,
  * @return Returns the number of fields to write.
  */
 INLINE static int chemistry_write_particles(const struct part* parts,
-                                            const struct xpart* xparts,
-                                            struct io_props* list,
-                                            const int with_cosmology) {
+					       const struct xpart* xparts,
+					       struct io_props* list,
+					       const int with_cosmology) {
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_part(
@@ -79,7 +86,13 @@ INLINE static int chemistry_write_particles(const struct part* parts,
       UNIT_CONV_NO_UNITS, 0.f, parts, xparts, convert_gas_metals,
       "Mass fraction of each element");
 
-  return 1;
+
+   list[1] = io_make_physical_output_field_convert_part(
+							"DiffusionCoefficients", DOUBLE, 1, UNIT_CONV_DIFF_COEFF, 0.f, parts, xparts,  /*can convert to comoving=*/0,
+      convert_chemistry_diffusion_coefficient,
+      "Physical diffusion coefficient for diffusion modes 0 and 1");
+
+  return 2;
 }
 
 /**
