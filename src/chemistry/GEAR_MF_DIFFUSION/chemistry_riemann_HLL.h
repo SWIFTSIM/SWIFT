@@ -282,11 +282,7 @@ chemistry_riemann_solve_for_flux(
   /****************************************************************************
    * Hopkins 2017 implementation of HLL */
   /* No conversion to physical needed, everything is physical here */
-  double flux_hll = 0.0;
-
-  /* Simple trick while testing to verify how numerical diffusion affects the
-     results */
-  flux_hll = chemistry_riemann_minmod((1 + chem_data->hll_riemann_solver_psi) * F_2, F_2 + F_U);
+  const double flux_hll = chemistry_riemann_minmod((1 + chem_data->hll_riemann_solver_psi) * F_2, F_2 + F_U);
 
   /* Compute the direct fluxes */
   const double qi = chemistry_get_metal_mass_fraction(pi, g);
