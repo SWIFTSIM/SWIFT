@@ -100,6 +100,8 @@ chemistry_riemann_compute_alpha(double c_s_R, double c_s_L, double uR,
                                 double U_star, const double K_star[3][3],
                                 double norm_K_star,
                                 const double grad_q_star[3]) {
+  /* Everything is physical here. No need to convert. */
+
   /* Compute norm(K_star * grad_q_star) */
   double norm_K_star_times_grad_q_star = 0.0;
   double matrix_product = 0.0;
@@ -149,20 +151,20 @@ chemistry_riemann_compute_alpha(double c_s_R, double c_s_L, double uR,
  *
  * @param pi Left particle
  * @param pj Right particle
- * @param UL left diffusion state (metal density)
- * @param UR right diffusion state (metal density)
+ * @param UL left diffusion state (metal density, in physical units)
+ * @param UR right diffusion state (metal density, in physical units)
  * @param WL Left state hydrodynamics primitve variables (density, velocity[3],
- * pressure)
+ * pressure) (in physical units)
  * @param WR Right state hydrodynamics primitve variables (density,
- * velocity[3], pressure)
- * @param F_diff_L The diffusion flux of the left
- * @param F_diff_R The diffusion flux of the right
- * @param Anorm Norm of the face between the left and right particles
- * @param hyperFluxR the flux of the hyperbolic conservation law of the right
- * state
+ * velocity[3], pressure) (in physical units)
+ * @param F_diff_L The diffusion flux of the left (in physical units)
+ * @param F_diff_R The diffusion flux of the right (in physical units)
+ * @param Anorm Norm of the face between the left and right particles (in physical units)
  * @param n_unit The unit vector perpendicular to the "intercell" surface.
+ * @param g Metal specie.
  * @param metal_flux (return) The resulting flux at the interface
  * @param chem_data Chemistry data.
+ * @param cosmo The cosmological model
  */
 __attribute__((always_inline)) INLINE static void
 chemistry_riemann_solve_for_flux(
@@ -170,7 +172,8 @@ chemistry_riemann_solve_for_flux(
     const double UL, const double UR, const float WL[5], const float WR[5],
     const double F_diff_L[3], const double F_diff_R[3], const float Anorm,
     const float n_unit[3], int g, double *metal_flux,
-    const struct chemistry_global_data *chem_data) {
+    const struct chemistry_global_data *chem_data,
+    const struct cosmology* cosmo) {
 
   /* Handle pure vacuum */
   if (!UL && !UR) {
