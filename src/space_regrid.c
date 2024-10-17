@@ -244,7 +244,7 @@ void space_regrid(struct space *s, int verbose) {
                        s->nr_cells * sizeof(char)) != 0)
       error("Failed to allocate top-level cells.");
     bzero(s->cells_top_updated, s->nr_cells * sizeof(char));
-    
+
     /* Allocate the indices of local cells */
     if (swift_memalign("local_cells_top", (void **)&s->local_cells_top,
                        SWIFT_STRUCT_ALIGNMENT, s->nr_cells * sizeof(int)) != 0)

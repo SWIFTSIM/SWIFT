@@ -1142,7 +1142,6 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
     }
   }
 
-
   if (c->top == c) {
 
     /* Has anything changed? */
@@ -1162,12 +1161,10 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
 
     /* Store in the top-level array whether anything changed */
     const size_t delta = c->top - r->e->s->cells_top;
-    r->e->s->cells_top_updated[delta] = changed ? 1 : 0;
+    r->e->s->cells_top_updated[delta] += changed ? 1 : 0;
     message("Changed: %d", changed);
-	    
   }
 
-  
   /* Store the values. */
   c->hydro.updated = updated;
   c->grav.updated = g_updated;
@@ -1239,7 +1236,7 @@ void runner_do_timestep_collect(struct runner *r, struct cell *c,
   if (c->super == c) {
     return;
   }
-    
+
   /* Counters for the different quantities. */
   size_t h_updated = 0;
   size_t g_updated = 0;
@@ -1316,11 +1313,10 @@ void runner_do_timestep_collect(struct runner *r, struct cell *c,
 
     /* Store in the top-level array whether anything changed */
     const size_t delta = c->top - r->e->s->cells_top;
-    r->e->s->cells_top_updated[delta] = changed ? 1 : 0;
-    message("Changed: %d", changed);
-	    
+    r->e->s->cells_top_updated[delta] += changed ? 1 : 0;
+    // message("Changed: %d", changed);
   }
-  
+
   /* Store the collected values in the cell. */
   c->hydro.ti_end_min = ti_hydro_end_min;
   c->hydro.ti_beg_max = ti_hydro_beg_max;
@@ -1399,12 +1395,6 @@ void runner_do_limiter(struct runner *r, struct cell *c, int force,
       }
     }
 
-    /* Store the updated values */
-    c->hydro.ti_end_min = min(c->hydro.ti_end_min, ti_hydro_end_min);
-    c->hydro.ti_beg_max = max(c->hydro.ti_beg_max, ti_hydro_beg_max);
-    c->grav.ti_end_min = min(c->grav.ti_end_min, ti_gravity_end_min);
-    c->grav.ti_beg_max = max(c->grav.ti_beg_max, ti_gravity_beg_max);
-
   } else if (!c->split && force) {
 
     ti_hydro_end_min = c->hydro.ti_end_min;
@@ -1478,13 +1468,28 @@ void runner_do_limiter(struct runner *r, struct cell *c, int force,
         }
       }
     }
-
-    /* Store the updated values */
-    c->hydro.ti_end_min = min(c->hydro.ti_end_min, ti_hydro_end_min);
-    c->hydro.ti_beg_max = max(c->hydro.ti_beg_max, ti_hydro_beg_max);
-    c->grav.ti_end_min = min(c->grav.ti_end_min, ti_gravity_end_min);
-    c->grav.ti_beg_max = max(c->grav.ti_beg_max, ti_gravity_beg_max);
   }
+
+  if (c->top == c) {
+
+    /* Has anything changed? */
+    char changed = 0;
+    changed += c->hydro.ti_end_min != ti_hydro_end_min ? 1 : 0;
+    changed += c->hydro.ti_beg_max != ti_hydro_beg_max ? 1 : 0;
+    changed += c->grav.ti_end_min != ti_gravity_end_min ? 1 : 0;
+    changed += c->grav.ti_beg_max != ti_gravity_beg_max ? 1 : 0;
+
+    /* Store in the top-level array whether anything changed */
+    const size_t delta = c->top - r->e->s->cells_top;
+    r->e->s->cells_top_updated[delta] += changed ? 1 : 0;
+    // message("Changed: %d", changed);
+  }
+
+  /* Store the updated values */
+  c->hydro.ti_end_min = min(c->hydro.ti_end_min, ti_hydro_end_min);
+  c->hydro.ti_beg_max = max(c->hydro.ti_beg_max, ti_hydro_beg_max);
+  c->grav.ti_end_min = min(c->grav.ti_end_min, ti_gravity_end_min);
+  c->grav.ti_beg_max = max(c->grav.ti_beg_max, ti_gravity_beg_max);
 
   /* Clear the limiter flags. */
   cell_clear_flag(c,
@@ -1550,13 +1555,6 @@ void runner_do_sync(struct runner *r, struct cell *c, int force,
         ti_gravity_beg_max = max(cp->grav.ti_beg_max, ti_gravity_beg_max);
       }
     }
-
-    /* Store the updated values */
-    c->hydro.ti_end_min = min(c->hydro.ti_end_min, ti_hydro_end_min);
-    c->hydro.ti_beg_max = max(c->hydro.ti_beg_max, ti_hydro_beg_max);
-    c->grav.ti_end_min = min(c->grav.ti_end_min, ti_gravity_end_min);
-    c->grav.ti_beg_max = max(c->grav.ti_beg_max, ti_gravity_beg_max);
-
   } else if (!c->split && force) {
 
     ti_hydro_end_min = c->hydro.ti_end_min;
@@ -1650,13 +1648,28 @@ void runner_do_sync(struct runner *r, struct cell *c, int force,
         }
       }
     }
-
-    /* Store the updated values */
-    c->hydro.ti_end_min = min(c->hydro.ti_end_min, ti_hydro_end_min);
-    c->hydro.ti_beg_max = max(c->hydro.ti_beg_max, ti_hydro_beg_max);
-    c->grav.ti_end_min = min(c->grav.ti_end_min, ti_gravity_end_min);
-    c->grav.ti_beg_max = max(c->grav.ti_beg_max, ti_gravity_beg_max);
   }
+
+  if (c->top == c) {
+
+    /* Has anything changed? */
+    char changed = 0;
+    changed += c->hydro.ti_end_min != ti_hydro_end_min ? 1 : 0;
+    changed += c->hydro.ti_beg_max != ti_hydro_beg_max ? 1 : 0;
+    changed += c->grav.ti_end_min != ti_gravity_end_min ? 1 : 0;
+    changed += c->grav.ti_beg_max != ti_gravity_beg_max ? 1 : 0;
+
+    /* Store in the top-level array whether anything changed */
+    const size_t delta = c->top - r->e->s->cells_top;
+    r->e->s->cells_top_updated[delta] += changed ? 1 : 0;
+    message("Changed: %d", changed);
+  }
+
+  /* Store the updated values */
+  c->hydro.ti_end_min = min(c->hydro.ti_end_min, ti_hydro_end_min);
+  c->hydro.ti_beg_max = max(c->hydro.ti_beg_max, ti_hydro_beg_max);
+  c->grav.ti_end_min = min(c->grav.ti_end_min, ti_gravity_end_min);
+  c->grav.ti_beg_max = max(c->grav.ti_beg_max, ti_gravity_beg_max);
 
   /* Clear the sync flags. */
   cell_clear_flag(c, cell_flag_do_hydro_sync | cell_flag_do_hydro_sub_sync);
