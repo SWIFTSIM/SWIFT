@@ -35,6 +35,7 @@
 #include "chemistry_gradients.h"
 #include "chemistry_setters.h"
 #include "chemistry_struct.h"
+#include "chemistry_timesteps.h"
 #include "error.h"
 #include "hydro.h"
 #include "kernel_hydro.h"
