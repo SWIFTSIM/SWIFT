@@ -425,8 +425,8 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
     double *Uj, int group, const float *dx, const float r,
     const float xij_i[3]) {
 
-  chemistry_get_comoving_diffusion_state_vector(pi, group, Ui);
-  chemistry_get_comoving_diffusion_state_vector(pj, group, Uj);
+  *Ui = chemistry_get_comoving_diffusion_state_vector(pi, group);
+  *Uj = chemistry_get_comoving_diffusion_state_vector(pj, group);
   /* No need to check unphysical state here:
    * they haven't been touched since the call
    * to chemistry_end_density() */

@@ -59,16 +59,14 @@ chemistry_get_metal_mass_fraction(const struct part *restrict p, int metal) {
  * @brief Get a 1-element state vector U containing the metal mass density (in
  * comoving units) of a specific metal group.
  *
- * @TODO: Rewrite this to remove the pointer... We can use return instead.
  * @param p Particle.
  * @param metal Index of metal specie
  * @param U Pointer to the array in which the result needs to be stored
  */
-__attribute__((always_inline)) INLINE static void
-chemistry_get_comoving_diffusion_state_vector(const struct part *restrict p, int metal,
-                                     double *U) {
+__attribute__((always_inline)) INLINE static double
+chemistry_get_comoving_diffusion_state_vector(const struct part *restrict p, int metal) {
   /* The state vector is 1D and contains the metal density. */
-  *U = chemistry_get_comoving_metal_density(p, metal);
+  return chemistry_get_comoving_metal_density(p, metal);
 }
 
 /**
