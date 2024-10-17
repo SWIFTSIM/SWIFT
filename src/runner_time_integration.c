@@ -1449,6 +1449,12 @@ void runner_do_limiter(struct runner *r, struct cell *c, int force,
         c->sinks.ti_beg_max, c->black_holes.ti_end_min,
         c->black_holes.ti_beg_max);
 
+  /* Store the updated values */
+  c->hydro.ti_end_min = min(c->hydro.ti_end_min, ti_hydro_end_min);
+  c->hydro.ti_beg_max = max(c->hydro.ti_beg_max, ti_hydro_beg_max);
+  c->grav.ti_end_min = min(c->grav.ti_end_min, ti_gravity_end_min);
+  c->grav.ti_beg_max = max(c->grav.ti_beg_max, ti_gravity_beg_max);
+
   /* Clear the limiter flags. */
   cell_clear_flag(c,
                   cell_flag_do_hydro_limiter | cell_flag_do_hydro_sub_limiter);
