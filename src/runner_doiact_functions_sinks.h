@@ -28,7 +28,7 @@
  * @param c cell
  * @param timer 1 if the time is to be recorded.
  */
-void DOSELF1_SINK(struct runner *r, struct cell *c, int timer) {
+void DOSELF1_SINKS(struct runner *r, struct cell *c, int timer) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->nodeID != engine_rank) error("Should be run on a different node");
@@ -93,7 +93,7 @@ void DOSELF1_SINK(struct runner *r, struct cell *c, int timer) {
 #endif
 
         if (r2 < ri2) {
-          IACT_SINK_GAS(
+          IACT_SINKS_GAS(
               r2, dx, ri, hj, si, pj, with_cosmology, cosmo,
               e->gravity_properties, e->sink_properties);
         }
@@ -150,7 +150,7 @@ void DOSELF1_SINK(struct runner *r, struct cell *c, int timer) {
 #endif
 
       if (r2 < ri2 || r2 < rj2) {
-        IACT_SINK_SINK(r2, dx, ri, rj, si, sj,
+        IACT_SINKS_SINK(r2, dx, ri, rj, si, sj,
                                               with_cosmology, cosmo,
                                               e->gravity_properties,
                                               e->sink_properties);
@@ -160,7 +160,7 @@ void DOSELF1_SINK(struct runner *r, struct cell *c, int timer) {
 
 #endif /* (FUNCTION_TASK_LOOP == TASK_LOOP_SWALLOW) */
 
-  if (timer) TIMER_TOC(TIMER_DOSELF_SINK);
+  if (timer) TIMER_TOC(TIMER_DOSELF_SINKS);
 }
 
 /**
@@ -170,7 +170,7 @@ void DOSELF1_SINK(struct runner *r, struct cell *c, int timer) {
  * @param ci The first #cell
  * @param cj The second #cell
  */
-void DO_NONSYM_PAIR1_SINK_NAIVE(struct runner *r,
+void DO_NONSYM_PAIR1_SINKS_NAIVE(struct runner *r,
                                 struct cell *restrict ci,
                                 struct cell *restrict cj) {
 
@@ -246,7 +246,7 @@ void DO_NONSYM_PAIR1_SINK_NAIVE(struct runner *r,
 #endif
 
         if (r2 < ri2) {
-          IACT_SINK_GAS(
+          IACT_SINKS_GAS(
               r2, dx, ri, hj, si, pj, with_cosmology, cosmo,
               e->gravity_properties, e->sink_properties);
         }
@@ -303,7 +303,7 @@ void DO_NONSYM_PAIR1_SINK_NAIVE(struct runner *r,
 #endif
 
       if (r2 < ri2 || r2 < rj2) {
-        IACT_SINK_SINK(r2, dx, ri, rj, si, sj,
+        IACT_SINKS_SINK(r2, dx, ri, rj, si, sj,
                                               with_cosmology, cosmo,
                                               e->gravity_properties,
                                               e->sink_properties);
@@ -322,7 +322,7 @@ void DO_NONSYM_PAIR1_SINK_NAIVE(struct runner *r,
  * @param ci The first #cell
  * @param cj The second #cell
  */
-void DOPAIR1_SINK_NAIVE(struct runner *r,
+void DOPAIR1_SINKS_NAIVE(struct runner *r,
                         struct cell *restrict ci,
                         struct cell *restrict cj, int timer) {
 
@@ -337,10 +337,10 @@ void DOPAIR1_SINK_NAIVE(struct runner *r,
   const int do_cj_sink = 1;
 #endif
 
-  if (do_ci_sink) DO_NONSYM_PAIR1_SINK_NAIVE(r, ci, cj);
-  if (do_cj_sink) DO_NONSYM_PAIR1_SINK_NAIVE(r, cj, ci);
+  if (do_ci_sink) DO_NONSYM_PAIR1_SINKS_NAIVE(r, ci, cj);
+  if (do_cj_sink) DO_NONSYM_PAIR1_SINKS_NAIVE(r, cj, ci);
 
-  if (timer) TIMER_TOC(TIMER_DOPAIR_SINK);
+  if (timer) TIMER_TOC(TIMER_DOPAIR_SINKS);
 }
 
 /**
@@ -350,7 +350,7 @@ void DOPAIR1_SINK_NAIVE(struct runner *r,
  * @param c #cell c
  *
  */
-void DOSELF1_BRANCH_SINK(struct runner *r, struct cell *c) {
+void DOSELF1_BRANCH_SINKS(struct runner *r, struct cell *c) {
 
   const struct engine *restrict e = r->e;
 
@@ -364,7 +364,7 @@ void DOSELF1_BRANCH_SINK(struct runner *r, struct cell *c) {
   if (c->sinks.r_cut_max_old > c->dmin)
     error("Cell smaller than the cut off radius");
 
-  DOSELF1_SINK(r, c, 1);
+  DOSELF1_SINKS(r, c, 1);
 }
 
 /**
@@ -375,7 +375,7 @@ void DOSELF1_BRANCH_SINK(struct runner *r, struct cell *c) {
  * @param cj #cell cj
  *
  */
-void DOPAIR1_BRANCH_SINK(struct runner *r, struct cell *ci,
+void DOPAIR1_BRANCH_SINKS(struct runner *r, struct cell *ci,
                           struct cell *cj) {
 
   const struct engine *restrict e = r->e;
@@ -408,7 +408,7 @@ void DOPAIR1_BRANCH_SINK(struct runner *r, struct cell *ci,
     error("Interacting undrifted cells.");
 
   /* No sorted interactions here -> use the naive ones */
-  DOPAIR1_SINK_NAIVE(r, ci, cj, 1);
+  DOPAIR1_SINKS_NAIVE(r, ci, cj, 1);
 }
 
 /**
@@ -422,7 +422,7 @@ void DOPAIR1_BRANCH_SINK(struct runner *r, struct cell *ci,
  * @todo Hard-code the sid on the recursive calls to avoid the
  * redundant computations to find the sid on-the-fly.
  */
-void DOSUB_PAIR1_SINK(struct runner *r, struct cell *ci,
+void DOSUB_PAIR1_SINKS(struct runner *r, struct cell *ci,
                                      struct cell *cj, int timer) {
 
   TIMER_TIC;
@@ -463,7 +463,7 @@ void DOSUB_PAIR1_SINK(struct runner *r, struct cell *ci,
       const int pid = csp->pairs[k].pid;
       const int pjd = csp->pairs[k].pjd;
       if (ci->progeny[pid] != NULL && cj->progeny[pjd] != NULL)
-        DOSUB_PAIR1_SINK(r, ci->progeny[pid], cj->progeny[pjd],
+        DOSUB_PAIR1_SINKS(r, ci->progeny[pid], cj->progeny[pjd],
                                         0);
     }
   }
@@ -509,10 +509,10 @@ void DOSUB_PAIR1_SINK(struct runner *r, struct cell *ci,
         error("Interacting undrifted cells (sinks).");
     }
 
-    if (do_ci || do_cj) DOPAIR1_BRANCH_SINK(r, ci, cj);
+    if (do_ci || do_cj) DOPAIR1_BRANCH_SINKS(r, ci, cj);
   }
 
-  if (timer) TIMER_TOC(TIMER_DOSUB_PAIR_SINK);
+  if (timer) TIMER_TOC(TIMER_DOSUB_PAIR_SINKS);
 }
 
 /**
@@ -522,7 +522,7 @@ void DOSUB_PAIR1_SINK(struct runner *r, struct cell *ci,
  * @param ci The first #cell.
  * @param gettimer Do we have a timer ?
  */
-void DOSUB_SELF1_SINK(struct runner *r, struct cell *ci,
+void DOSUB_SELF1_SINKS(struct runner *r, struct cell *ci,
                                      int timer) {
 
   TIMER_TIC;
@@ -556,10 +556,10 @@ void DOSUB_SELF1_SINK(struct runner *r, struct cell *ci,
     /* Loop over all progeny. */
     for (int k = 0; k < 8; k++)
       if (ci->progeny[k] != NULL) {
-        DOSUB_SELF1_SINK(r, ci->progeny[k], 0);
+        DOSUB_SELF1_SINKS(r, ci->progeny[k], 0);
         for (int j = k + 1; j < 8; j++)
           if (ci->progeny[j] != NULL)
-            DOSUB_PAIR1_SINK(r, ci->progeny[k], ci->progeny[j],
+            DOSUB_PAIR1_SINKS(r, ci->progeny[k], ci->progeny[j],
                                             0);
       }
   }
@@ -573,8 +573,8 @@ void DOSUB_SELF1_SINK(struct runner *r, struct cell *ci,
     if (ci->hydro.count != 0 && !cell_are_part_drifted(ci, e))
       error("Interacting undrifted cells (parts).");
 
-    DOSELF1_BRANCH_SINK(r, ci);
+    DOSELF1_BRANCH_SINKS(r, ci);
   }
 
-  if (timer) TIMER_TOC(TIMER_DOSUB_SELF_SINK);
+  if (timer) TIMER_TOC(TIMER_DOSUB_SELF_SINKS);
 }
