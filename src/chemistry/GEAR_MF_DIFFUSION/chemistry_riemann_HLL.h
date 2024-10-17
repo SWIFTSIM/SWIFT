@@ -67,7 +67,7 @@ chemistry_riemann_compute_K_star(
 
 __attribute__((always_inline)) INLINE static void chemistry_riemann_predict_Z(
     const struct part *restrict pi, const struct part *restrict pj, double *Zi,
-    double *Zj, int group) {
+    double *Zj, int group, const struct cosmology* cosmo) {
 
   const float dx[3] = {pi->x[0] - pj->x[0], pi->x[1] - pj->x[1],
                        pi->x[2] - pj->x[2]};
@@ -88,8 +88,10 @@ __attribute__((always_inline)) INLINE static void chemistry_riemann_predict_Z(
 
   chemistry_slope_limit_face(Zi, Zj, &dZi, &dZj, xij_i, xij_j, r);
 
-  *Zi += dZi;
-  *Zj += dZj;
+  /* Pay attention here to convert this gradient to physical units... Z is
+     always physical. */
+  *Zi += dZi*cosmo->a_inv;
+  *Zj += dZj*cosmo->a_inv;
 }
 
 __attribute__((always_inline)) INLINE static double
