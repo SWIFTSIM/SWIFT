@@ -388,7 +388,7 @@ __attribute__((always_inline)) INLINE static float chemistry_supertimestep(
       if (substep > 0.0) ++chd->timesteps.current_substep;
     } else {
       const float parabolic_explicit_timestep =
-	chemistry_compute_parabolic_timestep(p, cd, cosmo);
+          chemistry_compute_parabolic_timestep(p, cd, cosmo);
 
       /* Get the supertimestep from CFL condition */
       float super_timestep = chemistry_compute_CFL_supertimestep(p, cd, cosmo);
@@ -571,7 +571,8 @@ __attribute__((always_inline)) INLINE static void chemistry_prepare_force(
   p->chemistry_data.flux_dt = dt_therm;
 
   /* Update the diffusion coefficient for the new loops */
-  p->chemistry_data.kappa = chemistry_compute_diffusion_coefficient(p, cd, cosmo);
+  p->chemistry_data.kappa =
+      chemistry_compute_diffusion_coefficient(p, cd, cosmo);
 }
 
 /**

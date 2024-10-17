@@ -38,8 +38,8 @@
  * @param metal Index of metal specie
  * @param U Pointer to the array in which the result needs to be stored
  */
-__attribute__((always_inline)) INLINE static double chemistry_get_comoving_metal_density(
-    const struct part *restrict p, int metal) {
+__attribute__((always_inline)) INLINE static double
+chemistry_get_comoving_metal_density(const struct part *restrict p, int metal) {
   return p->chemistry_data.metal_mass[metal] / p->geometry.volume;
 }
 
@@ -50,9 +50,10 @@ __attribute__((always_inline)) INLINE static double chemistry_get_comoving_metal
  * @param metal Index of metal specie
  * @param U Pointer to the array in which the result needs to be stored
  */
-__attribute__((always_inline)) INLINE static double chemistry_get_physical_metal_density(
-  const struct part *restrict p, int metal, const struct cosmology *cosmo) {
-  return cosmo->a3_inv*chemistry_get_comoving_metal_density(p, metal);
+__attribute__((always_inline)) INLINE static double
+chemistry_get_physical_metal_density(const struct part *restrict p, int metal,
+                                     const struct cosmology *cosmo) {
+  return cosmo->a3_inv * chemistry_get_comoving_metal_density(p, metal);
 }
 
 /**
@@ -76,7 +77,8 @@ chemistry_get_metal_mass_fraction(const struct part *restrict p, int metal) {
  * @param U Pointer to the array in which the result needs to be stored
  */
 __attribute__((always_inline)) INLINE static double
-chemistry_get_comoving_diffusion_state_vector(const struct part *restrict p, int metal) {
+chemistry_get_comoving_diffusion_state_vector(const struct part *restrict p,
+                                              int metal) {
   /* The state vector is 1D and contains the metal density. */
   return chemistry_get_comoving_metal_density(p, metal);
 }
@@ -93,8 +95,8 @@ chemistry_get_comoving_diffusion_state_vector(const struct part *restrict p, int
  *
  * @param p Particle.
  */
-__attribute__((always_inline)) INLINE static float chemistry_get_comoving_density(
-    const struct part *restrict p) {
+__attribute__((always_inline)) INLINE static float
+chemistry_get_comoving_density(const struct part *restrict p) {
   float rho = hydro_get_comoving_density(p);
 
   if (rho == 0.0) {
@@ -117,15 +119,17 @@ __attribute__((always_inline)) INLINE static float chemistry_get_comoving_densit
  * @param p Particle.
  * @param S (return) Pointer to a 3x3 matrix.
  */
-__attribute__((always_inline)) INLINE static void chemistry_get_physical_shear_tensor(
-  const struct part *restrict p, double S[3][3], const struct cosmology* cosmo) {
+__attribute__((always_inline)) INLINE static void
+chemistry_get_physical_shear_tensor(const struct part *restrict p,
+                                    double S[3][3],
+                                    const struct cosmology *cosmo) {
   for (int i = 0; i < 3; ++i) {
     for (int j = 0; j < 3; ++j) {
       S[i][j] = 0.5 * (p->chemistry_data.filtered.grad_v_tilde[i][j] +
                        p->chemistry_data.filtered.grad_v_tilde[j][i]);
 
       /* Convert to physical units.
-	 In Swift, v_peculiar = v_c / a ; grad_p = a^{-1} grad_c. */
+         In Swift, v_peculiar = v_c / a ; grad_p = a^{-1} grad_c. */
       S[i][j] *= cosmo->a2_inv;
     }
   }
@@ -205,10 +209,10 @@ chemistry_regularize_shear_tensor(double S[3][3]) {
  *
  * @param p Particle.
  */
-__attribute__((always_inline)) INLINE static void chemistry_get_physical_matrix_K(
-    const struct part *restrict p, double K[3][3],
-    const struct chemistry_global_data *chem_data,
-    const struct cosmology* cosmo) {
+__attribute__((always_inline)) INLINE static void
+chemistry_get_physical_matrix_K(const struct part *restrict p, double K[3][3],
+                                const struct chemistry_global_data *chem_data,
+                                const struct cosmology *cosmo) {
   if (chem_data->diffusion_mode == isotropic_constant ||
       chem_data->diffusion_mode == isotropic_smagorinsky) {
     /* K = kappa * I */
@@ -236,7 +240,7 @@ __attribute__((always_inline)) INLINE static void chemistry_get_physical_matrix_
     /* K = kappa * S_minus */
     for (int i = 0; i < 3; ++i) {
       for (int j = 0; j < 3; ++j) {
-	/* kappa is already in physical units */
+        /* kappa is already in physical units */
         K[i][j] *= p->chemistry_data.kappa;
       }
     }
@@ -274,8 +278,8 @@ __attribute__((always_inline)) INLINE static double chemistry_get_matrix_norm(
  */
 __attribute__((always_inline)) INLINE static double
 chemistry_compute_diffusion_coefficient(
-  struct part *restrict p, const struct chemistry_global_data *chem_data,
-  const struct cosmology *cosmo) {
+    struct part *restrict p, const struct chemistry_global_data *chem_data,
+    const struct cosmology *cosmo) {
 
   float rho = p->chemistry_data.filtered.rho;
 
@@ -289,7 +293,7 @@ chemistry_compute_diffusion_coefficient(
   rho *= cosmo->a3_inv;
 
   /* Convert smoothing length to physical units */
-  const double h2_p = cosmo->a*cosmo->a * p->h * p->h;
+  const double h2_p = cosmo->a * cosmo->a * p->h * p->h;
 
   if (chem_data->diffusion_mode == isotropic_constant) {
     return chem_data->diffusion_coefficient;
@@ -305,7 +309,8 @@ chemistry_compute_diffusion_coefficient(
     S[1][1] -= trace;
     S[2][2] -= trace;
 
-    return chem_data->diffusion_coefficient * kernel_gamma2 * h2_p * rho * chemistry_get_matrix_norm(S);
+    return chem_data->diffusion_coefficient * kernel_gamma2 * h2_p * rho *
+           chemistry_get_matrix_norm(S);
   } else {
     /* Note that this is multiplied by the matrix S to get the full matrix K */
     return chem_data->diffusion_coefficient * kernel_gamma2 * h2_p * rho;

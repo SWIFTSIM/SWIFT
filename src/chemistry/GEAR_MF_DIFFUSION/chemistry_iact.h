@@ -262,8 +262,7 @@ runner_iact_chemistry_fluxes_common(
     const float r2, const float dx[3], const float hi, const float hj,
     struct part *restrict pi, struct part *restrict pj,
     const struct chemistry_global_data *chem_data,
-    const struct cosmology* cosmo,
-    int mode) {
+    const struct cosmology *cosmo, int mode) {
 
   struct chemistry_part_data *chi = &pi->chemistry_data;
   struct chemistry_part_data *chj = &pj->chemistry_data;
@@ -389,8 +388,10 @@ runner_iact_chemistry_fluxes_common(
                         vi[2] + (vi[2] - vj[2]) * xfac};
 
   /* Get the primitive variable of Euler eq */
-  float Wi[5] = {hydro_get_comoving_density(pi), vi[0], vi[1], vi[2], hydro_get_comoving_pressure(pi)};
-  float Wj[5] = {hydro_get_comoving_density(pj), vj[0], vj[1], vj[2], hydro_get_comoving_pressure(pj)};
+  float Wi[5] = {hydro_get_comoving_density(pi), vi[0], vi[1], vi[2],
+                 hydro_get_comoving_pressure(pi)};
+  float Wj[5] = {hydro_get_comoving_density(pj), vj[0], vj[1], vj[2],
+                 hydro_get_comoving_pressure(pj)};
 
   chemistry_gradients_predict_hydro(pi, pj, hi, hj, dx, r, xij_i, Wi, Wj);
 
@@ -418,7 +419,7 @@ runner_iact_chemistry_fluxes_common(
   Wj[4] *= cosmo->a_factor_pressure;
 
   /* Helper variable */
-  const float a2 = cosmo->a*cosmo->a;
+  const float a2 = cosmo->a * cosmo->a;
 
   /*****************************************/
   /* Now solve the Riemann problem for each metal specie */
@@ -434,8 +435,8 @@ runner_iact_chemistry_fluxes_common(
 
     /* Solve the 1D Riemann problem at the interface A_ij _physical units_ */
     double totflux;
-    chemistry_compute_flux(pi, pj, Ui, Uj, Wi, Wj, n_unit, a2*Anorm, g, &totflux,
-                           chem_data, cosmo);
+    chemistry_compute_flux(pi, pj, Ui, Uj, Wi, Wj, n_unit, a2 * Anorm, g,
+                           &totflux, chem_data, cosmo);
 
     /* if (fabs(totflux * mindt) > 0.0) { */
     /*   const double mi = hydro_get_mass(pi); */
@@ -494,7 +495,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_diffusion(
     const struct cosmology *cosmo, const int with_cosmology,
     const struct chemistry_global_data *chem_data) {
 
-  runner_iact_chemistry_fluxes_common(r2, dx, hi, hj, pi, pj, chem_data, cosmo, 1);
+  runner_iact_chemistry_fluxes_common(r2, dx, hi, hj, pi, pj, chem_data, cosmo,
+                                      1);
 }
 
 /**
@@ -523,7 +525,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_diffusion(
     const struct cosmology *cosmo, const int with_cosmology,
     const struct chemistry_global_data *chem_data) {
 
-  runner_iact_chemistry_fluxes_common(r2, dx, hi, hj, pi, pj, chem_data, cosmo, 0);
+  runner_iact_chemistry_fluxes_common(r2, dx, hi, hj, pi, pj, chem_data, cosmo,
+                                      0);
 }
 
 #endif /* SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_IACT_H */

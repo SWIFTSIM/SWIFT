@@ -19,8 +19,8 @@
 #ifndef SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_TIMESTEPS_H
 #define SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_TIMESTEPS_H
 
-#include "chemistry_struct.h"
 #include "chemistry_getters.h"
+#include "chemistry_struct.h"
 
 /**
  * @brief Compute the particle parabolic timestep proportional to h^2.
@@ -31,7 +31,7 @@ __attribute__((always_inline)) INLINE static float
 chemistry_compute_parabolic_timestep(
     const struct part *restrict p,
     const struct chemistry_global_data *chem_data,
-    const struct cosmology* cosmo) {
+    const struct cosmology *cosmo) {
 
   const struct chemistry_part_data *chd = &p->chemistry_data;
 
@@ -42,7 +42,8 @@ chemistry_compute_parabolic_timestep(
 
   /* Note: The State vector is U = (rho*Z_1,rho*Z_2, ...), and q = (Z_1, Z_2,
      ...). Hence, the term norm(U)/norm(q) in eq (15) is abs(rho). */
-  const float norm_U_over_norm_q = cosmo->a3_inv*fabs(chemistry_get_comoving_density(p));
+  const float norm_U_over_norm_q =
+      cosmo->a3_inv * fabs(chemistry_get_comoving_density(p));
 
   /* Some helpful variables */
   const float delta_x = kernel_gamma * p->h * cosmo->a;
@@ -67,7 +68,7 @@ chemistry_compute_parabolic_timestep(
   }
 
   /* Take the sqrt. Add the missing a^{-1} to have physical gradients */
-  norm_q = sqrtf(norm_q); // Physical
+  norm_q = sqrtf(norm_q);  // Physical
   norm_nabla_q = sqrtf(norm_nabla_q) * cosmo->a_inv;
 
   /* If the norm of q (metal density = 0), then use the following
@@ -114,7 +115,7 @@ __attribute__((always_inline)) INLINE static float chemistry_get_supertimestep(
 __attribute__((always_inline)) INLINE static float
 chemistry_compute_CFL_supertimestep(const struct part *restrict p,
                                     const struct chemistry_global_data *cd,
-				    const struct cosmology* cosmo) {
+                                    const struct cosmology *cosmo) {
 
   const struct chemistry_part_data *chd = &p->chemistry_data;
 
@@ -132,7 +133,8 @@ chemistry_compute_CFL_supertimestep(const struct part *restrict p,
 
   /* Compute the norms */
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
-    norm_U += chemistry_get_physical_metal_density(p, i, cosmo) * chemistry_get_physical_metal_density(p, i, cosmo);
+    norm_U += chemistry_get_physical_metal_density(p, i, cosmo) *
+              chemistry_get_physical_metal_density(p, i, cosmo);
 
     for (int j = 0; j < 3; j++) {
       /* Compute the Frobenius norm of \nabla \otimes q */
@@ -170,4 +172,3 @@ chemistry_compute_subtimestep(const struct part *restrict p,
 }
 
 #endif /* SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_TIMESTEPS_H  */
-

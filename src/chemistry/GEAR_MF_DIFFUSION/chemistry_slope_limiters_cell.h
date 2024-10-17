@@ -81,10 +81,12 @@ chemistry_slope_limit_cell_collect(struct part* pi, struct part* pj, float r) {
   /* Basic slope limiter: collect the maximal and the minimal value for the
    * primitive variables among the ngbs */
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
-    chi->limiter.metal_density[i][0] = min(chemistry_get_comoving_metal_density(pj, i),
-                                           chi->limiter.metal_density[i][0]);
-    chi->limiter.metal_density[i][1] = max(chemistry_get_comoving_metal_density(pj, i),
-                                           chi->limiter.metal_density[i][1]);
+    chi->limiter.metal_density[i][0] =
+        min(chemistry_get_comoving_metal_density(pj, i),
+            chi->limiter.metal_density[i][0]);
+    chi->limiter.metal_density[i][1] =
+        max(chemistry_get_comoving_metal_density(pj, i),
+            chi->limiter.metal_density[i][1]);
   }
 
   chi->limiter.v[0][0] = min(pj->v[0], chi->limiter.v[0][0]);
