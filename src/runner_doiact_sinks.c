@@ -3,7 +3,7 @@
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
  *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
- *
+ *               2024 Jonathan Davies (j.j.davies@ljmu.ac.uk)
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
  * by the Free Software Foundation, either version 3 of the License, or
@@ -24,19 +24,12 @@
 
 /* Local headers. */
 #include "active.h"
-// #include "sink.h"
 #include "sink_iact.h"
 #include "cell.h"
 #include "engine.h"
 #include "runner.h"
 #include "space_getsid.h"
 #include "timers.h"
-
-// /* Import the black hole density loop functions. */
-// #define FUNCTION density
-// #define FUNCTION_TASK_LOOP TASK_LOOP_DENSITY
-// #include "runner_doiact_functions_black_holes.h"
-// #include "runner_doiact_undef.h"
 
 /* Import the sink swallow loop functions. */
 #define FUNCTION swallow

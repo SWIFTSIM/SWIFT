@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2022 Yves Revaz (yves.revaz@epfl.ch)
+ * Copyright (c) 2024 Jonathan Davies (j.j.davies@ljmu.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -474,10 +474,6 @@ void DOSUB_PAIR1_SINKS(struct runner *r, struct cell *ci,
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
     const int do_ci_sink = ci->nodeID == e->nodeID;
     const int do_cj_sink = cj->nodeID == e->nodeID;
-#elif (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
-    /* Here we are updating the hydro -> switch ci, cj */
-    const int do_ci_sink = cj->nodeID == e->nodeID;
-    const int do_cj_sink = ci->nodeID == e->nodeID;
 #else
     /* Here we perform the task on both sides */
     const int do_ci_sink = 1;
