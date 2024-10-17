@@ -101,7 +101,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       const int ci_active_black_holes =
           ci->black_holes.count > 0 && cell_is_active_black_holes(ci, e);
       const int ci_active_sinks =
-          ci->sinks.count > 0 && cell_is_active_sinks(ci, e);
+          cell_is_active_sinks(ci, e) || cell_is_active_hydro(ci, e);
       const int ci_active_stars = cell_need_activating_stars(
           ci, e, with_star_formation, with_star_formation_sink);
       const int ci_active_rt = cell_is_rt_active(ci, e);
@@ -415,9 +415,9 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           cj->black_holes.count > 0 && cell_is_active_black_holes(cj, e);
 
       const int ci_active_sinks =
-          ci->sinks.count > 0 && cell_is_active_sinks(ci, e);
+          cell_is_active_sinks(ci, e) || ci_active_hydro;
       const int cj_active_sinks =
-          cj->sinks.count > 0 && cell_is_active_sinks(cj, e);
+          cell_is_active_sinks(cj, e) || cj_active_hydro;
 
       const int ci_active_stars = cell_need_activating_stars(
           ci, e, with_star_formation, with_star_formation_sink);
@@ -1612,7 +1612,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
              t_type == task_type_sink_density_ghost ||
              t_type == task_type_sink_ghost1 ||
              t_type == task_type_sink_ghost2) {
-      if (cell_is_active_sinks(t->ci, e))
+      if (cell_is_active_sinks(t->ci, e) || cell_is_active_hydro(t->ci, e))
         scheduler_activate(s, t);
     }
 
@@ -1693,7 +1693,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
     /* Subgrid tasks: star formation from sinks */
     else if (t_type == task_type_star_formation_sink) {
-      if (cell_is_active_sinks(t->ci, e)) {
+      if (cell_is_active_sinks(t->ci, e) || cell_is_active_hydro(t->ci, e)) {
         cell_activate_star_formation_sink_tasks(t->ci, s, with_feedback);
         cell_activate_super_sink_drifts(t->ci, s);
       }

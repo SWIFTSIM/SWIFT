@@ -2524,7 +2524,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       }
 
       /* The sink tasks */
-      if (with_sink && sinkcount_i > 0) {
+      if (with_sink) {
         t_sink_density = scheduler_addtask(
             sched, task_type_self, task_subtype_sink_density, flags, 0, ci, NULL);
         t_sink_swallow =
@@ -2577,7 +2577,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         engine_addlink(e, &ci->stars.prepare2, t_star_prep2);
 #endif
       }
-      if (with_sink && sinkcount_i > 0) {
+      if (with_sink) {
         engine_addlink(e, &ci->sinks.density, t_sink_density);
         engine_addlink(e, &ci->sinks.swallow, t_sink_swallow);
         engine_addlink(e, &ci->sinks.do_sink_swallow, t_sink_do_sink_swallow);
@@ -2656,7 +2656,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       }
 
       /* The sink's tasks. */
-      if (with_sink && sinkcount_i > 0) {
+      if (with_sink) {
 
         /* Sink density */
         if (with_cooling)
@@ -2814,7 +2814,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       }
 
       /* The sink tasks */
-      if (with_sink && (sinkcount_i > 0 || sinkcount_j > 0)) {
+      if (with_sink) {
         t_sink_density = scheduler_addtask(
             sched, task_type_pair, task_subtype_sink_density, flags, 0, ci, cj);
         t_sink_swallow = scheduler_addtask(
@@ -2894,7 +2894,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         engine_addlink(e, &cj->stars.prepare2, t_star_prep2);
 #endif
       }
-      if (with_sink && (sinkcount_i > 0 || sinkcount_j > 0)) {
+      if (with_sink) {
         engine_addlink(e, &ci->sinks.density, t_sink_density);
         engine_addlink(e, &cj->sinks.density, t_sink_density);
         engine_addlink(e, &ci->sinks.swallow, t_sink_swallow);
@@ -3021,7 +3021,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                               ci->hydro.super->stars.stars_out);
         }
 
-        if (with_sink && (sinkcount_i > 0 || sinkcount_j > 0)) {
+      if (with_sink) {
 
           if (with_cooling)
             scheduler_addunlock(sched, ci->hydro.super->hydro.cooling_out, t_sink_density);
@@ -3179,7 +3179,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                                 cj->hydro.super->stars.stars_out);
           }
 
-          if (with_sink && (sinkcount_i > 0 || sinkcount_j > 0)) {
+          if (with_sink) {
 
             if (with_cooling)
               scheduler_addunlock(sched, cj->hydro.super->hydro.cooling_out, t_sink_density);
@@ -3346,7 +3346,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       }
 
       /* The sink tasks */
-      if (with_sink && sinkcount_i > 0) {
+      if (with_sink) {
         t_sink_density =
             scheduler_addtask(sched, task_type_sub_self,
                               task_subtype_sink_density, flags, 0, ci, NULL);
@@ -3405,7 +3405,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         engine_addlink(e, &ci->stars.prepare2, t_star_prep2);
 #endif
       }
-      if (with_sink && sinkcount_i > 0) {
+      if (with_sink) {
         engine_addlink(e, &ci->sinks.density, t_sink_density);
         engine_addlink(e, &ci->sinks.swallow, t_sink_swallow);
         engine_addlink(e, &ci->sinks.do_sink_swallow, t_sink_do_sink_swallow);
@@ -3489,7 +3489,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                             ci->hydro.super->stars.stars_out);
       }
 
-      if (with_sink && sinkcount_i > 0) {
+      if (with_sink) {
 
         if (with_cooling)
           scheduler_addunlock(sched, ci->hydro.super->hydro.cooling_out,
@@ -3654,7 +3654,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       }
 
       /* The sink tasks */
-      if (with_sink && (sinkcount_i > 0 || sinkcount_j > 0)) {
+      if (with_sink) {
         t_sink_density =
             scheduler_addtask(sched, task_type_sub_pair,
                               task_subtype_sink_density, flags, 0, ci, cj);
@@ -3741,7 +3741,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         engine_addlink(e, &cj->stars.prepare2, t_star_prep2);
 #endif
       }
-      if (with_sink  && (sinkcount_i > 0 || sinkcount_j > 0)) {
+      if (with_sink) {
         engine_addlink(e, &ci->sinks.density, t_sink_density);
         engine_addlink(e, &cj->sinks.density, t_sink_density);
         engine_addlink(e, &ci->sinks.swallow, t_sink_swallow);
@@ -3867,7 +3867,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                               ci->hydro.super->stars.stars_out);
         }
 
-        if (with_sink && (sinkcount_i > 0 || sinkcount_j > 0)) {
+        if (with_sink) {
 
           if (with_cooling)
             scheduler_addunlock(sched, ci->hydro.super->hydro.cooling_out,
@@ -4030,7 +4030,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
             scheduler_addunlock(sched, t_star_feedback,
                                 cj->hydro.super->stars.stars_out);
           }
-          if (with_sink && (sinkcount_i > 0 || sinkcount_j > 0)) {
+          if (with_sink) {
 
             if (with_cooling)
               scheduler_addunlock(sched, cj->hydro.super->hydro.cooling_out,
