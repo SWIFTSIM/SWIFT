@@ -173,86 +173,113 @@ runner_iact_nonsym_sinks_gas_density(
  * @param rj Comoving cut off radius of particle j.
  * @param si First sink particle.
  * @param sj Second sink particle.
+ * @param with_cosmology if we run with cosmology.
+ * @param cosmo The cosmological parameters and properties.
+ * @param grav_props The gravity scheme parameters and properties.
+ * @param sink_props the sink properties to use.
  */
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_sinks_sink_swallow(const float r2, const float dx[3],
-                                      const float ri, const float rj,
-                                      struct sink *restrict si,
-                                      struct sink *restrict sj,
-                                      const int with_cosmology,
-                                      const struct cosmology *cosmo,
-                                      const struct gravity_props *grav_props) {
+runner_iact_nonsym_sinks_sink_swallow(
+    const float r2, const float dx[3], const float ri, const float rj,
+    struct sink *restrict si, struct sink *restrict sj,
+    const int with_cosmology, const struct cosmology *cosmo,
+    const struct gravity_props *grav_props,
+    const struct sink_props *sink_properties) {
 
-  /* Relative velocity between th sinks */
-  const float dv[3] = {sj->v[0] - si->v[0], sj->v[1] - si->v[1],
-                       sj->v[2] - si->v[2]};
+  const float r = sqrtf(r2);
+  const float f_acc_r_acc_i = sink_properties->f_acc * ri;
 
-  const float a = cosmo->a;
-  const float H = cosmo->H;
-  const float a2H = a * a * H;
+  /* If the sink j falls within f_acc*r_acc of sink i, then the
+     lightest is accreted on the most massive without further check.
+     Note that this is a non-symmetric interaction. So, we do not need to check
+     for the f_acc*r_acc_j case here. */
+  if (r < f_acc_r_acc_i) {
+    /* The sink with the smaller mass will be merged onto the one with the
+     * larger mass.
+     * To avoid rounding issues, we additionally check for IDs if the sink
+     * have the exact same mass. */
+    if ((sj->mass < si->mass) || (sj->mass == si->mass && sj->id < si->id)) {
+      /* This particle is swallowed by the sink with the largest mass of all the
+       * candidates wanting to swallow it (we use IDs to break ties)*/
+      if ((sj->merger_data.swallow_mass < si->mass) ||
+          (sj->merger_data.swallow_mass == si->mass &&
+           sj->merger_data.swallow_id < si->id)) {
+        sj->merger_data.swallow_id = si->id;
+        sj->merger_data.swallow_mass = si->mass;
+      }
+    }
+  } else {
 
-  /* Calculate the velocity with the Hubble flow */
-  const float v_plus_H_flow[3] = {a2H * dx[0] + dv[0], a2H * dx[1] + dv[1],
-                                  a2H * dx[2] + dv[2]};
+    /* Relative velocity between the sinks */
+    const float dv[3] = {sj->v[0] - si->v[0], sj->v[1] - si->v[1],
+                         sj->v[2] - si->v[2]};
 
-  /* Binding energy check */
-  /* Compute the physical relative velocity between the particles */
-  const float dv_physical[3] = {v_plus_H_flow[0] * cosmo->a_inv,
-                                v_plus_H_flow[1] * cosmo->a_inv,
-                                v_plus_H_flow[2] * cosmo->a_inv};
+    const float a = cosmo->a;
+    const float H = cosmo->H;
+    const float a2H = a * a * H;
 
-  const float dv_physical_squared = dv_physical[0] * dv_physical[0] +
-                                    dv_physical[1] * dv_physical[1] +
-                                    dv_physical[2] * dv_physical[2];
+    /* Calculate the velocity with the Hubble flow */
+    const float v_plus_H_flow[3] = {a2H * dx[0] + dv[0], a2H * dx[1] + dv[1],
+                                    a2H * dx[2] + dv[2]};
 
-  /* Kinetic energy of the gas */
-  const float E_kin_rel = 0.5f * dv_physical_squared;
+    /* Binding energy check */
+    /* Compute the physical relative velocity between the particles */
+    const float dv_physical[3] = {v_plus_H_flow[0] * cosmo->a_inv,
+                                  v_plus_H_flow[1] * cosmo->a_inv,
+                                  v_plus_H_flow[2] * cosmo->a_inv};
 
-  /* Compute the Newtonian or truncated potential the sink exherts onto the
-     gas particle */
-  const float eps = gravity_get_softening(si->gpart, grav_props);
-  const float eps2 = eps * eps;
-  const float eps_inv = 1.f / eps;
-  const float eps_inv3 = eps_inv * eps_inv * eps_inv;
-  const float si_mass = si->mass;
-  const float sj_mass = sj->mass;
+    const float dv_physical_squared = dv_physical[0] * dv_physical[0] +
+                                      dv_physical[1] * dv_physical[1] +
+                                      dv_physical[2] * dv_physical[2];
 
-  float dummy, pot_ij, pot_ji;
-  runner_iact_grav_pp_full(r2, eps2, eps_inv, eps_inv3, si_mass, &dummy,
-                           &pot_ij);
-  runner_iact_grav_pp_full(r2, eps2, eps_inv, eps_inv3, sj_mass, &dummy,
-                           &pot_ji);
+    /* Kinetic energy per unit mass of the gas */
+    const float E_kin_rel = 0.5f * dv_physical_squared;
 
-  /* Compute the physical potential energies :
-                       E_pot_phys = G*pot_grav*a^(-1) + c(z). */
-  /* The normalization is c(z) = 0 for all redshift z. */
-  const float E_pot_ij = grav_props->G_Newton * pot_ij * cosmo->a_inv;
-  const float E_pot_ji = grav_props->G_Newton * pot_ji * cosmo->a_inv;
+    /* Compute the Newtonian or softened potential the sink exherts onto the
+       gas particle */
+    const float eps = gravity_get_softening(si->gpart, grav_props);
+    const float eps2 = eps * eps;
+    const float eps_inv = 1.f / eps;
+    const float eps_inv3 = eps_inv * eps_inv * eps_inv;
+    const float si_mass = si->mass;
+    const float sj_mass = sj->mass;
 
-  /* Mechanical energy of the pair i-j and j-i */
-  const float E_mec_si = E_kin_rel + E_pot_ij;
-  const float E_mec_sj = E_kin_rel + E_pot_ji;
+    float dummy, pot_ij, pot_ji;
+    runner_iact_grav_pp_full(r2, eps2, eps_inv, eps_inv3, si_mass, &dummy,
+                             &pot_ij);
+    runner_iact_grav_pp_full(r2, eps2, eps_inv, eps_inv3, sj_mass, &dummy,
+                             &pot_ji);
 
-  /* Now, check if one is bound to the other */
-  if ((E_mec_si > 0) || (E_mec_sj > 0)) {
-    return;
-  }
+    /* Compute the physical potential energies per unit mass :
+                           E_pot_phys = G*pot_grav*a^(-1) + c(a).
+       The normalization is c(a) = 0. */
+    const float E_pot_ij = grav_props->G_Newton * pot_ij * cosmo->a_inv;
+    const float E_pot_ji = grav_props->G_Newton * pot_ji * cosmo->a_inv;
 
-  /* The sink with the smaller mass will be merged onto the one with the
-   * larger mass.
-   * To avoid rounding issues, we additionally check for IDs if the sink
-   * have the exact same mass. */
-  if ((sj->mass < si->mass) || (sj->mass == si->mass && sj->id < si->id)) {
-    /* This particle is swallowed by the sink with the largest mass of all the
-     * candidates wanting to swallow it (we use IDs to break ties)*/
-    if ((sj->merger_data.swallow_mass < si->mass) ||
-        (sj->merger_data.swallow_mass == si->mass &&
-         sj->merger_data.swallow_id < si->id)) {
-      sj->merger_data.swallow_id = si->id;
-      sj->merger_data.swallow_mass = si->mass;
+    /* Mechanical energy per unit mass of the pair i-j and j-i */
+    const float E_mec_si = E_kin_rel + E_pot_ij;
+    const float E_mec_sj = E_kin_rel + E_pot_ji;
+
+    /* Now, check if one is bound to the other */
+    if ((E_mec_si > 0) || (E_mec_sj > 0)) {
+      return;
+    }
+
+    /* The sink with the smaller mass will be merged onto the one with the
+     * larger mass.
+     * To avoid rounding issues, we additionally check for IDs if the sink
+     * have the exact same mass. */
+    if ((sj->mass < si->mass) || (sj->mass == si->mass && sj->id < si->id)) {
+      /* This particle is swallowed by the sink with the largest mass of all the
+       * candidates wanting to swallow it (we use IDs to break ties)*/
+      if ((sj->merger_data.swallow_mass < si->mass) ||
+          (sj->merger_data.swallow_mass == si->mass &&
+           sj->merger_data.swallow_id < si->id)) {
+        sj->merger_data.swallow_id = si->id;
+        sj->merger_data.swallow_mass = si->mass;
+      }
     }
   }
-
 #ifdef DEBUG_INTERACTIONS_SINKS
   /* Update ngb counters */
   if (si->num_ngb_formation < MAX_NUM_OF_NEIGHBOURS_SINKS)
