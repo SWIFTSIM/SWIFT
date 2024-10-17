@@ -1142,6 +1142,32 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
     }
   }
 
+
+  if (c->top == c) {
+
+    /* Has anything changed? */
+    char changed = 0;
+    changed += c->hydro.ti_end_min != ti_hydro_end_min ? 1 : 0;
+    changed += c->hydro.ti_beg_max != ti_hydro_beg_max ? 1 : 0;
+    changed += c->rt.ti_rt_end_min != ti_rt_end_min ? 1 : 0;
+    changed += c->rt.ti_rt_beg_max != ti_rt_beg_max ? 1 : 0;
+    changed += c->grav.ti_end_min != ti_gravity_end_min ? 1 : 0;
+    changed += c->grav.ti_beg_max != ti_gravity_beg_max ? 1 : 0;
+    changed += c->stars.ti_end_min != ti_stars_end_min ? 1 : 0;
+    changed += c->stars.ti_beg_max != ti_stars_beg_max ? 1 : 0;
+    changed += c->black_holes.ti_end_min != ti_black_holes_end_min ? 1 : 0;
+    changed += c->black_holes.ti_beg_max != ti_black_holes_beg_max ? 1 : 0;
+    changed += c->sinks.ti_end_min != ti_sinks_end_min ? 1 : 0;
+    changed += c->sinks.ti_beg_max != ti_sinks_beg_max ? 1 : 0;
+
+    /* Store in the top-level array whether anything changed */
+    const size_t delta = c->top - r->e->s->cells_top;
+    r->e->s->cells_top_updated[delta] = changed ? 1 : 0;
+    message("Changed: %d", changed);
+	    
+  }
+
+  
   /* Store the values. */
   c->hydro.updated = updated;
   c->grav.updated = g_updated;
@@ -1210,8 +1236,10 @@ void runner_do_timestep_collect(struct runner *r, struct cell *c,
 
   /* Early stop if we are at the super level.
    * The time-step task would have set things at this level already */
-  if (c->super == c) return;
-
+  if (c->super == c) {
+    return;
+  }
+    
   /* Counters for the different quantities. */
   size_t h_updated = 0;
   size_t g_updated = 0;
@@ -1269,6 +1297,30 @@ void runner_do_timestep_collect(struct runner *r, struct cell *c,
     }
   }
 
+  if (c->top == c) {
+
+    /* Has anything changed? */
+    char changed = 0;
+    changed += c->hydro.ti_end_min != ti_hydro_end_min ? 1 : 0;
+    changed += c->hydro.ti_beg_max != ti_hydro_beg_max ? 1 : 0;
+    changed += c->rt.ti_rt_end_min != ti_rt_end_min ? 1 : 0;
+    changed += c->rt.ti_rt_beg_max != ti_rt_beg_max ? 1 : 0;
+    changed += c->grav.ti_end_min != ti_grav_end_min ? 1 : 0;
+    changed += c->grav.ti_beg_max != ti_grav_beg_max ? 1 : 0;
+    changed += c->stars.ti_end_min != ti_stars_end_min ? 1 : 0;
+    changed += c->stars.ti_beg_max != ti_stars_beg_max ? 1 : 0;
+    changed += c->black_holes.ti_end_min != ti_black_holes_end_min ? 1 : 0;
+    changed += c->black_holes.ti_beg_max != ti_black_holes_beg_max ? 1 : 0;
+    changed += c->sinks.ti_end_min != ti_sinks_end_min ? 1 : 0;
+    changed += c->sinks.ti_beg_max != ti_sinks_beg_max ? 1 : 0;
+
+    /* Store in the top-level array whether anything changed */
+    const size_t delta = c->top - r->e->s->cells_top;
+    r->e->s->cells_top_updated[delta] = changed ? 1 : 0;
+    message("Changed: %d", changed);
+	    
+  }
+  
   /* Store the collected values in the cell. */
   c->hydro.ti_end_min = ti_hydro_end_min;
   c->hydro.ti_beg_max = ti_hydro_beg_max;

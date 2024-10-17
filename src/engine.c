@@ -1900,6 +1900,86 @@ void engine_get_max_ids(struct engine *e) {
 #endif
 }
 
+
+void engine_synchronize_times(struct engine *e) {
+
+  
+#ifdef WITH_MPI
+
+  if (1) { //engine_rank == 0) {
+
+    int sum = 0;
+    for (int i = 0; i < e->s->nr_cells; ++i) {
+      sum += e->s->cells_top_updated[i];
+    }
+    message("Sum: %d", sum);
+  }
+   
+  /* Collect which top-level cells have been updated */
+  MPI_Allreduce(MPI_IN_PLACE, e->s->cells_top_updated, e->s->nr_cells, MPI_CHAR, MPI_SUM, MPI_COMM_WORLD);
+
+  if (1) { //engine_rank == 0) {
+
+    int sum = 0;
+    for (int i = 0; i < e->s->nr_cells; ++i) {
+      sum += e->s->cells_top_updated[i];
+    }
+
+    message("Sum: %d", sum);
+  }
+  
+  /* Now launch the corresponding comms */
+  for (int k = 0; k < e->sched.nr_tasks; ++k) {
+
+    struct task *t = &e->sched.tasks[k];
+
+    if (t->type == task_type_send && t->subtype == task_subtype_tend) {
+
+      const struct cell *ci = t->ci;
+      //const struct cell *cj = t->cj;
+
+      if (ci->nodeID != e->nodeID) error("cell i is non-local!!");
+      
+      const size_t delta = ci - e->s->cells_top;
+      const int updated = e->s->cells_top_updated[delta];
+      
+      if (updated) {
+
+	if (e->step > 0)
+	message("Activating send %zd", delta);
+	
+	scheduler_activate(&e->sched, t);
+      }
+
+    }
+    if (t->type == task_type_recv && t->subtype == task_subtype_tend) {
+      
+      const struct cell *ci = t->ci;
+      //const struct cell *cj = t->cj;
+
+      if (ci->nodeID == e->nodeID) error("cell i is local!!");
+      
+      const size_t delta = ci - e->s->cells_top;
+      const int updated = e->s->cells_top_updated[delta];
+
+      if (updated) {
+
+	if (e->step > 0)
+	message("Activating recv %zd", delta);
+
+	scheduler_activate(&e->sched, t);
+      }
+    }
+  }
+
+
+  TIMER_TIC;
+  engine_launch(e, "tend");
+  TIMER_TOC(timer_runners);
+
+#endif
+}
+
 /**
  * @brief Run the radiative transfer sub-cycles outside the
  * regular time-steps.
@@ -2192,6 +2272,8 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   }
 #endif
 
+  bzero(e->s->cells_top_updated, e->s->nr_cells * sizeof(char));
+
   /* Now, launch the calculation */
   TIMER_TIC;
   engine_launch(e, "tasks");
@@ -2280,11 +2362,16 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   scheduler_write_cell_dependencies(&e->sched, e->verbose, e->step);
   if (e->nodeID == 0) scheduler_write_task_level(&e->sched, e->step);
 
+  bzero(e->s->cells_top_updated, e->s->nr_cells * sizeof(char));
+    
   /* Run the 0th time-step */
   TIMER_TIC2;
   engine_launch(e, "tasks");
   TIMER_TOC2(timer_runners);
 
+  /* When running over MPI, synchronize top-level cells */
+  engine_synchronize_times(e);
+  
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
   /* Run the brute-force hydro calculation for some parts */
   if (e->policy & engine_policy_hydro)
@@ -2809,11 +2896,18 @@ int engine_step(struct engine *e) {
      want to lose the data from the tasks) */
   space_reset_ghost_histograms(e->s);
 
+  bzero(e->s->cells_top_updated, e->s->nr_cells * sizeof(char));
+  
   /* Start all the tasks. */
   TIMER_TIC;
   engine_launch(e, "tasks");
   TIMER_TOC(timer_runners);
 
+  /* When running over MPI, synchronize top-level cells */
+#ifdef WITH_MPI
+  engine_synchronize_times(e);
+#endif
+  
   /* Now record the CPU times used by the tasks. */
 #ifdef WITH_MPI
   double end_usertime = 0.0;

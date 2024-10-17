@@ -2420,6 +2420,7 @@ void space_clean(struct space *s) {
 
   for (int i = 0; i < s->nr_cells; ++i) cell_clean(&s->cells_top[i]);
   swift_free("cells_top", s->cells_top);
+  swift_free("cells_top", s->cells_top_updated);
   swift_free("multipoles_top", s->multipoles_top);
   swift_free("local_cells_top", s->local_cells_top);
   swift_free("local_cells_with_tasks_top", s->local_cells_with_tasks_top);
@@ -2593,6 +2594,7 @@ void space_struct_restore(struct space *s, FILE *stream) {
 
   /* Things that should be reconstructed in a rebuild. */
   s->cells_top = NULL;
+  s->cells_top_updated = NULL;
   s->cells_sub = NULL;
   s->multipoles_top = NULL;
   s->multipoles_sub = NULL;

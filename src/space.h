@@ -331,6 +331,9 @@ struct space {
   /*! Structure dealing with the computation of a unique ID */
   struct unique_id unique_id;
 
+  /*! Have the top-level cells' time-steps been updated? */
+  char* cells_top_updated;
+  
 #ifdef WITH_MPI
 
   /*! Buffers for parts that we will receive from foreign cells. */
