@@ -65,6 +65,20 @@ INLINE static void convert_chemistry_diffusion_coefficient(
   *ret = p->chemistry_data.kappa;
 }
 
+INLINE static void convert_chemistry_diffusion_matrix(
+    const struct engine* e, const struct part* p, const struct xpart* xp,
+    double* ret) {
+
+   double K[3][3];
+   chemistry_get_physical_matrix_K(p, K, e->chemistry, e->cosmology);
+
+   for (int i = 0; i < 3; i++) {
+     for (int j = 0; j < 3; j++) {
+       ret[3*i + j] = K[i][j];
+     }
+   }
+}
+
 /**
  * @brief Specifies which particle fields to write to a dataset
  *
@@ -92,7 +106,13 @@ INLINE static int chemistry_write_particles(const struct part* parts,
       convert_chemistry_diffusion_coefficient,
       "Physical diffusion coefficient for diffusion modes 0 and 1");
 
-  return 2;
+  list[2] = io_make_physical_output_field_convert_part(
+      "DiffusionMatrices", DOUBLE, 9, UNIT_CONV_DIFF_COEFF, 0.f, parts,
+      xparts, /*can convert to comoving=*/0,
+      convert_chemistry_diffusion_matrix,
+      "Physical diffusion matrix");
+
+  return 3;
 }
 
 /**
