@@ -420,10 +420,10 @@ chemistry_compute_parabolic_timestep(
 
   /* Note: The State vector is U = (rho*Z_1,rho*Z_2, ...), and q = (Z_1, Z_2,
      ...). Hence, the term norm(U)/norm(q) in eq (15) is abs(rho). */
-  const float norm_U_over_norm_q = fabs(chemistry_get_comoving_density(p));
+  const float norm_U_over_norm_q = cosmo->a3_inv*fabs(chemistry_get_comoving_density(p));
 
   /* Some helpful variables */
-  const float delta_x = kernel_gamma * p->h;
+  const float delta_x = kernel_gamma * p->h * cosmo->a;
   float norm_q = 0.0;
   float norm_nabla_q = 0.0;
   float expression = 0.0;
@@ -444,9 +444,9 @@ chemistry_compute_parabolic_timestep(
     }
   }
 
-  /* Take the sqrt */
-  norm_q = sqrtf(norm_q);
-  norm_nabla_q = sqrtf(norm_nabla_q);
+  /* Take the sqrt. Add the missing a^{-1} to have physical gradients */
+  norm_q = sqrtf(norm_q); // Physical
+  norm_nabla_q = sqrtf(norm_nabla_q) * cosmo->a_inv;
 
   /* If the norm of q (metal density = 0), then use the following
      expression. Notice that if norm q = 0, the true timestep muste be 0... */
@@ -486,7 +486,6 @@ __attribute__((always_inline)) INLINE static float chemistry_get_supertimestep(
 /**
  * @brief Compute the particle supertimestep with using a CFL-like condition,
  * proportioanl to h.
- * @TODO: Convert to physical units 
  *
  * @param p Particle.
  */
@@ -503,35 +502,33 @@ chemistry_compute_CFL_supertimestep(const struct part *restrict p,
   const float norm_matrix_K = chemistry_get_matrix_norm(K);
 
   /* Some helpful variables */
-  const float delta_x = kernel_gamma * p->h;
+  const float delta_x = kernel_gamma * p->h * cosmo->a;
 
   /* Note: The State vector is U = (rho*Z_1,rho*Z_2, ...). */
   float norm_U = 0.0;
-  float norm_nabla_otimes_q = 0.0;
+  float norm_nabla_q = 0.0;
 
   /* Compute the norms */
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
-    norm_U += p->chemistry_data.metal_mass[i] * p->chemistry_data.metal_mass[i];
+    norm_U += chemistry_get_comoving_metal_density(p, i) * chemistry_get_comoving_metal_density(p, i);
 
     for (int j = 0; j < 3; j++) {
       /* Compute the Frobenius norm of \nabla \otimes q */
-      norm_nabla_otimes_q += chd->gradients.Z[i][j] * chd->gradients.Z[i][j];
+      norm_nabla_q += chd->gradients.Z[i][j] * chd->gradients.Z[i][j];
     }
   }
 
-  /* Take the sqrt and divide by the volume to get a density */
-  norm_U = sqrtf(norm_U) / p->geometry.volume;
-
-  /* Take the sqrt to get the norm */
-  norm_nabla_otimes_q = sqrtf(norm_nabla_otimes_q);
+  /* Take the sqrt and divide and convert to physical units */
+  norm_U = sqrtf(norm_U) * cosmo->a3_inv;
+  norm_nabla_q = sqrtf(norm_nabla_q) * cosmo->a_inv;
 
   /* Prevent pathological cases */
-  if (norm_matrix_K == 0.0 || norm_nabla_otimes_q == 0.0) {
+  if (norm_matrix_K == 0.0 || norm_nabla_q == 0.0) {
     return FLT_MAX;
   }
 
   return cd->C_CFL_chemistry * delta_x * norm_U /
-         (norm_matrix_K * norm_nabla_otimes_q);
+         (norm_matrix_K * norm_nabla_q);
 }
 
 /**
