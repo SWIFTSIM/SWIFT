@@ -430,6 +430,7 @@ nobase_noinst_HEADERS += chemistry/GEAR_MF_DIFFUSION/chemistry_iact.h
 nobase_noinst_HEADERS += chemistry/GEAR_MF_DIFFUSION/chemistry_debug.h
 nobase_noinst_HEADERS += chemistry/GEAR_MF_DIFFUSION/chemistry_flux.h
 nobase_noinst_HEADERS += chemistry/GEAR_MF_DIFFUSION/chemistry_getters.h
+nobase_noinst_HEADERS += chemistry/GEAR_MF_DIFFUSION/chemistry_timesteps.h
 nobase_noinst_HEADERS += chemistry/GEAR_MF_DIFFUSION/chemistry_gradients.h
 nobase_noinst_HEADERS += chemistry/GEAR_MF_DIFFUSION/chemistry_riemann_HLL.h
 nobase_noinst_HEADERS += chemistry/GEAR_MF_DIFFUSION/chemistry_setters.h
