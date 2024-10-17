@@ -279,56 +279,50 @@ chemistry_riemann_solve_for_flux(
   /* Multiply by alpha to limit numerical diffusion. */
   F_U *= alpha;
 
-  if (chem_data->use_hokpins2017_hll_riemann_solver) {
-    /****************************************************************************
-     * Hopkins 2017 implementation of HLL */
-    /* No conversion to physical needed, everything is physical here */
-    double flux_hll = 0.0;
+  /****************************************************************************
+   * Hopkins 2017 implementation of HLL */
+  /* No conversion to physical needed, everything is physical here */
+  double flux_hll = 0.0;
 
-    /* Simple trick while testing to verify how numerical diffusion affects the
-       results */
-    if (chem_data->hll_riemann_solver_psi >= 0) {
-      flux_hll = chemistry_riemann_minmod(
-          (1 + chem_data->hll_riemann_solver_psi) * F_2, F_2 + F_U);
-    } else {
-      flux_hll = F_2 + F_U;
-    }
-
-    /* Compute the direct fluxes */
-    const double qi = chemistry_get_metal_mass_fraction(pi, g);
-    const double qj = chemistry_get_metal_mass_fraction(pj, g);
-    const double dq = qj - qi;
-    const double nabla_o_q_dir[3] = {dx_p[0] * dq / dx_p_norm_2,
-                                     dx_p[1] * dq / dx_p_norm_2,
-                                     dx_p[2] * dq / dx_p_norm_2};
-    const double kappa_mean =
-        0.5 * (pi->chemistry_data.kappa + pj->chemistry_data.kappa);
-    const double F_A_left_side[3] = {-kappa_mean * nabla_o_q_dir[0],
-                                     -kappa_mean * nabla_o_q_dir[1],
-                                     -kappa_mean * nabla_o_q_dir[2]};
-    const double F_A_right_side[3] = {Anorm * dx_p[0] / dx_p_norm,
-                                      Anorm * dx_p[1] / dx_p_norm,
-                                      Anorm * dx_p[2] / dx_p_norm};
-
-    const double F_times_A_dir = F_A_left_side[0] * F_A_right_side[0] +
-                                 F_A_left_side[1] * F_A_right_side[1] +
-                                 F_A_left_side[2] * F_A_right_side[2];
-
-    /* Get F_HLL * A_ij */
-    const double F_HLL_times_A = flux_hll * Anorm;
-
-    /* Now, choose the righ flux to get F_diff_ij^* */
-    const double epsilon = chem_data->hll_riemann_solver_epsilon;
-    if (F_times_A_dir * F_HLL_times_A < 0.0 &&
-        fabs(F_times_A_dir) > epsilon * fabs(F_HLL_times_A)) {
-      *metal_flux = 0;
-    } else {
-      *metal_flux = flux_hll;
-    }
+  /* Simple trick while testing to verify how numerical diffusion affects the
+     results */
+  if (chem_data->hll_riemann_solver_psi >= 0) {
+    flux_hll = chemistry_riemann_minmod(
+					(1 + chem_data->hll_riemann_solver_psi) * F_2, F_2 + F_U);
   } else {
-    /***************************************************************************
-     * Simple HLL (compute F_diff_ij^*) */
-    *metal_flux = F_2 + F_U;
+    flux_hll = F_2 + F_U;
+  }
+
+  /* Compute the direct fluxes */
+  const double qi = chemistry_get_metal_mass_fraction(pi, g);
+  const double qj = chemistry_get_metal_mass_fraction(pj, g);
+  const double dq = qj - qi;
+  const double nabla_o_q_dir[3] = {dx_p[0] * dq / dx_p_norm_2,
+				   dx_p[1] * dq / dx_p_norm_2,
+				   dx_p[2] * dq / dx_p_norm_2};
+  const double kappa_mean =
+    0.5 * (pi->chemistry_data.kappa + pj->chemistry_data.kappa);
+  const double F_A_left_side[3] = {-kappa_mean * nabla_o_q_dir[0],
+				   -kappa_mean * nabla_o_q_dir[1],
+				   -kappa_mean * nabla_o_q_dir[2]};
+  const double F_A_right_side[3] = {Anorm * dx_p[0] / dx_p_norm,
+				    Anorm * dx_p[1] / dx_p_norm,
+				    Anorm * dx_p[2] / dx_p_norm};
+
+  const double F_times_A_dir = F_A_left_side[0] * F_A_right_side[0] +
+    F_A_left_side[1] * F_A_right_side[1] +
+    F_A_left_side[2] * F_A_right_side[2];
+
+  /* Get F_HLL * A_ij */
+  const double F_HLL_times_A = flux_hll * Anorm;
+
+  /* Now, choose the righ flux to get F_diff_ij^* */
+  const double epsilon = chem_data->hll_riemann_solver_epsilon;
+  if (F_times_A_dir * F_HLL_times_A < 0.0 &&
+      fabs(F_times_A_dir) > epsilon * fabs(F_HLL_times_A)) {
+    *metal_flux = 0;
+  } else {
+    *metal_flux = flux_hll;
   }
 }
 

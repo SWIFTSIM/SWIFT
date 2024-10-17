@@ -62,9 +62,6 @@ struct chemistry_global_data {
   /*! The psi in eq (7) */
   float hll_riemann_solver_psi;
 
-  /*! Use "usual" HLL or Hopkins 2017 modified HLL */
-  int use_hokpins2017_hll_riemann_solver;
-
   /*! The epsilon in eq (14). This is a tolerance parameter. So, it must be 0
       <= epsilon <= 1. */
   float hll_riemann_solver_epsilon;
