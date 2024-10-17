@@ -110,7 +110,7 @@ INLINE static int chemistry_write_particles(const struct part* parts,
       "DiffusionMatrices", DOUBLE, 9, UNIT_CONV_DIFF_COEFF, 0.f, parts,
       xparts, /*can convert to comoving=*/0,
       convert_chemistry_diffusion_matrix,
-      "Physical diffusion matrix");
+      "Physical diffusion matrix, stored in a vector");
 
   return 3;
 }
