@@ -1257,6 +1257,8 @@ int engine_estimate_nr_tasks(const struct engine *e) {
 void engine_rebuild(struct engine *e, const int repartitioned,
                     const int clean_smoothing_length_values) {
 
+  message("REBUILD!!!!");
+
   const ticks tic = getticks();
 
   /* Clear the forcerebuild flag, whatever it was. */
@@ -1900,13 +1902,11 @@ void engine_get_max_ids(struct engine *e) {
 #endif
 }
 
-
 void engine_synchronize_times(struct engine *e) {
 
-  
 #ifdef WITH_MPI
 
-  if (1) { //engine_rank == 0) {
+  if (1) {  // engine_rank == 0) {
 
     int sum = 0;
     for (int i = 0; i < e->s->nr_cells; ++i) {
@@ -1914,11 +1914,12 @@ void engine_synchronize_times(struct engine *e) {
     }
     message("Sum: %d", sum);
   }
-   
+
   /* Collect which top-level cells have been updated */
-  MPI_Allreduce(MPI_IN_PLACE, e->s->cells_top_updated, e->s->nr_cells, MPI_CHAR, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, e->s->cells_top_updated, e->s->nr_cells, MPI_CHAR,
+                MPI_SUM, MPI_COMM_WORLD);
 
-  if (1) { //engine_rank == 0) {
+  if (1) {  // engine_rank == 0) {
 
     int sum = 0;
     for (int i = 0; i < e->s->nr_cells; ++i) {
@@ -1927,51 +1928,17 @@ void engine_synchronize_times(struct engine *e) {
 
     message("Sum: %d", sum);
   }
-  
-  /* Now launch the corresponding comms */
-  for (int k = 0; k < e->sched.nr_tasks; ++k) {
 
-    struct task *t = &e->sched.tasks[k];
+  /* TODO: Loop only over the sub-set of cells we need */
+  for (int i = 0; i < e->s->nr_cells; ++i) {
 
-    if (t->type == task_type_send && t->subtype == task_subtype_tend) {
+    if (e->s->cells_top_updated[i]) {
 
-      const struct cell *ci = t->ci;
-      //const struct cell *cj = t->cj;
-
-      if (ci->nodeID != e->nodeID) error("cell i is non-local!!");
-      
-      const size_t delta = ci - e->s->cells_top;
-      const int updated = e->s->cells_top_updated[delta];
-      
-      if (updated) {
-
-	if (e->step > 0)
-	message("Activating send %zd", delta);
-	
-	scheduler_activate(&e->sched, t);
-      }
-
-    }
-    if (t->type == task_type_recv && t->subtype == task_subtype_tend) {
-      
-      const struct cell *ci = t->ci;
-      //const struct cell *cj = t->cj;
-
-      if (ci->nodeID == e->nodeID) error("cell i is local!!");
-      
-      const size_t delta = ci - e->s->cells_top;
-      const int updated = e->s->cells_top_updated[delta];
-
-      if (updated) {
-
-	if (e->step > 0)
-	message("Activating recv %zd", delta);
-
-	scheduler_activate(&e->sched, t);
-      }
+      struct cell *c = &e->s->cells_top[i];
+      scheduler_activate_all_subtype(&e->sched, c->mpi.send, task_subtype_tend);
+      scheduler_activate_all_subtype(&e->sched, c->mpi.recv, task_subtype_tend);
     }
   }
-
 
   TIMER_TIC;
   engine_launch(e, "tend");
@@ -2363,7 +2330,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   if (e->nodeID == 0) scheduler_write_task_level(&e->sched, e->step);
 
   bzero(e->s->cells_top_updated, e->s->nr_cells * sizeof(char));
-    
+
   /* Run the 0th time-step */
   TIMER_TIC2;
   engine_launch(e, "tasks");
@@ -2371,7 +2338,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
 
   /* When running over MPI, synchronize top-level cells */
   engine_synchronize_times(e);
-  
+
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
   /* Run the brute-force hydro calculation for some parts */
   if (e->policy & engine_policy_hydro)
@@ -2897,7 +2864,7 @@ int engine_step(struct engine *e) {
   space_reset_ghost_histograms(e->s);
 
   bzero(e->s->cells_top_updated, e->s->nr_cells * sizeof(char));
-  
+
   /* Start all the tasks. */
   TIMER_TIC;
   engine_launch(e, "tasks");
@@ -2907,7 +2874,7 @@ int engine_step(struct engine *e) {
 #ifdef WITH_MPI
   engine_synchronize_times(e);
 #endif
-  
+
   /* Now record the CPU times used by the tasks. */
 #ifdef WITH_MPI
   double end_usertime = 0.0;
