@@ -132,7 +132,7 @@ chemistry_compute_CFL_supertimestep(const struct part *restrict p,
 
   /* Compute the norms */
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
-    norm_U += chemistry_get_comoving_metal_density(p, i) * chemistry_get_comoving_metal_density(p, i);
+    norm_U += chemistry_get_physical_metal_density(p, i, cosmo) * chemistry_get_physical_metal_density(p, i, cosmo);
 
     for (int j = 0; j < 3; j++) {
       /* Compute the Frobenius norm of \nabla \otimes q */
@@ -140,8 +140,8 @@ chemistry_compute_CFL_supertimestep(const struct part *restrict p,
     }
   }
 
-  /* Take the sqrt and divide and convert to physical units */
-  norm_U = sqrtf(norm_U) * cosmo->a3_inv;
+  /* Take the sqrt and convert to physical units */
+  norm_U = sqrtf(norm_U);
   norm_nabla_q = sqrtf(norm_nabla_q) * cosmo->a_inv;
 
   /* Prevent pathological cases */
