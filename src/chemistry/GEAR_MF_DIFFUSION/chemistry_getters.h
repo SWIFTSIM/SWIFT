@@ -44,6 +44,19 @@ __attribute__((always_inline)) INLINE static double chemistry_get_comoving_metal
 }
 
 /**
+ * @brief Get metal density from a specific metal group.
+ *
+ * @param p Particle.
+ * @param metal Index of metal specie
+ * @param U Pointer to the array in which the result needs to be stored
+ */
+__attribute__((always_inline)) INLINE static double chemistry_get_physical_metal_density(
+  const struct part *restrict p, int metal, const struct cosmology *cosmo) {
+  return cosmo->a3_inv*chemistry_get_comoving_metal_density(p, metal);
+}
+
+
+/**
  * @brief Get a  metal mass fraction from a specific metal group.
  *
  * @param p Particle.
