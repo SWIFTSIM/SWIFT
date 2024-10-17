@@ -249,11 +249,13 @@ chemistry_riemann_solve_for_flux(
   /* Now compute alpha to reduce numerical diffusion below physical
      diffusion. */
   const double alpha =
-      chemistry_riemann_compute_alpha(c_s_R, c_s_R, uR, uL, dx_norm, q_star,
+      chemistry_riemann_compute_alpha(c_s_R, c_s_R, uR, uL, dx_p_norm, q_star,
                                       U_star, K_star, norm_K_star, grad_q_star);
 
   /****************************************************************************/
   /* Now compute the HLL flux */
+  /* No conversion to physical needed, everything is physical here */
+
   /* Project the fluxes to reduce to a 1D Problem with 1 quantity */
   const double Flux_L = F_diff_L[0] * n_unit[0] + F_diff_L[1] * n_unit[1] +
                         F_diff_L[2] * n_unit[2];
@@ -273,6 +275,7 @@ chemistry_riemann_solve_for_flux(
   if (chem_data->use_hokpins2017_hll_riemann_solver) {
     /****************************************************************************
      * Hopkins 2017 implementation of HLL */
+    /* No conversion to physical needed, everything is physical here */
     double flux_hll = 0.0;
 
     /* Simple trick while testing to verify how numerical diffusion affects the
@@ -289,15 +292,15 @@ chemistry_riemann_solve_for_flux(
     const double qj = chemistry_get_metal_mass_fraction(pj, g);
     const double dq = qj - qi;
     const double nabla_o_q_dir[3] = {
-        dx[0] * dq / dx_norm_2, dx[1] * dq / dx_norm_2, dx[2] * dq / dx_norm_2};
+        dx_p[0] * dq / dx_p_norm_2, dx_p[1] * dq / dx_p_norm_2, dx_p[2] * dq / dx_p_norm_2};
     const double kappa_mean =
         0.5 * (pi->chemistry_data.kappa + pj->chemistry_data.kappa);
     const double F_A_left_side[3] = {-kappa_mean * nabla_o_q_dir[0],
                                      -kappa_mean * nabla_o_q_dir[1],
                                      -kappa_mean * nabla_o_q_dir[2]};
-    const double F_A_right_side[3] = {Anorm * dx[0] / dx_norm,
-                                      Anorm * dx[1] / dx_norm,
-                                      Anorm * dx[2] / dx_norm};
+    const double F_A_right_side[3] = {Anorm * dx_p[0] / dx_p_norm,
+                                      Anorm * dx_p[1] / dx_p_norm,
+                                      Anorm * dx_p[2] / dx_p_norm};
 
     const double F_times_A_dir = F_A_left_side[0] * F_A_right_side[0] +
                                  F_A_left_side[1] * F_A_right_side[1] +
