@@ -31,7 +31,8 @@
 #define _DO_SYM_PAIR1_SINKS(f) PASTE(runner_do_sym_pair_sinks, f)
 #define DO_SYM_PAIR1_SINKS _DO_SYM_PAIR1_SINKS(FUNCTION)
 
-#define _DO_NONSYM_PAIR1_SINKS_NAIVE(f) PASTE(runner_do_nonsym_pair_sinks_naive, f)
+#define _DO_NONSYM_PAIR1_SINKS_NAIVE(f) \
+  PASTE(runner_do_nonsym_pair_sinks_naive, f)
 #define DO_NONSYM_PAIR1_SINKS_NAIVE _DO_NONSYM_PAIR1_SINKS_NAIVE(FUNCTION)
 
 #define _DOPAIR1_SINKS_NAIVE(f) PASTE(runner_dopair_sinks_naive, f)
@@ -67,11 +68,9 @@
 #define _IACT_SINKS_SINK(f) PASTE(runner_iact_nonsym_sinks_sink, f)
 #define IACT_SINKS_SINK _IACT_SINKS_SINK(FUNCTION)
 
-
 void DOSELF1_BRANCH_SINKS(struct runner *r, struct cell *c);
 void DOPAIR1_BRANCH_SINKS(struct runner *r, struct cell *ci, struct cell *cj);
 
 void DOSUB_SELF1_SINKS(struct runner *r, struct cell *ci, int gettimer);
 void DOSUB_PAIR1_SINKS(struct runner *r, struct cell *ci, struct cell *cj,
-                    int gettimer);
-
+                       int gettimer);
