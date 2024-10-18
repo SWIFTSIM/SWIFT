@@ -95,7 +95,7 @@ void DOSELF1_SINKS(struct runner *r, struct cell *c, int timer) {
                          e->gravity_properties, e->sink_properties);
         }
       } /* loop over the parts in ci. */
-    } /* loop over the bparts in ci. */
+    } /* loop over the sinks in ci. */
   } /* Do we have gas particles in the cell? */
 
   /* When doing sink swallowing, we need a quick loop also over the sink
@@ -202,7 +202,7 @@ void DO_NONSYM_PAIR1_SINKS_NAIVE(struct runner *r, struct cell *restrict ci,
     /* Loop over the sinks in ci. */
     for (int sid = 0; sid < scount_i; sid++) {
 
-      /* Get a hold of the ith bpart in ci. */
+      /* Get a hold of the ith sink in ci. */
       struct sink *restrict si = &sinks_i[sid];
 
       /* Skip inactive particles */
@@ -257,7 +257,7 @@ void DO_NONSYM_PAIR1_SINKS_NAIVE(struct runner *r, struct cell *restrict ci,
   /* Loop over the sinks in ci. */
   for (int sid = 0; sid < scount_i; sid++) {
 
-    /* Get a hold of the ith bpart in ci. */
+    /* Get a hold of the ith sink in ci. */
     struct sink *restrict si = &sinks_i[sid];
 
     /* Skip inactive particles */
