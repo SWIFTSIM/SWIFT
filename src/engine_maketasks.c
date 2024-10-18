@@ -2489,7 +2489,6 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
     else if (t_type == task_type_self && t_subtype == task_subtype_density) {
 
       const int bcount_i = ci->black_holes.count;
-      const int sinkcount_i = ci->sinks.count;
 
       /* Make the self-density tasks depend on the drift only. */
       scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t);
@@ -2756,9 +2755,6 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
       const int bcount_i = ci->black_holes.count;
       const int bcount_j = cj->black_holes.count;
-
-      const int sinkcount_i = ci->sinks.count;
-      const int sinkcount_j = cj->sinks.count;
 
       /* Make all density tasks depend on the drift */
       if (ci->nodeID == nodeID) {
@@ -3310,8 +3306,6 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
       const int bcount_i = ci->black_holes.count;
 
-      const int sinkcount_i = ci->sinks.count;
-
       /* Make all density tasks depend on the drift and sorts. */
       scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t);
       scheduler_addunlock(sched, ci->hydro.super->hydro.sorts, t);
@@ -3593,9 +3587,6 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
       const int bcount_i = ci->black_holes.count;
       const int bcount_j = cj->black_holes.count;
-
-      const int sinkcount_i = ci->sinks.count;
-      const int sinkcount_j = cj->sinks.count;
 
       /* Make all density tasks depend on the drift */
       if (ci->nodeID == nodeID) {
