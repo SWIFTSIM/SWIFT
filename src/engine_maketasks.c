@@ -1645,16 +1645,6 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
         }
       }
 
-      /* TODO THIS IS CAUSING PROBLEMS (unlocking task is NULL) BUT I THINK WE NEED IT?? */
-      // if (with_sinks && with_feedback) {
-      //   /* Make sure we don't start swallowing gas particles before the stars
-      //      have converged on their smoothing lengths. 
-      //      Copied from BHs (do we need?) */
-      //   message("Unlocking sink ghost1 with stars density");
-      //   scheduler_addunlock(s, c->stars.density_ghost,
-      //                       c->sinks.sink_ghost1);
-      // }
-
       /* Black holes */
       if (with_black_holes) {
         c->black_holes.drift = scheduler_addtask(
