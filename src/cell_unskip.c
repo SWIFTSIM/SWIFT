@@ -2925,7 +2925,7 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
     const int ci_active =
         cell_is_active_sinks(ci, e) || cell_is_active_hydro(ci, e);
     const int cj_active = (cj != NULL) && (cell_is_active_sinks(cj, e) ||
-                                          cell_is_active_hydro(cj, e));
+                                           cell_is_active_hydro(cj, e));
 
     /* Only activate tasks that involve a local active cell. */
     if ((ci_active || cj_active) &&
@@ -2971,7 +2971,7 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
     if (t->type == task_type_pair || t->type == task_type_sub_pair) {
 
       /* Activate sink_in for each cell that is part of
-        * a pair task as to not miss any dependencies */
+       * a pair task as to not miss any dependencies */
       if (ci_nodeID == nodeID)
         scheduler_activate(s, ci->hydro.super->sinks.sink_in);
       if (cj_nodeID == nodeID)
@@ -3004,7 +3004,7 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
     const int ci_active =
         cell_is_active_sinks(ci, e) || cell_is_active_hydro(ci, e);
     const int cj_active = (cj != NULL) && (cell_is_active_sinks(cj, e) ||
-                                          cell_is_active_hydro(cj, e));
+                                           cell_is_active_hydro(cj, e));
 
     /* Only activate tasks that involve a local active cell. */
     if ((ci_active || cj_active) &&
@@ -3030,7 +3030,7 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
     const int ci_active =
         cell_is_active_sinks(ci, e) || cell_is_active_hydro(ci, e);
     const int cj_active = (cj != NULL) && (cell_is_active_sinks(cj, e) ||
-                                          cell_is_active_hydro(cj, e));
+                                           cell_is_active_hydro(cj, e));
 
     /* Only activate tasks that involve a local active cell. */
     if ((ci_active || cj_active) &&
@@ -3054,9 +3054,8 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
 
     const int ci_active =
         cell_is_active_sinks(ci, e) || cell_is_active_hydro(ci, e);
-    const int cj_active = (cj != NULL) ? (cell_is_active_sinks(cj, e) ||
-                                          cell_is_active_hydro(cj, e))
-                                       : 0;
+    const int cj_active = (cj != NULL) && (cell_is_active_sinks(cj, e) ||
+                                           cell_is_active_hydro(cj, e));
 
     /* Only activate tasks that involve a local active cell. */
     if ((ci_active || cj_active) &&
@@ -3091,8 +3090,8 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
       scheduler_activate(s, c->sinks.sink_ghost2);
     if (c->sinks.sink_out != NULL) scheduler_activate(s, c->sinks.sink_out);
     if (c->top->sinks.star_formation_sink != NULL) {
-        cell_activate_star_formation_sink_tasks(c->top, s, with_feedback);
-        cell_activate_super_sink_drifts(c->top, s);
+      cell_activate_star_formation_sink_tasks(c->top, s, with_feedback);
+      cell_activate_super_sink_drifts(c->top, s);
     }
     if (c->kick1 != NULL) scheduler_activate(s, c->kick1);
     if (c->kick2 != NULL) scheduler_activate(s, c->kick2);
