@@ -24,10 +24,10 @@
 
 /* Local headers. */
 #include "active.h"
-#include "sink_iact.h"
 #include "cell.h"
 #include "engine.h"
 #include "runner.h"
+#include "sink_iact.h"
 #include "space_getsid.h"
 #include "timers.h"
 
@@ -36,4 +36,3 @@
 #define FUNCTION_TASK_LOOP TASK_LOOP_SWALLOW
 #include "runner_doiact_functions_sinks.h"
 #include "runner_doiact_undef.h"
-

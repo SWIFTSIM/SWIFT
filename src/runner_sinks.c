@@ -32,7 +32,6 @@
 #include "space_getsid.h"
 #include "timers.h"
 
-
 /**
  * @brief Process all the gas particles in a cell that have been flagged for
  * swallowing by a sink.

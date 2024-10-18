@@ -17,9 +17,7 @@
  *
  ******************************************************************************/
 
-
 #include "runner_doiact_sinks.h"
-
 
 /**
  * @brief Calculate gas and sink interaction around #sinks
@@ -93,9 +91,8 @@ void DOSELF1_SINKS(struct runner *r, struct cell *c, int timer) {
 #endif
 
         if (r2 < ri2) {
-          IACT_SINKS_GAS(
-              r2, dx, ri, hj, si, pj, with_cosmology, cosmo,
-              e->gravity_properties, e->sink_properties);
+          IACT_SINKS_GAS(r2, dx, ri, hj, si, pj, with_cosmology, cosmo,
+                         e->gravity_properties, e->sink_properties);
         }
       } /* loop over the parts in ci. */
     } /* loop over the bparts in ci. */
@@ -150,10 +147,8 @@ void DOSELF1_SINKS(struct runner *r, struct cell *c, int timer) {
 #endif
 
       if (r2 < ri2 || r2 < rj2) {
-        IACT_SINKS_SINK(r2, dx, ri, rj, si, sj,
-                                              with_cosmology, cosmo,
-                                              e->gravity_properties,
-                                              e->sink_properties);
+        IACT_SINKS_SINK(r2, dx, ri, rj, si, sj, with_cosmology, cosmo,
+                        e->gravity_properties, e->sink_properties);
       }
     } /* loop over the sinks in ci. */
   } /* loop over the sinks in ci. */
@@ -170,9 +165,8 @@ void DOSELF1_SINKS(struct runner *r, struct cell *c, int timer) {
  * @param ci The first #cell
  * @param cj The second #cell
  */
-void DO_NONSYM_PAIR1_SINKS_NAIVE(struct runner *r,
-                                struct cell *restrict ci,
-                                struct cell *restrict cj) {
+void DO_NONSYM_PAIR1_SINKS_NAIVE(struct runner *r, struct cell *restrict ci,
+                                 struct cell *restrict cj) {
 
 #ifdef SWIFT_DEBUG_CHECKS
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
@@ -246,9 +240,8 @@ void DO_NONSYM_PAIR1_SINKS_NAIVE(struct runner *r,
 #endif
 
         if (r2 < ri2) {
-          IACT_SINKS_GAS(
-              r2, dx, ri, hj, si, pj, with_cosmology, cosmo,
-              e->gravity_properties, e->sink_properties);
+          IACT_SINKS_GAS(r2, dx, ri, hj, si, pj, with_cosmology, cosmo,
+                         e->gravity_properties, e->sink_properties);
         }
       } /* loop over the parts in cj. */
     } /* loop over the sinks in ci. */
@@ -303,10 +296,8 @@ void DO_NONSYM_PAIR1_SINKS_NAIVE(struct runner *r,
 #endif
 
       if (r2 < ri2 || r2 < rj2) {
-        IACT_SINKS_SINK(r2, dx, ri, rj, si, sj,
-                                              with_cosmology, cosmo,
-                                              e->gravity_properties,
-                                              e->sink_properties);
+        IACT_SINKS_SINK(r2, dx, ri, rj, si, sj, with_cosmology, cosmo,
+                        e->gravity_properties, e->sink_properties);
       }
     } /* loop over the sinks in cj. */
   } /* loop over the sinks in ci. */
@@ -322,9 +313,8 @@ void DO_NONSYM_PAIR1_SINKS_NAIVE(struct runner *r,
  * @param ci The first #cell
  * @param cj The second #cell
  */
-void DOPAIR1_SINKS_NAIVE(struct runner *r,
-                        struct cell *restrict ci,
-                        struct cell *restrict cj, int timer) {
+void DOPAIR1_SINKS_NAIVE(struct runner *r, struct cell *restrict ci,
+                         struct cell *restrict cj, int timer) {
 
   TIMER_TIC;
 
@@ -375,8 +365,7 @@ void DOSELF1_BRANCH_SINKS(struct runner *r, struct cell *c) {
  * @param cj #cell cj
  *
  */
-void DOPAIR1_BRANCH_SINKS(struct runner *r, struct cell *ci,
-                          struct cell *cj) {
+void DOPAIR1_BRANCH_SINKS(struct runner *r, struct cell *ci, struct cell *cj) {
 
   const struct engine *restrict e = r->e;
 
@@ -392,10 +381,10 @@ void DOPAIR1_BRANCH_SINKS(struct runner *r, struct cell *ci,
   const int do_cj_sink = 1;
 #endif
 
-  const int do_ci = (ci->sinks.count != 0 && cj->hydro.count != 0 &&
-                     ci_active && do_ci_sink);
-  const int do_cj = (cj->sinks.count != 0 && ci->hydro.count != 0 &&
-                     cj_active && do_cj_sink);
+  const int do_ci =
+      (ci->sinks.count != 0 && cj->hydro.count != 0 && ci_active && do_ci_sink);
+  const int do_cj =
+      (cj->sinks.count != 0 && ci->hydro.count != 0 && cj_active && do_cj_sink);
 
   /* Anything to do here? */
   if (!do_ci && !do_cj) return;
@@ -422,8 +411,8 @@ void DOPAIR1_BRANCH_SINKS(struct runner *r, struct cell *ci,
  * @todo Hard-code the sid on the recursive calls to avoid the
  * redundant computations to find the sid on-the-fly.
  */
-void DOSUB_PAIR1_SINKS(struct runner *r, struct cell *ci,
-                                     struct cell *cj, int timer) {
+void DOSUB_PAIR1_SINKS(struct runner *r, struct cell *ci, struct cell *cj,
+                       int timer) {
 
   TIMER_TIC;
 
@@ -431,10 +420,8 @@ void DOSUB_PAIR1_SINKS(struct runner *r, struct cell *ci,
   const struct engine *e = r->e;
 
   /* Should we even bother? */
-  const int should_do_ci =
-      ci->sinks.count != 0 && cell_is_active_sinks(ci, e);
-  const int should_do_cj =
-      cj->sinks.count != 0 && cell_is_active_sinks(cj, e);
+  const int should_do_ci = ci->sinks.count != 0 && cell_is_active_sinks(ci, e);
+  const int should_do_cj = cj->sinks.count != 0 && cell_is_active_sinks(cj, e);
 
   if (!should_do_ci && !should_do_cj) return;
 
@@ -450,8 +437,7 @@ void DOSUB_PAIR1_SINKS(struct runner *r, struct cell *ci,
       const int pid = csp->pairs[k].pid;
       const int pjd = csp->pairs[k].pjd;
       if (ci->progeny[pid] != NULL && cj->progeny[pjd] != NULL)
-        DOSUB_PAIR1_SINKS(r, ci->progeny[pid], cj->progeny[pjd],
-                                        0);
+        DOSUB_PAIR1_SINKS(r, ci->progeny[pid], cj->progeny[pjd], 0);
     }
   }
 
@@ -467,10 +453,10 @@ void DOSUB_PAIR1_SINKS(struct runner *r, struct cell *ci,
     const int do_cj_sink = 1;
 #endif
 
-    const int do_ci = ci->sinks.count != 0 &&
-                      cell_is_active_sinks(ci, e) && do_ci_sink;
-    const int do_cj = cj->sinks.count != 0 &&
-                      cell_is_active_sinks(cj, e) && do_cj_sink;
+    const int do_ci =
+        ci->sinks.count != 0 && cell_is_active_sinks(ci, e) && do_ci_sink;
+    const int do_cj =
+        cj->sinks.count != 0 && cell_is_active_sinks(cj, e) && do_cj_sink;
 
     if (do_ci) {
 
@@ -505,8 +491,7 @@ void DOSUB_PAIR1_SINKS(struct runner *r, struct cell *ci,
  * @param ci The first #cell.
  * @param gettimer Do we have a timer ?
  */
-void DOSUB_SELF1_SINKS(struct runner *r, struct cell *ci,
-                                     int timer) {
+void DOSUB_SELF1_SINKS(struct runner *r, struct cell *ci, int timer) {
 
   TIMER_TIC;
 
@@ -518,8 +503,7 @@ void DOSUB_SELF1_SINKS(struct runner *r, struct cell *ci,
 #endif
 
   /* Should we even bother? */
-  const int should_do_ci =
-      ci->sinks.count != 0 && cell_is_active_sinks(ci, e);
+  const int should_do_ci = ci->sinks.count != 0 && cell_is_active_sinks(ci, e);
 
   if (!should_do_ci) return;
 
@@ -532,8 +516,7 @@ void DOSUB_SELF1_SINKS(struct runner *r, struct cell *ci,
         DOSUB_SELF1_SINKS(r, ci->progeny[k], 0);
         for (int j = k + 1; j < 8; j++)
           if (ci->progeny[j] != NULL)
-            DOSUB_PAIR1_SINKS(r, ci->progeny[k], ci->progeny[j],
-                                            0);
+            DOSUB_PAIR1_SINKS(r, ci->progeny[k], ci->progeny[j], 0);
       }
   }
 
