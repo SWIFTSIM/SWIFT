@@ -1,8 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
- *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
- *               2016 Bert Vandenbroucke (bert.vandenbroucke@gmail.com)
+ * Copyright (c) 2020 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -18,178 +16,141 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_SHADOWSWIFT_HYDRO_PART_H
-#define SWIFT_SHADOWSWIFT_HYDRO_PART_H
+#ifndef SWIFT_NONE_HYDRO_PART_H
+#define SWIFT_NONE_HYDRO_PART_H
+
+/**
+ * @file Shadowswift/hydro_part.h
+ * @brief Empty implementation
+ */
 
 #include "black_holes_struct.h"
 #include "chemistry_struct.h"
 #include "cooling_struct.h"
 #include "feedback_struct.h"
+#include "mhd_struct.h"
 #include "particle_splitting_struct.h"
+#include "pressure_floor_struct.h"
 #include "rt_struct.h"
 #include "sink_struct.h"
+#include "star_formation_struct.h"
 #include "timestep_limiter_struct.h"
 #include "tracers_struct.h"
-#include "voronoi_cell.h"
 
-/* Extra particle data not needed during the computation. */
+/**
+ * @brief Particle fields not needed during the SPH loops over neighbours.
+ *
+ * This structure contains the particle fields that are not used in the
+ * density or force loops. Quantities should be used in the kick, drift and
+ * potentially ghost tasks only.
+ */
 struct xpart {
 
-  /* Offset between current position and position at last tree rebuild. */
+  /*! Offset between current position and position at last tree rebuild. */
   float x_diff[3];
 
   /*! Offset between the current position and position at the last sort. */
   float x_diff_sort[3];
 
-  /* Velocity at the last full step. */
+  /*! Velocity at the last full step. */
   float v_full[3];
 
-  /*! Gravitational acceleration at the end of the last step */
+  /*! Gravitational acceleration at the last full step. */
   float a_grav[3];
 
   /*! Additional data used to record particle splits */
   struct particle_splitting_data split_data;
 
-  /* Additional data used to record cooling information */
+  /*! Additional data used to record cooling information */
   struct cooling_xpart_data cooling_data;
 
   /* Additional data used by the tracers */
   struct tracers_xpart_data tracers_data;
 
+  /* Additional data used by the tracers */
+  struct star_formation_xpart_data sf_data;
+
   /* Additional data used by the feedback */
-  struct feedback_part_data feedback_data;
+  struct feedback_xpart_data feedback_data;
+
+  /*! Additional data used by the MHD scheme */
+  struct mhd_xpart_data mhd_data;
 
 } SWIFT_STRUCT_ALIGN;
 
-/* Data of a single particle. */
+/**
+ * @brief Particle fields for the SPH particles
+ *
+ * The density and force substructures are used to contain variables only used
+ * within the density and force loops over neighbours. All more permanent
+ * variables should be declared in the main part of the part structure,
+ */
 struct part {
 
-  /* Particle ID. */
+  /*! Particle unique ID. */
   long long id;
 
-  /* Associated gravitas. */
-  struct gpart *gpart;
+  /*! Pointer to corresponding gravity part. */
+  struct gpart* gpart;
 
-  /* Particle position. */
+  /*! Particle position. */
   double x[3];
 
-  /* Particle predicted velocity. */
+  /*! Particle predicted velocity. */
   float v[3];
 
-  /* Particle acceleration. */
+  /*! Particle acceleration. */
   float a_hydro[3];
 
-  /* Particle cutoff radius. */
+  /*! Particle mass. */
+  float mass;
+
+  /*! Particle smoothing length. */
   float h;
 
-  /* The primitive hydrodynamical variables. */
-  struct {
+  /*! Particle density */
+  float rho;
 
-    /* Fluid velocity. */
-    float v[3];
+  /* Store density/force specific stuff. */
+  union {
 
-    /* Density. */
-    float rho;
-
-    /* Pressure. */
-    float P;
-
-    /* Gradients of the primitive variables. */
+    /**
+     * @brief Structure for the variables only used in the density loop over
+     * neighbours.
+     *
+     * Quantities in this sub-structure should only be accessed in the density
+     * loop over neighbours and the ghost task.
+     */
     struct {
 
-      /* Density gradients. */
-      float rho[3];
+      /*! Neighbour number count. */
+      float wcount;
 
-      /* Fluid velocity gradients. */
-      float v[3][3];
+      /*! Derivative of the neighbour number with respect to h. */
+      float wcount_dh;
 
-      /* Pressure gradients. */
-      float P[3];
+      /*! Derivative of the density with respect to h. */
+      float rho_dh;
 
-    } gradients;
+    } density;
 
-    /* Quantities needed by the slope limiter. */
+    /**
+     * @brief Structure for the variables only used in the force loop over
+     * neighbours.
+     *
+     * Quantities in this sub-structure should only be accessed in the force
+     * loop over neighbours and the ghost, drift and kick tasks.
+     */
     struct {
 
-      /* Extreme values of the density among the neighbours. */
-      float rho[2];
+      /*! Time derivative of smoothing length  */
+      float h_dt;
 
-      /* Extreme values of the fluid velocity among the neighbours. */
-      float v[3][2];
+    } force;
+  };
 
-      /* Extreme values of the pressure among the neighbours. */
-      float P[2];
-
-      /* Maximal distance to all neighbouring faces. */
-      float maxr;
-
-    } limiter;
-
-  } primitives;
-
-  /* The conserved hydrodynamical variables. */
-  struct {
-
-    /* Fluid momentum. */
-    float momentum[3];
-
-    /* Fluid mass (this field already exists outside of this struct as well). */
-    float mass;
-
-    /* Fluid thermal energy (not per unit mass!). */
-    float energy;
-
-    /* Fluxes. */
-    struct {
-
-      /* Mass flux. */
-      float mass;
-
-      /* Momentum flux. */
-      float momentum[3];
-
-      /* Energy flux. */
-      float energy;
-
-    } flux;
-
-  } conserved;
-
-  /* Variables used for timestep calculation (currently not used). */
-  struct {
-
-    /* Maximum fluid velocity among all neighbours. */
-    float vmax;
-
-  } timestepvars;
-
-  /* Quantities used during the volume (=density) loop. */
-  struct {
-
-    /* Derivative of particle number density. */
-    float wcount_dh;
-
-    /* Particle number density. */
-    float wcount;
-
-  } density;
-
-  /* Quantities used during the force loop. */
-  struct {
-
-    /* Needed to drift the primitive variables. */
-    float h_dt;
-
-    /* Physical time step of the particle. */
-    float dt;
-
-    /* Active flag. */
-    char active;
-
-    /* Actual velocity of the particle. */
-    float v_full[3];
-
-  } force;
+  /*! Additional data used by the MHD scheme */
+  struct mhd_part_data mhd_data;
 
   /*! Chemistry information */
   struct chemistry_part_data chemistry_data;
@@ -197,11 +158,17 @@ struct part {
   /*! Cooling information */
   struct cooling_part_data cooling_data;
 
+  /*! Additional data used by the feedback */
+  struct feedback_part_data feedback_data;
+
   /*! Black holes information (e.g. swallowing ID) */
   struct black_holes_part_data black_holes_data;
 
   /*! Sink information (e.g. swallowing ID) */
   struct sink_part_data sink_data;
+
+  /*! Additional data used by the pressure floor */
+  struct pressure_floor_part_data pressure_floor_data;
 
   /*! Additional Radiative Transfer Data */
   struct rt_part_data rt_data;
@@ -225,9 +192,6 @@ struct part {
 
 #endif
 
-  /* Voronoi cell. */
-  struct voronoi_cell cell;
-
 } SWIFT_STRUCT_ALIGN;
 
-#endif /* SWIFT_SHADOWSWIFT_HYDRO_PART_H */
+#endif /* SWIFT_NONE_HYDRO_PART_H */

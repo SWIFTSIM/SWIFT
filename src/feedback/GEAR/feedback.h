@@ -24,6 +24,7 @@
 #include "feedback_properties.h"
 #include "hydro_properties.h"
 #include "part.h"
+#include "stars.h"
 #include "stellar_evolution.h"
 #include "units.h"
 
@@ -51,7 +52,7 @@ void feedback_init_spart(struct spart* sp);
 
 void feedback_init_after_star_formation(
     struct spart* sp, const struct feedback_props* feedback_props,
-    enum star_feedback_type star_type);
+    enum stellar_type star_type);
 void feedback_reset_feedback(struct spart* sp,
                              const struct feedback_props* feedback_props);
 void feedback_first_init_spart(struct spart* sp,

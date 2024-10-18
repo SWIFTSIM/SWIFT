@@ -68,10 +68,10 @@
 /* Artificial diffussion term */
 #define mhd_props_artificial_diffusion_beta 1.0f
 
-//#define monopole_beta 1.0f
-//#define resistivity_beta 1.0f
-//#define dedner_beta 1.0f
-//#define dedner_gamma 0.5f
+// #define monopole_beta 1.0f
+// #define resistivity_beta 1.0f
+// #define dedner_beta 1.0f
+// #define dedner_gamma 0.5f
 
 /* Structs that store the relevant variables */
 

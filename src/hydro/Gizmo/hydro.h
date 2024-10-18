@@ -29,6 +29,7 @@
 
 #include "approx_math.h"
 #include "entropy_floor.h"
+#include "fvpm_geometry.h"
 #include "hydro_flux.h"
 #include "hydro_getters.h"
 #include "hydro_gradients.h"
@@ -190,19 +191,7 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->density.wcount = 0.0f;
   p->density.wcount_dh = 0.0f;
 
-  p->geometry.volume = 0.0f;
-  p->geometry.matrix_E[0][0] = 0.0f;
-  p->geometry.matrix_E[0][1] = 0.0f;
-  p->geometry.matrix_E[0][2] = 0.0f;
-  p->geometry.matrix_E[1][0] = 0.0f;
-  p->geometry.matrix_E[1][1] = 0.0f;
-  p->geometry.matrix_E[1][2] = 0.0f;
-  p->geometry.matrix_E[2][0] = 0.0f;
-  p->geometry.matrix_E[2][1] = 0.0f;
-  p->geometry.matrix_E[2][2] = 0.0f;
-
-  /* reset the centroid variables used for the velocity correction in MFV */
-  hydro_velocities_reset_centroids(p);
+  fvpm_geometry_init(p);
 }
 
 /**
@@ -241,72 +230,10 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   p->density.wcount_dh -= hydro_dimension * kernel_root;
   p->density.wcount_dh *= ihdim_plus_one;
 
-  /* Final operation on the geometry. */
-  /* we multiply with the smoothing kernel normalization ih3 and calculate the
-   * volume */
-  const float volume_inv = ihdim * (p->geometry.volume + kernel_root);
-  const float volume = 1.0f / volume_inv;
-  p->geometry.volume = volume;
-
-  /* we multiply with the smoothing kernel normalization */
-  p->geometry.matrix_E[0][0] *= ihdim;
-  p->geometry.matrix_E[0][1] *= ihdim;
-  p->geometry.matrix_E[0][2] *= ihdim;
-  p->geometry.matrix_E[1][0] *= ihdim;
-  p->geometry.matrix_E[1][1] *= ihdim;
-  p->geometry.matrix_E[1][2] *= ihdim;
-  p->geometry.matrix_E[2][0] *= ihdim;
-  p->geometry.matrix_E[2][1] *= ihdim;
-  p->geometry.matrix_E[2][2] *= ihdim;
-
-  /* normalise the centroids for MFV */
-  hydro_velocities_normalise_centroid(p, p->density.wcount);
-
-  /* Check the condition number to see if we have a stable geometry. */
-  const float condition_number_E =
-      p->geometry.matrix_E[0][0] * p->geometry.matrix_E[0][0] +
-      p->geometry.matrix_E[0][1] * p->geometry.matrix_E[0][1] +
-      p->geometry.matrix_E[0][2] * p->geometry.matrix_E[0][2] +
-      p->geometry.matrix_E[1][0] * p->geometry.matrix_E[1][0] +
-      p->geometry.matrix_E[1][1] * p->geometry.matrix_E[1][1] +
-      p->geometry.matrix_E[1][2] * p->geometry.matrix_E[1][2] +
-      p->geometry.matrix_E[2][0] * p->geometry.matrix_E[2][0] +
-      p->geometry.matrix_E[2][1] * p->geometry.matrix_E[2][1] +
-      p->geometry.matrix_E[2][2] * p->geometry.matrix_E[2][2];
-
-  float condition_number = 0.0f;
-  if (invert_dimension_by_dimension_matrix(p->geometry.matrix_E) != 0) {
-    /* something went wrong in the inversion; force bad condition number */
-    condition_number = const_gizmo_max_condition_number + 1.0f;
-  } else {
-    const float condition_number_Einv =
-        p->geometry.matrix_E[0][0] * p->geometry.matrix_E[0][0] +
-        p->geometry.matrix_E[0][1] * p->geometry.matrix_E[0][1] +
-        p->geometry.matrix_E[0][2] * p->geometry.matrix_E[0][2] +
-        p->geometry.matrix_E[1][0] * p->geometry.matrix_E[1][0] +
-        p->geometry.matrix_E[1][1] * p->geometry.matrix_E[1][1] +
-        p->geometry.matrix_E[1][2] * p->geometry.matrix_E[1][2] +
-        p->geometry.matrix_E[2][0] * p->geometry.matrix_E[2][0] +
-        p->geometry.matrix_E[2][1] * p->geometry.matrix_E[2][1] +
-        p->geometry.matrix_E[2][2] * p->geometry.matrix_E[2][2];
-
-    condition_number =
-        hydro_dimension_inv * sqrtf(condition_number_E * condition_number_Einv);
-  }
-
-  if (condition_number > const_gizmo_max_condition_number &&
-      p->geometry.wcorr > const_gizmo_min_wcorr) {
-#ifdef GIZMO_PATHOLOGICAL_ERROR
-    error("Condition number larger than %g (%g)!",
-          const_gizmo_max_condition_number, condition_number);
-#endif
-#ifdef GIZMO_PATHOLOGICAL_WARNING
-    message("Condition number too large: %g (> %g, p->id: %llu)!",
-            condition_number, const_gizmo_max_condition_number, p->id);
-#endif
-    /* add a correction to the number of neighbours for this particle */
-    p->geometry.wcorr = const_gizmo_w_correction_factor * p->geometry.wcorr;
-  }
+  /* Finish operation on particle volume and matrix. */
+  fvpm_compute_volume_and_matrix(p, ihdim);
+  const float volume = p->geometry.volume;
+  const float volume_inv = 1.f / volume;
 
   /* compute primitive variables */
   /* eqns (3)-(5) */
@@ -399,7 +326,7 @@ __attribute__((always_inline)) INLINE static void hydro_part_has_no_neighbours(
   p->geometry.matrix_E[2][2] = 1.0f;
 
   /* reset the centroid to disable MFV velocity corrections for this particle */
-  hydro_velocities_reset_centroids(p);
+  fvpm_reset_centroids(p);
 }
 
 /**

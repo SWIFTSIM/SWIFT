@@ -97,7 +97,7 @@ int stellar_evolution_compute_integer_number_supernovae(
 void stellar_evolution_sn_apply_ejected_mass(struct spart* restrict sp,
                                              const struct stellar_model* sm) {
   /* If a star is a discrete star */
-  if (sp->feedback_data.star_type == single_star) {
+  if (sp->star_type == single_star) {
     const int null_mass = (sp->mass == sp->feedback_data.mass_ejected);
     const int negative_mass = (sp->mass < sp->feedback_data.mass_ejected);
 
@@ -123,6 +123,10 @@ void stellar_evolution_sn_apply_ejected_mass(struct spart* restrict sp,
       sp->feedback_data.number_snia = 0;
       sp->feedback_data.number_snii = 0;
       sp->feedback_data.mass_ejected = 0;
+
+      /* Reset energy to avoid injecting anything in the
+         runner_iact_nonsym_feedback_apply() */
+      sp->feedback_data.energy_ejected = 0;
       return;
     } else {
       /* Update the mass */
@@ -142,6 +146,10 @@ void stellar_evolution_sn_apply_ejected_mass(struct spart* restrict sp,
       sp->feedback_data.number_snia = 0;
       sp->feedback_data.number_snii = 0;
       sp->feedback_data.mass_ejected = 0;
+
+      /* Reset energy to avoid injecting anything in the
+         runner_iact_nonsym_feedback_apply() */
+      sp->feedback_data.energy_ejected = 0;
       return;
     }
     /* Update the mass */
@@ -339,7 +347,7 @@ void stellar_evolution_evolve_individual_star(
     const double star_age_beg_step, const double dt) {
 
   /* Check that this function is called for single_star only. */
-  if (sp->feedback_data.star_type != single_star) {
+  if (sp->star_type != single_star) {
     error("This function can only be called for single/individual star!");
   }
 
@@ -446,7 +454,7 @@ void stellar_evolution_evolve_spart(
 
   /* Check that this function is called for populations of stars and not
      individual stars. */
-  if (sp->feedback_data.star_type == single_star) {
+  if (sp->star_type == single_star) {
     error(
         "This function can only be called for sparts representing stars "
         "populations!");
@@ -488,7 +496,7 @@ void stellar_evolution_evolve_spart(
   feedback. Note that the sm structure contains different information for the
   'first stars' and the 'late stars'. The right sm data is passed to this
   function so we do not need any special treatment here. */
-  if (sp->feedback_data.star_type == star_population_continuous_IMF) {
+  if (sp->star_type == star_population_continuous_IMF) {
     /* If it's not time yet for feedback, exit. Notice that both masses are in
       solar mass. */
     if (m_beg_step > sm->imf.minimal_discrete_mass_Msun) {
@@ -796,7 +804,7 @@ float stellar_evolution_compute_initial_mass(
     const struct phys_const* phys_const) {
 
   const struct initial_mass_function* imf = &sm->imf;
-  switch (sp->feedback_data.star_type) {
+  switch (sp->star_type) {
     case star_population:
       return sp->sf_data.birth_mass / phys_const->const_solar_mass;
     case star_population_continuous_IMF: {
@@ -810,8 +818,7 @@ float stellar_evolution_compute_initial_mass(
     case single_star:
       return sp->sf_data.birth_mass / phys_const->const_solar_mass;
     default: {
-      error("This star_type (%d) is not implemented!",
-            sp->feedback_data.star_type);
+      error("This star_type (%d) is not implemented!", sp->star_type);
       return -1.0;
     }
   }

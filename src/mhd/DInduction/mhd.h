@@ -28,9 +28,10 @@
  * @param xp the #xpart.
  */
 __attribute__((always_inline)) INLINE static float mhd_get_magnetic_energy(
-    const struct part *p, const struct xpart *xp, const float mu_0, const float a) {
+    const struct part *p, const struct xpart *xp, const float mu_0,
+    const float a) {
 
-  const float afact = pow(a,2.f*mhd_comoving_factor);
+  const float afact = pow(a, 2.f * mhd_comoving_factor);
 
   const float b2 = p->mhd_data.BPred[0] * p->mhd_data.BPred[0] +
                    p->mhd_data.BPred[1] * p->mhd_data.BPred[1] +

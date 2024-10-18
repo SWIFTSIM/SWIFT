@@ -77,8 +77,12 @@ struct mhd_part_data {
  */
 struct mhd_xpart_data {
 
-  /*! Full Step Magnetic field */
+  /*! Full Step Magnetic Field */
   float B_over_rho_full[3];
+
+  /*! Full Step Dedner Scalar */
+  float psi_over_ch_full;
+
 };
 
 #endif /* SWIFT_DIRECT_INDUCTION_MHD_STRUCT_H */
