@@ -1900,15 +1900,24 @@ void engine_get_max_ids(struct engine *e) {
 #endif
 }
 
+/**
+ * @brief Gather the information about the top-level cells whose time-step has
+ * changed and activate the communications required to synchonize the
+ * time-steps.
+ *
+ * @param e The #engine.
+ */
 void engine_synchronize_times(struct engine *e) {
 
 #ifdef WITH_MPI
+
+  const ticks tic = getticks();
 
   /* Collect which top-level cells have been updated */
   MPI_Allreduce(MPI_IN_PLACE, e->s->cells_top_updated, e->s->nr_cells, MPI_CHAR,
                 MPI_SUM, MPI_COMM_WORLD);
 
-  /* TODO: Loop only over the sub-set of cells we need */
+  /* Activate tend communications involving the cells that have changed. */
   for (int i = 0; i < e->s->nr_cells; ++i) {
 
     if (e->s->cells_top_updated[i]) {
@@ -1919,10 +1928,16 @@ void engine_synchronize_times(struct engine *e) {
     }
   }
 
+  if (e->verbose)
+    message("Gathering and activating tend took %.3f %s.",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
+
   TIMER_TIC;
   engine_launch(e, "tend");
   TIMER_TOC(timer_runners);
 
+#else
+  error("SWIFT was not compiled with MPI support.");
 #endif
 }
 
