@@ -329,6 +329,7 @@ INLINE static int sink_is_forming(
                                                     cosmo, cooling, p, xp);
 
   const float density_threshold = sink_props->density_threshold;
+  const float maximal_density_threshold = sink_props->maximal_density_threshold;
   const float density = hydro_get_physical_density(p, cosmo);
 
   const float div_v = sink_get_physical_div_v_from_part(p);
@@ -342,7 +343,20 @@ INLINE static int sink_is_forming(
                  E_grav + sink_data->E_mag_neighbours;
 
   /* Density and temperature criterion */
-  if (density <= density_threshold || temperature >= temperature_max) {
+  /* if (density <= density_threshold || temperature >= temperature_threshold) { */
+  /*   return 0; */
+  /* } */
+
+  /* Density criterion */
+  if (density < density_threshold) {
+    return 0;
+  }
+  /* Here we have density >= density_threshold */
+
+  /* If density_threshold <= density <= maximal_density_threshold, check the
+     temperature. If density > maximal_density_threshold, do no check the
+     temperature. */
+  if ((density <= maximal_density_threshold) && (temperature >= temperature_threshold)) {
     return 0;
   }
 
