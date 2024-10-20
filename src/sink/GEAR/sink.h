@@ -324,7 +324,7 @@ INLINE static int sink_is_forming(
 
   const struct sink_part_data* sink_data = &p->sink_data;
 
-  const float temperature_max = sink_props->maximal_temperature;
+  const float temperature_threshold = sink_props->temperature_threshold;
   const float temperature = cooling_get_temperature(phys_const, hydro_props, us,
                                                     cosmo, cooling, p, xp);
 
