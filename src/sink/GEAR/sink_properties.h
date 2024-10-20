@@ -38,8 +38,11 @@ struct sink_props {
   /*! Maximal gas temperature for forming a sink. */
   float temperature_threshold;
 
-  /*! Minimal gas density for forming a star. */
+  /*! Minimal gas density for forming a sink with the temperature threshold. */
   float density_threshold;
+
+  /*! Gas density for forming a sink without the temperature threshold. */
+  float maximal_density_threshold;
 
   /*! Mass of the stellar particle representing the low mass stars
    * (continuous IMF sampling). In M_sun. */
@@ -201,6 +204,13 @@ INLINE static void sink_props_init(struct sink_props *sp,
   sp->density_threshold =
       parser_get_param_float(params, "GEARSink:density_threshold_g_per_cm3");
 
+  sp->maximal_density_threshold =
+      parser_get_param_float(params, "GEARSink:maximal_density_threshold_g_per_cm3");
+
+  if (sp->maximal_density_threshold < sp->density_threshold) {
+    error("maximal_density_threshold_g_per_cm3 must be larger than density_threshold_g_per_cm3");
+  }
+
   sp->stellar_particle_mass_Msun =
       parser_get_param_float(params, "GEARSink:stellar_particle_mass_Msun");
 
@@ -248,6 +258,7 @@ INLINE static void sink_props_init(struct sink_props *sp,
       units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
 
   sp->density_threshold /= units_cgs_conversion_factor(us, UNIT_CONV_DENSITY);
+  sp->maximal_density_threshold /= units_cgs_conversion_factor(us, UNIT_CONV_DENSITY);
 
   /* here, we need to differenciate between the stellar models */
   struct initial_mass_function *imf;
