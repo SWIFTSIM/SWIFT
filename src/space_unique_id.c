@@ -82,6 +82,7 @@ void space_update_unique_id(struct space *s) {
 #endif  // WITH_MPI
 
   /* Compute the size of each batch. */
+  /* Should we add space_extra_sinks here ?*/
   const long long batch_size = (space_extra_parts + space_extra_sparts +
                                 space_extra_gparts + space_extra_bparts) *
                                s->nr_cells;
@@ -210,6 +211,7 @@ void space_init_unique_id(struct space *s, int nr_nodes) {
   s->unique_id.global_next_id++;
 
   /* Compute the size of each batch. */
+  /* Shall we add space_extra_sinks here ?*/
   const long long batch_size = (space_extra_parts + space_extra_sparts +
                                 space_extra_gparts + space_extra_bparts) *
                                s->nr_cells;
