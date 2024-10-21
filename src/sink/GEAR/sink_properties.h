@@ -281,7 +281,8 @@ INLINE static void sink_props_init(struct sink_props *sp,
           sp->temperature_threshold);
   message("density_threshold                            = %g",
           sp->density_threshold);
-
+  message("maximal_density_threshold                    = %g",
+          sp->maximal_density_threshold);
   message("stellar_particle_mass (in M_sun)             = %g",
           sp->stellar_particle_mass_Msun);
   message("minimal_discrete_mass (in M_sun)             = %g",
