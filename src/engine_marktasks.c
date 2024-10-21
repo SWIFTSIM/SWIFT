@@ -992,7 +992,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           }
 
           /* Propagating new star counts? */
-          if (with_star_formation_sink) error("TODO");
+          /* if (with_star_formation_sink) error("TODO"); */
           if (with_star_formation && with_feedback) {
             if (ci_active_hydro && ci->hydro.count > 0) {
               scheduler_activate_recv(s, ci->mpi.recv, task_subtype_sf_counts);
@@ -1094,7 +1094,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           }
 
           /* Propagating new star counts? */
-          if (with_star_formation_sink) error("TODO");
+          /* if (with_star_formation_sink) error("TODO"); */
           if (with_star_formation && with_feedback) {
             if (cj_active_hydro && cj->hydro.count > 0) {
               scheduler_activate_recv(s, cj->mpi.recv, task_subtype_sf_counts);
@@ -1210,9 +1210,9 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         if (cell_need_rebuild_for_sinks_pair(ci, cj)) *rebuild_space = 1;
         if (cell_need_rebuild_for_sinks_pair(cj, ci)) *rebuild_space = 1;
 
-#ifdef WITH_MPI
-        error("TODO");
-#endif
+/* #ifdef WITH_MPI */
+        /* error("TODO"); */
+/* #endif */
       }
 
       /* Only interested in black hole density tasks as of here. */
