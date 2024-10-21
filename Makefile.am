@@ -74,6 +74,23 @@ bin_PROGRAMS += fof_mpi
 endif
 endif
 
+# BUILD CUDA versions as well?
+if HAVECUDA
+bin_PROGRAMS += swift_cuda
+if HAVEMPI
+bin_PROGRAMS += swift_mpicuda
+endif
+endif
+
+
+# BUILD HIP versions as well?
+if HAVEHIP
+bin_PROGRAMS += swift_hip
+if HAVEMPI
+bin_PROGRAMS += swift_mpihip
+endif
+endif
+
 # engine_policy_setaffinity is available?
 if HAVESETAFFINITY
 ENGINE_POLICY_SETAFFINITY=| engine_policy_setaffinity
@@ -90,6 +107,28 @@ swift_LDADD =  src/libswiftsim.la argparse/libargparse.la $(VELOCIRAPTOR_LIBS) $
 swift_mpi_SOURCES = swift.c
 swift_mpi_CFLAGS = $(MYFLAGS) $(AM_CFLAGS) $(MPI_FLAGS) -DENGINE_POLICY="engine_policy_keep $(ENGINE_POLICY_SETAFFINITY)"
 swift_mpi_LDADD =  src/libswiftsim_mpi.la argparse/libargparse.la $(MPI_LIBS) $(VELOCIRAPTOR_MPI_LIBS) $(EXTRA_LIBS) $(LD_CSDS)
+
+# Sources for swift_cuda
+swift_cuda_SOURCES = swift.c dummy.C
+swift_cuda_CXXFLAGS = $(MYFLAGS) $(AM_CFLAGS) $(CUDA_CFLAGS) -DENGINE_POLICY="engine_policy_keep $(ENGINE_POLICY_SETAFFINITY)" -DWITH_CUDA
+swift_cuda_LDADD =  src/.libs/libswiftsim_cuda.a src/cuda/.libs/libswiftCUDA.a $(EXTRA_LIBS) $(CUDA_LIBS) -lcudart argparse/.libs/libargparse.a src/.libs/libgrav.la
+
+# Sources for swift_hip
+swift_hip_SOURCES = swift.c dummy.C
+swift_hip_CXXFLAGS = $(MYFLAGS) $(AM_CFLAGS) $(HIP_CFLAGS) -DENGINE_POLICY="engine_policy_keep $(ENGINE_POLICY_SETAFFINITY)" -DWITH_HIP
+swift_hip_LDADD =  src/.libs/libswiftsim_hip.a src/hip/.libs/libswiftHIP.a $(EXTRA_LIBS) $(HIP_LIBS) -lamdhip64 -L/opt/rocm-5.1.0/lib -lhsa-runtime64 -L/opt/rocm-5.1.0/lib64 -lamd_comgr argparse/.libs/libargparse.a src/.libs/libgrav.la
+
+# Sources for swift_mpicuda, do we need an affinity policy for MPI?
+swift_mpicuda_SOURCES = swift.c dummy.C
+swift_mpicuda_CXXFLAGS = $(MYFLAGS) $(AM_CFLAGS) $(MPI_FLAGS) $(CUDA_CFLAGS) -DENGINE_POLICY="engine_policy_keep $(ENGINE_POLICY_SETAFFINITY)" -DWITH_CUDA
+swift_mpicuda_CFLAGS = $(MYFLAGS) $(AM_CFLAGS) $(MPI_FLAGS) $(CUDA_CFLAGS) -DENGINE_POLICY="engine_policy_keep $(ENGINE_POLICY_SETAFFINITY)" -DWITH_CUDA
+swift_mpicuda_LDADD =  src/.libs/libswiftsim_mpicuda.a argparse/.libs/libargparse.a src/.libs/libgrav.la src/cuda/.libs/libswiftCUDA.a $(MPI_LIBS) $(EXTRA_LIBS) $(CUDA_LIBS) -lcudart
+
+# Sources for swift_mpihip, do we need an affinity policy for MPI?
+swift_mpihip_SOURCES = swift.c dummy.C
+swift_mpihip_CXXFLAGS = $(MYFLAGS) $(AM_CFLAGS) $(MPI_FLAGS) $(HIP_CFLAGS) -DENGINE_POLICY="engine_policy_keep $(ENGINE_POLICY_SETAFFINITY)" -DWITH_HIP
+swift_mpihip_CFLAGS = $(MYFLAGS) $(AM_CFLAGS) $(MPI_FLAGS) $(HIP_CFLAGS) -DENGINE_POLICY="engine_policy_keep $(ENGINE_POLICY_SETAFFINITY)" -DWITH_HIP
+swift_mpihip_LDADD =  src/.libs/libswiftsim_mpihip.a argparse/.libs/libargparse.a src/.libs/libgrav.la src/hip/.libs/libswiftHIP.a $(MPI_LIBS) $(EXTRA_LIBS) $(HIP_LIBS) -lamdhip64
 
 # Sources for fof
 fof_SOURCES = swift_fof.c
