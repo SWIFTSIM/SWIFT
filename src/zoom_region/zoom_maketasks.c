@@ -457,6 +457,8 @@ void zoom_engine_make_hierarchical_tasks_recursive(struct engine *e,
           scheduler_addunlock(s, c->grav.down_in, c->grav.down);
         } else {
           scheduler_addunlock(s, c->grav.down_in, parent->grav.down_in);
+          scheduler_addunlock(s, void_super->grav.down,
+                              c->grav.super->grav.end_force);
         }
 
         /* With adaptive softening, force the hydro density to complete first */
