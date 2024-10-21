@@ -995,6 +995,78 @@ AH_VERBATIM([__STDC_FORMAT_MACROS],
 #define __STDC_FORMAT_MACROS 1
 #endif])
 
+
+
+# Check for CUDA
+have_cuda="no"
+AC_ARG_WITH([cuda],
+    [AS_HELP_STRING([--with-cuda=PATH],
+       [root directory where CUDA is installed @<:@yes/no@:>@]
+    )],
+    [],
+    [with_cuda="no"]
+)
+if test "x$with_cuda" != "xno"; then
+   if test "x$with_cuda" != "xyes"; then
+      CUDA_CFLAGS="-I$with_cuda/include"
+      CUDA_LIBS="-L$with_cuda/lib -L$with_cuda/lib64 -lcudart"
+      NVCC="$with_cuda/bin/nvcc"
+      have_cuda="yes"
+   else
+      AC_PATH_PROG([NVCC],[nvcc])
+      echo "Found nvcc = $NVCC"
+      if test -n "$NVCC"; then
+         CUDA_ROOT="`dirname $NVCC`/.."
+         CUDA_CFLAGS="-I${CUDA_ROOT}/include"
+         CUDA_LIBS="-L${CUDA_ROOT}/lib -L${CUDA_ROOT}/lib64 -lcudart"
+         have_cuda="yes"
+      fi
+   fi
+   if test "x$have_cuda" != "xno"; then
+      AC_DEFINE([HAVE_CUDA], 1, [The CUDA compiler is installed.])
+   fi
+   CFLAGS="${CFLAGS} "
+fi
+AC_SUBST(CUDA_CFLAGS)
+AC_SUBST(CUDA_LIBS)
+AC_SUBST(NVCC)
+AM_CONDITIONAL([HAVECUDA],[test -n "$NVCC"])
+
+# Check for HIP
+have_hip="no"
+AC_ARG_WITH([hip],
+    [AS_HELP_STRING([--with-hip=PATH],
+       [root directory where HIP is installed @<:@yes/no@:>@]
+    )],
+    [],
+    [with_hip="no"]
+)
+if test "x$with_hip" != "xno"; then
+   if test "x$with_hip" != "xyes"; then
+      HIP_CFLAGS="-I$with_hip/include"
+      HIP_LIBS="-L$with_hip/lib -L$with_hip/lib64"
+      HIPCC="$with_hip/bin/hipcc"
+      have_hip="yes"
+   else
+      AC_PATH_PROG([HIPCC],[hipcc])
+      echo "Found hipcc = $HIPCC"
+      if test -n "$HIPCC"; then
+         HIP_ROOT="`dirname $HIPCC`/.."
+         HIP_CFLAGS="-I${HIP_ROOT}/include"
+         HIP_LIBS="-L${HIP_ROOT}/lib -L${HIP_ROOT}/lib64"
+         have_hip="yes"
+      fi
+   fi
+   if test "x$have_hip" != "xno"; then
+      AC_DEFINE([HAVE_HIP], 1, [The HIP compiler is installed.])
+   fi
+   CFLAGS="${CFLAGS} "
+fi
+AC_SUBST(HIP_CFLAGS)
+AC_SUBST(HIP_LIBS)
+AC_SUBST(HIPCC)
+AM_CONDITIONAL([HAVEHIP],[test -n "$HIPCC"])
+
 # Check for FFTW. We test for this in the standard directories by default,
 # and only disable if using --with-fftw=no or --without-fftw. When a value
 # is given FFTW must be found.
@@ -3246,6 +3318,10 @@ AC_CONFIG_FILES([tests/testSelectOutput.sh], [chmod +x tests/testSelectOutput.sh
 AC_CONFIG_FILES([tests/testFormat.sh], [chmod +x tests/testFormat.sh])
 AC_CONFIG_FILES([tests/testNeutrinoCosmology.sh], [chmod +x tests/testNeutrinoCosmology.sh])
 AC_CONFIG_FILES([tests/output_list_params.yml])
+# cuda .in file
+AC_CONFIG_FILES([src/cuda/Makefile])
+# hip .in file
+AC_CONFIG_FILES([src/hip/Makefile])
 
 # Save the compilation options
 AC_DEFINE_UNQUOTED([SWIFT_CONFIG_FLAGS],["$swift_config_flags"],[Flags passed to configure])
@@ -3276,6 +3352,8 @@ AC_MSG_RESULT([
    HDF5 enabled         : $with_hdf5
     - parallel          : $have_parallel_hdf5
    METIS/ParMETIS       : $have_metis / $have_parmetis
+   CUDA enabled         : $have_cuda
+   HIP enabled          : $have_hip
    FFTW3 enabled        : $have_fftw
     - threaded/openmp   : $have_threaded_fftw / $have_openmp_fftw
     - MPI               : $have_mpi_fftw
