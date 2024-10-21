@@ -455,6 +455,7 @@ void zoom_engine_make_hierarchical_tasks_recursive(struct engine *e,
           scheduler_addunlock(s, c->grav.long_range, c->grav.down);
           scheduler_addunlock(s, c->grav.down, c->grav.super->grav.end_force);
           scheduler_addunlock(s, c->grav.down_in, c->grav.down);
+        } else {
           scheduler_addunlock(s, c->grav.down_in, parent->grav.down_in);
         }
 
@@ -471,7 +472,7 @@ void zoom_engine_make_hierarchical_tasks_recursive(struct engine *e,
   }
 
   /* Below the void super level we just need to hook in the impoicit tasks */
-  else if (void_super != NULL && is_self_gravity) {
+  else if ((void_super != NULL || c->super != NULL) && is_self_gravity) {
 
     if (c->type == cell_type_zoom && c->grav.super != NULL) {
       c->grav.drift_out = scheduler_addtask(s, task_type_drift_gpart_out,
