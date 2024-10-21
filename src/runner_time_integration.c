@@ -1363,6 +1363,23 @@ void runner_do_limiter(struct runner *r, struct cell *c, int force,
       }
     }
 
+    /* Flag if anything has changed
+     * Note: Since the limiter only touches hydro+grav
+     * we use the cell values for the other time-steps (i.e. no change) */
+    if (c->top == c)
+      space_mark_cell_as_updated(
+          r->e->s, c, ti_hydro_end_min, ti_hydro_beg_max, c->rt.ti_rt_end_min,
+          c->rt.ti_rt_beg_max, ti_gravity_end_min, ti_gravity_beg_max,
+          c->stars.ti_end_min, c->stars.ti_beg_max, c->sinks.ti_end_min,
+          c->sinks.ti_beg_max, c->black_holes.ti_end_min,
+          c->black_holes.ti_beg_max);
+
+    /* Store the updated values */
+    c->hydro.ti_end_min = min(c->hydro.ti_end_min, ti_hydro_end_min);
+    c->hydro.ti_beg_max = max(c->hydro.ti_beg_max, ti_hydro_beg_max);
+    c->grav.ti_end_min = min(c->grav.ti_end_min, ti_gravity_end_min);
+    c->grav.ti_beg_max = max(c->grav.ti_beg_max, ti_gravity_beg_max);
+
   } else if (!c->split && force) {
 
     ti_hydro_end_min = c->hydro.ti_end_min;
@@ -1436,24 +1453,24 @@ void runner_do_limiter(struct runner *r, struct cell *c, int force,
         }
       }
     }
+
+    /* Flag if anything has changed
+     * Note: Since the limiter only touches hydro+grav
+     * we use the cell values for the other time-steps (i.e. no change) */
+    if (c->top == c)
+      space_mark_cell_as_updated(
+          r->e->s, c, ti_hydro_end_min, ti_hydro_beg_max, c->rt.ti_rt_end_min,
+          c->rt.ti_rt_beg_max, ti_gravity_end_min, ti_gravity_beg_max,
+          c->stars.ti_end_min, c->stars.ti_beg_max, c->sinks.ti_end_min,
+          c->sinks.ti_beg_max, c->black_holes.ti_end_min,
+          c->black_holes.ti_beg_max);
+
+    /* Store the updated values */
+    c->hydro.ti_end_min = min(c->hydro.ti_end_min, ti_hydro_end_min);
+    c->hydro.ti_beg_max = max(c->hydro.ti_beg_max, ti_hydro_beg_max);
+    c->grav.ti_end_min = min(c->grav.ti_end_min, ti_gravity_end_min);
+    c->grav.ti_beg_max = max(c->grav.ti_beg_max, ti_gravity_beg_max);
   }
-
-  /* Flag if anything has changed
-   * Note: Since the limiter only touches hydro+grav
-   * we use the cell values for the other time-steps (i.e. no change) */
-  if (c->top == c)
-    space_mark_cell_as_updated(
-        r->e->s, c, ti_hydro_end_min, ti_hydro_beg_max, c->rt.ti_rt_end_min,
-        c->rt.ti_rt_beg_max, ti_gravity_end_min, ti_gravity_beg_max,
-        c->stars.ti_end_min, c->stars.ti_beg_max, c->sinks.ti_end_min,
-        c->sinks.ti_beg_max, c->black_holes.ti_end_min,
-        c->black_holes.ti_beg_max);
-
-  /* Store the updated values */
-  c->hydro.ti_end_min = min(c->hydro.ti_end_min, ti_hydro_end_min);
-  c->hydro.ti_beg_max = max(c->hydro.ti_beg_max, ti_hydro_beg_max);
-  c->grav.ti_end_min = min(c->grav.ti_end_min, ti_gravity_end_min);
-  c->grav.ti_beg_max = max(c->grav.ti_beg_max, ti_gravity_beg_max);
 
   /* Clear the limiter flags. */
   cell_clear_flag(c,
@@ -1519,6 +1536,24 @@ void runner_do_sync(struct runner *r, struct cell *c, int force,
         ti_gravity_beg_max = max(cp->grav.ti_beg_max, ti_gravity_beg_max);
       }
     }
+
+    /* Flag if anything has changed
+     * Note: Since the sync only touches hydro+grav
+     * we use the cell values for the other time-steps (i.e. no change) */
+    if (c->top == c)
+      space_mark_cell_as_updated(
+          r->e->s, c, ti_hydro_end_min, ti_hydro_beg_max, c->rt.ti_rt_end_min,
+          c->rt.ti_rt_beg_max, ti_gravity_end_min, ti_gravity_beg_max,
+          c->stars.ti_end_min, c->stars.ti_beg_max, c->sinks.ti_end_min,
+          c->sinks.ti_beg_max, c->black_holes.ti_end_min,
+          c->black_holes.ti_beg_max);
+
+    /* Store the updated values */
+    c->hydro.ti_end_min = min(c->hydro.ti_end_min, ti_hydro_end_min);
+    c->hydro.ti_beg_max = max(c->hydro.ti_beg_max, ti_hydro_beg_max);
+    c->grav.ti_end_min = min(c->grav.ti_end_min, ti_gravity_end_min);
+    c->grav.ti_beg_max = max(c->grav.ti_beg_max, ti_gravity_beg_max);
+
   } else if (!c->split && force) {
 
     ti_hydro_end_min = c->hydro.ti_end_min;
@@ -1612,24 +1647,24 @@ void runner_do_sync(struct runner *r, struct cell *c, int force,
         }
       }
     }
+
+    /* Flag if anything has changed
+     * Note: Since the sync only touches hydro+grav
+     * we use the cell values for the other time-steps (i.e. no change) */
+    if (c->top == c)
+      space_mark_cell_as_updated(
+          r->e->s, c, ti_hydro_end_min, ti_hydro_beg_max, c->rt.ti_rt_end_min,
+          c->rt.ti_rt_beg_max, ti_gravity_end_min, ti_gravity_beg_max,
+          c->stars.ti_end_min, c->stars.ti_beg_max, c->sinks.ti_end_min,
+          c->sinks.ti_beg_max, c->black_holes.ti_end_min,
+          c->black_holes.ti_beg_max);
+
+    /* Store the updated values */
+    c->hydro.ti_end_min = min(c->hydro.ti_end_min, ti_hydro_end_min);
+    c->hydro.ti_beg_max = max(c->hydro.ti_beg_max, ti_hydro_beg_max);
+    c->grav.ti_end_min = min(c->grav.ti_end_min, ti_gravity_end_min);
+    c->grav.ti_beg_max = max(c->grav.ti_beg_max, ti_gravity_beg_max);
   }
-
-  /* Flag if anything has changed
-   * Note: Since the sync only touches hydro+grav
-   * we use the cell values for the other time-steps (i.e. no change) */
-  if (c->top == c)
-    space_mark_cell_as_updated(
-        r->e->s, c, ti_hydro_end_min, ti_hydro_beg_max, c->rt.ti_rt_end_min,
-        c->rt.ti_rt_beg_max, ti_gravity_end_min, ti_gravity_beg_max,
-        c->stars.ti_end_min, c->stars.ti_beg_max, c->sinks.ti_end_min,
-        c->sinks.ti_beg_max, c->black_holes.ti_end_min,
-        c->black_holes.ti_beg_max);
-
-  /* Store the updated values */
-  c->hydro.ti_end_min = min(c->hydro.ti_end_min, ti_hydro_end_min);
-  c->hydro.ti_beg_max = max(c->hydro.ti_beg_max, ti_hydro_beg_max);
-  c->grav.ti_end_min = min(c->grav.ti_end_min, ti_gravity_end_min);
-  c->grav.ti_beg_max = max(c->grav.ti_beg_max, ti_gravity_beg_max);
 
   /* Clear the sync flags. */
   cell_clear_flag(c, cell_flag_do_hydro_sync | cell_flag_do_hydro_sub_sync);
