@@ -67,3 +67,11 @@ PowerSpectrum:
   fold_factor: 2
   window_order: 2
   requested_spectra: ["matter-matter"]
+
+# Parameters governing the CSDS snapshot system
+CSDS:
+  delta_step:           10       # Update the particle log every this many updates
+  basename:             csds_index  # Common part of the filenames
+  initial_buffer_size:  0.3      # (Optional) Buffer size in GB
+  buffer_scale:	        2       # (Optional) When buffer size is too small, update it with required memory times buffer_scale
+

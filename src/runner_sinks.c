@@ -160,9 +160,9 @@ void runner_doself_sinks_swallow(struct runner *r, struct cell *c, int timer) {
 #endif
 
       if (r2 < ri2 || r2 < rj2) {
-	  runner_iact_nonsym_sinks_sink_swallow(r2, dx, ri, rj, si, sj,
-                                              with_cosmology, cosmo,
-                                              e->gravity_properties);
+        runner_iact_nonsym_sinks_sink_swallow(
+            r2, dx, ri, rj, si, sj, with_cosmology, cosmo,
+            e->gravity_properties, e->sink_properties);
       }
     } /* loop over the sinks in ci. */
   } /* loop over the sinks in ci. */
@@ -310,9 +310,9 @@ void runner_do_nonsym_pair_sinks_naive_swallow(struct runner *r,
 	/* MPI note: This function is allowed to access the gpart's data. Hence,
 	   it must be performed only on the local node. (GEAR uses gpart's data,
 	   e.g. to compute potential) */
-	  runner_iact_nonsym_sinks_sink_swallow(r2, dx, ri, rj, si, sj,
-                                              with_cosmology, cosmo,
-                                              e->gravity_properties);
+        runner_iact_nonsym_sinks_sink_swallow(
+            r2, dx, ri, rj, si, sj, with_cosmology, cosmo,
+            e->gravity_properties, e->sink_properties);
       }
     } /* loop over the sinks in cj. */
   } /* loop over the sinks in ci. */
@@ -1033,10 +1033,6 @@ void runner_do_prepare_part_sink_formation(struct runner *r, struct cell *c,
     sink_prepare_part_sink_formation_gas_criteria(e, p, xp, pi, xpi, cosmo,
                                                   sink_props);
   } /* End of gas neighbour loop */
-
-  /* Shall we reset the values of the energies for the next timestep? No, it is
-     done in cell_drift.c and space_init.c, for active particles. The
-     potential is set in runner_others.c->runner_do_end_grav_force() */
 
   /* Check that we are not forming a sink in the accretion radius of another
      one. The new sink may be swallowed by the older one.) */

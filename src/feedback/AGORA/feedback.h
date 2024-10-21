@@ -24,6 +24,7 @@
 #include "feedback_properties.h"
 #include "hydro_properties.h"
 #include "part.h"
+#include "stars.h"
 #include "units.h"
 
 /**
@@ -60,7 +61,7 @@ void feedback_init_spart(struct spart* sp);
 
 void feedback_init_after_star_formation(
     struct spart* sp, const struct feedback_props* feedback_props,
-    enum star_feedback_type star_type);
+    enum stellar_type star_type);
 
 /**
  * @brief Should we do feedback for this star?

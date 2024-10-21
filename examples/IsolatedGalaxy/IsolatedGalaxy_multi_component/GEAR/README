@@ -16,3 +16,10 @@ To start the simulation with the GEAR model:
 
 ./run.sh
 
+# Sink particles
+
+To configure this example with GEAR model + GEAR sink particles, add --with-sink=GEAR.
+
+To start the simulation with the sink particles, type:
+
+./run_sink.sh

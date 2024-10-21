@@ -33,6 +33,7 @@
 #include "dimension.h"
 #include "entropy_floor.h"
 #include "equation_of_state.h"
+#include "fvpm_geometry.h"
 #include "hydro_parameters.h"
 #include "hydro_properties.h"
 #include "hydro_space.h"
@@ -364,6 +365,16 @@ hydro_set_physical_internal_energy(struct part *p, struct xpart *xp,
   xp->u_full = u / cosmo->a_factor_internal_energy;
 }
 
+__attribute__((always_inline)) INLINE static void
+hydro_set_physical_internal_energy_TESTING_SPH_RT(struct part *p,
+                                                  const struct cosmology *cosmo,
+                                                  const float u) {
+
+  // TODO: This might be a problem. Hacky version to get code to compile.
+  // TODO: Cosmology might need attention
+  p->u = u / cosmo->a_factor_internal_energy;
+}
+
 /**
  * @brief Sets the drifted physical internal energy of a particle
  *
@@ -581,6 +592,9 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->inhibited_exact = 0;
   p->limited_part = 0;
 #endif
+
+  /* Init geometry for FVPM Radiative Transfer */
+  fvpm_geometry_init(p);
 }
 
 /**
@@ -628,6 +642,9 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   /* Finish calculation of the velocity divergence */
   p->viscosity.div_v *= h_inv_dim_plus_one * rho_inv * a_inv2;
   p->viscosity.div_v += cosmo->H * hydro_dimension;
+
+  /* Finish matrix and volume computations for FVPM Radiative Transfer */
+  fvpm_compute_volume_and_matrix(p, h_inv_dim);
 
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
   p->n_density += kernel_root;
