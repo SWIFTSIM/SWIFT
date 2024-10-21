@@ -41,6 +41,10 @@ AC_USE_SYSTEM_EXTENSIONS
 AC_PROG_CC
 AM_PROG_CC_C_O
 
+# Find and test the C++ compiler.
+AC_PROG_CXX
+AC_PROG_CXX_C_O
+
 # We need this for compilation hints and possibly FFTW.
 AX_OPENMP
 
