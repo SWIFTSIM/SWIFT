@@ -545,6 +545,33 @@ libswiftsim_mpi_la_LDFLAGS = $(AM_LDFLAGS) $(MPI_LIBS) $(EXTRA_LIBS) -version-in
 libswiftsim_mpi_la_SHORTNAME = mpi
 libswiftsim_mpi_la_LIBADD = $(GRACKLE_LIBS) $(VELOCIRAPTOR_LIBS) $(MPI_LIBS) libgrav_mpi.la
 
+# Sources and flags for regular CUDA library
+libswiftsim_cuda_la_SOURCES = $(AM_SOURCES)
+libswiftsim_cuda_la_CFLAGS = $(AM_CFLAGS) $(CUDA_CFLAGS) -DWITH_CUDA
+libswiftsim_cuda_la_CXXFLAGS = $(AM_CFLAGS) $(CUDA_CFLAGS) -DWITH_CUDA
+libswiftsim_cuda_la_LDFLAGS = $(AM_LDFLAGS) $(EXTRA_LIBS) $(CUDA_LIBS)
+libswiftsim_cuda_la_SHORTNAME = cuda
+libswiftsim_cuda_la_LIBADD = $(GRACKLE_LIBS) $(VELOCIRAPTOR_LIBS) $(MPI_LIBS) libgrav.la
+
+# Sources and flags for regular HIP library
+libswiftsim_hip_la_SOURCES = $(AM_SOURCES)
+libswiftsim_hip_la_CFLAGS = $(AM_CFLAGS) $(HIP_CFLAGS) -DWITH_HIP
+libswiftsim_hip_la_LDFLAGS = $(AM_LDFLAGS) $(EXTRA_LIBS) $(HIP_LIBS) -lamdhip64
+libswiftsim_hip_la_SHORTNAME = hip
+libswiftsim_hip_la_LIBADD = $(GRACKLE_LIBS) $(VELOCIRAPTOR_LIBS) $(MPI_LIBS) libgrav.la
+
+# Sources and flags for MPI CUDA library
+libswiftsim_mpicuda_la_SOURCES = $(AM_SOURCES)
+libswiftsim_mpicuda_la_CFLAGS = $(AM_CFLAGS) $(MPI_FLAGS) $(CUDA_CFLAGS) -DWITH_CUDA
+libswiftsim_mpicuda_la_CXXFLAGS = $(AM_CFLAGS) $(MPI_FLAGS) $(CUDA_CFLAGS) -DWITH_CUDA
+libswiftsim_mpicuda_la_LDFLAGS = $(AM_LDFLAGS) $(MPI_LIBS) $(EXTRA_LIBS) $(CUDA_LIBS)
+libswiftsim_mpicuda_la_SHORTNAME = mpicuda
+libswiftsim_mpicuda_la_LIBADD = $(GRACKLE_LIBS) $(VELOCIRAPTOR_LIBS) $(MPI_LIBS) libgrav_mpi.la
+
+#subdir
+SUBDIRS = . cuda
+SUBDIRS += . hip
+
 # Versioning. If any sources change then update the version_string.h file with
 # the current git revision and package version.
 # May have a checkout without a version_string.h file and no git command (tar/zip
