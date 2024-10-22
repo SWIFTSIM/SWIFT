@@ -978,7 +978,7 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
 
       if (!fof && with_sinks) {
 
-        /* For stars, we just use the numbers in the top-level cells */
+        /* For sinks, we just use the numbers in the top-level cells */
         cell_link_sinks(e->proxies[k].cells_in[j], sinks);
         sinks = &sinks[e->proxies[k].cells_in[j]->sinks.count +
                          space_extra_sinks];
