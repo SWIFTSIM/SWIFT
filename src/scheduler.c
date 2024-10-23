@@ -1612,31 +1612,31 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
                                  /*periodic boundaries*/ sp->periodic,
                                  /*use_mesh*/ sp->periodic)) {
 
-          /* Flag this pair as being treated by the M-M task.
-           * We use the 64 bits in the task->flags field to store
-           * this information. The corresponding taks will unpack
-           * the information and operate according to the choices
-           * made here. */
-          const int flag = i * 8 + j;
-          t->flags |= (1ULL << flag);
+          // /* Flag this pair as being treated by the M-M task.
+          //  * We use the 64 bits in the task->flags field to store
+          //  * this information. The corresponding taks will unpack
+          //  * the information and operate according to the choices
+          //  * made here. */
+          // const int flag = i * 8 + j;
+          // t->flags |= (1ULL << flag);
 
-          // /* Can we reuse the orignal task or do we need to make a new one?
-          // */ if (t->flags == 0) {
-          //
-          //   /* We can make use of the old task. Flag that it is between
-          //    * cpi and cpj not their progeny with -2. */
-          //   t->flags = -2;
-          //   t->ci = cpi;
-          //   t->cj = cpj;
-          //
-          // } else {
-          //
-          //   /* We've already used to original task, make a new one for this
-          //    * progeny pair. Flag that it is between cpi and cpj not their
-          //    * progeny with -2. */
-          //   scheduler_addtask(s, task_type_grav_mm, task_subtype_none, -2, 0,
-          //                     cpi, cpj);
-          // }
+          /* Can we reuse the orignal task or do we need to make a new one. */
+          if (t->flags == 0) {
+
+            /* We can make use of the old task. Flag that it is between
+             * cpi and cpj not their progeny with -2. */
+            t->flags = -2;
+            t->ci = cpi;
+            t->cj = cpj;
+
+          } else {
+
+            /* We've already used to original task, make a new one for this
+             * progeny pair. Flag that it is between cpi and cpj not their
+             * progeny with -2. */
+            scheduler_addtask(s, task_type_grav_mm, task_subtype_none, -2, 0,
+                              cpi, cpj);
+          }
 
         } else {
 
