@@ -20,6 +20,8 @@
  ******************************************************************************/
 
 /* Config parameters. */
+#include "cell.h"
+
 #include <config.h>
 
 /* Some standard headers. */
@@ -1771,7 +1773,13 @@ static void zoom_scheduler_splittask_gravity_void_self(struct task *t,
 
     /* Create pair tasks for all pairs of progeny. */
     for (int j = 0; j < 8; j++) {
+      if (ci->progeny[j]->subtype != cell_subtype_void &&
+          ci->progeny[j]->grav.count == 0)
+        continue;
       for (int k = j + 1; k < 8; k++) {
+        if (ci->progeny[k]->subtype != cell_subtype_void &&
+            ci->progeny[k]->grav.count == 0)
+          continue;
         zoom_scheduler_splittask_gravity_void_pair(
             scheduler_addtask(s, task_type_pair, t->subtype, sub_sid_flag[j][k],
                               0, ci->progeny[j], ci->progeny[k]),
