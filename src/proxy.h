@@ -72,7 +72,7 @@ struct proxy {
   struct gpart *gparts_in, *gparts_out;
   struct spart *sparts_in, *sparts_out;
   struct bpart *bparts_in, *bparts_out;
-  struct sink *sinks_in, *sinks_out;   /* HERE */
+  struct sink *sinks_in, *sinks_out;
   int size_parts_in, size_parts_out;
   int nr_parts_in, nr_parts_out;
   int size_gparts_in, size_gparts_out;
