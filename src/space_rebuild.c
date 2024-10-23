@@ -553,13 +553,11 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   }
 
   /* Re-allocate the index array for the bparts if needed.. */
-  /* TODO (While I'm in sink MPI implementation): Is the 's_index_size' the
-     right variable? Should'nt it be 'b_index_size' ? */
-  if (s->nr_bparts + 1 > s_index_size) {
+  if (s->nr_bparts + 1 > b_index_size) {
     int *bind_new;
     if ((bind_new = (int *)swift_malloc(
              "b_index", sizeof(int) * (s->nr_bparts + 1))) == NULL)
-      error("Failed to allocate temporary s-particle indices.");
+      error("Failed to allocate temporary b-particle indices.");
     memcpy(bind_new, b_index, sizeof(int) * nr_bparts);
     swift_free("b_index", b_index);
     b_index = bind_new;
