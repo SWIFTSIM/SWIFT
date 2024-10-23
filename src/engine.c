@@ -1088,6 +1088,7 @@ void engine_print_task_counts(const struct engine *e) {
   message("nr_sparts = %zu.", e->s->nr_sparts);
   message("nr_bparts = %zu.", e->s->nr_bparts);
 
+#ifdef SWIFT_DEBUG_CHECKS
 #ifdef WITH_MPI
   printf("[%04i] %s engine_print_task_counts: Skipped task counts are [ %s=%i",
          e->nodeID, clocks_get_timesincestart(), taskID_names[0],
@@ -1100,6 +1101,7 @@ void engine_print_task_counts(const struct engine *e) {
   for (int k = 1; k < task_type_count; k++)
     printf(" %s=%i", taskID_names[k], skipped_counts[k]);
   fflush(stdout);
+#endif
 
   /* In zoom land its helpful to print the pair types. */
   if (e->s->with_zoom_region) {
