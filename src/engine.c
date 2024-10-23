@@ -992,6 +992,28 @@ void engine_do_tasks_count_mapper(void *map_data, int num_elements,
   }
 }
 
+void engine_do_skipped_tasks_count_mapper(void *map_data, int num_elements,
+                                          void *extra_data) {
+
+  const struct task *tasks = (struct task *)map_data;
+  int *const global_counts = (int *)extra_data;
+
+  /* Local accumulator copy */
+  int local_counts[task_type_count + 1];
+  for (int k = 0; k <= task_type_count; k++) local_counts[k] = 0;
+
+  /* Add task counts locally */
+  for (int k = 0; k < num_elements; k++) {
+    if (!tasks[k].skip) continue;
+    local_counts[(int)tasks[k].type] += 1;
+  }
+
+  /* Update the global counts */
+  for (int k = 0; k <= task_type_count; k++) {
+    if (local_counts[k]) atomic_add(global_counts + k, local_counts[k]);
+  }
+}
+
 /**
  * @brief Prints the number of tasks in the engine
  *
@@ -1040,6 +1062,14 @@ void engine_print_task_counts(const struct engine *e) {
                  engine_do_tasks_count_mapper, (void *)tasks, nr_tasks,
                  sizeof(struct task), threadpool_auto_chunk_size, counts);
 
+  /* Count and print the number of skipped tasks. */
+  int skipped_counts[task_type_count + 1];
+  for (int k = 0; k <= task_type_count; k++) skipped_counts[k] = 0;
+  threadpool_map((struct threadpool *)&e->threadpool,
+                 engine_do_skipped_tasks_count_mapper, (void *)tasks, nr_tasks,
+                 sizeof(struct task), threadpool_auto_chunk_size,
+                 skipped_counts);
+
 #ifdef WITH_MPI
   printf("[%04i] %s engine_print_task_counts: task counts are [ %s=%i",
          e->nodeID, clocks_get_timesincestart(), taskID_names[0], counts[0]);
@@ -1057,6 +1087,19 @@ void engine_print_task_counts(const struct engine *e) {
   message("nr_sink = %zu.", e->s->nr_sinks);
   message("nr_sparts = %zu.", e->s->nr_sparts);
   message("nr_bparts = %zu.", e->s->nr_bparts);
+
+#ifdef WITH_MPI
+  printf("[%04i] %s engine_print_task_counts: Skipped task counts are [ %s=%i",
+         e->nodeID, clocks_get_timesincestart(), taskID_names[0],
+         skipped_counts[0]);
+#else
+  printf("%s engine_print_task_counts: Skipped task counts are [ %s=%i",
+         clocks_get_timesincestart(), taskID_names[0], skipped_counts[0]);
+#endif
+
+  for (int k = 1; k < task_type_count; k++)
+    printf(" %s=%i", taskID_names[k], skipped_counts[k]);
+  fflush(stdout);
 
   /* In zoom land its helpful to print the pair types. */
   if (e->s->with_zoom_region) {
@@ -3055,9 +3098,9 @@ int engine_step(struct engine *e) {
             e->collect_group1.csds_file_size_gb);
 #endif
 
-    /********************************************************/
-    /* OK, we are done with the regular stuff. Time for i/o */
-    /********************************************************/
+  /********************************************************/
+  /* OK, we are done with the regular stuff. Time for i/o */
+  /********************************************************/
 
 #ifdef WITH_LIGHTCONE
   /* Flush lightcone buffers if necessary */
