@@ -912,8 +912,7 @@ void engine_redistribute(struct engine *e) {
   }
   swift_free("b_dest", b_dest);
 
-  /***************************************************/
-    /* Get destination of each sink-particle */
+  /* Get destination of each sink-particle */
   int *sink_counts;
   if ((sink_counts = (int *)calloc(nr_nodes * nr_nodes, sizeof(int))) == NULL)
     error("Failed to allocate sink_counts temporary buffer.");
@@ -978,7 +977,6 @@ void engine_redistribute(struct engine *e) {
                    &savelink_data);
   }
   swift_free("sink_dest", sink_dest);
-  /***************************************************/
 
   /* Get destination of each g-particle */
   int *g_counts;
