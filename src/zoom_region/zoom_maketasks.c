@@ -357,7 +357,8 @@ void zoom_engine_make_hierarchical_tasks_recursive(struct engine *e,
 
   /* Get the right parent, either the normal parent or when at the top level
    * of the zoom region, the void parent. */
-  struct cell *parent = c->top == c ? c->void_parent : c->parent;
+  struct cell *parent =
+      (c->type == cell_type_zoom && c->top == c) ? c->void_parent : c->parent;
 
   /* At the void super level we have a few different tasks to make. (We don't
    * need any tasks above the super level) */
