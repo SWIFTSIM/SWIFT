@@ -457,7 +457,7 @@ void zoom_engine_make_hierarchical_tasks_recursive(struct engine *e,
           scheduler_addunlock(s, c->grav.down, c->grav.super->grav.end_force);
           scheduler_addunlock(s, c->grav.down_in, c->grav.down);
         } else {
-          scheduler_addunlock(s, c->grav.down_in, void_super->down);
+          scheduler_addunlock(s, c->grav.down_in, void_super->grav.down);
           scheduler_addunlock(s, void_super->grav.down,
                               c->grav.super->grav.end_force);
         }
