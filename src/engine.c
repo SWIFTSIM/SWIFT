@@ -1255,8 +1255,7 @@ int engine_estimate_nr_tasks(const struct engine *e) {
     struct cell *c = &e->s->cells_top[k];
 
     /* Any cells with particles will have tasks (local & foreign). */
-    /* Note: Why no BH ? */
-    int nparts = c->hydro.count + c->grav.count + c->stars.count + c->sinks.count;
+    int nparts = c->hydro.count + c->grav.count + c->stars.count + c->black_holes.count + c->sinks.count;
     if (nparts > 0) {
       ntop++;
       ncells++;
