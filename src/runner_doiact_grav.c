@@ -44,7 +44,7 @@
 static INLINE void runner_clear_grav_flags(struct cell *c,
                                            const struct engine *e) {
 
-  if ((!cell_is_active_gravity(c, e) || c->nodeID != e->nodeID) && c->split) {
+  if (!cell_is_active_gravity(c, e) || c->nodeID != e->nodeID) {
     for (int k = 0; k < 8; ++k)
       if (c->progeny[k] != NULL) runner_clear_grav_flags(c->progeny[k], e);
   }
