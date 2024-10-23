@@ -2005,6 +2005,11 @@ void runner_dopair_grav_mm_progenies(struct runner *r, const long long flags,
   runner_clear_grav_flags(ci, e);
   runner_clear_grav_flags(cj, e);
 
+  if (ci->subtype == cell_subtype_void)
+    message("Got a Void cell for MM... @ depth %d", ci->depth);
+  else if (cj->subtype == cell_subtype_void)
+    message("Got a Void cell for MM... @ depth %d", cj->depth);
+
   /* Loop over all pairs of progenies */
   for (int i = 0; i < 8; i++) {
     if (ci->progeny[i] != NULL) {
