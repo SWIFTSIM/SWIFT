@@ -1100,6 +1100,7 @@ void engine_print_task_counts(const struct engine *e) {
 
   for (int k = 1; k < task_type_count; k++)
     printf(" %s=%i", taskID_names[k], skipped_counts[k]);
+  printf(" ]\n");
   fflush(stdout);
 #endif
 
