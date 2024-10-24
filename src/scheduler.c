@@ -1651,6 +1651,14 @@ void scheduler_splittasks_mapper(void *map_data, int num_elements,
       scheduler_splittask_gravity(t, s);
     } else if (t->subtype == task_subtype_grav) {
       scheduler_splittask_gravity(t, s);
+    // if task is gpu task do not split A. Nasar
+    }else if (t->subtype == task_subtype_gpu_pack ||
+              t->subtype == task_subtype_gpu_unpack||
+      		  t->subtype == task_subtype_gpu_pack_g ||
+              t->subtype == task_subtype_gpu_unpack_g||
+      	      t->subtype == task_subtype_gpu_pack_f ||
+              t->subtype == task_subtype_gpu_unpack_f) {
+      continue; /*Do nothing and grab next task to split*/
     } else {
 #ifdef SWIFT_DEBUG_CHECKS
       error("Unexpected task sub-type %s/%s", taskID_names[t->type],
