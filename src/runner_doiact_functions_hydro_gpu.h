@@ -513,8 +513,8 @@ void runner_dopair1_pack(struct runner *r, struct scheduler *s, struct pack_vars
 	cell_unlocktree(cj);
 }
 
-double runner_dopair1_pack_f4(struct runner *r, struct scheduler *s, struct pack_vars_pair * restrict pack_vars, struct cell * restrict ci,
-		 struct cell * restrict cj, struct task *t, struct part_aos_f4_send *parts_send, struct engine *e, int4 *fparti_fpartj_lparti_lpartj){
+double runner_dopair1_pack_f4(struct runner *r, struct scheduler *s, struct pack_vars_pair * restrict pack_vars, struct cell * ci,
+		 struct cell * cj, struct task *t, struct part_aos_f4_send *parts_send, struct engine *e, int4 *fparti_fpartj_lparti_lpartj){
 
     /* Timers for how long this all takes.
     * t0 and t1 are from start to finish including GPU calcs
@@ -693,8 +693,8 @@ void runner_dopair1_pack_g(struct runner *r, struct scheduler *s, struct pack_va
 }
 
 
-double runner_dopair1_pack_f4_g(struct runner *r, struct scheduler *s, struct pack_vars_pair * restrict pack_vars, struct cell * restrict ci,
-		 struct cell * restrict cj, struct task *t, struct part_aos_f4_g_send *parts_send, struct engine *e, int4 *fparti_fpartj_lparti_lpartj){
+double runner_dopair1_pack_f4_g(struct runner *r, struct scheduler *s, struct pack_vars_pair * restrict pack_vars, struct cell * ci,
+		 struct cell * cj, struct task *t, struct part_aos_f4_g_send *parts_send, struct engine *e, int4 *fparti_fpartj_lparti_lpartj){
 
     /* Timers for how long this all takes.
     * t0 and t1 are from start to finish including GPU calcs
@@ -873,8 +873,8 @@ void runner_dopair1_pack_f(struct runner *r, struct scheduler *s, struct pack_va
                     (t1.tv_nsec - t0.tv_nsec) / 1000000000.0;
 }
 
-double runner_dopair1_pack_f4_f(struct runner *r, struct scheduler *s, struct pack_vars_pair * restrict pack_vars, struct cell * restrict ci,
-		 struct cell * restrict cj, struct task *t, struct part_aos_f4_f_send *parts_send, struct engine *e, int4 *fparti_fpartj_lparti_lpartj){
+double runner_dopair1_pack_f4_f(struct runner *r, struct scheduler *s, struct pack_vars_pair * restrict pack_vars, struct cell * ci,
+		 struct cell * cj, struct task *t, struct part_aos_f4_f_send *parts_send, struct engine *e, int4 *fparti_fpartj_lparti_lpartj){
 
     /* Timers for how long this all takes.
     * t0 and t1 are from start to finish including GPU calcs
