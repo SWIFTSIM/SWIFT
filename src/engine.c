@@ -1092,12 +1092,20 @@ int engine_estimate_nr_tasks(const struct engine *e) {
      */
     n1 += 38;
     n2 += 2;
+#ifdef WITH_CUDA
+    n1 += 2; //Self force and density packs
+    n1 += 26; //Pair force and density packs
+#endif
 #ifdef WITH_MPI
     n1 += 6;
 #endif
 
 #ifdef EXTRA_HYDRO_LOOP
     n1 += 15;
+#ifdef WITH_CUDA
+    n1 += 1; //Self gradient packs
+    n1 += 13; //Pair gradient packs
+#endif
 #ifdef WITH_MPI
     n1 += 2;
 #endif
@@ -1750,9 +1758,13 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->type == task_type_rt_ghost2 || t->type == task_type_rt_tchem ||
         t->type == task_type_rt_advance_cell_time ||
         t->type == task_type_neutrino_weight || t->type == task_type_csds ||
-        t->subtype == task_subtype_force ||
+        t->subtype == task_subtype_force || // A. Nasar
+        t->subtype == task_subtype_gpu_pack_f ||
+        t->subtype == task_subtype_gpu_unpack_f ||
         t->subtype == task_subtype_limiter ||
         t->subtype == task_subtype_gradient ||
+        t->subtype == task_subtype_gpu_pack_g ||
+        t->subtype == task_subtype_gpu_unpack_g ||
         t->subtype == task_subtype_stars_prep1 ||
         t->subtype == task_subtype_stars_prep2 ||
         t->subtype == task_subtype_stars_feedback ||
@@ -2192,6 +2204,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   }
 #endif
 
+  scheduler_write_dependencies(&e->sched, e->verbose); // A. Nasar write deps before running first step
   /* Now, launch the calculation */
   TIMER_TIC;
   engine_launch(e, "tasks");
