@@ -60,6 +60,33 @@ extern int activate_by_unskip;
 
 /* Data of a scheduler. */
 struct scheduler {
+
+  int nr_packs_self_dens_done; //A. Nasar
+  int nr_packs_pair_dens_done;
+  int nr_packs_self_forc_done;
+  int nr_packs_pair_forc_done;
+  int nr_packs_self_grad_done;
+  int nr_packs_pair_grad_done;
+
+  /* Actual number of GPU tasks. */
+  int nr_gpu_tasks;
+  /* Number of tasks we want*/
+  int target_gpu_tasks;
+  /* Actual number of density pack tasks. */
+  int nr_self_pack_tasks, nr_pair_pack_tasks;
+  /* Actual number of force pack tasks. */
+  int nr_self_pack_tasks_f, nr_pair_pack_tasks_f;
+  /* Actual number of gradient pack tasks. */
+  int nr_self_pack_tasks_g, nr_pair_pack_tasks_g;
+  /* Pack task indices */
+
+  // MATTHIEU: To be removed as unused !!!
+  int *pack_tasks_ind;
+
+  /*how many tasks we want to try and work on at once on the GPU*/
+  int pack_size;
+  int pack_size_pair;
+
   /* Scheduler flags. */
   unsigned int flags;
 
