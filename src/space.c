@@ -2433,7 +2433,7 @@ void space_mark_cell_as_updated(
 #endif
 
   /* Has anything changed? */
-  char changed = 0;
+  int changed = 0;
   changed += c->hydro.ti_end_min != ti_hydro_end_min;
   changed += c->hydro.ti_beg_max != ti_hydro_beg_max;
   changed += c->rt.ti_rt_end_min != ti_rt_end_min;
@@ -2448,8 +2448,10 @@ void space_mark_cell_as_updated(
   changed += c->sinks.ti_beg_max != ti_sinks_beg_max;
 
   /* Store in the top-level array whether anything changed */
-  const size_t delta = c - s->cells_top;
-  s->cells_top_updated[delta] += changed ? 1 : 0;
+  if (changed) {
+    const size_t delta = c - s->cells_top;
+    atomic_inc(&s->cells_top_updated[delta]);
+  }
 }
 
 /**
