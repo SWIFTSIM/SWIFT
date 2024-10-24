@@ -2414,12 +2414,12 @@ void space_after_snap_tracer(struct space *s, int verbose) {
 }
 
 /**
- * @brief Verifies whether a (top level) cell's time-step is different
+ * @brief Verifies whether a (top level) cell's time-steps are different
  * from the arguments passed in and update the space list of updates
  * accordingly.
  */
 void space_mark_cell_as_updated(
-    struct space *s, struct cell *c, const integertime_t ti_hydro_end_min,
+    struct space *s, const struct cell *c, const integertime_t ti_hydro_end_min,
     const integertime_t ti_hydro_beg_max, const integertime_t ti_rt_end_min,
     const integertime_t ti_rt_beg_max, const integertime_t ti_gravity_end_min,
     const integertime_t ti_gravity_beg_max,
