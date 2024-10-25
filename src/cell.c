@@ -1364,7 +1364,6 @@ void cell_grid_set_self_completeness_mapper(void *map_data, int num_elements,
                                             void *extra_data) {
   /* Extract the engine pointer. */
   struct engine *e = (struct engine *)extra_data;
-  const int periodic = e->s->periodic;
 
   struct space *s = e->s;
   struct cell *cells = s->cells_top;
