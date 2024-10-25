@@ -391,6 +391,18 @@ if test "$enable_naive_interactions_rt" = "yes"; then
    AC_DEFINE([SWIFT_USE_NAIVE_INTERACTIONS_RT],1,[Enable use of naive cell interaction functions for stars in RT tasks])
 fi
 
+# Check whether we want to default to naive cell interactions (grid)
+AC_ARG_ENABLE([naive-interactions-grid],
+   [AS_HELP_STRING([--enable-naive-interactions-grid],
+     [Activate use of naive cell interaction functions for grid construction tasks@<:@yes/no@:>@]
+   )],
+   [enable_naive_interactions_grid="$enableval"],
+   [enable_naive_interactions_grid="no"]
+)
+if test "$enable_naive_interactions_grid" = "yes"; then
+   AC_DEFINE([SWIFT_USE_NAIVE_INTERACTIONS_GRID],1,[Enable use of naive cell interaction functions for grid construction tasks])
+fi
+
 # Check if gravity force checks are on for some particles.
 AC_ARG_ENABLE([gravity-force-checks],
    [AS_HELP_STRING([--enable-gravity-force-checks=<N>],
@@ -2919,6 +2931,9 @@ case "$with_potential" in
    constant)
       AC_DEFINE([EXTERNAL_POTENTIAL_CONSTANT], [1], [Constant gravitational acceleration.])
    ;;
+   burkert)
+      AC_DEFINE([EXTERNAL_POTENTIAL_BURKERT], [1], [Burkert (1995) potential])
+   ;;
    *)
       AC_MSG_ERROR([Unknown external potential: $with_potential])
    ;;
@@ -3333,6 +3348,7 @@ AC_MSG_RESULT([
    Stars interaction debugging : $enable_debug_interactions_stars
    Naive interactions          : $enable_naive_interactions
    Naive stars interactions    : $enable_naive_interactions_stars
+   Naive grid interactions     : $enable_naive_interactions_grid
    Gravity checks              : $gravity_force_checks
    Custom icbrtf               : $enable_custom_icbrtf
    Boundary particles          : $boundary_particles
