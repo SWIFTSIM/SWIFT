@@ -1367,7 +1367,6 @@ void cell_grid_set_self_completeness_mapper(void *map_data, int num_elements,
   const int periodic = e->s->periodic;
 
   struct space *s = e->s;
-  const int nodeID = e->nodeID;
   struct cell *cells = s->cells_top;
 
   /* Loop through the elements, which are just byte offsets from NULL. */
