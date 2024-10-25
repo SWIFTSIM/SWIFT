@@ -91,12 +91,14 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
     		t_subtype == task_subtype_gpu_unpack_g ||
 			t_subtype == task_subtype_gpu_unpack_f)){ // A. Nasar
       scheduler_activate(s, t);
+      continue;
     }
 
     if (t_type == task_type_pair && (t_subtype == task_subtype_gpu_unpack ||
     		t_subtype == task_subtype_gpu_unpack_g ||
 			t_subtype == task_subtype_gpu_unpack_f)){ // A. Nasar
       scheduler_activate(s, t);
+      continue;
 //      fprintf(stderr,"activated pair unpack in marktasks\n");
     }
 
@@ -107,7 +109,16 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       struct cell *ci = t->ci;
 
 #ifdef SWIFT_DEBUG_CHECKS
+#ifndef WITH_CUDA // A. Nasar
       if (ci->nodeID != nodeID) error("Non-local self task found");
+#else
+      if (ci->nodeID != nodeID && t_subtype != task_subtype_gpu_unpack &&
+    		  t_subtype != task_subtype_gpu_unpack_f &&
+			  t_subtype != task_subtype_gpu_unpack_g){
+    	        fprintf(stderr, "task is %i\n", subtaskID_names[t->subtype]);
+    	        error("Non-local self task found. Task is subtaskID_names[%s]", subtaskID_names[t->subtype]);
+      }
+#endif
 #endif
 
       const int ci_active_hydro = cell_is_active_hydro(ci, e);
