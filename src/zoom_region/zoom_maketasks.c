@@ -477,7 +477,7 @@ void zoom_engine_make_hierarchical_tasks_recursive(struct engine *e,
   /* Below the void super level we just need to hook in the impoicit tasks */
   else if ((void_super != NULL || c->super != NULL) && is_self_gravity) {
 
-    if (c->type == cell_type_zoom && c->grav.super != NULL) {
+    if (c->type == cell_type_zoom && c->grav.super->type == cell_type_zoom) {
       c->grav.drift_out = scheduler_addtask(s, task_type_drift_gpart_out,
                                             task_subtype_none, 0, 1, c, NULL);
       scheduler_addunlock(s, parent->grav.drift_out, c->grav.drift_out);
