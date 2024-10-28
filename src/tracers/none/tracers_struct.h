@@ -26,8 +26,10 @@ struct tracers_xpart_data {};
 
 /**
  * @brief Properties of the tracers stored in the star particle data.
+ *
+ * Note: In this model, they are identical to the xpart data.
  */
-struct tracers_spart_data {};
+#define tracers_spart_data tracers_xpart_data
 
 /**
  * @brief Properties of the tracers stored in the black hole particle data.
