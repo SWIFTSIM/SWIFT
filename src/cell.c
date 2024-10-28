@@ -1220,7 +1220,7 @@ void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data) {
     if (with_hydro) cell_set_super_hydro(c, NULL);
 
     /* Super-pointer for gravity */
-    if (with_grav) cell_set_super_gravity(c, NULL);
+    if (with_grav && c->type != cell_type_zoom) cell_set_super_gravity(c, NULL);
 
     /* Super-pointer for common operations */
     cell_set_super(c, NULL, with_hydro, with_grav);
