@@ -209,6 +209,13 @@ int main(int argc, char *argv[]) {
   /* Construct the void cell tree. */
   zoom_void_space_split(s, /*verbose*/ 0);
 
+  /* Test the cell tree. */
+  for (int cid = 0; cid < s->nr_cells; cid++) {
+    /* Only test void cells. */
+    if (s->cells_top[cid].subtype == cell_subtype_void)
+      test_cell_tree(&s->cells_top[cid], s);
+  }
+
   /* Free the space. */
   free(s->local_cells_top);
   free(s->multipoles_top);
