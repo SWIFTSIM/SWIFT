@@ -250,7 +250,7 @@ int main(int argc, char *argv[]) {
   free(s->cells_with_particles_top);
   free(s->local_cells_with_particles_top);
   free(s->zoom_props->local_zoom_cells_top);
-  free(s->zoom_props->void_cells_top);
+  free(s->zoom_props->void_cell_indices);
   free(s->zoom_props->neighbour_cells_top);
   free(s->zoom_props->local_bkg_cells_top);
   free(s->zoom_props->local_buffer_cells_top);
