@@ -433,10 +433,10 @@ void zoom_engine_make_hierarchical_tasks_recursive(struct engine *e,
          * non-zoom cells and zoom cells where there are no grav_mm tasks in the
          * void cell tree (if this is the case then there will be no void super
          * level). */
-        c->grav.long_range = scheduler_addtask(
-            s, task_type_grav_long_range, task_subtype_none, 0, 0, c, NULL);
-
         if (void_super == NULL) {
+          c->grav.long_range = scheduler_addtask(
+              s, task_type_grav_long_range, task_subtype_none, 0, 0, c, NULL);
+
           /* Gravity recursive down-pass */
           c->grav.down = scheduler_addtask(s, task_type_grav_down,
                                            task_subtype_none, 0, 0, c, NULL);
