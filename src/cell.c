@@ -202,24 +202,59 @@ int cell_link_parts(struct cell *c, struct part *parts) {
  *
  * @return The number of particles linked.
  */
-int cell_link_gparts(struct cell *c, struct gpart *gparts) {
+int cell_link_gparts(struct cell *c, struct gpart_foreign *gparts_foreign) {
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->nodeID == engine_rank)
     error("Linking foreign particles in a local cell!");
 
-  if (c->grav.parts != NULL)
+  if (c->grav.parts_foreign != NULL)
     error("Linking gparts into a cell that was already linked");
 #endif
 
-  c->grav.parts = gparts;
-  c->grav.parts_rebuild = gparts;
+  c->grav.parts_foreign = gparts_foreign;
+  c->grav.parts_foreign_rebuild = gparts_foreign;
 
   /* Fill the progeny recursively, depth-first. */
   if (c->split) {
     int offset = 0;
     for (int k = 0; k < 8; k++) {
       if (c->progeny[k] != NULL)
-        offset += cell_link_gparts(c->progeny[k], &gparts[offset]);
+        offset += cell_link_gparts(c->progeny[k], &gparts_foreign[offset]);
+    }
+  }
+
+  /* Return the total number of linked particles. */
+  return c->grav.count;
+}
+
+/**
+ * @brief Link the cells recursively to the given #gpart array.
+ *
+ * @param c The #cell.
+ * @param gparts The #gpart array.
+ *
+ * @return The number of particles linked.
+ */
+int cell_link_fof_gparts(struct cell *c,
+                         struct gpart_fof_foreign *gparts_fof_foreign) {
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->nodeID == engine_rank)
+    error("Linking foreign particles in a local cell!");
+
+  if (c->grav.parts_fof_foreign != NULL)
+    error("Linking gparts into a cell that was already linked");
+#endif
+
+  c->grav.parts_fof_foreign = gparts_fof_foreign;
+  c->grav.parts_fof_foreign_rebuild = gparts_fof_foreign;
+
+  /* Fill the progeny recursively, depth-first. */
+  if (c->split) {
+    int offset = 0;
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] != NULL)
+        offset +=
+            cell_link_fof_gparts(c->progeny[k], &gparts_fof_foreign[offset]);
     }
   }
 
@@ -343,15 +378,16 @@ int cell_link_foreign_parts(struct cell *c, struct part *parts) {
 
 /**
  * @brief Recurse down foreign cells until reaching one with gravity
- * tasks; then trigger the linking of the #gpart array from that
+ * tasks; then trigger the linking of the #gpart_foreign array from that
  * level.
  *
  * @param c The #cell.
- * @param gparts The #gpart array.
+ * @param gparts_foreign The #gpart_foreign array.
  *
  * @return The number of particles linked.
  */
-int cell_link_foreign_gparts(struct cell *c, struct gpart *gparts) {
+int cell_link_foreign_gparts(struct cell *c,
+                             struct gpart_foreign *gparts_foreign) {
 #ifdef WITH_MPI
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -363,15 +399,15 @@ int cell_link_foreign_gparts(struct cell *c, struct gpart *gparts) {
   if (cell_get_recv(c, task_subtype_gpart) != NULL) {
 
     /* Recursively attach the gparts */
-    const int counts = cell_link_gparts(c, gparts);
+    const int counts = cell_link_gparts(c, gparts_foreign);
 #ifdef SWIFT_DEBUG_CHECKS
     if (counts != c->grav.count)
       error("Something is wrong with the foreign counts");
 #endif
     return counts;
   } else {
-    c->grav.parts = gparts;
-    c->grav.parts_rebuild = gparts;
+    c->grav.parts_foreign = NULL;
+    c->grav.parts_foreign_rebuild = NULL;
   }
 
   /* Go deeper to find the level where the tasks are */
@@ -379,7 +415,61 @@ int cell_link_foreign_gparts(struct cell *c, struct gpart *gparts) {
     int count = 0;
     for (int k = 0; k < 8; k++) {
       if (c->progeny[k] != NULL) {
-        count += cell_link_foreign_gparts(c->progeny[k], &gparts[count]);
+        count +=
+            cell_link_foreign_gparts(c->progeny[k], &gparts_foreign[count]);
+      }
+    }
+    return count;
+  } else {
+    return 0;
+  }
+
+#else
+  error("Calling linking of foregin particles in non-MPI mode.");
+#endif
+}
+
+/**
+ * @brief Recurse down foreign cells until reaching one with gravity
+ * tasks; then trigger the linking of the #gpart_fof_foreign array from that
+ * level.
+ *
+ * @param c The #cell.
+ * @param gparts_fof_foreign The #gpart_fof_foreign array.
+ *
+ * @return The number of particles linked.
+ */
+int cell_link_foreign_fof_gparts(struct cell *c,
+                                 struct gpart_fof_foreign *gparts_fof_foreign) {
+#ifdef WITH_MPI
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->nodeID == engine_rank)
+    error("Linking foreign particles in a local cell!");
+#endif
+
+  /* Do we have a gravity task at this level? */
+  if (cell_get_recv(c, task_subtype_gpart) != NULL) {
+
+    /* Recursively attach the gparts */
+    const int counts = cell_link_fof_gparts(c, gparts_fof_foreign);
+#ifdef SWIFT_DEBUG_CHECKS
+    if (counts != c->grav.count)
+      error("Something is wrong with the foreign counts");
+#endif
+    return counts;
+  } else {
+    c->grav.parts_fof_foreign = NULL;
+    c->grav.parts_fof_foreign_rebuild = NULL;
+  }
+
+  /* Go deeper to find the level where the tasks are */
+  if (c->split) {
+    int count = 0;
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] != NULL) {
+        count += cell_link_foreign_fof_gparts(c->progeny[k],
+                                              &gparts_fof_foreign[count]);
       }
     }
     return count;

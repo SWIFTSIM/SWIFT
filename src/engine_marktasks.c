@@ -1340,6 +1340,9 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           /* Is the foreign cell active and will need stuff from us? */
           if (ci_active_gravity) {
 
+            scheduler_activate_pack(s, cj->mpi.pack, task_subtype_gpart,
+                                    ci_nodeID);
+
             scheduler_activate_send(s, cj->mpi.send, task_subtype_gpart,
                                     ci_nodeID);
 
@@ -1357,6 +1360,9 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
           /* Is the foreign cell active and will need stuff from us? */
           if (cj_active_gravity) {
+
+            scheduler_activate_pack(s, ci->mpi.pack, task_subtype_gpart,
+                                    cj_nodeID);
 
             scheduler_activate_send(s, ci->mpi.send, task_subtype_gpart,
                                     cj_nodeID);
