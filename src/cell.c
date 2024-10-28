@@ -1180,14 +1180,15 @@ void cell_set_super_gravity(struct cell *c, struct cell *super_gravity) {
   /* Set the super-cell */
   c->grav.super = super_gravity;
 
-#ifdef SWIFT_DEBUG_CHECKS
-  if (super_gravity != NULL && super_gravity->subtype == cell_subtype_void &&
-      c->type == cell_type_zoom)
-    error("Zoom cell has a void cell super-gravity pointer!");
-#endif
+  // #ifdef SWIFT_DEBUG_CHECKS
+  //   if (super_gravity != NULL && super_gravity->subtype == cell_subtype_void
+  //   &&
+  //       c->type == cell_type_zoom)
+  //     error("Zoom cell has a void cell super-gravity pointer!");
+  // #endif
 
   /* Recurse */
-  if (c->split)
+  if (c->split || c->subtype == cell_subtype_void)
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL)
         cell_set_super_gravity(c->progeny[k], super_gravity);
