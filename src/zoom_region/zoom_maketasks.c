@@ -371,19 +371,20 @@ void zoom_engine_make_hierarchical_tasks_recursive(struct engine *e,
     c->grav.init = scheduler_addtask(s, task_type_init_grav, task_subtype_none,
                                      0, 0, c, NULL);
 
-    /* Gravity recursive down-pass */
-    c->grav.down = scheduler_addtask(s, task_type_grav_down, task_subtype_none,
-                                     0, 0, c, NULL);
+    // /* Gravity recursive down-pass */
+    // c->grav.down = scheduler_addtask(s, task_type_grav_down,
+    // task_subtype_none,
+    //                                  0, 0, c, NULL);
 
     /* Implicit tasks for the up and down passes */
     c->grav.init_out = scheduler_addtask(s, task_type_init_grav_out,
                                          task_subtype_none, 0, 1, c, NULL);
-    c->grav.down_in = scheduler_addtask(s, task_type_grav_down_in,
-                                        task_subtype_none, 0, 1, c, NULL);
+    // c->grav.down_in = scheduler_addtask(s, task_type_grav_down_in,
+    //                                     task_subtype_none, 0, 1, c, NULL);
 
     /* Link in the implicit tasks */
     scheduler_addunlock(s, c->grav.init, c->grav.init_out);
-    scheduler_addunlock(s, c->grav.down_in, c->grav.down);
+    // scheduler_addunlock(s, c->grav.down_in, c->grav.down);
 
   }
 
@@ -439,13 +440,9 @@ void zoom_engine_make_hierarchical_tasks_recursive(struct engine *e,
         c->grav.long_range = scheduler_addtask(
             s, task_type_grav_long_range, task_subtype_none, 0, 0, c, NULL);
 
-        /* We only need a down pass if the down pass isn't already coming
-         * down from above in the void tree. */
-        if (void_super == NULL) {
-          /* Gravity recursive down-pass */
-          c->grav.down = scheduler_addtask(s, task_type_grav_down,
-                                           task_subtype_none, 0, 0, c, NULL);
-        }
+        /* Gravity recursive down-pass */
+        c->grav.down = scheduler_addtask(s, task_type_grav_down,
+                                         task_subtype_none, 0, 0, c, NULL);
 
         /* Implicit tasks for the up and down passes */
         c->grav.drift_out = scheduler_addtask(s, task_type_drift_gpart_out,
@@ -457,14 +454,9 @@ void zoom_engine_make_hierarchical_tasks_recursive(struct engine *e,
 
         /* Long-range gravity forces (not the mesh ones!) */
         scheduler_addunlock(s, c->grav.init, c->grav.long_range);
-        if (void_super == NULL) {
-          scheduler_addunlock(s, c->grav.long_range, c->grav.down);
-          scheduler_addunlock(s, c->grav.down, c->grav.super->grav.end_force);
-          scheduler_addunlock(s, c->grav.down_in, c->grav.down);
-        } else {
-          scheduler_addunlock(s, void_super->grav.down,
-                              c->grav.super->grav.end_force);
-        }
+        scheduler_addunlock(s, c->grav.long_range, c->grav.down);
+        scheduler_addunlock(s, c->grav.down, c->grav.super->grav.end_force);
+        scheduler_addunlock(s, c->grav.down_in, c->grav.down);
 
         /* With adaptive softening, force the hydro density to complete first */
         if (gravity_after_hydro_density && c->hydro.super == c) {
@@ -474,7 +466,6 @@ void zoom_engine_make_hierarchical_tasks_recursive(struct engine *e,
         /* Link in the implicit tasks */
         scheduler_addunlock(s, c->grav.init, c->grav.init_out);
         scheduler_addunlock(s, c->grav.drift, c->grav.drift_out);
-        scheduler_addunlock(s, c->grav.down_in, parent->grav.down_in);
       }
     }
   }
