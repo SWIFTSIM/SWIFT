@@ -117,7 +117,7 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
          * In a non-zoom simulation the down is defined at the super level,
          * so you can never hit another down when recursing. Only the
          * void->zoom cell tree can have two super levels.  */
-        if (cp->grav.super != c) {
+        if (cp->grav.super != cp) {
           runner_do_grav_down(r, cp, 0);
         }
       }
