@@ -1092,9 +1092,9 @@ int engine_estimate_nr_tasks(const struct engine *e) {
      */
     n1 += 38;
     n2 += 2;
-#ifdef WITH_CUDA
-    n1 += 2; //Self force and density packs
-    n1 += 26; //Pair force and density packs
+#ifdef WITH_CUDA // A. Nasar
+    n1 += 4; //Self force and density packs should be 2 but doubled to prevent code crash due to unpack tasks
+    n1 += 52; //Pair force and density packs should be 26 but doubled to prevent code crash due to unpack tasks
 #endif
 #ifdef WITH_MPI
     n1 += 6;

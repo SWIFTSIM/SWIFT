@@ -901,7 +901,9 @@ void scheduler_write_cell_dependencies(struct scheduler *s, int verbose,
   int local_count = 0;
   for (int i = 0; i < s->nr_tasks; i++) {
     const struct task *ta = &s->tasks[i];
-
+//    if(ta->subtype == task_subtype_gpu_unpack
+//  		  || ta->subtype == task_subtype_gpu_unpack_f
+//			  || ta->subtype == task_subtype_gpu_unpack_g)continue;
     /* Are we using this task?
      * For the 0-step, we wish to show all the tasks (even the inactives). */
     if (step != 0 && ta->skip) continue;
@@ -953,7 +955,9 @@ void scheduler_write_cell_dependencies(struct scheduler *s, int verbose,
     /* and their dependencies */
     for (int j = 0; j < ta->nr_unlock_tasks; j++) {
       const struct task *tb = ta->unlock_tasks[j];
-
+      if(tb->subtype == task_subtype_gpu_unpack
+        		  || tb->subtype == task_subtype_gpu_unpack_f
+      			  || tb->subtype == task_subtype_gpu_unpack_g)continue;
       /* Are we using this task?
        * For the 0-step, we wish to show all the tasks (even the inactive). */
       if (step != 0 && tb->skip) continue;
@@ -1865,6 +1869,8 @@ void scheduler_set_unlocks(struct scheduler *s) {
     struct task *t = &s->tasks[k];
     for (int i = 0; i < t->nr_unlock_tasks; i++) {
       for (int j = i + 1; j < t->nr_unlock_tasks; j++) {
+//        if (t->unlock_tasks[i] == t->unlock_tasks[j] && t->subtype != task_subtype_gpu_unpack
+//        		&& t->subtype != task_subtype_gpu_unpack_g && t->subtype != task_subtype_gpu_unpack_f)
         if (t->unlock_tasks[i] == t->unlock_tasks[j])
           error("duplicate unlock! t->type=%s/%s unlocking type=%s/%s",
                 taskID_names[t->type], subtaskID_names[t->subtype],
@@ -1986,8 +1992,6 @@ void scheduler_reset(struct scheduler *s, int size) {
   s->total_ticks = 0;
   s->pack_size = N_TASKS_PER_PACK_SELF;
   s->pack_size_pair = N_TASKS_PER_PACK_PAIR;
-  if (s->pack_tasks_ind != NULL)
-    free(s->pack_tasks_ind);
   /* Set the task pointers in the queues. */
   for (int k = 0; k < s->nr_queues; k++) s->queues[k].tasks = s->tasks;
 }
@@ -2617,6 +2621,10 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         break;
       case task_type_pair:
       case task_type_sub_pair:
+        if(t->subtype == task_subtype_gpu_unpack ||
+            t->subtype == task_subtype_gpu_unpack_f ||
+  		   t->subtype == task_subtype_gpu_unpack_g) qid = -1;
+        break;
         qid = t->ci->super->owner;
         owner = &t->ci->super->owner;
         if ((qid < 0) ||
@@ -2625,10 +2633,6 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           qid = t->cj->super->owner;
           owner = &t->cj->super->owner;
         }
-        if(t->subtype == task_subtype_gpu_unpack ||
-            t->subtype == task_subtype_gpu_unpack_f ||
-		     t->subtype == task_subtype_gpu_unpack_g) qid = -1;
-        break;
       case task_type_recv:
 #ifdef WITH_MPI
       {
@@ -3170,7 +3174,6 @@ void scheduler_init(struct scheduler *s, struct space *space, int nr_tasks,
   s->size = 0;
   s->tasks = NULL;
   s->tasks_ind = NULL;
-  s->pack_tasks_ind = NULL; // A. Nasar
   scheduler_reset(s, nr_tasks);
 
 #if defined(SWIFT_DEBUG_CHECKS)
@@ -3234,10 +3237,6 @@ void scheduler_free_tasks(struct scheduler *s) {
   s->size = 0;
   s->nr_tasks = 0;
   //reset GPU task counters too
-  if (s->pack_tasks_ind != NULL) { // A. Nasar
-    swift_free("pack_tasks_ind", s->pack_tasks_ind);
-    s->pack_tasks_ind = NULL;
-  }
   s->nr_self_pack_tasks = 0;
   s->nr_self_pack_tasks_f = 0;
   s->nr_self_pack_tasks_g = 0;

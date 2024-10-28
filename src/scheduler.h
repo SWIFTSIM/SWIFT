@@ -67,7 +67,6 @@ struct scheduler {
   int nr_packs_pair_forc_done;
   int nr_packs_self_grad_done;
   int nr_packs_pair_grad_done;
-
   /* Actual number of GPU tasks. */
   int nr_gpu_tasks;
   /* Number of tasks we want*/
@@ -78,10 +77,6 @@ struct scheduler {
   int nr_self_pack_tasks_f, nr_pair_pack_tasks_f;
   /* Actual number of gradient pack tasks. */
   int nr_self_pack_tasks_g, nr_pair_pack_tasks_g;
-  /* Pack task indices */
-
-  // MATTHIEU: To be removed as unused !!!
-  int *pack_tasks_ind;
 
   /*how many tasks we want to try and work on at once on the GPU*/
   int pack_size;

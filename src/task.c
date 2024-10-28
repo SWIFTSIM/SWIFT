@@ -902,16 +902,16 @@ int task_lock(struct task *t) {
         if (cell_locktree(ci) != 0)
           return 0;
       } else if (subtype == task_subtype_gpu_unpack) {
-  //        for(int pp = 0; pp < 128 /*should be sched->pack_size*/; pp++){
-  //    	  if (t->ci_unpack[pp]->gpu_done == 0){
-  //    		  message("trying to queue an unpack before all packs done on GPU");
-  //    		  return 0;
-  //    	  }
-  ////          if (t->ci_unpack[pp]->hydro.hold)
-  ////    		return 0;
-  ////    	  if (cell_locktree(t->ci_unpack[pp]) != 0)
-  ////            return 0;
-  //        }
+//        for(int pp = 0; pp < 128 /*should be sched->pack_size*/; pp++){
+//    	  if (t->ci_unpack[pp]->gpu_done == 0){
+//    		  message("trying to queue an unpack before all packs done on GPU");
+//    		  return 0;
+//    	  }
+////          if (t->ci_unpack[pp]->hydro.hold)
+////    		return 0;
+////    	  if (cell_locktree(t->ci_unpack[pp]) != 0)
+////            return 0;
+//        }
         /* Nothing to do here */
         return 1;
       } else if (subtype == task_subtype_gpu_unpack_f) {

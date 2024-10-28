@@ -487,7 +487,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 	    cj->gpu_done_pair_f = 0;
       }
 
-      /* Only activate tasks that involve a local active cell. */
+      /* Only activate tasks that involve a local active cell. A. Nasar THIS COULD BE SOURCE OF BUG */
       if ((t_subtype == task_subtype_density ||
            t_subtype == task_subtype_gradient ||
            t_subtype == task_subtype_limiter ||
