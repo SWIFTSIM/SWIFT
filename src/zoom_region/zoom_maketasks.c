@@ -330,7 +330,6 @@ void zoom_engine_make_self_gravity_tasks(struct space *s, struct engine *e) {
  * This will construct:
  * - The init for preparing void cell multipoles.
  * - The init implicit task for the void cells.
- * - The long-range gravity task for the void cells.
  * - The down-pass gravity task for the void cells.
  * - The down-pass implicit task for the void cells.
  *
@@ -372,10 +371,6 @@ void zoom_engine_make_hierarchical_tasks_recursive(struct engine *e,
     c->grav.init = scheduler_addtask(s, task_type_init_grav, task_subtype_none,
                                      0, 0, c, NULL);
 
-    /* Gravity non-neighbouring pm calculations. */
-    c->grav.long_range = scheduler_addtask(s, task_type_grav_long_range,
-                                           task_subtype_none, 0, 0, c, NULL);
-
     /* Gravity recursive down-pass */
     c->grav.down = scheduler_addtask(s, task_type_grav_down, task_subtype_none,
                                      0, 0, c, NULL);
@@ -386,13 +381,25 @@ void zoom_engine_make_hierarchical_tasks_recursive(struct engine *e,
     c->grav.down_in = scheduler_addtask(s, task_type_grav_down_in,
                                         task_subtype_none, 0, 1, c, NULL);
 
-    /* Long-range gravity forces (not the mesh ones!) */
-    scheduler_addunlock(s, c->grav.init, c->grav.long_range);
-    scheduler_addunlock(s, c->grav.long_range, c->grav.down);
-
     /* Link in the implicit tasks */
     scheduler_addunlock(s, c->grav.init, c->grav.init_out);
     scheduler_addunlock(s, c->grav.down_in, c->grav.down);
+
+  }
+
+  /* In the void cell tree we just need to link in the implicit tasks */
+  else if (c->grav.super != NULL && c->subtype == cell_subtype_void &&
+           is_self_gravity) {
+
+    /* Below the super level we just need to link in the implicit tasks. */
+    c->grav.init_out = scheduler_addtask(s, task_type_init_grav_out,
+                                         task_subtype_none, 0, 1, c, NULL);
+    c->grav.down_in = scheduler_addtask(s, task_type_grav_down_in,
+                                        task_subtype_none, 0, 1, c, NULL);
+
+    /* Link in the implicit tasks */
+    scheduler_addunlock(s, parent->grav.init_out, c->grav.init_out);
+    scheduler_addunlock(s, c->grav.down_in, parent->grav.down_in);
 
   }
 
@@ -429,14 +436,12 @@ void zoom_engine_make_hierarchical_tasks_recursive(struct engine *e,
                                          task_subtype_none, 0, 0, c, NULL);
 
         /* Gravity non-neighbouring pm calculations */
-        /* When running a zoom we only want to create long range tasks for
-         * non-zoom cells and zoom cells where there are no grav_mm tasks in the
-         * void cell tree (if this is the case then there will be no void super
-         * level). */
-        if (void_super == NULL) {
-          c->grav.long_range = scheduler_addtask(
-              s, task_type_grav_long_range, task_subtype_none, 0, 0, c, NULL);
+        c->grav.long_range = scheduler_addtask(
+            s, task_type_grav_long_range, task_subtype_none, 0, 0, c, NULL);
 
+        /* We only need a down pass if the down pass isn't already coming
+         * down from above in the void tree. */
+        if (void_super == NULL) {
           /* Gravity recursive down-pass */
           c->grav.down = scheduler_addtask(s, task_type_grav_down,
                                            task_subtype_none, 0, 0, c, NULL);
@@ -451,13 +456,12 @@ void zoom_engine_make_hierarchical_tasks_recursive(struct engine *e,
                                             task_subtype_none, 0, 1, c, NULL);
 
         /* Long-range gravity forces (not the mesh ones!) */
+        scheduler_addunlock(s, c->grav.init, c->grav.long_range);
         if (void_super == NULL) {
-          scheduler_addunlock(s, c->grav.init, c->grav.long_range);
           scheduler_addunlock(s, c->grav.long_range, c->grav.down);
           scheduler_addunlock(s, c->grav.down, c->grav.super->grav.end_force);
           scheduler_addunlock(s, c->grav.down_in, c->grav.down);
         } else {
-          scheduler_addunlock(s, c->grav.down_in, void_super->grav.down);
           scheduler_addunlock(s, void_super->grav.down,
                               c->grav.super->grav.end_force);
         }
@@ -470,18 +474,17 @@ void zoom_engine_make_hierarchical_tasks_recursive(struct engine *e,
         /* Link in the implicit tasks */
         scheduler_addunlock(s, c->grav.init, c->grav.init_out);
         scheduler_addunlock(s, c->grav.drift, c->grav.drift_out);
+        scheduler_addunlock(s, c->grav.down_in, parent->grav.down_in);
       }
     }
   }
 
-  /* Below the void super level we just need to hook in the impoicit tasks */
-  else if ((void_super != NULL || c->super != NULL) && is_self_gravity) {
+  /* Below the nested super level we just need to hook in the implicit tasks */
+  else if (c->super != NULL && is_self_gravity) {
 
-    if (c->type == cell_type_zoom && c->grav.super->type == cell_type_zoom) {
-      c->grav.drift_out = scheduler_addtask(s, task_type_drift_gpart_out,
-                                            task_subtype_none, 0, 1, c, NULL);
-      scheduler_addunlock(s, parent->grav.drift_out, c->grav.drift_out);
-    }
+    c->grav.drift_out = scheduler_addtask(s, task_type_drift_gpart_out,
+                                          task_subtype_none, 0, 1, c, NULL);
+    scheduler_addunlock(s, parent->grav.drift_out, c->grav.drift_out);
 
     /* Below the super level we just need to link in the implicit tasks. */
     c->grav.init_out = scheduler_addtask(s, task_type_init_grav_out,

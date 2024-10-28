@@ -1180,15 +1180,14 @@ void cell_set_super_gravity(struct cell *c, struct cell *super_gravity) {
   /* Set the super-cell */
   c->grav.super = super_gravity;
 
-  // #ifdef SWIFT_DEBUG_CHECKS
-  //   if (super_gravity != NULL && super_gravity->subtype == cell_subtype_void
-  //   &&
-  //       c->type == cell_type_zoom)
-  //     error("Zoom cell has a void cell super-gravity pointer!");
-  // #endif
+#ifdef SWIFT_DEBUG_CHECKS
+  if (super_gravity != NULL && super_gravity->subtype == cell_subtype_void &&
+      c->type == cell_type_zoom)
+    error("Zoom cell has a void cell super-gravity pointer!");
+#endif
 
   /* Recurse */
-  if (c->split || c->subtype == cell_subtype_void)
+  if (c->split)
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL)
         cell_set_super_gravity(c->progeny[k], super_gravity);
@@ -1220,7 +1219,7 @@ void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data) {
     if (with_hydro) cell_set_super_hydro(c, NULL);
 
     /* Super-pointer for gravity */
-    if (with_grav && c->type != cell_type_zoom) cell_set_super_gravity(c, NULL);
+    if (with_grav) cell_set_super_gravity(c, NULL);
 
     /* Super-pointer for common operations */
     cell_set_super(c, NULL, with_hydro, with_grav);
