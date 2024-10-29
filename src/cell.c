@@ -1174,7 +1174,9 @@ void cell_set_super_hydro(struct cell *c, struct cell *super_hydro) {
  */
 void cell_set_super_gravity(struct cell *c, struct cell *super_gravity) {
   /* Are we in a cell with some kind of self/pair task ? */
-  if (super_gravity == NULL && (c->grav.grav != NULL || c->grav.mm != NULL))
+  if (super_gravity == NULL &&
+      (c->grav.grav != NULL ||
+       (c->grav.mm != NULL && c->subtype != cell_subtype_void)))
     super_gravity = c;
 
   /* Set the super-cell */
