@@ -70,6 +70,19 @@ struct sink_props {
   /* Factor to rescale the velocity dispersion of the stars when they are
      spawned */
   double star_spawning_sigma_factor;
+
+  /*! Maximal time-step length of young sinks (internal units) */
+  double max_time_step_young;
+
+  /*! Maximal time-step length of old sinks (internal units) */
+  double max_time_step_old;
+
+  /*! Age threshold for the young/old transition (internal units) */
+  double age_threshold;
+
+  /*! Age threshold for the transition to unlimited time-step size (internal
+   * units) */
+  double age_threshold_unlimited;
 };
 
 /**
