@@ -367,9 +367,6 @@ void zoom_engine_make_hierarchical_tasks_recursive(struct engine *e,
     /* Set the void super cell. */
     void_super = c;
 
-    c->grav.drift = scheduler_addtask(s, task_type_drift_gpart,
-                                      task_subtype_none, 0, 0, c, NULL);
-
     /* Initialisation of the multipoles */
     c->grav.init = scheduler_addtask(s, task_type_init_grav, task_subtype_none,
                                      0, 0, c, NULL);
@@ -383,19 +380,16 @@ void zoom_engine_make_hierarchical_tasks_recursive(struct engine *e,
                                          task_subtype_none, 0, 1, c, NULL);
     c->grav.down_in = scheduler_addtask(s, task_type_grav_down_in,
                                         task_subtype_none, 0, 1, c, NULL);
-    c->grav.drift_out = scheduler_addtask(s, task_type_drift_gpart_out,
-                                          task_subtype_none, 0, 1, c, NULL);
 
     /* Link in the implicit tasks */
     scheduler_addunlock(s, c->grav.init, c->grav.init_out);
     scheduler_addunlock(s, c->grav.down_in, c->grav.down);
-    scheduler_addunlock(s, c->grav.drift, c->grav.drift_out);
 
   }
 
   /* At the nested super level (within the void tree leaves) we have a few more
    * tasks to deal with. */
-  else if (c->grav.super == c && c->subtype != cell_subtype_void) {
+  else if (c->grav.super == c) {
 
     /* Local tasks only... */
     if (c->nodeID == e->nodeID) {
@@ -472,9 +466,11 @@ void zoom_engine_make_hierarchical_tasks_recursive(struct engine *e,
            (c->subtype == cell_subtype_void || c->grav.super == NULL) &&
            is_self_gravity) {
 
-    c->grav.drift_out = scheduler_addtask(s, task_type_drift_gpart_out,
-                                          task_subtype_none, 0, 1, c, NULL);
-    scheduler_addunlock(s, parent->grav.drift_out, c->grav.drift_out);
+    if (c->subtype != cell_subtype_void && c->super != NULL) {
+      c->grav.drift_out = scheduler_addtask(s, task_type_drift_gpart_out,
+                                            task_subtype_none, 0, 1, c, NULL);
+      scheduler_addunlock(s, parent->grav.drift_out, c->grav.drift_out);
+    }
 
     /* Below the super level we just need to link in the implicit tasks. */
     c->grav.init_out = scheduler_addtask(s, task_type_init_grav_out,
