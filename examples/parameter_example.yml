@@ -624,7 +624,8 @@ EAGLEStarFormation:
   threshold_temperature1_K:          1000      # When using subgrid-based SF threshold, subgrid temperature below which gas is star-forming.
   threshold_temperature2_K:          31622     # When using subgrid-based SF threshold, subgrid temperature below which gas is star-forming if also above the density limit.
   threshold_number_density_H_p_cm3:  10        # When using subgrid-based SF threshold, subgrid number density above which gas is star-forming if also below the second temperature limit.
-
+  num_of_stars_per_gas_particle:     1         # (Optional) The number star particles to form per gas particle converted to stars. (Defaults to 1. Must be > 0)
+  
 # Quick Lyman-alpha star formation parameters
 QLAStarFormation:
   over_density:              1000      # The over-density above which gas particles turn into stars.
