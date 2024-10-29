@@ -361,8 +361,7 @@ void zoom_engine_make_hierarchical_tasks_recursive(struct engine *e,
 
   /* At the void super level we have a few different tasks to make. (We don't
    * need any tasks above the super level) */
-  if (c->grav.super == c && c->subtype == cell_subtype_void &&
-      is_self_gravity) {
+  if (c->top == c && c->subtype == cell_subtype_void && is_self_gravity) {
 
     /* Set the void super cell. */
     void_super = c;
