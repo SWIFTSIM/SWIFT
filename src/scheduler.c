@@ -2889,6 +2889,8 @@ struct task *scheduler_done(struct scheduler *s, struct task *t) {
   /* Mark the task as skip. */
   t->skip = 1;
 
+  t->done = 1;
+
   /* Return the next best task. Note that we currently do not
      implement anything that does this, as getting it to respect
      priorities is too tricky and currently unnecessary. */
