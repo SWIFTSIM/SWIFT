@@ -1143,12 +1143,7 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
   }
 
   /* Flag if anything has changed */
-  if (c->top == c)
-    space_mark_cell_as_updated(
-        r->e->s, c, ti_hydro_end_min, ti_hydro_beg_max, ti_rt_end_min,
-        ti_rt_beg_max, ti_gravity_end_min, ti_gravity_beg_max, ti_stars_end_min,
-        ti_stars_beg_max, ti_sinks_end_min, ti_sinks_beg_max,
-        ti_black_holes_end_min, ti_black_holes_beg_max);
+  if (c->top == c) space_mark_cell_as_updated(r->e->s, c);
 
   /* Store the values. */
   c->hydro.updated = updated;
@@ -1278,12 +1273,7 @@ void runner_do_timestep_collect(struct runner *r, struct cell *c,
   }
 
   /* Flag if anything has changed */
-  if (c->top == c)
-    space_mark_cell_as_updated(
-        r->e->s, c, ti_hydro_end_min, ti_hydro_beg_max, ti_rt_end_min,
-        ti_rt_beg_max, ti_grav_end_min, ti_grav_beg_max, ti_stars_end_min,
-        ti_stars_beg_max, ti_sinks_end_min, ti_sinks_beg_max,
-        ti_black_holes_end_min, ti_black_holes_beg_max);
+  if (c->top == c) space_mark_cell_as_updated(r->e->s, c);
 
   /* Store the collected values in the cell. */
   c->hydro.ti_end_min = ti_hydro_end_min;
@@ -1363,16 +1353,8 @@ void runner_do_limiter(struct runner *r, struct cell *c, int force,
       }
     }
 
-    /* Flag if anything has changed
-     * Note: Since the limiter only touches hydro+grav
-     * we use the cell values for the other time-steps (i.e. no change) */
-    if (c->top == c)
-      space_mark_cell_as_updated(
-          r->e->s, c, ti_hydro_end_min, ti_hydro_beg_max, c->rt.ti_rt_end_min,
-          c->rt.ti_rt_beg_max, ti_gravity_end_min, ti_gravity_beg_max,
-          c->stars.ti_end_min, c->stars.ti_beg_max, c->sinks.ti_end_min,
-          c->sinks.ti_beg_max, c->black_holes.ti_end_min,
-          c->black_holes.ti_beg_max);
+    /* Flag if anything has changed */
+    if (c->top == c) space_mark_cell_as_updated(r->e->s, c);
 
     /* Store the updated values */
     c->hydro.ti_end_min = min(c->hydro.ti_end_min, ti_hydro_end_min);
@@ -1454,16 +1436,8 @@ void runner_do_limiter(struct runner *r, struct cell *c, int force,
       }
     }
 
-    /* Flag if anything has changed
-     * Note: Since the limiter only touches hydro+grav
-     * we use the cell values for the other time-steps (i.e. no change) */
-    if (c->top == c)
-      space_mark_cell_as_updated(
-          r->e->s, c, ti_hydro_end_min, ti_hydro_beg_max, c->rt.ti_rt_end_min,
-          c->rt.ti_rt_beg_max, ti_gravity_end_min, ti_gravity_beg_max,
-          c->stars.ti_end_min, c->stars.ti_beg_max, c->sinks.ti_end_min,
-          c->sinks.ti_beg_max, c->black_holes.ti_end_min,
-          c->black_holes.ti_beg_max);
+    /* Flag if anything has changed */
+    if (c->top == c) space_mark_cell_as_updated(r->e->s, c);
 
     /* Store the updated values */
     c->hydro.ti_end_min = min(c->hydro.ti_end_min, ti_hydro_end_min);
@@ -1537,16 +1511,8 @@ void runner_do_sync(struct runner *r, struct cell *c, int force,
       }
     }
 
-    /* Flag if anything has changed
-     * Note: Since the sync only touches hydro+grav
-     * we use the cell values for the other time-steps (i.e. no change) */
-    if (c->top == c)
-      space_mark_cell_as_updated(
-          r->e->s, c, ti_hydro_end_min, ti_hydro_beg_max, c->rt.ti_rt_end_min,
-          c->rt.ti_rt_beg_max, ti_gravity_end_min, ti_gravity_beg_max,
-          c->stars.ti_end_min, c->stars.ti_beg_max, c->sinks.ti_end_min,
-          c->sinks.ti_beg_max, c->black_holes.ti_end_min,
-          c->black_holes.ti_beg_max);
+    /* Flag if anything has changed */
+    if (c->top == c) space_mark_cell_as_updated(r->e->s, c);
 
     /* Store the updated values */
     c->hydro.ti_end_min = min(c->hydro.ti_end_min, ti_hydro_end_min);
@@ -1648,16 +1614,8 @@ void runner_do_sync(struct runner *r, struct cell *c, int force,
       }
     }
 
-    /* Flag if anything has changed
-     * Note: Since the sync only touches hydro+grav
-     * we use the cell values for the other time-steps (i.e. no change) */
-    if (c->top == c)
-      space_mark_cell_as_updated(
-          r->e->s, c, ti_hydro_end_min, ti_hydro_beg_max, c->rt.ti_rt_end_min,
-          c->rt.ti_rt_beg_max, ti_gravity_end_min, ti_gravity_beg_max,
-          c->stars.ti_end_min, c->stars.ti_beg_max, c->sinks.ti_end_min,
-          c->sinks.ti_beg_max, c->black_holes.ti_end_min,
-          c->black_holes.ti_beg_max);
+    /* Flag if anything has changed */
+    if (c->top == c) space_mark_cell_as_updated(r->e->s, c);
 
     /* Store the updated values */
     c->hydro.ti_end_min = min(c->hydro.ti_end_min, ti_hydro_end_min);
