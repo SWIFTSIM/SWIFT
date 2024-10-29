@@ -537,6 +537,15 @@ Note that the star formation rates are expressed in internal units and not in
 solar masses per year as is the case in many other codes. This choice ensures
 consistency between all the fields written to the snapshots.
 
+Finally, the star formation model can also create more than one star particle
+per gas particle in a star formation event. The number of particles generated is
+controlled by a runtime parameter. All the stars generated share the same
+properties. They are slightly displaced from each others using a random vector
+of magnitude :math:`0.1h` added to the position of the gas particle. If only
+one star is formed (as is the default), no displacement is added. If N stars are
+formed per gas particle, each star is born with a mass of 1/N of the gas
+particle's mass.
+
 For a normal EAGLE run, that section of the parameter file reads:
 
 .. code:: YAML
@@ -559,7 +568,8 @@ For a normal EAGLE run, that section of the parameter file reads:
      threshold_max_density_H_p_cm3:     10.0      # Maximal density of the metal-dependant density threshold for star formation in Hydrogen atoms per cm^3.
      min_over_density:                  57.7      # Over-density above which star-formation is allowed.
      EOS_entropy_margin_dex:            0.5       # (Optional) Logarithm base 10 of the maximal entropy above the EOS at which stars can form.
-
+     num_of_stars_per_gas_particle:     1         # (Optional) The number star particles to form per gas particle converted to stars. (Defaults to 1. Must be > 0)
+     
 
 Alternatively, the code can also use a simple Schmidt law for the SF rate
 :math:`\dot{m}_* = \epsilon_{ff} \times m_g \times \frac{3 \pi} {32 G

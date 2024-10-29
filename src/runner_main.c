@@ -482,6 +482,8 @@ void *runner_main(void *data) {
             free(t->buff);
           } else if (t->subtype == task_subtype_sf_counts) {
             free(t->buff);
+          } else if (t->subtype == task_subtype_grav_counts) {
+            free(t->buff);
           } else if (t->subtype == task_subtype_part_swallow) {
             free(t->buff);
           } else if (t->subtype == task_subtype_bpart_merger) {
@@ -495,8 +497,11 @@ void *runner_main(void *data) {
             cell_unpack_end_step(ci, (struct pcell_step *)t->buff);
             free(t->buff);
           } else if (t->subtype == task_subtype_sf_counts) {
-            cell_unpack_sf_counts(ci, (struct pcell_sf *)t->buff);
+            cell_unpack_sf_counts(ci, (struct pcell_sf_stars *)t->buff);
             cell_clear_stars_sort_flags(ci, /*clear_unused_flags=*/0);
+            free(t->buff);
+          } else if (t->subtype == task_subtype_grav_counts) {
+            cell_unpack_grav_counts(ci, (struct pcell_sf_grav *)t->buff);
             free(t->buff);
           } else if (t->subtype == task_subtype_xv) {
             runner_do_recv_part(r, ci, 1, 1);
