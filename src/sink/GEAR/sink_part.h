@@ -60,6 +60,16 @@ struct sink {
   /*! Sink target stellar type */
   enum stellar_type target_type;
 
+  /*! Union for the birth time and birth scale factor */
+  union {
+
+    /*! Birth time */
+    float birth_time;
+
+    /*! Birth scale factor */
+    float birth_scale_factor;
+  };
+
   /*! Particle time bin */
   timebin_t time_bin;
 
