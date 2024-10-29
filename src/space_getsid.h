@@ -46,7 +46,6 @@
 __attribute__((always_inline, nonnull)) INLINE static int
 space_getsid_and_swap_cells(const struct space *s, struct cell **ci,
                             struct cell **cj, double shift[3]) {
-
   /* Get the relative distance between the pairs, wrapping. */
   const int periodic = s->periodic;
   double dx[3];
@@ -73,6 +72,92 @@ space_getsid_and_swap_cells(const struct space *s, struct cell **ci,
     *cj = temp;
     for (int k = 0; k < 3; k++) shift[k] = -shift[k];
   }
+  sid = sortlistID[sid];
+
+  /* Return the sort ID. */
+  return sid;
+}
+
+__attribute__((always_inline, nonnull)) INLINE static int // A. Nasar Same as usual but only used to pack GPU cells
+space_getsid_GPU(const struct space *s, struct cell **ci,
+             struct cell **cj, double *shift_x, double *shift_y,
+			 double *shift_z) {
+  /* Get the relative distance between the pairs, wrapping. */
+  const int periodic = s->periodic;
+  double dx[3];
+  for(int k = 0; k < 3; k++)
+	  dx[k] = (*cj)->loc[k] - (*ci)->loc[k];
+
+  if (periodic && dx[0] < -s->dim[0] / 2)
+    *(shift_x) = s->dim[0];
+  else if (periodic && dx[0] > s->dim[0] / 2)
+    *(shift_x) = -s->dim[0];
+  else
+	  *(shift_x) = 0.0;
+
+  dx[0] += *(shift_x);
+
+  if (periodic && dx[1] < -s->dim[1] / 2)
+    *(shift_y) = s->dim[1];
+  else if (periodic && dx[1] > s->dim[1] / 2)
+    *(shift_y) = -s->dim[1];
+  else
+	  *(shift_y) = 0.0;
+
+  dx[1] += *(shift_y);
+
+  if (periodic && dx[2] < -s->dim[2] / 2)
+    *(shift_z) = s->dim[2];
+  else if (periodic && dx[2] > s->dim[2] / 2)
+    *(shift_z) = -s->dim[2];
+  else
+	  *(shift_z) = 0.0;
+
+  dx[2] += *(shift_z);
+
+  /* Get the sorting index. */
+  int sid = 0;
+  for (int k = 0; k < 3; k++)
+    sid = 3 * sid + ((dx[k] < 0.0) ? 0 : ((dx[k] > 0.0) ? 2 : 1));
+
+  /* Switch the cells around? */
+  if (runner_flip[sid]) {
+    struct cell *temp = *ci;
+    *ci = *cj;
+    *cj = temp;
+    *(shift_x) = -*(shift_x);
+    *(shift_y) = -*(shift_y);
+    *(shift_z) = -*(shift_z);
+  }
+  sid = sortlistID[sid];
+
+  /* Return the sort ID. */
+  return sid;
+}
+
+__attribute__((always_inline, nonnull)) INLINE static int
+space_getsid_filter(const struct space *s, struct cell **ci, struct cell **cj,
+             double shift[3]) {
+
+  /* Get the relative distance between the pairs, wrapping. */
+  const int periodic = s->periodic;
+  double dx[3];
+  for (int k = 0; k < 3; k++) {
+    dx[k] = (*cj)->loc[k] - (*ci)->loc[k];
+    if (periodic && dx[k] < -s->dim[k] / 2)
+      shift[k] = s->dim[k];
+    else if (periodic && dx[k] > s->dim[k] / 2)
+      shift[k] = -s->dim[k];
+    else
+      shift[k] = 0.0;
+    dx[k] += shift[k];
+  }
+
+  /* Get the sorting index. */
+  int sid = 0;
+  for (int k = 0; k < 3; k++)
+    sid = 3 * sid + ((dx[k] < 0.0) ? 0 : ((dx[k] > 0.0) ? 2 : 1));
+
   sid = sortlistID[sid];
 
   /* Return the sort ID. */

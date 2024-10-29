@@ -61,6 +61,24 @@ struct cell_hydro {
     /*! Linked list of the tasks computing this cell's hydro density. */
     struct link *density;
 
+    /*! Linked list of the tasks computing this cell's hydro density pack. A. Nasar */
+    struct link *density_pack;
+    struct link *density_unpack;
+    /*! Linked list of the tasks computing this cell's hydro force pack. */
+    struct link *force_pack;
+    struct link *force_unpack;
+    /*! Linked list of the tasks computing this cell's hydro gradient pack. */
+    struct link *gradient_pack;
+    struct link *gradient_unpack;
+
+    struct task *d_pack;
+    struct task *g_pack;
+    struct task *f_pack;
+
+    struct task *d_unpack;
+    struct task *g_unpack;
+    struct task *f_unpack;
+
     /* Linked list of the tasks computing this cell's hydro gradients. */
     struct link *gradient;
 

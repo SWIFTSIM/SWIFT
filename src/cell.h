@@ -360,6 +360,39 @@ enum cell_flags {
  */
 struct cell {
 
+  /*Marks a cell for GPU execution A. Nasar */
+  bool is_gpu_cell;
+
+  int unpacker_cell;
+
+  /*Marks a cell as having done its pack task 0->not 1-> yes*/
+  int pack_done;
+  /*Marks a cell as having done its pack task 0->not 1-> yes*/
+  int pack_done_g;
+  /*Marks a cell as having done its pack task 0->not 1-> yes*/
+  int pack_done_f;
+
+  /*Has the task run on the GPU? 0->No, 1-> Yes*/
+  int gpu_done;
+  /*Has the task run on the GPU? 0->No, 1-> Yes*/
+  int gpu_done_g;
+  /*Has the task run on the GPU? 0->No, 1-> Yes*/
+  int gpu_done_f;
+
+  /*Has the task run on the GPU? 0->No, 1-> Yes*/
+  int unpack_done;
+  /*Has the task run on the GPU? 0->No, 1-> Yes*/
+  int unpack_done_g;
+  /*Has the task run on the GPU? 0->No, 1-> Yes*/
+  int unpack_done_f;
+
+  /*Has the pair task run on the GPU? 0->No, 1-> Yes*/
+  int gpu_done_pair;
+  /*Has the pair task run on the GPU? 0->No, 1-> Yes*/
+  int gpu_done_pair_g;
+  /*Has the pair task run on the GPU? 0->No, 1-> Yes*/
+  int gpu_done_pair_f;
+
   /*! The cell location on the grid (corner nearest to the origin). */
   double loc[3];
 

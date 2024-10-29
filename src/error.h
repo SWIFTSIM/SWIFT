@@ -22,7 +22,11 @@
 #define SWIFT_ERROR_H
 
 /* Config parameters. */
+#ifdef WITH_CUDA
+#include "../config.h"
+#else
 #include <config.h>
+#endif
 
 /* Some standard headers. */
 #include <stdio.h>

@@ -79,6 +79,9 @@ struct unskip_data {
  */
 static void engine_do_unskip_hydro(struct cell *c, struct engine *e) {
 
+//  scheduler_activate(&e->sched, c->hydro.super->hydro.gpu_pack); A. Nasar
+//  scheduler_activate(&e->sched, c->hydro.super->hydro.gpu_unpack);
+
   /* Early abort (are we below the level where tasks are)? */
   if (!cell_get_flag(c, cell_flag_has_tasks)) return;
 

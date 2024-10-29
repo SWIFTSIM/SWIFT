@@ -32,6 +32,17 @@
 #include <numa.h>
 #endif
 
+#ifdef WITH_CUDA
+#include <cuda_runtime.h> /* A. Nasar */
+#include "runner_main_clean.cu"
+#endif
+
+#ifdef WITH_HIP
+//#include "/opt/rocm-5.1.0/hip/include/hip/hip_runtime.h"
+#include <hip/hip_runtime.h>
+#include "runner_main_clean.hip"
+#endif
+
 /* This object's header. */
 #include "engine.h"
 
@@ -909,9 +920,12 @@ void engine_config(int restart, int fof, struct engine *e,
   e->links_per_tasks =
       parser_get_opt_param_float(params, "Scheduler:links_per_tasks", 25.);
 
-  /* Init the scheduler. */
+  /* Init the scheduler. Allow stealing*/
+//  scheduler_init(&e->sched, e->s, maxtasks, nr_queues,
+//                 (e->policy & scheduler_flag_steal), e->nodeID, &e->threadpool);
+  /* Init the scheduler. NO stealing  A. Nasar */
   scheduler_init(&e->sched, e->s, maxtasks, nr_queues,
-                 (e->policy & scheduler_flag_steal), e->nodeID, &e->threadpool);
+                     0, e->nodeID, &e->threadpool);
 
   /* Maximum size of MPI task messages, in KB, that should not be buffered,
    * that is sent using MPI_Issend, not MPI_Isend. 4Mb by default. Can be
@@ -981,9 +995,20 @@ void engine_config(int restart, int fof, struct engine *e,
   for (int k = 0; k < e->nr_threads; k++) {
     e->runners[k].id = k;
     e->runners[k].e = e;
+
+#ifdef WITH_CUDA
+    if (pthread_create(&e->runners[k].thread, NULL, &runner_main2,
+                       &e->runners[k]) != 0)
+      error("Failed to create GPU runner thread.");
+#elif WITH_HIP
+    if (pthread_create(&e->runners[k].thread, NULL, &runner_main_hip,
+                       &e->runners[k]) != 0)
+      error("Failed to create runner thread.");
+#else
     if (pthread_create(&e->runners[k].thread, NULL, &runner_main,
                        &e->runners[k]) != 0)
       error("Failed to create runner thread.");
+#endif
 
     /* Try to pin the runner to a given core */
     if (with_aff &&

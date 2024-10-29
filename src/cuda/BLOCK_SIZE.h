@@ -1,0 +1,12 @@
+#ifndef BLOCK_SIZE_H
+#define BLOCK_SIZE_H
+
+#define BLOCK_SIZE 64
+#define N_TASKS_PER_PACK_SELF 64
+#define N_TASKS_BUNDLE_SELF 8
+
+#define BLOCK_SIZE_PAIR 64
+#define N_TASKS_PER_PACK_PAIR 32
+#define N_TASKS_BUNDLE_PAIR 4
+
+#endif // BLOCK_SIZE_H

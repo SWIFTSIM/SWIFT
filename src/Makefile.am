@@ -18,6 +18,9 @@
 # Add the non-standard paths to the included library headers
 AM_CFLAGS = $(HDF5_CPPFLAGS) $(GSL_INCS) $(FFTW_INCS) $(NUMA_INCS) $(GRACKLE_INCS)  $(SUNDIALS_INCS) $(CHEALPIX_CFLAGS)
 
+# Add HIP Path
+AM_CFLAGS += -D__HIP_PLATFORM_AMD__
+
 # Assign a "safe" version number
 AM_LDFLAGS = $(HDF5_LDFLAGS) $(FFTW_LIBS)
 
@@ -38,6 +41,22 @@ noinst_LTLIBRARIES = libgrav.la
 if HAVEMPI
 lib_LTLIBRARIES += libswiftsim_mpi.la
 noinst_LTLIBRARIES += libgrav_mpi.la
+endif
+
+# Build a cuda version too?
+if HAVECUDA
+lib_LTLIBRARIES += libswiftsim_cuda.la
+if HAVEMPI
+lib_LTLIBRARIES += libswiftsim_mpicuda.la
+endif
+endif
+
+# Build a hip version too?
+if HAVEHIP
+lib_LTLIBRARIES += libswiftsim_hip.la
+if HAVEMPI
+lib_LTLIBRARIES += libswiftsim_mpihip.la
+endif
 endif
 
 # List required headers
@@ -161,7 +180,7 @@ endif
 AM_SOURCES = space.c space_rebuild.c space_regrid.c space_unique_id.c 
 AM_SOURCES += space_sort.c space_split.c space_extras.c space_first_init.c space_init.c 
 AM_SOURCES += space_cell_index.c space_recycle.c 
-AM_SOURCES += runner_main.c runner_doiact_hydro.c runner_doiact_limiter.c
+AM_SOURCES += runner_main.c runner_doiact_hydro.c runner_doiact_limiter.c runner_gpu_pack_functions.c
 AM_SOURCES += runner_doiact_stars.c runner_doiact_black_holes.c runner_ghost.c
 AM_SOURCES += runner_recv.c runner_pack.c
 AM_SOURCES += runner_sort.c runner_drift.c runner_black_holes.c runner_time_integration.c 
@@ -208,7 +227,7 @@ AM_SOURCES += $(SPHM1RT_RT_SOURCES)
 AM_SOURCES += $(GEAR_RT_SOURCES)
 
 # Include files for distribution, not installation.
-nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h inline.h kernel_hydro.h kernel_gravity.h 
+nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h inline.h kernel_hydro.h kernel_gravity.h runner_gpu_pack_functions.h
 nobase_noinst_HEADERS += gravity_iact.h kernel_long_gravity.h vector.h accumulate.h cache.h exp.h log.h
 nobase_noinst_HEADERS += runner_doiact_nosort.h runner_doiact_hydro.h runner_doiact_stars.h runner_doiact_black_holes.h runner_doiact_grav.h
 nobase_noinst_HEADERS += runner_doiact_functions_hydro.h runner_doiact_functions_stars.h runner_doiact_functions_black_holes.h 
@@ -525,6 +544,33 @@ libswiftsim_mpi_la_CFLAGS = $(AM_CFLAGS) $(MPI_FLAGS)
 libswiftsim_mpi_la_LDFLAGS = $(AM_LDFLAGS) $(MPI_LIBS) $(EXTRA_LIBS) -version-info 0:0:0
 libswiftsim_mpi_la_SHORTNAME = mpi
 libswiftsim_mpi_la_LIBADD = $(GRACKLE_LIBS) $(VELOCIRAPTOR_LIBS) $(MPI_LIBS) libgrav_mpi.la
+
+# Sources and flags for regular CUDA library
+libswiftsim_cuda_la_SOURCES = $(AM_SOURCES)
+libswiftsim_cuda_la_CFLAGS = $(AM_CFLAGS) $(CUDA_CFLAGS) -DWITH_CUDA
+libswiftsim_cuda_la_CXXFLAGS = $(AM_CFLAGS) $(CUDA_CFLAGS) -DWITH_CUDA
+libswiftsim_cuda_la_LDFLAGS = $(AM_LDFLAGS) $(EXTRA_LIBS) $(CUDA_LIBS)
+libswiftsim_cuda_la_SHORTNAME = cuda
+libswiftsim_cuda_la_LIBADD = $(GRACKLE_LIBS) $(VELOCIRAPTOR_LIBS) $(MPI_LIBS) libgrav.la
+
+# Sources and flags for regular HIP library
+libswiftsim_hip_la_SOURCES = $(AM_SOURCES)
+libswiftsim_hip_la_CFLAGS = $(AM_CFLAGS) $(HIP_CFLAGS) -DWITH_HIP
+libswiftsim_hip_la_LDFLAGS = $(AM_LDFLAGS) $(EXTRA_LIBS) $(HIP_LIBS) -lamdhip64
+libswiftsim_hip_la_SHORTNAME = hip
+libswiftsim_hip_la_LIBADD = $(GRACKLE_LIBS) $(VELOCIRAPTOR_LIBS) $(MPI_LIBS) libgrav.la
+
+# Sources and flags for MPI CUDA library
+libswiftsim_mpicuda_la_SOURCES = $(AM_SOURCES)
+libswiftsim_mpicuda_la_CFLAGS = $(AM_CFLAGS) $(MPI_FLAGS) $(CUDA_CFLAGS) -DWITH_CUDA
+libswiftsim_mpicuda_la_CXXFLAGS = $(AM_CFLAGS) $(MPI_FLAGS) $(CUDA_CFLAGS) -DWITH_CUDA
+libswiftsim_mpicuda_la_LDFLAGS = $(AM_LDFLAGS) $(MPI_LIBS) $(EXTRA_LIBS) $(CUDA_LIBS)
+libswiftsim_mpicuda_la_SHORTNAME = mpicuda
+libswiftsim_mpicuda_la_LIBADD = $(GRACKLE_LIBS) $(VELOCIRAPTOR_LIBS) $(MPI_LIBS) libgrav_mpi.la
+
+#subdir
+SUBDIRS = . cuda
+SUBDIRS += . hip
 
 # Versioning. If any sources change then update the version_string.h file with
 # the current git revision and package version.
