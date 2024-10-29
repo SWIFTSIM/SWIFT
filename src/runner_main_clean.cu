@@ -19,8 +19,8 @@
  *
  ******************************************************************************/
 /* Config parameters. */
-//#define GPUOFFLOAD 1 //off-load hydro to GPU
-//#define DO_CORNERS 1 //do corner pair tasks on CPU
+#define GPUOFFLOAD 1 //off-load hydro to GPU
+#define DO_CORNERS 1 //do corner pair tasks on CPU
 //#define DUMP_TIMINGS 1
 #include "../config.h"
 
