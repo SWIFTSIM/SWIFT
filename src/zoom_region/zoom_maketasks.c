@@ -493,7 +493,7 @@ void zoom_engine_make_hierarchical_tasks_recursive(struct engine *e,
     scheduler_addunlock(s, c->grav.down_in, parent->grav.down_in);
   }
 
-  else if (is_self_gravity) {
+  else if (parent != NULL && is_self_gravity) {
 
     c->grav.down_in = scheduler_addtask(s, task_type_grav_down_in,
                                         task_subtype_none, 0, 1, c, NULL);
