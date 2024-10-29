@@ -178,7 +178,6 @@ int main(int argc, char *argv[]) {
   int with_self_gravity = 0;
   int with_hydro = 0;
 #ifdef MOVING_MESH
-  int with_grid_hydro = 0;
   int with_grid = 0;
 #endif
   int with_stars = 0;
