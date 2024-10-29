@@ -19,7 +19,7 @@ The ``f_acc`` parameter is optional. Its default value is :math:`0.1`. Its value
 
 The next three mandatory parameters are:
 
-* the gas temperature threshold to form a sink when :math:`\rho_\text{threshold} < \rho_\text{gas} < \rho_\text{maximal}` :``temperature_threshold``,
+* the gas temperature threshold to form a sink when :math:`\rho_\text{threshold} < \rho_\text{gas} < \rho_\text{maximal}` :``temperature_threshold_K``,
 * the minimal gas threshold density required to form a sink:``density_threshold_g_per_cm3``,
 * the maximal density at which the temperature check is not performed:``maximal_density_threshold_g_per_cm3``.
 
@@ -53,7 +53,7 @@ The full section is:
    GEARSink:
      cut_off_radius:              1e-3           # Cut off radius of the sink particles (in internal units). This parameter should be adapted with the resolution.
      f_acc: 0.1                                  # (Optional) Fraction of the cut_off_radius that determines if a gas particle should be swallowed wihtout additional check. It has to respect 0 <= f_acc <= 1. (Default: 0.1)
-     temperature_threshold:        100           # Max temperature (in K) for forming a sink when density_threshold_g_per_cm3 <= density <= maximal_density_threshold_g_per_cm3.
+     temperature_threshold_K:        100           # Max temperature (in K) for forming a sink when density_threshold_g_per_cm3 <= density <= maximal_density_threshold_g_per_cm3.
      density_threshold_g_per_cm3: 1.67e-21       # Minimum gas density (in g/cm3) required to form a sink particle.
      maximal_density_threshold_g_per_cm3: 1.67e-19 # If the gas density exceeds this value (in g/cm3), a sink forms regardless of temperature if all other criteria are passed.
      stellar_particle_mass_Msun:  20             # Mass of the stellar particle representing the low mass stars (continuous IMF sampling) (in solar mass)
