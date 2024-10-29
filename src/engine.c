@@ -2605,7 +2605,7 @@ int engine_step(struct engine *e) {
     gravity_props_update(e->gravity_properties, e->cosmology);
 
   /* Udpate the hydro properties */
-  if (e->policy & engine_policy_hydro)
+  if (e->policy & engine_policy_hydro || e->policy & engine_policy_grid_hydro)
     hydro_props_update(e->hydro_properties, e->gravity_properties,
                        e->cosmology);
 
