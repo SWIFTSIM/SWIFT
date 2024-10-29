@@ -67,6 +67,9 @@ struct sink_props {
      (keep sink formation) */
   uint8_t disable_sink_formation;
 
+  /* Disable star formation? Default: 0 (i.e. enable star formation) */
+  uint8_t disable_star_formation;
+
   /* Factor to rescale the velocity dispersion of the stars when they are
      spawned */
   double star_spawning_sigma_factor;
@@ -176,6 +179,7 @@ INLINE static void sink_props_init(struct sink_props *sp,
   const float default_star_spawning_sigma_factor = 0.2;
   const char default_disable_sink_formation = 0; /* Sink formation is
                                                      activated */
+  const char default_disable_star_formation = 0; /* SF is activated */
 
   /* By default all current implemented criteria are active */
   const uint8_t default_sink_formation_criterion_all = 1;
@@ -242,6 +246,11 @@ INLINE static void sink_props_init(struct sink_props *sp,
   sp->disable_sink_formation =
       parser_get_opt_param_int(params, "GEARSink:disable_sink_formation",
                                default_disable_sink_formation);
+
+  /* Should we disable star formation ? */
+  sp->disable_star_formation =
+      parser_get_opt_param_int(params, "GEARSink:disable_star_formation",
+                               default_disable_star_formation);
 
   /* Apply unit change */
   sp->maximal_temperature /=

@@ -57,12 +57,25 @@ __attribute__((always_inline)) INLINE static void runner_iact_sink(
 
   /* if the distance is less than the cut off radius */
   if (r < cut_off_radius) {
-
     /*
      * NOTE: Those lines break MPI
      */
-    float potential_i = pi->gpart->potential;
-    float potential_j = pj->gpart->potential;
+    /* float potential_i = pi->gpart->potential; */
+    /* float potential_j = pj->gpart->potential; */
+
+    /* Bug fix (02.08.2024): Using sink_data.potential solves MPI segfault issue
+       caused by using pi->gpart->potential. Same as runner_iact_nonsym_sink(),
+       the fix was propagated for consistency
+
+       Note to Darwin: Verify that this does not alter the behaviour of sinks
+       without MPI. It should not, as the potential is stored after th egravity
+       computations with sink_store_potential_in_part() function.*/
+
+    /* WARNING: This is 0 when the function is called... unless we do not init
+       the value to 0 in sink_init_part().
+       ---> Study the consequences of this choice. */
+    float potential_i = pi->sink_data.potential;
+    float potential_j = pj->sink_data.potential;
 
     /* prevent the particle with the largest potential to form a sink */
     if (potential_i > potential_j) {
@@ -106,9 +119,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_sink(
   const float r = sqrtf(r2);
 
   if (r < cut_off_radius) {
+    /* Bug fix (02.08.2024): Using sink_data.potential solves MPI segfault issue
+       caused by using pi->gpart->potential
 
-    float potential_i = pi->gpart->potential;
-    float potential_j = pj->gpart->potential;
+       Note to Darwin: Verify that this does not alter the behaviour of sinks
+       without MPI. It should not, as the potential is stored after th egravity
+       computations with sink_store_potential_in_part() function. */
+    float potential_i = pi->sink_data.potential;
+    float potential_j = pj->sink_data.potential;
 
     /* if the potential is larger
      * prevent the particle to form a sink */
@@ -120,6 +138,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_sink(
  * @brief Compute sink-sink swallow interaction (non-symmetric).
  *
  * Note: Energies are computed with physical quantities, not the comoving ones.
+ *
+ * MPI note: This functions invokes the gpart. Hence, it must be performed only
+ * on the local node (similarly to runner_iact_nonsym_bh_bh_repos()).
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
@@ -249,6 +270,9 @@ runner_iact_nonsym_sinks_sink_swallow(
  *
  * Note: Energies are computed with physical quantities, not the comoving ones.
  *
+ * MPI note: This functions invokes the gpart. Hence, it must be performed only
+ * on the local node (similarly to runner_iact_nonsym_bh_gas_repos()).
+ *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
  * @param ri Comoving cut off radius of particle i.
@@ -342,7 +366,7 @@ runner_iact_nonsym_sinks_gas_swallow(const float r2, const float dx[3],
 
     /* Compute the Newtonian or softened potential the sink exherts onto the
        gas particle */
-    const float eps = gravity_get_softening(si->gpart, grav_props);
+    const float eps = 1e-4 ; //gravity_get_softening(si->gpart, grav_props);
     const float eps2 = eps * eps;
     const float eps_inv = 1.f / eps;
     const float eps_inv3 = eps_inv * eps_inv * eps_inv;
@@ -376,7 +400,11 @@ runner_iact_nonsym_sinks_gas_swallow(const float r2, const float dx[3],
     /* Since this pair gas-sink is the most bounf, keep track of the
        E_mec_bound and set the swallow_id accordingly */
     pj->sink_data.E_mec_bound = E_mec_sink_part;
+
+    /* This line makes the MPI code crash with "undrifted sink particle"... */
     pj->sink_data.swallow_id = si->id;
+
+    message("Sink %lld swallows gas particle %lld", si->id, pj->id);
   }
 
 #ifdef DEBUG_INTERACTIONS_SINKS

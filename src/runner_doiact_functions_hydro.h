@@ -123,6 +123,9 @@ void DOPAIR1_NAIVE(struct runner *r, struct cell *restrict ci,
         runner_iact_nonsym_chemistry(r2, dx, hi, hj, pi, pj, a, H);
         runner_iact_nonsym_pressure_floor(r2, dx, hi, hj, pi, pj, a, H);
         runner_iact_nonsym_star_formation(r2, dx, hi, hj, pi, pj, a, H);
+
+	/* MPI note: Does this need to be performed on the local node only?
+	   (similar to sink_swallow pair tasks and runner_iact_nonsym_bh_gas_repos())*/
         runner_iact_nonsym_sink(r2, dx, hi, hj, pi, pj, a, H,
                                 e->sink_properties->cut_off_radius);
 #endif
@@ -145,6 +148,9 @@ void DOPAIR1_NAIVE(struct runner *r, struct cell *restrict ci,
         runner_iact_nonsym_chemistry(r2, dx, hj, hi, pj, pi, a, H);
         runner_iact_nonsym_pressure_floor(r2, dx, hj, hi, pj, pi, a, H);
         runner_iact_nonsym_star_formation(r2, dx, hj, hi, pj, pi, a, H);
+
+	/* MPI note: Does this need to be performed on the local node only?
+	   (similar to sink_swallow pair tasks and runner_iact_nonsym_bh_gas_repos())*/
         runner_iact_nonsym_sink(r2, dx, hj, hi, pj, pi, a, H,
                                 e->sink_properties->cut_off_radius);
 #endif
@@ -260,6 +266,9 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
           runner_iact_chemistry(r2, dx, hi, hj, pi, pj, a, H);
           runner_iact_pressure_floor(r2, dx, hi, hj, pi, pj, a, H);
           runner_iact_star_formation(r2, dx, hi, hj, pi, pj, a, H);
+
+	  /* MPI note: Does this need to be performed on the local node only?
+	     (similar to sink_swallow pair tasks and runner_iact_nonsym_bh_gas_repos())*/
           runner_iact_sink(r2, dx, hi, hj, pi, pj, a, H,
                            e->sink_properties->cut_off_radius);
 #endif
@@ -277,6 +286,9 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
           runner_iact_nonsym_chemistry(r2, dx, hi, hj, pi, pj, a, H);
           runner_iact_nonsym_pressure_floor(r2, dx, hi, hj, pi, pj, a, H);
           runner_iact_nonsym_star_formation(r2, dx, hi, hj, pi, pj, a, H);
+
+	  /* MPI note: Does this need to be performed on the local node only?
+	     (similar to sink_swallow pair tasks and runner_iact_nonsym_bh_gas_repos())*/
           runner_iact_nonsym_sink(r2, dx, hi, hj, pi, pj, a, H,
                                   e->sink_properties->cut_off_radius);
 #endif
@@ -298,6 +310,9 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
           runner_iact_nonsym_chemistry(r2, dx, hj, hi, pj, pi, a, H);
           runner_iact_nonsym_pressure_floor(r2, dx, hj, hi, pj, pi, a, H);
           runner_iact_nonsym_star_formation(r2, dx, hj, hi, pj, pi, a, H);
+
+	  /* MPI note: Does this need to be performed on the local node only?
+	   (similar to sink_swallow pair tasks and runner_iact_nonsym_bh_gas_repos())*/
           runner_iact_nonsym_sink(r2, dx, hj, hi, pj, pi, a, H,
                                   e->sink_properties->cut_off_radius);
 #endif
@@ -683,6 +698,9 @@ void DOPAIR_SUBSET_NAIVE(struct runner *r, struct cell *restrict ci,
         runner_iact_nonsym_chemistry(r2, dx, hi, pj->h, pi, pj, a, H);
         runner_iact_nonsym_pressure_floor(r2, dx, hi, pj->h, pi, pj, a, H);
         runner_iact_nonsym_star_formation(r2, dx, hi, pj->h, pi, pj, a, H);
+
+	/* MPI note: Does this need to be performed on the local node only?
+	   (similar to sink_swallow pair tasks and runner_iact_nonsym_bh_gas_repos())*/
         runner_iact_nonsym_sink(r2, dx, hi, pj->h, pi, pj, a, H,
                                 e->sink_properties->cut_off_radius);
 #endif
@@ -792,6 +810,9 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
           runner_iact_nonsym_chemistry(r2, dx, hi, hj, pi, pj, a, H);
           runner_iact_nonsym_pressure_floor(r2, dx, hi, hj, pi, pj, a, H);
           runner_iact_nonsym_star_formation(r2, dx, hi, hj, pi, pj, a, H);
+
+	  /* MPI note: Does this need to be performed on the local node only?
+	     (similar to sink_swallow pair tasks and runner_iact_nonsym_bh_gas_repos())*/
           runner_iact_nonsym_sink(r2, dx, hi, hj, pi, pj, a, H,
                                   e->sink_properties->cut_off_radius);
 #endif
@@ -858,6 +879,9 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
           runner_iact_nonsym_chemistry(r2, dx, hi, hj, pi, pj, a, H);
           runner_iact_nonsym_pressure_floor(r2, dx, hi, hj, pi, pj, a, H);
           runner_iact_nonsym_star_formation(r2, dx, hi, hj, pi, pj, a, H);
+
+	  /* MPI note: Does this need to be performed on the local node only?
+	     (similar to sink_swallow pair tasks and runner_iact_nonsym_bh_gas_repos())*/
           runner_iact_nonsym_sink(r2, dx, hi, hj, pi, pj, a, H,
                                   e->sink_properties->cut_off_radius);
 #endif
@@ -1629,6 +1653,9 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
           runner_iact_nonsym_chemistry(r2, dx, hj, hi, pj, pi, a, H);
           runner_iact_nonsym_pressure_floor(r2, dx, hj, hi, pj, pi, a, H);
           runner_iact_nonsym_star_formation(r2, dx, hj, hi, pj, pi, a, H);
+
+	  /* MPI note: Does this need to be performed on the local node only?
+	     (similar to sink_swallow pair tasks and runner_iact_nonsym_bh_gas_repos())*/
           runner_iact_nonsym_sink(r2, dx, hj, hi, pj, pi, a, H,
                                   e->sink_properties->cut_off_radius);
 #endif
@@ -1712,6 +1739,9 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
             runner_iact_chemistry(r2, dx, hi, hj, pi, pj, a, H);
             runner_iact_pressure_floor(r2, dx, hi, hj, pi, pj, a, H);
             runner_iact_star_formation(r2, dx, hi, hj, pi, pj, a, H);
+
+	    /* MPI note: Does this need to be performed on the local node only?
+	       (similar to sink_swallow pair tasks and runner_iact_nonsym_bh_gas_repos())*/
             runner_iact_sink(r2, dx, hi, hj, pi, pj, a, H,
                              e->sink_properties->cut_off_radius);
 #endif
@@ -1728,6 +1758,9 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
             runner_iact_nonsym_chemistry(r2, dx, hi, hj, pi, pj, a, H);
             runner_iact_nonsym_pressure_floor(r2, dx, hi, hj, pi, pj, a, H);
             runner_iact_nonsym_star_formation(r2, dx, hi, hj, pi, pj, a, H);
+
+	    /* MPI note: Does this need to be performed on the local node only?
+	       (similar to sink_swallow pair tasks and runner_iact_nonsym_bh_gas_repos())*/
             runner_iact_nonsym_sink(r2, dx, hi, hj, pi, pj, a, H,
                                     e->sink_properties->cut_off_radius);
 #endif
@@ -1844,6 +1877,9 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
           runner_iact_nonsym_chemistry(r2, dx, hi, hj, pi, pj, a, H);
           runner_iact_nonsym_pressure_floor(r2, dx, hi, hj, pi, pj, a, H);
           runner_iact_nonsym_star_formation(r2, dx, hi, hj, pi, pj, a, H);
+
+	  /* MPI note: Does this need to be performed on the local node only?
+	     (similar to sink_swallow pair tasks and runner_iact_nonsym_bh_gas_repos())*/
           runner_iact_nonsym_sink(r2, dx, hi, hj, pi, pj, a, H,
                                   e->sink_properties->cut_off_radius);
 #endif
@@ -1929,6 +1965,9 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
             runner_iact_chemistry(r2, dx, hj, hi, pj, pi, a, H);
             runner_iact_pressure_floor(r2, dx, hj, hi, pj, pi, a, H);
             runner_iact_star_formation(r2, dx, hj, hi, pj, pi, a, H);
+
+	    /* MPI note: Does this need to be performed on the local node only?
+	       (similar to sink_swallow pair tasks and runner_iact_nonsym_bh_gas_repos())*/
             runner_iact_sink(r2, dx, hj, hi, pj, pi, a, H,
                              e->sink_properties->cut_off_radius);
 #endif
@@ -1945,6 +1984,9 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
             runner_iact_nonsym_chemistry(r2, dx, hj, hi, pj, pi, a, H);
             runner_iact_nonsym_pressure_floor(r2, dx, hj, hi, pj, pi, a, H);
             runner_iact_nonsym_star_formation(r2, dx, hj, hi, pj, pi, a, H);
+
+	    /* MPI note: Does this need to be performed on the local node only?
+	       (similar to sink_swallow pair tasks and runner_iact_nonsym_bh_gas_repos())*/
             runner_iact_nonsym_sink(r2, dx, hj, hi, pj, pi, a, H,
                                     e->sink_properties->cut_off_radius);
 #endif
