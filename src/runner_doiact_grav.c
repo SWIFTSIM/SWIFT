@@ -77,7 +77,8 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
 
   /* Ensure the level above has been processed */
   if ((c->type == cell_type_zoom && c->grav.super == c) &&
-      !c->parent->grav.down_pass_done)
+      ((c->parent != NULL && !c->parent->grav.down_pass_done) ||
+       (c->void_parent != NULL && !c->void_parent->grav.down_pass_done)))
     error("Parent not processed before this level (%s/%s).",
           cellID_names[c->type], subcellID_names[c->subtype]);
 #endif
