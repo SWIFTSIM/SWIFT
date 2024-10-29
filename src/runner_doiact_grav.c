@@ -74,6 +74,12 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
     error("c->multipole not drifted.");
   if (c->grav.multipole->pot.ti_init != e->ti_current)
     error("c->field tensor not initialised");
+
+  /* Ensure the level above has been processed */
+  if ((c->type == cell_type_zoom && c->grav.super == c) &&
+      !c->grav.down_pass_done)
+    error("Parent not processed before this level (%s/%s).",
+          cellID_names[c->type], subcellID_names[c->subtype]);
 #endif
 
   /* Is the cell not a leaf? */
@@ -177,6 +183,11 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
     if (lock_unlock(&c->grav.plock) != 0) error("Error unlocking cell");
 #endif
   }
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Flag that we acted on this cell */
+  c->grav.down_pass_done = 1;
+#endif
 
   if (timer) TIMER_TOC(timer_dograv_down);
 }

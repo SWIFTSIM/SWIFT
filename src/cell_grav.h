@@ -119,6 +119,11 @@ struct cell_grav {
 
   /*! Number of M-M tasks that are associated with this cell. */
   short int nr_mm_tasks;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /*! Flag for tracking the down pass of the multipole */
+  int down_pass_done;
+#endif
 };
 
 #endif /* SWIFT_CELL_GRAV_H */
