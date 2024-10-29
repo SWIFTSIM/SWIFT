@@ -191,8 +191,8 @@ void *runner_main(void *data) {
 
       /* Ensure void cells only have one of their allowed tasks. */
       if (ci->subtype == cell_subtype_void &&
-          !(t->type == task_type_grav_down t->type == task_type_drift_gpart ||
-            t->type == task_type_grav_mm ||
+          !(t->type == task_type_grav_down ||
+            t->type == task_type_drift_gpart || t->type == task_type_grav_mm ||
             t->type == task_type_grav_long_range ||
             t->type == task_type_init_grav)) {
         error("Void cell with task (%s/%s).", taskID_names[t->type],
