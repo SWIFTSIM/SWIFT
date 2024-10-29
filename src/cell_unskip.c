@@ -2006,6 +2006,10 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
   const int nodeID = e->nodeID;
   int rebuild = 0;
 
+#ifdef WITH_MPI
+  const int with_star_formation = e->policy & engine_policy_star_formation;
+#endif
+
   /* Un-skip the gravity tasks involved with this cell. */
   for (struct link *l = c->grav.grav; l != NULL; l = l->next) {
     struct task *t = l->t;
@@ -2061,6 +2065,17 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
           cell_activate_drift_gpart(cj, s);
         }
 
+        /* Propagating new star counts? */
+        if (with_star_formation) {
+          if (ci_active && ci->hydro.count > 0) {
+            scheduler_activate_recv(s, ci->mpi.recv, task_subtype_grav_counts);
+          }
+          if (cj_active && cj->hydro.count > 0) {
+            scheduler_activate_send(s, cj->mpi.send, task_subtype_grav_counts,
+                                    ci_nodeID);
+          }
+        }
+
       } else if (cj_nodeID != nodeID) {
         /* If the local cell is active, receive data from the foreign cell. */
         if (ci_active)
@@ -2076,6 +2091,17 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
              sent, i.e. drift the cell specified in the send task (l->t)
              itself. */
           cell_activate_drift_gpart(ci, s);
+        }
+
+        /* Propagating new star counts? */
+        if (with_star_formation) {
+          if (cj_active && cj->hydro.count > 0) {
+            scheduler_activate_recv(s, cj->mpi.recv, task_subtype_grav_counts);
+          }
+          if (ci_active && ci->hydro.count > 0) {
+            scheduler_activate_send(s, ci->mpi.send, task_subtype_grav_counts,
+                                    cj_nodeID);
+          }
         }
       }
 #endif
