@@ -632,7 +632,87 @@ inline static int geometry3d_in_sphere_adaptive(struct geometry3d* restrict g,
   return result;
 }
 
-static inline int geometry3d_compute_circumcenter_relative_non_exact_no_errb(
+/*! @brief Compute the circumcenter of the 4 vertices assuming they are
+ * coplanar.
+ *
+ * NOTE: this is only possible if the 4 vertices are symmetrical along some
+ * plane. This method is meant as a first fallback, and if it also fails, the
+ * variant using exact integer arithmetic should be used.
+ */
+static inline int geometry3d_compute_circumcenter_coplanar(
+    const double* restrict v0, const double* restrict v1,
+    const double* restrict v2, const double* restrict v3,
+    double* restrict circumcenter) {
+  /* Compute relative coordinates */
+  const double r1x = v1[0] - v0[0];
+  const double r1y = v1[1] - v0[1];
+  const double r1z = v1[2] - v0[2];
+  const double r2x = v2[0] - v0[0];
+  const double r2y = v2[1] - v0[1];
+  const double r2z = v2[2] - v0[2];
+  const double r3x = v3[0] - v0[0];
+  const double r3y = v3[1] - v0[1];
+  const double r3z = v3[2] - v0[2];
+
+  /* Compute squared norm of relative coordinates */
+  const double r1_inv = 1. / sqrt(r1x * r1x + r1y * r1y + r1z * r1z);
+  const double r2_inv = 1. / sqrt(r2x * r2x + r2y * r2y + r2z * r2z);
+
+  /* Compute 3 normal vectors of 3 planes */
+  const double n1x = r1x * r1_inv;
+  const double n1y = r1y * r1_inv;
+  const double n1z = r1z * r1_inv;
+  const double n2x = r2x * r2_inv;
+  const double n2y = r2y * r2_inv;
+  const double n2z = r2z * r2_inv;
+  const double n3x = n1y * n2z - n1z * n2y;
+  const double n3y = -n1x * n2z + n1z * n2x;
+  const double n3z = n1x * n2y - n1y * n2x;
+
+  /* Compute intersection of planes with normals n1, n2, n3 and
+   * points 0.5 r1, 0.5 r2 and 0.
+   * see: https://mathworld.wolfram.com/Plane-PlaneIntersection.html */
+  const double n23yz = n2y * n3z - n2z * n3y;
+  const double n23xz = -n2x * n3z + n2z * n3x;
+  const double n23xy = n2x * n3y - n2y * n3x;
+  const double n31yz = n3y * n1z - n3z * n1y;
+  const double n31xz = -n3x * n1z + n3z * n1x;
+  const double n31xy = n3x * n1y - n3y * n1x;
+  const double det_inv = 1. / (n1x * n23yz + n1y * n23xz + n1z * n23xy);
+
+  const double p1dotn1 = 0.5 * (r1x * n1x + r1y * n1y + r1z * n1z);
+  const double p2dotn2 = 0.5 * (r2x * n2x + r2y * n2y + r2z * n2z);
+  /* const double p3dotn3 = 0.; */
+
+  const double cx = (p1dotn1 * n23yz + p2dotn2 * n31yz) * det_inv;
+  const double cy = (p1dotn1 * n23xz + p2dotn2 * n31xz) * det_inv;
+  const double cz = (p1dotn1 * n23xy + p2dotn2 * n31xy) * det_inv;
+
+  /* Check that the distance to the third point is approximately equal to the
+   * radius */
+  const double c2 = cx * cx + cy * cy + cz * cz;
+#ifdef SWIFT_DEBUG_CHECKS
+  const double cr1_2 = (r1x - cx) * (r1x - cx) + (r1y - cy) * (r1y - cy) +
+                       (r1z - cz) * (r1z - cz);
+  const double cr2_2 = (r2x - cx) * (r2x - cx) + (r2y - cy) * (r2y - cy) +
+                       (r2z - cz) * (r2z - cz);
+  if (fabs(cr1_2 - c2) / c2 > 1e-6 || fabs(cr2_2 - c2) / c2 > 1e-6)
+    error("Wrong circumcenter or circumradius!");
+#endif
+
+  const double cr3_2 = (r3x - cx) * (r3x - cx) + (r3y - cy) * (r3y - cy) +
+                       (r3z - cz) * (r3z - cz);
+  if (fabs(cr3_2 - c2) / c2 > 1e-6) {
+    return 0;
+  }
+
+  circumcenter[0] = cx;
+  circumcenter[1] = cy;
+  circumcenter[2] = cz;
+  return 1;
+}
+
+static inline int geometry3d_compute_circumcenter_relative_non_exact(
     const double* restrict v0, const double* restrict v1,
     const double* restrict v2, const double* restrict v3,
     double* restrict circumcenter) {
@@ -661,6 +741,13 @@ static inline int geometry3d_compute_circumcenter_relative_non_exact_no_errb(
   const double r2yr1z = r2y * r1z;
   const double a = r1x * (r2yr3z - r3yr2z) - r2x * (r1yr3z - r3yr1z) +
                    r3x * (r1yr2z - r2yr1z);
+  double errbound = fabs(r1x) * (fabs(r2yr3z) + fabs(r3yr2z)) +
+                    fabs(r2x) * (fabs(r1yr3z) + fabs(r3yr1z)) +
+                    fabs(r3x) * (fabs(r1yr2z) + fabs(r2yr1z));
+  errbound *= DBL_EPSILON * 1e6;
+  if (fabs(a) <= errbound)
+    return geometry3d_compute_circumcenter_coplanar(v0, v1, v2, v3,
+                                                    circumcenter);
 
   /* Compute Dx */
   const double Dx = r1_sqrd * (r2yr3z - r3yr2z) - r2_sqrd * (r1yr3z - r3yr1z) +
@@ -694,13 +781,12 @@ static inline int geometry3d_compute_circumcenter_relative_non_exact_no_errb(
   return 1;
 }
 
-static inline int geometry3d_compute_circumcenter_relative_non_exact(
+static inline int geometry3d_compute_circumcenter_relative_non_exact_errb(
     const double* restrict v0, const double* restrict v1,
     const double* restrict v2, const double* restrict v3,
     double* restrict circumcenter) {
 
-  //  double errbound_factor = 1.e-10;
-  double errbound_factor = DBL_EPSILON * DELAUNAY_ERRBOUND_FAC;
+  double errbound_factor = DBL_EPSILON * 1e6;
 
   /* Compute relative coordinates */
   const double r1x = v1[0] - v0[0];
@@ -730,7 +816,7 @@ static inline int geometry3d_compute_circumcenter_relative_non_exact(
                     fabs(r2x) * (fabs(r1yr3z) + fabs(r3yr1z)) +
                     fabs(r3x) * (fabs(r1yr2z) + fabs(r2yr1z));
   errbound *= errbound_factor;
-  if (a >= -errbound && a <= errbound) return 0;
+  if (fabs(a) <= errbound) return 0;
 
   /* Compute Dx */
   const double Dx = r1_sqrd * (r2yr3z - r3yr2z) - r2_sqrd * (r1yr3z - r3yr1z) +
@@ -739,7 +825,7 @@ static inline int geometry3d_compute_circumcenter_relative_non_exact(
              fabs(r2_sqrd) * (fabs(r1yr3z) - fabs(r3yr1z)) +
              fabs(r3_sqrd) * (fabs(r1yr2z) - fabs(r2yr1z));
   errbound *= errbound_factor;
-  if (Dx >= -errbound && Dx <= errbound) return 0;
+  if (fabs(Dx) <= errbound) return 0;
 
   /* Compute Dy */
   const double r2xr3z = r2x * r3z;
@@ -754,7 +840,7 @@ static inline int geometry3d_compute_circumcenter_relative_non_exact(
              fabs(r2_sqrd) * (fabs(r1xr3z) - fabs(r3xr1z)) -
              fabs(r3_sqrd) * (fabs(r1xr2z) - fabs(r2xr1z));
   errbound *= errbound_factor;
-  if (Dy >= -errbound && Dy <= errbound) return 0;
+  if (fabs(Dy) <= errbound) return 0;
 
   /* Compute Dz */
   const double r2xr3y = r2x * r3y;
@@ -769,7 +855,7 @@ static inline int geometry3d_compute_circumcenter_relative_non_exact(
              fabs(r2_sqrd) * (fabs(r1xr3y) - fabs(r3xr1y)) +
              fabs(r3_sqrd) * (fabs(r1xr2y) - fabs(r2xr1y));
   errbound *= errbound_factor;
-  if (Dz >= -errbound && Dz <= errbound) return 0;
+  if (fabs(Dz) <= errbound) return 0;
 
   const double denominator = 2. * a;
   circumcenter[0] = Dx / denominator;
@@ -890,17 +976,17 @@ static inline void geometry3d_compute_circumcenter_relative_adaptive(
     const delaunay_vertex_t* restrict v3, double* restrict circumcenter) {
 
 #ifdef DELAUNAY_3D_ADAPTIVE_CIRCUMCENTER
+  int result_non_exact =
+      geometry3d_compute_circumcenter_relative_non_exact_errb(
+          v0->x_f64, v1->x_f64, v2->x_f64, v3->x_f64, circumcenter);
+#else
   int result_non_exact = geometry3d_compute_circumcenter_relative_non_exact(
       v0->x_f64, v1->x_f64, v2->x_f64, v3->x_f64, circumcenter);
-
+#endif
   if (!result_non_exact) {
     geometry3d_compute_circumcenter_relative_exact(
         g, v0->x_u64, v1->x_u64, v2->x_u64, v3->x_u64, circumcenter);
   }
-#else
-  geometry3d_compute_circumcenter_relative_non_exact_no_errb(
-      v0->x_f64, v1->x_f64, v2->x_f64, v3->x_f64, circumcenter);
-#endif
 }
 
 /**

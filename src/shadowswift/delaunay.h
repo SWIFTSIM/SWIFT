@@ -40,12 +40,13 @@
 #define DELAUNAY_3D_HAND_VEC
 #endif
 
-/*! @brief Whether to use an adaptive circumcenter calculation in 3D */
+/*! @brief Whether to use a fully adaptive circumcenter calculation in 3D. */
 // #define DELAUNAY_3D_ADAPTIVE_CIRCUMCENTER
 
 /*! @brief Factor to multiply with DBL_EPSILON to obtain errbound in geometry
- * checks*/
-#define DELAUNAY_ERRBOUND_FAC 5e5
+ * checks. This is rather high for improved robustness (favour more exact
+ * tests in case of doubt) */
+#define DELAUNAY_ERRBOUND_FAC 1e3
 
 /*! @brief The default sid mask for marking faces as inside */
 #ifdef HYDRO_DIMENSION_1D

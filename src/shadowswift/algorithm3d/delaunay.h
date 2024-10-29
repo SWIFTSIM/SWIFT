@@ -2159,8 +2159,10 @@ inline static double delaunay_get_radius2(struct delaunay* restrict d,
   const delaunay_vertex_t* v2 = &d->rescaled_vertices[t->vertices[2]];
   const delaunay_vertex_t* v3 = &d->rescaled_vertices[t->vertices[3]];
 
-  return geometry3d_compute_circumradius2_adaptive(&d->geometry, v0, v1, v2, v3,
-                                                   d->side);
+  const double radius2 = geometry3d_compute_circumradius2_adaptive(
+      &d->geometry, v0, v1, v2, v3, d->side);
+  delaunay_assert(sqrt(radius2) * d->inverse_side < 1000.);
+  return radius2;
 }
 
 inline static void delaunay_compute_circumcenters(
@@ -2327,7 +2329,6 @@ inline static void delaunay_get_search_radii(struct delaunay* restrict d,
       /* Before doing anything, reset the flag of this tet */
       tet->_flags = tetrahedron_flag_none;
       max_circumradius2 = fmax(max_circumradius2, delaunay_get_radius2(d, tet));
-      delaunay_assert(sqrt(max_circumradius2) * d->inverse_side < 1000.);
     }
     r[i] = 2. * sqrt(max_circumradius2);
 
