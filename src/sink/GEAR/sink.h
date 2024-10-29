@@ -351,7 +351,8 @@ INLINE static int sink_is_forming(
   /* If density_threshold <= density <= maximal_density_threshold, check the
      temperature. If density > maximal_density_threshold, do no check the
      temperature. */
-  if ((density <= maximal_density_threshold) && (temperature >= temperature_threshold)) {
+  if ((density <= maximal_density_threshold) &&
+      (temperature >= temperature_threshold)) {
     return 0;
   }
 

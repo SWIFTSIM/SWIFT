@@ -204,12 +204,13 @@ INLINE static void sink_props_init(struct sink_props *sp,
   sp->density_threshold =
       parser_get_param_float(params, "GEARSink:density_threshold_g_per_cm3");
 
-  sp->maximal_density_threshold =
-    parser_get_opt_param_float(params, "GEARSink:maximal_density_threshold_g_per_cm3",
-			       FLT_MAX);
+  sp->maximal_density_threshold = parser_get_opt_param_float(
+      params, "GEARSink:maximal_density_threshold_g_per_cm3", FLT_MAX);
 
   if (sp->maximal_density_threshold < sp->density_threshold) {
-    error("maximal_density_threshold_g_per_cm3 must be larger than density_threshold_g_per_cm3");
+    error(
+        "maximal_density_threshold_g_per_cm3 must be larger than "
+        "density_threshold_g_per_cm3");
   }
 
   sp->stellar_particle_mass_Msun =
@@ -259,7 +260,8 @@ INLINE static void sink_props_init(struct sink_props *sp,
       units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
 
   sp->density_threshold /= units_cgs_conversion_factor(us, UNIT_CONV_DENSITY);
-  sp->maximal_density_threshold /= units_cgs_conversion_factor(us, UNIT_CONV_DENSITY);
+  sp->maximal_density_threshold /=
+      units_cgs_conversion_factor(us, UNIT_CONV_DENSITY);
 
   /* here, we need to differenciate between the stellar models */
   struct initial_mass_function *imf;
