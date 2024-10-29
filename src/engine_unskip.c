@@ -312,7 +312,7 @@ static void engine_do_unskip_grid(struct cell *c, struct engine *e) {
 }
 
 /**
- * @brief Unskip any moving mesh hyrdo tasks associated with active cells.
+ * @brief Unskip any moving mesh hydro tasks associated with active cells.
  *
  * @param c The cell.
  * @param e The engine.
