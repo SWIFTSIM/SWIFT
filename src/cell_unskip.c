@@ -884,7 +884,7 @@ void cell_activate_subcell_hydro_tasks(struct cell *ci, struct cell *cj,
       cell_activate_hydro_sorts(ci, sid, s);
       cell_activate_hydro_sorts(cj, sid, s);
     }
-  } /* Otherwise, pair interation */
+  } /* Otherwise, pair interaction */
 }
 
 /**
