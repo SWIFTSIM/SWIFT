@@ -205,7 +205,8 @@ INLINE static void sink_props_init(struct sink_props *sp,
       parser_get_param_float(params, "GEARSink:density_threshold_g_per_cm3");
 
   sp->maximal_density_threshold =
-      parser_get_param_float(params, "GEARSink:maximal_density_threshold_g_per_cm3");
+    parser_get_opt_param_float(params, "GEARSink:maximal_density_threshold_g_per_cm3",
+			       FLT_MAX);
 
   if (sp->maximal_density_threshold < sp->density_threshold) {
     error("maximal_density_threshold_g_per_cm3 must be larger than density_threshold_g_per_cm3");
