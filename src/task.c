@@ -618,6 +618,7 @@ void task_unlock(struct task *t) {
       } else if (subtype == task_subtype_gpu_pack_f) {
       	cell_unlocktree(ci);
       } else if (subtype == task_subtype_gpu_pack_g) {
+      	cell_unlocktree(ci);
       } else { /* hydro */
         cell_unlocktree(ci);
       }

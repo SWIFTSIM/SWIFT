@@ -19,9 +19,9 @@
  *
  ******************************************************************************/
 /* Config parameters. */
-//#define GPUOFFLOAD 1 //off-load hydro to GPU
-//#define DO_CORNERS 1 //do corner pair tasks on CPU
-//#define DUMP_TIMINGS 1
+#define GPUOFFLOAD 1 //off-load hydro to GPU
+#define DO_CORNERS 1 //do corner pair tasks on CPU
+#define DUMP_TIMINGS 1
 #include "../config.h"
 
 /* MPI headers. */
@@ -1783,8 +1783,7 @@ void *runner_main2(void *data) {
       else{ /* Mark task as done, as per usual */
         t = scheduler_done(sched, t);
       }
-#endif //GPUOFFLOAD
-#ifndef GPUOFFLOAD
+#else //GPUOFFLOAD
         t = scheduler_done(sched, t);
 #endif //GPUOFFLOAD
 
@@ -1848,8 +1847,8 @@ void *runner_main2(void *data) {
 
 		else fprintf(fgpu_steps,"%e, %e, %e, %e, %e, %e,\n", time_for_density_cpu, time_for_density_cpu_pair,
 				time_for_cpu_f, time_for_cpu_pair_f, time_for_cpu_g, time_for_cpu_pair_g);
-#endif
-#endif
+#endif //GPUOFFLOAD
+#endif //DUMPTIMINGS
 //    }
 	fflush(fgpu_steps);
 	fclose(fgpu_steps);
