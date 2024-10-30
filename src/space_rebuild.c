@@ -530,7 +530,8 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
     if ((ind_new = (int *)swift_malloc(
              "h_index", sizeof(int) * (s->nr_parts + 1))) == NULL)
       error("Failed to allocate temporary particle indices.");
-    memcpy(ind_new, h_index, sizeof(int) * nr_parts);
+    threadpool_memcpy(&s->e->threadpool, ind_new, h_index,
+                      sizeof(int) * nr_parts);
     swift_free("h_index", h_index);
     h_index = ind_new;
   }
@@ -541,7 +542,8 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
     if ((sind_new = (int *)swift_malloc(
              "s_index", sizeof(int) * (s->nr_sparts + 1))) == NULL)
       error("Failed to allocate temporary s-particle indices.");
-    memcpy(sind_new, s_index, sizeof(int) * nr_sparts);
+    threadpool_memcpy(&s->e->threadpool, sind_new, s_index,
+                      sizeof(int) * nr_sparts);
     swift_free("s_index", s_index);
     s_index = sind_new;
   }
@@ -552,7 +554,8 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
     if ((bind_new = (int *)swift_malloc(
              "b_index", sizeof(int) * (s->nr_bparts + 1))) == NULL)
       error("Failed to allocate temporary s-particle indices.");
-    memcpy(bind_new, b_index, sizeof(int) * nr_bparts);
+    threadpool_memcpy(&s->e->threadpool, bind_new, b_index,
+                      sizeof(int) * nr_bparts);
     swift_free("b_index", b_index);
     b_index = bind_new;
   }
@@ -802,7 +805,8 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
     if ((gind_new = (int *)swift_malloc(
              "g_index", sizeof(int) * (s->nr_gparts + 1))) == NULL)
       error("Failed to allocate temporary g-particle indices.");
-    memcpy(gind_new, g_index, sizeof(int) * nr_gparts);
+    threadpool_memcpy(&s->e->threadpool, gind_new, g_index,
+                      sizeof(int) * nr_gparts);
     swift_free("g_index", g_index);
     g_index = gind_new;
   }
