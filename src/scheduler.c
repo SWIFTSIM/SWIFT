@@ -2903,30 +2903,30 @@ struct task *signal_sleeping_runners(struct scheduler *s, struct task *t) {
 
   /* Task definitely done, signal any sleeping runners. */
   if (!t->implicit) {
-    t->toc = getticks();
-    t->total_ticks += t->toc - t->tic;
-    pthread_mutex_lock(&s->sleep_mutex);
-    atomic_dec(&s->waiting);
-    pthread_cond_broadcast(&s->sleep_cond);
-    pthread_mutex_unlock(&s->sleep_mutex);
+	t->toc = getticks();
+	t->total_ticks += t->toc - t->tic;
+	pthread_mutex_lock(&s->sleep_mutex);
+	atomic_dec(&s->waiting);
+	pthread_cond_broadcast(&s->sleep_cond);
+	pthread_mutex_unlock(&s->sleep_mutex);
   }
   return NULL;
 }
 
 struct task *enqueue_dependencies(struct scheduler *s, struct task *t) {
-//  t->skip = 1;
+
   /* Loop through the dependencies and add them to a queue if
-     they are ready. */
+	 they are ready. */
   for (int k = 0; k < t->nr_unlock_tasks; k++) {
-    struct task *t2 = t->unlock_tasks[k];
-    if (t2->skip)
-      continue;
-    const int res = atomic_dec(&t2->wait);
-    if (res < 1) {
-      error("Negative wait!");
-    } else if (res == 1) {
-      scheduler_enqueue(s, t2);
-    }
+	struct task *t2 = t->unlock_tasks[k];
+	if (t2->skip) continue;
+
+	const int res = atomic_dec(&t2->wait);
+	if (res < 1) {
+	  error("Negative wait!");
+	} else if (res == 1) {
+	  scheduler_enqueue(s, t2);
+	}
   }
 
   return NULL;

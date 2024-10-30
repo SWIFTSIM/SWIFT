@@ -1763,22 +1763,12 @@ void *runner_main2(void *data) {
       prev = t;
 #ifdef GPUOFFLOAD
 //      if (t->type == task_type_self && t->subtype == task_subtype_gpu_pack){
-      if (t->subtype == task_subtype_gpu_pack){
+      if (t->subtype == task_subtype_gpu_pack ||
+    	  t->subtype == task_subtype_gpu_pack_g ||
+		  t->subtype == task_subtype_gpu_pack_f){
     	/* Don't enqueue unpacks yet. Just signal the runners */
-        t->skip = 1;
-        t = NULL;
-      }
-//      else if (t->subtype == task_subtype_gpu_pack_g && t->type == task_type_self){
-      else if (t->subtype == task_subtype_gpu_pack_g){
-      	/* Don't enqueue unpacks yet. Just signal the runners */
-        t->skip = 1;
-        t = NULL;
-      }
-//      else if (t->subtype == task_subtype_gpu_pack_f && t->type == task_type_self){
-      else if (t->subtype == task_subtype_gpu_pack_f){
-      	/* Don't enqueue unpacks yet. Just signal the runners */
-        t->skip = 1;
-        t = NULL;
+//        t->skip = 1;
+//        t = NULL;
       }
       else{ /* Mark task as done, as per usual */
         t = scheduler_done(sched, t);
