@@ -393,7 +393,7 @@ void zoom_engine_make_hierarchical_tasks_recursive(struct engine *e,
 
   /* At the nested super level (within the void tree leaves) we have a few more
    * tasks to deal with. */
-  else if (c->grav.super == c) {
+  else if (c->grav.super == c && c->subtype != cell_subtype_void) {
 
     /* Local tasks only... */
     if (c->nodeID == e->nodeID) {
