@@ -937,22 +937,19 @@ void *runner_main2(void *data) {
             unpacked_f++;
         } else if (t->subtype == task_subtype_density) {
             cpu_self++;
-#ifndef GPUOFFLOAD
-          struct timespec t0, t1, dt;
-          clock_gettime(CLOCK_REALTIME, &t0);
-          runner_doself1_branch_density(r, ci);
-          clock_gettime(CLOCK_REALTIME, &t1);
-          tasks_done_cpu++;
-          time_for_density_cpu +=
-              (t1.tv_sec - t0.tv_sec) +
-              (t1.tv_nsec - t0.tv_nsec) /
-                  1000000000.0;
-          density++;
-#endif
+//          struct timespec t0, t1, dt;
+//          clock_gettime(CLOCK_REALTIME, &t0);
+//          runner_doself1_branch_density(r, ci);
+//          clock_gettime(CLOCK_REALTIME, &t1);
+//          tasks_done_cpu++;
+//          time_for_density_cpu +=
+//              (t1.tv_sec - t0.tv_sec) +
+//              (t1.tv_nsec - t0.tv_nsec) /
+//                  1000000000.0;
+//          density++;
 	    /* GPU WORK */
         } else if (t->subtype == task_subtype_gpu_pack) {
           packed_self++;
-#ifdef GPUOFFLOAD
 //          struct timespec t0, t1; //
 //          clock_gettime(CLOCK_REALTIME, &t0);
           packing_time += runner_doself1_pack_f4(r, sched, pack_vars_self_dens, ci,
@@ -979,11 +976,9 @@ void *runner_main2(void *data) {
 //	        		d_parts_aos_dens, stream, d_a, d_H, e, &packing_time, &time_for_density_gpu,
 //					&tot_time_for_hard_memcpys);
           } /*End of GPU work Self*/
-#endif //GPUOFFLOAD
         } /* self / pack */
         else if (t->subtype == task_subtype_gpu_pack_g){
           packed_self_g++;
-#ifdef GPUOFFLOAD
 //          runner_doself1_pack_g(r, sched, pack_vars_self_grad, ci,
 //        		  t, parts_aos_grad, &packing_time_g);
           packing_time_g += runner_doself1_pack_f4_g(r, sched, pack_vars_self_grad, ci,
@@ -1003,11 +998,9 @@ void *runner_main2(void *data) {
       	      		e, &packing_time_g, &time_for_gpu_g, task_first_part_f4_g, d_task_first_part_f4_g,
       	      		self_end_g, &unpack_time_self_g);
             } /*End of GPU work Self*/
-#endif //GPUGRADSELF
         }
         else if (t->subtype == task_subtype_gpu_pack_f){
           packed_self_f++;
-#ifdef GPUOFFLOAD
 //          runner_doself1_pack_f(r, sched, pack_vars_self_forc, ci,
 //        		  t, parts_aos_forc, &packing_time_f);
           packing_time_f += runner_doself1_pack_f4_f(r, sched, pack_vars_self_forc, ci,
@@ -1032,36 +1025,35 @@ void *runner_main2(void *data) {
 					e, &packing_time_f, &time_for_gpu_f, task_first_part_f4_f, d_task_first_part_f4_f,
 					self_end_f, &unpack_time_self_f);
           } /*End of GPU work Self*/
-#endif //GPUFORCSELF
         }
 #ifdef EXTRA_HYDRO_LOOP
         else if (t->subtype == task_subtype_gradient) {
             cpu_self_g++;
 #ifndef GPUOFFLOAD
-            struct timespec t0, t1, dt;
-            clock_gettime(CLOCK_REALTIME, &t0);
-            runner_doself1_branch_gradient(r, ci);
-            clock_gettime(CLOCK_REALTIME, &t1);
-            tasks_done_cpu++;
-            time_for_cpu_g +=
-                (t1.tv_sec - t0.tv_sec) +
-                (t1.tv_nsec - t0.tv_nsec) /
-                    1000000000.0;
+//            struct timespec t0, t1, dt;
+//            clock_gettime(CLOCK_REALTIME, &t0);
+//            runner_doself1_branch_gradient(r, ci);
+//            clock_gettime(CLOCK_REALTIME, &t1);
+//            tasks_done_cpu++;
+//            time_for_cpu_g +=
+//                (t1.tv_sec - t0.tv_sec) +
+//                (t1.tv_nsec - t0.tv_nsec) /
+//                    1000000000.0;
 #endif //GPUGRADSELF
         }
 #endif
         else if (t->subtype == task_subtype_force) {
             cpu_self_f++;
 #ifndef GPUOFFLOAD
-            struct timespec t0, t1;
-            clock_gettime(CLOCK_REALTIME, &t0);
-            runner_doself2_branch_force(r, ci);
-            clock_gettime(CLOCK_REALTIME, &t1);
-            tasks_done_cpu++;
-            time_for_cpu_f +=
-                (t1.tv_sec - t0.tv_sec) +
-                (t1.tv_nsec - t0.tv_nsec) /
-                    1000000000.0;
+//            struct timespec t0, t1;
+//            clock_gettime(CLOCK_REALTIME, &t0);
+//            runner_doself2_branch_force(r, ci);
+//            clock_gettime(CLOCK_REALTIME, &t1);
+//            tasks_done_cpu++;
+//            time_for_cpu_f +=
+//                (t1.tv_sec - t0.tv_sec) +
+//                (t1.tv_nsec - t0.tv_nsec) /
+//                    1000000000.0;
 #endif //GPUFORCSELF
         }else if (t->subtype == task_subtype_limiter)
 		  runner_doself1_branch_limiter(r, ci);
@@ -1109,21 +1101,20 @@ void *runner_main2(void *data) {
 	      /* Abouzied: To be commented out when the GPU pairs have been coded up */
           cpu_pair++;
 #ifndef GPUOFFLOAD
-          struct timespec t0, t1, dt;
-          clock_gettime(CLOCK_REALTIME, &t0);
-	      runner_dopair1_branch_density(r, ci, cj);
-	      clock_gettime(CLOCK_REALTIME, &t1);
-	      tasks_done_cpu++;
-	      time_for_density_cpu_pair +=
-	          (t1.tv_sec - t0.tv_sec) +
-	          (t1.tv_nsec - t0.tv_nsec) /
-	           1000000000.0;
+//          struct timespec t0, t1, dt;
+//          clock_gettime(CLOCK_REALTIME, &t0);
+//	      runner_dopair1_branch_density(r, ci, cj);
+//	      clock_gettime(CLOCK_REALTIME, &t1);
+//	      tasks_done_cpu++;
+//	      time_for_density_cpu_pair +=
+//	          (t1.tv_sec - t0.tv_sec) +
+//	          (t1.tv_nsec - t0.tv_nsec) /
+//	           1000000000.0;
 #endif
 	    }
 	    /* GPU WORK */
 	    else if (t->subtype == task_subtype_gpu_pack) {
 	      packed_pair++;
-#ifdef GPUOFFLOAD
 	        packing_time_pair += runner_dopair1_pack_f4(r, sched, pack_vars_pair_dens, ci,
 	      		 cj, t, parts_aos_pair_f4_send, e, fparti_fpartj_lparti_lpartj_dens);
 		    /* Packed enough tasks or no pack tasks left in queue, flag that we want to run */
@@ -1139,13 +1130,10 @@ void *runner_main2(void *data) {
 			  runner_dopair1_launch_f4_one_memcpy(r, sched, pack_vars_pair_dens, t, parts_aos_pair_f4_send, parts_aos_pair_f4_recv,
 						 d_parts_aos_pair_f4_send, d_parts_aos_pair_f4_recv, stream_pairs, d_a, d_H, e, &packing_time_pair, &time_for_density_gpu_pair,
 						 &unpacking_time_pair, fparti_fpartj_lparti_lpartj_dens, pair_end);
-		    }
-#endif //GPUDENS
-		  } /* End of GPU work Pairs */
+		    }/* End of GPU work Pairs */
 	    } /* pair / pack */
         else if (t->subtype == task_subtype_gpu_pack_g){
   	      packed_pair_g++;
-#ifdef GPUOFFLOAD
 	        packing_time_pair_g += runner_dopair1_pack_f4_g(r, sched, pack_vars_pair_grad, ci,
 	      		 cj, t, parts_aos_pair_f4_g_send, e, fparti_fpartj_lparti_lpartj_grad);
             /* No pack tasks left in queue, flag that we want to run */
@@ -1162,10 +1150,8 @@ void *runner_main2(void *data) {
 					 &unpacking_time_pair_g, fparti_fpartj_lparti_lpartj_grad, pair_end_g);
 		    }
 	    }/* End of GPU work Pairs */
-#endif //GPUGRADPAIR
         else if (t->subtype == task_subtype_gpu_pack_f){
     	    packed_pair_f++;
-#ifdef GPUOFFLOAD
 //            runner_dopair1_pack_f(r, sched, pack_vars_pair_forc, ci,
 //            		cj, t, parts_aos_pair_forc, e, &packing_time_f);
   	        packing_time_pair_f += runner_dopair1_pack_f4_f(r, sched, pack_vars_pair_forc, ci,
@@ -1183,7 +1169,6 @@ void *runner_main2(void *data) {
 					 d_parts_aos_pair_f4_f_send, d_parts_aos_pair_f4_f_recv, stream_pairs, d_a, d_H, e, &packing_time_pair_f, &time_for_gpu_pair_f,
 					 &unpacking_time_pair_f, fparti_fpartj_lparti_lpartj_forc, pair_end_f);
   		    } /* End of GPU work Pairs */
-#endif //GPUFORCPAIR
   	    }
 	    else if (t->subtype == task_subtype_gpu_unpack) {
 	  	      unpacked_pair++;
@@ -1198,30 +1183,30 @@ void *runner_main2(void *data) {
         else if (t->subtype == task_subtype_gradient){
           int Do_nothing = 0;
 #ifndef GPUOFFLOAD
-          struct timespec t0, t1, dt;
-          clock_gettime(CLOCK_REALTIME, &t0);
-          runner_dopair1_branch_gradient(r, ci, cj);
-	      clock_gettime(CLOCK_REALTIME, &t1);
-	      tasks_done_cpu++;
-	      time_for_cpu_pair_g +=
-	          (t1.tv_sec - t0.tv_sec) +
-	          (t1.tv_nsec - t0.tv_nsec) /
-	           1000000000.0;
+//          struct timespec t0, t1, dt;
+//          clock_gettime(CLOCK_REALTIME, &t0);
+//          runner_dopair1_branch_gradient(r, ci, cj);
+//	      clock_gettime(CLOCK_REALTIME, &t1);
+//	      tasks_done_cpu++;
+//	      time_for_cpu_pair_g +=
+//	          (t1.tv_sec - t0.tv_sec) +
+//	          (t1.tv_nsec - t0.tv_nsec) /
+//	           1000000000.0;
 #endif //GPUGRADPAIR
         }
 #endif //EXTRA_HYDRO_LOOP
         else if (t->subtype == task_subtype_force){
           int Do_nothing = 0;
 #ifndef GPUOFFLOAD
-          struct timespec t0, t1, dt;
-          clock_gettime(CLOCK_REALTIME, &t0);
-          runner_dopair2_branch_force(r, ci, cj);
-  	      clock_gettime(CLOCK_REALTIME, &t1);
-  	      tasks_done_cpu++;
-  	      time_for_cpu_pair_f +=
-  	          (t1.tv_sec - t0.tv_sec) +
-  	          (t1.tv_nsec - t0.tv_nsec) /
-  	           1000000000.0;
+//          struct timespec t0, t1, dt;
+//          clock_gettime(CLOCK_REALTIME, &t0);
+//          runner_dopair2_branch_force(r, ci, cj);
+//  	      clock_gettime(CLOCK_REALTIME, &t1);
+//  	      tasks_done_cpu++;
+//  	      time_for_cpu_pair_f +=
+//  	          (t1.tv_sec - t0.tv_sec) +
+//  	          (t1.tv_nsec - t0.tv_nsec) /
+//  	           1000000000.0;
 #endif //GPUFORCPAIR
         }
         else if (t->subtype == task_subtype_limiter)
