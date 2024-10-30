@@ -191,8 +191,7 @@ void *runner_main(void *data) {
 
       /* Ensure void cells only have one of their allowed tasks. */
       if (ci->subtype == cell_subtype_void &&
-          !(t->type == task_type_grav_down ||
-            t->type == task_type_drift_gpart || t->type == task_type_grav_mm ||
+          !(t->type == task_type_grav_down || t->type == task_type_grav_mm ||
             t->type == task_type_grav_long_range ||
             t->type == task_type_init_grav)) {
         error("Void cell with task (%s/%s).", taskID_names[t->type],
@@ -214,9 +213,13 @@ void *runner_main(void *data) {
             runner_doself2_branch_force(r, ci);
           else if (t->subtype == task_subtype_limiter)
             runner_doself1_branch_limiter(r, ci);
-          else if (t->subtype == task_subtype_grav)
+          else if (t->subtype == task_subtype_grav) {
+            if (t->ci->grav.down_pass_done) {
+              error("Self grav task with down pass done (%s/%s).",
+                    cellID_names[t->ci->type], subcellID_names[t->ci->subtype]);
+            }
             runner_doself_recursive_grav(r, ci, 1);
-          else if (t->subtype == task_subtype_external_grav)
+          } else if (t->subtype == task_subtype_external_grav)
             runner_do_grav_external(r, ci, 1);
           else if (t->subtype == task_subtype_stars_density)
             runner_doself_branch_stars_density(r, ci);
@@ -264,9 +267,14 @@ void *runner_main(void *data) {
             runner_dopair2_branch_force(r, ci, cj);
           else if (t->subtype == task_subtype_limiter)
             runner_dopair1_branch_limiter(r, ci, cj);
-          else if (t->subtype == task_subtype_grav)
+          else if (t->subtype == task_subtype_grav) {
+            if (t->ci->grav.down_pass_done || t->cj->grav.down_pass_done) {
+              error("Pair grav task with down pass done (%s/%s->%s/%s).",
+                    cellID_names[t->ci->type], subcellID_names[t->ci->subtype],
+                    cellID_names[t->cj->type], subcellID_names[t->cj->subtype]);
+            }
             runner_dopair_recursive_grav(r, ci, cj, 1);
-          else if (t->subtype == task_subtype_stars_density)
+          } else if (t->subtype == task_subtype_stars_density)
             runner_dopair_branch_stars_density(r, ci, cj);
 #ifdef EXTRA_STAR_LOOPS
           else if (t->subtype == task_subtype_stars_prep1)
@@ -557,6 +565,10 @@ void *runner_main(void *data) {
           runner_do_grav_down(r, t->ci, 1);
           break;
         case task_type_grav_long_range:
+          if (t->ci->grav.down_pass_done)
+            error(
+                "Long range gravity task on cell with down pass done. (%s/%s)",
+                cellID_names[t->ci->type], subcellID_names[t->ci->subtype]);
           runner_do_grav_long_range(r, t->ci, 1);
           break;
         case task_type_grav_mm:
@@ -564,6 +576,10 @@ void *runner_main(void *data) {
            * a combination of their progeny. */
           /* TODO: do this better, surely we can define them based on progeny
            * and limit the number of MM tasks!? */
+          if (t->ci->grav.down_pass_done || t->cj->grav.down_pass_done)
+            error("MM gravity task on cell with down pass done. (%s/%s->%s/%s)",
+                  cellID_names[t->ci->type], subcellID_names[t->ci->subtype],
+                  cellID_names[t->cj->type], subcellID_names[t->cj->subtype]);
           if (t->flags == -2) {
             runner_dopair_grav_mm(r, t->ci, t->cj);
           } else {
