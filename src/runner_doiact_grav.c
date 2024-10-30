@@ -75,12 +75,11 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
   if (c->grav.multipole->pot.ti_init != e->ti_current)
     error("c->field tensor not initialised");
 
-  /* Ensure the level above has been processed */
-  if ((c->type == cell_type_zoom && c->grav.super == c) &&
-      ((c->parent != NULL && !c->parent->grav.down_pass_done) ||
-       (c->void_parent != NULL && !c->void_parent->grav.down_pass_done)))
-    error("Parent not processed before this level (%s/%s).",
-          cellID_names[c->type], subcellID_names[c->subtype]);
+  /* Ensure the level above has been processed if its potential was interacted
+   * with. */
+  if (c->parent != NULL && c->grav.multipole->pot.interacted &&
+      !c->parent->grav.down_pass_done)
+    error("Parent not processed before child.");
 #endif
 
   /* Is the cell not a leaf? */
