@@ -1,7 +1,9 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2020 Loic Hausammann (loic.hausammann@epfl.ch)
- *
+ * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
+ *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
+ *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
+ *               2024 Jonathan Davies (j.j.davies@ljmu.ac.uk)
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
  * by the Free Software Foundation, either version 3 of the License, or
@@ -16,20 +18,27 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_SINK_IO_H
-#define SWIFT_SINK_IO_H
 
+/* Config parameters. */
 #include <config.h>
 
-/* Load the correct sink type */
-#if defined(SINK_NONE)
-#include "./sink/Default/sink_io.h"
-#elif defined(SINK_GEAR)
-#include "./sink/GEAR/sink_io.h"
-#elif defined(SINK_GEARBONDIHOYLE)
-#include "./sink/GEARBondiHoyle/sink_io.h"
-#else
-#error "Invalid choice of sink model"
-#endif
+/* Local headers. */
+#include "active.h"
+#include "cell.h"
+#include "engine.h"
+#include "runner.h"
+#include "sink_iact.h"
+#include "space_getsid.h"
+#include "timers.h"
 
-#endif /* SWIFT_SINK_IO_H */
+/* Import the sink density loop functions. */
+#define FUNCTION density
+#define FUNCTION_TASK_LOOP TASK_LOOP_DENSITY
+#include "runner_doiact_functions_sinks.h"
+#include "runner_doiact_undef.h"
+
+/* Import the sink swallow loop functions. */
+#define FUNCTION swallow
+#define FUNCTION_TASK_LOOP TASK_LOOP_SWALLOW
+#include "runner_doiact_functions_sinks.h"
+#include "runner_doiact_undef.h"

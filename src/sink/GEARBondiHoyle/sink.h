@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_GEAR_SINK_H
-#define SWIFT_GEAR_SINK_H
+#ifndef SWIFT_GEARBONDIHOYLE_SINK_H
+#define SWIFT_GEARBONDIHOYLE_SINK_H
 
 #include <float.h>
 
@@ -35,7 +35,6 @@
 #include "random.h"
 #include "sink_part.h"
 #include "sink_properties.h"
-#include "star_formation.h"
 
 /**
  * @brief Computes the time-step of a given sink particle.
@@ -191,6 +190,16 @@ __attribute__((always_inline)) INLINE static void sink_init_sink(
   /* Reset to the mass of the sink */
   sp->mass_tot_before_star_spawning = sp->mass;
 
+  sp->rho_gas = 0.f;
+  sp->sound_speed_gas = 0.f;
+  sp->velocity_gas[0] = 0.f;
+  sp->velocity_gas[1] = 0.f;
+  sp->velocity_gas[2] = 0.f;
+  sp->ngb_mass = 0.f;
+  sp->num_ngbs = 0;
+  sp->accretion_rate = 0.f;
+  sp->mass_accreted_this_timestep = 0;
+
 #ifdef DEBUG_INTERACTIONS_SINKS
   for (int i = 0; i < MAX_NUM_OF_NEIGHBOURS_SINKS; ++i)
     sp->ids_ngbs_accretion[i] = -1;
@@ -233,6 +242,7 @@ __attribute__((always_inline)) INLINE static void sink_reset_predicted_values(
 __attribute__((always_inline)) INLINE static void sink_kick_extra(
     struct sink* sp, float dt) {}
 
+
 /**
  * @brief Finishes the calculation of density on sinks
  *
@@ -240,7 +250,22 @@ __attribute__((always_inline)) INLINE static void sink_kick_extra(
  * @param cosmo The current cosmological model.
  */
 __attribute__((always_inline)) INLINE static void sink_end_density(
-    struct sink* si, const struct cosmology* cosmo) {}
+    struct sink* si, const struct cosmology* cosmo) {
+    
+  const float vol = (4./3.) * M_PI * pow(si->r_cut,3.);
+
+  /* Mean density within cutoff radius. Not sure what else to do without a kernel. */
+  si->rho_gas = si->ngb_mass/vol;
+
+  /* Mass-weighted mean smoothed sound speed within cutoff radius. Not sure what else to do without a kernel. */
+  si->sound_speed_gas /= si->ngb_mass;
+
+  /* Mass-weighted mean velocity components within cutoff radius. Not sure what else to do without a kernel. */
+  si->velocity_gas[0] /= si->ngb_mass;
+  si->velocity_gas[1] /= si->ngb_mass;
+  si->velocity_gas[2] /= si->ngb_mass;
+
+}
 
 /**
  * @brief Compute the accretion rate of the sink and any quantities
@@ -248,7 +273,7 @@ __attribute__((always_inline)) INLINE static void sink_end_density(
  * 
  * Adapted from black_holes_prepare_feedback
  *
- * @param si The sink particle.
+ * @param si The si particle.
  * @param props The properties of the sink scheme.
  * @param constants The physical constants (in internal units).
  * @param cosmo The cosmological model.
@@ -264,7 +289,64 @@ __attribute__((always_inline)) INLINE static void sink_prepare_swallow(
     const struct phys_const* constants, const struct cosmology* cosmo,
     const struct cooling_function_data* cooling,
     const struct entropy_floor_properties* floor_props, const double time,
-    const int with_cosmology, const double dt, const integertime_t ti_begin) {}
+    const int with_cosmology, const double dt, const integertime_t ti_begin) {
+
+  if (dt == 0. || si->rho_gas == 0.) return;
+
+  /* Gather some physical constants (all in internal units) */
+  const double G = constants->const_newton_G;
+
+  /* We can now compute the accretion rate (internal units) */
+  /* Standard approach: compute accretion rate for all gas simultaneously.
+    *
+    * Convert the quantities we gathered to physical frame (all internal
+    * units). Note: velocities are already in black hole frame. */
+  const double gas_rho_phys = si->rho_gas * cosmo->a3_inv;
+  const double gas_c_phys = si->sound_speed_gas * cosmo->a_factor_sound_speed;
+  const double gas_c_phys2 = gas_c_phys * gas_c_phys;
+  const double gas_v_phys[3] = {si->velocity_gas[0] * cosmo->a_inv,
+                                si->velocity_gas[1] * cosmo->a_inv,
+                                si->velocity_gas[2] * cosmo->a_inv};
+  const double gas_v_norm2 = gas_v_phys[0] * gas_v_phys[0] +
+                              gas_v_phys[1] * gas_v_phys[1] +
+                              gas_v_phys[2] * gas_v_phys[2];
+
+  const double denominator2 = gas_v_norm2 + gas_c_phys2;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Make sure that the denominator is strictly positive */
+  if (denominator2 <= 0)
+    error(
+        "Invalid denominator for sink particle %lld in Bondi rate "
+        "calculation.",
+        si->id);
+#endif
+
+  const double denominator_inv = 1. / sqrt(denominator2);
+
+  double accr_rate = 4. * M_PI * G * G * si->mass * si->mass * gas_rho_phys *
+              denominator_inv * denominator_inv * denominator_inv;
+
+
+  /* Integrate forward in time */
+  si->mass_accreted_this_timestep += accr_rate * dt;
+
+  /* Let's try enabling nibbling later */
+  // if (props->use_nibbling) {
+  //   /* There is some loss in this due to radiative losses, so we must decrease
+  //    * the particle mass in proprtion to its current accretion rate. We do not
+  //    * account for this in the swallowing approach, however. */
+  //   bp->mass -= epsilon_r * accr_rate * dt;
+  //   if (bp->mass < 0)
+  //     error(
+  //         "Black hole %lld has reached a negative mass (%f). This is "
+  //         "not a great situation, so I am stopping.",
+  //         bp->id, bp->mass);
+  // }
+
+}
+
+
 
 /**
  * @brief Compute the rotational energy of the neighbouring gas particles.
@@ -357,12 +439,11 @@ INLINE static int sink_is_forming(
 
   const struct sink_part_data* sink_data = &p->sink_data;
 
-  const float temperature_threshold = sink_props->temperature_threshold;
+  const float temperature_max = sink_props->maximal_temperature;
   const float temperature = cooling_get_temperature(phys_const, hydro_props, us,
                                                     cosmo, cooling, p, xp);
 
   const float density_threshold = sink_props->density_threshold;
-  const float maximal_density_threshold = sink_props->maximal_density_threshold;
   const float density = hydro_get_physical_density(p, cosmo);
 
   const float div_v = sink_get_physical_div_v_from_part(p);
@@ -375,17 +456,8 @@ INLINE static int sink_is_forming(
   double E_tot = sink_data->E_kin_neighbours + sink_data->E_int_neighbours +
                  E_grav + sink_data->E_mag_neighbours;
 
-  /* Density criterion */
-  if (density < density_threshold) {
-    return 0;
-  }
-  /* Here we have density >= density_threshold */
-
-  /* If density_threshold <= density <= maximal_density_threshold, check the
-     temperature. If density > maximal_density_threshold, do no check the
-     temperature. */
-  if ((density <= maximal_density_threshold) &&
-      (temperature >= temperature_threshold)) {
+  /* Density and temperature criterion */
+  if (density <= density_threshold || temperature >= temperature_max) {
     return 0;
   }
 
@@ -835,20 +907,18 @@ INLINE static void sink_copy_properties_to_star(
   /* Note: The sink module need to be compiled with GEAR SF as we store data
      in the SF struct. However, we do not need to run with --star-formation */
 
-  /* Mass at birth */
-  star_formation_set_spart_birth_mass(sp, sp->mass);
-
-  /* Store either the birth_scale_factor or birth_time */
-  star_formation_set_spart_birth_time_or_scale_factor(sp, e->time, cosmo->a,
-                                                      with_cosmology);
-
-  /* Copy the progenitor id */
-  star_formation_set_spart_progenitor_id(sp, sink->id);
+  /* Store either the birth_scale_factor or birth_time depending  */
+  if (with_cosmology) {
+    sp->birth_scale_factor = cosmo->a;
+  } else {
+    sp->birth_time = e->time;
+  }
 
   /* Copy the chemistry properties */
-  /* ----------------------------- */
-
   chemistry_copy_sink_properties_to_star(sink, sp);
+
+  /* Copy the progenitor id */
+  sp->sf_data.progenitor_id = sink->id;
 }
 
 /**
@@ -1135,4 +1205,4 @@ INLINE static void sink_prepare_part_sink_formation_sink_criteria(
   }
 }
 
-#endif /* SWIFT_GEAR_SINK_H */
+#endif /* SWIFT_GEARBONDIHOYLE_SINK_H */
