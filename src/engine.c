@@ -1749,6 +1749,7 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->type == task_type_bh_out || t->type == task_type_rt_ghost1 ||
         t->type == task_type_rt_ghost2 || t->type == task_type_rt_tchem ||
         t->type == task_type_rt_advance_cell_time ||
+        t->type == task_type_dcdm_weight ||
         t->type == task_type_neutrino_weight || t->type == task_type_csds ||
         t->subtype == task_subtype_force ||
         t->subtype == task_subtype_limiter ||
@@ -3618,6 +3619,7 @@ void engine_recompute_displacement_constraint(struct engine *e) {
   const int with_cosmology = e->policy & engine_policy_cosmology;
   const struct cosmology *cosmo = e->cosmology;
   const float Ocdm = cosmo->Omega_cdm;
+  const float Odcdm = cosmology_get_dcdm_density(cosmo, cosmo->a);
   const float Ob = cosmo->Omega_b;
   const float H0 = cosmo->H0;
   const float a = cosmo->a;
@@ -3706,7 +3708,7 @@ void engine_recompute_displacement_constraint(struct engine *e) {
       const float min_mass_dm = min_mass[1];
 
       /* Inter-particle sepration for the DM */
-      const float d_dm = cbrtf(min_mass_dm / (Ocdm * rho_crit0));
+      const float d_dm = cbrtf(min_mass_dm / ((Ocdm + Odcdm) * rho_crit0));
 
       /* RMS peculiar motion for the DM */
       const float rms_vel_dm = vel_norm_dm / N_dm;
