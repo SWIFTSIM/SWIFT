@@ -114,6 +114,11 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
 
           /* Add it to this level's tensor */
           gravity_field_tensors_add(&cp->grav.multipole->pot, &shifted_tensor);
+
+#ifdef SWIFT_DEBUG_CHECKS
+          /* Flag that we acted on this cell */
+          c->grav.down_pass_done = 1;
+#endif
         }
 
         /* Recurse, but only if we haven't reached the super level. This can
@@ -183,11 +188,6 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
     if (lock_unlock(&c->grav.plock) != 0) error("Error unlocking cell");
 #endif
   }
-
-#ifdef SWIFT_DEBUG_CHECKS
-  /* Flag that we acted on this cell */
-  c->grav.down_pass_done = 1;
-#endif
 
   if (timer) TIMER_TOC(timer_dograv_down);
 }
