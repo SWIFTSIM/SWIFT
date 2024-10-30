@@ -44,7 +44,7 @@
 static INLINE void runner_clear_grav_flags(struct cell *c,
                                            const struct engine *e) {
 
-  if ((!cell_is_active_gravity(c, e) || c->nodeID != e->nodeID) && c->split) {
+  if (!cell_is_active_gravity(c, e) || c->nodeID != e->nodeID) {
     for (int k = 0; k < 8; ++k)
       if (c->progeny[k] != NULL) runner_clear_grav_flags(c->progeny[k], e);
   }
@@ -74,6 +74,12 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
     error("c->multipole not drifted.");
   if (c->grav.multipole->pot.ti_init != e->ti_current)
     error("c->field tensor not initialised");
+
+  /* Ensure the level above has been processed if its potential was interacted
+   * with. */
+  if (c->parent != NULL && c->grav.multipole->pot.interacted &&
+      !c->parent->grav.down_pass_done)
+    error("Parent not processed before child.");
 #endif
 
   /* Is the cell not a leaf? */
@@ -108,6 +114,11 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
 
           /* Add it to this level's tensor */
           gravity_field_tensors_add(&cp->grav.multipole->pot, &shifted_tensor);
+
+#ifdef SWIFT_DEBUG_CHECKS
+          /* Flag that we acted on this cell */
+          c->grav.down_pass_done = 1;
+#endif
         }
 
         /* Recurse, but only if we haven't reached the super level. This can
