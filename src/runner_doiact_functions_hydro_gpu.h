@@ -2643,8 +2643,10 @@ void runner_dopair1_launch_f4_one_memcpy(struct runner *r, struct scheduler *s, 
 		  enqueue_dependencies(s, tii);
 		  /*Signal sleeping runners*/
 		  signal_sleeping_runners(s, tii);
-          tii->skip = 1;
+
 		  tii->gpu_done = 1;
+
+
 		  }
 		}
 	}
@@ -3292,7 +3294,7 @@ void runner_dopair1_launch_f4_g_one_memcpy(struct runner *r, struct scheduler *s
 		  enqueue_dependencies(s, tii);
 		  /*Signal sleeping runners*/
 		  signal_sleeping_runners(s, tii);
-          tii->skip = 1;
+
 		  tii->gpu_done = 1;
 
 
@@ -3971,7 +3973,7 @@ void runner_dopair1_launch_f4_f_one_memcpy(struct runner *r, struct scheduler *s
 		  enqueue_dependencies(s, tii);
 		  /*Signal sleeping runners*/
 		  signal_sleeping_runners(s, tii);
-          tii->skip = 1;
+
 		  tii->gpu_done = 1;
 
 

@@ -1767,8 +1767,8 @@ void *runner_main2(void *data) {
     	  t->subtype == task_subtype_gpu_pack_g ||
 		  t->subtype == task_subtype_gpu_pack_f){
     	/* Don't enqueue unpacks yet. Just signal the runners */
-//        t->skip = 1;
-//        t = NULL;
+        t->skip = 1;
+        t = NULL;
       }
       else{ /* Mark task as done, as per usual */
         t = scheduler_done(sched, t);
