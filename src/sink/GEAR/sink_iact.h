@@ -32,8 +32,6 @@
  * In GEAR: This function deactivates the sink formation ability of #part not
  * at a potential minimum.
  *
- * Note: This functions breaks MPI.
- *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
  * @param hi Comoving smoothing-length of particle i.
@@ -57,12 +55,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_sink(
 
   /* if the distance is less than the cut off radius */
   if (r < cut_off_radius) {
-
-    /*
-     * NOTE: Those lines break MPI
-     */
-    float potential_i = pi->gpart->potential;
-    float potential_j = pj->gpart->potential;
+    float potential_i = pi->sink_data.potential;
+    float potential_j = pj->sink_data.potential;
 
     /* prevent the particle with the largest potential to form a sink */
     if (potential_i > potential_j) {
@@ -106,9 +100,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_sink(
   const float r = sqrtf(r2);
 
   if (r < cut_off_radius) {
-
-    float potential_i = pi->gpart->potential;
-    float potential_j = pj->gpart->potential;
+    float potential_i = pi->sink_data.potential;
+    float potential_j = pj->sink_data.potential;
 
     /* if the potential is larger
      * prevent the particle to form a sink */
@@ -120,6 +113,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_sink(
  * @brief Compute sink-sink swallow interaction (non-symmetric).
  *
  * Note: Energies are computed with physical quantities, not the comoving ones.
+ *
+ * MPI note: This functions invokes the gpart. Hence, it must be performed only
+ * on the local node (similarly to runner_iact_nonsym_bh_bh_repos()).
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
@@ -248,6 +244,9 @@ runner_iact_nonsym_sinks_sink_swallow(
  * @brief Compute sink-gas swallow interaction (non-symmetric).
  *
  * Note: Energies are computed with physical quantities, not the comoving ones.
+ *
+ * MPI note: This functions invokes the gpart. Hence, it must be performed only
+ * on the local node (similarly to runner_iact_nonsym_bh_gas_repos()).
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
