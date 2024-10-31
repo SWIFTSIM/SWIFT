@@ -19,9 +19,9 @@
  *
  ******************************************************************************/
 /* Config parameters. */
-#define GPUOFFLOAD 1 //off-load hydro to GPU
-#define DO_CORNERS 1 //do corner pair tasks on CPU
-#define DUMP_TIMINGS 1
+//#define GPUOFFLOAD 1 //off-load hydro to GPU
+//#define DO_CORNERS 1 //do corner pair tasks on CPU
+//#define DUMP_TIMINGS 1
 #include "../config.h"
 
 /* MPI headers. */
@@ -1861,7 +1861,6 @@ void *runner_main2(void *data) {
     density = 0;
     density_sub = 0;
     unpacked = 0;
-    message("reached end of runner_main2\n");
 //	if(step == 2)cudaProfilerStop();
 //	if(step == 2)exit(0);
 //	  size_t free_byte ;

@@ -86,21 +86,21 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
     const enum task_types t_type = t->type;
     const enum task_subtypes t_subtype = t->subtype;
 
-//    //Activate GPU unpack tasks (cell-less dummy tasks so need activating separately)
-//    if (t_type == task_type_self && (t_subtype == task_subtype_gpu_unpack ||
-//    		t_subtype == task_subtype_gpu_unpack_g ||
-//			t_subtype == task_subtype_gpu_unpack_f)){ // A. Nasar
-//      scheduler_activate(s, t);
-//      continue;
-//    }
-//
-//    if (t_type == task_type_pair && (t_subtype == task_subtype_gpu_unpack ||
-//    		t_subtype == task_subtype_gpu_unpack_g ||
-//			t_subtype == task_subtype_gpu_unpack_f)){ // A. Nasar
-//      scheduler_activate(s, t);
-//      continue;
-////      fprintf(stderr,"activated pair unpack in marktasks\n");
-//    }
+    //Activate GPU unpack tasks (cell-less dummy tasks so need activating separately)
+    if (t_type == task_type_self && (t_subtype == task_subtype_gpu_unpack ||
+    		t_subtype == task_subtype_gpu_unpack_g ||
+			t_subtype == task_subtype_gpu_unpack_f)){ // A. Nasar
+      scheduler_activate(s, t);
+      continue;
+    }
+
+    if (t_type == task_type_pair && (t_subtype == task_subtype_gpu_unpack ||
+    		t_subtype == task_subtype_gpu_unpack_g ||
+			t_subtype == task_subtype_gpu_unpack_f)){ // A. Nasar
+      scheduler_activate(s, t);
+      continue;
+//      fprintf(stderr,"activated pair unpack in marktasks\n");
+    }
 
     /* Single-cell task? */
     if (t_type == task_type_self || t_type == task_type_sub_self) {
@@ -109,16 +109,16 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       struct cell *ci = t->ci;
 
 #ifdef SWIFT_DEBUG_CHECKS
-//#ifndef WITH_CUDA // A. Nasar
+#ifndef WITH_CUDA // A. Nasar
       if (ci->nodeID != nodeID) error("Non-local self task found");
-//#else
-//      if (ci->nodeID != nodeID && t_subtype != task_subtype_gpu_unpack &&
-//    		  t_subtype != task_subtype_gpu_unpack_f &&
-//			  t_subtype != task_subtype_gpu_unpack_g){
-//    	        fprintf(stderr, "task is %i\n", subtaskID_names[t->subtype]);
-//    	        error("Non-local self task found. Task is subtaskID_names[%s]", subtaskID_names[t->subtype]);
-//      }
-//#endif
+#else
+      if (ci->nodeID != nodeID && t_subtype != task_subtype_gpu_unpack &&
+    		  t_subtype != task_subtype_gpu_unpack_f &&
+			  t_subtype != task_subtype_gpu_unpack_g){
+    	        fprintf(stderr, "task is %i\n", subtaskID_names[t->subtype]);
+    	        error("Non-local self task found. Task is subtaskID_names[%s]", subtaskID_names[t->subtype]);
+      }
+#endif
 #endif
 
       const int ci_active_hydro = cell_is_active_hydro(ci, e);
@@ -141,34 +141,34 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       }
 
       /* Activate packing for GPU A. Nasar */
-//      else if (t_type == task_type_self && t_subtype == task_subtype_gpu_pack) {
-//        if (ci_active_hydro) {
-//          scheduler_activate(s, t);
-//          ci->pack_done = 0;
-//          ci->gpu_done = 0;
-//          ci->unpack_done = 0;
-//        }
-//      }
-//
-//      /* Activate packing for GPU */
-//      else if (t_type == task_type_self && t_subtype == task_subtype_gpu_pack_g) {
-//        if (ci_active_hydro) {
-//          scheduler_activate(s, t);
-//          ci->pack_done_g = 0;
-//          ci->gpu_done_g = 0;
-//          ci->unpack_done_g = 0;
-//        }
-//      }
-//
-//      /* Activate packing for GPU */
-//      else if (t_type == task_type_self && t_subtype == task_subtype_gpu_pack_f) {
-//        if (ci_active_hydro) {
-//          scheduler_activate(s, t);
-//          ci->pack_done_f = 0;
-//          ci->gpu_done_f = 0;
-//          ci->unpack_done_f = 0;
-//        }
-//      }
+      else if (t_type == task_type_self && t_subtype == task_subtype_gpu_pack) {
+        if (ci_active_hydro) {
+          scheduler_activate(s, t);
+          ci->pack_done = 0;
+          ci->gpu_done = 0;
+          ci->unpack_done = 0;
+        }
+      }
+
+      /* Activate packing for GPU */
+      else if (t_type == task_type_self && t_subtype == task_subtype_gpu_pack_g) {
+        if (ci_active_hydro) {
+          scheduler_activate(s, t);
+          ci->pack_done_g = 0;
+          ci->gpu_done_g = 0;
+          ci->unpack_done_g = 0;
+        }
+      }
+
+      /* Activate packing for GPU */
+      else if (t_type == task_type_self && t_subtype == task_subtype_gpu_pack_f) {
+        if (ci_active_hydro) {
+          scheduler_activate(s, t);
+          ci->pack_done_f = 0;
+          ci->gpu_done_f = 0;
+          ci->unpack_done_f = 0;
+        }
+      }
 
       /* Store current values of dx_max and h_max. */
       else if (t_type == task_type_sub_self &&
@@ -465,27 +465,27 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       const int cj_active_rt = cell_is_rt_active(cj, e);
 
       /* Activate packing for GPU A. Nasar */
-//	  if(t_subtype == task_subtype_gpu_pack &&
-//	   ((ci_active_hydro && ci_nodeID == nodeID) ||
-//		(cj_active_hydro && cj_nodeID == nodeID))) {
-//	    scheduler_activate(s, t);
-//	    ci->gpu_done_pair = 0;
-//	    cj->gpu_done_pair = 0;
-//	  }
-//	  else if (t_subtype == task_subtype_gpu_pack_g &&
-//		     ((ci_active_hydro && ci_nodeID == nodeID) ||
-//		      (cj_active_hydro && cj_nodeID == nodeID))) {
-//	    scheduler_activate(s, t);
-//	    ci->gpu_done_pair_g = 0;
-//	    cj->gpu_done_pair_g = 0;
-//	  }
-//	  else if (t_subtype == task_subtype_gpu_pack_f &&
-//		     ((ci_active_hydro && ci_nodeID == nodeID) ||
-//		      (cj_active_hydro && cj_nodeID == nodeID))) {
-//	    scheduler_activate(s, t);
-//	    ci->gpu_done_pair_f = 0;
-//	    cj->gpu_done_pair_f = 0;
-//      }
+	  if(t_subtype == task_subtype_gpu_pack &&
+	   ((ci_active_hydro && ci_nodeID == nodeID) ||
+		(cj_active_hydro && cj_nodeID == nodeID))) {
+	    scheduler_activate(s, t);
+	    ci->gpu_done_pair = 0;
+	    cj->gpu_done_pair = 0;
+	  }
+	  else if (t_subtype == task_subtype_gpu_pack_g &&
+		     ((ci_active_hydro && ci_nodeID == nodeID) ||
+		      (cj_active_hydro && cj_nodeID == nodeID))) {
+	    scheduler_activate(s, t);
+	    ci->gpu_done_pair_g = 0;
+	    cj->gpu_done_pair_g = 0;
+	  }
+	  else if (t_subtype == task_subtype_gpu_pack_f &&
+		     ((ci_active_hydro && ci_nodeID == nodeID) ||
+		      (cj_active_hydro && cj_nodeID == nodeID))) {
+	    scheduler_activate(s, t);
+	    ci->gpu_done_pair_f = 0;
+	    cj->gpu_done_pair_f = 0;
+      }
 
       /* Only activate tasks that involve a local active cell. A. Nasar THIS COULD BE SOURCE OF BUG */
       if ((t_subtype == task_subtype_density ||
