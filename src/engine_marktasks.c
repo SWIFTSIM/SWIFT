@@ -1210,9 +1210,9 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         if (cell_need_rebuild_for_sinks_pair(ci, cj)) *rebuild_space = 1;
         if (cell_need_rebuild_for_sinks_pair(cj, ci)) *rebuild_space = 1;
 
-/* #ifdef WITH_MPI */
+        /* #ifdef WITH_MPI */
         /* error("TODO"); */
-/* #endif */
+        /* #endif */
       }
 
       /* Only interested in black hole density tasks as of here. */

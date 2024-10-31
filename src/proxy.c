@@ -451,6 +451,8 @@ void proxy_cells_pack_mapper(void *map_data, int num_elements,
     if (cells[k].mpi.sendto) {
       ptrdiff_t ind = &cells[k] - data->s->cells_top;
       cells[k].mpi.pcell = &data->pcells[data->offset[ind]];
+
+      // HERE
       cell_pack(&cells[k], cells[k].mpi.pcell, data->with_gravity);
     }
   }
@@ -568,6 +570,8 @@ void proxy_cells_exchange(struct proxy *proxies, int num_proxies,
       error("MPI_Waitany failed.");
     // message( "cell data from proxy %i has arrived." , pid );
     for (int count = 0, j = 0; j < proxies[pid].nr_cells_in; j++)
+
+      // HERE
       count += cell_unpack(&proxies[pid].pcells_in[count],
                            proxies[pid].cells_in[j], s, with_gravity);
   }
@@ -707,7 +711,9 @@ void proxy_parts_exchange_first(struct proxy *p) {
   p->buff_out[3] = p->nr_bparts_out;
   p->buff_out[4] = p->nr_sinks_out;
 
-  message("Number of particles out [%i , %i, %i, %i, %i]", p->nr_parts_out, p->nr_gparts_out, p->nr_sparts_out, p->nr_bparts_out, p->nr_sinks_out);
+  message("Number of particles out [%i , %i, %i, %i, %i]", p->nr_parts_out,
+          p->nr_gparts_out, p->nr_sparts_out, p->nr_bparts_out,
+          p->nr_sinks_out);
 
   /* WARNING: Document this, maybe use a variable for clarity: if we add a
      particle type, we must increase the 5->6 (before sinks, it was
@@ -716,8 +722,10 @@ void proxy_parts_exchange_first(struct proxy *p) {
                 p->mynodeID * proxy_tag_shift + proxy_tag_count, MPI_COMM_WORLD,
                 &p->req_parts_count_out) != MPI_SUCCESS)
     error("Failed to isend nr of parts.");
-  message( "isent particle counts [%i, %i, %i, %i, %i] from node %i to node %i." ,
-	   p->buff_out[0], p->buff_out[1], p->buff_out[2], p->buff_out[3], p->buff_out[4],  p->mynodeID , p->nodeID ); fflush(stdout);
+  message("isent particle counts [%i, %i, %i, %i, %i] from node %i to node %i.",
+          p->buff_out[0], p->buff_out[1], p->buff_out[2], p->buff_out[3],
+          p->buff_out[4], p->mynodeID, p->nodeID);
+  fflush(stdout);
 
   /* Send the particle buffers. */
   if (p->nr_parts_out > 0) {
@@ -728,8 +736,8 @@ void proxy_parts_exchange_first(struct proxy *p) {
                   p->mynodeID * proxy_tag_shift + proxy_tag_xparts,
                   MPI_COMM_WORLD, &p->req_xparts_out) != MPI_SUCCESS)
       error("Failed to isend part data.");
-    message( "isent particle data (%i) to node %i." , p->nr_parts_out ,
-    p->nodeID ); fflush(stdout);
+    message("isent particle data (%i) to node %i.", p->nr_parts_out, p->nodeID);
+    fflush(stdout);
     for (int k = 0; k < p->nr_parts_out; k++)
       message("sending particle %lli, x=[%.3e %.3e %.3e], h=%.3e, to node %i.",
               p->parts_out[k].id, p->parts_out[k].x[0], p->parts_out[k].x[1],
@@ -740,12 +748,12 @@ void proxy_parts_exchange_first(struct proxy *p) {
                   p->mynodeID * proxy_tag_shift + proxy_tag_gparts,
                   MPI_COMM_WORLD, &p->req_gparts_out) != MPI_SUCCESS)
       error("Failed to isend gpart data.");
-    message( "isent gpart data (%i) to node %i." , p->nr_gparts_out ,
-    p->nodeID ); fflush(stdout);
+    message("isent gpart data (%i) to node %i.", p->nr_gparts_out, p->nodeID);
+    fflush(stdout);
     for (int k = 0; k < p->nr_parts_out; k++)
       message("sending gpart %lli, x=[%.3e %.3e %.3e], to node %i.",
-              p->gparts_out[k].id_or_neg_offset, p->gparts_out[k].x[0], p->gparts_out[k].x[1],
-              p->gparts_out[k].x[2], p->nodeID);
+              p->gparts_out[k].id_or_neg_offset, p->gparts_out[k].x[0],
+              p->gparts_out[k].x[1], p->gparts_out[k].x[2], p->nodeID);
   }
 
   if (p->nr_sparts_out > 0) {
@@ -753,8 +761,8 @@ void proxy_parts_exchange_first(struct proxy *p) {
                   p->mynodeID * proxy_tag_shift + proxy_tag_sparts,
                   MPI_COMM_WORLD, &p->req_sparts_out) != MPI_SUCCESS)
       error("Failed to isend spart data.");
-    message( "isent spart data (%i) to node %i." , p->nr_sparts_out ,
-    p->nodeID ); fflush(stdout);
+    message("isent spart data (%i) to node %i.", p->nr_sparts_out, p->nodeID);
+    fflush(stdout);
     for (int k = 0; k < p->nr_sparts_out; k++)
       message("sending spart %lli, x=[%.3e %.3e %.3e], h=%.3e, to node %i.",
               p->sparts_out[k].id, p->sparts_out[k].x[0], p->sparts_out[k].x[1],
@@ -765,16 +773,16 @@ void proxy_parts_exchange_first(struct proxy *p) {
                   p->mynodeID * proxy_tag_shift + proxy_tag_bparts,
                   MPI_COMM_WORLD, &p->req_bparts_out) != MPI_SUCCESS)
       error("Failed to isend bpart data.");
-    message( "isent bpart data (%i) to node %i." , p->nr_bparts_out ,
-    p->nodeID ); fflush(stdout);
+    message("isent bpart data (%i) to node %i.", p->nr_bparts_out, p->nodeID);
+    fflush(stdout);
   }
   if (p->nr_sinks_out > 0) {
     if (MPI_Isend(p->sinks_out, p->nr_sinks_out, sink_mpi_type, p->nodeID,
                   p->mynodeID * proxy_tag_shift + proxy_tag_sinks,
                   MPI_COMM_WORLD, &p->req_sinks_out) != MPI_SUCCESS)
       error("Failed to isend sink data.");
-    message( "isent sink data (%i) to node %i." , p->nr_sinks_out ,
-    p->nodeID ); fflush(stdout);
+    message("isent sink data (%i) to node %i.", p->nr_sinks_out, p->nodeID);
+    fflush(stdout);
     for (int k = 0; k < p->nr_sinks_out; k++)
       message("sending sinks %lli, x=[%.3e %.3e %.3e], h=%.3e, to node %i.",
               p->sinks_out[k].id, p->sinks_out[k].x[0], p->sinks_out[k].x[1],
@@ -788,8 +796,11 @@ void proxy_parts_exchange_first(struct proxy *p) {
                 p->nodeID * proxy_tag_shift + proxy_tag_count, MPI_COMM_WORLD,
                 &p->req_parts_count_in) != MPI_SUCCESS)
     error("Failed to irecv nr of parts.");
-   message( "irecv particle counts [%i, %i, %i, %i, %i] from node %i, I am node %i." ,
-	    p->buff_in[0], p->buff_in[1], p->buff_in[2], p->buff_in[3], p->buff_in[4], p->nodeID, p->mynodeID); fflush(stdout);
+  message(
+      "irecv particle counts [%i, %i, %i, %i, %i] from node %i, I am node %i.",
+      p->buff_in[0], p->buff_in[1], p->buff_in[2], p->buff_in[3], p->buff_in[4],
+      p->nodeID, p->mynodeID);
+  fflush(stdout);
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -853,7 +864,7 @@ void proxy_parts_exchange_second(struct proxy *p) {
     } while (p->nr_sinks_in > p->size_sinks_in);
     swift_free("sinks_in", p->sinks_in);
     if ((p->sinks_in = (struct sink *)swift_malloc(
-						     "sinks_in", sizeof(struct sink) * p->size_sinks_in)) == NULL)
+             "sinks_in", sizeof(struct sink) * p->size_sinks_in)) == NULL)
       error("Failed to re-allocate sinks_in buffers.");
   }
 
@@ -866,8 +877,9 @@ void proxy_parts_exchange_second(struct proxy *p) {
                   p->nodeID * proxy_tag_shift + proxy_tag_xparts,
                   MPI_COMM_WORLD, &p->req_xparts_in) != MPI_SUCCESS)
       error("Failed to irecv part data.");
-    message( "irecv particle data (%i) from node %i." , p->nr_parts_in ,
-    p->nodeID ); fflush(stdout);
+    message("irecv particle data (%i) from node %i.", p->nr_parts_in,
+            p->nodeID);
+    fflush(stdout);
     for (int k = 0; k < p->nr_parts_out; k++)
       message("receiving parts %lli, x=[%.3e %.3e %.3e], h=%.3e, from node %i.",
               p->parts_in[k].id, p->parts_in[k].x[0], p->parts_in[k].x[1],
@@ -878,40 +890,41 @@ void proxy_parts_exchange_second(struct proxy *p) {
                   p->nodeID * proxy_tag_shift + proxy_tag_gparts,
                   MPI_COMM_WORLD, &p->req_gparts_in) != MPI_SUCCESS)
       error("Failed to irecv gpart data.");
-    message( "irecv gpart data (%i) from node %i." , p->nr_gparts_in ,
-    p->nodeID ); fflush(stdout);
+    message("irecv gpart data (%i) from node %i.", p->nr_gparts_in, p->nodeID);
+    fflush(stdout);
     for (int k = 0; k < p->nr_gparts_out; k++)
       message("receiving gparts %lli, x=[%.3e %.3e %.3e], from node %i.",
-              p->gparts_in[k].id_or_neg_offset, p->gparts_in[k].x[0], p->gparts_in[k].x[1],
-              p->gparts_in[k].x[2], p->nodeID);
+              p->gparts_in[k].id_or_neg_offset, p->gparts_in[k].x[0],
+              p->gparts_in[k].x[1], p->gparts_in[k].x[2], p->nodeID);
   }
   if (p->nr_sparts_in > 0) {
     if (MPI_Irecv(p->sparts_in, p->nr_sparts_in, spart_mpi_type, p->nodeID,
                   p->nodeID * proxy_tag_shift + proxy_tag_sparts,
                   MPI_COMM_WORLD, &p->req_sparts_in) != MPI_SUCCESS)
       error("Failed to irecv spart data.");
-    message( "irecv spart data (%i) from node %i." , p->nr_sparts_in ,
-    p->nodeID ); fflush(stdout);
+    message("irecv spart data (%i) from node %i.", p->nr_sparts_in, p->nodeID);
+    fflush(stdout);
     for (int k = 0; k < p->nr_sparts_out; k++)
-      message("receiving sparts %lli, x=[%.3e %.3e %.3e], h=%.3e, from node %i.",
-              p->sparts_in[k].id, p->sparts_in[k].x[0], p->sparts_in[k].x[1],
-              p->sparts_in[k].x[2], p->sparts_in[k].h, p->nodeID);
+      message(
+          "receiving sparts %lli, x=[%.3e %.3e %.3e], h=%.3e, from node %i.",
+          p->sparts_in[k].id, p->sparts_in[k].x[0], p->sparts_in[k].x[1],
+          p->sparts_in[k].x[2], p->sparts_in[k].h, p->nodeID);
   }
   if (p->nr_bparts_in > 0) {
     if (MPI_Irecv(p->bparts_in, p->nr_bparts_in, bpart_mpi_type, p->nodeID,
                   p->nodeID * proxy_tag_shift + proxy_tag_bparts,
                   MPI_COMM_WORLD, &p->req_bparts_in) != MPI_SUCCESS)
       error("Failed to irecv bpart data.");
-    message( "irecv bpart data (%i) from node %i." , p->nr_bparts_in ,
-    p->nodeID ); fflush(stdout);
+    message("irecv bpart data (%i) from node %i.", p->nr_bparts_in, p->nodeID);
+    fflush(stdout);
   }
   if (p->nr_sinks_in > 0) {
     if (MPI_Irecv(p->sinks_in, p->nr_sinks_in, sink_mpi_type, p->nodeID,
-                  p->nodeID * proxy_tag_shift + proxy_tag_sinks,
-                  MPI_COMM_WORLD, &p->req_sinks_in) != MPI_SUCCESS)
+                  p->nodeID * proxy_tag_shift + proxy_tag_sinks, MPI_COMM_WORLD,
+                  &p->req_sinks_in) != MPI_SUCCESS)
       error("Failed to irecv sink data.");
-    message( "irecv sink data (%i) from node %i." , p->nr_sinks_in ,
-    p->nodeID ); fflush(stdout);
+    message("irecv sink data (%i) from node %i.", p->nr_sinks_in, p->nodeID);
+    fflush(stdout);
     for (int k = 0; k < p->nr_sinks_in; k++)
       message("receiving sinks %lli, x=[%.3e %.3e %.3e], h=%.3e, from node %i.",
               p->sinks_in[k].id, p->sinks_in[k].x[0], p->sinks_in[k].x[1],
@@ -1162,14 +1175,14 @@ void proxy_free_particle_buffers(struct proxy *p) {
     swift_free("sinks_out", p->sinks_out);
     p->size_sinks_out = proxy_buffinit;
     if ((p->sinks_out = (struct sink *)swift_malloc(
-						      "sinks_out", sizeof(struct sink) * p->size_sinks_out)) == NULL)
+             "sinks_out", sizeof(struct sink) * p->size_sinks_out)) == NULL)
       error("Failed to allocate sinks_out buffers.");
   }
   if (p->size_sinks_in > proxy_buffinit) {
     swift_free("sinks_in", p->sinks_in);
     p->size_sinks_in = proxy_buffinit;
     if ((p->sinks_in = (struct sink *)swift_malloc(
-						     "sinks_in", sizeof(struct sink) * p->size_sinks_in)) == NULL)
+             "sinks_in", sizeof(struct sink) * p->size_sinks_in)) == NULL)
       error("Failed to allocate sinks_in buffers.");
   }
 }

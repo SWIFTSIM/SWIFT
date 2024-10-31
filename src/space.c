@@ -2331,7 +2331,7 @@ void space_check_bpart_swallow_mapper(void *map_data, int nr_bparts,
  * @brief #threadpool mapper function for the swallow debugging check
  */
 void space_check_part_sink_swallow_mapper(void *map_data, int nr_parts,
-                                     void *extra_data) {
+                                          void *extra_data) {
 #ifdef SWIFT_DEBUG_CHECKS
   /* Unpack the data */
   struct part *restrict parts = (struct part *)map_data;
@@ -2341,8 +2341,7 @@ void space_check_part_sink_swallow_mapper(void *map_data, int nr_parts,
 
     if (parts[k].time_bin == time_bin_inhibited) continue;
 
-    const long long swallow_id =
-        sink_get_part_swallow_id(&parts[k].sink_data);
+    const long long swallow_id = sink_get_part_swallow_id(&parts[k].sink_data);
 
     if (swallow_id != -1)
       error("Particle has not been swallowed! id=%lld", parts[k].id);
@@ -2356,7 +2355,7 @@ void space_check_part_sink_swallow_mapper(void *map_data, int nr_parts,
  * @brief #threadpool mapper function for the swallow debugging check
  */
 void space_check_sink_sink_swallow_mapper(void *map_data, int nr_sinks,
-                                      void *extra_data) {
+                                          void *extra_data) {
 #ifdef SWIFT_DEBUG_CHECKS
   /* Unpack the data */
   struct sink *restrict sinks = (struct sink *)map_data;
@@ -2396,12 +2395,14 @@ void space_check_swallow(struct space *s) {
                  s->nr_bparts, sizeof(struct bpart), threadpool_auto_chunk_size,
                  /*extra_data=*/NULL);
 
-  threadpool_map(&s->e->threadpool, space_check_part_sink_swallow_mapper, s->parts,
-                 s->nr_parts, sizeof(struct part), threadpool_auto_chunk_size,
+  threadpool_map(&s->e->threadpool, space_check_part_sink_swallow_mapper,
+                 s->parts, s->nr_parts, sizeof(struct part),
+                 threadpool_auto_chunk_size,
                  /*extra_data=*/NULL);
 
-  threadpool_map(&s->e->threadpool, space_check_sink_sink_swallow_mapper, s->sinks,
-                 s->nr_sinks, sizeof(struct sink), threadpool_auto_chunk_size,
+  threadpool_map(&s->e->threadpool, space_check_sink_sink_swallow_mapper,
+                 s->sinks, s->nr_sinks, sizeof(struct sink),
+                 threadpool_auto_chunk_size,
                  /*extra_data=*/NULL);
 #else
   error("Calling debugging code without debugging flag activated.");
@@ -2795,8 +2796,9 @@ void space_write_cell(const struct space *s, FILE *f, const struct cell *c) {
   /* Write line for current cell */
   fprintf(f, "%lld,%lld,%i,", c->cellID, parent, c->nodeID);
   fprintf(f, "%i,%i,%i,%i,%s,%s,%g,%g,%g,%g,%g,%g, ", c->hydro.count,
-          c->stars.count, c->grav.count, c->sinks.count, superID, hydro_superID, c->loc[0],
-          c->loc[1], c->loc[2], c->width[0], c->width[1], c->width[2]);
+          c->stars.count, c->grav.count, c->sinks.count, superID, hydro_superID,
+          c->loc[0], c->loc[1], c->loc[2], c->width[0], c->width[1],
+          c->width[2]);
   fprintf(f, "%g, %g, %i, %i\n", c->hydro.h_max, c->stars.h_max, c->depth,
           c->maxdepth);
 

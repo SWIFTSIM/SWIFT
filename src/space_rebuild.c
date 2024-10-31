@@ -496,8 +496,8 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
                            &nr_parts_exchanged, nr_gparts, &g_index[nr_gparts],
                            &nr_gparts_exchanged, nr_sparts, &s_index[nr_sparts],
                            &nr_sparts_exchanged, nr_bparts, &b_index[nr_bparts],
-                           &nr_bparts_exchanged, nr_sinks, &sink_index[nr_sinks],
-                           &nr_sinks_exchanged);
+                           &nr_bparts_exchanged, nr_sinks,
+                           &sink_index[nr_sinks], &nr_sinks_exchanged);
 
     /* Set the new particle counts. */
     s->nr_parts = nr_parts + nr_parts_exchanged;
@@ -622,8 +622,8 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   /* Assign each received sink to its cell. */
   for (size_t k = nr_sinks; k < s->nr_sinks; k++) {
     const struct sink *const sink = &s->sinks[k];
-    sink_index[k] =
-        cell_getid(cdim, sink->x[0] * ih[0], sink->x[1] * ih[1], sink->x[2] * ih[2]);
+    sink_index[k] = cell_getid(cdim, sink->x[0] * ih[0], sink->x[1] * ih[1],
+                               sink->x[2] * ih[2]);
     cell_sink_counts[sink_index[k]]++;
 #ifdef SWIFT_DEBUG_CHECKS
     if (cells_top[sink_index[k]].nodeID != local_nodeID)

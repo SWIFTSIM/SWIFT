@@ -66,16 +66,13 @@
  * Note that this function does not mess-up the linkage between parts and
  * gparts, i.e. the received particles have correct linkeage.
  */
-void engine_exchange_strays(struct engine *e, const size_t offset_parts,
-                            const int *restrict ind_part, size_t *Npart,
-                            const size_t offset_gparts,
-                            const int *restrict ind_gpart, size_t *Ngpart,
-                            const size_t offset_sparts,
-                            const int *restrict ind_spart, size_t *Nspart,
-                            const size_t offset_bparts,
-                            const int *restrict ind_bpart, size_t *Nbpart,
-			    const size_t offset_sinks,
-                            const int *restrict ind_sink, size_t *Nsink) {
+void engine_exchange_strays(
+    struct engine *e, const size_t offset_parts, const int *restrict ind_part,
+    size_t *Npart, const size_t offset_gparts, const int *restrict ind_gpart,
+    size_t *Ngpart, const size_t offset_sparts, const int *restrict ind_spart,
+    size_t *Nspart, const size_t offset_bparts, const int *restrict ind_bpart,
+    size_t *Nbpart, const size_t offset_sinks, const int *restrict ind_sink,
+    size_t *Nsink) {
 
 #ifdef WITH_MPI
   struct space *s = e->s;
@@ -339,14 +336,16 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
     count_sparts_in += e->proxies[k].nr_sparts_in;
     count_bparts_in += e->proxies[k].nr_bparts_in;
     count_sinks_in += e->proxies[k].nr_sinks_in;
-    message("Counting entering particles, k = %i, nr_proxies = %d", k, e->nr_proxies);
+    message("Counting entering particles, k = %i, nr_proxies = %d", k,
+            e->nr_proxies);
   }
   if (e->verbose) {
     message(
-        "sent out %zu/%zu/%zu/%zu/%zu parts/gparts/sparts/bparts/sinks, got %i/%i/%i/%i/%i "
+        "sent out %zu/%zu/%zu/%zu/%zu parts/gparts/sparts/bparts/sinks, got "
+        "%i/%i/%i/%i/%i "
         "back.",
-        *Npart, *Ngpart, *Nspart, *Nbpart, *Nsink, count_parts_in, count_gparts_in,
-        count_sparts_in, count_bparts_in, count_sinks_in);
+        *Npart, *Ngpart, *Nspart, *Nbpart, *Nsink, count_parts_in,
+        count_gparts_in, count_sparts_in, count_bparts_in, count_sinks_in);
   }
 
   /* Reallocate the particle arrays if necessary */
@@ -525,7 +524,8 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
 
   /* Wait for each part array to come in and collect the new
      parts from the proxies. */
-  int count_parts = 0, count_gparts = 0, count_sparts = 0, count_bparts = 0, count_sinks = 0;
+  int count_parts = 0, count_gparts = 0, count_sparts = 0, count_bparts = 0,
+      count_sinks = 0;
   for (int k = 0; k < nr_in; k++) {
     int err, pid;
     /* WARNING: Document this, maybe use a variable for clarity: if we add a
@@ -548,7 +548,7 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
         reqs_in[pid + 2] == MPI_REQUEST_NULL &&
         reqs_in[pid + 3] == MPI_REQUEST_NULL &&
         reqs_in[pid + 4] == MPI_REQUEST_NULL &&
-	reqs_in[pid + 5] == MPI_REQUEST_NULL) {
+        reqs_in[pid + 5] == MPI_REQUEST_NULL) {
       /* Copy the particle data to the part/xpart/gpart arrays. */
       struct proxy *prox = &e->proxies[pid / 6];
       memcpy(&s->parts[offset_parts + count_parts], prox->parts_in,
@@ -591,9 +591,9 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
           error("TODO");
         }
 
-	/* Log the sinks */
+        /* Log the sinks */
         if (prox->nr_sinks_in > 0) {
-	  /* Not implemented yet */
+          /* Not implemented yet */
           error("TODO");
         }
       }

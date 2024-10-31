@@ -792,7 +792,7 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
   /* Count the number of particles we need to import and re-allocate
      the buffer if needed. */
   size_t count_parts_in = 0, count_gparts_in = 0, count_sparts_in = 0,
-    count_bparts_in = 0, count_sinks_in = 0;
+         count_bparts_in = 0, count_sinks_in = 0;
   for (int k = 0; k < nr_proxies; k++) {
     for (int j = 0; j < e->proxies[k].nr_cells_in; j++) {
 
@@ -813,8 +813,9 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
       count_bparts_in += e->proxies[k].cells_in[j]->black_holes.count;
 
       /* For sinks, we just use the numbers in the top-level cells + some
-	 extra space */
-      count_sinks_in += e->proxies[k].cells_in[j]->sinks.count + space_extra_sinks;
+         extra space */
+      count_sinks_in +=
+          e->proxies[k].cells_in[j]->sinks.count + space_extra_sinks;
     }
   }
 
@@ -880,14 +881,12 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
       error("Failed to allocate foreign bpart data.");
   }
 
-    /* Allocate space for the foreign particles we will receive */
+  /* Allocate space for the foreign particles we will receive */
   size_t old_size_sinks_foreign = s->size_sinks_foreign;
   if (!fof && count_sinks_in > s->size_sinks_foreign) {
-    if (s->sinks_foreign != NULL)
-      swift_free("sinks_foreign", s->sinks_foreign);
+    if (s->sinks_foreign != NULL) swift_free("sinks_foreign", s->sinks_foreign);
     s->size_sinks_foreign = engine_foreign_alloc_margin * count_sinks_in;
-    if (swift_memalign("sinks_foreign", (void **)&s->sinks_foreign,
-                       sink_align,
+    if (swift_memalign("sinks_foreign", (void **)&s->sinks_foreign, sink_align,
                        sizeof(struct sink) * s->size_sinks_foreign) != 0)
       error("Failed to allocate foreign sink data.");
     bzero(s->sinks_foreign, s->size_sinks_foreign * sizeof(struct sink));
@@ -910,12 +909,12 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
         s->size_gparts_foreign * sizeof(struct gpart) / (1024 * 1024),
         s->size_sparts_foreign * sizeof(struct spart) / (1024 * 1024),
         s->size_bparts_foreign * sizeof(struct bpart) / (1024 * 1024),
-	s->size_sinks_foreign * sizeof(struct sink) / (1024 * 1024));
+        s->size_sinks_foreign * sizeof(struct sink) / (1024 * 1024));
 
     if ((s->size_parts_foreign - old_size_parts_foreign) > 0 ||
         (s->size_gparts_foreign - old_size_gparts_foreign) > 0 ||
         (s->size_sparts_foreign - old_size_sparts_foreign) > 0 ||
-        (s->size_bparts_foreign - old_size_bparts_foreign) > 0  ||
+        (s->size_bparts_foreign - old_size_bparts_foreign) > 0 ||
         (s->size_sinks_foreign - old_size_sinks_foreign) > 0) {
       message(
           "Re-allocations %zd/%zd/%zd/%zd/%zd part/gpart/spart/bpart/sink "
@@ -924,7 +923,7 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
           (s->size_gparts_foreign - old_size_gparts_foreign),
           (s->size_sparts_foreign - old_size_sparts_foreign),
           (s->size_bparts_foreign - old_size_bparts_foreign),
-	  (s->size_sinks_foreign - old_size_sinks_foreign),
+          (s->size_sinks_foreign - old_size_sinks_foreign),
           (s->size_parts_foreign - old_size_parts_foreign) *
               sizeof(struct part) / (1024 * 1024),
           (s->size_gparts_foreign - old_size_gparts_foreign) *
@@ -932,8 +931,8 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
           (s->size_sparts_foreign - old_size_sparts_foreign) *
               sizeof(struct spart) / (1024 * 1024),
           (s->size_bparts_foreign - old_size_bparts_foreign) *
-	  sizeof(struct bpart) / (1024 * 1024),
-	  (s->size_sinks_foreign - old_size_sinks_foreign) *
+              sizeof(struct bpart) / (1024 * 1024),
+          (s->size_sinks_foreign - old_size_sinks_foreign) *
               sizeof(struct sink) / (1024 * 1024));
     }
   }
@@ -980,8 +979,8 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
 
         /* For sinks, we just use the numbers in the top-level cells */
         cell_link_sinks(e->proxies[k].cells_in[j], sinks);
-        sinks = &sinks[e->proxies[k].cells_in[j]->sinks.count +
-                         space_extra_sinks];
+        sinks =
+            &sinks[e->proxies[k].cells_in[j]->sinks.count + space_extra_sinks];
       }
     }
   }
@@ -1255,7 +1254,8 @@ int engine_estimate_nr_tasks(const struct engine *e) {
     struct cell *c = &e->s->cells_top[k];
 
     /* Any cells with particles will have tasks (local & foreign). */
-    int nparts = c->hydro.count + c->grav.count + c->stars.count + c->black_holes.count + c->sinks.count;
+    int nparts = c->hydro.count + c->grav.count + c->stars.count +
+                 c->black_holes.count + c->sinks.count;
     if (nparts > 0) {
       ntop++;
       ncells++;

@@ -421,8 +421,8 @@ void ENGINE_REDISTRIBUTE_SAVELINK_MAPPER(sink, 0);
 
 #ifdef WITH_MPI /* relink_mapper_data */
 
-/* Support for relinking parts, gparts, sparts, bparts and sinks after moving between
- * nodes. */
+/* Support for relinking parts, gparts, sparts, bparts and sinks after moving
+ * between nodes. */
 struct relink_mapper_data {
   int nodeID;
   int nr_nodes;
@@ -570,7 +570,6 @@ void engine_redistribute(struct engine *e) {
   size_t nr_sparts = s->nr_sparts;
   size_t nr_bparts = s->nr_bparts;
   size_t nr_sinks = s->nr_sinks;
-  
 
   /* Start by moving inhibited particles to the end of the arrays */
   for (size_t k = 0; k < nr_parts; /* void */) {
@@ -918,7 +917,8 @@ void engine_redistribute(struct engine *e) {
     error("Failed to allocate sink_counts temporary buffer.");
 
   int *sink_dest;
-  if ((sink_dest = (int *)swift_malloc("sink_dest", sizeof(int) * nr_sinks)) == NULL)
+  if ((sink_dest = (int *)swift_malloc("sink_dest", sizeof(int) * nr_sinks)) ==
+      NULL)
     error("Failed to allocate sink_dest temporary buffer.");
 
   redist_data.counts = sink_counts;
@@ -931,8 +931,8 @@ void engine_redistribute(struct engine *e) {
 
   /* Sort the particles according to their cell index. */
   if (nr_sinks > 0)
-    space_sinks_sort(s->sinks, sink_dest, &sink_counts[nodeID * nr_nodes], nr_nodes,
-                      0);
+    space_sinks_sort(s->sinks, sink_dest, &sink_counts[nodeID * nr_nodes],
+                     nr_nodes, 0);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that the sink have been sorted correctly. */
@@ -947,8 +947,8 @@ void engine_redistribute(struct engine *e) {
 
     /* New cell index */
     const int new_cid =
-        cell_getid(s->cdim, sink->x[0] * s->iwidth[0], sink->x[1] * s->iwidth[1],
-                   sink->x[2] * s->iwidth[2]);
+        cell_getid(s->cdim, sink->x[0] * s->iwidth[0],
+                   sink->x[1] * s->iwidth[1], sink->x[2] * s->iwidth[2]);
 
     /* New cell of this sink */
     const struct cell *c = &s->cells_top[new_cid];
@@ -1062,20 +1062,21 @@ void engine_redistribute(struct engine *e) {
   if (e->verbose) {
     if (e->nodeID == 0) {
       size_t total = 0, g_total = 0, s_total = 0, b_total = 0, sink_total = 0;
-      size_t unmoved = 0, g_unmoved = 0, s_unmoved = 0, b_unmoved = 0, sink_unmoved = 0;
+      size_t unmoved = 0, g_unmoved = 0, s_unmoved = 0, b_unmoved = 0,
+             sink_unmoved = 0;
       for (int p = 0, r = 0; p < nr_nodes; p++) {
         for (int n = 0; n < nr_nodes; n++) {
           total += counts[r];
           g_total += g_counts[r];
           s_total += s_counts[r];
           b_total += b_counts[r];
-	  sink_total += sink_counts[r];
+          sink_total += sink_counts[r];
           if (p == n) {
             unmoved += counts[r];
             g_unmoved += g_counts[r];
             s_unmoved += s_counts[r];
             b_unmoved += b_counts[r];
-	    sink_unmoved += sink_counts[r];
+            sink_unmoved += sink_counts[r];
           }
           r++;
         }
@@ -1096,17 +1097,18 @@ void engine_redistribute(struct engine *e) {
                 b_total,
                 100.0 * (double)(b_total - b_unmoved) / (double)b_total);
       if (sink_total > 0)
-        message("%ld of %ld (%.2f%%) of sink-particles moved", sink_total - sink_unmoved,
-                sink_total,
-                100.0 * (double)(sink_total - sink_unmoved) / (double)sink_total);
+        message(
+            "%ld of %ld (%.2f%%) of sink-particles moved",
+            sink_total - sink_unmoved, sink_total,
+            100.0 * (double)(sink_total - sink_unmoved) / (double)sink_total);
     }
   }
 
-  /* Now each node knows how many parts, sparts, bparts, sinks and gparts will be
-   * transferred to every other node. Get the new numbers of particles for this
-   * node. */
+  /* Now each node knows how many parts, sparts, bparts, sinks and gparts will
+   * be transferred to every other node. Get the new numbers of particles for
+   * this node. */
   size_t nr_parts_new = 0, nr_gparts_new = 0, nr_sparts_new = 0,
-    nr_bparts_new = 0, nr_sinks_new = 0;
+         nr_bparts_new = 0, nr_sinks_new = 0;
   for (int k = 0; k < nr_nodes; k++)
     nr_parts_new += counts[k * nr_nodes + nodeID];
   for (int k = 0; k < nr_nodes; k++)
@@ -1137,7 +1139,7 @@ void engine_redistribute(struct engine *e) {
         spart_offset += s_counts[c_ind];
         gpart_offset += g_counts[c_ind];
         bpart_offset += b_counts[c_ind];
-	sink_offset += sink_counts[c_ind];
+        sink_offset += sink_counts[c_ind];
         continue;
       }
 
@@ -1224,10 +1226,9 @@ void engine_redistribute(struct engine *e) {
   s->size_bparts = engine_redistribute_alloc_margin * nr_bparts_new;
 
   /* Sink particles. */
-  new_parts =
-      engine_do_redistribute("sinks", sink_counts, (char *)s->sinks,
-                             nr_sinks_new, sizeof(struct sink), sink_align,
-                             sink_mpi_type, nr_nodes, nodeID, e->syncredist);
+  new_parts = engine_do_redistribute(
+      "sinks", sink_counts, (char *)s->sinks, nr_sinks_new, sizeof(struct sink),
+      sink_align, sink_mpi_type, nr_nodes, nodeID, e->syncredist);
   swift_free("sinks", s->sinks);
   s->sinks = (struct sink *)new_parts;
   s->nr_sinks = nr_sinks_new;
@@ -1244,7 +1245,6 @@ void engine_redistribute(struct engine *e) {
     size_t bpart_offset = 0;
     size_t sink_offset = 0;
 
-
     for (int i = 0; i < nr_nodes; i++) {
       const size_t c_ind = i * nr_nodes + engine_rank;
 
@@ -1254,7 +1254,7 @@ void engine_redistribute(struct engine *e) {
         spart_offset += s_counts[c_ind];
         gpart_offset += g_counts[c_ind];
         bpart_offset += b_counts[c_ind];
-	sink_offset += sink_counts[c_ind];
+        sink_offset += sink_counts[c_ind];
         continue;
       }
 
@@ -1354,8 +1354,9 @@ void engine_redistribute(struct engine *e) {
                                s->sinks[k].x[1] * s->iwidth[1],
                                s->sinks[k].x[2] * s->iwidth[2]);
     if (cells[cid].nodeID != nodeID)
-      error("Received sink-particle (%zu) that does not belong here (nodeID=%i).",
-            k, cells[cid].nodeID);
+      error(
+          "Received sink-particle (%zu) that does not belong here (nodeID=%i).",
+          k, cells[cid].nodeID);
   }
 
   /* Verify that the links are correct */
@@ -1371,10 +1372,11 @@ void engine_redistribute(struct engine *e) {
     for (int k = 0; k < nr_cells; k++)
       if (cells[k].nodeID == nodeID) my_cells += 1;
     message(
-        "node %i now has %zu parts, %zu sparts, %zu bparts, %zu sinks and %zu gparts in "
+        "node %i now has %zu parts, %zu sparts, %zu bparts, %zu sinks and %zu "
+        "gparts in "
         "%i cells.",
-        nodeID, nr_parts_new, nr_sparts_new, nr_bparts_new, nr_sinks_new, nr_gparts_new,
-        my_cells);
+        nodeID, nr_parts_new, nr_sparts_new, nr_bparts_new, nr_sinks_new,
+        nr_gparts_new, my_cells);
   }
 
   /* Flag that we do not have any extra particles any more */
