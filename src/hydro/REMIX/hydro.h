@@ -669,12 +669,16 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   const float soundspeed =
       gas_soundspeed_from_internal_energy(p->rho_evol, p->u);
 
-  float div_v = p->dv_norm_kernel[0][0] + p->dv_norm_kernel[1][1] +
-                p->dv_norm_kernel[2][2];
+  /* Compute balsara switch including scale factor*/
+  const float a_inv2 = cosmo->a2_inv;
+  const float fac_B = cosmo->a_factor_Balsara_eps;
+
+  float div_v = (p->dv_norm_kernel[0][0] + p->dv_norm_kernel[1][1] +
+                p->dv_norm_kernel[2][2]) * a_inv2 + cosmo->H * hydro_dimension;
   float curl_v[3];
-  curl_v[0] = p->dv_norm_kernel[1][2] - p->dv_norm_kernel[2][1];
-  curl_v[1] = p->dv_norm_kernel[2][0] - p->dv_norm_kernel[0][2];
-  curl_v[2] = p->dv_norm_kernel[0][1] - p->dv_norm_kernel[1][0];
+  curl_v[0] = (p->dv_norm_kernel[1][2] - p->dv_norm_kernel[2][1]) * a_inv2;
+  curl_v[1] = (p->dv_norm_kernel[2][0] - p->dv_norm_kernel[0][2]) * a_inv2;
+  curl_v[2] = (p->dv_norm_kernel[0][1] - p->dv_norm_kernel[1][0]) * a_inv2;
   float mod_curl_v = sqrtf(curl_v[0] * curl_v[0] + curl_v[1] * curl_v[1] +
                            curl_v[2] * curl_v[2]);
 
@@ -684,7 +688,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
     balsara = 0.f;
   } else {
     balsara = fabsf(div_v) /
-              (fabsf(div_v) + mod_curl_v + 0.0001f * soundspeed / p->h);
+              (fabsf(div_v) + mod_curl_v + 0.0001f * soundspeed * fac_B / p->h);
   }
 
   /* Compute the pressure */

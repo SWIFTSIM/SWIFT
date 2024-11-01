@@ -305,7 +305,7 @@ __attribute__((always_inline)) INLINE static void hydro_set_Qi_Qj(
   float mu_j =
       fac_mu * min(0.f, ((vtilde_i[0] - vtilde_j[0]) * dx[0] +
                 (vtilde_i[1] - vtilde_j[1]) * dx[1] +
-                (vtilde_i[2] - vtilde_j[2]) * dx[2]) *
+                (vtilde_i[2] - vtilde_j[2]) * dx[2] + a2_Hubble * r2) *
                    hj_inv / (r2 * hj_inv * hj_inv + epsilon * epsilon));
 
   const float ci = pi->force.soundspeed;
