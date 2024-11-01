@@ -4906,7 +4906,7 @@ void engine_maketasks(struct engine *e) {
       continue;
 //    if(t->ci->hydro.super == t->ci && t->ci->nodeID == e->nodeID)
 //          scheduler_addunlock(sched, t->ci->hydro.d_unpack, t);
-    for (struct link *l = t->ci->hydro.density_pack; l != NULL; l = l->next) {
+    for (struct link *l = t->ci->hydro.density_unpack; l != NULL; l = l->next) {
       if(l->t->type == task_type_pair)scheduler_addunlock(sched, l->t, t);
     }
   }
@@ -4993,7 +4993,7 @@ void engine_maketasks(struct engine *e) {
       continue;
 //    if(t->ci->nodeID == e->nodeID)
 //      scheduler_addunlock(sched, t->ci->hydro.g_unpack, t);
-    for (struct link *l = t->ci->hydro.gradient_pack; l != NULL; l = l->next) {
+    for (struct link *l = t->ci->hydro.gradient_unpack; l != NULL; l = l->next) {
     	if(l->t->type == task_type_pair)scheduler_addunlock(sched, l->t, t);
     }
   }
@@ -5065,7 +5065,7 @@ void engine_maketasks(struct engine *e) {
       continue;
 //    if(t->ci->nodeID == e->nodeID)
 //      scheduler_addunlock(sched, t->ci->hydro.f_unpack, t);
-    for (struct link *l = t->ci->hydro.force_pack; l != NULL; l = l->next) {
+    for (struct link *l = t->ci->hydro.force_unpack; l != NULL; l = l->next) {
     	if(l->t->type == task_type_pair)scheduler_addunlock(sched, l->t, t);
     }
   }

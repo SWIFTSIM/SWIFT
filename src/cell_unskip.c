@@ -1657,7 +1657,6 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
     if ((ci_active && ci_nodeID == nodeID) ||
         (cj_active && cj_nodeID == nodeID)) {
       scheduler_activate(s, t);
-
       /* Activate hydro drift */
       if (t->type == task_type_self) {
         if (ci_nodeID == nodeID) cell_activate_drift_part(ci, s);
@@ -1903,10 +1902,28 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
 #endif
     }
   }
-
   /* Unskip all the other task types. */
   int c_active = cell_is_active_hydro(c, e);
   if (c->nodeID == nodeID && c_active) {
+    for (struct link *l = c->hydro.density_pack; l != NULL; l = l->next) { /* A. Nasar */
+	  scheduler_activate(s, l->t);
+//	  message("activating pair pack\n");
+	if (l->t->ci != NULL){
+	  l->t->ci->pack_done = 0;
+	  l->t->ci->gpu_done = 0;
+	  l->t->ci->unpack_done = 0;
+	}
+	if (l->t->cj != NULL){
+	  l->t->cj->pack_done = 0;
+	  l->t->cj->gpu_done = 0;
+	  l->t->cj->unpack_done = 0;
+	}
+    }
+    for (struct link *l = c->hydro.density_unpack; l != NULL; l = l->next) {
+	  scheduler_activate(s, l->t);
+//	  message("activating pair UN-pack\n");
+	  l->t->gpu_done = 0;
+    }
     for (struct link *l = c->hydro.gradient; l != NULL; l = l->next) {
       scheduler_activate(s, l->t);
     }
@@ -1915,25 +1932,10 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
     }
     for (struct link *l = c->hydro.limiter; l != NULL; l = l->next)
       scheduler_activate(s, l->t);
-    for (struct link *l = c->hydro.density_pack; l != NULL; l = l->next) { /* A. Nasar */
-      scheduler_activate(s, l->t);
-      if (l->t->ci != NULL){
-        l->t->ci->pack_done = 0;
-        l->t->ci->gpu_done = 0;
-        l->t->ci->unpack_done = 0;
-      }
-      if (l->t->cj != NULL){
-        l->t->cj->pack_done = 0;
-        l->t->cj->gpu_done = 0;
-        l->t->cj->unpack_done = 0;
-      }
-    }
-    for (struct link *l = c->hydro.density_unpack; l != NULL; l = l->next) {
-      scheduler_activate(s, l->t);
-      l->t->gpu_done = 0;
-    }
+    // A. Nasar activate force and gradient packing tasks
     for (struct link *l = c->hydro.force_pack; l != NULL; l = l->next) {
       scheduler_activate(s, l->t);
+//      message("activating pair pack force\n");
       if (l->t->ci != NULL){
         l->t->ci->pack_done_f = 0;
         l->t->ci->gpu_done_f = 0;
@@ -1947,12 +1949,14 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
     }
     for (struct link *l = c->hydro.force_unpack; l != NULL; l = l->next) {
       scheduler_activate(s, l->t);
+//      message("activating pair UN-pack force\n");
       l->t->gpu_done = 0;
     }
 
 #ifdef EXTRA_HYDRO_LOOP
     for (struct link *l = c->hydro.gradient_pack; l != NULL; l = l->next) {
       scheduler_activate(s, l->t);
+//      message("activating pair pack gradient\n");
       if (l->t->ci != NULL){
         l->t->ci->pack_done_g = 0;
         l->t->ci->gpu_done_g = 0;
@@ -1966,6 +1970,7 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
     }
     for (struct link *l = c->hydro.gradient_unpack; l != NULL; l = l->next) {
       scheduler_activate(s, l->t);
+//      message("activating pair UN-pack gradient\n");
       l->t->gpu_done = 0;
     }
 #endif
