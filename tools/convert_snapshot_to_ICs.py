@@ -10,7 +10,6 @@ You will need:
 """
 
 from swiftsimio import Writer, load
-import numpy as np
 import unyt
 import os
 

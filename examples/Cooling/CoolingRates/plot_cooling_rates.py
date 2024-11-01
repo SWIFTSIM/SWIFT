@@ -3,7 +3,6 @@
 # by testCooling.
 
 import matplotlib.pyplot as plt
-import numpy as np
 
 # Number of metals tracked by EAGLE cooling
 elements = 11

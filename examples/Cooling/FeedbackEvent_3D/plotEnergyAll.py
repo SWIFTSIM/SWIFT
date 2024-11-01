@@ -7,12 +7,11 @@ import numpy as np
 
 from swiftsimio import load
 
-from unyt import Gyr, erg, mh, kb, Myr
+from unyt import erg, mh, kb, Myr
 from scipy.interpolate import interp1d
 
 from makeIC import (
     gamma,
-    initial_density,
     initial_temperature,
     inject_temperature,
     mu,
