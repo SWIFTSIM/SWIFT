@@ -64,7 +64,11 @@ struct sink {
   float accretion_rate;
 
   /*! Mass accreted in this timestep (used for swallowing) */
-  float mass_accreted_this_timestep;
+  float mass_to_accrete;
+
+  /*! For testing */
+  float total_accreted_gas_mass;
+  float total_mass_to_accrete;
 
   /*! Density of the gas surrounding the black hole. */
   float rho_gas;

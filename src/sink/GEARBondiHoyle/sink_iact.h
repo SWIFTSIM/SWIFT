@@ -129,7 +129,8 @@ runner_iact_nonsym_sinks_gas_density(
     struct sink *si, const struct part *pj,
     const int with_cosmology, const struct cosmology *cosmo,
     const struct gravity_props *grav_props,
-    const struct sink_props *sink_props) {
+    const struct sink_props *sink_props,
+    const integertime_t ti_current) {
 
   const float r = sqrtf(r2);
 
@@ -310,122 +311,138 @@ runner_iact_nonsym_sinks_gas_swallow(const float r2, const float dx[3],
                                      const int with_cosmology,
                                      const struct cosmology *cosmo,
                                      const struct gravity_props *grav_props,
-                                     const struct sink_props *sink_properties) {
+                                     const struct sink_props *sink_properties,
+                                     const integertime_t ti_current) {
 
+  // float wi;
+
+  /* Get r. */
   const float r = sqrtf(r2);
-  const float f_acc_r_acc = sink_properties->f_acc * ri;
 
-  /* If the gas falls within f_acc*r_acc, it is accreted without further check
-   */
-  if (r < f_acc_r_acc) {
-    /* Check if a gas particle has not been already marked to be swallowed by
-       another sink particle. */
-    if (pj->sink_data.swallow_id < si->id) {
-      pj->sink_data.swallow_id = si->id;
+  // /* Compute the kernel function */
+  // const float hi_inv = 1.0f / hi;
+  // const float hi_inv_dim = pow_dimension(hi_inv);
+  // const float ui = r * hi_inv;
+  // kernel_eval(ui, &wi);
+
+  /* Check if within cutoff radius. If not, we're done. */
+  if (r > ri) return;
+
+  /* Check if the sink needs to be fed. If not, we're done here */
+  if (si->mass_to_accrete <= 0) return;
+
+  if (sink_properties->use_nibbling) {
+
+    /* If we do nibbling, things are quite straightforward. We transfer
+     * the mass and all associated quantities right here. */
+
+    const float si_mass_orig = si->mass;
+    const float pj_mass_orig = hydro_get_mass(pj);
+
+    /* Don't nibble from particles that are too small already */
+    if (pj_mass_orig < sink_properties->min_gas_mass_for_nibbling) return;
+
+    /* Next line is equivalent to w_ij * m_j / Sum_j (w_ij * m_j) */
+    // const float particle_weight = hi_inv_dim * wi * pj_mass_orig / bi->rho_gas;
+    // float nibble_mass = bh_mass_deficit * particle_weight;
+
+    /* Sinks don't have a kernel, nibble equally from all particles in cutoff radius*/
+    float nibble_mass = si->mass_to_accrete / si->num_ngbs;
+
+    /* Need to check whether nibbling would push gas mass below minimum
+     * allowed mass */
+    float new_gas_mass = pj_mass_orig - nibble_mass;
+    if (new_gas_mass < sink_properties->min_gas_mass_for_nibbling) {
+      new_gas_mass = sink_properties->min_gas_mass_for_nibbling;
+      nibble_mass = pj_mass_orig - sink_properties->min_gas_mass_for_nibbling;
     }
 
-    /* f_acc*r_acc <= r <= r_acc, we perform other checks */
-  } else if ((r >= f_acc_r_acc) && (r < ri)) {
+    /* Transfer (dynamical) mass from the gas particle to the sink */
+    si->mass += nibble_mass;
+    hydro_set_mass(pj, new_gas_mass);
 
-    /* Relative velocity between th sinks */
-    const float dv[3] = {pj->v[0] - si->v[0], pj->v[1] - si->v[1],
-                         pj->v[2] - si->v[2]};
+    /* Track total mass accreted */
+    si->total_accreted_gas_mass += nibble_mass;
 
-    const float a = cosmo->a;
-    const float H = cosmo->H;
-    const float a2H = a * a * H;
+    /* Add the angular momentum of the accreted gas to the sink total.
+     * Note no change to gas here. The cosmological conversion factors for
+     * velocity (a^-1) and distance (a) cancel out, so the angular momentum
+     * is already in physical units. */
+    const float dv[3] = {si->v[0] - pj->v[0], si->v[1] - pj->v[1],
+                         si->v[2] - pj->v[2]};
+    si->swallowed_angular_momentum[0] +=
+        nibble_mass * (dx[1] * dv[2] - dx[2] * dv[1]);
+    si->swallowed_angular_momentum[1] +=
+        nibble_mass * (dx[2] * dv[0] - dx[0] * dv[2]);
+    si->swallowed_angular_momentum[2] +=
+        nibble_mass * (dx[0] * dv[1] - dx[1] * dv[0]);
 
-    /* Calculate the velocity with the Hubble flow */
-    const float v_plus_H_flow[3] = {a2H * dx[0] + dv[0], a2H * dx[1] + dv[1],
-                                    a2H * dx[2] + dv[2]};
+    /* Update the BH momentum and velocity. Again, no change to gas here. */
+    const float si_mom[3] = {si_mass_orig * si->v[0] + nibble_mass * pj->v[0],
+                             si_mass_orig * si->v[1] + nibble_mass * pj->v[1],
+                             si_mass_orig * si->v[2] + nibble_mass * pj->v[2]};
 
-    /* Compute the physical relative velocity between the particles */
-    const float dv_physical[3] = {v_plus_H_flow[0] * cosmo->a_inv,
-                                  v_plus_H_flow[1] * cosmo->a_inv,
-                                  v_plus_H_flow[2] * cosmo->a_inv};
+    si->v[0] = si_mom[0] / si->mass;
+    si->v[1] = si_mom[1] / si->mass;
+    si->v[2] = si_mom[2] / si->mass;
 
-    const float dv_physical_squared = dv_physical[0] * dv_physical[0] +
-                                      dv_physical[1] * dv_physical[1] +
-                                      dv_physical[2] * dv_physical[2];
+    const float nibbled_fraction = nibble_mass / pj_mass_orig;
 
-    /* Compute the physical distance between the particles */
-    const float dx_physical[3] = {dx[0] * cosmo->a, dx[1] * cosmo->a,
-                                  dx[2] * cosmo->a};
-    const float r_physical = r * cosmo->a;
+    /* Update the BH and also gas metal & dust masses */
+    struct chemistry_sink_data *si_chem = &si->chemistry_data;
+    struct chemistry_part_data *pj_chem = &pj->chemistry_data;
 
-    /* Momentum check */
-    /* Relative momentum of the gas */
-    const float specific_angular_momentum_gas[3] = {
-        dx_physical[1] * dv_physical[2] - dx_physical[2] * dv_physical[1],
-        dx_physical[2] * dv_physical[0] - dx_physical[0] * dv_physical[2],
-        dx_physical[0] * dv_physical[1] - dx_physical[1] * dv_physical[0]};
-    const float L2_gas =
-        specific_angular_momentum_gas[0] * specific_angular_momentum_gas[0] +
-        specific_angular_momentum_gas[1] * specific_angular_momentum_gas[1] +
-        specific_angular_momentum_gas[2] * specific_angular_momentum_gas[2];
+    /* This should ultimately be in a function called chemistry_transfer_part_to_sink in the chemistry module */
+    for (int k = 0; k < GEAR_CHEMISTRY_ELEMENT_COUNT; k++) {
+      double mk = si_chem->metal_mass_fraction[k] * si_mass_orig +
+                  pj_chem->smoothed_metal_mass_fraction[k] * pj_mass_orig;
 
-    /* Keplerian angular speed squared */
-    const float omega_acc_2 = grav_props->G_Newton * si->mass /
-                              (r_physical * r_physical * r_physical);
-
-    /*Keplerian angular momentum squared */
-    const float L2_acc =
-        (si->r_cut * si->r_cut * si->r_cut * si->r_cut) * omega_acc_2;
-
-    /* To be accreted, the gas momentum shoulb lower than the keplerian orbit
-     * momentum. */
-    if (L2_gas > L2_acc) {
-      return;
+      si_chem->metal_mass_fraction[k] = mk / si->mass;
     }
 
-    /* Energy check */
-    /* Kinetic energy of the gas */
-    float E_kin_relative_gas = 0.5f * dv_physical_squared;
+    /* We will need this for the GCs */
+    // struct dust_bpart_data *si_dust = &si->dust_data;
+    // struct dust_part_data *pj_dust = &pj->dust_data;
+    // dust_transfer_part_to_bpart(si_dust, pj_dust, nibble_mass,
+    //                             nibbled_fraction);
 
-    /* Compute the Newtonian or truncated potential the sink exherts onto the
-       gas particle */
-    const float eps = gravity_get_softening(si->gpart, grav_props);
-    const float eps2 = eps * eps;
-    const float eps_inv = 1.f / eps;
-    const float eps_inv3 = eps_inv * eps_inv * eps_inv;
-    const float sink_mass = si->mass;
-    float dummy, pot_ij;
-    runner_iact_grav_pp_full(r2, eps2, eps_inv, eps_inv3, sink_mass, &dummy,
-                             &pot_ij);
+  } else { /* ends nibbling section, below comes swallowing */
 
-    /* Compute the potential energy that the sink exerts in the gas (do not
-       forget to convert to physical quantity)*/
-    /* Compute the potential energy :
-                      E_pot_phys = G*pot_grav*a^(-1) + c(z). */
-    /* The normalization is c(z) = 0 for all redshift z. */
-    float E_pot_gas = grav_props->G_Newton * pot_ij * cosmo->a_inv;
+    /* Probability to swallow this particle
+     * Recall that in SWIFT the SPH kernel is recovered by computing
+     * kernel_eval() and muliplying by (1/h^d) */
+    
+    /* Sinks don't currently have a kernel - all particles in cutoff radius have equal probability */
+    const float prob = si->mass_to_accrete / si->ngb_mass;
+    
+    /* Draw a random number (Note mixing both IDs) */
+    const float rand = random_unit_interval(si->id + pj->id, ti_current,
+                                            random_number_BH_swallow);
 
-    /* Mechanical energy of the pair sink-gas */
-    float E_mec_sink_part = E_kin_relative_gas + E_pot_gas;
+    /* Right now sinks don't have a kernel, so set all probabilities equal to 1 and eat until full. */
+    // const float prob = 1.f;
+    // const float rand = 0.f;
+    
+    /* Are we lucky? */
+    if (rand < prob) {
 
-    /* To be accreted, the gas must be gravitationally bound to the sink. */
-    if (E_mec_sink_part >= 0) return;
+      /* This particle is swallowed by the BH with the largest ID of all the
+       * candidates wanting to swallow it */
+      if (pj->sink_data.swallow_id < si->id) {
 
-    /* Most bound pair check */
-    /* The pair gas-sink must be the most bound among all sinks */
-    if (E_mec_sink_part >= pj->sink_data.E_mec_bound) {
-      return;
+        message("Sink %lld wants to swallow gas particle %lld", si->id, pj->id);
+
+        pj->sink_data.swallow_id = si->id;
+
+      } else {
+
+        message(
+            "Sink %lld wants to swallow gas particle %lld BUT CANNOT (old "
+            "swallow id=%lld)",
+            si->id, pj->id, pj->sink_data.swallow_id);
+      }
     }
-
-    /* Since this pair gas-sink is the most bounf, keep track of the
-       E_mec_bound and set the swallow_id accordingly */
-    pj->sink_data.E_mec_bound = E_mec_sink_part;
-    pj->sink_data.swallow_id = si->id;
-  }
-
-#ifdef DEBUG_INTERACTIONS_SINKS
-  /* Update ngb counters */
-  if (si->num_ngb_formation < MAX_NUM_OF_NEIGHBOURS_SINKS)
-    si->ids_ngbs_formation[si->num_ngb_formation] = pj->id;
-
-  /* Update ngb counters */
-  ++si->num_ngb_formation;
-#endif
+  } /* ends section for swallowing */
 }
 
 #endif

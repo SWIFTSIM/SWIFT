@@ -35,6 +35,12 @@ struct sink_props {
      f_acc <= 1 */
   float f_acc;
 
+  /* Use nibbling rather than swallowing for gas? */
+  float use_nibbling;
+
+  /* Gas mass below which sinks will not nibble. */
+  float min_gas_mass_for_nibbling;
+
   /*! Maximal gas temperature for forming a star. */
   float maximal_temperature;
 
@@ -194,6 +200,21 @@ INLINE static void sink_props_init(struct sink_props *sp,
         "<= 1. Current value f_acc = %f.",
         sp->f_acc);
   }
+
+  sp->use_nibbling = parser_get_param_int(params, "GEARSink:use_nibbling");
+  if (sp->use_nibbling) {
+    sp->min_gas_mass_for_nibbling = parser_get_param_float(
+        params, "GEARSink:min_gas_mass_for_nibbling_Msun");
+    sp->min_gas_mass_for_nibbling *= phys_const->const_solar_mass;
+  }
+
+  /* We will need this when it comes to implementing GCs */
+  // if ((sp->min_gas_mass_for_nibbling < 1e-5 * sp->subgrid_seed_mass) ||
+  //     (sp->min_gas_mass_for_nibbling > 1e5 * sp->subgrid_seed_mass)) {
+  //   error(
+  //       "The BH seeding mass and minimal gas mass for nibbling differ by more "
+  //       "than 10^5. That is probably indicating a typo in the parameter file.");
+  // }
 
   sp->maximal_temperature =
       parser_get_param_float(params, "GEARSink:maximal_temperature");

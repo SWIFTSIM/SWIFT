@@ -131,6 +131,11 @@ __attribute__((always_inline)) INLINE static void sink_first_init_sink(
   sp->swallowed_angular_momentum[2] = 0.f;
   sp->n_stars = 0;
 
+  /* For testing. Only relevant for nibbling mode. Use number_of_gas_swallows otherwise */
+  /* Summed on sink-sink mergers */
+  sp->total_accreted_gas_mass = 0.f;
+  sp->total_mass_to_accrete = 0.f;
+
   sp->has_IMF_changed_from_popIII_to_popII = 0;
 
   sink_mark_sink_as_not_swallowed(&sp->merger_data);
@@ -198,7 +203,7 @@ __attribute__((always_inline)) INLINE static void sink_init_sink(
   sp->ngb_mass = 0.f;
   sp->num_ngbs = 0;
   sp->accretion_rate = 0.f;
-  sp->mass_accreted_this_timestep = 0;
+  sp->mass_to_accrete = 0.f;
 
 #ifdef DEBUG_INTERACTIONS_SINKS
   for (int i = 0; i < MAX_NUM_OF_NEIGHBOURS_SINKS; ++i)
@@ -329,20 +334,10 @@ __attribute__((always_inline)) INLINE static void sink_prepare_swallow(
 
 
   /* Integrate forward in time */
-  si->mass_accreted_this_timestep += accr_rate * dt;
+  si->mass_to_accrete += accr_rate * dt;
 
-  /* Let's try enabling nibbling later */
-  // if (props->use_nibbling) {
-  //   /* There is some loss in this due to radiative losses, so we must decrease
-  //    * the particle mass in proprtion to its current accretion rate. We do not
-  //    * account for this in the swallowing approach, however. */
-  //   bp->mass -= epsilon_r * accr_rate * dt;
-  //   if (bp->mass < 0)
-  //     error(
-  //         "Black hole %lld has reached a negative mass (%f). This is "
-  //         "not a great situation, so I am stopping.",
-  //         bp->id, bp->mass);
-  // }
+  /* Track total mass that should have been accreted according to Bondi-Hoyle */
+  si->total_mass_to_accrete += si->mass_to_accrete;
 
 }
 
@@ -736,6 +731,9 @@ __attribute__((always_inline)) INLINE static void sink_swallow_sink(
 
   /* Update the total mass before star spawning */
   spi->mass_tot_before_star_spawning = spi->mass;
+
+  /* Add the accreted gas mass */
+  spi->total_accreted_gas_mass += spj->total_accreted_gas_mass;
 
   message("sink %lld swallow sink particle %lld. New mass: %e.", spi->id,
           spj->id, spi->mass);

@@ -122,7 +122,7 @@ INLINE static void sink_write_particles(const struct sink* sinks,
                                         int with_cosmology) {
 
   /* Say how much we want to write */
-  *num_fields = 9;
+  *num_fields = 11;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_sink(
@@ -168,6 +168,12 @@ INLINE static void sink_write_particles(const struct sink* sinks,
       sinks,
       /*can convert to comoving=*/0, convert_sink_swallowed_angular_momentum,
       "Physical swallowed angular momentum of the particles");
+
+  list[9] = io_make_output_field("TotalAccrMass", FLOAT, 1, UNIT_CONV_MASS, 0.f, sinks,
+                                 total_accreted_gas_mass, "Total gas mass accreted by this sink. Summed on sink-sink mergers");
+
+  list[10] = io_make_output_field("TotalMassToAccrete", FLOAT, 1, UNIT_CONV_MASS, 0.f, sinks,
+                                 total_mass_to_accrete, "Total gas mass this sink should have accreted. Summed on sink-sink mergers");
 
 #ifdef DEBUG_INTERACTIONS_SINKS
 
