@@ -92,7 +92,7 @@ void DOSELF1_SINKS(struct runner *r, struct cell *c, int timer) {
 
         if (r2 < ri2) {
           IACT_SINKS_GAS(r2, dx, ri, hj, si, pj, with_cosmology, cosmo,
-                         e->gravity_properties, e->sink_properties);
+                         e->gravity_properties, e->sink_properties,e->ti_current);
         }
       } /* loop over the parts in ci. */
     } /* loop over the sinks in ci. */
@@ -241,7 +241,7 @@ void DO_NONSYM_PAIR1_SINKS_NAIVE(struct runner *r, struct cell *restrict ci,
 
         if (r2 < ri2) {
           IACT_SINKS_GAS(r2, dx, ri, hj, si, pj, with_cosmology, cosmo,
-                         e->gravity_properties, e->sink_properties);
+                         e->gravity_properties, e->sink_properties,e->ti_current);
         }
       } /* loop over the parts in cj. */
     } /* loop over the sinks in ci. */

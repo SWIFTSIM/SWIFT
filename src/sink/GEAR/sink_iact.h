@@ -138,7 +138,8 @@ runner_iact_nonsym_sinks_gas_density(
     struct sink *si, const struct part *pj,
     const int with_cosmology, const struct cosmology *cosmo,
     const struct gravity_props *grav_props,
-    const struct sink_props *sink_props) {}
+    const struct sink_props *sink_props,
+    const integertime_t ti_current) {}
 
 /**
  * @brief Compute sink-sink swallow interaction (non-symmetric).
@@ -292,7 +293,8 @@ runner_iact_nonsym_sinks_gas_swallow(const float r2, const float dx[3],
                                      const int with_cosmology,
                                      const struct cosmology *cosmo,
                                      const struct gravity_props *grav_props,
-                                     const struct sink_props *sink_properties) {
+                                     const struct sink_props *sink_properties,
+                                     const integertime_t ti_current) {
 
   const float r = sqrtf(r2);
   const float f_acc_r_acc = sink_properties->f_acc * ri;
