@@ -1337,14 +1337,14 @@ void runner_doself1_launch_f4(struct runner *r, struct scheduler *s, struct pack
 			  *unpack_time += (tp1.tv_sec - tp0.tv_sec) +
 			    (tp1.tv_nsec - tp0.tv_nsec) / 1000000000.0;
 
-			  scheduler_done(s, tii);
+//			  scheduler_done(s, tii);
 			  /* Release the lock */
-//			  cell_unlocktree(cii);
+			  cell_unlocktree(cii);
 
 			  /*schedule my dependencies (Only unpacks really)*/
-//			  enqueue_dependencies(s, tii);
+			  enqueue_dependencies(s, tii);
 			  /*Signal sleeping runners*/
-//			  signal_sleeping_runners(s, tii);
+			  signal_sleeping_runners(s, tii);
 
 			  tii->gpu_done = 1;
 

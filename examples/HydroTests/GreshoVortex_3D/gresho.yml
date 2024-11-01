@@ -9,7 +9,6 @@ InternalUnitSystem:
 Scheduler:
   max_top_level_cells: 16
   cell_split_size: 1000
-  dependency_graph_cell: 10
   dependency_graph_frequency: 1
 
 # Parameters governing the time integration
