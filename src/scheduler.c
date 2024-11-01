@@ -2580,14 +2580,17 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           owner = &t->ci->grav.super->owner;
         } else if (t->subtype == task_subtype_gpu_pack) { // A. Nasar
           qid = t->ci->hydro.super->owner;
+          owner = &t->ci->hydro.super->owner;
             //          fprintf(stderr,"nqueues %i waiting %i active_count %i\n",
             //          s->nr_queues, s->waiting, s->active_count);
             //          if(qid==-1)fprintf(stderr,"queue id is negative\n");
             //          else fprintf(stderr,"queue id is %i\n", qid);
         } else if (t->subtype == task_subtype_gpu_pack_f) {
           qid = t->ci->hydro.super->owner;
+          owner = &t->ci->hydro.super->owner;
         } else if (t->subtype == task_subtype_gpu_pack_g) {
           qid = t->ci->hydro.super->owner;
+          owner = &t->ci->hydro.super->owner;
         } else if (t->subtype == task_subtype_gpu_unpack) {
           ////          qid = t->ci->owner;
           qid = -1;
@@ -2622,17 +2625,21 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
       case task_type_pair:
       case task_type_sub_pair:
         if(t->subtype == task_subtype_gpu_unpack ||
-            t->subtype == task_subtype_gpu_unpack_f ||
-  		   t->subtype == task_subtype_gpu_unpack_g) qid = -1;
-        break;
-        qid = t->ci->super->owner;
-        owner = &t->ci->super->owner;
-        if ((qid < 0) ||
-            ((t->cj->super->owner > -1) &&
-             (s->queues[qid].count > s->queues[t->cj->super->owner].count))) {
-          qid = t->cj->super->owner;
-          owner = &t->cj->super->owner;
+           t->subtype == task_subtype_gpu_unpack_f ||
+  		   t->subtype == task_subtype_gpu_unpack_g){
+        	qid = -1;
         }
+        else{
+          qid = t->ci->super->owner;
+          owner = &t->ci->super->owner;
+          if ((qid < 0) ||
+              ((t->cj->super->owner > -1) &&
+               (s->queues[qid].count > s->queues[t->cj->super->owner].count))) {
+            qid = t->cj->super->owner;
+            owner = &t->cj->super->owner;
+          }
+        }
+        break;
       case task_type_recv:
 #ifdef WITH_MPI
       {
