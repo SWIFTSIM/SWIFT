@@ -41,12 +41,104 @@
 /**
  * @brief Computes the time-step of a given sink particle.
  *
- * @param sp Pointer to the sink-particle data.
+ * @param sink Pointer to the sink-particle data.
+ * @param sink_properties Properties of the sink model.
+ * @param with_cosmology Are we running with cosmological time integration.
+ * @param cosmo The current cosmological model (used if running with
+ * cosmology).
+ * @param time The current time (used if running without cosmology).
  */
 __attribute__((always_inline)) INLINE static float sink_compute_timestep(
-    const struct sink* const sp) {
+    const struct sink* const sink, const struct sink_props* sink_properties,
+    const int with_cosmology, const struct cosmology* cosmo,
+    const double time) {
 
-  return FLT_MAX;
+  /* Background sink particles have no time-step limits */
+  if (sink->birth_time == -1.) {
+    return FLT_MAX;
+  }
+
+  /* Sink age (in internal units) */
+  double sink_age;
+  if (with_cosmology) {
+
+    /* Deal with rounding issues */
+    if (sink->birth_scale_factor >= cosmo->a) {
+      sink_age = 0.;
+    } else {
+      sink_age = cosmology_get_delta_time_from_scale_factors(
+          cosmo, sink->birth_scale_factor, cosmo->a);
+    }
+  } else {
+    sink_age = time - sink->birth_time;
+  }
+
+  /* What age category are we in? */
+  if (sink_age > sink_properties->age_threshold_unlimited) {
+    return FLT_MAX;
+  } else if (sink_age > sink_properties->age_threshold) {
+    return sink_properties->max_time_step_old;
+  } else {
+    return sink_properties->max_time_step_young;
+  }
+}
+
+/**
+ * @brief Update the target mass of the sink particle.
+ *
+ * @param sink the sink particle.
+ * @param sink_props the sink properties to use.
+ * @param phys_const the physical constants in internal units.
+ * @param e The #engine
+ * @param star_counter The star loop counter.
+ */
+INLINE static void sink_update_target_mass(struct sink* sink,
+                                           const struct sink_props* sink_props,
+                                           const struct engine* e,
+                                           int star_counter) {
+
+  float random_number = random_unit_interval_part_ID_and_index(
+      sink->id, star_counter, e->ti_current, random_number_sink_formation);
+
+  const struct feedback_props* feedback_props = e->feedback_props;
+
+  /* Pick the correct table. (if only one table, threshold is < 0) */
+  const float metal =
+      chemistry_get_sink_total_iron_mass_fraction_for_feedback(sink);
+  const float threshold = feedback_props->metallicity_max_first_stars;
+
+  /* If metal < threshold, then the sink generates first star particles. */
+  const int is_first_star = metal < threshold;
+  const struct stellar_model* model;
+  double minimal_discrete_mass_Msun;
+
+  /* Take the correct values if your are a first star or not. */
+  if (!is_first_star) /* (metal >= threshold)*/ {
+    model = &feedback_props->stellar_model;
+    minimal_discrete_mass_Msun = sink_props->minimal_discrete_mass_Msun;
+  } else {
+    model = &feedback_props->stellar_model_first_stars;
+    minimal_discrete_mass_Msun =
+        sink_props->minimal_discrete_mass_first_stars_Msun;
+  }
+
+  const struct initial_mass_function* imf = &model->imf;
+
+  if (random_number < imf->sink_Pc) {
+    /* We are dealing with the continous part of the IMF. */
+    sink->target_mass_Msun = imf->stellar_particle_mass_Msun;
+    sink->target_type = star_population_continuous_IMF;
+  } else {
+    /* We are dealing with the discrete part of the IMF. */
+    random_number = random_unit_interval_part_ID_and_index(
+        sink->id, star_counter + 1, e->ti_current,
+        random_number_sink_formation);
+    double m = initial_mass_function_sample_power_law(
+        minimal_discrete_mass_Msun, imf->mass_max, imf->exp[imf->n_parts - 1],
+        random_number);
+    sink->target_mass_Msun = m;
+    sink->target_type = single_star;
+  }
 }
 
 /**
