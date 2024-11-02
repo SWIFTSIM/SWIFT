@@ -84,6 +84,9 @@ struct sink_props {
   /*! Age threshold for the transition to unlimited time-step size (internal
    * units) */
   double age_threshold_unlimited;
+
+  /*! Time integration CFL condition factor */
+  float CFL_condition;
 };
 
 /**
@@ -273,6 +276,8 @@ INLINE static void sink_props_init(struct sink_props *sp,
 	    age_threshold_unlimited_Myr, age_threshold_Myr);
   }
 
+  sp->CFL_condition = parser_get_param_float(params, "GEARSink:CFL_condition");
+
   /* Apply unit change */
   sp->maximal_temperature /=
       units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
@@ -339,6 +344,8 @@ INLINE static void sink_props_init(struct sink_props *sp,
           sp->age_threshold);
   message("sink age_threshold from old to unlimited     = %f",
           sp->age_threshold_unlimited);
+  message("sink C_CFL                                   = %e",
+          sp->CFL_condition);
 }
 
 /**
