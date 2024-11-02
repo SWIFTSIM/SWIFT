@@ -3946,13 +3946,7 @@ void fof_compute_local_sizes(struct fof_props *props, struct space *s) {
  * @param dump_results Do we want to write the group catalogue to a hdf5 file?
  * @param seed_black_holes Do we want to seed black holes in haloes?
  */
-void fof_compute_group_props(struct fof_props *props,
-                             const struct black_holes_props *bh_props,
-                             const struct phys_const *constants,
-                             const struct cosmology *cosmo, struct space *s,
-                             const int dump_results,
-                             const int dump_debug_results,
-                             const int seed_black_holes) {
+void fof_assign_group_ids(struct fof_props *props, struct space *s) {
 
   const int verbose = s->e->verbose;
 #ifdef WITH_MPI
@@ -4028,6 +4022,7 @@ void fof_compute_group_props(struct fof_props *props,
     }
 #endif
   }
+  props->high_group_sizes = high_group_sizes;
 
   ticks tic = getticks();
 
@@ -4053,13 +4048,14 @@ void fof_compute_group_props(struct fof_props *props,
   max_group_size = max_group_size_local;
 #endif /* WITH_MPI */
   props->num_groups = num_groups;
+  props->num_groups_local = num_groups_local;
 
   /* Find number of groups on lower numbered MPI ranks */
 #ifdef WITH_MPI
   long long nglocal = num_groups_local;
   long long ngsum;
   MPI_Scan(&nglocal, &ngsum, 1, MPI_LONG_LONG, MPI_SUM, MPI_COMM_WORLD);
-  const size_t num_groups_prev = (size_t)(ngsum - nglocal);
+  props->num_groups_prev = (size_t)(ngsum - nglocal);
 #endif /* WITH_MPI */
 
   if (verbose)
@@ -4088,7 +4084,7 @@ void fof_compute_group_props(struct fof_props *props,
   for (size_t i = 0; i < num_groups_local; i++) {
 #ifdef WITH_MPI
     gparts[high_group_sizes[i].index - node_offset].fof_data.group_id =
-        group_id_offset + i + num_groups_prev;
+        group_id_offset + i + props->num_groups_prev;
 #else
     gparts[high_group_sizes[i].index].fof_data.group_id = group_id_offset + i;
 #endif
@@ -4100,7 +4096,7 @@ void fof_compute_group_props(struct fof_props *props,
    * AND the total size of the group is >= min_group_size we need to
    * retrieve the gparts.group_id we just assigned to the global root.
    *
-   * Will do that by sending the group_index of these lcoal roots to the
+   * Will do that by sending the group_index of these local roots to the
    * node where their global root is stored and receiving back the new
    * group_id associated with that particle.
    *
@@ -4136,22 +4132,22 @@ void fof_compute_group_props(struct fof_props *props,
         compare_fof_final_index_global_root);
 
   /* Determine range of global indexes (i.e. particles) on each node */
-  size_t *num_on_node = (size_t *)malloc(nr_nodes * sizeof(size_t));
-  MPI_Allgather(&nr_gparts, sizeof(size_t), MPI_BYTE, num_on_node,
+  props->num_on_node = (size_t *)malloc(nr_nodes * sizeof(size_t));
+  MPI_Allgather(&nr_gparts, sizeof(size_t), MPI_BYTE, props->num_on_node,
                 sizeof(size_t), MPI_BYTE, MPI_COMM_WORLD);
-  size_t *first_on_node = (size_t *)malloc(nr_nodes * sizeof(size_t));
-  first_on_node[0] = 0;
-  for (int i = 1; i < nr_nodes; i += 1)
-    first_on_node[i] = first_on_node[i - 1] + num_on_node[i - 1];
+  props->first_on_node = (size_t *)malloc(nr_nodes * sizeof(size_t));
+  props->first_on_node[0] = 0;
+  for (int i = 1; i < nr_nodes; i++)
+    props->first_on_node[i] =
+        props->first_on_node[i - 1] + props->num_on_node[i - 1];
 
   /* Determine how many entries go to each node */
-  int *sendcount = (int *)malloc(nr_nodes * sizeof(int));
-  for (int i = 0; i < nr_nodes; i += 1) sendcount[i] = 0;
+  int *sendcount = (int *)calloc(nr_nodes, sizeof(int));
   int dest = 0;
   for (size_t i = 0; i < nsend; i += 1) {
     while ((fof_index_send[i].global_root >=
-            first_on_node[dest] + num_on_node[dest]) ||
-           (num_on_node[dest] == 0))
+            props->first_on_node[dest] + props->num_on_node[dest]) ||
+           (props->num_on_node[dest] == 0))
       dest += 1;
     if (dest >= nr_nodes) error("Node index out of range!");
     sendcount[dest] += 1;
@@ -4213,9 +4209,47 @@ void fof_compute_group_props(struct fof_props *props,
     gparts[i].fof_data.group_id = gparts[root].fof_data.group_id;
   }
 
+  /* Give some info */
+  if (engine_rank == 0) {
+    message(
+        "No. of groups: %lld. No. of particles in groups: %lld. No. of "
+        "particles not in groups: %lld.",
+        num_groups, num_parts_in_groups,
+        s->e->total_nr_gparts - num_parts_in_groups);
+
+    message("Largest group by size: %lld", max_group_size);
+  }
+
   if (verbose)
-    message("Group sorting took: %.3f %s.", clocks_from_ticks(getticks() - tic),
+    message("took: %.3f %s.", clocks_from_ticks(getticks() - tic_total),
             clocks_getunit());
+}
+
+/**
+ * @brief Compute all the group properties
+ *
+ * @param props The properties of the FOF scheme.
+ * @param bh_props The properties of the black hole scheme.
+ * @param constants The physical constants in internal units.
+ * @param cosmo The current cosmological model.
+ * @param s The #space containing the particles.
+ * @param dump_debug_results Are we writing txt-file debug catalogues including
+ * BH-seeding info?
+ * @param dump_results Do we want to write the group catalogue to a hdf5 file?
+ * @param seed_black_holes Do we want to seed black holes in haloes?
+ */
+void fof_compute_group_props(struct fof_props *props,
+                             const struct black_holes_props *bh_props,
+                             const struct phys_const *constants,
+                             const struct cosmology *cosmo, struct space *s,
+                             const int dump_results,
+                             const int dump_debug_results,
+                             const int seed_black_holes) {
+
+  const int verbose = s->e->verbose;
+  const ticks tic_total = getticks();
+
+  const size_t num_groups_local = props->num_groups_local;
 
   /* Allocate and initialise a group mass and centre of mass array. */
   if (swift_memalign("fof_group_mass", (void **)&props->group_mass, 32,
@@ -4264,10 +4298,10 @@ void fof_compute_group_props(struct fof_props *props,
 
 #ifdef WITH_MPI
   fof_calc_group_mass(props, s, seed_black_holes, num_groups_local,
-                      num_groups_prev, num_on_node, first_on_node,
-                      props->group_mass);
-  free(num_on_node);
-  free(first_on_node);
+                      props->num_groups_prev, props->num_on_node,
+                      props->first_on_node, props->group_mass);
+  free(props->num_on_node);
+  free(props->first_on_node);
 #else
   fof_calc_group_mass(props, s, seed_black_holes, num_groups_local,
                       /*num_groups_prev=*/0, /*num_on_node=*/NULL,
@@ -4275,8 +4309,8 @@ void fof_compute_group_props(struct fof_props *props,
 #endif
 
   /* Finalise the group data before dump */
-  fof_finalise_group_data(props, high_group_sizes, s->gparts, s->periodic,
-                          s->dim, num_groups_local);
+  fof_finalise_group_data(props, props->high_group_sizes, s->gparts,
+                          s->periodic, s->dim, num_groups_local);
 
   if (verbose)
     message("Computing group properties took: %.3f %s.",
@@ -4314,7 +4348,7 @@ void fof_compute_group_props(struct fof_props *props,
   }
 
   /* Free the left-overs */
-  swift_free("fof_high_group_sizes", high_group_sizes);
+  swift_free("fof_high_group_sizes", props->high_group_sizes);
   swift_free("fof_group_mass", props->group_mass);
   swift_free("fof_group_size", props->final_group_size);
   swift_free("fof_group_centre_of_mass", props->group_centre_of_mass);
@@ -4335,15 +4369,6 @@ void fof_compute_group_props(struct fof_props *props,
   props->group_index = NULL;
   props->group_size = NULL;
 
-  if (engine_rank == 0) {
-    message(
-        "No. of groups: %lld. No. of particles in groups: %lld. No. of "
-        "particles not in groups: %lld.",
-        num_groups, num_parts_in_groups,
-        s->e->total_nr_gparts - num_parts_in_groups);
-
-    message("Largest group by size: %lld", max_group_size);
-  }
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic_total),
             clocks_getunit());

@@ -203,6 +203,8 @@ void engine_fof(struct engine *e, const int dump_results,
   fof_link_foreign_fragments(e->fof_properties, e->s);
 #endif
 
+  fof_assign_group_ids(e->fof_properties, e->s);
+
   /* Compute group properties and act on the results
    * (seed BHs, dump catalogues..) */
   fof_compute_group_props(e->fof_properties, e->black_holes_properties,
