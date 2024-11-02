@@ -64,9 +64,16 @@ __attribute__((always_inline)) INLINE static float sink_compute_timestep(
   const double gas_v_phys[3] = {sink->to_collect.velocity_gas[0] * cosmo->a_inv,
 				sink->to_collect.velocity_gas[1] * cosmo->a_inv,
 				sink->to_collect.velocity_gas[2] * cosmo->a_inv};
-  const double gas_v_norm2 = gas_v_phys[0] * gas_v_phys[0] +
+  double gas_v_norm2 = gas_v_phys[0] * gas_v_phys[0] +
                              gas_v_phys[1] * gas_v_phys[1] +
                              gas_v_phys[2] * gas_v_phys[2];
+
+  /* This case can happen if the sink is just born or without gas neighbour. */
+  if (gas_v_norm2 == 0.0) {
+    /* gas_v is the relative velocity. If there is no gas, it's just the sink
+       velocity. */
+    gas_v_norm2 = sink->v[0]*sink->v[0] +  sink->v[1]*sink->v[1] + sink->v[2]*sink->v[2];
+  }
 
   const double gas_c_phys = sink->to_collect.sound_speed_gas * cosmo->a_factor_sound_speed;
   const double gas_c_phys2 = gas_c_phys * gas_c_phys;
