@@ -35,11 +35,13 @@
  * @param with_cosmology Are we running with cosmological time integration.
  * @param cosmo The current cosmological model (used if running with
  * cosmology).
+ * @param grav_props The current gravity properties.
  * @param time The current time (used if running without cosmology).
  */
 __attribute__((always_inline)) INLINE static float sink_compute_timestep(
-									 const struct sink* const sink, const struct sink_props* sink_properties,
+    const struct sink* const sink, const struct sink_props* sink_properties,
     const int with_cosmology, const struct cosmology* cosmo,
+    const struct gravity_props* grav_props,
     const double time) {
 
   return FLT_MAX;
