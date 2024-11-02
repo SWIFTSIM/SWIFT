@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  *******************************************************************************/
-#ifndef SWIFT_GEAR_STAR_FORMATION_SETTERS_H
-#define SWIFT_GEAR_STAR_FORMATION_SETTERS_H
+#ifndef SWIFT_GEAR_SINK_SETTERS_H
+#define SWIFT_GEAR_SINK_SETTERS_H
 
 #include "sink_part.h"
 
@@ -47,4 +47,4 @@ sink_set_sink_birth_time_or_scale_factor(
     sink->birth_time = birth_time;
   }
 }
-#endif /* SWIFT_GEAR_STAR_FORMATION_SETTERS_H */
+#endif /* SWIFT_GEAR_SINK_SETTERS_H */
