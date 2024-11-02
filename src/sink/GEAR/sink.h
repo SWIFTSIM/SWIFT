@@ -178,6 +178,14 @@ __attribute__((always_inline)) INLINE static void sink_first_init_sink(
 
   /* Initialize to the mass of the sink */
   sp->mass_tot_before_star_spawning = sp->mass;
+
+  /* Init properties based on the local gas */
+  sp->to_collect.minimal_h_gas = FLT_MAX;
+  sp->to_collect.rho_gas = 0.0;
+  sp->to_collect.sound_speed_gas = 0.0;
+  sp->to_collect.velocity_gas[0] = 0.0;
+  sp->to_collect.velocity_gas[1] = 0.0;
+  sp->to_collect.velocity_gas[2] = 0.0;
 }
 
 /**
@@ -225,6 +233,14 @@ __attribute__((always_inline)) INLINE static void sink_init_sink(
 
   /* Reset to the mass of the sink */
   sp->mass_tot_before_star_spawning = sp->mass;
+
+  /* Init properties based on the local gas */
+  sp->to_collect.minimal_h_gas = FLT_MAX;
+  sp->to_collect.rho_gas = 0.0;
+  sp->to_collect.sound_speed_gas = 0.0;
+  sp->to_collect.velocity_gas[0] = 0.0;
+  sp->to_collect.velocity_gas[1] = 0.0;
+  sp->to_collect.velocity_gas[2] = 0.0;
 
 #ifdef DEBUG_INTERACTIONS_SINKS
   for (int i = 0; i < MAX_NUM_OF_NEIGHBOURS_SINKS; ++i)

@@ -70,6 +70,26 @@ struct sink {
     float birth_scale_factor;
   };
 
+  struct {
+
+    /*! Maximal gas smoothing length */
+    float minimal_h_gas;
+
+    /*! Density of the gas surrounding the black hole. */
+    float rho_gas;
+
+    /*! Smoothed sound speed of the gas surrounding the sink. */
+    float sound_speed_gas;
+
+    /*! Smoothed velocity of the gas surrounding the sink, in the frame of the
+      sink (internal units) */
+    float velocity_gas[3];
+
+    /*! Total mass of the gas neighbours. */
+    float ngb_mass;
+
+  } to_collect;
+
   /*! Particle time bin */
   timebin_t time_bin;
 
