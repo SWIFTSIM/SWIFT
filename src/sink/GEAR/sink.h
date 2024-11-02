@@ -59,6 +59,29 @@ __attribute__((always_inline)) INLINE static float sink_compute_timestep(
     return FLT_MAX;
   }
 
+  /* CFL condition for sink. Notice the conversion to phyiscal units. */
+  const float CFL_condition = sink_properties->CFL_condition;
+  const double gas_v_phys[3] = {sink->to_collect.velocity_gas[0] * cosmo->a_inv,
+				sink->to_collect.velocity_gas[1] * cosmo->a_inv,
+				sink->to_collect.velocity_gas[2] * cosmo->a_inv};
+  const double gas_v_norm2 = gas_v_phys[0] * gas_v_phys[0] +
+                             gas_v_phys[1] * gas_v_phys[1] +
+                             gas_v_phys[2] * gas_v_phys[2];
+
+  const double gas_c_phys = sink->to_collect.sound_speed_gas * cosmo->a_factor_sound_speed;
+  const double gas_c_phys2 = gas_c_phys * gas_c_phys;
+  const float denominator = sqrtf(gas_c_phys2 + gas_v_norm2);
+  const float h_min = cosmo->a * min(sink->r_cut, sink->to_collect.minimal_h_gas*kernel_gamma);
+  const float dt_cfl = 2.f * CFL_condition * h_min / denominator;
+
+  /* Free fall time condition: the sink must anticipate gas collapse */
+  const float rho_sink = 3.0*sink->mass/(4.0 * M_PI * h_min*h_min*h_min);
+  const float dt_ff = sqrtf(3.0 * M_PI / (32.0 * grav_props->G_Newton * rho_sink));
+
+  message("sink %lld, rho_gas = %e, c_s = %e, gas_v_phys = (%e %e %e), h_min = %e, rho_sink = %e, denominator = %e, birth_time = %e",
+	  sink->id, sink->to_collect.rho_gas, gas_c_phys, gas_v_phys[0],
+	  gas_v_phys[1], gas_v_phys[2], h_min, rho_sink, denominator,
+	  sink->birth_time);
   /* Sink age (in internal units) */
   double sink_age;
   if (with_cosmology) {
@@ -74,13 +97,23 @@ __attribute__((always_inline)) INLINE static float sink_compute_timestep(
     sink_age = time - sink->birth_time;
   }
 
+  /* Take the minimum dt */
+  float dt = min(dt_cfl, dt_ff);
+
   /* What age category are we in? */
   if (sink_age > sink_properties->age_threshold_unlimited) {
+    message("unlimited sink age, age = %e", sink_age);
     return FLT_MAX;
   } else if (sink_age > sink_properties->age_threshold) {
-    return sink_properties->max_time_step_old;
+    dt = min(dt, sink_properties->max_time_step_old);
+    message("old sink %lld, age = %e, dt_CFL = %e, dt_ff = %e, dt_age = %e",
+	    sink->id,sink_age,  dt_cfl, dt_ff, sink_properties->max_time_step_old);
+    return dt;
   } else {
-    return sink_properties->max_time_step_young;
+    dt = min(dt, sink_properties->max_time_step_young);
+    message("young sink %lld, age = %e, dt_CFL = %e, dt_ff = %e, dt_age = %e",
+	    sink->id, sink_age, dt_cfl, dt_ff, sink_properties->max_time_step_young);
+    return dt;
   }
 }
 
