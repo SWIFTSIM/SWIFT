@@ -555,6 +555,9 @@ INLINE static void sink_copy_properties(
 
   /* Note, we do not need to update sp->mass_tot_before_star_spawning because
      it is performed within the 'sink_init_sink()' function. */
+
+  /* Set the birth time of the sink */
+  sink_set_sink_birth_time_or_scale_factor(sink, e->time, cosmo->a, with_cosmology);
 }
 
 /**
