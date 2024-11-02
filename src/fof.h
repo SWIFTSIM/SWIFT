@@ -214,7 +214,7 @@ void fof_compute_local_sizes(struct fof_props *props, struct space *s);
 void fof_search_foreign_cells(struct fof_props *props, const struct space *s);
 void fof_link_attachable_particles(struct fof_props *props,
                                    const struct space *s);
-void fof_finalise_attachables(struct fof_props *props, const struct space *s);
+void fof_finalise_attachables(struct fof_props *props, struct space *s);
 void fof_link_foreign_fragments(struct fof_props *props, const struct space *s);
 void fof_build_list_of_purely_local_groups(struct fof_props *props,
                                            const struct space *s);

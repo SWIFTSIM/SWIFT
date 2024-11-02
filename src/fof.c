@@ -2646,6 +2646,8 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
   float *max_part_density = props->max_part_density;
   double *centre_of_mass = props->group_centre_of_mass;
   double *first_position = props->group_first_position;
+  long long *group_size = props->final_group_size;
+  long long max_group_size = 0;
 
   /* Loop over particles, compute CoM and find the densest particle in each
    * group. */
@@ -2685,6 +2687,11 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
       centre_of_mass[index * 3 + 1] += mass * x[1];
       centre_of_mass[index * 3 + 2] += mass * x[2];
 
+      /* Record the maximal group size */
+      if (group_size[index] > max_group_size) {
+        max_group_size = group_size[index];
+      }
+
       /* Check haloes above the seeding threshold */
       if (group_mass[index] > seed_halo_mass) {
 
@@ -2715,6 +2722,7 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
     }
   }
 
+  message("Largest group (with attachables) by size: %lld", max_group_size);
   props->extra_bh_seed_count = 0;
 #endif
 }
@@ -3521,7 +3529,7 @@ void fof_build_list_of_purely_local_groups(struct fof_props *props,
  * @param props The properties fof the FOF scheme.
  * @param s The #space we work with.
  */
-void fof_finalise_attachables(struct fof_props *props, const struct space *s) {
+void fof_finalise_attachables(struct fof_props *props, struct space *s) {
 
   /* Is there anything to attach? */
   if (!current_fof_attach_type) return;
@@ -3532,8 +3540,6 @@ void fof_finalise_attachables(struct fof_props *props, const struct space *s) {
 
   char *restrict found_attachable_link = props->found_attachable_link;
   size_t *restrict attach_index = props->attach_index;
-  size_t *restrict group_index = props->group_index;
-  size_t *restrict group_size = props->group_size;
 
 #ifdef WITH_MPI
 
@@ -3541,6 +3547,8 @@ void fof_finalise_attachables(struct fof_props *props, const struct space *s) {
   char *restrict is_purely_local = props->is_purely_local;
   int *restrict group_links_size = &props->group_links_size;
   int *restrict group_link_count = &props->group_link_count;
+  size_t *restrict group_index = props->group_index;
+  size_t *restrict group_size = props->group_size;
   struct fof_mpi **group_links = &props->group_links;
 
   /* Loop over all the attachables and added them to the group they belong to */
@@ -3592,20 +3600,15 @@ void fof_finalise_attachables(struct fof_props *props, const struct space *s) {
 
 #else /* not WITH_MPI */
 
+  struct gpart *gparts = s->gparts;
+
   /* Loop over all the attachables and added them to the group they belong to */
   for (size_t i = 0; i < nr_gparts; ++i) {
 
-    const struct gpart *gp = &s->gparts[i];
-
-    if (gpart_is_attachable(gp) && found_attachable_link[i]) {
+    if (gpart_is_attachable(&gparts[i]) && found_attachable_link[i]) {
 
       const size_t root = attach_index[i];
-
-      /* Update its root */
-      group_index[i] = root;
-
-      /* Update the size of the group the particle belongs to */
-      group_size[root]++;
+      gparts[i].fof_data.group_id = gparts[root].fof_data.group_id;
     }
   }
 
@@ -4001,7 +4004,7 @@ void fof_assign_group_ids(struct fof_props *props, struct space *s) {
   /* Sort the groups in descending order based upon size and re-label their
    * IDs 0-num_groups. */
   struct group_length *high_group_sizes = NULL;
-  int group_count = 0;
+  size_t group_count = 0;
 
   if (swift_memalign("fof_high_group_sizes", (void **)&high_group_sizes, 32,
                      num_groups_local * sizeof(struct group_length)) != 0)
@@ -4043,10 +4046,10 @@ void fof_assign_group_ids(struct fof_props *props, struct space *s) {
              MPI_MAX, 0, MPI_COMM_WORLD);
 #else
   num_groups = num_groups_local;
-
   num_parts_in_groups = num_parts_in_groups_local;
   max_group_size = max_group_size_local;
 #endif /* WITH_MPI */
+
   props->num_groups = num_groups;
   props->num_groups_local = num_groups_local;
 
@@ -4216,8 +4219,7 @@ void fof_assign_group_ids(struct fof_props *props, struct space *s) {
         "particles not in groups: %lld.",
         num_groups, num_parts_in_groups,
         s->e->total_nr_gparts - num_parts_in_groups);
-
-    message("Largest group by size: %lld", max_group_size);
+    message("Largest group (linkables only) by size: %lld", max_group_size);
   }
 
   if (verbose)

@@ -181,9 +181,6 @@ void engine_fof(struct engine *e, const int dump_results,
   fof_search_foreign_cells(e->fof_properties, e->s);
 #endif
 
-  /* Compute the attachable->linkable links */
-  fof_link_attachable_particles(e->fof_properties, e->s);
-
 #ifdef WITH_MPI
 
   /* Free the foreign particles */
@@ -193,9 +190,6 @@ void engine_fof(struct engine *e, const int dump_results,
   fof_build_list_of_purely_local_groups(e->fof_properties, e->s);
 #endif
 
-  /* Finish the operations attaching the attachables to their groups */
-  fof_finalise_attachables(e->fof_properties, e->s);
-
 #ifdef WITH_MPI
 
   /* Link the foreign fragments and finalise global group list (nothing to do
@@ -203,7 +197,15 @@ void engine_fof(struct engine *e, const int dump_results,
   fof_link_foreign_fragments(e->fof_properties, e->s);
 #endif
 
+  /* Count the total number of (linkable) groups,
+   * assign unique group IDs and set the IDs in the particles */
   fof_assign_group_ids(e->fof_properties, e->s);
+
+  /* Compute the attachable->linkable links */
+  fof_link_attachable_particles(e->fof_properties, e->s);
+
+  /* Finish the operations attaching the attachables to their groups */
+  fof_finalise_attachables(e->fof_properties, e->s);
 
   /* Compute group properties and act on the results
    * (seed BHs, dump catalogues..) */
