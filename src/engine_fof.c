@@ -179,18 +179,9 @@ void engine_fof(struct engine *e, const int dump_results,
 
   /* Compute the local<->foreign group links (nothing to do without MPI)*/
   fof_search_foreign_cells(e->fof_properties, e->s);
-#endif
-
-#ifdef WITH_MPI
-
-  /* Free the foreign particles */
-  space_free_foreign_parts(e->s, /*clear pointers=*/1);
 
   /* Make a list of purely local groups to speed up the attaching */
-  fof_build_list_of_purely_local_groups(e->fof_properties, e->s);
-#endif
-
-#ifdef WITH_MPI
+  //fof_build_list_of_purely_local_groups(e->fof_properties, e->s);
 
   /* Link the foreign fragments and finalise global group list (nothing to do
    * without MPI) */
@@ -201,9 +192,26 @@ void engine_fof(struct engine *e, const int dump_results,
    * assign unique group IDs and set the IDs in the particles */
   fof_assign_group_ids(e->fof_properties, e->s);
 
+#ifdef WITH_MPI
+
+  /* Activate the tasks exchanging all the required gparts */
+  engine_activate_gpart_comms(e);
+  
+  /* Perform send and receive tasks. */
+  engine_launch(e, "fof comms");
+  
+#endif
+  
   /* Compute the attachable->linkable links */
   fof_link_attachable_particles(e->fof_properties, e->s);
 
+#ifdef WITH_MPI
+
+    /* Free the foreign particles */
+  space_free_foreign_parts(e->s, /*clear pointers=*/1);
+  
+#endif
+  
   /* Finish the operations attaching the attachables to their groups */
   fof_finalise_attachables(e->fof_properties, e->s);
 

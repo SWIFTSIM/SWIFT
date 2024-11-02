@@ -1563,18 +1563,18 @@ void fof_attach_self_cell(const struct fof_props *props, const double l_x2,
   struct gpart *gparts = (struct gpart *)c->grav.parts;
 
   /* Make a list of particle offsets into the global gparts array. */
-  size_t *const group_index = props->group_index;
-#ifndef WITH_MPI
-  size_t *const index_offset = group_index + (ptrdiff_t)(gparts - space_gparts);
-#endif
+  /* size_t *const group_index = props->group_index; */
+/* #ifndef WITH_MPI */
+/*   size_t *const index_offset = group_index + (ptrdiff_t)(gparts - space_gparts); */
+/* #endif */
 
-  size_t *const attach_index = props->attach_index;
-  size_t *const attach_offset =
-      attach_index + (ptrdiff_t)(gparts - space_gparts);
+  /* size_t *const attach_index = props->attach_index; */
+  /* size_t *const attach_offset = */
+  /*     attach_index + (ptrdiff_t)(gparts - space_gparts); */
 
-  char *const found_attach_index = props->found_attachable_link;
-  char *const found_attach_offset =
-      found_attach_index + (ptrdiff_t)(gparts - space_gparts);
+  /* char *const found_attach_index = props->found_attachable_link; */
+  /* char *const found_attach_offset = */
+  /*     found_attach_index + (ptrdiff_t)(gparts - space_gparts); */
 
   /* Distances of particles in the global list */
   float *const offset_dist =
@@ -1605,13 +1605,13 @@ void fof_attach_self_cell(const struct fof_props *props, const double l_x2,
     const double piy = pi->x[1];
     const double piz = pi->x[2];
 
-    /* Find the root of pi. */
-#ifdef WITH_MPI
-    const size_t root_i = fof_find_global(
-        i + (ptrdiff_t)(gparts - space_gparts), group_index, nr_gparts);
-#else
-    const size_t root_i = fof_find(index_offset[i], group_index);
-#endif
+/*     /\* Find the root of pi. *\/ */
+/* #ifdef WITH_MPI */
+/*     const size_t root_i = fof_find_global( */
+/*         i + (ptrdiff_t)(gparts - space_gparts), group_index, nr_gparts); */
+/* #else */
+/*     const size_t root_i = fof_find(index_offset[i], group_index); */
+/* #endif */
 
     /* Get the nature of the linking */
     const int is_link_i = gpart_is_linkable(pi);
@@ -1650,13 +1650,13 @@ void fof_attach_self_cell(const struct fof_props *props, const double l_x2,
         error("Running FOF on an un-drifted particle!");
 #endif
 
-        /* Find the root of pi. */
-#ifdef WITH_MPI
-      const size_t root_j = fof_find_global(
-          j + (ptrdiff_t)(gparts - space_gparts), group_index, nr_gparts);
-#else
-      const size_t root_j = fof_find(index_offset[j], group_index);
-#endif
+/*         /\* Find the root of pi. *\/ */
+/* #ifdef WITH_MPI */
+/*       const size_t root_j = fof_find_global( */
+/*           j + (ptrdiff_t)(gparts - space_gparts), group_index, nr_gparts); */
+/* #else */
+/*       const size_t root_j = fof_find(index_offset[j], group_index); */
+/* #endif */
 
       const double pjx = pj->x[0];
       const double pjy = pj->x[1];
@@ -1693,8 +1693,7 @@ void fof_attach_self_cell(const struct fof_props *props, const double l_x2,
             offset_dist[j] = dist;
 
             /* Store the current best root */
-            attach_offset[j] = root_i;
-            found_attach_offset[j] = 1;
+	    pj->fof_data.group_id = pi->fof_data.group_id;
           }
 
         } else if (is_link_j && is_attach_i) {
@@ -1710,8 +1709,7 @@ void fof_attach_self_cell(const struct fof_props *props, const double l_x2,
             offset_dist[i] = dist;
 
             /* Store the current best root */
-            attach_offset[i] = root_j;
-            found_attach_offset[i] = 1;
+	    pi->fof_data.group_id = pj->fof_data.group_id;
           }
 
         } else {
@@ -1760,15 +1758,15 @@ void fof_attach_pair_cells(const struct fof_props *props, const double dim[3],
   size_t *const index_offset_j =
       group_index + (ptrdiff_t)(gparts_j - space_gparts);
 
-  size_t *const attach_offset_i =
-      props->attach_index + (ptrdiff_t)(gparts_i - space_gparts);
-  size_t *const attach_offset_j =
-      props->attach_index + (ptrdiff_t)(gparts_j - space_gparts);
+  /* size_t *const attach_offset_i = */
+  /*     props->attach_index + (ptrdiff_t)(gparts_i - space_gparts); */
+  /* size_t *const attach_offset_j = */
+  /*     props->attach_index + (ptrdiff_t)(gparts_j - space_gparts); */
 
-  char *const found_attach_offset_i =
-      props->found_attachable_link + (ptrdiff_t)(gparts_i - space_gparts);
-  char *const found_attach_offset_j =
-      props->found_attachable_link + (ptrdiff_t)(gparts_j - space_gparts);
+  /* char *const found_attach_offset_i = */
+  /*     props->found_attachable_link + (ptrdiff_t)(gparts_i - space_gparts); */
+  /* char *const found_attach_offset_j = */
+  /*     props->found_attachable_link + (ptrdiff_t)(gparts_j - space_gparts); */
 
   /* Distances of particles in the global list */
   float *const offset_dist_i =
@@ -1821,18 +1819,18 @@ void fof_attach_pair_cells(const struct fof_props *props, const double dim[3],
     const double piy = pi->x[1] - shift[1];
     const double piz = pi->x[2] - shift[2];
 
-    /* Find the root of pi. */
-#ifdef WITH_MPI
-    size_t root_i;
-    if (ci_local) {
-      root_i = fof_find_global(index_offset_i[i] - node_offset, group_index,
-                               nr_gparts);
-    } else {
-      root_i = pi->fof_data.group_id;
-    }
-#else
-    const size_t root_i = fof_find(index_offset_i[i], group_index);
-#endif
+/*     /\* Find the root of pi. *\/ */
+/* #ifdef WITH_MPI */
+/*     size_t root_i; */
+/*     if (ci_local) { */
+/*       root_i = fof_find_global(index_offset_i[i] - node_offset, group_index, */
+/*                                nr_gparts); */
+/*     } else { */
+/*       root_i = pi->fof_data.group_id; */
+/*     } */
+/* #else */
+/*     const size_t root_i = fof_find(index_offset_i[i], group_index); */
+/* #endif */
 
     /* Get the nature of the linking */
     const int is_link_i = gpart_is_linkable(pi);
@@ -1871,18 +1869,18 @@ void fof_attach_pair_cells(const struct fof_props *props, const double dim[3],
         error("Running FOF on an un-drifted particle!");
 #endif
 
-        /* Find the root of pj. */
-#ifdef WITH_MPI
-      size_t root_j;
-      if (cj_local) {
-        root_j = fof_find_global(index_offset_j[j] - node_offset, group_index,
-                                 nr_gparts);
-      } else {
-        root_j = pj->fof_data.group_id;
-      }
-#else
-      const size_t root_j = fof_find(index_offset_j[j], group_index);
-#endif
+/*         /\* Find the root of pj. *\/ */
+/* #ifdef WITH_MPI */
+/*       size_t root_j; */
+/*       if (cj_local) { */
+/*         root_j = fof_find_global(index_offset_j[j] - node_offset, group_index, */
+/*                                  nr_gparts); */
+/*       } else { */
+/*         root_j = pj->fof_data.group_id; */
+/*       } */
+/* #else */
+/*       const size_t root_j = fof_find(index_offset_j[j], group_index); */
+/* #endif */
 
       const double pjx = pj->x[0];
       const double pjy = pj->x[1];
@@ -1925,8 +1923,7 @@ void fof_attach_pair_cells(const struct fof_props *props, const double dim[3],
               offset_dist_j[j] = dist;
 
               /* Store the current best root */
-              attach_offset_j[j] = root_i;
-              found_attach_offset_j[j] = 1;
+	      pj->fof_data.group_id = pi->fof_data.group_id;
             }
           }
 
@@ -1946,8 +1943,7 @@ void fof_attach_pair_cells(const struct fof_props *props, const double dim[3],
               offset_dist_i[i] = dist;
 
               /* Store the current best root */
-              attach_offset_i[i] = root_j;
-              found_attach_offset_i[i] = 1;
+	      pi->fof_data.group_id = pj->fof_data.group_id;
             }
           }
 
@@ -2272,6 +2268,9 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
     /* Check whether we ignore this particle type altogether */
     if (gpart_is_ignorable(&gparts[i])) continue;
 
+    if (gpart_is_attachable(&gparts[i])) continue;
+
+    
     /* Check if the particle is in a group above the threshold. */
     if (gparts[i].fof_data.group_id != group_id_default) {
 
@@ -2436,6 +2435,8 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
     /* Check whether we ignore this particle type altogether */
     if (current_fof_ignore_type & (1 << (gparts[i].type + 1))) continue;
 
+    if (gpart_is_attachable(&gparts[i])) continue;
+    
     /* Only check groups above the minimum mass threshold. */
     if (gparts[i].fof_data.group_id != group_id_default) {
 
@@ -3534,89 +3535,87 @@ void fof_finalise_attachables(struct fof_props *props, struct space *s) {
   /* Is there anything to attach? */
   if (!current_fof_attach_type) return;
 
-  const ticks tic_total = getticks();
+  /* const ticks tic_total = getticks(); */
 
-  const size_t nr_gparts = s->nr_gparts;
+  /* const size_t nr_gparts = s->nr_gparts; */
 
-  char *restrict found_attachable_link = props->found_attachable_link;
-  size_t *restrict attach_index = props->attach_index;
+  /* char *restrict found_attachable_link = props->found_attachable_link; */
+  /* size_t *restrict attach_index = props->attach_index; */
 
-#ifdef WITH_MPI
+/* #ifdef WITH_MPI */
 
-  /* Get pointers to global arrays. */
-  char *restrict is_purely_local = props->is_purely_local;
-  int *restrict group_links_size = &props->group_links_size;
-  int *restrict group_link_count = &props->group_link_count;
-  size_t *restrict group_index = props->group_index;
-  size_t *restrict group_size = props->group_size;
-  struct fof_mpi **group_links = &props->group_links;
+/*   /\* Get pointers to global arrays. *\/ */
+/*   char *restrict is_purely_local = props->is_purely_local; */
+/*   int *restrict group_links_size = &props->group_links_size; */
+/*   int *restrict group_link_count = &props->group_link_count; */
+/*   size_t *restrict group_index = props->group_index; */
+/*   size_t *restrict group_size = props->group_size; */
+/*   struct fof_mpi **group_links = &props->group_links; */
 
-  /* Loop over all the attachables and added them to the group they belong to */
-  for (size_t i = 0; i < nr_gparts; ++i) {
+/*   /\* Loop over all the attachables and added them to the group they belong to *\/ */
+/*   for (size_t i = 0; i < nr_gparts; ++i) { */
 
-    const struct gpart *gp = &s->gparts[i];
+/*     const struct gpart *gp = &s->gparts[i]; */
 
-    if (gpart_is_attachable(gp) && found_attachable_link[i]) {
+/*     if (gpart_is_attachable(gp) && found_attachable_link[i]) { */
 
-      /* Update its root */
-      const size_t root_j = attach_index[i];
-      const size_t root_i =
-          fof_find_global(group_index[i] - node_offset, group_index, nr_gparts);
+/*       /\* Update its root *\/ */
+/*       const size_t root_j = attach_index[i]; */
+/*       const size_t root_i = */
+/*           fof_find_global(group_index[i] - node_offset, group_index, nr_gparts); */
 
-      /* Update the size of the group the particle belongs to.
-       * The strategy emploed depends on where the root and particles are. */
-      if (is_local(root_j, nr_gparts)) {
+/*       /\* Update the size of the group the particle belongs to. */
+/*        * The strategy emploed depends on where the root and particles are. *\/ */
+/*       if (is_local(root_j, nr_gparts)) { */
 
-        const size_t local_root = root_j - node_offset;
+/*         const size_t local_root = root_j - node_offset; */
 
-        if (is_purely_local[local_root]) { /* All parties involved are local */
+/*         if (is_purely_local[local_root]) { /\* All parties involved are local *\/ */
 
-          /* We can directly attack the list of groups */
-          group_index[i] = local_root + node_offset;
-          group_size[local_root]++;
+/*           /\* We can directly attack the list of groups *\/ */
+/*           group_index[i] = local_root + node_offset; */
+/*           group_size[local_root]++; */
 
-        } else { /* Group is involved in some cross-boundaries mixing */
+/*         } else { /\* Group is involved in some cross-boundaries mixing *\/ */
 
-          /* Add to the list of links to be resolved globally later */
-          add_foreign_link_to_list(group_link_count, group_links_size,
-                                   group_links, group_links, root_i, root_j,
-                                   /*size_i=*/1,
-                                   /*size_j=*/2);
-        }
+/*           /\* Add to the list of links to be resolved globally later *\/ */
+/*           add_foreign_link_to_list(group_link_count, group_links_size, */
+/*                                    group_links, group_links, root_i, root_j, */
+/*                                    /\*size_i=*\/1, */
+/*                                    /\*size_j=*\/2); */
+/*         } */
 
-      } else { /* Root is foreign */
+/*       } else { /\* Root is foreign *\/ */
 
-        /* Add to the list of links to be resolved globally later */
-        add_foreign_link_to_list(group_link_count, group_links_size,
-                                 group_links, group_links, root_i, root_j,
-                                 /*size_i=*/1,
-                                 /*size_j=*/2);
-      }
-    }
-  }
+/*         /\* Add to the list of links to be resolved globally later *\/ */
+/*         add_foreign_link_to_list(group_link_count, group_links_size, */
+/*                                  group_links, group_links, root_i, root_j, */
+/*                                  /\*size_i=*\/1, */
+/*                                  /\*size_j=*\/2); */
+/*       } */
+/*     } */
+/*   } */
 
-  /* We can free the list of purely local groups */
-  free(props->is_purely_local);
+/*   /\* /\\* We can free the list of purely local groups *\\/ *\/ */
+/*   /\* free(props->is_purely_local); *\/ */
 
-#else /* not WITH_MPI */
+/* #else /\* not WITH_MPI *\/ */
 
-  struct gpart *gparts = s->gparts;
+//  struct gpart *gparts = s->gparts;
 
-  /* Loop over all the attachables and added them to the group they belong to */
-  for (size_t i = 0; i < nr_gparts; ++i) {
+  /* /\* Loop over all the attachables and added them to the group they belong to *\/ */
+  /* for (size_t i = 0; i < nr_gparts; ++i) { */
 
-    if (gpart_is_attachable(&gparts[i]) && found_attachable_link[i]) {
+  /*   if (gpart_is_attachable(&gparts[i]) && found_attachable_link[i]) { */
+  /*     gparts[i].fof_data.group_id = attach_index[i]; */
+  /*   } */
+  /* } */
 
-      const size_t root = attach_index[i];
-      gparts[i].fof_data.group_id = gparts[root].fof_data.group_id;
-    }
-  }
+  //#endif /* WITH_MPI */
 
-#endif /* WITH_MPI */
-
-  if (s->e->verbose)
-    message("fof_finalise_attachables() took (FOF SCALING): %.3f %s.",
-            clocks_from_ticks(getticks() - tic_total), clocks_getunit());
+  /* if (s->e->verbose) */
+  /*   message("fof_finalise_attachables() took (FOF SCALING): %.3f %s.", */
+  /*           clocks_from_ticks(getticks() - tic_total), clocks_getunit()); */
 }
 
 /**
