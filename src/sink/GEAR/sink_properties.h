@@ -71,6 +71,7 @@ struct sink_props {
      spawned */
   double star_spawning_sigma_factor;
 
+  /***************************************************************************/
   /*! Maximal time-step length of young sinks (internal units) */
   double max_time_step_young;
 
