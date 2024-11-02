@@ -30,10 +30,17 @@
 /**
  * @brief Computes the time-step of a given sink particle.
  *
- * @param sp Pointer to the sink-particle data.
+ * @param sink Pointer to the sink-particle data.
+ * @param sink_properties Properties of the sink model.
+ * @param with_cosmology Are we running with cosmological time integration.
+ * @param cosmo The current cosmological model (used if running with
+ * cosmology).
+ * @param time The current time (used if running without cosmology).
  */
 __attribute__((always_inline)) INLINE static float sink_compute_timestep(
-    const struct sink* const sp) {
+									 const struct sink* const sink, const struct sink_props* sink_properties,
+    const int with_cosmology, const struct cosmology* cosmo,
+    const double time) {
 
   return FLT_MAX;
 }
