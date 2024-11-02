@@ -177,9 +177,9 @@ INLINE static void sink_write_particles(const struct sink* sinks,
         birth_scale_factor, /*can convert to comoving=*/0,
         "Scale-factors at which the sinks were born");
   } else {
-    list[9] = io_make_output_field("BirthTimes", FLOAT, 1, UNIT_CONV_TIME, 0.f,
-                                   sinks, birth_time,
-                                   "Times at which the sink were born");
+    list[9] =
+        io_make_output_field("BirthTimes", FLOAT, 1, UNIT_CONV_TIME, 0.f, sinks,
+                             birth_time, "Times at which the sink were born");
   }
 
 #ifdef DEBUG_INTERACTIONS_SINKS

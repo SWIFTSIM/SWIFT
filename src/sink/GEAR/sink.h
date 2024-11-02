@@ -35,8 +35,8 @@
 #include "random.h"
 #include "sink_part.h"
 #include "sink_properties.h"
-#include "star_formation.h"
 #include "sink_setters.h"
+#include "star_formation.h"
 
 /**
  * @brief Computes the time-step of a given sink particle.
@@ -51,8 +51,8 @@
  */
 __attribute__((always_inline)) INLINE static float sink_compute_timestep(
     const struct sink* const sink, const struct sink_props* sink_properties,
-    const int with_cosmology, const struct cosmology* cosmo, const struct gravity_props* grav_props,
-    const double time) {
+    const int with_cosmology, const struct cosmology* cosmo,
+    const struct gravity_props* grav_props, const double time) {
 
   /* Background sink particles have no time-step limits */
   if (sink->birth_time == -1.) {
@@ -61,34 +61,43 @@ __attribute__((always_inline)) INLINE static float sink_compute_timestep(
 
   /* CFL condition for sink. Notice the conversion to phyiscal units. */
   const float CFL_condition = sink_properties->CFL_condition;
-  const double gas_v_phys[3] = {sink->to_collect.velocity_gas[0] * cosmo->a_inv,
-				sink->to_collect.velocity_gas[1] * cosmo->a_inv,
-				sink->to_collect.velocity_gas[2] * cosmo->a_inv};
+  const double gas_v_phys[3] = {
+      sink->to_collect.velocity_gas[0] * cosmo->a_inv,
+      sink->to_collect.velocity_gas[1] * cosmo->a_inv,
+      sink->to_collect.velocity_gas[2] * cosmo->a_inv};
   double gas_v_norm2 = gas_v_phys[0] * gas_v_phys[0] +
-                             gas_v_phys[1] * gas_v_phys[1] +
-                             gas_v_phys[2] * gas_v_phys[2];
+                       gas_v_phys[1] * gas_v_phys[1] +
+                       gas_v_phys[2] * gas_v_phys[2];
 
   /* This case can happen if the sink is just born or without gas neighbour. */
   if (gas_v_norm2 == 0.0) {
     /* gas_v is the relative velocity. If there is no gas, it's just the sink
        velocity. */
-    gas_v_norm2 = sink->v[0]*sink->v[0] +  sink->v[1]*sink->v[1] + sink->v[2]*sink->v[2];
+    gas_v_norm2 = sink->v[0] * sink->v[0] + sink->v[1] * sink->v[1] +
+                  sink->v[2] * sink->v[2];
   }
 
-  const double gas_c_phys = sink->to_collect.sound_speed_gas * cosmo->a_factor_sound_speed;
+  const double gas_c_phys =
+      sink->to_collect.sound_speed_gas * cosmo->a_factor_sound_speed;
   const double gas_c_phys2 = gas_c_phys * gas_c_phys;
   const float denominator = sqrtf(gas_c_phys2 + gas_v_norm2);
-  const float h_min = cosmo->a * min(sink->r_cut, sink->to_collect.minimal_h_gas*kernel_gamma);
+  const float h_min =
+      cosmo->a *
+      min(sink->r_cut, sink->to_collect.minimal_h_gas * kernel_gamma);
   const float dt_cfl = 2.f * CFL_condition * h_min / denominator;
 
   /* Free fall time condition: the sink must anticipate gas collapse */
-  const float rho_sink = 3.0*sink->mass/(4.0 * M_PI * h_min*h_min*h_min);
-  const float dt_ff = sqrtf(3.0 * M_PI / (32.0 * grav_props->G_Newton * rho_sink));
+  const float rho_sink =
+      3.0 * sink->mass / (4.0 * M_PI * h_min * h_min * h_min);
+  const float dt_ff =
+      sqrtf(3.0 * M_PI / (32.0 * grav_props->G_Newton * rho_sink));
 
-  message("sink %lld, rho_gas = %e, c_s = %e, gas_v_phys = (%e %e %e), h_min = %e, rho_sink = %e, denominator = %e, birth_time = %e",
-	  sink->id, sink->to_collect.rho_gas, gas_c_phys, gas_v_phys[0],
-	  gas_v_phys[1], gas_v_phys[2], h_min, rho_sink, denominator,
-	  sink->birth_time);
+  message(
+      "sink %lld, rho_gas = %e, c_s = %e, gas_v_phys = (%e %e %e), h_min = %e, "
+      "rho_sink = %e, denominator = %e, birth_time = %e",
+      sink->id, sink->to_collect.rho_gas, gas_c_phys, gas_v_phys[0],
+      gas_v_phys[1], gas_v_phys[2], h_min, rho_sink, denominator,
+      sink->birth_time);
   /* Sink age (in internal units) */
   double sink_age;
   if (with_cosmology) {
@@ -114,12 +123,14 @@ __attribute__((always_inline)) INLINE static float sink_compute_timestep(
   } else if (sink_age > sink_properties->age_threshold) {
     dt = min(dt, sink_properties->max_time_step_old);
     message("old sink %lld, age = %e, dt_CFL = %e, dt_ff = %e, dt_age = %e",
-	    sink->id,sink_age,  dt_cfl, dt_ff, sink_properties->max_time_step_old);
+            sink->id, sink_age, dt_cfl, dt_ff,
+            sink_properties->max_time_step_old);
     return dt;
   } else {
     dt = min(dt, sink_properties->max_time_step_young);
     message("young sink %lld, age = %e, dt_CFL = %e, dt_ff = %e, dt_age = %e",
-	    sink->id, sink_age, dt_cfl, dt_ff, sink_properties->max_time_step_young);
+            sink->id, sink_age, dt_cfl, dt_ff,
+            sink_properties->max_time_step_young);
     return dt;
   }
 }
@@ -506,7 +517,8 @@ INLINE static void sink_copy_properties(
      it is performed within the 'sink_init_sink()' function. */
 
   /* Set the birth time of the sink */
-  sink_set_sink_birth_time_or_scale_factor(sink, e->time, cosmo->a, with_cosmology);
+  sink_set_sink_birth_time_or_scale_factor(sink, e->time, cosmo->a,
+                                           with_cosmology);
 }
 
 /**

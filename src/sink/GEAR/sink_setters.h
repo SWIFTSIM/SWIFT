@@ -27,7 +27,6 @@
  * implementation details to the outer world. Keep the code clean and lean.
  */
 
-
 /**
  * @brief Set the birth time/scale-factor of a star particle.
  *
@@ -38,9 +37,10 @@
  */
 
 __attribute__((always_inline)) INLINE void
-sink_set_sink_birth_time_or_scale_factor(
-    struct sink *restrict sink, const float birth_time,
-    const float birth_scale_factor, const int with_cosmology) {
+sink_set_sink_birth_time_or_scale_factor(struct sink* restrict sink,
+                                         const float birth_time,
+                                         const float birth_scale_factor,
+                                         const int with_cosmology) {
   if (with_cosmology) {
     sink->birth_scale_factor = birth_scale_factor;
   } else {

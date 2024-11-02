@@ -244,8 +244,6 @@ runner_iact_nonsym_sinks_sink_swallow(
 #endif
 }
 
-
-
 /**
  * @brief Update the properties of a sink particles from its gas neighbours.
  *
@@ -253,9 +251,11 @@ runner_iact_nonsym_sinks_sink_swallow(
  * @param p The #part that is swallowed.
  * @param xp The #xpart that is swallowed.
  */
-__attribute__((always_inline)) INLINE static void sink_collect_properties_from_gas(
-    const float r2, const float dx[3], const float ri, const float hj,
-    struct sink *restrict si, struct part *restrict pj) {
+__attribute__((always_inline)) INLINE static void
+sink_collect_properties_from_gas(const float r2, const float dx[3],
+                                 const float ri, const float hj,
+                                 struct sink *restrict si,
+                                 struct part *restrict pj) {
 
   float wi, wi_dx;
 
@@ -263,7 +263,7 @@ __attribute__((always_inline)) INLINE static void sink_collect_properties_from_g
   const float r = sqrtf(r2);
   const float hi_inv = 1.0f / ri;
   const float ui = r * hi_inv;
-  const float hi_inv_dim = pow_dimension(hi_inv);        /* 1/h^d */
+  const float hi_inv_dim = pow_dimension(hi_inv); /* 1/h^d */
   kernel_deval(ui, &wi, &wi_dx);
 
   /* Neighbour gas mass */
@@ -281,7 +281,8 @@ __attribute__((always_inline)) INLINE static void sink_collect_properties_from_g
   const float rho_inv = 1.f / si->to_collect.rho_gas;
 
   /* Contribution to the smoothed sound speed */
-  si->to_collect.sound_speed_gas += mj * wi * hydro_get_comoving_soundspeed(pj) * hi_inv_dim * rho_inv;
+  si->to_collect.sound_speed_gas +=
+      mj * wi * hydro_get_comoving_soundspeed(pj) * hi_inv_dim * rho_inv;
 
   /* Neighbour's (drifted) velocity in the frame of the sink
    * (we don't include a Hubble term since we are interested in the

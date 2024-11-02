@@ -261,19 +261,23 @@ INLINE static void sink_props_init(struct sink_props *sp,
                                default_disable_sink_formation);
 
   /* Maximal time-step lengths */
-  const double max_time_step_young_Myr = parser_get_opt_param_float(params, "GEARSink:max_timestep_young_Myr", FLT_MAX);
-  const double max_time_step_old_Myr = parser_get_opt_param_float(params, "GEARSink:max_timestep_old_Myr", FLT_MAX);
-  const double age_threshold_Myr = parser_get_opt_param_float(params, "GEARSink:timestep_age_threshold_Myr", FLT_MAX);
-  const double age_threshold_unlimited_Myr = parser_get_opt_param_float(params, "GEARSink:timestep_age_threshold_unlimited_Myr", 0.);
+  const double max_time_step_young_Myr = parser_get_opt_param_float(
+      params, "GEARSink:max_timestep_young_Myr", FLT_MAX);
+  const double max_time_step_old_Myr = parser_get_opt_param_float(
+      params, "GEARSink:max_timestep_old_Myr", FLT_MAX);
+  const double age_threshold_Myr = parser_get_opt_param_float(
+      params, "GEARSink:timestep_age_threshold_Myr", FLT_MAX);
+  const double age_threshold_unlimited_Myr = parser_get_opt_param_float(
+      params, "GEARSink:timestep_age_threshold_unlimited_Myr", 0.);
 
   /* Check for consistency */
   if (age_threshold_unlimited_Myr != 0. && age_threshold_Myr != FLT_MAX) {
     if (age_threshold_unlimited_Myr < age_threshold_Myr)
       error(
-	    "The age threshold for unlimited sink time-step sizes (%e Myr) is "
-	    "smaller than the transition threshold from young to old ages (%e "
-	    "Myr)",
-	    age_threshold_unlimited_Myr, age_threshold_Myr);
+          "The age threshold for unlimited sink time-step sizes (%e Myr) is "
+          "smaller than the transition threshold from young to old ages (%e "
+          "Myr)",
+          age_threshold_unlimited_Myr, age_threshold_Myr);
   }
 
   sp->CFL_condition = parser_get_param_float(params, "GEARSink:CFL_condition");
@@ -288,8 +292,8 @@ INLINE static void sink_props_init(struct sink_props *sp,
   sp->max_time_step_young = max_time_step_young_Myr * Myr_internal_units;
   sp->max_time_step_old = max_time_step_old_Myr * Myr_internal_units;
   sp->age_threshold = age_threshold_Myr * Myr_internal_units;
-  sp->age_threshold_unlimited = age_threshold_unlimited_Myr * Myr_internal_units;
-
+  sp->age_threshold_unlimited =
+      age_threshold_unlimited_Myr * Myr_internal_units;
 
   /* here, we need to differenciate between the stellar models */
   struct initial_mass_function *imf;

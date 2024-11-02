@@ -41,8 +41,7 @@
 __attribute__((always_inline)) INLINE static float sink_compute_timestep(
     const struct sink* const sink, const struct sink_props* sink_properties,
     const int with_cosmology, const struct cosmology* cosmo,
-    const struct gravity_props* grav_props,
-    const double time) {
+    const struct gravity_props* grav_props, const double time) {
 
   return FLT_MAX;
 }
