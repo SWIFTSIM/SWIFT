@@ -139,7 +139,7 @@ runner_iact_nonsym_sinks_gas_density(
     const int with_cosmology, const struct cosmology *cosmo,
     const struct gravity_props *grav_props,
     const struct sink_props *sink_props,
-    const integertime_t ti_current) {}
+    const integertime_t ti_current, const double time) {}
 
 /**
  * @brief Compute sink-sink swallow interaction (non-symmetric).
@@ -156,6 +156,8 @@ runner_iact_nonsym_sinks_gas_density(
  * @param cosmo The cosmological parameters and properties.
  * @param grav_props The gravity scheme parameters and properties.
  * @param sink_props the sink properties to use.
+ * @param ti_current Current integer time value (for random numbers).
+ * @param time current physical time in the simulation
  */
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_sinks_sink_swallow(
@@ -163,7 +165,8 @@ runner_iact_nonsym_sinks_sink_swallow(
     struct sink *restrict si, struct sink *restrict sj,
     const int with_cosmology, const struct cosmology *cosmo,
     const struct gravity_props *grav_props,
-    const struct sink_props *sink_properties) {
+    const struct sink_props *sink_properties,
+    const integertime_t ti_current, const double time) {
 
   const float r = sqrtf(r2);
   const float f_acc_r_acc_i = sink_properties->f_acc * ri;
@@ -284,6 +287,8 @@ runner_iact_nonsym_sinks_sink_swallow(
  * @param cosmo The cosmological parameters and properties.
  * @param grav_props The gravity scheme parameters and properties.
  * @param sink_props the sink properties to use.
+ * @param ti_current Current integer time value (for random numbers).
+ * @param time current physical time in the simulation
  */
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_sinks_gas_swallow(const float r2, const float dx[3],
@@ -294,7 +299,7 @@ runner_iact_nonsym_sinks_gas_swallow(const float r2, const float dx[3],
                                      const struct cosmology *cosmo,
                                      const struct gravity_props *grav_props,
                                      const struct sink_props *sink_properties,
-                                     const integertime_t ti_current) {
+                                     const integertime_t ti_current, const double time) {
 
   const float r = sqrtf(r2);
   const float f_acc_r_acc = sink_properties->f_acc * ri;
