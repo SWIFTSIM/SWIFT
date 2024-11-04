@@ -1292,13 +1292,15 @@ int cell_activate_subcell_grav_tasks(struct cell *restrict ci,
   if (cj == NULL) {
 
     /* Do anything? */
-    if (ci->grav.count == 0 || !cell_is_active_gravity(ci, e)) return 1;
+    if ((ci->grav.count == 0 && ci->subtype != cell_subtype_void) ||
+        !cell_is_active_gravity(ci, e))
+      return 1;
 
     /* Has it already been processed? */
     if (cell_get_flag(ci, cell_flag_unskip_self_grav_processed)) return 1;
 
     /* Recurse? */
-    if (ci->split) {
+    if (ci->split || ci->subtype == cell_subtype_void) {
 
       /* Loop over all progenies and pairs of progenies */
       for (int j = 0; j < 8; j++) {
