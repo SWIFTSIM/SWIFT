@@ -319,16 +319,9 @@ runner_iact_nonsym_sinks_gas_swallow(const float r2, const float dx[3],
                                      const struct sink_props *sink_properties,
                                      const integertime_t ti_current, const double time) {
 
-  // float wi;
 
   /* Get r. */
   const float r = sqrtf(r2);
-
-  // /* Compute the kernel function */
-  // const float hi_inv = 1.0f / hi;
-  // const float hi_inv_dim = pow_dimension(hi_inv);
-  // const float ui = r * hi_inv;
-  // kernel_eval(ui, &wi);
 
   /* Check if within cutoff radius. If not, we're done. */
   if (r > ri) return;
@@ -346,10 +339,6 @@ runner_iact_nonsym_sinks_gas_swallow(const float r2, const float dx[3],
 
     /* Don't nibble from particles that are too small already */
     if (pj_mass_orig < sink_properties->min_gas_mass_for_nibbling) return;
-
-    /* Next line is equivalent to w_ij * m_j / Sum_j (w_ij * m_j) */
-    // const float particle_weight = hi_inv_dim * wi * pj_mass_orig / bi->rho_gas;
-    // float nibble_mass = bh_mass_deficit * particle_weight;
 
     /* Sinks don't have a kernel, nibble equally from all particles in cutoff radius*/
     float nibble_mass = si->mass_to_accrete / si->num_ngbs;
@@ -423,10 +412,6 @@ runner_iact_nonsym_sinks_gas_swallow(const float r2, const float dx[3],
     /* Draw a random number (Note mixing both IDs) */
     const float rand = random_unit_interval(si->id + pj->id, ti_current,
                                             random_number_BH_swallow);
-
-    /* Right now sinks don't have a kernel, so set all probabilities equal to 1 and eat until full. */
-    // const float prob = 1.f;
-    // const float rand = 0.f;
     
     /* Are we lucky? */
     if (rand < prob) {
