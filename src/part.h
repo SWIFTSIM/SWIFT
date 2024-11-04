@@ -134,8 +134,6 @@ struct threadpool;
 #include "./sink/Default/sink_part.h"
 #elif defined(SINK_GEAR)
 #include "./sink/GEAR/sink_part.h"
-#elif defined(SINK_GEARBONDIHOYLE)
-#include "./sink/GEARBondiHoyle/sink_part.h"
 #else
 #error "Invalid choice of sink particle"
 #endif
