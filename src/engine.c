@@ -23,6 +23,8 @@
  ******************************************************************************/
 
 /* Config parameters. */
+#include "task.h"
+
 #include <config.h>
 
 /* Some standard headers. */
@@ -1947,6 +1949,41 @@ void engine_skip_drift(struct engine *e) {
 void engine_launch(struct engine *e, const char *call) {
   const ticks tic = getticks();
 
+  /* Split all MM tasks (sanity check) */
+  for (int i = 0; i < e->sched.nr_tasks; ++i) {
+    struct task *t = &e->sched.tasks[i];
+    if (t->type != task_type_grav_mm || t->flags != -2) continue;
+    /* Skip this task */
+    t->skip = 1;
+
+    /* Get the cells */
+    struct cell *ci = t->ci;
+    struct cell *cj = t->cj;
+
+    /* Loop over all pairs of progenies */
+    for (int i = 0; i < 8; i++) {
+      if (ci->progeny[i] != NULL) {
+        for (int j = 0; j < 8; j++) {
+          if (cj->progeny[j] != NULL) {
+
+            struct cell *cpi = ci->progeny[i];
+            struct cell *cpj = cj->progeny[j];
+
+            const int flag = i * 8 + j;
+
+            /* Did we agree to use an M-M interaction here at the last rebuild?
+             */
+            if (flags & (1ULL << flag)) {
+              /* Make a direct MM task */
+              scheduler_addtask(s, task_type_grav_mm, task_subtype_none, -2, 0,
+                                ci->progeny[i], cj->progeny[j]);
+            }
+          }
+        }
+      }
+    }
+  }
+
 #ifdef SWIFT_DEBUG_CHECKS
   /* Re-set all the cell task counters to 0 */
   space_reset_task_counters(e->s);
@@ -3055,9 +3092,9 @@ int engine_step(struct engine *e) {
             e->collect_group1.csds_file_size_gb);
 #endif
 
-    /********************************************************/
-    /* OK, we are done with the regular stuff. Time for i/o */
-    /********************************************************/
+  /********************************************************/
+  /* OK, we are done with the regular stuff. Time for i/o */
+  /********************************************************/
 
 #ifdef WITH_LIGHTCONE
   /* Flush lightcone buffers if necessary */
