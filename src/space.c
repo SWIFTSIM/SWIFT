@@ -22,8 +22,6 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "cell.h"
-
 #include <config.h>
 
 /* Some standard headers. */
