@@ -125,10 +125,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_sink(
  * @param hj Comoving smoothing-length of particle j.
  * @param si First particle (sink).
  * @param pj Second particle (gas, not updated).
- * @param xpj The extended data of the second particle (not updated).
  * @param with_cosmology Are we doing a cosmological run?
  * @param cosmo The cosmological model.
  * @param grav_props The properties of the gravity scheme (softening, G, ...).
+ * @param sink_props the sink properties to use.
  * @param ti_current Current integer time value (for random numbers).
  * @param time current physical time in the simulation
  */
