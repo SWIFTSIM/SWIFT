@@ -27,8 +27,6 @@
 #include "./sink/Default/sink.h"
 #elif defined(SINK_GEAR)
 #include "./sink/GEAR/sink.h"
-#elif defined(SINK_GEARBONDIHOYLE)
-#include "./sink/GEARBondiHoyle/sink.h"
 #else
 #error "Invalid choice of sink model"
 #endif

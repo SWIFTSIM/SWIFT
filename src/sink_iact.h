@@ -27,8 +27,6 @@
 #include "./sink/Default/sink_iact.h"
 #elif defined(SINK_GEAR)
 #include "./sink/GEAR/sink_iact.h"
-#elif defined(SINK_GEARBONDIHOYLE)
-#include "./sink/GEARBondiHoyle/sink_iact.h"
 #else
 #error "Invalid choice of sink model"
 #endif
