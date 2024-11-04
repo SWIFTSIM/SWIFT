@@ -1952,7 +1952,10 @@ void engine_launch(struct engine *e, const char *call) {
   /* Split all MM tasks (sanity check) */
   for (int k = 0; k < e->sched.nr_tasks; ++k) {
     struct task *t = &e->sched.tasks[k];
-    if (t->type != task_type_grav_mm || t->flags != -2) continue;
+    if (t->type != task_type_grav_mm) continue;
+
+    if (t->flags == -2) continue;
+
     /* Skip this task */
     t->skip = 1;
 
@@ -1975,8 +1978,10 @@ void engine_launch(struct engine *e, const char *call) {
              */
             if (t->flags & (1ULL << flag)) {
               /* Make a direct MM task */
-              scheduler_addtask(&e->sched, task_type_grav_mm, task_subtype_none,
-                                -2, 0, cpi, cpj);
+              struct task *t =
+                  scheduler_addtask(&e->sched, task_type_grav_mm,
+                                    task_subtype_none, -2, 0, cpi, cpj);
+              scheduler_activate(&e->sched, t);
             }
           }
         }
