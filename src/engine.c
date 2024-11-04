@@ -1973,10 +1973,10 @@ void engine_launch(struct engine *e, const char *call) {
 
             /* Did we agree to use an M-M interaction here at the last rebuild?
              */
-            if (flags & (1ULL << flag)) {
+            if (t->flags & (1ULL << flag)) {
               /* Make a direct MM task */
-              scheduler_addtask(s, task_type_grav_mm, task_subtype_none, -2, 0,
-                                ci->progeny[i], cj->progeny[j]);
+              scheduler_addtask(&e->sched, task_type_grav_mm, task_subtype_none,
+                                -2, 0, ci->progeny[i], cj->progeny[j]);
             }
           }
         }
