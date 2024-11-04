@@ -1950,8 +1950,8 @@ void engine_launch(struct engine *e, const char *call) {
   const ticks tic = getticks();
 
   /* Split all MM tasks (sanity check) */
-  for (int i = 0; i < e->sched.nr_tasks; ++i) {
-    struct task *t = &e->sched.tasks[i];
+  for (int k = 0; k < e->sched.nr_tasks; ++k) {
+    struct task *t = &e->sched.tasks[k];
     if (t->type != task_type_grav_mm || t->flags != -2) continue;
     /* Skip this task */
     t->skip = 1;
