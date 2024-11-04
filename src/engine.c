@@ -1976,7 +1976,7 @@ void engine_launch(struct engine *e, const char *call) {
             if (t->flags & (1ULL << flag)) {
               /* Make a direct MM task */
               scheduler_addtask(&e->sched, task_type_grav_mm, task_subtype_none,
-                                -2, 0, ci->progeny[i], cj->progeny[j]);
+                                -2, 0, cpi, cpj);
             }
           }
         }
