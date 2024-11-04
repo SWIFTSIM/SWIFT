@@ -769,7 +769,6 @@ double runner_dopair1_pack_f4_g(struct runner *r, struct scheduler *s, struct pa
 	t->done = 1;
 	/* Copies done. Release the lock ! */
 	task_unlock(t);
-//	signal_sleeping_runners(s, t);
 	pack_vars->tasks_packed++;
 	pack_vars->launch = 0;
 	pack_vars->launch_leftovers = 0;
@@ -950,7 +949,6 @@ double runner_dopair1_pack_f4_f(struct runner *r, struct scheduler *s, struct pa
 	t->done = 1;
 	/* Copies done. Release the lock ! */
 	task_unlock(t);
-//	signal_sleeping_runners(s, t);
 	pack_vars->tasks_packed++;
 	pack_vars->launch = 0;
 	pack_vars->launch_leftovers = 0;
@@ -1337,7 +1335,6 @@ void runner_doself1_launch_f4(struct runner *r, struct scheduler *s, struct pack
 			  *unpack_time += (tp1.tv_sec - tp0.tv_sec) +
 			    (tp1.tv_nsec - tp0.tv_nsec) / 1000000000.0;
 
-//			  scheduler_done(s, tii);
 			  /* Release the lock */
 			  cell_unlocktree(cii);
 
@@ -1701,15 +1698,14 @@ void runner_doself1_launch_f4_g(struct runner *r, struct scheduler *s, struct pa
 
 			  /* Record things for debugging */
 			  cii->gpu_done_g++;
-			  scheduler_done(s, tii);
 
 			  /* Release the lock */
-//			  cell_unlocktree(cii);
+			  cell_unlocktree(cii);
 
 			  /*schedule my dependencies (Only unpacks really)*/
-//			  enqueue_dependencies(s, tii);
+			  enqueue_dependencies(s, tii);
 			  /*Signal sleeping runners*/
-//			  signal_sleeping_runners(s, tii);
+			  signal_sleeping_runners(s, tii);
 
 			  tii->gpu_done = 1;
 
@@ -2072,7 +2068,6 @@ void runner_doself1_launch_f4_f(struct runner *r, struct scheduler *s, struct pa
 			  *unpack_time += (tp1.tv_sec - tp0.tv_sec) +
 			  (tp1.tv_nsec - tp0.tv_nsec) / 1000000000.0;
 
-//			  scheduler_done(s, tii);
 			  /* Release the lock */
 			  cell_unlocktree(cii);
 
@@ -2639,7 +2634,6 @@ void runner_dopair1_launch_f4_one_memcpy(struct runner *r, struct scheduler *s, 
 		  cii->gpu_done_pair++;
 		  cjj->gpu_done_pair++;
 
-//		  scheduler_done(s, tii);
 //		  /* Release the locks */
 		  cell_unlocktree(cii);
 //		  /* Release the locks */
@@ -3291,11 +3285,10 @@ void runner_dopair1_launch_f4_g_one_memcpy(struct runner *r, struct scheduler *s
 		  cii->gpu_done_pair_g++;
 		  cjj->gpu_done_pair_g++;
 
-		  scheduler_done(s, tii);
-//		  /* Release the locks */
-//		  cell_unlocktree(cii);
-//		  /* Release the locks */
-//		  cell_unlocktree(cjj);
+		  /* Release the locks */
+		  cell_unlocktree(cii);
+		  /* Release the locks */
+		  cell_unlocktree(cjj);
 
 		  /*Time end of unpacking*/
 		  clock_gettime(CLOCK_REALTIME, &tp1);
@@ -3303,9 +3296,9 @@ void runner_dopair1_launch_f4_g_one_memcpy(struct runner *r, struct scheduler *s
 		    (tp1.tv_nsec - tp0.tv_nsec) / 1000000000.0;
 
 		  /*schedule my dependencies (Only unpacks really)*/
-//		  enqueue_dependencies(s, tii);
+		  enqueue_dependencies(s, tii);
 		  /*Signal sleeping runners*/
-//		  signal_sleeping_runners(s, tii);
+		  signal_sleeping_runners(s, tii);
 
 		  tii->gpu_done = 1;
 
@@ -3971,12 +3964,10 @@ void runner_dopair1_launch_f4_f_one_memcpy(struct runner *r, struct scheduler *s
 		  cii->gpu_done_pair_f++;
 		  cjj->gpu_done_pair_f++;
 
-		  scheduler_done(s, tii);
-
 //		  /* Release the locks */
-//		  cell_unlocktree(cii);
+		  cell_unlocktree(cii);
 //		  /* Release the locks */
-//		  cell_unlocktree(cjj);
+		  cell_unlocktree(cjj);
 
 		  /*Time end of unpacking*/
 		  clock_gettime(CLOCK_REALTIME, &tp1);
@@ -3984,9 +3975,9 @@ void runner_dopair1_launch_f4_f_one_memcpy(struct runner *r, struct scheduler *s
 		    (tp1.tv_nsec - tp0.tv_nsec) / 1000000000.0;
 
 		  /*schedule my dependencies (Only unpacks really)*/
-//		  enqueue_dependencies(s, tii);
-//		  /*Signal sleeping runners*/
-//		  signal_sleeping_runners(s, tii);
+		  enqueue_dependencies(s, tii);
+		  /*Signal sleeping runners*/
+		  signal_sleeping_runners(s, tii);
 
 		  tii->gpu_done = 1;
 
