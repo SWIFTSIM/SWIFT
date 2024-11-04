@@ -1176,24 +1176,24 @@ void *runner_main2(void *data) {
 //	      }
 //	      else{
 //#endif //DO_CORNERS
-//	        packing_time_pair += runner_dopair1_pack_f4(r, sched, pack_vars_pair_dens, ci,
-//	      		 cj, t, parts_aos_pair_f4_send, e, fparti_fpartj_lparti_lpartj_dens);
-//		    /* Packed enough tasks or no pack tasks left in queue, flag that we want to run */
-//		    int launch = pack_vars_pair_dens->launch;
-//		    int launch_leftovers = pack_vars_pair_dens->launch_leftovers;
-//		    /* Do we have enough stuff to run the GPU ? */
-//	        if(launch)n_full_p_d_bundles++;
-//	        if(launch_leftovers)n_partial_p_d_bundles++;
-//		    if(launch || launch_leftovers) {
-//		    /*Launch GPU tasks*/
-////				runner_dopair1_launch(r, sched, pack_vars_pair_dens, ci, t, parts_aos_pair_dens,
-////						d_parts_aos_pair_dens, stream, d_a, d_H, e, &packing_time_pair, &time_for_density_gpu_pair);
-//			  runner_dopair1_launch_f4_one_memcpy(r, sched, pack_vars_pair_dens, t, parts_aos_pair_f4_send, parts_aos_pair_f4_recv,
-//						 d_parts_aos_pair_f4_send, d_parts_aos_pair_f4_recv, stream_pairs, d_a, d_H, e, &packing_time_pair, &time_for_density_gpu_pair,
-//						 &unpacking_time_pair, fparti_fpartj_lparti_lpartj_dens, pair_end);
+	        packing_time_pair += runner_dopair1_pack_f4(r, sched, pack_vars_pair_dens, ci,
+	      		 cj, t, parts_aos_pair_f4_send, e, fparti_fpartj_lparti_lpartj_dens);
+		    /* Packed enough tasks or no pack tasks left in queue, flag that we want to run */
+		    int launch = pack_vars_pair_dens->launch;
+		    int launch_leftovers = pack_vars_pair_dens->launch_leftovers;
+		    /* Do we have enough stuff to run the GPU ? */
+	        if(launch)n_full_p_d_bundles++;
+	        if(launch_leftovers)n_partial_p_d_bundles++;
+		    if(launch || launch_leftovers) {
+		    /*Launch GPU tasks*/
+//				runner_dopair1_launch(r, sched, pack_vars_pair_dens, ci, t, parts_aos_pair_dens,
+//						d_parts_aos_pair_dens, stream, d_a, d_H, e, &packing_time_pair, &time_for_density_gpu_pair);
+			  runner_dopair1_launch_f4_one_memcpy(r, sched, pack_vars_pair_dens, t, parts_aos_pair_f4_send, parts_aos_pair_f4_recv,
+						 d_parts_aos_pair_f4_send, d_parts_aos_pair_f4_recv, stream_pairs, d_a, d_H, e, &packing_time_pair, &time_for_density_gpu_pair,
+						 &unpacking_time_pair, fparti_fpartj_lparti_lpartj_dens, pair_end);
 //		    }
 //#ifdef DO_CORNERS
-//		  } /* End of GPU work Pairs */
+		  } /* End of GPU work Pairs */
 //#endif //DO_CORNERS
 #endif //GPUDENS
 	    } /* pair / pack */
@@ -1348,7 +1348,7 @@ void *runner_main2(void *data) {
 #ifdef EXTRA_HYDRO_LOOP
         else if (t->subtype == task_subtype_gradient){
           int Do_nothing = 0;
-//#ifndef GPUOFFLOAD
+#ifndef GPUOFFLOAD
           struct timespec t0, t1, dt;
           clock_gettime(CLOCK_REALTIME, &t0);
           runner_dopair1_branch_gradient(r, ci, cj);
@@ -1358,7 +1358,7 @@ void *runner_main2(void *data) {
 	          (t1.tv_sec - t0.tv_sec) +
 	          (t1.tv_nsec - t0.tv_nsec) /
 	           1000000000.0;
-//#endif //GPUGRADPAIR
+#endif //GPUGRADPAIR
         }
 #endif //EXTRA_HYDRO_LOOP
         else if (t->subtype == task_subtype_force){
@@ -1763,12 +1763,13 @@ void *runner_main2(void *data) {
       prev = t;
 #ifdef GPUOFFLOAD
 //      if (t->type == task_type_self && t->subtype == task_subtype_gpu_pack){
-      if (t->type == task_type_self && t->subtype == task_subtype_gpu_pack){// ||
+      if (t->subtype == task_subtype_gpu_pack){// ||
 //    	  t->subtype == task_subtype_gpu_pack_g ||
 //		  t->subtype == task_subtype_gpu_pack_f){
     	/* Don't enqueue unpacks yet. Just signal the runners */
         t->skip = 1;
         t = NULL;
+//        if(t->gpu_done == 0)message("Missed packing a GPU tasks\n");
       }
       else{ /* Mark task as done, as per usual */
         t = scheduler_done(sched, t);

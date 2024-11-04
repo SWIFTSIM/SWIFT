@@ -4305,8 +4305,8 @@ void engine_make_hydroloop_tasks_mapper(void *map_data, int num_elements,
           const int sid = sortlistID[(kk + 1) + 3 * ((jj + 1) + 3 * (ii + 1))];
           scheduler_addtask(sched, task_type_pair, task_subtype_density, sid, 0,
                             ci, cj);
-//          scheduler_addtask(sched, task_type_pair, task_subtype_gpu_pack, sid, 0,
-//        		            ci, cj); // A. Nasar
+          scheduler_addtask(sched, task_type_pair, task_subtype_gpu_pack, sid, 0,
+        		            ci, cj); // A. Nasar
 
 #ifdef SWIFT_DEBUG_CHECKS
 #ifdef WITH_MPI
@@ -4870,8 +4870,8 @@ void engine_maketasks(struct engine *e) {
 
     else if (t->type == task_type_pair) {
       if (count_current_pair % pack_size == 0) {
-//        last_created_pair_unpack = scheduler_addtask(
-//            sched, task_type_pair, task_subtype_gpu_unpack, 0, 0, NULL, NULL);
+        last_created_pair_unpack = scheduler_addtask(
+            sched, task_type_pair, task_subtype_gpu_unpack, 0, 0, NULL, NULL);
       }
 
       /* pack -> unpack -> ghost_in */
@@ -4880,16 +4880,16 @@ void engine_maketasks(struct engine *e) {
       if(t->cj->hydro.ghost_in == NULL)
         fprintf(stderr, "Ghost in for cell j is NULL\n");
 
-//      scheduler_addunlock(sched, t, last_created_pair_unpack);
-//      if(t->ci->nodeID == e->nodeID)
-//      scheduler_addunlock(sched, last_created_pair_unpack,
-//                          t->ci->hydro.super->hydro.ghost_in);
-//      if((t->cj->nodeID == e->nodeID) && (t->ci->hydro.super != t->cj->hydro.super))
-//      scheduler_addunlock(sched, last_created_pair_unpack,
-//                          t->cj->hydro.super->hydro.ghost_in);
-//
-//      engine_addlink(e, &t->ci->hydro.density_unpack, last_created_pair_unpack);
-//      engine_addlink(e, &t->cj->hydro.density_unpack, last_created_pair_unpack);
+      scheduler_addunlock(sched, t, last_created_pair_unpack);
+      if(t->ci->nodeID == e->nodeID)
+      scheduler_addunlock(sched, last_created_pair_unpack,
+                          t->ci->hydro.super->hydro.ghost_in);
+      if((t->cj->nodeID == e->nodeID) && (t->ci->hydro.super != t->cj->hydro.super))
+      scheduler_addunlock(sched, last_created_pair_unpack,
+                          t->cj->hydro.super->hydro.ghost_in);
+
+      engine_addlink(e, &t->ci->hydro.density_unpack, last_created_pair_unpack);
+      engine_addlink(e, &t->cj->hydro.density_unpack, last_created_pair_unpack);
 
       /*Useless as this ends up only setting one pair unpack as the unpack task for this cell whilst the cell
        * interacts with many other cells and can be linked to another unpack task. Rely on links instead*/

@@ -2440,24 +2440,29 @@ void scheduler_rewait_mapper(void *map_data, int num_elements,
 
     /* Ignore skipped tasks. */
     if (t->skip) continue;
-    if (t->type == task_type_self && t->subtype == task_subtype_gpu_pack) // A. Nasar
-      atomic_inc(&s->queues[t->ci->hydro.super->owner].n_packs_self_left);
-    if (t->type == task_type_self && t->subtype == task_subtype_gpu_pack_f)
-      atomic_inc(&s->queues[t->ci->hydro.super->owner].n_packs_self_left_f);
-    if (t->type == task_type_self && t->subtype == task_subtype_gpu_pack_g)
-      atomic_inc(&s->queues[t->ci->hydro.super->owner].n_packs_self_left_g);
-
-    if (t->type == task_type_pair && t->subtype == task_subtype_gpu_pack)
-          atomic_inc(&s->queues[t->ci->hydro.super->owner].n_packs_pair_left);
-    if (t->type == task_type_pair && t->subtype == task_subtype_gpu_pack_f)
-          atomic_inc(&s->queues[t->ci->hydro.super->owner].n_packs_pair_left_f);
-    if (t->type == task_type_pair && t->subtype == task_subtype_gpu_pack_g)
-          atomic_inc(&s->queues[t->ci->hydro.super->owner].n_packs_pair_left_g);
 
     /* Increment the task's own wait counter for the enqueueing. */
     atomic_inc(&t->wait);
     t->done = 0;
     t->gpu_done = 0;
+
+//    if (t->type == task_type_self){ // A. Nasar increment number of waiting tasks
+//      if(t->subtype == task_subtype_gpu_pack)
+//        atomic_inc(&s->queues[t->ci->hydro.super->owner].n_packs_self_left);
+//      if (t->subtype == task_subtype_gpu_pack_f)
+//        atomic_inc(&s->queues[t->ci->hydro.super->owner].n_packs_self_left_f);
+//      if (t->subtype == task_subtype_gpu_pack_g)
+//        atomic_inc(&s->queues[t->ci->hydro.super->owner].n_packs_self_left_g);
+//    }
+//
+//    if (t->type == task_type_pair){
+//      if(t->subtype == task_subtype_gpu_pack)
+//        atomic_inc(&s->queues[t->ci->hydro.super->owner].n_packs_pair_left);
+//      if (t->subtype == task_subtype_gpu_pack_f)
+//        atomic_inc(&s->queues[t->ci->hydro.super->owner].n_packs_pair_left_f);
+//      if (t->subtype == task_subtype_gpu_pack_g)
+//        atomic_inc(&s->queues[t->ci->hydro.super->owner].n_packs_pair_left_g);
+//    }
 
 #ifdef SWIFT_DEBUG_CHECKS
     /* Check that we don't have more waits that what can be stored. */
@@ -2850,7 +2855,35 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
 
     /* Increase the waiting counter. */
     atomic_inc(&s->waiting);
-
+    //A. Nasar Do the same for the pack tasks
+    if (t->type == task_type_self){
+      if(t->subtype == task_subtype_gpu_pack)
+        atomic_inc(&s->queues[qid].n_packs_self_left);
+      if (t->subtype == task_subtype_gpu_pack_f)
+        atomic_inc(&s->queues[qid].n_packs_self_left_f);
+      if (t->subtype == task_subtype_gpu_pack_g)
+        atomic_inc(&s->queues[qid].n_packs_self_left_g);
+    }
+    if (t->type == task_type_pair){ // A. Nasar NEED to think about how to do this with MPI where ci may not be on this node/rank
+      if(t->subtype == task_subtype_gpu_pack){
+    	  if(t->ci->nodeID == s->nodeID)
+            atomic_inc(&s->queues[qid].n_packs_pair_left);
+    	  else
+    		atomic_inc(&s->queues[qid].n_packs_pair_left);
+      }
+      if (t->subtype == task_subtype_gpu_pack_f){
+    	if(t->ci->nodeID == s->nodeID)
+          atomic_inc(&s->queues[qid].n_packs_pair_left_f);
+    	else
+    	  atomic_inc(&s->queues[qid].n_packs_pair_left_f);
+      }
+      if (t->subtype == task_subtype_gpu_pack_g){
+      	if(t->ci->nodeID == s->nodeID)
+          atomic_inc(&s->queues[qid].n_packs_pair_left_g);
+      	else
+          atomic_inc(&s->queues[qid].n_packs_pair_left_g);
+      }
+    }
     /* Insert the task into that queue. */
     queue_insert(&s->queues[qid], t);
   }
