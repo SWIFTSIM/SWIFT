@@ -796,12 +796,6 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   const float floor_rho = p->mass * kernel_root * h_inv_dim;
   p->rho_evol = max(p->rho_evol, floor_rho);
 
-  /* Check against absolute minimum */
-  const float min_u =
-      hydro_props->minimal_internal_energy / cosmo->a_factor_internal_energy;
-
-  p->u = max(p->u, min_u);
-
   /* Predict smoothing length */
   const float w1 = p->force.h_dt * h_inv * dt_drift;
   if (fabsf(w1) < 0.2f)
@@ -818,8 +812,17 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
 
   p->rho = p->rho_evol;
 
-  const float floor_u = FLT_MIN;
+  /* Check against entropy floor - explicitly do this after drifting the
+   * density as this has a density dependence. */
+  const float floor_A = entropy_floor(p, cosmo, floor_props);
+  const float floor_u = gas_internal_energy_from_entropy(p->rho, floor_A);
+
+  /* Check against absolute minimum */
+  const float min_u =
+      hydro_props->minimal_internal_energy / cosmo->a_factor_internal_energy;
+
   p->u = max(p->u, floor_u);
+  p->u = max(p->u, min_u);
 
   /* Compute the new pressure */
   const float pressure =
@@ -876,25 +879,6 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const struct entropy_floor_properties *floor_props) {
 
-  /* Integrate the internal energy forward in time */
-  const float delta_u = p->u_dt * dt_therm;
-
-  /* Do not decrease the energy by more than a factor of 2*/
-  xp->u_full = max(xp->u_full + delta_u, 0.5f * xp->u_full);
-
-  /* Check against absolute minimum */
-  const float min_u =
-      hydro_props->minimal_internal_energy / cosmo->a_factor_internal_energy;
-  const float floor_u = FLT_MIN;
-
-  /* Take highest of both limits */
-  const float energy_min = max(min_u, floor_u);
-
-  if (xp->u_full < energy_min) {
-    xp->u_full = energy_min;
-    p->u_dt = 0.f;
-  }
-
   const float delta_rho = p->drho_dt * dt_therm;
 
   xp->rho_evol_full =
@@ -908,6 +892,28 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
   if (xp->rho_evol_full < floor_rho) {
     xp->rho_evol_full = floor_rho;
     p->drho_dt = 0.f;
+  }
+
+  /* Integrate the internal energy forward in time */
+  const float delta_u = p->u_dt * dt_therm;
+
+  /* Do not decrease the energy by more than a factor of 2*/
+  xp->u_full = max(xp->u_full + delta_u, 0.5f * xp->u_full);
+
+  /* Check against entropy floor */
+  const float floor_A = entropy_floor(p, cosmo, floor_props);
+  const float floor_u = gas_internal_energy_from_entropy(p->rho, floor_A);
+
+  /* Check against absolute minimum */
+  const float min_u =
+      hydro_props->minimal_internal_energy / cosmo->a_factor_internal_energy;
+
+  /* Take highest of both limits */
+  const float energy_min = max(min_u, floor_u);
+
+  if (xp->u_full < energy_min) {
+    xp->u_full = energy_min;
+    p->u_dt = 0.f;
   }
 }
 
