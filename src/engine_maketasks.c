@@ -716,7 +716,7 @@ void engine_addtasks_recv_hydro(
       scheduler_addunlock(s, t_xv, l->t);
       scheduler_addunlock(s, l->t, t_rho);
     }
-#ifdef WITH_CUDA /* A. Nasar POSSIBLE BUG HERE (More like PROBABLE)*/
+#ifdef WITH_CUDA /* A. Nasar POSSIBLE BUG HERE (More like PROBABLE) NOT REQUIRED Ghost in for cell j is*/
     for (struct link *l = c->hydro.density_pack; l != NULL; l = l->next) {
       scheduler_addunlock(s, t_xv, l->t);
       scheduler_addunlock(s, l->t, t_rho);
@@ -4899,9 +4899,9 @@ void engine_maketasks(struct engine *e) {
 
       /* pack -> unpack -> ghost_in */
       if (t->ci->hydro.ghost_in == NULL)
-        fprintf(stderr, "Ghost in for cell i is NULL\n");
+        message("Ghost in for cell i is NULL\n");
       if (t->cj->hydro.ghost_in == NULL)
-        fprintf(stderr, "Ghost in for cell j is NULL\n");
+        message("Ghost in for cell j is NULL\n");
 
       scheduler_addunlock(sched, t, last_created_pair_unpack);
       if (t->ci->nodeID == e->nodeID)
