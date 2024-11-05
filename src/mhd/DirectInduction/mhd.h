@@ -110,10 +110,11 @@ __attribute__((always_inline)) INLINE static float mhd_get_divB_error(
       p->mhd_data.B_over_rho[1] * p->mhd_data.B_over_rho[1] +
       p->mhd_data.B_over_rho[2] * p->mhd_data.B_over_rho[2];
 
-  const float error = B_over_rho2 != 0.0f ? fabs(p->mhd_data.divB) * p->h / sqrtf(B_over_rho2 * rho * rho) : 0.0f;
+  const float error = B_over_rho2 != 0.0f ? fabs(p->mhd_data.divB) * p->h /
+                                                sqrtf(B_over_rho2 * rho * rho)
+                                          : 0.0f;
 
   return error;
-
 }
 
 /**
@@ -316,17 +317,17 @@ __attribute__((always_inline)) INLINE static void mhd_reset_gradient(
   p->mhd_data.curl_B[1] = 0.0f;
   p->mhd_data.curl_B[2] = 0.0f;
 
-  for (int i = 0; i < 3; i++) {
-    for (int j = 0; j < 3; j++) {
-      p->mhd_data.grad_B_tensor[i][j] = 0.0f;
-    }
-  }
+  /* for (int i = 0; i < 3; i++) { */
+  /*   for (int j = 0; j < 3; j++) { */
+  /*     p->mhd_data.grad_B_tensor[i][j] = 0.0f; */
+  /*   } */
+  /* } */
 
   /* SPH error*/
-  p->mhd_data.mean_SPH_err = 0.f;
-  for (int k = 0; k < 3; k++) {
-    p->mhd_data.mean_grad_SPH_err[k] = 0.f;
-  }
+  /* p->mhd_data.mean_SPH_err = 0.f; */
+  /* for (int k = 0; k < 3; k++) { */
+  /*   p->mhd_data.mean_grad_SPH_err[k] = 0.f; */
+  /* } */
 }
 
 /**
@@ -338,10 +339,30 @@ __attribute__((always_inline)) INLINE static void mhd_reset_gradient(
  */
 __attribute__((always_inline)) INLINE static void mhd_end_gradient(
     struct part *p) {
-  /* Add self contribution */
-  p->mhd_data.mean_SPH_err += p->mass * kernel_root;
-  /* Finish SPH_1 calculation*/
-  p->mhd_data.mean_SPH_err *= pow_dimension(1.f / (p->h)) / p->rho;
+
+  /* Some smoothing length multiples. */
+  const float h = p->h;
+  const float h_inv = 1.0f / h;                       /* 1/h */
+  const float h_inv_dim = pow_dimension(h_inv);       /* 1/h^d */
+  const float h_inv_dim_plus_one = h_inv_dim * h_inv; /* 1/h^(d+1) */
+
+  const float rho_inv = 1.f / p->rho;
+  const float a_inv2 = 1.f;  // MATTHIEU: Need to fix cosmo here
+
+  /* Finish calculation of the B curl components */
+  p->density.rot_v[0] *= h_inv_dim_plus_one * a_inv2 * rho_inv;
+  p->density.rot_v[1] *= h_inv_dim_plus_one * a_inv2 * rho_inv;
+  p->density.rot_v[2] *= h_inv_dim_plus_one * a_inv2 * rho_inv;
+
+  /* Finish calculation of the B divergence */
+  p->viscosity.div_v *= h_inv_dim_plus_one * rho_inv * a_inv2;
+  // p->viscosity.div_v += cosmo->H * hydro_dimension;   // MATTHIEU: Need to
+  // fix cosmo here
+
+  /* /\* Add self contribution *\/ */
+  /* p->mhd_data.mean_SPH_err += p->mass * kernel_root; */
+  /* /\* Finish SPH_1 calculation*\/ */
+  /* p->mhd_data.mean_SPH_err *= pow_dimension(1.f / (p->h)) / p->rho; */
 }
 
 /**
@@ -434,12 +455,13 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_force(
 
   float grad_B_mean_square = 0.0f;
 
-  for (int i = 0; i < 3; i++) {
-    for (int j = 0; j < 3; j++) {
-      grad_B_mean_square +=
-          p->mhd_data.grad_B_tensor[i][j] * p->mhd_data.grad_B_tensor[i][j];
-    }
-  }
+  /* for (int i = 0; i < 3; i++) { */
+  /*   for (int j = 0; j < 3; j++) { */
+  /*     grad_B_mean_square += */
+  /*         p->mhd_data.grad_B_tensor[i][j] * p->mhd_data.grad_B_tensor[i][j];
+   */
+  /*   } */
+  /* } */
 
   p->mhd_data.alpha_AR =
       normB ? fminf(1.0f, h * sqrtf(grad_B_mean_square) / normB) : 0.0f;
@@ -450,7 +472,6 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_force(
   xp->mhd_data.psi_over_ch_full += p->mhd_data.psi_over_ch_dt * dt_alpha;
 
   p->mhd_data.psi_over_ch = xp->mhd_data.psi_over_ch_full;
-
 }
 
 /**
@@ -531,7 +552,6 @@ __attribute__((always_inline)) INLINE static void mhd_predict_extra(
   p->mhd_data.B_over_rho[2] += p->mhd_data.B_over_rho_dt[2] * dt_therm;
 
   p->mhd_data.psi_over_ch += p->mhd_data.psi_over_ch_dt * dt_therm;
-
 }
 
 /**
@@ -634,7 +654,6 @@ __attribute__((always_inline)) INLINE static void mhd_convert_quantities(
   xp->mhd_data.B_over_rho_full[2] = p->mhd_data.B_over_rho[2];
 
   xp->mhd_data.psi_over_ch_full = p->mhd_data.psi_over_ch;
-
 }
 
 /**

@@ -24,16 +24,19 @@
  */
 struct mhd_part_data {
 
+  /*! Predicted B/rho field */
   float B_over_rho[3];
 
+  /*! Divergence of B */
   float divB;
 
-  /*! dB Direct Induction */
+  /*! Curl of B */
+  float curl_B[3];
+
+  /*! Time derivative of B/rho */
   float B_over_rho_dt[3];
 
   float v_fm;
-
-  float curl_B[3];
 
   /* Resistive Eta */
   float resistive_eta;

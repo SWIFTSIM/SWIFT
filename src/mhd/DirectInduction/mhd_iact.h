@@ -85,47 +85,40 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
 
   /* Define kernel variables */
   float wi, wi_dx;
+
   /* Get r and 1/r. */
   const float r = sqrtf(r2);
   const float r_inv = r ? 1.0f / r : 0.0f;
 
-  /* Recover some data */
+  /* Get masses and densities */
   // const float mi = pi->mass;
   const float mj = pj->mass;
   const float rhoi = pi->rho;
   const float rhoj = pj->rho;
 
-  float Bi[3], Bj[3];
-  for (int i = 0; i < 3; ++i) {
-    Bi[i] = pi->mhd_data.B_over_rho[i] * rhoi;
-    Bj[i] = pj->mhd_data.B_over_rho[i] * rhoj;
-  }
-
-  float dB[3];
-  for (int i = 0; i < 3; ++i) dB[i] = Bi[i] - Bj[i];
+  /* Get B for both particles */
+  const float Bi[3] = {pi->mhd_data.B_over_rho[0] * rhoi,   // x
+                       pi->mhd_data.B_over_rho[1] * rhoi,   // y
+                       pi->mhd_data.B_over_rho[2] * rhoi};  // z
+  const float Bj[3] = {pj->mhd_data.B_over_rho[0] * rhoj,   // x
+                       pj->mhd_data.B_over_rho[1] * rhoj,   // y
+                       pj->mhd_data.B_over_rho[2] * rhoj};  // z
 
   /* Get the kernel for hi. */
   const float hi_inv = 1.0f / hi;
-  const float hid_inv = pow_dimension_plus_one(hi_inv); /* 1/h^(d+1) */
-  const float xi = r * hi_inv;
-  kernel_deval(xi, &wi, &wi_dx);
-  const float wi_dr = hid_inv * wi_dx;
+  const float ui = r * hi_inv;
+  kernel_deval(ui, &wi, &wi_dx);
 
-  /* Get the kernel for hj. */
-  // const float hj_inv = 1.0f / hj;
-  // const float hjd_inv = pow_dimension_plus_one(hj_inv); /* 1/h^(d+1) */
-  // const float xj = r * hj_inv;
-  // float wj, wj_dx;
-  // kernel_deval(xj, &wj, &wj_dx);
-  // const float wj_dr = hjd_inv * wj_dx;
-
-  /* Variable smoothing length term */
-  const float f_ij = 1.f - pi->force.f / mj;
-  // const float f_ji = 1.f - pj->force.f / mi;
+  const float faci = mj * wi_dx * r_inv;
 
   /* B dot r. */
-  const float Bri = (Bi[0] * dx[0] + Bi[1] * dx[1] + Bi[2] * dx[2]);
-  const float Brj = (Bj[0] * dx[0] + Bj[1] * dx[1] + Bj[2] * dx[2]);
+  float dB[3];
+  dB[0] = Bi[0] - Bj[0];
+  dB[1] = Bi[1] - Bj[1];
+  dB[2] = Bi[2] - Bj[2];
+  const float dBdr = (Bi[0] * dx[0] + Bi[1] * dx[1] + Bi[2] * dx[2]);
+
+  pi->mhd_data.divB -= faci * dBdr;
 
   /* dB cross r */
   float dB_cross_dx[3];
@@ -133,32 +126,25 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
   dB_cross_dx[1] = dB[2] * dx[0] - dB[0] * dx[2];
   dB_cross_dx[2] = dB[0] * dx[1] - dB[1] * dx[0];
 
-  /* Compute gradient terms */
-  const float over_rho_i = 1.0f / rhoi * f_ij;
-
-  /* Calculate monopole term */
-  float divB_i = -over_rho_i * (Bri - Brj) * wi_dr * r_inv;
-  pi->mhd_data.divB += mj * divB_i;
-
   /* Calculate curl */
-  pi->mhd_data.curl_B[0] += mj * over_rho_i * wi_dr * r_inv * dB_cross_dx[0];
-  pi->mhd_data.curl_B[1] += mj * over_rho_i * wi_dr * r_inv * dB_cross_dx[1];
-  pi->mhd_data.curl_B[2] += mj * over_rho_i * wi_dr * r_inv * dB_cross_dx[2];
+  pi->mhd_data.curl_B[0] += faci * dB_cross_dx[0];
+  pi->mhd_data.curl_B[1] += faci * dB_cross_dx[1];
+  pi->mhd_data.curl_B[2] += faci * dB_cross_dx[2];
 
-  /* Calculate gradient of B tensor */
-  for (int i = 0; i < 3; i++) {
-    for (int j = 0; j < 3; j++) {
-      pi->mhd_data.grad_B_tensor[i][j] -=
-          mj * over_rho_i * wi_dr * r_inv * dB[i] * dx[j];
-    }
-  }
+  /* /\* Calculate gradient of B tensor *\/ */
+  /* for (int i = 0; i < 3; i++) { */
+  /*   for (int j = 0; j < 3; j++) { */
+  /*     pi->mhd_data.grad_B_tensor[i][j] -= */
+  /*         mj * over_rho_i * wi_dr * r_inv * dB[i] * dx[j]; */
+  /*   } */
+  /* } */
 
-  /* Calculate SPH error */
-  pi->mhd_data.mean_SPH_err += mj * wi;
-  for (int k = 0; k < 3; k++) {
-    pi->mhd_data.mean_grad_SPH_err[k] +=
-        mj * over_rho_i * wi_dr * r_inv * dx[k];
-  }
+  /* /\* Calculate SPH error *\/ */
+  /* pi->mhd_data.mean_SPH_err += mj * wi; */
+  /* for (int k = 0; k < 3; k++) { */
+  /*   pi->mhd_data.mean_grad_SPH_err[k] += */
+  /*       mj * over_rho_i * wi_dr * r_inv * dx[k]; */
+  /* } */
 }
 
 /**
