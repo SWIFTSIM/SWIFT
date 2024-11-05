@@ -54,120 +54,8 @@ __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_mhd_density(const float r2, const float dx[3],
                                const float hi, const float hj,
                                struct part *restrict pi,
-                               const struct part *restrict pj,
-                               const float mu_0, const float a,
-                               const float H) {}
-
-/**
- * @brief Calculate the MHD-gradient interaction between particle i and particle
- * j
- *
- * This method wraps around hydro_gradients_collect, which can be an empty
- * method, in which case no gradients are used.
- *
- * @param r2 Comoving squared distance between particle i and particle j.
- * @param dx Comoving distance vector between the particles (dx = pi->x -
- * pj->x).
- * @param hi Comoving smoothing-length of particle i.
- * @param hj Comoving smoothing-length of particle j.
- * @param pi Particle i.
- * @param pj Particle j.
- * @param mu_0 The vaccuum permeability constant in internal units.
- * @param a Current scale factor.
- * @param H Current Hubble parameter.
- */
-__attribute__((always_inline)) INLINE static void runner_iact_mhd_gradient(
-    const float r2, const float dx[3], const float hi, const float hj,
-    struct part *restrict pi, struct part *restrict pj, const float mu_0,
-    const float a, const float H) {
-
-  /* Define kernel variables */
-  float wi, wj, wi_dx, wj_dx;
-  /* Get r and 1/r. */
-  const float r = sqrtf(r2);
-  const float r_inv = r ? 1.0f / r : 0.0f;
-
-  /* Recover some data */
-  const float mi = pi->mass;
-  const float mj = pj->mass;
-  const float rhoi = pi->rho;
-  const float rhoj = pj->rho;
-
-  float Bi[3], Bj[3];
-  for (int i = 0; i < 3; ++i) {
-    Bi[i] = pi->mhd_data.B_over_rho[i] * rhoi;
-    Bj[i] = pj->mhd_data.B_over_rho[i] * rhoj;
-  }
-
-  float dB[3];
-  for (int i = 0; i < 3; ++i) dB[i] = Bi[i] - Bj[i];
-
-  /* Get the kernel for hi. */
-  const float hi_inv = 1.0f / hi;
-  const float hid_inv = pow_dimension_plus_one(hi_inv); /* 1/h^(d+1) */
-  const float xi = r * hi_inv;
-  kernel_deval(xi, &wi, &wi_dx);
-  const float wi_dr = hid_inv * wi_dx;
-
-  /* Get the kernel for hj. */
-  const float hj_inv = 1.0f / hj;
-  const float hjd_inv = pow_dimension_plus_one(hj_inv); /* 1/h^(d+1) */
-  const float xj = r * hj_inv;
-  kernel_deval(xj, &wj, &wj_dx);
-  const float wj_dr = hjd_inv * wj_dx;
-
-  /* Variable smoothing length term */
-  const float f_ij = 1.f - pi->force.f / mj;
-  const float f_ji = 1.f - pj->force.f / mi;
-
-  /* B dot r. */
-  const float Bri = Bi[0] * dx[0] + Bi[1] * dx[1] + Bi[2] * dx[2];
-  const float Brj = Bj[0] * dx[0] + Bj[1] * dx[1] + Bj[2] * dx[2];
-
-  /* dB cross r */
-  float dB_cross_dx[3];
-  dB_cross_dx[0] = dB[1] * dx[2] - dB[2] * dx[1];
-  dB_cross_dx[1] = dB[2] * dx[0] - dB[0] * dx[2];
-  dB_cross_dx[2] = dB[0] * dx[1] - dB[1] * dx[0];
-
-  /* Compute gradient terms */
-  const float over_rho_i = 1.0f / rhoi * f_ij;
-  const float over_rho_j = 1.0f / rhoj * f_ji;
-
-  /* Calculate monopole term */
-  float divB_i = -over_rho_i * (Bri - Brj) * wi_dr * r_inv;
-  float divB_j = -over_rho_j * (Bri - Brj) * wj_dr * r_inv;
-  pi->mhd_data.divB += mj * divB_i;
-  pj->mhd_data.divB += mi * divB_j;
-
-  /* Calculate curl */
-  pi->mhd_data.curl_B[0] += mj * over_rho_i * wi_dr * r_inv * dB_cross_dx[0];
-  pi->mhd_data.curl_B[1] += mj * over_rho_i * wi_dr * r_inv * dB_cross_dx[1];
-  pi->mhd_data.curl_B[2] += mj * over_rho_i * wi_dr * r_inv * dB_cross_dx[2];
-  pj->mhd_data.curl_B[0] += mi * over_rho_j * wj_dr * r_inv * dB_cross_dx[0];
-  pj->mhd_data.curl_B[1] += mi * over_rho_j * wj_dr * r_inv * dB_cross_dx[1];
-  pj->mhd_data.curl_B[2] += mi * over_rho_j * wj_dr * r_inv * dB_cross_dx[2];
-
-  /* Calculate gradient of B tensor */
-  for (int i = 0; i < 3; i++) {
-    for (int j = 0; j < 3; j++) {
-      pi->mhd_data.grad_B_tensor[i][j] -=
-          mj * over_rho_i * wi_dr * r_inv * dB[i] * dx[j];
-      pj->mhd_data.grad_B_tensor[i][j] -=
-          mi * over_rho_j * wj_dr * r_inv * dB[i] * dx[j];
-    }
-  }
-
-  /* Calculate SPH error */
-  pi->mhd_data.mean_SPH_err += mj * wi;
-  pj->mhd_data.mean_SPH_err += mi * wj;
-  for (int k = 0; k < 3; k++) {
-    pi->mhd_data.mean_grad_SPH_err[k] +=
-        mj * over_rho_i * wi_dr * r_inv * dx[k];
-    pj->mhd_data.mean_grad_SPH_err[k] -=
-        mi * over_rho_j * wj_dr * r_inv * dx[k];
-  }
-}
+                               const struct part *restrict pj, const float mu_0,
+                               const float a, const float H) {}
 
 /**
  * @brief Calculate the MHDgradient interaction between particle i and particle
@@ -271,6 +159,34 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
     pi->mhd_data.mean_grad_SPH_err[k] +=
         mj * over_rho_i * wi_dr * r_inv * dx[k];
   }
+}
+
+/**
+ * @brief Calculate the MHD-gradient interaction between particle i and particle
+ * j
+ *
+ * This method wraps around hydro_gradients_collect, which can be an empty
+ * method, in which case no gradients are used.
+ *
+ * @param r2 Comoving squared distance between particle i and particle j.
+ * @param dx Comoving distance vector between the particles (dx = pi->x -
+ * pj->x).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param pi Particle i.
+ * @param pj Particle j.
+ * @param mu_0 The vaccuum permeability constant in internal units.
+ * @param a Current scale factor.
+ * @param H Current Hubble parameter.
+ */
+__attribute__((always_inline)) INLINE static void runner_iact_mhd_gradient(
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part *restrict pi, struct part *restrict pj, const float mu_0,
+    const float a, const float H) {
+
+  runner_iact_nonsym_mhd_gradient(r2, dx, hi, hj, pi, pj, mu_0, a, H);
+  const float dx_inv[3] = {-dx[0], -dx[1], -dx[2]};
+  runner_iact_nonsym_mhd_gradient(r2, dx_inv, hj, hi, pj, pi, mu_0, a, H);
 }
 
 /**
@@ -599,11 +515,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
     struct part *restrict pi, struct part *restrict pj, const float mu_0,
     const float a, const float H) {
 
-
   runner_iact_nonsym_mhd_force(r2, dx, hi, hj, pi, pj, mu_0, a, H);
   const float dx_inv[3] = {-dx[0], -dx[1], -dx[2]};
   runner_iact_nonsym_mhd_force(r2, dx_inv, hj, hi, pj, pi, mu_0, a, H);
 }
-
 
 #endif /* SWIFT_DIRECT_INDUCTION_MHD_H */
