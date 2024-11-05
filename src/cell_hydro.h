@@ -61,7 +61,8 @@ struct cell_hydro {
     /*! Linked list of the tasks computing this cell's hydro density. */
     struct link *density;
 
-    /*! Linked list of the tasks computing this cell's hydro density pack. A. Nasar */
+    /*! Linked list of the tasks computing this cell's hydro density pack. A.
+     * Nasar */
     struct link *density_pack;
     struct link *density_unpack;
     /*! Linked list of the tasks computing this cell's hydro force pack. */

@@ -61,7 +61,7 @@ extern int activate_by_unskip;
 /* Data of a scheduler. */
 struct scheduler {
 
-  int nr_packs_self_dens_done; //A. Nasar
+  int nr_packs_self_dens_done;  // A. Nasar
   int nr_packs_pair_dens_done;
   int nr_packs_self_forc_done;
   int nr_packs_pair_forc_done;

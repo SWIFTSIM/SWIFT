@@ -3,11 +3,11 @@
 #include "../../config.h"
 
 /* Local headers. */
-//#include "../dimension.h"
-//#include "../error.h"
-//#include "../inline.h"
-//#include "../minmax.h"
-//#include "../vector.h"
+// #include "../dimension.h"
+// #include "../error.h"
+// #include "../inline.h"
+// #include "../minmax.h"
+// #include "../vector.h"
 
 // Is this even necessary? Probably not as our code will operate differently
 #define num_cuda_threads 128
@@ -22,11 +22,11 @@
 #define kernel_ivals 2
 #define kernel_degree 3 /*!< Degree of the polynomial */
 #define kernel_gamma_dim ((float)(kernel_gamma * kernel_gamma * kernel_gamma))
-#define kernel_gamma_dim_plus_one                                              \
+#define kernel_gamma_dim_plus_one \
   ((float)(kernel_gamma * kernel_gamma * kernel_gamma * kernel_gamma))
-#define kernel_gamma_inv_dim                                                   \
+#define kernel_gamma_inv_dim \
   ((float)(1. / (kernel_gamma * kernel_gamma * kernel_gamma)))
-#define kernel_gamma_inv_dim_plus_one                                          \
+#define kernel_gamma_inv_dim_plus_one \
   ((float)(1. / (kernel_gamma * kernel_gamma * kernel_gamma * kernel_gamma)))
 #define kernel_ivals_f ((float)kernel_ivals) /*!< Number of branches */
 #define kernel_constant ((float)(16. * M_1_PI))
@@ -110,8 +110,8 @@ __device__ float d_pow_three_gamma_minus_five_over_two(float x) {
  * @param W (return) The value of the kernel function \f$W(x,h)\f$.
  * @param dW_dx (return) The norm of the gradient of \f$|\nabla W(x,h)|\f$.
  */
-__device__ void d_kernel_deval(float u, float * __restrict__ W,
-                               float * __restrict__ dW_dx) {
+__device__ void d_kernel_deval(float u, float *__restrict__ W,
+                               float *__restrict__ dW_dx) {
 
   /* Go to the range [0,1[ from [0,H[ */
   const float x = u * kernel_gamma_inv;
@@ -146,4 +146,4 @@ __device__ void d_kernel_deval(float u, float * __restrict__ W,
 }
 #endif
 
-#endif // DEVICE_FUNCTIONS_H
+#endif  // DEVICE_FUNCTIONS_H

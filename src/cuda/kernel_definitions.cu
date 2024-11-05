@@ -7,9 +7,9 @@
 #ifndef static
 #define static
 #endif
-//#ifndef restrict
-//#define restrict __restrict__
-//#endif
+// #ifndef restrict
+// #define restrict __restrict__
+// #endif
 #endif
 
 /* Required header files */
@@ -105,8 +105,7 @@ __device__ void SPH_Sum_Self(cell_gpu *d_ci_gpu) {
     q4 = q4 * q4 * q4 * q4;
     float w = q4 * (2.0f * q + 1.0f);
     float v = mass / rho;
-    if (q < 2.0f)
-      sumLoc = sumLoc + w * v * 7.0 * 7.0 / (4.0 * 22.0 * h * h);
+    if (q < 2.0f) sumLoc = sumLoc + w * v * 7.0 * 7.0 / (4.0 * 22.0 * h * h);
   }
   // d_Particles[i].ker_sum=sumLoc;
 }

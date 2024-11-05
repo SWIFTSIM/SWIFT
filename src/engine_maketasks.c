@@ -583,13 +583,13 @@ void engine_addtasks_recv_hydro(
   /* Early abort (are we below the level where tasks are)? */
   if (!cell_get_flag(c, cell_flag_has_tasks)) return;
 
-  /* Have we reached a level where there are any hydro tasks ? */
-#ifdef WITH_CUDA // A. Nasar
-  if (t_xv == NULL && c->hydro.density != NULL  && c->hydro.density_pack != NULL)
+    /* Have we reached a level where there are any hydro tasks ? */
+#ifdef WITH_CUDA  // A. Nasar
+  if (t_xv == NULL && c->hydro.density != NULL && c->hydro.density_pack != NULL)
 #else
   if (t_xv == NULL && c->hydro.density != NULL)
 #endif /*WITH_CUDA*/
-    {
+  {
 
 #ifdef SWIFT_DEBUG_CHECKS
     /* Make sure this cell has a valid tag. */
@@ -735,17 +735,17 @@ void engine_addtasks_recv_hydro(
 #ifdef WITH_CUDA
     for (struct link *l = c->hydro.gradient_pack; l != NULL; l = l->next) {
       scheduler_addunlock(s, t_rho, l->t);
-//      scheduler_addunlock(s, l->t, t_gradient);
+      //      scheduler_addunlock(s, l->t, t_gradient);
     }
     scheduler_addunlock(s, c->hydro.super->hydro.g_unpack, t_gradient);
 
     for (struct link *l = c->hydro.force_pack; l != NULL; l = l->next) {
       scheduler_addunlock(s, t_gradient, l->t);
-//      scheduler_addunlock(s, l->t, t_ti);
+      //      scheduler_addunlock(s, l->t, t_ti);
     }
     scheduler_addunlock(s, c->hydro.super->hydro.f_unpack, tend);
-#endif   /*WITH_CUDA*/
-#else /*EXTRA_HYDRO_LOOP*/
+#endif /*WITH_CUDA*/
+#else  /*EXTRA_HYDRO_LOOP*/
     for (struct link *l = c->hydro.force; l != NULL; l = l->next) {
       scheduler_addunlock(s, t_rho, l->t);
       scheduler_addunlock(s, l->t, tend);
@@ -753,11 +753,11 @@ void engine_addtasks_recv_hydro(
 #ifdef WITH_CUDA
     for (struct link *l = c->hydro.force_pack; l != NULL; l = l->next) {
       scheduler_addunlock(s, t_rho, l->t);
-//      scheduler_addunlock(s, l->t, t_ti);
+      //      scheduler_addunlock(s, l->t, t_ti);
     }
     scheduler_addunlock(s, c->hydro.super->hydro.f_unpack, tend);
-#endif   /*WITH_CUDA*/
-#endif/*EXTRA_HYDRO_LOOP*/
+#endif /*WITH_CUDA*/
+#endif /*EXTRA_HYDRO_LOOP*/
 
     if (with_limiter) {
       for (struct link *l = c->hydro.limiter; l != NULL; l = l->next) {
@@ -2120,7 +2120,8 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
 
   for (int ind = 0; ind < num_elements; ind++) {
     struct task *t = &((struct task *)map_data)[ind];
-    if (t->ci == NULL) { //Possible fix missing when moving code over. Prevents unpack tasks continuing past here
+    if (t->ci == NULL) {  // Possible fix missing when moving code over.
+                          // Prevents unpack tasks continuing past here
       break;
     }
     struct cell *ci = t->ci;
@@ -2150,12 +2151,12 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
 
       if (t_subtype == task_subtype_density) {
         engine_addlink(e, &ci->hydro.density, t);
-      } else if (t_subtype == task_subtype_gpu_pack) { // A. Nasar
+      } else if (t_subtype == task_subtype_gpu_pack) {  // A. Nasar
         engine_addlink(e, &ci->hydro.density_pack, t);
-//      } else if (t_subtype == task_subtype_gpu_pack_f) {
-//        engine_addlink(e, &ci->hydro.force_pack, t);
-//      } else if (t_subtype == task_subtype_gpu_pack_g) {
-//        engine_addlink(e, &ci->hydro.gradient_pack, t);
+        //      } else if (t_subtype == task_subtype_gpu_pack_f) {
+        //        engine_addlink(e, &ci->hydro.force_pack, t);
+        //      } else if (t_subtype == task_subtype_gpu_pack_g) {
+        //        engine_addlink(e, &ci->hydro.gradient_pack, t);
       } else if (t_subtype == task_subtype_grav) {
         engine_addlink(e, &ci->grav.grav, t);
       } else if (t_subtype == task_subtype_external_grav) {
@@ -2170,15 +2171,15 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
       if (t_subtype == task_subtype_density) {
         engine_addlink(e, &ci->hydro.density, t);
         engine_addlink(e, &cj->hydro.density, t);
-      } else if (t_subtype == task_subtype_gpu_pack) { // A. Nasar
+      } else if (t_subtype == task_subtype_gpu_pack) {  // A. Nasar
         engine_addlink(e, &ci->hydro.density_pack, t);
         engine_addlink(e, &cj->hydro.density_pack, t);
-//      } else if (t_subtype == task_subtype_gpu_pack_f) {
-//        engine_addlink(e, &ci->hydro.force_pack, t);
-//        engine_addlink(e, &cj->hydro.force_pack, t);
-//      } else if (t_subtype == task_subtype_gpu_pack_g) {
-//        engine_addlink(e, &ci->hydro.gradient_pack, t);
-//        engine_addlink(e, &cj->hydro.gradient_pack, t);
+        //      } else if (t_subtype == task_subtype_gpu_pack_f) {
+        //        engine_addlink(e, &ci->hydro.force_pack, t);
+        //        engine_addlink(e, &cj->hydro.force_pack, t);
+        //      } else if (t_subtype == task_subtype_gpu_pack_g) {
+        //        engine_addlink(e, &ci->hydro.gradient_pack, t);
+        //        engine_addlink(e, &cj->hydro.gradient_pack, t);
       } else if (t_subtype == task_subtype_grav) {
         engine_addlink(e, &ci->grav.grav, t);
         engine_addlink(e, &cj->grav.grav, t);
@@ -2195,7 +2196,7 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
 
       if (t_subtype == task_subtype_density) {
         engine_addlink(e, &ci->hydro.density, t);
-      } else if (t_subtype == task_subtype_gpu_pack) { // A. Nasar
+      } else if (t_subtype == task_subtype_gpu_pack) {  // A. Nasar
         error("Abouzied: you need to code this up!");
       } else if (t_subtype == task_subtype_gpu_pack_f) {
         error("Abouzied: you need to code this up!");
@@ -2486,7 +2487,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
   const int with_sink = (e->policy & engine_policy_sinks);
 #ifdef EXTRA_HYDRO_LOOP
   struct task *t_gradient = NULL;
-  struct task *t_gradient_gpu = NULL; // A. Nasar
+  struct task *t_gradient_gpu = NULL;  // A. Nasar
 #endif
 #ifdef EXTRA_STAR_LOOPS
   struct task *t_star_prep1 = NULL;
@@ -2551,8 +2552,8 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       t_force = scheduler_addtask(sched, task_type_self, task_subtype_force,
                                   flags, 0, ci, NULL);
       /* Task for the second GPU hydro loop A. Nasar */
-      t_force_gpu = scheduler_addtask(sched, task_type_self, task_subtype_gpu_pack_f,
-                                  0, 0, ci, NULL);
+      t_force_gpu = scheduler_addtask(sched, task_type_self,
+                                      task_subtype_gpu_pack_f, 0, 0, ci, NULL);
 
       /* the task for the time-step limiter */
       if (with_timestep_limiter) {
@@ -2656,10 +2657,11 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       t_gradient = scheduler_addtask(sched, task_type_self,
                                      task_subtype_gradient, flags, 0, ci, NULL);
       /* Same work for the additional GPU hydro loop A. Nasar */
-      t_gradient_gpu = scheduler_addtask(sched, task_type_self,
-                                     task_subtype_gpu_pack_g, 0, 0, ci, NULL);
+      t_gradient_gpu = scheduler_addtask(
+          sched, task_type_self, task_subtype_gpu_pack_g, 0, 0, ci, NULL);
 
-      /* Add the link between the new loops and the cell. Same for GPU task A. Nasar */
+      /* Add the link between the new loops and the cell. Same for GPU task A.
+       * Nasar */
       engine_addlink(e, &ci->hydro.gradient, t_gradient);
       engine_addlink(e, &ci->hydro.gradient_pack, t_gradient_gpu);
 
@@ -2668,9 +2670,12 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                                            t_limiter, ci, with_cooling,
                                            with_timestep_limiter);
 
-      // A. Nasar add unlocks for pack tasks here. Unpacks depend on packs and will be used to create downstream deps later
-      scheduler_addunlock(sched, ci->hydro.super->hydro.ghost_out, t_gradient_gpu);
-      scheduler_addunlock(sched, ci->hydro.super->hydro.extra_ghost, t_force_gpu);
+      // A. Nasar add unlocks for pack tasks here. Unpacks depend on packs and
+      // will be used to create downstream deps later
+      scheduler_addunlock(sched, ci->hydro.super->hydro.ghost_out,
+                          t_gradient_gpu);
+      scheduler_addunlock(sched, ci->hydro.super->hydro.extra_ghost,
+                          t_force_gpu);
 #else
 
       /* Now, build all the dependencies for the hydro */
@@ -2849,8 +2854,8 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       t_force = scheduler_addtask(sched, task_type_pair, task_subtype_force,
                                   flags, 0, ci, cj);
       /* New task for the force A. Nasar */
-      t_force_gpu = scheduler_addtask(sched, task_type_pair, task_subtype_gpu_pack_f,
-                                  0, 0, ci, cj);
+      t_force_gpu = scheduler_addtask(sched, task_type_pair,
+                                      task_subtype_gpu_pack_f, 0, 0, ci, cj);
 
 #ifdef MPI_SYMMETRIC_FORCE_INTERACTION
       /* The order of operations for an inactive local cell interacting
@@ -3007,14 +3012,15 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       /* Start by constructing the task for the second and third hydro loop */
       t_gradient = scheduler_addtask(sched, task_type_pair,
                                      task_subtype_gradient, flags, 0, ci, cj);
-      /* Start by constructing the task for the second and third GPU hydro loop A. Nasar */
+      /* Start by constructing the task for the second and third GPU hydro loop
+       * A. Nasar */
       t_gradient_gpu = scheduler_addtask(sched, task_type_pair,
-                                     task_subtype_gpu_pack_g, 0, 0, ci, cj);
+                                         task_subtype_gpu_pack_g, 0, 0, ci, cj);
 
       /* Add the link between the new loop and both cells */
       engine_addlink(e, &ci->hydro.gradient, t_gradient);
       engine_addlink(e, &cj->hydro.gradient, t_gradient);
-//      /* Add the link between the new loop and both cells */
+      //      /* Add the link between the new loop and both cells */
       engine_addlink(e, &ci->hydro.gradient_pack, t_gradient_gpu);
       engine_addlink(e, &cj->hydro.gradient_pack, t_gradient_gpu);
 
@@ -3025,16 +3031,20 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                                              t_limiter, ci, with_cooling,
                                              with_timestep_limiter);
         /*Same for GPU tasks*/
-        scheduler_addunlock(sched, ci->hydro.super->hydro.ghost_out, t_gradient_gpu);
-        scheduler_addunlock(sched, ci->hydro.super->hydro.extra_ghost, t_force_gpu);
+        scheduler_addunlock(sched, ci->hydro.super->hydro.ghost_out,
+                            t_gradient_gpu);
+        scheduler_addunlock(sched, ci->hydro.super->hydro.extra_ghost,
+                            t_force_gpu);
       }
       if ((cj->nodeID == nodeID) && (ci->hydro.super != cj->hydro.super)) {
         engine_make_hydro_loops_dependencies(sched, t, t_gradient, t_force,
                                              t_limiter, cj, with_cooling,
                                              with_timestep_limiter);
         /*Same for GPU tasks*/
-        scheduler_addunlock(sched, cj->hydro.super->hydro.ghost_out, t_gradient_gpu);
-        scheduler_addunlock(sched, cj->hydro.super->hydro.extra_ghost, t_force_gpu);
+        scheduler_addunlock(sched, cj->hydro.super->hydro.ghost_out,
+                            t_gradient_gpu);
+        scheduler_addunlock(sched, cj->hydro.super->hydro.extra_ghost,
+                            t_force_gpu);
       }
 #else
 
@@ -3045,14 +3055,16 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                                              with_cooling,
                                              with_timestep_limiter);
         // GPU tasks A. Nasar
-        scheduler_addunlock(sched, ci->hydro.super->hydro.ghost_out, t_force_gpu);
+        scheduler_addunlock(sched, ci->hydro.super->hydro.ghost_out,
+                            t_force_gpu);
       }
       if ((cj->nodeID == nodeID) && (ci->hydro.super != cj->hydro.super)) {
         engine_make_hydro_loops_dependencies(sched, t, t_force, t_limiter, cj,
                                              with_cooling,
                                              with_timestep_limiter);
         // GPU tasks A. Nasar
-        scheduler_addunlock(sched, cj->hydro.super->hydro.ghost_out, t_force_gpu);
+        scheduler_addunlock(sched, cj->hydro.super->hydro.ghost_out,
+                            t_force_gpu);
       }
 
 #endif
@@ -4266,13 +4278,13 @@ void engine_make_hydroloop_tasks_mapper(void *map_data, int num_elements,
       continue;
 
     /* If the cell is local build a self-interaction */
-    struct task *t_pack_self;// A. Nasar
+    struct task *t_pack_self;  // A. Nasar
     if (ci->nodeID == nodeID) {
       scheduler_addtask(sched, task_type_self, task_subtype_density, 0, 0, ci,
                         NULL);
       // A. Nasar also add a pack task for GPU
       scheduler_addtask(sched, task_type_self, task_subtype_gpu_pack, 0, 0, ci,
-    		            NULL);
+                        NULL);
     }
 
     /* Now loop over all the neighbours of this cell */
@@ -4306,8 +4318,8 @@ void engine_make_hydroloop_tasks_mapper(void *map_data, int num_elements,
           const int sid = sortlistID[(kk + 1) + 3 * ((jj + 1) + 3 * (ii + 1))];
           scheduler_addtask(sched, task_type_pair, task_subtype_density, sid, 0,
                             ci, cj);
-          scheduler_addtask(sched, task_type_pair, task_subtype_gpu_pack, sid, 0,
-        		            ci, cj); // A. Nasar
+          scheduler_addtask(sched, task_type_pair, task_subtype_gpu_pack, sid,
+                            0, ci, cj);  // A. Nasar
 
 #ifdef SWIFT_DEBUG_CHECKS
 #ifdef WITH_MPI
@@ -4735,7 +4747,7 @@ void engine_maketasks(struct engine *e) {
 
   ticks tic2 = getticks();
   /*Initialise GPU task size in prep. for creation A. Nasar */
-  sched->target_gpu_tasks = s->nr_cells; // OK AS LONG AS NOT SPLITTING
+  sched->target_gpu_tasks = s->nr_cells;  // OK AS LONG AS NOT SPLITTING
   const int target_gpu_tasks = sched->target_gpu_tasks;
 
   /* Construct the first hydro loop over neighbours */
@@ -4848,8 +4860,7 @@ void engine_maketasks(struct engine *e) {
   for (int i = 0; i < sched->nr_tasks; i++) {
 
     struct task *t = &sched->tasks[i];
-    if (t->subtype != task_subtype_gpu_pack)
-      continue;
+    if (t->subtype != task_subtype_gpu_pack) continue;
 
     if (t->type == task_type_self) {
 
@@ -4862,7 +4873,9 @@ void engine_maketasks(struct engine *e) {
       /* pack -> unpack -> ghost_in */
       scheduler_addunlock(sched, t, last_created_self_unpack);
       scheduler_addunlock(sched, last_created_self_unpack,
-                          t->ci->hydro.super->hydro.ghost_in); //Keep self_unpack dependency here, pairs added later using links
+                          t->ci->hydro.super->hydro
+                              .ghost_in);  // Keep self_unpack dependency here,
+                                           // pairs added later using links
       /*Creating links between each cell and its unpack task*/
       engine_addlink(e, &t->ci->hydro.density_unpack, last_created_self_unpack);
       t->ci->hydro.d_unpack = last_created_self_unpack;
@@ -4876,28 +4889,30 @@ void engine_maketasks(struct engine *e) {
       }
 
       /* pack -> unpack -> ghost_in */
-      if(t->ci->hydro.ghost_in == NULL)
+      if (t->ci->hydro.ghost_in == NULL)
         fprintf(stderr, "Ghost in for cell i is NULL\n");
-      if(t->cj->hydro.ghost_in == NULL)
+      if (t->cj->hydro.ghost_in == NULL)
         fprintf(stderr, "Ghost in for cell j is NULL\n");
 
       scheduler_addunlock(sched, t, last_created_pair_unpack);
-      if(t->ci->nodeID == e->nodeID)
-      scheduler_addunlock(sched, last_created_pair_unpack,
-                          t->ci->hydro.super->hydro.ghost_in);
-      if((t->cj->nodeID == e->nodeID) && (t->ci->hydro.super != t->cj->hydro.super))
-      scheduler_addunlock(sched, last_created_pair_unpack,
-                          t->cj->hydro.super->hydro.ghost_in);
+      if (t->ci->nodeID == e->nodeID)
+        scheduler_addunlock(sched, last_created_pair_unpack,
+                            t->ci->hydro.super->hydro.ghost_in);
+      if ((t->cj->nodeID == e->nodeID) &&
+          (t->ci->hydro.super != t->cj->hydro.super))
+        scheduler_addunlock(sched, last_created_pair_unpack,
+                            t->cj->hydro.super->hydro.ghost_in);
 
       engine_addlink(e, &t->ci->hydro.density_unpack, last_created_pair_unpack);
       engine_addlink(e, &t->cj->hydro.density_unpack, last_created_pair_unpack);
 
-      /*Useless as this ends up only setting one pair unpack as the unpack task for this cell whilst the cell
-       * interacts with many other cells and can be linked to another unpack task. Rely on links instead*/
-//      t->ci->hydro.d_unpack = last_created_pair_unpack;
-//      t->cj->hydro.d_unpack = last_created_pair_unpack;
+      /*Useless as this ends up only setting one pair unpack as the unpack task
+       * for this cell whilst the cell interacts with many other cells and can
+       * be linked to another unpack task. Rely on links instead*/
+      //      t->ci->hydro.d_unpack = last_created_pair_unpack;
+      //      t->cj->hydro.d_unpack = last_created_pair_unpack;
 
-//      t->ci->hydro.super->hydro.d_unpack = last_created_self_unpack;
+      //      t->ci->hydro.super->hydro.d_unpack = last_created_self_unpack;
 
       ++count_current_pair;
     } else {
@@ -4911,18 +4926,20 @@ void engine_maketasks(struct engine *e) {
   if (count_current_pair != sched->nr_pair_pack_tasks)
     error("We did not find the correct number of pair pack tasks!!");
 #endif
-  /* Loop over all the currently existing ghost_in tasks to add unpack dependency*/
-//  for (int i = 0; i < sched->nr_tasks; i++) {
-//    struct task *t = &sched->tasks[i];
-//    if (t->type != task_type_ghost_in)
-//      continue;
-////    if(t->ci->hydro.super == t->ci && t->ci->nodeID == e->nodeID)
-////          scheduler_addunlock(sched, t->ci->hydro.d_unpack, t);
-//    for (struct link *l = t->ci->hydro.density_unpack; l != NULL; l = l->next) {
-////      if(l->t->type == task_type_pair)
-//    	  scheduler_addunlock(sched, l->t, t);
-//    }
-//  }
+  /* Loop over all the currently existing ghost_in tasks to add unpack
+   * dependency*/
+  //  for (int i = 0; i < sched->nr_tasks; i++) {
+  //    struct task *t = &sched->tasks[i];
+  //    if (t->type != task_type_ghost_in)
+  //      continue;
+  ////    if(t->ci->hydro.super == t->ci && t->ci->nodeID == e->nodeID)
+  ////          scheduler_addunlock(sched, t->ci->hydro.d_unpack, t);
+  //    for (struct link *l = t->ci->hydro.density_unpack; l != NULL; l =
+  //    l->next) {
+  ////      if(l->t->type == task_type_pair)
+  //    	  scheduler_addunlock(sched, l->t, t);
+  //    }
+  //  }
   /* Run through the tasks and make force tasks for each density task.
      Each force task depends on the cell ghosts and unlocks the kick task
      of its super-cell. */
@@ -4938,7 +4955,6 @@ void engine_maketasks(struct engine *e) {
      *                threadpool_auto_chunk_size, e); */
   }
 
-
   /*Now create unpacks for all gpu_pack_g (gradient) tasks A. Nasar */
   count_current_self = 0;
   count_current_pair = 0;
@@ -4949,8 +4965,7 @@ void engine_maketasks(struct engine *e) {
   for (int i = 0; i < sched->nr_tasks; i++) {
 
     struct task *t = &sched->tasks[i];
-    if (t->subtype != task_subtype_gpu_pack_g)
-      continue;
+    if (t->subtype != task_subtype_gpu_pack_g) continue;
 
     if (t->type == task_type_self) {
 
@@ -4965,7 +4980,8 @@ void engine_maketasks(struct engine *e) {
       scheduler_addunlock(sched, last_created_self_unpack,
                           t->ci->hydro.super->hydro.extra_ghost);
       /*Creating links between a each cell and its unpack task*/
-      engine_addlink(e, &t->ci->hydro.gradient_unpack, last_created_self_unpack);
+      engine_addlink(e, &t->ci->hydro.gradient_unpack,
+                     last_created_self_unpack);
       t->ci->hydro.g_unpack = last_created_self_unpack;
 
       ++count_current_self;
@@ -4979,19 +4995,23 @@ void engine_maketasks(struct engine *e) {
 
       /* pack -> unpack -> ghost_in */
       scheduler_addunlock(sched, t, last_created_pair_unpack);
-      if(t->ci->nodeID == e->nodeID)
+      if (t->ci->nodeID == e->nodeID)
         scheduler_addunlock(sched, last_created_pair_unpack,
-    		              t->ci->hydro.super->hydro.extra_ghost);
-      if((t->cj->nodeID == e->nodeID) && (t->ci->hydro.super != t->cj->hydro.super))
+                            t->ci->hydro.super->hydro.extra_ghost);
+      if ((t->cj->nodeID == e->nodeID) &&
+          (t->ci->hydro.super != t->cj->hydro.super))
         scheduler_addunlock(sched, last_created_pair_unpack,
-                          t->cj->hydro.super->hydro.extra_ghost);
+                            t->cj->hydro.super->hydro.extra_ghost);
 
-      engine_addlink(e, &t->ci->hydro.gradient_unpack, last_created_pair_unpack);
-      engine_addlink(e, &t->cj->hydro.gradient_unpack, last_created_pair_unpack);
-      /*Useless as this ends up only setting one pair unpack as the unpack task for this cell whilst the cell
-       * interacts with many other cells and can be linked to another unpack task. Rely on links instead*/
-//      t->ci->hydro.g_unpack = last_created_pair_unpack;
-//      t->cj->hydro.g_unpack = last_created_pair_unpack;
+      engine_addlink(e, &t->ci->hydro.gradient_unpack,
+                     last_created_pair_unpack);
+      engine_addlink(e, &t->cj->hydro.gradient_unpack,
+                     last_created_pair_unpack);
+      /*Useless as this ends up only setting one pair unpack as the unpack task
+       * for this cell whilst the cell interacts with many other cells and can
+       * be linked to another unpack task. Rely on links instead*/
+      //      t->ci->hydro.g_unpack = last_created_pair_unpack;
+      //      t->cj->hydro.g_unpack = last_created_pair_unpack;
 
       ++count_current_pair;
     } else {
@@ -5001,22 +5021,30 @@ void engine_maketasks(struct engine *e) {
   }
 #ifdef SWIFT_DEBUG_CHECKS
   if (count_current_self != sched->nr_self_pack_tasks_g)
-    error("We did not find the correct number of G self pack tasks!! count %i what it shoudl be %i", count_current_self, sched->nr_self_pack_tasks_g);
+    error(
+        "We did not find the correct number of G self pack tasks!! count %i "
+        "what it shoudl be %i",
+        count_current_self, sched->nr_self_pack_tasks_g);
   if (count_current_pair != sched->nr_pair_pack_tasks_g)
-	    error("We did not find the correct number of G pair pack tasks!! count %i what it shoudl be %i", count_current_pair, sched->nr_pair_pack_tasks_g);
+    error(
+        "We did not find the correct number of G pair pack tasks!! count %i "
+        "what it shoudl be %i",
+        count_current_pair, sched->nr_pair_pack_tasks_g);
 #endif
-  /* Loop over all the currently existing extra_ghost tasks to add unpack dependency*/
-//  for (int i = 0; i < sched->nr_tasks; i++) {
-//    struct task *t = &sched->tasks[i];
-//    if (t->type != task_type_extra_ghost)
-//      continue;
-////    if(t->ci->nodeID == e->nodeID)
-////      scheduler_addunlock(sched, t->ci->hydro.g_unpack, t);
-//    for (struct link *l = t->ci->hydro.gradient_unpack; l != NULL; l = l->next) {
-////    	if(l->t->type == task_type_pair)
-//    		scheduler_addunlock(sched, l->t, t);
-//    }
-//  }
+  /* Loop over all the currently existing extra_ghost tasks to add unpack
+   * dependency*/
+  //  for (int i = 0; i < sched->nr_tasks; i++) {
+  //    struct task *t = &sched->tasks[i];
+  //    if (t->type != task_type_extra_ghost)
+  //      continue;
+  ////    if(t->ci->nodeID == e->nodeID)
+  ////      scheduler_addunlock(sched, t->ci->hydro.g_unpack, t);
+  //    for (struct link *l = t->ci->hydro.gradient_unpack; l != NULL; l =
+  //    l->next) {
+  ////    	if(l->t->type == task_type_pair)
+  //    		scheduler_addunlock(sched, l->t, t);
+  //    }
+  //  }
   /*Now create unpacks for all gpu_pack_f (force) tasks*/
   count_current_self = 0;
   count_current_pair = 0;
@@ -5027,14 +5055,13 @@ void engine_maketasks(struct engine *e) {
   for (int i = 0; i < sched->nr_tasks; i++) {
 
     struct task *t = &sched->tasks[i];
-    if (t->subtype != task_subtype_gpu_pack_f)
-      continue;
+    if (t->subtype != task_subtype_gpu_pack_f) continue;
 
     if (t->type == task_type_self) {
 
       if (count_current_self % pack_size == 0) {
-          last_created_self_unpack = scheduler_addtask(
-              sched, task_type_self, task_subtype_gpu_unpack_f, 0, 0, NULL, NULL);
+        last_created_self_unpack = scheduler_addtask(
+            sched, task_type_self, task_subtype_gpu_unpack_f, 0, 0, NULL, NULL);
       }
 
       /* pack -> unpack -> ghost_in */
@@ -5043,8 +5070,8 @@ void engine_maketasks(struct engine *e) {
                           t->ci->hydro.super->hydro.end_force);
       /*Creating links between a each cell and its unpack task*/
       engine_addlink(e, &t->ci->hydro.force_unpack, last_created_self_unpack);
-//
-//      t->ci->hydro.f_unpack = last_created_self_unpack;
+      //
+      //      t->ci->hydro.f_unpack = last_created_self_unpack;
 
       ++count_current_self;
     }
@@ -5057,19 +5084,21 @@ void engine_maketasks(struct engine *e) {
 
       /* pack -> unpack -> ghost_in */
       scheduler_addunlock(sched, t, last_created_pair_unpack);
-      if(t->ci->nodeID == e->nodeID)
+      if (t->ci->nodeID == e->nodeID)
         scheduler_addunlock(sched, last_created_pair_unpack,
-    		              t->ci->hydro.super->hydro.end_force);
-      if((t->cj->nodeID == e->nodeID) && (t->ci->hydro.super != t->cj->hydro.super))
+                            t->ci->hydro.super->hydro.end_force);
+      if ((t->cj->nodeID == e->nodeID) &&
+          (t->ci->hydro.super != t->cj->hydro.super))
         scheduler_addunlock(sched, last_created_pair_unpack,
-                          t->cj->hydro.super->hydro.end_force);
+                            t->cj->hydro.super->hydro.end_force);
 
       engine_addlink(e, &t->ci->hydro.force_unpack, last_created_pair_unpack);
       engine_addlink(e, &t->cj->hydro.force_unpack, last_created_pair_unpack);
-      /*Useless as this ends up only setting one pair unpack as the unpack task for this cell whilst the cell
-       * interacts with many other cells and can be linked to another unpack task. Rely on links instead*/
-//      t->ci->hydro.f_unpack = last_created_pair_unpack;
-//      t->cj->hydro.f_unpack = last_created_pair_unpack;
+      /*Useless as this ends up only setting one pair unpack as the unpack task
+       * for this cell whilst the cell interacts with many other cells and can
+       * be linked to another unpack task. Rely on links instead*/
+      //      t->ci->hydro.f_unpack = last_created_pair_unpack;
+      //      t->cj->hydro.f_unpack = last_created_pair_unpack;
 
       ++count_current_pair;
     } else {
@@ -5083,18 +5112,20 @@ void engine_maketasks(struct engine *e) {
   if (count_current_pair != sched->nr_pair_pack_tasks_f)
     error("We did not find the correct number of F pair pack tasks!!");
 #endif
-  /* Loop over all the currently existing end_force tasks to add unpack dependency*/
-//  for (int i = 0; i < sched->nr_tasks; i++) {
-//    struct task *t = &sched->tasks[i];
-//    if (t->type != task_type_end_hydro_force)
-//      continue;
-////    if(t->ci->nodeID == e->nodeID)
-////      scheduler_addunlock(sched, t->ci->hydro.f_unpack, t);
-//    for (struct link *l = t->ci->hydro.force_unpack; l != NULL; l = l->next) {
-////    	if(l->t->type == task_type_pair)
-//    		scheduler_addunlock(sched, l->t, t);
-//    }
-//  }
+  /* Loop over all the currently existing end_force tasks to add unpack
+   * dependency*/
+  //  for (int i = 0; i < sched->nr_tasks; i++) {
+  //    struct task *t = &sched->tasks[i];
+  //    if (t->type != task_type_end_hydro_force)
+  //      continue;
+  ////    if(t->ci->nodeID == e->nodeID)
+  ////      scheduler_addunlock(sched, t->ci->hydro.f_unpack, t);
+  //    for (struct link *l = t->ci->hydro.force_unpack; l != NULL; l = l->next)
+  //    {
+  ////    	if(l->t->type == task_type_pair)
+  //    		scheduler_addunlock(sched, l->t, t);
+  //    }
+  //  }
   if (e->verbose)
     message("Making extra hydroloop tasks took %.3f %s.",
             clocks_from_ticks(getticks() - tic2), clocks_getunit());

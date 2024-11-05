@@ -232,7 +232,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->mpi.recv = NULL;
     c->mpi.send = NULL;
 #endif
-    c->hydro.density_pack = NULL; // A. Nasar
+    c->hydro.density_pack = NULL;  // A. Nasar
     c->hydro.density_unpack = NULL;
     c->hydro.gradient_pack = NULL;
     c->hydro.gradient_unpack = NULL;

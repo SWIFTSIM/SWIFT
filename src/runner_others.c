@@ -296,7 +296,7 @@ void runner_do_star_formation_sink(struct runner *r, struct cell *c,
         sink_update_sink_properties_after_star_formation(s, e, sink_props,
                                                          phys_const);
       } /* if sink_is_active */
-    } /* Loop over the particles */
+    }   /* Loop over the particles */
   }
 
   /* If we formed any stars, the star sorts are now invalid. We need to

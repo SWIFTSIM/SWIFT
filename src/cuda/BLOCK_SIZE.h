@@ -9,4 +9,4 @@
 #define N_TASKS_PER_PACK_PAIR 32
 #define N_TASKS_BUNDLE_PAIR 4
 
-#endif // BLOCK_SIZE_H
+#endif  // BLOCK_SIZE_H

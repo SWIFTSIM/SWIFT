@@ -33,14 +33,16 @@
 #endif
 
 #ifdef WITH_CUDA
-#include <cuda_runtime.h> /* A. Nasar */
 #include "runner_main_clean.cu"
+
+#include <cuda_runtime.h> /* A. Nasar */
 #endif
 
 #ifdef WITH_HIP
-//#include "/opt/rocm-5.1.0/hip/include/hip/hip_runtime.h"
-#include <hip/hip_runtime.h>
+// #include "/opt/rocm-5.1.0/hip/include/hip/hip_runtime.h"
 #include "runner_main_clean.hip"
+
+#include <hip/hip_runtime.h>
 #endif
 
 /* This object's header. */
@@ -921,11 +923,12 @@ void engine_config(int restart, int fof, struct engine *e,
       parser_get_opt_param_float(params, "Scheduler:links_per_tasks", 25.);
 
   /* Init the scheduler. Allow stealing*/
-//  scheduler_init(&e->sched, e->s, maxtasks, nr_queues,
-//                 (e->policy & scheduler_flag_steal), e->nodeID, &e->threadpool);
+  //  scheduler_init(&e->sched, e->s, maxtasks, nr_queues,
+  //                 (e->policy & scheduler_flag_steal), e->nodeID,
+  //                 &e->threadpool);
   /* Init the scheduler. NO stealing  A. Nasar */
-  scheduler_init(&e->sched, e->s, maxtasks, nr_queues,
-                     0, e->nodeID, &e->threadpool);
+  scheduler_init(&e->sched, e->s, maxtasks, nr_queues, 0, e->nodeID,
+                 &e->threadpool);
 
   /* Maximum size of MPI task messages, in KB, that should not be buffered,
    * that is sent using MPI_Issend, not MPI_Isend. 4Mb by default. Can be

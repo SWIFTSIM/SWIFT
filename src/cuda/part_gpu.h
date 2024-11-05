@@ -182,18 +182,19 @@ typedef struct part_aos_f4_send {
 
   /*! Particle predicted velocity and mass -> ux, uy, uz, m */
   float4 ux_m;
-  /*Markers for where neighbour cell j starts and stops in array indices for pair tasks*/
+  /*Markers for where neighbour cell j starts and stops in array indices for
+   * pair tasks*/
   int2 cjs_cje;
-}part_aos_f4_send __attribute__((aligned(SWIFT_STRUCT_ALIGNMENT)));
+} part_aos_f4_send __attribute__((aligned(SWIFT_STRUCT_ALIGNMENT)));
 
-typedef struct part_aos_f4_recv{
+typedef struct part_aos_f4_recv {
   /* Density information; rho */
   /*! Derivative of density with respect to h; rho_dh,
-  * Neighbour number count; w_count
-  * * Derivative of the neighbour number with respect to h; w_count_dh */
+   * Neighbour number count; w_count
+   * * Derivative of the neighbour number with respect to h; w_count_dh */
   float4 rho_dh_wcount;
   /*! Particle velocity curl; rot_ux and
-  * velocity divergence; div_v */
+   * velocity divergence; div_v */
   float4 rot_ux_div_v;
 } part_aos_f4_recv;
 
@@ -206,12 +207,12 @@ typedef struct part_aos_f4 {
   float4 ux_m;
   /* Density information; rho */
   /*! Derivative of density with respect to h; rho_dh,
-  * Neighbour number count; w_count
-  * * Derivative of the neighbour number with respect to h; w_count_dh */
+   * Neighbour number count; w_count
+   * * Derivative of the neighbour number with respect to h; w_count_dh */
   float4 rho_dh_wcount;
 
   /*! Particle velocity curl; rot_ux and
-  * velocity divergence; div_v */
+   * velocity divergence; div_v */
   float4 rot_ux_div_v;
 
 } part_aos_f4;
@@ -403,9 +404,8 @@ typedef struct part_aos_f4_g_recv {
 
 } part_aos_f4_g_recv;
 
-
 #ifdef __WITH_CUDA
 }
 #endif
 
-#endif // PART_GPU_H
+#endif  // PART_GPU_H

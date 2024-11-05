@@ -2350,8 +2350,8 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
         }
 
       } /* Foreign root */
-    } /* Particle is in a group */
-  } /* Loop over particles */
+    }   /* Particle is in a group */
+  }     /* Loop over particles */
 
   size_t nsend = map.size;
   struct fof_mass_send_hashmap hashmap_mass_send = {NULL, 0};

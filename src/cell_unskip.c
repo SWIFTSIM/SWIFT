@@ -1905,24 +1905,25 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
   /* Unskip all the other task types. */
   int c_active = cell_is_active_hydro(c, e);
   if (c->nodeID == nodeID && c_active) {
-    for (struct link *l = c->hydro.density_pack; l != NULL; l = l->next) { /* A. Nasar */
-	  scheduler_activate(s, l->t);
-//	  message("activating pair pack\n");
-	if (l->t->ci != NULL){
-	  l->t->ci->pack_done = 0;
-	  l->t->ci->gpu_done = 0;
-	  l->t->ci->unpack_done = 0;
-	}
-	if (l->t->cj != NULL){
-	  l->t->cj->pack_done = 0;
-	  l->t->cj->gpu_done = 0;
-	  l->t->cj->unpack_done = 0;
-	}
+    for (struct link *l = c->hydro.density_pack; l != NULL;
+         l = l->next) { /* A. Nasar */
+      scheduler_activate(s, l->t);
+      //	  message("activating pair pack\n");
+      if (l->t->ci != NULL) {
+        l->t->ci->pack_done = 0;
+        l->t->ci->gpu_done = 0;
+        l->t->ci->unpack_done = 0;
+      }
+      if (l->t->cj != NULL) {
+        l->t->cj->pack_done = 0;
+        l->t->cj->gpu_done = 0;
+        l->t->cj->unpack_done = 0;
+      }
     }
     for (struct link *l = c->hydro.density_unpack; l != NULL; l = l->next) {
-	  scheduler_activate(s, l->t);
-//	  message("activating pair UN-pack\n");
-	  l->t->gpu_done = 0;
+      scheduler_activate(s, l->t);
+      //	  message("activating pair UN-pack\n");
+      l->t->gpu_done = 0;
     }
     for (struct link *l = c->hydro.gradient; l != NULL; l = l->next) {
       scheduler_activate(s, l->t);
@@ -1935,13 +1936,13 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
     // A. Nasar activate force and gradient packing tasks
     for (struct link *l = c->hydro.force_pack; l != NULL; l = l->next) {
       scheduler_activate(s, l->t);
-//      message("activating pair pack force\n");
-      if (l->t->ci != NULL){
+      //      message("activating pair pack force\n");
+      if (l->t->ci != NULL) {
         l->t->ci->pack_done_f = 0;
         l->t->ci->gpu_done_f = 0;
         l->t->ci->unpack_done_f = 0;
       }
-      if (l->t->cj != NULL){
+      if (l->t->cj != NULL) {
         l->t->cj->pack_done_f = 0;
         l->t->cj->gpu_done_f = 0;
         l->t->cj->unpack_done_f = 0;
@@ -1949,20 +1950,20 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
     }
     for (struct link *l = c->hydro.force_unpack; l != NULL; l = l->next) {
       scheduler_activate(s, l->t);
-//      message("activating pair UN-pack force\n");
+      //      message("activating pair UN-pack force\n");
       l->t->gpu_done = 0;
     }
 
 #ifdef EXTRA_HYDRO_LOOP
     for (struct link *l = c->hydro.gradient_pack; l != NULL; l = l->next) {
       scheduler_activate(s, l->t);
-//      message("activating pair pack gradient\n");
-      if (l->t->ci != NULL){
+      //      message("activating pair pack gradient\n");
+      if (l->t->ci != NULL) {
         l->t->ci->pack_done_g = 0;
         l->t->ci->gpu_done_g = 0;
         l->t->ci->unpack_done_g = 0;
       }
-      if (l->t->cj != NULL){
+      if (l->t->cj != NULL) {
         l->t->cj->pack_done_g = 0;
         l->t->cj->gpu_done_g = 0;
         l->t->cj->unpack_done_g = 0;
@@ -1970,7 +1971,7 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
     }
     for (struct link *l = c->hydro.gradient_unpack; l != NULL; l = l->next) {
       scheduler_activate(s, l->t);
-//      message("activating pair UN-pack gradient\n");
+      //      message("activating pair UN-pack gradient\n");
       l->t->gpu_done = 0;
     }
 #endif
@@ -1999,7 +2000,7 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
    * so, we have to do this now, from the active remote cell). */
   else if (c->nodeID != nodeID && c_active) {
 #if defined(MPI_SYMMETRIC_FORCE_INTERACTION) && defined(WITH_MPI)
-	  // A. Nasar POSSIBLE BUG HERE MISSING ACTIVATION OF PACK TASKS
+    // A. Nasar POSSIBLE BUG HERE MISSING ACTIVATION OF PACK TASKS
     for (struct link *l = c->hydro.force; l != NULL; l = l->next) {
       struct task *t = l->t;
       if (t->type != task_type_pair && t->type != task_type_sub_pair) continue;

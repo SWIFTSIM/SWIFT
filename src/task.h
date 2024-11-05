@@ -160,7 +160,7 @@ enum task_subtypes {
   task_subtype_sink_do_gas_swallow,
   task_subtype_rt_gradient,
   task_subtype_rt_transport,
-  task_subtype_gpu_pack, // A. Nasar
+  task_subtype_gpu_pack,  // A. Nasar
   task_subtype_gpu_pack_g,
   task_subtype_gpu_pack_f,
   task_subtype_gpu_unpack,
@@ -241,14 +241,14 @@ struct task {
   /*! Pointers to the cells this task acts upon */
   struct cell *ci, *cj;
 
-  int done; // A. Nasar
+  int done;  // A. Nasar
 
   int gpu_done;
 
   int corner_pair;
 
   /*! Pointers to the cells this task acts upon */
-  struct cell **ci_unpack;//, **cj;
+  struct cell **ci_unpack;  //, **cj;
 
   /*! List of tasks unlocked by this one */
   struct task **unlock_tasks;
