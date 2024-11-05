@@ -19,7 +19,11 @@
  *
  ******************************************************************************/
 /* Config parameters. */
-#define GPUOFFLOAD 1  // off-load hydro to GPU
+#define GPUOFFLOAD_DENSITY 1  // off-load hydro density to GPU
+#define GPUOFFLOAD_GRADIENT 1  // off-load hydro density to GPU
+#define GPUOFFLOAD_FORCE 1  // off-load hydro density to GPU
+
+
 // #define DO_CORNERS 1 //do corner pair tasks on CPU
 // #define DUMP_TIMINGS 1
 #include "../config.h"
@@ -1015,7 +1019,7 @@ void *runner_main2(void *data) {
             unpacked_f++;
           } else if (t->subtype == task_subtype_density) {
             cpu_self++;
-#ifndef GPUOFFLOAD
+#ifndef GPUOFFLOAD_DENSITY
             struct timespec t0, t1, dt;
             clock_gettime(CLOCK_REALTIME, &t0);
             runner_doself1_branch_density(r, ci);
@@ -1028,7 +1032,7 @@ void *runner_main2(void *data) {
             /* GPU WORK */
           } else if (t->subtype == task_subtype_gpu_pack) {
             packed_self++;
-#ifdef GPUOFFLOAD
+#ifdef GPUOFFLOAD_DENSITY
             //          struct timespec t0, t1; //
             //          clock_gettime(CLOCK_REALTIME, &t0);
             packing_time +=
@@ -1060,11 +1064,11 @@ void *runner_main2(void *data) {
               //stream, d_a, d_H, e, &packing_time, &time_for_density_gpu,
               //					&tot_time_for_hard_memcpys);
             } /*End of GPU work Self*/
-#endif        // GPUDENSSELF
+#endif  
           }   /* self / pack */
           else if (t->subtype == task_subtype_gpu_pack_g) {
             packed_self_g++;
-#ifdef GPUOFFLOAD
+#ifdef GPUOFFLOAD_GRADIENT
             //          runner_doself1_pack_g(r, sched, pack_vars_self_grad, ci,
             //        		  t, parts_aos_grad, &packing_time_g);
             packing_time_g += runner_doself1_pack_f4_g(
@@ -1091,7 +1095,7 @@ void *runner_main2(void *data) {
 #endif        // GPUGRADSELF
           } else if (t->subtype == task_subtype_gpu_pack_f) {
             packed_self_f++;
-#ifdef GPUOFFLOAD
+#ifdef GPUOFFLOAD_FORCE
             //          runner_doself1_pack_f(r, sched, pack_vars_self_forc, ci,
             //        		  t, parts_aos_forc, &packing_time_f);
             packing_time_f += runner_doself1_pack_f4_f(
@@ -1121,12 +1125,12 @@ void *runner_main2(void *data) {
                   &packing_time_f, &time_for_gpu_f, task_first_part_f4_f,
                   d_task_first_part_f4_f, self_end_f, &unpack_time_self_f);
             } /*End of GPU work Self*/
-#endif        // GPUFORCSELF
+#endif 
           }
 #ifdef EXTRA_HYDRO_LOOP
           else if (t->subtype == task_subtype_gradient) {
             cpu_self_g++;
-#ifndef GPUOFFLOAD
+#ifndef GPUOFFLOAD_GRADIENT
             struct timespec t0, t1, dt;
             clock_gettime(CLOCK_REALTIME, &t0);
             runner_doself1_branch_gradient(r, ci);
@@ -1134,12 +1138,12 @@ void *runner_main2(void *data) {
             tasks_done_cpu++;
             time_for_cpu_g += (t1.tv_sec - t0.tv_sec) +
                               (t1.tv_nsec - t0.tv_nsec) / 1000000000.0;
-#endif  // GPUGRADSELF
+#endif 
           }
 #endif
           else if (t->subtype == task_subtype_force) {
             cpu_self_f++;
-#ifndef GPUOFFLOAD
+#ifndef GPUOFFLOAD_FORCE
             struct timespec t0, t1;
             clock_gettime(CLOCK_REALTIME, &t0);
             runner_doself2_branch_force(r, ci);
@@ -1147,7 +1151,7 @@ void *runner_main2(void *data) {
             tasks_done_cpu++;
             time_for_cpu_f += (t1.tv_sec - t0.tv_sec) +
                               (t1.tv_nsec - t0.tv_nsec) / 1000000000.0;
-#endif  // GPUFORCSELF
+#endif 
           } else if (t->subtype == task_subtype_limiter)
             runner_doself1_branch_limiter(r, ci);
           else if (t->subtype == task_subtype_grav)
@@ -1194,7 +1198,7 @@ void *runner_main2(void *data) {
             /* Abouzied: To be commented out when the GPU pairs have been coded
              * up */
             cpu_pair++;
-#ifndef GPUOFFLOAD
+#ifndef GPUOFFLOAD_DENSITY
             struct timespec t0, t1, dt;
             clock_gettime(CLOCK_REALTIME, &t0);
             runner_dopair1_branch_density(r, ci, cj);
@@ -1208,7 +1212,7 @@ void *runner_main2(void *data) {
           /* GPU WORK */
           else if (t->subtype == task_subtype_gpu_pack) {
             packed_pair++;
-#ifdef GPUOFFLOAD
+#ifdef GPUOFFLOAD_DENSITY
 #ifdef DO_CORNERS
             struct timespec t0, t1, dt;
             clock_gettime(CLOCK_REALTIME, &t0);
@@ -1282,11 +1286,11 @@ void *runner_main2(void *data) {
 #ifdef DO_CORNERS
             } /* End of GPU work Pairs */
 #endif        // DO_CORNERS
-#endif        // GPUDENS
+#endif        // GPUOFFLOAD_DENSITY
           }   /* pair / pack */
           else if (t->subtype == task_subtype_gpu_pack_g) {
             packed_pair_g++;
-#ifdef GPUOFFLOAD
+#ifdef GPUOFFLOAD_GRADIENT
 #ifdef DO_CORNERS
             struct timespec t0, t1, dt;
             clock_gettime(CLOCK_REALTIME, &t0);
@@ -1362,10 +1366,10 @@ void *runner_main2(void *data) {
 #ifdef DO_CORNERS
             } /* End of GPU work Pairs */
 #endif        // DO_CORNERS
-#endif        // GPUGRADPAIR
+#endif        // GPUOFFLOAD_GRADIENT
           } else if (t->subtype == task_subtype_gpu_pack_f) {
             packed_pair_f++;
-#ifdef GPUOFFLOAD
+#ifdef GPUOFFLOAD_FORCE
 #ifdef DO_CORNERS
             struct timespec t0, t1, dt;
             clock_gettime(CLOCK_REALTIME, &t0);
@@ -1438,7 +1442,7 @@ void *runner_main2(void *data) {
 #ifdef DO_CORNERS
             }
 #endif  // DO_CORNERS
-#endif  // GPUFORCPAIR
+#endif  // GPUOFFLOAD_FORCE
           } else if (t->subtype == task_subtype_gpu_unpack) {
             unpacked_pair++;
           } else if (t->subtype == task_subtype_gpu_unpack_g) {
@@ -1449,7 +1453,7 @@ void *runner_main2(void *data) {
 #ifdef EXTRA_HYDRO_LOOP
           else if (t->subtype == task_subtype_gradient) {
             int Do_nothing = 0;
-#ifndef GPUOFFLOAD
+#ifndef GPUOFFLOAD_GRADIENT
             struct timespec t0, t1, dt;
             clock_gettime(CLOCK_REALTIME, &t0);
             runner_dopair1_branch_gradient(r, ci, cj);
@@ -1457,12 +1461,12 @@ void *runner_main2(void *data) {
             tasks_done_cpu++;
             time_for_cpu_pair_g += (t1.tv_sec - t0.tv_sec) +
                                    (t1.tv_nsec - t0.tv_nsec) / 1000000000.0;
-#endif  // GPUGRADPAIR
+#endif 
           }
 #endif  // EXTRA_HYDRO_LOOP
           else if (t->subtype == task_subtype_force) {
             int Do_nothing = 0;
-#ifndef GPUOFFLOAD
+#ifndef GPUOFFLOAD_FORCE
             struct timespec t0, t1, dt;
             clock_gettime(CLOCK_REALTIME, &t0);
             runner_dopair2_branch_force(r, ci, cj);
@@ -1470,7 +1474,7 @@ void *runner_main2(void *data) {
             tasks_done_cpu++;
             time_for_cpu_pair_f += (t1.tv_sec - t0.tv_sec) +
                                    (t1.tv_nsec - t0.tv_nsec) / 1000000000.0;
-#endif  // GPUFORCPAIR
+#endif  // GPUOFFLOAD_FORCE
           } else if (t->subtype == task_subtype_limiter)
             runner_dopair1_branch_limiter(r, ci, cj);
           else if (t->subtype == task_subtype_grav)
@@ -1853,23 +1857,42 @@ void *runner_main2(void *data) {
 
       /* We're done with this task, see if we get a next one. */
       prev = t;
-#ifdef GPUOFFLOAD
-      //      if (t->type == task_type_self && t->subtype ==
-      //      task_subtype_gpu_pack){
-      if (t->subtype == task_subtype_gpu_pack ||
-          t->subtype == task_subtype_gpu_pack_g ||
-          t->subtype == task_subtype_gpu_pack_f) {
+
+      if (t->subtype == task_subtype_gpu_pack) {
+#ifdef GPUOFFLOAD_DENSITY
         /* Don't enqueue unpacks yet. Just signal the runners */
         t->skip = 1;
         t = NULL;
-        //        if(t->gpu_done == 0)message("Missed packing a GPU tasks\n");
-      } else { /* Mark task as done, as per usual */
-        t = scheduler_done(sched, t);
+#else
+	t = scheduler_done(sched, t);
+#endif
       }
-#else   // GPUOFFLOAD
-      t = scheduler_done(sched, t);
-#endif  // GPUOFFLOAD
 
+      if (t->subtype == task_subtype_gpu_pack_g) {
+#ifdef GPUOFFLOAD_GRADIENT
+        /* Don't enqueue unpacks yet. Just signal the runners */
+        t->skip = 1;
+        t = NULL;
+#else
+	t = scheduler_done(sched, t);
+#endif
+      }
+
+      if (t->subtype == task_subtype_gpu_pack_f) {
+#ifdef GPUOFFLOAD_FORCE
+        /* Don't enqueue unpacks yet. Just signal the runners */
+        t->skip = 1;
+        t = NULL;
+#else
+	t = scheduler_done(sched, t);
+      }
+#endif
+
+      if (t->subtype != task_subtype_gpu_pack &&
+	  t->subtype != task_subtype_gpu_pack_g &&
+	  t->subtype != task_subtype_gpu_pack_f) {
+	t = scheduler_done(sched, t);
+      }
     } /* main loop. */
       // Stuff for writing debug data to file for validation
     ////        if (step % 10 == 0 || step == 1) {
@@ -1901,7 +1924,7 @@ void *runner_main2(void *data) {
     /*Output compute times to separate files. cat later into one file*/
 //    if (step % 11 == 0 || step == 1) {
 #ifdef DUMP_TIMINGS
-#ifdef GPUOFFLOAD
+#if defined(GPUOFFLOAD_DENSITY) || defined(GPUOFFLOAD_GRADIENT) || defined(GPUOFFLOAD_FORCE)
     //        char buffer[30];
     //        snprintf(buffer, sizeof(buffer), "t%d_stepnfullbundles%d",
     //        r->cpuid, step); FILE *fullbundles = fopen(buffer, "w");
@@ -1941,7 +1964,7 @@ void *runner_main2(void *data) {
       ///////////////////////////////////////////////////////////////
       ///////////////////////////////////////////////////////////////
 
-#else   // GPUOFFLOAD
+#else   // No GPU offload
     if (r->cpuid == 0 && engine_rank == 0)
       fprintf(fgpu_steps,
               "CPU TIME SELF, CPU TIME PAIR, "
@@ -1955,7 +1978,7 @@ void *runner_main2(void *data) {
       fprintf(fgpu_steps, "%e, %e, %e, %e, %e, %e,\n", time_for_density_cpu,
               time_for_density_cpu_pair, time_for_cpu_f, time_for_cpu_pair_f,
               time_for_cpu_g, time_for_cpu_pair_g);
-#endif  // GPUOFFLOAD
+#endif  
 #endif  // DUMPTIMINGS
     //    }
     fflush(fgpu_steps);
