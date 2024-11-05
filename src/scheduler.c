@@ -2951,8 +2951,6 @@ struct task *signal_sleeping_runners(struct scheduler *s, struct task *t) {
 
   /* Task definitely done, signal any sleeping runners. */
   if (!t->implicit) {
-    t->toc = getticks();
-    t->total_ticks += t->toc - t->tic;
     pthread_mutex_lock(&s->sleep_mutex);
     atomic_dec(&s->waiting);
     pthread_cond_broadcast(&s->sleep_cond);
