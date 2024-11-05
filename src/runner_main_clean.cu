@@ -265,9 +265,9 @@ void *runner_main2(void *data) {
 #endif
 #ifdef WITH_MPI
   else {
-    cudaSetDevice(mpi_rank * 2);
+    cudaSetDevice(mpi_rank);
     fprintf(stderr, "%i devices available device id is %i\n", nDevices,
-            mpi_rank * 2);
+            mpi_rank);
   }
 #endif
   fprintf(stderr, "after dev select engine_rank %i rank %i\n", engine_rank,
@@ -952,10 +952,11 @@ void *runner_main2(void *data) {
     /*Some bits for output in case of debug*/
     char buf5[20];
     snprintf(buf5, sizeof(buf5), "t%dr%dstep%d", r->cpuid, engine_rank, step);
-
+#ifdef DUMP_TIMINGS
     FILE *fgpu_steps;
     //    if(step == 0 || step%10 == 0)fgpu_steps = fopen(buf5, "w");
     fgpu_steps = fopen(buf5, "w");
+#endif
     //    if (step == 0) cudaProfilerStart();
     step++;
 
@@ -1983,10 +1984,10 @@ void *runner_main2(void *data) {
               time_for_density_cpu_pair, time_for_cpu_f, time_for_cpu_pair_f,
               time_for_cpu_g, time_for_cpu_pair_g);
 #endif
-#endif  // DUMPTIMINGS
     //    }
     fflush(fgpu_steps);
     fclose(fgpu_steps);
+#endif  // DUMPTIMINGS
     time_for_density_cpu = 0.0;
     time_for_density_gpu = 0.0;
     time_for_density_cpu_pair = 0.0;
