@@ -748,7 +748,7 @@ void engine_addtasks_recv_hydro(
 
     for (struct link *l = c->hydro.force_pack; l != NULL; l = l->next) {
       scheduler_addunlock(s, t_gradient, l->t);
-      scheduler_addunlock(s, l->t, t_ti);
+      scheduler_addunlock(s, l->t, tend);
     }
     //scheduler_addunlock(s, c->hydro.super->hydro.f_unpack, tend);
 #endif /*WITH_CUDA*/
