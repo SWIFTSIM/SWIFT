@@ -4906,9 +4906,9 @@ void engine_maketasks(struct engine *e) {
       }
 
       /* pack -> unpack -> ghost_in */
-      if (t->ci->hydro.ghost_in == NULL && t->ci->nodeID != e->nodeID)
+      if (t->ci->hydro.ghost_in == NULL && t->ci->nodeID == e->nodeID)
         message("Ghost in for cell i is NULL\n");
-      if (t->cj->hydro.ghost_in == NULL && t->cj->nodeID != e->nodeID)
+      if (t->cj->hydro.ghost_in == NULL && t->cj->nodeID == e->nodeID)
         message("Ghost in for cell j is NULL\n");
 
       scheduler_addunlock(sched, t, last_created_pair_unpack);
