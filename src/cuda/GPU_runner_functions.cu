@@ -80,7 +80,7 @@ __global__ void tester(struct part_soa parts_soa, int *d_task_first_part,
   }
   //  if(parts_soa.tid_p[pid] == 1 && pid < last_part_in_task_blocks)
   //	  printf("tid %i last_part_in_blocks %i\n", parts_soa.tid_p[pid],
-  //last_part_in_task_blocks);
+  // last_part_in_task_blocks);
 }
 #ifdef WITH_CUDA
 }
@@ -859,7 +859,7 @@ __global__ void DOSELF_GPU_AOS_F4_G(
   }
   if (pid < last_part_in_task_blocks) {
     //	  printf("v %f lap %f maxvisc %f\n", vsig_lapu_aviscmax_empty_i.x,
-    //vsig_lapu_aviscmax_empty_i.y, vsig_lapu_aviscmax_empty_i.z);
+    // vsig_lapu_aviscmax_empty_i.y, vsig_lapu_aviscmax_empty_i.z);
     parts_recv[pid].vsig_lapu_aviscmax = vsig_lapu_aviscmax_i;
   }
 }
@@ -1739,7 +1739,7 @@ __device__ void DOPAIR2NONSYMGPU(struct part_soa parts_soa, int pid,
   //  printf("first_part_in_task_blocks_cj %i last_part_in_task_blocks_cj %i
   //  last_part_in_task_blocks_ci %i\n",
   //		  first_part_in_task_blocks_cj, last_part_in_task_blocks_cj,
-  //last_part_in_task_blocks_ci);
+  // last_part_in_task_blocks_ci);
   if (pid < ci_end) {
     hi = parts_soa.h[pid], hig2 = hi * hi * kernel_gamma2;
     mi = parts_soa.mass[pid];
@@ -1794,7 +1794,7 @@ __device__ void DOPAIR2NONSYMGPU(struct part_soa parts_soa, int pid,
 
         const float xij = pix - pjx, yij = piy - pjy, zij = piz - pjz;
         //		const float xij = (pix - pjx) * flip_order, yij = (piy -
-        //pjy) * flip_order, zij = (piz - pjz) * flip_order;
+        // pjy) * flip_order, zij = (piz - pjz) * flip_order;
         const float r2 = xij * xij + yij * yij + zij * zij;
         if (r2 < hig2) {
           /* Recover some data */
@@ -1883,7 +1883,7 @@ __device__ void DOPAIR2NONSYMGPUAOS(struct part_aos *parts_aos, int pid,
   //  printf("first_part_in_task_blocks_cj %i last_part_in_task_blocks_cj %i
   //  last_part_in_task_blocks_ci %i\n",
   //		  first_part_in_task_blocks_cj, last_part_in_task_blocks_cj,
-  //last_part_in_task_blocks_ci);
+  // last_part_in_task_blocks_ci);
   if (pid < ci_end) {
     hi = parts_aos[pid].h, hig2 = hi * hi * kernel_gamma2;
     mi = parts_aos[pid].mass;
@@ -1937,7 +1937,7 @@ __device__ void DOPAIR2NONSYMGPUAOS(struct part_aos *parts_aos, int pid,
 
         const float xij = pix - pjx, yij = piy - pjy, zij = piz - pjz;
         //		const float xij = (pix - pjx) * flip_order, yij = (piy -
-        //pjy) * flip_order, zij = (piz - pjz) * flip_order;
+        // pjy) * flip_order, zij = (piz - pjz) * flip_order;
         const float r2 = xij * xij + yij * yij + zij * zij;
         if (r2 < hig2) {
           /* Recover some data */
@@ -1973,7 +1973,7 @@ __device__ void DOPAIR2NONSYMGPUAOS(struct part_aos *parts_aos, int pid,
           rot_uyi += faci * curlvry;
           rot_uzi += faci * curlvrz;
           //		  if(timebin[j_block] != 1000 && timebin[j_block] !=
-          //20)printf("incorrect timebin %i\n", timebin[j_block]);
+          // 20)printf("incorrect timebin %i\n", timebin[j_block]);
         }
       } /*if (jj < cj_end && pid < ci_end && pid >= ci_start)*/
     }   /*End of looping through particles in shared memory---Shared arrays
@@ -2019,7 +2019,7 @@ __device__ void DOPAIR2NONSYMGPUAOSF4(
   //  printf("first_part_in_task_blocks_cj %i last_part_in_task_blocks_cj %i
   //  last_part_in_task_blocks_ci %i\n",
   //		  first_part_in_task_blocks_cj, last_part_in_task_blocks_cj,
-  //last_part_in_task_blocks_ci);
+  // last_part_in_task_blocks_ci);
   //  if (pid < ci_end) {
   hi = x_pi.w, hig2 = hi * hi * kernel_gamma2;
   //  }
@@ -2121,7 +2121,7 @@ __device__ void DOPAIR2NAIVEGPUAOSF4(
   //  printf("first_part_in_task_blocks_cj %i last_part_in_task_blocks_cj %i
   //  last_part_in_task_blocks_ci %i\n",
   //		  first_part_in_task_blocks_cj, last_part_in_task_blocks_cj,
-  //last_part_in_task_blocks_ci);
+  // last_part_in_task_blocks_ci);
   //  if (pid < ci_end) {
   hi = x_pi.w, hig2 = hi * hi * kernel_gamma2;
   //  }
@@ -2171,7 +2171,7 @@ __device__ void DOPAIR2NAIVEGPUAOSF4(
       res_rot.w -= faci * dvdr;
     }
   } /*Loop through parts in cell j one BLOCK_SIZE at a time*/
-    //  if (pid >= ci_start && pid < ci_end) {
+  //  if (pid >= ci_start && pid < ci_end) {
   parts_recv[pid].rho_dh_wcount = res_rho;
   parts_recv[pid].rot_ux_div_v = res_rot;
   //  }
@@ -2361,7 +2361,7 @@ __device__ void DOPAIR2NAIVEGPUAOSF4G(
   //  printf("first_part_in_task_blocks_cj %i last_part_in_task_blocks_cj %i
   //  last_part_in_task_blocks_ci %i\n",
   //		  first_part_in_task_blocks_cj, last_part_in_task_blocks_cj,
-  //last_part_in_task_blocks_ci);
+  // last_part_in_task_blocks_ci);
   //  if (pid < ci_end) {
   hi = x_h_i.w, hig2 = hi * hi * kernel_gamma2;
   //  }
@@ -2419,7 +2419,7 @@ __device__ void DOPAIR2NAIVEGPUAOSF4G(
       vsig_lapu_aviscmax_i.z = fmaxf(vsig_lapu_aviscmax_i.z, alpha_j);
     }
   } /*Loop through parts in cell j one BLOCK_SIZE at a time*/
-    //  if (pid >= ci_start && pid < ci_end) {
+  //  if (pid >= ci_start && pid < ci_end) {
   parts_recv[pid].vsig_lapu_aviscmax = vsig_lapu_aviscmax_i;
   //  }
 }
@@ -2840,7 +2840,7 @@ __device__ void DOPAIR2NAIVEGPUAOSF4F(
       //          printf("Got in\n");
     }
   } /*Loop through parts in cell j one BLOCK_SIZE at a time*/
-    //  if (pid >= ci_start && pid < ci_end) {
+  //  if (pid >= ci_start && pid < ci_end) {
   udt_hdt_vsig_mintbinngb.w = f_b_t_mintbinngb_i.w;
   parts_recv[pid].udt_hdt_vsig_mintimebin_ngb = udt_hdt_vsig_mintbinngb;
   parts_recv[pid].a_hydro = ahydro;
@@ -2887,7 +2887,7 @@ __device__ void DOPAIR2GPU(struct part_soa parts_soa, int pid,
   //  printf("first_part_in_task_blocks_cj %i last_part_in_task_blocks_cj %i
   //  last_part_in_task_blocks_ci %i\n",
   //		  first_part_in_task_blocks_cj, last_part_in_task_blocks_cj,
-  //last_part_in_task_blocks_ci);
+  // last_part_in_task_blocks_ci);
 
   if (pid < ci_end) {
     cellx = parts_soa.locx[pid];
@@ -3033,7 +3033,7 @@ __device__ void DOPAIR2GPU(struct part_soa parts_soa, int pid,
           //		  atomicAdd(&wcount_tmp[j_block], wj);
           atomicAdd(&parts_soa.wcount[j], wj);
           //		  atomicAdd(&wcount_dh_tmp[j_block], -(hydro_dimension *
-          //wj + uj * wj_dx));
+          // wj + uj * wj_dx));
           atomicAdd(&parts_soa.wcount_dh[j],
                     -(hydro_dimension * wj + uj * wj_dx));
 
@@ -3050,8 +3050,8 @@ __device__ void DOPAIR2GPU(struct part_soa parts_soa, int pid,
           atomicAdd(&parts_soa.rot_uy[j], facj * curlvry);
           atomicAdd(&parts_soa.rot_uz[j], facj * curlvrz);
           //		  printf("rho %f rho_dh %f wcount %f wcount_dh %f div_v
-          //%f rotux %f rotuy %f rotuz %f\n" 				 ,rhoi, rho_dhi, wcounti,
-          //wcount_dhi, div_vi, rot_uxi, rot_uyi, rot_uzi);
+          //%f rotux %f rotuy %f rotuz %f\n" 				 ,rhoi,
+          //rho_dhi, wcounti, wcount_dhi, div_vi, rot_uxi, rot_uyi, rot_uzi);
         } /*if r2<hjg2 */
       }   /*if (jj < cj_end && pid < ci_end && pid >= ci_start)*/
     }     /*End of looping through particles in shared memory---Shared arrays
@@ -3677,7 +3677,7 @@ void runner_dopair1_branch_density_gpu(
   //  fprintf(stderr,"max_parts %i, max_partsi %i, max_partsj %i\n, "
   //		  "numBlocks_x %i, numBlocks_y %i, BLOCK_SIZE %i\n", max_parts,
   //		  max_parts_i, max_parts_j, numBlocks_x, numBlocks_y,
-  //BLOCK_SIZE);
+  // BLOCK_SIZE);
 
   /*Do ci & cj*/
   //  fprintf(stderr, "BLOCK_SIZE %i max parts %i num idle threads %i\n",

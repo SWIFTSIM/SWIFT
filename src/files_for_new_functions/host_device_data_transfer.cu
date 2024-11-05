@@ -287,7 +287,7 @@ void host2device_async_density_pair(
   //  cudaMemcpyAsync(&tid_p[first_part_tmp],
   //  &(parts_soa_buffer.tid_p[first_part_tmp]),
   //				  bundle_n_parts * sizeof(int),
-  //cudaMemcpyHostToDevice, 				  stream);
+  // cudaMemcpyHostToDevice, 				  stream);
   //  cudaMemcpyAsync(&locx[first_part_tmp],
   //  &(parts_soa_buffer.locx[first_part_tmp]),
   //				  bundle_n_parts * sizeof(float),
