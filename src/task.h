@@ -202,6 +202,7 @@ enum task_categories {
   task_category_time_integration,
   task_category_mpi,
   task_category_pack,
+  task_category_gpu_pack,
   task_category_fof,
   task_category_others,
   task_category_neutrino,

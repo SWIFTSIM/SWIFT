@@ -177,7 +177,7 @@ const char *task_category_names[task_category_count] = {
     "hydro",       "gravity",  "feedback",
     "black holes", "cooling",  "star formation",
     "limiter",     "sync",     "time integration",
-    "mpi",         "pack",     "fof",
+    "mpi",         "pack",     "gpu_pack",        "fof",
     "others",      "neutrino", "sink",
     "RT",          "CSDS"};
 
@@ -1870,14 +1870,16 @@ enum task_categories task_get_category(const struct task *t) {
         case task_subtype_density:
         case task_subtype_gradient:
         case task_subtype_force:
+          return task_category_hydro;
+
         case task_subtype_gpu_pack:  // A. Nasar
         case task_subtype_gpu_unpack:
         case task_subtype_gpu_pack_f:
         case task_subtype_gpu_unpack_f:
         case task_subtype_gpu_pack_g:
         case task_subtype_gpu_unpack_g:
-          return task_category_hydro;
-
+          return task_category_gpu_pack;
+	  
         case task_subtype_limiter:
           return task_category_limiter;
 

@@ -1865,6 +1865,8 @@ void *runner_main2(void *data) {
 #ifdef GPUOFFLOAD_DENSITY
         /* Don't enqueue unpacks yet. Just signal the runners */
         t->skip = 1;
+	t->toc = getticks();           
+	t->total_ticks += t->toc - t->tic;
         t = NULL;
 #else
         t = scheduler_done(sched, t);
@@ -1875,6 +1877,8 @@ void *runner_main2(void *data) {
 #ifdef GPUOFFLOAD_GRADIENT
         /* Don't enqueue unpacks yet. Just signal the runners */
         t->skip = 1;
+	t->toc = getticks();           
+	t->total_ticks += t->toc - t->tic;
         t = NULL;
 #else
         t = scheduler_done(sched, t);
@@ -1885,6 +1889,8 @@ void *runner_main2(void *data) {
 #ifdef GPUOFFLOAD_FORCE
         /* Don't enqueue unpacks yet. Just signal the runners */
         t->skip = 1;
+	t->toc = getticks();           
+	t->total_ticks += t->toc - t->tic;
         t = NULL;
 #else
         t = scheduler_done(sched, t);
