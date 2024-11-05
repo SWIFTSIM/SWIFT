@@ -350,12 +350,12 @@ __attribute__((always_inline)) INLINE static void mhd_end_gradient(
   const float a_inv2 = 1.f;  // MATTHIEU: Need to fix cosmo here
 
   /* Finish calculation of the B curl components */
-  p->density.rot_v[0] *= h_inv_dim_plus_one * a_inv2 * rho_inv;
-  p->density.rot_v[1] *= h_inv_dim_plus_one * a_inv2 * rho_inv;
-  p->density.rot_v[2] *= h_inv_dim_plus_one * a_inv2 * rho_inv;
+  p->mhd_data.curl_B[0] *= h_inv_dim_plus_one * a_inv2 * rho_inv;
+  p->mhd_data.curl_B[1] *= h_inv_dim_plus_one * a_inv2 * rho_inv;
+  p->mhd_data.curl_B[2] *= h_inv_dim_plus_one * a_inv2 * rho_inv;
 
   /* Finish calculation of the B divergence */
-  p->viscosity.div_v *= h_inv_dim_plus_one * rho_inv * a_inv2;
+  p->mhd_data.divB*= h_inv_dim_plus_one * rho_inv * a_inv2;
   // p->viscosity.div_v += cosmo->H * hydro_dimension;   // MATTHIEU: Need to
   // fix cosmo here
 
