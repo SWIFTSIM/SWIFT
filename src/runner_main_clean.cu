@@ -1870,7 +1870,7 @@ void *runner_main2(void *data) {
 #endif
       }
       
-      if (t->subtype == task_subtype_gpu_pack_g) {
+      else if (t->subtype == task_subtype_gpu_pack_g) {
 #ifdef GPUOFFLOAD_GRADIENT
         /* Don't enqueue unpacks yet. Just signal the runners */
         t->skip = 1;
@@ -1880,7 +1880,7 @@ void *runner_main2(void *data) {
 #endif
       }
 
-      if (t->subtype == task_subtype_gpu_pack_f) {
+      else if (t->subtype == task_subtype_gpu_pack_f) {
 #ifdef GPUOFFLOAD_FORCE
         /* Don't enqueue unpacks yet. Just signal the runners */
         t->skip = 1;
@@ -1890,7 +1890,7 @@ void *runner_main2(void *data) {
 #endif
       }
 
-      if (t->subtype != task_subtype_gpu_pack &&
+      else if (t->subtype != task_subtype_gpu_pack &&
           t->subtype != task_subtype_gpu_pack_g &&
           t->subtype != task_subtype_gpu_pack_f) {
         t = scheduler_done(sched, t);
