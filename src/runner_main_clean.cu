@@ -1061,7 +1061,8 @@ void *runner_main2(void *data) {
               //	        runner_doself1_launch(r, sched,
               // pack_vars_self_dens, ci, t, parts_aos_dens,
               // d_parts_aos_dens, stream, d_a, d_H, e, &packing_time,
-              // &time_for_density_gpu, 					&tot_time_for_hard_memcpys);
+              // &time_for_density_gpu,
+              // &tot_time_for_hard_memcpys);
             } /*End of GPU work Self*/
 #endif
           } /* self / pack */
@@ -1858,7 +1859,7 @@ void *runner_main2(void *data) {
 
       /* We're done with this task, see if we get a next one. */
       prev = t;
-
+      
       if (t->subtype == task_subtype_gpu_pack) {
 #ifdef GPUOFFLOAD_DENSITY
         /* Don't enqueue unpacks yet. Just signal the runners */
@@ -1868,7 +1869,7 @@ void *runner_main2(void *data) {
         t = scheduler_done(sched, t);
 #endif
       }
-
+      
       if (t->subtype == task_subtype_gpu_pack_g) {
 #ifdef GPUOFFLOAD_GRADIENT
         /* Don't enqueue unpacks yet. Just signal the runners */
@@ -1889,14 +1890,14 @@ void *runner_main2(void *data) {
       }
 #endif
 
-        if (t->subtype != task_subtype_gpu_pack &&
-            t->subtype != task_subtype_gpu_pack_g &&
-            t->subtype != task_subtype_gpu_pack_f) {
-          t = scheduler_done(sched, t);
-        }
-      } /* main loop. */
-        // Stuff for writing debug data to file for validation
-        ////        if (step % 10 == 0 || step == 1) {
+      if (t->subtype != task_subtype_gpu_pack &&
+          t->subtype != task_subtype_gpu_pack_g &&
+          t->subtype != task_subtype_gpu_pack_f) {
+        t = scheduler_done(sched, t);
+      }
+    } /* main loop. */
+      // Stuff for writing debug data to file for validation
+      ////        if (step % 10 == 0 || step == 1) {
       //      if(r->cpuid == 0 && engine_rank == 0)fprintf(fgpu_steps, "x, y, z,
       //      rho, rhodh, v_sig, lap_u, a_visc_max, ax, ay, az\n"); for (int tid
       //      = 0; tid < space->nr_local_cells;
@@ -1928,217 +1929,215 @@ void *runner_main2(void *data) {
 #ifdef DUMP_TIMINGS
 #if defined(GPUOFFLOAD_DENSITY) || defined(GPUOFFLOAD_GRADIENT) || \
     defined(GPUOFFLOAD_FORCE)
-      //        char buffer[30];
-      //        snprintf(buffer, sizeof(buffer), "t%d_stepnfullbundles%d",
-      //        r->cpuid, step); FILE *fullbundles = fopen(buffer, "w");
-      //        if(r->cpuid == 0)fprintf(fullbundles, "nfull, npartial,
-      //        nfullpair, npartialpair\n"); else fprintf(fullbundles, "%i, %i,
-      //        %i, %i\n", 		n_full_d_bundles, n_partial_d_bundles,
-      //        n_full_p_d_bundles, n_partial_p_d_bundles); fflush(fullbundles);
+    //        char buffer[30];
+    //        snprintf(buffer, sizeof(buffer), "t%d_stepnfullbundles%d",
+    //        r->cpuid, step); FILE *fullbundles = fopen(buffer, "w");
+    //        if(r->cpuid == 0)fprintf(fullbundles, "nfull, npartial,
+    //        nfullpair, npartialpair\n"); else fprintf(fullbundles, "%i, %i,
+    //        %i, %i\n", 		n_full_d_bundles, n_partial_d_bundles,
+    //        n_full_p_d_bundles, n_partial_p_d_bundles); fflush(fullbundles);
 
-      ///////////////////////////////////////////////////////////////
-      /// to ooutput timings uncomment this
-      ///////////////////////////////////////////////////////////////
-      if (r->cpuid == 0 && engine_rank == 0)
-        fprintf(
-            fgpu_steps,
-            "GPU_SD, P_SD, U_SD, GPU_PD,  P_PD, U_PD, "
-            "GPU_SF, P_SF, U_SF, GPU_PF, P_PF, U_PF, GPU_SG, P_SG, U_SG, "
-            "GPU_PG, P_PG, U_PG\n "
-            "%e, %e, %e, %e, %e, %e, %e, %e, %e, %e, %e, %e, %e, %e, %e, %e, "
-            "%e, %e\n",
-            time_for_density_gpu, packing_time, unpack_time_self,
-            time_for_density_gpu_pair, packing_time_pair, unpacking_time_pair,
-            time_for_gpu_f, packing_time_f, unpack_time_self_f,
-            time_for_gpu_pair_f, packing_time_pair_f, unpacking_time_pair_f,
-            time_for_gpu_g, packing_time_g, unpack_time_self_g,
-            time_for_gpu_pair_g, packing_time_pair_g, unpacking_time_pair_f);
+    ///////////////////////////////////////////////////////////////
+    /// to ooutput timings uncomment this
+    ///////////////////////////////////////////////////////////////
+    if (r->cpuid == 0 && engine_rank == 0)
+      fprintf(fgpu_steps,
+              "GPU_SD, P_SD, U_SD, GPU_PD,  P_PD, U_PD, "
+              "GPU_SF, P_SF, U_SF, GPU_PF, P_PF, U_PF, GPU_SG, P_SG, U_SG, "
+              "GPU_PG, P_PG, U_PG\n "
+              "%e, %e, %e, %e, %e, %e, %e, %e, %e, %e, %e, %e, %e, %e, %e, %e, "
+              "%e, %e\n",
+              time_for_density_gpu, packing_time, unpack_time_self,
+              time_for_density_gpu_pair, packing_time_pair, unpacking_time_pair,
+              time_for_gpu_f, packing_time_f, unpack_time_self_f,
+              time_for_gpu_pair_f, packing_time_pair_f, unpacking_time_pair_f,
+              time_for_gpu_g, packing_time_g, unpack_time_self_g,
+              time_for_gpu_pair_g, packing_time_pair_g, unpacking_time_pair_f);
 
-      else
-        fprintf(
-            fgpu_steps,
-            "%e, %e, %e, %e, %e, %e, %e, %e, %e, %e, %e, %e, %e, %e, %e, %e, "
-            "%e, %e\n",
-            time_for_density_gpu, packing_time, unpack_time_self,
-            time_for_density_gpu_pair, packing_time_pair, unpacking_time_pair,
-            time_for_gpu_f, packing_time_f, unpack_time_self_f,
-            time_for_gpu_pair_f, packing_time_pair_f, unpacking_time_pair_f,
-            time_for_gpu_g, packing_time_g, unpack_time_self_g,
-            time_for_gpu_pair_g, packing_time_pair_g, unpacking_time_pair_f);
-        //////////////////////////////////////////////////////////////
-        ///////////////////////////////////////////////////////////////
-        ///////////////////////////////////////////////////////////////
+    else
+      fprintf(fgpu_steps,
+              "%e, %e, %e, %e, %e, %e, %e, %e, %e, %e, %e, %e, %e, %e, %e, %e, "
+              "%e, %e\n",
+              time_for_density_gpu, packing_time, unpack_time_self,
+              time_for_density_gpu_pair, packing_time_pair, unpacking_time_pair,
+              time_for_gpu_f, packing_time_f, unpack_time_self_f,
+              time_for_gpu_pair_f, packing_time_pair_f, unpacking_time_pair_f,
+              time_for_gpu_g, packing_time_g, unpack_time_self_g,
+              time_for_gpu_pair_g, packing_time_pair_g, unpacking_time_pair_f);
+      //////////////////////////////////////////////////////////////
+      ///////////////////////////////////////////////////////////////
+      ///////////////////////////////////////////////////////////////
 
 #else  // No GPU offload
-      if (r->cpuid == 0 && engine_rank == 0)
-        fprintf(fgpu_steps,
-                "CPU TIME SELF, CPU TIME PAIR, "
-                "CPU TIME SELF F, CPU TIME PAIR F, CPU TIME SELF G, CPU TIME "
-                "PAIR G\n "
-                "%e, %e, %e, %e, %e, %e\n",
-                time_for_density_cpu, time_for_density_cpu_pair, time_for_cpu_f,
-                time_for_cpu_pair_f, time_for_cpu_g, time_for_cpu_pair_g);
+    if (r->cpuid == 0 && engine_rank == 0)
+      fprintf(fgpu_steps,
+              "CPU TIME SELF, CPU TIME PAIR, "
+              "CPU TIME SELF F, CPU TIME PAIR F, CPU TIME SELF G, CPU TIME "
+              "PAIR G\n "
+              "%e, %e, %e, %e, %e, %e\n",
+              time_for_density_cpu, time_for_density_cpu_pair, time_for_cpu_f,
+              time_for_cpu_pair_f, time_for_cpu_g, time_for_cpu_pair_g);
 
-      else
-        fprintf(fgpu_steps, "%e, %e, %e, %e, %e, %e,\n", time_for_density_cpu,
-                time_for_density_cpu_pair, time_for_cpu_f, time_for_cpu_pair_f,
-                time_for_cpu_g, time_for_cpu_pair_g);
+    else
+      fprintf(fgpu_steps, "%e, %e, %e, %e, %e, %e,\n", time_for_density_cpu,
+              time_for_density_cpu_pair, time_for_cpu_f, time_for_cpu_pair_f,
+              time_for_cpu_g, time_for_cpu_pair_g);
 #endif
 #endif  // DUMPTIMINGS
-      //    }
-      fflush(fgpu_steps);
-      fclose(fgpu_steps);
-      time_for_density_cpu = 0.0;
-      time_for_density_gpu = 0.0;
-      time_for_density_cpu_pair = 0.0;
-      time_for_density_gpu_pair = 0.0;
-      time_for_density_cpu_sub = 0.0;
-      tot_time_for_hard_memcpys = 0.0;
-      tasks_done_gpu = 0;
-      tasks_done_cpu = 0;
-      tasks_done_gpu_inc = 0;
-      if (ghost_in > 0)
-        fprintf(stderr, "total tasks not done on GPU %i is %i\n", r->cpuid,
-                ghost_in);
-      packed_self = 0;
-      packed_pair = 0;
-      packed_self_f = 0;
-      packed_pair_f = 0;
-      packed_self_g = 0;
-      packed_pair_g = 0;
-      density = 0;
-      density_sub = 0;
-      unpacked = 0;
-      //	if(step == 2)cudaProfilerStop();
-      //	if(step == 2)exit(0);
-      //	  size_t free_byte ;
-      //	  size_t total_byte ;
-      //	  cudaError_t cuda_status = cudaMemGetInfo( &free_byte,
-      //&total_byte ) ; 	  double free = (double)free_byte; 	  double available =
-      //(double)total_byte; 	  double used = (available - free); 	  fprintf(stderr,
-      //"Used %f GB GPU memory\n", used/1e9);
-      /* Wait at the wait barrier. */
-      //    swift_barrier_wait(&e->wait_barrier);
-    }
-    // Free all data
-    //  cudaFree(d_tid_p);
-    //  cudaFree(d_id);
-    //  cudaFree(d_x_p);
-    //  cudaFree(d_y_p);
-    //  cudaFree(d_z_p);
-    //  cudaFree(d_ux);
-    //  cudaFree(d_uy);
-    //  cudaFree(d_uz);
-    //  cudaFree(d_a_hydrox);
-    //  cudaFree(d_a_hydroy);
-    //  cudaFree(d_a_hydroz);
-    //  cudaFree(d_mass);
-    //  cudaFree(d_h);
-    //  cudaFree(d_u);
-    //  cudaFree(d_u_dt);
-    //  cudaFree(d_rho);
-    //  cudaFree(d_SPH_sum);
-    //  cudaFree(d_locx);
-    //  cudaFree(d_locy);
-    //  cudaFree(d_locz);
-    //  cudaFree(d_widthx);
-    //  cudaFree(d_widthy);
-    //  cudaFree(d_widthz);
-    //  cudaFree(d_h_max);
-    //  cudaFree(d_count_p);
-    //  cudaFree(d_wcount);
-    //  cudaFree(d_wcount_dh);
-    //  cudaFree(d_rho_dh);
-    //  cudaFree(d_rot_ux);
-    //  cudaFree(d_rot_uy);
-    //  cudaFree(d_rot_uz);
-    //  cudaFree(d_div_v);
-    //  cudaFree(d_div_v_previous_step);
-    //  cudaFree(d_alpha_visc);
-    //  cudaFree(d_v_sig);
-    //  cudaFree(d_laplace_u);
-    //  cudaFree(d_alpha_diff);
-    //  cudaFree(d_f);
-    //  cudaFree(d_soundspeed);
-    //  cudaFree(d_h_dt);
-    //  cudaFree(d_balsara);
-    //  cudaFree(d_pressure);
-    //  cudaFree(d_alpha_visc_max_ngb);
-    //  cudaFree(d_time_bin);
-    //  cudaFree(d_wakeup);
-    //  cudaFree(d_min_ngb_time_bin);
-    //  cudaFree(d_to_be_synchronized);
-    //  cudaFree(tid_p);
-    //  cudaFree(id);
-    //  cudaFree(mass);
-    //  cudaFree(h);
-    //  cudaFree(u);
-    //  cudaFree(u_dt);
-    //  cudaFree(rho);
-    //  cudaFree(SPH_sum);
-    //  cudaFree(x_p);
-    //  cudaFree(y_p);
-    //  cudaFree(z_p);
-    //  cudaFree(ux);
-    //  cudaFree(uy);
-    //  cudaFree(uz);
-    //  cudaFree(a_hydrox);
-    //  cudaFree(a_hydroy);
-    //  cudaFree(a_hydroz);
-    //  cudaFree(locx);
-    //  cudaFree(locy);
-    //  cudaFree(locz);
-    //  cudaFree(widthx);
-    //  cudaFree(widthy);
-    //  cudaFree(widthz);
-    //  cudaFree(h_max);
-    //  cudaFree(count_p);
-    //  cudaFree(wcount);
-    //  cudaFree(wcount_dh);
-    //  cudaFree(rho_dh);
-    //  cudaFree(rot_ux);
-    //  cudaFree(rot_uy);
-    //  cudaFree(rot_uz);
-    //  cudaFree(div_v);
-    //  cudaFree(div_v_previous_step);
-    //  cudaFree(alpha_visc);
-    //  cudaFree(v_sig);
-    //  cudaFree(laplace_u);
-    //  cudaFree(alpha_diff);
-    //  cudaFree(f);
-    //  cudaFree(soundspeed);
-    //  cudaFree(h_dt);
-    //  cudaFree(balsara);
-    //  cudaFree(pressure);
-    //  cudaFree(alpha_visc_max_ngb);
-    //  cudaFree(time_bin);
-    //  cudaFree(wakeup);
-    //  cudaFree(min_ngb_time_bin);
-    //  cudaFree(to_be_synchronized);
-    //  cudaFree(partid_p);
-    //  cudaFree(d_task_first_part);
-    //  cudaFree(d_task_last_part);
-    //  cudaFree(task_first_part_self_dens);
-    //  cudaFree(task_last_part_self_dens);
-    //  cudaFree(task_first_part_pair_ci);
-    //  cudaFree(task_last_part_pair_ci);
-    //  cudaFree(task_first_part_pair_cj);
-    //  cudaFree(task_last_part_pair_cj);
-    //  cudaFree(d_bundle_first_part_self_dens);
-    //  cudaFree(d_bundle_last_part_self_dens);
-    //  cudaFree(bundle_first_part_self_dens);
-    //  cudaFree(bundle_last_part_self_dens);
-    //  cudaFree(bundle_first_part_pair_ci);
-    //  cudaFree(bundle_last_part_pair_ci);
-    //  cudaFree(bundle_first_part_pair_cj);
-    //  cudaFree(bundle_last_part_pair_cj);
-    //  free(ci_list_self_dens);
-    //  free(ci_list_pair);
-    //  free(cj_list_pair);
-
-    /* Be kind, rewind. */
-    return NULL;
+    //    }
+    fflush(fgpu_steps);
+    fclose(fgpu_steps);
+    time_for_density_cpu = 0.0;
+    time_for_density_gpu = 0.0;
+    time_for_density_cpu_pair = 0.0;
+    time_for_density_gpu_pair = 0.0;
+    time_for_density_cpu_sub = 0.0;
+    tot_time_for_hard_memcpys = 0.0;
+    tasks_done_gpu = 0;
+    tasks_done_cpu = 0;
+    tasks_done_gpu_inc = 0;
+    if (ghost_in > 0)
+      fprintf(stderr, "total tasks not done on GPU %i is %i\n", r->cpuid,
+              ghost_in);
+    packed_self = 0;
+    packed_pair = 0;
+    packed_self_f = 0;
+    packed_pair_f = 0;
+    packed_self_g = 0;
+    packed_pair_g = 0;
+    density = 0;
+    density_sub = 0;
+    unpacked = 0;
+    //	if(step == 2)cudaProfilerStop();
+    //	if(step == 2)exit(0);
+    //	  size_t free_byte ;
+    //	  size_t total_byte ;
+    //	  cudaError_t cuda_status = cudaMemGetInfo( &free_byte,
+    //&total_byte ) ; 	  double free = (double)free_byte; 	  double
+    //available = (double)total_byte; 	  double used = (available - free);
+    //fprintf(stderr, "Used %f GB GPU memory\n", used/1e9);
+    /* Wait at the wait barrier. */
+    //    swift_barrier_wait(&e->wait_barrier);
   }
+  // Free all data
+  //  cudaFree(d_tid_p);
+  //  cudaFree(d_id);
+  //  cudaFree(d_x_p);
+  //  cudaFree(d_y_p);
+  //  cudaFree(d_z_p);
+  //  cudaFree(d_ux);
+  //  cudaFree(d_uy);
+  //  cudaFree(d_uz);
+  //  cudaFree(d_a_hydrox);
+  //  cudaFree(d_a_hydroy);
+  //  cudaFree(d_a_hydroz);
+  //  cudaFree(d_mass);
+  //  cudaFree(d_h);
+  //  cudaFree(d_u);
+  //  cudaFree(d_u_dt);
+  //  cudaFree(d_rho);
+  //  cudaFree(d_SPH_sum);
+  //  cudaFree(d_locx);
+  //  cudaFree(d_locy);
+  //  cudaFree(d_locz);
+  //  cudaFree(d_widthx);
+  //  cudaFree(d_widthy);
+  //  cudaFree(d_widthz);
+  //  cudaFree(d_h_max);
+  //  cudaFree(d_count_p);
+  //  cudaFree(d_wcount);
+  //  cudaFree(d_wcount_dh);
+  //  cudaFree(d_rho_dh);
+  //  cudaFree(d_rot_ux);
+  //  cudaFree(d_rot_uy);
+  //  cudaFree(d_rot_uz);
+  //  cudaFree(d_div_v);
+  //  cudaFree(d_div_v_previous_step);
+  //  cudaFree(d_alpha_visc);
+  //  cudaFree(d_v_sig);
+  //  cudaFree(d_laplace_u);
+  //  cudaFree(d_alpha_diff);
+  //  cudaFree(d_f);
+  //  cudaFree(d_soundspeed);
+  //  cudaFree(d_h_dt);
+  //  cudaFree(d_balsara);
+  //  cudaFree(d_pressure);
+  //  cudaFree(d_alpha_visc_max_ngb);
+  //  cudaFree(d_time_bin);
+  //  cudaFree(d_wakeup);
+  //  cudaFree(d_min_ngb_time_bin);
+  //  cudaFree(d_to_be_synchronized);
+  //  cudaFree(tid_p);
+  //  cudaFree(id);
+  //  cudaFree(mass);
+  //  cudaFree(h);
+  //  cudaFree(u);
+  //  cudaFree(u_dt);
+  //  cudaFree(rho);
+  //  cudaFree(SPH_sum);
+  //  cudaFree(x_p);
+  //  cudaFree(y_p);
+  //  cudaFree(z_p);
+  //  cudaFree(ux);
+  //  cudaFree(uy);
+  //  cudaFree(uz);
+  //  cudaFree(a_hydrox);
+  //  cudaFree(a_hydroy);
+  //  cudaFree(a_hydroz);
+  //  cudaFree(locx);
+  //  cudaFree(locy);
+  //  cudaFree(locz);
+  //  cudaFree(widthx);
+  //  cudaFree(widthy);
+  //  cudaFree(widthz);
+  //  cudaFree(h_max);
+  //  cudaFree(count_p);
+  //  cudaFree(wcount);
+  //  cudaFree(wcount_dh);
+  //  cudaFree(rho_dh);
+  //  cudaFree(rot_ux);
+  //  cudaFree(rot_uy);
+  //  cudaFree(rot_uz);
+  //  cudaFree(div_v);
+  //  cudaFree(div_v_previous_step);
+  //  cudaFree(alpha_visc);
+  //  cudaFree(v_sig);
+  //  cudaFree(laplace_u);
+  //  cudaFree(alpha_diff);
+  //  cudaFree(f);
+  //  cudaFree(soundspeed);
+  //  cudaFree(h_dt);
+  //  cudaFree(balsara);
+  //  cudaFree(pressure);
+  //  cudaFree(alpha_visc_max_ngb);
+  //  cudaFree(time_bin);
+  //  cudaFree(wakeup);
+  //  cudaFree(min_ngb_time_bin);
+  //  cudaFree(to_be_synchronized);
+  //  cudaFree(partid_p);
+  //  cudaFree(d_task_first_part);
+  //  cudaFree(d_task_last_part);
+  //  cudaFree(task_first_part_self_dens);
+  //  cudaFree(task_last_part_self_dens);
+  //  cudaFree(task_first_part_pair_ci);
+  //  cudaFree(task_last_part_pair_ci);
+  //  cudaFree(task_first_part_pair_cj);
+  //  cudaFree(task_last_part_pair_cj);
+  //  cudaFree(d_bundle_first_part_self_dens);
+  //  cudaFree(d_bundle_last_part_self_dens);
+  //  cudaFree(bundle_first_part_self_dens);
+  //  cudaFree(bundle_last_part_self_dens);
+  //  cudaFree(bundle_first_part_pair_ci);
+  //  cudaFree(bundle_last_part_pair_ci);
+  //  cudaFree(bundle_first_part_pair_cj);
+  //  cudaFree(bundle_last_part_pair_cj);
+  //  free(ci_list_self_dens);
+  //  free(ci_list_pair);
+  //  free(cj_list_pair);
+
+  /* Be kind, rewind. */
+  return NULL;
+}
 
 #endif  // WITH_CUDA
 
@@ -2146,10 +2145,10 @@ void *runner_main2(void *data) {
 #include <sys/resource.h>
 #include <sys/time.h>
 
-  // uint64_t time_used ( ) {
-  //    struct rusage ru;
-  //    struct timeval t;
-  //    getrusage(RUSAGE_THREAD,&ru);
-  //    t = ru.ru_utime;
-  //    return (uint64_t) t.tv_sec*1000 + t.tv_usec/1000;
-  // }
+// uint64_t time_used ( ) {
+//    struct rusage ru;
+//    struct timeval t;
+//    getrusage(RUSAGE_THREAD,&ru);
+//    t = ru.ru_utime;
+//    return (uint64_t) t.tv_sec*1000 + t.tv_usec/1000;
+// }
