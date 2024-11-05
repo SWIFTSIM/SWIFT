@@ -724,7 +724,8 @@ void engine_addtasks_recv_hydro(
     for (struct link *l = c->hydro.density_unpack; l != NULL; l = l->next) {
       scheduler_addunlock(s, l->t, t_rho);
     }
-    //scheduler_addunlock(s, c->hydro.super->hydro.d_unpack, t_rho);
+
+    
 #endif
 
 
@@ -744,13 +745,20 @@ void engine_addtasks_recv_hydro(
       scheduler_addunlock(s, t_rho, l->t);
       scheduler_addunlock(s, l->t, t_gradient);
     }
-    //scheduler_addunlock(s, c->hydro.super->hydro.g_unpack, t_gradient);
+    for (struct link *l = c->hydro.gradient_unpack; l != NULL; l = l->next) {
+      scheduler_addunlock(s, l->t, t_gradient);
+    }
+
 
     for (struct link *l = c->hydro.force_pack; l != NULL; l = l->next) {
       scheduler_addunlock(s, t_gradient, l->t);
       scheduler_addunlock(s, l->t, tend);
     }
-    //scheduler_addunlock(s, c->hydro.super->hydro.f_unpack, tend);
+    for (struct link *l = c->hydro.force_unpack; l != NULL; l = l->next) {
+      scheduler_addunlock(s, l->t, tend);
+    }
+
+
 #endif /*WITH_CUDA*/
 #else  /*EXTRA_HYDRO_LOOP*/
     for (struct link *l = c->hydro.force; l != NULL; l = l->next) {
