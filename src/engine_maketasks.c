@@ -585,10 +585,11 @@ void engine_addtasks_recv_hydro(
 
   /* Have we reached a level where there are any hydro tasks ? */
 #ifdef WITH_CUDA // A. Nasar
-  if (t_xv == NULL && c->hydro.density != NULL  && c->hydro.density_pack != NULL) {
+  if (t_xv == NULL && c->hydro.density != NULL  && c->hydro.density_pack != NULL)
 #else
-  if (t_xv == NULL && c->hydro.density != NULL) {
+  if (t_xv == NULL && c->hydro.density != NULL)
 #endif /*WITH_CUDA*/
+    {
 
 #ifdef SWIFT_DEBUG_CHECKS
     /* Make sure this cell has a valid tag. */
