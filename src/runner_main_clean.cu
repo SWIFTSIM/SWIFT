@@ -1887,8 +1887,8 @@ void *runner_main2(void *data) {
         t = NULL;
 #else
         t = scheduler_done(sched, t);
-      }
 #endif
+      }
 
       if (t->subtype != task_subtype_gpu_pack &&
           t->subtype != task_subtype_gpu_pack_g &&
