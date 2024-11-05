@@ -1191,7 +1191,7 @@ void *runner_main2(void *data) {
 			  runner_dopair1_launch_f4_one_memcpy(r, sched, pack_vars_pair_dens, t, parts_aos_pair_f4_send, parts_aos_pair_f4_recv,
 						 d_parts_aos_pair_f4_send, d_parts_aos_pair_f4_recv, stream_pairs, d_a, d_H, e, &packing_time_pair, &time_for_density_gpu_pair,
 						 &unpacking_time_pair, fparti_fpartj_lparti_lpartj_dens, pair_end);
-//		    }
+		    }
 #ifdef DO_CORNERS
 		  } /* End of GPU work Pairs */
 #endif //DO_CORNERS
