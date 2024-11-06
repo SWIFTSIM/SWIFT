@@ -1900,8 +1900,8 @@ void engine_make_hierarchical_tasks_grid(struct engine *e, struct cell *c) {
   }
 }
 
-void engine_make_hierarchical_tasks_grid_hydro(struct engine *e,
-                                               struct cell *c) {
+void engine_make_hierarchical_tasks_grid_hydro(struct engine *e, struct cell *c,
+                                               struct cell *star_resort_cell) {
   struct scheduler *s = &e->sched;
   const int with_stars = (e->policy & engine_policy_stars);
   const int with_sinks = (e->policy & engine_policy_sinks);
@@ -1912,12 +1912,45 @@ void engine_make_hierarchical_tasks_grid_hydro(struct engine *e,
   const int with_black_holes = (e->policy & engine_policy_black_holes);
   const int with_rt = (e->policy & engine_policy_rt);
 
-  if (with_rt || with_stars || with_sinks || with_black_holes ||
-      with_feedback || with_star_formation || with_star_formation_sink)
+  if (with_rt || with_sinks || with_black_holes || with_star_formation_sink)
     error("Only cooling is supported with the moving mesh hydro scheme!");
 
-  /* Anything to do here? */
+  /* Anything to do here? Leave at top, not worth continuing if no*/
   if (c->hydro.count == 0) return;
+
+  /* Are we are the level where we create the stars' resort tasks?
+   * If the tree is shallow, we need to do this at the super-level if the
+   * super-level is above the level we want */
+  if ((c->nodeID == e->nodeID) && (star_resort_cell == NULL) &&
+      (c->depth == engine_star_resort_task_depth || c->hydro.super == c)) {
+
+    /* If star formation from gas or sinks has happened, we need to resort */
+    if (with_feedback && ((c->hydro.count > 0 && with_star_formation) ||
+                          ((c->hydro.count > 0 || c->sinks.count > 0) &&
+                           with_star_formation_sink))) {
+
+      /* Record this is the level where we re-sort */
+      star_resort_cell = c;
+
+      c->hydro.stars_resort = scheduler_addtask(
+          s, task_type_stars_resort, task_subtype_none, 0, 0, c, NULL);
+
+      /* Now add the relevant unlocks */
+      /* If we can make stars, we should wait until SF is done before resorting
+       */
+      if (with_star_formation && c->hydro.count > 0) {
+        scheduler_addunlock(s, c->top->hydro.star_formation,
+                            c->hydro.stars_resort);
+      }
+      /* If we can make sinks or spawn from existing ones, we should wait until
+      SF is done before resorting */
+      if (with_star_formation_sink &&
+          (c->hydro.count > 0 || c->sinks.count > 0)) {
+        scheduler_addunlock(s, c->top->sinks.star_formation_sink,
+                            c->hydro.stars_resort);
+      }
+    }
+  }
 
   /* Are we in a super-cell ? */
   if (c->hydro.super == c) {
@@ -1926,6 +1959,10 @@ void engine_make_hierarchical_tasks_grid_hydro(struct engine *e,
     c->hydro.sorts =
         scheduler_addtask(s, task_type_sort, task_subtype_none, 0, 0, c, NULL);
 
+    if (with_feedback) {
+      c->stars.sorts = scheduler_addtask(s, task_type_stars_sort,
+                                         task_subtype_none, 0, 0, c, NULL);
+    }
     /* Local tasks only... */
     if (c->nodeID == e->nodeID) {
 
@@ -1979,6 +2016,65 @@ void engine_make_hierarchical_tasks_grid_hydro(struct engine *e,
       } else {
         scheduler_addunlock(s, c->hydro.flux_ghost, c->super->kick2);
       }
+
+      /* Subgrid tasks: Stars & Star Formation*/
+      /* Stars */
+      if (with_stars) {
+        c->stars.drift = scheduler_addtask(s, task_type_drift_spart,
+                                           task_subtype_none, 0, 0, c, NULL);
+        scheduler_addunlock(s, c->stars.drift, c->super->kick2);
+
+        if (with_star_formation && c->top->hydro.count > 0)
+          scheduler_addunlock(s, c->stars.drift, c->top->hydro.star_formation);
+      }
+
+      /* Subgrid tasks: feedback */
+      if (with_feedback) {
+
+        c->stars.stars_in =
+            scheduler_addtask(s, task_type_stars_in, task_subtype_none, 0,
+                              /* implicit = */ 1, c, NULL);
+
+        c->stars.stars_out =
+            scheduler_addtask(s, task_type_stars_out, task_subtype_none, 0,
+                              /* implicit = */ 1, c, NULL);
+
+        c->stars.density_ghost = scheduler_addtask(
+            s, task_type_stars_ghost, task_subtype_none, 0, 0, c, NULL);
+
+#ifdef EXTRA_STAR_LOOPS
+        c->stars.prep1_ghost =
+            scheduler_addtask(s, task_type_stars_prep_ghost1, task_subtype_none,
+                              0, /* implicit = */ 1, c, NULL);
+
+        c->hydro.prep1_ghost =
+            scheduler_addtask(s, task_type_hydro_prep_ghost1, task_subtype_none,
+                              0, /* implicit = */ 1, c, NULL);
+
+        c->stars.prep2_ghost =
+            scheduler_addtask(s, task_type_stars_prep_ghost2, task_subtype_none,
+                              0, /* implicit = */ 1, c, NULL);
+#endif
+
+#ifdef WITH_CSDS
+        if (with_csds) {
+          scheduler_addunlock(s, c->super->csds, c->stars.stars_in);
+        } else {
+          scheduler_addunlock(s, c->super->kick2, c->stars.stars_in);
+        }
+#else
+        scheduler_addunlock(s, c->super->kick2, c->stars.stars_in);
+#endif
+        scheduler_addunlock(s, c->stars.stars_out, c->super->timestep);
+
+        /* Star formation*/
+        if (with_feedback && ((c->hydro.count > 0 && with_star_formation) ||
+                              ((c->hydro.count > 0 || c->sinks.count > 0) &&
+                               with_star_formation_sink))) {
+          scheduler_addunlock(s, star_resort_cell->hydro.stars_resort,
+                              c->stars.stars_in);
+        }
+      }
     }
   }
   /* Recurse until super level is reached. */
@@ -1993,7 +2089,8 @@ void engine_make_hierarchical_tasks_grid_hydro(struct engine *e,
 #endif
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL)
-        engine_make_hierarchical_tasks_grid_hydro(e, c->progeny[k]);
+        engine_make_hierarchical_tasks_grid_hydro(e, c->progeny[k],
+                                                  star_resort_cell);
   }
 }
 
@@ -2373,7 +2470,8 @@ void engine_make_hierarchical_tasks_mapper(void *map_data, int num_elements,
       engine_make_hierarchical_tasks_grid(e, c);
     }
     if (with_grid_hydro) {
-      engine_make_hierarchical_tasks_grid_hydro(e, c);
+      engine_make_hierarchical_tasks_grid_hydro(e, c,
+                                                /*star_resort_cell=*/NULL);
     }
   }
 }
@@ -5075,11 +5173,17 @@ void engine_make_grid_hydroloop_dependencies(struct scheduler *sched,
 void engine_make_extra_grid_hydroloop_tasks_mapper(void *map_data,
                                                    int num_elements,
                                                    void *extra_data) {
+
   struct engine *e = (struct engine *)extra_data;
   struct scheduler *sched = &e->sched;
   const int nodeID = e->nodeID;
   const int with_timestep_limiter =
       (e->policy & engine_policy_timestep_limiter);
+  /* SF variables*/
+  const int with_feedback = (e->policy & engine_policy_feedback);
+  struct task *t_star_density = NULL;
+  struct task *t_star_feedback = NULL;
+
 #ifndef SHADOWSWIFT_MESHLESS_GRADIENTS
 #ifdef EXTRA_HYDRO_LOOP
   struct task *t_slope_estimate = NULL;
@@ -5102,6 +5206,11 @@ void engine_make_extra_grid_hydroloop_tasks_mapper(void *map_data,
     struct cell *const cj = t->cj;
     const int ci_local = ci->nodeID == nodeID;
     const int cj_local = cj == NULL ? 0 : cj->nodeID == nodeID;
+
+    /* Sort tasks depend on the drift of the cell (stars version). */
+    if (t_type == task_type_stars_sort && ci->nodeID == nodeID) {
+      scheduler_addunlock(sched, ci->hydro.super->stars.drift, t);
+    }
 
     /* Grid construction? */
     if (t_type == task_type_grid_construction) {
@@ -5270,6 +5379,255 @@ void engine_make_extra_grid_hydroloop_tasks_mapper(void *map_data,
     else if (t_subtype == task_subtype_gradient) {
       /* Construct other neighbour loops that do NOT depend on the grid.
        * TODO: Add other kinds of neighbour loops */
+
+      /*Adding tasks for Star Formation (Stellar Feedback Tasks)*/
+      /*Self*/
+      if (t_type == task_type_self) {
+
+        /* The stellar feedback tasks */
+        if (with_feedback) {
+          t_star_density =
+              scheduler_addtask(sched, task_type_self,
+                                task_subtype_stars_density, flags, 0, ci, NULL);
+          t_star_feedback = scheduler_addtask(sched, task_type_self,
+                                              task_subtype_stars_feedback,
+                                              flags, 0, ci, NULL);
+
+          /* Engine Links*/
+          engine_addlink(e, &ci->stars.density, t_star_density);
+          engine_addlink(e, &ci->stars.feedback, t_star_feedback);
+
+          /* Add dependencies*/
+          scheduler_addunlock(sched, ci->hydro.super->stars.drift,
+                              t_star_density);
+          scheduler_addunlock(sched, ci->hydro.super->hydro.drift,
+                              t_star_density);
+          scheduler_addunlock(sched, ci->hydro.super->stars.stars_in,
+                              t_star_density);
+          scheduler_addunlock(sched, t_star_density,
+                              ci->hydro.super->stars.density_ghost);
+          scheduler_addunlock(sched, t_star_feedback,
+                              ci->hydro.super->stars.stars_out);
+          /* Else from EXTRA_STAR_LOOPS */
+          scheduler_addunlock(sched, ci->hydro.super->stars.density_ghost,
+                              t_star_feedback);
+
+        } /* Close feedback*/
+      } /* Close self*/
+
+      /*Pair*/
+      else if (t_type == task_type_pair) {
+        /* The stellar feedback tasks */
+        if (with_feedback) {
+          t_star_density =
+              scheduler_addtask(sched, task_type_pair,
+                                task_subtype_stars_density, flags, 0, ci, cj);
+          t_star_feedback =
+              scheduler_addtask(sched, task_type_pair,
+                                task_subtype_stars_feedback, flags, 0, ci, cj);
+
+          /* Engine Links Pairs*/
+          engine_addlink(e, &ci->stars.density, t_star_density);
+          engine_addlink(e, &cj->stars.density, t_star_density);
+          engine_addlink(e, &ci->stars.feedback, t_star_feedback);
+          engine_addlink(e, &cj->stars.feedback, t_star_feedback);
+
+          /* Make gradient (density) tasks depend on Hydro sort */
+          scheduler_addunlock(sched, ci->hydro.super->hydro.sorts,
+                              t_star_density);
+          if (ci->hydro.super != cj->hydro.super) {
+            scheduler_addunlock(sched, cj->hydro.super->hydro.sorts,
+                                t_star_density);
+          }
+
+          /* Add dependencies*/
+          /* ci Dependencies */
+          if (ci->nodeID == nodeID) {
+
+            scheduler_addunlock(sched, ci->hydro.super->stars.drift,
+                                t_star_density);
+            scheduler_addunlock(sched, ci->hydro.super->stars.sorts,
+                                t_star_density);
+            scheduler_addunlock(sched, ci->hydro.super->hydro.drift,
+                                t_star_density);
+            scheduler_addunlock(sched, ci->hydro.super->stars.stars_in,
+                                t_star_density);
+            scheduler_addunlock(sched, t_star_density,
+                                ci->hydro.super->stars.density_ghost);
+            /* Else from EXTRA_STAR_LOOPS */
+            scheduler_addunlock(sched, ci->hydro.super->stars.density_ghost,
+                                t_star_feedback);
+            scheduler_addunlock(sched, t_star_feedback,
+                                ci->hydro.super->stars.stars_out);
+          } else /*(ci->nodeID != nodeID) */ {
+
+            scheduler_addunlock(sched, ci->hydro.super->stars.sorts,
+                                t_star_feedback);
+          } /* Close ci */
+
+          /* cj Dependencies */
+          if (cj->nodeID == nodeID) {
+
+            if (ci->hydro.super != cj->hydro.super) {
+
+              scheduler_addunlock(sched, cj->hydro.super->stars.sorts,
+                                  t_star_density);
+              scheduler_addunlock(sched, cj->hydro.super->stars.drift,
+                                  t_star_density);
+              scheduler_addunlock(sched, cj->hydro.super->hydro.drift,
+                                  t_star_density);
+              scheduler_addunlock(sched, cj->hydro.super->stars.stars_in,
+                                  t_star_density);
+              scheduler_addunlock(sched, t_star_density,
+                                  cj->hydro.super->stars.density_ghost);
+              /* Else from EXTRA_STAR_LOOPS*/
+              scheduler_addunlock(sched, cj->hydro.super->stars.density_ghost,
+                                  t_star_feedback);
+              scheduler_addunlock(sched, t_star_feedback,
+                                  cj->hydro.super->stars.stars_out);
+
+            } /* Close ci->hydro.super != cj->hydro.super */
+          } else /*(cj->nodeID != nodeID) */ {
+            scheduler_addunlock(sched, cj->hydro.super->stars.sorts,
+                                t_star_feedback);
+          }
+        } /* Close feedback */
+      } /* Close pair */
+
+      /*Sub Self*/
+      if (t_type == task_type_sub_self) {
+        /* The stellar feedback tasks */
+        if (with_feedback) {
+          t_star_density =
+              scheduler_addtask(sched, task_type_sub_self,
+                                task_subtype_stars_density, flags, 0, ci, NULL);
+          t_star_feedback = scheduler_addtask(sched, task_type_sub_self,
+                                              task_subtype_stars_feedback,
+                                              flags, 0, ci, NULL);
+          /* Engine Links*/
+          engine_addlink(e, &ci->stars.density, t_star_density);
+          engine_addlink(e, &ci->stars.feedback, t_star_feedback);
+
+          /* Dependencies */
+          scheduler_addunlock(sched, ci->hydro.super->stars.drift,
+                              t_star_density);
+          scheduler_addunlock(sched, ci->hydro.super->stars.sorts,
+                              t_star_density);
+          scheduler_addunlock(sched, ci->hydro.super->hydro.drift,
+                              t_star_density);
+          scheduler_addunlock(sched, ci->hydro.super->hydro.sorts,
+                              t_star_density);
+          scheduler_addunlock(sched, ci->hydro.super->stars.stars_in,
+                              t_star_density);
+          scheduler_addunlock(sched, t_star_density,
+                              ci->hydro.super->stars.density_ghost);
+
+          /* else from Extra Star Loop */
+          scheduler_addunlock(sched, ci->hydro.super->stars.density_ghost,
+                              t_star_feedback);
+
+          scheduler_addunlock(sched, t_star_feedback,
+                              ci->hydro.super->stars.stars_out);
+
+        } /* Close feedback */
+      } /* Close subself*/
+
+      /*Sub Pair*/
+      else if (t_type == task_type_sub_pair) {
+
+        /* The stellar feedback tasks */
+        if (with_feedback) {
+          t_star_density =
+              scheduler_addtask(sched, task_type_sub_pair,
+                                task_subtype_stars_density, flags, 0, ci, cj);
+          t_star_feedback =
+              scheduler_addtask(sched, task_type_sub_pair,
+                                task_subtype_stars_feedback, flags, 0, ci, cj);
+
+          /* Engine Links Pairs*/
+          engine_addlink(e, &ci->stars.density, t_star_density);
+          engine_addlink(e, &cj->stars.density, t_star_density);
+          engine_addlink(e, &ci->stars.feedback, t_star_feedback);
+          engine_addlink(e, &cj->stars.feedback, t_star_feedback);
+
+          /* Make gradient (density) tasks depend on Hydro sort */
+          scheduler_addunlock(sched, ci->hydro.super->hydro.sorts,
+                              t_star_density);
+          if (ci->hydro.super != cj->hydro.super) {
+            scheduler_addunlock(sched, cj->hydro.super->hydro.sorts,
+                                t_star_density);
+          }
+        } /* Close feedback */
+
+
+        if (ci->nodeID == nodeID) {
+
+          if (with_feedback) {
+
+            scheduler_addunlock(sched, ci->hydro.super->stars.sorts,
+                                t_star_density);
+            scheduler_addunlock(sched, ci->hydro.super->stars.drift,
+                                t_star_density);
+            scheduler_addunlock(sched, ci->hydro.super->hydro.drift,
+                                t_star_density);
+            scheduler_addunlock(sched, ci->hydro.super->stars.stars_in,
+                                t_star_density);
+            scheduler_addunlock(sched, t_star_density,
+                                ci->hydro.super->stars.density_ghost);
+
+            /* Else from Extra star loops */
+            scheduler_addunlock(sched, ci->hydro.super->stars.density_ghost,
+                                t_star_feedback);
+
+            scheduler_addunlock(sched, t_star_feedback,
+                                ci->hydro.super->stars.stars_out);
+          }
+        } else /* ci->nodeID != nodeID */ {
+
+          if (with_feedback) {
+
+            /* else from Extra star loops */
+            scheduler_addunlock(sched, ci->hydro.super->stars.sorts,
+                                t_star_feedback);
+          }
+        }
+
+        if (cj->nodeID == nodeID) {
+
+          if (ci->hydro.super != cj->hydro.super) {
+
+            if (with_feedback) {
+
+              scheduler_addunlock(sched, cj->hydro.super->stars.sorts,
+                                  t_star_density);
+              scheduler_addunlock(sched, cj->hydro.super->stars.drift,
+                                  t_star_density);
+              scheduler_addunlock(sched, cj->hydro.super->hydro.drift,
+                                  t_star_density);
+              scheduler_addunlock(sched, cj->hydro.super->stars.stars_in,
+                                  t_star_density);
+              scheduler_addunlock(sched, t_star_density,
+                                  cj->hydro.super->stars.density_ghost);
+
+              /* else from Extra Star Loop */
+              scheduler_addunlock(sched, cj->hydro.super->stars.density_ghost,
+                                  t_star_feedback);
+
+              scheduler_addunlock(sched, t_star_feedback,
+                                  cj->hydro.super->stars.stars_out);
+            }
+          }
+        } else /* cj->nodeID != nodeID */ {
+
+          if (with_feedback) {
+
+            /* else from Extra Star Loops */
+            scheduler_addunlock(sched, cj->hydro.super->stars.sorts,
+                                t_star_feedback);
+          }
+        }
+      } /* Close sub pair*/
+
       if (with_timestep_limiter)
         t_limiter = scheduler_addtask(sched, t_type, task_subtype_limiter,
                                       flags, 0, ci, cj);
@@ -5539,10 +5897,11 @@ void engine_addtasks_recv_mapper(void *map_data, int num_elements,
          * run at the same time. rt_collect_times runs in sub-cycles,
          * tend runs on normal steps. */
 
-        /* Make sure the timestep task replacements, i.e. rt_advance_cell_time,
-         * exists on the super levels regardless of proxy type.
-         * This needs to be done before engine_addtasks_recv_hydro so we
-         * can set appropriate unlocks there without re-creating tasks. */
+        /* Make sure the timestep task replacements, i.e.
+         * rt_advance_cell_time, exists on the super levels regardless of
+         * proxy type. This needs to be done before engine_addtasks_recv_hydro
+         * so we can set appropriate unlocks there without re-creating tasks.
+         */
         engine_addtasks_recv_rt_advance_cell_time(e, ci, tend);
       }
     }
