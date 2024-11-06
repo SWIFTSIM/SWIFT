@@ -1035,9 +1035,14 @@ void *runner_main2(void *data) {
 #ifdef GPUOFFLOAD_DENSITY
             //          struct timespec t0, t1; //
             //          clock_gettime(CLOCK_REALTIME, &t0);
+            ticks tic_cpu_pack = getticks();
+
             packing_time +=
                 runner_doself1_pack_f4(r, sched, pack_vars_self_dens, ci, t,
                                        parts_aos_f4_send, task_first_part_f4);
+
+	        t->total_cpu_pack_ticks += getticks() - tic_cpu_pack;
+
             //      	  clock_gettime(CLOCK_REALTIME, &t1);
             //      	  packing_time += (t1.tv_sec - t0.tv_sec) +
             //      			(t1.tv_nsec - t0.tv_nsec) /
@@ -1072,9 +1077,14 @@ void *runner_main2(void *data) {
 #ifdef GPUOFFLOAD_GRADIENT
             //          runner_doself1_pack_g(r, sched, pack_vars_self_grad, ci,
             //        		  t, parts_aos_grad, &packing_time_g);
+            ticks tic_cpu_pack = getticks();
+
             packing_time_g += runner_doself1_pack_f4_g(
                 r, sched, pack_vars_self_grad, ci, t, parts_aos_grad_f4_send,
                 task_first_part_f4_g);
+
+	        t->total_cpu_pack_ticks += getticks() - tic_cpu_pack;
+
             /* No pack tasks left in queue, flag that we want to run */
             int launch_leftovers = pack_vars_self_grad->launch_leftovers;
             /*Packed enough tasks let's go*/
@@ -1099,9 +1109,14 @@ void *runner_main2(void *data) {
 #ifdef GPUOFFLOAD_FORCE
             //          runner_doself1_pack_f(r, sched, pack_vars_self_forc, ci,
             //        		  t, parts_aos_forc, &packing_time_f);
+            ticks tic_cpu_pack = getticks();
+
             packing_time_f += runner_doself1_pack_f4_f(
                 r, sched, pack_vars_self_forc, ci, t, parts_aos_forc_f4_send,
                 task_first_part_f4_f);
+
+	        t->total_cpu_pack_ticks += getticks() - tic_cpu_pack;
+
             //          int count = ci->hydro.count;
             //          for(int i = 0; i < count; i++){
             //        	  int pid = pack_vars_self_forc->count_parts - count +
@@ -1261,13 +1276,13 @@ void *runner_main2(void *data) {
             } else {
 #endif  // DO_CORNERS
 
-	      ticks tic_cpu_pack = getticks(); 
+	          ticks tic_cpu_pack = getticks();
 
-	      packing_time_pair += runner_dopair1_pack_f4(
+	          packing_time_pair += runner_dopair1_pack_f4(
                   r, sched, pack_vars_pair_dens, ci, cj, t,
                   parts_aos_pair_f4_send, e, fparti_fpartj_lparti_lpartj_dens);
 
-	      
+	          t->total_cpu_pack_ticks += getticks() - tic_cpu_pack;
               /* Packed enough tasks or no pack tasks left in queue, flag that
                * we want to run */
               int launch = pack_vars_pair_dens->launch;
@@ -1348,10 +1363,15 @@ void *runner_main2(void *data) {
         //          ci,
         //        		  cj, t, parts_aos_pair_grad, e,
         //        &packing_time_g);
+  	          ticks tic_cpu_pack = getticks();
+
               packing_time_pair_g +=
                   runner_dopair1_pack_f4_g(r, sched, pack_vars_pair_grad, ci,
                                            cj, t, parts_aos_pair_f4_g_send, e,
                                            fparti_fpartj_lparti_lpartj_grad);
+
+  	          t->total_cpu_pack_ticks += getticks() - tic_cpu_pack;
+
               /* No pack tasks left in queue, flag that we want to run */
               int launch_leftovers = pack_vars_pair_grad->launch_leftovers;
               /*Packed enough tasks let's go*/
@@ -1425,10 +1445,15 @@ void *runner_main2(void *data) {
         //            runner_dopair1_pack_f(r, sched, pack_vars_pair_forc,
         //            ci, 		cj, t, parts_aos_pair_forc, e,
         //            &packing_time_f);
+              ticks tic_cpu_pack = getticks();
+
               packing_time_pair_f +=
                   runner_dopair1_pack_f4_f(r, sched, pack_vars_pair_forc, ci,
                                            cj, t, parts_aos_pair_f4_f_send, e,
                                            fparti_fpartj_lparti_lpartj_forc);
+
+              t->total_cpu_pack_ticks += getticks() - tic_cpu_pack;
+
               /* No pack tasks left in queue, flag that we want to run */
               int launch_leftovers = pack_vars_pair_forc->launch_leftovers;
               /*Packed enough tasks let's go*/
