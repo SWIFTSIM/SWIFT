@@ -3119,29 +3119,70 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
         TIMER_TOC(timer_qget);
         if (res != NULL) break;
       }
-
+      
       /* If unsuccessful, try stealing from the other queues. A. Nasar commented
        * out for GPU work*/
-      //      if (s->flags & scheduler_flag_steal) {
-      //        int count = 0, qids[nr_queues];
-      //        for (int k = 0; k < nr_queues; k++)
-      //          if (s->queues[k].count > 0 || s->queues[k].count_incoming > 0)
-      //          {
-      //            qids[count++] = k;
-      //          }
-      //        for (int k = 0; k < scheduler_maxsteal && count > 0; k++) {
-      //          const int ind = rand_r(&seed) % count;
-      //          TIMER_TIC
-      //          res = queue_gettask(&s->queues[qids[ind]], prev, 0);
-      //          TIMER_TOC(timer_qsteal);
-      //          if (res != NULL) {
-      //            break;
-      //          } else {
-      //            qids[ind] = qids[--count];
-      //          }
-      //        }
-      //        if (res != NULL) break;
-      //      }
+      if (s->flags & scheduler_flag_steal) {
+
+	
+	int count = 0, qids[nr_queues];
+
+
+	/* Make list of queues that have 1 or more tasks in them */
+	for (int k = 0; k < nr_queues; k++) {
+	  if (s->queues[k].count > 0 || s->queues[k].count_incoming > 0) {
+	      qids[count++] = k;
+	  }
+	}
+	  
+	for (int k = 0; k < scheduler_maxsteal && count > 0; k++) {
+
+	  /* Pick a queue at random among the non-empty ones */
+	  const int ind = rand_r(&seed) % count;
+
+	  /* Try to get a task from that random queue */
+	  TIMER_TIC;
+	  res = queue_gettask(&s->queues[qids[ind]], prev, 0);
+	  TIMER_TOC(timer_qsteal);
+
+	  /* Lucky? */
+	  if (res != NULL) {
+
+	    if (res->type == task_type_self && res->subtype == task_subtype_gpu_pack) {
+	      atomic_inc(&s->queues[qid].n_packs_self_left);
+	      atomic_dec(&s->queues[qids[ind]].n_packs_self_left);
+	    }
+	    if (res->type == task_type_self && res->subtype == task_subtype_gpu_pack_g) {
+	      atomic_inc(&s->queues[qid].n_packs_self_left_g);
+	      atomic_dec(&s->queues[qids[ind]].n_packs_self_left_g);
+	    }
+	    if (res->type == task_type_self && res->subtype == task_subtype_gpu_pack_f) {
+	      atomic_inc(&s->queues[qid].n_packs_self_left_f);
+	      atomic_dec(&s->queues[qids[ind]].n_packs_self_left_f);
+	    }
+	    if (res->type == task_type_pair && res->subtype == task_subtype_gpu_pack) {
+	      atomic_inc(&s->queues[qid].n_packs_pair_left);
+	      atomic_dec(&s->queues[qids[ind]].n_packs_pair_left);
+	    }
+	    if (res->type == task_type_pair && res->subtype == task_subtype_gpu_pack_g) {
+	      atomic_inc(&s->queues[qid].n_packs_pair_left_g);
+	      atomic_dec(&s->queues[qids[ind]].n_packs_pair_left_g);
+	    }
+	    if (res->type == task_type_pair && res->subtype == task_subtype_gpu_pack_f) {
+	      atomic_inc(&s->queues[qid].n_packs_pair_left_f);
+	      atomic_dec(&s->queues[qids[ind]].n_packs_pair_left_f);
+	    }
+	    
+	    /* Run with the task */
+	    break;
+	  } else {
+
+	    /* Reduce the size of the list of non-empty queues */
+	    qids[ind] = qids[--count];
+	  }
+	}
+	if (res != NULL) break;
+      }
     }
 
 /* If we failed, take a short nap. */
