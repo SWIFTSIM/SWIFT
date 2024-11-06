@@ -120,7 +120,10 @@ __attribute__((always_inline)) INLINE static void sink_first_init_sink(
     struct sink* sp, const struct sink_props* sink_props,
     const struct engine* e) {
 
-  sp->r_cut = sink_props->cut_off_radius;
+  if (sink_props->use_fixed_r_cut){
+    sp->h = sink_props->cut_off_radius;
+  }
+  
   sp->time_bin = 0;
 
   sp->number_of_gas_swallows = 0;
@@ -240,7 +243,45 @@ __attribute__((always_inline)) INLINE static void sink_kick_extra(
  * @param cosmo The current cosmological model.
  */
 __attribute__((always_inline)) INLINE static void sink_end_density(
-    struct sink* si, const struct cosmology* cosmo) {}
+    struct sink* si, const struct cosmology* cosmo) {
+
+  /* Some smoothing length multiples. */
+  const float h = si->h;
+  const float h_inv = 1.0f / h;                       /* 1/h */
+  const float h_inv_dim = pow_dimension(h_inv);       /* 1/h^d */
+  const float h_inv_dim_plus_one = h_inv_dim * h_inv; /* 1/h^(d+1) */
+
+  /* Finish the calculation by inserting the missing h-factors */
+  si->density.wcount *= h_inv_dim;
+  si->density.wcount_dh *= h_inv_dim_plus_one;
+
+}
+
+/**
+ * @brief Sets all particle fields to sensible values when the #sink has 0
+ * ngbs.
+ *
+ * @param sp The particle to act upon
+ * @param cosmo The current cosmological model.
+ */
+__attribute__((always_inline)) INLINE static void
+sinks_sink_has_no_neighbours(struct sink* restrict sp,
+                                    const struct cosmology* cosmo) {
+
+  warning(
+      "Sink particle with ID %lld treated as having no neighbours (h: %g, "
+      "wcount: %g).",
+      sp->id, sp->h, sp->density.wcount);
+
+  /* Some smoothing length multiples. */
+  const float h = sp->h;
+  const float h_inv = 1.0f / h;                 /* 1/h */
+  const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */
+
+  /* Re-set problematic values */
+  sp->density.wcount = kernel_root * h_inv_dim;
+  sp->density.wcount_dh = 0.f;
+}
 
 /**
  * @brief Compute the accretion rate of the sink and any quantities
@@ -489,7 +530,11 @@ INLINE static void sink_copy_properties(
   sink_init_sink(sink);
 
   /* Set a smoothing length */
-  sink->r_cut = sink_props->cut_off_radius;
+  if (sink_props->use_fixed_r_cut){
+    sink->h = sink_props->cut_off_radius;
+  } else {
+    sink->h = p->h;
+  }
 
   /* Flag it as not swallowed */
   sink_mark_sink_as_not_swallowed(&sink->merger_data);

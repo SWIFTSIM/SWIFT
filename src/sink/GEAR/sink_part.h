@@ -45,8 +45,21 @@ struct sink {
   /*! Particle velocity. */
   float v[3];
 
-  /*! Cut off radius. */
-  float r_cut;
+  /* Particle smoothing length */
+  float h;
+
+  struct {
+
+    /* Number of neighbours. */
+    float wcount;
+
+    /* Number of neighbours spatial derivative. */
+    float wcount_dh;
+
+  } density;
+
+  // /*! Cut off radius. */
+  // float r_cut;
 
   /*! Sink particle mass */
   float mass;
