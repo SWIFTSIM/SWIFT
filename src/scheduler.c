@@ -3416,8 +3416,6 @@ void scheduler_report_task_times_mapper(void *map_data, int num_elements,
     if(t->subtype == task_subtype_gpu_pack || t->subtype == task_subtype_gpu_pack_f || t->subtype == task_subtype_gpu_pack_g) {
       time_local[task_category_gpu_pack] += clocks_from_ticks(t->total_cpu_pack_ticks);
       time_local[task_category_gpu] -= clocks_from_ticks(t->total_cpu_pack_ticks);
-    }
-    if(t->subtype == task_subtype_gpu_unpack || t->subtype == task_subtype_gpu_unpack_f || t->subtype == task_subtype_gpu_unpack_g) {
       time_local[task_category_gpu] -= clocks_from_ticks(t->total_cpu_unpack_ticks);
       time_local[task_category_gpu_unpack] += clocks_from_ticks(t->total_cpu_unpack_ticks);
     }
