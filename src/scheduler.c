@@ -3413,12 +3413,12 @@ void scheduler_report_task_times_mapper(void *map_data, int num_elements,
     const enum task_categories cat = task_get_category(t);
     time_local[cat] += total_time;
 
-    if(t->type == task_type_pair && t->subtype == task_subtype_pack) {
-      time_local[task_category_gpu_pack] += clock_from_ticks(t->total_cpu_pack_ticks);
-      time_local[task_category_gpu_unpack] += clock_from_ticks(t->total_cpu_unpack_ticks);
+    if(t->type == task_type_pair && t->subtype == task_subtype_gpu_pack) {
+      time_local[task_category_gpu_pack] += clocks_from_ticks(t->total_cpu_pack_ticks);
+      time_local[task_category_gpu_unpack] += clocks_from_ticks(t->total_cpu_unpack_ticks);
       
-      time_local[task_category_gpu] -= clock_from_ticks(t->total_cpu_pack_ticks);
-      time_local[task_category_gpu] -= clock_from_ticks(t->total_cpu_unpack_ticks);
+      time_local[task_category_gpu] -= clocks_from_ticks(t->total_cpu_pack_ticks);
+      time_local[task_category_gpu] -= clocks_from_ticks(t->total_cpu_unpack_ticks);
     }
   }
 
