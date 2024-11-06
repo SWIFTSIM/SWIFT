@@ -202,7 +202,9 @@ enum task_categories {
   task_category_time_integration,
   task_category_mpi,
   task_category_pack,
+  task_category_gpu,
   task_category_gpu_pack,
+  task_category_gpu_unpack,
   task_category_fof,
   task_category_others,
   task_category_neutrino,
@@ -302,6 +304,9 @@ struct task {
   /*! Start and end time of this task */
   ticks tic, toc;
 
+  ticks total_cpu_pack_ticks;
+  ticks total_cpu_unpack_ticks;
+  
   /* Total time spent running this task */
   ticks total_ticks;
 

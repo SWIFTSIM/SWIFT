@@ -2680,6 +2680,7 @@ void runner_dopair1_launch_f4(
   *packing_time +=
       (t1.tv_sec - t0.tv_sec) + (t1.tv_nsec - t0.tv_nsec) / 1000000000.0;
 } /*End of GPU work*/
+
 void runner_dopair1_launch_f4_one_memcpy(
     struct runner *r, struct scheduler *s, struct pack_vars_pair *pack_vars,
     struct task *t, struct part_aos_f4_send *parts_send,
@@ -2815,9 +2816,14 @@ void runner_dopair1_launch_f4_one_memcpy(
   clock_gettime(CLOCK_REALTIME, &t1);
   *gpu_time +=
       (t1.tv_sec - t0.tv_sec) + (t1.tv_nsec - t0.tv_nsec) / 1000000000.0;
+
+
   /* Now copy the data back from the CPU thread-local buffers to the cells */
   /* Pack length counter for use in unpacking */
+
   int pack_length_unpack = 0;
+  ticks total_cpu_unpack_ticks = 0;
+  
   for (int bid = 0; bid < nBundles_temp; bid++) {
     /*Time unpacking*/
     clock_gettime(CLOCK_REALTIME, &t0);
@@ -2829,9 +2835,11 @@ void runner_dopair1_launch_f4_one_memcpy(
     *gpu_time +=
         (t1.tv_sec - t0.tv_sec) + (t1.tv_nsec - t0.tv_nsec) / 1000000000.0;
 
+    ////////////
+    
     /*Time unpacking*/
     //		clock_gettime(CLOCK_REALTIME, &tp0);
-
+    
     for (int tid = bid * bundle_size; tid < (bid + 1) * bundle_size; tid++) {
 
       if (tid < tasks_packed) {
@@ -2850,11 +2858,18 @@ void runner_dopair1_launch_f4_one_memcpy(
         while (cell_locktree(cjj)) {
           ; /* spin until we acquire the lock */
         }
+
+	const ticks tic = getticks();
+	
         /* Do the copy */
         runner_do_ci_cj_gpu_unpack_neat_aos_f4(
             r, cii, cjj, parts_recv, 0, &pack_length_unpack, tid,
             2 * pack_vars->count_max_parts, e);
 
+	const ticks toc = getticks();
+
+	total_cpu_unpack_ticks += toc - tic;
+	
         /* Record things for debugging */
         cii->gpu_done_pair++;
         cjj->gpu_done_pair++;
@@ -2885,6 +2900,12 @@ void runner_dopair1_launch_f4_one_memcpy(
   //	clock_gettime(CLOCK_REALTIME, &t1);
   //	*packing_time += (t1.tv_sec - t0.tv_sec) +
   //	(t1.tv_nsec - t0.tv_nsec) / 1000000000.0;
+
+
+  /* Write the timers back to the task */
+  t->total_cpu_unpack_ticks += total_cpu_unpack_ticks;
+
+  
 } /*End of GPU work*/
 
 void runner_dopair1_launch_f4_mcpy_Ker_mcpy(

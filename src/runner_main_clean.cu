@@ -1260,17 +1260,24 @@ void *runner_main2(void *data) {
               }
             } else {
 #endif  // DO_CORNERS
-              packing_time_pair += runner_dopair1_pack_f4(
+
+	      ticks tic_cpu_pack = getticks(); 
+
+	      packing_time_pair += runner_dopair1_pack_f4(
                   r, sched, pack_vars_pair_dens, ci, cj, t,
                   parts_aos_pair_f4_send, e, fparti_fpartj_lparti_lpartj_dens);
+
+	      
               /* Packed enough tasks or no pack tasks left in queue, flag that
                * we want to run */
               int launch = pack_vars_pair_dens->launch;
               int launch_leftovers = pack_vars_pair_dens->launch_leftovers;
+	      
               /* Do we have enough stuff to run the GPU ? */
               if (launch) n_full_p_d_bundles++;
               if (launch_leftovers) n_partial_p_d_bundles++;
               if (launch || launch_leftovers) {
+
                 /*Launch GPU tasks*/
                 //				runner_dopair1_launch(r, sched,
                 // pack_vars_pair_dens, ci, t, parts_aos_pair_dens,

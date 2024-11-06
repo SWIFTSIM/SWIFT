@@ -177,7 +177,8 @@ const char *task_category_names[task_category_count] = {
     "hydro",       "gravity",  "feedback",
     "black holes", "cooling",  "star formation",
     "limiter",     "sync",     "time integration",
-    "mpi",         "pack",     "gpu_pack",        "fof",
+    "mpi",         "pack",     "gpu",
+    "gpu_pack",    "gpu_unpack",  "fof",
     "others",      "neutrino", "sink",
     "RT",          "CSDS"};
 
