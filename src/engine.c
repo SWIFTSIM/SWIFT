@@ -2373,12 +2373,12 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
     for (int i = 0; i < s->nr_cells; i++) {
       struct cell *c = &s->cells_top[i];
       if (c->nodeID == engine_rank && c->sinks.count > 0) {
-        float sink_h_max = c->sinks.parts[0].r_cut;
+        float sink_h_max = c->sinks.parts[0].h;
         for (int k = 1; k < c->sinks.count; k++) {
-          if (c->sinks.parts[k].r_cut > sink_h_max)
-            sink_h_max = c->sinks.parts[k].r_cut;
+          if (c->sinks.parts[k].h > sink_h_max)
+            sink_h_max = c->sinks.parts[k].h;
         }
-        c->sinks.r_cut_max = max(sink_h_max, c->sinks.r_cut_max);
+        c->sinks.h_max = max(sink_h_max, c->sinks.h_max);
       }
     }
   }

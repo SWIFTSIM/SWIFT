@@ -88,11 +88,11 @@ struct cell_sinks {
     /*! Nr of #sink this cell can hold after addition of new one. */
     int count_total;
 
-    /*! Max cut off radius of active particles in this cell. */
-    float r_cut_max_active;
+    /*! Max cut off radius or smoothing length of active particles in this cell. */
+    float h_max_active;
 
-    /*! Values of r_cut_max before the drifts, used for sub-cell tasks. */
-    float r_cut_max_old;
+    /*! Values of r_max before the drifts, used for sub-cell tasks. */
+    float h_max_old;
 
     /*! Maximum part movement in this cell since last construction. */
     float dx_max_part;
@@ -114,8 +114,8 @@ struct cell_sinks {
   /*! Spin lock for various uses (#sink case). */
   swift_lock_type lock;
 
-  /*! Max cut off radius in this cell. */
-  float r_cut_max;
+  /*! Max cut off radius or smoothing length in this cell. */
+  float h_max;
 
   /*! Number of #sink updated in this cell. */
   int updated;

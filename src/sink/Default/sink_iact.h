@@ -64,7 +64,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_sink(
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
- * @param ri Comoving cut off radius of particle i.
+ * @param hi Comoving smoothing length or cut off radius of particle i.
  * @param hj Comoving smoothing-length of particle j.
  * @param si First particle (sink).
  * @param pj Second particle (gas, not updated).
@@ -77,7 +77,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_sink(
  */
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_sinks_gas_density(
-    const float r2, const float dx[3], const float ri, const float hj,
+    const float r2, const float dx[3], const float hi, const float hj,
     struct sink *si, const struct part *pj,
     const int with_cosmology, const struct cosmology *cosmo,
     const struct gravity_props *grav_props,
@@ -89,8 +89,8 @@ runner_iact_nonsym_sinks_gas_density(
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
- * @param ri Comoving cut off radius of particle i.
- * @param rj Comoving cut off radius of particle j.
+ * @param hi Comoving smoothing length or cut off radius of particle i.
+ * @param hj Comoving smoothing length or cut off radius of particle j.
  * @param si First sink particle.
  * @param sj Second sink particle.
  * @param with_cosmology if we run with cosmology.
@@ -102,7 +102,7 @@ runner_iact_nonsym_sinks_gas_density(
  */
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_sinks_sink_swallow(
-    const float r2, const float dx[3], const float ri, const float rj,
+    const float r2, const float dx[3], const float hi, const float hj,
     struct sink *restrict si, struct sink *restrict sj,
     const int with_cosmology, const struct cosmology *cosmo,
     const struct gravity_props *grav_props,
@@ -114,7 +114,7 @@ runner_iact_nonsym_sinks_sink_swallow(
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
- * @param ri Comoving cut off radius of particle i.
+ * @param hi Comoving smoothing length or cut off radius of particle i.
  * @param hj Comoving smoothing-length of particle j.
  * @param si First sink particle.
  * @param pj Second particle.
@@ -127,7 +127,7 @@ runner_iact_nonsym_sinks_sink_swallow(
  */
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_sinks_gas_swallow(const float r2, const float dx[3],
-                                     const float ri, const float hj,
+                                     const float hi, const float hj,
                                      struct sink *restrict si,
                                      struct part *restrict pj,
                                      const int with_cosmology,

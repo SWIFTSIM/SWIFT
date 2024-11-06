@@ -719,7 +719,7 @@ INLINE static void sink_star_formation_give_new_position(const struct engine* e,
   const double phi =
       2 * M_PI *
       random_unit_interval(sp->id, e->ti_current, (enum random_number_type)3);
-  const double r = si->r_cut * random_unit_interval(sp->id, e->ti_current,
+  const double r = si->h * random_unit_interval(sp->id, e->ti_current,
                                                     (enum random_number_type)4);
   const double cos_theta =
       1.0 - 2.0 * random_unit_interval(sp->id, e->ti_current,
@@ -759,7 +759,7 @@ INLINE static void sink_star_formation_give_new_velocity(
   double v_given[3] = {0.0, 0.0, 0.0};
   const double G_newton = e->physical_constants->const_newton_G;
   const double sigma_2 =
-      G_newton * si->mass_tot_before_star_spawning / si->r_cut;
+      G_newton * si->mass_tot_before_star_spawning / si->h;
   const double sigma = sink_props->star_spawning_sigma_factor * sqrt(sigma_2);
 
   for (int i = 0; i < 3; ++i) {
@@ -821,7 +821,7 @@ INLINE static void sink_copy_properties_to_star(
   sink_star_formation_give_new_velocity(e, sink, sp, sink_props);
 
   /* Sph smoothing length */
-  sp->h = sink->r_cut;
+  sp->h = sink->h;
 
   /* Feedback related initialisation */
   /* ------------------------------- */
@@ -1114,7 +1114,7 @@ INLINE static void sink_prepare_part_sink_formation_sink_criteria(
   const float r_acc_p = sink_props->cut_off_radius * cosmo->a;
 
   /* Physical accretion radius of sink si */
-  const float r_acc_si = si->r_cut * cosmo->a;
+  const float r_acc_si = si->h * cosmo->a;
 
   /* Comoving distance of particl p */
   const float px[3] = {(float)(p->x[0]), (float)(p->x[1]), (float)(p->x[2])};
