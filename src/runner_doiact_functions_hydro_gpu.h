@@ -1407,6 +1407,7 @@ void runner_doself1_launch_f4(
   /* Now copy the data back from the CPU thread-local buffers to the cells */
   /* Pack length counter for use in unpacking */
   int pack_length_unpack = 0;
+  ticks total_cpu_unpack_ticks = 0.;
   for (int bid = 0; bid < nBundles_temp; bid++) {
 
     clock_gettime(CLOCK_REALTIME, &t0);
@@ -1440,11 +1441,14 @@ void runner_doself1_launch_f4(
         //				*hmemcpy_time += (t1hmemcpy.tv_sec -
         //t0hmemcpy.tv_sec) + 				(t1hmemcpy.tv_nsec - t0hmemcpy.tv_nsec) /
         //1000000000.0;
+        const ticks tic = getticks();
         /* Do the copy */
         runner_doself1_gpu_unpack_neat_aos_f4(r, cii, parts_recv, 0,
                                               &pack_length_unpack, tid,
                                               pack_vars->count_max_parts, e);
+    	const ticks toc = getticks();
 
+    	total_cpu_unpack_ticks += toc - tic;
         /* Record things for debugging */
         cii->gpu_done++;
         /*Time end of unpacking*/
@@ -1473,6 +1477,8 @@ void runner_doself1_launch_f4(
   /* Zero counters for the next pack operations */
   pack_vars->count_parts = 0;
   pack_vars->tasks_packed = 0;
+
+  t->total_cpu_unpack_ticks += total_cpu_unpack_ticks;
 
 } /*End of GPU work Self*/
 
@@ -1802,6 +1808,7 @@ void runner_doself1_launch_f4_g(
   /* Now copy the data back from the CPU thread-local buffers to the cells */
   /* Pack length counter for use in unpacking */
   int pack_length_unpack = 0;
+  ticks total_cpu_unpack_ticks = 0.;
   for (int bid = 0; bid < nBundles_temp; bid++) {
 
     clock_gettime(CLOCK_REALTIME, &t0);
@@ -1831,10 +1838,15 @@ void runner_doself1_launch_f4_g(
         }
         /*Time unpacking*/
         clock_gettime(CLOCK_REALTIME, &tp0);
+    	const ticks tic = getticks();
+
         /* Do the copy */
         runner_doself1_gpu_unpack_neat_aos_f4_g(r, cii, parts_recv, 0,
                                                 &pack_length_unpack, tid,
                                                 pack_vars->count_max_parts, e);
+    	const ticks toc = getticks();
+
+    	total_cpu_unpack_ticks += toc - tic;
         /*Time end of unpacking*/
         clock_gettime(CLOCK_REALTIME, &tp1);
         *unpack_time += (tp1.tv_sec - tp0.tv_sec) +
@@ -1864,6 +1876,8 @@ void runner_doself1_launch_f4_g(
   /* Zero counters for the next pack operations */
   pack_vars->count_parts = 0;
   pack_vars->tasks_packed = 0;
+
+  t->total_cpu_unpack_ticks += total_cpu_unpack_ticks;
 
 } /*End of GPU work Self Gradient*/
 
@@ -2200,6 +2214,7 @@ void runner_doself1_launch_f4_f(
   /* Now copy the data back from the CPU thread-local buffers to the cells */
   /* Pack length counter for use in unpacking */
   int pack_length_unpack = 0;
+  ticks total_cpu_unpack_ticks = 0.;
   for (int bid = 0; bid < nBundles_temp; bid++) {
 
     clock_gettime(CLOCK_REALTIME, &t0);
@@ -2227,11 +2242,15 @@ void runner_doself1_launch_f4_f(
           ; /* spin until we acquire the lock */
         }
         clock_gettime(CLOCK_REALTIME, &tp0);
+    	const ticks tic = getticks();
+
         /* Do the copy */
         runner_doself1_gpu_unpack_neat_aos_f4_f(r, cii, parts_recv, 0,
                                                 &pack_length_unpack, tid,
                                                 pack_vars->count_max_parts, e);
+    	const ticks toc = getticks();
 
+    	total_cpu_unpack_ticks += toc - tic;
         /* Record things for debugging */
         cii->gpu_done_f++;
         clock_gettime(CLOCK_REALTIME, &tp1);
@@ -2258,6 +2277,8 @@ void runner_doself1_launch_f4_f(
   /* Zero counters for the next pack operations */
   pack_vars->count_parts = 0;
   pack_vars->tasks_packed = 0;
+
+  t->total_cpu_unpack_ticks += total_cpu_unpack_ticks;
 } /*End of GPU work Self Gradient*/
 
 void runner_dopair1_launch(struct runner *r, struct scheduler *s,
@@ -3551,6 +3572,9 @@ void runner_dopair1_launch_f4_g_one_memcpy(
   /* Now copy the data back from the CPU thread-local buffers to the cells */
   /* Pack length counter for use in unpacking */
   int pack_length_unpack = 0;
+
+  ticks total_cpu_unpack_ticks = 0.;
+
   for (int bid = 0; bid < nBundles_temp; bid++) {
     /*Time unpacking*/
     clock_gettime(CLOCK_REALTIME, &t0);
@@ -3582,10 +3606,17 @@ void runner_dopair1_launch_f4_g_one_memcpy(
         while (cell_locktree(cjj)) {
           ; /* spin until we acquire the lock */
         }
+
+    	const ticks tic = getticks();
+
         /* Do the copy */
         runner_do_ci_cj_gpu_unpack_neat_aos_f4_g(
             r, cii, cjj, parts_recv, 0, &pack_length_unpack, tid,
             2 * pack_vars->count_max_parts, e);
+
+    	const ticks toc = getticks();
+
+    	total_cpu_unpack_ticks += toc - tic;
 
         /* Record things for debugging */
         cii->gpu_done_pair_g++;
@@ -3613,6 +3644,9 @@ void runner_dopair1_launch_f4_g_one_memcpy(
   /* Zero counters for the next pack operations */
   pack_vars->count_parts = 0;
   pack_vars->tasks_packed = 0;
+
+  /* Write the timers back to the task */
+  t->total_cpu_unpack_ticks += total_cpu_unpack_ticks;
   //	/*Time end of unpacking*/
   //	clock_gettime(CLOCK_REALTIME, &t1);
   //	*packing_time += (t1.tv_sec - t0.tv_sec) +
@@ -4291,6 +4325,7 @@ void runner_dopair1_launch_f4_f_one_memcpy(
   /* Now copy the data back from the CPU thread-local buffers to the cells */
   /* Pack length counter for use in unpacking */
   int pack_length_unpack = 0;
+  ticks total_cpu_unpack_ticks = 0.;
   for (int bid = 0; bid < nBundles_temp; bid++) {
     /*Time unpacking*/
     clock_gettime(CLOCK_REALTIME, &t0);
@@ -4322,10 +4357,18 @@ void runner_dopair1_launch_f4_f_one_memcpy(
         while (cell_locktree(cjj)) {
           ; /* spin until we acquire the lock */
         }
+
+        const ticks tic = getticks();
+
         /* Do the copy */
         runner_do_ci_cj_gpu_unpack_neat_aos_f4_f(
             r, cii, cjj, parts_recv, 0, &pack_length_unpack, tid,
             2 * pack_vars->count_max_parts, e);
+
+
+    	const ticks toc = getticks();
+
+    	total_cpu_unpack_ticks += toc - tic;
 
         /* Record things for debugging */
         cii->gpu_done_pair_f++;
@@ -4353,6 +4396,9 @@ void runner_dopair1_launch_f4_f_one_memcpy(
   /* Zero counters for the next pack operations */
   pack_vars->count_parts = 0;
   pack_vars->tasks_packed = 0;
+
+  /* Write the timers back to the task */
+  t->total_cpu_unpack_ticks += total_cpu_unpack_ticks;
   //	/*Time end of unpacking*/
   //	clock_gettime(CLOCK_REALTIME, &t1);
   //	*packing_time += (t1.tv_sec - t0.tv_sec) +
