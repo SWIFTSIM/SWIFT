@@ -718,9 +718,9 @@ void proxy_parts_exchange_first(struct proxy *p) {
           p->nr_sinks_out);
 #endif /* SWIFT_DEBUG_CHECKS */
 
-  if (MPI_Isend(p->buff_out, PROXY_EXCHANGE_NUMBER_PARTICLE_TYPES, MPI_INT, p->nodeID,
-                p->mynodeID * proxy_tag_shift + proxy_tag_count, MPI_COMM_WORLD,
-                &p->req_parts_count_out) != MPI_SUCCESS)
+  if (MPI_Isend(p->buff_out, PROXY_EXCHANGE_NUMBER_PARTICLE_TYPES, MPI_INT,
+                p->nodeID, p->mynodeID * proxy_tag_shift + proxy_tag_count,
+                MPI_COMM_WORLD, &p->req_parts_count_out) != MPI_SUCCESS)
     error("Failed to isend nr of parts.");
 #ifdef SWIFT_DEBUG_CHECKS
   message("isent particle counts [%i, %i, %i, %i, %i] from node %i to node %i.",
@@ -806,9 +806,9 @@ void proxy_parts_exchange_first(struct proxy *p) {
   }
 
   /* Receive the number of particles. */
-  if (MPI_Irecv(p->buff_in, PROXY_EXCHANGE_NUMBER_PARTICLE_TYPES, MPI_INT, p->nodeID,
-                p->nodeID * proxy_tag_shift + proxy_tag_count, MPI_COMM_WORLD,
-                &p->req_parts_count_in) != MPI_SUCCESS)
+  if (MPI_Irecv(p->buff_in, PROXY_EXCHANGE_NUMBER_PARTICLE_TYPES, MPI_INT,
+                p->nodeID, p->nodeID * proxy_tag_shift + proxy_tag_count,
+                MPI_COMM_WORLD, &p->req_parts_count_in) != MPI_SUCCESS)
     error("Failed to irecv nr of parts.");
 #ifdef SWIFT_DEBUG_CHECKS
   message(
