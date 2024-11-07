@@ -2449,11 +2449,11 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
     const int cj_nodeID = nodeID;
 #endif
 
-    /* #ifdef SWIFT_DEBUG_CHECKS */
-    /*     if (with_star_formation_sink) { */
-    /*       error("TODO"); */
-    /*     } */
-    /* #endif */
+#ifdef SWIFT_DEBUG_CHECKS
+    if (with_star_formation_sink) {
+      error("TODO");
+    }
+#endif
 
     const int ci_active = cell_need_activating_stars(ci, e, with_star_formation,
                                                      with_star_formation_sink);
