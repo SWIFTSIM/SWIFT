@@ -2464,6 +2464,9 @@ case "$with_riemann" in
    trrs)
       AC_DEFINE([RIEMANN_SOLVER_TRRS], [1], [Two Rarefaction Riemann Solver])
    ;;
+   tsrs)
+      AC_DEFINE([RIEMANN_SOLVER_TSRS], [1], [Two Shock Riemann Solver])
+   ;;
    hllc)
       AC_DEFINE([RIEMANN_SOLVER_HLLC], [1], [Harten-Lax-van Leer-Contact Riemann solver])
    ;;
