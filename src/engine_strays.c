@@ -33,6 +33,12 @@
 /* Local headers. */
 #include "proxy.h"
 
+#ifdef WITH_MPI
+/* Number of particle types to wait for after launching the proxies. We have parts,
+   xparts, gparts, sparts, bparts and sinks to exchange, hence 5 types. */
+#define MPI_REQUEST_NUMBER_PARTICLE_TYPES 6
+#endif
+
 /**
  * @brief Exchange straying particles with other nodes.
  *
@@ -297,11 +303,8 @@ void engine_exchange_strays(
   }
 
   /* Launch the proxies. */
-  /* WARNING: Document this, maybe use a variable for clarity: if we add a
-     particle type, we must increase the 6->7 (before sinks, it was 5->6) and
-     propagate the change to many many places below. So pay attention. */
-  MPI_Request reqs_in[6 * engine_maxproxies];
-  MPI_Request reqs_out[6 * engine_maxproxies];
+  MPI_Request reqs_in[MPI_REQUEST_NUMBER_PARTICLE_TYPES * engine_maxproxies];
+  MPI_Request reqs_out[MPI_REQUEST_NUMBER_PARTICLE_TYPES * engine_maxproxies];
   for (int k = 0; k < e->nr_proxies; k++) {
     proxy_parts_exchange_first(&e->proxies[k]);
     reqs_in[k] = e->proxies[k].req_parts_count_in;
@@ -452,73 +455,70 @@ void engine_exchange_strays(
   }
 
   /* Collect the requests for the particle data from the proxies. */
-  /* WARNING: Document this, maybe use a variable for clarity: if we add a
-     particle type, we must increase the 6->7 (before sinks, it was 5->6) and
-     propagate the change to many many places below. So pay attention. */
   int nr_in = 0, nr_out = 0;
   for (int k = 0; k < e->nr_proxies; k++) {
     if (e->proxies[k].nr_parts_in > 0) {
-      reqs_in[6 * k] = e->proxies[k].req_parts_in;
-      reqs_in[6 * k + 1] = e->proxies[k].req_xparts_in;
+      reqs_in[MPI_REQUEST_NUMBER_PARTICLE_TYPES * k] = e->proxies[k].req_parts_in;
+      reqs_in[MPI_REQUEST_NUMBER_PARTICLE_TYPES * k + 1] = e->proxies[k].req_xparts_in;
       nr_in += 2;
     } else {
-      reqs_in[6 * k] = reqs_in[6 * k + 1] = MPI_REQUEST_NULL;
+      reqs_in[MPI_REQUEST_NUMBER_PARTICLE_TYPES * k] = reqs_in[MPI_REQUEST_NUMBER_PARTICLE_TYPES * k + 1] = MPI_REQUEST_NULL;
     }
     if (e->proxies[k].nr_gparts_in > 0) {
-      reqs_in[6 * k + 2] = e->proxies[k].req_gparts_in;
+      reqs_in[MPI_REQUEST_NUMBER_PARTICLE_TYPES * k + 2] = e->proxies[k].req_gparts_in;
       nr_in += 1;
     } else {
-      reqs_in[6 * k + 2] = MPI_REQUEST_NULL;
+      reqs_in[MPI_REQUEST_NUMBER_PARTICLE_TYPES * k + 2] = MPI_REQUEST_NULL;
     }
     if (e->proxies[k].nr_sparts_in > 0) {
-      reqs_in[6 * k + 3] = e->proxies[k].req_sparts_in;
+      reqs_in[MPI_REQUEST_NUMBER_PARTICLE_TYPES * k + 3] = e->proxies[k].req_sparts_in;
       nr_in += 1;
     } else {
-      reqs_in[6 * k + 3] = MPI_REQUEST_NULL;
+      reqs_in[MPI_REQUEST_NUMBER_PARTICLE_TYPES * k + 3] = MPI_REQUEST_NULL;
     }
     if (e->proxies[k].nr_bparts_in > 0) {
-      reqs_in[6 * k + 4] = e->proxies[k].req_bparts_in;
+      reqs_in[MPI_REQUEST_NUMBER_PARTICLE_TYPES * k + 4] = e->proxies[k].req_bparts_in;
       nr_in += 1;
     } else {
-      reqs_in[6 * k + 4] = MPI_REQUEST_NULL;
+      reqs_in[MPI_REQUEST_NUMBER_PARTICLE_TYPES * k + 4] = MPI_REQUEST_NULL;
     }
     if (e->proxies[k].nr_sinks_in > 0) {
-      reqs_in[6 * k + 5] = e->proxies[k].req_sinks_in;
+      reqs_in[MPI_REQUEST_NUMBER_PARTICLE_TYPES * k + 5] = e->proxies[k].req_sinks_in;
       nr_in += 1;
     } else {
-      reqs_in[6 * k + 5] = MPI_REQUEST_NULL;
+      reqs_in[MPI_REQUEST_NUMBER_PARTICLE_TYPES * k + 5] = MPI_REQUEST_NULL;
     }
 
     if (e->proxies[k].nr_parts_out > 0) {
-      reqs_out[6 * k] = e->proxies[k].req_parts_out;
-      reqs_out[6 * k + 1] = e->proxies[k].req_xparts_out;
+      reqs_out[MPI_REQUEST_NUMBER_PARTICLE_TYPES * k] = e->proxies[k].req_parts_out;
+      reqs_out[MPI_REQUEST_NUMBER_PARTICLE_TYPES * k + 1] = e->proxies[k].req_xparts_out;
       nr_out += 2;
     } else {
-      reqs_out[6 * k] = reqs_out[6 * k + 1] = MPI_REQUEST_NULL;
+      reqs_out[MPI_REQUEST_NUMBER_PARTICLE_TYPES * k] = reqs_out[MPI_REQUEST_NUMBER_PARTICLE_TYPES * k + 1] = MPI_REQUEST_NULL;
     }
     if (e->proxies[k].nr_gparts_out > 0) {
-      reqs_out[6 * k + 2] = e->proxies[k].req_gparts_out;
+      reqs_out[MPI_REQUEST_NUMBER_PARTICLE_TYPES * k + 2] = e->proxies[k].req_gparts_out;
       nr_out += 1;
     } else {
-      reqs_out[6 * k + 2] = MPI_REQUEST_NULL;
+      reqs_out[MPI_REQUEST_NUMBER_PARTICLE_TYPES * k + 2] = MPI_REQUEST_NULL;
     }
     if (e->proxies[k].nr_sparts_out > 0) {
-      reqs_out[6 * k + 3] = e->proxies[k].req_sparts_out;
+      reqs_out[MPI_REQUEST_NUMBER_PARTICLE_TYPES * k + 3] = e->proxies[k].req_sparts_out;
       nr_out += 1;
     } else {
-      reqs_out[6 * k + 3] = MPI_REQUEST_NULL;
+      reqs_out[MPI_REQUEST_NUMBER_PARTICLE_TYPES * k + 3] = MPI_REQUEST_NULL;
     }
     if (e->proxies[k].nr_bparts_out > 0) {
-      reqs_out[6 * k + 4] = e->proxies[k].req_bparts_out;
+      reqs_out[MPI_REQUEST_NUMBER_PARTICLE_TYPES * k + 4] = e->proxies[k].req_bparts_out;
       nr_out += 1;
     } else {
-      reqs_out[6 * k + 4] = MPI_REQUEST_NULL;
+      reqs_out[MPI_REQUEST_NUMBER_PARTICLE_TYPES * k + 4] = MPI_REQUEST_NULL;
     }
     if (e->proxies[k].nr_sinks_out > 0) {
-      reqs_out[6 * k + 5] = e->proxies[k].req_sinks_out;
+      reqs_out[MPI_REQUEST_NUMBER_PARTICLE_TYPES * k + 5] = e->proxies[k].req_sinks_out;
       nr_out += 1;
     } else {
-      reqs_out[6 * k + 5] = MPI_REQUEST_NULL;
+      reqs_out[MPI_REQUEST_NUMBER_PARTICLE_TYPES * k + 5] = MPI_REQUEST_NULL;
     }
   }
 
@@ -528,10 +528,7 @@ void engine_exchange_strays(
       count_sinks = 0;
   for (int k = 0; k < nr_in; k++) {
     int err, pid;
-    /* WARNING: Document this, maybe use a variable for clarity: if we add a
-     particle type, we must increase the 6->7 (before sinks, it was 5->6) and
-     propagate the change to many many places below. So pay attention. */
-    if ((err = MPI_Waitany(6 * e->nr_proxies, reqs_in, &pid,
+    if ((err = MPI_Waitany(MPI_REQUEST_NUMBER_PARTICLE_TYPES * e->nr_proxies, reqs_in, &pid,
                            MPI_STATUS_IGNORE)) != MPI_SUCCESS) {
       char buff[MPI_MAX_ERROR_STRING];
       int res;
@@ -539,8 +536,8 @@ void engine_exchange_strays(
       error("MPI_Waitany failed (%s).", buff);
     }
     if (pid == MPI_UNDEFINED) break;
-    // message( "request from proxy %i has arrived." , pid / 6 );
-    pid = 6 * (pid / 6);
+    // message( "request from proxy %i has arrived." , pid / MPI_REQUEST_NUMBER_PARTICLE_TYPES );
+    pid = MPI_REQUEST_NUMBER_PARTICLE_TYPES * (pid / MPI_REQUEST_NUMBER_PARTICLE_TYPES);
 
     /* If all the requests for a given proxy have arrived... */
     if (reqs_in[pid + 0] == MPI_REQUEST_NULL &&
@@ -550,7 +547,7 @@ void engine_exchange_strays(
         reqs_in[pid + 4] == MPI_REQUEST_NULL &&
         reqs_in[pid + 5] == MPI_REQUEST_NULL) {
       /* Copy the particle data to the part/xpart/gpart arrays. */
-      struct proxy *prox = &e->proxies[pid / 6];
+      struct proxy *prox = &e->proxies[pid / MPI_REQUEST_NUMBER_PARTICLE_TYPES];
       memcpy(&s->parts[offset_parts + count_parts], prox->parts_in,
              sizeof(struct part) * prox->nr_parts_in);
       memcpy(&s->xparts[offset_parts + count_parts], prox->xparts_in,
@@ -642,7 +639,7 @@ void engine_exchange_strays(
 
   /* Wait for all the sends to have finished too. */
   if (nr_out > 0)
-    if (MPI_Waitall(6 * e->nr_proxies, reqs_out, MPI_STATUSES_IGNORE) !=
+    if (MPI_Waitall(MPI_REQUEST_NUMBER_PARTICLE_TYPES * e->nr_proxies, reqs_out, MPI_STATUSES_IGNORE) !=
         MPI_SUCCESS)
       error("MPI_Waitall on sends failed.");
 
