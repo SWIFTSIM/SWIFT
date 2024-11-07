@@ -451,8 +451,6 @@ void proxy_cells_pack_mapper(void *map_data, int num_elements,
     if (cells[k].mpi.sendto) {
       ptrdiff_t ind = &cells[k] - data->s->cells_top;
       cells[k].mpi.pcell = &data->pcells[data->offset[ind]];
-
-      // HERE
       cell_pack(&cells[k], cells[k].mpi.pcell, data->with_gravity);
     }
   }
@@ -570,8 +568,6 @@ void proxy_cells_exchange(struct proxy *proxies, int num_proxies,
       error("MPI_Waitany failed.");
     // message( "cell data from proxy %i has arrived." , pid );
     for (int count = 0, j = 0; j < proxies[pid].nr_cells_in; j++)
-
-      // HERE
       count += cell_unpack(&proxies[pid].pcells_in[count],
                            proxies[pid].cells_in[j], s, with_gravity);
   }
