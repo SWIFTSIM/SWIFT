@@ -48,6 +48,11 @@
 #ifdef WITH_MPI
 /* MPI data type for the communications */
 MPI_Datatype pcell_mpi_type;
+
+/* Number of particle types to exchange with proxies in
+   proxy_parts_exchange_first(). We have parts, gparts, sparts, bparts and
+   sinks to exchange, hence 5 types. */
+#define PROXY_EXCHANGE_NUMBER_PARTICLE_TYPES 5
 #endif
 
 /**
@@ -713,10 +718,7 @@ void proxy_parts_exchange_first(struct proxy *p) {
           p->nr_sinks_out);
 #endif /* SWIFT_DEBUG_CHECKS */
 
-  /* WARNING: Document this, maybe use a variable for clarity: if we add a
-     particle type, we must increase the 5->6 (before sinks, it was
-     4->5). Grep 5 in the file and apply the same comment */
-  if (MPI_Isend(p->buff_out, 5, MPI_INT, p->nodeID,
+  if (MPI_Isend(p->buff_out, PROXY_EXCHANGE_NUMBER_PARTICLE_TYPES, MPI_INT, p->nodeID,
                 p->mynodeID * proxy_tag_shift + proxy_tag_count, MPI_COMM_WORLD,
                 &p->req_parts_count_out) != MPI_SUCCESS)
     error("Failed to isend nr of parts.");
@@ -804,9 +806,7 @@ void proxy_parts_exchange_first(struct proxy *p) {
   }
 
   /* Receive the number of particles. */
-  /* WARNING: Document this, maybe use a variable for clarity: if we add a
-     particle type, we must increase the 5->6 (before sinks, it was 4->5) */
-  if (MPI_Irecv(p->buff_in, 5, MPI_INT, p->nodeID,
+  if (MPI_Irecv(p->buff_in, PROXY_EXCHANGE_NUMBER_PARTICLE_TYPES, MPI_INT, p->nodeID,
                 p->nodeID * proxy_tag_shift + proxy_tag_count, MPI_COMM_WORLD,
                 &p->req_parts_count_in) != MPI_SUCCESS)
     error("Failed to irecv nr of parts.");
