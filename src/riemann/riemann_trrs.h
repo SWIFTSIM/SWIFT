@@ -49,6 +49,12 @@
  * robust; (...) The TRRS is in fact exact when both non-linear waves are
  * actually rarefaction waves.'
  *
+ * NOTE (yuyttenh, 2024): This version only assumes the two-rarefaction
+ * approximation to determine the estimate for P_star. The other variables in
+ * the star region and the sampling of the solution happens identically to the
+ * exact Riemann solver. This makes the TRRS more accurate according to
+ * Ivkovic (2023).
+ *
  * @param WL The left state vector
  * @param WR The right state vector
  * @param Whalf Empty state vector in which the result will be stored
@@ -57,6 +63,56 @@
  */
 __attribute__((always_inline)) INLINE static float riemann_solver_solve(
     const float* WL, const float* WR, float* Whalf, const float* n_unit) {
+  float aL, aR;
+  float PLR;
+  float vL, vR;
+  float ustar, P_star;
+
+  /* calculate the velocities along the interface normal */
+  vL = WL[1] * n_unit[0] + WL[2] * n_unit[1] + WL[3] * n_unit[2];
+  vR = WR[1] * n_unit[0] + WR[2] * n_unit[1] + WR[3] * n_unit[2];
+
+  /* calculate the sound speeds */
+  aL = sqrtf(hydro_gamma * WL[4] / WL[0]);
+  aR = sqrtf(hydro_gamma * WR[4] / WR[0]);
+
+  if (riemann_is_vacuum(WL, WR, vL, vR, aL, aR)) {
+    return riemann_solve_vacuum(WL, WR, vL, vR, aL, aR, Whalf, n_unit);
+  }
+
+  /* calculate the velocity and pressure in the intermediate state */
+  PLR = pow_gamma_minus_one_over_two_gamma(WL[4] / WR[4]);
+  ustar = (PLR * vL / aL + vR / aR +
+           hydro_two_over_gamma_minus_one * (PLR - 1.0f)) /
+          (PLR / aL + 1.0f / aR);
+  P_star =
+      0.5f *
+      (WL[4] * pow_two_gamma_over_gamma_minus_one(
+                   1.0f + hydro_gamma_minus_one_over_two / aL * (vL - ustar)) +
+       WR[4] * pow_two_gamma_over_gamma_minus_one(
+                   1.0f + hydro_gamma_minus_one_over_two / aR * (ustar - vR)));
+
+  /* sample the solution */
+  riemann_sample(WL, WR, n_unit, vL, vR, aL, aR, P_star, Whalf);
+
+  return P_star;
+}
+
+/**
+ * @brief Solve the Riemann problem using the Two Rarefaction Riemann Solver
+ *
+ * This version also enforces the two-rarefaction approximation when sampling
+ * the solution (old behaviour). This is less accurate than the version above.
+ *
+ * @param WL The left state vector
+ * @param WR The right state vector
+ * @param Whalf Empty state vector in which the result will be stored
+ * @param n_unit Normal vector of the interface
+ * @return The pressure in the intermediate region (P_star)
+ */
+__attribute__((always_inline)) INLINE static float riemann_solver_solve_tr(
+    const float* WL, const float* WR, float* Whalf, const float* n_unit) {
+
   float aL, aR;
   float PLR;
   float vL, vR;
@@ -173,14 +229,14 @@ __attribute__((always_inline)) INLINE static float riemann_solve_for_flux(
 #endif
 
   float Whalf[5];
-  const float pstar = riemann_solver_solve(Wi, Wj, Whalf, n_unit);
+  const float P_star = riemann_solver_solve(Wi, Wj, Whalf, n_unit);
   riemann_flux_from_half_state(Whalf, vij, n_unit, totflux);
 
 #ifdef SWIFT_DEBUG_CHECKS
   riemann_check_output(Wi, Wj, n_unit, vij, totflux);
 #endif
 
-  return pstar;
+  return P_star;
 }
 
 __attribute__((always_inline)) INLINE static void
