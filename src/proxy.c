@@ -48,11 +48,6 @@
 #ifdef WITH_MPI
 /* MPI data type for the communications */
 MPI_Datatype pcell_mpi_type;
-
-/* Number of particle types to exchange with proxies in
-   proxy_parts_exchange_first(). We have parts, gparts, sparts, bparts and
-   sinks to exchange, hence 5 types. */
-#define PROXY_EXCHANGE_NUMBER_PARTICLE_TYPES 5
 #endif
 
 /**

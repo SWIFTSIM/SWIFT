@@ -28,6 +28,11 @@
 #define proxy_buffgrow 1.5
 #define proxy_buffinit 100
 
+/* Number of particle types to exchange with proxies in
+   proxy_parts_exchange_first(). We have parts, gparts, sparts, bparts and
+   sinks to exchange, hence 5 types. */
+#define PROXY_EXCHANGE_NUMBER_PARTICLE_TYPES 5
+
 /* Proxy tag arithmetic. */
 #define proxy_tag_shift 9
 #define proxy_tag_count 0
@@ -85,7 +90,8 @@ struct proxy {
   int nr_sinks_in, nr_sinks_out;
 
   /* Buffer to hold the incomming/outgoing particle counts. */
-  int buff_out[5], buff_in[5];
+  int buff_out[PROXY_EXCHANGE_NUMBER_PARTICLE_TYPES],
+      buff_in[PROXY_EXCHANGE_NUMBER_PARTICLE_TYPES];
 
 /* MPI request handles. */
 #ifdef WITH_MPI
