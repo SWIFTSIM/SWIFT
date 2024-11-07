@@ -528,10 +528,10 @@ int main(int argc, char *argv[]) {
 #endif
 
 #ifdef WITH_MPI
-    if (with_sinks) {
-      pretime_message("Error: sink particles are not available yet with MPI.");
-      return 1;
-    }
+  if (with_sinks) {
+    pretime_message("Error: sink particles are not available yet with MPI.");
+    return 1;
+  }
 #endif
 
   if (with_sinks && with_star_formation) {
