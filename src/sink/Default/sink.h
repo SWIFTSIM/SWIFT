@@ -73,7 +73,12 @@ __attribute__((always_inline)) INLINE static void sink_init_part(
  * @param sp The #sink particle to act upon.
  */
 __attribute__((always_inline)) INLINE static void sink_init_sink(
-    struct sink* sp) {}
+    struct sink* sp) {
+
+  sp->density.wcount = 0.f;
+  sp->density.wcount_dh = 0.f;
+
+}
 
 /**
  * @brief Predict additional particle fields forward in time when drifting

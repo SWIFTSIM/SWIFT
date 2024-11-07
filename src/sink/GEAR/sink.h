@@ -191,6 +191,9 @@ __attribute__((always_inline)) INLINE static void sink_init_part(
 __attribute__((always_inline)) INLINE static void sink_init_sink(
     struct sink* sp) {
 
+  sp->density.wcount = 0.f;
+  sp->density.wcount_dh = 0.f;
+
   /* Reset to the mass of the sink */
   sp->mass_tot_before_star_spawning = sp->mass;
 
