@@ -365,12 +365,11 @@ void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
                                 struct cell *cj, struct task *t_density,
                                 struct task *t_prep2, struct task *t_sf_counts,
                                 const int with_star_formation) {
-  /* #ifdef SWIFT_DEBUG_CHECKS */
-  /*   if (e->policy & engine_policy_sinks && e->policy & engine_policy_stars) {
-   */
-  /*     error("TODO"); */
-  /*   } */
-  /* #endif */
+  #ifdef SWIFT_DEBUG_CHECKS
+    if (e->policy & engine_policy_sinks && e->policy & engine_policy_stars) {
+      error("TODO");
+    }
+  #endif
 
 #ifdef WITH_MPI
 
@@ -917,12 +916,11 @@ void engine_addtasks_recv_stars(struct engine *e, struct cell *c,
                                 struct task *t_sf_counts,
                                 struct task *const tend,
                                 const int with_star_formation) {
-  /* #ifdef SWIFT_DEBUG_CHECKS */
-  /*   if (e->policy & engine_policy_sinks && e->policy & engine_policy_stars) {
-   */
-  /*     error("TODO"); */
-  /*   } */
-  /* #endif */
+  #ifdef SWIFT_DEBUG_CHECKS
+    if (e->policy & engine_policy_sinks && e->policy & engine_policy_stars) {
+      error("TODO");
+    }
+  #endif
 
 #ifdef WITH_MPI
   struct scheduler *s = &e->sched;
@@ -4341,11 +4339,11 @@ void engine_addtasks_send_mapper(void *map_data, int num_elements,
   const int with_rt = (e->policy & engine_policy_rt);
   struct cell_type_pair *cell_type_pairs = (struct cell_type_pair *)map_data;
 
-  /* #ifdef SWIFT_DEBUG_CHECKS */
-  /*   if (e->policy & engine_policy_sinks) { */
-  /*     error("TODO"); */
-  /*   } */
-  /* #endif */
+  #ifdef SWIFT_DEBUG_CHECKS
+    if (e->policy & engine_policy_sinks) {
+      error("TODO");
+    }
+  #endif
 
   for (int k = 0; k < num_elements; k++) {
     struct cell *ci = cell_type_pairs[k].ci;
@@ -4414,11 +4412,11 @@ void engine_addtasks_recv_mapper(void *map_data, int num_elements,
   const int with_rt = (e->policy & engine_policy_rt);
   struct cell_type_pair *cell_type_pairs = (struct cell_type_pair *)map_data;
 
-  /* #ifdef SWIFT_DEBUG_CHECKS */
-  /*   if (e->policy & engine_policy_sinks) { */
-  /*     error("TODO"); */
-  /*   } */
-  /* #endif */
+  #ifdef SWIFT_DEBUG_CHECKS
+    if (e->policy & engine_policy_sinks) {
+      error("TODO");
+    }
+  #endif
 
   for (int k = 0; k < num_elements; k++) {
     struct cell *ci = cell_type_pairs[k].ci;
