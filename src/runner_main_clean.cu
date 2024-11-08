@@ -994,9 +994,10 @@ void *runner_main2(void *data) {
         struct cell *ci_temp = ci;
         struct cell *cj_temp = cj;
         double shift[3];
-        if(t->subtype != task_subtype_gpu_unpack && t->subtype != task_subtype_gpu_unpack_g
-          && t->subtype != task_subtype_gpu_unpack_f && )
-            t->sid = space_getsid_and_swap_cells(e->s, &ci_temp, &cj_temp, shift);
+        if(t->subtype != task_subtype_gpu_unpack &&
+	   t->subtype != task_subtype_gpu_unpack_g &&
+	   t->subtype != task_subtype_gpu_unpack_f)
+	  t->sid = space_getsid_and_swap_cells(e->s, &ci_temp, &cj_temp, shift);
       } else {
         t->sid = -1;
       }
