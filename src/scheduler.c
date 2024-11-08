@@ -1652,7 +1652,7 @@ void scheduler_splittasks_mapper(void *map_data, int num_elements,
 
     /* Invoke the correct splitting strategy */
     if (t->subtype == task_subtype_density) {
-      scheduler_splittask_hydro(t, s);
+//      scheduler_splittask_hydro(t, s);
     } else if (t->subtype == task_subtype_external_grav) {
       scheduler_splittask_gravity(t, s);
     } else if (t->subtype == task_subtype_grav) {

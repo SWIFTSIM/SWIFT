@@ -2276,7 +2276,7 @@ void engine_link_gravity_tasks(struct engine *e) {
     /* Get a pointer to the task. */
     struct task *t = &sched->tasks[k];
 
-    if (t->type == task_type_none) continue;
+    if (t->type == task_type_none || t->ci == NULL) continue;
 
     /* Get the cells we act on */
     struct cell *ci = t->ci;
