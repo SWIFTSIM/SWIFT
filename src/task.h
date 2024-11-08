@@ -306,7 +306,7 @@ struct task {
 
   ticks total_cpu_pack_ticks;
   ticks total_cpu_unpack_ticks;
-  
+
   /* Total time spent running this task */
   ticks total_ticks;
 

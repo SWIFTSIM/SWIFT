@@ -173,13 +173,13 @@ const char *subtaskID_names[task_subtype_count] = {
 };
 
 const char *task_category_names[task_category_count] = {
-    "drift",       "sorts",    "resort",
-    "hydro",       "gravity",  "feedback",
-    "black holes", "cooling",  "star formation",
-    "limiter",     "sync",     "time integration",
-    "mpi",         "pack",     "gpu",
-    "gpu_pack",    "gpu_unpack",  "fof",
-    "others",      "neutrino", "sink",
+    "drift",       "sorts",      "resort",
+    "hydro",       "gravity",    "feedback",
+    "black holes", "cooling",    "star formation",
+    "limiter",     "sync",       "time integration",
+    "mpi",         "pack",       "gpu",
+    "gpu_pack",    "gpu_unpack", "fof",
+    "others",      "neutrino",   "sink",
     "RT",          "CSDS"};
 
 #ifdef WITH_MPI
@@ -1880,7 +1880,7 @@ enum task_categories task_get_category(const struct task *t) {
         case task_subtype_gpu_pack_g:
         case task_subtype_gpu_unpack_g:
           return task_category_gpu;
-	  
+
         case task_subtype_limiter:
           return task_category_limiter;
 

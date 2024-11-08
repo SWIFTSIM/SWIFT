@@ -716,7 +716,8 @@ void engine_addtasks_recv_hydro(
       scheduler_addunlock(s, t_xv, l->t);
       scheduler_addunlock(s, l->t, t_rho);
     }
-#ifdef WITH_CUDA /* A. Nasar POSSIBLE BUG HERE (More like PROBABLE) NOT REQUIRED Ghost in for cell j is*/
+#ifdef WITH_CUDA /* A. Nasar POSSIBLE BUG HERE (More like PROBABLE) NOT \
+                    REQUIRED Ghost in for cell j is*/
     for (struct link *l = c->hydro.density_pack; l != NULL; l = l->next) {
       scheduler_addunlock(s, t_xv, l->t);
       scheduler_addunlock(s, l->t, t_rho);
@@ -725,12 +726,8 @@ void engine_addtasks_recv_hydro(
       scheduler_addunlock(s, l->t, t_rho);
     }
 
-    
 #endif
 
-
-
-    
 #ifdef EXTRA_HYDRO_LOOP
     for (struct link *l = c->hydro.gradient; l != NULL; l = l->next) {
       scheduler_addunlock(s, t_rho, l->t);
@@ -749,7 +746,6 @@ void engine_addtasks_recv_hydro(
       scheduler_addunlock(s, l->t, t_gradient);
     }
 
-
     for (struct link *l = c->hydro.force_pack; l != NULL; l = l->next) {
       scheduler_addunlock(s, t_gradient, l->t);
       scheduler_addunlock(s, l->t, tend);
@@ -757,7 +753,6 @@ void engine_addtasks_recv_hydro(
     for (struct link *l = c->hydro.force_unpack; l != NULL; l = l->next) {
       scheduler_addunlock(s, l->t, tend);
     }
-
 
 #endif /*WITH_CUDA*/
 #else  /*EXTRA_HYDRO_LOOP*/
@@ -774,8 +769,6 @@ void engine_addtasks_recv_hydro(
 #endif /*WITH_CUDA*/
 #endif /*EXTRA_HYDRO_LOOP*/
 
-
-    
     if (with_limiter) {
       for (struct link *l = c->hydro.limiter; l != NULL; l = l->next) {
         scheduler_addunlock(s, t_unpack_limiter, l->t);
