@@ -515,12 +515,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     B_hat_corr_i = (10.f - beta_i) * 0.125f;
   else
     B_hat_corr_i = 0.f;
-  
+
   const float B_hat_i[3] = {B_hat_corr_i * Bi[0],   // x
                             B_hat_corr_i * Bi[1],   // y
                             B_hat_corr_i * Bi[2]};  // z
 
-  /* Tensile correction (Price 2012, eq. 129 second term) */
+  /* Tensile correction (Price 2012, eq. 129 second term)
+   * (Note that a 1/mu0 factor is missing in the paper) */
   float mhd_acc_corr_i[3] = {0.f, 0.f, 0.f};
   for (int k = 0; k < 3; k++) {
     for (int l = 0; l < 3; l++) {
@@ -530,9 +531,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   }
 
   /* Use the force Luke ! */
-  pi->a_hydro[0] -= mj * mhd_acc_corr_i[0];
-  pi->a_hydro[1] -= mj * mhd_acc_corr_i[1];
-  pi->a_hydro[2] -= mj * mhd_acc_corr_i[2];
+  pi->a_hydro[0] -= mj * one_over_mu0 * mhd_acc_corr_i[0];
+  pi->a_hydro[1] -= mj * one_over_mu0 * mhd_acc_corr_i[1];
+  pi->a_hydro[2] -= mj * one_over_mu0 * mhd_acc_corr_i[2];
 
   /* MATTHIEU END --------------------------------------- */
 }
