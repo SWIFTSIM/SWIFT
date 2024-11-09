@@ -449,16 +449,22 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
                        pi->v[1] - pj->v[1],   // y
                        pi->v[2] - pj->v[2]};  // z
 
+  const float weight_i = f_ij * wi_dr * r_inv / (rhoi * rhoi);
+  const float weight_j = f_ji * wj_dr * r_inv / (rhoj * rhoj);
+
   /* Induction equation ---------------------------------- */
 
-  const float B_dot_gradW =
-      (Bi[0] * dx[0] + Bi[1] * dx[1] + Bi[2] * dx[2]) * wi_dr * r_inv;
+  /* Induction equation (Price 2012, eq. 110) */
+  float dB_over_rho_dt_i[3] = {0.f, 0.f, 0.f};
+  for (int k = 0; k < 3; k++) {
+    for (int l = 0; l < 3; l++) {
+      dB_over_rho_dt_i[k] += dv[k] * weight_i * Bi[l] * dx[l];
+    }
+  }
 
-  /* Induction equation (Price 2012, eq. 110)
-   * Note their Omega_i is 1/f_ij for us */
-  pi->B_over_rho_dt[0] -= mj * dv[0] * B_dot_gradW * f_ij / (rhoi * rhoi);
-  pi->B_over_rho_dt[1] -= mj * dv[1] * B_dot_gradW * f_ij / (rhoi * rhoi);
-  pi->B_over_rho_dt[2] -= mj * dv[2] * B_dot_gradW * f_ij / (rhoi * rhoi);
+  pi->B_over_rho_dt[0] -= mj * dB_over_rho_dt_i[0];
+  pi->B_over_rho_dt[1] -= mj * dB_over_rho_dt_i[1];
+  pi->B_over_rho_dt[2] -= mj * dB_over_rho_dt_i[2];
 
   /* Accelerations  -------------------------------------- */
 
@@ -483,9 +489,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     }
   }
 
-  const float weight_i = f_ij * wi_dr * r_inv / (rhoi * rhoi);
-  const float weight_j = f_ji * wj_dr * r_inv / (rhoj * rhoj);
-
   /* (Price 2012, eq. 115) not including P in S */
   float mhd_acc_i[3] = {0.f, 0.f, 0.f};
   for (int k = 0; k < 3; k++) {
@@ -505,11 +508,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float beta_i = Bi_2 > 0.f ? 2.f * mu_0 * pressurei / Bi_2 : FLT_MAX;
 
   /* Magnitude of correction (Price 2018, eq. 178) */
-  float B_hat_corr_i = 0.f;
+  float B_hat_corr_i;
   if (beta_i < 2.f)
     B_hat_corr_i = 1.f;
   else if (beta_i < 10.f)
     B_hat_corr_i = (10.f - beta_i) * 0.125f;
+  else
+    B_hat_corr_i = 0.f;
+  
   const float B_hat_i[3] = {B_hat_corr_i * Bi[0],   // x
                             B_hat_corr_i * Bi[1],   // y
                             B_hat_corr_i * Bi[2]};  // z
