@@ -50,7 +50,7 @@ INLINE static void hydro_read_particles(struct part* parts,
                                         struct io_props* list,
                                         int* num_fields) {
 
-  *num_fields = 8;
+  *num_fields = 9;
 
   /* List what we want to read */
   list[0] = io_make_input_field("Coordinates", DOUBLE, 3, COMPULSORY,
@@ -69,6 +69,13 @@ INLINE static void hydro_read_particles(struct part* parts,
                                 UNIT_CONV_ACCELERATION, parts, a_hydro);
   list[7] = io_make_input_field("Density", FLOAT, 1, OPTIONAL,
                                 UNIT_CONV_DENSITY, parts, rho);
+
+  /* MATTHIEU START --------------------------------------- */
+
+  list[8] = io_make_input_field("MagneticFluxDensities", FLOAT, 3, COMPULSORY,
+                                UNIT_CONV_MAGNETIC_FIELD, parts, B_over_rho);
+
+  /* MATTHIEU END ----------------------------------------- */
 }
 
 INLINE static void convert_S(const struct engine* e, const struct part* p,
@@ -166,6 +173,19 @@ INLINE static void convert_part_potential(const struct engine* e,
     ret[0] = 0.f;
 }
 
+/* MATTHIEU START --------------------------------------- */
+
+INLINE static void convert_B(const struct engine* e, const struct part* p,
+                             const struct xpart* xp, float* ret) {
+
+  /* TODO: Do we want a drift here? */
+  ret[0] = xp->B_over_rho_full[0] * p->rho;
+  ret[1] = xp->B_over_rho_full[1] * p->rho;
+  ret[2] = xp->B_over_rho_full[2] * p->rho;
+}
+
+/* MATTHIEU END ----------------------------------------- */
+
 /**
  * @brief Specifies which particle fields to write to a dataset
  *
@@ -224,6 +244,20 @@ INLINE static void hydro_write_particles(const struct part* parts,
       "Potentials", FLOAT, 1, UNIT_CONV_POTENTIAL, -1.f, parts, xparts,
       convert_part_potential,
       "Co-moving gravitational potential at position of the particles");
+
+  /* MATTHIEU START --------------------------------------- */
+
+  list[10] = io_make_output_field_convert_part(
+      "MagneticFluxDensities", FLOAT, 3, UNIT_CONV_MAGNETIC_FIELD,
+      -1.5f * hydro_gamma, parts, xparts, convert_B,
+      "Magnetic flux densities of the particles");
+
+  list[11] = io_make_output_field("MagneticDivergences", FLOAT, 1,
+                                  UNIT_CONV_MAGNETIC_DIVERGENCE,
+                                  -1.5f * hydro_gamma - 1.f, parts, divB,
+                                  "co-moving DivB  of the particle");
+
+  /* MATTHIEU END ----------------------------------------- */
 }
 
 /**

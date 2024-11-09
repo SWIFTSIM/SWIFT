@@ -355,7 +355,7 @@ __attribute__((always_inline)) INLINE static void mhd_end_gradient(
   p->mhd_data.curl_B[2] *= h_inv_dim_plus_one * a_inv2 * rho_inv;
 
   /* Finish calculation of the B divergence */
-  p->mhd_data.divB*= h_inv_dim_plus_one * rho_inv * a_inv2;
+  p->mhd_data.divB *= h_inv_dim_plus_one * rho_inv * a_inv2;
   // p->viscosity.div_v += cosmo->H * hydro_dimension;   // MATTHIEU: Need to
   // fix cosmo here
 

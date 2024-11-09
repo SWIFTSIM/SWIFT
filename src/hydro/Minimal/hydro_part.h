@@ -69,6 +69,13 @@ struct xpart {
   /*! Internal energy at the last full step. */
   float u_full;
 
+  /* MATTHIEU START --------------------------------------- */
+
+  /*! Full Step Magnetic Field */
+  float B_over_rho_full[3];
+
+  /* MATTHIEU END ----------------------------------------- */
+
   /*! Additional data used to record particle splits */
   struct particle_splitting_data split_data;
 
@@ -127,6 +134,22 @@ struct part {
 
   /*! Particle density. */
   float rho;
+
+  /* MATTHIEU START --------------------------------------- */
+
+  /*! Predicted B/rho field */
+  float B_over_rho[3];
+
+  /*! Divergence of B */
+  float divB;
+
+  /*! Curl of B */
+  float curl_B[3];
+
+  /*! Time derivative of B/rho */
+  float B_over_rho_dt[3];
+
+  /* MATTHIEU END ----------------------------------------- */
 
   /* Store density/force specific stuff. */
   // union {

@@ -52,6 +52,7 @@ struct threadpool;
 #elif defined(MINIMAL_SPH)
 #include "./hydro/Minimal/hydro_part.h"
 #define hydro_need_extra_init_loop 0
+#define EXTRA_HYDRO_LOOP
 #elif defined(GADGET2_SPH)
 #include "./hydro/Gadget2/hydro_part.h"
 #define hydro_need_extra_init_loop 0

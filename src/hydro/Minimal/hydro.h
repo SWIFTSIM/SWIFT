@@ -968,6 +968,21 @@ __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
 
   p->force.pressure = pressure;
   p->force.soundspeed = soundspeed;
+
+  /* MATTHIEU START --------------------------------------- */
+
+  // TODO: Cosmology terms!!
+
+  /* Convert B into B/rho */
+  p->B_over_rho[0] /= p->rho;
+  p->B_over_rho[1] /= p->rho;
+  p->B_over_rho[2] /= p->rho;
+
+  xp->B_over_rho_full[0] = p->B_over_rho[0];
+  xp->B_over_rho_full[1] = p->B_over_rho[1];
+  xp->B_over_rho_full[2] = p->B_over_rho[2];
+
+  /* MATTHIEU END ----------------------------------------- */
 }
 
 /**
