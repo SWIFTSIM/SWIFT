@@ -152,6 +152,18 @@ struct part {
   /*! Alfven speed of the particle */
   float Alfven_speed;
 
+  /*! Dedner correction scalar */
+  float Dedner_Psi_over_c;
+
+  /*! Dedner correction scalar time derivative */
+  float Dedner_Psi_over_c_dt;
+
+  /*! Divergence of B used for the Dedner scalar evolution */
+  float Dedner_div_B;
+
+  /*! Divergence of v used for the Dedner scalar evolution */
+  float Dedner_div_v;
+
   /* MATTHIEU END ----------------------------------------- */
 
   /* Store density/force specific stuff. */

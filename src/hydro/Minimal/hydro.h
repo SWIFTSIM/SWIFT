@@ -810,6 +810,9 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
   p->B_over_rho_dt[1] = 0.f;
   p->B_over_rho_dt[2] = 0.f;
 
+  p->Dedner_div_B = 0.f;
+  p->Dedner_div_v = 0.f;
+
   /* MATTHIEU END ----------------------------------------- */
 }
 
@@ -890,6 +893,8 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   p->B_over_rho[1] += p->B_over_rho_dt[1] * dt_therm;
   p->B_over_rho[2] += p->B_over_rho_dt[2] * dt_therm;
 
+  p->Dedner_Psi_over_c += p->Dedner_Psi_over_c_dt * dt_therm;
+
   /* MATTHIEU END ----------------------------------------- */
 
   const float h_inv = 1.f / p->h;
@@ -949,6 +954,28 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
     struct part *restrict p, const struct cosmology *cosmo) {
 
   p->force.h_dt *= p->h * hydro_dimension_inv;
+
+  /* MATTHIEU START --------------------------------------- */
+
+  const float c_s = p->force.soundspeed;
+  const float v_A = p->Alfven_speed;
+
+  /* Magnetosonic speed (Price 2018, eq. 180) */
+  const float c_h = sqrtf(c_s * c_s + v_A * v_A);
+
+  /* Decay time (Price 2018, eq. 191) */
+  const float sigma_c = 1.f;
+  const float tau_c = p->h * kernel_gamma / (sigma_c * c_h);
+
+  /* Finish Dedner scalar time derivative (Price 2018, eq. 172) */
+  p->Dedner_div_B *= c_h;
+  p->Dedner_div_v *= 0.5f * p->Dedner_Psi_over_c;
+
+  p->Dedner_Psi_over_c_dt =
+      p->Dedner_div_B + p->Dedner_div_v - p->Dedner_Psi_over_c / tau_c;
+  // TODO: cosmo terms
+
+  /* MATTHIEU END ----------------------------------------- */
 }
 
 /**
@@ -983,10 +1010,10 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
   /* MATTHIEU START --------------------------------------- */
 
   /* Predict the magnetic fields */
-  xp->B_over_rho_full[0] +=
-      p->B_over_rho_dt[0] * dt_therm;  // TODO: cosmo terms
+  xp->B_over_rho_full[0] += p->B_over_rho_dt[0] * dt_therm;
   xp->B_over_rho_full[1] += p->B_over_rho_dt[1] * dt_therm;
   xp->B_over_rho_full[2] += p->B_over_rho_dt[2] * dt_therm;
+  // TODO: cosmo terms
 
   /* MATTHIEU END ----------------------------------------- */
 
@@ -1083,6 +1110,13 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
   xp->v_full[1] = p->v[1];
   xp->v_full[2] = p->v[2];
   xp->u_full = p->u;
+
+  /* MATTHIEU START --------------------------------------- */
+
+  p->Dedner_Psi_over_c_dt = 0.f;
+  p->Dedner_Psi_over_c = 0.f;
+
+  /* MATTHIEU END ----------------------------------------- */
 
   hydro_reset_acceleration(p);
   hydro_init_part(p, NULL);

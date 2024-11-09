@@ -440,6 +440,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
                        pj->B_over_rho[1] * rhoj,   // y
                        pj->B_over_rho[2] * rhoj};  // z
 
+  /* Difference in B between particles */
+  const float dB[3] = {Bi[0] - Bj[0],   // x
+                       Bi[1] - Bj[1],   // y
+                       Bi[2] - Bj[2]};  // z
+
   /* Square norm of B fields */
   const float Bi_2 = Bi[0] * Bi[0] + Bi[1] * Bi[1] + Bi[2] * Bi[2];
   const float Bj_2 = Bj[0] * Bj[0] + Bj[1] * Bj[1] + Bj[2] * Bj[2];
@@ -534,6 +539,46 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   pi->a_hydro[0] -= mj * one_over_mu0 * mhd_acc_corr_i[0];
   pi->a_hydro[1] -= mj * one_over_mu0 * mhd_acc_corr_i[1];
   pi->a_hydro[2] -= mj * one_over_mu0 * mhd_acc_corr_i[2];
+
+  /* Dener correction ----------------------------------- */
+
+  /* Magnetosonic speed (Price 2018, eq. 180) */
+  const float c_h_i = sqrtf(pi->force.soundspeed * pi->force.soundspeed +
+                            pi->Alfven_speed * pi->Alfven_speed);
+  const float c_h_j = sqrtf(pj->force.soundspeed * pj->force.soundspeed +
+                            pj->Alfven_speed * pj->Alfven_speed);
+
+  const float Psi_i = pi->Dedner_Psi_over_c * c_h_i;
+  const float Psi_j = pj->Dedner_Psi_over_c * c_h_j;
+
+  /* Induction equation (Price 2018, eq. 172 second term) */
+  float dB_over_rho_dt_Dedner_i[3] = {0.f, 0.f, 0.f};
+  for (int k = 0; k < 3; k++) {
+    dB_over_rho_dt_Dedner_i[k] += (weight_i * Psi_i + weight_j * Psi_j) * dx[k];
+  }
+
+  pi->B_over_rho_dt[0] -= mj * dB_over_rho_dt_Dedner_i[0];
+  pi->B_over_rho_dt[1] -= mj * dB_over_rho_dt_Dedner_i[1];
+  pi->B_over_rho_dt[2] -= mj * dB_over_rho_dt_Dedner_i[2];
+
+  /* Evolution of Dedner scalar ------------------------- */
+
+  /* Div B for Dedner (Price 2018, eq. 172 first term)
+   * (multiplication by c_h takes place later) */
+  float Dedner_div_B = 0.f;
+  for (int l = 0; l < 3; l++) {
+    Dedner_div_B += weight_i * rhoi * dB[l] * dx[l];
+  }
+
+  /* Div B for Dedner (Price 2018, eq. 172 second term)
+   * (multiplication by Psi/2c_h takes place later) */
+  float Dedner_div_v = 0.f;
+  for (int l = 0; l < 3; l++) {
+    Dedner_div_v += weight_i * rhoi * dv[l] * dx[l];
+  }
+
+  pi->Dedner_div_B += Dedner_div_B;
+  pi->Dedner_div_v += Dedner_div_v;
 
   /* MATTHIEU END --------------------------------------- */
 }
