@@ -525,6 +525,16 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->density.rot_v[0] = 0.f;
   p->density.rot_v[1] = 0.f;
   p->density.rot_v[2] = 0.f;
+
+  /* MATTHIEU START --------------------------------------- */
+
+  p->curl_B[0] = 0.f;
+  p->curl_B[1] = 0.f;
+  p->curl_B[2] = 0.f;
+
+  p->div_B = 0.f;
+
+  /* MATTHIEU END ----------------------------------------- */
 }
 
 /**
@@ -610,7 +620,30 @@ __attribute__((always_inline)) INLINE static void hydro_reset_gradient(
  * @param p The particle to act upon.
  */
 __attribute__((always_inline)) INLINE static void hydro_end_gradient(
-    struct part *p) {}
+    struct part *p) {
+
+  /* MATTHIEU START --------------------------------------- */
+
+  /* Some smoothing length multiples. */
+  const float h = p->h;
+  const float h_inv = 1.0f / h;                       /* 1/h */
+  const float h_inv_dim = pow_dimension(h_inv);       /* 1/h^d */
+  const float h_inv_dim_plus_one = h_inv_dim * h_inv; /* 1/h^(d+1) */
+
+  const float rho_inv = 1.f / p->rho;
+  // const float a_inv2 = cosmo->a2_inv;
+  const float a_inv2 = 1.;  // TODO: Cosmology terms!!
+
+  /* Finish calculation of the (physical) magnetic field curl components */
+  p->curl_B[0] *= h_inv_dim_plus_one * a_inv2 * rho_inv;
+  p->curl_B[1] *= h_inv_dim_plus_one * a_inv2 * rho_inv;
+  p->curl_B[2] *= h_inv_dim_plus_one * a_inv2 * rho_inv;
+
+  /* Finish calculation of the (physical) magnetic field divergence */
+  p->div_B *= h_inv_dim_plus_one * a_inv2 * rho_inv;
+
+  /* MATTHIEU END ----------------------------------------- */
+}
 
 /**
  * @brief Sets all particle fields to sensible values when the #part has 0 ngbs.
@@ -758,6 +791,14 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
   p->u_dt = 0.0f;
   p->force.h_dt = 0.0f;
   p->force.v_sig = 2.f * p->force.soundspeed;
+
+  /* MATTHIEU START --------------------------------------- */
+
+  p->B_over_rho_dt[0] = 0.f;
+  p->B_over_rho_dt[1] = 0.f;
+  p->B_over_rho_dt[2] = 0.f;
+
+  /* MATTHIEU END ----------------------------------------- */
 }
 
 /**

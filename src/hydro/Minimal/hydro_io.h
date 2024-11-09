@@ -257,10 +257,10 @@ INLINE static void hydro_write_particles(const struct part* parts,
       -1.5f * hydro_gamma - 1.f, parts, div_B,
       "co-moving magnetic field divergences of the particles");
 
-  list[12] = io_make_output_field(
-      "MagneticCurls", FLOAT, 3,
-      UNIT_CONV_MAGNETIC_CURL, - 1.5f * hydro_gamma - 1.f, parts, curl_B,
-      "co-moving magnetic field curls of the particles");
+  list[12] =
+      io_make_output_field("MagneticCurls", FLOAT, 3, UNIT_CONV_MAGNETIC_CURL,
+                           -1.5f * hydro_gamma - 1.f, parts, curl_B,
+                           "co-moving magnetic field curls of the particles");
 
   /* MATTHIEU END ----------------------------------------- */
 }

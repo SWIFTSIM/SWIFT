@@ -220,7 +220,56 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
     const float r2, const float dx[3], const float hi, const float hj,
     struct part *restrict pi, struct part *restrict pj, const float mu_0,
-    const float a, const float H) {}
+    const float a, const float H) {
+
+  /* MATTHIEU START --------------------------------------- */
+
+  /* Get r and 1/r. */
+  const float r = sqrtf(r2);
+  const float r_inv = r ? 1.0f / r : 0.0f;
+
+  /* Get masses and densities */
+  // const float mi = pi->mass;
+  const float mj = pj->mass;
+  const float rhoi = pi->rho;
+  const float rhoj = pj->rho;
+
+  /* Get B for both particles */
+  const float Bi[3] = {pi->B_over_rho[0] * rhoi,   // x
+                       pi->B_over_rho[1] * rhoi,   // y
+                       pi->B_over_rho[2] * rhoi};  // z
+  const float Bj[3] = {pj->B_over_rho[0] * rhoj,   // x
+                       pj->B_over_rho[1] * rhoj,   // y
+                       pj->B_over_rho[2] * rhoj};  // z
+
+  /* Get the kernel for hi. */
+  float wi, wi_dx;
+  const float hi_inv = 1.0f / hi;
+  const float ui = r * hi_inv;
+  kernel_deval(ui, &wi, &wi_dx);
+
+  /* Difference in B between particles */
+  const float dB[3] = {Bi[0] - Bj[0],   // x
+                       Bi[1] - Bj[1],   // y
+                       Bi[2] - Bj[2]};  // z
+
+  /* Compute dB dot r */
+  const float faci = mj * wi_dx * r_inv;
+  const float dBdr = dB[0] * dx[0] + dB[1] * dx[1] + dB[2] * dx[2];
+
+  pi->div_B -= faci * dBdr;
+
+  /* Compute dB cross r */
+  const float curlBr[3] = {dB[1] * dx[2] - dB[2] * dx[1],   // x
+                           dB[2] * dx[0] - dB[0] * dx[2],   // y
+                           dB[0] * dx[1] - dB[1] * dx[0]};  // z
+
+  pi->curl_B[0] += faci * curlBr[0];
+  pi->curl_B[1] += faci * curlBr[1];
+  pi->curl_B[2] += faci * curlBr[2];
+
+  /* MATTHIEU END ----------------------------------------- */
+}
 
 /**
  * @brief Calculate the gradient interaction between particle i and particle j
