@@ -500,8 +500,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   /* Tensile instability correction -------------------------- */
 
   /* Plasma beta */
-  const float beta_i = 2.f * pressurei / Bi_2;
-  /* const float beta_j = 2.f * pressurej / Bj_2; */
+  const float beta_i = Bi_2 > 0. ? 2.f * mu_0 * pressurei / Bi_2 : FLT_MAX;
+  /* const float beta_j = 2.f * mu_0 * pressurej / Bj_2; */
 
   /* Magnitude of correction (Price 2018, eq. 178)
    * This needs to be multiplied by Bi,Bj to recover the term */
