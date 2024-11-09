@@ -38,7 +38,6 @@
 #include "minmax.h"
 #include "signal_velocity.h"
 
-
 /**
  * @brief Density interaction between two particles (non-symmetric).
  *
@@ -125,6 +124,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
     struct part *restrict pi, struct part *restrict pj, const float mu_0,
     const float a, const float H) {
 
+  runner_iact_nonsym_density(r2, dx, hi, hj, pi, pj, mu_0, a, H);
+  const float dx_inv[3] = {-dx[0], -dx[1], -dx[2]};
+  runner_iact_nonsym_density(r2, dx_inv, hj, hi, pj, pi, mu_0, a, H);
+
+#if 0
+  
   float wi, wj, wi_dx, wj_dx;
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -190,6 +195,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   pj->density.rot_v[0] += facj * curlvr[0];
   pj->density.rot_v[1] += facj * curlvr[1];
   pj->density.rot_v[2] += facj * curlvr[2];
+
+#endif
 }
 
 /**
@@ -235,7 +242,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
 __attribute__((always_inline)) INLINE static void runner_iact_gradient(
     const float r2, const float dx[3], const float hi, const float hj,
     struct part *restrict pi, struct part *restrict pj, const float mu_0,
-    const float a, const float H) {}
+    const float a, const float H) {
+
+  runner_iact_nonsym_gradient(r2, dx, hi, hj, pi, pj, mu_0, a, H);
+  const float dx_inv[3] = {-dx[0], -dx[1], -dx[2]};
+  runner_iact_nonsym_gradient(r2, dx_inv, hj, hi, pj, pi, mu_0, a, H);
+}
 
 /**
  * @brief Force interaction between two particles (non-symmetric).
@@ -385,6 +397,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
     struct part *restrict pi, struct part *restrict pj, const float mu_0,
     const float a, const float H) {
 
+  runner_iact_nonsym_force(r2, dx, hi, hj, pi, pj, mu_0, a, H);
+  const float dx_inv[3] = {-dx[0], -dx[1], -dx[2]};
+  runner_iact_nonsym_force(r2, dx_inv, hj, hi, pj, pi, mu_0, a, H);
+
+#if 0
+
 #ifdef SWIFT_DEBUG_CHECKS
   if (pi->time_bin >= time_bin_inhibited)
     error("Inhibited pi in interaction function!");
@@ -502,6 +520,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   /* Update the signal velocity. */
   pi->force.v_sig = max(pi->force.v_sig, v_sig);
   pj->force.v_sig = max(pj->force.v_sig, v_sig);
+
+#endif
 }
 
 #endif /* SWIFT_MINIMAL_HYDRO_IACT_H */
