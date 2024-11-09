@@ -421,6 +421,10 @@ runner_iact_nonsym_sinks_gas_swallow(const float r2, const float dx[3],
     /* To be accreted, the gas must be gravitationally bound to the sink. */
     if (E_mec_sink_part >= 0) return;
 
+    /* To be accreted, the gas smoothing length must be smaller than the sink
+       accretion radius */
+    if (pj->h*kernel_gamma >= si->r_cut) return;
+
     /* Most bound pair check------------------------------------------------ */
     /* The pair gas-sink must be the most bound among all sinks */
     if (E_mec_sink_part >= pj->sink_data.E_mec_bound) {
