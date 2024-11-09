@@ -425,6 +425,114 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Update the signal velocity. */
   pi->force.v_sig = max(pi->force.v_sig, v_sig);
+
+  /* MATTHIEU START --------------------------------------- */
+
+  const float one_over_mu0 = 1.f / mu_0;
+
+  /* Get B for both particles */
+  const float Bi[3] = {pi->B_over_rho[0] * rhoi,   // x
+                       pi->B_over_rho[1] * rhoi,   // y
+                       pi->B_over_rho[2] * rhoi};  // z
+  const float Bj[3] = {pj->B_over_rho[0] * rhoj,   // x
+                       pj->B_over_rho[1] * rhoj,   // y
+                       pj->B_over_rho[2] * rhoj};  // z
+
+  /* Square norm of B fields */
+  const float Bi_2 = Bi[0] * Bi[0] + Bi[1] * Bi[1] + Bi[2] * Bi[2];
+  const float Bj_2 = Bj[0] * Bj[0] + Bj[1] * Bj[1] + Bj[2] * Bj[2];
+
+  /* Velocity difference */
+  const float dv[3] = {pi->v[0] - pj->v[0],   // x
+                       pi->v[1] - pj->v[1],   // y
+                       pi->v[2] - pj->v[2]};  // z
+
+  /* Induction equation ---------------------------------- */
+
+  const float B_dot_gradW =
+      (Bi[0] * dx[0] + Bi[1] * dx[1] + Bi[2] * dx[2]) * wi_dr * r_inv;
+
+  /* Induction equation (Price 2012, eq. 110)
+   * Note their Omega_i is 1/f_ij for us */
+  pi->B_over_rho_dt[0] -= mj * dv[0] * B_dot_gradW * f_ij / (rhoi * rhoi);
+  pi->B_over_rho_dt[1] -= mj * dv[1] * B_dot_gradW * f_ij / (rhoi * rhoi);
+  pi->B_over_rho_dt[2] -= mj * dv[2] * B_dot_gradW * f_ij / (rhoi * rhoi);
+
+  /* Accelerations  -------------------------------------- */
+
+  /* Stress tensor (Price 2012, eq. 116) not including pressure
+   * as we did pressure above already. */
+  float S_i[3][3];
+  float S_j[3][3];
+  for (int k = 0; k < 3; ++k) {
+    for (int l = 0; l < 3; ++l) {
+      S_i[k][l] = -Bi[k] * Bi[l];
+      S_j[k][l] = -Bj[k] * Bj[l];
+    }
+  }
+  for (int k = 0; k < 3; ++k) {
+    S_i[k][k] += 0.5f * Bi_2;
+    S_j[k][k] += 0.5f * Bj_2;
+  }
+  for (int k = 0; k < 3; ++k) {
+    for (int l = 0; l < 3; ++l) {
+      S_i[k][l] *= one_over_mu0;
+      S_j[k][l] *= one_over_mu0;
+    }
+  }
+
+  const float weight_i = f_ij * wi_dr * r_inv / (rhoi * rhoi);
+  const float weight_j = f_ji * wj_dr * r_inv / (rhoj * rhoj);
+
+  /* (Price 2012, eq. 115) not including P in S */
+  float mhd_acc_i[3] = {0.f, 0.f, 0.f};
+  for (int k = 0; k < 3; k++) {
+    for (int l = 0; l < 3; l++) {
+      mhd_acc_i[k] += (S_i[k][l] * weight_i + S_j[k][l] * weight_j) * dx[l];
+    }
+  }
+
+  /* Use the force Luke ! */
+  pi->a_hydro[0] += mj * mhd_acc_i[0];
+  pi->a_hydro[1] += mj * mhd_acc_i[1];
+  pi->a_hydro[2] += mj * mhd_acc_i[2];
+
+  /* Tensile instability correction -------------------------- */
+
+  /* Plasma beta */
+  const float beta_i = 2.f * pressurei / Bi_2;
+  /* const float beta_j = 2.f * pressurej / Bj_2; */
+
+  /* Magnitude of correction (Price 2018, eq. 178)
+   * This needs to be multiplied by Bi,Bj to recover the term */
+  float B_hat_corr_i = 0.f;
+  if (beta_i < 2.f)
+    B_hat_corr_i = 1.f;
+  else if (beta_i < 10.f)
+    B_hat_corr_i = (10.f - beta_i) * 0.125f;
+  /* float B_hat_corr_j = 0.f; */
+  /* if (beta_j < 2.f) B_hat_corr_j = 1.f; */
+  /* else if (beta_j < 10.f) B_hat_corr_j = (10.f - beta_j) * 0.125f; */
+
+  const float B_hat_i[3] = {B_hat_corr_i * Bi[0],   // x
+                            B_hat_corr_i * Bi[1],   // y
+                            B_hat_corr_i * Bi[2]};  // z
+
+  /* Tensile correction (Price 2012, eq. 129 second term) */
+  float mhd_acc_corr_i[3] = {0.f, 0.f, 0.f};
+  for (int k = 0; k < 3; k++) {
+    for (int l = 0; l < 3; l++) {
+      mhd_acc_corr_i[k] +=
+          B_hat_i[k] * (Bi[l] * weight_i + Bj[l] * weight_j) * dx[l];
+    }
+  }
+
+  /* Use the force Luke ! */
+  pi->a_hydro[0] -= mj * mhd_acc_corr_i[0];
+  pi->a_hydro[1] -= mj * mhd_acc_corr_i[1];
+  pi->a_hydro[2] -= mj * mhd_acc_corr_i[2];
+
+  /* MATTHIEU END --------------------------------------- */
 }
 
 /**
