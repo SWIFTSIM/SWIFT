@@ -1874,9 +1874,9 @@ void scheduler_set_unlocks(struct scheduler *s) {
       for (int j = i + 1; j < t->nr_unlock_tasks; j++) {
         /*Fix for the case when one unpack task works over the same cell
          * connected to two pair pack tasks*/
-        if (t->unlock_tasks[i]->subtype == task_subtype_gpu_unpack ||
-            t->unlock_tasks[i]->subtype == task_subtype_gpu_unpack_g ||
-            t->unlock_tasks[i]->subtype != task_subtype_gpu_unpack_f) {
+        if (t->subtype == task_subtype_gpu_unpack ||
+            t->subtype == task_subtype_gpu_unpack_g ||
+            t->subtype == task_subtype_gpu_unpack_f) {
           continue;
         }
         if (t->unlock_tasks[i] == t->unlock_tasks[j])
