@@ -470,7 +470,12 @@ __attribute__((always_inline)) INLINE static float hydro_signal_velocity(
   const float ci = pi->force.soundspeed;
   const float cj = pj->force.soundspeed;
 
-  return ci + cj - beta * mu_ij;
+  /* Price 2018, eq. 180 */
+  const float vi = sqrtf(ci * ci + pi->Alfven_speed * pi->Alfven_speed);
+  const float vj = sqrtf(cj * cj + pj->Alfven_speed * pj->Alfven_speed);
+
+  /* Price 2018, eq. 179 */
+  return vi + vj - beta * mu_ij;
 }
 
 /**
@@ -620,7 +625,7 @@ __attribute__((always_inline)) INLINE static void hydro_reset_gradient(
  * @param p The particle to act upon.
  */
 __attribute__((always_inline)) INLINE static void hydro_end_gradient(
-    struct part *p) {
+    struct part *p, const float mu_0) {
 
   /* MATTHIEU START --------------------------------------- */
 
@@ -630,7 +635,8 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
   const float h_inv_dim = pow_dimension(h_inv);       /* 1/h^d */
   const float h_inv_dim_plus_one = h_inv_dim * h_inv; /* 1/h^(d+1) */
 
-  const float rho_inv = 1.f / p->rho;
+  const float rho = p->rho;
+  const float rho_inv = 1.f / rho;
   // const float a_inv2 = cosmo->a2_inv;
   const float a_inv2 = 1.;  // TODO: Cosmology terms!!
 
@@ -641,6 +647,12 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
 
   /* Finish calculation of the (physical) magnetic field divergence */
   p->div_B *= h_inv_dim_plus_one * a_inv2 * rho_inv;
+
+  // TODO: Cosmology terms!!
+  const float B_magnitude2 = p->B_over_rho[0] * p->B_over_rho[0] +
+                             p->B_over_rho[1] * p->B_over_rho[1] +
+                             p->B_over_rho[2] * p->B_over_rho[2];
+  p->Alfven_speed = sqrtf(B_magnitude2 * rho / mu_0);
 
   /* MATTHIEU END ----------------------------------------- */
 }

@@ -149,6 +149,9 @@ struct part {
   /*! Time derivative of B/rho */
   float B_over_rho_dt[3];
 
+  /*! Alfven speed of the particle */
+  float Alfven_speed;
+
   /* MATTHIEU END ----------------------------------------- */
 
   /* Store density/force specific stuff. */

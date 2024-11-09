@@ -38,6 +38,8 @@
 #include "minmax.h"
 #include "signal_velocity.h"
 
+#include <float.h>
+
 /**
  * @brief Density interaction between two particles (non-symmetric).
  *
@@ -501,19 +503,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Plasma beta */
   const float beta_i = Bi_2 > 0.f ? 2.f * mu_0 * pressurei / Bi_2 : FLT_MAX;
-  /* const float beta_j = 2.f * mu_0 * pressurej / Bj_2; */
 
-  /* Magnitude of correction (Price 2018, eq. 178)
-   * This needs to be multiplied by Bi,Bj to recover the term */
+  /* Magnitude of correction (Price 2018, eq. 178) */
   float B_hat_corr_i = 0.f;
   if (beta_i < 2.f)
     B_hat_corr_i = 1.f;
   else if (beta_i < 10.f)
     B_hat_corr_i = (10.f - beta_i) * 0.125f;
-  /* float B_hat_corr_j = 0.f; */
-  /* if (beta_j < 2.f) B_hat_corr_j = 1.f; */
-  /* else if (beta_j < 10.f) B_hat_corr_j = (10.f - beta_j) * 0.125f; */
-
   const float B_hat_i[3] = {B_hat_corr_i * Bi[0],   // x
                             B_hat_corr_i * Bi[1],   // y
                             B_hat_corr_i * Bi[2]};  // z
