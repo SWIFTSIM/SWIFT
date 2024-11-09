@@ -498,9 +498,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   }
 
   /* Use the force Luke ! */
-  pi->a_hydro[0] += mj * mhd_acc_i[0];
-  pi->a_hydro[1] += mj * mhd_acc_i[1];
-  pi->a_hydro[2] += mj * mhd_acc_i[2];
+  pi->a_hydro[0] -= mj * mhd_acc_i[0];
+  pi->a_hydro[1] -= mj * mhd_acc_i[1];
+  pi->a_hydro[2] -= mj * mhd_acc_i[2];
 
   /* Tensile instability correction -------------------------- */
 
