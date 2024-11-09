@@ -5,7 +5,7 @@ from numpy import *
 # Generates a swift IC file for the 3D collapse in the Zeldovich pancake model, with magnetic field
 
 # Parameters
-B_0 = 1.0e-9 # Initial magnetic field strength (in T)
+B_0 = 1.0e-9  # Initial magnetic field strength (in T)
 T_i = 100.0  # Initial temperature of the gas (in K)
 # Redshift of caustic formation, which can have 3 different values for each direction now as well
 z_c_x = 5.0
@@ -19,7 +19,9 @@ fileName = "zeldovichPancake.hdf5"
 # Some units
 Mpc_in_m = 3.08567758e22
 Msol_in_kg = 1.98848e30
-Gyr_in_s = 3.08567758e19  ### so this is not actually a Gigayear, but 1 Mpc / (1 km/s) !!!
+Gyr_in_s = (
+    3.08567758e19
+)  ### so this is not actually a Gigayear, but 1 Mpc / (1 km/s) !!!
 mH_in_kg = 1.6737236e-27
 
 # Some constants
@@ -40,7 +42,7 @@ unit_t_in_si = Gyr_in_s
 unit_v_in_si = unit_l_in_si / unit_t_in_si
 unit_u_in_si = unit_v_in_si ** 2
 unit_I_in_si = 1
-unit_B_in_si = unit_m_in_si * unit_t_in_si**(-2) * unit_I_in_si**(-1)
+unit_B_in_si = unit_m_in_si * unit_t_in_si ** (-2) * unit_I_in_si ** (-1)
 
 # Total number of particles
 numPart = numPart_1D ** 3
@@ -102,7 +104,12 @@ for i in range(numPart_1D):
             coords[index, 2] = q_z - zfac_z * sin(k_z * q_z) / k_z - x_min
 
             # The rest, T and v are also changed to 3D
-            T = T_i * (1.0 / (1.0 - zfac_x * cos(k_x * q_x)) / (1.0 - zfac_y * cos(k_y * q_y)) / (1.0 - zfac_z * cos(k_z * q_z)) ) ** (2.0 / 3.0)
+            T = T_i * (
+                1.0
+                / (1.0 - zfac_x * cos(k_x * q_x))
+                / (1.0 - zfac_y * cos(k_y * q_y))
+                / (1.0 - zfac_z * cos(k_z * q_z))
+            ) ** (2.0 / 3.0)
             u[index] = kB_in_SI * T / (gamma - 1.0) / mH_in_kg
             h[index] = 1.2348 * delta_x
             m[index] = m_i
