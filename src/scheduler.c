@@ -2947,14 +2947,14 @@ struct task *scheduler_done(struct scheduler *s, struct task *t) {
   return NULL;
 }
 
-struct task *signal_sleeping_runners(struct scheduler *s, struct task *t) {
+struct task *signal_sleeping_runners(struct scheduler *s, struct task *t, int tasks_packed) {
   /* Mark the task as skip. */
   //  t->skip = 1;
 
   /* Task definitely done, signal any sleeping runners. */
   if (!t->implicit) {
     pthread_mutex_lock(&s->sleep_mutex);
-    atomic_dec(&s->waiting);
+    atomic_sub(&s->waiting, tasks_packed);
     pthread_cond_broadcast(&s->sleep_cond);
     pthread_mutex_unlock(&s->sleep_mutex);
   }
