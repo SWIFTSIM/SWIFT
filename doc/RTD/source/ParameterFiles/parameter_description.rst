@@ -466,7 +466,10 @@ can be either drawn randomly by setting the parameter ``generate_random_ids``
 newly generated IDs do not clash with any other pre-existing particle. If this
 option is set to :math:`0` (the default setting) then the new IDs are created in
 increasing order from the maximal pre-existing value in the simulation, hence
-preventing any clash.
+preventing any clash. Finally, if the option
+``particle_splitting_log_extra_splits`` is set, the code will log all the splits
+that go beyond the maximal allowed (typically 64) in a file so that the split tree
+for these particles can still be reconstructed.
 
 The final set of parameters in this section determine the initial and minimum
 temperatures of the particles.
