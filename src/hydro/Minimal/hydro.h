@@ -834,6 +834,14 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
   /* Re-set the entropy */
   p->u = xp->u_full;
 
+  /* MATTHIEU START --------------------------------------- */
+
+  p->B_over_rho[0] = xp->B_over_rho_full[0];
+  p->B_over_rho[1] = xp->B_over_rho_full[1];
+  p->B_over_rho[2] = xp->B_over_rho_full[2];
+
+  /* MATTHIEU END ----------------------------------------- */
+
   /* Re-compute the pressure */
   const float pressure = gas_pressure_from_internal_energy(p->rho, p->u);
 
@@ -874,6 +882,15 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
 
   /* Predict the internal energy */
   p->u += p->u_dt * dt_therm;
+
+  /* MATTHIEU START --------------------------------------- */
+
+  /* Predict the magnetic fields */
+  p->B_over_rho[0] += p->B_over_rho_dt[0] * dt_therm;  // TODO: cosmo terms
+  p->B_over_rho[1] += p->B_over_rho_dt[1] * dt_therm;
+  p->B_over_rho[2] += p->B_over_rho_dt[2] * dt_therm;
+
+  /* MATTHIEU END ----------------------------------------- */
 
   const float h_inv = 1.f / p->h;
 
@@ -962,6 +979,16 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
 
   /* Do not decrease the energy by more than a factor of 2*/
   xp->u_full = max(xp->u_full + delta_u, 0.5f * xp->u_full);
+
+  /* MATTHIEU START --------------------------------------- */
+
+  /* Predict the magnetic fields */
+  xp->B_over_rho_full[0] +=
+      p->B_over_rho_dt[0] * dt_therm;  // TODO: cosmo terms
+  xp->B_over_rho_full[1] += p->B_over_rho_dt[1] * dt_therm;
+  xp->B_over_rho_full[2] += p->B_over_rho_dt[2] * dt_therm;
+
+  /* MATTHIEU END ----------------------------------------- */
 
   /* Check against entropy floor */
   const float floor_A = entropy_floor(p, cosmo, floor_props);
