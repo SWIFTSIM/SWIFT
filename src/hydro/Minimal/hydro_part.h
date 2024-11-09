@@ -141,7 +141,7 @@ struct part {
   float B_over_rho[3];
 
   /*! Divergence of B */
-  float divB;
+  float div_B;
 
   /*! Curl of B */
   float curl_B[3];

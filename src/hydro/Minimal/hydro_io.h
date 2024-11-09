@@ -199,7 +199,7 @@ INLINE static void hydro_write_particles(const struct part* parts,
                                          struct io_props* list,
                                          int* num_fields) {
 
-  *num_fields = 10;
+  *num_fields = 13;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_part(
@@ -252,10 +252,15 @@ INLINE static void hydro_write_particles(const struct part* parts,
       -1.5f * hydro_gamma, parts, xparts, convert_B,
       "Magnetic flux densities of the particles");
 
-  list[11] = io_make_output_field("MagneticDivergences", FLOAT, 1,
-                                  UNIT_CONV_MAGNETIC_DIVERGENCE,
-                                  -1.5f * hydro_gamma - 1.f, parts, divB,
-                                  "co-moving DivB  of the particle");
+  list[11] = io_make_output_field(
+      "MagneticDivergences", FLOAT, 1, UNIT_CONV_MAGNETIC_DIVERGENCE,
+      -1.5f * hydro_gamma - 1.f, parts, div_B,
+      "co-moving magnetic field divergences of the particles");
+
+  list[12] = io_make_output_field(
+      "MagneticCurls", FLOAT, 3,
+      UNIT_CONV_MAGNETIC_CURL, - 1.5f * hydro_gamma - 1.f, parts, curl_B,
+      "co-moving magnetic field curls of the particles");
 
   /* MATTHIEU END ----------------------------------------- */
 }
