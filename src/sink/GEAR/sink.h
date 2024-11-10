@@ -1069,7 +1069,7 @@ INLINE static void sink_prepare_part_sink_formation_sink_criteria(
   const int sink_age = sink_get_sink_age(si, with_cosmology, cosmo, time);
   char is_dead = sink_age > sink_props->age_threshold_unlimited;
 
-  /* If the sink is dead, do check the criteria for the si - p pair. */
+  /* If the sink is dead, do not check the criteria for the si - p pair. */
   if (is_dead) {
     return;
   }
