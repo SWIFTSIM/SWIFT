@@ -107,12 +107,12 @@ __attribute__((always_inline)) INLINE static float sink_compute_timestep(
       (sink->to_collect.minimal_sink_t_c + sink->to_collect.minimal_sink_t_dyn);
   }
 
-  message(
-      "sink %lld, rho_gas = %e, c_s = %e, gas_v_phys = (%e %e %e), h_min = %e, "
-      "rho_sink = %e, denominator = %e, birth_time = %e",
-      sink->id, sink->to_collect.rho_gas, gas_c_phys, gas_v_phys[0],
-      gas_v_phys[1], gas_v_phys[2], h_min, rho_sink, denominator,
-      sink->birth_time);
+  /* message( */
+      /* "sink %lld, rho_gas = %e, c_s = %e, gas_v_phys = (%e %e %e), h_min = %e, " */
+      /* "rho_sink = %e, denominator = %e, birth_time = %e, t_dyn_min = %e", */
+      /* sink->id, sink->to_collect.rho_gas, gas_c_phys, gas_v_phys[0], */
+      /* gas_v_phys[1], gas_v_phys[2], h_min, rho_sink, denominator, */
+      /* sink->birth_time, sink->to_collect.minimal_sink_t_dyn); */
   /* Sink age (in internal units) */
   double sink_age = sink_get_sink_age(sink, with_cosmology, cosmo, time);
 
@@ -121,24 +121,24 @@ __attribute__((always_inline)) INLINE static float sink_compute_timestep(
 
   /* What age category are we in? */
   if (sink_age > sink_properties->age_threshold_unlimited) {
-    message("unlimited sink age, age = %e, dt_2-body = %e", sink_age,
-            dt_2_body);
+    /* message("unlimited sink age, age = %e, dt_2-body = %e", sink_age, */
+            /* dt_2_body); */
     return dt_2_body;
   } else if (sink_age > sink_properties->age_threshold) {
     dt = min3(dt, dt_2_body, sink_properties->max_time_step_old);
-    message(
-        "old sink %lld, age = %e, dt_CFL = %e, dt_ff = %e, dt_age = %e, "
-        "dt_2_body = %e",
-        sink->id, sink_age, dt_cfl, dt_ff, sink_properties->max_time_step_old,
-        dt_2_body);
+    /* message( */
+        /* "old sink %lld, age = %e, dt_CFL = %e, dt_ff = %e, dt_age = %e, " */
+        /* "dt_2_body = %e", */
+        /* sink->id, sink_age, dt_cfl, dt_ff, sink_properties->max_time_step_old, */
+        /* dt_2_body); */
     return dt;
   } else {
     dt = min3(dt, dt_2_body, sink_properties->max_time_step_young);
-    message(
-        "young sink %lld, age = %e, dt_CFL = %e, dt_ff = %e, dt_age = %e "
-        "dt_2-body = %e",
-        sink->id, sink_age, dt_cfl, dt_ff, sink_properties->max_time_step_young,
-        dt_2_body);
+    /* message( */
+        /* "young sink %lld, age = %e, dt_CFL = %e, dt_ff = %e, dt_age = %e " */
+        /* "dt_2-body = %e", */
+        /* sink->id, sink_age, dt_cfl, dt_ff, sink_properties->max_time_step_young, */
+        /* dt_2_body); */
     return dt;
   }
 }
