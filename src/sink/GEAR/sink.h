@@ -110,19 +110,19 @@ __attribute__((always_inline)) INLINE static float sink_compute_timestep(
 
   /* What age category are we in? */
   if (sink_age > sink_properties->age_threshold_unlimited) {
-    message("unlimited sink age, age = %e", sink_age);
+    message("unlimited sink age, age = %e, dt_2-body = %e", sink_age, dt_2_body);
     return dt_2_body;
   } else if (sink_age > sink_properties->age_threshold) {
     dt = min3(dt, dt_2_body, sink_properties->max_time_step_old);
-    message("old sink %lld, age = %e, dt_CFL = %e, dt_ff = %e, dt_age = %e",
+    message("old sink %lld, age = %e, dt_CFL = %e, dt_ff = %e, dt_age = %e, dt_2_body = %e",
             sink->id, sink_age, dt_cfl, dt_ff,
-            sink_properties->max_time_step_old);
+            sink_properties->max_time_step_old, dt_2_body);
     return dt;
   } else {
     dt = min3(dt, dt_2_body, sink_properties->max_time_step_young);
-    message("young sink %lld, age = %e, dt_CFL = %e, dt_ff = %e, dt_age = %e",
+    message("young sink %lld, age = %e, dt_CFL = %e, dt_ff = %e, dt_age = %e dt_2-body = %e",
             sink->id, sink_age, dt_cfl, dt_ff,
-            sink_properties->max_time_step_young);
+            sink_properties->max_time_step_young, dt_2_body);
     return dt;
   }
 }
