@@ -94,9 +94,18 @@ __attribute__((always_inline)) INLINE static float sink_compute_timestep(
       sqrtf(3.0 * M_PI / (32.0 * grav_props->G_Newton * rho_sink));
 
   /* Compute sink-sink orbital integration timestep */
-  const float dt_2_body =
+  float dt_2_body = 0.0;
+
+  /* If there are no sink neighbour, then the values are FLT_MAX. Prevent
+     giving a NaN to th timestep */
+  if ((sink->to_collect.minimal_sink_t_c == FLT_MAX) ||
+      (sink->to_collect.minimal_sink_t_dyn == FLT_MAX)) {
+    dt_2_body = FLT_MAX;
+  } else {
+    dt_2_body =
       sink->to_collect.minimal_sink_t_c * sink->to_collect.minimal_sink_t_dyn /
       (sink->to_collect.minimal_sink_t_c + sink->to_collect.minimal_sink_t_dyn);
+  }
 
   message(
       "sink %lld, rho_gas = %e, c_s = %e, gas_v_phys = (%e %e %e), h_min = %e, "
