@@ -1119,8 +1119,9 @@ INLINE static void sink_prepare_part_sink_formation_gas_criteria(
  */
 INLINE static void sink_prepare_part_sink_formation_sink_criteria(
     struct engine* e, struct part* restrict p, struct xpart* restrict xp,
-    struct sink* restrict si, const struct cosmology* cosmo,
-    const struct sink_props* sink_props) {
+    struct sink* restrict si, const int with_cosmology, const struct cosmology* cosmo,
+    const struct sink_props* sink_props, const double time) {
+
   /* Do not continue if the gas cannot form sink for any reason */
   if (!p->sink_data.can_form_sink) {
     return;
