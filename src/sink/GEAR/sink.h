@@ -93,6 +93,9 @@ __attribute__((always_inline)) INLINE static float sink_compute_timestep(
   const float dt_ff =
       sqrtf(3.0 * M_PI / (32.0 * grav_props->G_Newton * rho_sink));
 
+  /* Compute sink-sink orbital integration timestep */
+  const float dt_2_body = sink->to_collect.minimal_sink_t_c*sink->to_collect.minimal_sink_t_dyn / (sink->to_collect.minimal_sink_t_c + sink->to_collect.minimal_sink_t_dyn);
+
   message(
       "sink %lld, rho_gas = %e, c_s = %e, gas_v_phys = (%e %e %e), h_min = %e, "
       "rho_sink = %e, denominator = %e, birth_time = %e",
@@ -108,15 +111,15 @@ __attribute__((always_inline)) INLINE static float sink_compute_timestep(
   /* What age category are we in? */
   if (sink_age > sink_properties->age_threshold_unlimited) {
     message("unlimited sink age, age = %e", sink_age);
-    return FLT_MAX;
+    return dt_2_body;
   } else if (sink_age > sink_properties->age_threshold) {
-    dt = min(dt, sink_properties->max_time_step_old);
+    dt = min3(dt, dt_2_body, sink_properties->max_time_step_old);
     message("old sink %lld, age = %e, dt_CFL = %e, dt_ff = %e, dt_age = %e",
             sink->id, sink_age, dt_cfl, dt_ff,
             sink_properties->max_time_step_old);
     return dt;
   } else {
-    dt = min(dt, sink_properties->max_time_step_young);
+    dt = min3(dt, dt_2_body, sink_properties->max_time_step_young);
     message("young sink %lld, age = %e, dt_CFL = %e, dt_ff = %e, dt_age = %e",
             sink->id, sink_age, dt_cfl, dt_ff,
             sink_properties->max_time_step_young);
