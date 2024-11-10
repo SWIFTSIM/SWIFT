@@ -24,19 +24,16 @@
  */
 struct mhd_part_data {
 
-  /*! Predicted B/rho field */
   float B_over_rho[3];
 
-  /*! Divergence of B */
   float divB;
 
-  /*! Curl of B */
-  float curl_B[3];
-
-  /*! Time derivative of B/rho */
+  /*! dB Direct Induction */
   float B_over_rho_dt[3];
 
   float v_fm;
+
+  float curl_B[3];
 
   /* Resistive Eta */
   float resistive_eta;
@@ -85,6 +82,7 @@ struct mhd_xpart_data {
 
   /*! Full Step Dedner Scalar */
   float psi_over_ch_full;
+
 };
 
 #endif /* SWIFT_DIRECT_INDUCTION_MHD_STRUCT_H */

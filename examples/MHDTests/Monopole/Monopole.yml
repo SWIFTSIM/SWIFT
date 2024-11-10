@@ -11,7 +11,7 @@ TimeIntegration:
   time_begin: 0.    # The starting time of the simulation (in internal units).
   time_end:   10.0  # The end time of the simulation (in internal units).
   dt_min:     1e-9  # The minimal time-step size of the simulation (in internal units).
-  dt_max:     1e-6  # The maximal time-step size of the simulation (in internal units).
+  dt_max:     1e-3  # The maximal time-step size of the simulation (in internal units).
 
 # Parameters governing the snapshots
 Snapshots:

@@ -60,9 +60,9 @@ with h5py.File(args.input, "r") as handle:
     kernel = handle["/HydroScheme"].attrs["Kernel function"]
     neighbours = handle["/HydroScheme"].attrs["Kernel target N_ngb"]
     mu0 = handle["/PhysicalConstants/InternalUnits"].attrs["vacuum_permeability"]
-    dedhyp = 0 #handle["/HydroScheme"].attrs["Dedner Hyperbolic Constant"]
-    dedpar = 0 #handle["/HydroScheme"].attrs["Dedner Parabolic Constant"]
-    mhdeta = 0 #handle["/HydroScheme"].attrs["Resistive Eta"]
+    dedhyp = handle["/HydroScheme"].attrs["Dedner Hyperbolic Constant"]
+    dedpar = handle["/HydroScheme"].attrs["Dedner Parabolic Constant"]
+    mhdeta = handle["/HydroScheme"].attrs["Resistive Eta"]
     mhdflavour = handle["/HydroScheme"].attrs["MHD Flavour"]
 
 if gamma != 2.0:

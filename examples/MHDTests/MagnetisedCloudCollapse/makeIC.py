@@ -61,7 +61,7 @@ P_out = rho_out * cs0 * cs0 * sqrt(1.0 + (rho_out * inv_rho_c) ** gamma)
 # Read glass files
 fileName = "magnetised_cloud.hdf5"
 
-glass = h5py.File("glassCube_128.hdf5", "r")
+glass = h5py.File("glassCube_64.hdf5", "r")
 pos_gf = glass["/PartType0/Coordinates"][:, :]
 h_gf = glass["/PartType0/SmoothingLength"][:]
 
