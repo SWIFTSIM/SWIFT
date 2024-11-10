@@ -178,10 +178,22 @@ runner_iact_nonsym_sinks_sink_swallow(
     struct sink *restrict si, struct sink *restrict sj,
     const int with_cosmology, const struct cosmology *cosmo,
     const struct gravity_props *grav_props,
-    const struct sink_props *sink_properties) {
+    const struct sink_props *sink_properties, const int time) {
 
   const float r = sqrtf(r2);
   const float f_acc_r_acc_i = sink_properties->f_acc * ri;
+
+  sink_collect_properties_from_sink(r2, dx, ri, rj, si, sj, grav_props);
+
+  /* Determine if the sink is dead, i.e. if its age is bigger than the
+     age_threshold_unlimited */
+  const int sink_age = sink_get_sink_age(si, with_cosmology, cosmo, time);
+  char is_dead = sink_age > sink_properties->age_threshold_unlimited;
+
+  /* If si is dead, do not swallow sj. However, sj can swallow si. */
+  if (is_dead) {
+    return;
+  }
 
   /* If the sink j falls within f_acc*r_acc of sink i, then the
      lightest is accreted on the most massive without further check.
@@ -363,12 +375,23 @@ runner_iact_nonsym_sinks_gas_swallow(const float r2, const float dx[3],
                                      const int with_cosmology,
                                      const struct cosmology *cosmo,
                                      const struct gravity_props *grav_props,
-                                     const struct sink_props *sink_properties) {
+                                     const struct sink_props *sink_properties,
+				     const int time) {
 
   const float r = sqrtf(r2);
   const float f_acc_r_acc = sink_properties->f_acc * ri;
 
   sink_collect_properties_from_gas(r2, dx, ri, hj, si, pj);
+
+  /* Determine if the sink is dead, i.e. if its age is bigger than the
+     age_threshold_unlimited */
+  const int sink_age = sink_get_sink_age(si, with_cosmology, cosmo, time);
+  char is_dead = sink_age > sink_properties->age_threshold_unlimited;
+
+  /* If si is dead, do not swallow pj. */
+  if (is_dead) {
+    return;
+  }
 
   /* If the gas falls within f_acc*r_acc, it is accreted without further check
    */
