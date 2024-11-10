@@ -37,9 +37,9 @@
  * @param with_cosmology If we run with cosmology.
  */
 
-__attribute__((always_inline)) INLINE double
-sink_get_sink_age(const struct sink* restrict sink, const int with_cosmology,
-		  const struct cosmology* cosmo, const int time) {
+__attribute__((always_inline)) INLINE double sink_get_sink_age(
+    const struct sink* restrict sink, const int with_cosmology,
+    const struct cosmology* cosmo, const int time) {
   double sink_age;
   if (with_cosmology) {
 
@@ -47,7 +47,8 @@ sink_get_sink_age(const struct sink* restrict sink, const int with_cosmology,
     if (sink->birth_scale_factor >= cosmo->a) {
       sink_age = 0.;
     } else {
-      sink_age = cosmology_get_delta_time_from_scale_factors(cosmo, sink->birth_scale_factor, cosmo->a);
+      sink_age = cosmology_get_delta_time_from_scale_factors(
+          cosmo, sink->birth_scale_factor, cosmo->a);
     }
   } else {
     sink_age = time - sink->birth_time;

@@ -33,10 +33,10 @@
 #include "feedback.h"
 #include "minmax.h"
 #include "random.h"
+#include "sink_getters.h"
 #include "sink_part.h"
 #include "sink_properties.h"
 #include "sink_setters.h"
-#include "sink_getters.h"
 #include "star_formation.h"
 
 /**
@@ -94,7 +94,9 @@ __attribute__((always_inline)) INLINE static float sink_compute_timestep(
       sqrtf(3.0 * M_PI / (32.0 * grav_props->G_Newton * rho_sink));
 
   /* Compute sink-sink orbital integration timestep */
-  const float dt_2_body = sink->to_collect.minimal_sink_t_c*sink->to_collect.minimal_sink_t_dyn / (sink->to_collect.minimal_sink_t_c + sink->to_collect.minimal_sink_t_dyn);
+  const float dt_2_body =
+      sink->to_collect.minimal_sink_t_c * sink->to_collect.minimal_sink_t_dyn /
+      (sink->to_collect.minimal_sink_t_c + sink->to_collect.minimal_sink_t_dyn);
 
   message(
       "sink %lld, rho_gas = %e, c_s = %e, gas_v_phys = (%e %e %e), h_min = %e, "
@@ -110,19 +112,24 @@ __attribute__((always_inline)) INLINE static float sink_compute_timestep(
 
   /* What age category are we in? */
   if (sink_age > sink_properties->age_threshold_unlimited) {
-    message("unlimited sink age, age = %e, dt_2-body = %e", sink_age, dt_2_body);
+    message("unlimited sink age, age = %e, dt_2-body = %e", sink_age,
+            dt_2_body);
     return dt_2_body;
   } else if (sink_age > sink_properties->age_threshold) {
     dt = min3(dt, dt_2_body, sink_properties->max_time_step_old);
-    message("old sink %lld, age = %e, dt_CFL = %e, dt_ff = %e, dt_age = %e, dt_2_body = %e",
-            sink->id, sink_age, dt_cfl, dt_ff,
-            sink_properties->max_time_step_old, dt_2_body);
+    message(
+        "old sink %lld, age = %e, dt_CFL = %e, dt_ff = %e, dt_age = %e, "
+        "dt_2_body = %e",
+        sink->id, sink_age, dt_cfl, dt_ff, sink_properties->max_time_step_old,
+        dt_2_body);
     return dt;
   } else {
     dt = min3(dt, dt_2_body, sink_properties->max_time_step_young);
-    message("young sink %lld, age = %e, dt_CFL = %e, dt_ff = %e, dt_age = %e dt_2-body = %e",
-            sink->id, sink_age, dt_cfl, dt_ff,
-            sink_properties->max_time_step_young, dt_2_body);
+    message(
+        "young sink %lld, age = %e, dt_CFL = %e, dt_ff = %e, dt_age = %e "
+        "dt_2-body = %e",
+        sink->id, sink_age, dt_cfl, dt_ff, sink_properties->max_time_step_young,
+        dt_2_body);
     return dt;
   }
 }
@@ -1056,8 +1063,9 @@ INLINE static void sink_prepare_part_sink_formation_gas_criteria(
  */
 INLINE static void sink_prepare_part_sink_formation_sink_criteria(
     struct engine* e, struct part* restrict p, struct xpart* restrict xp,
-    struct sink* restrict si, const int with_cosmology, const struct cosmology* cosmo,
-    const struct sink_props* sink_props, const double time) {
+    struct sink* restrict si, const int with_cosmology,
+    const struct cosmology* cosmo, const struct sink_props* sink_props,
+    const double time) {
 
   /* Do not continue if the gas cannot form sink for any reason */
   if (!p->sink_data.can_form_sink) {

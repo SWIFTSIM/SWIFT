@@ -116,7 +116,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_sink(
   }
 }
 
-
 /**
  * @brief  Update the properties of a sink particles from its sink neighbours.
  *
@@ -132,28 +131,29 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_sink(
  */
 __attribute__((always_inline)) INLINE static void
 sink_collect_properties_from_sink(const float r2, const float dx[3],
-				  const float ri, const float rj,
-				  struct sink *restrict si,
-				  struct sink *restrict sj,
-				  const struct gravity_props *grav_props) {
+                                  const float ri, const float rj,
+                                  struct sink *restrict si,
+                                  struct sink *restrict sj,
+                                  const struct gravity_props *grav_props) {
 
   /* Neighbour's (drifted) velocity in the frame of the sink i
    * (we don't include a Hubble term since we are interested in the
    * velocity contribution at the location of the sink) */
   const float dv[3] = {sj->v[0] - si->v[0], sj->v[1] - si->v[1],
                        sj->v[2] - si->v[2]};
-  const float dv_norm = sqrtf(dv[0]*dv[0] + dv[1]*dv[1] + dv[2]*dv[2]);
+  const float dv_norm = sqrtf(dv[0] * dv[0] + dv[1] * dv[1] + dv[2] * dv[2]);
 
   /* Get the gravitional softening */
   const float eps_i = gravity_get_softening(si->gpart, grav_props);
 
-  const float sum_r2_eps2 = r2 + eps_i*eps_i;
-  const float t_c = sqrt(sum_r2_eps2)/dv_norm;
+  const float sum_r2_eps2 = r2 + eps_i * eps_i;
+  const float t_c = sqrt(sum_r2_eps2) / dv_norm;
   si->to_collect.minimal_sink_t_c = min(t_c, si->to_collect.minimal_sink_t_c);
 
   const float denominator = grav_props->G_Newton * (si->mass + sj->mass);
   const float t_dyn = sqrt(pow(sum_r2_eps2, 1.5) / denominator);
-  si->to_collect.minimal_sink_t_dyn = min(t_dyn, si->to_collect.minimal_sink_t_dyn);
+  si->to_collect.minimal_sink_t_dyn =
+      min(t_dyn, si->to_collect.minimal_sink_t_dyn);
 }
 
 /**
@@ -368,15 +368,12 @@ sink_collect_properties_from_gas(const float r2, const float dx[3],
  * @param sink_props the sink properties to use.
  */
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_sinks_gas_swallow(const float r2, const float dx[3],
-                                     const float ri, const float hj,
-                                     struct sink *restrict si,
-                                     struct part *restrict pj,
-                                     const int with_cosmology,
-                                     const struct cosmology *cosmo,
-                                     const struct gravity_props *grav_props,
-                                     const struct sink_props *sink_properties,
-				     const int time) {
+runner_iact_nonsym_sinks_gas_swallow(
+    const float r2, const float dx[3], const float ri, const float hj,
+    struct sink *restrict si, struct part *restrict pj,
+    const int with_cosmology, const struct cosmology *cosmo,
+    const struct gravity_props *grav_props,
+    const struct sink_props *sink_properties, const int time) {
 
   const float r = sqrtf(r2);
   const float f_acc_r_acc = sink_properties->f_acc * ri;
@@ -491,7 +488,7 @@ runner_iact_nonsym_sinks_gas_swallow(const float r2, const float dx[3],
     /* To be accreted, the gas smoothing length must be smaller than the sink
        accretion radius. This is similar to AMR codes requesting the maximum
        refinement level close to the sink. */
-    if (pj->h*kernel_gamma >= si->r_cut) return;
+    if (pj->h * kernel_gamma >= si->r_cut) return;
 
     /* Most bound pair check------------------------------------------------ */
     /* The pair gas-sink must be the most bound among all sinks */

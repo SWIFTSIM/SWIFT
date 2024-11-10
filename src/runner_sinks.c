@@ -480,7 +480,7 @@ void runner_do_prepare_part_sink_formation(struct runner *r, struct cell *c,
 
     /* Compute the quantities required to later decide to form a sink or not. */
     sink_prepare_part_sink_formation_sink_criteria(e, p, xp, si, with_cosmology,
-						   cosmo, sink_props, e->time);
+                                                   cosmo, sink_props, e->time);
 
   } /* End of sink neighbour loop */
 }
