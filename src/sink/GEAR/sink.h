@@ -172,6 +172,8 @@ __attribute__((always_inline)) INLINE static void sink_first_init_sink(
   sp->to_collect.velocity_gas[0] = 0.0;
   sp->to_collect.velocity_gas[1] = 0.0;
   sp->to_collect.velocity_gas[2] = 0.0;
+  sp->to_collect.minimal_sink_t_c = FLT_MAX;
+  sp->to_collect.minimal_sink_t_dyn = FLT_MAX;
 }
 
 /**
@@ -227,6 +229,8 @@ __attribute__((always_inline)) INLINE static void sink_init_sink(
   sp->to_collect.velocity_gas[0] = 0.0;
   sp->to_collect.velocity_gas[1] = 0.0;
   sp->to_collect.velocity_gas[2] = 0.0;
+  sp->to_collect.minimal_sink_t_c = FLT_MAX;
+  sp->to_collect.minimal_sink_t_dyn = FLT_MAX;
 
 #ifdef DEBUG_INTERACTIONS_SINKS
   for (int i = 0; i < MAX_NUM_OF_NEIGHBOURS_SINKS; ++i)
