@@ -214,6 +214,27 @@ void hydro_props_init(struct hydro_props *p,
     p->log_extra_splits_in_file = parser_get_opt_param_int(
         params, "SPH:particle_splitting_log_extra_splits", 0);
   }
+
+  /* ------ MHD properties ------------------------- */
+
+  /* MATTHIEU START --------------------------------------- */
+
+  /* Are we running with Dedner cleaning? */
+  p->mhd_with_Dedner = parser_get_opt_param_int(params, "MHD:with_Dedner", 1);
+
+  /* Pre-factor in front of div-B term in Dedner cleaning */
+  p->mhd_Dedner_div_B_factor =
+      parser_get_opt_param_float(params, "MHD:hyperbolic_dedner", 1);
+
+  /*! Pre-factor in front of div-v term in Dedner cleaning */
+  p->mhd_Dedner_div_v_factor =
+      parser_get_opt_param_float(params, "MHD:hyperbolic_dedner_divv", 0.5f);
+
+  /*! Pre-factor in front of parabolic term in Dedner cleaning */
+  p->mhd_Dedner_parabolic_factor =
+      parser_get_opt_param_float(params, "MHD:parabolic_dedner", 1);
+
+  /* MATTHIEU END ----------------------------------------- */
 }
 
 /**
@@ -337,6 +358,23 @@ void hydro_props_print_snapshot(hid_t h_grpsph, const struct hydro_props *p) {
   io_write_attribute_i(h_grpsph,
                        "Maximal time-bin difference between neighbours",
                        time_bin_neighbour_max_delta_bin);
+  /* MATTHIEU START --------------------------------------- */
+
+  io_write_attribute_i(h_grpsph, "Dedner On", p->mhd_with_Dedner);
+  io_write_attribute_f(h_grpsph, "Dedner Hyperbolic Constant",
+                       p->mhd_Dedner_div_B_factor);
+  io_write_attribute_f(h_grpsph, "Dedner Hyperbolic div(v) Constant",
+                       p->mhd_Dedner_div_v_factor);
+  io_write_attribute_f(h_grpsph, "Dedner Parabolic Constant",
+                       p->mhd_Dedner_parabolic_factor);
+
+  // Temporary place-holders
+  io_write_attribute_f(h_grpsph, "MHD Tensile Instability Correction Prefactor",
+                       1);
+  io_write_attribute_f(h_grpsph, "Artificial Diffusion Constant", 0);
+  io_write_attribute_f(h_grpsph, "Resistive Eta", 0);
+
+  /* MATTHIEU END ----------------------------------------- */
 
   /* Write out the implementation-dependent viscosity parameters
    * (see hydro/SCHEME/hydro_parameters.h for this implementation) */

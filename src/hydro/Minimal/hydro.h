@@ -951,7 +951,8 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
  * @param cosmo The current cosmological model.
  */
 __attribute__((always_inline)) INLINE static void hydro_end_force(
-    struct part *restrict p, const struct cosmology *cosmo) {
+    struct part *restrict p, const struct cosmology *cosmo,
+    const struct hydro_props *props) {
 
   p->force.h_dt *= p->h * hydro_dimension_inv;
 
@@ -967,13 +968,23 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
   const float sigma_c = 1.f;
   const float tau_c = p->h * kernel_gamma / (sigma_c * c_h);
 
-  /* Finish Dedner scalar time derivative (Price 2018, eq. 172) */
-  p->Dedner_div_B *= c_h;
-  p->Dedner_div_v *= 0.5f * p->Dedner_Psi_over_c;
+  if (props->mhd_with_Dedner) {
 
-  p->Dedner_Psi_over_c_dt =
-      p->Dedner_div_B + p->Dedner_div_v - p->Dedner_Psi_over_c / tau_c;
-  // TODO: cosmo terms
+    /* Finish Dedner scalar time derivative (Price 2018, eq. 172)
+     * (Note the 1/2 in the second term is read in as a runtime parameter) */
+    p->Dedner_div_B *= c_h;
+    p->Dedner_div_B *= props->mhd_Dedner_div_B_factor;
+
+    p->Dedner_div_v *= p->Dedner_Psi_over_c;
+    p->Dedner_div_v *= props->mhd_Dedner_div_v_factor;
+
+    float Dedner_parabolic = p->Dedner_Psi_over_c / tau_c;
+    Dedner_parabolic *= props->mhd_Dedner_parabolic_factor;
+
+    p->Dedner_Psi_over_c_dt =
+        p->Dedner_div_B + p->Dedner_div_v - Dedner_parabolic;
+    // TODO: cosmo terms
+  }
 
   /* MATTHIEU END ----------------------------------------- */
 }

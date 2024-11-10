@@ -577,8 +577,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     Dedner_div_v -= weight_i * rhoi * dv[l] * dx[l];
   }
 
-  pi->Dedner_div_B += mj * Dedner_div_B;
-  pi->Dedner_div_v += mj * Dedner_div_v;
+  pi->Dedner_div_B -= mj * Dedner_div_B;
+  pi->Dedner_div_v -= mj * Dedner_div_v;
 
   /* MATTHIEU END --------------------------------------- */
 }
