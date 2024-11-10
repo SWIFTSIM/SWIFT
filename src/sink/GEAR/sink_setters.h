@@ -23,15 +23,15 @@
 
 /**
  * @file src/sink/GEAR/sink_setters.h
- * @brief Setters functions for GEAR star formation scheme to avoid exposing
+ * @brief Setters functions for GEAR sink scheme to avoid exposing
  * implementation details to the outer world. Keep the code clean and lean.
  */
 
 /**
- * @brief Set the birth time/scale-factor of a star particle.
+ * @brief Set the birth time/scale-factor of a #sink particle.
  *
- * @param sp The #spart.
- * @param birth_time Birth time of the star.
+ * @param sp The #sink.
+ * @param birth_time Birth time of the #sink.
  * @param birth_scale_factor Birth scale-factor of the star.
  * @param with_cosmology If we run with cosmology.
  */
@@ -51,7 +51,7 @@ sink_set_sink_birth_time_or_scale_factor(struct sink* restrict sink,
 /**
  * @brief Update the target mass of the sink particle.
  *
- * @param sink the sink particle.
+ * @param sink the #sink particle.
  * @param sink_props the sink properties to use.
  * @param phys_const the physical constants in internal units.
  * @param e The #engine
