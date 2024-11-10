@@ -116,6 +116,26 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_sink(
   }
 }
 
+
+/**
+ * @brief  Update the properties of a sink particles from its sink neighbours.
+ *
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (pi - pj).
+ * @param ri Comoving cut off radius of particle i.
+ * @param rj Comoving cut off radius of particle j.
+ * @param si First sink particle.
+ * @param sj Second sink particle.
+ */
+__attribute__((always_inline)) INLINE static void
+sink_collect_properties_from_sink(const float r2, const float dx[3],
+                                 const float ri, const float rj,
+                                 struct sink *restrict si,
+                                 struct sink *restrict sj) {
+
+
+}
+
 /**
  * @brief Compute sink-sink swallow interaction (non-symmetric).
  *
