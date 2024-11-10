@@ -467,6 +467,8 @@ __attribute__((always_inline)) INLINE static float hydro_signal_velocity(
     const float dx[3], const struct part *restrict pi,
     const struct part *restrict pj, const float mu_ij, const float beta) {
 
+  /* MATTHIEU START --------------------------------------- */
+  
   const float ci = pi->force.soundspeed;
   const float cj = pj->force.soundspeed;
 
@@ -476,6 +478,8 @@ __attribute__((always_inline)) INLINE static float hydro_signal_velocity(
 
   /* Price 2018, eq. 179 */
   return vi + vj - beta * mu_ij;
+
+  /* MATTHIEU END ----------------------------------------- */
 }
 
 /**
