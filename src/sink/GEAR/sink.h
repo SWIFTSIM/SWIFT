@@ -100,19 +100,7 @@ __attribute__((always_inline)) INLINE static float sink_compute_timestep(
       gas_v_phys[1], gas_v_phys[2], h_min, rho_sink, denominator,
       sink->birth_time);
   /* Sink age (in internal units) */
-  double sink_age;
-  if (with_cosmology) {
-
-    /* Deal with rounding issues */
-    if (sink->birth_scale_factor >= cosmo->a) {
-      sink_age = 0.;
-    } else {
-      sink_age = cosmology_get_delta_time_from_scale_factors(
-          cosmo, sink->birth_scale_factor, cosmo->a);
-    }
-  } else {
-    sink_age = time - sink->birth_time;
-  }
+  double sink_age = sink_get_sink_age(sink, with_cosmology, cosmo, time);
 
   /* Take the minimum dt */
   float dt = min(dt_cfl, dt_ff);
