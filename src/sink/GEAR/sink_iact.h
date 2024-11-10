@@ -267,9 +267,12 @@ runner_iact_nonsym_sinks_sink_swallow(
 /**
  * @brief Update the properties of a sink particles from its gas neighbours.
  *
- * @param sp The #sink to update.
- * @param p The #part that is swallowed.
- * @param xp The #xpart that is swallowed.
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (pi - pj).
+ * @param ri Comoving cut off radius of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param si First sink particle.
+ * @param pj Second particle.
  */
 __attribute__((always_inline)) INLINE static void
 sink_collect_properties_from_gas(const float r2, const float dx[3],
