@@ -30,7 +30,7 @@
 /**
  * @brief Set the birth time/scale-factor of a #sink particle.
  *
- * @param sp The #sink.
+ * @param sink The #sink.
  * @param birth_time Birth time of the #sink.
  * @param birth_scale_factor Birth scale-factor of the star.
  * @param with_cosmology If we run with cosmology.
