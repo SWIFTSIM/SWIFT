@@ -423,7 +423,8 @@ runner_iact_nonsym_sinks_gas_swallow(const float r2, const float dx[3],
     if (E_mec_sink_part >= 0) return;
 
     /* To be accreted, the gas smoothing length must be smaller than the sink
-       accretion radius */
+       accretion radius. This is similar to AMR codes requesting the maximum
+       refinement level close to the sink. */
     if (pj->h*kernel_gamma >= si->r_cut) return;
 
     /* Most bound pair check------------------------------------------------ */
