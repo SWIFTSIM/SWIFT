@@ -1057,6 +1057,16 @@ INLINE static void sink_prepare_part_sink_formation_sink_criteria(
     return;
   }
 
+  /* Determine if the sink is dead, i.e. if its age is bigger than the
+     age_threshold_unlimited */
+  const int sink_age = sink_get_sink_age(si, with_cosmology, cosmo, time);
+  char is_dead = sink_age > sink_props->age_threshold_unlimited;
+
+  /* If the sink is dead, do check the criteria for the si - p pair. */
+  if (is_dead) {
+    return;
+  }
+
   /* Physical accretion radius of part p */
   const float r_acc_p = sink_props->cut_off_radius * cosmo->a;
 
