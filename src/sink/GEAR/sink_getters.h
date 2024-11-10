@@ -55,4 +55,63 @@ sink_get_sink_age(struct sink* restrict sink, const int with_cosmology,
   return sink_age;
 }
 
+/**
+ * @brief Compute the rotational energy of the neighbouring gas particles.
+ *
+ * Note: This function must be used after having computed the rotational energy
+ * per components, i.e. after sink_prepare_part_sink_formation().
+ *
+ * @param p The gas particle.
+ *
+ */
+INLINE static double sink_compute_neighbour_rotation_energy_magnitude(
+    const struct part* restrict p) {
+  double E_rot_x = p->sink_data.E_rot_neighbours[0];
+  double E_rot_y = p->sink_data.E_rot_neighbours[1];
+  double E_rot_z = p->sink_data.E_rot_neighbours[2];
+  double E_rot =
+      sqrtf(E_rot_x * E_rot_x + E_rot_y * E_rot_y + E_rot_z * E_rot_z);
+  return E_rot;
+}
+
+/**
+ * @brief Retrieve the physical velocity divergence from the gas particle.
+ *
+ * @param p The gas particles.
+ *
+ */
+INLINE static float sink_get_physical_div_v_from_part(
+    const struct part* restrict p) {
+
+  float div_v = 0.0;
+
+  /* The implementation of div_v depends on the Hydro scheme. Furthermore, some
+     add a Hubble flow term, some do not. We need to take care of this */
+#ifdef SPHENIX_SPH
+  /* SPHENIX is already including the Hubble flow. */
+  div_v = hydro_get_div_v(p);
+#elif GADGET2_SPH
+  div_v = p->density.div_v;
+
+  /* Add the missing term */
+  div_v += hydro_dimension * cosmo->H;
+#elif MINIMAL_SPH
+  div_v = hydro_get_div_v(p);
+
+  /* Add the missing term */
+  div_v += hydro_dimension * cosmo->H;
+#elif GASOLINE_SPH
+  /* Copy the velocity divergence */
+  div_v = (1. / 3.) * (p->viscosity.velocity_gradient[0][0] +
+                       p->viscosity.velocity_gradient[1][1] +
+                       p->viscosity.velocity_gradient[2][2]);
+#elif HOPKINS_PU_SPH
+  div_v = p->density.div_v;
+#else
+#error \
+    "This scheme is not implemented. Note that Different scheme apply the Hubble flow in different places. Be careful about it."
+#endif
+  return div_v;
+}
+
 #endif /* SWIFT_GEAR_SINK_GETTERS_H */
