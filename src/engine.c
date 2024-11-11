@@ -2424,7 +2424,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   /* Turn on all grav inits and unlock them. */
   for (int i = 0; i < e->sched.nr_tasks; i++) {
     struct task *t = &e->sched.tasks[i];
-    if (t->type == task_type_grav_init) {
+    if (t->type == task_type_init_grav) {
       t->skip = 0;
       t->wait = 2;
     }
