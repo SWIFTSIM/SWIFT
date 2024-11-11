@@ -99,18 +99,18 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
         if (cp->grav.multipole->pot.ti_init != e->ti_current)
           error("cp->field tensor not initialised");
 #endif
-        // /* If the tensor received any contribution, push it down */
-        // if (c->grav.multipole->pot.interacted) {
+        /* If the tensor received any contribution, push it down */
+        if (c->grav.multipole->pot.interacted) {
 
-        struct grav_tensor shifted_tensor;
+          struct grav_tensor shifted_tensor;
 
-        /* Shift the field tensor */
-        gravity_L2L(&shifted_tensor, &c->grav.multipole->pot,
-                    cp->grav.multipole->CoM, c->grav.multipole->CoM);
+          /* Shift the field tensor */
+          gravity_L2L(&shifted_tensor, &c->grav.multipole->pot,
+                      cp->grav.multipole->CoM, c->grav.multipole->CoM);
 
-        /* Add it to this level's tensor */
-        gravity_field_tensors_add(&cp->grav.multipole->pot, &shifted_tensor);
-        // }
+          /* Add it to this level's tensor */
+          gravity_field_tensors_add(&cp->grav.multipole->pot, &shifted_tensor);
+        }
 
         /* Recurse, but only if we haven't reached the super level. This can
          * can only happen in zoom land when recursing from the void cells to
