@@ -1,15 +1,15 @@
 #!/bin/bash
 
 # Generate the initial conditions file if not present.
-if [ ! -e glassCube_16.hdf5 ]
+if [ ! -f glassCube_16.hdf5 ]
 then
-    echo "Generating initial conditions for the magnetised cloud collapse example..."
+    echo "Fetching glass cubes to be used in IC generation for the Orszag-Tang Vortex test ..."
     ./getGlass.sh
 fi
 
 if [ ! -f ./BCCglassCube_16.hdf5 ]
 then
-    echo "Generating a BCC unit cell, copies of which are to be stacked to generate the ICs ..."
+    echo "Generating a BCC unit cell, copies of which are can be stacked to generate the ICs - if you do not want to use glass files ..."
     python3 makeBCC.py -n 16
 fi
 
