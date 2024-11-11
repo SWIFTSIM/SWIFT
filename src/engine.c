@@ -2321,10 +2321,11 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   }
 #endif
 
-  /* Turn off all tasks. */
+  /* Turn off all tasks and remove all automatic dependencies. */
   for (int i = 0; i < e->sched.nr_tasks; i++) {
     struct task *t = &e->sched.tasks[i];
     t->skip = 1;
+    t->wait = 1;
   }
 
   /* Turn on all grav inits and unlock them. */
@@ -2332,7 +2333,6 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
     struct task *t = &e->sched.tasks[i];
     if (t->type == task_type_init_grav) {
       t->skip = 0;
-      t->wait = 1;
     }
   }
 
@@ -2354,7 +2354,6 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
     struct task *t = &e->sched.tasks[i];
     if (t->subtype == task_subtype_grav) {
       t->skip = 0;
-      t->wait = 1;
     }
   }
 
@@ -2374,7 +2373,6 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
     struct task *t = &e->sched.tasks[i];
     if (t->type == task_type_grav_mm) {
       t->skip = 0;
-      t->wait = 1;
     }
   }
 
@@ -2394,7 +2392,6 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
     struct task *t = &e->sched.tasks[i];
     if (t->type == task_type_grav_long_range) {
       t->skip = 0;
-      t->wait = 1;
     }
   }
 
@@ -2414,7 +2411,6 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
     struct task *t = &e->sched.tasks[i];
     if (t->type == task_type_grav_down) {
       t->skip = 0;
-      t->wait = 1;
     }
   }
 
@@ -2434,7 +2430,6 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
     struct task *t = &e->sched.tasks[i];
     if (t->type == task_type_end_grav_force) {
       t->skip = 0;
-      t->wait = 1;
     }
   }
 
