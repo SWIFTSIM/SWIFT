@@ -1984,10 +1984,10 @@ void engine_launch(struct engine *e, const char *call) {
               scheduler_activate(&e->sched, new_t);
 
               /* Add the unlocks we need */
-              scheduler_add_unlock(&e->sched, new_t, cpi->grav.down_in);
-              scheduler_add_unlock(&e->sched, new_t, cpj->grav.down_in);
-              scheduler_add_unlock(&e->sched, cpi->grav.init_out, new_t);
-              scheduler_add_unlock(&e->sched, cpj->grav.init_out, new_t);
+              scheduler_addunlock(&e->sched, new_t, cpi->grav.down_in);
+              scheduler_addunlock(&e->sched, new_t, cpj->grav.down_in);
+              scheduler_addunlock(&e->sched, cpi->grav.init_out, new_t);
+              scheduler_addunlock(&e->sched, cpj->grav.init_out, new_t);
             }
           }
         }
