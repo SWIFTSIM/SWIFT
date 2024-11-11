@@ -2343,17 +2343,19 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   }
 
   /* Turn on all void downs. */
+  int n_void_downs = 0;
   for (int i = 0; i < e->sched.nr_tasks; i++) {
     struct task *t = &e->sched.tasks[i];
     if (t->type == task_type_grav_down && t->ci->subtype == cell_subtype_void) {
       scheduler_activate(&e->sched, t);
+      n_void_downs++;
     }
   }
 
   /* Run engine_launch() again */
   engine_launch(e, "tasks");
 
-  message("Ran void downs");
+  message("Ran void downs (%d)", n_void_downs);
 
   /* Turn off all tasks. */
   for (int i = 0; i < e->sched.nr_tasks; i++) {
