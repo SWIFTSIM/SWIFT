@@ -365,7 +365,6 @@ void zoom_engine_make_hierarchical_void_tasks_recursive(struct engine *e,
     /* Link in the implicit tasks */
     scheduler_addunlock(s, c->grav.init, c->grav.init_out);
     scheduler_addunlock(s, c->grav.down_in, c->grav.down);
-
   } else if (c->grav.super != NULL) {
 
     /* Below the super level we just need to link in the implicit tasks. */
