@@ -2016,8 +2016,8 @@ void runner_dopair_grav_mm_progenies(struct runner *r, const long long flags,
         }
       }
     }
-    message("Void cell in grav_mm_progenies (flag=%lld) interacting %d", flags,
-            count);
+    message("Void cell in grav_mm_progenies (flag=%lld) interacting %d %d",
+            flags, count, flags == -1);
   }
 
   /* Loop over all pairs of progenies */
