@@ -23,8 +23,8 @@ from numpy import *
 from scipy.spatial.transform import Rotation
 
 # Constants
-G = 4.300918e-03
-mu0 = 1.950089e-06
+G = 6.67430e-8
+mu0 = 1.25663706127e-1
 c1 = 0.53
 
 # Parameters (taken from Hopkins 2016)
@@ -61,7 +61,7 @@ P_out = rho_out * cs0 * cs0 * sqrt(1.0 + (rho_out * inv_rho_c) ** gamma)
 # Read glass files
 fileName = "magnetised_cloud.hdf5"
 
-glass = h5py.File("glassCube_128.hdf5", "r")
+glass = h5py.File("glassCube_32.hdf5", "r")
 pos_gf = glass["/PartType0/Coordinates"][:, :]
 h_gf = glass["/PartType0/SmoothingLength"][:]
 

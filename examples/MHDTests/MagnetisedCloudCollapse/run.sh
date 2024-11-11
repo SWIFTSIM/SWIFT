@@ -1,15 +1,15 @@
 #!/bin/bash
 
-if [ ! -e glassCube_128.hdf5 ]
+if [ ! -e glassCube_32.hdf5 ]
 then
-    echo "Generating initial conditions for the magnetised cloud collapse example..."
-    ./getGlass.sh 
+    echo "Fetching glass cubes to be used in IC generation for the magnetised cloud collapse example ..."
+    ./getGlass.sh
 fi
 
 # Generate the initial conditions if they are not present.
 if [ ! -e magnetised_cloud.hdf5 ]
 then
-    echo "Generating initial conditions for the magnetised cloud collapse example..."
+    echo "Generating initial conditions for the magnetised cloud collapse example ..."
     python3 makeIC.py
 fi
 
