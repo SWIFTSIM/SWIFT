@@ -1909,7 +1909,7 @@ void *runner_main2(void *data) {
 	t->toc = getticks();           
 	t->total_ticks += t->toc - t->tic;
 //	signal_sleeping_runners(sched, t);
-	enqueue_dependencies(sched, t);
+//	enqueue_dependencies(sched, t);
         t = NULL;
 #else
         t = scheduler_done(sched, t);
@@ -1923,7 +1923,7 @@ void *runner_main2(void *data) {
 	t->toc = getticks();           
 	t->total_ticks += t->toc - t->tic;
 //	signal_sleeping_runners(sched, t);
-	enqueue_dependencies(sched, t);
+//	enqueue_dependencies(sched, t);
         t = NULL;
 #else
         t = scheduler_done(sched, t);
@@ -1937,7 +1937,7 @@ void *runner_main2(void *data) {
 	t->toc = getticks();           
 	t->total_ticks += t->toc - t->tic;
 //	signal_sleeping_runners(sched, t);
-	enqueue_dependencies(sched, t);
+//	enqueue_dependencies(sched, t);
         t = NULL;
 #else
         t = scheduler_done(sched, t);
