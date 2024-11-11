@@ -23,8 +23,6 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "task.h"
-
 #include <config.h>
 
 /* Some standard headers. */
