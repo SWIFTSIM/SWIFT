@@ -564,14 +564,18 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   /* Evolution of Dedner scalar ------------------------- */
 
   /* Div B for Dedner (Price 2018, eq. 172 first term)
-   * (multiplication by c_h takes place later) */
+   * (multiplication by c_h takes place later)
+   * Note we have a negative sign overall as we want div B here
+   * for checks and not -divB as the paper assumes */
   float Dedner_div_B = 0.f;
   for (int l = 0; l < 3; l++) {
     Dedner_div_B += weight_i * rhoi * dB[l] * dx[l];
   }
 
   /* Div B for Dedner (Price 2018, eq. 172 second term)
-   * (multiplication by Psi/2c_h takes place later) */
+   * (multiplication by Psi/2c_h takes place later)
+   * Note we have a negative sign overall as we want div B here
+   * for checks and not -divB as the paper assumes */
   float Dedner_div_v = 0.f;
   for (int l = 0; l < 3; l++) {
     Dedner_div_v += weight_i * rhoi * dv[l] * dx[l];

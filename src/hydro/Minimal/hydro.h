@@ -974,7 +974,7 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
 
   if (props->mhd_with_Dedner) {
 
-    /* Finish Dedner scalar time derivative (Price 2018, eq. 172)
+    /* Finish Dedner scalar time derivative (Price 2018, eq. 168)
      * (Note the 1/2 in the second term is read in as a runtime parameter) */
     float Dedner_div_B = p->Dedner_div_B * c_h;
     Dedner_div_B *= props->mhd_Dedner_div_B_factor;
@@ -985,7 +985,7 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
     float Dedner_parabolic = p->Dedner_Psi_over_c / tau_c;
     Dedner_parabolic *= props->mhd_Dedner_parabolic_factor;
 
-    p->Dedner_Psi_over_c_dt = Dedner_div_B + Dedner_div_v - Dedner_parabolic;
+    p->Dedner_Psi_over_c_dt = -Dedner_div_B - Dedner_div_v - Dedner_parabolic;
     // TODO: cosmo terms
   }
 

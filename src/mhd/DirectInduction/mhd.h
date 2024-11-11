@@ -110,10 +110,11 @@ __attribute__((always_inline)) INLINE static float mhd_get_divB_error(
       p->mhd_data.B_over_rho[1] * p->mhd_data.B_over_rho[1] +
       p->mhd_data.B_over_rho[2] * p->mhd_data.B_over_rho[2];
 
-  const float error = B_over_rho2 != 0.0f ? fabs(p->mhd_data.divB) * p->h / sqrtf(B_over_rho2 * rho * rho) : 0.0f;
+  const float error = B_over_rho2 != 0.0f ? fabs(p->mhd_data.divB) * p->h /
+                                                sqrtf(B_over_rho2 * rho * rho)
+                                          : 0.0f;
 
   return error;
-
 }
 
 /**
@@ -450,7 +451,6 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_force(
   xp->mhd_data.psi_over_ch_full += p->mhd_data.psi_over_ch_dt * dt_alpha;
 
   p->mhd_data.psi_over_ch = xp->mhd_data.psi_over_ch_full;
-
 }
 
 /**
@@ -531,7 +531,6 @@ __attribute__((always_inline)) INLINE static void mhd_predict_extra(
   p->mhd_data.B_over_rho[2] += p->mhd_data.B_over_rho_dt[2] * dt_therm;
 
   p->mhd_data.psi_over_ch += p->mhd_data.psi_over_ch_dt * dt_therm;
-
 }
 
 /**
@@ -634,7 +633,6 @@ __attribute__((always_inline)) INLINE static void mhd_convert_quantities(
   xp->mhd_data.B_over_rho_full[2] = p->mhd_data.B_over_rho[2];
 
   xp->mhd_data.psi_over_ch_full = p->mhd_data.psi_over_ch;
-
 }
 
 /**
