@@ -540,7 +540,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   pi->a_hydro[1] -= mj * one_over_mu0 * mhd_acc_corr_i[1];
   pi->a_hydro[2] -= mj * one_over_mu0 * mhd_acc_corr_i[2];
 
-  /* Dener correction ----------------------------------- */
+  /* Dedner correction ----------------------------------- */
 
   /* Magnetosonic speed (Price 2018, eq. 180) */
   const float c_h_i = sqrtf(pi->force.soundspeed * pi->force.soundspeed +
@@ -579,6 +579,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   pi->Dedner_div_B -= mj * Dedner_div_B;
   pi->Dedner_div_v -= mj * Dedner_div_v;
+
+  /* Shock capturing (artifical resistivity) ------------ */
 
   /* MATTHIEU END --------------------------------------- */
 }

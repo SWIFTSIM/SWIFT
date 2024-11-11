@@ -468,7 +468,7 @@ __attribute__((always_inline)) INLINE static float hydro_signal_velocity(
     const struct part *restrict pj, const float mu_ij, const float beta) {
 
   /* MATTHIEU START --------------------------------------- */
-  
+
   const float ci = pi->force.soundspeed;
   const float cj = pj->force.soundspeed;
 
@@ -985,8 +985,7 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
     float Dedner_parabolic = p->Dedner_Psi_over_c / tau_c;
     Dedner_parabolic *= props->mhd_Dedner_parabolic_factor;
 
-    p->Dedner_Psi_over_c_dt =
-      Dedner_div_B + Dedner_div_v - Dedner_parabolic;
+    p->Dedner_Psi_over_c_dt = Dedner_div_B + Dedner_div_v - Dedner_parabolic;
     // TODO: cosmo terms
   }
 
