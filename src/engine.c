@@ -2342,10 +2342,10 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
     t->skip = 1;
   }
 
-  /* Turn on all downs. */
+  /* Turn on all void downs. */
   for (int i = 0; i < e->sched.nr_tasks; i++) {
     struct task *t = &e->sched.tasks[i];
-    if (t->type == task_type_grav_down) {
+    if (t->type == task_type_grav_down && t->ci->subtype == cell_subtype_void) {
       scheduler_activate(&e->sched, t);
     }
   }
@@ -2353,7 +2353,26 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   /* Run engine_launch() again */
   engine_launch(e, "tasks");
 
-  message("Ran downs");
+  message("Ran void downs");
+
+  /* Turn off all tasks. */
+  for (int i = 0; i < e->sched.nr_tasks; i++) {
+    struct task *t = &e->sched.tasks[i];
+    t->skip = 1;
+  }
+
+  /* Turn on all other downs. */
+  for (int i = 0; i < e->sched.nr_tasks; i++) {
+    struct task *t = &e->sched.tasks[i];
+    if (t->type == task_type_grav_down && t->ci->subtype != cell_subtype_void) {
+      scheduler_activate(&e->sched, t);
+    }
+  }
+
+  /* Run engine_launch() again */
+  engine_launch(e, "tasks");
+
+  message("Ran other downs");
 
   /* Turn off all tasks. */
   for (int i = 0; i < e->sched.nr_tasks; i++) {
