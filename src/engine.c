@@ -2422,7 +2422,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
 
     if (t->flags == -2) continue;
 
-    t->skip = 1;
+    t->implicit = 1;
 
     /* Get the cells */
     struct cell *ci = t->ci;
@@ -2449,8 +2449,8 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
                                     task_subtype_none, -2, 0, cpi, cpj);
               // scheduler_activate(&e->sched, new_t);
 
-              // /* Add an unlock from the implicit task */
-              // scheduler_addunlock(&e->sched, t, new_t);
+              /* Add an unlock from the implicit task */
+              scheduler_addunlock(&e->sched, t, new_t);
 
               /* Add unlocks to the original cells. */
               scheduler_addunlock(&e->sched, new_t, ci->grav.down_in);
