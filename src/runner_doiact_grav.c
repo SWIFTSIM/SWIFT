@@ -91,7 +91,7 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
       struct cell *cp = c->progeny[k];
 
       /* Do we have a progenitor with any active g-particles ? */
-      if (cp != NULL) {
+      if (cp != NULL && cell_is_active_gravity(cp, e)) {
 
 #ifdef SWIFT_DEBUG_CHECKS
         if (cp->grav.ti_old_multipole != e->ti_current)
