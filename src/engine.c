@@ -1949,53 +1949,54 @@ void engine_skip_drift(struct engine *e) {
 void engine_launch(struct engine *e, const char *call) {
   const ticks tic = getticks();
 
-  /* Split all MM tasks (sanity check) */
-  for (int k = 0; k < e->sched.nr_tasks; ++k) {
-    struct task *t = &e->sched.tasks[k];
-    if (t->type != task_type_grav_mm) continue;
-
-    if (t->flags == -2) continue;
-
-    t->skip = 1;
-
-    /* Get the cells */
-    struct cell *ci = t->ci;
-    struct cell *cj = t->cj;
-
-    /* Loop over all pairs of progenies */
-    for (int i = 0; i < 8; i++) {
-      if (ci->progeny[i] != NULL) {
-        for (int j = 0; j < 8; j++) {
-          if (cj->progeny[j] != NULL) {
-
-            struct cell *cpi = ci->progeny[i];
-            struct cell *cpj = cj->progeny[j];
-
-            const int flag = i * 8 + j;
-
-            /* Did we agree to use an M-M interaction here at the last rebuild?
-             */
-            if (t->flags & (1ULL << flag)) {
-              /* Make a direct MM task */
-              struct task *new_t =
-                  scheduler_addtask(&e->sched, task_type_grav_mm,
-                                    task_subtype_none, -2, 0, cpi, cpj);
-              scheduler_activate(&e->sched, new_t);
-
-              // /* Add an unlock from the implicit task */
-              // scheduler_addunlock(&e->sched, t, new_t);
-
-              /* Add unlocks to the original cells. */
-              scheduler_addunlock(&e->sched, new_t, ci->grav.down_in);
-              scheduler_addunlock(&e->sched, new_t, cj->grav.down_in);
-              scheduler_addunlock(&e->sched, ci->grav.init_out, new_t);
-              scheduler_addunlock(&e->sched, cj->grav.init_out, new_t);
-            }
-          }
-        }
-      }
-    }
-  }
+  // /* Split all MM tasks (sanity check) */
+  // for (int k = 0; k < e->sched.nr_tasks; ++k) {
+  //   struct task *t = &e->sched.tasks[k];
+  //   if (t->type != task_type_grav_mm) continue;
+  //
+  //   if (t->flags == -2) continue;
+  //
+  //   t->skip = 1;
+  //
+  //   /* Get the cells */
+  //   struct cell *ci = t->ci;
+  //   struct cell *cj = t->cj;
+  //
+  //   /* Loop over all pairs of progenies */
+  //   for (int i = 0; i < 8; i++) {
+  //     if (ci->progeny[i] != NULL) {
+  //       for (int j = 0; j < 8; j++) {
+  //         if (cj->progeny[j] != NULL) {
+  //
+  //           struct cell *cpi = ci->progeny[i];
+  //           struct cell *cpj = cj->progeny[j];
+  //
+  //           const int flag = i * 8 + j;
+  //
+  //           /* Did we agree to use an M-M interaction here at the last
+  //           rebuild?
+  //            */
+  //           if (t->flags & (1ULL << flag)) {
+  //             /* Make a direct MM task */
+  //             struct task *new_t =
+  //                 scheduler_addtask(&e->sched, task_type_grav_mm,
+  //                                   task_subtype_none, -2, 0, cpi, cpj);
+  //             // scheduler_activate(&e->sched, new_t);
+  //
+  //             // /* Add an unlock from the implicit task */
+  //             // scheduler_addunlock(&e->sched, t, new_t);
+  //
+  //             /* Add unlocks to the original cells. */
+  //             scheduler_addunlock(&e->sched, new_t, ci->grav.down_in);
+  //             scheduler_addunlock(&e->sched, new_t, cj->grav.down_in);
+  //             scheduler_addunlock(&e->sched, ci->grav.init_out, new_t);
+  //             scheduler_addunlock(&e->sched, cj->grav.init_out, new_t);
+  //           }
+  //         }
+  //       }
+  //     }
+  //   }
+  // }
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Re-set all the cell task counters to 0 */
@@ -2463,10 +2464,30 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   scheduler_write_cell_dependencies(&e->sched, e->verbose, e->step);
   if (e->nodeID == 0) scheduler_write_task_level(&e->sched, e->step);
 
+  /* Turn off all down and end tasks */
+  for (int i = 0; i < e->sched.nr_tasks) {
+    struct task *t = &e->sched.tasks[i];
+    if (t->type == task_type_grav_down || t->type == task_type_end_grav_force)
+      t->skip = 1;
+  }
+
   /* Run the 0th time-step */
   TIMER_TIC2;
   engine_launch(e, "tasks");
   TIMER_TOC2(timer_runners);
+
+  /* Now turn off all tasks that are not downs are ends, while skipping all
+   * others */
+  for (int i = 0; i < e->sched.nr_tasks) {
+    struct task *t = &e->sched.tasks[i];
+    if (t->type != task_type_grav_down && t->type != task_type_end_grav_force)
+      t->skip = 1;
+    else
+      t->skip = 0;
+  }
+
+  /* Run engine_launch() again */
+  engine_launch(e, "tasks");
 
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
   /* Run the brute-force hydro calculation for some parts */
