@@ -67,6 +67,11 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
   /* Some constants */
   const struct engine *e = r->e;
 
+  /* Start from the top */
+  if (timer) {
+    runner_do_grav_down(r, c->top, 0);
+  }
+
   TIMER_TIC;
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -117,7 +122,7 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
          * In a non-zoom simulation the down is defined at the super level,
          * so you can never hit another down when recursing. Only the
          * void->zoom cell tree can have two super levels.  */
-        if (cp->grav.super != cp) {
+        if (c->type == cp->type) {
           runner_do_grav_down(r, cp, 0);
         }
       }
