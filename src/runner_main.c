@@ -553,8 +553,7 @@ void *runner_main(void *data) {
           break;
 #endif
         case task_type_grav_down:
-          /* Call the recursive gravity function starting at the top. */
-          runner_do_grav_down(r, t->ci->top, 1);
+          runner_do_grav_down(r, t->ci, 1);
           break;
         case task_type_grav_long_range:
           runner_do_grav_long_range(r, t->ci, 1);
