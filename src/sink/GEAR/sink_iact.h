@@ -56,6 +56,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_sink(
   const float r = sqrtf(r2);
 
   /* if the distance is less than the cut off radius */
+  /* JD: right now, if we're not using a fixed cutoff, cut_off_radius=-1 and this will never do anything */
+  /* I think we really want the flexibility for cut_off_radius to not be a sink property at all. */
   if (r < cut_off_radius) {
 
     /*
@@ -105,6 +107,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_sink(
 
   const float r = sqrtf(r2);
 
+  /* JD: right now, if we're not using a fixed cutoff, cut_off_radius=-1 and this will never do anything */
   if (r < cut_off_radius) {
 
     float potential_i = pi->gpart->potential;
