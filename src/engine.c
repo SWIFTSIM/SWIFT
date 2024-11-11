@@ -2326,6 +2326,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
     struct task *t = &e->sched.tasks[i];
     t->skip = 1;
     t->wait = 0;
+    scheduler_activate(&e->sched, t);
   }
 
   /* Turn on all grav inits and unlock them. */
