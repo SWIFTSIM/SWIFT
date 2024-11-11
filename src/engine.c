@@ -23,6 +23,8 @@
  ******************************************************************************/
 
 /* Config parameters. */
+#include "task.h"
+
 #include <config.h>
 
 /* Some standard headers. */
@@ -2318,77 +2320,6 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
     csds_write_description(e->csds, e);
   }
 #endif
-
-  /* Turn off all grav downs and ends */
-  for (int i = 0; i < e->sched.nr_tasks; i++) {
-    struct task *t = &e->sched.tasks[i];
-    if (t->type == task_type_grav_down || t->type == task_type_end_grav_force) {
-      t->skip = 1;
-    }
-  }
-
-  /* Run the 0th time-step */
-  TIMER_TIC2;
-  engine_launch(e, "tasks");
-  TIMER_TOC2(timer_runners);
-
-  message("Ran grav interactions");
-
-  /* Turn off all tasks. */
-  for (int i = 0; i < e->sched.nr_tasks; i++) {
-    struct task *t = &e->sched.tasks[i];
-    t->skip = 1;
-  }
-
-  /* Turn on all void downs. */
-  int n_void_downs = 0;
-  for (int i = 0; i < e->sched.nr_tasks; i++) {
-    struct task *t = &e->sched.tasks[i];
-    if (t->type == task_type_grav_down && t->ci->subtype == cell_subtype_void) {
-      scheduler_activate(&e->sched, t);
-      n_void_downs++;
-    }
-  }
-
-  /* Run engine_launch() again */
-  engine_launch(e, "tasks");
-
-  message("Ran void downs (%d)", n_void_downs);
-
-  /* Turn off all tasks. */
-  for (int i = 0; i < e->sched.nr_tasks; i++) {
-    struct task *t = &e->sched.tasks[i];
-    t->skip = 1;
-  }
-
-  /* Turn on all other downs. */
-  for (int i = 0; i < e->sched.nr_tasks; i++) {
-    struct task *t = &e->sched.tasks[i];
-    if (t->type == task_type_grav_down && t->ci->subtype != cell_subtype_void) {
-      scheduler_activate(&e->sched, t);
-    }
-  }
-
-  /* Run engine_launch() again */
-  engine_launch(e, "tasks");
-
-  message("Ran other downs");
-
-  /* Turn off all tasks. */
-  for (int i = 0; i < e->sched.nr_tasks; i++) {
-    struct task *t = &e->sched.tasks[i];
-    t->skip = 1;
-  }
-
-  /* Turn on all ends. */
-  for (int i = 0; i < e->sched.nr_tasks; i++) {
-    struct task *t = &e->sched.tasks[i];
-    if (t->type == task_type_end_grav_force) {
-      scheduler_activate(&e->sched, t);
-    }
-  }
-
-  message("Ran ends");
 
   /* Now, launch the calculation */
   TIMER_TIC;
