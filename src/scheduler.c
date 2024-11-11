@@ -20,6 +20,8 @@
  ******************************************************************************/
 
 /* Config parameters. */
+#include "cell.h"
+
 #include <config.h>
 
 /* Some standard headers. */
@@ -1592,8 +1594,10 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
   t->flags = 0;
 
   /* Handle each individual splitting case. */
-  if ((ci->subtype == cell_subtype_void || ci->split) &&
-      (cj->subtype == cell_subtype_void || cj->split)) {
+  if ((ci->subtype == cell_subtype_void ||
+       (ci->split && cell_is_above_diff_grav_depth(ci))) &&
+      (cj->subtype == cell_subtype_void ||
+       (cj->split && cell_is_above_diff_grav_depth(cj)))) {
     for (int i = 0; i < 8; i++) {
       struct cell *cpi = ci->progeny[i];
       for (int j = 0; j < 8; j++) {
