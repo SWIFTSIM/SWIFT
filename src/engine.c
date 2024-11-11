@@ -2321,6 +2321,125 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   }
 #endif
 
+  /* Turn off all tasks. */
+  for (int i = 0; i < e->sched.nr_tasks; i++) {
+    struct task *t = &e->sched.tasks[i];
+    t->skip = 1;
+  }
+
+  /* Turn on all grav inits and unlock them. */
+  for (int i = 0; i < e->sched.nr_tasks; i++) {
+    struct task *t = &e->sched.tasks[i];
+    if (t->type == task_type_init_grav) {
+      t->skip = 0;
+      t->wait = 2;
+    }
+  }
+
+  /* Run the 0th time-step */
+  TIMER_TIC2;
+  engine_launch(e, "tasks");
+  TIMER_TOC2(timer_runners);
+
+  message("Ran grav inits");
+
+  /* Turn off all tasks. */
+  for (int i = 0; i < e->sched.nr_tasks; i++) {
+    struct task *t = &e->sched.tasks[i];
+    t->skip = 1;
+  }
+
+  /* Turn on all tasks that grav interations. */
+  for (int i = 0; i < e->sched.nr_tasks; i++) {
+    struct task *t = &e->sched.tasks[i];
+    if (t->subtype == task_subtype_grav) {
+      t->skip = 0;
+      t->wait = 2;
+    }
+  }
+
+  /* Run engine_launch() again */
+  engine_launch(e, "tasks");
+
+  message("Ran self and pair interactions");
+
+  /* Turn off all tasks. */
+  for (int i = 0; i < e->sched.nr_tasks; i++) {
+    struct task *t = &e->sched.tasks[i];
+    t->skip = 1;
+  }
+
+  /* Turn on all MM tasks. */
+  for (int i = 0; i < e->sched.nr_tasks; i++) {
+    struct task *t = &e->sched.tasks[i];
+    if (t->type == task_type_grav_mm) {
+      t->skip = 0;
+      t->wait = 2;
+    }
+  }
+
+  /* Run engine_launch() again */
+  engine_launch(e, "tasks");
+
+  message("Ran mms");
+
+  /* Turn off all tasks. */
+  for (int i = 0; i < e->sched.nr_tasks; i++) {
+    struct task *t = &e->sched.tasks[i];
+    t->skip = 1;
+  }
+
+  /* Turn on all long range interactions. */
+  for (int i = 0; i < e->sched.nr_tasks; i++) {
+    struct task *t = &e->sched.tasks[i];
+    if (t->type == task_type_grav_long_range) {
+      t->skip = 0;
+      t->wait = 2;
+    }
+  }
+
+  /* Run engine_launch() again */
+  engine_launch(e, "tasks");
+
+  message("Ran long range");
+
+  /* Turn off all tasks. */
+  for (int i = 0; i < e->sched.nr_tasks; i++) {
+    struct task *t = &e->sched.tasks[i];
+    t->skip = 1;
+  }
+
+  /* Turn on all downs. */
+  for (int i = 0; i < e->sched.nr_tasks; i++) {
+    struct task *t = &e->sched.tasks[i];
+    if (t->type == task_type_grav_down) {
+      t->skip = 0;
+      t->wait = 2;
+    }
+  }
+
+  /* Run engine_launch() again */
+  engine_launch(e, "tasks");
+
+  message("Ran downs");
+
+  /* Turn off all tasks. */
+  for (int i = 0; i < e->sched.nr_tasks; i++) {
+    struct task *t = &e->sched.tasks[i];
+    t->skip = 1;
+  }
+
+  /* Turn on all ends. */
+  for (int i = 0; i < e->sched.nr_tasks; i++) {
+    struct task *t = &e->sched.tasks[i];
+    if (t->type == task_type_end_grav_force) {
+      t->skip = 0;
+      t->wait = 2;
+    }
+  }
+
+  message("Ran ends");
+
   /* Now, launch the calculation */
   TIMER_TIC;
   engine_launch(e, "tasks");
