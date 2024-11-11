@@ -1984,6 +1984,30 @@ void engine_launch(struct engine *e, const char *call) {
               scheduler_activate(&e->sched, new_t);
 
               /* Add the unlocks we need */
+              if (cpi->grav.down_in == NULL) {
+                scheduler_addtask(&e->sched, task_type_grav_down_in,
+                                  task_subtype_none, -2, 0, cpi, NULL);
+                scheduler_addunlock(&e->sched, cpi->grav.down_in,
+                                    cpi->parent->grav.down_in);
+              }
+              if (cpj->grav.down_in == NULL) {
+                scheduler_addtask(&e->sched, task_type_grav_down_in,
+                                  task_subtype_none, -2, 0, cpj, NULL);
+                scheduler_addunlock(&e->sched, cpj->grav.down_in,
+                                    cpj->parent->grav.down_in);
+              }
+              if (cpi->grav.init_out == NULL) {
+                scheduler_addtask(&e->sched, task_type_grav_init_out,
+                                  task_subtype_none, -2, 0, cpi, NULL);
+                scheduler_addunlock(&e->sched, cpi->parent->grav.init_out,
+                                    cpi->grav.init_out);
+              }
+              if (cpj->grav.init_out == NULL) {
+                scheduler_addtask(&e->sched, task_type_grav_init_out,
+                                  task_subtype_none, -2, 0, cpj, NULL);
+                scheduler_addunlock(&e->sched, cpj->parent->grav.init_out,
+                                    cpj->grav.init_out);
+              }
               scheduler_addunlock(&e->sched, new_t, cpi->grav.down_in);
               scheduler_addunlock(&e->sched, new_t, cpj->grav.down_in);
               scheduler_addunlock(&e->sched, cpi->grav.init_out, new_t);
