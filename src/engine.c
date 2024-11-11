@@ -2324,7 +2324,6 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   /* Turn off all tasks and remove all automatic dependencies. */
   for (int i = 0; i < e->sched.nr_tasks; i++) {
     struct task *t = &e->sched.tasks[i];
-    t->wait = 0;
     t->skip = 1;
   }
 
