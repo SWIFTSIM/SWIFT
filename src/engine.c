@@ -1956,8 +1956,7 @@ void engine_launch(struct engine *e, const char *call) {
 
     if (t->flags == -2) continue;
 
-    /* Make the original task implicit */
-    t->implicit = 1;
+    t->skip = 1;
 
     /* Get the cells */
     struct cell *ci = t->ci;
