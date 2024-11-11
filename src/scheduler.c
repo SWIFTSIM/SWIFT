@@ -1592,7 +1592,8 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
   t->flags = 0;
 
   /* Handle each individual splitting case. */
-  if (ci->subtype == cell_subtype_void && cj->subtype == cell_subtype_void) {
+  if ((ci->subtype == cell_subtype_void || ci->split) &&
+      (cj->subtype == cell_subtype_void || cj->split)) {
     for (int i = 0; i < 8; i++) {
       struct cell *cpi = ci->progeny[i];
       for (int j = 0; j < 8; j++) {
