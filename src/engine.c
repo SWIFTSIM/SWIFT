@@ -1978,16 +1978,16 @@ void engine_launch(struct engine *e, const char *call) {
              */
             if (t->flags & (1ULL << flag)) {
               /* Make a direct MM task */
-              struct task *t =
+              struct task *new_t =
                   scheduler_addtask(&e->sched, task_type_grav_mm,
                                     task_subtype_none, -2, 0, cpi, cpj);
-              scheduler_activate(&e->sched, t);
+              scheduler_activate(&e->sched, new_t);
 
               /* Add the unlocks we need */
-              scheduler_add_unlock(&e->sched, t, cpi->grav.down_in);
-              scheduler_add_unlock(&e->sched, t, cpj->grav.down_in);
-              scheduler_add_unlock(&e->sched, cpi->grav.init_out, t);
-              scheduler_add_unlock(&e->sched, cpj->grav.init_out, t);
+              scheduler_add_unlock(&e->sched, new_t, cpi->grav.down_in);
+              scheduler_add_unlock(&e->sched, new_t, cpj->grav.down_in);
+              scheduler_add_unlock(&e->sched, cpi->grav.init_out, new_t);
+              scheduler_add_unlock(&e->sched, cpj->grav.init_out, new_t);
             }
           }
         }
