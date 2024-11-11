@@ -2466,18 +2466,53 @@ void engine_link_gravity_tasks(struct engine *e) {
     /* Otherwise M-M interaction? */
     else if (t_type == task_type_grav_mm) {
 
-      if (ci_nodeID == nodeID) {
+      /* MM tasks need to be linked at the progeny level where the interaction
+       * is happening. */
 
-        /* init -----> gravity --> grav_down */
-        scheduler_addunlock(sched, ci_parent->grav.init_out, t);
-        scheduler_addunlock(sched, t, ci_parent->grav.down_in);
-      }
-      if (cj_nodeID == nodeID) {
+      if (t->flags != -2) {
+        for (int i = 0; i < 8; i++) {
+          struct cell *cpi = ci->progeny[i];
+          if (cpi == NULL) continue;
+          for (int j = 0; j < 8; j++) {
+            struct cell *cpj = cj->progeny[j];
+            if (cpj == NULL) continue;
 
-        /* init -----> gravity --> grav_down */
-        if (ci_parent != cj_parent) { /* Avoid double unlock */
-          scheduler_addunlock(sched, cj_parent->grav.init_out, t);
-          scheduler_addunlock(sched, t, cj_parent->grav.down_in);
+            const int flag = i * 8 + j;
+
+            if (!(t->flags & (1ULL << flag))) continue;
+
+            /* Link the MM task to the progeny */
+            if (ci_nodeID == nodeID) {
+
+              /* init -----> gravity --> grav_down */
+              scheduler_addunlock(sched, cpi->grav.init_out, t);
+              scheduler_addunlock(sched, t, cpi->grav.down_in);
+            }
+            if (cj_nodeID == nodeID) {
+
+              /* init -----> gravity --> grav_down */
+              if (ci_parent != cj_parent) { /* Avoid double unlock */
+                scheduler_addunlock(sched, cpj->grav.init_out, t);
+                scheduler_addunlock(sched, t, cpj->grav.down_in);
+              }
+            }
+          }
+        }
+      } else {
+
+        if (ci_nodeID == nodeID) {
+
+          /* init -----> gravity --> grav_down */
+          scheduler_addunlock(sched, ci->grav.init_out, t);
+          scheduler_addunlock(sched, t, ci->grav.down_in);
+        }
+        if (cj_nodeID == nodeID) {
+
+          /* init -----> gravity --> grav_down */
+          if (ci_parent != cj_parent) { /* Avoid double unlock */
+            scheduler_addunlock(sched, cj->grav.init_out, t);
+            scheduler_addunlock(sched, t, cj->grav.down_in);
+          }
         }
       }
     }
