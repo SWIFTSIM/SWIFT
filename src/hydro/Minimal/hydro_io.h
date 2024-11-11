@@ -184,6 +184,20 @@ INLINE static void convert_B(const struct engine* e, const struct part* p,
   ret[2] = xp->B_over_rho_full[2] * p->rho;
 }
 
+INLINE static void convert_Psi(const struct engine* e, const struct part* p,
+                             const struct xpart* xp, float* ret) {
+
+  /* TODO: Do we want a drift here? */
+  const float c_s = p->force.soundspeed;
+  const float v_A = p->Alfven_speed;
+
+  /* Magnetosonic speed (Price 2018, eq. 180) */
+  const float c_h = sqrtf(c_s * c_s + v_A * v_A);
+
+  ret[0] = p->Dedner_Psi_over_c * c_h;
+}
+
+
 /* MATTHIEU END ----------------------------------------- */
 
 /**
@@ -199,7 +213,7 @@ INLINE static void hydro_write_particles(const struct part* parts,
                                          struct io_props* list,
                                          int* num_fields) {
 
-  *num_fields = 13;
+  *num_fields = 17;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_part(
@@ -247,6 +261,8 @@ INLINE static void hydro_write_particles(const struct part* parts,
 
   /* MATTHIEU START --------------------------------------- */
 
+  // TODO: Cosmo terms!!!
+  
   list[10] = io_make_output_field_convert_part(
       "MagneticFluxDensities", FLOAT, 3, UNIT_CONV_MAGNETIC_FIELD,
       -1.5f * hydro_gamma, parts, xparts, convert_B,
@@ -262,6 +278,27 @@ INLINE static void hydro_write_particles(const struct part* parts,
                            -1.5f * hydro_gamma - 1.f, parts, curl_B,
                            "co-moving magnetic field curls of the particles");
 
+  list[13] =
+      io_make_output_field("DednerDivB", FLOAT, 1, UNIT_CONV_MAGNETIC_CURL,
+                           -1.5f * hydro_gamma - 1.f, parts, Dedner_div_B,
+                           "Div B used for Dedner evolution");
+
+  list[14] =
+      io_make_output_field("DednerDivV", FLOAT, 1, UNIT_CONV_FREQUENCY,
+                           -1.5f * hydro_gamma - 1.f, parts, Dedner_div_v,
+                           "Div v used for Dedner evolution");
+  list[15] =
+      io_make_output_field("VelocityDivergences", FLOAT, 1, UNIT_CONV_FREQUENCY,
+                           -1.5f * hydro_gamma - 1.f, parts, Dedner_div_v,
+                           "Div v in Balsara");
+  list[16] =
+      io_make_output_field_convert_part("DednerScalars", FLOAT, 1,
+					UNIT_CONV_MAGNETIC_CURL,
+					-1.5f * hydro_gamma - 1.f, parts, xparts, convert_Psi,
+					"Dedner scalars");
+
+
+  
   /* MATTHIEU END ----------------------------------------- */
 }
 
