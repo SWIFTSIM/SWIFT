@@ -2018,6 +2018,9 @@ void runner_dopair_grav_mm_progenies(struct runner *r, const long long flags,
 
           const int flag = i * 8 + j;
 
+          if (cpi->grav.super == NULL || cpj->grav.super == NULL)
+            message("Super cell not set in M-M interaction.");
+
           /* Did we agree to use an M-M interaction here at the last rebuild? */
           if (flags & (1ULL << flag)) runner_dopair_grav_mm(r, cpi, cpj);
         }
