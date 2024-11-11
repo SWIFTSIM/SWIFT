@@ -2635,11 +2635,11 @@ void scheduler_rewait_mapper(void *map_data, int num_elements,
             (1LL << (8 * sizeof(t->wait) - 1)) - 1);
 #endif
 
-    /* Sets the waits of the dependances */
-    for (int k = 0; k < t->nr_unlock_tasks; k++) {
-      struct task *u = t->unlock_tasks[k];
-      atomic_inc(&u->wait);
-    }
+    // /* Sets the waits of the dependances */
+    // for (int k = 0; k < t->nr_unlock_tasks; k++) {
+    //   struct task *u = t->unlock_tasks[k];
+    //   atomic_inc(&u->wait);
+    // }
   }
 }
 
@@ -2664,14 +2664,13 @@ void scheduler_enqueue_mapper(void *map_data, int num_elements,
  */
 void scheduler_start(struct scheduler *s) {
 
-  // /* Re-wait the tasks. */
-  // if (s->active_count > 1000) {
-  //   threadpool_map(s->threadpool, scheduler_rewait_mapper, s->tid_active,
-  //                  s->active_count, sizeof(int), threadpool_auto_chunk_size,
-  //                  s);
-  // } else {
-  //   scheduler_rewait_mapper(s->tid_active, s->active_count, s);
-  // }
+  /* Re-wait the tasks. */
+  if (s->active_count > 1000) {
+    threadpool_map(s->threadpool, scheduler_rewait_mapper, s->tid_active,
+                   s->active_count, sizeof(int), threadpool_auto_chunk_size, s);
+  } else {
+    scheduler_rewait_mapper(s->tid_active, s->active_count, s);
+  }
 
   /* Loop over the tasks and enqueue whoever is ready. */
   if (s->active_count > 1000) {
