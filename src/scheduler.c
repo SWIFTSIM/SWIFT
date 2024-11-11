@@ -1781,7 +1781,7 @@ static void zoom_scheduler_splittask_gravity_void_self(struct task *t,
   }
 
   /* Now we're not in a void cell we can just call the normal splitter.  */
-  scheduler_splittask_gravity(t, s);
+  // scheduler_splittask_gravity(t, s);
 }
 
 /**
