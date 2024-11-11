@@ -234,6 +234,8 @@ __attribute__((always_inline)) INLINE static int cell_is_active_gravity(
         e->ti_current * e->time_base, e->cosmology->a);
 #endif
 
+  return 1;
+
   return (c->grav.ti_end_min == e->ti_current);
 }
 
@@ -246,6 +248,8 @@ __attribute__((always_inline)) INLINE static int cell_is_active_gravity(
  */
 __attribute__((always_inline)) INLINE static int cell_is_active_gravity_mm(
     const struct cell *c, const struct engine *e) {
+
+  return 1;
 
   return (c->grav.ti_end_min == e->ti_current);
 }
