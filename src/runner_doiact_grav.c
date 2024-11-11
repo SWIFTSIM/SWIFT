@@ -128,7 +128,7 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
     /* Leaf case */
 
     /* We can abort early if no interactions via multipole happened */
-    if (!c->grav.multipole->pot.interacted) return;
+    // if (!c->grav.multipole->pot.interacted) return;
 
     if (!cell_are_gpart_drifted(c, e)) error("Un-drifted gparts");
 
