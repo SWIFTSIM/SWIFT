@@ -1406,7 +1406,7 @@ int cell_activate_subcell_grav_tasks(struct cell *restrict ci,
 
       if (ri_max > rj_max) {
 
-        if (ci->split) {
+        if (ci->split || ci->subtype == cell_subtype_void) {
 
           /* Loop over ci's children, activate what is needed and
            * collect the number of cells that have been fully processed */
@@ -1427,7 +1427,7 @@ int cell_activate_subcell_grav_tasks(struct cell *restrict ci,
 
           return cell_done;
 
-        } else if (cj->split) {
+        } else if (cj->split || cj->subtype == cell_subtype_void) {
 
           /* Loop over cj's children, activate what is needed and
            * collect the number of cells that have been fully processed */
@@ -1457,7 +1457,7 @@ int cell_activate_subcell_grav_tasks(struct cell *restrict ci,
 
       } else if (rj_max >= ri_max) {
 
-        if (cj->split) {
+        if (cj->split || cj->subtype == cell_subtype_void) {
 
           /* Loop over cj's children, activate what is needed and
            * collect the number of cells that have been fully processed */
@@ -1478,7 +1478,7 @@ int cell_activate_subcell_grav_tasks(struct cell *restrict ci,
 
           return cell_done;
 
-        } else if (ci->split) {
+        } else if (ci->split || ci->subtype == cell_subtype_void) {
 
           /* Loop over ci's children, activate what is needed and
            * collect the number of cells that have been fully processed */
