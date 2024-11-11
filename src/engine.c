@@ -1988,6 +1988,8 @@ void engine_launch(struct engine *e, const char *call) {
               /* Add unlocks to the original cells. */
               scheduler_addunlock(&e->sched, new_t, ci->grav.down_in);
               scheduler_addunlock(&e->sched, new_t, cj->grav.down_in);
+              scheduler_addunlock(&e->sched, ci->grav.init_out, new_t);
+              scheduler_addunlock(&e->sched, cj->grav.init_out, new_t);
             }
           }
         }
