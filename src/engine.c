@@ -2331,7 +2331,6 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   for (int i = 0; i < e->sched.nr_tasks; i++) {
     struct task *t = &e->sched.tasks[i];
     if (t->type == task_type_init_grav) {
-      t->skip = 0;
       scheduler_activate(&e->sched, t);
     }
   }
