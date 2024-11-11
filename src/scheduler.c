@@ -2635,11 +2635,11 @@ void scheduler_rewait_mapper(void *map_data, int num_elements,
             (1LL << (8 * sizeof(t->wait) - 1)) - 1);
 #endif
 
-    // /* Sets the waits of the dependances */
-    // for (int k = 0; k < t->nr_unlock_tasks; k++) {
-    //   struct task *u = t->unlock_tasks[k];
-    //   atomic_inc(&u->wait);
-    // }
+    /* Sets the waits of the dependances */
+    for (int k = 0; k < t->nr_unlock_tasks; k++) {
+      struct task *u = t->unlock_tasks[k];
+      atomic_inc(&u->wait);
+    }
   }
 }
 
