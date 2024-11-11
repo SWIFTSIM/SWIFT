@@ -2465,7 +2465,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   if (e->nodeID == 0) scheduler_write_task_level(&e->sched, e->step);
 
   /* Turn off all down and end tasks */
-  for (int i = 0; i < e->sched.nr_tasks) {
+  for (int i = 0; i < e->sched.nr_tasks; i++) {
     struct task *t = &e->sched.tasks[i];
     if (t->type == task_type_grav_down || t->type == task_type_end_grav_force)
       t->skip = 1;
@@ -2478,7 +2478,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
 
   /* Now turn off all tasks that are not downs are ends, while skipping all
    * others */
-  for (int i = 0; i < e->sched.nr_tasks) {
+  for (int i = 0; i < e->sched.nr_tasks; i++) {
     struct task *t = &e->sched.tasks[i];
     if (t->type != task_type_grav_down && t->type != task_type_end_grav_force)
       t->skip = 1;
