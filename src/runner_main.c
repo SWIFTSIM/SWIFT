@@ -563,7 +563,7 @@ void *runner_main(void *data) {
            * a combination of their progeny. */
           /* TODO: do this better, surely we can define them based on progeny
            * and limit the number of MM tasks!? */
-          if (t->flags == -2) {
+          if (t->flags == -2 || t->flags == -1) {
             runner_dopair_grav_mm(r, t->ci, t->cj);
           } else {
             runner_dopair_grav_mm_progenies(r, t->flags, t->ci, t->cj);
