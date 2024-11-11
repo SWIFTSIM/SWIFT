@@ -1,9 +1,9 @@
 #!/bin/bash
 
-if [ ! -e glassCube_128.hdf5 ]
+if [ ! -e glassCube_32.hdf5 ]
 then
     echo "Generating initial conditions for the magnetised cloud collapse example..."
-    ./getGlass.sh 
+    ./getGlass.sh
 fi
 
 # Generate the initial conditions if they are not present.
