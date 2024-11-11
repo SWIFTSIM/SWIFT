@@ -23,8 +23,8 @@ from numpy import *
 from scipy.spatial.transform import Rotation
 
 # Constants
-G = 4.300918e-03
-mu0 = 1.950089e-06
+G = 6.67430e-8
+mu0 = 1.25663706127e-1
 c1 = 0.53
 
 # Parameters (taken from Hopkins 2016)

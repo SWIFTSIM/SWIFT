@@ -4,6 +4,16 @@ Magnetised Cloud Collapse
 
 Test case for investigation of coupling of MHD to gravity.
 
+The test has been ivestigated with the Direct Induction (Price 2018)
+formulation of MHD, and default parameters in this directory have been
+chosen to best couple with a Wendland-C2 kernel. Note the need for
+a barotropic equation of state and an adiabatic index of 4/3. We
+thus suggest you compile SWIFT as :
+
+./configure --with-spmhd=direct-induction --with-kernel=wendland-C2 --with-equation-of-state=barotropic-gas --with-adiabatic-index=4/3
+
+to run this test.
+
 Generate ICs with makeIC.py. You can provide as a command line
 argument the particle number on a side of the cube out of which
 we carve the collapsing spherical cloud (all other attributes
