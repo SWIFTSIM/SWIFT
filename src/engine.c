@@ -1982,8 +1982,8 @@ void engine_launch(struct engine *e, const char *call) {
                                     task_subtype_none, -2, 0, cpi, cpj);
               scheduler_activate(&e->sched, new_t);
 
-              /* Add an unlock from the implicit task */
-              scheduler_addunlock(&e->sched, t, new_t);
+              // /* Add an unlock from the implicit task */
+              // scheduler_addunlock(&e->sched, t, new_t);
 
               /* Add unlocks to the original cells. */
               scheduler_addunlock(&e->sched, new_t, ci->grav.down_in);
