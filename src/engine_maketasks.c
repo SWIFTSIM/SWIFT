@@ -1338,7 +1338,7 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
       (e->policy & engine_policy_stars) && !(e->policy & engine_policy_hydro);
 
   /* Are we in a super-cell ? */
-  if (c->grav.super == c) {
+  if (c->grav.top == c) {
 
     /* Local tasks only... */
     if (c->nodeID == e->nodeID) {
