@@ -1997,13 +1997,13 @@ void engine_launch(struct engine *e, const char *call) {
                                     cpj->parent->grav.down_in);
               }
               if (cpi->grav.init_out == NULL) {
-                scheduler_addtask(&e->sched, task_type_grav_init_out,
+                scheduler_addtask(&e->sched, task_type_init_grav_out,
                                   task_subtype_none, -2, 0, cpi, NULL);
                 scheduler_addunlock(&e->sched, cpi->parent->grav.init_out,
                                     cpi->grav.init_out);
               }
               if (cpj->grav.init_out == NULL) {
-                scheduler_addtask(&e->sched, task_type_grav_init_out,
+                scheduler_addtask(&e->sched, task_type_init_grav_out,
                                   task_subtype_none, -2, 0, cpj, NULL);
                 scheduler_addunlock(&e->sched, cpj->parent->grav.init_out,
                                     cpj->grav.init_out);
