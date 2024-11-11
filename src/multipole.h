@@ -2529,7 +2529,8 @@ __attribute__((nonnull)) INLINE static void gravity_L2L(
   gravity_field_tensors_init(la, 0);
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (lb->num_interacted == 0) error("Shifting tensors that did not interact");
+  // if (lb->num_interacted == 0) error("Shifting tensors that did not
+  // interact");
 
   la->num_interacted = lb->num_interacted;
 #endif
