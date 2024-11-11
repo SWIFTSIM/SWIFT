@@ -67,12 +67,7 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
   /* Some constants */
   const struct engine *e = r->e;
 
-  if (c->subtype == cell_subtype_void) return;
-
-  if (c->top->void_parent != NULL && timer) {
-    runner_do_grav_down(r, c->top, 0);
-    return;
-  }
+  if (c->type == cell_type_zoom && timer) return;
 
   TIMER_TIC;
 
