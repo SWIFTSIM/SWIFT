@@ -1547,18 +1547,19 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
  *
  * This will split in several different ways depending on what types of cells
  * are being handled:
- * - If both cells are void cells, we will split the task into all the
- *  progeny pairs.
- * - If only one cell we will split the task into all the pairs of void
- *  progeny and the (unsplit) non-void cell.
+ * - If both cells are void cells, we will split the task on both sides of
+ *   the pair.
+ * - If both cells are split we will split the task on both sides of the pair.
+ * - If only one cell is a void cell then we will split the task on the side
+ *   of the void cell. This is because we can't leave the task on a void cell.
  *
  * Once the zoom region is reached scheduler_splittask_gravity is called to
  * handle any further normal splitting that is needed.
  *
- * If a grav_mm task can be used instead of a pair task it will be created but
- * unlike scheduler_splittask_gravity the new grav_mm task handles only two
- * cells and not a collection. TODO: improve this in the future to handle
- * a collection of progeny.
+ * If a grav_mm task can be used instead of a pair task it will be created,
+ * for two splitable cells this will create a task that handles all progeny.
+ * In the case where there is only one splitable cell we create a grav_mm that
+ * handles a direct pair between the splitable cell and the unsplitable cell.
  *
  * @param t The #task
  * @param s The #scheduler we are working in.
