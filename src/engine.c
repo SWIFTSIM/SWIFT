@@ -2327,17 +2327,6 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
     }
   }
 
-  /* Ensure all void tasks are active */
-  for (int i = 0; i < e->sched.nr_tasks; i++) {
-    struct task *t = &e->sched.tasks[i];
-    if (!(t->type == task_type_grav_down ||
-          t->type == task_type_end_grav_force) &&
-        ((t->ci != NULL && t->ci->subtype == cell_subtype_void) ||
-         (t->cj != NULL && t->cj->subtype == cell_subtype_void))) {
-      scheduler_activate(&e->sched, t);
-    }
-  }
-
   /* Run the 0th time-step */
   TIMER_TIC2;
   engine_launch(e, "tasks");
