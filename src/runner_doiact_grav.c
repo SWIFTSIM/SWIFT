@@ -67,11 +67,6 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
   /* Some constants */
   const struct engine *e = r->e;
 
-  /* Start from the top */
-  if (timer) {
-    runner_do_grav_down(r, c->top, 0);
-  }
-
   TIMER_TIC;
 
 #ifdef SWIFT_DEBUG_CHECKS
