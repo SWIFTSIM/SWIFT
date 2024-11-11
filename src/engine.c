@@ -2415,60 +2415,19 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   scheduler_write_cell_dependencies(&e->sched, e->verbose, e->step);
   if (e->nodeID == 0) scheduler_write_task_level(&e->sched, e->step);
 
-  /* Split all MM tasks (sanity check) */
-  for (int k = 0; k < e->sched.nr_tasks; ++k) {
-    struct task *t = &e->sched.tasks[k];
-    if (t->type != task_type_grav_mm) continue;
-
-    if (t->flags == -2) continue;
-
-    t->implicit = 1;
-
-    /* Get the cells */
-    struct cell *ci = t->ci;
-    struct cell *cj = t->cj;
-
-    /* Loop over all pairs of progenies */
-    for (int i = 0; i < 8; i++) {
-      if (ci->progeny[i] != NULL) {
-        for (int j = 0; j < 8; j++) {
-          if (cj->progeny[j] != NULL) {
-
-            struct cell *cpi = ci->progeny[i];
-            struct cell *cpj = cj->progeny[j];
-
-            const int flag = i * 8 + j;
-
-            /* Did we agree to use an M-M interaction here at the last
-            rebuild?
-             */
-            if (t->flags & (1ULL << flag)) {
-              /* Make a direct MM task */
-              struct task *new_t =
-                  scheduler_addtask(&e->sched, task_type_grav_mm,
-                                    task_subtype_none, -2, 0, cpi, cpj);
-              // scheduler_activate(&e->sched, new_t);
-
-              /* Add an unlock from the implicit task */
-              scheduler_addunlock(&e->sched, t, new_t);
-
-              /* Add unlocks to the original cells. */
-              scheduler_addunlock(&e->sched, new_t, ci->grav.down_in);
-              scheduler_addunlock(&e->sched, new_t, cj->grav.down_in);
-              scheduler_addunlock(&e->sched, ci->grav.init_out, new_t);
-              scheduler_addunlock(&e->sched, cj->grav.init_out, new_t);
-            }
-          }
-        }
-      }
-    }
-  }
-
-  /* Turn off all down and end tasks */
+  /* Turn off all tasks. */
   for (int i = 0; i < e->sched.nr_tasks; i++) {
     struct task *t = &e->sched.tasks[i];
-    if (t->type == task_type_grav_down || t->type == task_type_end_grav_force)
-      t->skip = 1;
+    t->skip = 1;
+  }
+
+  /* Turn on all grav inits and unlock them. */
+  for (int i = 0; i < e->sched.nr_tasks; i++) {
+    struct task *t = &e->sched.tasks[i];
+    if (t->type == task_type_grav_init) {
+      t->skip = 0;
+      t->wait = 2;
+    }
   }
 
   /* Run the 0th time-step */
@@ -2476,18 +2435,104 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   engine_launch(e, "tasks");
   TIMER_TOC2(timer_runners);
 
-  /* Now turn off all tasks that are not downs are ends, while skipping all
-   * others */
+  message("Ran grav inits");
+
+  /* Turn off all tasks. */
   for (int i = 0; i < e->sched.nr_tasks; i++) {
     struct task *t = &e->sched.tasks[i];
-    if (t->type != task_type_grav_down && t->type != task_type_end_grav_force)
-      t->skip = 1;
-    else
+    t->skip = 1;
+  }
+
+  /* Turn on all tasks that grav interations. */
+  for (int i = 0; i < e->sched.nr_tasks; i++) {
+    struct task *t = &e->sched.tasks[i];
+    if (t->subtype == task_subtype_grav) {
       t->skip = 0;
+      t->wait = 2;
+    }
   }
 
   /* Run engine_launch() again */
   engine_launch(e, "tasks");
+
+  message("Ran self and pair interactions");
+
+  /* Turn off all tasks. */
+  for (int i = 0; i < e->sched.nr_tasks; i++) {
+    struct task *t = &e->sched.tasks[i];
+    t->skip = 1;
+  }
+
+  /* Turn on all MM tasks. */
+  for (int i = 0; i < e->sched.nr_tasks; i++) {
+    struct task *t = &e->sched.tasks[i];
+    if (t->type == task_type_grav_mm) {
+      t->skip = 0;
+      t->wait = 2;
+    }
+  }
+
+  /* Run engine_launch() again */
+  engine_launch(e, "tasks");
+
+  message("Ran mms");
+
+  /* Turn off all tasks. */
+  for (int i = 0; i < e->sched.nr_tasks; i++) {
+    struct task *t = &e->sched.tasks[i];
+    t->skip = 1;
+  }
+
+  /* Turn on all long range interactions. */
+  for (int i = 0; i < e->sched.nr_tasks; i++) {
+    struct task *t = &e->sched.tasks[i];
+    if (t->type == task_type_grav_long_range) {
+      t->skip = 0;
+      t->wait = 2;
+    }
+  }
+
+  /* Run engine_launch() again */
+  engine_launch(e, "tasks");
+
+  message("Ran long range");
+
+  /* Turn off all tasks. */
+  for (int i = 0; i < e->sched.nr_tasks; i++) {
+    struct task *t = &e->sched.tasks[i];
+    t->skip = 1;
+  }
+
+  /* Turn on all downs. */
+  for (int i = 0; i < e->sched.nr_tasks; i++) {
+    struct task *t = &e->sched.tasks[i];
+    if (t->type == task_type_grav_down) {
+      t->skip = 0;
+      t->wait = 2;
+    }
+  }
+
+  /* Run engine_launch() again */
+  engine_launch(e, "tasks");
+
+  message("Ran downs");
+
+  /* Turn off all tasks. */
+  for (int i = 0; i < e->sched.nr_tasks; i++) {
+    struct task *t = &e->sched.tasks[i];
+    t->skip = 1;
+  }
+
+  /* Turn on all ends. */
+  for (int i = 0; i < e->sched.nr_tasks; i++) {
+    struct task *t = &e->sched.tasks[i];
+    if (t->type == task_type_end_grav_force) {
+      t->skip = 0;
+      t->wait = 2;
+    }
+  }
+
+  message("Ran ends");
 
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
   /* Run the brute-force hydro calculation for some parts */
