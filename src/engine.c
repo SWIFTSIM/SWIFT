@@ -1982,6 +1982,12 @@ void engine_launch(struct engine *e, const char *call) {
                   scheduler_addtask(&e->sched, task_type_grav_mm,
                                     task_subtype_none, -2, 0, cpi, cpj);
               scheduler_activate(&e->sched, t);
+
+              /* Add the unlocks we need */
+              scheduler_add_unlock(&e->sched, t, cpi->grav.down_in);
+              scheduler_add_unlock(&e->sched, t, cpj->grav.down_in);
+              scheduler_add_unlock(&e->sched, cpi->grav.init_out, t);
+              scheduler_add_unlock(&e->sched, cpj->grav.init_out, t);
             }
           }
         }
