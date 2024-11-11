@@ -2008,14 +2008,16 @@ void runner_dopair_grav_mm_progenies(struct runner *r, const long long flags,
   runner_clear_grav_flags(cj, e);
 
   if (ci->subtype == cell_subtype_void || cj->subtype == cell_subtype_void) {
-    message("Void cell in grav_mm_progenies (flag=%lld) interacting:", flags);
+    int count = 0;
     for (int i = 0; i < 8; i++) {
       for (int j = 0; j < 8; j++) {
         if (flags & (1ULL << (i * 8 + j))) {
-          message("  %d %d", i, j);
+          count++;
         }
       }
     }
+    message("Void cell in grav_mm_progenies (flag=%lld) interacting %d", flags,
+            count);
   }
 
   /* Loop over all pairs of progenies */
