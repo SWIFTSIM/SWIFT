@@ -979,7 +979,7 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
 
   /* Decay time (Price 2018, eq. 191) */
   const float sigma_c = 1.f;
-  const float tau_c = p->h * kernel_gamma / (sigma_c * c_h);
+  const float tau_c = p->h / (sigma_c * c_h);
 
   if (props->mhd_with_Dedner) {
 
