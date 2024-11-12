@@ -20,6 +20,8 @@
  ******************************************************************************/
 
 /* Config parameters. */
+#include "task.h"
+
 #include <config.h>
 
 /* MPI headers. */
@@ -566,7 +568,8 @@ void *runner_main(void *data) {
           } else if (t->subtype == task_subtype_progeny) {
             runner_dopair_grav_mm_progenies(r, t->flags, t->ci, t->cj);
           } else {
-            error("Unknown/invalid task subtype (%d).", t->subtype);
+            error("Unknown/invalid task subtype (%s).",
+                  subtaskID_names[t->subtype]);
           }
           break;
         case task_type_cooling:
