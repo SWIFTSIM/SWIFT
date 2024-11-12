@@ -1408,6 +1408,9 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
           if (c->top->void_parent->grav.super != NULL) {
 
             /* zoom.init -> void.init */
+            /* This dependency is needed to ensure no MM tasks at the void
+             * level that interact zoom cells run before the zoom multipoles
+             * are ready. */
             scheduler_addunlock(s, c->grav.init_out,
                                 c->top->void_parent->grav.init_out);
 
