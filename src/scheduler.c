@@ -1492,7 +1492,7 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
           /* Turn the task into a M-M task that will take care of all the
            * progeny pairs */
           t->type = task_type_grav_mm;
-          t->subtype = task_subtype_none;
+          t->subtype = task_subtype_direct;
           t->flags = 0;
 
           /* Make a task for every other pair of progeny */
