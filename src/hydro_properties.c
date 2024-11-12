@@ -234,6 +234,8 @@ void hydro_props_init(struct hydro_props *p,
   p->mhd_Dedner_parabolic_factor =
       parser_get_opt_param_float(params, "MHD:parabolic_dedner", 1);
 
+  p->with_Balsara = parser_get_opt_param_int(params, "MHD:with_Balsara", 1);
+
   /* MATTHIEU END ----------------------------------------- */
 }
 

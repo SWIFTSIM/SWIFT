@@ -784,7 +784,16 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   p->force.f = grad_h_term;
   p->force.pressure = pressure;
   p->force.soundspeed = soundspeed;
-  p->force.balsara = 0 * balsara;
+
+  /* MATTHIEU START --------------------------------------- */
+
+  if (hydro_props->with_Balsara) {
+    p->force.balsara = balsara;
+  } else {
+    p->force.balsara = hydro_props->viscosity.alpha;
+  }
+
+  /* MATTHIEU END ----------------------------------------- */
 }
 
 /**
