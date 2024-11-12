@@ -20,7 +20,7 @@ fileOutputName = "Monopole.hdf5"
 
 ###---------------------------###
 
-glass = h5py.File("FCCglassCube_48.hdf5", "r")
+glass = h5py.File("glassCube_32.hdf5", "r")
 
 pos = glass["/PartType0/Coordinates"][:, :]
 h = glass["/PartType0/SmoothingLength"][:]
@@ -33,8 +33,8 @@ lx = 2.0
 ly = 2.0
 lz = 2.0
 
-lx_c = r_0  # lx/2
-ly_c = r_0  # ly/2
+lx_c = r_0
+ly_c = r_0
 lz_c = lz / 2
 
 pos[:, 0] = pos[:, 0] * lx
@@ -48,7 +48,8 @@ vol = lx * ly * lz
 
 rot = np.sqrt(
     (pos[:, 0] - lx_c) ** 2 + (pos[:, 1] - ly_c) ** 2
-)  # + (pos[:,2]-lz_c)**2)
+)
+
 v = np.zeros((N, 3))
 B = np.zeros((N, 3))
 ids = np.linspace(1, N, N)
@@ -70,7 +71,7 @@ fileOutput = h5py.File(fileOutputName, "w")
 
 # Header
 grp = fileOutput.create_group("/Header")
-grp.attrs["BoxSize"] = [lx, ly, lz]  #####
+grp.attrs["BoxSize"] = [lx, ly, lz]
 grp.attrs["NumPart_Total"] = [N, 0, 0, 0, 0, 0]
 grp.attrs["NumPart_Total_HighWord"] = [0, 0, 0, 0, 0, 0]
 grp.attrs["NumPart_ThisFile"] = [N, 0, 0, 0, 0, 0]
@@ -97,8 +98,5 @@ grp.create_dataset("SmoothingLength", data=h, dtype="f")
 grp.create_dataset("InternalEnergy", data=u, dtype="f")
 grp.create_dataset("ParticleIDs", data=ids, dtype="L")
 grp.create_dataset("MagneticFluxDensities", data=B, dtype="f")
-# grp.create_dataset("VecPot", data = vp, dtype = 'f')
-# grp.create_dataset("EPalpha", data = epa, dtype = 'f')
-# grp.create_dataset("EPbeta" , data = epb, dtype = 'f')
 
 fileOutput.close()

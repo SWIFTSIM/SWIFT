@@ -25,12 +25,12 @@ import numpy as np
 
 # Generates a swift IC file for the Orszag-Tang vortex in a periodic box
 
-# Read in number of BCC cells to stack along x and y
+# Read in number of unit cells to stack along x and y
 argparser = argparse.ArgumentParser()
 argparser.add_argument(
     "-r",
     "--replications",
-    help="Number of BCC unit cells to stack along the x and y directions. Default: 4",
+    help="Number of unit cells to stack along the x and y directions. Default: 4",
     default=4,
     type=int,
 )
