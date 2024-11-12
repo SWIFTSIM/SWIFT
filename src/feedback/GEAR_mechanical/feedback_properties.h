@@ -24,6 +24,8 @@
 #include "chemistry.h"
 #include "hydro_properties.h"
 
+#define DEFAULT_F_KIN_0 0.28 /* Idealized Sedov solution in a homogenous background*/
+
 /**
  * @brief Properties of the GEAR feedback model.
  */
@@ -171,13 +173,10 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
   fp->r_max = parser_get_opt_param_float(params, "GEARFeedback:maximal_radius",
                                          default_r_max);
 
-  /* Get the fraction of the SN energy available to kinetic energy. The
-     default value is for an idealized Sedov solution in a homogenous
-     background. */
-  const float default_f_kin_0 = 0.28;
-
+  /* Get the fraction of the SN energy available to kinetic energy. */
+  /* Only used for mode 2 */
   fp->f_kin_0 = parser_get_opt_param_float(params, "GEARFeedback:f_kin_0",
-                                           default_f_kin_0);
+                                           DEFAULT_F_KIN_0);
 
   /* Do we want to correct the total momentum of the gas particles after
      multiple SN ? */

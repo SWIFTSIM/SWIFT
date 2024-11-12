@@ -87,9 +87,10 @@ GEARFeedback:
 GEARSink:
   cut_off_radius: 1e-2                        # Cut off radius of all the sinks in internal units.
   f_acc: 0.4
-  maximal_temperature:  3e4                   # Upper limit to the temperature of a star forming particle
-  density_threshold_g_per_cm3:   1.67e-24     # Density threashold in g/cm3 (1.67e-24 =1acc)
-  stellar_particle_mass_Msun: 21               # Mass of the stellar particle representing the low mass stars, in solar mass
+  temperature_threshold_K:       3e4           # Max temperature (in K) for forming a sink when density_threshold_g_per_cm3 <= density <= maximal_density_threshold_g_per_cm3.
+  density_threshold_g_per_cm3: 1.67e-24      # Minimum gas density (in g/cm3) required to form a sink particle.
+  maximal_density_threshold_g_per_cm3: 1e10 # If the gas density exceeds this value (in g/cm3), a sink forms regardless of temperature if all other criteria are passed.
+  stellar_particle_mass_Msun: 21              # Mass of the stellar particle representing the low mass stars, in solar mass
   minimal_discrete_mass_Msun: 8               # Minimal mass of stars represented by discrete particles, in solar mass
   stellar_particle_mass_first_stars_Msun: 20  # Mass of the stellar particle representing the low mass stars, in solar mass
   minimal_discrete_mass_first_stars_Msun: 8  # Minimal mass of stars represented by discrete particles, in solar mass

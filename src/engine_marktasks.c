@@ -1400,7 +1400,6 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 #ifdef WITH_MPI
         /* Activate the send/recv tasks. */
         if (ci_nodeID != nodeID) {
-
           /* If the local cell is active, receive data from the foreign cell. */
           if (cj_active_gravity)
             scheduler_activate_recv(s, ci->mpi.recv, task_subtype_gpart);
@@ -1415,6 +1414,18 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
                sent, i.e. drift the cell specified in the send task (l->t)
                itself. */
             cell_activate_drift_gpart(cj, s);
+          }
+
+          /* Propagating new star counts? */
+          if (with_star_formation) {
+            if (ci_active_gravity && ci->hydro.count > 0) {
+              scheduler_activate_recv(s, ci->mpi.recv,
+                                      task_subtype_grav_counts);
+            }
+            if (cj_active_gravity && cj->hydro.count > 0) {
+              scheduler_activate_send(s, cj->mpi.send, task_subtype_grav_counts,
+                                      ci_nodeID);
+            }
           }
 
         } else if (cj_nodeID != nodeID) {
@@ -1433,6 +1444,18 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
                sent, i.e. drift the cell specified in the send task (l->t)
                itself. */
             cell_activate_drift_gpart(ci, s);
+          }
+
+          /* Propagating new star counts? */
+          if (with_star_formation) {
+            if (cj_active_gravity && cj->hydro.count > 0) {
+              scheduler_activate_recv(s, cj->mpi.recv,
+                                      task_subtype_grav_counts);
+            }
+            if (ci_active_gravity && ci->hydro.count > 0) {
+              scheduler_activate_send(s, ci->mpi.send, task_subtype_grav_counts,
+                                      cj_nodeID);
+            }
           }
         }
 #endif
