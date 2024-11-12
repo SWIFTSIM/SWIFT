@@ -94,6 +94,8 @@ SUBTYPES = [
     "force",
     "limiter",
     "grav",
+    "progeny",
+    "direct",
     "external_grav",
     "tend",
     "xv",
