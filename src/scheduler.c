@@ -1589,7 +1589,7 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
   /* Turn the task into a M-M task that will take care of the first
    * progeny pair (if we can use an M-M task). */
   t->type = task_type_grav_mm;
-  t->subtype = task_subtype_none;
+  t->subtype = task_subtype_progeny;
   t->flags = 0;
 
   /* Handle each individual splitting case. */
@@ -1653,9 +1653,8 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
         /* Can we reuse the orignal task or do we need to make a new one? */
         if (t->flags == 0) {
 
-          /* We can make use of the old task. Flag that it is between
-           * cpi and cpj not their progeny with -2. */
-          t->flags = -2;
+          /* We can make use of the old task but turn it into a direct one. */
+          t->subtype = task_subtype_direct;
           t->ci = ci->progeny[i];
           t->cj = cj;
 
@@ -1664,7 +1663,7 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
           /* We've already used to original task, make a new one for this
            * progeny pair. Flag that it is between cpi and cpj not their
            * progeny with -2. */
-          scheduler_addtask(s, task_type_grav_mm, task_subtype_none, -2, 0,
+          scheduler_addtask(s, task_type_grav_mm, task_subtype_direct, 0, 0,
                             ci->progeny[i], cj);
         }
 
@@ -1694,9 +1693,8 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
         /* Can we reuse the orignal task or do we need to make a new one? */
         if (t->flags == 0) {
 
-          /* We can make use of the old task. Flag that it is between
-           * cpi and cpj not their progeny with -2. */
-          t->flags = -2;
+          /* We can make use of the old task but turn it into a direct one. */
+          t->subtype = task_subtype_direct;
           t->ci = ci;
           t->cj = cj->progeny[j];
 
@@ -1705,8 +1703,8 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
           /* We've already used to original task, make a new one for this
            * progeny pair. Flag that it is between cpi and cpj not their
            * progeny with -2. */
-          scheduler_addtask(s, task_type_grav_mm, task_subtype_none, -2, 0, ci,
-                            cj->progeny[j]);
+          scheduler_addtask(s, task_type_grav_mm, task_subtype_direct, -2, 0,
+                            ci, cj->progeny[j]);
         }
       } else {
 
