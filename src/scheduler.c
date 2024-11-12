@@ -1651,7 +1651,7 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
                                /*use_mesh*/ sp->periodic)) {
 
         /* Can we reuse the orignal task or do we need to make a new one? */
-        if (t->flags == 0) {
+        if (t->subtype == task_subtype_progeny) {
 
           /* We can make use of the old task but turn it into a direct one. */
           t->subtype = task_subtype_direct;
@@ -1661,8 +1661,7 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
         } else {
 
           /* We've already used to original task, make a new one for this
-           * progeny pair. Flag that it is between cpi and cpj not their
-           * progeny with -2. */
+           * progeny pair. */
           scheduler_addtask(s, task_type_grav_mm, task_subtype_direct, 0, 0,
                             ci->progeny[i], cj);
         }
@@ -1691,7 +1690,7 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
                                /*use_mesh*/ sp->periodic)) {
 
         /* Can we reuse the orignal task or do we need to make a new one? */
-        if (t->flags == 0) {
+        if (t->subtype == task_subtype_progeny) {
 
           /* We can make use of the old task but turn it into a direct one. */
           t->subtype = task_subtype_direct;
@@ -1701,10 +1700,9 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
         } else {
 
           /* We've already used to original task, make a new one for this
-           * progeny pair. Flag that it is between cpi and cpj not their
-           * progeny with -2. */
-          scheduler_addtask(s, task_type_grav_mm, task_subtype_direct, -2, 0,
-                            ci, cj->progeny[j]);
+           * progeny pair. */
+          scheduler_addtask(s, task_type_grav_mm, task_subtype_direct, 0, 0, ci,
+                            cj->progeny[j]);
         }
       } else {
 
