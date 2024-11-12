@@ -784,7 +784,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   p->force.f = grad_h_term;
   p->force.pressure = pressure;
   p->force.soundspeed = soundspeed;
-  p->force.balsara = balsara;
+  p->force.balsara = 0 * balsara;
 }
 
 /**
@@ -1178,10 +1178,9 @@ __attribute__((always_inline)) INLINE static float mhd_get_divB_error(
     const struct part *p, const struct xpart *xp) {
 
   const float rho = p->rho;
-  const float B_over_rho2 =
-      p->B_over_rho[0] * p->B_over_rho[0] +
-      p->B_over_rho[1] * p->B_over_rho[1] +
-      p->B_over_rho[2] * p->B_over_rho[2];
+  const float B_over_rho2 = p->B_over_rho[0] * p->B_over_rho[0] +
+                            p->B_over_rho[1] * p->B_over_rho[1] +
+                            p->B_over_rho[2] * p->B_over_rho[2];
 
   const float error = B_over_rho2 != 0.0f ? fabsf(p->div_B) * p->h /
                                                 sqrtf(B_over_rho2 * rho * rho)
@@ -1189,7 +1188,6 @@ __attribute__((always_inline)) INLINE static float mhd_get_divB_error(
 
   return error;
 }
-
 
 /**
  * @brief Returns the magnetic field squared contained in the particle.
@@ -1201,15 +1199,32 @@ __attribute__((always_inline)) INLINE static float mhd_get_Bms(
     const struct part *p, const struct xpart *xp) {
 
   const float rho = p->rho;
-  const float B_over_rho2 =
-      p->B_over_rho[0] * p->B_over_rho[0] +
-      p->B_over_rho[1] * p->B_over_rho[1] +
-      p->B_over_rho[2] * p->B_over_rho[2];
+  const float B_over_rho2 = p->B_over_rho[0] * p->B_over_rho[0] +
+                            p->B_over_rho[1] * p->B_over_rho[1] +
+                            p->B_over_rho[2] * p->B_over_rho[2];
   return B_over_rho2 * rho * rho;
 }
 
+/**
+ * @brief Returns the magnetic energy contained in the particle.
+ *
+ * @param p the #part.
+ * @param xp the #xpart.
+ */
+__attribute__((always_inline)) INLINE static float mhd_get_magnetic_energy(
+    const struct part *p, const struct xpart *xp, const float mu_0,
+    const float a) {
+
+  const float a_fact = 1.f;  // pow(a, -3.f * hydro_gamma);
+  // TODO: cosmo terms
+
+  const float rho = p->rho;
+  const float B_over_rho2 = p->B_over_rho[0] * p->B_over_rho[0] +
+                            p->B_over_rho[1] * p->B_over_rho[1] +
+                            p->B_over_rho[2] * p->B_over_rho[2];
+  return 0.5f * a_fact * p->mass * B_over_rho2 * rho / mu_0;
+}
 
 /* MATTHIEU END ----------------------------------------- */
-
 
 #endif /* SWIFT_MINIMAL_HYDRO_H */

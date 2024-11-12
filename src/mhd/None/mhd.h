@@ -19,6 +19,8 @@
 #ifndef SWIFT_NONE_MHD_H
 #define SWIFT_NONE_MHD_H
 
+#if 0
+
 /**
  * @brief Returns the magnetic energy contained in the particle.
  *
@@ -30,8 +32,6 @@ __attribute__((always_inline)) INLINE static float mhd_get_magnetic_energy(
     const float a) {
   return 0.f;
 }
-
-#if 0
 
 /**
  * @brief Returns the magnetic field squared contained in the particle.
