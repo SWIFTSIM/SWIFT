@@ -44,6 +44,8 @@ INLINE static void sink_read_particles(struct sink* sinks,
                                 sinks, mass);
   list[3] = io_make_input_field("ParticleIDs", LONGLONG, 1, COMPULSORY,
                                 UNIT_CONV_NO_UNITS, sinks, id);
+  list[5] = io_make_input_field("BirthTime", FLOAT, 1, OPTIONAL, UNIT_CONV_MASS,
+                                sinks, birth_time);
 }
 
 INLINE static void convert_sink_pos(const struct engine* e,
@@ -122,7 +124,7 @@ INLINE static void sink_write_particles(const struct sink* sinks,
                                         int with_cosmology) {
 
   /* Say how much we want to write */
-  *num_fields = 9;
+  *num_fields = 10;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_sink(
@@ -168,6 +170,17 @@ INLINE static void sink_write_particles(const struct sink* sinks,
       sinks,
       /*can convert to comoving=*/0, convert_sink_swallowed_angular_momentum,
       "Physical swallowed angular momentum of the particles");
+
+  if (with_cosmology) {
+    list[9] = io_make_physical_output_field(
+        "BirthScaleFactors", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, sinks,
+        birth_scale_factor, /*can convert to comoving=*/0,
+        "Scale-factors at which the sinks were born");
+  } else {
+    list[9] =
+        io_make_output_field("BirthTimes", FLOAT, 1, UNIT_CONV_TIME, 0.f, sinks,
+                             birth_time, "Times at which the sink were born");
+  }
 
 #ifdef DEBUG_INTERACTIONS_SINKS
 

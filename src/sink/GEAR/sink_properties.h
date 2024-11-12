@@ -73,6 +73,23 @@ struct sink_props {
   /* Factor to rescale the velocity dispersion of the stars when they are
      spawned */
   double star_spawning_sigma_factor;
+
+  /***************************************************************************/
+  /*! Maximal time-step length of young sinks (internal units) */
+  double max_time_step_young;
+
+  /*! Maximal time-step length of old sinks (internal units) */
+  double max_time_step_old;
+
+  /*! Age threshold for the young/old transition (internal units) */
+  double age_threshold;
+
+  /*! Age threshold for the transition to unlimited time-step size (internal
+   * units) */
+  double age_threshold_unlimited;
+
+  /*! Time integration CFL condition factor */
+  float CFL_condition;
 };
 
 /**
@@ -259,6 +276,28 @@ INLINE static void sink_props_init(struct sink_props *sp,
       parser_get_opt_param_int(params, "GEARSink:disable_sink_formation",
                                default_disable_sink_formation);
 
+  /* Maximal time-step lengths */
+  const double max_time_step_young_Myr = parser_get_opt_param_float(
+      params, "GEARSink:max_timestep_young_Myr", FLT_MAX);
+  const double max_time_step_old_Myr = parser_get_opt_param_float(
+      params, "GEARSink:max_timestep_old_Myr", FLT_MAX);
+  const double age_threshold_Myr = parser_get_opt_param_float(
+      params, "GEARSink:timestep_age_threshold_Myr", FLT_MAX);
+  const double age_threshold_unlimited_Myr = parser_get_opt_param_float(
+      params, "GEARSink:timestep_age_threshold_unlimited_Myr", 0.);
+
+  /* Check for consistency */
+  if (age_threshold_unlimited_Myr != 0. && age_threshold_Myr != FLT_MAX) {
+    if (age_threshold_unlimited_Myr < age_threshold_Myr)
+      error(
+          "The age threshold for unlimited sink time-step sizes (%e Myr) is "
+          "smaller than the transition threshold from young to old ages (%e "
+          "Myr)",
+          age_threshold_unlimited_Myr, age_threshold_Myr);
+  }
+
+  sp->CFL_condition = parser_get_param_float(params, "GEARSink:CFL_condition");
+
   /* Apply unit change */
   sp->temperature_threshold /=
       units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
@@ -266,6 +305,13 @@ INLINE static void sink_props_init(struct sink_props *sp,
   sp->density_threshold /= units_cgs_conversion_factor(us, UNIT_CONV_DENSITY);
   sp->maximal_density_threshold /=
       units_cgs_conversion_factor(us, UNIT_CONV_DENSITY);
+
+  const double Myr_internal_units = 1e6 * phys_const->const_year;
+  sp->max_time_step_young = max_time_step_young_Myr * Myr_internal_units;
+  sp->max_time_step_old = max_time_step_old_Myr * Myr_internal_units;
+  sp->age_threshold = age_threshold_Myr * Myr_internal_units;
+  sp->age_threshold_unlimited =
+      age_threshold_unlimited_Myr * Myr_internal_units;
 
   /* here, we need to differenciate between the stellar models */
   struct initial_mass_function *imf;
@@ -313,6 +359,16 @@ INLINE static void sink_props_init(struct sink_props *sp,
           sp->sink_formation_bound_state_criterion);
   message("sink_formation_overlapping_sink_criterion    = %d",
           sp->sink_formation_overlapping_sink_criterion);
+  message("sink max_timestep_young                      = %e",
+          sp->max_time_step_young);
+  message("sink max_timestep_old                        = %e",
+          sp->max_time_step_old);
+  message("sink age_threshold from young to old         = %e",
+          sp->age_threshold);
+  message("sink age_threshold from old to unlimited     = %e",
+          sp->age_threshold_unlimited);
+  message("sink C_CFL                                   = %e",
+          sp->CFL_condition);
 }
 
 /**

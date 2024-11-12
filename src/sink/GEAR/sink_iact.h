@@ -118,6 +118,46 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_sink(
 }
 
 /**
+ * @brief  Update the properties of a sink particles from its sink neighbours.
+ *
+ * Warning: No symmetric interaction for timesteps since we are in
+ * runner_iact_nonsym_sinks_sink_swallow() --> pay attention to not break MPI.
+ *
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (pi - pj).
+ * @param ri Comoving cut off radius of particle i.
+ * @param rj Comoving cut off radius of particle j.
+ * @param si First sink particle.
+ * @param sj Second sink particle.
+ */
+__attribute__((always_inline)) INLINE static void
+sink_collect_properties_from_sink(const float r2, const float dx[3],
+                                  const float ri, const float rj,
+                                  struct sink *restrict si,
+                                  struct sink *restrict sj,
+                                  const struct gravity_props *grav_props) {
+
+  /* Neighbour's (drifted) velocity in the frame of the sink i
+   * (we don't include a Hubble term since we are interested in the
+   * velocity contribution at the location of the sink) */
+  const float dv[3] = {sj->v[0] - si->v[0], sj->v[1] - si->v[1],
+                       sj->v[2] - si->v[2]};
+  const float dv_norm = sqrtf(dv[0] * dv[0] + dv[1] * dv[1] + dv[2] * dv[2]);
+
+  /* Get the gravitional softening */
+  const float eps_i = gravity_get_softening(si->gpart, grav_props);
+
+  const float sum_r2_eps2 = r2 + eps_i * eps_i;
+  const float t_c = sqrt(sum_r2_eps2) / dv_norm;
+  si->to_collect.minimal_sink_t_c = min(t_c, si->to_collect.minimal_sink_t_c);
+
+  const float denominator = grav_props->G_Newton * (si->mass + sj->mass);
+  const float t_dyn = sqrt(pow(sum_r2_eps2, 1.5) / denominator);
+  si->to_collect.minimal_sink_t_dyn =
+      min(t_dyn, si->to_collect.minimal_sink_t_dyn);
+}
+
+/**
  * @brief Compute sink-sink swallow interaction (non-symmetric).
  *
  * Note: Energies are computed with physical quantities, not the comoving ones.
@@ -139,10 +179,22 @@ runner_iact_nonsym_sinks_sink_swallow(
     struct sink *restrict si, struct sink *restrict sj,
     const int with_cosmology, const struct cosmology *cosmo,
     const struct gravity_props *grav_props,
-    const struct sink_props *sink_properties) {
+    const struct sink_props *sink_properties, const int time) {
 
   const float r = sqrtf(r2);
   const float f_acc_r_acc_i = sink_properties->f_acc * ri;
+
+  sink_collect_properties_from_sink(r2, dx, ri, rj, si, sj, grav_props);
+
+  /* Determine if the sink is dead, i.e. if its age is bigger than the
+     age_threshold_unlimited */
+  const int sink_age = sink_get_sink_age(si, with_cosmology, cosmo, time);
+  char is_dead = sink_age > sink_properties->age_threshold_unlimited;
+
+  /* If si is dead, do not swallow sj. However, sj can swallow si. */
+  if (is_dead) {
+    return;
+  }
 
   /* If the sink j falls within f_acc*r_acc of sink i, then the
      lightest is accreted on the most massive without further check.
@@ -246,6 +298,61 @@ runner_iact_nonsym_sinks_sink_swallow(
 }
 
 /**
+ * @brief Update the properties of a sink particles from its gas neighbours.
+ *
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (pi - pj).
+ * @param ri Comoving cut off radius of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param si First sink particle.
+ * @param pj Second particle.
+ */
+__attribute__((always_inline)) INLINE static void
+sink_collect_properties_from_gas(const float r2, const float dx[3],
+                                 const float ri, const float hj,
+                                 struct sink *restrict si,
+                                 struct part *restrict pj) {
+
+  float wi, wi_dx;
+
+  /* Compute the kernel function */
+  const float r = sqrtf(r2);
+  const float hi_inv = 1.0f / ri;
+  const float ui = r * hi_inv;
+  const float hi_inv_dim = pow_dimension(hi_inv); /* 1/h^d */
+  kernel_deval(ui, &wi, &wi_dx);
+
+  /* Neighbour gas mass */
+  const float mj = hydro_get_mass(pj);
+
+  /* Minimum smoothing length accros the neighbours */
+  /* AND the sink smoothing length */
+  si->to_collect.minimal_h_gas = min(hj, si->to_collect.minimal_h_gas);
+
+  /* Contribution to the total neighbour mass */
+  si->to_collect.ngb_mass += mj;
+
+  /* Contribution to the BH gas density */
+  si->to_collect.rho_gas += mj * wi * hi_inv_dim;
+  const float rho_inv = 1.f / si->to_collect.rho_gas;
+
+  /* Contribution to the smoothed sound speed */
+  si->to_collect.sound_speed_gas +=
+      mj * wi * hydro_get_comoving_soundspeed(pj) * hi_inv_dim * rho_inv;
+
+  /* Neighbour's (drifted) velocity in the frame of the sink
+   * (we don't include a Hubble term since we are interested in the
+   * velocity contribution at the location of the sink) */
+  const float dv[3] = {pj->v[0] - si->v[0], pj->v[1] - si->v[1],
+                       pj->v[2] - si->v[2]};
+
+  /* Contribution to the smoothed velocity (gas w.r.t. black hole) */
+  si->to_collect.velocity_gas[0] += mj * dv[0] * wi * hi_inv_dim * rho_inv;
+  si->to_collect.velocity_gas[1] += mj * dv[1] * wi * hi_inv_dim * rho_inv;
+  si->to_collect.velocity_gas[2] += mj * dv[2] * wi * hi_inv_dim * rho_inv;
+}
+
+/**
  * @brief Compute sink-gas swallow interaction (non-symmetric).
  *
  * Note: Energies are computed with physical quantities, not the comoving ones.
@@ -262,21 +369,32 @@ runner_iact_nonsym_sinks_sink_swallow(
  * @param sink_props the sink properties to use.
  */
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_sinks_gas_swallow(const float r2, const float dx[3],
-                                     const float ri, const float hj,
-                                     struct sink *restrict si,
-                                     struct part *restrict pj,
-                                     const int with_cosmology,
-                                     const struct cosmology *cosmo,
-                                     const struct gravity_props *grav_props,
-                                     const struct sink_props *sink_properties) {
+runner_iact_nonsym_sinks_gas_swallow(
+    const float r2, const float dx[3], const float ri, const float hj,
+    struct sink *restrict si, struct part *restrict pj,
+    const int with_cosmology, const struct cosmology *cosmo,
+    const struct gravity_props *grav_props,
+    const struct sink_props *sink_properties, const int time) {
 
   const float r = sqrtf(r2);
   const float f_acc_r_acc = sink_properties->f_acc * ri;
 
+  sink_collect_properties_from_gas(r2, dx, ri, hj, si, pj);
+
+  /* Determine if the sink is dead, i.e. if its age is bigger than the
+     age_threshold_unlimited */
+  const int sink_age = sink_get_sink_age(si, with_cosmology, cosmo, time);
+  char is_dead = sink_age > sink_properties->age_threshold_unlimited;
+
+  /* If si is dead, do not swallow pj. */
+  if (is_dead) {
+    return;
+  }
+
   /* If the gas falls within f_acc*r_acc, it is accreted without further check
    */
   if (r < f_acc_r_acc) {
+    warning("Gas %lld within sink %lld inner accretion radius", pj->id, si->id);
     /* Check if a gas particle has not been already marked to be swallowed by
        another sink particle. */
     if (pj->sink_data.swallow_id < si->id) {
@@ -367,6 +485,12 @@ runner_iact_nonsym_sinks_gas_swallow(const float r2, const float dx[3],
 
     /* To be accreted, the gas must be gravitationally bound to the sink. */
     if (E_mec_sink_part >= 0) return;
+
+    /* To be accreted, the gas smoothing length must be smaller than the sink
+       accretion radius. This is similar to AMR codes requesting the maximum
+       refinement level close to the sink. */
+    if (sink_properties->sink_formation_smoothing_length_criterion &&
+	(pj->h * kernel_gamma >= si->r_cut)) return;
 
     /* Most bound pair check------------------------------------------------ */
     /* The pair gas-sink must be the most bound among all sinks */
