@@ -15,14 +15,15 @@ The first two parameters are:
 * The sink cut-off radius for gas and sink accretion: ``cut_off_radius``,
 * The sink inner accretion radius fraction in terms of the cut-off radius: ``f_acc``.
 
-The ``f_acc`` parameter is optional. Its default value is :math:`0.8`. Its value must respect :math:`0 \leq f_\text{acc} \leq 1` . It describes the inner radius :math:`f_{\text{acc}} \cdot r_{\text{cut-off}}` in which gas particles are swallowed without any further checks, as explained below. 
+The ``f_acc`` parameter is optional. Its default value is :math:`0.1`. Its value must respect :math:`0 \leq f_\text{acc} \leq 1` . It describes the inner radius :math:`f_{\text{acc}} \cdot r_{\text{cut-off}}` in which gas particles are swallowed without any further checks, as explained below.
 
-The next two mandatory parameters are:
+The next three mandatory parameters are:
 
-* the gas maximal temperature to form a sink:``maximal_temperature``,
-* the gas threshold density to form a sink:``density_threshold_g_per_cm3``.
+* the gas temperature threshold to form a sink when :math:`\rho_\text{threshold} < \rho_\text{gas} < \rho_\text{maximal}` :``temperature_threshold_K``,
+* the minimal gas threshold density required to form a sink:``density_threshold_g_per_cm3``,
+* the maximal density at which the temperature check is not performed:``maximal_density_threshold_g_per_cm3`` (Default: ``FLT_MAX``).
 
-These two parameters govern the first two criteria of the sink formation scheme. If these criteria are not passed, sink particles are not created. If they are passed, the code performs further checks to form sink particles. Some of those criteria checks can be disabled, as explained below.
+These three parameters govern the first two criteria of the sink formation scheme. If these criteria are not passed, sink particles are not created. If they are passed, the code performs further checks to form sink particles. Some of those criteria checks can be disabled, as explained below.
 
 The next set of parameters deals with the sampling of the IMF and the representation of star particles:
 
@@ -48,23 +49,24 @@ The last parameter is ``disable_sink_formation`` (default: 0). It controls wheth
 The full section is:
 
 .. code:: YAML
-	  
+
    GEARSink:
-     cut_off_radius:        1e-3                 # Cut off radius of the sink particles (in internal units).
-     f_acc: 0.8                                  # (Optional) Fraction of the cut_off_radius that determines if a gas particle should be swallowed wihtout additional check. (Default: 0.8)
-     maximal_temperature:        3e3             # Maximal gas temperature for forming a star (in K)
-     density_threshold_g_per_cm3: 1.67e-21       # Minimal gas density for forming a star (in g/cm3 (1.67e-24 =1acc))
-     stellar_particle_mass_Msun:      20              # Mass of the stellar particle representing the low mass stars (continuous IMF sampling) (in solar mass)
-     minimal_discrete_mass_Msun:      8               # Minimal mass of stars represented by discrete particles (in solar mass)
-     stellar_particle_mass_first_stars_Msun: 20       # Mass of the stellar particle representing the low mass stars (continuous IMF sampling) (in solar mass). First stars
-     minimal_discrete_mass_first_stars_Msun: 8        # Minimal mass of stars represented by discrete particles (in solar mass). First stars
-     star_spawning_sigma_factor: 0.2             # Factor to rescale the velocity dispersion of the stars when they are spawned. (Default: 0.2)
-     sink_formation_contracting_gas_criterion: 1     # (Optional) Activate the contracting gas criterion for sink formation. (Default: 1)
-     sink_formation_smoothing_length_criterion: 1    # (Optional) Activate the smoothing length criterion for sink formation. (Default: 1)
-     sink_formation_jeans_instability_criterion: 1   # (Optional) Activate the two Jeans instability criteria for sink formation. (Default: 1)
-     sink_formation_bound_state_criterion: 1         # (Optional) Activate the bound state criterion for sink formation. (Default: 1)
-     sink_formation_overlapping_sink_criterion: 1    # (Optional) Activate the overlapping sink criterion for sink formation. (Default: 1)
-     disable_sink_formation: 0                   # (Optional) Disable sink formation. (Default: 0)
+     cut_off_radius:              1e-3           # Cut off radius of the sink particles (in internal units). This parameter should be adapted with the resolution.
+     f_acc: 0.1                                  # (Optional) Fraction of the cut_off_radius that determines if a gas particle should be swallowed wihtout additional check. It has to respect 0 <= f_acc <= 1. (Default: 0.1)
+     temperature_threshold_K:        100           # Max temperature (in K) for forming a sink when density_threshold_g_per_cm3 <= density <= maximal_density_threshold_g_per_cm3.
+     density_threshold_g_per_cm3: 1.67e-21       # Minimum gas density (in g/cm3) required to form a sink particle.
+     maximal_density_threshold_g_per_cm3: 1.67e-19 # If the gas density exceeds this value (in g/cm3), a sink forms regardless of temperature if all other criteria are passed. (Default: FLT_MAX)
+     stellar_particle_mass_Msun:  20             # Mass of the stellar particle representing the low mass stars (continuous IMF sampling) (in solar mass)
+     minimal_discrete_mass_Msun: 8               # Minimal mass of stars represented by discrete particles (in solar mass)
+     stellar_particle_mass_first_stars_Msun: 20      # Mass of the stellar particle representing the low mass stars (continuous IMF sampling) (in solar mass). First stars
+     minimal_discrete_mass_first_stars_Msun: 8       # Minimal mass of stars represented by discrete particles (in solar mass). First stars
+     star_spawning_sigma_factor: 0.2                 # Factor to rescale the velocity dispersion of the stars when they are spawned. (Default: 0.2)
+     sink_formation_contracting_gas_criterion: 1     # (Optional) Activate the contracting gas check for sink formation. (Default: 1)
+     sink_formation_smoothing_length_criterion: 1    # (Optional) Activate the smoothing length check for sink formation. (Default: 1)
+     sink_formation_jeans_instability_criterion: 1   # (Optional) Activate the two Jeans instability checks for sink formation. (Default: 1)
+     sink_formation_bound_state_criterion: 1         # (Optional) Activate the bound state check for sink formation. (Default: 1)
+     sink_formation_overlapping_sink_criterion: 1    # (Optional) Activate the overlapping sink check for sink formation. (Default: 1)
+     disable_sink_formation: 0                       # (Optional) Disable sink formation. (Default: 0)
 
 .. warning::
    Some parameter choices can greatly impact the outcome of your simulations. Think twice when choosing them.

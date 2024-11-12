@@ -774,9 +774,6 @@ void engine_maketasks(struct engine *e);
 /* Function prototypes, engine_maketasks.c. */
 void engine_make_fof_tasks(struct engine *e);
 
-/* Function prototypes, engine_marktasks.c. */
-int engine_marktasks(struct engine *e);
-
 /* Function prototypes, engine_split_particles.c. */
 void engine_split_gas_particles(struct engine *e);
 void engine_init_split_gas_particles(struct engine *e);
