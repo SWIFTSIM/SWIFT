@@ -488,7 +488,8 @@ runner_iact_nonsym_sinks_gas_swallow(
     /* To be accreted, the gas smoothing length must be smaller than the sink
        accretion radius. This is similar to AMR codes requesting the maximum
        refinement level close to the sink. */
-    if (pj->h * kernel_gamma >= si->r_cut) return;
+    if (sink_properties->sink_formation_smoothing_length_criterion &&
+	(pj->h * kernel_gamma >= si->r_cut)) return;
 
     /* Most bound pair check------------------------------------------------ */
     /* The pair gas-sink must be the most bound among all sinks */
