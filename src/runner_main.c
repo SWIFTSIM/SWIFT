@@ -561,8 +561,6 @@ void *runner_main(void *data) {
         case task_type_grav_mm:
           /* A flag of -2 means we have an mm task directly between 2 cells not
            * a combination of their progeny. */
-          /* TODO: do this better, surely we can define them based on progeny
-           * and limit the number of MM tasks!? */
           if (t->flags == -2) {
             runner_dopair_grav_mm(r, t->ci, t->cj);
           } else {

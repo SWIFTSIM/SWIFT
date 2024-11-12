@@ -1547,18 +1547,19 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
  *
  * This will split in several different ways depending on what types of cells
  * are being handled:
- * - If both cells are void cells, we will split the task into all the
- *  progeny pairs.
- * - If only one cell we will split the task into all the pairs of void
- *  progeny and the (unsplit) non-void cell.
+ * - If both cells are void cells, we will split the task on both sides of
+ *   the pair.
+ * - If both cells are split we will split the task on both sides of the pair.
+ * - If only one cell is a void cell then we will split the task on the side
+ *   of the void cell. This is because we can't leave the task on a void cell.
  *
  * Once the zoom region is reached scheduler_splittask_gravity is called to
  * handle any further normal splitting that is needed.
  *
- * If a grav_mm task can be used instead of a pair task it will be created but
- * unlike scheduler_splittask_gravity the new grav_mm task handles only two
- * cells and not a collection. TODO: improve this in the future to handle
- * a collection of progeny.
+ * If a grav_mm task can be used instead of a pair task it will be created,
+ * for two splitable cells this will create a task that handles all progeny.
+ * In the case where there is only one splitable cell we create a grav_mm that
+ * handles a direct pair between the splitable cell and the unsplitable cell.
  *
  * @param t The #task
  * @param s The #scheduler we are working in.
@@ -1592,7 +1593,10 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
   t->flags = 0;
 
   /* Handle each individual splitting case. */
-  if (ci->subtype == cell_subtype_void && cj->subtype == cell_subtype_void) {
+  if ((ci->subtype == cell_subtype_void ||
+       (ci->split && cell_is_above_diff_grav_depth(ci))) &&
+      (cj->subtype == cell_subtype_void ||
+       (cj->split && cell_is_above_diff_grav_depth(cj)))) {
     for (int i = 0; i < 8; i++) {
       struct cell *cpi = ci->progeny[i];
       for (int j = 0; j < 8; j++) {
@@ -1605,23 +1609,13 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
                                  /*periodic boundaries*/ sp->periodic,
                                  /*use_mesh*/ sp->periodic)) {
 
-          /* Can we reuse the orignal task or do we need to make a new one? */
-          if (t->flags == 0) {
-
-            /* We can make use of the old task. Flag that it is between
-             * cpi and cpj not their progeny with -2. */
-            t->flags = -2;
-            t->ci = cpi;
-            t->cj = cpj;
-
-          } else {
-
-            /* We've already used to original task, make a new one for this
-             * progeny pair. Flag that it is between cpi and cpj not their
-             * progeny with -2. */
-            scheduler_addtask(s, task_type_grav_mm, task_subtype_none, -2, 0,
-                              cpi, cpj);
-          }
+          /* Flag this pair as being treated by the M-M task.
+           * We use the 64 bits in the task->flags field to store
+           * this information. The corresponding taks will unpack
+           * the information and operate according to the choices
+           * made here. */
+          const int flag = i * 8 + j;
+          t->flags |= (1ULL << flag);
 
         } else {
 
