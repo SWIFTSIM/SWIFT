@@ -1591,11 +1591,10 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
   /* Turn the task into a M-M task that will take care of the first
    * progeny pair (if we can use an M-M task). */
   t->type = task_type_grav_mm;
-  t->subtype = task_subtype_progeny;
+  t->subtype = task_subtype_none;
   t->flags = 0;
 
-  /* If we're dealing with a void -> non-void pair, we need a flag for when
-   * the original task has been reused. */
+  /* Define a flag for when the original task has been reused. */
   int reused = 0;
 
   /* Handle each individual splitting case. */
@@ -1603,6 +1602,11 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
        (ci->split && cell_is_above_diff_grav_depth(ci))) &&
       (cj->subtype == cell_subtype_void ||
        (cj->split && cell_is_above_diff_grav_depth(cj)))) {
+
+    //* We will use a progeny MM interaction since we can split both cells. */
+    t->subtype = task_subtype_progeny;
+
+    /* Loop over the progeny. */
     for (int i = 0; i < 8; i++) {
       struct cell *cpi = ci->progeny[i];
 
@@ -1626,6 +1630,9 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
                                  /*is_tree_walk=*/1,
                                  /*periodic boundaries*/ sp->periodic,
                                  /*use_mesh*/ sp->periodic)) {
+
+          /* Flag that we've reused the original task. */
+          reused = 1;
 
           /* Flag this pair as being treated by the M-M task.
            * We use the 64 bits in the task->flags field to store
@@ -1739,7 +1746,7 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
   }
 
   /* Can none of the progenies use M-M calculations? */
-  if (t->flags == 0) {
+  if (!reused) {
     t->type = task_type_none;
     t->subtype = task_subtype_none;
     t->ci = NULL;
