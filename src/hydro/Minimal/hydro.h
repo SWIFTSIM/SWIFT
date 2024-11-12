@@ -1164,4 +1164,52 @@ hydro_set_init_internal_energy(struct part *p, float u_init) {
 __attribute__((always_inline)) INLINE static void hydro_remove_part(
     const struct part *p, const struct xpart *xp, const double time) {}
 
+/* MATTHIEU START --------------------------------------- */
+
+/**
+ * @brief Returns the magnetic field divergence error of the particle.
+ *
+ * This is (div B) / (B / h) and is hence dimensionless.
+ *
+ * @param p the #part.
+ * @param xp the #xpart.
+ */
+__attribute__((always_inline)) INLINE static float mhd_get_divB_error(
+    const struct part *p, const struct xpart *xp) {
+
+  const float rho = p->rho;
+  const float B_over_rho2 =
+      p->B_over_rho[0] * p->B_over_rho[0] +
+      p->B_over_rho[1] * p->B_over_rho[1] +
+      p->B_over_rho[2] * p->B_over_rho[2];
+
+  const float error = B_over_rho2 != 0.0f ? fabsf(p->div_B) * p->h /
+                                                sqrtf(B_over_rho2 * rho * rho)
+                                          : 0.0f;
+
+  return error;
+}
+
+
+/**
+ * @brief Returns the magnetic field squared contained in the particle.
+ *
+ * @param p the #part.
+ * @param xp the #xpart.
+ */
+__attribute__((always_inline)) INLINE static float mhd_get_Bms(
+    const struct part *p, const struct xpart *xp) {
+
+  const float rho = p->rho;
+  const float B_over_rho2 =
+      p->B_over_rho[0] * p->B_over_rho[0] +
+      p->B_over_rho[1] * p->B_over_rho[1] +
+      p->B_over_rho[2] * p->B_over_rho[2];
+  return B_over_rho2 * rho * rho;
+}
+
+
+/* MATTHIEU END ----------------------------------------- */
+
+
 #endif /* SWIFT_MINIMAL_HYDRO_H */
