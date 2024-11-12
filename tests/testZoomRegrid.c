@@ -183,7 +183,7 @@ int main(int argc, char *argv[]) {
   /* Test all cells that aren't void or empty have at least one particle. */
   for (int i = 0; i < s->nr_cells; i++) {
     struct cell *c = &s->cells_top[i];
-    if (c->subtype != cell_subtype_void && c->subtype != cell_subtype_empty) {
+    if (c->subtype != cell_subtype_void) {
       if (c->grav.count == 0) {
         error(
             "Cell %d has no particles (c->type = %s, c->subtype = %s, c->loc = "
@@ -195,8 +195,7 @@ int main(int argc, char *argv[]) {
 
     /* If we have a background cell ensure the count is 1 (because of nesting
      * zoom and buffer cells can have more). */
-    if (c->type == cell_type_bkg && c->subtype != cell_subtype_empty &&
-        c->grav.count != 1) {
+    if (c->type == cell_type_bkg && c->grav.count != 1) {
       error(
           "Cell %d has %d particles (c->type = %s, c->subtype = %s, c->loc = "
           "[%f, %f, %f])",
@@ -205,7 +204,7 @@ int main(int argc, char *argv[]) {
     }
 
     /* Ensure empty and void cells have 0 counts. */
-    if (c->subtype == cell_subtype_empty || c->subtype == cell_subtype_void) {
+    if (c->subtype == cell_subtype_void) {
       if (c->grav.count != 0) {
         error(
             "Cell %d has %d particles (c->type = %s, c->subtype = %s, c->loc = "

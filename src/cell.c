@@ -157,7 +157,6 @@ const char *subcellID_names[4] = {
     "Regular",
     "Neighbour",
     "Void",
-    "Empty",
 };
 
 /**

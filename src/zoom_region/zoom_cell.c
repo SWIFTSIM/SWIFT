@@ -168,61 +168,6 @@ void zoom_find_void_cells(struct space *s, const int verbose) {
 }
 
 /**
- * @brief Find what background cells contain the buffer region.
- *
- * @param s The space.
- * @param verbose Are we talking?
- */
-void zoom_find_empty_cells(struct space *s, const int verbose) {
-
-  /* Get the zoom properties */
-  struct zoom_region_properties *zoom_props = s->zoom_props;
-
-  /* Get the cell pointers. */
-  struct cell *cells = s->cells_top;
-
-  /* Get the offset and the number of cells we're dealing with. */
-  const int offset = zoom_props->bkg_cell_offset;
-  const int ncells = zoom_props->nr_bkg_cells;
-
-  /* Loop over background cells and find cells containing the zoom region. */
-  for (int cid = offset; cid < offset + ncells; cid++) {
-
-    /* Get this cell. */
-    struct cell *c = &cells[cid];
-
-    /* Assign the cell type. */
-    if (zoom_cell_inside_buffer_region(c, s)) {
-      c->subtype = cell_subtype_empty;
-      zoom_props->nr_empty_cells++;
-    }
-  }
-
-  if (zoom_props->nr_empty_cells == 0)
-    error("No empty cells were found! (nr_bkg_cells=%d)", ncells);
-
-  if (verbose)
-    message("%i background cells contain the buffer region",
-            zoom_props->nr_empty_cells);
-
-#ifdef SWIFT_DEBUG_CHECKS
-  /* Ensure the empty cells in the zoom region are correctly labelled */
-  for (int cid = offset; cid < offset + ncells; cid++) {
-    if (zoom_cell_inside_buffer_region(&cells[cid], s) &&
-        cells[cid].subtype != cell_subtype_empty)
-      error("Empty cell is not correctly labelled (cid=%d, c->subtype=%s)", cid,
-            cellID_names[cells[cid].subtype]);
-    if (zoom_cell_inside_zoom_region(&cells[cid], s) &&
-        cells[cid].subtype != cell_subtype_empty)
-      error(
-          "Background cell above the zoom region isn't correctly labelled "
-          "empty (cid=%d, c->subtype=%s)",
-          cid, cellID_names[cells[cid].subtype]);
-  }
-#endif
-}
-
-/**
  * @brief Find what background or buffer cells surround the zoom region.
  *
  * When interacting background cells and zoom TL cells, it helps to know
@@ -767,11 +712,6 @@ void zoom_construct_tl_cells(struct space *s, const integertime_t ti_current,
 
   /* Now find and label what cells contain the zoom region. */
   zoom_find_void_cells(s, verbose);
-
-  /* If we have a buffer region then find and label the empty cells. */
-  if (zoom_props->with_buffer_cells) {
-    zoom_find_empty_cells(s, verbose);
-  }
 
   /* Find neighbours of the zoom region (cells within the distance past which
    * the gravity mesh takes over). */
