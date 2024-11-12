@@ -171,7 +171,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_diffusion(
     struct part *restrict pi, struct part *restrict pj, const float a,
     const float H, const float time_base, const integertime_t t_current,
     const struct cosmology *cosmo, const int with_cosmology,
-    const struct chemistry_global_data *chemistry_data) {}
+    const struct chemistry_global_data *chem_data) {}
 
 /**
  * @brief do metal diffusion computation in the <FORCE LOOP>
@@ -197,6 +197,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_diffusion(
     struct part *restrict pi, struct part *restrict pj, const float a,
     const float H, const float time_base, const integertime_t t_current,
     const struct cosmology *cosmo, const int with_cosmology,
-    const struct chemistry_global_data *chemistry_data) {}
+    const struct chemistry_global_data *chem_data) {}
 
 #endif /* SWIFT_GEAR_CHEMISTRY_IACT_H */
