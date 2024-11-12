@@ -164,6 +164,9 @@ struct part {
   /*! Divergence of v used for the Dedner scalar evolution */
   float Dedner_div_v;
 
+  /*! Particle-carried thermal diffusion constant */
+  float alpha_u;
+
   /* MATTHIEU END ----------------------------------------- */
 
   /* Store density/force specific stuff. */

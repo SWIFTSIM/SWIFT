@@ -430,6 +430,26 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* MATTHIEU START --------------------------------------- */
 
+  /* Thermal diffusion ------------------------------------ */
+
+  /* Diffusion signal velocity
+   * Price 2018, eq. 43 */
+  const float v_diff =
+      sqrtf(2.0 * fabsf(pressurei - pressurej) / (rhoi + rhoj));
+  // TODO: cosmo terms
+
+  /* Take average of both diffusion constants */
+  const float alpha_diff = 0.5f * (pi->alpha_u + pj->alpha_u);
+
+  /* Price 2018, eq. 42 second term
+   * wi_dx + wj_dx / 2 is F_ij */
+  const float diff_du_term = alpha_diff * v_diff * (pi->u - pj->u) * 0.5f *
+                             (wi_dr * f_ij / rhoi + wj_dr * f_ji / rhoj);
+
+  pi->u_dt += mj * diff_du_term;
+
+  /* MHD equations ---------------------------------------- */
+
   const float one_over_mu0 = 1.f / mu_0;
 
   /* Get B for both particles */
