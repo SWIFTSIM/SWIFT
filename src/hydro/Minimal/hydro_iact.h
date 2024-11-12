@@ -442,7 +442,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float alpha_diff = 0.5f * (pi->alpha_u + pj->alpha_u);
 
   /* Price 2018, eq. 42 second term
-   * wi_dx + wj_dx / 2 is F_ij */
+   * Note that wi_dx + wj_dx / 2 is F_ij */
   const float diff_du_term = alpha_diff * v_diff * (pi->u - pj->u) * 0.5f *
                              (wi_dr * f_ij / rhoi + wj_dr * f_ji / rhoj);
 
@@ -464,6 +464,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float dB[3] = {Bi[0] - Bj[0],   // x
                        Bi[1] - Bj[1],   // y
                        Bi[2] - Bj[2]};  // z
+
+  /* Square of the norm of the difference in B between particles */
+  const float square_norm_dB = dB[0] * dB[0] + dB[1] * dB[1] + dB[2] * dB[2];
 
   /* Square norm of B fields */
   const float Bi_2 = Bi[0] * Bi[0] + Bi[1] * Bi[1] + Bi[2] * Bi[2];
@@ -605,6 +608,37 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   pi->Dedner_div_v -= mj * Dedner_div_v;
 
   /* Shock capturing (artifical resistivity) ------------ */
+
+  /* Artificial resistivity speed (Price 2018, eq. 184) */
+  const float alpha_B_i = 1.f;
+  const float alpha_B_j = 1.f;
+
+  const float v_sig_AR_i = c_h_i * alpha_B_i;
+  const float v_sig_AR_j = c_h_j * alpha_B_j;
+
+  /* Artifical resistivity (Price 2018, eq. 181 second term)
+   * without the rho_a in front
+   * Note: wi_dx + wj_dx / 2 is F_ij */
+  float dB_over_rho_dt_AR_i[3] = {0.f, 0.f, 0.f};
+  for (int k = 0; k < 3; k++) {
+    dB_over_rho_dt_AR_i[k] += v_sig_AR_i * wi_dr * f_ij / (rhoi * rhoi);
+    dB_over_rho_dt_AR_i[k] += v_sig_AR_j * wj_dr * f_ji / (rhoj * rhoj);
+    dB_over_rho_dt_AR_i[k] *= 0.5f * dB[k];
+  }
+
+  pi->B_over_rho_dt[0] += mj * dB_over_rho_dt_AR_i[0];
+  pi->B_over_rho_dt[1] += mj * dB_over_rho_dt_AR_i[1];
+  pi->B_over_rho_dt[2] += mj * dB_over_rho_dt_AR_i[2];
+
+  /* Artificial resistivity energy change (Price 2018, eq. 182) */
+  float du_dt_AR_i = 0.f;
+  for (int k = 0; k < 3; k++) {
+    dB_over_rho_dt_AR_i[k] += v_sig_AR_i * wi_dr * f_ij / (rhoi * rhoi);
+    dB_over_rho_dt_AR_i[k] += v_sig_AR_j * wj_dr * f_ji / (rhoj * rhoj);
+    dB_over_rho_dt_AR_i[k] *= -0.25f * square_norm_dB;
+  }
+
+  pi->u_dt -= mj * du_dt_AR_i;
 
   /* MATTHIEU END --------------------------------------- */
 }
