@@ -1594,6 +1594,10 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
   t->subtype = task_subtype_progeny;
   t->flags = 0;
 
+  /* If we're dealing with a void -> non-void pair, we need a flag for when
+   * the original task has been reused. */
+  int reused = 0;
+
   /* Handle each individual splitting case. */
   if ((ci->subtype == cell_subtype_void ||
        (ci->split && cell_is_above_diff_grav_depth(ci))) &&
@@ -1658,12 +1662,13 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
                                /*use_mesh*/ sp->periodic)) {
 
         /* Can we reuse the orignal task or do we need to make a new one? */
-        if (t->subtype == task_subtype_progeny) {
+        if (!reused) {
 
           /* We can make use of the old task but turn it into a direct one. */
           t->subtype = task_subtype_direct;
           t->ci = cpi;
           t->cj = cj;
+          reused = 1;
 
         } else {
 
@@ -1702,12 +1707,13 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
                                /*use_mesh*/ sp->periodic)) {
 
         /* Can we reuse the orignal task or do we need to make a new one? */
-        if (t->subtype == task_subtype_progeny) {
+        if (!reused) {
 
           /* We can make use of the old task but turn it into a direct one. */
           t->subtype = task_subtype_direct;
           t->ci = ci;
           t->cj = cpj;
+          reused = 1;
 
         } else {
 
