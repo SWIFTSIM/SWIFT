@@ -1606,16 +1606,19 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
     for (int i = 0; i < 8; i++) {
       struct cell *cpi = ci->progeny[i];
 
-      /* Skip any empty progeny of a void cell (void cells themselves always
-       * have 0 particles but are never "empty"). */
-      if (cpi->grav.count == 0 && cpi->subtype != cell_subtype_void) continue;
+      // /* Skip any empty progeny of a void cell (void cells themselves always
+      //  * have 0 particles but are never "empty"). */
+      // if (cpi->grav.count == 0 && cpi->subtype != cell_subtype_void)
+      // continue;
 
       for (int j = 0; j < 8; j++) {
         struct cell *cpj = cj->progeny[j];
 
-        /* Skip any empty progeny of a void cell (void cells themselves always
-         * have 0 particles but are never "empty"). */
-        if (cpj->grav.count == 0 && cpj->subtype != cell_subtype_void) continue;
+        // /* Skip any empty progeny of a void cell (void cells themselves
+        // always
+        //  * have 0 particles but are never "empty"). */
+        // if (cpj->grav.count == 0 && cpj->subtype != cell_subtype_void)
+        // continue;
 
         /* Can we use a M-M interaction here? */
         if (cell_can_use_pair_mm(cpi, cpj, e, sp,
@@ -1650,9 +1653,10 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
       /* Unpack the progeny. */
       struct cell *cpi = ci->progeny[i];
 
-      /* Skip any empty progeny of a void cell (void cells themselves always
-       * have 0 particles but are never "empty"). */
-      if (cpi->grav.count == 0 && cpi->subtype != cell_subtype_void) continue;
+      // /* Skip any empty progeny of a void cell (void cells themselves always
+      //  * have 0 particles but are never "empty"). */
+      // if (cpi->grav.count == 0 && cpi->subtype != cell_subtype_void)
+      // continue;
 
       /* Can we use a M-M interaction here? */
       if (cell_can_use_pair_mm(cpi, cj, e, sp,
@@ -1695,9 +1699,10 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
       /* Unpack the progeny. */
       struct cell *cpj = cj->progeny[j];
 
-      /* Skip any empty progeny of a void cell (void cells themselves always
-       * have 0 particles but are never "empty"). */
-      if (cpj->grav.count == 0 && cpj->subtype != cell_subtype_void) continue;
+      // /* Skip any empty progeny of a void cell (void cells themselves always
+      //  * have 0 particles but are never "empty"). */
+      // if (cpj->grav.count == 0 && cpj->subtype != cell_subtype_void)
+      // continue;
 
       /* Can we use a M-M interaction here? */
       if (cell_can_use_pair_mm(ci, cpj, e, sp,
