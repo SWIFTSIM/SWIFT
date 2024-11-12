@@ -7,4 +7,4 @@
 #ifdef WITH_CUDA
 //}
 #endif
-#endif  // BLOCK_SIZE_H
+#endif // BLOCK_SIZE_H

@@ -19,4 +19,4 @@ void launch_density_kernel(struct part_soa parts_soa, int *d_task_first_part,
 }
 #endif
 
-#endif  // CUDA_HEADER_H
+#endif // CUDA_HEADER_H
