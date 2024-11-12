@@ -2871,7 +2871,6 @@ void runner_dopair1_launch_f4_one_memcpy(
         struct task *tii = pack_vars->task_list[tid];
 
         /*Let's lock ci*/
-        if (tii->corner_pair == 1) fprintf(stderr, "Corner task\n");
         while (cell_locktree(cii)) {
           ; /* spin until we acquire the lock */
         }
