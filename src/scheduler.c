@@ -1599,8 +1599,17 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
        (cj->split && cell_is_above_diff_grav_depth(cj)))) {
     for (int i = 0; i < 8; i++) {
       struct cell *cpi = ci->progeny[i];
+
+      /* Skip any empty progeny of a void cell (void cells themselves always
+       * have 0 particles but are never "empty"). */
+      if (cpi->grav.count == 0 && cpi->subtype != cell_subtype_void) continue;
+
       for (int j = 0; j < 8; j++) {
         struct cell *cpj = cj->progeny[j];
+
+        /* Skip any empty progeny of a void cell (void cells themselves always
+         * have 0 particles but are never "empty"). */
+        if (cpj->grav.count == 0 && cpj->subtype != cell_subtype_void) continue;
 
         /* Can we use a M-M interaction here? */
         if (cell_can_use_pair_mm(cpi, cpj, e, sp,
@@ -1629,6 +1638,10 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
     }
   } else if (ci->subtype == cell_subtype_void) {
     for (int i = 0; i < 8; i++) {
+
+      /* Skip any empty progeny of a void cell (void cells themselves always
+       * have 0 particles but are never "empty" */
+      if (ci->progeny[i]->grav.count == 0) continue;
 
       /* Can we use a M-M interaction here? */
       if (cell_can_use_pair_mm(ci->progeny[i], cj, e, sp,
@@ -1666,6 +1679,10 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
     }
   } else {
     for (int j = 0; j < 8; j++) {
+
+      /* Skip any empty progeny of a void cell (void cells themselves always
+       * have 0 particles but are never "empty" */
+      if (cj->progeny[j]->grav.count == 0) continue;
 
       /* Can we use a M-M interaction here? */
       if (cell_can_use_pair_mm(ci, cj->progeny[j], e, sp,
