@@ -236,6 +236,10 @@ void zoom_link_void_buffer_leaves(struct space *s, struct cell *c) {
     /* Get the zoom cell. */
     struct cell *buffer_cell = &s->cells_top[cid];
 
+    message("Linking void cell to buffer cell %d (%s/%s).", cid,
+            cellID_names[buffer_cell->type],
+            subcellID_names[buffer_cell->subtype]);
+
     /* Link this nested cell into the void cell hierarchy. */
     c->progeny[k] = buffer_cell;
 
