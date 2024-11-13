@@ -231,7 +231,10 @@ void zoom_link_void_buffer_leaves(struct space *s, struct cell *c) {
     if (k & 1) loc[2] += c->width[2] / 2;
 
     /* Which cell are we in? */
-    int cid = cell_getid_from_pos(s, loc[0], loc[1], loc[2]);
+    int cid = cell_getid_below_bkg(s->zoom_props->buffer_cdim,
+                                   s->zoom_props->buffer_lower_bounds, loc[0],
+                                   loc[1], loc[2], s->zoom_props->buffer_iwidth,
+                                   z->zoom_props->buffer_cell_offset);
 
     /* Get the zoom cell. */
     struct cell *buffer_cell = &s->cells_top[cid];
