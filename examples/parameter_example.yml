@@ -595,7 +595,7 @@ GEARChemistry:
   diffusion_coefficient: 1e-3    # (Optional) GEAR (MFM or not) diffusion: Coefficient for the diffusion (see Shen et al. 2010; differs by gamma^2 due to h^2). Default: 1
 
   #GEAR MFM diffusion only
-  diffusion_mode: 0               # Diffusion mode. 0 = constant isotropic ; 1=Smagorinsky (isotropic) ; 2=Gradient model (anisotropic). The diffusion_coefficient sets the noramlisation of the diffusion.
+  diffusion_mode: 0               # Diffusion mode. Isotropic_constant = constant isotropic ; Smagorinsky = Smagorinsky (isotropic) ; Gradient = Gradient model (anisotropic). The diffusion_coefficient sets the normalisation of the diffusion.
   hll_riemann_solver_psi:  0.1    # (Optional) Tolerance parameter (> 0) for artificial diffusion, eq (7) in Hopkins 2017. (Default: 0.1)
   hll_riemann_solver_epsilon: 0.5 # (Optional) Tolerance parameter for the Hopkins 2017 HLL, eq (14). It must respect 0 <= epsilon <= 1. Default: 0.5
   use_supertimestepping: 0        # (Optional) Do we want to use supertimestepping? Supertimestepping can accelerate simulations. (Default: 0)
