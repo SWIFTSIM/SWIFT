@@ -220,25 +220,44 @@ void zoom_void_space_split(struct space *s, int verbose) {
             clocks_from_ticks(getticks() - tic), clocks_getunit());
 
 #ifdef SWIFT_DEBUG_CHECKS
-  /* Ensure all cells are linked into the tree. */
+  /* Collect the number of particles in the void multipoles. */
+  int nr_gparts_in_void = 0;
+  for (int i = 0; i < nr_void_cells; i++) {
+    nr_gparts_in_void +=
+        s->multipoles_top[s->zoom_props->void_cell_indices[i]].m_pole.num_gpart;
+  }
+
+  /* Ensure all buffer cells are linked into the tree. */
   int notlinked = 0;
-  int nr_gparts_in_zoom = 0;
+  int nr_gparts = 0;
+  for (int k = s->zoom_props->buffer_cell_offset;
+       k < s->zoom_props->buffer_cell_offset + s->zoom_props->nr_void_cells;
+       k++) {
+    nr_gparts += s->multipoles_top[k].m_pole.num_gpart;
+    if (cells_top[k].void_parent == NULL) notlinked++;
+  }
+
+  if (notlinked > 0)
+    error("%d buffer cells are not linked into a void cell tree!", notlinked);
+
+  if (s->zoom_props->with_buffer_cells &&
+      nr_gparts_in_void != nr_gparts_in_zoom)
+    error(
+        "Number of gparts is in consistent between zoom cells and "
+        "void multipole (nr_gparts_in_void=%d, nr_gparts_in_zoom=%d)",
+        nr_gparts_in_void, nr_gparts_in_zoom);
+
+  /* Ensure all zoom cells are linked into the tree. */
+  notlinked = 0;
   for (int k = 0; k < s->zoom_props->nr_zoom_cells; k++) {
-    nr_gparts_in_zoom += s->multipoles_top[k].m_pole.num_gpart;
+    nr_gparts += s->multipoles_top[k].m_pole.num_gpart;
     if (cells_top[k].void_parent == NULL) notlinked++;
   }
   if (notlinked > 0)
     error("%d zoom cells are not linked into a void cell tree!", notlinked);
 
-  /* Check all void cells have void children. */
-
-  /* Compare the number of particles in the void multipole and zoom cells. */
-  int nr_gparts_in_void = 0;
-  for (int i = 0; i < nr_void_cells; i++)
-    nr_gparts_in_void +=
-        s->multipoles_top[s->zoom_props->void_cell_indices[i]].m_pole.num_gpart;
-
-  if (nr_gparts_in_void != nr_gparts_in_zoom)
+  if (!s->zoom_props->with_buffer_cells &&
+      nr_gparts_in_void != nr_gparts_in_zoom)
     error(
         "Number of gparts is in consistent between zoom cells and "
         "void multipole (nr_gparts_in_void=%d, nr_gparts_in_zoom=%d)",
