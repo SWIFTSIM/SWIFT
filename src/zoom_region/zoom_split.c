@@ -119,12 +119,6 @@ void zoom_void_split_recursive(struct space *s, struct cell *c,
       /* We're at the buffer level so we need to hook in the buffer cells. */
       zoom_link_void_leaves(s, cp);
 
-      /* Label the newly attached progeny as void cells. */
-      for (int i = 0; i < 8; i++) {
-        if (zoom_cell_overlaps_zoom_region(cp->progeny[i], s))
-          cp->progeny[i]->subtype = cell_subtype_void;
-      }
-
       /* Recurse */
       zoom_void_split_recursive(s, cp, tpid);
 
@@ -242,7 +236,7 @@ void zoom_void_space_split(struct space *s, int verbose) {
 
   if (s->zoom_props->with_buffer_cells && nr_gparts_in_void != nr_gparts)
     error(
-        "Number of gparts is in consistent between buffer cells and "
+        "Number of gparts is inconsistent between buffer cells and "
         "void multipole (nr_gparts_in_void=%d, nr_gparts=%d)",
         nr_gparts_in_void, nr_gparts);
 

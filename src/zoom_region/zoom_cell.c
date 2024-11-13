@@ -87,7 +87,8 @@ void zoom_find_void_cells(struct space *s, const int verbose) {
         "found_void_count=%d)",
         target_void_count, zoom_props->nr_void_cells);
 
-  if (verbose) message("Found %d void cells", zoom_props->nr_void_cells);
+  if (verbose)
+    message("Found %d background void cells", zoom_props->nr_void_cells);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check the void cells are in the right place. */
@@ -100,6 +101,22 @@ void zoom_find_void_cells(struct space *s, const int verbose) {
       error("Void cell is not inside the zoom region (cid=%d)", cid);
   }
 #endif
+
+  /* We also need to label any void cells that are in the buffer region. */
+  if (zoom_props->with_buffer_cells) {
+    int nr_buffer_void_cells = 0;
+    offset = zoom_props->buffer_cell_offset;
+    ncells = zoom_props->nr_buffer_cells;
+    for (int cid = offset; cid < offset + ncells; cid++) {
+      struct cell *c = &cells[cid];
+      if (zoom_cell_overlaps_zoom_region(c, s)) {
+        c->subtype = cell_subtype_void;
+        nr_buffer_void_cells++;
+      }
+    }
+
+    if (verbose) message("Found %d buffer void cells", nr_buffer_void_cells);
+  }
 }
 
 /**
