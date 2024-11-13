@@ -303,6 +303,7 @@ void zoom_get_geometry_no_buffer_cells(struct space *s) {
   /* If we have a buffer cell depth warn that we will ignore it. */
   if (s->zoom_props->buffer_cell_depth > 0) {
     message("No buffer cells are needed, ignoring buffer cell depth.");
+    s->zoom_props->buffer_cell_depth = 0;
   }
 
   /* Zero the buffer region properties explictly. */
