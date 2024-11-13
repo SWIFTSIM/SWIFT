@@ -275,6 +275,16 @@ int zoom_get_void_geometry(struct space *s, const double region_dim) {
   return nr_zoom_regions;
 }
 
+/**
+ * @brief Compute the number of child cells in a single parent cell at a given
+ * depth.
+ *
+ * @param region_dim The dimension of the region.
+ * @param parent_width The width of the parent cell.
+ * @param child_depth The depth of the child cell within the parent.
+ *
+ * @return The number of child cells in a single parent cell.
+ */
 static int zoom_get_cdim_at_depth(double region_dim, double parent_width,
                                   int child_depth) {
 
@@ -283,13 +293,9 @@ static int zoom_get_cdim_at_depth(double region_dim, double parent_width,
       floor((region_dim + (0.1 * parent_width)) / parent_width);
 
   /* We now know how many parent cells we have in the region, use this and the
-   * depth of the zoom region to calculate the number of child cells in a single
-   * parent cell. */
-  int nr_child_per_parent = floor(parent_width / pow(2, child_depth));
-
-  /* The cdim is then the number of parents times the number of children in a
-   * single parent. */
-  return region_parent_cdim * nr_child_per_parent;
+   * depth of the zoom region to calculate the cdim (the number of parents times
+   * the number of children in a parent. */
+  return region_parent_cdim * pow(2, child_depth);
 }
 
 void zoom_get_geometry_no_buffer_cells(struct space *s) {
