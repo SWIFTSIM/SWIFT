@@ -245,18 +245,23 @@ double zoom_get_region_dim_and_shift(struct space *s) {
 }
 
 /**
- * @brief Compute the void region bounds.
+ * @brief Compute the void region geometry.
  *
  * The void region is the region covered by background cells above the zoom
  * region. If the void region is sufficiently close to the zoom region size
  * then the two will be made equivalent later on. Otherwide the void region is
  * equivalent to the buffer region.
  *
+ * This function will derive the bounds of the void region and return how many
+ * zoom regions tesselate the void region.
+ *
  * @param s The space
  * @param ini_max_dim The dim of the zoom region before tesselating the
  * volume.
+ *
+ * @return The number of zoom regions that tesselate the void region.
  */
-double zoom_get_void_bounds(struct space *s, const double region_dim) {
+int zoom_get_void_geometry(struct space *s, const double region_dim) {
 
   /* Get the lower and upper bounds of the zoom region based on the initial
    * dimensions and the padding factor. */
@@ -288,11 +293,10 @@ double zoom_get_void_bounds(struct space *s, const double region_dim) {
     s->zoom_props->void_dim[i] = void_upper_bounds[i] - void_lower_bounds[i];
   }
 
-  /* Compute the new padding ratio for the void region. */
-  double org_reigon_dim = region_dim / s->zoom_props->region_pad_factor;
-  double void_pad_factor = s->zoom_props->void_dim[0] / org_reigon_dim;
+  /* Compute the number of zoom regions that tesselate the void region. */
+  int nr_zoom_regions = ceil(s->zoom_props->void_dim[0] / reigon_dim);
 
-  return void_pad_factor;
+  return nr_zoom_regions;
 }
 
 void zoom_get_geometry_no_buffer_cells() {}
@@ -465,23 +469,23 @@ void zoom_region_init(struct space *s, const int verbose) {
     s->iwidth[i] = 1.0 / s->width[i];
   }
 
-  /* Compute the void region bounds and padding factor. */
-  double void_pad_factor = zoom_get_void_bounds(s, max_dim);
+  /* Compute the void region bounds and number of zoom regions that tesselate
+   * it. */
+  int nr_zoom_regions = zoom_get_void_bounds(s, max_dim);
 
-  /* Check the user gave a sensible background cdim, if the amount of void
-   * padding is too high we will have to set up a unworkable number of buffer
+  /* Check the user gave a sensible background cdim, if the number of zoom
+   * regions is too high we will have to set up a unworkable number of buffer
    * cells. */
-  if (void_pad_factor / s->zoom_props->region_pad_factor >= 64) {
+  if (nr_zoom_regions >= 64) {
     error(
         "Background cell size is too large relative to the zoom region! "
-        "Increase ZoomRegion:bkg_top_level_cells (would have needed at least "
-        "%d buffer "
-        "cells)",
-        (int)(void_pad_factor / s->zoom_props->region_pad_factor));
+        "Increase ZoomRegion:bkg_top_level_cells (would have needed %d zoom "
+        "cells in the void region).",
+        (int)(void_pad_factor / s->zoom_pro));
   }
 
   /* If its alot but not silly just warn the user. */
-  if (void_pad_factor / s->zoom_props->region_pad_factor >= 32) {
+  if (nr_zoom_regions >= 16) {
     warning(
         "Background cell size is large relative to the zoom region! "
         "(we'll need at least %d buffer cells which may be slow). ",
@@ -489,9 +493,9 @@ void zoom_region_init(struct space *s, const int verbose) {
   }
 
   /* If the extra padding due to background cells is small enough we can forgo
-   * buffer cells entirely if not we'll use them to better match the geometry
+   * buffer cells entirel,y if not we'll use them to better match the geometry
    * to the high resolution particle distribution. */
-  if (void_pad_factor / s->zoom_props->region_pad_factor < 2) {
+  if (nr_zoom_regions < 2) {
     s->zoom_props->with_buffer_cells = 0;
     zoom_get_geometry_no_buffer_cells(s, max_dim);
   } else {
@@ -514,7 +518,7 @@ void zoom_region_init(struct space *s, const int verbose) {
   }
 
   /* Let's be safe and error if we have drastically changed the size of the
-  padding region. */
+   * requested padding region. */
   if ((s->zoom_props->region_pad_factor / input_pad_factor) >= 2)
     error(
         "WARNING: The pad region has to be 2x larger than requested."
