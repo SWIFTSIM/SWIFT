@@ -68,16 +68,6 @@ static void zoom_link_void_zoom_leaves(struct space *s, struct cell *c) {
    * normal split cell since it's linked into top level "progeny". */
   c->split = 0;
 
-  /* Initialise the timestep information we need to collect. */
-  integertime_t ti_hydro_end_min = max_nr_timesteps, ti_hydro_beg_max = 0;
-  integertime_t ti_rt_end_min = max_nr_timesteps, ti_rt_beg_max = 0;
-  integertime_t ti_rt_min_step_size = max_nr_timesteps;
-  integertime_t ti_gravity_end_min = max_nr_timesteps, ti_gravity_beg_max = 0;
-  integertime_t ti_stars_end_min = max_nr_timesteps, ti_stars_beg_max = 0;
-  integertime_t ti_sinks_end_min = max_nr_timesteps, ti_sinks_beg_max = 0;
-  integertime_t ti_black_holes_end_min = max_nr_timesteps,
-                ti_black_holes_beg_max = 0;
-
   /* Loop over the 8 progeny cells which are now the nested top level cells. */
   for (int k = 0; k < 8; k++) {
 
@@ -100,65 +90,7 @@ static void zoom_link_void_zoom_leaves(struct space *s, struct cell *c) {
 
     /* Flag this void cell "progeny" as the cell's void cell parent. */
     zoom_cell->void_parent = c;
-
-    /* Update the timestep information. */
-    ti_hydro_end_min = min(ti_hydro_end_min, zoom_cell->hydro.ti_end_min);
-    ti_hydro_beg_max = max(ti_hydro_beg_max, zoom_cell->hydro.ti_beg_max);
-    ti_rt_end_min = min(ti_rt_end_min, zoom_cell->rt.ti_rt_end_min);
-    ti_rt_beg_max = max(ti_rt_beg_max, zoom_cell->rt.ti_rt_beg_max);
-    ti_rt_min_step_size =
-        min(ti_rt_min_step_size, zoom_cell->rt.ti_rt_min_step_size);
-    ti_gravity_end_min = min(ti_gravity_end_min, zoom_cell->grav.ti_end_min);
-    ti_gravity_beg_max = max(ti_gravity_beg_max, zoom_cell->grav.ti_beg_max);
-    ti_stars_end_min = min(ti_stars_end_min, zoom_cell->stars.ti_end_min);
-    ti_stars_beg_max = max(ti_stars_beg_max, zoom_cell->stars.ti_beg_max);
-    ti_sinks_end_min = min(ti_sinks_end_min, zoom_cell->sinks.ti_end_min);
-    ti_sinks_beg_max = max(ti_sinks_beg_max, zoom_cell->sinks.ti_beg_max);
-    ti_black_holes_end_min =
-        min(ti_black_holes_end_min, zoom_cell->black_holes.ti_end_min);
-    ti_black_holes_beg_max =
-        max(ti_black_holes_beg_max, zoom_cell->black_holes.ti_beg_max);
   }
-
-  /* Update the timestep information. */
-  c->hydro.ti_end_min = ti_hydro_end_min;
-  c->hydro.ti_beg_max = ti_hydro_beg_max;
-  c->rt.ti_rt_end_min = ti_rt_end_min;
-  c->rt.ti_rt_beg_max = ti_rt_beg_max;
-  c->rt.ti_rt_min_step_size = ti_rt_min_step_size;
-  c->grav.ti_end_min = ti_gravity_end_min;
-  c->grav.ti_beg_max = ti_gravity_beg_max;
-  c->stars.ti_end_min = ti_stars_end_min;
-  c->stars.ti_beg_max = ti_stars_beg_max;
-  c->sinks.ti_end_min = ti_sinks_end_min;
-  c->sinks.ti_beg_max = ti_sinks_beg_max;
-  c->black_holes.ti_end_min = ti_black_holes_end_min;
-  c->black_holes.ti_beg_max = ti_black_holes_beg_max;
-
-  /* Interact the nested cell's multipoles with this cell. */
-  if (s->with_self_gravity) {
-    space_populate_multipole(c);
-  }
-
-#ifdef SWIFT_DEBUG_CHECKS
-  /* Ensure the void multipole agrees with the nested cells. */
-  int nr_gparts_in_nested = 0;
-  int nr_gparts_in_void = c->grav.multipole->m_pole.num_gpart;
-  for (int k = 0; k < 8; k++) {
-    /* All progeny should exist */
-    if (c->progeny[k] == NULL) {
-      error("Zoom cell has no progeny!");
-    }
-    nr_gparts_in_nested += c->progeny[k]->grav.multipole->m_pole.num_gpart;
-  }
-
-  if (nr_gparts_in_nested != nr_gparts_in_void) {
-    error(
-        "Nested cell and void cell multipole don't agree! "
-        "(nr_gparts_in_nested=%d nr_gparts_in_void=%d)",
-        nr_gparts_in_nested, nr_gparts_in_void);
-  }
-#endif
 }
 
 /**
@@ -205,16 +137,6 @@ void zoom_link_void_buffer_leaves(struct space *s, struct cell *c) {
     c->split = 0;
   }
 
-  /* Initialise the timestep information we need to collect. */
-  integertime_t ti_hydro_end_min = max_nr_timesteps, ti_hydro_beg_max = 0;
-  integertime_t ti_rt_end_min = max_nr_timesteps, ti_rt_beg_max = 0;
-  integertime_t ti_rt_min_step_size = max_nr_timesteps;
-  integertime_t ti_gravity_end_min = max_nr_timesteps, ti_gravity_beg_max = 0;
-  integertime_t ti_stars_end_min = max_nr_timesteps, ti_stars_beg_max = 0;
-  integertime_t ti_sinks_end_min = max_nr_timesteps, ti_sinks_beg_max = 0;
-  integertime_t ti_black_holes_end_min = max_nr_timesteps,
-                ti_black_holes_beg_max = 0;
-
   /* Loop over the 8 progeny cells which are now the nested top level cells. */
   for (int k = 0; k < 8; k++) {
 
@@ -235,10 +157,6 @@ void zoom_link_void_buffer_leaves(struct space *s, struct cell *c) {
     /* Get the zoom cell. */
     struct cell *buffer_cell = &s->cells_top[cid];
 
-    message("Linking void cell to buffer cell %d (%s/%s).", cid,
-            cellID_names[buffer_cell->type],
-            subcellID_names[buffer_cell->subtype]);
-
     /* Link this nested cell into the void cell hierarchy. */
     c->progeny[k] = buffer_cell;
 
@@ -249,65 +167,7 @@ void zoom_link_void_buffer_leaves(struct space *s, struct cell *c) {
     if (buffer_cell->subtype == cell_subtype_void) {
       buffer_cell->depth = c->depth + 1;
     }
-
-    /* Update the timestep information. */
-    ti_hydro_end_min = min(ti_hydro_end_min, buffer_cell->hydro.ti_end_min);
-    ti_hydro_beg_max = max(ti_hydro_beg_max, buffer_cell->hydro.ti_beg_max);
-    ti_rt_end_min = min(ti_rt_end_min, buffer_cell->rt.ti_rt_end_min);
-    ti_rt_beg_max = max(ti_rt_beg_max, buffer_cell->rt.ti_rt_beg_max);
-    ti_rt_min_step_size =
-        min(ti_rt_min_step_size, buffer_cell->rt.ti_rt_min_step_size);
-    ti_gravity_end_min = min(ti_gravity_end_min, buffer_cell->grav.ti_end_min);
-    ti_gravity_beg_max = max(ti_gravity_beg_max, buffer_cell->grav.ti_beg_max);
-    ti_stars_end_min = min(ti_stars_end_min, buffer_cell->stars.ti_end_min);
-    ti_stars_beg_max = max(ti_stars_beg_max, buffer_cell->stars.ti_beg_max);
-    ti_sinks_end_min = min(ti_sinks_end_min, buffer_cell->sinks.ti_end_min);
-    ti_sinks_beg_max = max(ti_sinks_beg_max, buffer_cell->sinks.ti_beg_max);
-    ti_black_holes_end_min =
-        min(ti_black_holes_end_min, buffer_cell->black_holes.ti_end_min);
-    ti_black_holes_beg_max =
-        max(ti_black_holes_beg_max, buffer_cell->black_holes.ti_beg_max);
   }
-
-  /* Update the timestep information. */
-  c->hydro.ti_end_min = ti_hydro_end_min;
-  c->hydro.ti_beg_max = ti_hydro_beg_max;
-  c->rt.ti_rt_end_min = ti_rt_end_min;
-  c->rt.ti_rt_beg_max = ti_rt_beg_max;
-  c->rt.ti_rt_min_step_size = ti_rt_min_step_size;
-  c->grav.ti_end_min = ti_gravity_end_min;
-  c->grav.ti_beg_max = ti_gravity_beg_max;
-  c->stars.ti_end_min = ti_stars_end_min;
-  c->stars.ti_beg_max = ti_stars_beg_max;
-  c->sinks.ti_end_min = ti_sinks_end_min;
-  c->sinks.ti_beg_max = ti_sinks_beg_max;
-  c->black_holes.ti_end_min = ti_black_holes_end_min;
-  c->black_holes.ti_beg_max = ti_black_holes_beg_max;
-
-  /* Interact the nested cell's multipoles with this cell. */
-  if (s->with_self_gravity) {
-    space_populate_multipole(c);
-  }
-
-#ifdef SWIFT_DEBUG_CHECKS
-  /* Ensure the void multipole agrees with the nested cells. */
-  int nr_gparts_in_nested = 0;
-  int nr_gparts_in_void = c->grav.multipole->m_pole.num_gpart;
-  for (int k = 0; k < 8; k++) {
-    /* All progeny should exist */
-    if (c->progeny[k] == NULL) {
-      error("Zoom cell has no progeny!");
-    }
-    nr_gparts_in_nested += c->progeny[k]->grav.multipole->m_pole.num_gpart;
-  }
-
-  if (nr_gparts_in_nested != nr_gparts_in_void) {
-    error(
-        "Nested cell and void cell multipole don't agree! "
-        "(nr_gparts_in_nested=%d nr_gparts_in_void=%d)",
-        nr_gparts_in_nested, nr_gparts_in_void);
-  }
-#endif
 }
 
 /**
