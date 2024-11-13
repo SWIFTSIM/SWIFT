@@ -137,7 +137,7 @@ static void zoom_link_void_zoom_leaves(struct space *s, struct cell *c) {
 
   /* Interact the nested cell's multipoles with this cell. */
   if (s->with_self_gravity) {
-    space_populate_multipole(zoom_cell);
+    space_populate_multipole(c);
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -279,7 +279,7 @@ void zoom_link_void_buffer_leaves(struct space *s, struct cell *c) {
 
   /* Interact the nested cell's multipoles with this cell. */
   if (s->with_self_gravity) {
-    space_populate_multipole(buffer_cell);
+    space_populate_multipole(c);
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -346,8 +346,8 @@ void zoom_void_split_recursive(struct space *s, struct cell *c,
         "cells are comprable in size to the zoom cells."
         " (cp->type=%s, cp->subtype=%s, cp->width[0]=%f, cp->depth=%d,"
         " s->zoom_props->width[0]=%f, zoom_props->zoom_cell_depth=%d)",
-        cellID_names[cp->type], subcellID_names[cp->subtype], cp->width[0],
-        cp->depth, s->zoom_props->width[0], s->zoom_props->zoom_cell_depth);
+        cellID_names[c->type], subcellID_names[c->subtype], c->width[0],
+        c->depth, s->zoom_props->width[0], s->zoom_props->zoom_cell_depth);
 #endif
 
   /* If the depth is too large, we have a problem and should stop. */
