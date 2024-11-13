@@ -328,9 +328,12 @@ void zoom_report_cell_properties(const struct space *s) {
   message("%25s = [%f, %f, %f]", "Background Cell Width", s->width[0],
           s->width[1], s->width[2]);
   message("%25s = %d", "Number of Background Cells", zoom_props->nr_bkg_cells);
+  message("%25s = %d", "Zoom Depth in Background Cell",
+          zoom_props->zoom_cell_depth);
   if (zoom_props->with_buffer_cells) {
-    message("%25s = %d", "Region Buffer Ratio",
-            zoom_props->region_buffer_ratio);
+    message("%25s = [%f, %f, %f]", "Buffer Region Dimensions",
+            zoom_props->buffer_dim[0], zoom_props->buffer_dim[1],
+            zoom_props->buffer_dim[2]);
     message(
         "%25s = [%f-%f, %f-%f, %f-%f]", "Buffer Bounds",
         zoom_props->buffer_lower_bounds[0], zoom_props->buffer_upper_bounds[0],
@@ -345,6 +348,8 @@ void zoom_report_cell_properties(const struct space *s) {
             zoom_props->buffer_width[1] * zoom_props->buffer_cdim[1],
             zoom_props->buffer_width[2] * zoom_props->buffer_cdim[2]);
     message("%25s = %d", "Number of Buffer Cells", zoom_props->nr_buffer_cells);
+    message("%25s = %d", "Buffer Depth in Background Cell",
+            zoom_props->buffer_cell_depth);
   }
   message("%25s = %d", "Zoom Depth in Void Tree", zoom_props->zoom_cell_depth);
 }
