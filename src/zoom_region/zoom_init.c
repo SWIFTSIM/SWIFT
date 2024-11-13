@@ -329,6 +329,14 @@ void zoom_get_geometry_no_buffer_cells(struct space *s) {
 
 void zoom_get_geometry_with_buffer_cells(struct space *s) {
 
+  /* Ensure we have a buffer cell depth. */
+  if (s->zoom_props->buffer_cell_depth == 0) {
+    error(
+        "Current cell structure requires buffer cells but not buffer cell has "
+        "been given. ZoomRegion:buffer_top_level_depth must be greater than "
+        "0.");
+  }
+
   /* Match the buffer region bounds to the void region bounds. */
   for (int i = 0; i < 3; i++) {
     s->zoom_props->buffer_lower_bounds[i] = s->zoom_props->void_lower_bounds[i];
