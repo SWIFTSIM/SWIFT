@@ -103,8 +103,8 @@ void zoom_find_void_cells(struct space *s, const int verbose) {
   int ncells = zoom_props->nr_bkg_cells;
 
   /* Work out how many void cells we should have. */
-  int void_cdim = s->zoom_props->void_dim[0] * s->iwidth * 1.0001;
-  int = target_void_count = void_cdim * void_cdim * void_cdim;
+  int void_cdim = s->zoom_props->void_dim[0] * s->iwidth[0] * 1.0001;
+  int target_void_count = void_cdim * void_cdim * void_cdim;
 
   /* Allocate the indices of void cells */
   if (swift_memalign(

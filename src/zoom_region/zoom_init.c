@@ -270,7 +270,7 @@ int zoom_get_void_geometry(struct space *s, const double region_dim) {
   }
 
   /* Compute the number of zoom regions that tesselate the void region. */
-  int nr_zoom_regions = ceil(s->zoom_props->void_dim[0] / reigon_dim);
+  int nr_zoom_regions = ceil(s->zoom_props->void_dim[0] / region_dim);
 
   return nr_zoom_regions;
 }
@@ -279,7 +279,8 @@ static int zoom_get_cdim_at_depth(double region_dim, double parent_width,
                                   int child_depth) {
 
   /* How many parent_widths are in the region? (ensure correct rounding) */
-  int region_parent_cdim = floor((dim + (0.1 * parent_width)) / parent_width);
+  int region_parent_cdim =
+      floor((region_dim + (0.1 * parent_width)) / parent_width);
 
   /* We now know how many parent cells we have in the region, use this and the
    * depth of the zoom region to calculate the number of child cells in a single
@@ -322,7 +323,7 @@ void zoom_get_geometry_no_buffer_cells(struct space *s) {
   for (int i = 0; i < 3; i++) {
     s->zoom_props->cdim[i] = cdim;
     s->zoom_props->width[i] = s->zoom_props->dim[i] / cdim;
-    s->zoom_props->iwidht[i] = 1.0 / s->zoom_props->width[i];
+    s->zoom_props->iwidth[i] = 1.0 / s->zoom_props->width[i];
   }
 }
 
@@ -359,8 +360,10 @@ void zoom_get_geometry_with_buffer_cells(struct space *s) {
   double region_lower_bounds[3];
   double region_upper_bounds[3];
   for (int i = 0; i < 3; i++) {
-    int lower = (int)floor(lower_bounds[i] * s->zoom_props->buffer_iwidth[i]);
-    int upper = (int)floor(upper_bounds[i] * s->zoom_props->buffer_iwidth[i]);
+    int lower = (int)floor(s->zoom_props->region_lower_bounds[i] *
+                           s->zoom_props->buffer_iwidth[i]);
+    int upper = (int)floor(s->zoom_props->region_upper_bounds[i] *
+                           s->zoom_props->buffer_iwidth[i]);
     region_lower_bounds[i] = lower * s->zoom_props->buffer_width[i];
     region_upper_bounds[i] = (upper + 1) * s->zoom_props->buffer_width[i];
   }
@@ -564,7 +567,7 @@ void zoom_region_init(struct space *s, const int verbose) {
 
   /* Compute the void region bounds and number of zoom regions that tesselate
    * it. */
-  int nr_zoom_regions = zoom_get_void_bounds(s, max_dim);
+  int nr_zoom_regions = zoom_get_void_geometry(s, max_dim);
 
   /* Check the user gave a sensible background cdim, if the number of zoom
    * regions is too high we will have to set up a unworkable number of buffer
@@ -574,7 +577,7 @@ void zoom_region_init(struct space *s, const int verbose) {
         "Background cell size is too large relative to the zoom region! "
         "Increase ZoomRegion:bkg_top_level_cells (would have needed %d zoom "
         "cells in the void region).",
-        (int)(void_pad_factor / s->zoom_pro));
+        nr_zoom_regions);
   }
 
   /* If its alot but not silly just warn the user. */
@@ -582,7 +585,7 @@ void zoom_region_init(struct space *s, const int verbose) {
     warning(
         "Background cell size is large relative to the zoom region! "
         "(we'll need at least %d buffer cells which may be slow). ",
-        (int)(void_pad_factor / s->zoom_props->region_pad_factor));
+        nr_zoom_regions);
   }
 
   /* If the extra padding due to background cells is small enough we can forgo
