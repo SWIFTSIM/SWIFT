@@ -75,7 +75,7 @@ void zoom_find_void_cells(struct space *s, const int verbose) {
     struct cell *c = &cells[cid];
 
     /* Label this cell if it contains the zoom region. */
-    if (nested_cell_overlaps_zoom_region(c, s)) {
+    if (zoom_cell_overlaps_zoom_region(c, s)) {
       c->subtype = cell_subtype_void;
       zoom_props->void_cell_indices[zoom_props->nr_void_cells++] = cid;
     }
@@ -96,7 +96,7 @@ void zoom_find_void_cells(struct space *s, const int verbose) {
     if (cid < offset || cid >= offset + ncells)
       error("Void cell index is out of range (cid=%d, offset=%d, ncells=%d)",
             cid, offset, ncells);
-    if (nested_cell_inside_zoom_region(&cells[cid], s) == 0)
+    if (zoom_cell_inside_zoom_region(&cells[cid], s) == 0)
       error("Void cell is not inside the zoom region (cid=%d)", cid);
   }
 #endif
@@ -514,7 +514,7 @@ void zoom_construct_tl_cells(struct space *s, const integertime_t ti_current,
 
   /* Attach zoom cells to their cell array (they are the first cells in
    * cells_top so nothing fancy needed here). */
-  zoom_props->nested_cells_top = s->cells_top;
+  zoom_props->zoom_cells_top = s->cells_top;
 
   if (verbose)
     message("Set zoom cell dimensions to [ %i %i %i ].", zoom_props->cdim[0],
