@@ -79,23 +79,13 @@ void zoom_parse_params(struct swift_params *params,
   }
 
   /* Get the ratio between the zoom region size and buffer cell size.
-   * Ignored if buffer cells aren't needed.
-   * NOTE: this has to be an integer to ensure the buffer and zoom cells align.
-   * The buffer region is divided into region_buffer_ratio cells along each
-   * axis. */
-  props->region_buffer_ratio = parser_get_opt_param_int(
-      params, "ZoomRegion:region_buffer_cell_ratio", 0);
+   * Ignored if buffer cells aren't needed. */
+  props->buffer_cell_depth =
+      parser_get_opt_param_int(params, "ZoomRegion:buffer_top_level_depth", 0);
 
-  /* Ensure we have been given a power of 2 times the region buffer ratio
-   * for cdim. If we don't the octrees of sub cells won't align properly between
-   * the nested cell grids. */
-  if (props->region_buffer_ratio > 0) { /* i.e. we have buffer cells. */
-    if (!cdim_is_power_of_2(props->cdim[0], props->region_buffer_ratio)) {
-      error(
-          "Scheduler:max_top_level_cells must be a power "
-          "of 2 times region_buffer_cell_ratio (by default 1)"
-          "when running with a zoom region!");
-    }
+  /* Ensure the buffer cell depth is less than the zoom cell depth. */
+  if (props->buffer_cell_depth > props->zoom_cell_depth) {
+    error("Buffer cell depth must be less than the zoom cell depth.");
   }
 
   /* Extract the zoom width boost factor (used to define the buffer around the
