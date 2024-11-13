@@ -379,16 +379,12 @@ void zoom_get_geometry_with_buffer_cells(struct space *s) {
   double region_lower_bounds[3];
   double region_upper_bounds[3];
   for (int i = 0; i < 3; i++) {
-    int lower = (int)floor((s->zoom_props->region_lower_bounds[i] -
-                            s->zoom_props->buffer_lower_bounds[i]) *
+    int lower = (int)floor(s->zoom_props->region_lower_bounds[i] *
                            s->zoom_props->buffer_iwidth[i]);
-    int upper = (int)floor((s->zoom_props->region_upper_bounds[i] -
-                            s->zoom_props->buffer_lower_bounds[i]) *
+    int upper = (int)floor(s->zoom_props->region_upper_bounds[i] *
                            s->zoom_props->buffer_iwidth[i]);
-    region_lower_bounds[i] = lower * s->zoom_props->buffer_width[i] +
-                             s->zoom_props->buffer_lower_bounds[i];
-    region_upper_bounds[i] = (upper + 1) * s->zoom_props->buffer_width[i] +
-                             s->zoom_props->buffer_lower_bounds[i];
+    region_lower_bounds[i] = lower * s->zoom_props->buffer_width[i];
+    region_upper_bounds[i] = (upper + 1) * s->zoom_props->buffer_width[i];
   }
 
   /* Assign the new aligned zoom bounds. */
