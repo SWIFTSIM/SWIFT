@@ -276,8 +276,22 @@ static INLINE void chemistry_init_backend(struct swift_params* parameter_file,
       parameter_file, "GEARChemistry:diffusion_coefficient",
       DEFAULT_DIFFUSION_NORMALISATION);
 
-  data->diffusion_mode =
-      parser_get_param_int(parameter_file, "GEARChemistry:diffusion_mode");
+  /* data->diffusion_mode = */
+      /* parser_get_param_int(parameter_file, "GEARChemistry:diffusion_mode"); */
+
+  char temp[PARSER_MAX_LINE_SIZE];
+  parser_get_param_string(parameter_file, "GEARChemistry:diffusion_mode", temp);
+  if (strcmp(temp, "Isotropic_constant") == 0)
+    data->diffusion_mode = isotropic_constant ;
+  else if (strcmp(temp, "Smagorinsky") == 0)
+    data->diffusion_mode = isotropic_smagorinsky;
+  else if (strcmp(temp, "Gradient") == 0)
+    data->diffusion_mode = anisotropic_gradient;
+  else
+    error(
+        "The chemistry diffusion mode must be Isotropic_constant, Smagorinsky or Gradient "
+        " not %s",
+        temp);
 
   /***************************************************************************/
   /* Read parameters for the Riemann solver */
