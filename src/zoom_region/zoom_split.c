@@ -498,7 +498,7 @@ void zoom_void_space_split(struct space *s, int verbose) {
   int notlinked = 0;
   int nr_gparts = 0;
   for (int k = s->zoom_props->buffer_cell_offset;
-       k < s->zoom_props->buffer_cell_offset + s->zoom_props->nr_void_cells;
+       k < s->zoom_props->buffer_cell_offset + s->zoom_props->nr_buffer_cells;
        k++) {
     nr_gparts += s->multipoles_top[k].m_pole.num_gpart;
     if (cells_top[k].void_parent == NULL) notlinked++;
