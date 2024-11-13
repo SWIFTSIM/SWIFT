@@ -663,11 +663,11 @@ void zoom_construct_tl_cells(struct space *s, const integertime_t ti_current,
 }
 
 /**
- * @brief Link the zoom cells to the void cells.
+ * @brief Link the top level cells in nested grids to the void cells.
  *
- * The leaves of the void cell hierarchy are the zoom cells. This function
- * sets the progeny of the highest res void cell to be the zoom cells it
- * contains.
+ * The leaves of the void cell hierarchy are top level cells in the nested grid.
+ * This function sets the progeny of the highest res void cell to be the top
+ * level cell it contains (either zoom or buffer cells).
  *
  * NOTE: The void cells with zoom progeny are not treated as split cells
  * since they are linked into the top level "progeny". We don't want to
@@ -710,49 +710,27 @@ void zoom_link_void_leaves(struct space *s, struct cell *c) {
   integertime_t ti_black_holes_end_min = max_nr_timesteps,
                 ti_black_holes_beg_max = 0;
 
-  /* Loop over the 8 progeny cells which are now the zoom cells. */
+  /* Loop over the 8 progeny cells which are now the nested top level cells. */
   for (int k = 0; k < 8; k++) {
 
     /* Establish the location of the fake progeny cell. */
-    double zoom_loc[3] = {c->loc[0] + (s->zoom_props->width[0] / 2),
-                          c->loc[1] + (s->zoom_props->width[1] / 2),
-                          c->loc[2] + (s->zoom_props->width[2] / 2)};
-    if (k & 4) zoom_loc[0] += s->zoom_props->width[0];
-    if (k & 2) zoom_loc[1] += s->zoom_props->width[1];
-    if (k & 1) zoom_loc[2] += s->zoom_props->width[2];
+    double loc[3] = {c->loc[0] + (c->width[0] / 4),
+                     c->loc[1] + (c->width[1] / 4),
+                     c->loc[2] + (c->width[2] / 4)};
+    if (k & 4) loc[0] += c->width[0] / 2;
+    if (k & 2) loc[1] += c->width[1] / 2;
+    if (k & 1) loc[2] += c->width[2] / 2;
 
-    /* Which zoom cell are we in? */
-    int cid = cell_getid_from_pos(s, zoom_loc[0], zoom_loc[1], zoom_loc[2]);
-
-#ifdef SWIFT_DEBUG_CHECKS
-    /* Ensure we're in the right cell. */
-    if (cid >= s->zoom_props->nr_zoom_cells || cid < 0)
-      error(
-          "Void progeny isn't in the right place! (zoom_loc=[%f %f %f] -> "
-          "cid=%d,"
-          "s->zoom_props->nr_zoom_cells=%d)",
-          zoom_loc[0], zoom_loc[1], zoom_loc[2], cid,
-          s->zoom_props->nr_zoom_cells);
-#endif
+    /* Which cell are we in? */
+    int cid = cell_getid_from_pos(s, loc[0], loc[1], loc[2]);
 
     /* Get the zoom cell. */
-    struct cell *zoom_cell = &s->cells_top[cid];
+    struct cell *nested_cell = &s->cells_top[cid];
 
-#ifdef SWIFT_DEBUG_CHECKS
-    /* Ensure the zoom cell we've got is actually a void cell. */
-    if (zoom_cell->type != cell_type_zoom)
-      error(
-          "Void progeny isn't a zoom cell! (zoom_loc=[%f %f %f] -> cid=%d,"
-          "c->type=%s, c->subtype=%s, c->loc=[%f %f %f])",
-          zoom_loc[0], zoom_loc[1], zoom_loc[2], cid,
-          cellID_names[zoom_cell->type], subcellID_names[zoom_cell->subtype],
-          zoom_cell->loc[0], zoom_cell->loc[1], zoom_cell->loc[2]);
-#endif
+    /* Link this nested cell into the void cell hierarchy. */
+    c->progeny[k] = nested_cell;
 
-    /* Link this zoom cell into the void cell hierarchy. */
-    c->progeny[k] = zoom_cell;
-
-    /* Flag this void cell "progeny" as the zoom cell's void cell parent. */
+    /* Flag this void cell "progeny" as the cell's void cell parent. */
     zoom_cell->void_parent = c;
 
     /* Update the timestep information. */
@@ -789,7 +767,7 @@ void zoom_link_void_leaves(struct space *s, struct cell *c) {
   c->black_holes.ti_end_min = ti_black_holes_end_min;
   c->black_holes.ti_beg_max = ti_black_holes_beg_max;
 
-  /* Interact the zoom cell multipoles with this cell. */
+  /* Interact the nested cell's multipoles with this cell. */
   if (s->with_self_gravity) {
 
     /* Reset everything */
@@ -893,23 +871,22 @@ void zoom_link_void_leaves(struct space *s, struct cell *c) {
   } /* Deal with gravity */
 
 #ifdef SWIFT_DEBUG_CHECKS
-  /* Ensure the void multipole agrees with the nested zoom cells. */
-  int nr_gparts_in_zoom = 0;
+  /* Ensure the void multipole agrees with the nested cells. */
+  int nr_gparts_in_nested = 0;
   int nr_gparts_in_void = c->grav.multipole->m_pole.num_gpart;
   for (int k = 0; k < 8; k++) {
     /* All progeny should exist */
     if (c->progeny[k] == NULL) {
       error("Zoom cell has no progeny!");
     }
-    nr_gparts_in_zoom += c->progeny[k]->grav.multipole->m_pole.num_gpart;
+    nr_gparts_in_nested += c->progeny[k]->grav.multipole->m_pole.num_gpart;
   }
 
-  if (nr_gparts_in_zoom != nr_gparts_in_void) {
+  if (nr_gparts_in_nested != nr_gparts_in_void) {
     error(
-        "Zoom cell and void cell multipole don't agree! "
-        "(nr_gparts_in_zoom=%d "
-        "nr_gparts_in_void=%d)",
-        nr_gparts_in_zoom, nr_gparts_in_void);
+        "Nested cell and void cell multipole don't agree! "
+        "(nr_gparts_in_nested=%d nr_gparts_in_void=%d)",
+        nr_gparts_in_nested, nr_gparts_in_void);
   }
 #endif
 }
