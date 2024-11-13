@@ -459,7 +459,7 @@ void zoom_report_cell_properties(const struct space *s) {
           zoom_props->width[1], zoom_props->width[2]);
 
   /* Number of Cells */
-  message("%28s = %d", "Number of Background Cells", s->nr_bkg_cells);
+  message("%28s = %d", "Number of Background Cells", zoom_props->nr_bkg_cells);
   if (zoom_props->with_buffer_cells)
     message("%28s = %d", "Number of Buffer Cells", zoom_props->nr_buffer_cells);
   message("%28s = %d", "Number of Zoom Cells", zoom_props->nr_zoom_cells);
