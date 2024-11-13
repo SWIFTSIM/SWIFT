@@ -423,7 +423,7 @@ struct zoom_region_properties {
   double buffer_lower_bounds[3];
 
   /*! The width of the void region. */
-  double void_width[3];
+  double void_dim[3];
 
   /*! Vector outlining the void cell region upper boundaries. This is a
    * convenience variable to avoid having to check if we need the region or
