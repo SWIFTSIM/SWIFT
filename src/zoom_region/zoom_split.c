@@ -240,12 +240,11 @@ void zoom_void_space_split(struct space *s, int verbose) {
   if (notlinked > 0)
     error("%d buffer cells are not linked into a void cell tree!", notlinked);
 
-  if (s->zoom_props->with_buffer_cells &&
-      nr_gparts_in_void != nr_gparts_in_zoom)
+  if (s->zoom_props->with_buffer_cells && nr_gparts_in_void != nr_gparts)
     error(
-        "Number of gparts is in consistent between zoom cells and "
-        "void multipole (nr_gparts_in_void=%d, nr_gparts_in_zoom=%d)",
-        nr_gparts_in_void, nr_gparts_in_zoom);
+        "Number of gparts is in consistent between buffer cells and "
+        "void multipole (nr_gparts_in_void=%d, nr_gparts=%d)",
+        nr_gparts_in_void, nr_gparts);
 
   /* Ensure all zoom cells are linked into the tree. */
   notlinked = 0;
@@ -256,12 +255,11 @@ void zoom_void_space_split(struct space *s, int verbose) {
   if (notlinked > 0)
     error("%d zoom cells are not linked into a void cell tree!", notlinked);
 
-  if (!s->zoom_props->with_buffer_cells &&
-      nr_gparts_in_void != nr_gparts_in_zoom)
+  if (!s->zoom_props->with_buffer_cells && nr_gparts_in_void != nr_gparts)
     error(
-        "Number of gparts is in consistent between zoom cells and "
-        "void multipole (nr_gparts_in_void=%d, nr_gparts_in_zoom=%d)",
-        nr_gparts_in_void, nr_gparts_in_zoom);
+        "Number of gparts is inconsistent between zoom cells and "
+        "void multipole (nr_gparts_in_void=%d, nr_gparts=%d)",
+        nr_gparts_in_void, nr_gparts);
 
 #endif
 }
