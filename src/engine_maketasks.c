@@ -1369,16 +1369,8 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
                                          task_subtype_none, 0, 0, c, NULL);
 
         /* Gravity non-neighbouring pm calculations */
-        /* When running a zoom we only want to create long range tasks for
-         * non-zoom cells and zoom cells where there are no grav_mm tasks in the
-         * void cell tree (if this is the case then there will be no void super
-         * level). */
-        if (c->top->type != cell_type_zoom ||
-            (c->top->type == cell_type_zoom &&
-             c->top->void_parent->grav.super == NULL)) {
-          c->grav.long_range = scheduler_addtask(
-              s, task_type_grav_long_range, task_subtype_none, 0, 0, c, NULL);
-        }
+        c->grav.long_range = scheduler_addtask(
+            s, task_type_grav_long_range, task_subtype_none, 0, 0, c, NULL);
 
         /* Gravity recursive down-pass */
         c->grav.down = scheduler_addtask(s, task_type_grav_down,
@@ -1393,10 +1385,8 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
                                             task_subtype_none, 0, 1, c, NULL);
 
         /* Long-range gravity forces (not the mesh ones!) */
-        if (c->grav.long_range != NULL) {
-          scheduler_addunlock(s, c->grav.init, c->grav.long_range);
-          scheduler_addunlock(s, c->grav.long_range, c->grav.down);
-        }
+        scheduler_addunlock(s, c->grav.init, c->grav.long_range);
+        scheduler_addunlock(s, c->grav.long_range, c->grav.down);
         scheduler_addunlock(s, c->grav.down, c->grav.super->grav.end_force);
 
         /* With adaptive softening, force the hydro density to complete first */
@@ -1416,6 +1406,13 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
           /* Ensure the void super exists (Otherwise there's nothing to worry
            * about). */
           if (c->top->void_parent->grav.super != NULL) {
+
+            /* zoom.init -> void.init */
+            /* This dependency is needed to ensure no MM tasks at the void
+             * level that interact zoom cells run before the zoom multipoles
+             * are ready. */
+            scheduler_addunlock(s, c->grav.init_out,
+                                c->top->void_parent->grav.init_out);
 
             /* void.down -> zoom.down */
             scheduler_addunlock(s, c->top->void_parent->grav.super->grav.down,
