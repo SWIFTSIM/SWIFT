@@ -300,6 +300,13 @@ static int zoom_get_cdim_at_depth(double region_dim, double parent_width,
 
 void zoom_get_geometry_no_buffer_cells(struct space *s) {
 
+  /* If we have a buffer cell depth warn that we will ignore it. */
+  if (s->zoom_props->buffer_cell_depth > 0) {
+    message(
+        "Buffer cell depth stated but no buffer cells are needed. "
+        "Ignoring buffer cell depth.");
+  }
+
   /* Zero the buffer region properties explictly. */
   for (int i = 0; i < 3; i++) {
     s->zoom_props->buffer_lower_bounds[i] = 0.0;
