@@ -385,6 +385,8 @@ void zoom_void_split_recursive(struct space *s, struct cell *c,
 
     /* If the progeny is a void cell, we need to recurse. */
     if (cp->subtype == cell_subtype_void) {
+      message("Recursing into void cell at depth %d with type (%s/%s).",
+              cp->depth, cellID_names[cp->type], subcellID_names[cp->subtype]);
       /* Recurse */
       zoom_void_split_recursive(s, cp, tpid);
 
