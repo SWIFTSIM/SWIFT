@@ -109,7 +109,7 @@ void zoom_find_void_cells(struct space *s, const int verbose) {
     ncells = zoom_props->nr_buffer_cells;
     for (int cid = offset; cid < offset + ncells; cid++) {
       struct cell *c = &cells[cid];
-      if (zoom_cell_overlaps_zoom_region(c, s)) {
+      if (zoom_cell_inside_zoom_region(c, s)) {
         c->subtype = cell_subtype_void;
         nr_buffer_void_cells++;
       }

@@ -910,13 +910,14 @@ __attribute__((always_inline)) INLINE int zoom_cell_getid(const struct space *s,
                                     y, z, s->zoom_props->iwidth,
                                     /*offset*/ 0);
       }
-    } else {
 
-      /* Otherwise, we are in the zoom region, which zoom TL cell are we in? */
-      return cell_getid_below_bkg(s->zoom_props->cdim, zoom_lower_bounds, x, y,
-                                  z, s->zoom_props->iwidth,
-                                  /*offset*/ 0);
+      return cell_id;
     }
+
+    /* Otherwise, we are in the zoom region, which zoom TL cell are we in? */
+    return cell_getid_below_bkg(s->zoom_props->cdim, zoom_lower_bounds, x, y, z,
+                                s->zoom_props->iwidth,
+                                /*offset*/ 0);
   }
 
   return cell_id;
