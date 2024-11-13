@@ -588,6 +588,11 @@ void zoom_region_init(struct space *s, const int verbose) {
         nr_zoom_regions);
   }
 
+  if (verbose) {
+    message("Initial geometry gives %d zoom regions in the void region.",
+            nr_zoom_regions);
+  }
+
   /* If the extra padding due to background cells is small enough we can forgo
    * buffer cells entirel,y if not we'll use them to better match the geometry
    * to the high resolution particle distribution. */
