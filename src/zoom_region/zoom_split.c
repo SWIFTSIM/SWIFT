@@ -238,11 +238,6 @@ void zoom_link_void_buffer_leaves(struct space *s, struct cell *c) {
     /* Flag this void cell "progeny" as the cell's void cell parent. */
     buffer_cell->void_parent = c;
 
-    /* If we are in a void buffer cell we need to continue recursing. */
-    if (buffer_cell->subtype == cell_subtype_void) {
-      zoom_void_split_recursive(s, buffer_cell, c->tpid);
-    }
-
     /* Update the timestep information. */
     ti_hydro_end_min = min(ti_hydro_end_min, buffer_cell->hydro.ti_end_min);
     ti_hydro_beg_max = max(ti_hydro_beg_max, buffer_cell->hydro.ti_beg_max);
@@ -360,29 +355,32 @@ void zoom_void_split_recursive(struct space *s, struct cell *c,
         space_cell_maxdepth, depth);
   }
 
-  /* Construct the progeny ready to populate with particles and multipoles (if
-   * doing gravity). We only need to construct the progeny if they aren't
-   * already attached. */
-  if (c->progeny[0] == NULL) space_construct_progeny(s, c, tpid);
+  /* Construct or attach the progeny ready to populate the multipoles (if
+   * doing gravity). If we are above one of the nested top level cell grids
+   * we will attach those existing cells rather than grab new ones. */
+
+  /* If we're above the zoom level we need to link in the zoom cells. */
+  if (c->depth == s->zoom_props->zoom_cell_depth - 1) {
+    zoom_link_void_zoom_leaves(s, c);
+  }
+
+  /* If we're above the buffer level we need to link in the buffer cells. */
+  else if (c->depth == s->zoom_props->buffer_cell_depth - 1) {
+    zoom_link_void_buffer_leaves(s, c);
+  }
+
+  /* Otherwise, we're in the void tree and need to construct new progeny. */
+  else {
+    space_construct_progeny(s, c, tpid);
+  }
 
   for (int k = 0; k < 8; k++) {
 
     /* Get the progenitor */
     struct cell *cp = c->progeny[k];
 
-    /* If the next level progeny is at the zoom level then we need to
-     * link the zoom cells in as the progeny of the void sub-cell. */
-    if (cp->depth == s->zoom_props->zoom_cell_depth - 1) {
-
-      zoom_link_void_zoom_leaves(s, cp);
-
-    } else if (s->zoom_props->with_buffer_cells &&
-               cp->depth == s->zoom_props->buffer_cell_depth - 1) {
-
-      /* We're at the buffer level so we need to hook in the buffer cells. */
-      zoom_link_void_buffer_leaves(s, cp);
-
-    } else {
+    /* If the progeny is a void cell, we need to recurse. */
+    if (cp->subtype == cell_subtype_void) {
       /* Recurse */
       zoom_void_split_recursive(s, cp, tpid);
 
