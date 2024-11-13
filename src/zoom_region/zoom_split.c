@@ -44,8 +44,6 @@
  */
 static void zoom_link_void_zoom_leaves(struct space *s, struct cell *c) {
 
-  message("Linking void cell to zoom cells at depth %d.", c->depth + 1);
-
 #ifdef SWIFT_DEBUG_CHECKS
   /* Ensure we have the right kind of cell. */
   if (c->subtype != cell_subtype_void) {
@@ -179,8 +177,6 @@ static void zoom_link_void_zoom_leaves(struct space *s, struct cell *c) {
  * @param c The void cell progeny to link
  */
 void zoom_link_void_buffer_leaves(struct space *s, struct cell *c) {
-
-  message("Linking void cell to buffer cells at depth %d.", c->depth + 1);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Ensure we have the right kind of cell. */
@@ -397,8 +393,7 @@ void zoom_void_split_recursive(struct space *s, struct cell *c,
 
     /* If the progeny is a void cell, we need to recurse. */
     if (cp->subtype == cell_subtype_void) {
-      message("Recursing into void cell at depth %d with type (%s/%s).",
-              cp->depth, cellID_names[cp->type], subcellID_names[cp->subtype]);
+
       /* Recurse */
       zoom_void_split_recursive(s, cp, tpid);
 
