@@ -44,6 +44,8 @@
  */
 static void zoom_link_void_zoom_leaves(struct space *s, struct cell *c) {
 
+  message("Linking void cell to zoom cells at depth %d.", c->depth + 1);
+
 #ifdef SWIFT_DEBUG_CHECKS
   /* Ensure we have the right kind of cell. */
   if (c->subtype != cell_subtype_void) {
@@ -177,6 +179,8 @@ static void zoom_link_void_zoom_leaves(struct space *s, struct cell *c) {
  * @param c The void cell progeny to link
  */
 void zoom_link_void_buffer_leaves(struct space *s, struct cell *c) {
+
+  message("Linking void cell to buffer cells at depth %d.", c->depth + 1);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Ensure we have the right kind of cell. */
