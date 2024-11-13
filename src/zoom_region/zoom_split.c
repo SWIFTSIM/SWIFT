@@ -76,7 +76,7 @@ void zoom_void_split_recursive(struct space *s, struct cell *c,
   /* Construct the progeny ready to populate with particles and multipoles (if
    * doing gravity). We only need to construct the progeny if they aren't
    * already attached. */
-  if (c->progeny == NULL) space_construct_progeny(s, c, tpid);
+  if (c->progeny[0] == NULL) space_construct_progeny(s, c, tpid);
 
   for (int k = 0; k < 8; k++) {
 
