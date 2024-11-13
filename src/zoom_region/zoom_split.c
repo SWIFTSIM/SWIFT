@@ -249,6 +249,11 @@ void zoom_link_void_buffer_leaves(struct space *s, struct cell *c) {
     /* Flag this void cell "progeny" as the cell's void cell parent. */
     buffer_cell->void_parent = c;
 
+    /* If we're in a void cell continue the void tree depth. */
+    if (buffer_cell->subtype == cell_subtype_void) {
+      buffer_cell->depth = c->depth + 1;
+    }
+
     /* Update the timestep information. */
     ti_hydro_end_min = min(ti_hydro_end_min, buffer_cell->hydro.ti_end_min);
     ti_hydro_beg_max = max(ti_hydro_beg_max, buffer_cell->hydro.ti_beg_max);
