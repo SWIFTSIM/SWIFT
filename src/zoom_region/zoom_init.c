@@ -372,19 +372,20 @@ void zoom_get_geometry_with_buffer_cells(struct space *s) {
     s->zoom_props->buffer_iwidth[i] = 1.0 / s->zoom_props->buffer_width[i];
   }
 
-  /* Find the buffer cell edges that contain the zoom region bounds. (NOTE: we
-   * don't care about the buffer bounds in the calculation below since
-   * everything is aligned, we just pretend the buffer cells tesselate the whole
-   * volume) */
+  /* Find the buffer cell edges that contain the zoom region bounds. */
   double region_lower_bounds[3];
   double region_upper_bounds[3];
   for (int i = 0; i < 3; i++) {
-    int lower = (int)floor(s->zoom_props->region_lower_bounds[i] *
+    int lower = (int)floor((s->zoom_props->region_lower_bounds[i] -
+                            s->zoom_props->buffer_lower_bounds[i]) *
                            s->zoom_props->buffer_iwidth[i]);
-    int upper = (int)floor(s->zoom_props->region_upper_bounds[i] *
+    int upper = (int)floor((s->zoom_props->region_upper_bounds[i] -
+                            s->zoom_props->buffer_lower_bounds[i]) *
                            s->zoom_props->buffer_iwidth[i]);
-    region_lower_bounds[i] = lower * s->zoom_props->buffer_width[i];
-    region_upper_bounds[i] = (upper + 1) * s->zoom_props->buffer_width[i];
+    region_lower_bounds[i] = lower * s->zoom_props->buffer_width[i] +
+                             s->zoom_props->buffer_lower_bounds[i];
+    region_upper_bounds[i] = (upper + 1) * s->zoom_props->buffer_width[i] +
+                             s->zoom_props->buffer_lower_bounds[i];
   }
 
   /* Assign the new aligned zoom bounds. */
