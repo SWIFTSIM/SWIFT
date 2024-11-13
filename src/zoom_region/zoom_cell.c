@@ -96,7 +96,7 @@ void zoom_find_void_cells(struct space *s, const int verbose) {
     if (cid < offset || cid >= offset + ncells)
       error("Void cell index is out of range (cid=%d, offset=%d, ncells=%d)",
             cid, offset, ncells);
-    if (zoom_cell_inside_zoom_region(&cells[cid], s) == 0)
+    if (zoom_cell_overlaps_zoom_region(&cells[cid], s) == 0)
       error("Void cell is not inside the zoom region (cid=%d)", cid);
   }
 #endif
