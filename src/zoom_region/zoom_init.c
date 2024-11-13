@@ -443,8 +443,7 @@ void zoom_report_cell_properties(const struct space *s) {
   message("%28s = [%f, %f, %f]", "Zoom Cell Width", zoom_props->width[0],
           zoom_props->width[1], zoom_props->width[2]);
   message("%28s = %d", "Number of Zoom Cells", zoom_props->nr_zoom_cells);
-  message("%28s = %d", "Zoom Depth in Background Cell",
-          zoom_props->zoom_cell_depth);
+  message("%28s = %d", "Zoom Top Level Depth", zoom_props->zoom_cell_depth);
   message("%28s = [%d, %d, %d]", "Background cdim", s->cdim[0], s->cdim[1],
           s->cdim[2]);
   message("%28s = [%f, %f, %f]", "Background Cell Width", s->width[0],
@@ -468,7 +467,7 @@ void zoom_report_cell_properties(const struct space *s) {
             zoom_props->buffer_width[1] * zoom_props->buffer_cdim[1],
             zoom_props->buffer_width[2] * zoom_props->buffer_cdim[2]);
     message("%28s = %d", "Number of Buffer Cells", zoom_props->nr_buffer_cells);
-    message("%28s = %d", "Buffer Depth in Background Cell",
+    message("%28s = %d", "Buffer Top Level Depth",
             zoom_props->buffer_cell_depth);
   }
 }
