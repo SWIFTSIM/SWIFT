@@ -424,51 +424,51 @@ void zoom_report_cell_properties(const struct space *s) {
 
   struct zoom_region_properties *zoom_props = s->zoom_props;
 
-  message("%25s = %f", "Zoom Region Pad Factor", zoom_props->region_pad_factor);
-  message("%25s = [%f, %f, %f]", "Zoom Region Shift", zoom_props->zoom_shift[0],
+  message("%28s = %f", "Zoom Region Pad Factor", zoom_props->region_pad_factor);
+  message("%28s = [%f, %f, %f]", "Zoom Region Shift", zoom_props->zoom_shift[0],
           zoom_props->zoom_shift[1], zoom_props->zoom_shift[2]);
-  message("%25s = [%f, %f, %f]", "Zoom Region Dimensions", zoom_props->dim[0],
+  message("%28s = [%f, %f, %f]", "Zoom Region Dimensions", zoom_props->dim[0],
           zoom_props->dim[1], zoom_props->dim[2]);
-  message("%25s = [%f, %f, %f]", "Zoom Region Center",
+  message("%28s = [%f, %f, %f]", "Zoom Region Center",
           zoom_props->region_lower_bounds[0] + (zoom_props->dim[0] / 2.0),
           zoom_props->region_lower_bounds[1] + (zoom_props->dim[1] / 2.0),
           zoom_props->region_lower_bounds[2] + (zoom_props->dim[2] / 2.0));
   message(
-      "%25s = [%f-%f, %f-%f, %f-%f]", "Zoom Region Bounds",
+      "%28s = [%f-%f, %f-%f, %f-%f]", "Zoom Region Bounds",
       zoom_props->region_lower_bounds[0], zoom_props->region_upper_bounds[0],
       zoom_props->region_lower_bounds[1], zoom_props->region_upper_bounds[1],
       zoom_props->region_lower_bounds[2], zoom_props->region_upper_bounds[2]);
-  message("%25s = [%d, %d, %d]", "Zoom Region cdim", zoom_props->cdim[0],
+  message("%28s = [%d, %d, %d]", "Zoom Region cdim", zoom_props->cdim[0],
           zoom_props->cdim[1], zoom_props->cdim[2]);
-  message("%25s = [%f, %f, %f]", "Zoom Cell Width", zoom_props->width[0],
+  message("%28s = [%f, %f, %f]", "Zoom Cell Width", zoom_props->width[0],
           zoom_props->width[1], zoom_props->width[2]);
-  message("%25s = %d", "Number of Zoom Cells", zoom_props->nr_zoom_cells);
-  message("%25s = [%d, %d, %d]", "Background cdim", s->cdim[0], s->cdim[1],
-          s->cdim[2]);
-  message("%25s = [%f, %f, %f]", "Background Cell Width", s->width[0],
-          s->width[1], s->width[2]);
-  message("%25s = %d", "Number of Background Cells", zoom_props->nr_bkg_cells);
-  message("%25s = %d", "Zoom Depth in Background Cell",
+  message("%28s = %d", "Number of Zoom Cells", zoom_props->nr_zoom_cells);
+  message("%28s = %d", "Zoom Depth in Background Cell",
           zoom_props->zoom_cell_depth);
+  message("%28s = [%d, %d, %d]", "Background cdim", s->cdim[0], s->cdim[1],
+          s->cdim[2]);
+  message("%28s = [%f, %f, %f]", "Background Cell Width", s->width[0],
+          s->width[1], s->width[2]);
+  message("%28s = %d", "Number of Background Cells", zoom_props->nr_bkg_cells);
   if (zoom_props->with_buffer_cells) {
-    message("%25s = [%f, %f, %f]", "Buffer Region Dimensions",
+    message("%28s = [%f, %f, %f]", "Buffer Region Dimensions",
             zoom_props->buffer_dim[0], zoom_props->buffer_dim[1],
             zoom_props->buffer_dim[2]);
     message(
-        "%25s = [%f-%f, %f-%f, %f-%f]", "Buffer Bounds",
+        "%28s = [%f-%f, %f-%f, %f-%f]", "Buffer Bounds",
         zoom_props->buffer_lower_bounds[0], zoom_props->buffer_upper_bounds[0],
         zoom_props->buffer_lower_bounds[1], zoom_props->buffer_upper_bounds[1],
         zoom_props->buffer_lower_bounds[2], zoom_props->buffer_upper_bounds[2]);
-    message("%25s = [%d, %d, %d]", "Buffer cdim", zoom_props->buffer_cdim[0],
+    message("%28s = [%d, %d, %d]", "Buffer cdim", zoom_props->buffer_cdim[0],
             zoom_props->buffer_cdim[1], zoom_props->buffer_cdim[2]);
-    message("%25s = [%f, %f, %f]", "Buffer Width", zoom_props->buffer_width[0],
+    message("%28s = [%f, %f, %f]", "Buffer Width", zoom_props->buffer_width[0],
             zoom_props->buffer_width[1], zoom_props->buffer_width[2]);
-    message("%25s = [%f, %f, %f]", "Buffer Dimensions",
+    message("%28s = [%f, %f, %f]", "Buffer Dimensions",
             zoom_props->buffer_width[0] * zoom_props->buffer_cdim[0],
             zoom_props->buffer_width[1] * zoom_props->buffer_cdim[1],
             zoom_props->buffer_width[2] * zoom_props->buffer_cdim[2]);
-    message("%25s = %d", "Number of Buffer Cells", zoom_props->nr_buffer_cells);
-    message("%25s = %d", "Buffer Depth in Background Cell",
+    message("%28s = %d", "Number of Buffer Cells", zoom_props->nr_buffer_cells);
+    message("%28s = %d", "Buffer Depth in Background Cell",
             zoom_props->buffer_cell_depth);
   }
 }
