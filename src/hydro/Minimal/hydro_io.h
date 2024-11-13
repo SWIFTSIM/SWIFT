@@ -212,7 +212,7 @@ INLINE static void hydro_write_particles(const struct part* parts,
                                          struct io_props* list,
                                          int* num_fields) {
 
-  *num_fields = 17;
+  *num_fields = 18;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_part(
@@ -293,6 +293,10 @@ INLINE static void hydro_write_particles(const struct part* parts,
   list[16] = io_make_output_field_convert_part(
       "DednerScalars", FLOAT, 1, UNIT_CONV_MAGNETIC_CURL,
       -1.5f * hydro_gamma - 1.f, parts, xparts, convert_Psi, "Dedner scalars");
+
+  list[17] =
+      io_make_output_field("AlphaViscosity", FLOAT, 1, UNIT_CONV_NO_UNITS, 0,
+                           parts, alpha_visc, "Viscosity constants");
 
   /* MATTHIEU END ----------------------------------------- */
 }

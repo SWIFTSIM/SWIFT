@@ -790,7 +790,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   if (hydro_props->with_Balsara) {
     p->force.balsara = balsara;
   } else {
-    p->force.balsara = hydro_props->viscosity.alpha;
+    p->force.balsara = 1.f;
   }
 
   /* MATTHIEU END ----------------------------------------- */
@@ -906,7 +906,11 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   p->B_over_rho[1] += p->B_over_rho_dt[1] * dt_therm;
   p->B_over_rho[2] += p->B_over_rho_dt[2] * dt_therm;
 
+  /* Predict Dedner scalar */
   p->Dedner_Psi_over_c += p->Dedner_Psi_over_c_dt * dt_therm;
+
+  /* Predict viscosity constant */
+  p->alpha_visc += p->alpha_visc_dt * dt_therm;
 
   /* MATTHIEU END ----------------------------------------- */
 
@@ -977,11 +981,11 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
   /* Magnetosonic speed (Price 2018, eq. 180) */
   const float c_h = sqrtf(c_s * c_s + v_A * v_A);
 
-  /* Decay time (Price 2018, eq. 191) */
-  const float sigma_c = 1.f;
-  const float tau_c = p->h / (sigma_c * c_h);
-
   if (props->mhd_with_Dedner) {
+
+    /* Decay time (Price 2018, eq. 191) */
+    const float sigma_c = 1.f;
+    const float tau_c = p->h / (sigma_c * c_h);
 
     /* Finish Dedner scalar time derivative (Price 2018, eq. 168)
      * (Note the 1/2 in the second term is read in as a runtime parameter) */
@@ -997,6 +1001,15 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
     p->Dedner_Psi_over_c_dt = -Dedner_div_B - Dedner_div_v - Dedner_parabolic;
     // TODO: cosmo terms
   }
+
+  /* Viscosity constant evolution (Price 2012, eq. 105) */
+  const float sigma_visc = 0.1f;
+  const float alpha_visc_min = 0.1;
+  const float S_visc = fmaxf(-p->density.div_v, 0.f);
+  const float tau_visc = p->h / (sigma_visc * c_s);
+
+  p->alpha_visc_dt = S_visc;
+  p->alpha_visc_dt += (p->alpha_visc - alpha_visc_min) / tau_visc;
 
   /* MATTHIEU END ----------------------------------------- */
 }
@@ -1140,7 +1153,12 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
   p->Dedner_Psi_over_c = 0.f;
 
   /* Constant from Price 2018 (text below eq. 43) */
-  p->alpha_u = 1.f;
+  p->alpha_u = 0.5f;
+
+  /* Constant from Price 2012 (text below eq. 105)
+   * We start the viscosity at the minimum */
+  p->alpha_visc = 0.1f;
+  p->alpha_visc_dt = 0.f;
 
   /* MATTHIEU END ----------------------------------------- */
 

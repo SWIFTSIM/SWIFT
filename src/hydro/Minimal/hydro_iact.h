@@ -386,9 +386,16 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float balsara_i = pi->force.balsara;
   const float balsara_j = pj->force.balsara;
 
+  /* MATTHIEU START --------------------------------------- */
+
+  const float alpha_visc = 0.5f * (pi->alpha_visc + pj->alpha_visc);
+  const float balsara = 0.5f * (balsara_i + balsara_j);
+
+  /* MATTHIEU END ----------------------------------------- */
+
   /* Construct the full viscosity term */
   const float rho_ij = 0.5f * (rhoi + rhoj);
-  const float visc = -0.25f * v_sig * (balsara_i + balsara_j) * mu_ij / rho_ij;
+  const float visc = -0.5f * v_sig * alpha_visc * balsara * mu_ij / rho_ij;
 
   /* Convolve with the kernel */
   const float visc_acc_term =

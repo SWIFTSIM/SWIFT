@@ -167,6 +167,12 @@ struct part {
   /*! Particle-carried thermal diffusion constant */
   float alpha_u;
 
+  /*! Particle-carried viscosity constant */
+  float alpha_visc;
+
+  /*! Particle-carried viscosity constant time derivative */
+  float alpha_visc_dt;
+
   /* MATTHIEU END ----------------------------------------- */
 
   /* Store density/force specific stuff. */
