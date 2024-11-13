@@ -422,6 +422,23 @@ struct zoom_region_properties {
   /*! Vector outlining the neighbour region lower boundaries. */
   double buffer_lower_bounds[3];
 
+  /*! The width of the void region. */
+  double void_width[3];
+
+  /*! Vector outlining the void cell region upper boundaries. This is a
+   * convenience variable to avoid having to check if we need the region or
+   * buffer cell boundaries (i.e. without buffer cells it will match
+   * region_upper_bounds, with buffer cells it will match
+   * buffer_upper_bounds). */
+  double void_upper_bounds[3];
+
+  /*! Vector outlining the void cell region lower boundaries. This is a
+   * convenience variable to avoid having to check if we need the region or
+   * buffer cell boundaries (i.e. without buffer cells it will match
+   * region_lower_bounds, with buffer cells it will match
+   * buffer_lower_bounds). */
+  double void_lower_bounds[3];
+
   /*! The depth of the zoom cells within a void cell tree. */
   int zoom_cell_depth;
 
