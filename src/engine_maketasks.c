@@ -5197,6 +5197,8 @@ void engine_make_extra_grid_hydroloop_tasks_mapper(void *map_data,
 
     /* Escape early */
     if (t->type == task_type_none) continue;
+    if (t->type == task_type_stars_resort) continue;
+    if (t->type == task_type_star_formation) continue;
     /* TODO: add other checks for star/sinks/... */
 
     const enum task_types t_type = t->type;
