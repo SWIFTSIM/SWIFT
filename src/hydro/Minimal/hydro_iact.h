@@ -448,7 +448,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   pi->u_dt += mj * diff_du_term;
 
-  /* MHD equations ---------------------------------------- */
+  /* MHD equations start ----------------------------------- */
 
   const float one_over_mu0 = 1.f / mu_0;
 
@@ -609,9 +609,25 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Shock capturing (artifical resistivity) ------------ */
 
-  /* Artificial resistivity speed (Price 2018, eq. 184) */
-  const float alpha_B_i = 1.f;
-  const float alpha_B_j = 1.f;
+  /* Norm of v_ij \cross \hat{r}_ij */
+  const float v_cross_r[3] = {dv[1] * dx[2] - dv[2] * dx[1],   // x
+                              dv[2] * dx[0] - dv[0] * dx[2],   // y
+                              dv[0] * dx[1] - dv[1] * dx[0]};  // z
+
+  const float v_cross_r_hat[3] = {v_cross_r[0] * r_inv,   // x
+                                  v_cross_r[1] * r_inv,   // y
+                                  v_cross_r[2] * r_inv};  // z
+
+  const float norm_square_v_cross_r_hat =
+      v_cross_r_hat[0] * v_cross_r_hat[0] +  // x
+      v_cross_r_hat[1] * v_cross_r_hat[1] +  // y
+      v_cross_r_hat[2] * v_cross_r_hat[2];   // z
+
+  const float norm_v_cross_r_hat = sqrtf(norm_square_v_cross_r_hat);
+
+  /* Artificial resistivity speed (Price 2018, eq. 185) */
+  const float alpha_B_i = norm_v_cross_r_hat;
+  const float alpha_B_j = norm_v_cross_r_hat;
 
   const float v_sig_AR_i = c_h_i * alpha_B_i;
   const float v_sig_AR_j = c_h_j * alpha_B_j;
