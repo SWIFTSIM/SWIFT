@@ -32,29 +32,6 @@
 #include "zoom.h"
 
 /**
- * @brief Is this cell within the zoom region?
- *
- * @param c The #cell.
- * @param s The #space.
- */
-__attribute__((always_inline)) INLINE static int zoom_cell_inside_zoom_region(
-    const struct cell *c, const struct space *s) {
-
-  /* Get the middle of the cell (since the cell grids align this eliminates
-   * any issues from rounding). */
-  const double mid[3] = {c->loc[0] + 0.5 * c->width[0],
-                         c->loc[1] + 0.5 * c->width[1],
-                         c->loc[2] + 0.5 * c->width[2]};
-
-  return ((mid[0] > s->zoom_props->region_lower_bounds[0]) &&
-          (mid[0] < s->zoom_props->region_upper_bounds[0]) &&
-          (mid[1] > s->zoom_props->region_lower_bounds[1]) &&
-          (mid[1] < s->zoom_props->region_upper_bounds[1]) &&
-          (mid[2] > s->zoom_props->region_lower_bounds[2]) &&
-          (mid[2] < s->zoom_props->region_upper_bounds[2]));
-}
-
-/**
  * @brief Find which background or buffer cells contain the zoom region.
  *
  * A void cell is a low resolution cell above the zoom region (or part
@@ -98,7 +75,7 @@ void zoom_find_void_cells(struct space *s, const int verbose) {
     struct cell *c = &cells[cid];
 
     /* Label this cell if it contains the zoom region. */
-    if (zoom_cell_inside_zoom_region(c, s)) {
+    if (zoom_cell_overlaps_zoom_region(c, s)) {
       c->subtype = cell_subtype_void;
       zoom_props->void_cell_indices[zoom_props->nr_void_cells++] = cid;
     }
