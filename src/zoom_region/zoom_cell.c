@@ -75,7 +75,7 @@ void zoom_find_void_cells(struct space *s, const int verbose) {
     struct cell *c = &cells[cid];
 
     /* Label this cell if it contains the zoom region. */
-    if (zoom_cell_overlaps_zoom_region(c, s)) {
+    if (nested_cell_overlaps_zoom_region(c, s)) {
       c->subtype = cell_subtype_void;
       zoom_props->void_cell_indices[zoom_props->nr_void_cells++] = cid;
     }
@@ -96,7 +96,7 @@ void zoom_find_void_cells(struct space *s, const int verbose) {
     if (cid < offset || cid >= offset + ncells)
       error("Void cell index is out of range (cid=%d, offset=%d, ncells=%d)",
             cid, offset, ncells);
-    if (zoom_cell_inside_zoom_region(&cells[cid], s) == 0)
+    if (nested_cell_inside_zoom_region(&cells[cid], s) == 0)
       error("Void cell is not inside the zoom region (cid=%d)", cid);
   }
 #endif
@@ -514,7 +514,7 @@ void zoom_construct_tl_cells(struct space *s, const integertime_t ti_current,
 
   /* Attach zoom cells to their cell array (they are the first cells in
    * cells_top so nothing fancy needed here). */
-  zoom_props->zoom_cells_top = s->cells_top;
+  zoom_props->nested_cells_top = s->cells_top;
 
   if (verbose)
     message("Set zoom cell dimensions to [ %i %i %i ].", zoom_props->cdim[0],
@@ -731,25 +731,25 @@ void zoom_link_void_leaves(struct space *s, struct cell *c) {
     c->progeny[k] = nested_cell;
 
     /* Flag this void cell "progeny" as the cell's void cell parent. */
-    zoom_cell->void_parent = c;
+    nested_cell->void_parent = c;
 
     /* Update the timestep information. */
-    ti_hydro_end_min = min(ti_hydro_end_min, zoom_cell->hydro.ti_end_min);
-    ti_hydro_beg_max = max(ti_hydro_beg_max, zoom_cell->hydro.ti_beg_max);
-    ti_rt_end_min = min(ti_rt_end_min, zoom_cell->rt.ti_rt_end_min);
-    ti_rt_beg_max = max(ti_rt_beg_max, zoom_cell->rt.ti_rt_beg_max);
+    ti_hydro_end_min = min(ti_hydro_end_min, nested_cell->hydro.ti_end_min);
+    ti_hydro_beg_max = max(ti_hydro_beg_max, nested_cell->hydro.ti_beg_max);
+    ti_rt_end_min = min(ti_rt_end_min, nested_cell->rt.ti_rt_end_min);
+    ti_rt_beg_max = max(ti_rt_beg_max, nested_cell->rt.ti_rt_beg_max);
     ti_rt_min_step_size =
-        min(ti_rt_min_step_size, zoom_cell->rt.ti_rt_min_step_size);
-    ti_gravity_end_min = min(ti_gravity_end_min, zoom_cell->grav.ti_end_min);
-    ti_gravity_beg_max = max(ti_gravity_beg_max, zoom_cell->grav.ti_beg_max);
-    ti_stars_end_min = min(ti_stars_end_min, zoom_cell->stars.ti_end_min);
-    ti_stars_beg_max = max(ti_stars_beg_max, zoom_cell->stars.ti_beg_max);
-    ti_sinks_end_min = min(ti_sinks_end_min, zoom_cell->sinks.ti_end_min);
-    ti_sinks_beg_max = max(ti_sinks_beg_max, zoom_cell->sinks.ti_beg_max);
+        min(ti_rt_min_step_size, nested_cell->rt.ti_rt_min_step_size);
+    ti_gravity_end_min = min(ti_gravity_end_min, nested_cell->grav.ti_end_min);
+    ti_gravity_beg_max = max(ti_gravity_beg_max, nested_cell->grav.ti_beg_max);
+    ti_stars_end_min = min(ti_stars_end_min, nested_cell->stars.ti_end_min);
+    ti_stars_beg_max = max(ti_stars_beg_max, nested_cell->stars.ti_beg_max);
+    ti_sinks_end_min = min(ti_sinks_end_min, nested_cell->sinks.ti_end_min);
+    ti_sinks_beg_max = max(ti_sinks_beg_max, nested_cell->sinks.ti_beg_max);
     ti_black_holes_end_min =
-        min(ti_black_holes_end_min, zoom_cell->black_holes.ti_end_min);
+        min(ti_black_holes_end_min, nested_cell->black_holes.ti_end_min);
     ti_black_holes_beg_max =
-        max(ti_black_holes_beg_max, zoom_cell->black_holes.ti_beg_max);
+        max(ti_black_holes_beg_max, nested_cell->black_holes.ti_beg_max);
   }
 
   /* Update the timestep information. */
