@@ -650,4 +650,6 @@ void zoom_region_init(struct space *s, const int verbose) {
   if (verbose) {
     zoom_report_cell_properties(s);
   }
+
+  error("Testing");
 }
