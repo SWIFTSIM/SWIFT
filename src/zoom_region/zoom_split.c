@@ -74,8 +74,9 @@ void zoom_void_split_recursive(struct space *s, struct cell *c,
   }
 
   /* Construct the progeny ready to populate with particles and multipoles (if
-   * doing gravity). */
-  space_construct_progeny(s, c, tpid);
+   * doing gravity). We only need to construct the progeny if they aren't
+   * already attached. */
+  if (c->progeny == NULL) space_construct_progeny(s, c, tpid);
 
   for (int k = 0; k < 8; k++) {
 
@@ -111,6 +112,24 @@ void zoom_void_split_recursive(struct space *s, struct cell *c,
 #endif
 
       zoom_link_void_leaves(s, cp);
+
+    } else if (s->zoom_props->with_buffer_cells &&
+               cp->depth < s->zoom_props->buffer_cell_depth - 1) {
+
+      /* We're at the buffer level so we need to hook in the buffer cells. */
+      zoom_link_void_leaves(s, cp);
+
+      /* Label the newly attached progeny as void cells. */
+      for (int i = 0; i < 8; i++) {
+        if (zoom_cell_overlaps_zoom_region(cp->progeny[i], s))
+          cp->progeny[i]->subtype = cell_subtype_void;
+      }
+
+      /* Recurse */
+      zoom_void_split_recursive(s, cp, tpid);
+
+      /* Increase the depth */
+      maxdepth = max(maxdepth, cp->maxdepth);
 
     } else {
       /* Recurse */
