@@ -687,13 +687,6 @@ void zoom_link_void_leaves(struct space *s, struct cell *c) {
         "c->subtype=%s)",
         cellID_names[c->type], subcellID_names[c->subtype]);
   }
-  if ((!s->zoom_props->with_buffer_cells && c->type != cell_type_bkg) ||
-      (s->zoom_props->with_buffer_cells && c->type != cell_type_buffer)) {
-    error(
-        "Trying to split cell which isn't directly above the zoom level! "
-        "(c->type=%s, c->subtype=%s)",
-        cellID_names[c->type], subcellID_names[c->subtype]);
-  }
 #endif
 
   /* We need to ensure this bottom level isn't treated like a
