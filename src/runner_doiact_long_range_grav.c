@@ -557,9 +557,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
 
   /* If we have a nested cell the true top level cell where we defined the
    * interactions is the background void parent cell. */
-  if (top->void_parent != NULL) {
-    top = top->void_parent->top;
-  }
+  while (top->void_parent != NULL) top = top->void_parent->top;
 
   /* Call the appropriate interaction function based on the type of the
    * cell in question. */
