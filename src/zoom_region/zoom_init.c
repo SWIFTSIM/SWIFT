@@ -391,7 +391,7 @@ void zoom_get_geometry_with_buffer_cells(struct space *s) {
   for (int i = 0; i < 3; i++) {
     s->zoom_props->cdim[i] = cdim;
     s->zoom_props->width[i] = s->zoom_props->dim[i] / cdim;
-    s->zoom_props->iwidht[i] = 1.0 / s->zoom_props->width[i];
+    s->zoom_props->iwidth[i] = 1.0 / s->zoom_props->width[i];
   }
 }
 
