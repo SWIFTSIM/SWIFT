@@ -559,12 +559,15 @@ void *runner_main(void *data) {
           runner_do_grav_long_range(r, t->ci, 1);
           break;
         case task_type_grav_mm:
-          /* A flag of -2 means we have an mm task directly between 2 cells not
-           * a combination of their progeny. */
-          if (t->flags == -2) {
+          /* Use the appropriate MM function, either between a pair (direct),
+           * or between multiple pairs of progeny. */
+          if (t->subtype == task_subtype_direct) {
             runner_dopair_grav_mm(r, t->ci, t->cj);
-          } else {
+          } else if (t->subtype == task_subtype_progeny) {
             runner_dopair_grav_mm_progenies(r, t->flags, t->ci, t->cj);
+          } else {
+            error("Unknown/invalid task subtype (%s).",
+                  subtaskID_names[t->subtype]);
           }
           break;
         case task_type_cooling:
