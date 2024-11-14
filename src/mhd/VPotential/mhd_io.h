@@ -356,7 +356,7 @@ INLINE static void calculate_Rm_local(const struct engine* e,
 
 INLINE static void calculate_SPH_sum_err(const struct engine* e,
                                          const struct part* p,                                         
-                                         const struct xpart* xp, float* r    et) {
+                                         const struct xpart* xp, float* ret) {
 
   /* Calculate SPH sum error */
 
