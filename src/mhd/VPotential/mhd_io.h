@@ -364,6 +364,8 @@ INLINE static void calculate_SPH_sum_err(const struct engine* e,
 
   ret[0] = 1-SPH1;
 
+}
+
 /**
  * @brief Specifies which particle fields to write to a dataset
  *
