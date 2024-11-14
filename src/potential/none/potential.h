@@ -36,7 +36,7 @@
 /**
  * @brief External Potential Properties
  */
-struct external_potential {};
+struct external_potential { int a; };
 
 /**
  * @brief Computes the time-step due to the acceleration from nothing

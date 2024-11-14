@@ -31,7 +31,7 @@
 #include "units.h"
 
 /* Starformation struct */
-struct star_formation {};
+struct star_formation { int a; };
 
 /* Does the star formation model move the hydro particles?
    This will update the c->hydro.dx_max_part and
