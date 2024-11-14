@@ -353,6 +353,17 @@ INLINE static void calculate_Rm_local(const struct engine* e,
   ret[0] = Rm_local;
 }
 
+INLINE static void calculate_SPH_sum_err(const struct engine* e,
+                                         const struct part* p,
+                                         const struct xpart* xp, float* r    et) {
+
+  /* Calculate SPH sum error */
+
+  const float SPH1 = p->mhd_data.mean_SPH_err;
+
+  ret[0] = 1.0-SPH1;
+}
+
 /**
  * @brief Specifies which particle fields to write to a dataset
  *
@@ -424,8 +435,7 @@ INLINE static int mhd_write_particles(const struct part* parts,
 
   list[10] = io_make_output_field_convert_part(
       "SPHSumErrors", FLOAT, 1, UNIT_CONV_NO_UNITS, 0, parts, xparts,
-      1.0-mhd_data.mean_SPH_err, "Shows local SPH sum errors");
- 
+      calculate_SPH_sum_err, "Shows local SPH sum errors"); 
 
   return 11;
 }

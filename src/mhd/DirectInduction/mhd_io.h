@@ -369,13 +369,11 @@ INLINE static void calculate_SPH_sum_err(const struct engine* e,
                                          const struct part* p,
                                          const struct xpart* xp, float* ret) {
 
-  /* Calculate local magnetic Reynolds number */
-
-  /* Get advection and diffusion sources in induction equation*/
+  /* Calculate SPH sum error */
 
   const float SPH1 = p->mhd_data.mean_SPH_err;
 
-  ret[0] = 1-SPH1;
+  ret[0] = 1.0-SPH1;
 }
 
 
