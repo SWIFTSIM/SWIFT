@@ -1492,7 +1492,7 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
           /* Turn the task into a M-M task that will take care of all the
            * progeny pairs */
           t->type = task_type_grav_mm;
-          t->subtype = task_subtype_none;
+          t->subtype = task_subtype_progeny;
           t->flags = 0;
 
           /* Make a task for every other pair of progeny */
@@ -1592,15 +1592,33 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
   t->subtype = task_subtype_none;
   t->flags = 0;
 
+  /* Define a flag for when the original task has been reused. */
+  int reused = 0;
+
   /* Handle each individual splitting case. */
   if ((ci->subtype == cell_subtype_void ||
        (ci->split && cell_is_above_diff_grav_depth(ci))) &&
       (cj->subtype == cell_subtype_void ||
        (cj->split && cell_is_above_diff_grav_depth(cj)))) {
+
+    /* We will use a progeny MM interaction since we can split both cells. */
+    t->subtype = task_subtype_progeny;
+
+    /* Loop over the progeny. */
     for (int i = 0; i < 8; i++) {
       struct cell *cpi = ci->progeny[i];
+
+      /* Skip any empty progeny of a void cell (void cells themselves always
+       * have 0 particles but are never "empty"). */
+      if (cpi->grav.count == 0 && cpi->subtype != cell_subtype_void) continue;
+
       for (int j = 0; j < 8; j++) {
         struct cell *cpj = cj->progeny[j];
+
+        /* Skip any empty progeny of a void cell (void cells themselves
+        always
+         * have 0 particles but are never "empty"). */
+        if (cpj->grav.count == 0 && cpj->subtype != cell_subtype_void) continue;
 
         /* Can we use a M-M interaction here? */
         if (cell_can_use_pair_mm(cpi, cpj, e, sp,
@@ -1608,6 +1626,9 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
                                  /*is_tree_walk=*/1,
                                  /*periodic boundaries*/ sp->periodic,
                                  /*use_mesh*/ sp->periodic)) {
+
+          /* Flag that we've reused the original task. */
+          reused = 1;
 
           /* Flag this pair as being treated by the M-M task.
            * We use the 64 bits in the task->flags field to store
@@ -1628,82 +1649,98 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
       }
     }
   } else if (ci->subtype == cell_subtype_void) {
+
+    /* Loop over the progeny of the void cell. */
     for (int i = 0; i < 8; i++) {
 
+      /* Unpack the progeny. */
+      struct cell *cpi = ci->progeny[i];
+
+      /* Skip any empty progeny of a void cell (void cells themselves always
+       * have 0 particles but are never "empty"). */
+      if (cpi->grav.count == 0 && cpi->subtype != cell_subtype_void) continue;
+
       /* Can we use a M-M interaction here? */
-      if (cell_can_use_pair_mm(ci->progeny[i], cj, e, sp,
+      if (cell_can_use_pair_mm(cpi, cj, e, sp,
                                /*use_rebuild_data=*/1,
                                /*is_tree_walk=*/1,
                                /*periodic boundaries*/ sp->periodic,
                                /*use_mesh*/ sp->periodic)) {
 
         /* Can we reuse the orignal task or do we need to make a new one? */
-        if (t->flags == 0) {
+        if (!reused) {
 
-          /* We can make use of the old task. Flag that it is between
-           * cpi and cpj not their progeny with -2. */
-          t->flags = -2;
-          t->ci = ci->progeny[i];
+          /* We can make use of the old task but turn it into a direct one. */
+          t->subtype = task_subtype_direct;
+          t->ci = cpi;
           t->cj = cj;
+          reused = 1;
 
         } else {
 
           /* We've already used to original task, make a new one for this
-           * progeny pair. Flag that it is between cpi and cpj not their
-           * progeny with -2. */
-          scheduler_addtask(s, task_type_grav_mm, task_subtype_none, -2, 0,
-                            ci->progeny[i], cj);
+           * progeny pair. */
+          scheduler_addtask(s, task_type_grav_mm, task_subtype_direct, 0, 0,
+                            cpi, cj);
         }
 
       } else {
 
         /* Can't use an M-M so let's make a pair task. */
         zoom_scheduler_splittask_gravity_void_pair(
-            scheduler_addtask(s, task_type_pair, task_subtype_grav, 0, 0,
-                              ci->progeny[i], cj),
+            scheduler_addtask(s, task_type_pair, task_subtype_grav, 0, 0, cpi,
+                              cj),
             s);
       }
     }
   } else {
+
+    /* Loop over the progeny of the void cell. */
     for (int j = 0; j < 8; j++) {
 
+      /* Unpack the progeny. */
+      struct cell *cpj = cj->progeny[j];
+
+      /* Skip any empty progeny of a void cell (void cells themselves always
+       * have 0 particles but are never "empty"). */
+      if (cpj->grav.count == 0 && cpj->subtype != cell_subtype_void) continue;
+
       /* Can we use a M-M interaction here? */
-      if (cell_can_use_pair_mm(ci, cj->progeny[j], e, sp,
+      if (cell_can_use_pair_mm(ci, cpj, e, sp,
                                /*use_rebuild_data=*/1,
                                /*is_tree_walk=*/1,
                                /*periodic boundaries*/ sp->periodic,
                                /*use_mesh*/ sp->periodic)) {
 
         /* Can we reuse the orignal task or do we need to make a new one? */
-        if (t->flags == 0) {
+        if (!reused) {
 
-          /* We can make use of the old task. Flag that it is between
-           * cpi and cpj not their progeny with -2. */
-          t->flags = -2;
+          /* We can make use of the old task but turn it into a direct one. */
+          t->subtype = task_subtype_direct;
           t->ci = ci;
-          t->cj = cj->progeny[j];
+          t->cj = cpj;
+          reused = 1;
 
         } else {
 
           /* We've already used to original task, make a new one for this
-           * progeny pair. Flag that it is between cpi and cpj not their
-           * progeny with -2. */
-          scheduler_addtask(s, task_type_grav_mm, task_subtype_none, -2, 0, ci,
-                            cj->progeny[j]);
+           * progeny pair. */
+          scheduler_addtask(s, task_type_grav_mm, task_subtype_direct, 0, 0, ci,
+                            cpj);
         }
       } else {
 
         /* Can't use an M-M so let's make a pair task. */
         zoom_scheduler_splittask_gravity_void_pair(
             scheduler_addtask(s, task_type_pair, task_subtype_grav, 0, 0, ci,
-                              cj->progeny[j]),
+                              cpj),
             s);
       }
     }
   }
 
   /* Can none of the progenies use M-M calculations? */
-  if (t->flags == 0) {
+  if (!reused) {
     t->type = task_type_none;
     t->subtype = task_subtype_none;
     t->ci = NULL;
