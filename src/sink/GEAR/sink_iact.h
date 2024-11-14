@@ -139,7 +139,16 @@ runner_iact_nonsym_sinks_gas_density(
     const int with_cosmology, const struct cosmology *cosmo,
     const struct gravity_props *grav_props,
     const struct sink_props *sink_props,
-    const integertime_t ti_current, const double time) {}
+    const integertime_t ti_current, const double time) {
+
+  /* Get r. */
+  const float r = sqrtf(r2);
+
+  if (r < ri) {
+    /* Contribution to the number of neighbours in cutoff radius */
+    si->num_ngbs++;
+  }
+}
 
 /**
  * @brief Compute sink-sink swallow interaction (non-symmetric).

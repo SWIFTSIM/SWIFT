@@ -1768,6 +1768,10 @@ void runner_do_sinks_density_ghost(struct runner *r, struct cell *c,
       /* Finish the density calculation */
       sink_end_density(sp, cosmo);
 
+      if (sp->num_ngbs==0) {
+        sinks_sink_has_no_neighbours(sp,cosmo);
+      }
+
       /* Get particle time-step */
       double dt;
       if (with_cosmology) {

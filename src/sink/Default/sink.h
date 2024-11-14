@@ -67,7 +67,10 @@ __attribute__((always_inline)) INLINE static void sink_init_part(
  * @param sp The #sink particle to act upon.
  */
 __attribute__((always_inline)) INLINE static void sink_init_sink(
-    struct sink* sp) {}
+    struct sink* sp) {
+
+  sp->num_ngbs = 0;
+}
 
 /**
  * @brief Predict additional particle fields forward in time when drifting
@@ -104,6 +107,17 @@ __attribute__((always_inline)) INLINE static void sink_kick_extra(
  */
 __attribute__((always_inline)) INLINE static void sink_end_density(
     struct sink* si, const struct cosmology* cosmo) {}
+
+/**
+ * @brief Sets all particle fields to sensible values when the #sink has 0
+ * ngbs.
+ *
+ * @param sp The particle to act upon
+ * @param cosmo The current cosmological model.
+ */
+__attribute__((always_inline)) INLINE static void
+sinks_sink_has_no_neighbours(struct sink* restrict sp,
+                                    const struct cosmology* cosmo) {}
 
 /**
  * @brief Compute the accretion rate of the sink and any quantities

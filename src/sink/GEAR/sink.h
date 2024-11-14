@@ -191,6 +191,8 @@ __attribute__((always_inline)) INLINE static void sink_init_sink(
   /* Reset to the mass of the sink */
   sp->mass_tot_before_star_spawning = sp->mass;
 
+  sp->num_ngbs = 0;
+
 #ifdef DEBUG_INTERACTIONS_SINKS
   for (int i = 0; i < MAX_NUM_OF_NEIGHBOURS_SINKS; ++i)
     sp->ids_ngbs_accretion[i] = -1;
@@ -241,6 +243,17 @@ __attribute__((always_inline)) INLINE static void sink_kick_extra(
  */
 __attribute__((always_inline)) INLINE static void sink_end_density(
     struct sink* si, const struct cosmology* cosmo) {}
+
+/**
+ * @brief Sets all particle fields to sensible values when the #sink has 0
+ * ngbs.
+ *
+ * @param sp The particle to act upon
+ * @param cosmo The current cosmological model.
+ */
+__attribute__((always_inline)) INLINE static void
+sinks_sink_has_no_neighbours(struct sink* restrict sp,
+                                    const struct cosmology* cosmo) {}
 
 /**
  * @brief Compute the accretion rate of the sink and any quantities
