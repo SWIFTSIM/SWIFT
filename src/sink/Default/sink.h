@@ -155,6 +155,17 @@ sinks_sink_has_no_neighbours(struct sink* restrict sp,
 }
 
 /**
+ * @brief Sets all particle fields to sensible values when the #sink has 0
+ * ngbs.
+ *
+ * @param sp The particle to act upon
+ * @param cosmo The current cosmological model.
+ */
+__attribute__((always_inline)) INLINE static void
+sinks_sink_has_no_neighbours(struct sink* restrict sp,
+                                    const struct cosmology* cosmo) {}
+
+/**
  * @brief Compute the accretion rate of the sink and any quantities
  * required swallowing based on an accretion rate
  * 
