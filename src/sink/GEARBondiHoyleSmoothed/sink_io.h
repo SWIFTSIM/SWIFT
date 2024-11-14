@@ -104,6 +104,22 @@ INLINE static void convert_sink_target_mass(const struct engine* e,
   ret[0] = sink->target_mass_Msun * e->physical_constants->const_solar_mass;
 }
 
+INLINE static void convert_sink_gas_vel(const struct engine* e,
+                                            const struct sink* sink,
+                                            float* ret) {
+  const struct cosmology* cosmo = e->cosmology;
+  ret[0] = sink->velocity_gas[0] * cosmo->a_inv;
+  ret[1] = sink->velocity_gas[1] * cosmo->a_inv;
+  ret[2] = sink->velocity_gas[2] * cosmo->a_inv;
+}
+
+INLINE static void convert_sink_gas_sound_speed(const struct engine* e,
+                                            const struct sink* sink,
+                                            double* ret) {
+  const struct cosmology* cosmo = e->cosmology;
+  ret[0] = sink->sound_speed_gas * cosmo->a_factor_sound_speed;
+}
+
 INLINE static void convert_sink_swallowed_angular_momentum(
     const struct engine* e, const struct sink* sink, float* ret) {
   ret[0] = sink->swallowed_angular_momentum[0];
@@ -124,7 +140,7 @@ INLINE static void sink_write_particles(const struct sink* sinks,
                                         int with_cosmology) {
 
   /* Say how much we want to write */
-  *num_fields = 12;
+  *num_fields = 15;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_sink(
@@ -180,6 +196,20 @@ INLINE static void sink_write_particles(const struct sink* sinks,
 
   list[11] = io_make_output_field("TotalMassToAccrete", FLOAT, 1, UNIT_CONV_MASS, 0.f, sinks,
                                  total_mass_to_accrete, "Total gas mass this sink should have accreted. Summed on sink-sink mergers");
+
+  list[12] = io_make_physical_output_field(
+      "GasDensity", FLOAT, 1, UNIT_CONV_DENSITY, -3.f, sinks, rho_gas,
+      /*can convert to comoving=*/1,
+      "Gas density at the location of the sink");
+
+  list[13] = io_make_output_field_convert_sink(
+      "GasVelocity", FLOAT, 3, UNIT_CONV_SPEED, 0.f, sinks, convert_sink_gas_vel,
+      "Gas velocity at the location of the sink. Velocities are peculiar, i.e. a * dx/dt where x is the "
+      "co-moving position of the gas.");
+
+  list[14] = io_make_output_field_convert_sink(
+      "GasSoundSpeed", DOUBLE, 1, UNIT_CONV_SPEED, 0.f, sinks, convert_sink_gas_sound_speed,
+      "Gas sound speed at the location of the sink (physical units)");
 
 #ifdef DEBUG_INTERACTIONS_SINKS
 

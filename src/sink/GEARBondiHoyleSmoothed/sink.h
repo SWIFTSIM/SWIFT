@@ -804,6 +804,9 @@ INLINE static int sink_spawn_star(struct sink* sink, const struct engine* e,
                                   const struct phys_const* phys_const,
                                   const struct unit_system* restrict us) {
 
+  /* For testing - disable star formation entirely */
+  return 0;
+
   if (sink->mass > sink->target_mass_Msun * phys_const->const_solar_mass)
     return 1;
   else
