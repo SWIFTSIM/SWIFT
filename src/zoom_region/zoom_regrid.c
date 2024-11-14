@@ -61,7 +61,8 @@ int zoom_need_regrid(const struct space *s, const int new_cdim[3]) {
  *
  * We'll first try to increase the background cdim a reasonable amount since
  * this will carry less of a performance penalty for small increases than
- * doubling the number of zoom cells.
+ * doubling the number of zoom cells. This is also most likely to produce a
+ * valid set up in all but the most extreme cases.
  *
  * @param s The #space.
  * @param new_cdim The new top-level cell dimensions (based on current hmax).
