@@ -53,6 +53,54 @@ int zoom_need_regrid(const struct space *s, const int new_cdim[3]) {
 }
 
 /**
+ * @brief Find an acceptable geometry given the required zoom cdim.
+ *
+ * Unlike a uniform box, we have options with a zoom region. We can either
+ * increase the background cdim to better resolve the zoom region or we can
+ * increase the depth of the zoom region.
+ *
+ * We'll first try to increase the background cdim a reasonable amount since
+ * this will carry less of a performance penalty for small increases than
+ * doubling the number of zoom cells.
+ *
+ * @param s The #space.
+ * @param new_cdim The new top-level cell dimensions (based on current hmax).
+ */
+void zoom_regrid_find_acceptable_geometry(sturct space *s,
+                                          const int new_cdim[3]) {
+
+  /* Loop until we have an acceptable geometry, we'll first try increasing the
+   * background cdim to a maximum increase of 50% its current value. */
+  int old_bkg_cdim = s->cdim[0];
+  while (zoom_need_regrid(s, new_cdim) && s->cdim[0] < 1.5 * old_bkg_cdim) {
+
+    /* Increment the background cdim. */
+    s->cdim[0]++;
+    s->cdim[1]++;
+    s->cdim[2]++;
+
+    /* Recalculate the zoom region geometry. (silently) */
+    zoom_region_init(s, 0);
+  }
+
+  /* If this worked we can stop here. */
+  if (!zoom_need_regrid(s, new_cdim)) {
+    return;
+  }
+
+  /* If it didn't work we'll try increasing the depth of the zoom region (with
+   * the original background cdim). */
+  s->zoom_props->zoom_cell_depth++;
+  zoom_region_init(s, 0);
+
+  /* If this still didn't work we'll recurse and try the operation again with
+   * this new zoom depth. */
+  if (zoom_need_regrid(s, new_cdim)) {
+    zoom_regrid_find_acceptable_geometry(s, new_cdim);
+  }
+}
+
+/**
  * @brief Prepare the cells for the zoom region.
  *
  * This function is called in space_regrid in space_regrid.c and provides
@@ -81,14 +129,15 @@ void zoom_prepare_cells(struct space *s, const int zoom_cdim[3], int verbose) {
     swift_free("void_cell_indices", s->zoom_props->void_cell_indices);
     swift_free("neighbour_cells_top", s->zoom_props->neighbour_cells_top);
 
-    /* Setting the new zoom cdim (this is the only property that isn't
-     * explicitly calculated in zoom_region_init). */
-    for (int i = 0; i < 3; i++) {
-      s->zoom_props->cdim[i] = zoom_cdim[i];
-    }
+    /* Find an acceptable geometry given the required zoom cdim. */
+    zoon_regrid_find_acceptable_geometry(s, zoom_cdim);
 
-    /* Calculate the region geometry. */
-    zoom_region_init(s, verbose);
+    /* The above function found the geometry silently, if we're running in
+     * verbose mode call the init again to print the cell properties
+     * report. */
+    if (verbose) {
+      zoom_region_init(s, verbose);
+    }
   }
 
   /* Count the number of top level cells. */
