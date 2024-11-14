@@ -434,8 +434,11 @@ INLINE static int mhd_write_particles(const struct part* parts,
   list[11] = io_make_output_field_convert_part(
       "RmLocals", FLOAT, 1, UNIT_CONV_NO_UNITS, 0, parts, xparts,
       calculate_Rm_local, "Shows local value of magnetic Reynolds number");
+  list[12] = io_make_output_field_convert_part(
+      "SPHSumErrors", FLOAT, 1, UNIT_CONV_NO_UNITS, 0, parts, xparts,
+      1-p->mhd_data.mean_SPH_err, "Shows local SPH sum errors"); 
 
-  return 12;
+  return 13;
 }
 
 /**
