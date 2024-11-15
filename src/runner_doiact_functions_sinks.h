@@ -60,7 +60,7 @@ void DOSELF1_SINKS(struct runner *r, struct cell *c, int timer) {
       if (!sink_is_active(si, e)) continue;
 
       const float hi = si->h;
-      const float hi2 = hi * hi;
+      const float hig2 = hi * hi * kernel_gamma2;
       const float six[3] = {(float)(si->x[0] - c->loc[0]),
                             (float)(si->x[1] - c->loc[1]),
                             (float)(si->x[2] - c->loc[2])};
@@ -90,7 +90,7 @@ void DOSELF1_SINKS(struct runner *r, struct cell *c, int timer) {
           error("Particle pj not drifted to current time");
 #endif
 
-        if (r2 < hi2) {
+        if (r2 < hig2) {
           IACT_SINKS_GAS(r2, dx, hi, hj, si, pj, with_cosmology, cosmo,
                          e->gravity_properties, e->sink_properties, e->ti_current, e->time);
         }
@@ -112,7 +112,7 @@ void DOSELF1_SINKS(struct runner *r, struct cell *c, int timer) {
     if (!sink_is_active(si, e)) continue;
 
     const float hi = si->h;
-    const float hi2 = hi * hi;
+    const float hig2 = hi * hi * kernel_gamma2;
     const float six[3] = {(float)(si->x[0] - c->loc[0]),
                           (float)(si->x[1] - c->loc[1]),
                           (float)(si->x[2] - c->loc[2])};
@@ -126,7 +126,7 @@ void DOSELF1_SINKS(struct runner *r, struct cell *c, int timer) {
       /* Get a pointer to the jth particle. */
       struct sink *restrict sj = &sinks[sjd];
       const float hj = sj->h;
-      const float hj2 = hj * hj;
+      const float hjg2 = hj * hj * kernel_gamma2;
 
       /* Early abort? */
       if (sink_is_inhibited(sj, e)) continue;
@@ -146,7 +146,7 @@ void DOSELF1_SINKS(struct runner *r, struct cell *c, int timer) {
         error("Particle bj not drifted to current time");
 #endif
 
-      if (r2 < hi2 || r2 < hj2) {
+      if (r2 < hig2 || r2 < hjg2) {
         IACT_SINKS_SINK(r2, dx, hi, hj, si, sj, with_cosmology, cosmo,
                         e->gravity_properties, e->sink_properties, e->ti_current, e->time);
       }
@@ -209,7 +209,7 @@ void DO_NONSYM_PAIR1_SINKS_NAIVE(struct runner *r, struct cell *restrict ci,
       if (!sink_is_active(si, e)) continue;
 
       const float hi = si->h;
-      const float hi2 = hi * hi;
+      const float hig2 = hi * hi * kernel_gamma2;
       const float six[3] = {(float)(si->x[0] - cj->loc[0]),
                             (float)(si->x[1] - cj->loc[1]),
                             (float)(si->x[2] - cj->loc[2])};
@@ -239,7 +239,7 @@ void DO_NONSYM_PAIR1_SINKS_NAIVE(struct runner *r, struct cell *restrict ci,
           error("Particle pj not drifted to current time");
 #endif
 
-        if (r2 < hi2) {
+        if (r2 < hig2) {
           IACT_SINKS_GAS(r2, dx, hi, hj, si, pj, with_cosmology, cosmo,
                          e->gravity_properties, e->sink_properties, e->ti_current, e->time);
         }
@@ -264,7 +264,7 @@ void DO_NONSYM_PAIR1_SINKS_NAIVE(struct runner *r, struct cell *restrict ci,
     if (!sink_is_active(si, e)) continue;
 
     const float hi = si->h;
-    const float hi2 = hi * hi;
+    const float hig2 = hi * hi * kernel_gamma2;
     const float six[3] = {(float)(si->x[0] - (cj->loc[0] + shift[0])),
                           (float)(si->x[1] - (cj->loc[1] + shift[1])),
                           (float)(si->x[2] - (cj->loc[2] + shift[2]))};
@@ -275,7 +275,7 @@ void DO_NONSYM_PAIR1_SINKS_NAIVE(struct runner *r, struct cell *restrict ci,
       /* Get a pointer to the jth particle. */
       struct sink *restrict sj = &sinks_j[sjd];
       const float hj = sj->h;
-      const float hj2 = hj * hj;
+      const float hjg2 = hj * hj * kernel_gamma2;
 
       /* Skip inhibited particles. */
       if (sink_is_inhibited(sj, e)) continue;
@@ -295,7 +295,7 @@ void DO_NONSYM_PAIR1_SINKS_NAIVE(struct runner *r, struct cell *restrict ci,
         error("Particle sj not drifted to current time");
 #endif
 
-      if (r2 < hi2 || r2 < hj2) {
+      if (r2 < hig2 || r2 < hjg2) {
         IACT_SINKS_SINK(r2, dx, hi, hj, si, sj, with_cosmology, cosmo,
                         e->gravity_properties, e->sink_properties, e->ti_current, e->time);
       }
