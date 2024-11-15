@@ -497,7 +497,25 @@ runner_iact_nonsym_sinks_gas_swallow(
       return;
     }
 
-    /* Since this pair gas-sink is the most bounf, keep track of the
+    /* Swallowed mass threshold--------------------------------------------- */
+    si->to_collect.mass_eligible_swallow += hydro_get_mass(pj);
+
+    /* Maximal mass that can be swallowed within a single timestep */
+    const float mass_swallow_limit = sink_properties->n_star*si->mass_IMF;
+
+    /* If the mass exceeds the threshold, do not swallow. Make sure you can at
+    least swallow a particle to avoid running into the problem of never being
+    able to spawn a star. */
+    if (si->to_collect.mass_after_swallow >= mass_swallow_limit
+	&& si->to_collect.mass_eligible_swallow != 0) {
+      return;
+    }
+
+    /* Increment the swallowd mass */
+    si->to_collect.mass_after_swallow += hydro_get_mass(pj);
+
+    /* --------------------------------------------------------------------- */
+    /* Since this pair gas-sink is the most bound, keep track of the
        E_mec_bound and set the swallow_id accordingly */
     pj->sink_data.E_mec_bound = E_mec_sink_part;
     pj->sink_data.swallow_id = si->id;
