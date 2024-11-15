@@ -383,8 +383,7 @@ runner_iact_nonsym_sinks_gas_swallow(const float r2, const float dx[3],
                               (r_physical * r_physical * r_physical);
 
     /*Keplerian angular momentum squared */
-    const float L2_acc =
-        (si->h * si->h * si->h * si->h) * omega_acc_2;
+    const float L2_acc = (ri * ri * ri * ri) * omega_acc_2;
 
     /* To be accreted, the gas momentum shoulb lower than the keplerian orbit
      * momentum. */
