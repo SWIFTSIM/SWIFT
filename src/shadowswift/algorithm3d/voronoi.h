@@ -5,13 +5,13 @@
 #ifndef SWIFTSIM_SHADOWSWIFT_VORONOI_3D_H
 #define SWIFTSIM_SHADOWSWIFT_VORONOI_3D_H
 
-#include <string.h>
-
 #include "part.h"
 #include "shadowswift/algorithm3d/delaunay.h"
 #include "shadowswift/algorithm3d/geometry.h"
 #include "shadowswift/algorithm3d/tetrahedron.h"
 #include "shadowswift/queues.h"
+
+#include <string.h>
 
 /*! @brief The sid order in which the faces are stored in their array */
 static const int face_sid_order[28] = {
@@ -299,7 +299,7 @@ inline static void voronoi_build(struct voronoi *v, struct delaunay *d,
 #else
     int pair_connections_offset = 0;
 #endif
-    double min_face_dist = DBL_MAX;
+    double min_face_dist_sqrd = DBL_MAX;
     int min_face_dist_ngb = -1;
     /* get the generator position */
     double generator_pos[3] = {p->x[0], p->x[1], p->x[2]};
@@ -381,9 +381,7 @@ inline static void voronoi_build(struct voronoi *v, struct delaunay *d,
       const double *vor_vertex1 = &circumcenters[3 * cur_t_idx];
       /* Initialize the area and centroid of this face */
       double face_area = 0.;
-      double face_centroid[3] = {vor_vertex0[0] + vor_vertex1[0],
-                                 vor_vertex0[1] + vor_vertex1[1],
-                                 vor_vertex0[2] + vor_vertex1[2]};
+      double face_centroid[3] = {0., 0., 0.};
 #ifdef VORONOI_STORE_FACES
       memcpy(&face_vertices[0], vor_vertex0, 3 * sizeof(*vor_vertex0));
       memcpy(&face_vertices[3], vor_vertex1, 3 * sizeof(*vor_vertex1));
@@ -410,13 +408,22 @@ inline static void voronoi_build(struct voronoi *v, struct delaunay *d,
 #endif
 
         /* Update face area and centroid */
-        face_area += geometry3d_compute_area_triangle(
-            vor_vertex0[0], vor_vertex0[1], vor_vertex0[2], vor_vertex1[0],
-            vor_vertex1[1], vor_vertex1[2], vor_vertex2[0], vor_vertex2[1],
-            vor_vertex2[2]);
-        face_centroid[0] += vor_vertex2[0];
-        face_centroid[1] += vor_vertex2[1];
-        face_centroid[2] += vor_vertex2[2];
+        double temp_centroid[3];
+        double temp = geometry3d_compute_area_centroid_triangle(
+            vor_vertex0, vor_vertex1, vor_vertex2, temp_centroid);
+        face_area += temp;
+        face_centroid[0] += temp * temp_centroid[0];
+        face_centroid[1] += temp * temp_centroid[1];
+        face_centroid[2] += temp * temp_centroid[2];
+
+        /* Update cell volume and centroid */
+        temp = geometry3d_compute_centroid_volume_tetrahedron(
+            vor_vertex0, vor_vertex1, vor_vertex2, generator_pos,
+            temp_centroid);
+        volume += temp;
+        centroid[0] += temp * temp_centroid[0];
+        centroid[1] += temp * temp_centroid[1];
+        centroid[2] += temp * temp_centroid[2];
 
         /* Update variables */
         prev_t_idx_in_cur_t = cur_t->index_in_neighbour[next_t_idx_in_cur_t];
@@ -446,32 +453,11 @@ inline static void voronoi_build(struct voronoi *v, struct delaunay *d,
         }
       }
 
-      /* Get the position of the neighbouring generator */
-      double ngb_pos[3];
-      delaunay_get_vertex_at(d, ngb_idx_in_d, ngb_pos);
-
-      /* Update voronoi cell's centroid and volume */
-      double dx[3] = {ngb_pos[0] - generator_pos[0],
-                      ngb_pos[1] - generator_pos[1],
-                      ngb_pos[2] - generator_pos[2]};
-      double face_dist =
-          0.5 * sqrt(dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]);
-      double face_pyramid_volume = face_area * face_dist / 3.;
-      double centroid_weight = face_pyramid_volume / (face_vertex_count + 1);
-      centroid[0] += centroid_weight * (face_centroid[0] + generator_pos[0]);
-      centroid[1] += centroid_weight * (face_centroid[1] + generator_pos[1]);
-      centroid[2] += centroid_weight * (face_centroid[2] + generator_pos[2]);
-      volume += face_pyramid_volume;
-#ifdef SWIFT_DEBUG_CHECKS
-      if (2. * face_dist > p->geometry.search_radius)
-        error("Neighbouring particle too far away!");
-#endif
-
       /* Finalize the face centroid */
-      double n_vertices_inv = 1. / face_vertex_count;
-      face_centroid[0] *= n_vertices_inv;
-      face_centroid[1] *= n_vertices_inv;
-      face_centroid[2] *= n_vertices_inv;
+      double norm = face_area > 0. ? 1. / face_area : 0.;
+      face_centroid[0] *= norm;
+      face_centroid[1] *= norm;
+      face_centroid[2] *= norm;
       if (voronoi_new_face(v, d, gen_idx_in_d, ngb_idx_in_d, parts, face_area,
                            face_centroid, face_vertices, face_vertex_count,
                            &face_sids)) {
@@ -479,10 +465,23 @@ inline static void voronoi_build(struct voronoi *v, struct delaunay *d,
 #ifdef VORONOI_STORE_CELL_FACE_CONNECTIONS
         nface++;
 #endif
-        /* Update the minimal dist to a neighbouring generator */
-        voronoi_assert(face_dist > 0.f);
-        if (face_dist < min_face_dist) {
-          min_face_dist = face_dist;
+        /* Get the position of the neighbouring generator and update
+         * min_face_dist_sqrd */
+        double ngb_pos[3];
+        delaunay_get_vertex_at(d, ngb_idx_in_d, ngb_pos);
+        double dx[3] = {ngb_pos[0] - generator_pos[0],
+                        ngb_pos[1] - generator_pos[1],
+                        ngb_pos[2] - generator_pos[2]};
+        double face_dist_sqrd =
+            0.25 * (dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]);
+#ifdef SWIFT_DEBUG_CHECKS
+        if (4. * face_dist_sqrd >
+            p->geometry.search_radius * p->geometry.search_radius)
+          error("Neighbouring particle too far away!");
+#endif
+        voronoi_assert(face_dist_sqrd > 0.f);
+        if (face_dist_sqrd < min_face_dist_sqrd) {
+          min_face_dist_sqrd = face_dist_sqrd;
           min_face_dist_ngb = ngb_idx_in_d;
         }
       }
@@ -490,9 +489,10 @@ inline static void voronoi_build(struct voronoi *v, struct delaunay *d,
 
     /* Compute the actual centroid. */
     voronoi_assert(volume > 0.);
-    centroid[0] /= volume;
-    centroid[1] /= volume;
-    centroid[2] /= volume;
+    double volume_inv = 1. / volume;
+    centroid[0] *= volume_inv;
+    centroid[1] *= volume_inv;
+    centroid[2] *= volume_inv;
 
     /* Estimate distance from centroid to nearest (to generator) face */
     double min_face_dist_ngb_pos[3];
@@ -506,7 +506,7 @@ inline static void voronoi_build(struct voronoi *v, struct delaunay *d,
                         face[2] - centroid[2]};
     double dist = (dx_cen[0] * dx_gen[0] + dx_cen[1] * dx_gen[1] +
                    dx_cen[2] * dx_gen[2]) /
-                  min_face_dist;
+                  sqrt(min_face_dist_sqrd);
 
     p->geometry.volume = (float)volume;
     p->geometry.centroid[0] = (float)(centroid[0] - generator_pos[0]);
@@ -815,7 +815,7 @@ inline static int voronoi_new_face(
   }
 
   /* Degenerate face? */
-  if (area < v->min_surface_area) return 0;
+  if (area <= v->min_surface_area) return 0;
 
   /* Do we need to extend the pairs and sids array? */
   if (v->pair_index == v->pair_size) {
@@ -920,7 +920,8 @@ inline static void voronoi_check_grid(struct voronoi *v,
   /* Check total volume */
   //  double total_volume = 0.;
   //  for (int j = d->vertex_start; j < d->vertex_end; j++) {
-  //    total_volume += parts[d->vertex_part_idx[j]].geometry.volume;
+  //    const struct part *part = &parts[d->vertex_part_idx[j]];
+  //    total_volume += part->geometry.volume;
   //  }
   //  fprintf(stderr, "Total volume: %g\n", total_volume);
 
@@ -931,7 +932,7 @@ inline static void voronoi_check_grid(struct voronoi *v,
   for (int i = 0; i < (d->vertex_end - d->vertex_start); i++)
     surface_areas[i] = 0;
 
-  for (int sid = 0; sid < 28; sid++)
+  for (int sid = 0; sid < 28; sid++) {
     for (int i = 0; i < v->pair_count[sid]; i++) {
       struct voronoi_pair *pair = &v->pairs[sid][i];
       int left_idx =
@@ -943,6 +944,7 @@ inline static void voronoi_check_grid(struct voronoi *v,
         surface_areas[right_idx] += pair->surface_area;
       }
     }
+  }
 
   for (int i = 0; i < (d->vertex_end - d->vertex_start); i++) {
     float volume =
