@@ -106,8 +106,10 @@ INLINE static void sink_update_target_mass(struct sink* sink,
   }
 
   /* Also store the mass of the IMF into the sink. */
-  double dummy;;
-  initial_mass_function_compute_Mc_Md_Mtot(imf, &dummy, &dummy, &sink->mass_IMF);
+  double dummy;
+  ;
+  initial_mass_function_compute_Mc_Md_Mtot(imf, &dummy, &dummy,
+                                           &sink->mass_IMF);
 
   /* Convert from M_sun to internal units. */
   sink->mass_IMF *= e->physical_constants->const_solar_mass;

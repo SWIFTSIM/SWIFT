@@ -103,9 +103,10 @@ __attribute__((always_inline)) INLINE static float sink_compute_timestep(
       (sink->to_collect.minimal_sink_t_dyn == FLT_MAX)) {
     dt_2_body = FLT_MAX;
   } else {
-    dt_2_body =
-      sink->to_collect.minimal_sink_t_c * sink->to_collect.minimal_sink_t_dyn /
-      (sink->to_collect.minimal_sink_t_c + sink->to_collect.minimal_sink_t_dyn);
+    dt_2_body = sink->to_collect.minimal_sink_t_c *
+                sink->to_collect.minimal_sink_t_dyn /
+                (sink->to_collect.minimal_sink_t_c +
+                 sink->to_collect.minimal_sink_t_dyn);
   }
 
   /* Now, limit timestep by computing how much we restricted the sink accretion
@@ -127,16 +128,19 @@ __attribute__((always_inline)) INLINE static float sink_compute_timestep(
      remaining mass sooner. */
   if (sink_properties->n_star > 0 && Delta_M < 0) {
     /* Add a tolerance parameter in the params.yml */
-    dt_SF = 0.1*sink->to_collect.mass_eligible_swallow / fabs(M_dot);
+    dt_SF = 0.1 * sink->to_collect.mass_eligible_swallow / fabs(M_dot);
   }
 
   /* Sink age (in internal units) */
   double sink_age = sink_get_sink_age(sink, with_cosmology, cosmo, time);
 
   /* message( */
-  /*     "sink %lld, rho_gas = %e, c_s = %e, gas_v_phys = (%e %e %e), h_min = %e, " */
-  /*     "rho_sink = %e, denominator = %e, birth_time = %e, t_dyn_min = %e, Delta_M = %e" */
-  /*     " M_IMF = %e, M_eligible = %e, time = %e, Dt_current = %e, age = %e", */
+  /*     "sink %lld, rho_gas = %e, c_s = %e, gas_v_phys = (%e %e %e), h_min =
+   * %e, " */
+  /*     "rho_sink = %e, denominator = %e, birth_time = %e, t_dyn_min = %e,
+   * Delta_M = %e" */
+  /*     " M_IMF = %e, M_eligible = %e, time = %e, Dt_current = %e, age = %e",
+   */
   /*     sink->id, sink->to_collect.rho_gas, gas_c_phys, gas_v_phys[0], */
   /*     gas_v_phys[1], gas_v_phys[2], h_min, rho_sink, denominator, */
   /*     sink->birth_time, sink->to_collect.minimal_sink_t_dyn, Delta_M, */
@@ -149,14 +153,15 @@ __attribute__((always_inline)) INLINE static float sink_compute_timestep(
   /* What age category are we in? */
   if (sink_age > sink_properties->age_threshold_unlimited) {
     /* message("unlimited sink age, age = %e, dt_2-body = %e", sink_age, */
-            /* dt_2_body); */
+    /* dt_2_body); */
     return dt_2_body;
   } else if (sink_age > sink_properties->age_threshold) {
     dt = min3(dt, dt_2_body, sink_properties->max_time_step_old);
     /* message( */
     /*     "old sink %lld, age = %e, dt_CFL = %e, dt_ff = %e, dt_age = %e, " */
     /*     "dt_2_body = %e, dt_SF = %e", */
-    /*     sink->id, sink_age, dt_cfl, dt_ff, sink_properties->max_time_step_old, */
+    /*     sink->id, sink_age, dt_cfl, dt_ff,
+     * sink_properties->max_time_step_old, */
     /*     dt_2_body, dt_SF); */
     return dt;
   } else {
@@ -164,7 +169,8 @@ __attribute__((always_inline)) INLINE static float sink_compute_timestep(
     /* message( */
     /*     "young sink %lld, age = %e, dt_CFL = %e, dt_ff = %e, dt_age = %e " */
     /*     "dt_2-body = %e, dt_SF = %e", */
-    /*     sink->id, sink_age, dt_cfl, dt_ff, sink_properties->max_time_step_young, */
+    /*     sink->id, sink_age, dt_cfl, dt_ff,
+     * sink_properties->max_time_step_young, */
     /*     dt_2_body, dt_SF); */
     return dt;
   }
