@@ -1903,6 +1903,9 @@ void runner_do_flux_ghost(struct runner *r, struct cell *c, int timer) {
   const struct cosmology *cosmo = e->cosmology;
   const struct hydro_props *hydro_props = e->hydro_properties;
   const struct pressure_floor_props *pressure_floor = e->pressure_floor_props;
+  const int with_grid_hydro = e->policy & engine_policy_grid_hydro;
+  const int with_ext_gravity = e->policy & engine_policy_external_gravity;
+  const int with_self_gravity = e->policy & engine_policy_self_gravity;
 
   if (c->hydro.super != c) error("Flux ghost not run at super level!");
   TIMER_TIC;
@@ -1917,7 +1920,7 @@ void runner_do_flux_ghost(struct runner *r, struct cell *c, int timer) {
   }
 
 #ifdef EXTRA_HYDRO_LOOP
-  if (e->policy & engine_policy_grid_hydro) {
+  if (with_grid_hydro) {
     /* Set the geometry properties of the particles and prepare the particles
      * for the gradient calculation */
     for (int i = 0; i < c->hydro.count; i++) {
@@ -1933,6 +1936,21 @@ void runner_do_flux_ghost(struct runner *r, struct cell *c, int timer) {
     }
   }
 #endif
+
+  if (with_ext_gravity || with_self_gravity) {
+    /* Update mass and center of mass of #gparts for gravity calculation at the
+     * end of timestep */
+    /* TODO: Add dependencies, so that this happens after gravity drift, but
+     * before gravity interactions */
+    for (int i = 0; i < c->hydro.count; i++) {
+      struct part *p = &c->hydro.parts[i];
+      if (!part_is_active(p, e)) continue;
+      p->gpart->mass = p->conserved.mass + p->flux.mass;
+      p->gpart->x[0] = p->x[0] + p->geometry.centroid[0];
+      p->gpart->x[1] = p->x[1] + p->geometry.centroid[1];
+      p->gpart->x[2] = p->x[2] + p->geometry.centroid[2];
+    }
+  }
 
   if (timer) TIMER_TOC(timer_do_flux_ghost);
 }
