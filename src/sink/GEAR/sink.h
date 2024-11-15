@@ -120,9 +120,9 @@ __attribute__((always_inline)) INLINE static void sink_first_init_sink(
     struct sink* sp, const struct sink_props* sink_props,
     const struct engine* e) {
 
-  if (sink_props->use_fixed_r_cut){
-    sp->h = sink_props->cut_off_radius/kernel_gamma;
-  }
+  // if (sink_props->use_fixed_r_cut){
+  //   sp->h = sink_props->cut_off_radius/kernel_gamma;
+  // }
   
   sp->time_bin = 0;
 
@@ -287,17 +287,6 @@ sinks_sink_has_no_neighbours(struct sink* restrict sp,
   sp->density.wcount = kernel_root * h_inv_dim;
   sp->density.wcount_dh = 0.f;
 }
-
-/**
- * @brief Sets all particle fields to sensible values when the #sink has 0
- * ngbs.
- *
- * @param sp The particle to act upon
- * @param cosmo The current cosmological model.
- */
-__attribute__((always_inline)) INLINE static void
-sinks_sink_has_no_neighbours(struct sink* restrict sp,
-                                    const struct cosmology* cosmo) {}
 
 /**
  * @brief Compute the accretion rate of the sink and any quantities
@@ -545,12 +534,12 @@ INLINE static void sink_copy_properties(
   /* First initialisation */
   sink_init_sink(sink);
 
-  // /* Set a smoothing length */
-  // if (sink_props->use_fixed_r_cut){
-  //   sink->h = sink_props->cut_off_radius/kernel_gamma;
-  // } else {
-  //   sink->h = p->h;
-  // }
+  /* Set a smoothing length */
+  if (sink_props->use_fixed_r_cut){
+    sink->h = sink_props->cut_off_radius/kernel_gamma;
+  } else {
+    sink->h = p->h;
+  }
 
   /* Flag it as not swallowed */
   sink_mark_sink_as_not_swallowed(&sink->merger_data);
