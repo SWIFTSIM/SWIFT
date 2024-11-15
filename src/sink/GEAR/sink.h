@@ -121,7 +121,7 @@ __attribute__((always_inline)) INLINE static void sink_first_init_sink(
     const struct engine* e) {
 
   if (sink_props->use_fixed_r_cut){
-    sp->h = sink_props->cut_off_radius;
+    sp->h = sink_props->cut_off_radius/kernel_gamma;
   }
   
   sp->time_bin = 0;
@@ -545,12 +545,12 @@ INLINE static void sink_copy_properties(
   /* First initialisation */
   sink_init_sink(sink);
 
-  /* Set a smoothing length */
-  if (sink_props->use_fixed_r_cut){
-    sink->h = sink_props->cut_off_radius;
-  } else {
-    sink->h = p->h;
-  }
+  // /* Set a smoothing length */
+  // if (sink_props->use_fixed_r_cut){
+  //   sink->h = sink_props->cut_off_radius/kernel_gamma;
+  // } else {
+  //   sink->h = p->h;
+  // }
 
   /* Flag it as not swallowed */
   sink_mark_sink_as_not_swallowed(&sink->merger_data);
