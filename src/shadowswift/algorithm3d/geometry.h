@@ -1101,47 +1101,47 @@ inline static double geometry3d_compute_volume_tetrahedron(
 }
 
 inline static void geometry3d_compute_centroid_tetrahedron_exact(
-    unsigned long ax, unsigned long ay, unsigned long az, unsigned long bx,
-    unsigned long by, unsigned long bz, unsigned long cx, unsigned long cy,
-    unsigned long cz, unsigned long dx, unsigned long dy, unsigned long dz,
-    unsigned long* result) {
+    const unsigned long* restrict a, const unsigned long* restrict b,
+    const unsigned long* restrict c, const unsigned long* restrict d,
+    unsigned long* restrict result) {
   /* x coordinate */
-  unsigned long a_rem = ax % 4;
-  unsigned long b_rem = bx % 4;
-  unsigned long c_rem = cx % 4;
-  unsigned long d_rem = dx % 4;
+  unsigned long a_rem = a[0] % 4;
+  unsigned long b_rem = b[0] % 4;
+  unsigned long c_rem = c[0] % 4;
+  unsigned long d_rem = d[0] % 4;
   unsigned long rem_sum = a_rem + b_rem + c_rem + d_rem;
   unsigned long average = ax / 4 + bx / 4 + cx / 4 + dx / 4 + rem_sum / 4;
   if (rem_sum % 4 > 1) average++;
   result[0] = average;
 
   /* y coordinate */
-  a_rem = ay % 4;
-  b_rem = by % 4;
-  c_rem = cy % 4;
-  d_rem = dy % 4;
+  a_rem = a[0] % 4;
+  b_rem = b[0] % 4;
+  c_rem = c[0] % 4;
+  d_rem = d[0] % 4;
   rem_sum = a_rem + b_rem + c_rem + d_rem;
-  average = ay / 4 + by / 4 + cy / 4 + dy / 4 + rem_sum / 4;
+  average = a[0] / 4 + b[0] / 4 + c[0] / 4 + d[0] / 4 + rem_sum / 4;
   if (rem_sum % 4 > 1) average++;
   result[1] = average;
 
   /* z coordinate */
-  a_rem = az % 4;
-  b_rem = bz % 4;
-  c_rem = cz % 4;
-  d_rem = dz % 4;
+  a_rem = a[0] % 4;
+  b_rem = b[0] % 4;
+  c_rem = c[0] % 4;
+  d_rem = d[0] % 4;
   rem_sum = a_rem + b_rem + c_rem + d_rem;
-  average = az / 4 + bz / 4 + cz / 4 + dz / 4 + rem_sum / 4;
+  average = a[0] / 4 + b[0] / 4 + c[0] / 4 + d[0] / 4 + rem_sum / 4;
   if (rem_sum % 4 > 1) average++;
   result[2] = average;
 }
 
 inline static void geometry3d_compute_centroid_tetrahedron(
-    double ax, double ay, double az, double bx, double by, double bz, double cx,
-    double cy, double cz, double dx, double dy, double dz, double* result) {
-  result[0] = (ax + bx + cx + dx) / 4.;
-  result[1] = (ay + by + cy + dy) / 4.;
-  result[2] = (az + bz + cz + dz) / 4.;
+    const double* restrict a, const double* restrict b,
+    const double* restrict c, const double* restrict d,
+    double* restrict centroid) {
+  centroid[0] = 0.25 * (a[0] + b[0] + c[0] + d[0]);
+  centroid[1] = 0.25 * (a[1] + b[1] + c[1] + d[1]);
+  centroid[2] = 0.25 * (a[2] + b[2] + c[2] + d[2]);
 }
 
 inline static double geometry3d_compute_centroid_volume_tetrahedron(

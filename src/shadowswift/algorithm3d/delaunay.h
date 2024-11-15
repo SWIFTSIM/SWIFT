@@ -989,15 +989,11 @@ inline static int delaunay_get_next_tetrahedron_idx_ray(
 
   double centroid[3];
   geometry3d_compute_centroid_tetrahedron(
-      v0->x_f64[0], v0->x_f64[1], v0->x_f64[2], v1->x_f64[0], v1->x_f64[1],
-      v1->x_f64[2], v2->x_f64[0], v2->x_f64[1], v2->x_f64[2], v3->x_f64[0],
-      v3->x_f64[1], v3->x_f64[2], centroid);
+      v0->x_f64, v1->x_f64, v2->x_f64, v3->x_f64, centroid);
 
   unsigned long centroid_ul[3];
   geometry3d_compute_centroid_tetrahedron_exact(
-      v0->x_u64[0], v0->x_u64[1], v0->x_u64[2], v1->x_u64[0], v1->x_u64[1],
-      v1->x_u64[2], v2->x_u64[0], v2->x_u64[1], v2->x_u64[2], v3->x_u64[0],
-      v3->x_u64[1], v3->x_u64[2], centroid_ul);
+      v0->x_u64, v1->x_u64, v2->x_u64, v3->x_u64, centroid_ul);
 
   struct shadowswift_ray r;
   shadowswift_ray_init(&r, centroid, v4->x_f64, centroid_ul, v4->x_u64);
