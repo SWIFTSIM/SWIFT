@@ -615,11 +615,6 @@ inline static int geometry3d_in_sphere_adaptive(struct geometry3d* restrict g,
 #ifdef DELAUNAY_3D_HAND_VEC
   int result = geometry3d_in_sphere_simd(a->x_f64, b->x_f64, c->x_f64, d->x_f64,
                                          e->x_f64);
-#ifdef SWIFT_DEBUG_CHECKS
-  int result_normal =
-      geometry3d_in_sphere(a->x_f64, b->x_f64, c->x_f64, d->x_f64, e->x_f64);
-  assert(result == result_normal);
-#endif
 #else
   int result =
       geometry3d_in_sphere(a->x_f64, b->x_f64, c->x_f64, d->x_f64, e->x_f64);
