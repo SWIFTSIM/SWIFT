@@ -1603,7 +1603,7 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
       (cj->subtype == cell_subtype_void ||
        (cj->split && cell_is_above_diff_grav_depth(cj)))) {
 
-    //* We will use a progeny MM interaction since we can split both cells. */
+    /* We will use a progeny MM interaction since we can split both cells. */
     t->subtype = task_subtype_progeny;
 
     /* Loop over the progeny. */

@@ -1069,7 +1069,6 @@ void engine_print_task_counts(const struct engine *e) {
     int nr_buffer_bkg = 0;
     int nr_bkg_bkg = 0;
     int nr_zoom_neighbour = 0;
-    int nr_void_pairs = 0; /* Should always be 0! */
     /* Loop over tasks. */
     for (int i = 0; i < nr_tasks; i++) {
       const struct task *t = &tasks[i];
@@ -1079,13 +1078,6 @@ void engine_print_task_counts(const struct engine *e) {
 
       /* Skip non-pairs. */
       if (t->type != task_type_pair) continue;
-
-      /* If either ci or cj are void cells count them. (again this should never
-       * happen!) */
-      if (t->ci->subtype == cell_subtype_void ||
-          t->cj->subtype == cell_subtype_void) {
-        nr_void_pairs++;
-      }
 
       /* Count a nieghbour pair if ci and cj are the combination of a zoom and
        * neighbour cell. */
