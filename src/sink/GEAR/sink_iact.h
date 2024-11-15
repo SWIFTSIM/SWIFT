@@ -504,9 +504,11 @@ runner_iact_nonsym_sinks_gas_swallow(
     const float mass_swallow_limit = sink_properties->n_star*si->mass_IMF;
 
     /* If the mass exceeds the threshold, do not swallow. Make sure you can at
-    least swallow a particle to avoid running into the problem of never being
-    able to spawn a star. */
-    if (si->to_collect.mass_after_swallow >= mass_swallow_limit
+       least swallow a particle to avoid running into the problem of never being
+       able to spawn a star.
+       If n_star <= 0, then disable this criterion */
+    if (sink_properties->n_star > 0 &&
+	si->to_collect.mass_after_swallow >= mass_swallow_limit
 	&& si->to_collect.mass_eligible_swallow != 0) {
       return;
     }
