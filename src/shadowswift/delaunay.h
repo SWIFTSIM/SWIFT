@@ -12,16 +12,16 @@
 /*! @brief Activate extensive log output. */
 // #define DELAUNAY_LOG_OUTPUT
 
-/*! @brief Activate runtime assertions. */
 #ifdef SWIFT_DEBUG_CHECKS
+/*! @brief Activate runtime assertions. */
 #define DELAUNAY_DO_ASSERTIONS
-#endif
 
 /*! @brief Check the validity of the Delaunay tessellation after every addition
  *  of a new vertex. This feature is very helpful when debugging to catch
  *  problems as they happen, but adds a very significant runtime cost. It should
  *  never be activated for production runs! */
 // #define DELAUNAY_CHECKS
+#endif
 
 /*! Search strategies to find the tetrahedron containing new vertices */
 /*! @brief Simple but efficient geometric criterion with fallback to random walk
