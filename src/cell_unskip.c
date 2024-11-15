@@ -2966,16 +2966,17 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
         if (with_timestep_sync) cell_activate_sync_part(ci, s);
       }
 
-      /* Activate the drifts */
+      /* Activate the drift & sync tasks. */
       else if (t->type == task_type_pair) {
 
-        /* Activate the drift & sync tasks. */
         if (ci_nodeID == nodeID) cell_activate_drift_sink(ci, s);
         if (ci_nodeID == nodeID) cell_activate_drift_part(ci, s);
+        if (ci_nodeID == nodeID) cell_activate_sink_formation_tasks(ci->top, s);
+
         if (cj_nodeID == nodeID) cell_activate_drift_part(cj, s);
         if (cj_nodeID == nodeID) cell_activate_drift_sink(cj, s);
+        if (cj_nodeID == nodeID) cell_activate_sink_formation_tasks(cj->top, s);
 
-        /* JD: The BHs do this. Do we need to?? */
         if (ci_nodeID == nodeID && cj_active && with_timestep_sync)
           cell_activate_sync_part(ci, s);
         if (cj_nodeID == nodeID && ci_active && with_timestep_sync)
