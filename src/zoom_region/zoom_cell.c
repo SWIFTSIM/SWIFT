@@ -711,8 +711,8 @@ static void zoom_void_timestep_collect_recursive(struct cell *c) {
     struct cell *cp = c->progeny[k];
     if (cp != NULL) {
 
-      /* Recurse, if we haven't hit the zoom level. */
-      if (cp->type != cell_type_zoom) {
+      /* Recurse, if we're still in the void cell tree. */
+      if (cp->subtype == cell_subtype_void) {
         zoom_void_timestep_collect_recursive(cp);
       }
 
