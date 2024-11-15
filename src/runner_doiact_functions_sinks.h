@@ -653,7 +653,7 @@ void DOSELF1_BRANCH_SINKS(struct runner *r, struct cell *c) {
   if (!cell_is_active_sinks(c, e)) return;
 
   /* Did we mess up the recursion? */
-  if (c->sinks.h_max_old > c->dmin)
+  if (c->sinks.h_max_old * kernel_gamma > c->dmin)
     error("Cell smaller than the cut off radius or smoothing length");
 
   DOSELF1_SINKS(r, c, 1);
