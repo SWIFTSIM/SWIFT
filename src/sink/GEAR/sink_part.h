@@ -54,6 +54,9 @@ struct sink {
   /*! Sink target mass. In Msun. */
   float target_mass_Msun;
 
+  /* Mass of the IMF this sinks is currently affected to. In internal units. */
+  double mass_IMF;
+
   /*! Mass of the sink before starting the star spawning loop */
   float mass_tot_before_star_spawning;
 
@@ -93,6 +96,16 @@ struct sink {
 
     /* Minimal dynamical time between all sink neighbours */
     float minimal_sink_t_dyn;
+
+    /*! Total mass of gas part that pass all criterion before the accretion mass
+       limit */
+    float mass_eligible_swallow;
+
+    /*! Mass of the sink immediately after
+      runner_iact_nonsym_sinks_gas_swallow(), i.e. after having flagged the gas
+      particle for swallow and before actually a=having swalloed it in
+      do_sink_gas_swallow task */
+    float mass_after_swallow;
 
   } to_collect;
 
