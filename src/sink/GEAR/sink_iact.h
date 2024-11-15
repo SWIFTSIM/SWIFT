@@ -124,7 +124,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_sink(
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
- * @param hi Comoving smoothing length or cut off radius of particle i.
+ * @param hi Comoving smoothing length of particle i.
  * @param hj Comoving smoothing-length of particle j.
  * @param si First particle (sink).
  * @param pj Second particle (gas, not updated).
@@ -167,8 +167,8 @@ runner_iact_nonsym_sinks_gas_density(
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
- * @param hi Comoving smoothing length or cut off radius of particle i.
- * @param hj Comoving smoothing length or cut off radius of particle j.
+ * @param hi Comoving smoothing length of particle i.
+ * @param hj Comoving smoothing length of particle j.
  * @param si First sink particle.
  * @param sj Second sink particle.
  * @param with_cosmology if we run with cosmology.
@@ -187,8 +187,11 @@ runner_iact_nonsym_sinks_sink_swallow(
     const struct sink_props *sink_properties,
     const integertime_t ti_current, const double time) {
 
+  /* If we're using a fixed cutoff radius, we need to convert the fixed smoothing length back into a cutoff radius */
+  float ri = (sink_properties->use_fixed_r_cut) ? hi * kernel_gamma : hi;
+
   const float r = sqrtf(r2);
-  const float f_acc_r_acc_i = sink_properties->f_acc * hi;
+  const float f_acc_r_acc_i = sink_properties->f_acc * ri;
 
   /* If the sink j falls within f_acc*r_acc of sink i, then the
      lightest is accreted on the most massive without further check.
@@ -298,7 +301,7 @@ runner_iact_nonsym_sinks_sink_swallow(
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
- * @param hi Comoving smoothing length or cut off radius of particle i.
+ * @param hi Comoving smoothing length of particle i.
  * @param hj Comoving smoothing-length of particle j.
  * @param si First sink particle.
  * @param pj Second particle.
@@ -320,8 +323,11 @@ runner_iact_nonsym_sinks_gas_swallow(const float r2, const float dx[3],
                                      const struct sink_props *sink_properties,
                                      const integertime_t ti_current, const double time) {
 
+  /* If we're using a fixed cutoff radius, we need to convert the fixed smoothing length back into a cutoff radius */
+  float ri = (sink_properties->use_fixed_r_cut) ? hi * kernel_gamma : hi;
+
   const float r = sqrtf(r2);
-  const float f_acc_r_acc = sink_properties->f_acc * hi;
+  const float f_acc_r_acc = sink_properties->f_acc * ri;
 
   /* If the gas falls within f_acc*r_acc, it is accreted without further check
    */
@@ -333,7 +339,7 @@ runner_iact_nonsym_sinks_gas_swallow(const float r2, const float dx[3],
     }
 
     /* f_acc*r_acc <= r <= r_acc, we perform other checks */
-  } else if ((r >= f_acc_r_acc) && (r < hi)) {
+  } else if ((r >= f_acc_r_acc) && (r < ri)) {
 
     /* Relative velocity between the sinks */
     const float dv[3] = {pj->v[0] - si->v[0], pj->v[1] - si->v[1],
@@ -377,8 +383,7 @@ runner_iact_nonsym_sinks_gas_swallow(const float r2, const float dx[3],
                               (r_physical * r_physical * r_physical);
 
     /*Keplerian angular momentum squared */
-    const float L2_acc =
-        (si->h * si->h * si->h * si->h) * omega_acc_2;
+    const float L2_acc = (ri * ri * ri * ri) * omega_acc_2;
 
     /* To be accreted, the gas momentum shoulb lower than the keplerian orbit
      * momentum. */

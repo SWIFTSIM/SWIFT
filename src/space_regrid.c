@@ -65,7 +65,7 @@ void space_regrid(struct space *s, int verbose) {
           h_max = c->black_holes.h_max;
         }
         if (c->sinks.h_max > h_max) {
-          h_max = c->sinks.h_max / kernel_gamma;
+          h_max = c->sinks.h_max;
         }
       }
 
@@ -83,7 +83,7 @@ void space_regrid(struct space *s, int verbose) {
           h_max = c->black_holes.h_max;
         }
         if (c->nodeID == engine_rank && c->sinks.h_max > h_max) {
-          h_max = c->sinks.h_max / kernel_gamma;
+          h_max = c->sinks.h_max;
         }
       }
 
@@ -99,7 +99,7 @@ void space_regrid(struct space *s, int verbose) {
         if (s->bparts[k].h > h_max) h_max = s->bparts[k].h;
       }
       for (size_t k = 0; k < nr_sinks; k++) {
-        if (s->sinks[k].h > h_max) h_max = s->sinks[k].h / kernel_gamma;
+        if (s->sinks[k].h > h_max) h_max = s->sinks[k].h;
       }
     }
   }
