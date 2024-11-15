@@ -91,10 +91,10 @@ struct sink {
     /*! Total mass of the gas neighbours. */
     float ngb_mass;
 
-    /* Minimal t_c between all sink neighbours */
+    /*! Minimal t_c between all sink neighbours */
     float minimal_sink_t_c;
 
-    /* Minimal dynamical time between all sink neighbours */
+    /*! Minimal dynamical time between all sink neighbours */
     float minimal_sink_t_dyn;
 
     /*! Total mass of gas part that pass all criterion before the accretion mass
