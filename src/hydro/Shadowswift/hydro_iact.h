@@ -233,10 +233,31 @@ __attribute__((always_inline)) INLINE static void runner_iact_flux_exchange(
     n_unit[k] = -dx[k] * r_inv;
   }
 
+#ifdef SHADOWSWIFT_EXACT_GRAV_WORK
+  float Whalf[5];
+  float P_star = riemann_solver_solve(Wi, Wj, Whalf, n_unit);
+  riemann_flux_from_half_state(Whalf, vij, n_unit, totflux);
+  const float mach_number = riemann_get_max_mach_number(Wi, Wj, P_star);
+  float entropy_flux;
+  if (totflux[0] > 0.f) {
+    entropy_flux = totflux[0] * Wi[5];
+  } else {
+    entropy_flux = totflux[0] * Wj[5];
+  }
+  totflux[0] *= surface_area;
+  totflux[1] *= surface_area;
+  totflux[2] *= surface_area;
+  totflux[3] *= surface_area;
+  totflux[4] *= surface_area;
+  totflux[5] = surface_area * entropy_flux;
+
+  hydro_grav_work_from_half_state(pi, pj, shift, Whalf, vij, centroid, n_unit,
+                                  surface_area, min_dt);
+#else
   const float mach_number =
       hydro_compute_flux(Wi, Wj, n_unit, vij, surface_area, totflux);
   hydro_grav_work_from_mass_flux(pi, pj, dx, totflux[0], min_dt);
-
+#endif
   pi->timestepvars.mach_number =
       fmaxf(pi->timestepvars.mach_number, mach_number);
   if (pj->flux.dt > 0.f) {

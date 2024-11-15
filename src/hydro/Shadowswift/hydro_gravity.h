@@ -31,23 +31,24 @@ hydro_gravity_extra_velocity_drift(struct part* p) {
  * @return Term used to update the energy variable.
  */
 __attribute__((always_inline)) INLINE static float
-hydro_gravity_energy_update_term(const float dt_kick_corr,
-                                 const struct part* restrict p,
-                                 const float* a_grav, const float* a_grav_prev,
+hydro_gravity_energy_update_term(const float dt_kick_corr1,
+                                 const float dt_kick_corr2,
+                                 const float* a_grav1, const float* a_grav2,
+                                 const float* mflux, const float* v_full,
                                  const float* grav_kick) {
 
-  float dE =
-      -0.5f *
-      (p->gravity.mflux[0] *
-           (dt_kick_corr * a_grav[0] + p->gravity.dt_corr * a_grav_prev[0]) +
-       p->gravity.mflux[1] *
-           (dt_kick_corr * a_grav[1] + p->gravity.dt_corr * a_grav_prev[1]) +
-       p->gravity.mflux[2] *
-           (dt_kick_corr * a_grav[2] + p->gravity.dt_corr * a_grav_prev[2]));
+  /* Gravitational work term due to mass fluxes */
+  float grav_work[3] = {
+      dt_kick_corr1 * a_grav1[0] + dt_kick_corr2 * a_grav2[0],
+      dt_kick_corr1 * a_grav1[1] + dt_kick_corr2 * a_grav2[1],
+      dt_kick_corr1 * a_grav1[2] + dt_kick_corr2 * a_grav2[2],
+  };
+  float dE = mflux[0] * grav_work[0] + mflux[1] * grav_work[1] +
+             mflux[2] * grav_work[2];
 
-  dE += p->v_full[0] * grav_kick[0] + p->v_full[1] * grav_kick[1] +
-        p->v_full[2] * grav_kick[2];
-
+  /* Gravitational kick at generator */
+  dE += v_full[0] * grav_kick[0] + v_full[1] * grav_kick[1] +
+        v_full[2] * grav_kick[2];
   return dE;
 }
 

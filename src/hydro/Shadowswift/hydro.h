@@ -588,6 +588,12 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
       grav_kick[1] = mdt2 * a_grav[1] + mdt1 * xp->a_grav[1];
       grav_kick[2] = mdt2 * a_grav[2] + mdt1 * xp->a_grav[2];
 
+      double e_kin_old = 0.5 *
+                         (p->conserved.momentum[0] * p->conserved.momentum[0] +
+                          p->conserved.momentum[1] * p->conserved.momentum[1] +
+                          p->conserved.momentum[2] * p->conserved.momentum[2]) /
+                         p->conserved.mass;
+
       /* apply both half kicks to the momentum */
       /* Note that this also affects the particle movement, as the velocity for
          the particles is set after this. */
@@ -600,13 +606,32 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
       /* Divide total integrated mass flux by the timestep for hydrodynamical
        * quantities. We will later multiply with the correct timestep (these
        * differ for cosmological simulations). */
+      float dt_grav_corr1 = 0.f;
+      float dt_grav_corr2 = 0.f;
       if (p->flux.dt > 0.) {
-        p->gravity.mflux[0] /= p->flux.dt;
-        p->gravity.mflux[1] /= p->flux.dt;
-        p->gravity.mflux[2] /= p->flux.dt;
+        dt_grav_corr1 = p->gravity.dt;
+        dt_grav_corr2 = dt_grav;
       }
-      p->conserved.energy += hydro_gravity_energy_update_term(
-          dt_kick_corr, p, a_grav, xp->a_grav, grav_kick);
+      float dE_springel = hydro_gravity_energy_update_term(
+          dt_grav_corr1, dt_grav_corr2, xp->a_grav, a_grav, p->gravity.mflux,
+          p->v_full, grav_kick);
+      const float *p1 = p->conserved.momentum;
+      const float p2[3] = {p->conserved.momentum[0] + p->flux.momentum[0],
+                           p->conserved.momentum[1] + p->flux.momentum[1],
+                           p->conserved.momentum[2] + p->flux.momentum[2]};
+      float dE_momentum =
+          dt_grav * (p1[0] * xp->a_grav[0] + p1[1] * xp->a_grav[1] +
+                     p1[2] * xp->a_grav[2]) +
+          dt_grav * (p2[0] * a_grav[0] + p2[1] * a_grav[1] + p2[2] * a_grav[2]);
+
+      double e_kin_new = 0.5 *
+                         (p->conserved.momentum[0] * p->conserved.momentum[0] +
+                          p->conserved.momentum[1] * p->conserved.momentum[1] +
+                          p->conserved.momentum[2] * p->conserved.momentum[2]) /
+                         p->conserved.mass;
+      float dE_kin = e_kin_new - e_kin_old;
+
+      p->conserved.energy += dE_kin;
     }
 
 #ifdef SWIFT_DEBUG_CHECKS

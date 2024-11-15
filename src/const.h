@@ -148,6 +148,11 @@
 #define THERMAL_ENERGY_SWITCH_ASENSIO 3
 #define SHADOWSWIFT_THERMAL_ENERGY_SWITCH THERMAL_ENERGY_SWITCH_SPRINGEL
 
+/*! @brief This option enables a (more) exact gravitational work term */
+#ifndef RIEMANN_SOLVER_HLLC
+//#define SHADOWSWIFT_EXACT_GRAV_WORK
+#endif
+
 /*! @brief This option enables boundary conditions for non-periodic ShadowSWIFT
  * runs */
 #define VACUUM_BC 0
