@@ -1145,13 +1145,6 @@ void engine_print_task_counts(const struct engine *e) {
       }
     }
 
-    /* If we have void pairs, something terrible has happened! */
-    if (nr_void_pairs > 0) {
-      error(
-          "Found %i void->void pairs! There should never be a void->void pair!",
-          nr_void_pairs);
-    }
-
     /* Print the pair types. */
 #ifdef WITH_MPI
     printf(

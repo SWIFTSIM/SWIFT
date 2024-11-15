@@ -30,11 +30,6 @@
 #include "cycle.h"
 #include "timeline.h"
 
-#ifdef WITH_MPI
-/* MPI headers */
-#include <mpi.h>
-#endif
-
 /* Forward declarations to avoid circular inclusion dependencies. */
 struct cell;
 struct engine;
