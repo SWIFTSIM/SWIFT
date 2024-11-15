@@ -90,6 +90,9 @@ struct sink_props {
 
   /*! Time integration CFL condition factor */
   float CFL_condition;
+
+  /*! Number of times the IMF mass can be swallowed in a single timestep */
+  float n_star;
 };
 
 /**
@@ -245,6 +248,10 @@ INLINE static void sink_props_init(struct sink_props *sp,
   sp->star_spawning_sigma_factor =
       parser_get_opt_param_float(params, "GEARSink:star_spawning_sigma_factor",
                                  default_star_spawning_sigma_factor);
+
+  sp->n_star                    =
+    parser_get_opt_param_int(params, "GEARSink:n_star",
+			       2);
 
   /* Sink formation criterion parameters (all active by default) */
   sp->sink_formation_contracting_gas_criterion = parser_get_opt_param_int(
