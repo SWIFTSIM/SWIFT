@@ -466,7 +466,12 @@ INLINE static int mhd_write_particles(const struct part* parts,
       "RmLocals", FLOAT, 1, UNIT_CONV_NO_UNITS, 0, parts, xparts,
       calculate_Rm_local, "Shows local value of magnetic Reynolds number");
 
-  return 16;
+  list[16] = io_make_output_field(
+      "AlfvenSpeeds", FLOAT, 1, UNIT_CONV_SPEED,
+      0.0f, parts, mhd_data.vA,
+      "Alfven speeds of the particles");
+  
+  return 17;
 }
 
 /**

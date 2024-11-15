@@ -192,7 +192,7 @@ INLINE static void hydro_write_particles(const struct part* parts,
                                          struct io_props* list,
                                          int* num_fields) {
 
-  *num_fields = 16;
+  *num_fields = 17;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_part(
@@ -274,6 +274,12 @@ INLINE static void hydro_write_particles(const struct part* parts,
       "Softenings", FLOAT, 1, UNIT_CONV_LENGTH, 1.f, parts, xparts,
       convert_part_softening,
       "Co-moving gravitational Plummer-equivalent softenings of the particles");
+
+  list[16] = io_make_output_field(
+      "SoundSpeeds", FLOAT, 1, UNIT_CONV_SPEED,
+      0.0f, parts, force.soundspeed,
+      "Sound speeds of the particles");
+
 }
 
 /**

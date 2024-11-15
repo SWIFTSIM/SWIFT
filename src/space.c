@@ -765,8 +765,9 @@ void space_convert_quantities_mapper(void *restrict map_data, int count,
                                      void *restrict extra_data) {
   struct space *s = (struct space *)extra_data;
   const struct cosmology *cosmo = s->e->cosmology;
-  const struct hydro_props *hydro_props = s->e->hydro_properties;
+  const struct hydro_props *hydro_props = s->e->hydro_properties;  
   const struct pressure_floor_props *floor = s->e->pressure_floor_props;
+  const float mu_0 = s->e->physical_constants->const_vacuum_permeability;
   struct part *restrict parts = (struct part *)map_data;
   const ptrdiff_t index = parts - s->parts;
   struct xpart *restrict xparts = s->xparts + index;
@@ -777,7 +778,7 @@ void space_convert_quantities_mapper(void *restrict map_data, int count,
     if (parts[k].time_bin <= num_time_bins) {
       hydro_convert_quantities(&parts[k], &xparts[k], cosmo, hydro_props,
                                floor);
-      mhd_convert_quantities(&parts[k], &xparts[k], cosmo, hydro_props);
+      mhd_convert_quantities(&parts[k], &xparts[k], cosmo, hydro_props, mu_0);
     }
   }
 }
