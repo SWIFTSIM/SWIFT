@@ -90,25 +90,16 @@ __attribute__((always_inline)) INLINE static float hydro_compute_flux(
  * @param dx Vector pointing from right particle to left particle.
  */
 __attribute__((always_inline)) INLINE static void hydro_part_update_fluxes_left(
-    struct part* restrict p, const float* restrict fluxes,
-    const float* restrict dx) {
+    struct part* restrict p, const float* restrict fluxes, const float dt) {
 
-  p->gravity.mflux[0] += fluxes[0] * dx[0];
-  p->gravity.mflux[1] += fluxes[0] * dx[1];
-  p->gravity.mflux[2] += fluxes[0] * dx[2];
+  p->flux.mass -= fluxes[0] * dt;
+  p->flux.momentum[0] -= fluxes[1] * dt;
+  p->flux.momentum[1] -= fluxes[2] * dt;
+  p->flux.momentum[2] -= fluxes[3] * dt;
+  p->flux.energy -= fluxes[4] * dt;
+  p->flux.entropy -= fluxes[5] * dt;
 
-  p->flux.mass -= fluxes[0];
-  p->flux.momentum[0] -= fluxes[1];
-  p->flux.momentum[1] -= fluxes[2];
-  p->flux.momentum[2] -= fluxes[3];
-  p->flux.energy -= fluxes[4];
-  p->flux.entropy -= fluxes[5];
-
-  if (dx[0] < 0) {
-    p->flux_count -= 1;
-  } else {
-    p->flux_count += 1;
-  }
+  p->flux_count -= 1;
 }
 
 /**
@@ -121,25 +112,16 @@ __attribute__((always_inline)) INLINE static void hydro_part_update_fluxes_left(
  */
 __attribute__((always_inline)) INLINE static void
 hydro_part_update_fluxes_right(struct part* restrict p,
-                               const float* restrict fluxes,
-                               const float* restrict dx) {
+                               const float* restrict fluxes, const float dt) {
 
-  p->gravity.mflux[0] += fluxes[0] * dx[0];
-  p->gravity.mflux[1] += fluxes[0] * dx[1];
-  p->gravity.mflux[2] += fluxes[0] * dx[2];
+  p->flux.mass += fluxes[0] * dt;
+  p->flux.momentum[0] += fluxes[1] * dt;
+  p->flux.momentum[1] += fluxes[2] * dt;
+  p->flux.momentum[2] += fluxes[3] * dt;
+  p->flux.energy += fluxes[4] * dt;
+  p->flux.entropy += fluxes[5] * dt;
 
-  p->flux.mass += fluxes[0];
-  p->flux.momentum[0] += fluxes[1];
-  p->flux.momentum[1] += fluxes[2];
-  p->flux.momentum[2] += fluxes[3];
-  p->flux.energy += fluxes[4];
-  p->flux.entropy += fluxes[5];
-
-  if (dx[0] < 0) {
-    p->flux_count += 1;
-  } else {
-    p->flux_count -= 1;
-  }
+  p->flux_count += 1;
 }
 
 /**

@@ -235,6 +235,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_flux_exchange(
 
   const float mach_number =
       hydro_compute_flux(Wi, Wj, n_unit, vij, surface_area, totflux);
+  hydro_grav_work_from_mass_flux(pi, pj, dx, totflux[0], min_dt);
   pi->timestepvars.mach_number =
       fmaxf(pi->timestepvars.mach_number, mach_number);
   if (pj->flux.dt > 0.f) {
@@ -249,16 +250,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_flux_exchange(
   runner_iact_chemistry_fluxes(pi, pj, totflux[0], min_dt, symmetric);
 
   /* Now compute time-integrated fluxes and update the particles themselves */
-  totflux[0] *= min_dt;
-  totflux[1] *= min_dt;
-  totflux[2] *= min_dt;
-  totflux[3] *= min_dt;
-  totflux[4] *= min_dt;
-  totflux[5] *= min_dt;
-  hydro_part_update_fluxes_left(pi, totflux, dx);
+  hydro_part_update_fluxes_left(pi, totflux, min_dt);
   /* We always update the fluxes for the right particle as well, to make
    * flux exchange manifestly symmetric. */
-  hydro_part_update_fluxes_right(pj, totflux, dx);
+  hydro_part_update_fluxes_right(pj, totflux, min_dt);
 }
 
 /**

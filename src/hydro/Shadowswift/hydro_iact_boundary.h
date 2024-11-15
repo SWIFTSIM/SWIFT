@@ -308,10 +308,11 @@ runner_iact_boundary_reflective_flux_exchange(struct part *p,
   float totflux[6];
   riemann_flux_from_half_state(Whalf, vij, n_unit, totflux);
   /* Take area and time integrals */
-  for (int i = 0; i < 5; i++) totflux[i] *= p->flux.dt * surface_area;
+  for (int i = 0; i < 5; i++) totflux[i] *= surface_area;
   /* Calculate entropy flux */
   totflux[5] = totflux[0] * p->A;
 
+  hydro_grav_work_from_mass_flux(p, p_boundary, dx, totflux[0], p->flux.dt);
   /* Check output */
 #ifdef SWIFT_DEBUG_CHECKS
   if (totflux[0] != totflux[0]) error("NaN Mass flux!");
@@ -320,7 +321,7 @@ runner_iact_boundary_reflective_flux_exchange(struct part *p,
   if (totflux[3] != totflux[3]) error("NaN Velocity flux!");
   if (totflux[4] != totflux[4]) error("NaN Energy flux!");
 #endif
-  hydro_part_update_fluxes_left(p, totflux, dx);
+  hydro_part_update_fluxes_left(p, totflux, p->flux.dt);
 }
 
 /**
@@ -378,6 +379,8 @@ runner_iact_boundary_flux_exchange(struct part *p, struct part *p_boundary,
   /* Calculate entropy flux */
   totflux[5] = totflux[0] * p->A;
   hydro_part_update_fluxes_left(p, totflux, dx);
+  hydro_grav_work_from_mass_flux(p, p_boundary, dx, totflux[0], p->flux.dt);
+  hydro_part_update_fluxes_left(p, totflux, p->flux.dt);
 #elif SHADOWSWIFT_BC == REFLECTIVE_BC
   runner_iact_boundary_reflective_flux_exchange(p, p_boundary, surface_area,
                                                 centroid);

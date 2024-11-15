@@ -64,6 +64,22 @@ hydro_gravity_mass_update_term(const float mass_flux, const float dt) {
 }
 
 /**
+ * @brief Applies the gravitational work term at the face between pi and pj to
+ * both particles.
+ *
+ * NOTE: This is only an approximation to the (more) exact gravitational work
+ * term computed by #hydro_grav_work_from_half_state().
+ */
+__attribute__((always_inline)) INLINE static void
+hydro_grav_work_from_mass_flux(struct part* pi, struct part* pj, float* dx,
+                               float mass_flux, const float dt) {
+  for (int i = 0; i < 3; i++) {
+    pi->gravity.mflux[i] -= 0.5f * mass_flux * dx[i];
+    pj->gravity.mflux[i] -= 0.5f * mass_flux * dx[i];
+  }
+}
+
+/**
  * @brief Update the mass of the gpart associated with the given particle after
  * the mass has been updated with the hydrodynamical mass flux.
  *
