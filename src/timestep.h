@@ -406,7 +406,7 @@ __attribute__((always_inline)) INLINE static integertime_t get_sink_timestep(
   /* Sink time-step */
   float new_dt_sink = sink_compute_timestep(
       sink, e->sink_properties, (e->policy & engine_policy_cosmology),
-      e->cosmology, e->gravity_properties, e->time);
+      e->cosmology, e->gravity_properties, e->time, e->time_base);
 
   /* Gravity time-step */
   float new_dt_self = FLT_MAX, new_dt_ext = FLT_MAX;

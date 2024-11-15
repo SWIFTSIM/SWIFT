@@ -39,7 +39,7 @@
 
 __attribute__((always_inline)) INLINE double sink_get_sink_age(
     const struct sink* restrict sink, const int with_cosmology,
-    const struct cosmology* cosmo, const int time) {
+    const struct cosmology* cosmo, const double time) {
   double sink_age;
   if (with_cosmology) {
 
