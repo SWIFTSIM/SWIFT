@@ -32,13 +32,15 @@
 /*! @brief Whether to store cell-face connections. */
 // #define VORONOI_STORE_CELL_FACE_CONNECTIONS
 
-/*! @brief Activate runtime assertions. */
 #ifdef SWIFT_DEBUG_CHECKS
-#define VORONOI_DO_ASSERTIONS
+/*! @brief Activate runtime assertions. */
+ #define VORONOI_DO_ASSERTIONS
+
+/*! @brief Activate extra (expensive) checks */
+// #define VORONOI_CHECKS
 #endif
 
-/*! @brief Activate extra checks */
-// #define VORONOI_CHECKS
+
 
 /*! @brief The minimal relative face size in 1D of voronoi faces */
 #define MIN_REL_FACE_SIZE 0.0
