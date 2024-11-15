@@ -311,14 +311,7 @@ runner_iact_boundary_reflective_flux_exchange(struct part *p,
   for (int i = 0; i < 5; i++) totflux[i] *= surface_area;
   /* Calculate entropy flux */
   totflux[5] = totflux[0] * p->A;
-
-#ifdef SHADOWSWIFT_EXACT_GRAV_WORK
-  double shift[3] = {0., 0., 0.};
-  hydro_grav_work_from_half_state(p, p_boundary, shift, Whalf, vij, centroid,
-                                  n_unit, surface_area, p->flux.dt);
-#else
   hydro_grav_work_from_mass_flux(p, p_boundary, dx, totflux[0], p->flux.dt);
-#endif
 
   /* Check output */
 #ifdef SWIFT_DEBUG_CHECKS
@@ -385,14 +378,7 @@ runner_iact_boundary_flux_exchange(struct part *p, struct part *p_boundary,
   for (int i = 0; i < 5; i++) totflux[i] *= p->flux.dt * surface_area;
   /* Calculate entropy flux */
   totflux[5] = totflux[0] * p->A;
-
-#ifdef SHADOWSWIFT_EXACT_GRAV_WORK
-  double shift[3] = {0., 0., 0.};
-  hydro_grav_work_from_half_state(p, p_boundary, shift, Whalf, vij, centroid,
-                                  n_unit, surface_area, p->flux.dt);
-#else
   hydro_grav_work_from_mass_flux(p, p_boundary, dx, totflux[0], p->flux.dt);
-#endif
 
   hydro_part_update_fluxes_left(p, totflux, p->flux.dt);
 #elif SHADOWSWIFT_BC == REFLECTIVE_BC
