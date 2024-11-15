@@ -1188,6 +1188,7 @@ void cell_activate_subcell_sinks_tasks(struct cell *ci, struct cell *cj,
       /* We have reached the bottom of the tree: activate drift */
       cell_activate_drift_sink(ci, s);
       cell_activate_drift_part(ci, s);
+      cell_activate_sink_formation_tasks(ci->top, s);
       if (with_timestep_sync) cell_activate_sync_part(ci, s);
     }
   }
@@ -1226,9 +1227,13 @@ void cell_activate_subcell_sinks_tasks(struct cell *ci, struct cell *cj,
       /* For the sink mergers */
       if (ci->nodeID == engine_rank) {
         cell_activate_drift_sink(ci, s);
+        cell_activate_sink_formation_tasks(ci->top, s);
       }
       if (cj->nodeID == engine_rank) {
         cell_activate_drift_sink(cj, s);
+        if (ci->top != cj->top) {
+          cell_activate_sink_formation_tasks(cj->top, s);
+        }
       }
 
       if (ci_active) {
