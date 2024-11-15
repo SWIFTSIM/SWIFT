@@ -236,7 +236,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_flux_exchange(
   const float mach_number =
       hydro_compute_flux(Wi, Wj, n_unit, vij, surface_area, totflux);
   hydro_grav_work_from_mass_flux(pi, pj, dx, totflux[0], min_dt);
-#endif
+
   pi->timestepvars.mach_number =
       fmaxf(pi->timestepvars.mach_number, mach_number);
   if (pj->flux.dt > 0.f) {
