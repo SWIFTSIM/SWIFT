@@ -66,6 +66,45 @@ hydro_gravity_mass_update_term(const float mass_flux, const float dt) {
 /**
  * @brief Applies the gravitational work term at the face between pi and pj to
  * both particles.
+ */
+__attribute__((always_inline)) INLINE static void
+hydro_grav_work_from_half_state(struct part* pi, struct part* pj,
+                                const double* shift, const float* Whalf,
+                                const float* vij, const double* cij,
+                                const float* n_unit, const float area,
+                                const float dt) {
+  /* Deboost velocity at interface to lab frame */
+  const float v_half_lab[3] = {
+      vij[0] + Whalf[1],
+      vij[1] + Whalf[2],
+      vij[2] + Whalf[3],
+  };
+  const float ri[3] = {
+      pi->geometry.centroid[0] + pi->x[0],
+      pi->geometry.centroid[1] + pi->x[1],
+      pi->geometry.centroid[2] + pi->x[2],
+  };
+  const float rj[3] = {
+      pj->geometry.centroid[0] + pj->x[0] + shift[0],
+      pj->geometry.centroid[1] + pj->x[1] + shift[1],
+      pj->geometry.centroid[2] + pj->x[2] + shift[2],
+  };
+
+  float v_dot_c_i = 0.f;
+  float v_dot_c_j = 0.f;
+  for (int i = 0; i < 3; i++) {
+    v_dot_c_i += (v_half_lab[i] - pi->v_full[i]) * (cij[i] - ri[i]);
+    v_dot_c_j += (v_half_lab[i] - pj->v_full[i]) * (cij[i] - rj[i]);
+  }
+  for (int i = 0; i < 3; i++) {
+    pi->gravity.mflux[i] += Whalf[0] * v_dot_c_i * area * n_unit[i];
+    pj->gravity.mflux[i] -= Whalf[0] * v_dot_c_j * area * n_unit[i];
+  }
+}
+
+/**
+ * @brief Applies the gravitational work term at the face between pi and pj to
+ * both particles.
  *
  * NOTE: This is only an approximation to the (more) exact gravitational work
  * term computed by #hydro_grav_work_from_half_state().
