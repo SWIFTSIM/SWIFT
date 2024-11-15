@@ -117,8 +117,14 @@ __attribute__((always_inline)) INLINE static float sink_compute_timestep(
      to unrestricted swallow */
   const float Delta_M = M_SF - sink->to_collect.mass_eligible_swallow;
 
-  /* Compute an accretion rate using this Delta_M. */
-  const float M_dot = Delta_M / get_timestep(sink->time_bin, time_base);
+  /* Compute an accretion rate using this Delta_M. Use the minmal timestep
+     based on the local gas properties.
+     If we use the current timestep, then we can end up with timesteps smaller
+     and smaller until they are smaller than the minimal engine timestep. Also,
+     we want to "subcycle" the accretion of gas, and not of sink, to accrete
+     smaller amount of mass in smaller timesteps, rather than a huge amount in
+     a big timestep. */
+  const float M_dot = Delta_M / min(dt_cfl, dt_ff);
 
   /* We want the timestep small if the error is small */
   float dt_SF = FLT_MAX;
