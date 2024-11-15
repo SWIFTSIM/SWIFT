@@ -23,6 +23,18 @@
 #include "feedback_properties.h"
 #include "parser.h"
 
+
+/* Some default values for the parameters to be read in the YAML file */
+#define DEFAULT_F_ACC 0.8
+#define DEFAULT_STAR_SPAWNING_SIGMA_FACTOR 0.2
+#define DEFAULT_N_STAR 2.0
+
+/* Sink formation is activated */
+#define DEFAULT_DISABLE_SINK_FORMATION 0
+
+/* By default all current implemented criteria are active */
+#define DEFAULT_SINK_FORMATION_CRITERION_ALL 1
+
 /**
  * @brief Properties of sink in the Default model.
  */
@@ -194,21 +206,12 @@ INLINE static void sink_props_init(struct sink_props *sp,
         "ERROR: Running with sink but without feedback. GEAR sink model needs "
         "to be run with --sink and --feedback");
 
-  /* Default values */
-  const float default_f_acc = 0.8;
-  const float default_star_spawning_sigma_factor = 0.2;
-  const char default_disable_sink_formation = 0; /* Sink formation is
-                                                     activated */
-
-  /* By default all current implemented criteria are active */
-  const uint8_t default_sink_formation_criterion_all = 1;
-
   /* Read the parameters from the parameter file */
   sp->cut_off_radius =
       parser_get_param_float(params, "GEARSink:cut_off_radius");
 
   sp->f_acc =
-      parser_get_opt_param_float(params, "GEARSink:f_acc", default_f_acc);
+      parser_get_opt_param_float(params, "GEARSink:f_acc", DEFAULT_F_ACC);
 
   /* Check that sp->f_acc respects 0 <= f_acc <= 1 */
   if ((sp->f_acc < 0) || (sp->f_acc > 1)) {
@@ -247,37 +250,37 @@ INLINE static void sink_props_init(struct sink_props *sp,
 
   sp->star_spawning_sigma_factor =
       parser_get_opt_param_float(params, "GEARSink:star_spawning_sigma_factor",
-                                 default_star_spawning_sigma_factor);
+                                 DEFAULT_STAR_SPAWNING_SIGMA_FACTOR);
 
   sp->n_star                    =
     parser_get_opt_param_float(params, "GEARSink:n_star",
-			       2.0);
+			       DEFAULT_N_STAR);
 
   /* Sink formation criterion parameters (all active by default) */
   sp->sink_formation_contracting_gas_criterion = parser_get_opt_param_int(
       params, "GEARSink:sink_formation_contracting_gas_criterion",
-      default_sink_formation_criterion_all);
+      DEFAULT_SINK_FORMATION_CRITERION_ALL);
 
   sp->sink_formation_smoothing_length_criterion = parser_get_opt_param_int(
       params, "GEARSink:sink_formation_smoothing_length_criterion",
-      default_sink_formation_criterion_all);
+      DEFAULT_SINK_FORMATION_CRITERION_ALL);
 
   sp->sink_formation_jeans_instability_criterion = parser_get_opt_param_int(
       params, "GEARSink:sink_formation_jeans_instability_criterion",
-      default_sink_formation_criterion_all);
+      DEFAULT_SINK_FORMATION_CRITERION_ALL);
 
   sp->sink_formation_bound_state_criterion = parser_get_opt_param_int(
       params, "GEARSink:sink_formation_bound_state_criterion",
-      default_sink_formation_criterion_all);
+      DEFAULT_SINK_FORMATION_CRITERION_ALL);
 
   sp->sink_formation_overlapping_sink_criterion = parser_get_opt_param_int(
       params, "GEARSink:sink_formation_overlapping_sink_criterion",
-      default_sink_formation_criterion_all);
+      DEFAULT_SINK_FORMATION_CRITERION_ALL);
 
   /* Should we disable sink formation ? */
   sp->disable_sink_formation =
       parser_get_opt_param_int(params, "GEARSink:disable_sink_formation",
-                               default_disable_sink_formation);
+                               DEFAULT_DISABLE_SINK_FORMATION);
 
   /* Maximal time-step lengths */
   const double max_time_step_young_Myr = parser_get_opt_param_float(
