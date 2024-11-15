@@ -697,7 +697,7 @@ static inline int geometry3d_compute_circumcenter_coplanar(
 
   const double cr3_2 = (r3x - cx) * (r3x - cx) + (r3y - cy) * (r3y - cy) +
                        (r3z - cz) * (r3z - cz);
-  if (fabs(cr3_2 - c2) / c2 > 1e-6) {
+  if (fabs(cr3_2 - c2) / c2 > FLT_EPSILON) {
     return 0;
   }
 
@@ -739,10 +739,13 @@ static inline int geometry3d_compute_circumcenter_relative_non_exact(
   double errbound = fabs(r1x) * (fabs(r2yr3z) + fabs(r3yr2z)) +
                     fabs(r2x) * (fabs(r1yr3z) + fabs(r3yr1z)) +
                     fabs(r3x) * (fabs(r1yr2z) + fabs(r2yr1z));
-  errbound *= DBL_EPSILON * 1e6;
-  if (fabs(a) <= errbound)
-    return geometry3d_compute_circumcenter_coplanar(v0, v1, v2, v3,
-                                                    circumcenter);
+  errbound *= 10 * FLT_EPSILON;
+  if (fabs(a) <= errbound) {
+    /* (Almost) coplanar tetrahedron, fallback to exact/coplanar test */
+    return 0;
+//    return geometry3d_compute_circumcenter_coplanar(v0, v1, v2, v3,
+//                                                    circumcenter);
+  }
 
   /* Compute Dx */
   const double Dx = r1_sqrd * (r2yr3z - r3yr2z) - r2_sqrd * (r1yr3z - r3yr1z) +
@@ -810,7 +813,7 @@ static inline int geometry3d_compute_circumcenter_relative_non_exact_errb(
   double errbound = fabs(r1x) * (fabs(r2yr3z) + fabs(r3yr2z)) +
                     fabs(r2x) * (fabs(r1yr3z) + fabs(r3yr1z)) +
                     fabs(r3x) * (fabs(r1yr2z) + fabs(r2yr1z));
-  errbound *= errbound_factor;
+  errbound *= 10 * FLT_EPSILON;
   if (fabs(a) <= errbound) return 0;
 
   /* Compute Dx */
