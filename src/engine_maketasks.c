@@ -4338,7 +4338,7 @@ void engine_addtasks_send_mapper(void *map_data, int num_elements,
   const int with_rt = (e->policy & engine_policy_rt);
   struct cell_type_pair *cell_type_pairs = (struct cell_type_pair *)map_data;
 
-#if defined(WITH_MPI) && !defined (SWIFT_DEBUG_CHECKS)
+#if defined(WITH_MPI) && !defined(SWIFT_DEBUG_CHECKS)
   if (e->policy & engine_policy_sinks) {
     error("TODO: Sink MPI tasks are not implemented yet!");
   }
@@ -4411,7 +4411,7 @@ void engine_addtasks_recv_mapper(void *map_data, int num_elements,
   const int with_rt = (e->policy & engine_policy_rt);
   struct cell_type_pair *cell_type_pairs = (struct cell_type_pair *)map_data;
 
-#if defined(WITH_MPI) && !defined (SWIFT_DEBUG_CHECKS)
+#if defined(WITH_MPI) && !defined(SWIFT_DEBUG_CHECKS)
   if (e->policy & engine_policy_sinks) {
     error("TODO: Sink MPI tasks are not implemented yet!");
   }
