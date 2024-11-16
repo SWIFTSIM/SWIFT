@@ -32,6 +32,7 @@ class store_as_array(argparse._StoreAction):
         values = np.array(values)
         return super().__call__(parser, namespace, values, option_string)
 
+
 def parse_options():
 
     usage = "usage: %prog [options] file"
@@ -106,7 +107,6 @@ def parse_options():
         default=10,
         help="Number of sink particles in the box",
     )
-
 
     parser.add_argument(
         "-o",
@@ -198,8 +198,8 @@ print("Inter-particle distance (code unit)   : {}".format(L / N ** (1 / 3.0)))
 # Now, take care of the sink
 #####################
 N_sink = opt.n_sink
-m_sink = opt.sink_mass*units.M_sun
-m_sink = m_sink.to(UnitMass).value # Convert the sink mass to internal units
+m_sink = opt.sink_mass * units.M_sun
+m_sink = m_sink.to(UnitMass).value  # Convert the sink mass to internal units
 
 
 if N_sink == 1:
@@ -208,12 +208,14 @@ else:
     pos_sink = np.random.random([N_sink, 3]) * np.array([L, L, L])
 
 if opt.sinks_vel is not None:
-    vel_sink = np.tile(opt.sinks_vel, (N_sink, 1))  # Duplicate the velocity for all sinks
+    vel_sink = np.tile(
+        opt.sinks_vel, (N_sink, 1)
+    )  # Duplicate the velocity for all sinks
 else:
     np.zeros([N_sink, 3])
 
 mass_sink = np.ones(N_sink) * m_sink
-ids_sink = np.arange(N, N+N_sink)
+ids_sink = np.arange(N, N + N_sink)
 
 #####################
 # Finally write the ICs in the file
