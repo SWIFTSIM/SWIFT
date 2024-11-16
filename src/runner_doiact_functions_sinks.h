@@ -342,6 +342,10 @@ void DOPAIR1_SINKS_NAIVE(struct runner *r, struct cell *restrict ci,
  */
 void DOSELF1_BRANCH_SINKS(struct runner *r, struct cell *c) {
 
+#ifdef SWIFT_DEBUG_CHECKS_MPI_DOMAIN_DECOMPOSITION
+  return;
+#endif
+
   const struct engine *restrict e = r->e;
 
   /* Anything to do here? */
@@ -366,6 +370,10 @@ void DOSELF1_BRANCH_SINKS(struct runner *r, struct cell *c) {
  *
  */
 void DOPAIR1_BRANCH_SINKS(struct runner *r, struct cell *ci, struct cell *cj) {
+
+#ifdef SWIFT_DEBUG_CHECKS_MPI_DOMAIN_DECOMPOSITION
+  return;
+#endif
 
   const struct engine *restrict e = r->e;
 
@@ -413,6 +421,9 @@ void DOPAIR1_BRANCH_SINKS(struct runner *r, struct cell *ci, struct cell *cj) {
  */
 void DOSUB_PAIR1_SINKS(struct runner *r, struct cell *ci, struct cell *cj,
                        int timer) {
+#ifdef SWIFT_DEBUG_CHECKS_MPI_DOMAIN_DECOMPOSITION
+  return;
+#endif
 
   TIMER_TIC;
 
@@ -492,6 +503,9 @@ void DOSUB_PAIR1_SINKS(struct runner *r, struct cell *ci, struct cell *cj,
  * @param gettimer Do we have a timer ?
  */
 void DOSUB_SELF1_SINKS(struct runner *r, struct cell *ci, int timer) {
+#ifdef SWIFT_DEBUG_CHECKS_MPI_DOMAIN_DECOMPOSITION
+  return;
+#endif
 
   TIMER_TIC;
 
