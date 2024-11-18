@@ -25,10 +25,10 @@
 /* Select the correct sink model */
 #if defined(SINK_NONE)
 #include "./sink/Default/sink.h"
+#elif defined(SINK_BASIC)
+#include "./sink/Basic/sink.h"
 #elif defined(SINK_GEAR)
 #include "./sink/GEAR/sink.h"
-#elif defined(SINK_GEARBHSMOOTHED)
-#include "./sink/GEARBondiHoyleSmoothed/sink.h"
 #else
 #error "Invalid choice of sink model"
 #endif

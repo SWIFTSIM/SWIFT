@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_GEAR_SINK_PART_H
-#define SWIFT_GEAR_SINK_PART_H
+#ifndef SWIFT_BASIC_SINK_PART_H
+#define SWIFT_BASIC_SINK_PART_H
 
 #include "timeline.h"
 
@@ -166,4 +166,4 @@ struct sink {
 #endif
 } SWIFT_STRUCT_ALIGN;
 
-#endif /* SWIFT_GEAR_SINK_PART_H */
+#endif /* SWIFT_BASIC_SINK_PART_H */

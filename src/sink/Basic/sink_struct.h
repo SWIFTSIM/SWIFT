@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_SINK_STRUCT_DEFAULT_H
-#define SWIFT_SINK_STRUCT_DEFAULT_H
+#ifndef SWIFT_BASIC_STRUCT_DEFAULT_H
+#define SWIFT_BASIC_STRUCT_DEFAULT_H
 
 /**
  * @brief Sink-related fields carried by each *gas* particle.
@@ -154,4 +154,4 @@ __attribute__((always_inline)) INLINE static long long sink_get_sink_swallow_id(
   return s_data->swallow_id;
 }
 
-#endif /* SWIFT_SINK_STRUCT_DEFAULT_H */
+#endif /* SWIFT_BASIC_STRUCT_DEFAULT_H */

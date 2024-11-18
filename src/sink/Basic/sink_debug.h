@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_SINK_GEAR_DEBUG_H
-#define SWIFT_SINK_GEAR_DEBUG_H
+#ifndef SWIFT_SINK_BASIC_DEBUG_H
+#define SWIFT_SINK_BASIC_DEBUG_H
 
 __attribute__((always_inline)) INLINE static void sink_debug_particle(
     const struct part* p, const struct xpart* xp) {
@@ -27,4 +27,4 @@ __attribute__((always_inline)) INLINE static void sink_debug_particle(
           p->sink_data.swallow_id, p->sink_data.can_form_sink);
 }
 
-#endif /* SWIFT_SINK_GEAR_DEBUG_H */
+#endif /* SWIFT_SINK_BASIC_DEBUG_H */

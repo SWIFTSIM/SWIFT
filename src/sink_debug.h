@@ -25,10 +25,10 @@
 /* Import the debug routines of the right sink definition */
 #if defined(SINK_NONE)
 #include "./sink/Default/sink_debug.h"
+#elif defined(SINK_BASIC)
+#include "./sink/Basic/sink_debug.h"
 #elif defined(SINK_GEAR)
 #include "./sink/GEAR/sink_debug.h"
-#elif defined(SINK_GEARBHSMOOTHED)
-#include "./sink/GEARBondiHoyleSmoothed/sink_debug.h"
 #else
 #error "Invalid choice of sink model"
 #endif

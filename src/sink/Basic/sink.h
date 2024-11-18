@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_GEAR_SINK_H
-#define SWIFT_GEAR_SINK_H
+#ifndef SWIFT_BASIC_SINK_H
+#define SWIFT_BASIC_SINK_H
 
 #include <float.h>
 
@@ -1255,4 +1255,4 @@ INLINE static void sink_prepare_part_sink_formation_sink_criteria(
   }
 }
 
-#endif /* SWIFT_GEAR_SINK_H */
+#endif /* SWIFT_BASIC_SINK_H */

@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_GEAR_SINK_IO_H
-#define SWIFT_GEAR_SINK_IO_H
+#ifndef SWIFT_BASIC_SINK_IO_H
+#define SWIFT_BASIC_SINK_IO_H
 
 #include "io_properties.h"
 #include "sink_part.h"
@@ -234,4 +234,4 @@ INLINE static void sink_write_particles(const struct sink* sinks,
 #endif
 }
 
-#endif /* SWIFT_GEAR_SINK_IO_H */
+#endif /* SWIFT_BASIC_SINK_IO_H */

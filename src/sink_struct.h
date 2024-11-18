@@ -33,10 +33,10 @@
 /* Import the right black holes definition */
 #if defined(SINK_NONE)
 #include "./sink/Default/sink_struct.h"
+#elif defined(SINK_BASIC)
+#include "./sink/Basic/sink_struct.h"
 #elif defined(SINK_GEAR)
 #include "./sink/GEAR/sink_struct.h"
-#elif defined(SINK_GEARBHSMOOTHED)
-#include "./sink/GEARBondiHoyleSmoothed/sink_struct.h"
 #else
 #error "Invalid choice of sink model."
 #endif

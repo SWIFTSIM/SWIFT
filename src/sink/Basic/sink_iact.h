@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_GEAR_SINKS_IACT_H
-#define SWIFT_GEAR_SINKS_IACT_H
+#ifndef SWIFT_BASIC_SINKS_IACT_H
+#define SWIFT_BASIC_SINKS_IACT_H
 
 /* Local includes */
 #include "gravity.h"
