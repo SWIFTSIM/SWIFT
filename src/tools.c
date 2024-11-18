@@ -244,7 +244,7 @@ void pairs_all_density(struct runner *r, struct cell *ci, struct cell *cj) {
         runner_iact_nonsym_pressure_floor(r2, dx, hi, pj->h, pi, pj, a, H);
         runner_iact_nonsym_star_formation(r2, dx, hi, pj->h, pi, pj, a, H);
         runner_iact_nonsym_sink(r2, dx, hi, pj->h, pi, pj, a, H,
-                                e->sink_properties->cut_off_radius);
+                                e->sink_properties);
       }
     }
   }
@@ -280,7 +280,7 @@ void pairs_all_density(struct runner *r, struct cell *ci, struct cell *cj) {
         runner_iact_nonsym_pressure_floor(r2, dx, hj, pi->h, pj, pi, a, H);
         runner_iact_nonsym_star_formation(r2, dx, hj, pi->h, pj, pi, a, H);
         runner_iact_nonsym_sink(r2, dx, hj, pi->h, pj, pi, a, H,
-                                e->sink_properties->cut_off_radius);
+                                e->sink_properties);
       }
     }
   }
@@ -560,7 +560,7 @@ void self_all_density(struct runner *r, struct cell *ci) {
         runner_iact_nonsym_pressure_floor(r2, dxi, hi, hj, pi, pj, a, H);
         runner_iact_nonsym_star_formation(r2, dxi, hi, hj, pi, pj, a, H);
         runner_iact_nonsym_sink(r2, dxi, hi, hj, pi, pj, a, H,
-                                e->sink_properties->cut_off_radius);
+                                e->sink_properties);
       }
 
       /* Hit or miss? */
@@ -576,7 +576,7 @@ void self_all_density(struct runner *r, struct cell *ci) {
         runner_iact_nonsym_pressure_floor(r2, dxi, hj, hi, pj, pi, a, H);
         runner_iact_nonsym_star_formation(r2, dxi, hj, hi, pj, pi, a, H);
         runner_iact_nonsym_sink(r2, dxi, hj, hi, pj, pi, a, H,
-                                e->sink_properties->cut_off_radius);
+                                e->sink_properties);
       }
     }
   }

@@ -31,12 +31,12 @@
  * @param pj Second particle.
  * @param a Current scale factor.
  * @param H Current Hubble parameter.
- * @param cut_off_radius Sink cut off radius.
+ * @param sink_props the sink properties to use.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_sink(
     const float r2, const float dx[3], const float hi, const float hj,
     struct part *restrict pi, struct part *restrict pj, const float a,
-    const float H, const float cut_off_radius) {}
+    const float H, const struct sink_props *sink_properties) {}
 
 /**
  * @brief do sink computation after the runner_iact_density (non symmetric
@@ -50,14 +50,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_sink(
  * @param pj Second particle (not updated).
  * @param a Current scale factor.
  * @param H Current Hubble parameter.
- * @param cut_off_radius Sink cut off radius.
- * @param ti_current Current integer time value (for random numbers).
- * @param time current physical time in the simulation
+ * @param sink_props the sink properties to use.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_sink(
     const float r2, const float dx[3], const float hi, const float hj,
     struct part *restrict pi, const struct part *restrict pj, const float a,
-    const float H, const float cut_off_radius) {}
+    const float H, const struct sink_props *sink_properties) {}
 
 /**
  * @brief Density interaction between two particles (non-symmetric).
