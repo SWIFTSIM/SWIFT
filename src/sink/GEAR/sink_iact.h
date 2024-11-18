@@ -42,12 +42,12 @@
  * @param pj Second particle.
  * @param a Current scale factor.
  * @param H Current Hubble parameter.
- * @param cut_off_radius Sink cut off radius.
+ * @param sink_props the sink properties to use.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_sink(
     const float r2, const float dx[3], const float hi, const float hj,
     struct part *restrict pi, struct part *restrict pj, const float a,
-    const float H, const float cut_off_radius) {
+    const float H, const struct sink_props *sink_properties) {
 
   /* In order to prevent the formation of two sink particles at a distance
    * smaller than the sink cutoff radius, we keep only gas particles with
@@ -56,9 +56,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_sink(
   const float r = sqrtf(r2);
 
   /* if the distance is less than the cut off radius */
-  /* JD: right now, if we're not using a fixed cutoff, cut_off_radius=-1 and this will never do anything */
-  /* I think we really want the flexibility for cut_off_radius to not be a sink property at all. */
-  if (r < cut_off_radius) {
+  if (r < sink_properties->cut_off_radius) {
 
     /*
      * NOTE: Those lines break MPI
@@ -94,12 +92,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_sink(
  * @param pj Second particle (not updated).
  * @param a Current scale factor.
  * @param H Current Hubble parameter.
- * @param cut_off_radius Sink cut off radius.
+ * @param sink_props the sink properties to use.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_sink(
     const float r2, const float dx[3], const float hi, const float hj,
     struct part *restrict pi, const struct part *restrict pj, const float a,
-    const float H, const float cut_off_radius) {
+    const float H, const struct sink_props *sink_properties) {
 
   /* In order to prevent the formation of two sink particles at a distance
    * smaller than the sink cutoff radius, we keep only gas particles with
@@ -108,7 +106,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_sink(
   const float r = sqrtf(r2);
 
   /* JD: right now, if we're not using a fixed cutoff, cut_off_radius=-1 and this will never do anything */
-  if (r < cut_off_radius) {
+  if (r < sink_properties->cut_off_radius) {
 
     float potential_i = pi->gpart->potential;
     float potential_j = pj->gpart->potential;
