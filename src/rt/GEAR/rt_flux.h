@@ -102,11 +102,13 @@ __attribute__((always_inline)) INLINE static void rt_compute_flux(
  **/
 __attribute__((always_inline)) INLINE static void rt_part_reset_mass_fluxes(
     struct part* restrict p) {
+#ifdef GIZMO_MFV_SPH
   p->rt_data.mass_flux.HI = 0.f;
   p->rt_data.mass_flux.HII = 0.f;
   p->rt_data.mass_flux.HeI = 0.f;
   p->rt_data.mass_flux.HeII = 0.f;
   p->rt_data.mass_flux.HeIII = 0.f;
+#endif
 }
 
 #endif /* SWIFT_GEAR_RT_FLUX_H */

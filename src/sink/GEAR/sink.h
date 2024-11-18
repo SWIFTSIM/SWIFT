@@ -35,6 +35,7 @@
 #include "random.h"
 #include "sink_part.h"
 #include "sink_properties.h"
+#include "star_formation.h"
 
 /**
  * @brief Computes the time-step of a given sink particle.
@@ -323,11 +324,12 @@ INLINE static int sink_is_forming(
 
   const struct sink_part_data* sink_data = &p->sink_data;
 
-  const float temperature_max = sink_props->maximal_temperature;
+  const float temperature_threshold = sink_props->temperature_threshold;
   const float temperature = cooling_get_temperature(phys_const, hydro_props, us,
                                                     cosmo, cooling, p, xp);
 
   const float density_threshold = sink_props->density_threshold;
+  const float maximal_density_threshold = sink_props->maximal_density_threshold;
   const float density = hydro_get_physical_density(p, cosmo);
 
   const float div_v = sink_get_physical_div_v_from_part(p);
@@ -340,8 +342,17 @@ INLINE static int sink_is_forming(
   double E_tot = sink_data->E_kin_neighbours + sink_data->E_int_neighbours +
                  E_grav + sink_data->E_mag_neighbours;
 
-  /* Density and temperature criterion */
-  if (density <= density_threshold || temperature >= temperature_max) {
+  /* Density criterion */
+  if (density < density_threshold) {
+    return 0;
+  }
+  /* Here we have density >= density_threshold */
+
+  /* If density_threshold <= density <= maximal_density_threshold, check the
+     temperature. If density > maximal_density_threshold, do no check the
+     temperature. */
+  if ((density <= maximal_density_threshold) &&
+      (temperature >= temperature_threshold)) {
     return 0;
   }
 
@@ -791,18 +802,20 @@ INLINE static void sink_copy_properties_to_star(
   /* Note: The sink module need to be compiled with GEAR SF as we store data
      in the SF struct. However, we do not need to run with --star-formation */
 
-  /* Store either the birth_scale_factor or birth_time depending  */
-  if (with_cosmology) {
-    sp->birth_scale_factor = cosmo->a;
-  } else {
-    sp->birth_time = e->time;
-  }
+  /* Mass at birth */
+  star_formation_set_spart_birth_mass(sp, sp->mass);
 
-  /* Copy the chemistry properties */
-  chemistry_copy_sink_properties_to_star(sink, sp);
+  /* Store either the birth_scale_factor or birth_time */
+  star_formation_set_spart_birth_time_or_scale_factor(sp, e->time, cosmo->a,
+                                                      with_cosmology);
 
   /* Copy the progenitor id */
-  sp->sf_data.progenitor_id = sink->id;
+  star_formation_set_spart_progenitor_id(sp, sink->id);
+
+  /* Copy the chemistry properties */
+  /* ----------------------------- */
+
+  chemistry_copy_sink_properties_to_star(sink, sp);
 }
 
 /**

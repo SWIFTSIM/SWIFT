@@ -371,12 +371,16 @@ the combination of ``ProgenitorID`` and this binary tree corresponds to a
 fully traceable, unique, identifier for every particle in the simulation volume.
 
 Note that we can only track 64 splitting events for a given particle, and after
-this the binary tree is meaningless. In practice, however, such a high number
-of splitting events is extremely unlikely to occur.
+this the binary tree is meaningless. In practice, however, such a high number of
+splitting events is extremely unlikely to occur. The logging of extra splits can
+optionally be activated. When particles reach 64 splits, their tree information
+is reset but the status prior to the reset is stored in a log file allowing for
+the reconstruction of the full history even in the cases where the maximum is
+reached.
 
-An example is provided in ``examples/SubgridTests/ParticleSplitting``, with
-a figure showing how one particle is split (eventually) into 16 descendants
-that makes use of this metadata.
+An example is provided in ``examples/SubgridTests/ParticleSplitting``, with a
+figure showing how one particle is split (eventually) into 16 descendants that
+makes use of this metadata.
    
 Quick access to particles via hash-tables
 -----------------------------------------

@@ -2006,6 +2006,10 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
   const int nodeID = e->nodeID;
   int rebuild = 0;
 
+#ifdef WITH_MPI
+  const int with_star_formation = e->policy & engine_policy_star_formation;
+#endif
+
   /* Un-skip the gravity tasks involved with this cell. */
   for (struct link *l = c->grav.grav; l != NULL; l = l->next) {
     struct task *t = l->t;
@@ -2061,6 +2065,17 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
           cell_activate_drift_gpart(cj, s);
         }
 
+        /* Propagating new star counts? */
+        if (with_star_formation) {
+          if (ci_active && ci->hydro.count > 0) {
+            scheduler_activate_recv(s, ci->mpi.recv, task_subtype_grav_counts);
+          }
+          if (cj_active && cj->hydro.count > 0) {
+            scheduler_activate_send(s, cj->mpi.send, task_subtype_grav_counts,
+                                    ci_nodeID);
+          }
+        }
+
       } else if (cj_nodeID != nodeID) {
         /* If the local cell is active, receive data from the foreign cell. */
         if (ci_active)
@@ -2076,6 +2091,17 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
              sent, i.e. drift the cell specified in the send task (l->t)
              itself. */
           cell_activate_drift_gpart(ci, s);
+        }
+
+        /* Propagating new star counts? */
+        if (with_star_formation) {
+          if (cj_active && cj->hydro.count > 0) {
+            scheduler_activate_recv(s, cj->mpi.recv, task_subtype_grav_counts);
+          }
+          if (ci_active && ci->hydro.count > 0) {
+            scheduler_activate_send(s, ci->mpi.send, task_subtype_grav_counts,
+                                    cj_nodeID);
+          }
         }
       }
 #endif
@@ -3172,7 +3198,7 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s,
             scheduler_activate_recv(s, ci->mpi.recv, task_subtype_rt_transport);
           }
         } else if (ci_active) {
-#ifdef MPI_SYMMETRIC_FORCE_INTERACTION
+#ifdef MPI_SYMMETRIC_FORCE_INTERACTION_RT
           /* If the local cell is inactive and the remote cell is active, we
            * still need to receive stuff to be able to do the force interaction
            * on this node as well.
@@ -3196,7 +3222,7 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s,
                                     ci_nodeID);
           }
         } else if (cj_active) {
-#ifdef MPI_SYMMETRIC_FORCE_INTERACTION
+#ifdef MPI_SYMMETRIC_FORCE_INTERACTION_RT
           /* If the foreign cell is inactive, but the local cell is active,
            * we still need to send stuff to be able to do the force interaction
            * on both nodes.
@@ -3225,7 +3251,7 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s,
             scheduler_activate_recv(s, cj->mpi.recv, task_subtype_rt_transport);
           }
         } else if (cj_active) {
-#ifdef MPI_SYMMETRIC_FORCE_INTERACTION
+#ifdef MPI_SYMMETRIC_FORCE_INTERACTION_RT
           /* If the local cell is inactive and the remote cell is active, we
            * still need to receive stuff to be able to do the force interaction
            * on this node as well.
@@ -3249,7 +3275,7 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s,
                                     cj_nodeID);
           }
         } else if (ci_active) {
-#ifdef MPI_SYMMETRIC_FORCE_INTERACTION
+#ifdef MPI_SYMMETRIC_FORCE_INTERACTION_RT
           /* If the foreign cell is inactive, but the local cell is active,
            * we still need to send stuff to be able to do the force interaction
            * on both nodes
@@ -3310,7 +3336,7 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s,
       if (c->rt.rt_tchem != NULL) scheduler_activate(s, c->rt.rt_tchem);
       if (c->rt.rt_out != NULL) scheduler_activate(s, c->rt.rt_out);
     } else {
-#if defined(MPI_SYMMETRIC_FORCE_INTERACTION) && defined(WITH_MPI)
+#if defined(MPI_SYMMETRIC_FORCE_INTERACTION_RT) && defined(WITH_MPI)
       /* Additionally unskip force interactions between inactive local cell and
        * active remote cell. (The cell unskip will only be called for active
        * cells, so, we have to do this now, from the active remote cell). */
