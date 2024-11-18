@@ -631,7 +631,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
                          p->conserved.mass;
       float dE_kin = e_kin_new - e_kin_old;
 
-      p->conserved.energy += dE_kin;
+      p->conserved.energy += dE_springel;
     }
 
 #ifdef SWIFT_DEBUG_CHECKS
