@@ -20,6 +20,7 @@
 #define SWIFT_GIZMO_HYDRO_IACT_H
 
 #include "chemistry_additions.h"
+#include "fvpm_geometry.h"
 #include "hydro_flux.h"
 #include "hydro_getters.h"
 #include "hydro_gradients.h"
@@ -67,13 +68,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   pi->density.wcount += wi;
   pi->density.wcount_dh -= (hydro_dimension * wi + xi * wi_dx);
 
-  /* these are eqns. (1) and (2) in the summary */
-  pi->geometry.volume += wi;
-  for (int k = 0; k < 3; k++)
-    for (int l = 0; l < 3; l++)
-      pi->geometry.matrix_E[k][l] += dx[k] * dx[l] * wi;
-
-  hydro_velocities_update_centroid_left(pi, dx, wi);
+  /* Collect data for matrix construction */
+  fvpm_accumulate_geometry_and_matrix(pi, wi, dx);
+  fvpm_update_centroid_left(pi, dx, wi);
 
   /* Compute density of pj. */
   const float hj_inv = 1.0f / hj;
@@ -83,13 +80,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   pj->density.wcount += wj;
   pj->density.wcount_dh -= (hydro_dimension * wj + xj * wj_dx);
 
-  /* these are eqns. (1) and (2) in the summary */
-  pj->geometry.volume += wj;
-  for (int k = 0; k < 3; k++)
-    for (int l = 0; l < 3; l++)
-      pj->geometry.matrix_E[k][l] += dx[k] * dx[l] * wj;
-
-  hydro_velocities_update_centroid_right(pj, dx, wj);
+  /* Collect data for matrix construction */
+  fvpm_accumulate_geometry_and_matrix(pj, wj, dx);
+  fvpm_update_centroid_right(pj, dx, wj);
 }
 
 /**
@@ -130,13 +123,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   pi->density.wcount += wi;
   pi->density.wcount_dh -= (hydro_dimension * wi + xi * wi_dx);
 
-  /* these are eqns. (1) and (2) in the summary */
-  pi->geometry.volume += wi;
-  for (int k = 0; k < 3; k++)
-    for (int l = 0; l < 3; l++)
-      pi->geometry.matrix_E[k][l] += dx[k] * dx[l] * wi;
-
-  hydro_velocities_update_centroid_left(pi, dx, wi);
+  fvpm_accumulate_geometry_and_matrix(pi, wi, dx);
+  fvpm_update_centroid_left(pi, dx, wi);
 }
 
 /**
@@ -306,8 +294,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   /* eqn. (7) */
   float Anorm2 = 0.0f;
   float A[3];
-  if (hydro_part_geometry_well_behaved(pi) &&
-      hydro_part_geometry_well_behaved(pj)) {
+  if (fvpm_part_geometry_well_behaved(pi) &&
+      fvpm_part_geometry_well_behaved(pj)) {
     /* in principle, we use Vi and Vj as weights for the left and right
        contributions to the generalized surface vector.
        However, if Vi and Vj are very different (because they have very

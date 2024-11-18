@@ -343,7 +343,7 @@ if test "$enable_cell_graph" = "yes"; then
    AC_DEFINE([SWIFT_CELL_GRAPH],1,[Enable cell graph])
 fi
 
-# Check if using our custom icbrtf is enalbled.
+# Check if using our custom icbrtf is enabled.
 AC_ARG_ENABLE([custom-icbrtf],
    [AS_HELP_STRING([--enable-custom-icbrtf],
      [Use SWIFT's custom icbrtf function instead of the system cbrtf @<:@yes/no@:>@]
@@ -1836,7 +1836,7 @@ if test "$have_armv7apmccntr"x = "yes"x; then
       AC_DEFINE(HAVE_ARMV7A_PMCCNTR,1,[Define if you have enabled the PMCCNTR cycle counter on ARMv7a])
 fi
 
-# Check if we have native exp10 and exp10f functions. If not failback to our
+# Check if we have native exp10 and exp10f functions. If not fallback to our
 # implementations. On Apple/CLANG we have __exp10, so also check for that
 # if the compiler is clang.
 AC_CHECK_LIB([m],[exp10], [AC_DEFINE([HAVE_EXP10],1,[The exp10 function is present.])])
@@ -1846,7 +1846,7 @@ if test "$ax_cv_c_compiler_vendor" = "clang"; then
       AC_CHECK_LIB([m],[__exp10f], [AC_DEFINE([HAVE___EXP10F],1,[The __exp10f function is present.])])
 fi
 
-# Check if we have native sincos and sincosf functions. If not failback to our
+# Check if we have native sincos and sincosf functions. If not fallback to our
 # implementations. On Apple/CLANG we have __sincos, so also check for that
 # if the compiler is clang.
 AC_CHECK_LIB([m],[sincos], [AC_DEFINE([HAVE_SINCOS],1,[The sincos function is present.])])
@@ -3100,6 +3100,7 @@ case "$with_rt" in
       AC_DEFINE([RT_GEAR], [1], [GEAR M1 closure scheme])
       number_group=${with_rt#*_}
       AC_DEFINE_UNQUOTED([RT_NGROUPS], [$number_group], [Number of photon groups to follow])
+      AC_DEFINE([MPI_SYMMETRIC_FORCE_INTERACTION_RT], [1], [Do symmetric MPI interactions])
 
       if test "$number_group" = "0"; then
           AC_MSG_ERROR([GEAR-RT: Cannot work with zero photon groups])
@@ -3114,9 +3115,14 @@ case "$with_rt" in
           AC_DEFINE([SWIFT_RT_DEBUG_CHECKS], [1], [additional debugging checks for RT])
       fi
 
-      if test "$with_hydro" != "gizmo-mfv"; then
-          AC_MSG_ERROR([GEAR-RT: Cannot work without gizmo-mfv hydro. Compile using --with-hydro=gizmo-mfv])
-      fi
+      case "$with_hydro" in
+          "gizmo-mfv" | "sphenix")
+          # allowed.
+        ;;
+        *)
+          AC_MSG_ERROR([GEAR-RT: Cannot work without gizmo-mfv or sphenix hydro. Compile using --with-hydro=gizmo-mfv or --with-hydro=sphenix])
+        ;;
+      esac
 
       if test "$with_rt_riemann_solver" = "none"; then
           AC_MSG_ERROR([GEAR-RT: You need to select an RT Riemann solver (--with-rt-riemann-solver=...)])

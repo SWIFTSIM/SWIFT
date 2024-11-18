@@ -35,11 +35,14 @@ struct sink_props {
      f_acc <= 1 */
   float f_acc;
 
-  /*! Maximal gas temperature for forming a star. */
-  float maximal_temperature;
+  /*! Maximal gas temperature for forming a sink. */
+  float temperature_threshold;
 
-  /*! Minimal gas density for forming a star. */
+  /*! Minimal gas density for forming a sink with the temperature threshold. */
   float density_threshold;
+
+  /*! Gas density for forming a sink without the temperature threshold. */
+  float maximal_density_threshold;
 
   /*! Mass of the stellar particle representing the low mass stars
    * (continuous IMF sampling). In M_sun. */
@@ -155,13 +158,21 @@ INLINE static void sink_props_init_probabilities(
  * @param us The internal unit system.
  * @param params The parsed parameters.
  * @param cosmo The cosmological model.
+ * @param with_feedback Are we running with feedback?
  */
 INLINE static void sink_props_init(struct sink_props *sp,
                                    struct feedback_props *fp,
                                    const struct phys_const *phys_const,
                                    const struct unit_system *us,
                                    struct swift_params *params,
-                                   const struct cosmology *cosmo) {
+                                   const struct cosmology *cosmo,
+                                   const int with_feedback) {
+
+  /* If we do not run with feedback, abort and print an error */
+  if (!with_feedback)
+    error(
+        "ERROR: Running with sink but without feedback. GEAR sink model needs "
+        "to be run with --sink and --feedback");
 
   /* Default values */
   const float default_f_acc = 0.8;
@@ -187,11 +198,20 @@ INLINE static void sink_props_init(struct sink_props *sp,
         sp->f_acc);
   }
 
-  sp->maximal_temperature =
-      parser_get_param_float(params, "GEARSink:maximal_temperature");
+  sp->temperature_threshold =
+      parser_get_param_float(params, "GEARSink:temperature_threshold_K");
 
   sp->density_threshold =
       parser_get_param_float(params, "GEARSink:density_threshold_g_per_cm3");
+
+  sp->maximal_density_threshold = parser_get_opt_param_float(
+      params, "GEARSink:maximal_density_threshold_g_per_cm3", FLT_MAX);
+
+  if (sp->maximal_density_threshold < sp->density_threshold) {
+    error(
+        "maximal_density_threshold_g_per_cm3 must be larger than "
+        "density_threshold_g_per_cm3");
+  }
 
   sp->stellar_particle_mass_Msun =
       parser_get_param_float(params, "GEARSink:stellar_particle_mass_Msun");
@@ -236,10 +256,12 @@ INLINE static void sink_props_init(struct sink_props *sp,
                                default_disable_sink_formation);
 
   /* Apply unit change */
-  sp->maximal_temperature /=
+  sp->temperature_threshold /=
       units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
 
   sp->density_threshold /= units_cgs_conversion_factor(us, UNIT_CONV_DENSITY);
+  sp->maximal_density_threshold /=
+      units_cgs_conversion_factor(us, UNIT_CONV_DENSITY);
 
   /* here, we need to differenciate between the stellar models */
   struct initial_mass_function *imf;
@@ -258,11 +280,12 @@ INLINE static void sink_props_init(struct sink_props *sp,
     sink_props_init_probabilities(sp, imf, phys_const, 1);
   }
 
-  message("maximal_temperature                          = %g",
-          sp->maximal_temperature);
+  message("temperature_threshold                        = %g",
+          sp->temperature_threshold);
   message("density_threshold                            = %g",
           sp->density_threshold);
-
+  message("maximal_density_threshold                    = %g",
+          sp->maximal_density_threshold);
   message("stellar_particle_mass (in M_sun)             = %g",
           sp->stellar_particle_mass_Msun);
   message("minimal_discrete_mass (in M_sun)             = %g",

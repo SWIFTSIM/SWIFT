@@ -156,6 +156,7 @@ enum task_subtypes {
   task_subtype_stars_prep2,
   task_subtype_stars_feedback,
   task_subtype_sf_counts,
+  task_subtype_grav_counts,
   task_subtype_bpart_rho,
   task_subtype_bpart_feedback,
   task_subtype_bh_density,
@@ -302,12 +303,6 @@ struct task {
 #ifdef SWIFT_DEBUG_CHECKS
   /* When was this task last run? */
   integertime_t ti_run;
-
-  /* Was this task activted by unskip? */
-  char activated_by_unskip;
-
-  /* Was this task activted by marktask? */
-  char activated_by_marktask;
 #endif /* SWIFT_DEBUG_CHECKS */
 
 } SWIFT_STRUCT_ALIGN;
