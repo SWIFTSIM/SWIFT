@@ -19,9 +19,9 @@
  *
  ******************************************************************************/
 /* Config parameters. */
-//#define GPUOFFLOAD_DENSITY 1   // off-load hydro density to GPU
-//#define GPUOFFLOAD_GRADIENT 1  // off-load hydro density to GPU
-//#define GPUOFFLOAD_FORCE 1     // off-load hydro density to GPU
+#define GPUOFFLOAD_DENSITY 1   // off-load hydro density to GPU
+#define GPUOFFLOAD_GRADIENT 1  // off-load hydro density to GPU
+#define GPUOFFLOAD_FORCE 1     // off-load hydro density to GPU
 
 // #define DO_CORNERS 1 //do corner pair tasks on CPU
 // #define DUMP_TIMINGS 1
@@ -1617,7 +1617,7 @@ void *runner_main2(void *data) {
 #ifdef EXTRA_HYDRO_LOOP
           else if (t->subtype == task_subtype_gradient) {
             runner_dosub_self1_gradient(r, ci, 1);
-            fprintf(stderr, "split a g task\n");
+//            fprintf(stderr, "split a g task\n");
           }
           else if (t->subtype == task_subtype_gpu_pack_g) {
 #ifdef GPUOFFLOAD_GRADIENT
@@ -1655,7 +1655,7 @@ void *runner_main2(void *data) {
 #endif
           else if (t->subtype == task_subtype_force) {
             runner_dosub_self2_force(r, ci, 1);
-            fprintf(stderr, "split a f task\n");
+//            fprintf(stderr, "split a f task\n");
           } else if (t->subtype == task_subtype_gpu_pack_f) {
 #ifdef GPUOFFLOAD_FORCE
               //          runner_doself1_pack_f(r, sched, pack_vars_self_forc, ci,
@@ -1736,7 +1736,7 @@ void *runner_main2(void *data) {
         case task_type_sub_pair:
           if (t->subtype == task_subtype_density) {
             int nothing = 0;
-            message("Doing a pair sub task");
+//            message("Doing a pair sub task");
             runner_dosub_pair1_density(r, ci, cj, 1);
           }
           else if (t->subtype == task_subtype_gpu_pack) {
@@ -1778,82 +1778,77 @@ void *runner_main2(void *data) {
 #ifdef EXTRA_HYDRO_LOOP
           else if (t->subtype == task_subtype_gradient) {
             runner_dosub_pair1_gradient(r, ci, cj, 1);
-            fprintf(stderr, "split a g task\n");
+//            fprintf(stderr, "split a g task\n");
           } else if (t->subtype == task_subtype_gpu_pack_g) {
 #ifdef GPUOFFLOAD_GRADIENT
-              //          runner_doself1_pack_g(r, sched, pack_vars_self_grad, ci,
-              //        		  t, parts_aos_grad, &packing_time_g);
-              ticks tic_cpu_pack = getticks();
+  	          ticks tic_cpu_pack = getticks();
 
-              packing_time_g += runner_doself1_pack_f4_g(
-                  r, sched, pack_vars_self_grad, ci, t, parts_aos_grad_f4_send,
-                  task_first_part_f4_g);
+              packing_time_pair_g +=
+                  runner_dopair1_pack_f4_g(r, sched, pack_vars_pair_grad, ci,
+                                           cj, t, parts_aos_pair_f4_g_send, e,
+                                           fparti_fpartj_lparti_lpartj_grad);
 
-  	        t->total_cpu_pack_ticks += getticks() - tic_cpu_pack;
+  	          t->total_cpu_pack_ticks += getticks() - tic_cpu_pack;
 
               /* No pack tasks left in queue, flag that we want to run */
-              int launch_leftovers = pack_vars_self_grad->launch_leftovers;
+              int launch_leftovers = pack_vars_pair_grad->launch_leftovers;
               /*Packed enough tasks let's go*/
-              int launch = pack_vars_self_grad->launch;
+              int launch = pack_vars_pair_grad->launch;
               /* Do we have enough stuff to run the GPU ? */
               if (launch || launch_leftovers) {
                 /*Launch GPU tasks*/
-                //      	        runner_doself1_launch_g(r, sched,
-                //      pack_vars_self_grad, ci, t, parts_aos_grad,
-                //      	        		d_parts_aos_grad, stream, d_a,
-                //      d_H, e, &packing_time_g, &time_for_gpu_g);
-                signal_sleeping_runners(sched, t, pack_vars_self_grad->tasks_packed);
-                runner_doself1_launch_f4_g(
-                    r, sched, pack_vars_self_grad, ci, t, parts_aos_grad_f4_send,
-                    parts_aos_grad_f4_recv, d_parts_aos_grad_f4_send,
-                    d_parts_aos_grad_f4_recv, stream, d_a, d_H, e,
-                    &packing_time_g, &time_for_gpu_g, task_first_part_f4_g,
-                    d_task_first_part_f4_g, self_end_g, &unpack_time_self_g);
-              } /*End of GPU work Self*/
+                //			runner_dopair1_launch_g(r, sched,
+                // pack_vars_pair_grad, ci, t, parts_aos_pair_grad,
+                //					d_parts_aos_pair_grad,
+                // stream, d_a, d_H, e, &packing_time_pair_g,
+                //&time_for_gpu_pair_g);
+                signal_sleeping_runners(sched, t, pack_vars_pair_grad->tasks_packed);
+                runner_dopair1_launch_f4_g_one_memcpy(
+                    r, sched, pack_vars_pair_grad, t, parts_aos_pair_f4_g_send,
+                    parts_aos_pair_f4_g_recv, d_parts_aos_pair_f4_g_send,
+                    d_parts_aos_pair_f4_g_recv, stream_pairs, d_a, d_H, e,
+                    &packing_time_pair_g, &time_for_gpu_pair_g,
+                    &unpacking_time_pair_g, fparti_fpartj_lparti_lpartj_grad,
+                    pair_end_g);
+              }
 #endif
           }
 #endif
           else if (t->subtype == task_subtype_force) {
             runner_dosub_pair2_force(r, ci, cj, 1);
-            fprintf(stderr, "split a f task\n");
+//            fprintf(stderr, "split a f task\n");
           } else if (t->subtype == task_subtype_gpu_pack_f) {
 #ifdef GPUOFFLOAD_FORCE
-              //          runner_doself1_pack_f(r, sched, pack_vars_self_forc, ci,
-              //        		  t, parts_aos_forc, &packing_time_f);
               ticks tic_cpu_pack = getticks();
 
-              packing_time_f += runner_doself1_pack_f4_f(
-                  r, sched, pack_vars_self_forc, ci, t, parts_aos_forc_f4_send,
-                  task_first_part_f4_f);
+              packing_time_pair_f +=
+                  runner_dopair1_pack_f4_f(r, sched, pack_vars_pair_forc, ci,
+                                           cj, t, parts_aos_pair_f4_f_send, e,
+                                           fparti_fpartj_lparti_lpartj_forc);
 
-  	        t->total_cpu_pack_ticks += getticks() - tic_cpu_pack;
+              t->total_cpu_pack_ticks += getticks() - tic_cpu_pack;
 
-              //          int count = ci->hydro.count;
-              //          for(int i = 0; i < count; i++){
-              //        	  int pid = pack_vars_self_forc->count_parts - count +
-              //        i; 	  if(parts_aos_forc_f4_send[pid].ux_m.w <
-              //        1e-9)fprintf(stderr, "zero mass after packing %i %f\n",
-              //        pid, parts_aos_forc_f4_send[pid].ux_m.w);
-              //          }
               /* No pack tasks left in queue, flag that we want to run */
-              int launch_leftovers = pack_vars_self_forc->launch_leftovers;
+              int launch_leftovers = pack_vars_pair_forc->launch_leftovers;
               /*Packed enough tasks let's go*/
-              int launch = pack_vars_self_forc->launch;
+              int launch = pack_vars_pair_forc->launch;
               /* Do we have enough stuff to run the GPU ? */
               if (launch || launch_leftovers) {
                 /*Launch GPU tasks*/
-                //  	        runner_doself1_launch_f(r, sched,
-                //  pack_vars_self_forc, ci, t, parts_aos_forc,
-                //  d_parts_aos_forc, stream, d_a, d_H, e, &packing_time_f,
-                //  &time_for_gpu_f);
-                signal_sleeping_runners(sched, t, pack_vars_self_forc->tasks_packed);
-                runner_doself1_launch_f4_f(
-                    r, sched, pack_vars_self_forc, ci, t, parts_aos_forc_f4_send,
-                    parts_aos_forc_f4_recv, d_parts_aos_forc_f4_send,
-                    d_parts_aos_forc_f4_recv, stream, d_a, d_H, e,
-                    &packing_time_f, &time_for_gpu_f, task_first_part_f4_f,
-                    d_task_first_part_f4_f, self_end_f, &unpack_time_self_f);
-              } /*End of GPU work Self*/
+                //  			runner_dopair1_launch_f(r, sched,
+                //  pack_vars_pair_forc, ci, t, parts_aos_pair_forc,
+                //  					d_parts_aos_pair_forc,
+                //  stream, d_a, d_H, e, &packing_time_pair_f,
+                //  &time_for_gpu_pair_f);
+                signal_sleeping_runners(sched, t, pack_vars_pair_forc->tasks_packed);
+                runner_dopair1_launch_f4_f_one_memcpy(
+                    r, sched, pack_vars_pair_forc, t, parts_aos_pair_f4_f_send,
+                    parts_aos_pair_f4_f_recv, d_parts_aos_pair_f4_f_send,
+                    d_parts_aos_pair_f4_f_recv, stream_pairs, d_a, d_H, e,
+                    &packing_time_pair_f, &time_for_gpu_pair_f,
+                    &unpacking_time_pair_f, fparti_fpartj_lparti_lpartj_forc,
+                    pair_end_f);
+              } /* End of GPU work Pairs */
 #endif
           } else if (t->subtype == task_subtype_limiter)
             runner_dosub_pair1_limiter(r, ci, cj, 1);

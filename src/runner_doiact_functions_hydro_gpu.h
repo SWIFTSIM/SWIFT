@@ -334,8 +334,8 @@ double runner_doself1_pack_f4_g(struct runner *r, struct scheduler *s,
    * launch_leftovers statement)*/
   clock_gettime(CLOCK_REALTIME, &t1);
   /* Release the lock on the cell */
-  //	task_unlock(t);
-  cell_unlocktree(ci);
+  	task_unlock(t);
+//  cell_unlocktree(ci);
   //	// MATTHIEU signal_sleeping_runners(s, t);
   return (t1.tv_sec - t0.tv_sec) + (t1.tv_nsec - t0.tv_nsec) / 1000000000.0;
 }
@@ -2894,10 +2894,11 @@ void runner_dopair1_launch_f4_one_memcpy(
         cii->gpu_done_pair++;
         cjj->gpu_done_pair++;
 
-        //		  /* Release the locks */
-        cell_unlocktree(cii);
-        //		  /* Release the locks */
-        cell_unlocktree(cjj);
+//        //		  /* Release the locks */
+//        cell_unlocktree(cii);
+//        //		  /* Release the locks */
+//        cell_unlocktree(cjj);
+        task_unlock(tii);
 
         /*Time end of unpacking*/
         clock_gettime(CLOCK_REALTIME, &tp1);

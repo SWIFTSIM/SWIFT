@@ -3172,32 +3172,38 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
           /* Lucky? */
           if (res != NULL) {
 
-            if (res->type == task_type_self &&
+            if ((res->type == task_type_self ||
+            	 res->type == task_type_sub_self)&&
                 res->subtype == task_subtype_gpu_pack) {
               atomic_inc(&s->queues[qid].n_packs_self_left);
               atomic_dec(&s->queues[qids[ind]].n_packs_self_left);
             }
-            if (res->type == task_type_self &&
+            if ((res->type == task_type_self ||
+            	 res->type == task_type_sub_self)&&
                 res->subtype == task_subtype_gpu_pack_g) {
               atomic_inc(&s->queues[qid].n_packs_self_left_g);
               atomic_dec(&s->queues[qids[ind]].n_packs_self_left_g);
             }
-            if (res->type == task_type_self &&
+            if ((res->type == task_type_self ||
+            	 res->type == task_type_sub_self)&&
                 res->subtype == task_subtype_gpu_pack_f) {
               atomic_inc(&s->queues[qid].n_packs_self_left_f);
               atomic_dec(&s->queues[qids[ind]].n_packs_self_left_f);
             }
-            if (res->type == task_type_pair &&
+            if ((res->type == task_type_pair ||
+            	 res->type == task_type_sub_pair)&&
                 res->subtype == task_subtype_gpu_pack) {
               atomic_inc(&s->queues[qid].n_packs_pair_left);
               atomic_dec(&s->queues[qids[ind]].n_packs_pair_left);
             }
-            if (res->type == task_type_pair &&
+            if ((res->type == task_type_pair ||
+            	 res->type == task_type_sub_pair)&&
                 res->subtype == task_subtype_gpu_pack_g) {
               atomic_inc(&s->queues[qid].n_packs_pair_left_g);
               atomic_dec(&s->queues[qids[ind]].n_packs_pair_left_g);
             }
-            if (res->type == task_type_pair &&
+            if ((res->type == task_type_pair ||
+            	 res->type == task_type_sub_pair)&&
                 res->subtype == task_subtype_gpu_pack_f) {
               atomic_inc(&s->queues[qid].n_packs_pair_left_f);
               atomic_dec(&s->queues[qids[ind]].n_packs_pair_left_f);
