@@ -2207,11 +2207,14 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
       if (t_subtype == task_subtype_density) {
         engine_addlink(e, &ci->hydro.density, t);
       } else if (t_subtype == task_subtype_gpu_pack) {  // A. Nasar
-        error("Abouzied: you need to code this up!");
+        engine_addlink(e, &ci->hydro.density_pack, t);
+//        error("Abouzied: you need to code this up!");
       } else if (t_subtype == task_subtype_gpu_pack_f) {
-        error("Abouzied: you need to code this up!");
+        engine_addlink(e, &ci->hydro.force_pack, t);
+//        error("Abouzied: you need to code this up!");
       } else if (t_subtype == task_subtype_gpu_pack_g) {
-        error("Abouzied: you need to code this up!");
+        engine_addlink(e, &ci->hydro.gradient_pack, t);
+//        error("Abouzied: you need to code this up!");
       } else if (t_subtype == task_subtype_grav) {
         engine_addlink(e, &ci->grav.grav, t);
       } else if (t_subtype == task_subtype_external_grav) {
@@ -2227,11 +2230,17 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
         engine_addlink(e, &ci->hydro.density, t);
         engine_addlink(e, &cj->hydro.density, t);
       } else if (t_subtype == task_subtype_gpu_pack) {
-        error("Abouzied: you need to code this up!");
+        engine_addlink(e, &ci->hydro.density_pack, t);
+        engine_addlink(e, &cj->hydro.density_pack, t);
+//        error("Abouzied: you need to code this up!");
       } else if (t_subtype == task_subtype_gpu_pack_f) {
-        error("Abouzied: you need to code this up!");
+        engine_addlink(e, &ci->hydro.force_pack, t);
+        engine_addlink(e, &cj->hydro.force_pack, t);
+//        error("Abouzied: you need to code this up!");
       } else if (t_subtype == task_subtype_gpu_pack_g) {
-        error("Abouzied: you need to code this up!");
+        engine_addlink(e, &ci->hydro.gradient_pack, t);
+        engine_addlink(e, &cj->hydro.gradient_pack, t);
+//        error("Abouzied: you need to code this up!");
       } else if (t_subtype == task_subtype_grav) {
         engine_addlink(e, &ci->grav.grav, t);
         engine_addlink(e, &cj->grav.grav, t);
@@ -4872,7 +4881,7 @@ void engine_maketasks(struct engine *e) {
     struct task *t = &sched->tasks[i];
     if (t->subtype != task_subtype_gpu_pack) continue;
 
-    if (t->type == task_type_self) {
+    if (t->type == task_type_self || t->type == task_type_sub_self) {
 
       if (count_current_self % pack_size == 0) {
         last_created_self_unpack = scheduler_addtask(
@@ -4892,16 +4901,16 @@ void engine_maketasks(struct engine *e) {
       ++count_current_self;
     }
 
-    else if (t->type == task_type_pair) {
+    else if (t->type == task_type_pair || t->type == task_type_sub_pair) {
       if (count_current_pair % pack_size == 0) {
         last_created_pair_unpack = scheduler_addtask(
             sched, task_type_pair, task_subtype_gpu_unpack, 0, 0, NULL, NULL);
       }
 
       /* pack -> unpack -> ghost_in */
-      if (t->ci->hydro.ghost_in == NULL && t->ci->nodeID == e->nodeID)
+      if (t->ci->hydro.super->hydro.ghost_in == NULL && t->ci->nodeID == e->nodeID)
         message("Ghost in for cell i is NULL\n");
-      if (t->cj->hydro.ghost_in == NULL && t->cj->nodeID == e->nodeID)
+      if (t->cj->hydro.super->hydro.ghost_in == NULL && t->cj->nodeID == e->nodeID)
         message("Ghost in for cell j is NULL\n");
 
       scheduler_addunlock(sched, t, last_created_pair_unpack);
@@ -4977,7 +4986,7 @@ void engine_maketasks(struct engine *e) {
     struct task *t = &sched->tasks[i];
     if (t->subtype != task_subtype_gpu_pack_g) continue;
 
-    if (t->type == task_type_self) {
+    if (t->type == task_type_self || t->type == task_type_sub_self) {
 
       if (count_current_self % pack_size == 0) {
         last_created_self_unpack = scheduler_addtask(
@@ -4997,7 +5006,7 @@ void engine_maketasks(struct engine *e) {
       ++count_current_self;
     }
 
-    else if (t->type == task_type_pair) {
+    else if (t->type == task_type_pair || t->type == task_type_sub_pair) {
       if (count_current_pair % pack_size == 0) {
         last_created_pair_unpack = scheduler_addtask(
             sched, task_type_pair, task_subtype_gpu_unpack_g, 0, 0, NULL, NULL);
@@ -5067,7 +5076,7 @@ void engine_maketasks(struct engine *e) {
     struct task *t = &sched->tasks[i];
     if (t->subtype != task_subtype_gpu_pack_f) continue;
 
-    if (t->type == task_type_self) {
+    if (t->type == task_type_self || t->type == task_type_sub_self) {
 
       if (count_current_self % pack_size == 0) {
         last_created_self_unpack = scheduler_addtask(
@@ -5086,7 +5095,7 @@ void engine_maketasks(struct engine *e) {
       ++count_current_self;
     }
 
-    else if (t->type == task_type_pair) {
+    else if (t->type == task_type_pair || t->type == task_type_sub_pair) {
       if (count_current_pair % pack_size == 0) {
         last_created_pair_unpack = scheduler_addtask(
             sched, task_type_pair, task_subtype_gpu_unpack_f, 0, 0, NULL, NULL);

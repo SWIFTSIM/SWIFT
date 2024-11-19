@@ -1652,20 +1652,23 @@ void scheduler_splittasks_mapper(void *map_data, int num_elements,
 
     /* Invoke the correct splitting strategy */
     if (t->subtype == task_subtype_density) {
-      //      scheduler_splittask_hydro(t, s);
+            scheduler_splittask_hydro(t, s);
     } else if (t->subtype == task_subtype_external_grav) {
       scheduler_splittask_gravity(t, s);
     } else if (t->subtype == task_subtype_grav) {
       scheduler_splittask_gravity(t, s);
       // if task is gpu task do not split A. Nasar
     } else if (t->subtype == task_subtype_gpu_pack ||
-               t->subtype == task_subtype_gpu_unpack ||
                t->subtype == task_subtype_gpu_pack_g ||
-               t->subtype == task_subtype_gpu_unpack_g ||
-               t->subtype == task_subtype_gpu_pack_f ||
-               t->subtype == task_subtype_gpu_unpack_f) {
-      continue; /*Do nothing and grab next task to split*/
-    } else {
+               t->subtype == task_subtype_gpu_pack_f) {
+        scheduler_splittask_hydro(t, s);
+//      continue; /*Do nothing and grab next task to split*/
+    } else if (t->subtype == task_subtype_gpu_unpack ||
+            t->subtype == task_subtype_gpu_unpack_g ||
+            t->subtype == task_subtype_gpu_unpack_f){
+    	continue;
+    }
+    else {
 #ifdef SWIFT_DEBUG_CHECKS
       error("Unexpected task sub-type %s/%s", taskID_names[t->type],
             subtaskID_names[t->subtype]);
@@ -2254,7 +2257,18 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
 
         } else if (t->subtype == task_subtype_do_bh_swallow) {
           cost = 1.f * wscale * (bcount_i + bcount_j);
-
+        } else if (t->subtype == task_subtype_gpu_pack) {
+		  cost = 2.f * (wscale * count_i) * count_i;
+		} else if (t->subtype == task_subtype_gpu_pack_f) {
+		  cost = 2.f * (wscale * count_i) * count_i;
+		} else if (t->subtype == task_subtype_gpu_pack_g) {
+		  cost = 2.f * (wscale * count_i) * count_i;
+		} else if (t->subtype == task_subtype_gpu_unpack) {
+		  cost = 1.f * wscale;
+		} else if (t->subtype == task_subtype_gpu_unpack_f) {
+		  cost = 1.f * wscale;
+		} else if (t->subtype == task_subtype_gpu_unpack_g) {
+		  cost = 1.f * wscale;
         } else if (t->subtype == task_subtype_density ||
                    t->subtype == task_subtype_gradient ||
                    t->subtype == task_subtype_force ||
@@ -2293,7 +2307,19 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
           cost = 1.f * wscale * count_i;
         } else if (t->subtype == task_subtype_do_bh_swallow) {
           cost = 1.f * wscale * bcount_i;
-        } else if (t->subtype == task_subtype_density ||
+        } else if (t->subtype == task_subtype_gpu_pack)  // A. Nasar
+            cost = 1.f * (wscale * count_i) * count_i;   // * s->pack_size;
+          else if (t->subtype == task_subtype_gpu_pack_f)
+            cost = 1.f * (wscale * count_i) * count_i;  // * s->pack_size;
+          else if (t->subtype == task_subtype_gpu_pack_g)
+            cost = 1.f * (wscale * count_i) * count_i;  // * s->pack_size;
+          else if (t->subtype == task_subtype_gpu_unpack)
+            cost = 1.f * wscale * s->pack_size;
+          else if (t->subtype == task_subtype_gpu_unpack_f)
+            cost = 1.f * wscale * s->pack_size;
+          else if (t->subtype == task_subtype_gpu_unpack_g)
+            cost = 1.f * wscale * s->pack_size;
+          else if (t->subtype == task_subtype_density ||
                    t->subtype == task_subtype_gradient ||
                    t->subtype == task_subtype_force ||
                    t->subtype == task_subtype_limiter) {
@@ -2864,7 +2890,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
     /* Increase the waiting counter. */
     atomic_inc(&s->waiting);
     // A. Nasar Do the same for the pack tasks
-    if (t->type == task_type_self) {
+    if (t->type == task_type_self || t->type == task_type_sub_self) {
       if (t->subtype == task_subtype_gpu_pack)
         atomic_inc(&s->queues[qid].n_packs_self_left);
       if (t->subtype == task_subtype_gpu_pack_f)
@@ -2873,7 +2899,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         atomic_inc(&s->queues[qid].n_packs_self_left_g);
     }
     if (t->type ==
-        task_type_pair) {  // A. Nasar NEED to think about how to do this with
+        task_type_pair || t->type == task_type_sub_pair) {  // A. Nasar NEED to think about how to do this with
                            // MPI where ci may not be on this node/rank
       if (t->subtype == task_subtype_gpu_pack) {
         if (t->ci->nodeID == s->nodeID)
