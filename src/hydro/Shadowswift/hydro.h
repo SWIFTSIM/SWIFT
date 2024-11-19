@@ -76,9 +76,11 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
      of the two. */
   float v_rel[3];
   hydro_part_get_relative_fluid_velocity(p, v_rel);
+  float soundspeed =
+      W[0] == 0.f ? gas_soundspeed_from_pressure(W[0], W[4]) : 0.f;
   float vmax =
       sqrtf(v_rel[0] * v_rel[0] + v_rel[1] * v_rel[1] + v_rel[2] * v_rel[2]) +
-      gas_soundspeed_from_pressure(W[0], W[4]);
+      soundspeed;
   vmax = max(vmax, p->timestepvars.vmax);
 
   /* Get the comoving psize, since we will compare with another comoving
@@ -86,8 +88,10 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
   float psize = hydro_get_comoving_psize(p);
   /* If the particle shows large deviations from a sphere, better use the
    * minimal distance to any of its faces to compute the timestep */
-  if (p->geometry.min_face_dist < 0.25 * psize)
+  if (p->geometry.min_face_dist < 0.25 * psize &&
+      p->geometry.min_face_dist > 0.) {
     psize = p->geometry.min_face_dist;
+  }
 
   /* NOTE (yuyttenh, 06/25): To compute the (physical) dt we want to divide the
    * physical particle size (a * psize) by the physical/peculiar velocity
@@ -95,7 +99,7 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
   float dt = cosmo->a * cosmo->a * psize / (vmax + FLT_MIN);
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (dt == 0.f) error("Part wants dt=0!");
+  if (dt == 0.f) error("Hydro part wants dt=0!");
 #endif
 
   return CFL_condition * dt;
