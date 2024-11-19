@@ -1,6 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2020 Loic Hausammann (loic.hausammann@epfl.ch)
+ *               2024 Darwin Roduit (darwin.roduit@alumni.epfl.ch)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -202,15 +203,15 @@ INLINE static void sink_props_init(struct sink_props *sp,
       parser_get_param_float(params, "GEARSink:temperature_threshold_K");
 
   sp->density_threshold =
-      parser_get_param_float(params, "GEARSink:density_threshold_g_per_cm3");
+      parser_get_param_float(params, "GEARSink:density_threshold_Hpcm3");
 
   sp->maximal_density_threshold = parser_get_opt_param_float(
-      params, "GEARSink:maximal_density_threshold_g_per_cm3", FLT_MAX);
+      params, "GEARSink:maximal_density_threshold_Hpcm3", FLT_MAX);
 
   if (sp->maximal_density_threshold < sp->density_threshold) {
     error(
-        "maximal_density_threshold_g_per_cm3 must be larger than "
-        "density_threshold_g_per_cm3");
+        "maximal_density_threshold_Hpcm3 must be larger than "
+        "density_threshold_Hpcm3");
   }
 
   sp->stellar_particle_mass_Msun =
@@ -259,9 +260,12 @@ INLINE static void sink_props_init(struct sink_props *sp,
   sp->temperature_threshold /=
       units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
 
-  sp->density_threshold /= units_cgs_conversion_factor(us, UNIT_CONV_DENSITY);
-  sp->maximal_density_threshold /=
-      units_cgs_conversion_factor(us, UNIT_CONV_DENSITY);
+  const double m_p_cgs = phys_const->const_proton_mass *
+                         units_cgs_conversion_factor(us, UNIT_CONV_MASS);
+  sp->density_threshold *=
+      m_p_cgs / units_cgs_conversion_factor(us, UNIT_CONV_DENSITY);
+  sp->maximal_density_threshold *=
+      m_p_cgs / units_cgs_conversion_factor(us, UNIT_CONV_DENSITY);
 
   /* here, we need to differenciate between the stellar models */
   struct initial_mass_function *imf;
