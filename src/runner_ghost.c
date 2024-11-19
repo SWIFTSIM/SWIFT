@@ -1939,17 +1939,13 @@ void runner_do_flux_ghost(struct runner *r, struct cell *c, int timer) {
 
   if (with_ext_gravity || with_self_gravity) {
     /* Update mass of #gparts for gravity calculation at the end of timestep */
-    /* TODO update position to center of mass of particles, triggers debug
-     * check */
-    /* TODO: Add dependencies, so that this happens after gravity drift, but
-     * before gravity interactions */
     for (int i = 0; i < c->hydro.count; i++) {
       struct part *p = &c->hydro.parts[i];
       if (!part_is_active(p, e)) continue;
       p->gpart->mass = p->conserved.mass + p->flux.mass;
-//      p->gpart->x[0] = p->x[0] + p->geometry.centroid[0];
-//      p->gpart->x[1] = p->x[1] + p->geometry.centroid[1];
-//      p->gpart->x[2] = p->x[2] + p->geometry.centroid[2];
+      p->gpart->x[0] = p->x[0] + p->geometry.centroid[0];
+      p->gpart->x[1] = p->x[1] + p->geometry.centroid[1];
+      p->gpart->x[2] = p->x[2] + p->geometry.centroid[2];
     }
   }
 

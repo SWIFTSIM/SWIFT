@@ -1756,6 +1756,7 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
   const int is_self_gravity = (e->policy & engine_policy_self_gravity);
   const int stars_only_gravity =
       (e->policy & engine_policy_stars) && !(e->policy & engine_policy_hydro);
+  const int with_grid_hydro = (e->policy & engine_policy_grid_hydro);
 
   /* Are we in a super-cell ? */
   if (c->grav.super == c) {
@@ -1781,6 +1782,12 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
                                             task_subtype_none, 0, 0, c, NULL);
 
       scheduler_addunlock(s, c->grav.end_force, c->super->kick2);
+      /* When using moving mesh hydro, we update the gpart mass and position
+       * after the flux exchange. We don't want this to be overwritten by the
+       * drift */
+      if (c->hydro.super != NULL) {
+        scheduler_addunlock(s, c->grav.drift, c->hydro.super->hydro.flux_ghost);
+      }
 
       if (is_self_gravity) {
 
@@ -1813,11 +1820,29 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
         if (gravity_after_hydro_density && c->hydro.super == c) {
           scheduler_addunlock(s, c->hydro.ghost_out, c->grav.init_out);
         }
+        /* With moving mesh hydro, don't do gravity interactions until mass has
+         * been updated. Here we treat the case where c.hydro.super is on or
+         * above the c.grav.super level. */
+        if (with_grid_hydro && c->hydro.super != NULL) {
+          scheduler_addunlock(s, c->hydro.super->hydro.flux_ghost,
+                              c->grav.drift_out);
+        }
 
         /* Link in the implicit tasks */
         scheduler_addunlock(s, c->grav.init, c->grav.init_out);
         scheduler_addunlock(s, c->grav.drift, c->grav.drift_out);
         scheduler_addunlock(s, c->grav.down_in, c->grav.down);
+      } else {
+        /* No self-gravity, but external gravity */
+        if (with_grid_hydro) {
+          /* Add implicit task for moving mesh hydro dependencies */
+          c->grav.drift_out = scheduler_addtask(
+              s, task_type_drift_gpart_out, task_subtype_none, 0, 1, c, NULL);
+          if (c->hydro.super != NULL) {
+            scheduler_addunlock(s, c->hydro.super->hydro.flux_ghost,
+                                c->grav.drift_out);
+          }
+        }
       }
     }
   }
@@ -1843,6 +1868,20 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
         scheduler_addunlock(s, c->parent->grav.init_out, c->grav.init_out);
         scheduler_addunlock(s, c->parent->grav.drift_out, c->grav.drift_out);
         scheduler_addunlock(s, c->grav.down_in, c->parent->grav.down_in);
+        /* With moving mesh hydro, don't do gravity interactions until mass has
+         * been updated. Here we treat only the case where c.hydro.super is
+         * below the c.grav.super level. */
+        if (with_grid_hydro && c->hydro.super == c) {
+          scheduler_addunlock(s, c->hydro.flux_ghost, c->grav.drift_out);
+        }
+      } else if (with_grid_hydro) {
+        /* No self-gravity, but external gravity.
+         * Add implicit task for moving mesh hydro dependencies */
+        /* NOTE: we are below the gravity super level */
+        if (c->hydro.super != NULL) {
+          scheduler_addunlock(s, c->hydro.flux_ghost,
+                              c->grav.super->grav.drift_out);
+        }
       }
     }
   }
@@ -2410,15 +2449,15 @@ void engine_make_hierarchical_tasks_mapper(void *map_data, int num_elements,
     /* Add the hydro stuff */
     if (with_hydro)
       engine_make_hierarchical_tasks_hydro(e, c, /*star_resort_cell=*/NULL);
-    /* And the gravity stuff */
-    if (with_self_gravity || with_ext_gravity)
-      engine_make_hierarchical_tasks_gravity(e, c);
     if (with_grid) {
       engine_make_hierarchical_tasks_grid(e, c);
     }
     if (with_grid_hydro) {
       engine_make_hierarchical_tasks_grid_hydro(e, c);
     }
+    /* And the gravity stuff */
+    if (with_self_gravity || with_ext_gravity)
+      engine_make_hierarchical_tasks_gravity(e, c);
   }
 }
 
