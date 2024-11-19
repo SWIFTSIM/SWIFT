@@ -28,6 +28,7 @@
 #include "engine.h"
 #include "gravity_properties.h"
 #include "scheduler.h"
+#include "space.h"
 #include "zoom.h"
 
 /**
@@ -67,7 +68,7 @@ int zoom_need_regrid(const struct space *s, const int new_cdim[3]) {
  * @param s The #space.
  * @param new_cdim The new top-level cell dimensions (based on current hmax).
  */
-void zoom_regrid_find_acceptable_geometry(sturct space *s,
+void zoom_regrid_find_acceptable_geometry(struct space *s,
                                           const int new_cdim[3]) {
 
   /* Loop until we have an acceptable geometry, we'll first try increasing the
@@ -131,7 +132,7 @@ void zoom_prepare_cells(struct space *s, const int zoom_cdim[3], int verbose) {
     swift_free("neighbour_cells_top", s->zoom_props->neighbour_cells_top);
 
     /* Find an acceptable geometry given the required zoom cdim. */
-    zoon_regrid_find_acceptable_geometry(s, zoom_cdim);
+    zoom_regrid_find_acceptable_geometry(s, zoom_cdim);
 
     /* The above function found the geometry silently, if we're running in
      * verbose mode call the init again to print the cell properties
