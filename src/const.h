@@ -133,7 +133,7 @@
 
 /* Options controlling particle movement */
 /*! @brief This option disables cell movement */
-#define SHADOWSWIFT_FIX_PARTICLES
+//#define SHADOWSWIFT_FIX_PARTICLES
 /*! @brief This option enables cell steering, i.e. trying to keep the cells
  * regular by adding a correction to the cell velocities.*/
 #ifndef SHADOWSWIFT_FIX_PARTICLES
