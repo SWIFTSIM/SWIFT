@@ -1826,6 +1826,8 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
         if (with_grid_hydro && c->hydro.super != NULL) {
           scheduler_addunlock(s, c->hydro.super->hydro.flux_ghost,
                               c->grav.drift_out);
+          scheduler_addunlock(s, c->hydro.super->hydro.flux_ghost,
+                              c->grav.init_out);
         }
 
         /* Link in the implicit tasks */
@@ -1873,6 +1875,7 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
          * below the c.grav.super level. */
         if (with_grid_hydro && c->hydro.super == c) {
           scheduler_addunlock(s, c->hydro.flux_ghost, c->grav.drift_out);
+          scheduler_addunlock(s, c->hydro.flux_ghost, c->grav.init_out);
         }
       } else if (with_grid_hydro) {
         /* No self-gravity, but external gravity.
