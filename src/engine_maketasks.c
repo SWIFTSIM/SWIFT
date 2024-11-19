@@ -5355,9 +5355,17 @@ void engine_maketasks(struct engine *e) {
   for (int i = 0; i < sched->nr_tasks; i++) {
 
     struct task *t = &sched->tasks[i];
-    if (t->subtype == task_subtype_density ||
-      t->subtype == task_subtype_gradient ||
-	  t->subtype == task_subtype_force){
+//    if (t->subtype == task_subtype_density ||
+//      t->subtype == task_subtype_gradient ||
+//	  t->subtype == task_subtype_force){
+//    	t->implicit = 1;
+//    }
+    if (t->subtype == task_subtype_gpu_pack ||
+      t->subtype == task_subtype_gpu_pack_g ||
+	  t->subtype == task_subtype_gpu_pack_f ||
+	  t->subtype == task_subtype_gpu_unpack ||
+	  t->subtype == task_subtype_gpu_unpack_g ||
+	  t->subtype == task_subtype_gpu_unpack_f){
     	t->implicit = 1;
     }
   }

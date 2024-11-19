@@ -19,9 +19,9 @@
  *
  ******************************************************************************/
 /* Config parameters. */
-#define GPUOFFLOAD_DENSITY 1   // off-load hydro density to GPU
-#define GPUOFFLOAD_GRADIENT 1  // off-load hydro density to GPU
-#define GPUOFFLOAD_FORCE 1     // off-load hydro density to GPU
+//#define GPUOFFLOAD_DENSITY 1   // off-load hydro density to GPU
+//#define GPUOFFLOAD_GRADIENT 1  // off-load hydro density to GPU
+//#define GPUOFFLOAD_FORCE 1     // off-load hydro density to GPU
 
 // #define DO_CORNERS 1 //do corner pair tasks on CPU
 // #define DUMP_TIMINGS 1
@@ -1736,10 +1736,10 @@ void *runner_main2(void *data) {
         case task_type_sub_pair:
           if (t->subtype == task_subtype_density) {
             int nothing = 0;
-            fprintf(stderr, "Doing a pair sub task");
+            message("Doing a pair sub task");
             runner_dosub_pair1_density(r, ci, cj, 1);
           }
-          if (t->subtype == task_subtype_gpu_pack) {
+          else if (t->subtype == task_subtype_gpu_pack) {
 #ifdef GPUOFFLOAD_DENSITY
 		  ticks tic_cpu_pack = getticks();
 
