@@ -37,11 +37,13 @@
  * cosmology).
  * @param grav_props The current gravity properties.
  * @param time The current time (used if running without cosmology).
+ * @param time_base The time base.
  */
 __attribute__((always_inline)) INLINE static float sink_compute_timestep(
     const struct sink* const sink, const struct sink_props* sink_properties,
     const int with_cosmology, const struct cosmology* cosmo,
-    const struct gravity_props* grav_props, const double time) {
+    const struct gravity_props* grav_props, const double time,
+    const double time_base) {
 
   return FLT_MAX;
 }
