@@ -4821,7 +4821,7 @@ void engine_maketasks(struct engine *e) {
 
   ticks tic2 = getticks();
   /*Initialise GPU task size in prep. for creation A. Nasar */
-  sched->target_gpu_tasks = s->nr_cells;  // OK AS LONG AS NOT SPLITTING
+  sched->target_gpu_tasks = 32*32*32;//s->nr_cells;  // OK AS LONG AS NOT SPLITTING
   const int target_gpu_tasks = sched->target_gpu_tasks;
 
   /* Construct the first hydro loop over neighbours */
@@ -4919,6 +4919,47 @@ void engine_maketasks(struct engine *e) {
 
   tic2 = getticks();
 
+
+  /* Run through the tasks and make force tasks for each density task.
+     Each force task depends on the cell ghosts and unlocks the kick task
+     of its super-cell. */
+  if (e->policy & engine_policy_hydro) {
+
+    /* Note that this does not scale well at all so we do not use the
+     * threadpool version here until the reason for this is found.
+     * We call the mapper function directly as if there was only 1 thread
+     * in the pool. */
+    engine_make_extra_hydroloop_tasks_mapper(sched->tasks, sched->nr_tasks, e);
+    /* threadpool_map(&e->threadpool, engine_make_extra_hydroloop_tasks_mapper,
+     *                sched->tasks, sched->nr_tasks, sizeof(struct task),
+     *                threadpool_auto_chunk_size, e); */
+  }
+
+//  for (int i = 0; i < sched->nr_tasks; i++) {
+//	  struct task * t = &sched->tasks[i];
+//	  if(t->type == task_type_sub_self && t->subtype == task_subtype_gpu_pack){
+//        t->type = task_type_self;
+//	  }
+//      if(t->type == task_type_sub_pair && t->subtype == task_subtype_gpu_pack){
+//    	t->type = task_type_pair;
+//      }
+//  }
+//  for (int i = 0; i < sched->nr_tasks; i++) {
+//	  struct task * t = &sched->tasks[i];
+//	  if(t->type == task_type_sub_self && t->subtype == task_subtype_gpu_pack_g){
+//        t->type = task_type_self;
+//	  }
+//      if(t->type == task_type_sub_pair && t->subtype == task_subtype_gpu_pack_g){
+//    	t->type = task_type_pair;
+//      }
+//	  if(t->type == task_type_sub_self && t->subtype == task_subtype_gpu_pack_f){
+//        t->type = task_type_self;
+//	  }
+//      if(t->type == task_type_sub_pair && t->subtype == task_subtype_gpu_pack_f){
+//    	t->type = task_type_pair;
+//      }
+//  }
+
   /* Now, create unpack tasks based on the existing packs and create
    * the dependencies pack->unpack->ghost_in A. Nasar */
   const int pack_size = sched->pack_size;
@@ -5013,44 +5054,7 @@ void engine_maketasks(struct engine *e) {
   //    	  scheduler_addunlock(sched, l->t, t);
   //    }
   //  }
-  /* Run through the tasks and make force tasks for each density task.
-     Each force task depends on the cell ghosts and unlocks the kick task
-     of its super-cell. */
-  if (e->policy & engine_policy_hydro) {
 
-    /* Note that this does not scale well at all so we do not use the
-     * threadpool version here until the reason for this is found.
-     * We call the mapper function directly as if there was only 1 thread
-     * in the pool. */
-    engine_make_extra_hydroloop_tasks_mapper(sched->tasks, sched->nr_tasks, e);
-    /* threadpool_map(&e->threadpool, engine_make_extra_hydroloop_tasks_mapper,
-     *                sched->tasks, sched->nr_tasks, sizeof(struct task),
-     *                threadpool_auto_chunk_size, e); */
-  }
-  for (int i = 0; i < sched->nr_tasks; i++) {
-	  struct task * t = &sched->tasks[i];
-	  if(t->type == task_type_sub_self && t->subtype == task_subtype_gpu_pack){
-        t->type = task_type_self;
-	  }
-      if(t->type == task_type_sub_pair && t->subtype == task_subtype_gpu_pack){
-    	t->type = task_type_pair;
-      }
-  }
-  for (int i = 0; i < sched->nr_tasks; i++) {
-	  struct task * t = &sched->tasks[i];
-	  if(t->type == task_type_sub_self && t->subtype == task_subtype_gpu_pack_g){
-        t->type = task_type_self;
-	  }
-      if(t->type == task_type_sub_pair && t->subtype == task_subtype_gpu_pack_g){
-    	t->type = task_type_pair;
-      }
-	  if(t->type == task_type_sub_self && t->subtype == task_subtype_gpu_pack_f){
-        t->type = task_type_self;
-	  }
-      if(t->type == task_type_sub_pair && t->subtype == task_subtype_gpu_pack_f){
-    	t->type = task_type_pair;
-      }
-  }
   /*Now create unpacks for all gpu_pack_g (gradient) tasks A. Nasar */
   count_current_self = 0;
   count_current_pair = 0;
@@ -5395,7 +5399,7 @@ void engine_maketasks(struct engine *e) {
 //	  t->subtype == task_subtype_gpu_pack_f) &&
 //	  (t->type == task_type_sub_pair ||
 //	  t->type == task_type_sub_self)){
-//    	error("STill have subs");
+////    	error("STill have subs");
 //    }
   }
 
