@@ -32,7 +32,7 @@
 #include "timers.h"
 
 /*! The size of the sorting stack used at the leaf level */
-const int sort_stack_size = 10;
+#define SORT_STACK_SIZE 10
 
 /**
  * @brief Sorts again all the stars in a given cell hierarchy.
@@ -71,12 +71,12 @@ void runner_do_sort_ascending(struct sort_entry *sort, int N) {
 
   struct {
     short int lo, hi;
-  } qstack[sort_stack_size];
+  } qstack[SORT_STACK_SIZE];
   int qpos, i, j, lo, hi, imin;
   struct sort_entry temp;
   float pivot;
 
-  if (N >= (1LL << sort_stack_size)) {
+  if (N >= (1LL << SORT_STACK_SIZE)) {
     error(
         "The stack size for sorting is too small."
         "Either increase it or reduce the number of parts per cell.");
