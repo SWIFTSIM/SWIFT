@@ -590,12 +590,6 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
       grav_kick[1] = mdt2 * a_grav[1] + mdt1 * xp->a_grav[1];
       grav_kick[2] = mdt2 * a_grav[2] + mdt1 * xp->a_grav[2];
 
-      double e_kin_old = 0.5 *
-                         (p->conserved.momentum[0] * p->conserved.momentum[0] +
-                          p->conserved.momentum[1] * p->conserved.momentum[1] +
-                          p->conserved.momentum[2] * p->conserved.momentum[2]) /
-                         p->conserved.mass;
-
       /* apply both half kicks to the momentum */
       /* Note that this also affects the particle movement, as the velocity for
          the particles is set after this. */
@@ -603,7 +597,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
       p->conserved.momentum[1] += grav_kick[1];
       p->conserved.momentum[2] += grav_kick[2];
 
-      /* Extra *kinetic* energy due to gravity kick, see eq. 94 in Springel
+      /* Extra hydrodynamic energy due to gravity kick, see eq. 94 in Springel
        * (2010) or eq. 62 in theory/Cosmology/cosmology.pdf. */
       /* Divide total integrated mass flux by the timestep for hydrodynamical
        * quantities. We will later multiply with the correct timestep (these
@@ -617,21 +611,6 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
       float dE_springel = hydro_gravity_energy_update_term(
           dt_grav_corr1, dt_grav_corr2, xp->a_grav, a_grav, p->gravity.mflux,
           p->v_full, grav_kick);
-      const float *p1 = p->conserved.momentum;
-      const float p2[3] = {p->conserved.momentum[0] + p->flux.momentum[0],
-                           p->conserved.momentum[1] + p->flux.momentum[1],
-                           p->conserved.momentum[2] + p->flux.momentum[2]};
-      float dE_momentum =
-          dt_grav * (p1[0] * xp->a_grav[0] + p1[1] * xp->a_grav[1] +
-                     p1[2] * xp->a_grav[2]) +
-          dt_grav * (p2[0] * a_grav[0] + p2[1] * a_grav[1] + p2[2] * a_grav[2]);
-
-      double e_kin_new = 0.5 *
-                         (p->conserved.momentum[0] * p->conserved.momentum[0] +
-                          p->conserved.momentum[1] * p->conserved.momentum[1] +
-                          p->conserved.momentum[2] * p->conserved.momentum[2]) /
-                         p->conserved.mass;
-      float dE_kin = e_kin_new - e_kin_old;
 
       p->conserved.energy += dE_springel;
     }
