@@ -625,8 +625,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   // const float vsig_Dedner_i = pi->viscosity.v_sig;
   // const float vsig_Dedner_j = pj->viscosity.v_sig;
 
-  const float vsig_Dedner_i = mhd_get_comoving_magnetosonic_speed(pi);
-  const float vsig_Dedner_j = mhd_get_comoving_magnetosonic_speed(pj);
+  const float vsig_Dedner_i = pi->mhd_data.c_fms;
+  const float vsig_Dedner_j = pj->mhd_data.c_fms;
 
   float grad_psi_i =
       over_rho2_i * psi_over_ch_i * vsig_Dedner_i * wi_dr * r_inv;
@@ -949,8 +949,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   // const float vsig_Dedner_i = pi->viscosity.v_sig;
   // const float vsig_Dedner_j = pj->viscosity.v_sig;
 
-  const float vsig_Dedner_i = mhd_get_comoving_magnetosonic_speed(pi);
-  const float vsig_Dedner_j = mhd_get_comoving_magnetosonic_speed(pj);
+  const float vsig_Dedner_i = pi->mhd_data.c_fms;
+  const float vsig_Dedner_j = pj->mhd_data.c_fms;
 
   float grad_psi_i =
       over_rho2_i * psi_over_ch_i * vsig_Dedner_i * wi_dr * r_inv;

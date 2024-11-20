@@ -191,12 +191,12 @@ __attribute__((always_inline)) INLINE static float mhd_get_comoving_magnetosonic
 
   /* Get Alfven speed squared */
   const float vA = p->mhd_data.vA;
-  const float v_A2 = vA * vA;
+  const float vA2 = vA * vA;
 
   /* Compute effective sound speeds */
-  const float c_ms2 = cs2 + v_A2;
+  const float cfms2 = cs2 + vA2;
 
-  return sqrtf(c_ms2);
+  return sqrtf(cfms2);
 }
 
 /**
@@ -226,7 +226,7 @@ mhd_get_fast_magnetosonic_wave_phase_velocity(const float dx[3],
   /* Compute effective sound speeds */
   const float cs = p->force.soundspeed;
   const float cs2 = cs * cs;
-  const float c_ms = mhd_get_comoving_magnetosonic_speed(p);
+  const float c_ms = p->mhd_data.c_fms;
   const float c_ms2 = c_ms * c_ms;
   const float projection_correction = c_ms2 * c_ms2 - 4.0f * permeability_inv *
                                                           cs2 * Br * r_inv *
@@ -255,8 +255,8 @@ __attribute__((always_inline)) INLINE static float mhd_signal_velocity(
     const float dx[3], const struct part *restrict pi,
     const struct part *restrict pj, const float mu_ij, const float beta) {
 
-  const float v_sigi = mhd_get_comoving_magnetosonic_speed(pi);
-  const float v_sigj = mhd_get_comoving_magnetosonic_speed(pj);
+  const float v_sigi = pi->mhd_data.c_fms;
+  const float v_sigj = pj->mhd_data.c_fms;
 
   const float v_sig = v_sigi + v_sigj - beta * mu_ij;
 
@@ -306,7 +306,8 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_gradient(
     const struct cosmology *cosmo, const struct hydro_props *hydro_props, const float mu_0) {
 
   p->mhd_data.vA = mhd_get_comoving_alfven_speed(p, mu_0);
-
+  p->mhd_data.c_fms = mhd_get_comoving_magnetosonic_speed(p);
+  
 }
 
 /**
@@ -390,7 +391,7 @@ __attribute__((always_inline)) INLINE static float mhd_get_psi_over_ch_dt(
   const float h_inv = 1.0f / h;
 
   /* Compute Dedner cleaning speed. */
-  const float ch = mhd_get_comoving_magnetosonic_speed(p);
+  const float ch = p->mhd_data.c_fms;
 
   /* Compute Dedner cleaning scalar time derivative. */
   const float hyp = hydro_props->mhd.hyp_dedner;
@@ -516,7 +517,7 @@ __attribute__((always_inline)) INLINE static void mhd_reset_predicted_values(
 
   /* Set Alfven speed */
   p->mhd_data.vA = mhd_get_comoving_alfven_speed(p, mu_0);
-  
+  p->mhd_data.c_fms = mhd_get_comoving_magnetosonic_speed(p);
 }
 
 /**
@@ -548,6 +549,7 @@ __attribute__((always_inline)) INLINE static void mhd_predict_extra(
   p->mhd_data.psi_over_ch += p->mhd_data.psi_over_ch_dt * dt_therm;
 
   p->mhd_data.vA = mhd_get_comoving_alfven_speed(p, mu_0);
+  p->mhd_data.c_fms = mhd_get_comoving_magnetosonic_speed(p);
   
 }
 
@@ -647,6 +649,7 @@ __attribute__((always_inline)) INLINE static void mhd_convert_quantities(
   p->mhd_data.B_over_rho[2] *= pow(cosmo->a, 1.5f * hydro_gamma);
 
   p->mhd_data.vA = mhd_get_comoving_alfven_speed(p, mu_0);
+  p->mhd_data.c_fms = mhd_get_comoving_magnetosonic_speed(p);
   
   xp->mhd_data.B_over_rho_full[0] = p->mhd_data.B_over_rho[0];
   xp->mhd_data.B_over_rho_full[1] = p->mhd_data.B_over_rho[1];

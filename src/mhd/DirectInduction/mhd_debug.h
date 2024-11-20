@@ -33,12 +33,12 @@ __attribute__((always_inline)) INLINE static void mhd_debug_particle(
       "B/rho=[%.3e,%.3e,%.3e], "
       "B/rho (pred)=[%.3e,%.3e,%.3e], "
       "d(B/rho)/dt=[%.3e,%.3e,%.3e], \n"
-      "divB=%.3e, v_fm=%.3e, psi/cs=%.3e, d(psi/c)/dt=%.3e\n",
+      "divB=%.3e, c_fms=%.3e, psi/ch=%.3e, d(psi/ch)/dt=%.3e\n",
       xp->mhd_data.B_over_rho_full[0], xp->mhd_data.B_over_rho_full[1],
       xp->mhd_data.B_over_rho_full[2], p->mhd_data.B_over_rho[0],
       p->mhd_data.B_over_rho[1], p->mhd_data.B_over_rho[2],
       p->mhd_data.B_over_rho_dt[0], p->mhd_data.B_over_rho_dt[1],
-      p->mhd_data.B_over_rho_dt[2], p->mhd_data.divB, p->mhd_data.v_fm,
+      p->mhd_data.B_over_rho_dt[2], p->mhd_data.divB, p->mhd_data.c_fms,
       p->mhd_data.psi_over_ch, p->mhd_data.psi_over_ch_dt);
 }
 
