@@ -143,9 +143,9 @@ runner_iact_nonsym_sinks_gas_density(
 
   /* Compute the kernel function */
   const float r = sqrtf(r2);
-  const float hi_inv = 1.0f / ri;
+  const float hi = ri/kernel_gamma;
+  const float hi_inv = 1.0f / hi;
   const float ui = r * hi_inv;
-  const float hi_inv_dim = pow_dimension(hi_inv); /* 1/h^d */
   kernel_deval(ui, &wi, &wi_dx);
 
   /* Neighbour gas mass */
@@ -155,16 +155,11 @@ runner_iact_nonsym_sinks_gas_density(
   /* AND the sink smoothing length */
   si->to_collect.minimal_h_gas = min(hj, si->to_collect.minimal_h_gas);
 
-  /* Contribution to the total neighbour mass */
-  si->to_collect.ngb_mass += mj;
-
   /* Contribution to the BH gas density */
-  si->to_collect.rho_gas += mj * wi * hi_inv_dim;
-  const float rho_inv = 1.f / si->to_collect.rho_gas;
+  si->to_collect.rho_gas += mj * wi;
 
   /* Contribution to the smoothed sound speed */
-  si->to_collect.sound_speed_gas +=
-      mj * wi * hydro_get_comoving_soundspeed(pj) * hi_inv_dim * rho_inv;
+  si->to_collect.sound_speed_gas += mj * wi * hydro_get_comoving_soundspeed(pj);
 
   /* Neighbour's (drifted) velocity in the frame of the sink
    * (we don't include a Hubble term since we are interested in the
@@ -173,9 +168,9 @@ runner_iact_nonsym_sinks_gas_density(
                        pj->v[2] - si->v[2]};
 
   /* Contribution to the smoothed velocity (gas w.r.t. black hole) */
-  si->to_collect.velocity_gas[0] += mj * dv[0] * wi * hi_inv_dim * rho_inv;
-  si->to_collect.velocity_gas[1] += mj * dv[1] * wi * hi_inv_dim * rho_inv;
-  si->to_collect.velocity_gas[2] += mj * dv[2] * wi * hi_inv_dim * rho_inv;
+  si->to_collect.velocity_gas[0] += mj * dv[0] * wi;
+  si->to_collect.velocity_gas[1] += mj * dv[1] * wi;
+  si->to_collect.velocity_gas[2] += mj * dv[2] * wi;
 }
 
 /**

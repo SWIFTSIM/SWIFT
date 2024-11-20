@@ -343,7 +343,23 @@ __attribute__((always_inline)) INLINE static void sink_kick_extra(
  * @param cosmo The current cosmological model.
  */
 __attribute__((always_inline)) INLINE static void sink_end_density(
-    struct sink* si, const struct cosmology* cosmo) {}
+    struct sink* si, const struct cosmology* cosmo) {
+
+  const float h = si->r_cut/kernel_gamma;
+  const float h_inv = 1.0f / h;                       /* 1/h */
+  const float h_inv_dim = pow_dimension(h_inv);       /* 1/h^d */
+
+  /* --- Finish the calculation by inserting the missing h factors --- */
+  si->to_collect.rho_gas *= h_inv_dim;
+  const float rho_inv = 1.f / si->to_collect.rho_gas;
+
+  /* For the following, we also have to undo the mass smoothing
+   * (N.B.: bp->velocity_gas is in BH frame, in internal units). */
+  si->to_collect.sound_speed_gas *= h_inv_dim * rho_inv;
+  si->to_collect.velocity_gas[0] *= h_inv_dim * rho_inv;
+  si->to_collect.velocity_gas[1] *= h_inv_dim * rho_inv;
+  si->to_collect.velocity_gas[2] *= h_inv_dim * rho_inv;
+}
 
 /**
  * @brief Sets all particle fields to sensible values when the #sink has 0
