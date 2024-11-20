@@ -76,11 +76,9 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
      of the two. */
   float v_rel[3];
   hydro_part_get_relative_fluid_velocity(p, v_rel);
-  float soundspeed =
-      W[0] == 0.f ? gas_soundspeed_from_pressure(W[0], W[4]) : 0.f;
   float vmax =
       sqrtf(v_rel[0] * v_rel[0] + v_rel[1] * v_rel[1] + v_rel[2] * v_rel[2]) +
-      soundspeed;
+      hydro_get_comoving_soundspeed(p);
   vmax = max(vmax, p->timestepvars.vmax);
 
   /* Get the comoving psize, since we will compare with another comoving
