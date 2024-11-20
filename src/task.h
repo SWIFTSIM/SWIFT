@@ -106,7 +106,8 @@ enum task_types {
   task_type_fof_attach_self,
   task_type_fof_attach_pair,
   task_type_neutrino_weight,
-  task_type_sink_in,     /* Implicit */
+  task_type_sink_in, /* Implicit */
+  task_type_sink_density_ghost,
   task_type_sink_ghost1, /* Implicit */
   task_type_sink_ghost2, /* Implicit */
   task_type_sink_out,    /* Implicit */
@@ -156,6 +157,7 @@ enum task_subtypes {
   task_subtype_do_gas_swallow,
   task_subtype_do_bh_swallow,
   task_subtype_bh_feedback,
+  task_subtype_sink_density,
   task_subtype_sink_do_sink_swallow,
   task_subtype_sink_swallow,
   task_subtype_sink_do_gas_swallow,
