@@ -2959,20 +2959,17 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
 
       scheduler_activate(s, t);
 
-      /* Activate the drifts & sync */
+      /* Activate drifts for self tasks */
       if (t->type == task_type_self) {
         cell_activate_drift_part(ci, s);
         cell_activate_drift_sink(ci, s);
-        if (with_timestep_sync) cell_activate_sync_part(ci, s);
       }
 
-      /* Activate the drift & sync tasks. */
+      /* Activate drifts for pair tasks */
       else if (t->type == task_type_pair) {
-
         if (ci_nodeID == nodeID) cell_activate_drift_sink(ci, s);
         if (ci_nodeID == nodeID) cell_activate_drift_part(ci, s);
         if (ci_nodeID == nodeID) cell_activate_sink_formation_tasks(ci->top, s);
-
         if (cj_nodeID == nodeID) cell_activate_drift_part(cj, s);
         if (cj_nodeID == nodeID) cell_activate_drift_sink(cj, s);
         if (cj_nodeID == nodeID) cell_activate_sink_formation_tasks(cj->top, s);
