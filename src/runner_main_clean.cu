@@ -658,7 +658,7 @@ void *runner_main2(void *data) {
     error("MPI_Comm_size failed with error %i.", res);
 #endif
   int count_max_parts_tmp =
-      100 * target_n_tasks * space->nr_parts * nr_nodes / (32*32*32);//space->nr_cells;
+      100 * target_n_tasks * space->nr_parts * nr_nodes / (64*64*64);//space->nr_cells;
   message("max_parts %i\n", count_max_parts_tmp);
   pack_vars_self_dens->count_max_parts = count_max_parts_tmp;
   pack_vars_pair_dens->count_max_parts = count_max_parts_tmp;

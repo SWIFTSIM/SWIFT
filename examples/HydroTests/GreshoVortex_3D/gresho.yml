@@ -8,7 +8,7 @@ InternalUnitSystem:
 
 Scheduler:
   max_top_level_cells: 15
-
+  tasks_per_cell: 200
 # Parameters governing the time integration
 TimeIntegration:
   time_begin: 0.    # The starting time of the simulation (in internal units).
