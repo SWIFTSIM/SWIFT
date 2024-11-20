@@ -369,17 +369,17 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
 /* Just a forward declaration... */
 #ifdef MOVING_MESH_HYDRO
 void runner_dopair1_branch_gradient(struct runner *r, struct cell *ci,
-                                   struct cell *cj);
+                                    struct cell *cj);
 void runner_doself1_branch_gradient(struct runner *r, struct cell *c);
 void runner_dopair_subset_branch_gradient(struct runner *r,
-                                         struct cell *restrict ci,
-                                         struct part *restrict parts_i,
-                                         int *restrict ind, int count,
-                                         struct cell *restrict cj);
+                                          struct cell *restrict ci,
+                                          struct part *restrict parts_i,
+                                          int *restrict ind, int count,
+                                          struct cell *restrict cj);
 void runner_doself_subset_branch_gradient(struct runner *r,
-                                         struct cell *restrict ci,
-                                         struct part *restrict parts,
-                                         int *restrict ind, int count);
+                                          struct cell *restrict ci,
+                                          struct part *restrict parts,
+                                          int *restrict ind, int count);
 #else
 void runner_dopair1_branch_density(struct runner *r, struct cell *ci,
                                    struct cell *cj);
