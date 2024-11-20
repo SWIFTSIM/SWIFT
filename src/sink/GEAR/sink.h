@@ -369,7 +369,19 @@ __attribute__((always_inline)) INLINE static void sink_end_density(
  * @param cosmo The current cosmological model.
  */
 __attribute__((always_inline)) INLINE static void sinks_sink_has_no_neighbours(
-    struct sink* restrict sp, const struct cosmology* cosmo) {}
+    struct sink* restrict sp, const struct cosmology* cosmo) {
+
+  warning(
+	  "Sink particle with ID %lld treated as having no neighbours (r_cut: %g, "
+	  "numb_ngbs: %i).",
+	  sp->id, sp->r_cut, sp->num_ngbs);
+
+  /* Reset problematic values */
+  sp->to_collect.velocity_gas[0] = sp->v[0];
+  sp->to_collect.velocity_gas[1] = sp->v[1];
+  sp->to_collect.velocity_gas[2] = sp->v[2];
+  sp->to_collect.minimal_h_gas = sp->r_cut/kernel_gamma;
+}
 
 /**
  * @brief Compute the accretion rate of the sink and any quantities
