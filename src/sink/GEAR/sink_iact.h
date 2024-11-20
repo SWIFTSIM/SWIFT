@@ -243,15 +243,23 @@ runner_iact_nonsym_sinks_sink_swallow(
   const float r = sqrtf(r2);
   const float f_acc_r_acc_i = sink_properties->f_acc * ri;
 
-  sink_collect_properties_from_sink(r2, dx, ri, rj, si, sj, grav_props);
-
   /* Determine if the sink is dead, i.e. if its age is bigger than the
      age_threshold_unlimited */
-  const int sink_age = sink_get_sink_age(si, with_cosmology, cosmo, time);
-  char is_dead = sink_age > sink_properties->age_threshold_unlimited;
+  const int si_age = sink_get_sink_age(si, with_cosmology, cosmo, time);
+  char si_is_dead = si_age > sink_properties->age_threshold_unlimited;
 
-  /* If si is dead, do not swallow sj. However, sj can swallow si. */
-  if (is_dead) {
+  const int sj_age = sink_get_sink_age(sj, with_cosmology, cosmo, time);
+  char sj_is_dead = sj_age > sink_properties->age_threshold_unlimited;
+
+  /* Collect the properties for 2-body interactions if one is sink is alive. If
+     they are both dead, we do not want to restrict the timesteps for 2-body
+     encounters since they won't merge. */
+  if (!si_is_dead || !sj_is_dead) {
+    sink_collect_properties_from_sink(r2, dx, ri, rj, si, sj, grav_props);
+  }
+
+  /* If si is dead, do not swallow sj. However, sj can swallow si if it alive. */
+  if (si_is_dead) {
     return;
   }
 
