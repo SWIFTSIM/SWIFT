@@ -6,44 +6,6 @@ Cell Construction and Their Hierarchy
 
 At it's root SWIFT is a cartesian grid of cells holding particles, on which computations can be performed. When defining a single cartesian grid for a zoom simulation the calculation becomes inbalanced with most of the work confined to a single (or handful of) cell(s). To combat this a hierachy of cell grids is introduced to better resolve the work. That hierachy and its construction is defined here.
 
-There are 3 approaches to cell grid construction for zoom simulations. Each of these is tailored to a specific use case depending on the size of the zoom region relative to the box. These are a necessity due to the performance constraints inherent at the ends of the range of spatial scales a zoom simulation can cover.
-
-
-Intermediate Zoom Regions
--------------------------
-
-.. figure:: figures/intermediate_cells.png
-            :width: 400px
-            :align: center
-            :alt: Intermediate zoom region cells
-
-At the intermediate scales, the zoom region must tesselate the entire box an integer number of times. A background cell is therefore the size of the zoom region and no buffer cells are employed. This is the simplest approach.
-
-Large Zoom Regions
-------------------
-
-
-.. figure:: figures/large_cells.png
-            :width: 400px
-            :align: center
-            :alt: Large zoom region cells
-
-When the zoom region is an appreciable percentage of the volume the above simple approach fails since it can in the worst case produce a 3x3x3 cell grid. This not only leads to a very poorly resolved background but can also increase the size of the zoom region leading to a poorly resolved zoom region too.
-
-To stop this from happening the number of zoom regions needed to tesselate the periodic box an integer number of times is found (while keeping the zoom region dimensions as close to ``ZoomRegion:region_pad_factor`` times high resolution particle extent). The number of background cells along an axis is then divided by two until it reaches the target set by ``ZoomRegion:bkg_top_level_cells`` ensuring both the zoom region and background are sufficiently well resolved for task construction.
-
-
-
-Small Zoom Regions
-------------------
-
-.. figure:: figures/small_cells.png
-            :width: 400px
-            :align: center
-            :alt: Small zoom region cells
-
-For small zoom regions applying the naive approach used at intermediate spatial scales results in far too many background cells bogging down the calculation. To avoid this the number of background cells is set to `ZoomRegion:bkg_top_level_cells` exactly. The background cell/s containing the zoom region are then populated with buffer cells which bridge the gap between the background cell scale and the zoom region scale. This ensures the background isn’t resolved with pointlessly high resolution while making sure the zoom region does not need to drastically increase in size. This also has the bonus of increasing the cell resolution around the zoom region where the background resolution also increases.
-
 Cell Construction
 -----------------
 
