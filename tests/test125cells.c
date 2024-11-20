@@ -559,7 +559,9 @@ int main(int argc, char *argv[]) {
   space.dim[0] = 5.;
   space.dim[1] = 5.;
   space.dim[2] = 5.;
-  hydro_space_init(&space.hs, &space);
+  struct swift_params params;
+  bzero(&params, sizeof(struct swift_params));
+  hydro_space_init(&space.hs, &space, &params);
 
   struct phys_const prog_const;
   prog_const.const_newton_G = 1.f;
