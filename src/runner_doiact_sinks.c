@@ -31,6 +31,12 @@
 #include "space_getsid.h"
 #include "timers.h"
 
+/* Import the sink density loop functions. */
+#define FUNCTION density
+#define FUNCTION_TASK_LOOP TASK_LOOP_DENSITY
+#include "runner_doiact_functions_sinks.h"
+#include "runner_doiact_undef.h"
+
 /* Import the sink swallow loop functions. */
 #define FUNCTION swallow
 #define FUNCTION_TASK_LOOP TASK_LOOP_SWALLOW

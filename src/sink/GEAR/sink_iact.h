@@ -118,6 +118,39 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_sink(
 }
 
 /**
+ * @brief Density interaction between two particles (non-symmetric).
+ *
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (pi - pj).
+ * @param ri Comoving cut off radius of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param si First particle (sink).
+ * @param pj Second particle (gas, not updated).
+ * @param with_cosmology Are we doing a cosmological run?
+ * @param cosmo The cosmological model.
+ * @param grav_props The properties of the gravity scheme (softening, G, ...).
+ * @param sink_props the sink properties to use.
+ * @param ti_current Current integer time value (for random numbers).
+ * @param time current physical time in the simulation
+ */
+__attribute__((always_inline)) INLINE static void
+runner_iact_nonsym_sinks_gas_density(
+    const float r2, const float dx[3], const float ri, const float hj,
+    struct sink *si, const struct part *pj, const int with_cosmology,
+    const struct cosmology *cosmo, const struct gravity_props *grav_props,
+    const struct sink_props *sink_props, const integertime_t ti_current,
+    const double time) {
+
+  /* Get r. */
+  const float r = sqrtf(r2);
+
+  if (r < ri) {
+    /* Contribution to the number of neighbours in cutoff radius */
+    si->num_ngbs++;
+  }
+}
+
+/**
  * @brief Compute sink-sink swallow interaction (non-symmetric).
  *
  * Note: Energies are computed with physical quantities, not the comoving ones.
@@ -132,6 +165,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_sink(
  * @param cosmo The cosmological parameters and properties.
  * @param grav_props The gravity scheme parameters and properties.
  * @param sink_props the sink properties to use.
+ * @param ti_current Current integer time value (for random numbers).
+ * @param time current physical time in the simulation
  */
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_sinks_sink_swallow(
@@ -139,7 +174,8 @@ runner_iact_nonsym_sinks_sink_swallow(
     struct sink *restrict si, struct sink *restrict sj,
     const int with_cosmology, const struct cosmology *cosmo,
     const struct gravity_props *grav_props,
-    const struct sink_props *sink_properties) {
+    const struct sink_props *sink_properties, const integertime_t ti_current,
+    const double time) {
 
   const float r = sqrtf(r2);
   const float f_acc_r_acc_i = sink_properties->f_acc * ri;
@@ -260,16 +296,17 @@ runner_iact_nonsym_sinks_sink_swallow(
  * @param cosmo The cosmological parameters and properties.
  * @param grav_props The gravity scheme parameters and properties.
  * @param sink_props the sink properties to use.
+ * @param ti_current Current integer time value (for random numbers).
+ * @param time current physical time in the simulation
  */
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_sinks_gas_swallow(const float r2, const float dx[3],
-                                     const float ri, const float hj,
-                                     struct sink *restrict si,
-                                     struct part *restrict pj,
-                                     const int with_cosmology,
-                                     const struct cosmology *cosmo,
-                                     const struct gravity_props *grav_props,
-                                     const struct sink_props *sink_properties) {
+runner_iact_nonsym_sinks_gas_swallow(
+    const float r2, const float dx[3], const float ri, const float hj,
+    struct sink *restrict si, struct part *restrict pj,
+    const int with_cosmology, const struct cosmology *cosmo,
+    const struct gravity_props *grav_props,
+    const struct sink_props *sink_properties, const integertime_t ti_current,
+    const double time) {
 
   const float r = sqrtf(r2);
   const float f_acc_r_acc = sink_properties->f_acc * ri;

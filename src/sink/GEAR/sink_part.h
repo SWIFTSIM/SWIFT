@@ -55,6 +55,9 @@ struct sink {
   /*! Sink target mass. In Msun. */
   float target_mass_Msun;
 
+  /*! Integer number of neighbours */
+  int num_ngbs;
+
   /*! Mass of the sink before starting the star spawning loop */
   float mass_tot_before_star_spawning;
 
