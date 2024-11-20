@@ -2902,21 +2902,12 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         task_type_pair || t->type == task_type_sub_pair) {  // A. Nasar NEED to think about how to do this with
                            // MPI where ci may not be on this node/rank
       if (t->subtype == task_subtype_gpu_pack) {
-        if (t->ci->nodeID == s->nodeID)
-          atomic_inc(&s->queues[qid].n_packs_pair_left);
-        else
           atomic_inc(&s->queues[qid].n_packs_pair_left);
       }
       if (t->subtype == task_subtype_gpu_pack_f) {
-        if (t->ci->nodeID == s->nodeID)
-          atomic_inc(&s->queues[qid].n_packs_pair_left_f);
-        else
           atomic_inc(&s->queues[qid].n_packs_pair_left_f);
       }
       if (t->subtype == task_subtype_gpu_pack_g) {
-        if (t->ci->nodeID == s->nodeID)
-          atomic_inc(&s->queues[qid].n_packs_pair_left_g);
-        else
           atomic_inc(&s->queues[qid].n_packs_pair_left_g);
       }
     }

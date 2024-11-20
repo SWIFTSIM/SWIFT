@@ -5394,13 +5394,14 @@ void engine_maketasks(struct engine *e) {
 //	  t->subtype == task_subtype_gpu_unpack_f){
 //    	t->implicit = 1;
 //    }
-//    if ((t->subtype == task_subtype_gpu_pack ||
-//      t->subtype == task_subtype_gpu_pack_g  ||
-//	  t->subtype == task_subtype_gpu_pack_f) &&
-//	  (t->type == task_type_sub_pair ||
-//	  t->type == task_type_sub_self)){
-////    	error("STill have subs");
-//    }
+    if ((t->subtype == task_subtype_gpu_pack ||
+      t->subtype == task_subtype_gpu_pack_g  ||
+	  t->subtype == task_subtype_gpu_pack_f) &&
+	  (t->type == task_type_sub_pair ||
+	  t->type == task_type_sub_self)){
+    	t->implicit = 1;
+//    	error("STill have subs");
+    }
   }
 
 }

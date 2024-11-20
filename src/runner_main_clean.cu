@@ -2126,6 +2126,13 @@ void *runner_main2(void *data) {
       if (t->subtype == task_subtype_gpu_pack) {
 #ifdef GPUOFFLOAD_DENSITY
         if (t->type == task_type_sub_self || t->type == task_type_sub_pair){
+      	  int qid = r->qid;
+      	  if (t->type == task_type_sub_pair){
+      		  atomic_dec(&(sched->queues[qid].n_packs_pair_left));
+      	  }
+      	  if (t->type == task_type_sub_self){
+      		  atomic_dec(&(sched->queues[qid].n_packs_self_left));
+      	  }
     	  t = scheduler_done(sched, t);
         }
     	else{
@@ -2145,6 +2152,13 @@ void *runner_main2(void *data) {
       else if (t->subtype == task_subtype_gpu_pack_g) {
 #ifdef GPUOFFLOAD_GRADIENT
         if (t->type == task_type_sub_self || t->type == task_type_sub_pair){
+      	  int qid = r->qid;
+      	  if (t->type == task_type_sub_pair){
+      		  atomic_dec(&(sched->queues[qid].n_packs_pair_left_g));
+      	  }
+      	  if (t->type == task_type_sub_self){
+      		  atomic_dec(&(sched->queues[qid].n_packs_self_left_g));
+      	  }
       	  t = scheduler_done(sched, t);
         }
       	else{
@@ -2164,6 +2178,13 @@ void *runner_main2(void *data) {
       else if (t->subtype == task_subtype_gpu_pack_f) {
 #ifdef GPUOFFLOAD_FORCE
       	if (t->type == task_type_sub_self || t->type == task_type_sub_pair){
+        	  int qid = r->qid;
+        	  if (t->type == task_type_sub_pair){
+        		  atomic_dec(&(sched->queues[qid].n_packs_pair_left_f));
+        	  }
+        	  if (t->type == task_type_sub_self){
+        		  atomic_dec(&(sched->queues[qid].n_packs_self_left_f));
+        	  }
       		t = scheduler_done(sched, t);
       	}
         /* Don't enqueue unpacks yet. Just signal the runners */
