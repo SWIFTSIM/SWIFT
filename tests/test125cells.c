@@ -117,7 +117,7 @@ void set_energy_state(struct part *part, enum pressure_field press, float size,
   part->u = pressure / (hydro_gamma_minus_one * density);
 #elif defined(PLANETARY_SPH)
   part->u = pressure / (hydro_gamma_minus_one * density);
-#elif defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH)
+#elif defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH) || defined(SHADOWSWIFT)
   part->conserved.energy = pressure / (hydro_gamma_minus_one * density);
 #else
   error("Need to define pressure here !");
@@ -664,17 +664,17 @@ int main(int argc, char *argv[]) {
     for (int j = 0; j < 125; ++j)
       runner_do_hydro_sort(&runner, cells[j], 0x1FFF, 0, 0, 0);
 
+#ifndef MOVING_MESH_HYDRO
       /* Do the density calculation */
 
-/* Initialise the particle cache. */
+      /* Initialise the particle cache. */
 #ifdef WITH_VECTORIZATION
     runner.ci_cache.count = 0;
     runner.cj_cache.count = 0;
     cache_init(&runner.ci_cache, 512);
     cache_init(&runner.cj_cache, 512);
 #endif
-
-    /* Run all the  (only once !)*/
+    /* Run all the pairs (only once !)*/
     for (int i = 0; i < 5; i++) {
       for (int j = 0; j < 5; j++) {
         for (int k = 0; k < 5; k++) {
@@ -710,6 +710,7 @@ int main(int argc, char *argv[]) {
 
     /* Ghost to finish everything on the central cells */
     for (int j = 0; j < 27; ++j) runner_do_ghost(&runner, inner_cells[j], 0);
+#endif
 
 #ifdef EXTRA_HYDRO_LOOP
     /* We need to do the gradient loop and the extra ghost! */
@@ -756,6 +757,7 @@ int main(int argc, char *argv[]) {
 
 #endif /* EXTRA_HYDRO_LOOP */
 
+#ifndef MOVING_MESH_HYDRO
       /* Do the force calculation */
 
 #ifdef WITH_VECTORIZATION
@@ -797,6 +799,7 @@ int main(int argc, char *argv[]) {
     runner_do_end_hydro_force(&runner, main_cell, 0);
     const ticks toc = getticks();
     time += toc - tic;
+#endif
 
     /* Dump if necessary */
     if (n == 0) {
@@ -855,6 +858,7 @@ int main(int argc, char *argv[]) {
   // for (int j = 0; j < 125; ++j) runner_do_drift_particles(&runner, cells[j],
   // 0);
 
+#ifndef MOVING_MESH_HYDRO
   /* Do the density calculation */
 
   /* Run all the pairs (only once !)*/
@@ -892,6 +896,7 @@ int main(int argc, char *argv[]) {
 
   /* Ghost to finish everything on the central cells */
   for (int j = 0; j < 27; ++j) runner_do_ghost(&runner, inner_cells[j], 0);
+#endif
 
 #ifdef EXTRA_HYDRO_LOOP
   /* We need to do the gradient loop and the extra ghost! */
@@ -935,6 +940,7 @@ int main(int argc, char *argv[]) {
 
 #endif /* EXTRA_HYDRO_LOOP */
 
+#ifndef MOVING_MESH_HYDRO
   /* Do the force calculation */
 
   /* Do the pairs (for the central 27 cells) */
@@ -955,6 +961,7 @@ int main(int argc, char *argv[]) {
   /* Finally, give a gentle kick */
   runner_do_end_hydro_force(&runner, main_cell, 0);
   // runner_do_kick2(&runner, main_cell, 0);
+#endif
 
   const ticks toc = getticks();
 
