@@ -133,7 +133,7 @@
 
 /* Options controlling particle movement */
 /*! @brief This option disables cell movement */
-//#define SHADOWSWIFT_FIX_PARTICLES
+// #define SHADOWSWIFT_FIX_PARTICLES
 /*! @brief This option enables cell steering, i.e. trying to keep the cells
  * regular by adding a correction to the cell velocities.*/
 #ifndef SHADOWSWIFT_FIX_PARTICLES
@@ -150,7 +150,7 @@
 
 /*! @brief This option enables a (more) exact gravitational work term */
 #ifndef RIEMANN_SOLVER_HLLC
-//#define SHADOWSWIFT_EXACT_GRAV_WORK
+// #define SHADOWSWIFT_EXACT_GRAV_WORK
 #endif
 
 /*! @brief This option enables boundary conditions for non-periodic ShadowSWIFT

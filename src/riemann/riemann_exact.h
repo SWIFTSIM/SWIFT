@@ -43,7 +43,6 @@
 #include "riemann_common.h"
 #include "riemann_vacuum.h"
 
-
 /**
  * @brief Function (4.5) in Toro
  *

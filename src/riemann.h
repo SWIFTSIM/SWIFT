@@ -39,8 +39,7 @@
 
 #elif defined(RIEMANN_SOLVER_TSRS)
 
-#define RIEMANN_SOLVER_IMPLEMENTATION \
-  "Two Shock Riemann Solver (Toro 2009)"
+#define RIEMANN_SOLVER_IMPLEMENTATION "Two Shock Riemann Solver (Toro 2009)"
 #include "riemann/riemann_tsrs.h"
 
 #elif defined(RIEMANN_SOLVER_HLLC)

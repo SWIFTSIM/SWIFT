@@ -743,8 +743,8 @@ static inline int geometry3d_compute_circumcenter_relative_non_exact(
   if (fabs(a) <= errbound) {
     /* (Almost) coplanar tetrahedron, fallback to exact/coplanar test */
     return 0;
-//    return geometry3d_compute_circumcenter_coplanar(v0, v1, v2, v3,
-//                                                    circumcenter);
+    //    return geometry3d_compute_circumcenter_coplanar(v0, v1, v2, v3,
+    //                                                    circumcenter);
   }
 
   /* Compute Dx */

@@ -76,8 +76,8 @@ __attribute__((always_inline)) INLINE static void riemann_sample(
     const float* restrict n_unit, float vL, float vR, float aL, float aR,
     float P_star, float* restrict Whalf) {
   /* calculate the velocity in the intermediate state */
-  float v_star =
-      0.5f * (vL + vR) + 0.5f * (riemann_fb(P_star, WR, aR) - riemann_fb(P_star, WL, aL));
+  float v_star = 0.5f * (vL + vR) + 0.5f * (riemann_fb(P_star, WR, aR) -
+                                            riemann_fb(P_star, WL, aL));
 
   /* variables used for sampling the solution */
   float vhalf;

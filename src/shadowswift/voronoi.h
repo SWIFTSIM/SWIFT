@@ -34,13 +34,11 @@
 
 #ifdef SWIFT_DEBUG_CHECKS
 /*! @brief Activate runtime assertions. */
- #define VORONOI_DO_ASSERTIONS
+#define VORONOI_DO_ASSERTIONS
 
 /*! @brief Activate extra (expensive) checks */
 // #define VORONOI_CHECKS
 #endif
-
-
 
 /*! @brief The minimal relative face size in 1D of voronoi faces */
 #define MIN_REL_FACE_SIZE 0.0
