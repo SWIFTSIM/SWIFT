@@ -92,9 +92,6 @@ struct sink {
       sink (internal units) */
     float velocity_gas[3];
 
-    /*! Total mass of the gas neighbours. */
-    float ngb_mass;
-
     /*! Minimal t_c between all sink neighbours */
     float minimal_sink_t_c;
 
