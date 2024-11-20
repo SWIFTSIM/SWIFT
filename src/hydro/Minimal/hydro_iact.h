@@ -327,8 +327,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 #endif
 
   /* Cosmological factors entering the EoMs */
-  const float fac_mu = pow_three_gamma_minus_five_over_two(a);
-  const float a2_Hubble = a * a * H;
+  // const float fac_mu = pow_three_gamma_minus_five_over_two(a);
+  // const float a2_Hubble = a * a * H;
 
   /* Get r and 1/r. */
   const float r = sqrtf(r2);
@@ -372,34 +372,52 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
                      (pi->v[2] - pj->v[2]) * dx[2];
 
   /* Add Hubble flow */
-  const float dvdr_Hubble = dvdr + a2_Hubble * r2;
+  // const float dvdr_Hubble = dvdr + a2_Hubble * r2;
 
   /* Are the particles moving towards each others ? */
-  const float omega_ij = min(dvdr_Hubble, 0.f);
-  const float mu_ij = fac_mu * r_inv * omega_ij; /* This is 0 or negative */
-
-  /* Compute signal velocity */
-  const float v_sig =
-      signal_velocity(dx, pi, pj, mu_ij, const_viscosity_beta, a, mu_0);
-
-  /* Grab balsara switches */
-  const float balsara_i = pi->force.balsara;
-  const float balsara_j = pj->force.balsara;
+  // const float omega_ij = min(dvdr_Hubble, 0.f);
+  // const float mu_ij = fac_mu * r_inv * omega_ij; /* This is 0 or negative */
 
   /* MATTHIEU START --------------------------------------- */
 
-  const float alpha_visc = 0.5f * (pi->alpha_visc + pj->alpha_visc);
-  const float balsara = 0.5f * (balsara_i + balsara_j);
+  /* Magnetosonic speed (Price 2018, eq. 180) */
+  const float c_h_i = sqrtf(pi->force.soundspeed * pi->force.soundspeed +
+                            pi->Alfven_speed * pi->Alfven_speed);
+  const float c_h_j = sqrtf(pj->force.soundspeed * pj->force.soundspeed +
+                            pj->Alfven_speed * pj->Alfven_speed);
+
+  /* Compute signal velocity *
+   * Price 2018, eq. 41 */
+  const float v_sig_i =
+      pi->alpha_visc * c_h_i + const_viscosity_beta * fabsf(dvdr) * r_inv;
+  const float v_sig_j =
+      pj->alpha_visc * c_h_j + const_viscosity_beta * fabsf(dvdr) * r_inv;
+
+  /* Price 2018, text below eq. 72 */
+  const float v_sig_dt_i = fmaxf(pj->alpha_visc, 1.f) * pj->force.soundspeed +
+                           const_viscosity_beta * fabsf(dvdr) * r_inv;
+
+  /* Viscosity terms
+   * Price 2018, eq. 40 */
+  float q_i = 0.f;
+  if (dvdr < 0.) {
+    q_i = -0.5f * rhoi * v_sig_i * dvdr * r_inv;
+  }
+  float q_j = 0.f;
+  if (dvdr < 0.) {
+    q_j = -0.5f * rhoj * v_sig_j * dvdr * r_inv;
+  }
+  // TODO: cosmo terms!
+
+  const float q_over_rho2_i = q_i / (rhoi * rhoi) * f_ij;
+  const float q_over_rho2_j = q_j / (rhoj * rhoj) * f_ji;
+
+  /* Convolve with the kernel
+   * (Price 2018, eq. 39) */
+  const float visc_acc_term =
+      (q_over_rho2_i * wi_dr + q_over_rho2_j * wj_dr) * r_inv;
 
   /* MATTHIEU END ----------------------------------------- */
-
-  /* Construct the full viscosity term */
-  const float rho_ij = 0.5f * (rhoi + rhoj);
-  const float visc = -0.5f * v_sig * alpha_visc * balsara * mu_ij / rho_ij;
-
-  /* Convolve with the kernel */
-  const float visc_acc_term =
-      0.5f * visc * (wi_dr * f_ij + wj_dr * f_ji) * r_inv;
 
   /* SPH acceleration term */
   const float sph_acc_term =
@@ -420,8 +438,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   /* Get the time derivative for u. */
   const float sph_du_term_i = P_over_rho2_i * dvdr * r_inv * wi_dr;
 
-  /* Viscosity term */
-  const float visc_du_term = 0.5f * visc_acc_term * dvdr_Hubble;
+  /* MATTHIEU START --------------------------------------- */
+
+  /* Viscosity term
+   * (Price 2018, eq. 42, first term) */
+  const float visc_du_term =
+      -0.5f * v_sig_i * dvdr * dvdr * r_inv * r_inv * wi_dr * f_ij / rhoi;
+
+  /* MATTHIEU END ----------------------------------------- */
 
   /* Assemble the energy equation term */
   const float du_dt_i = sph_du_term_i + visc_du_term;
@@ -433,7 +457,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   pi->force.h_dt -= mj * dvdr * r_inv / rhoj * wi_dr * f_ij;
 
   /* Update the signal velocity. */
-  pi->force.v_sig = max(pi->force.v_sig, v_sig);
+  pi->force.v_sig = max(pi->force.v_sig, v_sig_dt_i);
 
   /* MATTHIEU START --------------------------------------- */
 
@@ -571,12 +595,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   pi->a_hydro[2] -= mj * one_over_mu0 * mhd_acc_corr_i[2];
 
   /* Dedner correction ----------------------------------- */
-
-  /* Magnetosonic speed (Price 2018, eq. 180) */
-  const float c_h_i = sqrtf(pi->force.soundspeed * pi->force.soundspeed +
-                            pi->Alfven_speed * pi->Alfven_speed);
-  const float c_h_j = sqrtf(pj->force.soundspeed * pj->force.soundspeed +
-                            pj->Alfven_speed * pj->Alfven_speed);
 
   const float Psi_i = pi->Dedner_Psi_over_c * c_h_i;
   const float Psi_j = pj->Dedner_Psi_over_c * c_h_j;

@@ -469,15 +469,19 @@ __attribute__((always_inline)) INLINE static float hydro_signal_velocity(
 
   /* MATTHIEU START --------------------------------------- */
 
-  const float ci = pi->force.soundspeed;
-  const float cj = pj->force.soundspeed;
+  error("aaaa");
 
-  /* Price 2018, eq. 180 */
-  const float vi = sqrtf(ci * ci + pi->Alfven_speed * pi->Alfven_speed);
-  const float vj = sqrtf(cj * cj + pj->Alfven_speed * pj->Alfven_speed);
+  /* const float ci = pi->force.soundspeed; */
+  /* const float cj = pj->force.soundspeed; */
 
-  /* Price 2018, eq. 179 */
-  return vi + vj - beta * mu_ij;
+  /* /\* Price 2018, eq. 180 *\/ */
+  /* const float vi = sqrtf(ci * ci + pi->Alfven_speed * pi->Alfven_speed); */
+  /* const float vj = sqrtf(cj * cj + pj->Alfven_speed * pj->Alfven_speed); */
+
+  /* /\* Price 2018, eq. 179 *\/ */
+  /* return vi + vj - beta * mu_ij; */
+
+  return -1.f;
 
   /* MATTHIEU END ----------------------------------------- */
 }
@@ -815,7 +819,7 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
   /* Reset the time derivatives. */
   p->u_dt = 0.0f;
   p->force.h_dt = 0.0f;
-  p->force.v_sig = 2.f * p->force.soundspeed;
+  p->force.v_sig = p->force.soundspeed;
 
   /* MATTHIEU START --------------------------------------- */
 
