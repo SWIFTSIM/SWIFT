@@ -105,7 +105,7 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
         part->id = ++(*partId);
 
 /* Set the mass */
-#if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH)
+#if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH) || defined(SHADOWSWIFT)
         part->conserved.mass = density * volume / count;
 #else
         part->mass = density * volume / count;

@@ -283,7 +283,7 @@ struct cell *make_cell(size_t n, const double offset[3], double size, double h,
         part->h = size * h / (float)n;
         h_max = fmax(h_max, part->h);
 
-#if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH)
+#if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH) || defined(SHADOWSWIFT)
         part->conserved.mass = density * volume / count;
 #else
         part->mass = density * volume / count;
@@ -374,7 +374,7 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
 #if defined(MINIMAL_SPH) || defined(PLANETARY_SPH) ||              \
     defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH) ||            \
     defined(HOPKINS_PU_SPH) || defined(HOPKINS_PU_SPH_MONAGHAN) || \
-    defined(GASOLINE_SPH)
+    defined(GASOLINE_SPH) || defined(SHADOWSWIFT)
             0.f,
 #elif defined(ANARCHY_PU_SPH) || defined(SPHENIX_SPH) || defined(PHANTOM_SPH)
             main_cell->hydro.parts[pid].viscosity.div_v,
