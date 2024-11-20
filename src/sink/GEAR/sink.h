@@ -73,7 +73,7 @@ __attribute__((always_inline)) INLINE static float sink_compute_timestep(
                        gas_v_phys[1] * gas_v_phys[1] +
                        gas_v_phys[2] * gas_v_phys[2];
 
-  /* This case can happen if the sink is just born or without gas neighbour. */
+  /* This case can happen if the sink is just born. */
   if (gas_v_norm2 == 0.0) {
     /* gas_v is the relative velocity. If there is no gas, it's just the sink
        velocity. */
