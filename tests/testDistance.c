@@ -50,7 +50,7 @@ void compute_interaction(struct part *pi, struct part *pj, float mu_0, float a,
     double shift[3] = {0., 0., 0.};
     double centroid[3] = {pj->x[0] + 0.5 * dx[0], pj->x[1] + 0.5 * dx[1],
                           pj->x[2] + 0.5 * dx[2]};
-    double pert = 0.5 * fmin(sqrtf(r2), fmax(pi->h, pj->h));
+    double pert = 0.5 * fmin(sqrtf(r2), fmaxf(pi->h, pj->h));
     for (int i = 0; i < 3; i++) {
       centroid[i] += random_uniform(0., pert);
     }
