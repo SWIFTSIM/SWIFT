@@ -63,7 +63,7 @@ __attribute__((always_inline)) INLINE static float sink_compute_timestep(
     return FLT_MAX;
   }
 
-  /* CFL condition for sink. Notice the conversion to phyiscal units. */
+  /* CFL condition for sink. Notice the conversion to physical units ------- */
   const float CFL_condition = sink_properties->CFL_condition;
   const double gas_v_phys[3] = {
       sink->to_collect.velocity_gas[0] * cosmo->a_inv,
@@ -90,17 +90,17 @@ __attribute__((always_inline)) INLINE static float sink_compute_timestep(
       min(sink->r_cut, sink->to_collect.minimal_h_gas * kernel_gamma);
   const float dt_cfl = 2.f * CFL_condition * h_min / denominator;
 
-  /* Free fall time condition: the sink must anticipate gas collapse */
+  /* Free fall time condition: the sink must anticipate gas collapse ------- */
   const float rho_sink =
       3.0 * sink->mass / (4.0 * M_PI * h_min * h_min * h_min);
   const float dt_ff =
       sqrtf(3.0 * M_PI / (32.0 * grav_props->G_Newton * rho_sink));
 
-  /* Compute sink-sink orbital integration timestep */
+  /* Compute sink-sink orbital integration timestep ------------------------ */
   float dt_2_body = 0.0;
 
-  /* If there are no sink neighbour, then the values are FLT_MAX. Prevent
-     giving a NaN to th timestep */
+  /* If there are no sink neighbours, then the values are FLT_MAX. Prevent
+     giving a NaN to the timestep */
   if ((sink->to_collect.minimal_sink_t_c == FLT_MAX) ||
       (sink->to_collect.minimal_sink_t_dyn == FLT_MAX)) {
     dt_2_body = FLT_MAX;
@@ -111,6 +111,7 @@ __attribute__((always_inline)) INLINE static float sink_compute_timestep(
                  sink->to_collect.minimal_sink_t_dyn);
   }
 
+  /* SF - accretion timestep ------------------------------------------------*/
   /* Now, limit timestep by computing how much we restricted the sink accretion
      for SF reasons compared to an unrestricted accretion. */
   const float M_SF = sink_properties->n_star * sink->mass_IMF;
@@ -142,26 +143,25 @@ __attribute__((always_inline)) INLINE static float sink_compute_timestep(
   /* Sink age (in internal units) */
   double sink_age = sink_get_sink_age(sink, with_cosmology, cosmo, time);
 
-  /* message( */
-  /*     "sink %lld, rho_gas = %e, c_s = %e, gas_v_phys = (%e %e %e), h_min =
-   * %e, " */
-  /*     "rho_sink = %e, denominator = %e, birth_time = %e, t_dyn_min = %e,
-   * Delta_M = %e" */
-  /*     " M_IMF = %e, M_eligible = %e, time = %e, Dt_current = %e, age = %e",
-   */
-  /*     sink->id, sink->to_collect.rho_gas, gas_c_phys, gas_v_phys[0], */
-  /*     gas_v_phys[1], gas_v_phys[2], h_min, rho_sink, denominator, */
-  /*     sink->birth_time, sink->to_collect.minimal_sink_t_dyn, Delta_M, */
-  /*     sink->mass_IMF, sink->to_collect.mass_eligible_swallow, time, */
-  /*     get_timestep(sink->time_bin, time_base), sink_age); */
+  message(
+      "sink %lld, rho_gas = %e, c_s = %e, gas_v_phys = (%e %e %e), h_min = %e, "
+      "rho_sink = %e, denominator = %e, birth_time = %e, t_dyn_min = %e, Delta_M = %e"
+      " M_IMF = %e, M_eligible = %e, time = %e, Dt_current = %e, age = %e",
+      sink->id, sink->to_collect.rho_gas, gas_c_phys, gas_v_phys[0],
+      gas_v_phys[1], gas_v_phys[2], h_min, rho_sink, denominator,
+      sink->birth_time, sink->to_collect.minimal_sink_t_dyn, Delta_M,
+      sink->mass_IMF, sink->to_collect.mass_eligible_swallow, time,
+      get_timestep(sink->time_bin, time_base), sink_age);
 
-  /* Take the minimum dt */
+  /* Take the minimum dt --------------------------------------------------- */
   float dt = min3(dt_cfl, dt_ff, dt_SF);
 
   /* What age category are we in? */
   if (sink_age > sink_properties->age_threshold_unlimited) {
     /* message("unlimited sink age, age = %e, dt_2-body = %e", sink_age, */
     /* dt_2_body); */
+    /* Only follow the sink 2-body interaction to determine if the dead sink
+       will merge with the other one. */
     return dt_2_body;
   } else if (sink_age > sink_properties->age_threshold) {
     dt = min3(dt, dt_2_body, sink_properties->max_time_step_old);
