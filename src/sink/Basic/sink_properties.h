@@ -48,7 +48,8 @@ struct sink_props {
   /*! Maximal change of h over one time-step */
   float log_max_h_change;
 
-  /*! Are we using a fixed cutoff radius? (all smoothing length calculations are disabled if so) */
+  /*! Are we using a fixed cutoff radius? (all smoothing length calculations are
+   * disabled if so) */
   char use_fixed_r_cut;
 
   /* Use nibbling rather than swallowing for gas? */
@@ -56,7 +57,6 @@ struct sink_props {
 
   /* Gas mass below which sinks will not nibble. */
   float min_gas_mass_for_nibbling;
-
 };
 
 /**
@@ -69,16 +69,14 @@ struct sink_props {
  * @param cosmo The cosmological model.
  * @param with_feedback Are we running with feedback?
  */
-INLINE static void sink_props_init(struct sink_props *sp,
-                                   struct feedback_props *fp,
-                                   const struct phys_const *phys_const,
-                                   const struct unit_system *us,
-                                   struct swift_params *params,
-                                   const struct hydro_props *hydro_props,
-                                   const struct cosmology *cosmo,
-                                   const int with_feedback) {
-  
-  /* We don't use a fixed cutoff radius in this model. This property must always be specified. */
+INLINE static void sink_props_init(
+    struct sink_props *sp, struct feedback_props *fp,
+    const struct phys_const *phys_const, const struct unit_system *us,
+    struct swift_params *params, const struct hydro_props *hydro_props,
+    const struct cosmology *cosmo, const int with_feedback) {
+
+  /* We don't use a fixed cutoff radius in this model. This property must always
+   * be specified. */
   sp->use_fixed_r_cut = 0;
 
   /* Read in the basic neighbour search properties or default to the hydro
@@ -114,8 +112,8 @@ INLINE static void sink_props_init(struct sink_props *sp,
 
   sp->use_nibbling = parser_get_param_int(params, "Sinks:use_nibbling");
   if (sp->use_nibbling) {
-    sp->min_gas_mass_for_nibbling = parser_get_param_float(
-        params, "Sinks:min_gas_mass_for_nibbling_Msun");
+    sp->min_gas_mass_for_nibbling =
+        parser_get_param_float(params, "Sinks:min_gas_mass_for_nibbling_Msun");
     sp->min_gas_mass_for_nibbling *= phys_const->const_solar_mass;
   }
 
@@ -123,10 +121,10 @@ INLINE static void sink_props_init(struct sink_props *sp,
   // if ((sp->min_gas_mass_for_nibbling < 1e-5 * sp->subgrid_seed_mass) ||
   //     (sp->min_gas_mass_for_nibbling > 1e5 * sp->subgrid_seed_mass)) {
   //   error(
-  //       "The BH seeding mass and minimal gas mass for nibbling differ by more "
-  //       "than 10^5. That is probably indicating a typo in the parameter file.");
+  //       "The BH seeding mass and minimal gas mass for nibbling differ by more
+  //       " "than 10^5. That is probably indicating a typo in the parameter
+  //       file.");
   // }
-  
 }
 
 /**

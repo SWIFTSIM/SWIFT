@@ -41,16 +41,19 @@
 #define _DOPAIR1_SUBSET_SINKS(f) PASTE(runner_dopair_subset_sinks, f)
 #define DOPAIR1_SUBSET_SINKS _DOPAIR1_SUBSET_SINKS(FUNCTION)
 
-#define _DOPAIR1_SUBSET_SINKS_NAIVE(f) PASTE(runner_dopair_subset_sinks_naive, f)
+#define _DOPAIR1_SUBSET_SINKS_NAIVE(f) \
+  PASTE(runner_dopair_subset_sinks_naive, f)
 #define DOPAIR1_SUBSET_SINKS_NAIVE _DOPAIR1_SUBSET_SINKS_NAIVE(FUNCTION)
 
 #define _DOSELF1_SUBSET_SINKS(f) PASTE(runner_doself_subset_sinks, f)
 #define DOSELF1_SUBSET_SINKS _DOSELF1_SUBSET_SINKS(FUNCTION)
 
-#define _DOSELF1_SUBSET_BRANCH_SINKS(f) PASTE(runner_doself_subset_branch_sinks, f)
+#define _DOSELF1_SUBSET_BRANCH_SINKS(f) \
+  PASTE(runner_doself_subset_branch_sinks, f)
 #define DOSELF1_SUBSET_BRANCH_SINKS _DOSELF1_SUBSET_BRANCH_SINKS(FUNCTION)
 
-#define _DOPAIR1_SUBSET_BRANCH_SINKS(f) PASTE(runner_dopair_subset_branch_sinks, f)
+#define _DOPAIR1_SUBSET_BRANCH_SINKS(f) \
+  PASTE(runner_dopair_subset_branch_sinks, f)
 #define DOPAIR1_SUBSET_BRANCH_SINKS _DOPAIR1_SUBSET_BRANCH_SINKS(FUNCTION)
 
 #define _DOSUB_SUBSET_SINKS(f) PASTE(runner_dosub_subset_sinks, f)
@@ -94,12 +97,13 @@ void DOSUB_PAIR1_SINKS(struct runner *r, struct cell *ci, struct cell *cj,
                        int gettimer);
 
 void DOSELF1_SUBSET_BRANCH_SINKS(struct runner *r, struct cell *restrict ci,
-                              struct sink *restrict sinks, int *restrict ind,
-                              const int scount);
+                                 struct sink *restrict sinks, int *restrict ind,
+                                 const int scount);
 void DOPAIR1_SUBSET_BRANCH_SINKS(struct runner *r, struct cell *restrict ci,
-                              struct sink *restrict sinks_i,
-                              int *restrict ind, int const scount,
-                              struct cell *restrict cj);
+                                 struct sink *restrict sinks_i,
+                                 int *restrict ind, int const scount,
+                                 struct cell *restrict cj);
 
 void DOSUB_SUBSET_SINKS(struct runner *r, struct cell *ci, struct sink *sinks,
-                     int *ind, const int scount, struct cell *cj, int gettimer);
+                        int *ind, const int scount, struct cell *cj,
+                        int gettimer);

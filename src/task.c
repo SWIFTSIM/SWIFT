@@ -1789,7 +1789,7 @@ enum task_categories task_get_category(const struct task *t) {
         case task_subtype_do_bh_swallow:
         case task_subtype_bh_feedback:
           return task_category_black_holes;
-        
+
         case task_subtype_sink_density:
         case task_subtype_sink_swallow:
         case task_subtype_sink_do_sink_swallow:

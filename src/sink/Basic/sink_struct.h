@@ -26,7 +26,6 @@ struct sink_part_data {
 
   /*! ID of the sink that will swallow this #part. */
   long long swallow_id;
-
 };
 
 /**

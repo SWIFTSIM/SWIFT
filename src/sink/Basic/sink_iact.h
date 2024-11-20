@@ -22,8 +22,8 @@
 /* Local includes */
 #include "gravity.h"
 #include "gravity_iact.h"
-#include "sink_properties.h"
 #include "random.h"
+#include "sink_properties.h"
 
 /**
  * @brief do sink computation after the runner_iact_density (symmetric
@@ -47,7 +47,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_sink(
 /**
  * @brief do sink computation after the runner_iact_density (non symmetric
  * version)
- * 
+ *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
  * @param hi Comoving smoothing-length of particle i.
@@ -82,11 +82,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_sink(
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_sinks_gas_density(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct sink *si, const struct part *pj,
-    const int with_cosmology, const struct cosmology *cosmo,
-    const struct gravity_props *grav_props,
-    const struct sink_props *sink_props,
-    const integertime_t ti_current, const double time) {
+    struct sink *si, const struct part *pj, const int with_cosmology,
+    const struct cosmology *cosmo, const struct gravity_props *grav_props,
+    const struct sink_props *sink_props, const integertime_t ti_current,
+    const double time) {
 
   float wi, wi_dx;
 
@@ -129,7 +128,6 @@ runner_iact_nonsym_sinks_gas_density(
   si->velocity_gas[0] += mj * dv[0] * wi;
   si->velocity_gas[1] += mj * dv[1] * wi;
   si->velocity_gas[2] += mj * dv[2] * wi;
-
 }
 
 /**
@@ -156,14 +154,15 @@ runner_iact_nonsym_sinks_sink_swallow(
     struct sink *restrict si, struct sink *restrict sj,
     const int with_cosmology, const struct cosmology *cosmo,
     const struct gravity_props *grav_props,
-    const struct sink_props *sink_properties,
-    const integertime_t ti_current, const double time) {
+    const struct sink_props *sink_properties, const integertime_t ti_current,
+    const double time) {
 
-  /* Simpler version of GEAR as a placeholder. Sinks bound to each other are merged. */
+  /* Simpler version of GEAR as a placeholder. Sinks bound to each other are
+   * merged. */
 
   /* Relative velocity between the sinks */
   const float dv[3] = {sj->v[0] - si->v[0], sj->v[1] - si->v[1],
-                        sj->v[2] - si->v[2]};
+                       sj->v[2] - si->v[2]};
 
   const float a = cosmo->a;
   const float H = cosmo->H;
@@ -197,9 +196,9 @@ runner_iact_nonsym_sinks_sink_swallow(
 
   float dummy, pot_ij, pot_ji;
   runner_iact_grav_pp_full(r2, eps2, eps_inv, eps_inv3, si_mass, &dummy,
-                            &pot_ij);
+                           &pot_ij);
   runner_iact_grav_pp_full(r2, eps2, eps_inv, eps_inv3, sj_mass, &dummy,
-                            &pot_ji);
+                           &pot_ji);
 
   /* Compute the physical potential energies per unit mass :
                           E_pot_phys = G*pot_grav*a^(-1) + c(a).
@@ -217,15 +216,15 @@ runner_iact_nonsym_sinks_sink_swallow(
   }
 
   /* The sink with the smaller mass will be merged onto the one with the
-    * larger mass.
-    * To avoid rounding issues, we additionally check for IDs if the sink
-    * have the exact same mass. */
+   * larger mass.
+   * To avoid rounding issues, we additionally check for IDs if the sink
+   * have the exact same mass. */
   if ((sj->mass < si->mass) || (sj->mass == si->mass && sj->id < si->id)) {
     /* This particle is swallowed by the sink with the largest mass of all the
-      * candidates wanting to swallow it (we use IDs to break ties)*/
+     * candidates wanting to swallow it (we use IDs to break ties)*/
     if ((sj->merger_data.swallow_mass < si->mass) ||
         (sj->merger_data.swallow_mass == si->mass &&
-          sj->merger_data.swallow_id < si->id)) {
+         sj->merger_data.swallow_id < si->id)) {
       sj->merger_data.swallow_id = si->id;
       sj->merger_data.swallow_mass = si->mass;
     }
@@ -256,16 +255,14 @@ runner_iact_nonsym_sinks_sink_swallow(
  * @param time current physical time in the simulation
  */
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_sinks_gas_swallow(const float r2, const float dx[3],
-                                     const float hi, const float hj,
-                                     struct sink *restrict si,
-                                     struct part *restrict pj,
-                                     const int with_cosmology,
-                                     const struct cosmology *cosmo,
-                                     const struct gravity_props *grav_props,
-                                     const struct sink_props *sink_properties,
-                                     const integertime_t ti_current, const double time) {
-  
+runner_iact_nonsym_sinks_gas_swallow(
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct sink *restrict si, struct part *restrict pj,
+    const int with_cosmology, const struct cosmology *cosmo,
+    const struct gravity_props *grav_props,
+    const struct sink_props *sink_properties, const integertime_t ti_current,
+    const double time) {
+
   float wi;
 
   /* Get r. */
@@ -337,13 +334,13 @@ runner_iact_nonsym_sinks_gas_swallow(const float r2, const float dx[3],
     /* Probability to swallow this particle
      * Recall that in SWIFT the SPH kernel is recovered by computing
      * kernel_eval() and muliplying by (1/h^d) */
-    
+
     const float prob = si->mass_to_accrete * hi_inv_dim * wi / si->rho_gas;
 
     /* Draw a random number (Note mixing both IDs) */
     const float rand = random_unit_interval(si->id + pj->id, ti_current,
                                             random_number_BH_swallow);
-    
+
     /* Are we lucky? */
     if (rand < prob) {
 

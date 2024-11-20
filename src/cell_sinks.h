@@ -88,7 +88,8 @@ struct cell_sinks {
     /*! Nr of #sink this cell can hold after addition of new one. */
     int count_total;
 
-    /*! Max cut off radius or smoothing length of active particles in this cell. */
+    /*! Max cut off radius or smoothing length of active particles in this cell.
+     */
     float h_max_active;
 
     /*! Values of r_max before the drifts, used for sub-cell tasks. */

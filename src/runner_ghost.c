@@ -34,8 +34,8 @@
 #include "feedback.h"
 #include "mhd.h"
 #include "rt.h"
-#include "space_getsid.h"
 #include "sink.h"
+#include "space_getsid.h"
 #include "star_formation.h"
 #include "stars.h"
 #include "timers.h"
@@ -1726,7 +1726,7 @@ void runner_do_rt_ghost2(struct runner *r, struct cell *c, int timer) {
  * @param timer Are we timing this ?
  */
 void runner_do_sinks_density_ghost(struct runner *r, struct cell *c,
-                                         int timer) {
+                                   int timer) {
 
   struct sink *restrict sinks = c->sinks.parts;
   const struct engine *e = r->e;
@@ -1735,8 +1735,7 @@ void runner_do_sinks_density_ghost(struct runner *r, struct cell *c,
   const float sinks_h_max = e->hydro_properties->h_max;
   const float sinks_h_min = e->hydro_properties->h_min;
   const float eps = e->sink_properties->h_tolerance;
-  const float sinks_eta_dim =
-      pow_dimension(e->sink_properties->eta_neighbours);
+  const float sinks_eta_dim = pow_dimension(e->sink_properties->eta_neighbours);
   const int max_smoothing_iter = e->hydro_properties->max_smoothing_iterations;
   int redo = 0, scount = 0;
 
@@ -1758,20 +1757,20 @@ void runner_do_sinks_density_ghost(struct runner *r, struct cell *c,
 
         /* Update h_max */
         h_max = max(h_max, c->progeny[k]->sinks.h_max);
-        h_max_active =
-            max(h_max_active, c->progeny[k]->sinks.h_max_active);
+        h_max_active = max(h_max_active, c->progeny[k]->sinks.h_max_active);
       }
     }
   } else {
 
-    if (e->sink_properties->use_fixed_r_cut){
-      /* If we're using a fixed cutoff rather than a smoothing length, just finish up the density task and leave sp->h untouched. */
+    if (e->sink_properties->use_fixed_r_cut) {
+      /* If we're using a fixed cutoff rather than a smoothing length, just
+       * finish up the density task and leave sp->h untouched. */
 
       /* Init the list of active particles that have to be updated. */
       int *sid = NULL;
       if ((sid = (int *)malloc(sizeof(int) * c->sinks.count)) == NULL)
         error("Can't allocate memory for sid.");
-      
+
       for (int k = 0; k < c->sinks.count; k++)
         if (sink_is_active(&sinks[k], e)) {
           sid[scount] = k;
@@ -1784,11 +1783,10 @@ void runner_do_sinks_density_ghost(struct runner *r, struct cell *c,
         /* Get a direct pointer on the part. */
         struct sink *sp = &sinks[sid[i]];
 
-  #ifdef SWIFT_DEBUG_CHECKS
+#ifdef SWIFT_DEBUG_CHECKS
         /* Is this part within the timestep? */
-        if (!sink_is_active(sp, e))
-          error("Ghost applied to inactive particle");
-  #endif
+        if (!sink_is_active(sp, e)) error("Ghost applied to inactive particle");
+#endif
 
         /* Finish the density calculation */
         sink_end_density(sp, cosmo);
@@ -1806,11 +1804,11 @@ void runner_do_sinks_density_ghost(struct runner *r, struct cell *c,
           dt = get_timestep(sp->time_bin, e->time_base);
         }
 
-        /* Calculate the accretion rate and accreted mass this timestep, for use in swallow loop */
-        sink_prepare_swallow(sp, e->sink_properties,
-                                      e->physical_constants, e->cosmology,
-                                      e->cooling_func, e->entropy_floor, e->time,
-                                      with_cosmology, dt, e->ti_current);
+        /* Calculate the accretion rate and accreted mass this timestep, for use
+         * in swallow loop */
+        sink_prepare_swallow(sp, e->sink_properties, e->physical_constants,
+                             e->cosmology, e->cooling_func, e->entropy_floor,
+                             e->time, with_cosmology, dt, e->ti_current);
       }
 
     } else {
@@ -1840,7 +1838,7 @@ void runner_do_sinks_density_ghost(struct runner *r, struct cell *c,
 
       /* While there are particles that need to be updated... */
       for (int num_reruns = 0; scount > 0 && num_reruns < max_smoothing_iter;
-          num_reruns++) {
+           num_reruns++) {
 
         /* TODO? */
         // ghost_stats_account_for_sinks(&c->ghost_statistics, num_reruns,
@@ -1855,11 +1853,11 @@ void runner_do_sinks_density_ghost(struct runner *r, struct cell *c,
           /* Get a direct pointer on the part. */
           struct sink *sp = &sinks[sid[i]];
 
-  #ifdef SWIFT_DEBUG_CHECKS
+#ifdef SWIFT_DEBUG_CHECKS
           /* Is this part within the timestep? */
           if (!sink_is_active(sp, e))
             error("Ghost applied to inactive particle");
-  #endif
+#endif
 
           /* Get some useful values */
           const float h_init = h_0[i];
@@ -1870,7 +1868,8 @@ void runner_do_sinks_density_ghost(struct runner *r, struct cell *c,
           float h_new;
           int has_no_neighbours = 0;
 
-          if (sp->density.wcount < 1.e-5 * kernel_root) { /* No neighbours case */
+          if (sp->density.wcount <
+              1.e-5 * kernel_root) { /* No neighbours case */
 
             /* TODO? */
             // ghost_stats_no_ngb_black_hole_iteration(&c->ghost_statistics,
@@ -1900,11 +1899,12 @@ void runner_do_sinks_density_ghost(struct runner *r, struct cell *c,
               dt = get_timestep(sp->time_bin, e->time_base);
             }
 
-            /* Calculate the accretion rate and accreted mass this timestep, for use in swallow loop */
-            sink_prepare_swallow(sp, e->sink_properties,
-                                          e->physical_constants, e->cosmology,
-                                          e->cooling_func, e->entropy_floor, e->time,
-                                          with_cosmology, dt, e->ti_current);
+            /* Calculate the accretion rate and accreted mass this timestep, for
+             * use in swallow loop */
+            sink_prepare_swallow(sp, e->sink_properties, e->physical_constants,
+                                 e->cosmology, e->cooling_func,
+                                 e->entropy_floor, e->time, with_cosmology, dt,
+                                 e->ti_current);
 
             /* Compute one step of the Newton-Raphson scheme */
             const float n_sum = sp->density.wcount * h_old_dim;
@@ -1920,14 +1920,14 @@ void runner_do_sinks_density_ghost(struct runner *r, struct cell *c,
             else if (n_sum > n_target)
               right[i] = min(right[i], h_old);
 
-  #ifdef SWIFT_DEBUG_CHECKS
+#ifdef SWIFT_DEBUG_CHECKS
             /* Check the validity of the left and right bounds */
             if (left[i] > right[i])
               error("Invalid left (%e) and right (%e)", left[i], right[i]);
-  #endif
+#endif
 
             /* Skip if h is already h_max and we don't have enough neighbours
-            */
+             */
             /* Same if we are below h_min */
             if (((sp->h >= sinks_h_max) && (f < 0.f)) ||
                 ((sp->h <= sinks_h_min) && (f > 0.f))) {
@@ -1962,7 +1962,7 @@ void runner_do_sinks_density_ghost(struct runner *r, struct cell *c,
           }
 
           /* Check whether the particle has an inappropriate smoothing length
-          */
+           */
           if (fabsf(h_new - h_old) > eps * h_old) {
 
             /* Ok, correct then */
@@ -2011,7 +2011,7 @@ void runner_do_sinks_density_ghost(struct runner *r, struct cell *c,
               if (has_no_neighbours) {
                 /* TODO? */
                 // ghost_stats_no_ngb_black_hole_converged(&c->ghost_statistics);
-                sinks_sink_has_no_neighbours(sp,cosmo);
+                sinks_sink_has_no_neighbours(sp, cosmo);
               }
 
             } else {
@@ -2032,56 +2032,57 @@ void runner_do_sinks_density_ghost(struct runner *r, struct cell *c,
         }
 
         /* We now need to treat the particles whose smoothing length had not
-        * converged again */
+         * converged again */
 
         /* Re-set the counter for the next loop (potentially). */
         scount = redo;
         if (scount > 0) {
 
           /* Climb up the cell hierarchy. */
-          for (struct cell *finger = c; finger != NULL; finger = finger->parent) {
+          for (struct cell *finger = c; finger != NULL;
+               finger = finger->parent) {
 
             /* Run through this cell's density interactions. */
             for (struct link *l = finger->sinks.density; l != NULL;
-                l = l->next) {
+                 l = l->next) {
 
-  #ifdef SWIFT_DEBUG_CHECKS
+#ifdef SWIFT_DEBUG_CHECKS
               if (l->t->ti_run < r->e->ti_current)
                 error("Density task should have been run.");
-  #endif
+#endif
 
               /* Self-interaction? */
               if (l->t->type == task_type_self)
                 runner_doself_subset_branch_sinks_density(r, finger, sinks, sid,
-                                                      scount);
+                                                          scount);
 
               /* Otherwise, pair interaction? */
               else if (l->t->type == task_type_pair) {
 
                 /* Left or right? */
                 if (l->t->ci == finger)
-                  runner_dopair_subset_branch_sinks_density(r, finger, sinks, sid,
-                                                        scount, l->t->cj);
+                  runner_dopair_subset_branch_sinks_density(
+                      r, finger, sinks, sid, scount, l->t->cj);
                 else
-                  runner_dopair_subset_branch_sinks_density(r, finger, sinks, sid,
-                                                        scount, l->t->ci);
+                  runner_dopair_subset_branch_sinks_density(
+                      r, finger, sinks, sid, scount, l->t->ci);
               }
 
               /* Otherwise, sub-self interaction? */
               else if (l->t->type == task_type_sub_self)
                 runner_dosub_subset_sinks_density(r, finger, sinks, sid, scount,
-                                              NULL, 1);
+                                                  NULL, 1);
 
               /* Otherwise, sub-pair interaction? */
               else if (l->t->type == task_type_sub_pair) {
 
                 /* Left or right? */
                 if (l->t->ci == finger)
-                  runner_dosub_subset_sinks_density(r, finger, sinks, sid, scount,
-                                                l->t->cj, 1);
+                  runner_dosub_subset_sinks_density(r, finger, sinks, sid,
+                                                    scount, l->t->cj, 1);
                 else
-                  runner_dosub_subset_sinks_density(r, finger, sinks, sid, scount,
-                                                l->t->ci, 1);
+                  runner_dosub_subset_sinks_density(r, finger, sinks, sid,
+                                                    scount, l->t->ci, 1);
               }
             }
           }
@@ -2106,7 +2107,6 @@ void runner_do_sinks_density_ghost(struct runner *r, struct cell *c,
       free(right);
       free(sid);
       free(h_0);
-
     }
   }
 

@@ -72,13 +72,13 @@ __attribute__((always_inline)) INLINE static void sink_first_init_sink(
   sp->swallowed_angular_momentum[1] = 0.f;
   sp->swallowed_angular_momentum[2] = 0.f;
 
-  /* For testing. Only relevant for nibbling mode. Use number_of_gas_swallows otherwise */
+  /* For testing. Only relevant for nibbling mode. Use number_of_gas_swallows
+   * otherwise */
   /* Summed on sink-sink mergers */
   sp->total_accreted_gas_mass = 0.f;
   sp->total_mass_to_accrete = 0.f;
 
   sink_mark_sink_as_not_swallowed(&sp->merger_data);
-
 }
 
 /**
@@ -175,7 +175,7 @@ __attribute__((always_inline)) INLINE static void sink_end_density(
 
   /* Finish the density calculation */
   si->rho_gas *= h_inv_dim;
-  
+
   /* For the following, we also have to undo the mass smoothing
    * (N.B.: bp->velocity_gas is in BH frame, in internal units). */
   const float rho_inv = 1.f / si->rho_gas;
@@ -183,7 +183,6 @@ __attribute__((always_inline)) INLINE static void sink_end_density(
   si->velocity_gas[0] *= h_inv_dim * rho_inv;
   si->velocity_gas[1] *= h_inv_dim * rho_inv;
   si->velocity_gas[2] *= h_inv_dim * rho_inv;
-
 }
 
 /**
@@ -193,9 +192,8 @@ __attribute__((always_inline)) INLINE static void sink_end_density(
  * @param sp The particle to act upon
  * @param cosmo The current cosmological model.
  */
-__attribute__((always_inline)) INLINE static void
-sinks_sink_has_no_neighbours(struct sink* restrict sp,
-                                    const struct cosmology* cosmo) {
+__attribute__((always_inline)) INLINE static void sinks_sink_has_no_neighbours(
+    struct sink* restrict sp, const struct cosmology* cosmo) {
 
   warning(
       "Sink particle with ID %lld treated as having no neighbours (h: %g, "
@@ -215,7 +213,7 @@ sinks_sink_has_no_neighbours(struct sink* restrict sp,
 /**
  * @brief Compute the accretion rate of the sink and any quantities
  * required swallowing based on an accretion rate
- * 
+ *
  * Adapted from black_holes_prepare_feedback
  *
  * @param si The sink particle.
@@ -243,9 +241,9 @@ __attribute__((always_inline)) INLINE static void sink_prepare_swallow(
 
   /* We can now compute the accretion rate (internal units) */
   /* Standard approach: compute accretion rate for all gas simultaneously.
-    *
-    * Convert the quantities we gathered to physical frame (all internal
-    * units). Note: velocities are already in black hole frame. */
+   *
+   * Convert the quantities we gathered to physical frame (all internal
+   * units). Note: velocities are already in black hole frame. */
   const double gas_rho_phys = si->rho_gas * cosmo->a3_inv;
   const double gas_c_phys = si->sound_speed_gas * cosmo->a_factor_sound_speed;
   const double gas_c_phys2 = gas_c_phys * gas_c_phys;
@@ -253,8 +251,8 @@ __attribute__((always_inline)) INLINE static void sink_prepare_swallow(
                                 si->velocity_gas[1] * cosmo->a_inv,
                                 si->velocity_gas[2] * cosmo->a_inv};
   const double gas_v_norm2 = gas_v_phys[0] * gas_v_phys[0] +
-                              gas_v_phys[1] * gas_v_phys[1] +
-                              gas_v_phys[2] * gas_v_phys[2];
+                             gas_v_phys[1] * gas_v_phys[1] +
+                             gas_v_phys[2] * gas_v_phys[2];
 
   const double denominator2 = gas_v_norm2 + gas_c_phys2;
 
@@ -270,8 +268,7 @@ __attribute__((always_inline)) INLINE static void sink_prepare_swallow(
   const double denominator_inv = 1. / sqrt(denominator2);
 
   double accr_rate = 4. * M_PI * G * G * si->mass * si->mass * gas_rho_phys *
-              denominator_inv * denominator_inv * denominator_inv;
-
+                     denominator_inv * denominator_inv * denominator_inv;
 
   /* Integrate forward in time */
   si->mass_to_accrete += accr_rate * dt;
@@ -511,7 +508,6 @@ INLINE static int sink_spawn_star(struct sink* sink, const struct engine* e,
 
   /* Star formation from sinks is disabled in this model. */
   return 0;
-
 }
 
 /**

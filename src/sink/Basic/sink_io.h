@@ -97,8 +97,7 @@ INLINE static void convert_sink_vel(const struct engine* e,
 }
 
 INLINE static void convert_sink_gas_vel(const struct engine* e,
-                                            const struct sink* sink,
-                                            float* ret) {
+                                        const struct sink* sink, float* ret) {
   const struct cosmology* cosmo = e->cosmology;
   ret[0] = sink->velocity_gas[0] * cosmo->a_inv;
   ret[1] = sink->velocity_gas[1] * cosmo->a_inv;
@@ -106,8 +105,8 @@ INLINE static void convert_sink_gas_vel(const struct engine* e,
 }
 
 INLINE static void convert_sink_gas_sound_speed(const struct engine* e,
-                                            const struct sink* sink,
-                                            double* ret) {
+                                                const struct sink* sink,
+                                                double* ret) {
   const struct cosmology* cosmo = e->cosmology;
   ret[0] = sink->sound_speed_gas * cosmo->a_factor_sound_speed;
 }
@@ -174,24 +173,30 @@ INLINE static void sink_write_particles(const struct sink* sinks,
       /*can convert to comoving=*/0, convert_sink_swallowed_angular_momentum,
       "Physical swallowed angular momentum of the particles");
 
-  list[8] = io_make_output_field("TotalAccrMass", FLOAT, 1, UNIT_CONV_MASS, 0.f, sinks,
-                                 total_accreted_gas_mass, "Total gas mass accreted by this sink. Summed on sink-sink mergers");
+  list[8] = io_make_output_field(
+      "TotalAccrMass", FLOAT, 1, UNIT_CONV_MASS, 0.f, sinks,
+      total_accreted_gas_mass,
+      "Total gas mass accreted by this sink. Summed on sink-sink mergers");
 
-  list[9] = io_make_output_field("TotalMassToAccrete", FLOAT, 1, UNIT_CONV_MASS, 0.f, sinks,
-                                 total_mass_to_accrete, "Total gas mass this sink should have accreted. Summed on sink-sink mergers");
+  list[9] = io_make_output_field("TotalMassToAccrete", FLOAT, 1, UNIT_CONV_MASS,
+                                 0.f, sinks, total_mass_to_accrete,
+                                 "Total gas mass this sink should have "
+                                 "accreted. Summed on sink-sink mergers");
 
   list[10] = io_make_physical_output_field(
       "GasDensity", FLOAT, 1, UNIT_CONV_DENSITY, -3.f, sinks, rho_gas,
-      /*can convert to comoving=*/1,
-      "Gas density at the location of the sink");
+      /*can convert to comoving=*/1, "Gas density at the location of the sink");
 
   list[11] = io_make_output_field_convert_sink(
-      "GasVelocity", FLOAT, 3, UNIT_CONV_SPEED, 0.f, sinks, convert_sink_gas_vel,
-      "Gas velocity at the location of the sink. Velocities are peculiar, i.e. a * dx/dt where x is the "
+      "GasVelocity", FLOAT, 3, UNIT_CONV_SPEED, 0.f, sinks,
+      convert_sink_gas_vel,
+      "Gas velocity at the location of the sink. Velocities are peculiar, i.e. "
+      "a * dx/dt where x is the "
       "co-moving position of the gas.");
 
   list[12] = io_make_output_field_convert_sink(
-      "GasSoundSpeed", DOUBLE, 1, UNIT_CONV_SPEED, 0.f, sinks, convert_sink_gas_sound_speed,
+      "GasSoundSpeed", DOUBLE, 1, UNIT_CONV_SPEED, 0.f, sinks,
+      convert_sink_gas_sound_speed,
       "Gas sound speed at the location of the sink (physical units)");
 
 #ifdef DEBUG_INTERACTIONS_SINKS

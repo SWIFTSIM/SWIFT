@@ -92,7 +92,8 @@ void DOSELF1_SINKS(struct runner *r, struct cell *c, int timer) {
 
         if (r2 < hig2) {
           IACT_SINKS_GAS(r2, dx, hi, hj, si, pj, with_cosmology, cosmo,
-                         e->gravity_properties, e->sink_properties, e->ti_current, e->time);
+                         e->gravity_properties, e->sink_properties,
+                         e->ti_current, e->time);
         }
       } /* loop over the parts in ci. */
     } /* loop over the sinks in ci. */
@@ -148,7 +149,8 @@ void DOSELF1_SINKS(struct runner *r, struct cell *c, int timer) {
 
       if (r2 < hig2 || r2 < hjg2) {
         IACT_SINKS_SINK(r2, dx, hi, hj, si, sj, with_cosmology, cosmo,
-                        e->gravity_properties, e->sink_properties, e->ti_current, e->time);
+                        e->gravity_properties, e->sink_properties,
+                        e->ti_current, e->time);
       }
     } /* loop over the sinks in ci. */
   } /* loop over the sinks in ci. */
@@ -241,7 +243,8 @@ void DO_NONSYM_PAIR1_SINKS_NAIVE(struct runner *r, struct cell *restrict ci,
 
         if (r2 < hig2) {
           IACT_SINKS_GAS(r2, dx, hi, hj, si, pj, with_cosmology, cosmo,
-                         e->gravity_properties, e->sink_properties, e->ti_current, e->time);
+                         e->gravity_properties, e->sink_properties,
+                         e->ti_current, e->time);
         }
       } /* loop over the parts in cj. */
     } /* loop over the sinks in ci. */
@@ -297,7 +300,8 @@ void DO_NONSYM_PAIR1_SINKS_NAIVE(struct runner *r, struct cell *restrict ci,
 
       if (r2 < hig2 || r2 < hjg2) {
         IACT_SINKS_SINK(r2, dx, hi, hj, si, sj, with_cosmology, cosmo,
-                        e->gravity_properties, e->sink_properties, e->ti_current, e->time);
+                        e->gravity_properties, e->sink_properties,
+                        e->ti_current, e->time);
       }
     } /* loop over the sinks in cj. */
   } /* loop over the sinks in ci. */
@@ -348,9 +352,9 @@ void DOPAIR1_SINKS_NAIVE(struct runner *r, struct cell *restrict ci,
  * @param shift The shift vector to apply to the particles in ci.
  */
 void DOPAIR1_SUBSET_SINKS_NAIVE(struct runner *r, struct cell *restrict ci,
-                             struct sink *restrict sinks_i, int *restrict ind,
-                             const int scount, struct cell *restrict cj,
-                             const double *shift) {
+                                struct sink *restrict sinks_i,
+                                int *restrict ind, const int scount,
+                                struct cell *restrict cj, const double *shift) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (ci->nodeID != engine_rank) error("Should be run on a different node");
@@ -414,7 +418,8 @@ void DOPAIR1_SUBSET_SINKS_NAIVE(struct runner *r, struct cell *restrict ci,
       /* Hit or miss? */
       if (r2 < hig2) {
         IACT_SINKS_GAS(r2, dx, hi, hj, si, pj, with_cosmology, cosmo,
-                         e->gravity_properties, e->sink_properties, e->ti_current, e->time);
+                       e->gravity_properties, e->sink_properties, e->ti_current,
+                       e->time);
       }
     } /* loop over the parts in cj. */
   } /* loop over the parts in ci. */
@@ -431,8 +436,8 @@ void DOPAIR1_SUBSET_SINKS_NAIVE(struct runner *r, struct cell *restrict ci,
  * @param scount The number of particles in @c ind.
  */
 void DOSELF1_SUBSET_SINKS(struct runner *r, struct cell *restrict ci,
-                       struct sink *restrict sinks, int *restrict ind,
-                       const int scount) {
+                          struct sink *restrict sinks, int *restrict ind,
+                          const int scount) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (ci->nodeID != engine_rank) error("Should be run on a different node");
@@ -492,7 +497,8 @@ void DOSELF1_SUBSET_SINKS(struct runner *r, struct cell *restrict ci,
       /* Hit or miss? */
       if (r2 < hig2) {
         IACT_SINKS_GAS(r2, dx, hi, pj->h, si, pj, with_cosmology, cosmo,
-                         e->gravity_properties, e->sink_properties, e->ti_current, e->time);
+                       e->gravity_properties, e->sink_properties, e->ti_current,
+                       e->time);
       }
     } /* loop over the parts in cj. */
   } /* loop over the parts in ci. */
@@ -509,8 +515,8 @@ void DOSELF1_SUBSET_SINKS(struct runner *r, struct cell *restrict ci,
  * @param scount The number of particles in @c ind.
  */
 void DOSELF1_SUBSET_BRANCH_SINKS(struct runner *r, struct cell *restrict ci,
-                              struct sink *restrict sinks, int *restrict ind,
-                              const int scount) {
+                                 struct sink *restrict sinks, int *restrict ind,
+                                 const int scount) {
 
   DOSELF1_SUBSET_SINKS(r, ci, sinks, ind, scount);
 }
@@ -528,9 +534,9 @@ void DOSELF1_SUBSET_BRANCH_SINKS(struct runner *r, struct cell *restrict ci,
  * @param cj The second #cell.
  */
 void DOPAIR1_SUBSET_BRANCH_SINKS(struct runner *r, struct cell *restrict ci,
-                              struct sink *restrict sinks_i,
-                              int *restrict ind, int const scount,
-                              struct cell *restrict cj) {
+                                 struct sink *restrict sinks_i,
+                                 int *restrict ind, int const scount,
+                                 struct cell *restrict cj) {
 
   const struct engine *e = r->e;
 
@@ -550,8 +556,8 @@ void DOPAIR1_SUBSET_BRANCH_SINKS(struct runner *r, struct cell *restrict ci,
 }
 
 void DOSUB_SUBSET_SINKS(struct runner *r, struct cell *ci, struct sink *sinks,
-                     int *ind, const int scount, struct cell *cj,
-                     int gettimer) {
+                        int *ind, const int scount, struct cell *cj,
+                        int gettimer) {
 
   const struct engine *e = r->e;
   struct space *s = e->s;
@@ -568,8 +574,7 @@ void DOSUB_SUBSET_SINKS(struct runner *r, struct cell *ci, struct sink *sinks,
       if (ci->progeny[k] != NULL) {
         if (&sinks[ind[0]] >= &ci->progeny[k]->sinks.parts[0] &&
             &sinks[ind[0]] <
-                &ci->progeny[k]
-                     ->sinks.parts[ci->progeny[k]->sinks.count]) {
+                &ci->progeny[k]->sinks.parts[ci->progeny[k]->sinks.count]) {
           sub = ci->progeny[k];
           break;
         }
@@ -613,10 +618,10 @@ void DOSUB_SUBSET_SINKS(struct runner *r, struct cell *ci, struct sink *sinks,
         const int pjd = csp->pairs[k].pjd;
         if (ci->progeny[pid] == sub && cj->progeny[pjd] != NULL)
           DOSUB_SUBSET_SINKS(r, ci->progeny[pid], sinks, ind, scount,
-                          cj->progeny[pjd], 0);
+                             cj->progeny[pjd], 0);
         if (ci->progeny[pid] != NULL && cj->progeny[pjd] == sub)
           DOSUB_SUBSET_SINKS(r, cj->progeny[pjd], sinks, ind, scount,
-                          ci->progeny[pid], 0);
+                             ci->progeny[pid], 0);
       }
     }
 

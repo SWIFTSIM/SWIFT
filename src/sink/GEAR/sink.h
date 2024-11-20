@@ -123,7 +123,7 @@ __attribute__((always_inline)) INLINE static void sink_first_init_sink(
   // if (sink_props->use_fixed_r_cut){
   //   sp->h = sink_props->cut_off_radius/kernel_gamma;
   // }
-  
+
   sp->time_bin = 0;
 
   sp->number_of_gas_swallows = 0;
@@ -259,7 +259,6 @@ __attribute__((always_inline)) INLINE static void sink_end_density(
   /* Finish the calculation by inserting the missing h-factors */
   si->density.wcount *= h_inv_dim;
   si->density.wcount_dh *= h_inv_dim_plus_one;
-
 }
 
 /**
@@ -269,9 +268,8 @@ __attribute__((always_inline)) INLINE static void sink_end_density(
  * @param sp The particle to act upon
  * @param cosmo The current cosmological model.
  */
-__attribute__((always_inline)) INLINE static void
-sinks_sink_has_no_neighbours(struct sink* restrict sp,
-                                    const struct cosmology* cosmo) {
+__attribute__((always_inline)) INLINE static void sinks_sink_has_no_neighbours(
+    struct sink* restrict sp, const struct cosmology* cosmo) {
 
   warning(
       "Sink particle with ID %lld treated as having no neighbours (h: %g, "
@@ -291,7 +289,7 @@ sinks_sink_has_no_neighbours(struct sink* restrict sp,
 /**
  * @brief Compute the accretion rate of the sink and any quantities
  * required swallowing based on an accretion rate
- * 
+ *
  * Adapted from black_holes_prepare_feedback
  *
  * @param si The sink particle.
@@ -535,8 +533,8 @@ INLINE static void sink_copy_properties(
   sink_init_sink(sink);
 
   /* Set a smoothing length */
-  if (sink_props->use_fixed_r_cut){
-    sink->h = sink_props->cut_off_radius/kernel_gamma;
+  if (sink_props->use_fixed_r_cut) {
+    sink->h = sink_props->cut_off_radius / kernel_gamma;
   } else {
     sink->h = p->h;
   }
@@ -769,9 +767,10 @@ INLINE static void sink_star_formation_give_new_position(const struct engine* e,
   const double phi =
       2 * M_PI *
       random_unit_interval(sp->id, e->ti_current, (enum random_number_type)3);
-  const float rmax = (e->sink_properties->use_fixed_r_cut) ? si->h * kernel_gamma : si->h;
+  const float rmax =
+      (e->sink_properties->use_fixed_r_cut) ? si->h * kernel_gamma : si->h;
   const double r = rmax * random_unit_interval(sp->id, e->ti_current,
-                                                    (enum random_number_type)4);
+                                               (enum random_number_type)4);
   const double cos_theta =
       1.0 - 2.0 * random_unit_interval(sp->id, e->ti_current,
                                        (enum random_number_type)5);
@@ -809,9 +808,9 @@ INLINE static void sink_star_formation_give_new_velocity(
      and subtracted from the sink. */
   double v_given[3] = {0.0, 0.0, 0.0};
   const double G_newton = e->physical_constants->const_newton_G;
-  const float rmax = (e->sink_properties->use_fixed_r_cut) ? si->h * kernel_gamma : si->h;
-  const double sigma_2 =
-      G_newton * si->mass_tot_before_star_spawning / rmax;
+  const float rmax =
+      (e->sink_properties->use_fixed_r_cut) ? si->h * kernel_gamma : si->h;
+  const double sigma_2 = G_newton * si->mass_tot_before_star_spawning / rmax;
   const double sigma = sink_props->star_spawning_sigma_factor * sqrt(sigma_2);
 
   for (int i = 0; i < 3; ++i) {
@@ -1166,7 +1165,8 @@ INLINE static void sink_prepare_part_sink_formation_sink_criteria(
   const float r_acc_p = sink_props->cut_off_radius * cosmo->a;
 
   /* Physical accretion radius of sink si */
-  const float rmax = (e->sink_properties->use_fixed_r_cut) ? si->h * kernel_gamma : si->h;
+  const float rmax =
+      (e->sink_properties->use_fixed_r_cut) ? si->h * kernel_gamma : si->h;
   const float r_acc_si = rmax * cosmo->a;
 
   /* Comoving distance of particl p */
