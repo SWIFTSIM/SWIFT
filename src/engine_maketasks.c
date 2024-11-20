@@ -2693,16 +2693,9 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       if (with_sink) {
 
         /* Sink density */
-        if (with_cooling)
-
-          scheduler_addunlock(sched, ci->hydro.super->hydro.cooling_out,
-                              t_sink_density);
-
         scheduler_addunlock(sched, ci->hydro.super->sinks.drift,
                             t_sink_density);
         scheduler_addunlock(sched, ci->hydro.super->hydro.drift,
-                            t_sink_density);
-        scheduler_addunlock(sched, ci->hydro.super->hydro.sorts,
                             t_sink_density);
         scheduler_addunlock(sched, ci->hydro.super->sinks.sink_in,
                             t_sink_density);
@@ -3060,15 +3053,10 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
         if (with_sink) {
 
-          if (with_cooling)
-            scheduler_addunlock(sched, ci->hydro.super->hydro.cooling_out,
-                                t_sink_density);
-
+          /* Sink density */
           scheduler_addunlock(sched, ci->hydro.super->sinks.drift,
                               t_sink_density);
           scheduler_addunlock(sched, ci->hydro.super->hydro.drift,
-                              t_sink_density);
-          scheduler_addunlock(sched, ci->hydro.super->hydro.sorts,
                               t_sink_density);
           scheduler_addunlock(sched, ci->hydro.super->sinks.sink_in,
                               t_sink_density);
@@ -3224,15 +3212,10 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
           if (with_sink) {
 
-            if (with_cooling)
-              scheduler_addunlock(sched, cj->hydro.super->hydro.cooling_out,
-                                  t_sink_density);
-
+            /* Sink density */
             scheduler_addunlock(sched, cj->hydro.super->sinks.drift,
                                 t_sink_density);
             scheduler_addunlock(sched, cj->hydro.super->hydro.drift,
-                                t_sink_density);
-            scheduler_addunlock(sched, cj->hydro.super->hydro.sorts,
                                 t_sink_density);
             scheduler_addunlock(sched, cj->hydro.super->sinks.sink_in,
                                 t_sink_density);
@@ -3538,15 +3521,10 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
       if (with_sink) {
 
-        if (with_cooling)
-          scheduler_addunlock(sched, ci->hydro.super->hydro.cooling_out,
-                              t_sink_density);
-
+        /* Sink density */
         scheduler_addunlock(sched, ci->hydro.super->sinks.drift,
                             t_sink_density);
         scheduler_addunlock(sched, ci->hydro.super->hydro.drift,
-                            t_sink_density);
-        scheduler_addunlock(sched, ci->hydro.super->hydro.sorts,
                             t_sink_density);
         scheduler_addunlock(sched, ci->hydro.super->sinks.sink_in,
                             t_sink_density);
@@ -3914,15 +3892,10 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
         if (with_sink) {
 
-          if (with_cooling)
-            scheduler_addunlock(sched, ci->hydro.super->hydro.cooling_out,
-                                t_sink_density);
-
+          /* Sink density */
           scheduler_addunlock(sched, ci->hydro.super->sinks.drift,
                               t_sink_density);
           scheduler_addunlock(sched, ci->hydro.super->hydro.drift,
-                              t_sink_density);
-          scheduler_addunlock(sched, ci->hydro.super->hydro.sorts,
                               t_sink_density);
           scheduler_addunlock(sched, ci->hydro.super->sinks.sink_in,
                               t_sink_density);
@@ -4075,17 +4048,13 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
             scheduler_addunlock(sched, t_star_feedback,
                                 cj->hydro.super->stars.stars_out);
           }
+
           if (with_sink) {
 
-            if (with_cooling)
-              scheduler_addunlock(sched, cj->hydro.super->hydro.cooling_out,
-                                  t_sink_density);
-
+            /* Sink density */
             scheduler_addunlock(sched, cj->hydro.super->sinks.drift,
                                 t_sink_density);
             scheduler_addunlock(sched, cj->hydro.super->hydro.drift,
-                                t_sink_density);
-            scheduler_addunlock(sched, cj->hydro.super->hydro.sorts,
                                 t_sink_density);
             scheduler_addunlock(sched, cj->hydro.super->sinks.sink_in,
                                 t_sink_density);
