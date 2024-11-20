@@ -7,7 +7,7 @@ InternalUnitSystem:
   UnitTemp_in_cgs:     1   # Kelvin
 
 Scheduler:
-  max_top_level_cells: 8
+  max_top_level_cells: 16
   cell_split_size: 64
   deadlock_waiting_time_s: 10.
 
