@@ -203,6 +203,12 @@ if test "$ac_test_CFLAGS" != "set"; then
      # default optimization flags for MSVC opt builds
      CFLAGS="$CFLAGS -O2"
      ;;
+
+    nvhpc)
+     # need cpu type for neoverse-v2 flag should use for GCC and clang as well
+     # (-mcpu)?
+     CFLAGS="$CFLAGS -O3 -fast -acc=multicore -mcpu=neoverse-v2"
+
   esac
 
   if test -z "$CFLAGS"; then

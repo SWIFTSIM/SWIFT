@@ -224,7 +224,6 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
 
     case task_type_none:
       return task_action_none;
-      break;
 
     case task_type_drift_part:
     case task_type_sort:
@@ -233,7 +232,6 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
     case task_type_cooling:
     case task_type_end_hydro_force:
       return task_action_part;
-      break;
 
     case task_type_star_formation:
     case task_type_star_formation_sink:
@@ -245,24 +243,20 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
     case task_type_stars_sort:
     case task_type_stars_resort:
       return task_action_spart;
-      break;
 
     case task_type_drift_sink:
       return task_action_sink;
-      break;
 
     case task_type_drift_bpart:
     case task_type_bh_density_ghost:
     case task_type_bh_swallow_ghost3:
       return task_action_bpart;
-      break;
 
     case task_type_rt_ghost1:
     case task_type_rt_ghost2:
     case task_type_rt_tchem:
     case task_type_rt_sort:
       return task_action_part;
-      break;
 
     case task_type_self:
     case task_type_pair:
@@ -275,23 +269,19 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
         case task_subtype_force:
         case task_subtype_limiter:
           return task_action_part;
-          break;
 
         case task_subtype_stars_density:
         case task_subtype_stars_feedback:
           return task_action_all;
-          break;
 
         case task_subtype_bh_density:
         case task_subtype_bh_feedback:
         case task_subtype_bh_swallow:
         case task_subtype_do_gas_swallow:
           return task_action_all;
-          break;
 
         case task_subtype_do_bh_swallow:
           return task_action_bpart;
-          break;
 
         case task_subtype_sink_do_gas_swallow:
         case task_subtype_sink_do_sink_swallow:
@@ -301,12 +291,10 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
         case task_subtype_rt_transport:
         case task_subtype_rt_gradient:
           return task_action_part;
-          break;
 
         case task_subtype_grav:
         case task_subtype_external_grav:
           return task_action_gpart;
-          break;
 
         default:
 #ifdef SWIFT_DEBUG_CHECKS
@@ -314,9 +302,7 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
                 subtaskID_names[t->subtype]);
 #endif
           return task_action_none;
-          break;
       }
-      break;
 
     case task_type_kick1:
     case task_type_kick2:
@@ -347,13 +333,11 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
     case task_type_grav_mm:
     case task_type_grav_long_range:
       return task_action_multipole;
-      break;
 
     case task_type_drift_gpart:
     case task_type_grav_down:
     case task_type_end_grav_force:
       return task_action_gpart;
-      break;
 
     default:
 #ifdef SWIFT_DEBUG_CHECKS
@@ -361,7 +345,6 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
             subtaskID_names[t->subtype]);
 #endif
       return task_action_none;
-      break;
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -747,7 +730,6 @@ int task_lock(struct task *t) {
 #else
       error("SWIFT was not compiled with MPI support.");
 #endif
-      break;
 
     case task_type_kick1:
     case task_type_kick2:
