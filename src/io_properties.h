@@ -222,7 +222,7 @@ INLINE static void safe_strcpy(char *restrict dst, const char *restrict src,
  */
 #define io_make_input_field(name, type, dim, importance, units, part, field) \
   io_make_input_field_(name, type, dim, importance, units,                   \
-                       (char *)(&(part[0]).field), sizeof(part[0]), 0.)
+                       (char *)(&(part[0]).field), sizeof(part[0]), NULL)
 
 /**
  * @brief Constructs an #io_props from its parameters with a user-defined
@@ -241,7 +241,8 @@ INLINE static void safe_strcpy(char *restrict dst, const char *restrict src,
 #define io_make_input_field_default(name, type, dim, importance, units, part, \
                                     field, def)                               \
   io_make_input_field_(name, type, dim, importance, units,                    \
-                       (char *)(&(part[0]).field), sizeof(part[0]), def)
+                       (char *)(&(part[0]).field), sizeof(part[0]),           \
+                       (const void *)&(def))
 
 /**
  * @brief Construct an #io_props from its parameters
@@ -253,13 +254,14 @@ INLINE static void safe_strcpy(char *restrict dst, const char *restrict src,
  * @param units The units of the dataset
  * @param field Pointer to the field of the first particle
  * @param partSize The size in byte of the particle
+ * @param default_value The default value. It must be adressable.
  *
  * Do not call this function directly. Use the macro defined above.
  */
 INLINE static struct io_props io_make_input_field_(
     const char *name, enum IO_DATA_TYPE type, int dimension,
     enum DATA_IMPORTANCE importance, enum unit_conversion_factor units,
-    char *field, size_t partSize, const float default_value) {
+    char *field, size_t partSize, const void *default_value) {
   struct io_props r;
   bzero(&r, sizeof(struct io_props));
 
@@ -271,14 +273,55 @@ INLINE static struct io_props io_make_input_field_(
   r.units = units;
   r.field = field;
   r.partSize = partSize;
-  r.default_value = default_value;
 
-  if (default_value != 0.f && importance != OPTIONAL)
+  if (default_value != NULL && importance != OPTIONAL)
     error("Cannot set a non-zero default value for a compulsory field!");
-  if (default_value != 0.f && type != FLOAT)
-    error(
-        "Can only set non-zero default value for a field using a FLOAT type!");
 
+  if (default_value) {
+    switch (type) {
+      case INT:
+        r.default_value = *(int *)default_value;
+        break;
+      case LONG:
+        r.default_value = *(long *)default_value;
+        break;
+      case LONGLONG:
+        r.default_value = *(long long *)default_value;
+        break;
+      case UINT8:
+        r.default_value = *(uint8_t *)default_value;
+        break;
+      case UINT:
+        r.default_value = *(unsigned int *)default_value;
+        break;
+      case UINT64:
+        r.default_value = *(uint64_t *)default_value;
+        break;
+      case ULONG:
+        r.default_value = *(unsigned long *)default_value;
+        break;
+      case ULONGLONG:
+        r.default_value = *(unsigned long long *)default_value;
+        break;
+      case FLOAT:
+        r.default_value = *(float *)default_value;
+        break;
+      case DOUBLE:
+        r.default_value = *(double *)default_value;
+        break;
+      case CHAR:
+        r.default_value = *(char *)default_value;
+        break;
+      case BOOL:
+        r.default_value = *(bool *)default_value;
+        break;
+      case SIZE_T:
+        r.default_value = *(size_t *)default_value;
+        break;
+      default:
+        error("Unsupported type for default value!");
+    }
+  }
   return r;
 }
 

@@ -1,6 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2021 Loic Hausammann (loic.hausammann@epfl.ch)
+ *               2024 Darwin Roduit (darwin.roduit@alumni.epfl.ch)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -56,6 +57,9 @@ struct sink {
 
   /* Mass of the IMF this sinks is currently affected to. In internal units. */
   double mass_IMF;
+
+  /*! Integer number of neighbours */
+  int num_ngbs;
 
   /*! Mass of the sink before starting the star spawning loop */
   float mass_tot_before_star_spawning;

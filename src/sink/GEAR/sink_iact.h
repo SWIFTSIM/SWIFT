@@ -1,6 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2021 Loic Hausammann (loic.hausammann@epfl.ch)
+ *               2024 Darwin Roduit (darwin.roduit@alumni.epfl.ch)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -116,6 +117,34 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_sink(
   }
 }
 
+/* @brief Density interaction between two particles (non-symmetric).
+ * @param hj Comoving smoothing-length of particle j.
+ * @param si First particle (sink).
+ * @param pj Second particle (gas, not updated).
+ * @param with_cosmology Are we doing a cosmological run?
+ * @param cosmo The cosmological model.
+ * @param grav_props The properties of the gravity scheme (softening, G, ...).
+ * @param sink_props the sink properties to use.
+ * @param ti_current Current integer time value (for random numbers).
+ * @param time current physical time in the simulation
+ */
+__attribute__((always_inline)) INLINE static void
+runner_iact_nonsym_sinks_gas_density(
+    const float r2, const float dx[3], const float ri, const float hj,
+    struct sink *si, const struct part *pj, const int with_cosmology,
+    const struct cosmology *cosmo, const struct gravity_props *grav_props,
+    const struct sink_props *sink_props, const integertime_t ti_current,
+    const double time) {
+
+  /* Get r. */
+  const float r = sqrtf(r2);
+
+  if (r < ri) {
+    /* Contribution to the number of neighbours in cutoff radius */
+    si->num_ngbs++;
+  }
+}
+
 /**
  * @brief  Update the properties of a sink particles from its sink neighbours.
  *
@@ -171,6 +200,8 @@ sink_collect_properties_from_sink(const float r2, const float dx[3],
  * @param cosmo The cosmological parameters and properties.
  * @param grav_props The gravity scheme parameters and properties.
  * @param sink_props the sink properties to use.
+ * @param ti_current Current integer time value (for random numbers).
+ * @param time current physical time in the simulation
  */
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_sinks_sink_swallow(
@@ -178,7 +209,8 @@ runner_iact_nonsym_sinks_sink_swallow(
     struct sink *restrict si, struct sink *restrict sj,
     const int with_cosmology, const struct cosmology *cosmo,
     const struct gravity_props *grav_props,
-    const struct sink_props *sink_properties, const int time) {
+    const struct sink_props *sink_properties, const integertime_t ti_current,
+    const double time) {
 
   const float r = sqrtf(r2);
   const float f_acc_r_acc_i = sink_properties->f_acc * ri;
@@ -366,6 +398,8 @@ sink_collect_properties_from_gas(const float r2, const float dx[3],
  * @param cosmo The cosmological parameters and properties.
  * @param grav_props The gravity scheme parameters and properties.
  * @param sink_props the sink properties to use.
+ * @param ti_current Current integer time value (for random numbers).
+ * @param time current physical time in the simulation
  */
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_sinks_gas_swallow(
@@ -373,7 +407,8 @@ runner_iact_nonsym_sinks_gas_swallow(
     struct sink *restrict si, struct part *restrict pj,
     const int with_cosmology, const struct cosmology *cosmo,
     const struct gravity_props *grav_props,
-    const struct sink_props *sink_properties, const int time) {
+    const struct sink_props *sink_properties, const integertime_t ti_current,
+    const double time) {
 
   const float r = sqrtf(r2);
   const float f_acc_r_acc = sink_properties->f_acc * ri;
