@@ -136,18 +136,13 @@ runner_iact_nonsym_sinks_gas_density(
     const struct sink_props *sink_props, const integertime_t ti_current,
     const double time) {
 
-  /* Get r. */
-  const float r = sqrtf(r2);
-
-  if (r < ri) {
-    /* Contribution to the number of neighbours in cutoff radius */
-    si->num_ngbs++;
-  }
+  /* Contribution to the number of neighbours in cutoff radius */
+  si->num_ngbs++;
 
   float wi, wi_dx;
 
   /* Compute the kernel function */
-  /* const float r = sqrtf(r2); */
+  const float r = sqrtf(r2);
   const float hi_inv = 1.0f / ri;
   const float ui = r * hi_inv;
   const float hi_inv_dim = pow_dimension(hi_inv); /* 1/h^d */
