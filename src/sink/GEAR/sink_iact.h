@@ -105,7 +105,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_sink(
 
   const float r = sqrtf(r2);
 
-  /* JD: right now, if we're not using a fixed cutoff, cut_off_radius=-1 and this will never do anything */
+  /* JD: right now, if we're not using a fixed cutoff, cut_off_radius=-1 and
+   * this will never do anything */
   if (r < sink_properties->cut_off_radius) {
 
     float potential_i = pi->gpart->potential;
@@ -136,11 +137,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_sink(
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_sinks_gas_density(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct sink *si, const struct part *pj,
-    const int with_cosmology, const struct cosmology *cosmo,
-    const struct gravity_props *grav_props,
-    const struct sink_props *sink_props,
-    const integertime_t ti_current, const double time) {
+    struct sink *si, const struct part *pj, const int with_cosmology,
+    const struct cosmology *cosmo, const struct gravity_props *grav_props,
+    const struct sink_props *sink_props, const integertime_t ti_current,
+    const double time) {
 
   float wi, wi_dx;
 
@@ -155,7 +155,6 @@ runner_iact_nonsym_sinks_gas_density(
   /* Compute contribution to the number of neighbours */
   si->density.wcount += wi;
   si->density.wcount_dh -= (hydro_dimension * wi + ui * wi_dx);
-
 }
 
 /**
@@ -182,10 +181,11 @@ runner_iact_nonsym_sinks_sink_swallow(
     struct sink *restrict si, struct sink *restrict sj,
     const int with_cosmology, const struct cosmology *cosmo,
     const struct gravity_props *grav_props,
-    const struct sink_props *sink_properties,
-    const integertime_t ti_current, const double time) {
+    const struct sink_props *sink_properties, const integertime_t ti_current,
+    const double time) {
 
-  /* If we're using a fixed cutoff radius, we need to convert the fixed smoothing length back into a cutoff radius */
+  /* If we're using a fixed cutoff radius, we need to convert the fixed
+   * smoothing length back into a cutoff radius */
   float ri = (sink_properties->use_fixed_r_cut) ? hi * kernel_gamma : hi;
 
   const float r = sqrtf(r2);
@@ -311,17 +311,16 @@ runner_iact_nonsym_sinks_sink_swallow(
  * @param time current physical time in the simulation
  */
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_sinks_gas_swallow(const float r2, const float dx[3],
-                                     const float hi, const float hj,
-                                     struct sink *restrict si,
-                                     struct part *restrict pj,
-                                     const int with_cosmology,
-                                     const struct cosmology *cosmo,
-                                     const struct gravity_props *grav_props,
-                                     const struct sink_props *sink_properties,
-                                     const integertime_t ti_current, const double time) {
+runner_iact_nonsym_sinks_gas_swallow(
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct sink *restrict si, struct part *restrict pj,
+    const int with_cosmology, const struct cosmology *cosmo,
+    const struct gravity_props *grav_props,
+    const struct sink_props *sink_properties, const integertime_t ti_current,
+    const double time) {
 
-  /* If we're using a fixed cutoff radius, we need to convert the fixed smoothing length back into a cutoff radius */
+  /* If we're using a fixed cutoff radius, we need to convert the fixed
+   * smoothing length back into a cutoff radius */
   float ri = (sink_properties->use_fixed_r_cut) ? hi * kernel_gamma : hi;
 
   const float r = sqrtf(r2);

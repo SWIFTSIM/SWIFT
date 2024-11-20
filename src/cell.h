@@ -855,7 +855,7 @@ cell_can_recurse_in_pair_sinks_task(const struct cell *ci,
   /* smaller than the sub-cell sizes ? */
   /* Note: We use the _old values as these might have been updated by a drift */
   return ci->split && cj->split &&
-         ((kernel_gamma*ci->sinks.h_max_old + ci->sinks.dx_max_part_old) <
+         ((kernel_gamma * ci->sinks.h_max_old + ci->sinks.dx_max_part_old) <
           0.5f * ci->dmin) &&
          ((kernel_gamma * cj->hydro.h_max_old + cj->hydro.dx_max_part_old) <
           0.5f * cj->dmin);

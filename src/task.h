@@ -106,7 +106,7 @@ enum task_types {
   task_type_fof_attach_self,
   task_type_fof_attach_pair,
   task_type_neutrino_weight,
-  task_type_sink_in,     /* Implicit */
+  task_type_sink_in, /* Implicit */
   task_type_sink_density_ghost,
   task_type_sink_ghost1, /* Implicit */
   task_type_sink_ghost2, /* Implicit */

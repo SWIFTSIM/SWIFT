@@ -52,10 +52,9 @@ __attribute__((always_inline)) INLINE static void sink_first_init_sink(
     struct sink* sp, const struct sink_props* sink_props,
     const struct engine* e) {
 
-    if (sink_props->use_fixed_r_cut){
-      sp->h = sink_props->cut_off_radius;
-    }
-
+  if (sink_props->use_fixed_r_cut) {
+    sp->h = sink_props->cut_off_radius;
+  }
 }
 
 /**
@@ -77,7 +76,6 @@ __attribute__((always_inline)) INLINE static void sink_init_sink(
 
   sp->density.wcount = 0.f;
   sp->density.wcount_dh = 0.f;
-
 }
 
 /**
@@ -125,7 +123,6 @@ __attribute__((always_inline)) INLINE static void sink_end_density(
   /* Finish the calculation by inserting the missing h-factors */
   si->density.wcount *= h_inv_dim;
   si->density.wcount_dh *= h_inv_dim_plus_one;
-
 }
 
 /**
@@ -135,9 +132,8 @@ __attribute__((always_inline)) INLINE static void sink_end_density(
  * @param sp The particle to act upon
  * @param cosmo The current cosmological model.
  */
-__attribute__((always_inline)) INLINE static void
-sinks_sink_has_no_neighbours(struct sink* restrict sp,
-                                    const struct cosmology* cosmo) {
+__attribute__((always_inline)) INLINE static void sinks_sink_has_no_neighbours(
+    struct sink* restrict sp, const struct cosmology* cosmo) {
 
   warning(
       "Sink particle with ID %lld treated as having no neighbours (h: %g, "
@@ -161,14 +157,13 @@ sinks_sink_has_no_neighbours(struct sink* restrict sp,
  * @param sp The particle to act upon
  * @param cosmo The current cosmological model.
  */
-__attribute__((always_inline)) INLINE static void
-sinks_sink_has_no_neighbours(struct sink* restrict sp,
-                                    const struct cosmology* cosmo) {}
+__attribute__((always_inline)) INLINE static void sinks_sink_has_no_neighbours(
+    struct sink* restrict sp, const struct cosmology* cosmo) {}
 
 /**
  * @brief Compute the accretion rate of the sink and any quantities
  * required swallowing based on an accretion rate
- * 
+ *
  * Adapted from black_holes_prepare_feedback
  *
  * @param si The sink particle.
@@ -269,12 +264,11 @@ INLINE static void sink_copy_properties(
     const struct cooling_function_data* restrict cooling) {
 
   /* Set a smoothing length */
-  if (sink_props->use_fixed_r_cut){
+  if (sink_props->use_fixed_r_cut) {
     sink->h = sink_props->cut_off_radius;
   } else {
     sink->h = p->h;
   }
-
 }
 
 /**

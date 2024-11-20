@@ -48,7 +48,8 @@ struct sink_props {
   /*! Maximal change of h over one time-step */
   float log_max_h_change;
 
-  /*! Are we using a fixed cutoff radius? (all smoothing length calculations are disabled if so) */
+  /*! Are we using a fixed cutoff radius? (all smoothing length calculations are
+   * disabled if so) */
   char use_fixed_r_cut;
 
   /*! Cut off radius */
@@ -183,14 +184,11 @@ INLINE static void sink_props_init_probabilities(
  * @param cosmo The cosmological model.
  * @param with_feedback Are we running with feedback?
  */
-INLINE static void sink_props_init(struct sink_props *sp,
-                                   struct feedback_props *fp,
-                                   const struct phys_const *phys_const,
-                                   const struct unit_system *us,
-                                   struct swift_params *params,
-                                   const struct hydro_props *hydro_props,
-                                   const struct cosmology *cosmo,
-                                   const int with_feedback) {
+INLINE static void sink_props_init(
+    struct sink_props *sp, struct feedback_props *fp,
+    const struct phys_const *phys_const, const struct unit_system *us,
+    struct swift_params *params, const struct hydro_props *hydro_props,
+    const struct cosmology *cosmo, const int with_feedback) {
 
   /* Read in the basic neighbour search properties or default to the hydro
      ones if the user did not provide any different values */
@@ -240,7 +238,7 @@ INLINE static void sink_props_init(struct sink_props *sp,
 
   /* Read the parameters from the parameter file */
   sp->cut_off_radius =
-      parser_get_opt_param_float(params, "GEARSink:cut_off_radius",-1);
+      parser_get_opt_param_float(params, "GEARSink:cut_off_radius", -1);
 
   sp->use_fixed_r_cut = (sp->cut_off_radius == -1) ? 0 : 1;
 

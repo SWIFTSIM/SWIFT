@@ -76,11 +76,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_sink(
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_sinks_gas_density(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct sink *si, const struct part *pj,
-    const int with_cosmology, const struct cosmology *cosmo,
-    const struct gravity_props *grav_props,
-    const struct sink_props *sink_props,
-    const integertime_t ti_current, const double time) {
+    struct sink *si, const struct part *pj, const int with_cosmology,
+    const struct cosmology *cosmo, const struct gravity_props *grav_props,
+    const struct sink_props *sink_props, const integertime_t ti_current,
+    const double time) {
 
   float wi, wi_dx;
 
@@ -119,8 +118,8 @@ runner_iact_nonsym_sinks_sink_swallow(
     struct sink *restrict si, struct sink *restrict sj,
     const int with_cosmology, const struct cosmology *cosmo,
     const struct gravity_props *grav_props,
-    const struct sink_props *sink_properties,
-    const integertime_t ti_current, const double time) {}
+    const struct sink_props *sink_properties, const integertime_t ti_current,
+    const double time) {}
 
 /**
  * @brief Compute sink-gas swallow interaction (non-symmetric).
@@ -139,15 +138,12 @@ runner_iact_nonsym_sinks_sink_swallow(
  * @param time current physical time in the simulation
  */
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_sinks_gas_swallow(const float r2, const float dx[3],
-                                     const float hi, const float hj,
-                                     struct sink *restrict si,
-                                     struct part *restrict pj,
-                                     const int with_cosmology,
-                                     const struct cosmology *cosmo,
-                                     const struct gravity_props *grav_props,
-                                     const struct sink_props *sink_properties,
-                                     const integertime_t ti_current, const double time) {
-}
+runner_iact_nonsym_sinks_gas_swallow(
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct sink *restrict si, struct part *restrict pj,
+    const int with_cosmology, const struct cosmology *cosmo,
+    const struct gravity_props *grav_props,
+    const struct sink_props *sink_properties, const integertime_t ti_current,
+    const double time) {}
 
 #endif
