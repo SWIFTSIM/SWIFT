@@ -30,3 +30,7 @@ Void cell
 
 Background (and buffer cells if used) must align with the bounds of the zoom region. These background/buffer cells above the zoom region are denoted “void” cells, they will never be popualted by particles explicitly. They do however have multipoles for long-range and multipole-multipole gravity interactions.
 
+Neighbour cell 
+~~~~~~~~~~~~~~ 
+
+A Neighbour cell can be either a background or a buffer cell (if they are included). These are cells within the maximum distance at which we will have to do a non-mesh gravity interaction (e.g. a long-range gravity task, ``grav_mm`` or ``pair/grav`` task).
