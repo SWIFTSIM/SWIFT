@@ -128,7 +128,7 @@ __attribute__((always_inline)) INLINE static float sink_compute_timestep(
      a big timestep. */
   const float M_dot = Delta_M / min(dt_cfl, dt_ff);
 
-  /* We want the timestep small if the error is small */
+  /* We want a big timestep if the error is small */
   float dt_SF = FLT_MAX;
 
   /* If Delta_M < 0, then we are limiting the accretion rate by a huge factor.
