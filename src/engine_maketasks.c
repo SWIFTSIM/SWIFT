@@ -4857,6 +4857,15 @@ void engine_maketasks(struct engine *e) {
   /* Split the tasks. */
   scheduler_splittasks(sched, /*fof_tasks=*/0, e->verbose);
 
+  for (int i = 0; i < sched->nr_tasks; i++) {
+	  struct task * t = &sched->tasks[i];
+	  if(t->type == task_type_sub_self && t->subtype == task_subtype_gpu_pack){
+        t->type = task_type_self;
+	  }
+      if(t->type == task_type_sub_pair && t->subtype == task_subtype_gpu_pack){
+    	t->type = task_type_pair;
+      }
+  }
   if (e->verbose)
     message("Splitting tasks took %.3f %s.",
             clocks_from_ticks(getticks() - tic2), clocks_getunit());
@@ -4921,7 +4930,6 @@ void engine_maketasks(struct engine *e) {
 
   /* Now, create unpack tasks based on the existing packs and create
    * the dependencies pack->unpack->ghost_in A. Nasar */
-
   const int pack_size = sched->pack_size;
 
   int count_current_self = 0;
@@ -5028,7 +5036,21 @@ void engine_maketasks(struct engine *e) {
      *                sched->tasks, sched->nr_tasks, sizeof(struct task),
      *                threadpool_auto_chunk_size, e); */
   }
-
+  for (int i = 0; i < sched->nr_tasks; i++) {
+	  struct task * t = &sched->tasks[i];
+	  if(t->type == task_type_sub_self && t->subtype == task_subtype_gpu_pack_g){
+        t->type = task_type_self;
+	  }
+      if(t->type == task_type_sub_pair && t->subtype == task_subtype_gpu_pack_g){
+    	t->type = task_type_pair;
+      }
+	  if(t->type == task_type_sub_self && t->subtype == task_subtype_gpu_pack_f){
+        t->type = task_type_self;
+	  }
+      if(t->type == task_type_sub_pair && t->subtype == task_subtype_gpu_pack_f){
+    	t->type = task_type_pair;
+      }
+  }
   /*Now create unpacks for all gpu_pack_g (gradient) tasks A. Nasar */
   count_current_self = 0;
   count_current_pair = 0;

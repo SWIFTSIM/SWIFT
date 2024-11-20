@@ -1577,6 +1577,7 @@ void *runner_main2(void *data) {
           //          struct timespec t0, t1; //
           //          clock_gettime(CLOCK_REALTIME, &t0);
           ticks tic_cpu_pack = getticks();
+          message("Did a sub_self density");
 
           packing_time +=
               runner_doself1_pack_f4(r, sched, pack_vars_self_dens, ci, t,
@@ -1743,6 +1744,7 @@ void *runner_main2(void *data) {
 #ifdef GPUOFFLOAD_DENSITY
 		  ticks tic_cpu_pack = getticks();
 
+          message("Did a sub_pair density");
 		  packing_time_pair += runner_dopair1_pack_f4(
 			  r, sched, pack_vars_pair_dens, ci, cj, t,
 			  parts_aos_pair_f4_send, e, fparti_fpartj_lparti_lpartj_dens);
