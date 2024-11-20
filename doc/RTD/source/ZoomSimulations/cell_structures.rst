@@ -4,7 +4,29 @@
 Cell Construction and Their Hierarchy
 =====================================
 
-At it's root SWIFT is a cartesian grid of cells holding particles, on which computations can be performed. When defining a single cartesian grid for a zoom simulation the calculation becomes inbalanced with most of the work confined to a single (or handful of) cell(s). To combat this a hierachy of cell grids is introduced to better resolve the work. That hierachy and its construction is defined here.
+At it's root SWIFT is a cartesian grid of cells holding particles, on which computations can be performed. When defining a single cartesian grid for a zoom simulation the calculation becomes inbalanced with most of the work confined to a single (or handful of) cell(s). To combat this a hierachy of cell grids is introduced to better resolve the work. 
+
+There are two possible heirarchies that can be used depending on the geometry of the zoom simulation: (i) a two part hierachy with background cells and zoom cells nested at a certain depth inside the background cells, (iii) a three part hierachy with background cells, buffer cells, and zoom cells. Buffer cells are nested at a certain depth inside the background cells, with zoom cells then nested at a further depth inside the buffer cells. The former is used when the zoom region is large relative to the parent box, the latter when the zoom region is small relative to the parent box. 
+
+Ultimately which method is used is automatically chosen by SWIFT based on the parameters defined the zoom region geometry and the high resolution particle distribution. If the zoom region can be aligned with the edges of background cells without adding too much padding around the high-resolution particles then only background and zoom cells are needed. Buffers cells will automatically be added when the padding to align background and zoom cells increases the zoom region size by a factor of 2. 
+
+Large Zoom Regions
+------------------
+
+.. figure:: figures/zoom_geometry_nobuffer.png
+            :width: 400px
+            :align: center
+            :alt: Large zoom region cells
+
+
+Small Zoom Regions
+------------------
+
+.. figure:: figures/small_cells.png
+            :width: 400px
+            :align: center
+            :alt: Small zoom region cells
+
 
 Cell Construction
 -----------------
