@@ -261,7 +261,7 @@ def zoom_get_cdim_at_depth(region_dim, parent_width, child_depth):
     region_parent_cdim = np.floor((region_dim + (0.1 * parent_width)) / parent_width)
 
     # Calculate cdim as the number of parents times the number of children per parent
-    return int(region_parent_cdim * (2**child_depth))
+    return int(region_parent_cdim * (2 ** child_depth))
 
 
 def zoom_get_region_dim_and_shift(space, params):
@@ -825,10 +825,7 @@ def construct_tl_cells(space):
     for i in range(space.cdim[0]):
         for j in range(space.cdim[1]):
             cell = Cell(
-                i * space.width[0],
-                j * space.width[1],
-                space.width,
-                ctype="background",
+                i * space.width[0], j * space.width[1], space.width, ctype="background"
             )
             space.bkg_cells.append(cell)
 
@@ -937,10 +934,7 @@ def draw_grid(space, params):
 
     # Save the figure including relevant information in the filename
     ic_name = params["InitialConditions"]["file_name"].split("/")[-1].split(".")[0]
-    fig.savefig(
-        f"zoom_geometry_{ic_name}.png",
-        dpi=300,
-    )
+    fig.savefig(f"zoom_geometry_{ic_name}.png", dpi=300)
     plt.show()
     plt.close(fig)
 
@@ -956,9 +950,7 @@ def main():
         description="Draw a 2D grid diagram of cells with a nested region."
     )
     parser.add_argument(
-        dest="params",
-        type=str,
-        help="Path to the YAML file containing the parameters.",
+        dest="params", type=str, help="Path to the YAML file containing the parameters."
     )
     # Add arbitrary arguments
     parser.add_argument(
