@@ -14,6 +14,7 @@ import h5py
 import matplotlib.pyplot as plt
 import numpy as np
 import yaml
+from matplotlib.lines import Line2D
 
 # Declare the task diff grav constant
 zoom_bkg_subdepth_diff_grav_default = 0
@@ -148,14 +149,14 @@ class Cell:
         """
         # Define the color based on the cell type
         if self.type == "background":
-            color = "blue"
+            color = "#bbe6e4"
             order = 0
-        elif self.type == "zoom":
-            color = "red"
-            order = 2
         elif self.type == "buffer":
-            color = "green"
+            color = "#42bfdd"
             order = 1
+        elif self.type == "zoom":
+            color = "#084b83"
+            order = 2
         else:
             raise ValueError(f"Unknown cell type: {self.type}")
 
@@ -168,7 +169,7 @@ class Cell:
                 facecolor=color,
                 edgecolor="black",
                 zorder=order,
-                alpha=0.7,
+                alpha=0.9,
             )
         )
 
@@ -869,7 +870,7 @@ def draw_grid(space, params):
         space (Space): The space object containing the properties.
     """
     # Setup the figure
-    fig, ax = plt.subplots(figsize=(8, 8))
+    fig, ax = plt.subplots(figsize=(6, 6))
     ax.set_aspect("equal")
     ax.set_xlim(0, space.box_size)
     ax.set_ylim(0, space.box_size)
@@ -882,27 +883,57 @@ def draw_grid(space, params):
     for cell in space.zoom_cells:
         cell.draw_cell(ax)
 
-    # Add the report text with a pretty box around it on the right-hand side
-    report_text = zoom_report_cell_properties_text(space)
-    fig.text(
-        0.225,
-        0.38,
-        report_text,
-        ha="left",
-        va="top",
-        fontsize=6,
-        family="monospace",
-        wrap=False,
-        bbox=dict(
-            boxstyle="round,pad=1",
-            edgecolor="black",
-            facecolor="lightyellow",
-            alpha=0.7,
-        ),
-    )
+    # Define handles for the legend as square markers
+    handles = [
+        Line2D(
+            [0],
+            [0],
+            marker="s",  # Use a square marker
+            color="w",  # Set the color of the line to be invisible
+            markerfacecolor="#bbe6e4",
+            markeredgecolor="black",
+            markersize=15,
+            label="Background",
+            alpha=0.9,
+        )
+    ]
 
-    # Increase the margin at the bottom to ensure text is shown
-    plt.subplots_adjust(bottom=0.45)
+    if len(space.buffer_cells) > 0:
+        handles.append(
+            Line2D(
+                [0],
+                [0],
+                marker="s",  # Use a square marker
+                color="w",  # Set the color of the line to be invisible
+                markerfacecolor="#42bfdd",
+                markeredgecolor="black",
+                markersize=15,
+                label="Buffer",
+                alpha=0.9,
+            )
+        )
+
+    handles.append(
+        Line2D(
+            [0],
+            [0],
+            marker="s",  # Use a square marker
+            color="w",  # Set the color of the line to be invisible
+            markerfacecolor="#084b83",
+            markeredgecolor="black",
+            markersize=15,
+            label="Zoom",
+            alpha=0.9,
+        )
+    )
+    # Place a legend below the x axis with the cell types
+    ax.legend(
+        handles=handles,
+        loc="upper center",
+        bbox_to_anchor=(0.5, -0.05),
+        ncol=len(handles),
+        frameon=False,
+    )
 
     # Save the figure including relevant information in the filename
     ic_name = params["InitialConditions"]["file_name"].split("/")[-1].split(".")[0]
