@@ -163,7 +163,6 @@ INLINE static void convert_bpart_gas_velocity_curl(const struct engine* e,
   ret[2] = bp->curl_v_gas[2] * cosmo->a2_inv;
 }
 
-
 INLINE static void convert_bpart_gas_temperatures(const struct engine* e,
                                                   const struct bpart* bp,
                                                   float* ret) {
