@@ -394,7 +394,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
       pj->alpha_visc * c_h_j + const_viscosity_beta * fabsf(dvdr) * r_inv;
 
   /* Price 2018, text below eq. 72 */
-  const float v_sig_dt_i = fmaxf(pj->alpha_visc, 1.f) * pj->force.soundspeed +
+  const float v_sig_dt_i = fmaxf(pj->alpha_visc, 1.f) * c_h_i +
                            const_viscosity_beta * fabsf(dvdr) * r_inv;
 
   /* Viscosity terms
