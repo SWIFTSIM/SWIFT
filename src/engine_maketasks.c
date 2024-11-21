@@ -4820,9 +4820,6 @@ void engine_maketasks(struct engine *e) {
   scheduler_reset(sched, engine_estimate_nr_tasks(e));
 
   ticks tic2 = getticks();
-  /*Initialise GPU task size in prep. for creation A. Nasar */
-  sched->target_gpu_tasks = 32*32*32;//s->nr_cells;  // OK AS LONG AS NOT SPLITTING
-  const int target_gpu_tasks = sched->target_gpu_tasks;
 
   /* Construct the first hydro loop over neighbours */
   if (e->policy & engine_policy_hydro)
