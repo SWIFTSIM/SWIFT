@@ -2087,6 +2087,19 @@ case "$with_subgrid" in
 	with_subgrid_extra_io=none
 	enable_fof=yes
    ;;
+  SPIN_JET_EAGLE-XL)
+	with_subgrid_cooling=PS2020
+	with_subgrid_chemistry=EAGLE
+	with_subgrid_tracers=EAGLE
+	with_subgrid_entropy_floor=EAGLE
+	with_subgrid_stars=EAGLE
+	with_subgrid_star_formation=EAGLE
+	with_subgrid_feedback=EAGLE
+	with_subgrid_black_holes=SPIN_JET
+	with_subgrid_sink=none
+	with_subgrid_extra_io=none
+	enable_fof=yes
+   ;;
    *)
       AC_MSG_ERROR([Unknown subgrid choice: $with_subgrid])
    ;;
