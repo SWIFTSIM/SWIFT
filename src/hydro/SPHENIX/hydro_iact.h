@@ -32,6 +32,7 @@
 #include "hydro_parameters.h"
 #include "minmax.h"
 #include "signal_velocity.h"
+#include "signal_velocity_VNR.h"
 
 /**
  * @brief Density interaction between two particles.
@@ -417,7 +418,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 
   /* Compute sound speeds and signal velocity */
   const float v_sig =
-      signal_velocity(dx, pi, pj, mu_ij, const_viscosity_beta);
+      signal_velocity_VNR(dx, pi, pj, mu_ij, const_viscosity_beta);
 
   /* Variable smoothing length term */
   const float f_ij = 1.f - pi->force.f / mj;
@@ -429,9 +430,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 
   /* Construct the full viscosity term */
   const float rho_ij = rhoi + rhoj;
-  const float alpha = pi->viscosity.alpha + pj->viscosity.alpha;
   const float visc =
-      -0.25f * alpha * v_sig * mu_ij * (balsara_i + balsara_j) / rho_ij;
+      -0.5f * v_sig * mu_ij * (balsara_i + balsara_j) / rho_ij;
 
   /* Convolve with the kernel */
   const float visc_acc_term =
@@ -569,7 +569,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Compute sound speeds and signal velocity */
   const float v_sig =
-      signal_velocity(dx, pi, pj, mu_ij, const_viscosity_beta);
+      signal_velocity_VNR(dx, pi, pj, mu_ij, const_viscosity_beta);
 
   /* Variable smoothing length term */
   const float f_ij = 1.f - pi->force.f / mj;
@@ -581,9 +581,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Construct the full viscosity term */
   const float rho_ij = rhoi + rhoj;
-  const float alpha = pi->viscosity.alpha + pj->viscosity.alpha;
   const float visc =
-      -0.25f * alpha * v_sig * mu_ij * (balsara_i + balsara_j) / rho_ij;
+      -0.5f * v_sig * mu_ij * (balsara_i + balsara_j) / rho_ij;
 
   /* Convolve with the kernel */
   const float visc_acc_term =
