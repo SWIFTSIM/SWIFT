@@ -442,8 +442,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Viscosity term
    * (Price 2018, eq. 42, first term) */
-  const float visc_du_term =
-      -0.5f * v_sig_i * dvdr * dvdr * r_inv * r_inv * wi_dr * f_ij / rhoi;
+  const float visc_du_term = q_over_rho2_i * dvdr * r_inv * wi_dr;
 
   /* MATTHIEU END ----------------------------------------- */
 
