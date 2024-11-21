@@ -1768,27 +1768,24 @@ struct task *scheduler_addtask(struct scheduler *s, enum task_types type,
   if (cj != NULL) cell_set_flag(cj, cell_flag_has_tasks);
 
   // #ifdef WITH_CUDA  A. Nasar
-  if ((t->type == task_type_self || t->type == task_type_sub_self) && t->subtype == task_subtype_gpu_pack) {
-    atomic_inc(&s->nr_self_pack_tasks);
+  if(t->subtype == task_subtype_gpu_pack){
+	  if(t->type == task_type_self || t->type == task_type_sub_self)
+		    atomic_inc(&s->nr_self_pack_tasks);
+	  if(t->type == task_type_pair || t->type == task_type_sub_pair)
+		    atomic_inc(&s->nr_pair_pack_tasks);
   }
-  if ((t->type == task_type_pair || t->type == task_type_sub_pair) && t->subtype == task_subtype_gpu_pack) {
-    atomic_inc(&s->nr_pair_pack_tasks);
+  if(t->subtype == task_subtype_gpu_pack_f){
+	  if(t->type == task_type_self || t->type == task_type_sub_self)
+		    atomic_inc(&s->nr_self_pack_tasks_f);
+	  if(t->type == task_type_pair || t->type == task_type_sub_pair)
+		    atomic_inc(&s->nr_pair_pack_tasks_f);
   }
-  // #ifdef WITH_CUDA
-  if ((t->type == task_type_self || t->type == task_type_sub_self) && t->subtype == task_subtype_gpu_pack_g) {
-    atomic_inc(&s->nr_self_pack_tasks_g);
+  if(t->subtype == task_subtype_gpu_pack_g){
+	  if(t->type == task_type_self || t->type == task_type_sub_self)
+		    atomic_inc(&s->nr_self_pack_tasks_g);
+	  if(t->type == task_type_pair || t->type == task_type_sub_pair)
+		    atomic_inc(&s->nr_pair_pack_tasks_g);
   }
-  if ((t->type == task_type_pair || t->type == task_type_sub_pair) && t->subtype == task_subtype_gpu_pack_g) {
-    atomic_inc(&s->nr_pair_pack_tasks_g);
-  }
-  // #ifdef WITH_CUDA
-  if ((t->type == task_type_self || t->type == task_type_sub_self) && t->subtype == task_subtype_gpu_pack_f) {
-    atomic_inc(&s->nr_self_pack_tasks_f);
-  }
-  if ((t->type == task_type_pair || t->type == task_type_sub_pair) && t->subtype == task_subtype_gpu_pack_f) {
-    atomic_inc(&s->nr_pair_pack_tasks_f);
-  }
-
   // #endif
   /* Add an index for it. */
   // lock_lock( &s->lock );
