@@ -972,17 +972,17 @@ void *runner_main2(void *data) {
     tasks_done_gpu_inc = 0;
     ticks hang_time = getticks();
     while (1) {
-      ticks tic_get_task = getticks();
+//      ticks tic_get_task = getticks();
       /* If there's no old task, try to get a new one. */
       if (t == NULL) {
         /* Get the task. */
         TIMER_TIC
         t = scheduler_gettask(sched, r->qid, prev);
         TIMER_TOC(timer_gettask);
-        hang_time += getticks() - tic_get_task;
-        if (hang_time > 1000000000000000){
-        	message("I'm stuck runner %i", r->cpuid);
-        }
+//        hang_time += getticks() - tic_get_task;
+//        if (hang_time > 1000000000000000){
+//        	message("I'm stuck runner %i", r->cpuid);
+//        }
         /* Did I get anything? */
         if (t == NULL) break;
       }
