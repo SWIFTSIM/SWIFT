@@ -1157,7 +1157,7 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
   p->Dedner_Psi_over_c = 0.f;
 
   /* Constant from Price 2018 (text below eq. 43) */
-  p->alpha_u = 0.f;
+  p->alpha_u = 0.5f;
 
   /* Constant from Price 2012 (text below eq. 105)
    * We start the viscosity at the minimum */
