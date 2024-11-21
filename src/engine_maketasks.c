@@ -5004,12 +5004,6 @@ void engine_maketasks(struct engine *e) {
             sched, task_type_pair, task_subtype_gpu_unpack, 0, 0, NULL, NULL);
       }
 
-      /* pack -> unpack -> ghost_in */
-      if (t->ci->hydro.super->hydro.ghost_in == NULL && t->ci->nodeID == e->nodeID)
-        message("Ghost in for cell i is NULL\n");
-      if (t->cj->hydro.super->hydro.ghost_in == NULL && t->cj->nodeID == e->nodeID)
-        message("Ghost in for cell j is NULL\n");
-
       scheduler_addunlock(sched, t, last_created_pair_unpack);
       if (t->ci->nodeID == e->nodeID)
         scheduler_addunlock(sched, last_created_pair_unpack,
@@ -5021,14 +5015,6 @@ void engine_maketasks(struct engine *e) {
 
       engine_addlink(e, &t->ci->hydro.density_unpack, last_created_pair_unpack);
       engine_addlink(e, &t->cj->hydro.density_unpack, last_created_pair_unpack);
-
-      /*Useless as this ends up only setting one pair unpack as the unpack task
-       * for this cell whilst the cell interacts with many other cells and can
-       * be linked to another unpack task. Rely on links instead*/
-      //      t->ci->hydro.d_unpack = last_created_pair_unpack;
-      //      t->cj->hydro.d_unpack = last_created_pair_unpack;
-
-      //      t->ci->hydro.super->hydro.d_unpack = last_created_self_unpack;
 
       ++count_current_pair;
     } else {
@@ -5042,20 +5028,6 @@ void engine_maketasks(struct engine *e) {
   if (count_current_pair != sched->nr_pair_pack_tasks)
     error("We did not find the correct number of pair pack tasks!!");
 #endif
-  /* Loop over all the currently existing ghost_in tasks to add unpack
-   * dependency*/
-  //  for (int i = 0; i < sched->nr_tasks; i++) {
-  //    struct task *t = &sched->tasks[i];
-  //    if (t->type != task_type_ghost_in)
-  //      continue;
-  ////    if(t->ci->hydro.super == t->ci && t->ci->nodeID == e->nodeID)
-  ////          scheduler_addunlock(sched, t->ci->hydro.d_unpack, t);
-  //    for (struct link *l = t->ci->hydro.density_unpack; l != NULL; l =
-  //    l->next) {
-  ////      if(l->t->type == task_type_pair)
-  //    	  scheduler_addunlock(sched, l->t, t);
-  //    }
-  //  }
 
   /*Now create unpacks for all gpu_pack_g (gradient) tasks A. Nasar */
   count_current_self = 0;
@@ -5109,11 +5081,6 @@ void engine_maketasks(struct engine *e) {
                      last_created_pair_unpack);
       engine_addlink(e, &t->cj->hydro.gradient_unpack,
                      last_created_pair_unpack);
-      /*Useless as this ends up only setting one pair unpack as the unpack task
-       * for this cell whilst the cell interacts with many other cells and can
-       * be linked to another unpack task. Rely on links instead*/
-      //      t->ci->hydro.g_unpack = last_created_pair_unpack;
-      //      t->cj->hydro.g_unpack = last_created_pair_unpack;
 
       ++count_current_pair;
     } else {
@@ -5133,20 +5100,7 @@ void engine_maketasks(struct engine *e) {
         "what it shoudl be %i",
         count_current_pair, sched->nr_pair_pack_tasks_g);
 #endif
-  /* Loop over all the currently existing extra_ghost tasks to add unpack
-   * dependency*/
-  //  for (int i = 0; i < sched->nr_tasks; i++) {
-  //    struct task *t = &sched->tasks[i];
-  //    if (t->type != task_type_extra_ghost)
-  //      continue;
-  ////    if(t->ci->nodeID == e->nodeID)
-  ////      scheduler_addunlock(sched, t->ci->hydro.g_unpack, t);
-  //    for (struct link *l = t->ci->hydro.gradient_unpack; l != NULL; l =
-  //    l->next) {
-  ////    	if(l->t->type == task_type_pair)
-  //    		scheduler_addunlock(sched, l->t, t);
-  //    }
-  //  }
+
   /*Now create unpacks for all gpu_pack_f (force) tasks*/
   count_current_self = 0;
   count_current_pair = 0;
@@ -5172,8 +5126,6 @@ void engine_maketasks(struct engine *e) {
                           t->ci->hydro.super->hydro.end_force);
       /*Creating links between a each cell and its unpack task*/
       engine_addlink(e, &t->ci->hydro.force_unpack, last_created_self_unpack);
-      //
-      //      t->ci->hydro.f_unpack = last_created_self_unpack;
 
       ++count_current_self;
     }
@@ -5196,11 +5148,6 @@ void engine_maketasks(struct engine *e) {
 
       engine_addlink(e, &t->ci->hydro.force_unpack, last_created_pair_unpack);
       engine_addlink(e, &t->cj->hydro.force_unpack, last_created_pair_unpack);
-      /*Useless as this ends up only setting one pair unpack as the unpack task
-       * for this cell whilst the cell interacts with many other cells and can
-       * be linked to another unpack task. Rely on links instead*/
-      //      t->ci->hydro.f_unpack = last_created_pair_unpack;
-      //      t->cj->hydro.f_unpack = last_created_pair_unpack;
 
       ++count_current_pair;
     } else {
@@ -5214,20 +5161,7 @@ void engine_maketasks(struct engine *e) {
   if (count_current_pair != sched->nr_pair_pack_tasks_f)
     error("We did not find the correct number of F pair pack tasks!!");
 #endif
-  /* Loop over all the currently existing end_force tasks to add unpack
-   * dependency*/
-  //  for (int i = 0; i < sched->nr_tasks; i++) {
-  //    struct task *t = &sched->tasks[i];
-  //    if (t->type != task_type_end_hydro_force)
-  //      continue;
-  ////    if(t->ci->nodeID == e->nodeID)
-  ////      scheduler_addunlock(sched, t->ci->hydro.f_unpack, t);
-  //    for (struct link *l = t->ci->hydro.force_unpack; l != NULL; l = l->next)
-  //    {
-  ////    	if(l->t->type == task_type_pair)
-  //    		scheduler_addunlock(sched, l->t, t);
-  //    }
-  //  }
+
   if (e->verbose)
     message("Making extra hydroloop tasks took %.3f %s.",
             clocks_from_ticks(getticks() - tic2), clocks_getunit());
