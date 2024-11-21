@@ -55,7 +55,7 @@ struct hydro_props;
 #define space_extra_bparts_default 0
 #define space_extra_sinks_default 0
 #define space_expected_max_nr_strays_default 100
-#define space_subsize_pair_hydro_default 256000000
+#define space_subsize_pair_hydro_default 4096
 #define space_subsize_self_hydro_default 64
 #define space_subsize_pair_stars_default 256000000
 #define space_subsize_self_stars_default 32000

@@ -212,7 +212,7 @@ double runner_doself1_pack_f4(struct runner *r, struct scheduler *s,
    * launch_leftovers statement)*/
   clock_gettime(CLOCK_REALTIME, &t1);
   /* Release the lock on the cell */
-  task_unlock(t);
+  cell_unlocktree(ci);
   t->gpu_done = 1;
   //		cell_unlocktree(ci);
   //		// MATTHIEU signal_sleeping_runners(s, t);
@@ -334,8 +334,7 @@ double runner_doself1_pack_f4_g(struct runner *r, struct scheduler *s,
    * launch_leftovers statement)*/
   clock_gettime(CLOCK_REALTIME, &t1);
   /* Release the lock on the cell */
-  	task_unlock(t);
-//  cell_unlocktree(ci);
+  cell_unlocktree(ci);
   //	// MATTHIEU signal_sleeping_runners(s, t);
   return (t1.tv_sec - t0.tv_sec) + (t1.tv_nsec - t0.tv_nsec) / 1000000000.0;
 }
@@ -637,7 +636,8 @@ double runner_dopair1_pack_f4(struct runner *r, struct scheduler *s,
   atomic_dec(&(s->queues[qid].n_packs_pair_left));
   t->done = 1;
   /* Copies done. Release the lock ! */
-  task_unlock(t);
+  cell_unlocktree(ci);
+  cell_unlocktree(cj);
   pack_vars->tasks_packed++;
   pack_vars->launch = 0;
   pack_vars->launch_leftovers = 0;
@@ -838,7 +838,8 @@ double runner_dopair1_pack_f4_g(struct runner *r, struct scheduler *s,
   atomic_dec(&(s->queues[qid].n_packs_pair_left_g));
   t->done = 1;
   /* Copies done. Release the lock ! */
-  task_unlock(t);
+  cell_unlocktree(ci);
+  cell_unlocktree(cj);
   pack_vars->tasks_packed++;
   pack_vars->launch = 0;
   pack_vars->launch_leftovers = 0;
@@ -1041,7 +1042,8 @@ double runner_dopair1_pack_f4_f(struct runner *r, struct scheduler *s,
   atomic_dec(&(s->queues[qid].n_packs_pair_left_f));
   t->done = 1;
   /* Copies done. Release the lock ! */
-  task_unlock(t);
+  cell_unlocktree(ci);
+  cell_unlocktree(cj);
   pack_vars->tasks_packed++;
   pack_vars->launch = 0;
   pack_vars->launch_leftovers = 0;
@@ -2894,11 +2896,10 @@ void runner_dopair1_launch_f4_one_memcpy(
         cii->gpu_done_pair++;
         cjj->gpu_done_pair++;
 
-//        //		  /* Release the locks */
-//        cell_unlocktree(cii);
-//        //		  /* Release the locks */
-//        cell_unlocktree(cjj);
-        task_unlock(tii);
+        //		  /* Release the locks */
+        cell_unlocktree(cii);
+        //		  /* Release the locks */
+        cell_unlocktree(cjj);
 
         /*Time end of unpacking*/
         clock_gettime(CLOCK_REALTIME, &tp1);

@@ -980,7 +980,7 @@ void *runner_main2(void *data) {
         t = scheduler_gettask(sched, r->qid, prev);
         TIMER_TOC(timer_gettask);
         hang_time += getticks() - tic_get_task;
-        if (hang_time > 1000000000000000000){
+        if (hang_time > 1000000000000000){
         	message("I'm stuck runner %i", r->cpuid);
         }
         /* Did I get anything? */
