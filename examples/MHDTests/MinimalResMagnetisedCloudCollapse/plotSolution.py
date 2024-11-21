@@ -12,9 +12,12 @@ filename = sys.argv[1]
 data = load(filename)
 center = 0.5 * data.metadata.boxsize
 
-R0 = 0.015 * 3.086e18 * unyt.cm
+G = 6.6743015e-8 * unyt.cm**3 / unyt.g / unyt.s**2
+R0 = 0.015 * unyt.pc
+M = 1.0 * unyt.Msun
 
-tff = 3e4 * 3.156e7 * unyt.s
+tff = np.sqrt(2.0 * R0**3 / (G * M))
+
 tsim = data.metadata.time
 tplot = tsim / tff
 print("Showing results at %2f free fall times" % tplot)
