@@ -212,9 +212,9 @@ void DO_NONSYM_PAIR1_SINKS_NAIVE(struct runner *r, struct cell *restrict ci,
 
       const float ri = si->r_cut;
       const float ri2 = ri * ri;
-      const float six[3] = {(float)(si->x[0] - cj->loc[0]),
-                            (float)(si->x[1] - cj->loc[1]),
-                            (float)(si->x[2] - cj->loc[2])};
+      const float six[3] = {(float)(si->x[0] - (cj->loc[0] + shift[0])),
+                            (float)(si->x[1] - (cj->loc[1] + shift[1])),
+                            (float)(si->x[2] - (cj->loc[2] + shift[2]))};
 
       /* Loop over the parts (gas) in cj. */
       for (int pjd = 0; pjd < count_j; pjd++) {
