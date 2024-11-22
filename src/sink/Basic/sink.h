@@ -125,6 +125,16 @@ __attribute__((always_inline)) INLINE static void sink_init_sink(
     sp->ids_ngbs_formation[i] = -1;
   sp->num_ngb_formation = 0;
 #endif
+
+#ifdef SWIFT_SINK_DENSITY_CHECKS
+  sp->N_check_density = 0;
+  sp->N_check_density_exact = 0;
+  sp->rho_check = 0.f;
+  sp->rho_check_exact = 0.f;
+  sp->n_check = 0.f;
+  sp->n_check_exact = 0.f;
+  sp->inhibited_check_exact = 0;
+#endif
 }
 
 /**
@@ -183,6 +193,11 @@ __attribute__((always_inline)) INLINE static void sink_end_density(
   si->velocity_gas[0] *= h_inv_dim * rho_inv;
   si->velocity_gas[1] *= h_inv_dim * rho_inv;
   si->velocity_gas[2] *= h_inv_dim * rho_inv;
+
+#ifdef SWIFT_SINK_DENSITY_CHECKS
+  si->rho_check *= h_inv_dim;
+  si->n_check *= h_inv_dim;
+#endif
 }
 
 /**
