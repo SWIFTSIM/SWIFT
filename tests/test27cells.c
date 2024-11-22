@@ -30,6 +30,27 @@
 /* Local headers. */
 #include "swift.h"
 
+#ifdef MOVING_MESH_HYDRO
+#ifndef DOSELF1
+#define DOSELF1 runner_doself1_branch_gradient
+#define DOSELF1_SUBSET runner_doself_subset_branch_gradient
+#ifdef TEST_DOSELF_SUBSET
+#define DOSELF1_NAME "runner_doself_subset_branch_gradient"
+#else
+#define DOSELF1_NAME "runner_doself1_branch_gradient"
+#endif
+#endif
+
+#ifndef DOPAIR1
+#define DOPAIR1 runner_dopair1_branch_gradient
+#define DOPAIR1_SUBSET runner_dopair_subset_branch_gradient
+#ifdef TEST_DOPAIR_SUBSET
+#define DOPAIR1_NAME "runner_dopair1_subset_branch_gradient"
+#else
+#define DOPAIR1_NAME "runner_dopair1_branch_gradient"
+#endif
+#endif
+#else
 #if defined(WITH_VECTORIZATION)
 #define DOSELF1 runner_doself1_branch_density
 #define DOSELF1_SUBSET runner_doself_subset_branch_density
@@ -64,6 +85,7 @@
 #define DOPAIR1_NAME "runner_dopair1_subset_branch_density"
 #else
 #define DOPAIR1_NAME "runner_dopair1_branch_density"
+#endif
 #endif
 #endif
 
@@ -153,7 +175,7 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
         h_max = fmaxf(h_max, part->h);
         part->id = ++(*partId);
 
-#if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH)
+#if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH) || defined(SHADOWSWIFT)
         part->conserved.mass = density * volume / count;
 
 #else
@@ -266,7 +288,7 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
             main_cell->hydro.parts[pid].v[0], main_cell->hydro.parts[pid].v[1],
             main_cell->hydro.parts[pid].v[2],
             hydro_get_comoving_density(&main_cell->hydro.parts[pid]),
-#if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH)
+#if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH) || defined(SHADOWSWIFT)
             0.f,
 #elif defined(HOPKINS_PU_SPH) || defined(HOPKINS_PU_SPH_MONAGHAN) || \
     defined(ANARCHY_PU_SPH)
@@ -315,7 +337,7 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
               cj->hydro.parts[pjd].v[0], cj->hydro.parts[pjd].v[1],
               cj->hydro.parts[pjd].v[2],
               hydro_get_comoving_density(&cj->hydro.parts[pjd]),
-#if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH)
+#if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH) || defined(SHADOWSWIFT)
               0.f,
 #else
               main_cell->hydro.parts[pjd].density.rho_dh,
@@ -345,6 +367,20 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
 }
 
 /* Just a forward declaration... */
+#ifdef MOVING_MESH_HYDRO
+void runner_dopair1_branch_gradient(struct runner *r, struct cell *ci,
+                                    struct cell *cj);
+void runner_doself1_branch_gradient(struct runner *r, struct cell *c);
+void runner_dopair_subset_branch_gradient(struct runner *r,
+                                          struct cell *restrict ci,
+                                          struct part *restrict parts_i,
+                                          int *restrict ind, int count,
+                                          struct cell *restrict cj);
+void runner_doself_subset_branch_gradient(struct runner *r,
+                                          struct cell *restrict ci,
+                                          struct part *restrict parts,
+                                          int *restrict ind, int count);
+#else
 void runner_dopair1_branch_density(struct runner *r, struct cell *ci,
                                    struct cell *cj);
 void runner_doself1_branch_density(struct runner *r, struct cell *c);
@@ -357,6 +393,7 @@ void runner_doself_subset_branch_density(struct runner *r,
                                          struct cell *restrict ci,
                                          struct part *restrict parts,
                                          int *restrict ind, int count);
+#endif
 
 /* And go... */
 int main(int argc, char *argv[]) {
@@ -628,11 +665,19 @@ int main(int argc, char *argv[]) {
   const ticks tic = getticks();
 
   /* Run all the brute-force pairs */
+#ifdef MOVING_MESH_HYDRO
+  for (int j = 0; j < 27; ++j)
+    if (cells[j] != main_cell) pairs_all_gradient(&runner, main_cell, cells[j]);
+
+  /* And now the self-interaction */
+  self_all_gradient(&runner, main_cell);
+#else
   for (int j = 0; j < 27; ++j)
     if (cells[j] != main_cell) pairs_all_density(&runner, main_cell, cells[j]);
 
   /* And now the self-interaction */
   self_all_density(&runner, main_cell);
+#endif
 
   const ticks toc = getticks();
 

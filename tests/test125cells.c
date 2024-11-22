@@ -117,7 +117,7 @@ void set_energy_state(struct part *part, enum pressure_field press, float size,
   part->u = pressure / (hydro_gamma_minus_one * density);
 #elif defined(PLANETARY_SPH)
   part->u = pressure / (hydro_gamma_minus_one * density);
-#elif defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH)
+#elif defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH) || defined(SHADOWSWIFT)
   part->conserved.energy = pressure / (hydro_gamma_minus_one * density);
 #else
   error("Need to define pressure here !");
@@ -283,7 +283,7 @@ struct cell *make_cell(size_t n, const double offset[3], double size, double h,
         part->h = size * h / (float)n;
         h_max = fmax(h_max, part->h);
 
-#if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH)
+#if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH) || defined(SHADOWSWIFT)
         part->conserved.mass = density * volume / count;
 #else
         part->mass = density * volume / count;
@@ -374,7 +374,7 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
 #if defined(MINIMAL_SPH) || defined(PLANETARY_SPH) ||              \
     defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH) ||            \
     defined(HOPKINS_PU_SPH) || defined(HOPKINS_PU_SPH_MONAGHAN) || \
-    defined(GASOLINE_SPH)
+    defined(GASOLINE_SPH) || defined(SHADOWSWIFT)
             0.f,
 #elif defined(ANARCHY_PU_SPH) || defined(SPHENIX_SPH) || defined(PHANTOM_SPH)
             main_cell->hydro.parts[pid].viscosity.div_v,
@@ -559,7 +559,9 @@ int main(int argc, char *argv[]) {
   space.dim[0] = 5.;
   space.dim[1] = 5.;
   space.dim[2] = 5.;
-  hydro_space_init(&space.hs, &space);
+  struct swift_params params;
+  bzero(&params, sizeof(struct swift_params));
+  hydro_space_init(&space.hs, &space, &params);
 
   struct phys_const prog_const;
   prog_const.const_newton_G = 1.f;
@@ -662,17 +664,17 @@ int main(int argc, char *argv[]) {
     for (int j = 0; j < 125; ++j)
       runner_do_hydro_sort(&runner, cells[j], 0x1FFF, 0, 0, 0);
 
+#ifndef MOVING_MESH_HYDRO
       /* Do the density calculation */
 
-/* Initialise the particle cache. */
+      /* Initialise the particle cache. */
 #ifdef WITH_VECTORIZATION
     runner.ci_cache.count = 0;
     runner.cj_cache.count = 0;
     cache_init(&runner.ci_cache, 512);
     cache_init(&runner.cj_cache, 512);
 #endif
-
-    /* Run all the  (only once !)*/
+    /* Run all the pairs (only once !)*/
     for (int i = 0; i < 5; i++) {
       for (int j = 0; j < 5; j++) {
         for (int k = 0; k < 5; k++) {
@@ -708,6 +710,7 @@ int main(int argc, char *argv[]) {
 
     /* Ghost to finish everything on the central cells */
     for (int j = 0; j < 27; ++j) runner_do_ghost(&runner, inner_cells[j], 0);
+#endif
 
 #ifdef EXTRA_HYDRO_LOOP
     /* We need to do the gradient loop and the extra ghost! */
@@ -754,6 +757,7 @@ int main(int argc, char *argv[]) {
 
 #endif /* EXTRA_HYDRO_LOOP */
 
+#ifndef MOVING_MESH_HYDRO
       /* Do the force calculation */
 
 #ifdef WITH_VECTORIZATION
@@ -795,6 +799,7 @@ int main(int argc, char *argv[]) {
     runner_do_end_hydro_force(&runner, main_cell, 0);
     const ticks toc = getticks();
     time += toc - tic;
+#endif
 
     /* Dump if necessary */
     if (n == 0) {
@@ -853,6 +858,7 @@ int main(int argc, char *argv[]) {
   // for (int j = 0; j < 125; ++j) runner_do_drift_particles(&runner, cells[j],
   // 0);
 
+#ifndef MOVING_MESH_HYDRO
   /* Do the density calculation */
 
   /* Run all the pairs (only once !)*/
@@ -890,6 +896,7 @@ int main(int argc, char *argv[]) {
 
   /* Ghost to finish everything on the central cells */
   for (int j = 0; j < 27; ++j) runner_do_ghost(&runner, inner_cells[j], 0);
+#endif
 
 #ifdef EXTRA_HYDRO_LOOP
   /* We need to do the gradient loop and the extra ghost! */
@@ -933,6 +940,7 @@ int main(int argc, char *argv[]) {
 
 #endif /* EXTRA_HYDRO_LOOP */
 
+#ifndef MOVING_MESH_HYDRO
   /* Do the force calculation */
 
   /* Do the pairs (for the central 27 cells) */
@@ -953,6 +961,7 @@ int main(int argc, char *argv[]) {
   /* Finally, give a gentle kick */
   runner_do_end_hydro_force(&runner, main_cell, 0);
   // runner_do_kick2(&runner, main_cell, 0);
+#endif
 
   const ticks toc = getticks();
 

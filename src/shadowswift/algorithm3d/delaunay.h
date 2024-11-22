@@ -988,16 +988,12 @@ inline static int delaunay_get_next_tetrahedron_idx_ray(
   const delaunay_vertex_t* v4 = &d->rescaled_vertices[v];
 
   double centroid[3];
-  geometry3d_compute_centroid_tetrahedron(
-      v0->x_f64[0], v0->x_f64[1], v0->x_f64[2], v1->x_f64[0], v1->x_f64[1],
-      v1->x_f64[2], v2->x_f64[0], v2->x_f64[1], v2->x_f64[2], v3->x_f64[0],
-      v3->x_f64[1], v3->x_f64[2], centroid);
+  geometry3d_compute_centroid_tetrahedron(v0->x_f64, v1->x_f64, v2->x_f64,
+                                          v3->x_f64, centroid);
 
   unsigned long centroid_ul[3];
-  geometry3d_compute_centroid_tetrahedron_exact(
-      v0->x_u64[0], v0->x_u64[1], v0->x_u64[2], v1->x_u64[0], v1->x_u64[1],
-      v1->x_u64[2], v2->x_u64[0], v2->x_u64[1], v2->x_u64[2], v3->x_u64[0],
-      v3->x_u64[1], v3->x_u64[2], centroid_ul);
+  geometry3d_compute_centroid_tetrahedron_exact(v0->x_u64, v1->x_u64, v2->x_u64,
+                                                v3->x_u64, centroid_ul);
 
   struct shadowswift_ray r;
   shadowswift_ray_init(&r, centroid, v4->x_f64, centroid_ul, v4->x_u64);
@@ -2159,8 +2155,10 @@ inline static double delaunay_get_radius2(struct delaunay* restrict d,
   const delaunay_vertex_t* v2 = &d->rescaled_vertices[t->vertices[2]];
   const delaunay_vertex_t* v3 = &d->rescaled_vertices[t->vertices[3]];
 
-  return geometry3d_compute_circumradius2_adaptive(&d->geometry, v0, v1, v2, v3,
-                                                   d->side);
+  const double radius2 = geometry3d_compute_circumradius2_adaptive(
+      &d->geometry, v0, v1, v2, v3, d->side);
+  delaunay_assert(sqrt(radius2) * d->inverse_side < 1000.);
+  return radius2;
 }
 
 inline static void delaunay_compute_circumcenters(
@@ -2327,7 +2325,6 @@ inline static void delaunay_get_search_radii(struct delaunay* restrict d,
       /* Before doing anything, reset the flag of this tet */
       tet->_flags = tetrahedron_flag_none;
       max_circumradius2 = fmax(max_circumradius2, delaunay_get_radius2(d, tet));
-      delaunay_assert(sqrt(max_circumradius2) * d->inverse_side < 1000.);
     }
     r[i] = 2. * sqrt(max_circumradius2);
 

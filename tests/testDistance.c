@@ -37,22 +37,52 @@ void compute_interaction(struct part *pi, struct part *pj, float mu_0, float a,
 
   if (r2 < pi->h * pi->h * kernel_gamma2) {
 
+    /* Hydro interactions... */
+#ifdef MOVING_MESH_HYDRO
+    /* Make sure the primitives are physical */
+    shadowswift_check_physical_quantities(
+        "density", "pressure", "entropic function (A)", pi->rho, pi->v[0],
+        pi->v[1], pi->v[2], pi->P, pi->A);
+    shadowswift_check_physical_quantities(
+        "density", "pressure", "entropic function (A)", pj->rho, pj->v[0],
+        pj->v[1], pj->v[2], pj->P, pj->A);
+    /* Set some extra quantities */
+    double shift[3] = {0., 0., 0.};
+    double centroid[3] = {pj->x[0] + 0.5 * dx[0], pj->x[1] + 0.5 * dx[1],
+                          pj->x[2] + 0.5 * dx[2]};
+    double pert = 0.5 * fmin(sqrtf(r2), fmaxf(pi->h, pj->h));
+    for (int i = 0; i < 3; i++) {
+      centroid[i] += random_uniform(0., pert);
+    }
+    float surface_area = random_uniform(0., 1.);
+    /* Interactions */
+    runner_iact_slope_estimate(pi, pj, centroid, surface_area, shift, 1);
+    runner_iact_slope_limiter(pi, pj, centroid, surface_area, shift, 1);
+    runner_iact_gradient(r2, dx, pi->h, pj->h, pi, pj, a, H);
+    runner_iact_flux_exchange(pi, pj, centroid, surface_area, shift, 1);
+#else
     /* And interact them (density) */
     runner_iact_density(r2, dx, pi->h, pj->h, pi, pj, a, H);
+#ifdef EXTRA_HYDRO_LOOP
+    /* And interact them (gradient) */
+    runner_iact_gradient(r2, dx, pi->h, pj->h, pi, pj, a, H);
+#endif
+    /* And interact them (force) */
+    runner_iact_force(r2, dx, pi->h, pj->h, pi, pj, a, H);
+#endif
+    /* Other interactions... */
+    /* And interact them (density) */
     runner_iact_mhd_density(r2, dx, pi->h, pj->h, pi, pj, mu_0, a, H);
     runner_iact_chemistry(r2, dx, pi->h, pj->h, pi, pj, a, H);
     runner_iact_pressure_floor(r2, dx, pi->h, pj->h, pi, pj, a, H);
     runner_iact_star_formation(r2, dx, pi->h, pj->h, pi, pj, a, H);
 
 #ifdef EXTRA_HYDRO_LOOP
-
     /* And interact them (gradient) */
-    runner_iact_gradient(r2, dx, pi->h, pj->h, pi, pj, a, H);
     runner_iact_mhd_gradient(r2, dx, pi->h, pj->h, pi, pj, mu_0, a, H);
 #endif
 
     /* And interact them (force) */
-    runner_iact_force(r2, dx, pi->h, pj->h, pi, pj, a, H);
     runner_iact_mhd_force(r2, dx, pi->h, pj->h, pi, pj, mu_0, a, H);
   }
 }

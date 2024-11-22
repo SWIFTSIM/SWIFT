@@ -1,6 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2021 Loic Hausammann (loic.hausammann@epfl.ch)
+ *               2024 Darwin Roduit (darwin.roduit@alumni.epfl.ch)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -35,6 +36,7 @@
 #include "random.h"
 #include "sink_part.h"
 #include "sink_properties.h"
+#include "star_formation.h"
 
 /**
  * @brief Computes the time-step of a given sink particle.
@@ -190,6 +192,8 @@ __attribute__((always_inline)) INLINE static void sink_init_sink(
   /* Reset to the mass of the sink */
   sp->mass_tot_before_star_spawning = sp->mass;
 
+  sp->num_ngbs = 0;
+
 #ifdef DEBUG_INTERACTIONS_SINKS
   for (int i = 0; i < MAX_NUM_OF_NEIGHBOURS_SINKS; ++i)
     sp->ids_ngbs_accretion[i] = -1;
@@ -231,6 +235,49 @@ __attribute__((always_inline)) INLINE static void sink_reset_predicted_values(
  */
 __attribute__((always_inline)) INLINE static void sink_kick_extra(
     struct sink* sp, float dt) {}
+
+/**
+ * @brief Finishes the calculation of density on sinks
+ *
+ * @param si The particle to act upon
+ * @param cosmo The current cosmological model.
+ */
+__attribute__((always_inline)) INLINE static void sink_end_density(
+    struct sink* si, const struct cosmology* cosmo) {}
+
+/**
+ * @brief Sets all particle fields to sensible values when the #sink has 0
+ * ngbs.
+ *
+ * @param sp The particle to act upon
+ * @param cosmo The current cosmological model.
+ */
+__attribute__((always_inline)) INLINE static void sinks_sink_has_no_neighbours(
+    struct sink* restrict sp, const struct cosmology* cosmo) {}
+
+/**
+ * @brief Compute the accretion rate of the sink and any quantities
+ * required swallowing based on an accretion rate
+ *
+ * Adapted from black_holes_prepare_feedback
+ *
+ * @param si The sink particle.
+ * @param props The properties of the sink scheme.
+ * @param constants The physical constants (in internal units).
+ * @param cosmo The cosmological model.
+ * @param cooling Properties of the cooling model.
+ * @param floor_props Properties of the entropy floor.
+ * @param time Time since the start of the simulation (non-cosmo mode).
+ * @param with_cosmology Are we running with cosmology?
+ * @param dt The time-step size (in physical internal units).
+ * @param ti_begin Integer time value at the beginning of timestep
+ */
+__attribute__((always_inline)) INLINE static void sink_prepare_swallow(
+    struct sink* restrict si, const struct sink_props* props,
+    const struct phys_const* constants, const struct cosmology* cosmo,
+    const struct cooling_function_data* cooling,
+    const struct entropy_floor_properties* floor_props, const double time,
+    const int with_cosmology, const double dt, const integertime_t ti_begin) {}
 
 /**
  * @brief Compute the rotational energy of the neighbouring gas particles.
@@ -323,11 +370,12 @@ INLINE static int sink_is_forming(
 
   const struct sink_part_data* sink_data = &p->sink_data;
 
-  const float temperature_max = sink_props->maximal_temperature;
+  const float temperature_threshold = sink_props->temperature_threshold;
   const float temperature = cooling_get_temperature(phys_const, hydro_props, us,
                                                     cosmo, cooling, p, xp);
 
   const float density_threshold = sink_props->density_threshold;
+  const float maximal_density_threshold = sink_props->maximal_density_threshold;
   const float density = hydro_get_physical_density(p, cosmo);
 
   const float div_v = sink_get_physical_div_v_from_part(p);
@@ -340,8 +388,17 @@ INLINE static int sink_is_forming(
   double E_tot = sink_data->E_kin_neighbours + sink_data->E_int_neighbours +
                  E_grav + sink_data->E_mag_neighbours;
 
-  /* Density and temperature criterion */
-  if (density <= density_threshold || temperature >= temperature_max) {
+  /* Density criterion */
+  if (density < density_threshold) {
+    return 0;
+  }
+  /* Here we have density >= density_threshold */
+
+  /* If density_threshold <= density <= maximal_density_threshold, check the
+     temperature. If density > maximal_density_threshold, do no check the
+     temperature. */
+  if ((density <= maximal_density_threshold) &&
+      (temperature >= temperature_threshold)) {
     return 0;
   }
 
@@ -791,18 +848,20 @@ INLINE static void sink_copy_properties_to_star(
   /* Note: The sink module need to be compiled with GEAR SF as we store data
      in the SF struct. However, we do not need to run with --star-formation */
 
-  /* Store either the birth_scale_factor or birth_time depending  */
-  if (with_cosmology) {
-    sp->birth_scale_factor = cosmo->a;
-  } else {
-    sp->birth_time = e->time;
-  }
+  /* Mass at birth */
+  star_formation_set_spart_birth_mass(sp, sp->mass);
 
-  /* Copy the chemistry properties */
-  chemistry_copy_sink_properties_to_star(sink, sp);
+  /* Store either the birth_scale_factor or birth_time */
+  star_formation_set_spart_birth_time_or_scale_factor(sp, e->time, cosmo->a,
+                                                      with_cosmology);
 
   /* Copy the progenitor id */
-  sp->sf_data.progenitor_id = sink->id;
+  star_formation_set_spart_progenitor_id(sp, sink->id);
+
+  /* Copy the chemistry properties */
+  /* ----------------------------- */
+
+  chemistry_copy_sink_properties_to_star(sink, sp);
 }
 
 /**

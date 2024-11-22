@@ -36,13 +36,15 @@ struct sink_props {
  * @param us The internal unit system.
  * @param params The parsed parameters.
  * @param cosmo The cosmological model.
+ * @param with_feedback Are we running with feedback?
  */
 INLINE static void sink_props_init(struct sink_props *sp,
                                    struct feedback_props *fp,
                                    const struct phys_const *phys_const,
                                    const struct unit_system *us,
                                    struct swift_params *params,
-                                   const struct cosmology *cosmo) {
+                                   const struct cosmology *cosmo,
+                                   const int with_feedback) {
 
   sp->cut_off_radius =
       parser_get_param_float(params, "DefaultSink:cut_off_radius");

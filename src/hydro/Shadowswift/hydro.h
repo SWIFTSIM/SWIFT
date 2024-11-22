@@ -78,7 +78,7 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
   hydro_part_get_relative_fluid_velocity(p, v_rel);
   float vmax =
       sqrtf(v_rel[0] * v_rel[0] + v_rel[1] * v_rel[1] + v_rel[2] * v_rel[2]) +
-      gas_soundspeed_from_pressure(W[0], W[4]);
+      hydro_get_comoving_soundspeed(p);
   vmax = max(vmax, p->timestepvars.vmax);
 
   /* Get the comoving psize, since we will compare with another comoving
@@ -86,8 +86,10 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
   float psize = hydro_get_comoving_psize(p);
   /* If the particle shows large deviations from a sphere, better use the
    * minimal distance to any of its faces to compute the timestep */
-  if (p->geometry.min_face_dist < 0.25 * psize)
+  if (p->geometry.min_face_dist < 0.25 * psize &&
+      p->geometry.min_face_dist > 0.) {
     psize = p->geometry.min_face_dist;
+  }
 
   /* NOTE (yuyttenh, 06/25): To compute the (physical) dt we want to divide the
    * physical particle size (a * psize) by the physical/peculiar velocity
@@ -95,7 +97,7 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
   float dt = cosmo->a * cosmo->a * psize / (vmax + FLT_MIN);
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (dt == 0.f) error("Part wants dt=0!");
+  if (dt == 0.f) error("Hydro part wants dt=0!");
 #endif
 
   return CFL_condition * dt;
@@ -595,18 +597,22 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
       p->conserved.momentum[1] += grav_kick[1];
       p->conserved.momentum[2] += grav_kick[2];
 
-      /* Extra *kinetic* energy due to gravity kick, see eq. 94 in Springel
+      /* Extra hydrodynamic energy due to gravity kick, see eq. 94 in Springel
        * (2010) or eq. 62 in theory/Cosmology/cosmology.pdf. */
       /* Divide total integrated mass flux by the timestep for hydrodynamical
        * quantities. We will later multiply with the correct timestep (these
        * differ for cosmological simulations). */
+      float dt_grav_corr1 = 0.f;
+      float dt_grav_corr2 = 0.f;
       if (p->flux.dt > 0.) {
-        p->gravity.mflux[0] /= p->flux.dt;
-        p->gravity.mflux[1] /= p->flux.dt;
-        p->gravity.mflux[2] /= p->flux.dt;
+        dt_grav_corr1 = p->gravity.dt;
+        dt_grav_corr2 = dt_grav;
       }
-      p->conserved.energy += hydro_gravity_energy_update_term(
-          dt_kick_corr, p, a_grav, xp->a_grav, grav_kick);
+      float dE_springel = hydro_gravity_energy_update_term(
+          dt_grav_corr1, dt_grav_corr2, xp->a_grav, a_grav, p->gravity.mflux,
+          p->v_full, grav_kick);
+
+      p->conserved.energy += dE_springel;
     }
 
 #ifdef SWIFT_DEBUG_CHECKS

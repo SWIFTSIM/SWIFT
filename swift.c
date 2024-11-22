@@ -178,7 +178,6 @@ int main(int argc, char *argv[]) {
   int with_self_gravity = 0;
   int with_hydro = 0;
 #ifdef MOVING_MESH
-  int with_grid_hydro = 0;
   int with_grid = 0;
 #endif
   int with_stars = 0;
@@ -1168,7 +1167,7 @@ int main(int argc, char *argv[]) {
     /* Initialise the sink properties */
     if (with_sinks) {
       sink_props_init(&sink_properties, &feedback_properties, &prog_const, &us,
-                      params, &cosmo);
+                      params, &cosmo, with_feedback);
     } else
       bzero(&sink_properties, sizeof(struct sink_props));
 

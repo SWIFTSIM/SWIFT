@@ -186,7 +186,7 @@ void space_reorder_extra_gparts_mapper(void *map_data, int num_cells,
 
   for (int ind = 0; ind < num_cells; ind++) {
     struct cell *c = &cells_top[local_cells[ind]];
-    cell_reorder_extra_gparts(c, s->parts, s->sparts, s->sinks);
+    cell_reorder_extra_gparts(c, s->parts, s->sparts, s->sinks, s->bparts);
   }
 }
 
@@ -1222,7 +1222,12 @@ void space_init(struct space *s, struct swift_params *params,
 
   /* Check that it is big enough. */
   const double dmin = min3(s->dim[0], s->dim[1], s->dim[2]);
-  int needtcells = 3 * dmax / dmin;
+  int needtcells;
+  if (s->periodic) {
+    needtcells = 3 * dmax / dmin;
+  } else {
+    needtcells = dmax / dmin;
+  }
   if (maxtcells < needtcells)
     error(
         "Scheduler:max_top_level_cells is too small %d, needs to be at "

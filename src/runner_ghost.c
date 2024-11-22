@@ -34,6 +34,7 @@
 #include "feedback.h"
 #include "mhd.h"
 #include "rt.h"
+#include "sink.h"
 #include "space_getsid.h"
 #include "star_formation.h"
 #include "stars.h"
@@ -1739,6 +1740,91 @@ void runner_do_rt_ghost2(struct runner *r, struct cell *c, int timer) {
   if (timer) TIMER_TOC(timer_do_rt_ghost2);
 }
 
+/**
+ * @brief Intermediate task after the density to finish density calculation
+ *  and calculate accretion rates for the particle swallowing step
+ *
+ * @param r The runner thread.
+ * @param c The cell.
+ * @param timer Are we timing this ?
+ */
+void runner_do_sinks_density_ghost(struct runner *r, struct cell *c,
+                                   int timer) {
+
+  struct sink *restrict sinks = c->sinks.parts;
+  const struct engine *e = r->e;
+  const struct cosmology *cosmo = e->cosmology;
+  const int with_cosmology = e->policy & engine_policy_cosmology;
+
+  TIMER_TIC;
+
+  /* Anything to do here? */
+  if (c->sinks.count == 0) return;
+  if (!cell_is_active_sinks(c, e)) return;
+
+  /* Recurse? */
+  if (c->split) {
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] != NULL) {
+        runner_do_sinks_density_ghost(r, c->progeny[k], 0);
+      }
+    }
+  } else {
+
+    /* Init the list of active particles that have to be updated. */
+    int *sid = NULL;
+    if ((sid = (int *)malloc(sizeof(int) * c->sinks.count)) == NULL)
+      error("Can't allocate memory for sid.");
+
+    int scount = 0;
+    for (int k = 0; k < c->sinks.count; k++)
+      if (sink_is_active(&sinks[k], e)) {
+        sid[scount] = k;
+        ++scount;
+      }
+
+    /* Loop over the remaining active parts in this cell. */
+    for (int i = 0; i < scount; i++) {
+
+      /* Get a direct pointer on the part. */
+      struct sink *sp = &sinks[sid[i]];
+
+#ifdef SWIFT_DEBUG_CHECKS
+      /* Is this part within the timestep? */
+      if (!sink_is_active(sp, e)) error("Ghost applied to inactive particle");
+#endif
+
+      /* Finish the density calculation */
+      sink_end_density(sp, cosmo);
+
+      if (sp->num_ngbs == 0) {
+        sinks_sink_has_no_neighbours(sp, cosmo);
+      }
+
+      /* Get particle time-step */
+      double dt;
+      if (with_cosmology) {
+        const integertime_t ti_step = get_integer_timestep(sp->time_bin);
+        const integertime_t ti_begin =
+            get_integer_time_begin(e->ti_current - 1, sp->time_bin);
+
+        dt = cosmology_get_delta_time(e->cosmology, ti_begin,
+                                      ti_begin + ti_step);
+      } else {
+        dt = get_timestep(sp->time_bin, e->time_base);
+      }
+
+      /* Calculate the accretion rate and accreted mass this timestep, for use
+       * in swallow loop */
+      sink_prepare_swallow(sp, e->sink_properties, e->physical_constants,
+                           e->cosmology, e->cooling_func, e->entropy_floor,
+                           e->time, with_cosmology, dt, e->ti_current);
+    }
+  }
+
+  if (timer) TIMER_TOC(timer_do_sinks_ghost);
+}
+
 #ifdef MOVING_MESH
 /**
  * @brief Some preparation work after the grid construction
@@ -1903,6 +1989,9 @@ void runner_do_flux_ghost(struct runner *r, struct cell *c, int timer) {
   const struct cosmology *cosmo = e->cosmology;
   const struct hydro_props *hydro_props = e->hydro_properties;
   const struct pressure_floor_props *pressure_floor = e->pressure_floor_props;
+  const int with_grid_hydro = e->policy & engine_policy_grid_hydro;
+  const int with_ext_gravity = e->policy & engine_policy_external_gravity;
+  const int with_self_gravity = e->policy & engine_policy_self_gravity;
 
   if (c->hydro.super != c) error("Flux ghost not run at super level!");
   TIMER_TIC;
@@ -1917,7 +2006,7 @@ void runner_do_flux_ghost(struct runner *r, struct cell *c, int timer) {
   }
 
 #ifdef EXTRA_HYDRO_LOOP
-  if (e->policy & engine_policy_grid_hydro) {
+  if (with_grid_hydro) {
     /* Set the geometry properties of the particles and prepare the particles
      * for the gradient calculation */
     for (int i = 0; i < c->hydro.count; i++) {
@@ -1933,6 +2022,18 @@ void runner_do_flux_ghost(struct runner *r, struct cell *c, int timer) {
     }
   }
 #endif
+
+  if (with_ext_gravity || with_self_gravity) {
+    /* Update mass of #gparts for gravity calculation at the end of timestep */
+    for (int i = 0; i < c->hydro.count; i++) {
+      struct part *p = &c->hydro.parts[i];
+      if (!part_is_active(p, e)) continue;
+      p->gpart->mass = p->conserved.mass + p->flux.mass;
+      p->gpart->x[0] = p->x[0] + p->geometry.centroid[0];
+      p->gpart->x[1] = p->x[1] + p->geometry.centroid[1];
+      p->gpart->x[2] = p->x[2] + p->geometry.centroid[2];
+    }
+  }
 
   if (timer) TIMER_TOC(timer_do_flux_ghost);
 }

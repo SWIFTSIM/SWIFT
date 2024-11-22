@@ -636,7 +636,8 @@ void cell_reorder_extra_sinks(struct cell *c, const ptrdiff_t sinks_offset) {
  * @param sinks The global array of #sink (for re-linking).
  */
 void cell_reorder_extra_gparts(struct cell *c, struct part *parts,
-                               struct spart *sparts, struct sink *sinks) {
+                               struct spart *sparts, struct sink *sinks,
+                               struct bpart *bparts) {
   struct gpart *gparts = c->grav.parts;
   const int count_real = c->grav.count;
 
@@ -668,6 +669,8 @@ void cell_reorder_extra_gparts(struct cell *c, struct part *parts,
         sinks[-gparts[i].id_or_neg_offset].gpart = &gparts[i];
       } else if (gparts[i].type == swift_type_stars) {
         sparts[-gparts[i].id_or_neg_offset].gpart = &gparts[i];
+      } else if (gparts[i].type == swift_type_black_hole) {
+        bparts[-gparts[i].id_or_neg_offset].gpart = &gparts[i];
       }
     }
   }

@@ -34,3 +34,8 @@ In order to add a new scheme, you will need to:
    ``nobase_noinst_HEADERS``, add your new header files.
 
 6. Update the documentation.  Add your equations/documentation to ``doc/RTD``.
+
+.. toctree::
+   :caption: Table of Contents
+
+   sink_adding_new_scheme

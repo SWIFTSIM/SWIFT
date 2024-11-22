@@ -101,6 +101,7 @@ void runner_do_black_holes_density_ghost(struct runner *r, struct cell *c,
                                          int timer);
 void runner_do_black_holes_swallow_ghost(struct runner *r, struct cell *c,
                                          int timer);
+void runner_do_sinks_density_ghost(struct runner *r, struct cell *c, int timer);
 void runner_do_init_grav(struct runner *r, struct cell *c, int timer);
 void runner_do_hydro_sort(struct runner *r, struct cell *c, int flag,
                           int cleanup, int rt_requests_sort, int clock);
@@ -150,6 +151,17 @@ void runner_do_bh_swallow_pair(struct runner *r, struct cell *ci,
 void runner_do_star_formation(struct runner *r, struct cell *c, int timer);
 void runner_do_star_formation_sink(struct runner *r, struct cell *c, int timer);
 void runner_do_sink_formation(struct runner *r, struct cell *c);
+void runner_do_prepare_part_sink_formation(struct runner *r, struct cell *c,
+                                           struct part *restrict p,
+                                           struct xpart *restrict xp);
+void runner_do_sinks_gas_swallow_self(struct runner *r, struct cell *c,
+                                      int timer);
+void runner_do_sinks_gas_swallow_pair(struct runner *r, struct cell *ci,
+                                      struct cell *cj, int timer);
+void runner_do_sinks_sink_swallow_self(struct runner *r, struct cell *c,
+                                       int timer);
+void runner_do_sinks_sink_swallow_pair(struct runner *r, struct cell *ci,
+                                       struct cell *cj, int timer);
 void runner_do_stars_resort(struct runner *r, struct cell *c, const int timer);
 
 void runner_do_recv_gpart(struct runner *r, struct cell *c, int timer);
