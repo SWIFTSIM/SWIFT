@@ -76,6 +76,16 @@ __attribute__((always_inline)) INLINE static void sink_init_sink(
 
   sp->density.wcount = 0.f;
   sp->density.wcount_dh = 0.f;
+
+#ifdef SWIFT_SINK_DENSITY_CHECKS
+  sp->N_check_density = 0;
+  sp->N_check_density_exact = 0;
+  sp->rho_check = 0.f;
+  sp->rho_check_exact = 0.f;
+  sp->n_check = 0.f;
+  sp->n_check_exact = 0.f;
+  sp->inhibited_check_exact = 0;
+#endif
 }
 
 /**
@@ -123,6 +133,11 @@ __attribute__((always_inline)) INLINE static void sink_end_density(
   /* Finish the calculation by inserting the missing h-factors */
   si->density.wcount *= h_inv_dim;
   si->density.wcount_dh *= h_inv_dim_plus_one;
+
+#ifdef SWIFT_SINK_DENSITY_CHECKS
+  si->rho_check *= h_inv_dim;
+  si->n_check *= h_inv_dim;
+#endif
 }
 
 /**

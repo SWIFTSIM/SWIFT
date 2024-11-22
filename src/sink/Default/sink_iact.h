@@ -94,6 +94,12 @@ runner_iact_nonsym_sinks_gas_density(
   /* Compute contribution to the number of neighbours */
   si->density.wcount += wi;
   si->density.wcount_dh -= (hydro_dimension * wi + ui * wi_dx);
+
+#ifdef SWIFT_SINK_DENSITY_CHECKS
+  si->rho_check += pj->mass * wi;
+  si->n_check += wi;
+  si->N_check_density++;
+#endif
 }
 
 /**
