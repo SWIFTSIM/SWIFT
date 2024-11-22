@@ -299,14 +299,16 @@ void part_verify_links(struct part *parts, struct gpart *gparts,
       if (part->gpart != &gparts[k]) error("Linking problem!");
 
       /* Check that the particles are at the same place */
-      if (gparts[k].x[0] != part->x[0] || gparts[k].x[1] != part->x[1] ||
-          gparts[k].x[2] != part->x[2])
+      double com[3];
+      hydro_get_center_of_mass(part, com);
+      if (gparts[k].x[0] != com[0] || gparts[k].x[1] != com[1] ||
+          gparts[k].x[2] != com[2])
         error(
             "Linked particles are not at the same position!\n"
             "gp->x=[%e %e %e] p->x=[%e %e %e] diff=[%e %e %e]",
-            gparts[k].x[0], gparts[k].x[1], gparts[k].x[2], part->x[0],
-            part->x[1], part->x[2], gparts[k].x[0] - part->x[0],
-            gparts[k].x[1] - part->x[1], gparts[k].x[2] - part->x[2]);
+            gparts[k].x[0], gparts[k].x[1], gparts[k].x[2], com[0],
+            com[1], com[2], gparts[k].x[0] - com[0],
+            gparts[k].x[1] - com[1], gparts[k].x[2] - com[2]);
 
       /* Check that the particles have the same mass */
       if (gparts[k].mass != hydro_get_mass(part))
