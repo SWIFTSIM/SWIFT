@@ -137,11 +137,11 @@ INLINE static void starformation_init_backend(
 
   /* Maximum gas temperature for star formation */
   starform->maximal_temperature = parser_get_param_double(
-      parameter_file, "GEARStarFormation:maximal_temperature");
+      parameter_file, "GEARStarFormation:maximal_temperature_K");
 
   /* Minimal gas density for star formation */
   starform->density_threshold = parser_get_param_double(
-      parameter_file, "GEARStarFormation:density_threshold");
+      parameter_file, "GEARStarFormation:density_threshold_Hpcm3");
 
   /* Number of stars per particles */
   starform->n_stars_per_part = parser_get_param_double(
@@ -162,8 +162,10 @@ INLINE static void starformation_init_backend(
   starform->maximal_temperature /=
       units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
 
-  starform->density_threshold /=
-      units_cgs_conversion_factor(us, UNIT_CONV_DENSITY);
+  const double m_p_cgs = phys_const->const_proton_mass *
+                         units_cgs_conversion_factor(us, UNIT_CONV_MASS);
+  starform->density_threshold *=
+      m_p_cgs / units_cgs_conversion_factor(us, UNIT_CONV_DENSITY);
 
   /* Initialize the mass of the stars to 0 for the stats computation */
   starform->mass_stars = 0;

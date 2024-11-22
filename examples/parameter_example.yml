@@ -634,10 +634,10 @@ QLAStarFormation:
 GEARStarFormation:
   star_formation_mode: default      # default (use the pressure floor limit) or agora (do not use the pressure floor limit)
   star_formation_efficiency: 0.01   # star formation efficiency (c_*)
-  maximal_temperature:  3e4         # Upper limit to the temperature of a star forming particle
+  maximal_temperature_K:     3e4    # Upper limit to the temperature of a star forming particle
+  density_threshold_Hpcm3:   10     # Density threshold (Hydrogen atoms/cm^3) for star formation
   n_stars_per_particle: 4           # Number of stars that an hydro particle can generate
   min_mass_frac: 0.5                # Minimal mass for a stellar particle as a fraction of the average mass for the stellar particles.
-  density_threshold: 1.67e-23       # Density threshold for star formation
 
 # Parameters related to feedback models  -----------------------------------------------
 
@@ -886,9 +886,9 @@ DefaultSink:
 GEARSink:
   cut_off_radius:        1e-3       # Cut off radius of the sink particles (in internal units). This parameter should be adapted with the resolution. 
   f_acc: 0.1                                  # (Optional) Fraction of the cut_off_radius that determines if a gas particle should be swallowed wihtout additional check. It has to respect 0 <= f_acc <= 1. (Default: 0.1)
-  temperature_threshold_K:        100           # Max temperature (in K) for forming a sink when density_threshold_g_per_cm3 <= density <= maximal_density_threshold_g_per_cm3.
-  density_threshold_g_per_cm3: 1.67e-21       # Minimum gas density (in g/cm3) required to form a sink particle.
-  maximal_density_threshold_g_per_cm3: 1.67e-19 # If the gas density exceeds this value (in g/cm3), a sink forms regardless of temperature if all other criteria are passed. (Default: FLT_MAX)
+  temperature_threshold_K:        100           # Max temperature (in K) for forming a sink when density_threshold_Hpcm3 <= density <= maximal_density_threshold_Hpcm3.
+  density_threshold_Hpcm3: 1e3       # Minimum gas density (in Hydrogen atoms/cm3) required to form a sink particle.
+  maximal_density_threshold_Hpcm3: 1e5 # If the gas density exceeds this value (in Hydrogen atoms/cm3), a sink forms regardless of temperature if all other criteria are passed. (Default: FLT_MAX)
   stellar_particle_mass_Msun:  20             # Mass of the stellar particle representing the low mass stars (continuous IMF sampling) (in solar mass)
   minimal_discrete_mass_Msun: 8               # Minimal mass of stars represented by discrete particles (in solar mass)
   stellar_particle_mass_first_stars_Msun: 20      # Mass of the stellar particle representing the low mass stars (continuous IMF sampling) (in solar mass). First stars

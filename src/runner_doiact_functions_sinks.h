@@ -92,7 +92,8 @@ void DOSELF1_SINKS(struct runner *r, struct cell *c, int timer) {
 
         if (r2 < ri2) {
           IACT_SINKS_GAS(r2, dx, ri, hj, si, pj, with_cosmology, cosmo,
-                         e->gravity_properties, e->sink_properties);
+                         e->gravity_properties, e->sink_properties,
+                         e->ti_current, e->time);
         }
       } /* loop over the parts in ci. */
     } /* loop over the sinks in ci. */
@@ -148,7 +149,8 @@ void DOSELF1_SINKS(struct runner *r, struct cell *c, int timer) {
 
       if (r2 < ri2 || r2 < rj2) {
         IACT_SINKS_SINK(r2, dx, ri, rj, si, sj, with_cosmology, cosmo,
-                        e->gravity_properties, e->sink_properties);
+                        e->gravity_properties, e->sink_properties,
+                        e->ti_current, e->time);
       }
     } /* loop over the sinks in ci. */
   } /* loop over the sinks in ci. */
@@ -210,9 +212,9 @@ void DO_NONSYM_PAIR1_SINKS_NAIVE(struct runner *r, struct cell *restrict ci,
 
       const float ri = si->r_cut;
       const float ri2 = ri * ri;
-      const float six[3] = {(float)(si->x[0] - cj->loc[0]),
-                            (float)(si->x[1] - cj->loc[1]),
-                            (float)(si->x[2] - cj->loc[2])};
+      const float six[3] = {(float)(si->x[0] - (cj->loc[0] + shift[0])),
+                            (float)(si->x[1] - (cj->loc[1] + shift[1])),
+                            (float)(si->x[2] - (cj->loc[2] + shift[2]))};
 
       /* Loop over the parts (gas) in cj. */
       for (int pjd = 0; pjd < count_j; pjd++) {
@@ -241,7 +243,8 @@ void DO_NONSYM_PAIR1_SINKS_NAIVE(struct runner *r, struct cell *restrict ci,
 
         if (r2 < ri2) {
           IACT_SINKS_GAS(r2, dx, ri, hj, si, pj, with_cosmology, cosmo,
-                         e->gravity_properties, e->sink_properties);
+                         e->gravity_properties, e->sink_properties,
+                         e->ti_current, e->time);
         }
       } /* loop over the parts in cj. */
     } /* loop over the sinks in ci. */
@@ -297,7 +300,8 @@ void DO_NONSYM_PAIR1_SINKS_NAIVE(struct runner *r, struct cell *restrict ci,
 
       if (r2 < ri2 || r2 < rj2) {
         IACT_SINKS_SINK(r2, dx, ri, rj, si, sj, with_cosmology, cosmo,
-                        e->gravity_properties, e->sink_properties);
+                        e->gravity_properties, e->sink_properties,
+                        e->ti_current, e->time);
       }
     } /* loop over the sinks in cj. */
   } /* loop over the sinks in ci. */
