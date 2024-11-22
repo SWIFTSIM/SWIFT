@@ -36,7 +36,7 @@ Star formation
 The AGORA model uses the :ref:`GEAR model <gear_star_formation>` scheme, however with the 
 ``GEARStarFormation:star_formation_mode`` parameter set to ``agora``. Instead of requiring the gas
 density to reach the pressure floor, we simply require it to be denser than a density
-threshold defined by ``GEARStarFormation:density_threshold``.
+threshold defined by ``GEARStarFormation:density_threshold_Hpcm3``.
 
 
 Recommended parameters for the AGORA model should be:
@@ -47,10 +47,10 @@ Recommended parameters for the AGORA model should be:
   GEARStarFormation:
     star_formation_mode: agora            
     star_formation_efficiency: 0.01   
-    maximal_temperature:  1e10       
+    maximal_temperature_K:  1e10
     n_stars_per_particle: 1
     min_mass_frac: 0.5
-    density_threshold:   1.67e-23   
+    density_threshold_Hpcm3:   10
 
 
 

@@ -142,6 +142,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->stars.prepare2 = NULL;
     c->stars.prepare3 = NULL;
     c->stars.prepare4 = NULL;
+    c->sinks.density = NULL;
     c->sinks.swallow = NULL;
     c->sinks.do_sink_swallow = NULL;
     c->sinks.do_gas_swallow = NULL;
@@ -173,6 +174,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->black_holes.black_holes_in = NULL;
     c->black_holes.black_holes_out = NULL;
     c->sinks.sink_in = NULL;
+    c->sinks.density_ghost = NULL;
     c->sinks.sink_ghost1 = NULL;
     c->sinks.sink_ghost2 = NULL;
     c->sinks.sink_out = NULL;
