@@ -650,11 +650,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float norm_v_cross_r_hat = sqrtf(norm_square_v_cross_r_hat);
 
   /* Artificial resistivity speed (Price 2018, eq. 185) */
-  const float alpha_B_i = norm_v_cross_r_hat;
-  const float alpha_B_j = norm_v_cross_r_hat;
+  const float alpha_B_i = 1.f;
+  const float alpha_B_j = 1.f;
 
-  const float v_sig_AR_i = c_h_i * alpha_B_i;
-  const float v_sig_AR_j = c_h_j * alpha_B_j;
+  const float v_sig_AR_i = norm_v_cross_r_hat * alpha_B_i;
+  const float v_sig_AR_j = norm_v_cross_r_hat * alpha_B_j;
 
   /* Artifical resistivity (Price 2018, eq. 181 second term)
    * without the rho_a in front
@@ -672,11 +672,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Artificial resistivity energy change (Price 2018, eq. 182) */
   float du_dt_AR_i = 0.f;
-  for (int k = 0; k < 3; k++) {
-    dB_over_rho_dt_AR_i[k] += v_sig_AR_i * wi_dr * f_ij / (rhoi * rhoi);
-    dB_over_rho_dt_AR_i[k] += v_sig_AR_j * wj_dr * f_ji / (rhoj * rhoj);
-    dB_over_rho_dt_AR_i[k] *= -0.25f * square_norm_dB;
-  }
+  du_dt_AR_i += v_sig_AR_i * wi_dr * f_ij / (rhoi * rhoi);
+  du_dt_AR_i += v_sig_AR_j * wj_dr * f_ji / (rhoj * rhoj);
+  du_dt_AR_i *= -0.25f * square_norm_dB;
 
   pi->u_dt -= mj * du_dt_AR_i;
 
