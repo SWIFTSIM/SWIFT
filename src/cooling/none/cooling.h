@@ -286,8 +286,9 @@ __attribute__((always_inline)) INLINE static float cooling_get_radiated_energy(
  * @param xp Pointer to the #xpart data.
  * @param time The time when the cooling was switched off.
  */
-INLINE static void
-cooling_set_part_time_cooling_off(struct part* p, struct xpart* xp, const double time) {}
+INLINE static void cooling_set_part_time_cooling_off(struct part* p,
+                                                     struct xpart* xp,
+                                                     const double time) {}
 
 /**
  * @brief Split the coolong content of a particle into n pieces

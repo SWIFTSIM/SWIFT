@@ -75,8 +75,8 @@ double cooling_get_physical_density(
  * @param xp Pointer to the #xpart data.
  * @param time The time when the cooling was switched off.
  */
-INLINE void
-cooling_set_part_time_cooling_off(struct part* p, struct xpart* xp, const double time) {
+INLINE void cooling_set_part_time_cooling_off(struct part* p, struct xpart* xp,
+                                              const double time) {
   xp->cooling_data.time_last_event = time;
 }
 
