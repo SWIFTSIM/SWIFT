@@ -516,13 +516,13 @@ runner_iact_nonsym_sinks_gas_swallow(
     si->to_collect.mass_eligible_swallow += hydro_get_mass(pj);
 
     /* Maximal mass that can be swallowed within a single timestep */
-    const float mass_swallow_limit = sink_properties->n_star * si->mass_IMF;
+    const float mass_swallow_limit = sink_properties->n_IMF * si->mass_IMF;
 
     /* If the mass exceeds the threshold, do not swallow. Make sure you can at
        least swallow a particle to avoid running into the problem of never being
        able to spawn a star.
-       If n_star <= 0, then disable this criterion */
-    if (sink_properties->n_star > 0 &&
+       If n_IMF <= 0, then disable this criterion */
+    if (sink_properties->n_IMF > 0 &&
         si->to_collect.mass_after_swallow >= mass_swallow_limit &&
         si->to_collect.mass_eligible_swallow != 0) {
       return;

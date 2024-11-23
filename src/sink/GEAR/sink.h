@@ -114,7 +114,7 @@ __attribute__((always_inline)) INLINE static float sink_compute_timestep(
   /* SF - accretion timestep ------------------------------------------------*/
   /* Now, limit timestep by computing how much we restricted the sink accretion
      for SF reasons compared to an unrestricted accretion. */
-  const float M_SF = sink_properties->n_star * sink->mass_IMF;
+  const float M_SF = sink_properties->n_IMF * sink->mass_IMF;
 
   /* If we divide by mass_eligible_swallow, we get the relative error compared
      to unrestricted swallow */
@@ -135,7 +135,7 @@ __attribute__((always_inline)) INLINE static float sink_compute_timestep(
   /* If Delta_M < 0, then we are limiting the accretion rate by a huge factor.
      To avoid biasing the SFR too much, do a small timestep to accrete the
      remaining mass sooner. */
-  if (sink_properties->n_star > 0 && Delta_M < 0) {
+  if (sink_properties->n_IMF > 0 && Delta_M < 0) {
     /* Add a tolerance parameter in the params.yml */
     dt_SF = 0.1 * sink->to_collect.mass_eligible_swallow / fabs(M_dot);
   }
