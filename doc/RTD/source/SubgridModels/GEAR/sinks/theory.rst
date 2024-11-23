@@ -1,5 +1,5 @@
 .. Sink particles in GEAR model
-   Darwin Roduit, 17 April 2024
+   Darwin Roduit, 24 November 2024
 
 .. _sink_GEAR_model_summary:
 
