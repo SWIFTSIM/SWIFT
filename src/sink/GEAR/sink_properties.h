@@ -27,7 +27,7 @@
 /* Some default values for the parameters to be read in the YAML file */
 #define DEFAULT_F_ACC 0.8
 #define DEFAULT_STAR_SPAWNING_SIGMA_FACTOR 0.2
-#define DEFAULT_N_STAR 2.0
+#define DEFAULT_N_IMF FLT_MAX /* No accretion restriction */
 
 /* Sink formation is activated */
 #define DEFAULT_DISABLE_SINK_FORMATION 0
