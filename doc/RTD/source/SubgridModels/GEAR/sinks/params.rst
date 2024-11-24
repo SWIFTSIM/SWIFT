@@ -44,7 +44,16 @@ The next set of parameters controls the sink formation scheme. More details are 
 
 Those criteria are checked if the density and temperature criteria are successfully passed. They control the behaviour of the sink formation scheme. By default, they are all activated and set to ``1``.
 
-The last parameter is ``disable_sink_formation`` (default: 0). It controls whether sinks are formed or not in the simulation. The main purpose is when sinks are put in initial conditions and sinks are not wanted to be added during the run. This parameter is set to ``0`` by default, i.e. sink formation is *enabled*. 
+The next parameter is ``disable_sink_formation`` (default: 0). It controls whether sinks are formed or not in the simulation. The main purpose is when sinks are put in initial conditions and sinks are not wanted to be added during the run. This parameter is set to ``0`` by default, i.e. sink formation is *enabled*.
+
+The last set of paramters deals with the sink timesteps:
+
+* Courant-Friedrich-Levy constant for the CFL-like timestep constraint:``CFL_condition``,
+* age (in Myr) at which a sink is considered dead (no accretion) and without timestep limitations, except for 2-body encounters involving another young/old sink and gravity: ``timestep_age_threshold_unlimited_Myr`` (default: FLT_MAX),
+* age (in Myr) at which sink switch from young to old for time-stepping purposes:``timestep_age_threshold``  (default: FLT_MAX),
+* maximal time-step length of young sinks (in Myr): ``max_timestep_young_Myr``  (default: FLT_MAX),
+* maximal time-step length of old sinks (in Myr): ``max_timestep_old_Myr`` (default: FLT_MAX),
+* number of times the IMF mass can be swallowed in a single timestep: ``n_IMF`` (default: FLT_MAX).
 
 The full section is:
 
@@ -67,6 +76,12 @@ The full section is:
      sink_formation_bound_state_criterion: 1         # (Optional) Activate the bound state check for sink formation. (Default: 1)
      sink_formation_overlapping_sink_criterion: 1    # (Optional) Activate the overlapping sink check for sink formation. (Default: 1)
      disable_sink_formation: 0                       # (Optional) Disable sink formation. (Default: 0)
+     CFL_condition:                        0.5       # Courant-Friedrich-Levy condition for time integration.
+     timestep_age_threshold_unlimited_Myr: 100.      # (Optional) Age above which sinks no longer have time-step restrictions, except for 2-body encounters involving another young/old sink and gravity (in Mega-years). (Default: FLT_MAX)
+     timestep_age_threshold_Myr:           25.       # (Optional) Age at which sink switch from young to old for time-stepping purposes (in Mega-years). (Default: FLT_MAX)
+     max_timestep_young_Myr:               1.0       # (Optional) Maximal time-step length of young sinks (in Mega-years). (Default: FLT_MAX)
+     max_timestep_old_Myr:                 5.0       # (Optional) Maximal time-step length of old sinks (in Mega-years). (Default: FLT_MAX)
+     n_IMF:                                 2        # (Optional) Number of times the IMF mass can be swallowed in a single timestep. (Default: FLTM_MAX)
 
 .. warning::
    Some parameter choices can greatly impact the outcome of your simulations. Think twice when choosing them.
