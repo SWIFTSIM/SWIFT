@@ -11,7 +11,7 @@ First, sink particles obey a Courant-Friedrichs-Lewy (CFL)-like timestep constra
 .. math::
    \Delta t_s \leq C_\text{CFL} \frac{r_{\text{cut, min}}}{\sqrt{c_{s,s}^2 + \| \Delta \mathbf{v}_s \|^2}} \; ,
 
-where :math:`r_\text{cut, min} = \min(r_{\text{cut}, s}, \gamma_k \min_j(h_j))` is the minimal cut-off radius between the sink :math:`s` and the gas neihbours :math:`j`, :math:`c_{s, s}` and :math:`\Delta \mathbf{v}_s` are the gas soundspeed and the relative gas-sink velocity at the sink location. The latter two are reconstructed at the sink location with SPH interpolation. The value of :math:`C_\text{CFL}` is given in the YAML parameter file with ``GEARSink:CFL_condition``.
+where :math:`r_\text{cut, min} = \min(r_{\text{cut}, s}, \gamma_k \min_j(h_j))` is the minimal cut-off radius between the sink :math:`s` and the gas neighbours:math:`j`, :math:`c_{s, s}` and :math:`\Delta \mathbf{v}_s` are the gas sound-speed and the relative gas-sink velocity at the sink location. The latter two are reconstructed at the sink location with SPH interpolation. The value of :math:`C_\text{CFL}` is given in the YAML parameter file with ``GEARSink:CFL_condition``.
 
 With this condition, we ensure the sink knows the *local dynamics*. Since sink particles accrete gas, they must anticipate the surrounding gas infall. We achieve this with a gas free-fall time criterion, following Grudic 2017:
 
@@ -20,7 +20,7 @@ With this condition, we ensure the sink knows the *local dynamics*. Since sink p
 
 with :math:`m_s` the sink mass.
 
-These constraints ensure the gas accretion is smooth by removing few particles per timesteps. This is important since, in SPH, gas particles serve as interpolation points. By preventing the removal of huge amount of particles, we ensure the stability of the hydrodynamics computations.
+These constraints ensure smooth gas accretion by removing a few particles per timestep. This is important since, in SPH, gas particles serve as interpolation points. By preventing the removal of a large number of particles, we ensure the stability of the hydrodynamic computations.
 
 To accurately follow *sink mergers*, we implemented Grudic 2017 two body timestep constraints between all sink particles:
 
@@ -34,12 +34,16 @@ with
 
 where :math:`r_{ss'}` is the sinks relative separation, :math:`v_{ss'}` the relative velocity, :math:`m_{s}` and :math:`m_{s'}` their masses and :math:`\epsilon_{sink}` is the sink (fixed) gravitational softening.
 
-We also implemented maximal timesteps sizes depending on the sink age; :math:`\Delta t_\text{max,s}^\text{age}`. A sink can be young, old or dead. In the first two cases, the sink's timestep is :math:`\min(\Delta t_\text{max,s}^\text{age}, \Delta t_s)`. In the last case, we impose :math:`\Delta t_\text{2-body}` only if a dead sink is involved in a two-boy encounter with an alive sink. Otherwise, the sink has no timesteps constraint (apart from gravity). The parameters controlling the transition between the young and old is ``GEARSink:timestep_age_threshold``, the one between old and dead is ``timestep_age_threshold_unlimited_Myr``. The maximal timesteps are given by  ``GEARSink:max_timestep_young_Myr`` and  ``GEARSink:max_timestep_old_Myr``.
+We also implemented maximal timesteps sizes depending on the sink age; :math:`\Delta t_\text{max,s}^\text{age}`. A sink can be young, old or dead. In the first two cases, the sink's timestep is :math:`\min(\Delta t_\text{max,s}^\text{age}, \Delta t_s)`. In the last case, we impose :math:`\Delta t_\text{2-body}` only if a dead sink is involved in a two-boy encounter with an alive sink. Otherwise, the sink has no timestep constraint (apart from gravity). The parameters controlling the transition between the young and old is ``GEARSink:timestep_age_threshold``, and the one between old and dead is ``timestep_age_threshold_unlimited_Myr``. The maximal timesteps are given by  ``GEARSink:max_timestep_young_Myr`` and  ``GEARSink:max_timestep_old_Myr``.
 
-Notice that sink particles also satisfy a gravity timestep constraint, as all gravitational particles in Swift. We add a last timestep contraint, explained in the following section.
+Notice that sink particles also satisfy a gravity timestep constraint, as do all gravitational particles in Swift. We add a last timestep constraint, which is explained in the following section.
 
 
 Star formation constraint
 =========================
 
-A concern that we did not adressed know concerns the star spawning algorihtm. Althought the stars' masses are sampled from the IMF, the stars metallicities are not. If a sink accrete lots of mass, then it can create lots of star particles during the same timestep. However, these stars will all have the same metallicity, which does not represent the actual metals evolution during the accretion. In such situation, the galaxies' properties are affected and do not represent the underlying physics. Another problem is that we can spawn many stars at once and the code may complain. Such situation is not ideal. Although, the constraints in the previous section will help, they are not sufficient. Hence, we introduce a new timestep constraint.
+
+A concern we did not address concerns the star is the spawning algorithm. Although the stars' masses are sampled from the IMF, the star's metallicities are not. If a sink accretes mass, it can create many star particles during the same timestep. However, these stars will all have the same metallicity, which does not represent the actual metals' evolution during the accretion. In such a situation, the galaxies' properties are affected and do not represent the underlying physics.
+
+Another problem is that we can spawn many stars simultaneously, and the code may complain. Such a situation could be better. Although the constraints in the previous section will help, more is needed. Hence, we introduce a new timestep constraint.
+
