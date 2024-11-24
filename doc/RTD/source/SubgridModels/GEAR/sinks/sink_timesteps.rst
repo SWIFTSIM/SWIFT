@@ -11,7 +11,7 @@ First, sink particles obey a Courant-Friedrichs-Lewy (CFL)-like timestep constra
 .. math::
    \Delta t_s \leq C_\text{CFL} \frac{r_{\text{cut, min}}}{\sqrt{c_{s,s}^2 + \| \Delta \mathbf{v}_s \|^2}} \; ,
 
-where :math:`r_\text{cut, min} = \min(r_{\text{cut}, s}, \gamma_k \min_j(h_j))` is the minimal cut-off radius between the sink :math:`s` and the gas neihbours :math:`j`, :math:`c_{s, s}` and :math:`\Delta \mathbf{v}_s` are the gas soundspeed and the relative gas-sink velocity at the sink location. The latter two are reconstructed at the sink location with SPH interpolation.
+where :math:`r_\text{cut, min} = \min(r_{\text{cut}, s}, \gamma_k \min_j(h_j))` is the minimal cut-off radius between the sink :math:`s` and the gas neihbours :math:`j`, :math:`c_{s, s}` and :math:`\Delta \mathbf{v}_s` are the gas soundspeed and the relative gas-sink velocity at the sink location. The latter two are reconstructed at the sink location with SPH interpolation. The value of :math:`C_\text{CFL}` is given in the YAML parameter file with ``GEARSink:CFL_condition``.
 
 With this condition, we ensure the sink knows the *local dynamics*. Since sink particles accrete gas, they must anticipate the surrounding gas infall. We achieve this with a gas free-fall time criterion, following Grudic 2017:
 
@@ -34,7 +34,7 @@ with
 
 where :math:`r_{ss'}` is the sinks relative separation, :math:`v_{ss'}` the relative velocity, :math:`m_{s}` and :math:`m_{s'}` their masses and :math:`\epsilon_{sink}` is the sink (fixed) gravitational softening.
 
-We also implemented maximal timesteps sizes depending on the sink age; :math:`\Delta t_\text{max,s}^\text{age}`. A sink can be young, old or dead. In the first two cases, the sink's timestep is :math:`\min(\Delta t_\text{max,s}^\text{age}, \Delta t_s)`. In the last case, we impose :math:`\Delta t_\text{2-body}` only if a dead sink is involved in a two-boy encounter with an alive sink. Otherwise, the sink has no timesteps constraint (apart from gravity).
+We also implemented maximal timesteps sizes depending on the sink age; :math:`\Delta t_\text{max,s}^\text{age}`. A sink can be young, old or dead. In the first two cases, the sink's timestep is :math:`\min(\Delta t_\text{max,s}^\text{age}, \Delta t_s)`. In the last case, we impose :math:`\Delta t_\text{2-body}` only if a dead sink is involved in a two-boy encounter with an alive sink. Otherwise, the sink has no timesteps constraint (apart from gravity). The parameters controlling the transition between the young and old is ``GEARSink:timestep_age_threshold``, the one between old and dead is ``timestep_age_threshold_unlimited_Myr``. The maximal timesteps are given by  ``GEARSink:max_timestep_young_Myr`` and  ``GEARSink:max_timestep_old_Myr``.
 
 Notice that sink particles also satisfy a gravity timestep constraint, as all gravitational particles in Swift. We add a last timestep contraint, explained in the following section.
 
