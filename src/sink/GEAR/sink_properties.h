@@ -289,7 +289,7 @@ INLINE static void sink_props_init(struct sink_props *sp,
   const double age_threshold_Myr = parser_get_opt_param_float(
       params, "GEARSink:timestep_age_threshold_Myr", FLT_MAX);
   const double age_threshold_unlimited_Myr = parser_get_opt_param_float(
-      params, "GEARSink:timestep_age_threshold_unlimited_Myr", 0.);
+      params, "GEARSink:timestep_age_threshold_unlimited_Myr", FLT_MAX);
 
   /* Check for consistency */
   if (age_threshold_unlimited_Myr != 0. && age_threshold_Myr != FLT_MAX) {
