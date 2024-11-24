@@ -136,8 +136,7 @@ __attribute__((always_inline)) INLINE static float sink_compute_timestep(
      To avoid biasing the SFR too much, do a small timestep to accrete the
      remaining mass sooner. */
   if (sink_properties->n_IMF > 0 && Delta_M < 0) {
-    /* Add a tolerance parameter in the params.yml */
-    dt_SF = 0.1 * sink->to_collect.mass_eligible_swallow / fabs(M_dot);
+    dt_SF = sink_properties->tolerance_SF_timestep * sink->to_collect.mass_eligible_swallow / fabs(M_dot);
   }
 
   /* Sink age (in internal units) */

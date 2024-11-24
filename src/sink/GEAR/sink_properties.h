@@ -28,6 +28,7 @@
 #define DEFAULT_F_ACC 0.8
 #define DEFAULT_STAR_SPAWNING_SIGMA_FACTOR 0.2
 #define DEFAULT_N_IMF FLT_MAX /* No accretion restriction */
+#define DEFAULT_TOLERANCE_SF_TIMESTEP 0.1
 
 /* Sink formation is activated */
 #define DEFAULT_DISABLE_SINK_FORMATION 0
@@ -105,6 +106,9 @@ struct sink_props {
 
   /*! Number of times the IMF mass can be swallowed in a single timestep */
   float n_IMF;
+
+  /*! Tolerance parameter for SF timestep constraint */
+  float tolerance_SF_timestep;
 };
 
 /**
@@ -301,7 +305,10 @@ INLINE static void sink_props_init(struct sink_props *sp,
           age_threshold_unlimited_Myr, age_threshold_Myr);
   }
 
+  /* Timestep tolerance paramters */
   sp->CFL_condition = parser_get_param_float(params, "GEARSink:CFL_condition");
+
+  sp->tolerance_SF_timestep = parser_get_opt_param_float(params, "GEARSink:tolerance_SF_timestep", DEFAULT_TOLERANCE_SF_TIMESTEP);
 
   /* Apply unit change */
   sp->temperature_threshold /=
