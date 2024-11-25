@@ -780,7 +780,7 @@ INLINE static int sink_spawn_star(struct sink* sink, const struct engine* e,
      2) and have a mass exceeding the minimal mass.
      The second condition is relevant for low resolution simulations, where a
      new born sink can already spawn stars. After spawning the stars, the sink
-     has a mass << gas mass and can get kicked off by gravitational
+     has a mass << gas mass and can get kicked away by gravitational
      interactions. Also, if the sink's mass << gas' mass, the gas is never bound
      to the sink and is thus never accreted. */
   if (sink->mass > sink->target_mass_Msun * phys_const->const_solar_mass
