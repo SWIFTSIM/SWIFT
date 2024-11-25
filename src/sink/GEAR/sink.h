@@ -775,7 +775,9 @@ INLINE static int sink_spawn_star(struct sink* sink, const struct engine* e,
                                   const struct phys_const* phys_const,
                                   const struct unit_system* restrict us) {
 
-  if (sink->mass > sink->target_mass_Msun * phys_const->const_solar_mass)
+  const float mass_min = 500*phys_const->const_solar_mass;
+  if (sink->mass > sink->target_mass_Msun * phys_const->const_solar_mass
+      && sink->mass >= mass_min)
     return 1;
   else
     return 0;
