@@ -2919,6 +2919,8 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
   struct task *res = NULL;
   const int nr_queues = s->nr_queues;
   unsigned int seed = qid;
+  // nvc: https://forums.developer.nvidia.com/t/local-array-is-not-removed-from-stack/260346
+  int qids[nr_queues];
 
   /* Check qid. */
   if (qid >= nr_queues || qid < 0) error("Bad queue ID.");
@@ -2938,7 +2940,7 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
 
       /* If unsuccessful, try stealing from the other queues. */
       if (s->flags & scheduler_flag_steal) {
-        int count = 0, qids[nr_queues];
+        int count = 0;
         for (int k = 0; k < nr_queues; k++)
           if (s->queues[k].count > 0 || s->queues[k].count_incoming > 0) {
             qids[count++] = k;
