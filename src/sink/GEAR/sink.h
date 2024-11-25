@@ -114,7 +114,7 @@ __attribute__((always_inline)) INLINE static float sink_compute_timestep(
   /* SF - accretion timestep ------------------------------------------------*/
   /* Now, limit timestep by computing how much we restricted the sink accretion
      for SF reasons compared to an unrestricted accretion. */
-  const float M_SF = sink_properties->n_star * sink->mass_IMF;
+  const float M_SF = sink_properties->n_IMF * sink->mass_IMF;
 
   /* If we divide by mass_eligible_swallow, we get the relative error compared
      to unrestricted swallow */
@@ -127,7 +127,9 @@ __attribute__((always_inline)) INLINE static float sink_compute_timestep(
      we want to "subcycle" the accretion of gas, and not of sink, to accrete
      smaller amount of mass in smaller timesteps, rather than a huge amount in
      a big timestep. */
-  const float M_dot = Delta_M / min(dt_cfl, dt_ff);
+  // TODO: create a fct that retrieves the dt age and also pass it to the min fct here
+  const float dt_tmp = min3(dt_cfl, dt_ff, dt_2_body);
+  const float M_dot = Delta_M / dt_tmp;
 
   /* We want a big timestep if the error is small */
   float dt_SF = FLT_MAX;
@@ -135,9 +137,8 @@ __attribute__((always_inline)) INLINE static float sink_compute_timestep(
   /* If Delta_M < 0, then we are limiting the accretion rate by a huge factor.
      To avoid biasing the SFR too much, do a small timestep to accrete the
      remaining mass sooner. */
-  if (sink_properties->n_star > 0 && Delta_M < 0) {
-    /* Add a tolerance parameter in the params.yml */
-    dt_SF = 0.1 * sink->to_collect.mass_eligible_swallow / fabs(M_dot);
+  if (sink_properties->n_IMF > 0 && Delta_M < 0) {
+    dt_SF = sink_properties->tolerance_SF_timestep * sink->to_collect.mass_eligible_swallow / fabs(M_dot);
   }
 
   /* Sink age (in internal units) */
@@ -151,7 +152,7 @@ __attribute__((always_inline)) INLINE static float sink_compute_timestep(
       gas_v_phys[1], gas_v_phys[2], h_min, rho_sink, denominator,
       sink->birth_time, sink->to_collect.minimal_sink_t_dyn, Delta_M,
       sink->mass_IMF, sink->to_collect.mass_eligible_swallow, time,
-      get_timestep(sink->time_bin, time_base), sink_age);
+      dt_tmp, sink_age);
 
   /* Take the minimum dt --------------------------------------------------- */
   float dt = min3(dt_cfl, dt_ff, dt_SF);
@@ -774,7 +775,9 @@ INLINE static int sink_spawn_star(struct sink* sink, const struct engine* e,
                                   const struct phys_const* phys_const,
                                   const struct unit_system* restrict us) {
 
-  if (sink->mass > sink->target_mass_Msun * phys_const->const_solar_mass)
+  const float mass_min = 500*phys_const->const_solar_mass;
+  if (sink->mass > sink->target_mass_Msun * phys_const->const_solar_mass
+      && sink->mass >= mass_min)
     return 1;
   else
     return 0;

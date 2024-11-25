@@ -27,7 +27,8 @@
 /* Some default values for the parameters to be read in the YAML file */
 #define DEFAULT_F_ACC 0.8
 #define DEFAULT_STAR_SPAWNING_SIGMA_FACTOR 0.2
-#define DEFAULT_N_STAR 2.0
+#define DEFAULT_N_IMF FLT_MAX /* No accretion restriction */
+#define DEFAULT_TOLERANCE_SF_TIMESTEP 0.1
 
 /* Sink formation is activated */
 #define DEFAULT_DISABLE_SINK_FORMATION 0
@@ -104,7 +105,10 @@ struct sink_props {
   float CFL_condition;
 
   /*! Number of times the IMF mass can be swallowed in a single timestep */
-  float n_star;
+  float n_IMF;
+
+  /*! Tolerance parameter for SF timestep constraint */
+  float tolerance_SF_timestep;
 };
 
 /**
@@ -252,8 +256,8 @@ INLINE static void sink_props_init(struct sink_props *sp,
       parser_get_opt_param_float(params, "GEARSink:star_spawning_sigma_factor",
                                  DEFAULT_STAR_SPAWNING_SIGMA_FACTOR);
 
-  sp->n_star =
-      parser_get_opt_param_float(params, "GEARSink:n_star", DEFAULT_N_STAR);
+  sp->n_IMF =
+      parser_get_opt_param_float(params, "GEARSink:n_IMF", DEFAULT_N_IMF);
 
   sp->star_spawning_sigma_factor =
       parser_get_opt_param_float(params, "GEARSink:star_spawning_sigma_factor",
@@ -293,7 +297,7 @@ INLINE static void sink_props_init(struct sink_props *sp,
   const double age_threshold_Myr = parser_get_opt_param_float(
       params, "GEARSink:timestep_age_threshold_Myr", FLT_MAX);
   const double age_threshold_unlimited_Myr = parser_get_opt_param_float(
-      params, "GEARSink:timestep_age_threshold_unlimited_Myr", 0.);
+      params, "GEARSink:timestep_age_threshold_unlimited_Myr", FLT_MAX);
 
   /* Check for consistency */
   if (age_threshold_unlimited_Myr != 0. && age_threshold_Myr != FLT_MAX) {
@@ -305,7 +309,10 @@ INLINE static void sink_props_init(struct sink_props *sp,
           age_threshold_unlimited_Myr, age_threshold_Myr);
   }
 
+  /* Timestep tolerance paramters */
   sp->CFL_condition = parser_get_param_float(params, "GEARSink:CFL_condition");
+
+  sp->tolerance_SF_timestep = parser_get_opt_param_float(params, "GEARSink:tolerance_SF_timestep", DEFAULT_TOLERANCE_SF_TIMESTEP);
 
   /* Apply unit change */
   sp->temperature_threshold /=
