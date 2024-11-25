@@ -127,7 +127,9 @@ __attribute__((always_inline)) INLINE static float sink_compute_timestep(
      we want to "subcycle" the accretion of gas, and not of sink, to accrete
      smaller amount of mass in smaller timesteps, rather than a huge amount in
      a big timestep. */
-  const float M_dot = Delta_M / min(dt_cfl, dt_ff);
+  // TODO: create a fct that retrieves the dt age and also pass it to the min fct here
+  const float dt_tmp = min3(dt_cfl, dt_ff, dt_2_body);
+  const float M_dot = Delta_M / dt_tmp;
 
   /* We want a big timestep if the error is small */
   float dt_SF = FLT_MAX;
@@ -150,7 +152,7 @@ __attribute__((always_inline)) INLINE static float sink_compute_timestep(
       gas_v_phys[1], gas_v_phys[2], h_min, rho_sink, denominator,
       sink->birth_time, sink->to_collect.minimal_sink_t_dyn, Delta_M,
       sink->mass_IMF, sink->to_collect.mass_eligible_swallow, time,
-      get_timestep(sink->time_bin, time_base), sink_age);
+      dt_tmp, sink_age);
 
   /* Take the minimum dt --------------------------------------------------- */
   float dt = min3(dt_cfl, dt_ff, dt_SF);
