@@ -19,6 +19,7 @@
 #ifndef SWIFT_MULTI_SOFTENING_GRAVITY_PART_H
 #define SWIFT_MULTI_SOFTENING_GRAVITY_PART_H
 
+#include "adaptive_softening_struct.h"
 #include "csds.h"
 #include "fof_struct.h"
 
@@ -68,6 +69,9 @@ struct gpart {
 
   /*! Type of the #gpart (DM, gas, star, ...) */
   enum part_type type;
+
+  /*! Additional data used for adaptive softening */
+  struct adaptive_softening_gpart_data adaptive_softening_data;
 
 #ifdef WITH_CSDS
   /* Additional data for the particle csds */
