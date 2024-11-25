@@ -75,8 +75,8 @@ struct sink_props {
      spawned */
   double star_spawning_sigma_factor;
 
-  /*! Minimal sink mass in Msun. This prevents sink m_sink << m_gas in low
-      resolution simulations. */
+  /*! Minimal sink mass in Msun. This prevents m_sink << m_gas in low
+    resolution simulations. */
   float sink_minimal_mass_Msun;
 };
 
