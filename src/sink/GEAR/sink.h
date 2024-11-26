@@ -700,8 +700,10 @@ INLINE static int sink_spawn_star(struct sink* sink, const struct engine* e,
                                   const struct phys_const* phys_const,
                                   const struct unit_system* restrict us) {
   /* Convenient variables in internal units */
-  const float target_mass = sink->target_mass_Msun * phys_const->const_solar_mass;
-  const float minimal_mass = sink_props->sink_minimal_mass_Msun * phys_const->const_solar_mass;
+  const float target_mass =
+      sink->target_mass_Msun * phys_const->const_solar_mass;
+  const float minimal_mass =
+      sink_props->sink_minimal_mass_Msun * phys_const->const_solar_mass;
 
   /* To spawn a star, the sink must:
      1) m_sink > target_mass,
