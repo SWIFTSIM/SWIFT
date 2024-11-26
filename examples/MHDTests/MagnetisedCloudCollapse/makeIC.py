@@ -130,6 +130,11 @@ u[~mask] *= P_out / ((gamma - 1) * rho_out)
 B = zeros((numPart, 3))
 B[:, 2] = Bini
 
+A = zeros((numPart, 3))
+A[:,0] = -Bini * (pos[:,1]-0.5*Lbox)/2
+A[:,1] = Bini * (pos[:,0]-0.5*Lbox)/2
+
+
 epsilon_lim = cbrt(M / (numPart_in * 1e-11)) / 3.086e18
 print(epsilon_lim)
 print(
@@ -169,5 +174,6 @@ grp.create_dataset("SmoothingLength", data=h, dtype="f")
 grp.create_dataset("InternalEnergy", data=u, dtype="f")
 grp.create_dataset("ParticleIDs", data=ids, dtype="L")
 grp.create_dataset("MagneticFluxDensities", data=B, dtype="f")
+grp.create_dataset("MagneticVectorPotentials", data=A, dtype="f")
 
 file.close()
