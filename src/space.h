@@ -371,17 +371,23 @@ struct zoom_region_properties {
   /*! Dimensions of the zoom region. */
   double dim[3];
 
+  /*! Dimensions of the buffer region. */
+  double buffer_dim[3];
+
   /*! Width of the top level zoom cells. */
   double width[3];
 
   /*! Inverse width of the top level zoom cells. */
   double iwidth[3];
 
+  /*! The depth of the zoom cells within a background cell. */
+  int zoom_cell_depth;
+
   /*! Do we have buffer cells?. */
   int with_buffer_cells;
 
-  /*! The ratio between the zoom region dim and buffer cell width . */
-  int region_buffer_ratio;
+  /*! The depth of the buffer cells inside a background cell. */
+  int buffer_cell_depth;
 
   /*! Width of the neighbour top level zoom cells. */
   double buffer_width[3];
@@ -422,16 +428,30 @@ struct zoom_region_properties {
   /*! Vector outlining the neighbour region lower boundaries. */
   double buffer_lower_bounds[3];
 
-  /*! The depth of the zoom cells within a void cell tree. */
-  int zoom_cell_depth;
+  /*! The width of the void region. */
+  double void_dim[3];
+
+  /*! Vector outlining the void cell region upper boundaries. This is a
+   * convenience variable to avoid having to check if we need the region or
+   * buffer cell boundaries (i.e. without buffer cells it will match
+   * region_upper_bounds, with buffer cells it will match
+   * buffer_upper_bounds). */
+  double void_upper_bounds[3];
+
+  /*! Vector outlining the void cell region lower boundaries. This is a
+   * convenience variable to avoid having to check if we need the region or
+   * buffer cell boundaries (i.e. without buffer cells it will match
+   * region_lower_bounds, with buffer cells it will match
+   * buffer_lower_bounds). */
+  double void_lower_bounds[3];
 
   /*! The depth of the neighbour cell tree. */
   int neighbour_max_tree_depth;
 
-  /*! Offset in the top level cell list background/natural cells start from. */
+  /*! Offset in the top level cell list background cells start from. */
   int bkg_cell_offset;
 
-  /*! Offset in the top level cell list background/natural cells start from. */
+  /*! Offset in the top level cell list background cells start from. */
   int buffer_cell_offset;
 
   /*! Number of zoom cells */

@@ -46,7 +46,6 @@ CELLSUBTYPES = [
     "Neighbour",
     "Void",
     None
-    # Empty will never appear
 ]
 
 

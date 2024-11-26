@@ -61,13 +61,6 @@ void zoom_void_split_recursive(struct space *s, struct cell *c,
         "Trying to split a Void with particles! "
         "(c->type=%s, c->subtype=%s)",
         cellID_names[c->type], subcellID_names[c->subtype]);
-
-  /* Ensure we haven't got an empty cell. */
-  if (c->subtype == cell_subtype_empty)
-    error(
-        "Trying to split an empty cell which "
-        "shouldn't have particles! (c->type=%s, c->type=%s)",
-        cellID_names[c->type], subcellID_names[c->subtype]);
 #endif
 
   /* If the depth is too large, we have a problem and should stop. */
