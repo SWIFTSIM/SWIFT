@@ -1190,7 +1190,7 @@ void engine_redistribute(struct engine *e) {
   /* Verify that the links are correct */
   part_verify_links(s->parts, s->gparts, s->sinks, s->sparts, s->bparts,
                     nr_parts_new, nr_gparts_new, nr_sinks_new, nr_sparts_new,
-                    nr_bparts_new, e->verbose);
+                    nr_bparts_new, s->dim, s->periodic, e->verbose);
 
 #endif
 

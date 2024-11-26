@@ -888,7 +888,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
       (nr_gparts > 0 && nr_bparts > 0) || (nr_gparts > 0 && nr_sinks > 0))
     part_verify_links(s->parts, s->gparts, s->sinks, s->sparts, s->bparts,
                       nr_parts, nr_gparts, nr_sinks, nr_sparts, nr_bparts,
-                      verbose);
+                      s->dim, s->periodic, verbose);
 #endif
 
   /* Hook the cells up to the parts. Make list of local and non-empty cells */

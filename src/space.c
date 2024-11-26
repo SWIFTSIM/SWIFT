@@ -612,9 +612,7 @@ void space_synchronize_part_positions_mapper(void *map_data, int nr_parts,
 #endif
 
     /* Synchronize positions, velocities and masses */
-    gp->x[0] = p->x[0];
-    gp->x[1] = p->x[1];
-    gp->x[2] = p->x[2];
+    hydro_get_center_of_mass(p, gp->x);
 
     gp->v_full[0] = xp->v_full[0];
     gp->v_full[1] = xp->v_full[1];
@@ -1183,7 +1181,7 @@ void space_init(struct space *s, struct swift_params *params,
 #ifdef SWIFT_DEBUG_CHECKS
     if (!dry_run)
       part_verify_links(parts, gparts, sinks, sparts, bparts, Npart, Ngpart,
-                        Nsink, Nspart, Nbpart, 1);
+                        Nsink, Nspart, Nbpart, s->dim, s->periodic, 1);
 #endif
   }
 
@@ -1209,7 +1207,7 @@ void space_init(struct space *s, struct swift_params *params,
 
 #ifdef SWIFT_DEBUG_CHECKS
     part_verify_links(parts, gparts, sinks, sparts, bparts, Npart, Ngpart,
-                      Nsink, Nspart, Nbpart, 1);
+                      Nsink, Nspart, Nbpart, s->dim, s->periodic, 1);
 #endif
   }
 
@@ -1663,7 +1661,7 @@ void space_replicate(struct space *s, int replicate, int verbose) {
   /* Verify that everything is correct */
   part_verify_links(s->parts, s->gparts, s->sinks, s->sparts, s->bparts,
                     s->nr_parts, s->nr_gparts, s->nr_sinks, s->nr_sparts,
-                    s->nr_bparts, verbose);
+                    s->nr_bparts, s->dim, s->periodic, verbose);
 #endif
 }
 
@@ -2709,7 +2707,7 @@ void space_struct_restore(struct space *s, FILE *stream) {
   /* Verify that everything is correct */
   part_verify_links(s->parts, s->gparts, s->sinks, s->sparts, s->bparts,
                     s->nr_parts, s->nr_gparts, s->nr_sinks, s->nr_sparts,
-                    s->nr_bparts, 1);
+                    s->nr_bparts, s->dim, s->periodic, 1);
 #endif
 }
 
