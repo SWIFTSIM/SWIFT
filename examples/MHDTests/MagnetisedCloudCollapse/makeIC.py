@@ -114,8 +114,8 @@ cos_phi = cos(phi)
 sin_phi = sin(phi)
 
 v = zeros((numPart, 3))
-v[mask][:, 0] = -Omega * R[mask] * sin_phi[mask]
-v[mask][:, 1] = Omega * R[mask] * cos_phi[mask]
+v[:, 0][mask] = -Omega * R[mask] * sin_phi[mask]
+v[:, 1][mask] = Omega * R[mask] * cos_phi[mask]
 
 pos += 0.5 * Lbox
 
