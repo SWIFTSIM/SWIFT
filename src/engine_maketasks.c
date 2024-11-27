@@ -1399,19 +1399,19 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
         scheduler_addunlock(s, c->grav.drift, c->grav.drift_out);
         scheduler_addunlock(s, c->grav.down_in, c->grav.down);
 
-        /* In zoom land we also need to link the void cell tasks and zoom cell
-         * tasks if there are tasks at the void level. */
-        if (c->type == cell_type_zoom &&
+        /* In zoom land we also need to link the void cell tasks and zoom/buffer
+         * cell tasks if there are tasks at the void level. */
+        if (c->top->void_parent != NULL &&
             c->top->void_parent->grav.super != NULL) {
 
-          /* zoom.init -> void.init */
+          /* nested.init -> void.init */
           /* This dependency is needed to ensure no MM tasks at the void
-           * level that interact zoom cells run before the zoom multipoles
+           * level that interact nested cells run before the zoom multipoles
            * are ready. */
           scheduler_addunlock(s, c->grav.init_out,
                               c->top->void_parent->grav.init_out);
 
-          /* void.down -> zoom.down */
+          /* void.down -> nested.down */
           scheduler_addunlock(s, c->top->void_parent->grav.super->grav.down,
                               c->grav.down);
         }
