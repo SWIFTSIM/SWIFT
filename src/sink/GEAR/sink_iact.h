@@ -523,33 +523,15 @@ runner_iact_nonsym_sinks_gas_swallow(
                                       dv_physical[1] * dv_physical[1] +
                                       dv_physical[2] * dv_physical[2];
 
-    /* Compute the physical distance between the particles */
-    const float dx_physical[3] = {dx[0] * cosmo->a, dx[1] * cosmo->a,
-                                  dx[2] * cosmo->a};
-    const float r_physical = r * cosmo->a;
-
     /* Momentum check------------------------------------------------------- */
-    /* Relative momentum of the gas */
-    const float specific_angular_momentum_gas[3] = {
-        dx_physical[1] * dv_physical[2] - dx_physical[2] * dv_physical[1],
-        dx_physical[2] * dv_physical[0] - dx_physical[0] * dv_physical[2],
-        dx_physical[0] * dv_physical[1] - dx_physical[1] * dv_physical[0]};
-    const float L2_gas =
-        specific_angular_momentum_gas[0] * specific_angular_momentum_gas[0] +
-        specific_angular_momentum_gas[1] * specific_angular_momentum_gas[1] +
-        specific_angular_momentum_gas[2] * specific_angular_momentum_gas[2];
+    float L2_gas_j = 0.0; /* Relative momentum of the gas */
+    float L2_kepler = 0.0; /* Keplerian angular momentum squared */
+    sink_compute_angular_momenta_criterion(dx, v_plus_H_flow, r, si->r_cut, si->mass,
+					   &L2_kepler, &L2_gas_j, cosmo, grav_props);
 
-    /* Keplerian angular speed squared */
-    const float omega_acc_2 = grav_props->G_Newton * si->mass /
-                              (r_physical * r_physical * r_physical);
-
-    /*Keplerian angular momentum squared */
-    const float L2_acc =
-        (si->r_cut * si->r_cut * si->r_cut * si->r_cut) * omega_acc_2;
-
-    /* To be accreted, the gas momentum shoulb lower than the keplerian orbit
+    /* To be accreted, the gas momentum should lower than the keplerian orbit
      * momentum. */
-    if (L2_gas > L2_acc) {
+    if (L2_gas_j > L2_kepler) {
       return;
     }
 
