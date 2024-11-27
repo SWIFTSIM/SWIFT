@@ -213,6 +213,23 @@ sink_collect_properties_from_sink(const float r2, const float dx[3],
       min(t_dyn, si->to_collect.minimal_sink_t_dyn);
 }
 
+
+/**
+ * @brief Compute the angular momentum-based criterion for sink-sink interaction.
+ *
+ * This function calculates the angular momentum of a sink particle relative to
+ * another particle (sink or gas) and evaluates the Keplerian angular momentum.
+ *
+ * @param dx Comoving vector separating the two particles (pi - pj).
+ * @param dv_plus_H_flow Comoving relative velocity including the Hubble flow.
+ * @param r Comoving distance between the two particles.
+ * @param r_cut_i Comoving cut-off radius of particle i.
+ * @param mass_i Mass of particle i.
+ * @param L2_acc (return) Keplerian angular momentum squared of particle i.
+ * @param L2_j (return) Specific angular momentum squared relative to particle j.
+ * @param cosmo The cosmological parameters and properties
+ * @param grav_props The gravity scheme parameters and properties
+ */
 __attribute__((always_inline)) INLINE static void
 sink_compute_angular_momenta_criterion(const float dx[3], const float dv_plus_H_flow[3],
 				       const float r, const float r_cut_i,
