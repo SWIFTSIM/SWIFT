@@ -210,6 +210,9 @@ void runner_do_sinks_gas_swallow(struct runner *r, struct cell *c, int timer) {
  */
 void runner_do_sinks_gas_swallow_self(struct runner *r, struct cell *c,
                                       int timer) {
+#ifdef SWIFT_DEBUG_CHECKS_MPI_DOMAIN_DECOMPOSITION
+  return;
+#endif
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->nodeID != r->e->nodeID) error("Running self task on foreign node");
@@ -230,6 +233,9 @@ void runner_do_sinks_gas_swallow_self(struct runner *r, struct cell *c,
  */
 void runner_do_sinks_gas_swallow_pair(struct runner *r, struct cell *ci,
                                       struct cell *cj, int timer) {
+#ifdef SWIFT_DEBUG_CHECKS_MPI_DOMAIN_DECOMPOSITION
+  return;
+#endif
 
   const struct engine *e = r->e;
 
@@ -399,6 +405,9 @@ void runner_do_sinks_sink_swallow(struct runner *r, struct cell *c, int timer) {
  */
 void runner_do_sinks_sink_swallow_self(struct runner *r, struct cell *c,
                                        int timer) {
+#ifdef SWIFT_DEBUG_CHECKS_MPI_DOMAIN_DECOMPOSITION
+  return;
+#endif
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->nodeID != r->e->nodeID) error("Running self task on foreign node");
@@ -419,6 +428,9 @@ void runner_do_sinks_sink_swallow_self(struct runner *r, struct cell *c,
  */
 void runner_do_sinks_sink_swallow_pair(struct runner *r, struct cell *ci,
                                        struct cell *cj, int timer) {
+#ifdef SWIFT_DEBUG_CHECKS_MPI_DOMAIN_DECOMPOSITION
+  return;
+#endif
 
   const struct engine *e = r->e;
 

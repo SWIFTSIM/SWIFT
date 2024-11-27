@@ -46,7 +46,7 @@ Those criteria are checked if the density and temperature criteria are successfu
 
 The next parameter is ``disable_sink_formation`` (default: 0). It controls whether sinks are formed or not in the simulation. The main purpose is when sinks are put in initial conditions and sinks are not wanted to be added during the run. This parameter is set to ``0`` by default, i.e. sink formation is *enabled*.
 
-The last set of parameters deals with the sink time-steps:
+The next set of parameters deals with the sink time-steps:
 
 * Courant-Friedrich-Levy constant for the CFL-like time-step constraint:``CFL_condition``,
 * age (in Myr) at which a sink is considered dead (no accretion) and without time-step limitations, except for 2-body encounters involving another young/old sink and gravity: ``timestep_age_threshold_unlimited_Myr`` (default: FLT_MAX),
@@ -55,6 +55,8 @@ The last set of parameters deals with the sink time-steps:
 * maximal time-step length of old sinks (in Myr): ``max_timestep_old_Myr`` (default: FLT_MAX),
 * number of times the IMF mass can be swallowed in a single time-step: ``n_IMF`` (default: FLT_MAX).
 * tolerance parameter for SF timestep constraint.tolerance_SF_timestep: ``tolerance_SF_timestep`` (default: 0.1)
+
+The last parameter is ``sink_minimal_mass_Msun``. This parameter is mainly intended for low-resolution simulations with :math:`m_\text{gas} > 100 \; M_\odot`. It prevents :math:`m_\text{sink} \ll m_\text{gas}` simulations when sinks spawn stars, which can lead to gravity run away.
 
 The full section is:
 
@@ -66,6 +68,7 @@ The full section is:
      temperature_threshold_K:        100         # Max temperature (in K) for forming a sink when density_threshold_Hpcm3 <= density <= maximal_density_threshold_Hpcm3.
      density_threshold_Hpcm3: 1e3                # Minimum gas density (in Hydrogen atoms/cm3) required to form a sink particle.
      maximal_density_threshold_Hpcm3: 1e5        # If the gas density exceeds this value (in Hydrogen atoms/cm3), a sink forms regardless of temperature if all other criteria are passed. (Default: FLT_MAX)
+     sink_minimal_mass_Msun:     0.              # (Optional) Sink minimal mass in Msun. This parameter prevents m_sink << m_gas in low resolution simulations. (Default: 0.0)
      stellar_particle_mass_Msun:  20             # Mass of the stellar particle representing the low mass stars (continuous IMF sampling) (in solar mass)
      minimal_discrete_mass_Msun: 8               # Minimal mass of stars represented by discrete particles (in solar mass)
      stellar_particle_mass_first_stars_Msun: 20      # Mass of the stellar particle representing the low mass stars (continuous IMF sampling) (in solar mass). First stars
