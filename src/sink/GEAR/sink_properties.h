@@ -69,7 +69,7 @@ struct sink_props {
 
   /*! Disable sink formation? (e.g. used in sink accretion tests). Default: 0
      (keep sink formation) */
-  uint8_t disable_sink_formation;
+  char disable_sink_formation;
 
   /*! Factor to rescale the velocity dispersion of the stars when they are
      spawned */
