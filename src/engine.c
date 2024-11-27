@@ -1175,12 +1175,13 @@ int engine_estimate_nr_tasks(const struct engine *e) {
   }
   if (e->policy & engine_policy_sinks) {
     /* 1 drift, 2 kicks, 1 time-step, 1 sink formation     | 5
+       density: 1 self + 13 pairs                          | 14
        swallow: 1 self + 13 pairs                          | 14
        do_gas_swallow: 1 self + 13 pairs                   | 14
        do_sink_swallow: 1 self + 13 pairs                  | 14
-       ghosts: sink_ghost_1, sink_ghost_2                  | 2
+       ghosts: density_ghost, sink_ghost_1, sink_ghost_2   | 3
        implicit: sink_in,  sink_out                        | 2 */
-    n1 += 51;
+    n1 += 66;
     n2 += 3;
     if (e->policy & engine_policy_stars) {
       /* 1 star formation */
