@@ -24,13 +24,14 @@ GNU General Public License for more details.
 You should have received a copy of the GNU Lesser General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
-import sys
+
 import random
+import sys
+
 import numpy as np
 
 # import hardcoded data
-from swift_hardcoded_data import TASKTYPES, SUBTYPES
-
+from swift_hardcoded_data import SUBTYPES, TASKTYPES
 
 # Set the random seed for reproducibility
 random.seed(42)
