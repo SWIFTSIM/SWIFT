@@ -150,6 +150,11 @@ void space_free_foreign_parts(struct space *s, const int clear_cell_pointers) {
     s->size_bparts_foreign = 0;
     s->bparts_foreign = NULL;
   }
+  if (s->sinks_foreign != NULL) {
+    swift_free("sinks_foreign", s->sinks_foreign);
+    s->size_sinks_foreign = 0;
+    s->sinks_foreign = NULL;
+  }
   if (clear_cell_pointers) {
     for (int k = 0; k < s->e->nr_proxies; k++) {
       for (int j = 0; j < s->e->proxies[k].nr_cells_in; j++) {
@@ -2175,6 +2180,7 @@ void space_check_drift_point(struct space *s, integertime_t ti_drift,
   space_map_cells_pre(s, 1, cell_check_part_drift_point, &ti_drift);
   space_map_cells_pre(s, 1, cell_check_gpart_drift_point, &ti_drift);
   space_map_cells_pre(s, 1, cell_check_spart_drift_point, &ti_drift);
+  space_map_cells_pre(s, 1, cell_check_sink_drift_point, &ti_drift);
   if (multipole)
     space_map_cells_pre(s, 1, cell_check_multipole_drift_point, &ti_drift);
 #else
@@ -2322,6 +2328,55 @@ void space_check_bpart_swallow_mapper(void *map_data, int nr_bparts,
 }
 
 /**
+ * @brief #threadpool mapper function for the swallow debugging check
+ */
+void space_check_part_sink_swallow_mapper(void *map_data, int nr_parts,
+                                          void *extra_data) {
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Unpack the data */
+  struct part *restrict parts = (struct part *)map_data;
+
+  /* Verify that all particles have been swallowed or are untouched */
+  for (int k = 0; k < nr_parts; k++) {
+
+    if (parts[k].time_bin == time_bin_inhibited) continue;
+
+    const long long swallow_id = sink_get_part_swallow_id(&parts[k].sink_data);
+
+    if (swallow_id != -1)
+      error("Particle has not been swallowed! id=%lld", parts[k].id);
+  }
+#else
+  error("Calling debugging code without debugging flag activated.");
+#endif
+}
+
+/**
+ * @brief #threadpool mapper function for the swallow debugging check
+ */
+void space_check_sink_sink_swallow_mapper(void *map_data, int nr_sinks,
+                                          void *extra_data) {
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Unpack the data */
+  struct sink *restrict sinks = (struct sink *)map_data;
+
+  /* Verify that all particles have been swallowed or are untouched */
+  for (int k = 0; k < nr_sinks; k++) {
+
+    if (sinks[k].time_bin == time_bin_inhibited) continue;
+
+    const long long swallow_id =
+        sink_get_sink_swallow_id(&sinks[k].merger_data);
+
+    if (swallow_id != -1)
+      error("Sink particle has not been swallowed! id=%lld", sinks[k].id);
+  }
+#else
+  error("Calling debugging code without debugging flag activated.");
+#endif
+}
+
+/**
  * @brief Checks that all particles have their swallow flag in a "no swallow"
  * state.
  *
@@ -2338,6 +2393,16 @@ void space_check_swallow(struct space *s) {
 
   threadpool_map(&s->e->threadpool, space_check_bpart_swallow_mapper, s->bparts,
                  s->nr_bparts, sizeof(struct bpart), threadpool_auto_chunk_size,
+                 /*extra_data=*/NULL);
+
+  threadpool_map(&s->e->threadpool, space_check_part_sink_swallow_mapper,
+                 s->parts, s->nr_parts, sizeof(struct part),
+                 threadpool_auto_chunk_size,
+                 /*extra_data=*/NULL);
+
+  threadpool_map(&s->e->threadpool, space_check_sink_sink_swallow_mapper,
+                 s->sinks, s->nr_sinks, sizeof(struct sink),
+                 threadpool_auto_chunk_size,
                  /*extra_data=*/NULL);
 #else
   error("Calling debugging code without debugging flag activated.");
@@ -2437,6 +2502,7 @@ void space_clean(struct space *s) {
   swift_free("sparts_foreign", s->sparts_foreign);
   swift_free("gparts_foreign", s->gparts_foreign);
   swift_free("bparts_foreign", s->bparts_foreign);
+  swift_free("sinks_foreign", s->sinks_foreign);
 #endif
   free(s->cells_sub);
   free(s->multipoles_sub);
@@ -2611,6 +2677,8 @@ void space_struct_restore(struct space *s, FILE *stream) {
   s->size_sparts_foreign = 0;
   s->bparts_foreign = NULL;
   s->size_bparts_foreign = 0;
+  s->sinks_foreign = NULL;
+  s->size_sinks_foreign = 0;
 #endif
 
   /* More things to read. */
@@ -2727,9 +2795,10 @@ void space_write_cell(const struct space *s, FILE *f, const struct cell *c) {
 
   /* Write line for current cell */
   fprintf(f, "%lld,%lld,%i,", c->cellID, parent, c->nodeID);
-  fprintf(f, "%i,%i,%i,%s,%s,%g,%g,%g,%g,%g,%g, ", c->hydro.count,
-          c->stars.count, c->grav.count, superID, hydro_superID, c->loc[0],
-          c->loc[1], c->loc[2], c->width[0], c->width[1], c->width[2]);
+  fprintf(f, "%i,%i,%i,%i,%s,%s,%g,%g,%g,%g,%g,%g, ", c->hydro.count,
+          c->stars.count, c->grav.count, c->sinks.count, superID, hydro_superID,
+          c->loc[0], c->loc[1], c->loc[2], c->width[0], c->width[1],
+          c->width[2]);
   fprintf(f, "%g, %g, %i, %i\n", c->hydro.h_max, c->stars.h_max, c->depth,
           c->maxdepth);
 
@@ -2761,7 +2830,7 @@ void space_write_cell_hierarchy(const struct space *s, int j) {
   if (engine_rank == 0) {
     fprintf(f, "name,parent,mpi_rank,");
     fprintf(f,
-            "hydro_count,stars_count,gpart_count,super,hydro_super,"
+            "hydro_count,stars_count,gpart_count,sinks_count,super,hydro_super,"
             "loc1,loc2,loc3,width1,width2,width3,");
     fprintf(f, "hydro_h_max,stars_h_max,depth,maxdepth\n");
 

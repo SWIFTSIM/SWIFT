@@ -303,6 +303,7 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
       temp->hydro.count = 0;
       temp->grav.count = 0;
       temp->stars.count = 0;
+      temp->sinks.count = 0;
       temp->loc[0] = c->loc[0];
       temp->loc[1] = c->loc[1];
       temp->loc[2] = c->loc[2];
@@ -319,6 +320,7 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
       temp->hydro.dx_max_sort = 0.f;
       temp->stars.dx_max_part = 0.f;
       temp->stars.dx_max_sort = 0.f;
+      temp->sinks.dx_max_part = 0.f;
       temp->black_holes.dx_max_part = 0.f;
       temp->nodeID = c->nodeID;
       temp->parent = c;
@@ -457,6 +459,9 @@ int cell_pack_end_step(const struct cell *c, struct pcell_step *pcells) {
   pcells[0].black_holes.ti_end_min = c->black_holes.ti_end_min;
   pcells[0].black_holes.dx_max_part = c->black_holes.dx_max_part;
 
+  pcells[0].sinks.ti_end_min = c->sinks.ti_end_min;
+  pcells[0].sinks.dx_max_part = c->sinks.dx_max_part;
+
   /* Fill in the progeny, depth-first recursion. */
   int count = 1;
   for (int k = 0; k < 8; k++)
@@ -500,6 +505,9 @@ int cell_unpack_end_step(struct cell *c, const struct pcell_step *pcells) {
 
   c->black_holes.ti_end_min = pcells[0].black_holes.ti_end_min;
   c->black_holes.dx_max_part = pcells[0].black_holes.dx_max_part;
+
+  c->sinks.ti_end_min = pcells[0].sinks.ti_end_min;
+  c->sinks.dx_max_part = pcells[0].sinks.dx_max_part;
 
   /* Fill in the progeny, depth-first recursion. */
   int count = 1;
