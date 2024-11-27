@@ -71,34 +71,32 @@ int zoom_need_regrid(const struct space *s, const int new_cdim[3]) {
 void zoom_regrid_find_acceptable_geometry(struct space *s,
                                           const int new_cdim[3]) {
 
-  /* Loop until we have an acceptable geometry, we'll first try increasing the
-   * background cdim to a maximum increase of 50% its current value. */
-  int old_bkg_cdim = s->cdim[0];
-  while (zoom_need_regrid(s, new_cdim) && s->cdim[0] < 1.5 * old_bkg_cdim) {
+  /* Loop until we've found an acceptable geometry. */
+  while (zoom_need_regrid(s, new_cdim)) {
 
-    /* Increment the background cdim. */
-    s->cdim[0]++;
-    s->cdim[1]++;
-    s->cdim[2]++;
+    /* First try increasing the background cdim to a maximum increase of 50% its
+     * current value. */
+    int old_bkg_cdim = s->cdim[0];
+    while (zoom_need_regrid(s, new_cdim) && s->cdim[0] < 1.5 * old_bkg_cdim) {
 
-    /* Recalculate the zoom region geometry. (silently) */
+      /* Increment the background cdim. */
+      s->cdim[0]++;
+      s->cdim[1]++;
+      s->cdim[2]++;
+
+      /* Recalculate the zoom region geometry. (silently) */
+      zoom_region_init(s, 0);
+    }
+
+    /* If this worked we can stop here. */
+    if (!zoom_need_regrid(s, new_cdim)) {
+      break;
+    }
+
+    /* If it didn't work we'll try increasing the depth of the zoom region (with
+     * the original background cdim). */
+    s->zoom_props->zoom_cell_depth++;
     zoom_region_init(s, 0);
-  }
-
-  /* If this worked we can stop here. */
-  if (!zoom_need_regrid(s, new_cdim)) {
-    return;
-  }
-
-  /* If it didn't work we'll try increasing the depth of the zoom region (with
-   * the original background cdim). */
-  s->zoom_props->zoom_cell_depth++;
-  zoom_region_init(s, 0);
-
-  /* If this still didn't work we'll recurse and try the operation again with
-   * this new zoom depth. */
-  if (zoom_need_regrid(s, new_cdim)) {
-    zoom_regrid_find_acceptable_geometry(s, new_cdim);
   }
 }
 
