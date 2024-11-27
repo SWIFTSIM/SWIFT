@@ -403,10 +403,9 @@ enum cell_types {
  *   zoom region. Otherwise, they are cell_subtype_regular.
  * - Like buffer cells, background cells can be neighbours if they are within
  *   the gravity criterion of the zoom region or void cells if they contain the
- *   zoom region, but only if buffer cells are not turned on. If buffer cells
- *   are turned on, a background cell can be cell_subtype_empty if it contains
- *   nested buffer cells (only background cells can be empty). Otherwise, they
- *   are cell_subtype_regular.
+ *   zoom region. If buffer cells are turned on, a background cell can be
+ *   cell_subtype_void if it contains nested buffer cells  Otherwise, they are
+ *   cell_subtype_regular.
  *
  * All cell types serve a function but only cell_subtype_neighbour and
  * cell_subtype_regular can get tasks.
@@ -422,8 +421,6 @@ enum cell_subtypes {
   cell_subtype_neighbour, /* A cell within the gravity criterion of the zoom
                              region. */
   cell_subtype_void,      /* A cell containing the zoom region (void cell). */
-  cell_subtype_empty      /* An empty cell (background cells containing buffer
-                             cells). */
 } __attribute__((__packed__));
 
 /**
@@ -896,31 +893,31 @@ __attribute__((always_inline)) INLINE int zoom_cell_getid(const struct space *s,
   /* If this is a void cell we are in the zoom region. */
   if (s->cells_top[cell_id].subtype == cell_subtype_void) {
 
-    /* Which zoom TL cell are we in? */
+    /* If we have buffer cells then we first need to check those. */
+    if (s->zoom_props->with_buffer_cells) {
+
+      /* Which buffer TL cell are we in? */
+      cell_id = cell_getid_below_bkg(
+          s->zoom_props->buffer_cdim, buffer_lower_bounds, x, y, z,
+          s->zoom_props->buffer_iwidth, buffer_cell_offset);
+
+      /* Here we need to check if this is the void buffer cell.
+       * Otherwise, It's a legitimate buffer cell, and we'll return it. */
+      if (s->cells_top[cell_id].subtype == cell_subtype_void) {
+
+        /* Which zoom TL cell are we in? */
+        return cell_getid_below_bkg(s->zoom_props->cdim, zoom_lower_bounds, x,
+                                    y, z, s->zoom_props->iwidth,
+                                    /*offset*/ 0);
+      }
+
+      return cell_id;
+    }
+
+    /* Otherwise, we are in the zoom region, which zoom TL cell are we in? */
     return cell_getid_below_bkg(s->zoom_props->cdim, zoom_lower_bounds, x, y, z,
                                 s->zoom_props->iwidth,
                                 /*offset*/ 0);
-
-  }
-
-  /* If this is an empty cell we are in the buffer cells.
-   * Otherwise, It's a legitimate background cell, and we'll return it. */
-  else if (s->cells_top[cell_id].subtype == cell_subtype_empty) {
-
-    /* Which buffer TL cell are we in? */
-    cell_id = cell_getid_below_bkg(
-        s->zoom_props->buffer_cdim, buffer_lower_bounds, x, y, z,
-        s->zoom_props->buffer_iwidth, buffer_cell_offset);
-
-    /* Here we need to check if this is the void buffer cell.
-     * Otherwise, It's a legitimate buffer cell, and we'll return it. */
-    if (s->cells_top[cell_id].subtype == cell_subtype_void) {
-
-      /* Which zoom TL cell are we in? */
-      return cell_getid_below_bkg(s->zoom_props->cdim, zoom_lower_bounds, x, y,
-                                  z, s->zoom_props->iwidth,
-                                  /*offset*/ 0);
-    }
   }
 
   return cell_id;

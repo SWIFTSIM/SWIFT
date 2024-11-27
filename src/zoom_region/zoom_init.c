@@ -40,23 +40,6 @@
 int zoom_bkg_subdepth_diff_grav = zoom_bkg_subdepth_diff_grav_default;
 
 /**
- * @brief Check that cdim is a power of 2 times the region_buffer_ratio.
- *
- * @param cdim The cell dimension to check.
- * @param region_buffer_ratio The ratio of the zoom region to a buffer cell.
- */
-int cdim_is_power_of_2(int cdim, int region_buffer_ratio) {
-
-  /* How many multiples of region_buffer_ratio are in cdim? */
-  /* NOTE: if casting to int results in rounding this will correctly return
-   * false when checked. */
-  int multiples = cdim / region_buffer_ratio;
-
-  /* Check if the product is a power of 2 */
-  return (multiples & (multiples - 1)) == 0;
-}
-
-/**
  * @brief Read parameter file for "ZoomRegion" properties.
  *
  * @param params Swift parameter structure.
@@ -65,12 +48,8 @@ int cdim_is_power_of_2(int cdim, int region_buffer_ratio) {
 void zoom_parse_params(struct swift_params *params,
                        struct zoom_region_properties *props) {
   /* Set the zoom cdim. */
-  int zoom_cdim =
-      parser_get_opt_param_int(params, "ZoomRegion:zoom_top_level_cells",
-                               space_max_top_level_cells_default);
-  for (int i = 0; i < 3; i++) {
-    props->cdim[i] = zoom_cdim;
-  }
+  props->zoom_cell_depth =
+      parser_get_opt_param_int(params, "ZoomRegion:zoom_top_level_depth", 2);
 
   /* Set the target background cdim, default is a negative value so that if no
    * value is given for a target then the zoom region defines the background
@@ -83,23 +62,13 @@ void zoom_parse_params(struct swift_params *params,
   }
 
   /* Get the ratio between the zoom region size and buffer cell size.
-   * Ignored if buffer cells aren't needed.
-   * NOTE: this has to be an integer to ensure the buffer and zoom cells align.
-   * The buffer region is divided into region_buffer_ratio cells along each
-   * axis. */
-  props->region_buffer_ratio = parser_get_opt_param_int(
-      params, "ZoomRegion:region_buffer_cell_ratio", 0);
+   * Ignored if buffer cells aren't needed. */
+  props->buffer_cell_depth =
+      parser_get_opt_param_int(params, "ZoomRegion:buffer_top_level_depth", 0);
 
-  /* Ensure we have been given a power of 2 times the region buffer ratio
-   * for cdim. If we don't the octrees of sub cells won't align properly between
-   * the nested cell grids. */
-  if (props->region_buffer_ratio > 0) { /* i.e. we have buffer cells. */
-    if (!cdim_is_power_of_2(props->cdim[0], props->region_buffer_ratio)) {
-      error(
-          "Scheduler:max_top_level_cells must be a power "
-          "of 2 times region_buffer_cell_ratio (by default 1)"
-          "when running with a zoom region!");
-    }
+  /* Ensure the buffer cell depth is less than the zoom cell depth. */
+  if (props->buffer_cell_depth > props->zoom_cell_depth) {
+    error("Buffer cell depth must be less than the zoom cell depth.");
   }
 
   /* Extract the zoom width boost factor (used to define the buffer around the
@@ -245,202 +214,205 @@ double zoom_get_region_dim_and_shift(struct space *s) {
 }
 
 /**
- * @brief Compute the cell properties for the large zoom region case.
+ * @brief Compute the void region geometry.
  *
- * This case is used when the zoom region is larger than a background cell.
- * This will not respect the ZoomRegion:bkg_top_level_cells parameter but
- * instead treat it as a target.
+ * The void region is the region covered by background cells above the zoom
+ * region. If the void region is sufficiently close to the zoom region size
+ * then the two will be made equivalent later on. Otherwide the void region is
+ * equivalent to the buffer region.
+ *
+ * This function will derive the bounds of the void region and return how many
+ * zoom regions tesselate the void region.
  *
  * @param s The space
  * @param ini_max_dim The dim of the zoom region before tesselating the
  * volume.
+ *
+ * @return The number of zoom regions that tesselate the void region.
  */
-void zoom_get_cell_props_large_region(struct space *s, double ini_max_dim) {
+int zoom_get_void_geometry(struct space *s, const double region_dim) {
 
-  /* First we need to ensure the zoom region tesselates the parent volume. */
-  int nr_zoom_regions = (int)(s->dim[0] / ini_max_dim);
-  double max_dim = s->dim[0] / nr_zoom_regions;
-
-  /* Define the requested background cdim as the target. */
-  int target_bkg_cdim = s->cdim[0];
-
-  /* Now we can define the background grid. */
+  /* Get the lower and upper bounds of the zoom region based on the initial
+   * dimensions and the padding factor. */
+  double lower_bounds[3];
+  double upper_bounds[3];
   for (int i = 0; i < 3; i++) {
-    s->cdim[i] = (int)floor(s->dim[i] / max_dim);
+    lower_bounds[i] = (s->dim[i] / 2) - (region_dim / 2.0);
+    upper_bounds[i] = (s->dim[i] / 2) + (region_dim / 2.0);
   }
 
-  /* Compute the new number of a background cells. */
-  int new_bkg_cdim = s->cdim[0];
-  while (new_bkg_cdim < target_bkg_cdim) {
-    new_bkg_cdim *= 2;
-  }
-
-  /* Set the background cdim. */
-  s->cdim[0] = new_bkg_cdim;
-  s->cdim[1] = new_bkg_cdim;
-  s->cdim[2] = new_bkg_cdim;
-
-  /* Set the background cell width. */
+  /* Assign these temporaru bounds to the zoom region bounds, we'll overwrite
+   * these later but useful to have them for now. */
   for (int i = 0; i < 3; i++) {
-    s->width[i] = s->dim[i] / s->cdim[i];
-    s->iwidth[i] = 1.0 / s->width[i];
+    s->zoom_props->region_lower_bounds[i] = lower_bounds[i];
+    s->zoom_props->region_upper_bounds[i] = upper_bounds[i];
   }
 
-  /* Zero the buffer region. */
+  /* Find the background cell edges that contain these bounds. */
+  double void_lower_bounds[3];
+  double void_upper_bounds[3];
   for (int i = 0; i < 3; i++) {
-    s->zoom_props->buffer_lower_bounds[i] = 0;
-    s->zoom_props->buffer_upper_bounds[i] = 0;
-    s->zoom_props->buffer_cdim[i] = 0;
-    s->zoom_props->buffer_width[i] = 0;
-    s->zoom_props->buffer_iwidth[i] = 0;
+    int lower = (int)floor(lower_bounds[i] * s->iwidth[i]);
+    int upper = (int)floor(upper_bounds[i] * s->iwidth[i]);
+    void_lower_bounds[i] = lower * s->width[i];
+    void_upper_bounds[i] = (upper + 1) * s->width[i];
   }
 
-  /* Finally define the region boundaries in the centre of the box. */
+  /* Assign the void bounds. */
   for (int i = 0; i < 3; i++) {
-    /* Set the new boundaries. */
-    s->zoom_props->region_lower_bounds[i] = (s->dim[i] / 2.0) - (max_dim / 2.0);
-    s->zoom_props->region_upper_bounds[i] = (s->dim[i] / 2.0) + (max_dim / 2.0);
-
-    /* Set the reigon dim. */
-    s->zoom_props->dim[i] = max_dim;
+    s->zoom_props->void_lower_bounds[i] = void_lower_bounds[i];
+    s->zoom_props->void_upper_bounds[i] = void_upper_bounds[i];
   }
+
+  /* Compute the void region dimensions. */
+  for (int i = 0; i < 3; i++) {
+    s->zoom_props->void_dim[i] = void_upper_bounds[i] - void_lower_bounds[i];
+  }
+
+  /* Compute the number of zoom regions that tesselate the void region. */
+  int nr_zoom_regions = ceil(s->zoom_props->void_dim[0] / region_dim);
+
+  return nr_zoom_regions;
 }
 
 /**
- * @brief Compute the zoom, background and buffer cell grid properties.
+ * @brief Compute the number of child cells in a single parent cell at a given
+ * depth.
  *
- * This function is used when buffer cells are need to ensure the number of
- * background cells is kept to a minimum. Buffer cells will fill the
- * background cell containing the zoom region and ensure the zoom region can
- * remain sufficiently small while the background cells remain sufficiently
- * large.
+ * @param region_dim The dimension of the region.
+ * @param parent_width The width of the parent cell.
+ * @param child_depth The depth of the child cell within the parent.
  *
- * @param s The space
- * @param max_dim The dim of the zoom region including padding. This will be
- * changed to ensure the background, buffer and zoom cells align.
+ * @return The number of child cells in a single parent cell.
  */
-void zoom_get_cell_props_with_buffer_cells(struct space *s, double max_dim) {
+static int zoom_get_cdim_at_depth(double region_dim, double parent_width,
+                                  int child_depth) {
 
-  /* Set the initial zoom_region boundaries with boost factor.
-   * The zoom region is already centred on the middle of the box */
-  for (int i = 0; i < 3; i++) {
-    /* Set the new boundaries. */
-    s->zoom_props->region_lower_bounds[i] = (s->dim[i] / 2.0) - (max_dim / 2.0);
-    s->zoom_props->region_upper_bounds[i] = (s->dim[i] / 2.0) + (max_dim / 2.0);
+  /* How many parent_widths are in the region? (ensure correct rounding) */
+  int region_parent_cdim =
+      floor((region_dim + (0.1 * parent_width)) / parent_width);
+
+  /* We now know how many parent cells we have in the region, use this and the
+   * depth of the zoom region to calculate the cdim (the number of parents times
+   * the number of children in a parent. */
+  return region_parent_cdim * pow(2, child_depth);
+}
+
+void zoom_get_geometry_no_buffer_cells(struct space *s) {
+
+  /* If we have a buffer cell depth warn that we will ignore it. */
+  if (s->zoom_props->buffer_cell_depth > 0) {
+    message("No buffer cells are needed, ignoring buffer cell depth.");
+    s->zoom_props->buffer_cell_depth = 0;
   }
 
-  /* Flag that we have buffer cells. */
-  s->zoom_props->with_buffer_cells = 1;
-
-  /* Calculate how many background cells we need in the buffer region. The
-   * goal is to have this as large as could be necessary, overshooting
-   * isn't an issue. */
-
-  /* Get the extent of the buffer region. */
-  double max_distance = s->zoom_props->neighbour_distance;
-
-  /* Find the buffer region boundaries. The zoom region is already centred on
-   * the middle of the box. */
+  /* Zero the buffer region properties explictly. */
   for (int i = 0; i < 3; i++) {
-
-    /* Find the background cell containing lower and upper bounds of the zoom
-     * region's "gravity reach". */
-    int lower =
-        (s->zoom_props->region_lower_bounds[i] - max_distance) * s->iwidth[i];
-    int upper =
-        (s->zoom_props->region_upper_bounds[i] + max_distance) * s->iwidth[i];
-
-    s->zoom_props->buffer_lower_bounds[i] = lower * s->width[i];
-    s->zoom_props->buffer_upper_bounds[i] = (upper + 1) * s->width[i];
+    s->zoom_props->buffer_lower_bounds[i] = 0.0;
+    s->zoom_props->buffer_upper_bounds[i] = 0.0;
+    s->zoom_props->buffer_dim[i] = 0.0;
+    s->zoom_props->buffer_cdim[i] = 0;
+    s->zoom_props->buffer_width[i] = 0.0;
   }
 
-  /* Define the extent of the buffer region. */
-  double buffer_dim = s->zoom_props->buffer_upper_bounds[0] -
-                      s->zoom_props->buffer_lower_bounds[0];
-
-  /* Calculate the initial buffer region cdim. */
-  int ini_buffer_cdim = (int)(floor(buffer_dim / max_dim));
-
-  /* Ensure the initial buffer cdim is odd (it must be centered on middle of
-   * the box). */
-  if (ini_buffer_cdim % 2 == 0) ini_buffer_cdim -= 1;
-
-  /* Account for the number of buffer cells we want in the zoom region. */
-  ini_buffer_cdim *= s->zoom_props->region_buffer_ratio;
-
-  /* Calculate the intial width of a buffer cell. */
-  double ini_buffer_width = buffer_dim / ini_buffer_cdim;
-
-  /* Now redefine the bounds of the zoom region based on the edges of the
-   * buffer cells containing it. */
+  /* Match the zoom reigon bounds to the void region bounds. */
   for (int i = 0; i < 3; i++) {
-
-    /* Define the region bounds based on the buffer cells. */
-    s->zoom_props->region_lower_bounds[i] =
-        (s->dim[i] / 2.0) -
-        (ini_buffer_width * s->zoom_props->region_buffer_ratio / 2.0);
-    s->zoom_props->region_upper_bounds[i] =
-        (s->dim[i] / 2.0) +
-        (ini_buffer_width * s->zoom_props->region_buffer_ratio / 2.0);
+    s->zoom_props->region_lower_bounds[i] = s->zoom_props->void_lower_bounds[i];
+    s->zoom_props->region_upper_bounds[i] = s->zoom_props->void_upper_bounds[i];
   }
 
-  /* Calculate the new zoom region dimension. */
+  /* Compute the zoom region dimensions. */
   for (int i = 0; i < 3; i++) {
     s->zoom_props->dim[i] = s->zoom_props->region_upper_bounds[i] -
                             s->zoom_props->region_lower_bounds[i];
   }
-  /* Set the buffer cells properties. */
+
+  /* Compute the number of zoom cells in the void region. */
+  int cdim = zoom_get_cdim_at_depth(s->zoom_props->dim[0], s->width[0],
+                                    s->zoom_props->zoom_cell_depth);
+
+  /* Compute the zoom cdim and cell width. */
   for (int i = 0; i < 3; i++) {
-    s->zoom_props->buffer_cdim[i] = ini_buffer_cdim;
-    s->zoom_props->buffer_width[i] = ini_buffer_width;
-    s->zoom_props->buffer_iwidth[i] = 1.0 / s->zoom_props->buffer_width[i];
+    s->zoom_props->cdim[i] = cdim;
+    s->zoom_props->width[i] = s->zoom_props->dim[i] / cdim;
+    s->zoom_props->iwidth[i] = 1.0 / s->zoom_props->width[i];
   }
 }
 
-/**
- * @brief Compute cell properties without buffer cells.
- *
- * This will tesselate background cells the size of the zoom region across
- * the box.
- *
- * @param s The space
- * @param ini_max_dim The dim of the zoom region before tesselating the
- * volume.
- */
-void zoom_get_cell_props_no_buffer_cells(struct space *s, double ini_max_dim) {
+void zoom_get_geometry_with_buffer_cells(struct space *s) {
 
-  /* Ensure an odd integer number of the zoom regions tessalate the box. */
-  int nr_zoom_regions = (int)(s->dim[0] / ini_max_dim);
-  if (nr_zoom_regions % 2 == 0) nr_zoom_regions -= 1;
-  double max_dim = s->dim[0] / nr_zoom_regions;
-
-  /* Redefine the background cells using this new width */
-  for (int i = 0; i < 3; i++) {
-    s->cdim[i] = nr_zoom_regions;
-    s->width[i] = s->dim[i] / s->cdim[i];
-    s->iwidth[i] = 1.0 / s->width[i];
+  /* Ensure we have a buffer cell depth. */
+  if (s->zoom_props->buffer_cell_depth == 0) {
+    error(
+        "Current cell structure requires buffer cells but not buffer cell has "
+        "been given. ZoomRegion:buffer_top_level_depth must be greater than "
+        "0.");
   }
 
-  /* Declare we have no buffer region. */
-  s->zoom_props->with_buffer_cells = 0;
-
-  /* Zero the buffer region. */
+  /* Match the buffer region bounds to the void region bounds. */
   for (int i = 0; i < 3; i++) {
-    s->zoom_props->buffer_lower_bounds[i] = 0;
-    s->zoom_props->buffer_upper_bounds[i] = 0;
-    s->zoom_props->buffer_cdim[i] = 0;
-    s->zoom_props->buffer_width[i] = 0;
-    s->zoom_props->buffer_iwidth[i] = 0;
+    s->zoom_props->buffer_lower_bounds[i] = s->zoom_props->void_lower_bounds[i];
+    s->zoom_props->buffer_upper_bounds[i] = s->zoom_props->void_upper_bounds[i];
   }
 
-  /* Finally define the region boundaries in the centre of the box. */
+  /* Compute the buffer region dimensions. */
   for (int i = 0; i < 3; i++) {
-    /* Set the new boundaries. */
-    s->zoom_props->region_lower_bounds[i] = (s->dim[i] / 2.0) - (max_dim / 2.0);
-    s->zoom_props->region_upper_bounds[i] = (s->dim[i] / 2.0) + (max_dim / 2.0);
+    s->zoom_props->buffer_dim[i] = s->zoom_props->buffer_upper_bounds[i] -
+                                   s->zoom_props->buffer_lower_bounds[i];
+  }
 
-    /* Set the reigon dim. */
-    s->zoom_props->dim[i] = max_dim;
+  /* Compute the number of buffer cells in the void region. */
+  int buffer_cdim =
+      zoom_get_cdim_at_depth(s->zoom_props->buffer_dim[0], s->width[0],
+                             s->zoom_props->buffer_cell_depth);
+
+  /* Compute the buffer cdim and cell width. */
+  for (int i = 0; i < 3; i++) {
+    s->zoom_props->buffer_cdim[i] = buffer_cdim;
+    s->zoom_props->buffer_width[i] = s->zoom_props->buffer_dim[i] / buffer_cdim;
+    s->zoom_props->buffer_iwidth[i] = 1.0 / s->zoom_props->buffer_width[i];
+  }
+
+  /* Find the buffer cell edges that contain the zoom region bounds. */
+  double region_lower_bounds[3];
+  double region_upper_bounds[3];
+  for (int i = 0; i < 3; i++) {
+    int lower = (int)floor((s->zoom_props->region_lower_bounds[i] -
+                            s->zoom_props->buffer_lower_bounds[i]) *
+                           s->zoom_props->buffer_iwidth[i]);
+    int upper = (int)floor((s->zoom_props->region_upper_bounds[i] -
+                            s->zoom_props->buffer_lower_bounds[i]) *
+                           s->zoom_props->buffer_iwidth[i]);
+    region_lower_bounds[i] = lower * s->zoom_props->buffer_width[i] +
+                             s->zoom_props->buffer_lower_bounds[i];
+    region_upper_bounds[i] = (upper + 1) * s->zoom_props->buffer_width[i] +
+                             s->zoom_props->buffer_lower_bounds[i];
+  }
+
+  /* Assign the new aligned zoom bounds. */
+  for (int i = 0; i < 3; i++) {
+    s->zoom_props->region_lower_bounds[i] = region_lower_bounds[i];
+    s->zoom_props->region_upper_bounds[i] = region_upper_bounds[i];
+  }
+
+  /* Compute the void region dimensions. */
+  for (int i = 0; i < 3; i++) {
+    s->zoom_props->dim[i] = region_upper_bounds[i] - region_lower_bounds[i];
+  }
+
+  /* Compute the number of zoom cells in the zoom region. Here we need to
+   * subtract the buffer depth from the user defined zoom depth, both are
+   * defined from the background cells but the calculation below is from the
+   * buffer cells down to the zoom level. */
+  int cdim = zoom_get_cdim_at_depth(
+      s->zoom_props->dim[0], s->zoom_props->buffer_width[0],
+      s->zoom_props->zoom_cell_depth - s->zoom_props->buffer_cell_depth);
+
+  /* Compute the zoom cdim and cell width. */
+  for (int i = 0; i < 3; i++) {
+    s->zoom_props->cdim[i] = cdim;
+    s->zoom_props->width[i] = s->zoom_props->dim[i] / cdim;
+    s->zoom_props->iwidth[i] = 1.0 / s->zoom_props->width[i];
   }
 }
 
@@ -459,49 +431,68 @@ void zoom_report_cell_properties(const struct space *s) {
 
   struct zoom_region_properties *zoom_props = s->zoom_props;
 
-  message("%25s = %f", "Zoom Region Pad Factor", zoom_props->region_pad_factor);
-  message("%25s = [%f, %f, %f]", "Zoom Region Shift", zoom_props->zoom_shift[0],
-          zoom_props->zoom_shift[1], zoom_props->zoom_shift[2]);
-  message("%25s = [%f, %f, %f]", "Zoom Region Dimensions", zoom_props->dim[0],
-          zoom_props->dim[1], zoom_props->dim[2]);
-  message("%25s = [%f, %f, %f]", "Zoom Region Center",
-          zoom_props->region_lower_bounds[0] + (zoom_props->dim[0] / 2.0),
-          zoom_props->region_lower_bounds[1] + (zoom_props->dim[1] / 2.0),
-          zoom_props->region_lower_bounds[2] + (zoom_props->dim[2] / 2.0));
-  message(
-      "%25s = [%f-%f, %f-%f, %f-%f]", "Zoom Region Bounds",
-      zoom_props->region_lower_bounds[0], zoom_props->region_upper_bounds[0],
-      zoom_props->region_lower_bounds[1], zoom_props->region_upper_bounds[1],
-      zoom_props->region_lower_bounds[2], zoom_props->region_upper_bounds[2]);
-  message("%25s = [%d, %d, %d]", "Zoom Region cdim", zoom_props->cdim[0],
-          zoom_props->cdim[1], zoom_props->cdim[2]);
-  message("%25s = [%f, %f, %f]", "Zoom Cell Width", zoom_props->width[0],
-          zoom_props->width[1], zoom_props->width[2]);
-  message("%25s = %d", "Number of Zoom Cells", zoom_props->nr_zoom_cells);
-  message("%25s = [%d, %d, %d]", "Background cdim", s->cdim[0], s->cdim[1],
+  /* Cdims */
+  message("%28s = [%d, %d, %d]", "Background cdim", s->cdim[0], s->cdim[1],
           s->cdim[2]);
-  message("%25s = [%f, %f, %f]", "Background Cell Width", s->width[0],
+  if (zoom_props->with_buffer_cells)
+    message("%28s = [%d, %d, %d]", "Buffer cdim", zoom_props->buffer_cdim[0],
+            zoom_props->buffer_cdim[1], zoom_props->buffer_cdim[2]);
+  message("%28s = [%d, %d, %d]", "Zoom cdim", zoom_props->cdim[0],
+          zoom_props->cdim[1], zoom_props->cdim[2]);
+
+  /* Dimensions */
+  message("%28s = [%f, %f, %f]", "Background Dimensions", s->dim[0], s->dim[1],
+          s->dim[2]);
+  if (zoom_props->with_buffer_cells)
+    message("%28s = [%f, %f, %f]", "Buffer Region Dimensions",
+            zoom_props->buffer_dim[0], zoom_props->buffer_dim[1],
+            zoom_props->buffer_dim[2]);
+  message("%28s = [%f, %f, %f]", "Zoom Region Dimensions", zoom_props->dim[0],
+          zoom_props->dim[1], zoom_props->dim[2]);
+
+  /* Cell Widths */
+  message("%28s = [%f, %f, %f]", "Background Cell Width", s->width[0],
           s->width[1], s->width[2]);
-  message("%25s = %d", "Number of Background Cells", zoom_props->nr_bkg_cells);
-  if (zoom_props->with_buffer_cells) {
-    message("%25s = %d", "Region Buffer Ratio",
-            zoom_props->region_buffer_ratio);
+  if (zoom_props->with_buffer_cells)
+    message("%28s = [%f, %f, %f]", "Buffer Cell Width",
+            zoom_props->buffer_width[0], zoom_props->buffer_width[1],
+            zoom_props->buffer_width[2]);
+  message("%28s = [%f, %f, %f]", "Zoom Cell Width", zoom_props->width[0],
+          zoom_props->width[1], zoom_props->width[2]);
+
+  /* Number of Cells */
+  message("%28s = %d", "Number of Background Cells", zoom_props->nr_bkg_cells);
+  if (zoom_props->with_buffer_cells)
+    message("%28s = %d", "Number of Buffer Cells", zoom_props->nr_buffer_cells);
+  message("%28s = %d", "Number of Zoom Cells", zoom_props->nr_zoom_cells);
+
+  /* Bounds */
+  if (zoom_props->with_buffer_cells)
     message(
-        "%25s = [%f-%f, %f-%f, %f-%f]", "Buffer Bounds",
+        "%28s = [%f-%f, %f-%f, %f-%f]", "Buffer Bounds",
         zoom_props->buffer_lower_bounds[0], zoom_props->buffer_upper_bounds[0],
         zoom_props->buffer_lower_bounds[1], zoom_props->buffer_upper_bounds[1],
         zoom_props->buffer_lower_bounds[2], zoom_props->buffer_upper_bounds[2]);
-    message("%25s = [%d, %d, %d]", "Buffer cdim", zoom_props->buffer_cdim[0],
-            zoom_props->buffer_cdim[1], zoom_props->buffer_cdim[2]);
-    message("%25s = [%f, %f, %f]", "Buffer Width", zoom_props->buffer_width[0],
-            zoom_props->buffer_width[1], zoom_props->buffer_width[2]);
-    message("%25s = [%f, %f, %f]", "Buffer Dimensions",
-            zoom_props->buffer_width[0] * zoom_props->buffer_cdim[0],
-            zoom_props->buffer_width[1] * zoom_props->buffer_cdim[1],
-            zoom_props->buffer_width[2] * zoom_props->buffer_cdim[2]);
-    message("%25s = %d", "Number of Buffer Cells", zoom_props->nr_buffer_cells);
-  }
-  message("%25s = %d", "Zoom Depth in Void Tree", zoom_props->zoom_cell_depth);
+  message(
+      "%28s = [%f-%f, %f-%f, %f-%f]", "Zoom Region Bounds",
+      zoom_props->region_lower_bounds[0], zoom_props->region_upper_bounds[0],
+      zoom_props->region_lower_bounds[1], zoom_props->region_upper_bounds[1],
+      zoom_props->region_lower_bounds[2], zoom_props->region_upper_bounds[2]);
+
+  /* Depths */
+  if (zoom_props->with_buffer_cells)
+    message("%28s = %d", "Buffer Top Level Depth",
+            zoom_props->buffer_cell_depth);
+  message("%28s = %d", "Zoom Top Level Depth", zoom_props->zoom_cell_depth);
+
+  /* Assorted extra zoom properties */
+  message("%28s = %f", "Zoom Region Pad Factor", zoom_props->region_pad_factor);
+  message("%28s = [%f, %f, %f]", "Zoom Region Shift", zoom_props->zoom_shift[0],
+          zoom_props->zoom_shift[1], zoom_props->zoom_shift[2]);
+  message("%28s = [%f, %f, %f]", "Zoom Region Center",
+          zoom_props->region_lower_bounds[0] + (zoom_props->dim[0] / 2.0),
+          zoom_props->region_lower_bounds[1] + (zoom_props->dim[1] / 2.0),
+          zoom_props->region_lower_bounds[2] + (zoom_props->dim[2] / 2.0));
 }
 
 /**
@@ -603,54 +594,50 @@ void zoom_region_init(struct space *s, const int verbose) {
   /* Include the requested padding around the high resolution particles. */
   double max_dim = ini_dim * s->zoom_props->region_pad_factor;
 
-  /* Define the background grid.
-   * NOTE: This can be updated below if max_dim > s->width[0]. In that event
-   * the number of background cells is modified until an acceptable number is
-   * found. See the note below. It can also be modified if max_dim <
-   * s->width[0] and no buffer cells are being used. In that event the
-   * background cdim becomes the number of zoom regions that tesselate the
-   * full box. */
+  /* Define the background grid (we'll treat this as gospel). */
   for (int i = 0; i < 3; i++) {
     s->cdim[i] = s->zoom_props->bkg_cdim[i];
     s->width[i] = s->dim[i] / s->cdim[i];
     s->iwidth[i] = 1.0 / s->width[i];
   }
 
-  /* Warn the user if they have turned off buffer cells with a small zoom
-   * region. */
-  if (max_dim < s->width[0] / 2.0 && s->zoom_props->region_buffer_ratio == 0) {
-    error(
-        "Running with a zoom region significantly smaller than a "
-        "background cell (region_dim=%f, bkg_cell_width=%f) and no buffer "
-        "cells, performance will be poor! Increase "
-        "ZoomRegion:region_buffer_cell_ratio",
-        max_dim, s->width[0]);
-  }
+  /* Compute the void region bounds and number of zoom regions that tesselate
+   * it. */
+  int nr_zoom_regions = zoom_get_void_geometry(s, max_dim);
 
-  /* If we have a region larger than a background cell construct the zoom
-   * region for that case regardless of buffer cell definition in the
-   * parameter file. */
-  if (max_dim > s->width[0]) {
-
-    /* NOTE: for this case the number of background cells is defined by
-     * the geometry but attempts to get as close as possible to the user
-     * defined cdim from the parameter file. */
-    zoom_get_cell_props_large_region(s, max_dim);
-  }
-
-  /* If we have buffer cells: use them alongside the zoom and background
+  /* Check the user gave a sensible background cdim, if the number of zoom
+   * regions is too high we will have to set up a unworkable number of buffer
    * cells. */
-  else if (s->zoom_props->region_buffer_ratio > 0) {
-
-    /* Compute the cell grid properties. */
-    zoom_get_cell_props_with_buffer_cells(s, max_dim);
-
+  if (nr_zoom_regions >= 64) {
+    error(
+        "Background cell size is too large relative to the zoom region! "
+        "Increase ZoomRegion:bkg_top_level_cells (would have needed %d zoom "
+        "cells in the void region).",
+        nr_zoom_regions);
   }
 
-  /* Otherwise we simply tessalate cells the size of the zoom region across
-   * the whole volume without padding with buffer cells. */
-  else {
-    zoom_get_cell_props_no_buffer_cells(s, max_dim);
+  /* If its alot but not silly just warn the user. */
+  if (nr_zoom_regions >= 16) {
+    warning(
+        "Background cell size is large relative to the zoom region! "
+        "(we'll need at least %d buffer cells which may be slow). ",
+        nr_zoom_regions);
+  }
+
+  if (verbose) {
+    message("Initial geometry gives %d zoom regions in the void region.",
+            nr_zoom_regions);
+  }
+
+  /* If the extra padding due to background cells is small enough we can forgo
+   * buffer cells entirel,y if not we'll use them to better match the geometry
+   * to the high resolution particle distribution. */
+  if (nr_zoom_regions <= 2) {
+    s->zoom_props->with_buffer_cells = 0;
+    zoom_get_geometry_no_buffer_cells(s);
+  } else {
+    s->zoom_props->with_buffer_cells = 1;
+    zoom_get_geometry_with_buffer_cells(s);
   }
 
   /* Store what the true boost factor ended up being */
@@ -663,34 +650,20 @@ void zoom_region_init(struct space *s, const int verbose) {
     error(
         "Found a zoom region smaller than the high resolution particle "
         "distribution! Adjust the cell structure "
-        "(ZoomRegion:bkg_top_level_cells, ZoomRegion:zoom_top_level_cells"
-        " and ZoomRegion:region_buffer_cell_ratio)");
+        "(ZoomRegion:bkg_top_level_cells, ZoomRegion:zoom_top_level_cells)");
   }
 
-  /* Let's be safe and error if we have drastically changed the size of the
-  padding region. */
+  /* Let's be safe and warn if we have drastically changed the size of the
+   * requested padding region. */
   if ((s->zoom_props->region_pad_factor / input_pad_factor) >= 2)
-    error(
-        "WARNING: The pad region has to be 2x larger than requested."
-        "Either increase ZoomRegion:region_pad_factor or increase the "
-        "number of background cells.");
+    warning(
+        "The pad region has to be %d times larger than requested."
+        "Either increase ZoomRegion:region_pad_factor, increase the "
+        "number of background cells, or increase the depths of the zoom cells "
+        "(and buffer cells if using).",
+        (int)(s->zoom_props->region_pad_factor / input_pad_factor));
 
-  /* Set zoom cell width */
-  for (int i = 0; i < 3; i++) {
-    s->zoom_props->width[i] = s->zoom_props->dim[i] / s->zoom_props->cdim[i];
-    s->zoom_props->iwidth[i] = 1.0 / s->zoom_props->width[i];
-  }
-
-  /* Calculate the depth of the zoom cells in the void cell hierarchy. */
-  if (s->zoom_props->with_buffer_cells) {
-    s->zoom_props->zoom_cell_depth =
-        log2((s->zoom_props->buffer_width[0] / s->zoom_props->width[0]) + 0.1);
-  } else {
-    s->zoom_props->zoom_cell_depth =
-        log2((s->width[0] / s->zoom_props->width[0]) + 0.1);
-  }
-
-  /* If we didn't get an explicit neighbour cell depth we'll use the zoom
+  /* If we didn't get an explicit neighbour cell depth we'll match the zoom
    * depth. */
   s->zoom_props->neighbour_max_tree_depth =
       (s->zoom_props->neighbour_max_tree_depth < 0)
