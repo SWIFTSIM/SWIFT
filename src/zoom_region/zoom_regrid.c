@@ -135,10 +135,9 @@ void zoom_prepare_cells(struct space *s, const int zoom_cdim[3], int verbose) {
     zoom_regrid_find_acceptable_geometry(s, zoom_cdim);
 
     /* The above function found the geometry silently, if we're running in
-     * verbose mode call the init again to print the cell properties
-     * report. */
+     * verbose mode print the cell properties report. */
     if (verbose) {
-      zoom_region_init(s, verbose);
+      zoom_report_cell_properties(s);
     }
   }
 
