@@ -204,17 +204,6 @@ void zoom_void_split_recursive(struct space *s, struct cell *c,
         "Trying to split a Void with particles! "
         "(c->type=%s, c->subtype=%s)",
         cellID_names[c->type], subcellID_names[c->subtype]);
-
-  /* Ensure we haven't missed the zoom cells and gone too deep in the tree. */
-  if (c->subtype != cell_subtype_void || c->width[0] <= s->zoom_props->width[0])
-    error(
-        "We have a zoom cell labelled as a void cell! We have gone too "
-        "deep in the zoom cell tree, this could be because background "
-        "cells are comprable in size to the zoom cells."
-        " (cp->type=%s, cp->subtype=%s, cp->width[0]=%f, cp->depth=%d,"
-        " s->zoom_props->width[0]=%f, zoom_props->zoom_cell_depth=%d)",
-        cellID_names[c->type], subcellID_names[c->subtype], c->width[0],
-        c->depth, s->zoom_props->width[0], s->zoom_props->zoom_cell_depth);
 #endif
 
   /* If the depth is too large, we have a problem and should stop. */
