@@ -63,7 +63,7 @@
 #include "timestep_limiter.h"
 #include "tracers.h"
 
-extern const int sort_stack_size;
+#define SORT_STACK_SIZE 10
 
 /**
  * @brief Calculate gravity acceleration from external potential
@@ -274,7 +274,7 @@ void runner_do_star_formation_sink(struct runner *r, struct cell *c,
 
           /* Verify that we do not have too many stars in the leaf for
            * the sort task to be able to act. */
-          if (c->stars.count > (1LL << sort_stack_size))
+          if (c->stars.count > (1LL << SORT_STACK_SIZE))
             error(
                 "Too many stars in the cell tree leaf! The sorting task will "
                 "not be able to perform its duties. Possible solutions: (1) "

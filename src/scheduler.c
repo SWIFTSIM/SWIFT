@@ -214,10 +214,10 @@ struct task_dependency {
  */
 void task_dependency_define(MPI_Datatype *tstype) {
   /* Define the variables */
+  int blocklens[14];
+  MPI_Datatype types[14];
+  MPI_Aint disps[14];
   const int count = 14;
-  int blocklens[count];
-  MPI_Datatype types[count];
-  MPI_Aint disps[count];
 
   /* all the type are int */
   for (int i = 0; i < count; i++) {
@@ -2608,7 +2608,8 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
                         subtaskMPI_comms[t->subtype], &t->req);
 
         if (err != MPI_SUCCESS) {
-          mpi_error(err, "Failed to emit irecv for particle data.");
+          mpi_error(err, "Failed to emit irecv for particle data of size %zd.",
+                    size);
         }
 
         /* And log, if logging enabled. */

@@ -32,6 +32,8 @@
 /* Some standard headers. */
 #include <string.h>
 
+#define MAX_NUM_PTYPE_FIELDS 100
+
 /**
  * @brief Return the particle type code of a select_output parameter
  *
@@ -127,8 +129,6 @@ int io_get_ptype_fields(const int ptype, struct io_props* list,
 void io_prepare_output_fields(struct output_options* output_options,
                               const int with_cosmology, const int with_fof,
                               const int with_stf, int verbose) {
-
-  const int MAX_NUM_PTYPE_FIELDS = 100;
 
   /* Parameter struct for the output options */
   struct swift_params* params = output_options->select_output;
