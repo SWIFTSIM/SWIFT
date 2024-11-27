@@ -32,29 +32,6 @@
 #include "zoom.h"
 
 /**
- * @brief Is this cell within the zoom region?
- *
- * @param c The #cell.
- * @param s The #space.
- */
-__attribute__((always_inline)) INLINE static int zoom_cell_inside_zoom_region(
-    const struct cell *c, const struct space *s) {
-
-  /* Get the middle of the cell (since the cell grids align this eliminates
-   * any issues from rounding). */
-  const double mid[3] = {c->loc[0] + 0.5 * c->width[0],
-                         c->loc[1] + 0.5 * c->width[1],
-                         c->loc[2] + 0.5 * c->width[2]};
-
-  return ((mid[0] > s->zoom_props->region_lower_bounds[0]) &&
-          (mid[0] < s->zoom_props->region_upper_bounds[0]) &&
-          (mid[1] > s->zoom_props->region_lower_bounds[1]) &&
-          (mid[1] < s->zoom_props->region_upper_bounds[1]) &&
-          (mid[2] > s->zoom_props->region_lower_bounds[2]) &&
-          (mid[2] < s->zoom_props->region_upper_bounds[2]));
-}
-
-/**
  * @brief Find which background or buffer cells contain the zoom region.
  *
  * A void cell is a low resolution cell above the zoom region (or part
@@ -98,7 +75,7 @@ void zoom_find_void_cells(struct space *s, const int verbose) {
     struct cell *c = &cells[cid];
 
     /* Label this cell if it contains the zoom region. */
-    if (zoom_cell_inside_zoom_region(c, s)) {
+    if (zoom_cell_overlaps_zoom_region(c, s)) {
       c->subtype = cell_subtype_void;
       zoom_props->void_cell_indices[zoom_props->nr_void_cells++] = cid;
     }
@@ -119,7 +96,7 @@ void zoom_find_void_cells(struct space *s, const int verbose) {
     if (cid < offset || cid >= offset + ncells)
       error("Void cell index is out of range (cid=%d, offset=%d, ncells=%d)",
             cid, offset, ncells);
-    if (zoom_cell_inside_zoom_region(&cells[cid], s) == 0)
+    if (zoom_cell_overlaps_zoom_region(&cells[cid], s) == 0)
       error("Void cell is not inside the zoom region (cid=%d)", cid);
   }
 #endif
@@ -686,258 +663,6 @@ void zoom_construct_tl_cells(struct space *s, const integertime_t ti_current,
 }
 
 /**
- * @brief Link the zoom cells to the void cells.
- *
- * The leaves of the void cell hierarchy are the zoom cells. This function
- * sets the progeny of the highest res void cell to be the zoom cells it
- * contains.
- *
- * NOTE: The void cells with zoom progeny are not treated as split cells
- * since they are linked into the top level "progeny". We don't want to
- * accidentally treat them as split cells and recurse from void cells straight
- * through to the zoom cells unless explictly desired.
- *
- * @param s The space.
- * @param c The void cell progeny to link
- */
-void zoom_link_void_leaves(struct space *s, struct cell *c) {
-
-#ifdef SWIFT_DEBUG_CHECKS
-  /* Ensure we have the right kind of cell. */
-  if (c->subtype != cell_subtype_void) {
-    error(
-        "Trying to split cell which isn't a void cell! (c->type=%s, "
-        "c->subtype=%s)",
-        cellID_names[c->type], subcellID_names[c->subtype]);
-  }
-  if ((!s->zoom_props->with_buffer_cells && c->type != cell_type_bkg) ||
-      (s->zoom_props->with_buffer_cells && c->type != cell_type_buffer)) {
-    error(
-        "Trying to split cell which isn't directly above the zoom level! "
-        "(c->type=%s, c->subtype=%s)",
-        cellID_names[c->type], subcellID_names[c->subtype]);
-  }
-#endif
-
-  /* We need to ensure this bottom level isn't treated like a
-   * normal split cell since it's linked into top level "progeny". */
-  c->split = 0;
-
-  /* Initialise the timestep information we need to collect. */
-  integertime_t ti_hydro_end_min = max_nr_timesteps, ti_hydro_beg_max = 0;
-  integertime_t ti_rt_end_min = max_nr_timesteps, ti_rt_beg_max = 0;
-  integertime_t ti_rt_min_step_size = max_nr_timesteps;
-  integertime_t ti_gravity_end_min = max_nr_timesteps, ti_gravity_beg_max = 0;
-  integertime_t ti_stars_end_min = max_nr_timesteps, ti_stars_beg_max = 0;
-  integertime_t ti_sinks_end_min = max_nr_timesteps, ti_sinks_beg_max = 0;
-  integertime_t ti_black_holes_end_min = max_nr_timesteps,
-                ti_black_holes_beg_max = 0;
-
-  /* Loop over the 8 progeny cells which are now the zoom cells. */
-  for (int k = 0; k < 8; k++) {
-
-    /* Establish the location of the fake progeny cell. */
-    double zoom_loc[3] = {c->loc[0] + (s->zoom_props->width[0] / 2),
-                          c->loc[1] + (s->zoom_props->width[1] / 2),
-                          c->loc[2] + (s->zoom_props->width[2] / 2)};
-    if (k & 4) zoom_loc[0] += s->zoom_props->width[0];
-    if (k & 2) zoom_loc[1] += s->zoom_props->width[1];
-    if (k & 1) zoom_loc[2] += s->zoom_props->width[2];
-
-    /* Which zoom cell are we in? */
-    int cid = cell_getid_from_pos(s, zoom_loc[0], zoom_loc[1], zoom_loc[2]);
-
-#ifdef SWIFT_DEBUG_CHECKS
-    /* Ensure we're in the right cell. */
-    if (cid >= s->zoom_props->nr_zoom_cells || cid < 0)
-      error(
-          "Void progeny isn't in the right place! (zoom_loc=[%f %f %f] -> "
-          "cid=%d,"
-          "s->zoom_props->nr_zoom_cells=%d)",
-          zoom_loc[0], zoom_loc[1], zoom_loc[2], cid,
-          s->zoom_props->nr_zoom_cells);
-#endif
-
-    /* Get the zoom cell. */
-    struct cell *zoom_cell = &s->cells_top[cid];
-
-#ifdef SWIFT_DEBUG_CHECKS
-    /* Ensure the zoom cell we've got is actually a void cell. */
-    if (zoom_cell->type != cell_type_zoom)
-      error(
-          "Void progeny isn't a zoom cell! (zoom_loc=[%f %f %f] -> cid=%d,"
-          "c->type=%s, c->subtype=%s, c->loc=[%f %f %f])",
-          zoom_loc[0], zoom_loc[1], zoom_loc[2], cid,
-          cellID_names[zoom_cell->type], subcellID_names[zoom_cell->subtype],
-          zoom_cell->loc[0], zoom_cell->loc[1], zoom_cell->loc[2]);
-#endif
-
-    /* Link this zoom cell into the void cell hierarchy. */
-    c->progeny[k] = zoom_cell;
-
-    /* Flag this void cell "progeny" as the zoom cell's void cell parent. */
-    zoom_cell->void_parent = c;
-
-    /* Update the timestep information. */
-    ti_hydro_end_min = min(ti_hydro_end_min, zoom_cell->hydro.ti_end_min);
-    ti_hydro_beg_max = max(ti_hydro_beg_max, zoom_cell->hydro.ti_beg_max);
-    ti_rt_end_min = min(ti_rt_end_min, zoom_cell->rt.ti_rt_end_min);
-    ti_rt_beg_max = max(ti_rt_beg_max, zoom_cell->rt.ti_rt_beg_max);
-    ti_rt_min_step_size =
-        min(ti_rt_min_step_size, zoom_cell->rt.ti_rt_min_step_size);
-    ti_gravity_end_min = min(ti_gravity_end_min, zoom_cell->grav.ti_end_min);
-    ti_gravity_beg_max = max(ti_gravity_beg_max, zoom_cell->grav.ti_beg_max);
-    ti_stars_end_min = min(ti_stars_end_min, zoom_cell->stars.ti_end_min);
-    ti_stars_beg_max = max(ti_stars_beg_max, zoom_cell->stars.ti_beg_max);
-    ti_sinks_end_min = min(ti_sinks_end_min, zoom_cell->sinks.ti_end_min);
-    ti_sinks_beg_max = max(ti_sinks_beg_max, zoom_cell->sinks.ti_beg_max);
-    ti_black_holes_end_min =
-        min(ti_black_holes_end_min, zoom_cell->black_holes.ti_end_min);
-    ti_black_holes_beg_max =
-        max(ti_black_holes_beg_max, zoom_cell->black_holes.ti_beg_max);
-  }
-
-  /* Update the timestep information. */
-  c->hydro.ti_end_min = ti_hydro_end_min;
-  c->hydro.ti_beg_max = ti_hydro_beg_max;
-  c->rt.ti_rt_end_min = ti_rt_end_min;
-  c->rt.ti_rt_beg_max = ti_rt_beg_max;
-  c->rt.ti_rt_min_step_size = ti_rt_min_step_size;
-  c->grav.ti_end_min = ti_gravity_end_min;
-  c->grav.ti_beg_max = ti_gravity_beg_max;
-  c->stars.ti_end_min = ti_stars_end_min;
-  c->stars.ti_beg_max = ti_stars_beg_max;
-  c->sinks.ti_end_min = ti_sinks_end_min;
-  c->sinks.ti_beg_max = ti_sinks_beg_max;
-  c->black_holes.ti_end_min = ti_black_holes_end_min;
-  c->black_holes.ti_beg_max = ti_black_holes_beg_max;
-
-  /* Interact the zoom cell multipoles with this cell. */
-  if (s->with_self_gravity) {
-
-    /* Reset everything */
-    gravity_reset(c->grav.multipole);
-
-    /* Compute CoM and bulk velocity from all progenies */
-    double CoM[3] = {0., 0., 0.};
-    double vel[3] = {0., 0., 0.};
-    float max_delta_vel[3] = {0.f, 0.f, 0.f};
-    float min_delta_vel[3] = {0.f, 0.f, 0.f};
-    double mass = 0.;
-
-    for (int k = 0; k < 8; ++k) {
-      if (c->progeny[k] != NULL) {
-        const struct gravity_tensors *m = c->progeny[k]->grav.multipole;
-
-        mass += m->m_pole.M_000;
-
-        CoM[0] += m->CoM[0] * m->m_pole.M_000;
-        CoM[1] += m->CoM[1] * m->m_pole.M_000;
-        CoM[2] += m->CoM[2] * m->m_pole.M_000;
-
-        vel[0] += m->m_pole.vel[0] * m->m_pole.M_000;
-        vel[1] += m->m_pole.vel[1] * m->m_pole.M_000;
-        vel[2] += m->m_pole.vel[2] * m->m_pole.M_000;
-
-        max_delta_vel[0] = max(m->m_pole.max_delta_vel[0], max_delta_vel[0]);
-        max_delta_vel[1] = max(m->m_pole.max_delta_vel[1], max_delta_vel[1]);
-        max_delta_vel[2] = max(m->m_pole.max_delta_vel[2], max_delta_vel[2]);
-
-        min_delta_vel[0] = min(m->m_pole.min_delta_vel[0], min_delta_vel[0]);
-        min_delta_vel[1] = min(m->m_pole.min_delta_vel[1], min_delta_vel[1]);
-        min_delta_vel[2] = min(m->m_pole.min_delta_vel[2], min_delta_vel[2]);
-      }
-    }
-
-    /* Final operation on the CoM and bulk velocity */
-    const double inv_mass = 1. / mass;
-    c->grav.multipole->CoM[0] = CoM[0] * inv_mass;
-    c->grav.multipole->CoM[1] = CoM[1] * inv_mass;
-    c->grav.multipole->CoM[2] = CoM[2] * inv_mass;
-    c->grav.multipole->m_pole.vel[0] = vel[0] * inv_mass;
-    c->grav.multipole->m_pole.vel[1] = vel[1] * inv_mass;
-    c->grav.multipole->m_pole.vel[2] = vel[2] * inv_mass;
-
-    /* Min max velocity along each axis */
-    c->grav.multipole->m_pole.max_delta_vel[0] = max_delta_vel[0];
-    c->grav.multipole->m_pole.max_delta_vel[1] = max_delta_vel[1];
-    c->grav.multipole->m_pole.max_delta_vel[2] = max_delta_vel[2];
-    c->grav.multipole->m_pole.min_delta_vel[0] = min_delta_vel[0];
-    c->grav.multipole->m_pole.min_delta_vel[1] = min_delta_vel[1];
-    c->grav.multipole->m_pole.min_delta_vel[2] = min_delta_vel[2];
-
-    /* Now shift progeny multipoles and add them up */
-    struct multipole temp;
-    double r_max = 0.;
-    for (int k = 0; k < 8; ++k) {
-      if (c->progeny[k] != NULL) {
-        const struct cell *cp = c->progeny[k];
-        const struct multipole *m = &cp->grav.multipole->m_pole;
-
-        /* Contribution to multipole */
-        gravity_M2M(&temp, m, c->grav.multipole->CoM, cp->grav.multipole->CoM);
-        gravity_multipole_add(&c->grav.multipole->m_pole, &temp);
-
-        /* Upper limit of max CoM<->gpart distance */
-        const double dx =
-            c->grav.multipole->CoM[0] - cp->grav.multipole->CoM[0];
-        const double dy =
-            c->grav.multipole->CoM[1] - cp->grav.multipole->CoM[1];
-        const double dz =
-            c->grav.multipole->CoM[2] - cp->grav.multipole->CoM[2];
-        const double r2 = dx * dx + dy * dy + dz * dz;
-        r_max = max(r_max, cp->grav.multipole->r_max + sqrt(r2));
-      }
-    }
-
-    /* Alternative upper limit of max CoM<->gpart distance */
-    const double dx = c->grav.multipole->CoM[0] > c->loc[0] + c->width[0] / 2.
-                          ? c->grav.multipole->CoM[0] - c->loc[0]
-                          : c->loc[0] + c->width[0] - c->grav.multipole->CoM[0];
-    const double dy = c->grav.multipole->CoM[1] > c->loc[1] + c->width[1] / 2.
-                          ? c->grav.multipole->CoM[1] - c->loc[1]
-                          : c->loc[1] + c->width[1] - c->grav.multipole->CoM[1];
-    const double dz = c->grav.multipole->CoM[2] > c->loc[2] + c->width[2] / 2.
-                          ? c->grav.multipole->CoM[2] - c->loc[2]
-                          : c->loc[2] + c->width[2] - c->grav.multipole->CoM[2];
-
-    /* Take minimum of both limits */
-    c->grav.multipole->r_max = min(r_max, sqrt(dx * dx + dy * dy + dz * dz));
-
-    /* Store the value at rebuild time */
-    c->grav.multipole->r_max_rebuild = c->grav.multipole->r_max;
-    c->grav.multipole->CoM_rebuild[0] = c->grav.multipole->CoM[0];
-    c->grav.multipole->CoM_rebuild[1] = c->grav.multipole->CoM[1];
-    c->grav.multipole->CoM_rebuild[2] = c->grav.multipole->CoM[2];
-
-    /* Compute the multipole power */
-    gravity_multipole_compute_power(&c->grav.multipole->m_pole);
-
-  } /* Deal with gravity */
-
-#ifdef SWIFT_DEBUG_CHECKS
-  /* Ensure the void multipole agrees with the nested zoom cells. */
-  int nr_gparts_in_zoom = 0;
-  int nr_gparts_in_void = c->grav.multipole->m_pole.num_gpart;
-  for (int k = 0; k < 8; k++) {
-    /* All progeny should exist */
-    if (c->progeny[k] == NULL) {
-      error("Zoom cell has no progeny!");
-    }
-    nr_gparts_in_zoom += c->progeny[k]->grav.multipole->m_pole.num_gpart;
-  }
-
-  if (nr_gparts_in_zoom != nr_gparts_in_void) {
-    error(
-        "Zoom cell and void cell multipole don't agree! "
-        "(nr_gparts_in_zoom=%d "
-        "nr_gparts_in_void=%d)",
-        nr_gparts_in_zoom, nr_gparts_in_void);
-  }
-#endif
-}
-
-/**
  * @brief Collect the timestep from the zoom region to the void level.
  *
  * This will recurse to the void leaves and grab the timestep from the zoom
@@ -971,8 +696,8 @@ static void zoom_void_timestep_collect_recursive(struct cell *c) {
     struct cell *cp = c->progeny[k];
     if (cp != NULL) {
 
-      /* Recurse, if we haven't hit the zoom level. */
-      if (cp->type != cell_type_zoom) {
+      /* Recurse, if we're still in the void cell tree. */
+      if (cp->subtype == cell_subtype_void) {
         zoom_void_timestep_collect_recursive(cp);
       }
 

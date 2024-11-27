@@ -1914,4 +1914,69 @@ __attribute__((always_inline)) INLINE void cell_assign_cell_index(
 #endif
 }
 
+/**
+ * @brief Does this cell overlap the zoom region?
+ *
+ * This will test if there is any overlap whatsoever between the zoom boundaries
+ * and the cell boundaries.
+ *
+ * @param c The #cell.
+ * @param s The #space.
+ */
+__attribute__((always_inline)) INLINE static int zoom_cell_overlaps_zoom_region(
+    const struct cell *c, const struct space *s) {
+
+  /* Cell boundaries */
+  const double cell_min[3] = {c->loc[0], c->loc[1], c->loc[2]};
+  const double cell_max[3] = {c->loc[0] + c->width[0], c->loc[1] + c->width[1],
+                              c->loc[2] + c->width[2]};
+
+  /* Zoom region boundaries */
+  const double zoom_min[3] = {s->zoom_props->region_lower_bounds[0],
+                              s->zoom_props->region_lower_bounds[1],
+                              s->zoom_props->region_lower_bounds[2]};
+  const double zoom_max[3] = {s->zoom_props->region_upper_bounds[0],
+                              s->zoom_props->region_upper_bounds[1],
+                              s->zoom_props->region_upper_bounds[2]};
+
+  /* Calculate overlap in each dimension */
+  const double overlap_x =
+      fmin(cell_max[0], zoom_max[0]) - fmax(cell_min[0], zoom_min[0]);
+  const double overlap_y =
+      fmin(cell_max[1], zoom_max[1]) - fmax(cell_min[1], zoom_min[1]);
+  const double overlap_z =
+      fmin(cell_max[2], zoom_max[2]) - fmax(cell_min[2], zoom_min[2]);
+
+  /* Check if overlap lengths are positive */
+  return (overlap_x > 0.0 && overlap_y > 0.0 && overlap_z > 0.0);
+}
+
+/**
+ * @brief Is this cell entirely inside the zoom region?
+ *
+ * @param c The #cell.
+ * @param s The #space.
+ */
+__attribute__((always_inline)) INLINE static int zoom_cell_inside_zoom_region(
+    const struct cell *c, const struct space *s) {
+
+  /* Cell boundaries */
+  const double cell_min[3] = {c->loc[0], c->loc[1], c->loc[2]};
+  const double cell_max[3] = {c->loc[0] + c->width[0], c->loc[1] + c->width[1],
+                              c->loc[2] + c->width[2]};
+
+  /* Zoom region boundaries */
+  const double zoom_min[3] = {s->zoom_props->region_lower_bounds[0],
+                              s->zoom_props->region_lower_bounds[1],
+                              s->zoom_props->region_lower_bounds[2]};
+  const double zoom_max[3] = {s->zoom_props->region_upper_bounds[0],
+                              s->zoom_props->region_upper_bounds[1],
+                              s->zoom_props->region_upper_bounds[2]};
+
+  /* Check if the cell is entirely inside the zoom region */
+  return (cell_min[0] >= zoom_min[0] && cell_min[1] >= zoom_min[1] &&
+          cell_min[2] >= zoom_min[2] && cell_max[0] <= zoom_max[0] &&
+          cell_max[1] <= zoom_max[1] && cell_max[2] <= zoom_max[2]);
+}
+
 #endif /* SWIFT_CELL_H */

@@ -653,6 +653,13 @@ void space_split_recursive(struct space *s, struct cell *c,
                            struct cell_buff *restrict sink_buff,
                            const short int tpid) {
 
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Ensure we don't get a void cell here */
+  if (c->subtype == cell_subtype_void) {
+    error("Void cell in space_split_recursive()");
+  }
+#endif
+
   const int count = c->hydro.count;
   const int gcount = c->grav.count;
   const int scount = c->stars.count;
