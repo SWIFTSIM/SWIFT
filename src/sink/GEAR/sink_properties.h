@@ -67,13 +67,17 @@ struct sink_props {
   char sink_formation_bound_state_criterion;
   char sink_formation_overlapping_sink_criterion;
 
-  /* Disable sink formation? (e.g. used in sink accretion tests). Default: 0
+  /*! Disable sink formation? (e.g. used in sink accretion tests). Default: 0
      (keep sink formation) */
-  uint8_t disable_sink_formation;
+  char disable_sink_formation;
 
-  /* Factor to rescale the velocity dispersion of the stars when they are
+  /*! Factor to rescale the velocity dispersion of the stars when they are
      spawned */
   double star_spawning_sigma_factor;
+
+  /*! Minimal sink mass in Msun. This prevents m_sink << m_gas in low
+    resolution simulations. */
+  float sink_minimal_mass_Msun;
 };
 
 /**
@@ -230,6 +234,9 @@ INLINE static void sink_props_init(struct sink_props *sp,
       parser_get_opt_param_float(params, "GEARSink:star_spawning_sigma_factor",
                                  default_star_spawning_sigma_factor);
 
+  sp->sink_minimal_mass_Msun =
+      parser_get_opt_param_float(params, "GEARSink:sink_minimal_mass_Msun", 0.);
+
   /* Sink formation criterion parameters (all active by default) */
   sp->sink_formation_contracting_gas_criterion = parser_get_opt_param_int(
       params, "GEARSink:sink_formation_contracting_gas_criterion",
@@ -290,6 +297,8 @@ INLINE static void sink_props_init(struct sink_props *sp,
           sp->density_threshold);
   message("maximal_density_threshold                    = %g",
           sp->maximal_density_threshold);
+  message("sink_minimal_mass (in M_sun)                 = %g",
+          sp->sink_minimal_mass_Msun);
   message("stellar_particle_mass (in M_sun)             = %g",
           sp->stellar_particle_mass_Msun);
   message("minimal_discrete_mass (in M_sun)             = %g",

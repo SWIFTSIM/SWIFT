@@ -3110,7 +3110,7 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
       if (cell_need_rebuild_for_sinks_pair(ci, cj)) rebuild = 1;
       if (cell_need_rebuild_for_sinks_pair(cj, ci)) rebuild = 1;
 
-#ifdef WITH_MPI
+#if defined(WITH_MPI) && !defined(SWIFT_DEBUG_CHECKS)
       error("TODO");
 #endif
     }
