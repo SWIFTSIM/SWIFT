@@ -392,6 +392,25 @@ runner_iact_nonsym_sinks_sink_swallow(
       return;
     }
 
+    /* Swallowed mass threshold--------------------------------------------- */
+    si->to_collect.mass_eligible_swallow += sj->mass;
+
+    /* Maximal mass that can be swallowed within a single timestep */
+    const float mass_swallow_limit = sink_properties->n_IMF * si->mass_IMF;
+
+    /* If the mass exceeds the threshold, do not swallow. Make sure you can at
+       least swallow a particle to avoid running into the problem of never being
+       able to spawn a star.
+       If n_IMF <= 0, then disable this criterion */
+    if (sink_properties->n_IMF > 0 &&
+        si->to_collect.mass_after_swallow >= mass_swallow_limit &&
+        si->to_collect.mass_eligible_swallow != 0) {
+      return;
+    }
+
+    /* Increment the swallowd mass */
+    si->to_collect.mass_after_swallow += sj->mass;
+
     /* The sink with the smaller mass will be merged onto the one with the
      * larger mass.
      * To avoid rounding issues, we additionally check for IDs if the sink
