@@ -383,6 +383,8 @@ INLINE static void sink_props_init(struct sink_props *sp,
           sp->sink_formation_bound_state_criterion);
   message("sink_formation_overlapping_sink_criterion    = %d",
           sp->sink_formation_overlapping_sink_criterion);
+
+  /* Print timestep parameters information */
   message("sink max_timestep_young                      = %e",
           sp->max_time_step_young);
   message("sink max_timestep_old                        = %e",
@@ -393,6 +395,10 @@ INLINE static void sink_props_init(struct sink_props *sp,
           sp->age_threshold_unlimited);
   message("sink C_CFL                                   = %e",
           sp->CFL_condition);
+  message("tolerance_SF_timestep                        = %e",
+          sp->tolerance_SF_timestep);
+  message("n_IMF                                        = %e",
+          sp->n_IMF);
 }
 
 /**
