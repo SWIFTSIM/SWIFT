@@ -625,11 +625,11 @@ void cell_activate_subcell_hydro_tasks(struct cell *ci, struct cell *cj,
                                        const int with_timestep_limiter);
 int cell_activate_subcell_grav_tasks(struct cell *ci, struct cell *cj,
                                      struct scheduler *s);
-void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
-                                       struct scheduler *s,
-                                       const int with_star_formation,
-                                       const int with_star_formation_sink,
-                                       const int with_timestep_sync);
+int cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
+                                      struct scheduler *s,
+                                      const int with_star_formation,
+                                      const int with_star_formation_sink,
+                                      const int with_timestep_sync);
 void cell_activate_subcell_sinks_tasks(struct cell *ci, struct cell *cj,
                                        struct scheduler *s,
                                        const int with_timestep_sync);
