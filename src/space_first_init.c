@@ -484,6 +484,9 @@ void space_first_init_sinks_mapper(void *restrict map_data, int count,
     /* Initialize the sinks */
     sink_first_init_sink(&sink[k], props, e);
 
+    /* And the sink merger markers */
+    sink_mark_sink_as_not_swallowed(&sink[k].merger_data);
+
     /* Also initialize the chemistry */
     chemistry_first_init_sink(chemistry, &sink[k]);
 

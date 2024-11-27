@@ -34,8 +34,6 @@
  * In GEAR: This function deactivates the sink formation ability of #part not
  * at a potential minimum.
  *
- * Note: This functions breaks MPI.
- *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
  * @param hi Comoving smoothing-length of particle i.
@@ -59,12 +57,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_sink(
 
   /* if the distance is less than the cut off radius */
   if (r < cut_off_radius) {
-
-    /*
-     * NOTE: Those lines break MPI
-     */
-    float potential_i = pi->gpart->potential;
-    float potential_j = pj->gpart->potential;
+    float potential_i = pi->sink_data.potential;
+    float potential_j = pj->sink_data.potential;
 
     /* prevent the particle with the largest potential to form a sink */
     if (potential_i > potential_j) {
@@ -108,9 +102,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_sink(
   const float r = sqrtf(r2);
 
   if (r < cut_off_radius) {
-
-    float potential_i = pi->gpart->potential;
-    float potential_j = pj->gpart->potential;
+    float potential_i = pi->sink_data.potential;
+    float potential_j = pj->sink_data.potential;
 
     /* if the potential is larger
      * prevent the particle to form a sink */
@@ -214,10 +207,68 @@ sink_collect_properties_from_sink(const float r2, const float dx[3],
       min(t_dyn, si->to_collect.minimal_sink_t_dyn);
 }
 
+
+/**
+ * @brief Compute the angular momentum-based criterion for sink-sink interaction.
+ *
+ * This function calculates the angular momentum of a sink particle relative to
+ * another particle (sink or gas) and evaluates the Keplerian angular momentum.
+ *
+ * @param dx Comoving vector separating the two particles (pi - pj).
+ * @param dv_plus_H_flow Comoving relative velocity including the Hubble flow.
+ * @param r Comoving distance between the two particles.
+ * @param r_cut_i Comoving cut-off radius of particle i.
+ * @param mass_i Mass of particle i.
+ * @param L2_kepler (return) Keplerian angular momentum squared of particle i.
+ * @param L2_j (return) Specific angular momentum squared relative to particle j.
+ * @param cosmo The cosmological parameters and properties
+ * @param grav_props The gravity scheme parameters and properties
+ */
+__attribute__((always_inline)) INLINE static void
+sink_compute_angular_momenta_criterion(const float dx[3], const float dv_plus_H_flow[3],
+				       const float r, const float r_cut_i,
+				       const float mass_i,
+				       float* L2_kepler, float* L2_j,
+				       const struct cosmology *cosmo,
+				       const struct gravity_props *grav_props) {
+
+  /* Compute the physical relative velocity between the particles */
+  const float dv_physical[3] = {dv_plus_H_flow[0] * cosmo->a_inv,
+                                  dv_plus_H_flow[1] * cosmo->a_inv,
+                                  dv_plus_H_flow[2] * cosmo->a_inv};
+
+  /* Compute the physical distance between the particles */
+  const float dx_physical[3] = {dx[0] * cosmo->a, dx[1] * cosmo->a,
+				dx[2] * cosmo->a};
+  const float r_physical = r * cosmo->a;
+
+  /* Momentum check------------------------------------------------------- */
+  /* Relative momentum of the gas */
+  const float specific_angular_momentum[3] = {
+    dx_physical[1] * dv_physical[2] - dx_physical[2] * dv_physical[1],
+    dx_physical[2] * dv_physical[0] - dx_physical[0] * dv_physical[2],
+    dx_physical[0] * dv_physical[1] - dx_physical[1] * dv_physical[0]};
+
+  *L2_j =
+    specific_angular_momentum[0] * specific_angular_momentum[0] +
+    specific_angular_momentum[1] * specific_angular_momentum[1] +
+    specific_angular_momentum[2] * specific_angular_momentum[2];
+
+  /* Keplerian angular speed squared */
+  const float omega_acc_2 = grav_props->G_Newton * mass_i /
+    (r_physical * r_physical * r_physical);
+
+  /*Keplerian angular momentum squared */
+  *L2_kepler = (r_cut_i* r_cut_i* r_cut_i* r_cut_i) * omega_acc_2;
+}
+
 /**
  * @brief Compute sink-sink swallow interaction (non-symmetric).
  *
  * Note: Energies are computed with physical quantities, not the comoving ones.
+ *
+ * MPI note: This functions invokes the gpart. Hence, it must be performed only
+ * on the local node (similarly to runner_iact_nonsym_bh_bh_repos()).
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
@@ -297,7 +348,6 @@ runner_iact_nonsym_sinks_sink_swallow(
     const float v_plus_H_flow[3] = {a2H * dx[0] + dv[0], a2H * dx[1] + dv[1],
                                     a2H * dx[2] + dv[2]};
 
-    /* Binding energy check */
     /* Compute the physical relative velocity between the particles */
     const float dv_physical[3] = {v_plus_H_flow[0] * cosmo->a_inv,
                                   v_plus_H_flow[1] * cosmo->a_inv,
@@ -307,7 +357,20 @@ runner_iact_nonsym_sinks_sink_swallow(
                                       dv_physical[1] * dv_physical[1] +
                                       dv_physical[2] * dv_physical[2];
 
-    /* Kinetic energy per unit mass of the gas */
+    /* Momentum check------------------------------------------------------- */
+    float L2_j = 0.0; /* Relative momentum of the sink j */
+    float L2_kepler = 0.0; /* Keplerian angular momentum squared */
+    sink_compute_angular_momenta_criterion(dx, v_plus_H_flow, r, si->r_cut, si->mass,
+					   &L2_kepler, &L2_j, cosmo, grav_props);
+
+    /* To be accreted, the sink momentum should lower than the keplerian orbit
+     * momentum. */
+    if (L2_j > L2_kepler) {
+      return;
+    }
+
+    /* Binding energy check------------------------------------------------- */
+    /* Kinetic energy per unit mass of the sink */
     const float E_kin_rel = 0.5f * dv_physical_squared;
 
     /* Compute the Newtonian or softened potential the sink exherts onto the
@@ -340,6 +403,25 @@ runner_iact_nonsym_sinks_sink_swallow(
       return;
     }
 
+    /* Swallowed mass threshold--------------------------------------------- */
+    si->to_collect.mass_eligible_swallow += sj->mass;
+
+    /* Maximal mass that can be swallowed within a single timestep */
+    const float mass_swallow_limit = sink_properties->n_IMF * si->mass_IMF;
+
+    /* If the mass exceeds the threshold, do not swallow. Make sure you can at
+       least swallow a particle to avoid running into the problem of never being
+       able to spawn a star.
+       If n_IMF <= 0, then disable this criterion */
+    if (sink_properties->n_IMF > 0 &&
+        si->to_collect.mass_after_swallow >= mass_swallow_limit &&
+        si->to_collect.mass_eligible_swallow != 0) {
+      return;
+    }
+
+    /* Increment the swallowd mass */
+    si->to_collect.mass_after_swallow += sj->mass;
+
     /* The sink with the smaller mass will be merged onto the one with the
      * larger mass.
      * To avoid rounding issues, we additionally check for IDs if the sink
@@ -369,6 +451,9 @@ runner_iact_nonsym_sinks_sink_swallow(
  * @brief Compute sink-gas swallow interaction (non-symmetric).
  *
  * Note: Energies are computed with physical quantities, not the comoving ones.
+ *
+ * MPI note: This functions invokes the gpart. Hence, it must be performed only
+ * on the local node (similarly to runner_iact_nonsym_bh_gas_repos()).
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
@@ -439,33 +524,15 @@ runner_iact_nonsym_sinks_gas_swallow(
                                       dv_physical[1] * dv_physical[1] +
                                       dv_physical[2] * dv_physical[2];
 
-    /* Compute the physical distance between the particles */
-    const float dx_physical[3] = {dx[0] * cosmo->a, dx[1] * cosmo->a,
-                                  dx[2] * cosmo->a};
-    const float r_physical = r * cosmo->a;
-
     /* Momentum check------------------------------------------------------- */
-    /* Relative momentum of the gas */
-    const float specific_angular_momentum_gas[3] = {
-        dx_physical[1] * dv_physical[2] - dx_physical[2] * dv_physical[1],
-        dx_physical[2] * dv_physical[0] - dx_physical[0] * dv_physical[2],
-        dx_physical[0] * dv_physical[1] - dx_physical[1] * dv_physical[0]};
-    const float L2_gas =
-        specific_angular_momentum_gas[0] * specific_angular_momentum_gas[0] +
-        specific_angular_momentum_gas[1] * specific_angular_momentum_gas[1] +
-        specific_angular_momentum_gas[2] * specific_angular_momentum_gas[2];
+    float L2_gas_j = 0.0; /* Relative momentum of the gas */
+    float L2_kepler = 0.0; /* Keplerian angular momentum squared */
+    sink_compute_angular_momenta_criterion(dx, v_plus_H_flow, r, si->r_cut, si->mass,
+					   &L2_kepler, &L2_gas_j, cosmo, grav_props);
 
-    /* Keplerian angular speed squared */
-    const float omega_acc_2 = grav_props->G_Newton * si->mass /
-                              (r_physical * r_physical * r_physical);
-
-    /*Keplerian angular momentum squared */
-    const float L2_acc =
-        (si->r_cut * si->r_cut * si->r_cut * si->r_cut) * omega_acc_2;
-
-    /* To be accreted, the gas momentum shoulb lower than the keplerian orbit
+    /* To be accreted, the gas momentum should lower than the keplerian orbit
      * momentum. */
-    if (L2_gas > L2_acc) {
+    if (L2_gas_j > L2_kepler) {
       return;
     }
 

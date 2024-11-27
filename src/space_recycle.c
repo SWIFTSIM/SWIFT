@@ -197,6 +197,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->grav.parts = NULL;
     c->grav.parts_rebuild = NULL;
     c->sinks.parts = NULL;
+    c->sinks.parts_rebuild = NULL;
     c->stars.parts = NULL;
     c->stars.parts_rebuild = NULL;
     c->black_holes.parts = NULL;

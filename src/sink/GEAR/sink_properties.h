@@ -81,11 +81,15 @@ struct sink_props {
 
   /*! Disable sink formation? (e.g. used in sink accretion tests). Default: 0
      (keep sink formation) */
-  uint8_t disable_sink_formation;
+  char disable_sink_formation;
 
   /*! Factor to rescale the velocity dispersion of the stars when they are
      spawned */
   double star_spawning_sigma_factor;
+
+  /*! Minimal sink mass in Msun. This prevents m_sink << m_gas in low
+    resolution simulations. */
+  float sink_minimal_mass_Msun;
 
   /***************************************************************************/
   /*! Maximal time-step length of young sinks (internal units) */
@@ -109,10 +113,6 @@ struct sink_props {
 
   /*! Tolerance parameter for SF timestep constraint */
   float tolerance_SF_timestep;
-
-  /*! Minimal sink mass in Msun. This prevents sink m_sink << m_gas in low
-      resolution simulations. */
-  float sink_minimal_mass_Msun;
 };
 
 /**
@@ -263,10 +263,6 @@ INLINE static void sink_props_init(struct sink_props *sp,
   sp->n_IMF =
       parser_get_opt_param_float(params, "GEARSink:n_IMF", DEFAULT_N_IMF);
 
-  sp->star_spawning_sigma_factor =
-      parser_get_opt_param_float(params, "GEARSink:star_spawning_sigma_factor",
-                                 DEFAULT_STAR_SPAWNING_SIGMA_FACTOR);
-
   sp->sink_minimal_mass_Msun =
       parser_get_opt_param_float(params, "GEARSink:sink_minimal_mass_Msun", 0.);
 
@@ -387,6 +383,8 @@ INLINE static void sink_props_init(struct sink_props *sp,
           sp->sink_formation_bound_state_criterion);
   message("sink_formation_overlapping_sink_criterion    = %d",
           sp->sink_formation_overlapping_sink_criterion);
+
+  /* Print timestep parameters information */
   message("sink max_timestep_young                      = %e",
           sp->max_time_step_young);
   message("sink max_timestep_old                        = %e",
@@ -397,6 +395,10 @@ INLINE static void sink_props_init(struct sink_props *sp,
           sp->age_threshold_unlimited);
   message("sink C_CFL                                   = %e",
           sp->CFL_condition);
+  message("tolerance_SF_timestep                        = %e",
+          sp->tolerance_SF_timestep);
+  message("n_IMF                                        = %e",
+          sp->n_IMF);
 }
 
 /**
