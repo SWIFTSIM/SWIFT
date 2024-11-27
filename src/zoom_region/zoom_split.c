@@ -28,6 +28,149 @@
 #include "zoom.h"
 
 /**
+ * @brief Link the top level cells in zoom grid to a void parent cell.
+ *
+ * The leaves of the void cell hierarchy are top level cells in the nested grid.
+ * This function sets the progeny of the highest res void cell to be the top
+ * level cell it contains (either zoom or buffer cells).
+ *
+ * NOTE: The void cells with top level progeny are not treated as split cells
+ * since they are linked into the top level "progeny". We don't want to
+ * accidentally treat them as split cells and recurse from void cells straight
+ * through to the zoom cells unless explictly desired.
+ *
+ * @param s The space.
+ * @param c The void cell progeny to link
+ */
+static void zoom_link_void_zoom_leaves(struct space *s, struct cell *c) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Ensure we have the right kind of cell. */
+  if (c->subtype != cell_subtype_void) {
+    error(
+        "Trying to split cell which isn't a void cell! (c->type=%s, "
+        "c->subtype=%s)",
+        cellID_names[c->type], subcellID_names[c->subtype]);
+  }
+
+  /* Check that the widths are right. */
+  if (fabs((c->width[0] / 2) - s->zoom_props->width[0]) >
+      (0.001 * s->zoom_props->width[0]))
+    error(
+        "The width of the zoom cell is not half the width of the void "
+        "cell were about to link to! (c->width[0]=%f, "
+        "s->zoom_props->width[0]=%f)",
+        c->width[0] / 2, s->zoom_props->width[0]);
+
+#endif
+
+  /* We need to ensure this bottom level isn't treated like a
+   * normal split cell since it's linked into top level "progeny". */
+  c->split = 0;
+
+  /* Loop over the 8 progeny cells which are now the nested top level cells. */
+  for (int k = 0; k < 8; k++) {
+
+    /* Establish the location of the fake progeny cell. */
+    double loc[3] = {c->loc[0] + (c->width[0] / 4),
+                     c->loc[1] + (c->width[1] / 4),
+                     c->loc[2] + (c->width[2] / 4)};
+    if (k & 4) loc[0] += c->width[0] / 2;
+    if (k & 2) loc[1] += c->width[1] / 2;
+    if (k & 1) loc[2] += c->width[2] / 2;
+
+    /* Which cell are we in? */
+    int cid = cell_getid_from_pos(s, loc[0], loc[1], loc[2]);
+
+    /* Get the zoom cell. */
+    struct cell *zoom_cell = &s->cells_top[cid];
+
+    /* Link this nested cell into the void cell hierarchy. */
+    c->progeny[k] = zoom_cell;
+
+    /* Flag this void cell "progeny" as the cell's void cell parent. */
+    zoom_cell->void_parent = c;
+  }
+}
+
+/**
+ * @brief Link the top level cells in buffer grid to a void parent cell.
+ *
+ * The leaves of the void cell hierarchy are top level cells in the nested grid.
+ * This function sets the progeny of the highest res void cell to be the top
+ * level cell it contains (either zoom or buffer cells).
+ *
+ * NOTE: The void cells with top level progeny are not treated as split cells
+ * since they are linked into the top level "progeny". We don't want to
+ * accidentally treat them as split cells and recurse from void cells straight
+ * through to the zoom cells unless explictly desired.
+ *
+ * @param s The space.
+ * @param c The void cell progeny to link
+ */
+void zoom_link_void_buffer_leaves(struct space *s, struct cell *c) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Ensure we have the right kind of cell. */
+  if (c->subtype != cell_subtype_void) {
+    error(
+        "Trying to split cell which isn't a void cell! (c->type=%s, "
+        "c->subtype=%s)",
+        cellID_names[c->type], subcellID_names[c->subtype]);
+  }
+
+  /* Check that the widths are right. */
+  if (fabs((c->width[0] / 2) - s->zoom_props->buffer_width[0]) >
+      (0.001 * s->zoom_props->buffer_width[0]))
+    error(
+        "The width of the buffer cell is not half the width of the void "
+        "cell were about to link to! (c->width[0]=%f, "
+        "s->zoom_props->width[0]=%f)",
+        c->width[0] / 2, s->zoom_props->width[0]);
+
+#endif
+
+  /* If we are above regular buffer cells we need to ensure this bottom level
+   * isn't treated like a normal split cell since it's linked into top level
+   * "progeny". */
+  if (!zoom_cell_overlaps_zoom_region(c, s)) {
+    c->split = 0;
+  }
+
+  /* Loop over the 8 progeny cells which are now the nested top level cells. */
+  for (int k = 0; k < 8; k++) {
+
+    /* Establish the location of the fake progeny cell. */
+    double loc[3] = {c->loc[0] + (c->width[0] / 4),
+                     c->loc[1] + (c->width[1] / 4),
+                     c->loc[2] + (c->width[2] / 4)};
+    if (k & 4) loc[0] += c->width[0] / 2;
+    if (k & 2) loc[1] += c->width[1] / 2;
+    if (k & 1) loc[2] += c->width[2] / 2;
+
+    /* Which cell are we in? */
+    int cid = cell_getid_below_bkg(s->zoom_props->buffer_cdim,
+                                   s->zoom_props->buffer_lower_bounds, loc[0],
+                                   loc[1], loc[2], s->zoom_props->buffer_iwidth,
+                                   s->zoom_props->buffer_cell_offset);
+
+    /* Get the zoom cell. */
+    struct cell *buffer_cell = &s->cells_top[cid];
+
+    /* Link this nested cell into the void cell hierarchy. */
+    c->progeny[k] = buffer_cell;
+
+    /* Flag this void cell "progeny" as the cell's void cell parent. */
+    buffer_cell->void_parent = c;
+
+    /* If we're in a void cell continue the void tree depth. */
+    if (buffer_cell->subtype == cell_subtype_void) {
+      buffer_cell->depth = c->depth + 1;
+    }
+  }
+}
+
+/**
  * @brief Recursively split a cell.
  *
  * @param s The #space in which the cell lives.
@@ -73,46 +216,33 @@ void zoom_void_split_recursive(struct space *s, struct cell *c,
         space_cell_maxdepth, depth);
   }
 
-  /* Construct the progeny ready to populate with particles and multipoles (if
-   * doing gravity). */
-  space_construct_progeny(s, c, tpid);
+  /* Construct or attach the progeny ready to populate the multipoles (if
+   * doing gravity). If we are above one of the nested top level cell grids
+   * we will attach those existing cells rather than grab new ones. */
+
+  /* If we're above the zoom level we need to link in the zoom cells. */
+  if (c->depth == s->zoom_props->zoom_cell_depth - 1) {
+    zoom_link_void_zoom_leaves(s, c);
+  }
+
+  /* If we're above the buffer level we need to link in the buffer cells. */
+  else if (c->depth == s->zoom_props->buffer_cell_depth - 1) {
+    zoom_link_void_buffer_leaves(s, c);
+  }
+
+  /* Otherwise, we're in the void tree and need to construct new progeny. */
+  else {
+    space_construct_progeny(s, c, tpid);
+  }
 
   for (int k = 0; k < 8; k++) {
 
     /* Get the progenitor */
     struct cell *cp = c->progeny[k];
 
-#ifdef SWIFT_DEBUG_CHECKS
-    if (cp->subtype == cell_subtype_void &&
-        cp->width[0] <= s->zoom_props->width[0])
-      error(
-          "We have a zoom cell labelled as a void cell! We have gone too "
-          "deep in the zoom cell tree, this could be because background "
-          "cells are comprable in size to the zoom cells."
-          " (cp->type=%s, cp->subtype=%s, cp->width[0]=%f, cp->depth=%d,"
-          " s->zoom_props->width[0]=%f, zoom_props->zoom_cell_depth=%d)",
-          cellID_names[cp->type], subcellID_names[cp->subtype], cp->width[0],
-          cp->depth, s->zoom_props->width[0], s->zoom_props->zoom_cell_depth);
-#endif
+    /* If the progeny is a void cell, we need to recurse. */
+    if (cp->subtype == cell_subtype_void) {
 
-    /* If the next level progeny is at the zoom level then we need to
-     * link the zoom cells in as the progeny of the void sub-cell. */
-    if (cp->depth == s->zoom_props->zoom_cell_depth - 1) {
-
-#ifdef SWIFT_DEBUG_CHECKS
-      /* Check that the widths are right. */
-      if (fabs((cp->width[0] / 2) - s->zoom_props->width[0]) >
-          (0.001 * s->zoom_props->width[0]))
-        error(
-            "The width of the zoom cell is not half the width of the void "
-            "cell were about to link to! (cp->width[0]=%f, "
-            "s->zoom_props->width[0]=%f)",
-            cp->width[0] / 2, s->zoom_props->width[0]);
-#endif
-
-      zoom_link_void_leaves(s, cp);
-
-    } else {
       /* Recurse */
       zoom_void_split_recursive(s, cp, tpid);
 
@@ -201,29 +331,46 @@ void zoom_void_space_split(struct space *s, int verbose) {
             clocks_from_ticks(getticks() - tic), clocks_getunit());
 
 #ifdef SWIFT_DEBUG_CHECKS
-  /* Ensure all cells are linked into the tree. */
+  /* Collect the number of particles in the void multipoles. */
+  int nr_gparts_in_void = 0;
+  for (int i = 0; i < nr_void_cells; i++) {
+    nr_gparts_in_void +=
+        s->multipoles_top[s->zoom_props->void_cell_indices[i]].m_pole.num_gpart;
+  }
+
+  /* Ensure all buffer cells are linked into the tree. */
   int notlinked = 0;
-  int nr_gparts_in_zoom = 0;
+  int nr_gparts = 0;
+  for (int k = s->zoom_props->buffer_cell_offset;
+       k < s->zoom_props->buffer_cell_offset + s->zoom_props->nr_buffer_cells;
+       k++) {
+    nr_gparts += s->multipoles_top[k].m_pole.num_gpart;
+    if (cells_top[k].void_parent == NULL) notlinked++;
+  }
+
+  if (notlinked > 0)
+    error("%d buffer cells are not linked into a void cell tree!", notlinked);
+
+  if (s->zoom_props->with_buffer_cells && nr_gparts_in_void != nr_gparts)
+    error(
+        "Number of gparts is inconsistent between buffer cells and "
+        "void multipole (nr_gparts_in_void=%d, nr_gparts=%d)",
+        nr_gparts_in_void, nr_gparts);
+
+  /* Ensure all zoom cells are linked into the tree. */
+  notlinked = 0;
   for (int k = 0; k < s->zoom_props->nr_zoom_cells; k++) {
-    nr_gparts_in_zoom += s->multipoles_top[k].m_pole.num_gpart;
+    nr_gparts += s->multipoles_top[k].m_pole.num_gpart;
     if (cells_top[k].void_parent == NULL) notlinked++;
   }
   if (notlinked > 0)
     error("%d zoom cells are not linked into a void cell tree!", notlinked);
 
-  /* Check all void cells have void children. */
-
-  /* Compare the number of particles in the void multipole and zoom cells. */
-  int nr_gparts_in_void = 0;
-  for (int i = 0; i < nr_void_cells; i++)
-    nr_gparts_in_void +=
-        s->multipoles_top[s->zoom_props->void_cell_indices[i]].m_pole.num_gpart;
-
-  if (nr_gparts_in_void != nr_gparts_in_zoom)
+  if (!s->zoom_props->with_buffer_cells && nr_gparts_in_void != nr_gparts)
     error(
-        "Number of gparts is in consistent between zoom cells and "
-        "void multipole (nr_gparts_in_void=%d, nr_gparts_in_zoom=%d)",
-        nr_gparts_in_void, nr_gparts_in_zoom);
+        "Number of gparts is inconsistent between zoom cells and "
+        "void multipole (nr_gparts_in_void=%d, nr_gparts=%d)",
+        nr_gparts_in_void, nr_gparts);
 
 #endif
 }

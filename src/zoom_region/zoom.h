@@ -51,6 +51,8 @@ void zoom_prepare_cells(struct space *s, const int zoom_cdim[3], int verbose);
 void zoom_allocate_cells(struct space *s);
 
 /* Void cell tree construction function. */
+void zoom_void_split_recursive(struct space *s, struct cell *c,
+                               const short int tpid);
 void zoom_void_space_split(struct space *s, int verbose);
 
 /* Task creation functions. */
