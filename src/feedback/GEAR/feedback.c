@@ -21,6 +21,7 @@
 #include "feedback.h"
 
 /* Local includes */
+#include "cooling.h"
 #include "cosmology.h"
 #include "engine.h"
 #include "error.h"
@@ -49,7 +50,7 @@ void feedback_update_part(struct part* p, struct xpart* xp,
   const struct pressure_floor_props* pressure_floor = e->pressure_floor_props;
 
   /* Turn off the cooling */
-  xp->cooling_data.time_last_event = e->time;
+  cooling_set_part_time_cooling_off(p, xp, e->time);
 
   /* Update mass */
   const float old_mass = hydro_get_mass(p);
