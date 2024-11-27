@@ -35,7 +35,7 @@
 
 #ifdef WITH_MPI
 /* Number of particle types to wait for after launching the proxies. We have
-   parts, xparts, gparts, sparts, bparts and sinks to exchange, hence 5 types.
+   parts, xparts, gparts, sparts, bparts and sinks to exchange, hence 6 types.
  */
 #define MPI_REQUEST_NUMBER_PARTICLE_TYPES 6
 #endif
