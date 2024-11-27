@@ -172,7 +172,15 @@ __attribute__((always_inline)) INLINE static void sink_init_part(
   cpd->E_rot_neighbours[0] = 0.f;
   cpd->E_rot_neighbours[1] = 0.f;
   cpd->E_rot_neighbours[2] = 0.f;
-  cpd->potential = 0.f;
+
+  /* Do not reset the potential to 0. Keep the value computed at the end of the
+  last step. This value is used in runner_iact_nonsym_sink() and
+  runner_iact_sink() to check which particle is at a potential minimum. If you
+  set this value to 0, then we break the check. This value is used instead of
+  gpart->potential because:
+  1) cpd->potential does not break MPI, while gpart->potential does
+  2) gpart->potential is not yet computed in runner_iact_X_sink(). */
+  /* cpd->potential = 0.f; */
   cpd->E_mec_bound = 0.f; /* Gravitationally bound particles will have
                              E_mec_bound < 0. This is checked before comparing
                              any other value with this one. So no need to put
