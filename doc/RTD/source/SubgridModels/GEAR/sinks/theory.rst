@@ -197,7 +197,7 @@ Consider an IMF such as the one above. We split it into two parts at ``minimal_d
 
 As a result, we group all those low-mass stars in one stellar particle of mass ``stellar_particle_mass_Msun``. Such star particles are called "continuous", contrary to the "discrete" individual stars.  With all that information, we can compute the number of stars in the continuous part of the IMF (called :math:`N_c`) and in the discrete part (called :math:`N_d`). Finally, we can compute the probabilities of each part, respectively called :math:`P_c` and :math:`P_d`. Notice that the mathematical derivation is given in the theory latex files.
 
-Thus, the algorithm to sample the IMF and five the sink their ``target_mass`` is the following :
+Thus, the algorithm to sample the IMF and determine the sink's ``target_mass`` is the following :
 
 * draw a random number :math:`\chi`  from a uniform distribution in the interval :math:`(0 , \; 1 ]`;
 * if  :math:`\chi < P_c`: ``sink.target_mass = stellar_particle_mass``;
@@ -205,7 +205,9 @@ Thus, the algorithm to sample the IMF and five the sink their ``target_mass`` is
 
 We have assumed that we have a function ``sample_IMF_high()`` that correctly samples the IMF in the discrete part.
 
-Now, what happens to the sink? After a first sink forms, we give it a target mass with the algorithm outlined above. The sink then swallows gas particles (see the task graph at the top of the page) and finally spawns stars.  While the sink possesses enough mass, we can continue to choose a new target mass. When the sink does have enough mass, the algorithm stops for this timestep. The next timestep, the sink may accrete gas and spawn stars again. If the sink never reaches the target mass, then it cannot spawn stars. In practice, however, sink particles could accumulate enough pass to spawn individual (Pop III) stars with masses 240 :math:`M_\odot` and more!
+Now, what happens to the sink? After a sink forms, we give it a target mass with the abovementioned algorithm. The sink then swallows gas particles (see the task graph at the top of the page) and spawns stars.  *While the sink possesses enough mass*, we can continue to choose a new target mass. When the sink does have enough mass, the algorithm stops for this timestep. The next timestep, the sink may accrete gas and spawn stars again. The sink cannot spawn stars if it never reaches the target mass. In practice, sink particles could accumulate enough pass to spawn individual (Pop III) stars with masses 240 :math:`M_\odot` and more!
+
+For low-resolution simulations (:math:`m_\text{gas} > 100 \; M_\odot`), we also add a minimal sink mass constraint: the sink can spawn a star if ``m_sink > target_mass`` *and* ``m_sink - target_mass >= minimal_mass``. In low-resolution simulation, when a gas particle turns into a sink, the latter can have enough mass to spawn stars, depending on the sink stars and IMF parameters. As a result, the sink spawns the stars and then ends up with :math:`m_\text{sink} \ll m_\text{gas}`. Such a situation is detrimental for two reasons: 1) the sink mass is so low that gas can seldom be bound to it and thus stops spawning stars and 2) the sink can get kicked away by gravitational interactions due to the high mass difference. The parameter controlling the sink's minimal mass is ``GEARSink:sink_minimal_mass_Msun``.
 
 As explained at the beginning of this section, GEAR uses two IMFs for the population of II and III stars. The latter are called the first stars in the code. How does a sink decide which IMF to draw the target mass from? We define a threshold metallicity, ``GEARFeedback:imf_transition_metallicity`` that determines the first stars' maximal metallicity. When the sink particle's metallicity exceeds this threshold, it uses the population II IMF, defined in ``GEARFeedback:yields_table``.
 
