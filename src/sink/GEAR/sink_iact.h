@@ -254,6 +254,7 @@ sink_compute_angular_momenta_criterion(const float dx[3], const float dv_plus_H_
     dx_physical[1] * dv_physical[2] - dx_physical[2] * dv_physical[1],
     dx_physical[2] * dv_physical[0] - dx_physical[0] * dv_physical[2],
     dx_physical[0] * dv_physical[1] - dx_physical[1] * dv_physical[0]};
+
   *L2_j =
     specific_angular_momentum[0] * specific_angular_momentum[0] +
     specific_angular_momentum[1] * specific_angular_momentum[1] +
