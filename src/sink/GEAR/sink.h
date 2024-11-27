@@ -699,8 +699,21 @@ INLINE static int sink_spawn_star(struct sink* sink, const struct engine* e,
                                   const int with_cosmology,
                                   const struct phys_const* phys_const,
                                   const struct unit_system* restrict us) {
+  /* Convenient variables in internal units */
+  const float target_mass =
+      sink->target_mass_Msun * phys_const->const_solar_mass;
+  const float minimal_mass =
+      sink_props->sink_minimal_mass_Msun * phys_const->const_solar_mass;
 
-  if (sink->mass > sink->target_mass_Msun * phys_const->const_solar_mass)
+  /* To spawn a star, the sink must:
+     1) m_sink > target_mass,
+     2) and m_sink - target_mass >= minimal_sink_mass mass.
+     The second condition is relevant for low resolution simulations, where a
+     new born sink can already spawn stars. After spawning the stars, the sink
+     has a mass << gas mass and can get kicked away by gravitational
+     interactions. Also, if the sink's mass << gas' mass, the gas is never bound
+     to the sink and is thus never accreted. */
+  if (sink->mass > target_mass && (sink->mass - target_mass >= minimal_mass))
     return 1;
   else
     return 0;
