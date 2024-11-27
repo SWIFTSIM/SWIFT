@@ -225,7 +225,7 @@ sink_collect_properties_from_sink(const float r2, const float dx[3],
  * @param r Comoving distance between the two particles.
  * @param r_cut_i Comoving cut-off radius of particle i.
  * @param mass_i Mass of particle i.
- * @param L2_acc (return) Keplerian angular momentum squared of particle i.
+ * @param L2_kepler (return) Keplerian angular momentum squared of particle i.
  * @param L2_j (return) Specific angular momentum squared relative to particle j.
  * @param cosmo The cosmological parameters and properties
  * @param grav_props The gravity scheme parameters and properties
@@ -234,7 +234,7 @@ __attribute__((always_inline)) INLINE static void
 sink_compute_angular_momenta_criterion(const float dx[3], const float dv_plus_H_flow[3],
 				       const float r, const float r_cut_i,
 				       const float mass_i,
-				       float* L2_acc, float* L2_j,
+				       float* L2_kepler, float* L2_j,
 				       const struct cosmology *cosmo,
 				       const struct gravity_props *grav_props) {
 
@@ -264,7 +264,7 @@ sink_compute_angular_momenta_criterion(const float dx[3], const float dv_plus_H_
     (r_physical * r_physical * r_physical);
 
   /*Keplerian angular momentum squared */
-  *L2_acc = (r_cut_i* r_cut_i* r_cut_i* r_cut_i) * omega_acc_2;
+  *L2_kepler = (r_cut_i* r_cut_i* r_cut_i* r_cut_i) * omega_acc_2;
 }
 
 /**
@@ -360,18 +360,14 @@ runner_iact_nonsym_sinks_sink_swallow(
                                       dv_physical[2] * dv_physical[2];
 
     /* Momentum check------------------------------------------------------- */
-    /* Relative momentum of the sink j */
-    float L2_j = 0.0;
-
-    /*Keplerian angular momentum squared */
-    float L2_acc = 0.0;
-
+    float L2_j = 0.0; /* Relative momentum of the sink j */
+    float L2_kepler = 0.0; /* Keplerian angular momentum squared */
     sink_compute_angular_momenta_criterion(dx, v_plus_H_flow, r, si->r_cut, si->mass,
-					   &L2_acc, &L2_j, cosmo, grav_props);
+					   &L2_kepler, &L2_j, cosmo, grav_props);
 
     /* To be accreted, the sink momentum should lower than the keplerian orbit
      * momentum. */
-    if (L2_j > L2_acc) {
+    if (L2_j > L2_kepler) {
       return;
     }
 
