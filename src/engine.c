@@ -875,6 +875,11 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
                        bpart_align,
                        sizeof(struct bpart) * s->size_bparts_foreign) != 0)
       error("Failed to allocate foreign bpart data.");
+
+    for (size_t i = 0; i < s->size_bparts_foreign; ++i) {
+      black_holes_mark_bpart_as_not_swallowed(
+          &s->bparts_foreign[i].merger_data);
+    }
   }
 
   /* Allocate space for the foreign particles we will receive */
