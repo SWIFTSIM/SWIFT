@@ -121,16 +121,13 @@ __attribute__((always_inline)) INLINE static float sink_compute_timestep(
   const float Delta_M = M_SF - sink->to_collect.mass_eligible_swallow;
 
   /* Compute an accretion rate using this Delta_M. Use the minmal timestep
-     based on the local gas properties.
-     If we use the current timestep, then we can end up with timesteps smaller
-     and smaller until they are smaller than the minimal engine timestep. Also,
-     we want to "subcycle" the accretion of gas, and not of sink, to accrete
-     smaller amount of mass in smaller timesteps, rather than a huge amount in
-     a big timestep. */
+     based on the local gas properties. If we use the current timestep, then we
+     can end up with timesteps smaller and smaller until they are smaller than
+     the minimal engine timestep. */
   const float dt_tmp = min3(dt_cfl, dt_ff, dt_2_body);
   const float M_dot = Delta_M / dt_tmp;
 
-  /* We want a big timestep if the error is small */
+  /* We want a big timestep if the error is small. */
   float dt_SF = FLT_MAX;
 
   /* If Delta_M < 0, then we are limiting the accretion rate by a huge factor.
@@ -158,28 +155,12 @@ __attribute__((always_inline)) INLINE static float sink_compute_timestep(
 
   /* What age category are we in? */
   if (sink_age > sink_properties->age_threshold_unlimited) {
-    /* message("unlimited sink age, age = %e, dt_2-body = %e", sink_age, */
-    /* dt_2_body); */
-    /* Only follow the sink 2-body interaction to determine if the dead sink
-       will merge with the other one. */
     return dt_2_body;
   } else if (sink_age > sink_properties->age_threshold) {
     dt = min3(dt, dt_2_body, sink_properties->max_time_step_old);
-    /* message( */
-    /*     "old sink %lld, age = %e, dt_CFL = %e, dt_ff = %e, dt_age = %e, " */
-    /*     "dt_2_body = %e, dt_SF = %e", */
-    /*     sink->id, sink_age, dt_cfl, dt_ff,
-     * sink_properties->max_time_step_old, */
-    /*     dt_2_body, dt_SF); */
     return dt;
   } else {
     dt = min3(dt, dt_2_body, sink_properties->max_time_step_young);
-    /* message( */
-    /*     "young sink %lld, age = %e, dt_CFL = %e, dt_ff = %e, dt_age = %e " */
-    /*     "dt_2-body = %e, dt_SF = %e", */
-    /*     sink->id, sink_age, dt_cfl, dt_ff,
-     * sink_properties->max_time_step_young, */
-    /*     dt_2_body, dt_SF); */
     return dt;
   }
 }
