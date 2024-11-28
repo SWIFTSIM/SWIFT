@@ -28,7 +28,7 @@
 #define DEFAULT_F_ACC 0.8
 #define DEFAULT_STAR_SPAWNING_SIGMA_FACTOR 0.2
 #define DEFAULT_N_IMF FLT_MAX /* No accretion restriction */
-#define DEFAULT_TOLERANCE_SF_TIMESTEP 0.1
+#define DEFAULT_TOLERANCE_SF_TIMESTEP 0.5
 
 /* Sink formation is activated */
 #define DEFAULT_DISABLE_SINK_FORMATION 0
