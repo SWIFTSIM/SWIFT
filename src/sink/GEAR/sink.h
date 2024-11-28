@@ -114,18 +114,11 @@ __attribute__((always_inline)) INLINE static float sink_compute_timestep(
   /* SF - accretion timestep ------------------------------------------------*/
   /* Now, limit timestep by computing how much we restricted the sink accretion
      for SF reasons compared to an unrestricted accretion. */
-  const float M_SF = sink_properties->n_IMF * sink->mass_IMF;
+  const float M_SF = sink->to_collect.mass_swallowed;
 
   /* If we divide by mass_eligible_swallow, we get the relative error compared
      to unrestricted swallow */
   const float Delta_M = M_SF - sink->to_collect.mass_eligible_swallow;
-
-  /* Compute an accretion rate using this Delta_M. Use the minmal timestep
-     based on the local gas properties. If we use the current timestep, then we
-     can end up with timesteps smaller and smaller until they are smaller than
-     the minimal engine timestep. */
-  const float dt_tmp = min3(dt_cfl, dt_ff, dt_2_body);
-  const float M_dot = Delta_M / dt_tmp;
 
   /* We want a big timestep if the error is small. */
   float dt_SF = FLT_MAX;
@@ -134,7 +127,13 @@ __attribute__((always_inline)) INLINE static float sink_compute_timestep(
      To avoid biasing the SFR too much, do a small timestep to accrete the
      remaining mass sooner. */
   if (sink_properties->n_IMF > 0 && Delta_M < 0) {
-    dt_SF = sink_properties->tolerance_SF_timestep * sink->to_collect.mass_eligible_swallow / fabs(M_dot);
+    /* Compute an accretion rate using this Delta_M. Use the minmal timestep
+     based on the local gas properties. If we use the current timestep, then we
+     can end up with timesteps smaller and smaller until they are smaller than
+     the minimal engine timestep. */
+  const float dt_tmp = min3(dt_cfl, dt_ff, dt_2_body);
+  const float M_dot = Delta_M / dt_tmp;
+  dt_SF = sink_properties->tolerance_SF_timestep * sink->to_collect.mass_eligible_swallow / fabs(M_dot);
   }
 
   /* Sink age (in internal units) */
