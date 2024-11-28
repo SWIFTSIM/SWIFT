@@ -466,7 +466,45 @@ INLINE static int mhd_write_particles(const struct part* parts,
       "RmLocals", FLOAT, 1, UNIT_CONV_NO_UNITS, 0, parts, xparts,
       calculate_Rm_local, "Shows local value of magnetic Reynolds number");
 
-  return 16;
+  /* EOM force tracking */
+  list[16] = io_make_output_field(
+      "TotalForce", FLOAT, 3, UNIT_CONV_ACCELERATION,
+      1.f, parts, a_hydro,
+      "Particle EOM: total force");
+  list[17] = io_make_output_field(
+      "LorentzIsotropicForce", FLOAT, 3, UNIT_CONV_ACCELERATION,
+      1.f, parts, mhd_data.lorentz_isotropic_F,
+      "Particle EOM: isotropic component of lorentz force");
+  list[18] = io_make_output_field(
+      "LorentzAnisotropicForce", FLOAT, 3, UNIT_CONV_ACCELERATION,
+      1.f, parts, mhd_data.lorentz_anisotropic_F,
+      "Particle EOM: anisotropic component of lorentz force");
+  list[19] = io_make_output_field(
+      "MonopoleCorrectionForce", FLOAT, 3, UNIT_CONV_ACCELERATION,
+      1.f, parts, mhd_data.monopole_correction_F,
+      "Particle EOM: tensile instability correction term, proportional to divB");
+
+
+
+  /* MHD equations source tracking */
+  list[20] = io_make_output_field(
+      "StretchingBSource", FLOAT, 3, UNIT_CONV_MAGNETIC_FIELD_DENSITY_RATIO_PER_TIME,
+      1.f, parts, mhd_data.stretching_B_source,
+      "MHD equations: (B * grad) v source");
+  list[21] = io_make_output_field(
+      "DednerBSource", FLOAT, 3, UNIT_CONV_MAGNETIC_FIELD_DENSITY_RATIO_PER_TIME,
+      1.f, parts, mhd_data.dedner_B_source,
+      "MHD equations: -grad psi, dedner divergence cleaning source");
+  list[22] = io_make_output_field(
+      "PhysicalResistivityBSource", FLOAT, 3, UNIT_CONV_MAGNETIC_FIELD_DENSITY_RATIO_PER_TIME,
+      1.f, parts, mhd_data.physical_resistivity_B_source,
+      "MHD equations: physical resistivity source");
+  list[23] = io_make_output_field(
+      "ArtificialResistivityBSource", FLOAT, 3, UNIT_CONV_MAGNETIC_FIELD_DENSITY_RATIO_PER_TIME,
+      1.f, parts, mhd_data.artificial_resistivity_B_source,
+      "MHD equations: artificial resistivity source");
+
+  return 24;
 }
 
 /**

@@ -478,12 +478,21 @@ __attribute__((always_inline)) INLINE static void mhd_reset_acceleration(
   /* Save forces*/
   for (int k = 0; k < 3; k++) {
     p->mhd_data.tot_mag_F[k] = 0.0f;
+
+    p->mhd_data.lorentz_isotropic_F[k] = 0.0f;
+    p->mhd_data.lorentz_anisotropic_F[k] = 0.0f;
+    p->mhd_data.monopole_correction_F[k] = 0.0f;
   }
   /* Save induction sources*/
   for (int k = 0; k < 3; k++) {
     p->mhd_data.Adv_B_source[k] = 0.0f;
     p->mhd_data.Diff_B_source[k] = 0.0f;
     p->mhd_data.Delta_B[k] = 0.0f;
+
+    p->mhd_data.stretching_B_source[k] = 0.0f;
+    p->mhd_data.dedner_B_source[k] = 0.0f;
+    p->mhd_data.physical_resistivity_B_source[k] = 0.0f;
+    p->mhd_data.artificial_resistivity_B_source[k] = 0.0f;
   }
 }
 

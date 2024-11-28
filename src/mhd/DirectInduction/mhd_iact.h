@@ -483,6 +483,20 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   for (int k = 1; k < 3; k++) {
     pi->mhd_data.tot_mag_F[k] -= mj * sph_acc_term_i[k];
     pj->mhd_data.tot_mag_F[k] -= mi * sph_acc_term_j[k];
+
+    pi->mhd_data.lorentz_isotropic_F[k] -= 0.5f * mj * B2i * permeability_inv * over_rho2_i * wi_dr * r_inv * dx[k];
+    pi->mhd_data.lorentz_isotropic_F[k] -= 0.5f * mj * B2j * permeability_inv * over_rho2_j * wj_dr * r_inv * dx[k];
+    pj->mhd_data.lorentz_isotropic_F[k] += 0.5f * mi * B2i * permeability_inv * over_rho2_i * wi_dr * r_inv * dx[k];
+    pj->mhd_data.lorentz_isotropic_F[k] += 0.5f * mi * B2j * permeability_inv * over_rho2_j * wj_dr * r_inv * dx[k];
+    pi->mhd_data.lorentz_anisotropic_F[k] -= -1.f * mj * over_rho2_i * wi_dr * Bri * permeability_inv * r_inv * Bi[k];
+    pi->mhd_data.lorentz_anisotropic_F[k] -= -1.f * mj * over_rho2_j * wj_dr * Brj * permeability_inv * r_inv * Bj[k];
+    pj->mhd_data.lorentz_anisotropic_F[k] += -1.f * mi * over_rho2_i * wi_dr * Bri * permeability_inv * r_inv * Bi[k];
+    pj->mhd_data.lorentz_anisotropic_F[k] += -1.f * mi * over_rho2_j * wj_dr * Brj * permeability_inv * r_inv * Bj[k];
+    pi->mhd_data.monopole_correction_F[k] -= mj * monopole_beta * over_rho2_i * wi_dr * permeability_inv * Bri * r_inv * Bi[k] * tensile_correction_scale_i;
+    pi->mhd_data.monopole_correction_F[k] -= mj * monopole_beta * over_rho2_j * wj_dr * permeability_inv * Brj * r_inv * Bi[k] * tensile_correction_scale_i;
+    pj->mhd_data.monopole_correction_F[k] += mi * monopole_beta * over_rho2_i * wi_dr * permeability_inv * Bri * r_inv * Bj[k] * tensile_correction_scale_j;
+    pj->mhd_data.monopole_correction_F[k] += mi * monopole_beta * over_rho2_j * wj_dr * permeability_inv * Brj * r_inv * Bj[k] * tensile_correction_scale_j;
+ 
   }
 
   /* Direct Induction */
@@ -668,6 +682,16 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
     pj->mhd_data.Diff_B_source[i] -= mi * art_diff_pref_j * dB[i];
     pi->mhd_data.Delta_B[i] += mj * dB_dt_pref_Lap_i * wi_dr * dB[i];
     pj->mhd_data.Delta_B[i] -= mi * dB_dt_pref_Lap_j * wj_dr * dB[i];
+
+    pi->mhd_data.stretching_B_source[i] += mj * dB_dt_pref_i * dB_dt_i[i];
+    pj->mhd_data.stretching_B_source[i] += mi * dB_dt_pref_j * dB_dt_j[i];
+    pi->mhd_data.dedner_B_source[i] -= mj * Qi * grad_psi_i * dx[i];
+    pj->mhd_data.dedner_B_source[i] += mj * Qj * grad_psi_j * dx[i];
+    pi->mhd_data.physical_resistivity_B_source[i] += mj * dB_dt_pref_PR_i * wi_dr * dB[i];
+    pj->mhd_data.physical_resistivity_B_source[i] -= mi * dB_dt_pref_PR_j * wj_dr * dB[i];
+    pi->mhd_data.artificial_resistivity_B_source[i] += mj * art_diff_pref_i * dB[i];
+    pj->mhd_data.artificial_resistivity_B_source[i] -= mi * art_diff_pref_j * dB[i];
+
   }
 }
 
@@ -847,6 +871,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   /* Save forces */
   for (int k = 1; k < 3; k++) {
     pi->mhd_data.tot_mag_F[k] -= mj * sph_acc_term_i[k];
+
+    pi->mhd_data.lorentz_isotropic_F[k] -= 0.5f * mj * B2i * permeability_inv * over_rho2_i * wi_dr * r_inv * dx[k];
+    pi->mhd_data.lorentz_isotropic_F[k] -= 0.5f * mj * B2j * permeability_inv * over_rho2_j * wj_dr * r_inv * dx[k];
+    pi->mhd_data.lorentz_anisotropic_F[k] -= -1.f * mj * over_rho2_i * wi_dr * Bri * permeability_inv * r_inv * Bi[k];
+    pi->mhd_data.lorentz_anisotropic_F[k] -= -1.f * mj * over_rho2_j * wj_dr * Brj * permeability_inv * r_inv * Bj[k];
+    pi->mhd_data.monopole_correction_F[k] -= mj * monopole_beta * over_rho2_i * wi_dr * permeability_inv * Bri * r_inv * Bi[k] * tensile_correction_scale_i;
+    pi->mhd_data.monopole_correction_F[k] -= mj * monopole_beta * over_rho2_j * wj_dr * permeability_inv * Brj * r_inv * Bi[k] * tensile_correction_scale_i;
   }
 
   /* */
@@ -976,6 +1007,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
     pi->mhd_data.Diff_B_source[i] += mj * dB_dt_pref_PR * wi_dr * dB[i];
     pi->mhd_data.Diff_B_source[i] += mj * art_diff_pref * dB[i];
     pi->mhd_data.Delta_B[i] += mj * dB_dt_pref_Lap * wi_dr * dB[i];
+
+    pi->mhd_data.stretching_B_source[i] += mj * dB_dt_pref_i * dB_dt_i[i];
+    pi->mhd_data.dedner_B_source[i] -= mj * Qi * grad_psi_i * dx[i];
+    pi->mhd_data.physical_resistivity_B_source[i] += mj * dB_dt_pref_PR * wi_dr * dB[i];
+    pi->mhd_data.artificial_resistivity_B_source[i] += mj * art_diff_pref * dB[i];
   }
 }
 

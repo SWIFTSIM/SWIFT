@@ -64,12 +64,31 @@ struct mhd_part_data {
 
   /* Magnetic force */
   float tot_mag_F[3];
+  
+  /* More detailed force tracking */
+  float lorentz_isotropic_F[3];
+
+  float lorentz_anisotropic_F[3];
+
+  float monopole_correction_F[3];
+ 
+
   /* B advection source */
   float Adv_B_source[3];
   /* B total diffusion source */
   float Diff_B_source[3];
   /* Laplacian B */
   float Delta_B[3];
+
+  /* More detailed MHD equations source tracking */
+  float stretching_B_source[3];
+
+  float dedner_B_source[3];
+
+  float physical_resistivity_B_source[3];
+
+  float artificial_resistivity_B_source[3];
+
 };
 
 /**
