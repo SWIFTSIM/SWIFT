@@ -82,7 +82,7 @@ struct sink {
     /*! Minimal gas smoothing length */
     float minimal_h_gas;
 
-    /*! Density of the gas surrounding the black hole. */
+    /*! Density of the gas surrounding the sink. */
     float rho_gas;
 
     /*! Smoothed sound speed of the gas surrounding the sink. */
@@ -98,8 +98,7 @@ struct sink {
     /*! Minimal dynamical time between all sink neighbours */
     float minimal_sink_t_dyn;
 
-    /*! Total mass of gas part that pass all criterion before the accretion mass
-       limit */
+    /*! Total mass that passes all criteria before the accretion limit */
     float mass_eligible_swallow;
 
     /*! Swallowed mass during this timestep */
