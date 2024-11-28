@@ -359,13 +359,13 @@ runner_iact_nonsym_sinks_sink_swallow(
        able to spawn a star.
        If n_IMF <= 0, then disable this criterion */
     if (sink_properties->n_IMF > 0 &&
-        si->to_collect.mass_after_swallow >= mass_swallow_limit &&
+        si->to_collect.mass_swallowed >= mass_swallow_limit &&
         si->to_collect.mass_eligible_swallow != 0) {
       return;
     }
 
     /* Increment the swallowd mass */
-    si->to_collect.mass_after_swallow += sj->mass;
+    si->to_collect.mass_swallowed += sj->mass;
 
     /* The sink with the smaller mass will be merged onto the one with the
      * larger mass.
@@ -536,13 +536,13 @@ runner_iact_nonsym_sinks_gas_swallow(
        able to spawn a star.
        If n_IMF <= 0, then disable this criterion */
     if (sink_properties->n_IMF > 0 &&
-        si->to_collect.mass_after_swallow >= mass_swallow_limit &&
+        si->to_collect.mass_swallowed >= mass_swallow_limit &&
         si->to_collect.mass_eligible_swallow != 0) {
       return;
     }
 
     /* Increment the swallowd mass */
-    si->to_collect.mass_after_swallow += hydro_get_mass(pj);
+    si->to_collect.mass_swallowed += hydro_get_mass(pj);
 
     /* --------------------------------------------------------------------- */
     /* Since this pair gas-sink is the most bound, keep track of the

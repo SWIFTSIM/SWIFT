@@ -102,12 +102,8 @@ struct sink {
        limit */
     float mass_eligible_swallow;
 
-    /*! Mass of the sink immediately after
-      runner_iact_nonsym_sinks_gas_swallow(), i.e. after having flagged the gas
-      particle for swallow and before actually a=having swalloed it in
-      do_sink_gas_swallow task */
-    float mass_after_swallow;
-
+    /*! Swallowed mass during this timestep */
+    float mass_swallowed;
   } to_collect;
 
   /*! Particle time bin */
