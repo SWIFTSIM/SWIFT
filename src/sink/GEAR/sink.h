@@ -725,8 +725,10 @@ __attribute__((always_inline)) INLINE static void sink_swallow_sink(
   /* Add the stars spawned by the swallowed sink */
   spi->n_stars += spj->n_stars;
 
-  /* Update the total mass before star spawning */
+  /* Update masses */
   spi->mass_tot_before_star_spawning = spi->mass;
+  spi->to_collect.mass_eligible_swallow += spj->to_collect.mass_eligible_swallow;
+  spi->to_collect.mass_swallowed += spj->to_collect.mass_swallowed;
 
   message("sink %lld swallows sink particle %lld. New mass: %e.", spi->id,
           spj->id, spi->mass);
