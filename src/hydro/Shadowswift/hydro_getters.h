@@ -291,7 +291,20 @@ __attribute__((always_inline)) INLINE static float hydro_get_physical_pressure(
 __attribute__((always_inline)) INLINE static float hydro_get_mass(
     const struct part* restrict p) {
 
-  return p->conserved.mass;
+  return p->conserved.mass + p->flux.mass;
+}
+
+/**
+ * @brief Returns the center mass of a particle
+ *
+ * @param p The particle of interest
+ * @param com (Return) The center of mass vector
+ */
+__attribute__((always_inline)) INLINE static void hydro_get_center_of_mass(
+    const struct part* restrict p, double* com) {
+  com[0] = p->x[0] + p->geometry.centroid[0];
+  com[1] = p->x[1] + p->geometry.centroid[1];
+  com[2] = p->x[2] + p->geometry.centroid[2];
 }
 
 /**

@@ -1844,6 +1844,8 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
   struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
   const struct chemistry_global_data *chemistry = e->chemistry;
+  const int with_ext_gravity = e->policy & engine_policy_external_gravity;
+  const int with_self_gravity = e->policy & engine_policy_self_gravity;
 
   /* Anything to do here? */
   if (c->hydro.count == 0) return;
@@ -1877,6 +1879,12 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
          * _part_has_no_neighours version instead of _end_denisty */
         chemistry_part_has_no_neighbours(p, &c->hydro.xparts[i], chemistry,
                                          cosmo);
+
+        /* Update position of #gparts for gravity calculation at the end of
+         * timestep */
+        if (with_ext_gravity || with_self_gravity) {
+          hydro_get_center_of_mass(p, p->gpart->x);
+        }
       }
       h_max = max(h_max, p->h);
     }
@@ -2005,33 +2013,20 @@ void runner_do_flux_ghost(struct runner *r, struct cell *c, int timer) {
     runner_dopair_boundary_flux_exchange(r, c);
   }
 
+  for (int i = 0; i < c->hydro.count; i++) {
+    struct part *p = &c->hydro.parts[i];
+    if (!part_is_active(p, e)) continue;
+
 #ifdef EXTRA_HYDRO_LOOP
-  if (with_grid_hydro) {
-    /* Set the geometry properties of the particles and prepare the particles
-     * for the gradient calculation */
-    for (int i = 0; i < c->hydro.count; i++) {
-      struct part *p = &c->hydro.parts[i];
-
-      if (!part_is_active(p, e)) continue;
-
-      /* get a handle on the xp */
-      struct xpart *xp = &c->hydro.xparts[i];
-
-      /* Prepare particle for gradient calculation */
-      hydro_prepare_gradient(p, xp, cosmo, hydro_props, pressure_floor);
-    }
-  }
+    /* get a handle on the xp */
+    struct xpart *xp = &c->hydro.xparts[i];
+    /* Prepare particle for gradient calculation */
+    hydro_prepare_gradient(p, xp, cosmo, hydro_props, pressure_floor);
 #endif
 
-  if (with_ext_gravity || with_self_gravity) {
     /* Update mass of #gparts for gravity calculation at the end of timestep */
-    for (int i = 0; i < c->hydro.count; i++) {
-      struct part *p = &c->hydro.parts[i];
-      if (!part_is_active(p, e)) continue;
+    if (with_ext_gravity || with_self_gravity) {
       p->gpart->mass = p->conserved.mass + p->flux.mass;
-      p->gpart->x[0] = p->x[0] + p->geometry.centroid[0];
-      p->gpart->x[1] = p->x[1] + p->geometry.centroid[1];
-      p->gpart->x[2] = p->x[2] + p->geometry.centroid[2];
     }
   }
 
