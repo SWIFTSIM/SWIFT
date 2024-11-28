@@ -113,12 +113,10 @@ __attribute__((always_inline)) INLINE static float sink_compute_timestep(
 
   /* SF - accretion timestep ------------------------------------------------*/
   /* Now, limit timestep by computing how much we restricted the sink accretion
-     for SF reasons compared to an unrestricted accretion. */
-  const float M_SF = sink->to_collect.mass_swallowed;
-
-  /* If we divide by mass_eligible_swallow, we get the relative error compared
-     to unrestricted swallow */
-  const float Delta_M = M_SF - sink->to_collect.mass_eligible_swallow;
+     for SF reasons compared to an unrestricted accretion.
+     Note: If we divide by mass_eligible_swallow, we get the relative error
+     compared to unrestricted swallow. */
+  const float Delta_M = sink->to_collect.mass_swallowed - sink->to_collect.mass_eligible_swallow;
 
   /* We want a big timestep if the error is small. */
   float dt_SF = FLT_MAX;
@@ -202,7 +200,7 @@ __attribute__((always_inline)) INLINE static void sink_first_init_sink(
   sp->to_collect.minimal_sink_t_c = FLT_MAX;
   sp->to_collect.minimal_sink_t_dyn = FLT_MAX;
   sp->to_collect.mass_eligible_swallow = 0.0;
-  sp->to_collect.mass_after_swallow = sp->mass;
+  sp->to_collect.mass_swallowed = sp->mass;
 }
 
 /**
@@ -269,7 +267,7 @@ __attribute__((always_inline)) INLINE static void sink_init_sink(
   sp->to_collect.minimal_sink_t_c = FLT_MAX;
   sp->to_collect.minimal_sink_t_dyn = FLT_MAX;
   sp->to_collect.mass_eligible_swallow = 0.0;
-  sp->to_collect.mass_after_swallow = sp->mass;
+  sp->to_collect.mass_swallowed = sp->mass;
   sp->num_ngbs = 0;
 
 #ifdef DEBUG_INTERACTIONS_SINKS
@@ -730,7 +728,7 @@ __attribute__((always_inline)) INLINE static void sink_swallow_sink(
   /* Update the total mass before star spawning */
   spi->mass_tot_before_star_spawning = spi->mass;
 
-  message("sink %lld swallow sink particle %lld. New mass: %e.", spi->id,
+  message("sink %lld swallows sink particle %lld. New mass: %e.", spi->id,
           spj->id, spi->mass);
 }
 
