@@ -54,7 +54,7 @@ The next set of parameters deals with the sink time-steps:
 * maximal time-step length of young sinks (in Myr): ``max_timestep_young_Myr``  (default: FLT_MAX),
 * maximal time-step length of old sinks (in Myr): ``max_timestep_old_Myr`` (default: FLT_MAX),
 * number of times the IMF mass can be swallowed in a single time-step: ``n_IMF`` (default: FLT_MAX).
-* tolerance parameter for SF timestep constraint.tolerance_SF_timestep: ``tolerance_SF_timestep`` (default: 0.1)
+* tolerance parameter for SF timestep constraint: ``tolerance_SF_timestep`` (default: 0.5)
 
 The last parameter is ``sink_minimal_mass_Msun``. This parameter is mainly intended for low-resolution simulations with :math:`m_\text{gas} > 100 \; M_\odot`. It prevents :math:`m_\text{sink} \ll m_\text{gas}` simulations when sinks spawn stars, which can lead to gravity run away.
 
@@ -86,7 +86,7 @@ The full section is:
      max_timestep_young_Myr:               1.0       # (Optional) Maximal time-step length of young sinks (in Mega-years). (Default: FLT_MAX)
      max_timestep_old_Myr:                 5.0       # (Optional) Maximal time-step length of old sinks (in Mega-years). (Default: FLT_MAX)
      n_IMF:                                 2        # (Optional) Number of times the IMF mass can be swallowed in a single timestep. (Default: FLTM_MAX)
-     tolerance_SF_timestep:                 0.1      # (Optional) Tolerance parameter for SF timestep constraint. (Default: 0.1)
+     tolerance_SF_timestep:                 0.5      # (Optional) Tolerance parameter for SF timestep constraint. (Default: 0.5)
 
 .. warning::
    Some parameter choices can greatly impact the outcome of your simulations. Think twice when choosing them.

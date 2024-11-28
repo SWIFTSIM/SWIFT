@@ -113,73 +113,41 @@ __attribute__((always_inline)) INLINE static float sink_compute_timestep(
 
   /* SF - accretion timestep ------------------------------------------------*/
   /* Now, limit timestep by computing how much we restricted the sink accretion
-     for SF reasons compared to an unrestricted accretion. */
-  const float M_SF = sink_properties->n_IMF * sink->mass_IMF;
+     for SF reasons compared to an unrestricted accretion.
+     Note: If we divide by mass_eligible_swallow, we get the relative error
+     compared to unrestricted swallow. */
+  const float Delta_M = sink->to_collect.mass_swallowed - sink->to_collect.mass_eligible_swallow;
 
-  /* If we divide by mass_eligible_swallow, we get the relative error compared
-     to unrestricted swallow */
-  const float Delta_M = M_SF - sink->to_collect.mass_eligible_swallow;
-
-  /* Compute an accretion rate using this Delta_M. Use the minmal timestep
-     based on the local gas properties.
-     If we use the current timestep, then we can end up with timesteps smaller
-     and smaller until they are smaller than the minimal engine timestep. Also,
-     we want to "subcycle" the accretion of gas, and not of sink, to accrete
-     smaller amount of mass in smaller timesteps, rather than a huge amount in
-     a big timestep. */
-  const float dt_tmp = min3(dt_cfl, dt_ff, dt_2_body);
-  const float M_dot = Delta_M / dt_tmp;
-
-  /* We want a big timestep if the error is small */
+  /* We want a big timestep if the error is small. */
   float dt_SF = FLT_MAX;
 
   /* If Delta_M < 0, then we are limiting the accretion rate by a huge factor.
      To avoid biasing the SFR too much, do a small timestep to accrete the
      remaining mass sooner. */
   if (sink_properties->n_IMF > 0 && Delta_M < 0) {
-    dt_SF = sink_properties->tolerance_SF_timestep * sink->to_collect.mass_eligible_swallow / fabs(M_dot);
+    /* Compute an accretion rate using this Delta_M. Use the minmal timestep
+     based on the local gas properties. If we use the current timestep, then we
+     can end up with timesteps smaller and smaller until they are smaller than
+     the minimal engine timestep. */
+  const float dt_tmp = min3(dt_cfl, dt_ff, dt_2_body);
+  const float M_dot = Delta_M / dt_tmp;
+  dt_SF = sink_properties->tolerance_SF_timestep * sink->to_collect.mass_eligible_swallow / fabs(M_dot);
   }
 
   /* Sink age (in internal units) */
   double sink_age = sink_get_sink_age(sink, with_cosmology, cosmo, time);
-
-  message(
-      "sink %lld, rho_gas = %e, c_s = %e, gas_v_phys = (%e %e %e), h_min = %e, "
-      "rho_sink = %e, denominator = %e, birth_time = %e, t_dyn_min = %e, Delta_M = %e"
-      " M_IMF = %e, M_eligible = %e, time = %e, Dt_current = %e, age = %e",
-      sink->id, sink->to_collect.rho_gas, gas_c_phys, gas_v_phys[0],
-      gas_v_phys[1], gas_v_phys[2], h_min, rho_sink, denominator,
-      sink->birth_time, sink->to_collect.minimal_sink_t_dyn, Delta_M,
-      sink->mass_IMF, sink->to_collect.mass_eligible_swallow, time,
-      dt_tmp, sink_age);
 
   /* Take the minimum dt --------------------------------------------------- */
   float dt = min3(dt_cfl, dt_ff, dt_SF);
 
   /* What age category are we in? */
   if (sink_age > sink_properties->age_threshold_unlimited) {
-    /* message("unlimited sink age, age = %e, dt_2-body = %e", sink_age, */
-    /* dt_2_body); */
-    /* Only follow the sink 2-body interaction to determine if the dead sink
-       will merge with the other one. */
     return dt_2_body;
   } else if (sink_age > sink_properties->age_threshold) {
     dt = min3(dt, dt_2_body, sink_properties->max_time_step_old);
-    /* message( */
-    /*     "old sink %lld, age = %e, dt_CFL = %e, dt_ff = %e, dt_age = %e, " */
-    /*     "dt_2_body = %e, dt_SF = %e", */
-    /*     sink->id, sink_age, dt_cfl, dt_ff,
-     * sink_properties->max_time_step_old, */
-    /*     dt_2_body, dt_SF); */
     return dt;
   } else {
     dt = min3(dt, dt_2_body, sink_properties->max_time_step_young);
-    /* message( */
-    /*     "young sink %lld, age = %e, dt_CFL = %e, dt_ff = %e, dt_age = %e " */
-    /*     "dt_2-body = %e, dt_SF = %e", */
-    /*     sink->id, sink_age, dt_cfl, dt_ff,
-     * sink_properties->max_time_step_young, */
-    /*     dt_2_body, dt_SF); */
     return dt;
   }
 }
@@ -232,7 +200,7 @@ __attribute__((always_inline)) INLINE static void sink_first_init_sink(
   sp->to_collect.minimal_sink_t_c = FLT_MAX;
   sp->to_collect.minimal_sink_t_dyn = FLT_MAX;
   sp->to_collect.mass_eligible_swallow = 0.0;
-  sp->to_collect.mass_after_swallow = sp->mass;
+  sp->to_collect.mass_swallowed = sp->mass;
 }
 
 /**
@@ -299,7 +267,7 @@ __attribute__((always_inline)) INLINE static void sink_init_sink(
   sp->to_collect.minimal_sink_t_c = FLT_MAX;
   sp->to_collect.minimal_sink_t_dyn = FLT_MAX;
   sp->to_collect.mass_eligible_swallow = 0.0;
-  sp->to_collect.mass_after_swallow = sp->mass;
+  sp->to_collect.mass_swallowed = sp->mass;
   sp->num_ngbs = 0;
 
 #ifdef DEBUG_INTERACTIONS_SINKS
@@ -757,10 +725,12 @@ __attribute__((always_inline)) INLINE static void sink_swallow_sink(
   /* Add the stars spawned by the swallowed sink */
   spi->n_stars += spj->n_stars;
 
-  /* Update the total mass before star spawning */
+  /* Update masses */
   spi->mass_tot_before_star_spawning = spi->mass;
+  spi->to_collect.mass_eligible_swallow += spj->to_collect.mass_eligible_swallow;
+  spi->to_collect.mass_swallowed += spj->to_collect.mass_swallowed;
 
-  message("sink %lld swallow sink particle %lld. New mass: %e.", spi->id,
+  message("sink %lld swallows sink particle %lld. New mass: %e.", spi->id,
           spj->id, spi->mass);
 }
 

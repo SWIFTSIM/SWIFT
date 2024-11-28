@@ -139,7 +139,7 @@ Now that sink particles can populate the simulation, they need to swallow gas pa
    #. The gas is gravitationally bound to the sink particle: :math:`E_{\text{tot}} < 0`.
    #. The gas size is smaller or equal to the sink size: :math:`\gamma_k h_i \leq r_{\text{acc}}`.
    #. Out of all pairs of sink-gas, the gas is the most bound to this one. This case is illustrated in the figure below.
-   #. The swallowed gas mass does not exceed ``n_IMF`` times the IMF mass (see the IMF sampling section), but make sure to swallow at least one particle: :math:`M_\text{swallowed} \leq n_\text{IMF} M_\text{IMF} \text{ or } M_\text{swallowed} = 0`.
+   #. The total swallowed mass does not exceed ``n_IMF`` times the IMF mass (see the IMF sampling section), but make sure to swallow at least one particle: :math:`M_\text{swallowed} \leq n_\text{IMF} M_\text{IMF} \text{ or } M_\text{swallowed} = 0`.
 
 The physical specific angular momenta and the total energy are given by:
 
@@ -152,9 +152,9 @@ The physical specific angular momenta and the total energy are given by:
 
 Those criteria are similar to `Price et al. <https://ui.adsabs.harvard.edu/abs/2018PASA...35...31P/abstract>`_ and `Grudic et al. (2021) <https://academic.oup.com/mnras/article/506/2/2199/6276745>`_, with the addition of the internal energy. This term ensures that the gas is cold enough to be accreted. Its main purpose is to avoid gas accretion and star spawning in hot regions far from sink/star-forming regions, which can happen, e.g., if a sink leaves a galaxy.
 
-Let's comment on the fourth criterion, specific to our star formation scheme. This criterion restricts the swallowed mass to avoid spawning too many stars in a single time step. Swallowing too many gas particles in a time-step can lead to instabilities in the hydrodynamics, given that gas particles act as interpolation points. Also, creating many stars at once is prejudicial for two reasons. First, the stars' mass samples an IMF, but the star's metallicities are not. So, all stars end up with the same metal content. This situation does not reflect the history of metal accretion and will lead to poor galaxy properties. Second, we need to specify at runtime the maximal number of memory allocated for extra stars until the next tree rebuild. If we create more stars than this limit, the code will stop and send an error.
+Let's comment on the fourth criterion, specific to our star formation scheme. This criterion restricts the swallowed mass to avoid spawning too many stars in a single time step. Swallowing too many gas particles in a time-step can lead to instabilities in the hydrodynamics, given that gas particles act as interpolation points. Also, creating many stars at once is prejudicial for two reasons. First, the stars' mass samples an IMF, but the star's metallicities do not. So, all stars end up with the same metal content. This situation does not reflect the history of metal accretion and will lead to poor galaxy properties. Second, we need to specify at runtime the maximal number of memory allocated for extra stars until the next tree rebuild. If we create more stars than this limit, the code will stop and send an error.
 
-Since our politics is not to arbitrarily restrict gas accretion using some arbitrary mass accretion rate (in fact, the accretion must be feedback-regulated), we then lower the sink time step to swallow the remaining gas particles soon. So, instead of eating a considerable amount of gas and spawning many stars in a big time step, we swallow smaller amounts of gas and spawning fewer stars in smaller time steps. Details about the how we reduce the timestep are given in :ref:`sink_GEAR_timesteps`.
+Since our politics is not to arbitrarily restrict the accretion using some arbitrary mass accretion rate (in fact, the accretion must be feedback-regulated), we then lower the sink time step to swallow the remaining gas particles soon. So, instead of eating a considerable amount of mass and spawning many stars in a big time step, we swallow smaller amounts of gas/sink and create fewer stars in smaller time steps. Details about the how we reduce the timestep are given in :ref:`sink_GEAR_timesteps`.
 
 Once a gas is eligible for accretion, its properties are assigned to the sink. The sink accretes the *entire* gas particle mass and its properties are updated in the following way:
 
@@ -180,9 +180,11 @@ Sinks are allowed to merge if they enter one's accretion radius. We merge two si
 #. If one of the sinks falls within the other's inner accretion radius, :math:`f_{\text{acc}} r_{\text{acc}}` (:math:`0 \leq f_{\text{acc}} \leq 1`), the sinks are merged without further check.
 #. In the region  :math:`f_{\text{acc}} r_{\text{acc}} \leq |\mathbf{x}_i| \leq r_{\text{acc}}`, then, we check:
 
+   #. The specific angular momentum is smaller than the one of a Keplerian orbit at :math:`r_{\text{acc}}`: :math:`|\mathbf{L}_{ss'}| \leq |\mathbf{L}_{\text{Kepler}}|`.
    #. One sink is gravitationally bound to the other: :math:`E_{\text{mec}, ss'} < 0` or  :math:`E_{\text{mec}, s's} < 0`.
+   #. The total swallowed mass does not exceed ``n_IMF`` times the IMF mass (see the IMF sampling section), but make sure to swallow at least one particle: :math:`M_\text{swallowed} \leq n_\text{IMF} M_\text{IMF} \text{ or } M_\text{swallowed} = 0`.
 
-We compute the total energies in the same manner as gas particles, with the difference that we do not use internal energy. Notice that we have two energies: each sink has a different potential energy since their mass can differ.
+We compute the angular momenta and total energies in the same manner as gas particles, with the difference that we do not use internal energy. Notice that we have two energies: each sink has a different potential energy since their mass can differ.
 
 When sinks merge, the sink with the smallest mass merges with the sink with the largest. If the two sinks have the same mass, we check the sink ID number and add the smallest ID to the biggest one.
 

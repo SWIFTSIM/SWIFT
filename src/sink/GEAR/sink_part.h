@@ -79,10 +79,10 @@ struct sink {
 
   struct {
 
-    /*! Maximal gas smoothing length */
+    /*! Minimal gas smoothing length */
     float minimal_h_gas;
 
-    /*! Density of the gas surrounding the black hole. */
+    /*! Density of the gas surrounding the sink. */
     float rho_gas;
 
     /*! Smoothed sound speed of the gas surrounding the sink. */
@@ -98,16 +98,11 @@ struct sink {
     /*! Minimal dynamical time between all sink neighbours */
     float minimal_sink_t_dyn;
 
-    /*! Total mass of gas part that pass all criterion before the accretion mass
-       limit */
+    /*! Total mass that passes all criteria before the accretion limit */
     float mass_eligible_swallow;
 
-    /*! Mass of the sink immediately after
-      runner_iact_nonsym_sinks_gas_swallow(), i.e. after having flagged the gas
-      particle for swallow and before actually a=having swalloed it in
-      do_sink_gas_swallow task */
-    float mass_after_swallow;
-
+    /*! Swallowed mass during this timestep */
+    float mass_swallowed;
   } to_collect;
 
   /*! Particle time bin */

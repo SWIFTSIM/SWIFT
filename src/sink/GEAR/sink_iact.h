@@ -25,6 +25,7 @@
 #include "gravity.h"
 #include "gravity_iact.h"
 #include "sink.h"
+#include "sink_getters.h"
 #include "sink_properties.h"
 
 /**
@@ -207,61 +208,6 @@ sink_collect_properties_from_sink(const float r2, const float dx[3],
       min(t_dyn, si->to_collect.minimal_sink_t_dyn);
 }
 
-
-/**
- * @brief Compute the angular momentum-based criterion for sink-sink interaction.
- *
- * This function calculates the angular momentum of a sink particle relative to
- * another particle (sink or gas) and evaluates the Keplerian angular momentum.
- *
- * @param dx Comoving vector separating the two particles (pi - pj).
- * @param dv_plus_H_flow Comoving relative velocity including the Hubble flow.
- * @param r Comoving distance between the two particles.
- * @param r_cut_i Comoving cut-off radius of particle i.
- * @param mass_i Mass of particle i.
- * @param L2_kepler (return) Keplerian angular momentum squared of particle i.
- * @param L2_j (return) Specific angular momentum squared relative to particle j.
- * @param cosmo The cosmological parameters and properties
- * @param grav_props The gravity scheme parameters and properties
- */
-__attribute__((always_inline)) INLINE static void
-sink_compute_angular_momenta_criterion(const float dx[3], const float dv_plus_H_flow[3],
-				       const float r, const float r_cut_i,
-				       const float mass_i,
-				       float* L2_kepler, float* L2_j,
-				       const struct cosmology *cosmo,
-				       const struct gravity_props *grav_props) {
-
-  /* Compute the physical relative velocity between the particles */
-  const float dv_physical[3] = {dv_plus_H_flow[0] * cosmo->a_inv,
-                                  dv_plus_H_flow[1] * cosmo->a_inv,
-                                  dv_plus_H_flow[2] * cosmo->a_inv};
-
-  /* Compute the physical distance between the particles */
-  const float dx_physical[3] = {dx[0] * cosmo->a, dx[1] * cosmo->a,
-				dx[2] * cosmo->a};
-  const float r_physical = r * cosmo->a;
-
-  /* Momentum check------------------------------------------------------- */
-  /* Relative momentum of the gas */
-  const float specific_angular_momentum[3] = {
-    dx_physical[1] * dv_physical[2] - dx_physical[2] * dv_physical[1],
-    dx_physical[2] * dv_physical[0] - dx_physical[0] * dv_physical[2],
-    dx_physical[0] * dv_physical[1] - dx_physical[1] * dv_physical[0]};
-
-  *L2_j =
-    specific_angular_momentum[0] * specific_angular_momentum[0] +
-    specific_angular_momentum[1] * specific_angular_momentum[1] +
-    specific_angular_momentum[2] * specific_angular_momentum[2];
-
-  /* Keplerian angular speed squared */
-  const float omega_acc_2 = grav_props->G_Newton * mass_i /
-    (r_physical * r_physical * r_physical);
-
-  /*Keplerian angular momentum squared */
-  *L2_kepler = (r_cut_i* r_cut_i* r_cut_i* r_cut_i) * omega_acc_2;
-}
-
 /**
  * @brief Compute sink-sink swallow interaction (non-symmetric).
  *
@@ -414,13 +360,13 @@ runner_iact_nonsym_sinks_sink_swallow(
        able to spawn a star.
        If n_IMF <= 0, then disable this criterion */
     if (sink_properties->n_IMF > 0 &&
-        si->to_collect.mass_after_swallow >= mass_swallow_limit &&
+        si->to_collect.mass_swallowed >= mass_swallow_limit &&
         si->to_collect.mass_eligible_swallow != 0) {
       return;
     }
 
     /* Increment the swallowd mass */
-    si->to_collect.mass_after_swallow += sj->mass;
+    si->to_collect.mass_swallowed += sj->mass;
 
     /* The sink with the smaller mass will be merged onto the one with the
      * larger mass.
@@ -591,13 +537,13 @@ runner_iact_nonsym_sinks_gas_swallow(
        able to spawn a star.
        If n_IMF <= 0, then disable this criterion */
     if (sink_properties->n_IMF > 0 &&
-        si->to_collect.mass_after_swallow >= mass_swallow_limit &&
+        si->to_collect.mass_swallowed >= mass_swallow_limit &&
         si->to_collect.mass_eligible_swallow != 0) {
       return;
     }
 
     /* Increment the swallowd mass */
-    si->to_collect.mass_after_swallow += hydro_get_mass(pj);
+    si->to_collect.mass_swallowed += hydro_get_mass(pj);
 
     /* --------------------------------------------------------------------- */
     /* Since this pair gas-sink is the most bound, keep track of the
