@@ -79,7 +79,7 @@ struct sink {
 
   struct {
 
-    /*! Maximal gas smoothing length */
+    /*! Minimal gas smoothing length */
     float minimal_h_gas;
 
     /*! Density of the gas surrounding the black hole. */
