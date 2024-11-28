@@ -859,7 +859,7 @@ int cell_pack_sink_formation_counts(struct cell *c, struct pcell_sink_formation_
 #ifdef WITH_MPI
 
   /* Pack this cell's data. */
-  pcells[0].delta_from_rebuild = c->sinks.parts - c->sink.parts_rebuild;
+  pcells[0].delta_from_rebuild = c->sinks.parts - c->sinks.parts_rebuild;
   pcells[0].count = c->sinks.count;
   pcells[0].dx_max_part = c->sinks.dx_max_part;
 
@@ -989,7 +989,7 @@ int cell_unpack_sink_formation_grav_counts(struct cell *c, struct pcell_sink_for
 #ifdef WITH_MPI
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (c->sink.parts_rebuild == NULL)
+  if (c->sinks.parts_rebuild == NULL)
     error("Star particles array at rebuild is NULL!");
 #endif
 
