@@ -139,16 +139,6 @@ __attribute__((always_inline)) INLINE static float sink_compute_timestep(
   /* Sink age (in internal units) */
   double sink_age = sink_get_sink_age(sink, with_cosmology, cosmo, time);
 
-  message(
-      "sink %lld, rho_gas = %e, c_s = %e, gas_v_phys = (%e %e %e), h_min = %e, "
-      "rho_sink = %e, denominator = %e, birth_time = %e, t_dyn_min = %e, Delta_M = %e"
-      " M_IMF = %e, M_eligible = %e, time = %e, Dt_current = %e, age = %e",
-      sink->id, sink->to_collect.rho_gas, gas_c_phys, gas_v_phys[0],
-      gas_v_phys[1], gas_v_phys[2], h_min, rho_sink, denominator,
-      sink->birth_time, sink->to_collect.minimal_sink_t_dyn, Delta_M,
-      sink->mass_IMF, sink->to_collect.mass_eligible_swallow, time,
-      dt_tmp, sink_age);
-
   /* Take the minimum dt --------------------------------------------------- */
   float dt = min3(dt_cfl, dt_ff, dt_SF);
 
