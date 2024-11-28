@@ -57,7 +57,8 @@ void runner_do_sinks_gas_swallow(struct runner *r, struct cell *c, int timer) {
   struct sink *sinks = s->sinks;
   const size_t nr_sink = s->nr_sinks;
 #ifdef WITH_MPI
-  error("MPI is not implemented yet for sink particles.");
+  struct sink *sinks_foreign = s->sinks_foreign;
+  const size_t nr_sinks_foreign = s->nr_sinks_foreign;
 #endif
 
   struct part *parts = c->hydro.parts;
@@ -166,7 +167,40 @@ void runner_do_sinks_gas_swallow(struct runner *r, struct cell *c, int timer) {
         } /* Loop over local sinks */
 
 #ifdef WITH_MPI
-        error("MPI is not implemented yet for sink particles.");
+	/* We could also be in the case of a local gas particle being
+         * swallowed by a foreign sink. In this case, we won't update the
+         * sink but just remove the particle from the local list. */
+        if (c->nodeID == e->nodeID && !found) {
+
+          /* Let's look for the foreign hungry black hole */
+          for (size_t i = 0; i < nr_sinks_foreign; ++i) {
+
+            /* Get a handle on the sink. */
+            struct sink *sink = &sinks_foreign[i];
+
+            if (sink->id == sink_id) {
+
+              message("Sink %lld removing gas particle %lld (foreign sink case)",
+                      sink->id, p->id);
+
+              lock_lock(&e->s->lock);
+
+              /* Re-check that the particle has not been removed
+               * by another thread before we do the deed. */
+              if (!part_is_inhibited(p, e)) {
+
+                /* Finally, remove the gas particle from the system */
+                cell_remove_part(e, c, p, xp);
+              }
+
+              if (lock_unlock(&e->s->lock) != 0)
+                error("Failed to unlock the space!");
+
+              found = 1;
+              break;
+            }
+          } /* Loop over foreign sinks */
+        }   /* Is the cell local? */
 #endif
 
         /* If we have a local particle, we must have found the sink in one
@@ -275,7 +309,8 @@ void runner_do_sinks_sink_swallow(struct runner *r, struct cell *c, int timer) {
   struct sink *sinks = s->sinks;
   const size_t nr_sink = s->nr_sinks;
 #ifdef WITH_MPI
-  error("MPI is not implemented yet for sink particles.");
+  struct sink *sinks_foreign = s->sinks_foreign;
+  const size_t nr_sinks_foreign = s->nr_sinks_foreign;
 #endif
 
   struct sink *cell_sinks = c->sinks.parts;
@@ -381,7 +416,40 @@ void runner_do_sinks_sink_swallow(struct runner *r, struct cell *c, int timer) {
         } /* Loop over local sinks */
 
 #ifdef WITH_MPI
-        error("MPI is not implemented yet for sink particles.");
+        /* We could also be in the case of a local sink particle being
+         * swallowed by a foreign sink. In this case, we won't update the
+         * foreign sink but just remove the particle from the local list. */
+        if (c->nodeID == e->nodeID && !found) {
+
+          /* Let's look for the foreign hungry sink */
+          for (size_t i = 0; i < nr_sinks_foreign; ++i) {
+
+            /* Get a handle on the sink. */
+            struct sink *sink = &sinks_foreign[i];
+
+            if (sink->id == sink_id) {
+
+              /* Is the swallowing sink itself flagged for swallowing by
+                 another sink? */
+              if (sink_get_sink_swallow_id(&sink->merger_data) != -1) {
+
+                /* Pretend it was found and abort */
+                sink_mark_sink_as_not_swallowed(&cell_sp->merger_data);
+                found = 1;
+                break;
+              }
+
+              message("Sink %lld swallowing sink particle %lld (foreign sink case)",
+                      sink->id, cell_sp->id);
+
+              /* Finally, remove the gas particle from the system */
+              cell_remove_sink(e, c, cell_sp);
+
+              found = 1;
+              break;
+            }
+          } /* Loop over foreign sinks */
+        }   /* Is the cell local? */
 #endif
 
         /* If we have a local particle, we must have found the sink in one
