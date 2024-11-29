@@ -126,18 +126,18 @@ INLINE static float sink_get_physical_div_v_from_part(
  * @param r Comoving distance between the two particles.
  * @param r_cut_i Comoving cut-off radius of particle i.
  * @param mass_i Mass of particle i.
- * @param L2_kepler (return) Keplerian angular momentum squared of particle i.
- * @param L2_j (return) Specific angular momentum squared relative to particle j.
  * @param cosmo The cosmological parameters and properties
  * @param grav_props The gravity scheme parameters and properties
+ * @param L2_kepler (return) Keplerian angular momentum squared of particle i.
+ * @param L2_j (return) Specific angular momentum squared relative to particle j.
  */
 __attribute__((always_inline)) INLINE static void
 sink_compute_angular_momenta_criterion(const float dx[3], const float dv_plus_H_flow[3],
 				       const float r, const float r_cut_i,
 				       const float mass_i,
-				       float* L2_kepler, float* L2_j,
 				       const struct cosmology *cosmo,
-				       const struct gravity_props *grav_props) {
+				       const struct gravity_props *grav_props,
+				       float* L2_kepler, float* L2_j) {
 
   /* Compute the physical relative velocity between the particles */
   const float dv_physical[3] = {dv_plus_H_flow[0] * cosmo->a_inv,

@@ -34,7 +34,7 @@ INLINE static void sink_read_particles(struct sink* sinks,
                                        struct io_props* list, int* num_fields) {
 
   /* Say how much we want to read */
-  *num_fields = 4;
+  *num_fields = 5;
 
   /* List what we want to read */
   list[0] = io_make_input_field("Coordinates", DOUBLE, 3, COMPULSORY,
