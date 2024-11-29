@@ -46,7 +46,7 @@ struct sink {
   /*! Particle velocity. */
   float v[3];
 
-  /* Particle smoothing length */
+  /* Particle smoothing length, or r_cut/kernel_gamma if using a fixed cutoff*/
   float h;
 
   struct {
@@ -58,9 +58,6 @@ struct sink {
     float wcount_dh;
 
   } density;
-
-  // /*! Cut off radius. */
-  // float r_cut;
 
   /*! Sink particle mass */
   float mass;

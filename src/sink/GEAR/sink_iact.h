@@ -55,6 +55,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_sink(
   const float r = sqrtf(r2);
 
   /* if the distance is less than the cut off radius */
+  /* JD: right now, if we're not using a fixed cutoff, cut_off_radius=-1 and
+   * this will never do anything */
   if (r < sink_properties->cut_off_radius) {
     float potential_i = pi->sink_data.potential;
     float potential_j = pj->sink_data.potential;
@@ -151,7 +153,7 @@ runner_iact_nonsym_sinks_gas_density(
   si->density.wcount_dh -= (hydro_dimension * wi + ui * wi_dx);
 
 #ifdef SWIFT_SINK_DENSITY_CHECKS
-  si->rho_check += pj->mass * wi;
+  si->rho_check += hydro_get_mass(pj) * wi;
   si->n_check += wi;
   si->N_check_density++;
 #endif

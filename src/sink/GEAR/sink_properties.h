@@ -241,10 +241,14 @@ INLINE static void sink_props_init(
   /* By default all current implemented criteria are active */
   const uint8_t default_sink_formation_criterion_all = 1;
 
-  /* Read the parameters from the parameter file */
+  /* The property cut_off_radius is now only used in the GEAR model. */
+  /* If it is specified, we use a fixed r_cut and don't calculate h */
+  /* If not, the code will use the variable h*kernel_gamma as a cutoff radius. */
+  /* If not specified, this parameter is set to -1, which effectively disables sink formation proximity checks. */
   sp->cut_off_radius =
       parser_get_opt_param_float(params, "GEARSink:cut_off_radius", -1);
 
+  /* This property is used in all models to flag if we're using a fixed cutoff. */
   sp->use_fixed_r_cut = (sp->cut_off_radius == -1) ? 0 : 1;
 
   sp->f_acc =
