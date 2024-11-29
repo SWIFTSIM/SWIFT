@@ -50,12 +50,7 @@ __attribute__((always_inline)) INLINE static float sink_compute_timestep(
  */
 __attribute__((always_inline)) INLINE static void sink_first_init_sink(
     struct sink* sp, const struct sink_props* sink_props,
-    const struct engine* e) {
-
-  if (sink_props->use_fixed_r_cut) {
-    sp->h = sink_props->cut_off_radius;
-  }
-}
+    const struct engine* e) {}
 
 /**
  * @brief Prepares a particle for the sink calculation.
@@ -279,11 +274,8 @@ INLINE static void sink_copy_properties(
     const struct cooling_function_data* restrict cooling) {
 
   /* Set a smoothing length */
-  if (sink_props->use_fixed_r_cut) {
-    sink->h = sink_props->cut_off_radius;
-  } else {
-    sink->h = p->h;
-  }
+  sink->h = p->h;
+  
 }
 
 /**

@@ -117,14 +117,6 @@ INLINE static void sink_props_init(
     sp->min_gas_mass_for_nibbling *= phys_const->const_solar_mass;
   }
 
-  /* We will need this when it comes to implementing GCs */
-  // if ((sp->min_gas_mass_for_nibbling < 1e-5 * sp->subgrid_seed_mass) ||
-  //     (sp->min_gas_mass_for_nibbling > 1e5 * sp->subgrid_seed_mass)) {
-  //   error(
-  //       "The BH seeding mass and minimal gas mass for nibbling differ by more
-  //       " "than 10^5. That is probably indicating a typo in the parameter
-  //       file.");
-  // }
 }
 
 /**

@@ -52,8 +52,6 @@ struct sink_props {
    * disabled if so) */
   char use_fixed_r_cut;
 
-  /*! Cut off radius */
-  float cut_off_radius;
 };
 
 /**
@@ -103,10 +101,7 @@ INLINE static void sink_props_init(
   else
     sp->log_max_h_change = logf(powf(max_volume_change, hydro_dimension_inv));
 
-  sp->cut_off_radius =
-      parser_get_opt_param_float(params, "DefaultSink:cut_off_radius", -1);
-
-  sp->use_fixed_r_cut = (sp->cut_off_radius == -1) ? 0 : 1;
+  sp->use_fixed_r_cut = 0;
 }
 
 /**

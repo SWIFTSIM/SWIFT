@@ -130,7 +130,7 @@ runner_iact_nonsym_sinks_gas_density(
   si->velocity_gas[2] += mj * dv[2] * wi;
 
 #ifdef SWIFT_SINK_DENSITY_CHECKS
-  si->rho_check += pj->mass * wi;
+  si->rho_check += mj * wi;
   si->n_check += wi;
   si->N_check_density++;
 #endif

@@ -62,7 +62,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_sink(
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
- * @param hi Comoving smoothing length or cut off radius of particle i.
+ * @param hi Comoving smoothing length of particle i.
  * @param hj Comoving smoothing-length of particle j.
  * @param si First particle (sink).
  * @param pj Second particle (gas, not updated).
@@ -96,7 +96,7 @@ runner_iact_nonsym_sinks_gas_density(
   si->density.wcount_dh -= (hydro_dimension * wi + ui * wi_dx);
 
 #ifdef SWIFT_SINK_DENSITY_CHECKS
-  si->rho_check += pj->mass * wi;
+  si->rho_check += hydro_get_mass(pj) * wi;
   si->n_check += wi;
   si->N_check_density++;
 #endif
@@ -107,8 +107,8 @@ runner_iact_nonsym_sinks_gas_density(
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
- * @param hi Comoving smoothing length or cut off radius of particle i.
- * @param hj Comoving smoothing length or cut off radius of particle j.
+ * @param hi Comoving smoothing length of particle i.
+ * @param hj Comoving smoothing length of particle j.
  * @param si First sink particle.
  * @param sj Second sink particle.
  * @param with_cosmology if we run with cosmology.
@@ -132,7 +132,7 @@ runner_iact_nonsym_sinks_sink_swallow(
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
- * @param hi Comoving smoothing length or cut off radius of particle i.
+ * @param hi Comoving smoothing length of particle i.
  * @param hj Comoving smoothing-length of particle j.
  * @param si First sink particle.
  * @param pj Second particle.

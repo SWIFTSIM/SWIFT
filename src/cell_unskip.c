@@ -2973,11 +2973,6 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
         if (cj_nodeID == nodeID) cell_activate_drift_part(cj, s);
         if (cj_nodeID == nodeID) cell_activate_drift_sink(cj, s);
         if (cj_nodeID == nodeID) cell_activate_sink_formation_tasks(cj->top, s);
-
-        if (ci_nodeID == nodeID && cj_active && with_timestep_sync)
-          cell_activate_sync_part(ci, s);
-        if (cj_nodeID == nodeID && ci_active && with_timestep_sync)
-          cell_activate_sync_part(cj, s);
       }
 
       /* Store current values of dx_max and h_max. */
