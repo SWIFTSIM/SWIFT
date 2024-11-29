@@ -127,6 +127,8 @@ void runner_do_gas_swallow(struct runner *r, struct cell *c, int timer) {
         /* Have we found this particle's BH already? */
         int found = 0;
 
+        ticks tic_local = getticks();
+
         /* Let's look for the hungry black hole in the local list */
         for (size_t i = 0; i < nr_bpart; ++i) {
 
@@ -176,6 +178,10 @@ void runner_do_gas_swallow(struct runner *r, struct cell *c, int timer) {
 
         } /* Loop over local BHs */
 
+        ticks toc_local = getticks();
+
+        ticks tic_foreign = getticks();
+
 #ifdef WITH_MPI
 
         /* We could also be in the case of a local gas particle being
@@ -213,6 +219,13 @@ void runner_do_gas_swallow(struct runner *r, struct cell *c, int timer) {
           } /* Loop over foreign BHs */
         } /* Is the cell local? */
 #endif
+
+        ticks toc_foreign = getticks();
+
+        r->ticks_local_gas_swallow += toc_local - tic_local;
+        r->ticks_foreign_gas_swallow += toc_foreign - tic_foreign;
+
+	 message("%lld %lld", toc_local - tic_local, toc_foreign - tic_foreign);
 
         /* If we have a local particle, we must have found the BH in one
          * of our list of black holes. */
@@ -360,6 +373,8 @@ void runner_do_bh_swallow(struct runner *r, struct cell *c, int timer) {
         /* Have we found this particle's BH already? */
         int found = 0;
 
+        ticks tic_local = getticks();
+
         /* Let's look for the hungry black hole in the local list */
         for (size_t i = 0; i < nr_bpart; ++i) {
 
@@ -414,6 +429,10 @@ void runner_do_bh_swallow(struct runner *r, struct cell *c, int timer) {
 
         } /* Loop over local BHs */
 
+        ticks toc_local = getticks();
+
+        ticks tic_foreign = getticks();
+
 #ifdef WITH_MPI
 
         /* We could also be in the case of a local BH particle being
@@ -452,12 +471,19 @@ void runner_do_bh_swallow(struct runner *r, struct cell *c, int timer) {
         } /* Is the cell local? */
 #endif
 
+        ticks toc_foreign = getticks();
+
         /* If we have a local particle, we must have found the BH in one
          * of our list of black holes. */
         if (c->nodeID == e->nodeID && !found) {
           error("BH particle %lld could not find BH %lld to be swallowed",
                 cell_bp->id, swallow_id);
         }
+
+        r->ticks_local_bh_swallow += toc_local - tic_local;
+        r->ticks_foreign_bh_swallow += toc_foreign - tic_foreign;
+
+        message("%lld %lld", toc_local - tic_local, toc_foreign - tic_foreign);
 
       } /* Part was flagged for swallowing */
     } /* Loop over the parts */

@@ -1833,6 +1833,10 @@ void engine_launch(struct engine *e, const char *call) {
   /* reset the active time counters for the runners */
   for (int i = 0; i < e->nr_threads; ++i) {
     runner_reset_active_time(&e->runners[i]);
+    e->runners[i].ticks_local_bh_swallow = 0;
+    e->runners[i].ticks_local_gas_swallow = 0;
+    e->runners[i].ticks_foreign_bh_swallow = 0;
+    e->runners[i].ticks_foreign_gas_swallow = 0;
   }
 
   /* Prepare the scheduler. */
@@ -2501,14 +2505,30 @@ int engine_step(struct engine *e) {
 
     const ticks tic_files = getticks();
 
+    ticks ticks_local_bh_swallow = 0;
+    ticks ticks_foreign_bh_swallow = 0;
+
+    ticks ticks_local_gas_swallow = 0;
+    ticks ticks_foreign_gas_swallow = 0;
+
+    for (int i = 0; i < e->nr_threads; ++i) {
+      ticks_local_bh_swallow += e->runners[i].ticks_local_bh_swallow;
+      ticks_local_gas_swallow += e->runners[i].ticks_local_gas_swallow;
+      ticks_foreign_bh_swallow += e->runners[i].ticks_foreign_bh_swallow;
+      ticks_foreign_gas_swallow += e->runners[i].ticks_foreign_gas_swallow;
+    }
+
     /* Print some information to the screen */
     printf(
         "  %6d %14e %12.7f %12.7f %14e %4d %4d %12lld %12lld %12lld "
-        "%12lld %12lld %21.3f %6d %17.3f\n",
+        "%12lld %12lld %21.3f %6d %17.3f | %12.3f %12.3f %12.3f %12.3f\n",
         e->step, e->time, e->cosmology->a, e->cosmology->z, e->time_step,
         e->min_active_bin, e->max_active_bin, e->updates, e->g_updates,
         e->s_updates, e->sink_updates, e->b_updates, e->wallclock_time,
-        e->step_props, dead_time);
+        e->step_props, dead_time, clocks_from_ticks(ticks_local_bh_swallow),
+        clocks_from_ticks(ticks_local_gas_swallow),
+        clocks_from_ticks(ticks_foreign_bh_swallow),
+        clocks_from_ticks(ticks_foreign_gas_swallow));
 #ifdef SWIFT_DEBUG_CHECKS
     fflush(stdout);
 #endif
@@ -2531,11 +2551,15 @@ int engine_step(struct engine *e) {
       fprintf(
           e->file_timesteps,
           "  %6d %14e %12.7f %12.7f %14e %4d %4d %12lld %12lld %12lld %12lld "
-          "%12lld %21.3f %6d %17.3f\n",
+          "%12lld %21.3f %6d %17.3f  | %12.3f %12.3f %12.3f %12.3f \n",
           e->step, e->time, e->cosmology->a, e->cosmology->z, e->time_step,
           e->min_active_bin, e->max_active_bin, e->updates, e->g_updates,
           e->s_updates, e->sink_updates, e->b_updates, e->wallclock_time,
-          e->step_props, dead_time);
+          e->step_props, dead_time, clocks_from_ticks(ticks_local_bh_swallow),
+          clocks_from_ticks(ticks_local_gas_swallow),
+          clocks_from_ticks(ticks_foreign_bh_swallow),
+          clocks_from_ticks(ticks_foreign_gas_swallow));
+
 #ifdef SWIFT_DEBUG_CHECKS
     fflush(e->file_timesteps);
 #endif

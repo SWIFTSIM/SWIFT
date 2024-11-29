@@ -75,6 +75,12 @@ struct runner {
   /*! Time this runner was active during the last engine_launch. */
   ticks active_time;
 
+  ticks ticks_local_bh_swallow;
+  ticks ticks_foreign_bh_swallow;
+
+  ticks ticks_local_gas_swallow;
+  ticks ticks_foreign_gas_swallow;
+
 #ifdef WITH_VECTORIZATION
 
   /*! The particle cache of cell ci. */
