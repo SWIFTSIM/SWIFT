@@ -131,7 +131,7 @@ __attribute__((always_inline)) INLINE static float sink_compute_timestep(
      the minimal engine timestep. */
   const float dt_tmp = min3(dt_cfl, dt_ff, dt_2_body);
   const float M_dot = Delta_M / dt_tmp;
-  dt_SF = sink_properties->tolerance_SF_timestep * sink->to_collect.mass_eligible_swallow / fabs(M_dot);
+  dt_SF = sink_properties->tolerance_SF_timestep * sink->to_collect.mass_eligible_swallow / fabsf(M_dot);
   }
 
   /* Sink age (in internal units) */
