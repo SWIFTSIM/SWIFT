@@ -25,16 +25,16 @@
 #include "parser.h"
 
 /* Some default values for the parameters to be read in the YAML file */
-#define DEFAULT_F_ACC 0.8
-#define DEFAULT_STAR_SPAWNING_SIGMA_FACTOR 0.2
-#define DEFAULT_N_IMF FLT_MAX /* No accretion restriction */
-#define DEFAULT_TOLERANCE_SF_TIMESTEP 0.5
+#define sink_gear_f_acc_default 0.8
+#define sink_gear_star_spawning_sigma_factor_default 0.2
+#define sink_gear_n_imf_default FLT_MAX /* No accretion restriction */
+#define sink_gear_tolerance_sf_timestep_default 0.5
 
 /* Sink formation is activated */
-#define DEFAULT_DISABLE_SINK_FORMATION 0
+#define sink_gear_disable_sink_formation_default 0
 
 /* By default all current implemented criteria are active */
-#define DEFAULT_SINK_FORMATION_CRITERION_ALL 1
+#define sink_gear_sink_formation_criterion_all_default 1
 
 /**
  * @brief Properties of sink in the Default model.
@@ -219,7 +219,7 @@ INLINE static void sink_props_init(struct sink_props *sp,
       parser_get_param_float(params, "GEARSink:cut_off_radius");
 
   sp->f_acc =
-      parser_get_opt_param_float(params, "GEARSink:f_acc", DEFAULT_F_ACC);
+    parser_get_opt_param_float(params, "GEARSink:f_acc", sink_gear_f_acc_default);
 
   /* Check that sp->f_acc respects 0 <= f_acc <= 1 */
   if ((sp->f_acc < 0) || (sp->f_acc > 1)) {
@@ -258,10 +258,10 @@ INLINE static void sink_props_init(struct sink_props *sp,
 
   sp->star_spawning_sigma_factor =
       parser_get_opt_param_float(params, "GEARSink:star_spawning_sigma_factor",
-                                 DEFAULT_STAR_SPAWNING_SIGMA_FACTOR);
+                                  sink_gear_star_spawning_sigma_factor_default);
 
   sp->n_IMF =
-      parser_get_opt_param_float(params, "GEARSink:n_IMF", DEFAULT_N_IMF);
+      parser_get_opt_param_float(params, "GEARSink:n_IMF", sink_gear_n_imf_default);
 
   sp->sink_minimal_mass_Msun =
       parser_get_opt_param_float(params, "GEARSink:sink_minimal_mass_Msun", 0.);
@@ -269,28 +269,28 @@ INLINE static void sink_props_init(struct sink_props *sp,
   /* Sink formation criterion parameters (all active by default) */
   sp->sink_formation_contracting_gas_criterion = parser_get_opt_param_int(
       params, "GEARSink:sink_formation_contracting_gas_criterion",
-      DEFAULT_SINK_FORMATION_CRITERION_ALL);
+      sink_gear_sink_formation_criterion_all_default);
 
   sp->sink_formation_smoothing_length_criterion = parser_get_opt_param_int(
       params, "GEARSink:sink_formation_smoothing_length_criterion",
-      DEFAULT_SINK_FORMATION_CRITERION_ALL);
+      sink_gear_sink_formation_criterion_all_default);
 
   sp->sink_formation_jeans_instability_criterion = parser_get_opt_param_int(
       params, "GEARSink:sink_formation_jeans_instability_criterion",
-      DEFAULT_SINK_FORMATION_CRITERION_ALL);
+      sink_gear_sink_formation_criterion_all_default);
 
   sp->sink_formation_bound_state_criterion = parser_get_opt_param_int(
       params, "GEARSink:sink_formation_bound_state_criterion",
-      DEFAULT_SINK_FORMATION_CRITERION_ALL);
+      sink_gear_sink_formation_criterion_all_default);
 
   sp->sink_formation_overlapping_sink_criterion = parser_get_opt_param_int(
       params, "GEARSink:sink_formation_overlapping_sink_criterion",
-      DEFAULT_SINK_FORMATION_CRITERION_ALL);
+      sink_gear_sink_formation_criterion_all_default);
 
   /* Should we disable sink formation ? */
   sp->disable_sink_formation =
       parser_get_opt_param_int(params, "GEARSink:disable_sink_formation",
-                               DEFAULT_DISABLE_SINK_FORMATION);
+                               sink_gear_disable_sink_formation_default);
 
   /* Maximal time-step lengths */
   const double max_time_step_young_Myr = parser_get_opt_param_float(
@@ -315,7 +315,7 @@ INLINE static void sink_props_init(struct sink_props *sp,
   /* Timestep tolerance paramters */
   sp->CFL_condition = parser_get_param_float(params, "GEARSink:CFL_condition");
 
-  sp->tolerance_SF_timestep = parser_get_opt_param_float(params, "GEARSink:tolerance_SF_timestep", DEFAULT_TOLERANCE_SF_TIMESTEP);
+  sp->tolerance_SF_timestep = parser_get_opt_param_float(params, "GEARSink:tolerance_SF_timestep", sink_gear_tolerance_sf_timestep_default);
 
   /* Apply unit change */
   sp->temperature_threshold /=
