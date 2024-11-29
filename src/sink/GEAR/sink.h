@@ -116,7 +116,8 @@ __attribute__((always_inline)) INLINE static float sink_compute_timestep(
      for SF reasons compared to an unrestricted accretion.
      Note: If we divide by mass_eligible_swallow, we get the relative error
      compared to unrestricted swallow. */
-  const float Delta_M = sink->to_collect.mass_swallowed - sink->to_collect.mass_eligible_swallow;
+  const float Delta_M =
+      sink->to_collect.mass_swallowed - sink->to_collect.mass_eligible_swallow;
 
   /* We want a big timestep if the error is small. */
   float dt_SF = FLT_MAX;
@@ -129,9 +130,10 @@ __attribute__((always_inline)) INLINE static float sink_compute_timestep(
      based on the local gas properties. If we use the current timestep, then we
      can end up with timesteps smaller and smaller until they are smaller than
      the minimal engine timestep. */
-  const float dt_tmp = min3(dt_cfl, dt_ff, dt_2_body);
-  const float M_dot = Delta_M / dt_tmp;
-  dt_SF = sink_properties->tolerance_SF_timestep * sink->to_collect.mass_eligible_swallow / fabsf(M_dot);
+    const float dt_tmp = min3(dt_cfl, dt_ff, dt_2_body);
+    const float M_dot = Delta_M / dt_tmp;
+    dt_SF = sink_properties->tolerance_SF_timestep *
+            sink->to_collect.mass_eligible_swallow / fabsf(M_dot);
   }
 
   /* Sink age (in internal units) */
@@ -321,9 +323,9 @@ __attribute__((always_inline)) INLINE static void sink_kick_extra(
 __attribute__((always_inline)) INLINE static void sink_end_density(
     struct sink* si, const struct cosmology* cosmo) {
 
-  const float h = si->r_cut/kernel_gamma;
-  const float h_inv = 1.0f / h;                       /* 1/h */
-  const float h_inv_dim = pow_dimension(h_inv);       /* 1/h^d */
+  const float h = si->r_cut / kernel_gamma;
+  const float h_inv = 1.0f / h;                 /* 1/h */
+  const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */
 
   /* --- Finish the calculation by inserting the missing h factors --- */
   si->to_collect.rho_gas *= h_inv_dim;
@@ -348,15 +350,15 @@ __attribute__((always_inline)) INLINE static void sinks_sink_has_no_neighbours(
     struct sink* restrict sp, const struct cosmology* cosmo) {
 
   warning(
-	  "Sink particle with ID %lld treated as having no neighbours (r_cut: %g, "
-	  "numb_ngbs: %i).",
-	  sp->id, sp->r_cut, sp->num_ngbs);
+      "Sink particle with ID %lld treated as having no neighbours (r_cut: %g, "
+      "numb_ngbs: %i).",
+      sp->id, sp->r_cut, sp->num_ngbs);
 
   /* Reset problematic values */
   sp->to_collect.velocity_gas[0] = sp->v[0];
   sp->to_collect.velocity_gas[1] = sp->v[1];
   sp->to_collect.velocity_gas[2] = sp->v[2];
-  sp->to_collect.minimal_h_gas = sp->r_cut/kernel_gamma;
+  sp->to_collect.minimal_h_gas = sp->r_cut / kernel_gamma;
 }
 
 /**
@@ -382,7 +384,6 @@ __attribute__((always_inline)) INLINE static void sink_prepare_swallow(
     const struct cooling_function_data* cooling,
     const struct entropy_floor_properties* floor_props, const double time,
     const int with_cosmology, const double dt, const integertime_t ti_begin) {}
-
 
 /**
  * @brief Calculate if the gas has the potential of becoming
@@ -727,7 +728,8 @@ __attribute__((always_inline)) INLINE static void sink_swallow_sink(
 
   /* Update masses */
   spi->mass_tot_before_star_spawning = spi->mass;
-  spi->to_collect.mass_eligible_swallow += spj->to_collect.mass_eligible_swallow;
+  spi->to_collect.mass_eligible_swallow +=
+      spj->to_collect.mass_eligible_swallow;
   spi->to_collect.mass_swallowed += spj->to_collect.mass_swallowed;
 
   message("sink %lld swallows sink particle %lld. New mass: %e.", spi->id,

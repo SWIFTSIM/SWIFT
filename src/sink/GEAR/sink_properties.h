@@ -218,8 +218,8 @@ INLINE static void sink_props_init(struct sink_props *sp,
   sp->cut_off_radius =
       parser_get_param_float(params, "GEARSink:cut_off_radius");
 
-  sp->f_acc =
-    parser_get_opt_param_float(params, "GEARSink:f_acc", sink_gear_f_acc_default);
+  sp->f_acc = parser_get_opt_param_float(params, "GEARSink:f_acc",
+                                         sink_gear_f_acc_default);
 
   /* Check that sp->f_acc respects 0 <= f_acc <= 1 */
   if ((sp->f_acc < 0) || (sp->f_acc > 1)) {
@@ -258,10 +258,10 @@ INLINE static void sink_props_init(struct sink_props *sp,
 
   sp->star_spawning_sigma_factor =
       parser_get_opt_param_float(params, "GEARSink:star_spawning_sigma_factor",
-                                  sink_gear_star_spawning_sigma_factor_default);
+                                 sink_gear_star_spawning_sigma_factor_default);
 
-  sp->n_IMF =
-      parser_get_opt_param_float(params, "GEARSink:n_IMF", sink_gear_n_imf_default);
+  sp->n_IMF = parser_get_opt_param_float(params, "GEARSink:n_IMF",
+                                         sink_gear_n_imf_default);
 
   sp->sink_minimal_mass_Msun =
       parser_get_opt_param_float(params, "GEARSink:sink_minimal_mass_Msun", 0.);
@@ -315,7 +315,9 @@ INLINE static void sink_props_init(struct sink_props *sp,
   /* Timestep tolerance paramters */
   sp->CFL_condition = parser_get_param_float(params, "GEARSink:CFL_condition");
 
-  sp->tolerance_SF_timestep = parser_get_opt_param_float(params, "GEARSink:tolerance_SF_timestep", sink_gear_tolerance_sf_timestep_default);
+  sp->tolerance_SF_timestep =
+      parser_get_opt_param_float(params, "GEARSink:tolerance_SF_timestep",
+                                 sink_gear_tolerance_sf_timestep_default);
 
   /* Apply unit change */
   sp->temperature_threshold /=
@@ -397,8 +399,7 @@ INLINE static void sink_props_init(struct sink_props *sp,
           sp->CFL_condition);
   message("tolerance_SF_timestep                        = %e",
           sp->tolerance_SF_timestep);
-  message("n_IMF                                        = %e",
-          sp->n_IMF);
+  message("n_IMF                                        = %e", sp->n_IMF);
 }
 
 /**
