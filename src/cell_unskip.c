@@ -2316,9 +2316,9 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
           /* Check the sorts and activate them if needed. */
           cell_activate_hydro_sorts(ci, t->flags, s);
           cell_activate_stars_sorts(cj, t->flags, s);
-        }
 
-        activated_something++;
+          activated_something++;
+        }
       }
 
       else if (t->type == task_type_sub_self) {
