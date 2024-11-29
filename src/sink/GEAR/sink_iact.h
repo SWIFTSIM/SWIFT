@@ -189,12 +189,11 @@ runner_iact_nonsym_sinks_sink_swallow(
     const struct sink_props *sink_properties, const integertime_t ti_current,
     const double time) {
 
-  /* If we're using a fixed cutoff radius, we need to convert the fixed
-   * smoothing length back into a cutoff radius */
-  float ri = (sink_properties->use_fixed_r_cut) ? hi * kernel_gamma : hi;
+  /* Convert the smoothing length back into a cutoff radius */
+  const float hig = hi * kernel_gamma;
 
   const float r = sqrtf(r2);
-  const float f_acc_r_acc_i = sink_properties->f_acc * ri;
+  const float f_acc_r_acc_i = sink_properties->f_acc * hig;
 
   /* If the sink j falls within f_acc*r_acc of sink i, then the
      lightest is accreted on the most massive without further check.
@@ -327,12 +326,11 @@ runner_iact_nonsym_sinks_gas_swallow(
     const struct sink_props *sink_properties, const integertime_t ti_current,
     const double time) {
 
-  /* If we're using a fixed cutoff radius, we need to convert the fixed
-   * smoothing length back into a cutoff radius */
-  float ri = (sink_properties->use_fixed_r_cut) ? hi * kernel_gamma : hi;
+  /* Convert the smoothing length back into a cutoff radius */
+  const float hig = hi * kernel_gamma;
 
   const float r = sqrtf(r2);
-  const float f_acc_r_acc = sink_properties->f_acc * ri;
+  const float f_acc_r_acc = sink_properties->f_acc * hig;
 
   /* If the gas falls within f_acc*r_acc, it is accreted without further check
    */
@@ -344,7 +342,7 @@ runner_iact_nonsym_sinks_gas_swallow(
     }
 
     /* f_acc*r_acc <= r <= r_acc, we perform other checks */
-  } else if ((r >= f_acc_r_acc) && (r < ri)) {
+  } else if ((r >= f_acc_r_acc) && (r < hig)) {
 
     /* Relative velocity between the sinks */
     const float dv[3] = {pj->v[0] - si->v[0], pj->v[1] - si->v[1],
@@ -388,7 +386,7 @@ runner_iact_nonsym_sinks_gas_swallow(
                               (r_physical * r_physical * r_physical);
 
     /*Keplerian angular momentum squared */
-    const float L2_acc = (ri * ri * ri * ri) * omega_acc_2;
+    const float L2_acc = (hig * hig * hig * hig) * omega_acc_2;
 
     /* To be accreted, the gas momentum shoulb lower than the keplerian orbit
      * momentum. */
