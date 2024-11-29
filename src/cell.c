@@ -295,6 +295,39 @@ int cell_link_bparts(struct cell *c, struct bpart *bparts) {
 }
 
 /**
+ * @brief Link the cells recursively to the given #sink array.
+ *
+ * @param c The #cell.
+ * @param sinks The #sink array.
+ *
+ * @return The number of particles linked.
+ */
+int cell_link_sinks(struct cell *c, struct sink *sinks) {
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->nodeID == engine_rank)
+    error("Linking foreign particles in a local cell!");
+
+  if (c->sinks.parts != NULL)
+    error("Linking sparts into a cell that was already linked");
+#endif
+
+  c->sinks.parts = sinks;
+  c->sinks.parts_rebuild = sinks;
+
+  /* Fill the progeny recursively, depth-first. */
+  if (c->split) {
+    int offset = 0;
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] != NULL)
+        offset += cell_link_sinks(c->progeny[k], &sinks[offset]);
+    }
+  }
+
+  /* Return the total number of linked particles. */
+  return c->sinks.count;
+}
+
+/**
  * @brief Recurse down foreign cells until reaching one with hydro
  * tasks; then trigger the linking of the #part array from that
  * level.
@@ -414,6 +447,7 @@ void cell_unlink_foreign_particles(struct cell *c) {
   c->hydro.parts = NULL;
   c->stars.parts = NULL;
   c->black_holes.parts = NULL;
+  c->sinks.parts = NULL;
 
   if (c->split) {
     for (int k = 0; k < 8; k++) {

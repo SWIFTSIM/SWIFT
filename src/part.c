@@ -568,6 +568,7 @@ MPI_Datatype xpart_mpi_type;
 MPI_Datatype gpart_mpi_type;
 MPI_Datatype spart_mpi_type;
 MPI_Datatype bpart_mpi_type;
+MPI_Datatype sink_mpi_type;
 
 /**
  * @brief Registers MPI particle types.
@@ -605,6 +606,11 @@ void part_create_mpi_types(void) {
       MPI_Type_commit(&bpart_mpi_type) != MPI_SUCCESS) {
     error("Failed to create MPI type for bparts.");
   }
+  if (MPI_Type_contiguous(sizeof(struct sink) / sizeof(unsigned char), MPI_BYTE,
+                          &sink_mpi_type) != MPI_SUCCESS ||
+      MPI_Type_commit(&sink_mpi_type) != MPI_SUCCESS) {
+    error("Failed to create MPI type for sink.");
+  }
 }
 
 void part_free_mpi_types(void) {
@@ -614,5 +620,6 @@ void part_free_mpi_types(void) {
   MPI_Type_free(&gpart_mpi_type);
   MPI_Type_free(&spart_mpi_type);
   MPI_Type_free(&bpart_mpi_type);
+  MPI_Type_free(&sink_mpi_type);
 }
 #endif

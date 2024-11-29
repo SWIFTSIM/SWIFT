@@ -368,6 +368,10 @@ struct space {
   struct bpart *bparts_foreign;
   size_t nr_bparts_foreign, size_bparts_foreign;
 
+  /*! Buffers for sink-parts that we will receive from foreign cells. */
+  struct sink *sinks_foreign;
+  size_t nr_sinks_foreign, size_sinks_foreign;
+
 #endif
 };
 

@@ -527,11 +527,17 @@ int main(int argc, char *argv[]) {
 #endif
 
 #ifdef WITH_MPI
+#ifdef SWIFT_DEBUG_CHECKS
+  if (with_sinks) {
+    pretime_message("Warning: sink particles are are WIP yet with MPI.");
+  }
+#else
   if (with_sinks) {
     pretime_message("Error: sink particles are not available yet with MPI.");
     return 1;
   }
-#endif
+#endif /* SWIFT_DEBUG_CHECKS */
+#endif /* WITH_MPI */
 
   if (with_sinks && with_star_formation) {
     pretime_message(
