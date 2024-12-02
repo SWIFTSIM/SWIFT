@@ -77,10 +77,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
     pi->num_unkicked_ngbs += 1;
   }
 
-  if (pj->id < 1e7) {
-    pi->num_noninteracting_ngbs += 1;
-  }
-    
   pi->density.rho_dh -= mj * (hydro_dimension * wi + ui * wi_dx);
   pi->density.wcount += wi;
   pi->density.wcount_dh -= (hydro_dimension * wi + ui * wi_dx);
@@ -93,10 +89,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   pj->rho += mi * wj;
   if (pi->id < 1e7 && pi->hit_by_jet_feedback==0) {
     pj->num_unkicked_ngbs += 1;
-  }
-    
-  if (pi->id < 1e7) {
-    pj->num_noninteracting_ngbs += 1;
   }
     
   pj->density.rho_dh -= mi * (hydro_dimension * wj + uj * wj_dx);
@@ -154,10 +146,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   if (pj->id < 1e7 && pj->hit_by_jet_feedback==0) {
     pi->num_unkicked_ngbs += 1;
   }
-
-  if (pj->id < 1e7) {
-    pi->num_noninteracting_ngbs += 1;
-  }
     
   pi->density.rho_dh -= mj * (hydro_dimension * wi + ui * wi_dx);
   pi->density.wcount += wi;
@@ -191,8 +179,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
     float r2, const float *dx, float hi, float hj, struct part *restrict pi,
     struct part *restrict pj, float a, float H) {
 
-if (pi->id > pi->max_id && pj->id > pj->max_id) {
-
   float wi, wj, wi_dx, wj_dx;
 
   /* Get r. */
@@ -210,7 +196,6 @@ if (pi->id > pi->max_id && pj->id > pj->max_id) {
 
   hydro_runner_iact_gradient_extra_kernel(pi, pj, dx, wi, wj, wi_dx, wj_dx);
   hydro_runner_iact_gradient_extra_viscosity(pi, pj, dx, wi, wj, wi_dx, wj_dx);
-}
 }
 
 /**
@@ -233,8 +218,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
     float r2, const float *dx, float hi, float hj, struct part *restrict pi,
     struct part *restrict pj, float a, float H) {
 
-if (pi->id > pi->max_id && pj->id > pj->max_id) {
-
   float wi, wj, wi_dx, wj_dx;
 
   /* Get r. */
@@ -254,7 +237,6 @@ if (pi->id > pi->max_id && pj->id > pj->max_id) {
                                                  wj_dx);
   hydro_runner_iact_nonsym_gradient_extra_viscosity(pi, pj, dx, wi, wi_dx);
 }
-}
 
 /**
  * @brief Force interaction between two particles.
@@ -273,7 +255,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
     struct part *restrict pi, struct part *restrict pj, const float a,
     const float H) {
 
-if (pi->id > pi->max_id && pj->id > pj->max_id) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (pi->time_bin >= time_bin_inhibited)
@@ -419,7 +400,6 @@ if (pi->id > pi->max_id && pj->id > pj->max_id) {
   pj->N_force++;
 #endif
 }
-}
 
 /**
  * @brief Force interaction between two particles (non-symmetric).
@@ -437,8 +417,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     const float r2, const float dx[3], const float hi, const float hj,
     struct part *restrict pi, const struct part *restrict pj, const float a,
     const float H) {
-
-if (pi->id > pi->max_id && pj->id > pj->max_id) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (pi->time_bin >= time_bin_inhibited)
@@ -562,7 +540,6 @@ if (pi->id > pi->max_id && pj->id > pj->max_id) {
   pi->n_force += wi + wj;
   pi->N_force++;
 #endif
-}
 }
 
 #endif /* SWIFT_PLANETARY_HYDRO_IACT_H */

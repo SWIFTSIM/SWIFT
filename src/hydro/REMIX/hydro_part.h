@@ -153,7 +153,6 @@ struct part {
   int timestep_counter;
   int hit_by_jet_feedback;
   int num_unkicked_ngbs;
-  int num_noninteracting_ngbs; //temporary
 
   /* Store density/force specific stuff. */
   union {
@@ -308,9 +307,6 @@ struct part {
 #endif
 
 float rho_sph;
-
-// temporary
-int max_id;
 
 } SWIFT_STRUCT_ALIGN;
 
