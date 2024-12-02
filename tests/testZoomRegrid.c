@@ -112,8 +112,6 @@ void associate_gparts_to_cells(struct space *s) {
   }
 }
 
-void make_gparts_grid(struct space *s) {}
-
 int main(int argc, char *argv[]) {
 
   /* Initialize CPU frequency, this also starts time. */
