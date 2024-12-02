@@ -11,14 +11,14 @@ Sink particles interact with the surrounding gas through accretion. To accuratel
 First, we want to ensure sinks know the *local dynamics* and thus they obey a Courant-Friedrichs-Lewy (CFL)-like timestep constraint:
 
 .. math::
-   \Delta t_s \leq C_\text{CFL} \frac{r_{\text{cut, min}}}{\sqrt{c_{s,s}^2 + \| \Delta \mathbf{v}_s \|^2}} \; ,
+   \Delta t_s \leq \Delta t_\text{CFL} =  C_\text{CFL} \frac{r_{\text{cut, min}}}{\sqrt{c_{s,s}^2 + \| \Delta \mathbf{v}_s \|^2}} \; ,
 
 where :math:`r_\text{cut, min} = \min(r_{\text{cut}, s}, \gamma_k \min_j(h_j))` is the minimal cut-off radius between the sink :math:`s` and the gas neighbours:math:`j`, :math:`c_{s, s}` and :math:`\Delta \mathbf{v}_s` are the gas sound-speed and the relative gas-sink velocity at the sink location. The latter two are reconstructed at the sink location with SPH interpolation. The value of :math:`C_\text{CFL}` is given in the YAML parameter file with ``GEARSink:CFL_condition``.
 
 Since sink particles accrete gas, they must anticipate the surrounding gas infall. We achieve this with a gas free-fall time criterion similar to `Grudic et al. (2021) <https://academic.oup.com/mnras/article/506/2/2199/6276745>`_:
 
 .. math::
-   \Delta t_s \leq \sqrt{ \frac{3 \pi}{32 G \rho_s} } \quad \text{with} \quad \rho_s = \frac{3 m_s}{4 \pi {r_{\text{cut, min}}}} \; ,
+   \Delta t_s \leq \Delta t_\text{ff} = \sqrt{ \frac{3 \pi}{32 G \rho_s} } \quad \text{with} \quad \rho_s = \frac{3 m_s}{4 \pi {r_{\text{cut, min}}}} \; ,
 
 with :math:`m_s` the sink mass.
 
