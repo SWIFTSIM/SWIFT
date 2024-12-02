@@ -677,7 +677,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   float du_dt_AR_i = 0.f;
   du_dt_AR_i += v_sig_AR_i * wi_dr * f_ij / (rhoi * rhoi);
   du_dt_AR_i += v_sig_AR_j * wj_dr * f_ji / (rhoj * rhoj);
-  du_dt_AR_i *= -0.25f * square_norm_dB;
+  du_dt_AR_i *= 0.25f * square_norm_dB;
 
   pi->u_dt -= mj * du_dt_AR_i;
 
