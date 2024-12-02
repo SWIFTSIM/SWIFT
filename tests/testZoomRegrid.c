@@ -72,9 +72,9 @@ void make_mock_space(struct space *s) {
 
   /* Randomly place the background particles. */
   for (int i = 0; i < 100; i++) {
-    gparts[i].x[0] = s->dim[0] * rand();
-    gparts[i].x[1] = s->dim[1] * rand();
-    gparts[i].x[2] = s->dim[2] * rand();
+    gparts[i].x[0] = s->dim[0] * ((double)rand() / RAND_MAX) + 1;
+    gparts[i].x[1] = s->dim[1] * ((double)rand() / RAND_MAX) + 1;
+    gparts[i].x[2] = s->dim[2] * ((double)rand() / RAND_MAX) + 1;
     gparts[i].type = swift_type_dark_matter_background;
     gparts[i].mass = 1.0;
   }
