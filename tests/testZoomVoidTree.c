@@ -171,7 +171,7 @@ int main(int argc, char *argv[]) {
   /* Create a space structure. (this creates fake particles to get the layout
    * of cells right but we will modify this shortly to get a particle per
    * cell) */
-  struct space *s = calloc(sizeof(struct space));
+  struct space *s = malloc(sizeof(struct space));
   bzero(s, sizeof(struct space));
   make_mock_space(s);
 
