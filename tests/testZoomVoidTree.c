@@ -199,7 +199,7 @@ int main(int argc, char *argv[]) {
   zoom_props_init(&param_file, s, /*verbose*/ 1);
 
   /* Run the regridding. */
-  space_regrid(s, /*verbose*/ 1);
+  space_rebuild(s, /*repartitioned*/ 0, /*verbose*/ 1);
 
   /* Associate gparts. */
   associate_gparts_to_cells(s);
