@@ -1806,6 +1806,8 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
           }
         }
 
+	/* TODO: Add sf_sinks */
+
       } else if (cj_nodeID != nodeID) {
         /* If the local cell is active, receive data from the foreign cell. */
         if (ci_active) {
@@ -1899,6 +1901,8 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
                                     cj_nodeID);
           }
         }
+
+	/* TODO: Add sf_sinks */
       }
 #endif
     }
@@ -2076,6 +2080,8 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
           }
         }
 
+	/* TODO: Add sf_sinks */
+
       } else if (cj_nodeID != nodeID) {
         /* If the local cell is active, receive data from the foreign cell. */
         if (ci_active)
@@ -2103,6 +2109,8 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
                                     cj_nodeID);
           }
         }
+
+	/* TODO: Add sf_sinks */
       }
 #endif
     }
