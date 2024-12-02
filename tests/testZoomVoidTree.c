@@ -157,6 +157,11 @@ int main(int argc, char *argv[]) {
   feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW);
 #endif
 
+  /* Get some randomness going */
+  const int seed = time(NULL);
+  message("Seed = %d", seed);
+  srand(seed);
+
   /* Create a structure to read file into. */
   struct swift_params param_file;
 
