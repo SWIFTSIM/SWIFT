@@ -74,9 +74,9 @@ void make_mock_space(struct space *s) {
   const double zoom_width = 2.5;
   const double buffer_lower[3] = {400, 400, 400};
   const double zoom_lower[3] = {480, 480, 480};
-  for (int i = 0; i < 10; i++) {
-    for (int j = 0; j < 10; j++) {
-      for (int k = 0; k < 10; k++) {
+  for (int i = 0; i < 16; i++) {
+    for (int j = 0; j < 16; j++) {
+      for (int k = 0; k < 16; k++) {
         gparts[gpart_count].mass = 1.0;
 
         /* Set background particles to be at the center of the cell. */
@@ -87,9 +87,9 @@ void make_mock_space(struct space *s) {
       }
     }
   }
-  for (int i = 0; i < 10; i++) {
-    for (int j = 0; j < 10; j++) {
-      for (int k = 0; k < 10; k++) {
+  for (int i = 0; i < 16; i++) {
+    for (int j = 0; j < 16; j++) {
+      for (int k = 0; k < 16; k++) {
         gparts[gpart_count].mass = 1.0;
 
         /* Set buffer particles to be at the center of the cell. */
