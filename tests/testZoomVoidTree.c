@@ -60,7 +60,6 @@ void make_mock_cells(struct space *s) {
         c->subtype = cell_subtype_regular;
         c->split = 0;
         c->void_parent = NULL;
-        c->progeny = NULL;
         c->grav.count = 0;
         c->grav.parts = NULL;
         c->top = c;
@@ -76,11 +75,10 @@ void make_mock_cells(struct space *s) {
   c->loc[0] = 450;
   c->loc[1] = 450;
   c->loc[2] = 450;
-  c->type = cell_type_background;
+  c->type = cell_type_bkg;
   c->subtype = cell_subtype_void;
   c->split = 0;
   c->void_parent = NULL;
-  c->progeny = NULL;
   c->grav.count = 0;
   c->grav.parts = NULL;
   c->top = c;
