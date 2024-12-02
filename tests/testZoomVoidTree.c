@@ -158,25 +158,11 @@ int main(int argc, char *argv[]) {
   bzero(s, sizeof(struct space));
   make_mock_space(s);
 
-  struct engine engine;
-  engine.s = s;
-  engine.time = 0.1f;
-  engine.ti_current = 0;
-  engine.ti_old = 0;
-  engine.max_active_bin = num_time_bins;
-  engine.nr_threads = 1;
-  engine.nodeID = 0;
-  engine_rank = 0;
-  engine.verbose = 1;
-
   /* Flag that we are running a zoom. */
   s->with_zoom_region = 1;
 
   /* Run the zoom_init function. */
   zoom_props_init(&param_file, s, /*verbose*/ 1);
-
-  /* Now we can attach the engine. */
-  s->e = &engine;
 
   /* Run the regridding. */
   space_rebuild(s, /*repartitioned*/ 0, /*verbose*/ 1);
