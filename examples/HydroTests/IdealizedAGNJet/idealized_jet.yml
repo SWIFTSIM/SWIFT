@@ -1,6 +1,6 @@
 # Define some meta-data about the simulation
 MetaData:
-  run_name:   IdealizedJet
+  run_name:   IdealizedAGNJet
 
 # Define the system of units to use internally.
 InternalUnitSystem:
@@ -22,11 +22,6 @@ Snapshots:
   basename:              output      # Common part of the name of output files
   time_first:            0.          # Time of the first output if non-cosmological time-integration (in internal units)
   delta_time:            0.005114    # Time difference between consecutive outputs (in internal units). 5 Myr here
-  compression:           3           # Compress the snapshots
-  select_output_on:      0
-  select_output:         param_list.yml
-  output_list_on:        0
-  output_list:           output_list.txt
 
 Restarts:
   delta_hours:           0.5
@@ -56,6 +51,4 @@ SPH:
   jet_velocity:          7.5e3      # km/s. Make sure it is consistent with the ICs script
   box_size:              500      # kpc make sure it is consistent with the ICs script
   box_aspect_ratio:      0.5      # side-lengths of the x and y directions of the box (perpendicular to jet direction) in unit of box_size
-  particle_splitting:    0
-  particle_splitting_mass_threshold:  1e-7
 

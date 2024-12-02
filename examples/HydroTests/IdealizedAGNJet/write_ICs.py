@@ -1,7 +1,5 @@
 import h5py as h5
 import numpy as np
-from scipy.integrate import quad
-import scipy.special
 
 # Define some functions that will be used at the end to write the actual IC data
 def write_header(f, boxsize, flag_entropy, np_total, np_total_hw, other=False):
