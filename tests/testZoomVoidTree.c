@@ -80,8 +80,7 @@ void make_mock_space(struct space *s) {
   }
 
   /* Define the width of the zoom region (randomly). */
-  double zoom_width = 50 * ((double)rand() / RAND_MAX) + 1;
-  message("Zoom width = %f", zoom_width);
+  double zoom_width = 50;
 
   /* Define the zoom particles by sampling from a normal distribution. */
   for (int i = 100; i < 200; i++) {
@@ -156,11 +155,6 @@ int main(int argc, char *argv[]) {
 #ifdef HAVE_FE_ENABLE_EXCEPT
   feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW);
 #endif
-
-  /* Get some randomness going */
-  const int seed = time(NULL);
-  message("Seed = %d", seed);
-  srand(seed);
 
   /* Create a structure to read file into. */
   struct swift_params param_file;
