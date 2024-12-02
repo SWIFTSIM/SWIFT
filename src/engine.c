@@ -892,6 +892,7 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
     for (size_t i = 0; i < s->size_sinks_foreign; ++i) {
       s->sinks_foreign[i].time_bin = time_bin_not_created;
       s->sinks_foreign[i].id = -666;
+      sink_mark_sink_as_not_swallowed(&s->sinks_foreign[i].merger_data);
     }
   }
 
