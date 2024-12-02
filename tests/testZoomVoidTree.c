@@ -162,13 +162,12 @@ int main(int argc, char *argv[]) {
   make_mock_space(s);
 
   struct engine engine;
-  engine.s = &space;
-  space.e = &engine;
+  engine.s = s;
+  s->e = &engine;
   engine.time = 0.1f;
   engine.ti_current = 0;
   engine.ti_old = 0;
   engine.max_active_bin = num_time_bins;
-  engine.gravity_properties = &gravity_properties;
   engine.nr_threads = 1;
   engine.nodeID = 0;
   engine_rank = 0;
