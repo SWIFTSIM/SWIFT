@@ -115,7 +115,7 @@ void make_mock_space(struct space *s) {
   message("Zoom width = %f", zoom_width);
 
   /* Define the zoom particles by sampling from a normal distribution. */
-  for (int i = 10000; i < 20000; i++) {
+  for (int i = 0; i < s->nr_gparts; i++) {
     gparts[i].x[0] =
         generate_gaussian_coordinate(s->dim[0] / 2, zoom_width, 100);
     gparts[i].x[1] =
