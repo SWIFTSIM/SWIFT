@@ -72,9 +72,9 @@ void make_mock_cells(struct space *s) {
   c->width[0] = 100;
   c->width[1] = 100;
   c->width[2] = 100;
-  c->loc[0] = 450;
-  c->loc[1] = 450;
-  c->loc[2] = 450;
+  c->loc[0] = s->zoom_props->region_lower_bounds[0];
+  c->loc[1] = s->zoom_props->region_lower_bounds[1];
+  c->loc[2] = s->zoom_props->region_lower_bounds[2];
   c->type = cell_type_bkg;
   c->subtype = cell_subtype_void;
   c->split = 0;
