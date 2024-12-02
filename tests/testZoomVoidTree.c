@@ -51,9 +51,12 @@ void make_mock_space(struct space *s) {
   /* The simulation is periodic */
   s->periodic = 1;
 
-  /* Define the gpart count (1000 high and 100 low resolution) + every
+  /* Turn on gravity. */
+  s->with_self_gravity = 1;
+
+  /* Define the gpart count (1000 high and 1000 low resolution) + every
    * background cell gets 1. */
-  s->nr_gparts = 1000 + 100 + (16 * 16 * 16);
+  s->nr_gparts = 2 * 10000;
 
   /* We need the engine to be NULL for the logic. */
   s->e = NULL;
@@ -67,7 +70,7 @@ void make_mock_space(struct space *s) {
   bzero(gparts, s->nr_gparts * sizeof(struct gpart));
 
   /* Randomly place the background particles. */
-  for (int i = 0; i < 100; i++) {
+  for (int i = 0; i < 10000; i++) {
     gparts[i].x[0] = s->dim[0] * 0.99 * ((double)rand() / RAND_MAX) + 1;
     gparts[i].x[1] = s->dim[1] * 0.99 * ((double)rand() / RAND_MAX) + 1;
     gparts[i].x[2] = s->dim[2] * 0.99 * ((double)rand() / RAND_MAX) + 1;
@@ -80,7 +83,7 @@ void make_mock_space(struct space *s) {
   message("Zoom width = %f", zoom_width);
 
   /* Define the zoom particles by sampling from a normal distribution. */
-  for (int i = 100; i < 1100; i++) {
+  for (int i = 10000; i < 20000; i++) {
     gparts[i].x[0] =
         generate_gaussian_coordinate(s->dim[0] / 2, zoom_width, 50);
     gparts[i].x[1] =
@@ -88,18 +91,6 @@ void make_mock_space(struct space *s) {
     gparts[i].x[2] =
         generate_gaussian_coordinate(s->dim[2] / 2, zoom_width, 50);
     gparts[i].type = swift_type_dark_matter;
-    gparts[i].mass = 1.0;
-  }
-
-  /* Add the background particles so that each cell has one. */
-  for (int i = 1100; i < s->nr_gparts; i++) {
-    int x = (i - 1100) % 16;
-    int y = ((i - 1100) / 16) % 16;
-    int z = (i - 1100) / (16 * 16);
-    gparts[i].x[0] = x * 1000 / 16;
-    gparts[i].x[1] = y * 1000 / 16;
-    gparts[i].x[2] = z * 1000 / 16;
-    gparts[i].type = swift_type_dark_matter_background;
     gparts[i].mass = 1.0;
   }
 
@@ -180,7 +171,7 @@ int main(int argc, char *argv[]) {
   /* Create a space structure. (this creates fake particles to get the layout
    * of cells right but we will modify this shortly to get a particle per
    * cell) */
-  struct space *s = malloc(sizeof(struct space));
+  struct space *s = calloc(sizeof(struct space));
   bzero(s, sizeof(struct space));
   make_mock_space(s);
 
