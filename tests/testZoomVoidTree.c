@@ -27,68 +27,6 @@
 #include "swift.h"
 #include "zoom_region/zoom.h"
 
-double generate_gaussian_coordinate(const double mean, const double std,
-                                    const double max_width) {
-  double u1 = (double)rand() / RAND_MAX;
-  double u2 = (double)rand() / RAND_MAX;
-  double z0 = (sqrt(-2.0 * log(u1)) * cos(2 * M_PI * u2)) * std + mean;
-
-  /* Try again if we're out of bounds. */
-  if (z0 < mean - max_width / 2 || z0 > mean + max_width / 2) {
-    return generate_gaussian_coordinate(mean, std, max_width);
-  }
-
-  return z0;
-}
-void make_mock_cells(struct space *s) {
-
-  /* Allocate memory for the cells. */
-  s->cells_top = (struct cell *)malloc(s->nr_cells * sizeof(struct cell));
-
-  /* Set up the top level cells. */
-  for (int i = 0; i < 4; i++) {
-    for (int j = 0; j < 4; j++) {
-      for (int k = 0; k < 4; k++) {
-        struct cell *c = &s->cells_top[i * 16 + j * 4 + k];
-        c->width[0] = s->zoom_props->dim[0] / 4;
-        c->width[1] = s->zoom_props->dim[1] / 4;
-        c->width[2] = s->zoom_props->dim[2] / 4;
-        c->loc[0] = s->zoom_props->region_lower_bounds[0] + i * c->width[0];
-        c->loc[1] = s->zoom_props->region_lower_bounds[1] + j * c->width[1];
-        c->loc[2] = s->zoom_props->region_lower_bounds[2] + k * c->width[2];
-        c->type = cell_type_zoom;
-        c->subtype = cell_subtype_regular;
-        c->split = 0;
-        c->void_parent = NULL;
-        c->grav.count = 0;
-        c->grav.parts = NULL;
-        c->top = c;
-      }
-    }
-  }
-
-  /* Set up the background cell. */
-  struct cell *c = &s->cells_top[64];
-  c->width[0] = 100;
-  c->width[1] = 100;
-  c->width[2] = 100;
-  c->loc[0] = s->zoom_props->region_lower_bounds[0];
-  c->loc[1] = s->zoom_props->region_lower_bounds[1];
-  c->loc[2] = s->zoom_props->region_lower_bounds[2];
-  c->type = cell_type_bkg;
-  c->subtype = cell_subtype_void;
-  c->split = 0;
-  c->void_parent = NULL;
-  c->grav.count = 0;
-  c->grav.parts = NULL;
-  c->top = c;
-
-  /* Flag the void cell indices. */
-  s->zoom_props->void_cell_indices = (int *)malloc(64 * sizeof(int));
-  s->zoom_props->void_cell_indices[0] = 64;
-  s->zoom_props->nr_void_cells = 1;
-}
-
 void make_mock_space(struct space *s) {
 
   /* Define the boxsize. */
@@ -96,14 +34,12 @@ void make_mock_space(struct space *s) {
   s->dim[1] = 1000;
   s->dim[2] = 1000;
 
-  /* Need to flag we are running a zoom. */
-  s->with_zoom_region = 1;
+  /* Define the gpart count (this is a background particle per cell + the 8
+   * corner high res particles used to define the region.) */
+  s->nr_gparts = (2 * 10 * 10 * 10) + (16 * 16 * 16) + 8;
 
-  /* The simulation is periodic */
-  s->periodic = 1;
-
-  /* Define the gpart count (we only care about the zoom region) */
-  s->nr_gparts = 10000;
+  /* We need the engine to be NULL for the logic. */
+  s->e = NULL;
 
   /* Allocate memory for the gparts. */
   struct gpart *gparts = NULL;
@@ -113,61 +49,96 @@ void make_mock_space(struct space *s) {
   }
   bzero(gparts, s->nr_gparts * sizeof(struct gpart));
 
-  /* Define the width of the zoom region (randomly). */
-  double zoom_width = 50 * ((double)rand() / RAND_MAX) + 1;
-  message("Zoom width = %f", zoom_width);
+  /* Define the corners of the region */
+  const double mid = 500;
+  const double offset = 12.5;
+  double cube_corners[8][3] = {{mid - offset, mid - offset, mid - offset},
+                               {mid - offset, mid - offset, mid + offset},
+                               {mid - offset, mid + offset, mid - offset},
+                               {mid - offset, mid + offset, mid + offset},
+                               {mid + offset, mid - offset, mid - offset},
+                               {mid + offset, mid - offset, mid + offset},
+                               {mid + offset, mid + offset, mid - offset},
+                               {mid + offset, mid + offset, mid + offset}};
 
-  /* Define the zoom particles by sampling from a normal distribution. */
-  for (size_t i = 0; i < s->nr_gparts; i++) {
-    gparts[i].x[0] =
-        generate_gaussian_coordinate(s->dim[0] / 2, zoom_width, 100);
-    gparts[i].x[1] =
-        generate_gaussian_coordinate(s->dim[1] / 2, zoom_width, 100);
-    gparts[i].x[2] =
-        generate_gaussian_coordinate(s->dim[2] / 2, zoom_width, 100);
-    gparts[i].type = swift_type_dark_matter;
-    gparts[i].mass = 1.0;
+  /* Loop over the cell grids making a background particle per cell. */
+  int gpart_count = 0;
+  const double bkg_width = 100;
+  const double buffer_width = 20;
+  const double zoom_width = 2.5;
+  const double buffer_lower[3] = {400, 400, 400};
+  const double zoom_lower[3] = {480, 480, 480};
+  for (int i = 0; i < 10; i++) {
+    for (int j = 0; j < 10; j++) {
+      for (int k = 0; k < 10; k++) {
+        gparts[gpart_count].mass = 1.0;
+
+        /* Set background particles to be at the center of the cell. */
+        gparts[gpart_count].x[0] = bkg_width * (i + 0.5);
+        gparts[gpart_count].x[1] = bkg_width * (j + 0.5);
+        gparts[gpart_count].x[2] = bkg_width * (k + 0.5);
+        gparts[gpart_count++].type = swift_type_dark_matter_background;
+      }
+    }
+  }
+  for (int i = 0; i < 10; i++) {
+    for (int j = 0; j < 10; j++) {
+      for (int k = 0; k < 10; k++) {
+        gparts[gpart_count].mass = 1.0;
+
+        /* Set buffer particles to be at the center of the cell. */
+        gparts[gpart_count].x[0] = (buffer_width * (i + 0.5)) + buffer_lower[0];
+        gparts[gpart_count].x[1] = (buffer_width * (j + 0.5)) + buffer_lower[1];
+        gparts[gpart_count].x[2] = (buffer_width * (k + 0.5)) + buffer_lower[2];
+        gparts[gpart_count++].type = swift_type_dark_matter_background;
+      }
+    }
+  }
+  for (int i = 0; i < 16; i++) {
+    for (int j = 0; j < 16; j++) {
+      for (int k = 0; k < 16; k++) {
+        gparts[gpart_count].mass = 1.0;
+
+        /* Set zoom particles to be at the center of the cell. */
+        gparts[gpart_count].x[0] = (zoom_width * (i + 0.5)) + zoom_lower[0];
+        gparts[gpart_count].x[1] = (zoom_width * (j + 0.5)) + zoom_lower[1];
+        gparts[gpart_count].x[2] = (zoom_width * (k + 0.5)) + zoom_lower[2];
+        gparts[gpart_count++].type = swift_type_dark_matter_background;
+      }
+    }
+  }
+
+  /* Make a zoom particle in each corner to define the zoom region. */
+  for (size_t i = 0; i < 8; i++) {
+    gparts[gpart_count].mass = 1.0;
+
+    /* Set zoom region particles to be at the corners of the region. */
+    gparts[gpart_count].x[0] = cube_corners[i][0];
+    gparts[gpart_count].x[1] = cube_corners[i][1];
+    gparts[gpart_count].x[2] = cube_corners[i][2];
+    gparts[gpart_count++].type = swift_type_dark_matter;
   }
 
   s->gparts = gparts;
-
-  /* Set up the zoom region properties. */
-  s->zoom_props = (struct zoom_region_properties *)malloc(
-      sizeof(struct zoom_region_properties));
-  struct zoom_region_properties *zoom_props = s->zoom_props;
-  zoom_props->region_lower_bounds[0] = s->dim[0] / 2 - 50;
-  zoom_props->region_lower_bounds[1] = s->dim[1] / 2 - 50;
-  zoom_props->region_lower_bounds[2] = s->dim[2] / 2 - 50;
-  zoom_props->region_upper_bounds[0] = s->dim[0] / 2 + 50;
-  zoom_props->region_upper_bounds[1] = s->dim[1] / 2 + 50;
-  zoom_props->region_upper_bounds[2] = s->dim[2] / 2 + 50;
-  zoom_props->dim[0] = 100;
-  zoom_props->dim[1] = 100;
-  zoom_props->dim[2] = 100;
-  zoom_props->cdim[0] = 4;
-  zoom_props->cdim[1] = 4;
-  zoom_props->cdim[2] = 4;
-  zoom_props->width[0] = 100 / 4;
-  zoom_props->width[1] = 100 / 4;
-  zoom_props->width[2] = 100 / 4;
-  zoom_props->nr_zoom_cells =
-      zoom_props->cdim[0] * zoom_props->cdim[1] * zoom_props->cdim[2];
-  zoom_props->zoom_cell_depth = 1;
-  zoom_props->nr_bkg_cells = 1;
-  zoom_props->nr_buffer_cells = 0;
-  zoom_props->with_buffer_cells = 0;
-  zoom_props->bkg_cell_offset = zoom_props->nr_zoom_cells;
-
-  /* We have nr_zoom_cells zoom cells and 1 background cell. */
-  s->nr_cells = zoom_props->nr_zoom_cells + 1;
-
-  /* Allocate the cells. */
-  make_mock_cells(s);
 
   /* Allocate sub cells and multipoles. */
   s->cells_sub = (struct cell **)calloc(2, sizeof(struct cell *));
   s->multipoles_sub =
       (struct gravity_tensors **)calloc(2, sizeof(struct gravity_tensors *));
+}
+
+void associate_gparts_to_cells(struct space *s) {
+  for (size_t i = 0; i < s->nr_gparts; i++) {
+    struct gpart *gpart = &s->gparts[i];
+
+    int cid = cell_getid_from_pos(s, gpart->x[0], gpart->x[1], gpart->x[2]);
+
+    struct cell *c = &s->cells_top[cid];
+    if (c == NULL) {
+      error("Failed to find cell for gpart.");
+    }
+    c->grav.count++;
+  }
 }
 
 void test_cell_tree(struct cell *c, struct space *s) {
@@ -187,8 +158,7 @@ void test_cell_tree(struct cell *c, struct space *s) {
     for (int i = 0; i < 8; i++) {
       assert(c->progeny[i]->void_parent != NULL);
       assert(c->progeny[i]->void_parent->subtype == cell_subtype_void);
-      assert(c->progeny[i]->type == cell_type_zoom ||
-             c->progeny[i]->type == cell_type_buffer);
+      assert(c->progeny[i]->type == cell_type_zoom);
     }
 
     /* NOTE: zoom_void_space_split contains a lot of its own checks so this
@@ -211,11 +181,6 @@ int main(int argc, char *argv[]) {
   feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW);
 #endif
 
-  /* Get some randomness going */
-  const int seed = time(NULL);
-  message("Seed = %d", seed);
-  srand(seed);
-
   /* Create a structure to read file into. */
   struct swift_params param_file;
 
@@ -229,8 +194,20 @@ int main(int argc, char *argv[]) {
   bzero(s, sizeof(struct space));
   make_mock_space(s);
 
+  /* Flag that we are running a zoom. */
+  s->with_zoom_region = 1;
+
+  /* Run the zoom_init function. */
+  zoom_props_init(&param_file, s, /*verbose*/ 0);
+
+  /* Run the regridding. */
+  space_regrid(s, /*verbose*/ 0);
+
+  /* Associate gparts. */
+  associate_gparts_to_cells(s);
+
   /* Construct the void cell tree. */
-  zoom_void_space_split(s, /*verbose*/ 1);
+  zoom_void_space_split(s, /*verbose*/ 0);
 
   /* Test the cell tree. */
   for (int cid = 0; cid < s->nr_cells; cid++) {
