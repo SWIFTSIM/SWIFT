@@ -38,6 +38,7 @@ Scheduler:
   dependency_graph_frequency: 1  # (Optional) Dumping frequency of the dependency graph. By default, writes only at the first step.
   mpi_message_limit:          4 #Default: 4
   dependency_graph_cell:      0
+  links_per_tasks:           30
 
 # Parameters governing the conserved quantities statistics
 Statistics:
