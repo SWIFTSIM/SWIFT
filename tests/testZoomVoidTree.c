@@ -102,37 +102,6 @@ void make_mock_space(struct space *s) {
       (struct gravity_tensors **)calloc(2, sizeof(struct gravity_tensors *));
 }
 
-void associate_gparts_to_cells(struct space *s) {
-  for (size_t i = 0; i < s->nr_gparts; i++) {
-    struct gpart *gpart = &s->gparts[i];
-
-    int cid = cell_getid_from_pos(s, gpart->x[0], gpart->x[1], gpart->x[2]);
-
-    struct cell *c = &s->cells_top[cid];
-    if (c == NULL) {
-      error("Failed to find cell for gpart.");
-    }
-    c->grav.count++;
-  }
-
-  /* Now actually allocate the gparts to the cells. */
-  for (int i = 0; i < s->nr_cells; i++) {
-    struct cell *c = &s->cells_top[i];
-    if (c->grav.count > 0) {
-      c->grav.parts = malloc(c->grav.count * sizeof(struct gpart *));
-      c->grav.count = 0;
-    }
-  }
-
-  /* And finally attach the gparts to the cells. */
-  for (size_t i = 0; i < s->nr_gparts; i++) {
-    struct gpart *gpart = &s->gparts[i];
-    int cid = cell_getid_from_pos(s, gpart->x[0], gpart->x[1], gpart->x[2]);
-    struct cell *c = &s->cells_top[cid];
-    c->grav.parts[c->grav.count++] = *gpart;
-  }
-}
-
 void test_cell_tree(struct cell *c, struct space *s) {
 
   /* Recurse if the the cell is split. */
@@ -200,9 +169,6 @@ int main(int argc, char *argv[]) {
 
   /* Run the regridding. */
   space_rebuild(s, /*repartitioned*/ 0, /*verbose*/ 1);
-
-  /* Associate gparts. */
-  associate_gparts_to_cells(s);
 
   /* Construct the void cell tree. */
   zoom_void_space_split(s, /*verbose*/ 1);
