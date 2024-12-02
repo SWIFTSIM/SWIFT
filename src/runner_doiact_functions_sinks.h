@@ -37,6 +37,7 @@ void DOSELF1_SINKS(struct runner *r, struct cell *c, int timer) {
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
   const int with_cosmology = e->policy & engine_policy_cosmology;
+  const int si_is_local = 1; /* SELF tasks are always local */
 
   /* Anything to do here? */
   if (c->sinks.count == 0) return;
@@ -91,6 +92,9 @@ void DOSELF1_SINKS(struct runner *r, struct cell *c, int timer) {
 #endif
 
         if (r2 < ri2) {
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_SWALLOW)
+	  if (si_is_local)
+#endif
           IACT_SINKS_GAS(r2, dx, ri, hj, si, pj, with_cosmology, cosmo,
                          e->gravity_properties, e->sink_properties,
                          e->ti_current, e->time);
@@ -148,9 +152,11 @@ void DOSELF1_SINKS(struct runner *r, struct cell *c, int timer) {
 #endif
 
       if (r2 < ri2 || r2 < rj2) {
-        IACT_SINKS_SINK(r2, dx, ri, rj, si, sj, with_cosmology, cosmo,
-                        e->gravity_properties, e->sink_properties,
-                        e->ti_current, e->time);
+	if (si_is_local) {
+	  IACT_SINKS_SINK(r2, dx, ri, rj, si, sj, with_cosmology, cosmo,
+			  e->gravity_properties, e->sink_properties,
+			  e->ti_current, e->time);
+	}
       }
     } /* loop over the sinks in ci. */
   } /* loop over the sinks in ci. */
@@ -179,6 +185,7 @@ void DO_NONSYM_PAIR1_SINKS_NAIVE(struct runner *r, struct cell *restrict ci,
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
   const int with_cosmology = e->policy & engine_policy_cosmology;
+  const int si_is_local = ci->nodeID == e->nodeID;
 
   /* Anything to do here? */
   if (ci->sinks.count == 0) return;
@@ -242,6 +249,9 @@ void DO_NONSYM_PAIR1_SINKS_NAIVE(struct runner *r, struct cell *restrict ci,
 #endif
 
         if (r2 < ri2) {
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_SWALLOW)
+	  if (si_is_local)
+#endif
           IACT_SINKS_GAS(r2, dx, ri, hj, si, pj, with_cosmology, cosmo,
                          e->gravity_properties, e->sink_properties,
                          e->ti_current, e->time);
@@ -299,9 +309,11 @@ void DO_NONSYM_PAIR1_SINKS_NAIVE(struct runner *r, struct cell *restrict ci,
 #endif
 
       if (r2 < ri2 || r2 < rj2) {
+	if (si_is_local) {
         IACT_SINKS_SINK(r2, dx, ri, rj, si, sj, with_cosmology, cosmo,
                         e->gravity_properties, e->sink_properties,
                         e->ti_current, e->time);
+	}
       }
     } /* loop over the sinks in cj. */
   } /* loop over the sinks in ci. */
