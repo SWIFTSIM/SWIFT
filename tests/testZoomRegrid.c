@@ -42,7 +42,7 @@ void make_mock_space(struct space *s) {
 
   /* Define the gpart count (this is a background particle per cell + the 8
    * corner high res particles used to define the region.) */
-  s->nr_gparts = (2 * 10 * 10 * 10) + (16 * 16 * 16) + 8;
+  s->nr_gparts = (2 * 16 * 16 * 16) + (16 * 16 * 16) + 8;
 
   /* We need the engine to be NULL for the logic. */
   s->e = NULL;
@@ -172,10 +172,10 @@ int main(int argc, char *argv[]) {
   s->with_zoom_region = 1;
 
   /* Run the zoom_init function. */
-  zoom_props_init(&param_file, s, /*verbose*/ 0);
+  zoom_props_init(&param_file, s, /*verbose*/ 1);
 
   /* Run the regridding. */
-  space_regrid(s, /*verbose*/ 0);
+  space_regrid(s, /*verbose*/ 1);
 
   /* Associate gparts. */
   associate_gparts_to_cells(s);
