@@ -105,6 +105,14 @@ GEARSink:
   sink_formation_overlapping_sink_criterion: 1    # (Optional) Activate the overlapping sink check for sink formation. (Default: 1)
   disable_sink_formation: 0                       # (Optional) Disable sink formation. (Default: 0)
 
+  # Timesteps parameters
+  CFL_condition:                        0.5       # Courant-Friedrich-Levy condition for time integration.
+  timestep_age_threshold_unlimited_Myr: 100.      # (Optional) Age above which sinks have no time-step restriction any more (in Mega-years). Defaults to 0.
+  timestep_age_threshold_Myr:           25.       # (Optional) Age at which sink switch from young to old for time-stepping purposes (in Mega-years). Defaults to FLT_MAX.
+  max_timestep_young_Myr:               0.5       # (Optional) Maximal time-step length of young sinks (in Mega-years). Defaults to FLT_MAX.
+  max_timestep_old_Myr:                  1.       # (Optional) Maximal time-step length of old sinks (in Mega-years). Defaults to FLT_MAX.
+  n_IMF:                                 2.       # (Optional) Number of times the IMF mass can be swallowed in a single timestep. (Default: FLTM_MAX)
+
 GEARFeedback:
   supernovae_energy_erg: 1e51
   supernovae_efficiency: 0.1

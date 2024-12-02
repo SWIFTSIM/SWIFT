@@ -30,10 +30,22 @@
 /**
  * @brief Computes the time-step of a given sink particle.
  *
- * @param sp Pointer to the sink-particle data.
+ * Note: In the Default sink, no time-step limit is applied.
+ *
+ * @param sink Pointer to the sink-particle data.
+ * @param sink_properties Properties of the sink model.
+ * @param with_cosmology Are we running with cosmological time integration.
+ * @param cosmo The current cosmological model (used if running with
+ * cosmology).
+ * @param grav_props The current gravity properties.
+ * @param time The current time (used if running without cosmology).
+ * @param time_base The time base.
  */
 __attribute__((always_inline)) INLINE static float sink_compute_timestep(
-    const struct sink* const sp) {
+    const struct sink* const sink, const struct sink_props* sink_properties,
+    const int with_cosmology, const struct cosmology* cosmo,
+    const struct gravity_props* grav_props, const double time,
+    const double time_base) {
 
   return FLT_MAX;
 }
@@ -372,7 +384,8 @@ INLINE static void sink_prepare_part_sink_formation_gas_criteria(
  */
 INLINE static void sink_prepare_part_sink_formation_sink_criteria(
     struct engine* e, struct part* restrict p, struct xpart* restrict xp,
-    struct sink* restrict si, const struct cosmology* cosmo,
-    const struct sink_props* sink_props) {}
+    struct sink* restrict si, const int with_cosmology,
+    const struct cosmology* cosmo, const struct sink_props* sink_props,
+    const double time) {}
 
 #endif /* SWIFT_DEFAULT_SINK_H */
