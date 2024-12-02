@@ -51,9 +51,6 @@ void make_mock_space(struct space *s) {
   /* The simulation is periodic */
   s->periodic = 1;
 
-  /* Turn on gravity. */
-  s->with_self_gravity = 1;
-
   /* Define the gpart count (1000 high and 1000 low resolution) + every
    * background cell gets 1. */
   s->nr_gparts = 2 * 10000;
