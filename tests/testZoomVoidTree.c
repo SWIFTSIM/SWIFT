@@ -51,6 +51,9 @@ void make_mock_space(struct space *s) {
   /* The simulation is periodic */
   s->periodic = 1;
 
+  /* We're doing gravity. */
+  s->with_self_gravity = 1;
+
   /* Define the gpart count (100 high and 100 low resolution) */
   s->nr_gparts = 100 + 100;
 
@@ -96,13 +99,6 @@ void make_mock_space(struct space *s) {
   s->cells_sub = (struct cell **)calloc(2, sizeof(struct cell *));
   s->multipoles_sub =
       (struct gravity_tensors **)calloc(2, sizeof(struct gravity_tensors *));
-
-  /* Allocate and attach the top level multipoles too. */
-  s->multipoles_top = (struct gravity_tensors *)calloc(
-      s->nr_cells, sizeof(struct gravity_tensors));
-  for (int i = 0; i < s->nr_cells; i++) {
-    s->cells_top[i].grav.multipole = &s->multipoles_top[i];
-  }
 }
 
 void associate_gparts_to_cells(struct space *s) {
