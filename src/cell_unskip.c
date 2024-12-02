@@ -2920,11 +2920,11 @@ int cell_unskip_black_holes_tasks(struct cell *c, struct scheduler *s) {
 int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
 
   struct engine *e = s->space->e;
-#ifdef WITH_MPI
-  const int with_sinks = (e->policy & engine_policy_sinks);
-  const int with_stars = (e->policy & engine_policy_stars);
-  const int with_star_formation_sink = with_sinks && with_stars;
-#endif
+/* #ifdef WITH_MPI */
+  /* const int with_sinks = (e->policy & engine_policy_sinks); */
+  /* const int with_stars = (e->policy & engine_policy_stars); */
+  /* const int with_star_formation_sink = with_sinks && with_stars; */
+/* #endif */
   const int with_timestep_sync = (e->policy & engine_policy_timestep_sync);
   const int with_feedback = e->policy & engine_policy_feedback;
   const int nodeID = e->nodeID;
@@ -3009,7 +3009,126 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
         scheduler_activate(s, cj->hydro.super->sinks.sink_ghost1);
 
 #ifdef WITH_MPI
+      /* Activate the send/recv tasks. */
+      if (ci_nodeID != nodeID) {
 
+	if ((ci_active || cj_active)) {
+	  /* We must exchange the foreign sinks no matter the activity status */
+	  scheduler_activate_recv(s, ci->mpi.recv, task_subtype_sink_rho);
+	  scheduler_activate_send(s, cj->mpi.send, task_subtype_sink_rho,
+				  ci_nodeID);
+
+	  /* Drift before you send */
+	  cell_activate_drift_sink(cj, s);
+	}
+
+	if (cj_active) {
+
+	  /* Receive the foreign parts to compute sink properties and do
+	   * the swallowing */
+	  scheduler_activate_recv(s, ci->mpi.recv, task_subtype_rho);
+	  scheduler_activate_recv(s, ci->mpi.recv, task_subtype_sink_gas_swallow);
+	  scheduler_activate_recv(s, ci->mpi.recv, task_subtype_sink_merger);
+
+	  /* We don't send any sink so we don't need to drift. */
+	}
+
+	if (ci_active) {
+
+	  /* Send the local part information */
+	  scheduler_activate_send(s, cj->mpi.send, task_subtype_rho, ci_nodeID);
+	  scheduler_activate_send(s, cj->mpi.send, task_subtype_sink_gas_swallow,
+				  ci_nodeID);
+	  scheduler_activate_send(s, cj->mpi.send, task_subtype_sink_merger,
+				  ci_nodeID);
+
+	  /* Drift the cell which will be sent; note that not all sent
+	     particles will be drifted, only those that are needed. */
+	  if (cj->hydro.count > 0) cell_activate_drift_part(cj, s);
+	}
+
+	/* TODO: implement sink_formation_counts + same for gravity */
+	/* if (ci_active && ci->hydro.count > 0) { */
+	/*   scheduler_activate_recv(s, ci->mpi.recv, task_subtype_sink_formation_counts); */
+	/* } */
+	/* if (cj_active && cj->hydro.count > 0) { */
+	/*   scheduler_activate_send(s, cj->mpi.send, task_subtype_sink_formation_counts, */
+	/* 			  ci_nodeID); */
+	/* } */
+
+	/* TODO: implement sf_sink_counts + same for gravity */
+	/* Propagating new star counts? */
+	/* if (with_star_formation_sink) { */
+	/*   /\* Why not cj->sinks.count instead? If the other node does not have */
+	/*      any sink, we do not need to receive anything *\/ */
+        /*   if (ci_active && (ci->hydro.count > 0 || ci->sinks.count > 0)) { */
+        /*     scheduler_activate_recv(s, ci->mpi.recv, task_subtype_sf_counts); */
+        /*   } */
+        /*   if (cj_active && (cj->hydro.count > 0 || cj->sinks.count > 0)) { */
+        /*     scheduler_activate_send(s, cj->mpi.send, task_subtype_sf_counts, */
+        /*                             ci_nodeID); */
+        /*   } */
+	/* } */
+
+      } else if (cj_nodeID != nodeID) {
+
+	if ((ci_active || cj_active)) {
+	  /* We must exchange the foreign sinks no matter the activity status */
+	  scheduler_activate_recv(s, cj->mpi.recv, task_subtype_sink_rho);
+	  scheduler_activate_send(s, ci->mpi.send, task_subtype_sink_rho,
+				  cj_nodeID);
+
+	  /* Drift before you send */
+	  cell_activate_drift_sink(ci, s);
+	}
+
+	/* Think carefully if we need the ci or cj count */
+	if (ci_active) {
+
+	  /* Receive the foreign parts to compute sink properties and do
+	   * the swallowing */
+	  scheduler_activate_recv(s, cj->mpi.recv, task_subtype_rho);
+	  scheduler_activate_recv(s, cj->mpi.recv, task_subtype_sink_gas_swallow);
+	  scheduler_activate_recv(s, cj->mpi.recv, task_subtype_sink_merger);
+
+	  /* We don't send any sink so we don't need to drift. */
+	}
+
+	if (cj_active) {
+
+	  /* Send the local part information */
+	  scheduler_activate_send(s, ci->mpi.send, task_subtype_rho, cj_nodeID);
+	  scheduler_activate_send(s, ci->mpi.send, task_subtype_sink_gas_swallow,
+				  cj_nodeID);
+	  scheduler_activate_send(s, ci->mpi.send, task_subtype_sink_merger,
+				  cj_nodeID);
+
+	  /* Drift the cell which will be sent; note that not all sent
+	     particles will be drifted, only those that are needed. */
+	  if (ci->hydro.count > 0) cell_activate_drift_part(ci, s);
+	}
+
+	/* TODO: implement sink_formation_counts + same for gravity */
+	/* if (cj_active && cj->hydro.count > 0) { */
+	/*   scheduler_activate_recv(s, cj->mpi.recv, task_subtype_sink_formation_counts); */
+	/* } */
+	/* if (ci_active && ci->hydro.count > 0) { */
+	/*   scheduler_activate_send(s, ci->mpi.send, task_subtype_sink_formation_counts, */
+	/* 			  cj_nodeID); */
+	/* } */
+
+	/* TODO: implement sf_sink_counts + same for gravity */
+	/* Propagating new star counts? */
+        /* if (with_star_formation_sink) { */
+        /*   if (cj_active && (cj->hydro.count > 0 || cj->sinks.count > 0)) { */
+        /*     scheduler_activate_recv(s, cj->mpi.recv, task_subtype_sf_counts); */
+        /*   } */
+        /*   if (ci_active && (ci->hydro.count > 0 || ci->sinks.count > 0)) { */
+        /*     scheduler_activate_send(s, ci->mpi.send, task_subtype_sf_counts, */
+        /*                             cj_nodeID); */
+        /*   } */
+        /* } */
+      }
 #endif /* WITH_MPI */
     }
   }
