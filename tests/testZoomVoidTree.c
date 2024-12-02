@@ -179,16 +179,16 @@ int main(int argc, char *argv[]) {
   s->with_zoom_region = 1;
 
   /* Run the zoom_init function. */
-  zoom_props_init(&param_file, s, /*verbose*/ 0);
+  zoom_props_init(&param_file, s, /*verbose*/ 1);
 
   /* Run the regridding. */
-  space_regrid(s, /*verbose*/ 0);
+  space_regrid(s, /*verbose*/ 1);
 
   /* Associate gparts. */
   associate_gparts_to_cells(s);
 
   /* Construct the void cell tree. */
-  zoom_void_space_split(s, /*verbose*/ 0);
+  zoom_void_space_split(s, /*verbose*/ 1);
 
   /* Test the cell tree. */
   for (int cid = 0; cid < s->nr_cells; cid++) {
