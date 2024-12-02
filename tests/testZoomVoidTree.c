@@ -152,7 +152,7 @@ void make_mock_space(struct space *s) {
   zoom_props->width[2] = 100 / 4;
   zoom_props->nr_zoom_cells =
       zoom_props->cdim[0] * zoom_props->cdim[1] * zoom_props->cdim[2];
-  zoom_props->zoom_cell_depth = 2;
+  zoom_props->zoom_cell_depth = 1;
   zoom_props->nr_bkg_cells = 1;
   zoom_props->nr_buffer_cells = 0;
   zoom_props->with_buffer_cells = 0;
