@@ -200,7 +200,8 @@ sink_collect_properties_from_sink(const float r2, const float dx[3],
   const float eps_inv = 1.f / eps;
   const float eps_inv3 = eps_inv * eps_inv * eps_inv;
 
-  /* Compute the kernel potential and force */
+  /* Compute the kernel potential and force with mass = 1.0. We multiply by
+     the mass below if needed. */
   float dphi_dr, pot;
   runner_iact_grav_pp_full(r2, eps2, eps_inv, eps_inv3, 1.0, &dphi_dr, &pot);
 
