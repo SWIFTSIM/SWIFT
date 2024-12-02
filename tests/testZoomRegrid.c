@@ -81,6 +81,7 @@ void make_mock_space(struct space *s) {
     gparts[i].x[1] = generate_gaussian_coordinate(s->dim[1] / 2, zoom_width);
     gparts[i].x[2] = generate_gaussian_coordinate(s->dim[2] / 2, zoom_width);
     gparts[i].type = swift_type_dark_matter;
+    gparts[i].mass = 1.0;
   }
 
   s->gparts = gparts;
