@@ -198,7 +198,7 @@ void runner_do_cooling(struct runner *r, struct cell *c, int timer) {
  */
 void runner_do_star_formation_sink(struct runner *r, struct cell *c,
                                    int timer) {
-#ifdef SWIFT_DEBUG_CHECKS_MPI_DOMAIN_DECOMPOSITION
+#if defined(SWIFT_DEBUG_CHECKS_MPI_DOMAIN_DECOMPOSITION) || defined(WITH_PI)
   return;
 #endif
 
@@ -570,7 +570,8 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
  */
 void runner_do_sink_formation(struct runner *r, struct cell *c) {
 
-#ifdef SWIFT_DEBUG_CHECKS_MPI_DOMAIN_DECOMPOSITION
+  /* Disable sink formation with MPI for now */
+#if defined(SWIFT_DEBUG_CHECKS_MPI_DOMAIN_DECOMPOSITION) || defined(WITH_PI)
   return;
 #endif
 
