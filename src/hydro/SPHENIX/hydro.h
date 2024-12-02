@@ -40,6 +40,7 @@
 #include "kernel_hydro.h"
 #include "minmax.h"
 #include "pressure_floor.h"
+#include "timestep_sync_part.h"
 
 #include <float.h>
 
@@ -1121,7 +1122,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     struct part *restrict p, struct xpart *restrict xp, float dt_therm,
     float dt_grav, float dt_grav_mesh, float dt_hydro, float dt_kick_corr,
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
-    const struct entropy_floor_properties *floor_props) {
+    const struct entropy_floor_properties *floor_props, const double time) {
 
   /* Integrate the internal energy forward in time */
   const float delta_u = p->u_dt * dt_therm;
@@ -1144,6 +1145,65 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     xp->u_full = energy_min;
     p->u_dt = 0.f;
   }
+
+  // only kick the particle if it hasn't yet been launched, and if it is time to kick it //
+  // max particle ID we should be kicking by now //
+  const float max_id = (hydro_props->jet_power * time) / (0.5 * p->mass * hydro_props->jet_velocity * hydro_props->jet_velocity);
+  if (p->id < max_id) {
+
+    // particle position relative to the box centre
+    double delta_x = (p->x[0] - hydro_props->box_aspect_ratio * hydro_props->box_size / 2.f);
+    double delta_y = (p->x[1] - hydro_props->box_aspect_ratio * hydro_props->box_size / 2.f);
+    double delta_z = (p->x[2] - hydro_props->box_size / 2.f);
+
+    // cylindrical and spherical radius
+    double r = sqrtf(delta_x * delta_x + delta_y * delta_y);
+    double R = sqrtf(delta_x * delta_x + delta_y * delta_y + delta_z * delta_z);
+
+    // angle position in the x-y plane
+    double phi = 0.f;
+    if (delta_y > 0.0001f) {
+      phi = acos(fmaxf(-1.0f, fminf(1.0f, delta_x / r)));
+    } else if (delta_y < 0.0001f) {
+      phi = -1.f * acos(fmaxf(-1.0f, fminf(1.0f, delta_x / r)));
+    } else {
+      if (delta_x > 0.f) {
+        phi = 0.f;
+      } else {
+        phi = M_PI;
+      }
+    }
+
+    // cosine and sine of particle position with respect to z axis
+    double cos_theta = delta_z / R;
+    double sin_theta = fmaxf(0.f, sqrtf(1.f - cos_theta * cos_theta));
+
+    // assign velocity to be given. We do a radial kick from the origin
+    float vel_kick_vec[3];
+    vel_kick_vec[0] = hydro_props->jet_velocity * sin_theta *  cos(phi);
+    vel_kick_vec[1] = hydro_props->jet_velocity * sin_theta *  sin(phi);
+    vel_kick_vec[2] = hydro_props->jet_velocity * cos_theta;
+
+    p->v[0] = vel_kick_vec[0];
+    p->v[1] = vel_kick_vec[1];
+    p->v[2] = vel_kick_vec[2];
+    xp->v_full[0] = vel_kick_vec[0];
+    xp->v_full[1] = vel_kick_vec[1];
+    xp->v_full[2] = vel_kick_vec[2];
+
+    // reset some hydro quantities
+    hydro_diffusive_feedback_reset(p);
+
+    // recompute the signal velocity of the particle
+    hydro_set_v_sig_based_on_velocity_kick(p, cosmo, hydro_props->jet_velocity);
+
+    // synchronize the particle on the time-line
+    timestep_sync_part(p);
+
+    // increase the particle's id so it's no longer ever kicked
+    p->id += 1e7;
+  }
+    
 }
 
 /**

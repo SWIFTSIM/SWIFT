@@ -211,6 +211,13 @@ void hydro_props_init(struct hydro_props *p,
     p->log_extra_splits_in_file = parser_get_opt_param_int(
         params, "SPH:particle_splitting_log_extra_splits", 0);
   }
+
+  p->box_size = parser_get_param_float(params, "SPH:box_size");
+  p->box_aspect_ratio = parser_get_param_float(params, "SPH:box_aspect_ratio");
+  p->jet_power = parser_get_param_float(params, "SPH:jet_power");
+  p->jet_velocity = parser_get_param_float(params, "SPH:jet_velocity");
+  p->jet_duration = parser_get_param_float(params, "SPH:jet_duration");
+    
 }
 
 /**
