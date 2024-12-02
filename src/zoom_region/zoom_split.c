@@ -334,13 +334,15 @@ void zoom_void_space_split(struct space *s, int verbose) {
 
   /* Ensure all buffer cells are linked into the tree. */
   int notlinked = 0;
-  for (int k = s->zoom_props->buffer_cell_offset;
-       k < s->zoom_props->buffer_cell_offset + s->zoom_props->nr_buffer_cells;
-       k++) {
-    if (cells_top[k].void_parent == NULL) notlinked++;
+  if (s->zoom_props->with_buffer_cells) {
+    for (int k = s->zoom_props->buffer_cell_offset;
+         k < s->zoom_props->buffer_cell_offset + s->zoom_props->nr_buffer_cells;
+         k++) {
+      if (cells_top[k].void_parent == NULL) notlinked++;
+    }
+    if (notlinked > 0)
+      error("%d buffer cells are not linked into a void cell tree!", notlinked);
   }
-  if (notlinked > 0)
-    error("%d buffer cells are not linked into a void cell tree!", notlinked);
 
   /* Ensure all zoom cells are linked into the tree. */
   notlinked = 0;
@@ -361,10 +363,13 @@ void zoom_void_space_split(struct space *s, int verbose) {
 
     /* Collect the number of particles in the buffer multipoles. */
     int nr_gparts = 0;
-    for (int k = s->zoom_props->buffer_cell_offset;
-         k < s->zoom_props->buffer_cell_offset + s->zoom_props->nr_buffer_cells;
-         k++) {
-      nr_gparts += s->multipoles_top[k].m_pole.num_gpart;
+    if (s->zoom_props->with_buffer_cells) {
+      for (int k = s->zoom_props->buffer_cell_offset;
+           k <
+           s->zoom_props->buffer_cell_offset + s->zoom_props->nr_buffer_cells;
+           k++) {
+        nr_gparts += s->multipoles_top[k].m_pole.num_gpart;
+      }
     }
 
     /* Check the number of gparts is consistent. */
