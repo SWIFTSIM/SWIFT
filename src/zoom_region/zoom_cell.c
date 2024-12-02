@@ -87,8 +87,7 @@ void zoom_find_void_cells(struct space *s, const int verbose) {
         "found_void_count=%d)",
         target_void_count, zoom_props->nr_void_cells);
 
-  if (verbose)
-    message("Found %d background void cells", zoom_props->nr_void_cells);
+  if (verbose) message("Found %d void cells", zoom_props->nr_void_cells);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check the void cells are in the right place. */
