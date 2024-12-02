@@ -1054,6 +1054,8 @@ void engine_addtasks_recv_rt_advance_cell_time(struct engine *e, struct cell *c,
 /**
  * @brief Add recv tasks for stars pairs to a hierarchy of cells.
  *
+ * @TODO: Add t_sf_sink_counts
+ *
  * @param e The #engine.
  * @param c The foreign #cell.
  * @param t_density The recv_density #task, if it has already been created.
@@ -1065,15 +1067,11 @@ void engine_addtasks_recv_rt_advance_cell_time(struct engine *e, struct cell *c,
 void engine_addtasks_recv_stars(struct engine *e, struct cell *c,
                                 struct task *t_density, struct task *t_prep2,
                                 struct task *t_sf_counts,
+				/* struct task *t_sf_sink_counts, */
                                 struct task *const tend,
-                                const int with_star_formation) {
+                                const int with_star_formation,
+				const int with_star_formation_sink) {
 #ifdef WITH_MPI
-#if !defined(SWIFT_DEBUG_CHECKS)
-  if (e->policy & engine_policy_sinks && e->policy & engine_policy_stars) {
-    error("TODO: Star formation sink over MPI");
-  }
-#endif
-
   struct scheduler *s = &e->sched;
 
   /* Early abort (are we below the level where tasks are)? */
@@ -1086,6 +1084,17 @@ void engine_addtasks_recv_stars(struct engine *e, struct cell *c,
           "Attaching a sf_count task at a non-top level c->depth=%d "
           "c->count=%d",
           c->depth, c->hydro.count);
+#endif
+    t_sf_counts = scheduler_addtask(s, task_type_recv, task_subtype_sf_counts,
+                                    c->mpi.tag, 0, c, NULL);
+  }
+  if (t_sf_counts == NULL && with_star_formation_sink && (c->hydro.count > 0 || c->sinks.count > 0)) {
+#ifdef SWIFT_DEBUG_CHECKS
+    if (c->depth != 0)
+      error(
+          "Attaching a sf_count_sink task at a non-top level c->depth=%d "
+          "c->hydro.count=%d c->sink.count=%d",
+          c->depth, c->hydro.count, c->sinks.count);
 #endif
     t_sf_counts = scheduler_addtask(s, task_type_recv, task_subtype_sf_counts,
                                     c->mpi.tag, 0, c, NULL);
@@ -1116,6 +1125,16 @@ void engine_addtasks_recv_stars(struct engine *e, struct cell *c,
       scheduler_addunlock(s, t_sf_counts, t_prep2);
 #endif
     }
+
+    if (with_star_formation_sink && (c->hydro.count > 0 || c->sinks.count > 0)) {
+
+      /* Receive the stars only once the counts have been received */
+      scheduler_addunlock(s, t_sf_counts, c->stars.sorts);
+      scheduler_addunlock(s, t_sf_counts, t_density);
+#ifdef EXTRA_STAR_LOOPS
+      scheduler_addunlock(s, t_sf_counts, t_prep2);
+#endif
+    }
   }
 
   if (t_density != NULL) {
@@ -1124,6 +1143,10 @@ void engine_addtasks_recv_stars(struct engine *e, struct cell *c,
     engine_addlink(e, &c->mpi.recv, t_prep2);
 #endif
     if (with_star_formation && c->hydro.count > 0) {
+      engine_addlink(e, &c->mpi.recv, t_sf_counts);
+    }
+
+    if (with_star_formation_sink && (c->hydro.count > 0 || c->sinks.count > 0)) {
       engine_addlink(e, &c->mpi.recv, t_sf_counts);
     }
 
@@ -1173,7 +1196,8 @@ void engine_addtasks_recv_stars(struct engine *e, struct cell *c,
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL)
         engine_addtasks_recv_stars(e, c->progeny[k], t_density, t_prep2,
-                                   t_sf_counts, tend, with_star_formation);
+                                   t_sf_counts, tend, with_star_formation,
+				   with_star_formation_sink);
 
 #else
   error("SWIFT was not compiled with MPI support.");
