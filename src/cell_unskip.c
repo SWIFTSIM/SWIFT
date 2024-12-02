@@ -2392,12 +2392,6 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
         (cj != NULL) && cell_need_activating_stars(cj, e, with_star_formation,
                                                    with_star_formation_sink);
 
-#ifdef SWIFT_DEBUG_CHECKS
-    if (with_star_formation_sink) {
-      error("TODO");
-    }
-#endif
-
     if (t->type == task_type_self && ci_active) {
       scheduler_activate(s, t);
     }
@@ -2447,12 +2441,6 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
 #else
     const int ci_nodeID = nodeID;
     const int cj_nodeID = nodeID;
-#endif
-
-#ifdef SWIFT_DEBUG_CHECKS
-    if (with_star_formation_sink) {
-      error("TODO");
-    }
 #endif
 
     const int ci_active = cell_need_activating_stars(ci, e, with_star_formation,
@@ -3000,10 +2988,6 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
          cell neighbour conditions were violated. */
       if (cell_need_rebuild_for_sinks_pair(ci, cj)) rebuild = 1;
       if (cell_need_rebuild_for_sinks_pair(cj, ci)) rebuild = 1;
-
-#if defined(WITH_MPI) && !defined(SWIFT_DEBUG_CHECKS)
-      error("TODO");
-#endif
     }
   }
 
