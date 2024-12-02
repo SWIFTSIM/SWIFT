@@ -1187,7 +1187,19 @@ int engine_estimate_nr_tasks(const struct engine *e) {
     if (e->policy & engine_policy_stars) {
       /* 1 star formation */
       n1 += 1;
+#ifdef WITH_MPI
+      /* sf_count: send and recv              | 2 */
+      n1 += 2;
+#endif
     }
+#ifdef WITH_MPI
+  /* sink_formation_count: send and recv              | 2
+     sink_rho: send and recv                          | 2
+     sink_gas_swallow: send and recv                  | 2
+     sink_merger: send and recv                       | 2 */
+    n1 += 8;
+#endif
+
   }
   if (e->policy & engine_policy_fof) {
     n1 += 2;
