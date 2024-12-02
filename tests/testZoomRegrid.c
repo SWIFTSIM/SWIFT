@@ -77,6 +77,13 @@ void make_mock_space(struct space *s) {
     gparts[i].x[2] = s->dim[2] * ((double)rand() / RAND_MAX) + 1;
     gparts[i].type = swift_type_dark_matter_background;
     gparts[i].mass = 1.0;
+
+    /* Wrap any particles that are out of bounds. */
+    if (s->periodic) {
+      box_wrap(gparts[i].x[0], 0.0, s->dim[0]);
+      box_wrap(gparts[i].x[1], 0.0, s->dim[1]);
+      box_wrap(gparts[i].x[2], 0.0, s->dim[2]);
+    }
   }
 
   /* Define the width of the zoom region (randomly). */
