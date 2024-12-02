@@ -54,8 +54,8 @@ void make_mock_space(struct space *s) {
   /* We're doing gravity. */
   s->with_self_gravity = 1;
 
-  /* Define the gpart count (100 high and 100 low resolution) */
-  s->nr_gparts = 100 + 100;
+  /* Define the gpart count (1000 high and 100 low resolution) */
+  s->nr_gparts = 1000 + 100;
 
   /* We need the engine to be NULL for the logic. */
   s->e = NULL;
@@ -82,7 +82,7 @@ void make_mock_space(struct space *s) {
   message("Zoom width = %f", zoom_width);
 
   /* Define the zoom particles by sampling from a normal distribution. */
-  for (int i = 100; i < 200; i++) {
+  for (int i = 100; i < 1100; i++) {
     gparts[i].x[0] =
         generate_gaussian_coordinate(s->dim[0] / 2, zoom_width, 100);
     gparts[i].x[1] =
@@ -185,6 +185,9 @@ int main(int argc, char *argv[]) {
 
   /* Associate gparts. */
   associate_gparts_to_cells(s);
+
+  /* Split the space. */
+  space_split(s, /*verbose*/ 0);
 
   /* Construct the void cell tree. */
   zoom_void_space_split(s, /*verbose*/ 0);
