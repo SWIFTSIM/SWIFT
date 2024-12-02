@@ -54,8 +54,9 @@ void make_mock_space(struct space *s) {
   /* We're doing gravity. */
   s->with_self_gravity = 1;
 
-  /* Define the gpart count (1000 high and 100 low resolution) */
-  s->nr_gparts = 1000 + 100;
+  /* Define the gpart count (1000 high and 100 low resolution) + every
+   * background cell gets 1. */
+  s->nr_gparts = 1000 + 100 + (16 * 16 * 16);
 
   /* We need the engine to be NULL for the logic. */
   s->e = NULL;
@@ -90,6 +91,18 @@ void make_mock_space(struct space *s) {
     gparts[i].x[2] =
         generate_gaussian_coordinate(s->dim[2] / 2, zoom_width, 100);
     gparts[i].type = swift_type_dark_matter;
+    gparts[i].mass = 1.0;
+  }
+
+  /* Add the background particles so that each cell has one. */
+  for (int i = 1100; i < s->nr_gparts; i++) {
+    int x = (i - 1100) % 16;
+    int y = ((i - 1100) / 16) % 16;
+    int z = (i - 1100) / (16 * 16);
+    gparts[i].x[0] = x * 1000 / 16;
+    gparts[i].x[1] = y * 1000 / 16;
+    gparts[i].x[2] = z * 1000 / 16;
+    gparts[i].type = swift_type_dark_matter_background;
     gparts[i].mass = 1.0;
   }
 
@@ -185,9 +198,6 @@ int main(int argc, char *argv[]) {
 
   /* Associate gparts. */
   associate_gparts_to_cells(s);
-
-  /* Split the space. */
-  space_split(s, /*verbose*/ 0);
 
   /* Construct the void cell tree. */
   zoom_void_space_split(s, /*verbose*/ 0);
