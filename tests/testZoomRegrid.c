@@ -80,17 +80,17 @@ void make_mock_space(struct space *s) {
   }
 
   /* Define the width of the zoom region (randomly). */
-  double zoom_width = 100 * ((double)rand() / RAND_MAX) + 1;
+  double zoom_width = 50 * ((double)rand() / RAND_MAX) + 1;
   message("Zoom width = %f", zoom_width);
 
   /* Define the zoom particles by sampling from a normal distribution. */
   for (int i = 100; i < 200; i++) {
     gparts[i].x[0] =
-        generate_gaussian_coordinate(s->dim[0] / 2, zoom_width, 200);
+        generate_gaussian_coordinate(s->dim[0] / 2, zoom_width, 100);
     gparts[i].x[1] =
-        generate_gaussian_coordinate(s->dim[1] / 2, zoom_width, 200);
+        generate_gaussian_coordinate(s->dim[1] / 2, zoom_width, 100);
     gparts[i].x[2] =
-        generate_gaussian_coordinate(s->dim[2] / 2, zoom_width, 200);
+        generate_gaussian_coordinate(s->dim[2] / 2, zoom_width, 100);
     gparts[i].type = swift_type_dark_matter;
     gparts[i].mass = 1.0;
   }
