@@ -96,6 +96,9 @@ void make_mock_space(struct space *s) {
   s->dim[1] = 1000;
   s->dim[2] = 1000;
 
+  /* Need to flag we are running a zoom. */
+  s->with_zoom_region = 1;
+
   /* The simulation is periodic */
   s->periodic = 1;
 
