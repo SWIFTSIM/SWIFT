@@ -60,7 +60,7 @@ void make_mock_space(struct space *s) {
                                {487.5, 487.5, 512.5}, {487.5, 512.5, 512.5},
                                {512.5, 487.5, 512.5}, {512.5, 512.5, 512.5}};
 
-  /* Loop over the gparts and set up baxckground and zoom particles. */
+  /* Loop over the gparts and set up background and zoom particles. */
   for (size_t i = 0; i < s->nr_gparts; i++) {
     gparts[i].mass = 1.0;
 
