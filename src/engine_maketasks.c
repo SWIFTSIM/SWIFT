@@ -4775,19 +4775,16 @@ void engine_addtasks_recv_mapper(void *map_data, int num_elements,
                                  void *extra_data) {
 
   struct engine *e = (struct engine *)extra_data;
+  const int with_sinks = (e->policy & engine_policy_sinks);
+  const int with_stars = (e->policy & engine_policy_stars);
   const int with_star_formation = (e->policy & engine_policy_star_formation);
+  const int with_star_formation_sink = with_sinks && with_stars;
   const int with_limiter = (e->policy & engine_policy_timestep_limiter);
   const int with_feedback = (e->policy & engine_policy_feedback);
   const int with_black_holes = (e->policy & engine_policy_black_holes);
   const int with_sync = (e->policy & engine_policy_timestep_sync);
   const int with_rt = (e->policy & engine_policy_rt);
   struct cell_type_pair *cell_type_pairs = (struct cell_type_pair *)map_data;
-
-#if defined(WITH_MPI) && !defined(SWIFT_DEBUG_CHECKS)
-  if (e->policy & engine_policy_sinks) {
-    error("TODO: Sink MPI tasks are not implemented yet!");
-  }
-#endif
 
   for (int k = 0; k < num_elements; k++) {
     struct cell *ci = cell_type_pairs[k].ci;
@@ -4848,7 +4845,7 @@ void engine_addtasks_recv_mapper(void *map_data, int num_elements,
     if ((e->policy & engine_policy_feedback) && (type & proxy_cell_type_hydro))
       engine_addtasks_recv_stars(e, ci, /*t_density=*/NULL, /*t_prep2=*/NULL,
                                  /*t_sf_counts=*/NULL, tend,
-                                 with_star_formation);
+                                 with_star_formation, with_star_formation_sink);
 
     /* Add the recv tasks for the cells in the proxy that have a black holes
      * connection. */
@@ -4858,6 +4855,14 @@ void engine_addtasks_recv_mapper(void *map_data, int num_elements,
                                        /*t_swallow=*/NULL,
                                        /*t_gas_swallow=*/NULL,
                                        /*t_feedback=*/NULL, tend);
+
+    /* Add the recv tasks for the cells in the proxy that have a sink connection. */
+    if ((e->policy & engine_policy_sinks) &&
+        (type & proxy_cell_type_hydro))
+      engine_addtasks_recv_sinks(e, ci, /*t_rho=*/NULL,
+				 /*t_sink_merger*/NULL,
+				 /*t_sink_gas_swallow=*/NULL,
+				 /*t_sink_formation_counts=*/NULL, tend);
 
     /* Add the recv tasks for the cells in the proxy that have a gravity
      * connection. */
