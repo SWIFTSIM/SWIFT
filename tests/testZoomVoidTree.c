@@ -91,6 +91,11 @@ void make_mock_space(struct space *s) {
   }
 
   s->gparts = gparts;
+
+  /* Allocate sub cells and multipoles. */
+  s->cells_sub = (struct cell **)calloc(2, sizeof(struct cell *));
+  s->multipoles_sub =
+      (struct gravity_tensors **)calloc(2, sizeof(struct gravity_tensors *));
 }
 
 void associate_gparts_to_cells(struct space *s) {
