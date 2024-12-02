@@ -163,7 +163,6 @@ int main(int argc, char *argv[]) {
 
   struct engine engine;
   engine.s = s;
-  s->e = &engine;
   engine.time = 0.1f;
   engine.ti_current = 0;
   engine.ti_old = 0;
@@ -178,6 +177,9 @@ int main(int argc, char *argv[]) {
 
   /* Run the zoom_init function. */
   zoom_props_init(&param_file, s, /*verbose*/ 1);
+
+  /* Now we can attach the engine. */
+  s->e = &engine;
 
   /* Run the regridding. */
   space_rebuild(s, /*repartitioned*/ 0, /*verbose*/ 1);
