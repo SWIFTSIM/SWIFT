@@ -114,6 +114,23 @@ void associate_gparts_to_cells(struct space *s) {
     }
     c->grav.count++;
   }
+
+  /* Now actually allocate the gparts to the cells. */
+  for (size_t i = 0; i < s->nr_cells; i++) {
+    struct cell *c = &s->cells_top[i];
+    if (c->grav.count > 0) {
+      c->grav.gparts = malloc(c->grav.count * sizeof(struct gpart *));
+      c->grav.count = 0;
+    }
+  }
+
+  /* And finally attach the gparts to the cells. */
+  for (size_t i = 0; i < s->nr_gparts; i++) {
+    struct gpart *gpart = &s->gparts[i];
+    int cid = cell_getid_from_pos(s, gpart->x[0], gpart->x[1], gpart->x[2]);
+    struct cell *c = &s->cells_top[cid];
+    c->grav.gparts[c->grav.count++] = gpart;
+  }
 }
 
 void test_cell_tree(struct cell *c, struct space *s) {
