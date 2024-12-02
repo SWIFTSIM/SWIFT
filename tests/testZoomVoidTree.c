@@ -40,6 +40,56 @@ double generate_gaussian_coordinate(const double mean, const double std,
 
   return z0;
 }
+void make_mock_cells(struct space *s) {
+
+  /* Allocate memory for the cells. */
+  s->cells_top = (struct cell *)malloc(s->nr_cells * sizeof(struct cell));
+
+  /* Set up the top level cells. */
+  for (int i = 0; i < 4; i++) {
+    for (int j = 0; j < 4; j++) {
+      for (int k = 0; k < 4; k++) {
+        struct cell *c = &s->cells_top[i * 16 + j * 4 + k];
+        c->width[0] = s->zoom_props->dim[0] / 4;
+        c->width[1] = s->zoom_props->dim[1] / 4;
+        c->width[2] = s->zoom_props->dim[2] / 4;
+        c->loc[0] = s->zoom_props->region_lower_bounds[0] + i * c->width[0];
+        c->loc[1] = s->zoom_props->region_lower_bounds[1] + j * c->width[1];
+        c->loc[2] = s->zoom_props->region_lower_bounds[2] + k * c->width[2];
+        c->type = cell_type_zoom;
+        c->subtype = cell_subtype_regular;
+        c->split = 0;
+        c->void_parent = NULL;
+        c->progeny = NULL;
+        c->grav.count = 0;
+        c->grav.parts = NULL;
+        c->top = c;
+      }
+    }
+  }
+
+  /* Set up the background cell. */
+  struct cell *c = &s->cells_top[64];
+  c->width[0] = 100;
+  c->width[1] = 100;
+  c->width[2] = 100;
+  c->loc[0] = 450;
+  c->loc[1] = 450;
+  c->loc[2] = 450;
+  c->type = cell_type_background;
+  c->subtype = cell_subtype_void;
+  c->split = 0;
+  c->void_parent = NULL;
+  c->progeny = NULL;
+  c->grav.count = 0;
+  c->grav.parts = NULL;
+  c->top = c;
+
+  /* Flag the void cell indices. */
+  s->zoom_props->void_cell_indices = (int *)malloc(64 * sizeof(int));
+  s->zoom_props->void_cell_indices[0] = 64;
+  s->zoom_props->nr_void_cells = 1;
+}
 
 void make_mock_space(struct space *s) {
 
@@ -51,12 +101,8 @@ void make_mock_space(struct space *s) {
   /* The simulation is periodic */
   s->periodic = 1;
 
-  /* Define the gpart count (1000 high and 1000 low resolution) + every
-   * background cell gets 1. */
-  s->nr_gparts = 2 * 10000;
-
-  /* We need the engine to be NULL for the logic. */
-  s->e = NULL;
+  /* Define the gpart count (we only care about the zoom region) */
+  s->nr_gparts = 10000;
 
   /* Allocate memory for the gparts. */
   struct gpart *gparts = NULL;
@@ -65,15 +111,6 @@ void make_mock_space(struct space *s) {
     error("Failed to allocate memory for gparts");
   }
   bzero(gparts, s->nr_gparts * sizeof(struct gpart));
-
-  /* Randomly place the background particles. */
-  for (int i = 0; i < 10000; i++) {
-    gparts[i].x[0] = s->dim[0] * 0.99 * ((double)rand() / RAND_MAX) + 1;
-    gparts[i].x[1] = s->dim[1] * 0.99 * ((double)rand() / RAND_MAX) + 1;
-    gparts[i].x[2] = s->dim[2] * 0.99 * ((double)rand() / RAND_MAX) + 1;
-    gparts[i].type = swift_type_dark_matter_background;
-    gparts[i].mass = 1.0;
-  }
 
   /* Define the width of the zoom region (randomly). */
   double zoom_width = 50 * ((double)rand() / RAND_MAX) + 1;
@@ -92,6 +129,36 @@ void make_mock_space(struct space *s) {
   }
 
   s->gparts = gparts;
+
+  /* Set up the zoom region properties. */
+  s->zoom_props = (struct zoom_region_properties *)malloc(
+      sizeof(struct zoom_region_properties));
+  struct zoom_region_properties *zoom_props = s->zoom_props;
+  zoom_props->region_lower_bounds[0] = s->dim[0] / 2 - 50;
+  zoom_props->region_lower_bounds[1] = s->dim[1] / 2 - 50;
+  zoom_props->region_lower_bounds[2] = s->dim[2] / 2 - 50;
+  zoom_props->region_upper_bounds[0] = s->dim[0] / 2 + 50;
+  zoom_props->region_upper_bounds[1] = s->dim[1] / 2 + 50;
+  zoom_props->region_upper_bounds[2] = s->dim[2] / 2 + 50;
+  zoom_props->dim[0] = 100;
+  zoom_props->dim[1] = 100;
+  zoom_props->dim[2] = 100;
+  zoom_props->cdim[0] = 4;
+  zoom_props->cdim[1] = 4;
+  zoom_props->cdim[2] = 4;
+  zoom_props->nr_zoom_cells =
+      zoom_props->cdim[0] * zoom_props->cdim[1] * zoom_props->cdim[2];
+  zoom_props->zoom_cell_depth = 2;
+  zoom_props->nr_bkg_cells = 1;
+  zoom_props->nr_buffer_cells = 0;
+  zoom_props->with_buffer_cells = 0;
+  zoom_props->bkg_cell_offset = zoom_props->nr_zoom_cells;
+
+  /* We have nr_zoom_cells zoom cells and 1 background cell. */
+  s->nr_cells = zoom_props->nr_zoom_cells + 1;
+
+  /* Allocate the cells. */
+  make_mock_cells(s);
 
   /* Allocate sub cells and multipoles. */
   s->cells_sub = (struct cell **)calloc(2, sizeof(struct cell *));
@@ -157,15 +224,6 @@ int main(int argc, char *argv[]) {
   struct space *s = malloc(sizeof(struct space));
   bzero(s, sizeof(struct space));
   make_mock_space(s);
-
-  /* Flag that we are running a zoom. */
-  s->with_zoom_region = 1;
-
-  /* Run the zoom_init function. */
-  zoom_props_init(&param_file, s, /*verbose*/ 1);
-
-  /* Run the regridding. */
-  space_rebuild(s, /*repartitioned*/ 0, /*verbose*/ 1);
 
   /* Construct the void cell tree. */
   zoom_void_space_split(s, /*verbose*/ 1);
