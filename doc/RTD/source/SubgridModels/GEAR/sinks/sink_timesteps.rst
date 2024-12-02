@@ -35,9 +35,9 @@ To accurately follow *sink mergers*, we implemented `Grudic et al. (2021) <https
 with
 
 .. math::
-  \quad t_\text{c, min} = \min_{s \neq s'} \frac{\sqrt{ r_{ss'}^2 + \epsilon_{\text{sink}}^2} }{v_{ss'}} \quad \text{and} \quad t_\text{dyn, min} = \min_{s \neq s'} \sqrt{ \frac{(r_{ss'}^2 + \epsilon_\text{sink}^2)^{3/2}}{ G (m_s + m_{s'})}    } \; ,
+  \quad t_\text{c, min} = \min_{s \neq s'} \frac{ |\varphi^{-1}(r_{ss'}, \, H_\text{sink})| }{v_{ss'}} \quad \text{and} \quad t_\text{dyn, min} = \min_{s \neq s'} \sqrt{ \frac{ |\varphi'(r_{ss'}, \, H_\text{sink})|^{-1}} { G (m_s + m_{s'})}    } \; ,
 
-where :math:`r_{ss'}` is the sinks relative separation, :math:`v_{ss'}` the relative velocity, :math:`m_{s}` and :math:`m_{s'}` their masses and :math:`\epsilon_{sink}` is the sink (fixed) gravitational softening.
+where :math:`r_{ss'}` is the sinks relative separation, :math:`v_{ss'}` the relative velocity, :math:`m_{s}` and :math:`m_{s'}` their masses and :math:`H_\text{sink}` is the sink (fixed) gravitational softening. The function :math:`\varphi(r, H)` is the potential corresponding to the Wendland C2 kernel density field (see `Schaller et al. (2024) <https://doi.org/10.1093/mnras/stae922>`_ section 4.1) and  :math:`\varphi'(r, H) \equiv \frac{\mathrm{d} \varphi(r, H)}{\mathrm{d} r}` its derivative.
 
 Timesteps per sink's age categories
 +++++++++++++++++++++++++++++++++++
