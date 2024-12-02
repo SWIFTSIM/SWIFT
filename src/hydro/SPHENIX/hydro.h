@@ -1146,14 +1146,18 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     p->u_dt = 0.f;
   }
 
-  // only kick the particle if it hasn't yet been launched, and if it is time to kick it //
-  // max particle ID we should be kicking by now //
-  const float max_id = (hydro_props->jet_power * time) / (0.5 * p->mass * hydro_props->jet_velocity * hydro_props->jet_velocity);
+  // only kick the particle if it hasn't yet been launched, and if it is time to
+  // kick it // max particle ID we should be kicking by now //
+  const float max_id =
+      (hydro_props->jet_power * time) /
+      (0.5 * p->mass * hydro_props->jet_velocity * hydro_props->jet_velocity);
   if (p->id < max_id) {
 
     // particle position relative to the box centre
-    double delta_x = (p->x[0] - hydro_props->box_aspect_ratio * hydro_props->box_size / 2.f);
-    double delta_y = (p->x[1] - hydro_props->box_aspect_ratio * hydro_props->box_size / 2.f);
+    double delta_x =
+        (p->x[0] - hydro_props->box_aspect_ratio * hydro_props->box_size / 2.f);
+    double delta_y =
+        (p->x[1] - hydro_props->box_aspect_ratio * hydro_props->box_size / 2.f);
     double delta_z = (p->x[2] - hydro_props->box_size / 2.f);
 
     // cylindrical and spherical radius
@@ -1180,8 +1184,8 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
 
     // assign velocity to be given. We do a radial kick from the origin
     float vel_kick_vec[3];
-    vel_kick_vec[0] = hydro_props->jet_velocity * sin_theta *  cos(phi);
-    vel_kick_vec[1] = hydro_props->jet_velocity * sin_theta *  sin(phi);
+    vel_kick_vec[0] = hydro_props->jet_velocity * sin_theta * cos(phi);
+    vel_kick_vec[1] = hydro_props->jet_velocity * sin_theta * sin(phi);
     vel_kick_vec[2] = hydro_props->jet_velocity * cos_theta;
 
     p->v[0] = vel_kick_vec[0];
@@ -1203,7 +1207,6 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     // increase the particle's id so it's no longer ever kicked
     p->id += 1e7;
   }
-    
 }
 
 /**

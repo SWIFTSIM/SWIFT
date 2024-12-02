@@ -146,7 +146,6 @@ struct hydro_props {
   float jet_power;
   float jet_velocity;
   float jet_duration;
-
 };
 
 void hydro_props_print(const struct hydro_props *p);
