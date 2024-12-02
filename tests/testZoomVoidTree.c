@@ -116,7 +116,7 @@ void associate_gparts_to_cells(struct space *s) {
   }
 
   /* Now actually allocate the gparts to the cells. */
-  for (size_t i = 0; i < s->nr_cells; i++) {
+  for (int i = 0; i < s->nr_cells; i++) {
     struct cell *c = &s->cells_top[i];
     if (c->grav.count > 0) {
       c->grav.parts = malloc(c->grav.count * sizeof(struct gpart *));
@@ -129,7 +129,7 @@ void associate_gparts_to_cells(struct space *s) {
     struct gpart *gpart = &s->gparts[i];
     int cid = cell_getid_from_pos(s, gpart->x[0], gpart->x[1], gpart->x[2]);
     struct cell *c = &s->cells_top[cid];
-    c->grav.parts[c->grav.count++] = gpart;
+    c->grav.parts[c->grav.count++] = &gpart;
   }
 }
 
