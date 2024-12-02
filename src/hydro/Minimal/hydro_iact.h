@@ -386,6 +386,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float c_h_j = sqrtf(pj->force.soundspeed * pj->force.soundspeed +
                             pj->Alfven_speed * pj->Alfven_speed);
 
+  const float balsata_i = pi->force.balsara;
+  const float balsata_j = pj->force.balsara;
+
   /* Compute signal velocity *
    * Price 2018, eq. 41 */
   const float v_sig_i =
@@ -409,8 +412,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   }
   // TODO: cosmo terms!
 
-  const float q_over_rho2_i = q_i / (rhoi * rhoi) * f_ij;
-  const float q_over_rho2_j = q_j / (rhoj * rhoj) * f_ji;
+  const float q_over_rho2_i = balsata_i * q_i / (rhoi * rhoi) * f_ij;
+  const float q_over_rho2_j = balsata_j * q_j / (rhoj * rhoj) * f_ji;
 
   /* Convolve with the kernel
    * (Price 2018, eq. 39) */
