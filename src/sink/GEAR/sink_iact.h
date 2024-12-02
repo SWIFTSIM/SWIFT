@@ -196,14 +196,13 @@ sink_collect_properties_from_sink(const float r2, const float dx[3],
 
   /* Get the gravitional softening */
   const float eps = gravity_get_softening(si->gpart, grav_props);
-  const float eps2 = eps*eps;
+  const float eps2 = eps * eps;
   const float eps_inv = 1.f / eps;
   const float eps_inv3 = eps_inv * eps_inv * eps_inv;
 
   /* Compute the kernel potential and force */
   float dphi_dr, pot;
-  runner_iact_grav_pp_full(r2, eps2, eps_inv, eps_inv3, 1.0, &dphi_dr,
-			   &pot);
+  runner_iact_grav_pp_full(r2, eps2, eps_inv, eps_inv3, 1.0, &dphi_dr, &pot);
 
   /* From Grudic et al. (2021) eq 6, we replace the plummer functionnal form
      sqrt(r^2 + eps^2) by the kernel 1.0/|phi(r,H=3*eps)| */
