@@ -199,7 +199,6 @@ void runner_do_cooling(struct runner *r, struct cell *c, int timer) {
 void runner_do_star_formation_sink(struct runner *r, struct cell *c,
                                    int timer) {
 #if defined(SWIFT_DEBUG_CHECKS_MPI_DOMAIN_DECOMPOSITION) || defined(WITH_MPI)
-  message("This top here");
   return;
 #endif
 
