@@ -663,7 +663,7 @@ void engine_addtasks_send_sinks(struct engine *e, struct cell *ci,
 
       /* Ghost before you send density */
       scheduler_addunlock(s, ci->hydro.super->sinks.density_ghost, t_rho);
-      scheduler_addunlock(s, t_rho, ci->hydro.super->sinks.swallow_ghost1);
+      scheduler_addunlock(s, t_rho, ci->hydro.super->sinks.sink_ghost1);
 
       if (ci->hydro.count > 0) {
 	scheduler_addunlock(s, t_sink_formation_counts, t_rho);
@@ -1392,7 +1392,7 @@ void engine_addtasks_recv_sinks(struct engine *e, struct cell *c,
     }
 
     for (struct link *l = c->hydro.force; l != NULL; l = l->next) {
-      scheduler_addunlock(s, l->t, t_gas_swallow);
+      scheduler_addunlock(s, l->t, t_sink_gas_swallow);
     }
 
     /* Receive the sinks after the swallow loop */
