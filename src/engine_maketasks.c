@@ -1908,6 +1908,12 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
                                          task_subtype_none, 0, 0, c, NULL);
     }
 
+    if (with_sinks) {
+      c->sinks.sink_ghost1 =
+          scheduler_addtask(s, task_type_sink_ghost1, task_subtype_none,
+                            0, /* implicit =*/1, c, NULL);
+    }
+
     if (with_black_holes) {
       c->black_holes.swallow_ghost_1 =
           scheduler_addtask(s, task_type_bh_swallow_ghost1, task_subtype_none,
@@ -3459,6 +3465,11 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                               t_star_feedback);
         }
 
+	if (with_sink) {
+          scheduler_addunlock(sched, t_sink_swallow,
+                              ci->hydro.super->sinks.sink_ghost1);
+        }
+
         if (with_black_holes && (bcount_i > 0 || bcount_j > 0)) {
           scheduler_addunlock(sched, t_bh_swallow,
                               ci->hydro.super->black_holes.swallow_ghost_1);
@@ -3626,6 +3637,11 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 #endif
           scheduler_addunlock(sched, cj->hydro.super->stars.sorts,
                               t_star_feedback);
+        }
+
+	if (with_sink) {
+          scheduler_addunlock(sched, t_sink_swallow,
+                              cj->hydro.super->sinks.sink_ghost1);
         }
 
         if (with_black_holes && (bcount_i > 0 || bcount_j > 0)) {
@@ -4297,6 +4313,10 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
           scheduler_addunlock(sched, ci->hydro.super->stars.sorts,
                               t_star_feedback);
         }
+	if (with_sink) {
+          scheduler_addunlock(sched, t_sink_swallow,
+                              ci->hydro.super->sinks.sink_ghost1);
+        }
         if (with_black_holes && (bcount_i > 0 || bcount_j > 0)) {
 
           scheduler_addunlock(sched, t_bh_swallow,
@@ -4463,6 +4483,11 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 #endif
           scheduler_addunlock(sched, cj->hydro.super->stars.sorts,
                               t_star_feedback);
+        }
+
+	if (with_sink) {
+          scheduler_addunlock(sched, t_sink_swallow,
+                              cj->hydro.super->sinks.sink_ghost1);
         }
 
         if (with_black_holes && (bcount_i > 0 || bcount_j > 0)) {
