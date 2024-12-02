@@ -147,10 +147,10 @@ int main(int argc, char *argv[]) {
   s->with_zoom_region = 1;
 
   /* Run the zoom_init function. */
-  zoom_props_init(&param_file, s, /*verbose*/ 1);
+  zoom_props_init(&param_file, s, /*verbose*/ 0);
 
   /* Run the regridding. */
-  space_regrid(s, /*verbose*/ 1);
+  space_regrid(s, /*verbose*/ 0);
 
   /* Associate gparts. */
   associate_gparts_to_cells(s);
