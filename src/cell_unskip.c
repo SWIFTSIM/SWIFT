@@ -3100,6 +3100,14 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
   }
 
   /* Unskip all the other task types. */
+  if (cell_is_active_sinks(c, e) || cell_is_active_hydro(c, e)) {
+    if (c->sinks.density_ghost != NULL)
+      scheduler_activate(s, c->sinks.density_ghost);
+    if (c->sinks.sink_ghost1 != NULL)
+      scheduler_activate(s, c->sinks.sink_ghost1);
+    if (c->sinks.sink_ghost2 != NULL)
+      scheduler_activate(s, c->sinks.sink_ghost2);
+  }
   if (c->nodeID == nodeID &&
       (cell_is_active_sinks(c, e) || cell_is_active_hydro(c, e))) {
 
@@ -3108,12 +3116,7 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
       cell_activate_sink_formation_tasks(c->top, s);
       cell_activate_super_sink_drifts(c->top, s);
     }
-    if (c->sinks.density_ghost != NULL)
-      scheduler_activate(s, c->sinks.density_ghost);
-    if (c->sinks.sink_ghost1 != NULL)
-      scheduler_activate(s, c->sinks.sink_ghost1);
-    if (c->sinks.sink_ghost2 != NULL)
-      scheduler_activate(s, c->sinks.sink_ghost2);
+
     if (c->sinks.sink_out != NULL) scheduler_activate(s, c->sinks.sink_out);
     if (c->top->sinks.star_formation_sink != NULL) {
       cell_activate_star_formation_sink_tasks(c->top, s, with_feedback);
