@@ -27,6 +27,20 @@
 #include "swift.h"
 #include "zoom_region/zoom.h"
 
+double generate_gaussian_coordinate(const double mean, const double std,
+                                    const double max_width) {
+  double u1 = (double)rand() / RAND_MAX;
+  double u2 = (double)rand() / RAND_MAX;
+  double z0 = (sqrt(-2.0 * log(u1)) * cos(2 * M_PI * u2)) * std + mean;
+
+  /* Try again if we're out of bounds. */
+  if (z0 < mean - max_width / 2 || z0 > mean + max_width / 2) {
+    return generate_gaussian_coordinate(mean, std, max_width);
+  }
+
+  return z0;
+}
+
 void make_mock_space(struct space *s) {
 
   /* Define the boxsize. */
@@ -36,9 +50,6 @@ void make_mock_space(struct space *s) {
 
   /* The simulation is periodic */
   s->periodic = 1;
-
-  /* We're doing gravity. */
-  s->with_self_gravity = 1;
 
   /* Define the gpart count (1000 high and 100 low resolution) + every
    * background cell gets 1. */
@@ -70,9 +81,12 @@ void make_mock_space(struct space *s) {
 
   /* Define the zoom particles by sampling from a normal distribution. */
   for (int i = 100; i < 1100; i++) {
-    gparts[i].x[0] = zoom_width * ((double)rand() / RAND_MAX) + 1;
-    gparts[i].x[1] = zoom_width * ((double)rand() / RAND_MAX) + 1;
-    gparts[i].x[2] = zoom_width * ((double)rand() / RAND_MAX) + 1;
+    gparts[i].x[0] =
+        generate_gaussian_coordinate(s->dim[0] / 2, zoom_width, 50);
+    gparts[i].x[1] =
+        generate_gaussian_coordinate(s->dim[1] / 2, zoom_width, 50);
+    gparts[i].x[2] =
+        generate_gaussian_coordinate(s->dim[2] / 2, zoom_width, 50);
     gparts[i].type = swift_type_dark_matter;
     gparts[i].mass = 1.0;
   }
