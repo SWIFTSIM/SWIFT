@@ -73,14 +73,6 @@ __attribute__((always_inline)) INLINE static float sink_compute_timestep(
                        gas_v_phys[1] * gas_v_phys[1] +
                        gas_v_phys[2] * gas_v_phys[2];
 
-  /* This case can happen if the sink is just born. */
-  if (gas_v_norm2 == 0.0) {
-    /* gas_v is the relative velocity. If there is no gas, it's just the sink
-       velocity. */
-    gas_v_norm2 = sink->v[0] * sink->v[0] + sink->v[1] * sink->v[1] +
-                  sink->v[2] * sink->v[2];
-  }
-
   const double gas_c_phys =
       sink->to_collect.sound_speed_gas * cosmo->a_factor_sound_speed;
   const double gas_c_phys2 = gas_c_phys * gas_c_phys;
@@ -88,7 +80,14 @@ __attribute__((always_inline)) INLINE static float sink_compute_timestep(
   const float h_min =
       cosmo->a *
       min(sink->r_cut, sink->to_collect.minimal_h_gas * kernel_gamma);
-  const float dt_cfl = 2.f * CFL_condition * h_min / denominator;
+  float dt_cfl = 0.0;
+
+  /* This case can happen if the sink is just born. */
+  if (gas_v_norm2 == 0.0) {
+    dt_cfl = FLT_MAX;
+  } else {
+    dt_cfl = 2.f * CFL_condition * h_min / denominator;
+  }
 
   /* Free fall time condition: the sink must anticipate gas collapse ------- */
   const float rho_sink =
