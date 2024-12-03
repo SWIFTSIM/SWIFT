@@ -171,7 +171,7 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
       engine_addlink(e, &ci->mpi.send, t_grav_counts);
     }
 
-    if (with_star_formation && (ci->hydro.count > 0 || ci->sinks.count > 0))
+    if (with_star_formation_sink && (ci->hydro.count > 0 || ci->sinks.count > 0))
       engine_addlink(e, &ci->mpi.send, t_grav_counts);
 
     if (with_sinks && ci->hydro.count > 0)
