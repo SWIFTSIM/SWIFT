@@ -35,10 +35,10 @@
 #include "zoom_region/zoom.h"
 
 double generate_gaussian_coordinate(const double mean, const double std,
-                                    const double cell_width) {
+                                    const double cell_width, const int id) {
 
   /* Generate a random number from a normal distribution. */
-  double z0 = random_gaussian(mean, std, /*id*/ 0, /*ti_current*/ 42,
+  double z0 = random_gaussian(mean, std, id, /*ti_current*/ 42,
                               /*arbitrary type*/ random_number_star_formation);
 
   /* We only want to go out at most by the size of a cell. If we've got a
@@ -79,11 +79,11 @@ void make_mock_space(struct space *s, struct engine *e, const double std) {
    * the middle of the box with a width. */
   for (size_t i = 0; i < s->nr_gparts; i++) {
     gparts[i].x[0] =
-        generate_gaussian_coordinate(s->dim[0] / 2, std, s->width[0]);
+        generate_gaussian_coordinate(s->dim[0] / 2, zoom_width, 100, i * 3);
     gparts[i].x[1] =
-        generate_gaussian_coordinate(s->dim[1] / 2, std, s->width[1]);
+        generate_gaussian_coordinate(s->dim[1] / 2, zoom_width, 100, i * 3 + 1);
     gparts[i].x[2] =
-        generate_gaussian_coordinate(s->dim[2] / 2, std, s->width[2]);
+        generate_gaussian_coordinate(s->dim[2] / 2, zoom_width, 100, i * 3 + 2);
     gparts[i].mass = 1.0;
     gparts[i].type = swift_type_dark_matter;
   }
