@@ -24,7 +24,6 @@
 #include <fenv.h>
 
 /* Local headers. */
-#include "random.h"
 #include "swift.h"
 #include "zoom_region/zoom.h"
 
