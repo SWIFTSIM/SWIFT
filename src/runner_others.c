@@ -420,93 +420,115 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
                                                     dt_star)) {
 
             /* Convert the gas particle to a star particle */
-            struct spart *sp = NULL;
-            const int spawn_spart =
-                star_formation_should_spawn_spart(p, xp, sf_props);
+            const int n_spart_spawn =
+                star_formation_number_spart_to_spawn(p, xp, sf_props);
+            const int n_spart_convert =
+                star_formation_number_spart_to_convert(p, xp, sf_props);
 
-            /* Are we using a model that actually generates star particles? */
-            if (swift_star_formation_model_creates_stars) {
-
-              /* Check if we should create a new particle or transform one */
-              if (spawn_spart) {
-                /* Spawn a new spart (+ gpart) */
-                sp = cell_spawn_new_spart_from_part(e, c, p, xp);
-              } else {
-                /* Convert the gas particle to a star particle */
-                sp = cell_convert_part_to_spart(e, c, p, xp);
-#ifdef WITH_CSDS
-                /* Write the particle */
-                /* Logs all the fields request by the user */
-                // TODO select only the requested fields
-                csds_log_part(e->csds, p, xp, e, /* log_all */ 1,
-                              csds_flag_change_type, swift_type_stars);
+#ifdef SWIFT_DEBUG_CHECKS
+            if (n_spart_convert > 1 || n_spart_convert < 0)
+              error("Invalid number of sparts to convert");
 #endif
+
+            int n_spart_to_create = n_spart_spawn + n_spart_convert;
+
+            while (n_spart_to_create > 0) {
+
+              struct spart *sp = NULL;
+              int part_converted;
+
+              /* Are we using a model that actually generates star particles? */
+              if (swift_star_formation_model_creates_stars) {
+
+                /* Check if we should create a new particle or transform one */
+                if (n_spart_to_create == 1 && n_spart_convert == 1) {
+                  /* Convert the gas particle to a star particle */
+                  sp = cell_convert_part_to_spart(e, c, p, xp);
+                  part_converted = 1;
+#ifdef WITH_CSDS
+                  /* Write the particle */
+                  /* Logs all the fields request by the user */
+                  // TODO select only the requested fields
+                  csds_log_part(e->csds, p, xp, e, /* log_all */ 1,
+                                csds_flag_change_type, swift_type_stars);
+#endif
+                } else {
+                  /* Spawn a new spart (+ gpart) */
+                  sp = cell_spawn_new_spart_from_part(e, c, p, xp);
+                  part_converted = 0;
+                }
+
+              } else {
+
+                /* We are in a model where spart don't exist
+                 * --> convert the part to a DM gpart */
+                cell_convert_part_to_gpart(e, c, p, xp);
+                part_converted = 1;
               }
 
-            } else {
+              /* Did we get a star? (Or did we run out of spare ones?) */
+              if (sp != NULL) {
 
-              /* We are in a model where spart don't exist
-               * --> convert the part to a DM gpart */
-              cell_convert_part_to_gpart(e, c, p, xp);
-            }
+                /* Copy the properties of the gas particle to the star particle
+                 */
+                star_formation_copy_properties(
+                    p, xp, sp, e, sf_props, cosmo, with_cosmology, phys_const,
+                    hydro_props, us, cooling, part_converted);
 
-            /* Did we get a star? (Or did we run out of spare ones?) */
-            if (sp != NULL) {
+                /* Update the Star formation history */
+                star_formation_logger_log_new_spart(sp, &c->stars.sfh);
 
-              /* message("We formed a star id=%lld cellID=%lld", sp->id,
-               * c->cellID); */
+                /* Update the h_max */
+                c->stars.h_max = max(c->stars.h_max, sp->h);
+                c->stars.h_max_active = max(c->stars.h_max_active, sp->h);
 
-              /* Copy the properties of the gas particle to the star particle */
-              star_formation_copy_properties(
-                  p, xp, sp, e, sf_props, cosmo, with_cosmology, phys_const,
-                  hydro_props, us, cooling, !spawn_spart);
+                /* Update the displacement information */
+                if (star_formation_need_update_dx_max) {
+                  const float dx2_part = xp->x_diff[0] * xp->x_diff[0] +
+                                         xp->x_diff[1] * xp->x_diff[1] +
+                                         xp->x_diff[2] * xp->x_diff[2];
+                  const float dx2_sort =
+                      xp->x_diff_sort[0] * xp->x_diff_sort[0] +
+                      xp->x_diff_sort[1] * xp->x_diff_sort[1] +
+                      xp->x_diff_sort[2] * xp->x_diff_sort[2];
 
-              /* Update the Star formation history */
-              star_formation_logger_log_new_spart(sp, &c->stars.sfh);
+                  const float dx_part = sqrtf(dx2_part);
+                  const float dx_sort = sqrtf(dx2_sort);
 
-              /* Update the h_max */
-              c->stars.h_max = max(c->stars.h_max, sp->h);
-              c->stars.h_max_active = max(c->stars.h_max_active, sp->h);
-
-              /* Update the displacement information */
-              if (star_formation_need_update_dx_max) {
-                const float dx2_part = xp->x_diff[0] * xp->x_diff[0] +
-                                       xp->x_diff[1] * xp->x_diff[1] +
-                                       xp->x_diff[2] * xp->x_diff[2];
-                const float dx2_sort = xp->x_diff_sort[0] * xp->x_diff_sort[0] +
-                                       xp->x_diff_sort[1] * xp->x_diff_sort[1] +
-                                       xp->x_diff_sort[2] * xp->x_diff_sort[2];
-
-                const float dx_part = sqrtf(dx2_part);
-                const float dx_sort = sqrtf(dx2_sort);
-
-                /* Note: no need to update quantities further up the tree as
-                   this task is always called at the top-level */
-                c->hydro.dx_max_part = max(c->hydro.dx_max_part, dx_part);
-                c->hydro.dx_max_sort = max(c->hydro.dx_max_sort, dx_sort);
-              }
+                  /* Note: no need to update quantities further up the tree as
+                     this task is always called at the top-level */
+                  c->hydro.dx_max_part = max(c->hydro.dx_max_part, dx_part);
+                  c->hydro.dx_max_sort = max(c->hydro.dx_max_sort, dx_sort);
+                }
 
 #ifdef WITH_CSDS
-              if (spawn_spart) {
-                /* Set to zero the csds data. */
-                csds_part_data_init(&sp->csds_data);
-              } else {
-                /* Copy the properties back to the stellar particle */
-                sp->csds_data = xp->csds_data;
+                if (spawn_spart) {
+                  /* Set to zero the csds data. */
+                  csds_part_data_init(&sp->csds_data);
+                } else {
+                  /* Copy the properties back to the stellar particle */
+                  sp->csds_data = xp->csds_data;
+                }
+
+                /* Write the s-particle */
+                csds_log_spart(e->csds, sp, e, /* log_all */ 1,
+                               csds_flag_create,
+                               /* data */ 0);
+#endif
+              } else if (swift_star_formation_model_creates_stars) {
+
+                /* Do something about the fact no star could be formed.
+                   Note that in such cases a tree rebuild to create more free
+                   slots has already been triggered by the function
+                   cell_convert_part_to_spart() */
+                star_formation_no_spart_available(e, p, xp);
               }
 
-              /* Write the s-particle */
-              csds_log_spart(e->csds, sp, e, /* log_all */ 1, csds_flag_create,
-                             /* data */ 0);
-#endif
-            } else if (swift_star_formation_model_creates_stars) {
+              /* We have spawned a particle, decrease the counter of particles
+               * to create */
+              n_spart_to_create--;
 
-              /* Do something about the fact no star could be formed.
-                 Note that in such cases a tree rebuild to create more free
-                 slots has already been triggered by the function
-                 cell_convert_part_to_spart() */
-              star_formation_no_spart_available(e, p, xp);
-            }
+            } /* while n_spart_to_create > 0 */
           }
 
         } else { /* Are we not star-forming? */

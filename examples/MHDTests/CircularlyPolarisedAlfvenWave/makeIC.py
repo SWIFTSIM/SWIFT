@@ -8,7 +8,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # Parameters
-
 rho = 1.0
 P = 0.1
 gamma = 5.0 / 3.0
@@ -19,9 +18,8 @@ wavenum = 2.0 * np.pi / wavelen
 
 fileOutputName = "CircularlyPolarisedAlfvenWave.hdf5"
 
-###---------------------------###
-
-glass = h5py.File("FCCglassCube_32.hdf5", "r")
+# Fetch unit cell 
+glass = h5py.File("BCCglassCube_32.hdf5", "r")
 
 unit_cell = glass["/PartType0/Coordinates"][:, :]
 h_unit_cell = glass["/PartType0/SmoothingLength"][:]
@@ -29,8 +27,7 @@ h_unit_cell = glass["/PartType0/SmoothingLength"][:]
 N_unit_cell = len(h_unit_cell)
 times = 2
 
-###---------------------------###
-
+# Stack unit cells
 cx = times
 cy = 1
 cz = 1
@@ -64,8 +61,7 @@ h = h * Lx / cx
 
 vol = Lx * Ly * Lz
 
-###---------------------------###
-
+# Direction of propagation of wave
 sina = 2.0 / 3.0
 cosa = np.sqrt(1 - sina ** 2)
 
@@ -80,10 +76,11 @@ Rotation = np.array(
     ]
 )
 
-# Rotationinv = np.linalg.inv(Rotation)
+Rotationinv = np.linalg.inv(Rotation)
 
-# x = np.matmul(Rotationinv, pos.T)
-x1 = (pos[:, 0] + 2 * pos[:, 1] + 2 * pos[:, 2]) / 3
+# Instantiate arrays
+x = np.matmul(Rotationinv, pos.T)
+x1 = x[0, :]
 v = np.zeros((3, N))
 B = np.zeros((3, N))
 A = np.zeros((3, N))
@@ -91,13 +88,11 @@ ids = np.linspace(1, N, N)
 m = np.ones(N) * rho * vol / N
 u = np.ones(N) * P / (rho * (gamma - 1))
 
-"""
-v[0, :] = 1.0
 v[1, :] = 0.1 * np.sin(wavenum * x1)
 v[2, :] = 0.1 * np.cos(wavenum * x1)
-"""
 
-# B[0, :] = 0.0
+
+B[0, :] = 1.0
 B[1, :] = B0 * np.sin(wavenum * x1)
 B[2, :] = B0 * np.cos(wavenum * x1)
 
@@ -108,11 +103,10 @@ v = np.matmul(Rotation, v)
 B = np.matmul(Rotation, B)
 A = np.matmul(Rotation, A)
 
+# Rotate back to simulation frame
 v = v.T
 B = B.T
 A = A.T
-
-###---------------------------###
 
 # File
 fileOutput = h5py.File(fileOutputName, "w")

@@ -7,9 +7,9 @@ from numpy import *
 # Parameters
 T_i = 100.0  # Initial temperature of the gas (in K)
 # Redshift of caustic formation, which can have 3 different values for each direction now
-z_c_x = 5.0 #1.0
+z_c_x = 5.0  # 1.0
 z_c_y = 1.0
-z_c_z = 0.5 #1.0
+z_c_z = 0.5  # 1.0
 z_i = 100.0  # Initial redshift
 gamma = 5.0 / 3.0  # Gas adiabatic index
 numPart_1D = 32  # Number of particles along each dimension
@@ -18,7 +18,9 @@ fileName = "zeldovichPancake.hdf5"
 # Some units
 Mpc_in_m = 3.08567758e22
 Msol_in_kg = 1.98848e30
-Gyr_in_s = 3.08567758e19  ### so this is not actually a Gigayear, but 1 Mpc / (1 km/s) !!!
+Gyr_in_s = (
+    3.08567758e19
+)  ### so this is not actually a Gigayear, but 1 Mpc / (1 km/s) !!!
 mH_in_kg = 1.6737236e-27
 
 # Some constants
@@ -90,7 +92,12 @@ for i in range(numPart_1D):
             coords[index, 2] = q_z - zfac_z * sin(k_z * q_z) / k_z - x_min
 
             # The rest, T and v are also changed to 3D
-            T = T_i * (1.0 / (1.0 - zfac_x * cos(k_x * q_x)) / (1.0 - zfac_y * cos(k_y * q_y)) / (1.0 - zfac_z * cos(k_z * q_z)) ) ** (2.0 / 3.0)
+            T = T_i * (
+                1.0
+                / (1.0 - zfac_x * cos(k_x * q_x))
+                / (1.0 - zfac_y * cos(k_y * q_y))
+                / (1.0 - zfac_z * cos(k_z * q_z))
+            ) ** (2.0 / 3.0)
             u[index] = kB_in_SI * T / (gamma - 1.0) / mH_in_kg
             h[index] = 1.2348 * delta_x
             m[index] = m_i

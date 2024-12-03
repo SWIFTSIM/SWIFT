@@ -35,6 +35,7 @@
 #include "align.h"
 #include "cell_black_holes.h"
 #include "cell_grav.h"
+#include "cell_grid.h"
 #include "cell_hydro.h"
 #include "cell_rt.h"
 #include "cell_sinks.h"
@@ -211,6 +212,12 @@ struct pcell {
 
   } sinks;
 
+  /*! Grid variables */
+  struct {
+    /*! self complete flag */
+    enum grid_completeness self_completeness;
+  } grid;
+
   /*! RT variables */
   struct {
 
@@ -285,34 +292,32 @@ struct pcell_step {
 };
 
 /**
- * @brief Cell information to propagate the new counts of star particles.
+ * @brief Cell information to propagate the new counts of star particles (star
+ * variables).
  */
-struct pcell_sf {
+struct pcell_sf_stars {
 
-  /*! Stars variables */
-  struct {
+  /* Distance by which the stars pointer has moved since the last rebuild */
+  ptrdiff_t delta_from_rebuild;
 
-    /* Distance by which the stars pointer has moved since the last rebuild */
-    ptrdiff_t delta_from_rebuild;
+  /* Number of particles in the cell */
+  int count;
 
-    /* Number of particles in the cell */
-    int count;
+  /*! Maximum part movement in this cell since last construction. */
+  float dx_max_part;
+};
 
-    /*! Maximum part movement in this cell since last construction. */
-    float dx_max_part;
+/**
+ * @brief Cell information to propagate the new counts of star particles (grav
+ * variables).
+ */
+struct pcell_sf_grav {
 
-  } stars;
+  /* Distance by which the gpart pointer has moved since the last rebuild */
+  ptrdiff_t delta_from_rebuild;
 
-  /*! Grav. variables */
-  struct {
-
-    /* Distance by which the gpart pointer has moved since the last rebuild */
-    ptrdiff_t delta_from_rebuild;
-
-    /* Number of particles in the cell */
-    int count;
-
-  } grav;
+  /* Number of particles in the cell */
+  int count;
 };
 
 /**
@@ -394,6 +399,9 @@ struct cell {
 
   /*! Sink particles variables */
   struct cell_sinks sinks;
+
+  /*! The grid variables */
+  struct cell_grid grid;
 
   /*! Radiative transfer variables */
   struct cell_rt rt;
@@ -535,14 +543,20 @@ void cell_unpack_bpart_swallow(struct cell *c,
                                const struct black_holes_bpart_data *data);
 int cell_pack_tags(const struct cell *c, int *tags);
 int cell_unpack_tags(const int *tags, struct cell *c);
+int cell_pack_grid_extra(const struct cell *c,
+                         enum grid_construction_level *info);
+int cell_unpack_grid_extra(const enum grid_construction_level *info,
+                           struct cell *c, struct cell *construction_level);
 int cell_pack_end_step(const struct cell *c, struct pcell_step *pcell);
 int cell_unpack_end_step(struct cell *c, const struct pcell_step *pcell);
 void cell_pack_timebin(const struct cell *const c, timebin_t *const t);
 void cell_unpack_timebin(struct cell *const c, timebin_t *const t);
 int cell_pack_multipoles(struct cell *c, struct gravity_tensors *m);
 int cell_unpack_multipoles(struct cell *c, struct gravity_tensors *m);
-int cell_pack_sf_counts(struct cell *c, struct pcell_sf *pcell);
-int cell_unpack_sf_counts(struct cell *c, struct pcell_sf *pcell);
+int cell_pack_sf_counts(struct cell *c, struct pcell_sf_stars *pcell);
+int cell_unpack_sf_counts(struct cell *c, struct pcell_sf_stars *pcell);
+int cell_pack_grav_counts(struct cell *c, struct pcell_sf_grav *pcell);
+int cell_unpack_grav_counts(struct cell *c, struct pcell_sf_grav *pcell);
 int cell_get_tree_size(struct cell *c);
 int cell_link_parts(struct cell *c, struct part *parts);
 int cell_link_gparts(struct cell *c, struct gpart *gparts);
@@ -632,12 +646,18 @@ void cell_activate_limiter(struct cell *c, struct scheduler *s);
 void cell_clear_drift_flags(struct cell *c, void *data);
 void cell_clear_limiter_flags(struct cell *c, void *data);
 void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data);
+void cell_grid_update_self_completeness(struct cell *c, int force);
+void cell_set_grid_completeness_mapper(void *map_data, int num_elements,
+                                       void *extra_data);
+void cell_set_grid_construction_level_mapper(void *map_data, int num_elements,
+                                             void *extra_data);
+void cell_grid_set_self_completeness_mapper(void *map_data, int num_elements,
+                                            void *extra_data);
 void cell_check_spart_pos(const struct cell *c,
                           const struct spart *global_sparts);
 void cell_check_sort_flags(const struct cell *c);
 void cell_clear_stars_sort_flags(struct cell *c, const int unused_flags);
 void cell_clear_hydro_sort_flags(struct cell *c, const int unused_flags);
-void cell_clear_unskip_flags(struct cell *c);
 int cell_has_tasks(struct cell *c);
 void cell_remove_part(const struct engine *e, struct cell *c, struct part *p,
                       struct xpart *xp);
@@ -666,7 +686,8 @@ struct sink *cell_convert_part_to_sink(struct engine *e, struct cell *c,
                                        struct part *p, struct xpart *xp);
 void cell_reorder_extra_parts(struct cell *c, const ptrdiff_t parts_offset);
 void cell_reorder_extra_gparts(struct cell *c, struct part *parts,
-                               struct spart *sparts, struct sink *sinks);
+                               struct spart *sparts, struct sink *sinks,
+                               struct bpart *bparts);
 void cell_reorder_extra_sparts(struct cell *c, const ptrdiff_t sparts_offset);
 void cell_reorder_extra_sinks(struct cell *c, const ptrdiff_t sinks_offset);
 int cell_can_use_pair_mm(const struct cell *ci, const struct cell *cj,
@@ -994,6 +1015,45 @@ cell_need_rebuild_for_hydro_pair(const struct cell *ci, const struct cell *cj) {
 }
 
 /**
+ * @brief Have gas particles in a pair of cells moved too much, invalidating the
+ * completeness criterion for #ci?
+ *
+ * This function returns true the grid completeness criterion from the
+ * perspective of ci (the #cell for which the grid will be constructed) is no
+ * longer valid.
+ *
+ * NOTE: This function assumes that the self_completeness flags are up to date.
+ * NOTE: This whether a cell needs a rebuild for a grid construction pair is an
+ * asymmetric property, so it should always be checked both ways!
+ *
+ * @param ci The first #cell. This is the cell for which the grid will be
+ * constructed.
+ * @param cj The second #cell. This is the neighbouring cell whose particles are
+ * used as ghost particles.
+ * @return Whether completeness of #ci is invalidated by the pair (#ci, #cj).
+ */
+__attribute__((always_inline, nonnull)) INLINE static int
+cell_grid_pair_invalidates_completeness(struct cell *ci, struct cell *cj) {
+
+  /* Check completeness criteria */
+  /* NOTE: Both completeness flags should already be updated at this point */
+  const int ci_self_complete = ci->grid.self_completeness == grid_complete;
+  const int cj_self_complete = cj->grid.self_completeness == grid_complete;
+  if (!ci_self_complete) return 1;
+#ifdef SHADOWSWIFT_RELAXED_COMPLETENESS
+  /* If if ci is self-complete and cj is not, but its maximal search radius is
+   * sufficiently small, we still consider the pair (ci, cj) complete.
+   * NOTE: ci->dmin == cj->dmin */
+  if (!cj_self_complete && kernel_gamma * ci->hydro.h_max > 0.5 * cj->dmin)
+    return 1;
+#else
+  if (!ci_self_complete || !cj_self_complete) return 1;
+#endif
+
+  return 0;
+}
+
+/**
  * @brief Have star particles in a pair of cells moved too much and require a
  * rebuild?
  *
@@ -1313,6 +1373,32 @@ cell_get_stars_sorts(const struct cell *c, const int sid) {
   /* Return the corresponding array */
   return &c->stars.sort[j * (c->stars.count + 1)];
 }
+
+/**
+ * @brief Free grid memory for cell.
+ *
+ * @param c The #cell.
+ */
+__attribute__((always_inline)) INLINE static void cell_free_grid(
+    struct cell *c) {
+
+#ifndef MOVING_MESH
+  /* Nothing to do as we have no tessellations */
+#else
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->grid.construction_level != c && c->grid.voronoi != NULL)
+    error("Grid allocated, but not on grid construction level!");
+#endif
+  if (c->grid.construction_level == c) {
+    if (c->grid.voronoi != NULL) {
+      voronoi_destroy(c->grid.voronoi);
+      c->grid.voronoi = NULL;
+    }
+  }
+#endif
+}
+
+void cell_free_grid_rec(struct cell *c);
 
 /**
  * @brief Set the given flag for the given cell.

@@ -29,16 +29,17 @@
  * @param xp the #xpart.
  */
 __attribute__((always_inline)) INLINE static float mhd_get_magnetic_energy(
-    const struct part *p, const struct xpart *xp, const float mu_0, const float a) {
+    const struct part *p, const struct xpart *xp, const float mu_0,
+    const float a) {
 
   const float rho = p->rho;
   // convert to physical
-  const float a_fact = pow(a , -3.f * hydro_gamma);
+  const float a_fact = pow(a, -3.f * hydro_gamma);
   const float B_over_rho2 =
       p->mhd_data.B_over_rho[0] * p->mhd_data.B_over_rho[0] +
       p->mhd_data.B_over_rho[1] * p->mhd_data.B_over_rho[1] +
       p->mhd_data.B_over_rho[2] * p->mhd_data.B_over_rho[2];
-  return 0.5f * a_fact* p->mass * B_over_rho2 * rho / mu_0;
+  return 0.5f * a_fact * p->mass * B_over_rho2 * rho / mu_0;
 }
 /**
  * @brief Returns the magnetic field squared contained in the particle.
@@ -108,8 +109,11 @@ __attribute__((always_inline)) INLINE static float mhd_get_divB_error(
       p->mhd_data.B_over_rho[0] * p->mhd_data.B_over_rho[0] +
       p->mhd_data.B_over_rho[1] * p->mhd_data.B_over_rho[1] +
       p->mhd_data.B_over_rho[2] * p->mhd_data.B_over_rho[2];
-  return fabs(p->mhd_data.divB) * p->h /
-         (sqrtf(B_over_rho2 * rho * rho) + 1.e-18);
+
+  const float error = B_over_rho2 != 0.0f ? fabs(p->mhd_data.divB) * p->h / sqrtf(B_over_rho2 * rho * rho) : 0.0f;
+
+  return error;
+
 }
 
 /**
@@ -166,7 +170,7 @@ __attribute__((always_inline)) INLINE static float mhd_get_magnetosonic_speed(
   /* B squared */
   const float B2 = B[0] * B[0] + B[1] * B[1] + B[2] * B[2];
 
-  const float permeability_inv = 1 / mu_0;
+  const float permeability_inv = 1.0f / mu_0;
 
   /* Compute effective sound speeds */
   const float cs = p->force.soundspeed;
@@ -199,7 +203,7 @@ mhd_get_fast_magnetosonic_wave_phase_velocity(const float dx[3],
 
   /* B dot r. */
   const float Br = B[0] * dx[0] + B[1] * dx[1] + B[2] * dx[2];
-  const float permeability_inv = 1 / mu_0;
+  const float permeability_inv = 1.0f / mu_0;
 
   /* Compute effective sound speeds */
   const float cs = p->force.soundspeed;
@@ -361,6 +365,42 @@ __attribute__((always_inline)) INLINE static void mhd_part_has_no_neighbours(
 }
 
 /**
+ * @brief Calculate time derivative of dedner scalar
+ *
+ * @param p The particle to act upon
+ * @param a The current value of the cosmological scale factor
+ */
+__attribute__((always_inline)) INLINE static float mhd_get_psi_over_ch_dt(
+    struct part *p, const float a, const float a_factor_sound_speed,
+    const float H, const struct hydro_props *hydro_props, const float mu_0) {
+
+  /* Retrieve inverse of smoothing length. */
+  const float h = p->h;
+  const float h_inv = 1.0f / h;
+
+  /* Compute Dedner cleaning speed. */
+  const float ch = mhd_get_magnetosonic_speed(p, a, mu_0);
+
+  /* Compute Dedner cleaning scalar time derivative. */
+  const float hyp = hydro_props->mhd.hyp_dedner;
+  const float hyp_divv = hydro_props->mhd.hyp_dedner_divv;
+  const float par = hydro_props->mhd.par_dedner;
+
+  const float div_B = p->mhd_data.divB;
+  const float div_v = a * a * hydro_get_div_v(p) - 3.0f * a * a * H;
+  const float psi_over_ch = p->mhd_data.psi_over_ch;
+
+  const float hyperbolic_term =
+      -hyp * a * a * a_factor_sound_speed * a_factor_sound_speed * ch * div_B;
+  const float hyperbolic_divv_term = -hyp_divv * psi_over_ch * div_v;
+  const float parabolic_term =
+      -par * a * a_factor_sound_speed * psi_over_ch * ch * h_inv;
+  const float Hubble_term = a * a * H * psi_over_ch;
+
+  return hyperbolic_term + hyperbolic_divv_term + parabolic_term + Hubble_term;
+}
+
+/**
  * @brief Prepare a particle for the force calculation.
  *
  * This function is called in the ghost task to convert some quantities coming
@@ -403,42 +443,14 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_force(
 
   p->mhd_data.alpha_AR =
       normB ? fminf(1.0f, h * sqrtf(grad_B_mean_square) / normB) : 0.0f;
-}
 
-/**
- * @brief Calculate time derivative of dedner scalar
- *
- * @param p The particle to act upon
- * @param a The current value of the cosmological scale factor
- */
-__attribute__((always_inline)) INLINE static float mhd_get_psi_over_ch_dt(
-    struct part *p, const float a, const float a_factor_sound_speed,
-    const float H, const struct hydro_props *hydro_props, const float mu_0) {
+  p->mhd_data.psi_over_ch_dt = mhd_get_psi_over_ch_dt(
+      p, cosmo->a, cosmo->a_factor_sound_speed, cosmo->H, hydro_props, mu_0);
 
-  /* Retrieve inverse of smoothing length. */
-  const float h = p->h;
-  const float h_inv = 1.0f / h;
+  xp->mhd_data.psi_over_ch_full += p->mhd_data.psi_over_ch_dt * dt_alpha;
 
-  /* Compute Dedner cleaning speed. */
-  const float ch = mhd_get_magnetosonic_speed(p, a, mu_0);
+  p->mhd_data.psi_over_ch = xp->mhd_data.psi_over_ch_full;
 
-  /* Compute Dedner cleaning scalar time derivative. */
-  const float hyp = hydro_props->mhd.hyp_dedner;
-  const float hyp_divv = hydro_props->mhd.hyp_dedner_divv;
-  const float par = hydro_props->mhd.par_dedner;
-
-  const float div_B = p->mhd_data.divB;
-  const float div_v = a * a * hydro_get_div_v(p) - 3.0f * a * a * H;
-  const float psi_over_ch = p->mhd_data.psi_over_ch;
-
-  const float hyperbolic_term =
-      -hyp * a * a * a_factor_sound_speed * a_factor_sound_speed * ch * div_B;
-  const float hyperbolic_divv_term = -hyp_divv * psi_over_ch * div_v;
-  const float parabolic_term =
-      -par * a * a_factor_sound_speed * psi_over_ch * ch * h_inv;
-  const float Hubble_term = a * a * H * psi_over_ch;
-
-  return hyperbolic_term + hyperbolic_divv_term + parabolic_term + Hubble_term;
 }
 
 /**
@@ -518,12 +530,8 @@ __attribute__((always_inline)) INLINE static void mhd_predict_extra(
   p->mhd_data.B_over_rho[1] += p->mhd_data.B_over_rho_dt[1] * dt_therm;
   p->mhd_data.B_over_rho[2] += p->mhd_data.B_over_rho_dt[2] * dt_therm;
 
-  p->mhd_data.psi_over_ch_dt = mhd_get_psi_over_ch_dt(
-      p, cosmo->a, cosmo->a_factor_sound_speed, cosmo->H, hydro_props, mu_0);
-  p->mhd_data.psi_over_ch +=
-      mhd_get_psi_over_ch_dt(p, cosmo->a, cosmo->a_factor_sound_speed, cosmo->H,
-                             hydro_props, mu_0) *
-      dt_therm;
+  p->mhd_data.psi_over_ch += p->mhd_data.psi_over_ch_dt * dt_therm;
+
 }
 
 /**
@@ -624,6 +632,9 @@ __attribute__((always_inline)) INLINE static void mhd_convert_quantities(
   xp->mhd_data.B_over_rho_full[0] = p->mhd_data.B_over_rho[0];
   xp->mhd_data.B_over_rho_full[1] = p->mhd_data.B_over_rho[1];
   xp->mhd_data.B_over_rho_full[2] = p->mhd_data.B_over_rho[2];
+
+  xp->mhd_data.psi_over_ch_full = p->mhd_data.psi_over_ch;
+
 }
 
 /**

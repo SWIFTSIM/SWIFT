@@ -89,8 +89,10 @@ enum engine_policy {
   engine_policy_sinks = (1 << 25),
   engine_policy_rt = (1 << 26),
   engine_policy_power_spectra = (1 << 27),
+  engine_policy_grid = (1 << 28),
+  engine_policy_grid_hydro = (1 << 29),
 };
-#define engine_maxpolicy 28
+#define engine_maxpolicy 30
 extern const char *engine_policy_names[engine_maxpolicy + 1];
 
 /**
@@ -772,11 +774,9 @@ void engine_maketasks(struct engine *e);
 /* Function prototypes, engine_maketasks.c. */
 void engine_make_fof_tasks(struct engine *e);
 
-/* Function prototypes, engine_marktasks.c. */
-int engine_marktasks(struct engine *e);
-
 /* Function prototypes, engine_split_particles.c. */
 void engine_split_gas_particles(struct engine *e);
+void engine_init_split_gas_particles(struct engine *e);
 
 #ifdef HAVE_SETAFFINITY
 cpu_set_t *engine_entry_affinity(void);

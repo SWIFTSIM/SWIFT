@@ -428,8 +428,8 @@ INLINE static int mhd_write_particles(const struct part* parts,
       "magnetic field gradients will stay below maximal resolvable gradient"
       "of B/h");
   list[10] = io_make_output_field_convert_part(
-      "TotalEffectiveResistivities", FLOAT, 1, UNIT_CONV_MAGNETIC_DIFFUSIVITY, 0, parts,
-      xparts, calculate_effective_resistivity,
+      "TotalEffectiveResistivities", FLOAT, 1, UNIT_CONV_MAGNETIC_DIFFUSIVITY,
+      0, parts, xparts, calculate_effective_resistivity,
       "Shows local value of total resistivity of the code");
   list[11] = io_make_output_field_convert_part(
       "RmLocals", FLOAT, 1, UNIT_CONV_NO_UNITS, 0, parts, xparts,

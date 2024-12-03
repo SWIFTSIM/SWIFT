@@ -23,9 +23,9 @@ from numpy import *
 from scipy.spatial.transform import Rotation
 
 # Constants
-G   = 4.300918e-03
-mu0 = 1.950089e-06
-c1  = 0.53
+G = 6.67430e-8
+mu0 = 1.25663706127e-1
+c1 = 0.53
 
 # Parameters (taken from Hopkins 2016)
 Rcloud = 4.628516371e16
@@ -33,11 +33,13 @@ Lbox = 10.0 * Rcloud
 
 gamma = 4.0 / 3.0  # Gas adiabatic index
 
-M = 1.99e33                          # total mass of the sphere
-T = 4.7e5                            # initial orbital period in years
-Omega = 2 * pi / (T * 3.1536e7)      # initial angular frequency of cloud 
+M = 1.99e33  # total mass of the sphere
+T = 4.7e5  # initial orbital period in years
+Omega = 2 * pi / (T * 3.1536e7)  # initial angular frequency of cloud
 
-mu   = 10                            # mass to magnetic field flux through sphere, normalised to a critical value for collapse. Refer to e.g. Henebelle & Fromang 2008 for details.
+mu = (
+    10
+)  # mass to magnetic field flux through sphere, normalised to a critical value for collapse. Refer to e.g. Henebelle & Fromang 2008 for details.
 Bini = 3.0 / c1 * sqrt(mu0 * G / 5.0) * M / (Rcloud * Rcloud) * 1 / mu
 
 # Barotropic EoS parameters
@@ -53,26 +55,26 @@ rho_in = M / volume_cloud
 rho_out_to_rho_in = 1 / 360
 rho_out = rho_out_to_rho_in * rho_in
 
-P_in  = rho_in * cs0 * cs0 * sqrt(1.0 + (rho_in * inv_rho_c) ** gamma)
+P_in = rho_in * cs0 * cs0 * sqrt(1.0 + (rho_in * inv_rho_c) ** gamma)
 P_out = rho_out * cs0 * cs0 * sqrt(1.0 + (rho_out * inv_rho_c) ** gamma)
 
 # Read glass files
 fileName = "magnetised_cloud.hdf5"
 
-glass = h5py.File("glassCube_128.hdf5", "r")
+glass = h5py.File("glassCube_32.hdf5", "r")
 pos_gf = glass["/PartType0/Coordinates"][:, :]
-h_gf   = glass["/PartType0/SmoothingLength"][:]
+h_gf = glass["/PartType0/SmoothingLength"][:]
 
 # Position cloud and ambient medium particles
-cloud_box_side = 2.0 *	Rcloud
+cloud_box_side = 2.0 * Rcloud
 atmosphere_box_side = (1.0 / cbrt(rho_out_to_rho_in)) * cloud_box_side
 
-pos_in = cloud_box_side * pos_gf 
-h_in   = cloud_box_side * h_gf
+pos_in = cloud_box_side * pos_gf
+h_in = cloud_box_side * h_gf
 
 pos_in -= 0.5 * cloud_box_side
 
-mask_in = pos_in[:,0]**2 + pos_in[:,1]**2 + pos_in[:,2]**2 < Rcloud * Rcloud
+mask_in = pos_in[:, 0] ** 2 + pos_in[:, 1] ** 2 + pos_in[:, 2] ** 2 < Rcloud * Rcloud
 
 pos_in = pos_in[mask_in]
 h_in = h_in[mask_in]
@@ -80,11 +82,16 @@ h_in = h_in[mask_in]
 numPart_in = int(len(h_in))
 
 pos_out = atmosphere_box_side * pos_gf
-h_out   = atmosphere_box_side * h_gf
+h_out = atmosphere_box_side * h_gf
 
 pos_out -= 0.5 * atmosphere_box_side
 
-mask_out = (pos_out[:,0]**2 + pos_out[:,1]**2 + pos_out[:,2]**2 > Rcloud * Rcloud) & (abs(pos_out[:,0]) < 0.5 * Lbox) & (abs(pos_out[:,1]) < 0.5 * Lbox) & (abs(pos_out[:,2]) < 0.5 * Lbox)
+mask_out = (
+    (pos_out[:, 0] ** 2 + pos_out[:, 1] ** 2 + pos_out[:, 2] ** 2 > Rcloud * Rcloud)
+    & (abs(pos_out[:, 0]) < 0.5 * Lbox)
+    & (abs(pos_out[:, 1]) < 0.5 * Lbox)
+    & (abs(pos_out[:, 2]) < 0.5 * Lbox)
+)
 
 pos_out = pos_out[mask_out]
 h_out = h_out[mask_out]
@@ -95,10 +102,10 @@ h = concatenate((h_in, h_out), axis=0)
 numPart = int(len(h))
 
 # Solid body rotation for cloud particles
-mask = pos[:,0] ** 2 + pos[:,1] ** 2 + pos[:,2] ** 2 < Rcloud * Rcloud  
+mask = pos[:, 0] ** 2 + pos[:, 1] ** 2 + pos[:, 2] ** 2 < Rcloud * Rcloud
 
-x = pos[:,0]
-y = pos[:,1]
+x = pos[:, 0]
+y = pos[:, 1]
 
 R = sqrt(x * x + y * y)
 
@@ -107,8 +114,8 @@ cos_phi = cos(phi)
 sin_phi = sin(phi)
 
 v = zeros((numPart, 3))
-v[mask][:, 0] = -Omega * R[mask] * sin_phi[mask]
-v[mask][:, 1] = Omega * R[mask] * cos_phi[mask]
+v[:, 0][mask] = -Omega * R[mask] * sin_phi[mask]
+v[:, 1][mask] = Omega * R[mask] * cos_phi[mask]
 
 pos += 0.5 * Lbox
 
@@ -122,6 +129,11 @@ u[~mask] *= P_out / ((gamma - 1) * rho_out)
 
 B = zeros((numPart, 3))
 B[:, 2] = Bini
+
+A = zeros((numPart, 3))
+A[:,0] = -Bini * (pos[:,1]-0.5*Lbox)/2
+A[:,1] = Bini * (pos[:,0]-0.5*Lbox)/2
+
 
 epsilon_lim = cbrt(M / (numPart_in * 1e-11)) / 3.086e18
 print(epsilon_lim)
@@ -162,5 +174,6 @@ grp.create_dataset("SmoothingLength", data=h, dtype="f")
 grp.create_dataset("InternalEnergy", data=u, dtype="f")
 grp.create_dataset("ParticleIDs", data=ids, dtype="L")
 grp.create_dataset("MagneticFluxDensities", data=B, dtype="f")
+grp.create_dataset("MagneticVectorPotentials", data=A, dtype="f")
 
 file.close()

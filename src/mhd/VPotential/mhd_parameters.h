@@ -52,7 +52,7 @@
  * A_phi = a^MHD+1 A_co
  */
 #define mhd_comoving_factor -2.f
-//#define mhd_comoving_factor -3.f/2.f*(hydro_gamma-1.f)
+// #define mhd_comoving_factor -3.f/2.f*(hydro_gamma-1.f)
 
 /* Magnetic Diffusion parameters -- Defaults can be changed in RunTime */
 /* Magnetic Diffusion, if set to 0 IDEAL mhd
