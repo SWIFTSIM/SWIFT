@@ -109,7 +109,7 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
 #endif
     t_grav_counts = scheduler_addtask(
         s, task_type_send, task_subtype_grav_counts, ci->mpi.tag, 0, ci, cj);
-    scheduler_addunlock(s, ci->hydro.star_formation, t_grav_counts);
+    scheduler_addunlock(s, ci->sinks.star_formation_sink, t_grav_counts);
   }
   if (t_sink_formation_grav_counts == NULL && with_sinks && ci->hydro.count > 0) {
 #ifdef SWIFT_DEBUG_CHECKS
