@@ -29,15 +29,16 @@
 /* Local headers. */
 #include "engine.h"
 #include "parser.h"
+#include "random.h"
 #include "space.h"
 #include "swift.h"
 #include "zoom_region/zoom.h"
 
 double generate_gaussian_coordinate(const double mean, const double std,
                                     const double cell_width) {
-  double u1 = (double)rand() / RAND_MAX;
-  double u2 = (double)rand() / RAND_MAX;
-  double z0 = (sqrt(-2.0 * log(u1)) * cos(2 * M_PI * u2)) * std + mean;
+
+  /* Generate a random number from a normal distribution. */
+  douvle z0 = random_gaussian(mean, std);
 
   /* We only want to go out at most by the size of a cell. If we've got a
    * coordinate out too far we should try again. */

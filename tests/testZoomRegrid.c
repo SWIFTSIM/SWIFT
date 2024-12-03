@@ -24,14 +24,14 @@
 #include <fenv.h>
 
 /* Local headers. */
+#include "random.h"
 #include "swift.h"
 #include "zoom_region/zoom.h"
 
 double generate_gaussian_coordinate(const double mean, const double std,
                                     const double max_width) {
-  double u1 = (double)rand() / RAND_MAX;
-  double u2 = (double)rand() / RAND_MAX;
-  double z0 = (sqrt(-2.0 * log(u1)) * cos(2 * M_PI * u2)) * std + mean;
+
+  double z0 = random_gaussian(mean, std);
 
   /* Try again if we're out of bounds. */
   if (z0 < mean - max_width / 2 || z0 > mean + max_width / 2) {
