@@ -55,6 +55,9 @@ struct sink {
   /*! Sink target mass. In Msun. */
   float target_mass_Msun;
 
+  /* Mass of the IMF this sinks is currently affected to. In internal units. */
+  double mass_IMF;
+
   /*! Integer number of neighbours */
   int num_ngbs;
 
@@ -63,6 +66,44 @@ struct sink {
 
   /*! Sink target stellar type */
   enum stellar_type target_type;
+
+  /*! Union for the birth time and birth scale factor */
+  union {
+
+    /*! Birth time */
+    float birth_time;
+
+    /*! Birth scale factor */
+    float birth_scale_factor;
+  };
+
+  struct {
+
+    /*! Minimal gas smoothing length */
+    float minimal_h_gas;
+
+    /*! Density of the gas surrounding the sink. */
+    float rho_gas;
+
+    /*! Smoothed sound speed of the gas surrounding the sink. */
+    float sound_speed_gas;
+
+    /*! Smoothed velocity of the gas surrounding the sink, in the frame of the
+      sink (internal units) */
+    float velocity_gas[3];
+
+    /*! Minimal t_c between all sink neighbours */
+    float minimal_sink_t_c;
+
+    /*! Minimal dynamical time between all sink neighbours */
+    float minimal_sink_t_dyn;
+
+    /*! Total mass that passes all criteria before the accretion limit */
+    float mass_eligible_swallow;
+
+    /*! Swallowed mass during this timestep */
+    float mass_swallowed;
+  } to_collect;
 
   /*! Particle time bin */
   timebin_t time_bin;

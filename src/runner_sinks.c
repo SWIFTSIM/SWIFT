@@ -529,6 +529,7 @@ void runner_do_prepare_part_sink_formation(struct runner *r, struct cell *c,
                                            struct xpart *restrict xp) {
   struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
+  const int with_cosmology = e->policy & engine_policy_cosmology;
   const struct sink_props *sink_props = e->sink_properties;
   const int count = c->hydro.count;
   struct part *restrict parts = c->hydro.parts;
@@ -558,8 +559,8 @@ void runner_do_prepare_part_sink_formation(struct runner *r, struct cell *c,
     struct sink *restrict si = &sinks[i];
 
     /* Compute the quantities required to later decide to form a sink or not. */
-    sink_prepare_part_sink_formation_sink_criteria(e, p, xp, si, cosmo,
-                                                   sink_props);
+    sink_prepare_part_sink_formation_sink_criteria(e, p, xp, si, with_cosmology,
+                                                   cosmo, sink_props, e->time);
 
   } /* End of sink neighbour loop */
 }

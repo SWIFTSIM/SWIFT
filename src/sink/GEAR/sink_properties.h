@@ -24,9 +24,20 @@
 #include "feedback_properties.h"
 #include "parser.h"
 
+/* Some default values for the parameters to be read in the YAML file */
+#define sink_gear_f_acc_default 0.8
+#define sink_gear_star_spawning_sigma_factor_default 0.2
+#define sink_gear_n_imf_default FLT_MAX /* No accretion restriction */
+#define sink_gear_tolerance_sf_timestep_default 0.5
 
+/* Sink formation is activated */
+#define sink_gear_disable_sink_formation_default 0
 
-#define DEFAULT_DISABLE_SF 0 /* SF is activated */
+/* Star formation is activated */
+#define sink_gear_disable_sf_default 0
+
+/* By default all current implemented criteria are active */
+#define sink_gear_sink_formation_criterion_all_default 1
 
 /**
  * @brief Properties of sink in the Default model.
@@ -85,6 +96,29 @@ struct sink_props {
   /*! Minimal sink mass in Msun. This prevents m_sink << m_gas in low
     resolution simulations. */
   float sink_minimal_mass_Msun;
+
+  /***************************************************************************/
+  /*! Maximal time-step length of young sinks (internal units) */
+  double max_time_step_young;
+
+  /*! Maximal time-step length of old sinks (internal units) */
+  double max_time_step_old;
+
+  /*! Age threshold for the young/old transition (internal units) */
+  double age_threshold;
+
+  /*! Age threshold for the transition to unlimited time-step size (internal
+   * units) */
+  double age_threshold_unlimited;
+
+  /*! Time integration CFL condition factor */
+  float CFL_condition;
+
+  /*! Number of times the IMF mass can be swallowed in a single timestep */
+  float n_IMF;
+
+  /*! Tolerance parameter for SF timestep constraint */
+  float tolerance_SF_timestep;
 };
 
 /**
@@ -186,21 +220,12 @@ INLINE static void sink_props_init(struct sink_props *sp,
         "ERROR: Running with sink but without feedback. GEAR sink model needs "
         "to be run with --sink and --feedback");
 
-  /* Default values */
-  const float default_f_acc = 0.8;
-  const float default_star_spawning_sigma_factor = 0.2;
-  const char default_disable_sink_formation = 0; /* Sink formation is
-                                                     activated */
-
-  /* By default all current implemented criteria are active */
-  const uint8_t default_sink_formation_criterion_all = 1;
-
   /* Read the parameters from the parameter file */
   sp->cut_off_radius =
       parser_get_param_float(params, "GEARSink:cut_off_radius");
 
-  sp->f_acc =
-      parser_get_opt_param_float(params, "GEARSink:f_acc", default_f_acc);
+  sp->f_acc = parser_get_opt_param_float(params, "GEARSink:f_acc",
+                                         sink_gear_f_acc_default);
 
   /* Check that sp->f_acc respects 0 <= f_acc <= 1 */
   if ((sp->f_acc < 0) || (sp->f_acc > 1)) {
@@ -239,7 +264,10 @@ INLINE static void sink_props_init(struct sink_props *sp,
 
   sp->star_spawning_sigma_factor =
       parser_get_opt_param_float(params, "GEARSink:star_spawning_sigma_factor",
-                                 default_star_spawning_sigma_factor);
+                                 sink_gear_star_spawning_sigma_factor_default);
+
+  sp->n_IMF = parser_get_opt_param_float(params, "GEARSink:n_IMF",
+                                         sink_gear_n_imf_default);
 
   sp->sink_minimal_mass_Msun =
       parser_get_opt_param_float(params, "GEARSink:sink_minimal_mass_Msun", 0.);
@@ -247,33 +275,60 @@ INLINE static void sink_props_init(struct sink_props *sp,
   /* Sink formation criterion parameters (all active by default) */
   sp->sink_formation_contracting_gas_criterion = parser_get_opt_param_int(
       params, "GEARSink:sink_formation_contracting_gas_criterion",
-      default_sink_formation_criterion_all);
+      sink_gear_sink_formation_criterion_all_default);
 
   sp->sink_formation_smoothing_length_criterion = parser_get_opt_param_int(
       params, "GEARSink:sink_formation_smoothing_length_criterion",
-      default_sink_formation_criterion_all);
+      sink_gear_sink_formation_criterion_all_default);
 
   sp->sink_formation_jeans_instability_criterion = parser_get_opt_param_int(
       params, "GEARSink:sink_formation_jeans_instability_criterion",
-      default_sink_formation_criterion_all);
+      sink_gear_sink_formation_criterion_all_default);
 
   sp->sink_formation_bound_state_criterion = parser_get_opt_param_int(
       params, "GEARSink:sink_formation_bound_state_criterion",
-      default_sink_formation_criterion_all);
+      sink_gear_sink_formation_criterion_all_default);
 
   sp->sink_formation_overlapping_sink_criterion = parser_get_opt_param_int(
       params, "GEARSink:sink_formation_overlapping_sink_criterion",
-      default_sink_formation_criterion_all);
+      sink_gear_sink_formation_criterion_all_default);
 
   /* Should we disable sink formation ? */
   sp->disable_sink_formation =
       parser_get_opt_param_int(params, "GEARSink:disable_sink_formation",
-                               default_disable_sink_formation);
+                               sink_gear_disable_sink_formation_default);
+
+  /* Maximal time-step lengths */
+  const double max_time_step_young_Myr = parser_get_opt_param_float(
+      params, "GEARSink:max_timestep_young_Myr", FLT_MAX);
+  const double max_time_step_old_Myr = parser_get_opt_param_float(
+      params, "GEARSink:max_timestep_old_Myr", FLT_MAX);
+  const double age_threshold_Myr = parser_get_opt_param_float(
+      params, "GEARSink:timestep_age_threshold_Myr", FLT_MAX);
+  const double age_threshold_unlimited_Myr = parser_get_opt_param_float(
+      params, "GEARSink:timestep_age_threshold_unlimited_Myr", FLT_MAX);
+
+  /* Check for consistency */
+  if (age_threshold_unlimited_Myr != 0. && age_threshold_Myr != FLT_MAX) {
+    if (age_threshold_unlimited_Myr < age_threshold_Myr)
+      error(
+          "The age threshold for unlimited sink time-step sizes (%e Myr) is "
+          "smaller than the transition threshold from young to old ages (%e "
+          "Myr)",
+          age_threshold_unlimited_Myr, age_threshold_Myr);
+  }
+
+  /* Timestep tolerance paramters */
+  sp->CFL_condition = parser_get_param_float(params, "GEARSink:CFL_condition");
+
+  sp->tolerance_SF_timestep =
+      parser_get_opt_param_float(params, "GEARSink:tolerance_SF_timestep",
+                                 sink_gear_tolerance_sf_timestep_default);
 
   /* Should we disable star formation ? */
   sp->disable_star_formation =
       parser_get_opt_param_int(params, "GEARSink:disable_star_formation",
-                               DEFAULT_DISABLE_SF);
+			       sink_gear_disable_sf_default);
 
   /* Apply unit change */
   sp->temperature_threshold /=
@@ -285,6 +340,13 @@ INLINE static void sink_props_init(struct sink_props *sp,
       m_p_cgs / units_cgs_conversion_factor(us, UNIT_CONV_DENSITY);
   sp->maximal_density_threshold *=
       m_p_cgs / units_cgs_conversion_factor(us, UNIT_CONV_DENSITY);
+
+  const double Myr_internal_units = 1e6 * phys_const->const_year;
+  sp->max_time_step_young = max_time_step_young_Myr * Myr_internal_units;
+  sp->max_time_step_old = max_time_step_old_Myr * Myr_internal_units;
+  sp->age_threshold = age_threshold_Myr * Myr_internal_units;
+  sp->age_threshold_unlimited =
+      age_threshold_unlimited_Myr * Myr_internal_units;
 
   /* here, we need to differenciate between the stellar models */
   struct initial_mass_function *imf;
@@ -336,6 +398,21 @@ INLINE static void sink_props_init(struct sink_props *sp,
           sp->sink_formation_bound_state_criterion);
   message("sink_formation_overlapping_sink_criterion    = %d",
           sp->sink_formation_overlapping_sink_criterion);
+
+  /* Print timestep parameters information */
+  message("sink max_timestep_young                      = %e",
+          sp->max_time_step_young);
+  message("sink max_timestep_old                        = %e",
+          sp->max_time_step_old);
+  message("sink age_threshold from young to old         = %e",
+          sp->age_threshold);
+  message("sink age_threshold from old to unlimited     = %e",
+          sp->age_threshold_unlimited);
+  message("sink C_CFL                                   = %e",
+          sp->CFL_condition);
+  message("tolerance_SF_timestep                        = %e",
+          sp->tolerance_SF_timestep);
+  message("n_IMF                                        = %e", sp->n_IMF);
 }
 
 /**
