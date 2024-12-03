@@ -38,7 +38,8 @@ double generate_gaussian_coordinate(const double mean, const double std,
                                     const double cell_width) {
 
   /* Generate a random number from a normal distribution. */
-  douvle z0 = random_gaussian(mean, std);
+  douvle z0 = random_gaussian(mean, std, /*id*/ 0, /*ti_current*/ 42,
+                              /*arbitrary type*/ random_number_star_formation);
 
   /* We only want to go out at most by the size of a cell. If we've got a
    * coordinate out too far we should try again. */

@@ -29,9 +29,10 @@
 
 double generate_gaussian_coordinate(const double mean, const double std,
                                     const double max_width) {
-  double u1 = (double)rand() / RAND_MAX;
-  double u2 = (double)rand() / RAND_MAX;
-  double z0 = (sqrt(-2.0 * log(u1)) * cos(2 * M_PI * u2)) * std + mean;
+
+  /* Generate a random number from a normal distribution. */
+  douvle z0 = random_gaussian(mean, std, /*id*/ 0, /*ti_current*/ 42,
+                              /*arbitrary type*/ random_number_star_formation);
 
   /* Try again if we're out of bounds. */
   if (z0 < mean - max_width / 2 || z0 > mean + max_width / 2) {
