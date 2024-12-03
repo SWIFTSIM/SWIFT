@@ -44,7 +44,7 @@ double generate_gaussian_coordinate(const double mean, const double std,
   /* We only want to go out at most by the size of a cell. If we've got a
    * coordinate out too far we should try again. */
   if (z0 < mean - cell_width / 2 || z0 > mean + cell_width / 2) {
-    return generate_gaussian_coordinate(mean, std, cell_width);
+    return generate_gaussian_coordinate(mean, std, cell_width, id);
   }
 
   return z0;
