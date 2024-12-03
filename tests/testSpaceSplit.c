@@ -34,17 +34,31 @@
 #include "swift.h"
 #include "zoom_region/zoom.h"
 
-double generate_gaussian_coordinate(const double mean, const double std,
-                                    const double cell_width, const int id) {
+/**
+ * @brief Generate a random coordinate from a gaussian distribution.
+ *
+ * @param mean The mean of the gaussian distribution.
+ * @param std The standard deviation of the gaussian distribution.
+ * @param max_width The maximum width of the cell.
+ * @param id The ID of the particle for which to generate the number.
+ * @param ti_current The time (on the time-line) for which to generate the
+ * number.
+ * @return A random number drawn from the gaussian distribution.
+ */
+double random_gaussian_coordinate(const double mean, const double std,
+                                  const double max_width, const int id,
+                                  const integertime_t ti_current) {
 
   /* Generate a random number from a normal distribution. */
-  double z0 = random_gaussian(mean, std, id, /*ti_current*/ 42,
+  double z0 = random_gaussian(mean, std, id, ti_current,
                               /*arbitrary type*/ random_number_star_formation);
 
   /* We only want to go out at most by the size of a cell. If we've got a
-   * coordinate out too far we should try again. */
-  if (z0 < mean - cell_width / 2 || z0 > mean + cell_width / 2) {
-    return generate_gaussian_coordinate(mean, std, cell_width, id * 2);
+   * coordinate out too far we should try again changing the random number
+   * seed. */
+  if (z0 < mean - max_width / 2 || z0 > mean + max_width / 2) {
+    return random_gaussian_coordinate(mean, std, max_width, id,
+                                      (integertime_t)rand());
   }
 
   return z0;
@@ -79,11 +93,11 @@ void make_mock_space(struct space *s, struct engine *e, const double std) {
    * the middle of the box with a width. */
   for (size_t i = 0; i < s->nr_gparts; i++) {
     gparts[i].x[0] =
-        generate_gaussian_coordinate(s->dim[0] / 2, std, s->width[0], i * 3);
-    gparts[i].x[1] = generate_gaussian_coordinate(s->dim[1] / 2, std,
-                                                  s->width[1], i * 3 + 1);
-    gparts[i].x[2] = generate_gaussian_coordinate(s->dim[2] / 2, std,
-                                                  s->width[2], i * 3 + 2);
+        random_gaussian_coordinate(s->dim[0] / 2, std, s->width[0], i, rand());
+    gparts[i].x[1] =
+        random_gaussian_coordinate(s->dim[1] / 2, std, s->width[1], i, rand());
+    gparts[i].x[2] =
+        random_gaussian_coordinate(s->dim[2] / 2, std, s->width[2], i, rand());
     gparts[i].mass = 1.0;
     gparts[i].type = swift_type_dark_matter;
   }
