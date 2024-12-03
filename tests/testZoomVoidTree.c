@@ -31,7 +31,7 @@ double generate_gaussian_coordinate(const double mean, const double std,
                                     const double max_width) {
 
   /* Generate a random number from a normal distribution. */
-  douvle z0 = random_gaussian(mean, std, /*id*/ 0, /*ti_current*/ 42,
+  double z0 = random_gaussian(mean, std, /*id*/ 0, /*ti_current*/ 42,
                               /*arbitrary type*/ random_number_star_formation);
 
   /* Try again if we're out of bounds. */
