@@ -1806,8 +1806,6 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
           }
         }
 
-	/* TODO: Add sf_sinks */
-
       } else if (cj_nodeID != nodeID) {
         /* If the local cell is active, receive data from the foreign cell. */
         if (ci_active) {
@@ -1901,8 +1899,6 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
                                     cj_nodeID);
           }
         }
-
-	/* TODO: Add sf_sinks */
       }
 #endif
     }
@@ -2920,11 +2916,11 @@ int cell_unskip_black_holes_tasks(struct cell *c, struct scheduler *s) {
 int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
 
   struct engine *e = s->space->e;
-/* #ifdef WITH_MPI */
-  /* const int with_sinks = (e->policy & engine_policy_sinks); */
-  /* const int with_stars = (e->policy & engine_policy_stars); */
-  /* const int with_star_formation_sink = with_sinks && with_stars; */
-/* #endif */
+#ifdef WITH_MPI
+  const int with_sinks = (e->policy & engine_policy_sinks);
+  const int with_stars = (e->policy & engine_policy_stars);
+  const int with_star_formation_sink = with_sinks && with_stars;
+#endif
   const int with_timestep_sync = (e->policy & engine_policy_timestep_sync);
   const int with_feedback = e->policy & engine_policy_feedback;
   const int nodeID = e->nodeID;
@@ -3058,17 +3054,15 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
 
 	/* TODO: implement sf_sink_counts + same for gravity */
 	/* Propagating new star counts? */
-	/* if (with_star_formation_sink) { */
-	/*   /\* Why not cj->sinks.count instead? If the other node does not have */
-	/*      any sink, we do not need to receive anything *\/ */
-        /*   if (ci_active && (ci->hydro.count > 0 || ci->sinks.count > 0)) { */
-        /*     scheduler_activate_recv(s, ci->mpi.recv, task_subtype_sf_counts); */
-        /*   } */
-        /*   if (cj_active && (cj->hydro.count > 0 || cj->sinks.count > 0)) { */
-        /*     scheduler_activate_send(s, cj->mpi.send, task_subtype_sf_counts, */
-        /*                             ci_nodeID); */
-        /*   } */
-	/* } */
+	if (with_star_formation_sink) {
+          if (ci_active && (ci->hydro.count > 0 || ci->sinks.count > 0)) {
+            scheduler_activate_recv(s, ci->mpi.recv, task_subtype_sf_counts);
+          }
+          if (cj_active && (cj->hydro.count > 0 || cj->sinks.count > 0)) {
+            scheduler_activate_send(s, cj->mpi.send, task_subtype_sf_counts,
+                                    ci_nodeID);
+          }
+	}
 
       } else if (cj_nodeID != nodeID) {
 
@@ -3119,15 +3113,15 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
 
 	/* TODO: implement sf_sink_counts + same for gravity */
 	/* Propagating new star counts? */
-        /* if (with_star_formation_sink) { */
-        /*   if (cj_active && (cj->hydro.count > 0 || cj->sinks.count > 0)) { */
-        /*     scheduler_activate_recv(s, cj->mpi.recv, task_subtype_sf_counts); */
-        /*   } */
-        /*   if (ci_active && (ci->hydro.count > 0 || ci->sinks.count > 0)) { */
-        /*     scheduler_activate_send(s, ci->mpi.send, task_subtype_sf_counts, */
-        /*                             cj_nodeID); */
-        /*   } */
-        /* } */
+        if (with_star_formation_sink) {
+          if (cj_active && (cj->hydro.count > 0 || cj->sinks.count > 0)) {
+            scheduler_activate_recv(s, cj->mpi.recv, task_subtype_sf_counts);
+          }
+          if (ci_active && (ci->hydro.count > 0 || ci->sinks.count > 0)) {
+            scheduler_activate_send(s, ci->mpi.send, task_subtype_sf_counts,
+                                    cj_nodeID);
+          }
+        }
       }
 #endif /* WITH_MPI */
     }
