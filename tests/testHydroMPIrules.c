@@ -84,7 +84,7 @@ void test(void) {
   float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
   /* --- Test the density loop --- */
-  runner_iact_nonsym_density(r2, dx, pi.h, pj.h, &pi, &pj, a, H);
+  runner_iact_nonsym_density(r2, dx, pi.h, pj.h, &pi, &pj, mu_0, a, H);
   runner_iact_nonsym_mhd_density(r2, dx, pi.h, pj.h, &pi, &pj, mu_0, a, H);
   runner_iact_nonsym_chemistry(r2, dx, pi.h, pj.h, &pi, &pj, a, H);
   runner_iact_nonsym_pressure_floor(r2, dx, pi.h, pj.h, &pi, &pj, a, H);
@@ -104,7 +104,7 @@ void test(void) {
   /* --- Test the gradient loop --- */
 #ifdef EXTRA_HYDRO_LOOP
 
-  runner_iact_nonsym_gradient(r2, dx, pi.h, pj.h, &pi, &pj, a, H);
+  runner_iact_nonsym_gradient(r2, dx, pi.h, pj.h, &pi, &pj, mu_0, a, H);
   runner_iact_nonsym_mhd_gradient(r2, dx, pi.h, pj.h, &pi, &pj, mu_0, a, H);
 
   /* Check whether pj has been modified */
@@ -120,7 +120,7 @@ void test(void) {
 #endif
 
   /* --- Test the force loop --- */
-  runner_iact_nonsym_force(r2, dx, pi.h, pj.h, &pi, &pj, a, H);
+  runner_iact_nonsym_force(r2, dx, pi.h, pj.h, &pi, &pj, mu_0, a, H);
   runner_iact_nonsym_mhd_force(r2, dx, pi.h, pj.h, &pi, &pj, mu_0, a, H);
 
   /* Check that the particles are the same */

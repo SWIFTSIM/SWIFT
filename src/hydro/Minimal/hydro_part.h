@@ -69,6 +69,13 @@ struct xpart {
   /*! Internal energy at the last full step. */
   float u_full;
 
+  /* MATTHIEU START --------------------------------------- */
+
+  /*! Full Step Magnetic Field */
+  float B_over_rho_full[3];
+
+  /* MATTHIEU END ----------------------------------------- */
+
   /*! Additional data used to record particle splits */
   struct particle_splitting_data split_data;
 
@@ -127,6 +134,46 @@ struct part {
 
   /*! Particle density. */
   float rho;
+
+  /* MATTHIEU START --------------------------------------- */
+
+  /*! Predicted B/rho field */
+  float B_over_rho[3];
+
+  /*! Divergence of B */
+  float div_B;
+
+  /*! Curl of B */
+  float curl_B[3];
+
+  /*! Time derivative of B/rho */
+  float B_over_rho_dt[3];
+
+  /*! Alfven speed of the particle */
+  float Alfven_speed;
+
+  /*! Dedner correction scalar */
+  float Dedner_Psi_over_c;
+
+  /*! Dedner correction scalar time derivative */
+  float Dedner_Psi_over_c_dt;
+
+  /*! Divergence of B used for the Dedner scalar evolution */
+  float Dedner_div_B;
+
+  /*! Divergence of v used for the Dedner scalar evolution */
+  float Dedner_div_v;
+
+  /*! Particle-carried thermal diffusion constant */
+  float alpha_u;
+
+  /*! Particle-carried viscosity constant */
+  float alpha_visc;
+
+  /*! Particle-carried viscosity constant time derivative */
+  float alpha_visc_dt;
+
+  /* MATTHIEU END ----------------------------------------- */
 
   /* Store density/force specific stuff. */
   // union {

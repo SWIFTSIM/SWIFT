@@ -467,10 +467,23 @@ __attribute__((always_inline)) INLINE static float hydro_signal_velocity(
     const float dx[3], const struct part *restrict pi,
     const struct part *restrict pj, const float mu_ij, const float beta) {
 
-  const float ci = pi->force.soundspeed;
-  const float cj = pj->force.soundspeed;
+  /* MATTHIEU START --------------------------------------- */
 
-  return ci + cj - beta * mu_ij;
+  error("aaaa");
+
+  /* const float ci = pi->force.soundspeed; */
+  /* const float cj = pj->force.soundspeed; */
+
+  /* /\* Price 2018, eq. 180 *\/ */
+  /* const float vi = sqrtf(ci * ci + pi->Alfven_speed * pi->Alfven_speed); */
+  /* const float vj = sqrtf(cj * cj + pj->Alfven_speed * pj->Alfven_speed); */
+
+  /* /\* Price 2018, eq. 179 *\/ */
+  /* return vi + vj - beta * mu_ij; */
+
+  return -1.f;
+
+  /* MATTHIEU END ----------------------------------------- */
 }
 
 /**
@@ -525,6 +538,16 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->density.rot_v[0] = 0.f;
   p->density.rot_v[1] = 0.f;
   p->density.rot_v[2] = 0.f;
+
+  /* MATTHIEU START --------------------------------------- */
+
+  p->curl_B[0] = 0.f;
+  p->curl_B[1] = 0.f;
+  p->curl_B[2] = 0.f;
+
+  p->div_B = 0.f;
+
+  /* MATTHIEU END ----------------------------------------- */
 }
 
 /**
@@ -610,7 +633,37 @@ __attribute__((always_inline)) INLINE static void hydro_reset_gradient(
  * @param p The particle to act upon.
  */
 __attribute__((always_inline)) INLINE static void hydro_end_gradient(
-    struct part *p) {}
+    struct part *p, const float mu_0) {
+
+  /* MATTHIEU START --------------------------------------- */
+
+  /* Some smoothing length multiples. */
+  const float h = p->h;
+  const float h_inv = 1.0f / h;                       /* 1/h */
+  const float h_inv_dim = pow_dimension(h_inv);       /* 1/h^d */
+  const float h_inv_dim_plus_one = h_inv_dim * h_inv; /* 1/h^(d+1) */
+
+  const float rho = p->rho;
+  const float rho_inv = 1.f / rho;
+  // const float a_inv2 = cosmo->a2_inv;
+  const float a_inv2 = 1.;  // TODO: Cosmology terms!!
+
+  /* Finish calculation of the (physical) magnetic field curl components */
+  p->curl_B[0] *= h_inv_dim_plus_one * a_inv2 * rho_inv;
+  p->curl_B[1] *= h_inv_dim_plus_one * a_inv2 * rho_inv;
+  p->curl_B[2] *= h_inv_dim_plus_one * a_inv2 * rho_inv;
+
+  /* Finish calculation of the (physical) magnetic field divergence */
+  p->div_B *= h_inv_dim_plus_one * a_inv2 * rho_inv;
+
+  // TODO: Cosmology terms!!
+  const float B_magnitude2 = p->B_over_rho[0] * p->B_over_rho[0] +
+                             p->B_over_rho[1] * p->B_over_rho[1] +
+                             p->B_over_rho[2] * p->B_over_rho[2];
+  p->Alfven_speed = sqrtf(B_magnitude2 * rho / mu_0);
+
+  /* MATTHIEU END ----------------------------------------- */
+}
 
 /**
  * @brief Sets all particle fields to sensible values when the #part has 0 ngbs.
@@ -735,7 +788,16 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   p->force.f = grad_h_term;
   p->force.pressure = pressure;
   p->force.soundspeed = soundspeed;
-  p->force.balsara = balsara;
+
+  /* MATTHIEU START --------------------------------------- */
+
+  if (hydro_props->with_Balsara) {
+    p->force.balsara = balsara;
+  } else {
+    p->force.balsara = 1.f;
+  }
+
+  /* MATTHIEU END ----------------------------------------- */
 }
 
 /**
@@ -757,7 +819,18 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
   /* Reset the time derivatives. */
   p->u_dt = 0.0f;
   p->force.h_dt = 0.0f;
-  p->force.v_sig = 2.f * p->force.soundspeed;
+  p->force.v_sig = p->force.soundspeed;
+
+  /* MATTHIEU START --------------------------------------- */
+
+  p->B_over_rho_dt[0] = 0.f;
+  p->B_over_rho_dt[1] = 0.f;
+  p->B_over_rho_dt[2] = 0.f;
+
+  p->Dedner_div_B = 0.f;
+  p->Dedner_div_v = 0.f;
+
+  /* MATTHIEU END ----------------------------------------- */
 }
 
 /**
@@ -780,6 +853,14 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
 
   /* Re-set the entropy */
   p->u = xp->u_full;
+
+  /* MATTHIEU START --------------------------------------- */
+
+  p->B_over_rho[0] = xp->B_over_rho_full[0];
+  p->B_over_rho[1] = xp->B_over_rho_full[1];
+  p->B_over_rho[2] = xp->B_over_rho_full[2];
+
+  /* MATTHIEU END ----------------------------------------- */
 
   /* Re-compute the pressure */
   const float pressure = gas_pressure_from_internal_energy(p->rho, p->u);
@@ -821,6 +902,21 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
 
   /* Predict the internal energy */
   p->u += p->u_dt * dt_therm;
+
+  /* MATTHIEU START --------------------------------------- */
+
+  /* Predict the magnetic fields */
+  p->B_over_rho[0] += p->B_over_rho_dt[0] * dt_therm;  // TODO: cosmo terms
+  p->B_over_rho[1] += p->B_over_rho_dt[1] * dt_therm;
+  p->B_over_rho[2] += p->B_over_rho_dt[2] * dt_therm;
+
+  /* Predict Dedner scalar */
+  p->Dedner_Psi_over_c += p->Dedner_Psi_over_c_dt * dt_therm;
+
+  /* Predict viscosity constant */
+  p->alpha_visc += p->alpha_visc_dt * dt_therm;
+
+  /* MATTHIEU END ----------------------------------------- */
 
   const float h_inv = 1.f / p->h;
 
@@ -876,9 +972,50 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
  * @param cosmo The current cosmological model.
  */
 __attribute__((always_inline)) INLINE static void hydro_end_force(
-    struct part *restrict p, const struct cosmology *cosmo) {
+    struct part *restrict p, const struct cosmology *cosmo,
+    const struct hydro_props *props) {
 
   p->force.h_dt *= p->h * hydro_dimension_inv;
+
+  /* MATTHIEU START --------------------------------------- */
+
+  const float c_s = p->force.soundspeed;
+  const float v_A = p->Alfven_speed;
+
+  /* Magnetosonic speed (Price 2018, eq. 180) */
+  const float c_h = sqrtf(c_s * c_s + v_A * v_A);
+
+  if (props->mhd_with_Dedner) {
+
+    /* Decay time (Price 2018, eq. 191) */
+    const float sigma_c = 1.f;
+    const float tau_c = p->h / (sigma_c * c_h);
+
+    /* Finish Dedner scalar time derivative (Price 2018, eq. 168)
+     * (Note the 1/2 in the second term is read in as a runtime parameter) */
+    float Dedner_div_B = p->Dedner_div_B * c_h;
+    Dedner_div_B *= props->mhd_Dedner_div_B_factor;
+
+    float Dedner_div_v = p->Dedner_div_v * p->Dedner_Psi_over_c;
+    Dedner_div_v *= props->mhd_Dedner_div_v_factor;
+
+    float Dedner_parabolic = p->Dedner_Psi_over_c / tau_c;
+    Dedner_parabolic *= props->mhd_Dedner_parabolic_factor;
+
+    p->Dedner_Psi_over_c_dt = -Dedner_div_B - Dedner_div_v - Dedner_parabolic;
+    // TODO: cosmo terms
+  }
+
+  /* Viscosity constant evolution (Price 2012, eq. 105) */
+  const float sigma_visc = 0.1f;
+  const float alpha_visc_min = 0.1;
+  const float S_visc = fmaxf(-p->density.div_v, 0.f);
+  const float tau_visc = p->h / (sigma_visc * c_s);
+
+  p->alpha_visc_dt = S_visc;
+  p->alpha_visc_dt += (p->alpha_visc - alpha_visc_min) / tau_visc;
+
+  /* MATTHIEU END ----------------------------------------- */
 }
 
 /**
@@ -909,6 +1046,16 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
 
   /* Do not decrease the energy by more than a factor of 2*/
   xp->u_full = max(xp->u_full + delta_u, 0.5f * xp->u_full);
+
+  /* MATTHIEU START --------------------------------------- */
+
+  /* Predict the magnetic fields */
+  xp->B_over_rho_full[0] += p->B_over_rho_dt[0] * dt_therm;
+  xp->B_over_rho_full[1] += p->B_over_rho_dt[1] * dt_therm;
+  xp->B_over_rho_full[2] += p->B_over_rho_dt[2] * dt_therm;
+  // TODO: cosmo terms
+
+  /* MATTHIEU END ----------------------------------------- */
 
   /* Check against entropy floor */
   const float floor_A = entropy_floor(p, cosmo, floor_props);
@@ -968,6 +1115,21 @@ __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
 
   p->force.pressure = pressure;
   p->force.soundspeed = soundspeed;
+
+  /* MATTHIEU START --------------------------------------- */
+
+  // TODO: Cosmology terms!!
+
+  /* Convert B into B/rho */
+  p->B_over_rho[0] /= p->rho;
+  p->B_over_rho[1] /= p->rho;
+  p->B_over_rho[2] /= p->rho;
+
+  xp->B_over_rho_full[0] = p->B_over_rho[0];
+  xp->B_over_rho_full[1] = p->B_over_rho[1];
+  xp->B_over_rho_full[2] = p->B_over_rho[2];
+
+  /* MATTHIEU END ----------------------------------------- */
 }
 
 /**
@@ -988,6 +1150,21 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
   xp->v_full[1] = p->v[1];
   xp->v_full[2] = p->v[2];
   xp->u_full = p->u;
+
+  /* MATTHIEU START --------------------------------------- */
+
+  p->Dedner_Psi_over_c_dt = 0.f;
+  p->Dedner_Psi_over_c = 0.f;
+
+  /* Constant from Price 2018 (text below eq. 43) */
+  p->alpha_u = 0.5f;
+
+  /* Constant from Price 2012 (text below eq. 105)
+   * We start the viscosity at the minimum */
+  p->alpha_visc = 0.1f;
+  p->alpha_visc_dt = 0.f;
+
+  /* MATTHIEU END ----------------------------------------- */
 
   hydro_reset_acceleration(p);
   hydro_init_part(p, NULL);
@@ -1020,5 +1197,68 @@ hydro_set_init_internal_energy(struct part *p, float u_init) {
  */
 __attribute__((always_inline)) INLINE static void hydro_remove_part(
     const struct part *p, const struct xpart *xp, const double time) {}
+
+/* MATTHIEU START --------------------------------------- */
+
+/**
+ * @brief Returns the magnetic field divergence error of the particle.
+ *
+ * This is (div B) / (B / h) and is hence dimensionless.
+ *
+ * @param p the #part.
+ * @param xp the #xpart.
+ */
+__attribute__((always_inline)) INLINE static float mhd_get_divB_error(
+    const struct part *p, const struct xpart *xp) {
+
+  const float rho = p->rho;
+  const float B_over_rho2 = p->B_over_rho[0] * p->B_over_rho[0] +
+                            p->B_over_rho[1] * p->B_over_rho[1] +
+                            p->B_over_rho[2] * p->B_over_rho[2];
+
+  const float error = B_over_rho2 != 0.0f ? fabsf(p->div_B) * p->h /
+                                                sqrtf(B_over_rho2 * rho * rho)
+                                          : 0.0f;
+
+  return error;
+}
+
+/**
+ * @brief Returns the magnetic field squared contained in the particle.
+ *
+ * @param p the #part.
+ * @param xp the #xpart.
+ */
+__attribute__((always_inline)) INLINE static float mhd_get_Bms(
+    const struct part *p, const struct xpart *xp) {
+
+  const float rho = p->rho;
+  const float B_over_rho2 = p->B_over_rho[0] * p->B_over_rho[0] +
+                            p->B_over_rho[1] * p->B_over_rho[1] +
+                            p->B_over_rho[2] * p->B_over_rho[2];
+  return B_over_rho2 * rho * rho;
+}
+
+/**
+ * @brief Returns the magnetic energy contained in the particle.
+ *
+ * @param p the #part.
+ * @param xp the #xpart.
+ */
+__attribute__((always_inline)) INLINE static float mhd_get_magnetic_energy(
+    const struct part *p, const struct xpart *xp, const float mu_0,
+    const float a) {
+
+  const float a_fact = 1.f;  // pow(a, -3.f * hydro_gamma);
+  // TODO: cosmo terms
+
+  const float rho = p->rho;
+  const float B_over_rho2 = p->B_over_rho[0] * p->B_over_rho[0] +
+                            p->B_over_rho[1] * p->B_over_rho[1] +
+                            p->B_over_rho[2] * p->B_over_rho[2];
+  return 0.5f * a_fact * p->mass * B_over_rho2 * rho / mu_0;
+}
+
+/* MATTHIEU END ----------------------------------------- */
 
 #endif /* SWIFT_MINIMAL_HYDRO_H */

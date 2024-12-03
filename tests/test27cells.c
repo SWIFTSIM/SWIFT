@@ -134,16 +134,25 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
             part->v[0] = random_uniform(-0.05, 0.05);
             part->v[1] = random_uniform(-0.05, 0.05);
             part->v[2] = random_uniform(-0.05, 0.05);
+            part->B_over_rho[0] = random_uniform(-0.05, 0.05);
+            part->B_over_rho[1] = random_uniform(-0.05, 0.05);
+            part->B_over_rho[2] = random_uniform(-0.05, 0.05);
             break;
           case velocity_divergent:
             part->v[0] = part->x[0] - 1.5 * size;
             part->v[1] = part->x[1] - 1.5 * size;
             part->v[2] = part->x[2] - 1.5 * size;
+            part->B_over_rho[0] = part->x[0] - 1.5 * size;
+            part->B_over_rho[1] = part->x[1] - 1.5 * size;
+            part->B_over_rho[2] = part->x[2] - 1.5 * size;
             break;
           case velocity_rotating:
             part->v[0] = part->x[1];
             part->v[1] = -part->x[0];
             part->v[2] = 0.f;
+            part->B_over_rho[0] = part->x[1];
+            part->B_over_rho[1] = -part->x[0];
+            part->B_over_rho[2] = 0.f;
             break;
         }
         if (h_pert)
@@ -213,7 +222,7 @@ void clean_up(struct cell *ci) {
 /**
  * @brief Initializes all particles field to be ready for a density calculation
  */
-void zero_particle_fields(struct cell *c) {
+void zero_density_fields(struct cell *c) {
   struct hydro_space *hspointer = NULL;
 
   for (int pid = 0; pid < c->hydro.count; pid++) {
@@ -223,11 +232,23 @@ void zero_particle_fields(struct cell *c) {
   }
 }
 
+void zero_gradient_fields(struct cell *c) {
+  for (int pid = 0; pid < c->hydro.count; pid++) {
+    // hydro_prepare_gradient(&c->hydro.parts[pid], cosmo);
+    hydro_reset_gradient(&c->hydro.parts[pid]);
+  }
+}
+
+void set_density_particles(struct cell *c, float rho) {
+  for (int k = 0; k < c->hydro.count; ++k) {
+    c->hydro.parts[k].rho = rho;
+  }
+}
 /**
- * @brief Ends the loop by adding the appropriate coefficients
+ * @brief Ends the density loop by adding the appropriate coefficients
  */
-void end_calculation(struct cell *c, const struct cosmology *cosmo,
-                     const struct gravity_props *gravity_props) {
+void end_density_calculation(struct cell *c, const struct cosmology *cosmo,
+                             const struct gravity_props *gravity_props) {
 
   for (int pid = 0; pid < c->hydro.count; pid++) {
     hydro_end_density(&c->hydro.parts[pid], cosmo);
@@ -241,6 +262,18 @@ void end_calculation(struct cell *c, const struct cosmology *cosmo,
 }
 
 /**
+ * @brief Ends the gradient loop by adding the appropriate coefficients
+ */
+void end_gradient_calculation(struct cell *c, const struct cosmology *cosmo,
+                              const struct gravity_props *gravity_props) {
+
+  for (int pid = 0; pid < c->hydro.count; pid++) {
+    hydro_end_gradient(&c->hydro.parts[pid]);
+    mhd_end_gradient(&c->hydro.parts[pid]);
+  }
+}
+
+/**
  * @brief Dump all the particles to a file
  */
 void dump_particle_fields(char *fileName, struct cell *main_cell,
@@ -250,9 +283,10 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
   /* Write header */
   fprintf(file,
           "# %4s %10s %10s %10s %10s %10s %10s %13s %13s %13s %13s %13s "
-          "%13s %13s %13s\n",
+          "%13s %13s %13s %13s %13s %13s %13s\n",
           "ID", "pos_x", "pos_y", "pos_z", "v_x", "v_y", "v_z", "rho", "rho_dh",
-          "wcount", "wcount_dh", "div_v", "curl_vx", "curl_vy", "curl_vz");
+          "wcount", "wcount_dh", "div_v", "curl_vx", "curl_vy", "curl_vz",
+          "div_B", "curl_Bx", "curl_By", "curl_Bz");
 
   fprintf(file, "# Main cell --------------------------------------------\n");
 
@@ -260,7 +294,7 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
   for (int pid = 0; pid < main_cell->hydro.count; pid++) {
     fprintf(file,
             "%6llu %10f %10f %10f %10f %10f %10f %13e %13e %13e %13e %13e "
-            "%13e %13e %13e\n",
+            "%13e %13e %13e %13e %13e %13e %13e\n",
             main_cell->hydro.parts[pid].id, main_cell->hydro.parts[pid].x[0],
             main_cell->hydro.parts[pid].x[1], main_cell->hydro.parts[pid].x[2],
             main_cell->hydro.parts[pid].v[0], main_cell->hydro.parts[pid].v[1],
@@ -281,16 +315,30 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
             main_cell->hydro.parts[pid].density.div_v,
             main_cell->hydro.parts[pid].density.rot_v[0],
             main_cell->hydro.parts[pid].density.rot_v[1],
-            main_cell->hydro.parts[pid].density.rot_v[2]
+            main_cell->hydro.parts[pid].density.rot_v[2],
 #elif defined(ANARCHY_PU_SPH) || defined(SPHENIX_SPH) || defined(PHANTOM_SPH)
             /* this is required because of the variable AV scheme */
             main_cell->hydro.parts[pid].viscosity.div_v,
             main_cell->hydro.parts[pid].density.rot_v[0],
             main_cell->hydro.parts[pid].density.rot_v[1],
-            main_cell->hydro.parts[pid].density.rot_v[2]
+            main_cell->hydro.parts[pid].density.rot_v[2],
+#elif defined(MINIMAL_SPH)
+            main_cell->hydro.parts[pid].density.div_v,
+            main_cell->hydro.parts[pid].density.rot_v[0],
+            main_cell->hydro.parts[pid].density.rot_v[1],
+            main_cell->hydro.parts[pid].density.rot_v[2],
+#else
+            0., 0., 0., 0.,
+#endif
+#if defined(MINIMAL_SPH)
+            main_cell->hydro.parts[pid].div_B,
+            main_cell->hydro.parts[pid].curl_B[0],
+            main_cell->hydro.parts[pid].curl_B[1],
+            main_cell->hydro.parts[pid].curl_B[2]
 #else
             0., 0., 0., 0.
 #endif
+
     );
   }
 
@@ -309,7 +357,7 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
           fprintf(
               file,
               "%6llu %10f %10f %10f %10f %10f %10f %13e %13e %13e %13e %13e "
-              "%13e %13e %13e\n",
+              "%13e %13e %13e %13e %13e %13e %13e\n",
               cj->hydro.parts[pjd].id, cj->hydro.parts[pjd].x[0],
               cj->hydro.parts[pjd].x[1], cj->hydro.parts[pjd].x[2],
               cj->hydro.parts[pjd].v[0], cj->hydro.parts[pjd].v[1],
@@ -326,13 +374,24 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
               cj->hydro.parts[pjd].density.div_v,
               cj->hydro.parts[pjd].density.rot_v[0],
               cj->hydro.parts[pjd].density.rot_v[1],
-              cj->hydro.parts[pjd].density.rot_v[2]
+              cj->hydro.parts[pjd].density.rot_v[2],
 #elif defined(ANARCHY_PU_SPH) || defined(SPHENIX_SPH) || defined(PHANTOM_SPH)
               /* this is required because of the variable AV scheme */
               cj->hydro.parts[pjd].viscosity.div_v,
               cj->hydro.parts[pjd].density.rot_v[0],
               cj->hydro.parts[pjd].density.rot_v[1],
-              cj->hydro.parts[pjd].density.rot_v[2]
+              cj->hydro.parts[pjd].density.rot_v[2],
+#elif defined(MINIMAL_SPH)
+              cj->hydro.parts[pjd].density.div_v,
+              cj->hydro.parts[pjd].density.rot_v[0],
+              cj->hydro.parts[pjd].density.rot_v[1],
+              cj->hydro.parts[pjd].density.rot_v[2],
+#else
+              0., 0., 0., 0.,
+#endif
+#if defined(MINIMAL_SPH)
+              cj->hydro.parts[pjd].div_B, cj->hydro.parts[pjd].curl_B[0],
+              cj->hydro.parts[pjd].curl_B[1], cj->hydro.parts[pjd].curl_B[2]
 #else
               0., 0., 0., 0.
 #endif
@@ -357,6 +416,9 @@ void runner_doself_subset_branch_density(struct runner *r,
                                          struct cell *restrict ci,
                                          struct part *restrict parts,
                                          int *restrict ind, int count);
+void runner_dopair1_branch_gradient(struct runner *r, struct cell *ci,
+                                    struct cell *cj);
+void runner_doself1_branch_gradient(struct runner *r, struct cell *c);
 
 /* And go... */
 int main(int argc, char *argv[]) {
@@ -532,7 +594,7 @@ int main(int argc, char *argv[]) {
   ticks time = 0;
   for (size_t i = 0; i < runs; ++i) {
     /* Zero the fields */
-    for (int j = 0; j < 27; ++j) zero_particle_fields(cells[j]);
+    for (int j = 0; j < 27; ++j) zero_density_fields(cells[j]);
 
     const ticks tic = getticks();
 
@@ -586,7 +648,31 @@ int main(int argc, char *argv[]) {
     time += toc - tic;
 
     /* Let's get physical ! */
-    end_calculation(main_cell, &cosmo, &gravity_props);
+    end_density_calculation(main_cell, &cosmo, &gravity_props);
+
+#if defined(EXTRA_HYDRO_LOOP) && !defined(TEST_DOSELF_SUBSET)
+
+    for (int j = 0; j < 27; ++j) {
+      zero_gradient_fields(cells[j]);
+      if (cells[j] != main_cell) {
+        set_density_particles(cells[j], /*rho=*/1.003978);
+      }
+    }
+
+    /* Run all the pairs */
+    for (int j = 0; j < 27; ++j) {
+      if (cells[j] != main_cell) {
+        runner_dopair1_branch_gradient(&runner, main_cell, cells[j]);
+      }
+    }
+
+    /* And now the self-interaction */
+    runner_doself1_branch_gradient(&runner, main_cell);
+
+    /* Let's get physical ! */
+    end_gradient_calculation(main_cell, &cosmo, &gravity_props);
+
+#endif
 
     /* Dump if necessary */
     if (i % 50 == 0) {
@@ -623,7 +709,7 @@ int main(int argc, char *argv[]) {
   /* Now perform a brute-force version for accuracy tests */
 
   /* Zero the fields */
-  for (int i = 0; i < 27; ++i) zero_particle_fields(cells[i]);
+  for (int i = 0; i < 27; ++i) zero_density_fields(cells[i]);
 
   const ticks tic = getticks();
 
@@ -637,7 +723,28 @@ int main(int argc, char *argv[]) {
   const ticks toc = getticks();
 
   /* Let's get physical ! */
-  end_calculation(main_cell, &cosmo, &gravity_props);
+  end_density_calculation(main_cell, &cosmo, &gravity_props);
+
+#if defined(EXTRA_HYDRO_LOOP) && !defined(TEST_DOSELF_SUBSET)
+
+  for (int j = 0; j < 27; ++j) {
+    zero_gradient_fields(cells[j]);
+    if (cells[j] != main_cell) {
+      set_density_particles(cells[j], /*rho=*/1.003978);
+    }
+  }
+
+  /* Run all the brute-force pairs */
+  for (int j = 0; j < 27; ++j)
+    if (cells[j] != main_cell) pairs_all_gradient(&runner, main_cell, cells[j]);
+
+  /* And now the self-interaction */
+  self_all_gradient(&runner, main_cell);
+
+  /* Let's get physical ! */
+  end_gradient_calculation(main_cell, &cosmo, &gravity_props);
+
+#endif
 
   /* Dump */
   sprintf(outputFileName, "brute_force_27_%.150s.dat", outputFileNameExtension);

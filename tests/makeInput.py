@@ -116,8 +116,11 @@ ds = grp.create_dataset("InternalEnergy", (numPart, 1), "f")
 ds[()] = u
 ds = grp.create_dataset("ParticleIDs", (numPart, 1), "L")
 ds[()] = ids
+ds = grp.create_dataset("MagneticFluxDensities", (numPart, 3), "f")
+ds[()] = ids
 # chemistry
 ds = grp.create_dataset("HeDensity", (numPart, 1), "f")
 ds[()] = he
+
 
 file.close()

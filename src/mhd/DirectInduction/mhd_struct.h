@@ -82,7 +82,6 @@ struct mhd_xpart_data {
 
   /*! Full Step Dedner Scalar */
   float psi_over_ch_full;
-
 };
 
 #endif /* SWIFT_DIRECT_INDUCTION_MHD_STRUCT_H */

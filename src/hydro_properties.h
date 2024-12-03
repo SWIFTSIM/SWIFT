@@ -137,6 +137,25 @@ struct hydro_props {
 
   /* ------ MHD properties ------------------------- */
 
+  /* MATTHIEU START --------------------------------------- */
+
+  /*! Are we running with Dedner cleaning? */
+  int mhd_with_Dedner;
+
+  /*! Pre-factor in front of div-B term in Dedner cleaning */
+  float mhd_Dedner_div_B_factor;
+
+  /*! Pre-factor in front of div-v term in Dedner cleaning */
+  float mhd_Dedner_div_v_factor;
+
+  /*! Pre-factor in front of parabolic term in Dedner cleaning */
+  float mhd_Dedner_parabolic_factor;
+
+  /*! Are we using the Balsara switch in the viscosity term? */
+  int with_Balsara;
+
+  /* MATTHIEU END ----------------------------------------- */
+
   /*! MHD parameters */
   struct mhd_global_data mhd;
 };

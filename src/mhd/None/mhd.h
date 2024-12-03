@@ -19,6 +19,8 @@
 #ifndef SWIFT_NONE_MHD_H
 #define SWIFT_NONE_MHD_H
 
+#if 0
+
 /**
  * @brief Returns the magnetic energy contained in the particle.
  *
@@ -42,6 +44,8 @@ __attribute__((always_inline)) INLINE static float mhd_get_Bms(
 
   return 0.f;
 }
+
+#endif
 
 /**
  * @brief Returns the magnetic field divergence of a particle.
@@ -80,6 +84,8 @@ __attribute__((always_inline)) INLINE static float mhd_get_cross_helicity(
   return 0.f;
 }
 
+#if 0
+
 /**
  * @brief Returns the magnetic field divergence error of the particle.
  *
@@ -93,6 +99,8 @@ __attribute__((always_inline)) INLINE static float mhd_get_divB_error(
 
   return 0.f;
 }
+
+#endif
 
 /**
  * @brief Computes the MHD time-step of a given particle
