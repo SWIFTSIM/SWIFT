@@ -36,7 +36,7 @@ double generate_gaussian_coordinate(const double mean, const double std,
 
   /* Try again if we're out of bounds. */
   if (z0 < mean - max_width / 2 || z0 > mean + max_width / 2) {
-    return generate_gaussian_coordinate(mean, std, max_width, id);
+    return generate_gaussian_coordinate(mean, std, max_width, id * 2);
   }
 
   return z0;
