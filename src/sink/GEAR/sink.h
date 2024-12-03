@@ -79,7 +79,7 @@ __attribute__((always_inline)) INLINE static float sink_compute_timestep(
   const float denominator = sqrtf(gas_c_phys2 + gas_v_norm2);
   const float h_min =
       cosmo->a *
-      min(sink->r_cut, sink->to_collect.minimal_h_gas * kernel_gamma);
+      min(sink->h, sink->to_collect.minimal_h_gas);
   float dt_cfl = 0.0;
 
   /* This case can happen if the sink is just born. */
@@ -371,9 +371,9 @@ __attribute__((always_inline)) INLINE static void sinks_sink_has_no_neighbours(
     struct sink* restrict sp, const struct cosmology* cosmo) {
 
   warning(
-      "Sink particle with ID %lld treated as having no neighbours (r_cut: %g, "
+      "Sink particle with ID %lld treated as having no neighbours (h: %g, "
       "numb_ngbs: %i).",
-      sp->id, sp->r_cut, sp->num_ngbs);
+      sp->id, sp->h, sp->num_ngbs);
 
   /* Some smoothing length multiples. */
   const float h = sp->h;
@@ -809,7 +809,7 @@ INLINE static int sink_spawn_star(struct sink* sink, const struct engine* e,
  * @brief Give the #spart a new position.
  *
  * In GEAR: Positions are set by randomly sampling coordinates in an homogeneous
- * sphere centered on the #sink with radius  the sink's r_cut.
+ * sphere centered on the #sink with radius the sink's r_cut.
  *
  * @param e The #engine.
  * @param si The #sink generating a star.

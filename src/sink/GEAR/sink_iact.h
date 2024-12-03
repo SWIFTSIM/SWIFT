@@ -193,14 +193,14 @@ runner_iact_nonsym_sinks_gas_density(
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
- * @param ri Comoving cut off radius of particle i.
- * @param rj Comoving cut off radius of particle j.
+ * @param hi Comoving smoothing length of particle i.
+ * @param hj Comoving smoothing length of particle j.
  * @param si First sink particle.
  * @param sj Second sink particle.
  */
 __attribute__((always_inline)) INLINE static void
 sink_collect_properties_from_sink(const float r2, const float dx[3],
-                                  const float ri, const float rj,
+                                  const float hi, const float hj,
                                   struct sink *restrict si,
                                   struct sink *restrict sj,
                                   const struct gravity_props *grav_props) {
@@ -285,7 +285,7 @@ runner_iact_nonsym_sinks_sink_swallow(
      they are both dead, we do not want to restrict the timesteps for 2-body
      encounters since they won't merge. */
   if (!si_is_dead || !sj_is_dead) {
-    sink_collect_properties_from_sink(r2, dx, ri, rj, si, sj, grav_props);
+    sink_collect_properties_from_sink(r2, dx, hi, hj, si, sj, grav_props);
   }
 
   /* If si is dead, do not swallow sj. However, sj can swallow si if it alive.
@@ -339,7 +339,7 @@ runner_iact_nonsym_sinks_sink_swallow(
     /* Momentum check------------------------------------------------------- */
     float L2_j = 0.0;      /* Relative momentum of the sink j */
     float L2_kepler = 0.0; /* Keplerian angular momentum squared */
-    sink_compute_angular_momenta_criterion(dx, v_plus_H_flow, r, si->r_cut,
+    sink_compute_angular_momenta_criterion(dx, v_plus_H_flow, r, si->h * kernel_gamma,
                                            si->mass, cosmo, grav_props,
                                            &L2_kepler, &L2_j);
 
@@ -510,7 +510,7 @@ runner_iact_nonsym_sinks_gas_swallow(
     /* Momentum check------------------------------------------------------- */
     float L2_gas_j = 0.0;  /* Relative momentum of the gas */
     float L2_kepler = 0.0; /* Keplerian angular momentum squared */
-    sink_compute_angular_momenta_criterion(dx, v_plus_H_flow, r, si->r_cut,
+    sink_compute_angular_momenta_criterion(dx, v_plus_H_flow, r, si->h * kernel_gamma,
                                            si->mass, cosmo, grav_props,
                                            &L2_kepler, &L2_gas_j);
 
@@ -552,10 +552,10 @@ runner_iact_nonsym_sinks_gas_swallow(
     if (E_mec_sink_part >= 0) return;
 
     /* To be accreted, the gas smoothing length must be smaller than the sink
-       accretion radius. This is similar to AMR codes requesting the maximum
+       smoothing length. This is similar to AMR codes requesting the maximum
        refinement level close to the sink. */
     if (sink_properties->sink_formation_smoothing_length_criterion &&
-        (pj->h * kernel_gamma >= si->r_cut))
+        (pj->h >= si->h))
       return;
 
     /* Most bound pair check------------------------------------------------ */
