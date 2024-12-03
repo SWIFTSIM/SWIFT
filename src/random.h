@@ -408,8 +408,11 @@ INLINE static void random_direction_in_cone(const int64_t id_bh,
 INLINE static double random_gaussian(const double mean, const double std) {
 
   /* Generate two uniform random numbers for sampling the gaussian. */
-  double u1 = (double)rand() / RAND_MAX;
-  double u2 = (double)rand() / RAND_MAX;
+  static uint32_t seed = 42;
+  uint16_t xsubi[3] = {seed & 0xFFFF, (seed >> 16) & 0xFFFF,
+                       (seed >> 32) & 0xFFFF};
+  double u1 = inl_erand48(xsubi);
+  double u2 = inl_erand48(xsubi);
 
   return (sqrt(-2.0 * log(u1)) * cos(2 * M_PI * u2)) * std + mean;
 }
