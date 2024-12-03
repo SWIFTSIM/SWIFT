@@ -1810,7 +1810,8 @@ void runner_do_sinks_density_ghost(struct runner *r, struct cell *c,
                              e->cosmology, e->cooling_func, e->entropy_floor,
                              e->time, with_cosmology, dt, e->ti_current);
 
-        /* Set these variables to the fixed cutoff radius for the rest of the ghost task */
+        /* Set these variables to the fixed cutoff radius for the rest of the
+         * ghost task */
         h_max = sp->h;
         h_max_active = sp->h;
       }

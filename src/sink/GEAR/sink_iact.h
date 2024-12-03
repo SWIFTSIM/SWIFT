@@ -339,9 +339,9 @@ runner_iact_nonsym_sinks_sink_swallow(
     /* Momentum check------------------------------------------------------- */
     float L2_j = 0.0;      /* Relative momentum of the sink j */
     float L2_kepler = 0.0; /* Keplerian angular momentum squared */
-    sink_compute_angular_momenta_criterion(dx, v_plus_H_flow, r, si->h * kernel_gamma,
-                                           si->mass, cosmo, grav_props,
-                                           &L2_kepler, &L2_j);
+    sink_compute_angular_momenta_criterion(
+        dx, v_plus_H_flow, r, si->h * kernel_gamma, si->mass, cosmo, grav_props,
+        &L2_kepler, &L2_j);
 
     /* To be accreted, the sink momentum should lower than the keplerian orbit
      * momentum. */
@@ -510,9 +510,9 @@ runner_iact_nonsym_sinks_gas_swallow(
     /* Momentum check------------------------------------------------------- */
     float L2_gas_j = 0.0;  /* Relative momentum of the gas */
     float L2_kepler = 0.0; /* Keplerian angular momentum squared */
-    sink_compute_angular_momenta_criterion(dx, v_plus_H_flow, r, si->h * kernel_gamma,
-                                           si->mass, cosmo, grav_props,
-                                           &L2_kepler, &L2_gas_j);
+    sink_compute_angular_momenta_criterion(
+        dx, v_plus_H_flow, r, si->h * kernel_gamma, si->mass, cosmo, grav_props,
+        &L2_kepler, &L2_gas_j);
 
     /* To be accreted, the gas momentum should lower than the keplerian orbit
      * momentum. */

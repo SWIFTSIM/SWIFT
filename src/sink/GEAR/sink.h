@@ -77,9 +77,7 @@ __attribute__((always_inline)) INLINE static float sink_compute_timestep(
       sink->to_collect.sound_speed_gas * cosmo->a_factor_sound_speed;
   const double gas_c_phys2 = gas_c_phys * gas_c_phys;
   const float denominator = sqrtf(gas_c_phys2 + gas_v_norm2);
-  const float h_min =
-      cosmo->a *
-      min(sink->h, sink->to_collect.minimal_h_gas);
+  const float h_min = cosmo->a * min(sink->h, sink->to_collect.minimal_h_gas);
   float dt_cfl = 0.0;
 
   /* This case can happen if the sink is just born. */
@@ -335,8 +333,8 @@ __attribute__((always_inline)) INLINE static void sink_end_density(
     struct sink* si, const struct cosmology* cosmo) {
 
   const float h = si->h;
-  const float h_inv = 1.0f / h;                 /* 1/h */
-  const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */
+  const float h_inv = 1.0f / h;                       /* 1/h */
+  const float h_inv_dim = pow_dimension(h_inv);       /* 1/h^d */
   const float h_inv_dim_plus_one = h_inv_dim * h_inv; /* 1/h^(d+1) */
 
   /* --- Finish the calculation by inserting the missing h factors --- */

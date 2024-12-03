@@ -116,7 +116,6 @@ INLINE static void sink_props_init(
         parser_get_param_float(params, "Sinks:min_gas_mass_for_nibbling_Msun");
     sp->min_gas_mass_for_nibbling *= phys_const->const_solar_mass;
   }
-
 }
 
 /**

@@ -51,7 +51,6 @@ struct sink_props {
   /*! Are we using a fixed cutoff radius? (all smoothing length calculations are
    * disabled if so) */
   char use_fixed_r_cut;
-
 };
 
 /**

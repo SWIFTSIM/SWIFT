@@ -38,6 +38,6 @@ struct space;
 
 void sink_exact_density_compute(struct space *s, const struct engine *e);
 void sink_exact_density_check(struct space *s, const struct engine *e,
-                               const double rel_tol);
+                              const double rel_tol);
 
 #endif /* SWIFT_SINK_H */

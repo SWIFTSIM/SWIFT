@@ -267,14 +267,16 @@ INLINE static void sink_props_init(
         "ERROR: Running with sink but without feedback. GEAR sink model needs "
         "to be run with --sink and --feedback");
 
-  /* The property cut_off_radius is now only used in the GEAR model. */
-  /* If it is specified, we use a fixed r_cut and don't calculate h */
-  /* If not, the code will use the variable h*kernel_gamma as a cutoff radius. */
-  /* If not specified, this parameter is set to -1, which effectively disables sink formation proximity checks. */
+  /* The property cut_off_radius is now only used in the GEAR model.
+   * If it is specified, we use a fixed r_cut and don't calculate h
+   * If not, the code will use the variable h*kernel_gamma as a cutoff radius.
+   * If not specified, this parameter is set to -1, which effectively disables
+   * sink formation proximity checks. */
   sp->cut_off_radius =
       parser_get_opt_param_float(params, "GEARSink:cut_off_radius", -1);
 
-  /* This property is used in all models to flag if we're using a fixed cutoff. */
+  /* This property is used in all models to flag if we're using a fixed cutoff.
+   */
   sp->use_fixed_r_cut = (sp->cut_off_radius == -1) ? 0 : 1;
 
   sp->f_acc = parser_get_opt_param_float(params, "GEARSink:f_acc",

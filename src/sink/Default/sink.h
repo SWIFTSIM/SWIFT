@@ -287,7 +287,6 @@ INLINE static void sink_copy_properties(
 
   /* Set a smoothing length */
   sink->h = p->h;
-  
 }
 
 /**

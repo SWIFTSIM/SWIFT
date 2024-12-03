@@ -47,7 +47,7 @@ struct exact_density_data {
  * counters.
  */
 void sink_exact_density_compute_mapper(void *map_data, int nr_sinks,
-                                        void *extra_data) {
+                                       void *extra_data) {
 #ifdef SWIFT_SINK_DENSITY_CHECKS
 
   /* Unpack the data */
@@ -161,8 +161,8 @@ void sink_exact_density_compute(struct space *s, const struct engine *e) {
   data.s = s;
   data.counter_global = 0;
 
-  threadpool_map(&s->e->threadpool, sink_exact_density_compute_mapper,
-                 s->sinks, s->nr_sinks, sizeof(struct sink), 0, &data);
+  threadpool_map(&s->e->threadpool, sink_exact_density_compute_mapper, s->sinks,
+                 s->nr_sinks, sizeof(struct sink), 0, &data);
 
   if (e->verbose)
     message("Computed exact densities for %d sinks (took %.3f %s). ",
@@ -182,7 +182,7 @@ void sink_exact_density_compute(struct space *s, const struct engine *e) {
  * @param rel_tol Relative tolerance for the checks
  */
 void sink_exact_density_check(struct space *s, const struct engine *e,
-                               const double rel_tol) {
+                              const double rel_tol) {
 
 #ifdef SWIFT_SINK_DENSITY_CHECKS
 
@@ -272,7 +272,8 @@ void sink_exact_density_check(struct space *s, const struct engine *e,
     const int found_inhibited = si->inhibited_check_exact;
 
     const double N_ngb = (4. / 3.) * M_PI * kernel_gamma * kernel_gamma *
-                         kernel_gamma * si->h * si->h * si->h * si->n_check_exact;
+                         kernel_gamma * si->h * si->h * si->h *
+                         si->n_check_exact;
 
     if (id % SWIFT_SINK_DENSITY_CHECKS == 0 && sink_is_starting(si, e)) {
 
@@ -288,11 +289,13 @@ void sink_exact_density_check(struct space *s, const struct engine *e,
        * Note that we ignore particles that saw an inhibted particle as a
        * neighbour as we don't know whether that neighbour became inhibited in
        * that step or not. */
-      if (!found_inhibited && si->N_check_density_exact != si->N_check_density &&
+      if (!found_inhibited &&
+          si->N_check_density_exact != si->N_check_density &&
           (fabsf(si->rho_check / si->rho_check_exact - 1.f) > rel_tol ||
            fabsf(si->rho_check_exact / si->rho_check - 1.f) > rel_tol)) {
         message("RHO: id=%lld swift=%e exact=%e N_swift=%d N_true=%d", id,
-                si->rho_check, si->rho_check_exact, si->N_check_density, si->N_check_density_exact);
+                si->rho_check, si->rho_check_exact, si->N_check_density,
+                si->N_check_density_exact);
         wrong_rho++;
       }
 
