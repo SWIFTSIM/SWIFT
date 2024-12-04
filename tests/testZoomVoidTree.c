@@ -51,7 +51,7 @@ double random_gaussian_coordinate(const double mean, const double std,
    * seed. */
   if (z0 < mean - max_width / 2 || z0 > mean + max_width / 2) {
     return random_gaussian_coordinate(mean, std, max_width, id,
-                                      (integertime_t)rand());
+                                      (integertime_t)time());
   }
 
   return z0;
@@ -96,11 +96,11 @@ void make_mock_space(struct space *s) {
   /* Define the zoom particles by sampling from a normal distribution. */
   for (int i = 100; i < 200; i++) {
     gparts[i].x[0] =
-        random_gaussian_coordinate(s->dim[0] / 2, zoom_width, 100, i, rand());
+        random_gaussian_coordinate(s->dim[0] / 2, zoom_width, 100, i, time());
     gparts[i].x[1] =
-        random_gaussian_coordinate(s->dim[1] / 2, zoom_width, 100, i, rand());
+        random_gaussian_coordinate(s->dim[1] / 2, zoom_width, 100, i, time());
     gparts[i].x[2] =
-        random_gaussian_coordinate(s->dim[2] / 2, zoom_width, 100, i, rand());
+        random_gaussian_coordinate(s->dim[2] / 2, zoom_width, 100, i, time());
     gparts[i].type = swift_type_dark_matter;
     gparts[i].mass = 1.0;
   }

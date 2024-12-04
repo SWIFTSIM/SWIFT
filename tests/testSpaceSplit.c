@@ -58,7 +58,7 @@ double random_gaussian_coordinate(const double mean, const double std,
    * seed. */
   if (z0 < mean - max_width / 2 || z0 > mean + max_width / 2) {
     return random_gaussian_coordinate(mean, std, max_width, id,
-                                      (integertime_t)rand());
+                                      (integertime_t)time());
   }
 
   return z0;
@@ -93,11 +93,11 @@ void make_mock_space(struct space *s, struct engine *e, const double std) {
    * the middle of the box with a width. */
   for (size_t i = 0; i < s->nr_gparts; i++) {
     gparts[i].x[0] =
-        random_gaussian_coordinate(s->dim[0] / 2, std, s->width[0], i, rand());
+        random_gaussian_coordinate(s->dim[0] / 2, std, s->width[0], i, time());
     gparts[i].x[1] =
-        random_gaussian_coordinate(s->dim[1] / 2, std, s->width[1], i, rand());
+        random_gaussian_coordinate(s->dim[1] / 2, std, s->width[1], i, time());
     gparts[i].x[2] =
-        random_gaussian_coordinate(s->dim[2] / 2, std, s->width[2], i, rand());
+        random_gaussian_coordinate(s->dim[2] / 2, std, s->width[2], i, time());
     gparts[i].mass = 1.0;
     gparts[i].type = swift_type_dark_matter;
   }
