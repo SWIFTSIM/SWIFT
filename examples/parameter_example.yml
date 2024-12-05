@@ -34,30 +34,30 @@ Cosmology:
 
 # Parameters for the hydrodynamics scheme
 SPH:
-  resolution_eta:                    1.2348   # Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel).
-  CFL_condition:                     0.1      # Courant-Friedrich-Levy condition for time integration.
-  use_mass_weighted_num_ngb:         0        # (Optional) Are we using the mass-weighted definition of the number of neighbours?
-  h_tolerance:                       1e-4     # (Optional) Relative accuracy of the Netwon-Raphson scheme for the smoothing lengths.
-  h_max:                             10.      # (Optional) Maximal allowed smoothing length in internal units. Defaults to FLT_MAX if unspecified.
-  h_min_ratio:                       0.       # (Optional) Minimal allowed smoothing length in units of the softening. Defaults to 0 if unspecified.
-  max_volume_change:                 1.4      # (Optional) Maximal allowed change of kernel volume over one time-step.
-  max_ghost_iterations:              30       # (Optional) Maximal number of iterations allowed to converge towards the smoothing length.
-  particle_splitting:                1        # (Optional) Are we splitting particles that are too massive (default: 0)
-  particle_splitting_mass_threshold: 7e-4     # (Optional) Mass threshold for particle splitting (in internal units)
-  generate_random_ids:               0        # (Optional) When creating new particles via splitting, generate ids at random (1) or use new IDs beyond the current range (0) (default: 0)
-  initial_temperature:               0        # (Optional) Initial temperature (in internal units) to set the gas particles at start-up. Value is ignored if set to 0.
-  minimal_temperature:               0        # (Optional) Minimal temperature (in internal units) allowed for the gas particles. Value is ignored if set to 0.
-  H_mass_fraction:                   0.755    # (Optional) Hydrogen mass fraction used for initial conversion from temp to internal energy. Default value is derived from the physical constants.
-  H_ionization_temperature:          1e4      # (Optional) Temperature of the transition from neutral to ionized Hydrogen for primoridal gas.
-  viscosity_alpha:                   0.8      # (Optional) Override for the initial value of the artificial viscosity. In schemes that have a fixed AV, this remains as alpha throughout the run.
-  viscosity_alpha_max:               2.0      # (Optional) Maximal value for the artificial viscosity in schemes that allow alpha to vary.
-  viscosity_alpha_min:               0.1      # (Optional) Minimal value for the artificial viscosity in schemes that allow alpha to vary.
-  viscosity_length:                  0.1      # (Optional) Decay length for the artificial viscosity in schemes that allow alpha to vary.
-  diffusion_alpha:                   0.0      # (Optional) Override the initial value for the thermal diffusion coefficient in schemes with thermal diffusion.
-  diffusion_beta:                    0.01     # (Optional) Override the decay/rise rate tuning parameter for the thermal diffusion.
-  diffusion_alpha_max:               1.0      # (Optional) Override the maximal thermal diffusion coefficient that is allowed for a given particle.
-  diffusion_alpha_min:               0.0      # (Optional) Override the minimal thermal diffusion coefficient that is allowed for a given particle.
-  convert_particles_at_h_max:         1        # Flag for whether to convert SPH particles which reach h_max to dark matter (this can help with long running neighbour searches by removing non-physical particles limited by h_max)
+  resolution_eta:                      1.2348   # Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel).
+  CFL_condition:                       0.1      # Courant-Friedrich-Levy condition for time integration.
+  use_mass_weighted_num_ngb:           0        # (Optional) Are we using the mass-weighted definition of the number of neighbours?
+  h_tolerance:                         1e-4     # (Optional) Relative accuracy of the Netwon-Raphson scheme for the smoothing lengths.
+  h_max:                               10.      # (Optional) Maximal allowed smoothing length in internal units. Defaults to FLT_MAX if unspecified.
+  h_min_ratio:                         0.       # (Optional) Minimal allowed smoothing length in units of the softening. Defaults to 0 if unspecified.
+  max_volume_change:                   1.4      # (Optional) Maximal allowed change of kernel volume over one time-step.
+  max_ghost_iterations:                30       # (Optional) Maximal number of iterations allowed to converge towards the smoothing length.
+  particle_splitting:                  1        # (Optional) Are we splitting particles that are too massive (default: 0)
+  particle_splitting_mass_threshold:   7e-4     # (Optional) Mass threshold for particle splitting (in internal units)
+  particle_splitting_log_extra_splits: 0        # (Optional) Are we logging the splits beyond the maximal allowed into files? (default: 0)
+  generate_random_ids:                 0        # (Optional) When creating new particles via splitting, generate ids at random (1) or use new IDs beyond the current range (0) (default: 0)
+  initial_temperature:                 0        # (Optional) Initial temperature (in internal units) to set the gas particles at start-up. Value is ignored if set to 0.
+  minimal_temperature:                 0        # (Optional) Minimal temperature (in internal units) allowed for the gas particles. Value is ignored if set to 0.
+  H_mass_fraction:                     0.755    # (Optional) Hydrogen mass fraction used for initial conversion from temp to internal energy. Default value is derived from the physical constants.
+  H_ionization_temperature:            1e4      # (Optional) Temperature of the transition from neutral to ionized Hydrogen for primoridal gas.
+  viscosity_alpha:                     0.8      # (Optional) Override for the initial value of the artificial viscosity. In schemes that have a fixed AV, this remains as alpha throughout the run.
+  viscosity_alpha_max:                 2.0      # (Optional) Maximal value for the artificial viscosity in schemes that allow alpha to vary.
+  viscosity_alpha_min:                 0.1      # (Optional) Minimal value for the artificial viscosity in schemes that allow alpha to vary.
+  viscosity_length:                    0.1      # (Optional) Decay length for the artificial viscosity in schemes that allow alpha to vary.
+  diffusion_alpha:                     0.0      # (Optional) Override the initial value for the thermal diffusion coefficient in schemes with thermal diffusion.
+  diffusion_beta:                      0.01     # (Optional) Override the decay/rise rate tuning parameter for the thermal diffusion.
+  diffusion_alpha_max:                 1.0      # (Optional) Override the maximal thermal diffusion coefficient that is allowed for a given particle.
+  diffusion_alpha_min:                 0.0      # (Optional) Override the minimal thermal diffusion coefficient that is allowed for a given particle.
 
 # Parameters of the stars
 Stars:
@@ -625,7 +625,8 @@ EAGLEStarFormation:
   threshold_temperature1_K:          1000      # When using subgrid-based SF threshold, subgrid temperature below which gas is star-forming.
   threshold_temperature2_K:          31622     # When using subgrid-based SF threshold, subgrid temperature below which gas is star-forming if also above the density limit.
   threshold_number_density_H_p_cm3:  10        # When using subgrid-based SF threshold, subgrid number density above which gas is star-forming if also below the second temperature limit.
-
+  num_of_stars_per_gas_particle:     1         # (Optional) The number star particles to form per gas particle converted to stars. (Defaults to 1. Must be > 0)
+  
 # Quick Lyman-alpha star formation parameters
 QLAStarFormation:
   over_density:              1000      # The over-density above which gas particles turn into stars.
@@ -634,10 +635,10 @@ QLAStarFormation:
 GEARStarFormation:
   star_formation_mode: default      # default (use the pressure floor limit) or agora (do not use the pressure floor limit)
   star_formation_efficiency: 0.01   # star formation efficiency (c_*)
-  maximal_temperature:  3e4         # Upper limit to the temperature of a star forming particle
+  maximal_temperature_K:     3e4    # Upper limit to the temperature of a star forming particle
+  density_threshold_Hpcm3:   10     # Density threshold (Hydrogen atoms/cm^3) for star formation
   n_stars_per_particle: 4           # Number of stars that an hydro particle can generate
   min_mass_frac: 0.5                # Minimal mass for a stellar particle as a fraction of the average mass for the stellar particles.
-  density_threshold: 1.67e-23       # Density threshold for star formation
 
 # Parameters related to feedback models  -----------------------------------------------
 
@@ -878,21 +879,30 @@ DefaultSink:
 
 # GEAR sink particles
 GEARSink:
-  cut_off_radius:        1e-3       # Cut off radius of the sink particles (in internal units). This parameter should be adapted with the resolution. 
-  f_acc: 0.8                                  # (Optional) Fraction of the cut_off_radius that determines if a gas particle should be swallowed wihtout additional check. It has to respect 0 <= f_acc <= 1. (Default: 0.8)
-  maximal_temperature:        3e10            # Maximal gas temperature for forming a star (in K)
-  density_threshold_g_per_cm3:          1.67e-23        # Minimal gas density for forming a star (in g/cm3 (1.67e-24 =1acc))
-  stellar_particle_mass_Msun: 20              # Mass of the stellar particle representing the low mass stars (continuous IMF sampling) (in solar mass)
+  cut_off_radius:        1e-3                 # Cut off radius of the sink particles (in internal units). This parameter should be adapted with the resolution.
+  f_acc: 0.1                                  # (Optional) Fraction of the cut_off_radius that determines if a gas particle should be swallowed wihtout additional check. It has to respect 0 <= f_acc <= 1. (Default: 0.1)
+  temperature_threshold_K:        100         # Max temperature (in K) for forming a sink when density_threshold_Hpcm3 <= density <= maximal_density_threshold_Hpcm3.
+  density_threshold_Hpcm3: 1e3                # Minimum gas density (in Hydrogen atoms/cm3) required to form a sink particle.
+  maximal_density_threshold_Hpcm3: 1e5        # If the gas density exceeds this value (in Hydrogen atoms/cm3), a sink forms regardless of temperature if all other criteria are passed. (Default: FLT_MAX)
+  sink_minimal_mass_Msun:      0.             # (Optional) Sink minimal mass in Msun. This parameter prevents m_sink << m_gas in low resolution simulations. (Default: 0.0)
+  stellar_particle_mass_Msun:  20             # Mass of the stellar particle representing the low mass stars (continuous IMF sampling) (in solar mass)
   minimal_discrete_mass_Msun: 8               # Minimal mass of stars represented by discrete particles (in solar mass)
-  stellar_particle_mass_first_stars_Msun: 20       # Mass of the stellar particle representing the low mass stars (continuous IMF sampling) (in solar mass). First stars
-  minimal_discrete_mass_first_stars_Msun: 8        # Minimal mass of stars represented by discrete particles (in solar mass). First stars
+  stellar_particle_mass_first_stars_Msun: 20      # Mass of the stellar particle representing the low mass stars (continuous IMF sampling) (in solar mass). First stars
+  minimal_discrete_mass_first_stars_Msun: 8       # Minimal mass of stars represented by discrete particles (in solar mass). First stars
   star_spawning_sigma_factor: 0.2                 # Factor to rescale the velocity dispersion of the stars when they are spawned. (Default: 0.2)
   sink_formation_contracting_gas_criterion: 1     # (Optional) Activate the contracting gas check for sink formation. (Default: 1)
   sink_formation_smoothing_length_criterion: 1    # (Optional) Activate the smoothing length check for sink formation. (Default: 1)
   sink_formation_jeans_instability_criterion: 1   # (Optional) Activate the two Jeans instability checks for sink formation. (Default: 1)
   sink_formation_bound_state_criterion: 1         # (Optional) Activate the bound state check for sink formation. (Default: 1)
   sink_formation_overlapping_sink_criterion: 1    # (Optional) Activate the overlapping sink check for sink formation. (Default: 1)
-  disable_sink_formation: 0                   # (Optional) Disable sink formation. (Default: 0)
+  disable_sink_formation: 0                       # (Optional) Disable sink formation. (Default: 0)
+  CFL_condition:                        0.5       # Courant-Friedrich-Levy condition for time integration.
+  timestep_age_threshold_unlimited_Myr: 100.      # (Optional) Age above which sinks no longer have time-step restrictions, except for 2-body encounters involving another young/old sink and gravity (in Mega-years). (Default: FLT_MAX)
+  timestep_age_threshold_Myr:           25.       # (Optional) Age at which sink switch from young to old for time-stepping purposes (in Mega-years). (Default: FLT_MAX)
+  max_timestep_young_Myr:               1.0       # (Optional) Maximal time-step length of young sinks (in Mega-years). (Default: FLT_MAX)
+  max_timestep_old_Myr:                 5.0       # (Optional) Maximal time-step length of old sinks (in Mega-years). (Default: FLT_MAX)
+  n_IMF:                                 2        # (Optional) Number of times the IMF mass can be swallowed in a single timestep. (Default: FLTM_MAX)
+  tolerance_SF_timestep:                 0.5      # (Optional) Tolerance parameter for SF timestep constraint. (Default: 0.5)
 
 # Parameters related to radiative transfer ---------------------------------------
 

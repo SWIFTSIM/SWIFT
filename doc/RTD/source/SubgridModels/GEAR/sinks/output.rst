@@ -37,6 +37,14 @@ Sink particles
 |                                       | | element                           |           | | number of elements ``N`` is determined at       |
 |                                       | |                                   |           | | compile time by ``--with-chemistry=GEAR_N``.    |
 +---------------------------------------+-------------------------------------+-----------+---------------------------------------------------+
+| ``BirthScaleFactors``                 | | Scale-factors when the sinks were | [-]       | Only used in cosmological runs.                   |
+|                                       | | born                              |           |                                                   |
+|                                       | |                                   |           |                                                   |
++---------------------------------------+-------------------------------------+-----------+---------------------------------------------------+
+| ``BirthTimes``                        | | Time when the sinks were          | [U_T]     | Only used in non-cosmological runs.               |
+|                                       | | born                              |           |                                                   |
++---------------------------------------+-------------------------------------+-----------+---------------------------------------------------+
+
 
 
 Stars

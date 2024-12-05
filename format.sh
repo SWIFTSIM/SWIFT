@@ -16,7 +16,7 @@ if test "$?" != "0"; then
 fi
 
 # Formatting command
-cmd="$clang -style=file $(git ls-files | grep '\.[ch]$')"
+cmd="$clang -style=file $(git ls-files | grep '\.[ch]$' | grep -v csds_io\.h | grep -v argparse\.h | grep -v vector\.h)"
 
 # Test if `clang-format-18` works
 command -v $clang > /dev/null

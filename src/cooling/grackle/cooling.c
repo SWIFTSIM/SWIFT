@@ -69,6 +69,18 @@ double cooling_get_physical_density(
     const struct cooling_function_data* cooling);
 
 /**
+ * @brief Record the time when cooling was switched off for a particle.
+ *
+ * @param p #part data.
+ * @param xp Pointer to the #xpart data.
+ * @param time The time when the cooling was switched off.
+ */
+INLINE void cooling_set_part_time_cooling_off(struct part* p, struct xpart* xp,
+                                              const double time) {
+  xp->cooling_data.time_last_event = time;
+}
+
+/**
  * @brief Common operations performed on the cooling function at a
  * given time-step or redshift.
  *
@@ -218,11 +230,17 @@ void cooling_first_init_part(const struct phys_const* phys_const,
 
   /* Compute nH (formally divided by the gas density and assuming the proton
    * mass to be one) */
-  double nH = grackle_data->HydrogenFractionByMass;
+  double nH = 1.0;
+  if (grackle_data != NULL) {
+    nH = grackle_data->HydrogenFractionByMass;
+  }
 
   /* Compute nHe (formally divided by the gas density and assuming the proton
    * mass to be one) */
-  double nHe = (1.f - grackle_data->HydrogenFractionByMass) / 4.f;
+  double nHe = 0.0;
+  if (grackle_data != NULL) {
+    nHe = (1.f - grackle_data->HydrogenFractionByMass) / 4.f;
+  }
 
   /* Electron density */
   double ne = zero;
@@ -330,9 +348,12 @@ void cooling_first_init_part(const struct phys_const* phys_const,
   if (cooling->initial_nDI_to_nH_ratio >= 0.f) {
     double nDI = nH * cooling->initial_nDI_to_nH_ratio;
     xp->cooling_data.DI_frac = nDI * 2.f;
-  } else
-    xp->cooling_data.DI_frac = grackle_data->DeuteriumToHydrogenRatio *
-                               grackle_data->HydrogenFractionByMass;
+  } else {
+    if (grackle_data != NULL) {
+      xp->cooling_data.DI_frac = grackle_data->DeuteriumToHydrogenRatio *
+                                 grackle_data->HydrogenFractionByMass;
+    }
+  }
 
   Xtot += xp->cooling_data.DI_frac;
 

@@ -384,6 +384,7 @@ void cell_split(struct cell *c, const ptrdiff_t parts_offset,
     c->progeny[k]->sinks.count = bucket_count[k];
     c->progeny[k]->sinks.count_total = c->progeny[k]->sinks.count;
     c->progeny[k]->sinks.parts = &c->sinks.parts[bucket_offset[k]];
+    c->progeny[k]->sinks.parts_rebuild = c->progeny[k]->sinks.parts;
   }
 
   /* Finally, do the same song and dance for the gparts. */
@@ -636,7 +637,8 @@ void cell_reorder_extra_sinks(struct cell *c, const ptrdiff_t sinks_offset) {
  * @param sinks The global array of #sink (for re-linking).
  */
 void cell_reorder_extra_gparts(struct cell *c, struct part *parts,
-                               struct spart *sparts, struct sink *sinks) {
+                               struct spart *sparts, struct sink *sinks,
+                               struct bpart *bparts) {
   struct gpart *gparts = c->grav.parts;
   const int count_real = c->grav.count;
 
@@ -668,6 +670,8 @@ void cell_reorder_extra_gparts(struct cell *c, struct part *parts,
         sinks[-gparts[i].id_or_neg_offset].gpart = &gparts[i];
       } else if (gparts[i].type == swift_type_stars) {
         sparts[-gparts[i].id_or_neg_offset].gpart = &gparts[i];
+      } else if (gparts[i].type == swift_type_black_hole) {
+        bparts[-gparts[i].id_or_neg_offset].gpart = &gparts[i];
       }
     }
   }
