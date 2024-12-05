@@ -316,3 +316,51 @@ different files could represent different MPI ranks, but also different
 time steps or even different simulations (which would make little
 sense). It is up to the user to make sure that the input is actually
 relevant.
+
+
+Zoom Cell Geometry 
+------------------ 
+
+Performance when running a zoom simulation is extremely sensetive to the geometry of the different cell grids. To help tune the parameters that control this cell strucutre we provide a python script for visualising the cell structure, ``tools/plot_zoom_geometry.py``. This script will ingest your parameter file and use the exact same construction logic that SWIFT uses internally to compute the cell structure producing a report of the geometry and a visualisation. 
+
+To use the script, run:
+
+``` bash 
+python plot_zoom_geometry.py <path_to_your_parameter_file> 
+``` 
+
+To overide a parameter in the parameter file on the command line, you can use the following syntax: 
+
+``` bash 
+python plot_zoom_geometry.py <path_to_your_parameter_file> --<parameter_name> <value>
+```
+
+An example of the output of this script is shown below: 
+
+```
+             Background cdim = [8, 8, 8]
+                 Buffer cdim = [8, 8, 8]
+                   Zoom cdim = [4, 4, 4]
+       Background Dimensions = [100.00000000000001, 100.00000000000001, 100.00000000000001]
+    Buffer Region Dimensions = [25.0, 25.0, 25.0]
+      Zoom Region Dimensions = [12.5, 12.5, 12.5]
+       Background Cell Width = [12.500000000000002, 12.500000000000002, 12.500000000000002]
+           Buffer Cell Width = [3.125, 3.125, 3.125]
+             Zoom Cell Width = [3.125, 3.125, 3.125]
+  Number of Background Cells = 512
+      Number of Buffer Cells = 512
+        Number of Zoom Cells = 64
+               Buffer Bounds = [37.50000000000001-62.50000000000001, 37.50000000000001-62.50000000000001, 37.50000000000001-62.50000000000001]
+          Zoom Region Bounds = [43.75000000000001-56.25000000000001, 43.75000000000001-56.25000000000001, 43.75000000000001-56.25000000000001]
+      Buffer Top Level Depth = 2
+        Zoom Top Level Depth = 2
+      Zoom Region Pad Factor = 1.165400086076128
+           Zoom Region Shift = [0.0, 0.0, 0.0]
+          Zoom Region Center = [50.00000000000001, 50.00000000000001, 50.00000000000001]
+```
+
+.. figure:: figures/zoom_geometry_with_buffer.png
+            :width: 400px
+            :align: center
+            :alt: Small zoom region cells
+
