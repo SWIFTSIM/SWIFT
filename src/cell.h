@@ -1777,7 +1777,7 @@ __attribute__((always_inline)) INLINE void cell_assign_top_level_cell_index(
     struct cell *c, struct space *s) {
 
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
-  if (c->depth != 0) {
+  if (c->depth != 0 && c->subtype != cell_subtype_void) {
     error("assigning top level cell index to cell with depth > 0");
   } else {
 
