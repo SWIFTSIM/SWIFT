@@ -398,4 +398,26 @@ INLINE static void random_direction_in_cone(const int64_t id_bh,
                            rand_cos_theta * a[2];
 }
 
+/**
+ * @brief Generate a pseudo-random number drawn from a gaussian distribution.
+ *
+ * @param mean The mean of the gaussian distribution.
+ * @param std The standard deviation of the gaussian distribution.
+ * @param id The ID of the particle for which to generate the number.
+ * @param ti_current The time (on the time-line) for which to generate the
+ * number.
+ * @param type The #random_number_type to generate.
+ * @return A random number drawn from the gaussian distribution.
+ */
+INLINE static double random_gaussian(const double mean, const double std,
+                                     const int64_t id,
+                                     const integertime_t ti_current,
+                                     const enum random_number_type type) {
+
+  /* Generate two uniform random numbers for sampling the gaussian. */
+  double u1 = random_unit_interval(id, ti_current, type);
+  double u2 = random_unit_interval(id + 1, ti_current, type);
+
+  return (sqrt(-2.0 * log(u1)) * cos(2 * M_PI * u2)) * std + mean;
+}
 #endif /* SWIFT_RANDOM_H */

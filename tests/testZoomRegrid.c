@@ -27,11 +27,41 @@
 #include "swift.h"
 #include "zoom_region/zoom.h"
 
+/**
+ * @brief Generate a random coordinate from a gaussian distribution.
+ *
+ * @param mean The mean of the gaussian distribution.
+ * @param std The standard deviation of the gaussian distribution.
+ * @param max_width The maximum width of the cell.
+ * @param id The ID of the particle for which to generate the number.
+ * @param ti_current The time (on the time-line) for which to generate the
+ * number.
+ * @return A random number drawn from the gaussian distribution.
+ */
+double random_gaussian_coordinate(const double mean, const double std,
+                                  const double max_width, const int id,
+                                  const integertime_t ti_current,
+                                  const enum random_number_type type) {
+
+  /* Generate a random number from a normal distribution. */
+  double z0 = random_gaussian(mean, std, id, ti_current, type);
+
+  /* We only want to go out at most by the size of a cell. If we've got a
+   * coordinate out too far we should try again changing the random number
+   * seed. */
+  if (z0 < mean - max_width / 2 || z0 > mean + max_width / 2) {
+    return random_gaussian_coordinate(
+        mean, std, max_width, id, ti_current,
+        type + 3 % random_number_powerspectrum_split);
+  }
+
+  return z0;
+}
+
 /* This script tests the process of regridding a zoom simulation. It'll first
  * calculate the zoom geometry, construct the cell structures as would be done
- * in a run during a regrid, populates 1 particle per cell and then tests that
- * all cells (and different cell types) containing the expected number
- * particles. This ensures the regrid produces the expected cell structure. */
+ * in a run during a regrid, populates the cells and then tests all particles
+ * have ended up where they are supposed to be. */
 
 void make_mock_space(struct space *s) {
 
@@ -40,9 +70,11 @@ void make_mock_space(struct space *s) {
   s->dim[1] = 1000;
   s->dim[2] = 1000;
 
-  /* Define the gpart count (this is a background particle per cell + the 8
-   * corner high res particles used to define the region.) */
-  s->nr_gparts = (2 * 10 * 10 * 10) + (16 * 16 * 16) + 8;
+  /* The simulation is periodic */
+  s->periodic = 1;
+
+  /* Define the gpart count (100 high and 100 low resolution) */
+  s->nr_gparts = 100 + 100;
 
   /* We need the engine to be NULL for the logic. */
   s->e = NULL;
@@ -55,74 +87,32 @@ void make_mock_space(struct space *s) {
   }
   bzero(gparts, s->nr_gparts * sizeof(struct gpart));
 
-  /* Define the corners of the region */
-  const double mid = 500;
-  const double offset = 12.5;
-  double cube_corners[8][3] = {{mid - offset, mid - offset, mid - offset},
-                               {mid - offset, mid - offset, mid + offset},
-                               {mid - offset, mid + offset, mid - offset},
-                               {mid - offset, mid + offset, mid + offset},
-                               {mid + offset, mid - offset, mid - offset},
-                               {mid + offset, mid - offset, mid + offset},
-                               {mid + offset, mid + offset, mid - offset},
-                               {mid + offset, mid + offset, mid + offset}};
-
-  /* Loop over the cell grids making a background particle per cell. */
-  int gpart_count = 0;
-  const double bkg_width = 100;
-  const double buffer_width = 20;
-  const double zoom_width = 2.5;
-  const double buffer_lower[3] = {400, 400, 400};
-  const double zoom_lower[3] = {480, 480, 480};
-  for (int i = 0; i < 10; i++) {
-    for (int j = 0; j < 10; j++) {
-      for (int k = 0; k < 10; k++) {
-        gparts[gpart_count].mass = 1.0;
-
-        /* Set background particles to be at the center of the cell. */
-        gparts[gpart_count].x[0] = bkg_width * (i + 0.5);
-        gparts[gpart_count].x[1] = bkg_width * (j + 0.5);
-        gparts[gpart_count].x[2] = bkg_width * (k + 0.5);
-        gparts[gpart_count++].type = swift_type_dark_matter_background;
-      }
-    }
-  }
-  for (int i = 0; i < 10; i++) {
-    for (int j = 0; j < 10; j++) {
-      for (int k = 0; k < 10; k++) {
-        gparts[gpart_count].mass = 1.0;
-
-        /* Set buffer particles to be at the center of the cell. */
-        gparts[gpart_count].x[0] = (buffer_width * (i + 0.5)) + buffer_lower[0];
-        gparts[gpart_count].x[1] = (buffer_width * (j + 0.5)) + buffer_lower[1];
-        gparts[gpart_count].x[2] = (buffer_width * (k + 0.5)) + buffer_lower[2];
-        gparts[gpart_count++].type = swift_type_dark_matter_background;
-      }
-    }
-  }
-  for (int i = 0; i < 16; i++) {
-    for (int j = 0; j < 16; j++) {
-      for (int k = 0; k < 16; k++) {
-        gparts[gpart_count].mass = 1.0;
-
-        /* Set zoom particles to be at the center of the cell. */
-        gparts[gpart_count].x[0] = (zoom_width * (i + 0.5)) + zoom_lower[0];
-        gparts[gpart_count].x[1] = (zoom_width * (j + 0.5)) + zoom_lower[1];
-        gparts[gpart_count].x[2] = (zoom_width * (k + 0.5)) + zoom_lower[2];
-        gparts[gpart_count++].type = swift_type_dark_matter_background;
-      }
-    }
+  /* Randomly place the background particles. */
+  for (int i = 0; i < 100; i++) {
+    gparts[i].x[0] = s->dim[0] * 0.99 * ((double)rand() / RAND_MAX) + 1;
+    gparts[i].x[1] = s->dim[1] * 0.99 * ((double)rand() / RAND_MAX) + 1;
+    gparts[i].x[2] = s->dim[2] * 0.99 * ((double)rand() / RAND_MAX) + 1;
+    gparts[i].type = swift_type_dark_matter_background;
+    gparts[i].mass = 1.0;
   }
 
-  /* Make a zoom particle in each corner to define the zoom region. */
-  for (size_t i = 0; i < 8; i++) {
-    gparts[gpart_count].mass = 1.0;
+  /* Define the width of the zoom region (randomly). */
+  double zoom_width = 50 * ((double)rand() / RAND_MAX) + 1;
+  message("Zoom width = %f", zoom_width);
 
-    /* Set zoom region particles to be at the corners of the region. */
-    gparts[gpart_count].x[0] = cube_corners[i][0];
-    gparts[gpart_count].x[1] = cube_corners[i][1];
-    gparts[gpart_count].x[2] = cube_corners[i][2];
-    gparts[gpart_count++].type = swift_type_dark_matter;
+  /* Get the "current time" */
+  time_t ti_current = time(NULL);
+
+  /* Define the zoom particles by sampling from a normal distribution. */
+  for (int i = 100; i < 200; i++) {
+    gparts[i].x[0] = random_gaussian_coordinate(s->dim[0] / 2, zoom_width, 100,
+                                                i, ti_current, 0);
+    gparts[i].x[1] = random_gaussian_coordinate(s->dim[1] / 2, zoom_width, 100,
+                                                i, ti_current, 1);
+    gparts[i].x[2] = random_gaussian_coordinate(s->dim[2] / 2, zoom_width, 100,
+                                                i, ti_current, 2);
+    gparts[i].type = swift_type_dark_matter;
+    gparts[i].mass = 1.0;
   }
 
   s->gparts = gparts;
@@ -142,8 +132,6 @@ void associate_gparts_to_cells(struct space *s) {
   }
 }
 
-void make_gparts_grid(struct space *s) {}
-
 int main(int argc, char *argv[]) {
 
   /* Initialize CPU frequency, this also starts time. */
@@ -154,6 +142,11 @@ int main(int argc, char *argv[]) {
 #ifdef HAVE_FE_ENABLE_EXCEPT
   feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW);
 #endif
+
+  /* Get some randomness going */
+  const int seed = time(NULL);
+  message("Seed = %d", seed);
+  srand(seed);
 
   /* Create a structure to read file into. */
   struct swift_params param_file;
@@ -180,32 +173,10 @@ int main(int argc, char *argv[]) {
   /* Associate gparts. */
   associate_gparts_to_cells(s);
 
-  /* Test all cells that aren't void or empty have at least one particle. */
+  /* Ensure void cells have 0 counts. */
   for (int i = 0; i < s->nr_cells; i++) {
     struct cell *c = &s->cells_top[i];
-    if (c->subtype != cell_subtype_void && c->subtype != cell_subtype_empty) {
-      if (c->grav.count == 0) {
-        error(
-            "Cell %d has no particles (c->type = %s, c->subtype = %s, c->loc = "
-            "[%f, %f, %f])",
-            i, cellID_names[c->type], subcellID_names[c->subtype], c->loc[0],
-            c->loc[1], c->loc[2]);
-      }
-    }
-
-    /* If we have a background cell ensure the count is 1 (because of nesting
-     * zoom and buffer cells can have more). */
-    if (c->type == cell_type_bkg && c->subtype != cell_subtype_empty &&
-        c->grav.count != 1) {
-      error(
-          "Cell %d has %d particles (c->type = %s, c->subtype = %s, c->loc = "
-          "[%f, %f, %f])",
-          i, c->grav.count, cellID_names[c->type], subcellID_names[c->subtype],
-          c->loc[0], c->loc[1], c->loc[2]);
-    }
-
-    /* Ensure empty and void cells have 0 counts. */
-    if (c->subtype == cell_subtype_empty || c->subtype == cell_subtype_void) {
+    if (c->subtype == cell_subtype_void) {
       if (c->grav.count != 0) {
         error(
             "Cell %d has %d particles (c->type = %s, c->subtype = %s, c->loc = "
@@ -234,14 +205,23 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  /* Zoom region should have zoomcdim^3 + 8 high res corners + 8 void cells. */
-  assert(zoom_count == 16 * 16 * 16 + 8 + 8);
+  /* Because we are doing things randomly we need to check for both the buffer
+   * cell case and no buffer cell case. */
+  if (s->zoom_props->with_buffer_cells) {
+    /* Zoom region has 100 high res particles and any low res interlopers. */
+    assert(zoom_count == 100 + 100 - bkg_count - buffer_count);
 
-  /* Background cell should have bkgcdim^3 - 8 empty */
-  assert(bkg_count == 10 * 10 * 10 - 8);
+    /* Buffer region + background region + zoom interlopers == 100 background
+     * particles. */
+    assert(bkg_count + buffer_count + zoom_count - 100 == 100);
 
-  /* Buffer cell should have buffercdim^3 - 8 void + 8 empty */
-  assert(buffer_count == 10 * 10 * 10);
+  } else {
+    /* Zoom region has 100 high res particles and any low res interlopers. */
+    assert(zoom_count == 100 + 100 - bkg_count);
+
+    /* Background region + zoom interlopers == 100 background particles. */
+    assert(bkg_count + zoom_count - 100 == 100);
+  }
 
   /* Free the space. */
   free(s->local_cells_top);
