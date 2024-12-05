@@ -1063,6 +1063,26 @@ __attribute__((always_inline)) INLINE static double cell_min_dist2(
   }
 }
 
+/**
+ * @brief Is a cell a direct neighbour of another cell?
+ *
+ * @param s The #space.
+ * @param ci The first #cell.
+ * @param cj The second #cell.
+ *
+ * @return 1 if the cells are direct neighbours, 0 otherwise.
+ */
+__attribute__((always_inline)) INLINE static int cell_is_direct_neighbour(
+    const struct space *s, const struct cell *ci, const struct cell *cj) {
+
+  /* Calculate the minimum distance between the two cells */
+  const double dist2 = cell_min_dist2(ci, cj, s->periodic, s->dim);
+
+  /* If the cells are direct neighbours, the distance will be 0. We use a
+   * tolerance of 1e-10 to be safe and account for floating point errors. */
+  return fabs(dist2) < 1e-10;
+}
+
 /* Inlined functions (for speed). */
 
 /**
