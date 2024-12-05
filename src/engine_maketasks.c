@@ -788,7 +788,7 @@ void engine_addtasks_recv_hydro(
     struct task *t_unpack_limiter, struct task *t_rt_gradient,
     struct task *t_rt_transport, struct task *t_rt_sorts,
     struct task *const tend, const int with_feedback,
-    const int with_black_holes, const int with_limiter, const int with_sync,
+    const int with_black_holes, const int with_sinks, const int with_limiter, const int with_sync,
     const int with_rt) {
 
 #ifdef WITH_MPI
@@ -979,6 +979,17 @@ void engine_addtasks_recv_hydro(
       }
     }
 
+    /* Make sure the part have been received before the sinks compute their
+     * properties (depends on particles' rho). */
+    if (with_sinks) {
+      for (struct link *l = c->sinks.density; l != NULL; l = l->next) {
+        /* t_rho is not activated for cells with no active hydro, so we need
+           to add an additional dependency on t_xv for these cells */
+        scheduler_addunlock(s, t_xv, l->t);
+        scheduler_addunlock(s, t_rho, l->t);
+      }
+    }
+
     if (with_rt) {
       engine_addlink(e, &c->mpi.recv, t_rt_gradient);
       engine_addlink(e, &c->mpi.recv, t_rt_transport);
@@ -1018,7 +1029,7 @@ void engine_addtasks_recv_hydro(
         engine_addtasks_recv_hydro(
             e, c->progeny[k], t_xv, t_rho, t_gradient, t_prep1, t_limiter,
             t_unpack_limiter, t_rt_gradient, t_rt_transport, t_rt_sorts, tend,
-            with_feedback, with_black_holes, with_limiter, with_sync, with_rt);
+            with_feedback, with_black_holes, with_sinks, with_limiter, with_sync, with_rt);
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -4919,7 +4930,7 @@ void engine_addtasks_recv_mapper(void *map_data, int num_elements,
           e, ci, /*t_xv=*/NULL, /*t_rho=*/NULL, /*t_gradient=*/NULL,
           /*t_prep1=*/NULL, /*t_limiter=*/NULL, /*t_unpack_limiter=*/NULL,
           /*t_rt_gradient=*/NULL, /*t_rt_transport=*/NULL,
-          /*t_rt_sorts=*/NULL, tend, with_feedback, with_black_holes,
+          /*t_rt_sorts=*/NULL, tend, with_feedback, with_black_holes, with_sinks,
           with_limiter, with_sync, with_rt);
     }
 
