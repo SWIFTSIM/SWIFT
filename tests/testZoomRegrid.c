@@ -41,7 +41,7 @@
 double random_gaussian_coordinate(const double mean, const double std,
                                   const double max_width, const int id,
                                   const integertime_t ti_current,
-                                  const random_number_type type) {
+                                  const enum random_number_type type) {
 
   /* Generate a random number from a normal distribution. */
   double z0 = random_gaussian(mean, std, id, ti_current, type);
