@@ -348,10 +348,10 @@ __attribute__((always_inline)) INLINE static void sink_end_density(
 __attribute__((always_inline)) INLINE static void sinks_sink_has_no_neighbours(
     struct sink* restrict sp, const struct cosmology* cosmo) {
 
-  warning(
-      "Sink particle with ID %lld treated as having no neighbours (r_cut: %g, "
-      "numb_ngbs: %i).",
-      sp->id, sp->r_cut, sp->num_ngbs);
+  /* warning( */
+  /*     "Sink particle with ID %lld treated as having no neighbours (r_cut: %g, " */
+  /*     "numb_ngbs: %i).", */
+  /*     sp->id, sp->r_cut, sp->num_ngbs); */
 
   /* Reset problematic values */
   sp->to_collect.velocity_gas[0] = sp->v[0];
