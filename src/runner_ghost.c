@@ -1791,25 +1791,6 @@ void runner_do_sinks_density_ghost(struct runner *r, struct cell *c,
         /* Finish the density calculation */
         sink_end_density(sp, cosmo);
 
-        /* Get particle time-step */
-        double dt;
-        if (with_cosmology) {
-          const integertime_t ti_step = get_integer_timestep(sp->time_bin);
-          const integertime_t ti_begin =
-              get_integer_time_begin(e->ti_current - 1, sp->time_bin);
-
-          dt = cosmology_get_delta_time(e->cosmology, ti_begin,
-                                        ti_begin + ti_step);
-        } else {
-          dt = get_timestep(sp->time_bin, e->time_base);
-        }
-
-        /* Calculate the accretion rate and accreted mass this timestep, for use
-         * in swallow loop */
-        sink_prepare_swallow(sp, e->sink_properties, e->physical_constants,
-                             e->cosmology, e->cooling_func, e->entropy_floor,
-                             e->time, with_cosmology, dt, e->ti_current);
-
         /* Set these variables to the fixed cutoff radius for the rest of the
          * ghost task */
         h_max = sp->h;
@@ -1903,13 +1884,6 @@ void runner_do_sinks_density_ghost(struct runner *r, struct cell *c,
             } else {
               dt = get_timestep(sp->time_bin, e->time_base);
             }
-
-            /* Calculate the accretion rate and accreted mass this timestep, for
-             * use in swallow loop */
-            sink_prepare_swallow(sp, e->sink_properties, e->physical_constants,
-                                 e->cosmology, e->cooling_func,
-                                 e->entropy_floor, e->time, with_cosmology, dt,
-                                 e->ti_current);
 
             /* Compute one step of the Newton-Raphson scheme */
             const float n_sum = sp->density.wcount * h_old_dim;
@@ -2112,6 +2086,35 @@ void runner_do_sinks_density_ghost(struct runner *r, struct cell *c,
       free(right);
       free(sid);
       free(h_0);
+    }
+
+    /* We need one more quick loop over the sinks to run prepare_swallow */
+    for (int i = 0; i < c->sinks.count; i++) {
+
+      /* Get a direct pointer on the part. */
+      struct sink *sp = &sinks[i];
+
+      if (sink_is_active(sp, e)) {
+
+        /* Get particle time-step */
+        double dt;
+        if (with_cosmology) {
+          const integertime_t ti_step = get_integer_timestep(sp->time_bin);
+          const integertime_t ti_begin =
+              get_integer_time_begin(e->ti_current - 1, sp->time_bin);
+
+          dt = cosmology_get_delta_time(e->cosmology, ti_begin,
+                                        ti_begin + ti_step);
+        } else {
+          dt = get_timestep(sp->time_bin, e->time_base);
+        }
+
+        /* Calculate the accretion rate and accreted mass this timestep, for use
+        * in swallow loop */
+        sink_prepare_swallow(sp, e->sink_properties, e->physical_constants,
+                              e->cosmology, e->cooling_func, e->entropy_floor,
+                              e->time, with_cosmology, dt, e->ti_current);
+      }
     }
   }
 
