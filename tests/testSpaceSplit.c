@@ -47,16 +47,19 @@
  */
 double random_gaussian_coordinate(const double mean, const double std,
                                   const double max_width, const int id,
-                                  const integertime_t ti_current) {
+                                  const integertime_t ti_current,
+                                  const random_number_type type) {
 
   /* Generate a random number from a normal distribution. */
-  double z0 = random_gaussian(mean, std, id, ti_current,
-                              /*arbitrary type*/ random_number_star_formation);
+  double z0 = random_gaussian(mean, std, id, ti_current, type);
 
   /* We only want to go out at most by the size of a cell. If we've got a
-   * coordinate out too far we should try again changing the current time. */
+   * coordinate out too far we should try again changing the random number
+   * seed. */
   if (z0 < mean - max_width / 2 || z0 > mean + max_width / 2) {
-    return random_gaussian_coordinate(mean, std, max_width, id, ti_current * 2);
+    return random_gaussian_coordinate(
+        mean, std, max_width, id, ti_current,
+        type + 3 % random_number_powerspectrum_split);
   }
 
   return z0;
@@ -94,11 +97,11 @@ void make_mock_space(struct space *s, struct engine *e, const double std) {
    * the middle of the box with a width. */
   for (size_t i = 0; i < s->nr_gparts; i++) {
     gparts[i].x[0] = random_gaussian_coordinate(s->dim[0] / 2, std, s->width[0],
-                                                i, ti_current);
+                                                i, ti_current, 0);
     gparts[i].x[1] = random_gaussian_coordinate(s->dim[1] / 2, std, s->width[1],
-                                                i, ti_current * 2);
+                                                i, ti_current, 1);
     gparts[i].x[2] = random_gaussian_coordinate(s->dim[2] / 2, std, s->width[2],
-                                                i, ti_current * 3);
+                                                i, ti_current, 2);
     gparts[i].mass = 1.0;
     gparts[i].type = swift_type_dark_matter;
   }
