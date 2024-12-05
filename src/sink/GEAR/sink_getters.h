@@ -20,6 +20,7 @@
 #define SWIFT_GEAR_SINK_GETTERS_H
 
 #include "cosmology.h"
+#include "gravity.h"
 #include "sink_part.h"
 
 /**
@@ -166,6 +167,19 @@ sink_compute_angular_momenta_criterion(
 
   /*Keplerian angular momentum squared */
   *L2_kepler = (r_cut_i * r_cut_i * r_cut_i * r_cut_i) * omega_acc_2;
+}
+
+/**
+ * @brief Returns the current co-moving softening of a sink particle
+ *
+ * @param sink The particle of interest
+ * @param grav_props The global gravity properties.
+ */
+__attribute__((always_inline)) INLINE static float sink_get_softening(
+    const struct sink* sink, const struct gravity_props* grav_props) {
+  /* This is not MPI friendly */
+  /* return gravity_get_softening(sink->gpart, grav_props); */
+  return grav_props->epsilon_baryon_cur;
 }
 
 #endif /* SWIFT_GEAR_SINK_GETTERS_H */
