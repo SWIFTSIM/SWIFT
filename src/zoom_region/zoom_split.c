@@ -331,46 +331,65 @@ void zoom_void_space_split(struct space *s, int verbose) {
             clocks_from_ticks(getticks() - tic), clocks_getunit());
 
 #ifdef SWIFT_DEBUG_CHECKS
-  /* Collect the number of particles in the void multipoles. */
-  int nr_gparts_in_void = 0;
-  for (int i = 0; i < nr_void_cells; i++) {
-    nr_gparts_in_void +=
-        s->multipoles_top[s->zoom_props->void_cell_indices[i]].m_pole.num_gpart;
-  }
 
   /* Ensure all buffer cells are linked into the tree. */
   int notlinked = 0;
-  int nr_gparts = 0;
-  for (int k = s->zoom_props->buffer_cell_offset;
-       k < s->zoom_props->buffer_cell_offset + s->zoom_props->nr_buffer_cells;
-       k++) {
-    nr_gparts += s->multipoles_top[k].m_pole.num_gpart;
-    if (cells_top[k].void_parent == NULL) notlinked++;
+  if (s->zoom_props->with_buffer_cells) {
+    for (int k = s->zoom_props->buffer_cell_offset;
+         k < s->zoom_props->buffer_cell_offset + s->zoom_props->nr_buffer_cells;
+         k++) {
+      if (cells_top[k].void_parent == NULL) notlinked++;
+    }
+    if (notlinked > 0)
+      error("%d buffer cells are not linked into a void cell tree!", notlinked);
   }
-
-  if (notlinked > 0)
-    error("%d buffer cells are not linked into a void cell tree!", notlinked);
-
-  if (s->zoom_props->with_buffer_cells && nr_gparts_in_void != nr_gparts)
-    error(
-        "Number of gparts is inconsistent between buffer cells and "
-        "void multipole (nr_gparts_in_void=%d, nr_gparts=%d)",
-        nr_gparts_in_void, nr_gparts);
 
   /* Ensure all zoom cells are linked into the tree. */
   notlinked = 0;
   for (int k = 0; k < s->zoom_props->nr_zoom_cells; k++) {
-    nr_gparts += s->multipoles_top[k].m_pole.num_gpart;
     if (cells_top[k].void_parent == NULL) notlinked++;
   }
   if (notlinked > 0)
     error("%d zoom cells are not linked into a void cell tree!", notlinked);
 
-  if (!s->zoom_props->with_buffer_cells && nr_gparts_in_void != nr_gparts)
-    error(
-        "Number of gparts is inconsistent between zoom cells and "
-        "void multipole (nr_gparts_in_void=%d, nr_gparts=%d)",
-        nr_gparts_in_void, nr_gparts);
+  if (s->with_self_gravity) {
+    /* Collect the number of particles in the void multipoles. */
+    int nr_gparts_in_void = 0;
+    for (int i = 0; i < nr_void_cells; i++) {
+      nr_gparts_in_void +=
+          s->multipoles_top[s->zoom_props->void_cell_indices[i]]
+              .m_pole.num_gpart;
+    }
 
+    /* Collect the number of particles in the buffer multipoles. */
+    int nr_gparts = 0;
+    if (s->zoom_props->with_buffer_cells) {
+      for (int k = s->zoom_props->buffer_cell_offset;
+           k <
+           s->zoom_props->buffer_cell_offset + s->zoom_props->nr_buffer_cells;
+           k++) {
+        nr_gparts += s->multipoles_top[k].m_pole.num_gpart;
+      }
+    }
+
+    /* Check the number of gparts is consistent. */
+    if (s->zoom_props->with_buffer_cells && nr_gparts_in_void != nr_gparts)
+      error(
+          "Number of gparts is inconsistent between buffer cells and "
+          "void multipole (nr_gparts_in_void=%d, nr_gparts=%d)",
+          nr_gparts_in_void, nr_gparts);
+
+    /* Collect the number of particles in the zoom multipoles. */
+    for (int k = 0; k < s->zoom_props->nr_zoom_cells; k++) {
+      nr_gparts += s->multipoles_top[k].m_pole.num_gpart;
+    }
+
+    /* Check the number of particles in the void cells. */
+    if (!s->zoom_props->with_buffer_cells && nr_gparts_in_void != nr_gparts)
+      error(
+          "Number of gparts is inconsistent between zoom cells and "
+          "void multipole (nr_gparts_in_void=%d, nr_gparts=%d)",
+          nr_gparts_in_void, nr_gparts);
+  }
 #endif
 }

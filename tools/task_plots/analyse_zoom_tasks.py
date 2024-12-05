@@ -32,12 +32,13 @@ GNU General Public License for more details.
 You should have received a copy of the GNU Lesser General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
+
 import argparse
-import numpy as np
-import matplotlib.pyplot as plt
+
 import matplotlib.gridspec as gridspec
 import matplotlib.patches as mpatches
-
+import matplotlib.pyplot as plt
+import numpy as np
 from task_parser import TaskParser
 
 
@@ -468,9 +469,7 @@ def make_pair_mindist_plot(
 
         # Ensure we only have pair tasks (i.e. the string "pair" is in the
         # task label)
-        mask = np.logical_and(
-            mask, np.array(["pair" in t for t in run.task_labels])
-        )
+        mask = np.logical_and(mask, np.array(["pair" in t for t in run.task_labels]))
 
         # Get the distances
         dists[name] = run.min_dists[mask]
@@ -570,9 +569,7 @@ def make_pair_mpoledist_plot(
 
         # Ensure we only have pair tasks (i.e. the string "pair" is in the
         # task label)
-        mask = np.logical_and(
-            mask, np.array(["pair" in t for t in run.task_labels])
-        )
+        mask = np.logical_and(mask, np.array(["pair" in t for t in run.task_labels]))
 
         # Get the distances
         dists[name] = run.mpole_dists[mask]
@@ -657,9 +654,7 @@ def make_mindist_mpoledist_comp(
 
     # Ensure we only have pair tasks (i.e. the string "pair" is in the
     # task label)
-    mask = np.logical_and(
-        mask, np.array(["pair" in t for t in run.task_labels])
-    )
+    mask = np.logical_and(mask, np.array(["pair" in t for t in run.task_labels]))
 
     # Exit if there are no distances
     if np.sum(mask) == 0:
@@ -748,9 +743,7 @@ def make_task_plot(
     )
 
     # Get the unique tasks
-    unique_tasks, task_counts = np.unique(
-        run.task_labels[mask], return_counts=True
-    )
+    unique_tasks, task_counts = np.unique(run.task_labels[mask], return_counts=True)
     ntasks = len(unique_tasks)
 
     # Set up the figure
@@ -772,11 +765,7 @@ def make_task_plot(
             _colors.append(colors[labels[i][j]])
 
         ax.broken_barh(
-            _tictocs,
-            [i + 0.55, 0.9],
-            facecolors=_colors,
-            linewidth=0,
-            zorder=1,
+            _tictocs, [i + 0.55, 0.9], facecolors=_colors, linewidth=0, zorder=1
         )
 
     # Create legend handles from sorted labels and colors
@@ -872,9 +861,7 @@ def make_task_activity_plot(
         sort_threads: Sort the threads by the end of their tasks. (Optional)
     """
     # If we have nothing then exit and move on
-    ntasks_tot = run.get_mask(
-        ci_type, cj_type, ci_subtype, cj_subtype, depth
-    ).sum()
+    ntasks_tot = run.get_mask(ci_type, cj_type, ci_subtype, cj_subtype, depth).sum()
     if ntasks_tot == 0:
         print(
             f"No tasks to plot for task_type={task_type} ci_type={ci_type} "
@@ -940,9 +927,7 @@ def make_task_activity_plot(
 
     # Start and end of time-step
     ax_grid.plot([0, 0], ax_grid.get_ylim(), "k--", linewidth=1)
-    ax_grid.plot(
-        [run.delta_t, run.delta_t], ax_grid.get_ylim(), "k--", linewidth=1
-    )
+    ax_grid.plot([run.delta_t, run.delta_t], ax_grid.get_ylim(), "k--", linewidth=1)
 
     ax_grid.set_xlabel("Wall clock time [ms]")
     ax_grid.set_ylabel("Thread ID")
@@ -1007,16 +992,11 @@ if __name__ == "__main__":
 
     # Adding files argument
     parser.add_argument(
-        "--files",
-        nargs="+",
-        help="List of files to combine on outputs",
-        required=True,
+        "--files", nargs="+", help="List of files to combine on outputs", required=True
     )
 
     # Adding labels argument
-    parser.add_argument(
-        "--labels", nargs="+", help="List of labels", default=[]
-    )
+    parser.add_argument("--labels", nargs="+", help="List of labels", default=[])
 
     # Adding output directory
     parser.add_argument("--outdir", help="Output directory", default=".")
@@ -1089,24 +1069,12 @@ if __name__ == "__main__":
 
     # Time weighted counts of tasks but only depth 0
     make_task_hist_time_weighted(runs, depth=0, output=output)
-    make_task_hist_time_weighted(
-        runs, ci_type=1, cj_type=1, depth=0, output=output
-    )
-    make_task_hist_time_weighted(
-        runs, ci_type=2, cj_type=2, depth=0, output=output
-    )
-    make_task_hist_time_weighted(
-        runs, ci_type=3, cj_type=3, depth=0, output=output
-    )
-    make_task_hist_time_weighted(
-        runs, ci_type=1, cj_type=3, depth=0, output=output
-    )
-    make_task_hist_time_weighted(
-        runs, ci_type=1, cj_type=2, depth=0, output=output
-    )
-    make_task_hist_time_weighted(
-        runs, ci_type=2, cj_type=3, depth=0, output=output
-    )
+    make_task_hist_time_weighted(runs, ci_type=1, cj_type=1, depth=0, output=output)
+    make_task_hist_time_weighted(runs, ci_type=2, cj_type=2, depth=0, output=output)
+    make_task_hist_time_weighted(runs, ci_type=3, cj_type=3, depth=0, output=output)
+    make_task_hist_time_weighted(runs, ci_type=1, cj_type=3, depth=0, output=output)
+    make_task_hist_time_weighted(runs, ci_type=1, cj_type=2, depth=0, output=output)
+    make_task_hist_time_weighted(runs, ci_type=2, cj_type=3, depth=0, output=output)
 
     # Pair distance histograms
     make_pair_mindist_plot(runs, output=output)
@@ -1163,15 +1131,9 @@ if __name__ == "__main__":
 
         # Make task activity plots but don't sort the threads
         make_task_activity_plot(run, sort_threads=False, output=output)
-        make_task_activity_plot(
-            run, ci_type=1, sort_threads=False, output=output
-        )
-        make_task_activity_plot(
-            run, ci_type=2, sort_threads=False, output=output
-        )
-        make_task_activity_plot(
-            run, ci_type=3, sort_threads=False, output=output
-        )
+        make_task_activity_plot(run, ci_type=1, sort_threads=False, output=output)
+        make_task_activity_plot(run, ci_type=2, sort_threads=False, output=output)
+        make_task_activity_plot(run, ci_type=3, sort_threads=False, output=output)
         make_task_activity_plot(
             run, ci_type=1, cj_type=1, sort_threads=False, output=output
         )
