@@ -342,7 +342,7 @@ if test "$enable_cell_graph" = "yes"; then
    AC_DEFINE([SWIFT_CELL_GRAPH],1,[Enable cell graph])
 fi
 
-# Check if using our custom icbrtf is enalbled.
+# Check if using our custom icbrtf is enabled.
 AC_ARG_ENABLE([custom-icbrtf],
    [AS_HELP_STRING([--enable-custom-icbrtf],
      [Use SWIFT's custom icbrtf function instead of the system cbrtf @<:@yes/no@:>@]
@@ -1823,7 +1823,7 @@ if test "$have_armv7apmccntr"x = "yes"x; then
       AC_DEFINE(HAVE_ARMV7A_PMCCNTR,1,[Define if you have enabled the PMCCNTR cycle counter on ARMv7a])
 fi
 
-# Check if we have native exp10 and exp10f functions. If not failback to our
+# Check if we have native exp10 and exp10f functions. If not fallback to our
 # implementations. On Apple/CLANG we have __exp10, so also check for that
 # if the compiler is clang.
 AC_CHECK_LIB([m],[exp10], [AC_DEFINE([HAVE_EXP10],1,[The exp10 function is present.])])
@@ -1833,7 +1833,7 @@ if test "$ax_cv_c_compiler_vendor" = "clang"; then
       AC_CHECK_LIB([m],[__exp10f], [AC_DEFINE([HAVE___EXP10F],1,[The __exp10f function is present.])])
 fi
 
-# Check if we have native sincos and sincosf functions. If not failback to our
+# Check if we have native sincos and sincosf functions. If not fallback to our
 # implementations. On Apple/CLANG we have __sincos, so also check for that
 # if the compiler is clang.
 AC_CHECK_LIB([m],[sincos], [AC_DEFINE([HAVE_SINCOS],1,[The sincos function is present.])])
@@ -1962,7 +1962,8 @@ AC_SUBST([SUNDIALS_INCS])
 # As an example for this, see the call to AC_ARG_WITH for cooling.
 AC_ARG_WITH([subgrid],
 	[AS_HELP_STRING([--with-subgrid=<subgrid>],
-		[Master switch for subgrid methods. Inexperienced user should start here. Options are: @<:@none, GEAR, AGORA, QLA, QLA-EAGLE, EAGLE, EAGLE-XL, SPIN_JET_EAGLE default: none@:>@]
+		[Master switch for subgrid methods. Inexperienced user should
+		start here. Options are: @<:@none, GEAR, GEAR-G3, AGORA, QLA, QLA-EAGLE, EAGLE, EAGLE-XL, SPIN_JET_EAGLE default: none@:>@]
 	)],
 	[with_subgrid="$withval"],
 	[with_subgrid=none]
@@ -1989,12 +1990,24 @@ case "$with_subgrid" in
    GEAR)
 	with_subgrid_cooling=grackle_0
 	with_subgrid_chemistry=GEAR_10
+	with_subgrid_pressure_floor=GEAR
+	with_subgrid_stars=GEAR
+	with_subgrid_star_formation=GEAR
+	with_subgrid_feedback=GEAR
+	with_subgrid_black_holes=none
+	with_subgrid_sink=GEAR
+	with_subgrid_extra_io=none
+	enable_fof=no
+   ;;
+   GEAR-G3)
+	with_subgrid_cooling=grackle_3
+	with_subgrid_chemistry=GEAR_10
 	with_subgrid_pressure_floor=none
 	with_subgrid_stars=GEAR
 	with_subgrid_star_formation=GEAR
 	with_subgrid_feedback=GEAR
 	with_subgrid_black_holes=none
-	with_subgrid_sink=none
+	with_subgrid_sink=GEAR
 	with_subgrid_extra_io=none
 	enable_fof=no
    ;;
@@ -2063,6 +2076,19 @@ case "$with_subgrid" in
    ;;
    SPIN_JET_EAGLE)
 	with_subgrid_cooling=EAGLE
+	with_subgrid_chemistry=EAGLE
+	with_subgrid_tracers=EAGLE
+	with_subgrid_entropy_floor=EAGLE
+	with_subgrid_stars=EAGLE
+	with_subgrid_star_formation=EAGLE
+	with_subgrid_feedback=EAGLE
+	with_subgrid_black_holes=SPIN_JET
+	with_subgrid_sink=none
+	with_subgrid_extra_io=none
+	enable_fof=yes
+   ;;
+  SPIN_JET_EAGLE-XL)
+	with_subgrid_cooling=PS2020
 	with_subgrid_chemistry=EAGLE
 	with_subgrid_tracers=EAGLE
 	with_subgrid_entropy_floor=EAGLE

@@ -72,8 +72,8 @@ struct sink {
   /*! Particle time bin */
   timebin_t time_bin;
 
-  /*! Number of stars contained in the sink */
-  int n_stars;
+  /*! Integer number of neighbours */
+  int num_ngbs;
 
 #ifdef SWIFT_DEBUG_CHECKS
 

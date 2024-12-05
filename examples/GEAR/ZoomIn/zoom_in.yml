@@ -96,8 +96,8 @@ GrackleCooling:
 
 GEARStarFormation:
   star_formation_efficiency: 0.01   # star formation efficiency (c_*)
-  maximal_temperature:  3e4         # Upper limit to the temperature of a star forming particle
-  density_threshold:   1.67e-25    # Density threashold in g/cm3
+  maximal_temperature_K:     3e4    # Upper limit to the temperature of a star forming particle
+  density_threshold_Hpcm3:   0.1    # Density threshold in Hydrogen atoms/cm3
   n_stars_per_particle: 4
   min_mass_frac: 0.5
 
