@@ -150,7 +150,7 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
         scheduler_addunlock(s, t_grav, ci->top->hydro.star_formation);
 
       /* Star formation from sinks */
-      if (with_star_formation && (ci->hydro.count > 0 || ci->sinks.count > 0))
+      if (with_star_formation_sink && (ci->hydro.count > 0 || ci->sinks.count > 0))
         scheduler_addunlock(s, t_grav, ci->top->sinks.star_formation_sink);
 
       /* Sink formation */
