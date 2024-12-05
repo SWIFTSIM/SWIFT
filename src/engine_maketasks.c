@@ -416,12 +416,6 @@ void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
                                 const int with_star_formation,
 				const int with_star_formation_sink) {
 #ifdef WITH_MPI
-#if !defined(SWIFT_DEBUG_CHECKS)
-  if (e->policy & engine_policy_sinks && e->policy & engine_policy_stars) {
-    error("TODO: Star formation sink over MPI");
-  }
-#endif
-
   struct link *l = NULL;
   struct scheduler *s = &e->sched;
   const int nodeID = cj->nodeID;
