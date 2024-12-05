@@ -45,8 +45,7 @@
  * @returns proxy_type The proxy type for this pair.
  */
 int engine_get_proxy_type(const struct engine *e, const struct cell *ci,
-                          const struct cell *cj, const double r_max,
-                          const int do_direct_check) {
+                          const struct cell *cj, const double r_max) {
 
   struct space *s = e->s;
 
@@ -54,16 +53,20 @@ int engine_get_proxy_type(const struct engine *e, const struct cell *ci,
   int proxy_type = 0;
 
   /* Get some info about the physics */
-  const int with_hydro = (e->policy & engine_policy_hydro);
+  int with_hydro = (e->policy & engine_policy_hydro);
   const int with_gravity = (e->policy & engine_policy_self_gravity);
   const double theta_crit = e->gravity_properties->theta_crit;
   const double max_mesh_dist2 = e->mesh->r_cut_max * e->mesh->r_cut_max;
 
-  /* In the hydro case, only care about direct neighbours */
-  if (with_hydro) {
+  /* When running a zoom only a combination of zoom cells can do hydro */
+  if (s->with_zoom_region &&
+      (ci->type != cell_type_zoom || cj->type != cell_type_zoom)) {
+    with_hydro = 0;
+  }
 
-    if (do_direct_check && cell_is_direct_neighbour(s, ci, cj))
-      proxy_type |= (int)proxy_cell_type_hydro;
+  /* In the hydro case, only care about direct neighbours */
+  if (with_hydro && cell_is_direct_neighbour(s, ci, cj)) {
+    proxy_type |= (int)proxy_cell_type_hydro;
   }
 
   /* In the gravity case, check distances using the MAC. */
@@ -71,8 +74,9 @@ int engine_get_proxy_type(const struct engine *e, const struct cell *ci,
 
     /* First just add the direct neighbours. Then look for
        some further out if the opening angle demands it */
-    if (do_direct_check && cell_is_direct_neighbour(s, ci, cj)) {
+    if (cell_is_direct_neighbour(s, ci, cj)) {
       proxy_type |= (int)proxy_cell_type_gravity;
+
     } else {
 
       /* We don't have multipoles yet (or their CoMs) so we will
@@ -308,8 +312,7 @@ void engine_makeproxies(struct engine *e) {
 
               /* What sort of proxy (if any) do we need? */
               int proxy_type =
-                  engine_get_proxy_type(e, &cells[cid], &cells[cjd], r_max,
-                                        /*do_direct_check*/ 1);
+                  engine_get_proxy_type(e, &cells[cid], &cells[cjd], r_max);
 
               /* Abort if not in range at all */
               if (proxy_type == proxy_cell_type_none) continue;
