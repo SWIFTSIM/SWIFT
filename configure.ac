@@ -2221,6 +2221,9 @@ case "$with_hydro" in
    sphenix)
       AC_DEFINE([SPHENIX_SPH], [1], [SPHENIX SPH])
    ;;
+   magma2)
+      AC_DEFINE([MAGMA_SPH], [1], [MAGMA SPH])
+   ;;
    gasoline)
       AC_DEFINE([GASOLINE_SPH], [1], [Gasoline SPH])
    ;;
@@ -2248,6 +2251,15 @@ AC_ARG_WITH([spmhd],
 case "$with_spmhd" in
    none)
       AC_DEFINE([NONE_MHD], [1], [No mhd])
+   ;;
+   direct-induction)
+      AC_DEFINE([DIRECT_INDUCTION_MHD], [1], [MHD using a direct induction method])
+   ;;
+   direct-induction-fede)
+      AC_DEFINE([DIRECT_INDUCTION_FEDE_MHD], [1], [MHD using yet another direct induction method (To dissapear)])
+   ;;
+   vector-potential)
+      AC_DEFINE([VECTOR_POTENTIAL_MHD], [1], [MHD using Vector Potentials])
    ;;
    *)
       AC_MSG_ERROR([Unknown magneto-hydrodynamics scheme: $with_spmhd])
@@ -2876,7 +2888,7 @@ esac
 # Forcing terms
 AC_ARG_WITH([forcing],
    [AS_HELP_STRING([--with-forcing=<term>],
-      [Hydrodynamics forcing terms @<:@none, roberts-flow, roberts-flow-acceleration , abc-flowdefault: none@:>@]
+      [Hydrodynamics forcing terms @<:@none, roberts-flow, roberts-flow-acceleration, abc-flow default: none@:>@]
    )],
    [with_forcing="$withval"],
    [with_forcing="none"]
@@ -2898,7 +2910,6 @@ case "$with_forcing" in
       AC_MSG_ERROR([Unknown external forcing term: $with_forcing])
    ;;
 esac
-
 
 #  External potential
 AC_ARG_WITH([ext-potential],
