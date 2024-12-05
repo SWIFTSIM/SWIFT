@@ -64,4 +64,7 @@ void zoom_engine_make_hierarchical_void_tasks(struct engine *e);
 
 /* Update the void cell gravity timesteps. */
 void zoom_void_timestep_collect(struct engine *e);
+
+/* Zoom proxy creation functions. */
+void zoom_engine_makeproxies(struct engine *e);
 #endif /* SWIFT_ZOOM_H */
