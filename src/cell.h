@@ -566,6 +566,10 @@ int cell_pack_sf_counts(struct cell *c, struct pcell_sf_stars *pcell);
 int cell_unpack_sf_counts(struct cell *c, struct pcell_sf_stars *pcell);
 int cell_pack_grav_counts(struct cell *c, struct pcell_sf_grav *pcell);
 int cell_unpack_grav_counts(struct cell *c, struct pcell_sf_grav *pcell);
+void cell_pack_voronoi_faces(struct cell *restrict c,
+                             struct pcell_faces *restrict pcell, size_t count);
+void cell_unpack_voronoi_faces(struct cell *restrict c,
+                               struct pcell_faces *restrict pcell);
 int cell_get_tree_size(struct cell *c);
 int cell_link_parts(struct cell *c, struct part *parts);
 int cell_link_gparts(struct cell *c, struct gpart *gparts);
@@ -597,6 +601,8 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
 int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s);
 int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s,
                          const int sub_cycle);
+int cell_unskip_grid_tasks(struct cell *c, struct scheduler *s);
+int cell_unskip_grid_hydro_tasks(struct cell *c, struct scheduler *s);
 int cell_unskip_black_holes_tasks(struct cell *c, struct scheduler *s);
 int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s);
 void cell_drift_part(struct cell *c, const struct engine *e, int force,
@@ -1551,6 +1557,47 @@ __attribute__((always_inline)) INLINE void cell_assign_cell_index(
   }
 
 #endif
+}
+
+/*! @brief return the total number of voronoi faces for all directions,
+ * excluding the local faces, which will be sent over MPI. */
+__attribute__((always_inline)) INLINE static size_t
+cell_get_voronoi_face_send_count(struct cell *c) {
+#if WITH_MPI
+  if (c->grid.voronoi == NULL) return 0;
+
+  size_t count = 0;
+  for (int sid = 0; sid < 27; sid++) {
+    if (!(c->grid.send_flags & 1 << sid)) continue;
+    count += c->grid.voronoi->pair_count[sid];
+  }
+  return count;
+#else
+  return 0;
+#endif
+}
+
+/*! @brief Reflect the given position across the cell face corresponding to
+ * the given sid. */
+__attribute__((always_inline)) INLINE static void cell_reflect_coordinates(
+    const struct cell *c, const double *x_in, int sid, double *x_out) {
+  double x_rel[3];
+  const double cell_loc[3] = {c->loc[0], c->loc[1], c->loc[2]};
+  const double cell_width[3] = {c->width[0], c->width[1], c->width[2]};
+
+  x_rel[0] = x_in[0] - cell_loc[0];
+  x_rel[1] = x_in[1] - cell_loc[1];
+  x_rel[2] = x_in[2] - cell_loc[2];
+
+  for (int i = 0; i < 3; i++) {
+    if (sortlist_shift_vector[sid][i] < 0) {
+      x_out[i] = cell_loc[i] - x_rel[i];
+    } else if (sortlist_shift_vector[sid][i] == 0) {
+      x_out[i] = x_in[i];
+    } else {
+      x_out[i] = cell_loc[i] + 2 * cell_width[i] - x_rel[i];
+    }
+  }
 }
 
 #endif /* SWIFT_CELL_H */

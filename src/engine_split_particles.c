@@ -429,7 +429,7 @@ void engine_split_gas_particles(struct engine *e) {
    * links */
   part_verify_links(s->parts, s->gparts, s->sinks, s->sparts, s->bparts,
                     s->nr_parts, s->nr_gparts, s->nr_sinks, s->nr_sparts,
-                    s->nr_bparts, e->verbose);
+                    s->nr_bparts, e->s->dim, e->s->periodic, e->verbose);
 #endif
 
   /* We now have enough memory in the part array to accomodate the new

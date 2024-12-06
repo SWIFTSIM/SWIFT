@@ -105,7 +105,7 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
         part->id = ++(*partId);
 
 /* Set the mass */
-#if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH)
+#if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH) || defined(SHADOWSWIFT)
         part->conserved.mass = density * volume / count;
 #else
         part->mass = density * volume / count;
@@ -195,6 +195,20 @@ void zero_particle_fields_density(
     hydro_init_part(&c->hydro.parts[pid], NULL);
     adaptive_softening_init_part(&c->hydro.parts[pid]);
     mhd_init_part(&c->hydro.parts[pid]);
+  }
+}
+
+/**
+ * @brief Initializes all particles field to be ready for a gradient calculation
+ */
+void zero_particle_fields_gradient(
+    struct cell *c, const struct cosmology *cosmo,
+    const struct hydro_props *hydro_props,
+    const struct pressure_floor_props *pressure_floor) {
+
+  for (int pid = 0; pid < c->hydro.count; pid++) {
+    hydro_prepare_gradient(&c->hydro.parts[pid], NULL, cosmo, hydro_props,
+                           pressure_floor);
   }
 }
 
@@ -301,6 +315,18 @@ void end_calculation_density(struct cell *c, const struct cosmology *cosmo,
 }
 
 /**
+ * @brief Ends the gradient loop
+ */
+void end_calculation_gradient(struct cell *c, const struct cosmology *cosmo,
+                              const struct gravity_props *gravity_props) {
+
+  for (int pid = 0; pid < c->hydro.count; pid++) {
+    hydro_end_gradient(&c->hydro.parts[pid]);
+    mhd_end_gradient(&c->hydro.parts[pid]);
+  }
+}
+
+/**
  * @brief Ends the force loop by adding the appropriate coefficients
  */
 void end_calculation_force(struct cell *c, const struct cosmology *cosmo,
@@ -340,6 +366,13 @@ void dump_particle_fields(char *fileName, struct cell *ci, struct cell *cj) {
 }
 
 /* Just a forward declaration... */
+#ifdef MOVING_MESH_HYDRO
+void runner_dopair1_gradient(struct runner *r, struct cell *ci,
+                             struct cell *cj);
+void runner_doself1_gradient_vec(struct runner *r, struct cell *ci);
+void runner_dopair1_branch_gradient(struct runner *r, struct cell *ci,
+                                    struct cell *cj);
+#else
 void runner_dopair1_density(struct runner *r, struct cell *ci, struct cell *cj);
 void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
                               struct cell *cj);
@@ -348,6 +381,7 @@ void runner_dopair1_branch_density(struct runner *r, struct cell *ci,
                                    struct cell *cj);
 void runner_dopair2_branch_force(struct runner *r, struct cell *ci,
                                  struct cell *cj);
+#endif
 
 /**
  * @brief Computes the pair interactions of two cells using SWIFT and a brute
@@ -681,10 +715,17 @@ int main(int argc, char *argv[]) {
   double offset[3] = {1., 0., 0.};
 
   /* Define which interactions to call */
+#ifdef MOVING_MESH_HYDRO
+  interaction_func serial_inter_func = &pairs_all_gradient;
+  interaction_func vec_inter_func = &runner_dopair1_branch_gradient;
+  init_func init = &zero_particle_fields_gradient;
+  finalise_func finalise = &end_calculation_gradient;
+#else
   interaction_func serial_inter_func = &pairs_all_density;
   interaction_func vec_inter_func = &runner_dopair1_branch_density;
   init_func init = &zero_particle_fields_density;
   finalise_func finalise = &end_calculation_density;
+#endif
 
   /* Test a pair of cells face-on. */
   test_all_pair_interactions(runner, offset, particles, size, h, rho, &partId,
@@ -709,7 +750,7 @@ int main(int argc, char *argv[]) {
                              perturbation, h_pert, swiftOutputFileName,
                              bruteForceOutputFileName, serial_inter_func,
                              vec_inter_func, init, finalise);
-
+#ifndef MOVING_MESH_HYDRO
   /* Re-assign function pointers. */
   serial_inter_func = &pairs_all_force;
   vec_inter_func = &runner_dopair2_branch_force;
@@ -752,6 +793,7 @@ int main(int argc, char *argv[]) {
                              perturbation, h_pert, swiftOutputFileName,
                              bruteForceOutputFileName, serial_inter_func,
                              vec_inter_func, init, finalise);
+#endif
 #ifdef WITH_VECTORIZATION
   cache_clean(&runner->ci_cache);
   cache_clean(&runner->cj_cache);
