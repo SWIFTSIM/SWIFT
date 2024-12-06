@@ -4,7 +4,6 @@ import sys
 import numpy as np
 import mmap
 import struct
-import os
 
 
 class DarkMatterParticle:

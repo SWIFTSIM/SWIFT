@@ -38,11 +38,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import matplotlib
 
 matplotlib.use("TkAgg")
-import numpy as np
 import matplotlib.backends.backend_tkagg as tkagg
 from matplotlib.figure import Figure
 import tkinter as tk
-import matplotlib.collections as collections
 import matplotlib.ticker as plticker
 import pylab as pl
 import sys
