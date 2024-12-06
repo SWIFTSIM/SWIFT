@@ -33,7 +33,6 @@
 /* Local headers. */
 #include "engine.h"
 #include "feedback.h"
-#include "runner_doiact_sinks.h"
 #include "scheduler.h"
 #include "space_getsid.h"
 #include "timers.h"
@@ -111,6 +110,18 @@
 #define FUNCTION feedback
 #define FUNCTION_TASK_LOOP TASK_LOOP_FEEDBACK
 #include "runner_doiact_black_holes.h"
+#include "runner_doiact_undef.h"
+
+/* Import the sink density loop functions. */
+#define FUNCTION density
+#define FUNCTION_TASK_LOOP TASK_LOOP_DENSITY
+#include "runner_doiact_sinks.h"
+#include "runner_doiact_undef.h"
+
+/* Import the sink swallow loop functions. */
+#define FUNCTION swallow
+#define FUNCTION_TASK_LOOP TASK_LOOP_SWALLOW
+#include "runner_doiact_sinks.h"
 #include "runner_doiact_undef.h"
 
 /* Import the RT gradient loop functions */
@@ -241,6 +252,8 @@ void *runner_main(void *data) {
             runner_doself1_branch_rt_gradient(r, ci);
           else if (t->subtype == task_subtype_rt_transport)
             runner_doself2_branch_rt_transport(r, ci);
+          else if (t->subtype == task_subtype_sink_density)
+            runner_doself_branch_sinks_density(r, ci);
           else if (t->subtype == task_subtype_sink_swallow)
             runner_doself_branch_sinks_swallow(r, ci);
           else if (t->subtype == task_subtype_sink_do_gas_swallow)
@@ -289,6 +302,8 @@ void *runner_main(void *data) {
             runner_dopair1_branch_rt_gradient(r, ci, cj);
           else if (t->subtype == task_subtype_rt_transport)
             runner_dopair2_branch_rt_transport(r, ci, cj);
+          else if (t->subtype == task_subtype_sink_density)
+            runner_dopair_branch_sinks_density(r, ci, cj);
           else if (t->subtype == task_subtype_sink_swallow)
             runner_dopair_branch_sinks_swallow(r, ci, cj);
           else if (t->subtype == task_subtype_sink_do_gas_swallow)
@@ -335,6 +350,8 @@ void *runner_main(void *data) {
             runner_dosub_self1_rt_gradient(r, ci, 1);
           else if (t->subtype == task_subtype_rt_transport)
             runner_dosub_self2_rt_transport(r, ci, 1);
+          else if (t->subtype == task_subtype_sink_density)
+            runner_dosub_self_sinks_density(r, ci, 1);
           else if (t->subtype == task_subtype_sink_swallow)
             runner_dosub_self_sinks_swallow(r, ci, 1);
           else if (t->subtype == task_subtype_sink_do_gas_swallow)
@@ -381,6 +398,8 @@ void *runner_main(void *data) {
             runner_dosub_pair1_rt_gradient(r, ci, cj, 1);
           else if (t->subtype == task_subtype_rt_transport)
             runner_dosub_pair2_rt_transport(r, ci, cj, 1);
+          else if (t->subtype == task_subtype_sink_density)
+            runner_dosub_pair_sinks_density(r, ci, cj, 1);
           else if (t->subtype == task_subtype_sink_swallow)
             runner_dosub_pair_sinks_swallow(r, ci, cj, 1);
           else if (t->subtype == task_subtype_sink_do_gas_swallow)
@@ -440,6 +459,9 @@ void *runner_main(void *data) {
         case task_type_bh_swallow_ghost3:
           runner_do_black_holes_swallow_ghost(r, ci, 1);
           break;
+        case task_type_sink_density_ghost:
+          runner_do_sinks_density_ghost(r, ci, 1);
+          break;
         case task_type_drift_part:
           runner_do_drift_part(r, ci, 1);
           break;
@@ -491,6 +513,8 @@ void *runner_main(void *data) {
             free(t->buff);
           } else if (t->subtype == task_subtype_sf_counts) {
             free(t->buff);
+          } else if (t->subtype == task_subtype_grav_counts) {
+            free(t->buff);
           } else if (t->subtype == task_subtype_part_swallow) {
             free(t->buff);
           } else if (t->subtype == task_subtype_bpart_merger) {
@@ -504,8 +528,11 @@ void *runner_main(void *data) {
             cell_unpack_end_step(ci, (struct pcell_step *)t->buff);
             free(t->buff);
           } else if (t->subtype == task_subtype_sf_counts) {
-            cell_unpack_sf_counts(ci, (struct pcell_sf *)t->buff);
+            cell_unpack_sf_counts(ci, (struct pcell_sf_stars *)t->buff);
             cell_clear_stars_sort_flags(ci, /*clear_unused_flags=*/0);
+            free(t->buff);
+          } else if (t->subtype == task_subtype_grav_counts) {
+            cell_unpack_grav_counts(ci, (struct pcell_sf_grav *)t->buff);
             free(t->buff);
           } else if (t->subtype == task_subtype_xv) {
             runner_do_recv_part(r, ci, 1, 1);

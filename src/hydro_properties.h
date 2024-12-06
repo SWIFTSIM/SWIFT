@@ -130,6 +130,10 @@ struct hydro_props {
    * with caution. */
   int convert_at_h_max;
 
+  /*! Are we logging the particle splits beyond the limit in a file before
+   * reseting? */
+  int log_extra_splits_in_file;
+
   /* ------ Viscosity and diffusion ---------------- */
 
   /*! Artificial viscosity parameters */

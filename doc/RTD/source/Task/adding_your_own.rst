@@ -217,7 +217,8 @@ and the second kick cannot be done before the cooling::
 
 
 The next step is to activate your task
-in ``engine_marktasks_mapper`` in ``engine_marktasks.c``::
+in the relevant section of ``cell_unskip.c`` (things are split
+by type of particles the tasks act on)::
 
   else if (t->type == task_type_cooling || t->type == task_type_sourceterms) {
     if (cell_is_active_hydro(t->ci, e)) scheduler_activate(s, t);

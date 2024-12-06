@@ -105,6 +105,16 @@ INLINE static float cooling_get_subgrid_density(const struct part* p,
   return -1.f;
 }
 
+/**
+ * @brief Record the time when cooling was switched off for a particle.
+ *
+ * @param p #part data.
+ * @param xp Pointer to the #xpart data.
+ * @param time The time when the cooling was switched off.
+ */
+void cooling_set_part_time_cooling_off(struct part* p, struct xpart* xp,
+                                       const double time);
+
 float cooling_get_radiated_energy(const struct xpart* restrict xp);
 void cooling_print_backend(const struct cooling_function_data* cooling);
 

@@ -42,6 +42,9 @@ struct cell_sinks {
     /*! Pointer to the #sink data. */
     struct sink *parts;
 
+    /*! Pointer to the #spart data at rebuild time. */
+    struct sink *parts_rebuild;
+
     /*! Linked list of the tasks computing this cell's sink swallow. */
     struct link *swallow;
 
@@ -56,6 +59,12 @@ struct cell_sinks {
 
     /*! Implicit tasks marking the entry of the sink block of tasks */
     struct task *sink_in;
+
+    /*! The sink ghost task itself */
+    struct task *density_ghost;
+
+    /*! Linked list of the tasks computing this cell's sink density. */
+    struct link *density;
 
     /*! Implicit tasks marking the end of sink swallow */
     struct task *sink_ghost1;
