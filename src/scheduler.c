@@ -57,10 +57,6 @@
 #include "timers.h"
 #include "version.h"
 
-#ifdef SWIFT_DEBUG_CHECKS
-int activate_by_unskip = 1;
-#endif
-
 /**
  * @brief Re-set the list of active tasks.
  */
@@ -2015,10 +2011,6 @@ struct task *scheduler_addtask(struct scheduler *s, enum task_types type,
   t->tic = 0;
   t->toc = 0;
   t->total_ticks = 0;
-#ifdef SWIFT_DEBUG_CHECKS
-  t->activated_by_unskip = 0;
-  t->activated_by_marktask = 0;
-#endif
 
   if (ci != NULL) cell_set_flag(ci, cell_flag_has_tasks);
   if (cj != NULL) cell_set_flag(cj, cell_flag_has_tasks);
@@ -2287,7 +2279,8 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
                  t->subtype == task_subtype_stars_prep2 ||
                  t->subtype == task_subtype_stars_feedback)
           cost = 1.f * wscale * scount_i * count_i;
-        else if (t->subtype == task_subtype_sink_swallow ||
+        else if (t->subtype == task_subtype_sink_density ||
+                 t->subtype == task_subtype_sink_swallow ||
                  t->subtype == task_subtype_sink_do_gas_swallow)
           cost = 1.f * wscale * count_i * sink_count_i;
         else if (t->subtype == task_subtype_sink_do_sink_swallow)
@@ -2333,7 +2326,8 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
             cost = 2.f * wscale * (scount_i * count_j + scount_j * count_i) *
                    sid_scale[t->flags];
 
-        } else if (t->subtype == task_subtype_sink_swallow ||
+        } else if (t->subtype == task_subtype_sink_density ||
+                   t->subtype == task_subtype_sink_swallow ||
                    t->subtype == task_subtype_sink_do_gas_swallow) {
           if (t->ci->nodeID != nodeID)
             cost = 3.f * wscale * count_i * sink_count_j * sid_scale[t->flags];
@@ -2409,7 +2403,8 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
                    sid_scale[t->flags];
           }
 
-        } else if (t->subtype == task_subtype_sink_swallow ||
+        } else if (t->subtype == task_subtype_sink_density ||
+                   t->subtype == task_subtype_sink_swallow ||
                    t->subtype == task_subtype_sink_do_gas_swallow) {
           if (t->ci->nodeID != nodeID) {
             cost =
@@ -2478,7 +2473,8 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
             t->subtype == task_subtype_stars_prep2 ||
             t->subtype == task_subtype_stars_feedback) {
           cost = 1.f * (wscale * scount_i) * count_i;
-        } else if (t->subtype == task_subtype_sink_swallow ||
+        } else if (t->subtype == task_subtype_sink_density ||
+                   t->subtype == task_subtype_sink_swallow ||
                    t->subtype == task_subtype_sink_do_gas_swallow) {
           cost = 1.f * (wscale * sink_count_i) * count_i;
         } else if (t->subtype == task_subtype_sink_do_sink_swallow) {
@@ -2519,6 +2515,9 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         break;
       case task_type_bh_swallow_ghost2:
         if (t->ci == t->ci->hydro.super) cost = wscale * bcount_i;
+        break;
+      case task_type_sink_density_ghost:
+        if (t->ci == t->ci->hydro.super) cost = wscale * sink_count_i;
         break;
       case task_type_drift_part:
         cost = wscale * count_i;
@@ -2867,7 +2866,12 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
 
         } else if (t->subtype == task_subtype_sf_counts) {
 
-          count = size = t->ci->mpi.pcell_size * sizeof(struct pcell_sf);
+          count = size = t->ci->mpi.pcell_size * sizeof(struct pcell_sf_stars);
+          buff = t->buff = malloc(count);
+
+        } else if (t->subtype == task_subtype_grav_counts) {
+
+          count = size = t->ci->mpi.pcell_size * sizeof(struct pcell_sf_grav);
           buff = t->buff = malloc(count);
 
         } else {
@@ -2963,9 +2967,15 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
 
         } else if (t->subtype == task_subtype_sf_counts) {
 
-          size = count = t->ci->mpi.pcell_size * sizeof(struct pcell_sf);
+          size = count = t->ci->mpi.pcell_size * sizeof(struct pcell_sf_stars);
           buff = t->buff = malloc(size);
-          cell_pack_sf_counts(t->ci, (struct pcell_sf *)t->buff);
+          cell_pack_sf_counts(t->ci, (struct pcell_sf_stars *)t->buff);
+
+        } else if (t->subtype == task_subtype_grav_counts) {
+
+          size = count = t->ci->mpi.pcell_size * sizeof(struct pcell_sf_grav);
+          buff = t->buff = malloc(size);
+          cell_pack_grav_counts(t->ci, (struct pcell_sf_grav *)t->buff);
 
         } else {
           error("Unknown communication sub-type");
