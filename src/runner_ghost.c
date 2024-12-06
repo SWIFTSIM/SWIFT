@@ -1027,7 +1027,7 @@ void runner_do_extra_ghost(struct runner *r, struct cell *c, int timer) {
       if (part_is_active(p, e)) {
 
         /* Finish the gradient calculation */
-        hydro_end_gradient(p);
+        hydro_end_gradient(p, cosmo, pressure_floor);
         mhd_end_gradient(p);
 
         /* As of here, particle force variables will be set. */
@@ -1200,7 +1200,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
         } else {
 
           /* Finish the density calculation */
-          hydro_end_density(p, cosmo);
+          hydro_end_density(p, cosmo, hydro_props);
           adaptive_softening_end_density(p, e->gravity_properties);
           mhd_end_density(p, cosmo);
           chemistry_end_density(p, chemistry, cosmo);

@@ -779,7 +779,7 @@ void engine_single_density(const double dim[3], const long long int pid,
   }
 
   /* Dump the result. */
-  hydro_end_density(&p, cosmo);
+  // hydro_end_density(&p, cosmo);
   adaptive_softening_end_density(&p, grav_props);
   mhd_end_density(&p, cosmo);
   message("part %lli (h=%e) has wcount=%e, rho=%e.", p.id, p.h,
