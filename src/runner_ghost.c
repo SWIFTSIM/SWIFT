@@ -1762,22 +1762,33 @@ void runner_do_sinks_density_ghost(struct runner *r, struct cell *c,
     }
   } else {
 
+    /* Init the list of active particles that have to be updated. */
+    int *sid = NULL;
+    float *h_0 = NULL;
+    float *left = NULL;
+    float *right = NULL;
+    if ((sid = (int *)malloc(sizeof(int) * c->sinks.count)) == NULL)
+      error("Can't allocate memory for sid.");
+    if ((h_0 = (float *)malloc(sizeof(float) * c->sinks.count)) == NULL)
+      error("Can't allocate memory for h_0.");
+    if ((left = (float *)malloc(sizeof(float) * c->sinks.count)) == NULL)
+      error("Can't allocate memory for left.");
+    if ((right = (float *)malloc(sizeof(float) * c->sinks.count)) == NULL)
+      error("Can't allocate memory for right.");
+    for (int k = 0; k < c->sinks.count; k++)
+      if (sink_is_active(&sinks[k], e)) {
+        sid[scount] = k;
+        h_0[scount] = sinks[k].h;
+        left[scount] = 0.f;
+        right[scount] = sinks_h_max;
+        ++scount;
+      }
+
     if (e->sink_properties->use_fixed_r_cut) {
       /* If we're using a fixed cutoff rather than a smoothing length, just
        * finish up the density task and leave sp->h untouched. */
 
-      /* Init the list of active particles that have to be updated. */
-      int *sid = NULL;
-      if ((sid = (int *)malloc(sizeof(int) * c->sinks.count)) == NULL)
-        error("Can't allocate memory for sid.");
-
-      for (int k = 0; k < c->sinks.count; k++)
-        if (sink_is_active(&sinks[k], e)) {
-          sid[scount] = k;
-          ++scount;
-        }
-
-      /* Loop over the remaining active parts in this cell. */
+      /* Loop over the active sinks in this cell. */
       for (int i = 0; i < scount; i++) {
 
         /* Get a direct pointer on the part. */
@@ -1799,28 +1810,6 @@ void runner_do_sinks_density_ghost(struct runner *r, struct cell *c,
 
     } else {
       /* Otherwise we need to iterate to update the smoothing lengths */
-
-      /* Init the list of active particles that have to be updated. */
-      int *sid = NULL;
-      float *h_0 = NULL;
-      float *left = NULL;
-      float *right = NULL;
-      if ((sid = (int *)malloc(sizeof(int) * c->sinks.count)) == NULL)
-        error("Can't allocate memory for sid.");
-      if ((h_0 = (float *)malloc(sizeof(float) * c->sinks.count)) == NULL)
-        error("Can't allocate memory for h_0.");
-      if ((left = (float *)malloc(sizeof(float) * c->sinks.count)) == NULL)
-        error("Can't allocate memory for left.");
-      if ((right = (float *)malloc(sizeof(float) * c->sinks.count)) == NULL)
-        error("Can't allocate memory for right.");
-      for (int k = 0; k < c->sinks.count; k++)
-        if (sink_is_active(&sinks[k], e)) {
-          sid[scount] = k;
-          h_0[scount] = sinks[k].h;
-          left[scount] = 0.f;
-          right[scount] = sinks_h_max;
-          ++scount;
-        }
 
       /* While there are particles that need to be updated... */
       for (int num_reruns = 0; scount > 0 && num_reruns < max_smoothing_iter;
