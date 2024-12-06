@@ -1,0 +1,31 @@
+# Intro
+This example is a non cosmological homogeneous box containing gas and a single sink in the centre. It's designed for testing that your sink model accretes the amount of gas that you're expecting. It's mainly designed to test the Basic model, which requires no extra subgrid physics to function.
+
+# ICs
+The included python script `make_sink_ic.py` creates the initial conditions. You can set the particle masses of the gas and sink, the gas density and velocity dispersion (which sets the internal energy), and set an overall "level", which determines how many particles to simulate (N_particle = 2^(3*level)). Run `python make_sink_ic.py --help` to get the list of parameters.
+
+Running the script with no options produces a "level 6" box at "m5" resolution, with a sink mass 50x that of the gas mass, and a density and velocity dispersion of 0.1 atoms/cc and 10 km/s respectively, representative of the ISM. The ICs have the default name `ics.hdf5`.
+
+# Configure
+To run this example with GEAR model,
+
+./configure --with-sink=Basic --with-kernel=wendland-C2
+
+and then
+
+make -j
+
+You can also add `--enable-sink-density-checks=<CHECK_FREQUENCY>` to run the brute-force density checks for the sink, to make sure things are being calculated properly.
+
+# Run
+We can now run with 
+
+swift --hydro --self-gravity --sinks --threads=<NUM_THREADS> params.yml
+
+By default the simulation will run for 500 Myr, and output a snapshot every 10 Myr. You can change these options in your paramfile.
+
+# Testing the output
+
+Included in this directory is a very simple script for making some test plots. You can run it with
+
+python make_test_plots.py <snapshot-directory-name>

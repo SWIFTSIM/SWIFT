@@ -202,7 +202,7 @@ struct pcell {
     int count;
 
     /*! Maximal cut off radius. */
-    float r_cut_max;
+    float h_max;
 
     /*! Minimal integer end-of-timestep in this cell for sinks tasks */
     integertime_t ti_end_min;
@@ -865,7 +865,7 @@ cell_can_recurse_in_pair_sinks_task(const struct cell *ci,
   /* smaller than the sub-cell sizes ? */
   /* Note: We use the _old values as these might have been updated by a drift */
   return ci->split && cj->split &&
-         ((ci->sinks.r_cut_max_old + ci->sinks.dx_max_part_old) <
+         ((kernel_gamma * ci->sinks.h_max_old + ci->sinks.dx_max_part_old) <
           0.5f * ci->dmin) &&
          ((kernel_gamma * cj->hydro.h_max_old + cj->hydro.dx_max_part_old) <
           0.5f * cj->dmin);
@@ -918,7 +918,7 @@ __attribute__((always_inline)) INLINE static int
 cell_can_recurse_in_self_sinks_task(const struct cell *c) {
 
   /* Is the cell split and not smaller than the smoothing length? */
-  return c->split && (c->sinks.r_cut_max_old < 0.5f * c->dmin) &&
+  return c->split && (kernel_gamma * c->sinks.h_max_old < 0.5f * c->dmin) &&
          (kernel_gamma * c->hydro.h_max_old < 0.5f * c->dmin);
 }
 
@@ -1097,7 +1097,7 @@ cell_need_rebuild_for_sinks_pair(const struct cell *ci, const struct cell *cj) {
   /* Is the cut-off radius plus the max distance the parts in both cells have */
   /* moved larger than the cell size ? */
   /* Note ci->dmin == cj->dmin */
-  if (max(ci->sinks.r_cut_max, kernel_gamma * cj->hydro.h_max) +
+  if (max(kernel_gamma * ci->sinks.h_max, kernel_gamma * cj->hydro.h_max) +
           ci->sinks.dx_max_part + cj->hydro.dx_max_part >
       cj->dmin) {
     return 1;

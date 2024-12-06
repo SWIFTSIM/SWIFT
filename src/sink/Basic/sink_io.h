@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2020 Loic Hausammann (loic.hausammann@epfl.ch)
+ * Copyright (c) 2021 Loic Hausammann (loic.hausammann@epfl.ch)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_DEFAULT_SINK_IO_H
-#define SWIFT_DEFAULT_SINK_IO_H
+#ifndef SWIFT_BASIC_SINK_IO_H
+#define SWIFT_BASIC_SINK_IO_H
 
 #include "io_properties.h"
 #include "sink_part.h"
@@ -96,6 +96,28 @@ INLINE static void convert_sink_vel(const struct engine* e,
   ret[2] *= cosmo->a_inv;
 }
 
+INLINE static void convert_sink_gas_vel(const struct engine* e,
+                                        const struct sink* sink, float* ret) {
+  const struct cosmology* cosmo = e->cosmology;
+  ret[0] = sink->velocity_gas[0] * cosmo->a_inv;
+  ret[1] = sink->velocity_gas[1] * cosmo->a_inv;
+  ret[2] = sink->velocity_gas[2] * cosmo->a_inv;
+}
+
+INLINE static void convert_sink_gas_sound_speed(const struct engine* e,
+                                                const struct sink* sink,
+                                                double* ret) {
+  const struct cosmology* cosmo = e->cosmology;
+  ret[0] = sink->sound_speed_gas * cosmo->a_factor_sound_speed;
+}
+
+INLINE static void convert_sink_swallowed_angular_momentum(
+    const struct engine* e, const struct sink* sink, float* ret) {
+  ret[0] = sink->swallowed_angular_momentum[0];
+  ret[1] = sink->swallowed_angular_momentum[1];
+  ret[2] = sink->swallowed_angular_momentum[2];
+}
+
 /**
  * @brief Specifies which sink-particle fields to write to a dataset
  *
@@ -109,7 +131,7 @@ INLINE static void sink_write_particles(const struct sink* sinks,
                                         int with_cosmology) {
 
   /* Say how much we want to write */
-  *num_fields = 5;
+  *num_fields = 13;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_sink(
@@ -132,6 +154,51 @@ INLINE static void sink_write_particles(const struct sink* sinks,
       "SmoothingLengths", FLOAT, 1, UNIT_CONV_LENGTH, 1.f, sinks, h,
       "Co-moving smoothing lengths (FWHM of the kernel) of the particles");
 
+  list[5] = io_make_physical_output_field(
+      "NumberOfSinkSwallows", INT, 1, UNIT_CONV_NO_UNITS, 0.f, sinks,
+      number_of_sink_swallows, /*can convert to comoving=*/0,
+      "Total number of sink merger events");
+
+  list[6] = io_make_physical_output_field(
+      "NumberOfGasSwallows", INT, 1, UNIT_CONV_NO_UNITS, 0.f, sinks,
+      number_of_gas_swallows, /*can convert to comoving=*/0,
+      "Total number of gas merger events");
+
+  /* Note: Since the swallowed momentum is computed with the physical velocity,
+     i.e. including the Hubble flow term, it is not convertible to comoving
+     frame. */
+  list[7] = io_make_physical_output_field_convert_sink(
+      "SwallowedAngularMomentum", FLOAT, 3, UNIT_CONV_ANGULAR_MOMENTUM, 0.f,
+      sinks,
+      /*can convert to comoving=*/0, convert_sink_swallowed_angular_momentum,
+      "Physical swallowed angular momentum of the particles");
+
+  list[8] = io_make_output_field(
+      "TotalAccrMass", FLOAT, 1, UNIT_CONV_MASS, 0.f, sinks,
+      total_accreted_gas_mass,
+      "Total gas mass accreted by this sink. Summed on sink-sink mergers");
+
+  list[9] = io_make_output_field("TotalMassToAccrete", FLOAT, 1, UNIT_CONV_MASS,
+                                 0.f, sinks, total_mass_to_accrete,
+                                 "Total gas mass this sink should have "
+                                 "accreted. Summed on sink-sink mergers");
+
+  list[10] = io_make_physical_output_field(
+      "GasDensity", FLOAT, 1, UNIT_CONV_DENSITY, -3.f, sinks, rho_gas,
+      /*can convert to comoving=*/1, "Gas density at the location of the sink");
+
+  list[11] = io_make_output_field_convert_sink(
+      "GasVelocity", FLOAT, 3, UNIT_CONV_SPEED, 0.f, sinks,
+      convert_sink_gas_vel,
+      "Gas velocity at the location of the sink. Velocities are peculiar, i.e. "
+      "a * dx/dt where x is the "
+      "co-moving position of the gas.");
+
+  list[12] = io_make_output_field_convert_sink(
+      "GasSoundSpeed", DOUBLE, 1, UNIT_CONV_SPEED, 0.f, sinks,
+      convert_sink_gas_sound_speed,
+      "Gas sound speed at the location of the sink (physical units)");
+
 #ifdef DEBUG_INTERACTIONS_SINKS
 
   list += *num_fields;
@@ -151,7 +218,8 @@ INLINE static void sink_write_particles(const struct sink* sinks,
   list[3] = io_make_output_field(
       "Ids_ngb_merger", LONGLONG, MAX_NUM_OF_NEIGHBOURS_SINKS,
       UNIT_CONV_NO_UNITS, 0.f, sinks, ids_ngbs_merger, "IDs of the neighbors");
+
 #endif
 }
 
-#endif /* SWIFT_DEFAULT_SINK_IO_H */
+#endif /* SWIFT_BASIC_SINK_IO_H */
