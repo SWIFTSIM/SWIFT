@@ -3560,6 +3560,8 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 	if (with_sink) {
           scheduler_addunlock(sched, t_sink_swallow,
                               ci->hydro.super->sinks.sink_ghost1);
+	  scheduler_addunlock(sched, ci->hydro.super->sinks.sink_ghost1,
+			      t_sink_do_gas_swallow);
         }
 
         if (with_black_holes && (bcount_i > 0 || bcount_j > 0)) {
@@ -3734,6 +3736,8 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 	if (with_sink) {
           scheduler_addunlock(sched, t_sink_swallow,
                               cj->hydro.super->sinks.sink_ghost1);
+	  scheduler_addunlock(sched, cj->hydro.super->sinks.sink_ghost1,
+                                t_sink_do_gas_swallow);
         }
 
         if (with_black_holes && (bcount_i > 0 || bcount_j > 0)) {
@@ -4408,6 +4412,8 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 	if (with_sink) {
           scheduler_addunlock(sched, t_sink_swallow,
                               ci->hydro.super->sinks.sink_ghost1);
+	  scheduler_addunlock(sched, ci->hydro.super->sinks.sink_ghost1,
+                                t_sink_do_gas_swallow);
         }
         if (with_black_holes && (bcount_i > 0 || bcount_j > 0)) {
 
@@ -4580,6 +4586,8 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 	if (with_sink) {
           scheduler_addunlock(sched, t_sink_swallow,
                               cj->hydro.super->sinks.sink_ghost1);
+	  scheduler_addunlock(sched, cj->hydro.super->sinks.sink_ghost1,
+                                t_sink_do_gas_swallow);
         }
 
         if (with_black_holes && (bcount_i > 0 || bcount_j > 0)) {
