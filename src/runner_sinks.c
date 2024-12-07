@@ -179,9 +179,10 @@ void runner_do_sinks_gas_swallow(struct runner *r, struct cell *c, int timer) {
             struct sink *sink = &sinks_foreign[i];
 
             if (sink->id == sink_id) {
-
+#ifdef SWIFT_DEBUG_CHECKS
               message("Sink %lld removing gas particle %lld (foreign sink case)",
                       sink->id, p->id);
+#endif /* SWIFT_DEBUG_CHECKS */
 
               lock_lock(&e->s->lock);
 
@@ -439,8 +440,10 @@ void runner_do_sinks_sink_swallow(struct runner *r, struct cell *c, int timer) {
                 break;
               }
 
+#ifdef SWIFT_DEBUG_CHECKS
               message("Sink %lld swallowing sink particle %lld (foreign sink case)",
                       sink->id, cell_sp->id);
+#endif /* SWIFT_DEBUG_CHECKS */
 
               /* Finally, remove the gas particle from the system */
               cell_remove_sink(e, c, cell_sp);
