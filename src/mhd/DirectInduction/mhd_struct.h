@@ -31,7 +31,7 @@ struct mhd_part_data {
   /*! dB Direct Induction */
   float B_over_rho_dt[3];
 
-  float v_fm;
+  float Alfven_speed;
 
   float curl_B[3];
 

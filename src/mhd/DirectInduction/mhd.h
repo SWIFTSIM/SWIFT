@@ -157,6 +157,30 @@ __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
 /**
  * @brief Compute magnetosonic speed
  */
+__attribute__((always_inline)) INLINE static float mhd_get_Alfven_speed(
+    const struct part *restrict p, const float mu_0) {
+
+  const float permeability_inv = 1.0f / mu_0;
+  
+  /* Recover some data */
+  const float rho = p->rho;
+  float B[3];
+  B[0] = p->mhd_data.B_over_rho[0] * rho;
+  B[1] = p->mhd_data.B_over_rho[1] * rho;
+  B[2] = p->mhd_data.B_over_rho[2] * rho;
+
+  /* B squared */
+  const float B2 = B[0] * B[0] + B[1] * B[1] + B[2] * B[2];
+
+  /* Compute Alfven speed */
+  const float vA2 = permeability_inv * B2 / rho;
+  
+  return sqrtf(vA2);
+}
+
+/**
+ * @brief Compute magnetosonic speed
+ */
 __attribute__((always_inline)) INLINE static float mhd_get_magnetosonic_speed(
     const struct part *restrict p, const float a, const float mu_0) {
 
@@ -293,7 +317,11 @@ __attribute__((always_inline)) INLINE static void mhd_end_density(
  */
 __attribute__((always_inline)) INLINE static void mhd_prepare_gradient(
     struct part *restrict p, struct xpart *restrict xp,
-    const struct cosmology *cosmo, const struct hydro_props *hydro_props) {}
+    const struct cosmology *cosmo, const struct hydro_props *hydro_props, const float mu_0) {
+
+  p->mhd_data.Alfven_speed = mhd_get_Alfven_speed(p, mu_0);
+  
+}
 
 /**
  * @brief Resets the variables that are required for a gradient calculation.
@@ -499,6 +527,8 @@ __attribute__((always_inline)) INLINE static void mhd_reset_predicted_values(
   p->mhd_data.B_over_rho[0] = xp->mhd_data.B_over_rho_full[0];
   p->mhd_data.B_over_rho[1] = xp->mhd_data.B_over_rho_full[1];
   p->mhd_data.B_over_rho[2] = xp->mhd_data.B_over_rho_full[2];
+
+  p->mhd_data.Alfven_speed = mhd_get_Alfven_speed(p, mu_0);
 }
 
 /**
@@ -529,6 +559,7 @@ __attribute__((always_inline)) INLINE static void mhd_predict_extra(
 
   p->mhd_data.psi_over_ch += p->mhd_data.psi_over_ch_dt * dt_therm;
 
+  p->mhd_data.Alfven_speed = mhd_get_Alfven_speed(p, mu_0);
 }
 
 /**
@@ -626,6 +657,8 @@ __attribute__((always_inline)) INLINE static void mhd_convert_quantities(
   p->mhd_data.B_over_rho[1] *= pow(cosmo->a, 1.5f * hydro_gamma);
   p->mhd_data.B_over_rho[2] *= pow(cosmo->a, 1.5f * hydro_gamma);
 
+  p->mhd_data.Alfven_speed = mhd_get_Alfven_speed(p, mu_0);
+  
   xp->mhd_data.B_over_rho_full[0] = p->mhd_data.B_over_rho[0];
   xp->mhd_data.B_over_rho_full[1] = p->mhd_data.B_over_rho[1];
   xp->mhd_data.B_over_rho_full[2] = p->mhd_data.B_over_rho[2];
