@@ -33,6 +33,9 @@
 /* Sink formation is activated */
 #define sink_gear_disable_sink_formation_default 0
 
+/* Star formation is activated */
+#define sink_gear_disable_sf_default 0
+
 /* By default all current implemented criteria are active */
 #define sink_gear_sink_formation_criterion_all_default 1
 
@@ -82,6 +85,9 @@ struct sink_props {
   /*! Disable sink formation? (e.g. used in sink accretion tests). Default: 0
      (keep sink formation) */
   char disable_sink_formation;
+
+  /* Disable star formation? Default: 0 (i.e. enable star formation) */
+  char disable_star_formation;
 
   /*! Factor to rescale the velocity dispersion of the stars when they are
      spawned */
@@ -166,18 +172,22 @@ INLINE static void sink_props_init_probabilities(
                   imf, imf->minimal_discrete_mass_Msun, mass_max) *
               Mtot;
 
-  message("Mass of the continuous part (in M_sun) : %g", Mc);
-  message("Mass of the discrete   part (in M_sun) : %g", Md);
-  message("Total IMF mass (in M_sun)              : %g", Mtot);
-  message("Number of stars in the continuous part : %g", Nc);
-  message("Number of stars in the discrete   part : %g", Nd);
+  if (engine_rank == 0) {
+    message("Mass of the continuous part (in M_sun) : %g", Mc);
+    message("Mass of the discrete   part (in M_sun) : %g", Md);
+    message("Total IMF mass (in M_sun)              : %g", Mtot);
+    message("Number of stars in the continuous part : %g", Nc);
+    message("Number of stars in the discrete   part : %g", Nd);
+  }
 
   /* if no continous part, return */
   if (Mc == 0) {
     imf->sink_Pc = 0;
     imf->stellar_particle_mass_Msun = 0;
-    message("probability of the continuous part    : %g", 0.);
-    message("probability of the discrete   part    : %g", 1.);
+    if (engine_rank == 0) {
+      message("probability of the continuous part    : %g", 0.);
+      message("probability of the discrete   part    : %g", 1.);
+    }
     return;
   }
 
@@ -186,8 +196,10 @@ INLINE static void sink_props_init_probabilities(
   double Pd = 1 - Pc;
   imf->sink_Pc = Pc;
 
-  message("probability of the continuous part     : %g", Pc);
-  message("probability of the discrete   part     : %g", Pd);
+  if (engine_rank == 0) {
+    message("probability of the continuous part     : %g", Pc);
+    message("probability of the discrete   part     : %g", Pd);
+  }
 }
 
 /**
@@ -319,6 +331,11 @@ INLINE static void sink_props_init(struct sink_props *sp,
       parser_get_opt_param_float(params, "GEARSink:tolerance_SF_timestep",
                                  sink_gear_tolerance_sf_timestep_default);
 
+  /* Should we disable star formation ? */
+  sp->disable_star_formation =
+      parser_get_opt_param_int(params, "GEARSink:disable_star_formation",
+			       sink_gear_disable_sf_default);
+
   /* Apply unit change */
   sp->temperature_threshold /=
       units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
@@ -353,53 +370,56 @@ INLINE static void sink_props_init(struct sink_props *sp,
     imf = &sm->imf;
     sink_props_init_probabilities(sp, imf, phys_const, 1);
   }
+  if (engine_rank == 0) {
+    message("temperature_threshold                        = %g",
+	    sp->temperature_threshold);
+    message("density_threshold                            = %g",
+	    sp->density_threshold);
+    message("maximal_density_threshold                    = %g",
+	    sp->maximal_density_threshold);
+    message("sink_minimal_mass (in M_sun)                 = %g",
+	    sp->sink_minimal_mass_Msun);
+    message("stellar_particle_mass (in M_sun)             = %g",
+	    sp->stellar_particle_mass_Msun);
+    message("minimal_discrete_mass (in M_sun)             = %g",
+	    sp->minimal_discrete_mass_Msun);
 
-  message("temperature_threshold                        = %g",
-          sp->temperature_threshold);
-  message("density_threshold                            = %g",
-          sp->density_threshold);
-  message("maximal_density_threshold                    = %g",
-          sp->maximal_density_threshold);
-  message("sink_minimal_mass (in M_sun)                 = %g",
-          sp->sink_minimal_mass_Msun);
-  message("stellar_particle_mass (in M_sun)             = %g",
-          sp->stellar_particle_mass_Msun);
-  message("minimal_discrete_mass (in M_sun)             = %g",
-          sp->minimal_discrete_mass_Msun);
+    message("stellar_particle_mass_first_stars (in M_sun) = %g",
+	    sp->stellar_particle_mass_first_stars_Msun);
+    message("minimal_discrete_mass_first_stars (in M_sun) = %g",
+	    sp->minimal_discrete_mass_first_stars_Msun);
 
-  message("stellar_particle_mass_first_stars (in M_sun) = %g",
-          sp->stellar_particle_mass_first_stars_Msun);
-  message("minimal_discrete_mass_first_stars (in M_sun) = %g",
-          sp->minimal_discrete_mass_first_stars_Msun);
+    /* Print information about the functionalities */
+    message("disable_sink_formation                       = %d",
+	    sp->disable_sink_formation);
+    message("disable_star_formation                       = %d",
+	    sp->disable_star_formation);
+    message("sink_formation_contracting_gas_criterion     = %d",
+	    sp->sink_formation_contracting_gas_criterion);
+    message("sink_formation_smoothing_length_criterion    = %d",
+	    sp->sink_formation_smoothing_length_criterion);
+    message("sink_formation_jeans_instability_criterion   = %d",
+	    sp->sink_formation_jeans_instability_criterion);
+    message("sink_formation_bound_state_criterion         = %d",
+	    sp->sink_formation_bound_state_criterion);
+    message("sink_formation_overlapping_sink_criterion    = %d",
+	    sp->sink_formation_overlapping_sink_criterion);
 
-  /* Print information about the functionalities */
-  message("disable_sink_formation                       = %d",
-          sp->disable_sink_formation);
-  message("sink_formation_contracting_gas_criterion     = %d",
-          sp->sink_formation_contracting_gas_criterion);
-  message("sink_formation_smoothing_length_criterion    = %d",
-          sp->sink_formation_smoothing_length_criterion);
-  message("sink_formation_jeans_instability_criterion   = %d",
-          sp->sink_formation_jeans_instability_criterion);
-  message("sink_formation_bound_state_criterion         = %d",
-          sp->sink_formation_bound_state_criterion);
-  message("sink_formation_overlapping_sink_criterion    = %d",
-          sp->sink_formation_overlapping_sink_criterion);
-
-  /* Print timestep parameters information */
-  message("sink max_timestep_young                      = %e",
-          sp->max_time_step_young);
-  message("sink max_timestep_old                        = %e",
-          sp->max_time_step_old);
-  message("sink age_threshold from young to old         = %e",
-          sp->age_threshold);
-  message("sink age_threshold from old to unlimited     = %e",
-          sp->age_threshold_unlimited);
-  message("sink C_CFL                                   = %e",
-          sp->CFL_condition);
-  message("tolerance_SF_timestep                        = %e",
-          sp->tolerance_SF_timestep);
-  message("n_IMF                                        = %e", sp->n_IMF);
+    /* Print timestep parameters information */
+    message("sink max_timestep_young                      = %e",
+	    sp->max_time_step_young);
+    message("sink max_timestep_old                        = %e",
+	    sp->max_time_step_old);
+    message("sink age_threshold from young to old         = %e",
+	    sp->age_threshold);
+    message("sink age_threshold from old to unlimited     = %e",
+	    sp->age_threshold_unlimited);
+    message("sink C_CFL                                   = %e",
+	    sp->CFL_condition);
+    message("tolerance_SF_timestep                        = %e",
+	    sp->tolerance_SF_timestep);
+    message("n_IMF                                        = %e", sp->n_IMF);
+  }
 }
 
 /**

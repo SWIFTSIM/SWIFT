@@ -165,6 +165,11 @@ const char *subtaskID_names[task_subtype_count] = {
     "sink_do_sink_swallow",
     "sink_swallow",
     "sink_do_gas_swallow",
+    "task_subtype_sink_formation_counts",
+    "task_subtype_sink_formation_grav_counts",
+    "task_subtype_sink_rho",
+    "task_subtype_sink_gas_swallow",
+    "task_subtype_sink_merger", //TODO: Add SF_sink
     "rt_gradient",
     "rt_transport",
 };

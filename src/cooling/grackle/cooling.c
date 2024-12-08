@@ -434,6 +434,10 @@ float cooling_get_radiated_energy(const struct xpart* xp) {
  */
 void cooling_print_backend(const struct cooling_function_data* cooling) {
 
+  if (engine_rank != 0) {
+    return;
+  }
+
   message("Cooling function is 'Grackle'.");
   message("Using Grackle = %i", cooling->chemistry_data.use_grackle);
   message("Chemical network = %i",
