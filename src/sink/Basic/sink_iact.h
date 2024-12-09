@@ -36,12 +36,11 @@
  * @param pj Second particle.
  * @param a Current scale factor.
  * @param H Current Hubble parameter.
- * @param sink_props the sink properties to use.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_sink(
     const float r2, const float dx[3], const float hi, const float hj,
     struct part *restrict pi, struct part *restrict pj, const float a,
-    const float H, const struct sink_props *sink_properties) {}
+    const float H) {}
 
 /**
  * @brief Gas particle interactions relevant for sinks, to run in hydro density interaction (non symmetric version)
@@ -54,12 +53,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_sink(
  * @param pj Second particle (not updated).
  * @param a Current scale factor.
  * @param H Current Hubble parameter.
- * @param sink_props the sink properties to use.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_sink(
     const float r2, const float dx[3], const float hi, const float hj,
     struct part *restrict pi, const struct part *restrict pj, const float a,
-    const float H, const struct sink_props *sink_properties) {}
+    const float H) {}
 
 /**
  * @brief Density interaction between sinks and gas (non-symmetric).

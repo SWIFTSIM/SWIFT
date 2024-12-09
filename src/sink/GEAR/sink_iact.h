@@ -42,23 +42,21 @@
  * @param pj Second particle.
  * @param a Current scale factor.
  * @param H Current Hubble parameter.
- * @param sink_props the sink properties to use.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_sink(
     const float r2, const float dx[3], const float hi, const float hj,
     struct part *restrict pi, struct part *restrict pj, const float a,
-    const float H, const struct sink_props *sink_properties) {
+    const float H) {
 
-  /* In order to prevent the formation of two sink particles at a distance
-   * smaller than the sink cutoff radius, we keep only gas particles with
-   * the smallest potential. */
+  /* In order to prevent the formation of two sink particles too close together, 
+   * we keep only gas particles with the smallest potential. The distance at which
+   * to prevent sink formation is the cutoff radius if this is fixed, or it is 
+   * the variable smoothing length times gamma. */
 
   const float r = sqrtf(r2);
+  const float rmax = max(hi, hj) * kernel_gamma;
 
-  /* if the distance is less than the cut off radius */
-  /* JD: right now, if we're not using a fixed cutoff, cut_off_radius=-1 and
-   * this will never do anything */
-  if (r < sink_properties->cut_off_radius) {
+  if (r < rmax) {
     float potential_i = pi->sink_data.potential;
     float potential_j = pj->sink_data.potential;
 
@@ -90,22 +88,21 @@ __attribute__((always_inline)) INLINE static void runner_iact_sink(
  * @param pj Second particle (not updated).
  * @param a Current scale factor.
  * @param H Current Hubble parameter.
- * @param sink_props the sink properties to use.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_sink(
     const float r2, const float dx[3], const float hi, const float hj,
     struct part *restrict pi, const struct part *restrict pj, const float a,
-    const float H, const struct sink_props *sink_properties) {
+    const float H) {
 
-  /* In order to prevent the formation of two sink particles at a distance
-   * smaller than the sink cutoff radius, we keep only gas particles with
-   * the smallest potential. */
+  /* In order to prevent the formation of two sink particles too close together, 
+   * we keep only gas particles with the smallest potential. The distance at which
+   * to prevent sink formation is the cutoff radius if this is fixed, or it is 
+   * the variable smoothing length times gamma. */
 
   const float r = sqrtf(r2);
+  const float rmax = max(hi, hj) * kernel_gamma;
 
-  /* JD: right now, if we're not using a fixed cutoff, cut_off_radius=-1 and
-   * this will never do anything */
-  if (r < sink_properties->cut_off_radius) {
+  if (r < rmax) {
     float potential_i = pi->sink_data.potential;
     float potential_j = pj->sink_data.potential;
 
