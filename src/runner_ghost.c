@@ -1096,7 +1096,8 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
   const struct star_formation *star_formation = e->star_formation;
   const struct hydro_props *hydro_props = e->hydro_properties;
   const struct pressure_floor_props *pressure_floor = e->pressure_floor_props;
-
+  const float mu_0 = e->physical_constants->const_vacuum_permeability;
+ 
   const int with_cosmology = (e->policy & engine_policy_cosmology);
   const int with_rt = (e->policy & engine_policy_rt);
 
@@ -1256,7 +1257,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 
             /* Compute variables required for the gradient loop */
             hydro_prepare_gradient(p, xp, cosmo, hydro_props, pressure_floor);
-            mhd_prepare_gradient(p, xp, cosmo, hydro_props);
+            mhd_prepare_gradient(p, xp, cosmo, hydro_props, mu_0);
 
             /* The particle gradient values are now set.  Do _NOT_
                try to read any particle density variables! */
@@ -1441,7 +1442,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 
         /* Compute variables required for the gradient loop */
         hydro_prepare_gradient(p, xp, cosmo, hydro_props, pressure_floor);
-        mhd_prepare_gradient(p, xp, cosmo, hydro_props);
+        mhd_prepare_gradient(p, xp, cosmo, hydro_props, mu_0);
 
         /* The particle gradient values are now set.  Do _NOT_
            try to read any particle density variables! */
