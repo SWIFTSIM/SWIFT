@@ -43,6 +43,7 @@ void zoom_engine_makeproxies(struct engine *e) {
 
   /* Useful local information */
   const struct space *s = e->s;
+  const int nodeID = e->nodeID;
 
   /* Handle on the cells and proxies */
   struct cell *cells = s->cells_top;
