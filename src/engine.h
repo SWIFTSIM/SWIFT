@@ -754,6 +754,10 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
 void engine_rebuild(struct engine *e, int redistributed, int clean_h_values);
 void engine_repartition(struct engine *e);
 void engine_repartition_trigger(struct engine *e);
+void engine_add_proxy(struct engine *e, struct cell *ci, struct cell *cj,
+                      const int proxy_type);
+int engine_get_proxy_type(const struct engine *e, const struct cell *ci,
+                          const struct cell *cj, const double r_max);
 void engine_makeproxies(struct engine *e);
 void engine_redistribute(struct engine *e);
 void engine_print_policy(struct engine *e);
