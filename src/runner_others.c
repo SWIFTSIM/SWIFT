@@ -571,7 +571,7 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
 void runner_do_sink_formation(struct runner *r, struct cell *c) {
 
   /* Disable sink formation with MPI for now */
-#if defined(SWIFT_DEBUG_CHECKS_MPI_DOMAIN_DECOMPOSITION) || defined(WITH_MPI)
+#if defined(SWIFT_DEBUG_CHECKS_MPI_DOMAIN_DECOMPOSITION)
   return;
 #endif
 
