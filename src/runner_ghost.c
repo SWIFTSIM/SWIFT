@@ -1815,10 +1815,6 @@ void runner_do_sinks_density_ghost(struct runner *r, struct cell *c,
       for (int num_reruns = 0; scount > 0 && num_reruns < max_smoothing_iter;
            num_reruns++) {
 
-        /* TODO? */
-        // ghost_stats_account_for_sinks(&c->ghost_statistics, num_reruns,
-        //                                     scount, sinks, sid);
-
         /* Reset the redo-count. */
         redo = 0;
 
@@ -1845,10 +1841,6 @@ void runner_do_sinks_density_ghost(struct runner *r, struct cell *c,
 
           if (sp->density.wcount <
               1.e-5 * kernel_root) { /* No neighbours case */
-
-            /* TODO? */
-            // ghost_stats_no_ngb_black_hole_iteration(&c->ghost_statistics,
-            //                                         num_reruns);
 
             /* Flag that there were no neighbours */
             has_no_neighbours = 1;
@@ -1977,8 +1969,6 @@ void runner_do_sinks_density_ghost(struct runner *r, struct cell *c,
 
               /* Do some damage control if no neighbours at all were found */
               if (has_no_neighbours) {
-                /* TODO? */
-                // ghost_stats_no_ngb_black_hole_converged(&c->ghost_statistics);
                 sinks_sink_has_no_neighbours(sp, cosmo);
               }
 
@@ -1990,9 +1980,6 @@ void runner_do_sinks_density_ghost(struct runner *r, struct cell *c,
           }
 
           /* We now have a particle whose smoothing length has converged */
-
-          /* TODO? */
-          // ghost_stats_converged_black_hole(&c->ghost_statistics, sp);
 
           /* Check if h_max has increased */
           h_max = max(h_max, sp->h);
@@ -2059,7 +2046,7 @@ void runner_do_sinks_density_ghost(struct runner *r, struct cell *c,
 
       if (scount) {
         warning(
-            "Smoothing length failed to converge for the following BH "
+            "Smoothing length failed to converge for the following sink "
             "particles:");
         for (int i = 0; i < scount; i++) {
           struct sink *sp = &sinks[sid[i]];
