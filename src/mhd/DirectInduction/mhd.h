@@ -247,12 +247,11 @@ mhd_get_fast_magnetosonic_wave_phase_velocity(const float dx[3], const struct pa
  * @brief beta The non-linear viscosity constant.
  */
 __attribute__((always_inline)) INLINE static float mhd_signal_velocity(
-    const struct part *restrict pi, const struct part *restrict pj, const float mu_ij, const float beta) {
+    const struct part *restrict pi, const float alphai, const float mu_ij, const float beta) {
   
   const float cmsi = mhd_get_magnetosonic_speed(pi);
-  const float cmsj = mhd_get_magnetosonic_speed(pj);
   
-  const float v_sig = cmsi + cmsj + beta * fabsf(mu_ij);
+  const float v_sig = alphai * cmsi + beta * fabsf(mu_ij);
 
   return v_sig;
 }

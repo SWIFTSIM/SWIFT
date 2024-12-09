@@ -211,12 +211,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
   const float mu_ij = fac_mu * r_inv * omega_ij; /* This is 0 or negative */
 
   /* Signal velocity */
-  const float new_v_sig =
-      signal_velocity(pi, pj, mu_ij, const_viscosity_beta);
+  const float new_v_sig_i =
+      signal_velocity(pi, 1.0f, mu_ij, const_viscosity_beta);
+  const float new_v_sig_j =
+      signal_velocity(pj, 1.0f, mu_ij, const_viscosity_beta);
   
   /* Update if we need to */
-  pi->viscosity.v_sig = max(pi->viscosity.v_sig, new_v_sig);
-  pj->viscosity.v_sig = max(pj->viscosity.v_sig, new_v_sig);
+  pi->viscosity.v_sig = max(pi->viscosity.v_sig, new_v_sig_i);
+  pj->viscosity.v_sig = max(pj->viscosity.v_sig, new_v_sig_j);
 
   /* Now we need to compute the div terms */
   const float faci = mj * f_ij * wi_dx * r_inv;
@@ -321,11 +323,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
   const float mu_ij = fac_mu * r_inv * omega_ij; /* This is 0 or negative */
 
   /* Signal velocity */
-  const float new_v_sig =
-      signal_velocity(pi, pj, mu_ij, const_viscosity_beta);
+  const float new_v_sig_i =
+      signal_velocity(pi, 1.0f, mu_ij, const_viscosity_beta);
 
   /* Update if we need to */
-  pi->viscosity.v_sig = max(pi->viscosity.v_sig, new_v_sig);
+  pi->viscosity.v_sig = max(pi->viscosity.v_sig, new_v_sig_i);
 
   /* Now we need to compute the div terms */
   const float faci = mj * f_ij * wi_dx * r_inv;
@@ -420,9 +422,22 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float omega_ij = min(dvdr_Hubble, 0.f);
   const float mu_ij = fac_mu * r_inv * omega_ij; /* This is 0 or negative */
 
+  /* Update timestep if needws be */
+  const float v_sig_dt_i =
+      signal_velocity(pi, 1.0f, mu_ij, const_viscosity_beta);
+  const float v_sig_dt_j =
+      signal_velocity(pj, 1.0f, mu_ij, const_viscosity_beta);
+
+  pi->viscosity.v_sig = max(pi->viscosity.v_sig, v_sig_dt_i);
+  pj->viscosity.v_sig = max(pj->viscosity.v_sig, v_sig_dt_j);
+  
   /* Compute sound speeds and signal velocity */
-  const float v_sig =
-      signal_velocity(pi, pj, mu_ij, const_viscosity_beta);
+  const float alphai = pi->viscosity.alpha;
+  const float alphaj = pj->viscosity.alpha; 
+  const float v_sig_i =
+      signal_velocity(pi, alphai, mu_ij, const_viscosity_beta);
+  const float v_sig_j =
+      signal_velocity(pj, alphaj, mu_ij, const_viscosity_beta);
 
   /* Variable smoothing length term */
   const float f_ij = 1.f - pi->force.f / mj;
@@ -432,16 +447,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float balsara_i = pi->force.balsara;
   const float balsara_j = pj->force.balsara;
 
+  const float q_ij = -0.5f * rhoi * v_sig_i * mu_ij;
+  const float q_ji = -0.5f * rhoj * v_sig_j * mu_ij;
+   
   /* Construct the full viscosity term */
-  const float rho_ij = rhoi + rhoj;
-  const float alpha = pi->viscosity.alpha + pj->viscosity.alpha;
-  const float visc =
-      -0.25f * alpha * v_sig * mu_ij * (balsara_i + balsara_j) / rho_ij;
-
-  /* Convolve with the kernel */
-  const float visc_acc_term =
-      0.5f * visc * (wi_dr * f_ij + wj_dr * f_ji) * r_inv;
-
+  float visc_acc_term = f_ij * balsara_i * q_ij * wi_dr / (rhoi * rhoi) * r_inv;
+  visc_acc_term += f_ji * balsara_j * q_ji * wj_dr / (rhoj * rhoj) * r_inv;
+  
   /* Compute gradient terms */
   const float P_over_rho2_i = pressurei / (rhoi * rhoi) * f_ij;
   const float P_over_rho2_j = pressurej / (rhoj * rhoj) * f_ji;
@@ -478,6 +490,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
    * alpha from the highest pressure particle to dominate, so that the
    * diffusion limited particles always take precedence - another trick to
    * allow the scheme to work with thermal feedback. */
+  const float rho_ij = rhoi + rhoj;
   const float alpha_diff =
       (pressurei * pi->diffusion.alpha + pressurej * pj->diffusion.alpha) /
       (pressurei + pressurej);
@@ -572,10 +585,20 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float omega_ij = min(dvdr_Hubble, 0.f);
   const float mu_ij = fac_mu * r_inv * omega_ij; /* This is 0 or negative */
 
+  /* Update timestep if needws be */
+  const float v_sig_dt_i =
+      signal_velocity(pi, 1.0f, mu_ij, const_viscosity_beta);
+  
+  pi->viscosity.v_sig = max(pi->viscosity.v_sig, v_sig_dt_i);
+  
   /* Compute sound speeds and signal velocity */
-  const float v_sig =
-      signal_velocity(pi, pj, mu_ij, const_viscosity_beta);
-
+  const float alphai = pi->viscosity.alpha;
+  const float alphaj = pj->viscosity.alpha; 
+  const float v_sig_i =
+      signal_velocity(pi, alphai, mu_ij, const_viscosity_beta);
+  const float v_sig_j =
+      signal_velocity(pj, alphaj, mu_ij, const_viscosity_beta);
+    
   /* Variable smoothing length term */
   const float f_ij = 1.f - pi->force.f / mj;
   const float f_ji = 1.f - pj->force.f / mi;
@@ -584,16 +607,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float balsara_i = pi->force.balsara;
   const float balsara_j = pj->force.balsara;
 
+  const float q_ij = -0.5f * rhoi * v_sig_i * mu_ij;
+  const float q_ji = -0.5f * rhoj * v_sig_j * mu_ij;
+
   /* Construct the full viscosity term */
-  const float rho_ij = rhoi + rhoj;
-  const float alpha = pi->viscosity.alpha + pj->viscosity.alpha;
-  const float visc =
-      -0.25f * alpha * v_sig * mu_ij * (balsara_i + balsara_j) / rho_ij;
-
-  /* Convolve with the kernel */
-  const float visc_acc_term =
-      0.5f * visc * (wi_dr * f_ij + wj_dr * f_ji) * r_inv;
-
+  float	visc_acc_term =	f_ij * balsara_i * q_ij * wi_dr / (rhoi * rhoi) * r_inv;
+  visc_acc_term += f_ji * balsara_j * q_ji * wj_dr / (rhoj * rhoj) * r_inv;
+  
   /* Compute gradient terms */
   const float P_over_rho2_i = pressurei / (rhoi * rhoi) * f_ij;
   const float P_over_rho2_j = pressurej / (rhoj * rhoj) * f_ji;
@@ -625,6 +645,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
    * alpha from the highest pressure particle to dominate, so that the
    * diffusion limited particles always take precedence - another trick to
    * allow the scheme to work with thermal feedback. */
+  const float rho_ij = rhoi + rhoj;
   const float alpha_diff =
       (pressurei * pi->diffusion.alpha + pressurej * pj->diffusion.alpha) /
       (pressurei + pressurej);

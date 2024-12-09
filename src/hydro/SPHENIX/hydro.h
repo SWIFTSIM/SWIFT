@@ -407,7 +407,7 @@ hydro_set_drifted_physical_internal_energy(
   p->force.soundspeed = soundspeed;
   p->force.pressure = pressure_including_floor;
 
-  p->viscosity.v_sig = max(p->viscosity.v_sig, 2.f * soundspeed);
+  p->viscosity.v_sig = max(p->viscosity.v_sig, soundspeed);
 }
 
 /**
@@ -499,13 +499,11 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
  * @brief beta The non-linear viscosity constant.
  */
 __attribute__((always_inline)) INLINE static float hydro_signal_velocity(
-    const float dx[3], const struct part *restrict pi,
-    const struct part *restrict pj, const float mu_ij, const float beta) {
+    const struct part *restrict pi, const float alphai, const float mu_ij, const float beta) {
 
   const float ci = pi->force.soundspeed;
-  const float cj = pj->force.soundspeed;
 
-  return ci + cj - beta * mu_ij;
+  return alphai * ci + beta * fabsf(mu_ij);
 }
 
 /**
@@ -720,7 +718,7 @@ __attribute__((always_inline)) INLINE static void hydro_reset_gradient(
 
   p->viscosity.div_v = 0.f;
   
-  p->viscosity.v_sig = 2.f * p->force.soundspeed;
+  p->viscosity.v_sig = p->force.soundspeed;
   p->force.alpha_visc_max_ngb = p->viscosity.alpha;
 }
 
@@ -1015,7 +1013,7 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
   p->force.soundspeed = soundspeed;
 
   /* Update the signal velocity, if we need to. */
-  p->viscosity.v_sig = max(p->viscosity.v_sig, 2.f * soundspeed);
+  p->viscosity.v_sig = max(p->viscosity.v_sig, soundspeed);
 }
 
 /**
@@ -1090,7 +1088,7 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   p->force.soundspeed = soundspeed;
 
   /* Update signal velocity if we need to */
-  p->viscosity.v_sig = max(p->viscosity.v_sig, 2.f * soundspeed);
+  p->viscosity.v_sig = max(p->viscosity.v_sig, soundspeed);
 }
 
 /**
