@@ -211,21 +211,16 @@ void engine_makeproxies(struct engine *e) {
 
   /* Handle on the cells and proxies */
   struct cell *cells = s->cells_top;
-  struct proxy *proxies = e->proxies;
 
   /* Some info about the domain */
   const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
-  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const int periodic = s->periodic;
   const double cell_width[3] = {cells[0].width[0], cells[0].width[1],
                                 cells[0].width[2]};
 
   /* Get some info about the physics */
-  const int with_hydro = (e->policy & engine_policy_hydro);
   const int with_gravity = (e->policy & engine_policy_self_gravity);
   const double theta_crit = e->gravity_properties->theta_crit;
-  const double max_mesh_dist = e->mesh->r_cut_max;
-  const double max_mesh_dist2 = max_mesh_dist * max_mesh_dist;
 
   /* Distance between centre of the cell and corners */
   const double r_diag2 = cell_width[0] * cell_width[0] +
