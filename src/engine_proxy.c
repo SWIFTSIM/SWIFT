@@ -121,11 +121,11 @@ int engine_get_proxy_type(const struct engine *e, const struct cell *ci,
 void engine_add_proxy(struct engine *e, const struct cell *ci,
                       const struct cell *cj, const int proxy_type) {
 
+#ifdef WITH_MPI
   /* Unpack what we need */
   struct proxy *proxies = e->proxies;
   const int nodeID = e->nodeID;
 
-#ifdef WITH_MPI
   /* Add to proxies? */
   if (ci->nodeID == nodeID && cj->nodeID != nodeID) {
 
