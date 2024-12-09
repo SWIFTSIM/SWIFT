@@ -139,6 +139,9 @@ struct part {
     /*! Time differential of velocity divergence */
     float div_v_dt;
 
+    /*! Particle velocity curl. */
+    float rot_v[3];
+    
     /*! Particle velocity divergence from previous step */
     float div_v_previous_step;
 
@@ -181,9 +184,6 @@ struct part {
 
     /*! Derivative of density with respect to h */
     float rho_dh;
-
-    /*! Particle velocity curl. */
-    float rot_v[3];
 
   } density;
 
