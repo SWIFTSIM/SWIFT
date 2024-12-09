@@ -193,6 +193,7 @@ runner_iact_nonsym_sinks_sink_swallow(
 
   /* Compute the Newtonian or softened potential the sink exherts onto the
       gas particle */
+  /* TODO: needs updating for MPI safety. We don't have access to foreign gparts here. */
   const float eps = gravity_get_softening(si->gpart, grav_props);
   const float eps2 = eps * eps;
   const float eps_inv = 1.f / eps;
