@@ -103,3 +103,6 @@ GEARSink:
   sink_formation_bound_state_criterion:       1   # (Optional) Activate the bound state check for sink formation. (Default: 1)
   sink_formation_overlapping_sink_criterion:  1   # (Optional) Activate the overlapping sink check for sink formation. (Default: 1)
   disable_sink_formation:                     0   # (Optional) Disable sink formation. (Default: 0)
+
+  # Timesteps parameters
+  CFL_condition:                        0.5       # Courant-Friedrich-Levy condition for time integration.
