@@ -47,14 +47,6 @@ void zoom_engine_makeproxies(struct engine *e) {
 
   /* Handle on the cells and proxies */
   struct cell *cells = s->cells_top;
-  struct proxy *proxies = e->proxies;
-
-  /* Get some info about the physics */
-  int with_hydro = (e->policy & engine_policy_hydro);
-  int with_gravity = (e->policy & engine_policy_self_gravity);
-  const double theta_crit = e->gravity_properties->theta_crit;
-  const double max_mesh_dist = e->mesh->r_cut_max;
-  const double max_mesh_dist2 = max_mesh_dist * max_mesh_dist;
 
   /* Prepare the proxies and the proxy index. */
   if (e->proxy_ind == NULL)
