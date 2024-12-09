@@ -26,8 +26,7 @@
 #include "sink_properties.h"
 
 /**
- * @brief do sink computation after the runner_iact_density (symmetric
- * version)
+ * @brief Gas particle interactions relevant for sinks, to run in hydro density interaction
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
@@ -45,8 +44,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_sink(
     const float H, const struct sink_props *sink_properties) {}
 
 /**
- * @brief do sink computation after the runner_iact_density (non symmetric
- * version)
+ * @brief Gas particle interactions relevant for sinks, to run in hydro density interaction (non symmetric version)
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
@@ -64,7 +62,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_sink(
     const float H, const struct sink_props *sink_properties) {}
 
 /**
- * @brief Density interaction between two particles (non-symmetric).
+ * @brief Density interaction between sinks and gas (non-symmetric).
+ * 
+ * The gas particle cannot be touched.
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
@@ -114,7 +114,7 @@ runner_iact_nonsym_sinks_gas_density(
   si->ngb_mass += mj;
 
   /* Neighbour's sound speed */
-  float cj = hydro_get_comoving_soundspeed(pj);
+  const float cj = hydro_get_comoving_soundspeed(pj);
 
   /* Contribution to the smoothed sound speed */
   si->sound_speed_gas += mj * cj * wi;
@@ -344,7 +344,7 @@ runner_iact_nonsym_sinks_gas_swallow(
     const float prob = si->mass_to_accrete * hi_inv_dim * wi / si->rho_gas;
 
     /* Draw a random number (Note mixing both IDs) */
-    const float rand = random_unit_interval(si->id + pj->id, ti_current,
+    const float rand = random_unit_interval_two_IDs(si->id, pj->id, ti_current, 
                                             random_number_BH_swallow);
 
     /* Are we lucky? */
