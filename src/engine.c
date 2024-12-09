@@ -892,6 +892,7 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
     for (size_t i = 0; i < s->size_sinks_foreign; ++i) {
       s->sinks_foreign[i].time_bin = time_bin_not_created;
       s->sinks_foreign[i].id = -666;
+      sink_mark_sink_as_not_swallowed(&s->sinks_foreign[i].merger_data);
     }
   }
 
@@ -1186,7 +1187,19 @@ int engine_estimate_nr_tasks(const struct engine *e) {
     if (e->policy & engine_policy_stars) {
       /* 1 star formation */
       n1 += 1;
+#ifdef WITH_MPI
+      /* sf_count: send and recv              | 2 */
+      n1 += 2;
+#endif
     }
+#ifdef WITH_MPI
+  /* sink_formation_count: send and recv              | 2
+     sink_rho: send and recv                          | 2
+     sink_gas_swallow: send and recv                  | 2
+     sink_merger: send and recv                       | 2 */
+    n1 += 8;
+#endif
+
   }
   if (e->policy & engine_policy_fof) {
     n1 += 2;
@@ -1770,6 +1783,11 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->subtype == task_subtype_sink_swallow ||
         t->subtype == task_subtype_sink_do_sink_swallow ||
         t->subtype == task_subtype_sink_do_gas_swallow ||
+	t->subtype == task_subtype_sink_formation_counts ||
+	t->subtype == task_subtype_sink_formation_grav_counts ||
+	t->subtype == task_subtype_sink_rho ||
+	t->subtype == task_subtype_sink_gas_swallow ||
+	t->subtype == task_subtype_sink_merger ||
         t->subtype == task_subtype_tend || t->subtype == task_subtype_rho ||
         t->subtype == task_subtype_spart_density ||
         t->subtype == task_subtype_part_prep1 ||

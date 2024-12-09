@@ -502,6 +502,7 @@ void *runner_main(void *data) {
         case task_type_send:
           if (t->subtype == task_subtype_tend) {
             free(t->buff);
+	  /* TODO: We need to take care of sf_sinks_counts */
           } else if (t->subtype == task_subtype_sf_counts) {
             free(t->buff);
           } else if (t->subtype == task_subtype_grav_counts) {
@@ -510,6 +511,16 @@ void *runner_main(void *data) {
             free(t->buff);
           } else if (t->subtype == task_subtype_bpart_merger) {
             free(t->buff);
+	  } else if (t->subtype == task_subtype_sink_formation_counts) {
+            free(t->buff);
+	  } else if (t->subtype == task_subtype_sink_formation_grav_counts) {
+            free(t->buff);
+	  } else if (t->subtype == task_subtype_sink_gas_swallow) {
+            free(t->buff);
+          } else if (t->subtype == task_subtype_sink_merger) {
+            free(t->buff);
+	  } else if (t->subtype == task_subtype_limiter) {
+
           } else if (t->subtype == task_subtype_limiter) {
             free(t->buff);
           }
@@ -518,12 +529,19 @@ void *runner_main(void *data) {
           if (t->subtype == task_subtype_tend) {
             cell_unpack_end_step(ci, (struct pcell_step *)t->buff);
             free(t->buff);
+          /* TODO: We need to take care of sf_sinks_counts */
           } else if (t->subtype == task_subtype_sf_counts) {
             cell_unpack_sf_counts(ci, (struct pcell_sf_stars *)t->buff);
             cell_clear_stars_sort_flags(ci, /*clear_unused_flags=*/0);
             free(t->buff);
           } else if (t->subtype == task_subtype_grav_counts) {
             cell_unpack_grav_counts(ci, (struct pcell_sf_grav *)t->buff);
+            free(t->buff);
+	  } else if (t->subtype == task_subtype_sink_formation_counts) {
+            cell_unpack_sink_formation_counts(ci, (struct pcell_sink_formation_sinks *)t->buff);
+            free(t->buff);
+          } else if (t->subtype == task_subtype_sink_formation_grav_counts) {
+            cell_unpack_sink_formation_grav_counts(ci, (struct pcell_sink_formation_grav *)t->buff);
             free(t->buff);
           } else if (t->subtype == task_subtype_xv) {
             runner_do_recv_part(r, ci, 1, 1);
@@ -543,6 +561,14 @@ void *runner_main(void *data) {
             cell_unpack_bpart_swallow(ci,
                                       (struct black_holes_bpart_data *)t->buff);
             free(t->buff);
+	  } else if (t->subtype == task_subtype_sink_gas_swallow) {
+            cell_unpack_sink_gas_swallow(ci,
+                                     (struct sink_part_data *)t->buff);
+            free(t->buff);
+          } else if (t->subtype == task_subtype_sink_merger) {
+            cell_unpack_sink_swallow(ci,
+                                      (struct sink_sink_data *)t->buff);
+            free(t->buff);
           } else if (t->subtype == task_subtype_limiter) {
             /* Nothing to do here. Unpacking done in a separate task */
           } else if (t->subtype == task_subtype_gpart) {
@@ -555,6 +581,8 @@ void *runner_main(void *data) {
             runner_do_recv_spart(r, ci, 0, 1);
           } else if (t->subtype == task_subtype_bpart_rho) {
             runner_do_recv_bpart(r, ci, 1, 1);
+	  } else if (t->subtype == task_subtype_sink_rho) {
+            runner_do_recv_sink(r, ci, 1, 1);
           } else if (t->subtype == task_subtype_bpart_feedback) {
             runner_do_recv_bpart(r, ci, 0, 1);
           } else {
