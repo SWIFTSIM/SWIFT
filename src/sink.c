@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2018 Matthieu Schaller (schaller@strw.leidenuniv.nl)
+ * Copyright (c) 2024 Jonathan Davies (j.j.davies@ljmu.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
