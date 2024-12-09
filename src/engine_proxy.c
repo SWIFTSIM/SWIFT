@@ -118,8 +118,8 @@ int engine_get_proxy_type(const struct engine *e, const struct cell *ci,
  * @param cj The second #cell.
  * @param proxy_type The type of proxy.
  */
-void engine_add_proxy(struct engine *e, const struct cell *ci,
-                      const struct cell *cj, const int proxy_type) {
+void engine_add_proxy(struct engine *e, struct cell *ci, struct cell *cj,
+                      const int proxy_type) {
 
 #ifdef WITH_MPI
   /* Unpack what we need */
