@@ -502,6 +502,10 @@ __attribute__((always_inline)) INLINE static void sink_swallow_sink(
   spi->number_of_sink_swallows += spj->number_of_sink_swallows;
   spi->number_of_gas_swallows += spj->number_of_gas_swallows;
 
+  /* Sum the running accretion totals */
+  spi->total_accreted_gas_mass += spj->total_accreted_gas_mass;
+  spi->total_mass_to_accrete += spj->total_mass_to_accrete;
+
   message("sink %lld swallow sink particle %lld. New mass: %e.", spi->id,
           spj->id, spi->mass);
 }
