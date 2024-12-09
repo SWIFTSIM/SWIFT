@@ -390,7 +390,7 @@ double lightcone_map_neutrino_mass_get_value(
       double weight = 1.0;
       gpart_neutrino_weight_mesh_only(gp, &nu_model, &weight);
       return gp->mass * weight;
-    } break;
+    }
     default:
       error("lightcone map function called on wrong particle type");
       return -1.0; /* Prevent 'missing return' error */
