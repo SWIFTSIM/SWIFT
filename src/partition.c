@@ -2131,6 +2131,13 @@ void partition_initial_partition(struct partition *initial_partition,
 #endif
   }
 
+  /* In zoom land we need to handle the void cells (these are always local
+   * if they have a single local "top level progeny" somewhere in
+   * their tree). */
+  if (s->with_zoom_region) {
+    zoom_partition_voids(s, nodeID);
+  }
+
   if (s->e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());

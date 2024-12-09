@@ -69,9 +69,10 @@ void zoom_void_timestep_collect(struct engine *e);
 /* Zoom proxy creation functions. */
 void zoom_engine_makeproxies(struct engine *e);
 
-/* Zoom region partitioning functions. */
+/* Zoom partitioning functions. */
 void partition_zoom_grid(struct partition *initial_partition, int nr_nodes,
                          struct space *s);
-void partition_zoom_vector(const int nr_nodes, struct space *s);
+void partition_zoom_vector(int nr_nodes, struct space *s);
+void zoom_partition_voids(struct space *s, int nodeID);
 
 #endif /* SWIFT_ZOOM_H */
