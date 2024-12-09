@@ -73,8 +73,10 @@ struct sink {
   /*! Mass accreted in this timestep (used for swallowing) */
   float mass_to_accrete;
 
-  /*! For testing */
+  /*! Total mass accreted onto the sink. Summed on sink-sink mergers */
   float total_accreted_gas_mass;
+
+  /*! Total mass the sink should have accreted. Summed on sink-sink mergers */
   float total_mass_to_accrete;
 
   /*! Density of the gas surrounding the black hole. */
