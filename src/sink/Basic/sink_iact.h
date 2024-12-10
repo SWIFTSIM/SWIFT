@@ -26,7 +26,8 @@
 #include "sink_properties.h"
 
 /**
- * @brief Gas particle interactions relevant for sinks, to run in hydro density interaction
+ * @brief Gas particle interactions relevant for sinks, to run in hydro density
+ * interaction
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
@@ -43,7 +44,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_sink(
     const float H) {}
 
 /**
- * @brief Gas particle interactions relevant for sinks, to run in hydro density interaction (non symmetric version)
+ * @brief Gas particle interactions relevant for sinks, to run in hydro density
+ * interaction (non symmetric version)
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
@@ -61,7 +63,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_sink(
 
 /**
  * @brief Density interaction between sinks and gas (non-symmetric).
- * 
+ *
  * The gas particle cannot be touched.
  *
  * @param r2 Comoving square distance between the two particles.
@@ -191,7 +193,8 @@ runner_iact_nonsym_sinks_sink_swallow(
 
   /* Compute the Newtonian or softened potential the sink exherts onto the
       gas particle */
-  /* TODO: needs updating for MPI safety. We don't have access to foreign gparts here. */
+  /* TODO: needs updating for MPI safety. We don't have access to foreign gparts
+   * here. */
   const float eps = gravity_get_softening(si->gpart, grav_props);
   const float eps2 = eps * eps;
   const float eps_inv = 1.f / eps;
@@ -338,11 +341,12 @@ runner_iact_nonsym_sinks_gas_swallow(
      * Recall that in SWIFT the SPH kernel is recovered by computing
      * kernel_eval() and muliplying by (1/h^d) */
 
-    const float prob = (si->subgrid_mass - si->mass) * hi_inv_dim * wi / si->rho_gas;
+    const float prob =
+        (si->subgrid_mass - si->mass) * hi_inv_dim * wi / si->rho_gas;
 
     /* Draw a random number (Note mixing both IDs) */
-    const float rand = random_unit_interval_two_IDs(si->id, pj->id, ti_current, 
-                                            random_number_sink_swallow);
+    const float rand = random_unit_interval_two_IDs(si->id, pj->id, ti_current,
+                                                    random_number_sink_swallow);
 
     /* Are we lucky? */
     if (rand < prob) {

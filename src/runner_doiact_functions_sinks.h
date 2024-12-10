@@ -361,14 +361,10 @@ void DOPAIR1_SUBSET_SINKS_NAIVE(struct runner *r, struct cell *restrict ci,
 #endif
 
   const struct engine *e = r->e;
-  const integertime_t ti_current = e->ti_current;
   const struct cosmology *cosmo = e->cosmology;
   const int with_cosmology = e->policy & engine_policy_cosmology;
-  const int si_is_local = ci->nodeID == e->nodeID;
-
   const int count_j = cj->hydro.count;
   struct part *restrict parts_j = cj->hydro.parts;
-  struct xpart *restrict xparts_j = cj->hydro.xparts;
 
   /* Early abort? */
   if (count_j == 0) return;
@@ -395,7 +391,6 @@ void DOPAIR1_SUBSET_SINKS_NAIVE(struct runner *r, struct cell *restrict ci,
 
       /* Get a pointer to the jth particle. */
       struct part *restrict pj = &parts_j[pjd];
-      struct xpart *restrict xpj = &xparts_j[pjd];
 
       /* Skip inhibited particles */
       if (part_is_inhibited(pj, e)) continue;
@@ -444,14 +439,10 @@ void DOSELF1_SUBSET_SINKS(struct runner *r, struct cell *restrict ci,
 #endif
 
   const struct engine *e = r->e;
-  const integertime_t ti_current = e->ti_current;
   const struct cosmology *cosmo = e->cosmology;
   const int with_cosmology = e->policy & engine_policy_cosmology;
-  const int si_is_local = 1; /* SELF tasks are always local */
-
   const int count_i = ci->hydro.count;
   struct part *restrict parts_j = ci->hydro.parts;
-  struct xpart *restrict xparts_j = ci->hydro.xparts;
 
   /* Early abort? */
   if (count_i == 0) return;
@@ -476,7 +467,6 @@ void DOSELF1_SUBSET_SINKS(struct runner *r, struct cell *restrict ci,
 
       /* Get a pointer to the jth particle. */
       struct part *restrict pj = &parts_j[pjd];
-      struct xpart *restrict xpj = &xparts_j[pjd];
 
       /* Early abort? */
       if (part_is_inhibited(pj, e)) continue;

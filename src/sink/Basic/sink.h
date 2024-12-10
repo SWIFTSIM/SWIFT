@@ -75,7 +75,8 @@ __attribute__((always_inline)) INLINE static void sink_first_init_sink(
   sp->swallowed_angular_momentum[1] = 0.f;
   sp->swallowed_angular_momentum[2] = 0.f;
 
-  /* Initially set the subgrid mass equal to the dynamical mass read from the ICs. */
+  /* Initially set the subgrid mass equal to the dynamical mass read from the
+   * ICs. */
   sp->subgrid_mass = sp->mass;
 
   sink_mark_sink_as_not_swallowed(&sp->merger_data);

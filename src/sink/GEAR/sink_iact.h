@@ -48,10 +48,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_sink(
     struct part *restrict pi, struct part *restrict pj, const float a,
     const float H) {
 
-  /* In order to prevent the formation of two sink particles too close together, 
-   * we keep only gas particles with the smallest potential. The distance at which
-   * to prevent sink formation is the cutoff radius if this is fixed, or it is 
-   * the variable smoothing length times gamma. */
+  /* In order to prevent the formation of two sink particles too close together,
+   * we keep only gas particles with the smallest potential. The distance at
+   * which to prevent sink formation is the cutoff radius if this is fixed, or
+   * it is the variable smoothing length times gamma. */
 
   const float r = sqrtf(r2);
   const float rmax = max(hi, hj) * kernel_gamma;
@@ -94,10 +94,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_sink(
     struct part *restrict pi, const struct part *restrict pj, const float a,
     const float H) {
 
-  /* In order to prevent the formation of two sink particles too close together, 
-   * we keep only gas particles with the smallest potential. The distance at which
-   * to prevent sink formation is the cutoff radius if this is fixed, or it is 
-   * the variable smoothing length times gamma. */
+  /* In order to prevent the formation of two sink particles too close together,
+   * we keep only gas particles with the smallest potential. The distance at
+   * which to prevent sink formation is the cutoff radius if this is fixed, or
+   * it is the variable smoothing length times gamma. */
 
   const float r = sqrtf(r2);
   const float rmax = max(hi, hj) * kernel_gamma;

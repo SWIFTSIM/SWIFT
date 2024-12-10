@@ -2086,10 +2086,10 @@ void runner_do_sinks_density_ghost(struct runner *r, struct cell *c,
         }
 
         /* Calculate the accretion rate and accreted mass this timestep, for use
-        * in swallow loop */
+         * in swallow loop */
         sink_prepare_swallow(sp, e->sink_properties, e->physical_constants,
-                              e->cosmology, e->cooling_func, e->entropy_floor,
-                              e->time, with_cosmology, dt, e->ti_current);
+                             e->cosmology, e->cooling_func, e->entropy_floor,
+                             e->time, with_cosmology, dt, e->ti_current);
       }
     }
   }

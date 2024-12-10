@@ -174,8 +174,7 @@ INLINE static void sink_write_particles(const struct sink* sinks,
       "Physical swallowed angular momentum of the particles");
 
   list[8] = io_make_output_field(
-      "SubgridMasses", FLOAT, 1, UNIT_CONV_MASS, 0.f, sinks,
-      subgrid_mass,
+      "SubgridMasses", FLOAT, 1, UNIT_CONV_MASS, 0.f, sinks, subgrid_mass,
       "Subgrid mass of the sink. Summed on sink-sink mergers");
 
   list[9] = io_make_physical_output_field(
