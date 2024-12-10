@@ -440,8 +440,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   }
 
   /* Correcting for lorentz force component parallel to curlB */
-  float sph_acc_term_mul_i = 0.0f;
-  float sph_acc_term_mul_j = 0.0f;
+  sph_acc_term_mul_i = 0.0f;
+  sph_acc_term_mul_j = 0.0f;
   for (int k = 1; k < 3; k++) {
     sph_acc_term_mul_i += sph_acc_term_i[k]*curlBi[k]/curlB2i;
     sph_acc_term_mul_j += sph_acc_term_j[k]*curlBj[k]/curlB2j; 
@@ -747,14 +747,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
 
   
   float curlBi[3];
-  float curlBj[3];
   float curlB2i;
-  float curlB2j;
   curlBi[0] = pi->mhd_data.curl_B[0];
   curlBi[1] = pi->mhd_data.curl_B[1];
   curlBi[2] = pi->mhd_data.curl_B[2];
   curlB2i = curlBi[0] * curlBi[0] + curlBi[1] * curlBi[1] + curlBi[2] * curlBi[2];
  /*
+  float curlBj[3];
+  float curlB2j;
   curlBj[0] = pj->mhd_data.curl_B[0];
   curlBj[1] = pj->mhd_data.curl_B[1];
   curlBj[2] = pj->mhd_data.curl_B[2];
@@ -856,7 +856,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
     sph_acc_term_i[k] -= Bi[k]*sph_acc_term_mul_i; 
   }
 /* Correcting for lorentz force component parallel to curlB */
-  float sph_acc_term_mul_i = 0.0f;
+  sph_acc_term_mul_i = 0.0f;
   for (int k = 1; k < 3; k++) {
     sph_acc_term_mul_i += sph_acc_term_i[k]*curlBi[k]/curlB2i;
   }
