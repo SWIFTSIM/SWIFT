@@ -335,7 +335,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   curlBj[2] = pj->mhd_data.curl_B[2];
   curlB2i = curlBi[0] * curlBi[0] + curlBi[1] * curlBi[1] + curlBi[2] * curlBi[2];
   curlB2j = curlBj[0] * curlBj[0] + curlBj[1] * curlBj[1] + curlBj[2] * curlBj[2];
-/*
+*/
   float dB[3];
   dB[0] = Bi[0] - Bj[0];
   dB[1] = Bi[1] - Bj[1];
