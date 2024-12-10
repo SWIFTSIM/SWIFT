@@ -68,9 +68,8 @@ def simple_bondi_hoyle(t, m, rho, v, cs):
 snapshots = glob(f'./{argv[1]}/*.hdf5')
 
 times = np.empty(len(snapshots),dtype=np.float32)
-gas_accreted_evo = np.empty(len(snapshots),dtype=np.float32)
-gas_desired_evo = np.empty(len(snapshots),dtype=np.float32)
 mass_evo = np.empty(len(snapshots),dtype=np.float32)
+subgrid_mass_evo = np.empty(len(snapshots),dtype=np.float32)
 rho_evo = np.empty(len(snapshots),dtype=np.float32)
 v_evo = np.empty(len(snapshots),dtype=np.float32)
 cs_evo = np.empty(len(snapshots),dtype=np.float32)
@@ -81,15 +80,13 @@ for s, snap in enumerate(snapshots):
 
     with h5py.File(snap) as f:
         times[s] = f['Header'].attrs['Time'][0]
-
-        gas_accreted_evo[s] = f['PartType3/TotalAccrMass'][0]
-        gas_desired_evo[s] = f['PartType3/TotalMassToAccrete'][0]
         mass_evo[s] = f['PartType3/Masses'][0]
-        rho_evo[s] = f['PartType3/GasDensity'][0]
-        cs_evo[s] = f['PartType3/GasSoundSpeed'][0]
+        subgrid_mass_evo[s] = f['PartType3/SubgridMasses'][0]
+        rho_evo[s] = f['PartType3/GasDensities'][0]
+        cs_evo[s] = f['PartType3/GasSoundSpeeds'][0]
         hsml_evo[s] = f['PartType3/SmoothingLengths'][0]
 
-        v = f['PartType3/GasVelocity'][0] - f['PartType3/Velocities'][0]
+        v = f['PartType3/GasVelocities'][0] - f['PartType3/Velocities'][0]
         v_evo[s] = np.sqrt(v[0]**2+v[1]**2+v[2]**2)
 
 
@@ -102,8 +99,9 @@ t = times/times[-1]
 # Time evolution of the sink mass, target mass, and Bondi-Hoyle prediction
 fig, ax = plt.subplots(1,figsize=(8,6))
 ax.plot(t,np.log10(m_sink_bondi_prediction),label=r'Simple Bondi-Hoyle, constant $\rho$, $v$, $c_{\rm s}$')
-ax.plot(t,np.log10((mass_evo[0]+gas_desired_evo) * 1e10),label=r'$m_{\rm sink,0} + m_{\rm target}^{\rm gas}$')
-ax.plot(t,np.log10(mass_evo * 1e10),label='Actual')
+ax.plot(t,np.log10(subgrid_mass_evo * 1e10),label=r'Subgrid mass')
+ax.plot(t,np.log10(mass_evo * 1e10),label=r'Dynamical mass')
+
 ax.set_xlabel(r"$t/t_{\rm final}$")
 ax.set_ylabel(r"$\log_{10}(M_{\rm sink})$")
 ax.legend(fontsize=14)
@@ -112,7 +110,7 @@ fig.savefig('mass_evolution.png',bbox_inches='tight')
 
 # Time evolution of the total mass accreted relative to the target mass
 fig, ax = plt.subplots(1,figsize=(8,6))
-ax.plot(t,gas_accreted_evo/gas_desired_evo)
+ax.plot(t,mass_evo/subgrid_mass_evo)
 ax.set_xlabel(r"$t/t_{\rm final}$")
 ax.set_ylabel(r"$m_{\rm accr}^{\rm gas}/m_{\rm target}^{\rm gas}$")
 fig.savefig('target_mass_ratio.png',bbox_inches='tight')
