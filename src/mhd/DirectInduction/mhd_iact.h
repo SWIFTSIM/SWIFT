@@ -325,6 +325,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
 
   float curlBi[3];
   float curlBj[3];
+  float curlB2i;
+  float curlB2j;
   curlBi[0] = pi->mhd_data.curl_B[0];
   curlBi[1] = pi->mhd_data.curl_B[1];
   curlBi[2] = pi->mhd_data.curl_B[2];
@@ -746,6 +748,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   
   float curlBi[3];
   float curlBj[3];
+  float curlB2i;
+  float curlB2j;
   curlBi[0] = pi->mhd_data.curl_B[0];
   curlBi[1] = pi->mhd_data.curl_B[1];
   curlBi[2] = pi->mhd_data.curl_B[2];
