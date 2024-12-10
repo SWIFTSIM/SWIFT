@@ -425,6 +425,18 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   sph_acc_term_j[1] = -sph_acc_term_i[1];
   sph_acc_term_j[2] = -sph_acc_term_i[2];
 
+  /* Correcting for lorentz force component parallel to B */
+  float sph_acc_term_mul_i = 0.0f;
+  float sph_acc_term_mul_j = 0.0f;
+  for (int k = 1; k < 3; k++) {
+    sph_acc_term_mul_i += sph_acc_term_i[k]*Bi[k]/B2i;
+    sph_acc_term_mul_j += sph_acc_term_j[k]*Bj[k]/B2j; 
+  }
+  for (int k = 1; k < 3; k++) {
+    sph_acc_term_i[k] -= Bi[k]*sph_acc_term_mul_i; 
+    sph_acc_term_j[k] -= Bj[k]*sph_acc_term_mul_j; 
+  }
+
   /* Divergence cleaning term */
   /* Manifestly *NOT* symmetric in i <-> j */
 
@@ -814,6 +826,16 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
       -1.f * over_rho2_i * wi_dr * Bri * permeability_inv * r_inv * Bi[2];
   sph_acc_term_i[2] +=
       -1.f * over_rho2_j * wj_dr * Brj * permeability_inv * r_inv * Bj[2];
+
+/* Correcting for lorentz force component parallel to B */
+  float sph_acc_term_mul_i = 0.0f;
+  for (int k = 1; k < 3; k++) {
+    sph_acc_term_mul_i += sph_acc_term_i[k]*Bi[k]/B2i;
+  }
+  for (int k = 1; k < 3; k++) {
+    sph_acc_term_i[k] -= Bi[k]*sph_acc_term_mul_i; 
+  }
+
 
   /* Divergence cleaning term */
   /* Manifestly *NOT* symmetric in i <-> j */
