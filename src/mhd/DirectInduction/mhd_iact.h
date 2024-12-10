@@ -739,7 +739,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   Bj[0] = pj->mhd_data.B_over_rho[0] * rhoj;
   Bj[1] = pj->mhd_data.B_over_rho[1] * rhoj;
   Bj[2] = pj->mhd_data.B_over_rho[2] * rhoj;
-
+  
   const float B2i = Bi[0] * Bi[0] + Bi[1] * Bi[1] + Bi[2] * Bi[2];
   const float B2j = Bj[0] * Bj[0] + Bj[1] * Bj[1] + Bj[2] * Bj[2];
 
@@ -753,12 +753,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   curlBi[0] = pi->mhd_data.curl_B[0];
   curlBi[1] = pi->mhd_data.curl_B[1];
   curlBi[2] = pi->mhd_data.curl_B[2];
+  curlB2i = curlBi[0] * curlBi[0] + curlBi[1] * curlBi[1] + curlBi[2] * curlBi[2];
+ /*
   curlBj[0] = pj->mhd_data.curl_B[0];
   curlBj[1] = pj->mhd_data.curl_B[1];
   curlBj[2] = pj->mhd_data.curl_B[2];
   curlB2i = curlBi[0] * curlBi[0] + curlBi[1] * curlBi[1] + curlBi[2] * curlBi[2];
   curlB2j = curlBj[0] * curlBj[0] + curlBj[1] * curlBj[1] + curlBj[2] * curlBj[2];
-
+  */
 
   float dB[3];
   dB[0] = Bi[0] - Bj[0];
