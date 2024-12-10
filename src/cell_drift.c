@@ -991,8 +991,8 @@ void cell_drift_sink(struct cell *c, const struct engine *e, int force) {
   struct sink *const sinks = c->sinks.parts;
 
   float dx_max = 0.f, dx2_max = 0.f;
-  float cell_r_max = 0.f;
-  float cell_r_max_active = 0.f;
+  float cell_h_max = 0.f;
+  float cell_h_max_active = 0.f;
 
   /* Drift irrespective of cell flags? */
   force = (force || cell_get_flag(c, cell_flag_do_sink_drift));
@@ -1032,14 +1032,14 @@ void cell_drift_sink(struct cell *c, const struct engine *e, int force) {
 
         /* Update */
         dx_max = max(dx_max, cp->sinks.dx_max_part);
-        cell_r_max = max(cell_r_max, cp->sinks.r_cut_max);
-        cell_r_max_active = max(cell_r_max_active, cp->sinks.r_cut_max_active);
+        cell_h_max = max(cell_h_max, cp->sinks.h_max);
+        cell_h_max_active = max(cell_h_max_active, cp->sinks.h_max_active);
       }
     }
 
     /* Store the values */
-    c->sinks.r_cut_max = cell_r_max;
-    c->sinks.r_cut_max_active = cell_r_max_active;
+    c->sinks.h_max = cell_h_max;
+    c->sinks.h_max_active = cell_h_max_active;
     c->sinks.dx_max_part = dx_max;
 
     /* Update the time of the last drift */
@@ -1118,7 +1118,7 @@ void cell_drift_sink(struct cell *c, const struct engine *e, int force) {
       dx2_max = max(dx2_max, dx2);
 
       /* Maximal smoothing length */
-      cell_r_max = max(cell_r_max, sink->r_cut);
+      cell_h_max = max(cell_h_max, sink->h);
 
       /* Mark the particle has not being swallowed */
       sink_mark_sink_as_not_swallowed(&sink->merger_data);
@@ -1127,7 +1127,7 @@ void cell_drift_sink(struct cell *c, const struct engine *e, int force) {
       if (sink_is_active(sink, e)) {
         sink_init_sink(sink);
 
-        cell_r_max_active = max(cell_r_max_active, sink->r_cut);
+        cell_h_max_active = max(cell_h_max_active, sink->h);
       }
     }
 
@@ -1135,8 +1135,8 @@ void cell_drift_sink(struct cell *c, const struct engine *e, int force) {
     dx_max = sqrtf(dx2_max);
 
     /* Store the values */
-    c->sinks.r_cut_max = cell_r_max;
-    c->sinks.r_cut_max_active = cell_r_max_active;
+    c->sinks.h_max = cell_h_max;
+    c->sinks.h_max_active = cell_h_max_active;
     c->sinks.dx_max_part = dx_max;
 
     /* Update the time of the last drift */

@@ -42,21 +42,21 @@
  * @param pj Second particle.
  * @param a Current scale factor.
  * @param H Current Hubble parameter.
- * @param cut_off_radius Sink cut off radius.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_sink(
     const float r2, const float dx[3], const float hi, const float hj,
     struct part *restrict pi, struct part *restrict pj, const float a,
-    const float H, const float cut_off_radius) {
+    const float H) {
 
-  /* In order to prevent the formation of two sink particles at a distance
-   * smaller than the sink cutoff radius, we keep only gas particles with
-   * the smallest potential. */
+  /* In order to prevent the formation of two sink particles too close together,
+   * we keep only gas particles with the smallest potential. The distance at
+   * which to prevent sink formation is the cutoff radius if this is fixed, or
+   * it is the variable smoothing length times gamma. */
 
   const float r = sqrtf(r2);
+  const float rmax = max(hi, hj) * kernel_gamma;
 
-  /* if the distance is less than the cut off radius */
-  if (r < cut_off_radius) {
+  if (r < rmax) {
     float potential_i = pi->sink_data.potential;
     float potential_j = pj->sink_data.potential;
 
@@ -88,20 +88,21 @@ __attribute__((always_inline)) INLINE static void runner_iact_sink(
  * @param pj Second particle (not updated).
  * @param a Current scale factor.
  * @param H Current Hubble parameter.
- * @param cut_off_radius Sink cut off radius.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_sink(
     const float r2, const float dx[3], const float hi, const float hj,
     struct part *restrict pi, const struct part *restrict pj, const float a,
-    const float H, const float cut_off_radius) {
+    const float H) {
 
-  /* In order to prevent the formation of two sink particles at a distance
-   * smaller than the sink cutoff radius, we keep only gas particles with
-   * the smallest potential. */
+  /* In order to prevent the formation of two sink particles too close together,
+   * we keep only gas particles with the smallest potential. The distance at
+   * which to prevent sink formation is the cutoff radius if this is fixed, or
+   * it is the variable smoothing length times gamma. */
 
   const float r = sqrtf(r2);
+  const float rmax = max(hi, hj) * kernel_gamma;
 
-  if (r < cut_off_radius) {
+  if (r < rmax) {
     float potential_i = pi->sink_data.potential;
     float potential_j = pj->sink_data.potential;
 
@@ -111,7 +112,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_sink(
   }
 }
 
-/* @brief Density interaction between two particles (non-symmetric).
+/**
+ * @brief Density interaction between two particles (non-symmetric).
+ *
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (pi - pj).
+ * @param hi Comoving smoothing length of particle i.
  * @param hj Comoving smoothing-length of particle j.
  * @param si First particle (sink).
  * @param pj Second particle (gas, not updated).
@@ -124,7 +130,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_sink(
  */
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_sinks_gas_density(
-    const float r2, const float dx[3], const float ri, const float hj,
+    const float r2, const float dx[3], const float hi, const float hj,
     struct sink *si, const struct part *pj, const int with_cosmology,
     const struct cosmology *cosmo, const struct gravity_props *grav_props,
     const struct sink_props *sink_props, const integertime_t ti_current,
@@ -137,7 +143,6 @@ runner_iact_nonsym_sinks_gas_density(
 
   /* Compute the kernel function */
   const float r = sqrtf(r2);
-  const float hi = ri / kernel_gamma;
   const float hi_inv = 1.0f / hi;
   const float ui = r * hi_inv;
   kernel_deval(ui, &wi, &wi_dx);
@@ -165,6 +170,16 @@ runner_iact_nonsym_sinks_gas_density(
   si->to_collect.velocity_gas[0] += mj * dv[0] * wi;
   si->to_collect.velocity_gas[1] += mj * dv[1] * wi;
   si->to_collect.velocity_gas[2] += mj * dv[2] * wi;
+
+  /* Compute contribution to the number of neighbours */
+  si->density.wcount += wi;
+  si->density.wcount_dh -= (hydro_dimension * wi + ui * wi_dx);
+
+#ifdef SWIFT_SINK_DENSITY_CHECKS
+  si->rho_check += hydro_get_mass(pj) * wi;
+  si->n_check += wi;
+  si->N_check_density++;
+#endif
 }
 
 /**
@@ -175,14 +190,14 @@ runner_iact_nonsym_sinks_gas_density(
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
- * @param ri Comoving cut off radius of particle i.
- * @param rj Comoving cut off radius of particle j.
+ * @param hi Comoving smoothing length of particle i.
+ * @param hj Comoving smoothing length of particle j.
  * @param si First sink particle.
  * @param sj Second sink particle.
  */
 __attribute__((always_inline)) INLINE static void
 sink_collect_properties_from_sink(const float r2, const float dx[3],
-                                  const float ri, const float rj,
+                                  const float hi, const float hj,
                                   struct sink *restrict si,
                                   struct sink *restrict sj,
                                   const struct gravity_props *grav_props) {
@@ -229,8 +244,8 @@ sink_collect_properties_from_sink(const float r2, const float dx[3],
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
- * @param ri Comoving cut off radius of particle i.
- * @param rj Comoving cut off radius of particle j.
+ * @param hi Comoving smoothing length of particle i.
+ * @param hj Comoving smoothing length of particle j.
  * @param si First sink particle.
  * @param sj Second sink particle.
  * @param with_cosmology if we run with cosmology.
@@ -242,15 +257,18 @@ sink_collect_properties_from_sink(const float r2, const float dx[3],
  */
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_sinks_sink_swallow(
-    const float r2, const float dx[3], const float ri, const float rj,
+    const float r2, const float dx[3], const float hi, const float hj,
     struct sink *restrict si, struct sink *restrict sj,
     const int with_cosmology, const struct cosmology *cosmo,
     const struct gravity_props *grav_props,
     const struct sink_props *sink_properties, const integertime_t ti_current,
     const double time) {
 
+  /* Convert the smoothing length back into a cutoff radius */
+  const float hig = hi * kernel_gamma;
+
   const float r = sqrtf(r2);
-  const float f_acc_r_acc_i = sink_properties->f_acc * ri;
+  const float f_acc_r_acc_i = sink_properties->f_acc * hig;
 
   /* Determine if the sink is dead, i.e. if its age is bigger than the
      age_threshold_unlimited */
@@ -264,7 +282,7 @@ runner_iact_nonsym_sinks_sink_swallow(
      they are both dead, we do not want to restrict the timesteps for 2-body
      encounters since they won't merge. */
   if (!si_is_dead || !sj_is_dead) {
-    sink_collect_properties_from_sink(r2, dx, ri, rj, si, sj, grav_props);
+    sink_collect_properties_from_sink(r2, dx, hi, hj, si, sj, grav_props);
   }
 
   /* If si is dead, do not swallow sj. However, sj can swallow si if it alive.
@@ -318,9 +336,9 @@ runner_iact_nonsym_sinks_sink_swallow(
     /* Momentum check------------------------------------------------------- */
     float L2_j = 0.0;      /* Relative momentum of the sink j */
     float L2_kepler = 0.0; /* Keplerian angular momentum squared */
-    sink_compute_angular_momenta_criterion(dx, v_plus_H_flow, r, si->r_cut,
-                                           si->mass, cosmo, grav_props,
-                                           &L2_kepler, &L2_j);
+    sink_compute_angular_momenta_criterion(
+        dx, v_plus_H_flow, r, si->h * kernel_gamma, si->mass, cosmo, grav_props,
+        &L2_kepler, &L2_j);
 
     /* To be accreted, the sink momentum should lower than the keplerian orbit
      * momentum. */
@@ -416,7 +434,7 @@ runner_iact_nonsym_sinks_sink_swallow(
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
- * @param ri Comoving cut off radius of particle i.
+ * @param hi Comoving smoothing length of particle i.
  * @param hj Comoving smoothing-length of particle j.
  * @param si First sink particle.
  * @param pj Second particle.
@@ -429,15 +447,18 @@ runner_iact_nonsym_sinks_sink_swallow(
  */
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_sinks_gas_swallow(
-    const float r2, const float dx[3], const float ri, const float hj,
+    const float r2, const float dx[3], const float hi, const float hj,
     struct sink *restrict si, struct part *restrict pj,
     const int with_cosmology, const struct cosmology *cosmo,
     const struct gravity_props *grav_props,
     const struct sink_props *sink_properties, const integertime_t ti_current,
     const double time) {
 
+  /* Convert the smoothing length back into a cutoff radius */
+  const float hig = hi * kernel_gamma;
+
   const float r = sqrtf(r2);
-  const float f_acc_r_acc = sink_properties->f_acc * ri;
+  const float f_acc_r_acc = sink_properties->f_acc * hig;
 
   /* Determine if the sink is dead, i.e. if its age is bigger than the
      age_threshold_unlimited */
@@ -460,7 +481,7 @@ runner_iact_nonsym_sinks_gas_swallow(
     }
 
     /* f_acc*r_acc <= r <= r_acc, we perform other checks */
-  } else if ((r >= f_acc_r_acc) && (r < ri)) {
+  } else if ((r >= f_acc_r_acc) && (r < hig)) {
 
     /* Relative velocity between the sinks */
     const float dv[3] = {pj->v[0] - si->v[0], pj->v[1] - si->v[1],
@@ -486,9 +507,9 @@ runner_iact_nonsym_sinks_gas_swallow(
     /* Momentum check------------------------------------------------------- */
     float L2_gas_j = 0.0;  /* Relative momentum of the gas */
     float L2_kepler = 0.0; /* Keplerian angular momentum squared */
-    sink_compute_angular_momenta_criterion(dx, v_plus_H_flow, r, si->r_cut,
-                                           si->mass, cosmo, grav_props,
-                                           &L2_kepler, &L2_gas_j);
+    sink_compute_angular_momenta_criterion(
+        dx, v_plus_H_flow, r, si->h * kernel_gamma, si->mass, cosmo, grav_props,
+        &L2_kepler, &L2_gas_j);
 
     /* To be accreted, the gas momentum should lower than the keplerian orbit
      * momentum. */
@@ -528,10 +549,10 @@ runner_iact_nonsym_sinks_gas_swallow(
     if (E_mec_sink_part >= 0) return;
 
     /* To be accreted, the gas smoothing length must be smaller than the sink
-       accretion radius. This is similar to AMR codes requesting the maximum
+       smoothing length. This is similar to AMR codes requesting the maximum
        refinement level close to the sink. */
     if (sink_properties->sink_formation_smoothing_length_criterion &&
-        (pj->h * kernel_gamma >= si->r_cut))
+        (pj->h >= si->h))
       return;
 
     /* Most bound pair check------------------------------------------------ */
