@@ -84,10 +84,10 @@ INLINE static void sink_props_init(
 
   /* Kernel properties */
   sp->eta_neighbours = parser_get_opt_param_float(
-      params, "Sinks:resolution_eta", hydro_props->eta_neighbours);
+      params, "BasicSink:resolution_eta", hydro_props->eta_neighbours);
 
   /* Tolerance for the smoothing length Newton-Raphson scheme */
-  sp->h_tolerance = parser_get_opt_param_float(params, "Sinks:h_tolerance",
+  sp->h_tolerance = parser_get_opt_param_float(params, "BasicSink:h_tolerance",
                                                hydro_props->h_tolerance);
 
   /* Get derived properties */
@@ -99,21 +99,21 @@ INLINE static void sink_props_init(
 
   /* Number of iterations to converge h */
   sp->max_smoothing_iterations =
-      parser_get_opt_param_int(params, "Sinks:max_ghost_iterations",
+      parser_get_opt_param_int(params, "BasicSink:max_ghost_iterations",
                                hydro_props->max_smoothing_iterations);
 
   /* Time integration properties */
   const float max_volume_change =
-      parser_get_opt_param_float(params, "Sinks:max_volume_change", -1);
+      parser_get_opt_param_float(params, "BasicSink:max_volume_change", -1);
   if (max_volume_change == -1)
     sp->log_max_h_change = hydro_props->log_max_h_change;
   else
     sp->log_max_h_change = logf(powf(max_volume_change, hydro_dimension_inv));
 
-  sp->use_nibbling = parser_get_param_int(params, "Sinks:use_nibbling");
+  sp->use_nibbling = parser_get_param_int(params, "BasicSink:use_nibbling");
   if (sp->use_nibbling) {
     sp->min_gas_mass_for_nibbling =
-        parser_get_param_float(params, "Sinks:min_gas_mass_for_nibbling_Msun");
+        parser_get_param_float(params, "BasicSink:min_gas_mass_for_nibbling_Msun");
     sp->min_gas_mass_for_nibbling *= phys_const->const_solar_mass;
   }
 }

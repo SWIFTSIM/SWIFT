@@ -56,6 +56,6 @@ SPH:
   h_max:                 250.
   minimal_temperature:   1
 
-Sinks:
+BasicSink:
   use_nibbling: 1
   min_gas_mass_for_nibbling_Msun: 5e4 # half the gas particle mass in msun
