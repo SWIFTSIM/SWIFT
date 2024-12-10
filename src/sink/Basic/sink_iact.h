@@ -344,7 +344,7 @@ runner_iact_nonsym_sinks_gas_swallow(
 
     /* Draw a random number (Note mixing both IDs) */
     const float rand = random_unit_interval_two_IDs(si->id, pj->id, ti_current, 
-                                            random_number_BH_swallow);
+                                            random_number_sink_swallow);
 
     /* Are we lucky? */
     if (rand < prob) {
