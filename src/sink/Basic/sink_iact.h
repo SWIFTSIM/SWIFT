@@ -280,7 +280,8 @@ runner_iact_nonsym_sinks_gas_swallow(
   kernel_eval(ui, &wi);
 
   /* Check if the sink needs to be fed. If not, we're done here */
-  if (si->mass_to_accrete <= 0) return;
+  const float sink_mass_deficit = si->subgrid_mass - si->mass_at_start_of_step;
+  if (sink_mass_deficit <= 0) return;
 
   if (sink_properties->use_nibbling) {
 
@@ -295,7 +296,7 @@ runner_iact_nonsym_sinks_gas_swallow(
 
     /* Next line is equivalent to w_ij * m_j / Sum_j (w_ij * m_j) */
     const float particle_weight = hi_inv_dim * wi * pj_mass_orig / si->rho_gas;
-    float nibble_mass = si->mass_to_accrete * particle_weight;
+    float nibble_mass = sink_mass_deficit * particle_weight;
 
     /* Need to check whether nibbling would push gas mass below minimum
      * allowed mass */
@@ -308,9 +309,6 @@ runner_iact_nonsym_sinks_gas_swallow(
     /* Transfer (dynamical) mass from the gas particle to the sink */
     si->mass += nibble_mass;
     hydro_set_mass(pj, new_gas_mass);
-
-    /* Track total mass accreted */
-    si->total_accreted_gas_mass += nibble_mass;
 
     /* Add the angular momentum of the accreted gas to the sink total.
      * Note no change to gas here. The cosmological conversion factors for
@@ -340,7 +338,7 @@ runner_iact_nonsym_sinks_gas_swallow(
      * Recall that in SWIFT the SPH kernel is recovered by computing
      * kernel_eval() and muliplying by (1/h^d) */
 
-    const float prob = si->mass_to_accrete * hi_inv_dim * wi / si->rho_gas;
+    const float prob = (si->subgrid_mass - si->mass) * hi_inv_dim * wi / si->rho_gas;
 
     /* Draw a random number (Note mixing both IDs) */
     const float rand = random_unit_interval_two_IDs(si->id, pj->id, ti_current, 

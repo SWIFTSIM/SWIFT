@@ -75,11 +75,8 @@ __attribute__((always_inline)) INLINE static void sink_first_init_sink(
   sp->swallowed_angular_momentum[1] = 0.f;
   sp->swallowed_angular_momentum[2] = 0.f;
 
-  /* For testing. Only relevant for nibbling mode. Use number_of_gas_swallows
-   * otherwise */
-  /* Summed on sink-sink mergers */
-  sp->total_accreted_gas_mass = 0.f;
-  sp->total_mass_to_accrete = 0.f;
+  /* Initially set the subgrid mass equal to the dynamical mass read from the ICs. */
+  sp->subgrid_mass = sp->mass;
 
   sink_mark_sink_as_not_swallowed(&sp->merger_data);
 }
@@ -113,7 +110,7 @@ __attribute__((always_inline)) INLINE static void sink_init_sink(
   sp->ngb_mass = 0.f;
   sp->num_ngbs = 0;
   sp->accretion_rate = 0.f;
-  sp->mass_to_accrete = 0.f;
+  sp->mass_at_start_of_step = sp->mass; /* sp->mass may grow in nibbling mode */
 
 #ifdef DEBUG_INTERACTIONS_SINKS
   for (int i = 0; i < MAX_NUM_OF_NEIGHBOURS_SINKS; ++i)
@@ -257,6 +254,9 @@ __attribute__((always_inline)) INLINE static void sink_prepare_swallow(
   /* Gather some physical constants (all in internal units) */
   const double G = constants->const_newton_G;
 
+  /* (Subgrid) mass of the sink (internal units) */
+  const double sink_mass = si->subgrid_mass;
+
   /* We can now compute the accretion rate (internal units) */
   /* Standard approach: compute accretion rate for all gas simultaneously.
    *
@@ -285,14 +285,11 @@ __attribute__((always_inline)) INLINE static void sink_prepare_swallow(
 
   const double denominator_inv = 1. / sqrt(denominator2);
 
-  double accr_rate = 4. * M_PI * G * G * si->mass * si->mass * gas_rho_phys *
+  double accr_rate = 4. * M_PI * G * G * sink_mass * sink_mass * gas_rho_phys *
                      denominator_inv * denominator_inv * denominator_inv;
 
   /* Integrate forward in time */
-  si->mass_to_accrete += accr_rate * dt;
-
-  /* Track total mass that should have been accreted according to Bondi-Hoyle */
-  si->total_mass_to_accrete += si->mass_to_accrete;
+  si->subgrid_mass += accr_rate * dt;
 }
 
 /**
@@ -475,6 +472,7 @@ __attribute__((always_inline)) INLINE static void sink_swallow_sink(
   /* Increase the masses of the sink. */
   spi->mass += spj->mass;
   spi->gpart->mass += spj->mass;
+  spi->subgrid_mass += spj->subgrid_mass;
 
   /* Collect the swallowed angular momentum */
   spi->swallowed_angular_momentum[0] += spj->swallowed_angular_momentum[0];
@@ -501,10 +499,6 @@ __attribute__((always_inline)) INLINE static void sink_swallow_sink(
   /* Add all other swallowed particles swallowed by the swallowed sink */
   spi->number_of_sink_swallows += spj->number_of_sink_swallows;
   spi->number_of_gas_swallows += spj->number_of_gas_swallows;
-
-  /* Sum the running accretion totals */
-  spi->total_accreted_gas_mass += spj->total_accreted_gas_mass;
-  spi->total_mass_to_accrete += spj->total_mass_to_accrete;
 
   message("sink %lld swallow sink particle %lld. New mass: %e.", spi->id,
           spj->id, spi->mass);

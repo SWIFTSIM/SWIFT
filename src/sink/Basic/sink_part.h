@@ -70,14 +70,11 @@ struct sink {
   /*! Instantaneous accretion rate */
   float accretion_rate;
 
-  /*! Mass accreted in this timestep (used for swallowing) */
-  float mass_to_accrete;
+  /*! Subgrid mass of the sink */
+  float subgrid_mass;
 
-  /*! Total mass accreted onto the sink. Summed on sink-sink mergers */
-  float total_accreted_gas_mass;
-
-  /*! Total mass the sink should have accreted. Summed on sink-sink mergers */
-  float total_mass_to_accrete;
+  /*! Sink mass at the start of each step, prior to any nibbling */
+  float mass_at_start_of_step;
 
   /*! Density of the gas surrounding the black hole. */
   float rho_gas;

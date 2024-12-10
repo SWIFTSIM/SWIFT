@@ -131,7 +131,7 @@ INLINE static void sink_write_particles(const struct sink* sinks,
                                         int with_cosmology) {
 
   /* Say how much we want to write */
-  *num_fields = 13;
+  *num_fields = 12;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_sink(
@@ -144,7 +144,7 @@ INLINE static void sink_write_particles(const struct sink* sinks,
       "co-moving position of the particles.");
 
   list[2] = io_make_output_field("Masses", FLOAT, 1, UNIT_CONV_MASS, 0.f, sinks,
-                                 mass, "Masses of the particles");
+                                 mass, "Dynamical masses of the sinks.");
 
   list[3] = io_make_physical_output_field(
       "ParticleIDs", ULONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f, sinks, id,
@@ -174,27 +174,22 @@ INLINE static void sink_write_particles(const struct sink* sinks,
       "Physical swallowed angular momentum of the particles");
 
   list[8] = io_make_output_field(
-      "TotalAccretedMass", FLOAT, 1, UNIT_CONV_MASS, 0.f, sinks,
-      total_accreted_gas_mass,
-      "Total gas mass accreted by this sink. Summed on sink-sink mergers");
+      "SubgridMasses", FLOAT, 1, UNIT_CONV_MASS, 0.f, sinks,
+      subgrid_mass,
+      "Subgrid mass of the sink. Summed on sink-sink mergers");
 
-  list[9] = io_make_output_field("TotalMassToAccrete", FLOAT, 1, UNIT_CONV_MASS,
-                                 0.f, sinks, total_mass_to_accrete,
-                                 "Total gas mass this sink should have "
-                                 "accreted. Summed on sink-sink mergers");
-
-  list[10] = io_make_physical_output_field(
+  list[9] = io_make_physical_output_field(
       "GasDensities", FLOAT, 1, UNIT_CONV_DENSITY, -3.f, sinks, rho_gas,
       /*can convert to comoving=*/1, "Gas density at the location of the sink");
 
-  list[11] = io_make_output_field_convert_sink(
+  list[10] = io_make_output_field_convert_sink(
       "GasVelocities", FLOAT, 3, UNIT_CONV_SPEED, 0.f, sinks,
       convert_sink_gas_vel,
       "Gas velocity at the location of the sink. Velocities are peculiar, i.e. "
       "a * dx/dt where x is the "
       "co-moving position of the gas.");
 
-  list[12] = io_make_output_field_convert_sink(
+  list[11] = io_make_output_field_convert_sink(
       "GasSoundSpeeds", DOUBLE, 1, UNIT_CONV_SPEED, 0.f, sinks,
       convert_sink_gas_sound_speed,
       "Gas sound speed at the location of the sink (physical units)");
