@@ -1853,19 +1853,6 @@ void runner_do_sinks_density_ghost(struct runner *r, struct cell *c,
             /* Finish the density calculation */
             sink_end_density(sp, cosmo);
 
-            /* Get particle time-step */
-            double dt;
-            if (with_cosmology) {
-              const integertime_t ti_step = get_integer_timestep(sp->time_bin);
-              const integertime_t ti_begin =
-                  get_integer_time_begin(e->ti_current - 1, sp->time_bin);
-
-              dt = cosmology_get_delta_time(e->cosmology, ti_begin,
-                                            ti_begin + ti_step);
-            } else {
-              dt = get_timestep(sp->time_bin, e->time_base);
-            }
-
             /* Compute one step of the Newton-Raphson scheme */
             const float n_sum = sp->density.wcount * h_old_dim;
             const float n_target = sinks_eta_dim;
