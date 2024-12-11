@@ -219,6 +219,7 @@ void engine_makeproxies(struct engine *e) {
   /* When running a zoom simulation we need to redirect to the zoom version. */
   if (e->s->with_zoom_region) {
     zoom_engine_makeproxies(e);
+    return;
   }
 
 #ifdef WITH_MPI
