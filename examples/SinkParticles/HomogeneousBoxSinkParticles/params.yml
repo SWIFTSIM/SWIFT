@@ -83,7 +83,7 @@ GEARFeedback:
   elements: [Fe, Mg, O, C, Al, Ca, Ba, Zn, Eu]    # Elements to read in the yields table. The number of element should be one less than the number of elements (N) requested during the configuration (--with-chemistry=GEAR_N).
 
 GEARSink:
-  cut_off_radius: 5e-3                            # Cut off radius of all the sinks in internal units.
+  cut_off_radius: 5e-3                            # Cut off radius of all the sinks in internal units. In GEAR, if this is specified, the cutoff radius is fixed, and the sink smoothing length is fixed at this value divided by kernel_gamma. If not, the cutoff radius varies with the sink smoothing length as r_cut = h*kernel_gamma.
   f_acc: 0.1
   temperature_threshold_K:       100              # Max temperature (in K) for forming a sink when density_threshold_g_per_cm3 <= density <= maximal_density_threshold_g_per_cm3.
   density_threshold_Hpcm3: 1e1           # Minimum gas density (in g/cm3) required to form a sink particle.
