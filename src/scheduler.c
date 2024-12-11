@@ -1784,6 +1784,9 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
 static void zoom_scheduler_splittask_gravity_void_self(struct task *t,
                                                        struct scheduler *s) {
 
+  struct space *sp = s->space;
+  struct engine *e = sp->e;
+
 #ifdef SWIFT_DEBUG_CHECKS
   /* Ensure we have a self task. */
   if (t->type != task_type_self) {
@@ -1822,12 +1825,13 @@ static void zoom_scheduler_splittask_gravity_void_self(struct task *t,
 
   /* If we have a top level task for a foreign cell we need to kill it off and
    * exit. */
-  if (t->ci->nodeID != s->space->e->nodeID) {
+  if (t->ci->nodeID != e->nodeID) {
     t->type = task_type_none;
     t->subtype = task_subtype_none;
     t->ci = NULL;
     t->cj = NULL;
     t->skip = 1;
+    return;
   }
 
   /* Now we're not in a void cell we can just call the normal splitter.  */
