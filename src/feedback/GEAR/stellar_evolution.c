@@ -722,8 +722,11 @@ void stellar_evolution_props_init(struct stellar_model* sm,
 
   /* Convert from M_sun to internal units */
   sm->discrete_star_minimal_gravity_mass *= phys_const->const_solar_mass;
-  message("discrete_star_minimal_gravity_mass: (internal units)          %e",
-          sm->discrete_star_minimal_gravity_mass);
+
+  if (engine_rank == 0) {
+    message("discrete_star_minimal_gravity_mass: (internal units)          %e",
+	    sm->discrete_star_minimal_gravity_mass);
+  }
 }
 
 /**
