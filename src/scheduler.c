@@ -20,6 +20,8 @@
  ******************************************************************************/
 
 /* Config parameters. */
+#include "cell.h"
+
 #include <config.h>
 
 /* Some standard headers. */
@@ -1615,10 +1617,16 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
       for (int j = 0; j < 8; j++) {
         struct cell *cpj = cj->progeny[j];
 
-        /* Skip any empty progeny of a void cell (void cells themselves
-        always
+        /* Skip any empty progeny of a void cell (void cells themselves always
          * have 0 particles but are never "empty"). */
         if (cpj->grav.count == 0 && cpj->subtype != cell_subtype_void) continue;
+
+        /* Skip entirely foreign non-void pairs. */
+        if ((cpi->subtype != cell_subtype_void &&
+             cpj->subtype != cell_subtype_void) &&
+            (cpi->nodeID != e->nodeID && cpj->nodeID != e->nodeID)) {
+          continue;
+        }
 
         /* Can we use a M-M interaction here? */
         if (cell_can_use_pair_mm(cpi, cpj, e, sp,
@@ -1656,9 +1664,16 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
       /* Unpack the progeny. */
       struct cell *cpi = ci->progeny[i];
 
-      /* Skip any empty progeny of a void cell (void cells themselves always
-       * have 0 particles but are never "empty"). */
+      /* Skip any empty or foreign progeny of a void cell (void cells themselves
+       * always have 0 particles but are never "empty"). */
       if (cpi->grav.count == 0 && cpi->subtype != cell_subtype_void) continue;
+
+      /* Skip entirely foreign non-void pairs. */
+      if ((cpi->subtype != cell_subtype_void &&
+           cj->subtype != cell_subtype_void) &&
+          (cpi->nodeID != e->nodeID && cj->nodeID != e->nodeID)) {
+        continue;
+      }
 
       /* Can we use a M-M interaction here? */
       if (cell_can_use_pair_mm(cpi, cj, e, sp,
@@ -1704,6 +1719,13 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
       /* Skip any empty progeny of a void cell (void cells themselves always
        * have 0 particles but are never "empty"). */
       if (cpj->grav.count == 0 && cpj->subtype != cell_subtype_void) continue;
+
+      /* Skip entirely foreign non-void pairs. */
+      if ((ci->subtype != cell_subtype_void &&
+           cpj->subtype != cell_subtype_void) &&
+          (ci->nodeID != e->nodeID && cpj->nodeID != e->nodeID)) {
+        continue;
+      }
 
       /* Can we use a M-M interaction here? */
       if (cell_can_use_pair_mm(ci, cpj, e, sp,
@@ -1796,6 +1818,16 @@ static void zoom_scheduler_splittask_gravity_void_self(struct task *t,
             s);
       }
     }
+  }
+
+  /* If we have a top level task for a foreign cell we need to kill it off and
+   * exit. */
+  if (t->ci->nodeID != s->space->e->nodeID) {
+    t->type = task_type_none;
+    t->subtype = task_subtype_none;
+    t->ci = NULL;
+    t->cj = NULL;
+    t->skip = 1;
   }
 
   /* Now we're not in a void cell we can just call the normal splitter.  */
