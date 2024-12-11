@@ -513,8 +513,6 @@ void *runner_main(void *data) {
             free(t->buff);
 	  } else if (t->subtype == task_subtype_sink_formation_counts) {
             free(t->buff);
-	  } else if (t->subtype == task_subtype_sink_formation_grav_counts) {
-            free(t->buff);
 	  } else if (t->subtype == task_subtype_sink_gas_swallow) {
             free(t->buff);
           } else if (t->subtype == task_subtype_sink_merger) {
@@ -539,9 +537,6 @@ void *runner_main(void *data) {
             free(t->buff);
 	  } else if (t->subtype == task_subtype_sink_formation_counts) {
             cell_unpack_sink_formation_counts(ci, (struct pcell_sink_formation_sinks *)t->buff);
-            free(t->buff);
-          } else if (t->subtype == task_subtype_sink_formation_grav_counts) {
-            cell_unpack_sink_formation_grav_counts(ci, (struct pcell_sink_formation_grav *)t->buff);
             free(t->buff);
           } else if (t->subtype == task_subtype_xv) {
             runner_do_recv_part(r, ci, 1, 1);
