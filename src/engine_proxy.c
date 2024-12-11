@@ -20,6 +20,8 @@
  ******************************************************************************/
 
 /* Config parameters. */
+#include "zoom_region/zoom.h"
+
 #include <config.h>
 
 /* MPI headers. */
@@ -200,6 +202,11 @@ void engine_add_proxy(struct engine *e, struct cell *ci, struct cell *cj,
  * @param e The #engine.
  */
 void engine_makeproxies(struct engine *e) {
+
+  /* When running a zoom simulation we need to redirect to the zoom version. */
+  if (e->s->with_zoom_region) {
+    zoom_engine_makeproxies(e);
+  }
 
 #ifdef WITH_MPI
   /* Let's time this */
