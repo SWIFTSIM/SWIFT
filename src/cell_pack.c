@@ -770,6 +770,7 @@ int cell_unpack_sf_counts(struct cell *c, struct pcell_sf_stars *pcells) {
  *
  * @return The number of packed cells.
  */
+// TODO:Rename the struct : it will be common to SF, SF_sink and sink_formation
 int cell_pack_grav_counts(struct cell *c, struct pcell_sf_grav *pcells) {
 
 #ifdef WITH_MPI
@@ -815,6 +816,7 @@ int cell_pack_grav_counts(struct cell *c, struct pcell_sf_grav *pcells) {
  *
  * @return The number of cells created.
  */
+// TODO:Rename the struct : it will be common to SF, SF_sink and sink_formation
 int cell_unpack_grav_counts(struct cell *c, struct pcell_sf_grav *pcells) {
 
 #ifdef WITH_MPI
