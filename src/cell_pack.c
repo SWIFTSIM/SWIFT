@@ -73,6 +73,8 @@ int cell_pack(struct cell *restrict c, struct pcell *restrict pc,
   pc->sinks.count = c->sinks.count;
   pc->black_holes.count = c->black_holes.count;
   pc->maxdepth = c->maxdepth;
+  pc->type = c->type;
+  pc->subtype = c->subtype;
 
   pc->grid.self_completeness = c->grid.self_completeness;
 
@@ -248,6 +250,12 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
                 struct space *restrict s, const int with_gravity) {
 #ifdef WITH_MPI
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->subtype == cell_subtype_void) {
+    error("Unpacking a void cell shouldn't happen!");
+  }
+#endif
+
   /* Unpack the current pcell. */
   c->hydro.h_max = pc->hydro.h_max;
   c->stars.h_max = pc->stars.h_max;
@@ -275,6 +283,8 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
   c->sinks.count = pc->sinks.count;
   c->black_holes.count = pc->black_holes.count;
   c->maxdepth = pc->maxdepth;
+  c->type = pc->type;
+  c->subtype = pc->subtype;
 
   c->grid.self_completeness = pc->grid.self_completeness;
 
