@@ -73,7 +73,6 @@ extern int engine_max_parts_per_cooling;
  */
 void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
                                   struct cell *cj, struct task *t_grav_counts,
-				  struct task *t_sink_formation_grav_counts,
                                   struct task *t_grav, const int with_sinks,
                                   const int with_star_formation,
 				  const int with_star_formation_sink) {
@@ -82,6 +81,7 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
   struct link *l = NULL;
   struct scheduler *s = &e->sched;
   const int nodeID = cj->nodeID;
+  const int grav_count_was_null = (t_grav_counts == NULL);
 
   /* Early abort (are we below the level where tasks are)? */
   if (!cell_get_flag(ci, cell_flag_has_tasks)) return;
@@ -90,38 +90,52 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
 #ifdef SWIFT_DEBUG_CHECKS
     if (ci->depth != 0)
       error(
-          "Attaching a grav_count task at a non-top level c->depth=%d "
+          "Attaching a grav_count (with_star_formation) task at a non-top level c->depth=%d "
           "c->count=%d",
           ci->depth, ci->hydro.count);
 #endif
     t_grav_counts = scheduler_addtask(
         s, task_type_send, task_subtype_grav_counts, ci->mpi.tag, 0, ci, cj);
-    scheduler_addunlock(s, ci->hydro.star_formation, t_grav_counts);
+    /* scheduler_addunlock(s, ci->hydro.star_formation, t_grav_counts); */
   }
   if (t_grav_counts == NULL && with_star_formation_sink
       && (ci->hydro.count > 0 || ci->sinks.count > 0)) {
 #ifdef SWIFT_DEBUG_CHECKS
     if (ci->depth != 0)
       error(
-          "Attaching a grav_count task at a non-top level c->depth=%d "
+          "Attaching a grav_count (with_star_formation_sink) task at a non-top level c->depth=%d "
+          "c->hydro.count=%d, c->sinks.count=%d",
+          ci->depth, ci->hydro.count, ci->sinks.count);
+#endif
+    t_grav_counts = scheduler_addtask(
+        s, task_type_send, task_subtype_grav_counts, ci->mpi.tag, 0, ci, cj);
+    /* scheduler_addunlock(s, ci->sinks.star_formation_sink, t_grav_counts); */
+  }
+  if (t_grav_counts == NULL && with_sinks && ci->hydro.count > 0) {
+#ifdef SWIFT_DEBUG_CHECKS
+    if (ci->depth != 0)
+      error(
+          "Attaching a grav_count (with sinks) task at a non-top level c->depth=%d "
           "c->count=%d",
           ci->depth, ci->hydro.count);
 #endif
     t_grav_counts = scheduler_addtask(
         s, task_type_send, task_subtype_grav_counts, ci->mpi.tag, 0, ci, cj);
-    scheduler_addunlock(s, ci->sinks.star_formation_sink, t_grav_counts);
+    /* scheduler_addunlock(s, ci->sinks.sink_formation, t_grav_counts); */
   }
-  if (t_sink_formation_grav_counts == NULL && with_sinks && ci->hydro.count > 0) {
-#ifdef SWIFT_DEBUG_CHECKS
-    if (ci->depth != 0)
-      error(
-          "Attaching a sink_formation grav_count task at a non-top level c->depth=%d "
-          "c->count=%d",
-          ci->depth, ci->hydro.count);
-#endif
-    t_sink_formation_grav_counts = scheduler_addtask(
-        s, task_type_send, task_subtype_sink_formation_grav_counts, ci->mpi.tag, 0, ci, cj);
-    scheduler_addunlock(s, ci->sinks.sink_formation, t_sink_formation_grav_counts);
+
+  /* Add the dependencies to t_grav_counts */
+  if (grav_count_was_null && with_star_formation && ci->hydro.count > 0) {
+    scheduler_addunlock(s, ci->top->hydro.star_formation, t_grav_counts);
+  }
+
+  if (grav_count_was_null && with_star_formation_sink
+      && (ci->hydro.count > 0 || ci->sinks.count > 0)) {
+    scheduler_addunlock(s, ci->top->sinks.star_formation_sink, t_grav_counts);
+  }
+
+  if (grav_count_was_null && with_sinks && ci->hydro.count > 0){
+    scheduler_addunlock(s, ci->top->sinks.sink_formation, t_grav_counts);
   }
 
   /* Check if any of the gravity tasks are for the target node. */
@@ -175,7 +189,7 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
       engine_addlink(e, &ci->mpi.send, t_grav_counts);
 
     if (with_sinks && ci->hydro.count > 0)
-      engine_addlink(e, &ci->mpi.send, t_sink_formation_grav_counts);
+      engine_addlink(e, &ci->mpi.send, t_grav_counts);
   }
 
   /* Recurse? */
@@ -183,7 +197,6 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
     for (int k = 0; k < 8; k++)
       if (ci->progeny[k] != NULL)
         engine_addtasks_send_gravity(e, ci->progeny[k], cj, t_grav_counts,
-				     t_sink_formation_grav_counts,
                                      t_grav, with_sinks, with_star_formation,
 				     with_star_formation_sink);
 
@@ -4867,7 +4880,6 @@ void engine_addtasks_send_mapper(void *map_data, int num_elements,
     if ((e->policy & engine_policy_self_gravity) &&
         (type & proxy_cell_type_gravity))
       engine_addtasks_send_gravity(e, ci, cj, /*t_grav_counts=*/NULL,
-				   /*t_sink_formation_grav_counts*/ NULL,
                                    /*t_grav=*/NULL, with_sinks,
 				   with_star_formation, with_star_formation_sink);
   }
