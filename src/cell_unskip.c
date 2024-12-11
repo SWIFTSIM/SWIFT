@@ -2071,10 +2071,10 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
 	/* Propagating new sink counts? */
         if (with_sinks) {
           if (ci_active && ci->hydro.count > 0) {
-            scheduler_activate_recv(s, ci->mpi.recv, task_subtype_sink_formation_grav_counts);
+            scheduler_activate_recv(s, ci->mpi.recv, task_subtype_grav_counts);
           }
           if (cj_active && cj->hydro.count > 0) {
-            scheduler_activate_send(s, cj->mpi.send, task_subtype_sink_formation_grav_counts,
+            scheduler_activate_send(s, cj->mpi.send, task_subtype_grav_counts,
                                     ci_nodeID);
           }
         }
@@ -2121,10 +2121,10 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
 	/* Propagating new sink counts? */
 	if (with_sinks) {
           if (cj_active && cj->hydro.count > 0) {
-            scheduler_activate_recv(s, cj->mpi.recv, task_subtype_sink_formation_grav_counts);
+            scheduler_activate_recv(s, cj->mpi.recv, task_subtype_grav_counts);
           }
           if (ci_active && ci->hydro.count > 0) {
-            scheduler_activate_send(s, ci->mpi.send, task_subtype_sink_formation_grav_counts,
+            scheduler_activate_send(s, ci->mpi.send, task_subtype_grav_counts,
                                     cj_nodeID);
           }
         }
