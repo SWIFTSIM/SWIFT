@@ -62,7 +62,7 @@ void zoom_engine_makeproxies(struct engine *e) {
     struct cell *ci = &cells[cid];
 
     /* Skip void cells (these will never need a proxy). */
-    if (ci->subtype == cell_subtype_void) continue;
+    // if (ci->subtype == cell_subtype_void) continue;
 
     /* Loop over the prospective neighbours. */
     for (int cjd = cid + 1; cjd < s->nr_cells; cjd++) {
@@ -71,7 +71,7 @@ void zoom_engine_makeproxies(struct engine *e) {
       struct cell *cj = &cells[cjd];
 
       /* Skip void cells (these will never need a proxy). */
-      if (cj->subtype == cell_subtype_void) continue;
+      // if (cj->subtype == cell_subtype_void) continue;
 
       /* Early abort (both same node) -> Nigel is happy */
       if (ci->nodeID == nodeID && cj->nodeID == nodeID) return;
