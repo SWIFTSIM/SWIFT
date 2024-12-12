@@ -491,17 +491,20 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
     size_t nr_gparts_exchanged = s->nr_gparts - nr_gparts;
     size_t nr_sparts_exchanged = s->nr_sparts - nr_sparts;
     size_t nr_bparts_exchanged = s->nr_bparts - nr_bparts;
+    size_t nr_sinks_exchanged = s->nr_sinks - nr_sinks;
     engine_exchange_strays(s->e, nr_parts, &h_index[nr_parts],
                            &nr_parts_exchanged, nr_gparts, &g_index[nr_gparts],
                            &nr_gparts_exchanged, nr_sparts, &s_index[nr_sparts],
                            &nr_sparts_exchanged, nr_bparts, &b_index[nr_bparts],
-                           &nr_bparts_exchanged);
+                           &nr_bparts_exchanged, nr_sinks,
+                           &sink_index[nr_sinks], &nr_sinks_exchanged);
 
     /* Set the new particle counts. */
     s->nr_parts = nr_parts + nr_parts_exchanged;
     s->nr_gparts = nr_gparts + nr_gparts_exchanged;
     s->nr_sparts = nr_sparts + nr_sparts_exchanged;
     s->nr_bparts = nr_bparts + nr_bparts_exchanged;
+    s->nr_sinks = nr_sinks + nr_sinks_exchanged;
 
   } else {
 #ifdef SWIFT_DEBUG_CHECKS
@@ -511,6 +514,8 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
       error("Number of sparts changing after repartition");
     if (s->nr_gparts != nr_gparts)
       error("Number of gparts changing after repartition");
+    if (s->nr_sinks != nr_sinks)
+      error("Number of sinks changing after repartition");
 #endif
   }
 
@@ -521,6 +526,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
       cell_spart_counts[k] = 0;
       cell_gpart_counts[k] = 0;
       cell_bpart_counts[k] = 0;
+      cell_sink_counts[k] = 0;
     }
   }
 
@@ -547,14 +553,25 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   }
 
   /* Re-allocate the index array for the bparts if needed.. */
-  if (s->nr_bparts + 1 > s_index_size) {
+  if (s->nr_bparts + 1 > b_index_size) {
     int *bind_new;
     if ((bind_new = (int *)swift_malloc(
              "b_index", sizeof(int) * (s->nr_bparts + 1))) == NULL)
-      error("Failed to allocate temporary s-particle indices.");
+      error("Failed to allocate temporary b-particle indices.");
     memcpy(bind_new, b_index, sizeof(int) * nr_bparts);
     swift_free("b_index", b_index);
     b_index = bind_new;
+  }
+
+  /* Re-allocate the index array for the sinks if needed.. */
+  if (s->nr_sinks + 1 > sink_index_size) {
+    int *sink_ind_new;
+    if ((sink_ind_new = (int *)swift_malloc(
+             "sink_index", sizeof(int) * (s->nr_sinks + 1))) == NULL)
+      error("Failed to allocate temporary sink-particle indices.");
+    memcpy(sink_ind_new, sink_index, sizeof(int) * nr_sinks);
+    swift_free("sink_index", sink_index);
+    sink_index = sink_ind_new;
   }
 
   const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
@@ -601,6 +618,20 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 #endif
   }
   nr_bparts = s->nr_bparts;
+
+  /* Assign each received sink to its cell. */
+  for (size_t k = nr_sinks; k < s->nr_sinks; k++) {
+    const struct sink *const sink = &s->sinks[k];
+    sink_index[k] = cell_getid(cdim, sink->x[0] * ih[0], sink->x[1] * ih[1],
+                               sink->x[2] * ih[2]);
+    cell_sink_counts[sink_index[k]]++;
+#ifdef SWIFT_DEBUG_CHECKS
+    if (cells_top[sink_index[k]].nodeID != local_nodeID)
+      error("Received sink-part that does not belong to me (nodeID=%i).",
+            cells_top[sink_index[k]].nodeID);
+#endif
+  }
+  nr_sinks = s->nr_sinks;
 
 #else /* WITH_MPI */
 
@@ -716,14 +747,14 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
       error("Inhibited particle sorted into a cell!");
 
     /* New cell index */
-    const int new_bind =
+    const int new_sink_ind =
         cell_getid(s->cdim, sink->x[0] * s->iwidth[0],
                    sink->x[1] * s->iwidth[1], sink->x[2] * s->iwidth[2]);
 
     /* New cell of this sink */
-    const struct cell *c = &s->cells_top[new_bind];
+    const struct cell *c = &s->cells_top[new_sink_ind];
 
-    if (sink_index[k] != new_bind)
+    if (sink_index[k] != new_sink_ind)
       error("sink's new cell index not matching sorted index.");
 
     if (sink->x[0] < c->loc[0] || sink->x[0] > c->loc[0] + c->width[0] ||
@@ -931,6 +962,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 
       /* Store the state at rebuild time */
       c->stars.parts_rebuild = c->stars.parts;
+      c->sinks.parts_rebuild = c->sinks.parts;
       c->grav.parts_rebuild = c->grav.parts;
 
       c->hydro.count_total = c->hydro.count + space_extra_parts;
