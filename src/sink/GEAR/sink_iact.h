@@ -138,7 +138,7 @@ runner_iact_nonsym_sinks_gas_density(
 
   /* Compute the kernel function */
   const float r = sqrtf(r2);
-  const float hi = ri/kernel_gamma;
+  const float hi = ri / kernel_gamma;
   const float hi_inv = 1.0f / hi;
   const float ui = r * hi_inv;
   kernel_deval(ui, &wi, &wi_dx);
@@ -196,14 +196,26 @@ sink_collect_properties_from_sink(const float r2, const float dx[3],
   const float dv_norm = sqrtf(dv[0] * dv[0] + dv[1] * dv[1] + dv[2] * dv[2]);
 
   /* Get the gravitional softening */
-  const float eps_i = gravity_get_softening(si->gpart, grav_props);
+  const float eps = gravity_get_softening(si->gpart, grav_props);
+  const float eps2 = eps * eps;
+  const float eps_inv = 1.f / eps;
+  const float eps_inv3 = eps_inv * eps_inv * eps_inv;
 
-  const float sum_r2_eps2 = r2 + eps_i * eps_i;
-  const float t_c = sqrt(sum_r2_eps2) / dv_norm;
+  /* Compute the kernel potential and force with mass = 1.0. We multiply by
+     the mass below if needed. */
+  float dphi_dr, pot;
+  runner_iact_grav_pp_full(r2, eps2, eps_inv, eps_inv3, 1.0, &dphi_dr, &pot);
+
+  /* From Grudic et al. (2021) eq 6, we replace the plummer functionnal form
+     sqrt(r^2 + eps^2) by the kernel 1.0/|phi(r,H=3*eps)| */
+  const float t_c = 1.0 / (fabsf(pot) * dv_norm);
   si->to_collect.minimal_sink_t_c = min(t_c, si->to_collect.minimal_sink_t_c);
 
+  /* From Grudic et al. (2021) eq 7, we replace the plummer functionnal form
+     (r^2 + eps^2)^{3/2} by the kernel |(d phi(r,H=3*eps)/ dr)^{-1}| */
   const float denominator = grav_props->G_Newton * (si->mass + sj->mass);
-  const float t_dyn = sqrt(pow(sum_r2_eps2, 1.5) / denominator);
+  const float numerator = 1.0 / fabsf(dphi_dr);
+  const float t_dyn = sqrt(numerator / denominator);
   si->to_collect.minimal_sink_t_dyn =
       min(t_dyn, si->to_collect.minimal_sink_t_dyn);
 }
@@ -256,7 +268,8 @@ runner_iact_nonsym_sinks_sink_swallow(
     sink_collect_properties_from_sink(r2, dx, ri, rj, si, sj, grav_props);
   }
 
-  /* If si is dead, do not swallow sj. However, sj can swallow si if it alive. */
+  /* If si is dead, do not swallow sj. However, sj can swallow si if it alive.
+   */
   if (si_is_dead) {
     return;
   }
@@ -304,10 +317,11 @@ runner_iact_nonsym_sinks_sink_swallow(
                                       dv_physical[2] * dv_physical[2];
 
     /* Momentum check------------------------------------------------------- */
-    float L2_j = 0.0; /* Relative momentum of the sink j */
+    float L2_j = 0.0;      /* Relative momentum of the sink j */
     float L2_kepler = 0.0; /* Keplerian angular momentum squared */
-    sink_compute_angular_momenta_criterion(dx, v_plus_H_flow, r, si->r_cut, si->mass,
-					   &L2_kepler, &L2_j, cosmo, grav_props);
+    sink_compute_angular_momenta_criterion(dx, v_plus_H_flow, r, si->r_cut,
+                                           si->mass, cosmo, grav_props,
+                                           &L2_kepler, &L2_j);
 
     /* To be accreted, the sink momentum should lower than the keplerian orbit
      * momentum. */
@@ -471,10 +485,11 @@ runner_iact_nonsym_sinks_gas_swallow(
                                       dv_physical[2] * dv_physical[2];
 
     /* Momentum check------------------------------------------------------- */
-    float L2_gas_j = 0.0; /* Relative momentum of the gas */
+    float L2_gas_j = 0.0;  /* Relative momentum of the gas */
     float L2_kepler = 0.0; /* Keplerian angular momentum squared */
-    sink_compute_angular_momenta_criterion(dx, v_plus_H_flow, r, si->r_cut, si->mass,
-					   &L2_kepler, &L2_gas_j, cosmo, grav_props);
+    sink_compute_angular_momenta_criterion(dx, v_plus_H_flow, r, si->r_cut,
+                                           si->mass, cosmo, grav_props,
+                                           &L2_kepler, &L2_gas_j);
 
     /* To be accreted, the gas momentum should lower than the keplerian orbit
      * momentum. */

@@ -34,7 +34,7 @@ INLINE static void sink_read_particles(struct sink* sinks,
                                        struct io_props* list, int* num_fields) {
 
   /* Say how much we want to read */
-  *num_fields = 4;
+  *num_fields = 5;
 
   /* List what we want to read */
   list[0] = io_make_input_field("Coordinates", DOUBLE, 3, COMPULSORY,
@@ -45,7 +45,7 @@ INLINE static void sink_read_particles(struct sink* sinks,
                                 sinks, mass);
   list[3] = io_make_input_field("ParticleIDs", LONGLONG, 1, COMPULSORY,
                                 UNIT_CONV_NO_UNITS, sinks, id);
-  list[5] = io_make_input_field("BirthTime", FLOAT, 1, OPTIONAL, UNIT_CONV_MASS,
+  list[4] = io_make_input_field("BirthTime", FLOAT, 1, OPTIONAL, UNIT_CONV_MASS,
                                 sinks, birth_time);
 }
 

@@ -11,14 +11,14 @@ Sink particles interact with the surrounding gas through accretion. To accuratel
 First, we want to ensure sinks know the *local dynamics* and thus they obey a Courant-Friedrichs-Lewy (CFL)-like timestep constraint:
 
 .. math::
-   \Delta t_s \leq C_\text{CFL} \frac{r_{\text{cut, min}}}{\sqrt{c_{s,s}^2 + \| \Delta \mathbf{v}_s \|^2}} \; ,
+   \Delta t_s \leq \Delta t_\text{CFL} =  C_\text{CFL} \frac{r_{\text{cut, min}}}{\sqrt{c_{s,s}^2 + \| \Delta \mathbf{v}_s \|^2}} \; ,
 
 where :math:`r_\text{cut, min} = \min(r_{\text{cut}, s}, \gamma_k \min_j(h_j))` is the minimal cut-off radius between the sink :math:`s` and the gas neighbours:math:`j`, :math:`c_{s, s}` and :math:`\Delta \mathbf{v}_s` are the gas sound-speed and the relative gas-sink velocity at the sink location. The latter two are reconstructed at the sink location with SPH interpolation. The value of :math:`C_\text{CFL}` is given in the YAML parameter file with ``GEARSink:CFL_condition``.
 
 Since sink particles accrete gas, they must anticipate the surrounding gas infall. We achieve this with a gas free-fall time criterion similar to `Grudic et al. (2021) <https://academic.oup.com/mnras/article/506/2/2199/6276745>`_:
 
 .. math::
-   \Delta t_s \leq \sqrt{ \frac{3 \pi}{32 G \rho_s} } \quad \text{with} \quad \rho_s = \frac{3 m_s}{4 \pi {r_{\text{cut, min}}}} \; ,
+   \Delta t_s \leq \Delta t_\text{ff} = \sqrt{ \frac{3 \pi}{32 G \rho_s} } \quad \text{with} \quad \rho_s = \frac{3 m_s}{4 \pi {r_{\text{cut, min}}}} \; ,
 
 with :math:`m_s` the sink mass.
 
@@ -35,9 +35,9 @@ To accurately follow *sink mergers*, we implemented `Grudic et al. (2021) <https
 with
 
 .. math::
-  \quad t_\text{c, min} = \min_{s \neq s'} \frac{\sqrt{ r_{ss'}^2 + \epsilon_{\text{sink}}^2} }{v_{ss'}} \quad \text{and} \quad t_\text{dyn, min} = \min_{s \neq s'} \sqrt{ \frac{(r_{ss'}^2 + \epsilon_\text{sink}^2)^{3/2}}{ G (m_s + m_{s'})}    } \; ,
+  \quad t_\text{c, min} = \min_{s \neq s'} \frac{ |\varphi^{-1}(r_{ss'}, \, H_\text{sink})| }{v_{ss'}} \quad \text{and} \quad t_\text{dyn, min} = \min_{s \neq s'} \sqrt{ \frac{ |\varphi'(r_{ss'}, \, H_\text{sink})|^{-1}} { G (m_s + m_{s'})}    } \; ,
 
-where :math:`r_{ss'}` is the sinks relative separation, :math:`v_{ss'}` the relative velocity, :math:`m_{s}` and :math:`m_{s'}` their masses and :math:`\epsilon_{sink}` is the sink (fixed) gravitational softening.
+where :math:`r_{ss'}` is the sinks relative separation, :math:`v_{ss'}` the relative velocity, :math:`m_{s}` and :math:`m_{s'}` their masses and :math:`H_\text{sink}` is the sink (fixed) gravitational softening. The function :math:`\varphi(r, H)` is the potential corresponding to the Wendland C2 kernel density field (see `Schaller et al. (2024) <https://doi.org/10.1093/mnras/stae922>`_ section 4.1) and  :math:`\varphi'(r, H) \equiv \frac{\mathrm{d} \varphi(r, H)}{\mathrm{d} r}` its derivative.
 
 Timesteps per sink's age categories
 +++++++++++++++++++++++++++++++++++

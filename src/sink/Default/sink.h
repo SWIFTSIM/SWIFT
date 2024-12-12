@@ -30,6 +30,8 @@
 /**
  * @brief Computes the time-step of a given sink particle.
  *
+ * Note: In the Default sink, no time-step limit is applied.
+ *
  * @param sink Pointer to the sink-particle data.
  * @param sink_properties Properties of the sink model.
  * @param with_cosmology Are we running with cosmological time integration.
