@@ -3134,8 +3134,8 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
         if (res != NULL) break;
       }
 
-      /* If unsuccessful, try stealing from the other queues. A. Nasar commented
-       * out for GPU work*/
+      /* If unsuccessful, try stealing from the other queues. A. Nasar
+       * falg set to zero for GPU work*/
       if (s->flags & scheduler_flag_steal) {
 
         int count = 0, qids[nr_queues];
@@ -3159,39 +3159,39 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
 
           /* Lucky? */
           if (res != NULL) {
+//		  if (res != NULL && res->subtype != task_subtype_gpu_pack
+//				  && res->subtype != task_subtype_gpu_pack_g
+//				  && res->subtype != task_subtype_gpu_pack_f
+//				  && res->subtype != task_subtype_gpu_unpack
+//				  && res->subtype != task_subtype_gpu_unpack_g
+//				  && res->subtype != task_subtype_gpu_unpack_f) {
 
-            if ((res->type == task_type_self ||
-            	 res->type == task_type_sub_self)&&
+            if ((res->type == task_type_self)&&
                 res->subtype == task_subtype_gpu_pack) {
               atomic_inc(&s->queues[qid].n_packs_self_left);
               atomic_dec(&s->queues[qids[ind]].n_packs_self_left);
             }
-            if ((res->type == task_type_self ||
-            	 res->type == task_type_sub_self)&&
+            if ((res->type == task_type_self)&&
                 res->subtype == task_subtype_gpu_pack_g) {
               atomic_inc(&s->queues[qid].n_packs_self_left_g);
               atomic_dec(&s->queues[qids[ind]].n_packs_self_left_g);
             }
-            if ((res->type == task_type_self ||
-            	 res->type == task_type_sub_self)&&
+            if ((res->type == task_type_self)&&
                 res->subtype == task_subtype_gpu_pack_f) {
               atomic_inc(&s->queues[qid].n_packs_self_left_f);
               atomic_dec(&s->queues[qids[ind]].n_packs_self_left_f);
             }
-            if ((res->type == task_type_pair ||
-            	 res->type == task_type_sub_pair)&&
+            if ((res->type == task_type_pair)&&
                 res->subtype == task_subtype_gpu_pack) {
               atomic_inc(&s->queues[qid].n_packs_pair_left);
               atomic_dec(&s->queues[qids[ind]].n_packs_pair_left);
             }
-            if ((res->type == task_type_pair ||
-            	 res->type == task_type_sub_pair)&&
+            if ((res->type == task_type_pair)&&
                 res->subtype == task_subtype_gpu_pack_g) {
               atomic_inc(&s->queues[qid].n_packs_pair_left_g);
               atomic_dec(&s->queues[qids[ind]].n_packs_pair_left_g);
             }
-            if ((res->type == task_type_pair ||
-            	 res->type == task_type_sub_pair)&&
+            if ((res->type == task_type_pair)&&
                 res->subtype == task_subtype_gpu_pack_f) {
               atomic_inc(&s->queues[qid].n_packs_pair_left_f);
               atomic_dec(&s->queues[qids[ind]].n_packs_pair_left_f);

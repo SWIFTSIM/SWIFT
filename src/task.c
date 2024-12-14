@@ -1745,8 +1745,13 @@ void task_dump_active(struct engine *e) {
 
       /* Get destination rank of MPI requests. */
       int paired = (t->cj != NULL);
-      int otherrank = t->ci->nodeID;
-      if (paired) otherrank = t->cj->nodeID;
+      int otherrank = 0;
+      if(t->subtype!= task_subtype_gpu_unpack && t->subtype!= task_subtype_gpu_unpack_f
+    		  && t->subtype!= task_subtype_gpu_unpack_g)
+    	  otherrank = t->ci->nodeID;
+      if (paired && t->subtype!= task_subtype_gpu_unpack && t->subtype!= task_subtype_gpu_unpack_f
+    		  && t->subtype!= task_subtype_gpu_unpack_g)
+    	  otherrank = t->cj->nodeID;;
 
       fprintf(file_thread, "%i %i %s %s %i %i %lli %lli %i %i %i %i %lli\n",
               engine_rank, otherrank, taskID_names[t->type],
