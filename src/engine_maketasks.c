@@ -4933,7 +4933,7 @@ void engine_maketasks(struct engine *e) {
      *                sched->tasks, sched->nr_tasks, sizeof(struct task),
      *                threadpool_auto_chunk_size, e); */
   }
-
+  /*These loops should really be threadmapped A. Nasar*/
   for (int i = 0; i < sched->nr_tasks; i++) {
 	  struct task * t = &sched->tasks[i];
 	  if(t->type == task_type_sub_self && t->subtype == task_subtype_gpu_pack){
@@ -4969,7 +4969,8 @@ void engine_maketasks(struct engine *e) {
   struct task *last_created_self_unpack = NULL;
   struct task *last_created_pair_unpack = NULL;
 
-  /* Loop over all the currently existing pack tasks */
+  /* Loop over all the currently existing pack tasks
+   * These loops should be thread-mapped too but will be a bit more tricky: A. Nasar*/
   for (int i = 0; i < sched->nr_tasks; i++) {
 
     struct task *t = &sched->tasks[i];
