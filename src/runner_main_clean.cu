@@ -657,6 +657,26 @@ void *runner_main2(void *data) {
   if ((res = MPI_Comm_size(MPI_COMM_WORLD, &nr_nodes)) != MPI_SUCCESS)
     error("MPI_Comm_size failed with error %i.", res);
 #endif
+  int parts_per_top_level_cell = space->nr_local_cells_with_particles /
+		  space->nr_parts; /*A. Nasar: What I think is a good approximation for
+		                               average N particles in each top level cell*/
+  int buff = 30; /*A. Nasar: Increase parts per recursed task-level cell by buffer to
+                             ensure we allocate enough memory*/
+//  int np_per_cell = ceil(2.0 * e->eta_neighbours); /*A. Nasar: 2h/dx roughly*/
+
+//  char *param_filename = &e->param_filename;
+//  struct swift_params *params =
+//      (struct swift_params *)malloc(sizeof(struct swift_params));
+//  if (params == NULL) error("Error allocating memory for the parameter file.");
+//  message("Reading runtime parameters from file '%s'", param_filename);
+//  parser_read_file(param_filename, params);
+
+  float eta_neighbours = e->s->eta_neighbours;
+  int np_per_cell = ceil(2.0 * eta_neighbours);
+  np_per_cell *= np_per_cell * np_per_cell;
+  fprintf(stderr, "np_per_cell target is %i, eta_neighbours %f\n", np_per_cell, eta_neighbours);
+  exit(0);
+
   int count_max_parts_tmp =
       2 * target_n_tasks * space->nr_parts * nr_nodes / space->tot_cells;
   message("max_parts %i\n", count_max_parts_tmp);

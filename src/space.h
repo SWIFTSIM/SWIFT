@@ -94,6 +94,9 @@ extern double engine_foreign_alloc_margin;
  */
 struct space {
 
+  /*Used to define GPU task memory allocation*/
+  float eta_neighbours;
+
   /*! Spatial extent. */
   double dim[3];
 

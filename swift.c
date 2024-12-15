@@ -1108,7 +1108,7 @@ int main(int argc, char *argv[]) {
       hydro_props_init(&hydro_properties, &prog_const, &us, params);
     else
       bzero(&hydro_properties, sizeof(struct hydro_props));
-
+    float eta_neighbours = hydro_properties.eta_neighbours;
     /* Initialise the equation of state */
     if (with_hydro)
       eos_init(&eos, &prog_const, &us, params);
@@ -1388,7 +1388,7 @@ int main(int argc, char *argv[]) {
                with_self_gravity, with_star_formation, with_sinks,
                with_DM_particles, with_DM_background_particles, with_neutrinos,
                talking, dry_run, nr_nodes);
-
+    s.eta_neighbours = eta_neighbours;
     /* Initialise the line of sight properties. */
     if (with_line_of_sight) los_init(s.dim, &los_properties, params);
 
