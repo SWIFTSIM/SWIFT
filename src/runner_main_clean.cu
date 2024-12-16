@@ -660,26 +660,19 @@ void *runner_main2(void *data) {
   int parts_per_top_level_cell = space->nr_local_cells_with_particles /
 		  space->nr_parts; /*A. Nasar: What I think is a good approximation for
 		                               average N particles in each top level cell*/
-  int buff = 30; /*A. Nasar: Increase parts per recursed task-level cell by buffer to
-                             ensure we allocate enough memory*/
-//  int np_per_cell = ceil(2.0 * e->eta_neighbours); /*A. Nasar: 2h/dx roughly*/
-
-//  char *param_filename = &e->param_filename;
-//  struct swift_params *params =
-//      (struct swift_params *)malloc(sizeof(struct swift_params));
-//  if (params == NULL) error("Error allocating memory for the parameter file.");
-//  message("Reading runtime parameters from file '%s'", param_filename);
-//  parser_read_file(param_filename, params);
-
   float eta_neighbours = e->s->eta_neighbours;
   int np_per_cell = ceil(2.0 * eta_neighbours);
   np_per_cell *= np_per_cell * np_per_cell;
-  fprintf(stderr, "np_per_cell target is %i, eta_neighbours %f\n", np_per_cell, eta_neighbours);
-  exit(0);
+  int buff = ceil(0.5 * np_per_cell); /*A. Nasar: Increase parts per recursed task-level cell by buffer to
+                             ensure we allocate enough memory*/
 
+  int tot_self_tasks = space->nr_parts / np_per_cell;
+
+//  int count_max_parts_tmp =
+//      2 * target_n_tasks * space->nr_parts * nr_nodes / space->tot_cells;
   int count_max_parts_tmp =
-      2 * target_n_tasks * space->nr_parts * nr_nodes / space->tot_cells;
-  message("max_parts %i\n", count_max_parts_tmp);
+      target_n_tasks * (np_per_cell + buff);
+  message("max_parts %i, n_tasks_GPU %i\n", count_max_parts_tmp, target_n_tasks);
   pack_vars_self_dens->count_max_parts = count_max_parts_tmp;
   pack_vars_pair_dens->count_max_parts = count_max_parts_tmp;
   pack_vars_self_forc->count_max_parts = count_max_parts_tmp;
@@ -987,6 +980,9 @@ void *runner_main2(void *data) {
     sched->nr_packs_pair_forc_done = 0;
     sched->nr_packs_self_grad_done = 0;
     sched->nr_packs_pair_grad_done = 0;
+    int g100 = 0;
+    int l100 = 0;
+    int maxcount = 0;
 
     /* Loop while there are tasks... */
     tasks_done_gpu_inc = 0;
@@ -1312,7 +1308,15 @@ void *runner_main2(void *data) {
 #endif  // DO_CORNERS
 
 	          ticks tic_cpu_pack = getticks();
-
+	          if (ci == ci->hydro.super || cj == cj->hydro.super){
+	        	  g100++;
+//	        	  message("GPU working on top level cell");
+	          }
+//              if(ci->hydro.count > 100){
+//            	  g100++;
+//            	  maxcount = max(ci->hydro.count, maxcount);
+//              }
+//              else l100++;
 	          packing_time_pair += runner_dopair1_pack_f4(
                   r, sched, pack_vars_pair_dens, ci, cj, t,
                   parts_aos_pair_f4_send, e, fparti_fpartj_lparti_lpartj_dens);
@@ -1918,6 +1922,8 @@ void *runner_main2(void *data) {
           error("Unknown/invalid task type (%d).", t->type);
       }
       r->active_time += (getticks() - task_beg);
+//      if(g100 > 0)
+//    	  message("less than 100 %i more than 100 %i max count %i", l100, g100, maxcount);
 
 /* Mark that we have run this task on these cells */
 #ifdef SWIFT_DEBUG_CHECKS
@@ -1978,6 +1984,8 @@ void *runner_main2(void *data) {
         t = scheduler_done(sched, t);
       }
     } /* main loop. */
+
+    message("Worked on %i supers of split cells", g100);
       // Stuff for writing debug data to file for validation
       ////        if (step % 10 == 0 || step == 1) {
       //      if(r->cpuid == 0 && engine_rank == 0)fprintf(fgpu_steps, "x, y, z,

@@ -88,7 +88,8 @@ void runner_doself1_gpu_pack_neat_aos_f4(
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (local_pack_position + count >= count_max_parts_tmp) {
-    fprintf(stderr, "Exceeded count_max_parts_tmp. Make arrays bigger!\n");
+    fprintf(stderr, "Exceeded count_max_parts_tmp. Make arrays bigger! count_max %i count %i\n"
+    		, count_max_parts_tmp, local_pack_position + count);
     error("0");
   }
 #endif

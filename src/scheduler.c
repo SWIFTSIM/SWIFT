@@ -1368,8 +1368,6 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
         /* Otherwise, break it up if it is too large? */
       } else if (scheduler_doforcesplit && ci->split && cj->split &&
                  (ci->hydro.count > space_maxsize / cj->hydro.count)) {
-        // message( "force splitting pair with %i and %i parts." ,
-        // ci->hydro.count , cj->hydro.count );
 
         /* Replace the current task. */
         t->type = task_type_none;

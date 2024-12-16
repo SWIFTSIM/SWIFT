@@ -2766,6 +2766,8 @@ void runner_dopair1_launch_f4_one_memcpy(
                       fparti_fpartj_lparti_lpartj_dens[tid].y;
         parts_in_bundle_cj += count_j;
         max_parts_j = max(max_parts_j, count_j);
+//        if(count_i > 100 || count_j > 100)
+//        	error("Sending data for excessive n parts %i %i", count_i, count_j);
       }
     }
     const int first_part_tmp_i = pack_vars->bundle_first_part[bid];
@@ -2786,7 +2788,7 @@ void runner_dopair1_launch_f4_one_memcpy(
               "CUDA error with pair density H2D async  memcpy ci: %s cpuid id "
               "is: %i\n ",
               cudaGetErrorString(cu_error), r->cpuid);
-      error("Something's up with your cuda code");
+      error("Something's up with your cuda code first_part %i bundle size %i", first_part_tmp_i, bundle_n_parts);
     }
 #endif
     /* LAUNCH THE GPU KERNELS for ci & cj */
