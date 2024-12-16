@@ -1825,14 +1825,12 @@ if test "$have_armv7apmccntr"x = "yes"x; then
 fi
 
 # Check if we have native exp10 and exp10f functions. If not fallback to our
-# implementations. On Apple/CLANG we have __exp10, so also check for that
+# implementations. On Apple/CLANG/homebrew gcc we have __exp10, so also check for that
 # if the compiler is clang.
 AC_CHECK_LIB([m],[exp10], [AC_DEFINE([HAVE_EXP10],1,[The exp10 function is present.])])
 AC_CHECK_LIB([m],[exp10f], [AC_DEFINE([HAVE_EXP10F],1,[The exp10f function is present.])])
-if test "$ax_cv_c_compiler_vendor" = "clang"; then
-      AC_CHECK_LIB([m],[__exp10], [AC_DEFINE([HAVE___EXP10],1,[The __exp10 function is present.])])
-      AC_CHECK_LIB([m],[__exp10f], [AC_DEFINE([HAVE___EXP10F],1,[The __exp10f function is present.])])
-fi
+AC_CHECK_LIB([m],[__exp10], [AC_DEFINE([HAVE___EXP10],1,[The __exp10 function is present.])])
+AC_CHECK_LIB([m],[__exp10f], [AC_DEFINE([HAVE___EXP10F],1,[The __exp10f function is present.])])
 
 # Check if we have native sincos and sincosf functions. If not fallback to our
 # implementations. On Apple/CLANG we have __sincos, so also check for that
