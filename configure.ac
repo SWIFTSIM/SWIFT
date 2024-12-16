@@ -1841,7 +1841,15 @@ if test "$ax_cv_c_compiler_vendor" = "clang"; then
       AC_CHECK_LIB([m],[__sincos], [AC_DEFINE([HAVE___SINCOS],1,[The __sincos function is present.])])
       AC_CHECK_LIB([m],[__sincosf], [AC_DEFINE([HAVE___SINCOSF],1,[The __sincosf function is present.])])
 fi
- 
+
+# On Apple, check for __sincos and __sincosf inline functions in the headers.
+AC_CHECK_HEADERS([math.h], [
+  AC_CHECK_DECLS([__sincos, __sincosf], [
+    AC_DEFINE([HAVE___SINCOS], 1, [The __sincos function is present.])
+    AC_DEFINE([HAVE___SINCOSF], 1, [The __sincosf function is present.])
+  ], [], [#include <math.h>])
+])
+
 # The aocc compiler has optimized maths libraries that we should use. Check
 # any clang for this support. Note do this after the basic check for maths
 # as we need to make sure -lm follows. Also note needs -Ofast or -ffast-math
