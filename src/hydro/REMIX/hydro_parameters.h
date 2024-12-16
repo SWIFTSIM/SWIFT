@@ -211,7 +211,7 @@ static INLINE void diffusion_init(struct swift_params* params,
   diffusion->a_difn_rho = parser_get_opt_param_float(
       params, "SPH:diffusion_a_rho", hydro_props_default_remix_a_difn_rho);
   diffusion->b_difn_rho = parser_get_opt_param_float(
-      params, "SPH:vdiffusion_b_rho", hydro_props_default_remix_b_difn_rho);
+      params, "SPH:diffusion_b_rho", hydro_props_default_remix_b_difn_rho);
   diffusion->alpha_norm = parser_get_opt_param_float(
       params, "SPH:alpha_norm", hydro_props_default_remix_alpha_norm);
 
