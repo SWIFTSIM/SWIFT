@@ -450,6 +450,11 @@ __attribute__((always_inline)) INLINE static void star_formation_end_density(
                                    p->viscosity.velocity_gradient[2][2]);
 #elif HOPKINS_PU_SPH
   xp->sf_data.div_v = p->density.div_v;
+#elif SHADOWSWIFT
+  xp->sf_data.div_v  = p->gradients.v[0][0] +
+                       p->gradients.v[1][1] +
+                       p->gradients.v[2][2];
+  xp->sf_data.div_v += hydro_dimension * cosmo->H;
 #else
 #error \
     "This scheme is not implemented. Note that Different scheme apply the Hubble flow in different places. Be careful about it."
