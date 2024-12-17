@@ -60,20 +60,24 @@ chemistry_check_unphysical_state(double* metal_mass, const double mZ_old,
     error("Got inf/nan metal density/mass diffusion case %d | %.6e ", callloc,
           *metal_mass);
 
+  /* Fix negative masses */
   if (*metal_mass < 0.0) {
-    *metal_mass = 0.0;
-    return;
-  }
-
-  if (*metal_mass > gas_mass) {
-    error("Metal mass bigger than gas mass ! case %d | %e | %e", callloc,
-          *metal_mass, mZ_old);
-    if (mZ_old <= gas_mass) {
+    /* Do not extrapolate, use 0th order reconstruction. */
+    if (callloc == 1) {
       *metal_mass = mZ_old;
     } else {
       *metal_mass = 0.0;
     }
-    return;
+  }
+
+  if (*metal_mass > gas_mass) {
+    if (callloc == 1 && mZ_old <= gas_mass) {
+      /* Do not extrapolate, use 0th order reconstruction. */
+      *metal_mass = mZ_old;
+    } else {
+      error("Metal mass bigger than gas mass ! case %d | %e | %e | %e", callloc,
+	    *metal_mass, mZ_old, gas_mass);
+    }
   }
 }
 

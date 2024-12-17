@@ -637,17 +637,13 @@ __attribute__((always_inline)) INLINE static void chemistry_end_force(
 
   /* Verify that the total metal mass does not exceed the part's mass */
   double sum = 0.;
-  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT - 1; i++) {
+  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
     sum += p->chemistry_data.metal_mass[i];
   }
   const double total_metal_mass =
       p->chemistry_data.metal_mass[GEAR_CHEMISTRY_ELEMENT_COUNT - 1];
-  /* if (sum > total_metal_mass) */
-  /*   error( */
-  /*       "Sum of element-wise metal masses grew larger than total metal " */
-  /*       "mass!"); */
   if (total_metal_mass > hydro_get_mass(p))
-    error("Total metal mass grew larger than the particle mass!");
+    error("[%lld] Total metal mass grew larger than the particle mass! m_Z_tot = %e, m = %e", p->id, total_metal_mass, hydro_get_mass(p));
 
   /* Reset wcorr */
   p->geometry.wcorr = 1.0f;
@@ -973,8 +969,11 @@ chemistry_get_metal_mass_fraction_for_feedback(const struct part* restrict p) {
 __attribute__((always_inline)) INLINE static float
 chemistry_get_total_metal_mass_fraction_for_feedback(
     const struct part* restrict p) {
-  return p->chemistry_data.metal_mass[GEAR_CHEMISTRY_ELEMENT_COUNT - 1] /
-         hydro_get_mass(p);
+  float m_Z_tot = 0.0;
+  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
+    m_Z_tot += p->chemistry_data.metal_mass[i];
+  }
+  return m_Z_tot/hydro_get_mass(p);
 }
 
 /**
@@ -986,9 +985,11 @@ chemistry_get_total_metal_mass_fraction_for_feedback(
 __attribute__((always_inline)) INLINE static double
 chemistry_get_star_total_metal_mass_fraction_for_feedback(
     const struct spart* restrict sp) {
-
-  return sp->chemistry_data
-      .metal_mass_fraction[GEAR_CHEMISTRY_ELEMENT_COUNT - 1];
+  float Z_tot = 0.0;
+  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
+    Z_tot += sp->chemistry_data.metal_mass_fraction[i];
+  }
+  return Z_tot;
 }
 
 /**
@@ -1041,9 +1042,11 @@ chemistry_get_star_metal_mass_fraction_for_feedback(
 __attribute__((always_inline)) INLINE static double
 chemistry_get_total_metal_mass_fraction_for_cooling(
     const struct part* restrict p) {
-
-  return p->chemistry_data.metal_mass[GEAR_CHEMISTRY_ELEMENT_COUNT - 1] /
-         hydro_get_mass(p);
+  float m_Z_tot = 0.0;
+  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
+    m_Z_tot += p->chemistry_data.metal_mass[i];
+  }
+  return m_Z_tot/hydro_get_mass(p);
 }
 
 /**
@@ -1069,8 +1072,12 @@ chemistry_get_metal_mass_fraction_for_cooling(const struct part* restrict p) {
 __attribute__((always_inline)) INLINE static double
 chemistry_get_total_metal_mass_fraction_for_star_formation(
     const struct part* restrict p) {
-  return p->chemistry_data.metal_mass[GEAR_CHEMISTRY_ELEMENT_COUNT - 1] /
-         hydro_get_mass(p);
+
+  float m_Z_tot = 0.0;
+  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
+    m_Z_tot += p->chemistry_data.metal_mass[i];
+  }
+  return m_Z_tot/hydro_get_mass(p);
 }
 
 /**
@@ -1096,8 +1103,11 @@ chemistry_get_metal_mass_fraction_for_star_formation(
  */
 __attribute__((always_inline)) INLINE static float
 chemistry_get_total_metal_mass_for_stats(const struct part* restrict p) {
-
-  return p->chemistry_data.metal_mass[GEAR_CHEMISTRY_ELEMENT_COUNT - 1];
+  float m_Z_tot = 0.0;
+  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
+    m_Z_tot += p->chemistry_data.metal_mass[i];
+  }
+  return m_Z_tot;
 }
 
 /**
@@ -1108,10 +1118,11 @@ chemistry_get_total_metal_mass_for_stats(const struct part* restrict p) {
  */
 __attribute__((always_inline)) INLINE static float
 chemistry_get_star_total_metal_mass_for_stats(const struct spart* restrict sp) {
-
-  return sp->chemistry_data
-             .metal_mass_fraction[GEAR_CHEMISTRY_ELEMENT_COUNT - 1] *
-         sp->mass;
+  float Z_tot = 0.0;
+  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
+    Z_tot += sp->chemistry_data.metal_mass_fraction[i];
+  }
+  return Z_tot*sp->mass;
 }
 
 /**
@@ -1124,6 +1135,79 @@ __attribute__((always_inline)) INLINE static float
 chemistry_get_bh_total_metal_mass_for_stats(const struct bpart* restrict bp) {
   error("No BH yet in GEAR");
   return 0.f;
+}
+
+/**
+ * @brief Compute and set the ejected metal yields from supernovae events (SNII
+ * and SNIa) for a star particle.
+ *
+ * This function calculates the total mass of metals ejected during supernova
+ * feedback (Type II and Type Ia) for a given star particle. It combines the
+ * yields from SNII and SNIa, accounts for unprocessed gas, and converts the
+ * results into internal units.
+ *
+ * @param sp Pointer to the star particle structure (`struct spart`) where the results will be stored.
+ * @param m_snii Stellar mass involved per supernova II event.
+ * @param m_non_processed Mass of unprocessed gas that retains the star's initial metallicity.
+ * @param number_snii Number of Type II supernovae events.
+ * @param number_snia Number of Type Ia supernovae events.
+ * @param snii_yields Array of metal yields per element for Type II supernovae.
+ *                        The array size is `GEAR_CHEMISTRY_ELEMENT_COUNT`.
+ * @param snia_yields Array of metal yields per element for Type Ia supernovae.
+ *                        The array size is `GEAR_CHEMISTRY_ELEMENT_COUNT`.
+ * @param phys_const Pointer to a structure containing physical constants.
+ *
+ * @note The resulting metal mass ejected per element is stored in:
+ *       `sp->feedback_data.metal_mass_ejected[i]` for each element `i`.
+ */
+__attribute__((always_inline)) INLINE static void
+chemistry_set_star_supernovae_ejected_yields(struct spart* restrict sp,
+					     const float mass_snii_event, const float m_non_processed, const int number_snii, const int number_snia,
+  const float snii_yields[GEAR_CHEMISTRY_ELEMENT_COUNT],
+  const float snia_yields[GEAR_CHEMISTRY_ELEMENT_COUNT],
+  const struct phys_const* phys_const) {
+
+  /* In MF diffusion, the last element correspond to the other untracked
+     metals, not the sum of all metals. This ensure proper diffusion of the
+     elements and consistency between the tracked elements and untracked ones */
+
+  float snii_yields_new[GEAR_CHEMISTRY_ELEMENT_COUNT] = {0.f};
+  float snia_yields_new[GEAR_CHEMISTRY_ELEMENT_COUNT] = {0.f};
+
+  /* Get the sum of all explicitely tracked elements */
+  float m_Z_tot_snii_tracked = 0.0;
+  float m_Z_tot_snia_tracked = 0.0;
+  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT - 1; i++) {
+    m_Z_tot_snii_tracked += snii_yields[i];
+    m_Z_tot_snia_tracked += snia_yields[i];
+
+    snii_yields_new[i] = snii_yields[i];
+    snia_yields_new[i] = snia_yields[i];
+  }
+
+  const int last_elem = GEAR_CHEMISTRY_ELEMENT_COUNT - 1;
+  snii_yields_new[last_elem] = snii_yields[last_elem] - m_Z_tot_snii_tracked;
+  snia_yields_new[last_elem] = snia_yields_new[last_elem] - m_Z_tot_snia_tracked;\
+
+  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
+
+    /* Compute the mass fraction of metals */
+    sp->feedback_data.metal_mass_ejected[i] =
+        /* Supernovae II yields */
+        snii_yields_new[i] +
+        /* Gas contained in stars initial metallicity */
+        chemistry_get_star_metal_mass_fraction_for_feedback(sp)[i] *
+            m_non_processed;
+
+    /* Convert it to total mass */
+    sp->feedback_data.metal_mass_ejected[i] *= mass_snii_event * number_snii;
+
+    /* Supernovae Ia yields */
+    sp->feedback_data.metal_mass_ejected[i] += snia_yields_new[i] * number_snia;
+
+    /* Convert everything in code units */
+    sp->feedback_data.metal_mass_ejected[i] *= phys_const->const_solar_mass;
+  }
 }
 
 #endif /* SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_H */

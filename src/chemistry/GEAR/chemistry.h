@@ -805,4 +805,56 @@ chemistry_get_bh_total_metal_mass_for_stats(const struct bpart* restrict bp) {
   return 0.f;
 }
 
+/**
+ * @brief Compute and set the ejected metal yields from supernovae events (SNII
+ * and SNIa) for a star particle.
+ *
+ * This function calculates the total mass of metals ejected during supernova
+ * feedback (Type II and Type Ia) for a given star particle. It combines the
+ * yields from SNII and SNIa, accounts for unprocessed gas, and converts the
+ * results into internal units.
+ *
+ * @param sp Pointer to the star particle structure (`struct spart`) where the results will be stored.
+ * @param m_snii Stellar mass involved per supernova II event.
+ * @param m_non_processed Mass of unprocessed gas that retains the star's initial metallicity.
+ * @param number_snii Number of Type II supernovae events.
+ * @param number_snia Number of Type Ia supernovae events.
+ * @param snii_yields Array of metal yields per element for Type II supernovae.
+ *                        The array size is `GEAR_CHEMISTRY_ELEMENT_COUNT`.
+ * @param snia_yields Array of metal yields per element for Type Ia supernovae.
+ *                        The array size is `GEAR_CHEMISTRY_ELEMENT_COUNT`.
+ * @param phys_const Pointer to a structure containing physical constants.
+ *
+ * @note The resulting metal mass ejected per element is stored in:
+ *       `sp->feedback_data.metal_mass_ejected[i]` for each element `i`.
+ */
+__attribute__((always_inline)) INLINE static void
+chemistry_set_star_supernovae_ejected_yields(struct spart* restrict sp,
+					     const float mass_snii_event, const float m_non_processed, const int number_snii, const int number_snia,
+  const float snii_yields[GEAR_CHEMISTRY_ELEMENT_COUNT],
+  const float snia_yields[GEAR_CHEMISTRY_ELEMENT_COUNT],
+  const struct phys_const* phys_const) {
+
+  /* Use a chemistry function */
+  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
+
+    /* Compute the mass fraction of metals */
+    sp->feedback_data.metal_mass_ejected[i] =
+        /* Supernovae II yields */
+        snii_yields[i] +
+        /* Gas contained in stars initial metallicity */
+        chemistry_get_star_metal_mass_fraction_for_feedback(sp)[i] *
+            m_non_processed;
+
+    /* Convert it to total mass */
+    sp->feedback_data.metal_mass_ejected[i] *= mass_snii_event * number_snii;
+
+    /* Supernovae Ia yields */
+    sp->feedback_data.metal_mass_ejected[i] += snia_yields[i] * number_snia;
+
+    /* Convert everything in code units */
+    sp->feedback_data.metal_mass_ejected[i] *= phys_const->const_solar_mass;
+  }
+}
+
 #endif /* SWIFT_CHEMISTRY_GEAR_H */
