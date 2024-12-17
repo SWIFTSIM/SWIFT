@@ -1167,13 +1167,16 @@ chemistry_get_bh_total_metal_mass_for_stats(const struct bpart* restrict bp) {
 __attribute__((always_inline)) INLINE static void
 chemistry_set_star_supernovae_ejected_yields(struct spart* restrict sp,
 					     const float mass_snii_event, const float m_non_processed, const int number_snii, const int number_snia,
-  float snii_yields[GEAR_CHEMISTRY_ELEMENT_COUNT],
-  float snia_yields[GEAR_CHEMISTRY_ELEMENT_COUNT],
+  const float snii_yields[GEAR_CHEMISTRY_ELEMENT_COUNT],
+  const float snia_yields[GEAR_CHEMISTRY_ELEMENT_COUNT],
   const struct phys_const* phys_const) {
 
   /* In MF diffusion, the last element correspond to the other untracked
      metals, not the sum of all metals. This ensure proper diffusion of the
      elements and consistency between the tracked elements and untracked ones */
+
+  float snii_yields_new[GEAR_CHEMISTRY_ELEMENT_COUNT] = {0.f};
+  float snia_yields_new[GEAR_CHEMISTRY_ELEMENT_COUNT] = {0.f};
 
   /* Get the sum of all explicitely tracked elements */
   float m_Z_tot_snii_tracked = 0.0;
@@ -1181,17 +1184,21 @@ chemistry_set_star_supernovae_ejected_yields(struct spart* restrict sp,
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT - 1; i++) {
     m_Z_tot_snii_tracked += snii_yields[i];
     m_Z_tot_snia_tracked += snia_yields[i];
+
+    snii_yields_new[i] = snii_yields[i];
+    snia_yields_new[i] = snia_yields[i];
   }
 
-  snii_yields[GEAR_CHEMISTRY_ELEMENT_COUNT - 1] -= m_Z_tot_snii_tracked;
-  snia_yields[GEAR_CHEMISTRY_ELEMENT_COUNT - 1] -= m_Z_tot_snia_tracked;\
+  const int last_elem = GEAR_CHEMISTRY_ELEMENT_COUNT - 1;
+  snii_yields_new[last_elem] = snii_yields[last_elem] - m_Z_tot_snii_tracked;
+  snia_yields_new[last_elem] = snia_yields_new[last_elem] - m_Z_tot_snia_tracked;\
 
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
 
     /* Compute the mass fraction of metals */
     sp->feedback_data.metal_mass_ejected[i] =
         /* Supernovae II yields */
-        snii_yields[i] +
+        snii_yields_new[i] +
         /* Gas contained in stars initial metallicity */
         chemistry_get_star_metal_mass_fraction_for_feedback(sp)[i] *
             m_non_processed;
@@ -1200,7 +1207,7 @@ chemistry_set_star_supernovae_ejected_yields(struct spart* restrict sp,
     sp->feedback_data.metal_mass_ejected[i] *= mass_snii_event * number_snii;
 
     /* Supernovae Ia yields */
-    sp->feedback_data.metal_mass_ejected[i] += snia_yields[i] * number_snia;
+    sp->feedback_data.metal_mass_ejected[i] += snia_yields_new[i] * number_snia;
 
     /* Convert everything in code units */
     sp->feedback_data.metal_mass_ejected[i] *= phys_const->const_solar_mass;
