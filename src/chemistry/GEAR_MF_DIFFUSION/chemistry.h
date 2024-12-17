@@ -647,7 +647,7 @@ __attribute__((always_inline)) INLINE static void chemistry_end_force(
   /*       "Sum of element-wise metal masses grew larger than total metal " */
   /*       "mass!"); */
   if (total_metal_mass > hydro_get_mass(p))
-    error("Total metal mass grew larger than the particle mass!");
+    error("[%lld] Total metal mass grew larger than the particle mass! m_Z_tot = %e, m = %e", p->id, total_metal_mass, hydro_get_mass(p));
 
   /* Reset wcorr */
   p->geometry.wcorr = 1.0f;
