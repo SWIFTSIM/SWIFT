@@ -62,8 +62,12 @@ chemistry_check_unphysical_state(double* metal_mass, const double mZ_old,
 
   /* Fix negative masses */
   if (*metal_mass < 0.0) {
-    *metal_mass = mZ_old;
-    return;
+    /* Do not extrapolate, use 0th order reconstruction. */
+    if (callloc == 1) {
+      *metal_mass = mZ_old;
+    } else {
+      *metal_mass = 0.0;
+    }
   }
 
   if (*metal_mass > gas_mass) {
@@ -74,7 +78,6 @@ chemistry_check_unphysical_state(double* metal_mass, const double mZ_old,
       error("Metal mass bigger than gas mass ! case %d | %e | %e | %e", callloc,
 	    *metal_mass, mZ_old, gas_mass);
     }
-    return;
   }
 }
 
