@@ -1389,6 +1389,199 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
 }
 
 /**
+ * @brief Split a hydrodynamic task if too large.
+ *
+ * @param t The #task
+ * @param s The #scheduler we are working in.
+ */
+static void scheduler_splittask_hydro_GPU(struct task *t, struct scheduler *s) {
+  /* Are we considering both stars and hydro when splitting? */
+  /* Note this is not very clean as the scheduler should not really
+     access the engine... */
+
+  /* Iterate on this task until we're done with it. */
+  int redo = 1;
+  while (redo) {
+    /* Reset the redo flag. */
+    redo = 0;
+
+    /* Is this a non-empty self-task? */
+    const int is_self =
+        (t->type == task_type_self) && (t->ci != NULL) &&
+        (t->ci->hydro.count > 0);
+
+    /* Is this a non-empty pair-task? */
+    const int is_pair = (t->type == task_type_pair) && (t->ci != NULL) &&
+                        (t->cj != NULL) &&
+                        (t->ci->hydro.count > 0) &&
+                        (t->cj->hydro.count > 0);
+
+    /* Empty task? */
+    if (!is_self && !is_pair) {
+      t->type = task_type_none;
+      t->subtype = task_subtype_none;
+      t->ci = NULL;
+      t->cj = NULL;
+      t->skip = 1;
+      break;
+    }
+
+    /* Self-interaction? */
+    if (t->type == task_type_self) {
+      /* Get a handle on the cell involved. */
+      struct cell *ci = t->ci;
+
+      /* Foreign task? */
+      if (ci->nodeID != s->nodeID) {
+        t->skip = 1;
+        break;
+      }
+
+      /* Is this cell even split and the task does not violate h ? */
+      if (cell_can_split_self_hydro_task(ci)) {
+
+          /* Take a step back (we're going to recycle the current task)... */
+          redo = 1;
+
+          /* Add the self tasks. */
+          int first_child = 0;
+          while (ci->progeny[first_child] == NULL) first_child++;
+
+          t->ci = ci->progeny[first_child];
+          cell_set_flag(t->ci, cell_flag_has_tasks);
+
+          for (int k = first_child + 1; k < 8; k++) {
+            /* Do we have a non-empty progenitor? */
+            if (ci->progeny[k] != NULL &&
+                ci->progeny[k]->hydro.count) {
+            	scheduler_splittask_hydro_GPU(
+                  scheduler_addtask(s, task_type_self, t->subtype, 0, 0,
+                                    ci->progeny[k], NULL),
+                  s);
+            }
+          }
+
+          /* Make a task for each pair of progeny */
+          for (int j = 0; j < 8; j++) {
+            /* Do we have a non-empty progenitor? */
+            if (ci->progeny[j] != NULL &&
+                (ci->progeny[j]->hydro.count)) {
+              for (int k = j + 1; k < 8; k++) {
+                /* Do we have a second non-empty progenitor? */
+                if (ci->progeny[k] != NULL &&
+                    (ci->progeny[k]->hydro.count)) {
+                  scheduler_splittask_hydro_GPU(
+                      scheduler_addtask(s, task_type_pair, t->subtype,
+                                        sub_sid_flag[j][k], 0, ci->progeny[j],
+                                        ci->progeny[k]),
+                      s);
+                }
+              }
+            }
+          }
+
+      } /* Cell is split */
+
+    } /* Self interaction */
+
+    /* Pair interaction? */
+    else if (t->type == task_type_pair) {
+      /* Get a handle on the cells involved. */
+      struct cell *ci = t->ci;
+      struct cell *cj = t->cj;
+
+      /* Foreign task? */
+      if (ci->nodeID != s->nodeID && cj->nodeID != s->nodeID) {
+        t->skip = 1;
+        break;
+      }
+
+      /* Get the sort ID, use space_getsid_and_swap_cells and not t->flags
+         to make sure we get ci and cj swapped if needed. */
+      double shift[3];
+      const int sid = space_getsid_and_swap_cells(s->space, &ci, &cj, shift);
+
+#ifdef SWIFT_DEBUG_CHECKS
+      if (sid != t->flags)
+        error("Got pair task with incorrect flags: sid=%d flags=%lld", sid,
+              t->flags);
+#endif
+
+      /* Should this task be split-up? */
+      if (cell_can_split_pair_hydro_task(ci) &&
+          cell_can_split_pair_hydro_task(cj)) {
+
+        const int h_count_i = ci->hydro.count;
+        const int h_count_j = cj->hydro.count;
+
+//        const int s_count_i = ci->stars.count;
+//        const int s_count_j = cj->stars.count;
+//
+//        int do_sub_hydro = 1;
+//        if (h_count_i > 0 && h_count_j > 0) {
+//
+//          /* Note: Use division to avoid integer overflow. */
+//          do_sub_hydro =
+//              h_count_i * sid_scale[sid] < space_subsize_pair_hydro / h_count_j;
+//        }
+
+        /* Replace by a single sub-task? */
+//        if (scheduler_dosub &&
+//            (do_sub_hydro) &&
+//            !sort_is_corner(sid)) {
+//
+//          /* Make this task a sub task. */
+//          t->type = task_type_sub_pair;
+//
+//          /* Otherwise, split it. */
+//        } else {
+          /* Take a step back (we're going to recycle the current task)... */
+          redo = 1;
+
+          /* Loop over the sub-cell pairs for the current sid and add new tasks
+           * for them. */
+          struct cell_split_pair *csp = &cell_split_pairs[sid];
+
+          t->ci = ci->progeny[csp->pairs[0].pid];
+          t->cj = cj->progeny[csp->pairs[0].pjd];
+//          if (t->ci != NULL) cell_set_flag(t->ci, cell_flag_has_tasks);
+//          if (t->cj != NULL) cell_set_flag(t->cj, cell_flag_has_tasks);
+//
+//          t->flags = csp->pairs[0].sid;
+//          for (int k = 1; k < csp->count; k++) {
+//            scheduler_splittask_hydro_GPU(
+//                scheduler_addtask(s, task_type_pair, t->subtype,
+//                                  csp->pairs[k].sid, 0,
+//                                  ci->progeny[csp->pairs[k].pid],
+//                                  cj->progeny[csp->pairs[k].pjd]),
+//                s);
+//          }
+//        }
+
+        /* Otherwise, break it up if it is too large? */
+//      } else if (scheduler_doforcesplit && ci->split && cj->split &&
+//                 (ci->hydro.count > space_maxsize / cj->hydro.count)) {
+
+        /* Replace the current task. */
+        t->type = task_type_none;
+
+        for (int j = 0; j < 8; j++)
+          if (ci->progeny[j] != NULL && ci->progeny[j]->hydro.count)
+            for (int k = 0; k < 8; k++)
+              if (cj->progeny[k] != NULL && cj->progeny[k]->hydro.count) {
+                struct task *tl =
+                    scheduler_addtask(s, task_type_pair, t->subtype, 0, 0,
+                                      ci->progeny[j], cj->progeny[k]);
+                scheduler_splittask_hydro_GPU(tl, s);
+                tl->flags = space_getsid_and_swap_cells(s->space, &t->ci,
+                                                        &t->cj, shift);
+              }
+      }
+    } /* pair interaction? */
+  }   /* iterate over the current task. */
+}
+
+/**
  * @brief Split a gravity task if too large.
  *
  * @param t The #task
@@ -1660,10 +1853,13 @@ void scheduler_splittasks_mapper(void *map_data, int num_elements,
                t->subtype == task_subtype_gpu_pack_g ||
                t->subtype == task_subtype_gpu_pack_f) {
         scheduler_splittask_hydro(t, s);
-//      continue; /*Do nothing and grab next task to split*/
     } else if (t->subtype == task_subtype_gpu_unpack ||
             t->subtype == task_subtype_gpu_unpack_g ||
             t->subtype == task_subtype_gpu_unpack_f){
+    	/*Do nothing and grab next task to split.
+    	 *These tasks are cell-less so cannot split.
+    	 *Will remove this if statement if set on splitting
+    	 *b4 creating unpack tasks*/
     	continue;
     }
     else {

@@ -10,7 +10,7 @@ Scheduler:
   max_top_level_cells: 8
   tasks_per_cell: 200
   deadlock_waiting_time_s:   10
-  cell_split_size: 100
+  cell_split_size: 80
 # Parameters governing the time integration
 TimeIntegration:
   time_begin: 0.    # The starting time of the simulation (in internal units).

@@ -16,7 +16,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Add the non-standard paths to the included library headers
-AM_CFLAGS = $(HDF5_CPPFLAGS) $(GSL_INCS) $(FFTW_INCS) $(NUMA_INCS) $(GRACKLE_INCS)  $(SUNDIALS_INCS) $(CHEALPIX_CFLAGS)
+AM_CFLAGS = $(HDF5_CPPFLAGS) $(GSL_INCS) $(FFTW_INCS) $(NUMA_INCS) $(GRACKLE_INCS)  $(SUNDIALS_INCS) $(CHEALPIX_CFLAGS) -O0
 
 # Add HIP Path
 AM_CFLAGS += -D__HIP_PLATFORM_AMD__

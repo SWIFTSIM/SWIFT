@@ -1058,6 +1058,13 @@ void *runner_main2(void *data) {
           } else if (t->subtype == task_subtype_gpu_pack) {
             packed_self++;
 #ifdef GPUOFFLOAD_DENSITY
+            if(ci->hydro.count > 2 * np_per_cell){
+          	  g100++;
+          	  maxcount = max(ci->hydro.count, maxcount);
+          	  error("SELF expecting %i got %i parts"
+          			  "Cell ID %i Cell split %d",
+						  np_per_cell, ci->hydro.count, ci->cellID, ci->split);
+            }
             //          struct timespec t0, t1; //
             //          clock_gettime(CLOCK_REALTIME, &t0);
             ticks tic_cpu_pack = getticks();
@@ -1308,13 +1315,23 @@ void *runner_main2(void *data) {
 #endif  // DO_CORNERS
 
 	          ticks tic_cpu_pack = getticks();
-	          if (ci == ci->hydro.super || cj == cj->hydro.super){
-	        	  g100++;
-//	        	  message("GPU working on top level cell");
-	          }
-//              if(ci->hydro.count > 100){
+//	          if (ci == ci->hydro.super || cj == cj->hydro.super){
+//	        	  g100++;
+////	        	  message("GPU working on top level cell");
+//	          }
+//              if(ci->hydro.count > 2 * np_per_cell){
 //            	  g100++;
 //            	  maxcount = max(ci->hydro.count, maxcount);
+//            	  error("expecting %i got %i parts"
+//            			  "Cell ID %i Cell split %d",
+//						  np_per_cell, ci->hydro.count, ci->cellID, ci->split);
+//              }
+//              if(ci->hydro.count < 2 * np_per_cell){
+//            	  g100++;
+//            	  maxcount = max(ci->hydro.count, maxcount);
+//            	  error("expecting %i got %i parts"
+//            			  "Cell ID %i Cell split %d",
+//						  np_per_cell, ci->hydro.count, ci->cellID, ci->split);
 //              }
 //              else l100++;
 	          packing_time_pair += runner_dopair1_pack_f4(
@@ -1985,7 +2002,7 @@ void *runner_main2(void *data) {
       }
     } /* main loop. */
 
-    message("Worked on %i supers of split cells", g100);
+//    message("Worked on %i supers w more than 100 parts", g100);
       // Stuff for writing debug data to file for validation
       ////        if (step % 10 == 0 || step == 1) {
       //      if(r->cpuid == 0 && engine_rank == 0)fprintf(fgpu_steps, "x, y, z,
