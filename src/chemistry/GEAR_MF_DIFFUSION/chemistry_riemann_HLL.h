@@ -66,6 +66,35 @@ chemistry_riemann_compute_K_star(const struct part *restrict pi,
   }
 }
 
+__attribute__((always_inline)) INLINE static void
+chemistry_riemann_prevent_large_K_star(const struct part *restrict pi,
+				       const struct part *restrict pj,
+				       const float Anorm,
+				       const struct cosmology *cosmo,
+				       double* norm_K_star,
+				       double K_star[3][3]) {
+
+  /* Prevent exessively large diffusion coefficients */
+  const float min_dt = (pj->chemistry_data.flux_dt > 0.f)
+                       ? fminf(pi->chemistry_data.flux_dt, pj->chemistry_data.flux_dt)
+                       : pi->chemistry_data.flux_dt;
+  const float min_mass = min(hydro_get_mass(pi), hydro_get_mass(pj));
+  const float min_h = min(pi->h, pj->h)*cosmo->a*kernel_gamma;
+
+  /* Add missing scale-factors (Anorm is physical or comoving?) */
+
+  double mass_flux = Anorm * *norm_K_star / min_h  * min_dt / min_mass;
+  if(mass_flux > 0.25) {
+    /* warning("Mass_flux > 0.25, reducing the diffusion coefficient"); */
+    for (int i = 0; i < 3; ++i) {
+      for (int j = 0; j < 3; ++j) {
+	K_star[i][j] *= 0.25/mass_flux;
+      }
+    }
+  }
+  *norm_K_star *= 0.25/mass_flux;
+}
+
 __attribute__((always_inline)) INLINE static void chemistry_riemann_predict_Z(
     const struct part *restrict pi, const struct part *restrict pj, double *Zi,
     double *Zj, int group, const struct cosmology *cosmo) {
@@ -212,7 +241,7 @@ chemistry_riemann_solve_for_flux(
   /* Compute diffusion matrix K_star = 0.5*(KR + KL) */
   double K_star[3][3];
   chemistry_riemann_compute_K_star(pi, pj, K_star, chem_data, cosmo);
-  const double norm_K_star = chemistry_get_matrix_norm(K_star);
+  double norm_K_star = chemistry_get_matrix_norm(K_star);
 
   /* If the diffusion matrix is null, don't exchange flux. This can happen
      in the first timestep when the density is not yet computed. */
@@ -220,6 +249,9 @@ chemistry_riemann_solve_for_flux(
     *metal_flux = 0;
     return;
   }
+
+  /* Prevent exessively large diffusion coefficients */
+  /* chemistry_riemann_prevent_large_K_star(pi, pj, Anorm, cosmo, &norm_K_star, K_star); */
 
   /* Get U_star. Already in physical units. */
   const double U_star = 0.5 * (UR + UL);
