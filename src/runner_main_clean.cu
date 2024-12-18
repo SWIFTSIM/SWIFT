@@ -20,8 +20,8 @@
  ******************************************************************************/
 /* Config parameters. */
 #define GPUOFFLOAD_DENSITY 1   // off-load hydro density to GPU
-#define GPUOFFLOAD_GRADIENT 1  // off-load hydro density to GPU
-#define GPUOFFLOAD_FORCE 1     // off-load hydro density to GPU
+//#define GPUOFFLOAD_GRADIENT 1  // off-load hydro density to GPU
+//#define GPUOFFLOAD_FORCE 1     // off-load hydro density to GPU
 
 // #define DO_CORNERS 1 //do corner pair tasks on CPU
 // #define DUMP_TIMINGS 1
@@ -998,10 +998,6 @@ void *runner_main2(void *data) {
         TIMER_TIC
         t = scheduler_gettask(sched, r->qid, prev);
         TIMER_TOC(timer_gettask);
-//        hang_time += getticks() - tic_get_task;
-//        if (hang_time > 1000000000000000){
-//        	message("I'm stuck runner %i", r->cpuid);
-//        }
         /* Did I get anything? */
         if (t == NULL) break;
       }
@@ -1256,7 +1252,7 @@ void *runner_main2(void *data) {
             /* Abouzied: To be commented out when the GPU pairs have been coded
              * up */
             cpu_pair++;
-#ifndef GPUOFFLOAD_DENSITY
+//#ifndef GPUOFFLOAD_DENSITY
             struct timespec t0, t1, dt;
             clock_gettime(CLOCK_REALTIME, &t0);
             runner_dopair1_branch_density(r, ci, cj);
@@ -1265,112 +1261,112 @@ void *runner_main2(void *data) {
             time_for_density_cpu_pair +=
                 (t1.tv_sec - t0.tv_sec) +
                 (t1.tv_nsec - t0.tv_nsec) / 1000000000.0;
-#endif
+//#endif
           }
           /* GPU WORK */
           else if (t->subtype == task_subtype_gpu_pack) {
             packed_pair++;
 #ifdef GPUOFFLOAD_DENSITY
-#ifdef DO_CORNERS
-            struct timespec t0, t1, dt;
-            clock_gettime(CLOCK_REALTIME, &t0);
-            double shift[3] = {0.0};
-            t->corner_pair = 0;
-            int sid = space_getsid_filter(e->s, &ci, &cj, shift);
-            clock_gettime(CLOCK_REALTIME, &t1);
-            packing_time_pair += (t1.tv_sec - t0.tv_sec) +
-                                 (t1.tv_nsec - t0.tv_nsec) / 1000000000.0;
-            if ((sid == 0 || sid == 2 || sid == 6 || sid == 8) && step > 1) {
-              //		  if((sid != 4 && sid != 10 && sid == 12) &&
-              // step > 1){
-              clock_gettime(CLOCK_REALTIME, &t0);
-              runner_dopair1_branch_density(r, ci, cj);
-              t->corner_pair = 1;
-              int qid = r->qid;
-              atomic_dec(&(sched->queues[qid].n_packs_pair_left));
-              /* Tell the cells they have been packed */
-              ci->pack_done++;
-              cj->pack_done++;
-              t->done = 1;
-              int launch = 0, launch_leftovers = 0;
-              if ((sched->queues[qid].n_packs_pair_left == 0))
-                launch_leftovers = 1;
-              /* Tasks done. Release the lock ! */
-              task_unlock(t);
-              /*schedule my dependencies (Only unpacks really)*/
-              enqueue_dependencies(sched, t);
-              /*Signal sleeping runners*/
-              signal_sleeping_runners(sched, t);
-              clock_gettime(CLOCK_REALTIME, &t1);
-              packing_time_pair += (t1.tv_sec - t0.tv_sec) +
-                                   (t1.tv_nsec - t0.tv_nsec) / 1000000000.0;
-              if (launch_leftovers) {
-                pack_vars_pair_dens->launch_leftovers = 1;
-                runner_dopair1_launch_f4_one_memcpy(
-                    r, sched, pack_vars_pair_dens, t, parts_aos_pair_f4_send,
-                    parts_aos_pair_f4_recv, d_parts_aos_pair_f4_send,
-                    d_parts_aos_pair_f4_recv, stream_pairs, d_a, d_H, e,
-                    &packing_time_pair, &time_for_density_gpu_pair,
-                    &unpacking_time_pair, fparti_fpartj_lparti_lpartj_dens,
-                    pair_end);
-              }
-            } else {
-#endif  // DO_CORNERS
-
-	          ticks tic_cpu_pack = getticks();
-//	          if (ci == ci->hydro.super || cj == cj->hydro.super){
-//	        	  g100++;
-////	        	  message("GPU working on top level cell");
-//	          }
-//              if(ci->hydro.count > 2 * np_per_cell){
-//            	  g100++;
-//            	  maxcount = max(ci->hydro.count, maxcount);
-//            	  error("expecting %i got %i parts"
-//            			  "Cell ID %i Cell split %d",
-//						  np_per_cell, ci->hydro.count, ci->cellID, ci->split);
+//#ifdef DO_CORNERS
+//            struct timespec t0, t1, dt;
+//            clock_gettime(CLOCK_REALTIME, &t0);
+//            double shift[3] = {0.0};
+//            t->corner_pair = 0;
+//            int sid = space_getsid_filter(e->s, &ci, &cj, shift);
+//            clock_gettime(CLOCK_REALTIME, &t1);
+//            packing_time_pair += (t1.tv_sec - t0.tv_sec) +
+//                                 (t1.tv_nsec - t0.tv_nsec) / 1000000000.0;
+//            if ((sid == 0 || sid == 2 || sid == 6 || sid == 8) && step > 1) {
+//              //		  if((sid != 4 && sid != 10 && sid == 12) &&
+//              // step > 1){
+//              clock_gettime(CLOCK_REALTIME, &t0);
+//              runner_dopair1_branch_density(r, ci, cj);
+//              t->corner_pair = 1;
+//              int qid = r->qid;
+//              atomic_dec(&(sched->queues[qid].n_packs_pair_left));
+//              /* Tell the cells they have been packed */
+//              ci->pack_done++;
+//              cj->pack_done++;
+//              t->done = 1;
+//              int launch = 0, launch_leftovers = 0;
+//              if ((sched->queues[qid].n_packs_pair_left == 0))
+//                launch_leftovers = 1;
+//              /* Tasks done. Release the lock ! */
+//              task_unlock(t);
+//              /*schedule my dependencies (Only unpacks really)*/
+//              enqueue_dependencies(sched, t);
+//              /*Signal sleeping runners*/
+//              signal_sleeping_runners(sched, t);
+//              clock_gettime(CLOCK_REALTIME, &t1);
+//              packing_time_pair += (t1.tv_sec - t0.tv_sec) +
+//                                   (t1.tv_nsec - t0.tv_nsec) / 1000000000.0;
+//              if (launch_leftovers) {
+//                pack_vars_pair_dens->launch_leftovers = 1;
+//                runner_dopair1_launch_f4_one_memcpy(
+//                    r, sched, pack_vars_pair_dens, t, parts_aos_pair_f4_send,
+//                    parts_aos_pair_f4_recv, d_parts_aos_pair_f4_send,
+//                    d_parts_aos_pair_f4_recv, stream_pairs, d_a, d_H, e,
+//                    &packing_time_pair, &time_for_density_gpu_pair,
+//                    &unpacking_time_pair, fparti_fpartj_lparti_lpartj_dens,
+//                    pair_end);
 //              }
-//              if(ci->hydro.count < 2 * np_per_cell){
-//            	  g100++;
-//            	  maxcount = max(ci->hydro.count, maxcount);
-//            	  error("expecting %i got %i parts"
-//            			  "Cell ID %i Cell split %d",
-//						  np_per_cell, ci->hydro.count, ci->cellID, ci->split);
+//            } else {
+//#endif  // DO_CORNERS
+//
+//	          ticks tic_cpu_pack = getticks();
+////	          if (ci == ci->hydro.super || cj == cj->hydro.super){
+////	        	  g100++;
+//////	        	  message("GPU working on top level cell");
+////	          }
+////              if(ci->hydro.count > 2 * np_per_cell){
+////            	  g100++;
+////            	  maxcount = max(ci->hydro.count, maxcount);
+////            	  error("expecting %i got %i parts"
+////            			  "Cell ID %i Cell split %d",
+////						  np_per_cell, ci->hydro.count, ci->cellID, ci->split);
+////              }
+////              if(ci->hydro.count < 2 * np_per_cell){
+////            	  g100++;
+////            	  maxcount = max(ci->hydro.count, maxcount);
+////            	  error("expecting %i got %i parts"
+////            			  "Cell ID %i Cell split %d",
+////						  np_per_cell, ci->hydro.count, ci->cellID, ci->split);
+////              }
+////              else l100++;
+//	          packing_time_pair += runner_dopair1_pack_f4(
+//                  r, sched, pack_vars_pair_dens, ci, cj, t,
+//                  parts_aos_pair_f4_send, e, fparti_fpartj_lparti_lpartj_dens);
+//
+//	          t->total_cpu_pack_ticks += getticks() - tic_cpu_pack;
+//              /* Packed enough tasks or no pack tasks left in queue, flag that
+//               * we want to run */
+//              int launch = pack_vars_pair_dens->launch;
+//              int launch_leftovers = pack_vars_pair_dens->launch_leftovers;
+//
+//              /* Do we have enough stuff to run the GPU ? */
+//              if (launch) n_full_p_d_bundles++;
+//              if (launch_leftovers) n_partial_p_d_bundles++;
+//              if (launch || launch_leftovers) {
+//
+//                /*Launch GPU tasks*/
+//                //				runner_dopair1_launch(r, sched,
+//                // pack_vars_pair_dens, ci, t, parts_aos_pair_dens,
+//                //						d_parts_aos_pair_dens,
+//                // stream, d_a, d_H, e, &packing_time_pair,
+//                //&time_for_density_gpu_pair);
+//            	int t_packed = pack_vars_pair_dens->tasks_packed;
+//                signal_sleeping_runners(sched, t, t_packed);
+//                runner_dopair1_launch_f4_one_memcpy(
+//                    r, sched, pack_vars_pair_dens, t, parts_aos_pair_f4_send,
+//                    parts_aos_pair_f4_recv, d_parts_aos_pair_f4_send,
+//                    d_parts_aos_pair_f4_recv, stream_pairs, d_a, d_H, e,
+//                    &packing_time_pair, &time_for_density_gpu_pair,
+//                    &unpacking_time_pair, fparti_fpartj_lparti_lpartj_dens,
+//                    pair_end);
 //              }
-//              else l100++;
-	          packing_time_pair += runner_dopair1_pack_f4(
-                  r, sched, pack_vars_pair_dens, ci, cj, t,
-                  parts_aos_pair_f4_send, e, fparti_fpartj_lparti_lpartj_dens);
-
-	          t->total_cpu_pack_ticks += getticks() - tic_cpu_pack;
-              /* Packed enough tasks or no pack tasks left in queue, flag that
-               * we want to run */
-              int launch = pack_vars_pair_dens->launch;
-              int launch_leftovers = pack_vars_pair_dens->launch_leftovers;
-	      
-              /* Do we have enough stuff to run the GPU ? */
-              if (launch) n_full_p_d_bundles++;
-              if (launch_leftovers) n_partial_p_d_bundles++;
-              if (launch || launch_leftovers) {
-
-                /*Launch GPU tasks*/
-                //				runner_dopair1_launch(r, sched,
-                // pack_vars_pair_dens, ci, t, parts_aos_pair_dens,
-                //						d_parts_aos_pair_dens,
-                // stream, d_a, d_H, e, &packing_time_pair,
-                //&time_for_density_gpu_pair);
-            	int t_packed = pack_vars_pair_dens->tasks_packed;
-                signal_sleeping_runners(sched, t, t_packed);
-                runner_dopair1_launch_f4_one_memcpy(
-                    r, sched, pack_vars_pair_dens, t, parts_aos_pair_f4_send,
-                    parts_aos_pair_f4_recv, d_parts_aos_pair_f4_send,
-                    d_parts_aos_pair_f4_recv, stream_pairs, d_a, d_H, e,
-                    &packing_time_pair, &time_for_density_gpu_pair,
-                    &unpacking_time_pair, fparti_fpartj_lparti_lpartj_dens,
-                    pair_end);
-              }
-#ifdef DO_CORNERS
-            } /* End of GPU work Pairs */
-#endif        // DO_CORNERS
+//#ifdef DO_CORNERS
+//            } /* End of GPU work Pairs */
+//#endif        // DO_CORNERS
 #endif        // GPUOFFLOAD_DENSITY
           }   /* pair / pack */
           else if (t->subtype == task_subtype_gpu_pack_g) {
@@ -1962,7 +1958,7 @@ void *runner_main2(void *data) {
       /* We're done with this task, see if we get a next one. */
       prev = t;
       
-      if (t->subtype == task_subtype_gpu_pack) {
+      if (t->subtype == task_subtype_gpu_pack && t->type == task_type_self) {
 #ifdef GPUOFFLOAD_DENSITY
         /* Don't enqueue unpacks yet. Just signal the runners */
         t->skip = 1;
@@ -1973,7 +1969,10 @@ void *runner_main2(void *data) {
         t = scheduler_done(sched, t);
 #endif
       }
-      
+
+      else if (t->subtype == task_subtype_gpu_pack && t->type == task_type_pair) {
+    	  t = scheduler_done(sched, t);
+      }
       else if (t->subtype == task_subtype_gpu_pack_g) {
 #ifdef GPUOFFLOAD_GRADIENT
         /* Don't enqueue unpacks yet. Just signal the runners */
