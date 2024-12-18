@@ -140,7 +140,7 @@ __attribute__((always_inline)) INLINE static void chemistry_compute_flux(
                                    Anorm, n_unit, metal, metal_flux, chem_data,
                                    cosmo);
 
-  /* Anorm_physical = a^2 A_comoving. Hence we are missing a a^2 factor. */
+  /* Anorm is already in physical units here. */
   *metal_flux *= Anorm;
 }
 
