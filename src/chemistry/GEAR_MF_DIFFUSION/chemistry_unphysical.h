@@ -62,8 +62,8 @@ chemistry_check_unphysical_state(double* metal_mass, const double mZ_old,
 
   /* Fix negative masses */
   if (*metal_mass < 0.0) {
-    /* Do not extrapolate, use 0th order reconstruction. */
     if (callloc == 1) {
+      /* Do not extrapolate, use 0th order reconstruction. */
       *metal_mass = mZ_old;
     } else {
       *metal_mass = 0.0;
