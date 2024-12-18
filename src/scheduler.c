@@ -1369,7 +1369,8 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
       } else if (scheduler_doforcesplit && ci->split && cj->split &&
                  (ci->hydro.count > space_maxsize / cj->hydro.count)) {
 
-        /* Replace the current task. */
+        /* Replace the current task.A. Nasar: Code does NOT go in here even
+         * with doforcesplit defined as 1 in scheduler.h */
         t->type = task_type_none;
 
         for (int j = 0; j < 8; j++)
@@ -1507,6 +1508,11 @@ static void scheduler_splittask_hydro_GPU(struct task *t, struct scheduler *s) {
               t->flags);
 #endif
 
+      if((cell_can_split_pair_hydro_task(ci) &&
+              !cell_can_split_pair_hydro_task(cj))
+        || !cell_can_split_pair_hydro_task(ci) &&
+        cell_can_split_pair_hydro_task(cj))
+    	  error("for some reason cell i can be split and cell j not");
       /* Should this task be split-up? */
       if (cell_can_split_pair_hydro_task(ci) &&
           cell_can_split_pair_hydro_task(cj)) {

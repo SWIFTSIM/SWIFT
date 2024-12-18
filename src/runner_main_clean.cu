@@ -671,7 +671,7 @@ void *runner_main2(void *data) {
 //  int count_max_parts_tmp =
 //      2 * target_n_tasks * space->nr_parts * nr_nodes / space->tot_cells;
   int count_max_parts_tmp =
-      target_n_tasks * (np_per_cell + buff);
+      2 * target_n_tasks * (np_per_cell + buff);
   message("max_parts %i, n_tasks_GPU %i\n", count_max_parts_tmp, target_n_tasks);
   pack_vars_self_dens->count_max_parts = count_max_parts_tmp;
   pack_vars_pair_dens->count_max_parts = count_max_parts_tmp;
@@ -1058,13 +1058,13 @@ void *runner_main2(void *data) {
           } else if (t->subtype == task_subtype_gpu_pack) {
             packed_self++;
 #ifdef GPUOFFLOAD_DENSITY
-            if(ci->hydro.count > 2 * np_per_cell){
-          	  g100++;
-          	  maxcount = max(ci->hydro.count, maxcount);
-          	  error("SELF expecting %i got %i parts"
-          			  "Cell ID %i Cell split %d",
-						  np_per_cell, ci->hydro.count, ci->cellID, ci->split);
-            }
+//            if(ci->hydro.count > 2 * np_per_cell){
+//          	  g100++;
+//          	  maxcount = max(ci->hydro.count, maxcount);
+//          	  error("SELF expecting %i got %i parts"
+//          			  "Cell ID %i Cell split %d",
+//						  np_per_cell, ci->hydro.count, ci->cellID, ci->split);
+//            }
             //          struct timespec t0, t1; //
             //          clock_gettime(CLOCK_REALTIME, &t0);
             ticks tic_cpu_pack = getticks();

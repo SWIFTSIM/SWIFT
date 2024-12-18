@@ -8,7 +8,7 @@ InternalUnitSystem:
 
 Scheduler:
   max_top_level_cells: 8
-  tasks_per_cell: 200
+  tasks_per_cell: 1000
   deadlock_waiting_time_s:   10
   cell_split_size: 80
 # Parameters governing the time integration
@@ -31,7 +31,7 @@ Statistics:
 
 # Parameters for the hydrodynamics scheme
 SPH:
-  resolution_eta:        1.99   # Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel).
+  resolution_eta:        1.2348   # Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel).
   CFL_condition:         0.1      # Courant-Friedrich-Levy condition for time integration.
   
 # Parameters related to the initial conditions

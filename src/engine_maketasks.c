@@ -5165,7 +5165,9 @@ void engine_maketasks(struct engine *e) {
   for (int i = 0; i < sched->nr_tasks; i++) {
     struct task *t = &sched->tasks[i];
     if(t->ci != NULL){
-      if(t->ci->hydro.count > 80 && t->subtype == task_subtype_gpu_pack)
+//      if(t->type == task_type_pair && ((t->ci->split && !t->cj->split) || (!t->ci->split && t->cj->split)))
+//    	  error("one is split the other isn't");
+      if(t->ci->hydro.count > 80 && t->type == task_type_self)
     	  error("Count is %i task subtype (%s)",
                   t->ci->hydro.count, subtaskID_names[t->subtype]);
     }
