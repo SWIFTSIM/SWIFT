@@ -663,15 +663,18 @@ void *runner_main2(void *data) {
   float eta_neighbours = e->s->eta_neighbours;
   int np_per_cell = ceil(2.0 * eta_neighbours);
   np_per_cell *= np_per_cell * np_per_cell;
-  int buff = ceil(0.5 * np_per_cell); /*A. Nasar: Increase parts per recursed task-level cell by buffer to
-                             ensure we allocate enough memory*/
+  /*A. Nasar: Increase parts per recursed task-level cell by buffer to
+    ensure we allocate enough memory*/
+  int buff = ceil(0.5 * np_per_cell);
 
   int tot_self_tasks = space->nr_parts / np_per_cell;
 
-//  int count_max_parts_tmp =
-//      2 * target_n_tasks * space->nr_parts * nr_nodes / space->tot_cells;
+  /*A. Nasar: Multiplication by 2 is also to ensure we do not over-run
+   *  the allocated memory on buffers and GPU. This can happen if calculated h is
+   *  larger than cell width and splitting makes bigger than target cells*/
   int count_max_parts_tmp =
       2 * target_n_tasks * (np_per_cell + buff);
+
   message("max_parts %i, n_tasks_GPU %i\n", count_max_parts_tmp, target_n_tasks);
   pack_vars_self_dens->count_max_parts = count_max_parts_tmp;
   pack_vars_pair_dens->count_max_parts = count_max_parts_tmp;
