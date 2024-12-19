@@ -20,16 +20,12 @@
 #define SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_GETTERS_H
 
 #include "chemistry_struct.h"
+#include "chemistry_utils.h"
 #include "const.h"
 #include "cosmology.h"
 #include "hydro.h"
 #include "kernel_hydro.h"
 #include "part.h"
-
-#ifdef HAVE_LIBGSL
-#include <gsl/gsl_eigen.h>
-#include <gsl/gsl_matrix.h>
-#endif
 
 /**
  * @brief Get metal density from a specific metal group.
@@ -144,64 +140,42 @@ chemistry_get_physical_shear_tensor(const struct part *restrict p,
  */
 __attribute__((always_inline)) INLINE static void
 chemistry_regularize_shear_tensor(double S[3][3]) {
-#ifdef HAVE_LIBGSL
-  /* Create the necessary GSL objects to hold the eigenvalues and eigenvectors
-   */
-  gsl_matrix *S_matrix = gsl_matrix_alloc(3, 3);  // Matrix for input/output S
-  gsl_vector *eigenvalues =
-      gsl_vector_alloc(3);  // Vector to hold the eigenvalues
-  gsl_matrix *eigenvectors =
-      gsl_matrix_alloc(3, 3);  // Matrix to hold the eigenvectors
-  gsl_eigen_symmv_workspace *workspace =
-      gsl_eigen_symmv_alloc(3);  // Workspace for eigen computation
-
-  /* Fill S_matrix with the values from S */
-  for (int i = 0; i < 3; i++) {
-    for (int j = 0; j < 3; j++) {
-      gsl_matrix_set(S_matrix, i, j, S[i][j]);
-    }
-  }
+  double eigenvalues[3] = {0.0};
+  double eigenvector0[3] = {0.0};
+  double eigenvector1[3] = {0.0};
+  double eigenvector2[3] = {0.0};
 
   /* Compute the eigenvalues and eigenvectors. S is symmetric by construction.
    */
-  gsl_eigen_symmv(S_matrix, eigenvalues, eigenvectors, workspace);
+  chemistry_utils_diagonalize_3x3(S, eigenvalues, eigenvector0, eigenvector1, eigenvector2);
 
-  /* Zero-initialize the matrix S to store S_minus */
-  double S_minus[3][3] = {{0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}};
+  const double eigenvectors[3][3] = {
+    {eigenvector0[0], eigenvector1[0], eigenvector2[0]},
+    {eigenvector0[1], eigenvector1[1], eigenvector2[1]},
+    {eigenvector0[2], eigenvector1[2], eigenvector2[2]}
+  };
+  double S_minus[3][3] = {{0.0}};
 
-  /* Compute S_ij^minus using the sum of min(0, lambda^(k)) * e_i^(k) * e_j^(k)
-   */
+  /* Compute S_minus as the sum of min(0, lambda^(k)) * e_i^(k) * e_j^(k) */
   for (int k = 0; k < 3; k++) {
-    double lambda_k =
-        gsl_vector_get(eigenvalues, k);        // Get the k-th eigenvalue
-    double lambda_k_minus = min(0, lambda_k);  // Take min(0, lambda^(k))
+    const double lambda_k = eigenvalues[k];            // Get the k-th eigenvalue
+    const double lambda_k_minus = fmin(0.0, lambda_k); // Take min(0, lambda^(k))
 
     for (int i = 0; i < 3; i++) {
       for (int j = 0; j < 3; j++) {
-        double e_ik = gsl_matrix_get(eigenvectors, i, k);
-        double e_jk = gsl_matrix_get(eigenvectors, j, k);
-        S_minus[i][j] += lambda_k_minus * e_ik * e_jk;
+	const double e_ik = eigenvectors[i][k];
+	const double e_jk = eigenvectors[j][k];
+	S_minus[i][j] += lambda_k_minus * e_ik * e_jk;
       }
     }
   }
 
-  // Copy S_minus back into S (overwriting it)
+  /* Copy S_minus back into S (overwriting it) */
   for (int i = 0; i < 3; i++) {
     for (int j = 0; j < 3; j++) {
       S[i][j] = S_minus[i][j];
     }
   }
-
-  // Free the allocated memory
-  gsl_matrix_free(S_matrix);
-  gsl_vector_free(eigenvalues);
-  gsl_matrix_free(eigenvectors);
-  gsl_eigen_symmv_free(workspace);
-#else
-  error(
-      "Code not compiled with GSL. Can't compute eigenvalues of the filtered "
-      "shear tensor.");
-#endif
 }
 
 /**
@@ -230,12 +204,10 @@ chemistry_get_physical_matrix_K(const struct part *restrict p, double K[3][3],
     /* Get the full shear tensor */
     chemistry_get_physical_shear_tensor(p, K, cosmo);
 
-    /* This takes way too much time, probably because we allocate and
-       deallocate the workspace too often. Comment it for now */
     /* Now regularize the shear tensor by considering only the negative
        eigenvalues (Balarac et al. (2013)). This is now called the S_minus
        matrix. */
-    /* chemistry_regularize_shear_tensor(K); */
+    chemistry_regularize_shear_tensor(K);
 
     /* K = kappa * S_minus */
     for (int i = 0; i < 3; ++i) {
