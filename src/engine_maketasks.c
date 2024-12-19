@@ -5323,7 +5323,7 @@ void engine_maketasks(struct engine *e) {
     message("took %.3f %s (including reweight).",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
 
-  /* Loop over all the CPU hydro tasks to make implicit*/
+  /* Loop over all the CPU hydro tasks to make implicit (needs threadmapping)*/
   for (int i = 0; i < sched->nr_tasks; i++) {
 
     struct task *t = &sched->tasks[i];
@@ -5343,7 +5343,9 @@ void engine_maketasks(struct engine *e) {
     if (t->subtype == task_subtype_gpu_pack_g ||
 	  t->subtype == task_subtype_gpu_pack_f ||
 	  t->subtype == task_subtype_gpu_unpack_g ||
-	  t->subtype == task_subtype_gpu_unpack_f){
+	  t->subtype == task_subtype_gpu_unpack_f){// ||
+//	  (t->type == task_type_pair &&
+//	   t->subtype == task_subtype_gpu_pack)){
     	t->implicit = 1;
     }
 //    if ((t->subtype == task_subtype_gpu_pack ||

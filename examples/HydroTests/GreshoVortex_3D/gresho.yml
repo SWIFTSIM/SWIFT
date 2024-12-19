@@ -8,7 +8,7 @@ InternalUnitSystem:
 
 Scheduler:
   max_top_level_cells: 8
-  tasks_per_cell: 1000
+  tasks_per_cell: 200
   deadlock_waiting_time_s:   10
   cell_split_size: 80
 # Parameters governing the time integration
@@ -38,4 +38,4 @@ SPH:
 InitialConditions:
   file_name:  ./greshoVortex.hdf5     # The file to read
   periodic:   1
-#  replicate:  2
+  replicate:  2
