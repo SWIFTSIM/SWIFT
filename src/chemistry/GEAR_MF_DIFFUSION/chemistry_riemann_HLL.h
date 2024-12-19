@@ -249,7 +249,7 @@ chemistry_riemann_solve_for_flux(
   }
 
   /* Prevent exessively large diffusion coefficients (same as Gizmo) */
-  chemistry_riemann_prevent_large_K_star(pi, pj, Anorm, cosmo, &norm_K_star, K_star);
+  /* chemistry_riemann_prevent_large_K_star(pi, pj, Anorm, cosmo, &norm_K_star, K_star); */
 
   /* Get U_star. Already in physical units. */
   const double U_star = 0.5 * (UR + UL);
