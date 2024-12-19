@@ -2825,7 +2825,6 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           qid = t->ci->hydro.super->owner;
           owner = &t->ci->hydro.super->owner;
         } else if (t->subtype == task_subtype_gpu_unpack) {
-          ////          qid = t->ci->owner;
           qid = -1;
         } else if (t->subtype == task_subtype_gpu_unpack_f) {
           qid = -1;
