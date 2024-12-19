@@ -3081,7 +3081,9 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
 
     /* Increase the waiting counter. */
     atomic_inc(&s->waiting);
-    // A. Nasar Do the same for the pack tasks
+    /* Insert the task into that queue. */
+    queue_insert(&s->queues[qid], t);
+    /* A. Nasar: Increment counters required for the pack tasks */
     if (t->type == task_type_self || t->type == task_type_sub_self) {
       if (t->subtype == task_subtype_gpu_pack)
         atomic_inc(&s->queues[qid].n_packs_self_left);
@@ -3090,9 +3092,9 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
       if (t->subtype == task_subtype_gpu_pack_g)
         atomic_inc(&s->queues[qid].n_packs_self_left_g);
     }
-    if (t->type ==
-        task_type_pair || t->type == task_type_sub_pair) {  // A. Nasar NEED to think about how to do this with
-                           // MPI where ci may not be on this node/rank
+    /* A. Nasar NEED to think about how to do this with
+     MPI where ci may not be on this node/rank */
+    if (t->type == task_type_pair || t->type == task_type_sub_pair) {
       if (t->subtype == task_subtype_gpu_pack) {
           atomic_inc(&s->queues[qid].n_packs_pair_left);
       }
@@ -3103,8 +3105,6 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           atomic_inc(&s->queues[qid].n_packs_pair_left_g);
       }
     }
-    /* Insert the task into that queue. */
-    queue_insert(&s->queues[qid], t);
   }
 }
 
@@ -3352,7 +3352,14 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
           int qstl = qids[ind];
           res = queue_gettask(&s->queues[qstl], prev, 0);
           TIMER_TOC(timer_qsteal);
-
+          if (res != NULL && (res->subtype == task_subtype_gpu_unpack ||
+        	  res->subtype == task_subtype_gpu_unpack_f	||
+			  res->subtype == task_subtype_gpu_unpack_g))
+            /* Reduce the size of the list of non-empty queues */
+            qids[ind] = qids[--count];
+            //A. Nasar: This should probably be a
+//            "continue;"
+            //Instead of reducing size of the list
           /* Lucky? */
           if (res != NULL) {
 //		  if (res != NULL && res->subtype != task_subtype_gpu_pack
@@ -3396,7 +3403,6 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
             /* Run with the task */
             break;
           } else {
-
             /* Reduce the size of the list of non-empty queues */
             qids[ind] = qids[--count];
           }
