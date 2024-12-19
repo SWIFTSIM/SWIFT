@@ -638,12 +638,22 @@ __attribute__((always_inline)) INLINE static void chemistry_end_force(
   /* Verify that the total metal mass does not exceed the part's mass */
   double total_metal_mass = 0.;
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
-    sum += p->chemistry_data.metal_mass[i];
+    total_metal_mass += chd->metal_mass[i];
   }
-  const double total_metal_mass =
-      p->chemistry_data.metal_mass[GEAR_CHEMISTRY_ELEMENT_COUNT - 1];
-  if (total_metal_mass > hydro_get_mass(p))
-    error("[%lld] Total metal mass grew larger than the particle mass! m_Z_tot = %e, m = %e", p->id, total_metal_mass, hydro_get_mass(p));
+  if (total_metal_mass > hydro_get_mass(p)) {
+    warning("[%lld] Total metal mass grew larger than the particle mass! "
+	    "Rescaling the element masses. m_Z_tot = %e, m = %e"
+	    " m_z_0 = %e, m_z_1 = %e, m_z_2 = %e, m_z_3 = %e, m_z_4 = %e, m_z_5 = %e, m_z_6 ="
+	    " %e, m_z_7 = %e, m_z_8 = %e, m_z_9 = %e",
+	    p->id, total_metal_mass, hydro_get_mass(p),
+	    chd->metal_mass[0],  chd->metal_mass[1], chd->metal_mass[2],
+	    chd->metal_mass[3], chd->metal_mass[4], chd->metal_mass[5],
+	    chd->metal_mass[6], chd->metal_mass[7], chd->metal_mass[8],
+	    chd->metal_mass[9]);
+    for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
+      chd->metal_mass[i] /= 1.1*total_metal_mass/hydro_get_mass(p);
+    }
+  }
 
   /* Reset wcorr */
   p->geometry.wcorr = 1.0f;
@@ -1046,6 +1056,11 @@ chemistry_get_total_metal_mass_fraction_for_cooling(
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
     m_Z_tot += p->chemistry_data.metal_mass[i];
   }
+
+  if (m_Z_tot > hydro_get_mass(p)) {
+    warning("[%lld] Total metal mass grew larger than the particle mass! m_Z_tot = %e, m = %e", p->id, m_Z_tot, hydro_get_mass(p));
+  }
+
   return m_Z_tot/hydro_get_mass(p);
 }
 
