@@ -892,7 +892,7 @@ INLINE static void sink_copy_properties_to_star(
   /* Give the stars a new position */
   sink_star_formation_give_new_position(e, sink, sp);
 
-  /* Set the mass (do not forget the sink's gpart friend!) */
+  /* Set the mass (do not forget the star's gpart friend!) */
   sp->mass = sink->target_mass_Msun * phys_const->const_solar_mass;
   sp->gpart->mass = sp->mass;
 

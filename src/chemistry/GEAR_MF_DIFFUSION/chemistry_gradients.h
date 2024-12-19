@@ -431,8 +431,8 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
    * they haven't been touched since the call
    * to chemistry_end_density() */
 
-  double m_Zi_old = *Ui * pi->geometry.volume;
-  double m_Zj_old = *Uj * pj->geometry.volume;
+  double m_Zi_not_extrapolated = *Ui * pi->geometry.volume;
+  double m_Zj_not_extrapolated = *Uj * pj->geometry.volume;
 
   /* Get grad U = grad (rho*Z) = Z*grad_rho + rho*grad_Z */
   const float Delta_rho = max(pi->rho, pj->rho) - min(pi->rho, pj->rho);
@@ -461,22 +461,21 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
 
   /* Check we have physical masses and that we are not overshooting the
      particle's mass */
-  double m_Zi_prev = *Ui * pi->geometry.volume;
-  double m_Zj_prev = *Uj * pj->geometry.volume;
-  double m_Zi = m_Zi_old;
-  double m_Zj = m_Zj_old;
+  double m_Zi = *Ui * pi->geometry.volume; /* extrapolated masses */
+  double m_Zj = *Uj * pj->geometry.volume;
   const double mi = hydro_get_mass(pi);
   const double mj = hydro_get_mass(pj);
 
   /* Check and correct unphysical extrapolated states */
-  chemistry_check_unphysical_state(&m_Zi, m_Zi_old, mi, /*callloc=*/1);
-  chemistry_check_unphysical_state(&m_Zj ,m_Zj_old, mj, /*callloc=*/1);
+  chemistry_check_unphysical_state(&m_Zi, m_Zi_not_extrapolated, mi, /*callloc=*/1);
+  chemistry_check_unphysical_state(&m_Zj, m_Zj_not_extrapolated, mj, /*callloc=*/1);
 
-  /* If the new masses have been changed, update the state vectors */
-  if (m_Zi != m_Zi_prev) {
+  /* If the new masses have been changed, do not extrapolate, use 0th order
+     reconstruction and update the state vectors */
+  if (m_Zi == m_Zi_not_extrapolated) {
     *Ui = m_Zi / pi->geometry.volume;
   }
-  if (m_Zj != m_Zj_prev) {
+  if (m_Zj == m_Zj_not_extrapolated) {
     *Uj = m_Zj / pj->geometry.volume;
   }
 }

@@ -81,8 +81,6 @@ chemistry_riemann_prevent_large_K_star(const struct part *restrict pi,
   const float min_mass = min(hydro_get_mass(pi), hydro_get_mass(pj));
   const float min_h = min(pi->h, pj->h)*cosmo->a*kernel_gamma;
 
-  /* Add missing scale-factors (Anorm is physical or comoving?) */
-
   double mass_flux = Anorm * *norm_K_star / min_h  * min_dt / min_mass;
   if(mass_flux > 0.25) {
     /* warning("Mass_flux > 0.25, reducing the diffusion coefficient"); */

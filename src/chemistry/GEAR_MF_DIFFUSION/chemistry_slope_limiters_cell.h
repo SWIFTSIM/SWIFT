@@ -139,11 +139,11 @@ chemistry_slope_limit_quantity(double gradient[3], const float maxr,
     const double gradtrue_inv = 1.0 / gradtrue;
     const double gradmax = valmax - value;
     const double gradmin = value - valmin;
-    const double beta_2 =
-        min(1.0, const_gizmo_max_condition_number / condition_number);
-    const double beta = max(GIZMO_SLOPE_LIMITER_BETA_MIN,
-                            GIZMO_SLOPE_LIMITER_BETA_MAX * beta_2);
-    /* const double beta = 1.0; /\* Choose stability *\/ */
+    /* const double beta_2 = */
+        /* min(1.0, const_gizmo_max_condition_number / condition_number); */
+    /* const double beta = max(GIZMO_SLOPE_LIMITER_BETA_MIN, */
+                            /* GIZMO_SLOPE_LIMITER_BETA_MAX * beta_2); */
+    const double beta = 1.0; /* Choose stability */
     const double min_temp =
         min(gradmax * gradtrue_inv, gradmin * gradtrue_inv) * beta;
     const double alpha = min(1.0, min_temp);
