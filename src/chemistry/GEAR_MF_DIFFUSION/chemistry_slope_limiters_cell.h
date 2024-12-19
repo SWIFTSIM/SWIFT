@@ -179,14 +179,13 @@ __attribute__((always_inline)) INLINE static void chemistry_slope_limit_cell(
                             chd->filtered.rho_v[1] / chd->filtered.rho,
                             chd->filtered.rho_v[2] / chd->filtered.rho};
 
-  const float rho = hydro_get_comoving_density(p);
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
     chemistry_slope_limit_quantity(
         /*gradient=*/ chd->gradients.Z[i],
         /*maxr=    */ maxr,
         /*value=   */ chemistry_get_metal_mass_fraction(p, i),
-        /*valmin=  */ chd->limiter.Z[i][0]/rho, /* Z_min */
-        /*valmax=  */ chd->limiter.Z[i][1]/rho, /* Z_max */
+        /*valmin=  */ chd->limiter.Z[i][0],
+        /*valmax=  */ chd->limiter.Z[i][1],
         /*condition_number*/ N_cond);
   }
 
