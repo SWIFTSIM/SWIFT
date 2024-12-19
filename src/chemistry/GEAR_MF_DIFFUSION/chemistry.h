@@ -636,7 +636,7 @@ __attribute__((always_inline)) INLINE static void chemistry_end_force(
   }
 
   /* Verify that the total metal mass does not exceed the part's mass */
-  double sum = 0.;
+  double total_metal_mass = 0.;
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
     sum += p->chemistry_data.metal_mass[i];
   }
