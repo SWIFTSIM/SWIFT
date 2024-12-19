@@ -112,8 +112,8 @@ struct chemistry_part_data {
   } gradients;
 
   struct {
-    /* Extreme values of the fluid metal_density among the neighbours. */
-    double metal_density[GEAR_CHEMISTRY_ELEMENT_COUNT][2];
+    /* Extreme values of the fluid metal mass fraction among the neighbours. */
+    double Z[GEAR_CHEMISTRY_ELEMENT_COUNT][2];
 
     /* Extreme values of the fluid velocity among the neighbours. */
     float v[3][2];
