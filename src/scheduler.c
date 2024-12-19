@@ -2818,10 +2818,6 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         } else if (t->subtype == task_subtype_gpu_pack) {  // A. Nasar
           qid = t->ci->hydro.super->owner;
           owner = &t->ci->hydro.super->owner;
-          //          fprintf(stderr,"nqueues %i waiting %i active_count %i\n",
-          //          s->nr_queues, s->waiting, s->active_count);
-          //          if(qid==-1)fprintf(stderr,"queue id is negative\n");
-          //          else fprintf(stderr,"queue id is %i\n", qid);
         } else if (t->subtype == task_subtype_gpu_pack_f) {
           qid = t->ci->hydro.super->owner;
           owner = &t->ci->hydro.super->owner;
