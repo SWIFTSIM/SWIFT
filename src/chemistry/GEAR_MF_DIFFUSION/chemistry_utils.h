@@ -243,7 +243,8 @@ chemistry_utils_diagonalize_3x3(const double A[3][3], double eigenvalues[3],
   const double max0 = max(fabs(A[0][0]), fabs(A[0][1]));
   const double max1 = max(fabs(A[0][2]), fabs(A[1][1]));
   const double max2 = max(fabs(A[1][2]), fabs(A[2][2]));
-  const double maxAbsElement = max(max(max0, max1), max2);
+  const double max01 = max(max0, max1);
+  const double maxAbsElement = max(max01, max2);
   if (maxAbsElement == 0.0)  {
     // A is the zero matrix.
     eigenvalues[0] = 0.0;
@@ -296,7 +297,8 @@ chemistry_utils_diagonalize_3x3(const double A[3][3], double eigenvalues[3],
 
     // Compute halfDet and clamp it to [-1, 1]
     double halfDet = det * 0.5;
-    halfDet = min(max(halfDet, -1.0), 1.0);
+    const double tmp = max(halfDet, -1.0);
+    halfDet = min(tmp, 1.0);
 
     // Compute the angle for the eigenvalues
     const double angle = acos(halfDet) / 3.0;
