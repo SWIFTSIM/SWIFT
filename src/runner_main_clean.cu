@@ -20,8 +20,8 @@
  ******************************************************************************/
 /* Config parameters. */
 #define GPUOFFLOAD_DENSITY 1   // off-load hydro density to GPU
-//#define GPUOFFLOAD_GRADIENT 1  // off-load hydro density to GPU
-//#define GPUOFFLOAD_FORCE 1     // off-load hydro density to GPU
+#define GPUOFFLOAD_GRADIENT 1  // off-load hydro gradient to GPU
+#define GPUOFFLOAD_FORCE 1     // off-load hydro force to GPU
 
 // #define DO_CORNERS 1 //do corner pair tasks on CPU
 // #define DUMP_TIMINGS 1
