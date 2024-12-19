@@ -445,19 +445,19 @@ runner_iact_chemistry_fluxes_common(
 
     /* Limit the mass flux to 1/4 of the total mass. This avoids ending with
        more metal mass than the gas_mass. */
-    if (fabs(totflux * mindt) > 0.0) {
-      const double mi = hydro_get_mass(pi);
-      const double mj = hydro_get_mass(pj);
-      const double Zi = chemistry_get_metal_mass_fraction(pi, g);
-      const double Zj = chemistry_get_metal_mass_fraction(pj, g);
-      const double min_m_Z = min(mi, mj) * fabs(Zi - Zj);
-      const double max_m_Z = max(mi * Zi, mj * Zj);
-      double m_Z_lim = 0.25 * min(min_m_Z, max_m_Z);
+    /* if (fabs(totflux * mindt) > 0.0) { */
+    /*   const double mi = hydro_get_mass(pi); */
+    /*   const double mj = hydro_get_mass(pj); */
+    /*   const double Zi = chemistry_get_metal_mass_fraction(pi, g); */
+    /*   const double Zj = chemistry_get_metal_mass_fraction(pj, g); */
+    /*   const double min_m_Z = min(mi, mj) * fabs(Zi - Zj); */
+    /*   const double max_m_Z = max(mi * Zi, mj * Zj); */
+    /*   double m_Z_lim = 0.25 * min(min_m_Z, max_m_Z); */
 
-      if (fabs(totflux * mindt) > m_Z_lim) {
-        totflux *= m_Z_lim / fabs(totflux);
-      }
-    }
+    /*   if (fabs(totflux * mindt) > m_Z_lim) { */
+    /*     totflux *= m_Z_lim / fabs(totflux); */
+    /*   } */
+    /* } */
 
     /* When solving the Riemann problem, we assume pi is left state, and
      * pj is right state. The sign convention is that a positive total
