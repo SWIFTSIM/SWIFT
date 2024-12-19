@@ -3352,22 +3352,18 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
           int qstl = qids[ind];
           res = queue_gettask(&s->queues[qstl], prev, 0);
           TIMER_TOC(timer_qsteal);
-          if (res != NULL && (res->subtype == task_subtype_gpu_unpack ||
-        	  res->subtype == task_subtype_gpu_unpack_f	||
-			  res->subtype == task_subtype_gpu_unpack_g))
+          if (res != NULL && (res->type == task_type_pair) &&
+        	  (res->subtype == task_subtype_gpu_unpack ||
+        	   res->subtype == task_subtype_gpu_unpack_f	||
+			   res->subtype == task_subtype_gpu_unpack_g)){
             /* Reduce the size of the list of non-empty queues */
             qids[ind] = qids[--count];
             //A. Nasar: This should probably be a
-//            "continue;"
+            continue;
+          }
             //Instead of reducing size of the list
           /* Lucky? */
           if (res != NULL) {
-//		  if (res != NULL && res->subtype != task_subtype_gpu_pack
-//				  && res->subtype != task_subtype_gpu_pack_g
-//				  && res->subtype != task_subtype_gpu_pack_f
-//				  && res->subtype != task_subtype_gpu_unpack
-//				  && res->subtype != task_subtype_gpu_unpack_g
-//				  && res->subtype != task_subtype_gpu_unpack_f) {
 
             if ((res->type == task_type_self)&&
                 res->subtype == task_subtype_gpu_pack) {
