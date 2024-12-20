@@ -641,6 +641,9 @@ __attribute__((always_inline)) INLINE static void chemistry_end_force(
     total_metal_mass += chd->metal_mass[i];
   }
   if (total_metal_mass > hydro_get_mass(p)) {
+    for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
+      chd->metal_mass[i] /= 1e3*total_metal_mass/hydro_get_mass(p);
+    }
     warning("[%lld] Total metal mass grew larger than the particle mass! "
 	    "Rescaling the element masses. m_Z_tot = %e, m = %e"
 	    " m_z_0 = %e, m_z_1 = %e, m_z_2 = %e, m_z_3 = %e, m_z_4 = %e, m_z_5 = %e, m_z_6 ="
@@ -650,9 +653,6 @@ __attribute__((always_inline)) INLINE static void chemistry_end_force(
 	    chd->metal_mass[3], chd->metal_mass[4], chd->metal_mass[5],
 	    chd->metal_mass[6], chd->metal_mass[7], chd->metal_mass[8],
 	    chd->metal_mass[9]);
-    for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
-      chd->metal_mass[i] /= 1.1*total_metal_mass/hydro_get_mass(p);
-    }
   }
 
   /* Reset wcorr */
