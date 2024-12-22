@@ -132,23 +132,28 @@ struct chemistry_part_data {
   /* Particle chemistry time-step. */
   float flux_dt;
 
-  /* Isotropic diffusion coefficient. */
+  /* Isotropic diffusion coefficient. The matrix K is proportional to kappa. */
   float kappa;
 
-  /* Density of the previous timestep */
+  /* Density of the previous timestep. This is used to compute quantities in
+     the density loop while hydro loops are updating rho. */
   float rho_prev;
 
-  /* Here are the filtered quantities, i.e. "smoothed" over the resolution scale
-   */
+  /* Here are the filtered quantities, i.e. "smoothed" over the resolution
+     scale h_bar = \gamma_k h */
   struct {
+
+    /* Filtered density (rho_bar) */
     float rho;
 
+    /* Filtered density (rho_bar) of the previous timstep. This is used to
+       compute quantities in the density loop while we are updating rho_bar. */
     float rho_prev;
 
-    /* rho * v*/
+    /* Filtered (rho * v). tilde(v) = filtered(rho*v) / filtered(rho) */
     float rho_v[3];
 
-    /* v_tilde = filtered(rho_v) / filtered(rho) */
+    /* Gradient of tilde(v) */
     float grad_v_tilde[3][3];
   } filtered;
 
