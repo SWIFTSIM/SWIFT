@@ -147,7 +147,10 @@ void engine_fof(struct engine *e, const int dump_results,
 
   const ticks tic = getticks();
 
-  /* Start by cleaning up the foreign buffers */
+  /* Start by freeing the hydro and stars sort arrays */
+  space_free_sorts(e->s);
+
+  /* Next, cleaning up the foreign buffers */
   if (foreign_buffers_allocated) {
 #ifdef WITH_MPI
     space_free_foreign_parts(e->s, /*clear pointers=*/1);

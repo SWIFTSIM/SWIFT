@@ -165,6 +165,21 @@ void space_free_foreign_parts(struct space *s, const int clear_cell_pointers) {
 #endif
 }
 
+/**
+ * @brief Free all the sort arrays associated with hydro and stars
+ *
+ * @struct s The #space.
+ */
+void space_free_sorts(struct space *s) {
+
+  for (int i = 0; i < s->nr_local_cells_with_tasks; ++i) {
+    struct cell *c = &s->cells_top[s->local_cells_with_tasks_top[i]];
+
+    cell_clear_hydro_sort_flags(c, /*clear_unused_flags=*/1);
+    cell_clear_stars_sort_flags(c, /*clear_unused_flags=*/1);
+  }
+}
+
 void space_reorder_extra_parts_mapper(void *map_data, int num_cells,
                                       void *extra_data) {
   int *local_cells = (int *)map_data;

@@ -1237,8 +1237,7 @@ void cell_clear_stars_sort_flags(struct cell *c, const int clear_unused_flags) {
   }
 
   /* Indicate that the cell is not sorted and cancel the pointer sorting
-   * arrays.
-   */
+   * arrays. */
   c->stars.sorted = 0;
   cell_free_stars_sorts(c);
 
