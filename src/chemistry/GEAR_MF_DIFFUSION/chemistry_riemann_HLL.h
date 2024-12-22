@@ -116,6 +116,19 @@ __attribute__((always_inline)) INLINE static void chemistry_riemann_predict_Z(
 
   chemistry_slope_limit_face(Zi, Zj, &dZi, &dZj, xij_i, xij_j, r);
 
+  /* Check that we do not have unphysical values */
+  if (*Zi > 1) {
+    *Zi = 1;
+  } else if (*Zi < 0) {
+    *Zi = 0;
+  }
+
+  if (*Zi > 1) {
+    *Zj = 1;
+  } else if (*Zj < 0) {
+    *Zj = 0;
+  }
+
   /* Pay attention here to convert this gradient to physical units... Z is
      always physical. */
   *Zi += dZi * cosmo->a_inv;
