@@ -19,6 +19,8 @@
 #ifndef SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_ADDITIONS_H
 #define SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_ADDITIONS_H
 
+#include "chemistry_getters.h"
+
 __attribute__((always_inline)) INLINE static void chemistry_kick_extra(
     struct part* p, float dt_therm, float dt_grav, float dt_hydro,
     float dt_kick_corr, const struct cosmology* cosmo,
@@ -61,19 +63,16 @@ __attribute__((always_inline)) INLINE static void chemistry_kick_extra(
   }
 
   /* Verify that the total metal mass does not exceed the part's mass */
-  double total_metal_mass = 0.;
-  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
-    total_metal_mass += chd->metal_mass[i];
-  }
-  if (total_metal_mass > hydro_get_mass(p)) {
+  const double m_Z_tot = chemistry_get_total_metal_mass_fraction(p) * hydro_get_mass(p);
+  if (m_Z_tot > hydro_get_mass(p)) {
     for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
-      chd->metal_mass[i] /= 1e3*total_metal_mass/hydro_get_mass(p);
+      chd->metal_mass[i] /= 1e3*m_Z_tot/hydro_get_mass(p);
     }
     warning("[%lld] Total metal mass grew larger than the particle mass! "
 	    "Rescaling the element masses. m_Z_tot = %e, m = %e"
 	    " m_z_0 = %e, m_z_1 = %e, m_z_2 = %e, m_z_3 = %e, m_z_4 = %e, m_z_5 = %e, m_z_6 ="
 	    " %e, m_z_7 = %e, m_z_8 = %e, m_z_9 = %e",
-	    p->id, total_metal_mass, hydro_get_mass(p),
+	    p->id, m_Z_tot, hydro_get_mass(p),
 	    chd->metal_mass[0],  chd->metal_mass[1], chd->metal_mass[2],
 	    chd->metal_mass[3], chd->metal_mass[4], chd->metal_mass[5],
 	    chd->metal_mass[6], chd->metal_mass[7], chd->metal_mass[8],
