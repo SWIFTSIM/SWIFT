@@ -595,7 +595,17 @@ __attribute__((always_inline)) INLINE static void chemistry_prepare_force(
 __attribute__((always_inline)) INLINE static void chemistry_end_force(
     struct part* restrict p, const struct cosmology* cosmo,
     const int with_cosmology, const double time, const double dt,
-    const struct chemistry_global_data* cd) {}
+    const struct chemistry_global_data* cd) {
+
+  /* Store the density of the current timestep for the next timestep */
+  p->chemistry_data.rho_prev = chemistry_get_comoving_density(p);
+  p->chemistry_data.filtered.rho_prev = p->chemistry_data.filtered.rho;
+
+  /* Take care of the case where \bar{rho_prev} = 0 */
+  if (p->chemistry_data.filtered.rho_prev == 0) {
+    p->chemistry_data.filtered.rho_prev = p->chemistry_data.rho_prev;
+  }
+}
 
 /**
  * @brief Sets all particle fields to sensible values when the #part has 0 ngbs.

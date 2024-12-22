@@ -83,15 +83,6 @@ __attribute__((always_inline)) INLINE static void chemistry_kick_extra(
   /* Reset wcorr */
   p->geometry.wcorr = 1.0f;
 
-  /* Store the density of the current timestep for the next timestep */
-  p->chemistry_data.rho_prev = chemistry_get_comoving_density(p);
-  p->chemistry_data.filtered.rho_prev = p->chemistry_data.filtered.rho;
-
-  /* Take care of the case where \bar{rho_prev} = 0 */
-  if (p->chemistry_data.filtered.rho_prev == 0) {
-    p->chemistry_data.filtered.rho_prev = p->chemistry_data.rho_prev;
-  }
-
 #if defined(HYDRO_DOES_MASS_FLUX)
   chemistry_kick_extra_mass_flux(p, dt_therm, dt_grav, dt_hydro, dt_kick_corr,
 				 cosmo, hydro_props)
