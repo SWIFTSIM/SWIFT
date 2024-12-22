@@ -391,5 +391,29 @@ void zoom_void_space_split(struct space *s, int verbose) {
           "void multipole (nr_gparts_in_void=%d, nr_gparts=%d)",
           nr_gparts_in_void, nr_gparts);
   }
+
+  /* Ensure the zoom count agrees with the buffer void cells (if we have buffer
+   * cells) */
+  if (s->zoom_props->with_buffer_cells) {
+    int zoom_count = 0;
+    int buffer_count = 0;
+    for (int k = 0; k < s->nr_cells; k++) {
+      struct cell *c = s->cells_top[k];
+      if (c->type == cell_type_zoom) {
+        zoom_count += c->grav.multipole.m_pole.num_gpart;
+      } else if (c->type == cell_type_buffer &&
+                 c->subtype == cell_subtype_void) {
+        buffer_count += c->grav->multipole.m_pole.num_gpart;
+      }
+    }
+
+    if (zoom_count != buffer_count) {
+      error(
+          "Buffer and zoom multipoles disagree (buffer_count=%d, "
+          "zoom_count=%d)",
+          buffer_count, zoom_count);
+    }
+  }
+
 #endif
 }
