@@ -429,18 +429,18 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
                             dv_cross_dx[2] * dv_cross_dx[2];
   const float v_sig_B_i = sqrtf(v_sig_B_i_2) * r_inv;
   const float v_sig_B_j = v_sig_B_i;
+
+  const float rhoij = 0.5f * (rhoi + rhoj);
+  const float dB_dt_AR_grad_term_i = f_ij * wi_dr / (rhoij * rhoij);
+  const float dB_dt_AR_grad_term_j = f_ji * wj_dr / (rhoij * rhoij);
+
+  const float dB_dt_AR_pref_i = art_diff_beta_i * v_sig_B_i * dB_dt_AR_grad_term_i;
+  const float dB_dt_AR_pref_j = art_diff_beta_j * v_sig_B_j * dB_dt_AR_grad_term_j;
   
-  const float dB_dt_AR_grad_term_i = f_ij * wi_dr / (rhoi * rhoi);
-  const float dB_dt_AR_grad_term_j = f_ji * wj_dr / (rhoj * rhoj);
-
-  float dB_dt_AR_pref_i = art_diff_beta_i * v_sig_B_i * dB_dt_AR_grad_term_i;
-  dB_dt_AR_pref_i += art_diff_beta_j * v_sig_B_j * dB_dt_AR_grad_term_j;
-  const float dB_dt_AR_pref_j = dB_dt_AR_pref_i;
-
   /* Update time derivative of B */
   for (int k = 0; k < 3; k++) {
-    pi->mhd_data.B_dt[k] += 0.5f * rhoi * mj * dB_dt_AR_pref_i * dB[k];
-    pj->mhd_data.B_dt[k] -= 0.5f * rhoj * mi * dB_dt_AR_pref_j * dB[k];
+    pi->mhd_data.B_dt[k] += rhoi * mj * dB_dt_AR_pref_i * dB[k];
+    pj->mhd_data.B_dt[k] -= rhoj * mi * dB_dt_AR_pref_j * dB[k];
   }
 
   /* Put back diffused magnetic energy as heat */ 
@@ -614,7 +614,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   
   /* Artificial resistivity */
   const float art_diff_beta_i = pi->mhd_data.art_diff_beta;
-  const float art_diff_beta_j = pj->mhd_data.art_diff_beta;
   
   float dv_cross_dx[3];
   dv_cross_dx[0] = dv[1] * dx[2] - dv[2] * dx[1];
@@ -625,17 +624,15 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
                             dv_cross_dx[1] * dv_cross_dx[1] +
                             dv_cross_dx[2] * dv_cross_dx[2];
   const float v_sig_B_i = sqrtf(v_sig_B_i_2) * r_inv;
-  const float v_sig_B_j = v_sig_B_i;
-  
-  const float dB_dt_AR_grad_term_i = f_ij * wi_dr / (rhoi * rhoi);
-  const float dB_dt_AR_grad_term_j = f_ji * wj_dr / (rhoj * rhoj);
 
-  float dB_dt_AR_pref_i = art_diff_beta_i * v_sig_B_i * dB_dt_AR_grad_term_i;
-  dB_dt_AR_pref_i += art_diff_beta_j * v_sig_B_j * dB_dt_AR_grad_term_j;
+  const	float rhoij = 0.5f * (rhoi + rhoj);
+  const float dB_dt_AR_grad_term_i = f_ij * wi_dr / (rhoij * rhoij);
+  
+  const float dB_dt_AR_pref_i = art_diff_beta_i * v_sig_B_i * dB_dt_AR_grad_term_i;
   
   /* Update time derivative of B */
   for (int k = 0; k < 3; k++) {
-    pi->mhd_data.B_dt[k] += 0.5f * rhoi * mj * dB_dt_AR_pref_i * dB[k];
+    pi->mhd_data.B_dt[k] += rhoi * mj * dB_dt_AR_pref_i * dB[k];
   }
 
   /* Put back diffused magnetic energy as heat */ 
