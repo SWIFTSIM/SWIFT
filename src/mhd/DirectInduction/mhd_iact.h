@@ -94,13 +94,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_gradient(
   const float rhoj = pj->rho;
 
   float Bi[3], Bj[3];
-  for (int i = 0; i < 3; ++i) {
-    Bi[i] = pi->mhd_data.B_over_rho[i] * rhoi;
-    Bj[i] = pj->mhd_data.B_over_rho[i] * rhoj;
+  for (int k = 0; k < 3; k++) {
+    Bi[k] = pi->mhd_data.B[k];
+    Bj[k] = pj->mhd_data.B[k];
   }
 
   float dB[3];
-  for (int i = 0; i < 3; ++i) dB[i] = Bi[i] - Bj[i];
+  for (int k = 0; k < 3; k++) dB[k] = Bi[k] - Bj[k];
 
   /* Get the kernel for hi. */
   const float hi_inv = 1.0f / hi;
@@ -131,41 +131,29 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_gradient(
   dB_cross_dx[2] = dB[0] * dx[1] - dB[1] * dx[0];
 
   /* Compute gradient terms */
-  const float over_rho_i = 1.0f / rhoi * f_ij;
-  const float over_rho_j = 1.0f / rhoj * f_ji;
+  const float grad_term_i = f_ij * wi_dr * r_inv / rhoi;
+  const float grad_term_j = f_ji * wj_dr * r_inv / rhoj;
 
-  /* Calculate monopole term */
-  float divB_i = -over_rho_i * (Bri - Brj) * wi_dr * r_inv;
-  float divB_j = -over_rho_j * (Bri - Brj) * wj_dr * r_inv;
-  pi->mhd_data.divB += mj * divB_i;
-  pj->mhd_data.divB += mi * divB_j;
+  /* Calculate divergence */
+  float div_B_i = grad_term_i * (Bri - Brj);
+  float div_B_j = grad_term_j * (Bri - Brj);
+  pi->mhd_data.div_B -= mj * div_B_i;
+  pj->mhd_data.div_B -= mi * div_B_j;
 
   /* Calculate curl */
-  pi->mhd_data.curl_B[0] += mj * over_rho_i * wi_dr * r_inv * dB_cross_dx[0];
-  pi->mhd_data.curl_B[1] += mj * over_rho_i * wi_dr * r_inv * dB_cross_dx[1];
-  pi->mhd_data.curl_B[2] += mj * over_rho_i * wi_dr * r_inv * dB_cross_dx[2];
-  pj->mhd_data.curl_B[0] += mi * over_rho_j * wj_dr * r_inv * dB_cross_dx[0];
-  pj->mhd_data.curl_B[1] += mi * over_rho_j * wj_dr * r_inv * dB_cross_dx[1];
-  pj->mhd_data.curl_B[2] += mi * over_rho_j * wj_dr * r_inv * dB_cross_dx[2];
-
-  /* Calculate gradient of B tensor */
-  for (int i = 0; i < 3; i++) {
-    for (int j = 0; j < 3; j++) {
-      pi->mhd_data.grad_B_tensor[i][j] -=
-          mj * over_rho_i * wi_dr * r_inv * dB[i] * dx[j];
-      pj->mhd_data.grad_B_tensor[i][j] -=
-          mi * over_rho_j * wj_dr * r_inv * dB[i] * dx[j];
-    }
-  }
-
-  /* Calculate SPH error */
-  pi->mhd_data.mean_SPH_err += mj * wi;
-  pj->mhd_data.mean_SPH_err += mi * wj;
   for (int k = 0; k < 3; k++) {
-    pi->mhd_data.mean_grad_SPH_err[k] +=
-        mj * over_rho_i * wi_dr * r_inv * dx[k];
-    pj->mhd_data.mean_grad_SPH_err[k] -=
-        mi * over_rho_j * wj_dr * r_inv * dx[k];
+    pi->mhd_data.curl_B[k] += mj * grad_term_i * dB_cross_dx[k];
+    pj->mhd_data.curl_B[k] += mi * grad_term_j * dB_cross_dx[k];
+  }
+  
+  /* Calculate gradient of B tensor */
+  for (int k = 0; k < 3; k++) {
+    for (int m = 0; m < 3; m++) {
+      pi->mhd_data.grad_B_tensor[k][m] -=
+          mj * grad_term_i * dB[k] * dx[m];
+      pj->mhd_data.grad_B_tensor[k][m] -=
+          mi * grad_term_j * dB[k] * dx[m];
+    }
   }
 }
 
@@ -202,19 +190,17 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
   const float r_inv = r ? 1.0f / r : 0.0f;
 
   /* Recover some data */
-  // const float mi = pi->mass;
   const float mj = pj->mass;
   const float rhoi = pi->rho;
-  const float rhoj = pj->rho;
-
+  
   float Bi[3], Bj[3];
-  for (int i = 0; i < 3; ++i) {
-    Bi[i] = pi->mhd_data.B_over_rho[i] * rhoi;
-    Bj[i] = pj->mhd_data.B_over_rho[i] * rhoj;
+  for (int k = 0; k < 3; k++) {
+    Bi[k] = pi->mhd_data.B[k];
+    Bj[k] = pj->mhd_data.B[k];
   }
 
   float dB[3];
-  for (int i = 0; i < 3; ++i) dB[i] = Bi[i] - Bj[i];
+  for (int k = 0; k < 3; k++) dB[k] = Bi[k] - Bj[k];
 
   /* Get the kernel for hi. */
   const float hi_inv = 1.0f / hi;
@@ -223,21 +209,12 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
   kernel_deval(xi, &wi, &wi_dx);
   const float wi_dr = hid_inv * wi_dx;
 
-  /* Get the kernel for hj. */
-  // const float hj_inv = 1.0f / hj;
-  // const float hjd_inv = pow_dimension_plus_one(hj_inv); /* 1/h^(d+1) */
-  // const float xj = r * hj_inv;
-  // float wj, wj_dx;
-  // kernel_deval(xj, &wj, &wj_dx);
-  // const float wj_dr = hjd_inv * wj_dx;
-
   /* Variable smoothing length term */
   const float f_ij = 1.f - pi->force.f / mj;
-  // const float f_ji = 1.f - pj->force.f / mi;
 
   /* B dot r. */
-  const float Bri = (Bi[0] * dx[0] + Bi[1] * dx[1] + Bi[2] * dx[2]);
-  const float Brj = (Bj[0] * dx[0] + Bj[1] * dx[1] + Bj[2] * dx[2]);
+  const float Bri = Bi[0] * dx[0] + Bi[1] * dx[1] + Bi[2] * dx[2];
+  const float Brj = Bj[0] * dx[0] + Bj[1] * dx[1] + Bj[2] * dx[2];
 
   /* dB cross r */
   float dB_cross_dx[3];
@@ -246,30 +223,23 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
   dB_cross_dx[2] = dB[0] * dx[1] - dB[1] * dx[0];
 
   /* Compute gradient terms */
-  const float over_rho_i = 1.0f / rhoi * f_ij;
+  const float grad_term_i = f_ij * wi_dr * r_inv / rhoi;
 
-  /* Calculate monopole term */
-  float divB_i = -over_rho_i * (Bri - Brj) * wi_dr * r_inv;
-  pi->mhd_data.divB += mj * divB_i;
+  /* Calculate divergence */
+  float div_B_i = grad_term_i * (Bri - Brj);
+  pi->mhd_data.div_B -= mj * div_B_i;
 
   /* Calculate curl */
-  pi->mhd_data.curl_B[0] += mj * over_rho_i * wi_dr * r_inv * dB_cross_dx[0];
-  pi->mhd_data.curl_B[1] += mj * over_rho_i * wi_dr * r_inv * dB_cross_dx[1];
-  pi->mhd_data.curl_B[2] += mj * over_rho_i * wi_dr * r_inv * dB_cross_dx[2];
-
-  /* Calculate gradient of B tensor */
-  for (int i = 0; i < 3; i++) {
-    for (int j = 0; j < 3; j++) {
-      pi->mhd_data.grad_B_tensor[i][j] -=
-          mj * over_rho_i * wi_dr * r_inv * dB[i] * dx[j];
-    }
-  }
-
-  /* Calculate SPH error */
-  pi->mhd_data.mean_SPH_err += mj * wi;
   for (int k = 0; k < 3; k++) {
-    pi->mhd_data.mean_grad_SPH_err[k] +=
-        mj * over_rho_i * wi_dr * r_inv * dx[k];
+    pi->mhd_data.curl_B[k] += mj * grad_term_i * dB_cross_dx[k];
+  }
+  
+  /* Calculate gradient of B tensor */
+  for (int k = 0; k < 3; k++) {
+    for (int m = 0; m < 3; m++) {
+      pi->mhd_data.grad_B_tensor[k][m] -=
+          mj * grad_term_i * dB[k] * dx[m];
+    }
   }
 }
 
@@ -291,6 +261,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
     struct part *restrict pi, struct part *restrict pj, const float mu_0,
     const float a, const float H) {
 
+  /* Force coupling between MHD and the rest */
+  const float permeability_inv = 1.0f / mu_0;
+  
   /* Get r and 1/r. */
   const float r = sqrtf(r2);
   const float r_inv = r ? 1.0f / r : 0.0f;
@@ -303,49 +276,32 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   const float rhoi = pi->rho;
   const float rhoj = pj->rho;
 
+  float Bi[3], Bj[3];
+  for (int k = 0; k < 3; k++) {
+    Bi[k] = pi->mhd_data.B[k];
+    Bj[k] = pj->mhd_data.B[k];
+  }
+
+  const float psi_over_ch_i = pi->mhd_data.psi_over_ch;
+  const float psi_over_ch_j = pj->mhd_data.psi_over_ch;
+  
+  /* Useful combinations of magnetic field components */ 
+  const float B2i = Bi[0] * Bi[0] + Bi[1] * Bi[1] + Bi[2] * Bi[2];
+  const float B2j = Bj[0] * Bj[0] + Bj[1] * Bj[1] + Bj[2] * Bj[2];
+
+  float dB[3];
+  for (int k = 0; k < 3; k++) dB[k] = Bi[k] - Bj[k];
+  
+  const float dB_2 = dB[0] * dB[0] + dB[1] * dB[1] + dB[2] * dB[2];
+
+  /* Useful terms involving position and velocity differences */ 
   float dv[3];
   dv[0] = pi->v[0] - pj->v[0];
   dv[1] = pi->v[1] - pj->v[1];
   dv[2] = pi->v[2] - pj->v[2];
 
-  float Bi[3];
-  float Bj[3];
-  Bi[0] = pi->mhd_data.B_over_rho[0] * rhoi;
-  Bi[1] = pi->mhd_data.B_over_rho[1] * rhoi;
-  Bi[2] = pi->mhd_data.B_over_rho[2] * rhoi;
-  Bj[0] = pj->mhd_data.B_over_rho[0] * rhoj;
-  Bj[1] = pj->mhd_data.B_over_rho[1] * rhoj;
-  Bj[2] = pj->mhd_data.B_over_rho[2] * rhoj;
-
-  const float B2i = Bi[0] * Bi[0] + Bi[1] * Bi[1] + Bi[2] * Bi[2];
-  const float B2j = Bj[0] * Bj[0] + Bj[1] * Bj[1] + Bj[2] * Bj[2];
-
-  const float normBi = sqrtf(B2i);
-  const float normBj = sqrtf(B2j);
-
-  /*
-  float curlBi[3];
-  float curlBj[3];
-  curlBi[0] = pi->mhd_data.curl_B[0];
-  curlBi[1] = pi->mhd_data.curl_B[1];
-  curlBi[2] = pi->mhd_data.curl_B[2];
-  curlBj[0] = pj->mhd_data.curl_B[0];
-  curlBj[1] = pj->mhd_data.curl_B[1];
-  curlBj[2] = pj->mhd_data.curl_B[2];
-  */
-
-  float dB[3];
-  dB[0] = Bi[0] - Bj[0];
-  dB[1] = Bi[1] - Bj[1];
-  dB[2] = Bi[2] - Bj[2];
-
-  const float dB_2 = dB[0] * dB[0] + dB[1] * dB[1] + dB[2] * dB[2];
-
-  const float psi_over_ch_i = pi->mhd_data.psi_over_ch;
-  const float psi_over_ch_j = pj->mhd_data.psi_over_ch;
-
-  const float permeability_inv = 1.0f / mu_0;
-
+  const float dvdr = dv[0] * dx[0] + dv[1] * dx[1] + dv[2] * dx[2];
+  
   /* Get the kernel for hi. */
   const float hi_inv = 1.0f / hi;
   const float hid_inv = pow_dimension_plus_one(hi_inv); /* 1/h^(d+1) */
@@ -371,303 +327,138 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   const float Brj = Bj[0] * dx[0] + Bj[1] * dx[1] + Bj[2] * dx[2];
 
   /* Compute gradient terms */
-  const float over_rho2_i = 1.0f / (rhoi * rhoi) * f_ij;
-  const float over_rho2_j = 1.0f / (rhoj * rhoj) * f_ji;
+  const float grad_term_i = f_ij * wi_dr * r_inv / (rhoi * rhoi);
+  const float grad_term_j = f_ji * wj_dr * r_inv / (rhoj * rhoj);
 
-  /* SPH acceleration term in x direction, i_th particle */
+  /* SPH acceleration term, i_th particle */
   float sph_acc_term_i[3] = {0.f, 0.f, 0.f};
 
-  /* Accelerations along X */
+  for (int k = 0; k < 3; k++) {
 
-  /* Isotropic MHD pressure term */
-  sph_acc_term_i[0] +=
-      0.5f * B2i * permeability_inv * over_rho2_i * wi_dr * r_inv * dx[0];
-  sph_acc_term_i[0] +=
-      0.5f * B2j * permeability_inv * over_rho2_j * wj_dr * r_inv * dx[0];
+    /* Isotropic MHD pressure term */
+    sph_acc_term_i[k] += 0.5f * B2i * grad_term_i * dx[k];
+    sph_acc_term_i[k] += 0.5f * B2j * grad_term_j * dx[k];
 
-  /* Anisotropic MHD term */
-  sph_acc_term_i[0] +=
-      -1.f * over_rho2_i * wi_dr * Bri * permeability_inv * r_inv * Bi[0];
-  sph_acc_term_i[0] +=
-      -1.f * over_rho2_j * wj_dr * Brj * permeability_inv * r_inv * Bj[0];
+    /* Anisotropic MHD tension term */
+    sph_acc_term_i[k] -= grad_term_i * Bri * Bi[k];
+    sph_acc_term_i[k] -= grad_term_j * Brj * Bj[k];
 
-  /* Accelerations along Y */
+  }
 
-  /* Isotropic MHD pressure term */
-  sph_acc_term_i[1] +=
-      0.5f * B2i * permeability_inv * over_rho2_i * wi_dr * r_inv * dx[1];
-  sph_acc_term_i[1] +=
-      0.5f * B2j * permeability_inv * over_rho2_j * wj_dr * r_inv * dx[1];
-
-  /* Anisotropic MHD term */
-  sph_acc_term_i[1] +=
-      -1.f * over_rho2_i * wi_dr * Bri * permeability_inv * r_inv * Bi[1];
-  sph_acc_term_i[1] +=
-      -1.f * over_rho2_j * wj_dr * Brj * permeability_inv * r_inv * Bj[1];
-
-  /* Accelerations along Z */
-
-  /* Isotropic MHD pressure term */
-  sph_acc_term_i[2] +=
-      0.5f * B2i * permeability_inv * over_rho2_i * wi_dr * r_inv * dx[2];
-  sph_acc_term_i[2] +=
-      0.5f * B2j * permeability_inv * over_rho2_j * wj_dr * r_inv * dx[2];
-
-  /* Anisotropic MHD term */
-  sph_acc_term_i[2] +=
-      -1.f * over_rho2_i * wi_dr * Bri * permeability_inv * r_inv * Bi[2];
-  sph_acc_term_i[2] +=
-      -1.f * over_rho2_j * wj_dr * Brj * permeability_inv * r_inv * Bj[2];
-
-  /* SPH acceleration term in x direction, j_th particle */
+  /* SPH acceleration term, j_th particle */
   float sph_acc_term_j[3];
-  sph_acc_term_j[0] = -sph_acc_term_i[0];
-  sph_acc_term_j[1] = -sph_acc_term_i[1];
-  sph_acc_term_j[2] = -sph_acc_term_i[2];
-
-  /* Divergence cleaning term */
-  /* Manifestly *NOT* symmetric in i <-> j */
-
-  // const float monopole_beta = hydro_props->mhd.monopole_subtraction;
-  const float monopole_beta = pi->mhd_data.monopole_beta;
-
+  for (int k = 0; k < 3; k++) {
+    sph_acc_term_j[k] = - sph_acc_term_i[k];
+  }
+  
+  /* Tensile instability correction term */
+  const float monopole_beta_i = pi->mhd_data.monopole_beta;
+  const float monopole_beta_j = pj->mhd_data.monopole_beta;
+  
   const float plasma_beta_i = B2i != 0.0f ? 2.0f * mu_0 * Pi / B2i : FLT_MAX;
   const float plasma_beta_j = B2j != 0.0f ? 2.0f * mu_0 * Pj / B2j : FLT_MAX;
 
   const float scale_i = 0.125f * (10.0f - plasma_beta_i);
   const float scale_j = 0.125f * (10.0f - plasma_beta_j);
 
-  const float tensile_correction_scale_i = fmaxf(0.0f, fminf(scale_i, 1.0f));
-  const float tensile_correction_scale_j = fmaxf(0.0f, fminf(scale_j, 1.0f));
+  const float tensile_correction_scale_i = monopole_beta_i * fmaxf(0.0f, fminf(scale_i, 1.0f));
+  const float tensile_correction_scale_j = monopole_beta_j * fmaxf(0.0f, fminf(scale_j, 1.0f));
 
-  sph_acc_term_i[0] += monopole_beta * over_rho2_i * wi_dr * permeability_inv *
-                       Bri * r_inv * Bi[0] * tensile_correction_scale_i;
-  sph_acc_term_i[0] += monopole_beta * over_rho2_j * wj_dr * permeability_inv *
-                       Brj * r_inv * Bi[0] * tensile_correction_scale_i;
+  for (int k = 0; k < 3; k++) {
 
-  sph_acc_term_i[1] += monopole_beta * over_rho2_i * wi_dr * permeability_inv *
-                       Bri * r_inv * Bi[1] * tensile_correction_scale_i;
-  sph_acc_term_i[1] += monopole_beta * over_rho2_j * wj_dr * permeability_inv *
-                       Brj * r_inv * Bi[1] * tensile_correction_scale_i;
+    sph_acc_term_i[k] += tensile_correction_scale_i * Bri * grad_term_i * Bi[k];
+    sph_acc_term_i[k] += tensile_correction_scale_i * Brj * grad_term_j * Bi[k];
 
-  sph_acc_term_i[2] += monopole_beta * over_rho2_i * wi_dr * permeability_inv *
-                       Bri * r_inv * Bi[2] * tensile_correction_scale_i;
-  sph_acc_term_i[2] += monopole_beta * over_rho2_j * wj_dr * permeability_inv *
-                       Brj * r_inv * Bi[2] * tensile_correction_scale_i;
+    sph_acc_term_j[k] -= tensile_correction_scale_j * Bri * grad_term_i * Bj[k];
+    sph_acc_term_j[k] -= tensile_correction_scale_j * Brj * grad_term_j	* Bj[k];
 
-  sph_acc_term_j[0] -= monopole_beta * over_rho2_i * wi_dr * permeability_inv *
-                       Bri * r_inv * Bj[0] * tensile_correction_scale_j;
-  sph_acc_term_j[0] -= monopole_beta * over_rho2_j * wj_dr * permeability_inv *
-                       Brj * r_inv * Bj[0] * tensile_correction_scale_j;
-
-  sph_acc_term_j[1] -= monopole_beta * over_rho2_i * wi_dr * permeability_inv *
-                       Bri * r_inv * Bj[1] * tensile_correction_scale_j;
-  sph_acc_term_j[1] -= monopole_beta * over_rho2_j * wj_dr * permeability_inv *
-                       Brj * r_inv * Bj[1] * tensile_correction_scale_j;
-
-  sph_acc_term_j[2] -= monopole_beta * over_rho2_i * wi_dr * permeability_inv *
-                       Bri * r_inv * Bj[2] * tensile_correction_scale_j;
-  sph_acc_term_j[2] -= monopole_beta * over_rho2_j * wj_dr * permeability_inv *
-                       Brj * r_inv * Bj[2] * tensile_correction_scale_j;
-
+  }
+  
+  /* Scale forces appropriately */
+  for (int k = 0; k < 3; k++) {
+    sph_acc_term_i[k] *= permeability_inv;
+    sph_acc_term_j[k] *= permeability_inv;
+  }
+  
   /* Use the force Luke ! */
-  pi->a_hydro[0] -= mj * sph_acc_term_i[0];
-  pi->a_hydro[1] -= mj * sph_acc_term_i[1];
-  pi->a_hydro[2] -= mj * sph_acc_term_i[2];
-
-  pj->a_hydro[0] -= mi * sph_acc_term_j[0];
-  pj->a_hydro[1] -= mi * sph_acc_term_j[1];
-  pj->a_hydro[2] -= mi * sph_acc_term_j[2];
-
-  /* Save forces */
-  for (int k = 1; k < 3; k++) {
-    pi->mhd_data.tot_mag_F[k] -= mj * sph_acc_term_i[k];
-    pj->mhd_data.tot_mag_F[k] -= mi * sph_acc_term_j[k];
+  for (int k = 0; k < 3; k++) {
+    pi->a_hydro[k] -= mj * sph_acc_term_i[k];
+    pj->a_hydro[k] -= mi * sph_acc_term_j[k];
+  }
+  
+  /* Physical induction */
+  const float induction_grad_term_i = f_ij * wi_dr * r_inv / rhoi;
+  const float induction_grad_term_j = f_ji * wj_dr * r_inv / rhoj;
+  
+  float dB_dt_i[3], dB_dt_j[3];
+  for (int k = 0; k < 3; k++) {
+    dB_dt_i[k] = induction_grad_term_i * (Bri * dv[k] - dvdr * Bi[k]);
+    dB_dt_j[k] = induction_grad_term_j * (Brj * dv[k] - dvdr * Bj[k]);
   }
 
-  /* Direct Induction */
-  const float dB_dt_pref_i = over_rho2_i * wi_dr * r_inv;
-  const float dB_dt_pref_j = over_rho2_j * wj_dr * r_inv;
-
-  /* */
-  float dB_dt_i[3];
-  dB_dt_i[0] = -Bri * dv[0];
-  dB_dt_i[1] = -Bri * dv[1];
-  dB_dt_i[2] = -Bri * dv[2];
-
-  float dB_dt_j[3];
-  dB_dt_j[0] = -Brj * dv[0];
-  dB_dt_j[1] = -Brj * dv[1];
-  dB_dt_j[2] = -Brj * dv[2];
-
-  /* */
-  pi->mhd_data.B_over_rho_dt[0] += mj * dB_dt_pref_i * dB_dt_i[0];
-  pi->mhd_data.B_over_rho_dt[1] += mj * dB_dt_pref_i * dB_dt_i[1];
-  pi->mhd_data.B_over_rho_dt[2] += mj * dB_dt_pref_i * dB_dt_i[2];
-
-  pj->mhd_data.B_over_rho_dt[0] += mi * dB_dt_pref_j * dB_dt_j[0];
-  pj->mhd_data.B_over_rho_dt[1] += mi * dB_dt_pref_j * dB_dt_j[1];
-  pj->mhd_data.B_over_rho_dt[2] += mi * dB_dt_pref_j * dB_dt_j[2];
+  /* Update time derivative of B */
+  for (int k = 0; k < 3; k++) {
+    pi->mhd_data.B_dt[k] -= mj * dB_dt_i[k];
+    pj->mhd_data.B_dt[k] -= mi * dB_dt_j[k];
+  }
 
   /* Physical resistivity */
   const float resistive_eta_i = pi->mhd_data.resistive_eta;
   const float resistive_eta_j = pj->mhd_data.resistive_eta;
-  const float dB_dt_pref_PR_i = 2.0f * resistive_eta_i * r_inv / (rhoi * rhoj);
-  const float dB_dt_pref_PR_j = 2.0f * resistive_eta_j * r_inv / (rhoi * rhoj);
 
-  pi->mhd_data.B_over_rho_dt[0] += mj * dB_dt_pref_PR_i * wi_dr * dB[0];
-  pi->mhd_data.B_over_rho_dt[1] += mj * dB_dt_pref_PR_i * wi_dr * dB[1];
-  pi->mhd_data.B_over_rho_dt[2] += mj * dB_dt_pref_PR_i * wi_dr * dB[2];
-
-  pj->mhd_data.B_over_rho_dt[0] -= mi * dB_dt_pref_PR_j * wj_dr * dB[0];
-  pj->mhd_data.B_over_rho_dt[1] -= mi * dB_dt_pref_PR_j * wj_dr * dB[1];
-  pj->mhd_data.B_over_rho_dt[2] -= mi * dB_dt_pref_PR_j * wj_dr * dB[2];
-
-  /*
-  float curlB_cross_dxi[3];
-  float curlB_cross_dxj[3];
-
-  curlB_cross_dxi[0] = curlBi[1] * dx[2] - curlBi[2] * dx[1];
-  curlB_cross_dxi[1] = curlBi[2] * dx[0] - curlBi[0] * dx[2];
-  curlB_cross_dxi[2] = curlBi[0] * dx[1] - curlBi[1] * dx[0];
-
-  curlB_cross_dxj[0] = curlBj[1] * dx[2] - curlBj[2] * dx[1];
-  curlB_cross_dxj[1] = curlBj[2] * dx[0] - curlBj[0] * dx[2];
-  curlB_cross_dxj[2] = curlBj[0] * dx[1] - curlBj[1] * dx[0];
-
-  pi->mhd_data.B_over_rho_dt[0] +=
-      mj * resistive_eta * over_rho2_i * wi_dr * r_inv * curlB_cross_dxi[0];
-  pi->mhd_data.B_over_rho_dt[0] +=
-      mj * resistive_eta * over_rho2_j * wj_dr * r_inv * curlB_cross_dxj[0];
-  pi->mhd_data.B_over_rho_dt[1] +=
-      mj * resistive_eta * over_rho2_i * wi_dr * r_inv * curlB_cross_dxi[1];
-  pi->mhd_data.B_over_rho_dt[1] +=
-      mj * resistive_eta * over_rho2_j * wj_dr * r_inv * curlB_cross_dxj[1];
-  pi->mhd_data.B_over_rho_dt[2] +=
-      mj * resistive_eta * over_rho2_i * wi_dr * r_inv * curlB_cross_dxi[2];
-  pi->mhd_data.B_over_rho_dt[2] +=
-      mj * resistive_eta * over_rho2_j * wj_dr * r_inv * curlB_cross_dxj[2];
-
-  pj->mhd_data.B_over_rho_dt[0] -=
-      mi * resistive_eta * over_rho2_j * wj_dr * r_inv * curlB_cross_dxj[0];
-  pj->mhd_data.B_over_rho_dt[0] -=
-      mi * resistive_eta * over_rho2_i * wi_dr * r_inv * curlB_cross_dxi[0];
-  pj->mhd_data.B_over_rho_dt[1] -=
-      mi * resistive_eta * over_rho2_j * wj_dr * r_inv * curlB_cross_dxj[1];
-  pj->mhd_data.B_over_rho_dt[1] -=
-      mi * resistive_eta * over_rho2_i * wi_dr * r_inv * curlB_cross_dxi[1];
-  pj->mhd_data.B_over_rho_dt[2] -=
-      mi * resistive_eta * over_rho2_j * wj_dr * r_inv * curlB_cross_dxj[2];
-  pj->mhd_data.B_over_rho_dt[2] -=
-      mi * resistive_eta * over_rho2_i * wi_dr * r_inv * curlB_cross_dxi[2];
-  */
-
-  /*Artificial resistivity*/
-
-  // const float resistivity_beta = hydro_props->mhd.art_resistivity;
+  const float dB_dt_PR_prefactor_i = 2.0f * f_ij * wi_dr * r_inv / rhoj;
+  const float dB_dt_PR_prefactor_j = 2.0f * f_ji * wj_dr * r_inv / rhoi;
+  
+  /* Update time derivative of B */
+  for (int k = 0; k < 3; k++) {
+    pi->mhd_data.B_dt[k] += resistive_eta_i * mj * dB_dt_PR_prefactor_i * dB[k];
+    pj->mhd_data.B_dt[k] -= resistive_eta_j * mi * dB_dt_PR_prefactor_j * dB[k];
+  }
+  
+  /* Artificial resistivity */
   const float art_diff_beta_i = pi->mhd_data.art_diff_beta;
   const float art_diff_beta_j = pj->mhd_data.art_diff_beta;
-
-  /*
-  const float rhoij = rhoi + rhoj;
-  const float rhoij2 = rhoij * rhoij;
-  const float rhoij2_inv = 1 / rhoij2;
-
-  const float alpha_ARij = pi->mhd_data.alpha_AR  + pj->mhd_data.alpha_AR;
-  const float v_sig_Bij  = mhd_get_fast_magnetosonic_wave_speed(dx, pi, a, mu_0)
-  + mhd_get_fast_magnetosonic_wave_speed(dx, pj, a, mu_0);
-
-  const float art_res_prefi = resistivity_beta * alpha_ARij * v_sig_Bij *
-  rhoij2_inv * wi_dr; const float art_res_prefj = resistivity_beta * alpha_ARij
-  * v_sig_Bij * rhoij2_inv * wj_dr;
-  */
 
   float dv_cross_dx[3];
   dv_cross_dx[0] = dv[1] * dx[2] - dv[2] * dx[1];
   dv_cross_dx[1] = dv[2] * dx[0] - dv[0] * dx[2];
   dv_cross_dx[2] = dv[0] * dx[1] - dv[1] * dx[0];
 
-  const float v_sig_B_2 = dv_cross_dx[0] * dv_cross_dx[0] +
-                          dv_cross_dx[1] * dv_cross_dx[1] +
-                          dv_cross_dx[2] * dv_cross_dx[2];
-  const float v_sig_B = sqrtf(v_sig_B_2) * r_inv;
+  const float v_sig_B_i_2 = dv_cross_dx[0] * dv_cross_dx[0] +
+                            dv_cross_dx[1] * dv_cross_dx[1] +
+                            dv_cross_dx[2] * dv_cross_dx[2];
+  const float v_sig_B_i = sqrtf(v_sig_B_i_2) * r_inv;
+  const float v_sig_B_j = v_sig_B_i;
+  
+  const float dB_dt_AR_grad_term_i = f_ij * wi_dr / (rhoi * rhoi);
+  const float dB_dt_AR_grad_term_j = f_ji * wj_dr / (rhoj * rhoj);
 
-  const float art_diff_pref_i = 0.5f * art_diff_beta_i * v_sig_B *
-                                (wi_dr * over_rho2_i + wj_dr * over_rho2_j);
-  const float art_diff_pref_j = 0.5f * art_diff_beta_j * v_sig_B *
-                                (wi_dr * over_rho2_i + wj_dr * over_rho2_j);
+  float dB_dt_AR_pref_i = art_diff_beta_i * v_sig_B_i * dB_dt_AR_grad_term_i;
+  dB_dt_AR_pref_i += art_diff_beta_j * v_sig_B_j * dB_dt_AR_grad_term_j;
+  const float dB_dt_AR_pref_j = dB_dt_AR_pref_i;
 
-  pi->mhd_data.B_over_rho_dt[0] += mj * art_diff_pref_i * dB[0];
-  pi->mhd_data.B_over_rho_dt[1] += mj * art_diff_pref_i * dB[1];
-  pi->mhd_data.B_over_rho_dt[2] += mj * art_diff_pref_i * dB[2];
+  /* Update time derivative of B */
+  for (int k = 0; k < 3; k++) {
+    pi->mhd_data.B_dt[k] += 0.5f * rhoi * mj * dB_dt_AR_pref_i * dB[k];
+    pj->mhd_data.B_dt[k] -= 0.5f * rhoj * mi * dB_dt_AR_pref_j * dB[k];
+  }
 
-  pj->mhd_data.B_over_rho_dt[0] -= mi * art_diff_pref_j * dB[0];
-  pj->mhd_data.B_over_rho_dt[1] -= mi * art_diff_pref_j * dB[1];
-  pj->mhd_data.B_over_rho_dt[2] -= mi * art_diff_pref_j * dB[2];
+  /* Put back diffused magnetic energy as heat */ 
+  pi->u_dt -= 0.25f * permeability_inv * mj * dB_dt_AR_pref_i * dB_2;
+  pj->u_dt -= 0.25f * permeability_inv * mi * dB_dt_AR_pref_j * dB_2;
 
-  pi->u_dt -= 0.5f * mj * permeability_inv * art_diff_pref_i * dB_2;
-  pj->u_dt -= 0.5f * mi * permeability_inv * art_diff_pref_j * dB_2;
+  /* Divergence cleaning */
+  const float ch_i = mhd_get_magnetosonic_speed(pi, mu_0);
+  const float ch_j = mhd_get_magnetosonic_speed(pj, mu_0);
 
-  /* Store AR terms */
-  pi->mhd_data.B_over_rho_dt_AR[0] += mj * art_diff_pref_i * dB[0];
-  pi->mhd_data.B_over_rho_dt_AR[1] += mj * art_diff_pref_i * dB[1];
-  pi->mhd_data.B_over_rho_dt_AR[2] += mj * art_diff_pref_i * dB[2];
+  float dB_dt_Dedner_pref_i = psi_over_ch_i * ch_i * grad_term_i;
+  dB_dt_Dedner_pref_i += psi_over_ch_j * ch_j * grad_term_j;
+  float dB_dt_Dedner_pref_j = dB_dt_Dedner_pref_i;
 
-  pj->mhd_data.B_over_rho_dt_AR[0] -= mi * art_diff_pref_j * dB[0];
-  pj->mhd_data.B_over_rho_dt_AR[1] -= mi * art_diff_pref_j * dB[1];
-  pj->mhd_data.B_over_rho_dt_AR[2] -= mi * art_diff_pref_j * dB[2];
-
-  pi->mhd_data.u_dt_AR -= 0.5f * mj * permeability_inv * art_diff_pref_i * dB_2;
-  pj->mhd_data.u_dt_AR -= 0.5f * mi * permeability_inv * art_diff_pref_j * dB_2;
-
-  /*Divergence diffusion */
-
-  // const float vsig_Dedner_i = pi->viscosity.v_sig;
-  // const float vsig_Dedner_j = pj->viscosity.v_sig;
-
-  const float vsig_Dedner_i = mhd_get_magnetosonic_speed(pi, a, mu_0);
-  const float vsig_Dedner_j = mhd_get_magnetosonic_speed(pj, a, mu_0);
-
-  float grad_psi_i =
-      over_rho2_i * psi_over_ch_i * vsig_Dedner_i * wi_dr * r_inv;
-  grad_psi_i += over_rho2_j * psi_over_ch_j * vsig_Dedner_j * wj_dr * r_inv;
-  float grad_psi_j = grad_psi_i;
-
-  const float psi_over_ch_i_inv =
-      psi_over_ch_i != 0.f ? 1.f / psi_over_ch_i : 0.;
-  const float psi_over_ch_j_inv =
-      psi_over_ch_j != 0.f ? 1.f / psi_over_ch_j : 0.;
-
-  const float corr_ratio_i = fabsf(normBi * psi_over_ch_i_inv);
-  const float corr_ratio_j = fabsf(normBj * psi_over_ch_j_inv);
-
-  const float Qi = corr_ratio_i < 2 ? 0.5 * corr_ratio_i : 1.0f;
-  const float Qj = corr_ratio_j < 2 ? 0.5 * corr_ratio_j : 1.0f;
-
-  pi->mhd_data.B_over_rho_dt[0] -= mj * Qi * grad_psi_i * dx[0];
-  pi->mhd_data.B_over_rho_dt[1] -= mj * Qi * grad_psi_i * dx[1];
-  pi->mhd_data.B_over_rho_dt[2] -= mj * Qi * grad_psi_i * dx[2];
-
-  pj->mhd_data.B_over_rho_dt[0] += mi * Qj * grad_psi_j * dx[0];
-  pj->mhd_data.B_over_rho_dt[1] += mi * Qj * grad_psi_j * dx[1];
-  pj->mhd_data.B_over_rho_dt[2] += mi * Qj * grad_psi_j * dx[2];
-
-  /* Save induction sources */
-
-  const float dB_dt_pref_Lap_i = 2.0f * r_inv / rhoj;
-  const float dB_dt_pref_Lap_j = 2.0f * r_inv / rhoi;
-
-  for (int i = 0; i < 3; i++) {
-    pi->mhd_data.Adv_B_source[i] += mj * dB_dt_pref_i * dB_dt_i[i];
-    pj->mhd_data.Adv_B_source[i] += mi * dB_dt_pref_j * dB_dt_j[i];
-    pi->mhd_data.Adv_B_source[i] -= mj * Qi * grad_psi_i * dx[i];
-    pj->mhd_data.Adv_B_source[i] += mi * Qj * grad_psi_j * dx[i];
-    pi->mhd_data.Diff_B_source[i] += mj * dB_dt_pref_PR_i * wi_dr * dB[i];
-    pj->mhd_data.Diff_B_source[i] -= mi * dB_dt_pref_PR_j * wj_dr * dB[i];
-    pi->mhd_data.Diff_B_source[i] += mj * art_diff_pref_i * dB[i];
-    pj->mhd_data.Diff_B_source[i] -= mi * art_diff_pref_j * dB[i];
-    pi->mhd_data.Delta_B[i] += mj * dB_dt_pref_Lap_i * wi_dr * dB[i];
-    pj->mhd_data.Delta_B[i] -= mi * dB_dt_pref_Lap_j * wj_dr * dB[i];
+  /* Update time derivative of B */
+  for (int k = 0; k < 3; k++) {
+    pi->mhd_data.B_dt[k] -= rhoi * mj * dB_dt_Dedner_pref_i * dx[k];
+    pj->mhd_data.B_dt[k] += rhoj * mi * dB_dt_Dedner_pref_j * dx[k];
   }
 }
 
@@ -689,6 +480,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
     struct part *restrict pi, const struct part *restrict pj, const float mu_0,
     const float a, const float H) {
 
+  /* Force coupling between MHD and the rest */  
+  const float permeability_inv = 1.0f / mu_0;
+  
   /* Get r and 1/r. */
   const float r = sqrtf(r2);
   const float r_inv = r ? 1.0f / r : 0.0f;
@@ -700,48 +494,32 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   const float rhoi = pi->rho;
   const float rhoj = pj->rho;
 
+  float Bi[3], Bj[3];
+  for (int k = 0; k < 3; k++) {
+    Bi[k] = pi->mhd_data.B[k];
+    Bj[k] = pj->mhd_data.B[k];
+  }
+ 
+  const float psi_over_ch_i = pi->mhd_data.psi_over_ch;
+  const float psi_over_ch_j = pj->mhd_data.psi_over_ch;
+
+  /* Useful combinations of magnetic field components */
+  const float B2i = Bi[0] * Bi[0] + Bi[1] * Bi[1] + Bi[2] * Bi[2];
+  const float B2j = Bj[0] * Bj[0] + Bj[1] * Bj[1] + Bj[2] * Bj[2];
+  
+  float dB[3];
+  for (int k = 0; k < 3; k++) dB[k] = Bi[k] - Bj[k];
+  
+  const float dB_2 = dB[0] * dB[0] + dB[1] * dB[1] + dB[2] * dB[2];
+
+  /* Useful terms involving position and velocity differences */
   float dv[3];
   dv[0] = pi->v[0] - pj->v[0];
   dv[1] = pi->v[1] - pj->v[1];
   dv[2] = pi->v[2] - pj->v[2];
 
-  float Bi[3];
-  float Bj[3];
-  Bi[0] = pi->mhd_data.B_over_rho[0] * rhoi;
-  Bi[1] = pi->mhd_data.B_over_rho[1] * rhoi;
-  Bi[2] = pi->mhd_data.B_over_rho[2] * rhoi;
-  Bj[0] = pj->mhd_data.B_over_rho[0] * rhoj;
-  Bj[1] = pj->mhd_data.B_over_rho[1] * rhoj;
-  Bj[2] = pj->mhd_data.B_over_rho[2] * rhoj;
-
-  const float B2i = Bi[0] * Bi[0] + Bi[1] * Bi[1] + Bi[2] * Bi[2];
-  const float B2j = Bj[0] * Bj[0] + Bj[1] * Bj[1] + Bj[2] * Bj[2];
-
-  const float normBi = sqrtf(B2i);
-
-  /*
-  float curlBi[3];
-  float curlBj[3];
-  curlBi[0] = pi->mhd_data.curl_B[0];
-  curlBi[1] = pi->mhd_data.curl_B[1];
-  curlBi[2] = pi->mhd_data.curl_B[2];
-  curlBj[0] = pj->mhd_data.curl_B[0];
-  curlBj[1] = pj->mhd_data.curl_B[1];
-  curlBj[2] = pj->mhd_data.curl_B[2];
-  */
-
-  float dB[3];
-  dB[0] = Bi[0] - Bj[0];
-  dB[1] = Bi[1] - Bj[1];
-  dB[2] = Bi[2] - Bj[2];
-
-  const float dB_2 = dB[0] * dB[0] + dB[1] * dB[1] + dB[2] * dB[2];
-
-  const float psi_over_ch_i = pi->mhd_data.psi_over_ch;
-  const float psi_over_ch_j = pj->mhd_data.psi_over_ch;
-
-  const float permeability_inv = 1.0f / mu_0;
-
+  const float dvdr = dv[0] * dx[0] + dv[1] * dx[1] + dv[2] * dx[2];
+  
   /* Get the kernel for hi. */
   const float hi_inv = 1.0f / hi;
   const float hid_inv = pow_dimension_plus_one(hi_inv); /* 1/h^(d+1) */
@@ -767,215 +545,112 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   const float Brj = Bj[0] * dx[0] + Bj[1] * dx[1] + Bj[2] * dx[2];
 
   /* Compute gradient terms */
-  const float over_rho2_i = 1.0f / (rhoi * rhoi) * f_ij;
-  const float over_rho2_j = 1.0f / (rhoj * rhoj) * f_ji;
-
+  const float grad_term_i = f_ij * wi_dr * r_inv / (rhoi * rhoi);
+  const float grad_term_j = f_ji * wj_dr * r_inv / (rhoj * rhoj);
+  
   /* SPH acceleration term in x direction, i_th particle */
   float sph_acc_term_i[3] = {0.f, 0.f, 0.f};
 
-  /* Accelerations along X */
+  for (int k = 0; k < 3; k++) {
 
-  /* Isotropic MHD pressure term */
-  sph_acc_term_i[0] +=
-      0.5f * B2i * permeability_inv * over_rho2_i * wi_dr * r_inv * dx[0];
-  sph_acc_term_i[0] +=
-      0.5f * B2j * permeability_inv * over_rho2_j * wj_dr * r_inv * dx[0];
+    /* Isotropic MHD pressure term */
+    sph_acc_term_i[k] += 0.5f * B2i * grad_term_i * dx[k];
+    sph_acc_term_i[k] += 0.5f * B2j * grad_term_j * dx[k];
 
-  /* Anisotropic MHD term */
-  sph_acc_term_i[0] +=
-      -1.f * over_rho2_i * wi_dr * Bri * permeability_inv * r_inv * Bi[0];
-  sph_acc_term_i[0] +=
-      -1.f * over_rho2_j * wj_dr * Brj * permeability_inv * r_inv * Bj[0];
+    /* Anisotropic MHD tension term */
+    sph_acc_term_i[k] -= grad_term_i * Bri * Bi[k];
+    sph_acc_term_i[k] -= grad_term_j * Brj * Bj[k];
 
-  /* Accelerations along Y */
-
-  /* Isotropic MHD pressure term */
-  sph_acc_term_i[1] +=
-      0.5f * B2i * permeability_inv * over_rho2_i * wi_dr * r_inv * dx[1];
-  sph_acc_term_i[1] +=
-      0.5f * B2j * permeability_inv * over_rho2_j * wj_dr * r_inv * dx[1];
-
-  /* Anisotropic MHD term */
-  sph_acc_term_i[1] +=
-      -1.f * over_rho2_i * wi_dr * Bri * permeability_inv * r_inv * Bi[1];
-  sph_acc_term_i[1] +=
-      -1.f * over_rho2_j * wj_dr * Brj * permeability_inv * r_inv * Bj[1];
-
-  /* Accelerations along Z */
-
-  /* Isotropic MHD pressure term */
-  sph_acc_term_i[2] +=
-      0.5f * B2i * permeability_inv * over_rho2_i * wi_dr * r_inv * dx[2];
-  sph_acc_term_i[2] +=
-      0.5f * B2j * permeability_inv * over_rho2_j * wj_dr * r_inv * dx[2];
-
-  /* Anisotropic MHD term */
-  sph_acc_term_i[2] +=
-      -1.f * over_rho2_i * wi_dr * Bri * permeability_inv * r_inv * Bi[2];
-  sph_acc_term_i[2] +=
-      -1.f * over_rho2_j * wj_dr * Brj * permeability_inv * r_inv * Bj[2];
-
-  /* Divergence cleaning term */
-  /* Manifestly *NOT* symmetric in i <-> j */
-
-  // const float monopole_beta = hydro_props->mhd.monopole_subtraction;
-  const float monopole_beta = pi->mhd_data.monopole_beta;
-
+  }
+  
+  /* Tensile instability corection term */
+  const float monopole_beta_i = pi->mhd_data.monopole_beta;
+  
   const float plasma_beta_i = B2i != 0.0f ? 2.0f * mu_0 * Pi / B2i : FLT_MAX;
+  
   const float scale_i = 0.125f * (10.0f - plasma_beta_i);
-  const float tensile_correction_scale_i = fmaxf(0.0f, fminf(scale_i, 1.0f));
+  
+  const float tensile_correction_scale_i = monopole_beta_i * fmaxf(0.0f, fminf(scale_i, 1.0f));
 
-  sph_acc_term_i[0] += monopole_beta * over_rho2_i * wi_dr * permeability_inv *
-                       Bri * r_inv * Bi[0] * tensile_correction_scale_i;
-  sph_acc_term_i[0] += monopole_beta * over_rho2_j * wj_dr * permeability_inv *
-                       Brj * r_inv * Bi[0] * tensile_correction_scale_i;
+  for (int k = 0; k < 3; k++) {
 
-  sph_acc_term_i[1] += monopole_beta * over_rho2_i * wi_dr * permeability_inv *
-                       Bri * r_inv * Bi[1] * tensile_correction_scale_i;
-  sph_acc_term_i[1] += monopole_beta * over_rho2_j * wj_dr * permeability_inv *
-                       Brj * r_inv * Bi[1] * tensile_correction_scale_i;
+    sph_acc_term_i[k] += tensile_correction_scale_i * Bri * grad_term_i * Bi[k];
+    sph_acc_term_i[k] += tensile_correction_scale_i * Brj * grad_term_j	* Bi[k];
 
-  sph_acc_term_i[2] += monopole_beta * over_rho2_i * wi_dr * permeability_inv *
-                       Bri * r_inv * Bi[2] * tensile_correction_scale_i;
-  sph_acc_term_i[2] += monopole_beta * over_rho2_j * wj_dr * permeability_inv *
-                       Brj * r_inv * Bi[2] * tensile_correction_scale_i;
+  }
+  
+  /* Scale forces appropriately */
+  for (int k = 0; k < 3; k++) {
+    sph_acc_term_i[k] *= permeability_inv;
+  }
+  
   /* Use the force Luke ! */
-  pi->a_hydro[0] -= mj * sph_acc_term_i[0];
-  pi->a_hydro[1] -= mj * sph_acc_term_i[1];
-  pi->a_hydro[2] -= mj * sph_acc_term_i[2];
+  for (int k = 0; k < 3; k++) {
+    pi->a_hydro[k] -= mj * sph_acc_term_i[k];
+  }
+  
+  /* Physical induction */
+  const float induction_grad_term_i = f_ij * wi_dr * r_inv / rhoi;
 
-  /* Save forces */
-  for (int k = 1; k < 3; k++) {
-    pi->mhd_data.tot_mag_F[k] -= mj * sph_acc_term_i[k];
+  float dB_dt_i[3];
+  for (int k = 0; k < 3; k++) {
+    dB_dt_i[k] = induction_grad_term_i * (Bri * dv[k] - dvdr * Bi[k]);
   }
 
-  /* */
-  const float dB_dt_pref_i = over_rho2_i * wi_dr * r_inv;
-  // const float dB_dt_pref_j = over_rho2_j * wj_dr * r_inv;
-
-  /* */
-  float dB_dt_i[3];
-  dB_dt_i[0] = -Bri * dv[0];
-  dB_dt_i[1] = -Bri * dv[1];
-  dB_dt_i[2] = -Bri * dv[2];
-
-  /* */
-  pi->mhd_data.B_over_rho_dt[0] += mj * dB_dt_pref_i * dB_dt_i[0];
-  pi->mhd_data.B_over_rho_dt[1] += mj * dB_dt_pref_i * dB_dt_i[1];
-  pi->mhd_data.B_over_rho_dt[2] += mj * dB_dt_pref_i * dB_dt_i[2];
-
+  /* Update time derivative of B */
+  for (int k = 0; k < 3; k++) {
+    pi->mhd_data.B_dt[k] -= mj * dB_dt_i[k];
+  }
+  
   /* Physical resistivity */
-  const float resistive_eta = pi->mhd_data.resistive_eta;
+  const float resistive_eta_i = pi->mhd_data.resistive_eta;
 
-  const float dB_dt_pref_PR = 2.0f * resistive_eta * r_inv / (rhoi * rhoj);
-
-  pi->mhd_data.B_over_rho_dt[0] += mj * dB_dt_pref_PR * wi_dr * dB[0];
-  pi->mhd_data.B_over_rho_dt[1] += mj * dB_dt_pref_PR * wi_dr * dB[1];
-  pi->mhd_data.B_over_rho_dt[2] += mj * dB_dt_pref_PR * wi_dr * dB[2];
-
-  /*
-  float curlB_cross_dxi[3];
-  float curlB_cross_dxj[3];
-
-  curlB_cross_dxi[0] = curlBi[1] * dx[2] - curlBi[2] * dx[1];
-  curlB_cross_dxi[1] = curlBi[2] * dx[0] - curlBi[0] * dx[2];
-  curlB_cross_dxi[2] = curlBi[0] * dx[1] - curlBi[1] * dx[0];
-
-  curlB_cross_dxj[0] = curlBj[1] * dx[2] - curlBj[2] * dx[1];
-  curlB_cross_dxj[1] = curlBj[2] * dx[0] - curlBj[0] * dx[2];
-  curlB_cross_dxj[2] = curlBj[0] * dx[1] - curlBj[1] * dx[0];
-
-  pi->mhd_data.B_over_rho_dt[0] +=
-      mj * resistive_eta * over_rho2_i * wi_dr * r_inv * curlB_cross_dxi[0];
-  pi->mhd_data.B_over_rho_dt[0] +=
-      mj * resistive_eta * over_rho2_j * wj_dr * r_inv * curlB_cross_dxj[0];
-  pi->mhd_data.B_over_rho_dt[1] +=
-      mj * resistive_eta * over_rho2_i * wi_dr * r_inv * curlB_cross_dxi[1];
-  pi->mhd_data.B_over_rho_dt[1] +=
-      mj * resistive_eta * over_rho2_j * wj_dr * r_inv * curlB_cross_dxj[1];
-  pi->mhd_data.B_over_rho_dt[2] +=
-      mj * resistive_eta * over_rho2_i * wi_dr * r_inv * curlB_cross_dxi[2];
-  pi->mhd_data.B_over_rho_dt[2] +=
-      mj * resistive_eta * over_rho2_j * wj_dr * r_inv * curlB_cross_dxj[2];
-  */
-
-  /*Artificial resistivity*/
-
-  // const float resistivity_beta = hydro_props->mhd.art_resistivity;
-
-  const float art_diff_beta = pi->mhd_data.art_diff_beta;
-
-  /*
-  const float rhoij = rhoi + rhoj;
-  const float rhoij2 = rhoij * rhoij;
-  const float rhoij2_inv = 1 / rhoij2;
-
-  const float alpha_ARij = pi->mhd_data.alpha_AR + pj->mhd_data.alpha_AR;
-  const float v_sig_Bij  = mhd_get_fast_magnetosonic_wave_speed(dx, pi, a, mu_0)
-  + mhd_get_fast_magnetosonic_wave_speed(dx, pj, a, mu_0);
-
-  const float art_res_pref = resistivity_beta * alpha_ARij * v_sig_Bij *
-  rhoij2_inv * wi_dr;
-  */
-
+  const float dB_dt_PR_prefactor_i = 2.0f * f_ij * wi_dr * r_inv / rhoj;
+  
+  /* Update time derivative of B */
+  for (int k = 0; k < 3; k++) {
+    pi->mhd_data.B_dt[k] += resistive_eta_i * mj * dB_dt_PR_prefactor_i * dB[k];
+  }
+  
+  /* Artificial resistivity */
+  const float art_diff_beta_i = pi->mhd_data.art_diff_beta;
+  const float art_diff_beta_j = pj->mhd_data.art_diff_beta;
+  
   float dv_cross_dx[3];
   dv_cross_dx[0] = dv[1] * dx[2] - dv[2] * dx[1];
   dv_cross_dx[1] = dv[2] * dx[0] - dv[0] * dx[2];
   dv_cross_dx[2] = dv[0] * dx[1] - dv[1] * dx[0];
 
-  const float v_sig_B_2 = dv_cross_dx[0] * dv_cross_dx[0] +
-                          dv_cross_dx[1] * dv_cross_dx[1] +
-                          dv_cross_dx[2] * dv_cross_dx[2];
-  const float v_sig_B = sqrtf(v_sig_B_2) * r_inv;
+  const float v_sig_B_i_2 = dv_cross_dx[0] * dv_cross_dx[0] +
+                            dv_cross_dx[1] * dv_cross_dx[1] +
+                            dv_cross_dx[2] * dv_cross_dx[2];
+  const float v_sig_B_i = sqrtf(v_sig_B_i_2) * r_inv;
+  const float v_sig_B_j = v_sig_B_i;
+  
+  const float dB_dt_AR_grad_term_i = f_ij * wi_dr / (rhoi * rhoi);
+  const float dB_dt_AR_grad_term_j = f_ji * wj_dr / (rhoj * rhoj);
 
-  const float art_diff_pref = 0.5f * art_diff_beta * v_sig_B *
-                              (wi_dr * over_rho2_i + wj_dr * over_rho2_j);
+  float dB_dt_AR_pref_i = art_diff_beta_i * v_sig_B_i * dB_dt_AR_grad_term_i;
+  dB_dt_AR_pref_i += art_diff_beta_j * v_sig_B_j * dB_dt_AR_grad_term_j;
+  
+  /* Update time derivative of B */
+  for (int k = 0; k < 3; k++) {
+    pi->mhd_data.B_dt[k] += 0.5f * rhoi * mj * dB_dt_AR_pref_i * dB[k];
+  }
 
-  pi->mhd_data.B_over_rho_dt[0] += mj * art_diff_pref * dB[0];
-  pi->mhd_data.B_over_rho_dt[1] += mj * art_diff_pref * dB[1];
-  pi->mhd_data.B_over_rho_dt[2] += mj * art_diff_pref * dB[2];
+  /* Put back diffused magnetic energy as heat */ 
+  pi->u_dt -= 0.25f * permeability_inv * mj * dB_dt_AR_pref_i * dB_2;
+  
+  /* Divergence cleaning */
+  const float ch_i = mhd_get_magnetosonic_speed(pi, mu_0);
+  const float ch_j = mhd_get_magnetosonic_speed(pj, mu_0);
 
-  pi->u_dt -= 0.5f * mj * permeability_inv * art_diff_pref * dB_2;
+  float dB_dt_Dedner_pref_i = psi_over_ch_i * ch_i * grad_term_i;
+  dB_dt_Dedner_pref_i += psi_over_ch_j * ch_j * grad_term_j;
 
-  /* Store AR terms */
-  pi->mhd_data.B_over_rho_dt_AR[0] += mj * art_diff_pref * dB[0];
-  pi->mhd_data.B_over_rho_dt_AR[1] += mj * art_diff_pref * dB[1];
-  pi->mhd_data.B_over_rho_dt_AR[2] += mj * art_diff_pref * dB[2];
-
-  pi->mhd_data.u_dt_AR -= 0.5f * mj * permeability_inv * art_diff_pref * dB_2;
-
-  /*Divergence diffusion */
-
-  // const float vsig_Dedner_i = pi->viscosity.v_sig;
-  // const float vsig_Dedner_j = pj->viscosity.v_sig;
-
-  const float vsig_Dedner_i = mhd_get_magnetosonic_speed(pi, a, mu_0);
-  const float vsig_Dedner_j = mhd_get_magnetosonic_speed(pj, a, mu_0);
-
-  float grad_psi_i =
-      over_rho2_i * psi_over_ch_i * vsig_Dedner_i * wi_dr * r_inv;
-  grad_psi_i += over_rho2_j * psi_over_ch_j * vsig_Dedner_j * wj_dr * r_inv;
-
-  const float psi_over_ch_i_inv =
-      psi_over_ch_i != 0.f ? 1.f / psi_over_ch_i : 0.;
-
-  const float corr_ratio_i = fabsf(normBi * psi_over_ch_i_inv);
-
-  const float Qi = corr_ratio_i < 2 ? 0.5 * corr_ratio_i : 1.0f;
-
-  pi->mhd_data.B_over_rho_dt[0] -= mj * Qi * grad_psi_i * dx[0];
-  pi->mhd_data.B_over_rho_dt[1] -= mj * Qi * grad_psi_i * dx[1];
-  pi->mhd_data.B_over_rho_dt[2] -= mj * Qi * grad_psi_i * dx[2];
-
-  /* Save induction sources */
-  const float dB_dt_pref_Lap = 2.0f * r_inv / rhoj;
-
-  for (int i = 0; i < 3; i++) {
-    pi->mhd_data.Adv_B_source[i] += mj * dB_dt_pref_i * dB_dt_i[i];
-    pi->mhd_data.Adv_B_source[i] -= mj * Qi * grad_psi_i * dx[i];
-    pi->mhd_data.Diff_B_source[i] += mj * dB_dt_pref_PR * wi_dr * dB[i];
-    pi->mhd_data.Diff_B_source[i] += mj * art_diff_pref * dB[i];
-    pi->mhd_data.Delta_B[i] += mj * dB_dt_pref_Lap * wi_dr * dB[i];
+  /* Update time derivative of B */
+  for (int k = 0; k < 3; k++) {
+    pi->mhd_data.B_dt[k] -= rhoi * mj * dB_dt_Dedner_pref_i * dx[k];
   }
 }
 

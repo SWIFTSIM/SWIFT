@@ -24,15 +24,13 @@
  */
 struct mhd_part_data {
 
-  float B_over_rho[3];
-
-  float divB;
+  float B[3];
 
   /*! dB Direct Induction */
-  float B_over_rho_dt[3];
-
-  float v_fm;
-
+  float B_dt[3];
+ 
+  float div_B;
+  
   float curl_B[3];
 
   /* Resistive Eta */
@@ -51,25 +49,6 @@ struct mhd_part_data {
 
   /*! Artifical Diffusion */
   float art_diff_beta;
-
-  float B_over_rho_dt_AR[3];
-
-  float u_dt_AR;
-
-  /* SPH <1> error */
-  float mean_SPH_err;
-
-  /* SPH <grad1> error */
-  float mean_grad_SPH_err[3];
-
-  /* Magnetic force */
-  float tot_mag_F[3];
-  /* B advection source */
-  float Adv_B_source[3];
-  /* B total diffusion source */
-  float Diff_B_source[3];
-  /* Laplacian B */
-  float Delta_B[3];
 };
 
 /**
@@ -78,7 +57,7 @@ struct mhd_part_data {
 struct mhd_xpart_data {
 
   /*! Full Step Magnetic Field */
-  float B_over_rho_full[3];
+  float B_full[3];
 
   /*! Full Step Dedner Scalar */
   float psi_over_ch_full;

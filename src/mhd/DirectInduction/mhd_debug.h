@@ -30,15 +30,15 @@
 __attribute__((always_inline)) INLINE static void mhd_debug_particle(
     const struct part *p, const struct xpart *xp) {
   warning(
-      "B/rho=[%.3e,%.3e,%.3e], "
-      "B/rho (pred)=[%.3e,%.3e,%.3e], "
-      "d(B/rho)/dt=[%.3e,%.3e,%.3e], \n"
-      "divB=%.3e, v_fm=%.3e, psi/cs=%.3e, d(psi/c)/dt=%.3e\n",
-      xp->mhd_data.B_over_rho_full[0], xp->mhd_data.B_over_rho_full[1],
-      xp->mhd_data.B_over_rho_full[2], p->mhd_data.B_over_rho[0],
-      p->mhd_data.B_over_rho[1], p->mhd_data.B_over_rho[2],
-      p->mhd_data.B_over_rho_dt[0], p->mhd_data.B_over_rho_dt[1],
-      p->mhd_data.B_over_rho_dt[2], p->mhd_data.divB, p->mhd_data.v_fm,
+      "B=[%.3e,%.3e,%.3e], "
+      "B(pred)=[%.3e,%.3e,%.3e], "
+      "dB/dt=[%.3e,%.3e,%.3e], \n"
+      "divB=%.3e, psi/ch=%.3e, d(psi/ch)/dt=%.3e\n",
+      xp->mhd_data.B_full[0], xp->mhd_data.B_full[1],
+      xp->mhd_data.B_full[2], p->mhd_data.B[0],
+      p->mhd_data.B[1], p->mhd_data.B[2],
+      p->mhd_data.B_dt[0], p->mhd_data.B_dt[1],
+      p->mhd_data.B_dt[2], p->mhd_data.div_B, 
       p->mhd_data.psi_over_ch, p->mhd_data.psi_over_ch_dt);
 }
 
