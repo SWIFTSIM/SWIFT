@@ -892,4 +892,45 @@ __attribute__((always_inline)) INLINE static void chemistry_split_part(
   error("Loic: to be implemented");
 }
 
+
+/**
+ * @brief Extra operations to be done during the drift for chemistry.
+ *
+ * @param p Particle to act upon.
+ * @param xp The extended particle data to act upon.
+ * @param dt_drift The drift time-step for positions.
+ * @param dt_therm The drift time-step for thermal quantities.
+ */
+__attribute__((always_inline)) INLINE static void chemistry_predict_extra(
+    struct part* p, struct xpart* xp, float dt_drift, float dt_therm,
+    const struct cosmology* cosmo, const struct chemistry_global_data* chem_data) {
+
+  struct chemistry_part_data* chd = &p->chemistry_data;
+
+  /* Predict rho_prev using the density predicted by the hydro. */
+  chd->rho_prev = p->rho;
+
+  /* Predict filtered density. Notice that h was predicted before by
+     hydro_predict_extra() */
+  float h_bar_inv = 1/ (p->h * kernel_gamma);
+  const float w1 = p->force.h_dt * h_bar_inv * dt_drift;
+
+  const float w2 = -hydro_dimension * w1;
+  if (fabsf(w2) < 0.2f) {
+    const float expf_approx =
+        approx_expf(w2); /* 4th order expansion of exp(w) */
+    chd->filtered.rho *= expf_approx;
+  } else {
+    const float expf_exact = expf(w2);
+    chd->filtered.rho *= expf_exact;
+  }
+  chd->filtered.rho_prev = chd->filtered.rho;
+
+  /* Update diffusion coefficient */
+  chd->kappa = chemistry_compute_diffusion_coefficient(p, chem_data, cosmo);
+
+  /* Update the metal masses */
+
+}
+
 #endif /* SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_H */
