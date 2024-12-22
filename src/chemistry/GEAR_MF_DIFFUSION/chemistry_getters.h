@@ -355,6 +355,22 @@ __attribute__((always_inline)) INLINE static void chemistry_get_hydro_gradients(
   dvz[2] = p->chemistry_data.gradients.v[2][2];
 }
 
+
+/**
+ * @brief Returns the total metallicity (metal mass fraction) of the
+ * gas particle to be used in feedback/enrichment related routines.
+ *
+ * @param p Pointer to the particle data.
+ */
+__attribute__((always_inline)) INLINE static float
+chemistry_get_total_metal_mass_fraction(const struct part* restrict p) {
+  float m_Z_tot = 0.0;
+  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
+    m_Z_tot += p->chemistry_data.metal_mass[i];
+  }
+  return m_Z_tot/hydro_get_mass(p);
+}
+
 /**
  * @brief Returns the abundance array (metal mass fractions) of the
  * gas particle to be used in feedback/enrichment related routines.
@@ -376,13 +392,8 @@ chemistry_get_metal_mass_fraction_for_feedback(const struct part* restrict p) {
  * @param p Pointer to the particle data.
  */
 __attribute__((always_inline)) INLINE static float
-chemistry_get_total_metal_mass_fraction_for_feedback(
-    const struct part* restrict p) {
-  float m_Z_tot = 0.0;
-  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
-    m_Z_tot += p->chemistry_data.metal_mass[i];
-  }
-  return m_Z_tot/hydro_get_mass(p);
+chemistry_get_total_metal_mass_fraction_for_feedback(const struct part* restrict p) {
+  return chemistry_get_total_metal_mass_fraction(p);
 }
 
 /**
@@ -451,16 +462,7 @@ chemistry_get_star_metal_mass_fraction_for_feedback(
 __attribute__((always_inline)) INLINE static double
 chemistry_get_total_metal_mass_fraction_for_cooling(
     const struct part* restrict p) {
-  float m_Z_tot = 0.0;
-  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
-    m_Z_tot += p->chemistry_data.metal_mass[i];
-  }
-
-  if (m_Z_tot > hydro_get_mass(p)) {
-    warning("[%lld] Total metal mass grew larger than the particle mass! m_Z_tot = %e, m = %e", p->id, m_Z_tot, hydro_get_mass(p));
-  }
-
-  return m_Z_tot/hydro_get_mass(p);
+  return chemistry_get_total_metal_mass_fraction(p);
 }
 
 /**
@@ -486,12 +488,7 @@ chemistry_get_metal_mass_fraction_for_cooling(const struct part* restrict p) {
 __attribute__((always_inline)) INLINE static double
 chemistry_get_total_metal_mass_fraction_for_star_formation(
     const struct part* restrict p) {
-
-  float m_Z_tot = 0.0;
-  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
-    m_Z_tot += p->chemistry_data.metal_mass[i];
-  }
-  return m_Z_tot/hydro_get_mass(p);
+  return chemistry_get_total_metal_mass_fraction(p);
 }
 
 /**
@@ -517,11 +514,7 @@ chemistry_get_metal_mass_fraction_for_star_formation(
  */
 __attribute__((always_inline)) INLINE static float
 chemistry_get_total_metal_mass_for_stats(const struct part* restrict p) {
-  float m_Z_tot = 0.0;
-  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
-    m_Z_tot += p->chemistry_data.metal_mass[i];
-  }
-  return m_Z_tot;
+  return chemistry_get_total_metal_mass_fraction(p) * hydro_get_mass(p);
 }
 
 /**
