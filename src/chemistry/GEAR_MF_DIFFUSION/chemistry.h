@@ -479,14 +479,11 @@ __attribute__((always_inline)) INLINE static void chemistry_end_density(
   p->chemistry_data.filtered.rho_v[1] *= FILTERING_SMOOTHING_FACTOR;
   p->chemistry_data.filtered.rho_v[2] *= FILTERING_SMOOTHING_FACTOR;
 
-  /* Add self term */
-  p->chemistry_data.filtered.rho += hydro_get_mass(p) * kernel_root;
-  p->chemistry_data.filtered.rho_v[0] +=
-      p->chemistry_data.filtered.rho_prev * p->v[0];
-  p->chemistry_data.filtered.rho_v[1] +=
-      p->chemistry_data.filtered.rho_prev * p->v[1];
-  p->chemistry_data.filtered.rho_v[2] +=
-      p->chemistry_data.filtered.rho_prev * p->v[2];
+  /* Add self term (is it needed for rho? the formula does not include it) */
+  /* p->chemistry_data.filtered.rho += hydro_get_mass(p) * kernel_root; */
+  p->chemistry_data.filtered.rho_v[0] += hydro_get_comoving_density(p) * p->v[0];
+  p->chemistry_data.filtered.rho_v[1] += hydro_get_comoving_density(p) * p->v[1];
+  p->chemistry_data.filtered.rho_v[2] += hydro_get_comoving_density(p) * p->v[2];
 
   /* Insert missing h-factor to rho. For rho*v, notice that the h-factors were
      already given in the density loop since they depend on bar{h_ij}. */
