@@ -19,6 +19,86 @@
 #ifndef SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_ADDITIONS_H
 #define SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_ADDITIONS_H
 
+__attribute__((always_inline)) INLINE static void chemistry_kick_extra(
+    struct part* p, float dt_therm, float dt_grav, float dt_hydro,
+    float dt_kick_corr, const struct cosmology* cosmo,
+    const struct hydro_props* hydro_props) {
+
+  struct chemistry_part_data* chd = &p->chemistry_data;
+
+  if (chd->flux_dt != 0.0f) {
+    for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; ++i) {
+      double flux;
+      chemistry_get_fluxes(p, i, &flux);
+
+      /* Update the conserved variable */
+      chd->metal_mass[i] += flux;
+    }
+
+    /* Reset the fluxes, so that they do not get used again in kick1 */
+    chemistry_reset_chemistry_fluxes(p);
+
+    /* Invalidate the particle time-step. It is considered to be inactive until
+       dt is set again in hydro_prepare_force() */
+    chd->flux_dt = -1.0f;
+  } else /* (p->chemistry_data.flux_dt == 0.0f) */ {
+    /* something tricky happens at the beginning of the simulation: the flux
+       exchange is done for all particles, but using a time step of 0. This
+       in itself is not a problem. However, it causes some issues with the
+       initialisation of flux.dt for inactive particles, since this value will
+       remain 0 until the particle is active again, and its flux.dt is set to
+       the actual time step in hydro_prepare_force(). We have to make sure it
+       is properly set to -1 here, so that inactive particles are indeed found
+       to be inactive during the flux loop. */
+    chd->flux_dt = -1.0f;
+  }
+
+  /* Sanity checks. We don't want negative metal masses. */
+  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; ++i) {
+    const double m_metal_old = chd->metal_mass[i];
+    chemistry_check_unphysical_state(&chd->metal_mass[i], m_metal_old,
+                                     hydro_get_mass(p), /*callloc=*/2);
+  }
+
+  /* Verify that the total metal mass does not exceed the part's mass */
+  double total_metal_mass = 0.;
+  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
+    total_metal_mass += chd->metal_mass[i];
+  }
+  if (total_metal_mass > hydro_get_mass(p)) {
+    for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
+      chd->metal_mass[i] /= 1e3*total_metal_mass/hydro_get_mass(p);
+    }
+    warning("[%lld] Total metal mass grew larger than the particle mass! "
+	    "Rescaling the element masses. m_Z_tot = %e, m = %e"
+	    " m_z_0 = %e, m_z_1 = %e, m_z_2 = %e, m_z_3 = %e, m_z_4 = %e, m_z_5 = %e, m_z_6 ="
+	    " %e, m_z_7 = %e, m_z_8 = %e, m_z_9 = %e",
+	    p->id, total_metal_mass, hydro_get_mass(p),
+	    chd->metal_mass[0],  chd->metal_mass[1], chd->metal_mass[2],
+	    chd->metal_mass[3], chd->metal_mass[4], chd->metal_mass[5],
+	    chd->metal_mass[6], chd->metal_mass[7], chd->metal_mass[8],
+	    chd->metal_mass[9]);
+  }
+
+  /* Reset wcorr */
+  p->geometry.wcorr = 1.0f;
+
+  /* Store the density of the current timestep for the next timestep */
+  p->chemistry_data.rho_prev = chemistry_get_comoving_density(p);
+  p->chemistry_data.filtered.rho_prev = p->chemistry_data.filtered.rho;
+
+  /* Take care of the case where \bar{rho_prev} = 0 */
+  if (p->chemistry_data.filtered.rho_prev == 0) {
+    p->chemistry_data.filtered.rho_prev = p->chemistry_data.rho_prev;
+  }
+
+#if defined(HYDRO_DOES_MASS_FLUX)
+  chemistry_kick_extra_mass_flux(p, dt_therm, dt_grav, dt_hydro, dt_kick_corr,
+				 cosmo, hydro_props)
+#endif
+}
+
+#if defined (HYDRO_DOES_MASS_FLUX)
 /**
  * @brief Resets the metal mass fluxes for schemes that use them.
  *
@@ -44,7 +124,7 @@ __attribute__((always_inline)) INLINE static void chemistry_reset_mass_fluxes(
  * @param cosmo Cosmology.
  * @param hydro_props Additional hydro properties.
  */
-__attribute__((always_inline)) INLINE static void chemistry_kick_extra(
+__attribute__((always_inline)) INLINE static void chemistry_kick_extra_mass_flux(
     struct part* p, float dt_therm, float dt_grav, float dt_hydro,
     float dt_kick_corr, const struct cosmology* cosmo,
     const struct hydro_props* hydro_props) {
@@ -146,5 +226,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_chemistry_fluxes(
     }
   }
 }
+#endif /* HYDRO_DOES_MASS_FLUX */
 
 #endif  // SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_ADDITIONS_H
