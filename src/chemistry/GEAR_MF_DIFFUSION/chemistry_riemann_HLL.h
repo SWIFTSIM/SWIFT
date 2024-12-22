@@ -95,7 +95,7 @@ chemistry_riemann_prevent_large_K_star(const struct part *restrict pi,
 
 __attribute__((always_inline)) INLINE static void chemistry_riemann_predict_Z(
     const struct part *restrict pi, const struct part *restrict pj, double *Zi,
-    double *Zj, int group, const struct cosmology *cosmo) {
+    double *Zj, int metal, const struct cosmology *cosmo) {
 
   const float dx[3] = {pi->x[0] - pj->x[0], pi->x[1] - pj->x[1],
                        pi->x[2] - pj->x[2]};
@@ -104,12 +104,9 @@ __attribute__((always_inline)) INLINE static void chemistry_riemann_predict_Z(
   const float xij_i[3] = {xfac * dx[0], xfac * dx[1], xfac * dx[2]};
   const float xij_j[3] = {xij_i[0] + dx[0], xij_i[1] + dx[1], xij_i[2] + dx[2]};
 
-  const double grad_Z_i[3] = {pi->chemistry_data.gradients.Z[group][0],
-                              pi->chemistry_data.gradients.Z[group][1],
-                              pi->chemistry_data.gradients.Z[group][2]};
-  const double grad_Z_j[3] = {pj->chemistry_data.gradients.Z[group][0],
-                              pj->chemistry_data.gradients.Z[group][1],
-                              pj->chemistry_data.gradients.Z[group][2]};
+  double grad_Z_i[3], grad_Z_j[3];
+  chemistry_get_metal_mass_fraction_gradients(pi, metal, grad_Z_i);
+  chemistry_get_metal_mass_fraction_gradients(pj, metal, grad_Z_j);
 
   double dZi = chemistry_gradients_extrapolate(grad_Z_i, xij_i);
   double dZj = chemistry_gradients_extrapolate(grad_Z_j, xij_j);

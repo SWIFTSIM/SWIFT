@@ -296,9 +296,22 @@ chemistry_compute_diffusion_coefficient(
  *
  * @param p Particle.
  * @param metal Index of metal specie
- * @param dvx x velocity gradient (of size 3 or more).
- * @param dvy y velocity gradient (of size 3 or more).
- * @param dvz z velocity gradient (of size 3 or more).
+ * @param dF Metal mass fraction gradient (of size 3).
+ */
+__attribute__((always_inline)) INLINE static void
+chemistry_get_metal_mass_fraction_gradients(const struct part *restrict p, int metal,
+					    double dF[3]) {
+  dF[0] = p->chemistry_data.gradients.Z[metal][0];
+  dF[1] = p->chemistry_data.gradients.Z[metal][1];
+  dF[2] = p->chemistry_data.gradients.Z[metal][2];
+}
+
+/**
+ * @brief Get the gradients of metal mass fraction a given metal group.
+ *
+ * @param p Particle.
+ * @param metal Index of metal specie
+ * @param dF Metal mass density gradient (of size 3).
  */
 __attribute__((always_inline)) INLINE static void
 chemistry_get_metal_mass_density_gradients(const struct part *restrict p, int metal,
@@ -318,6 +331,7 @@ chemistry_get_metal_mass_density_gradients(const struct part *restrict p, int me
   dF[1] = chd->gradients.Z[metal][1] * p->rho + grad_rho[1] * Z;
   dF[2] = chd->gradients.Z[metal][2] * p->rho + grad_rho[2] * Z;
 }
+
 
 /**
  * @brief Get the velocity gradients.
