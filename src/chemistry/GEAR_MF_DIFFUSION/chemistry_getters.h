@@ -301,7 +301,7 @@ chemistry_compute_diffusion_coefficient(
  * @param dvz z velocity gradient (of size 3 or more).
  */
 __attribute__((always_inline)) INLINE static void
-chemistry_get_diffusion_gradients(const struct part *restrict p, int metal,
+chemistry_get_metal_mass_density_gradients(const struct part *restrict p, int metal,
                                   const float grad_rho[3], double dF[3]) {
 
   const struct chemistry_part_data *chd = &p->chemistry_data;

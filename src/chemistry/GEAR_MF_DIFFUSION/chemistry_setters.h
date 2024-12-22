@@ -67,7 +67,7 @@ chemistry_part_reset_gradients(struct part *restrict p) {
  * @param p Particle.
  */
 __attribute__((always_inline)) INLINE static void
-chemistry_part_set_diffusion_gradients(struct part *restrict p, int metal,
+chemistry_part_set_metal_mass_fraction_gradients(struct part *restrict p, int metal,
                                        const double gradF[3]) {
 
   struct chemistry_part_data *chd = &p->chemistry_data;
@@ -87,7 +87,7 @@ chemistry_part_set_diffusion_gradients(struct part *restrict p, int metal,
  * @param dF gradient of the diffusion flux
  */
 __attribute__((always_inline)) INLINE static void
-chemistry_part_update_diffusion_gradients(struct part *restrict p, int metal,
+chemistry_part_update_metal_mass_fraction_gradients(struct part *restrict p, int metal,
                                           double dF[3]) {
 
   struct chemistry_part_data *chd = &p->chemistry_data;

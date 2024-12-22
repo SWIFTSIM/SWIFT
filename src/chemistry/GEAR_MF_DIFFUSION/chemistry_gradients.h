@@ -137,7 +137,7 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_collect(
     dF_i[1] = dZ * psii_tilde[1];
     dF_i[2] = dZ * psii_tilde[2];
 
-    chemistry_part_update_diffusion_gradients(pi, g, dF_i);
+    chemistry_part_update_metal_mass_fraction_gradients(pi, g, dF_i);
 
     /* Now do the gradients of pj */
     double dF_j[3];
@@ -148,7 +148,7 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_collect(
     dF_j[1] = dZ * psij_tilde[1];
     dF_j[2] = dZ * psij_tilde[2];
 
-    chemistry_part_update_diffusion_gradients(pj, g, dF_j);
+    chemistry_part_update_metal_mass_fraction_gradients(pj, g, dF_j);
   }
 
   /*****************************************/
@@ -296,7 +296,7 @@ chemistry_gradients_nonsym_collect(float r2, const float *dx, float hi,
     dF_i[1] = dZ * psii_tilde[1];
     dF_i[2] = dZ * psii_tilde[2];
 
-    chemistry_part_update_diffusion_gradients(pi, g, dF_i);
+    chemistry_part_update_metal_mass_fraction_gradients(pi, g, dF_i);
   }
 
   /*****************************************/
@@ -441,8 +441,8 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
                              Delta_rho * dx[2] / (r * r)};
   double dF_i[3];
   double dF_j[3];
-  chemistry_get_diffusion_gradients(pi, group, grad_rho, dF_i);
-  chemistry_get_diffusion_gradients(pj, group, grad_rho, dF_j);
+  chemistry_get_metal_mass_density_gradients(pi, group, grad_rho, dF_i);
+  chemistry_get_metal_mass_density_gradients(pj, group, grad_rho, dF_j);
 
   /* Compute interface position (relative to pj, since we don't need the actual
    * position) eqn. (8)
