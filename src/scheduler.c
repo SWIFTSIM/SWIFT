@@ -2733,6 +2733,10 @@ void scheduler_enqueue_mapper(void *map_data, int num_elements,
  */
 void scheduler_start(struct scheduler *s) {
   for (int i = 0; i < s->nr_queues; i++) {  // A. Nasar
+//	if(s->queues[i].n_packs_self_left_f > 0 && s->e->time > 0.0){
+//		message("time %f", s->e->time);
+//		error("We did not complete all density pack tasks. n left %i", s->queues[i].n_packs_self_left_f);
+//	}
     s->queues[i].n_packs_self_left = 0;
     s->queues[i].n_packs_pair_left = 0;
     s->queues[i].n_packs_self_left_f = 0;
@@ -3346,11 +3350,12 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
 
           /* Pick a queue at random among the non-empty ones */
           const int ind = rand_r(&seed) % count;
-
+          /*Get a pointer to the queue we're stealing from*/
+          int qstl = qids[ind];
+      	  struct queue * q_stl = &s->queues[qstl];
           /* Try to get a task from that random queue */
           TIMER_TIC;
-          int qstl = qids[ind];
-          res = queue_gettask(&s->queues[qstl], prev, 0);
+          res = queue_gettask(q_stl, prev, 0);
           TIMER_TOC(timer_qsteal);
 
 //          if (res != NULL && (res->type == task_type_pair) &&
@@ -3379,36 +3384,42 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
 //          }
 
           /* Lucky? */
-          if (res != NULL) {
+          if (res != NULL){
+        	/*Get a pointer to our queue for re-use*/
+        	struct queue * q = &s->queues[qid];
+//        		  && res->subtype != task_subtype_gpu_pack
+//        		  && res->subtype != task_subtype_gpu_pack_f
+//				  && res->subtype != task_subtype_gpu_pack_g) {
+        	/*Move counter from the robbed to the robber*/
             if ((res->type == task_type_self)&&
                 res->subtype == task_subtype_gpu_pack) {
-              atomic_inc(&s->queues[qid].n_packs_self_left);
-              atomic_dec(&s->queues[qstl].n_packs_self_left);
+              atomic_inc(&q->n_packs_self_left);
+              atomic_dec(&q_stl->n_packs_self_left);
             }
             if ((res->type == task_type_self)&&
                 res->subtype == task_subtype_gpu_pack_g) {
-              atomic_inc(&s->queues[qid].n_packs_self_left_g);
-              atomic_dec(&s->queues[qstl].n_packs_self_left_g);
+              atomic_inc(&q->n_packs_self_left_g);
+              atomic_dec(&q_stl->n_packs_self_left_g);
             }
             if ((res->type == task_type_self)&&
                 res->subtype == task_subtype_gpu_pack_f) {
-              atomic_inc(&s->queues[qid].n_packs_self_left_f);
-              atomic_dec(&s->queues[qstl].n_packs_self_left_f);
+              atomic_inc(&q->n_packs_self_left_f);
+              atomic_dec(&q_stl->n_packs_self_left_f);
             }
             if ((res->type == task_type_pair)&&
                 res->subtype == task_subtype_gpu_pack) {
-              atomic_inc(&s->queues[qid].n_packs_pair_left);
-              atomic_dec(&s->queues[qstl].n_packs_pair_left);
+              atomic_inc(&q->n_packs_pair_left);
+              atomic_dec(&q_stl->n_packs_pair_left);
             }
             if ((res->type == task_type_pair)&&
                 res->subtype == task_subtype_gpu_pack_g) {
-              atomic_inc(&s->queues[qid].n_packs_pair_left_g);
-              atomic_dec(&s->queues[qstl].n_packs_pair_left_g);
+              atomic_inc(&q->n_packs_pair_left_g);
+              atomic_dec(&q_stl->n_packs_pair_left_g);
             }
             if ((res->type == task_type_pair)&&
                 res->subtype == task_subtype_gpu_pack_f) {
-              atomic_inc(&s->queues[qid].n_packs_pair_left_f);
-              atomic_dec(&s->queues[qstl].n_packs_pair_left_f);
+              atomic_inc(&q->n_packs_pair_left_f);
+              atomic_dec(&q_stl->n_packs_pair_left_f);
             }
             /* Run with the task */
             break;
