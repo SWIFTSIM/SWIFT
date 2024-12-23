@@ -5161,17 +5161,17 @@ void engine_maketasks(struct engine *e) {
   if (count_current_pair != sched->nr_pair_pack_tasks_f)
     error("We did not find the correct number of F pair pack tasks!!");
 #endif
-
-  for (int i = 0; i < sched->nr_tasks; i++) {
-    struct task *t = &sched->tasks[i];
-    if(t->ci != NULL){
-//      if(t->type == task_type_pair && ((t->ci->split && !t->cj->split) || (!t->ci->split && t->cj->split)))
-//    	  error("one is split the other isn't");
-      if(t->ci->hydro.count > 80 && t->type == task_type_self)
-    	  error("Count is %i task subtype (%s)",
-                  t->ci->hydro.count, subtaskID_names[t->subtype]);
-    }
-  }
+/*Debug code to check if some tasks are not split to desired level in tree for GPU*/
+//  for (int i = 0; i < sched->nr_tasks; i++) {
+//    struct task *t = &sched->tasks[i];
+//    if(t->ci != NULL){
+////      if(t->type == task_type_pair && ((t->ci->split && !t->cj->split) || (!t->ci->split && t->cj->split)))
+////    	  error("one is split the other isn't");
+//      if(t->ci->hydro.count > 80 && t->type == task_type_self)
+//    	  error("Count is %i task subtype (%s)",
+//                  t->ci->hydro.count, subtaskID_names[t->subtype]);
+//    }
+//  }
   if (e->verbose)
     message("Making extra hydroloop tasks took %.3f %s.",
             clocks_from_ticks(getticks() - tic2), clocks_getunit());

@@ -31,11 +31,11 @@ Statistics:
 
 # Parameters for the hydrodynamics scheme
 SPH:
-  resolution_eta:        1.2348   # Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel).
+  resolution_eta:        1.99   # Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel).
   CFL_condition:         0.1      # Courant-Friedrich-Levy condition for time integration.
   
 # Parameters related to the initial conditions
 InitialConditions:
   file_name:  ./greshoVortex.hdf5     # The file to read
   periodic:   1
-#  replicate:  2
+  replicate:  2

@@ -673,7 +673,7 @@ void *runner_main2(void *data) {
    *  the allocated memory on buffers and GPU. This can happen if calculated h is
    *  larger than cell width and splitting makes bigger than target cells*/
   int count_max_parts_tmp =
-      2 * target_n_tasks * (np_per_cell + buff);
+      8 * target_n_tasks * (np_per_cell + buff);
 
   message("max_parts %i, n_tasks_GPU %i\n", count_max_parts_tmp, target_n_tasks);
   pack_vars_self_dens->count_max_parts = count_max_parts_tmp;
