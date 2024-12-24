@@ -532,7 +532,7 @@ chemistry_gradients_predict_hydro(struct part *restrict pi,
   Wj[2] += dvj[1];
   Wj[3] += dvj[2];
 
-  /* Note: We do not reconstruct v_tilde at the interace since it is not use
+  /* Note: We do not reconstruct v_tilde at the interface since it is not used
      during the Riemann problem. */
 }
 
