@@ -62,22 +62,8 @@ __attribute__((always_inline)) INLINE static void chemistry_kick_extra(
                                      hydro_get_mass(p), /*callloc=*/2);
   }
 
-  /* Verify that the total metal mass does not exceed the part's mass */
-  const double m_Z_tot = chemistry_get_total_metal_mass_fraction(p) * hydro_get_mass(p);
-  if (m_Z_tot > hydro_get_mass(p)) {
-    for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
-      chd->metal_mass[i] /= 1e3*m_Z_tot/hydro_get_mass(p);
-    }
-    warning("[%lld] Total metal mass grew larger than the particle mass! "
-	    "Rescaling the element masses. m_Z_tot = %e, m = %e"
-	    " m_z_0 = %e, m_z_1 = %e, m_z_2 = %e, m_z_3 = %e, m_z_4 = %e, m_z_5 = %e, m_z_6 ="
-	    " %e, m_z_7 = %e, m_z_8 = %e, m_z_9 = %e",
-	    p->id, m_Z_tot, hydro_get_mass(p),
-	    chd->metal_mass[0],  chd->metal_mass[1], chd->metal_mass[2],
-	    chd->metal_mass[3], chd->metal_mass[4], chd->metal_mass[5],
-	    chd->metal_mass[6], chd->metal_mass[7], chd->metal_mass[8],
-	    chd->metal_mass[9]);
-  }
+  /* Sanity check on the total metal mass */
+  chemistry_check_unphysical_total_metal_mass(p, 1);
 
   /* Reset wcorr */
   p->geometry.wcorr = 1.0f;

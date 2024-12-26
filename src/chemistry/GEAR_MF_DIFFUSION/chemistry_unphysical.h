@@ -21,6 +21,7 @@
 
 #include "error.h"
 #include "inline.h"
+#include "part.h"
 
 /**
  * @file src/chemistry/GEAR/chemistry_unphysical.h
@@ -112,6 +113,36 @@ chemistry_check_unphysical_diffusion_flux(double flux[3]) {
     if (isnan(flux[i])) {
       flux[i] = 0.f;
     }
+  }
+}
+
+/**
+ * @brief Check for and correct if needed unphysical total metal mass.
+ *
+ * @param p The #part
+ */
+__attribute__((always_inline)) INLINE static void
+chemistry_check_unphysical_total_metal_mass(struct part* restrict p, int callloc) {
+  struct chemistry_part_data* chd = &p->chemistry_data;
+
+  /* Verify that the total metal mass does not exceed the part's mass */
+  const float gas_mass = hydro_get_mass(p);
+  const double m_Z_tot = chemistry_get_total_metal_mass_fraction(p) * gas_mass;
+
+  if (m_Z_tot > gas_mass) {
+    /* Rescale the elements */
+    for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
+      chd->metal_mass[i] /= 1.01*m_Z_tot/gas_mass;
+    }
+    warning("[%lld, %i] Total metal mass grew larger than the particle mass! "
+	    "Rescaling the element masses. m_Z_tot = %e, m = %e"
+	    " m_z_0 = %e, m_z_1 = %e, m_z_2 = %e, m_z_3 = %e, m_z_4 = %e, "
+	    "m_z_5 = %e, m_z_6 = %e, m_z_7 = %e, m_z_8 = %e, m_z_9 = %e",
+	    p->id,  callloc, m_Z_tot, gas_mass,
+	    chd->metal_mass[0], chd->metal_mass[1], chd->metal_mass[2],
+	    chd->metal_mass[3], chd->metal_mass[4], chd->metal_mass[5],
+	    chd->metal_mass[6], chd->metal_mass[7], chd->metal_mass[8],
+	    chd->metal_mass[9]);
   }
 }
 

@@ -547,6 +547,9 @@ __attribute__((always_inline)) INLINE static void chemistry_end_density(
                                      m_metal_old, hydro_get_mass(p),
                                      /*callloc=*/g + 3);
   }
+
+  /* Sanity check on the total metal mass */
+  chemistry_check_unphysical_total_metal_mass(p, 0);
 }
 
 /**
