@@ -27,7 +27,7 @@
 #include "sign.h"
 
 /**
- * @file src/chemistry/GEAR_MFM_FIDDUSION/chemistry_slope_limiters_face.h
+ * @file src/chemistry/GEAR_MF_DIFFUSION/chemistry_slope_limiters_face.h
  * @brief File containing routines concerning the face slope
  * limiter for the GEAR MFM diffusion scheme, i.e. limiting the actual
  * interparticle flux.
@@ -64,13 +64,13 @@ __attribute__((always_inline)) INLINE static void chemistry_limiter_minmod(
  * @param phi_mid0 Extrapolated value of the quantity at the interface position.
  * @param xij_norm Distance between the particle position and the interface
  * position.
- * @param r Distance between the particle and its neighbour.
+ * @param r_inv Inverse distance between the particle and its neighbour.
  * @return The slope limited difference between the quantity at the particle
  * position and the quantity at the interface position.
  */
 __attribute__((always_inline)) INLINE static double
-chemistry_slope_limit_face_quantity(double phi_i, double phi_j, double phi_mid0,
-                                    float xij_norm, float r_inv) {
+chemistry_slope_limit_face_quantity_double(double phi_i, double phi_j, double phi_mid0,
+					   float xij_norm, float r_inv) {
 
   const double psi1 = 0.5;
   const double psi2 = 0.25;
@@ -136,10 +136,10 @@ __attribute__((always_inline)) INLINE static void chemistry_slope_limit_face(
 
   /* const float r_inv = (r > 0.0f) ? 1.0f / r : 0.0f; */
 
-  /* *dUi = chemistry_slope_limit_face_quantity(Ui[0], Uj[0], Ui[0] + dUi[0], */
+  /* *dUi = chemistry_slope_limit_face_quantity_double(Ui[0], Uj[0], Ui[0] + dUi[0], */
   /*                                            xij_i_norm, r_inv); */
 
-  /* *dUj = chemistry_slope_limit_face_quantity(Uj[0], Ui[0], Uj[0] + dUj[0], */
+  /* *dUj = chemistry_slope_limit_face_quantity_double(Uj[0], Ui[0], Uj[0] + dUj[0], */
   /*                                            xij_j_norm, r_inv); */
 
   /* Use the minmod slop limiter: it avoids most pathological cases where the
@@ -155,7 +155,7 @@ __attribute__((always_inline)) INLINE static void chemistry_slope_limit_face(
  * @param phi_mid0 Extrapolated value of the quantity at the interface position.
  * @param xij_norm Distance between the particle position and the interface
  * position.
- * @param r Distance between the particle and its neighbour.
+ * @param r_inv Inverse distance between the particle and its neighbour.
  * @return The slope limited difference between the quantity at the particle
  * position and the quantity at the interface position.
  */

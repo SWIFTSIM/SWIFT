@@ -26,9 +26,9 @@
 #define GIZMO_SLOPE_LIMITER_BETA_MAX 2.0
 
 /**
- * @file src/chemistry/GEAR_MFM_FIDDUSION/chemistry_slope_limiters_cell.h
+ * @file src/chemistry/GEAR_MF_DIFFUSION/chemistry_slope_limiters_cell.h
  * @brief File containing routines concerning the cell slope
- * limiter for the GEAR MFM diffusion scheme. (= fist slope limiting step
+ * limiter for the GEAR MF diffusion scheme. (= fist slope limiting step
  * that limits gradients such that they don't predict new extrema
  * at neighbour particle's positions )
  *
@@ -125,6 +125,7 @@ chemistry_slope_limit_cell_collect(struct part* pi, struct part* pj, float r) {
  * @param value the current value of the quantity
  * @param valmin the minimal value amongst all neighbours of the quantity
  * @param valmax the maximal value amongst all neighbours of the quantity
+ * @param condition_number Condition number of the particle geometric matrix E
  */
 __attribute__((always_inline)) INLINE static void
 chemistry_slope_limit_quantity(double gradient[3], const float maxr,

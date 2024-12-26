@@ -43,7 +43,7 @@ chemistry_reset_chemistry_fluxes(struct part* restrict p) {
  * the flux is 1D.
  *
  * @param p Particle.
- * @param metal Metal index.
+ * @param metal Index of metal specie.
  * @param flux Fluxes for the particle (array of size 1).
  */
 __attribute__((always_inline)) INLINE void chemistry_get_fluxes(
@@ -57,8 +57,10 @@ __attribute__((always_inline)) INLINE void chemistry_get_fluxes(
  * F_diss = - K * \nabla \otimes q
  *
  * @param p Particle.
- * @param metal Index of metal specie
- * @param F_diff (return) Array to write diffusion flux component into
+ * @param metal Index of metal specie.
+ * @param F_diff (return) Array to write diffusion flux component into.
+ * @param chem_data The global properties of the chemistry scheme.
+ * @param cosmo The current cosmological model.
  */
 __attribute__((always_inline)) INLINE static void
 chemistry_compute_physical_diffusion_flux(
@@ -112,6 +114,8 @@ chemistry_compute_physical_diffusion_flux(
  * @param Anorm Surface area of the interface (in physical units).
  * @param metal Metal specie.
  * @param metal_flux Array to store the result in (of size 1).
+ * @param chem_data The global properties of the chemistry scheme.
+ * @param cosmo The current cosmological model.
  */
 __attribute__((always_inline)) INLINE static void chemistry_compute_flux(
     const struct part* restrict pi, const struct part* restrict pj,
