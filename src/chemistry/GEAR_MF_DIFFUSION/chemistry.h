@@ -605,7 +605,10 @@ __attribute__((always_inline)) INLINE static void chemistry_end_force(
 }
 
 /**
- * @brief Sets all particle fields to sensible values when the #part has 0 ngbs.
+ * @brief Sets all particle fields to sensible values when the #part has 0
+ * ngbs.
+ *
+ * Note: When the #part has 0 ngbs, the chemistry_end_density() is not called.
  *
  * @param p The particle to act upon
  * @param xp The extended particle data to act upon
@@ -618,7 +621,7 @@ chemistry_part_has_no_neighbours(struct part* restrict p,
                                  const struct chemistry_global_data* cd,
                                  const struct cosmology* cosmo) {
 
-  /* Re-set problematic values */
+  /* Re-set geometry problematic values */
   p->geometry.volume = 1.0f;
   p->geometry.matrix_E[0][0] = 1.0f;
   p->geometry.matrix_E[0][1] = 0.0f;
@@ -629,9 +632,16 @@ chemistry_part_has_no_neighbours(struct part* restrict p,
   p->geometry.matrix_E[2][0] = 0.0f;
   p->geometry.matrix_E[2][1] = 0.0f;
   p->geometry.matrix_E[2][2] = 1.0f;
+  p->chemistry_data.geometry_condition_number = hydro_dimension_inv*1.f;
 
-  /* reset the centroid to disable MFV velocity corrections for this particle */
+  /* Reset the centroid to disable MFV velocity corrections for this particle */
   fvpm_reset_centroids(p);
+
+  /* Set density loop variables to meaningful values */
+  p->chemistry_data.filtered.rho = hydro_get_comoving_density();
+  p->chemistry_data.filtered.rho_v[0] = hydro_get_comoving_density(p) * p->v[0];
+  p->chemistry_data.filtered.rho_v[1] = hydro_get_comoving_density(p) * p->v[1];
+  p->chemistry_data.filtered.rho_v[2] = hydro_get_comoving_density(p) * p->v[2];
 }
 
 /**
