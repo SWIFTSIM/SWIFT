@@ -545,7 +545,7 @@ __attribute__((always_inline)) INLINE static void chemistry_end_density(
 #endif
     chemistry_check_unphysical_state(&p->chemistry_data.metal_mass[g],
                                      m_metal_old, hydro_get_mass(p),
-                                     /*callloc=*/g + 3);
+                                     /*callloc=*/ 3, /*element*/ g);
   }
 
   /* Sanity check on the total metal mass */

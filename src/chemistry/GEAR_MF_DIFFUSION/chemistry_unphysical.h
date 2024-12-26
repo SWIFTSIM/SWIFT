@@ -29,20 +29,16 @@
  */
 
 /**
- * @brief check for and correct if needed unphysical
- * values for a diffusion state.
+ * @brief Check for and correct, if needed, unphysical values for a diffusion
+ * state.
  *
- * Check that the metal density does not exceed the particle mass. To do so, we
- * whould check all metallicities at the same time. We should also ensure that
- * the sum of the metallicities does not exceed the particle mass.
- *
- * @param metal_density pointer to the radiation energy density
+ * @param metal_mass pointer to the radiation energy density
  * @param n_old metal density before change to check. Set = 0 if not available
  * @param callloc integer indentifier where this function was called from
  */
 __attribute__((always_inline)) INLINE static void
 chemistry_check_unphysical_state(double* metal_mass, const double mZ_old,
-                                 const double gas_mass, int callloc) {
+                                 const double gas_mass, int callloc, const int element) {
 
   /* Check for negative metal densities/masses */
 #ifdef SWIFT_DEBUG_CHECKS
@@ -54,12 +50,12 @@ chemistry_check_unphysical_state(double* metal_mass, const double mZ_old,
   /* callloc = 1 is gradient extrapolation. Don't print out those. */
   if (callloc == 1) print = 0;
   if (print)
-    error("Fixing unphysical metal density/mass case %d | %.6e | %.6e", callloc,
-          *metal_mass, mZ_old);
+    error("[%d] Fixing unphysical metal density/mass case %d | %.6e | %.6e",
+	  element, callloc, *metal_mass, mZ_old);
 #endif
   if (isinf(*metal_mass) || isnan(*metal_mass))
-    error("Got inf/nan metal density/mass diffusion case %d | %.6e ", callloc,
-          *metal_mass);
+    error("[%d] Got inf/nan metal density/mass diffusion case %d | %.6e ",
+	  element, callloc, *metal_mass);
 
   /* Fix negative masses */
   if (*metal_mass < 0.0) {
@@ -76,9 +72,9 @@ chemistry_check_unphysical_state(double* metal_mass, const double mZ_old,
       /* Do not extrapolate, use 0th order reconstruction. */
       *metal_mass = mZ_old;
     } else {
-      *metal_mass /= 1e3*mZ_old/gas_mass;
-      warning("Metal mass bigger than gas mass ! case %d | %e | %e | %e", callloc,
-	    *metal_mass, mZ_old, gas_mass);
+      *metal_mass /= 1.01*mZ_old/gas_mass;
+      warning("[%d] Metal mass bigger than gas mass ! case %d | %e | %e | %e",
+	      element, callloc, *metal_mass, mZ_old, gas_mass);
     }
   }
 }

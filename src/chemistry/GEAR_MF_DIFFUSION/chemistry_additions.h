@@ -55,11 +55,12 @@ __attribute__((always_inline)) INLINE static void chemistry_kick_extra(
     chd->flux_dt = -1.0f;
   }
 
-  /* Sanity checks. We don't want negative metal masses. */
+  /* Element-wise sanity checks */
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; ++i) {
     const double m_metal_old = chd->metal_mass[i];
     chemistry_check_unphysical_state(&chd->metal_mass[i], m_metal_old,
-                                     hydro_get_mass(p), /*callloc=*/2);
+                                     hydro_get_mass(p), /*callloc=*/ 2,
+				     /*element*/ i);
   }
 
   /* Sanity check on the total metal mass */
