@@ -441,8 +441,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   }
 
   /* Put back diffused magnetic energy as heat */ 
-  pi->u_dt -= 0.25f * permeability_inv * mj * dB_dt_AR_pref_i * dB_2;
-  pj->u_dt -= 0.25f * permeability_inv * mi * dB_dt_AR_pref_j * dB_2;
+  pi->u_dt -= 0.5f * permeability_inv * mj * dB_dt_AR_pref_i * dB_2;
+  pj->u_dt -= 0.5f * permeability_inv * mi * dB_dt_AR_pref_j * dB_2;
 
   /* Divergence cleaning */
   const float ch_i = mhd_get_magnetosonic_speed(pi, mu_0);
@@ -633,7 +633,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   }
 
   /* Put back diffused magnetic energy as heat */ 
-  pi->u_dt -= 0.25f * permeability_inv * mj * dB_dt_AR_pref_i * dB_2;
+  pi->u_dt -= 0.5f * permeability_inv * mj * dB_dt_AR_pref_i * dB_2;
   
   /* Divergence cleaning */
   const float ch_i = mhd_get_magnetosonic_speed(pi, mu_0);
