@@ -5,7 +5,7 @@ from numpy import *
 # Generates a swift IC file for the 1D Zeldovich pancake, with a perpendicular magnetic field
 
 # Parameters
-B_0 = 1.0e-9 # Initial magnetic field strength (in T)
+B_0 = 1.0e-9  # Initial magnetic field strength (in T)
 T_i = 100.0  # Initial temperature of the gas (in K)
 z_c = 1.0  # Redshift of caustic formation (non-linear collapse)
 z_i = 100.0  # Initial redshift
@@ -16,7 +16,9 @@ fileName = "zeldovichPancake.hdf5"
 # Some units
 Mpc_in_m = 3.08567758e22
 Msol_in_kg = 1.98848e30
-Gyr_in_s = 3.08567758e19  ### so this is not actually a Gigayear, but 1 Mpc / (1 km/s) !!!
+Gyr_in_s = (
+    3.08567758e19
+)  ### so this is not actually a Gigayear, but 1 Mpc / (1 km/s) !!!
 mH_in_kg = 1.6737236e-27
 
 # Some constants
@@ -37,7 +39,7 @@ unit_t_in_si = Gyr_in_s
 unit_v_in_si = unit_l_in_si / unit_t_in_si
 unit_u_in_si = unit_v_in_si ** 2
 unit_I_in_si = 1
-unit_B_in_si = unit_m_in_si * unit_t_in_si**(-2) * unit_I_in_si**(-1)
+unit_B_in_si = unit_m_in_si * unit_t_in_si ** (-2) * unit_I_in_si ** (-1)
 
 # Total number of particles
 numPart = numPart_1D ** 3
@@ -128,7 +130,7 @@ grp.attrs["Unit temperature in cgs (U_T)"] = 1.0
 grp = file.create_group("/PartType0")
 grp.create_dataset("Coordinates", data=coords, dtype="d")
 grp.create_dataset("Velocities", data=v, dtype="f")
-grp.create_dataset("MagneticFluxDensities", data=B, dtype="f") ## added B field
+grp.create_dataset("MagneticFluxDensities", data=B, dtype="f")  ## added B field
 grp.create_dataset("Masses", data=m, dtype="f")
 grp.create_dataset("SmoothingLength", data=h, dtype="f")
 grp.create_dataset("InternalEnergy", data=u, dtype="f")

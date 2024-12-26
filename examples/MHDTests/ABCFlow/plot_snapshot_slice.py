@@ -11,9 +11,9 @@ slice_height = sys.argv[3]
 
 projection = sys.argv[4]
 
-prefered_color = "magma"#"CMRmap"#"magma"
+prefered_color = "magma"  # "CMRmap"#"magma"
 
-cpts = 100#14
+cpts = 100  # 14
 
 
 to_plot = "B"  # 'B' or 'A' or 'errors'
@@ -225,7 +225,18 @@ def make_color_levels(cmin, cmax, c_res=10, log_sc=True):
 
 
 def make_density_plot(
-    Q, cmin, cmax, i, j, Q_name, c_res=10, log_sc=True, cmap="viridis",draw_cbar=True,cmapnorm="dim"):
+    Q,
+    cmin,
+    cmax,
+    i,
+    j,
+    Q_name,
+    c_res=10,
+    log_sc=True,
+    cmap="viridis",
+    draw_cbar=True,
+    cmapnorm="dim",
+):
     levels, levels_short = make_color_levels(cmin, cmax, c_res, log_sc)
     if log_sc:
         to_plot = ax[j].contourf(
@@ -246,20 +257,22 @@ def make_density_plot(
             cmap=cmap,
             extend="both",
         )
-    
+
     ticks_to_plot = levels_short
-    if cmapnorm=='dim-less':
-        ticks_to_plot = np.array([-1,-0.5,0,0.5,1])
-    if cmapnorm=='orders':
-        ticks_to_plot = np.array([1e-2,1e-1,1e0,1e1])
-    ax[j].set_aspect('equal')
+    if cmapnorm == "dim-less":
+        ticks_to_plot = np.array([-1, -0.5, 0, 0.5, 1])
+    if cmapnorm == "orders":
+        ticks_to_plot = np.array([1e-2, 1e-1, 1e0, 1e1])
+    ax[j].set_aspect("equal")
     if draw_cbar:
-        fig.colorbar(to_plot, ax=ax.ravel().tolist(),ticks=ticks_to_plot, location='left')
-    #ax[j].set_ylabel(Q_name)
+        fig.colorbar(
+            to_plot, ax=ax.ravel().tolist(), ticks=ticks_to_plot, location="left"
+        )
+    # ax[j].set_ylabel(Q_name)
     ax[j].set_xlim(min(new_x), max(new_x))
     ax[j].set_ylim(min(new_y), max(new_y))
-    ax[j].tick_params(axis='x', labelsize=14)
-    ax[j].tick_params(axis='y', labelsize=14)
+    ax[j].tick_params(axis="x", labelsize=14)
+    ax[j].tick_params(axis="y", labelsize=14)
     return 0
 
 
@@ -338,11 +351,11 @@ if to_plot == "B":
     Babs = abs_vec(B)
     Bmean = np.mean(Babs)
     Bmax = np.max(Babs)
-    Bx = B[:, 0] /Brms
-    By = B[:, 1] /Brms
-    Bz = B[:, 2] /Brms
+    Bx = B[:, 0] / Brms
+    By = B[:, 1] / Brms
+    Bz = B[:, 2] / Brms
 
-    fig, ax = plt.subplots(1, 3, figsize=(16, 5),constrained_layout=True)
+    fig, ax = plt.subplots(1, 3, figsize=(16, 5), constrained_layout=True)
     make_density_plot(
         Bx.reshape((dimx, dimy)),
         -1.0,
@@ -354,7 +367,7 @@ if to_plot == "B":
         log_sc=False,
         cmap=prefered_color,
         draw_cbar=False,
-        cmapnorm='dim-less',	
+        cmapnorm="dim-less",
     )
     make_density_plot(
         By.reshape((dimx, dimy)),
@@ -367,7 +380,7 @@ if to_plot == "B":
         log_sc=False,
         cmap=prefered_color,
         draw_cbar=False,
-        cmapnorm='dim-less',
+        cmapnorm="dim-less",
     )
     make_density_plot(
         Bz.reshape((dimx, dimy)),
@@ -380,34 +393,34 @@ if to_plot == "B":
         log_sc=False,
         cmap=prefered_color,
         draw_cbar=True,
-        cmapnorm='dim-less',
+        cmapnorm="dim-less",
     )
 
-#    vx = v[:, 0] / vrms
-#    vy = v[:, 1] / vrms
-#    vz = v[:, 2] / vrms
+    #    vx = v[:, 0] / vrms
+    #    vy = v[:, 1] / vrms
+    #    vz = v[:, 2] / vrms
 
-#    make_density_plot(
-#        vz.reshape((dimx, dimy)),
-#        -1.0,
-#        1.0,
-#        0,
-#        3,
-#        "$v_z$/$v_{rms}$",
-#        c_res=cpts,
-#        log_sc=False,
-#        cmap=prefered_color,
-#        cmapnorm='dim-less',
-#    )
+    #    make_density_plot(
+    #        vz.reshape((dimx, dimy)),
+    #        -1.0,
+    #        1.0,
+    #        0,
+    #        3,
+    #        "$v_z$/$v_{rms}$",
+    #        c_res=cpts,
+    #        log_sc=False,
+    #        cmap=prefered_color,
+    #        cmapnorm='dim-less',
+    #    )
     ax[0].streamplot(
         new_x,
         new_y,
         np.transpose(Bx.reshape((dimx, dimy))),
         np.transpose(By.reshape((dimx, dimy))),
         color="w",
-        density=3.0,#2.0
-        linewidth=0.25,#0.5
-        arrowsize=0.4,#0.8
+        density=3.0,  # 2.0
+        linewidth=0.25,  # 0.5
+        arrowsize=0.4,  # 0.8
     )
     ax[1].streamplot(
         new_x,
@@ -442,9 +455,8 @@ if to_plot == "B":
 
 if to_plot == "errors":
 
-    fig, ax = plt.subplots(
-        1, 2, sharex=True, figsize=(12, 5),constrained_layout=True)
-      # for 3 plts 18 for 4 plts use 24
+    fig, ax = plt.subplots(1, 2, sharex=True, figsize=(12, 5), constrained_layout=True)
+    # for 3 plts 18 for 4 plts use 24
 
     make_density_plot(
         R0.reshape((dimx, dimy)),
@@ -457,21 +469,21 @@ if to_plot == "errors":
         # log_sc=False,
         cmap=prefered_color,
         draw_cbar=False,
-        cmapnorm='orders'
+        cmapnorm="orders",
     )
-#    make_density_plot(
-#        R1.reshape((dimx, dimy)),
-#        reg_err,
-#        1.0,
-#        0,
-#        1,
-#        "$R_1$",
-#        c_res=cpts,
-#        # log_sc=False,
-#        cmap=prefered_color,
-#        draw_cbar=False,
-#        cmapnorm='dim-less'
-#    )
+    #    make_density_plot(
+    #        R1.reshape((dimx, dimy)),
+    #        reg_err,
+    #        1.0,
+    #        0,
+    #        1,
+    #        "$R_1$",
+    #        c_res=cpts,
+    #        # log_sc=False,
+    #        cmap=prefered_color,
+    #        draw_cbar=False,
+    #        cmapnorm='dim-less'
+    #    )
     make_density_plot(
         R2.reshape((dimx, dimy)),
         reg_err,
@@ -483,7 +495,7 @@ if to_plot == "errors":
         # log_sc=False,
         cmap=prefered_color,
         draw_cbar=True,
-        cmapnorm='orders'
+        cmapnorm="orders",
     )
 #    make_density_plot(
 #        R3.reshape((dimx, dimy)),
@@ -497,11 +509,11 @@ if to_plot == "errors":
 #        cmap=prefered_color,
 #    )
 
-#ax[0].set_title(f"Nneigh={int(neighbours[0]):}, Npart={len(data.gas.coordinates):}")
-#ax[0].set_title('$R_0$')
-#ax[1].set_title('$R_2$')
+# ax[0].set_title(f"Nneigh={int(neighbours[0]):}, Npart={len(data.gas.coordinates):}")
+# ax[0].set_title('$R_0$')
+# ax[1].set_title('$R_2$')
 ax[1].set_title(f"t={t:.2e}")
 ax[2].set_title("$z_{slice}/L_{box}$=" + slice_height)
-#fig.tight_layout()
+# fig.tight_layout()
 
-plt.savefig(sys.argv[2], dpi=200)#100)
+plt.savefig(sys.argv[2], dpi=200)  # 100)

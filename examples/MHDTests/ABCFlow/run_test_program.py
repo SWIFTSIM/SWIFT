@@ -222,7 +222,7 @@ def run_simulation(phys_parameters, threads):
     set_time_end = ""
     set_dt_max = ""
     if t_max != None:
-        #t_c = Lbox / (2 * np.pi * kv * v0)
+        # t_c = Lbox / (2 * np.pi * kv * v0)
         time_end = t_max
         set_time_end = timeI_pref + "time_end:" + str(time_end)
         if max_dt != None:

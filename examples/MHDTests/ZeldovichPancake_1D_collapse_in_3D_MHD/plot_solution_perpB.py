@@ -4,12 +4,12 @@
 # the simulation result, including a perpendicular magnetic field
 
 # Parameters
-B_0 = 1.0e-9 # Initial magnetic field strength (in T)
+B_0 = 1.0e-9  # Initial magnetic field strength (in T)
 T_i = 100.0  # Initial temperature of the gas (in K)
 z_c = 1.0  # Redshift of caustic formation (non-linear collapse)
 z_i = 100.0  # Initial redshift
-a_c = 1/(1+z_c)
-a_i = 1/(1+z_i)
+a_c = 1 / (1 + z_c)
+a_i = 1 / (1 + z_i)
 numPart_1D = 32  # Number of particles along each dimension
 
 # Physical constants needed for internal energy to temperature conversion
@@ -32,7 +32,7 @@ snap = int(sys.argv[1])
 try:
     path = str(sys.argv[2])
 except:
-    path = ''
+    path = ""
 filepath = f"{path}zeldovichPancake_%04d.hdf5" % snap
 
 # Read the simulation data
@@ -92,7 +92,9 @@ x_s = q - zfac * np.sin(k_i * q) / k_i
 rho_s = rho_0 / (1.0 - zfac * np.cos(k_i * q))
 v_s = -H_0 * (1.0 + z_c) / np.sqrt(1.0 + redshift) * np.sin(k_i * q) / k_i
 T_s = T_i * (((1.0 + redshift) / (1.0 + z_i)) ** 3.0 * rho_s / rho_0) ** (2.0 / 3.0)
-P_s = T_s * rho_s*unit_rho_in_si * k_in_J_K / mH_in_kg / (a/a_i)**3  ## rho_s is not SI units! So multiply unit
+P_s = (
+    T_s * rho_s * unit_rho_in_si * k_in_J_K / mH_in_kg / (a / a_i) ** 3
+)  ## rho_s is not SI units! So multiply unit
 
 # Magnetic field solution
 rho_initial = rho_0 / (1.0 - (1.0 + z_c) / (1.0 + z_i) * np.cos(k_i * q))
@@ -167,50 +169,59 @@ plt.xlabel("${\\rm{Comoving~position}}~x~{\\rm{(Mpc)}}$", labelpad=0)
 # Magnetic field profile -------------------------
 plt.subplot(337)
 Bx *= unit_B_in_si
-Bx /= a**(3*gas_gamma/2)   # In ODI
+Bx /= a ** (3 * gas_gamma / 2)  # In ODI
 ## In FDI, need to add: Bx *= a**0.5
 ## In VP,  need to add: Bx *= a**0.5  AND  Bx /= a_i
-Bx *= (a/a_i)**2   # for comoving
+Bx *= (a / a_i) ** 2  # for comoving
 
 if redshift > z_c:
-    plt.plot(x, Bx*1e9, **scatter_props)
-    plt.plot(x_s, Bx_s*1e9, "--", color=line_color, alpha=0.8, lw=1.2)
+    plt.plot(x, Bx * 1e9, **scatter_props)
+    plt.plot(x_s, Bx_s * 1e9, "--", color=line_color, alpha=0.8, lw=1.2)
     plt.ylabel("${\\rm{Comoving~magnetic~field}}~B_x~{\\rm{(nT)}}$", labelpad=0)
 else:
-    plt.plot(x, np.log10(Bx*1e9), **scatter_props)
-    plt.ylabel("${\\rm{Comoving~magnetic~field}}$ \n $\\log_{10}(B_x)~{\\rm{(nT)}}$", labelpad=0)
+    plt.plot(x, np.log10(Bx * 1e9), **scatter_props)
+    plt.ylabel(
+        "${\\rm{Comoving~magnetic~field}}$ \n $\\log_{10}(B_x)~{\\rm{(nT)}}$",
+        labelpad=0,
+    )
 plt.xlabel("${\\rm{Comoving~position}}~x~{\\rm{(Mpc)}}$", labelpad=0)
 
 plt.subplot(338)
 By *= unit_B_in_si
-By /= a**(3*gas_gamma/2)   # In ODI
+By /= a ** (3 * gas_gamma / 2)  # In ODI
 ## In FDI, need to add: By *= a**0.5
 ## In VP,  need to add: By *= a**0.5  AND  By /= a_i
-By *= (a/a_i)**2   # for comoving
+By *= (a / a_i) ** 2  # for comoving
 
 if redshift > z_c:
-    plt.plot(x, By*1e9, **scatter_props)
-    plt.plot(x_s, By_s*1e9, "--", color=line_color, alpha=0.8, lw=1.2)
+    plt.plot(x, By * 1e9, **scatter_props)
+    plt.plot(x_s, By_s * 1e9, "--", color=line_color, alpha=0.8, lw=1.2)
     plt.ylabel("${\\rm{Comoving~magnetic~field}}~B_y~{\\rm{(nT)}}$", labelpad=0)
 else:
-    plt.plot(x, np.log10(By*1e9), **scatter_props)
-    plt.ylabel("${\\rm{Comoving~magnetic~field}}$ \n $\\log_{10}(B_y)~{\\rm{(nT)}}$", labelpad=0)
+    plt.plot(x, np.log10(By * 1e9), **scatter_props)
+    plt.ylabel(
+        "${\\rm{Comoving~magnetic~field}}$ \n $\\log_{10}(B_y)~{\\rm{(nT)}}$",
+        labelpad=0,
+    )
 plt.xlabel("${\\rm{Comoving~position}}~x~{\\rm{(Mpc)}}$", labelpad=0)
 
 plt.subplot(339)
 Bz *= unit_B_in_si
-Bz /= a**(3*gas_gamma/2)   # In ODI
+Bz /= a ** (3 * gas_gamma / 2)  # In ODI
 ## In FDI, need to add: Bz *= a**0.5
 ## In VP,  need to add: Bz *= a**0.5  AND  Bz /= a_i
-Bz *= (a/a_i)**2   # for comoving
+Bz *= (a / a_i) ** 2  # for comoving
 
 if redshift > z_c:
-    plt.plot(x, Bz*1e9, **scatter_props)
-    plt.plot(x_s, Bz_s*1e9, "--", color=line_color, alpha=0.8, lw=1.2)
+    plt.plot(x, Bz * 1e9, **scatter_props)
+    plt.plot(x_s, Bz_s * 1e9, "--", color=line_color, alpha=0.8, lw=1.2)
     plt.ylabel("${\\rm{Comoving~magnetic~field}}~B_z~{\\rm{(nT)}}$", labelpad=0)
 else:
-    plt.plot(x, np.log10(Bz*1e9), **scatter_props)
-    plt.ylabel("${\\rm{Comoving~magnetic~field}}$ \n $\\log_{10}(B_z)~{\\rm{(nT)}}$", labelpad=0)
+    plt.plot(x, np.log10(Bz * 1e9), **scatter_props)
+    plt.ylabel(
+        "${\\rm{Comoving~magnetic~field}}$ \n $\\log_{10}(B_z)~{\\rm{(nT)}}$",
+        labelpad=0,
+    )
 plt.xlabel("${\\rm{Comoving~position}}~x~{\\rm{(Mpc)}}$", labelpad=0)
 ##
 
@@ -220,16 +231,16 @@ plt.subplot(336)
 # Read in divB, then also apply the same scalings as for B
 divB = sim["/PartType0/MagneticDivergences"]
 divB *= unit_B_in_si
-divB /= a**(3*gas_gamma/2)   # In ODI
-divB *= (a/a_i)**2 # for comoving
+divB /= a ** (3 * gas_gamma / 2)  # In ODI
+divB *= (a / a_i) ** 2  # for comoving
 ## In FDI, need to add: divB *= a**0.5
 ## In VP,  need to add: divB *= a**0.5  AND  divB /= a_i
-B = np.sqrt(Bx**2 + By**2 + Bz**2)
+B = np.sqrt(Bx ** 2 + By ** 2 + Bz ** 2)
 # Smoothing length h
 h = sim["/PartType0/SmoothingLengths"]
 
 divB_measure = np.zeros_like(divB)
-if By_s[0] != 0:   # if run without field keep divB zero
+if By_s[0] != 0:  # if run without field keep divB zero
     divB_measure = h * np.abs(divB) / B
 
 plt.plot(x, divB_measure, **scatter_props)
@@ -250,7 +261,9 @@ plt.text(
     "adiabatic index $\\gamma=%.2f$, viscosity $\\alpha=%.2f$" % (gas_gamma, alpha),
     fontsize=text_fontsize,
 )
-plt.text(-0.45, 0.7, "magnetic diffusivity $\\eta=%.2f$" % mag_eta, fontsize=text_fontsize)
+plt.text(
+    -0.45, 0.7, "magnetic diffusivity $\\eta=%.2f$" % mag_eta, fontsize=text_fontsize
+)
 plt.plot([-0.45, 0.1], [0.62, 0.62], "k-", lw=1)
 plt.text(-0.45, 0.5, "$SWIFT$ %s" % git.decode("utf-8"), fontsize=text_fontsize)
 plt.text(-0.45, 0.4, scheme.decode("utf-8"), fontsize=text_fontsize)
