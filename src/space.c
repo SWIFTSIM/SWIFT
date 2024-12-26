@@ -181,7 +181,7 @@ void space_reorder_extra_gparts_mapper(void *map_data, int num_cells,
 
   for (int ind = 0; ind < num_cells; ind++) {
     struct cell *c = &cells_top[local_cells[ind]];
-    cell_reorder_extra_gparts(c, s->parts, s->sparts, s->sinks);
+    cell_reorder_extra_gparts(c, s->parts, s->sparts, s->sinks, s->bparts);
   }
 }
 

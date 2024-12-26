@@ -189,16 +189,16 @@ INLINE static int star_formation_should_convert_to_star(
 }
 
 /**
- * @brief Decides whether a new particle should be created or if the hydro
- * particle needs to be transformed.
+ * @brief Returns the number of new star particles to create per SF event.
  *
  * @param p The #part.
  * @param xp The #xpart.
  * @param starform The properties of the star formation model.
  *
- * @return 1 if a new spart needs to be created.
+ * @return The number of extra star particles to generate per gas particles.
+ *        (return 0 if the gas particle itself is to be converted)
  */
-INLINE static int star_formation_should_spawn_spart(
+INLINE static int star_formation_number_spart_to_spawn(
     struct part* p, struct xpart* xp, const struct star_formation* starform) {
 
   /* Check if we are splitting the particles or not */
@@ -209,6 +209,29 @@ INLINE static int star_formation_should_spawn_spart(
   const float mass_min =
       starform->min_mass_frac_plus_one * starform->mass_stars;
   return hydro_get_mass(p) > mass_min;
+}
+
+/**
+ * @brief Returns the number of particles to convert per SF event.
+ *
+ * @param p The #part.
+ * @param xp The #xpart.
+ * @param starform The properties of the star formation model.
+ *
+ * @return The number of particles to generate per gas particles.
+ *        (This has to be 0 or 1)
+ */
+INLINE static int star_formation_number_spart_to_convert(
+    const struct part* p, const struct xpart* xp,
+    const struct star_formation* starform) {
+
+  if (starform->n_stars_per_part == 1) {
+    return 1;
+  }
+
+  const float mass_min =
+      starform->min_mass_frac_plus_one * starform->mass_stars;
+  return hydro_get_mass(p) <= mass_min;
 }
 
 /**
