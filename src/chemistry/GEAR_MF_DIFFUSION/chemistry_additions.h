@@ -43,7 +43,7 @@ __attribute__((always_inline)) INLINE static void chemistry_kick_extra(
     /* Invalidate the particle time-step. It is considered to be inactive until
        dt is set again in hydro_prepare_force() */
     chd->flux_dt = -1.0f;
-  } else /* (p->chemistry_data.flux_dt == 0.0f) */ {
+  } else /* (p->chemistry_data.flux_dt == 0.f) */ {
     /* something tricky happens at the beginning of the simulation: the flux
        exchange is done for all particles, but using a time step of 0. This
        in itself is not a problem. However, it causes some issues with the

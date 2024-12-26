@@ -108,8 +108,8 @@ __attribute__((always_inline)) INLINE static void chemistry_riemann_predict_Z(
   chemistry_get_metal_mass_fraction_gradients(pi, metal, grad_Z_i);
   chemistry_get_metal_mass_fraction_gradients(pj, metal, grad_Z_j);
 
-  double dZi = chemistry_gradients_extrapolate(grad_Z_i, xij_i);
-  double dZj = chemistry_gradients_extrapolate(grad_Z_j, xij_j);
+  double dZi = chemistry_gradients_extrapolate_double(grad_Z_i, xij_i);
+  double dZj = chemistry_gradients_extrapolate_double(grad_Z_j, xij_j);
 
   chemistry_slope_limit_face(Zi, Zj, &dZi, &dZj, xij_i, xij_j, r);
 

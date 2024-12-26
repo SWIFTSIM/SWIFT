@@ -398,7 +398,7 @@ runner_iact_chemistry_fluxes_common(
   float Wj[5] = {hydro_get_comoving_density(pj), vj[0], vj[1], vj[2],
                  hydro_get_comoving_pressure(pj)};
 
-  chemistry_gradients_predict_hydro(pi, pj, hi, hj, dx, r, xij_i, Wi, Wj);
+  chemistry_gradients_predict_hydro(pi, pj, dx, r, xij_i, Wi, Wj);
 
   /* Boost the primitive variables to the frame of reference of the interface */
   /* Note that velocities are indices 1-3 in W */
@@ -432,7 +432,7 @@ runner_iact_chemistry_fluxes_common(
 
     /* Predict the diffusion state at the interface to compute fluxes */
     double Ui, Uj;
-    chemistry_gradients_predict(pi, pj, &Ui, &Uj, g, dx, r, xij_i);
+    chemistry_gradients_predict(pi, pj, g, dx, r, xij_i, &Ui, &Uj);
 
     /* Convert Ui and Uj to physical units */
     Ui *= cosmo->a3_inv;

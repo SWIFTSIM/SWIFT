@@ -458,9 +458,7 @@ __attribute__((always_inline)) INLINE static float chemistry_supertimestep(
 }
 
 /**
- * @brief Finishes the smooth metal calculation.
- *
- * End MF geometry computations
+ * @brief Finishes geometry and density calculation.
  *
  * This function requires the #hydro_end_density to have been called.
  *
@@ -536,7 +534,7 @@ __attribute__((always_inline)) INLINE static void chemistry_end_density(
 
   /* Check that the metal masses are physical */
   for (int g = 0; g < GEAR_CHEMISTRY_ELEMENT_COUNT; g++) {
-    double m_metal_old = p->chemistry_data.metal_mass[g];
+    const double m_metal_old = p->chemistry_data.metal_mass[g];
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (p->geometry.volume == 0.) {
@@ -641,17 +639,17 @@ chemistry_part_has_no_neighbours(struct part* restrict p,
   fvpm_reset_centroids(p);
 
   /* Set density loop variables to meaningful values */
-  p->chemistry_data.filtered.rho = hydro_get_comoving_density();
+  p->chemistry_data.filtered.rho = hydro_get_comoving_density(p);
   p->chemistry_data.filtered.rho_v[0] = hydro_get_comoving_density(p) * p->v[0];
   p->chemistry_data.filtered.rho_v[1] = hydro_get_comoving_density(p) * p->v[1];
   p->chemistry_data.filtered.rho_v[2] = hydro_get_comoving_density(p) * p->v[2];
 }
 
 /**
- * @brief Prepares a particle for the smooth metal calculation.
+ * @brief Prepares a particle for the diffusionx calculations.
  *
  * Zeroes all the relevant arrays in preparation for the sums taking place in
- * the various smooth metallicity tasks.
+ * the various diffusion tasks.
  *
  * Warning: DON'T call p->rho here. It is basically 0.
  *
@@ -941,8 +939,6 @@ __attribute__((always_inline)) INLINE static void chemistry_predict_extra(
 
   /* Update diffusion coefficient */
   chd->kappa = chemistry_compute_diffusion_coefficient(p, chem_data, cosmo);
-
-  /* Update the metal masses */
 
 }
 
