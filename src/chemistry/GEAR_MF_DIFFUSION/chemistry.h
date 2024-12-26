@@ -1,7 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2016 Matthieu Schaller (schaller@strw.leidenuniv.nl)
- *               2024 Darwin Roduit (darwin.roduit@alumni.epfl.ch)
+ * Copyright (c) 2024 Darwin Roduit (darwin.roduit@alumni.epfl.ch)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -276,9 +275,6 @@ static INLINE void chemistry_init_backend(struct swift_params* parameter_file,
       parameter_file, "GEARChemistry:diffusion_coefficient",
       DEFAULT_DIFFUSION_NORMALISATION);
 
-  /* data->diffusion_mode = */
-      /* parser_get_param_int(parameter_file, "GEARChemistry:diffusion_mode"); */
-
   char temp[PARSER_MAX_LINE_SIZE];
   parser_get_param_string(parameter_file, "GEARChemistry:diffusion_mode", temp);
   if (strcmp(temp, "Isotropic_constant") == 0)
@@ -331,17 +327,19 @@ static INLINE void chemistry_init_backend(struct swift_params* parameter_file,
 
   /***************************************************************************/
   /* Print the parameters we use */
-  message("Diffusion mode:             %u", data->diffusion_mode);
-  message("Diffusion coefficient:      %e", data->diffusion_coefficient);
-  message("HLL Riemann solver psi:     %e", data->hll_riemann_solver_psi);
-  message("HLL Riemann solver epsilon: %e", data->hll_riemann_solver_epsilon);
-  message("Use supertimestepping:      %d", data->use_supertimestepping);
-  message("N_substeps:                 %d", data->N_substeps);
-  message("nu:                         %e", data->nu);
+  if (engine_rank == 1) {
+    message("Diffusion mode:             %u", data->diffusion_mode);
+    message("Diffusion coefficient:      %e", data->diffusion_coefficient);
+    message("HLL Riemann solver psi:     %e", data->hll_riemann_solver_psi);
+    message("HLL Riemann solver epsilon: %e", data->hll_riemann_solver_epsilon);
+    message("Use supertimestepping:      %d", data->use_supertimestepping);
+    message("N_substeps:                 %d", data->N_substeps);
+    message("nu:                         %e", data->nu);
+  }
 }
 
 /**
- * @brief Computes the chemistry-related time-step constraint.
+ * @brief Computes the chemistry-related timestep constraints.
  *
  * Parabolic constraint proportional to h^2 or supertimestepping.
  *
@@ -349,7 +347,7 @@ static INLINE void chemistry_init_backend(struct swift_params* parameter_file,
  * @param cosmo The current cosmological model.
  * @param us The internal system of units.
  * @param hydro_props The properties of the hydro scheme.
- * @param cd The global properties of the chemistry scheme.
+ * @param chem_data The global properties of the chemistry scheme.
  * @param p Pointer to the particle data.
  */
 __attribute__((always_inline)) INLINE static float chemistry_timestep(
@@ -372,7 +370,14 @@ __attribute__((always_inline)) INLINE static float chemistry_timestep(
  *
  * This is equation (10) in Alexiades, Amiez and Gremaud (1996).
  *
- * @param p Particle.
+ * @param phys_const The physical constants in internal units.
+ * @param cosmo The current cosmological model.
+ * @param us The internal system of units.
+ * @param hydro_props The properties of the hydro scheme.
+ * @param cd The global properties of the chemistry scheme.
+ * @param p Pointer to the particle data.
+ * @param min_dt_part Minimal timestep for the other physical processes
+ * (hydro, MHD, rt, gravity, ...).
  */
 __attribute__((always_inline)) INLINE static float chemistry_supertimestep(
     const struct phys_const* restrict phys_const,
@@ -458,12 +463,12 @@ __attribute__((always_inline)) INLINE static float chemistry_supertimestep(
 }
 
 /**
- * @brief Finishes geometry and density calculation.
+ * @brief Finishes geometry and density calculations.
  *
  * This function requires the #hydro_end_density to have been called.
  *
  * @param p The particle to act upon.
- * @param cd #chemistry_global_data containing chemistry informations.
+ * @param cd The global properties of the chemistry scheme.
  * @param cosmo The current cosmological model.
  */
 __attribute__((always_inline)) INLINE static void chemistry_end_density(
@@ -551,7 +556,7 @@ __attribute__((always_inline)) INLINE static void chemistry_end_density(
 }
 
 /**
- * @brief Finishes the gradient calculation.
+ * @brief Finishes the gradient calculations.
  *
  * Just a wrapper around chemistry_gradients_finalize, which can be an empty
  * method, in which case no gradients are used.
@@ -564,7 +569,7 @@ __attribute__((always_inline)) INLINE static void chemistry_end_gradient(
 }
 
 /**
- * @brief Prepare a particle for the force calculation.
+ * @brief Prepare a particle for the force calculations.
  *
  * @param p The particle to act upon
  * @param xp The extended particle data to act upon
@@ -572,6 +577,7 @@ __attribute__((always_inline)) INLINE static void chemistry_end_gradient(
  * @param dt_alpha The time-step used to evolve non-cosmological quantities such
  *                 as the artificial viscosity.
  * @param dt_therm The time-step used to evolve hydrodynamical quantities.
+ * @param cd The global properties of the chemistry scheme.
  */
 __attribute__((always_inline)) INLINE static void chemistry_prepare_force(
     struct part* restrict p, struct xpart* restrict xp,
@@ -579,7 +585,7 @@ __attribute__((always_inline)) INLINE static void chemistry_prepare_force(
     const struct chemistry_global_data* cd) {
   p->chemistry_data.flux_dt = dt_therm;
 
-  /* Update the diffusion coefficient for the new loops */
+  /* Update the diffusion coefficient for the new loop */
   p->chemistry_data.kappa =
       chemistry_compute_diffusion_coefficient(p, cd, cosmo);
 }
@@ -589,6 +595,7 @@ __attribute__((always_inline)) INLINE static void chemistry_prepare_force(
  *
  * @param p The particle to act upon.
  * @param cosmo The current cosmological model.
+ * @param chem_data The global properties of the chemistry scheme.
  */
 __attribute__((always_inline)) INLINE static void chemistry_end_force(
     struct part* restrict p, const struct cosmology* cosmo,
@@ -677,7 +684,7 @@ __attribute__((always_inline)) INLINE static void chemistry_init_part(
  * @param phys_const The #phys_const.
  * @param us The #unit_system.
  * @param cosmo The #cosmology.
- * @param data The global chemistry information.
+ * @param cd The global properties of the chemistry scheme.
  * @param p Pointer to the particle data.
  * @param xp Pointer to the extended particle data.
  */
@@ -685,22 +692,22 @@ __attribute__((always_inline)) INLINE static void chemistry_first_init_part(
     const struct phys_const* restrict phys_const,
     const struct unit_system* restrict us,
     const struct cosmology* restrict cosmo,
-    const struct chemistry_global_data* data, struct part* restrict p,
+    const struct chemistry_global_data* cd, struct part* restrict p,
     struct xpart* restrict xp) {
 
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
-    if (data->initial_metallicities[i] < 0) {
+    if (cd->initial_metallicities[i] < 0) {
       /* Use the value from the IC. We are reading the metal mass fraction. */
       p->chemistry_data.metal_mass[i] *= hydro_get_mass(p);
     } else {
       /* Use the value from the parameter file */
       p->chemistry_data.metal_mass[i] =
-          data->initial_metallicities[i] * hydro_get_mass(p);
+          cd->initial_metallicities[i] * hydro_get_mass(p);
     }
   }
 
   /* Init the part chemistry data */
-  chemistry_init_part(p, data);
+  chemistry_init_part(p, cd);
 
   /* we cannot initialize wcorr in init_part, as init_part gets called every
      time the density loop is repeated, and the whole point of storing wcorr
@@ -711,7 +718,7 @@ __attribute__((always_inline)) INLINE static void chemistry_first_init_part(
   /* Supertimestepping ----*/
   /* Set the substep to N_substep +1 so that we can compute everything in
      timestep for the first time.  */
-  p->chemistry_data.timesteps.current_substep = data->N_substeps + 1;
+  p->chemistry_data.timesteps.current_substep = cd->N_substeps + 1;
 }
 
 /**
@@ -822,7 +829,7 @@ INLINE static void chemistry_copy_sink_properties(const struct part* p,
 /**
  * @brief Add the chemistry data of a sink particle to a sink.
  *
- * @param si_data The black hole data to add to.
+ * @param si_data The sink data to add to.
  * @param sj_data The gas data to use.
  * @param gas_mass The mass of the gas particle.
  */
@@ -840,9 +847,9 @@ __attribute__((always_inline)) INLINE static void chemistry_add_sink_to_sink(
 /**
  * @brief Add the chemistry data of a gas particle to a sink.
  *
- * @param sp_data The sink data to add to.
- * @param p_data The gas data to use.
- * @param gas_mass The mass of the gas particle.
+ * @param s The #sink to add to.
+ * @param p The gas #part to use.
+ * @param ms_old The mass of the gas particle.
  */
 __attribute__((always_inline)) INLINE static void chemistry_add_part_to_sink(
     struct sink* s, const struct part* p, const double ms_old) {
@@ -905,12 +912,14 @@ __attribute__((always_inline)) INLINE static void chemistry_split_part(
 
 
 /**
- * @brief Extra operations to be done during the drift for chemistry.
+ * @brief Extra chemistry operations to be done during the drift.
  *
  * @param p Particle to act upon.
  * @param xp The extended particle data to act upon.
  * @param dt_drift The drift time-step for positions.
  * @param dt_therm The drift time-step for thermal quantities.
+ * @param cosmo The current cosmological model.
+ * @param chem_data The global properties of the chemistry scheme.
  */
 __attribute__((always_inline)) INLINE static void chemistry_predict_extra(
     struct part* p, struct xpart* xp, float dt_drift, float dt_therm,

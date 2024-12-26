@@ -36,8 +36,6 @@
  * @brief Do chemistry computation after the runner_iact_density (symmetric
  * version)
  *
- * Compute MFM geometry variables if needed.
- *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
  * @param hi Comoving smoothing-length of particle i.
@@ -60,7 +58,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_chemistry(
   /* Compute the filtered quantities */
 
   /* Compute the filtered rho = same as rho in SPH but with h_bar instead of h,
-     where h_bar = compact support of the kernel*/
+     where h_bar = compact support of the kernel */
   float hi_bar = hi * kernel_gamma;
   float hj_bar = hj * kernel_gamma;
   float wi_bar, wj_bar;
@@ -141,11 +139,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_chemistry(
 
   /*****************************************/
   /* Compute the filtered quantities */
-  /*****************************************/
-  /* Compute the filtered quantities */
 
   /* Compute the filtered rho = same as rho in SPH but with h_bar instead of h,
-     where h_bar = compact support of the kernel*/
+     where h_bar = compact support of the kernel */
   float hi_bar = hi * kernel_gamma;
   float hj_bar = hj * kernel_gamma;
   float wi_bar;
@@ -159,7 +155,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_chemistry(
   const float h_inv_bar = 1.0f / h_bar_ij;          /* 1/h */
   const float h_inv_dim = pow_dimension(h_inv_bar); /* 1/h^d */
 
-  /* Take the previous value of bar{rho} since we are computing it now */
+  /* Take the previous value of \bar{rho} since we are computing it now */
   float rho_i_bar = chi->filtered.rho_prev;
   float rho_j_bar = chj->filtered.rho_prev;
   float rho_bar_mean =
@@ -188,7 +184,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_chemistry(
 }
 
 /**
- * @brief Do metal diffusion computation in the gradient loop (symmetric
+ * @brief Do metal diffusion computations in the gradient loop (symmetric
  * version)
  *
  * @param r2 Comoving square distance between the two particles.
@@ -210,7 +206,7 @@ runner_iact_gradient_diffusion(const float r2, const float dx[3],
 }
 
 /**
- * @brief Do metal diffusion computation in the gradient loop (nonsymmetric
+ * @brief Do metal diffusion computations in the gradient loop (nonsymmetric
  * version)
  *
  * @param r2 Comoving square distance between the two particles.
@@ -232,7 +228,7 @@ runner_iact_nonsym_gradient_diffusion(const float r2, const float dx[3],
 }
 
 /**
- * @brief Common part of the flux calculation between particle i and j.
+ * @brief Common part of the flux calculations between particle i and j.
  *
  * Since the only difference between the symmetric and non-symmetric version
  * of the flux calculation  is in the update of the conserved variables at the
@@ -246,9 +242,6 @@ runner_iact_nonsym_gradient_diffusion(const float r2, const float dx[3],
  * fed to a Riemann solver that calculates a flux. This flux is used to update
  * the conserved variables of particle i or both particles.
  *
- * This method also calculates the maximal velocity used to calculate the time
- * step.
- *
  * @param r2 Comoving squared distance between particle i and particle j.
  * @param dx Comoving distance vector between the particles (dx = pi->x -
  * pj->x).
@@ -256,6 +249,9 @@ runner_iact_nonsym_gradient_diffusion(const float r2, const float dx[3],
  * @param hj Comoving smoothing-length of particle j.
  * @param pi Particle i.
  * @param pj Particle j.
+ * @param chem_data The global properties of the chemistry scheme.
+ * @param cosmo The #cosmology.
+ * @param mode 0 if non-symmetric interaction, 1 if symmetric
  */
 __attribute__((always_inline)) INLINE static void
 runner_iact_chemistry_fluxes_common(
@@ -477,8 +473,7 @@ runner_iact_chemistry_fluxes_common(
 }
 
 /**
- * @brief do metal diffusion computation in the <FORCE LOOP>
- * (symmetric version)
+ * @brief Do metal diffusion computation in the <FORCE LOOP> (symmetric version)
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
@@ -493,6 +488,7 @@ runner_iact_chemistry_fluxes_common(
  * @param ti_current The current time (in integer)
  * @param cosmo The #cosmology.
  * @param with_cosmology Are we running with cosmology?
+ * @param chem_data The global properties of the chemistry scheme.
  *
  */
 __attribute__((always_inline)) INLINE static void runner_iact_diffusion(
@@ -507,7 +503,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_diffusion(
 }
 
 /**
- * @brief do metal diffusion computation in the <FORCE LOOP>
+ * @brief Do metal diffusion computation in the <FORCE LOOP>
  * (nonsymmetric version)
  *
  * @param r2 Comoving square distance between the two particles.
@@ -523,6 +519,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_diffusion(
  * @param ti_current The current time (in integer)
  * @param cosmo The #cosmology.
  * @param with_cosmology Are we running with cosmology?
+ * @param chem_data The global properties of the chemistry scheme.
  *
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_diffusion(

@@ -65,6 +65,8 @@ chemistry_part_reset_gradients(struct part *restrict p) {
  * @brief Set the gradients for the given particle to the given values.
  *
  * @param p Particle.
+ * @param metal Index of metal specie.
+ * @param gradF Metal mass fraction gradient (of size 3) to set.
  */
 __attribute__((always_inline)) INLINE static void
 chemistry_part_set_metal_mass_fraction_gradients(struct part *restrict p, int metal,
@@ -81,10 +83,10 @@ chemistry_part_set_metal_mass_fraction_gradients(struct part *restrict p, int me
  * @brief Update the diffusion gradients for the given particle with the
  * given contributions.
  *
- * @param p Particle
+ * @param p Particle.
  * @param metal metal specie index to update (0 <= metal <
- * GEAR_CHEMISTRY_ELEMENT_COUNT)
- * @param dF gradient of the diffusion flux
+ * GEAR_CHEMISTRY_ELEMENT_COUNT).
+ * @param dF Metal mass fraction gradient (of size 3).
  */
 __attribute__((always_inline)) INLINE static void
 chemistry_part_update_metal_mass_fraction_gradients(struct part *restrict p, int metal,
@@ -92,7 +94,6 @@ chemistry_part_update_metal_mass_fraction_gradients(struct part *restrict p, int
 
   struct chemistry_part_data *chd = &p->chemistry_data;
 
-  /* Now this is grad Z (and not grad rho_Z) */
   chd->gradients.Z[metal][0] += dF[0];
   chd->gradients.Z[metal][1] += dF[1];
   chd->gradients.Z[metal][2] += dF[2];
@@ -103,9 +104,12 @@ chemistry_part_update_metal_mass_fraction_gradients(struct part *restrict p, int
  * given contributions.
  *
  * @param p Particle
- * @param dvx x velocity gradient contribution.
- * @param dvy y velocity gradient contribution.
- * @param dvz z velocity gradient contribution.
+ * @param dvx x Velocity gradient contribution.
+ * @param dvy y Velocity gradient contribution.
+ * @param dvz z Velocity gradient contribution.
+ * @param dvx_tilde x Velocity tilde gradient contribution.
+ * @param dvy_tilde y Velocity tilde gradient contribution.
+ * @param dvz_tilde z Velocity tilde gradient contribution.
  */
 __attribute__((always_inline)) INLINE static void
 chemistry_part_update_hydro_gradients(struct part *restrict p, float dvx[3],

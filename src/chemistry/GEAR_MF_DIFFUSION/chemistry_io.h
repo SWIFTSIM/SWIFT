@@ -70,7 +70,7 @@ INLINE static void convert_chemistry_diffusion_matrix(
     double* ret) {
 
    double K[3][3];
-   chemistry_get_physical_matrix_K(p, K, e->chemistry, e->cosmology);
+   chemistry_get_physical_matrix_K(p, e->chemistry, e->cosmology, K);
 
    for (int i = 0; i < 3; i++) {
      for (int j = 0; j < 3; j++) {

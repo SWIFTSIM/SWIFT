@@ -1,6 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2023 Yolan Uyttenhove (yolan.uyttenhove@ugent.be)
+ *               2024 Darwin Roduit (darwin.roduit@alumni.epfl.ch)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -21,6 +22,24 @@
 
 #include "chemistry_getters.h"
 
+/**
+ * @file src/chemistry/GEAR/chemistry_additions.h
+ * @brief Routines to update chemistry data during kick operations and compute
+ * metal mass fluxes in MFV hydro scheme.
+ */
+
+/**
+ * @brief Extra chemistry operations done during the kick. Update the fluxes.
+ *
+ * @param p Particle to act upon.
+ * @param dt_therm Thermal energy time-step @f$\frac{dt}{a^2}@f$.
+ * @param dt_grav Gravity time-step @f$\frac{dt}{a}@f$.
+ * @param dt_hydro Hydro acceleration time-step
+ * @f$\frac{dt}{a^{3(\gamma{}-1)}}@f$.
+ * @param dt_kick_corr Gravity correction time-step @f$adt@f$.
+ * @param cosmo Cosmology.
+ * @param hydro_props Additional hydro properties.
+ */
 __attribute__((always_inline)) INLINE static void chemistry_kick_extra(
     struct part* p, float dt_therm, float dt_grav, float dt_hydro,
     float dt_kick_corr, const struct cosmology* cosmo,
@@ -89,8 +108,9 @@ __attribute__((always_inline)) INLINE static void chemistry_reset_mass_fluxes(
 }
 
 /**
- * @brief Extra operations done during the kick. This needs to be
- * done before the particle mass is updated in the hydro_kick_extra.
+ * @brief Extra operations done during the kick in schemes with mass fluxes
+ * (e.g. MFV). This needs to be done before the particle mass is updated in the
+ * hydro_kick_extra.
  *
  * @param p Particle to act upon.
  * @param dt_therm Thermal energy time-step @f$\frac{dt}{a^2}@f$.

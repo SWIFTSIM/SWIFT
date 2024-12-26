@@ -26,6 +26,8 @@
  * @brief Compute the particle parabolic timestep proportional to h^2.
  *
  * @param p Particle.
+ * @param chem_data The global properties of the chemistry scheme.
+ * @param cosmo The current cosmological model.
  */
 __attribute__((always_inline)) INLINE static float
 chemistry_compute_parabolic_timestep(
@@ -35,9 +37,9 @@ chemistry_compute_parabolic_timestep(
 
   const struct chemistry_part_data *chd = &p->chemistry_data;
 
-  /* Compute diffusion matrix K */
+  /* Compute the diffusion matrix K */
   double K[3][3];
-  chemistry_get_physical_matrix_K(p, K, chem_data, cosmo);
+  chemistry_get_physical_matrix_K(p, chem_data, cosmo, K);
   const float norm_matrix_K = chemistry_get_matrix_norm(K);
 
   /* Note: The State vector is U = (rho*Z_1,rho*Z_2, ...), and q = (Z_1, Z_2,
@@ -93,6 +95,8 @@ chemistry_compute_parabolic_timestep(
  * This is equation (10) in Alexiades, Amiez and Gremaud (1996).
  *
  * @param p Particle.
+ * @param chem_data The global properties of the chemistry scheme.
+ * @param timestep_explicit Usual explicit parabolic timestep.
  */
 __attribute__((always_inline)) INLINE static float chemistry_get_supertimestep(
     const struct part *restrict p, const struct chemistry_global_data *cd,
@@ -111,6 +115,8 @@ __attribute__((always_inline)) INLINE static float chemistry_get_supertimestep(
  * proportioanl to h.
  *
  * @param p Particle.
+ * @param chem_data The global properties of the chemistry scheme.
+ * @param cosmo The current cosmological model.
  */
 __attribute__((always_inline)) INLINE static float
 chemistry_compute_CFL_supertimestep(const struct part *restrict p,
@@ -121,7 +127,7 @@ chemistry_compute_CFL_supertimestep(const struct part *restrict p,
 
   /* Compute diffusion matrix K */
   double K[3][3];
-  chemistry_get_physical_matrix_K(p, K, cd, cosmo);
+  chemistry_get_physical_matrix_K(p, cd, cosmo, K);
   const float norm_matrix_K = chemistry_get_matrix_norm(K);
 
   /* Some helpful variables */
@@ -159,6 +165,8 @@ chemistry_compute_CFL_supertimestep(const struct part *restrict p,
  * @brief Compute the particle supertimestep proportional to h.
  *
  * @param p Particle.
+ * @param chem_data The global properties of the chemistry scheme.
+ * @param curretn_substep_number Current substep number.
  */
 __attribute__((always_inline)) INLINE static float
 chemistry_compute_subtimestep(const struct part *restrict p,

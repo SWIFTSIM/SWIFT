@@ -87,7 +87,7 @@ chemistry_compute_physical_diffusion_flux(
 
     /* Compute diffusion matrix K */
     double K[3][3];
-    chemistry_get_physical_matrix_K(p, K, chem_data, cosmo);
+    chemistry_get_physical_matrix_K(p, chem_data, cosmo, K);
 
     for (int i = 0; i < 3; ++i) {
       for (int j = 0; j < 3; ++j) {
