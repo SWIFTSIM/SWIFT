@@ -120,10 +120,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_gradient(
   const float f_ij = 1.f - pi->force.f / mj;
   const float f_ji = 1.f - pj->force.f / mi;
 
-  /* B dot r. */
-  const float Bri = Bi[0] * dx[0] + Bi[1] * dx[1] + Bi[2] * dx[2];
-  const float Brj = Bj[0] * dx[0] + Bj[1] * dx[1] + Bj[2] * dx[2];
-
   /* dB cross r */
   float dB_cross_dx[3];
   dB_cross_dx[0] = dB[1] * dx[2] - dB[2] * dx[1];
@@ -133,12 +129,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_gradient(
   /* Compute gradient terms */
   const float grad_term_i = f_ij * wi_dr * r_inv / rhoi;
   const float grad_term_j = f_ji * wj_dr * r_inv / rhoj;
-
-  /* Calculate divergence */
-  float div_B_i = grad_term_i * (Bri - Brj);
-  float div_B_j = grad_term_j * (Bri - Brj);
-  pi->mhd_data.div_B -= mj * div_B_i;
-  pj->mhd_data.div_B -= mi * div_B_j;
 
   /* Calculate curl */
   for (int k = 0; k < 3; k++) {
@@ -212,10 +202,6 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
   /* Variable smoothing length term */
   const float f_ij = 1.f - pi->force.f / mj;
 
-  /* B dot r. */
-  const float Bri = Bi[0] * dx[0] + Bi[1] * dx[1] + Bi[2] * dx[2];
-  const float Brj = Bj[0] * dx[0] + Bj[1] * dx[1] + Bj[2] * dx[2];
-
   /* dB cross r */
   float dB_cross_dx[3];
   dB_cross_dx[0] = dB[1] * dx[2] - dB[2] * dx[1];
@@ -224,10 +210,6 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
 
   /* Compute gradient terms */
   const float grad_term_i = f_ij * wi_dr * r_inv / rhoi;
-
-  /* Calculate divergence */
-  float div_B_i = grad_term_i * (Bri - Brj);
-  pi->mhd_data.div_B -= mj * div_B_i;
 
   /* Calculate curl */
   for (int k = 0; k < 3; k++) {
@@ -364,14 +346,19 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   const float tensile_correction_scale_i = monopole_beta_i * fmaxf(0.0f, fminf(scale_i, 1.0f));
   const float tensile_correction_scale_j = monopole_beta_j * fmaxf(0.0f, fminf(scale_j, 1.0f));
 
+  float div_B_pref_i = Bri * grad_term_i;
+  div_B_pref_i += Brj * grad_term_j;
+  const float div_B_pref_j = div_B_pref_i;
+
+  pi->mhd_data.div_B += rhoi * mj * div_B_pref_i;
+  pj->mhd_data.div_B -= rhoj * mi * div_B_pref_j;
+  
   for (int k = 0; k < 3; k++) {
 
-    sph_acc_term_i[k] += tensile_correction_scale_i * Bri * grad_term_i * Bi[k];
-    sph_acc_term_i[k] += tensile_correction_scale_i * Brj * grad_term_j * Bi[k];
-
-    sph_acc_term_j[k] -= tensile_correction_scale_j * Bri * grad_term_i * Bj[k];
-    sph_acc_term_j[k] -= tensile_correction_scale_j * Brj * grad_term_j	* Bj[k];
-
+    sph_acc_term_i[k] += tensile_correction_scale_i * div_B_pref_i * Bi[k];
+    
+    sph_acc_term_j[k] -= tensile_correction_scale_j * div_B_pref_j * Bj[k];
+    
   }
   
   /* Scale forces appropriately */
@@ -426,8 +413,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   const float v_sig_B_2 = dv_cross_dx[0] * dv_cross_dx[0] +
                             dv_cross_dx[1] * dv_cross_dx[1] +
                             dv_cross_dx[2] * dv_cross_dx[2];
-  const float v_sig_B = sqrtf(v_sig_B_2) * r_inv;
-  
+  const float v_sig_B = sqrtf(v_sig_B_2) * r_inv; 
+   
   const float rhoij = 0.5f * (rhoi + rhoj);
   const float dB_dt_AR_grad_term = 0.5f * (f_ij * wi_dr + f_ji * wj_dr) / (rhoij * rhoij);
 
@@ -439,7 +426,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
     pi->mhd_data.B_dt[k] += rhoi * mj * dB_dt_AR_pref_i * dB[k];
     pj->mhd_data.B_dt[k] -= rhoj * mi * dB_dt_AR_pref_j * dB[k];
   }
-
+    
   /* Put back diffused magnetic energy as heat */ 
   pi->u_dt -= 0.5f * permeability_inv * mj * dB_dt_AR_pref_i * dB_2;
   pj->u_dt -= 0.5f * permeability_inv * mi * dB_dt_AR_pref_j * dB_2;
@@ -448,14 +435,15 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   const float ch_i = mhd_get_magnetosonic_speed(pi, mu_0);
   const float ch_j = mhd_get_magnetosonic_speed(pj, mu_0);
 
-  float dB_dt_Dedner_pref_i = psi_over_ch_i * ch_i * grad_term_i;
-  dB_dt_Dedner_pref_i += psi_over_ch_j * ch_j * grad_term_j;
-  float dB_dt_Dedner_pref_j = dB_dt_Dedner_pref_i;
+  float dB_dt_Dedner_pref_i = psi_over_ch_i * ch_i * induction_grad_term_i;
+  dB_dt_Dedner_pref_i -= psi_over_ch_j * ch_j * induction_grad_term_i;
+  float dB_dt_Dedner_pref_j = psi_over_ch_i * ch_i * induction_grad_term_j;
+  dB_dt_Dedner_pref_j -= psi_over_ch_j * ch_j * induction_grad_term_j;
 
   /* Update time derivative of B */
   for (int k = 0; k < 3; k++) {
-    pi->mhd_data.B_dt[k] -= rhoi * mj * dB_dt_Dedner_pref_i * dx[k];
-    pj->mhd_data.B_dt[k] += rhoj * mi * dB_dt_Dedner_pref_j * dx[k];
+    pi->mhd_data.B_dt[k] += mj * dB_dt_Dedner_pref_i * dx[k];
+    pj->mhd_data.B_dt[k] += mi * dB_dt_Dedner_pref_j * dx[k];
   }
 }
 
@@ -569,11 +557,15 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   
   const float tensile_correction_scale_i = monopole_beta_i * fmaxf(0.0f, fminf(scale_i, 1.0f));
 
+  float div_B_pref_i = Bri * grad_term_i;
+  div_B_pref_i += Brj * grad_term_j;
+
+  pi->mhd_data.div_B += rhoi * mj * div_B_pref_i;
+  
   for (int k = 0; k < 3; k++) {
 
-    sph_acc_term_i[k] += tensile_correction_scale_i * Bri * grad_term_i * Bi[k];
-    sph_acc_term_i[k] += tensile_correction_scale_i * Brj * grad_term_j	* Bi[k];
-
+    sph_acc_term_i[k] += tensile_correction_scale_i * div_B_pref_i * Bi[k];
+    
   }
   
   /* Scale forces appropriately */
@@ -621,7 +613,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
                             dv_cross_dx[1] * dv_cross_dx[1] +
                             dv_cross_dx[2] * dv_cross_dx[2];
   const float v_sig_B = sqrtf(v_sig_B_2) * r_inv;
-
+  
   const float rhoij = 0.5f * (rhoi + rhoj);
   const float dB_dt_AR_grad_term = 0.5f * (f_ij * wi_dr + f_ji * wj_dr) / (rhoij * rhoij);
 
@@ -631,7 +623,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   for (int k = 0; k < 3; k++) {
     pi->mhd_data.B_dt[k] += rhoi * mj * dB_dt_AR_pref_i * dB[k];
   }
-
+  
   /* Put back diffused magnetic energy as heat */ 
   pi->u_dt -= 0.5f * permeability_inv * mj * dB_dt_AR_pref_i * dB_2;
   
@@ -639,12 +631,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   const float ch_i = mhd_get_magnetosonic_speed(pi, mu_0);
   const float ch_j = mhd_get_magnetosonic_speed(pj, mu_0);
 
-  float dB_dt_Dedner_pref_i = psi_over_ch_i * ch_i * grad_term_i;
-  dB_dt_Dedner_pref_i += psi_over_ch_j * ch_j * grad_term_j;
-
+  float dB_dt_Dedner_pref_i = psi_over_ch_i * ch_i * induction_grad_term_i;
+  dB_dt_Dedner_pref_i -= psi_over_ch_j * ch_j * induction_grad_term_i;
+  
   /* Update time derivative of B */
   for (int k = 0; k < 3; k++) {
-    pi->mhd_data.B_dt[k] -= rhoi * mj * dB_dt_Dedner_pref_i * dx[k];
+    pi->mhd_data.B_dt[k] += mj * dB_dt_Dedner_pref_i * dx[k];
   }
 }
 

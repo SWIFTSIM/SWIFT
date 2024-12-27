@@ -120,32 +120,6 @@ __attribute__((always_inline)) INLINE static float mhd_get_divB_error(
 }
 
 /**
- * @brief Computes the MHD time-step of a given particle
- *
- * This function returns the time-step of a particle given its hydro-dynamical
- * state. A typical time-step calculation would be the use of the CFL condition.
- *
- * @param p Pointer to the particle data
- * @param xp Pointer to the extended particle data
- * @param hydro_properties The SPH parameters
- * @param cosmo The cosmological model.
- */
-__attribute__((always_inline)) INLINE static float mhd_compute_timestep(
-    const struct part *p, const struct xpart *xp,
-    const struct hydro_props *hydro_properties, const struct cosmology *cosmo,
-    const float mu_0) {
-
-  const float dt_eta = p->mhd_data.resistive_eta != 0.f
-                           ? hydro_properties->CFL_condition * cosmo->a *
-                                 cosmo->a * p->h * p->h /
-                                 p->mhd_data.resistive_eta
-                           : FLT_MAX;
-
-  return dt_eta;
-
-}
-
-/**
  * @brief Compute magnetosonic speed
  */
 __attribute__((always_inline)) INLINE static float mhd_get_magnetosonic_speed(
@@ -170,6 +144,38 @@ __attribute__((always_inline)) INLINE static float mhd_get_magnetosonic_speed(
   const float c_ms2 = cs2 + v_A2;
 
   return sqrtf(c_ms2);
+}
+
+/**
+ * @brief Computes the MHD time-step of a given particle
+ *
+ * This function returns the time-step of a particle given its hydro-dynamical
+ * state. A typical time-step calculation would be the use of the CFL condition.
+ *
+ * @param p Pointer to the particle data
+ * @param xp Pointer to the extended particle data
+ * @param hydro_properties The SPH parameters
+ * @param cosmo The cosmological model.
+ */
+__attribute__((always_inline)) INLINE static float mhd_compute_timestep(
+    const struct part *p, const struct xpart *xp,
+    const struct hydro_props *hydro_properties, const struct cosmology *cosmo,
+    const float mu_0) {
+
+  const float CFL_condition = hydro_properties->CFL_condition;
+  
+  const float ch = mhd_get_magnetosonic_speed(p, mu_0);
+  
+  const float dt_Dedner = ch != 0.f ? 0.5f * kernel_gamma * CFL_condition * p->h / ch : FLT_MAX;
+  
+  const float dt_eta = p->mhd_data.resistive_eta != 0.f
+                           ? hydro_properties->CFL_condition * cosmo->a *
+                                 cosmo->a * p->h * p->h /
+                                 p->mhd_data.resistive_eta
+                           : FLT_MAX;
+
+  return fminf(dt_Dedner, dt_eta);
+
 }
 
 /**
@@ -325,7 +331,6 @@ __attribute__((always_inline)) INLINE static void mhd_reset_gradient(
     struct part *p) {
 
   /* Zero the fields updated by the mhd gradient loop */
-  p->mhd_data.div_B = 0.0f;
   p->mhd_data.curl_B[0] = 0.0f;
   p->mhd_data.curl_B[1] = 0.0f;
   p->mhd_data.curl_B[2] = 0.0f;
@@ -424,11 +429,13 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_force(
 __attribute__((always_inline)) INLINE static void mhd_reset_acceleration(
     struct part *restrict p) {
 
-  /* Zero the fields updated by the mhd force loop */
+  /* Zero the fields updated by the mhd force loop */  
   p->mhd_data.B_dt[0] = 0.0f;
   p->mhd_data.B_dt[1] = 0.0f;
   p->mhd_data.B_dt[2] = 0.0f;
 
+  p->mhd_data.div_B = 0.0f;
+  
 }
 
 /**
