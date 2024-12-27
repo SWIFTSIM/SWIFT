@@ -35,6 +35,7 @@
  * @param metal_mass pointer to the radiation energy density
  * @param n_old metal density before change to check. Set = 0 if not available
  * @param callloc integer indentifier where this function was called from
+ * @param element Integer identifier for the metal specie to correct
  */
 __attribute__((always_inline)) INLINE static void
 chemistry_check_unphysical_state(double* metal_mass, const double mZ_old,
@@ -72,7 +73,7 @@ chemistry_check_unphysical_state(double* metal_mass, const double mZ_old,
       /* Do not extrapolate, use 0th order reconstruction. */
       *metal_mass = mZ_old;
     } else {
-      *metal_mass /= 1.01*mZ_old/gas_mass;
+      *metal_mass /= 1e1*mZ_old/gas_mass;
       warning("[%d] Metal mass bigger than gas mass ! case %d | %e | %e | %e",
 	      element, callloc, *metal_mass, mZ_old, gas_mass);
     }
@@ -116,6 +117,7 @@ chemistry_check_unphysical_diffusion_flux(double flux[3]) {
  * @brief Check for and correct if needed unphysical total metal mass.
  *
  * @param p The #part
+ * @param callloc integer indentifier where this function was called from
  */
 __attribute__((always_inline)) INLINE static void
 chemistry_check_unphysical_total_metal_mass(struct part* restrict p, int callloc) {
@@ -128,7 +130,7 @@ chemistry_check_unphysical_total_metal_mass(struct part* restrict p, int callloc
   if (m_Z_tot > gas_mass) {
     /* Rescale the elements */
     for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
-      chd->metal_mass[i] /= 1.01*m_Z_tot/gas_mass;
+      chd->metal_mass[i] /= 1e1*m_Z_tot/gas_mass;
     }
     warning("[%lld, %i] Total metal mass grew larger than the particle mass! "
 	    "Rescaling the element masses. m_Z_tot = %e, m = %e"

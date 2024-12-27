@@ -27,11 +27,9 @@
 
 /**
  * @file src/chemistry/GEAR_MF_DIFFUSION/chemistry_slope_limiters_cell.h
- * @brief File containing routines concerning the cell slope
- * limiter for the GEAR MF diffusion scheme. (= fist slope limiting step
- * that limits gradients such that they don't predict new extrema
- * at neighbour particle's positions )
- *
+ * @brief File containing routines concerning the cell slope limiter for the
+ * GEAR MF diffusion scheme. (= fist slope limiting step that limits gradients
+ * such that they don't predict new extrema at neighbour particle's positions)
  * */
 
 /**

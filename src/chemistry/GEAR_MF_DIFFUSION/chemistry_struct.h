@@ -26,9 +26,9 @@
  * @brief The diffusion mode
  */
 enum chemistry_diffusion_mode {
-  isotropic_constant,
+  isotropic_constant,    /* Constant isotropic diffusion */
   isotropic_smagorinsky, /* Smagorinsky turbulent diffusion \propto |S| */
-  anisotropic_gradient   /* Rennehan (2021) model \propto S */
+  anisotropic_gradient   /* Rennehan (2021) gradient model \propto S */
 };
 
 /**
@@ -102,40 +102,41 @@ struct chemistry_part_data {
 
   /* Gradients. */
   struct {
-    /* Gradient of the metals. It is used to compute the diffusion flux.
+    /*! Gradient of the metals. It is used to compute the diffusion flux.
      */
     double Z[GEAR_CHEMISTRY_ELEMENT_COUNT][3];
 
-    /* Fluid velocity gradients. */
+    /*! Fluid velocity gradients. */
     float v[3][3];
 
   } gradients;
 
+  /* Cell-wise limiter to avoid creating new min or max */
   struct {
-    /* Extreme values of the fluid metal mass fraction among the neighbours. */
+    /*! Extreme values of the fluid metal mass fraction among the neighbours. */
     double Z[GEAR_CHEMISTRY_ELEMENT_COUNT][2];
 
-    /* Extreme values of the fluid velocity among the neighbours. */
+    /*! Extreme values of the fluid velocity among the neighbours. */
     float v[3][2];
 
-    /* Extreme values of the filtered velocity among the neighbours. */
+    /*! Extreme values of the filtered velocity among the neighbours. */
     float v_tilde[3][2];
 
-    /* Maximal distance to all neighbouring faces. */
+    /*! Maximal distance to all neighbouring faces. */
     float maxr;
 
   } limiter;
 
-  /* Condition number of matrix_E (eq C1) */
+  /*! Condition number of matrix_E (eq C1) */
   float geometry_condition_number;
 
-  /* Particle chemistry time-step. */
+  /*! Particle chemistry time-step. */
   float flux_dt;
 
-  /* Isotropic diffusion coefficient. The matrix K is proportional to kappa. */
+  /*! Isotropic diffusion coefficient. The matrix K is proportional to kappa. */
   float kappa;
 
-  /* Density of the previous timestep. This is used to compute quantities in
+  /*! Density of the previous timestep. This is used to compute quantities in
      the density loop while hydro loops are updating rho. */
   float rho_prev;
 
@@ -143,22 +144,26 @@ struct chemistry_part_data {
      scale h_bar = \gamma_k h */
   struct {
 
-    /* Filtered density (rho_bar) */
+    /*! Filtered density (rho_bar) */
     float rho;
 
-    /* Filtered density (rho_bar) of the previous timstep. This is used to
+    /*! Filtered density (rho_bar) of the previous timstep. This is used to
        compute quantities in the density loop while we are updating rho_bar. */
     float rho_prev;
 
-    /* Filtered (rho * v). tilde(v) = filtered(rho*v) / filtered(rho) */
+    /*! Filtered (rho * v). tilde(v) = filtered(rho*v) / filtered(rho) */
     float rho_v[3];
 
-    /* Gradient of tilde(v) */
+    /*! Gradient of tilde(v) */
     float grad_v_tilde[3][3];
   } filtered;
 
+  /* Supertimestepping variables */
   struct {
+    /*! Current substep integer */
     int current_substep;
+
+    /*! Explicit timestep given by the CFL parabolic condition */
     float explicit_timestep;
   } timesteps;
 };

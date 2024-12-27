@@ -28,10 +28,8 @@
 
 /**
  * @file src/chemistry/GEAR_MF_DIFFUSION/chemistry_slope_limiters_face.h
- * @brief File containing routines concerning the face slope
- * limiter for the GEAR MFM diffusion scheme, i.e. limiting the actual
- * interparticle flux.
- *
+ * @brief File containing routines concerning the face slope limiter for the
+ * GEAR MFM diffusion scheme, i.e. limiting the actual interparticle flux.
  * */
 
 /**
