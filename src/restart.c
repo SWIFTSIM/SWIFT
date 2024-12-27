@@ -191,19 +191,21 @@ void restart_read(struct engine *e, const char *filename) {
   if (stream == NULL)
     error("Failed to open restart file: %s (%s)", filename, strerror(errno));
 
-  /* Get our version and signature back. These should match. */
-  char signature[strlen(SWIFT_RESTART_SIGNATURE) + 1];
-  int len = strlen(SWIFT_RESTART_SIGNATURE);
-  restart_read_blocks(signature, len, 1, stream, NULL, "SWIFT signature");
-  signature[len] = '\0';
-  if (strncmp(signature, SWIFT_RESTART_SIGNATURE, len) != 0)
+  /* Get our version and signature back. These should match.
+   * Use static int here to avoid compiler warnings about gnu-extensions
+   * of folding a variable length array to constant array. */
+  const static int sig_len = strlen(SWIFT_RESTART_SIGNATURE);
+  char signature[sig_len + 1];
+  restart_read_blocks(signature, sig_len, 1, stream, NULL, "SWIFT signature");
+  signature[sig_len] = '\0';
+  if (strncmp(signature, SWIFT_RESTART_SIGNATURE, sig_len) != 0)
     error(
         "Do not recognise this as a SWIFT restart file, found '%s' "
         "expected '%s'",
         signature, SWIFT_RESTART_SIGNATURE);
 
   char version[FNAMELEN];
-  len = strlen(package_version());
+  int len = strlen(package_version());
   restart_read_blocks(version, len, 1, stream, NULL, "SWIFT version");
   version[len] = '\0';
 
