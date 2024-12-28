@@ -69,8 +69,9 @@ chemistry_part_reset_gradients(struct part *restrict p) {
  * @param gradF Metal mass fraction gradient (of size 3) to set.
  */
 __attribute__((always_inline)) INLINE static void
-chemistry_part_set_metal_mass_fraction_gradients(struct part *restrict p, int metal,
-                                       const double gradF[3]) {
+chemistry_part_set_metal_mass_fraction_gradients(struct part *restrict p,
+                                                 int metal,
+                                                 const double gradF[3]) {
 
   struct chemistry_part_data *chd = &p->chemistry_data;
 
@@ -89,8 +90,8 @@ chemistry_part_set_metal_mass_fraction_gradients(struct part *restrict p, int me
  * @param dF Metal mass fraction gradient (of size 3).
  */
 __attribute__((always_inline)) INLINE static void
-chemistry_part_update_metal_mass_fraction_gradients(struct part *restrict p, int metal,
-                                          double dF[3]) {
+chemistry_part_update_metal_mass_fraction_gradients(struct part *restrict p,
+                                                    int metal, double dF[3]) {
 
   struct chemistry_part_data *chd = &p->chemistry_data;
 
@@ -188,9 +189,11 @@ chemistry_part_normalise_gradients(struct part *restrict p, const float norm) {
  * yields from SNII and SNIa, accounts for unprocessed gas, and converts the
  * results into internal units.
  *
- * @param sp Pointer to the star particle structure (`struct spart`) where the results will be stored.
+ * @param sp Pointer to the star particle structure (`struct spart`) where the
+ * results will be stored.
  * @param m_snii Stellar mass involved per supernova II event.
- * @param m_non_processed Mass of unprocessed gas that retains the star's initial metallicity.
+ * @param m_non_processed Mass of unprocessed gas that retains the star's
+ * initial metallicity.
  * @param number_snii Number of Type II supernovae events.
  * @param number_snia Number of Type Ia supernovae events.
  * @param snii_yields Array of metal yields per element for Type II supernovae.
@@ -203,11 +206,12 @@ chemistry_part_normalise_gradients(struct part *restrict p, const float norm) {
  *       `sp->feedback_data.metal_mass_ejected[i]` for each element `i`.
  */
 __attribute__((always_inline)) INLINE static void
-chemistry_set_star_supernovae_ejected_yields(struct spart* restrict sp,
-					     const float mass_snii_event, const float m_non_processed, const int number_snii, const int number_snia,
-  const float snii_yields[GEAR_CHEMISTRY_ELEMENT_COUNT],
-  const float snia_yields[GEAR_CHEMISTRY_ELEMENT_COUNT],
-  const struct phys_const* phys_const) {
+chemistry_set_star_supernovae_ejected_yields(
+    struct spart *restrict sp, const float mass_snii_event,
+    const float m_non_processed, const int number_snii, const int number_snia,
+    const float snii_yields[GEAR_CHEMISTRY_ELEMENT_COUNT],
+    const float snia_yields[GEAR_CHEMISTRY_ELEMENT_COUNT],
+    const struct phys_const *phys_const) {
 
   /* In MF diffusion, the last element correspond to the other untracked
      metals, not the sum of all metals. This ensure proper diffusion of the
@@ -229,7 +233,8 @@ chemistry_set_star_supernovae_ejected_yields(struct spart* restrict sp,
 
   const int last_elem = GEAR_CHEMISTRY_ELEMENT_COUNT - 1;
   snii_yields_new[last_elem] = snii_yields[last_elem] - m_Z_tot_snii_tracked;
-  snia_yields_new[last_elem] = snia_yields_new[last_elem] - m_Z_tot_snia_tracked;\
+  snia_yields_new[last_elem] =
+      snia_yields_new[last_elem] - m_Z_tot_snia_tracked;
 
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
 

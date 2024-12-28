@@ -149,9 +149,9 @@ __attribute__((always_inline)) INLINE static void chemistry_compute_flux(
 
   /* While solving the Riemann problem, we shall get a scalar because of the
      scalar product betwee F_diff_ij^* and A_ij */
-  chemistry_riemann_solve_for_flux(dx, pi, pj, UL, UR, WL, WR, F_diff_i, F_diff_j,
-                                   Anorm, n_unit, metal, chem_data, cosmo,
-				   metal_flux);
+  chemistry_riemann_solve_for_flux(dx, pi, pj, UL, UR, WL, WR, F_diff_i,
+                                   F_diff_j, Anorm, n_unit, metal, chem_data,
+                                   cosmo, metal_flux);
 
   /* Anorm is already in physical units here. */
   *metal_flux *= Anorm;

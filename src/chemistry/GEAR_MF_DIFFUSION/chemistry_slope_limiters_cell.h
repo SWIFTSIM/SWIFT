@@ -81,11 +81,9 @@ chemistry_slope_limit_cell_collect(struct part* pi, struct part* pj, float r) {
    * primitive variables among the ngbs */
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
     chi->limiter.Z[i][0] =
-        min(chemistry_get_metal_mass_fraction(pj, i),
-            chi->limiter.Z[i][0]);
+        min(chemistry_get_metal_mass_fraction(pj, i), chi->limiter.Z[i][0]);
     chi->limiter.Z[i][1] =
-        max(chemistry_get_metal_mass_fraction(pj, i),
-            chi->limiter.Z[i][1]);
+        max(chemistry_get_metal_mass_fraction(pj, i), chi->limiter.Z[i][1]);
   }
 
   chi->limiter.v[0][0] = min(pj->v[0], chi->limiter.v[0][0]);
@@ -140,9 +138,9 @@ chemistry_slope_limit_quantity(double gradient[3], const float maxr,
     const double gradmax = valmax - value;
     const double gradmin = value - valmin;
     /* const double beta_2 = */
-        /* min(1.0, const_gizmo_max_condition_number / condition_number); */
+    /* min(1.0, const_gizmo_max_condition_number / condition_number); */
     /* const double beta = max(GIZMO_SLOPE_LIMITER_BETA_MIN, */
-                            /* GIZMO_SLOPE_LIMITER_BETA_MAX * beta_2); */
+    /* GIZMO_SLOPE_LIMITER_BETA_MAX * beta_2); */
     const double beta = 1.0; /* Choose stability */
     const double min_temp =
         min(gradmax * gradtrue_inv, gradmin * gradtrue_inv) * beta;
@@ -180,7 +178,7 @@ __attribute__((always_inline)) INLINE static void chemistry_slope_limit_cell(
 
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
     chemistry_slope_limit_quantity(
-        /*gradient=*/ chd->gradients.Z[i],
+        /*gradient=*/chd->gradients.Z[i],
         /*maxr=    */ maxr,
         /*value=   */ chemistry_get_metal_mass_fraction(p, i),
         /*valmin=  */ chd->limiter.Z[i][0],

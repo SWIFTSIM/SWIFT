@@ -21,6 +21,7 @@
 
 #include "inline.h"
 #include "minmax.h"
+
 #include <math.h>
 
 /**
@@ -28,9 +29,9 @@
  * @brief File containing functions to diagonalize real 3x3 symmetric
  * matrices. Functions in this file were adapted from the C++ implementation of
  * David Eberly (Geometric Tools) non iterative eigen-solver
- * (https://www.geometrictools.com/GTE/Mathematics/SymmetricEigensolver3x3.h). Mathematical
- * and numerical details are provided in
- * https://www.geometrictools.com/Documentation/RobustEigenSymmetric3x3.pdf.  
+ * (https://www.geometrictools.com/GTE/Mathematics/SymmetricEigensolver3x3.h).
+ * Mathematical and numerical details are provided in
+ * https://www.geometrictools.com/Documentation/RobustEigenSymmetric3x3.pdf.
  * */
 
 /**
@@ -41,8 +42,8 @@
  * @param result (return) The resulting 3D vector (array of 3 doubles) from the
  * cross product of u and v.
  */
-__attribute__((always_inline)) INLINE static void
-chemistry_utils_cross_product(const double u[3], const double v[3], double result[3]) {
+__attribute__((always_inline)) INLINE static void chemistry_utils_cross_product(
+    const double u[3], const double v[3], double result[3]) {
   result[0] = u[1] * v[2] - u[2] * v[1];
   result[1] = u[2] * v[0] - u[0] * v[2];
   result[2] = u[0] * v[1] - u[1] * v[0];
@@ -50,26 +51,26 @@ chemistry_utils_cross_product(const double u[3], const double v[3], double resul
 
 /**
  * @brief Computes the dot product of two 3D vectors.
- * 
+ *
  * @param u A 3D vector (array of 3 doubles).
  * @param v A 3D vector (array of 3 doubles).
  * @return The dot product (scalar) of vectors u and v.
  */
-__attribute__((always_inline)) INLINE static double
-chemistry_utils_dot_product(const double u[3], const double v[3]) {
-    return u[0] * v[0] + u[1] * v[1] + u[2] * v[2];
+__attribute__((always_inline)) INLINE static double chemistry_utils_dot_product(
+    const double u[3], const double v[3]) {
+  return u[0] * v[0] + u[1] * v[1] + u[2] * v[2];
 }
 
 /**
  * @brief Normalizes a 3D vector to unit length.
- * 
+ *
  * @param v (return) A 3D vector (array of 3 doubles) to be normalized. The
- * vector is modified in place. 
- * 
+ * vector is modified in place.
+ *
  * @note If the vector's magnitude is zero, the behavior is undefined.
  */
-__attribute__((always_inline)) INLINE static void
-chemistry_utils_normalize(double v[3]) {
+__attribute__((always_inline)) INLINE static void chemistry_utils_normalize(
+    double v[3]) {
   const double norm = sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
   for (int i = 0; i < 3; i++) {
     v[i] /= norm;
@@ -78,15 +79,18 @@ chemistry_utils_normalize(double v[3]) {
 
 /**
  * @brief Computes an orthogonal complement to a given 3D unit vector.
- * 
+ *
  * @param W A 3D unit vector (array of 3 doubles). Assumes W is normalized.
- * @param U (return) A 3D vector (array of 3 doubles) to store one orthogonal complement.
- * @param V (return) A 3D vector (array of 3 doubles) to store the second orthogonal complement.
- * 
+ * @param U (return) A 3D vector (array of 3 doubles) to store one orthogonal
+ * complement.
+ * @param V (return) A 3D vector (array of 3 doubles) to store the second
+ * orthogonal complement.
+ *
  * @details Generates a robust right-handed orthonormal basis { U, V, W },
  *          where U and V are orthogonal to W and to each other. The vector W
- *          is assumed to have unit length, ensuring stability in the computations.
- * 
+ *          is assumed to have unit length, ensuring stability in the
+ * computations.
+ *
  * @note The orthonormal basis is computed such that:
  *       - `chemistry_utils_dot_product(U, W) == 0`
  *       - `chemistry_utils_dot_product(V, W) == 0`
@@ -94,7 +98,7 @@ chemistry_utils_normalize(double v[3]) {
  */
 __attribute__((always_inline)) INLINE static void
 chemistry_utils_compute_orthogonal_complement(const double W[3], double U[3],
-					      double V[3]) {
+                                              double V[3]) {
   /* Robustly compute a right-handed orthonormal set { U, V, W }. The vector W
      is guaranteed to be unit-length, in which case there is no need to worry
      about a division by zero when computing invLength. */
@@ -104,11 +108,11 @@ chemistry_utils_compute_orthogonal_complement(const double W[3], double U[3],
     invLength = 1.0 / sqrt(W[0] * W[0] + W[2] * W[2]);
     U[0] = -W[2] * invLength;
     U[1] = 0.0;
-    U[2] = +W[0] * invLength ;
+    U[2] = +W[0] * invLength;
   } else {
     /* The component of maximum absolute value is either W[1] or W[2]. */
     invLength = 1.0 / sqrt(W[1] * W[1] + W[2] * W[2]);
-    U[0] =  0.0;
+    U[0] = 0.0;
     U[1] = +W[2] * invLength;
     U[2] = -W[1] * invLength;
   }
@@ -134,10 +138,10 @@ chemistry_utils_compute_orthogonal_complement(const double W[3], double U[3],
  * @param (return) eigenvector0 Eigenvector corresponding to the smallest
  * eigenvalue.
  */
-__attribute__((always_inline)) INLINE static void
-compute_eigenvector_0(const double a00, const double a01, const double a02,
-		      const double a11, const double a12, const double a22,
-		      const double eigenvalue0, double eigenvector0[3]) {
+__attribute__((always_inline)) INLINE static void compute_eigenvector_0(
+    const double a00, const double a01, const double a02, const double a11,
+    const double a12, const double a22, const double eigenvalue0,
+    double eigenvector0[3]) {
   /* Compute a unit-length eigenvector for eigenvalue[i0]. The  matrix is rank
      2, so two of the rows are linearly independent. For a robust computation
      of the eigenvector, select the two rows whose cross product has largest
@@ -197,12 +201,11 @@ compute_eigenvector_0(const double a00, const double a01, const double a02,
  * @param eigenvalue1 Second eigenvalue of the matrix.
  * @param (return) eigenvector1 Second eigenvector of the matrix.
  */
-__attribute__((always_inline)) INLINE static void
-compute_eigenvector_1(const double a00, const double a01, const double a02,
-		      const double a11, const double a12, const double a22,
-		      const double eigenvector0[3], const double eigenvalue1,
-		      double eigenvector1[3]) {
-  
+__attribute__((always_inline)) INLINE static void compute_eigenvector_1(
+    const double a00, const double a01, const double a02, const double a11,
+    const double a12, const double a22, const double eigenvector0[3],
+    const double eigenvalue1, double eigenvector1[3]) {
+
   /* Robustly compute a right-handed orthonormal set { U, V, eigenvector0 }. */
   double U[3], V[3];
   chemistry_utils_compute_orthogonal_complement(eigenvector0, U, V);
@@ -223,14 +226,14 @@ compute_eigenvector_1(const double a00, const double a01, const double a02,
        +-                        -++   -+       +-  -+
        where X has row entries x0 and x1. */
 
-  const double AU[3] = { a00 * U[0] + a01 * U[1] + a02 * U[2],
-                   a01 * U[0] + a11 * U[1] + a12 * U[2],
-		   a02 * U[0] + a12 * U[1] + a22 * U[2] };
+  const double AU[3] = {a00 * U[0] + a01 * U[1] + a02 * U[2],
+                        a01 * U[0] + a11 * U[1] + a12 * U[2],
+                        a02 * U[0] + a12 * U[1] + a22 * U[2]};
 
-  const double AV[3] = { a00 * V[0] + a01 * V[1] + a02 * V[2],
-		   a01 * V[0] + a11 * V[1] + a12 * V[2],
-		   a02 * V[0] + a12 * V[1] + a22 * V[2]};
-  
+  const double AV[3] = {a00 * V[0] + a01 * V[1] + a02 * V[2],
+                        a01 * V[0] + a11 * V[1] + a12 * V[2],
+                        a02 * V[0] + a12 * V[1] + a22 * V[2]};
+
   double m00 = U[0] * AU[0] + U[1] * AU[1] + U[2] * AU[2] - eigenvalue1;
   double m01 = U[0] * AV[0] + U[1] * AV[1] + U[2] * AV[2];
   double m11 = V[0] * AV[0] + V[1] * AV[1] + V[2] * AV[2] - eigenvalue1;
@@ -248,16 +251,16 @@ compute_eigenvector_1(const double a00, const double a01, const double a02,
     maxAbsComp = max(absM00, absM01);
     if (maxAbsComp > 0.0) {
       if (absM00 >= absM01) {
-	m01 /= m00;
-	m00 = 1.0 / sqrt(1.0 + m01 * m01);
-	m01 *= m00;
+        m01 /= m00;
+        m00 = 1.0 / sqrt(1.0 + m01 * m01);
+        m01 *= m00;
       } else {
-	m00 /= m01;
-	m01 = 1.0 / sqrt(1.0 + m00 * m00);
-	m00 *= m01;
+        m00 /= m01;
+        m01 = 1.0 / sqrt(1.0 + m00 * m00);
+        m00 *= m01;
       }
       /* eigenvector1 = Subtract(Multiply(m01, U), Multiply(m00, V))
-	 Intermediate results: m01 * U and m00 * V */
+         Intermediate results: m01 * U and m00 * V */
       double m01U[3], m00V[3];
 
       /* Multiply m01 with U and m00 with V */
@@ -269,24 +272,23 @@ compute_eigenvector_1(const double a00, const double a01, const double a02,
       for (int i = 0; i < 3; i++) {
         eigenvector1[i] = m01U[i] - m00V[i];
       }
-    }
-    else {
+    } else {
       eigenvector1 = U;
     }
   } else {
     maxAbsComp = max(absM11, absM01);
     if (maxAbsComp > 0.0) {
       if (absM11 >= absM01) {
-	m01 /= m11;
-	m11 = 1.0 / sqrt(1.0 + m01 * m01);
-	m01 *= m11;
+        m01 /= m11;
+        m11 = 1.0 / sqrt(1.0 + m01 * m01);
+        m01 *= m11;
       } else {
-	m11 /= m01;
-	m01 = 1.0 / sqrt(1.0 + m11 * m11);
-	m11 *= m01;
+        m11 /= m01;
+        m01 = 1.0 / sqrt(1.0 + m11 * m11);
+        m11 *= m01;
       }
       /* eigenvector1 = Subtract(Multiply(m11, U), Multiply(m01, V))
-	 Intermediate results: m11 * U and m01 * V */
+         Intermediate results: m11 * U and m01 * V */
       double m11U[3], m01V[3];
 
       /* Multiply m11 with U and m01 with V */
@@ -299,7 +301,7 @@ compute_eigenvector_1(const double a00, const double a01, const double a02,
       for (int i = 0; i < 3; i++) {
         eigenvector1[i] = m11U[i] - m01V[i];
       }
-    }  else {
+    } else {
       eigenvector1 = U;
     }
   }
@@ -314,15 +316,16 @@ compute_eigenvector_1(const double a00, const double a01, const double a02,
  * to ensure they form an orthonormal and right-handed set.
  *
  * @param A The symmetric 3x3 matrix to diagonalize (input).
- * @param (return) eigenvalues Array to store the three eigenvalues of the matrix.
+ * @param (return) eigenvalues Array to store the three eigenvalues of the
+ * matrix.
  * @param (return) eigenvector0 Array to store the first eigenvector.
  * @param (return) eigenvector1 Array to store the second eigenvector.
  * @param (return) eigenvector2 Array to store the third eigenvector.
  */
 __attribute__((always_inline)) INLINE static void
 chemistry_utils_diagonalize_3x3(const double A[3][3], double eigenvalues[3],
-				double eigenvector0[3], double eigenvector1[3],
-				double eigenvector2[3]) {
+                                double eigenvector0[3], double eigenvector1[3],
+                                double eigenvector2[3]) {
   /* Precondition the matrix by factoring out the maximum absolute value of the
      components. This guards against floating-point overflow when computing
      the eigenvalues. */
@@ -331,7 +334,7 @@ chemistry_utils_diagonalize_3x3(const double A[3][3], double eigenvalues[3],
   const double max2 = max(fabs(A[1][2]), fabs(A[2][2]));
   const double max01 = max(max0, max1);
   const double maxAbsElement = max(max01, max2);
-  if (maxAbsElement == 0.0)  {
+  if (maxAbsElement == 0.0) {
     /* A is the zero matrix. */
     eigenvalues[0] = 0.0;
     eigenvalues[1] = 0.0;
@@ -352,11 +355,12 @@ chemistry_utils_diagonalize_3x3(const double A[3][3], double eigenvalues[3],
   double A_p[3][3];
   for (int i = 0; i < 3; i++) {
     for (int j = 0; j < 3; j++) {
-      A_p[i][j] = invMaxAbsElement*A[i][j];
+      A_p[i][j] = invMaxAbsElement * A[i][j];
     }
   }
 
-  const double norm = A_p[0][1] * A_p[0][1] + A_p[0][2] * A_p[0][2] + A_p[1][2] * A_p[1][2];
+  const double norm =
+      A_p[0][1] * A_p[0][1] + A_p[0][2] * A_p[0][2] + A_p[1][2] * A_p[1][2];
 
   if (norm > 0.0) {
     /* Compute the eigenvalues of A. */
@@ -402,13 +406,16 @@ chemistry_utils_diagonalize_3x3(const double A[3][3], double eigenvalues[3],
     /* Compute the eigenvectors so that the set {eigenvector0, eigenvector1,
        eigenvector2} is right handed and orthonormal. */
     if (halfDet >= 0.0) {
-      compute_eigenvector_0(a00, a01, a02, a11, a12, a22, eigenvalues[2], eigenvector2);
-      compute_eigenvector_1(a00, a01, a02, a11, a12, a22, eigenvector2, eigenvalues[1],
-			  eigenvector1);
+      compute_eigenvector_0(a00, a01, a02, a11, a12, a22, eigenvalues[2],
+                            eigenvector2);
+      compute_eigenvector_1(a00, a01, a02, a11, a12, a22, eigenvector2,
+                            eigenvalues[1], eigenvector1);
       chemistry_utils_cross_product(eigenvector1, eigenvector2, eigenvector0);
     } else {
-      compute_eigenvector_0(a00, a01, a02, a11, a12, a22, eigenvalues[0], eigenvector0);
-      compute_eigenvector_1(a00, a01, a02, a11, a12, a22, eigenvector0, eigenvalues[1], eigenvector1);
+      compute_eigenvector_0(a00, a01, a02, a11, a12, a22, eigenvalues[0],
+                            eigenvector0);
+      compute_eigenvector_1(a00, a01, a02, a11, a12, a22, eigenvector0,
+                            eigenvalues[1], eigenvector1);
       chemistry_utils_cross_product(eigenvector0, eigenvector1, eigenvector2);
     }
   } else /* The matrix is diagonal */ {

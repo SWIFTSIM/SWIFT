@@ -34,7 +34,7 @@
  * @param metal Index of metal specie
  */
 __attribute__((always_inline)) INLINE static double
-chemistry_get_comoving_metal_density(const struct part *restrict p, int metal) {
+chemistry_get_comoving_metal_density(const struct part* restrict p, int metal) {
   return p->chemistry_data.metal_mass[metal] / p->geometry.volume;
 }
 
@@ -46,8 +46,8 @@ chemistry_get_comoving_metal_density(const struct part *restrict p, int metal) {
  * @param cosmo The current cosmological model.
  */
 __attribute__((always_inline)) INLINE static double
-chemistry_get_physical_metal_density(const struct part *restrict p, int metal,
-                                     const struct cosmology *cosmo) {
+chemistry_get_physical_metal_density(const struct part* restrict p, int metal,
+                                     const struct cosmology* cosmo) {
   return cosmo->a3_inv * chemistry_get_comoving_metal_density(p, metal);
 }
 
@@ -58,7 +58,7 @@ chemistry_get_physical_metal_density(const struct part *restrict p, int metal,
  * @param metal Index of metal specie
  */
 __attribute__((always_inline)) INLINE static double
-chemistry_get_metal_mass_fraction(const struct part *restrict p, int metal) {
+chemistry_get_metal_mass_fraction(const struct part* restrict p, int metal) {
   return p->chemistry_data.metal_mass[metal] / hydro_get_mass(p);
 }
 
@@ -70,7 +70,7 @@ chemistry_get_metal_mass_fraction(const struct part *restrict p, int metal) {
  * @param metal Index of metal specie
  */
 __attribute__((always_inline)) INLINE static double
-chemistry_get_comoving_diffusion_state_vector(const struct part *restrict p,
+chemistry_get_comoving_diffusion_state_vector(const struct part* restrict p,
                                               int metal) {
   /* The state vector is 1D and contains the metal density. */
   return chemistry_get_comoving_metal_density(p, metal);
@@ -89,7 +89,7 @@ chemistry_get_comoving_diffusion_state_vector(const struct part *restrict p,
  * @param p Particle.
  */
 __attribute__((always_inline)) INLINE static float
-chemistry_get_comoving_density(const struct part *restrict p) {
+chemistry_get_comoving_density(const struct part* restrict p) {
   float rho = hydro_get_comoving_density(p);
 
   if (rho == 0.0) {
@@ -114,9 +114,9 @@ chemistry_get_comoving_density(const struct part *restrict p) {
  * @param S (return) Pointer to a 3x3 matrix.
  */
 __attribute__((always_inline)) INLINE static void
-chemistry_get_physical_shear_tensor(const struct part *restrict p,
-                                    const struct cosmology *cosmo,
-				    double S[3][3]) {
+chemistry_get_physical_shear_tensor(const struct part* restrict p,
+                                    const struct cosmology* cosmo,
+                                    double S[3][3]) {
   for (int i = 0; i < 3; ++i) {
     for (int j = 0; j < 3; ++j) {
       S[i][j] = 0.5 * (p->chemistry_data.filtered.grad_v_tilde[i][j] +
@@ -145,25 +145,26 @@ chemistry_regularize_shear_tensor(double S[3][3]) {
 
   /* Compute the eigenvalues and eigenvectors. S is symmetric by construction.
    */
-  chemistry_utils_diagonalize_3x3(S, eigenvalues, eigenvector0, eigenvector1, eigenvector2);
+  chemistry_utils_diagonalize_3x3(S, eigenvalues, eigenvector0, eigenvector1,
+                                  eigenvector2);
 
   const double eigenvectors[3][3] = {
-    {eigenvector0[0], eigenvector1[0], eigenvector2[0]},
-    {eigenvector0[1], eigenvector1[1], eigenvector2[1]},
-    {eigenvector0[2], eigenvector1[2], eigenvector2[2]}
-  };
+      {eigenvector0[0], eigenvector1[0], eigenvector2[0]},
+      {eigenvector0[1], eigenvector1[1], eigenvector2[1]},
+      {eigenvector0[2], eigenvector1[2], eigenvector2[2]}};
   double S_minus[3][3] = {{0.0}};
 
   /* Compute S_minus as the sum of min(0, lambda^(k)) * e_i^(k) * e_j^(k) */
   for (int k = 0; k < 3; k++) {
-    const double lambda_k = eigenvalues[k];            // Get the k-th eigenvalue
-    const double lambda_k_minus = fmin(0.0, lambda_k); // Take min(0, lambda^(k))
+    const double lambda_k = eigenvalues[k];  // Get the k-th eigenvalue
+    const double lambda_k_minus =
+        fmin(0.0, lambda_k);  // Take min(0, lambda^(k))
 
     for (int i = 0; i < 3; i++) {
       for (int j = 0; j < 3; j++) {
-	const double e_ik = eigenvectors[i][k];
-	const double e_jk = eigenvectors[j][k];
-	S_minus[i][j] += lambda_k_minus * e_ik * e_jk;
+        const double e_ik = eigenvectors[i][k];
+        const double e_jk = eigenvectors[j][k];
+        S_minus[i][j] += lambda_k_minus * e_ik * e_jk;
       }
     }
   }
@@ -185,10 +186,9 @@ chemistry_regularize_shear_tensor(double S[3][3]) {
  * @param K (return) Pointer to a 3x3 diffusion tensor.
  */
 __attribute__((always_inline)) INLINE static void
-chemistry_get_physical_matrix_K(const struct part *restrict p,
-                                const struct chemistry_global_data *chem_data,
-                                const struct cosmology *cosmo,
-				double K[3][3]) {
+chemistry_get_physical_matrix_K(const struct part* restrict p,
+                                const struct chemistry_global_data* chem_data,
+                                const struct cosmology* cosmo, double K[3][3]) {
   if (chem_data->diffusion_mode == isotropic_constant ||
       chem_data->diffusion_mode == isotropic_smagorinsky) {
     /* K = kappa * I */
@@ -253,8 +253,8 @@ __attribute__((always_inline)) INLINE static double chemistry_get_matrix_norm(
  */
 __attribute__((always_inline)) INLINE static double
 chemistry_compute_diffusion_coefficient(
-    struct part *restrict p, const struct chemistry_global_data *chem_data,
-    const struct cosmology *cosmo) {
+    struct part* restrict p, const struct chemistry_global_data* chem_data,
+    const struct cosmology* cosmo) {
 
   float rho = p->chemistry_data.filtered.rho;
 
@@ -302,8 +302,8 @@ chemistry_compute_diffusion_coefficient(
  * @param dF Metal mass fraction gradient (of size 3).
  */
 __attribute__((always_inline)) INLINE static void
-chemistry_get_metal_mass_fraction_gradients(const struct part *restrict p, int metal,
-					    double dF[3]) {
+chemistry_get_metal_mass_fraction_gradients(const struct part* restrict p,
+                                            int metal, double dF[3]) {
   dF[0] = p->chemistry_data.gradients.Z[metal][0];
   dF[1] = p->chemistry_data.gradients.Z[metal][1];
   dF[2] = p->chemistry_data.gradients.Z[metal][2];
@@ -317,10 +317,11 @@ chemistry_get_metal_mass_fraction_gradients(const struct part *restrict p, int m
  * @param dF Metal mass density gradient (of size 3).
  */
 __attribute__((always_inline)) INLINE static void
-chemistry_get_metal_mass_density_gradients(const struct part *restrict p, int metal,
-                                  const float grad_rho[3], double dF[3]) {
+chemistry_get_metal_mass_density_gradients(const struct part* restrict p,
+                                           int metal, const float grad_rho[3],
+                                           double dF[3]) {
 
-  const struct chemistry_part_data *chd = &p->chemistry_data;
+  const struct chemistry_part_data* chd = &p->chemistry_data;
 
   /* We have U = rho_Z and q = Z.
      But we computed Grad Z and not Grad (rho*Z).
@@ -335,7 +336,6 @@ chemistry_get_metal_mass_density_gradients(const struct part *restrict p, int me
   dF[2] = chd->gradients.Z[metal][2] * p->rho + grad_rho[2] * Z;
 }
 
-
 /**
  * @brief Get the velocity gradients.
  *
@@ -345,7 +345,7 @@ chemistry_get_metal_mass_density_gradients(const struct part *restrict p, int me
  * @param dvz z velocity gradient (of size 3 or more).
  */
 __attribute__((always_inline)) INLINE static void chemistry_get_hydro_gradients(
-    const struct part *restrict p, float dvx[3], float dvy[3], float dvz[3]) {
+    const struct part* restrict p, float dvx[3], float dvy[3], float dvz[3]) {
 
   dvx[0] = p->chemistry_data.gradients.v[0][0];
   dvx[1] = p->chemistry_data.gradients.v[0][1];
@@ -357,7 +357,6 @@ __attribute__((always_inline)) INLINE static void chemistry_get_hydro_gradients(
   dvz[1] = p->chemistry_data.gradients.v[2][1];
   dvz[2] = p->chemistry_data.gradients.v[2][2];
 }
-
 
 /**
  * @brief Returns the total metallicity (metal mass fraction) of the
@@ -371,7 +370,7 @@ chemistry_get_total_metal_mass_fraction(const struct part* restrict p) {
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
     m_Z_tot += p->chemistry_data.metal_mass[i];
   }
-  return m_Z_tot/hydro_get_mass(p);
+  return m_Z_tot / hydro_get_mass(p);
 }
 
 /**
@@ -395,7 +394,8 @@ chemistry_get_metal_mass_fraction_for_feedback(const struct part* restrict p) {
  * @param p Pointer to the particle data.
  */
 __attribute__((always_inline)) INLINE static float
-chemistry_get_total_metal_mass_fraction_for_feedback(const struct part* restrict p) {
+chemistry_get_total_metal_mass_fraction_for_feedback(
+    const struct part* restrict p) {
   return chemistry_get_total_metal_mass_fraction(p);
 }
 
@@ -530,7 +530,7 @@ chemistry_get_star_total_metal_mass_for_stats(const struct spart* restrict sp) {
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
     Z_tot += sp->chemistry_data.metal_mass_fraction[i];
   }
-  return Z_tot*sp->mass;
+  return Z_tot * sp->mass;
 }
 
 /**

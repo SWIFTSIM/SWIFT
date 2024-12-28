@@ -78,8 +78,8 @@ __attribute__((always_inline)) INLINE static void chemistry_kick_extra(
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; ++i) {
     const double m_metal_old = chd->metal_mass[i];
     chemistry_check_unphysical_state(&chd->metal_mass[i], m_metal_old,
-                                     hydro_get_mass(p), /*callloc=*/ 2,
-				     /*element*/ i);
+                                     hydro_get_mass(p), /*callloc=*/2,
+                                     /*element*/ i);
   }
 
   /* Sanity check on the total metal mass */
@@ -90,11 +90,11 @@ __attribute__((always_inline)) INLINE static void chemistry_kick_extra(
 
 #if defined(HYDRO_DOES_MASS_FLUX)
   chemistry_kick_extra_mass_flux(p, dt_therm, dt_grav, dt_hydro, dt_kick_corr,
-				 cosmo, hydro_props)
+                                 cosmo, hydro_props)
 #endif
 }
 
-#if defined (HYDRO_DOES_MASS_FLUX)
+#if defined(HYDRO_DOES_MASS_FLUX)
 /**
  * @brief Resets the metal mass fluxes for schemes that use them.
  *
@@ -121,10 +121,11 @@ __attribute__((always_inline)) INLINE static void chemistry_reset_mass_fluxes(
  * @param cosmo Cosmology.
  * @param hydro_props Additional hydro properties.
  */
-__attribute__((always_inline)) INLINE static void chemistry_kick_extra_mass_flux(
-    struct part* p, float dt_therm, float dt_grav, float dt_hydro,
-    float dt_kick_corr, const struct cosmology* cosmo,
-    const struct hydro_props* hydro_props) {
+__attribute__((always_inline)) INLINE static void
+chemistry_kick_extra_mass_flux(struct part* p, float dt_therm, float dt_grav,
+                               float dt_hydro, float dt_kick_corr,
+                               const struct cosmology* cosmo,
+                               const struct hydro_props* hydro_props) {
   /* For hydro schemes that exchange mass fluxes between the particles,
    * we want to advect the metals. */
   if (p->flux.dt > 0.) {

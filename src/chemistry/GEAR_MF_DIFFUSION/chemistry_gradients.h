@@ -374,7 +374,8 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_finalise(
 }
 
 /**
- * @brief Extrapolate the given gradient over the given distance. Double version.
+ * @brief Extrapolate the given gradient over the given distance. Double
+ * version.
  *
  * @param gradient Gradient of a quantity.
  * @param dx Distance vector.
@@ -382,7 +383,8 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_finalise(
  * vector.
  */
 __attribute__((always_inline)) INLINE static double
-chemistry_gradients_extrapolate_double(const double gradient[3], const float dx[3]) {
+chemistry_gradients_extrapolate_double(const double gradient[3],
+                                       const float dx[3]) {
   return gradient[0] * dx[0] + gradient[1] * dx[1] + gradient[2] * dx[2];
 }
 
@@ -423,8 +425,8 @@ chemistry_gradients_extrapolate_float(const float gradient[3],
  */
 __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
     const struct part *restrict pi, const struct part *restrict pj, int metal,
-    const float dx[3], const float r, const float xij_i[3],
-    double *Ui, double *Uj) {
+    const float dx[3], const float r, const float xij_i[3], double *Ui,
+    double *Uj) {
 
   *Ui = chemistry_get_comoving_diffusion_state_vector(pi, metal);
   *Uj = chemistry_get_comoving_diffusion_state_vector(pj, metal);
@@ -467,9 +469,9 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
   const double mj = hydro_get_mass(pj);
 
   chemistry_check_unphysical_state(&m_Zi, m_Zi_not_extrapolated, mi,
-				   /*callloc=*/ 1, /*element*/ metal);
+                                   /*callloc=*/1, /*element*/ metal);
   chemistry_check_unphysical_state(&m_Zj, m_Zj_not_extrapolated, mj,
-				   /*callloc=*/ 1, /*element*/ metal);
+                                   /*callloc=*/1, /*element*/ metal);
 
   /* If the new masses have been changed, do not extrapolate, use 0th order
      reconstruction and update the state vectors */
@@ -492,10 +494,10 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
  * @param dx Comoving distance vector between the particles (dx = pi->x -
  * pj->x).
  * @param cosmo The current cosmological model.
- * @param Zi (return) Particle i's metal mass fraction of metal specie "metal" (in physical
- * units).
- * @param Zj (return) Particle j's metal mass fraction of metal specie "metal" (in physical
- * units).
+ * @param Zi (return) Particle i's metal mass fraction of metal specie "metal"
+ * (in physical units).
+ * @param Zj (return) Particle j's metal mass fraction of metal specie "metal"
+ * (in physical units).
  */
 __attribute__((always_inline)) INLINE static void chemistry_gradients_predict_Z(
     const struct part *restrict pi, const struct part *restrict pj, int metal,
@@ -556,10 +558,9 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict_Z(
  */
 __attribute__((always_inline)) INLINE static void
 chemistry_gradients_predict_hydro(struct part *restrict pi,
-                                  struct part *restrict pj,
-                                  const float dx[3], const float r,
-				  const float xij_i[3],
-				  float Wi[5], float Wj[5]) {
+                                  struct part *restrict pj, const float dx[3],
+                                  const float r, const float xij_i[3],
+                                  float Wi[5], float Wj[5]) {
 
   /* Perform gradient reconstruction in space and time */
   /* Compute interface position (relative to pj, since we don't need the actual

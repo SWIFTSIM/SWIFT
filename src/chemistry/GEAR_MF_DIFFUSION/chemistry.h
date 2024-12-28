@@ -278,14 +278,15 @@ static INLINE void chemistry_init_backend(struct swift_params* parameter_file,
   char temp[PARSER_MAX_LINE_SIZE];
   parser_get_param_string(parameter_file, "GEARChemistry:diffusion_mode", temp);
   if (strcmp(temp, "Isotropic_constant") == 0)
-    data->diffusion_mode = isotropic_constant ;
+    data->diffusion_mode = isotropic_constant;
   else if (strcmp(temp, "Smagorinsky") == 0)
     data->diffusion_mode = isotropic_smagorinsky;
   else if (strcmp(temp, "Gradient") == 0)
     data->diffusion_mode = anisotropic_gradient;
   else
     error(
-        "The chemistry diffusion mode must be Isotropic_constant, Smagorinsky or Gradient "
+        "The chemistry diffusion mode must be Isotropic_constant, Smagorinsky "
+        "or Gradient "
         " not %s",
         temp);
 
@@ -295,7 +296,7 @@ static INLINE void chemistry_init_backend(struct swift_params* parameter_file,
       parameter_file, "GEARChemistry:hll_riemann_solver_psi",
       DEFAULT_PSI_RIEMANN_SOLVER);
 
-   if ((data->hll_riemann_solver_psi < 0)) {
+  if ((data->hll_riemann_solver_psi < 0)) {
     error("hll_riemann_solver_psi must be positive!");
   }
 
@@ -484,9 +485,12 @@ __attribute__((always_inline)) INLINE static void chemistry_end_density(
 
   /* Add self term (is it needed for rho? the formula does not include it) */
   /* p->chemistry_data.filtered.rho += hydro_get_mass(p) * kernel_root; */
-  p->chemistry_data.filtered.rho_v[0] += hydro_get_comoving_density(p) * p->v[0];
-  p->chemistry_data.filtered.rho_v[1] += hydro_get_comoving_density(p) * p->v[1];
-  p->chemistry_data.filtered.rho_v[2] += hydro_get_comoving_density(p) * p->v[2];
+  p->chemistry_data.filtered.rho_v[0] +=
+      hydro_get_comoving_density(p) * p->v[0];
+  p->chemistry_data.filtered.rho_v[1] +=
+      hydro_get_comoving_density(p) * p->v[1];
+  p->chemistry_data.filtered.rho_v[2] +=
+      hydro_get_comoving_density(p) * p->v[2];
 
   /* Insert missing h-factor to rho. For rho*v, notice that the h-factors were
      already given in the density loop since they depend on bar{h_ij}. */
@@ -548,7 +552,7 @@ __attribute__((always_inline)) INLINE static void chemistry_end_density(
 #endif
     chemistry_check_unphysical_state(&p->chemistry_data.metal_mass[g],
                                      m_metal_old, hydro_get_mass(p),
-                                     /*callloc=*/ 3, /*element*/ g);
+                                     /*callloc=*/3, /*element*/ g);
   }
 
   /* Sanity check on the total metal mass */
@@ -640,7 +644,7 @@ chemistry_part_has_no_neighbours(struct part* restrict p,
   p->geometry.matrix_E[2][0] = 0.0f;
   p->geometry.matrix_E[2][1] = 0.0f;
   p->geometry.matrix_E[2][2] = 1.0f;
-  p->chemistry_data.geometry_condition_number = hydro_dimension_inv*1.f;
+  p->chemistry_data.geometry_condition_number = hydro_dimension_inv * 1.f;
 
   /* Reset the centroid to disable MFV velocity corrections for this particle */
   fvpm_reset_centroids(p);
@@ -910,7 +914,6 @@ __attribute__((always_inline)) INLINE static void chemistry_split_part(
   error("Loic: to be implemented");
 }
 
-
 /**
  * @brief Extra chemistry operations to be done during the drift.
  *
@@ -923,7 +926,8 @@ __attribute__((always_inline)) INLINE static void chemistry_split_part(
  */
 __attribute__((always_inline)) INLINE static void chemistry_predict_extra(
     struct part* p, struct xpart* xp, float dt_drift, float dt_therm,
-    const struct cosmology* cosmo, const struct chemistry_global_data* chem_data) {
+    const struct cosmology* cosmo,
+    const struct chemistry_global_data* chem_data) {
 
   struct chemistry_part_data* chd = &p->chemistry_data;
 
@@ -932,7 +936,7 @@ __attribute__((always_inline)) INLINE static void chemistry_predict_extra(
 
   /* Predict filtered density. Notice that h was predicted before by
      hydro_predict_extra() */
-  float h_bar_inv = 1/ (p->h * kernel_gamma);
+  float h_bar_inv = 1 / (p->h * kernel_gamma);
   const float w1 = p->force.h_dt * h_bar_inv * dt_drift;
 
   const float w2 = -hydro_dimension * w1;
@@ -948,7 +952,6 @@ __attribute__((always_inline)) INLINE static void chemistry_predict_extra(
 
   /* Update diffusion coefficient */
   chd->kappa = chemistry_compute_diffusion_coefficient(p, chem_data, cosmo);
-
 }
 
 #endif /* SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_H */

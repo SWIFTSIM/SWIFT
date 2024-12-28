@@ -436,8 +436,8 @@ runner_iact_chemistry_fluxes_common(
 
     /* Solve the 1D Riemann problem at the interface A_ij _physical units_ */
     double totflux;
-    chemistry_compute_flux(dx, pi, pj, Ui, Uj, Wi, Wj, n_unit, a2 * Anorm,
-			   m, chem_data, cosmo, &totflux);
+    chemistry_compute_flux(dx, pi, pj, Ui, Uj, Wi, Wj, n_unit, a2 * Anorm, m,
+                           chem_data, cosmo, &totflux);
 
     /* Limit the mass flux to 1/4 of the total mass. This avoids ending with
        more metal mass than the gas_mass. */

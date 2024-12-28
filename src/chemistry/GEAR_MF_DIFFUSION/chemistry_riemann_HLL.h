@@ -56,14 +56,15 @@ __attribute__((always_inline)) INLINE static double chemistry_riemann_minmod(
  * @param pj Particle j.
  * @param chem_data The global properties of the chemistry scheme.
  * @param cosmo The current cosmological model.
- * @param (return) K_star The diffusion matrix at the interface (in physical units).
+ * @param (return) K_star The diffusion matrix at the interface (in physical
+ * units).
  */
 __attribute__((always_inline)) INLINE static void
 chemistry_riemann_compute_K_star(const struct part *restrict pi,
                                  const struct part *restrict pj,
                                  const struct chemistry_global_data *chem_data,
                                  const struct cosmology *cosmo,
-				 double K_star[3][3]) {
+                                 double K_star[3][3]) {
   double KR[3][3], KL[3][3];
   chemistry_get_physical_matrix_K(pi, chem_data, cosmo, KR);
   chemistry_get_physical_matrix_K(pj, chem_data, cosmo, KL);
@@ -98,29 +99,31 @@ chemistry_riemann_compute_K_star(const struct part *restrict pi,
  */
 __attribute__((always_inline)) INLINE static void
 chemistry_riemann_prevent_large_K_star(const struct part *restrict pi,
-				       const struct part *restrict pj,
-				       const float Anorm,
-				       const struct cosmology *cosmo,
-				       double* norm_K_star,
-				       double K_star[3][3]) {
+                                       const struct part *restrict pj,
+                                       const float Anorm,
+                                       const struct cosmology *cosmo,
+                                       double *norm_K_star,
+                                       double K_star[3][3]) {
 
-  /* Prevent exessively large diffusion coefficients. This is taken from Gizmo. */
-  const float min_dt = (pj->chemistry_data.flux_dt > 0.f)
-                       ? fminf(pi->chemistry_data.flux_dt, pj->chemistry_data.flux_dt)
-                       : pi->chemistry_data.flux_dt;
+  /* Prevent exessively large diffusion coefficients. This is taken from Gizmo.
+   */
+  const float min_dt =
+      (pj->chemistry_data.flux_dt > 0.f)
+          ? fminf(pi->chemistry_data.flux_dt, pj->chemistry_data.flux_dt)
+          : pi->chemistry_data.flux_dt;
   const float min_mass = min(hydro_get_mass(pi), hydro_get_mass(pj));
-  const float min_h = min(pi->h, pj->h)*cosmo->a*kernel_gamma;
+  const float min_h = min(pi->h, pj->h) * cosmo->a * kernel_gamma;
 
-  double mass_flux = Anorm * *norm_K_star / min_h  * min_dt / min_mass;
-  if(mass_flux > 0.25) {
+  double mass_flux = Anorm * *norm_K_star / min_h * min_dt / min_mass;
+  if (mass_flux > 0.25) {
     /* warning("Mass_flux > 0.25, reducing the diffusion coefficient"); */
     for (int i = 0; i < 3; ++i) {
       for (int j = 0; j < 3; ++j) {
-	K_star[i][j] *= 0.25/mass_flux;
+        K_star[i][j] *= 0.25 / mass_flux;
       }
     }
   }
-  *norm_K_star *= 0.25/mass_flux;
+  *norm_K_star *= 0.25 / mass_flux;
 }
 
 /**
@@ -131,22 +134,28 @@ chemistry_riemann_prevent_large_K_star(const struct part *restrict pi,
  *
  * @param c_s_R Sound speed of the right state (in physical units).
  * @param c_s_L Sound speed of the left state (in physical units).
- * @param uR Velocity of the right state in the interface frame (in physical units).
- * @param uL Velocity of the left state in the interface frame (in physical units).
- * @param dx_norm Normalized distance between the left and right states (in physical units).
- * @param q_star Metal mass fraction of metal specie "metal" at the interface (in physical units).
+ * @param uR Velocity of the right state in the interface frame (in physical
+ * units).
+ * @param uL Velocity of the left state in the interface frame (in physical
+ * units).
+ * @param dx_norm Normalized distance between the left and right states (in
+ * physical units).
+ * @param q_star Metal mass fraction of metal specie "metal" at the interface
+ * (in physical units).
  * @param U_star Metal mass density at the interface (in physical units).
  * @param K_star The 3x3 matrix representing anisotropic diffusion at the
  * interface (in physical units).
  * @param norm_K_star The norm of the diffusion matrix at the interface
  * (in physical units).
- * @param grad_q_star Gradient of metal mass fraction at thexs interface (in physical units).
+ * @param grad_q_star Gradient of metal mass fraction at thexs interface (in
+ * physical units).
  *
  * @return The artificial diffusivity \alpha (in physical units).
  */
 __attribute__((always_inline)) INLINE static double
-chemistry_riemann_compute_alpha(const double c_s_R, const double c_s_L, const double uR,
-                                const double uL, const double dx_norm, const double q_star,
+chemistry_riemann_compute_alpha(const double c_s_R, const double c_s_L,
+                                const double uR, const double uL,
+                                const double dx_norm, const double q_star,
                                 const double U_star, const double K_star[3][3],
                                 const double norm_K_star,
                                 const double grad_q_star[3]) {
@@ -221,11 +230,12 @@ chemistry_riemann_compute_alpha(const double c_s_R, const double c_s_L, const do
  * @param metal_flux (return) The resulting flux at the interface.
  */
 __attribute__((always_inline)) INLINE static void
-chemistry_riemann_solve_for_flux(const float dx[3],
-    const struct part *restrict pi, const struct part *restrict pj,
-    const double UL, const double UR, const float WL[5], const float WR[5],
-    const double F_diff_L[3], const double F_diff_R[3], const float Anorm,
-    const float n_unit[3], const int m, const struct chemistry_global_data *chem_data,
+chemistry_riemann_solve_for_flux(
+    const float dx[3], const struct part *restrict pi,
+    const struct part *restrict pj, const double UL, const double UR,
+    const float WL[5], const float WR[5], const double F_diff_L[3],
+    const double F_diff_R[3], const float Anorm, const float n_unit[3],
+    const int m, const struct chemistry_global_data *chem_data,
     const struct cosmology *cosmo, double *metal_flux) {
 
   /* Handle pure vacuum */
@@ -271,7 +281,8 @@ chemistry_riemann_solve_for_flux(const float dx[3],
   }
 
   /* Prevent exessively large diffusion coefficients (same as Gizmo) */
-  /* chemistry_riemann_prevent_large_K_star(pi, pj, Anorm, cosmo, &norm_K_star, K_star); */
+  /* chemistry_riemann_prevent_large_K_star(pi, pj, Anorm, cosmo, &norm_K_star,
+   * K_star); */
 
   /* Get U_star. Already in physical units. */
   const double U_star = 0.5 * (UR + UL);
@@ -298,7 +309,7 @@ chemistry_riemann_solve_for_flux(const float dx[3],
 
   /* Define some convenient variables. Convert to physical: add a for the norm
    */
-  const float dx_p[3] = {dx[0] * cosmo->a,dx[1] * cosmo->a, dx[2] * cosmo->a};
+  const float dx_p[3] = {dx[0] * cosmo->a, dx[1] * cosmo->a, dx[2] * cosmo->a};
   const float dx_p_norm_2 =
       sqrtf(dx_p[0] * dx_p[0] + dx_p[1] * dx_p[1] + dx_p[2] * dx_p[2]);
   const float dx_p_norm = sqrtf(dx_p_norm_2);
@@ -332,27 +343,28 @@ chemistry_riemann_solve_for_flux(const float dx[3],
   /****************************************************************************
    * Hopkins 2017 implementation of HLL */
   /* No conversion to physical needed, everything is physical here */
-  const double flux_hll = chemistry_riemann_minmod((1 + chem_data->hll_riemann_solver_psi) * F_2, F_2 + F_U);
+  const double flux_hll = chemistry_riemann_minmod(
+      (1 + chem_data->hll_riemann_solver_psi) * F_2, F_2 + F_U);
 
   /* Compute the direct fluxes */
   const double qi = chemistry_get_metal_mass_fraction(pi, m);
   const double qj = chemistry_get_metal_mass_fraction(pj, m);
   const double dq = qj - qi;
   const double nabla_o_q_dir[3] = {dx_p[0] * dq / dx_p_norm_2,
-				   dx_p[1] * dq / dx_p_norm_2,
-				   dx_p[2] * dq / dx_p_norm_2};
+                                   dx_p[1] * dq / dx_p_norm_2,
+                                   dx_p[2] * dq / dx_p_norm_2};
   const double kappa_mean =
-    0.5 * (pi->chemistry_data.kappa + pj->chemistry_data.kappa);
+      0.5 * (pi->chemistry_data.kappa + pj->chemistry_data.kappa);
   const double F_A_left_side[3] = {-kappa_mean * nabla_o_q_dir[0],
-				   -kappa_mean * nabla_o_q_dir[1],
-				   -kappa_mean * nabla_o_q_dir[2]};
+                                   -kappa_mean * nabla_o_q_dir[1],
+                                   -kappa_mean * nabla_o_q_dir[2]};
   const double F_A_right_side[3] = {Anorm * dx_p[0] / dx_p_norm,
-				    Anorm * dx_p[1] / dx_p_norm,
-				    Anorm * dx_p[2] / dx_p_norm};
+                                    Anorm * dx_p[1] / dx_p_norm,
+                                    Anorm * dx_p[2] / dx_p_norm};
 
   const double F_times_A_dir = F_A_left_side[0] * F_A_right_side[0] +
-    F_A_left_side[1] * F_A_right_side[1] +
-    F_A_left_side[2] * F_A_right_side[2];
+                               F_A_left_side[1] * F_A_right_side[1] +
+                               F_A_left_side[2] * F_A_right_side[2];
 
   /* Get F_HLL * A_ij */
   const double F_HLL_times_A = flux_hll * Anorm;
