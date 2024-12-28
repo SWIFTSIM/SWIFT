@@ -41,7 +41,7 @@
  * @param result (return) The resulting 3D vector (array of 3 doubles) from the
  * cross product of u and v.
  */
-__attribute__((always_inline)) INLINE void
+__attribute__((always_inline)) INLINE static void
 chemistry_utils_cross_product(const double u[3], const double v[3], double result[3]) {
   result[0] = u[1] * v[2] - u[2] * v[1];
   result[1] = u[2] * v[0] - u[0] * v[2];
@@ -55,7 +55,7 @@ chemistry_utils_cross_product(const double u[3], const double v[3], double resul
  * @param v A 3D vector (array of 3 doubles).
  * @return The dot product (scalar) of vectors u and v.
  */
-__attribute__((always_inline)) INLINE double
+__attribute__((always_inline)) INLINE static double
 chemistry_utils_dot_product(const double u[3], const double v[3]) {
     return u[0] * v[0] + u[1] * v[1] + u[2] * v[2];
 }
@@ -68,7 +68,7 @@ chemistry_utils_dot_product(const double u[3], const double v[3]) {
  * 
  * @note If the vector's magnitude is zero, the behavior is undefined.
  */
-__attribute__((always_inline)) INLINE void
+__attribute__((always_inline)) INLINE static void
 chemistry_utils_normalize(double v[3]) {
   const double norm = sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
   for (int i = 0; i < 3; i++) {
@@ -92,7 +92,7 @@ chemistry_utils_normalize(double v[3]) {
  *       - `chemistry_utils_dot_product(V, W) == 0`
  *       - `chemistry_utils_dot_product(U, V) == 0`
  */
-__attribute__((always_inline)) INLINE void
+__attribute__((always_inline)) INLINE static void
 chemistry_utils_compute_orthogonal_complement(const double W[3], double U[3],
 					      double V[3]) {
   /* Robustly compute a right-handed orthonormal set { U, V, W }. The vector W
@@ -134,7 +134,7 @@ chemistry_utils_compute_orthogonal_complement(const double W[3], double U[3],
  * @param (return) eigenvector0 Eigenvector corresponding to the smallest
  * eigenvalue.
  */
-__attribute__((always_inline)) INLINE  void
+__attribute__((always_inline)) INLINE static void
 compute_eigenvector_0(const double a00, const double a01, const double a02,
 		      const double a11, const double a12, const double a22,
 		      const double eigenvalue0, double eigenvector0[3]) {
@@ -197,7 +197,7 @@ compute_eigenvector_0(const double a00, const double a01, const double a02,
  * @param eigenvalue1 Second eigenvalue of the matrix.
  * @param (return) eigenvector1 Second eigenvector of the matrix.
  */
-__attribute__((always_inline)) INLINE  void
+__attribute__((always_inline)) INLINE static void
 compute_eigenvector_1(const double a00, const double a01, const double a02,
 		      const double a11, const double a12, const double a22,
 		      const double eigenvector0[3], const double eigenvalue1,
@@ -319,7 +319,7 @@ compute_eigenvector_1(const double a00, const double a01, const double a02,
  * @param (return) eigenvector1 Array to store the second eigenvector.
  * @param (return) eigenvector2 Array to store the third eigenvector.
  */
-__attribute__((always_inline)) INLINE void
+__attribute__((always_inline)) INLINE static void
 chemistry_utils_diagonalize_3x3(const double A[3][3], double eigenvalues[3],
 				double eigenvector0[3], double eigenvector1[3],
 				double eigenvector2[3]) {
