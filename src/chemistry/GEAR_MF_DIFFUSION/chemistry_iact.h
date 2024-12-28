@@ -424,11 +424,11 @@ runner_iact_chemistry_fluxes_common(
 
   /*****************************************/
   /* Now solve the Riemann problem for each metal specie */
-  for (int g = 0; g < GEAR_CHEMISTRY_ELEMENT_COUNT; g++) {
+  for (int m = 0; m < GEAR_CHEMISTRY_ELEMENT_COUNT; m++) {
 
     /* Predict the diffusion state at the interface to compute fluxes */
     double Ui, Uj;
-    chemistry_gradients_predict(pi, pj, g, dx, r, xij_i, &Ui, &Uj);
+    chemistry_gradients_predict(pi, pj, m, dx, r, xij_i, &Ui, &Uj);
 
     /* Convert Ui and Uj to physical units */
     Ui *= cosmo->a3_inv;
@@ -436,16 +436,16 @@ runner_iact_chemistry_fluxes_common(
 
     /* Solve the 1D Riemann problem at the interface A_ij _physical units_ */
     double totflux;
-    chemistry_compute_flux(pi, pj, Ui, Uj, Wi, Wj, n_unit, a2 * Anorm, g,
-                           &totflux, chem_data, cosmo);
+    chemistry_compute_flux(dx, pi, pj, Ui, Uj, Wi, Wj, n_unit, a2 * Anorm,
+			   m, chem_data, cosmo, &totflux);
 
     /* Limit the mass flux to 1/4 of the total mass. This avoids ending with
        more metal mass than the gas_mass. */
     /* if (fabs(totflux * mindt) > 0.0) { */
     /*   const double mi = hydro_get_mass(pi); */
     /*   const double mj = hydro_get_mass(pj); */
-    /*   const double Zi = chemistry_get_metal_mass_fraction(pi, g); */
-    /*   const double Zj = chemistry_get_metal_mass_fraction(pj, g); */
+    /*   const double Zi = chemistry_get_metal_mass_fraction(pi, m); */
+    /*   const double Zj = chemistry_get_metal_mass_fraction(pj, m); */
     /*   const double min_m_Z = min(mi, mj) * fabs(Zi - Zj); */
     /*   const double max_m_Z = max(mi * Zi, mj * Zj); */
     /*   double m_Z_lim = 0.25 * min(min_m_Z, max_m_Z); */
@@ -465,9 +465,9 @@ runner_iact_chemistry_fluxes_common(
      * of flux_dt, we can detect inactive neighbours through their negative time
      * step. */
     /* Update V*U. */
-    chi->diffusion_flux[g] -= totflux * mindt;
+    chi->diffusion_flux[m] -= totflux * mindt;
     if (mode == 1 || (chj->flux_dt < 0.f)) {
-      chj->diffusion_flux[g] += totflux * mindt;
+      chj->diffusion_flux[m] += totflux * mindt;
     }
   }
 }
