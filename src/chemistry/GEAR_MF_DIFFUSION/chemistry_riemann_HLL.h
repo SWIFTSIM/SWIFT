@@ -25,6 +25,13 @@
 #include "hydro.h"
 
 /**
+ * @file src/chemistry/GEAR_MF_DIFFUSION/chemistry_riemann_HLL.h
+ * @brief File containing functions concerning HLL riemann solver for the
+ * anisotropic diffusion equation.
+ *
+ * */
+
+/**
  * The minmod limiter.
  *
  * @param a Left slope
@@ -41,12 +48,22 @@ __attribute__((always_inline)) INLINE static double chemistry_riemann_minmod(
   }
 }
 
+/**
+ * @brief Computes the matrix diffusion matrix at the particles' interface. The
+ * matrix is computed as K_\star = 0.5*(K_R + K_L).
+ *
+ * @param pi Particle i.
+ * @param pj Particle j.
+ * @param chem_data The global properties of the chemistry scheme.
+ * @param cosmo The current cosmological model.
+ * @param (return) K_star The diffusion matrix at the interface (in physical units).
+ */
 __attribute__((always_inline)) INLINE static void
 chemistry_riemann_compute_K_star(const struct part *restrict pi,
                                  const struct part *restrict pj,
-                                 double K_star[3][3],
                                  const struct chemistry_global_data *chem_data,
-                                 const struct cosmology *cosmo) {
+                                 const struct cosmology *cosmo,
+				 double K_star[3][3]) {
   double KR[3][3], KL[3][3];
   chemistry_get_physical_matrix_K(pi, chem_data, cosmo, KR);
   chemistry_get_physical_matrix_K(pj, chem_data, cosmo, KL);
@@ -66,6 +83,19 @@ chemistry_riemann_compute_K_star(const struct part *restrict pi,
   }
 }
 
+/**
+ * @brief Limit the diffusion matrix at the interface to aboir excessively
+ * large diffusion coefficients.
+ *
+ * @param pi Particle i.
+ * @param pj Particle j.
+ * @param Anorm Surface area of the interface (in physical units).
+ * @param cosmo The current cosmological model.
+ * @param (return) K_star The norm of the diffusion matrix at the interface
+ * (in physical units).
+ * @param (return) K_star The diffusion matrix at the interface (in physical
+ * units).
+ */
 __attribute__((always_inline)) INLINE static void
 chemistry_riemann_prevent_large_K_star(const struct part *restrict pi,
 				       const struct part *restrict pj,
@@ -74,7 +104,7 @@ chemistry_riemann_prevent_large_K_star(const struct part *restrict pi,
 				       double* norm_K_star,
 				       double K_star[3][3]) {
 
-  /* Prevent exessively large diffusion coefficients */
+  /* Prevent exessively large diffusion coefficients. This is taken from Gizmo. */
   const float min_dt = (pj->chemistry_data.flux_dt > 0.f)
                        ? fminf(pi->chemistry_data.flux_dt, pj->chemistry_data.flux_dt)
                        : pi->chemistry_data.flux_dt;
@@ -93,52 +123,34 @@ chemistry_riemann_prevent_large_K_star(const struct part *restrict pi,
   *norm_K_star *= 0.25/mass_flux;
 }
 
-__attribute__((always_inline)) INLINE static void chemistry_riemann_predict_Z(
-    const struct part *restrict pi, const struct part *restrict pj, double *Zi,
-    double *Zj, int metal, const struct cosmology *cosmo) {
-
-  const float dx[3] = {pi->x[0] - pj->x[0], pi->x[1] - pj->x[1],
-                       pi->x[2] - pj->x[2]};
-  const float r = sqrtf(dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]);
-  const float xfac = -pi->h / (pi->h + pj->h);
-  const float xij_i[3] = {xfac * dx[0], xfac * dx[1], xfac * dx[2]};
-  const float xij_j[3] = {xij_i[0] + dx[0], xij_i[1] + dx[1], xij_i[2] + dx[2]};
-
-  double grad_Z_i[3], grad_Z_j[3];
-  chemistry_get_metal_mass_fraction_gradients(pi, metal, grad_Z_i);
-  chemistry_get_metal_mass_fraction_gradients(pj, metal, grad_Z_j);
-
-  double dZi = chemistry_gradients_extrapolate_double(grad_Z_i, xij_i);
-  double dZj = chemistry_gradients_extrapolate_double(grad_Z_j, xij_j);
-
-  chemistry_slope_limit_face(Zi, Zj, &dZi, &dZj, xij_i, xij_j, r);
-
-  /* Check that we do not have unphysical values */
-  if (*Zi > 1) {
-    *Zi = 1;
-  } else if (*Zi < 0) {
-    *Zi = 0;
-  }
-
-  if (*Zi > 1) {
-    *Zj = 1;
-  } else if (*Zj < 0) {
-    *Zj = 0;
-  }
-
-  /* Pay attention here to convert this gradient to physical units... Z is
-     always physical. */
-  *Zi += dZi * cosmo->a_inv;
-  *Zj += dZj * cosmo->a_inv;
-}
-
+/**
+ * @brief Compute the artificial diffusivity \alpha from eqn (7-11) in Hopkins
+ * 2017. While solving the Rieman problem with HLL/GLF, we do not use \alpha=1
+ * because the effective numerical diffusivity can exceed the physical
+ * diffusivity \propto \| K \|.
+ *
+ * @param c_s_R Sound speed of the right state (in physical units).
+ * @param c_s_L Sound speed of the left state (in physical units).
+ * @param uR Velocity of the right state in the interface frame (in physical units).
+ * @param uL Velocity of the left state in the interface frame (in physical units).
+ * @param dx_norm Normalized distance between the left and right states (in physical units).
+ * @param q_star Metal mass fraction of metal specie "metal" at the interface (in physical units).
+ * @param U_star Metal mass density at the interface (in physical units).
+ * @param K_star The 3x3 matrix representing anisotropic diffusion at the
+ * interface (in physical units).
+ * @param norm_K_star The norm of the diffusion matrix at the interface
+ * (in physical units).
+ * @param grad_q_star Gradient of metal mass fraction at thexs interface (in physical units).
+ *
+ * @return The artificial diffusivity \alpha (in physical units).
+ */
 __attribute__((always_inline)) INLINE static double
-chemistry_riemann_compute_alpha(double c_s_R, double c_s_L, double uR,
-                                double uL, double dx_norm, double q_star,
-                                double U_star, const double K_star[3][3],
-                                double norm_K_star,
+chemistry_riemann_compute_alpha(const double c_s_R, const double c_s_L, const double uR,
+                                const double uL, const double dx_norm, const double q_star,
+                                const double U_star, const double K_star[3][3],
+                                const double norm_K_star,
                                 const double grad_q_star[3]) {
-  /* Everything is physical here. No need to convert. */
+  /* Everything is in physical units here. No need to convert. */
 
   /* Compute norm(K_star * grad_q_star) */
   double norm_K_star_times_grad_q_star = 0.0;
@@ -167,13 +179,14 @@ chemistry_riemann_compute_alpha(double c_s_R, double c_s_L, double uR,
             grad_q_star[2] * grad_q_star[2]);
   double norm_term =
       norm_K_star_times_grad_q_star / (norm_K_star * norm_grad_q_star);
-  double alpha = norm_term * r_term;
 
-  /* This behaviour is physically not the correct one. The correct physical
-     behaviour is undetermined: we have 0/0 */
+  /* This behaviour is physically not correct. The correct physical behaviour
+     is undetermined: we have 0/0 */
   if (norm_grad_q_star == 0.0) {
     norm_term = 1.0;
   }
+
+  double alpha = norm_term * r_term;
 
   /* Treat pathological cases (physical solutions to the equation) */
   if (U_star == 0.0 || norm_K_star == 0.0) {
@@ -187,6 +200,8 @@ chemistry_riemann_compute_alpha(double c_s_R, double c_s_L, double uR,
  * @brief Solve the Riemann problem for the diffusion equations and return the
  * flux at the interface.
  *
+ * @param dx Comoving distance vector between the particles (dx = pi->x -
+ * pj->x).
  * @param pi Left particle
  * @param pj Right particle
  * @param UL left diffusion state (metal density, in physical units)
@@ -200,19 +215,18 @@ chemistry_riemann_compute_alpha(double c_s_R, double c_s_L, double uR,
  * @param Anorm Norm of the face between the left and right particles (in
  * physical units)
  * @param n_unit The unit vector perpendicular to the "intercell" surface.
- * @param g Metal specie.
- * @param metal_flux (return) The resulting flux at the interface
- * @param chem_data Chemistry data.
- * @param cosmo The cosmological model
+ * @param m Index of metal specie to update.
+ * @param chem_data The global properties of the chemistry scheme.
+ * @param cosmo The #cosmology.
+ * @param metal_flux (return) The resulting flux at the interface.
  */
 __attribute__((always_inline)) INLINE static void
-chemistry_riemann_solve_for_flux(
+chemistry_riemann_solve_for_flux(const float dx[3],
     const struct part *restrict pi, const struct part *restrict pj,
     const double UL, const double UR, const float WL[5], const float WR[5],
     const double F_diff_L[3], const double F_diff_R[3], const float Anorm,
-    const float n_unit[3], int g, double *metal_flux,
-    const struct chemistry_global_data *chem_data,
-    const struct cosmology *cosmo) {
+    const float n_unit[3], const int m, const struct chemistry_global_data *chem_data,
+    const struct cosmology *cosmo, double *metal_flux) {
 
   /* Handle pure vacuum */
   if (!UL && !UR) {
@@ -228,9 +242,7 @@ chemistry_riemann_solve_for_flux(
   const float uL = WL[1] * n_unit[0] + WL[2] * n_unit[1] + WL[3] * n_unit[2];
   const float uR = WR[1] * n_unit[0] + WR[2] * n_unit[1] + WR[3] * n_unit[2];
 
-  /* Get the fastet speed of sound */
-  /* Think about comoving vs physical units */
-  /* Use physical soundspeed */
+  /* Get the fastet speed of sound. Use physical soundspeed */
   const float c_s_L = hydro_get_physical_soundspeed(pi, cosmo);
   const float c_s_R = hydro_get_physical_soundspeed(pj, cosmo);
   const float c_fast = max(c_s_L, c_s_R);
@@ -248,7 +260,7 @@ chemistry_riemann_solve_for_flux(
   /* Compute the flux artificial diffusion coefficient alpha */
   /* Compute diffusion matrix K_star = 0.5*(KR + KL) */
   double K_star[3][3];
-  chemistry_riemann_compute_K_star(pi, pj, K_star, chem_data, cosmo);
+  chemistry_riemann_compute_K_star(pi, pj, chem_data, cosmo, K_star);
   double norm_K_star = chemistry_get_matrix_norm(K_star);
 
   /* If the diffusion matrix is null, don't exchange flux. This can happen
@@ -267,28 +279,26 @@ chemistry_riemann_solve_for_flux(
   /* Reconstruct ZR and ZL at the interface. Note that we have reconstructed UL
      and UR in chemistry_gradients_predict(), but not q. We have everything to
      do so now. */
-  double ZR = chemistry_get_metal_mass_fraction(pi, g);
-  double ZL = chemistry_get_metal_mass_fraction(pj, g);
-  chemistry_riemann_predict_Z(pi, pj, &ZR, &ZL, g, cosmo);
+  double ZR = chemistry_get_metal_mass_fraction(pi, m);
+  double ZL = chemistry_get_metal_mass_fraction(pj, m);
+  chemistry_gradients_predict_Z(pi, pj, m, dx, cosmo, &ZR, &ZL);
 
   /* Now compute q_star and grad_q_star. Convert the gradient to physical
      units by dividing by a. Z is physical. */
   const double q_star = 0.5 * (ZR + ZL);
   double grad_q_star[3] = {0.5 * cosmo->a_inv *
-                               (pi->chemistry_data.gradients.Z[g][0] +
-                                pj->chemistry_data.gradients.Z[g][0]),
+                               (pi->chemistry_data.gradients.Z[m][0] +
+                                pj->chemistry_data.gradients.Z[m][0]),
                            0.5 * cosmo->a_inv *
-                               (pi->chemistry_data.gradients.Z[g][1] +
-                                pj->chemistry_data.gradients.Z[g][1]),
+                               (pi->chemistry_data.gradients.Z[m][1] +
+                                pj->chemistry_data.gradients.Z[m][1]),
                            0.5 * cosmo->a_inv *
-                               (pi->chemistry_data.gradients.Z[g][2] +
-                                pj->chemistry_data.gradients.Z[g][2])};
+                               (pi->chemistry_data.gradients.Z[m][2] +
+                                pj->chemistry_data.gradients.Z[m][2])};
 
   /* Define some convenient variables. Convert to physical: add a for the norm
    */
-  const float dx_p[3] = {(pj->x[0] - pi->x[0]) * cosmo->a,
-                         (pj->x[1] - pi->x[1]) * cosmo->a,
-                         (pj->x[2] - pi->x[2]) * cosmo->a};
+  const float dx_p[3] = {dx[0] * cosmo->a,dx[1] * cosmo->a, dx[2] * cosmo->a};
   const float dx_p_norm_2 =
       sqrtf(dx_p[0] * dx_p[0] + dx_p[1] * dx_p[1] + dx_p[2] * dx_p[2]);
   const float dx_p_norm = sqrtf(dx_p_norm_2);
@@ -325,8 +335,8 @@ chemistry_riemann_solve_for_flux(
   const double flux_hll = chemistry_riemann_minmod((1 + chem_data->hll_riemann_solver_psi) * F_2, F_2 + F_U);
 
   /* Compute the direct fluxes */
-  const double qi = chemistry_get_metal_mass_fraction(pi, g);
-  const double qj = chemistry_get_metal_mass_fraction(pj, g);
+  const double qi = chemistry_get_metal_mass_fraction(pi, m);
+  const double qj = chemistry_get_metal_mass_fraction(pj, m);
   const double dq = qj - qi;
   const double nabla_o_q_dir[3] = {dx_p[0] * dq / dx_p_norm_2,
 				   dx_p[1] * dq / dx_p_norm_2,
