@@ -383,6 +383,10 @@ __attribute__((always_inline)) INLINE static void chemistry_end_gradient(
  *
  * @param p The particle to act upon.
  * @param cosmo The current cosmological model.
+ * @param with_cosmology Are we running with the cosmology?
+ * @param time Current time of the simulation.
+ * @param dt Time step (in physical units).
+ * @param chem_data The global properties of the chemistry scheme.
  */
 __attribute__((always_inline)) INLINE static void chemistry_end_force(
     struct part* restrict p, const struct cosmology* cosmo,
@@ -451,9 +455,14 @@ __attribute__((always_inline)) INLINE static float chemistry_timestep(
 /**
  * @brief Compute the particle supertimestep proportional to h.
  *
- * In GEAR, we don't have supertimestep.
- *
- * @param p Particle.
+ * @param phys_const The physical constants in internal units.
+ * @param cosmo The current cosmological model.
+ * @param us The internal system of units.
+ * @param hydro_props The properties of the hydro scheme.
+ * @param cd The global properties of the chemistry scheme.
+ * @param p Pointer to the particle data.
+ * @param min_dt_part Minimal timestep for the other physical processes
+ * (hydro, MHD, rt, gravity, ...).
  */
 __attribute__((always_inline)) INLINE static float chemistry_supertimestep(
     const struct phys_const* restrict phys_const,
@@ -859,5 +868,20 @@ chemistry_set_star_supernovae_ejected_yields(
     sp->feedback_data.metal_mass_ejected[i] *= phys_const->const_solar_mass;
   }
 }
+
+/**
+ * @brief Extra chemistry operations to be done during the drift.
+ *
+ * @param p Particle to act upon.
+ * @param xp The extended particle data to act upon.
+ * @param dt_drift The drift time-step for positions.
+ * @param dt_therm The drift time-step for thermal quantities.
+ * @param cosmo The current cosmological model.
+ * @param chem_data The global properties of the chemistry scheme.
+ */
+__attribute__((always_inline)) INLINE static void chemistry_predict_extra(
+    struct part* p, struct xpart* xp, float dt_drift, float dt_therm,
+    const struct cosmology* cosmo,
+    const struct chemistry_global_data* chem_data) {}
 
 #endif /* SWIFT_CHEMISTRY_GEAR_H */
