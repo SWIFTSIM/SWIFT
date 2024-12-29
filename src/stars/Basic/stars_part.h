@@ -102,8 +102,8 @@ struct spart {
   /*! Radiative Transfer data */
   struct rt_spart_data rt_data;
 
-  /*! RT sub-cycling time stepping data */
-  struct rt_timestepping_data rt_time_data;
+  /*! Neighbour RT time bins */
+  timebin_t min_rt_ngb_time_bin;
 
 #ifdef WITH_CSDS
   /* Additional data for the particle csds */
