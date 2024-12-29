@@ -168,8 +168,8 @@ __attribute__((always_inline)) INLINE static void rt_spart_timestep_prepare_feed
  *
  * @param r2 Comoving square distance between the two sparts.
  * @param dx Comoving vector separating both sparts (sp - p).
- * @param hi Comoving smoothing-length of spart i.
- * @param hj Comoving smoothing-length of spart j.
+ * @param hi Comoving smoothing-length of spart
+ * @param hj Comoving smoothing-length of part
  * @param sp The spart.
  * @param p The part (not updated)
  * @param a Current scale factor.
