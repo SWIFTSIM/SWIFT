@@ -46,19 +46,6 @@
 #endif
 
 /**
- * @brief Initialise RT time step data. This struct should be hidden from users,
- * so we do it for all schemes here.
- *
- * @param p The #part.
- */
-__attribute__((always_inline)) INLINE static void rt_first_init_part_timestep_data(
-    struct part *restrict p) {
-
-  p->rt_time_data.min_ngb_time_bin = num_time_bins + 1;
-  p->rt_time_data.time_bin = 0;
-}
-
-/**
  * @brief Prepare the rt *time step* quantities for a *hydro force* calculation.
  *
  * @param p The #part.
@@ -68,6 +55,20 @@ __attribute__((always_inline)) INLINE static void rt_part_timestep_prepare_force
 
   p->rt_time_data.min_ngb_time_bin = num_time_bins + 1;
 }
+
+/**
+ * @brief Initialise RT time step data. This struct should be hidden from users,
+ * so we do it for all schemes here.
+ *
+ * @param p The #part.
+ */
+__attribute__((always_inline)) INLINE static void rt_first_init_part_timestep_data(
+    struct part *restrict p) {
+
+  p->rt_time_data.time_bin = 0;
+  rt_part_timestep_prepare_force(p);
+}
+
 
 /**
  * @brief Gathers neighbor data for RT during *hydro* force loops.
@@ -135,19 +136,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_rt_part_tim
 
 
 /**
- * @brief Initialise RT time step data. This struct should be hidden from users,
- * so we do it for all schemes here.
- *
- * @param sp The #spart.
- */
-__attribute__((always_inline)) INLINE static void rt_first_init_spart_timestep_data(
-    struct spart *restrict sp) {
-
-  sp->rt_time_data.min_ngb_time_bin = num_time_bins + 1;
-  sp->rt_time_data.time_bin = 0;
-}
-
-/**
  * @brief Prepare the rt *time step* quantities for a stars feedback calculation
  *
  * @param sp The #spart.
@@ -155,8 +143,21 @@ __attribute__((always_inline)) INLINE static void rt_first_init_spart_timestep_d
 __attribute__((always_inline)) INLINE static void rt_spart_timestep_prepare_feedback(
     struct spart *restrict sp) {
 
-  sp->rt_time_data.min_ngb_time_bin = num_time_bins + 1;
+  sp->min_rt_ngb_time_bin = num_time_bins + 1;
 }
+
+
+/**
+ * @brief Initialise RT time step data.
+ *
+ * @param sp The #spart.
+ */
+__attribute__((always_inline)) INLINE static void rt_first_init_spart_timestep_data(
+    struct spart *restrict sp) {
+
+  rt_spart_timestep_prepare_feedback(sp);
+}
+
 
 
 /**
@@ -167,7 +168,7 @@ __attribute__((always_inline)) INLINE static void rt_spart_timestep_prepare_feed
  *
  *
  * @param r2 Comoving square distance between the two sparts.
- * @param dx Comoving vector separating both sparts (sp - p).
+ * @param dx Comoving vector separating sparts and part (sp - p).
  * @param hi Comoving smoothing-length of spart
  * @param hj Comoving smoothing-length of part
  * @param sp The spart.
@@ -177,14 +178,13 @@ __attribute__((always_inline)) INLINE static void rt_spart_timestep_prepare_feed
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_rt_spart_timebin(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct spart *restrict sp, const struct spart *restrict p, const float a,
+    struct spart *restrict sp, const struct part *restrict p, const float a,
     const float H) {
 
 #ifndef RT_NONE
   /* Update the minimal time-bin */
   if (p->rt_time_data.time_bin > 0) {
-    sp->rt_time_data.min_ngb_time_bin =
-        min(sp->rt_time_data.min_ngb_time_bin, p->rt_time_data.time_bin);
+    sp->min_rt_ngb_time_bin = min(sp->min_rt_ngb_time_bin, p->rt_time_data.time_bin);
   }
 #endif
 }
