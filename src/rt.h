@@ -50,8 +50,8 @@
  *
  * @param p The #part.
  */
-__attribute__((always_inline)) INLINE static void rt_part_timestep_prepare_force(
-    struct part *restrict p) {
+__attribute__((always_inline)) INLINE static void
+rt_part_timestep_prepare_force(struct part *restrict p) {
 
   p->rt_time_data.min_ngb_time_bin = num_time_bins + 1;
 }
@@ -62,13 +62,12 @@ __attribute__((always_inline)) INLINE static void rt_part_timestep_prepare_force
  *
  * @param p The #part.
  */
-__attribute__((always_inline)) INLINE static void rt_first_init_part_timestep_data(
-    struct part *restrict p) {
+__attribute__((always_inline)) INLINE static void
+rt_first_init_part_timestep_data(struct part *restrict p) {
 
   p->rt_time_data.time_bin = 0;
   rt_part_timestep_prepare_force(p);
 }
-
 
 /**
  * @brief Gathers neighbor data for RT during *hydro* force loops.
@@ -120,10 +119,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_part_timebin(
  * @param a Current scale factor.
  * @param H Current Hubble parameter.
  */
-__attribute__((always_inline)) INLINE static void runner_iact_nonsym_rt_part_timebin(
-    const float r2, const float dx[3], const float hi, const float hj,
-    struct part *restrict pi, const struct part *restrict pj, const float a,
-    const float H) {
+__attribute__((always_inline)) INLINE static void
+runner_iact_nonsym_rt_part_timebin(const float r2, const float dx[3],
+                                   const float hi, const float hj,
+                                   struct part *restrict pi,
+                                   const struct part *restrict pj,
+                                   const float a, const float H) {
 
 #ifndef RT_NONE
   /* Update the minimal time-bin */
@@ -134,31 +135,27 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_rt_part_tim
 #endif
 }
 
-
 /**
  * @brief Prepare the rt *time step* quantities for a stars feedback calculation
  *
  * @param sp The #spart.
  */
-__attribute__((always_inline)) INLINE static void rt_spart_timestep_prepare_feedback(
-    struct spart *restrict sp) {
+__attribute__((always_inline)) INLINE static void
+rt_spart_timestep_prepare_feedback(struct spart *restrict sp) {
 
   sp->min_rt_ngb_time_bin = num_time_bins + 1;
 }
-
 
 /**
  * @brief Initialise RT time step data.
  *
  * @param sp The #spart.
  */
-__attribute__((always_inline)) INLINE static void rt_first_init_spart_timestep_data(
-    struct spart *restrict sp) {
+__attribute__((always_inline)) INLINE static void
+rt_first_init_spart_timestep_data(struct spart *restrict sp) {
 
   rt_spart_timestep_prepare_feedback(sp);
 }
-
-
 
 /**
  * @brief Gathers neighbor data for RT during *hydro* force loops
@@ -176,18 +173,20 @@ __attribute__((always_inline)) INLINE static void rt_first_init_spart_timestep_d
  * @param a Current scale factor.
  * @param H Current Hubble parameter.
  */
-__attribute__((always_inline)) INLINE static void runner_iact_nonsym_rt_spart_timebin(
-    const float r2, const float dx[3], const float hi, const float hj,
-    struct spart *restrict sp, const struct part *restrict p, const float a,
-    const float H) {
+__attribute__((always_inline)) INLINE static void
+runner_iact_nonsym_rt_spart_timebin(const float r2, const float dx[3],
+                                    const float hi, const float hj,
+                                    struct spart *restrict sp,
+                                    const struct part *restrict p,
+                                    const float a, const float H) {
 
 #ifndef RT_NONE
   /* Update the minimal time-bin */
   if (p->rt_time_data.time_bin > 0) {
-    sp->min_rt_ngb_time_bin = min(sp->min_rt_ngb_time_bin, p->rt_time_data.time_bin);
+    sp->min_rt_ngb_time_bin =
+        min(sp->min_rt_ngb_time_bin, p->rt_time_data.time_bin);
   }
 #endif
 }
-
 
 #endif /* SWIFT_RT_H */
