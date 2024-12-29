@@ -121,6 +121,9 @@ struct spart {
   /*! Radiative Transfer data */
   struct rt_spart_data rt_data;
 
+  /*! RT sub-cycling time stepping data */
+  struct rt_timestepping_data rt_time_data;
+
   /*! Particle time bin */
   timebin_t time_bin;
 

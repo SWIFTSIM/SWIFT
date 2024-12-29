@@ -102,6 +102,9 @@ struct spart {
   /*! Radiative Transfer data */
   struct rt_spart_data rt_data;
 
+  /*! RT sub-cycling time stepping data */
+  struct rt_timestepping_data rt_time_data;
+
 #ifdef WITH_CSDS
   /* Additional data for the particle csds */
   struct csds_part_data csds_data;
