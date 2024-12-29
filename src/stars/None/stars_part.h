@@ -58,6 +58,9 @@ struct spart {
   /*! Particle time bin */
   timebin_t time_bin;
 
+  /*! Neighbour RT time bins */
+  timebin_t min_rt_ngb_time_bin;
+
   /*! Tracer structure */
   struct tracers_spart_data tracers_data;
 
