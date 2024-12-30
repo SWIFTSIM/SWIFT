@@ -84,6 +84,14 @@ struct queue {
   int n_packs_pair_left_f;
   int n_packs_pair_left_g;
 
+  int n_packs_self_stolen;   /*Number of density pack tasks left in queue*/
+  int n_packs_self_stolen_f; /*Number of force pack tasks left in queue*/
+  int n_packs_self_stolen_g; /*Number of gradient pack tasks left in queue*/
+
+  int n_packs_pair_stolen;
+  int n_packs_pair_stolen_f;
+  int n_packs_pair_stolen_g;
+
 } __attribute__((aligned(queue_struct_align)));
 
 /* Function prototypes. */

@@ -2743,6 +2743,14 @@ void scheduler_start(struct scheduler *s) {
     s->queues[i].n_packs_pair_left_f = 0;
     s->queues[i].n_packs_self_left_g = 0;
     s->queues[i].n_packs_pair_left_g = 0;
+
+    s->queues[i].n_packs_self_stolen = 0;
+    s->queues[i].n_packs_pair_stolen = 0;
+    s->queues[i].n_packs_self_stolen_f = 0;
+    s->queues[i].n_packs_pair_stolen_f = 0;
+    s->queues[i].n_packs_self_stolen_g = 0;
+    s->queues[i].n_packs_pair_stolen_g = 0;
+
   }
   /* Re-wait the tasks. */
   if (s->active_count > 1000) {
@@ -3384,7 +3392,10 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
 //          }
 
           /* Lucky? */
-          if (res != NULL){
+//          if (res != NULL && res->subtype != task_subtype_gpu_unpack
+//        		  && res->subtype != task_subtype_gpu_unpack_f
+//				  && res->subtype != task_subtype_gpu_unpack_g){
+		  if (res != NULL){
         	/*Get a pointer to our queue for re-use*/
         	struct queue * q = &s->queues[qid];
 //        		  && res->subtype != task_subtype_gpu_pack
@@ -3394,31 +3405,37 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
             if ((res->type == task_type_self)&&
                 res->subtype == task_subtype_gpu_pack) {
               atomic_inc(&q->n_packs_self_left);
+              atomic_inc(&q->n_packs_self_stolen);
               atomic_dec(&q_stl->n_packs_self_left);
             }
             if ((res->type == task_type_self)&&
                 res->subtype == task_subtype_gpu_pack_g) {
               atomic_inc(&q->n_packs_self_left_g);
+              atomic_inc(&q->n_packs_self_stolen_g);
               atomic_dec(&q_stl->n_packs_self_left_g);
             }
             if ((res->type == task_type_self)&&
                 res->subtype == task_subtype_gpu_pack_f) {
               atomic_inc(&q->n_packs_self_left_f);
+              atomic_inc(&q->n_packs_self_stolen_f);
               atomic_dec(&q_stl->n_packs_self_left_f);
             }
             if ((res->type == task_type_pair)&&
                 res->subtype == task_subtype_gpu_pack) {
               atomic_inc(&q->n_packs_pair_left);
+              atomic_inc(&q->n_packs_pair_stolen);
               atomic_dec(&q_stl->n_packs_pair_left);
             }
             if ((res->type == task_type_pair)&&
                 res->subtype == task_subtype_gpu_pack_g) {
               atomic_inc(&q->n_packs_pair_left_g);
+              atomic_inc(&q->n_packs_pair_stolen_g);
               atomic_dec(&q_stl->n_packs_pair_left_g);
             }
             if ((res->type == task_type_pair)&&
                 res->subtype == task_subtype_gpu_pack_f) {
               atomic_inc(&q->n_packs_pair_left_f);
+              atomic_inc(&q->n_packs_pair_stolen_f);
               atomic_dec(&q_stl->n_packs_pair_left_f);
             }
             /* Run with the task */
@@ -3442,6 +3459,9 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
       pthread_mutex_lock(&s->sleep_mutex);
       res = queue_gettask(&s->queues[qid], prev, 1);
       if (res == NULL && s->waiting > 0) {
+    	struct queue qq = s->queues[qid];
+    	message("s->waiting %i self_stolen %i, self_left %i, pair_stolen %i, pair_left %i", s->waiting,
+    			qq.n_packs_self_stolen, qq.n_packs_self_left, qq.n_packs_pair_stolen, qq.n_packs_pair_left);
         pthread_cond_wait(&s->sleep_cond, &s->sleep_mutex);
       }
       pthread_mutex_unlock(&s->sleep_mutex);
