@@ -3066,13 +3066,11 @@ void runner_dopair1_launch_f4_mcpy_Ker_mcpy(
 #ifdef CUDA_DEBUG
     cudaError_t cu_error = cudaPeekAtLastError();  // Get error code
     if (cu_error != cudaSuccess) {
-      fprintf(
-          stderr,
+      error(
           "CUDA error with pair density kernel launch: %s cpuid id is: %i\n "
           "nbx %i nby %i max_parts_i %i max_parts_j %i\n",
           cudaGetErrorString(cu_error), r->cpuid, numBlocks_x, numBlocks_y,
           max_parts_i, max_parts_j);
-      exit(0);
     }
 #endif
   }
