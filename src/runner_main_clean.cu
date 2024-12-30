@@ -983,6 +983,8 @@ void *runner_main2(void *data) {
     sched->nr_packs_pair_forc_done = 0;
     sched->nr_packs_self_grad_done = 0;
     sched->nr_packs_pair_grad_done = 0;
+    int n_cells = 0;
+    int n_w_prts_gtr_target = 0;
     int g100 = 0;
     int l100 = 0;
     int maxcount = 0;
@@ -1067,7 +1069,12 @@ void *runner_main2(void *data) {
 
             /* No pack tasks left in queue, flag that we want to run */
             int launch_leftovers = pack_vars_self_dens->launch_leftovers;
-//            if(sched->queues[r->qid].n_packs_self_left < 1) launch_leftovers = 1;
+            n_cells++;
+            if(ci->hydro.count > 1.5 * np_per_cell){
+            	n_w_prts_gtr_target++;
+            	message("count %i target %i", ci->hydro.count, np_per_cell);
+            }
+//            	error("There's %i parts in a cell when it should be %i max", ci->hydro.count, np_per_cell);
             /*Packed enough tasks let's go*/
             int launch = pack_vars_self_dens->launch;
             /* Do we have enough stuff to run the GPU ? */
@@ -1935,6 +1942,9 @@ void *runner_main2(void *data) {
         t = scheduler_done(sched, t);
       }
     } /* main loop. */
+
+    message("cpu %i packed %i cells with %i containing more parts than target",
+    		r->cpuid, n_cells, n_w_prts_gtr_target);
 
 //    message("Worked on %i supers w more than 100 parts", g100);
       // Stuff for writing debug data to file for validation
