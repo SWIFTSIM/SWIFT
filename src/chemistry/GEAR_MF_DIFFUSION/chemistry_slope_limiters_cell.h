@@ -219,11 +219,11 @@ __attribute__((always_inline)) INLINE static void chemistry_slope_limit_cell(
   chemistry_slope_limit_quantity(gradvz, maxr, p->v[2], vzlim[0], vzlim[1],
                                  N_cond);
   chemistry_slope_limit_quantity(gradvx_tilde, maxr, v_tilde[0],
-                                 vx_tilde_lim[0], vxlim[1], N_cond);
+                                 vx_tilde_lim[0], vx_tilde_lim[1], N_cond);
   chemistry_slope_limit_quantity(gradvy_tilde, maxr, v_tilde[1],
-                                 vy_tilde_lim[0], vylim[1], N_cond);
+                                 vy_tilde_lim[0], vy_tilde_lim[1], N_cond);
   chemistry_slope_limit_quantity(gradvz_tilde, maxr, v_tilde[2],
-                                 vz_tilde_lim[0], vzlim[1], N_cond);
+                                 vz_tilde_lim[0], vz_tilde_lim[1], N_cond);
 
   /* Set the velocity gradient values */
   chd->gradients.v[0][0] = gradvx[0];
