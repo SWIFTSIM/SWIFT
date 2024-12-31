@@ -360,8 +360,10 @@ __attribute__((always_inline)) INLINE static float chemistry_timestep(
     const struct part* restrict p) {
 
   if (chem_data->use_supertimestepping) {
-    return FLT_MAX;
+    /* For supertimestepping, use the advective timestep eq (D1) */
+    return chemistry_compute_CFL_supertimestep(p, chem_data, cosmo);
   } else {
+    /* Without supertimestepping, use the parabolic timestep eq (15) */
     return chemistry_compute_parabolic_timestep(p, chem_data, cosmo);
   }
 }
@@ -386,78 +388,89 @@ __attribute__((always_inline)) INLINE static float chemistry_supertimestep(
     const struct unit_system* restrict us,
     const struct hydro_props* hydro_props,
     const struct chemistry_global_data* cd, struct part* restrict p,
-    float min_dt_part) {
+    const float min_dt_part, const double time_base, const timebin_t max_active_bin) {
 
   struct chemistry_part_data* chd = &p->chemistry_data;
 
   /* Do not use supertimestepping in the fake timestep */
   if (cd->use_supertimestepping && p->time_bin != 0) {
-    float substep = 0.0;
 
-    /* Have we finished substepping? */
-    if (chd->timesteps.current_substep <= cd->N_substeps) {
-      /* What happens if min_dt_part < substep ? Then, we will integrate with
-         min_dt_part and continue the cycle as if we had done the substep */
+    /* If we need to start a new cycle, compute the new explicit timestep */
+    if (chd->timesteps.current_substep == 0) {
+      /* Get the explicit timestep from eq (15) */
+      chd->timesteps.explicit_timestep = chemistry_compute_parabolic_timestep(p, cd, cosmo);
+    }
 
-      /* Get the next substep */
-      substep =
-          chemistry_compute_subtimestep(p, cd, chd->timesteps.current_substep);
+    /* Compute the current substep */
+    double substep = chemistry_compute_subtimestep(p, cd, chd->timesteps.current_substep+1);
+    double timestep_to_use = substep;
 
-      /* Then, increment the current_substep */
-      if (substep > 0.0) ++chd->timesteps.current_substep;
-    } else {
-      const float parabolic_explicit_timestep =
-          chemistry_compute_parabolic_timestep(p, cd, cosmo);
+    if (min_dt_part <= substep || chd->timesteps.current_substep > 0) {
+      /* if(dt <= substep): other constraints beat our substep, so it doesn't matter: iterate */
+      ++chd->timesteps.current_substep;
 
-      /* Get the supertimestep from CFL condition */
-      float super_timestep = chemistry_compute_CFL_supertimestep(p, cd, cosmo);
-
-      /* If the hydro timestep is smaller than the parabolic timestep, then
-         don't start supertimestepping. Do parabolic timestep instead.
-         Same if the CFL timestep is smaller than the parabolic timestep. */
-      if (min_dt_part <= parabolic_explicit_timestep ||
-          super_timestep <= parabolic_explicit_timestep) {
-        /* message("hydro_timestep = %e, supertimestep = %e, parabolic_timestep
-         * = %e", min_dt_part, super_timestep, parabolic_explicit_timestep); */
-        return parabolic_explicit_timestep;
+      /* Nncrement substep and loop if it cycles fully */
+      if (chd->timesteps.current_substep >= cd->N_substeps) {
+	chd->timesteps.current_substep = 0;
       }
-      /* Now we have min_dt_part and super_timestep > parabolic_time_step. So,
-         it is worth doing supertimestepping. */
-
-      /* Update the explicit timestep to correspond to the chosen supertimestep
-       */
-      const float N = cd->N_substeps;
-      const float nu = cd->nu;
-      const float nu_plus_term = pow(1 + sqrtf(nu), 2.0 * N);
-      const float nu_minus_term = pow(1 - sqrtf(nu), 2.0 * N);
-      const float factor = N / sqrt(nu) * (nu_plus_term - nu_minus_term) /
-                           (nu_plus_term + nu_minus_term);
-      const float new_explicit_timestep = super_timestep / factor;
-
-      /* Take the biggest explicit timestep. We don't want to have smaller
-         supertimesteps than necessary. */
-      chd->timesteps.explicit_timestep =
-          max(parabolic_explicit_timestep, new_explicit_timestep);
-
-      /* Reset the current_substep to 1 */
-      chd->timesteps.current_substep = 1;
-
-      /* Compute the current substep */
-      substep =
-          chemistry_compute_subtimestep(p, cd, chd->timesteps.current_substep);
-
-      /* Increment the current_substep */
-      if (substep > 0.0) ++chd->timesteps.current_substep;
-    }
-
-    /* Do not return a 0 timestep... */
-    if (substep != 0.0) {
-      return substep;
     } else {
-      /* Reset the supertimestepping */
-      chd->timesteps.current_substep = cd->N_substeps + 1;
-      return chemistry_compute_parabolic_timestep(p, cd, cosmo);
+      /* Now, j=0 and dt > substep [the next super-step matters for starting a
+	 new cycle]: think about whether to start */
+
+      double dt_pred = substep*cosmo->a;
+
+      /* Check that the substep is within the engine's min and max timesteps */
+      integertime_t ti_min = max_nr_timesteps;
+      integertime_t ti_step = (integertime_t)(dt_pred/time_base);
+
+      /* Check against valid limits */
+      if(ti_step <= 1) {
+	ti_step = 2;
+      }
+      if(ti_step >= max_nr_timesteps) {
+	ti_step = max_nr_timesteps - 1;
+      }
+      while(ti_min > ti_step) {
+	ti_min >>= 1; /* make it a power 2 subdivision */
+      }
+      ti_step = ti_min;
+
+      /* Now turn it into a timebin */
+      int bin = get_time_bin(ti_step);
+      int binold = p->time_bin;
+
+      /* If the timestep wants to increase: check whether it wants to move into
+	 a valid timebin */
+      if(bin > binold){
+	int is_active = (bin <= max_active_bin);
+	while(!is_active && bin > binold) {
+	  bin--;
+	  is_active = (bin <= max_active_bin);
+	} /* Make sure the new step is synchronized */
+      }
+
+      /* Now convert this back to a physical timestep */
+      double dt_allowed = get_timestep(bin, time_base)/cosmo->a;
+
+      if(substep > 1.5*dt_allowed) {
+	/* the next allowed timestep [because of synchronization] is not big
+	   enough to fit the 'big step' part of the super-stepping cycle. rather than
+	   'waste' our timestep which will knock us into a lower bin and defeat
+	   the super-stepping, we simply take the -safe- explicit timestep and 
+	   wait until the desired time-bin synchs up, so we can super-step  */
+	// use the safe [normal explicit] timestep and -do not- cycle j //
+	timestep_to_use = chemistry_compute_parabolic_timestep(p, cd, cosmo); 
+      } else {
+	/* We can jump up in bins to use our super-step => begin the cycle */
+	++chd->timesteps.current_substep;
+
+	/* Increment substep and loop if it cycles fully */
+	if (chd->timesteps.current_substep >= cd->N_substeps) {
+	  chd->timesteps.current_substep = 0;
+	}
+      }
     }
+    return timestep_to_use;
   } else {
     return FLT_MAX;
   }
@@ -723,9 +736,9 @@ __attribute__((always_inline)) INLINE static void chemistry_first_init_part(
   p->geometry.wcorr = 1.0f;
 
   /* Supertimestepping ----*/
-  /* Set the substep to N_substep +1 so that we can compute everything in
-     timestep for the first time.  */
-  p->chemistry_data.timesteps.current_substep = cd->N_substeps + 1;
+  /* Set the substep to 0 so that we can compute everything in timestep for the
+     first time. */
+  p->chemistry_data.timesteps.current_substep = 0;
 }
 
 /**
