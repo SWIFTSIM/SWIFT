@@ -439,8 +439,8 @@ runner_iact_chemistry_fluxes_common(
     chemistry_compute_flux(dx, pi, pj, Ui, Uj, Wi, Wj, n_unit, a2 * Anorm, m,
                            chem_data, cosmo, &totflux);
 
-    /* Limit the mass flux to 1/4 of the total mass. This avoids ending with
-       more metal mass than the gas_mass. */
+    /* Limit the mass flux to 1/4 of the total mass. This avoids exchanging too
+       much metal mass during a timestep */
     /* if (fabs(totflux * mindt) > 0.0) { */
     /*   const double mi = hydro_get_mass(pi); */
     /*   const double mj = hydro_get_mass(pj); */
