@@ -113,8 +113,8 @@ struct chemistry_part_data {
 
   /* Cell-wise limiter to avoid creating new min or max */
   struct {
-    /*! Extreme values of the fluid metal mass fraction among the neighbours. */
-    double Z[GEAR_CHEMISTRY_ELEMENT_COUNT][2];
+    /*! Extreme values of the fluid metal density among the neighbours. */
+    double rho_Z[GEAR_CHEMISTRY_ELEMENT_COUNT][2];
 
     /*! Extreme values of the fluid velocity among the neighbours. */
     float v[3][2];

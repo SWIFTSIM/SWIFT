@@ -41,8 +41,8 @@ __attribute__((always_inline)) INLINE static void
 chemistry_slope_limit_cell_init(struct part* p) {
 
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
-    p->chemistry_data.limiter.Z[i][0] = FLT_MAX;
-    p->chemistry_data.limiter.Z[i][1] = -FLT_MAX;
+    p->chemistry_data.limiter.rho_Z[i][0] = FLT_MAX;
+    p->chemistry_data.limiter.rho_Z[i][1] = -FLT_MAX;
   }
 
   p->chemistry_data.limiter.v[0][0] = FLT_MAX;
@@ -79,10 +79,10 @@ chemistry_slope_limit_cell_collect(struct part* pi, struct part* pj, float r) {
   /* Basic slope limiter: collect the maximal and the minimal value for the
    * primitive variables among the ngbs */
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
-    chi->limiter.Z[i][0] =
-        min(chemistry_get_comoving_metal_density(pj, i), chi->limiter.Z[i][0]);
-    chi->limiter.Z[i][1] =
-        max(chemistry_get_comoving_metal_density(pj, i), chi->limiter.Z[i][1]);
+    chi->limiter.rho_Z[i][0] =
+        min(chemistry_get_comoving_metal_density(pj, i), chi->limiter.rho_Z[i][0]);
+    chi->limiter.rho_Z[i][1] =
+        max(chemistry_get_comoving_metal_density(pj, i), chi->limiter.rho_Z[i][1]);
   }
 
   chi->limiter.v[0][0] = min(pj->v[0], chi->limiter.v[0][0]);
@@ -174,12 +174,15 @@ __attribute__((always_inline)) INLINE static void chemistry_slope_limit_cell(
                             chd->filtered.rho_v[2] / chd->filtered.rho};
 
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
+    /* Notice that we are slope-limiting grad Z with the metal density. This
+    weird behaviour ensures proper metal mass conservation. Using metal mass
+    fraction does not... */
     chemistry_slope_limit_quantity(
         /*gradient=*/ chd->gradients.Z[i],
         /*maxr=    */ maxr,
         /*value=   */ chemistry_get_comoving_metal_density(p, i),
-        /*valmin=  */ chd->limiter.Z[i][0],
-        /*valmax=  */ chd->limiter.Z[i][1],
+        /*valmin=  */ chd->limiter.rho_Z[i][0],
+        /*valmax=  */ chd->limiter.rho_Z[i][1],
         /*condition_number*/ N_cond);
   }
 
