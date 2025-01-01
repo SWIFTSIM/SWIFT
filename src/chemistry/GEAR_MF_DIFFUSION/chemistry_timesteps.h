@@ -73,10 +73,10 @@ chemistry_compute_parabolic_timestep(
   norm_q = sqrtf(norm_q);  // Physical
   norm_nabla_q = sqrtf(norm_nabla_q) * cosmo->a_inv;
 
-  /* If the norm of q (metal density = 0), then use the following
-     expression. Notice that if norm q = 0, the true timestep muste be 0... */
+  /* If ||q|| is 0 (metal density = 0), then there is no metal to diffuse.
+     Hence, no timestep limit is needed. */
   if (norm_q == 0) {
-    return delta_x * delta_x / norm_matrix_K * norm_U_over_norm_q;
+    return FLT_MAX;
   }
 
   /* Compute the expression in the square bracket in eq (15). Notice that I
@@ -153,12 +153,15 @@ chemistry_compute_CFL_supertimestep(const struct part *restrict p,
   norm_nabla_q = sqrtf(norm_nabla_q) * cosmo->a_inv;
 
   /* Prevent pathological cases */
-  if (norm_matrix_K == 0.0 || norm_nabla_q == 0.0) {
+  if (norm_matrix_K == 0.0 || norm_nabla_q == 0.0 || norm_U == 0.0) {
+    /* The firt two cases are derived from the equation. The last case comes
+    from a physical argument: if there is no metal, there is no need to limit
+    the timestep */
     return FLT_MAX;
   }
 
   return cd->C_CFL_chemistry * delta_x * norm_U /
-         (norm_matrix_K * norm_nabla_q);
+    (norm_matrix_K * norm_nabla_q) ;
 }
 
 /**
