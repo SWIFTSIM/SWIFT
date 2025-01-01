@@ -429,23 +429,21 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
     const float dx[3], const float r, const float xij_i[3], double *Ui,
     double *Uj) {
 
-  *Ui = chemistry_get_comoving_diffusion_state_vector(pi, metal);
-  *Uj = chemistry_get_comoving_diffusion_state_vector(pj, metal);
+  const double mi = hydro_get_mass(pi);
+  const double mj = hydro_get_mass(pj);
+
+  *Ui = chemistry_get_metal_mass_fraction(pi, metal);
+  *Uj = chemistry_get_metal_mass_fraction(pj, metal);
   /* No need to check unphysical state here: they haven't been touched since
      the call to chemistry_end_density() */
 
-  double m_Zi_not_extrapolated = *Ui * pi->geometry.volume;
-  double m_Zj_not_extrapolated = *Uj * pj->geometry.volume;
+  double m_Zi_not_extrapolated = *Ui * mi;
+  double m_Zj_not_extrapolated = *Uj * mj;
 
-  /* Get grad U = grad (rho*Z) = Z*grad_rho + rho*grad_Z */
-  const float Delta_rho = max(pi->rho, pj->rho) - min(pi->rho, pj->rho);
-  const float grad_rho[3] = {Delta_rho * dx[0] / (r * r),
-                             Delta_rho * dx[1] / (r * r),
-                             Delta_rho * dx[2] / (r * r)};
   double dF_i[3];
   double dF_j[3];
-  chemistry_get_metal_mass_density_gradients(pi, metal, grad_rho, dF_i);
-  chemistry_get_metal_mass_density_gradients(pj, metal, grad_rho, dF_j);
+  chemistry_get_metal_mass_fraction_gradients(pi, metal, dF_i);
+  chemistry_get_metal_mass_fraction_gradients(pj, metal, dF_j);
 
   /* Compute interface position (relative to pj, since we don't need the actual
    * position) eqn. (8)
@@ -462,12 +460,14 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
   *Ui += dUi;
   *Uj += dUj;
 
+  /* Convert to density */
+  *Ui *= mi/pi->geometry.volume;
+  *Uj *= mj/pj->geometry.volume;
+
   /* Check we have physical masses and that we are not overshooting the
      particle's mass */
   double m_Zi = *Ui * pi->geometry.volume; /* extrapolated masses */
   double m_Zj = *Uj * pj->geometry.volume;
-  const double mi = hydro_get_mass(pi);
-  const double mj = hydro_get_mass(pj);
 
   chemistry_check_unphysical_state(&m_Zi, m_Zi_not_extrapolated, mi,
                                    /*callloc=*/1, /*element*/ metal);

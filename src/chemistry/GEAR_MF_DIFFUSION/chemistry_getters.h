@@ -63,20 +63,6 @@ chemistry_get_metal_mass_fraction(const struct part* restrict p, int metal) {
 }
 
 /**
- * @brief Get a 1-element state vector U containing the metal mass density (in
- * comoving units) of a specific metal group.
- *
- * @param p Particle.
- * @param metal Index of metal specie
- */
-__attribute__((always_inline)) INLINE static double
-chemistry_get_comoving_diffusion_state_vector(const struct part* restrict p,
-                                              int metal) {
-  /* The state vector is 1D and contains the metal density. */
-  return chemistry_get_comoving_metal_density(p, metal);
-}
-
-/**
  * @brief Get particle density.
  *
  * This function must be used for sensitive operations like computing
