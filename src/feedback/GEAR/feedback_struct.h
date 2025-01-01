@@ -33,6 +33,9 @@ struct feedback_xpart_data {
   /*! mass received from supernovae */
   float delta_mass;
 
+  /*! Metal mass received from supernovae */
+  double delta_metal_mass[GEAR_CHEMISTRY_ELEMENT_COUNT];
+
   /*! specific energy received from supernovae */
   float delta_u;
 
