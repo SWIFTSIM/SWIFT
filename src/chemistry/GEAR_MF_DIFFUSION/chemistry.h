@@ -560,10 +560,11 @@ __attribute__((always_inline)) INLINE static void chemistry_end_density(
  * method, in which case no gradients are used.
  *
  * @param p The particle to act upon.
+ * @param cd The global properties of the chemistry scheme.
  */
 __attribute__((always_inline)) INLINE static void chemistry_end_gradient(
-    struct part* p) {
-  chemistry_gradients_finalise(p);
+  struct part* p, const struct chemistry_global_data* cd) {
+  chemistry_gradients_finalise(p, cd);
 }
 
 /**

@@ -153,9 +153,10 @@ chemistry_slope_limit_quantity(double gradient[3], const float maxr,
  * This is done in chemistry_gradients_finalise().
  *
  * @param p Particle.
+ * @param cd The global properties of the chemistry scheme.
  */
 __attribute__((always_inline)) INLINE static void chemistry_slope_limit_cell(
-    struct part* p) {
+   struct part* p, const struct chemistry_global_data* cd) {
 
   struct chemistry_part_data* chd = &p->chemistry_data;
   const float N_cond = chd->geometry_condition_number;
@@ -173,18 +174,31 @@ __attribute__((always_inline)) INLINE static void chemistry_slope_limit_cell(
                             chd->filtered.rho_v[1] / chd->filtered.rho,
                             chd->filtered.rho_v[2] / chd->filtered.rho};
 
+  const double rho = hydro_get_comoving_density(p);
+  double Z_min, Z_max, Z;
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
-    /* Notice that we are slope-limiting grad Z with the metal density. This
-    weird behaviour ensures proper metal mass conservation. Using metal mass
-    fraction does not... */
+
+    if (cd->diffusion_mode == isotropic_constant) {
+      /* Notice that we are slope-limiting grad Z with the metal density. This
+	 weird behaviour ensures proper metal mass conservation. Using metal mass
+	 fraction does not... There is probably a missing density for this case. */
+      Z_min = chd->limiter.rho_Z[i][0];
+      Z_max = chd->limiter.rho_Z[i][1];
+      Z = chemistry_get_comoving_metal_density(p, i);
+    } else {
+      Z_min = chd->limiter.rho_Z[i][0]/rho;
+      Z_max = chd->limiter.rho_Z[i][1]/rho;
+      Z = chemistry_get_comoving_metal_density(p, i)/rho;
+    }
     chemistry_slope_limit_quantity(
         /*gradient=*/ chd->gradients.Z[i],
         /*maxr=    */ maxr,
-        /*value=   */ chemistry_get_comoving_metal_density(p, i),
-        /*valmin=  */ chd->limiter.rho_Z[i][0],
-        /*valmax=  */ chd->limiter.rho_Z[i][1],
+        /*value=   */ Z,
+        /*valmin=  */ Z_min,
+        /*valmax=  */ Z_max,
         /*condition_number*/ N_cond);
   }
+
 
   /* Use doubles sice chemistry_slope_limit_quantity() accepts double arrays. */
   double gradvx[3], gradvy[3], gradvz[3], gradvx_tilde[3], gradvy_tilde[3],

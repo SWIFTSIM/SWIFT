@@ -349,9 +349,10 @@ chemistry_gradients_nonsym_collect(float r2, const float *dx, float hi,
  * @brief Finalize the gradient variables after all data have been collected
  *
  * @param p Particle.
+ * @param cd The global properties of the chemistry scheme.
  */
 __attribute__((always_inline)) INLINE static void chemistry_gradients_finalise(
-    struct part *p) {
+  struct part *p, const struct chemistry_global_data* cd) {
 
   /* add kernel normalization to gradients */
   const float h = p->h;
@@ -370,7 +371,7 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_finalise(
   chemistry_part_normalise_gradients(p, norm);
 
   /* Limit the cell gradients */
-  chemistry_slope_limit_cell(p);
+  chemistry_slope_limit_cell(p, cd);
 }
 
 /**
