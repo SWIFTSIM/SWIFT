@@ -361,7 +361,7 @@ __attribute__((always_inline)) INLINE static float chemistry_timestep(
 
   if (chem_data->use_supertimestepping) {
     /* For supertimestepping, use the advective timestep eq (D1) */
-    return chemistry_compute_CFL_supertimestep(p, chem_data, cosmo);
+    return chemistry_compute_advective_supertimestep(p, chem_data, cosmo);
   } else {
     /* Without supertimestepping, use the parabolic timestep eq (15) */
     return chemistry_compute_parabolic_timestep(p, chem_data, cosmo);
@@ -388,7 +388,7 @@ __attribute__((always_inline)) INLINE static float chemistry_supertimestep(
     const struct unit_system* restrict us,
     const struct hydro_props* hydro_props,
     const struct chemistry_global_data* cd, struct part* restrict p,
-    const float min_dt_part, const double time_base, const timebin_t max_active_bin) {
+    const float dt_part, const double time_base, const double ti_current) {
 
   struct chemistry_part_data* chd = &p->chemistry_data;
 
@@ -405,60 +405,40 @@ __attribute__((always_inline)) INLINE static float chemistry_supertimestep(
     double substep = chemistry_compute_subtimestep(p, cd, chd->timesteps.current_substep+1);
     double timestep_to_use = substep;
 
-    if (min_dt_part <= substep || chd->timesteps.current_substep > 0) {
-      /* if(dt <= substep): other constraints beat our substep, so it doesn't matter: iterate */
+    if (dt_part <= substep || chd->timesteps.current_substep > 0) {
+      /* If the part timestep is smaller, other constraints beat the
+	 substep. We can safely iterate the substep.
+	 If we are in the middle of a supertimestepping cycle, iterate. */
       ++chd->timesteps.current_substep;
 
-      /* Nncrement substep and loop if it cycles fully */
+      /* Increment substep and loop if it cycles fully */
       if (chd->timesteps.current_substep >= cd->N_substeps) {
 	chd->timesteps.current_substep = 0;
       }
     } else {
-      /* Now, j=0 and dt > substep [the next super-step matters for starting a
-	 new cycle]: think about whether to start */
+      /* If we are at the beginning of a new cycle (current_substep = 0) and
+      the next substep matters for starting a new cycle (dt_part > substep),
+      think whether to start a cycle */
 
-      double dt_pred = substep*cosmo->a;
+      /* Apply cosmology correction (This is 1 if non-cosmological) */
+      const double dt_pred = substep*cosmo->time_step_factor;
 
-      /* Check that the substep is within the engine's min and max timesteps */
-      integertime_t ti_min = max_nr_timesteps;
-      integertime_t ti_step = (integertime_t)(dt_pred/time_base);
-
-      /* Check against valid limits */
-      if(ti_step <= 1) {
-	ti_step = 2;
-      }
-      if(ti_step >= max_nr_timesteps) {
-	ti_step = max_nr_timesteps - 1;
-      }
-      while(ti_min > ti_step) {
-	ti_min >>= 1; /* make it a power 2 subdivision */
-      }
-      ti_step = ti_min;
-
-      /* Now turn it into a timebin */
-      int bin = get_time_bin(ti_step);
-      int binold = p->time_bin;
-
-      /* If the timestep wants to increase: check whether it wants to move into
-	 a valid timebin */
-      if(bin > binold){
-	int is_active = (bin <= max_active_bin);
-	while(!is_active && bin > binold) {
-	  bin--;
-	  is_active = (bin <= max_active_bin);
-	} /* Make sure the new step is synchronized */
-      }
+      /* Convert to integer time.
+	 Note: This function is similar to Gizmo code checking for synchronization. */
+      const integertime_t dti_allowed = chemistry_make_integer_timestep(dt_pred,
+                                        p->time_bin, p->limiter_data.min_ngb_time_bin,
+					ti_current, 1.0/time_base);
 
       /* Now convert this back to a physical timestep */
-      double dt_allowed = get_timestep(bin, time_base)/cosmo->a;
+      const timebin_t bin_allowed = get_time_bin(dti_allowed);
+      const double dt_allowed = get_timestep(bin_allowed, time_base) / cosmo->time_step_factor;
 
       if(substep > 1.5*dt_allowed) {
-	/* the next allowed timestep [because of synchronization] is not big
-	   enough to fit the 'big step' part of the super-stepping cycle. rather than
-	   'waste' our timestep which will knock us into a lower bin and defeat
-	   the super-stepping, we simply take the -safe- explicit timestep and 
-	   wait until the desired time-bin synchs up, so we can super-step  */
-	// use the safe [normal explicit] timestep and -do not- cycle j //
+	/* The next allowed timestep is too small to fit the big step part of
+	the supertimestepping cycle. Do not waste our timestep (which will put
+	us into a lower bin and defeat the supertimestep purpose of using bigger
+	timesteps) and use the safe parabolic timestep until the next desired
+	time-bin synchs up */
 	timestep_to_use = chemistry_compute_parabolic_timestep(p, cd, cosmo); 
       } else {
 	/* We can jump up in bins to use our super-step => begin the cycle */
@@ -468,10 +448,10 @@ __attribute__((always_inline)) INLINE static float chemistry_supertimestep(
 	if (chd->timesteps.current_substep >= cd->N_substeps) {
 	  chd->timesteps.current_substep = 0;
 	}
-      }
+      } /* substep > 1.5*dt_allowed */
     }
     return timestep_to_use;
-  } else {
+  } else { /* No supertimestepping */
     return FLT_MAX;
   }
 }

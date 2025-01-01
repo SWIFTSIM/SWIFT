@@ -119,9 +119,9 @@ __attribute__((always_inline)) INLINE static float chemistry_get_supertimestep(
  * @param cosmo The current cosmological model.
  */
 __attribute__((always_inline)) INLINE static float
-chemistry_compute_CFL_supertimestep(const struct part *restrict p,
-                                    const struct chemistry_global_data *cd,
-                                    const struct cosmology *cosmo) {
+chemistry_compute_advective_supertimestep(const struct part *restrict p,
+					  const struct chemistry_global_data *cd,
+					  const struct cosmology *cosmo) {
 
   const struct chemistry_part_data *chd = &p->chemistry_data;
 
@@ -176,10 +176,67 @@ chemistry_compute_subtimestep(const struct part *restrict p,
                               const struct chemistry_global_data *cd,
                               int current_substep_number) {
   const struct chemistry_part_data *chd = &p->chemistry_data;
+
+  /* TODO: Check that the division is not an integer division */
   const float cos_argument =
-      M_PI * (2.0 * current_substep_number - 1.0) / (2.0 * cd->N_substeps);
+    M_PI * (2.0 * current_substep_number - 1.0) / (2.0 * cd->N_substeps);
   const float expression = (1 + cd->nu) - (1 - cd->nu) * cos(cos_argument);
   return chd->timesteps.explicit_timestep / expression;
+}
+
+/**
+ * @brief Compute a valid integer time-step form a given time-step
+ *
+ * TODO: This is a copy/paste from make_integer_timestep. This is bad. Improve it.
+ *
+ * We consider the minimal time-bin of any neighbours and prevent particles
+ * to differ from it by a fixed constant `time_bin_neighbour_max_delta_bin`.
+ *
+ * If min_ngb_bin is set to `num_time_bins`, then no limit from the neighbours
+ * is imposed.
+ *
+ * @param new_dt The time-step to convert.
+ * @param old_bin The old time bin.
+ * @param min_ngb_bin Minimal time-bin of any neighbour of this particle.
+ * @param ti_current The current time on the integer time-line.
+ * @param time_base_inv The inverse of the system's minimal time-step.
+ */
+__attribute__((always_inline, const)) INLINE static integertime_t
+chemistry_make_integer_timestep(const float new_dt, const timebin_t old_bin,
+                      const timebin_t min_ngb_bin,
+                      const integertime_t ti_current,
+                      const double time_base_inv) {
+
+  /* Convert to integer time */
+  integertime_t new_dti = (integertime_t)(new_dt * time_base_inv);
+
+  /* Are we allowed to use this bin given the neighbours? */
+  timebin_t new_bin = get_time_bin(new_dti);
+  new_bin = min(new_bin, min_ngb_bin + time_bin_neighbour_max_delta_bin);
+  new_dti = get_integer_timestep(new_bin);
+
+  /* Current time-step */
+  const integertime_t current_dti = get_integer_timestep(old_bin);
+  const integertime_t ti_end = get_integer_time_end(ti_current, old_bin);
+
+  /* Limit timestep increase */
+  if (old_bin > 0) new_dti = min(new_dti, 2 * current_dti);
+
+  /* Put this timestep on the time line */
+  integertime_t dti_timeline = max_nr_timesteps;
+  while (new_dti < dti_timeline) dti_timeline /= ((integertime_t)2);
+  new_dti = dti_timeline;
+
+  /* Make sure we are allowed to increase the timestep size */
+  if (new_dti > current_dti) {
+    if ((max_nr_timesteps - ti_end) % new_dti > 0) new_dti = current_dti;
+  }
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (new_dti == 0) error("Computed an integer time-step of size 0");
+#endif
+
+  return new_dti;
 }
 
 #endif /* SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_TIMESTEPS_H  */
