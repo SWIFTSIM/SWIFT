@@ -65,5 +65,4 @@ fi
 python3 compare_num_to_sol.py snap/snapshot_*0.hdf5 --x_min 0 --x_max 1 --y_min 0 --y_max 1
 python3 metal_profile.py snap/snapshot_*0.hdf5 --n_bins 30 --r_min 1e-1 --r_max 1.1
 python3 metal_projection.py snap/snapshot_*0.hdf5 --log
-
-#TODO: Call plot_metal_mass_conservation_in_time.py
+python3 plot_metal_mass_conservation_in_time.py snap/*.hdf5

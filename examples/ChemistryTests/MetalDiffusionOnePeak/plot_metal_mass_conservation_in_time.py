@@ -18,14 +18,13 @@ from tqdm import tqdm
 
 # %%
 def parse_option():
-    description = """"
-Plot the Fe mass
+    description = """
+Plot the Fe mass time evolution. This script ensure metal mass conservation in idealized tests.
     """
     epilog = """
 Examples:
 --------
-python3 metal_projection.py snap/snapshot_0000.hdf5 --n_px 2048
-python3 metal_projection.py snap/snapshot_*.hdf5 --log
+python3 plot_metal_mass_conservation_in_time.py snap/*.hdf5 
 """
     parser = argparse.ArgumentParser(description=description, epilog=epilog)
 
@@ -48,7 +47,6 @@ python3 metal_projection.py snap/snapshot_*.hdf5 --log
     return args, files
 
 #%%
-
 
 args, files = parse_option()
 log = args.log
@@ -85,4 +83,3 @@ ax.plot(time, m_fe)
 plt.savefig("metal_mass_evolution.png", format='png',
             bbox_inches='tight', dpi=300)
 plt.close()
-
