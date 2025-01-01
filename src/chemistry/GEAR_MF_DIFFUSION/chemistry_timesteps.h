@@ -169,7 +169,7 @@ chemistry_compute_advective_supertimestep(const struct part *restrict p,
  *
  * @param p Particle.
  * @param chem_data The global properties of the chemistry scheme.
- * @param curretn_substep_number Current substep number.
+ * @param current_substep_number Current substep number.
  */
 __attribute__((always_inline)) INLINE static float
 chemistry_compute_subtimestep(const struct part *restrict p,

@@ -328,7 +328,7 @@ static INLINE void chemistry_init_backend(struct swift_params* parameter_file,
 
   /***************************************************************************/
   /* Print the parameters we use */
-  if (engine_rank == 1) {
+  if (engine_rank == 0) {
     message("Diffusion mode:             %u", data->diffusion_mode);
     message("Diffusion coefficient:      %e", data->diffusion_coefficient);
     message("HLL Riemann solver psi:     %e", data->hll_riemann_solver_psi);
@@ -369,9 +369,8 @@ __attribute__((always_inline)) INLINE static float chemistry_timestep(
 }
 
 /**
- * @brief Compute the particle supertimestep proportional to h.
- *
- * This is equation (10) in Alexiades, Amiez and Gremaud (1996).
+ * @brief Do supertimestepping following Alexiades, Amiez and Gremaud (1996)
+ * and Hopkins (2017) modifications for individual timestep scheme.
  *
  * @param phys_const The physical constants in internal units.
  * @param cosmo The current cosmological model.
@@ -379,8 +378,10 @@ __attribute__((always_inline)) INLINE static float chemistry_timestep(
  * @param hydro_props The properties of the hydro scheme.
  * @param cd The global properties of the chemistry scheme.
  * @param p Pointer to the particle data.
- * @param min_dt_part Minimal timestep for the other physical processes
- * (hydro, MHD, rt, gravity, ...).
+ * @param dt_part Minimal timestep for the other physical processes (hydro,
+ * MHD, rt, gravity, ...).
+ * @param time_base The system's minimal time-step.
+ * @param ti_current The current time on the integer time-line.
  */
 __attribute__((always_inline)) INLINE static float chemistry_supertimestep(
     const struct phys_const* restrict phys_const,
