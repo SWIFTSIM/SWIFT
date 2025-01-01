@@ -374,9 +374,10 @@ __attribute__((always_inline)) INLINE static void chemistry_end_density(
  * Nothing to do here.
  *
  * @param p The particle to act upon.
+ * @param cd The global properties of the chemistry scheme.
  */
 __attribute__((always_inline)) INLINE static void chemistry_end_gradient(
-    struct part* p) {}
+    struct part* p, const struct chemistry_global_data* cd) {}
 
 /**
  * @brief Updates to the chemistry data after the hydro force loop.
@@ -453,7 +454,7 @@ __attribute__((always_inline)) INLINE static float chemistry_timestep(
 }
 
 /**
- * @brief Compute the particle supertimestep proportional to h.
+ * @brief Do supertimestepping.
  *
  * @param phys_const The physical constants in internal units.
  * @param cosmo The current cosmological model.
@@ -461,8 +462,10 @@ __attribute__((always_inline)) INLINE static float chemistry_timestep(
  * @param hydro_props The properties of the hydro scheme.
  * @param cd The global properties of the chemistry scheme.
  * @param p Pointer to the particle data.
- * @param min_dt_part Minimal timestep for the other physical processes
- * (hydro, MHD, rt, gravity, ...).
+ * @param dt_part Minimal timestep for the other physical processes (hydro,
+ * MHD, rt, gravity, ...).
+ * @param time_base The system's minimal time-step.
+ * @param ti_current The current time on the integer time-line.
  */
 __attribute__((always_inline)) INLINE static float chemistry_supertimestep(
     const struct phys_const* restrict phys_const,
@@ -470,7 +473,7 @@ __attribute__((always_inline)) INLINE static float chemistry_supertimestep(
     const struct unit_system* restrict us,
     const struct hydro_props* hydro_props,
     const struct chemistry_global_data* cd, struct part* restrict p,
-    float min_dt_part) {
+    const float dt_part, const double time_base, const double ti_current) {
   return FLT_MAX;
 }
 
