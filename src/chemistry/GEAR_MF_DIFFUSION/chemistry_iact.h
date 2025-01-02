@@ -419,15 +419,15 @@ runner_iact_chemistry_fluxes_common(
   Wj[3] /= cosmo->a;
   Wj[4] *= cosmo->a_factor_pressure;
 
-  /* Helper variable */
-  const float a2 = cosmo->a * cosmo->a;
-
-  /* Compute the gas mass available in the particles. */
-  const double mi = hydro_get_mass(pi);
-  const double mj = hydro_get_mass(pj);
-
   /*****************************************/
   /* Now solve the Riemann problem for each metal specie */
+  /* Helper variable */
+  const float a2 = cosmo->a * cosmo->a;
+  double totflux[GEAR_CHEMISTRY_ELEMENT_COUNT];
+  double norm2_totflux = 0.0;
+  double m_Z_i = 0.0;
+  double m_Z_j = 0.0;
+
   for (int m = 0; m < GEAR_CHEMISTRY_ELEMENT_COUNT; m++) {
 
     /* Predict the diffusion state at the interface to compute fluxes */
@@ -439,22 +439,36 @@ runner_iact_chemistry_fluxes_common(
     Uj *= cosmo->a3_inv;
 
     /* Solve the 1D Riemann problem at the interface A_ij _physical units_ */
-    double totflux;
     chemistry_compute_flux(dx, pi, pj, Ui, Uj, Wi, Wj, n_unit, a2 * Anorm, m,
-                           chem_data, cosmo, &totflux);
+                           chem_data, cosmo, &totflux[m]);
+    norm2_totflux += totflux[m]*totflux[m];
 
-    /* Limit the mass flux to 1/4 of the total mass. This avoids exchanging too
-       much metal mass during a timestep */
-    if (fabs(totflux * mindt) > 0.0) {
-      const double Zi = chemistry_get_metal_mass_fraction(pi, m);
-      const double Zj = chemistry_get_metal_mass_fraction(pj, m);
-      const double min_m_Z = min(mi, mj) * fabs(Zi - Zj);
-      const double max_m_Z = max(mi * Zi, mj * Zj);
-      double m_Z_lim = 0.25 * min(min_m_Z, max_m_Z);
+    /* Accumulate the metal mass */
+    m_Z_i += chi->metal_mass[m];
+    m_Z_j += chj->metal_mass[m];
+  }
 
-      if (fabs(totflux * mindt) > m_Z_lim) {
-        totflux *= m_Z_lim / fabs(totflux);
-      }
+  /* Limit the inter-aprticle mass flux to 1/4 of the total mass. This avoids
+     exchanging too much metal mass during a timestep */
+  const double mi = hydro_get_mass(pi);
+  const double mj = hydro_get_mass(pj);
+  const double Zi = min(m_Z_i/mi, 1.0);
+  const double Zj = min(m_Z_j/mj, 1.0);
+  const double min_m_Z = min(mi, mj) * fabs(Zi - Zj);
+  const double max_m_Z = max(mi * Zi, mj * Zj);
+  const double m_Z_lim = 0.25 * min(min_m_Z, max_m_Z);
+
+  const double total_mass_flux = sqrtf(norm2_totflux)*mindt;
+  const int should_rescale = fabs(total_mass_flux) > m_Z_lim;
+  double rescale_factor = 1.0;
+
+  if (fabs(total_mass_flux) != 0.0 && should_rescale) {
+    rescale_factor = m_Z_lim / fabs(total_mass_flux);
+  }
+
+  for (int m = 0; m < GEAR_CHEMISTRY_ELEMENT_COUNT; m++) {
+    if (should_rescale) {
+      totflux[m] *= rescale_factor;
     }
 
     /* When solving the Riemann problem, we assume pi is left state, and
@@ -467,9 +481,9 @@ runner_iact_chemistry_fluxes_common(
      * of flux_dt, we can detect inactive neighbours through their negative time
      * step. */
     /* Update V*U. */
-    chi->diffusion_flux[m] -= totflux * mindt;
+    chi->diffusion_flux[m] -= totflux[m] * mindt;
     if (mode == 1 || (chj->flux_dt < 0.f)) {
-      chj->diffusion_flux[m] += totflux * mindt;
+      chj->diffusion_flux[m] += totflux[m] * mindt;
     }
   }
 }
