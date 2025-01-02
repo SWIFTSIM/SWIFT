@@ -32,9 +32,9 @@ Snapshots:
   delta_time: 1e-1        # Time difference between consecutive outputs (in internal units)
 
 Scheduler:
-  cell_extra_gparts: 10000      # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
-  cell_extra_sinks: 10000       # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
-  cell_extra_sparts: 10000      # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
+  cell_extra_gparts: 100      # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
+  cell_extra_sinks: 100       # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
+  cell_extra_sparts: 100      # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
   max_top_level_cells: 3        #
 
 # Parameters governing the conserved quantities statistics
@@ -54,7 +54,6 @@ SPH:
   CFL_condition:         0.1      # Courant-Friedrich-Levy condition for time integration.
   h_max:                 5
   minimal_temperature:   1
-
 
 # Cooling with Grackle 3.0
 GrackleCooling:
@@ -90,32 +89,3 @@ GEARFeedback:
   discrete_yields: 1
   imf_transition_metallicity: -5         # Maximal metallicity ([Fe/H]) for a first star (0 to deactivate).
   elements: [Fe, Mg, O, C, Al, Ca, Ba, Zn, Eu]              # Elements to read in the yields table. The number of element should be one less than the number of elements (N) requested during the configuration (--with-chemistry=GEAR_N).
-
-# Parameters of the stars
-Stars:
-  timestep_age_threshold_unlimited_Myr: 15.        # (Optional) Age above which stars have no time-step restriction any more (in Mega-years). Defaults to 0.
-  timestep_age_threshold_Myr:           10.          # (Optional) Age at which stars switch from young to old for time-stepping purposes (in Mega-years). Defaults to FLT_MAX.
-  max_timestep_young_Myr:               1          # (Optional) Maximal time-step length of young stars (in Mega-years). Defaults to FLT_MAX.
-  max_timestep_old_Myr:                 10.0          # (Optional) Maximal time-step length of old stars (in Mega-years). Defaults to FLT_MAX.
-  birth_time:                           -1           # (Optional) Initial birth times of *all* the stars to be used if we are overwriting them. (-1 means the stars remain inactive feedback-wise througout the run).
-  overwrite_birth_time:               0           # (Optional) Do we want to overwrite the birth density of the stars read from the ICs? (default: 0).
-
-
-GEARSink:
-  cut_off_radius: 1e-2                  # Cut off radius of all the sinks in internal units.
-  f_acc: 0.5
-  maximal_temperature:  100            # Upper limit to the temperature of a star forming particle
-  density_threshold:   1.67e-23        # Density threashold in g/cm3 (1.67e-24 =1acc)
-  size_of_calibration_sample: 100000   # Size of the calibration sample  
-  stellar_particle_mass: 50             # Mass of the stellar particle representing the low mass stars, in solar mass
-  minimal_discrete_mass: 8              # Minimal mass of stars represented by discrete particles, in solar mass
-  stellar_particle_mass_first_stars: 50  # Mass of the stellar particle representing the low mass stars, in solar mass
-  minimal_discrete_mass_first_stars: 8   # Minimal mass of stars represented by discrete particles, in solar mass
-  star_spawning_sigma_factor: 0.5        # Factor to rescale the velocity dispersion of the stars when they are spawned. (Default: 0.2)
-  sink_formation_contracting_gas_criterion: 1     # (Optional) Activate the contracting gas check for sink formation. (Default: 1)
-  sink_formation_smoothing_length_criterion: 1    # (Optional) Activate the smoothing length check for sink formation. (Default: 1)
-  sink_formation_jeans_instability_criterion: 1   # (Optional) Activate the two Jeans instability checks for sink formation. (Default: 1)
-  sink_formation_bound_state_criterion: 1         # (Optional) Activate the bound state check for sink formation. (Default: 1)
-  sink_formation_overlapping_sink_criterion: 1    # (Optional) Activate the overlapping sink check for sink formation. (Default: 1)
-  disable_sink_formation: 1                       # (Optional) Disable sink formation. (Default: 0)
-  disable_star_formation: 1                       # (Optional) Disable star formation. (Default: 0)
