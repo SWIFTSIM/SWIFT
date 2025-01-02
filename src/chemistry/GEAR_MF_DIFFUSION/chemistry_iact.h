@@ -36,8 +36,6 @@
  * @brief Do chemistry computation after the runner_iact_density (symmetric
  * version)
  *
- * Compute MFM geometry variables if needed.
- *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
  * @param hi Comoving smoothing-length of particle i.
@@ -60,7 +58,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_chemistry(
   /* Compute the filtered quantities */
 
   /* Compute the filtered rho = same as rho in SPH but with h_bar instead of h,
-     where h_bar = compact support of the kernel*/
+     where h_bar = compact support of the kernel */
   float hi_bar = hi * kernel_gamma;
   float hj_bar = hj * kernel_gamma;
   float wi_bar, wj_bar;
@@ -141,11 +139,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_chemistry(
 
   /*****************************************/
   /* Compute the filtered quantities */
-  /*****************************************/
-  /* Compute the filtered quantities */
 
   /* Compute the filtered rho = same as rho in SPH but with h_bar instead of h,
-     where h_bar = compact support of the kernel*/
+     where h_bar = compact support of the kernel */
   float hi_bar = hi * kernel_gamma;
   float hj_bar = hj * kernel_gamma;
   float wi_bar;
@@ -159,7 +155,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_chemistry(
   const float h_inv_bar = 1.0f / h_bar_ij;          /* 1/h */
   const float h_inv_dim = pow_dimension(h_inv_bar); /* 1/h^d */
 
-  /* Take the previous value of bar{rho} since we are computing it now */
+  /* Take the previous value of \bar{rho} since we are computing it now */
   float rho_i_bar = chi->filtered.rho_prev;
   float rho_j_bar = chj->filtered.rho_prev;
   float rho_bar_mean =
@@ -188,7 +184,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_chemistry(
 }
 
 /**
- * @brief Do metal diffusion computation in the gradient loop (symmetric
+ * @brief Do metal diffusion computations in the gradient loop (symmetric
  * version)
  *
  * @param r2 Comoving square distance between the two particles.
@@ -210,7 +206,7 @@ runner_iact_gradient_diffusion(const float r2, const float dx[3],
 }
 
 /**
- * @brief Do metal diffusion computation in the gradient loop (nonsymmetric
+ * @brief Do metal diffusion computations in the gradient loop (nonsymmetric
  * version)
  *
  * @param r2 Comoving square distance between the two particles.
@@ -232,7 +228,7 @@ runner_iact_nonsym_gradient_diffusion(const float r2, const float dx[3],
 }
 
 /**
- * @brief Common part of the flux calculation between particle i and j.
+ * @brief Common part of the flux calculations between particle i and j.
  *
  * Since the only difference between the symmetric and non-symmetric version
  * of the flux calculation  is in the update of the conserved variables at the
@@ -246,9 +242,6 @@ runner_iact_nonsym_gradient_diffusion(const float r2, const float dx[3],
  * fed to a Riemann solver that calculates a flux. This flux is used to update
  * the conserved variables of particle i or both particles.
  *
- * This method also calculates the maximal velocity used to calculate the time
- * step.
- *
  * @param r2 Comoving squared distance between particle i and particle j.
  * @param dx Comoving distance vector between the particles (dx = pi->x -
  * pj->x).
@@ -256,6 +249,9 @@ runner_iact_nonsym_gradient_diffusion(const float r2, const float dx[3],
  * @param hj Comoving smoothing-length of particle j.
  * @param pi Particle i.
  * @param pj Particle j.
+ * @param chem_data The global properties of the chemistry scheme.
+ * @param cosmo The #cosmology.
+ * @param mode 0 if non-symmetric interaction, 1 if symmetric
  */
 __attribute__((always_inline)) INLINE static void
 runner_iact_chemistry_fluxes_common(
@@ -398,7 +394,7 @@ runner_iact_chemistry_fluxes_common(
   float Wj[5] = {hydro_get_comoving_density(pj), vj[0], vj[1], vj[2],
                  hydro_get_comoving_pressure(pj)};
 
-  chemistry_gradients_predict_hydro(pi, pj, hi, hj, dx, r, xij_i, Wi, Wj);
+  chemistry_gradients_predict_hydro(pi, pj, dx, r, xij_i, Wi, Wj);
 
   /* Boost the primitive variables to the frame of reference of the interface */
   /* Note that velocities are indices 1-3 in W */
@@ -423,41 +419,57 @@ runner_iact_chemistry_fluxes_common(
   Wj[3] /= cosmo->a;
   Wj[4] *= cosmo->a_factor_pressure;
 
-  /* Helper variable */
-  const float a2 = cosmo->a * cosmo->a;
-
   /*****************************************/
   /* Now solve the Riemann problem for each metal specie */
-  for (int g = 0; g < GEAR_CHEMISTRY_ELEMENT_COUNT; g++) {
+  /* Helper variable */
+  const float a2 = cosmo->a * cosmo->a;
+  double totflux[GEAR_CHEMISTRY_ELEMENT_COUNT];
+  double norm2_totflux = 0.0;
+  double m_Z_i = 0.0;
+  double m_Z_j = 0.0;
+
+  for (int m = 0; m < GEAR_CHEMISTRY_ELEMENT_COUNT; m++) {
 
     /* Predict the diffusion state at the interface to compute fluxes */
     double Ui, Uj;
-    chemistry_gradients_predict(pi, pj, &Ui, &Uj, g, dx, r, xij_i);
+    chemistry_gradients_predict(pi, pj, m, dx, r, xij_i, &Ui, &Uj);
 
     /* Convert Ui and Uj to physical units */
     Ui *= cosmo->a3_inv;
     Uj *= cosmo->a3_inv;
 
     /* Solve the 1D Riemann problem at the interface A_ij _physical units_ */
-    double totflux;
-    chemistry_compute_flux(pi, pj, Ui, Uj, Wi, Wj, n_unit, a2 * Anorm, g,
-                           &totflux, chem_data, cosmo);
+    chemistry_compute_flux(dx, pi, pj, Ui, Uj, Wi, Wj, n_unit, a2 * Anorm, m,
+                           chem_data, cosmo, &totflux[m]);
+    norm2_totflux += totflux[m]*totflux[m];
 
-    /* Limit the mass flux to 1/4 of the total mass. This avoids ending with
-       more metal mass than the gas_mass. */
-    /* if (fabs(totflux * mindt) > 0.0) { */
-    /*   const double mi = hydro_get_mass(pi); */
-    /*   const double mj = hydro_get_mass(pj); */
-    /*   const double Zi = chemistry_get_metal_mass_fraction(pi, g); */
-    /*   const double Zj = chemistry_get_metal_mass_fraction(pj, g); */
-    /*   const double min_m_Z = min(mi, mj) * fabs(Zi - Zj); */
-    /*   const double max_m_Z = max(mi * Zi, mj * Zj); */
-    /*   double m_Z_lim = 0.25 * min(min_m_Z, max_m_Z); */
+    /* Accumulate the metal mass */
+    m_Z_i += chi->metal_mass[m];
+    m_Z_j += chj->metal_mass[m];
+  }
 
-    /*   if (fabs(totflux * mindt) > m_Z_lim) { */
-    /*     totflux *= m_Z_lim / fabs(totflux); */
-    /*   } */
-    /* } */
+  /* Limit the inter-aprticle mass flux to 1/4 of the total mass. This avoids
+     exchanging too much metal mass during a timestep */
+  const double mi = hydro_get_mass(pi);
+  const double mj = hydro_get_mass(pj);
+  const double Zi = min(m_Z_i/mi, 1.0);
+  const double Zj = min(m_Z_j/mj, 1.0);
+  const double min_m_Z = min(mi, mj) * fabs(Zi - Zj);
+  const double max_m_Z = max(mi * Zi, mj * Zj);
+  const double m_Z_lim = 0.25 * min(min_m_Z, max_m_Z);
+
+  const double total_mass_flux = sqrtf(norm2_totflux)*mindt;
+  const int should_rescale = fabs(total_mass_flux) > m_Z_lim;
+  double rescale_factor = 1.0;
+
+  if (fabs(total_mass_flux) != 0.0 && should_rescale) {
+    rescale_factor = m_Z_lim / fabs(total_mass_flux);
+  }
+
+  for (int m = 0; m < GEAR_CHEMISTRY_ELEMENT_COUNT; m++) {
+    if (should_rescale) {
+      totflux[m] *= rescale_factor;
+    }
 
     /* When solving the Riemann problem, we assume pi is left state, and
      * pj is right state. The sign convention is that a positive total
@@ -469,16 +481,15 @@ runner_iact_chemistry_fluxes_common(
      * of flux_dt, we can detect inactive neighbours through their negative time
      * step. */
     /* Update V*U. */
-    chi->diffusion_flux[g] -= totflux * mindt;
+    chi->diffusion_flux[m] -= totflux[m] * mindt;
     if (mode == 1 || (chj->flux_dt < 0.f)) {
-      chj->diffusion_flux[g] += totflux * mindt;
+      chj->diffusion_flux[m] += totflux[m] * mindt;
     }
   }
 }
 
 /**
- * @brief do metal diffusion computation in the <FORCE LOOP>
- * (symmetric version)
+ * @brief Do metal diffusion computation in the <FORCE LOOP> (symmetric version)
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
@@ -493,6 +504,7 @@ runner_iact_chemistry_fluxes_common(
  * @param ti_current The current time (in integer)
  * @param cosmo The #cosmology.
  * @param with_cosmology Are we running with cosmology?
+ * @param chem_data The global properties of the chemistry scheme.
  *
  */
 __attribute__((always_inline)) INLINE static void runner_iact_diffusion(
@@ -507,7 +519,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_diffusion(
 }
 
 /**
- * @brief do metal diffusion computation in the <FORCE LOOP>
+ * @brief Do metal diffusion computation in the <FORCE LOOP>
  * (nonsymmetric version)
  *
  * @param r2 Comoving square distance between the two particles.
@@ -523,6 +535,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_diffusion(
  * @param ti_current The current time (in integer)
  * @param cosmo The #cosmology.
  * @param with_cosmology Are we running with cosmology?
+ * @param chem_data The global properties of the chemistry scheme.
  *
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_diffusion(

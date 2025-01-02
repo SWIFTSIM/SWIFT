@@ -374,15 +374,20 @@ __attribute__((always_inline)) INLINE static void chemistry_end_density(
  * Nothing to do here.
  *
  * @param p The particle to act upon.
+ * @param cd The global properties of the chemistry scheme.
  */
 __attribute__((always_inline)) INLINE static void chemistry_end_gradient(
-    struct part* p) {}
+    struct part* p, const struct chemistry_global_data* cd) {}
 
 /**
  * @brief Updates to the chemistry data after the hydro force loop.
  *
  * @param p The particle to act upon.
  * @param cosmo The current cosmological model.
+ * @param with_cosmology Are we running with the cosmology?
+ * @param time Current time of the simulation.
+ * @param dt Time step (in physical units).
+ * @param chem_data The global properties of the chemistry scheme.
  */
 __attribute__((always_inline)) INLINE static void chemistry_end_force(
     struct part* restrict p, const struct cosmology* cosmo,
@@ -449,11 +454,18 @@ __attribute__((always_inline)) INLINE static float chemistry_timestep(
 }
 
 /**
- * @brief Compute the particle supertimestep proportional to h.
+ * @brief Do supertimestepping.
  *
- * In GEAR, we don't have supertimestep.
- *
- * @param p Particle.
+ * @param phys_const The physical constants in internal units.
+ * @param cosmo The current cosmological model.
+ * @param us The internal system of units.
+ * @param hydro_props The properties of the hydro scheme.
+ * @param cd The global properties of the chemistry scheme.
+ * @param p Pointer to the particle data.
+ * @param dt_part Minimal timestep for the other physical processes (hydro,
+ * MHD, rt, gravity, ...).
+ * @param time_base The system's minimal time-step.
+ * @param ti_current The current time on the integer time-line.
  */
 __attribute__((always_inline)) INLINE static float chemistry_supertimestep(
     const struct phys_const* restrict phys_const,
@@ -461,7 +473,7 @@ __attribute__((always_inline)) INLINE static float chemistry_supertimestep(
     const struct unit_system* restrict us,
     const struct hydro_props* hydro_props,
     const struct chemistry_global_data* cd, struct part* restrict p,
-    float min_dt_part) {
+    const float dt_part, const double time_base, const double ti_current) {
   return FLT_MAX;
 }
 
@@ -814,9 +826,11 @@ chemistry_get_bh_total_metal_mass_for_stats(const struct bpart* restrict bp) {
  * yields from SNII and SNIa, accounts for unprocessed gas, and converts the
  * results into internal units.
  *
- * @param sp Pointer to the star particle structure (`struct spart`) where the results will be stored.
+ * @param sp Pointer to the star particle structure (`struct spart`) where the
+ * results will be stored.
  * @param m_snii Stellar mass involved per supernova II event.
- * @param m_non_processed Mass of unprocessed gas that retains the star's initial metallicity.
+ * @param m_non_processed Mass of unprocessed gas that retains the star's
+ * initial metallicity.
  * @param number_snii Number of Type II supernovae events.
  * @param number_snia Number of Type Ia supernovae events.
  * @param snii_yields Array of metal yields per element for Type II supernovae.
@@ -829,11 +843,12 @@ chemistry_get_bh_total_metal_mass_for_stats(const struct bpart* restrict bp) {
  *       `sp->feedback_data.metal_mass_ejected[i]` for each element `i`.
  */
 __attribute__((always_inline)) INLINE static void
-chemistry_set_star_supernovae_ejected_yields(struct spart* restrict sp,
-					     const float mass_snii_event, const float m_non_processed, const int number_snii, const int number_snia,
-  const float snii_yields[GEAR_CHEMISTRY_ELEMENT_COUNT],
-  const float snia_yields[GEAR_CHEMISTRY_ELEMENT_COUNT],
-  const struct phys_const* phys_const) {
+chemistry_set_star_supernovae_ejected_yields(
+    struct spart* restrict sp, const float mass_snii_event,
+    const float m_non_processed, const int number_snii, const int number_snia,
+    const float snii_yields[GEAR_CHEMISTRY_ELEMENT_COUNT],
+    const float snia_yields[GEAR_CHEMISTRY_ELEMENT_COUNT],
+    const struct phys_const* phys_const) {
 
   /* Use a chemistry function */
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
@@ -856,5 +871,20 @@ chemistry_set_star_supernovae_ejected_yields(struct spart* restrict sp,
     sp->feedback_data.metal_mass_ejected[i] *= phys_const->const_solar_mass;
   }
 }
+
+/**
+ * @brief Extra chemistry operations to be done during the drift.
+ *
+ * @param p Particle to act upon.
+ * @param xp The extended particle data to act upon.
+ * @param dt_drift The drift time-step for positions.
+ * @param dt_therm The drift time-step for thermal quantities.
+ * @param cosmo The current cosmological model.
+ * @param chem_data The global properties of the chemistry scheme.
+ */
+__attribute__((always_inline)) INLINE static void chemistry_predict_extra(
+    struct part* p, struct xpart* xp, float dt_drift, float dt_therm,
+    const struct cosmology* cosmo,
+    const struct chemistry_global_data* chem_data) {}
 
 #endif /* SWIFT_CHEMISTRY_GEAR_H */

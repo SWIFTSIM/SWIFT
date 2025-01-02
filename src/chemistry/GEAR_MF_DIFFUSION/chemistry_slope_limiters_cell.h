@@ -26,12 +26,10 @@
 #define GIZMO_SLOPE_LIMITER_BETA_MAX 2.0
 
 /**
- * @file src/chemistry/GEAR_MFM_FIDDUSION/chemistry_slope_limiters_cell.h
- * @brief File containing routines concerning the cell slope
- * limiter for the GEAR MFM diffusion scheme. (= fist slope limiting step
- * that limits gradients such that they don't predict new extrema
- * at neighbour particle's positions )
- *
+ * @file src/chemistry/GEAR_MF_DIFFUSION/chemistry_slope_limiters_cell.h
+ * @brief File containing routines concerning the cell slope limiter for the
+ * GEAR MF diffusion scheme. (= fist slope limiting step that limits gradients
+ * such that they don't predict new extrema at neighbour particle's positions)
  * */
 
 /**
@@ -43,9 +41,8 @@ __attribute__((always_inline)) INLINE static void
 chemistry_slope_limit_cell_init(struct part* p) {
 
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
-    /* The metal mass fraction must be element of [0, 1] */
-    p->chemistry_data.limiter.Z[i][0] = 1; /* 1 instead of FLT_MAX */
-    p->chemistry_data.limiter.Z[i][1] = 0; /* 0 instead of - FLT_MAX */
+    p->chemistry_data.limiter.rho_Z[i][0] = FLT_MAX;
+    p->chemistry_data.limiter.rho_Z[i][1] = -FLT_MAX;
   }
 
   p->chemistry_data.limiter.v[0][0] = FLT_MAX;
@@ -82,12 +79,10 @@ chemistry_slope_limit_cell_collect(struct part* pi, struct part* pj, float r) {
   /* Basic slope limiter: collect the maximal and the minimal value for the
    * primitive variables among the ngbs */
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
-    chi->limiter.Z[i][0] =
-        min(chemistry_get_metal_mass_fraction(pj, i),
-            chi->limiter.Z[i][0]);
-    chi->limiter.Z[i][1] =
-        max(chemistry_get_metal_mass_fraction(pj, i),
-            chi->limiter.Z[i][1]);
+    chi->limiter.rho_Z[i][0] =
+        min(chemistry_get_comoving_metal_density(pj, i), chi->limiter.rho_Z[i][0]);
+    chi->limiter.rho_Z[i][1] =
+        max(chemistry_get_comoving_metal_density(pj, i), chi->limiter.rho_Z[i][1]);
   }
 
   chi->limiter.v[0][0] = min(pj->v[0], chi->limiter.v[0][0]);
@@ -125,6 +120,7 @@ chemistry_slope_limit_cell_collect(struct part* pi, struct part* pj, float r) {
  * @param value the current value of the quantity
  * @param valmin the minimal value amongst all neighbours of the quantity
  * @param valmax the maximal value amongst all neighbours of the quantity
+ * @param condition_number Condition number of the particle geometric matrix E
  */
 __attribute__((always_inline)) INLINE static void
 chemistry_slope_limit_quantity(double gradient[3], const float maxr,
@@ -140,11 +136,9 @@ chemistry_slope_limit_quantity(double gradient[3], const float maxr,
     const double gradtrue_inv = 1.0 / gradtrue;
     const double gradmax = valmax - value;
     const double gradmin = value - valmin;
-    /* const double beta_2 = */
-        /* min(1.0, const_gizmo_max_condition_number / condition_number); */
-    /* const double beta = max(GIZMO_SLOPE_LIMITER_BETA_MIN, */
-                            /* GIZMO_SLOPE_LIMITER_BETA_MAX * beta_2); */
-    const double beta = 1.0; /* Choose stability */
+    const double beta_2 = min(1.0, const_gizmo_max_condition_number / condition_number);
+    const double beta = max(GIZMO_SLOPE_LIMITER_BETA_MIN, GIZMO_SLOPE_LIMITER_BETA_MAX * beta_2);
+    /* const double beta = 1.0; /\* Choose stability *\/ */
     const double min_temp =
         min(gradmax * gradtrue_inv, gradmin * gradtrue_inv) * beta;
     const double alpha = min(1.0, min_temp);
@@ -159,9 +153,10 @@ chemistry_slope_limit_quantity(double gradient[3], const float maxr,
  * This is done in chemistry_gradients_finalise().
  *
  * @param p Particle.
+ * @param cd The global properties of the chemistry scheme.
  */
 __attribute__((always_inline)) INLINE static void chemistry_slope_limit_cell(
-    struct part* p) {
+   struct part* p, const struct chemistry_global_data* cd) {
 
   struct chemistry_part_data* chd = &p->chemistry_data;
   const float N_cond = chd->geometry_condition_number;
@@ -179,15 +174,31 @@ __attribute__((always_inline)) INLINE static void chemistry_slope_limit_cell(
                             chd->filtered.rho_v[1] / chd->filtered.rho,
                             chd->filtered.rho_v[2] / chd->filtered.rho};
 
+  const double rho = hydro_get_comoving_density(p);
+  double Z_min, Z_max, Z;
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
+
+    if (cd->diffusion_mode == isotropic_constant) {
+      /* Notice that we are slope-limiting grad Z with the metal density. This
+	 weird behaviour ensures proper metal mass conservation. Using metal mass
+	 fraction does not... There is probably a missing density for this case. */
+      Z_min = chd->limiter.rho_Z[i][0];
+      Z_max = chd->limiter.rho_Z[i][1];
+      Z = chemistry_get_comoving_metal_density(p, i);
+    } else {
+      Z_min = chd->limiter.rho_Z[i][0]/rho;
+      Z_max = chd->limiter.rho_Z[i][1]/rho;
+      Z = chemistry_get_comoving_metal_density(p, i)/rho;
+    }
     chemistry_slope_limit_quantity(
         /*gradient=*/ chd->gradients.Z[i],
         /*maxr=    */ maxr,
-        /*value=   */ chemistry_get_metal_mass_fraction(p, i),
-        /*valmin=  */ chd->limiter.Z[i][0],
-        /*valmax=  */ chd->limiter.Z[i][1],
+        /*value=   */ Z,
+        /*valmin=  */ Z_min,
+        /*valmax=  */ Z_max,
         /*condition_number*/ N_cond);
   }
+
 
   /* Use doubles sice chemistry_slope_limit_quantity() accepts double arrays. */
   double gradvx[3], gradvy[3], gradvz[3], gradvx_tilde[3], gradvy_tilde[3],
@@ -222,11 +233,11 @@ __attribute__((always_inline)) INLINE static void chemistry_slope_limit_cell(
   chemistry_slope_limit_quantity(gradvz, maxr, p->v[2], vzlim[0], vzlim[1],
                                  N_cond);
   chemistry_slope_limit_quantity(gradvx_tilde, maxr, v_tilde[0],
-                                 vx_tilde_lim[0], vxlim[1], N_cond);
+                                 vx_tilde_lim[0], vx_tilde_lim[1], N_cond);
   chemistry_slope_limit_quantity(gradvy_tilde, maxr, v_tilde[1],
-                                 vy_tilde_lim[0], vylim[1], N_cond);
+                                 vy_tilde_lim[0], vy_tilde_lim[1], N_cond);
   chemistry_slope_limit_quantity(gradvz_tilde, maxr, v_tilde[2],
-                                 vz_tilde_lim[0], vzlim[1], N_cond);
+                                 vz_tilde_lim[0], vz_tilde_lim[1], N_cond);
 
   /* Set the velocity gradient values */
   chd->gradients.v[0][0] = gradvx[0];

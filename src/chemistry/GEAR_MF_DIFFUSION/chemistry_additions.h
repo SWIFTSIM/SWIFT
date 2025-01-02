@@ -1,6 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2023 Yolan Uyttenhove (yolan.uyttenhove@ugent.be)
+ *               2024 Darwin Roduit (darwin.roduit@alumni.epfl.ch)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -19,21 +20,16 @@
 #ifndef SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_ADDITIONS_H
 #define SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_ADDITIONS_H
 
-/**
- * @brief Resets the metal mass fluxes for schemes that use them.
- *
- * @param p The particle to act upon.
- */
-__attribute__((always_inline)) INLINE static void chemistry_reset_mass_fluxes(
-    struct part* restrict p) {
-  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
-    p->chemistry_data.metal_mass_fluxes[i] = 0.f;
-  }
-}
+#include "chemistry_getters.h"
 
 /**
- * @brief Extra operations done during the kick. This needs to be
- * done before the particle mass is updated in the hydro_kick_extra.
+ * @file src/chemistry/GEAR/chemistry_additions.h
+ * @brief Routines to update chemistry data during kick operations and compute
+ * metal mass fluxes in MFV hydro scheme.
+ */
+
+/**
+ * @brief Extra chemistry operations done during the kick. Update the fluxes.
  *
  * @param p Particle to act upon.
  * @param dt_therm Thermal energy time-step @f$\frac{dt}{a^2}@f$.
@@ -48,6 +44,88 @@ __attribute__((always_inline)) INLINE static void chemistry_kick_extra(
     struct part* p, float dt_therm, float dt_grav, float dt_hydro,
     float dt_kick_corr, const struct cosmology* cosmo,
     const struct hydro_props* hydro_props) {
+
+  struct chemistry_part_data* chd = &p->chemistry_data;
+
+  if (chd->flux_dt != 0.0f) {
+    for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; ++i) {
+      double flux;
+      chemistry_get_fluxes(p, i, &flux);
+
+      /* Update the conserved variable */
+      chd->metal_mass[i] += flux;
+    }
+
+    /* Reset the fluxes, so that they do not get used again in kick1 */
+    chemistry_reset_chemistry_fluxes(p);
+
+    /* Invalidate the particle time-step. It is considered to be inactive until
+       dt is set again in hydro_prepare_force() */
+    chd->flux_dt = -1.0f;
+  } else /* (p->chemistry_data.flux_dt == 0.f) */ {
+    /* something tricky happens at the beginning of the simulation: the flux
+       exchange is done for all particles, but using a time step of 0. This
+       in itself is not a problem. However, it causes some issues with the
+       initialisation of flux.dt for inactive particles, since this value will
+       remain 0 until the particle is active again, and its flux.dt is set to
+       the actual time step in hydro_prepare_force(). We have to make sure it
+       is properly set to -1 here, so that inactive particles are indeed found
+       to be inactive during the flux loop. */
+    chd->flux_dt = -1.0f;
+  }
+
+  /* Element-wise sanity checks */
+  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; ++i) {
+    const double m_metal_old = chd->metal_mass[i];
+    chemistry_check_unphysical_state(&chd->metal_mass[i], m_metal_old,
+                                     hydro_get_mass(p), /*callloc=*/2,
+                                     /*element*/ i);
+  }
+
+  /* Sanity check on the total metal mass */
+  chemistry_check_unphysical_total_metal_mass(p, 1);
+
+  /* Reset wcorr */
+  p->geometry.wcorr = 1.0f;
+
+#if defined(HYDRO_DOES_MASS_FLUX)
+  chemistry_kick_extra_mass_flux(p, dt_therm, dt_grav, dt_hydro, dt_kick_corr,
+                                 cosmo, hydro_props)
+#endif
+}
+
+#if defined(HYDRO_DOES_MASS_FLUX)
+/**
+ * @brief Resets the metal mass fluxes for schemes that use them.
+ *
+ * @param p The particle to act upon.
+ */
+__attribute__((always_inline)) INLINE static void chemistry_reset_mass_fluxes(
+    struct part* restrict p) {
+  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
+    p->chemistry_data.metal_mass_fluxes[i] = 0.f;
+  }
+}
+
+/**
+ * @brief Extra operations done during the kick in schemes with mass fluxes
+ * (e.g. MFV). This needs to be done before the particle mass is updated in the
+ * hydro_kick_extra.
+ *
+ * @param p Particle to act upon.
+ * @param dt_therm Thermal energy time-step @f$\frac{dt}{a^2}@f$.
+ * @param dt_grav Gravity time-step @f$\frac{dt}{a}@f$.
+ * @param dt_hydro Hydro acceleration time-step
+ * @f$\frac{dt}{a^{3(\gamma{}-1)}}@f$.
+ * @param dt_kick_corr Gravity correction time-step @f$adt@f$.
+ * @param cosmo Cosmology.
+ * @param hydro_props Additional hydro properties.
+ */
+__attribute__((always_inline)) INLINE static void
+chemistry_kick_extra_mass_flux(struct part* p, float dt_therm, float dt_grav,
+                               float dt_hydro, float dt_kick_corr,
+                               const struct cosmology* cosmo,
+                               const struct hydro_props* hydro_props) {
   /* For hydro schemes that exchange mass fluxes between the particles,
    * we want to advect the metals. */
   if (p->flux.dt > 0.) {
@@ -146,5 +224,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_chemistry_fluxes(
     }
   }
 }
+#endif /* HYDRO_DOES_MASS_FLUX */
 
 #endif  // SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_ADDITIONS_H

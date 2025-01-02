@@ -28,6 +28,8 @@
 /**
  * @brief Write the metallicities.
  *
+ * @TODO
+ *
  * @param p The #part
  * @param xp Its related #xpart
  * @param e The #engine
@@ -39,12 +41,6 @@ INLINE static void *csds_chemistry_write_part(const struct part *p,
                                               const struct xpart *xp,
                                               const struct engine *e,
                                               void *buffer) {
-
-  /* Add the smoothed metals */
-  const size_t size = sizeof(p->chemistry_data.smoothed_metal_mass_fraction);
-  memcpy(buffer, p->chemistry_data.smoothed_metal_mass_fraction, size);
-  buffer += size;
-
   /* Add the metal mass */
   double *metals = buffer;
   const float m = hydro_get_mass(p);

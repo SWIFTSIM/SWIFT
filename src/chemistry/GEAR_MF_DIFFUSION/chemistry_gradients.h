@@ -46,7 +46,7 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_init(
 /**
  * @brief Gradient calculations done during the gradient loop
  *
- * We compute \nabla \otimes q.
+ * We compute \nabla Z.
  *
  * @param r2 Squared distance between the two particles.
  * @param dx Distance vector (pi->x - pj->x).
@@ -137,7 +137,7 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_collect(
     dF_i[1] = dZ * psii_tilde[1];
     dF_i[2] = dZ * psii_tilde[2];
 
-    chemistry_part_update_diffusion_gradients(pi, g, dF_i);
+    chemistry_part_update_metal_mass_fraction_gradients(pi, g, dF_i);
 
     /* Now do the gradients of pj */
     double dF_j[3];
@@ -148,7 +148,7 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_collect(
     dF_j[1] = dZ * psij_tilde[1];
     dF_j[2] = dZ * psij_tilde[2];
 
-    chemistry_part_update_diffusion_gradients(pj, g, dF_j);
+    chemistry_part_update_metal_mass_fraction_gradients(pj, g, dF_j);
   }
 
   /*****************************************/
@@ -296,7 +296,7 @@ chemistry_gradients_nonsym_collect(float r2, const float *dx, float hi,
     dF_i[1] = dZ * psii_tilde[1];
     dF_i[2] = dZ * psii_tilde[2];
 
-    chemistry_part_update_diffusion_gradients(pi, g, dF_i);
+    chemistry_part_update_metal_mass_fraction_gradients(pi, g, dF_i);
   }
 
   /*****************************************/
@@ -349,9 +349,10 @@ chemistry_gradients_nonsym_collect(float r2, const float *dx, float hi,
  * @brief Finalize the gradient variables after all data have been collected
  *
  * @param p Particle.
+ * @param cd The global properties of the chemistry scheme.
  */
 __attribute__((always_inline)) INLINE static void chemistry_gradients_finalise(
-    struct part *p) {
+  struct part *p, const struct chemistry_global_data* cd) {
 
   /* add kernel normalization to gradients */
   const float h = p->h;
@@ -370,11 +371,12 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_finalise(
   chemistry_part_normalise_gradients(p, norm);
 
   /* Limit the cell gradients */
-  chemistry_slope_limit_cell(p);
+  chemistry_slope_limit_cell(p, cd);
 }
 
 /**
- * @brief Extrapolate the given gradient over the given distance.
+ * @brief Extrapolate the given gradient over the given distance. Double
+ * version.
  *
  * @param gradient Gradient of a quantity.
  * @param dx Distance vector.
@@ -382,7 +384,8 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_finalise(
  * vector.
  */
 __attribute__((always_inline)) INLINE static double
-chemistry_gradients_extrapolate(const double gradient[3], const float dx[3]) {
+chemistry_gradients_extrapolate_double(const double gradient[3],
+                                       const float dx[3]) {
   return gradient[0] * dx[0] + gradient[1] * dx[1] + gradient[2] * dx[2];
 }
 
@@ -401,48 +404,46 @@ chemistry_gradients_extrapolate_float(const float gradient[3],
 }
 
 /**
- * @brief Gradients reconstruction. Predict the value at point x_ij given
- * current values at particle positions and gradients at particle positions.
+ * @brief Metal density gradients reconstruction. Predict the value at point
+ * x_ij given current values at particle positions and gradients at particle
+ * positions.
  *
  * Only reconstruct U_R and U_L. We do not use a linear reconstuction for
- * nabla_otimes_q_L/R, we simply use nabla_otimes_q_L/R = nabla_otimes_q_i/j,
- * i.e. first order reconstruction.
+ * grad Z_L/R, we simply use grad Z_L/R = grad Z_i/j, i.e. first order
+ * reconstruction.
  *
  * @param pi Particle i
  * @param pj Particle j
- * @param Ui (return) Resulting predicted and limited diffusion state of
- * particle i
- * @param Uj (return) Resulting predicted and limited diffusion state of
- * particle j
- * @param group which metal to use
+ * @param metal Metal specie to update
  * @param dx Comoving distance vector between the particles (dx = pi->x -
  * pj->x).
  * @param r Comoving distance between particle i and particle j.
  * @param xij_i Position of the "interface" w.r.t. position of particle i
+ * @param Ui (return) Resulting predicted and limited diffusion state of
+ * particle i
+ * @param Uj (return) Resulting predicted and limited diffusion state of
+ * particle j
  */
 __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
-    const struct part *restrict pi, const struct part *restrict pj, double *Ui,
-    double *Uj, int group, const float *dx, const float r,
-    const float xij_i[3]) {
+    const struct part *restrict pi, const struct part *restrict pj, int metal,
+    const float dx[3], const float r, const float xij_i[3], double *Ui,
+    double *Uj) {
 
-  *Ui = chemistry_get_comoving_diffusion_state_vector(pi, group);
-  *Uj = chemistry_get_comoving_diffusion_state_vector(pj, group);
-  /* No need to check unphysical state here:
-   * they haven't been touched since the call
-   * to chemistry_end_density() */
+  const double mi = hydro_get_mass(pi);
+  const double mj = hydro_get_mass(pj);
 
-  double m_Zi_not_extrapolated = *Ui * pi->geometry.volume;
-  double m_Zj_not_extrapolated = *Uj * pj->geometry.volume;
+  *Ui = chemistry_get_metal_mass_fraction(pi, metal);
+  *Uj = chemistry_get_metal_mass_fraction(pj, metal);
+  /* No need to check unphysical state here: they haven't been touched since
+     the call to chemistry_end_density() */
 
-  /* Get grad U = grad (rho*Z) = Z*grad_rho + rho*grad_Z */
-  const float Delta_rho = max(pi->rho, pj->rho) - min(pi->rho, pj->rho);
-  const float grad_rho[3] = {Delta_rho * dx[0] / (r * r),
-                             Delta_rho * dx[1] / (r * r),
-                             Delta_rho * dx[2] / (r * r)};
+  double m_Zi_not_extrapolated = *Ui * mi;
+  double m_Zj_not_extrapolated = *Uj * mj;
+
   double dF_i[3];
   double dF_j[3];
-  chemistry_get_diffusion_gradients(pi, group, grad_rho, dF_i);
-  chemistry_get_diffusion_gradients(pj, group, grad_rho, dF_j);
+  chemistry_get_metal_mass_fraction_gradients(pi, metal, dF_i);
+  chemistry_get_metal_mass_fraction_gradients(pj, metal, dF_j);
 
   /* Compute interface position (relative to pj, since we don't need the actual
    * position) eqn. (8)
@@ -450,8 +451,8 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
   const float xij_j[3] = {xij_i[0] + dx[0], xij_i[1] + dx[1], xij_i[2] + dx[2]};
 
   /* Linear reconstruction of U_R and U_L (rho*Z) */
-  double dUi = chemistry_gradients_extrapolate(dF_i, xij_i);
-  double dUj = chemistry_gradients_extrapolate(dF_j, xij_j);
+  double dUi = chemistry_gradients_extrapolate_double(dF_i, xij_i);
+  double dUj = chemistry_gradients_extrapolate_double(dF_j, xij_j);
 
   /* Apply the slope limiter at this interface */
   chemistry_slope_limit_face(Ui, Uj, &dUi, &dUj, xij_i, xij_j, r);
@@ -459,16 +460,19 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
   *Ui += dUi;
   *Uj += dUj;
 
+  /* Convert to density */
+  *Ui *= mi/pi->geometry.volume;
+  *Uj *= mj/pj->geometry.volume;
+
   /* Check we have physical masses and that we are not overshooting the
      particle's mass */
   double m_Zi = *Ui * pi->geometry.volume; /* extrapolated masses */
   double m_Zj = *Uj * pj->geometry.volume;
-  const double mi = hydro_get_mass(pi);
-  const double mj = hydro_get_mass(pj);
 
-  /* Check and correct unphysical extrapolated states */
-  chemistry_check_unphysical_state(&m_Zi, m_Zi_not_extrapolated, mi, /*callloc=*/1);
-  chemistry_check_unphysical_state(&m_Zj, m_Zj_not_extrapolated, mj, /*callloc=*/1);
+  chemistry_check_unphysical_state(&m_Zi, m_Zi_not_extrapolated, mi,
+                                   /*callloc=*/1, /*element*/ metal);
+  chemistry_check_unphysical_state(&m_Zj, m_Zj_not_extrapolated, mj,
+                                   /*callloc=*/1, /*element*/ metal);
 
   /* If the new masses have been changed, do not extrapolate, use 0th order
      reconstruction and update the state vectors */
@@ -481,25 +485,83 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
 }
 
 /**
+ * @brief Gradients reconstruction of the metal mass fraction of specie
+ * "metal". Predict the value at point x_ij given current values at particle
+ * positions and gradients at particle positions.
+ *
+ * @param pi Particle i.
+ * @param pj Particle j.
+ * @param metal Metal specie to update.
+ * @param dx Comoving distance vector between the particles (dx = pi->x -
+ * pj->x).
+ * @param cosmo The current cosmological model.
+ * @param Zi (return) Particle i's metal mass fraction of metal specie "metal"
+ * (in physical units).
+ * @param Zj (return) Particle j's metal mass fraction of metal specie "metal"
+ * (in physical units).
+ */
+__attribute__((always_inline)) INLINE static void chemistry_gradients_predict_Z(
+    const struct part *restrict pi, const struct part *restrict pj, int metal,
+    const float dx[3], const struct cosmology *cosmo, double *Zi, double *Zj) {
+
+  const float r = sqrtf(dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]);
+
+  double grad_Z_i[3], grad_Z_j[3];
+  chemistry_get_metal_mass_fraction_gradients(pi, metal, grad_Z_i);
+  chemistry_get_metal_mass_fraction_gradients(pj, metal, grad_Z_j);
+
+  /* Compute interface position (relative to pj, since we don't need the actual
+   * position) eqn. (8)
+   * Do it this way in case dx contains periodicity corrections already */
+  const float xfac = -pi->h / (pi->h + pj->h);
+  const float xij_i[3] = {xfac * dx[0], xfac * dx[1], xfac * dx[2]};
+  const float xij_j[3] = {xij_i[0] + dx[0], xij_i[1] + dx[1], xij_i[2] + dx[2]};
+
+  /* Linear reconstruction of Z_i and Z_j */
+  double dZi = chemistry_gradients_extrapolate_double(grad_Z_i, xij_i);
+  double dZj = chemistry_gradients_extrapolate_double(grad_Z_j, xij_j);
+
+  /* Apply the slope limiter at this interface */
+  chemistry_slope_limit_face(Zi, Zj, &dZi, &dZj, xij_i, xij_j, r);
+
+  /* Check that we do not have unphysical values */
+  if (*Zi > 1) {
+    *Zi = 1;
+  } else if (*Zi < 0) {
+    *Zi = 0;
+  }
+
+  if (*Zi > 1) {
+    *Zj = 1;
+  } else if (*Zj < 0) {
+    *Zj = 0;
+  }
+
+  /* Pay attention here to convert this gradient to physical units... Z is
+     always physical. */
+  *Zi += dZi * cosmo->a_inv;
+  *Zj += dZj * cosmo->a_inv;
+}
+
+/**
  * @brief Velocity gradients reconstruction. Predict the value at point x_ij
  * given current values at particle positions and gradients at particle
  * positions.
  *
  * @param pi Particle i
  * @param pj Particle j
- * @param Wi (return) Resulting predicted and limited state of particle i.
- * @param Wj (return) Resulting predicted and limited state of particle j.
  * @param dx Comoving distance vector between the particles (dx = pi->x -
  * pj->x).
- * @param r Comoving distance between particle i and particle j.
+ * @param float r Comoving distance between particle i and particle j.
  * @param xij_i Position of the "interface" w.r.t. position of particle i
+ * @param Wi (return) Resulting predicted and limited state of particle i.
+ * @param Wj (return) Resulting predicted and limited state of particle j.
  */
 __attribute__((always_inline)) INLINE static void
 chemistry_gradients_predict_hydro(struct part *restrict pi,
-                                  struct part *restrict pj, float hi, float hj,
-                                  const float dx[3], float r,
-                                  const float xij_i[3], float Wi[5],
-                                  float Wj[5]) {
+                                  struct part *restrict pj, const float dx[3],
+                                  const float r, const float xij_i[3],
+                                  float Wi[5], float Wj[5]) {
 
   /* Perform gradient reconstruction in space and time */
   /* Compute interface position (relative to pj, since we don't need the actual
@@ -532,7 +594,7 @@ chemistry_gradients_predict_hydro(struct part *restrict pi,
   Wj[2] += dvj[1];
   Wj[3] += dvj[2];
 
-  /* Note: We do not reconstruct v_tilde at the interace since it is not use
+  /* Note: We do not reconstruct v_tilde at the interface since it is not used
      during the Riemann problem. */
 }
 

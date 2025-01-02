@@ -26,6 +26,8 @@
  * @brief Compute the particle parabolic timestep proportional to h^2.
  *
  * @param p Particle.
+ * @param chem_data The global properties of the chemistry scheme.
+ * @param cosmo The current cosmological model.
  */
 __attribute__((always_inline)) INLINE static float
 chemistry_compute_parabolic_timestep(
@@ -35,9 +37,9 @@ chemistry_compute_parabolic_timestep(
 
   const struct chemistry_part_data *chd = &p->chemistry_data;
 
-  /* Compute diffusion matrix K */
+  /* Compute the diffusion matrix K */
   double K[3][3];
-  chemistry_get_physical_matrix_K(p, K, chem_data, cosmo);
+  chemistry_get_physical_matrix_K(p, chem_data, cosmo, K);
   const float norm_matrix_K = chemistry_get_matrix_norm(K);
 
   /* Note: The State vector is U = (rho*Z_1,rho*Z_2, ...), and q = (Z_1, Z_2,
@@ -71,10 +73,10 @@ chemistry_compute_parabolic_timestep(
   norm_q = sqrtf(norm_q);  // Physical
   norm_nabla_q = sqrtf(norm_nabla_q) * cosmo->a_inv;
 
-  /* If the norm of q (metal density = 0), then use the following
-     expression. Notice that if norm q = 0, the true timestep muste be 0... */
+  /* If ||q|| is 0 (metal density = 0), then there is no metal to diffuse.
+     Hence, no timestep limit is needed. */
   if (norm_q == 0) {
-    return delta_x * delta_x / norm_matrix_K * norm_U_over_norm_q;
+    return FLT_MAX;
   }
 
   /* Compute the expression in the square bracket in eq (15). Notice that I
@@ -93,6 +95,8 @@ chemistry_compute_parabolic_timestep(
  * This is equation (10) in Alexiades, Amiez and Gremaud (1996).
  *
  * @param p Particle.
+ * @param chem_data The global properties of the chemistry scheme.
+ * @param timestep_explicit Usual explicit parabolic timestep.
  */
 __attribute__((always_inline)) INLINE static float chemistry_get_supertimestep(
     const struct part *restrict p, const struct chemistry_global_data *cd,
@@ -111,17 +115,19 @@ __attribute__((always_inline)) INLINE static float chemistry_get_supertimestep(
  * proportioanl to h.
  *
  * @param p Particle.
+ * @param chem_data The global properties of the chemistry scheme.
+ * @param cosmo The current cosmological model.
  */
 __attribute__((always_inline)) INLINE static float
-chemistry_compute_CFL_supertimestep(const struct part *restrict p,
-                                    const struct chemistry_global_data *cd,
-                                    const struct cosmology *cosmo) {
+chemistry_compute_advective_supertimestep(const struct part *restrict p,
+					  const struct chemistry_global_data *cd,
+					  const struct cosmology *cosmo) {
 
   const struct chemistry_part_data *chd = &p->chemistry_data;
 
   /* Compute diffusion matrix K */
   double K[3][3];
-  chemistry_get_physical_matrix_K(p, K, cd, cosmo);
+  chemistry_get_physical_matrix_K(p, cd, cosmo, K);
   const float norm_matrix_K = chemistry_get_matrix_norm(K);
 
   /* Some helpful variables */
@@ -147,28 +153,90 @@ chemistry_compute_CFL_supertimestep(const struct part *restrict p,
   norm_nabla_q = sqrtf(norm_nabla_q) * cosmo->a_inv;
 
   /* Prevent pathological cases */
-  if (norm_matrix_K == 0.0 || norm_nabla_q == 0.0) {
+  if (norm_matrix_K == 0.0 || norm_nabla_q == 0.0 || norm_U == 0.0) {
+    /* The firt two cases are derived from the equation. The last case comes
+    from a physical argument: if there is no metal, there is no need to limit
+    the timestep */
     return FLT_MAX;
   }
 
   return cd->C_CFL_chemistry * delta_x * norm_U /
-         (norm_matrix_K * norm_nabla_q);
+    (norm_matrix_K * norm_nabla_q) ;
 }
 
 /**
  * @brief Compute the particle supertimestep proportional to h.
  *
  * @param p Particle.
+ * @param chem_data The global properties of the chemistry scheme.
+ * @param current_substep_number Current substep number.
  */
 __attribute__((always_inline)) INLINE static float
 chemistry_compute_subtimestep(const struct part *restrict p,
                               const struct chemistry_global_data *cd,
                               int current_substep_number) {
   const struct chemistry_part_data *chd = &p->chemistry_data;
+
+  /* TODO: Check that the division is not an integer division */
   const float cos_argument =
-      M_PI * (2.0 * current_substep_number - 1.0) / (2.0 * cd->N_substeps);
+    M_PI * (2.0 * current_substep_number - 1.0) / (2.0 * cd->N_substeps);
   const float expression = (1 + cd->nu) - (1 - cd->nu) * cos(cos_argument);
   return chd->timesteps.explicit_timestep / expression;
+}
+
+/**
+ * @brief Compute a valid integer time-step form a given time-step
+ *
+ * TODO: This is a copy/paste from make_integer_timestep. This is bad. Improve it.
+ *
+ * We consider the minimal time-bin of any neighbours and prevent particles
+ * to differ from it by a fixed constant `time_bin_neighbour_max_delta_bin`.
+ *
+ * If min_ngb_bin is set to `num_time_bins`, then no limit from the neighbours
+ * is imposed.
+ *
+ * @param new_dt The time-step to convert.
+ * @param old_bin The old time bin.
+ * @param min_ngb_bin Minimal time-bin of any neighbour of this particle.
+ * @param ti_current The current time on the integer time-line.
+ * @param time_base_inv The inverse of the system's minimal time-step.
+ */
+__attribute__((always_inline, const)) INLINE static integertime_t
+chemistry_make_integer_timestep(const float new_dt, const timebin_t old_bin,
+                      const timebin_t min_ngb_bin,
+                      const integertime_t ti_current,
+                      const double time_base_inv) {
+
+  /* Convert to integer time */
+  integertime_t new_dti = (integertime_t)(new_dt * time_base_inv);
+
+  /* Are we allowed to use this bin given the neighbours? */
+  timebin_t new_bin = get_time_bin(new_dti);
+  new_bin = min(new_bin, min_ngb_bin + time_bin_neighbour_max_delta_bin);
+  new_dti = get_integer_timestep(new_bin);
+
+  /* Current time-step */
+  const integertime_t current_dti = get_integer_timestep(old_bin);
+  const integertime_t ti_end = get_integer_time_end(ti_current, old_bin);
+
+  /* Limit timestep increase */
+  if (old_bin > 0) new_dti = min(new_dti, 2 * current_dti);
+
+  /* Put this timestep on the time line */
+  integertime_t dti_timeline = max_nr_timesteps;
+  while (new_dti < dti_timeline) dti_timeline /= ((integertime_t)2);
+  new_dti = dti_timeline;
+
+  /* Make sure we are allowed to increase the timestep size */
+  if (new_dti > current_dti) {
+    if ((max_nr_timesteps - ti_end) % new_dti > 0) new_dti = current_dti;
+  }
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (new_dti == 0) error("Computed an integer time-step of size 0");
+#endif
+
+  return new_dti;
 }
 
 #endif /* SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_TIMESTEPS_H  */

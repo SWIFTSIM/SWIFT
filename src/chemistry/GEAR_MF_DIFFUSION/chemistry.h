@@ -1,7 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2016 Matthieu Schaller (schaller@strw.leidenuniv.nl)
- *               2024 Darwin Roduit (darwin.roduit@alumni.epfl.ch)
+ * Copyright (c) 2024 Darwin Roduit (darwin.roduit@alumni.epfl.ch)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -276,20 +275,18 @@ static INLINE void chemistry_init_backend(struct swift_params* parameter_file,
       parameter_file, "GEARChemistry:diffusion_coefficient",
       DEFAULT_DIFFUSION_NORMALISATION);
 
-  /* data->diffusion_mode = */
-      /* parser_get_param_int(parameter_file, "GEARChemistry:diffusion_mode"); */
-
   char temp[PARSER_MAX_LINE_SIZE];
   parser_get_param_string(parameter_file, "GEARChemistry:diffusion_mode", temp);
   if (strcmp(temp, "Isotropic_constant") == 0)
-    data->diffusion_mode = isotropic_constant ;
+    data->diffusion_mode = isotropic_constant;
   else if (strcmp(temp, "Smagorinsky") == 0)
     data->diffusion_mode = isotropic_smagorinsky;
   else if (strcmp(temp, "Gradient") == 0)
     data->diffusion_mode = anisotropic_gradient;
   else
     error(
-        "The chemistry diffusion mode must be Isotropic_constant, Smagorinsky or Gradient "
+        "The chemistry diffusion mode must be Isotropic_constant, Smagorinsky "
+        "or Gradient "
         " not %s",
         temp);
 
@@ -299,7 +296,7 @@ static INLINE void chemistry_init_backend(struct swift_params* parameter_file,
       parameter_file, "GEARChemistry:hll_riemann_solver_psi",
       DEFAULT_PSI_RIEMANN_SOLVER);
 
-   if ((data->hll_riemann_solver_psi < 0)) {
+  if ((data->hll_riemann_solver_psi < 0)) {
     error("hll_riemann_solver_psi must be positive!");
   }
 
@@ -331,17 +328,19 @@ static INLINE void chemistry_init_backend(struct swift_params* parameter_file,
 
   /***************************************************************************/
   /* Print the parameters we use */
-  message("Diffusion mode:             %u", data->diffusion_mode);
-  message("Diffusion coefficient:      %e", data->diffusion_coefficient);
-  message("HLL Riemann solver psi:     %e", data->hll_riemann_solver_psi);
-  message("HLL Riemann solver epsilon: %e", data->hll_riemann_solver_epsilon);
-  message("Use supertimestepping:      %d", data->use_supertimestepping);
-  message("N_substeps:                 %d", data->N_substeps);
-  message("nu:                         %e", data->nu);
+  if (engine_rank == 0) {
+    message("Diffusion mode:             %u", data->diffusion_mode);
+    message("Diffusion coefficient:      %e", data->diffusion_coefficient);
+    message("HLL Riemann solver psi:     %e", data->hll_riemann_solver_psi);
+    message("HLL Riemann solver epsilon: %e", data->hll_riemann_solver_epsilon);
+    message("Use supertimestepping:      %d", data->use_supertimestepping);
+    message("N_substeps:                 %d", data->N_substeps);
+    message("nu:                         %e", data->nu);
+  }
 }
 
 /**
- * @brief Computes the chemistry-related time-step constraint.
+ * @brief Computes the chemistry-related timestep constraints.
  *
  * Parabolic constraint proportional to h^2 or supertimestepping.
  *
@@ -349,7 +348,7 @@ static INLINE void chemistry_init_backend(struct swift_params* parameter_file,
  * @param cosmo The current cosmological model.
  * @param us The internal system of units.
  * @param hydro_props The properties of the hydro scheme.
- * @param cd The global properties of the chemistry scheme.
+ * @param chem_data The global properties of the chemistry scheme.
  * @param p Pointer to the particle data.
  */
 __attribute__((always_inline)) INLINE static float chemistry_timestep(
@@ -361,18 +360,28 @@ __attribute__((always_inline)) INLINE static float chemistry_timestep(
     const struct part* restrict p) {
 
   if (chem_data->use_supertimestepping) {
-    return FLT_MAX;
+    /* For supertimestepping, use the advective timestep eq (D1) */
+    return chemistry_compute_advective_supertimestep(p, chem_data, cosmo);
   } else {
+    /* Without supertimestepping, use the parabolic timestep eq (15) */
     return chemistry_compute_parabolic_timestep(p, chem_data, cosmo);
   }
 }
 
 /**
- * @brief Compute the particle supertimestep proportional to h.
+ * @brief Do supertimestepping following Alexiades, Amiez and Gremaud (1996)
+ * and Hopkins (2017) modifications for individual timestep scheme.
  *
- * This is equation (10) in Alexiades, Amiez and Gremaud (1996).
- *
- * @param p Particle.
+ * @param phys_const The physical constants in internal units.
+ * @param cosmo The current cosmological model.
+ * @param us The internal system of units.
+ * @param hydro_props The properties of the hydro scheme.
+ * @param cd The global properties of the chemistry scheme.
+ * @param p Pointer to the particle data.
+ * @param dt_part Minimal timestep for the other physical processes (hydro,
+ * MHD, rt, gravity, ...).
+ * @param time_base The system's minimal time-step.
+ * @param ti_current The current time on the integer time-line.
  */
 __attribute__((always_inline)) INLINE static float chemistry_supertimestep(
     const struct phys_const* restrict phys_const,
@@ -380,92 +389,81 @@ __attribute__((always_inline)) INLINE static float chemistry_supertimestep(
     const struct unit_system* restrict us,
     const struct hydro_props* hydro_props,
     const struct chemistry_global_data* cd, struct part* restrict p,
-    float min_dt_part) {
+    const float dt_part, const double time_base, const double ti_current) {
 
   struct chemistry_part_data* chd = &p->chemistry_data;
 
   /* Do not use supertimestepping in the fake timestep */
   if (cd->use_supertimestepping && p->time_bin != 0) {
-    float substep = 0.0;
 
-    /* Have we finished substepping? */
-    if (chd->timesteps.current_substep <= cd->N_substeps) {
-      /* What happens if min_dt_part < substep ? Then, we will integrate with
-         min_dt_part and continue the cycle as if we had done the substep */
+    /* If we need to start a new cycle, compute the new explicit timestep */
+    if (chd->timesteps.current_substep == 0) {
+      /* Get the explicit timestep from eq (15) */
+      chd->timesteps.explicit_timestep = chemistry_compute_parabolic_timestep(p, cd, cosmo);
+    }
 
-      /* Get the next substep */
-      substep =
-          chemistry_compute_subtimestep(p, cd, chd->timesteps.current_substep);
+    /* Compute the current substep */
+    double substep = chemistry_compute_subtimestep(p, cd, chd->timesteps.current_substep+1);
+    double timestep_to_use = substep;
 
-      /* Then, increment the current_substep */
-      if (substep > 0.0) ++chd->timesteps.current_substep;
-    } else {
-      const float parabolic_explicit_timestep =
-          chemistry_compute_parabolic_timestep(p, cd, cosmo);
+    if (dt_part <= substep || chd->timesteps.current_substep > 0) {
+      /* If the part timestep is smaller, other constraints beat the
+	 substep. We can safely iterate the substep.
+	 If we are in the middle of a supertimestepping cycle, iterate. */
+      ++chd->timesteps.current_substep;
 
-      /* Get the supertimestep from CFL condition */
-      float super_timestep = chemistry_compute_CFL_supertimestep(p, cd, cosmo);
-
-      /* If the hydro timestep is smaller than the parabolic timestep, then
-         don't start supertimestepping. Do parabolic timestep instead.
-         Same if the CFL timestep is smaller than the parabolic timestep. */
-      if (min_dt_part <= parabolic_explicit_timestep ||
-          super_timestep <= parabolic_explicit_timestep) {
-        /* message("hydro_timestep = %e, supertimestep = %e, parabolic_timestep
-         * = %e", min_dt_part, super_timestep, parabolic_explicit_timestep); */
-        return parabolic_explicit_timestep;
+      /* Increment substep and loop if it cycles fully */
+      if (chd->timesteps.current_substep >= cd->N_substeps) {
+	chd->timesteps.current_substep = 0;
       }
-      /* Now we have min_dt_part and super_timestep > parabolic_time_step. So,
-         it is worth doing supertimestepping. */
-
-      /* Update the explicit timestep to correspond to the chosen supertimestep
-       */
-      const float N = cd->N_substeps;
-      const float nu = cd->nu;
-      const float nu_plus_term = pow(1 + sqrtf(nu), 2.0 * N);
-      const float nu_minus_term = pow(1 - sqrtf(nu), 2.0 * N);
-      const float factor = N / sqrt(nu) * (nu_plus_term - nu_minus_term) /
-                           (nu_plus_term + nu_minus_term);
-      const float new_explicit_timestep = super_timestep / factor;
-
-      /* Take the biggest explicit timestep. We don't want to have smaller
-         supertimesteps than necessary. */
-      chd->timesteps.explicit_timestep =
-          max(parabolic_explicit_timestep, new_explicit_timestep);
-
-      /* Reset the current_substep to 1 */
-      chd->timesteps.current_substep = 1;
-
-      /* Compute the current substep */
-      substep =
-          chemistry_compute_subtimestep(p, cd, chd->timesteps.current_substep);
-
-      /* Increment the current_substep */
-      if (substep > 0.0) ++chd->timesteps.current_substep;
-    }
-
-    /* Do not return a 0 timestep... */
-    if (substep != 0.0) {
-      return substep;
     } else {
-      /* Reset the supertimestepping */
-      chd->timesteps.current_substep = cd->N_substeps + 1;
-      return chemistry_compute_parabolic_timestep(p, cd, cosmo);
+      /* If we are at the beginning of a new cycle (current_substep = 0) and
+      the next substep matters for starting a new cycle (dt_part > substep),
+      think whether to start a cycle */
+
+      /* Apply cosmology correction (This is 1 if non-cosmological) */
+      const double dt_pred = substep*cosmo->time_step_factor;
+
+      /* Convert to integer time.
+	 Note: This function is similar to Gizmo code checking for synchronization. */
+      const integertime_t dti_allowed = chemistry_make_integer_timestep(dt_pred,
+                                        p->time_bin, p->limiter_data.min_ngb_time_bin,
+					ti_current, 1.0/time_base);
+
+      /* Now convert this back to a physical timestep */
+      const timebin_t bin_allowed = get_time_bin(dti_allowed);
+      const double dt_allowed = get_timestep(bin_allowed, time_base) / cosmo->time_step_factor;
+
+      if(substep > 1.5*dt_allowed) {
+	/* The next allowed timestep is too small to fit the big step part of
+	the supertimestepping cycle. Do not waste our timestep (which will put
+	us into a lower bin and defeat the supertimestep purpose of using bigger
+	timesteps) and use the safe parabolic timestep until the next desired
+	time-bin synchs up */
+	timestep_to_use = chemistry_compute_parabolic_timestep(p, cd, cosmo); 
+      } else {
+	/* We can jump up in bins to use our super-step => begin the cycle */
+	++chd->timesteps.current_substep;
+
+	/* Increment substep and loop if it cycles fully */
+	if (chd->timesteps.current_substep >= cd->N_substeps) {
+	  chd->timesteps.current_substep = 0;
+	}
+      } /* substep > 1.5*dt_allowed */
     }
-  } else {
+    return timestep_to_use;
+  } else { /* No supertimestepping */
     return FLT_MAX;
   }
 }
 
 /**
- * @brief Finishes the smooth metal calculation.
- *
- * End MF geometry computations
+ * @brief Finishes geometry and density calculations.
  *
  * This function requires the #hydro_end_density to have been called.
  *
  * @param p The particle to act upon.
- * @param cd #chemistry_global_data containing chemistry informations.
+ * @param cd The global properties of the chemistry scheme.
  * @param cosmo The current cosmological model.
  */
 __attribute__((always_inline)) INLINE static void chemistry_end_density(
@@ -479,14 +477,14 @@ __attribute__((always_inline)) INLINE static void chemistry_end_density(
   p->chemistry_data.filtered.rho_v[1] *= FILTERING_SMOOTHING_FACTOR;
   p->chemistry_data.filtered.rho_v[2] *= FILTERING_SMOOTHING_FACTOR;
 
-  /* Add self term */
-  p->chemistry_data.filtered.rho += hydro_get_mass(p) * kernel_root;
+  /* Add self term (is it needed for rho? the formula does not include it) */
+  /* p->chemistry_data.filtered.rho += hydro_get_mass(p) * kernel_root; */
   p->chemistry_data.filtered.rho_v[0] +=
-      p->chemistry_data.filtered.rho_prev * p->v[0];
+      hydro_get_comoving_density(p) * p->v[0];
   p->chemistry_data.filtered.rho_v[1] +=
-      p->chemistry_data.filtered.rho_prev * p->v[1];
+      hydro_get_comoving_density(p) * p->v[1];
   p->chemistry_data.filtered.rho_v[2] +=
-      p->chemistry_data.filtered.rho_prev * p->v[2];
+      hydro_get_comoving_density(p) * p->v[2];
 
   /* Insert missing h-factor to rho. For rho*v, notice that the h-factors were
      already given in the density loop since they depend on bar{h_ij}. */
@@ -539,7 +537,7 @@ __attribute__((always_inline)) INLINE static void chemistry_end_density(
 
   /* Check that the metal masses are physical */
   for (int g = 0; g < GEAR_CHEMISTRY_ELEMENT_COUNT; g++) {
-    double m_metal_old = p->chemistry_data.metal_mass[g];
+    const double m_metal_old = p->chemistry_data.metal_mass[g];
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (p->geometry.volume == 0.) {
@@ -548,27 +546,29 @@ __attribute__((always_inline)) INLINE static void chemistry_end_density(
 #endif
     chemistry_check_unphysical_state(&p->chemistry_data.metal_mass[g],
                                      m_metal_old, hydro_get_mass(p),
-                                     /*callloc=*/g + 3);
+                                     /*callloc=*/3, /*element*/ g);
   }
+
+  /* Sanity check on the total metal mass */
+  chemistry_check_unphysical_total_metal_mass(p, 0);
 }
 
 /**
- * @brief Finishes the gradient calculation.
+ * @brief Finishes the gradient calculations.
  *
  * Just a wrapper around chemistry_gradients_finalize, which can be an empty
  * method, in which case no gradients are used.
  *
  * @param p The particle to act upon.
+ * @param cd The global properties of the chemistry scheme.
  */
 __attribute__((always_inline)) INLINE static void chemistry_end_gradient(
-    struct part* p) {
-  chemistry_gradients_finalise(p);
+  struct part* p, const struct chemistry_global_data* cd) {
+  chemistry_gradients_finalise(p, cd);
 }
 
 /**
- * @brief Prepare a particle for the force calculation.
- *
- * In GEAR MF diffusion, we update the flux timestep.
+ * @brief Prepare a particle for the force calculations.
  *
  * @param p The particle to act upon
  * @param xp The extended particle data to act upon
@@ -576,6 +576,7 @@ __attribute__((always_inline)) INLINE static void chemistry_end_gradient(
  * @param dt_alpha The time-step used to evolve non-cosmological quantities such
  *                 as the artificial viscosity.
  * @param dt_therm The time-step used to evolve hydrodynamical quantities.
+ * @param cd The global properties of the chemistry scheme.
  */
 __attribute__((always_inline)) INLINE static void chemistry_prepare_force(
     struct part* restrict p, struct xpart* restrict xp,
@@ -583,7 +584,7 @@ __attribute__((always_inline)) INLINE static void chemistry_prepare_force(
     const struct chemistry_global_data* cd) {
   p->chemistry_data.flux_dt = dt_therm;
 
-  /* Update the diffusion coefficient for the new loops */
+  /* Update the diffusion coefficient for the new loop */
   p->chemistry_data.kappa =
       chemistry_compute_diffusion_coefficient(p, cd, cosmo);
 }
@@ -593,70 +594,15 @@ __attribute__((always_inline)) INLINE static void chemistry_prepare_force(
  *
  * @param p The particle to act upon.
  * @param cosmo The current cosmological model.
+ * @param with_cosmology Are we running with the cosmology?
+ * @param time Current time of the simulation.
+ * @param dt Time step (in physical units).
+ * @param chem_data The global properties of the chemistry scheme.
  */
 __attribute__((always_inline)) INLINE static void chemistry_end_force(
     struct part* restrict p, const struct cosmology* cosmo,
     const int with_cosmology, const double time, const double dt,
     const struct chemistry_global_data* cd) {
-
-  struct chemistry_part_data* chd = &p->chemistry_data;
-
-  if (chd->flux_dt != 0.0f) {
-    for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; ++i) {
-      double flux;
-      chemistry_get_fluxes(p, i, &flux);
-
-      /* Update the conserved variable */
-      chd->metal_mass[i] += flux;
-    }
-
-    /* Reset the fluxes, so that they do not get used again in kick1 */
-    chemistry_reset_chemistry_fluxes(p);
-
-    /* Invalidate the particle time-step. It is considered to be inactive until
-       dt is set again in hydro_prepare_force() */
-    chd->flux_dt = -1.0f;
-  } else /* (p->chemistry_data.flux_dt == 0.0f) */ {
-    /* something tricky happens at the beginning of the simulation: the flux
-       exchange is done for all particles, but using a time step of 0. This
-       in itself is not a problem. However, it causes some issues with the
-       initialisation of flux.dt for inactive particles, since this value will
-       remain 0 until the particle is active again, and its flux.dt is set to
-       the actual time step in hydro_prepare_force(). We have to make sure it
-       is properly set to -1 here, so that inactive particles are indeed found
-       to be inactive during the flux loop. */
-    chd->flux_dt = -1.0f;
-  }
-
-  /* Sanity checks. We don't want negative metal masses. */
-  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; ++i) {
-    const double m_metal_old = chd->metal_mass[i];
-    chemistry_check_unphysical_state(&chd->metal_mass[i], m_metal_old,
-                                     hydro_get_mass(p), /*callloc=*/2);
-  }
-
-  /* Verify that the total metal mass does not exceed the part's mass */
-  double total_metal_mass = 0.;
-  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
-    total_metal_mass += chd->metal_mass[i];
-  }
-  if (total_metal_mass > hydro_get_mass(p)) {
-    for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
-      chd->metal_mass[i] /= 1e3*total_metal_mass/hydro_get_mass(p);
-    }
-    warning("[%lld] Total metal mass grew larger than the particle mass! "
-	    "Rescaling the element masses. m_Z_tot = %e, m = %e"
-	    " m_z_0 = %e, m_z_1 = %e, m_z_2 = %e, m_z_3 = %e, m_z_4 = %e, m_z_5 = %e, m_z_6 ="
-	    " %e, m_z_7 = %e, m_z_8 = %e, m_z_9 = %e",
-	    p->id, total_metal_mass, hydro_get_mass(p),
-	    chd->metal_mass[0],  chd->metal_mass[1], chd->metal_mass[2],
-	    chd->metal_mass[3], chd->metal_mass[4], chd->metal_mass[5],
-	    chd->metal_mass[6], chd->metal_mass[7], chd->metal_mass[8],
-	    chd->metal_mass[9]);
-  }
-
-  /* Reset wcorr */
-  p->geometry.wcorr = 1.0f;
 
   /* Store the density of the current timestep for the next timestep */
   p->chemistry_data.rho_prev = chemistry_get_comoving_density(p);
@@ -669,7 +615,10 @@ __attribute__((always_inline)) INLINE static void chemistry_end_force(
 }
 
 /**
- * @brief Sets all particle fields to sensible values when the #part has 0 ngbs.
+ * @brief Sets all particle fields to sensible values when the #part has 0
+ * ngbs.
+ *
+ * Note: When the #part has 0 ngbs, the chemistry_end_density() is not called.
  *
  * @param p The particle to act upon
  * @param xp The extended particle data to act upon
@@ -682,7 +631,7 @@ chemistry_part_has_no_neighbours(struct part* restrict p,
                                  const struct chemistry_global_data* cd,
                                  const struct cosmology* cosmo) {
 
-  /* Re-set problematic values */
+  /* Re-set geometry problematic values */
   p->geometry.volume = 1.0f;
   p->geometry.matrix_E[0][0] = 1.0f;
   p->geometry.matrix_E[0][1] = 0.0f;
@@ -693,16 +642,23 @@ chemistry_part_has_no_neighbours(struct part* restrict p,
   p->geometry.matrix_E[2][0] = 0.0f;
   p->geometry.matrix_E[2][1] = 0.0f;
   p->geometry.matrix_E[2][2] = 1.0f;
+  p->chemistry_data.geometry_condition_number = hydro_dimension_inv * 1.f;
 
-  /* reset the centroid to disable MFV velocity corrections for this particle */
+  /* Reset the centroid to disable MFV velocity corrections for this particle */
   fvpm_reset_centroids(p);
+
+  /* Set density loop variables to meaningful values */
+  p->chemistry_data.filtered.rho = hydro_get_comoving_density(p);
+  p->chemistry_data.filtered.rho_v[0] = hydro_get_comoving_density(p) * p->v[0];
+  p->chemistry_data.filtered.rho_v[1] = hydro_get_comoving_density(p) * p->v[1];
+  p->chemistry_data.filtered.rho_v[2] = hydro_get_comoving_density(p) * p->v[2];
 }
 
 /**
- * @brief Prepares a particle for the smooth metal calculation.
+ * @brief Prepares a particle for the diffusionx calculations.
  *
  * Zeroes all the relevant arrays in preparation for the sums taking place in
- * the various smooth metallicity tasks.
+ * the various diffusion tasks.
  *
  * Warning: DON'T call p->rho here. It is basically 0.
  *
@@ -730,7 +686,7 @@ __attribute__((always_inline)) INLINE static void chemistry_init_part(
  * @param phys_const The #phys_const.
  * @param us The #unit_system.
  * @param cosmo The #cosmology.
- * @param data The global chemistry information.
+ * @param cd The global properties of the chemistry scheme.
  * @param p Pointer to the particle data.
  * @param xp Pointer to the extended particle data.
  */
@@ -738,22 +694,22 @@ __attribute__((always_inline)) INLINE static void chemistry_first_init_part(
     const struct phys_const* restrict phys_const,
     const struct unit_system* restrict us,
     const struct cosmology* restrict cosmo,
-    const struct chemistry_global_data* data, struct part* restrict p,
+    const struct chemistry_global_data* cd, struct part* restrict p,
     struct xpart* restrict xp) {
 
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
-    if (data->initial_metallicities[i] < 0) {
+    if (cd->initial_metallicities[i] < 0) {
       /* Use the value from the IC. We are reading the metal mass fraction. */
       p->chemistry_data.metal_mass[i] *= hydro_get_mass(p);
     } else {
       /* Use the value from the parameter file */
       p->chemistry_data.metal_mass[i] =
-          data->initial_metallicities[i] * hydro_get_mass(p);
+          cd->initial_metallicities[i] * hydro_get_mass(p);
     }
   }
 
   /* Init the part chemistry data */
-  chemistry_init_part(p, data);
+  chemistry_init_part(p, cd);
 
   /* we cannot initialize wcorr in init_part, as init_part gets called every
      time the density loop is repeated, and the whole point of storing wcorr
@@ -762,9 +718,9 @@ __attribute__((always_inline)) INLINE static void chemistry_first_init_part(
   p->geometry.wcorr = 1.0f;
 
   /* Supertimestepping ----*/
-  /* Set the substep to N_substep +1 so that we can compute everything in
-     timestep for the first time.  */
-  p->chemistry_data.timesteps.current_substep = data->N_substeps + 1;
+  /* Set the substep to 0 so that we can compute everything in timestep for the
+     first time. */
+  p->chemistry_data.timesteps.current_substep = 0;
 }
 
 /**
@@ -875,7 +831,7 @@ INLINE static void chemistry_copy_sink_properties(const struct part* p,
 /**
  * @brief Add the chemistry data of a sink particle to a sink.
  *
- * @param si_data The black hole data to add to.
+ * @param si_data The sink data to add to.
  * @param sj_data The gas data to use.
  * @param gas_mass The mass of the gas particle.
  */
@@ -893,9 +849,9 @@ __attribute__((always_inline)) INLINE static void chemistry_add_sink_to_sink(
 /**
  * @brief Add the chemistry data of a gas particle to a sink.
  *
- * @param sp_data The sink data to add to.
- * @param p_data The gas data to use.
- * @param gas_mass The mass of the gas particle.
+ * @param s The #sink to add to.
+ * @param p The gas #part to use.
+ * @param ms_old The mass of the gas particle.
  */
 __attribute__((always_inline)) INLINE static void chemistry_add_part_to_sink(
     struct sink* s, const struct part* p, const double ms_old) {
@@ -957,272 +913,43 @@ __attribute__((always_inline)) INLINE static void chemistry_split_part(
 }
 
 /**
- * @brief Returns the abundance array (metal mass fractions) of the
- * gas particle to be used in feedback/enrichment related routines.
+ * @brief Extra chemistry operations to be done during the drift.
  *
- * This is unused in GEAR. --> return NULL
- *
- * @param p Pointer to the particle data.
+ * @param p Particle to act upon.
+ * @param xp The extended particle data to act upon.
+ * @param dt_drift The drift time-step for positions.
+ * @param dt_therm The drift time-step for thermal quantities.
+ * @param cosmo The current cosmological model.
+ * @param chem_data The global properties of the chemistry scheme.
  */
-__attribute__((always_inline)) INLINE static float const*
-chemistry_get_metal_mass_fraction_for_feedback(const struct part* restrict p) {
-  error("Not implemented");
-  return NULL;
-}
+__attribute__((always_inline)) INLINE static void chemistry_predict_extra(
+    struct part* p, struct xpart* xp, float dt_drift, float dt_therm,
+    const struct cosmology* cosmo,
+    const struct chemistry_global_data* chem_data) {
 
-/**
- * @brief Returns the total metallicity (metal mass fraction) of the
- * gas particle to be used in feedback/enrichment related routines.
- *
- * @param p Pointer to the particle data.
- */
-__attribute__((always_inline)) INLINE static float
-chemistry_get_total_metal_mass_fraction_for_feedback(
-    const struct part* restrict p) {
-  float m_Z_tot = 0.0;
-  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
-    m_Z_tot += p->chemistry_data.metal_mass[i];
+  struct chemistry_part_data* chd = &p->chemistry_data;
+
+  /* Predict rho_prev using the density predicted by the hydro. */
+  chd->rho_prev = p->rho;
+
+  /* Predict filtered density. Notice that h was predicted before by
+     hydro_predict_extra() */
+  float h_bar_inv = 1 / (p->h * kernel_gamma);
+  const float w1 = p->force.h_dt * h_bar_inv * dt_drift;
+
+  const float w2 = -hydro_dimension * w1;
+  if (fabsf(w2) < 0.2f) {
+    const float expf_approx =
+        approx_expf(w2); /* 4th order expansion of exp(w) */
+    chd->filtered.rho *= expf_approx;
+  } else {
+    const float expf_exact = expf(w2);
+    chd->filtered.rho *= expf_exact;
   }
-  return m_Z_tot/hydro_get_mass(p);
-}
+  chd->filtered.rho_prev = chd->filtered.rho;
 
-/**
- * @brief Returns the total metallicity (metal mass fraction) of the
- * star particle to be used in feedback/enrichment related routines.
- *
- * @param sp Pointer to the particle data.
- */
-__attribute__((always_inline)) INLINE static double
-chemistry_get_star_total_metal_mass_fraction_for_feedback(
-    const struct spart* restrict sp) {
-  float Z_tot = 0.0;
-  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
-    Z_tot += sp->chemistry_data.metal_mass_fraction[i];
-  }
-  return Z_tot;
-}
-
-/**
- * @brief Returns the total iron mass fraction of the
- * star particle to be used in feedback/enrichment related routines.
- * We assume iron to be stored at index 0.
- *
- * @param sp Pointer to the particle data.
- */
-__attribute__((always_inline)) INLINE static double
-chemistry_get_star_total_iron_mass_fraction_for_feedback(
-    const struct spart* restrict sp) {
-
-  return sp->chemistry_data.metal_mass_fraction[0];
-}
-
-/**
- * @brief Returns the total iron mass fraction of the
- * sink particle to be used in feedback/enrichment related routines.
- * We assume iron to be stored at index 0.
- *
- * @param sp Pointer to the particle data.
- */
-__attribute__((always_inline)) INLINE static double
-chemistry_get_sink_total_iron_mass_fraction_for_feedback(
-    const struct sink* restrict sink) {
-
-  return sink->chemistry_data.metal_mass_fraction[0];
-}
-
-/**
- * @brief Returns the abundances (metal mass fraction) of the
- * star particle to be used in feedback/enrichment related routines.
- *
- * @param sp Pointer to the particle data.
- */
-__attribute__((always_inline)) INLINE static double const*
-chemistry_get_star_metal_mass_fraction_for_feedback(
-    const struct spart* restrict sp) {
-
-  return sp->chemistry_data.metal_mass_fraction;
-}
-
-/**
- * @brief Returns the total metallicity (metal mass fraction) of the
- * gas particle to be used in cooling related routines.
- *
- * @param p Pointer to the particle data.
- */
-__attribute__((always_inline)) INLINE static double
-chemistry_get_total_metal_mass_fraction_for_cooling(
-    const struct part* restrict p) {
-  float m_Z_tot = 0.0;
-  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
-    m_Z_tot += p->chemistry_data.metal_mass[i];
-  }
-
-  if (m_Z_tot > hydro_get_mass(p)) {
-    warning("[%lld] Total metal mass grew larger than the particle mass! m_Z_tot = %e, m = %e", p->id, m_Z_tot, hydro_get_mass(p));
-  }
-
-  return m_Z_tot/hydro_get_mass(p);
-}
-
-/**
- * @brief Returns the abundance array (metal mass fractions) of the
- * gas particle to be used in cooling related routines.
- *
- * @TODO: This must be changed
- *
- * @param p Pointer to the particle data.
- */
-__attribute__((always_inline)) INLINE static double const*
-chemistry_get_metal_mass_fraction_for_cooling(const struct part* restrict p) {
-  error("This function is not used in GEAR");
-  return p->chemistry_data.metal_mass;
-}
-
-/**
- * @brief Returns the total metallicity (metal mass fraction) of the
- * gas particle to be used in star formation related routines.
- *
- * @param p Pointer to the particle data.
- */
-__attribute__((always_inline)) INLINE static double
-chemistry_get_total_metal_mass_fraction_for_star_formation(
-    const struct part* restrict p) {
-
-  float m_Z_tot = 0.0;
-  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
-    m_Z_tot += p->chemistry_data.metal_mass[i];
-  }
-  return m_Z_tot/hydro_get_mass(p);
-}
-
-/**
- * @brief Returns the abundance array (metal mass fractions) of the
- * gas particle to be used in star formation related routines.
- *
- * TODO: Take care of this...
- *
- * @param p Pointer to the particle data.
- */
-__attribute__((always_inline)) INLINE static double const*
-chemistry_get_metal_mass_fraction_for_star_formation(
-    const struct part* restrict p) {
-  error("This function is not used in GEAR");
-  return p->chemistry_data.metal_mass;
-}
-
-/**
- * @brief Returns the total metallicity (metal mass fraction) of the
- * gas particle to be used in the stats related routines.
- *
- * @param p Pointer to the particle data.
- */
-__attribute__((always_inline)) INLINE static float
-chemistry_get_total_metal_mass_for_stats(const struct part* restrict p) {
-  float m_Z_tot = 0.0;
-  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
-    m_Z_tot += p->chemistry_data.metal_mass[i];
-  }
-  return m_Z_tot;
-}
-
-/**
- * @brief Returns the total metallicity (metal mass fraction) of the
- * star particle to be used in the stats related routines.
- *
- * @param sp Pointer to the star particle data.
- */
-__attribute__((always_inline)) INLINE static float
-chemistry_get_star_total_metal_mass_for_stats(const struct spart* restrict sp) {
-  float Z_tot = 0.0;
-  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
-    Z_tot += sp->chemistry_data.metal_mass_fraction[i];
-  }
-  return Z_tot*sp->mass;
-}
-
-/**
- * @brief Returns the total metallicity (metal mass fraction) of the
- * black hole particle to be used in the stats related routines.
- *
- * @param bp Pointer to the BH particle data.
- */
-__attribute__((always_inline)) INLINE static float
-chemistry_get_bh_total_metal_mass_for_stats(const struct bpart* restrict bp) {
-  error("No BH yet in GEAR");
-  return 0.f;
-}
-
-/**
- * @brief Compute and set the ejected metal yields from supernovae events (SNII
- * and SNIa) for a star particle.
- *
- * This function calculates the total mass of metals ejected during supernova
- * feedback (Type II and Type Ia) for a given star particle. It combines the
- * yields from SNII and SNIa, accounts for unprocessed gas, and converts the
- * results into internal units.
- *
- * @param sp Pointer to the star particle structure (`struct spart`) where the results will be stored.
- * @param m_snii Stellar mass involved per supernova II event.
- * @param m_non_processed Mass of unprocessed gas that retains the star's initial metallicity.
- * @param number_snii Number of Type II supernovae events.
- * @param number_snia Number of Type Ia supernovae events.
- * @param snii_yields Array of metal yields per element for Type II supernovae.
- *                        The array size is `GEAR_CHEMISTRY_ELEMENT_COUNT`.
- * @param snia_yields Array of metal yields per element for Type Ia supernovae.
- *                        The array size is `GEAR_CHEMISTRY_ELEMENT_COUNT`.
- * @param phys_const Pointer to a structure containing physical constants.
- *
- * @note The resulting metal mass ejected per element is stored in:
- *       `sp->feedback_data.metal_mass_ejected[i]` for each element `i`.
- */
-__attribute__((always_inline)) INLINE static void
-chemistry_set_star_supernovae_ejected_yields(struct spart* restrict sp,
-					     const float mass_snii_event, const float m_non_processed, const int number_snii, const int number_snia,
-  const float snii_yields[GEAR_CHEMISTRY_ELEMENT_COUNT],
-  const float snia_yields[GEAR_CHEMISTRY_ELEMENT_COUNT],
-  const struct phys_const* phys_const) {
-
-  /* In MF diffusion, the last element correspond to the other untracked
-     metals, not the sum of all metals. This ensure proper diffusion of the
-     elements and consistency between the tracked elements and untracked ones */
-
-  float snii_yields_new[GEAR_CHEMISTRY_ELEMENT_COUNT] = {0.f};
-  float snia_yields_new[GEAR_CHEMISTRY_ELEMENT_COUNT] = {0.f};
-
-  /* Get the sum of all explicitely tracked elements */
-  float m_Z_tot_snii_tracked = 0.0;
-  float m_Z_tot_snia_tracked = 0.0;
-  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT - 1; i++) {
-    m_Z_tot_snii_tracked += snii_yields[i];
-    m_Z_tot_snia_tracked += snia_yields[i];
-
-    snii_yields_new[i] = snii_yields[i];
-    snia_yields_new[i] = snia_yields[i];
-  }
-
-  const int last_elem = GEAR_CHEMISTRY_ELEMENT_COUNT - 1;
-  snii_yields_new[last_elem] = snii_yields[last_elem] - m_Z_tot_snii_tracked;
-  snia_yields_new[last_elem] = snia_yields_new[last_elem] - m_Z_tot_snia_tracked;\
-
-  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
-
-    /* Compute the mass fraction of metals */
-    sp->feedback_data.metal_mass_ejected[i] =
-        /* Supernovae II yields */
-        snii_yields_new[i] +
-        /* Gas contained in stars initial metallicity */
-        chemistry_get_star_metal_mass_fraction_for_feedback(sp)[i] *
-            m_non_processed;
-
-    /* Convert it to total mass */
-    sp->feedback_data.metal_mass_ejected[i] *= mass_snii_event * number_snii;
-
-    /* Supernovae Ia yields */
-    sp->feedback_data.metal_mass_ejected[i] += snia_yields_new[i] * number_snia;
-
-    /* Convert everything in code units */
-    sp->feedback_data.metal_mass_ejected[i] *= phys_const->const_solar_mass;
-  }
+  /* Update diffusion coefficient */
+  chd->kappa = chemistry_compute_diffusion_coefficient(p, chem_data, cosmo);
 }
 
 #endif /* SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_H */

@@ -24,6 +24,12 @@
 #include "chemistry_unphysical.h"
 
 /**
+ * @file src/chemistry/GEAR_MF_DIFFUSION/chemistry_flux.h
+ * @brief File containing functions dealing with the diffusion fluxes.
+ *
+ * */
+
+/**
  * @brief Reset the diffusion fluxes for the given particle.
  *
  * @param p Particle.
@@ -43,7 +49,7 @@ chemistry_reset_chemistry_fluxes(struct part* restrict p) {
  * the flux is 1D.
  *
  * @param p Particle.
- * @param metal Metal index.
+ * @param metal Index of metal specie.
  * @param flux Fluxes for the particle (array of size 1).
  */
 __attribute__((always_inline)) INLINE void chemistry_get_fluxes(
@@ -57,8 +63,10 @@ __attribute__((always_inline)) INLINE void chemistry_get_fluxes(
  * F_diss = - K * \nabla \otimes q
  *
  * @param p Particle.
- * @param metal Index of metal specie
- * @param F_diff (return) Array to write diffusion flux component into
+ * @param metal Index of metal specie.
+ * @param F_diff (return) Array to write diffusion flux component into.
+ * @param chem_data The global properties of the chemistry scheme.
+ * @param cosmo The current cosmological model.
  */
 __attribute__((always_inline)) INLINE static void
 chemistry_compute_physical_diffusion_flux(
@@ -87,7 +95,7 @@ chemistry_compute_physical_diffusion_flux(
 
     /* Compute diffusion matrix K */
     double K[3][3];
-    chemistry_get_physical_matrix_K(p, K, chem_data, cosmo);
+    chemistry_get_physical_matrix_K(p, chem_data, cosmo, K);
 
     for (int i = 0; i < 3; ++i) {
       for (int j = 0; j < 3; ++j) {
@@ -102,6 +110,8 @@ chemistry_compute_physical_diffusion_flux(
  * @brief Compute the flux for the Riemann problem with the given left and right
  * state, and interface normal, surface area and velocity.
  *
+ * @param dx Comoving distance vector between the particles (dx = pi->x -
+ * pj->x).
  * @param pi The #part pi.
  * @param pj The #part pj.
  * @param UL Left diffusion state variables (in physical units).
@@ -111,14 +121,17 @@ chemistry_compute_physical_diffusion_flux(
  * @param n_unit Unit vector of the interface.
  * @param Anorm Surface area of the interface (in physical units).
  * @param metal Metal specie.
- * @param metal_flux Array to store the result in (of size 1).
+ * @param chem_data The global properties of the chemistry scheme.
+ * @param cosmo The current cosmological model.
+ * @param metal_flux (return) The resulting flux at the interface (of size 1).
  */
 __attribute__((always_inline)) INLINE static void chemistry_compute_flux(
-    const struct part* restrict pi, const struct part* restrict pj,
-    const double UL, const double UR, const float WL[5], const float WR[5],
-    const float n_unit[3], const float Anorm, int metal, double* metal_flux,
+    const float dx[3], const struct part* restrict pi,
+    const struct part* restrict pj, const double UL, const double UR,
+    const float WL[5], const float WR[5], const float n_unit[3],
+    const float Anorm, const int metal,
     const struct chemistry_global_data* chem_data,
-    const struct cosmology* cosmo) {
+    const struct cosmology* cosmo, double* metal_flux) {
 
   /* Note: F_diff_R and F_diff_L are computed with a first order
          reconstruction */
@@ -136,9 +149,9 @@ __attribute__((always_inline)) INLINE static void chemistry_compute_flux(
 
   /* While solving the Riemann problem, we shall get a scalar because of the
      scalar product betwee F_diff_ij^* and A_ij */
-  chemistry_riemann_solve_for_flux(pi, pj, UL, UR, WL, WR, F_diff_i, F_diff_j,
-                                   Anorm, n_unit, metal, metal_flux, chem_data,
-                                   cosmo);
+  chemistry_riemann_solve_for_flux(dx, pi, pj, UL, UR, WL, WR, F_diff_i,
+                                   F_diff_j, Anorm, n_unit, metal, chem_data,
+                                   cosmo, metal_flux);
 
   /* Anorm is already in physical units here. */
   *metal_flux *= Anorm;

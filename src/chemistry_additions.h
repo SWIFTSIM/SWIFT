@@ -30,7 +30,7 @@
 /* Config parameters. */
 #include <config.h>
 
-#if defined(HYDRO_DOES_MASS_FLUX)
+#if defined(HYDRO_DOES_MASS_FLUX) || defined(CHEMISTRY_GEAR_MF_DIFFUSION)
 /* Import the right chemistry definition */
 #if defined(CHEMISTRY_AGORA)
 #include "./chemistry/AGORA/chemistry_additions.h"

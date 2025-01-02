@@ -65,10 +65,13 @@ chemistry_part_reset_gradients(struct part *restrict p) {
  * @brief Set the gradients for the given particle to the given values.
  *
  * @param p Particle.
+ * @param metal Index of metal specie.
+ * @param gradF Metal mass fraction gradient (of size 3) to set.
  */
 __attribute__((always_inline)) INLINE static void
-chemistry_part_set_diffusion_gradients(struct part *restrict p, int metal,
-                                       const double gradF[3]) {
+chemistry_part_set_metal_mass_fraction_gradients(struct part *restrict p,
+                                                 int metal,
+                                                 const double gradF[3]) {
 
   struct chemistry_part_data *chd = &p->chemistry_data;
 
@@ -81,18 +84,17 @@ chemistry_part_set_diffusion_gradients(struct part *restrict p, int metal,
  * @brief Update the diffusion gradients for the given particle with the
  * given contributions.
  *
- * @param p Particle
+ * @param p Particle.
  * @param metal metal specie index to update (0 <= metal <
- * GEAR_CHEMISTRY_ELEMENT_COUNT)
- * @param dF gradient of the diffusion flux
+ * GEAR_CHEMISTRY_ELEMENT_COUNT).
+ * @param dF Metal mass fraction gradient (of size 3).
  */
 __attribute__((always_inline)) INLINE static void
-chemistry_part_update_diffusion_gradients(struct part *restrict p, int metal,
-                                          double dF[3]) {
+chemistry_part_update_metal_mass_fraction_gradients(struct part *restrict p,
+                                                    int metal, double dF[3]) {
 
   struct chemistry_part_data *chd = &p->chemistry_data;
 
-  /* Now this is grad Z (and not grad rho_Z) */
   chd->gradients.Z[metal][0] += dF[0];
   chd->gradients.Z[metal][1] += dF[1];
   chd->gradients.Z[metal][2] += dF[2];
@@ -103,9 +105,12 @@ chemistry_part_update_diffusion_gradients(struct part *restrict p, int metal,
  * given contributions.
  *
  * @param p Particle
- * @param dvx x velocity gradient contribution.
- * @param dvy y velocity gradient contribution.
- * @param dvz z velocity gradient contribution.
+ * @param dvx x Velocity gradient contribution.
+ * @param dvy y Velocity gradient contribution.
+ * @param dvz z Velocity gradient contribution.
+ * @param dvx_tilde x Velocity tilde gradient contribution.
+ * @param dvy_tilde y Velocity tilde gradient contribution.
+ * @param dvz_tilde z Velocity tilde gradient contribution.
  */
 __attribute__((always_inline)) INLINE static void
 chemistry_part_update_hydro_gradients(struct part *restrict p, float dvx[3],
@@ -173,6 +178,83 @@ chemistry_part_normalise_gradients(struct part *restrict p, const float norm) {
   chd->filtered.grad_v_tilde[2][0] *= norm;
   chd->filtered.grad_v_tilde[2][1] *= norm;
   chd->filtered.grad_v_tilde[2][2] *= norm;
+}
+
+/**
+ * @brief Compute and set the ejected metal yields from supernovae events (SNII
+ * and SNIa) for a star particle.
+ *
+ * This function calculates the total mass of metals ejected during supernova
+ * feedback (Type II and Type Ia) for a given star particle. It combines the
+ * yields from SNII and SNIa, accounts for unprocessed gas, and converts the
+ * results into internal units.
+ *
+ * @param sp Pointer to the star particle structure (`struct spart`) where the
+ * results will be stored.
+ * @param m_snii Stellar mass involved per supernova II event.
+ * @param m_non_processed Mass of unprocessed gas that retains the star's
+ * initial metallicity.
+ * @param number_snii Number of Type II supernovae events.
+ * @param number_snia Number of Type Ia supernovae events.
+ * @param snii_yields Array of metal yields per element for Type II supernovae.
+ *                        The array size is `GEAR_CHEMISTRY_ELEMENT_COUNT`.
+ * @param snia_yields Array of metal yields per element for Type Ia supernovae.
+ *                        The array size is `GEAR_CHEMISTRY_ELEMENT_COUNT`.
+ * @param phys_const Pointer to a structure containing physical constants.
+ *
+ * @note The resulting metal mass ejected per element is stored in:
+ *       `sp->feedback_data.metal_mass_ejected[i]` for each element `i`.
+ */
+__attribute__((always_inline)) INLINE static void
+chemistry_set_star_supernovae_ejected_yields(
+    struct spart *restrict sp, const float mass_snii_event,
+    const float m_non_processed, const int number_snii, const int number_snia,
+    const float snii_yields[GEAR_CHEMISTRY_ELEMENT_COUNT],
+    const float snia_yields[GEAR_CHEMISTRY_ELEMENT_COUNT],
+    const struct phys_const *phys_const) {
+
+  /* In MF diffusion, the last element correspond to the other untracked
+     metals, not the sum of all metals. This ensure proper diffusion of the
+     elements and consistency between the tracked elements and untracked ones */
+
+  float snii_yields_new[GEAR_CHEMISTRY_ELEMENT_COUNT] = {0.f};
+  float snia_yields_new[GEAR_CHEMISTRY_ELEMENT_COUNT] = {0.f};
+
+  /* Get the sum of all explicitely tracked elements */
+  float m_Z_tot_snii_tracked = 0.0;
+  float m_Z_tot_snia_tracked = 0.0;
+  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT - 1; i++) {
+    m_Z_tot_snii_tracked += snii_yields[i];
+    m_Z_tot_snia_tracked += snia_yields[i];
+
+    snii_yields_new[i] = snii_yields[i];
+    snia_yields_new[i] = snia_yields[i];
+  }
+
+  const int last_elem = GEAR_CHEMISTRY_ELEMENT_COUNT - 1;
+  snii_yields_new[last_elem] = snii_yields[last_elem] - m_Z_tot_snii_tracked;
+  snia_yields_new[last_elem] =
+      snia_yields_new[last_elem] - m_Z_tot_snia_tracked;
+
+  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
+
+    /* Compute the mass fraction of metals */
+    sp->feedback_data.metal_mass_ejected[i] =
+        /* Supernovae II yields */
+        snii_yields_new[i] +
+        /* Gas contained in stars initial metallicity */
+        chemistry_get_star_metal_mass_fraction_for_feedback(sp)[i] *
+            m_non_processed;
+
+    /* Convert it to total mass */
+    sp->feedback_data.metal_mass_ejected[i] *= mass_snii_event * number_snii;
+
+    /* Supernovae Ia yields */
+    sp->feedback_data.metal_mass_ejected[i] += snia_yields_new[i] * number_snia;
+
+    /* Convert everything in code units */
+    sp->feedback_data.metal_mass_ejected[i] *= phys_const->const_solar_mass;
+  }
 }
 
 #endif /* SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_SETTERS_H */

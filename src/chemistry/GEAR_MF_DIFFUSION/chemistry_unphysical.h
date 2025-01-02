@@ -21,6 +21,7 @@
 
 #include "error.h"
 #include "inline.h"
+#include "part.h"
 
 /**
  * @file src/chemistry/GEAR/chemistry_unphysical.h
@@ -28,20 +29,18 @@
  */
 
 /**
- * @brief check for and correct if needed unphysical
- * values for a diffusion state.
+ * @brief Check for and correct, if needed, unphysical values for a diffusion
+ * state.
  *
- * Check that the metal density does not exceed the particle mass. To do so, we
- * whould check all metallicities at the same time. We should also ensure that
- * the sum of the metallicities does not exceed the particle mass.
- *
- * @param metal_density pointer to the radiation energy density
+ * @param metal_mass pointer to the radiation energy density
  * @param n_old metal density before change to check. Set = 0 if not available
  * @param callloc integer indentifier where this function was called from
+ * @param element Integer identifier for the metal specie to correct
  */
 __attribute__((always_inline)) INLINE static void
 chemistry_check_unphysical_state(double* metal_mass, const double mZ_old,
-                                 const double gas_mass, int callloc) {
+                                 const double gas_mass, int callloc,
+                                 const int element) {
 
   /* Check for negative metal densities/masses */
 #ifdef SWIFT_DEBUG_CHECKS
@@ -53,12 +52,12 @@ chemistry_check_unphysical_state(double* metal_mass, const double mZ_old,
   /* callloc = 1 is gradient extrapolation. Don't print out those. */
   if (callloc == 1) print = 0;
   if (print)
-    error("Fixing unphysical metal density/mass case %d | %.6e | %.6e", callloc,
-          *metal_mass, mZ_old);
+    error("[%d] Fixing unphysical metal density/mass case %d | %.6e | %.6e",
+          element, callloc, *metal_mass, mZ_old);
 #endif
   if (isinf(*metal_mass) || isnan(*metal_mass))
-    error("Got inf/nan metal density/mass diffusion case %d | %.6e ", callloc,
-          *metal_mass);
+    error("[%d] Got inf/nan metal density/mass diffusion case %d | %.6e ",
+          element, callloc, *metal_mass);
 
   /* Fix negative masses */
   if (*metal_mass < 0.0) {
@@ -75,9 +74,9 @@ chemistry_check_unphysical_state(double* metal_mass, const double mZ_old,
       /* Do not extrapolate, use 0th order reconstruction. */
       *metal_mass = mZ_old;
     } else {
-      *metal_mass /= 1e3*mZ_old/gas_mass;
-      warning("Metal mass bigger than gas mass ! case %d | %e | %e | %e", callloc,
-	    *metal_mass, mZ_old, gas_mass);
+      *metal_mass /= 1.1*mZ_old/gas_mass;
+      warning("[%d] Metal mass bigger than gas mass ! case %d | %e | %e | %e",
+              element, callloc, *metal_mass, mZ_old, gas_mass);
     }
   }
 }
@@ -112,6 +111,38 @@ chemistry_check_unphysical_diffusion_flux(double flux[3]) {
     if (isnan(flux[i])) {
       flux[i] = 0.f;
     }
+  }
+}
+
+/**
+ * @brief Check for and correct if needed unphysical total metal mass.
+ *
+ * @param p The #part
+ * @param callloc integer indentifier where this function was called from
+ */
+__attribute__((always_inline)) INLINE static void
+chemistry_check_unphysical_total_metal_mass(struct part* restrict p,
+                                            int callloc) {
+  struct chemistry_part_data* chd = &p->chemistry_data;
+
+  /* Verify that the total metal mass does not exceed the part's mass */
+  const float gas_mass = hydro_get_mass(p);
+  const double m_Z_tot = chemistry_get_total_metal_mass_fraction(p) * gas_mass;
+
+  if (m_Z_tot > gas_mass) {
+    /* Rescale the elements */
+    for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
+      chd->metal_mass[i] /= 1e1 * m_Z_tot / gas_mass;
+    }
+    warning(
+        "[%lld, %i] Total metal mass grew larger than the particle mass! "
+        "Rescaling the element masses. m_Z_tot = %e, m = %e"
+        " m_z_0 = %e, m_z_1 = %e, m_z_2 = %e, m_z_3 = %e, m_z_4 = %e, "
+        "m_z_5 = %e, m_z_6 = %e, m_z_7 = %e, m_z_8 = %e, m_z_9 = %e",
+        p->id, callloc, m_Z_tot, gas_mass, chd->metal_mass[0],
+        chd->metal_mass[1], chd->metal_mass[2], chd->metal_mass[3],
+        chd->metal_mass[4], chd->metal_mass[5], chd->metal_mass[6],
+        chd->metal_mass[7], chd->metal_mass[8], chd->metal_mass[9]);
   }
 }
 
