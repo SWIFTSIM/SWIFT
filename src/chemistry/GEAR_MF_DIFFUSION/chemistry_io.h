@@ -52,10 +52,17 @@ INLINE static int chemistry_read_particles(struct part* parts,
 INLINE static void convert_gas_metals(const struct engine* e,
                                       const struct part* p,
                                       const struct xpart* xp, double* ret) {
-
+  /* GEAR expects the last element to be the metallicity. Since the
+  diffusion stores the mass of all "untracked" elements in the last index, we
+  need to compute the metallicity and write it in the last index. */
+  double m_Z = 0.0;
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
     ret[i] = p->chemistry_data.metal_mass[i] / hydro_get_mass(p);
+    m_Z += p->chemistry_data.metal_mass[i];
   }
+
+  /* Now write the metallicity */
+  ret[GEAR_CHEMISTRY_ELEMENT_COUNT-1] = m_Z / hydro_get_mass(p);
 }
 
 INLINE static void convert_chemistry_diffusion_coefficient(
