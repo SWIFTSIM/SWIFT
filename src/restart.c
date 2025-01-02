@@ -194,7 +194,7 @@ void restart_read(struct engine *e, const char *filename) {
   /* Get our version and signature back. These should match.
    * Use static int here to avoid compiler warnings about gnu-extensions
    * of folding a variable length array to constant array. */
-  const static int sig_len = strlen(SWIFT_RESTART_SIGNATURE);
+  const int sig_len = strlen(SWIFT_RESTART_SIGNATURE);
   char signature[sig_len + 1];
   restart_read_blocks(signature, sig_len, 1, stream, NULL, "SWIFT signature");
   signature[sig_len] = '\0';
