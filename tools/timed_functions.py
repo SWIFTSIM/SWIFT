@@ -38,6 +38,8 @@ labels = [
     ["engine_launch: \(tasks\)", 0],
     ["engine_launch: \(timesteps\)", 0],
     ["engine_launch: \(cycles\)", 0],
+    ["engine_launch: \(tend\)", 0],
+    ["Gathering and activating tend", 0],
     ["writing particle properties", 0],
     ["engine_repartition:", 0],
     ["engine_exchange_cells:", 1],

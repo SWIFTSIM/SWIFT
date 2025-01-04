@@ -331,6 +331,9 @@ struct space {
   /*! Structure dealing with the computation of a unique ID */
   struct unique_id unique_id;
 
+  /*! Have the top-level cells' time-steps been updated? */
+  char *cells_top_updated;
+
 #ifdef WITH_MPI
 
   /*! Buffers for parts that we will receive from foreign cells. */
@@ -432,6 +435,7 @@ void space_init_sparts(struct space *s, int verbose);
 void space_init_bparts(struct space *s, int verbose);
 void space_init_sinks(struct space *s, int verbose);
 void space_after_snap_tracer(struct space *s, int verbose);
+void space_mark_cell_as_updated(struct space *s, const struct cell *c);
 void space_convert_quantities(struct space *s, int verbose);
 void space_convert_rt_quantities(struct space *s, int verbose);
 void space_post_init_parts(struct space *s, int verbose);
