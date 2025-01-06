@@ -2136,15 +2136,7 @@ void engine_gravity_make_task_loop(struct engine *e, int cid, const int cdim[3],
          * out of the union/we skip them). Unless they are void cells, Nigels a
          * fan of those (and we need to make tasks for them to be later split
          * even if they are empty and foreign). */
-        /* TODO: Once we have the partitioning sorted it would be far better
-         * to know exactly which void cells contain local zoom progeny. We
-         * only actually need to make tasks for void cells with at least one
-         * local zoom cell within their tree. This could be achieved with a
-         * flag of some form. */
-        if ((ci->nodeID != nodeID && cj->nodeID != nodeID) &&
-            (ci->subtype != cell_subtype_void &&
-             cj->subtype != cell_subtype_void))
-          continue;
+        if (ci->nodeID != nodeID && cj->nodeID != nodeID) continue;
 
         /* Do we need a pair interaction for these cells? */
         if (engine_gravity_need_cell_pair_task(e, ci, cj, periodic, use_mesh)) {
