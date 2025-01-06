@@ -352,6 +352,8 @@ void zoom_void_space_split(struct space *s, int verbose) {
   if (notlinked > 0)
     error("%d zoom cells are not linked into a void cell tree!", notlinked);
 
+  /* When running with gravity we need to make sure our multipole counts make
+   * sense between cell levels. */
   if (s->with_self_gravity) {
     /* Collect the number of particles in the void multipoles. */
     int nr_gparts_in_void = 0;
@@ -370,50 +372,54 @@ void zoom_void_space_split(struct space *s, int verbose) {
            k++) {
         nr_gparts += s->multipoles_top[k].m_pole.num_gpart;
       }
+    } else {
+      /* With no buffer cells we instead need to count up the zoom cell
+       * gpart counts. */
+      /* Collect the number of particles in the zoom multipoles. */
+      for (int k = 0; k < s->zoom_props->nr_zoom_cells; k++) {
+        nr_gparts += s->multipoles_top[k].m_pole.num_gpart;
+      }
     }
 
     /* Check the number of gparts is consistent. */
-    if (s->zoom_props->with_buffer_cells && nr_gparts_in_void != nr_gparts)
+    if (s->zoom_props->with_buffer_cells && nr_gparts_in_void != nr_gparts) {
       error(
           "Number of gparts is inconsistent between buffer cells and "
           "void multipole (nr_gparts_in_void=%d, nr_gparts=%d)",
           nr_gparts_in_void, nr_gparts);
-
-    /* Collect the number of particles in the zoom multipoles. */
-    for (int k = 0; k < s->zoom_props->nr_zoom_cells; k++) {
-      nr_gparts += s->multipoles_top[k].m_pole.num_gpart;
     }
 
     /* Check the number of particles in the void cells. */
-    if (!s->zoom_props->with_buffer_cells && nr_gparts_in_void != nr_gparts)
+    else if (!s->zoom_props->with_buffer_cells &&
+             nr_gparts_in_void != nr_gparts) {
       error(
           "Number of gparts is inconsistent between zoom cells and "
           "void multipole (nr_gparts_in_void=%d, nr_gparts=%d)",
           nr_gparts_in_void, nr_gparts);
-  }
+    }
 
-  /* Ensure the zoom count agrees with the buffer void cells (if we have buffer
-   * cells) */
-  if (s->zoom_props->with_buffer_cells) {
-    int zoom_count = 0;
-    int buffer_count = 0;
-    for (int k = 0; k < s->nr_cells; k++) {
-      struct cell *c = s->cells_top[k];
-      if (c->type == cell_type_zoom) {
-        zoom_count += c->grav.multipole.m_pole.num_gpart;
-      } else if (c->type == cell_type_buffer &&
-                 c->subtype == cell_subtype_void) {
-        buffer_count += c->grav->multipole.m_pole.num_gpart;
+    /* Ensure the zoom count agrees between the buffer void cells and zoom cells
+     * (if we have buffer cells). */
+    if (s->zoom_props->with_buffer_cells) {
+      int zoom_count = 0;
+      int buffer_count = 0;
+      for (int k = 0; k < s->nr_cells; k++) {
+        struct cell *c = s->cells_top[k];
+        if (c->type == cell_type_zoom) {
+          zoom_count += c->grav.multipole.m_pole.num_gpart;
+        } else if (c->type == cell_type_buffer &&
+                   c->subtype == cell_subtype_void) {
+          buffer_count += c->grav->multipole.m_pole.num_gpart;
+        }
+      }
+
+      if (zoom_count != buffer_count) {
+        error(
+            "Buffer and zoom multipoles disagree (buffer_count=%d, "
+            "zoom_count=%d)",
+            buffer_count, zoom_count);
       }
     }
-
-    if (zoom_count != buffer_count) {
-      error(
-          "Buffer and zoom multipoles disagree (buffer_count=%d, "
-          "zoom_count=%d)",
-          buffer_count, zoom_count);
-    }
   }
-
 #endif
 }
