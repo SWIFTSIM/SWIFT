@@ -207,9 +207,9 @@ void zoom_partition_voids(struct space *s, int nodeID) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Before we do anything else... do we all agree on the partition? */
-  int *cell_nodeIDs if ((cell_nodeIDs =
-                             (int *)malloc(sizeof(int) * s->nr_cells)) == NULL)
-      error("Failed to allocate cell_nodeIDs.");
+  int *cell_nodeIDs;
+  if ((cell_nodeIDs = (int *)malloc(sizeof(int) * s->nr_cells)) == NULL)
+    error("Failed to allocate cell_nodeIDs.");
 
   for (int k = 0; k < s->nr_cells; k++) {
     cell_nodeIDs[k] = s->cells_top[k].nodeID;
