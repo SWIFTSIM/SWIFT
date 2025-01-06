@@ -219,7 +219,7 @@ void zoom_partition_voids(struct space *s, int nodeID) {
   int res = MPI_Allreduce(MPI_IN_PLACE, cell_nodeIDs, s->nr_cells, MPI_INT,
                           MPI_MAX, MPI_COMM_WORLD);
 
-  if (res != MPI_SUCCESS) error(res, "Failed to allreduce the cell node IDs.");
+  if (res != MPI_SUCCESS) error("Failed to allreduce the cell node IDs.");
 
   for (int k = 0; k < s->nr_cells; k++) {
     if (cell_nodeIDs[k] != s->cells_top[k].nodeID)
