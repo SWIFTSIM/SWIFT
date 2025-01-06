@@ -757,6 +757,8 @@ void engine_repartition(struct engine *e);
 void engine_repartition_trigger(struct engine *e);
 void engine_add_proxy(struct engine *e, struct cell *ci, struct cell *cj,
                       const int proxy_type);
+void engine_check_proxy_exists(const struct engine *e, const struct cell *ci,
+                               const struct cell *cj, const int nodeID);
 int engine_get_proxy_type(const struct engine *e, const struct cell *ci,
                           const struct cell *cj, const double r_max);
 void engine_makeproxies(struct engine *e);

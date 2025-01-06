@@ -350,3 +350,64 @@ void engine_makeproxies(struct engine *e) {
   error("SWIFT was not compiled with MPI support.");
 #endif
 }
+
+/**
+ * @brief Check that a proxy exists for a given pair of cells.
+ *
+ * @param e The #engine.
+ * @param ci The first #cell.
+ * @param cj The second #cell.
+ * @param nodeID The node ID.
+ */
+void engine_check_proxy_exists(const struct engine *e, const struct cell *ci,
+                               const struct cell *cj, const int nodeID) {
+#ifdef WITH_MPI
+  /* Get the top level cell */
+  struct cell *topi = ci->top;
+  struct cell *topj = cj->top;
+
+  /* Let's cross-check that we had a proxy for that cell */
+  if (topi->nodeID == nodeID && topj->nodeID != nodeID) {
+
+    /* Find the proxy for this node */
+    const int proxy_id = e->proxy_ind[topj->nodeID];
+    if (proxy_id < 0)
+      error("No proxy exists for that foreign node %d!", topj->nodeID);
+
+    const struct proxy *p = &e->proxies[proxy_id];
+
+    /* Check whether the cell exists in the proxy */
+    int n = 0;
+    for (; n < p->nr_cells_in; n++)
+      if (p->cells_in[n] == topj) {
+        break;
+      }
+    if (n == p->nr_cells_in)
+      error(
+          "Cell %d not found in the proxy but trying to construct "
+          "grav task!",
+          (int)(e->s->cells_top - topj));
+
+  } else if (topj->nodeID == nodeID && topi->nodeID != nodeID) {
+
+    /* Find the proxy for this node */
+    const int proxy_id = e->proxy_ind[topi->nodeID];
+    if (proxy_id < 0)
+      error("No proxy exists for that foreign node %d!", topi->nodeID);
+
+    const struct proxy *p = &e->proxies[proxy_id];
+
+    /* Check whether the cell exists in the proxy */
+    int n = 0;
+    for (; n < p->nr_cells_in; n++)
+      if (p->cells_in[n] == topi) {
+        break;
+      }
+    if (n == p->nr_cells_in)
+      error(
+          "Cell %d not found in the proxy but trying to construct "
+          "grav task!",
+          (int)(e->s->cells_top - topi));
+  }
+#endif /* WITH_MPI */
+}
