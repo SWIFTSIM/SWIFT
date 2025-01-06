@@ -205,6 +205,32 @@ void partition_zoom_vector(int nr_nodes, struct space *s) {
  */
 void zoom_partition_voids(struct space *s, int nodeID) {
 
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Before we do anything else... do we all agree on the partition? */
+  int *cell_nodeIDs if ((cell_nodeIDs =
+                             (int *)malloc(sizeof(int) * s->nr_cells)) == NULL)
+      error("Failed to allocate cell_nodeIDs.");
+
+  for (int k = 0; k < s->nr_cells; k++) {
+    cell_nodeIDs[k] = s->cells_top[k].nodeID;
+  }
+
+  /* Compare the partition across ranks. */
+  int res = MPI_Allreduce(MPI_IN_PLACE, cell_nodeIDs, s->nr_cells, MPI_INT,
+                          MPI_MAX, MPI_COMM_WORLD);
+
+  if (res != MPI_SUCCESS)
+    mpi_error(res, "Failed to allreduce the cell node IDs.");
+
+  for (int k = 0; k < s->nr_cells; k++) {
+    if (cell_nodeIDs[k] != s->cells_top[k].nodeID)
+      error(
+          "Disagreement on the partitioning of the cells (cid=%d, "
+          "c->nodeID=%d, other rank thinks %d).",
+          k, s->cells_top[k].nodeID, cell_nodeIDs[k]);
+  }
+#endif
+
   /* All void cells are local. */
   for (int k = 0; k < s->zoom_props->nr_void_cells; k++) {
     s->cells_top[s->zoom_props->void_cell_indices[k]].nodeID = nodeID;
