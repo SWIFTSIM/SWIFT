@@ -2131,6 +2131,11 @@ void partition_initial_partition(struct partition *initial_partition,
 #endif
   }
 
+  /* Check that all is well. */
+  if (!check_complete(s, (nodeID == 0), nr_nodes)) {
+    error("Initial partition failed, not all nodes have cells");
+  }
+
   /* In zoom land we need to handle the void cells (these are always local
    * if they have a single local "top level progeny" somewhere in
    * their tree). */

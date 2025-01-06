@@ -53,8 +53,6 @@
 void partition_zoom_grid(struct partition *initial_partition, int nr_nodes,
                          struct space *s) {
 
-  message("Partitioning the space using a simple grid.");
-
   /* If we've got the wrong number of nodes, fail. */
   if (nr_nodes != initial_partition->grid[0] * initial_partition->grid[1] *
                       initial_partition->grid[2])
@@ -132,9 +130,6 @@ void partition_zoom_grid(struct partition *initial_partition, int nr_nodes,
  * @param s The #space.
  */
 void partition_zoom_vector(int nr_nodes, struct space *s) {
-
-  message(
-      "Partitioning the space using a vectorised list of sample positions.");
 
   /* Vectorised selection, guaranteed to work for samples less than the
    * number of cells, but not very clumpy in the selection of regions. */
