@@ -79,12 +79,14 @@ chemistry_compute_parabolic_timestep(
     return FLT_MAX;
   }
 
-  /* Compute the expression in the square bracket in eq (15). Notice that I
-     rewrote it to avoid division by 0 when norm_nabla_1 = 0. */
-  expression = norm_q * delta_x / (norm_nabla_q * delta_x + norm_q);
-
-  /* This trick comes from Gizmo. This is a mix between eq (15) and eq (D1) */
-  expression = max(expression, delta_x);
+  if (chem_data->diffusion_mode == isotropic_constant) {
+    /* Isotropic constant diffusion has the simple expression: */
+    expression = delta_x;
+  } else {
+    /* Compute the expression in the square bracket in eq (15). Notice that I
+       rewrote it to avoid division by 0 when norm_nabla_q = 0. */
+    expression = norm_q * delta_x / (norm_nabla_q * delta_x + norm_q);
+  }
 
   return expression * expression / norm_matrix_K * norm_U_over_norm_q;
 }
