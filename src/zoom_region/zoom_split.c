@@ -404,7 +404,7 @@ void zoom_void_space_split(struct space *s, int verbose) {
       int zoom_count = 0;
       int buffer_count = 0;
       for (int k = 0; k < s->nr_cells; k++) {
-        struct cell *c = s->cells_top[k];
+        struct cell *c = &s->cells_top[k];
         if (c->type == cell_type_zoom) {
           zoom_count += c->grav.multipole->m_pole.num_gpart;
         } else if (c->type == cell_type_buffer &&
