@@ -406,10 +406,10 @@ void zoom_void_space_split(struct space *s, int verbose) {
       for (int k = 0; k < s->nr_cells; k++) {
         struct cell *c = s->cells_top[k];
         if (c->type == cell_type_zoom) {
-          zoom_count += c->grav.multipole.m_pole.num_gpart;
+          zoom_count += c->grav.multipole->m_pole.num_gpart;
         } else if (c->type == cell_type_buffer &&
                    c->subtype == cell_subtype_void) {
-          buffer_count += c->grav->multipole.m_pole.num_gpart;
+          buffer_count += c->grav.multipole->m_pole.num_gpart;
         }
       }
 
