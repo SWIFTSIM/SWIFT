@@ -20,8 +20,6 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "cell.h"
-
 #include <config.h>
 
 /* Some standard headers. */
@@ -58,6 +56,10 @@
 #include "threadpool.h"
 #include "timers.h"
 #include "version.h"
+
+#ifdef SWIFT_DEBUG_CHECKS
+int activate_by_unskip = 1;
+#endif
 
 /**
  * @brief Re-set the list of active tasks.
@@ -1617,12 +1619,12 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
          * have 0 particles but are never "empty"). */
         if (cpj->grav.count == 0 && cpj->subtype != cell_subtype_void) continue;
 
-        /* Skip entirely foreign non-void pairs. */
-        if ((cpi->subtype != cell_subtype_void &&
-             cpj->subtype != cell_subtype_void) &&
-            (cpi->nodeID != e->nodeID && cpj->nodeID != e->nodeID)) {
-          continue;
-        }
+        // /* Skip entirely foreign non-void pairs. */
+        // if ((cpi->subtype != cell_subtype_void &&
+        //      cpj->subtype != cell_subtype_void) &&
+        //     (cpi->nodeID != e->nodeID && cpj->nodeID != e->nodeID)) {
+        //   continue;
+        // }
 
         /* Can we use a M-M interaction here? */
         if (cell_can_use_pair_mm(cpi, cpj, e, sp,
@@ -1664,12 +1666,12 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
        * always have 0 particles but are never "empty"). */
       if (cpi->grav.count == 0 && cpi->subtype != cell_subtype_void) continue;
 
-      /* Skip entirely foreign non-void pairs. */
-      if ((cpi->subtype != cell_subtype_void &&
-           cj->subtype != cell_subtype_void) &&
-          (cpi->nodeID != e->nodeID && cj->nodeID != e->nodeID)) {
-        continue;
-      }
+      // /* Skip entirely foreign non-void pairs. */
+      // if ((cpi->subtype != cell_subtype_void &&
+      //      cj->subtype != cell_subtype_void) &&
+      //     (cpi->nodeID != e->nodeID && cj->nodeID != e->nodeID)) {
+      //   continue;
+      // }
 
       /* Can we use a M-M interaction here? */
       if (cell_can_use_pair_mm(cpi, cj, e, sp,
@@ -1716,12 +1718,12 @@ static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
        * have 0 particles but are never "empty"). */
       if (cpj->grav.count == 0 && cpj->subtype != cell_subtype_void) continue;
 
-      /* Skip entirely foreign non-void pairs. */
-      if ((ci->subtype != cell_subtype_void &&
-           cpj->subtype != cell_subtype_void) &&
-          (ci->nodeID != e->nodeID && cpj->nodeID != e->nodeID)) {
-        continue;
-      }
+      // /* Skip entirely foreign non-void pairs. */
+      // if ((ci->subtype != cell_subtype_void &&
+      //      cpj->subtype != cell_subtype_void) &&
+      //     (ci->nodeID != e->nodeID && cpj->nodeID != e->nodeID)) {
+      //   continue;
+      // }
 
       /* Can we use a M-M interaction here? */
       if (cell_can_use_pair_mm(ci, cpj, e, sp,
@@ -2047,6 +2049,10 @@ struct task *scheduler_addtask(struct scheduler *s, enum task_types type,
   t->tic = 0;
   t->toc = 0;
   t->total_ticks = 0;
+#ifdef SWIFT_DEBUG_CHECKS
+  t->activated_by_unskip = 0;
+  t->activated_by_marktask = 0;
+#endif
 
   if (ci != NULL) cell_set_flag(ci, cell_flag_has_tasks);
   if (cj != NULL) cell_set_flag(cj, cell_flag_has_tasks);
@@ -2315,8 +2321,7 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
                  t->subtype == task_subtype_stars_prep2 ||
                  t->subtype == task_subtype_stars_feedback)
           cost = 1.f * wscale * scount_i * count_i;
-        else if (t->subtype == task_subtype_sink_density ||
-                 t->subtype == task_subtype_sink_swallow ||
+        else if (t->subtype == task_subtype_sink_swallow ||
                  t->subtype == task_subtype_sink_do_gas_swallow)
           cost = 1.f * wscale * count_i * sink_count_i;
         else if (t->subtype == task_subtype_sink_do_sink_swallow)
@@ -2362,8 +2367,7 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
             cost = 2.f * wscale * (scount_i * count_j + scount_j * count_i) *
                    sid_scale[t->flags];
 
-        } else if (t->subtype == task_subtype_sink_density ||
-                   t->subtype == task_subtype_sink_swallow ||
+        } else if (t->subtype == task_subtype_sink_swallow ||
                    t->subtype == task_subtype_sink_do_gas_swallow) {
           if (t->ci->nodeID != nodeID)
             cost = 3.f * wscale * count_i * sink_count_j * sid_scale[t->flags];
@@ -2439,8 +2443,7 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
                    sid_scale[t->flags];
           }
 
-        } else if (t->subtype == task_subtype_sink_density ||
-                   t->subtype == task_subtype_sink_swallow ||
+        } else if (t->subtype == task_subtype_sink_swallow ||
                    t->subtype == task_subtype_sink_do_gas_swallow) {
           if (t->ci->nodeID != nodeID) {
             cost =
@@ -2509,8 +2512,7 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
             t->subtype == task_subtype_stars_prep2 ||
             t->subtype == task_subtype_stars_feedback) {
           cost = 1.f * (wscale * scount_i) * count_i;
-        } else if (t->subtype == task_subtype_sink_density ||
-                   t->subtype == task_subtype_sink_swallow ||
+        } else if (t->subtype == task_subtype_sink_swallow ||
                    t->subtype == task_subtype_sink_do_gas_swallow) {
           cost = 1.f * (wscale * sink_count_i) * count_i;
         } else if (t->subtype == task_subtype_sink_do_sink_swallow) {
@@ -2551,9 +2553,6 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         break;
       case task_type_bh_swallow_ghost2:
         if (t->ci == t->ci->hydro.super) cost = wscale * bcount_i;
-        break;
-      case task_type_sink_density_ghost:
-        if (t->ci == t->ci->hydro.super) cost = wscale * sink_count_i;
         break;
       case task_type_drift_part:
         cost = wscale * count_i;
@@ -2902,12 +2901,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
 
         } else if (t->subtype == task_subtype_sf_counts) {
 
-          count = size = t->ci->mpi.pcell_size * sizeof(struct pcell_sf_stars);
-          buff = t->buff = malloc(count);
-
-        } else if (t->subtype == task_subtype_grav_counts) {
-
-          count = size = t->ci->mpi.pcell_size * sizeof(struct pcell_sf_grav);
+          count = size = t->ci->mpi.pcell_size * sizeof(struct pcell_sf);
           buff = t->buff = malloc(count);
 
         } else {
@@ -3003,15 +2997,9 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
 
         } else if (t->subtype == task_subtype_sf_counts) {
 
-          size = count = t->ci->mpi.pcell_size * sizeof(struct pcell_sf_stars);
+          size = count = t->ci->mpi.pcell_size * sizeof(struct pcell_sf);
           buff = t->buff = malloc(size);
-          cell_pack_sf_counts(t->ci, (struct pcell_sf_stars *)t->buff);
-
-        } else if (t->subtype == task_subtype_grav_counts) {
-
-          size = count = t->ci->mpi.pcell_size * sizeof(struct pcell_sf_grav);
-          buff = t->buff = malloc(size);
-          cell_pack_grav_counts(t->ci, (struct pcell_sf_grav *)t->buff);
+          cell_pack_sf_counts(t->ci, (struct pcell_sf *)t->buff);
 
         } else {
           error("Unknown communication sub-type");
