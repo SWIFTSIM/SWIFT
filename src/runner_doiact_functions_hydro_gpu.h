@@ -206,9 +206,8 @@ double runner_doself1_pack_f4(struct runner *r, struct scheduler *s,
   pack_vars->launch = 0;
   pack_vars->launch_leftovers = 0;
 
-  atomic_cas(&pack_vars->launch_leftovers, &(s->queues[qid].n_packs_self_left), 1);
+  atomic_cas(&pack_vars->launch_leftovers, (s->queues[qid].n_packs_self_left), 1);
 
-  if(pack_vars->launch_leftovers == 1)message("Launching leftovers self");
 //  if ((s->queues[qid].n_packs_self_left < 1)) pack_vars->launch_leftovers = 1;
   if (pack_vars->tasks_packed == pack_vars->target_n_tasks)
     pack_vars->launch = 1;
@@ -331,8 +330,7 @@ double runner_doself1_pack_f4_g(struct runner *r, struct scheduler *s,
   pack_vars->launch = 0;
   pack_vars->launch_leftovers = 0;
 
-  atomic_cas(&pack_vars->launch_leftovers, &(s->queues[qid].n_packs_self_left_g), 1);
-  if(pack_vars->launch_leftovers == 1)message("Launching leftovers self g");
+  atomic_cas(&pack_vars->launch_leftovers, (s->queues[qid].n_packs_self_left_g), 1);
 //  if ((s->queues[qid].n_packs_self_left_g < 1))
 //    pack_vars->launch_leftovers = 1;
   if (pack_vars->tasks_packed == pack_vars->target_n_tasks)
@@ -454,9 +452,7 @@ double runner_doself1_pack_f4_f(struct runner *r, struct scheduler *s,
   pack_vars->launch = 0;
   pack_vars->launch_leftovers = 0;
 
-  atomic_cas(&pack_vars->launch_leftovers, &(s->queues[qid].n_packs_self_left_f), 1);
-
-  if(pack_vars->launch_leftovers == 1)message("Launching leftovers self f");
+  atomic_cas(&pack_vars->launch_leftovers, (s->queues[qid].n_packs_self_left_f), 1);
 //  if ((s->queues[qid].n_packs_self_left_f < 1))
 //    pack_vars->launch_leftovers = 1;
   if (pack_vars->tasks_packed == pack_vars->target_n_tasks)
@@ -654,9 +650,8 @@ double runner_dopair1_pack_f4(struct runner *r, struct scheduler *s,
   int qid = r->qid;
   atomic_dec(&(s->queues[qid].n_packs_pair_left));
 //  if ((s->queues[qid].n_packs_pair_left < 1)) pack_vars->launch_leftovers = 1;
-  atomic_cas(&pack_vars->launch_leftovers, &(s->queues[qid].n_packs_pair_left), 1);
+  atomic_cas(&pack_vars->launch_leftovers, (s->queues[qid].n_packs_pair_left), 1);
 
-  if(pack_vars->launch_leftovers == 1)message("Launching leftovers pair");
   if (pack_vars->tasks_packed == pack_vars->target_n_tasks)
     pack_vars->launch = 1;
   /*Add time to packing_time. Timer for end of GPU work after the if(launch ||
@@ -859,8 +854,7 @@ double runner_dopair1_pack_f4_g(struct runner *r, struct scheduler *s,
   /* Record that we have now done a packing (self) */
   int qid = r->qid;
   atomic_dec(&(s->queues[qid].n_packs_pair_left_g));
-  atomic_cas(&pack_vars->launch_leftovers, &(s->queues[qid].n_packs_pair_left_g), 1);
-  if(pack_vars->launch_leftovers == 1)message("Launching leftovers pair g");
+  atomic_cas(&pack_vars->launch_leftovers, (s->queues[qid].n_packs_pair_left_g), 1);
 //  if ((s->queues[qid].n_packs_pair_left_g < 1))
 //    pack_vars->launch_leftovers = 1;
   if (pack_vars->tasks_packed == pack_vars->target_n_tasks)
@@ -1066,9 +1060,8 @@ double runner_dopair1_pack_f4_f(struct runner *r, struct scheduler *s,
   /* Record that we have now done a packing (self) */
   int qid = r->qid;
   atomic_dec(&(s->queues[qid].n_packs_pair_left_f));
-  atomic_cas(&pack_vars->launch_leftovers, &(s->queues[qid].n_packs_pair_left_f), 1);
+  atomic_cas(&pack_vars->launch_leftovers, (s->queues[qid].n_packs_pair_left_f), 1);
 
-  if(pack_vars->launch_leftovers == 1)message("Launching leftovers pair f");
 //  if ((s->queues[qid].n_packs_pair_left_f < 1))
 //    pack_vars->launch_leftovers = 1;
   if (pack_vars->tasks_packed == pack_vars->target_n_tasks)
