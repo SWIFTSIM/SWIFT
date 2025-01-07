@@ -205,7 +205,7 @@ double runner_doself1_pack_f4(struct runner *r, struct scheduler *s,
   pack_vars->tasks_packed++;
   pack_vars->launch = 0;
   pack_vars->launch_leftovers = 0;
-  if ((s->queues[qid].n_packs_self_left < 1)) pack_vars->launch_leftovers = 1;
+  if ((s->queues[qid].n_packs_self_left == 0)) pack_vars->launch_leftovers = 1;
   if (pack_vars->tasks_packed == pack_vars->target_n_tasks)
     pack_vars->launch = 1;
   /*Add time to packing_time. Timer for end of GPU work after the if(launch ||
@@ -326,7 +326,7 @@ double runner_doself1_pack_f4_g(struct runner *r, struct scheduler *s,
   pack_vars->tasks_packed++;
   pack_vars->launch = 0;
   pack_vars->launch_leftovers = 0;
-  if ((s->queues[qid].n_packs_self_left_g < 1))
+  if ((s->queues[qid].n_packs_self_left_g == 0))
     pack_vars->launch_leftovers = 1;
   if (pack_vars->tasks_packed == pack_vars->target_n_tasks)
     pack_vars->launch = 1;
@@ -446,7 +446,7 @@ double runner_doself1_pack_f4_f(struct runner *r, struct scheduler *s,
   pack_vars->tasks_packed++;
   pack_vars->launch = 0;
   pack_vars->launch_leftovers = 0;
-  if ((s->queues[qid].n_packs_self_left_f < 1))
+  if ((s->queues[qid].n_packs_self_left_f == 0))
     pack_vars->launch_leftovers = 1;
   if (pack_vars->tasks_packed == pack_vars->target_n_tasks)
     pack_vars->launch = 1;
@@ -641,7 +641,7 @@ double runner_dopair1_pack_f4(struct runner *r, struct scheduler *s,
   pack_vars->tasks_packed++;
   pack_vars->launch = 0;
   pack_vars->launch_leftovers = 0;
-  if ((s->queues[qid].n_packs_pair_left < 1)) pack_vars->launch_leftovers = 1;
+  if ((s->queues[qid].n_packs_pair_left == 0)) pack_vars->launch_leftovers = 1;
   if (pack_vars->tasks_packed == pack_vars->target_n_tasks)
     pack_vars->launch = 1;
   /*Add time to packing_time. Timer for end of GPU work after the if(launch ||
@@ -843,7 +843,7 @@ double runner_dopair1_pack_f4_g(struct runner *r, struct scheduler *s,
   pack_vars->tasks_packed++;
   pack_vars->launch = 0;
   pack_vars->launch_leftovers = 0;
-  if ((s->queues[qid].n_packs_pair_left_g < 1))
+  if (s->queues[qid].n_packs_pair_left_g == 0)
     pack_vars->launch_leftovers = 1;
   if (pack_vars->tasks_packed == pack_vars->target_n_tasks)
     pack_vars->launch = 1;
@@ -1047,7 +1047,7 @@ double runner_dopair1_pack_f4_f(struct runner *r, struct scheduler *s,
   pack_vars->tasks_packed++;
   pack_vars->launch = 0;
   pack_vars->launch_leftovers = 0;
-  if ((s->queues[qid].n_packs_pair_left_f < 1))
+  if (s->queues[qid].n_packs_pair_left_f == 0)
     pack_vars->launch_leftovers = 1;
   if (pack_vars->tasks_packed == pack_vars->target_n_tasks)
     pack_vars->launch = 1;

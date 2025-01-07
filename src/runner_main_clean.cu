@@ -675,7 +675,7 @@ void *runner_main2(void *data) {
   int count_max_parts_tmp =
       2 * target_n_tasks * (np_per_cell + buff);
 
-  message("np per cell %i, max_parts %i, n_tasks_GPU %i\n", np_per_cell, count_max_parts_tmp, target_n_tasks);
+//  message("np per cell %i, max_parts %i, n_tasks_GPU %i\n", np_per_cell, count_max_parts_tmp, target_n_tasks);
   pack_vars_self_dens->count_max_parts = count_max_parts_tmp;
   pack_vars_pair_dens->count_max_parts = count_max_parts_tmp;
   pack_vars_self_forc->count_max_parts = count_max_parts_tmp;
@@ -1300,7 +1300,7 @@ void *runner_main2(void *data) {
               if(launch_leftovers &&
             		  (sched->queues[r->qid].n_packs_pair_left < 0
             				  || sched->queues[r->qid].n_packs_pair_left >= 1))
-            	  error("Somethig's wrong. n_packs_pair_left = %i when it should be zero",
+            	  error("Something's wrong. n_packs_pair_left = %i when it should be zero",
             			  sched->queues[r->qid].n_packs_pair_left);
               /* Do we have enough stuff to run the GPU ? */
               if (launch) n_full_p_d_bundles++;
@@ -1386,7 +1386,7 @@ void *runner_main2(void *data) {
               if(launch_leftovers &&
             		  (sched->queues[r->qid].n_packs_pair_left_g < 0
             				  || sched->queues[r->qid].n_packs_pair_left_g >= 1))
-            	  error("Somethig's wrong. n_packs_pair_left_g = %i when it should be zero",
+            	  error("Something's wrong. n_packs_pair_left_g = %i when it should be zero",
             			  sched->queues[r->qid].n_packs_pair_left_g);
               /* Do we have enough stuff to run the GPU ? */
               if (launch || launch_leftovers) {
