@@ -1,4 +1,5 @@
 #include "scheduler.h"
+#include <atomic.h>
 struct pack_vars_self {
   /*List of tasks and respective cells to be packed*/
   struct task **task_list;
@@ -200,13 +201,13 @@ double runner_doself1_pack_f4(struct runner *r, struct scheduler *s,
   ci->pack_done++;
   /* Record that we have now done a packing (self) */
   int qid = r->qid;
-  atomic_dec(&(s->queues[qid].n_packs_self_left));
+//  atomic_dec(&(s->queues[qid].n_packs_self_left));
   t->done = 1;
   pack_vars->tasks_packed++;
   pack_vars->launch = 0;
   pack_vars->launch_leftovers = 0;
 
-  atomic_cas(&pack_vars->launch_leftovers, (s->queues[qid].n_packs_self_left), 1);
+  atomic_cas(&pack_vars->launch_leftovers, __sync_sub_and_fetch(&(s->queues[qid].n_packs_self_left), 1), 1);
 
 //  if ((s->queues[qid].n_packs_self_left < 1)) pack_vars->launch_leftovers = 1;
   if (pack_vars->tasks_packed == pack_vars->target_n_tasks)
@@ -324,13 +325,13 @@ double runner_doself1_pack_f4_g(struct runner *r, struct scheduler *s,
   ci->pack_done_g++;
   /* Record that we have now done a packing (self) */
   int qid = r->qid;
-  atomic_dec(&(s->queues[qid].n_packs_self_left_g));
+//  atomic_dec(&(s->queues[qid].n_packs_self_left_g));
   t->done = 1;
   pack_vars->tasks_packed++;
   pack_vars->launch = 0;
   pack_vars->launch_leftovers = 0;
 
-  atomic_cas(&pack_vars->launch_leftovers, (s->queues[qid].n_packs_self_left_g), 1);
+  atomic_cas(&pack_vars->launch_leftovers, __sync_sub_and_fetch(&(s->queues[qid].n_packs_self_left_g), 1), 1);
 //  if ((s->queues[qid].n_packs_self_left_g < 1))
 //    pack_vars->launch_leftovers = 1;
   if (pack_vars->tasks_packed == pack_vars->target_n_tasks)
@@ -446,13 +447,13 @@ double runner_doself1_pack_f4_f(struct runner *r, struct scheduler *s,
   ci->pack_done_f++;
   /* Record that we have now done a packing (self) */
   int qid = r->qid;
-  atomic_dec(&(s->queues[qid].n_packs_self_left_f));
+//  atomic_dec(&(s->queues[qid].n_packs_self_left_f));
   t->done = 1;
   pack_vars->tasks_packed++;
   pack_vars->launch = 0;
   pack_vars->launch_leftovers = 0;
 
-  atomic_cas(&pack_vars->launch_leftovers, (s->queues[qid].n_packs_self_left_f), 1);
+  atomic_cas(&pack_vars->launch_leftovers, __sync_sub_and_fetch(&(s->queues[qid].n_packs_self_left_f), 1), 1);
 //  if ((s->queues[qid].n_packs_self_left_f < 1))
 //    pack_vars->launch_leftovers = 1;
   if (pack_vars->tasks_packed == pack_vars->target_n_tasks)
@@ -648,9 +649,9 @@ double runner_dopair1_pack_f4(struct runner *r, struct scheduler *s,
   pack_vars->launch_leftovers = 0;
   /* Record that we have now done a packing (self) */
   int qid = r->qid;
-  atomic_dec(&(s->queues[qid].n_packs_pair_left));
+//  atomic_dec(&(s->queues[qid].n_packs_pair_left));
 //  if ((s->queues[qid].n_packs_pair_left < 1)) pack_vars->launch_leftovers = 1;
-  atomic_cas(&pack_vars->launch_leftovers, (s->queues[qid].n_packs_pair_left), 1);
+  atomic_cas(&pack_vars->launch_leftovers, __sync_sub_and_fetch(&(s->queues[qid].n_packs_pair_left), 1), 1);
 
   if (pack_vars->tasks_packed == pack_vars->target_n_tasks)
     pack_vars->launch = 1;
@@ -853,8 +854,8 @@ double runner_dopair1_pack_f4_g(struct runner *r, struct scheduler *s,
   pack_vars->launch_leftovers = 0;
   /* Record that we have now done a packing (self) */
   int qid = r->qid;
-  atomic_dec(&(s->queues[qid].n_packs_pair_left_g));
-  atomic_cas(&pack_vars->launch_leftovers, (s->queues[qid].n_packs_pair_left_g), 1);
+//  atomic_dec(&(s->queues[qid].n_packs_pair_left_g));
+  atomic_cas(&pack_vars->launch_leftovers, __sync_sub_and_fetch(&(s->queues[qid].n_packs_pair_left_g), 1), 1);
 //  if ((s->queues[qid].n_packs_pair_left_g < 1))
 //    pack_vars->launch_leftovers = 1;
   if (pack_vars->tasks_packed == pack_vars->target_n_tasks)
@@ -1059,8 +1060,8 @@ double runner_dopair1_pack_f4_f(struct runner *r, struct scheduler *s,
   pack_vars->launch_leftovers = 0;
   /* Record that we have now done a packing (self) */
   int qid = r->qid;
-  atomic_dec(&(s->queues[qid].n_packs_pair_left_f));
-  atomic_cas(&pack_vars->launch_leftovers, (s->queues[qid].n_packs_pair_left_f), 1);
+//  atomic_dec(&(s->queues[qid].n_packs_pair_left_f));
+  atomic_cas(&pack_vars->launch_leftovers, __sync_sub_and_fetch(&(s->queues[qid].n_packs_pair_left_f), 1), 1);
 
 //  if ((s->queues[qid].n_packs_pair_left_f < 1))
 //    pack_vars->launch_leftovers = 1;

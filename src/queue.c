@@ -180,24 +180,45 @@ void queue_insert(struct queue *q, struct task *t) {
   }
   /* A. Nasar: Increment counters required for the pack tasks */
   if (t->type == task_type_self || t->type == task_type_sub_self) {
-    if (t->subtype == task_subtype_gpu_pack)
+    if (t->subtype == task_subtype_gpu_pack){
+//      pthread_mutex_lock(&q->sleep_mutex);
       atomic_inc(&q->n_packs_self_left);
-    if (t->subtype == task_subtype_gpu_pack_f)
+//      pthread_cond_broadcast(&q->sleep_cond);
+//      pthread_mutex_unlock(&q->sleep_mutex);
+    }
+    if (t->subtype == task_subtype_gpu_pack_f){
+//      pthread_mutex_lock(&q->sleep_mutex);
       atomic_inc(&q->n_packs_self_left_f);
-    if (t->subtype == task_subtype_gpu_pack_g)
+//      pthread_cond_broadcast(&q->sleep_cond);
+//      pthread_mutex_unlock(&q->sleep_mutex);
+    }
+    if (t->subtype == task_subtype_gpu_pack_g){
+//      pthread_mutex_lock(&q->sleep_mutex);
       atomic_inc(&q->n_packs_self_left_g);
+//      pthread_cond_broadcast(&q->sleep_cond);
+//      pthread_mutex_unlock(&q->sleep_mutex);
+    }
   }
   /* A. Nasar NEED to think about how to do this with
    MPI where ci may not be on this node/rank */
   if (t->type == task_type_pair || t->type == task_type_sub_pair) {
     if (t->subtype == task_subtype_gpu_pack) {
-        atomic_inc(&q->n_packs_pair_left);
+//      pthread_mutex_lock(&q->sleep_mutex);
+      atomic_inc(&q->n_packs_pair_left);
+//      pthread_cond_broadcast(&q->sleep_cond);
+//      pthread_mutex_unlock(&q->sleep_mutex);
     }
     if (t->subtype == task_subtype_gpu_pack_f) {
-        atomic_inc(&q->n_packs_pair_left_f);
+//      pthread_mutex_lock(&q->sleep_mutex);
+      atomic_inc(&q->n_packs_pair_left_f);
+//      pthread_cond_broadcast(&q->sleep_cond);
+//      pthread_mutex_unlock(&q->sleep_mutex);
     }
     if (t->subtype == task_subtype_gpu_pack_g) {
-        atomic_inc(&q->n_packs_pair_left_g);
+//      pthread_mutex_lock(&q->sleep_mutex);
+      atomic_inc(&q->n_packs_pair_left_g);
+//      pthread_cond_broadcast(&q->sleep_cond);
+//      pthread_mutex_unlock(&q->sleep_mutex);
     }
   }
   /* Increase the incoming count. */
