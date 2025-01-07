@@ -171,35 +171,35 @@ void queue_insert(struct queue *q, struct task *t) {
 
       /* Clean up the incoming DEQ. */
       queue_get_incoming(q);
-      /* A. Nasar: Increment counters required for the pack tasks */
-      if (t->type == task_type_self || t->type == task_type_sub_self) {
-        if (t->subtype == task_subtype_gpu_pack)
-          atomic_inc(&q->n_packs_self_left);
-        if (t->subtype == task_subtype_gpu_pack_f)
-          atomic_inc(&q->n_packs_self_left_f);
-        if (t->subtype == task_subtype_gpu_pack_g)
-          atomic_inc(&q->n_packs_self_left_g);
-      }
-      /* A. Nasar NEED to think about how to do this with
-       MPI where ci may not be on this node/rank */
-      if (t->type == task_type_pair || t->type == task_type_sub_pair) {
-        if (t->subtype == task_subtype_gpu_pack) {
-            atomic_inc(&q->n_packs_pair_left);
-        }
-        if (t->subtype == task_subtype_gpu_pack_f) {
-            atomic_inc(&q->n_packs_pair_left_f);
-        }
-        if (t->subtype == task_subtype_gpu_pack_g) {
-            atomic_inc(&q->n_packs_pair_left_g);
-        }
-      }
+
       /* Release the queue lock. */
       if (lock_unlock(&q->lock) != 0) {
         error("Unlocking the qlock failed.\n");
       }
     }
   }
-
+  /* A. Nasar: Increment counters required for the pack tasks */
+  if (t->type == task_type_self || t->type == task_type_sub_self) {
+    if (t->subtype == task_subtype_gpu_pack)
+      atomic_inc(&q->n_packs_self_left);
+    if (t->subtype == task_subtype_gpu_pack_f)
+      atomic_inc(&q->n_packs_self_left_f);
+    if (t->subtype == task_subtype_gpu_pack_g)
+      atomic_inc(&q->n_packs_self_left_g);
+  }
+  /* A. Nasar NEED to think about how to do this with
+   MPI where ci may not be on this node/rank */
+  if (t->type == task_type_pair || t->type == task_type_sub_pair) {
+    if (t->subtype == task_subtype_gpu_pack) {
+        atomic_inc(&q->n_packs_pair_left);
+    }
+    if (t->subtype == task_subtype_gpu_pack_f) {
+        atomic_inc(&q->n_packs_pair_left_f);
+    }
+    if (t->subtype == task_subtype_gpu_pack_g) {
+        atomic_inc(&q->n_packs_pair_left_g);
+    }
+  }
   /* Increase the incoming count. */
   atomic_inc(&q->count_incoming);
 }
