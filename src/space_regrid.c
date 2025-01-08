@@ -210,6 +210,7 @@ void space_regrid(struct space *s, int verbose) {
       swift_free("local_cells_with_particles_top",
                  s->local_cells_with_particles_top);
       swift_free("cells_top", s->cells_top);
+      swift_free("cells_top_updated", s->cells_top_updated);
       swift_free("multipoles_top", s->multipoles_top);
     }
 
@@ -241,6 +242,11 @@ void space_regrid(struct space *s, int verbose) {
         error("Failed to allocate top-level multipoles.");
       bzero(s->multipoles_top, s->nr_cells * sizeof(struct gravity_tensors));
     }
+
+    if (swift_memalign("cells_top_updated", (void **)&s->cells_top_updated,
+                       cell_align, s->nr_cells * sizeof(char)) != 0)
+      error("Failed to allocate top-level cells.");
+    bzero(s->cells_top_updated, s->nr_cells * sizeof(char));
 
     /* Allocate the indices of local cells */
     if (swift_memalign("local_cells_top", (void **)&s->local_cells_top,

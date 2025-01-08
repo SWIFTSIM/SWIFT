@@ -54,6 +54,9 @@ struct sink {
   /*! Particle time bin */
   timebin_t time_bin;
 
+  /*! Tree-depth at which size / 2 <= h * gamma < size */
+  char depth_h;
+
   /*! Integer number of neighbours */
   int num_ngbs;
 
