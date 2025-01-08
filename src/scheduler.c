@@ -1369,205 +1369,6 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
       } else if (scheduler_doforcesplit && ci->split && cj->split &&
                  (ci->hydro.count > space_maxsize / cj->hydro.count)) {
 
-        /* Replace the current task.A. Nasar: Code does NOT go in here even
-         * with doforcesplit defined as 1 in scheduler.h */
-        t->type = task_type_none;
-
-        for (int j = 0; j < 8; j++)
-          if (ci->progeny[j] != NULL && ci->progeny[j]->hydro.count)
-            for (int k = 0; k < 8; k++)
-              if (cj->progeny[k] != NULL && cj->progeny[k]->hydro.count) {
-                struct task *tl =
-                    scheduler_addtask(s, task_type_pair, t->subtype, 0, 0,
-                                      ci->progeny[j], cj->progeny[k]);
-                scheduler_splittask_hydro(tl, s);
-                tl->flags = space_getsid_and_swap_cells(s->space, &t->ci,
-                                                        &t->cj, shift);
-              }
-      }
-    } /* pair interaction? */
-  }   /* iterate over the current task. */
-}
-
-/**
- * @brief Split a hydrodynamic task if too large.
- *
- * @param t The #task
- * @param s The #scheduler we are working in.
- */
-static void scheduler_splittask_hydro_GPU(struct task *t, struct scheduler *s) {
-  /* Are we considering both stars and hydro when splitting? */
-  /* Note this is not very clean as the scheduler should not really
-     access the engine... */
-
-  /* Iterate on this task until we're done with it. */
-  int redo = 1;
-  while (redo) {
-    /* Reset the redo flag. */
-    redo = 0;
-
-    /* Is this a non-empty self-task? */
-    const int is_self =
-        (t->type == task_type_self) && (t->ci != NULL) &&
-        (t->ci->hydro.count > 0);
-
-    /* Is this a non-empty pair-task? */
-    const int is_pair = (t->type == task_type_pair) && (t->ci != NULL) &&
-                        (t->cj != NULL) &&
-                        (t->ci->hydro.count > 0) &&
-                        (t->cj->hydro.count > 0);
-
-    /* Empty task? */
-    if (!is_self && !is_pair) {
-      t->type = task_type_none;
-      t->subtype = task_subtype_none;
-      t->ci = NULL;
-      t->cj = NULL;
-      t->skip = 1;
-      break;
-    }
-
-    /* Self-interaction? */
-    if (t->type == task_type_self) {
-      /* Get a handle on the cell involved. */
-      struct cell *ci = t->ci;
-
-      /* Foreign task? */
-      if (ci->nodeID != s->nodeID) {
-        t->skip = 1;
-        break;
-      }
-
-      /* Is this cell even split and the task does not violate h ? */
-      if (cell_can_split_self_hydro_task(ci)) {
-
-          /* Take a step back (we're going to recycle the current task)... */
-          redo = 1;
-
-          /* Add the self tasks. */
-          int first_child = 0;
-          while (ci->progeny[first_child] == NULL) first_child++;
-
-          t->ci = ci->progeny[first_child];
-          cell_set_flag(t->ci, cell_flag_has_tasks);
-
-          for (int k = first_child + 1; k < 8; k++) {
-            /* Do we have a non-empty progenitor? */
-            if (ci->progeny[k] != NULL &&
-                ci->progeny[k]->hydro.count) {
-            	scheduler_splittask_hydro_GPU(
-                  scheduler_addtask(s, task_type_self, t->subtype, 0, 0,
-                                    ci->progeny[k], NULL),
-                  s);
-            }
-          }
-
-          /* Make a task for each pair of progeny */
-          for (int j = 0; j < 8; j++) {
-            /* Do we have a non-empty progenitor? */
-            if (ci->progeny[j] != NULL &&
-                (ci->progeny[j]->hydro.count)) {
-              for (int k = j + 1; k < 8; k++) {
-                /* Do we have a second non-empty progenitor? */
-                if (ci->progeny[k] != NULL &&
-                    (ci->progeny[k]->hydro.count)) {
-                  scheduler_splittask_hydro_GPU(
-                      scheduler_addtask(s, task_type_pair, t->subtype,
-                                        sub_sid_flag[j][k], 0, ci->progeny[j],
-                                        ci->progeny[k]),
-                      s);
-                }
-              }
-            }
-          }
-
-      } /* Cell is split */
-
-    } /* Self interaction */
-
-    /* Pair interaction? */
-    else if (t->type == task_type_pair) {
-      /* Get a handle on the cells involved. */
-      struct cell *ci = t->ci;
-      struct cell *cj = t->cj;
-
-      /* Foreign task? */
-      if (ci->nodeID != s->nodeID && cj->nodeID != s->nodeID) {
-        t->skip = 1;
-        break;
-      }
-
-      /* Get the sort ID, use space_getsid_and_swap_cells and not t->flags
-         to make sure we get ci and cj swapped if needed. */
-      double shift[3];
-      const int sid = space_getsid_and_swap_cells(s->space, &ci, &cj, shift);
-
-#ifdef SWIFT_DEBUG_CHECKS
-      if (sid != t->flags)
-        error("Got pair task with incorrect flags: sid=%d flags=%lld", sid,
-              t->flags);
-#endif
-
-      if((cell_can_split_pair_hydro_task(ci) &&
-              !cell_can_split_pair_hydro_task(cj))
-        || !cell_can_split_pair_hydro_task(ci) &&
-        cell_can_split_pair_hydro_task(cj))
-    	  error("for some reason cell i can be split and cell j not");
-      /* Should this task be split-up? */
-      if (cell_can_split_pair_hydro_task(ci) &&
-          cell_can_split_pair_hydro_task(cj)) {
-
-        const int h_count_i = ci->hydro.count;
-        const int h_count_j = cj->hydro.count;
-
-//        const int s_count_i = ci->stars.count;
-//        const int s_count_j = cj->stars.count;
-//
-//        int do_sub_hydro = 1;
-//        if (h_count_i > 0 && h_count_j > 0) {
-//
-//          /* Note: Use division to avoid integer overflow. */
-//          do_sub_hydro =
-//              h_count_i * sid_scale[sid] < space_subsize_pair_hydro / h_count_j;
-//        }
-
-        /* Replace by a single sub-task? */
-//        if (scheduler_dosub &&
-//            (do_sub_hydro) &&
-//            !sort_is_corner(sid)) {
-//
-//          /* Make this task a sub task. */
-//          t->type = task_type_sub_pair;
-//
-//          /* Otherwise, split it. */
-//        } else {
-          /* Take a step back (we're going to recycle the current task)... */
-          redo = 1;
-
-          /* Loop over the sub-cell pairs for the current sid and add new tasks
-           * for them. */
-          struct cell_split_pair *csp = &cell_split_pairs[sid];
-
-          t->ci = ci->progeny[csp->pairs[0].pid];
-          t->cj = cj->progeny[csp->pairs[0].pjd];
-//          if (t->ci != NULL) cell_set_flag(t->ci, cell_flag_has_tasks);
-//          if (t->cj != NULL) cell_set_flag(t->cj, cell_flag_has_tasks);
-//
-//          t->flags = csp->pairs[0].sid;
-//          for (int k = 1; k < csp->count; k++) {
-//            scheduler_splittask_hydro_GPU(
-//                scheduler_addtask(s, task_type_pair, t->subtype,
-//                                  csp->pairs[k].sid, 0,
-//                                  ci->progeny[csp->pairs[k].pid],
-//                                  cj->progeny[csp->pairs[k].pjd]),
-//                s);
-//          }
-//        }
-
-        /* Otherwise, break it up if it is too large? */
-//      } else if (scheduler_doforcesplit && ci->split && cj->split &&
-//                 (ci->hydro.count > space_maxsize / cj->hydro.count)) {
-
         /* Replace the current task. */
         t->type = task_type_none;
 
@@ -1578,7 +1379,7 @@ static void scheduler_splittask_hydro_GPU(struct task *t, struct scheduler *s) {
                 struct task *tl =
                     scheduler_addtask(s, task_type_pair, t->subtype, 0, 0,
                                       ci->progeny[j], cj->progeny[k]);
-                scheduler_splittask_hydro_GPU(tl, s);
+                scheduler_splittask_hydro(tl, s);
                 tl->flags = space_getsid_and_swap_cells(s->space, &t->ci,
                                                         &t->cj, shift);
               }
@@ -2733,24 +2534,18 @@ void scheduler_enqueue_mapper(void *map_data, int num_elements,
  */
 void scheduler_start(struct scheduler *s) {
   for (int i = 0; i < s->nr_queues; i++) {  // A. Nasar
-//	if(s->queues[i].n_packs_self_left_f > 0 && s->e->time > 0.0){
-//		message("time %f", s->e->time);
-//		error("We did not complete all density pack tasks. n left %i", s->queues[i].n_packs_self_left_f);
-//	}
     s->queues[i].n_packs_self_left = 0;
     s->queues[i].n_packs_pair_left = 0;
     s->queues[i].n_packs_self_left_f = 0;
     s->queues[i].n_packs_pair_left_f = 0;
     s->queues[i].n_packs_self_left_g = 0;
     s->queues[i].n_packs_pair_left_g = 0;
-
     s->queues[i].n_packs_self_stolen = 0;
     s->queues[i].n_packs_pair_stolen = 0;
     s->queues[i].n_packs_self_stolen_f = 0;
     s->queues[i].n_packs_pair_stolen_f = 0;
     s->queues[i].n_packs_self_stolen_g = 0;
     s->queues[i].n_packs_pair_stolen_g = 0;
-
   }
   /* Re-wait the tasks. */
   if (s->active_count > 1000) {
@@ -3306,6 +3101,8 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
   /* Check qid. */
   if (qid >= nr_queues || qid < 0) error("Bad queue ID.");
 
+  /*Get a pointer to our queue for re-use*/
+  struct queue * q = &s->queues[qid];
   /* Loop as long as there are tasks... */
   while (s->waiting > 0 && res == NULL) {
     /* Try more than once before sleeping. */
@@ -3319,11 +3116,10 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
         if (res != NULL) break;
       }
 
-      /* If unsuccessful, try stealing from the other queues. A. Nasar
-       * falg set to zero for GPU work*/
+      /* If unsuccessful, try stealing from the other queues. */
       if (s->flags & scheduler_flag_steal) {
 
-        int count = 0, qids[nr_queues], act_qids[nr_queues];
+        int count = 0, qids[nr_queues];
 
         /* Make list of queues that have 1 or more tasks in them */
         for (int k = 0; k < nr_queues; k++) {
@@ -3336,6 +3132,7 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
 
           /* Pick a queue at random among the non-empty ones */
           const int ind = rand_r(&seed) % count;
+
           /*Get a pointer to the queue we're stealing from*/
           int qstl_id = qids[ind];
       	  struct queue * q_stl = &s->queues[qstl_id];
@@ -3344,74 +3141,47 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
           res = queue_gettask(q_stl, prev, 0);
           TIMER_TOC(timer_qsteal);
 
-//          if (res != NULL && (res->type == task_type_pair) &&
-//        	  (res->subtype == task_subtype_gpu_unpack ||
-//        	   res->subtype == task_subtype_gpu_unpack_f	||
-//			   res->subtype == task_subtype_gpu_unpack_g)){
-//            continue;
-//          }
-
-//          if (res != NULL && res->type == task_type_pair &&
-//        	    res->subtype == task_subtype_gpu_pack &&
-//			    s->queues[qstl].n_packs_pair_left < 2){ //Condition we want to avoid is =< 1
-//            continue;
-//          }
-//
-//          if (res != NULL && res->type == task_type_pair &&
-//        	    res->subtype == task_subtype_gpu_pack_g &&
-//			    s->queues[qstl].n_packs_pair_left_g < 2){
-//            continue;
-//          }
-//
-//          if (res != NULL && res->type == task_type_pair &&
-//        	    res->subtype == task_subtype_gpu_pack_f &&
-//			    s->queues[qstl].n_packs_pair_left_f < 2){
-//            continue;
-//          }
-
           /* Lucky? */
 //          if (res != NULL && res->subtype != task_subtype_gpu_unpack
 //        		  && res->subtype != task_subtype_gpu_unpack_f
 //				  && res->subtype != task_subtype_gpu_unpack_g){
 		  if (res != NULL){
-        	/*Get a pointer to our queue for re-use*/
-        	struct queue * q = &s->queues[qid];
-//        		  && res->subtype != task_subtype_gpu_pack
-//        		  && res->subtype != task_subtype_gpu_pack_f
-//				  && res->subtype != task_subtype_gpu_pack_g) {
+        	/*A.Nasar: Get task type*/
+        	enum task_types type = res->type;
+        	enum task_subtypes subtype = res->subtype;
         	/*Move counter from the robbed to the robber*/
-            if ((res->type == task_type_self)&&
-                res->subtype == task_subtype_gpu_pack) {
+            if ((type == task_type_self || type == task_type_sub_self)&&
+                subtype == task_subtype_gpu_pack) {
               atomic_inc(&q->n_packs_self_left);
               atomic_inc(&q->n_packs_self_stolen);
               atomic_dec(&q_stl->n_packs_self_left);
             }
-            if ((res->type == task_type_self)&&
-                res->subtype == task_subtype_gpu_pack_g) {
+            if ((type == task_type_self || type == task_type_sub_self)&&
+                subtype == task_subtype_gpu_pack_g) {
               atomic_inc(&q->n_packs_self_left_g);
               atomic_inc(&q->n_packs_self_stolen_g);
               atomic_dec(&q_stl->n_packs_self_left_g);
             }
-            if ((res->type == task_type_self)&&
-                res->subtype == task_subtype_gpu_pack_f) {
+            if ((type == task_type_self || type == task_type_sub_self)&&
+                subtype == task_subtype_gpu_pack_f) {
               atomic_inc(&q->n_packs_self_left_f);
               atomic_inc(&q->n_packs_self_stolen_f);
               atomic_dec(&q_stl->n_packs_self_left_f);
             }
-            if ((res->type == task_type_pair)&&
-                res->subtype == task_subtype_gpu_pack) {
+            if ((type == task_type_pair || type == task_type_sub_pair)&&
+                subtype == task_subtype_gpu_pack) {
               atomic_inc(&q->n_packs_pair_left);
               atomic_inc(&q->n_packs_pair_stolen);
               atomic_dec(&q_stl->n_packs_pair_left);
             }
-            if ((res->type == task_type_pair)&&
-                res->subtype == task_subtype_gpu_pack_g) {
+            if ((type == task_type_pair || type == task_type_sub_pair)&&
+                subtype == task_subtype_gpu_pack_g) {
               atomic_inc(&q->n_packs_pair_left_g);
               atomic_inc(&q->n_packs_pair_stolen_g);
               atomic_dec(&q_stl->n_packs_pair_left_g);
             }
-            if ((res->type == task_type_pair)&&
-                res->subtype == task_subtype_gpu_pack_f) {
+            if ((type == task_type_pair || type == task_type_sub_pair)&&
+                subtype == task_subtype_gpu_pack_f) {
               atomic_inc(&q->n_packs_pair_left_f);
               atomic_inc(&q->n_packs_pair_stolen_f);
               atomic_dec(&q_stl->n_packs_pair_left_f);
