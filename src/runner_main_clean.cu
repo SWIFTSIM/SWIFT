@@ -1107,7 +1107,6 @@ void *runner_main2(void *data) {
 
             /* No pack tasks left in queue, flag that we want to run */
             int launch_leftovers = pack_vars_self_grad->launch_leftovers;
-//            if(sched->queues[r->qid].n_packs_self_left_g < 1) launch_leftovers = 1;
             /*Packed enough tasks let's go*/
             int launch = pack_vars_self_grad->launch;
             /* Do we have enough stuff to run the GPU ? */
@@ -1136,7 +1135,6 @@ void *runner_main2(void *data) {
 
             /* No pack tasks left in queue, flag that we want to run */
             int launch_leftovers = pack_vars_self_forc->launch_leftovers;
-//            if(sched->queues[r->qid].n_packs_self_left_f < 1) launch_leftovers = 1;
             /*Packed enough tasks let's go*/
             int launch = pack_vars_self_forc->launch;
             /* Do we have enough stuff to run the GPU ? */
@@ -1296,12 +1294,7 @@ void *runner_main2(void *data) {
                * we want to run */
               int launch = pack_vars_pair_dens->launch;
               int launch_leftovers = pack_vars_pair_dens->launch_leftovers;
-//              if(sched->queues[r->qid].n_packs_pair_left < 1) launch_leftovers = 1;
-//              if(launch_leftovers &&
-//            		  (sched->queues[r->qid].n_packs_pair_left < 0
-//            				  || sched->queues[r->qid].n_packs_pair_left >= 1))
-//            	  error("Something's wrong. n_packs_pair_left = %i when it should be zero",
-//            			  sched->queues[r->qid].n_packs_pair_left);
+
               /* Do we have enough stuff to run the GPU ? */
               if (launch) n_full_p_d_bundles++;
               if (launch_leftovers) n_partial_p_d_bundles++;
@@ -1380,14 +1373,8 @@ void *runner_main2(void *data) {
 
               /* No pack tasks left in queue, flag that we want to run */
               int launch_leftovers = pack_vars_pair_grad->launch_leftovers;
-//              if(sched->queues[r->qid].n_packs_pair_left_g < 1) launch_leftovers = 1;
               /*Packed enough tasks, let's go*/
               int launch = pack_vars_pair_grad->launch;
-//              if(launch_leftovers &&
-//            		  (sched->queues[r->qid].n_packs_pair_left_g < 0
-//            				  || sched->queues[r->qid].n_packs_pair_left_g >= 1))
-//            	  error("Something's wrong. n_packs_pair_left_g = %i when it should be zero",
-//            			  sched->queues[r->qid].n_packs_pair_left_g);
               /* Do we have enough stuff to run the GPU ? */
               if (launch || launch_leftovers) {
                 /*Launch GPU tasks*/
@@ -1466,22 +1453,11 @@ void *runner_main2(void *data) {
 
               /* No pack tasks left in queue, flag that we want to run */
               int launch_leftovers = pack_vars_pair_forc->launch_leftovers;
-////              if(sched->queues[r->qid].n_packs_pair_left_g < 1) launch_leftovers = 1;
-//              if(launch_leftovers &&
-//            		  (sched->queues[r->qid].n_packs_pair_left_f < 0
-//            				  || sched->queues[r->qid].n_packs_pair_left_f >= 1))
-//            	  error("Somethig's wrong. n_packs_pair_left_f = %i when it should be zero",
-//            			  sched->queues[r->qid].n_packs_pair_left_f);
               /*Packed enough tasks let's go*/
               int launch = pack_vars_pair_forc->launch;
               /* Do we have enough stuff to run the GPU ? */
               if (launch || launch_leftovers) {
                 /*Launch GPU tasks*/
-                //  			runner_dopair1_launch_f(r, sched,
-                //  pack_vars_pair_forc, ci, t, parts_aos_pair_forc,
-                //  					d_parts_aos_pair_forc,
-                //  stream, d_a, d_H, e, &packing_time_pair_f,
-                //  &time_for_gpu_pair_f);
             	int t_packed = pack_vars_pair_forc->tasks_packed;
                 signal_sleeping_runners(sched, t, t_packed);
                 runner_dopair1_launch_f4_f_one_memcpy(
