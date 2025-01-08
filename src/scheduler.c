@@ -3142,9 +3142,6 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
           TIMER_TOC(timer_qsteal);
 
           /* Lucky? */
-//          if (res != NULL && res->subtype != task_subtype_gpu_unpack
-//        		  && res->subtype != task_subtype_gpu_unpack_f
-//				  && res->subtype != task_subtype_gpu_unpack_g){
 		  if (res != NULL){
         	/*A.Nasar: Get task type*/
         	enum task_types type = res->type;
@@ -3153,37 +3150,31 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
             if ((type == task_type_self || type == task_type_sub_self)&&
                 subtype == task_subtype_gpu_pack) {
               atomic_inc(&q->n_packs_self_left);
-              atomic_inc(&q->n_packs_self_stolen);
               atomic_dec(&q_stl->n_packs_self_left);
             }
             if ((type == task_type_self || type == task_type_sub_self)&&
                 subtype == task_subtype_gpu_pack_g) {
               atomic_inc(&q->n_packs_self_left_g);
-              atomic_inc(&q->n_packs_self_stolen_g);
               atomic_dec(&q_stl->n_packs_self_left_g);
             }
             if ((type == task_type_self || type == task_type_sub_self)&&
                 subtype == task_subtype_gpu_pack_f) {
               atomic_inc(&q->n_packs_self_left_f);
-              atomic_inc(&q->n_packs_self_stolen_f);
               atomic_dec(&q_stl->n_packs_self_left_f);
             }
             if ((type == task_type_pair || type == task_type_sub_pair)&&
                 subtype == task_subtype_gpu_pack) {
               atomic_inc(&q->n_packs_pair_left);
-              atomic_inc(&q->n_packs_pair_stolen);
               atomic_dec(&q_stl->n_packs_pair_left);
             }
             if ((type == task_type_pair || type == task_type_sub_pair)&&
                 subtype == task_subtype_gpu_pack_g) {
               atomic_inc(&q->n_packs_pair_left_g);
-              atomic_inc(&q->n_packs_pair_stolen_g);
               atomic_dec(&q_stl->n_packs_pair_left_g);
             }
             if ((type == task_type_pair || type == task_type_sub_pair)&&
                 subtype == task_subtype_gpu_pack_f) {
               atomic_inc(&q->n_packs_pair_left_f);
-              atomic_inc(&q->n_packs_pair_stolen_f);
               atomic_dec(&q_stl->n_packs_pair_left_f);
             }
             /* Run with the task */
