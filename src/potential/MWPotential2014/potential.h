@@ -368,7 +368,7 @@ static INLINE void potential_init_backend(
   const double Mdisk_Msun_default = 6.8e10;                /* M_sun  */
   const double Rdisk_kpc_default = 3.0;                    /* kpc  */
   const double Zdisk_kpc_default = 0.280;                  /* kpc  */
-  const double amplitude_default = 1.0;                    /* no unit  */
+  const double amplitude_Msun_per_kpc3_default = 1e10;     /* M_sun/kpc^3  */
   const double r_1_kpc_default = 1.0;                      /* kpc  */
   const double alpha_default = 1.8;                        /* no unit  */
   const double r_c_kpc_default = 1.9;                      /* kpc  */
@@ -404,7 +404,8 @@ static INLINE void potential_init_backend(
   potential->Zdisk = parser_get_opt_param_double(
       parameter_file, "MWPotential2014Potential:Zdisk_kpc", Zdisk_kpc_default);
   potential->amplitude = parser_get_opt_param_double(
-      parameter_file, "MWPotential2014Potential:amplitude", amplitude_default);
+      parameter_file, "MWPotential2014Potential:amplitude_Msun_per_kpc3",
+      amplitude_Msun_per_kpc3_default);
   potential->r_1 = parser_get_opt_param_double(
       parameter_file, "MWPotential2014Potential:r_1_kpc", r_1_kpc_default);
   potential->alpha = parser_get_opt_param_double(
@@ -417,13 +418,15 @@ static INLINE void potential_init_backend(
 
   /* Convert to internal system of units by using the
    * physical constants defined in this system */
+  const double kpc = 1000. * phys_const->const_parsec;
   potential->M_200 *= phys_const->const_solar_mass;
   potential->H *= phys_const->const_reduced_hubble;
   potential->Mdisk *= phys_const->const_solar_mass;
-  potential->Rdisk *= 1000. * phys_const->const_parsec;
-  potential->Zdisk *= 1000. * phys_const->const_parsec;
-  potential->r_1 *= 1000. * phys_const->const_parsec;
-  potential->r_c *= 1000. * phys_const->const_parsec;
+  potential->Rdisk *= kpc;
+  potential->Zdisk *= kpc;
+  potential->r_1 *= kpc;
+  potential->r_c *= kpc;
+  potential->amplitude *= phys_const->const_solar_mass / (kpc * kpc * kpc);
 
   /* Compute rho_c */
   const double rho_c = 3.0 * potential->H * potential->H /
