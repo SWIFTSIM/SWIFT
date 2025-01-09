@@ -246,6 +246,19 @@ INLINE static void convert_part_potential(const struct engine* e,
     ret[0] = 0.f;
 }
 
+INLINE static void convert_velocity_divergence(const struct engine* e,
+                                          const struct part* p,
+                                          const struct xpart* xp, float* ret) {
+
+  const struct cosmology* cosmo = e->cosmology;
+
+  /* Copy velocity divergence, 1/3 omitted */
+  ret[0] =   p->gradients.v[0][0] +
+             p->gradients.v[1][1] +
+             p->gradients.v[2][2];
+  ret[0] += hydro_dimension * cosmo->H;
+}
+
 /**
  * @brief Specifies which particle fields to write to a dataset
  *
@@ -258,7 +271,7 @@ INLINE static void hydro_write_particles(const struct part* parts,
                                          struct io_props* list,
                                          int* num_fields) {
 
-  *num_fields = 14;
+  *num_fields = 15;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_part(
@@ -316,16 +329,21 @@ INLINE static void hydro_write_particles(const struct part* parts,
       io_make_output_field("Flux_counts", LONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f,
                            parts, flux_count, "Flux counters of the particles");
 
+  list[13] = io_make_output_field_convert_part(
+      "VelocityDivergences", FLOAT, 1, UNIT_CONV_FREQUENCY, 0.f, parts, xparts,
+      convert_velocity_divergence,
+      "Velocity Divergences of the particles");
+
 #if defined(HYDRO_DIMENSION_1D)
-  list[13] = io_make_output_field("Volumes", FLOAT, 1, UNIT_CONV_LENGTH, 1.f,
+  list[14] = io_make_output_field("Volumes", FLOAT, 1, UNIT_CONV_LENGTH, 1.f,
                                   parts, geometry.volume,
                                   "Co-moving volumes of the particles");
 #elif defined(HYDRO_DIMENSION_2D)
-  list[13] = io_make_output_field("Volumes", FLOAT, 1, UNIT_CONV_AREA, 2.f,
+  list[14] = io_make_output_field("Volumes", FLOAT, 1, UNIT_CONV_AREA, 2.f,
                                   parts, geometry.volume,
                                   "Co-moving volumes of the particles");
 #elif defined(HYDRO_DIMENSION_3D)
-  list[13] = io_make_output_field("Volumes", FLOAT, 1, UNIT_CONV_VOLUME, 3.f,
+  list[14] = io_make_output_field("Volumes", FLOAT, 1, UNIT_CONV_VOLUME, 3.f,
                                   parts, geometry.volume,
                                   "Co-moving volumes of the particles");
 #else

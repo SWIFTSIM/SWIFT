@@ -451,6 +451,7 @@ __attribute__((always_inline)) INLINE static void star_formation_end_density(
 #elif HOPKINS_PU_SPH
   xp->sf_data.div_v = p->density.div_v;
 #elif SHADOWSWIFT
+  /* Copy the velocity divergence, 1/3 omitted */
   xp->sf_data.div_v  = p->gradients.v[0][0] +
                        p->gradients.v[1][1] +
                        p->gradients.v[2][2];
