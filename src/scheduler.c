@@ -3123,6 +3123,7 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
 
         /* Make list of queues that have 1 or more tasks in them */
         for (int k = 0; k < nr_queues; k++) {
+        	if(k == qid) continue;
           if (s->queues[k].count > 0 || s->queues[k].count_incoming > 0) {
             qids[count++] = k;
           }
@@ -3132,15 +3133,18 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
 
           /* Pick a queue at random among the non-empty ones */
           const int ind = rand_r(&seed) % count;
-
           /*Get a pointer to the queue we're stealing from*/
           int qstl_id = qids[ind];
+          if(qid == qstl_id){
+        	  /* Reduce the size of the list of non-empty queues */
+        	  qids[ind] = qids[--count];
+        	  continue;
+          }
       	  struct queue * q_stl = &s->queues[qstl_id];
           /* Try to get a task from that random queue */
           TIMER_TIC;
           res = queue_gettask(q_stl, prev, 0);
           TIMER_TOC(timer_qsteal);
-
           /* Lucky? */
 		  if (res != NULL){
         	/*A.Nasar: Get task type*/
@@ -3199,8 +3203,8 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
       res = queue_gettask(&s->queues[qid], prev, 1);
       if (res == NULL && s->waiting > 0) {
     	struct queue qq = s->queues[qid];
-//    	message("s->waiting %i self_stolen %i, self_left %i, pair_stolen %i, pair_left %i", s->waiting,
-//    			qq.n_packs_self_stolen_f, qq.n_packs_self_left_f, qq.n_packs_pair_stolen_f, qq.n_packs_pair_left_f);
+    	message("s->waiting %i self_stolen %i, self_left %i, pair_stolen %i, pair_left %i", s->waiting,
+    			qq.n_packs_self_stolen_f, qq.n_packs_self_left_f, qq.n_packs_pair_stolen_f, qq.n_packs_pair_left_f);
         pthread_cond_wait(&s->sleep_cond, &s->sleep_mutex);
       }
       pthread_mutex_unlock(&s->sleep_mutex);

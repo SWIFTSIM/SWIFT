@@ -1473,7 +1473,10 @@ void runner_doself1_launch_f4(
         clock_gettime(CLOCK_REALTIME, &tp1);
         *unpack_time += (tp1.tv_sec - tp0.tv_sec) +
                         (tp1.tv_nsec - tp0.tv_nsec) / 1000000000.0;
-
+        pthread_mutex_lock(&s->sleep_mutex);
+        atomic_dec(&s->waiting);
+        pthread_cond_broadcast(&s->sleep_cond);
+        pthread_mutex_unlock(&s->sleep_mutex);
         /* Release the lock */
         cell_unlocktree(cii);
 
@@ -1872,7 +1875,10 @@ void runner_doself1_launch_f4_g(
 
         /* Record things for debugging */
         cii->gpu_done_g++;
-
+        pthread_mutex_lock(&s->sleep_mutex);
+        atomic_dec(&s->waiting);
+        pthread_cond_broadcast(&s->sleep_cond);
+        pthread_mutex_unlock(&s->sleep_mutex);
         /* Release the lock */
         cell_unlocktree(cii);
 
@@ -2274,7 +2280,10 @@ void runner_doself1_launch_f4_f(
         clock_gettime(CLOCK_REALTIME, &tp1);
         *unpack_time += (tp1.tv_sec - tp0.tv_sec) +
                         (tp1.tv_nsec - tp0.tv_nsec) / 1000000000.0;
-
+        pthread_mutex_lock(&s->sleep_mutex);
+        atomic_dec(&s->waiting);
+        pthread_cond_broadcast(&s->sleep_cond);
+        pthread_mutex_unlock(&s->sleep_mutex);
         /* Release the lock */
         cell_unlocktree(cii);
 
@@ -2913,7 +2922,10 @@ void runner_dopair1_launch_f4_one_memcpy(
         /* Record things for debugging */
         cii->gpu_done_pair++;
         cjj->gpu_done_pair++;
-
+        pthread_mutex_lock(&s->sleep_mutex);
+        atomic_dec(&s->waiting);
+        pthread_cond_broadcast(&s->sleep_cond);
+        pthread_mutex_unlock(&s->sleep_mutex);
         //		  /* Release the locks */
         cell_unlocktree(cii);
         //		  /* Release the locks */
@@ -3638,7 +3650,10 @@ void runner_dopair1_launch_f4_g_one_memcpy(
         /* Record things for debugging */
         cii->gpu_done_pair_g++;
         cjj->gpu_done_pair_g++;
-
+        pthread_mutex_lock(&s->sleep_mutex);
+        atomic_dec(&s->waiting);
+        pthread_cond_broadcast(&s->sleep_cond);
+        pthread_mutex_unlock(&s->sleep_mutex);
         /* Release the locks */
         cell_unlocktree(cii);
         /* Release the locks */
@@ -4390,7 +4405,10 @@ void runner_dopair1_launch_f4_f_one_memcpy(
         /* Record things for debugging */
         cii->gpu_done_pair_f++;
         cjj->gpu_done_pair_f++;
-
+        pthread_mutex_lock(&s->sleep_mutex);
+        atomic_dec(&s->waiting);
+        pthread_cond_broadcast(&s->sleep_cond);
+        pthread_mutex_unlock(&s->sleep_mutex);
         //		  /* Release the locks */
         cell_unlocktree(cii);
         //		  /* Release the locks */

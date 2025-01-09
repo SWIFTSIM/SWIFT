@@ -9,7 +9,7 @@ typedef int8_t timebin_t;
 extern "C" {
 #endif
 
-#include "/usr/local/cuda-12.6/targets/x86_64-linux/include/vector_types.h"
+#include "/usr/local/cuda-12.2/targets/x86_64-linux/include/vector_types.h"
 
 typedef struct part_soa {
   /*Task ID*/

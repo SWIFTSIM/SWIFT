@@ -1083,7 +1083,7 @@ void *runner_main2(void *data) {
             if (launch || launch_leftovers) {
               /*Launch GPU tasks*/
               int t_packed = pack_vars_self_dens->tasks_packed;
-              signal_sleeping_runners(sched, t, t_packed);
+//              signal_sleeping_runners(sched, t, t_packed);
               runner_doself1_launch_f4(
                   r, sched, pack_vars_self_dens, ci, t, parts_aos_f4_send,
                   parts_aos_f4_recv, d_parts_aos_f4_send, d_parts_aos_f4_recv,
@@ -1113,7 +1113,7 @@ void *runner_main2(void *data) {
             if (launch || launch_leftovers) {
               /*Launch GPU tasks*/
               int t_packed = pack_vars_self_grad->tasks_packed;
-              signal_sleeping_runners(sched, t, t_packed);
+//              signal_sleeping_runners(sched, t, t_packed);
               runner_doself1_launch_f4_g(
                   r, sched, pack_vars_self_grad, ci, t, parts_aos_grad_f4_send,
                   parts_aos_grad_f4_recv, d_parts_aos_grad_f4_send,
@@ -1141,7 +1141,7 @@ void *runner_main2(void *data) {
             if (launch || launch_leftovers) {
               /*Launch GPU tasks*/
               int t_packed = pack_vars_self_forc->tasks_packed;
-              signal_sleeping_runners(sched, t, t_packed);
+//              signal_sleeping_runners(sched, t, t_packed);
               runner_doself1_launch_f4_f(
                   r, sched, pack_vars_self_forc, ci, t, parts_aos_forc_f4_send,
                   parts_aos_forc_f4_recv, d_parts_aos_forc_f4_send,
@@ -1301,7 +1301,7 @@ void *runner_main2(void *data) {
               if (launch || launch_leftovers) {
                 /*Launch GPU tasks*/
             	int t_packed = pack_vars_pair_dens->tasks_packed;
-                signal_sleeping_runners(sched, t, t_packed);
+//                signal_sleeping_runners(sched, t, t_packed);
                 runner_dopair1_launch_f4_one_memcpy(
                     r, sched, pack_vars_pair_dens, t, parts_aos_pair_f4_send,
                     parts_aos_pair_f4_recv, d_parts_aos_pair_f4_send,
@@ -1379,7 +1379,7 @@ void *runner_main2(void *data) {
               if (launch || launch_leftovers) {
                 /*Launch GPU tasks*/
             	int t_packed = pack_vars_pair_grad->tasks_packed;
-                signal_sleeping_runners(sched, t, t_packed);
+//                signal_sleeping_runners(sched, t, t_packed);
                 runner_dopair1_launch_f4_g_one_memcpy(
                     r, sched, pack_vars_pair_grad, t, parts_aos_pair_f4_g_send,
                     parts_aos_pair_f4_g_recv, d_parts_aos_pair_f4_g_send,
@@ -1459,7 +1459,7 @@ void *runner_main2(void *data) {
               if (launch || launch_leftovers) {
                 /*Launch GPU tasks*/
             	int t_packed = pack_vars_pair_forc->tasks_packed;
-                signal_sleeping_runners(sched, t, t_packed);
+//                signal_sleeping_runners(sched, t, t_packed);
                 runner_dopair1_launch_f4_f_one_memcpy(
                     r, sched, pack_vars_pair_forc, t, parts_aos_pair_f4_f_send,
                     parts_aos_pair_f4_f_recv, d_parts_aos_pair_f4_f_send,
