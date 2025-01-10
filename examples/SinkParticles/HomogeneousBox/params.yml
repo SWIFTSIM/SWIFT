@@ -85,7 +85,8 @@ GEARFeedback:
 
 
 GEARSink:
-  cut_off_radius: 5e-3                        # Cut off radius of all the sinks in internal units.
+  use_fixed_cut_off_radius: 1                 # Are we using a fixed cutoff radius? If we are, in GEAR the cutoff radius is fixed at the value specified below, and the sink smoothing length is fixed at this value divided by kernel_gamma. If not, the cutoff radius varies with the sink smoothing length as r_cut = h*kernel_gamma.
+  cut_off_radius: 5e-3                        # Cut off radius of all the sinks in internal units. Ignored if use_fixed_cut_off_radius is 0. 
   f_acc: 1e-2
   temperature_threshold_K: 1000               # Max temperature (in K) for forming a sink when density_threshold_Hpcm3 <= density <= maximal_density_threshold_Hpcm3.
   density_threshold_Hpcm3: 1e1                # Minimum gas density (in g/cm3) required to form a sink particle.
