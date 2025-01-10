@@ -167,6 +167,13 @@ double runner_doself1_pack_f4(struct runner *r, struct scheduler *s,
    * tp0 and tp1 only time packing and unpacking*/
   struct timespec t0, t1;  //
   clock_gettime(CLOCK_REALTIME, &t0);
+  /* Record that we have now done a packing (self) */
+  int qid = r->qid;
+//  atomic_dec(&(s->queues[qid].n_packs_pair_left_f));
+  pthread_mutex_lock(&s->sleep_mutex);
+  atomic_dec(&(s->s_d_left[qid]));
+  pthread_cond_broadcast(&s->sleep_cond);
+  pthread_mutex_unlock(&s->sleep_mutex);
 
   int tasks_packed = pack_vars->tasks_packed;
   //	pack_vars->cellx[tasks_packed] = ci->loc[0];
@@ -200,16 +207,16 @@ double runner_doself1_pack_f4(struct runner *r, struct scheduler *s,
   /* Tell the cell it has been packed */
   ci->pack_done++;
   /* Record that we have now done a packing (self) */
-  int qid = r->qid;
+//  int qid = r->qid;
 //  atomic_dec(&(s->queues[qid].n_packs_self_left));
   t->done = 1;
   pack_vars->tasks_packed++;
   pack_vars->launch = 0;
   pack_vars->launch_leftovers = 0;
 
-  atomic_cas(&pack_vars->launch_leftovers, __sync_sub_and_fetch(&(s->queues[qid].n_packs_self_left), 1), 1);
+//  atomic_cas(&pack_vars->launch_leftovers, __sync_sub_and_fetch(&(s->queues[qid].n_packs_self_left), 1), 1);
 
-//  if ((s->queues[qid].n_packs_self_left < 1)) pack_vars->launch_leftovers = 1;
+  if ((s->s_d_left[qid] < 1)) pack_vars->launch_leftovers = 1;
   if (pack_vars->tasks_packed == pack_vars->target_n_tasks)
     pack_vars->launch = 1;
   /*Add time to packing_time. Timer for end of GPU work after the if(launch ||
@@ -293,7 +300,13 @@ double runner_doself1_pack_f4_g(struct runner *r, struct scheduler *s,
    * tp0 and tp1 only time packing and unpacking*/
   struct timespec t0, t1;  //
   clock_gettime(CLOCK_REALTIME, &t0);
-
+  /* Record that we have now done a packing (self) */
+  int qid = r->qid;
+//  atomic_dec(&(s->queues[qid].n_packs_pair_left_f));
+  pthread_mutex_lock(&s->sleep_mutex);
+  atomic_dec(&(s->s_g_left[qid]));
+  pthread_cond_broadcast(&s->sleep_cond);
+  pthread_mutex_unlock(&s->sleep_mutex);
   int tasks_packed = pack_vars->tasks_packed;
   //	pack_vars->cellx[tasks_packed] = ci->loc[0];
   //	pack_vars->celly[tasks_packed] = ci->loc[1];
@@ -324,7 +337,7 @@ double runner_doself1_pack_f4_g(struct runner *r, struct scheduler *s,
   /* Tell the cell it has been packed */
   ci->pack_done_g++;
   /* Record that we have now done a packing (self) */
-  int qid = r->qid;
+//  int qid = r->qid;
 //  atomic_dec(&(s->queues[qid].n_packs_self_left_g));
   t->done = 1;
   pack_vars->tasks_packed++;
@@ -415,7 +428,13 @@ double runner_doself1_pack_f4_f(struct runner *r, struct scheduler *s,
    * tp0 and tp1 only time packing and unpacking*/
   struct timespec t0, t1;  //
   clock_gettime(CLOCK_REALTIME, &t0);
-
+  /* Record that we have now done a packing (self) */
+  int qid = r->qid;
+//  atomic_dec(&(s->queues[qid].n_packs_pair_left_f));
+  pthread_mutex_lock(&s->sleep_mutex);
+  atomic_dec(&(s->s_f_left[qid]));
+  pthread_cond_broadcast(&s->sleep_cond);
+  pthread_mutex_unlock(&s->sleep_mutex);
   int tasks_packed = pack_vars->tasks_packed;
   //	pack_vars->cellx[tasks_packed] = ci->loc[0];
   //	pack_vars->celly[tasks_packed] = ci->loc[1];
@@ -446,7 +465,7 @@ double runner_doself1_pack_f4_f(struct runner *r, struct scheduler *s,
   /* Tell the cell it has been packed */
   ci->pack_done_f++;
   /* Record that we have now done a packing (self) */
-  int qid = r->qid;
+//  int qid = r->qid;
 //  atomic_dec(&(s->queues[qid].n_packs_self_left_f));
   t->done = 1;
   pack_vars->tasks_packed++;
@@ -573,6 +592,11 @@ double runner_dopair1_pack_f4(struct runner *r, struct scheduler *s,
   struct timespec t0, t1;  //
   clock_gettime(CLOCK_REALTIME, &t0);
   int tasks_packed = pack_vars->tasks_packed;
+  int qid = r->qid;
+  pthread_mutex_lock(&s->sleep_mutex);
+  atomic_dec(&(s->p_d_left[qid]));
+  pthread_cond_broadcast(&s->sleep_cond);
+  pthread_mutex_unlock(&s->sleep_mutex);
 
   double x_tmp = 0.0, y_tmp = 0.0, z_tmp = 0.0;
   /*Get the shifts in case of periodics*/
@@ -648,10 +672,10 @@ double runner_dopair1_pack_f4(struct runner *r, struct scheduler *s,
   pack_vars->launch = 0;
   pack_vars->launch_leftovers = 0;
   /* Record that we have now done a packing (self) */
-  int qid = r->qid;
+//  int qid = r->qid;
 //  atomic_dec(&(s->queues[qid].n_packs_pair_left));
-//  if ((s->queues[qid].n_packs_pair_left < 1)) pack_vars->launch_leftovers = 1;
-  atomic_cas(&pack_vars->launch_leftovers, __sync_sub_and_fetch(&(s->queues[qid].n_packs_pair_left), 1), 1);
+  if ((s->p_d_left < 1)) pack_vars->launch_leftovers = 1;
+//  atomic_cas(&pack_vars->launch_leftovers, __sync_sub_and_fetch(&(s->queues[qid].n_packs_pair_left), 1), 1);
 
   if (pack_vars->tasks_packed == pack_vars->target_n_tasks)
     pack_vars->launch = 1;
@@ -779,6 +803,12 @@ double runner_dopair1_pack_f4_g(struct runner *r, struct scheduler *s,
   clock_gettime(CLOCK_REALTIME, &t0);
   int tasks_packed = pack_vars->tasks_packed;
 
+  int qid = r->qid;
+  pthread_mutex_lock(&s->sleep_mutex);
+  atomic_dec(&(s->p_g_left[qid]));
+  pthread_cond_broadcast(&s->sleep_cond);
+  pthread_mutex_unlock(&s->sleep_mutex);
+
   double x_tmp = 0.0, y_tmp = 0.0, z_tmp = 0.0;
   /*Get the shifts in case of periodics*/
   space_getsid_GPU(e->s, &ci, &cj, &x_tmp, &y_tmp, &z_tmp);
@@ -853,11 +883,11 @@ double runner_dopair1_pack_f4_g(struct runner *r, struct scheduler *s,
   pack_vars->launch = 0;
   pack_vars->launch_leftovers = 0;
   /* Record that we have now done a packing (self) */
-  int qid = r->qid;
+//  int qid = r->qid;
 //  atomic_dec(&(s->queues[qid].n_packs_pair_left_g));
-  atomic_cas(&pack_vars->launch_leftovers, __sync_sub_and_fetch(&(s->queues[qid].n_packs_pair_left_g), 1), 1);
-//  if ((s->queues[qid].n_packs_pair_left_g < 1))
-//    pack_vars->launch_leftovers = 1;
+//  atomic_cas(&pack_vars->launch_leftovers, __sync_sub_and_fetch(&(s->queues[qid].n_packs_pair_left_g), 1), 1);
+  if ((s->p_g_left[qid] < 1))
+    pack_vars->launch_leftovers = 1;
   if (pack_vars->tasks_packed == pack_vars->target_n_tasks)
     pack_vars->launch = 1;
   /*Add time to packing_time. Timer for end of GPU work after the if(launch ||
@@ -985,6 +1015,14 @@ double runner_dopair1_pack_f4_f(struct runner *r, struct scheduler *s,
   clock_gettime(CLOCK_REALTIME, &t0);
   int tasks_packed = pack_vars->tasks_packed;
 
+  /* Record that we have now done a packing (self) */
+  int qid = r->qid;
+//  atomic_dec(&(s->queues[qid].n_packs_pair_left_f));
+  pthread_mutex_lock(&s->sleep_mutex);
+  atomic_dec(&(s->p_f_left[qid]));
+  pthread_cond_broadcast(&s->sleep_cond);
+  pthread_mutex_unlock(&s->sleep_mutex);
+
   double x_tmp = 0.0, y_tmp = 0.0, z_tmp = 0.0;
   /*Get the shifts in case of periodics*/
   space_getsid_GPU(e->s, &ci, &cj, &x_tmp, &y_tmp, &z_tmp);
@@ -1058,13 +1096,10 @@ double runner_dopair1_pack_f4_f(struct runner *r, struct scheduler *s,
   pack_vars->tasks_packed++;
   pack_vars->launch = 0;
   pack_vars->launch_leftovers = 0;
-  /* Record that we have now done a packing (self) */
-  int qid = r->qid;
-//  atomic_dec(&(s->queues[qid].n_packs_pair_left_f));
-  atomic_cas(&pack_vars->launch_leftovers, __sync_sub_and_fetch(&(s->queues[qid].n_packs_pair_left_f), 1), 1);
+//  atomic_cas(&pack_vars->launch_leftovers, __sync_sub_and_fetch(&(s->queues[qid].n_packs_pair_left_f), 1), 1);
 
-//  if ((s->queues[qid].n_packs_pair_left_f < 1))
-//    pack_vars->launch_leftovers = 1;
+  if ((s->p_f_left[qid] < 1))
+    pack_vars->launch_leftovers = 1;
   if (pack_vars->tasks_packed == pack_vars->target_n_tasks)
     pack_vars->launch = 1;
   /*Add time to packing_time. Timer for end of GPU work after the if(launch ||

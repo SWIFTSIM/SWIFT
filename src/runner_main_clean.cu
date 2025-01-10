@@ -994,16 +994,17 @@ void *runner_main2(void *data) {
     ticks hang_time = getticks();
     while (1) {
 //      ticks tic_get_task = getticks();
+      //A. Nasar: Get qid for re-use later
+      int qid = r->qid;
       /* If there's no old task, try to get a new one. */
       if (t == NULL) {
         /* Get the task. */
         TIMER_TIC
-        t = scheduler_gettask(sched, r->qid, prev);
+        t = scheduler_gettask(sched, qid, prev);
         TIMER_TOC(timer_gettask);
         /* Did I get anything? */
         if (t == NULL) break;
       }
-
       /* Get the cells. */
       struct cell *ci = t->ci;
       struct cell *cj = t->cj;
@@ -1078,10 +1079,10 @@ void *runner_main2(void *data) {
             /*Packed enough tasks let's go*/
             int launch = pack_vars_self_dens->launch;
 
-            if ((sched->queues[r->qid].n_packs_self_left < 1)){
-            	launch_leftovers = 1;
-            	pack_vars_self_dens->launch_leftovers = 1;
-            }
+//            if ((sched->s_d_left[qid] < 1)){
+//            	launch_leftovers = 1;
+//            	pack_vars_self_dens->launch_leftovers = 1;
+//            }
             /* Do we have enough stuff to run the GPU ? */
             if (launch) n_full_d_bundles++;
             if (launch_leftovers) n_partial_d_bundles++;
@@ -1115,10 +1116,10 @@ void *runner_main2(void *data) {
             /*Packed enough tasks let's go*/
             int launch = pack_vars_self_grad->launch;
 
-            if ((sched->queues[r->qid].n_packs_self_left_g < 1)){
-              launch_leftovers = 1;
-          	  pack_vars_self_grad->launch_leftovers = 1;
-            }
+//            if ((sched->s_g_left[qid] < 1)){
+//              launch_leftovers = 1;
+//          	  pack_vars_self_grad->launch_leftovers = 1;
+//            }
             /* Do we have enough stuff to run the GPU ? */
             if (launch || launch_leftovers) {
               /*Launch GPU tasks*/
@@ -1148,10 +1149,10 @@ void *runner_main2(void *data) {
             /*Packed enough tasks let's go*/
             int launch = pack_vars_self_forc->launch;
 
-            if ((sched->queues[r->qid].n_packs_self_left_f < 1)){
-              launch_leftovers = 1;
-          	  pack_vars_self_forc->launch_leftovers = 1;
-            }
+//            if ((sched->s_f_left[qid] < 1)){
+//              launch_leftovers = 1;
+//          	  pack_vars_self_forc->launch_leftovers = 1;
+//            }
             /* Do we have enough stuff to run the GPU ? */
             if (launch || launch_leftovers) {
               /*Launch GPU tasks*/
@@ -1314,10 +1315,10 @@ void *runner_main2(void *data) {
               if (launch) n_full_p_d_bundles++;
               if (launch_leftovers) n_partial_p_d_bundles++;
 
-              if ((sched->queues[r->qid].n_packs_pair_left < 1)){
-            	  launch_leftovers = 1;
-            	  pack_vars_pair_dens->launch_leftovers = 1;
-              }
+//              if ((sched->p_d_left[qid] < 1)){
+//            	  launch_leftovers = 1;
+//            	  pack_vars_pair_dens->launch_leftovers = 1;
+//              }
               if (launch || launch_leftovers) {
                 /*Launch GPU tasks*/
             	int t_packed = pack_vars_pair_dens->tasks_packed;
@@ -1396,10 +1397,10 @@ void *runner_main2(void *data) {
               /*Packed enough tasks, let's go*/
               int launch = pack_vars_pair_grad->launch;
 
-              if ((sched->queues[r->qid].n_packs_pair_left_g < 1)){
-            	  launch_leftovers = 1;
-            	  pack_vars_pair_grad->launch_leftovers = 1;
-              }
+//              if ((sched->p_g_left[qid] < 1)){
+//            	  launch_leftovers = 1;
+//            	  pack_vars_pair_grad->launch_leftovers = 1;
+//              }
               /* Do we have enough stuff to run the GPU ? */
               if (launch || launch_leftovers) {
                 /*Launch GPU tasks*/
@@ -1480,10 +1481,10 @@ void *runner_main2(void *data) {
               int launch_leftovers = pack_vars_pair_forc->launch_leftovers;
               /*Packed enough tasks let's go*/
               int launch = pack_vars_pair_forc->launch;
-              if ((sched->queues[r->qid].n_packs_pair_left_f < 1)){
-            	  launch_leftovers = 1;
-            	  pack_vars_pair_forc->launch_leftovers = 1;
-              }
+//              if ((sched->p_f_left[qid] < 1)){
+//            	  launch_leftovers = 1;
+//            	  pack_vars_pair_forc->launch_leftovers = 1;
+//              }
               /* Do we have enough stuff to run the GPU ? */
               if (launch || launch_leftovers) {
                 /*Launch GPU tasks*/

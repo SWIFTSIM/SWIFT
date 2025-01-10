@@ -67,6 +67,13 @@ struct scheduler {
   int nr_packs_pair_forc_done;
   int nr_packs_self_grad_done;
   int nr_packs_pair_grad_done;
+
+  volatile int *s_d_left;
+  volatile int *s_g_left;
+  volatile int *s_f_left;
+  volatile int *p_d_left;
+  volatile int *p_g_left;
+  volatile int *p_f_left;
   /* Actual number of GPU tasks. */
   int nr_gpu_tasks;
   /* Number of tasks we want*/
