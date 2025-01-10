@@ -1140,7 +1140,7 @@ struct spart *cell_spawn_new_spart_from_sink(struct engine *e, struct cell *c,
 #endif
 
   /* Set a smoothing length */
-  sp->h = s->r_cut;
+  sp->h = s->h;
 
   /* Here comes the Sun! */
   return sp;

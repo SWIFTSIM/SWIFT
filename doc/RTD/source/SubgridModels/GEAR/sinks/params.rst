@@ -10,12 +10,17 @@ Model parameters
 
 The parameters of the GEAR sink model are grouped into the ``GEARSink`` section of the parameter file. 
 
-The first two parameters are:
+The first three parameters are:
 
-* The sink cut-off radius for gas and sink accretion: ``cut_off_radius``,
+* Whether we are using a fixed cut-off radius for gas and sink accretion: ``use_fixed_cut_off_radius``,
+* The sink cut-off radius: ``cut_off_radius``,
 * The sink inner accretion radius fraction in terms of the cut-off radius: ``f_acc``.
 
-The ``f_acc`` parameter is optional. Its default value is :math:`0.1`. Its value must respect :math:`0 \leq f_\text{acc} \leq 1` . It describes the inner radius :math:`f_{\text{acc}} \cdot r_{\text{cut-off}}` in which gas particles are swallowed without any further checks, as explained below.
+The ``use_fixed_cut_off_radius`` is mandatory and should be set to 0 or 1. If set to 1, the GEAR model will use a fixed cutoff radius equal to the value of ``cut_off_radius``. If not, the cutoff radius is allowed to vary according to the local gas density. In the code, the cutoff radius is always equal to the sink's smoothing length multiplied by a constant factor ``kernel_gamma`` - setting a fixed cutoff will fix the smoothing length at the appropriate value for all sinks.
+
+The ``cut_off_radius`` parameter is optional, and is ignored if ``use_fixed_cut_off_radius`` is 0. If a fixed cut-off is used, every sink's smoothing length will be permanently set to this number divided by ``kernel_gamma`` on formation.
+
+The ``f_acc`` parameter is also optional. Its default value is :math:`0.1`. Its value must respect :math:`0 \leq f_\text{acc} \leq 1` . It describes the inner radius :math:`f_{\text{acc}} \cdot r_{\text{cut-off}}` in which gas particles are swallowed without any further checks, as explained below.
 
 The next three mandatory parameters are:
 
@@ -63,7 +68,8 @@ The full section is:
 .. code:: YAML
 
    GEARSink:
-     cut_off_radius:              1e-3           # Cut off radius of the sink particles (in internal units). This parameter should be adapted with the resolution.
+     use_fixed_cut_off_radius: 1                 # Are we using a fixed cutoff radius? If we are, in GEAR the cutoff radius is fixed at the value specified below, and the sink smoothing length is fixed at this value divided by kernel_gamma. If not, the cutoff radius varies with the sink smoothing length as r_cut = h*kernel_gamma.
+     cut_off_radius: 1e-3                        # Cut off radius of all the sinks in internal units. Ignored if use_fixed_cut_off_radius is 0. 
      f_acc: 0.1                                  # (Optional) Fraction of the cut_off_radius that determines if a gas particle should be swallowed wihtout additional check. It has to respect 0 <= f_acc <= 1. (Default: 0.1)
      temperature_threshold_K:        100         # Max temperature (in K) for forming a sink when density_threshold_Hpcm3 <= density <= maximal_density_threshold_Hpcm3.
      density_threshold_Hpcm3: 1e3                # Minimum gas density (in Hydrogen atoms/cm3) required to form a sink particle.
@@ -103,6 +109,8 @@ On the contrary, if you set a too high cut-off radius, then sinks will accrete a
 This problem can be mitigated by choosing a higher value of ``stellar_particle_mass_Msun`` and ``stellar_particle_mass_first_stars_Msun``, or higher values of ``minimal_discrete_mass_Msun`` and ``minimal_discrete_mass_first_stars_Msun``. Of course, this comes at the price of having fewer individual stars. Finally, all parameters will depend on your needs.
 
 *If you do not want to change your parameters*, you can increase the ``sort_stack_size`` variable at the beginning ``runner_sort.c``. The default value is 10 in powers of 2 (so the stack size is 1024 particles). Increase it to the desired value. Be careful to not overestimate this.
+
+Note that if a cutoff radius is not specified, and the radius is instead left to vary with the local gas density, the smoothing length criterion is always satisfied.
 
 Guide to choose the the accretion radius or the density threshold
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
