@@ -99,7 +99,7 @@ chemistry_compute_physical_diffusion_flux(
 
     for (int i = 0; i < 3; ++i) {
       for (int j = 0; j < 3; ++j) {
-        F_diff[i] +=
+        F_diff[i] -=
             K[i][j] * p->chemistry_data.gradients.Z[metal][j] * cosmo->a_inv;
       }
     } /* End of matrix multiplication */
