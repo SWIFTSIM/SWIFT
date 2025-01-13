@@ -317,7 +317,7 @@ chemistry_riemann_solve_for_flux(
   /* Now compute alpha to reduce numerical diffusion below physical
      diffusion. */
   const double alpha =
-      chemistry_riemann_compute_alpha(c_s_R, c_s_R, uR, uL, dx_p_norm, q_star,
+      chemistry_riemann_compute_alpha(c_s_R, c_s_L, uR, uL, dx_p_norm, q_star,
                                       U_star, K_star, norm_K_star, grad_q_star);
 
   /****************************************************************************/
