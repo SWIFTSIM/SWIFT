@@ -24,6 +24,7 @@
 #include "gravity.h"
 #include "gravity_iact.h"
 #include "sink.h"
+#include "sink_getters.h"
 #include "sink_properties.h"
 
 /**
@@ -41,21 +42,21 @@
  * @param pj Second particle.
  * @param a Current scale factor.
  * @param H Current Hubble parameter.
- * @param cut_off_radius Sink cut off radius.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_sink(
     const float r2, const float dx[3], const float hi, const float hj,
     struct part *restrict pi, struct part *restrict pj, const float a,
-    const float H, const float cut_off_radius) {
+    const float H) {
 
-  /* In order to prevent the formation of two sink particles at a distance
-   * smaller than the sink cutoff radius, we keep only gas particles with
-   * the smallest potential. */
+  /* In order to prevent the formation of two sink particles too close together,
+   * we keep only gas particles with the smallest potential. The distance at
+   * which to prevent sink formation is the cutoff radius if this is fixed, or
+   * it is the variable smoothing length times gamma. */
 
   const float r = sqrtf(r2);
+  const float rmax = max(hi, hj) * kernel_gamma;
 
-  /* if the distance is less than the cut off radius */
-  if (r < cut_off_radius) {
+  if (r < rmax) {
     float potential_i = pi->sink_data.potential;
     float potential_j = pj->sink_data.potential;
 
@@ -87,20 +88,21 @@ __attribute__((always_inline)) INLINE static void runner_iact_sink(
  * @param pj Second particle (not updated).
  * @param a Current scale factor.
  * @param H Current Hubble parameter.
- * @param cut_off_radius Sink cut off radius.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_sink(
     const float r2, const float dx[3], const float hi, const float hj,
     struct part *restrict pi, const struct part *restrict pj, const float a,
-    const float H, const float cut_off_radius) {
+    const float H) {
 
-  /* In order to prevent the formation of two sink particles at a distance
-   * smaller than the sink cutoff radius, we keep only gas particles with
-   * the smallest potential. */
+  /* In order to prevent the formation of two sink particles too close together,
+   * we keep only gas particles with the smallest potential. The distance at
+   * which to prevent sink formation is the cutoff radius if this is fixed, or
+   * it is the variable smoothing length times gamma. */
 
   const float r = sqrtf(r2);
+  const float rmax = max(hi, hj) * kernel_gamma;
 
-  if (r < cut_off_radius) {
+  if (r < rmax) {
     float potential_i = pi->sink_data.potential;
     float potential_j = pj->sink_data.potential;
 
@@ -115,7 +117,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_sink(
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
- * @param ri Comoving cut off radius of particle i.
+ * @param hi Comoving smoothing length of particle i.
  * @param hj Comoving smoothing-length of particle j.
  * @param si First particle (sink).
  * @param pj Second particle (gas, not updated).
@@ -128,19 +130,108 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_sink(
  */
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_sinks_gas_density(
-    const float r2, const float dx[3], const float ri, const float hj,
+    const float r2, const float dx[3], const float hi, const float hj,
     struct sink *si, const struct part *pj, const int with_cosmology,
     const struct cosmology *cosmo, const struct gravity_props *grav_props,
     const struct sink_props *sink_props, const integertime_t ti_current,
     const double time) {
 
-  /* Get r. */
-  const float r = sqrtf(r2);
+  /* Contribution to the number of neighbours in cutoff radius */
+  si->num_ngbs++;
 
-  if (r < ri) {
-    /* Contribution to the number of neighbours in cutoff radius */
-    si->num_ngbs++;
-  }
+  float wi, wi_dx;
+
+  /* Compute the kernel function */
+  const float r = sqrtf(r2);
+  const float hi_inv = 1.0f / hi;
+  const float ui = r * hi_inv;
+  kernel_deval(ui, &wi, &wi_dx);
+
+  /* Neighbour gas mass */
+  const float mj = hydro_get_mass(pj);
+
+  /* Minimum smoothing length accros the neighbours */
+  /* AND the sink smoothing length */
+  si->to_collect.minimal_h_gas = min(hj, si->to_collect.minimal_h_gas);
+
+  /* Contribution to the BH gas density */
+  si->to_collect.rho_gas += mj * wi;
+
+  /* Contribution to the smoothed sound speed */
+  si->to_collect.sound_speed_gas += mj * wi * hydro_get_comoving_soundspeed(pj);
+
+  /* Neighbour's (drifted) velocity in the frame of the sink
+   * (we don't include a Hubble term since we are interested in the
+   * velocity contribution at the location of the sink) */
+  const float dv[3] = {pj->v[0] - si->v[0], pj->v[1] - si->v[1],
+                       pj->v[2] - si->v[2]};
+
+  /* Contribution to the smoothed velocity (gas w.r.t. black hole) */
+  si->to_collect.velocity_gas[0] += mj * dv[0] * wi;
+  si->to_collect.velocity_gas[1] += mj * dv[1] * wi;
+  si->to_collect.velocity_gas[2] += mj * dv[2] * wi;
+
+  /* Compute contribution to the number of neighbours */
+  si->density.wcount += wi;
+  si->density.wcount_dh -= (hydro_dimension * wi + ui * wi_dx);
+
+#ifdef SWIFT_SINK_DENSITY_CHECKS
+  si->rho_check += hydro_get_mass(pj) * wi;
+  si->n_check += wi;
+  si->N_check_density++;
+#endif
+}
+
+/**
+ * @brief  Update the properties of a sink particles from its sink neighbours.
+ *
+ * Warning: No symmetric interaction for timesteps since we are in
+ * runner_iact_nonsym_sinks_sink_swallow() --> pay attention to not break MPI.
+ *
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (pi - pj).
+ * @param hi Comoving smoothing length of particle i.
+ * @param hj Comoving smoothing length of particle j.
+ * @param si First sink particle.
+ * @param sj Second sink particle.
+ */
+__attribute__((always_inline)) INLINE static void
+sink_collect_properties_from_sink(const float r2, const float dx[3],
+                                  const float hi, const float hj,
+                                  struct sink *restrict si,
+                                  struct sink *restrict sj,
+                                  const struct gravity_props *grav_props) {
+
+  /* Neighbour's (drifted) velocity in the frame of the sink i
+   * (we don't include a Hubble term since we are interested in the
+   * velocity contribution at the location of the sink) */
+  const float dv[3] = {sj->v[0] - si->v[0], sj->v[1] - si->v[1],
+                       sj->v[2] - si->v[2]};
+  const float dv_norm = sqrtf(dv[0] * dv[0] + dv[1] * dv[1] + dv[2] * dv[2]);
+
+  /* Get the gravitional softening */
+  const float eps = gravity_get_softening(si->gpart, grav_props);
+  const float eps2 = eps * eps;
+  const float eps_inv = 1.f / eps;
+  const float eps_inv3 = eps_inv * eps_inv * eps_inv;
+
+  /* Compute the kernel potential and force with mass = 1.0. We multiply by
+     the mass below if needed. */
+  float dphi_dr, pot;
+  runner_iact_grav_pp_full(r2, eps2, eps_inv, eps_inv3, 1.0, &dphi_dr, &pot);
+
+  /* From Grudic et al. (2021) eq 6, we replace the plummer functionnal form
+     sqrt(r^2 + eps^2) by the kernel 1.0/|phi(r,H=3*eps)| */
+  const float t_c = 1.0 / (fabsf(pot) * dv_norm);
+  si->to_collect.minimal_sink_t_c = min(t_c, si->to_collect.minimal_sink_t_c);
+
+  /* From Grudic et al. (2021) eq 7, we replace the plummer functionnal form
+     (r^2 + eps^2)^{3/2} by the kernel |(d phi(r,H=3*eps)/ dr)^{-1}| */
+  const float denominator = grav_props->G_Newton * (si->mass + sj->mass);
+  const float numerator = 1.0 / fabsf(dphi_dr);
+  const float t_dyn = sqrt(numerator / denominator);
+  si->to_collect.minimal_sink_t_dyn =
+      min(t_dyn, si->to_collect.minimal_sink_t_dyn);
 }
 
 /**
@@ -153,8 +244,8 @@ runner_iact_nonsym_sinks_gas_density(
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
- * @param ri Comoving cut off radius of particle i.
- * @param rj Comoving cut off radius of particle j.
+ * @param hi Comoving smoothing length of particle i.
+ * @param hj Comoving smoothing length of particle j.
  * @param si First sink particle.
  * @param sj Second sink particle.
  * @param with_cosmology if we run with cosmology.
@@ -166,15 +257,39 @@ runner_iact_nonsym_sinks_gas_density(
  */
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_sinks_sink_swallow(
-    const float r2, const float dx[3], const float ri, const float rj,
+    const float r2, const float dx[3], const float hi, const float hj,
     struct sink *restrict si, struct sink *restrict sj,
     const int with_cosmology, const struct cosmology *cosmo,
     const struct gravity_props *grav_props,
     const struct sink_props *sink_properties, const integertime_t ti_current,
     const double time) {
 
+  /* Convert the smoothing length back into a cutoff radius */
+  const float hig = hi * kernel_gamma;
+
   const float r = sqrtf(r2);
-  const float f_acc_r_acc_i = sink_properties->f_acc * ri;
+  const float f_acc_r_acc_i = sink_properties->f_acc * hig;
+
+  /* Determine if the sink is dead, i.e. if its age is bigger than the
+     age_threshold_unlimited */
+  const int si_age = sink_get_sink_age(si, with_cosmology, cosmo, time);
+  char si_is_dead = si_age > sink_properties->age_threshold_unlimited;
+
+  const int sj_age = sink_get_sink_age(sj, with_cosmology, cosmo, time);
+  char sj_is_dead = sj_age > sink_properties->age_threshold_unlimited;
+
+  /* Collect the properties for 2-body interactions if one is sink is alive. If
+     they are both dead, we do not want to restrict the timesteps for 2-body
+     encounters since they won't merge. */
+  if (!si_is_dead || !sj_is_dead) {
+    sink_collect_properties_from_sink(r2, dx, hi, hj, si, sj, grav_props);
+  }
+
+  /* If si is dead, do not swallow sj. However, sj can swallow si if it alive.
+   */
+  if (si_is_dead) {
+    return;
+  }
 
   /* If the sink j falls within f_acc*r_acc of sink i, then the
      lightest is accreted on the most massive without further check.
@@ -209,7 +324,6 @@ runner_iact_nonsym_sinks_sink_swallow(
     const float v_plus_H_flow[3] = {a2H * dx[0] + dv[0], a2H * dx[1] + dv[1],
                                     a2H * dx[2] + dv[2]};
 
-    /* Binding energy check */
     /* Compute the physical relative velocity between the particles */
     const float dv_physical[3] = {v_plus_H_flow[0] * cosmo->a_inv,
                                   v_plus_H_flow[1] * cosmo->a_inv,
@@ -219,7 +333,21 @@ runner_iact_nonsym_sinks_sink_swallow(
                                       dv_physical[1] * dv_physical[1] +
                                       dv_physical[2] * dv_physical[2];
 
-    /* Kinetic energy per unit mass of the gas */
+    /* Momentum check------------------------------------------------------- */
+    float L2_j = 0.0;      /* Relative momentum of the sink j */
+    float L2_kepler = 0.0; /* Keplerian angular momentum squared */
+    sink_compute_angular_momenta_criterion(
+        dx, v_plus_H_flow, r, si->h * kernel_gamma, si->mass, cosmo, grav_props,
+        &L2_kepler, &L2_j);
+
+    /* To be accreted, the sink momentum should lower than the keplerian orbit
+     * momentum. */
+    if (L2_j > L2_kepler) {
+      return;
+    }
+
+    /* Binding energy check------------------------------------------------- */
+    /* Kinetic energy per unit mass of the sink */
     const float E_kin_rel = 0.5f * dv_physical_squared;
 
     /* Compute the Newtonian or softened potential the sink exherts onto the
@@ -251,6 +379,25 @@ runner_iact_nonsym_sinks_sink_swallow(
     if ((E_mec_si > 0) || (E_mec_sj > 0)) {
       return;
     }
+
+    /* Swallowed mass threshold--------------------------------------------- */
+    si->to_collect.mass_eligible_swallow += sj->mass;
+
+    /* Maximal mass that can be swallowed within a single timestep */
+    const float mass_swallow_limit = sink_properties->n_IMF * si->mass_IMF;
+
+    /* If the mass exceeds the threshold, do not swallow. Make sure you can at
+       least swallow a particle to avoid running into the problem of never being
+       able to spawn a star.
+       If n_IMF <= 0, then disable this criterion */
+    if (sink_properties->n_IMF > 0 &&
+        si->to_collect.mass_swallowed >= mass_swallow_limit &&
+        si->to_collect.mass_eligible_swallow != 0) {
+      return;
+    }
+
+    /* Increment the swallowd mass */
+    si->to_collect.mass_swallowed += sj->mass;
 
     /* The sink with the smaller mass will be merged onto the one with the
      * larger mass.
@@ -287,7 +434,7 @@ runner_iact_nonsym_sinks_sink_swallow(
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
- * @param ri Comoving cut off radius of particle i.
+ * @param hi Comoving smoothing length of particle i.
  * @param hj Comoving smoothing-length of particle j.
  * @param si First sink particle.
  * @param pj Second particle.
@@ -300,19 +447,33 @@ runner_iact_nonsym_sinks_sink_swallow(
  */
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_sinks_gas_swallow(
-    const float r2, const float dx[3], const float ri, const float hj,
+    const float r2, const float dx[3], const float hi, const float hj,
     struct sink *restrict si, struct part *restrict pj,
     const int with_cosmology, const struct cosmology *cosmo,
     const struct gravity_props *grav_props,
     const struct sink_props *sink_properties, const integertime_t ti_current,
     const double time) {
 
+  /* Convert the smoothing length back into a cutoff radius */
+  const float hig = hi * kernel_gamma;
+
   const float r = sqrtf(r2);
-  const float f_acc_r_acc = sink_properties->f_acc * ri;
+  const float f_acc_r_acc = sink_properties->f_acc * hig;
+
+  /* Determine if the sink is dead, i.e. if its age is bigger than the
+     age_threshold_unlimited */
+  const int sink_age = sink_get_sink_age(si, with_cosmology, cosmo, time);
+  char is_dead = sink_age > sink_properties->age_threshold_unlimited;
+
+  /* If si is dead, do not swallow pj. */
+  if (is_dead) {
+    return;
+  }
 
   /* If the gas falls within f_acc*r_acc, it is accreted without further check
    */
   if (r < f_acc_r_acc) {
+    warning("Gas %lld within sink %lld inner accretion radius", pj->id, si->id);
     /* Check if a gas particle has not been already marked to be swallowed by
        another sink particle. */
     if (pj->sink_data.swallow_id < si->id) {
@@ -320,7 +481,7 @@ runner_iact_nonsym_sinks_gas_swallow(
     }
 
     /* f_acc*r_acc <= r <= r_acc, we perform other checks */
-  } else if ((r >= f_acc_r_acc) && (r < ri)) {
+  } else if ((r >= f_acc_r_acc) && (r < hig)) {
 
     /* Relative velocity between the sinks */
     const float dv[3] = {pj->v[0] - si->v[0], pj->v[1] - si->v[1],
@@ -343,33 +504,16 @@ runner_iact_nonsym_sinks_gas_swallow(
                                       dv_physical[1] * dv_physical[1] +
                                       dv_physical[2] * dv_physical[2];
 
-    /* Compute the physical distance between the particles */
-    const float dx_physical[3] = {dx[0] * cosmo->a, dx[1] * cosmo->a,
-                                  dx[2] * cosmo->a};
-    const float r_physical = r * cosmo->a;
-
     /* Momentum check------------------------------------------------------- */
-    /* Relative momentum of the gas */
-    const float specific_angular_momentum_gas[3] = {
-        dx_physical[1] * dv_physical[2] - dx_physical[2] * dv_physical[1],
-        dx_physical[2] * dv_physical[0] - dx_physical[0] * dv_physical[2],
-        dx_physical[0] * dv_physical[1] - dx_physical[1] * dv_physical[0]};
-    const float L2_gas =
-        specific_angular_momentum_gas[0] * specific_angular_momentum_gas[0] +
-        specific_angular_momentum_gas[1] * specific_angular_momentum_gas[1] +
-        specific_angular_momentum_gas[2] * specific_angular_momentum_gas[2];
+    float L2_gas_j = 0.0;  /* Relative momentum of the gas */
+    float L2_kepler = 0.0; /* Keplerian angular momentum squared */
+    sink_compute_angular_momenta_criterion(
+        dx, v_plus_H_flow, r, si->h * kernel_gamma, si->mass, cosmo, grav_props,
+        &L2_kepler, &L2_gas_j);
 
-    /* Keplerian angular speed squared */
-    const float omega_acc_2 = grav_props->G_Newton * si->mass /
-                              (r_physical * r_physical * r_physical);
-
-    /*Keplerian angular momentum squared */
-    const float L2_acc =
-        (si->r_cut * si->r_cut * si->r_cut * si->r_cut) * omega_acc_2;
-
-    /* To be accreted, the gas momentum shoulb lower than the keplerian orbit
+    /* To be accreted, the gas momentum should lower than the keplerian orbit
      * momentum. */
-    if (L2_gas > L2_acc) {
+    if (L2_gas_j > L2_kepler) {
       return;
     }
 
@@ -404,13 +548,40 @@ runner_iact_nonsym_sinks_gas_swallow(
     /* To be accreted, the gas must be gravitationally bound to the sink. */
     if (E_mec_sink_part >= 0) return;
 
+    /* To be accreted, the gas smoothing length must be smaller than the sink
+       smoothing length. This is similar to AMR codes requesting the maximum
+       refinement level close to the sink. */
+    if (sink_properties->sink_formation_smoothing_length_criterion &&
+        (pj->h >= si->h))
+      return;
+
     /* Most bound pair check------------------------------------------------ */
     /* The pair gas-sink must be the most bound among all sinks */
     if (E_mec_sink_part >= pj->sink_data.E_mec_bound) {
       return;
     }
 
-    /* Since this pair gas-sink is the most bounf, keep track of the
+    /* Swallowed mass threshold--------------------------------------------- */
+    si->to_collect.mass_eligible_swallow += hydro_get_mass(pj);
+
+    /* Maximal mass that can be swallowed within a single timestep */
+    const float mass_swallow_limit = sink_properties->n_IMF * si->mass_IMF;
+
+    /* If the mass exceeds the threshold, do not swallow. Make sure you can at
+       least swallow a particle to avoid running into the problem of never being
+       able to spawn a star.
+       If n_IMF <= 0, then disable this criterion */
+    if (sink_properties->n_IMF > 0 &&
+        si->to_collect.mass_swallowed >= mass_swallow_limit &&
+        si->to_collect.mass_eligible_swallow != 0) {
+      return;
+    }
+
+    /* Increment the swallowd mass */
+    si->to_collect.mass_swallowed += hydro_get_mass(pj);
+
+    /* --------------------------------------------------------------------- */
+    /* Since this pair gas-sink is the most bound, keep track of the
        E_mec_bound and set the swallow_id accordingly */
     pj->sink_data.E_mec_bound = E_mec_sink_part;
     pj->sink_data.swallow_id = si->id;

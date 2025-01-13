@@ -504,12 +504,6 @@ void engine_unskip(struct engine *e) {
         memswap(&local_cells[k], &local_cells[num_active_cells], sizeof(int));
       num_active_cells += 1;
     }
-
-    /* Activate the top-level timestep exchange */
-#ifdef WITH_MPI
-    scheduler_activate_all_subtype(&e->sched, c->mpi.send, task_subtype_tend);
-    scheduler_activate_all_subtype(&e->sched, c->mpi.recv, task_subtype_tend);
-#endif
   }
 
   /* What kind of tasks do we have? */

@@ -122,6 +122,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   pj->density.rot_v[0] += facj * curlvr[0];
   pj->density.rot_v[1] += facj * curlvr[1];
   pj->density.rot_v[2] += facj * curlvr[2];
+
+#ifdef SWIFT_HYDRO_DENSITY_CHECKS
+  pi->n_density += wi;
+  pj->n_density += wj;
+  pi->N_density++;
+  pj->N_density++;
+#endif
 }
 
 /**
@@ -187,6 +194,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   pi->density.rot_v[0] += faci * curlvr[0];
   pi->density.rot_v[1] += faci * curlvr[1];
   pi->density.rot_v[2] += faci * curlvr[2];
+
+#ifdef SWIFT_HYDRO_DENSITY_CHECKS
+  pi->n_density += wi;
+  pi->N_density++;
+#endif
 }
 
 /**
@@ -360,6 +372,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   /* Update the signal velocity. */
   pi->force.v_sig = max(pi->force.v_sig, v_sig);
   pj->force.v_sig = max(pj->force.v_sig, v_sig);
+
+#ifdef SWIFT_HYDRO_DENSITY_CHECKS
+  pi->n_force += wi + wj;
+  pj->n_force += wi + wj;
+  pi->N_force++;
+  pj->N_force++;
+#endif
 }
 
 /**
@@ -483,6 +502,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Update the signal velocity. */
   pi->force.v_sig = max(pi->force.v_sig, v_sig);
+
+#ifdef SWIFT_HYDRO_DENSITY_CHECKS
+  pi->n_force += wi + wj;
+  pi->N_force++;
+#endif
 }
 
 /**

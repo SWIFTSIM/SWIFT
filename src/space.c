@@ -2491,12 +2491,30 @@ void space_after_snap_tracer(struct space *s, int verbose) {
 }
 
 /**
+ * @brief Marks a top-level cell as having been updated by one of the
+ * time-step updating tasks.
+ */
+void space_mark_cell_as_updated(struct space *s, const struct cell *c) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c != c->top) error("Function can only be called at the top level!");
+#endif
+
+  /* Get the offest into the top-level cell array */
+  const size_t delta = c - s->cells_top;
+
+  /* Mark as updated */
+  atomic_inc(&s->cells_top_updated[delta]);
+}
+
+/**
  * @brief Frees up the memory allocated for this #space
  */
 void space_clean(struct space *s) {
 
   for (int i = 0; i < s->nr_cells; ++i) cell_clean(&s->cells_top[i]);
   swift_free("cells_top", s->cells_top);
+  swift_free("cells_top_updated", s->cells_top_updated);
   swift_free("multipoles_top", s->multipoles_top);
   swift_free("local_cells_top", s->local_cells_top);
   swift_free("local_cells_with_tasks_top", s->local_cells_with_tasks_top);
@@ -2671,6 +2689,7 @@ void space_struct_restore(struct space *s, FILE *stream) {
 
   /* Things that should be reconstructed in a rebuild. */
   s->cells_top = NULL;
+  s->cells_top_updated = NULL;
   s->cells_sub = NULL;
   s->multipoles_top = NULL;
   s->multipoles_sub = NULL;

@@ -1910,6 +1910,47 @@ void engine_get_max_ids(struct engine *e) {
 }
 
 /**
+ * @brief Gather the information about the top-level cells whose time-step has
+ * changed and activate the communications required to synchonize the
+ * time-steps.
+ *
+ * @param e The #engine.
+ */
+void engine_synchronize_times(struct engine *e) {
+
+#ifdef WITH_MPI
+
+  const ticks tic = getticks();
+
+  /* Collect which top-level cells have been updated */
+  MPI_Allreduce(MPI_IN_PLACE, e->s->cells_top_updated, e->s->nr_cells, MPI_CHAR,
+                MPI_SUM, MPI_COMM_WORLD);
+
+  /* Activate tend communications involving the cells that have changed. */
+  for (int i = 0; i < e->s->nr_cells; ++i) {
+
+    if (e->s->cells_top_updated[i]) {
+
+      struct cell *c = &e->s->cells_top[i];
+      scheduler_activate_all_subtype(&e->sched, c->mpi.send, task_subtype_tend);
+      scheduler_activate_all_subtype(&e->sched, c->mpi.recv, task_subtype_tend);
+    }
+  }
+
+  if (e->verbose)
+    message("Gathering and activating tend took %.3f %s.",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
+
+  TIMER_TIC;
+  engine_launch(e, "tend");
+  TIMER_TOC(timer_runners);
+
+#else
+  error("SWIFT was not compiled with MPI support.");
+#endif
+}
+
+/**
  * @brief Run the radiative transfer sub-cycles outside the
  * regular time-steps.
  *
@@ -2201,6 +2242,9 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   }
 #endif
 
+  /* Zero the list of cells that have had their time-step updated */
+  bzero(e->s->cells_top_updated, e->s->nr_cells * sizeof(char));
+
   /* Now, launch the calculation */
   TIMER_TIC;
   engine_launch(e, "tasks");
@@ -2289,10 +2333,18 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   scheduler_write_cell_dependencies(&e->sched, e->verbose, e->step);
   if (e->nodeID == 0) scheduler_write_task_level(&e->sched, e->step);
 
+  /* Zero the list of cells that have had their time-step updated */
+  bzero(e->s->cells_top_updated, e->s->nr_cells * sizeof(char));
+
   /* Run the 0th time-step */
   TIMER_TIC2;
   engine_launch(e, "tasks");
   TIMER_TOC2(timer_runners);
+
+  /* When running over MPI, synchronize top-level cells */
+#ifdef WITH_MPI
+  engine_synchronize_times(e);
+#endif
 
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
   /* Run the brute-force hydro calculation for some parts */
@@ -2311,6 +2363,15 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   /* Check the accuracy of the stars calculation */
   if (e->policy & engine_policy_stars)
     stars_exact_density_check(e->s, e, /*rel_tol=*/1e-3);
+#endif
+
+#ifdef SWIFT_SINK_DENSITY_CHECKS
+  /* Run the brute-force sink calculation for some sinks */
+  if (e->policy & engine_policy_sinks) sink_exact_density_compute(e->s, e);
+
+  /* Check the accuracy of the sink calculation */
+  if (e->policy & engine_policy_sinks)
+    sink_exact_density_check(e->s, e, /*rel_tol=*/1e-3);
 #endif
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
@@ -2425,12 +2486,12 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
     for (int i = 0; i < s->nr_cells; i++) {
       struct cell *c = &s->cells_top[i];
       if (c->nodeID == engine_rank && c->sinks.count > 0) {
-        float sink_h_max = c->sinks.parts[0].r_cut;
+        float sink_h_max = c->sinks.parts[0].h;
         for (int k = 1; k < c->sinks.count; k++) {
-          if (c->sinks.parts[k].r_cut > sink_h_max)
-            sink_h_max = c->sinks.parts[k].r_cut;
+          if (c->sinks.parts[k].h > sink_h_max)
+            sink_h_max = c->sinks.parts[k].h;
         }
-        c->sinks.r_cut_max = max(sink_h_max, c->sinks.r_cut_max);
+        c->sinks.h_max = max(sink_h_max, c->sinks.h_max);
       }
     }
   }
@@ -2818,10 +2879,18 @@ int engine_step(struct engine *e) {
      want to lose the data from the tasks) */
   space_reset_ghost_histograms(e->s);
 
+  /* Zero the list of cells that have had their time-step updated */
+  bzero(e->s->cells_top_updated, e->s->nr_cells * sizeof(char));
+
   /* Start all the tasks. */
   TIMER_TIC;
   engine_launch(e, "tasks");
   TIMER_TOC(timer_runners);
+
+  /* When running over MPI, synchronize top-level cells */
+#ifdef WITH_MPI
+  engine_synchronize_times(e);
+#endif
 
   /* Now record the CPU times used by the tasks. */
 #ifdef WITH_MPI
@@ -2849,6 +2918,15 @@ int engine_step(struct engine *e) {
   /* Check the accuracy of the stars calculation */
   if (e->policy & engine_policy_stars)
     stars_exact_density_check(e->s, e, /*rel_tol=*/1e-2);
+#endif
+
+#ifdef SWIFT_SINK_DENSITY_CHECKS
+  /* Run the brute-force sink calculation for some sinks */
+  if (e->policy & engine_policy_sinks) sink_exact_density_compute(e->s, e);
+
+  /* Check the accuracy of the sink calculation */
+  if (e->policy & engine_policy_sinks)
+    sink_exact_density_check(e->s, e, /*rel_tol=*/1e-2);
 #endif
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
