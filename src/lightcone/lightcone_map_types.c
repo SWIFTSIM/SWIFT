@@ -98,19 +98,19 @@ double lightcone_map_total_mass_get_value(
     case swift_type_gas: {
       const struct part *p = &parts[-gp->id_or_neg_offset];
       return hydro_get_mass(p);
-    } break;
+    }
     case swift_type_stars: {
       const struct spart *sp = &sparts[-gp->id_or_neg_offset];
       return sp->mass;
-    } break;
+    }
     case swift_type_black_hole: {
       const struct bpart *bp = &bparts[-gp->id_or_neg_offset];
       return bp->mass;
-    } break;
+    }
     case swift_type_dark_matter:
     case swift_type_dark_matter_background: {
       return gp->mass;
-    } break;
+    }
     case swift_type_neutrino: {
       struct neutrino_model nu_model;
       bzero(&nu_model, sizeof(struct neutrino_model));
@@ -119,7 +119,7 @@ double lightcone_map_total_mass_get_value(
       double weight = 1.0;
       gpart_neutrino_weight_mesh_only(gp, &nu_model, &weight);
       return gp->mass * weight;
-    } break;
+    }
     default:
       error("lightcone map function called on wrong particle type");
       return -1.0; /* Prevent 'missing return' error */
@@ -181,7 +181,7 @@ double lightcone_map_gas_mass_get_value(
     case swift_type_gas: {
       const struct part *p = &parts[-gp->id_or_neg_offset];
       return hydro_get_mass(p);
-    } break;
+    }
     default:
       error("lightcone map function called on wrong particle type");
       return -1.0; /* Prevent 'missing return' error */
@@ -221,7 +221,7 @@ double lightcone_map_dark_matter_mass_get_value(
     case swift_type_dark_matter:
     case swift_type_dark_matter_background: {
       return gp->mass;
-    } break;
+    }
     default:
       error("lightcone map function called on wrong particle type");
       return -1.0; /* Prevent 'missing return' error */
@@ -265,7 +265,7 @@ double lightcone_map_stellar_mass_get_value(
     case swift_type_stars: {
       const struct spart *sp = &sparts[-gp->id_or_neg_offset];
       return sp->mass;
-    } break;
+    }
     default:
       error("lightcone map function called on wrong particle type");
       return -1.0; /* Prevent 'missing return' error */
@@ -309,7 +309,7 @@ double lightcone_map_black_hole_mass_get_value(
     case swift_type_black_hole: {
       const struct bpart *bp = &bparts[-gp->id_or_neg_offset];
       return bp->mass;
-    } break;
+    }
     default:
       error("lightcone map function called on wrong particle type");
       return -1.0; /* Prevent 'missing return' error */
@@ -355,7 +355,7 @@ double lightcone_map_sfr_get_value(
       const struct part *p = &parts[-gp->id_or_neg_offset];
       const struct xpart *xp = &xparts[-gp->id_or_neg_offset];
       return star_formation_get_SFR(p, xp);
-    } break;
+    }
     default:
       error("lightcone map function called on wrong particle type");
       return -1.0; /* Prevent 'missing return' error */

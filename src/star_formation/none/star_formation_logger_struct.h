@@ -20,12 +20,12 @@
 #define SWIFT_NONE_STAR_FORMATION_LOGGER_STRUCT_H
 
 /* Starformation history struct */
-struct star_formation_history {};
+struct star_formation_history {int a;};
 
 /* Starformation history accumulator struct.
    This structure is only defined in the engine and
    allows the user to integrate some quantities over time.
 */
-struct star_formation_history_accumulator {};
+struct star_formation_history_accumulator {int a;};
 
 #endif /* SWIFT_NONE_STAR_FORMATION_STRUCT_H */

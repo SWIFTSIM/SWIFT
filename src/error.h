@@ -93,8 +93,8 @@ extern int engine_rank;
     fprintf(stderr, "[%04i] %s %s:%s():%i: " s "\n", engine_rank,          \
             clocks_get_timesincestart(), __FILE__, __FUNCTION__, __LINE__, \
             ##__VA_ARGS__);                                                \
-    int len = 1024;                                                        \
-    char buf[len];                                                         \
+    int len = 0;                                                        \
+    char buf[1024];                                                         \
     MPI_Error_string(res, buf, &len);                                      \
     fprintf(stderr, "%s\n\n", buf);                                        \
     memdump(engine_rank);                                                  \
@@ -108,8 +108,8 @@ extern int engine_rank;
     fprintf(stderr, "[%04i] %s %s:%s():%i: " s "\n", engine_rank,          \
             clocks_get_timesincestart(), __FILE__, __FUNCTION__, __LINE__, \
             ##__VA_ARGS__);                                                \
-    int len = 1024;                                                        \
-    char buf[len];                                                         \
+    int len = 0;                                                        \
+    char buf[1024];                                                         \
     MPI_Error_string(res, buf, &len);                                      \
     fprintf(stderr, "%s\n\n", buf);                                        \
     fflush(stderr);                                                        \
