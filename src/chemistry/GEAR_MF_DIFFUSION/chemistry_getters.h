@@ -83,11 +83,6 @@ chemistry_get_comoving_density(const struct part* restrict p) {
         kernel_gamma * kernel_gamma * kernel_gamma * p->h * p->h * p->h;
     const float volume = 4.0 / 3.0 * M_PI * r_cubed;
     rho = hydro_get_mass(p) / volume;
-
-    if (rho == 0.0) {
-      rho = FLT_MIN;
-      error("Density cannot be null!");
-    }
   }
   return rho;
 }
