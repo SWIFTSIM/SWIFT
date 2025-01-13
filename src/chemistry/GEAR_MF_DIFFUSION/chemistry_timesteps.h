@@ -35,6 +35,7 @@ chemistry_compute_parabolic_timestep(
     const struct chemistry_global_data *chem_data,
     const struct cosmology *cosmo) {
 
+#if !defined(GEAR_MF_HYPERBOLIC_DIFFUSION)
   const struct chemistry_part_data *chd = &p->chemistry_data;
 
   /* Compute the diffusion matrix K */
@@ -89,6 +90,14 @@ chemistry_compute_parabolic_timestep(
   }
 
   return expression * expression / norm_matrix_K * norm_U_over_norm_q;
+#else
+  const float CFL_condition = chem_data->C_CFL_chemistry;
+  const float delta_x = cosmo->a * kernel_gamma * p->h;
+
+  /* CFL condition */
+  const float dt_cfl = CFL_condition * delta_x / chemistry_get_physical_hyperbolic_soundspeed(p, chem_data, cosmo);
+  return dt_cfl;
+#endif
 }
 
 /**

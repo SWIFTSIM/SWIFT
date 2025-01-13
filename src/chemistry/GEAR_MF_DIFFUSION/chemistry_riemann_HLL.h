@@ -355,9 +355,19 @@ chemistry_riemann_solve_for_flux(
                                    dx_p[2] * dq / dx_p_norm_2};
   const double kappa_mean =
       0.5 * (pi->chemistry_data.kappa + pj->chemistry_data.kappa);
+
+#if !defined(GEAR_MF_HYPERBOLIC_DIFFUSION)
   const double F_A_left_side[3] = {-kappa_mean * nabla_o_q_dir[0],
                                    -kappa_mean * nabla_o_q_dir[1],
                                    -kappa_mean * nabla_o_q_dir[2]};
+#else
+  const double tau_L = pi->chemistry_data.tau;
+  const double tau_R = pj->chemistry_data.tau;
+  const double F_A_left_side[3] = {- 0.5*(F_diff_L[0]/tau_L + F_diff_R[0]/tau_R) - kappa_mean * nabla_o_q_dir[0],
+                                   - 0.5*(F_diff_L[1]/tau_L + F_diff_R[1]/tau_R) - kappa_mean * nabla_o_q_dir[1],
+                                   - 0.5*(F_diff_L[2]/tau_L + F_diff_R[2]/tau_R) - kappa_mean * nabla_o_q_dir[2]};
+#endif
+
   const double F_A_right_side[3] = {Anorm * dx_p[0] / dx_p_norm,
                                     Anorm * dx_p[1] / dx_p_norm,
                                     Anorm * dx_p[2] / dx_p_norm};

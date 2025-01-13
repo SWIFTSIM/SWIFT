@@ -345,6 +345,74 @@ __attribute__((always_inline)) INLINE static void chemistry_get_hydro_gradients(
 }
 
 /**
+ * @brief Get the comoving hyperbolic diffusion soundspeed.
+ *
+ * @param p Particle.
+ */
+__attribute__((always_inline)) INLINE static double
+chemistry_get_comoving_hyperbolic_soundspeed(const struct part* restrict p,
+					     const struct chemistry_global_data* chem_data) {
+#if defined(GEAR_MF_HYPERBOLIC_DIFFUSION)
+  if (chem_data->diffusion_mode == isotropic_constant) {
+    return chem_data->diffusion_coefficient/chem_data->tau;
+  } else {
+    return hydro_get_comoving_soundspeed(p);
+  }
+#else
+  return hydro_get_comoving_soundspeed(p);
+#endif
+}
+
+/**
+ * @brief Get the physical hyperbolic diffusion soundspeed.
+ *
+ * @param p Particle.
+ */
+__attribute__((always_inline)) INLINE static double
+chemistry_get_physical_hyperbolic_soundspeed(const struct part* restrict p,
+					     const struct chemistry_global_data* chem_data,
+					     const struct cosmology* cosmo) {
+#if defined(GEAR_MF_HYPERBOLIC_DIFFUSION)
+  if (chem_data->diffusion_mode == isotropic_constant) {
+    return chemistry_get_comoving_hyperbolic_soundspeed(p, chem_data);
+  } else {
+    return hydro_get_physical_soundspeed(p, cosmo);
+  }
+#else
+  return hydro_get_physical_soundspeed(p);
+#endif
+}
+
+/**
+ * @brief Get the physical hyperbolic diffusion relaxation time.
+ *
+ * @param p Particle.
+ * @param chem_data The global properties of the chemistry scheme.
+ * @param cosmo The current cosmological model.
+ */
+__attribute__((always_inline)) INLINE static double
+chemistry_compute_physical_tau(const struct part* restrict p,
+			       const struct chemistry_global_data* chem_data,
+			       const struct cosmology* cosmo) {
+#if defined(GEAR_MF_HYPERBOLIC_DIFFUSION)
+  if (chem_data->diffusion_mode != isotropic_constant) {
+    /* Compute the diffusion matrix K */
+    double K[3][3];
+    chemistry_get_physical_matrix_K(p, chem_data, cosmo, K);
+    const float norm_matrix_K = chemistry_get_matrix_norm(K);
+
+    /* Get soundspeed */
+    const double c_hyp = chemistry_get_physical_hyperbolic_soundspeed(p, chem_data, cosmo);
+    return  norm_matrix_K / (c_hyp*c_hyp);
+  } else {
+    return chem_data->tau;
+  }
+#else
+  return 0.0;
+#endif
+}
+
+/**
  * @brief Returns the total metallicity (metal mass fraction) of the
  * gas particle to be used in feedback/enrichment related routines.
  *

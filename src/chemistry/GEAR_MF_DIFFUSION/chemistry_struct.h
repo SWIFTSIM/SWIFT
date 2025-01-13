@@ -51,6 +51,11 @@ struct chemistry_global_data {
   /*! Diffusion normalisation constant: \kappa \propto C */
   float diffusion_coefficient;
 
+#if defined(GEAR_MF_HYPERBOLIC_DIFFUSION)
+  /*! Relaxation time for the constant isotropic case */
+  double tau;
+#endif
+
   /*! Diffusion mode. 0: isotropic with constant coefficient, 1: Smagorinsky
       isotrpoic diffusion, 2: anistropic diffusion with the shear tensor. */
   enum chemistry_diffusion_mode diffusion_mode;
@@ -98,7 +103,24 @@ struct chemistry_part_data {
   double metal_mass_fluxes[GEAR_CHEMISTRY_ELEMENT_COUNT];
 #endif
 
+  /*! Metal mass flux */
   double diffusion_flux[GEAR_CHEMISTRY_ELEMENT_COUNT];
+
+#if defined(GEAR_MF_HYPERBOLIC_DIFFUSION)
+  /* Hyperbolic flux scheme variables */
+  struct {
+    /*! Diffusion flux at the last active timestep */
+    double F_diff[3];
+
+    /*! Predicted diffusion flux */
+    double F_diff_pred[3];
+
+    /*! Time derivative of the diffusion flux */
+    double dF_dt[3];
+  } hyperbolic_flux[GEAR_CHEMISTRY_ELEMENT_COUNT];
+
+  double tau;
+#endif
 
   /* Gradients. */
   struct {
