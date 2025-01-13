@@ -290,9 +290,9 @@ chemistry_riemann_solve_for_flux(
   /* Reconstruct ZR and ZL at the interface. Note that we have reconstructed UL
      and UR in chemistry_gradients_predict(), but not q. We have everything to
      do so now. */
-  double ZR = chemistry_get_metal_mass_fraction(pi, m);
-  double ZL = chemistry_get_metal_mass_fraction(pj, m);
-  chemistry_gradients_predict_Z(pi, pj, m, dx, cosmo, &ZR, &ZL);
+  double ZL = chemistry_get_metal_mass_fraction(pi, m);
+  double ZR = chemistry_get_metal_mass_fraction(pj, m);
+  chemistry_gradients_predict_Z(pi, pj, m, dx, cosmo, &ZL, &ZR);
 
   /* Now compute q_star and grad_q_star. Convert the gradient to physical
      units by dividing by a. Z is physical. */
