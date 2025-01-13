@@ -749,7 +749,8 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
                             size_t *Ngpart, const size_t offset_sparts,
                             const int *ind_spart, size_t *Nspart,
                             const size_t offset_bparts, const int *ind_bpart,
-                            size_t *Nbpart);
+                            size_t *Nbpart, const size_t offset_sinks,
+                            const int *ind_sink, size_t *Nsink);
 void engine_rebuild(struct engine *e, int redistributed, int clean_h_values);
 void engine_repartition(struct engine *e);
 void engine_repartition_trigger(struct engine *e);
@@ -773,9 +774,6 @@ void engine_maketasks(struct engine *e);
 
 /* Function prototypes, engine_maketasks.c. */
 void engine_make_fof_tasks(struct engine *e);
-
-/* Function prototypes, engine_marktasks.c. */
-int engine_marktasks(struct engine *e);
 
 /* Function prototypes, engine_split_particles.c. */
 void engine_split_gas_particles(struct engine *e);
