@@ -45,6 +45,9 @@ chemistry_slope_limit_cell_init(struct part* p) {
     p->chemistry_data.limiter.rho_Z[i][1] = -FLT_MAX;
   }
 
+  p->chemistry_data.limiter.rho[0] = FLT_MAX;
+  p->chemistry_data.limiter.rho[1] = -FLT_MAX;
+
   p->chemistry_data.limiter.v[0][0] = FLT_MAX;
   p->chemistry_data.limiter.v[0][1] = -FLT_MAX;
   p->chemistry_data.limiter.v[1][0] = FLT_MAX;
@@ -92,6 +95,9 @@ chemistry_slope_limit_cell_collect(struct part* pi, struct part* pj, float r) {
   chi->limiter.v[2][0] = min(pj->v[2], chi->limiter.v[2][0]);
   chi->limiter.v[2][1] = max(pj->v[2], chi->limiter.v[2][1]);
 
+  chi->limiter.rho[0] = min(pj->rho, chi->limiter.rho[0]);
+  chi->limiter.rho[1] = max(pj->rho, chi->limiter.rho[1]);
+
   chi->limiter.v_tilde[0][0] = min(chj->filtered.rho_v[0] / chj->filtered.rho,
                                    chi->limiter.v_tilde[0][0]);
   chi->limiter.v_tilde[0][1] = max(chj->filtered.rho_v[0] / chj->filtered.rho,
@@ -131,9 +137,8 @@ chemistry_slope_limit_quantity(double gradient[3], const float maxr,
                                const float condition_number,
                                const int pos_preserve) {
 
-  double gradtrue =
-      sqrt(gradient[0] * gradient[0] + gradient[1] * gradient[1] +
-           gradient[2] * gradient[2]);
+  double gradtrue = sqrt(gradient[0] * gradient[0] + gradient[1] * gradient[1] +
+                         gradient[2] * gradient[2]);
   if (gradtrue != 0.0) {
     gradtrue *= maxr;
     const double gradtrue_inv = 1.0 / gradtrue;
@@ -180,7 +185,7 @@ chemistry_slope_limit_quantity(double gradient[3], const float maxr,
  * @param cd The global properties of the chemistry scheme.
  */
 __attribute__((always_inline)) INLINE static void chemistry_slope_limit_cell(
-   struct part* p, const struct chemistry_global_data* cd) {
+    struct part* p, const struct chemistry_global_data* cd) {
 
   struct chemistry_part_data* chd = &p->chemistry_data;
   const float N_cond = chd->geometry_condition_number;
@@ -188,6 +193,7 @@ __attribute__((always_inline)) INLINE static void chemistry_slope_limit_cell(
   const float vxlim[2] = {chd->limiter.v[0][0], chd->limiter.v[0][1]};
   const float vylim[2] = {chd->limiter.v[1][0], chd->limiter.v[1][1]};
   const float vzlim[2] = {chd->limiter.v[2][0], chd->limiter.v[2][1]};
+  const float rholim[2] = {chd->limiter.rho[0], chd->limiter.rho[1]};
   const float vx_tilde_lim[2] = {chd->limiter.v_tilde[0][0],
                                  chd->limiter.v_tilde[0][1]};
   const float vy_tilde_lim[2] = {chd->limiter.v_tilde[1][0],
@@ -228,7 +234,7 @@ __attribute__((always_inline)) INLINE static void chemistry_slope_limit_cell(
   }
 
   /* Use doubles sice chemistry_slope_limit_quantity() accepts double arrays. */
-  double gradvx[3], gradvy[3], gradvz[3], gradvx_tilde[3], gradvy_tilde[3],
+  double gradrho[3], gradvx[3], gradvy[3], gradvz[3], gradvx_tilde[3], gradvy_tilde[3],
       gradvz_tilde[3];
 
   /* Get the velocity gradients and cast them as double */
@@ -241,6 +247,10 @@ __attribute__((always_inline)) INLINE static void chemistry_slope_limit_cell(
   gradvz[0] = chd->gradients.v[2][0];
   gradvz[1] = chd->gradients.v[2][1];
   gradvz[2] = chd->gradients.v[2][2];
+
+  gradrho[0] = chd->gradients.rho[0];
+  gradrho[1] = chd->gradients.rho[1];
+  gradrho[2] = chd->gradients.rho[2];
 
   gradvx_tilde[0] = chd->filtered.grad_v_tilde[0][0];
   gradvx_tilde[1] = chd->filtered.grad_v_tilde[0][1];
@@ -265,6 +275,9 @@ __attribute__((always_inline)) INLINE static void chemistry_slope_limit_cell(
                                  vy_tilde_lim[0], vy_tilde_lim[1], N_cond, 0);
   chemistry_slope_limit_quantity(gradvz_tilde, maxr, v_tilde[2],
                                  vz_tilde_lim[0], vz_tilde_lim[1], N_cond, 0);
+
+  /* Slope limit density gradient */
+  chemistry_slope_limit_quantity(gradrho, maxr, p->rho, rholim[0], rholim[1], N_cond, 0);
 
   /* Set the velocity gradient values */
   chd->gradients.v[0][0] = gradvx[0];
