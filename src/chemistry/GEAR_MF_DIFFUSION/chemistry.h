@@ -332,6 +332,10 @@ static INLINE void chemistry_init_backend(struct swift_params* parameter_file,
 					   parameter_file, "GEARChemistry:tau",
 					   0.1);
   }
+
+  data->riemann_solver = parser_get_opt_param_float(
+					   parameter_file, "GEARChemistry:riemann_solver",
+					   1);
 #endif
 
   /***************************************************************************/

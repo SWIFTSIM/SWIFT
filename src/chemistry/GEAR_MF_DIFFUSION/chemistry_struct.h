@@ -54,6 +54,9 @@ struct chemistry_global_data {
 #if defined(GEAR_MF_HYPERBOLIC_DIFFUSION)
   /*! Relaxation time for the constant isotropic case */
   double tau;
+
+  /* 1=Hopkins 2017, 2=HLL, 3=HLLC */
+  int riemann_solver;
 #endif
 
   /*! Diffusion mode. 0: isotropic with constant coefficient, 1: Smagorinsky
