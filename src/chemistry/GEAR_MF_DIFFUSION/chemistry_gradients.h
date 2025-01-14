@@ -496,10 +496,10 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
   /* If the new masses have been changed, do not extrapolate, use 0th order
      reconstruction and update the state vectors */
   if (m_Zi == m_Zi_not_extrapolated) {
-    *Ui = m_Zi / pi->geometry.volume;
+    *Ui = m_Zi_not_extrapolated / pi->geometry.volume;
   }
   if (m_Zj == m_Zj_not_extrapolated) {
-    *Uj = m_Zj / pj->geometry.volume;
+    *Uj = m_Zj_not_extrapolated / pj->geometry.volume;
   }
 }
 
