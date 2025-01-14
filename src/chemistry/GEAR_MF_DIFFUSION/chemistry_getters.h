@@ -340,25 +340,6 @@ __attribute__((always_inline)) INLINE static void chemistry_get_hydro_gradients(
 }
 
 /**
- * @brief Get the comoving hyperbolic diffusion soundspeed.
- *
- * @param p Particle.
- */
-__attribute__((always_inline)) INLINE static double
-chemistry_get_comoving_hyperbolic_soundspeed(const struct part* restrict p,
-					     const struct chemistry_global_data* chem_data) {
-#if defined(GEAR_MF_HYPERBOLIC_DIFFUSION)
-  if (chem_data->diffusion_mode == isotropic_constant) {
-    return chem_data->diffusion_coefficient/chem_data->tau;
-  } else {
-    return hydro_get_comoving_soundspeed(p);
-  }
-#else
-  return hydro_get_comoving_soundspeed(p);
-#endif
-}
-
-/**
  * @brief Get the physical hyperbolic diffusion soundspeed.
  *
  * @param p Particle.
@@ -369,12 +350,45 @@ chemistry_get_physical_hyperbolic_soundspeed(const struct part* restrict p,
 					     const struct cosmology* cosmo) {
 #if defined(GEAR_MF_HYPERBOLIC_DIFFUSION)
   if (chem_data->diffusion_mode == isotropic_constant) {
-    return chemistry_get_comoving_hyperbolic_soundspeed(p, chem_data);
+    return chem_data->diffusion_coefficient/chem_data->tau;
   } else {
+    /* const struct chemistry_part_data *chd = &p->chemistry_data; */
+
+    /* Compute diffusion matrix K */
+    /* double K[3][3]; */
+    /* chemistry_get_physical_matrix_K(p, chem_data, cosmo, K); */
+    /* const float norm_matrix_K = chemistry_get_matrix_norm(K); */
+
+    /* /\* Note: The State vector is U = (rho*Z_1,rho*Z_2, ...). *\/ */
+    /* float norm_U = 0.0; */
+    /* float norm_nabla_q = 0.0; */
+
+    /* /\* Compute the norms *\/ */
+    /* for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) { */
+    /*   norm_U += chemistry_get_physical_metal_density(p, i, cosmo) * */
+    /* 	chemistry_get_physical_metal_density(p, i, cosmo); */
+
+    /*   for (int j = 0; j < 3; j++) { */
+    /* 	/\* Compute the Frobenius norm of \nabla \otimes q *\/ */
+    /* 	norm_nabla_q += chd->gradients.Z[i][j] * chd->gradients.Z[i][j]; */
+    /*   } */
+    /* } */
+
+    /* /\* Take the sqrt and convert to physical units *\/ */
+    /* norm_U = sqrtf(norm_U); */
+    /* norm_nabla_q = sqrtf(norm_nabla_q) * cosmo->a_inv; */
+
+    /* /\* Prevent pathological cases *\/ */
+    /* if (norm_U == 0.0) { */
+    /*   /\* Limit by the soundspeed *\/ */
+    /*   return hydro_get_physical_soundspeed(p, cosmo); */
+    /* } */
+
+    /* return norm_matrix_K * norm_nabla_q/norm_U ; */
     return hydro_get_physical_soundspeed(p, cosmo);
   }
 #else
-  return hydro_get_physical_soundspeed(p);
+  return hydro_get_physical_soundspeed(p, cosmo);
 #endif
 }
 
