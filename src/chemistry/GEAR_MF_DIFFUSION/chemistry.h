@@ -326,6 +326,14 @@ static INLINE void chemistry_init_backend(struct swift_params* parameter_file,
       parameter_file, "GEARChemistry:C_CFL_chemistry",
       DEFAULT_C_CFL_CHEMISTRY_SUPERTIMESTEPPPING);
 
+#if defined(GEAR_MF_HYPERBOLIC_DIFFUSION)
+  if (data->diffusion_mode == isotropic_constant){
+    data->tau = parser_get_opt_param_float(
+					   parameter_file, "GEARChemistry:tau",
+					   0.1);
+  }
+#endif
+
   /***************************************************************************/
   /* Print the parameters we use */
   if (engine_rank == 0) {
@@ -587,6 +595,10 @@ __attribute__((always_inline)) INLINE static void chemistry_prepare_force(
   /* Update the diffusion coefficient for the new loop */
   p->chemistry_data.kappa =
       chemistry_compute_diffusion_coefficient(p, cd, cosmo);
+
+#if defined(GEAR_MF_HYPERBOLIC_DIFFUSION)
+  p->chemistry_data.tau = chemistry_compute_physical_tau(p, cd, cosmo);
+#endif
 }
 
 /**
@@ -950,6 +962,16 @@ __attribute__((always_inline)) INLINE static void chemistry_predict_extra(
 
   /* Update diffusion coefficient */
   chd->kappa = chemistry_compute_diffusion_coefficient(p, chem_data, cosmo);
+
+#if defined(GEAR_MF_HYPERBOLIC_DIFFUSION)
+  /* Compute the predicted flux */
+
+  for (int m = 0; m < GEAR_CHEMISTRY_ELEMENT_COUNT; m++) {
+    chd->hyperbolic_flux[m].F_diff_pred[0] = chd->hyperbolic_flux[m].F_diff[0] + dt_therm*chd->hyperbolic_flux[m].dF_dt[0];
+    chd->hyperbolic_flux[m].F_diff_pred[1] = chd->hyperbolic_flux[m].F_diff[1] + dt_therm*chd->hyperbolic_flux[m].dF_dt[1];
+    chd->hyperbolic_flux[m].F_diff_pred[2] = chd->hyperbolic_flux[m].F_diff[2] + dt_therm*chd->hyperbolic_flux[m].dF_dt[2];
+  }
+#endif
 }
 
 #endif /* SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_H */
