@@ -10,8 +10,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 from pNbody import *
 from scipy.optimize import curve_fit
+from scipy.special import iv as modified_bessel
 import argparse
 from tqdm import tqdm
+import swiftsimio as sw
 
 # %%
 
@@ -50,6 +52,45 @@ def radial_profile(value, r, r_min=None, r_max=None, n_bins=30):
 def gaussian(r, t, q_0, r_0, kappa, epsilon):
     return q_0*(2*np.pi)**(-1.5) / (epsilon**2 + 2*kappa*t)**1.5 * np.exp(-0.5*((r-r_0)**2)/(epsilon**2 + 2*kappa*t))
 
+def hyperbolic_diffusion_solution(x, t, q_0, x_0, tau, kappa):
+    """
+    Compute the solution u(x, t) of the hyperbolic diffusion equation.
+
+    Parameters:
+        x (array): Spatial positions.
+        t (float): Time.
+        tau (float): Relaxation time constant.
+        kappa (float): Diffusion coefficient.
+
+    Returns:
+        u (array): Solution values at positions x and time t.
+    """
+    # Wave speed
+    c = np.sqrt(kappa / tau)
+
+    Delta_x = x - x_0
+
+    # Exponential decay factor
+    decay_factor = q_0*np.exp(-c**2 * t / (2 * kappa))
+
+    # Compute radial term and modified Bessel functions for valid x values
+    within_causal_region = np.abs(Delta_x) <= c * t
+    radial_term = np.zeros_like(Delta_x)
+    radial_term[within_causal_region] = np.sqrt(c**2 * t**2 - Delta_x[within_causal_region]**2)
+
+    I0 = modified_bessel(0, (c / (2 * kappa)) * radial_term[within_causal_region])
+    I1 = modified_bessel(1, (c / (2 * kappa)) * radial_term[within_causal_region])
+
+    # Compute the solution
+    u = np.zeros_like(Delta_x)
+    if t > 0:
+        u[within_causal_region] = 0.5 * decay_factor * (
+            (c / (2 * kappa)) * I0 +
+            (c**2 / (2 * kappa)) * t * I1 / radial_term[within_causal_region]
+        )
+
+    return u
+
 # %%
 
 
@@ -75,6 +116,12 @@ python3 metal_profile.py snap/snapshot_*0.hdf5 --n_bins 30 --r_min 1e-1 --r_max 
                         type=float,
                         default=2.516846e-03,
                         help="Diffusion coefficient")
+
+    parser.add_argument("--tau",
+                        action="store",
+                        type=float,
+                        default=1,
+                        help="Relaxation time")
 
     parser.add_argument("--epsilon",
                         action="store",
@@ -122,6 +169,7 @@ r_min = args.r_min
 r_max = args.r_max
 n_bins = args.n_bins
 kappa = args.kappa
+tau = args.tau
 epsilon = args.epsilon
 log = args.log
 
@@ -156,17 +204,31 @@ for filename in tqdm(files):
 
     # Extract the fitted q_0 value
     q_0 = popt[0]
-    # q_0 = 1e-4
 
     # Compute the analytical solution
     fe_sol = gaussian(r_sol, t, q_0, r_0, kappa, epsilon)
 
+    #########
+
+    def fit_q_0_hyperbolic(r, q_0):
+        return hyperbolic_diffusion_solution(r, t, q_0, r_0, tau, kappa)
+
+    popt2, pcov2 = curve_fit(fit_q_0_hyperbolic, r, fe, p0=initial_guess_q_0)
+
+    # Extract the fitted q_0 value
+    q_0_hyperbolic = popt2[0]
+
+    # Compute the analytical solution
+    fe_sol_hyperbolic = hyperbolic_diffusion_solution(r_sol, t, q_0_hyperbolic, r_0, tau, kappa)
+
+    ###########
     # Now plot
     fig, ax = plt.subplots(num=1, nrows=1, ncols=1,
                            figsize=figsize, layout="tight")
     ax.clear()
     ax.plot(r_centers, fe_bin, label='Fe mass profile')
     ax.plot(r_sol, fe_sol, label='Analytical solution')
+    ax.plot(r_sol, fe_sol_hyperbolic, label='Analytical solution')
     ax.set_xlabel("$r$ [kpc]")
     ax.set_ylabel("$Fe$ [M$_\odot$]")
     ax.legend()
