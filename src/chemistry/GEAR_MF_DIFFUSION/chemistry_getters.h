@@ -298,23 +298,20 @@ chemistry_get_metal_mass_fraction_gradients(const struct part* restrict p,
  * @param dF Metal mass density gradient (of size 3).
  */
 __attribute__((always_inline)) INLINE static void
-chemistry_get_metal_mass_density_gradients(const struct part* restrict p,
-                                           int metal, const float grad_rho[3],
-                                           double dF[3]) {
+chemistry_get_metal_density_gradients(const struct part* restrict p, int metal,
+				      double dF[3]) {
 
   const struct chemistry_part_data* chd = &p->chemistry_data;
 
-  /* We have U = rho_Z and q = Z.
-     But we computed Grad Z and not Grad (rho*Z).
-     However, Grad (rho*Z) = Z*Grad_rho + rho*Grad_Z
-     We can estimate grad_rho = (rho_max_ij - rho_min_ij) * dx[3] / (r*r). */
-
+  /* We have U = rho_Z and q = Z.  But we computed Grad Z and Grad rho, not
+     Grad (rho*Z). However, Grad (rho*Z) = Z*Grad_rho + rho*Grad_Z */
+  const double rho = hydro_get_comoving_density(p);
   const double Z = chemistry_get_metal_mass_fraction(p, metal);
 
   /* For isotropic diffusion, \grad U = \nabla \otimes q = \grad n_Z */
-  dF[0] = chd->gradients.Z[metal][0] * p->rho + grad_rho[0] * Z;
-  dF[1] = chd->gradients.Z[metal][1] * p->rho + grad_rho[1] * Z;
-  dF[2] = chd->gradients.Z[metal][2] * p->rho + grad_rho[2] * Z;
+  dF[0] = chd->gradients.Z[metal][0] * rho + chd->gradients.rho[0] * Z;
+  dF[1] = chd->gradients.Z[metal][1] * rho + chd->gradients.rho[1] * Z;
+  dF[2] = chd->gradients.Z[metal][2] * rho + chd->gradients.rho[2] * Z;
 }
 
 /**
