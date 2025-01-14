@@ -347,12 +347,13 @@ __attribute__((always_inline)) INLINE static void chemistry_get_hydro_gradients(
  * @param p Particle.
  */
 __attribute__((always_inline)) INLINE static double
-chemistry_get_physical_hyperbolic_soundspeed(const struct part* restrict p,
-					     const struct chemistry_global_data* chem_data,
-					     const struct cosmology* cosmo) {
+chemistry_get_physical_hyperbolic_soundspeed(
+    const struct part* restrict p,
+    const struct chemistry_global_data* chem_data,
+    const struct cosmology* cosmo) {
 #if defined(GEAR_MF_HYPERBOLIC_DIFFUSION)
   if (chem_data->diffusion_mode == isotropic_constant) {
-    return chem_data->diffusion_coefficient/chem_data->tau;
+    return chem_data->diffusion_coefficient / chem_data->tau;
   } else {
     /* const struct chemistry_part_data *chd = &p->chemistry_data; */
 

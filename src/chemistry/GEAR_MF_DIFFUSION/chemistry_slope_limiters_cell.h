@@ -146,24 +146,32 @@ chemistry_slope_limit_quantity(double gradient[3], const float maxr,
     const double gradmin = value - valmin;
 
     /* Stability factor based on condition number (better than 1.0) */
-    const double beta_2 = min(1.0, const_gizmo_max_condition_number / condition_number);
-    const double beta = max(GIZMO_SLOPE_LIMITER_BETA_MIN, GIZMO_SLOPE_LIMITER_BETA_MAX * beta_2);
+    const double beta_2 =
+        min(1.0, const_gizmo_max_condition_number / condition_number);
+    const double beta = max(GIZMO_SLOPE_LIMITER_BETA_MIN,
+                            GIZMO_SLOPE_LIMITER_BETA_MAX * beta_2);
 
     /* Base slope limiter */
-    const double min_temp = min(gradmax * gradtrue_inv, gradmin * gradtrue_inv) * beta;
+    const double min_temp =
+        min(gradmax * gradtrue_inv, gradmin * gradtrue_inv) * beta;
     double alpha = min(1.0, min_temp);
 
     /* Positivity-preserving mechanism */
     if (pos_preserve) {
-      const double shoot_tol = 0.0; // Allowable overshoot tolerance
+      const double shoot_tol = 0.0;  // Allowable overshoot tolerance
       const double overshoot_corr = gradmin + shoot_tol * gradmax;
-      const double f_corr_overshoot = (overshoot_corr < gradmax) ? overshoot_corr : gradmax;
+      const double f_corr_overshoot =
+          (overshoot_corr < gradmax) ? overshoot_corr : gradmax;
 
       /* Compute fmin for positivity preservation */
-      const double min_value = (value + valmin) * 0.5; // Halfway between central and min value
-      const double positive_definite_min = (value > 0.0) ? value * FLT_MIN : 0.0;
-      const double fmin = (f_corr_overshoot < min_value) ? f_corr_overshoot : min_value;
-      const double final_fmin = (fmin > positive_definite_min) ? fmin : positive_definite_min;
+      const double min_value =
+          (value + valmin) * 0.5;  // Halfway between central and min value
+      const double positive_definite_min =
+          (value > 0.0) ? value * FLT_MIN : 0.0;
+      const double fmin =
+          (f_corr_overshoot < min_value) ? f_corr_overshoot : min_value;
+      const double final_fmin =
+          (fmin > positive_definite_min) ? fmin : positive_definite_min;
 
       /* Compute cfac for positivity preservation */
       const double cfac_pos_preserve = (value - final_fmin) / gradtrue;
@@ -204,33 +212,42 @@ __attribute__((always_inline)) INLINE static void chemistry_slope_limit_cell(
                             chd->filtered.rho_v[1] / chd->filtered.rho,
                             chd->filtered.rho_v[2] / chd->filtered.rho};
 
-  const double rho = hydro_get_comoving_density(p);
+  /* const double rho = hydro_get_comoving_density(p); */
   double Z_min, Z_max, Z;
   int mode;
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
 
     if (cd->diffusion_mode == isotropic_constant) {
-      /* Notice that we are slope-limiting grad Z with the metal density. This */
-      /* weird behaviour ensures proper metal mass conservation. Using metal mass */
-      /* fraction does not... There is probably a missing density for this case. */
+      // For hyperbolic diffusion, use the positivity preserving slope
+      // limiter. It better limits numerical diffusion and avoids creating new
+      // extrema */
+      /* Notice that we are slope-limiting grad Z with the metal density. This
+       */
+      /* weird behaviour ensures proper metal mass conservation. Using metal
+       * mass */
+      /* fraction does not... There is probably a missing density for this case.
+       */
       mode = 0;
       Z_min = chd->limiter.rho_Z[i][0];
       Z_max = chd->limiter.rho_Z[i][1];
       Z = chemistry_get_comoving_metal_density(p, i);
+      /* Z = chemistry_get_metal_mass_fraction(p, i); */
+
     } else {
-      mode = 1;
-      Z_min = chd->limiter.rho_Z[i][0]/rho;
-      Z_max = chd->limiter.rho_Z[i][1]/rho;
-      Z = chemistry_get_comoving_metal_density(p, i)/rho;
+      mode = 0;
+      Z_min = chd->limiter.rho_Z[i][0];
+      Z_max = chd->limiter.rho_Z[i][1];
+      Z = chemistry_get_comoving_metal_density(p, i);
+      /* Z = chemistry_get_metal_mass_fraction(p, i); */
     }
     chemistry_slope_limit_quantity(
-        /*gradient=*/ chd->gradients.Z[i],
+        /*gradient=*/chd->gradients.Z[i],
         /*maxr=    */ maxr,
         /*value=   */ Z,
         /*valmin=  */ Z_min,
         /*valmax=  */ Z_max,
         /*condition_number*/ N_cond,
-	/*pos_preserve*/ mode);
+        /*pos_preserve*/ mode);
   }
 
   /* Use doubles sice chemistry_slope_limit_quantity() accepts double arrays. */

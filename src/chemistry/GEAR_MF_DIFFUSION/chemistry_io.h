@@ -62,7 +62,7 @@ INLINE static void convert_gas_metals(const struct engine* e,
   }
 
   /* Now write the metallicity */
-  ret[GEAR_CHEMISTRY_ELEMENT_COUNT-1] = m_Z / hydro_get_mass(p);
+  ret[GEAR_CHEMISTRY_ELEMENT_COUNT - 1] = m_Z / hydro_get_mass(p);
 }
 
 INLINE static void convert_chemistry_diffusion_coefficient(

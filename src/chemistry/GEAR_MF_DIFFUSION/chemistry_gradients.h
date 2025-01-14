@@ -122,7 +122,7 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_collect(
   }
 
   /*****************************************/
-  /* Update diffusion gradients */
+  /* Update metal mass fraction gradients */
   for (int g = 0; g < GEAR_CHEMISTRY_ELEMENT_COUNT; g++) {
     const double Zi = chemistry_get_metal_mass_fraction(pi, g);
     const double Zj = chemistry_get_metal_mass_fraction(pj, g);

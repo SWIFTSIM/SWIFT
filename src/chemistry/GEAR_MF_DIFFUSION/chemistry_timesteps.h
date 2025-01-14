@@ -95,7 +95,9 @@ chemistry_compute_parabolic_timestep(
   const float delta_x = cosmo->a * kernel_gamma * p->h;
 
   /* CFL condition */
-  const float dt_cfl = CFL_condition * delta_x / chemistry_get_physical_hyperbolic_soundspeed(p, chem_data, cosmo);
+  const float dt_cfl =
+      CFL_condition * delta_x /
+      chemistry_get_physical_hyperbolic_soundspeed(p, chem_data, cosmo);
   return dt_cfl;
 #endif
 }
@@ -130,9 +132,9 @@ __attribute__((always_inline)) INLINE static float chemistry_get_supertimestep(
  * @param cosmo The current cosmological model.
  */
 __attribute__((always_inline)) INLINE static float
-chemistry_compute_advective_supertimestep(const struct part *restrict p,
-					  const struct chemistry_global_data *cd,
-					  const struct cosmology *cosmo) {
+chemistry_compute_advective_supertimestep(
+    const struct part *restrict p, const struct chemistry_global_data *cd,
+    const struct cosmology *cosmo) {
 
   const struct chemistry_part_data *chd = &p->chemistry_data;
 
@@ -172,7 +174,7 @@ chemistry_compute_advective_supertimestep(const struct part *restrict p,
   }
 
   return cd->C_CFL_chemistry * delta_x * norm_U /
-    (norm_matrix_K * norm_nabla_q) ;
+         (norm_matrix_K * norm_nabla_q);
 }
 
 /**
@@ -190,7 +192,7 @@ chemistry_compute_subtimestep(const struct part *restrict p,
 
   /* TODO: Check that the division is not an integer division */
   const float cos_argument =
-    M_PI * (2.0 * current_substep_number - 1.0) / (2.0 * cd->N_substeps);
+      M_PI * (2.0 * current_substep_number - 1.0) / (2.0 * cd->N_substeps);
   const float expression = (1 + cd->nu) - (1 - cd->nu) * cos(cos_argument);
   return chd->timesteps.explicit_timestep / expression;
 }
@@ -198,7 +200,8 @@ chemistry_compute_subtimestep(const struct part *restrict p,
 /**
  * @brief Compute a valid integer time-step form a given time-step
  *
- * TODO: This is a copy/paste from make_integer_timestep. This is bad. Improve it.
+ * TODO: This is a copy/paste from make_integer_timestep. This is bad. Improve
+ * it.
  *
  * We consider the minimal time-bin of any neighbours and prevent particles
  * to differ from it by a fixed constant `time_bin_neighbour_max_delta_bin`.
@@ -214,9 +217,9 @@ chemistry_compute_subtimestep(const struct part *restrict p,
  */
 __attribute__((always_inline, const)) INLINE static integertime_t
 chemistry_make_integer_timestep(const float new_dt, const timebin_t old_bin,
-                      const timebin_t min_ngb_bin,
-                      const integertime_t ti_current,
-                      const double time_base_inv) {
+                                const timebin_t min_ngb_bin,
+                                const integertime_t ti_current,
+                                const double time_base_inv) {
 
   /* Convert to integer time */
   integertime_t new_dti = (integertime_t)(new_dt * time_base_inv);
