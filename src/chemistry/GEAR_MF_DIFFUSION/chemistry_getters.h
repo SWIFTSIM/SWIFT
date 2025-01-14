@@ -413,9 +413,12 @@ chemistry_compute_physical_tau(const struct part* restrict p,
     chemistry_get_physical_matrix_K(p, chem_data, cosmo, K);
     const float norm_matrix_K = chemistry_get_matrix_norm(K);
 
+    const double rho = hydro_get_physical_density(p, cosmo);
+
     /* Get soundspeed */
-    const double c_hyp = chemistry_get_physical_hyperbolic_soundspeed(p, chem_data, cosmo);
-    return  norm_matrix_K / (c_hyp*c_hyp);
+    const double c_hyp =
+        chemistry_get_physical_hyperbolic_soundspeed(p, chem_data, cosmo);
+    return  norm_matrix_K / (c_hyp*c_hyp*rho);
   } else {
     return chem_data->tau;
   }
