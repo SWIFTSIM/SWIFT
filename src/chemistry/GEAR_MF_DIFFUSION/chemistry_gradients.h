@@ -109,11 +109,11 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_collect(
   float psij_tilde[3];
   if (fvpm_part_geometry_well_behaved(pj)) {
     psij_tilde[0] =
-        wi * (Bj[0][0] * dx[0] + Bj[0][1] * dx[1] + Bj[0][2] * dx[2]);
+        wj * (Bj[0][0] * dx[0] + Bj[0][1] * dx[1] + Bj[0][2] * dx[2]);
     psij_tilde[1] =
-        wi * (Bj[1][0] * dx[0] + Bj[1][1] * dx[1] + Bj[1][2] * dx[2]);
+        wj * (Bj[1][0] * dx[0] + Bj[1][1] * dx[1] + Bj[1][2] * dx[2]);
     psij_tilde[2] =
-        wi * (Bj[2][0] * dx[0] + Bj[2][1] * dx[1] + Bj[2][2] * dx[2]);
+        wj * (Bj[2][0] * dx[0] + Bj[2][1] * dx[1] + Bj[2][2] * dx[2]);
   } else {
     const float norm = -wj_dx * r_inv;
     psij_tilde[0] = norm * dx[0];
@@ -222,7 +222,6 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_collect(
   /*****************************************/
   /* Collect the cell's min and max for the slope limiter. */
   chemistry_slope_limit_cell_collect(pi, pj, r);
-  chemistry_slope_limit_cell_collect(pj, pi, r);
 }
 
 /**
