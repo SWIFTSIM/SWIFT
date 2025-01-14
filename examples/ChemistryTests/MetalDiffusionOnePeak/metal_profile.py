@@ -117,12 +117,6 @@ python3 metal_profile.py snap/snapshot_*0.hdf5 --n_bins 30 --r_min 1e-1 --r_max 
                         default=2.516846e-03,
                         help="Diffusion coefficient")
 
-    parser.add_argument("--tau",
-                        action="store",
-                        type=float,
-                        default=1,
-                        help="Relaxation time")
-
     parser.add_argument("--epsilon",
                         action="store",
                         type=float,
@@ -169,7 +163,6 @@ r_min = args.r_min
 r_max = args.r_max
 n_bins = args.n_bins
 kappa = args.kappa
-tau = args.tau
 epsilon = args.epsilon
 log = args.log
 
@@ -178,6 +171,12 @@ figsize = (6.4, 4.8)
 for filename in tqdm(files):
     snapshot_number = int(filename.split('_')[1].split('.')[0])
     output_name = "metal_profile" + str(snapshot_number)
+    data = sw.load(filename)
+
+    try:
+        tau = float(data.metadata.parameters["GEARChemistry:tau"])
+    except:
+        tau = 0.001
 
     if log:
         output_name = "log_" + output_name
