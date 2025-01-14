@@ -206,8 +206,8 @@ chemistry_riemann_compute_alpha(const double c_s_R, const double c_s_L,
 }
 
 /**
- * @brief Solve the Riemann problem for the diffusion equations and return the
- * flux at the interface.
+ * @brief Hokpins (2017) HLL Riemann solver. It works well for parabolic
+ * diffusion but not for hyperbolic diffusion when tau >> 1.
  *
  * @param dx Comoving distance vector between the particles (dx = pi->x -
  * pj->x).
@@ -230,19 +230,13 @@ chemistry_riemann_compute_alpha(const double c_s_R, const double c_s_L,
  * @param metal_flux (return) The resulting flux at the interface.
  */
 __attribute__((always_inline)) INLINE static void
-chemistry_riemann_solve_for_flux(
+chemistry_riemann_solver_hopkins2017_HLL(
     const float dx[3], const struct part *restrict pi,
     const struct part *restrict pj, const double UL, const double UR,
     const float WL[5], const float WR[5], const double F_diff_L[3],
     const double F_diff_R[3], const float Anorm, const float n_unit[3],
     const int m, const struct chemistry_global_data *chem_data,
     const struct cosmology *cosmo, double *metal_flux) {
-
-  /* Handle pure vacuum */
-  if (!UL && !UR) {
-    *metal_flux = 0.0f;
-    return;
-  }
 
   /****************************************************************************/
   /* Estimate the eigenvalue of the Jacobian matrix dF/dU */
@@ -321,7 +315,7 @@ chemistry_riemann_solve_for_flux(
                                       U_star, K_star, norm_K_star, grad_q_star);
 
   /****************************************************************************/
-  /* Now compute the HLL flux */
+  /* Now project the fluxes */
   /* No conversion to physical needed, everything is physical here */
 
   /* Project the fluxes to reduce to a 1D Problem with 1 quantity */
@@ -330,21 +324,15 @@ chemistry_riemann_solve_for_flux(
   const double Flux_R = F_diff_R[0] * n_unit[0] + F_diff_R[1] * n_unit[1] +
                         F_diff_R[2] * n_unit[2];
 
+  /****************************************************************************/
   /* Compute variables to determine F_HLL */
   const double dU = UR - UL;
   const float one_over_dl = 1.f / (lambda_plus - lambda_minus);
   const double F_2 =
       (lambda_plus * Flux_L - lambda_minus * Flux_R) * one_over_dl;
   double F_U = lambda_plus * lambda_minus * dU * one_over_dl;
-
-  /* Multiply by alpha to limit numerical diffusion. */
-  F_U *= alpha;
-
-  /****************************************************************************
-   * Hopkins 2017 implementation of HLL */
-  /* No conversion to physical needed, everything is physical here */
   const double flux_hll = chemistry_riemann_minmod(
-      (1 + chem_data->hll_riemann_solver_psi) * F_2, F_2 + F_U);
+      (1 + chem_data->hll_riemann_solver_psi) * F_2, F_2 + alpha * F_U);
 
   /* Compute the direct fluxes */
   const double qi = chemistry_get_metal_mass_fraction(pi, m);
@@ -361,11 +349,19 @@ chemistry_riemann_solve_for_flux(
                                    -kappa_mean * nabla_o_q_dir[1],
                                    -kappa_mean * nabla_o_q_dir[2]};
 #else
+  const float min_dt =
+      (pj->chemistry_data.flux_dt > 0.f)
+          ? fminf(pi->chemistry_data.flux_dt, pj->chemistry_data.flux_dt)
+          : pi->chemistry_data.flux_dt;
   const double tau_L = pi->chemistry_data.tau;
   const double tau_R = pj->chemistry_data.tau;
-  const double F_A_left_side[3] = {- 0.5*(F_diff_L[0]/tau_L + F_diff_R[0]/tau_R) - kappa_mean * nabla_o_q_dir[0],
-                                   - 0.5*(F_diff_L[1]/tau_L + F_diff_R[1]/tau_R) - kappa_mean * nabla_o_q_dir[1],
-                                   - 0.5*(F_diff_L[2]/tau_L + F_diff_R[2]/tau_R) - kappa_mean * nabla_o_q_dir[2]};
+  const double F_A_left_side[3] = {
+      -min_dt * 0.5 * (F_diff_L[0] / tau_L + F_diff_R[0] / tau_R) -
+          min_dt * kappa_mean * nabla_o_q_dir[0],
+      -min_dt * 0.5 * (F_diff_L[1] / tau_L + F_diff_R[1] / tau_R) -
+          min_dt * kappa_mean * nabla_o_q_dir[1],
+      -min_dt * 0.5 * (F_diff_L[2] / tau_L + F_diff_R[2] / tau_R) -
+          min_dt * kappa_mean * nabla_o_q_dir[2]};
 #endif
 
   const double F_A_right_side[3] = {Anorm * dx_p[0] / dx_p_norm,
@@ -386,6 +382,243 @@ chemistry_riemann_solve_for_flux(
     *metal_flux = 0;
   } else {
     *metal_flux = flux_hll;
+  }
+}
+
+/**
+ * @brief HLL riemann solver.
+ *
+ * @param dx Comoving distance vector between the particles (dx = pi->x -
+ * pj->x).
+ * @param pi Left particle
+ * @param pj Right particle
+ * @param UL left diffusion state (metal density, in physical units)
+ * @param UR right diffusion state (metal density, in physical units)
+ * @param WL Left state hydrodynamics primitve variables (density, velocity[3],
+ * pressure) (in physical units)
+ * @param WR Right state hydrodynamics primitve variables (density,
+ * velocity[3], pressure) (in physical units)
+ * @param F_diff_L The diffusion flux of the left (in physical units)
+ * @param F_diff_R The diffusion flux of the right (in physical units)
+ * @param Anorm Norm of the face between the left and right particles (in
+ * physical units)
+ * @param n_unit The unit vector perpendicular to the "intercell" surface.
+ * @param m Index of metal specie to update.
+ * @param chem_data The global properties of the chemistry scheme.
+ * @param cosmo The #cosmology.
+ * @param metal_flux (return) The resulting flux at the interface.
+ */
+__attribute__((always_inline)) INLINE static void chemistry_riemann_solver_HLL(
+    const float dx[3], const struct part *restrict pi,
+    const struct part *restrict pj, const double UL, const double UR,
+    const float WL[5], const float WR[5], const double F_diff_L[3],
+    const double F_diff_R[3], const float Anorm, const float n_unit[3],
+    const int m, const struct chemistry_global_data *chem_data,
+    const struct cosmology *cosmo, double *metal_flux) {
+
+  /***************************************************************************/
+  /* Estimate the eigenvalue of the Jacobian matrix dF/dU */
+  /* Everything is in physical units here */
+
+  /* Obtain velocity in interface frame */
+  const float u_L = WL[1] * n_unit[0] + WL[2] * n_unit[1] + WL[3] * n_unit[2];
+  const float u_R = WR[1] * n_unit[0] + WR[2] * n_unit[1] + WR[3] * n_unit[2];
+  /* const float u_rel = u_L - u_R; */
+
+  /* Get the fastet speed of sound. Use physical soundspeed */
+  const float c_s_L = hydro_get_physical_soundspeed(pi, cosmo);
+  const float c_s_R = hydro_get_physical_soundspeed(pj, cosmo);
+  /* const float c_s_L = chemistry_get_physical_hyperbolic_soundspeed(pi,
+   * chem_data, cosmo); */
+  /* const float c_s_R = chemistry_get_physical_hyperbolic_soundspeed(pj,
+   * chem_data, cosmo); */
+
+  /* Approximate lambda_plus and lambda_minus. Use velocity difference. */
+  const double lambda_plus = max(u_L + c_s_L, u_R + c_s_R);
+  const double lambda_minus = min(u_L - c_s_L, u_R - c_s_R);
+
+  /* const double lambda_plus = max(u_rel + c_s_L, u_rel + c_s_R); */
+  /* const double lambda_minus = min(u_rel - c_s_L, u_rel - c_s_R); */
+
+  /* const double lambda_plus = max(fabs(u_L) + c_s_L, fabs(u_R) + c_s_R); */
+  /* const double lambda_minus = - lambda_plus; */
+
+  /* const float c_fast = max(c_s_L, c_s_R); */
+  /* const float lambda_plus = fabsf(u_rel) + c_fast; */
+  /* const float lambda_minus = -lambda_plus; */
+
+  if (lambda_plus == 0.0 && lambda_minus == 0.0) {
+    *metal_flux = 0.0;
+  }
+
+  /***************************************************************************/
+  /* Now project the fluxes */
+  /* No conversion to physical needed, everything is physical here */
+
+  /* Project the fluxes to reduce to a 1D Problem with 1 quantity */
+  const double Flux_L = F_diff_L[0] * n_unit[0] + F_diff_L[1] * n_unit[1] +
+                        F_diff_L[2] * n_unit[2];
+  const double Flux_R = F_diff_R[0] * n_unit[0] + F_diff_R[1] * n_unit[1] +
+                        F_diff_R[2] * n_unit[2];
+
+  /***************************************************************************/
+  /* Now solve the Riemann problem */
+
+  const double dU = UR - UL;
+  const double one_over_dl = 1.f / (lambda_plus - lambda_minus);
+  const double F_2 =
+      (lambda_plus * Flux_L - lambda_minus * Flux_R) * one_over_dl;
+  double F_U = lambda_plus * lambda_minus * dU * one_over_dl;
+
+  if (lambda_minus > 0.0) {
+    *metal_flux = Flux_L;
+  } else if (lambda_minus <= 0.0 && lambda_plus >= 0.0) {
+    *metal_flux = F_2 + F_U;
+  } else if (lambda_plus < 0.0) {
+    *metal_flux = Flux_R;
+  }
+}
+
+/**
+ * @brief HLLC riemann solver.
+ *
+ * @param dx Comoving distance vector between the particles (dx = pi->x -
+ * pj->x).
+ * @param pi Left particle
+ * @param pj Right particle
+ * @param UL left diffusion state (metal density, in physical units)
+ * @param UR right diffusion state (metal density, in physical units)
+ * @param WL Left state hydrodynamics primitve variables (density, velocity[3],
+ * pressure) (in physical units)
+ * @param WR Right state hydrodynamics primitve variables (density,
+ * velocity[3], pressure) (in physical units)
+ * @param F_diff_L The diffusion flux of the left (in physical units)
+ * @param F_diff_R The diffusion flux of the right (in physical units)
+ * @param Anorm Norm of the face between the left and right particles (in
+ * physical units)
+ * @param n_unit The unit vector perpendicular to the "intercell" surface.
+ * @param m Index of metal specie to update.
+ * @param chem_data The global properties of the chemistry scheme.
+ * @param cosmo The #cosmology.
+ * @param metal_flux (return) The resulting flux at the interface.
+ */
+__attribute__((always_inline)) INLINE static void chemistry_riemann_solver_HLLC(
+    const float dx[3], const struct part *restrict pi,
+    const struct part *restrict pj, const double UL, const double UR,
+    const float WL[5], const float WR[5], const double F_diff_L[3],
+    const double F_diff_R[3], const float Anorm, const float n_unit[3],
+    const int m, const struct chemistry_global_data *chem_data,
+    const struct cosmology *cosmo, double *metal_flux) {
+
+  /***************************************************************************/
+  /* Step 1: Compute velocities and sound speeds */
+  const float u_L = WL[1] * n_unit[0] + WL[2] * n_unit[1] + WL[3] * n_unit[2];
+  const float u_R = WR[1] * n_unit[0] + WR[2] * n_unit[1] + WR[3] * n_unit[2];
+  const float c_s_L = hydro_get_physical_soundspeed(pi, cosmo);
+  const float c_s_R = hydro_get_physical_soundspeed(pj, cosmo);
+
+  /***************************************************************************/
+  /* Step 2: Estimate wave speeds */
+  const double S_L = min(u_L - c_s_L, u_R - c_s_R);
+  const double S_R = max(u_L + c_s_L, u_R + c_s_R);
+  const double S_M =
+      (WR[4] - WL[4] + WL[0] * u_L * (S_L - u_L) - WR[0] * u_R * (S_R - u_R)) /
+      (WL[0] * (S_L - u_L) - WR[0] * (S_R - u_R));
+
+  /***************************************************************************/
+  /* Step 3: Compute fluxes for left and right states */
+  const double Flux_L = F_diff_L[0] * n_unit[0] + F_diff_L[1] * n_unit[1] +
+                        F_diff_L[2] * n_unit[2];
+  const double Flux_R = F_diff_R[0] * n_unit[0] + F_diff_R[1] * n_unit[1] +
+                        F_diff_R[2] * n_unit[2];
+
+  /***************************************************************************/
+  /* Step 4: Compute intermediate fluxes */
+  const double U_L_star = ((S_L - u_L) / (S_L - S_M)) * UL;
+  const double U_R_star = ((S_R - u_R) / (S_R - S_M)) * UR;
+
+  /* Left star state flux */
+  const double F_L_star = Flux_L + S_L * (U_L_star - UL);
+
+  /* Right star state flux */
+  const double F_R_star = Flux_R + S_R * (U_R_star - UR);
+
+  /***************************************************************************/
+  /* Step 5: Solve the Riemann problem */
+  if (S_L > 0.0) {
+    *metal_flux = Flux_L;  // Left state
+  } else if (S_L <= 0.0 && S_M >= 0.0) {
+    *metal_flux = F_L_star;  // Left star state
+  } else if (S_M < 0.0 && S_R >= 0.0) {
+    *metal_flux = F_R_star;  // Right star state
+  } else if (S_R < 0.0) {
+    *metal_flux = Flux_R;  // Right state
+  }
+}
+
+/**
+ * @brief Solve the Riemann problem for the diffusion equations and return the
+ * flux at the interface.
+ *
+ * @param dx Comoving distance vector between the particles (dx = pi->x -
+ * pj->x).
+ * @param pi Left particle
+ * @param pj Right particle
+ * @param UL left diffusion state (metal density, in physical units)
+ * @param UR right diffusion state (metal density, in physical units)
+ * @param WL Left state hydrodynamics primitve variables (density, velocity[3],
+ * pressure) (in physical units)
+ * @param WR Right state hydrodynamics primitve variables (density,
+ * velocity[3], pressure) (in physical units)
+ * @param F_diff_L The diffusion flux of the left (in physical units)
+ * @param F_diff_R The diffusion flux of the right (in physical units)
+ * @param Anorm Norm of the face between the left and right particles (in
+ * physical units)
+ * @param n_unit The unit vector perpendicular to the "intercell" surface.
+ * @param m Index of metal specie to update.
+ * @param chem_data The global properties of the chemistry scheme.
+ * @param cosmo The #cosmology.
+ * @param metal_flux (return) The resulting flux at the interface.
+ */
+__attribute__((always_inline)) INLINE static void
+chemistry_riemann_solve_for_flux(
+    const float dx[3], const struct part *restrict pi,
+    const struct part *restrict pj, const double UL, const double UR,
+    const float WL[5], const float WR[5], const double F_diff_L[3],
+    const double F_diff_R[3], const float Anorm, const float n_unit[3],
+    const int m, const struct chemistry_global_data *chem_data,
+    const struct cosmology *cosmo, double *metal_flux) {
+
+  /* Handle pure vacuum */
+  if (!UL && !UR) {
+    *metal_flux = 0.0f;
+    return;
+  }
+
+  /* No conversion to physical needed, everything is physical here */
+  /* We probably need a mechanism to switch the Riemann solver when tau << 1.*/
+
+  if (chem_data->riemann_solver == 1) {
+    /* Regular HLL */
+    chemistry_riemann_solver_HLL(dx, pi, pj, UL, UR, WL, WR, F_diff_L, F_diff_R,
+                                 Anorm, n_unit, m, chem_data, cosmo,
+                                 metal_flux);
+    return;
+
+  } else if (chem_data->riemann_solver == 2) {
+    /* Hopkins Hopkins 2017 implementation of HLL */
+    chemistry_riemann_solver_hopkins2017_HLL(dx, pi, pj, UL, UR, WL, WR,
+                                             F_diff_L, F_diff_R, Anorm, n_unit,
+                                             m, chem_data, cosmo, metal_flux);
+    return;
+  } else if (chem_data->riemann_solver == 3) {
+    /* HLLC Riemann solver */
+    chemistry_riemann_solver_HLLC(dx, pi, pj, UL, UR, WL, WR, F_diff_L,
+                                  F_diff_R, Anorm, n_unit, m, chem_data, cosmo,
+                                  metal_flux);
+    return;
+  } else {
+    return;
   }
 }
 
