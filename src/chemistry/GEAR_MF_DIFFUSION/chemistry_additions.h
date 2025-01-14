@@ -61,19 +61,31 @@ __attribute__((always_inline)) INLINE static void chemistry_kick_extra(
       /* Get the parabolic diffusion flux */
       double F_diff_target[3];
       chemistry_compute_physical_diffusion_flux(p, i, F_diff_target, chem_data,
-						cosmo);
+                                                cosmo);
 
       /* First update dF_dt with the previous value of the diffusion
-	 flux. Notice the + in front of F_diff_target. This is because the
-	 minus sign is already included.  */
-      chd->hyperbolic_flux[i].dF_dt[0] = (- chd->hyperbolic_flux[i].F_diff[0] + F_diff_target[0])/chd->tau;
-      chd->hyperbolic_flux[i].dF_dt[1] = (- chd->hyperbolic_flux[i].F_diff[1] + F_diff_target[1])/chd->tau;
-      chd->hyperbolic_flux[i].dF_dt[2] = (- chd->hyperbolic_flux[i].F_diff[2] + F_diff_target[2])/chd->tau;
+         flux. Notice the + in front of F_diff_target. This is because the
+         minus sign is already included.  */
+      chd->hyperbolic_flux[i].dF_dt[0] =
+          (-chd->hyperbolic_flux[i].F_diff[0] + F_diff_target[0]) / chd->tau;
+      chd->hyperbolic_flux[i].dF_dt[1] =
+          (-chd->hyperbolic_flux[i].F_diff[1] + F_diff_target[1]) / chd->tau;
+      chd->hyperbolic_flux[i].dF_dt[2] =
+          (-chd->hyperbolic_flux[i].F_diff[2] + F_diff_target[2]) / chd->tau;
 
       /* Then update the diffusion flux with a semi-implicit scheme */
-      chd->hyperbolic_flux[i].F_diff[0] = chd->hyperbolic_flux[i].F_diff_pred[0] + dt_therm/ (chd->tau + dt_therm) * (F_diff_target[0] - chd->hyperbolic_flux[i].F_diff_pred[0]);
-      chd->hyperbolic_flux[i].F_diff[1] = chd->hyperbolic_flux[i].F_diff_pred[1] + dt_therm/ (chd->tau + dt_therm) * (F_diff_target[1] - chd->hyperbolic_flux[i].F_diff_pred[1]);
-      chd->hyperbolic_flux[i].F_diff[2] = chd->hyperbolic_flux[i].F_diff_pred[2] + dt_therm/ (chd->tau + dt_therm) * (F_diff_target[2] - chd->hyperbolic_flux[i].F_diff_pred[2]);
+      chd->hyperbolic_flux[i].F_diff[0] =
+          chd->hyperbolic_flux[i].F_diff_pred[0] +
+          dt_therm / (chd->tau + dt_therm) *
+              (F_diff_target[0] - chd->hyperbolic_flux[i].F_diff_pred[0]);
+      chd->hyperbolic_flux[i].F_diff[1] =
+          chd->hyperbolic_flux[i].F_diff_pred[1] +
+          dt_therm / (chd->tau + dt_therm) *
+              (F_diff_target[1] - chd->hyperbolic_flux[i].F_diff_pred[1]);
+      chd->hyperbolic_flux[i].F_diff[2] =
+          chd->hyperbolic_flux[i].F_diff_pred[2] +
+          dt_therm / (chd->tau + dt_therm) *
+              (F_diff_target[2] - chd->hyperbolic_flux[i].F_diff_pred[2]);
 #endif
     }
 

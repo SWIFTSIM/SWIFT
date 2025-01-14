@@ -145,12 +145,14 @@ __attribute__((always_inline)) INLINE static void chemistry_compute_flux(
 
 #else
   /* Using the predicted fluxes. They improve metal mass conservation. */
-  double F_diff_i[3] = {pi->chemistry_data.hyperbolic_flux[metal].F_diff_pred[0],
-			pi->chemistry_data.hyperbolic_flux[metal].F_diff_pred[1],
-			pi->chemistry_data.hyperbolic_flux[metal].F_diff_pred[2]};
-  double F_diff_j[3] = {pj->chemistry_data.hyperbolic_flux[metal].F_diff_pred[0],
-			pj->chemistry_data.hyperbolic_flux[metal].F_diff_pred[1],
-			pj->chemistry_data.hyperbolic_flux[metal].F_diff_pred[2]};
+  double F_diff_i[3] = {
+      pi->chemistry_data.hyperbolic_flux[metal].F_diff_pred[0],
+      pi->chemistry_data.hyperbolic_flux[metal].F_diff_pred[1],
+      pi->chemistry_data.hyperbolic_flux[metal].F_diff_pred[2]};
+  double F_diff_j[3] = {
+      pj->chemistry_data.hyperbolic_flux[metal].F_diff_pred[0],
+      pj->chemistry_data.hyperbolic_flux[metal].F_diff_pred[1],
+      pj->chemistry_data.hyperbolic_flux[metal].F_diff_pred[2]};
 #endif
 
 #ifdef SWIFT_DEBUG_CHECKS

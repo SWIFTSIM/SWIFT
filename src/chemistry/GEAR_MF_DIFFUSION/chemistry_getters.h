@@ -299,7 +299,7 @@ chemistry_get_metal_mass_fraction_gradients(const struct part* restrict p,
  */
 __attribute__((always_inline)) INLINE static void
 chemistry_get_metal_density_gradients(const struct part* restrict p, int metal,
-				      double dF[3]) {
+                                      double dF[3]) {
 
   const struct chemistry_part_data* chd = &p->chemistry_data;
 
@@ -398,8 +398,8 @@ chemistry_get_physical_hyperbolic_soundspeed(const struct part* restrict p,
  */
 __attribute__((always_inline)) INLINE static double
 chemistry_compute_physical_tau(const struct part* restrict p,
-			       const struct chemistry_global_data* chem_data,
-			       const struct cosmology* cosmo) {
+                               const struct chemistry_global_data* chem_data,
+                               const struct cosmology* cosmo) {
 #if defined(GEAR_MF_HYPERBOLIC_DIFFUSION)
   if (chem_data->diffusion_mode != isotropic_constant) {
     /* Compute the diffusion matrix K */
