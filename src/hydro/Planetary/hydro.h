@@ -1028,4 +1028,19 @@ __attribute__((always_inline)) INLINE static void hydro_remove_part(
       p->u, p->force.pressure, p->rho, p->h, p->mat_id, time);
 }
 
+/**
+ * @brief Split additional hydrodynamic quantities when splitting particles.
+ *
+ * Note that the mass is already handled in
+ * @engine_split_gas_particle_split_mapper, so this will be a no-op for most
+ * hydro schemes.
+ *
+ * @param p The particle.
+ * @param xp The extended particle data.
+ * @param particle_split_factor Over how many particles are we splitting?
+ */
+__attribute__((always_inline)) INLINE static void hydro_split_part(
+    struct part *p, struct xpart *xp,
+    const int particle_split_factor) {}
+
 #endif /* SWIFT_PLANETARY_HYDRO_H */

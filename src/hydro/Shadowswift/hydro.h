@@ -815,6 +815,46 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
 }
 
 /**
+ * @brief Split additional hydrodynamic quantities when splitting particles.
+ *
+ * Note that the mass is already handled in
+ * @engine_split_gas_particle_split_mapper, so this will be a no-op for most
+ * hydro schemes.
+ *
+ * @param p The particle.
+ * @param xp The extended particle data.
+ * @param particle_split_factor Over how many particles are we splitting?
+ */
+__attribute__((always_inline)) INLINE static void hydro_split_part(
+    struct part *p, struct xpart *xp,
+    const int particle_split_factor) {
+  const float fraction = 1.f / (float)particle_split_factor;
+  /* Conserved quantities (without mass) */
+  p->conserved.momentum[0] *= fraction;
+  p->conserved.momentum[2] *= fraction;
+  p->conserved.momentum[1] *= fraction;
+  p->conserved.energy *= fraction;
+  p->conserved.entropy *= fraction;
+  /* Any not applied fluxes */
+  p->flux.mass *= fraction;
+  p->flux.momentum[0] *= fraction;
+  p->flux.momentum[1] *= fraction;
+  p->flux.momentum[2] *= fraction;
+  p->flux.energy *= fraction;
+  p->flux.entropy *= fraction;
+  /* Volume */
+  p->geometry.volume *= fraction;
+  /* Temporarily set centroid to position.
+   * NOTE: This is incorrect, but at least ensures that the centroid will be in
+   * inside the particles new Voronoi cell.
+   * NOTE: In shadowswift, the centroid field stores an offset of the particle's
+   * position */
+  p->geometry.centroid[0] = 0.f;
+  p->geometry.centroid[1] = 0.f;
+  p->geometry.centroid[2] = 0.f;
+}
+
+/**
  * @brief Operations performed when a particle gets removed from the
  * simulation volume.
  *
