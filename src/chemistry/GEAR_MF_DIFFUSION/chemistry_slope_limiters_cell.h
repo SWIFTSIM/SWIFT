@@ -41,8 +41,8 @@ __attribute__((always_inline)) INLINE static void
 chemistry_slope_limit_cell_init(struct part* p) {
 
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
-    p->chemistry_data.limiter.rho_Z[i][0] = FLT_MAX;
-    p->chemistry_data.limiter.rho_Z[i][1] = -FLT_MAX;
+    p->chemistry_data.limiter.Z[i][0] = FLT_MAX;
+    p->chemistry_data.limiter.Z[i][1] = -FLT_MAX;
   }
 
   p->chemistry_data.limiter.rho[0] = FLT_MAX;
@@ -82,10 +82,10 @@ chemistry_slope_limit_cell_collect(struct part* pi, struct part* pj, float r) {
   /* Basic slope limiter: collect the maximal and the minimal value for the
    * primitive variables among the ngbs */
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
-    chi->limiter.rho_Z[i][0] =
-        min(chemistry_get_comoving_metal_density(pj, i), chi->limiter.rho_Z[i][0]);
-    chi->limiter.rho_Z[i][1] =
-        max(chemistry_get_comoving_metal_density(pj, i), chi->limiter.rho_Z[i][1]);
+    chi->limiter.Z[i][0] =
+      min(chemistry_get_metal_mass_fraction(pj, i), chi->limiter.Z[i][0]);
+    chi->limiter.Z[i][1] =
+      max(chemistry_get_metal_mass_fraction(pj, i), chi->limiter.Z[i][1]);
   }
 
   chi->limiter.v[0][0] = min(pj->v[0], chi->limiter.v[0][0]);
@@ -212,40 +212,18 @@ __attribute__((always_inline)) INLINE static void chemistry_slope_limit_cell(
                             chd->filtered.rho_v[1] / chd->filtered.rho,
                             chd->filtered.rho_v[2] / chd->filtered.rho};
 
-  /* const double rho = hydro_get_comoving_density(p); */
-  double Z_min, Z_max, Z;
-  int mode;
+#if defined(GEAR_MF_HYPERBOLIC_DIFFUSION)
+  const int mode = 1;
+#else
+  const int mode = 0;
+#endif
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
-
-    if (cd->diffusion_mode == isotropic_constant) {
-      // For hyperbolic diffusion, use the positivity preserving slope
-      // limiter. It better limits numerical diffusion and avoids creating new
-      // extrema */
-      /* Notice that we are slope-limiting grad Z with the metal density. This
-       */
-      /* weird behaviour ensures proper metal mass conservation. Using metal
-       * mass */
-      /* fraction does not... There is probably a missing density for this case.
-       */
-      mode = 0;
-      Z_min = chd->limiter.rho_Z[i][0];
-      Z_max = chd->limiter.rho_Z[i][1];
-      Z = chemistry_get_comoving_metal_density(p, i);
-      /* Z = chemistry_get_metal_mass_fraction(p, i); */
-
-    } else {
-      mode = 0;
-      Z_min = chd->limiter.rho_Z[i][0];
-      Z_max = chd->limiter.rho_Z[i][1];
-      Z = chemistry_get_comoving_metal_density(p, i);
-      /* Z = chemistry_get_metal_mass_fraction(p, i); */
-    }
     chemistry_slope_limit_quantity(
-        /*gradient=*/chd->gradients.Z[i],
+        /*gradient=*/ chd->gradients.Z[i],
         /*maxr=    */ maxr,
-        /*value=   */ Z,
-        /*valmin=  */ Z_min,
-        /*valmax=  */ Z_max,
+        /*value=   */ chemistry_get_metal_mass_fraction(p, i),
+        /*valmin=  */ chd->limiter.Z[i][0],
+        /*valmax=  */ chd->limiter.Z[i][1],
         /*condition_number*/ N_cond,
         /*pos_preserve*/ mode);
   }
@@ -279,7 +257,7 @@ __attribute__((always_inline)) INLINE static void chemistry_slope_limit_cell(
   gradvz_tilde[1] = chd->filtered.grad_v_tilde[2][1];
   gradvz_tilde[2] = chd->filtered.grad_v_tilde[2][2];
 
-  /* Slope limit the velocity gradient */
+  /* Slope limit the velocity gradients */
   chemistry_slope_limit_quantity(gradvx, maxr, p->v[0], vxlim[0], vxlim[1],
                                  N_cond, 0);
   chemistry_slope_limit_quantity(gradvy, maxr, p->v[1], vylim[0], vylim[1],
