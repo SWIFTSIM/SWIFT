@@ -340,8 +340,8 @@ void engine_exchange_strays(
     count_sparts_in += e->proxies[k].nr_sparts_in;
     count_bparts_in += e->proxies[k].nr_bparts_in;
     count_sinks_in += e->proxies[k].nr_sinks_in;
-    message("Counting entering particles, k = %i, nr_proxies = %d", k,
-            e->nr_proxies);
+    /* message("Counting entering particles, k = %i, nr_proxies = %d", k, */
+    /*         e->nr_proxies); */
   }
   if (e->verbose) {
     message(

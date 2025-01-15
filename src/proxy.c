@@ -490,11 +490,13 @@ void proxy_cells_exchange(struct proxy *proxies, int num_proxies,
 
   ticks tic2 = getticks();
 
-  /* Run through the cells and get the size of the ones that will be sent off.
-   */
+  /* Run through the cells and get the size of the ones that 
+   * will be sent off. */
   threadpool_map(&s->e->threadpool, proxy_cells_count_mapper, s->cells_top,
                  s->nr_cells, sizeof(struct cell), threadpool_auto_chunk_size,
                  /*extra_data=*/NULL);
+
+  /* Create a list of offsets */
   int count_out = 0;
   int *offset =
       (int *)swift_malloc("proxy_cell_offset", s->nr_cells * sizeof(int));
@@ -528,9 +530,11 @@ void proxy_cells_exchange(struct proxy *proxies, int num_proxies,
             clocks_getunit());
 
   /* Launch the first part of the exchange. */
-  threadpool_map(&s->e->threadpool, proxy_cells_exchange_first_mapper, proxies,
-                 num_proxies, sizeof(struct proxy), threadpool_auto_chunk_size,
-                 /*extra_data=*/NULL);
+  //threadpool_map(&s->e->threadpool, proxy_cells_exchange_first_mapper, proxies,
+  //               num_proxies, sizeof(struct proxy), threadpool_auto_chunk_size,
+  //               /*extra_data=*/NULL);
+  proxy_cells_exchange_first_mapper(proxies, num_proxies, NULL);
+  
   for (int k = 0; k < num_proxies; k++) {
     reqs_in[k] = proxies[k].req_cells_count_in;
     reqs_out[k] = proxies[k].req_cells_count_out;
@@ -828,13 +832,13 @@ void proxy_parts_exchange_first(struct proxy *p) {
                 p->nodeID, p->nodeID * proxy_tag_shift + proxy_tag_count,
                 MPI_COMM_WORLD, &p->req_parts_count_in) != MPI_SUCCESS)
     error("Failed to irecv nr of parts.");
-#ifdef SWIFT_DEBUG_CHECKS
-  message(
-      "irecv particle counts [%i, %i, %i, %i, %i] from node %i, I am node %i.",
-      p->buff_in[0], p->buff_in[1], p->buff_in[2], p->buff_in[3], p->buff_in[4],
-      p->nodeID, p->mynodeID);
-  fflush(stdout);
-#endif /* SWIFT_DEBUG_CHECKS */
+/* #ifdef SWIFT_DEBUG_CHECKS */
+/*   message( */
+/*       "irecv particle counts [%i, %i, %i, %i, %i] from node %i, I am node %i.", */
+/*       p->buff_in[0], p->buff_in[1], p->buff_in[2], p->buff_in[3], p->buff_in[4], */
+/*       p->nodeID, p->mynodeID); */
+/*   fflush(stdout); */
+/* #endif /\* SWIFT_DEBUG_CHECKS *\/ */
 
 #else
   error("SWIFT was not compiled with MPI support.");
