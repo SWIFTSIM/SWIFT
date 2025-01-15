@@ -219,9 +219,9 @@ __attribute__((always_inline)) INLINE static void kick_part(
     const double dt_kick_corr, const struct cosmology *cosmo,
     const struct hydro_props *hydro_props,
     const struct entropy_floor_properties *floor_props,
-    const struct chemistry_global_data* chem_data,
-    const integertime_t ti_start, const integertime_t ti_end,
-    const integertime_t ti_start_mesh, const integertime_t ti_end_mesh) {
+    const struct chemistry_global_data *chem_data, const integertime_t ti_start,
+    const integertime_t ti_end, const integertime_t ti_start_mesh,
+    const integertime_t ti_end_mesh) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (p->ti_kick != ti_start)
