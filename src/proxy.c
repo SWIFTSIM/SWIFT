@@ -354,30 +354,35 @@ void proxy_cells_exchange_first(struct proxy *p) {
   // message( "isent pcell count (%i) from node %i to node %i." ,
   // p->size_pcells_out , p->mynodeID , p->nodeID ); fflush(stdout);
 
-  /* Allocate and fill the pcell buffer. */
-  if (p->pcells_out != NULL) swift_free("pcells_out", p->pcells_out);
-  if (swift_memalign("pcells_out", (void **)&p->pcells_out,
-                     SWIFT_STRUCT_ALIGNMENT,
-                     sizeof(struct pcell) * p->size_pcells_out) != 0)
-    error("Failed to allocate pcell_out buffer.");
-
-  for (int ind = 0, k = 0; k < p->nr_cells_out; k++) {
-    memcpy(&p->pcells_out[ind], p->cells_out[k]->mpi.pcell,
-           sizeof(struct pcell) * p->cells_out[k]->mpi.pcell_size);
-    ind += p->cells_out[k]->mpi.pcell_size;
-  }
+#else
+  error("SWIFT was not compiled with MPI support.");
+#endif
+}
+  
+void proxy_cells_exchange_second(struct proxy *p) {
+  
+#ifdef WITH_MPI
 
   /* Send the pcell buffer. */
-  err = MPI_Isend(p->pcells_out, p->size_pcells_out, pcell_mpi_type, p->nodeID,
-                  p->mynodeID * proxy_tag_shift + proxy_tag_cells,
-                  MPI_COMM_WORLD, &p->req_cells_out);
+  int err = MPI_Isend(p->pcells_out, p->size_pcells_out, pcell_mpi_type, p->nodeID,
+		      p->mynodeID * proxy_tag_shift + proxy_tag_cells,
+		      MPI_COMM_WORLD, &p->req_cells_out);
 
   if (err != MPI_SUCCESS) mpi_error(err, "Failed to pcell_out buffer.");
   // message( "isent pcells (%i) from node %i to node %i." , p->size_pcells_out
   // , p->mynodeID , p->nodeID ); fflush(stdout);
 
+#else
+  error("SWIFT was not compiled with MPI support.");
+#endif
+}
+
+void proxy_cells_exchange_third(struct proxy *p) {
+  
+#ifdef WITH_MPI
+
   /* Receive the number of pcells. */
-  err = MPI_Irecv(&p->size_pcells_in, 1, MPI_INT, p->nodeID,
+  int err = MPI_Irecv(&p->size_pcells_in, 1, MPI_INT, p->nodeID,
                   p->nodeID * proxy_tag_shift + proxy_tag_count, MPI_COMM_WORLD,
                   &p->req_cells_count_in);
   if (err != MPI_SUCCESS) mpi_error(err, "Failed to irecv nr of pcells.");
@@ -398,7 +403,7 @@ void proxy_cells_exchange_first(struct proxy *p) {
  *
  * @param p The #proxy.
  */
-void proxy_cells_exchange_second(struct proxy *p) {
+void proxy_cells_exchange_fourth(struct proxy *p) {
 
 #ifdef WITH_MPI
 
@@ -529,11 +534,61 @@ void proxy_cells_exchange(struct proxy *proxies, int num_proxies,
     message("Packing cells took %.3f %s.", clocks_from_ticks(getticks() - tic2),
             clocks_getunit());
 
+  tic2 = getticks();
+  
   /* Launch the first part of the exchange. */
-  //threadpool_map(&s->e->threadpool, proxy_cells_exchange_first_mapper, proxies,
-  //               num_proxies, sizeof(struct proxy), threadpool_auto_chunk_size,
-  //               /*extra_data=*/NULL);
-  proxy_cells_exchange_first_mapper(proxies, num_proxies, NULL);
+  for (int i = 0; i < num_proxies; ++i) {
+    proxy_cells_exchange_first(&proxies[i]);
+  }
+
+  if (s->e->verbose)
+    message("exchange first took %.3f %s.", clocks_from_ticks(getticks() - tic2),
+            clocks_getunit());
+
+  tic2 = getticks();
+  
+  for (int i = 0; i < num_proxies; ++i) {
+    struct proxy *p = &proxies[i];
+
+    /* Allocate and fill the pcell buffer. */
+    if (p->pcells_out != NULL) swift_free("pcells_out", p->pcells_out);
+    if (swift_memalign("pcells_out", (void **)&p->pcells_out,
+		       SWIFT_STRUCT_ALIGNMENT,
+		       sizeof(struct pcell) * p->size_pcells_out) != 0)
+      error("Failed to allocate pcell_out buffer.");
+    
+    for (int ind = 0, k = 0; k < p->nr_cells_out; k++) {
+      memcpy(&p->pcells_out[ind], p->cells_out[k]->mpi.pcell,
+	     sizeof(struct pcell) * p->cells_out[k]->mpi.pcell_size);
+      ind += p->cells_out[k]->mpi.pcell_size;
+    }
+  }
+
+  if (s->e->verbose)
+    message("memcpy took %.3f %s.", clocks_from_ticks(getticks() - tic2),
+            clocks_getunit());
+  
+  tic2 = getticks();
+
+  /* Launch the second part of the exchange. */
+  for (int i = 0; i < num_proxies; ++i) {
+    proxy_cells_exchange_second(&proxies[i]);
+  }
+
+  if (s->e->verbose)
+    message("exchange second took %.3f %s.", clocks_from_ticks(getticks() - tic2),
+            clocks_getunit());
+
+  tic2 = getticks();
+
+  /* Launch the third part of the exchange. */
+  for (int i = 0; i < num_proxies; ++i) {
+    proxy_cells_exchange_third(&proxies[i]);
+  }
+
+  if (s->e->verbose)
+    message("exchange third took %.3f %s.", clocks_from_ticks(getticks() - tic2),
+            clocks_getunit());
   
   for (int k = 0; k < num_proxies; k++) {
     reqs_in[k] = proxies[k].req_cells_count_in;
@@ -552,11 +607,11 @@ void proxy_cells_exchange(struct proxy *proxies, int num_proxies,
   
   /* Wait for each count to come in and start the recv. */
   for (int k = 0; k < num_proxies; k++) {
-    proxy_cells_exchange_second(&proxies[k]);
+    proxy_cells_exchange_fourth(&proxies[k]);
   }
 
   if (s->e->verbose)
-    message("exchange second took %.3f %s.", clocks_from_ticks(getticks() - tic2),
+    message("exchange fourth took %.3f %s.", clocks_from_ticks(getticks() - tic2),
             clocks_getunit());
   
   tic2 = getticks();
