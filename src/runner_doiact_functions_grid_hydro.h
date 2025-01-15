@@ -115,6 +115,7 @@ void DOPAIR(struct runner *restrict r, struct cell *ci, struct cell *cj,
 #endif
 
   struct engine *e = r->e;
+  const struct hydro_props *hydro = e->hydro_properties;
 
   /* Recurse? If the cells have been flipped in the branch function, ci might
    * be above its construction level. */
@@ -203,6 +204,26 @@ void DOPAIR(struct runner *restrict r, struct cell *ci, struct cell *cj,
       }
 
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FLUX_EXCHANGE)
+      if (hydro->particle_derefinement) {
+        if (part_left->time_bin == time_bin_apoptosis) {
+          /* perform apoptosis on part_left */
+          runner_iact_apoptosis(part_left, part_right, pair->midpoint,
+                                pair->surface_area, shift);
+          continue;
+        } else if (part_right->time_bin == time_bin_apoptosis) {
+          /* The pair needs to be flipped around */
+          /* The midpoint from the reference frame of the right particle */
+          double midpoint[3] = {pair->midpoint[0] - shift[0],
+                                pair->midpoint[1] - shift[1],
+                                pair->midpoint[2] - shift[2]};
+          /* The reversed shift */
+          double r_shift[3] = {-shift[0], -shift[1], -shift[2]};
+          /* perform apoptosis on part_right */
+          runner_iact_apoptosis(part_right, part_left, midpoint,
+                                pair->surface_area, r_shift);
+          continue;
+        }
+      }
       /* Flux exchange always symmetric */
       IACT(part_left, part_right, pair->midpoint, pair->surface_area, shift, 1);
 #else
@@ -332,6 +353,7 @@ void DOSELF(struct runner *restrict r, struct cell *restrict c) {
   TIMER_TIC;
 
   struct engine *e = r->e;
+  const struct hydro_props *hydro = e->hydro_properties;
 
 #ifdef SWIFT_DEBUG_CHECKS
   assert(c->grid.voronoi != NULL);
@@ -370,6 +392,19 @@ void DOSELF(struct runner *restrict r, struct cell *restrict c) {
     }
 
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FLUX_EXCHANGE)
+    if (hydro->particle_derefinement) {
+      if (part_left->time_bin == time_bin_apoptosis) {
+        /* perform apoptosis on part_left */
+        runner_iact_apoptosis(part_left, part_right, pair->midpoint,
+                              pair->surface_area, shift);
+        continue;
+      } else if (part_right->time_bin == time_bin_apoptosis) {
+        /* perform apoptosis on part_right */
+        runner_iact_apoptosis(part_right, part_left, pair->midpoint,
+                              pair->surface_area, shift);
+        continue;
+      }
+    }
     /* Flux exchange always symmetric */
     IACT(part_left, part_right, pair->midpoint, pair->surface_area, shift, 1);
 #else

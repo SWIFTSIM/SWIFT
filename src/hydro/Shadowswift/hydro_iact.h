@@ -279,6 +279,37 @@ __attribute__((always_inline)) INLINE static void runner_iact_flux_exchange(
 }
 
 /**
+ * @brief Transfer a portion of pi's conserved quantities to pj before pi is
+ * removed from the simulation.
+ *
+ * We use the ratio of the face between pi and pj over the total area of pi's
+ * faces as a heuristic for the fraction to transfer.
+ *
+ * @param pi Particle i (the "left" particle). This particle will be removed.
+ * @param pj Particle j (the "right" particle).
+ * @param centroid Centroid of the face between pi and pj.
+ * @param surface_area Surface area of the face.
+ * @param shift Shift to apply to the coordinates of pj.
+ */
+__attribute__((always_inline)) INLINE static void runner_iact_apoptosis(
+    struct part *pi, struct part *pj, double const *centroid,
+    float surface_area, const double *shift) {
+  const float fraction = surface_area / pi->geometry.area;
+
+  /* Transfer conserved quantities, including any fluxes that had not been
+   * applied to pi yet. */
+  pj->flux.mass += fraction * (pi->conserved.mass + pi->flux.mass);
+  pj->flux.momentum[0] +=
+      fraction * (pi->conserved.momentum[0] + pi->flux.momentum[0]);
+  pj->flux.momentum[1] +=
+      fraction * (pi->conserved.momentum[1] + pi->flux.momentum[1]);
+  pj->flux.momentum[2] +=
+      fraction * (pi->conserved.momentum[2] + pi->flux.momentum[2]);
+  pj->flux.energy += fraction * (pi->conserved.energy + pi->flux.energy);
+  pj->flux.entropy += fraction * (pi->conserved.entropy + pi->flux.entropy);
+}
+
+/**
  * @brief Not used in the ShadowSWIFT scheme.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_density(
