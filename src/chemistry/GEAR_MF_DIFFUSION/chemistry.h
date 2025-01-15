@@ -739,6 +739,22 @@ __attribute__((always_inline)) INLINE static void chemistry_first_init_part(
   /* Set the substep to 0 so that we can compute everything in timestep for the
      first time. */
   p->chemistry_data.timesteps.current_substep = 0;
+
+#if defined(GEAR_MF_HYPERBOLIC_DIFFUSION)
+  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
+    p->chemistry_data.hyperbolic_flux[i].F_diff_pred[0] = 0.0;
+    p->chemistry_data.hyperbolic_flux[i].F_diff_pred[1] = 0.0;
+    p->chemistry_data.hyperbolic_flux[i].F_diff_pred[2] = 0.0;
+
+    p->chemistry_data.hyperbolic_flux[i].F_diff[0] = 0.0;
+    p->chemistry_data.hyperbolic_flux[i].F_diff[1] = 0.0;
+    p->chemistry_data.hyperbolic_flux[i].F_diff[2] = 0.0;
+
+    p->chemistry_data.hyperbolic_flux[i].dF_dt[0] = 0.0;
+    p->chemistry_data.hyperbolic_flux[i].dF_dt[1] = 0.0;
+    p->chemistry_data.hyperbolic_flux[i].dF_dt[2] = 0.0;
+  }
+#endif
 }
 
 /**
