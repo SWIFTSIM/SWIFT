@@ -248,8 +248,16 @@ struct part {
      * been added. */
     unsigned long delaunay_flags;
 
-    /*! Voronoi cell volume. */
-    float volume;
+    union {
+      /*! Voronoi cell volume. */
+      float volume;
+
+      /*! Total area of non-boundary faces of voronoi cell (only used when
+       * performing derefinement, in which case we don't need the volume any
+       * more) */
+       float area;
+    };
+
 
     /*! Voronoi cell centroid, relative to this particles position. */
     float centroid[3];

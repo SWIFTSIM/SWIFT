@@ -2158,6 +2158,7 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
   TIMER_TIC;
 
   struct engine *e = r->e;
+  const struct hydro_props *hydro = e->hydro_properties;
   const struct cosmology *cosmo = e->cosmology;
   const struct chemistry_global_data *chemistry = e->chemistry;
   const int with_ext_gravity = e->policy & engine_policy_external_gravity;
@@ -2216,6 +2217,67 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
     for (struct cell *tmp = c->parent; tmp != NULL; tmp = tmp->parent) {
       atomic_max_f(&tmp->hydro.h_max, h_max);
       atomic_max_f(&tmp->hydro.h_max_active, h_max_active);
+    }
+  }
+
+  /* Flag particles for de-refinement if we are at the construction level */
+  if (hydro->particle_derefinement && c->grid.construction_level == c) {
+
+    /* Get the neighbouring cells */
+    struct cell *ngb_cells[27];
+    ngb_cells[13] = c;
+    for (struct link *l = c->grid.sync_in; l != NULL; l = l->next) {
+      struct cell *ci_temp = c;
+      struct cell *cj_temp = l->t->cj;
+      double shift[3] = {0.0, 0.0, 0.0};
+      int sid = space_getsid_and_swap_cells(e->s, &ci_temp, &cj_temp, shift);
+      /* Flipped? */
+      if (c == ci_temp) sid = 26 - sid;
+      ngb_cells[sid] = l->t->cj;
+    }
+
+    /* Loop through the particles and flag the ones whose volume is too small
+     * and have no neighbours with smaller volume */
+    for (int pi_idx = 0; pi_idx < c->hydro.count; pi_idx++) {
+      struct part *pi = &c->hydro.parts[pi_idx];
+      /* Anything to do here? */
+      if (!part_is_active(pi, e)) continue;
+      if (pi->geometry.volume > hydro->particle_derefinement_volume_threshold)
+        continue;
+
+      /* We have a particle that should be de-refined, check its neighbours for
+       * conflicts. */
+      int faces_start = pi->geometry.pair_connections_offset;
+      int faces_end = faces_start + pi->geometry.nface;
+      double total_area = 0.;
+      for (int j = faces_start; j < faces_end; j++) {
+        struct int2 connection =
+            c->grid.voronoi->cell_pair_connections.values[j];
+        int sid = connection._1;
+        /* Boundary face? */
+        if (sid == 27) continue;
+        int face_idx = connection._0;
+        struct voronoi_pair *face = &c->grid.voronoi->pairs[sid][face_idx];
+        total_area += face->surface_area;
+        int pj_idx =
+            face->left_idx == pi_idx ? face->right_idx : face->left_idx;
+        struct part *pj = &ngb_cells[sid]->hydro.parts[pj_idx];
+        /* Should we de-refine pj instead? */
+        if (pj->time_bin == time_bin_apoptosis ||
+            (part_is_active(pj, e) &&
+             pj->geometry.volume < pi->geometry.volume)) {
+          /* we found a conflict, so we can't de-refine pi, continue the outer
+           * loop instead */
+          goto next_particle;
+        }
+        total_area += face->surface_area;
+      }
+      /* No conflicts were found, indicate that this particle will be killed
+       * during the flux exchange */
+      pi->time_bin = time_bin_apoptosis;
+      pi->geometry.area = total_area;
+
+    next_particle:;
     }
   }
 
@@ -2331,6 +2393,8 @@ void runner_do_flux_ghost(struct runner *r, struct cell *c, int timer) {
 
   for (int i = 0; i < c->hydro.count; i++) {
     struct part *p = &c->hydro.parts[i];
+    /* once flux calculation is complete, apoptosis is finished. */
+    if (p->time_bin == time_bin_apoptosis) p->time_bin = time_bin_inhibited;
     if (!part_is_active(p, e)) continue;
 
 #ifdef EXTRA_HYDRO_LOOP
