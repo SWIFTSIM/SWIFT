@@ -81,13 +81,23 @@ chemistry_compute_physical_diffusion_flux(
                                  grad_p = a^{-1} * grad_c.
      The metallicity is already physical (Z_p = Z_c = Z). */
 
-  if (chem_data->diffusion_mode == isotropic_constant ||
-      chem_data->diffusion_mode == isotropic_smagorinsky) {
-    /* Isotropic diffusion: K = kappa * I_3. */
+  if (chem_data->diffusion_mode == isotropic_constant) {
+    /* Here, we use grad (rho Z) */
+    double grad_rhoZ[3];
+    chemistry_get_metal_density_gradients(p, metal, grad_rhoZ);
+    const double a_inv_4 = cosmo->a_inv*cosmo->a_inv*cosmo->a_inv*cosmo->a_inv;
+
+    /* a^-3 for density and a^-1 for gradient */
+    F_diff[0] = -kappa * grad_rhoZ[0] * a_inv_4;
+    F_diff[1] = -kappa * grad_rhoZ[1] * a_inv_4;
+    F_diff[2] = -kappa * grad_rhoZ[2] * a_inv_4;
+  } else if (chem_data->diffusion_mode == isotropic_smagorinsky) {
+    /* Here, we use grad Z */
     F_diff[0] = -kappa * p->chemistry_data.gradients.Z[metal][0] * cosmo->a_inv;
     F_diff[1] = -kappa * p->chemistry_data.gradients.Z[metal][1] * cosmo->a_inv;
     F_diff[2] = -kappa * p->chemistry_data.gradients.Z[metal][2] * cosmo->a_inv;
   } else {
+    /* Here, we use grad Z */
     /* Initialise to the flux to 0 */
     F_diff[0] = 0.0;
     F_diff[1] = 0.0;
@@ -103,7 +113,7 @@ chemistry_compute_physical_diffusion_flux(
             K[i][j] * p->chemistry_data.gradients.Z[metal][j] * cosmo->a_inv;
       }
     } /* End of matrix multiplication */
-  } /* end of if else diffusion_mode */
+    } /* end of if else diffusion_mode */
 }
 
 /**
