@@ -131,24 +131,24 @@ struct chemistry_part_data {
      */
     double Z[GEAR_CHEMISTRY_ELEMENT_COUNT][3];
 
-    /*! Fluid velocity gradients. */
-    float v[3][3];
-
     /*! Density gradient */
     float rho[3];
+
+    /*! Fluid velocity gradients. */
+    float v[3][3];
 
   } gradients;
 
   /* Cell-wise limiter to avoid creating new min or max */
   struct {
-    /*! Extreme values of the fluid metal density among the neighbours. */
-    double rho_Z[GEAR_CHEMISTRY_ELEMENT_COUNT][2];
+    /*! Extreme values of the fluid metal mass fraction  among the neighbours. */
+    double Z[GEAR_CHEMISTRY_ELEMENT_COUNT][2];
+
+    /*! Extreme values of the density among the neigbours. */
+    float rho[2];
 
     /*! Extreme values of the fluid velocity among the neighbours. */
     float v[3][2];
-
-    /*! Extreme values of the density among the neigbouts */
-    float rho[2];
 
     /*! Extreme values of the filtered velocity among the neighbours. */
     float v_tilde[3][2];
