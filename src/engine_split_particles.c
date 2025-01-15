@@ -207,22 +207,10 @@ void engine_split_gas_particle_split_mapper(void *restrict map_data, int count,
       p->x[1] += delta_y * displacement_factor * h;
       p->x[2] += delta_z * displacement_factor * h;
 
-      if (with_gravity) {
-        gp->x[0] += delta_x * displacement_factor * h;
-        gp->x[1] += delta_y * displacement_factor * h;
-        gp->x[2] += delta_z * displacement_factor * h;
-      }
-
       /* Displace the new particle */
       global_parts[k_parts].x[0] -= delta_x * displacement_factor * h;
       global_parts[k_parts].x[1] -= delta_y * displacement_factor * h;
       global_parts[k_parts].x[2] -= delta_z * displacement_factor * h;
-
-      if (with_gravity) {
-        global_gparts[k_gparts].x[0] -= delta_x * displacement_factor * h;
-        global_gparts[k_gparts].x[1] -= delta_y * displacement_factor * h;
-        global_gparts[k_gparts].x[2] -= delta_z * displacement_factor * h;
-      }
 
       /* Divide the mass */
       const double new_mass = gas_mass * 0.5;
@@ -230,9 +218,21 @@ void engine_split_gas_particle_split_mapper(void *restrict map_data, int count,
       hydro_set_mass(&global_parts[k_parts], new_mass);
 
       if (with_gravity) {
-        gp->mass = new_mass;
-        global_gparts[k_gparts].mass = new_mass;
+        /* Apply new masses and positions to gparts */
+        gp->mass = hydro_get_mass(p);
+        global_gparts[k_gparts].mass = hydro_get_mass(&global_parts[k_parts]);
+        gp->x[0] = p->x[0];
+        gp->x[1] = p->x[1];
+        gp->x[2] = p->x[2];
+        global_gparts[k_gparts].x[0] = global_parts[k_parts].x[0];
+        global_gparts[k_gparts].x[1] = global_parts[k_parts].x[1];
+        global_gparts[k_gparts].x[2] = global_parts[k_parts].x[2];
       }
+
+      /* Split other hydro quantities */
+      hydro_split_part(p, xp, particle_split_factor);
+      hydro_split_part(&global_parts[k_parts], &global_xparts[k_parts],
+                       particle_split_factor);
 
       /* Split the chemistry fields */
       chemistry_split_part(p, particle_split_factor);
