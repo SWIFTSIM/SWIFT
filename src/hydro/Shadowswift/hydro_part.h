@@ -253,7 +253,6 @@ struct part {
     } apoptosis_data;
   };
 
-
   /*! Geometric information associated with this particle */
   struct {
 
@@ -263,7 +262,6 @@ struct part {
 
     /*! Voronoi cell volume. */
     float volume;
-
 
     /*! Voronoi cell centroid, relative to this particles position. */
     float centroid[3];

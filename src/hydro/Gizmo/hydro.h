@@ -749,8 +749,7 @@ __attribute__((always_inline)) INLINE static void hydro_remove_part(
  * @param particle_split_factor Over how many particles are we splitting?
  */
 __attribute__((always_inline)) INLINE static void hydro_split_part(
-    struct part *p, struct xpart *xp,
-    const int particle_split_factor) {
+    struct part* p, struct xpart* xp, const int particle_split_factor) {
   const float fraction = 1.f / (float)particle_split_factor;
   /* Conserved quantities (without mass) */
   p->conserved.momentum[0] *= fraction;
@@ -787,6 +786,6 @@ __attribute__((always_inline)) INLINE static void hydro_split_part(
  * @param displacement (in-out) initial random displacement vector.
  */
 __attribute__((always_inline)) INLINE static void hydro_split_part_displacement(
-    struct part *p, struct xpart *xp, double *displacement) {}
+    struct part* p, struct xpart* xp, double* displacement) {}
 
 #endif /* SWIFT_GIZMO_HYDRO_H */

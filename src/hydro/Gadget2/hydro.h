@@ -247,7 +247,7 @@ __attribute__((always_inline)) INLINE static float hydro_get_mass(
  * @param com (Return) The center of mass vector
  */
 __attribute__((always_inline)) INLINE static void hydro_get_center_of_mass(
-    const struct part* restrict p, double* com) {
+    const struct part *restrict p, double *com) {
   com[0] = p->x[0];
   com[1] = p->x[1];
   com[2] = p->x[2];
@@ -1047,8 +1047,7 @@ __attribute__((always_inline)) INLINE static void hydro_remove_part(
  * @param particle_split_factor Over how many particles are we splitting?
  */
 __attribute__((always_inline)) INLINE static void hydro_split_part(
-    struct part *p, struct xpart *xp,
-    const int particle_split_factor) {}
+    struct part *p, struct xpart *xp, const int particle_split_factor) {}
 
 /**
  * @brief Update given random displacement vector if needed.
