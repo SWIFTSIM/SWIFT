@@ -423,29 +423,15 @@ __attribute__((always_inline)) INLINE static void chemistry_riemann_solver_HLL(
   /* Obtain velocity in interface frame */
   const float u_L = WL[1] * n_unit[0] + WL[2] * n_unit[1] + WL[3] * n_unit[2];
   const float u_R = WR[1] * n_unit[0] + WR[2] * n_unit[1] + WR[3] * n_unit[2];
-  /* const float u_rel = u_L - u_R; */
+  const float u_rel = u_L - u_R;
 
   /* Get the fastet speed of sound. Use physical soundspeed */
   const float c_s_L = hydro_get_physical_soundspeed(pi, cosmo);
   const float c_s_R = hydro_get_physical_soundspeed(pj, cosmo);
-  /* const float c_s_L = chemistry_get_physical_hyperbolic_soundspeed(pi,
-   * chem_data, cosmo); */
-  /* const float c_s_R = chemistry_get_physical_hyperbolic_soundspeed(pj,
-   * chem_data, cosmo); */
 
-  /* Approximate lambda_plus and lambda_minus. Use velocity difference. */
-  const double lambda_plus = max(u_L + c_s_L, u_R + c_s_R);
-  const double lambda_minus = min(u_L - c_s_L, u_R - c_s_R);
-
-  /* const double lambda_plus = max(u_rel + c_s_L, u_rel + c_s_R); */
-  /* const double lambda_minus = min(u_rel - c_s_L, u_rel - c_s_R); */
-
-  /* const double lambda_plus = max(fabs(u_L) + c_s_L, fabs(u_R) + c_s_R); */
-  /* const double lambda_minus = - lambda_plus; */
-
-  /* const float c_fast = max(c_s_L, c_s_R); */
-  /* const float lambda_plus = fabsf(u_rel) + c_fast; */
-  /* const float lambda_minus = -lambda_plus; */
+  const float c_fast = max(c_s_L, c_s_R);
+  const float lambda_plus = fabsf(u_rel) + c_fast;
+  const float lambda_minus = -lambda_plus;
 
   if (lambda_plus == 0.0 && lambda_minus == 0.0) {
     *metal_flux = 0.0;
