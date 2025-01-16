@@ -193,27 +193,49 @@ __attribute__((always_inline)) INLINE static void chemistry_slope_limit_face(
     double *Ui, double *Uj, double *dUi, double *dUj, const float xij_i[3],
     const float *xij_j, float r) {
 
-  /* const float xij_i_norm = */
-  /*     sqrtf(xij_i[0] * xij_i[0] + xij_i[1] * xij_i[1] + xij_i[2] * xij_i[2]);
-   */
-
-  /* const float xij_j_norm = */
-  /*     sqrtf(xij_j[0] * xij_j[0] + xij_j[1] * xij_j[1] + xij_j[2] * xij_j[2]);
-   */
-
-  /* const float r_inv = (r > 0.0f) ? 1.0f / r : 0.0f; */
-
-  /* *dUi = chemistry_slope_limit_face_quantity_double(Ui[0], Uj[0], Ui[0] +
-   * dUi[0], */
-  /*                                            xij_i_norm, r_inv); */
-
-  /* *dUj = chemistry_slope_limit_face_quantity_double(Uj[0], Ui[0], Uj[0] +
-   * dUj[0], */
-  /*                                            xij_j_norm, r_inv); */
-
   /* Use the minmod slop limiter: it avoids most pathological cases where the
-     mass of metals gets bigger than the mass of the particle */
-  chemistry_limiter_minmod(dUi, dUj);
+     mass of metals gets bigger than the mass of the particle. It's better
+     than Hopkins slope limiter */
+  /* chemistry_limiter_minmod(dUi, dUj); */
+
+  /* For hyperbolic diffusion, all these slope limiter perform better than
+     minmod and reduce numerical diffusion */
+  /* const double alphai = chemistry_limiter_mc(*dUi, *dUj); */
+  /* const double alphaj = chemistry_limiter_mc(*dUj, *dUi); */
+  /* *dUi *= alphai; */
+  /* *dUj *= alphaj; */
+
+  /* const double alphai = chemistry_limiter_superbee(*dUi, *dUj); */
+  /* const double alphaj = chemistry_limiter_superbee(*dUj, *dUi); */
+  /* *dUi *= alphai; */
+  /* *dUj *= alphaj; */
+
+  /* const double alphai = chemistry_limiter_vanLeer(*dUi, *dUj); */
+  /* const double alphaj = chemistry_limiter_vanLeer(*dUj, *dUi); */
+  /* *dUi *= alphai; */
+  /* *dUj *= alphaj; */
+
+  /* const double alphai = chemistry_limiter_koren(*dUi, *dUj); */
+  /* const double alphaj = chemistry_limiter_koren(*dUj, *dUi); */
+  /* *dUi *= alphai; */
+  /* *dUj *= alphaj; */
+
+  /* The Gizmo slope limiter works even better. */
+  const float xij_i_norm =
+      sqrtf(xij_i[0] * xij_i[0] + xij_i[1] * xij_i[1] + xij_i[2] * xij_i[2]);
+
+  const float xij_j_norm =
+      sqrtf(xij_j[0] * xij_j[0] + xij_j[1] * xij_j[1] + xij_j[2] * xij_j[2]);
+
+  const float r_inv = (r > 0.0f) ? 1.0f / r : 0.0f;
+
+  *dUi = chemistry_slope_limit_face_quantity_double(Ui[0], Uj[0], Ui[0] +
+  dUi[0],
+                                             xij_i_norm, r_inv);
+
+  *dUj = chemistry_slope_limit_face_quantity_double(Uj[0], Ui[0], Uj[0] +
+  dUj[0],
+                                             xij_j_norm, r_inv);
 }
 
 /**
