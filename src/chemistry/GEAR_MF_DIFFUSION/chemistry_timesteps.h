@@ -41,8 +41,7 @@ chemistry_compute_parabolic_timestep(
 
   /* CFL condition */
   const float dt_cfl =
-      CFL_condition * delta_x /
-      chemistry_get_physical_hyperbolic_soundspeed(p, chem_data, cosmo);
+    CFL_condition * delta_x / p->chemistry_data.timestepvars.vmax;
   return dt_cfl;
 #else
   const struct chemistry_part_data *chd = &p->chemistry_data;

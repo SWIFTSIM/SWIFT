@@ -284,6 +284,17 @@ runner_iact_chemistry_fluxes_common(
   const float Vi = pi->geometry.volume;
   const float Vj = pj->geometry.volume;
 
+  /* calculate the maximal soundspeed */
+  const float ci = chemistry_get_physical_hyperbolic_soundspeed(pi, chem_data, cosmo);
+  const float cj = chemistry_get_physical_hyperbolic_soundspeed(pj, chem_data, cosmo);
+  const float vmax = ci + cj;
+
+  /* Store the soundspeed */
+  chi->timestepvars.vmax = max(chi->timestepvars.vmax, vmax);
+  if (mode == 1) {
+    chj->timestepvars.vmax = max(chj->timestepvars.vmax, vmax);
+  }
+
   /* Compute kernel of pi. */
   float wi, wi_dx;
   const float hi_inv = 1.0f / hi;

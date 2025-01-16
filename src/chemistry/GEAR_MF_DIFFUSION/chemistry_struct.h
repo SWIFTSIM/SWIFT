@@ -123,6 +123,18 @@ struct chemistry_part_data {
   } hyperbolic_flux[GEAR_CHEMISTRY_ELEMENT_COUNT];
 
   double tau;
+
+  /*! Variables used for timestep calculation. */
+  struct {
+    /* Maximum signal velocity among all the neighbours of the particle. The
+     * signal velocity encodes information about the relative fluid
+     * velocities
+     * AND particle velocities of the neighbour and this particle, as well
+     * as
+     * the sound speed of both particles. */
+    float vmax;
+
+  } timestepvars;
 #endif
 
   /* Gradients. */
@@ -197,6 +209,7 @@ struct chemistry_part_data {
     /*! Explicit timestep given by the CFL parabolic condition */
     float explicit_timestep;
   } timesteps;
+
 };
 
 /**

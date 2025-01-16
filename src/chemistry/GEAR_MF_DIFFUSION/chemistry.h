@@ -753,6 +753,8 @@ __attribute__((always_inline)) INLINE static void chemistry_first_init_part(
     p->chemistry_data.hyperbolic_flux[i].dF_dt[0] = 0.0;
     p->chemistry_data.hyperbolic_flux[i].dF_dt[1] = 0.0;
     p->chemistry_data.hyperbolic_flux[i].dF_dt[2] = 0.0;
+
+    p->chemistry_data.timestepvars.vmax = 0.0;
   }
 #endif
 }
