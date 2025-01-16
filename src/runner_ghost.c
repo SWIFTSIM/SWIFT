@@ -2227,6 +2227,7 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
     struct cell *ngb_cells[27];
     ngb_cells[13] = c;
     for (struct link *l = c->grid.sync_in; l != NULL; l = l->next) {
+      if (l->t->type == task_type_self) continue;
       struct cell *ci_temp = c;
       struct cell *cj_temp = l->t->cj;
       double shift[3] = {0.0, 0.0, 0.0};
