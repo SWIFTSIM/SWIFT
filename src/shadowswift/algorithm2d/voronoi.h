@@ -156,7 +156,8 @@ static inline int voronoi_add_pair(struct voronoi *v, const struct delaunay *d,
         int2 connection =
             v->cell_pair_connections
                 .values[ngb->geometry.pair_connections_offset + i];
-        if (v->pairs[connection._1][connection._0].right_idx == left_part_idx) {
+        if (connection._1 == 13 &&
+            v->pairs[connection._1][connection._0].right_idx == left_part_idx) {
           int2_lifo_queue_push(&v->cell_pair_connections, connection);
           return 1;
         }
