@@ -197,10 +197,16 @@ void engine_split_gas_particle_split_mapper(void *restrict map_data, int count,
       /* Displacement unit vector */
       const double delta_x = random_unit_interval(p->id, e->ti_current,
                                                   (enum random_number_type)0);
-      const double delta_y = random_unit_interval(p->id, e->ti_current,
-                                                  (enum random_number_type)1);
-      const double delta_z = random_unit_interval(p->id, e->ti_current,
-                                                  (enum random_number_type)2);
+      double delta_y = random_unit_interval(p->id, e->ti_current,
+                                            (enum random_number_type)1);
+      double delta_z = random_unit_interval(p->id, e->ti_current,
+                                            (enum random_number_type)2);
+#ifdef HYDRO_DIMENSION_1D
+      delta_y = 0.;
+      delta_z = 0.;
+#elif defined(HYDRO_DIMENSION_2D)
+      delta_z = 0.;
+#endif
 
       /* Displace the old particle */
       p->x[0] += delta_x * displacement_factor * h;
@@ -211,6 +217,22 @@ void engine_split_gas_particle_split_mapper(void *restrict map_data, int count,
       global_parts[k_parts].x[0] -= delta_x * displacement_factor * h;
       global_parts[k_parts].x[1] -= delta_y * displacement_factor * h;
       global_parts[k_parts].x[2] -= delta_z * displacement_factor * h;
+
+      if (!s->periodic) {
+        /* Clamp the new positions to the box */
+        const double dim_x = s->dim[0];
+        const double dim_y = s->dim[1];
+        const double dim_z = s->dim[2];
+        p->x[0] = fmin(dim_x, fmax(0., p->x[0]));
+        p->x[1] = fmin(dim_y, fmax(0., p->x[1]));
+        p->x[2] = fmin(dim_z, fmax(0., p->x[2]));
+        global_parts[k_parts].x[0] =
+            fmin(dim_x, fmax(0., global_parts[k_parts].x[0]));
+        global_parts[k_parts].x[1] =
+            fmin(dim_y, fmax(0., global_parts[k_parts].x[1]));
+        global_parts[k_parts].x[2] =
+            fmin(dim_z, fmax(0., global_parts[k_parts].x[2]));
+      }
 
       /* Divide the mass */
       const double new_mass = gas_mass * 0.5;
