@@ -2411,8 +2411,8 @@ void runner_do_flux_ghost(struct runner *r, struct cell *c, int timer) {
       if (fabs(p->apoptosis_data.transferred_fraction - 1.) > 1e-4)
         error("Not fully transferred during apoptosis!");
 #endif
-      /* Indicate that this particle should now be removed */
-      p->time_bin = time_bin_inhibited;
+      /* We can now remove the part */
+      cell_remove_part(e, c, p, &c->hydro.xparts[i]);
     }
     if (!part_is_active(p, e)) continue;
 
