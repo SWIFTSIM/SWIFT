@@ -893,7 +893,7 @@ __attribute__((always_inline)) INLINE static void hydro_split_part_displacement(
   double delta_y = displacement[1] - axis[1] * delta_dot_axis / axis_nrm2;
   double delta_z = displacement[2] - axis[2] * delta_dot_axis / axis_nrm2;
 
-  if (delta_x * delta_x + delta_y * delta_y + delta_z * delta_z < 1e-14) {
+  if (delta_x * delta_x + delta_y * delta_y + delta_z * delta_z < 1e-17) {
     /* try again with cyclic permutation */
     delta_dot_axis = displacement[1] * axis[0] + displacement[2] * axis[1] +
                      displacement[0] * axis[2];
@@ -902,9 +902,9 @@ __attribute__((always_inline)) INLINE static void hydro_split_part_displacement(
     delta_z = displacement[2] - axis[2] * delta_dot_axis / axis_nrm2;
   }
 
-  displacement[0] = delta_x;
-  displacement[1] = delta_y;
-  displacement[2] = delta_z;
+  displacement[0] = 0.001 * delta_x;
+  displacement[1] = 0.001 * delta_y;
+  displacement[2] = 0.001 * delta_z;
 }
 
 /**

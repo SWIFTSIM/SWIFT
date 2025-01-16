@@ -776,4 +776,17 @@ __attribute__((always_inline)) INLINE static void hydro_split_part(
   p->geometry.centroid[2] = p->x[2];
 }
 
+/**
+ * @brief Update given random displacement vector if needed.
+ *
+ * No-op for most schemes, but might be necessary for schemes with asymmetric
+ * cells/particles.
+ *
+ * @param p The particle.
+ * @param xp The extended particle data.
+ * @param displacement (in-out) initial random displacement vector.
+ */
+__attribute__((always_inline)) INLINE static void hydro_split_part_displacement(
+    struct part *p, struct xpart *xp, double *displacement) {}
+
 #endif /* SWIFT_GIZMO_HYDRO_H */

@@ -1089,4 +1089,17 @@ __attribute__((always_inline)) INLINE static void hydro_split_part(
     struct part *p, struct xpart *xp,
     const int particle_split_factor) {}
 
+/**
+ * @brief Update given random displacement vector if needed.
+ *
+ * No-op for most schemes, but might be necessary for schemes with asymmetric
+ * cells/particles.
+ *
+ * @param p The particle.
+ * @param xp The extended particle data.
+ * @param displacement (in-out) initial random displacement vector.
+ */
+__attribute__((always_inline)) INLINE static void hydro_split_part_displacement(
+    struct part *p, struct xpart *xp, double *displacement) {}
+
 #endif /* SWIFT_PRESSURE_ENERGY_HYDRO_H */
