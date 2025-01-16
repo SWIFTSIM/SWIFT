@@ -301,6 +301,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_apoptosis(
   if (pj->time_bin == time_bin_apoptosis) {
     error("De-refining neighbouring particles!");
   }
+  if (fraction > 1.)
+    error("Transferring fraction > 1. of conserved quantities!");
   pi->apoptosis_data.transferred_fraction += fraction;
   pi->apoptosis_data.transfer_count += 1;
 #endif
