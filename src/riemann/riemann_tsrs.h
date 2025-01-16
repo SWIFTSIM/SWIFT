@@ -96,7 +96,7 @@ __attribute__((always_inline)) INLINE static float riemann_solver_solve(
    * approximation */
   gL = riemann_g(WL[0], WL[4], P0);
   gR = riemann_g(WR[0], WR[4], P0);
-  P_star = (gL * WL[4] + gR * WR[4] + vL - vR) / (gL + gR);
+  P_star = fmaxf(0.f, (gL * WL[4] + gR * WR[4] + vL - vR) / (gL + gR));
 
   /* sample the solution */
   riemann_sample(WL, WR, n_unit, vL, vR, aL, aR, P_star, Whalf);
