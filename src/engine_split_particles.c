@@ -194,29 +194,32 @@ void engine_split_gas_particle_split_mapper(void *restrict map_data, int count,
         global_gparts[k_gparts].id_or_neg_offset = -k_parts;
       }
 
-      /* Displacement unit vector */
-      const double delta_x = random_unit_interval(p->id, e->ti_current,
-                                                  (enum random_number_type)0);
-      double delta_y = random_unit_interval(p->id, e->ti_current,
-                                            (enum random_number_type)1);
-      double delta_z = random_unit_interval(p->id, e->ti_current,
-                                            (enum random_number_type)2);
+      /* Random displacement vector in unit sphere */
+      double displacement[3] = {
+          random_unit_interval(p->id, e->ti_current,
+                               (enum random_number_type)0),
+          random_unit_interval(p->id, e->ti_current,
+                               (enum random_number_type)1),
+          random_unit_interval(p->id, e->ti_current,
+                               (enum random_number_type)2),
+      };
 #ifdef HYDRO_DIMENSION_1D
-      delta_y = 0.;
-      delta_z = 0.;
+      displacement[1] = 0.;
+      displacement[2] = 0.;
 #elif defined(HYDRO_DIMENSION_2D)
-      delta_z = 0.;
+      displacement[2] = 0.;
 #endif
+      hydro_split_part_displacement(p, xp, displacement);
 
       /* Displace the old particle */
-      p->x[0] += delta_x * displacement_factor * h;
-      p->x[1] += delta_y * displacement_factor * h;
-      p->x[2] += delta_z * displacement_factor * h;
+      p->x[0] += displacement[0] * displacement_factor * h;
+      p->x[1] += displacement[1] * displacement_factor * h;
+      p->x[2] += displacement[2] * displacement_factor * h;
 
       /* Displace the new particle */
-      global_parts[k_parts].x[0] -= delta_x * displacement_factor * h;
-      global_parts[k_parts].x[1] -= delta_y * displacement_factor * h;
-      global_parts[k_parts].x[2] -= delta_z * displacement_factor * h;
+      global_parts[k_parts].x[0] -= displacement[0] * displacement_factor * h;
+      global_parts[k_parts].x[1] -= displacement[1] * displacement_factor * h;
+      global_parts[k_parts].x[2] -= displacement[2] * displacement_factor * h;
 
       if (!s->periodic) {
         /* Clamp the new positions to the box */

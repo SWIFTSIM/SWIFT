@@ -826,8 +826,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
  * @param particle_split_factor Over how many particles are we splitting?
  */
 __attribute__((always_inline)) INLINE static void hydro_split_part(
-    struct part *p, struct xpart *xp,
-    const int particle_split_factor) {
+    struct part *p, struct xpart *xp, const int particle_split_factor) {
   const float fraction = 1.f / (float)particle_split_factor;
   /* Conserved quantities (without mass) */
   p->conserved.momentum[0] *= fraction;
@@ -852,6 +851,60 @@ __attribute__((always_inline)) INLINE static void hydro_split_part(
   p->geometry.centroid[0] = 0.f;
   p->geometry.centroid[1] = 0.f;
   p->geometry.centroid[2] = 0.f;
+}
+
+/**
+ * @brief Update given random displacement vector if needed.
+ *
+ * Might be necessary for schemes with asymmetric cells.
+ *
+ * @param p The particle.
+ * @param xp The extended particle data.
+ * @param displacement (in-out) initial random displacement vector.
+ */
+__attribute__((always_inline)) INLINE static void hydro_split_part_displacement(
+    struct part *p, struct xpart *xp, double *displacement) {
+  /* Set some minimal distance */
+  double displacement_nrm2 = displacement[0] * displacement[0] +
+                             displacement[1] * displacement[1] +
+                             displacement[2] * displacement[2];
+  if (displacement_nrm2 < 1e-14) {
+#ifdef SWIFT_DEBUG_CHECKS
+    if (displacement_nrm2 == 0) {
+      error("Displacement vector cannot be 0!");
+    }
+#endif
+    double fac = sqrt(1e-14 / displacement_nrm2);
+    displacement[0] *= fac;
+    displacement[1] *= fac;
+    displacement[2] *= fac;
+  }
+
+  /* make perpendicular to cell axis */
+  const float *axis = p->geometry.centroid;
+  double axis_nrm2 = axis[0] * axis[0] + axis[1] * axis[1] + axis[2] * axis[2];
+  if (axis_nrm2 < 1e-14) {
+    /* Centroidal cell is symmetric */
+    return;
+  }
+  double delta_dot_axis = displacement[0] * axis[0] +
+                          displacement[1] * axis[1] + displacement[2] * axis[2];
+  double delta_x = displacement[0] - axis[0] * delta_dot_axis / axis_nrm2;
+  double delta_y = displacement[1] - axis[1] * delta_dot_axis / axis_nrm2;
+  double delta_z = displacement[2] - axis[2] * delta_dot_axis / axis_nrm2;
+
+  if (delta_x * delta_x + delta_y * delta_y + delta_z * delta_z < 1e-14) {
+    /* try again with cyclic permutation */
+    delta_dot_axis = displacement[1] * axis[0] + displacement[2] * axis[1] +
+                     displacement[0] * axis[2];
+    delta_x = displacement[0] - axis[0] * delta_dot_axis / axis_nrm2;
+    delta_y = displacement[1] - axis[1] * delta_dot_axis / axis_nrm2;
+    delta_z = displacement[2] - axis[2] * delta_dot_axis / axis_nrm2;
+  }
+
+  displacement[0] = delta_x;
+  displacement[1] = delta_y;
+  displacement[2] = delta_z;
 }
 
 /**
