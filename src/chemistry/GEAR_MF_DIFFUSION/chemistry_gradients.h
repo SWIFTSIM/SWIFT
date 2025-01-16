@@ -448,45 +448,41 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
     const float dx[3], const float r, const float xij_i[3], double *Ui,
     double *Uj) {
 
-  const double mi = hydro_get_mass(pi);
-  const double mj = hydro_get_mass(pj);
-
-  *Ui = chemistry_get_metal_mass_fraction(pi, metal);
-  *Uj = chemistry_get_metal_mass_fraction(pj, metal);
+  *Ui = chemistry_get_comoving_metal_density(pi, metal);
+  *Uj = chemistry_get_comoving_metal_density(pj, metal);
   /* No need to check unphysical state here: they haven't been touched since
      the call to chemistry_end_density() */
 
-  double m_Zi_not_extrapolated = *Ui * mi;
-  double m_Zj_not_extrapolated = *Uj * mj;
+  double grad_rhoZ_i[3];
+  double grad_rhoZ_j[3];
+  chemistry_get_metal_density_gradients(pi, metal, grad_rhoZ_i);
+  chemistry_get_metal_density_gradients(pj, metal, grad_rhoZ_j);
 
-  double dF_i[3];
-  double dF_j[3];
-  chemistry_get_metal_mass_fraction_gradients(pi, metal, dF_i);
-  chemistry_get_metal_mass_fraction_gradients(pj, metal, dF_j);
-
-  /* Compute interface position (relative to pj, since we don't need the actual
-   * position) eqn. (8)
-   * Do it this way in case dx contains periodicity corrections already */
-  const float xij_j[3] = {xij_i[0] + dx[0], xij_i[1] + dx[1], xij_i[2] + dx[2]};
+  /* Compute interface position (relative to pj, since we don't need the
+     actual position) eqn. (8)
+     Do it this way in case dx contains periodicity corrections already */
+  const float xij_j[3] = {xij_i[0] + dx[0], xij_i[1] + dx[1], xij_i[2] +
+  dx[2]};
 
   /* Linear reconstruction of U_R and U_L (rho*Z) */
-  double dUi = chemistry_gradients_extrapolate_double(dF_i, xij_i);
-  double dUj = chemistry_gradients_extrapolate_double(dF_j, xij_j);
+  double dUi = chemistry_gradients_extrapolate_double(grad_rhoZ_i, xij_i);
+  double dUj = chemistry_gradients_extrapolate_double(grad_rhoZ_j, xij_j);
 
-  /* Apply the slope limiter at this interface */
   chemistry_slope_limit_face(Ui, Uj, &dUi, &dUj, xij_i, xij_j, r);
 
   *Ui += dUi;
   *Uj += dUj;
 
-  /* Convert to density */
-  *Ui *= mi / pi->geometry.volume;
-  *Uj *= mj / pj->geometry.volume;
-
   /* Check we have physical masses and that we are not overshooting the
      particle's mass */
-  double m_Zi = *Ui * pi->geometry.volume; /* extrapolated masses */
-  double m_Zj = *Uj * pj->geometry.volume;
+  const double mi = hydro_get_mass(pi);
+  const double mj = hydro_get_mass(pj);
+  const double m_Zi_not_extrapolated = chemistry_get_metal_mass_fraction(pi,
+  metal) * mi;
+  const double m_Zj_not_extrapolated = chemistry_get_metal_mass_fraction(pj,
+  metal) * mj;
+  double m_Zi = *Ui * pi->geometry.volume; /* extrapolated mass */
+  double m_Zj = *Uj * pj->geometry.volume; /* extrapolated mass */
 
   chemistry_check_unphysical_state(&m_Zi, m_Zi_not_extrapolated, mi,
                                    /*callloc=*/1, /*element*/ metal);
