@@ -39,7 +39,6 @@ MWPotential2014Potential:
   position:        [0.,0.,0.]    #Centre of the potential with respect to centre of the box
   timestep_mult:   0.005     # Dimensionless pre-factor for the time-step condition
   epsilon:         0.001      # Softening size (internal units)
-  with_dynamical_friction:1
   #The following parameters are the default ones.
   # concentration:    9.823403437774843
   # M_200_Msun:       147.41031542774076e10
