@@ -2282,8 +2282,8 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
       pi->conserved.momentum[2] += pi->flux.momentum[2];
       pi->conserved.energy += pi->flux.energy;
       pi->conserved.entropy += pi->flux.entropy;
-#ifdef SWIFT_DEBUG_CHECKS
       pi->apoptosis_data.total_area = total_area;
+#ifdef SWIFT_DEBUG_CHECKS
       pi->apoptosis_data.transferred_fraction = 0.;
       pi->apoptosis_data.transfer_count = 0;
 #endif
