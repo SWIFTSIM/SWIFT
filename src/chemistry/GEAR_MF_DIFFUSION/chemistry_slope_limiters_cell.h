@@ -139,7 +139,12 @@ chemistry_slope_limit_quantity(double gradient[3], const float maxr,
 
   double gradtrue = sqrt(gradient[0] * gradient[0] + gradient[1] * gradient[1] +
                          gradient[2] * gradient[2]);
-  if (gradtrue != 0.0) {
+
+  /* If valmin == valmax, this is ill-defined. Do not slope-limit.
+     This case can happen e.g. in the MetalDiffusionOnePeak example where we
+     only have one particule with non zero metallicity. The slope limiter then
+     computes a high value for alpha (1e15). */
+  if (valmin != valmax && gradtrue != 0.0) {
     gradtrue *= maxr;
     const double gradtrue_inv = 1.0 / gradtrue;
     const double gradmax = valmax - value;
@@ -272,7 +277,7 @@ __attribute__((always_inline)) INLINE static void chemistry_slope_limit_cell(
                                  vz_tilde_lim[0], vz_tilde_lim[1], N_cond, 0);
 
   /* Slope limit density gradient */
-  chemistry_slope_limit_quantity(gradrho, maxr, p->rho, rholim[0], rholim[1], N_cond, 0);
+  chemistry_slope_limit_quantity(gradrho, maxr, p->rho, rholim[0], rholim[1], N_cond, 1);
 
   /* Set the velocity gradient values */
   chd->gradients.v[0][0] = gradvx[0];
