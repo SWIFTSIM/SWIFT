@@ -112,6 +112,9 @@ struct external_potential {
   /*! Are we using the dynamical friction ?*/
   int with_dynamical_friction;
 
+  /*! Coulomb logarithm */
+  double lnLambda;
+  
   /*! Gamma function evaluation \f$ \Gamma((3-\alpha)/2 \f$ */
   double gamma_psc;
 
@@ -120,6 +123,10 @@ struct external_potential {
    * the time integration steps */
   double timestep_mult;
 
+  /*! Time-step condition pre_factor, this factor is used to constraints
+   * the time-step so that the norm of v*dt is a fraction of the acceleration */
+  double timestep_mult_df;
+  
   /*! Minimum time step based on the orbital time at the softening times
    * the timestep_mult */
   double mintime;
@@ -189,7 +196,30 @@ __attribute__((always_inline)) INLINE static float external_gravity_timestep(
   const float period = 2.0f * M_PI * r / Vcirc;
 
   /* Time-step as a fraction of the circular period */
-  const float time_step = potential->timestep_mult * period;
+  float time_step = potential->timestep_mult * period;
+
+
+  /* Add dynamical friction */
+  
+  if (potential->with_dynamical_friction){
+
+    const float vx = g->v_full[0];
+    const float vy = g->v_full[1];
+    const float vz = g->v_full[2];  
+    
+    float v = sqrtf(vx*vx+vy*vy+vz*vz);
+
+    const float ax = g->a_grav[0];
+    const float ay = g->a_grav[1];
+    const float az = g->a_grav[2];
+    
+    float a = sqrtf(ax*ax+ay*ay+az*az);  
+    
+    time_step = min(time_step,potential->timestep_mult_df*a/v);
+
+  }
+
+
 
   return max(time_step, potential->mintime);
 
@@ -282,10 +312,7 @@ __attribute__((always_inline)) INLINE static void external_gravity_acceleration(
     const float vy = g->v_full[1];
     const float vz = g->v_full[2];  
     
-    float dyn_fric_fact = -1e-5;
-    
-    printf(">>\n");
-    
+    float dyn_fric_fact = -1e-6 *potential->lnLambda;
     
     g->a_grav[0] += dyn_fric_fact * vx; 
     g->a_grav[1] += dyn_fric_fact * vy;
@@ -440,8 +467,10 @@ static INLINE void potential_init_backend(
       potential->f);
   potential->with_dynamical_friction = parser_get_opt_param_int(
       parameter_file, "MWPotential2014Potential:with_dynamical_friction", 0);
-
-
+  potential->lnLambda = parser_get_opt_param_double(
+      parameter_file, "MWPotential2014Potential:lnLambda", 5.0);
+  potential->timestep_mult_df = parser_get_opt_param_double(
+      parameter_file, "MWPotential2014Potential:timestep_mult_df", 0.1);
 
   /* Convert to internal system of units by using the
    * physical constants defined in this system */
