@@ -108,6 +108,9 @@ struct external_potential {
 
   /*! Prefactor \f$ 2 \pi amplitude r_1^\alpha r_c^(2-\alpha) \f$ */
   double prefactor_psc_2;
+  
+  /*! Are we using the dynamical friction ?*/
+  int with_dynamical_friction;
 
   /*! Gamma function evaluation \f$ \Gamma((3-\alpha)/2 \f$ */
   double gamma_psc;
@@ -269,6 +272,26 @@ __attribute__((always_inline)) INLINE static void external_gravity_acceleration(
   g->a_grav[0] -= potential->f[2] * dpot_dr * dx * r_inv;
   g->a_grav[1] -= potential->f[2] * dpot_dr * dy * r_inv;
   g->a_grav[2] -= potential->f[2] * dpot_dr * dz * r_inv;
+  
+  
+  /* Add dynamical friction */
+  
+  if (potential->with_dynamical_friction){
+
+    const float vx = g->v_full[0];
+    const float vy = g->v_full[1];
+    const float vz = g->v_full[2];  
+    
+    float dyn_fric_fact = -1e-5;
+    
+    printf(">>\n");
+    
+    
+    g->a_grav[0] += dyn_fric_fact * vx; 
+    g->a_grav[1] += dyn_fric_fact * vy;
+    g->a_grav[2] += dyn_fric_fact * vz;
+  }
+  
   gravity_add_comoving_potential(g, potential->f[2] * pot_psc);
 
 #else
@@ -415,6 +438,10 @@ static INLINE void potential_init_backend(
   parser_get_opt_param_double_array(
       parameter_file, "MWPotential2014Potential:potential_factors", 3,
       potential->f);
+  potential->with_dynamical_friction = parser_get_opt_param_int(
+      parameter_file, "MWPotential2014Potential:with_dynamical_friction", 0);
+
+
 
   /* Convert to internal system of units by using the
    * physical constants defined in this system */
