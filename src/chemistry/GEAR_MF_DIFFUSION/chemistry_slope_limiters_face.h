@@ -54,6 +54,64 @@ __attribute__((always_inline)) INLINE static void chemistry_limiter_minmod(
 }
 
 /**
+ * The monotonized central limiter.
+ *
+ * @param dQi left slope
+ * @param dQj right slope
+ * @return factor to slope limit the slope dQi
+ */
+__attribute__((always_inline)) INLINE static double chemistry_limiter_mc(
+    const double dQi, const double dQj) {
+
+  const double r = dQj == 0.0 ? dQi * 1e6 : dQi / dQj;
+  const double minterm = min3(0.5 * (1.0 + r), 2.0, 2.0 * r);
+  return max(0.0, minterm);
+}
+
+/**
+ * The van Leer limiter.
+ *
+ * @param dQi left slope
+ * @param dQj right slope
+ * @return factor to slope limit the slope dQi
+ */
+__attribute__((always_inline)) INLINE static double chemistry_limiter_vanLeer(
+    const double dQi, const double dQj) {
+  const double r = dQj == 0.0 ? dQi * 1e6 : dQi / dQj;
+  const double absr = fabs(r);
+  return (r + absr) / (1.0 + absr);
+}
+
+/**
+ * The superbee limiter.
+ *
+ * @param dQi left slope
+ * @param dQj right slope
+ * @return factor to slope limit the slope dQi
+ */
+__attribute__((always_inline)) INLINE static double chemistry_limiter_superbee(
+    const double dQi, const double dQj) {
+  const double r = dQj == 0.0 ? dQi * 1e6 : dQi / dQj;
+  const double minterm1 = min(1.0, 2.0 * r);
+  const double minterm2 = min(2.0, r);
+  return max3(0.0, minterm1, minterm2);
+}
+
+/**
+ * The Koren limiter.
+ *
+ * @param dQi left slope
+ * @param dQj right slope
+ * @return factor to slope limit the slope dQi
+ */
+__attribute__((always_inline)) INLINE static double chemistry_limiter_koren(
+    const double dQi, const double dQj) {
+  const double r = dQj == 0.0 ? dQi * 1e6 : dQi / dQj;
+  const double minterm = min3(2.0*r, (1.0 + 2.0*r)/3.0, 2.0);
+  return max(0.0, minterm);
+}
+
+/**
  * @brief Slope limit a single quantity at the interface using Gizmo
  * slope-limiter.
  *
