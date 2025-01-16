@@ -86,6 +86,11 @@ __attribute__((always_inline)) INLINE static void runner_build_grid(
     }
   }
 
+  if (count_unconverged == 0) {
+    /* Nothing left to do */
+    goto cleanup;
+  }
+
   /* Now that we now the number of active particles, malloc the delaunay */
   struct delaunay *d = delaunay_malloc(c->loc, c->width, count_unconverged);
 
@@ -200,6 +205,7 @@ __attribute__((always_inline)) INLINE static void runner_build_grid(
 #ifdef SHADOWSWIFT_BVH
   flat_bvh_destroy(bvh);
 #endif
+cleanup:
   free(pid_unconverged);
   free(pid_ghost_candidate);
   free(search_radii);
