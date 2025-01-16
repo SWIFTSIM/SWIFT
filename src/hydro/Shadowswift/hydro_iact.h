@@ -293,20 +293,23 @@ __attribute__((always_inline)) INLINE static void runner_iact_flux_exchange(
  */
 __attribute__((always_inline)) INLINE static void runner_iact_apoptosis(
     struct part *pi, struct part *pj, double const *centroid,
-    float surface_area, const double *shift) {
-  const float fraction = surface_area / pi->geometry.area;
-
+    double surface_area, const double *shift) {
+  const double fraction = surface_area / pi->apoptosis_data.total_area;
+#ifdef SWIFT_DEBUG_CHECKS
+  if (pj->time_bin == time_bin_apoptosis) {
+    error("De-refining neighbouring particles!");
+  }
+  pi->apoptosis_data.transferred_fraction += fraction;
+  pi->apoptosis_data.transfer_count += 1;
+#endif
   /* Transfer conserved quantities, including any fluxes that had not been
    * applied to pi yet. */
-  pj->flux.mass += fraction * (pi->conserved.mass + pi->flux.mass);
-  pj->flux.momentum[0] +=
-      fraction * (pi->conserved.momentum[0] + pi->flux.momentum[0]);
-  pj->flux.momentum[1] +=
-      fraction * (pi->conserved.momentum[1] + pi->flux.momentum[1]);
-  pj->flux.momentum[2] +=
-      fraction * (pi->conserved.momentum[2] + pi->flux.momentum[2]);
-  pj->flux.energy += fraction * (pi->conserved.energy + pi->flux.energy);
-  pj->flux.entropy += fraction * (pi->conserved.entropy + pi->flux.entropy);
+  pj->flux.mass += fraction * pi->conserved.mass;
+  pj->flux.momentum[0] += fraction * pi->conserved.momentum[0];
+  pj->flux.momentum[1] += fraction * pi->conserved.momentum[1];
+  pj->flux.momentum[2] += fraction * pi->conserved.momentum[2];
+  pj->flux.energy += fraction * pi->conserved.energy;
+  pj->flux.entropy += fraction * pi->conserved.entropy;
 }
 
 /**

@@ -221,25 +221,38 @@ struct part {
   /* Flux counter, should be conserved */
   long flux_count;
 
-  /*! Fluxes. */
-  struct {
+  union {
+    /*! Fluxes. */
+    struct {
 
-    /* Mass flux. */
-    float mass;
+      /* Mass flux. */
+      float mass;
 
-    /* Momentum flux. */
-    float momentum[3];
+      /* Momentum flux. */
+      float momentum[3];
 
-    /* Energy flux. */
-    float energy;
+      /* Energy flux. */
+      float energy;
 
-    /* Entropy flux. */
-    float entropy;
+      /* Entropy flux. */
+      float entropy;
 
-    /* Timestep for flux calculation. */
-    float dt;
+      /* Timestep for flux calculation. */
+      float dt;
 
-  } flux;
+    } flux;
+
+    struct {
+      double total_area;
+
+#ifdef SWIFT_DEBUG_CHECKS
+      double transferred_fraction;
+
+      int transfer_count;
+#endif
+    } apoptosis_data;
+  };
+
 
   /*! Geometric information associated with this particle */
   struct {
@@ -248,15 +261,8 @@ struct part {
      * been added. */
     unsigned long delaunay_flags;
 
-    union {
-      /*! Voronoi cell volume. */
-      float volume;
-
-      /*! Total area of non-boundary faces of voronoi cell (only used when
-       * performing derefinement, in which case we don't need the volume any
-       * more) */
-       float area;
-    };
+    /*! Voronoi cell volume. */
+    float volume;
 
 
     /*! Voronoi cell centroid, relative to this particles position. */

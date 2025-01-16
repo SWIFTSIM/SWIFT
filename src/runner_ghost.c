@@ -2258,7 +2258,6 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
         if (sid == 27) continue;
         int face_idx = connection._0;
         struct voronoi_pair *face = &c->grid.voronoi->pairs[sid][face_idx];
-        total_area += face->surface_area;
         int pj_idx =
             face->left_idx == pi_idx ? face->right_idx : face->left_idx;
         struct part *pj = &ngb_cells[sid]->hydro.parts[pj_idx];
@@ -2275,7 +2274,19 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
       /* No conflicts were found, indicate that this particle will be killed
        * during the flux exchange */
       pi->time_bin = time_bin_apoptosis;
-      pi->geometry.area = total_area;
+      /* Apply any leftover fluxes */
+      pi->conserved.mass += pi->flux.mass;
+      pi->conserved.momentum[0] += pi->flux.momentum[0];
+      pi->conserved.momentum[1] += pi->flux.momentum[1];
+      pi->conserved.momentum[2] += pi->flux.momentum[2];
+      pi->conserved.energy += pi->flux.energy;
+      pi->conserved.entropy += pi->flux.entropy;
+#ifdef SWIFT_DEBUG_CHECKS
+      pi->apoptosis_data.total_area = total_area;
+      pi->apoptosis_data.transferred_fraction = 0.;
+      pi->apoptosis_data.transfer_count = 0;
+#endif
+      /* TODO apply gravitational work term? or transfer later? */
 
     next_particle:;
     }
@@ -2394,7 +2405,14 @@ void runner_do_flux_ghost(struct runner *r, struct cell *c, int timer) {
   for (int i = 0; i < c->hydro.count; i++) {
     struct part *p = &c->hydro.parts[i];
     /* once flux calculation is complete, apoptosis is finished. */
-    if (p->time_bin == time_bin_apoptosis) p->time_bin = time_bin_inhibited;
+    if (p->time_bin == time_bin_apoptosis) {
+#ifdef SWIFT_DEBUG_CHECKS
+      if (fabs(p->apoptosis_data.transferred_fraction - 1.) > 1e-4)
+        error("Not fully transferred during apoptosis!");
+#endif
+      /* Indicate that this particle should now be removed */
+      p->time_bin = time_bin_inhibited;
+    }
     if (!part_is_active(p, e)) continue;
 
 #ifdef EXTRA_HYDRO_LOOP
