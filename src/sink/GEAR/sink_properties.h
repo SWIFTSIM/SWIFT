@@ -137,6 +137,9 @@ struct sink_props {
 
   /*! Tolerance parameter for SF timestep constraint */
   float tolerance_SF_timestep;
+
+  /*! Sink formation efficiency */
+  float sink_formation_efficiency;
 };
 
 /**
@@ -329,6 +332,12 @@ INLINE static void sink_props_init(
 
   sp->sink_minimal_mass_Msun =
       parser_get_opt_param_float(params, "GEARSink:sink_minimal_mass_Msun", 0.);
+
+  /* Star formation efficiency */
+  sp->sink_formation_efficiency =
+    parser_get_opt_param_float(params,
+				"GEARSink:sink_formation_efficiency",
+				-1);
 
   /* Sink formation criterion parameters (all active by default) */
   sp->sink_formation_contracting_gas_criterion = parser_get_opt_param_int(
