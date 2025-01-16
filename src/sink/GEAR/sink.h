@@ -540,8 +540,39 @@ INLINE static int sink_should_convert_to_sink(
     const struct sink_props* sink_props, const struct engine* e,
     const double dt_sink) {
 
-  /* We do not use a stockastic approach.
-   * Once elligible (sink_is_forming), the gas particle form a sink */
+  if (sink_props->sink_formation_efficiency < 0) {
+    /* We do not use a stockastic approach.
+     * Once elligible (sink_is_forming), the gas particle form a sink */
+    return 1.0;
+  }
+
+  const struct phys_const *phys_const = e->physical_constants;
+  const struct cosmology* cosmo = e->cosmology;
+
+  /* Check that we are running a full time step */
+  if (dt_sink == 0.) {
+    return 0;
+  }
+
+  /* Get a few variables */
+  const float G = phys_const->const_newton_G;
+  const float density = hydro_get_physical_density(p, cosmo);
+
+  /* Get the mass of the future possible sink */
+  /* const float mass_gas = hydro_get_mass(p); */
+
+  /* Compute the probability */
+  const float inv_free_fall_time =
+      sqrtf(density * 32.f * G * 0.33333333f * M_1_PI);
+  float prob = 1.f - expf(-sink_props->sink_formation_efficiency *
+                          inv_free_fall_time * dt_sink);
+
+  /* Roll the dice... */
+  const float random_number =
+      random_unit_interval(p->id, e->ti_current, random_number_sink_formation);
+
+  /* Can we form a star? */
+  return random_number < prob;
 
   return 1;
 }
