@@ -142,12 +142,14 @@ chemistry_slope_limit_face_quantity_double(double phi_i, double phi_j,
 
   double phiplus, phiminus, phi_mid;
 
+  /* Determine phiplus */
   if (same_signf(phimax + delta1, phimax)) {
     phiplus = phimax + delta1;
   } else {
     phiplus = (phimax != 0.0f) ? phimax / (1.0f + delta1 / fabs(phimax)) : 0.0f;
   }
 
+  /* Determine phi_minus */
   if (same_signf(phimin - delta1, phimin)) {
     phiminus = phimin - delta1;
   } else {
@@ -155,6 +157,7 @@ chemistry_slope_limit_face_quantity_double(double phi_i, double phi_j,
         (phimin != 0.0f) ? phimin / (1.0f + delta1 / fabs(phimin)) : 0.0f;
   }
 
+  /* Determine phi_mid */
   if (phi_i < phi_j) {
     const double temp = min(phibar + delta2, phi_mid0);
     phi_mid = max(phiminus, temp);
@@ -162,6 +165,13 @@ chemistry_slope_limit_face_quantity_double(double phi_i, double phi_j,
     const double temp = max(phibar - delta2, phi_mid0);
     phi_mid = min(phiplus, temp);
   }
+
+  /* Enforce monotonicity */
+  const double minterm =  min(phimax, phi_mid);
+  phi_mid = max(phimin, minterm);
+
+  /* Enforce positivity */
+  phi_mid = max(0.0, phi_mid);
 
   return phi_mid - phi_i;
 }

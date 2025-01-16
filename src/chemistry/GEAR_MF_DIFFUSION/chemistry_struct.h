@@ -209,7 +209,6 @@ struct chemistry_part_data {
     /*! Explicit timestep given by the CFL parabolic condition */
     float explicit_timestep;
   } timesteps;
-
 };
 
 /**
