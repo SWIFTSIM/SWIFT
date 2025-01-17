@@ -121,8 +121,8 @@ INLINE static int chemistry_write_particles(const struct part* parts,
       /*can convert to comoving=*/0, convert_chemistry_diffusion_matrix,
       "Physical diffusion matrix, stored in a vector");
 
-#if defined(GEAR_MF_HYPERBOLIC_DIFFUSION)
-  // Check the a exponent
+#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
+  // TODO: Check the a exponent
   list[3] = io_make_physical_output_field(
        "RelaxationTimes", DOUBLE, 1, UNIT_CONV_TIME, 0.f, parts,
        chemistry_data.tau, /*can convert to comoving=*/1,

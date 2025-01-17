@@ -57,7 +57,7 @@ __attribute__((always_inline)) INLINE static void chemistry_kick_extra(
       /* Update the conserved variable */
       chd->metal_mass[i] += flux;
 
-#if defined(GEAR_MF_HYPERBOLIC_DIFFUSION)
+#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
       /* Avoid 0.0 divisions */
       if (chd->tau != 0.0) {
 	/* Get the parabolic diffusion flux */

@@ -217,9 +217,12 @@ __attribute__((always_inline)) INLINE static void chemistry_slope_limit_cell(
                             chd->filtered.rho_v[1] / chd->filtered.rho,
                             chd->filtered.rho_v[2] / chd->filtered.rho};
 
-#if defined(GEAR_MF_HYPERBOLIC_DIFFUSION)
+#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
+  /* The positivity preserving better reduces artificial diffusion */
   const int mode = 1;
 #else
+  /* For parabolic diffusion, it's better to use the regular cell slope
+     limiter. The Riemann solver takes care of artifical diffusion. */
   const int mode = 0;
 #endif
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {

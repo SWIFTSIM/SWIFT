@@ -61,7 +61,11 @@
  */
 static INLINE void chemistry_print_backend(
     const struct chemistry_global_data* data) {
+#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
+  message("Chemistry function is 'Gear MF hyperbolic diffusion'.");
+#else
   message("Chemistry function is 'Gear MF diffusion'.");
+#endif
 }
 
 /**
@@ -326,13 +330,16 @@ static INLINE void chemistry_init_backend(struct swift_params* parameter_file,
       parameter_file, "GEARChemistry:C_CFL_chemistry",
       DEFAULT_C_CFL_CHEMISTRY_SUPERTIMESTEPPPING);
 
-#if defined(GEAR_MF_HYPERBOLIC_DIFFUSION)
+  /***************************************************************************/
+  /* Hyperbolic diffusion */
+#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
   if (data->diffusion_mode == isotropic_constant) {
     data->tau =
-        parser_get_opt_param_float(parameter_file, "GEARChemistry:tau", 0.1);
+        parser_get_param_double(parameter_file, "GEARChemistry:tau");
   }
 
-  data->riemann_solver = parser_get_opt_param_float(
+  /* This is used for testing only */
+  data->riemann_solver = parser_get_opt_param_int(
       parameter_file, "GEARChemistry:riemann_solver", 1);
 #endif
 
@@ -602,7 +609,7 @@ __attribute__((always_inline)) INLINE static void chemistry_prepare_force(
   p->chemistry_data.kappa =
       chemistry_compute_diffusion_coefficient(p, cd, cosmo);
 
-#if defined(GEAR_MF_HYPERBOLIC_DIFFUSION)
+#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
   p->chemistry_data.tau = chemistry_compute_physical_tau(p, cd, cosmo);
 #endif
 }
@@ -740,7 +747,7 @@ __attribute__((always_inline)) INLINE static void chemistry_first_init_part(
      first time. */
   p->chemistry_data.timesteps.current_substep = 0;
 
-#if defined(GEAR_MF_HYPERBOLIC_DIFFUSION)
+#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
     p->chemistry_data.hyperbolic_flux[i].F_diff_pred[0] = 0.0;
     p->chemistry_data.hyperbolic_flux[i].F_diff_pred[1] = 0.0;
@@ -987,7 +994,7 @@ __attribute__((always_inline)) INLINE static void chemistry_predict_extra(
   /* Update diffusion coefficient */
   chd->kappa = chemistry_compute_diffusion_coefficient(p, chem_data, cosmo);
 
-#if defined(GEAR_MF_HYPERBOLIC_DIFFUSION)
+#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
   /* Compute the predicted flux */
 
   for (int m = 0; m < GEAR_CHEMISTRY_ELEMENT_COUNT; m++) {

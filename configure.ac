@@ -2554,11 +2554,22 @@ case "$with_chemistry" in
    ;;
    GEAR-MF-DIFFUSION_*)
       AC_DEFINE([CHEMISTRY_GEAR_MF_DIFFUSION], [1], [Chemistry taken from the
-      GEAR model with meshless finite particle method diffusion])
+      GEAR model with meshless finite particle method to solve the parabolic
+      diffusion equation])
       number_element=${with_chemistry#*_}
       AC_DEFINE_UNQUOTED([GEAR_CHEMISTRY_ELEMENT_COUNT], [$number_element], [Number of element to follow])
-      with_chemistry_name="GEAR MFM diffusion (with $number_element elements)"
-      with_chemistry="GEAR MFM DIFFUSION"
+      with_chemistry_name="GEAR MF diffusion (with $number_element elements)"
+      with_chemistry="GEAR MF DIFFUSION"
+   ;;
+   GEAR-MF-HYPERBOLIC-DIFFUSION_*)
+      AC_DEFINE([CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION], [1], [Chemistry taken from the
+      GEAR model with meshless finite particle method to solve the *hyperbolic*
+      diffusion equation])
+      number_element=${with_chemistry#*_}
+      AC_DEFINE_UNQUOTED([GEAR_CHEMISTRY_ELEMENT_COUNT], [$number_element],
+      [Number of element to follow])
+      with_chemistry_name="GEAR MF hyperbolic diffusion (with $number_element elements)"
+      with_chemistry="GEAR MF HYPERBOLIC DIFFUSION"
    ;;
    AGORA)
       AC_DEFINE([CHEMISTRY_AGORA], [1], [Chemistry taken from the AGORA model])
@@ -3236,7 +3247,8 @@ AM_CONDITIONAL([HAVE_CHEMISTRY_NONE], [test "$with_chemistry" = "none"])
 
 # check if using GEAR chemistry
 AM_CONDITIONAL([HAVE_CHEMISTRY_GEAR], [test "$with_chemistry" = "GEAR" || test
-"$with_chemistry" = "GEAR_DIFFUSION" || test "$with_chemistry" = "GEAR_MF_DIFFUSION"])
+"$with_chemistry" = "GEAR_DIFFUSION" || test "$with_chemistry" =
+"GEAR_MF_DIFFUSION" || test "$with_chemistry" = "CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION"])
 
 # check if using AGORA chemistry
 AM_CONDITIONAL([HAVE_CHEMISTRY_AGORA], [test "$with_chemistry" = "AGORA" || test "$with_chemistry" = "GEAR_DIFFUSION"])

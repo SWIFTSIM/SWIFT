@@ -344,11 +344,7 @@ chemistry_riemann_solver_hopkins2017_HLL(
   const double kappa_mean =
       0.5 * (pi->chemistry_data.kappa + pj->chemistry_data.kappa);
 
-#if !defined(GEAR_MF_HYPERBOLIC_DIFFUSION)
-  const double F_A_left_side[3] = {-kappa_mean * nabla_o_q_dir[0],
-                                   -kappa_mean * nabla_o_q_dir[1],
-                                   -kappa_mean * nabla_o_q_dir[2]};
-#else
+#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
   const float min_dt =
       (pj->chemistry_data.flux_dt > 0.f)
           ? fminf(pi->chemistry_data.flux_dt, pj->chemistry_data.flux_dt)
@@ -362,6 +358,10 @@ chemistry_riemann_solver_hopkins2017_HLL(
           min_dt * kappa_mean * nabla_o_q_dir[1],
       -min_dt * 0.5 * (F_diff_L[2] / tau_L + F_diff_R[2] / tau_R) -
           min_dt * kappa_mean * nabla_o_q_dir[2]};
+#else
+  const double F_A_left_side[3] = {-kappa_mean * nabla_o_q_dir[0],
+                                   -kappa_mean * nabla_o_q_dir[1],
+                                   -kappa_mean * nabla_o_q_dir[2]};
 #endif
 
   const double F_A_right_side[3] = {Anorm * dx_p[0] / dx_p_norm,
@@ -428,7 +428,6 @@ __attribute__((always_inline)) INLINE static void chemistry_riemann_solver_HLL(
   /* Get the fastet speed of sound. Use physical soundspeed */
   const float c_s_L = hydro_get_physical_soundspeed(pi, cosmo);
   const float c_s_R = hydro_get_physical_soundspeed(pj, cosmo);
-
   const float c_fast = max(c_s_L, c_s_R);
   const float lambda_plus = fabsf(u_rel) + c_fast;
   const float lambda_minus = -lambda_plus;
@@ -583,7 +582,7 @@ chemistry_riemann_solve_for_flux(
 
   /* No conversion to physical needed, everything is physical here */
   /* We probably need a mechanism to switch the Riemann solver when tau << 1.*/
-
+#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
   if (chem_data->riemann_solver == 1) {
     /* Regular HLL */
     chemistry_riemann_solver_HLL(dx, pi, pj, UL, UR, WL, WR, F_diff_L, F_diff_R,
@@ -606,6 +605,12 @@ chemistry_riemann_solve_for_flux(
   } else {
     return;
   }
+#else
+  /* Hopkins Hopkins 2017 implementation of HLL */
+  chemistry_riemann_solver_hopkins2017_HLL(dx, pi, pj, UL, UR, WL, WR,
+					   F_diff_L, F_diff_R, Anorm, n_unit,
+					   m, chem_data, cosmo, metal_flux);
+#endif
 }
 
 #endif /* SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_RIEMANN_HLL_H */

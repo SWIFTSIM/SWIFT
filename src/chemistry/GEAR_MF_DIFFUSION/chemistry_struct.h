@@ -51,7 +51,7 @@ struct chemistry_global_data {
   /*! Diffusion normalisation constant: \kappa \propto C */
   float diffusion_coefficient;
 
-#if defined(GEAR_MF_HYPERBOLIC_DIFFUSION)
+#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
   /*! Relaxation time for the constant isotropic case */
   double tau;
 
@@ -109,7 +109,7 @@ struct chemistry_part_data {
   /*! Metal mass flux */
   double diffusion_flux[GEAR_CHEMISTRY_ELEMENT_COUNT];
 
-#if defined(GEAR_MF_HYPERBOLIC_DIFFUSION)
+#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
   /* Hyperbolic flux scheme variables */
   struct {
     /*! Diffusion flux at the last active timestep */

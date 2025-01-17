@@ -284,7 +284,8 @@ runner_iact_chemistry_fluxes_common(
   const float Vi = pi->geometry.volume;
   const float Vj = pj->geometry.volume;
 
-  /* calculate the maximal soundspeed */
+#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
+  /* Calculate the maximal soundspeed */
   const float ci = chemistry_get_physical_hyperbolic_soundspeed(pi, chem_data, cosmo);
   const float cj = chemistry_get_physical_hyperbolic_soundspeed(pj, chem_data, cosmo);
   const float vmax = ci + cj;
@@ -294,6 +295,7 @@ runner_iact_chemistry_fluxes_common(
   if (mode == 1) {
     chj->timestepvars.vmax = max(chj->timestepvars.vmax, vmax);
   }
+#endif
 
   /* Compute kernel of pi. */
   float wi, wi_dx;

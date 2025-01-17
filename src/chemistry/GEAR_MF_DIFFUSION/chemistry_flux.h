@@ -143,7 +143,7 @@ __attribute__((always_inline)) INLINE static void chemistry_compute_flux(
     const struct chemistry_global_data* chem_data,
     const struct cosmology* cosmo, double* metal_flux) {
 
-#if !defined(GEAR_MF_HYPERBOLIC_DIFFUSION)
+#if !defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
   /* Note: F_diff_R and F_diff_L are computed with a first order
          reconstruction */
   /* Get the diffusion flux */
@@ -154,7 +154,8 @@ __attribute__((always_inline)) INLINE static void chemistry_compute_flux(
                                             cosmo);
 
 #else
-  /* Using the predicted fluxes. They improve metal mass conservation. */
+  /* Use the predicted fluxes. They improve metal mass conservation and reduce
+     artificial diffusion. */
   double F_diff_i[3] = {
       pi->chemistry_data.hyperbolic_flux[metal].F_diff_pred[0],
       pi->chemistry_data.hyperbolic_flux[metal].F_diff_pred[1],

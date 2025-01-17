@@ -193,9 +193,8 @@ __attribute__((always_inline)) INLINE static void chemistry_slope_limit_face(
     double *Ui, double *Uj, double *dUi, double *dUj, const float xij_i[3],
     const float *xij_j, float r) {
 
-  /* Use the minmod slop limiter: it avoids most pathological cases where the
-     mass of metals gets bigger than the mass of the particle. It's better
-     than Hopkins slope limiter */
+#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
+  /* Too much artificial diffusion, avoid using it */
   /* chemistry_limiter_minmod(dUi, dUj); */
 
   /* For hyperbolic diffusion, all these slope limiter perform better than
@@ -236,6 +235,27 @@ __attribute__((always_inline)) INLINE static void chemistry_slope_limit_face(
   *dUj = chemistry_slope_limit_face_quantity_double(Uj[0], Ui[0], Uj[0] +
   dUj[0],
                                              xij_j_norm, r_inv);
+#else
+  /* chemistry_limiter_minmod(dUi, dUj); */
+
+  /* The Gizmo slope limiter works better. */
+  const float xij_i_norm =
+      sqrtf(xij_i[0] * xij_i[0] + xij_i[1] * xij_i[1] + xij_i[2] * xij_i[2]);
+
+  const float xij_j_norm =
+      sqrtf(xij_j[0] * xij_j[0] + xij_j[1] * xij_j[1] + xij_j[2] * xij_j[2]);
+
+  const float r_inv = (r > 0.0f) ? 1.0f / r : 0.0f;
+
+  *dUi = chemistry_slope_limit_face_quantity_double(Ui[0], Uj[0], Ui[0] +
+  dUi[0],
+                                             xij_i_norm, r_inv);
+
+  *dUj = chemistry_slope_limit_face_quantity_double(Uj[0], Ui[0], Uj[0] +
+  dUj[0],
+                                             xij_j_norm, r_inv);
+
+#endif
 }
 
 /**

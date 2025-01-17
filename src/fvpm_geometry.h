@@ -24,7 +24,7 @@
 
 /* Import the right FVPM geometry functions */
 #if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH) || defined(RT_GEAR) || \
-    defined(CHEMISTRY_GEAR_MF_DIFFUSION)
+    defined(CHEMISTRY_GEAR_MF_DIFFUSION) || defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
 #include "./fvpm_geometry/Gizmo/fvpm_geometry.h"
 #else
 #include "./fvpm_geometry/None/fvpm_geometry.h"
