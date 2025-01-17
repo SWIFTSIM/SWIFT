@@ -28,7 +28,7 @@ Statistics:
 SPH:
   resolution_eta:        1.2348   # Target h in units of the mean inter-particle separation
   CFL_condition:         0.1      # Courant-Friedrich-Levy condition for time integration.
-  h_max:		 0.1
+  h_max:                 0.1
 
 # Parameters for MHD scheme
 MHD:
