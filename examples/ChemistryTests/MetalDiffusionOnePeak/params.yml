@@ -73,13 +73,15 @@ GrackleCooling:
 GEARChemistry:
   initial_metallicity: -1
   diffusion_coefficient:  2.516849e-03   # (Optional) GEAR (MFM or not) diffusion: Coefficient for the diffusion (see Shen et al. 2010; differs by gamma^2 due to h^2). Default: 1
-  diffusion_mode: Isotropic_constant  # Diffusion mode. Isotropic_constant = constant isotropic ; Smagorinsky = Smagorinsky (isotropic) ; Gradient = Gradient model (anisotropic). The diffusion_coefficient sets the normalisation of the diffusion.
+  diffusion_mode: Isotropic_constant     # Diffusion mode. Isotropic_constant = constant isotropic ; Smagorinsky = Smagorinsky (isotropic) ; Gradient = Gradient model (anisotropic). The diffusion_coefficient sets the normalisation of the diffusion.
   hll_riemann_solver_psi:  0.1        # (Optional) Tolerance parameter (> 0) for artificial diffusion, eq (7) in Hopkins 2017. (Default: 0.1)
   hll_riemann_solver_epsilon: 0.5     # (Optional) Tolerance parameter for the Hopkins 2017 HLL, eq (14). It must respect 0 <= epsilon <= 1. Default: 0.5
   use_supertimestepping: 0        # (Optional) Do we want to use supertimestepping? Supertimestepping can accelerate simulations. (Default: 0)
   N_substeps: 5                   # (Optional) Number of substeps in supertimestepping. (Default: 5)
   nu_supertimestepping: 0.04      # (Optional) Nu parameter for supertimestep. It's optimal when n >= 1/sqrt(N). (Default: 0.04)
   C_CFL_chemistry: 0.4            # (Optional) Courant-Friedrich-Levy condition for time integration of the supertimestep.
+  tau: 1 #1e-1 # Test 1e-10, 1e-5, 1e-1, 1, 10, 100, 1000
+  riemann_solver: 1
 
 GEARFeedback:
   supernovae_energy_erg: 1e51           # supernovae energy, used only for SNIa
