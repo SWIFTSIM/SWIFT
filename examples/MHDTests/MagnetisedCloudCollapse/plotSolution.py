@@ -12,12 +12,14 @@ filename = sys.argv[1]
 data = load(filename)
 center = 0.5 * data.metadata.boxsize
 
-R0 = 0.015 * 3.086e18 * unyt.cm
+G = 6.6743015e-8 * unyt.cm**3 / unyt.g / unyt.s**2
+R0 = 0.015 * unyt.pc
+M = 1.0 * unyt.Msun
 
-tff = 3e4 * 3.156e7 * unyt.s
+tff = np.sqrt(2.0 * R0**3 / (G * M))
 tsim = data.metadata.time
 tplot = tsim / tff
-print("Showing results at %2f free fall times" % tplot)
+#print("Showing results at %2f free fall times" % tplot)
 
 # First create a mass-weighted temperature dataset
 r = data.gas.coordinates - center
@@ -45,17 +47,17 @@ rotation_matrix = [[1,0,0],
 rotation_matrix = [[0, 0, 1], [0, 1, 0], [-1, 0, 0]]
 
 visualise_region = [
-    center[0] - 0.15 * R0,
-    center[0] + 0.15 * R0,
-    center[2] - 0.15 * R0,
-    center[2] + 0.15 * R0,
+    center[0] - 0.30 * R0,
+    center[0] + 0.30 * R0,
+    center[2] - 0.30 * R0,
+    center[2] + 0.30 * R0,
 ]
 
 visualise_region_zoom = [
-    center[0] - 0.015 * R0,
-    center[0] + 0.015 * R0,
-    center[2] - 0.015 * R0,
-    center[2] + 0.015 * R0,
+    center[0] - 0.030 * R0,
+    center[0] + 0.030 * R0,
+    center[2] - 0.030 * R0,
+    center[2] + 0.030 * R0,
 ]
 
 common_arguments = dict(
@@ -151,7 +153,7 @@ a21 = ax[2, 1].contourf(
 locs = [85.33, 256.00, 426.67]
 # locs   = [170.67, 512.00, 853.33]
 # locs   = [341.33, 1024, 1706.67]
-labels = [-0.1, 0.0, 0.1]
+labels = [-0.2, 0.0, 0.2]
 
 # locs   = [128, 256, 384]
 # labels = [-1.0, 0.0, 1.0]
