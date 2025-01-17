@@ -240,8 +240,8 @@ void cell_unpack_bpart_swallow(struct cell *c,
  */
 int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
                 struct space *restrict s, const int with_gravity,
-		const short int tpid) {
-  
+                const short int tpid) {
+
 #ifdef WITH_MPI
 
   /* Unpack the current pcell. */
