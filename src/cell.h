@@ -541,7 +541,7 @@ int cell_blocktree(struct cell *c);
 void cell_bunlocktree(struct cell *c);
 int cell_pack(struct cell *c, struct pcell *pc, const int with_gravity);
 int cell_unpack(struct pcell *pc, struct cell *c, struct space *s,
-                const int with_gravity);
+                const int with_gravity, const short int tpid);
 void cell_pack_part_swallow(const struct cell *c,
                             struct black_holes_part_data *data);
 void cell_unpack_part_swallow(struct cell *c,

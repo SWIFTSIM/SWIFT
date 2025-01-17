@@ -462,12 +462,47 @@ void proxy_cells_pack_mapper(void *map_data, int num_elements,
   }
 }
 
-void proxy_cells_exchange_first_mapper(void *map_data, int num_elements,
-                                       void *extra_data) {
-  struct proxy *proxies = (struct proxy *)map_data;
+void proxy_cells_unpack_mapper(void *map_data, int num_elements,
+			       void *extra_data) {
 
+  struct proxy *proxies = (struct proxy*) map_data;
+  struct pack_mapper_data *data = (struct pack_mapper_data *)extra_data;
+  const int with_gravity = data->with_gravity;
+  struct space *s = data->s;
+
+  /* Threadpool id of current thread. */
+  const short int tpid = threadpool_gettid();
+  
   for (int k = 0; k < num_elements; k++) {
-    proxy_cells_exchange_first(&proxies[k]);
+    int count = 0;
+      
+    for (int j = 0; j < proxies[k].nr_cells_in; j++) {
+      count += cell_unpack(&proxies[k].pcells_in[count], proxies[k].cells_in[j],
+                           s, with_gravity, tpid);
+    }
+  }  
+}
+
+void proxy_progress_requests_mapper(void *map_data, int num_elements,
+				    void *extra_data) {
+  
+  MPI_Request *reqs = (MPI_Request*) map_data;
+  
+  for (int k = 0; k < num_elements; k++) {
+
+    MPI_Status stat;
+    int result;
+    
+    /* Call MPI_Test to progress the pending requests
+     * Result is irrelevant */
+    const int err = MPI_Test(&reqs[k], &result, &stat);
+    
+    if(err != MPI_SUCCESS) {
+      char buff[MPI_MAX_ERROR_STRING];
+      int len;
+      MPI_Error_string(err, buff, &len);
+      error("MPI_Test failed with error '%s'", buff);
+    }
   }
 }
 
@@ -542,6 +577,10 @@ void proxy_cells_exchange(struct proxy *proxies, int num_proxies,
     proxy_cells_exchange_first(&proxies[i]);
   }
 
+  for (int k = 0; k < num_proxies; k++) {
+    reqs_out[k] = proxies[k].req_cells_count_out;
+  }
+  
   if (s->e->verbose)
     message("exchange first took %.3f %s.",
             clocks_from_ticks(getticks() - tic2), clocks_getunit());
@@ -570,32 +609,38 @@ void proxy_cells_exchange(struct proxy *proxies, int num_proxies,
             clocks_getunit());
 
   tic2 = getticks();
-
-  /* Launch the second part of the exchange. */
-  for (int i = 0; i < num_proxies; ++i) {
-    proxy_cells_exchange_second(&proxies[i]);
-  }
-
-  if (s->e->verbose)
-    message("exchange second took %.3f %s.",
-            clocks_from_ticks(getticks() - tic2), clocks_getunit());
-
-  tic2 = getticks();
-
+  
   /* Launch the third part of the exchange. */
   for (int i = 0; i < num_proxies; ++i) {
     proxy_cells_exchange_third(&proxies[i]);
   }
 
+  for (int k = 0; k < num_proxies; k++) {
+    reqs_in[k] = proxies[k].req_cells_count_in;
+  }
+
   if (s->e->verbose)
     message("exchange third took %.3f %s.",
             clocks_from_ticks(getticks() - tic2), clocks_getunit());
+		 
+  /* Progress messages in parallel */
+  tic2 = getticks();
+  threadpool_map(&s->e->threadpool, proxy_progress_requests_mapper,
+		 reqs_in, num_proxies, sizeof(MPI_Request), threadpool_auto_chunk_size,
+		 /*extra_data=*/NULL);		 
+  if (s->e->verbose)
+    message("Progressing count recv. took %.3f %s.",
+            clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
-  for (int k = 0; k < num_proxies; k++) {
-    reqs_in[k] = proxies[k].req_cells_count_in;
-    reqs_out[k] = proxies[k].req_cells_count_out;
-  }
+  tic2 = getticks();
+  threadpool_map(&s->e->threadpool, proxy_progress_requests_mapper,
+		 reqs_out, num_proxies, sizeof(MPI_Request), threadpool_auto_chunk_size,
+		 /*extra_data=*/NULL);		 
+  if (s->e->verbose)
+    message("Progressing count send. took %.3f %s.",
+            clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
+  /* Make sure all messages have arrived */
   tic2 = getticks();
 
   if (MPI_Waitall(num_proxies, reqs_in, MPI_STATUSES_IGNORE) != MPI_SUCCESS)
@@ -604,17 +649,7 @@ void proxy_cells_exchange(struct proxy *proxies, int num_proxies,
   if (s->e->verbose)
     message("WaitAll on counts_in took %.3f %s.",
             clocks_from_ticks(getticks() - tic2), clocks_getunit());
-  tic2 = getticks();
-
-  /* Wait for each count to come in and start the recv. */
-  for (int k = 0; k < num_proxies; k++) {
-    proxy_cells_exchange_fourth(&proxies[k]);
-  }
-
-  if (s->e->verbose)
-    message("exchange fourth took %.3f %s.",
-            clocks_from_ticks(getticks() - tic2), clocks_getunit());
-
+  
   tic2 = getticks();
 
   /* Wait for all the sends to have finished too. */
@@ -625,14 +660,59 @@ void proxy_cells_exchange(struct proxy *proxies, int num_proxies,
     message("WaitAll on counts_out took %.3f %s.",
             clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
+  /* -------------------------------------------------------------------------- */
+  
+  tic2 = getticks();
+  
+  /* Launch the second part of the exchange. */
+  for (int i = 0; i < num_proxies; ++i) {
+    proxy_cells_exchange_second(&proxies[i]);
+  }
+
   /* Set the requests for the cells. */
   for (int k = 0; k < num_proxies; k++) {
-    reqs_in[k] = proxies[k].req_cells_in;
     reqs_out[k] = proxies[k].req_cells_out;
   }
+  
+  if (s->e->verbose)
+    message("exchange second took %.3f %s.",
+            clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
   tic2 = getticks();
 
+  /* Wait for each count to come in and start the recv. */
+  for (int k = 0; k < num_proxies; k++) {
+    proxy_cells_exchange_fourth(&proxies[k]);
+  }
+
+  /* Set the requests for the cells. */
+  for (int k = 0; k < num_proxies; k++) {
+    reqs_in[k] = proxies[k].req_cells_in;
+  }
+  
+  if (s->e->verbose)
+    message("exchange fourth took %.3f %s.",
+            clocks_from_ticks(getticks() - tic2), clocks_getunit());
+
+  tic2 = getticks();
+
+  /* Progress messages in parallel */
+  tic2 = getticks();
+  threadpool_map(&s->e->threadpool, proxy_progress_requests_mapper,
+		 reqs_in, num_proxies, sizeof(MPI_Request), threadpool_auto_chunk_size,
+		 /*extra_data=*/NULL);		 
+  if (s->e->verbose)
+    message("Progressing data recv. took %.3f %s.",
+            clocks_from_ticks(getticks() - tic2), clocks_getunit());
+
+  tic2 = getticks();
+  threadpool_map(&s->e->threadpool, proxy_progress_requests_mapper,
+		 reqs_out, num_proxies, sizeof(MPI_Request), threadpool_auto_chunk_size,
+		 /*extra_data=*/NULL);		 
+  if (s->e->verbose)
+    message("Progressing data send. took %.3f %s.",
+            clocks_from_ticks(getticks() - tic2), clocks_getunit());
+  
   /* Wait for each pcell array to come in from the proxies. */
   if (MPI_Waitall(num_proxies, reqs_in, MPI_STATUSES_IGNORE) != MPI_SUCCESS)
     error("MPI_Waitall on cells_in failed.");
@@ -641,13 +721,13 @@ void proxy_cells_exchange(struct proxy *proxies, int num_proxies,
     message("WaitAll on cells_in took %.3f %s.",
             clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
+  /* Finish by unpacking all the data */
   tic2 = getticks();
-  for (int k = 0; k < num_proxies; k++) {
-    for (int count = 0, j = 0; j < proxies[k].nr_cells_in; j++)
-      count += cell_unpack(&proxies[k].pcells_in[count], proxies[k].cells_in[j],
-                           s, with_gravity);
-  }
 
+  threadpool_map(&s->e->threadpool, proxy_cells_unpack_mapper, proxies,
+		 num_proxies, sizeof(struct proxy), threadpool_auto_chunk_size,
+                 &data);
+  
   if (s->e->verbose)
     message("Un-packing cells took %.3f %s.",
             clocks_from_ticks(getticks() - tic2), clocks_getunit());
