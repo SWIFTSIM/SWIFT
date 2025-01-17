@@ -17,11 +17,20 @@
 #
 ################################################################################
 
+import yaml
 import h5py
 import argparse as ap
 from numpy import *
 from scipy.spatial.transform import Rotation
 
+# Code parameters
+with open("magnetised_cloud.yml") as stream:
+    try:
+        data_loaded = yaml.safe_load(stream)
+        resolution_eta = data_loaded['SPH']['resolution_eta']
+    except yaml.YAMLError as exc:
+        print(exc)
+        
 # Constants
 G = 6.67430e-8
 mu0 = 1.25663706127e-1
@@ -37,10 +46,8 @@ M = 1.99e33  # total mass of the sphere
 T = 4.7e5  # initial orbital period in years
 Omega = 2 * pi / (T * 3.1536e7)  # initial angular frequency of cloud
 
-mu = (
-    10
-)  # mass to magnetic field flux through sphere, normalised to a critical value for collapse. Refer to e.g. Henebelle & Fromang 2008 for details.
-Bini = 3.0 / c1 * sqrt(mu0 * G / 5.0) * M / (Rcloud * Rcloud) * 1 / mu
+mu = 10 # mass to magnetic field flux through sphere, normalised to a critical value for collapse. Refer to e.g. Henebelle & Fromang 2008 for details.
+Bini = (3.0 / (2.0 * c1)) * sqrt(mu0 * G / (5.0 * pi)) * M / (Rcloud * Rcloud) * 1 / mu
 
 # Barotropic EoS parameters
 cs0 = 2e4
@@ -61,16 +68,28 @@ P_out = rho_out * cs0 * cs0 * sqrt(1.0 + (rho_out * inv_rho_c) ** gamma)
 # Read glass files
 fileName = "magnetised_cloud.hdf5"
 
-glass = h5py.File("glassCube_16.hdf5", "r")
-pos_gf = glass["/PartType0/Coordinates"][:, :]
-h_gf = glass["/PartType0/SmoothingLength"][:]
+glass_in = h5py.File("glassCube_16.hdf5", "r")
+pos_gf_in = glass_in["/PartType0/Coordinates"][:, :]
+
+Nin = len(pos_gf_in)
+Nin_side = int(cbrt(Nin))
+
+h_gf_in = (resolution_eta / Nin_side) * ones(Nin)
+
+glass_out = h5py.File("glassCube_16.hdf5", "r")
+pos_gf_out = glass_out["/PartType0/Coordinates"][:, :]
+
+Nout = len(pos_gf_out)
+Nout_side = int(cbrt(Nout))
+
+h_gf_out = (resolution_eta / Nout_side) * ones(Nout)
 
 # Position cloud and ambient medium particles
 cloud_box_side = 2.0 * Rcloud
 atmosphere_box_side = (1.0 / cbrt(rho_out_to_rho_in)) * cloud_box_side
 
-pos_in = cloud_box_side * pos_gf
-h_in = cloud_box_side * h_gf
+pos_in = cloud_box_side * pos_gf_in
+h_in = cloud_box_side * h_gf_in
 
 pos_in -= 0.5 * cloud_box_side
 
@@ -81,8 +100,8 @@ h_in = h_in[mask_in]
 
 numPart_in = int(len(h_in))
 
-pos_out = atmosphere_box_side * pos_gf
-h_out = atmosphere_box_side * h_gf
+pos_out = atmosphere_box_side * pos_gf_out
+h_out = atmosphere_box_side * h_gf_out
 
 pos_out -= 0.5 * atmosphere_box_side
 
@@ -114,8 +133,8 @@ cos_phi = cos(phi)
 sin_phi = sin(phi)
 
 v = zeros((numPart, 3))
-v[mask][:, 0] = -Omega * R[mask] * sin_phi[mask]
-v[mask][:, 1] = Omega * R[mask] * cos_phi[mask]
+v[:, 0][mask] = -Omega * R[mask] * sin_phi[mask]
+v[:, 1][mask] = Omega * R[mask] * cos_phi[mask]
 
 pos += 0.5 * Lbox
 
@@ -131,7 +150,6 @@ B = zeros((numPart, 3))
 B[:, 2] = Bini
 
 epsilon_lim = cbrt(M / (numPart_in * 1e-11)) / 3.086e18
-print(epsilon_lim)
 print(
     "The softening length you need to correctly resolve densities up to 1e-11 g cm^-3 is %f pc"
     % epsilon_lim
