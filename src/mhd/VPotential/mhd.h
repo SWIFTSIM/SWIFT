@@ -439,7 +439,8 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_force(
   p->mhd_data.Q0 =
       p->mhd_data.Q0 < 10.0f ? 1.0f : 0.0f;  // No correction if not magnetized
   /* divB contribution */
-  const float ACC_corr = fabs(p->mhd_data.divB * sqrt(b2) * mu_0_1);
+  //const float ACC_corr = fabs(p->mhd_data.divB * sqrt(b2) * mu_0_1);
+  const float ACC_corr = (p->mhd_data.divB * p->mhd_data.divB * p->h * mu_0_1);
   // this should go with a /p->h, but I
   // take simplify becasue of ACC_mhd also.
   /* isotropic magnetic presure */
