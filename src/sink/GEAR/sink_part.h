@@ -108,6 +108,9 @@ struct sink {
   /*! Particle time bin */
   timebin_t time_bin;
 
+  /*! Tree-depth at which size / 2 <= h * gamma < size */
+  char depth_h;
+
   /*! Number of stars spawned by this sink */
   int n_stars;
 
