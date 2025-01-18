@@ -279,6 +279,9 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force,
                           with_cosmology, e->cosmology, e->hydro_properties,
                           e->cooling_func, e->time);
 
+      /* Set the appropriate depth level for this particle */
+      cell_set_part_h_depth(p, c);
+
 #ifdef SWIFT_DEBUG_CHECKS
       /* Make sure the particle does not drift by more than a box length. */
       if (fabs(xp->v_full[0] * dt_drift) > e->s->dim[0] ||
@@ -679,6 +682,9 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force,
       drift_spart(sp, dt_drift, ti_old_spart, ti_current, e, replication_list,
                   c->loc);
 
+      /* Set the appropriate depth level for this particle */
+      cell_set_spart_h_depth(sp, c);
+
 #ifdef SWIFT_DEBUG_CHECKS
       /* Make sure the particle does not drift by more than a box length. */
       if (fabs(sp->v[0] * dt_drift) > e->s->dim[0] ||
@@ -885,6 +891,9 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force,
       drift_bpart(bp, dt_drift, ti_old_bpart, ti_current, e, replication_list,
                   c->loc);
 
+      /* Set the appropriate depth level for this particle */
+      cell_set_bpart_h_depth(bp, c);
+
 #ifdef SWIFT_DEBUG_CHECKS
       /* Make sure the particle does not drift by more than a box length. */
       if (fabs(bp->v[0] * dt_drift) > e->s->dim[0] ||
@@ -1068,6 +1077,9 @@ void cell_drift_sink(struct cell *c, const struct engine *e, int force) {
 
       /* Drift... */
       drift_sink(sink, dt_drift, ti_old_sink, ti_current);
+
+      /* Set the appropriate depth level for this particle */
+      cell_set_sink_h_depth(sink, c);
 
 #ifdef SWIFT_DEBUG_CHECKS
       /* Make sure the particle does not drift by more than a box length. */

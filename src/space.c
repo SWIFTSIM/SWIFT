@@ -2180,6 +2180,7 @@ void space_check_drift_point(struct space *s, integertime_t ti_drift,
   space_map_cells_pre(s, 1, cell_check_part_drift_point, &ti_drift);
   space_map_cells_pre(s, 1, cell_check_gpart_drift_point, &ti_drift);
   space_map_cells_pre(s, 1, cell_check_spart_drift_point, &ti_drift);
+  space_map_cells_pre(s, 1, cell_check_bpart_drift_point, &ti_drift);
   space_map_cells_pre(s, 1, cell_check_sink_drift_point, &ti_drift);
   if (multipole)
     space_map_cells_pre(s, 1, cell_check_multipole_drift_point, &ti_drift);
