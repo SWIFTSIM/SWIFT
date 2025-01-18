@@ -53,7 +53,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
     const float a, const float H) {
 
   float wi, wj, wi_dx, wj_dx;
-  float dv[3], curlvr[3];
 
   const float r = sqrtf(r2);
 
@@ -92,34 +91,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   fvpm_accumulate_geometry_and_matrix(pj, wj, dx);
   fvpm_update_centroid_right(pj, dx, wj);
 
-  /* Now we need to compute the div terms */
-  const float r_inv = r ? 1.0f / r : 0.0f;
-  const float faci = mj * wi_dx * r_inv;
-  const float facj = mi * wj_dx * r_inv;
-
-  /* Compute dv dot r */
-  dv[0] = pi->v[0] - pj->v[0];
-  dv[1] = pi->v[1] - pj->v[1];
-  dv[2] = pi->v[2] - pj->v[2];
-  const float dvdr = dv[0] * dx[0] + dv[1] * dx[1] + dv[2] * dx[2];
-
-  pi->viscosity.div_v -= faci * dvdr;
-  pj->viscosity.div_v -= facj * dvdr;
-
-  /* Compute dv cross r */
-  curlvr[0] = dv[1] * dx[2] - dv[2] * dx[1];
-  curlvr[1] = dv[2] * dx[0] - dv[0] * dx[2];
-  curlvr[2] = dv[0] * dx[1] - dv[1] * dx[0];
-
-  pi->density.rot_v[0] += faci * curlvr[0];
-  pi->density.rot_v[1] += faci * curlvr[1];
-  pi->density.rot_v[2] += faci * curlvr[2];
-
-  /* Negative because of the change in sign of dx & dv. */
-  pj->density.rot_v[0] += facj * curlvr[0];
-  pj->density.rot_v[1] += facj * curlvr[1];
-  pj->density.rot_v[2] += facj * curlvr[2];
-
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
   pi->n_density += wi;
   pj->n_density += wj;
@@ -148,7 +119,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
     const float a, const float H) {
 
   float wi, wi_dx;
-  float dv[3], curlvr[3];
 
   /* Get the masses. */
   const float mj = pj->mass;
@@ -169,26 +139,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   /* Collect data for FVPM matrix construction */
   fvpm_accumulate_geometry_and_matrix(pi, wi, dx);
   fvpm_update_centroid_left(pi, dx, wi);
-
-  const float r_inv = r ? 1.0f / r : 0.0f;
-  const float faci = mj * wi_dx * r_inv;
-
-  /* Compute dv dot r */
-  dv[0] = pi->v[0] - pj->v[0];
-  dv[1] = pi->v[1] - pj->v[1];
-  dv[2] = pi->v[2] - pj->v[2];
-  const float dvdr = dv[0] * dx[0] + dv[1] * dx[1] + dv[2] * dx[2];
-
-  pi->viscosity.div_v -= faci * dvdr;
-
-  /* Compute dv cross r */
-  curlvr[0] = dv[1] * dx[2] - dv[2] * dx[1];
-  curlvr[1] = dv[2] * dx[0] - dv[0] * dx[2];
-  curlvr[2] = dv[0] * dx[1] - dv[1] * dx[0];
-
-  pi->density.rot_v[0] += faci * curlvr[0];
-  pi->density.rot_v[1] += faci * curlvr[1];
-  pi->density.rot_v[2] += faci * curlvr[2];
 
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
   pi->n_density += wi;
@@ -222,33 +172,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
   /* We need to construct the maximal signal velocity between our particle
    * and all of it's neighbours */
 
+  float dv[3], curlvr[3];
+  
   const float r = sqrtf(r2);
   const float r_inv = r ? 1.0f / r : 0.0f;
 
-  /* Cosmology terms for the signal velocity */
-  const float fac_mu = pow_three_gamma_minus_five_over_two(a);
-  const float a2_Hubble = a * a * H;
+  const float mi = pi->mass;
+  const float mj = pj->mass;
 
-  const float dvdr = (pi->v[0] - pj->v[0]) * dx[0] +
-                     (pi->v[1] - pj->v[1]) * dx[1] +
-                     (pi->v[2] - pj->v[2]) * dx[2];
-
-  /* Add Hubble flow */
-
-  const float dvdr_Hubble = dvdr + a2_Hubble * r2;
-  /* Are the particles moving towards each others ? */
-  const float omega_ij = min(dvdr_Hubble, 0.f);
-  const float mu_ij = fac_mu * r_inv * omega_ij; /* This is 0 or negative */
-
-  /* Signal velocity */
-  const float new_v_sig =
-      signal_velocity(dx, pi, pj, mu_ij, const_viscosity_beta, a, mu_0);
-
-  /* Update if we need to */
-  pi->viscosity.v_sig = max(pi->viscosity.v_sig, new_v_sig);
-  pj->viscosity.v_sig = max(pj->viscosity.v_sig, new_v_sig);
-
-  /* Calculate Del^2 u for the thermal diffusion coefficient. */
   /* Need to get some kernel values F_ij = wi_dx */
   float wi, wi_dx, wj, wj_dx;
 
@@ -257,7 +188,60 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
 
   kernel_deval(ui, &wi, &wi_dx);
   kernel_deval(uj, &wj, &wj_dx);
+  
+  /* Variable smoothing length term */
+  const float f_ij = 1.f - pi->force.f / mj;
+  const float f_ji = 1.f - pj->force.f / mi;
+  
+  /* Cosmology terms for the signal velocity */
+  const float fac_mu = pow_three_gamma_minus_five_over_two(a);
+  const float a2_Hubble = a * a * H;
 
+  /* Compute dv dot r */
+  dv[0] = pi->v[0] - pj->v[0];
+  dv[1] = pi->v[1] - pj->v[1];
+  dv[2] = pi->v[2] - pj->v[2];
+  const float dvdr = dv[0] * dx[0] + dv[1] * dx[1] + dv[2] * dx[2];  
+  
+  /* Add Hubble flow */
+
+  const float dvdr_Hubble = dvdr + a2_Hubble * r2;
+  /* Are the particles moving towards each others ? */
+  const float omega_ij = min(dvdr_Hubble, 0.f);
+  const float mu_ij = fac_mu * r_inv * omega_ij; /* This is 0 or negative */
+
+  /* Signal velocity */
+  const float new_v_sig_i =
+      signal_velocity(pi, 1.0f, mu_ij, const_viscosity_beta);
+  const float new_v_sig_j =
+      signal_velocity(pj, 1.0f, mu_ij, const_viscosity_beta);
+  
+  /* Update if we need to */
+  pi->viscosity.v_sig = max(pi->viscosity.v_sig, new_v_sig_i);
+  pj->viscosity.v_sig = max(pj->viscosity.v_sig, new_v_sig_j);
+
+  /* Now we need to compute the div terms */
+  const float faci = mj * f_ij * wi_dx * r_inv;
+  const float facj = mi * f_ji * wj_dx * r_inv;
+
+  pi->viscosity.div_v -= faci * dvdr;
+  pj->viscosity.div_v -= facj * dvdr;
+
+  /* Compute dv cross r */
+  curlvr[0] = dv[1] * dx[2] - dv[2] * dx[1];
+  curlvr[1] = dv[2] * dx[0] - dv[0] * dx[2];
+  curlvr[2] = dv[0] * dx[1] - dv[1] * dx[0];
+
+  pi->viscosity.rot_v[0] += faci * curlvr[0];
+  pi->viscosity.rot_v[1] += faci * curlvr[1];
+  pi->viscosity.rot_v[2] += faci * curlvr[2];
+
+  /* Negative because of the change in sign of dx & dv. */
+  pj->viscosity.rot_v[0] += facj * curlvr[0];
+  pj->viscosity.rot_v[1] += facj * curlvr[1];
+  pj->viscosity.rot_v[2] += facj * curlvr[2];
+  
+  /* Calculate Del^2 u for the thermal diffusion coefficient. */
   const float delta_u_factor = (pi->u - pj->u) * r_inv;
   pi->diffusion.laplace_u += pj->mass * delta_u_factor * wi_dx / pj->rho;
   pj->diffusion.laplace_u -= pi->mass * delta_u_factor * wj_dx / pi->rho;
@@ -304,17 +288,33 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
   /* We need to construct the maximal signal velocity between our particle
    * and all of it's neighbours */
 
+  float dv[3], curlvr[3];
+
   const float r = sqrtf(r2);
   const float r_inv = r ? 1.0f / r : 0.0f;
 
+  const float mj = pj->mass;
+
+  /* Need to get some kernel values F_ij = wi_dx */
+  float wi, wi_dx;
+
+  const float ui = r / hi;
+  
+  kernel_deval(ui, &wi, &wi_dx);
+
+  /* Variable smoothing length term */
+  const float f_ij = 1.f - pi->force.f / mj;
+  
   /* Cosmology terms for the signal velocity */
   const float fac_mu = pow_three_gamma_minus_five_over_two(a);
   const float a2_Hubble = a * a * H;
 
-  const float dvdr = (pi->v[0] - pj->v[0]) * dx[0] +
-                     (pi->v[1] - pj->v[1]) * dx[1] +
-                     (pi->v[2] - pj->v[2]) * dx[2];
-
+  /* Compute dv dot r */
+  dv[0] = pi->v[0] - pj->v[0];
+  dv[1] = pi->v[1] - pj->v[1];
+  dv[2] = pi->v[2] - pj->v[2];
+  const float dvdr = dv[0] * dx[0] + dv[1] * dx[1] + dv[2] * dx[2];
+  
   /* Add Hubble flow */
 
   const float dvdr_Hubble = dvdr + a2_Hubble * r2;
@@ -323,20 +323,27 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
   const float mu_ij = fac_mu * r_inv * omega_ij; /* This is 0 or negative */
 
   /* Signal velocity */
-  const float new_v_sig =
-      signal_velocity(dx, pi, pj, mu_ij, const_viscosity_beta, a, mu_0);
+  const float new_v_sig_i =
+      signal_velocity(pi, 1.0f, mu_ij, const_viscosity_beta);
 
   /* Update if we need to */
-  pi->viscosity.v_sig = max(pi->viscosity.v_sig, new_v_sig);
+  pi->viscosity.v_sig = max(pi->viscosity.v_sig, new_v_sig_i);
 
+  /* Now we need to compute the div terms */
+  const float faci = mj * f_ij * wi_dx * r_inv;
+
+  pi->viscosity.div_v -= faci * dvdr;
+
+  /* Compute dv cross r */
+  curlvr[0] = dv[1] * dx[2] - dv[2] * dx[1];
+  curlvr[1] = dv[2] * dx[0] - dv[0] * dx[2];
+  curlvr[2] = dv[0] * dx[1] - dv[1] * dx[0];
+
+  pi->viscosity.rot_v[0] += faci * curlvr[0];
+  pi->viscosity.rot_v[1] += faci * curlvr[1];
+  pi->viscosity.rot_v[2] += faci * curlvr[2];
+  
   /* Calculate Del^2 u for the thermal diffusion coefficient. */
-  /* Need to get some kernel values F_ij = wi_dx */
-  float wi, wi_dx;
-
-  const float ui = r / hi;
-
-  kernel_deval(ui, &wi, &wi_dx);
-
   const float delta_u_factor = (pi->u - pj->u) * r_inv;
   pi->diffusion.laplace_u += pj->mass * delta_u_factor * wi_dx / pj->rho;
 
@@ -415,9 +422,22 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float omega_ij = min(dvdr_Hubble, 0.f);
   const float mu_ij = fac_mu * r_inv * omega_ij; /* This is 0 or negative */
 
+  /* Update timestep if needws be */
+  const float v_sig_dt_i =
+      signal_velocity(pi, 1.0f, mu_ij, const_viscosity_beta);
+  const float v_sig_dt_j =
+      signal_velocity(pj, 1.0f, mu_ij, const_viscosity_beta);
+
+  pi->viscosity.v_sig = max(pi->viscosity.v_sig, v_sig_dt_i);
+  pj->viscosity.v_sig = max(pj->viscosity.v_sig, v_sig_dt_j);
+  
   /* Compute sound speeds and signal velocity */
-  const float v_sig =
-      signal_velocity(dx, pi, pj, mu_ij, const_viscosity_beta, a, mu_0);
+  const float alphai = pi->viscosity.alpha;
+  const float alphaj = pj->viscosity.alpha; 
+  const float v_sig_i =
+      signal_velocity(pi, alphai, mu_ij, const_viscosity_beta);
+  const float v_sig_j =
+      signal_velocity(pj, alphaj, mu_ij, const_viscosity_beta);
 
   /* Variable smoothing length term */
   const float f_ij = 1.f - pi->force.f / mj;
@@ -427,16 +447,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float balsara_i = pi->force.balsara;
   const float balsara_j = pj->force.balsara;
 
+  const float q_ij = -0.5f * rhoi * v_sig_i * mu_ij;
+  const float q_ji = -0.5f * rhoj * v_sig_j * mu_ij;
+   
   /* Construct the full viscosity term */
-  const float rho_ij = rhoi + rhoj;
-  const float alpha = pi->viscosity.alpha + pj->viscosity.alpha;
-  const float visc =
-      -0.25f * alpha * v_sig * mu_ij * (balsara_i + balsara_j) / rho_ij;
-
-  /* Convolve with the kernel */
-  const float visc_acc_term =
-      0.5f * visc * (wi_dr * f_ij + wj_dr * f_ji) * r_inv;
-
+  float visc_acc_term = f_ij * balsara_i * q_ij * wi_dr / (rhoi * rhoi) * r_inv;
+  visc_acc_term += f_ji * balsara_j * q_ji * wj_dr / (rhoj * rhoj) * r_inv;
+  
   /* Compute gradient terms */
   const float P_over_rho2_i = pressurei / (rhoi * rhoi) * f_ij;
   const float P_over_rho2_j = pressurej / (rhoj * rhoj) * f_ji;
@@ -473,6 +490,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
    * alpha from the highest pressure particle to dominate, so that the
    * diffusion limited particles always take precedence - another trick to
    * allow the scheme to work with thermal feedback. */
+  const float rho_ij = rhoi + rhoj;
   const float alpha_diff =
       (pressurei * pi->diffusion.alpha + pressurej * pj->diffusion.alpha) /
       (pressurei + pressurej);
@@ -492,8 +510,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   pj->u_dt += du_dt_j * mi;
 
   /* Get the time derivative for h. */
-  pi->force.h_dt -= mj * dvdr * r_inv / rhoj * wi_dr;
-  pj->force.h_dt -= mi * dvdr * r_inv / rhoi * wj_dr;
+  pi->force.h_dt -= mj * f_ij * dvdr * r_inv * wi_dr;
+  pj->force.h_dt -= mi * f_ji * dvdr * r_inv * wj_dr;
 
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
   pi->n_force += wi + wj;
@@ -567,10 +585,20 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float omega_ij = min(dvdr_Hubble, 0.f);
   const float mu_ij = fac_mu * r_inv * omega_ij; /* This is 0 or negative */
 
+  /* Update timestep if needws be */
+  const float v_sig_dt_i =
+      signal_velocity(pi, 1.0f, mu_ij, const_viscosity_beta);
+  
+  pi->viscosity.v_sig = max(pi->viscosity.v_sig, v_sig_dt_i);
+  
   /* Compute sound speeds and signal velocity */
-  const float v_sig =
-      signal_velocity(dx, pi, pj, mu_ij, const_viscosity_beta, a, mu_0);
-
+  const float alphai = pi->viscosity.alpha;
+  const float alphaj = pj->viscosity.alpha; 
+  const float v_sig_i =
+      signal_velocity(pi, alphai, mu_ij, const_viscosity_beta);
+  const float v_sig_j =
+      signal_velocity(pj, alphaj, mu_ij, const_viscosity_beta);
+    
   /* Variable smoothing length term */
   const float f_ij = 1.f - pi->force.f / mj;
   const float f_ji = 1.f - pj->force.f / mi;
@@ -579,16 +607,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float balsara_i = pi->force.balsara;
   const float balsara_j = pj->force.balsara;
 
+  const float q_ij = -0.5f * rhoi * v_sig_i * mu_ij;
+  const float q_ji = -0.5f * rhoj * v_sig_j * mu_ij;
+
   /* Construct the full viscosity term */
-  const float rho_ij = rhoi + rhoj;
-  const float alpha = pi->viscosity.alpha + pj->viscosity.alpha;
-  const float visc =
-      -0.25f * alpha * v_sig * mu_ij * (balsara_i + balsara_j) / rho_ij;
-
-  /* Convolve with the kernel */
-  const float visc_acc_term =
-      0.5f * visc * (wi_dr * f_ij + wj_dr * f_ji) * r_inv;
-
+  float	visc_acc_term =	f_ij * balsara_i * q_ij * wi_dr / (rhoi * rhoi) * r_inv;
+  visc_acc_term += f_ji * balsara_j * q_ji * wj_dr / (rhoj * rhoj) * r_inv;
+  
   /* Compute gradient terms */
   const float P_over_rho2_i = pressurei / (rhoi * rhoi) * f_ij;
   const float P_over_rho2_j = pressurej / (rhoj * rhoj) * f_ji;
@@ -620,6 +645,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
    * alpha from the highest pressure particle to dominate, so that the
    * diffusion limited particles always take precedence - another trick to
    * allow the scheme to work with thermal feedback. */
+  const float rho_ij = rhoi + rhoj;
   const float alpha_diff =
       (pressurei * pi->diffusion.alpha + pressurej * pj->diffusion.alpha) /
       (pressurei + pressurej);
@@ -637,7 +663,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   pi->u_dt += du_dt_i * mj;
 
   /* Get the time derivative for h. */
-  pi->force.h_dt -= mj * dvdr * r_inv / rhoj * wi_dr;
+  pi->force.h_dt -= mj * f_ij * dvdr * r_inv * wi_dr;
 
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
   pi->n_force += wi + wj;
