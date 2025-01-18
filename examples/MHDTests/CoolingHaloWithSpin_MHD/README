@@ -14,7 +14,8 @@ The gas is given some angular momentum about the z-axis. This is
 defined by the 'spin_lambda' variable in makeIC.py
 
 A uniform magnetic field pointing along the angular momentum 
-axis is seeded through the B0 variable.
+axis is seeded through the B0_Gaussian_Units variable. It is set
+by default to 1muG.
 
 While the system is initially in hydrostatic equilibrium, the cooling
 of the gas and the non-zero angular momentum means that the halo will

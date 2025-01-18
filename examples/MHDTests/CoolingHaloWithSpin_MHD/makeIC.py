@@ -32,6 +32,7 @@ OMEGA = 0.3  # Cosmological matter fraction at z = 0
 PARSEC_IN_CGS = 3.0856776e18
 KM_PER_SEC_IN_CGS = 1.0e5
 CONST_G_CGS = 6.672e-8
+CONST_MU0_CGS = 4 * np.pi * 1e-2
 h = 0.67777  # hubble parameter
 gamma = 5.0 / 3.0
 eta = 1.2349
@@ -46,7 +47,8 @@ v_c_cgs = v_c * const_unit_velocity_in_cgs
 
 # Set the magnitude of the uniform seed magnetic field
 
-B0 = 1e-6 # muG
+B0_Gaussian_Units = 1e-6 # 1 micro Gauss
+B0_cgs = np.sqrt(CONST_MU0_CGS / (4.0 * np.pi)) * B0_Gaussian_Units
 
 # Now we use this to get the virial mass and virial radius, which we will set to be the unit mass and radius
 
@@ -213,7 +215,7 @@ omega = np.zeros((N, 3))
 for i in range(N):
     omega[i, 2] = 3.0 * J / radius[i]
     v[i, :] = np.cross(omega[i, :], (coords[i, :] - boxSize / 2.0))
-    B[i, 2] = B0 
+    B[i, 2] = B0_cgs / const_unit_magnetic_field_in_cgs 
 
 # Header
 grp = file.create_group("/Header")
