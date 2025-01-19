@@ -40,7 +40,7 @@ Omega = 2 * pi / (T * 3.1536e7)  # initial angular frequency of cloud
 mu = (
     10
 )  # mass to magnetic field flux through sphere, normalised to a critical value for collapse. Refer to e.g. Henebelle & Fromang 2008 for details.
-Bini = 3.0 / c1 * sqrt(mu0 * G / 5.0) * M / (Rcloud * Rcloud) * 1 / mu
+Bini = (3.0 / (2.0 * c1)) * sqrt(mu0 * G / (5.0 * pi)) * M / (Rcloud * Rcloud) * 1 / mu
 
 # Barotropic EoS parameters
 cs0 = 2e4
