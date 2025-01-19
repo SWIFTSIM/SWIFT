@@ -455,12 +455,14 @@ void proxy_cells_pack_mapper(void *map_data, int num_elements,
                              void *extra_data) {
   struct cell *cells = (struct cell *)map_data;
   struct pack_mapper_data *data = (struct pack_mapper_data *)extra_data;
+  const int with_gravity = data->with_gravity;
+  struct space *s = data->s;
 
   for (int k = 0; k < num_elements; k++) {
     if (cells[k].mpi.sendto) {
-      ptrdiff_t ind = &cells[k] - data->s->cells_top;
+      const ptrdiff_t ind = &cells[k] - s->cells_top;
       cells[k].mpi.pcell = &data->pcells[data->offset[ind]];
-      cell_pack(&cells[k], cells[k].mpi.pcell, data->with_gravity);
+      cell_pack(&cells[k], cells[k].mpi.pcell, with_gravity);
     }
   }
 }
@@ -505,6 +507,31 @@ void proxy_progress_requests_mapper(void *map_data, int num_elements,
       int len;
       MPI_Error_string(err, buff, &len);
       error("MPI_Test failed with error '%s'", buff);
+    }
+  }
+}
+
+void proxy_pcells_memcpy_mapper(void *map_data, int num_elements,
+                                void *extra_data) {
+
+  struct proxy *proxies = (struct proxy *)map_data;
+
+  for (int i = 0; i < num_elements; ++i) {
+    struct proxy *p = &proxies[i];
+
+    /* Allocate and fill the pcell buffer. */
+    if (p->pcells_out != NULL) swift_free("pcells_out", p->pcells_out);
+    if (swift_memalign("pcells_out", (void **)&p->pcells_out,
+                       SWIFT_STRUCT_ALIGNMENT,
+                       sizeof(struct pcell) * p->size_pcells_out) != 0)
+      error("Failed to allocate pcell_out buffer.");
+
+    int ind = 0;
+
+    for (int k = 0; k < p->nr_cells_out; k++) {
+      memcpy(&p->pcells_out[ind], p->cells_out[k]->mpi.pcell,
+             sizeof(struct pcell) * p->cells_out[k]->mpi.pcell_size);
+      ind += p->cells_out[k]->mpi.pcell_size;
     }
   }
 }
@@ -621,22 +648,9 @@ void proxy_cells_exchange(struct proxy *proxies, const int num_proxies,
   tic2 = getticks();
 
   /* Copy the pcell data in the buffer to be sent */
-  for (int i = 0; i < num_proxies; ++i) {
-    struct proxy *p = &proxies[i];
-
-    /* Allocate and fill the pcell buffer. */
-    if (p->pcells_out != NULL) swift_free("pcells_out", p->pcells_out);
-    if (swift_memalign("pcells_out", (void **)&p->pcells_out,
-                       SWIFT_STRUCT_ALIGNMENT,
-                       sizeof(struct pcell) * p->size_pcells_out) != 0)
-      error("Failed to allocate pcell_out buffer.");
-
-    for (int ind = 0, k = 0; k < p->nr_cells_out; k++) {
-      memcpy(&p->pcells_out[ind], p->cells_out[k]->mpi.pcell,
-             sizeof(struct pcell) * p->cells_out[k]->mpi.pcell_size);
-      ind += p->cells_out[k]->mpi.pcell_size;
-    }
-  }
+  threadpool_map(&s->e->threadpool, proxy_pcells_memcpy_mapper, proxies,
+                 num_proxies, sizeof(struct proxy), threadpool_auto_chunk_size,
+                 /*extra_data=*/NULL);
 
   if (s->e->verbose)
     message("memcpy took %.3f %s.", clocks_from_ticks(getticks() - tic2),
