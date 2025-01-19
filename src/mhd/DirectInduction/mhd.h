@@ -110,10 +110,11 @@ __attribute__((always_inline)) INLINE static float mhd_get_divB_error(
       p->mhd_data.B_over_rho[1] * p->mhd_data.B_over_rho[1] +
       p->mhd_data.B_over_rho[2] * p->mhd_data.B_over_rho[2];
 
-  const float error = B_over_rho2 != 0.0f ? fabs(p->mhd_data.divB) * p->h / sqrtf(B_over_rho2 * rho * rho) : 0.0f;
+  const float error = B_over_rho2 != 0.0f ? fabs(p->mhd_data.divB) * p->h /
+                                                sqrtf(B_over_rho2 * rho * rho)
+                                          : 0.0f;
 
   return error;
-
 }
 
 /**
@@ -429,7 +430,6 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_force(
 
   p->mhd_data.alpha_AR =
       normB ? fminf(1.0f, h * sqrtf(grad_B_mean_square) / normB) : 0.0f;
-
 }
 
 /**
@@ -514,7 +514,6 @@ __attribute__((always_inline)) INLINE static void mhd_predict_extra(
   p->mhd_data.B_over_rho[2] += p->mhd_data.B_over_rho_dt[2] * dt_therm;
 
   p->mhd_data.psi_over_ch += p->mhd_data.psi_over_ch_dt * dt_therm;
-
 }
 
 /**
@@ -533,10 +532,10 @@ __attribute__((always_inline)) INLINE static void mhd_end_force(
     struct part *p, const struct cosmology *cosmo,
     const struct hydro_props *hydro_props, const float mu_0) {
 
-  /* Get time derivative of Dedner scalar */  
+  /* Get time derivative of Dedner scalar */
   p->mhd_data.psi_over_ch_dt = mhd_get_psi_over_ch_dt(
       p, cosmo->a, cosmo->a_factor_sound_speed, cosmo->H, hydro_props, mu_0);
-  
+
   /* Hubble expansion contribution to induction equation */
   const float Hubble_induction_pref =
       cosmo->a * cosmo->a * cosmo->H * (1.5f * hydro_gamma - 2.f);
@@ -581,7 +580,6 @@ __attribute__((always_inline)) INLINE static void mhd_kick_extra(
   xp->mhd_data.B_over_rho_full[2] = xp->mhd_data.B_over_rho_full[2] + delta_Bz;
 
   xp->mhd_data.psi_over_ch_full += p->mhd_data.psi_over_ch_dt * dt_therm;
-
 }
 
 /**
@@ -623,7 +621,6 @@ __attribute__((always_inline)) INLINE static void mhd_convert_quantities(
   xp->mhd_data.B_over_rho_full[2] = p->mhd_data.B_over_rho[2];
 
   xp->mhd_data.psi_over_ch_full = p->mhd_data.psi_over_ch;
-
 }
 
 /**

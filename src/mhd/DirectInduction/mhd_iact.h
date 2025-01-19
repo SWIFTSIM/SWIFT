@@ -54,9 +54,8 @@ __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_mhd_density(const float r2, const float dx[3],
                                const float hi, const float hj,
                                struct part *restrict pi,
-                               const struct part *restrict pj,
-                               const float mu_0, const float a,
-                               const float H) {}
+                               const struct part *restrict pj, const float mu_0,
+                               const float a, const float H) {}
 
 /**
  * @brief Calculate the MHD-gradient interaction between particle i and particle
@@ -363,7 +362,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
 
   pi->mhd_data.divB += rhoi * mj * divB_i;
   pj->mhd_data.divB -= rhoj * mi * divB_j;
-    
+
   /* SPH acceleration term in x direction, i_th particle */
   float sph_acc_term_i[3] = {0.f, 0.f, 0.f};
 
@@ -614,11 +613,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
 
   const float vsig_Dedner_i = mhd_get_magnetosonic_speed(pi, a, mu_0);
   const float vsig_Dedner_j = mhd_get_magnetosonic_speed(pj, a, mu_0);
-  
-  const float delta_psi = psi_over_ch_i * vsig_Dedner_i - psi_over_ch_j * vsig_Dedner_j;  
-  const float grad_psi_i = - grad_term_i * delta_psi;
-  const float grad_psi_j = - grad_term_j * delta_psi;
-  
+
+  const float delta_psi =
+      psi_over_ch_i * vsig_Dedner_i - psi_over_ch_j * vsig_Dedner_j;
+  const float grad_psi_i = -grad_term_i * delta_psi;
+  const float grad_psi_j = -grad_term_j * delta_psi;
+
   pi->mhd_data.B_over_rho_dt[0] -= mj * grad_psi_i * dx[0];
   pi->mhd_data.B_over_rho_dt[1] -= mj * grad_psi_i * dx[1];
   pi->mhd_data.B_over_rho_dt[2] -= mj * grad_psi_i * dx[2];
@@ -749,7 +749,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
 
   float divB_i = Bri * grad_term_i;
   divB_i += Brj * grad_term_j;
-  
+
   pi->mhd_data.divB += rhoi * mj * divB_i;
 
   /* SPH acceleration term in x direction, i_th particle */
@@ -931,9 +931,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   const float vsig_Dedner_i = mhd_get_magnetosonic_speed(pi, a, mu_0);
   const float vsig_Dedner_j = mhd_get_magnetosonic_speed(pj, a, mu_0);
 
-  const float delta_psi = psi_over_ch_i * vsig_Dedner_i - psi_over_ch_j * vsig_Dedner_j;
-  const float grad_psi_i = - grad_term_i * delta_psi;
-  
+  const float delta_psi =
+      psi_over_ch_i * vsig_Dedner_i - psi_over_ch_j * vsig_Dedner_j;
+  const float grad_psi_i = -grad_term_i * delta_psi;
+
   pi->mhd_data.B_over_rho_dt[0] -= mj * grad_psi_i * dx[0];
   pi->mhd_data.B_over_rho_dt[1] -= mj * grad_psi_i * dx[1];
   pi->mhd_data.B_over_rho_dt[2] -= mj * grad_psi_i * dx[2];
