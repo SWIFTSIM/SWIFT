@@ -340,7 +340,7 @@ void proxy_grid_extra_exchange(struct proxy *proxies, int num_proxies,
  *
  * @param p The #proxy.
  */
-void proxy_cells_exchange_first(struct proxy *p) {
+void proxy_cells_send_pcell_counts(struct proxy *p) {
 
 #ifdef WITH_MPI
 
@@ -362,7 +362,7 @@ void proxy_cells_exchange_first(struct proxy *p) {
 #endif
 }
 
-void proxy_cells_exchange_second(struct proxy *p) {
+void proxy_cells_recv_pcell_counts(struct proxy *p) {
 
 #ifdef WITH_MPI
 
@@ -379,7 +379,7 @@ void proxy_cells_exchange_second(struct proxy *p) {
 #endif
 }
 
-void proxy_cells_exchange_third(struct proxy *p) {
+void proxy_cells_send_pcells(struct proxy *p) {
 
 #ifdef WITH_MPI
 
@@ -407,7 +407,7 @@ void proxy_cells_exchange_third(struct proxy *p) {
  *
  * @param p The #proxy.
  */
-void proxy_cells_exchange_fourth(struct proxy *p) {
+void proxy_cells_recv_pcells(struct proxy *p) {
 
 #ifdef WITH_MPI
 
@@ -604,7 +604,7 @@ void proxy_cells_exchange(struct proxy *proxies, const int num_proxies,
 
   /* Issue the sends for all the cell counts. */
   for (int i = 0; i < num_proxies; ++i) {
-    proxy_cells_exchange_first(&proxies[i]);
+    proxy_cells_send_pcell_counts(&proxies[i]);
   }
 
   for (int k = 0; k < num_proxies; k++) {
@@ -612,12 +612,12 @@ void proxy_cells_exchange(struct proxy *proxies, const int num_proxies,
   }
 
   if (s->e->verbose)
-    message("exchange first took %.3f %s.",
+    message("Emit pcell counts Isend took %.3f %s.",
             clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
   /* Issue the receives for all the cell counts. */
   for (int i = 0; i < num_proxies; ++i) {
-    proxy_cells_exchange_second(&proxies[i]);
+    proxy_cells_recv_pcell_counts(&proxies[i]);
   }
 
   for (int k = 0; k < num_proxies; k++) {
@@ -625,7 +625,7 @@ void proxy_cells_exchange(struct proxy *proxies, const int num_proxies,
   }
 
   if (s->e->verbose)
-    message("exchange second took %.3f %s.",
+    message("Emit pcell counts Irecv took %.3f %s.",
             clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
   /* Progress messages in parallel */
@@ -678,28 +678,28 @@ void proxy_cells_exchange(struct proxy *proxies, const int num_proxies,
 
   /* Issue the sends for all the pcell data */
   for (int i = 0; i < num_proxies; ++i) {
-    proxy_cells_exchange_third(&proxies[i]);
+    proxy_cells_send_pcells(&proxies[i]);
   }
   for (int k = 0; k < num_proxies; k++) {
     reqs_out[k] = proxies[k].req_cells_out;
   }
 
   if (s->e->verbose)
-    message("exchange third took %.3f %s.",
+    message("Emit pcell Isend took %.3f %s.",
             clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
   tic2 = getticks();
 
   /* Issue the receives for all the pcell data */
   for (int k = 0; k < num_proxies; k++) {
-    proxy_cells_exchange_fourth(&proxies[k]);
+    proxy_cells_recv_pcells(&proxies[k]);
   }
   for (int k = 0; k < num_proxies; k++) {
     reqs_in[k] = proxies[k].req_cells_in;
   }
 
   if (s->e->verbose)
-    message("exchange fourth took %.3f %s.",
+    message("Emit pcell Irecv took %.3f %s.",
             clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
   tic2 = getticks();
