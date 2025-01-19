@@ -146,7 +146,8 @@ GEARChemistry:
   # GEAR star formation model (Revaz and Jablonka 2018)
 GEARStarFormation:
   star_formation_efficiency: 0.01   # star formation efficiency (c_*)
-  maximal_temperature:  3e4         # Upper limit to the temperature of a star forming particle
+  maximal_temperature_K:  3e4       # Upper limit to the temperature of a star forming particle
+  density_threshold_Hpcm3: 5        # Density threshold in Hydrogen atoms/cm3
   n_stars_per_particle: 4
   min_mass_frac: 0.5
 

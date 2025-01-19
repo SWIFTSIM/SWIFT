@@ -25,6 +25,8 @@
 /* Select the correct sink model */
 #if defined(SINK_NONE)
 #include "./sink/Default/sink_iact.h"
+#elif defined(SINK_BASIC)
+#include "./sink/Basic/sink_iact.h"
 #elif defined(SINK_GEAR)
 #include "./sink/GEAR/sink_iact.h"
 #else
