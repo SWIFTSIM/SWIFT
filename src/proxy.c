@@ -602,19 +602,6 @@ void proxy_cells_exchange(struct proxy *proxies, const int num_proxies,
 
   tic2 = getticks();
 
-  /* Issue the sends for all the cell counts. */
-  for (int i = 0; i < num_proxies; ++i) {
-    proxy_cells_send_pcell_counts(&proxies[i]);
-  }
-
-  for (int k = 0; k < num_proxies; k++) {
-    reqs_out[k] = proxies[k].req_cells_count_out;
-  }
-
-  if (s->e->verbose)
-    message("Emit pcell counts Isend took %.3f %s.",
-            clocks_from_ticks(getticks() - tic2), clocks_getunit());
-
   /* Issue the receives for all the cell counts. */
   for (int i = 0; i < num_proxies; ++i) {
     proxy_cells_recv_pcell_counts(&proxies[i]);
@@ -626,6 +613,21 @@ void proxy_cells_exchange(struct proxy *proxies, const int num_proxies,
 
   if (s->e->verbose)
     message("Emit pcell counts Irecv took %.3f %s.",
+            clocks_from_ticks(getticks() - tic2), clocks_getunit());
+
+  tic2 = getticks();
+
+  /* Issue the sends for all the cell counts. */
+  for (int i = 0; i < num_proxies; ++i) {
+    proxy_cells_send_pcell_counts(&proxies[i]);
+  }
+
+  for (int k = 0; k < num_proxies; k++) {
+    reqs_out[k] = proxies[k].req_cells_count_out;
+  }
+
+  if (s->e->verbose)
+    message("Emit pcell counts Isend took %.3f %s.",
             clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
   /* Progress messages in parallel */
@@ -656,8 +658,6 @@ void proxy_cells_exchange(struct proxy *proxies, const int num_proxies,
     message("memcpy took %.3f %s.", clocks_from_ticks(getticks() - tic2),
             clocks_getunit());
 
-  tic2 = getticks();
-
   /* Make sure all the count messages have arrived */
   tic2 = getticks();
 
@@ -676,20 +676,6 @@ void proxy_cells_exchange(struct proxy *proxies, const int num_proxies,
 
   tic2 = getticks();
 
-  /* Issue the sends for all the pcell data */
-  for (int i = 0; i < num_proxies; ++i) {
-    proxy_cells_send_pcells(&proxies[i]);
-  }
-  for (int k = 0; k < num_proxies; k++) {
-    reqs_out[k] = proxies[k].req_cells_out;
-  }
-
-  if (s->e->verbose)
-    message("Emit pcell Isend took %.3f %s.",
-            clocks_from_ticks(getticks() - tic2), clocks_getunit());
-
-  tic2 = getticks();
-
   /* Issue the receives for all the pcell data */
   for (int k = 0; k < num_proxies; k++) {
     proxy_cells_recv_pcells(&proxies[k]);
@@ -700,6 +686,20 @@ void proxy_cells_exchange(struct proxy *proxies, const int num_proxies,
 
   if (s->e->verbose)
     message("Emit pcell Irecv took %.3f %s.",
+            clocks_from_ticks(getticks() - tic2), clocks_getunit());
+
+  tic2 = getticks();
+
+  /* Issue the sends for all the pcell data */
+  for (int i = 0; i < num_proxies; ++i) {
+    proxy_cells_send_pcells(&proxies[i]);
+  }
+  for (int k = 0; k < num_proxies; k++) {
+    reqs_out[k] = proxies[k].req_cells_out;
+  }
+
+  if (s->e->verbose)
+    message("Emit pcell Isend took %.3f %s.",
             clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
   tic2 = getticks();
