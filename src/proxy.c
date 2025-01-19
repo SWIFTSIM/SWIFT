@@ -359,7 +359,7 @@ void proxy_cells_exchange_first(struct proxy *p) {
 #endif
 }
 
-void proxy_cells_exchange_second(struct proxy *p) {
+void proxy_cells_exchange_third(struct proxy *p) {
 
 #ifdef WITH_MPI
 
@@ -378,7 +378,7 @@ void proxy_cells_exchange_second(struct proxy *p) {
 #endif
 }
 
-void proxy_cells_exchange_third(struct proxy *p) {
+void proxy_cells_exchange_second(struct proxy *p) {
 
 #ifdef WITH_MPI
 
@@ -517,7 +517,7 @@ void proxy_progress_requests_mapper(void *map_data, int num_elements,
  * @param with_gravity Are we running with gravity and hence need
  *      to exchange multipoles?
  */
-void proxy_cells_exchange(struct proxy *proxies, int num_proxies,
+void proxy_cells_exchange(struct proxy *proxies, const int num_proxies,
                           struct space *s, const int with_gravity) {
 
 #ifdef WITH_MPI
@@ -610,9 +610,9 @@ void proxy_cells_exchange(struct proxy *proxies, int num_proxies,
 
   tic2 = getticks();
 
-  /* Launch the third part of the exchange. */
+  /* Launch the second part of the exchange. */
   for (int i = 0; i < num_proxies; ++i) {
-    proxy_cells_exchange_third(&proxies[i]);
+    proxy_cells_exchange_second(&proxies[i]);
   }
 
   for (int k = 0; k < num_proxies; k++) {
@@ -660,14 +660,16 @@ void proxy_cells_exchange(struct proxy *proxies, int num_proxies,
     message("WaitAll on counts_out took %.3f %s.",
             clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
-  /* --------------------------------------------------------------------------
-   */
+  /******************************************************
+   * We now have all the counts of cells to send/receive.
+   * We can start issuing the actual exchanges
+   ******************************************************/
 
   tic2 = getticks();
 
-  /* Launch the second part of the exchange. */
+  /* Launch the third part of the exchange. */
   for (int i = 0; i < num_proxies; ++i) {
-    proxy_cells_exchange_second(&proxies[i]);
+    proxy_cells_exchange_third(&proxies[i]);
   }
 
   /* Set the requests for the cells. */
