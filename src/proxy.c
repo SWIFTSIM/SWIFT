@@ -50,6 +50,9 @@
 MPI_Datatype pcell_mpi_type;
 #endif
 
+/* Are we reporting all the exchanges made? */
+// #define VERBOSE_PART_EXCHANGE
+
 /**
  * @brief Exchange tags between nodes.
  *
