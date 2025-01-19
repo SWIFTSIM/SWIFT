@@ -362,6 +362,23 @@ void proxy_cells_exchange_first(struct proxy *p) {
 #endif
 }
 
+void proxy_cells_exchange_second(struct proxy *p) {
+
+#ifdef WITH_MPI
+
+  /* Receive the number of pcells. */
+  int err = MPI_Irecv(&p->size_pcells_in, 1, MPI_INT, p->nodeID,
+                      p->nodeID * proxy_tag_shift + proxy_tag_count,
+                      MPI_COMM_WORLD, &p->req_cells_count_in);
+  if (err != MPI_SUCCESS) mpi_error(err, "Failed to irecv nr of pcells.");
+    // message( "irecv pcells count on node %i from node %i." , p->mynodeID ,
+    // p->nodeID ); fflush(stdout);
+
+#else
+  error("SWIFT was not compiled with MPI support.");
+#endif
+}
+
 void proxy_cells_exchange_third(struct proxy *p) {
 
 #ifdef WITH_MPI
@@ -375,23 +392,6 @@ void proxy_cells_exchange_third(struct proxy *p) {
   if (err != MPI_SUCCESS) mpi_error(err, "Failed to pcell_out buffer.");
     // message( "isent pcells (%i) from node %i to node %i." ,
     // p->size_pcells_out , p->mynodeID , p->nodeID ); fflush(stdout);
-
-#else
-  error("SWIFT was not compiled with MPI support.");
-#endif
-}
-
-void proxy_cells_exchange_second(struct proxy *p) {
-
-#ifdef WITH_MPI
-
-  /* Receive the number of pcells. */
-  int err = MPI_Irecv(&p->size_pcells_in, 1, MPI_INT, p->nodeID,
-                      p->nodeID * proxy_tag_shift + proxy_tag_count,
-                      MPI_COMM_WORLD, &p->req_cells_count_in);
-  if (err != MPI_SUCCESS) mpi_error(err, "Failed to irecv nr of pcells.");
-    // message( "irecv pcells count on node %i from node %i." , p->mynodeID ,
-    // p->nodeID ); fflush(stdout);
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -575,7 +575,7 @@ void proxy_cells_exchange(struct proxy *proxies, const int num_proxies,
 
   tic2 = getticks();
 
-  /* Launch the first part of the exchange. */
+  /* Issue the sends for all the cell counts. */
   for (int i = 0; i < num_proxies; ++i) {
     proxy_cells_exchange_first(&proxies[i]);
   }
@@ -588,8 +588,39 @@ void proxy_cells_exchange(struct proxy *proxies, const int num_proxies,
     message("exchange first took %.3f %s.",
             clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
+  /* Issue the receives for all the cell counts. */
+  for (int i = 0; i < num_proxies; ++i) {
+    proxy_cells_exchange_second(&proxies[i]);
+  }
+
+  for (int k = 0; k < num_proxies; k++) {
+    reqs_in[k] = proxies[k].req_cells_count_in;
+  }
+
+  if (s->e->verbose)
+    message("exchange second took %.3f %s.",
+            clocks_from_ticks(getticks() - tic2), clocks_getunit());
+
+  /* Progress messages in parallel */
+  tic2 = getticks();
+  threadpool_map(&s->e->threadpool, proxy_progress_requests_mapper, reqs_in,
+                 num_proxies, sizeof(MPI_Request), threadpool_auto_chunk_size,
+                 /*extra_data=*/NULL);
+  if (s->e->verbose)
+    message("Progressing count recv. took %.3f %s.",
+            clocks_from_ticks(getticks() - tic2), clocks_getunit());
+
+  tic2 = getticks();
+  threadpool_map(&s->e->threadpool, proxy_progress_requests_mapper, reqs_out,
+                 num_proxies, sizeof(MPI_Request), threadpool_auto_chunk_size,
+                 /*extra_data=*/NULL);
+  if (s->e->verbose)
+    message("Progressing count send. took %.3f %s.",
+            clocks_from_ticks(getticks() - tic2), clocks_getunit());
+
   tic2 = getticks();
 
+  /* Copy the pcell data in the buffer to be sent */
   for (int i = 0; i < num_proxies; ++i) {
     struct proxy *p = &proxies[i];
 
@@ -613,85 +644,42 @@ void proxy_cells_exchange(struct proxy *proxies, const int num_proxies,
 
   tic2 = getticks();
 
-  /* Launch the second part of the exchange. */
-  for (int i = 0; i < num_proxies; ++i) {
-    proxy_cells_exchange_second(&proxies[i]);
-  }
+  /* Make sure all the count messages have arrived */
+  tic2 = getticks();
 
+  if (MPI_Waitall(num_proxies, reqs_in, MPI_STATUSES_IGNORE) != MPI_SUCCESS)
+    error("MPI_Waitall on recvs failed.");
+
+  if (s->e->verbose)
+    message("WaitAll on counts_in took %.3f %s.",
+            clocks_from_ticks(getticks() - tic2), clocks_getunit());
+
+  /******************************************************
+   * We now have all the counts of cells to send/receive
+   * and the pcell data is in the buffers ready for MPI.
+   * We can start issuing the actual exchanges
+   ******************************************************/
+
+  tic2 = getticks();
+
+  /* Issue the sends for all the pcell data */
+  for (int i = 0; i < num_proxies; ++i) {
+    proxy_cells_exchange_third(&proxies[i]);
+  }
   for (int k = 0; k < num_proxies; k++) {
-    reqs_in[k] = proxies[k].req_cells_count_in;
+    reqs_out[k] = proxies[k].req_cells_out;
   }
 
   if (s->e->verbose)
     message("exchange third took %.3f %s.",
             clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
-  /* Progress messages in parallel */
-  tic2 = getticks();
-  threadpool_map(&s->e->threadpool, proxy_progress_requests_mapper, reqs_in,
-                 num_proxies, sizeof(MPI_Request), threadpool_auto_chunk_size,
-                 /*extra_data=*/NULL);
-  if (s->e->verbose)
-    message("Progressing count recv. took %.3f %s.",
-            clocks_from_ticks(getticks() - tic2), clocks_getunit());
-
-  tic2 = getticks();
-  threadpool_map(&s->e->threadpool, proxy_progress_requests_mapper, reqs_out,
-                 num_proxies, sizeof(MPI_Request), threadpool_auto_chunk_size,
-                 /*extra_data=*/NULL);
-  if (s->e->verbose)
-    message("Progressing count send. took %.3f %s.",
-            clocks_from_ticks(getticks() - tic2), clocks_getunit());
-
-  /* Make sure all messages have arrived */
   tic2 = getticks();
 
-  if (MPI_Waitall(num_proxies, reqs_in, MPI_STATUSES_IGNORE) != MPI_SUCCESS)
-    error("MPI_Waitall on sends failed.");
-
-  if (s->e->verbose)
-    message("WaitAll on counts_in took %.3f %s.",
-            clocks_from_ticks(getticks() - tic2), clocks_getunit());
-
-  tic2 = getticks();
-
-  /* Wait for all the sends to have finished too. */
-  if (MPI_Waitall(num_proxies, reqs_out, MPI_STATUSES_IGNORE) != MPI_SUCCESS)
-    error("MPI_Waitall on sends failed.");
-
-  if (s->e->verbose)
-    message("WaitAll on counts_out took %.3f %s.",
-            clocks_from_ticks(getticks() - tic2), clocks_getunit());
-
-  /******************************************************
-   * We now have all the counts of cells to send/receive.
-   * We can start issuing the actual exchanges
-   ******************************************************/
-
-  tic2 = getticks();
-
-  /* Launch the third part of the exchange. */
-  for (int i = 0; i < num_proxies; ++i) {
-    proxy_cells_exchange_third(&proxies[i]);
-  }
-
-  /* Set the requests for the cells. */
-  for (int k = 0; k < num_proxies; k++) {
-    reqs_out[k] = proxies[k].req_cells_out;
-  }
-
-  if (s->e->verbose)
-    message("exchange second took %.3f %s.",
-            clocks_from_ticks(getticks() - tic2), clocks_getunit());
-
-  tic2 = getticks();
-
-  /* Wait for each count to come in and start the recv. */
+  /* Issue the receives for all the pcell data */
   for (int k = 0; k < num_proxies; k++) {
     proxy_cells_exchange_fourth(&proxies[k]);
   }
-
-  /* Set the requests for the cells. */
   for (int k = 0; k < num_proxies; k++) {
     reqs_in[k] = proxies[k].req_cells_in;
   }
@@ -740,7 +728,17 @@ void proxy_cells_exchange(struct proxy *proxies, const int num_proxies,
 
   tic2 = getticks();
 
-  /* Wait for all the sends to have finished too. */
+  /* Wait for all the count sends to have finished too. */
+  if (MPI_Waitall(num_proxies, reqs_out, MPI_STATUSES_IGNORE) != MPI_SUCCESS)
+    error("MPI_Waitall on sends failed.");
+
+  if (s->e->verbose)
+    message("WaitAll on counts_out took %.3f %s.",
+            clocks_from_ticks(getticks() - tic2), clocks_getunit());
+
+  tic2 = getticks();
+
+  /* Wait for all the cell sends to have finished too. */
   if (MPI_Waitall(num_proxies, reqs_out, MPI_STATUSES_IGNORE) != MPI_SUCCESS)
     error("MPI_Waitall on sends failed.");
 
