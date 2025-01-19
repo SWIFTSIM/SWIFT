@@ -872,25 +872,23 @@ void proxy_parts_exchange_first(struct proxy *p) {
   p->buff_out[3] = p->nr_bparts_out;
   p->buff_out[4] = p->nr_sinks_out;
 
-  /* #ifdef SWIFT_DEBUG_CHECKS */
-  /*   message("Number of particles out [%i , %i, %i, %i, %i]", p->nr_parts_out,
-   */
-  /*           p->nr_gparts_out, p->nr_sparts_out, p->nr_bparts_out, */
-  /*           p->nr_sinks_out); */
-  /* #endif /\* SWIFT_DEBUG_CHECKS *\/ */
+#ifdef VERBOSE_PART_EXCHANGE
+  message("Number of particles out [%i , %i, %i, %i, %i]", p->nr_parts_out,
+          p->nr_gparts_out, p->nr_sparts_out, p->nr_bparts_out,
+          p->nr_sinks_out);
+#endif /* VERBOSE_PART_EXCHANGE */
 
   if (MPI_Isend(p->buff_out, PROXY_EXCHANGE_NUMBER_PARTICLE_TYPES, MPI_INT,
                 p->nodeID, p->mynodeID * proxy_tag_shift + proxy_tag_count,
                 MPI_COMM_WORLD, &p->req_parts_count_out) != MPI_SUCCESS)
     error("Failed to isend nr of parts.");
-  /* #ifdef SWIFT_DEBUG_CHECKS */
-  /*   message("isent particle counts [%i, %i, %i, %i, %i] from node %i to node
-   * %i.", */
-  /*           p->buff_out[0], p->buff_out[1], p->buff_out[2], p->buff_out[3],
-   */
-  /*           p->buff_out[4], p->mynodeID, p->nodeID); */
-  /*   fflush(stdout); */
-  /* #endif /\* SWIFT_DEBUG_CHECKS *\/ */
+
+#ifdef VERBOSE_PART_EXCHANGE
+  message("isent particle counts [%i, %i, %i, %i, %i] from node %i to node %i.",
+          p->buff_out[0], p->buff_out[1], p->buff_out[2], p->buff_out[3],
+          p->buff_out[4], p->mynodeID, p->nodeID);
+  fflush(stdout);
+#endif /* VERBOSE_PART_EXCHANGE */
 
   /* Send the particle buffers. */
   if (p->nr_parts_out > 0) {
@@ -901,34 +899,30 @@ void proxy_parts_exchange_first(struct proxy *p) {
                   p->mynodeID * proxy_tag_shift + proxy_tag_xparts,
                   MPI_COMM_WORLD, &p->req_xparts_out) != MPI_SUCCESS)
       error("Failed to isend part data.");
-    /* #ifdef SWIFT_DEBUG_CHECKS */
-    /*     message("isent particle data (%i) to node %i.", p->nr_parts_out,
-     * p->nodeID); */
-    /*     fflush(stdout); */
-    /*     for (int k = 0; k < p->nr_parts_out; k++) */
-    /*       message("sending particle %lli, x=[%.3e %.3e %.3e], h=%.3e, to node
-     * %i.", */
-    /*               p->parts_out[k].id, p->parts_out[k].x[0],
-     * p->parts_out[k].x[1], */
-    /*               p->parts_out[k].x[2], p->parts_out[k].h, p->nodeID); */
-    /* #endif /\* SWIFT_DEBUG_CHECKS *\/ */
+
+#ifdef VERBOSE_PART_EXCHANGE
+    message("isent particle data (%i) to node %i.", p->nr_parts_out, p->nodeID);
+    fflush(stdout);
+    for (int k = 0; k < p->nr_parts_out; k++)
+      message("sending particle %lli, x=[%.3e %.3e %.3e], h=%.3e, to node %i.",
+              p->parts_out[k].id, p->parts_out[k].x[0], p->parts_out[k].x[1],
+              p->parts_out[k].x[2], p->parts_out[k].h, p->nodeID);
+#endif /* VERBOSE_PART_EXCHANGE */
   }
   if (p->nr_gparts_out > 0) {
     if (MPI_Isend(p->gparts_out, p->nr_gparts_out, gpart_mpi_type, p->nodeID,
                   p->mynodeID * proxy_tag_shift + proxy_tag_gparts,
                   MPI_COMM_WORLD, &p->req_gparts_out) != MPI_SUCCESS)
       error("Failed to isend gpart data.");
-    /* #ifdef SWIFT_DEBUG_CHECKS */
-    /*     message("isent gpart data (%i) to node %i.", p->nr_gparts_out,
-     * p->nodeID); */
-    /*     fflush(stdout); */
-    /*     for (int k = 0; k < p->nr_parts_out; k++) */
-    /*       message("sending gpart %lli, x=[%.3e %.3e %.3e], to node %i.", */
-    /*               p->gparts_out[k].id_or_neg_offset, p->gparts_out[k].x[0],
-     */
-    /*               p->gparts_out[k].x[1], p->gparts_out[k].x[2], p->nodeID);
-     */
-    /* #endif /\* SWIFT_DEBUG_CHECKS *\/ */
+
+#ifdef VERBOSE_PART_EXCHANGE
+    message("isent gpart data (%i) to node %i.", p->nr_gparts_out, p->nodeID);
+    fflush(stdout);
+    for (int k = 0; k < p->nr_parts_out; k++)
+      message("sending gpart %lli, x=[%.3e %.3e %.3e], to node %i.",
+              p->gparts_out[k].id_or_neg_offset, p->gparts_out[k].x[0],
+              p->gparts_out[k].x[1], p->gparts_out[k].x[2], p->nodeID);
+#endif /* VERBOSE_PART_EXCHANGE */
   }
 
   if (p->nr_sparts_out > 0) {
@@ -936,51 +930,45 @@ void proxy_parts_exchange_first(struct proxy *p) {
                   p->mynodeID * proxy_tag_shift + proxy_tag_sparts,
                   MPI_COMM_WORLD, &p->req_sparts_out) != MPI_SUCCESS)
       error("Failed to isend spart data.");
-    /* #ifdef SWIFT_DEBUG_CHECKS */
-    /*     message("isent spart data (%i) to node %i.", p->nr_sparts_out,
-     * p->nodeID); */
-    /*     fflush(stdout); */
-    /*     for (int k = 0; k < p->nr_sparts_out; k++) */
-    /*       message("sending spart %lli, x=[%.3e %.3e %.3e], h=%.3e, to node
-     * %i.", */
-    /*               p->sparts_out[k].id, p->sparts_out[k].x[0],
-     * p->sparts_out[k].x[1], */
-    /*               p->sparts_out[k].x[2], p->sparts_out[k].h, p->nodeID); */
-    /* #endif /\* SWIFT_DEBUG_CHECKS *\/ */
+
+#ifdef VERBOSE_PART_EXCHANGE
+    message("isent spart data (%i) to node %i.", p->nr_sparts_out, p->nodeID);
+    fflush(stdout);
+    for (int k = 0; k < p->nr_sparts_out; k++)
+      message("sending spart %lli, x=[%.3e %.3e %.3e], h=%.3e, to node %i.",
+              p->sparts_out[k].id, p->sparts_out[k].x[0], p->sparts_out[k].x[1],
+              p->sparts_out[k].x[2], p->sparts_out[k].h, p->nodeID);
+#endif /* VERBOSE_PART_EXCHANGE */
   }
   if (p->nr_bparts_out > 0) {
     if (MPI_Isend(p->bparts_out, p->nr_bparts_out, bpart_mpi_type, p->nodeID,
                   p->mynodeID * proxy_tag_shift + proxy_tag_bparts,
                   MPI_COMM_WORLD, &p->req_bparts_out) != MPI_SUCCESS)
       error("Failed to isend bpart data.");
-    /* #ifdef SWIFT_DEBUG_CHECKS */
-    /*     message("isent bpart data (%i) to node %i.", p->nr_bparts_out,
-     * p->nodeID); */
-    /*     fflush(stdout); */
-    /*     for (int k = 0; k < p->nr_bparts_out; k++) */
-    /*       message("sending bpart %lli, x=[%.3e %.3e %.3e], h=%.3e, to node
-     * %i.", */
-    /*               p->bparts_out[k].id, p->bparts_out[k].x[0],
-     * p->bparts_out[k].x[1], */
-    /*               p->bparts_out[k].x[2], p->bparts_out[k].h, p->nodeID); */
-    /* #endif /\* SWIFT_DEBUG_CHECKS *\/ */
+
+#ifdef VERBOSE_PART_EXCHANGE
+    message("isent bpart data (%i) to node %i.", p->nr_bparts_out, p->nodeID);
+    fflush(stdout);
+    for (int k = 0; k < p->nr_bparts_out; k++)
+      message("sending bpart %lli, x=[%.3e %.3e %.3e], h=%.3e, to node %i.",
+              p->bparts_out[k].id, p->bparts_out[k].x[0], p->bparts_out[k].x[1],
+              p->bparts_out[k].x[2], p->bparts_out[k].h, p->nodeID);
+#endif /* VERBOSE_PART_EXCHANGE */
   }
   if (p->nr_sinks_out > 0) {
     if (MPI_Isend(p->sinks_out, p->nr_sinks_out, sink_mpi_type, p->nodeID,
                   p->mynodeID * proxy_tag_shift + proxy_tag_sinks,
                   MPI_COMM_WORLD, &p->req_sinks_out) != MPI_SUCCESS)
       error("Failed to isend sink data.");
-    /* #ifdef SWIFT_DEBUG_CHECKS */
-    /*     message("isent sink data (%i) to node %i.", p->nr_sinks_out,
-     * p->nodeID); */
-    /*     fflush(stdout); */
-    /*     for (int k = 0; k < p->nr_sinks_out; k++) */
-    /*       message("sending sinks %lli, x=[%.3e %.3e %.3e], h=%.3e, to node
-     * %i.", */
-    /*               p->sinks_out[k].id, p->sinks_out[k].x[0],
-     * p->sinks_out[k].x[1], */
-    /*               p->sinks_out[k].x[2], p->sinks_out[k].h, p->nodeID); */
-    /* #endif /\* SWIFT_DEBUG_CHECKS *\/ */
+
+#ifdef VERBOSE_PART_EXCHANGE
+    message("isent sink data (%i) to node %i.", p->nr_sinks_out, p->nodeID);
+    fflush(stdout);
+    for (int k = 0; k < p->nr_sinks_out; k++)
+      message("sending sinks %lli, x=[%.3e %.3e %.3e], h=%.3e, to node %i.",
+              p->sinks_out[k].id, p->sinks_out[k].x[0], p->sinks_out[k].x[1],
+              p->sinks_out[k].x[2], p->sinks_out[k].h, p->nodeID);
+#endif /* VERBOSE_PART_EXCHANGE */
   }
 
   /* Receive the number of particles. */
@@ -988,15 +976,14 @@ void proxy_parts_exchange_first(struct proxy *p) {
                 p->nodeID, p->nodeID * proxy_tag_shift + proxy_tag_count,
                 MPI_COMM_WORLD, &p->req_parts_count_in) != MPI_SUCCESS)
     error("Failed to irecv nr of parts.");
-    /* #ifdef SWIFT_DEBUG_CHECKS */
-    /*   message( */
-    /*       "irecv particle counts [%i, %i, %i, %i, %i] from node %i, I am node
-     * %i.", */
-    /*       p->buff_in[0], p->buff_in[1], p->buff_in[2], p->buff_in[3],
-     * p->buff_in[4], */
-    /*       p->nodeID, p->mynodeID); */
-    /*   fflush(stdout); */
-    /* #endif /\* SWIFT_DEBUG_CHECKS *\/ */
+
+#ifdef VERBOSE_PART_EXCHANGE
+  message(
+      "irecv particle counts [%i, %i, %i, %i, %i] from node %i, I am node %i.",
+      p->buff_in[0], p->buff_in[1], p->buff_in[2], p->buff_in[3], p->buff_in[4],
+      p->nodeID, p->mynodeID);
+  fflush(stdout);
+#endif /* VERBOSE_PART_EXCHANGE */
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -1073,7 +1060,8 @@ void proxy_parts_exchange_second(struct proxy *p) {
                   p->nodeID * proxy_tag_shift + proxy_tag_xparts,
                   MPI_COMM_WORLD, &p->req_xparts_in) != MPI_SUCCESS)
       error("Failed to irecv part data.");
-#ifdef SWIFT_DEBUG_CHECKS
+
+#ifdef VERBOSE_PART_EXCHANGE
     message("irecv particle data (%i) from node %i.", p->nr_parts_in,
             p->nodeID);
     fflush(stdout);
@@ -1081,28 +1069,30 @@ void proxy_parts_exchange_second(struct proxy *p) {
       message("receiving parts %lli, x=[%.3e %.3e %.3e], h=%.3e, from node %i.",
               p->parts_in[k].id, p->parts_in[k].x[0], p->parts_in[k].x[1],
               p->parts_in[k].x[2], p->parts_in[k].h, p->nodeID);
-#endif /* SWIFT_DEBUG_CHECKS */
+#endif /* VERBOSE_PART_EXCHANGE */
   }
   if (p->nr_gparts_in > 0) {
     if (MPI_Irecv(p->gparts_in, p->nr_gparts_in, gpart_mpi_type, p->nodeID,
                   p->nodeID * proxy_tag_shift + proxy_tag_gparts,
                   MPI_COMM_WORLD, &p->req_gparts_in) != MPI_SUCCESS)
       error("Failed to irecv gpart data.");
-#ifdef SWIFT_DEBUG_CHECKS
+
+#ifdef VERBOSE_PART_EXCHANGE
     message("irecv gpart data (%i) from node %i.", p->nr_gparts_in, p->nodeID);
     fflush(stdout);
     for (int k = 0; k < p->nr_gparts_in; k++)
       message("receiving gparts %lli, x=[%.3e %.3e %.3e], from node %i.",
               p->gparts_in[k].id_or_neg_offset, p->gparts_in[k].x[0],
               p->gparts_in[k].x[1], p->gparts_in[k].x[2], p->nodeID);
-#endif /* SWIFT_DEBUG_CHECKS */
+#endif /* VERBOSE_PART_EXCHANGE */
   }
   if (p->nr_sparts_in > 0) {
     if (MPI_Irecv(p->sparts_in, p->nr_sparts_in, spart_mpi_type, p->nodeID,
                   p->nodeID * proxy_tag_shift + proxy_tag_sparts,
                   MPI_COMM_WORLD, &p->req_sparts_in) != MPI_SUCCESS)
       error("Failed to irecv spart data.");
-#ifdef SWIFT_DEBUG_CHECKS
+
+#ifdef VERBOSE_PART_EXCHANGE
     message("irecv spart data (%i) from node %i.", p->nr_sparts_in, p->nodeID);
     fflush(stdout);
     for (int k = 0; k < p->nr_sparts_in; k++)
@@ -1117,7 +1107,8 @@ void proxy_parts_exchange_second(struct proxy *p) {
                   p->nodeID * proxy_tag_shift + proxy_tag_bparts,
                   MPI_COMM_WORLD, &p->req_bparts_in) != MPI_SUCCESS)
       error("Failed to irecv bpart data.");
-#ifdef SWIFT_DEBUG_CHECKS
+
+#ifdef VERBOSE_PART_EXCHANGE
     message("irecv bpart data (%i) from node %i.", p->nr_bparts_in, p->nodeID);
     fflush(stdout);
     for (int k = 0; k < p->nr_bparts_in; k++)
@@ -1125,21 +1116,22 @@ void proxy_parts_exchange_second(struct proxy *p) {
           "receiving bparts %lli, x=[%.3e %.3e %.3e], h=%.3e, from node %i.",
           p->bparts_in[k].id, p->bparts_in[k].x[0], p->bparts_in[k].x[1],
           p->bparts_in[k].x[2], p->bparts_in[k].h, p->nodeID);
-#endif /* SWIFT_DEBUG_CHECKS */
+#endif /* VERBOSE_PART_EXCHANGE */
   }
   if (p->nr_sinks_in > 0) {
     if (MPI_Irecv(p->sinks_in, p->nr_sinks_in, sink_mpi_type, p->nodeID,
                   p->nodeID * proxy_tag_shift + proxy_tag_sinks, MPI_COMM_WORLD,
                   &p->req_sinks_in) != MPI_SUCCESS)
       error("Failed to irecv sink data.");
-#ifdef SWIFT_DEBUG_CHECKS
+
+#ifdef VERBOSE_PART_EXCHANGE
     message("irecv sink data (%i) from node %i.", p->nr_sinks_in, p->nodeID);
     fflush(stdout);
     for (int k = 0; k < p->nr_sinks_in; k++)
       message("receiving sinks %lli, x=[%.3e %.3e %.3e], h=%.3e, from node %i.",
               p->sinks_in[k].id, p->sinks_in[k].x[0], p->sinks_in[k].x[1],
               p->sinks_in[k].x[2], p->sinks_in[k].h, p->nodeID);
-#endif /* SWIFT_DEBUG_CHECKS */
+#endif /* VERBOSE_PART_EXCHANGE */
   }
 
 #else
