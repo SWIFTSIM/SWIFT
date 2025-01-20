@@ -45,8 +45,18 @@ struct sink {
   /*! Particle velocity. */
   float v[3];
 
-  /*! Cut off radius. */
-  float r_cut;
+  /* Particle smoothing length */
+  float h;
+
+  struct {
+
+    /* Number of neighbours. */
+    float wcount;
+
+    /* Number of neighbours spatial derivative. */
+    float wcount_dh;
+
+  } density;
 
   /*! Sink particle mass */
   float mass;
@@ -96,6 +106,29 @@ struct sink {
   /*! List of interacting particles in compute formation SELF and PAIR */
   long long ids_ngbs_accretion[MAX_NUM_OF_NEIGHBOURS_SINKS];
 #endif
+
+#ifdef SWIFT_SINK_DENSITY_CHECKS
+
+  /* Integer number of neighbours in the density loop */
+  int N_check_density;
+
+  /* Exact integer number of neighbours in the density loop */
+  int N_check_density_exact;
+
+  /*! Has this particle interacted with any unhibited neighbour? */
+  char inhibited_check_exact;
+
+  float n_check;
+
+  float n_check_exact;
+
+  float rho_check;
+
+  /*! Exact value of the density field obtained via brute-force loop */
+  float rho_check_exact;
+
+#endif
+
 } SWIFT_STRUCT_ALIGN;
 
 #endif /* SWIFT_DEFAULT_SINK_PART_H */

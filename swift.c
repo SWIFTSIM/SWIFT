@@ -1181,7 +1181,7 @@ int main(int argc, char *argv[]) {
                              is on. */
         error("ERROR: Running with sink but without feedback.");
       sink_props_init(&sink_properties, &feedback_properties, &prog_const, &us,
-                      params, &cosmo, with_feedback);
+                      params, &hydro_properties, &cosmo, with_feedback);
     } else
       bzero(&sink_properties, sizeof(struct sink_props));
 

@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2020 Loic Hausammann (loic.hausammann@epfl.ch)
+ * Copyright (c) 2024 Jonathan Davies (j.j.davies@ljmu.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_DEFAULT_SINK_PROPERTIES_H
-#define SWIFT_DEFAULT_SINK_PROPERTIES_H
+#ifndef SWIFT_BASIC_SINK_PROPERTIES_H
+#define SWIFT_BASIC_SINK_PROPERTIES_H
 
 /* Local header */
 #include "feedback_properties.h"
@@ -51,6 +51,12 @@ struct sink_props {
   /*! Are we using a fixed cutoff radius? (all smoothing length calculations are
    * disabled if so) */
   char use_fixed_r_cut;
+
+  /* Use nibbling rather than swallowing for gas? */
+  float use_nibbling;
+
+  /* Gas mass below which sinks will not nibble. */
+  float min_gas_mass_for_nibbling;
 };
 
 /**
@@ -69,15 +75,20 @@ INLINE static void sink_props_init(
     struct swift_params *params, const struct hydro_props *hydro_props,
     const struct cosmology *cosmo, const int with_feedback) {
 
+  /* We don't use a fixed cutoff radius in this model. This property must always
+   * be present, as we use it to skip smoothing length iterations in
+   * runner_ghost if a fixed cutoff is being used. */
+  sp->use_fixed_r_cut = 0;
+
   /* Read in the basic neighbour search properties or default to the hydro
      ones if the user did not provide any different values */
 
   /* Kernel properties */
   sp->eta_neighbours = parser_get_opt_param_float(
-      params, "Sinks:resolution_eta", hydro_props->eta_neighbours);
+      params, "BasicSink:resolution_eta", hydro_props->eta_neighbours);
 
   /* Tolerance for the smoothing length Newton-Raphson scheme */
-  sp->h_tolerance = parser_get_opt_param_float(params, "Sinks:h_tolerance",
+  sp->h_tolerance = parser_get_opt_param_float(params, "BasicSink:h_tolerance",
                                                hydro_props->h_tolerance);
 
   /* Get derived properties */
@@ -89,22 +100,23 @@ INLINE static void sink_props_init(
 
   /* Number of iterations to converge h */
   sp->max_smoothing_iterations =
-      parser_get_opt_param_int(params, "Sinks:max_ghost_iterations",
+      parser_get_opt_param_int(params, "BasicSink:max_ghost_iterations",
                                hydro_props->max_smoothing_iterations);
 
   /* Time integration properties */
   const float max_volume_change =
-      parser_get_opt_param_float(params, "Sinks:max_volume_change", -1);
+      parser_get_opt_param_float(params, "BasicSink:max_volume_change", -1);
   if (max_volume_change == -1)
     sp->log_max_h_change = hydro_props->log_max_h_change;
   else
     sp->log_max_h_change = logf(powf(max_volume_change, hydro_dimension_inv));
 
-  /* This property determines whether we're using a fixed cutoff radius (and
-   * smoothing length) for the sink. It must always be present, as we use it
-   * to skip smoothing length iterations in runner_ghost if a fixed cutoff is
-   * being used. */
-  sp->use_fixed_r_cut = 0;
+  sp->use_nibbling = parser_get_param_int(params, "BasicSink:use_nibbling");
+  if (sp->use_nibbling) {
+    sp->min_gas_mass_for_nibbling = parser_get_param_float(
+        params, "BasicSink:min_gas_mass_for_nibbling_Msun");
+    sp->min_gas_mass_for_nibbling *= phys_const->const_solar_mass;
+  }
 }
 
 /**
@@ -133,4 +145,4 @@ INLINE static void sink_struct_restore(const struct sink_props *props,
                       "Sink props");
 }
 
-#endif /* SWIFT_DEFAULT_SINK_PROPERTIES_H */
+#endif /* SWIFT_BASIC_SINK_PROPERTIES_H */
