@@ -353,7 +353,7 @@ chemistry_get_physical_hyperbolic_soundspeed(
     const struct cosmology* cosmo) {
 #if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
   if (chem_data->diffusion_mode == isotropic_constant) {
-    return chem_data->diffusion_coefficient / chem_data->tau;
+    return sqrt(chem_data->diffusion_coefficient / chem_data->tau);
   } else {
     return hydro_get_physical_soundspeed(p, cosmo);
   }
