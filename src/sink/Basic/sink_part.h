@@ -1,7 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2021 Loic Hausammann (loic.hausammann@epfl.ch)
- *               2024 Darwin Roduit (darwin.roduit@alumni.epfl.ch)
+ * Copyright (c) 2024 Jonathan Davies (j.j.davies@ljmu.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -17,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_GEAR_SINK_PART_H
-#define SWIFT_GEAR_SINK_PART_H
+#ifndef SWIFT_BASIC_SINK_PART_H
+#define SWIFT_BASIC_SINK_PART_H
 
 #include "timeline.h"
 
@@ -46,7 +45,7 @@ struct sink {
   /*! Particle velocity. */
   float v[3];
 
-  /* Particle smoothing length, or r_cut/kernel_gamma if using a fixed cutoff*/
+  /* Particle smoothing length */
   float h;
 
   struct {
@@ -62,67 +61,33 @@ struct sink {
   /*! Sink particle mass */
   float mass;
 
-  /*! Sink target mass. In Msun. */
-  float target_mass_Msun;
-
-  /* Mass of the IMF this sinks is currently affected to. In internal units. */
-  double mass_IMF;
+  /*! Total mass of the gas neighbours. */
+  float ngb_mass;
 
   /*! Integer number of neighbours */
   int num_ngbs;
 
-  /*! Mass of the sink before starting the star spawning loop */
-  float mass_tot_before_star_spawning;
+  /*! Instantaneous accretion rate */
+  float accretion_rate;
 
-  /*! Sink target stellar type */
-  enum stellar_type target_type;
+  /*! Subgrid mass of the sink */
+  float subgrid_mass;
 
-  /*! Union for the birth time and birth scale factor */
-  union {
+  /*! Sink mass at the start of each step, prior to any nibbling */
+  float mass_at_start_of_step;
 
-    /*! Birth time */
-    float birth_time;
+  /*! Density of the gas surrounding the black hole. */
+  float rho_gas;
 
-    /*! Birth scale factor */
-    float birth_scale_factor;
-  };
+  /*! Smoothed sound speed of the gas surrounding the black hole. */
+  float sound_speed_gas;
 
-  struct {
-
-    /*! Minimal gas smoothing length */
-    float minimal_h_gas;
-
-    /*! Density of the gas surrounding the sink. */
-    float rho_gas;
-
-    /*! Smoothed sound speed of the gas surrounding the sink. */
-    float sound_speed_gas;
-
-    /*! Smoothed velocity of the gas surrounding the sink, in the frame of the
-      sink (internal units) */
-    float velocity_gas[3];
-
-    /*! Minimal t_c between all sink neighbours */
-    float minimal_sink_t_c;
-
-    /*! Minimal dynamical time between all sink neighbours */
-    float minimal_sink_t_dyn;
-
-    /*! Total mass that passes all criteria before the accretion limit */
-    float mass_eligible_swallow;
-
-    /*! Swallowed mass during this timestep */
-    float mass_swallowed;
-  } to_collect;
+  /*! Smoothed velocity of the gas surrounding the black hole,
+   * in the frame of the black hole (internal units) */
+  float velocity_gas[3];
 
   /*! Particle time bin */
   timebin_t time_bin;
-
-  /*! Tree-depth at which size / 2 <= h * gamma < size */
-  char depth_h;
-
-  /*! Number of stars spawned by this sink */
-  int n_stars;
 
   /*! Total (physical) angular momentum accumulated by swallowing particles */
   float swallowed_angular_momentum[3];
@@ -142,14 +107,6 @@ struct sink {
   /*! Total number of gas particles swallowed (excluding particles swallowed
    * by merged-in sinks) */
   int number_of_direct_gas_swallows;
-
-  /*! Flag to determine if a sink has already changed its IMF from pop III to
-     pop II. */
-  int has_IMF_changed_from_popIII_to_popII;
-
-  /*! Chemistry information (e.g. metal content at birth, swallowed metal
-   * content, etc.) */
-  struct chemistry_sink_data chemistry_data;
 
   /*! sink merger information (e.g. merging ID) */
   struct sink_sink_data merger_data;
@@ -205,6 +162,7 @@ struct sink {
   float rho_check_exact;
 
 #endif
+
 } SWIFT_STRUCT_ALIGN;
 
-#endif /* SWIFT_GEAR_SINK_PART_H */
+#endif /* SWIFT_BASIC_SINK_PART_H */
