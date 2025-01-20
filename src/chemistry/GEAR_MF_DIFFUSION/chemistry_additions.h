@@ -93,6 +93,18 @@ __attribute__((always_inline)) INLINE static void chemistry_kick_extra(
           dt_therm / (chd->tau + dt_therm) *
 	  (F_diff_target[2] - chd->hyperbolic_flux[i].F_diff_pred[2]);
       }
+
+      if (chd->kappa == 0.0 && chd->tau == 0.0) {
+	/* According to the equations, we have F = 0 and dF/dt = 0.0 */
+	chd->hyperbolic_flux[i].dF_dt[0] = 0.0;
+	chd->hyperbolic_flux[i].dF_dt[1] = 0.0;
+	chd->hyperbolic_flux[i].dF_dt[2] = 0.0;
+
+	/* Then update the diffusion flux with a semi-implicit scheme */
+	chd->hyperbolic_flux[i].F_diff[0] = 0.0;
+	chd->hyperbolic_flux[i].F_diff[1] = 0.0;
+	chd->hyperbolic_flux[i].F_diff[2] = 0.0;
+      }
 #endif
     }
 
