@@ -1086,6 +1086,19 @@ void engine_print_task_counts(const struct engine *e) {
   message("nr_sparts = %zu.", e->s->nr_sparts);
   message("nr_bparts = %zu.", e->s->nr_bparts);
 
+#if defined(SWIFT_DEBUG_CHECKS) && defined(WITH_MPI)
+  if (e->verbose == 2) {
+    /* check that the global number of sends matches the global number of
+       recvs */
+    int global_counts[2] = {counts[task_type_send], counts[task_type_recv]};
+    MPI_Allreduce(MPI_IN_PLACE, global_counts, 2, MPI_INT, MPI_SUM,
+                  MPI_COMM_WORLD);
+    if (global_counts[0] != global_counts[1])
+      error("Missing communications (%i sends, %i recvs)!", global_counts[0],
+            global_counts[1]);
+  }
+#endif
+
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());

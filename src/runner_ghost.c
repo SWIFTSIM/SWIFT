@@ -417,6 +417,9 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
 
         /* We now have a particle whose smoothing length has converged */
 
+        /* Set the correct depth */
+        cell_set_spart_h_depth(sp, c);
+
         /* Check if h_max has increased */
         h_max = max(h_max, sp->h);
         h_max_active = max(h_max_active, sp->h);
@@ -838,6 +841,9 @@ void runner_do_black_holes_density_ghost(struct runner *r, struct cell *c,
         ghost_stats_converged_black_hole(&c->ghost_statistics, bp);
 
         black_holes_reset_feedback(bp);
+
+        /* Set the correct depth */
+        cell_set_bpart_h_depth(bp, c);
 
         /* Check if h_max has increased */
         h_max = max(h_max, bp->h);
@@ -1462,6 +1468,9 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 
         /* We now have a particle whose smoothing length has converged */
 
+        /* Set the correct depth */
+        cell_set_part_h_depth(p, c);
+
         /* Check if h_max has increased */
         h_max = max(h_max, p->h);
         h_max_active = max(h_max_active, p->h);
@@ -1998,6 +2007,9 @@ void runner_do_sinks_density_ghost(struct runner *r, struct cell *c,
           }
 
           /* We now have a particle whose smoothing length has converged */
+
+          /* Set the correct depth */
+          cell_set_sink_h_depth(sp, c);
 
           /* Check if h_max has increased */
           h_max = max(h_max, sp->h);
