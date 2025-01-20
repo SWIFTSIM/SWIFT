@@ -8,6 +8,7 @@ level=${level:=5}  #Number of particles = 2^(3*level)
 gas_density=${gas_density:=1} #Gas density in atom/cm^3
 box_mass=${box_mass:=10000000} #Mass of the gas particles
 with_hydro_MFM=${with_hydro_MFM:=0}
+run_name=${run_name:=""}
 
 # Remove the ICs
 if [ -e ICs_homogeneous_box.hdf5 ]
@@ -63,6 +64,22 @@ fi
 
 #Do some data analysis to show what's in this box
 python3 compare_num_to_sol.py snap/snapshot_*0.hdf5 --x_min 0 --x_max 1 --y_min 0 --y_max 1
-python3 metal_profile.py snap/snapshot_*0.hdf5 --n_bins 30 --r_min 1e-1 --r_max 1.1
+python3 metal_profile.py snap/snapshot_*0.hdf5 --n_bins 30 --r_min 1e-1 --r_max=1.1
 python3 metal_projection.py snap/snapshot_*0.hdf5 --log
 python3 plot_metal_mass_conservation_in_time.py snap/*.hdf5
+
+if [ -z "$run_name" ]; then
+    echo "run_name is empty."
+else
+    if [ -d "$run_name" ]; then
+	echo "$run_name directory exists. Nothing will be moved."
+    else
+	echo "$run_name directory does not exists. It will be created."
+	mkdir $run_name
+	mv timesteps.txt $run_name
+	mv snap $run_name
+	mv unused_parameters.yml $run_name
+	mv used_parameters.yml $run_name
+	mv *.png $run_name
+    fi
+fi

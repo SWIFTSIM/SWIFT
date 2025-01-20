@@ -61,7 +61,11 @@
  */
 static INLINE void chemistry_print_backend(
     const struct chemistry_global_data* data) {
+#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
+  message("Chemistry function is 'Gear MF hyperbolic diffusion'.");
+#else
   message("Chemistry function is 'Gear MF diffusion'.");
+#endif
 }
 
 /**
@@ -327,6 +331,19 @@ static INLINE void chemistry_init_backend(struct swift_params* parameter_file,
       DEFAULT_C_CFL_CHEMISTRY_SUPERTIMESTEPPPING);
 
   /***************************************************************************/
+  /* Hyperbolic diffusion */
+#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
+  if (data->diffusion_mode == isotropic_constant) {
+    data->tau =
+        parser_get_param_double(parameter_file, "GEARChemistry:tau");
+  }
+
+  /* This is used for testing only */
+  data->riemann_solver = parser_get_opt_param_int(
+      parameter_file, "GEARChemistry:riemann_solver", 1);
+#endif
+
+  /***************************************************************************/
   /* Print the parameters we use */
   if (engine_rank == 0) {
     message("Diffusion mode:             %u", data->diffusion_mode);
@@ -399,22 +416,24 @@ __attribute__((always_inline)) INLINE static float chemistry_supertimestep(
     /* If we need to start a new cycle, compute the new explicit timestep */
     if (chd->timesteps.current_substep == 0) {
       /* Get the explicit timestep from eq (15) */
-      chd->timesteps.explicit_timestep = chemistry_compute_parabolic_timestep(p, cd, cosmo);
+      chd->timesteps.explicit_timestep =
+          chemistry_compute_parabolic_timestep(p, cd, cosmo);
     }
 
     /* Compute the current substep */
-    double substep = chemistry_compute_subtimestep(p, cd, chd->timesteps.current_substep+1);
+    double substep = chemistry_compute_subtimestep(
+        p, cd, chd->timesteps.current_substep + 1);
     double timestep_to_use = substep;
 
     if (dt_part <= substep || chd->timesteps.current_substep > 0) {
       /* If the part timestep is smaller, other constraints beat the
-	 substep. We can safely iterate the substep.
-	 If we are in the middle of a supertimestepping cycle, iterate. */
+         substep. We can safely iterate the substep.
+         If we are in the middle of a supertimestepping cycle, iterate. */
       ++chd->timesteps.current_substep;
 
       /* Increment substep and loop if it cycles fully */
       if (chd->timesteps.current_substep >= cd->N_substeps) {
-	chd->timesteps.current_substep = 0;
+        chd->timesteps.current_substep = 0;
       }
     } else {
       /* If we are at the beginning of a new cycle (current_substep = 0) and
@@ -422,33 +441,35 @@ __attribute__((always_inline)) INLINE static float chemistry_supertimestep(
       think whether to start a cycle */
 
       /* Apply cosmology correction (This is 1 if non-cosmological) */
-      const double dt_pred = substep*cosmo->time_step_factor;
+      const double dt_pred = substep * cosmo->time_step_factor;
 
       /* Convert to integer time.
-	 Note: This function is similar to Gizmo code checking for synchronization. */
-      const integertime_t dti_allowed = chemistry_make_integer_timestep(dt_pred,
-                                        p->time_bin, p->limiter_data.min_ngb_time_bin,
-					ti_current, 1.0/time_base);
+         Note: This function is similar to Gizmo code checking for
+         synchronization. */
+      const integertime_t dti_allowed = chemistry_make_integer_timestep(
+          dt_pred, p->time_bin, p->limiter_data.min_ngb_time_bin, ti_current,
+          1.0 / time_base);
 
       /* Now convert this back to a physical timestep */
       const timebin_t bin_allowed = get_time_bin(dti_allowed);
-      const double dt_allowed = get_timestep(bin_allowed, time_base) / cosmo->time_step_factor;
+      const double dt_allowed =
+          get_timestep(bin_allowed, time_base) / cosmo->time_step_factor;
 
-      if(substep > 1.5*dt_allowed) {
-	/* The next allowed timestep is too small to fit the big step part of
-	the supertimestepping cycle. Do not waste our timestep (which will put
-	us into a lower bin and defeat the supertimestep purpose of using bigger
-	timesteps) and use the safe parabolic timestep until the next desired
-	time-bin synchs up */
-	timestep_to_use = chemistry_compute_parabolic_timestep(p, cd, cosmo); 
+      if (substep > 1.5 * dt_allowed) {
+        /* The next allowed timestep is too small to fit the big step part of
+        the supertimestepping cycle. Do not waste our timestep (which will put
+        us into a lower bin and defeat the supertimestep purpose of using bigger
+        timesteps) and use the safe parabolic timestep until the next desired
+        time-bin synchs up */
+        timestep_to_use = chemistry_compute_parabolic_timestep(p, cd, cosmo);
       } else {
-	/* We can jump up in bins to use our super-step => begin the cycle */
-	++chd->timesteps.current_substep;
+        /* We can jump up in bins to use our super-step => begin the cycle */
+        ++chd->timesteps.current_substep;
 
-	/* Increment substep and loop if it cycles fully */
-	if (chd->timesteps.current_substep >= cd->N_substeps) {
-	  chd->timesteps.current_substep = 0;
-	}
+        /* Increment substep and loop if it cycles fully */
+        if (chd->timesteps.current_substep >= cd->N_substeps) {
+          chd->timesteps.current_substep = 0;
+        }
       } /* substep > 1.5*dt_allowed */
     }
     return timestep_to_use;
@@ -563,7 +584,7 @@ __attribute__((always_inline)) INLINE static void chemistry_end_density(
  * @param cd The global properties of the chemistry scheme.
  */
 __attribute__((always_inline)) INLINE static void chemistry_end_gradient(
-  struct part* p, const struct chemistry_global_data* cd) {
+    struct part* p, const struct chemistry_global_data* cd) {
   chemistry_gradients_finalise(p, cd);
 }
 
@@ -587,6 +608,10 @@ __attribute__((always_inline)) INLINE static void chemistry_prepare_force(
   /* Update the diffusion coefficient for the new loop */
   p->chemistry_data.kappa =
       chemistry_compute_diffusion_coefficient(p, cd, cosmo);
+
+#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
+  p->chemistry_data.tau = chemistry_compute_physical_tau(p, cd, cosmo);
+#endif
 }
 
 /**
@@ -721,6 +746,24 @@ __attribute__((always_inline)) INLINE static void chemistry_first_init_part(
   /* Set the substep to 0 so that we can compute everything in timestep for the
      first time. */
   p->chemistry_data.timesteps.current_substep = 0;
+
+#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
+  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
+    p->chemistry_data.hyperbolic_flux[i].F_diff_pred[0] = 0.0;
+    p->chemistry_data.hyperbolic_flux[i].F_diff_pred[1] = 0.0;
+    p->chemistry_data.hyperbolic_flux[i].F_diff_pred[2] = 0.0;
+
+    p->chemistry_data.hyperbolic_flux[i].F_diff[0] = 0.0;
+    p->chemistry_data.hyperbolic_flux[i].F_diff[1] = 0.0;
+    p->chemistry_data.hyperbolic_flux[i].F_diff[2] = 0.0;
+
+    p->chemistry_data.hyperbolic_flux[i].dF_dt[0] = 0.0;
+    p->chemistry_data.hyperbolic_flux[i].dF_dt[1] = 0.0;
+    p->chemistry_data.hyperbolic_flux[i].dF_dt[2] = 0.0;
+
+    p->chemistry_data.timestepvars.vmax = 0.0;
+  }
+#endif
 }
 
 /**
@@ -950,6 +993,22 @@ __attribute__((always_inline)) INLINE static void chemistry_predict_extra(
 
   /* Update diffusion coefficient */
   chd->kappa = chemistry_compute_diffusion_coefficient(p, chem_data, cosmo);
+
+#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
+  /* Compute the predicted flux */
+
+  for (int m = 0; m < GEAR_CHEMISTRY_ELEMENT_COUNT; m++) {
+    chd->hyperbolic_flux[m].F_diff_pred[0] =
+        chd->hyperbolic_flux[m].F_diff[0] +
+        dt_therm * chd->hyperbolic_flux[m].dF_dt[0];
+    chd->hyperbolic_flux[m].F_diff_pred[1] =
+        chd->hyperbolic_flux[m].F_diff[1] +
+        dt_therm * chd->hyperbolic_flux[m].dF_dt[1];
+    chd->hyperbolic_flux[m].F_diff_pred[2] =
+        chd->hyperbolic_flux[m].F_diff[2] +
+        dt_therm * chd->hyperbolic_flux[m].dF_dt[2];
+  }
+#endif
 }
 
 #endif /* SWIFT_CHEMISTRY_GEAR_MF_DIFFUSION_H */

@@ -51,6 +51,14 @@ struct chemistry_global_data {
   /*! Diffusion normalisation constant: \kappa \propto C */
   float diffusion_coefficient;
 
+#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
+  /*! Relaxation time for the constant isotropic case */
+  double tau;
+
+  /* 1=Hopkins 2017, 2=HLL, 3=HLLC */
+  int riemann_solver;
+#endif
+
   /*! Diffusion mode. 0: isotropic with constant coefficient, 1: Smagorinsky
       isotrpoic diffusion, 2: anistropic diffusion with the shear tensor. */
   enum chemistry_diffusion_mode diffusion_mode;
@@ -98,13 +106,45 @@ struct chemistry_part_data {
   double metal_mass_fluxes[GEAR_CHEMISTRY_ELEMENT_COUNT];
 #endif
 
+  /*! Metal mass flux */
   double diffusion_flux[GEAR_CHEMISTRY_ELEMENT_COUNT];
+
+#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
+  /* Hyperbolic flux scheme variables */
+  struct {
+    /*! Diffusion flux at the last active timestep */
+    double F_diff[3];
+
+    /*! Predicted diffusion flux */
+    double F_diff_pred[3];
+
+    /*! Time derivative of the diffusion flux */
+    double dF_dt[3];
+  } hyperbolic_flux[GEAR_CHEMISTRY_ELEMENT_COUNT];
+
+  double tau;
+
+  /*! Variables used for timestep calculation. */
+  struct {
+    /* Maximum signal velocity among all the neighbours of the particle. The
+     * signal velocity encodes information about the relative fluid
+     * velocities
+     * AND particle velocities of the neighbour and this particle, as well
+     * as
+     * the sound speed of both particles. */
+    float vmax;
+
+  } timestepvars;
+#endif
 
   /* Gradients. */
   struct {
     /*! Gradient of the metals. It is used to compute the diffusion flux.
      */
     double Z[GEAR_CHEMISTRY_ELEMENT_COUNT][3];
+
+    /*! Density gradient */
+    float rho[3];
 
     /*! Fluid velocity gradients. */
     float v[3][3];
@@ -113,8 +153,11 @@ struct chemistry_part_data {
 
   /* Cell-wise limiter to avoid creating new min or max */
   struct {
-    /*! Extreme values of the fluid metal density among the neighbours. */
-    double rho_Z[GEAR_CHEMISTRY_ELEMENT_COUNT][2];
+    /*! Extreme values of the fluid metal mass fraction  among the neighbours. */
+    double Z[GEAR_CHEMISTRY_ELEMENT_COUNT][2];
+
+    /*! Extreme values of the density among the neigbours. */
+    float rho[2];
 
     /*! Extreme values of the fluid velocity among the neighbours. */
     float v[3][2];

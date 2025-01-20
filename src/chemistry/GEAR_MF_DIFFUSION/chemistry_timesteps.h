@@ -35,6 +35,15 @@ chemistry_compute_parabolic_timestep(
     const struct chemistry_global_data *chem_data,
     const struct cosmology *cosmo) {
 
+#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
+  const float CFL_condition = chem_data->C_CFL_chemistry;
+  const float delta_x = cosmo->a * kernel_gamma * p->h;
+
+  /* CFL condition */
+  const float dt_cfl =
+    CFL_condition * delta_x / p->chemistry_data.timestepvars.vmax;
+  return dt_cfl;
+#else
   const struct chemistry_part_data *chd = &p->chemistry_data;
 
   /* Compute the diffusion matrix K */
@@ -79,14 +88,17 @@ chemistry_compute_parabolic_timestep(
     return FLT_MAX;
   }
 
-  /* Compute the expression in the square bracket in eq (15). Notice that I
-     rewrote it to avoid division by 0 when norm_nabla_1 = 0. */
-  expression = norm_q * delta_x / (norm_nabla_q * delta_x + norm_q);
-
-  /* This trick comes from Gizmo. This is a mix between eq (15) and eq (D1) */
-  expression = max(expression, delta_x);
+  if (chem_data->diffusion_mode == isotropic_constant) {
+    /* Isotropic constant diffusion has the simple expression: */
+    expression = delta_x;
+  } else {
+    /* Compute the expression in the square bracket in eq (15). Notice that I
+       rewrote it to avoid division by 0 when norm_nabla_q = 0. */
+    expression = norm_q * delta_x / (norm_nabla_q * delta_x + norm_q);
+  }
 
   return expression * expression / norm_matrix_K * norm_U_over_norm_q;
+#endif
 }
 
 /**
@@ -119,9 +131,9 @@ __attribute__((always_inline)) INLINE static float chemistry_get_supertimestep(
  * @param cosmo The current cosmological model.
  */
 __attribute__((always_inline)) INLINE static float
-chemistry_compute_advective_supertimestep(const struct part *restrict p,
-					  const struct chemistry_global_data *cd,
-					  const struct cosmology *cosmo) {
+chemistry_compute_advective_supertimestep(
+    const struct part *restrict p, const struct chemistry_global_data *cd,
+    const struct cosmology *cosmo) {
 
   const struct chemistry_part_data *chd = &p->chemistry_data;
 
@@ -161,7 +173,7 @@ chemistry_compute_advective_supertimestep(const struct part *restrict p,
   }
 
   return cd->C_CFL_chemistry * delta_x * norm_U /
-    (norm_matrix_K * norm_nabla_q) ;
+         (norm_matrix_K * norm_nabla_q);
 }
 
 /**
@@ -179,7 +191,7 @@ chemistry_compute_subtimestep(const struct part *restrict p,
 
   /* TODO: Check that the division is not an integer division */
   const float cos_argument =
-    M_PI * (2.0 * current_substep_number - 1.0) / (2.0 * cd->N_substeps);
+      M_PI * (2.0 * current_substep_number - 1.0) / (2.0 * cd->N_substeps);
   const float expression = (1 + cd->nu) - (1 - cd->nu) * cos(cos_argument);
   return chd->timesteps.explicit_timestep / expression;
 }
@@ -187,7 +199,8 @@ chemistry_compute_subtimestep(const struct part *restrict p,
 /**
  * @brief Compute a valid integer time-step form a given time-step
  *
- * TODO: This is a copy/paste from make_integer_timestep. This is bad. Improve it.
+ * TODO: This is a copy/paste from make_integer_timestep. This is bad. Improve
+ * it.
  *
  * We consider the minimal time-bin of any neighbours and prevent particles
  * to differ from it by a fixed constant `time_bin_neighbour_max_delta_bin`.
@@ -203,9 +216,9 @@ chemistry_compute_subtimestep(const struct part *restrict p,
  */
 __attribute__((always_inline, const)) INLINE static integertime_t
 chemistry_make_integer_timestep(const float new_dt, const timebin_t old_bin,
-                      const timebin_t min_ngb_bin,
-                      const integertime_t ti_current,
-                      const double time_base_inv) {
+                                const timebin_t min_ngb_bin,
+                                const integertime_t ti_current,
+                                const double time_base_inv) {
 
   /* Convert to integer time */
   integertime_t new_dti = (integertime_t)(new_dt * time_base_inv);

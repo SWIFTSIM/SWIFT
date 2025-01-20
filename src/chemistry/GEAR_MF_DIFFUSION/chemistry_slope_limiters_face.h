@@ -54,6 +54,64 @@ __attribute__((always_inline)) INLINE static void chemistry_limiter_minmod(
 }
 
 /**
+ * The monotonized central limiter.
+ *
+ * @param dQi left slope
+ * @param dQj right slope
+ * @return factor to slope limit the slope dQi
+ */
+__attribute__((always_inline)) INLINE static double chemistry_limiter_mc(
+    const double dQi, const double dQj) {
+
+  const double r = dQj == 0.0 ? dQi * 1e6 : dQi / dQj;
+  const double minterm = min3(0.5 * (1.0 + r), 2.0, 2.0 * r);
+  return max(0.0, minterm);
+}
+
+/**
+ * The van Leer limiter.
+ *
+ * @param dQi left slope
+ * @param dQj right slope
+ * @return factor to slope limit the slope dQi
+ */
+__attribute__((always_inline)) INLINE static double chemistry_limiter_vanLeer(
+    const double dQi, const double dQj) {
+  const double r = dQj == 0.0 ? dQi * 1e6 : dQi / dQj;
+  const double absr = fabs(r);
+  return (r + absr) / (1.0 + absr);
+}
+
+/**
+ * The superbee limiter.
+ *
+ * @param dQi left slope
+ * @param dQj right slope
+ * @return factor to slope limit the slope dQi
+ */
+__attribute__((always_inline)) INLINE static double chemistry_limiter_superbee(
+    const double dQi, const double dQj) {
+  const double r = dQj == 0.0 ? dQi * 1e6 : dQi / dQj;
+  const double minterm1 = min(1.0, 2.0 * r);
+  const double minterm2 = min(2.0, r);
+  return max3(0.0, minterm1, minterm2);
+}
+
+/**
+ * The Koren limiter.
+ *
+ * @param dQi left slope
+ * @param dQj right slope
+ * @return factor to slope limit the slope dQi
+ */
+__attribute__((always_inline)) INLINE static double chemistry_limiter_koren(
+    const double dQi, const double dQj) {
+  const double r = dQj == 0.0 ? dQi * 1e6 : dQi / dQj;
+  const double minterm = min3(2.0*r, (1.0 + 2.0*r)/3.0, 2.0);
+  return max(0.0, minterm);
+}
+
+/**
  * @brief Slope limit a single quantity at the interface using Gizmo
  * slope-limiter.
  *
@@ -84,12 +142,14 @@ chemistry_slope_limit_face_quantity_double(double phi_i, double phi_j,
 
   double phiplus, phiminus, phi_mid;
 
+  /* Determine phiplus */
   if (same_signf(phimax + delta1, phimax)) {
     phiplus = phimax + delta1;
   } else {
     phiplus = (phimax != 0.0f) ? phimax / (1.0f + delta1 / fabs(phimax)) : 0.0f;
   }
 
+  /* Determine phi_minus */
   if (same_signf(phimin - delta1, phimin)) {
     phiminus = phimin - delta1;
   } else {
@@ -97,6 +157,7 @@ chemistry_slope_limit_face_quantity_double(double phi_i, double phi_j,
         (phimin != 0.0f) ? phimin / (1.0f + delta1 / fabs(phimin)) : 0.0f;
   }
 
+  /* Determine phi_mid */
   if (phi_i < phi_j) {
     const double temp = min(phibar + delta2, phi_mid0);
     phi_mid = max(phiminus, temp);
@@ -104,6 +165,13 @@ chemistry_slope_limit_face_quantity_double(double phi_i, double phi_j,
     const double temp = max(phibar - delta2, phi_mid0);
     phi_mid = min(phiplus, temp);
   }
+
+  /* Enforce monotonicity */
+  const double minterm =  min(phimax, phi_mid);
+  phi_mid = max(phimin, minterm);
+
+  /* Enforce positivity */
+  phi_mid = max(0.0, phi_mid);
 
   return phi_mid - phi_i;
 }
@@ -125,27 +193,69 @@ __attribute__((always_inline)) INLINE static void chemistry_slope_limit_face(
     double *Ui, double *Uj, double *dUi, double *dUj, const float xij_i[3],
     const float *xij_j, float r) {
 
-  /* const float xij_i_norm = */
-  /*     sqrtf(xij_i[0] * xij_i[0] + xij_i[1] * xij_i[1] + xij_i[2] * xij_i[2]);
-   */
+#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
+  /* Too much artificial diffusion, avoid using it */
+  /* chemistry_limiter_minmod(dUi, dUj); */
 
-  /* const float xij_j_norm = */
-  /*     sqrtf(xij_j[0] * xij_j[0] + xij_j[1] * xij_j[1] + xij_j[2] * xij_j[2]);
-   */
+  /* For hyperbolic diffusion, all these slope limiter perform better than
+     minmod and reduce numerical diffusion */
+  /* const double alphai = chemistry_limiter_mc(*dUi, *dUj); */
+  /* const double alphaj = chemistry_limiter_mc(*dUj, *dUi); */
+  /* *dUi *= alphai; */
+  /* *dUj *= alphaj; */
 
-  /* const float r_inv = (r > 0.0f) ? 1.0f / r : 0.0f; */
+  /* const double alphai = chemistry_limiter_superbee(*dUi, *dUj); */
+  /* const double alphaj = chemistry_limiter_superbee(*dUj, *dUi); */
+  /* *dUi *= alphai; */
+  /* *dUj *= alphaj; */
 
-  /* *dUi = chemistry_slope_limit_face_quantity_double(Ui[0], Uj[0], Ui[0] +
-   * dUi[0], */
-  /*                                            xij_i_norm, r_inv); */
+  /* const double alphai = chemistry_limiter_vanLeer(*dUi, *dUj); */
+  /* const double alphaj = chemistry_limiter_vanLeer(*dUj, *dUi); */
+  /* *dUi *= alphai; */
+  /* *dUj *= alphaj; */
 
-  /* *dUj = chemistry_slope_limit_face_quantity_double(Uj[0], Ui[0], Uj[0] +
-   * dUj[0], */
-  /*                                            xij_j_norm, r_inv); */
+  /* const double alphai = chemistry_limiter_koren(*dUi, *dUj); */
+  /* const double alphaj = chemistry_limiter_koren(*dUj, *dUi); */
+  /* *dUi *= alphai; */
+  /* *dUj *= alphaj; */
 
-  /* Use the minmod slop limiter: it avoids most pathological cases where the
-     mass of metals gets bigger than the mass of the particle */
-  chemistry_limiter_minmod(dUi, dUj);
+  /* The Gizmo slope limiter works even better. */
+  const float xij_i_norm =
+      sqrtf(xij_i[0] * xij_i[0] + xij_i[1] * xij_i[1] + xij_i[2] * xij_i[2]);
+
+  const float xij_j_norm =
+      sqrtf(xij_j[0] * xij_j[0] + xij_j[1] * xij_j[1] + xij_j[2] * xij_j[2]);
+
+  const float r_inv = (r > 0.0f) ? 1.0f / r : 0.0f;
+
+  *dUi = chemistry_slope_limit_face_quantity_double(Ui[0], Uj[0], Ui[0] +
+  dUi[0],
+                                             xij_i_norm, r_inv);
+
+  *dUj = chemistry_slope_limit_face_quantity_double(Uj[0], Ui[0], Uj[0] +
+  dUj[0],
+                                             xij_j_norm, r_inv);
+#else
+  /* chemistry_limiter_minmod(dUi, dUj); */
+
+  /* The Gizmo slope limiter works better. */
+  const float xij_i_norm =
+      sqrtf(xij_i[0] * xij_i[0] + xij_i[1] * xij_i[1] + xij_i[2] * xij_i[2]);
+
+  const float xij_j_norm =
+      sqrtf(xij_j[0] * xij_j[0] + xij_j[1] * xij_j[1] + xij_j[2] * xij_j[2]);
+
+  const float r_inv = (r > 0.0f) ? 1.0f / r : 0.0f;
+
+  *dUi = chemistry_slope_limit_face_quantity_double(Ui[0], Uj[0], Ui[0] +
+  dUi[0],
+                                             xij_i_norm, r_inv);
+
+  *dUj = chemistry_slope_limit_face_quantity_double(Uj[0], Ui[0], Uj[0] +
+  dUj[0],
+                                             xij_j_norm, r_inv);
+
+#endif
 }
 
 /**

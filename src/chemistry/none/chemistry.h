@@ -98,7 +98,6 @@ __attribute__((always_inline)) INLINE static void chemistry_end_density(
     struct part* restrict p, const struct chemistry_global_data* cd,
     const struct cosmology* cosmo) {}
 
-
 /**
  * @brief Finishes the gradient calculation.
  *

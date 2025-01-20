@@ -40,6 +40,10 @@ chemistry_part_reset_gradients(struct part *restrict p) {
     chd->gradients.Z[i][2] = 0.0f;
   }
 
+  chd->gradients.rho[0] = 0.0f;
+  chd->gradients.rho[1] = 0.0f;
+  chd->gradients.rho[2] = 0.0f;
+
   chd->gradients.v[0][0] = 0.0f;
   chd->gradients.v[0][1] = 0.0f;
   chd->gradients.v[0][2] = 0.0f;
@@ -113,12 +117,16 @@ chemistry_part_update_metal_mass_fraction_gradients(struct part *restrict p,
  * @param dvz_tilde z Velocity tilde gradient contribution.
  */
 __attribute__((always_inline)) INLINE static void
-chemistry_part_update_hydro_gradients(struct part *restrict p, float dvx[3],
-                                      float dvy[3], float dvz[3],
+chemistry_part_update_hydro_gradients(struct part *restrict p, float drho[3],
+                                      float dvx[3], float dvy[3], float dvz[3],
                                       float dvx_tilde[3], float dvy_tilde[3],
                                       float dvz_tilde[3]) {
 
   struct chemistry_part_data *chd = &p->chemistry_data;
+
+  chd->gradients.rho[0] += drho[0];
+  chd->gradients.rho[1] += drho[1];
+  chd->gradients.rho[2] += drho[2];
 
   chd->gradients.v[0][0] += dvx[0];
   chd->gradients.v[0][1] += dvx[1];
@@ -158,6 +166,10 @@ chemistry_part_normalise_gradients(struct part *restrict p, const float norm) {
     chd->gradients.Z[i][1] *= norm;
     chd->gradients.Z[i][2] *= norm;
   }
+
+  chd->gradients.rho[0] *= norm;
+  chd->gradients.rho[1] *= norm;
+  chd->gradients.rho[2] *= norm;
 
   chd->gradients.v[0][0] *= norm;
   chd->gradients.v[0][1] *= norm;

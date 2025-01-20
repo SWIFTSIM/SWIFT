@@ -62,7 +62,7 @@ INLINE static void convert_gas_metals(const struct engine* e,
   }
 
   /* Now write the metallicity */
-  ret[GEAR_CHEMISTRY_ELEMENT_COUNT-1] = m_Z / hydro_get_mass(p);
+  ret[GEAR_CHEMISTRY_ELEMENT_COUNT - 1] = m_Z / hydro_get_mass(p);
 }
 
 INLINE static void convert_chemistry_diffusion_coefficient(
@@ -101,6 +101,8 @@ INLINE static int chemistry_write_particles(const struct part* parts,
                                             const struct xpart* xparts,
                                             struct io_props* list,
                                             const int with_cosmology) {
+  /* Number of fields to write */
+  int num = 3;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_part(
@@ -119,7 +121,17 @@ INLINE static int chemistry_write_particles(const struct part* parts,
       /*can convert to comoving=*/0, convert_chemistry_diffusion_matrix,
       "Physical diffusion matrix, stored in a vector");
 
-  return 3;
+#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
+  // TODO: Check the a exponent
+  list[3] = io_make_physical_output_field(
+       "RelaxationTimes", DOUBLE, 1, UNIT_CONV_TIME, 0.f, parts,
+       chemistry_data.tau, /*can convert to comoving=*/1,
+       "Physical diffusion relaxation time of the particles.");
+
+  num += 1;
+#endif
+
+  return num;
 }
 
 /**

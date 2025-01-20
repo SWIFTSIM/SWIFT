@@ -83,11 +83,6 @@ chemistry_get_comoving_density(const struct part* restrict p) {
         kernel_gamma * kernel_gamma * kernel_gamma * p->h * p->h * p->h;
     const float volume = 4.0 / 3.0 * M_PI * r_cubed;
     rho = hydro_get_mass(p) / volume;
-
-    if (rho == 0.0) {
-      rho = FLT_MIN;
-      error("Density cannot be null!");
-    }
   }
   return rho;
 }
@@ -303,23 +298,20 @@ chemistry_get_metal_mass_fraction_gradients(const struct part* restrict p,
  * @param dF Metal mass density gradient (of size 3).
  */
 __attribute__((always_inline)) INLINE static void
-chemistry_get_metal_mass_density_gradients(const struct part* restrict p,
-                                           int metal, const float grad_rho[3],
-                                           double dF[3]) {
+chemistry_get_metal_density_gradients(const struct part* restrict p, int metal,
+                                      double dF[3]) {
 
   const struct chemistry_part_data* chd = &p->chemistry_data;
 
-  /* We have U = rho_Z and q = Z.
-     But we computed Grad Z and not Grad (rho*Z).
-     However, Grad (rho*Z) = Z*Grad_rho + rho*Grad_Z
-     We can estimate grad_rho = (rho_max_ij - rho_min_ij) * dx[3] / (r*r). */
-
+  /* We have U = rho_Z and q = Z.  But we computed Grad Z and Grad rho, not
+     Grad (rho*Z). However, Grad (rho*Z) = Z*Grad_rho + rho*Grad_Z */
+  const double rho = hydro_get_comoving_density(p);
   const double Z = chemistry_get_metal_mass_fraction(p, metal);
 
   /* For isotropic diffusion, \grad U = \nabla \otimes q = \grad n_Z */
-  dF[0] = chd->gradients.Z[metal][0] * p->rho + grad_rho[0] * Z;
-  dF[1] = chd->gradients.Z[metal][1] * p->rho + grad_rho[1] * Z;
-  dF[2] = chd->gradients.Z[metal][2] * p->rho + grad_rho[2] * Z;
+  dF[0] = chd->gradients.Z[metal][0] * rho + chd->gradients.rho[0] * Z;
+  dF[1] = chd->gradients.Z[metal][1] * rho + chd->gradients.rho[1] * Z;
+  dF[2] = chd->gradients.Z[metal][2] * rho + chd->gradients.rho[2] * Z;
 }
 
 /**
@@ -331,7 +323,12 @@ chemistry_get_metal_mass_density_gradients(const struct part* restrict p,
  * @param dvz z velocity gradient (of size 3 or more).
  */
 __attribute__((always_inline)) INLINE static void chemistry_get_hydro_gradients(
-    const struct part* restrict p, float dvx[3], float dvy[3], float dvz[3]) {
+    const struct part* restrict p, float drho[3], float dvx[3], float dvy[3],
+    float dvz[3]) {
+
+  drho[0] = p->chemistry_data.gradients.rho[0];
+  drho[1] = p->chemistry_data.gradients.rho[1];
+  drho[2] = p->chemistry_data.gradients.rho[2];
 
   dvx[0] = p->chemistry_data.gradients.v[0][0];
   dvx[1] = p->chemistry_data.gradients.v[0][1];
@@ -342,6 +339,59 @@ __attribute__((always_inline)) INLINE static void chemistry_get_hydro_gradients(
   dvz[0] = p->chemistry_data.gradients.v[2][0];
   dvz[1] = p->chemistry_data.gradients.v[2][1];
   dvz[2] = p->chemistry_data.gradients.v[2][2];
+}
+
+/**
+ * @brief Get the physical hyperbolic diffusion soundspeed.
+ *
+ * @param p Particle.
+ */
+__attribute__((always_inline)) INLINE static double
+chemistry_get_physical_hyperbolic_soundspeed(
+    const struct part* restrict p,
+    const struct chemistry_global_data* chem_data,
+    const struct cosmology* cosmo) {
+#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
+  if (chem_data->diffusion_mode == isotropic_constant) {
+    return chem_data->diffusion_coefficient / chem_data->tau;
+  } else {
+    return hydro_get_physical_soundspeed(p, cosmo);
+  }
+#else
+  return hydro_get_physical_soundspeed(p, cosmo);
+#endif
+}
+
+/**
+ * @brief Get the physical hyperbolic diffusion relaxation time.
+ *
+ * @param p Particle.
+ * @param chem_data The global properties of the chemistry scheme.
+ * @param cosmo The current cosmological model.
+ */
+__attribute__((always_inline)) INLINE static double
+chemistry_compute_physical_tau(const struct part* restrict p,
+                               const struct chemistry_global_data* chem_data,
+                               const struct cosmology* cosmo) {
+#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
+  if (chem_data->diffusion_mode != isotropic_constant) {
+    /* Compute the diffusion matrix K */
+    double K[3][3];
+    chemistry_get_physical_matrix_K(p, chem_data, cosmo, K);
+    const float norm_matrix_K = chemistry_get_matrix_norm(K);
+
+    const double rho = hydro_get_physical_density(p, cosmo);
+
+    /* Get soundspeed */
+    const double c_hyp =
+        chemistry_get_physical_hyperbolic_soundspeed(p, chem_data, cosmo);
+    return  norm_matrix_K / (c_hyp*c_hyp*rho);
+  } else {
+    return chem_data->tau;
+  }
+#else
+  return 0.0;
+#endif
 }
 
 /**

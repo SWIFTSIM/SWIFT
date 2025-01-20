@@ -284,6 +284,19 @@ runner_iact_chemistry_fluxes_common(
   const float Vi = pi->geometry.volume;
   const float Vj = pj->geometry.volume;
 
+#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
+  /* Calculate the maximal soundspeed */
+  const float ci = chemistry_get_physical_hyperbolic_soundspeed(pi, chem_data, cosmo);
+  const float cj = chemistry_get_physical_hyperbolic_soundspeed(pj, chem_data, cosmo);
+  const float vmax = ci + cj;
+
+  /* Store the soundspeed */
+  chi->timestepvars.vmax = max(chi->timestepvars.vmax, vmax);
+  if (mode == 1) {
+    chj->timestepvars.vmax = max(chj->timestepvars.vmax, vmax);
+  }
+#endif
+
   /* Compute kernel of pi. */
   float wi, wi_dx;
   const float hi_inv = 1.0f / hi;
@@ -423,10 +436,6 @@ runner_iact_chemistry_fluxes_common(
   /* Now solve the Riemann problem for each metal specie */
   /* Helper variable */
   const float a2 = cosmo->a * cosmo->a;
-  double totflux[GEAR_CHEMISTRY_ELEMENT_COUNT];
-  double norm2_totflux = 0.0;
-  double m_Z_i = 0.0;
-  double m_Z_j = 0.0;
 
   for (int m = 0; m < GEAR_CHEMISTRY_ELEMENT_COUNT; m++) {
 
@@ -439,37 +448,9 @@ runner_iact_chemistry_fluxes_common(
     Uj *= cosmo->a3_inv;
 
     /* Solve the 1D Riemann problem at the interface A_ij _physical units_ */
+    double totflux = 0.0;
     chemistry_compute_flux(dx, pi, pj, Ui, Uj, Wi, Wj, n_unit, a2 * Anorm, m,
-                           chem_data, cosmo, &totflux[m]);
-    norm2_totflux += totflux[m]*totflux[m];
-
-    /* Accumulate the metal mass */
-    m_Z_i += chi->metal_mass[m];
-    m_Z_j += chj->metal_mass[m];
-  }
-
-  /* Limit the inter-aprticle mass flux to 1/4 of the total mass. This avoids
-     exchanging too much metal mass during a timestep */
-  const double mi = hydro_get_mass(pi);
-  const double mj = hydro_get_mass(pj);
-  const double Zi = min(m_Z_i/mi, 1.0);
-  const double Zj = min(m_Z_j/mj, 1.0);
-  const double min_m_Z = min(mi, mj) * fabs(Zi - Zj);
-  const double max_m_Z = max(mi * Zi, mj * Zj);
-  const double m_Z_lim = 0.25 * min(min_m_Z, max_m_Z);
-
-  const double total_mass_flux = sqrtf(norm2_totflux)*mindt;
-  const int should_rescale = fabs(total_mass_flux) > m_Z_lim;
-  double rescale_factor = 1.0;
-
-  if (fabs(total_mass_flux) != 0.0 && should_rescale) {
-    rescale_factor = m_Z_lim / fabs(total_mass_flux);
-  }
-
-  for (int m = 0; m < GEAR_CHEMISTRY_ELEMENT_COUNT; m++) {
-    if (should_rescale) {
-      totflux[m] *= rescale_factor;
-    }
+                           chem_data, cosmo, &totflux);
 
     /* When solving the Riemann problem, we assume pi is left state, and
      * pj is right state. The sign convention is that a positive total
@@ -481,9 +462,9 @@ runner_iact_chemistry_fluxes_common(
      * of flux_dt, we can detect inactive neighbours through their negative time
      * step. */
     /* Update V*U. */
-    chi->diffusion_flux[m] -= totflux[m] * mindt;
+    chi->diffusion_flux[m] -= totflux * mindt;
     if (mode == 1 || (chj->flux_dt < 0.f)) {
-      chj->diffusion_flux[m] += totflux[m] * mindt;
+      chj->diffusion_flux[m] += totflux * mindt;
     }
   }
 }

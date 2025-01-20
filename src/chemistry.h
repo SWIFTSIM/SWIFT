@@ -40,7 +40,7 @@
 #elif defined(CHEMISTRY_GEAR_DIFFUSION)
 #include "./chemistry/GEAR_DIFFUSION/chemistry.h"
 #include "./chemistry/GEAR_DIFFUSION/chemistry_iact.h"
-#elif defined(CHEMISTRY_GEAR_MF_DIFFUSION)
+#elif defined(CHEMISTRY_GEAR_MF_DIFFUSION) || defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
 #include "./chemistry/GEAR_MF_DIFFUSION/chemistry.h"
 #include "./chemistry/GEAR_MF_DIFFUSION/chemistry_iact.h"
 #elif defined(CHEMISTRY_AGORA)

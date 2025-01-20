@@ -219,8 +219,9 @@ __attribute__((always_inline)) INLINE static void kick_part(
     const double dt_kick_corr, const struct cosmology *cosmo,
     const struct hydro_props *hydro_props,
     const struct entropy_floor_properties *floor_props,
-    const integertime_t ti_start, const integertime_t ti_end,
-    const integertime_t ti_start_mesh, const integertime_t ti_end_mesh) {
+    const struct chemistry_global_data *chem_data, const integertime_t ti_start,
+    const integertime_t ti_end, const integertime_t ti_start_mesh,
+    const integertime_t ti_end_mesh) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (p->ti_kick != ti_start)
@@ -275,7 +276,7 @@ __attribute__((always_inline)) INLINE static void kick_part(
   /* Similarly, we must apply the chemistry metal fluxes before updating the
    * particle masses */
   chemistry_kick_extra(p, dt_kick_therm, dt_kick_grav, dt_kick_hydro,
-                       dt_kick_corr, cosmo, hydro_props);
+                       dt_kick_corr, cosmo, hydro_props, chem_data);
   hydro_kick_extra(p, xp, dt_kick_therm, dt_kick_grav, dt_kick_mesh_grav,
                    dt_kick_hydro, dt_kick_corr, cosmo, hydro_props,
                    floor_props);
