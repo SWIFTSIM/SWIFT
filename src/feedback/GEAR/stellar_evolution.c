@@ -725,7 +725,7 @@ void stellar_evolution_props_init(struct stellar_model* sm,
 
   if (engine_rank == 0) {
     message("discrete_star_minimal_gravity_mass: (internal units)          %e",
-	    sm->discrete_star_minimal_gravity_mass);
+            sm->discrete_star_minimal_gravity_mass);
   }
 }
 

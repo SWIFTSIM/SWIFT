@@ -436,52 +436,52 @@ INLINE static void sink_props_init(
   }
   if (engine_rank == 0) {
     message("temperature_threshold                        = %g",
-	    sp->temperature_threshold);
+            sp->temperature_threshold);
     message("density_threshold                            = %g",
-	    sp->density_threshold);
+            sp->density_threshold);
     message("maximal_density_threshold                    = %g",
-	    sp->maximal_density_threshold);
+            sp->maximal_density_threshold);
     message("sink_minimal_mass (in M_sun)                 = %g",
-	    sp->sink_minimal_mass_Msun);
+            sp->sink_minimal_mass_Msun);
     message("stellar_particle_mass (in M_sun)             = %g",
-	    sp->stellar_particle_mass_Msun);
+            sp->stellar_particle_mass_Msun);
     message("minimal_discrete_mass (in M_sun)             = %g",
-	    sp->minimal_discrete_mass_Msun);
+            sp->minimal_discrete_mass_Msun);
 
     message("stellar_particle_mass_first_stars (in M_sun) = %g",
-	    sp->stellar_particle_mass_first_stars_Msun);
+            sp->stellar_particle_mass_first_stars_Msun);
     message("minimal_discrete_mass_first_stars (in M_sun) = %g",
-	    sp->minimal_discrete_mass_first_stars_Msun);
+            sp->minimal_discrete_mass_first_stars_Msun);
 
     /* Print information about the functionalities */
     message("disable_sink_formation                       = %d",
-	    sp->disable_sink_formation);
+            sp->disable_sink_formation);
     message("disable_star_formation                       = %d",
 	    sp->disable_star_formation);
     message("sink_formation_contracting_gas_criterion     = %d",
-	    sp->sink_formation_contracting_gas_criterion);
+            sp->sink_formation_contracting_gas_criterion);
     message("sink_formation_smoothing_length_criterion    = %d",
-	    sp->sink_formation_smoothing_length_criterion);
+            sp->sink_formation_smoothing_length_criterion);
     message("sink_formation_jeans_instability_criterion   = %d",
-	    sp->sink_formation_jeans_instability_criterion);
+            sp->sink_formation_jeans_instability_criterion);
     message("sink_formation_bound_state_criterion         = %d",
-	    sp->sink_formation_bound_state_criterion);
+            sp->sink_formation_bound_state_criterion);
     message("sink_formation_overlapping_sink_criterion    = %d",
-	    sp->sink_formation_overlapping_sink_criterion);
+            sp->sink_formation_overlapping_sink_criterion);
 
     /* Print timestep parameters information */
     message("sink max_timestep_young                      = %e",
-	    sp->max_time_step_young);
+            sp->max_time_step_young);
     message("sink max_timestep_old                        = %e",
-	    sp->max_time_step_old);
+            sp->max_time_step_old);
     message("sink age_threshold from young to old         = %e",
-	    sp->age_threshold);
+            sp->age_threshold);
     message("sink age_threshold from old to unlimited     = %e",
-	    sp->age_threshold_unlimited);
+            sp->age_threshold_unlimited);
     message("sink C_CFL                                   = %e",
-	    sp->CFL_condition);
+            sp->CFL_condition);
     message("tolerance_SF_timestep                        = %e",
-	    sp->tolerance_SF_timestep);
+            sp->tolerance_SF_timestep);
     message("n_IMF                                        = %e", sp->n_IMF);
   }
 }

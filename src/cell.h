@@ -511,9 +511,6 @@ struct cell {
   /*! ID of the node this cell lives on. */
   int nodeID;
 
-  /*! Number of tasks that are associated with this cell. */
-  short int nr_tasks;
-
   /*! The depth of this cell in the tree. */
   char depth;
 
@@ -529,6 +526,9 @@ struct cell {
 #endif
 
 #ifdef SWIFT_DEBUG_CHECKS
+
+  /*! Number of tasks that are associated with this cell. */
+  short int nr_tasks;
 
   /*! The list of tasks that have been executed on this cell */
   char tasks_executed[task_type_count];
