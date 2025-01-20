@@ -132,7 +132,7 @@ __attribute__((always_inline)) INLINE static float ray_arclength(
  * @param v Gas particle velocity
  */
 __attribute__((always_inline)) INLINE static void ray_minimise_arclength(
-    const float *dx, const float r, struct ray_data *ray,
+    const float dx[3], const float r, struct ray_data *ray,
     const ray_feedback_type ray_type, const long long gas_part_id,
     const double rand_theta_gen, const double rand_phi_gen, const float m,
     struct ray_data_extra *ray_ext, const float *v) {
