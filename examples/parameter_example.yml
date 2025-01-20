@@ -441,7 +441,7 @@ MWPotential2014Potential:
   Mdisk_Msun:       6.8e10                 # Mass of the disk (in M_sun)
   Rdisk_kpc:        3.0                    # Effective radius of the disk (in kpc)
   Zdisk_kpc:        0.280                  # Scale-height of the disk (in kpc)
-  amplitude:        1.0                    # Amplitude of the bulge
+  amplitude_Msun_per_kpc3: 1.0e10          # Amplitude of the bulge (in M_sun/kpc^3)
   r_1_kpc:          1.0                    # Reference radius for amplitude of the bulge (in kpc)
   alpha:            1.8                    # Exponent of the power law of the bulge
   r_c_kpc:          1.9                    # Cut-off radius of the bulge (in kpc)
@@ -882,9 +882,13 @@ XrayEmissivity:
 DefaultSink:
   cut_off_radius:        1e-3       # Cut off radius of the sink particles (in internal units). This parameter should be adapted with the resolution.
 
+BasicSink:
+  use_nibbling: 1                             # Use nibbling to accrete gas? If zero, do swallowing instead.
+  min_gas_mass_for_nibbling_Msun: 5e4         # The mass in Msun that particles cannot be nibbled below. A good default is half the initial mass.
+
 # GEAR sink particles
 GEARSink:
-  cut_off_radius:        1e-3                 # Cut off radius of the sink particles (in internal units). This parameter should be adapted with the resolution.
+  cut_off_radius:        1e-3                 # Cut off radius of the sink particles (in internal units). In GEAR, if this is specified, the cutoff radius is fixed, and the sink smoothing length is fixed at this value divided by kernel_gamma. If not, the cutoff radius varies with the sink smoothing length as r_cut = h*kernel_gamma.
   f_acc: 0.1                                  # (Optional) Fraction of the cut_off_radius that determines if a gas particle should be swallowed wihtout additional check. It has to respect 0 <= f_acc <= 1. (Default: 0.1)
   temperature_threshold_K:        100         # Max temperature (in K) for forming a sink when density_threshold_Hpcm3 <= density <= maximal_density_threshold_Hpcm3.
   density_threshold_Hpcm3: 1e3                # Minimum gas density (in Hydrogen atoms/cm3) required to form a sink particle.
