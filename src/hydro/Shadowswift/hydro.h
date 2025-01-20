@@ -865,25 +865,24 @@ __attribute__((always_inline)) INLINE static void hydro_split_part(
 __attribute__((always_inline)) INLINE static void hydro_split_part_displacement(
     struct part *p, struct xpart *xp, double *displacement) {
   /* Set some minimal distance */
-  double displacement_nrm2 = displacement[0] * displacement[0] +
-                             displacement[1] * displacement[1] +
-                             displacement[2] * displacement[2];
-  if (displacement_nrm2 < 1e-14) {
+  double displacement_nrm = sqrt(displacement[0] * displacement[0] +
+                                 displacement[1] * displacement[1] +
+                                 displacement[2] * displacement[2]);
 #ifdef SWIFT_DEBUG_CHECKS
-    if (displacement_nrm2 == 0) {
-      error("Displacement vector cannot be 0!");
-    }
-#endif
-    double fac = sqrt(1e-14 / displacement_nrm2);
-    displacement[0] *= fac;
-    displacement[1] *= fac;
-    displacement[2] *= fac;
+  if (displacement_nrm2 == 0) {
+    error("Displacement vector cannot be 0!");
   }
+#endif
+  /* Rescale to make displacement smaller */
+  double fac = fmax(1e-4, 1e-8 / displacement_nrm);
+  displacement[0] *= fac;
+  displacement[1] *= fac;
+  displacement[2] *= fac;
 
   /* make perpendicular to cell axis */
   const float *axis = p->geometry.centroid;
   double axis_nrm2 = axis[0] * axis[0] + axis[1] * axis[1] + axis[2] * axis[2];
-  if (axis_nrm2 < 1e-14) {
+  if (axis_nrm2 < 1e-16) {
     /* Centroidal cell is symmetric */
     return;
   }
@@ -902,9 +901,9 @@ __attribute__((always_inline)) INLINE static void hydro_split_part_displacement(
     delta_z = displacement[2] - axis[2] * delta_dot_axis / axis_nrm2;
   }
 
-  displacement[0] = 0.001 * delta_x;
-  displacement[1] = 0.001 * delta_y;
-  displacement[2] = 0.001 * delta_z;
+  displacement[0] = delta_x;
+  displacement[1] = delta_y;
+  displacement[2] = delta_z;
 }
 
 /**
