@@ -2264,17 +2264,18 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
 
       /* We have a particle that should be de-refined, check its neighbours for
        * conflicts. */
-      int faces_start = pi->geometry.pair_connections_offset;
-      int faces_end = faces_start + pi->geometry.nface;
+      int faces_offset = pi->geometry.pair_connections_offset;
       double total_area = 0.;
-      for (int j = faces_start; j < faces_end; j++) {
-        struct int2 connection =
-            c->grid.voronoi->cell_pair_connections.values[j];
-        int sid = connection._1;
+      for (int j = 0; j < pi->geometry.nface; j++) {
+        struct voronoi_pair* face;
+        int sid = voronoi_get_cell_face(c->grid.voronoi, faces_offset, j, &face);
         /* Boundary face? */
         if (sid == 27) continue;
-        int face_idx = connection._0;
-        struct voronoi_pair *face = &c->grid.voronoi->pairs[sid][face_idx];
+#ifdef SWIFT_DEBUG_CHECKS
+        if (pi_idx != face->left_idx && pi_idx != face->right_idx) {
+          error("Got unconnected face!");
+        }
+#endif
         int pj_idx =
             face->left_idx == pi_idx ? face->right_idx : face->left_idx;
         struct part *pj = &ngb_cells[sid]->hydro.parts[pj_idx];

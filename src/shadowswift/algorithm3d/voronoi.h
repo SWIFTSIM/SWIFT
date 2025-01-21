@@ -156,6 +156,10 @@ inline static void voronoi_finalize(struct voronoi *v, const struct delaunay *d,
                                     struct part *parts, int *face_sids);
 inline static void voronoi_destroy(struct voronoi *restrict v);
 
+inline static int voronoi_get_cell_face(const struct voronoi *v, int offset,
+                                        int face_idx,
+                                        struct voronoi_pair **face);
+
 inline static struct voronoi *voronoi_malloc(int number_of_cells, double dmin) {
 
   /* Allocate memory */
@@ -874,6 +878,20 @@ inline static int voronoi_new_face(
   v->pair_index++;
 
   return 1;
+}
+
+inline static int voronoi_get_cell_face(const struct voronoi *v, int offset,
+                                        int face_idx,
+                                        struct voronoi_pair **face) {
+#ifdef VORONOI_STORE_CELL_FACE_CONNECTIONS
+  *face = &v->pairs_flat[v->cell_pair_connections[offset + face_idx]];
+  int i;
+  for (i = 0; i < 27 && v->pairs[face_sid_order[i + 1]] < *face; i++) {
+  }
+  return face_sid_order[i];
+#else
+  error("Shouldn't call this function!")
+#endif
 }
 
 static inline double voronoi_compute_volume(const struct voronoi *restrict v) {
