@@ -242,12 +242,16 @@ struct part {
 
     } flux;
 
+    /*! Data used for derefining a particle (happens instead of flux exchange)*/
     struct {
-      double total_area;
+      /* Inverse of the total sum of derefinement weights of the faces */
+      double total_weight_inv;
 
 #ifdef SWIFT_DEBUG_CHECKS
+      /* Fraction of conserved variables that has been transferred */
       double transferred_fraction;
 
+      /* Number or transfers that occurred */
       int transfer_count;
 #endif
     } apoptosis_data;

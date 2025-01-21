@@ -2266,10 +2266,11 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
       /* We have a particle that should be de-refined, check its neighbours for
        * conflicts. */
       int faces_offset = pi->geometry.pair_connections_offset;
-      double total_area = 0.;
+      double total_weight = 0.;
       for (int j = 0; j < pi->geometry.nface; j++) {
-        struct voronoi_pair* face;
-        int sid = voronoi_get_cell_face(c->grid.voronoi, faces_offset, j, &face);
+        struct voronoi_pair *face;
+        int sid =
+            voronoi_get_cell_face(c->grid.voronoi, faces_offset, j, &face);
         /* Boundary face? */
         if (sid == 27) continue;
 #ifdef SWIFT_DEBUG_CHECKS
@@ -2288,7 +2289,8 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
            * loop instead */
           goto next_particle;
         }
-        total_area += face->surface_area;
+        total_weight += hydro_part_get_derefinement_weight_face(
+            pi, pj, face->surface_area, face->midpoint);
       }
       /* No conflicts were found, indicate that this particle will be killed
        * during the flux exchange */
@@ -2300,7 +2302,7 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
       pi->conserved.momentum[2] += pi->flux.momentum[2];
       pi->conserved.energy += pi->flux.energy;
       pi->conserved.entropy += pi->flux.entropy;
-      pi->apoptosis_data.total_area = total_area;
+      pi->apoptosis_data.total_weight_inv = 1. / total_weight;
 #ifdef SWIFT_DEBUG_CHECKS
       pi->apoptosis_data.transferred_fraction = 0.;
       pi->apoptosis_data.transfer_count = 0;

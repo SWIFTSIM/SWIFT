@@ -294,9 +294,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_flux_exchange(
 __attribute__((always_inline)) INLINE static void runner_iact_apoptosis(
     struct part *pi, struct part *pj, double const *centroid,
     double surface_area, const double *shift) {
-  const double fraction = pi->apoptosis_data.total_area > 0.
-                              ? surface_area / pi->apoptosis_data.total_area
-                              : 0.;
+  const double fraction =
+      hydro_part_get_derefinement_weight_face(pi, pj, surface_area, centroid) *
+      pi->apoptosis_data.total_weight_inv;
 #ifdef SWIFT_DEBUG_CHECKS
   if (pj->time_bin == time_bin_apoptosis) {
     error("De-refining neighbouring particles!");

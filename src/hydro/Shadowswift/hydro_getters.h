@@ -457,4 +457,77 @@ __attribute__((always_inline)) INLINE static void hydro_get_interface_velocity(
 #endif
 }
 
+/**
+ * Compute the weight to attribute to a given face when de-refining a particle.
+ */
+__attribute__((always_inline)) INLINE static double
+hydro_part_get_derefinement_weight_face(const struct part* pi,
+                                        const struct part* pj,
+                                        double surface_area,
+                                        const double* centroid) {
+#ifdef HYDRO_DIMENSION_1D
+  return 1.;
+#else
+
+#if SHADOWSWIFT_DEREFINEMENT_FACE_WEIGHTS == \
+    SHADOWSWIFT_DEREFINEMENT_WEIGHTS_AREA
+
+  return surface_area;
+
+#elif SHADOWSWIFT_DEREFINEMENT_FACE_WEIGHTS == \
+    SHADOWSWIFT_DEREFINEMENT_WEIGHTS_SOLID_ANGLE
+
+  const double dx[3] = {
+      pj->x[0] - pi->x[0],
+      pj->x[1] - pi->x[1],
+      pj->x[2] - pi->x[2],
+  };
+  const double r_inv = 1. / sqrt(dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]);
+  const double dx_face[3] = {
+      centroid[0] - pi->x[0],
+      centroid[1] - pi->x[1],
+      centroid[2] - pi->x[2],
+  };
+  const double r_face_inv =
+      1. / sqrt(dx_face[0] * dx_face[0] + dx_face[1] * dx_face[1] +
+                dx_face[2] * dx_face[2]);
+  const double effective_area =
+      surface_area *
+      (dx[0] * dx_face[0] + dx[1] * dx_face[1] + dx[2] * dx_face[2]) * r_inv *
+      r_face_inv;
+#if defined(HYDRO_DIMENSION_2D)
+  /* Approximation for angle extended by face over 2 pi. Interpolates between
+   * 1 / 2 and effective_area / (2 pi r) approx angle_face / 2pi */
+  return 0.5 * (1. - 1. / sqrt(1 + 2. * effective_area * M_1_PI * r_face_inv));
+#elif defined(HYDRO_DIMENSION_3D)
+  /* Approximation for solid angle extended by face over 4 pi. (See e.g. eq. 2
+   * in Hopkins 2017) */
+  return 0.5 * (1. - 1. / sqrt(1. + effective_area * M_1_PI * r_face_inv *
+                                        r_face_inv));
+#endif
+
+#elif SHADOWSWIFT_DEREFINEMENT_FACE_WEIGHTS == \
+    SHADOWSWIFT_DEREFINEMENT_WEIGHTS_CONE
+
+  const double dx[3] = {
+      pj->x[0] - pi->x[0],
+      pj->x[1] - pi->x[1],
+      pj->x[2] - pi->x[2],
+  };
+  const double r_inv = 1. / sqrt(dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]);
+  const double dx_face[3] = {
+      centroid[0] - pi->x[0],
+      centroid[1] - pi->x[1],
+      centroid[2] - pi->x[2],
+  };
+  return surface_area * r_inv *
+         (dx[0] * dx_face[0] + dx[1] * dx_face[1] + dx[2] * dx_face[2]);
+
+#else
+  error("Unknown derefinement weights");
+#endif
+
+#endif
+}
+
 #endif /* SWIFT_SHADOWSWIFT_HYDRO_GETTERS_H */
