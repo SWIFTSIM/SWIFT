@@ -57,9 +57,10 @@ void DOPAIR1_NAIVE(struct runner *r, struct cell *restrict ci,
   struct part *restrict parts_j = cj->hydro.parts;
 
   /* Cosmological terms and physical constants */
+  const float mu_0 = e->physical_constants->const_vacuum_permeability;
   const float a = cosmo->a;
   const float H = cosmo->H;
-  GET_MU0();
+  // GET_MU0();
 
   /* Get the relative distance between the pairs, wrapping. */
   double shift[3] = {0.0, 0.0, 0.0};
@@ -117,7 +118,7 @@ void DOPAIR1_NAIVE(struct runner *r, struct cell *restrict ci,
       /* Hit or miss? */
       if (r2 < hig2 && pi_active) {
 
-        IACT_NONSYM(r2, dx, hi, hj, pi, pj, a, H);
+        IACT_NONSYM(r2, dx, hi, hj, pi, pj, mu_0, a, H);
         IACT_NONSYM_MHD(r2, dx, hi, hj, pi, pj, mu_0, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
         runner_iact_nonsym_chemistry(r2, dx, hi, hj, pi, pj, a, H);
@@ -138,7 +139,7 @@ void DOPAIR1_NAIVE(struct runner *r, struct cell *restrict ci,
         dx[1] = -dx[1];
         dx[2] = -dx[2];
 
-        IACT_NONSYM(r2, dx, hj, hi, pj, pi, a, H);
+        IACT_NONSYM(r2, dx, hj, hi, pj, pi, mu_0, a, H);
         IACT_NONSYM_MHD(r2, dx, hj, hi, pj, pi, mu_0, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
         runner_iact_nonsym_chemistry(r2, dx, hj, hi, pj, pi, a, H);
@@ -190,9 +191,10 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
   struct part *restrict parts_j = cj->hydro.parts;
 
   /* Cosmological terms and physical constants */
+  const float mu_0 = e->physical_constants->const_vacuum_permeability;
   const float a = cosmo->a;
   const float H = cosmo->H;
-  GET_MU0();
+  // GET_MU0();
 
   /* Get the relative distance between the pairs, wrapping. */
   double shift[3] = {0.0, 0.0, 0.0};
@@ -252,7 +254,7 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
 
         if (pi_active && pj_active) {
 
-          IACT(r2, dx, hi, hj, pi, pj, a, H);
+          IACT(r2, dx, hi, hj, pi, pj, mu_0, a, H);
           IACT_MHD(r2, dx, hi, hj, pi, pj, mu_0, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
           runner_iact_chemistry(r2, dx, hi, hj, pi, pj, a, H);
@@ -268,7 +270,7 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
 #endif
         } else if (pi_active) {
 
-          IACT_NONSYM(r2, dx, hi, hj, pi, pj, a, H);
+          IACT_NONSYM(r2, dx, hi, hj, pi, pj, mu_0, a, H);
           IACT_NONSYM_MHD(r2, dx, hi, hj, pi, pj, mu_0, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
           runner_iact_nonsym_chemistry(r2, dx, hi, hj, pi, pj, a, H);
@@ -288,7 +290,7 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
           dx[1] = -dx[1];
           dx[2] = -dx[2];
 
-          IACT_NONSYM(r2, dx, hj, hi, pj, pi, a, H);
+          IACT_NONSYM(r2, dx, hj, hi, pj, pi, mu_0, a, H);
           IACT_NONSYM_MHD(r2, dx, hj, hi, pj, pi, mu_0, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
           runner_iact_nonsym_chemistry(r2, dx, hj, hi, pj, pi, a, H);
@@ -334,9 +336,10 @@ void DOSELF1_NAIVE(struct runner *r, struct cell *restrict c) {
   if (!CELL_IS_ACTIVE(c, e)) return;
 
   /* Cosmological terms and physical constants */
+  const float mu_0 = e->physical_constants->const_vacuum_permeability;
   const float a = cosmo->a;
   const float H = cosmo->H;
-  GET_MU0();
+  // GET_MU0();
 
   const int count = c->hydro.count;
   struct part *restrict parts = c->hydro.parts;
@@ -391,7 +394,7 @@ void DOSELF1_NAIVE(struct runner *r, struct cell *restrict c) {
       /* Hit or miss? */
       if (doi && doj) {
 
-        IACT(r2, dx, hi, hj, pi, pj, a, H);
+        IACT(r2, dx, hi, hj, pi, pj, mu_0, a, H);
         IACT_MHD(r2, dx, hi, hj, pi, pj, mu_0, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
         runner_iact_chemistry(r2, dx, hi, hj, pi, pj, a, H);
@@ -407,7 +410,7 @@ void DOSELF1_NAIVE(struct runner *r, struct cell *restrict c) {
 #endif
       } else if (doi) {
 
-        IACT_NONSYM(r2, dx, hi, hj, pi, pj, a, H);
+        IACT_NONSYM(r2, dx, hi, hj, pi, pj, mu_0, a, H);
         IACT_NONSYM_MHD(r2, dx, hi, hj, pi, pj, mu_0, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
         runner_iact_nonsym_chemistry(r2, dx, hi, hj, pi, pj, a, H);
@@ -427,7 +430,7 @@ void DOSELF1_NAIVE(struct runner *r, struct cell *restrict c) {
         dx[1] = -dx[1];
         dx[2] = -dx[2];
 
-        IACT_NONSYM(r2, dx, hj, hi, pj, pi, a, H);
+        IACT_NONSYM(r2, dx, hj, hi, pj, pi, mu_0, a, H);
         IACT_NONSYM_MHD(r2, dx, hj, hi, pj, pi, mu_0, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
         runner_iact_nonsym_chemistry(r2, dx, hj, hi, pj, pi, a, H);
@@ -472,9 +475,10 @@ void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
   if (!CELL_IS_ACTIVE(c, e)) return;
 
   /* Cosmological terms and physical constants */
+  const float mu_0 = e->physical_constants->const_vacuum_permeability;
   const float a = cosmo->a;
   const float H = cosmo->H;
-  GET_MU0();
+  // GET_MU0();
 
   const int count = c->hydro.count;
   struct part *restrict parts = c->hydro.parts;
@@ -529,7 +533,7 @@ void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
       /* Hit or miss? */
       if (doi && doj) {
 
-        IACT(r2, dx, hi, hj, pi, pj, a, H);
+        IACT(r2, dx, hi, hj, pi, pj, mu_0, a, H);
         IACT_MHD(r2, dx, hi, hj, pi, pj, mu_0, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
         runner_iact_chemistry(r2, dx, hi, hj, pi, pj, a, H);
@@ -545,7 +549,7 @@ void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
 #endif
       } else if (doi) {
 
-        IACT_NONSYM(r2, dx, hi, hj, pi, pj, a, H);
+        IACT_NONSYM(r2, dx, hi, hj, pi, pj, mu_0, a, H);
         IACT_NONSYM_MHD(r2, dx, hi, hj, pi, pj, mu_0, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
         runner_iact_nonsym_chemistry(r2, dx, hi, hj, pi, pj, a, H);
@@ -565,7 +569,7 @@ void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
         dx[1] = -dx[1];
         dx[2] = -dx[2];
 
-        IACT_NONSYM(r2, dx, hj, hi, pj, pi, a, H);
+        IACT_NONSYM(r2, dx, hj, hi, pj, pi, mu_0, a, H);
         IACT_NONSYM_MHD(r2, dx, hj, hi, pj, pi, mu_0, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
         runner_iact_nonsym_chemistry(r2, dx, hj, hi, pj, pi, a, H);
@@ -619,9 +623,10 @@ void DOPAIR_SUBSET_NAIVE(struct runner *r, struct cell *restrict ci,
   struct part *restrict parts_j = cj->hydro.parts;
 
   /* Cosmological terms and physical constants */
+  const float mu_0 = e->physical_constants->const_vacuum_permeability;
   const float a = cosmo->a;
   const float H = cosmo->H;
-  GET_MU0();
+  // GET_MU0();
 
   /* Loop over the parts_i. */
   for (int pid = 0; pid < count; pid++) {
@@ -666,7 +671,7 @@ void DOPAIR_SUBSET_NAIVE(struct runner *r, struct cell *restrict ci,
       /* Hit or miss? */
       if (r2 < hig2) {
 
-        IACT_NONSYM(r2, dx, hi, pj->h, pi, pj, a, H);
+        IACT_NONSYM(r2, dx, hi, pj->h, pi, pj, mu_0, a, H);
         IACT_NONSYM_MHD(r2, dx, hi, pj->h, pi, pj, mu_0, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
         runner_iact_nonsym_chemistry(r2, dx, hi, pj->h, pi, pj, a, H);
@@ -720,9 +725,10 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
   struct part *restrict parts_j = cj->hydro.parts;
 
   /* Cosmological terms and physical constants */
+  const float mu_0 = e->physical_constants->const_vacuum_permeability;
   const float a = cosmo->a;
   const float H = cosmo->H;
-  GET_MU0();
+  // GET_MU0();
 
   /* Pick-out the sorted lists. */
   const struct sort_entry *sort_j = cell_get_hydro_sorts(cj, sid);
@@ -774,7 +780,7 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
         /* Hit or miss? */
         if (r2 < hig2) {
 
-          IACT_NONSYM(r2, dx, hi, hj, pi, pj, a, H);
+          IACT_NONSYM(r2, dx, hi, hj, pi, pj, mu_0, a, H);
           IACT_NONSYM_MHD(r2, dx, hi, hj, pi, pj, mu_0, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
           runner_iact_nonsym_chemistry(r2, dx, hi, hj, pi, pj, a, H);
@@ -839,7 +845,7 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
         /* Hit or miss? */
         if (r2 < hig2) {
 
-          IACT_NONSYM(r2, dx, hi, hj, pi, pj, a, H);
+          IACT_NONSYM(r2, dx, hi, hj, pi, pj, mu_0, a, H);
           IACT_NONSYM_MHD(r2, dx, hi, hj, pi, pj, mu_0, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
           runner_iact_nonsym_chemistry(r2, dx, hi, hj, pi, pj, a, H);
@@ -952,9 +958,10 @@ void DOSELF_SUBSET(struct runner *r, struct cell *restrict ci,
   TIMER_TIC;
 
   /* Cosmological terms and physical constants */
+  const float mu_0 = e->physical_constants->const_vacuum_permeability;
   const float a = cosmo->a;
   const float H = cosmo->H;
-  GET_MU0();
+  // GET_MU0();
 
   const int count_i = ci->hydro.count;
   struct part *restrict parts_j = ci->hydro.parts;
@@ -1005,7 +1012,7 @@ void DOSELF_SUBSET(struct runner *r, struct cell *restrict ci,
       /* Hit or miss? */
       if (r2 < hig2) {
 
-        IACT_NONSYM(r2, dx, hi, hj, pi, pj, a, H);
+        IACT_NONSYM(r2, dx, hi, hj, pi, pj, mu_0, a, H);
         IACT_NONSYM_MHD(r2, dx, hi, hj, pi, pj, mu_0, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
         runner_iact_nonsym_chemistry(r2, dx, hi, hj, pi, pj, a, H);
@@ -1103,9 +1110,10 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
   const float dx_max = (ci->hydro.dx_max_sort + cj->hydro.dx_max_sort);
 
   /* Cosmological terms and physical constants */
+  const float mu_0 = e->physical_constants->const_vacuum_permeability;
   const float a = cosmo->a;
   const float H = cosmo->H;
-  GET_MU0();
+  // GET_MU0();
 
   if (CELL_IS_ACTIVE(ci, e)) {
 
@@ -1187,7 +1195,7 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
         /* Hit or miss? */
         if (r2 < hig2) {
 
-          IACT_NONSYM(r2, dx, hi, hj, pi, pj, a, H);
+          IACT_NONSYM(r2, dx, hi, hj, pi, pj, mu_0, a, H);
           IACT_NONSYM_MHD(r2, dx, hi, hj, pi, pj, mu_0, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
           runner_iact_nonsym_chemistry(r2, dx, hi, hj, pi, pj, a, H);
@@ -1286,7 +1294,7 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
         /* Hit or miss? */
         if (r2 < hjg2) {
 
-          IACT_NONSYM(r2, dx, hj, hi, pj, pi, a, H);
+          IACT_NONSYM(r2, dx, hj, hi, pj, pi, mu_0, a, H);
           IACT_NONSYM_MHD(r2, dx, hj, hi, pj, pi, mu_0, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
           runner_iact_nonsym_chemistry(r2, dx, hj, hi, pj, pi, a, H);
@@ -1454,9 +1462,10 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
   struct part *restrict parts_j = cj->hydro.parts;
 
   /* Cosmological terms and physical constants */
+  const float mu_0 = e->physical_constants->const_vacuum_permeability;
   const float a = cosmo->a;
   const float H = cosmo->H;
-  GET_MU0();
+  // GET_MU0();
 
   /* Maximal displacement since last rebuild */
   const double dx_max = (ci->hydro.dx_max_sort + cj->hydro.dx_max_sort);
@@ -1606,7 +1615,7 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
         /* Hit or miss?
            (note that we will do the other condition in the reverse loop) */
         if (r2 < hig2) {
-          IACT_NONSYM(r2, dx, hj, hi, pj, pi, a, H);
+          IACT_NONSYM(r2, dx, hj, hi, pj, pi, mu_0, a, H);
           IACT_NONSYM_MHD(r2, dx, hj, hi, pj, pi, mu_0, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
           runner_iact_nonsym_chemistry(r2, dx, hj, hi, pj, pi, a, H);
@@ -1688,7 +1697,7 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
 
           /* Does pj need to be updated too? */
           if (PART_IS_ACTIVE(pj, e)) {
-            IACT(r2, dx, hi, hj, pi, pj, a, H);
+            IACT(r2, dx, hi, hj, pi, pj, mu_0, a, H);
             IACT_MHD(r2, dx, hi, hj, pi, pj, mu_0, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
             runner_iact_chemistry(r2, dx, hi, hj, pi, pj, a, H);
@@ -1703,7 +1712,7 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
                                   t_current, cosmo, with_cosmology);
 #endif
           } else {
-            IACT_NONSYM(r2, dx, hi, hj, pi, pj, a, H);
+            IACT_NONSYM(r2, dx, hi, hj, pi, pj, mu_0, a, H);
             IACT_NONSYM_MHD(r2, dx, hi, hj, pi, pj, mu_0, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
             runner_iact_nonsym_chemistry(r2, dx, hi, hj, pi, pj, a, H);
@@ -1818,7 +1827,7 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
         /* Hit or miss?
            (note that we must avoid the r2 < hig2 cases we already processed) */
         if (r2 < hjg2 && r2 >= hig2) {
-          IACT_NONSYM(r2, dx, hi, hj, pi, pj, a, H);
+          IACT_NONSYM(r2, dx, hi, hj, pi, pj, mu_0, a, H);
           IACT_NONSYM_MHD(r2, dx, hi, hj, pi, pj, mu_0, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
           runner_iact_nonsym_chemistry(r2, dx, hi, hj, pi, pj, a, H);
@@ -1902,7 +1911,7 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
 
           /* Does pi need to be updated too? */
           if (PART_IS_ACTIVE(pi, e)) {
-            IACT(r2, dx, hj, hi, pj, pi, a, H);
+            IACT(r2, dx, hj, hi, pj, pi, mu_0, a, H);
             IACT_MHD(r2, dx, hj, hi, pj, pi, mu_0, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
             runner_iact_chemistry(r2, dx, hj, hi, pj, pi, a, H);
@@ -1917,7 +1926,7 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
                                   t_current, cosmo, with_cosmology);
 #endif
           } else {
-            IACT_NONSYM(r2, dx, hj, hi, pj, pi, a, H);
+            IACT_NONSYM(r2, dx, hj, hi, pj, pi, mu_0, a, H);
             IACT_NONSYM_MHD(r2, dx, hj, hi, pj, pi, mu_0, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
             runner_iact_nonsym_chemistry(r2, dx, hj, hi, pj, pi, a, H);
@@ -2074,9 +2083,10 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
     }
 
   /* Cosmological terms and physical constants */
+  const float mu_0 = e->physical_constants->const_vacuum_permeability;
   const float a = cosmo->a;
   const float H = cosmo->H;
-  GET_MU0();
+  // GET_MU0();
 
   /* Loop over the particles in the cell. */
   for (int pid = 0; pid < count; pid++) {
@@ -2122,7 +2132,7 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
         /* Hit or miss? */
         if (r2 < hj * hj * kernel_gamma2) {
 
-          IACT_NONSYM(r2, dx, hj, hi, pj, pi, a, H);
+          IACT_NONSYM(r2, dx, hj, hi, pj, pi, mu_0, a, H);
           IACT_NONSYM_MHD(r2, dx, hj, hi, pj, pi, mu_0, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
           runner_iact_nonsym_chemistry(r2, dx, hj, hi, pj, pi, a, H);
@@ -2183,7 +2193,7 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
           /* Which parts need to be updated? */
           if (doi && doj) {
 
-            IACT(r2, dx, hi, hj, pi, pj, a, H);
+            IACT(r2, dx, hi, hj, pi, pj, mu_0, a, H);
             IACT_MHD(r2, dx, hi, hj, pi, pj, mu_0, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
             runner_iact_chemistry(r2, dx, hi, hj, pi, pj, a, H);
@@ -2199,7 +2209,7 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
 #endif
           } else if (doi) {
 
-            IACT_NONSYM(r2, dx, hi, hj, pi, pj, a, H);
+            IACT_NONSYM(r2, dx, hi, hj, pi, pj, mu_0, a, H);
             IACT_NONSYM_MHD(r2, dx, hi, hj, pi, pj, mu_0, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
             runner_iact_nonsym_chemistry(r2, dx, hi, hj, pi, pj, a, H);
@@ -2219,7 +2229,7 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
             dx[0] = -dx[0];
             dx[1] = -dx[1];
             dx[2] = -dx[2];
-            IACT_NONSYM(r2, dx, hj, hi, pj, pi, a, H);
+            IACT_NONSYM(r2, dx, hj, hi, pj, pi, mu_0, a, H);
             IACT_NONSYM_MHD(r2, dx, hj, hi, pj, pi, mu_0, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
             runner_iact_nonsym_chemistry(r2, dx, hj, hi, pj, pi, a, H);
@@ -2314,9 +2324,10 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
     }
 
   /* Cosmological terms and physical constants */
+  const float mu_0 = e->physical_constants->const_vacuum_permeability;
   const float a = cosmo->a;
   const float H = cosmo->H;
-  GET_MU0();
+  // GET_MU0();
 
   /* Loop over the particles in the cell. */
   for (int pid = 0; pid < count; pid++) {
@@ -2362,7 +2373,7 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
         /* Hit or miss? */
         if (r2 < hig2 || r2 < hj * hj * kernel_gamma2) {
 
-          IACT_NONSYM(r2, dx, hj, hi, pj, pi, a, H);
+          IACT_NONSYM(r2, dx, hj, hi, pj, pi, mu_0, a, H);
           IACT_NONSYM_MHD(r2, dx, hj, hi, pj, pi, mu_0, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
           runner_iact_nonsym_chemistry(r2, dx, hj, hi, pj, pi, a, H);
@@ -2418,7 +2429,7 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
 
           /* Does pj need to be updated too? */
           if (PART_IS_ACTIVE(pj, e)) {
-            IACT(r2, dx, hi, hj, pi, pj, a, H);
+            IACT(r2, dx, hi, hj, pi, pj, mu_0, a, H);
             IACT_MHD(r2, dx, hi, hj, pi, pj, mu_0, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
             runner_iact_chemistry(r2, dx, hi, hj, pi, pj, a, H);
@@ -2433,7 +2444,7 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
                                   t_current, cosmo, with_cosmology);
 #endif
           } else {
-            IACT_NONSYM(r2, dx, hi, hj, pi, pj, a, H);
+            IACT_NONSYM(r2, dx, hi, hj, pi, pj, mu_0, a, H);
             IACT_NONSYM_MHD(r2, dx, hi, hj, pi, pj, mu_0, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
             runner_iact_nonsym_chemistry(r2, dx, hi, hj, pi, pj, a, H);

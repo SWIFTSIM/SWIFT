@@ -56,3 +56,9 @@ Gravity:
   comoving_baryon_softening: 0.08	# 80 kpc = 1/25 of mean inter-particle separation
   max_physical_baryon_softening: 0.08  # 80 kpc = 1/25 of mean inter-particle separation
 
+#MHD part
+MHD:
+ define_B_in_ics:       1e-9         #Comoving Bfield at Z 
+ parabolic_dedner:      2.0 #
+ hyperbolic_dedner:     0.1
+ diffusion_eta:         0.00
