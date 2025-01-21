@@ -869,7 +869,7 @@ __attribute__((always_inline)) INLINE static void hydro_split_part_displacement(
                                  displacement[1] * displacement[1] +
                                  displacement[2] * displacement[2]);
 #ifdef SWIFT_DEBUG_CHECKS
-  if (displacement_nrm2 == 0) {
+  if (displacement_nrm == 0) {
     error("Displacement vector cannot be 0!");
   }
 #endif
