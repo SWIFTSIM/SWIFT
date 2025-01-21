@@ -261,7 +261,8 @@ runner_iact_chemistry_fluxes_common(
     const struct cosmology *cosmo, int mode) {
 
   /* If the masses are null, then there is nothing to diffuse. */
-  if (hydro_get_mass(pi) == 0.0 || hydro_get_mass(pj) == 0) {
+  if ((hydro_get_mass(pi) == 0.0 || hydro_get_mass(pj) == 0) ||
+      (pi->chemistry_data.kappa == 0.0 && pj->chemistry_data.kappa == 0.0)) {
     return;
   }
 
