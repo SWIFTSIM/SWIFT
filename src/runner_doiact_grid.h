@@ -181,10 +181,12 @@ __attribute__((always_inline)) INLINE static void runner_build_grid(
   if (count_unconverged) {
     warning(
         "Search radius failed to converge for the following gas "
-        "particles:");
+        "particles  after %d iterations: ",
+        max_smoothing_iter);
     for (int i = 0; i < count_unconverged; i++) {
       struct part *p = &parts[pid_unconverged[i]];
-      warning("ID: %lld, search radius: %g", p->id, p->geometry.search_radius);
+      warning("ID: %lld, (x, y, z): (%g, %g, %g), search radius: %g", p->id,
+              p->x[0], p->x[1], p->x[2], p->geometry.search_radius);
     }
 
     error("Search radius failed to converge on %i particles.",
