@@ -121,6 +121,10 @@ struct voronoi {
    * all parts. */
   int *cell_pair_connections;
 
+#ifdef SWIFT_DEBUG_CHECKS
+  int *cell_pair_connections_sids;
+#endif
+
   int cell_pair_connections_size;
 
   int cell_pair_connections_index;
@@ -185,6 +189,11 @@ inline static struct voronoi *voronoi_malloc(int number_of_cells, double dmin) {
   v->cell_pair_connections =
       (int *)swift_malloc("voronoi", v->cell_pair_connections_size *
                                          sizeof(*v->cell_pair_connections));
+#ifdef SWIFT_DEBUG_CHECKS
+  v->cell_pair_connections_sids = (int *)swift_malloc(
+      "voronoi",
+      v->cell_pair_connections_size * sizeof(*v->cell_pair_connections_sids));
+#endif
 #endif
 
 #ifdef VORONOI_STORE_FACES
@@ -627,6 +636,10 @@ inline static void voronoi_finalize(struct voronoi *v, const struct delaunay *d,
 #ifdef SWIFT_DEBUG_CHECKS
   int *face_counts_old = (int *)malloc((d->vertex_end - d->vertex_start) *
                                        sizeof(*face_counts_old));
+  /* Make sure the sids array is large enough */
+  v->cell_pair_connections_sids = swift_realloc(
+      "voronoi", v->cell_pair_connections_sids,
+      v->cell_pair_connections_size * sizeof(*v->cell_pair_connections_sids));
 #endif
   for (int j = d->vertex_start; j < d->vertex_end; j++) {
     struct part *p = &parts[d->vertex_part_idx[j]];
@@ -649,16 +662,28 @@ inline static void voronoi_finalize(struct voronoi *v, const struct delaunay *d,
                    left->geometry.delaunay_vertex < d->vertex_end);
     v->cell_pair_connections[left->geometry.pair_connections_offset +
                              left->geometry.nface] = idx;
+#ifdef SWIFT_DEBUG_CHECKS
+    v->cell_pair_connections_sids[left->geometry.pair_connections_offset +
+                                  left->geometry.nface] = 13;
+#endif
     left->geometry.nface++;
 
     /* Only update right face links if active */
     if (right->geometry.delaunay_vertex >= 0) {
       v->cell_pair_connections[right->geometry.pair_connections_offset +
                                right->geometry.nface] = idx;
+#ifdef SWIFT_DEBUG_CHECKS
+      v->cell_pair_connections_sids[right->geometry.pair_connections_offset +
+                                    right->geometry.nface] = 13;
+#endif
       right->geometry.nface++;
     }
   }
-  /* Now do the external faces (only left part needs updating */
+  /* Now do the external faces (only left part needs updating) */
+#ifdef SWIFT_DEBUG_CHECKS
+  int sid_idx = 1;
+  sid = face_sid_order[sid_idx];
+#endif
   for (; idx < v->pair_index; idx++) {
     const struct voronoi_pair *face = &v->pairs_flat[idx];
     struct part *left = &parts[face->left_idx];
@@ -668,10 +693,21 @@ inline static void voronoi_finalize(struct voronoi *v, const struct delaunay *d,
                    left->geometry.delaunay_vertex < d->vertex_end);
     v->cell_pair_connections[left->geometry.pair_connections_offset +
                              left->geometry.nface] = idx;
+#ifdef SWIFT_DEBUG_CHECKS
+    while (sid_idx < 28 && idx == offsets[sid] + counts[sid]) {
+      sid_idx++;
+      sid = face_sid_order[sid_idx];
+    }
+    v->cell_pair_connections_sids[left->geometry.pair_connections_offset +
+                                  left->geometry.nface] = sid;
+#endif
     left->geometry.nface++;
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
+  for (sid_idx++; sid_idx < 28; sid_idx++) {
+    if (counts[face_sid_order[sid_idx]] != 0) error("Missed some faces!");
+  }
   /* Check whether the face counts match */
   int count_total = 0;
   for (int j = d->vertex_start; j < d->vertex_end; j++) {
@@ -711,8 +747,12 @@ inline static void voronoi_destroy(struct voronoi *restrict v) {
   }
 
 #ifdef VORONOI_STORE_CELL_FACE_CONNECTIONS
-  if (v->cell_pair_connections != NULL)
+  if (v->cell_pair_connections != NULL) {
     swift_free("voronoi", v->cell_pair_connections);
+#ifdef SWIFT_DEBUG_CHECKS
+    swift_free("voronoi", v->cell_pair_connections_sids);
+#endif
+  }
   v->cell_pair_connections_size = 0;
   v->cell_pair_connections_index = 0;
 #endif
@@ -886,8 +926,11 @@ inline static int voronoi_get_cell_face(const struct voronoi *v, int offset,
 #ifdef VORONOI_STORE_CELL_FACE_CONNECTIONS
   *face = &v->pairs_flat[v->cell_pair_connections[offset + face_idx]];
   int i;
-  for (i = 0; i < 27 && v->pairs[face_sid_order[i + 1]] < *face; i++) {
+  for (i = 0; i < 27 && v->pairs[face_sid_order[i + 1]] <= *face; i++) {
   }
+#ifdef SWIFT_DEBUG_CHECKS
+  assert(v->cell_pair_connections_sids[offset + face_idx] == face_sid_order[i]);
+#endif
   return face_sid_order[i];
 #else
   error("Shouldn't call this function!")

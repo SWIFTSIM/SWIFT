@@ -551,6 +551,15 @@ static inline void voronoi_build(struct voronoi *v, struct delaunay *d,
   free(vertices);
 }
 
+inline static int voronoi_get_cell_face(const struct voronoi *v, int offset,
+                                        int face_idx,
+                                        struct voronoi_pair **face) {
+
+  int2 connection = v->cell_pair_connections.values[offset + face_idx];
+  *face = &v->pairs[connection._1][connection._0];
+  return connection._1;
+}
+
 static inline double voronoi_compute_volume(const struct voronoi *restrict v) {
   /* TODO */
   return 0.0;
