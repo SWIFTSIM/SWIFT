@@ -2217,8 +2217,8 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
       }
       h_max = max(h_max, p->h);
 
-      /* The particles smoothing length is updated by the volume calculation.
-       * Set the correct depth */
+      /* The particles smoothing length is updated by the volume calculation, so
+       * we must update the h_depth as well. */
       cell_set_part_h_depth(p, c);
     }
   }
@@ -2241,6 +2241,7 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
 
     /* Get the neighbouring cells */
     struct cell *ngb_cells[27];
+    bzero(ngb_cells, 27 * sizeof(ngb_cells[0]));
     ngb_cells[13] = c;
     for (struct link *l = c->grid.sync_in; l != NULL; l = l->next) {
       if (l->t->type == task_type_self) continue;
