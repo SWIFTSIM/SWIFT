@@ -77,18 +77,24 @@ __attribute__((always_inline)) INLINE static void chemistry_kick_extra(
           -chd->hyperbolic_flux[i].F_diff[2]/chd->tau + F_diff_target[2]/chd->tau;
 
 	/* Then update the diffusion flux with a semi-implicit scheme */
-	chd->hyperbolic_flux[i].F_diff[0] =
-          chd->hyperbolic_flux[i].F_diff_pred[0] +
-          dt_therm / (chd->tau + dt_therm) *
-	  (F_diff_target[0] - chd->hyperbolic_flux[i].F_diff_pred[0]);
-	chd->hyperbolic_flux[i].F_diff[1] =
-          chd->hyperbolic_flux[i].F_diff_pred[1] +
-          dt_therm / (chd->tau + dt_therm) *
-	  (F_diff_target[1] - chd->hyperbolic_flux[i].F_diff_pred[1]);
-	chd->hyperbolic_flux[i].F_diff[2] =
-          chd->hyperbolic_flux[i].F_diff_pred[2] +
-          dt_therm / (chd->tau + dt_therm) *
-	  (F_diff_target[2] - chd->hyperbolic_flux[i].F_diff_pred[2]);
+	/* chd->hyperbolic_flux[i].F_diff[0] = */
+        /*   chd->hyperbolic_flux[i].F_diff_pred[0] + */
+        /*   dt_therm / (chd->tau + dt_therm) * */
+	/*   (F_diff_target[0] - chd->hyperbolic_flux[i].F_diff_pred[0]); */
+	/* chd->hyperbolic_flux[i].F_diff[1] = */
+        /*   chd->hyperbolic_flux[i].F_diff_pred[1] + */
+        /*   dt_therm / (chd->tau + dt_therm) * */
+	/*   (F_diff_target[1] - chd->hyperbolic_flux[i].F_diff_pred[1]); */
+	/* chd->hyperbolic_flux[i].F_diff[2] = */
+        /*   chd->hyperbolic_flux[i].F_diff_pred[2] + */
+        /*   dt_therm / (chd->tau + dt_therm) * */
+	/*   (F_diff_target[2] - chd->hyperbolic_flux[i].F_diff_pred[2]); */
+
+	/* Update with an implicit solver */
+	const float dt_factor = 1.0 / (1.0 + dt_therm / chd->tau);
+	chd->hyperbolic_flux[i].F_diff[0] = dt_factor*(chd->hyperbolic_flux[i].F_diff[0] + dt_therm / chd->tau * F_diff_target[0]);
+	chd->hyperbolic_flux[i].F_diff[1] = dt_factor*(chd->hyperbolic_flux[i].F_diff[1] + dt_therm / chd->tau * F_diff_target[1]);
+	chd->hyperbolic_flux[i].F_diff[2] = dt_factor*(chd->hyperbolic_flux[i].F_diff[2] + dt_therm / chd->tau * F_diff_target[2]);
       }
 
       if (chd->kappa == 0.0 && chd->tau == 0.0) {
