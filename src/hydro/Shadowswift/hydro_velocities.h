@@ -141,7 +141,7 @@ __attribute__((always_inline)) INLINE static void hydro_velocities_set(
        * In this case, use a criterion based on the timestep instead */
       if (25.f * soundspeed * soundspeed <
           p->v[0] * p->v[0] + p->v[1] * p->v[1] + p->v[2] * p->v[2]) {
-        fac = fmaxf(fac, 0.3f * xi / dt);
+        fac = fmaxf(fac, 0.5f * xi / dt);
       }
 #endif
       if (d < 1.1f * etaR) {
