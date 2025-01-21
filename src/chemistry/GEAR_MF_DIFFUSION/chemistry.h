@@ -996,7 +996,6 @@ __attribute__((always_inline)) INLINE static void chemistry_predict_extra(
 
 #if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
   /* Compute the predicted flux */
-
   for (int m = 0; m < GEAR_CHEMISTRY_ELEMENT_COUNT; m++) {
     chd->hyperbolic_flux[m].F_diff_pred[0] =
         chd->hyperbolic_flux[m].F_diff[0] +
