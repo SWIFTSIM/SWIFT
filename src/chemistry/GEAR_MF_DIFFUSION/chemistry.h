@@ -702,6 +702,9 @@ __attribute__((always_inline)) INLINE static void chemistry_init_part(
 
   /* Init the gradient for the next loops */
   chemistry_gradients_init(p);
+
+  /* Initialize time step criterion variables */
+  cpd->timestepvars.vmax = 0.;
 }
 
 /**
