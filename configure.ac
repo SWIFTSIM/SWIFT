@@ -2540,6 +2540,19 @@ if test "$enable_moving_mesh" = "yes"; then
     AC_DEFINE([MOVING_MESH], [1], [Unstructured Voronoi mesh])
 fi
 
+# Moving mesh: store cell-face connections (expensive)
+AC_ARG_ENABLE([moving-mesh-cell-face-connections],
+    [AS_HELP_STRING([--enable-moving-mesh-cell-face-connections],
+        [Moving mesh: store cell-face connections (expensive, needed for e.g. mesh de-refinement)]
+    )],
+    [enable_moving_mesh_cell_face_connections="${enableval}"],
+    [enable_moving_mesh_cell_face_connections="no"]
+)
+if test "$enable_moving_mesh_cell_face_connections" = "yes"; then
+    AC_DEFINE([MOVING_MESH_STORE_CELL_FACE_CONNECTIONS], [1],
+        [Moving mesh: store cell-face connections (expensive, needed for e.g. mesh de-refinement)])
+fi
+
 # Hydro does mass flux?
 if test "x$hydro_does_mass_flux" = "xyes"; then
     AC_DEFINE([HYDRO_DOES_MASS_FLUX], [1], [Hydro scheme with mass fluxes])
@@ -3385,22 +3398,23 @@ AC_MSG_RESULT([
    Radiative transfer   : $with_rt
    Extra i/o            : $with_extra_io
 
-   Atomic operations in tasks  : $enable_atomics_within_tasks
-   Individual timers           : $enable_timers
-   Task debugging              : $enable_task_debugging
-   Threadpool debugging        : $enable_threadpool_debugging
-   Debugging checks            : $enable_debugging_checks
-   Interaction debugging       : $enable_debug_interactions
-   Stars interaction debugging : $enable_debug_interactions_stars
-   Naive interactions          : $enable_naive_interactions
-   Naive stars interactions    : $enable_naive_interactions_stars
-   Naive grid interactions     : $enable_naive_interactions_grid
-   Gravity checks              : $gravity_force_checks
-   Custom icbrtf               : $enable_custom_icbrtf
-   Boundary particles          : $boundary_particles
-   Fixed boundary particles    : $fixed_boundary_particles
-   Planetary fixed entropy     : $planetary_fixed_entropy
-   Ghost statistics            : $ghost_stats
+   Atomic operations in tasks     : $enable_atomics_within_tasks
+   Individual timers              : $enable_timers
+   Task debugging                 : $enable_task_debugging
+   Threadpool debugging           : $enable_threadpool_debugging
+   Debugging checks               : $enable_debugging_checks
+   Interaction debugging          : $enable_debug_interactions
+   Stars interaction debugging    : $enable_debug_interactions_stars
+   Naive interactions             : $enable_naive_interactions
+   Naive stars interactions       : $enable_naive_interactions_stars
+   Naive grid interactions        : $enable_naive_interactions_grid
+   Gravity checks                 : $gravity_force_checks
+   Custom icbrtf                  : $enable_custom_icbrtf
+   Boundary particles             : $boundary_particles
+   Fixed boundary particles       : $fixed_boundary_particles
+   Planetary fixed entropy        : $planetary_fixed_entropy
+   Ghost statistics               : $ghost_stats
+   Store particle-face connections: $enable_moving_mesh_cell_face_connections
 
    Continuous Sim. Data Stream : $with_csds
 
