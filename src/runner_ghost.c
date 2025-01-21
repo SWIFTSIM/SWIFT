@@ -2205,7 +2205,7 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
 
         /* Make set up quantities for cooling */
         /* We don't want smoothing for Moving mesh, so use the
-         * _part_has_no_neighours version instead of _end_denisty */
+         * _part_has_no_neighbours version instead of _end_density */
         chemistry_part_has_no_neighbours(p, &c->hydro.xparts[i], chemistry,
                                          cosmo);
 
@@ -2216,6 +2216,10 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
         }
       }
       h_max = max(h_max, p->h);
+
+      /* The particles smoothing length is updated by the volume calculation.
+       * Set the correct depth */
+      cell_set_part_h_depth(p, c);
     }
   }
 
