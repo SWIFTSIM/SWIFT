@@ -51,8 +51,8 @@ MPI_Datatype pcell_mpi_type;
 #endif
 
 struct tag_mapper_data {
-  int *tags_out;
-  int *offset_out;
+  int *tags_out, *tags_in;
+  int *offset_out, *offset_in;
   struct cell *space_cells;
 };
 
@@ -72,6 +72,21 @@ void proxy_tags_exchange_pack_mapper(void *map_data, int num_elements,
     if (cells[k].mpi.sendto) {
       cell_pack_tags(&cells[k], &tags_out[offset_out[k + delta]]);
     }
+  }
+}
+
+void proxy_tags_exchange_unpack_mapper(void *map_data, int num_elements,
+                                       void *extra_data) {
+
+  int *restrict cids_in = (int *)map_data;
+  struct tag_mapper_data *data = (struct tag_mapper_data *)extra_data;
+  const int *restrict offset_in = data->offset_in;
+  int *restrict tags_in = data->tags_in;
+  struct cell *space_cells = data->space_cells;
+
+  for (int k = 0; k < num_elements; k++) {
+    const int cid = cids_in[k];
+    cell_unpack_tags(&tags_in[offset_in[cid]], &space_cells[cid]);
   }
 }
 
@@ -206,10 +221,16 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
 
   tic2 = getticks();
 
-  for (int k = 0; k < num_reqs_in; k++) {
-    const int cid = cids_in[k];
-    cell_unpack_tags(&tags_in[offset_in[cid]], &s->cells_top[cid]);
-  }
+  extra_data.tags_in = tags_in;
+  extra_data.offset_in = offset_in;
+  extra_data.space_cells = s->cells_top;
+  threadpool_map(&s->e->threadpool, proxy_tags_exchange_unpack_mapper, cids_in,
+                 num_reqs_in, sizeof(int), threadpool_auto_chunk_size,
+                 &extra_data);
+  // for (int k = 0; k < num_reqs_in; k++) {
+  //   const int cid = cids_in[k];
+  //   cell_unpack_tags(&tags_in[offset_in[cid]], &s->cells_top[cid]);
+  // }
 
   /* Wait for each recv and unpack the tags into the local cells. */
   // for (int k = 0; k < num_reqs_in; k++) {
