@@ -207,7 +207,8 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
   tic2 = getticks();
 
   for (int k = 0; k < num_reqs_in; k++) {
-    cell_unpack_tags(&tags_in[offset_in[k]], &s->cells_top[k]);
+    const int cid = cids_in[k];
+    cell_unpack_tags(&tags_in[offset_in[cid]], &s->cells_top[cid]);
   }
 
   /* Wait for each recv and unpack the tags into the local cells. */
