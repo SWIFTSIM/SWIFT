@@ -34,7 +34,6 @@ import matplotlib
 
 matplotlib.use("Agg")
 import math
-import matplotlib.collections as collections
 import matplotlib.ticker as plticker
 import pylab as pl
 import sys

@@ -20,8 +20,6 @@
 import numpy as np
 import h5py
 import matplotlib.pyplot as plt
-from matplotlib.colors import BoundaryNorm
-from matplotlib.ticker import MaxNLocator
 import scipy.optimize as sco
 import os
 

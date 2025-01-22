@@ -18,10 +18,8 @@
 ##############################################################################
 
 import h5py
-import sys
 import numpy
 import math
-import random
 import numpy as np
 
 # Generates N particles in a spherical distribution centred on [0,0,0], to be moved in an isothermal potential

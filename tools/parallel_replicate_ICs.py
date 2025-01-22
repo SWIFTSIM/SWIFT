@@ -39,18 +39,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 import h5py as h
-import numpy as np
 import matplotlib
 
 matplotlib.use("Agg")
 from pylab import *
 import os.path
-from tqdm import tqdm
-from tqdm import trange
 import time
 from numba import jit, prange
-from swiftsimio import Writer
-from swiftsimio.units import cosmo_units
 
 replicate = 1
 box_size = 1

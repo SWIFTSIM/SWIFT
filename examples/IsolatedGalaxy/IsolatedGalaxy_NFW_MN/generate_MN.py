@@ -19,7 +19,6 @@
 
 import numpy as np
 from scipy import special
-import matplotlib.pyplot as plt
 import h5py
 
 G = 4.299e-6

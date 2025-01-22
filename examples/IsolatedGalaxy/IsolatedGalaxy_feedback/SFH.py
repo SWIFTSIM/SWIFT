@@ -9,7 +9,6 @@ Usage: python3 makeMovie.py CoolingHalo_
 Written by James Willis (james.s.willis@durham.ac.uk)
 """
 
-import glob
 import h5py as h5
 import numpy as np
 import matplotlib.pyplot as plt

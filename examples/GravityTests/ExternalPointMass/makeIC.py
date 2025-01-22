@@ -22,7 +22,6 @@ import h5py
 import sys
 import numpy
 import math
-import random
 
 # Generates a random distriution of particles, for motion in an external potential centred at (0,0,0)
 

@@ -10,9 +10,7 @@ Written by Josh Borrow (joshua.borrow@durham.ac.uk)
 """
 
 import os
-import h5py as h5
 import numpy as np
-import scipy.interpolate as si
 
 from swiftsimio import load
 from swiftsimio.visualisation import project_gas_pixel_grid

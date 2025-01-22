@@ -19,7 +19,6 @@
 
 import h5py
 from numpy import *
-import sys
 
 # Generates a swift IC file for the Kelvin-Helmholtz vortex in a periodic box
 

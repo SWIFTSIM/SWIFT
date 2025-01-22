@@ -17,8 +17,6 @@
 #
 ################################################################################
 import numpy as np
-import matplotlib.pyplot as plt
-from astropy import units
 import h5py as h5
 
 C = 8.0

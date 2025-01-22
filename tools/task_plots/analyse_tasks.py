@@ -31,8 +31,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import matplotlib
 
 matplotlib.use("Agg")
-import matplotlib.collections as collections
-import matplotlib.ticker as plticker
 import pylab as pl
 import sys
 import argparse

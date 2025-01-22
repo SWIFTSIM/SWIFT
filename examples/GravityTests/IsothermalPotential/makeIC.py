@@ -22,7 +22,6 @@ import h5py
 import sys
 import numpy
 import math
-import random
 
 # Generates N particles in a spherical distribution centred on [0,0,0], to be moved in an isothermal potential
 # usage: python3 makeIC.py 1000 0 : generate 1000 particles on circular orbits
