@@ -4943,7 +4943,7 @@ void engine_maketasks(struct engine *e) {
   tic2 = getticks();
 
   /* Set the unlocks per task. */
-  scheduler_set_unlocks(sched);
+  scheduler_set_unlocks(sched, &e->threadpool);
 
   if (e->verbose)
     message("Setting unlocks took %.3f %s.",
