@@ -861,6 +861,7 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
 
 #ifdef SWIFT_DEBUG_CHECKS
     bzero(s->sparts_foreign, s->size_sparts_foreign * sizeof(struct spart));
+
     for (size_t i = 0; i < s->size_sparts_foreign; ++i) {
       s->sparts_foreign[i].time_bin = time_bin_not_created;
       s->sparts_foreign[i].id = -43;
@@ -900,6 +901,12 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
     }
 #endif
   }
+
+  if (e->verbose)
+    message("Allocating and zeroing arrays took %.3f %s.",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
+
+  tic = getticks();
 
   if (e->verbose) {
     message(

@@ -1749,7 +1749,7 @@ struct task *scheduler_addtask(struct scheduler *s, enum task_types type,
   return t;
 }
 
-struct unlock_extra_data{
+struct unlock_extra_data {
   struct scheduler *s;
   int *counts;
   int *offsets;
@@ -1758,45 +1758,44 @@ struct unlock_extra_data{
 };
 
 void scheduler_set_unlock_counts_mapper(void *map_data, int num_elements,
-					void *extra_data) {
+                                        void *extra_data) {
 
-  struct unlock_extra_data* data = (struct unlock_extra_data*) extra_data;
-  int *counts = (int*) data->counts;
+  struct unlock_extra_data *data = (struct unlock_extra_data *)extra_data;
+  int *counts = (int *)data->counts;
   struct scheduler *s = data->s;
-  int *volatile unlock_ind = (int*) map_data;
-  
-  for (int k = 0; k < num_elements; k++) {   /* s->nr_unlocks */
+  int *volatile unlock_ind = (int *)map_data;
+
+  for (int k = 0; k < num_elements; k++) { /* s->nr_unlocks */
     atomic_inc(&counts[unlock_ind[k]]);
-    
+
     /* Check that we are not overflowing */
     if (counts[unlock_ind[k]] < 0)
       error(
-	    "Task (type=%s/%s) unlocking more than %lld other tasks!\n"
-	    "This likely a result of having tasks at vastly different levels"
-	    "in the tree.\nYou may want to play with the 'Scheduler' "
-	    "parameters to modify the task splitting strategy and reduce"
-	    "the difference in task depths.",
-	    taskID_names[s->tasks[unlock_ind[k]].type],
-	    subtaskID_names[s->tasks[unlock_ind[k]].subtype],
-	    (1LL << (8 * sizeof(int) - 1)) - 1);
-  }  
+          "Task (type=%s/%s) unlocking more than %lld other tasks!\n"
+          "This likely a result of having tasks at vastly different levels"
+          "in the tree.\nYou may want to play with the 'Scheduler' "
+          "parameters to modify the task splitting strategy and reduce"
+          "the difference in task depths.",
+          taskID_names[s->tasks[unlock_ind[k]].type],
+          subtaskID_names[s->tasks[unlock_ind[k]].subtype],
+          (1LL << (8 * sizeof(int) - 1)) - 1);
+  }
 }
 
-
 void scheduler_set_unlock_sorts_mapper(void *map_data, int num_elements,
-				       void *extra_data) {
+                                       void *extra_data) {
 
-  struct unlock_extra_data* data = (struct unlock_extra_data*) extra_data;
+  struct unlock_extra_data *data = (struct unlock_extra_data *)extra_data;
   const struct scheduler *s = data->s;
   struct task **unlocks = data->unlocks;
-  int *volatile offsets  = data->offsets;
-  int *unlock_ind = (int*) map_data;
+  int *volatile offsets = data->offsets;
+  int *unlock_ind = (int *)map_data;
   const size_t delta = unlock_ind - s->unlock_ind;
-  
+
   for (int k = 0; k < num_elements; k++) {
     const int ind = unlock_ind[k];
     unlocks[atomic_inc(&offsets[ind])] = s->unlocks[k + delta];
-  } 
+  }
 }
 
 /**
@@ -1804,8 +1803,8 @@ void scheduler_set_unlock_sorts_mapper(void *map_data, int num_elements,
  *
  * @param s The #scheduler.
  */
-void scheduler_set_unlocks(struct scheduler *s, struct threadpool* tp) {
-  
+void scheduler_set_unlocks(struct scheduler *s, struct threadpool *tp) {
+
   /* Store the counts for each task. */
   int *counts;
   if ((counts = (int *)swift_malloc("counts", sizeof(int) * s->nr_tasks)) ==
@@ -1816,9 +1815,9 @@ void scheduler_set_unlocks(struct scheduler *s, struct threadpool* tp) {
   struct unlock_extra_data extra_data;
   extra_data.s = s;
   extra_data.counts = counts;
-  threadpool_map(tp, scheduler_set_unlock_counts_mapper,
-		 s->unlock_ind, s->nr_unlocks, sizeof(int), threadpool_auto_chunk_size,
-		 &extra_data);
+  threadpool_map(tp, scheduler_set_unlock_counts_mapper, s->unlock_ind,
+                 s->nr_unlocks, sizeof(int), threadpool_auto_chunk_size,
+                 &extra_data);
 
   /* Compute the offset for each unlock block. */
   int *offsets;
@@ -1841,16 +1840,11 @@ void scheduler_set_unlocks(struct scheduler *s, struct threadpool* tp) {
            "unlocks", sizeof(struct task *) * s->size_unlocks)) == NULL)
     error("Failed to allocate temporary unlocks array.");
 
-  // for (int k = 0; k < s->nr_unlocks; k++) {
-  // const int ind = s->unlock_ind[k];
-  // unlocks[offsets[ind]] = s->unlocks[k];
-  // offsets[ind] += 1;
-  // }
   extra_data.offsets = offsets;
   extra_data.unlocks = unlocks;
-  threadpool_map(tp, scheduler_set_unlock_sorts_mapper,
-		 s->unlock_ind, s->nr_unlocks, sizeof(int),
-		 threadpool_auto_chunk_size, &extra_data);
+  threadpool_map(tp, scheduler_set_unlock_sorts_mapper, s->unlock_ind,
+                 s->nr_unlocks, sizeof(int), threadpool_auto_chunk_size,
+                 &extra_data);
 
   /* Swap the unlocks. */
   swift_free("unlocks", s->unlocks);
