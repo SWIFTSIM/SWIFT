@@ -310,11 +310,11 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force,
             (p->x[1] > dim[1]) || (p->x[1] < 0.) ||  // y
             (p->x[2] > dim[2]) || (p->x[2] < 0.)) {  // z
 
-#if SHADOWSWIFT_BC == REFLECTIVE_BC
+#if defined(MOVING_MESH) && SHADOWSWIFT_BC == REFLECTIVE_BC
           /* reflect the coordinates and velocity of the particle */
           for (int i = 0; i < 3; i++) {
             if (p->x[i] > dim[i]) {
-              p->x[i] = 2 * dim[0] - p->x[i];
+              p->x[i] = 2 * dim[i] - p->x[i];
               float delta_v = xp->v_full[i] - p->v[i];
               xp->v_full[i] = -xp->v_full[i];
               p->v[i] = xp->v_full[i] + delta_v;
