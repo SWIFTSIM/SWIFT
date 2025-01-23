@@ -2172,9 +2172,13 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
   struct engine *e = r->e;
   const struct hydro_props *hydro = e->hydro_properties;
   const struct cosmology *cosmo = e->cosmology;
+  const struct pressure_floor_props *pfloor;
   const struct chemistry_global_data *chemistry = e->chemistry;
   const int with_ext_gravity = e->policy & engine_policy_external_gravity;
   const int with_self_gravity = e->policy & engine_policy_self_gravity;
+  const int with_cosmology = (e->policy & engine_policy_cosmology);
+  const integertime_t ti_current = e->ti_current;
+  const double time_base = e->time_base;
 
   /* Anything to do here? */
   if (c->hydro.count == 0) return;
@@ -2202,6 +2206,9 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
         /* Set the particle's smoothing length */
         p->h = kernel_gamma_inv * p->geometry.search_radius;
         h_max_active = max(h_max_active, p->h);
+        /* The particles smoothing length is updated by the volume calculation,
+         * so we must update the h_depth as well. */
+        cell_set_part_h_depth(p, c);
 
         /* Make set up quantities for cooling */
         /* We don't want smoothing for Moving mesh, so use the
@@ -2214,12 +2221,32 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
         if (with_ext_gravity || with_self_gravity) {
           hydro_get_center_of_mass(p, p->gpart->x);
         }
+
+        /* Prepare particle for hydro calculations. */
+        /* Calculate the time-step for passing to hydro_prepare_force.
+         * This is the physical time between the start and end of the time-step
+         * without any scale-factor powers. */
+        double dt_alpha, dt_therm;
+
+        if (with_cosmology) {
+          const integertime_t ti_step = get_integer_timestep(p->time_bin);
+          const integertime_t ti_begin =
+              get_integer_time_begin(ti_current - 1, p->time_bin);
+
+          dt_alpha =
+              cosmology_get_delta_time(cosmo, ti_begin, ti_begin + ti_step);
+          dt_therm = cosmology_get_therm_kick_factor(cosmo, ti_begin,
+                                                     ti_begin + ti_step);
+        } else {
+          dt_alpha = get_timestep(p->time_bin, time_base);
+          dt_therm = get_timestep(p->time_bin, time_base);
+        }
+        struct xpart *xp = &c->hydro.xparts[i];
+        hydro_prepare_force(p, xp, e->cosmology, hydro, pfloor, dt_alpha,
+                            dt_therm);
+        timestep_limiter_prepare_force(p, xp);
       }
       h_max = max(h_max, p->h);
-
-      /* The particles smoothing length is updated by the volume calculation, so
-       * we must update the h_depth as well. */
-      cell_set_part_h_depth(p, c);
     }
   }
 

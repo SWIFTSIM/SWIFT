@@ -262,12 +262,8 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
 /**
  * @brief Prepare a particle for the force calculation.
  *
- * This function is called in the ghost task to convert some quantities coming
- * from the density loop over neighbours into quantities ready to be used in the
- * force loop over neighbours. Quantities are typically read from the density
- * sub-structure and written to the force sub-structure.
- * Examples of calculations done here include the calculation of viscosity term
- * constants, thermal conduction terms, hydro conversions, etc.
+ * For ShadowSWIFT, this function is called before the flux exchange, and is
+ * mainly used to apply the pressure floor if needed.
  *
  * @param p The particle to act upon
  * @param xp The extended particle data to act upon
@@ -282,7 +278,23 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const struct pressure_floor_props *pressure_floor, const float dt_alpha,
     const float dt_therm) {
-  hydro_part_reset_fluxes(p);
+
+  /* Apply the pressure floor. */
+  /* Temporarily apply the time extrapolation to density as it is used in the
+   * pressure floor... */
+  const float rho = p->rho;
+  p->rho += p->dW_time[0];
+  const float pressure_with_floor =
+      pressure_floor_get_comoving_pressure(p, pressure_floor,
+                                           p->P + p->dW_time[4], cosmo) -
+      p->dW_time[4];
+  p->rho = rho;
+  if (p->P < pressure_with_floor) {
+    p->P = pressure_with_floor;
+    /* TODO: Should we update the internal energy and/or entropy as well to
+     * reflect this change? */
+    /* TODO: Should we update the total energy? */
+  }
 }
 
 /**

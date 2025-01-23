@@ -35,7 +35,7 @@
 /* Check if pressure floor is implemented in hydro */
 #ifndef PRESSURE_FLOOR_NONE
 #if defined(GADGET2_SPH) || defined(HOPKINS_PU_SPH) || defined(SPHENIX_SPH) || \
-    defined(GASOLINE_SPH)
+    defined(GASOLINE_SPH) || defined(SHADOWSWIFT)
 /* Implemented */
 #else
 #error Pressure floor not implemented with this hydro scheme
