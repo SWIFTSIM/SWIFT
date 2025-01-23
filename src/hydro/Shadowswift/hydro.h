@@ -398,10 +398,9 @@ hydro_convert_conserved_to_primitive(
 
   /* Calculate the updated internal energy and entropic function A.
    * NOTE: This may violate energy conservation. */
-  double A, u;
+  double u;
 #ifdef EOS_ISOTHERMAL_GAS
   u = gas_internal_energy_from_pressure(0.f, 0.f);
-  A = gas_entropy_from_internal_energy(W[0], u);
 #else
   double Ekin = 0.5f * (Q[1] * Q[1] + Q[2] * Q[2] + Q[3] * Q[3]) * m_inv;
   double thermal_energy = Q[4] - Ekin;
@@ -414,20 +413,18 @@ hydro_convert_conserved_to_primitive(
       thermal_energy > 1e-2 * Egrav) {
     /* Recover thermal energy and entropy from total energy */
     u = thermal_energy * m_inv;
-    A = gas_entropy_from_internal_energy(W[0], u);
   } else {
     /* Keep entropy conserved and recover thermal and total energy. */
-    A = p->conserved.entropy * m_inv;
+    double A = p->conserved.entropy * m_inv;
     u = gas_internal_energy_from_entropy(W[0], A);
   }
 #elif SHADOWSWIFT_THERMAL_ENERGY_SWITCH == THERMAL_ENERGY_SWITCH_SPRINGEL_MACH
   if (p->timestepvars.mach_number > 1.1) {
     /* Recover thermal energy and entropy from total energy */
     u = thermal_energy * m_inv;
-    A = gas_entropy_from_internal_energy(W[0], u);
   } else {
     /* Keep entropy conserved and recover thermal and total energy. */
-    A = p->conserved.entropy * m_inv;
+    double A = p->conserved.entropy * m_inv;
     u = gas_internal_energy_from_entropy(W[0], A);
   }
 #elif SHADOWSWIFT_THERMAL_ENERGY_SWITCH == THERMAL_ENERGY_SWITCH_ASENSIO
@@ -437,43 +434,39 @@ hydro_convert_conserved_to_primitive(
   if (thermal_energy > 1e-2 * (Ekin + Egrav)) {
     /* Recover thermal energy and entropy from total energy */
     u = thermal_energy * m_inv;
-    A = gas_entropy_from_internal_energy(W[0], u);
   } else if (thermal_energy < 1e-3 * (p->timestepvars.Ekin + thermal_energy) ||
              thermal_energy < 1e-3 * Egrav) {
     /* Keep entropy conserved and recover thermal and total energy. */
-    A = p->conserved.entropy * m_inv;
+    double A = p->conserved.entropy * m_inv;
     u = gas_internal_energy_from_entropy(W[0], A);
   } else {
     /* Use evolved thermal energy to set total energy and entropy */
     u = p->thermal_energy * m_inv;
-    A = gas_entropy_from_internal_energy(W[0], u);
   }
 #else
   error("Unknown thermal energy switch!");
 #endif
 #else
   u = thermal_energy * m_inv;
-  A = gas_entropy_from_internal_energy(W[0], u);
 #endif
 
   /* Apply entropy floor.
-   * Note that this may also violate energy conservation. */
+   * Note that this may also violate energy conservation! */
+  /* Explicitly update density here already, since the entropy floor depends on
+   * it... */
+  p->rho = W[0];
   /* Check against entropy floor */
   const float floor_A = entropy_floor(p, cosmo, floor_props);
-  const double floor_u = gas_internal_energy_from_entropy(p->rho, floor_A);
+  u = fmax(u, gas_internal_energy_from_entropy(p->rho, floor_A));
   /* Check against absolute minimum */
-  const double min_u = fmax(floor_u, hydro_props->minimal_internal_energy /
-                                         cosmo->a_factor_internal_energy);
-  if (u < min_u) {
-    u = min_u;
-    A = gas_entropy_from_internal_energy(W[0], u);
-  }
+  u = fmax(u, hydro_props->minimal_internal_energy /
+                  cosmo->a_factor_internal_energy);
 #endif
 
   /* Finally update the pressure and update conserved quantities that are
    * affected by our choice of thermal energy. */
   W[4] = gas_pressure_from_internal_energy(W[0], u);
-  W[5] = A;
+  W[5] = gas_entropy_from_internal_energy(W[0], u);
   thermal_energy = Q[0] * u;
   p->conserved.energy = Ekin + thermal_energy;
   p->conserved.entropy = Q[0] * W[5];
