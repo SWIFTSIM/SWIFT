@@ -214,7 +214,8 @@ vel = np.tile(velocity, (N, 1)) # np.zeros([N, 3])
 
 # Add shear
 if add_shear:
-    vy_shear = x/2.0 - L/2.0
+    vy_shear = (x/2.0 - L/2.0)*units.kpc/units.Gyr
+    vy_shear = vy_shear.to(UnitVelocity).value
     
     # Create the 3D shear velocity array [0, vy_shear, 0]
     v_shear = np.zeros_like(vel)  # Initialize with zeros
