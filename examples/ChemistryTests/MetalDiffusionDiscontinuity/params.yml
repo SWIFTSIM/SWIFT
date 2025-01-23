@@ -1,0 +1,90 @@
+# Define the system of units to use internally.
+InternalUnitSystem:
+  UnitMass_in_cgs:     1.988409870698051e+43   # 10^10 solar masses
+  UnitLength_in_cgs:   3.0856775814913673e+21  # 1 kpc
+  UnitVelocity_in_cgs: 1e5   # km/s
+  UnitCurrent_in_cgs:  1   # Amperes
+  UnitTemp_in_cgs:     1   # Kelvin
+
+# Parameters for the self-gravity scheme
+Gravity:
+  MAC:                           adaptive  # Choice of mulitpole acceptance criterion: 'adaptive' OR 'geometric'.
+  epsilon_fmm:                   0.001     # Tolerance parameter for the adaptive multipole acceptance criterion.
+  theta_cr:                      0.7       # Opening angle for the purely gemoetric criterion.
+  eta:          0.025               # Constant dimensionless multiplier for time integration.
+  theta:        0.7                 # Opening angle (Multipole acceptance criterion).
+  max_physical_baryon_softening: 0.005  # Physical softening length (in internal units)
+  mesh_side_length:        32
+
+# Parameters governing the time integration (Set dt_min and dt_max to the same value for a fixed time-step run.)
+TimeIntegration:
+  time_begin:        0.    # The starting time of the simulation (in internal units).
+  time_end:          5  #5e-4   #500 kyr # The end time of the simulation (in internal units).
+  dt_min:            1e-15  # The minimal time-step size of the simulation (in internal units).
+  dt_max:            1e-2  # The maximal time-step size of the simulation (in internal units).
+
+# Parameters governing the snapshots
+Snapshots:
+  subdir: snap
+  basename:   snapshot      # Common part of the name of output files
+  time_first: 0. #230 Myr # (Optional) Time of the first output if non-cosmological time-integration (in internal units)
+  # delta_time: 1e-5        # Time difference between consecutive outputs (in internal units)
+  delta_time: 1e-1        # Time difference between consecutive outputs (in internal units)
+
+Scheduler:
+  cell_extra_gparts: 100      # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
+  cell_extra_sinks: 100       # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
+  cell_extra_sparts: 100      # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
+  max_top_level_cells: 3        #
+
+# Parameters governing the conserved quantities statistics
+Statistics:
+  delta_time:           1e-1     # Time between statistics output
+  time_first:             0.     # (Optional) Time of the first stats output if non-cosmological time-integration (in internal units)
+
+# Parameters related to the initial conditions
+InitialConditions:
+  file_name:          ICs_homogeneous_box.hdf5
+  periodic:                    1    # Are we running with periodic ICs?
+  shift:              [0.0,0.0,0.0]
+
+# Parameters for the hydrodynamics scheme
+SPH:
+  resolution_eta:        1.2348   # Target smoothing length in units of the mean inter-particle separation (1.2348 == 57Ngbs with the Wendland C2 kernel).
+  CFL_condition:         0.1      # Courant-Friedrich-Levy condition for time integration.
+  h_max:                 5
+  minimal_temperature:   1
+
+# Cooling with Grackle 3.0
+GrackleCooling:
+  cloudy_table: CloudyData_UVB=HM2012.h5  # Name of the Cloudy Table (available on the grackle bitbucket repository)
+  with_UV_background: 0                   # Enable or not the UV background
+  redshift: -1                            # Redshift to use (-1 means time based redshift)
+  with_metal_cooling: 1                   # Enable or not the metal cooling
+  provide_volumetric_heating_rates: 0     # User provide volumetric heating rates
+  provide_specific_heating_rates: 0       # User provide specific heating rates
+  self_shielding_method: -1               # Grackle (<= 3) or Gear self shielding method
+  self_shielding_threshold_atom_per_cm3: 0.007  # Required only with GEAR's self shielding. Density threshold of the self shielding
+  max_steps: 1000
+  convergence_limit: 1e-2
+  thermal_time_myr: 5
+  maximal_density_Hpcm3: -1               # Maximal density (in hydrogen atoms/cm^3) for cooling. Higher densities are floored to this value to ensure grackle works properly when interpolating beyond the cloudy_table maximal density. A value < 0 deactivates this parameter.
+
+GEARChemistry:
+  initial_metallicity: -1               # If < 0, read the metals from the ICs
+  diffusion_coefficient:  2.516849e-03   # (Optional) GEAR (MFM or not) diffusion: Coefficient for the diffusion (see Shen et al. 2010; differs by gamma^2 due to h^2). Default: 1
+  diffusion_mode: Isotropic_constant     # Diffusion mode. Isotropic_constant = constant isotropic ; Smagorinsky = Smagorinsky (isotropic) ; Gradient = Gradient model (anisotropic). The diffusion_coefficient sets the normalisation of the diffusion.
+  hll_riemann_solver_psi:  0.1        # (Optional) Tolerance parameter (> 0) for artificial diffusion, eq (7) in Hopkins 2017. (Default: 0.1)
+  hll_riemann_solver_epsilon: 0.5     # (Optional) Tolerance parameter for the Hopkins 2017 HLL, eq (14). It must respect 0 <= epsilon <= 1. Default: 0.5
+  C_CFL_chemistry: 0.4                # (Optional) Courant-Friedrich-Levy condition for time integration of the supertimestep.
+  tau: 1e-2
+  riemann_solver: 1
+
+GEARFeedback:
+  supernovae_energy_erg: 1e51            # supernovae energy, used only for SNIa
+  supernovae_efficiency: 0.1             # supernovae energy efficiency, used for both SNIa and SNII
+  yields_table: POPIIsw.h5
+  yields_table_first_stars: POPIIsw.h5
+  discrete_yields: 1
+  imf_transition_metallicity: -5         # Maximal metallicity ([Fe/H]) for a first star (0 to deactivate).
+  elements: [Fe, Mg, O, C, Al, Ca, Ba, Zn, Eu]    # Elements to read in the yields table. The number of element should be one less than the number of elements (N) requested during the configuration (--with-chemistry=GEAR_N).

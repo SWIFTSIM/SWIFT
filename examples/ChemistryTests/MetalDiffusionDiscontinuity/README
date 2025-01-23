@@ -1,0 +1,31 @@
+# Intro
+This example is a non cosmological homogeneous box with gas only.
+
+TODO
+
+# Configure
+To run this example with GEAR model,
+
+'''
+./configure --disable-mpi --with-chemistry=GEAR_10 --with-cooling=grackle_0 --with-stars=GEAR --with-star-formation=GEAR --with-feedback=GEAR --with-kernel=wendland-C2 --with-grackle=path/to/grackle
+
+and then
+
+make -j
+
+You can remove the adaptive softening. In this case, you may need to change the default `max_physical_baryon_softening` value.
+
+Other sink models can be probed by changing swift configuration and adding the relevant parameters in params.yml.
+
+# ICs
+The run.sh script calls `makeIC.py' script with default values. You can experiment by changing the ICs. Run `python3 makeIC.py --help` to get the list of parameters.
+
+# Run
+Type run.sh, and let's go!
+
+# Changing the cooling
+You can change grackle mode to 1,2, or 3 if you want. You may also want to change the simulation end time.
+
+For grackle_0 (equilibrium mode), the first sink form roughly at 0.260 (internal units). The end time is 0.282 Myr. The simulation runs in ~ 2 minutes.
+
+Notice that, for grackle_X with X from 1 to 3, the level 5 simulation does not have enough particles to run for long times. At 0.5 Gyr, swift ends because there are not enough particles per top-level cell. However, note how different the collapse from grackle_0 is!
