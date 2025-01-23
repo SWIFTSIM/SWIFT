@@ -203,6 +203,7 @@ __attribute__((always_inline)) INLINE static void black_holes_init_bpart(
   bp->rho_gas_hot = 0.f;
   bp->sound_speed_gas = 0.f;
   bp->sound_speed_gas_hot = 0.f;
+  bp->internal_energy_gas = 0.f;
   bp->velocity_gas[0] = 0.f;
   bp->velocity_gas[1] = 0.f;
   bp->velocity_gas[2] = 0.f;
@@ -332,6 +333,7 @@ __attribute__((always_inline)) INLINE static void black_holes_end_density(
    * (N.B.: bp->velocity_gas is in BH frame, in internal units). */
   if (bp->rho_gas_hot > 0.)
     bp->sound_speed_gas_hot *= h_inv_dim / bp->rho_gas_hot;
+  bp->internal_energy_gas *= h_inv_dim * rho_inv;
   bp->sound_speed_gas *= h_inv_dim * rho_inv;
   if (bp->rho_gas_hot > 0.) {
     bp->sound_speed_gas_hot *= h_inv_dim / bp->rho_gas_hot;
@@ -394,6 +396,8 @@ black_holes_bpart_has_no_neighbours(struct bpart* bp,
   bp->curl_v_gas[0] = FLT_MAX;
   bp->curl_v_gas[1] = FLT_MAX;
   bp->curl_v_gas[2] = FLT_MAX;
+
+  bp->internal_energy_gas = -FLT_MAX;
 }
 
 /**

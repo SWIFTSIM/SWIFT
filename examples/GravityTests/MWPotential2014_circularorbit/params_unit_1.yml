@@ -1,7 +1,7 @@
 # Define the system of units to use internally.
 InternalUnitSystem:
-  UnitMass_in_cgs:     1.98848e+43 # 10^10 Solar masses
-  UnitLength_in_cgs:   3.086e+21 # kpc
+  UnitMass_in_cgs:     1.988409870698051e+43 # 10^10 Solar masses
+  UnitLength_in_cgs:   3.0856775814913673e+21 # kpc
   UnitVelocity_in_cgs: 1e5       # 1 km / s in cm/s
   UnitCurrent_in_cgs:  1         # Amperes
   UnitTemp_in_cgs:     1         # Kelvin
@@ -46,7 +46,7 @@ MWPotential2014Potential:
   # Mdisk_Msun:       6.8e10
   # Rdisk_kpc:        3.0
   # Zdisk_kpc:        0.280
-  # amplitude:        1.0
+  # amplitude_Msun_per_kpc3: 1.0e10
   # r_1_kpc:          1.0
   # alpha:            1.8
   # r_c_kpc:          1.9
