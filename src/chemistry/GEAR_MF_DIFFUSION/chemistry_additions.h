@@ -49,96 +49,60 @@ __attribute__((always_inline)) INLINE static void chemistry_kick_extra(
 
   struct chemistry_part_data* chd = &p->chemistry_data;
 
-  if (chd->flux_dt != 0.0f) {
-    for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; ++i) {
-      double flux;
-      chemistry_get_fluxes(p, i, &flux);
-
-      /* Update the conserved variable */
-      chd->metal_mass[i] += flux;
-
+  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; ++i) {
 #if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
-      /* Avoid 0.0 divisions */
-      if (chd->tau != 0.0) {
-	/* Get the parabolic diffusion flux */
-	double F_diff_target[3];
-	chemistry_compute_physical_diffusion_flux(p, i, F_diff_target, chem_data,
-						  cosmo);
+    /* Avoid 0.0 divisions */
+    if (chd->tau != 0.0) {
+      /* Get the parabolic diffusion flux */
+      double F_diff_target[3];
+      chemistry_compute_physical_diffusion_flux(p, i, F_diff_target, chem_data,
+						cosmo);
 
-	/* First update dF_dt with the previous value of the diffusion
-	   flux. Notice the + in front of F_diff_target. This is because the
-	   minus sign is already included.  */
+      /* First update dF_dt with the previous value of the diffusion
+	 flux. Notice the + in front of F_diff_target. This is because the
+	 minus sign is already included.  */
 
-	chd->hyperbolic_flux[i].dF_dt[0] =
-          -chd->hyperbolic_flux[i].F_diff[0]/chd->tau + F_diff_target[0]/chd->tau;
-	chd->hyperbolic_flux[i].dF_dt[1] =
-          -chd->hyperbolic_flux[i].F_diff[1]/chd->tau + F_diff_target[1]/chd->tau;
-	chd->hyperbolic_flux[i].dF_dt[2] =
-          -chd->hyperbolic_flux[i].F_diff[2]/chd->tau + F_diff_target[2]/chd->tau;
+      chd->hyperbolic_flux[i].dF_dt[0] =
+	-chd->hyperbolic_flux[i].F_diff[0]/chd->tau + F_diff_target[0]/chd->tau;
+      chd->hyperbolic_flux[i].dF_dt[1] =
+	-chd->hyperbolic_flux[i].F_diff[1]/chd->tau + F_diff_target[1]/chd->tau;
+      chd->hyperbolic_flux[i].dF_dt[2] =
+	-chd->hyperbolic_flux[i].F_diff[2]/chd->tau + F_diff_target[2]/chd->tau;
 
-	/* Then update the diffusion flux with a semi-implicit scheme */
-	/* chd->hyperbolic_flux[i].F_diff[0] = */
-        /*   chd->hyperbolic_flux[i].F_diff_pred[0] + */
-        /*   dt_therm / (chd->tau + dt_therm) * */
-	/*   (F_diff_target[0] - chd->hyperbolic_flux[i].F_diff_pred[0]); */
-	/* chd->hyperbolic_flux[i].F_diff[1] = */
-        /*   chd->hyperbolic_flux[i].F_diff_pred[1] + */
-        /*   dt_therm / (chd->tau + dt_therm) * */
-	/*   (F_diff_target[1] - chd->hyperbolic_flux[i].F_diff_pred[1]); */
-	/* chd->hyperbolic_flux[i].F_diff[2] = */
-        /*   chd->hyperbolic_flux[i].F_diff_pred[2] + */
-        /*   dt_therm / (chd->tau + dt_therm) * */
-	/*   (F_diff_target[2] - chd->hyperbolic_flux[i].F_diff_pred[2]); */
+      /* Then update the diffusion flux with a semi-implicit scheme */
+      /* chd->hyperbolic_flux[i].F_diff[0] = */
+      /*   chd->hyperbolic_flux[i].F_diff_pred[0] + */
+      /*   dt_therm / (chd->tau + dt_therm) * */
+      /*   (F_diff_target[0] - chd->hyperbolic_flux[i].F_diff_pred[0]); */
+      /* chd->hyperbolic_flux[i].F_diff[1] = */
+      /*   chd->hyperbolic_flux[i].F_diff_pred[1] + */
+      /*   dt_therm / (chd->tau + dt_therm) * */
+      /*   (F_diff_target[1] - chd->hyperbolic_flux[i].F_diff_pred[1]); */
+      /* chd->hyperbolic_flux[i].F_diff[2] = */
+      /*   chd->hyperbolic_flux[i].F_diff_pred[2] + */
+      /*   dt_therm / (chd->tau + dt_therm) * */
+      /*   (F_diff_target[2] - chd->hyperbolic_flux[i].F_diff_pred[2]); */
 
-	/* Update with an implicit solver */
-	const float dt_factor = 1.0 / (1.0 + dt_therm / chd->tau);
-	chd->hyperbolic_flux[i].F_diff[0] = dt_factor*(chd->hyperbolic_flux[i].F_diff[0] + dt_therm / chd->tau * F_diff_target[0]);
-	chd->hyperbolic_flux[i].F_diff[1] = dt_factor*(chd->hyperbolic_flux[i].F_diff[1] + dt_therm / chd->tau * F_diff_target[1]);
-	chd->hyperbolic_flux[i].F_diff[2] = dt_factor*(chd->hyperbolic_flux[i].F_diff[2] + dt_therm / chd->tau * F_diff_target[2]);
-      }
-
-      if (chd->kappa == 0.0 && chd->tau == 0.0) {
-	/* According to the equations, we have F = 0 and dF/dt = 0.0 */
-	chd->hyperbolic_flux[i].dF_dt[0] = 0.0;
-	chd->hyperbolic_flux[i].dF_dt[1] = 0.0;
-	chd->hyperbolic_flux[i].dF_dt[2] = 0.0;
-
-	/* Then update the diffusion flux with a semi-implicit scheme */
-	chd->hyperbolic_flux[i].F_diff[0] = 0.0;
-	chd->hyperbolic_flux[i].F_diff[1] = 0.0;
-	chd->hyperbolic_flux[i].F_diff[2] = 0.0;
-      }
-#endif
+      /* Update with an implicit solver */
+      const float dt_factor = 1.0 / (1.0 + dt_therm / chd->tau);
+      chd->hyperbolic_flux[i].F_diff[0] = dt_factor*(chd->hyperbolic_flux[i].F_diff[0] + dt_therm / chd->tau * F_diff_target[0]);
+      chd->hyperbolic_flux[i].F_diff[1] = dt_factor*(chd->hyperbolic_flux[i].F_diff[1] + dt_therm / chd->tau * F_diff_target[1]);
+      chd->hyperbolic_flux[i].F_diff[2] = dt_factor*(chd->hyperbolic_flux[i].F_diff[2] + dt_therm / chd->tau * F_diff_target[2]);
     }
 
-    /* Reset the fluxes, so that they do not get used again in kick1 */
-    chemistry_reset_chemistry_fluxes(p);
+    /* if (chd->kappa == 0.0 && chd->tau == 0.0) { */
+    /* 	/\* According to the equations, we have F = 0 and dF/dt = 0.0 *\/ */
+    /* 	chd->hyperbolic_flux[i].dF_dt[0] = 0.0; */
+    /* 	chd->hyperbolic_flux[i].dF_dt[1] = 0.0; */
+    /* 	chd->hyperbolic_flux[i].dF_dt[2] = 0.0; */
 
-    /* Invalidate the particle time-step. It is considered to be inactive until
-       dt is set again in hydro_prepare_force() */
-    chd->flux_dt = -1.0f;
-  } else /* (p->chemistry_data.flux_dt == 0.f) */ {
-    /* something tricky happens at the beginning of the simulation: the flux
-       exchange is done for all particles, but using a time step of 0. This
-       in itself is not a problem. However, it causes some issues with the
-       initialisation of flux.dt for inactive particles, since this value will
-       remain 0 until the particle is active again, and its flux.dt is set to
-       the actual time step in hydro_prepare_force(). We have to make sure it
-       is properly set to -1 here, so that inactive particles are indeed found
-       to be inactive during the flux loop. */
-    chd->flux_dt = -1.0f;
+    /* 	/\* Then update the diffusion flux with a semi-implicit scheme *\/ */
+    /* 	chd->hyperbolic_flux[i].F_diff[0] = 0.0; */
+    /* 	chd->hyperbolic_flux[i].F_diff[1] = 0.0; */
+    /* 	chd->hyperbolic_flux[i].F_diff[2] = 0.0; */
+    /* } */
+#endif
   }
-
-  /* Element-wise sanity checks */
-  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; ++i) {
-    const double m_metal_old = chd->metal_mass[i];
-    chemistry_check_unphysical_state(&chd->metal_mass[i], m_metal_old,
-                                     hydro_get_mass(p), /*callloc=*/2,
-                                     /*element*/ i);
-  }
-
-  /* Sanity check on the total metal mass */
-  chemistry_check_unphysical_total_metal_mass(p, 1);
 
   /* Reset wcorr */
   p->geometry.wcorr = 1.0f;
