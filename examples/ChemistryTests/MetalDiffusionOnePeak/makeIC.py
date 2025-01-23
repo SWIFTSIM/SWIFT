@@ -65,6 +65,13 @@ def parse_options():
         help="Resolution level: N = (2**l)**3",
     )
 
+    parser.add_argument("--velocity",
+                        action=store_as_array,
+                        nargs=3,
+                        type=float,
+                        default=np.zeros(0),
+                        help="Velocity boost to all particles")
+
     parser.add_argument(
         "--metal_mass_fraction",
         action="store",
@@ -115,6 +122,7 @@ N_metal = opt.N_metal
 epsilon = opt.epsilon
 random_position = opt.random_position
 level = opt.level
+velocity = opt.velocity
 
 # define standard units
 UnitMass_in_cgs = 1.988409870698051e43  # 10^10 M_sun in grams
@@ -173,7 +181,7 @@ else:
     pos = np.vstack([x.ravel(), y.ravel(), z.ravel()]).T
 
 print(pos.shape)
-vel = np.zeros([N, 3])
+vel = np.tile(velocity, (N, 1)) # np.zeros([N, 3])
 mass = np.ones(N) * m
 u = np.zeros(N)
 ids = np.arange(N)

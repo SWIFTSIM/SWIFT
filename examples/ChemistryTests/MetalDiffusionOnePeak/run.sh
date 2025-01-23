@@ -7,6 +7,9 @@ n_threads=${n_threads:=8}  #Number of threads to use
 level=${level:=5}  #Number of particles = 2^(3*level)
 gas_density=${gas_density:=1} #Gas density in atom/cm^3
 box_mass=${box_mass:=10000000} #Mass of the gas particles
+vx=${vx:=0.0}  # Default velocity x-component
+vy=${vy:=0.0}  # Default velocity y-component
+vz=${vz:=0.0}  # Default velocity z-component
 with_hydro_MFM=${with_hydro_MFM:=0}
 run_name=${run_name:=""}
 
@@ -20,7 +23,7 @@ fi
 if [ ! -e ICs_homogeneous_box.hdf5 ]
 then
     echo "Generating initial conditions to run the example..."
-    python3 makeIC.py --level $level --rho $gas_density --mass $box_mass -o ICs_homogeneous_box.hdf5
+    python3 makeIC.py --level $level --rho $gas_density --mass $box_mass --velocity $vx $vy $vz -o ICs_homogeneous_box.hdf5
 fi
 
 # Get the Grackle cooling table
