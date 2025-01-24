@@ -39,7 +39,7 @@ case $1 in
    mdi)
 	varN=3
 	echo "scheme chosen: "${SCHEME_NAME[$varN]}
-	BASE_CONF=$BASE_CONF" --with-sph=minimal"
+	BASE_CONF=$BASE_CONF" --with-hydro=minimal"
 	git switch MHD_canvas_matthieu
 	git pull 
    ;;
