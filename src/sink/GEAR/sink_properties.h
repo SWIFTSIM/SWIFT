@@ -1,6 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2020 Loic Hausammann (loic.hausammann@epfl.ch)
+ *               2024 Darwin Roduit (darwin.roduit@alumni.epfl.ch)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -23,10 +24,46 @@
 #include "feedback_properties.h"
 #include "parser.h"
 
+/* Some default values for the parameters to be read in the YAML file */
+#define sink_gear_f_acc_default 0.8
+#define sink_gear_star_spawning_sigma_factor_default 0.2
+#define sink_gear_n_imf_default FLT_MAX /* No accretion restriction */
+#define sink_gear_tolerance_sf_timestep_default 0.5
+
+/* Sink formation is activated */
+#define sink_gear_disable_sink_formation_default 0
+
+/* By default all current implemented criteria are active */
+#define sink_gear_sink_formation_criterion_all_default 1
+
 /**
  * @brief Properties of sink in the Default model.
  */
 struct sink_props {
+
+  /* ----- Basic neighbour search properties ------ */
+
+  /*! Resolution parameter */
+  float eta_neighbours;
+
+  /*! Target weightd number of neighbours (for info only)*/
+  float target_neighbours;
+
+  /*! Smoothing length tolerance */
+  float h_tolerance;
+
+  /*! Tolerance on neighbour number  (for info only)*/
+  float delta_neighbours;
+
+  /*! Maximal number of iterations to converge h */
+  int max_smoothing_iterations;
+
+  /*! Maximal change of h over one time-step */
+  float log_max_h_change;
+
+  /*! Are we using a fixed cutoff radius? (all smoothing length calculations are
+   * disabled if so) */
+  char use_fixed_r_cut;
 
   /*! Cut off radius */
   float cut_off_radius;
@@ -66,13 +103,40 @@ struct sink_props {
   char sink_formation_bound_state_criterion;
   char sink_formation_overlapping_sink_criterion;
 
-  /* Disable sink formation? (e.g. used in sink accretion tests). Default: 0
+  /*! Disable sink formation? (e.g. used in sink accretion tests). Default: 0
      (keep sink formation) */
-  uint8_t disable_sink_formation;
+  char disable_sink_formation;
 
-  /* Factor to rescale the velocity dispersion of the stars when they are
+  /*! Factor to rescale the velocity dispersion of the stars when they are
      spawned */
   double star_spawning_sigma_factor;
+
+  /*! Minimal sink mass in Msun. This prevents m_sink << m_gas in low
+    resolution simulations. */
+  float sink_minimal_mass_Msun;
+
+  /***************************************************************************/
+  /*! Maximal time-step length of young sinks (internal units) */
+  double max_time_step_young;
+
+  /*! Maximal time-step length of old sinks (internal units) */
+  double max_time_step_old;
+
+  /*! Age threshold for the young/old transition (internal units) */
+  double age_threshold;
+
+  /*! Age threshold for the transition to unlimited time-step size (internal
+   * units) */
+  double age_threshold_unlimited;
+
+  /*! Time integration CFL condition factor */
+  float CFL_condition;
+
+  /*! Number of times the IMF mass can be swallowed in a single timestep */
+  float n_IMF;
+
+  /*! Tolerance parameter for SF timestep constraint */
+  float tolerance_SF_timestep;
 };
 
 /**
@@ -160,13 +224,42 @@ INLINE static void sink_props_init_probabilities(
  * @param cosmo The cosmological model.
  * @param with_feedback Are we running with feedback?
  */
-INLINE static void sink_props_init(struct sink_props *sp,
-                                   struct feedback_props *fp,
-                                   const struct phys_const *phys_const,
-                                   const struct unit_system *us,
-                                   struct swift_params *params,
-                                   const struct cosmology *cosmo,
-                                   const int with_feedback) {
+INLINE static void sink_props_init(
+    struct sink_props *sp, struct feedback_props *fp,
+    const struct phys_const *phys_const, const struct unit_system *us,
+    struct swift_params *params, const struct hydro_props *hydro_props,
+    const struct cosmology *cosmo, const int with_feedback) {
+
+  /* Read in the basic neighbour search properties or default to the hydro
+     ones if the user did not provide any different values */
+
+  /* Kernel properties */
+  sp->eta_neighbours = parser_get_opt_param_float(
+      params, "Sinks:resolution_eta", hydro_props->eta_neighbours);
+
+  /* Tolerance for the smoothing length Newton-Raphson scheme */
+  sp->h_tolerance = parser_get_opt_param_float(params, "Sinks:h_tolerance",
+                                               hydro_props->h_tolerance);
+
+  /* Get derived properties */
+  sp->target_neighbours = pow_dimension(sp->eta_neighbours) * kernel_norm;
+  const float delta_eta = sp->eta_neighbours * (1.f + sp->h_tolerance);
+  sp->delta_neighbours =
+      (pow_dimension(delta_eta) - pow_dimension(sp->eta_neighbours)) *
+      kernel_norm;
+
+  /* Number of iterations to converge h */
+  sp->max_smoothing_iterations =
+      parser_get_opt_param_int(params, "Sinks:max_ghost_iterations",
+                               hydro_props->max_smoothing_iterations);
+
+  /* Time integration properties */
+  const float max_volume_change =
+      parser_get_opt_param_float(params, "Sinks:max_volume_change", -1);
+  if (max_volume_change == -1)
+    sp->log_max_h_change = hydro_props->log_max_h_change;
+  else
+    sp->log_max_h_change = logf(powf(max_volume_change, hydro_dimension_inv));
 
   /* If we do not run with feedback, abort and print an error */
   if (!with_feedback)
@@ -174,21 +267,23 @@ INLINE static void sink_props_init(struct sink_props *sp,
         "ERROR: Running with sink but without feedback. GEAR sink model needs "
         "to be run with --sink and --feedback");
 
-  /* Default values */
-  const float default_f_acc = 0.8;
-  const float default_star_spawning_sigma_factor = 0.2;
-  const char default_disable_sink_formation = 0; /* Sink formation is
-                                                     activated */
+  /* This property is used in all models to flag if we're using a fixed cutoff.
+   * If it is set to 1, we use a fixed r_cut (read in below) and don't
+   * (re)calculate h. If not, the code will use the variable h*kernel_gamma as a
+   * cutoff radius.
+   */
+  sp->use_fixed_r_cut =
+      parser_get_param_char(params, "GEARSink:use_fixed_cut_off_radius");
 
-  /* By default all current implemented criteria are active */
-  const uint8_t default_sink_formation_criterion_all = 1;
+  /* The property cut_off_radius is now only used in the GEAR model.
+   * It is ignored if use_fixed_r_cut is 0. */
+  if (sp->use_fixed_r_cut) {
+    sp->cut_off_radius =
+        parser_get_param_float(params, "GEARSink:cut_off_radius");
+  }
 
-  /* Read the parameters from the parameter file */
-  sp->cut_off_radius =
-      parser_get_param_float(params, "GEARSink:cut_off_radius");
-
-  sp->f_acc =
-      parser_get_opt_param_float(params, "GEARSink:f_acc", default_f_acc);
+  sp->f_acc = parser_get_opt_param_float(params, "GEARSink:f_acc",
+                                         sink_gear_f_acc_default);
 
   /* Check that sp->f_acc respects 0 <= f_acc <= 1 */
   if ((sp->f_acc < 0) || (sp->f_acc > 1)) {
@@ -202,7 +297,16 @@ INLINE static void sink_props_init(struct sink_props *sp,
       parser_get_param_float(params, "GEARSink:temperature_threshold_K");
 
   sp->density_threshold =
-      parser_get_param_float(params, "GEARSink:density_threshold_g_per_cm3");
+      parser_get_param_float(params, "GEARSink:density_threshold_Hpcm3");
+
+  sp->maximal_density_threshold = parser_get_opt_param_float(
+      params, "GEARSink:maximal_density_threshold_Hpcm3", FLT_MAX);
+
+  if (sp->maximal_density_threshold < sp->density_threshold) {
+    error(
+        "maximal_density_threshold_Hpcm3 must be larger than "
+        "density_threshold_Hpcm3");
+  }
 
   sp->maximal_density_threshold = parser_get_opt_param_float(
       params, "GEARSink:maximal_density_threshold_g_per_cm3", FLT_MAX);
@@ -227,41 +331,84 @@ INLINE static void sink_props_init(struct sink_props *sp,
 
   sp->star_spawning_sigma_factor =
       parser_get_opt_param_float(params, "GEARSink:star_spawning_sigma_factor",
-                                 default_star_spawning_sigma_factor);
+                                 sink_gear_star_spawning_sigma_factor_default);
+
+  sp->n_IMF = parser_get_opt_param_float(params, "GEARSink:n_IMF",
+                                         sink_gear_n_imf_default);
+
+  sp->sink_minimal_mass_Msun =
+      parser_get_opt_param_float(params, "GEARSink:sink_minimal_mass_Msun", 0.);
 
   /* Sink formation criterion parameters (all active by default) */
   sp->sink_formation_contracting_gas_criterion = parser_get_opt_param_int(
       params, "GEARSink:sink_formation_contracting_gas_criterion",
-      default_sink_formation_criterion_all);
+      sink_gear_sink_formation_criterion_all_default);
 
   sp->sink_formation_smoothing_length_criterion = parser_get_opt_param_int(
       params, "GEARSink:sink_formation_smoothing_length_criterion",
-      default_sink_formation_criterion_all);
+      sink_gear_sink_formation_criterion_all_default);
 
   sp->sink_formation_jeans_instability_criterion = parser_get_opt_param_int(
       params, "GEARSink:sink_formation_jeans_instability_criterion",
-      default_sink_formation_criterion_all);
+      sink_gear_sink_formation_criterion_all_default);
 
   sp->sink_formation_bound_state_criterion = parser_get_opt_param_int(
       params, "GEARSink:sink_formation_bound_state_criterion",
-      default_sink_formation_criterion_all);
+      sink_gear_sink_formation_criterion_all_default);
 
   sp->sink_formation_overlapping_sink_criterion = parser_get_opt_param_int(
       params, "GEARSink:sink_formation_overlapping_sink_criterion",
-      default_sink_formation_criterion_all);
+      sink_gear_sink_formation_criterion_all_default);
 
   /* Should we disable sink formation ? */
   sp->disable_sink_formation =
       parser_get_opt_param_int(params, "GEARSink:disable_sink_formation",
-                               default_disable_sink_formation);
+                               sink_gear_disable_sink_formation_default);
+
+  /* Maximal time-step lengths */
+  const double max_time_step_young_Myr = parser_get_opt_param_float(
+      params, "GEARSink:max_timestep_young_Myr", FLT_MAX);
+  const double max_time_step_old_Myr = parser_get_opt_param_float(
+      params, "GEARSink:max_timestep_old_Myr", FLT_MAX);
+  const double age_threshold_Myr = parser_get_opt_param_float(
+      params, "GEARSink:timestep_age_threshold_Myr", FLT_MAX);
+  const double age_threshold_unlimited_Myr = parser_get_opt_param_float(
+      params, "GEARSink:timestep_age_threshold_unlimited_Myr", FLT_MAX);
+
+  /* Check for consistency */
+  if (age_threshold_unlimited_Myr != 0. && age_threshold_Myr != FLT_MAX) {
+    if (age_threshold_unlimited_Myr < age_threshold_Myr)
+      error(
+          "The age threshold for unlimited sink time-step sizes (%e Myr) is "
+          "smaller than the transition threshold from young to old ages (%e "
+          "Myr)",
+          age_threshold_unlimited_Myr, age_threshold_Myr);
+  }
+
+  /* Timestep tolerance paramters */
+  sp->CFL_condition = parser_get_param_float(params, "GEARSink:CFL_condition");
+
+  sp->tolerance_SF_timestep =
+      parser_get_opt_param_float(params, "GEARSink:tolerance_SF_timestep",
+                                 sink_gear_tolerance_sf_timestep_default);
 
   /* Apply unit change */
   sp->temperature_threshold /=
       units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
 
-  sp->density_threshold /= units_cgs_conversion_factor(us, UNIT_CONV_DENSITY);
-  sp->maximal_density_threshold /=
-      units_cgs_conversion_factor(us, UNIT_CONV_DENSITY);
+  const double m_p_cgs = phys_const->const_proton_mass *
+                         units_cgs_conversion_factor(us, UNIT_CONV_MASS);
+  sp->density_threshold *=
+      m_p_cgs / units_cgs_conversion_factor(us, UNIT_CONV_DENSITY);
+  sp->maximal_density_threshold *=
+      m_p_cgs / units_cgs_conversion_factor(us, UNIT_CONV_DENSITY);
+
+  const double Myr_internal_units = 1e6 * phys_const->const_year;
+  sp->max_time_step_young = max_time_step_young_Myr * Myr_internal_units;
+  sp->max_time_step_old = max_time_step_old_Myr * Myr_internal_units;
+  sp->age_threshold = age_threshold_Myr * Myr_internal_units;
+  sp->age_threshold_unlimited =
+      age_threshold_unlimited_Myr * Myr_internal_units;
 
   /* here, we need to differenciate between the stellar models */
   struct initial_mass_function *imf;
@@ -286,6 +433,8 @@ INLINE static void sink_props_init(struct sink_props *sp,
           sp->density_threshold);
   message("maximal_density_threshold                    = %g",
           sp->maximal_density_threshold);
+  message("sink_minimal_mass (in M_sun)                 = %g",
+          sp->sink_minimal_mass_Msun);
   message("stellar_particle_mass (in M_sun)             = %g",
           sp->stellar_particle_mass_Msun);
   message("minimal_discrete_mass (in M_sun)             = %g",
@@ -309,6 +458,21 @@ INLINE static void sink_props_init(struct sink_props *sp,
           sp->sink_formation_bound_state_criterion);
   message("sink_formation_overlapping_sink_criterion    = %d",
           sp->sink_formation_overlapping_sink_criterion);
+
+  /* Print timestep parameters information */
+  message("sink max_timestep_young                      = %e",
+          sp->max_time_step_young);
+  message("sink max_timestep_old                        = %e",
+          sp->max_time_step_old);
+  message("sink age_threshold from young to old         = %e",
+          sp->age_threshold);
+  message("sink age_threshold from old to unlimited     = %e",
+          sp->age_threshold_unlimited);
+  message("sink C_CFL                                   = %e",
+          sp->CFL_condition);
+  message("tolerance_SF_timestep                        = %e",
+          sp->tolerance_SF_timestep);
+  message("n_IMF                                        = %e", sp->n_IMF);
 }
 
 /**

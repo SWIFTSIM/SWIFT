@@ -110,10 +110,11 @@ __attribute__((always_inline)) INLINE static float mhd_get_divB_error(
       p->mhd_data.B_over_rho[1] * p->mhd_data.B_over_rho[1] +
       p->mhd_data.B_over_rho[2] * p->mhd_data.B_over_rho[2];
 
-  const float error = B_over_rho2 != 0.0f ? fabs(p->mhd_data.divB) * p->h / sqrtf(B_over_rho2 * rho * rho) : 0.0f;
+  const float error = B_over_rho2 != 0.0f ? fabs(p->mhd_data.divB) * p->h /
+                                                sqrtf(B_over_rho2 * rho * rho)
+                                          : 0.0f;
 
   return error;
-
 }
 
 /**
@@ -132,26 +133,13 @@ __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
     const struct hydro_props *hydro_properties, const struct cosmology *cosmo,
     const float mu_0) {
 
-  /* Dt from 1/DivOperator(Alfven speed) */
-
-  const float divB = p->mhd_data.divB;
-
-  const float dt_B_factor = fabsf(divB);
-
-  const float dt_B_derivatives =
-      dt_B_factor != 0.f
-          ? hydro_properties->CFL_condition * cosmo->a /
-                cosmo->a_factor_sound_speed *
-                sqrtf(p->rho * mu_0 / (dt_B_factor * dt_B_factor))
-          : FLT_MAX;
-
   const float dt_eta = p->mhd_data.resistive_eta != 0.f
                            ? hydro_properties->CFL_condition * cosmo->a *
                                  cosmo->a * p->h * p->h /
                                  p->mhd_data.resistive_eta
                            : FLT_MAX;
 
-  return fminf(dt_B_derivatives, dt_eta);
+  return dt_eta;
 }
 
 /**
@@ -311,7 +299,6 @@ __attribute__((always_inline)) INLINE static void mhd_reset_gradient(
     struct part *p) {
 
   /* Zero the fields updated by the mhd gradient loop */
-  p->mhd_data.divB = 0.0f;
   p->mhd_data.curl_B[0] = 0.0f;
   p->mhd_data.curl_B[1] = 0.0f;
   p->mhd_data.curl_B[2] = 0.0f;
@@ -450,7 +437,6 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_force(
   xp->mhd_data.psi_over_ch_full += p->mhd_data.psi_over_ch_dt * dt_alpha;
 
   p->mhd_data.psi_over_ch = xp->mhd_data.psi_over_ch_full;
-
 }
 
 /**
@@ -465,6 +451,8 @@ __attribute__((always_inline)) INLINE static void mhd_reset_acceleration(
     struct part *restrict p) {
 
   /* Zero the fields updated by the mhd force loop */
+  p->mhd_data.divB = 0.0f;
+  
   p->mhd_data.B_over_rho_dt[0] = 0.0f;
   p->mhd_data.B_over_rho_dt[1] = 0.0f;
   p->mhd_data.B_over_rho_dt[2] = 0.0f;
@@ -502,6 +490,8 @@ __attribute__((always_inline)) INLINE static void mhd_reset_predicted_values(
   p->mhd_data.B_over_rho[0] = xp->mhd_data.B_over_rho_full[0];
   p->mhd_data.B_over_rho[1] = xp->mhd_data.B_over_rho_full[1];
   p->mhd_data.B_over_rho[2] = xp->mhd_data.B_over_rho_full[2];
+
+  p->mhd_data.psi_over_ch = xp->mhd_data.psi_over_ch_full;
 }
 
 /**
@@ -531,7 +521,6 @@ __attribute__((always_inline)) INLINE static void mhd_predict_extra(
   p->mhd_data.B_over_rho[2] += p->mhd_data.B_over_rho_dt[2] * dt_therm;
 
   p->mhd_data.psi_over_ch += p->mhd_data.psi_over_ch_dt * dt_therm;
-
 }
 
 /**
@@ -550,8 +539,11 @@ __attribute__((always_inline)) INLINE static void mhd_end_force(
     struct part *p, const struct cosmology *cosmo,
     const struct hydro_props *hydro_props, const float mu_0) {
 
-  /* Hubble expansion contribution to induction equation */
+  /* Get time derivative of Dedner scalar */
+  p->mhd_data.psi_over_ch_dt = mhd_get_psi_over_ch_dt(
+      p, cosmo->a, cosmo->a_factor_sound_speed, cosmo->H, hydro_props, mu_0);
 
+  /* Hubble expansion contribution to induction equation */
   const float Hubble_induction_pref =
       cosmo->a * cosmo->a * cosmo->H * (1.5f * hydro_gamma - 2.f);
   p->mhd_data.B_over_rho_dt[0] +=
@@ -593,6 +585,8 @@ __attribute__((always_inline)) INLINE static void mhd_kick_extra(
   xp->mhd_data.B_over_rho_full[0] = xp->mhd_data.B_over_rho_full[0] + delta_Bx;
   xp->mhd_data.B_over_rho_full[1] = xp->mhd_data.B_over_rho_full[1] + delta_By;
   xp->mhd_data.B_over_rho_full[2] = xp->mhd_data.B_over_rho_full[2] + delta_Bz;
+
+  xp->mhd_data.psi_over_ch_full += p->mhd_data.psi_over_ch_dt * dt_therm;
 }
 
 /**
@@ -634,7 +628,6 @@ __attribute__((always_inline)) INLINE static void mhd_convert_quantities(
   xp->mhd_data.B_over_rho_full[2] = p->mhd_data.B_over_rho[2];
 
   xp->mhd_data.psi_over_ch_full = p->mhd_data.psi_over_ch;
-
 }
 
 /**

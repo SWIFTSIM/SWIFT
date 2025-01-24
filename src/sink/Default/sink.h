@@ -30,10 +30,22 @@
 /**
  * @brief Computes the time-step of a given sink particle.
  *
- * @param sp Pointer to the sink-particle data.
+ * Note: In the Default sink, no time-step limit is applied.
+ *
+ * @param sink Pointer to the sink-particle data.
+ * @param sink_properties Properties of the sink model.
+ * @param with_cosmology Are we running with cosmological time integration.
+ * @param cosmo The current cosmological model (used if running with
+ * cosmology).
+ * @param grav_props The current gravity properties.
+ * @param time The current time (used if running without cosmology).
+ * @param time_base The time base.
  */
 __attribute__((always_inline)) INLINE static float sink_compute_timestep(
-    const struct sink* const sp) {
+    const struct sink* const sink, const struct sink_props* sink_properties,
+    const int with_cosmology, const struct cosmology* cosmo,
+    const struct gravity_props* grav_props, const double time,
+    const double time_base) {
 
   return FLT_MAX;
 }
@@ -67,7 +79,21 @@ __attribute__((always_inline)) INLINE static void sink_init_part(
  * @param sp The #sink particle to act upon.
  */
 __attribute__((always_inline)) INLINE static void sink_init_sink(
-    struct sink* sp) {}
+    struct sink* sp) {
+
+  sp->density.wcount = 0.f;
+  sp->density.wcount_dh = 0.f;
+
+#ifdef SWIFT_SINK_DENSITY_CHECKS
+  sp->N_check_density = 0;
+  sp->N_check_density_exact = 0;
+  sp->rho_check = 0.f;
+  sp->rho_check_exact = 0.f;
+  sp->n_check = 0.f;
+  sp->n_check_exact = 0.f;
+  sp->inhibited_check_exact = 0;
+#endif
+}
 
 /**
  * @brief Predict additional particle fields forward in time when drifting
@@ -95,6 +121,80 @@ __attribute__((always_inline)) INLINE static void sink_reset_predicted_values(
  */
 __attribute__((always_inline)) INLINE static void sink_kick_extra(
     struct sink* sp, float dt) {}
+
+/**
+ * @brief Finishes the calculation of density on sinks
+ *
+ * @param si The particle to act upon
+ * @param cosmo The current cosmological model.
+ */
+__attribute__((always_inline)) INLINE static void sink_end_density(
+    struct sink* si, const struct cosmology* cosmo) {
+
+  /* Some smoothing length multiples. */
+  const float h = si->h;
+  const float h_inv = 1.0f / h;                       /* 1/h */
+  const float h_inv_dim = pow_dimension(h_inv);       /* 1/h^d */
+  const float h_inv_dim_plus_one = h_inv_dim * h_inv; /* 1/h^(d+1) */
+
+  /* Finish the calculation by inserting the missing h-factors */
+  si->density.wcount *= h_inv_dim;
+  si->density.wcount_dh *= h_inv_dim_plus_one;
+
+#ifdef SWIFT_SINK_DENSITY_CHECKS
+  si->rho_check *= h_inv_dim;
+  si->n_check *= h_inv_dim;
+#endif
+}
+
+/**
+ * @brief Sets all particle fields to sensible values when the #sink has 0
+ * ngbs.
+ *
+ * @param sp The particle to act upon
+ * @param cosmo The current cosmological model.
+ */
+__attribute__((always_inline)) INLINE static void sinks_sink_has_no_neighbours(
+    struct sink* restrict sp, const struct cosmology* cosmo) {
+
+  warning(
+      "Sink particle with ID %lld treated as having no neighbours (h: %g, "
+      "wcount: %g).",
+      sp->id, sp->h, sp->density.wcount);
+
+  /* Some smoothing length multiples. */
+  const float h = sp->h;
+  const float h_inv = 1.0f / h;                 /* 1/h */
+  const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */
+
+  /* Re-set problematic values */
+  sp->density.wcount = kernel_root * h_inv_dim;
+  sp->density.wcount_dh = 0.f;
+}
+
+/**
+ * @brief Compute the accretion rate of the sink and any quantities
+ * required swallowing based on an accretion rate
+ *
+ * Adapted from black_holes_prepare_feedback
+ *
+ * @param si The sink particle.
+ * @param props The properties of the sink scheme.
+ * @param constants The physical constants (in internal units).
+ * @param cosmo The cosmological model.
+ * @param cooling Properties of the cooling model.
+ * @param floor_props Properties of the entropy floor.
+ * @param time Time since the start of the simulation (non-cosmo mode).
+ * @param with_cosmology Are we running with cosmology?
+ * @param dt The time-step size (in physical internal units).
+ * @param ti_begin Integer time value at the beginning of timestep
+ */
+__attribute__((always_inline)) INLINE static void sink_prepare_swallow(
+    struct sink* restrict si, const struct sink_props* props,
+    const struct phys_const* constants, const struct cosmology* cosmo,
+    const struct cooling_function_data* cooling,
+    const struct entropy_floor_properties* floor_props, const double time,
+    const int with_cosmology, const double dt, const integertime_t ti_begin) {}
 
 /**
  * @brief Calculate if the gas has the potential of becoming
@@ -173,7 +273,11 @@ INLINE static void sink_copy_properties(
     const struct phys_const* phys_const,
     const struct hydro_props* restrict hydro_props,
     const struct unit_system* restrict us,
-    const struct cooling_function_data* restrict cooling) {}
+    const struct cooling_function_data* restrict cooling) {
+
+  /* Set a smoothing length */
+  sink->h = p->h;
+}
 
 /**
  * @brief Update the properties of a sink particles by swallowing
@@ -326,7 +430,8 @@ INLINE static void sink_prepare_part_sink_formation_gas_criteria(
  */
 INLINE static void sink_prepare_part_sink_formation_sink_criteria(
     struct engine* e, struct part* restrict p, struct xpart* restrict xp,
-    struct sink* restrict si, const struct cosmology* cosmo,
-    const struct sink_props* sink_props) {}
+    struct sink* restrict si, const int with_cosmology,
+    const struct cosmology* cosmo, const struct sink_props* sink_props,
+    const double time) {}
 
 #endif /* SWIFT_DEFAULT_SINK_H */

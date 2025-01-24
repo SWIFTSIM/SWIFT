@@ -22,6 +22,18 @@ Before forming a sink, the code loops over all gas and sink particles to gather 
 
 Then, to decide if we can turn a gas particle into a sink particle, the function ``sink_is_forming()`` is called. Before forming a sink particle, there is a call to ``sink_should_convert_to_sink()``. This function determines whether the gas particle must transform into a sink. Both functions return either 0 or 1.
 
+Gas-sink density interactions
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The first interaction task to be run for the sinks is the density task. This task updates the smoothing length for the sink particle, unless a fixed cutoff radius is being used (coming soon). It can also calculate the contributions made by neigbouring gas particles to the density, sound speed, velocity etc. at the location of the sink. Code for these interactions should be added to ``sink_iact.h/runner_iact_nonsym_sinks_gas_density()``.
+
+Once the contributions of all neigbouring gas particles have been calculated, the density calculation is completed by the sink density ghost task. You can set what this task does with the functions ``sink_end_density()`` and ``sink_prepare_swallow()`` in ``sink.h``.
+
+The ``sink_end_density()`` function completes the calculation of the smoothing length (coming soon), and this is where you can finish density-based calculations by e.g. dividing mass-weighted contributions to the velocity field by the total density in the kernel. For examples of this, see the equivalent task for the black hole particles.
+
+The ``sink_prepare_swallow()`` task is where you can calculate density-based quantities that you might need to use in swallowing interactions later. For example, a Bondi-Hoyle accretion prescription should calculate an accretion rate and target mass to be accreted here.
+
+
 Gas and sink flagging: finding whom to eat
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
