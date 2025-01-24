@@ -18,10 +18,20 @@ filename = args.input
 data = load(filename)
 
 # Retrieve some information about the simulation run
-artDiffusion = data.metadata.hydro_scheme["Artificial Diffusion Constant"]
-dedHyp = data.metadata.hydro_scheme["Dedner Hyperbolic Constant"]
-dedHypDivv = data.metadata.hydro_scheme["Dedner Hyperbolic div(v) Constant"]
-dedPar = data.metadata.hydro_scheme["Dedner Parabolic Constant"]
+try:
+    artDiffusion = data.metadata.hydro_scheme["Artificial Diffusion Constant"]
+    dedHypDivv = data.metadata.hydro_scheme["Dedner Hyperbolic div(v) Constant"]
+except:
+    artDiffusion = 0.0
+    dedHypDivv = 0.0
+
+try:
+    dedHyp = data.metadata.hydro_scheme["Dedner Hyperbolic Constant"]
+    dedPar = data.metadata.hydro_scheme["Dedner Parabolic Constant"]
+except:
+    dedHyp = 0.0
+    dedPar = 0.0
+
 eta = data.metadata.hydro_scheme["Resistive Eta"]
 git = data.metadata.code["Git Revision"]
 gitBranch = data.metadata.code["Git Branch"]
