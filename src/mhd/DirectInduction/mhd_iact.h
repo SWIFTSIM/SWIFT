@@ -193,7 +193,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_gradient(
   Cos_Ind_Diffj = (Adv_B_sourcej[0]*Delta_Bj[0]+Adv_B_sourcej[1]*Delta_Bj[1]+Adv_B_sourcej[2]*Delta_Bj[2])/(Abs_Adv_B_sourcej*Abs_Delta_Bj+FLT_MIN);
   pj->mhd_data.eta_OWAR = 1.0f/OW * ( 0.5f * hj * hj / (absBj+FLT_MIN)) * (0.5f*(1-Cos_Ind_Diffj))*Abs_Adv_B_sourcej;
 **/
-
+/**
   float OW;
   OW = 1.0f;
 
@@ -229,7 +229,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_gradient(
   Cos_Ind_Diffj = (Adv_B_sourcej[0]*Delta_Bj[0]+Adv_B_sourcej[1]*Delta_Bj[1]+Adv_B_sourcej[2]*Delta_Bj[2])/(Abs_Adv_B_sourcej*Abs_Delta_Bj+FLT_MIN);
   pi->mhd_data.eta_OWAR = 1.0f/OW * ( 0.5f * hj * hj / (absBj+FLT_MIN)) * (0.5f*(1-Cos_Ind_Diffj))*Abs_Adv_B_sourcej*(wi*mj/rhoj);
 
-
+**/
 
 }
 
@@ -348,7 +348,7 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
   Cos_Ind_Diffi = (Adv_B_sourcei[0]*Delta_Bi[0]+Adv_B_sourcei[1]*Delta_Bi[1]+Adv_B_sourcei[2]*Delta_Bi[2])/(Abs_Adv_B_sourcei*Abs_Delta_Bi+FLT_MIN);
   pi->mhd_data.eta_OWAR = 1.0f/OW * ( 0.5f * hi * hi / (absBi+FLT_MIN)) * (0.5f*(1-Cos_Ind_Diffi))*Abs_Adv_B_sourcei;
 **/
-
+/**
   float OW;
   OW = 1.0f;
 
@@ -367,7 +367,7 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
   Abs_Delta_Bj = sqrtf(Delta_Bj[0]*Delta_Bj[0]+Delta_Bj[1]*Delta_Bj[1]+Delta_Bj[2]*Delta_Bj[2]);
   Cos_Ind_Diffj = (Adv_B_sourcej[0]*Delta_Bj[0]+Adv_B_sourcej[1]*Delta_Bj[1]+Adv_B_sourcej[2]*Delta_Bj[2])/(Abs_Adv_B_sourcej*Abs_Delta_Bj+FLT_MIN);
   pi->mhd_data.eta_OWAR = 1.0f/OW * ( 0.5f * hj * hj / (absBj+FLT_MIN)) * (0.5f*(1-Cos_Ind_Diffj))*Abs_Adv_B_sourcej*(wi*mj/rhoj);
-
+**/
 }
 
 /**

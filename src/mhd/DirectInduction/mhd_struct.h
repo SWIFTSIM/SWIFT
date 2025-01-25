@@ -73,7 +73,6 @@ struct mhd_part_data {
   /* OW artificial resistivity */
   float eta_OWAR;
 
-
 };
 
 /**
