@@ -127,6 +127,14 @@ struct hydro_props {
    * reseting? */
   int log_extra_splits_in_file;
 
+  /* ------ Particle de-refinement parameters ------ */
+
+  /*! Is particle de-refinement enabled? */
+  int particle_derefinement;
+
+  /*! Volume threshold below which a particle will be removed */
+  float particle_derefinement_volume_threshold;
+
   /* ------ Viscosity and diffusion ---------------- */
 
   /*! Artificial viscosity parameters */
