@@ -70,6 +70,10 @@ struct mhd_part_data {
   float Diff_B_source[3];
   /* Laplacian B */
   float Delta_B[3];
+  /* OW artificial resistivity */
+  float eta_OWAR;
+
+
 };
 
 /**

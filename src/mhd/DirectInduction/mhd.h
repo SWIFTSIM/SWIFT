@@ -314,6 +314,8 @@ __attribute__((always_inline)) INLINE static void mhd_reset_gradient(
   for (int k = 0; k < 3; k++) {
     p->mhd_data.mean_grad_SPH_err[k] = 0.f;
   }
+  /* Set zero OW artificial resistivity*/
+  p->mhd_data.eta_OWAR = 0.0f; 
 }
 
 /**
