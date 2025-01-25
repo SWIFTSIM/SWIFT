@@ -907,7 +907,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   pi->mhd_data.B_over_rho_dt[2] += mj * dB_dt_pref_i * dB_dt_i[2];
 
   /* Physical resistivity */
-  const float resistive_eta = pi->mhd_data.resistive_eta;
+  const float resistive_eta = pi->mhd_data.resistive_eta+pi->mhd_data.eta_OWAR;
 
   const float dB_dt_pref_PR = 2.0f * resistive_eta * r_inv / (rhoi * rhoj);
 
