@@ -504,7 +504,6 @@ __attribute__((always_inline)) INLINE static void mhd_reset_acceleration(
     p->mhd_data.Delta_B[k] = 0.0f;
   }
   /* Calculate nessesary OWAR */
-  const float h = p->h;
   const float rho = p->rho;
   float B[3];
   B[0] = p->mhd_data.B_over_rho[0] * rho;
