@@ -331,6 +331,14 @@ __attribute__((always_inline)) INLINE static void mhd_end_gradient(
   p->mhd_data.mean_SPH_err += p->mass * kernel_root;
   /* Finish SPH_1 calculation*/
   p->mhd_data.mean_SPH_err *= pow_dimension(1.f / (p->h)) / p->rho;
+
+ /* Save induction sources*/
+  for (int k = 0; k < 3; k++) {
+    p->mhd_data.Adv_B_source[k] = 0.0f;
+    p->mhd_data.Diff_B_source[k] = 0.0f;
+    p->mhd_data.Delta_B[k] = 0.0f;
+  }
+
 }
 
 /**
