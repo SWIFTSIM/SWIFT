@@ -105,7 +105,7 @@ def parse_options():
         help="output filename",
     )
 
-    parser.add_argument('--random_position', default=False, action="store_true",
+    parser.add_argument('--random_positions', default=False, action="store_true",
                         help="Place the particles randomly in the box.")
 
     options = parser.parse_args()
@@ -120,7 +120,7 @@ opt = parse_options()
 
 N_metal = opt.N_metal
 epsilon = opt.epsilon
-random_position = opt.random_position
+random_positions = opt.random_positions
 level = opt.level
 velocity = opt.velocity
 
@@ -168,7 +168,7 @@ rho = rho.to(UnitMass / UnitLength ** 3).value
 
 # Generate the particles
 
-if random_position:
+if random_positions:
     print("Sampling random positions in the box")
     pos = np.random.random([N, 3]) * np.array([L, L, L])
 else:

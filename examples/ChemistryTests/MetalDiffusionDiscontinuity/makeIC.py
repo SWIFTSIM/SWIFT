@@ -66,7 +66,7 @@ def parse_options():
     )
     
     # Do we want to generate positions randomly instead of a grid.
-    parser.add_argument('--random_position', default=False, action="store_true",
+    parser.add_argument('--random_positions', default=False, action="store_true",
                         help="Place the particles randomly in the box. If false, the particles are placed on a regular carthesian grid")
     
     # Do we want to add a sheering effect?
@@ -149,7 +149,7 @@ def parse_options():
 opt = parse_options()
 
 N_metal = opt.N_metal
-random_position = opt.random_position
+random_positions = opt.random_positions
 add_shear = opt.add_shear
 level = opt.level
 velocity = opt.velocity
@@ -193,7 +193,7 @@ L = L.to(UnitLength).value
 
 #%% Generate particles positions
 
-if random_position:
+if random_positions:
     print("Sampling random positions in the box")
     pos = np.random.random([N, 3]) * np.array([L, L, L])
 else:

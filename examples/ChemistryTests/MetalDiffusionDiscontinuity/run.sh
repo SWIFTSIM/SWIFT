@@ -6,7 +6,6 @@ set -e
 # Script parameters
 n_threads=${n_threads:=8}  #Number of threads to use
 level=${level:=5}  #Number of particles = 2^(3*level)
-gas_density=${gas_density:=1} #Gas density in atom/cm^3
 box_mass=${box_mass:=10000000} #Mass of the gas particles
 vx=${vx:=0.0}  # Default velocity x-component
 vy=${vy:=0.0}  # Default velocity y-component
@@ -17,6 +16,7 @@ rhoR=${rhoR=1}   # Density on the right on the discontinuity
 rhoL=${rhoL=1}   # Density on the rightleft on the discontinuity
 with_shear=${with_shear:=0} # Add a velocity shearing effect
 with_hydro_MFM=${with_hydro_MFM:=0}
+random_positions=${random_positions:=0} # Use random positions instead of regular grid?
 run_name=${run_name:=""}
 
 # Remove the ICs
@@ -25,34 +25,32 @@ then
     rm ICs_homogeneous_box.hdf5
 fi
 
-#Create the ICs if they do not exist
+# Create the ICs if they do not exist
 if [ ! -e ICs_homogeneous_box.hdf5 ]
 then
     echo "Generating initial conditions to run the example..."
-    if [ "$with_shear" -eq 0 ]; then
-	python3 makeIC.py \
-		--level "$level" \
-		--rho "$gas_density" \
-		--mass "$box_mass" \
-		--velocity "$vx" "$vy" "$vz" \
-		--Z_R "$ZR" \
-		--Z_L "$ZL" \
-		--rho_R "$rhoR" \
-		--rho_L "$rhoL" \
-		-o ICs_homogeneous_box.hdf5
-    else
-	python3 makeIC.py \
-		--level "$level" \
-		--rho "$gas_density" \
-		--mass "$box_mass" \
-		--velocity "$vx" "$vy" "$vz" \
-		--Z_R "$ZR" \
-		--Z_L "$ZL" \
-		--rho_R "$rhoR" \
-		--rho_L "$rhoL" \
-		--add_shear \
-		-o ICs_homogeneous_box.hdf5
+    shear_flag=""
+    random_flag=""
+
+    if [ "$with_shear" -eq 1 ]; then
+        shear_flag="--add_shear"
     fi
+
+    if [ "$random_positions" -eq 1 ]; then
+        random_flag="--random_positions"
+    fi
+
+    python3 makeIC.py \
+        --level "$level" \
+        --mass "$box_mass" \
+        --velocity "$vx" "$vy" "$vz" \
+        --Z_R "$ZR" \
+        --Z_L "$ZL" \
+        --rho_R "$rhoR" \
+        --rho_L "$rhoL" \
+        $shear_flag \
+        $random_flag \
+        -o ICs_homogeneous_box.hdf5
 fi
 
 # Get the Grackle cooling table
@@ -68,7 +66,6 @@ then
     echo "Fetching the chemistry tables..."
     ./getChemistryTable.sh
 fi
-
 
 # Create output directory
 DIR=snap #First test of units conversion
@@ -95,7 +92,21 @@ else
 fi
 
 #Do some data analysis to show what's in this box
-# python3 metal_profile.py snap/snapshot_*0.hdf5 --n_bins 30 --r_min 1e-1
-# --r_max=1.1
 python3 plot_metal_mass_conservation_in_time.py snap/*.hdf5
 python3 metal_projection.py snap/snapshot_*0.hdf5 --log
+
+if [ -z "$run_name" ]; then
+    echo "run_name is empty."
+else
+    if [ -d "$run_name" ]; then
+	echo "$run_name directory exists. Nothing will be moved."
+    else
+	echo "$run_name directory does not exists. It will be created."
+	mkdir $run_name
+	mv timesteps.txt $run_name
+	mv snap $run_name
+	mv unused_parameters.yml $run_name
+	mv used_parameters.yml $run_name
+	mv *.png $run_name
+    fi
+fi

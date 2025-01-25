@@ -11,6 +11,7 @@ vx=${vx:=0.0}  # Default velocity x-component
 vy=${vy:=0.0}  # Default velocity y-component
 vz=${vz:=0.0}  # Default velocity z-component
 with_hydro_MFM=${with_hydro_MFM:=0}
+random_positions=${random_positions:=0} # Use random positions instead of regular grid?
 run_name=${run_name:=""}
 
 # Remove the ICs
@@ -23,7 +24,14 @@ fi
 if [ ! -e ICs_homogeneous_box.hdf5 ]
 then
     echo "Generating initial conditions to run the example..."
-    python3 makeIC.py --level $level --rho $gas_density --mass $box_mass --velocity $vx $vy $vz -o ICs_homogeneous_box.hdf5
+    if [ "$random_positions" -eq 0 ]; then
+	python3 makeIC.py --level $level --rho $gas_density --mass $box_mass \
+		--velocity $vx $vy $vz -o ICs_homogeneous_box.hdf5
+    else
+        python3 makeIC.py --level $level --rho $gas_density --mass $box_mass \
+		--velocity $vx $vy $vz --random_positions \
+		-o ICs_homogeneous_box.hdf5
+    fi
 fi
 
 # Get the Grackle cooling table
