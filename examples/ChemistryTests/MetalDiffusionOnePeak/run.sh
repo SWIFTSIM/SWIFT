@@ -24,14 +24,19 @@ fi
 if [ ! -e ICs_homogeneous_box.hdf5 ]
 then
     echo "Generating initial conditions to run the example..."
-    if [ "$random_positions" -eq 0 ]; then
-	python3 makeIC.py --level $level --rho $gas_density --mass $box_mass \
-		--velocity $vx $vy $vz -o ICs_homogeneous_box.hdf5
-    else
-        python3 makeIC.py --level $level --rho $gas_density --mass $box_mass \
-		--velocity $vx $vy $vz --random_positions \
-		-o ICs_homogeneous_box.hdf5
+    random_flag=""
+
+    if [ "$random_positions" -eq 1 ]; then
+        random_flag="--random_positions"
     fi
+
+    python3 makeIC.py \
+        --level "$level" \
+        --rho "$gas_density" \
+        --mass "$box_mass" \
+        --velocity "$vx" "$vy" "$vz" \
+        $random_flag \
+        -o ICs_homogeneous_box.hdf5
 fi
 
 # Get the Grackle cooling table
