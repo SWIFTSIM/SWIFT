@@ -65,6 +65,38 @@ INLINE static void convert_gas_metals(const struct engine* e,
   ret[GEAR_CHEMISTRY_ELEMENT_COUNT - 1] = m_Z / hydro_get_mass(p);
 }
 
+INLINE static void convert_gas_feedback_metals(const struct engine* e,
+					       const struct part* p,
+					       const struct xpart* xp, double* ret) {
+  /* GEAR expects the last element to be the metallicity. Since the
+  diffusion stores the mass of all "untracked" elements in the last index, we
+  need to compute the metallicity and write it in the last index. */
+  double m_Z = 0.0;
+  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
+    ret[i] = p->feedback_data.metal_mass[i];
+    m_Z += p->feedback_data.metal_mass[i];
+  }
+
+  /* Now write the metallicity */
+  ret[GEAR_CHEMISTRY_ELEMENT_COUNT - 1] = m_Z;
+}
+
+INLINE static void convert_gas_diffused_metals(const struct engine* e,
+					       const struct part* p,
+					       const struct xpart* xp, double* ret) {
+  /* GEAR expects the last element to be the metallicity. Since the
+  diffusion stores the mass of all "untracked" elements in the last index, we
+  need to compute the metallicity and write it in the last index. */
+  double m_Z = 0.0;
+  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
+    ret[i] = p->chemistry_data.diffused_metal_mass[i];
+    m_Z += p->chemistry_data.diffused_metal_mass[i];
+  }
+
+  /* Now write the metallicity */
+  ret[GEAR_CHEMISTRY_ELEMENT_COUNT - 1] = m_Z;
+}
+
 INLINE static void convert_chemistry_diffusion_coefficient(
     const struct engine* e, const struct part* p, const struct xpart* xp,
     double* ret) {
@@ -102,7 +134,7 @@ INLINE static int chemistry_write_particles(const struct part* parts,
                                             struct io_props* list,
                                             const int with_cosmology) {
   /* Number of fields to write */
-  int num = 3;
+  int num = 5;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_part(
@@ -121,13 +153,22 @@ INLINE static int chemistry_write_particles(const struct part* parts,
       /*can convert to comoving=*/0, convert_chemistry_diffusion_matrix,
       "Physical diffusion matrix, stored in a vector");
 
+  list[3] = io_make_output_field_convert_part(
+      "DiffusedMetalMasses", DOUBLE, GEAR_CHEMISTRY_ELEMENT_COUNT,
+      UNIT_CONV_MASS, 0.f, parts, xparts, convert_gas_diffused_metals,
+      "Mass fraction of each element transferred by diffusion");
+
+  list[4] = io_make_output_field_convert_part(
+      "FeedbackMetalMasses", DOUBLE, GEAR_CHEMISTRY_ELEMENT_COUNT,
+      UNIT_CONV_MASS, 0.f, parts, xparts, convert_gas_feedback_metals,
+      "Mass fraction of each element received by feedback events");
+
 #if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
   // TODO: Check the a exponent
-  list[3] = io_make_physical_output_field(
+  list[5] = io_make_physical_output_field(
        "RelaxationTimes", DOUBLE, 1, UNIT_CONV_TIME, 0.f, parts,
        chemistry_data.tau, /*can convert to comoving=*/1,
        "Physical diffusion relaxation time of the particles.");
-
   num += 1;
 #endif
 

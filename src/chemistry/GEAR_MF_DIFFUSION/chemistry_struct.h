@@ -109,10 +109,14 @@ struct chemistry_part_data {
   /*! Metal mass flux */
   double diffusion_flux[GEAR_CHEMISTRY_ELEMENT_COUNT];
 
+  /* Debug thing */
+  /* Metal mass diffused in this timestep */
+  double diffused_metal_mass[GEAR_CHEMISTRY_ELEMENT_COUNT];
+
 #if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
   /* Hyperbolic flux scheme variables */
   struct {
-    /*! Diffusion flux at the last active timestep */
+    /*! Diffusion flux at the last active timestep. Units: U_M/(U_L^2 U_T) */
     double F_diff[3];
 
     /*! Predicted diffusion flux */
@@ -122,15 +126,14 @@ struct chemistry_part_data {
     double dF_dt[3];
   } hyperbolic_flux[GEAR_CHEMISTRY_ELEMENT_COUNT];
 
+  /* Relaxation time */
   double tau;
 
   /*! Variables used for timestep calculation. */
   struct {
     /* Maximum signal velocity among all the neighbours of the particle. The
-     * signal velocity encodes information about the relative fluid
-     * velocities
-     * AND particle velocities of the neighbour and this particle, as well
-     * as
+     * signal velocity encodes information about the relative fluid velocities
+     * AND particle velocities of the neighbour and this particle, as well as
      * the sound speed of both particles. */
     float vmax;
 
@@ -176,8 +179,11 @@ struct chemistry_part_data {
   /*! Particle chemistry time-step. */
   float flux_dt;
 
-  /*! Isotropic diffusion coefficient. The matrix K is proportional to kappa. */
-  float kappa;
+  /*! Isotropic diffusion coefficient. The matrix K is proportional to kappa.
+   Note about units:
+   - For the isotropic constat case, the units are : U_L^2/U_T
+   - Smagorinsky/Gradient, units are : U_M/(U_L*U_T) */
+  double kappa;
 
   /*! Density of the previous timestep. This is used to compute quantities in
      the density loop while hydro loops are updating rho. */

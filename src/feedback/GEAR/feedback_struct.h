@@ -24,7 +24,11 @@
 /**
  * @brief Feedback fields carried by each hydro particles
  */
-struct feedback_part_data {};
+struct feedback_part_data {
+  /* Trace the metals received from feedback events. This is similar to not
+     diffusing metals */
+  double metal_mass[GEAR_CHEMISTRY_ELEMENT_COUNT];
+};
 
 /**
  * @brief Extra feedback fields carried by each hydro particles

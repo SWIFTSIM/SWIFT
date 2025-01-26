@@ -135,6 +135,8 @@ runner_iact_nonsym_feedback_apply(
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
     xpj->feedback_data.delta_metal_mass[i] +=
         weight * si->feedback_data.metal_mass_ejected[i];
+    pj->feedback_data.metal_mass[i] +=
+        weight * si->feedback_data.metal_mass_ejected[i];
   }
 
   /* Impose maximal viscosity */
