@@ -111,8 +111,8 @@ chemistry_riemann_prevent_large_K_star(const struct part *restrict pi,
       (pj->chemistry_data.flux_dt > 0.f)
           ? fminf(pi->chemistry_data.flux_dt, pj->chemistry_data.flux_dt)
           : pi->chemistry_data.flux_dt;
-  const float min_mass = min(hydro_get_mass(pi), hydro_get_mass(pj));
-  const float min_h = min(pi->h, pj->h) * cosmo->a * kernel_gamma;
+  const double min_mass = min(hydro_get_mass(pi), hydro_get_mass(pj));
+  const double min_h = min(pi->h, pj->h) * cosmo->a * kernel_gamma;
 
   double mass_flux = Anorm * *norm_K_star / min_h * min_dt / min_mass;
   if (mass_flux > 0.25) {
@@ -233,7 +233,7 @@ __attribute__((always_inline)) INLINE static void
 chemistry_riemann_solver_hopkins2017_HLL(
     const float dx[3], const struct part *restrict pi,
     const struct part *restrict pj, const double UL, const double UR,
-    const float WL[5], const float WR[5], const double F_diff_L[3],
+    const double WL[5], const double WR[5], const double F_diff_L[3],
     const double F_diff_R[3], const float Anorm, const float n_unit[3],
     const int m, const struct chemistry_global_data *chem_data,
     const struct cosmology *cosmo, double *metal_flux) {
@@ -243,17 +243,17 @@ chemistry_riemann_solver_hopkins2017_HLL(
   /* Everything is in physical units here */
 
   /* Obtain velocity in interface frame */
-  const float uL = WL[1] * n_unit[0] + WL[2] * n_unit[1] + WL[3] * n_unit[2];
-  const float uR = WR[1] * n_unit[0] + WR[2] * n_unit[1] + WR[3] * n_unit[2];
+  const double uL = WL[1] * n_unit[0] + WL[2] * n_unit[1] + WL[3] * n_unit[2];
+  const double uR = WR[1] * n_unit[0] + WR[2] * n_unit[1] + WR[3] * n_unit[2];
 
   /* Get the fastet speed of sound. Use physical soundspeed */
-  const float c_s_L = hydro_get_physical_soundspeed(pi, cosmo);
-  const float c_s_R = hydro_get_physical_soundspeed(pj, cosmo);
-  const float c_fast = max(c_s_L, c_s_R);
+  const double c_s_L = hydro_get_physical_soundspeed(pi, cosmo);
+  const double c_s_R = hydro_get_physical_soundspeed(pj, cosmo);
+  const double c_fast = max(c_s_L, c_s_R);
 
   /* Approximate lambda_plus and lambda_minus. Use velocity difference. */
-  const float lambda_plus = fabsf(uL - uR) + c_fast;
-  const float lambda_minus = -lambda_plus;
+  const double lambda_plus = fabs(uL - uR) + c_fast;
+  const double lambda_minus = -lambda_plus;
 
   if (lambda_plus == 0.f && lambda_minus == 0.f) {
     *metal_flux = 0.f;
@@ -327,7 +327,7 @@ chemistry_riemann_solver_hopkins2017_HLL(
   /****************************************************************************/
   /* Compute variables to determine F_HLL */
   const double dU = UR - UL;
-  const float one_over_dl = 1.f / (lambda_plus - lambda_minus);
+  const double one_over_dl = 1.f / (lambda_plus - lambda_minus);
   const double F_2 =
       (lambda_plus * Flux_L - lambda_minus * Flux_R) * one_over_dl;
   double F_U = lambda_plus * lambda_minus * dU * one_over_dl;
@@ -411,7 +411,7 @@ chemistry_riemann_solver_hopkins2017_HLL(
 __attribute__((always_inline)) INLINE static void chemistry_riemann_solver_HLL(
     const float dx[3], const struct part *restrict pi,
     const struct part *restrict pj, const double UL, const double UR,
-    const float WL[5], const float WR[5], const double F_diff_L[3],
+    const double WL[5], const double WR[5], const double F_diff_L[3],
     const double F_diff_R[3], const float Anorm, const float n_unit[3],
     const int m, const struct chemistry_global_data *chem_data,
     const struct cosmology *cosmo, double *metal_flux) {
@@ -421,16 +421,69 @@ __attribute__((always_inline)) INLINE static void chemistry_riemann_solver_HLL(
   /* Everything is in physical units here */
 
   /* Obtain velocity in interface frame */
-  const float u_L = WL[1] * n_unit[0] + WL[2] * n_unit[1] + WL[3] * n_unit[2];
-  const float u_R = WR[1] * n_unit[0] + WR[2] * n_unit[1] + WR[3] * n_unit[2];
-  const float u_rel = u_L - u_R;
+  /* const double u_L = WL[1] * n_unit[0] + WL[2] * n_unit[1] + WL[3] * n_unit[2]; */
+  /* const double u_R = WR[1] * n_unit[0] + WR[2] * n_unit[1] + WR[3] * n_unit[2]; */
+  /* const double u_rel = u_R - u_L; */
 
   /* Get the fastet speed of sound. Use physical soundspeed */
-  const float c_s_L = hydro_get_physical_soundspeed(pi, cosmo);
-  const float c_s_R = hydro_get_physical_soundspeed(pj, cosmo);
-  const float c_fast = max(c_s_L, c_s_R);
-  const float lambda_plus = fabsf(u_rel) + c_fast;
-  const float lambda_minus = -lambda_plus;
+  /* const double c_s_L = hydro_get_physical_soundspeed(pi, cosmo); */
+  /* const double c_s_R = hydro_get_physical_soundspeed(pj, cosmo); */
+  /* const double c_s_L = chemistry_get_physical_hyperbolic_soundspeed(pi, chem_data, cosmo); */
+  /* const double c_s_R = chemistry_get_physical_hyperbolic_soundspeed(pj, chem_data, cosmo); */
+  /* const double c_fast = max(c_s_L, c_s_R); */
+  /* const double lambda_plus = fabs(u_rel) + c_fast; */
+  /* const double lambda_minus = -lambda_plus; */
+
+  /* Toro's wavespeed */
+  /* const double lambda_plus = max(u_L + c_s_L, u_R + c_s_R); */
+  /* const double lambda_minus = min(u_L - c_s_L, u_R - c_s_R); */
+
+  /* Roe's wavespeed */
+  /* const double rho_L = WL[0]; */
+  /* const double rho_R = WR[0]; */
+  /* const double rho_sum = rho_L + rho_R; */
+
+  /* if (rho_sum <= 0.0) { */
+  /*   *metal_flux = 0.0; */
+  /*   return; */
+  /* } */
+
+  /* const double u_bar = (rho_L*u_L + rho_R*u_R)/ rho_sum; */
+  /* const double c_L_2 = c_s_L * c_s_L; */
+  /* const double c_R_2 = c_s_R * c_s_R; */
+  /* const double c_bar = sqrt((rho_L*c_L_2 + rho_R*c_R_2) / rho_sum); */
+  /* const double lambda_plus = u_bar + c_bar; */
+  /* const double lambda_minus = u_bar - c_bar; */
+
+  /* PVRS wavespeed approximation */
+  const double uL = WL[1] * n_unit[0] + WL[2] * n_unit[1] + WL[3] * n_unit[2];
+  const double uR = WR[1] * n_unit[0] + WR[2] * n_unit[1] + WR[3] * n_unit[2];
+  const double rhoLinv = (WL[0] > 0.0f) ? 1.0f / WL[0] : 0.0f;
+  const double rhoRinv = (WR[0] > 0.0f) ? 1.0f / WR[0] : 0.0f;
+  const double aL = sqrtf(hydro_gamma * WL[4] * rhoLinv);
+  const double aR = sqrtf(hydro_gamma * WR[4] * rhoRinv);
+
+  /* Pressure estimate */
+  const double rhobar = WL[0] + WR[0];
+  const double abar = aL + aR;
+  const double pPVRS =
+      0.5f * ((WL[4] + WR[4]) - 0.25f * (uR - uL) * rhobar * abar);
+  const double pstar = max(0.0f, pPVRS);
+
+  /* Wave speed estimates
+     all these speeds are along the interface normal, since uL and uR are */
+  double qL = 1.0f;
+  if (pstar > WL[4] && WL[4] > 0.0f) {
+    qL = sqrtf(1.0f + 0.5f * hydro_gamma_plus_one * hydro_one_over_gamma *
+                          (pstar / WL[4] - 1.0f));
+  }
+  double qR = 1.0f;
+  if (pstar > WR[4] && WR[4] > 0.0f) {
+    qR = sqrtf(1.0f + 0.5f * hydro_gamma_plus_one * hydro_one_over_gamma *
+                          (pstar / WR[4] - 1.0f));
+  }
+  const double lambda_minus = -aL * qL;
+  const double lambda_plus = aR * qR;
 
   if (lambda_plus == 0.0 && lambda_minus == 0.0) {
     *metal_flux = 0.0;
@@ -450,6 +503,13 @@ __attribute__((always_inline)) INLINE static void chemistry_riemann_solver_HLL(
   /* Now solve the Riemann problem */
 
   const double dU = UR - UL;
+
+  const double delta_lambda = lambda_plus - lambda_minus;
+  if (fabs(delta_lambda) < 1e-8) {
+    *metal_flux = 0.0;
+    return;
+  }
+
   const double one_over_dl = 1.f / (lambda_plus - lambda_minus);
   const double F_2 =
       (lambda_plus * Flux_L - lambda_minus * Flux_R) * one_over_dl;
@@ -490,7 +550,7 @@ __attribute__((always_inline)) INLINE static void chemistry_riemann_solver_HLL(
 __attribute__((always_inline)) INLINE static void chemistry_riemann_solver_HLLC(
     const float dx[3], const struct part *restrict pi,
     const struct part *restrict pj, const double UL, const double UR,
-    const float WL[5], const float WR[5], const double F_diff_L[3],
+    const double WL[5], const double WR[5], const double F_diff_L[3],
     const double F_diff_R[3], const float Anorm, const float n_unit[3],
     const int m, const struct chemistry_global_data *chem_data,
     const struct cosmology *cosmo, double *metal_flux) {
@@ -569,7 +629,7 @@ __attribute__((always_inline)) INLINE static void
 chemistry_riemann_solve_for_flux(
     const float dx[3], const struct part *restrict pi,
     const struct part *restrict pj, const double UL, const double UR,
-    const float WL[5], const float WR[5], const double F_diff_L[3],
+    const double WL[5], const double WR[5], const double F_diff_L[3],
     const double F_diff_R[3], const float Anorm, const float n_unit[3],
     const int m, const struct chemistry_global_data *chem_data,
     const struct cosmology *cosmo, double *metal_flux) {
