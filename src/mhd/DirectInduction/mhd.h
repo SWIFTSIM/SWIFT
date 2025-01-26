@@ -483,7 +483,7 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_force(
   Abs_Adv_B_source = sqrtf(Adv_B_source[0]*Adv_B_source[0]+Adv_B_source[1]*Adv_B_source[1]+Adv_B_source[2]*Adv_B_source[2]);
   Abs_Delta_B = sqrtf(Delta_B[0]*Delta_B[0]+Delta_B[1]*Delta_B[1]+Delta_B[2]*Delta_B[2]);
   Cos_Ind_Diff = (Adv_B_source[0]*Delta_B[0]+Adv_B_source[1]*Delta_B[1]+Adv_B_source[2]*Delta_B[2])/(Abs_Adv_B_source*Abs_Delta_B+FLT_MIN);
-  p->mhd_data.eta_OWAR = 1.0f/OW * ( 0.5f * p->h * p->h / (absB+FLT_MIN)) * (0.5f*(1-Cos_Ind_Diff))*Abs_Adv_B_source;
+  p->mhd_data.eta_OWAR = 1.0f/OW * p->rho * ( 0.5f * p->h * p->h / (absB+FLT_MIN)) * (0.5f*(1-Cos_Ind_Diff))*Abs_Adv_B_source;
 
 }
 
