@@ -275,7 +275,7 @@ static INLINE void chemistry_init_backend(struct swift_params* parameter_file,
 #endif
 
   /***************************************************************************/
-  data->diffusion_coefficient = parser_get_opt_param_float(
+  data->diffusion_coefficient = parser_get_opt_param_double(
       parameter_file, "GEARChemistry:diffusion_coefficient",
       DEFAULT_DIFFUSION_NORMALISATION);
 
@@ -1033,13 +1033,13 @@ __attribute__((always_inline)) INLINE static void chemistry_predict_extra(
   for (int m = 0; m < GEAR_CHEMISTRY_ELEMENT_COUNT; m++) {
     chd->hyperbolic_flux[m].F_diff_pred[0] =
         chd->hyperbolic_flux[m].F_diff[0] +
-        dt_therm * chd->hyperbolic_flux[m].dF_dt[0];
+        0.5*dt_therm * chd->hyperbolic_flux[m].dF_dt[0];
     chd->hyperbolic_flux[m].F_diff_pred[1] =
         chd->hyperbolic_flux[m].F_diff[1] +
-        dt_therm * chd->hyperbolic_flux[m].dF_dt[1];
+        0.5*dt_therm * chd->hyperbolic_flux[m].dF_dt[1];
     chd->hyperbolic_flux[m].F_diff_pred[2] =
         chd->hyperbolic_flux[m].F_diff[2] +
-        dt_therm * chd->hyperbolic_flux[m].dF_dt[2];
+        0.5*dt_therm * chd->hyperbolic_flux[m].dF_dt[2];
   }
 #endif
 }
