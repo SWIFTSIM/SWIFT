@@ -289,4 +289,4 @@ struct cells_gpu_flat_test {
   float *locx;
 };
 
-#endif // CELL_GPU_H
+#endif  // CELL_GPU_H

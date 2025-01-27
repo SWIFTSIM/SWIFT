@@ -353,6 +353,7 @@ void scheduler_dump_queues(struct engine *e);
 void scheduler_report_task_times(const struct scheduler *s,
                                  const int nr_threads);
 struct task *enqueue_dependencies(struct scheduler *s, struct task *t);
-struct task *signal_sleeping_runners(struct scheduler *s, struct task *t, int tasks_packed);
+struct task *signal_sleeping_runners(struct scheduler *s, struct task *t,
+                                     int tasks_packed);
 
 #endif /* SWIFT_SCHEDULER_H */

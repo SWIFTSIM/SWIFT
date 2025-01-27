@@ -1385,7 +1385,7 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
               }
       }
     } /* pair interaction? */
-  }   /* iterate over the current task. */
+  } /* iterate over the current task. */
 }
 
 /**
@@ -1460,9 +1460,9 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
                         s);
 
           } /* Self-gravity only */
-        }   /* Make tasks explicitly */
-      }     /* Cell is split */
-    }       /* Self interaction */
+        } /* Make tasks explicitly */
+      } /* Cell is split */
+    } /* Self interaction */
 
     /* Pair interaction? */
     else if (t->type == task_type_pair) {
@@ -1535,7 +1535,7 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
         } /* Split the pair */
       }
     } /* pair interaction? */
-  }   /* iterate over the current task. */
+  } /* iterate over the current task. */
 }
 
 /**
@@ -1650,7 +1650,7 @@ void scheduler_splittasks_mapper(void *map_data, int num_elements,
 
     /* Invoke the correct splitting strategy */
     if (t->subtype == task_subtype_density) {
-            scheduler_splittask_hydro(t, s);
+      scheduler_splittask_hydro(t, s);
     } else if (t->subtype == task_subtype_external_grav) {
       scheduler_splittask_gravity(t, s);
     } else if (t->subtype == task_subtype_grav) {
@@ -1659,17 +1659,16 @@ void scheduler_splittasks_mapper(void *map_data, int num_elements,
     } else if (t->subtype == task_subtype_gpu_pack ||
                t->subtype == task_subtype_gpu_pack_g ||
                t->subtype == task_subtype_gpu_pack_f) {
-        scheduler_splittask_hydro(t, s);
+      scheduler_splittask_hydro(t, s);
     } else if (t->subtype == task_subtype_gpu_unpack ||
-            t->subtype == task_subtype_gpu_unpack_g ||
-            t->subtype == task_subtype_gpu_unpack_f){
-    	/*Do nothing and grab next task to split.
-    	 *These tasks are cell-less so cannot split.
-    	 *Will remove this if statement if set on splitting
-    	 *b4 creating unpack tasks*/
-    	continue;
-    }
-    else {
+               t->subtype == task_subtype_gpu_unpack_g ||
+               t->subtype == task_subtype_gpu_unpack_f) {
+      /*Do nothing and grab next task to split.
+       *These tasks are cell-less so cannot split.
+       *Will remove this if statement if set on splitting
+       *b4 creating unpack tasks*/
+      continue;
+    } else {
 #ifdef SWIFT_DEBUG_CHECKS
       error("Unexpected task sub-type %s/%s", taskID_names[t->type],
             subtaskID_names[t->subtype]);
@@ -1769,23 +1768,23 @@ struct task *scheduler_addtask(struct scheduler *s, enum task_types type,
   if (cj != NULL) cell_set_flag(cj, cell_flag_has_tasks);
 
   // #ifdef WITH_CUDA  A. Nasar
-  if(t->subtype == task_subtype_gpu_pack){
-	  if(t->type == task_type_self || t->type == task_type_sub_self)
-		    atomic_inc(&s->nr_self_pack_tasks_d);
-	  if(t->type == task_type_pair || t->type == task_type_sub_pair)
-		    atomic_inc(&s->nr_pair_pack_tasks_d);
+  if (t->subtype == task_subtype_gpu_pack) {
+    if (t->type == task_type_self || t->type == task_type_sub_self)
+      atomic_inc(&s->nr_self_pack_tasks_d);
+    if (t->type == task_type_pair || t->type == task_type_sub_pair)
+      atomic_inc(&s->nr_pair_pack_tasks_d);
   }
-  if(t->subtype == task_subtype_gpu_pack_f){
-	  if(t->type == task_type_self || t->type == task_type_sub_self)
-		    atomic_inc(&s->nr_self_pack_tasks_f);
-	  if(t->type == task_type_pair || t->type == task_type_sub_pair)
-		    atomic_inc(&s->nr_pair_pack_tasks_f);
+  if (t->subtype == task_subtype_gpu_pack_f) {
+    if (t->type == task_type_self || t->type == task_type_sub_self)
+      atomic_inc(&s->nr_self_pack_tasks_f);
+    if (t->type == task_type_pair || t->type == task_type_sub_pair)
+      atomic_inc(&s->nr_pair_pack_tasks_f);
   }
-  if(t->subtype == task_subtype_gpu_pack_g){
-	  if(t->type == task_type_self || t->type == task_type_sub_self)
-		    atomic_inc(&s->nr_self_pack_tasks_g);
-	  if(t->type == task_type_pair || t->type == task_type_sub_pair)
-		    atomic_inc(&s->nr_pair_pack_tasks_g);
+  if (t->subtype == task_subtype_gpu_pack_g) {
+    if (t->type == task_type_self || t->type == task_type_sub_self)
+      atomic_inc(&s->nr_self_pack_tasks_g);
+    if (t->type == task_type_pair || t->type == task_type_sub_pair)
+      atomic_inc(&s->nr_pair_pack_tasks_g);
   }
   // #endif
   /* Add an index for it. */
@@ -2256,17 +2255,17 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         } else if (t->subtype == task_subtype_do_bh_swallow) {
           cost = 1.f * wscale * (bcount_i + bcount_j);
         } else if (t->subtype == task_subtype_gpu_pack) {
-		  cost = 2.f * (wscale * count_i) * count_i;
-		} else if (t->subtype == task_subtype_gpu_pack_f) {
-		  cost = 2.f * (wscale * count_i) * count_i;
-		} else if (t->subtype == task_subtype_gpu_pack_g) {
-		  cost = 2.f * (wscale * count_i) * count_i;
-		} else if (t->subtype == task_subtype_gpu_unpack) {
-		  cost = 1.f * wscale;
-		} else if (t->subtype == task_subtype_gpu_unpack_f) {
-		  cost = 1.f * wscale;
-		} else if (t->subtype == task_subtype_gpu_unpack_g) {
-		  cost = 1.f * wscale;
+          cost = 2.f * (wscale * count_i) * count_i;
+        } else if (t->subtype == task_subtype_gpu_pack_f) {
+          cost = 2.f * (wscale * count_i) * count_i;
+        } else if (t->subtype == task_subtype_gpu_pack_g) {
+          cost = 2.f * (wscale * count_i) * count_i;
+        } else if (t->subtype == task_subtype_gpu_unpack) {
+          cost = 1.f * wscale;
+        } else if (t->subtype == task_subtype_gpu_unpack_f) {
+          cost = 1.f * wscale;
+        } else if (t->subtype == task_subtype_gpu_unpack_g) {
+          cost = 1.f * wscale;
         } else if (t->subtype == task_subtype_density ||
                    t->subtype == task_subtype_gradient ||
                    t->subtype == task_subtype_force ||
@@ -2306,21 +2305,21 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         } else if (t->subtype == task_subtype_do_bh_swallow) {
           cost = 1.f * wscale * bcount_i;
         } else if (t->subtype == task_subtype_gpu_pack)  // A. Nasar
-            cost = 1.f * (wscale * count_i) * count_i;   // * s->pack_size;
-          else if (t->subtype == task_subtype_gpu_pack_f)
-            cost = 1.f * (wscale * count_i) * count_i;  // * s->pack_size;
-          else if (t->subtype == task_subtype_gpu_pack_g)
-            cost = 1.f * (wscale * count_i) * count_i;  // * s->pack_size;
-          else if (t->subtype == task_subtype_gpu_unpack)
-            cost = 1.f * wscale * s->pack_size;
-          else if (t->subtype == task_subtype_gpu_unpack_f)
-            cost = 1.f * wscale * s->pack_size;
-          else if (t->subtype == task_subtype_gpu_unpack_g)
-            cost = 1.f * wscale * s->pack_size;
-          else if (t->subtype == task_subtype_density ||
-                   t->subtype == task_subtype_gradient ||
-                   t->subtype == task_subtype_force ||
-                   t->subtype == task_subtype_limiter) {
+          cost = 1.f * (wscale * count_i) * count_i;     // * s->pack_size;
+        else if (t->subtype == task_subtype_gpu_pack_f)
+          cost = 1.f * (wscale * count_i) * count_i;  // * s->pack_size;
+        else if (t->subtype == task_subtype_gpu_pack_g)
+          cost = 1.f * (wscale * count_i) * count_i;  // * s->pack_size;
+        else if (t->subtype == task_subtype_gpu_unpack)
+          cost = 1.f * wscale * s->pack_size;
+        else if (t->subtype == task_subtype_gpu_unpack_f)
+          cost = 1.f * wscale * s->pack_size;
+        else if (t->subtype == task_subtype_gpu_unpack_g)
+          cost = 1.f * wscale * s->pack_size;
+        else if (t->subtype == task_subtype_density ||
+                 t->subtype == task_subtype_gradient ||
+                 t->subtype == task_subtype_force ||
+                 t->subtype == task_subtype_limiter) {
           cost = 1.f * (wscale * count_i) * count_i;
         } else if (t->subtype == task_subtype_rt_gradient) {
           cost = 1.f * wscale * scount_i * count_i;
@@ -2898,22 +2897,22 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
     queue_insert(&s->queues[qid], t);
     /* A. Nasar: Increment counters required for the pack tasks */
     if (t->type == task_type_self || t->type == task_type_sub_self) {
-      if (t->subtype == task_subtype_gpu_pack){
-	lock_lock(&s->queues[qid].lock);
+      if (t->subtype == task_subtype_gpu_pack) {
+        lock_lock(&s->queues[qid].lock);
         s->queues[qid].n_packs_self_left_d++;
-	lock_unlock(&s->queues[qid].lock);
+        lock_unlock(&s->queues[qid].lock);
         atomic_inc(&s->s_d_left[qid]);
       }
-      if (t->subtype == task_subtype_gpu_pack_f){
-	lock_lock(&s->queues[qid].lock);
+      if (t->subtype == task_subtype_gpu_pack_f) {
+        lock_lock(&s->queues[qid].lock);
         s->queues[qid].n_packs_self_left_f++;
-	lock_unlock(&s->queues[qid].lock);
+        lock_unlock(&s->queues[qid].lock);
         atomic_inc(&s->s_f_left[qid]);
       }
-      if (t->subtype == task_subtype_gpu_pack_g){
-	lock_lock(&s->queues[qid].lock);
+      if (t->subtype == task_subtype_gpu_pack_g) {
+        lock_lock(&s->queues[qid].lock);
         s->queues[qid].n_packs_self_left_g++;
-	lock_unlock(&s->queues[qid].lock);
+        lock_unlock(&s->queues[qid].lock);
         atomic_inc(&s->s_g_left[qid]);
       }
     }
@@ -2921,21 +2920,21 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
      MPI where ci may not be on this node/rank */
     if (t->type == task_type_pair || t->type == task_type_sub_pair) {
       if (t->subtype == task_subtype_gpu_pack) {
-	lock_lock(&s->queues[qid].lock);
+        lock_lock(&s->queues[qid].lock);
         s->queues[qid].n_packs_pair_left_d++;
-	lock_unlock(&s->queues[qid].lock);
+        lock_unlock(&s->queues[qid].lock);
         atomic_inc(&s->p_d_left[qid]);
       }
       if (t->subtype == task_subtype_gpu_pack_f) {
-	lock_lock(&s->queues[qid].lock);
+        lock_lock(&s->queues[qid].lock);
         s->queues[qid].n_packs_pair_left_f++;
-	lock_unlock(&s->queues[qid].lock);
+        lock_unlock(&s->queues[qid].lock);
         atomic_inc(&s->p_f_left[qid]);
       }
       if (t->subtype == task_subtype_gpu_pack_g) {
-	lock_lock(&s->queues[qid].lock);
+        lock_lock(&s->queues[qid].lock);
         s->queues[qid].n_packs_pair_left_g++;
-	lock_unlock(&s->queues[qid].lock);
+        lock_unlock(&s->queues[qid].lock);
         atomic_inc(&s->p_g_left[qid]);
       }
     }
@@ -2990,7 +2989,8 @@ struct task *scheduler_done(struct scheduler *s, struct task *t) {
   return NULL;
 }
 
-struct task *signal_sleeping_runners(struct scheduler *s, struct task *t, int tasks_packed) {
+struct task *signal_sleeping_runners(struct scheduler *s, struct task *t,
+                                     int tasks_packed) {
   /* Mark the task as skip. */
   //  t->skip = 1;
 
@@ -3151,7 +3151,7 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
   if (qid >= nr_queues || qid < 0) error("Bad queue ID.");
 
   /*Get a pointer to our queue for re-use*/
-  struct queue * q = &s->queues[qid];
+  struct queue *q = &s->queues[qid];
   /* Loop as long as there are tasks... */
   while (s->waiting > 0 && res == NULL) {
     /* Try more than once before sleeping. */
@@ -3172,7 +3172,7 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
 
         /* Make list of queues that have 1 or more tasks in them */
         for (int k = 0; k < nr_queues; k++) {
-        	if(k == qid) continue;
+          if (k == qid) continue;
           if (s->queues[k].count > 0 || s->queues[k].count_incoming > 0) {
             qids[count++] = k;
           }
@@ -3185,85 +3185,85 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
           /*Get a pointer to the queue we're stealing from*/
           int qstl_id = qids[ind];
 
-	  /* If we got the queue we already have, abort */
-          if(qid == qstl_id){
-        	  /* Reduce the size of the list of non-empty queues */
-        	  qids[ind] = qids[--count];
-        	  continue;
+          /* If we got the queue we already have, abort */
+          if (qid == qstl_id) {
+            /* Reduce the size of the list of non-empty queues */
+            qids[ind] = qids[--count];
+            continue;
           }
 
-	  /* The queue we are stealing from */
-      	  struct queue * q_stl = &s->queues[qstl_id];
+          /* The queue we are stealing from */
+          struct queue *q_stl = &s->queues[qstl_id];
 
-	  /* Can we lock our own queue? */
-	  if (lock_trylock(&q->lock) != 0) {
+          /* Can we lock our own queue? */
+          if (lock_trylock(&q->lock) != 0) {
 
-	    /* No --> continue and try a different queue */
-	    continue;
-	    
-	  } else {
+            /* No --> continue and try a different queue */
+            continue;
 
-	    /* Yes --> Try locking the que we steal from */
-	    if (lock_trylock(&q_stl->lock) != 0) {
+          } else {
 
-	      /* Failed? --> Unlock the 1st queue  and
-		 try again */
-	      lock_unlock(&q->lock);
-	      continue;
-	    }
-	  }
+            /* Yes --> Try locking the que we steal from */
+            if (lock_trylock(&q_stl->lock) != 0) {
 
-	  /* We now have locked q and q_stl */
+              /* Failed? --> Unlock the 1st queue  and
+                 try again */
+              lock_unlock(&q->lock);
+              continue;
+            }
+          }
 
-	  /* Try to get a task from that random queue */
+          /* We now have locked q and q_stl */
+
+          /* Try to get a task from that random queue */
           TIMER_TIC;
           res = queue_gettask(q_stl, prev, 0);
           TIMER_TOC(timer_qsteal);
-	  
+
           /* Lucky? i.e. did we actually get a task? */
-	  if (res != NULL){
+          if (res != NULL) {
 
-	    /*A.Nasar: Get task type*/
-	    enum task_types type = res->type;
-	    enum task_subtypes subtype = res->subtype;
+            /*A.Nasar: Get task type*/
+            enum task_types type = res->type;
+            enum task_subtypes subtype = res->subtype;
 
-	    /*Move counter from the robbed to the robber*/
-            if ((type == task_type_self || type == task_type_sub_self)&&
+            /*Move counter from the robbed to the robber*/
+            if ((type == task_type_self || type == task_type_sub_self) &&
                 subtype == task_subtype_gpu_pack) {
               q->n_packs_self_left_d--;
               q_stl->n_packs_self_left_d--;
               atomic_inc(&s->s_d_left[qid]);
               atomic_dec(&s->s_d_left[qstl_id]);
             }
-            if ((type == task_type_self || type == task_type_sub_self)&&
+            if ((type == task_type_self || type == task_type_sub_self) &&
                 subtype == task_subtype_gpu_pack_g) {
               q->n_packs_self_left_g--;
               q_stl->n_packs_self_left_g--;
               atomic_inc(&s->s_g_left[qid]);
               atomic_dec(&s->s_g_left[qstl_id]);
             }
-            if ((type == task_type_self || type == task_type_sub_self)&&
+            if ((type == task_type_self || type == task_type_sub_self) &&
                 subtype == task_subtype_gpu_pack_f) {
               q->n_packs_self_left_f--;
               q_stl->n_packs_self_left_f--;
               atomic_inc(&s->s_f_left[qid]);
               atomic_dec(&s->s_f_left[qstl_id]);
             }
-            if ((type == task_type_pair || type == task_type_sub_pair)&&
+            if ((type == task_type_pair || type == task_type_sub_pair) &&
                 subtype == task_subtype_gpu_pack) {
               q->n_packs_pair_left_d--;
               q_stl->n_packs_pair_left_d--;
               atomic_inc(&s->p_d_left[qid]);
               atomic_dec(&s->p_d_left[qstl_id]);
             }
-            if ((type == task_type_pair || type == task_type_sub_pair)&&
+            if ((type == task_type_pair || type == task_type_sub_pair) &&
                 subtype == task_subtype_gpu_pack_g) {
               q->n_packs_pair_left_g--;
               q_stl->n_packs_pair_left_g--;
               atomic_inc(&s->p_g_left[qid]);
               atomic_dec(&s->p_g_left[qstl_id]);
             }
-            if ((type == task_type_pair || type == task_type_sub_pair)&&
+            if ((type == task_type_pair || type == task_type_sub_pair) &&
                 subtype == task_subtype_gpu_pack_f) {
               q->n_packs_pair_left_f--;
               q_stl->n_packs_pair_left_f--;
@@ -3273,13 +3273,13 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
             /* Run with the task */
             break;
           } else {
-	    
+
             /* Reduce the size of the list of non-empty queues */
             qids[ind] = qids[--count];
           }
 
-	  lock_unlock(&q->lock);
-	  lock_unlock(&q_stl->lock);
+          lock_unlock(&q->lock);
+          lock_unlock(&q_stl->lock);
         }
         if (res != NULL) break;
       }
@@ -3295,9 +3295,11 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
       pthread_mutex_lock(&s->sleep_mutex);
       res = queue_gettask(&s->queues[qid], prev, 1);
       if (res == NULL && s->waiting > 0) {
-    	struct queue qq = s->queues[qid];
-//    	message("s->waiting %i self_stolen %i, self_left %i, pair_stolen %i, pair_left %i", s->waiting,
-//    			qq.n_packs_self_stolen_f, qq.n_packs_self_left_f, qq.n_packs_pair_stolen_f, qq.n_packs_pair_left_f);
+        struct queue qq = s->queues[qid];
+        //    	message("s->waiting %i self_stolen %i, self_left %i, pair_stolen
+        //    %i, pair_left %i", s->waiting, 			qq.n_packs_self_stolen_f,
+        //    qq.n_packs_self_left_f, qq.n_packs_pair_stolen_f,
+        //    qq.n_packs_pair_left_f);
         pthread_cond_wait(&s->sleep_cond, &s->sleep_mutex);
       }
       pthread_mutex_unlock(&s->sleep_mutex);
@@ -3345,13 +3347,13 @@ void scheduler_init(struct scheduler *s, struct space *space, int nr_tasks,
   for (int k = 0; k < nr_queues; k++) queue_init(&s->queues[k], NULL);
 
   /* Initialize each queue. */
-  for (int k = 0; k < nr_queues; k++){
-	  s->s_d_left = (volatile int *) malloc(sizeof(volatile int) * nr_queues);
-	  s->s_g_left = (volatile int *) malloc(sizeof(volatile int) * nr_queues);
-	  s->s_f_left = (volatile int *) malloc(sizeof(volatile int) * nr_queues);
-	  s->p_d_left = (volatile int *) malloc(sizeof(volatile int) * nr_queues);
-	  s->p_g_left = (volatile int *) malloc(sizeof(volatile int) * nr_queues);
-	  s->p_f_left = (volatile int *) malloc(sizeof(volatile int) * nr_queues);
+  for (int k = 0; k < nr_queues; k++) {
+    s->s_d_left = (volatile int *)malloc(sizeof(volatile int) * nr_queues);
+    s->s_g_left = (volatile int *)malloc(sizeof(volatile int) * nr_queues);
+    s->s_f_left = (volatile int *)malloc(sizeof(volatile int) * nr_queues);
+    s->p_d_left = (volatile int *)malloc(sizeof(volatile int) * nr_queues);
+    s->p_g_left = (volatile int *)malloc(sizeof(volatile int) * nr_queues);
+    s->p_f_left = (volatile int *)malloc(sizeof(volatile int) * nr_queues);
   }
 
   /* Init the sleep mutex and cond. */

@@ -134,4 +134,4 @@ typedef struct part_soa {
 };
 #endif
 
-#endif // PART_GPU_H
+#endif  // PART_GPU_H

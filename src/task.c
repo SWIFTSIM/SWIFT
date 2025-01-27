@@ -194,22 +194,22 @@ MPI_Comm subtaskMPI_comms[task_subtype_count];
  * @param ARRAY is the array of this specific type.
  * @param COUNT is the number of elements in the array.
  */
-#define TASK_CELL_OVERLAP(TYPE, ARRAY, COUNT)                           \
-  __attribute__((always_inline))                                        \
-  INLINE static size_t task_cell_overlap_##TYPE(                        \
-      const struct cell *restrict ci, const struct cell *restrict cj) { \
-                                                                        \
-    if (ci == NULL || cj == NULL) return 0;                             \
-                                                                        \
-    if (ci->ARRAY <= cj->ARRAY &&                                       \
-        ci->ARRAY + ci->COUNT >= cj->ARRAY + cj->COUNT) {               \
-      return cj->COUNT;                                                 \
-    } else if (cj->ARRAY <= ci->ARRAY &&                                \
-               cj->ARRAY + cj->COUNT >= ci->ARRAY + ci->COUNT) {        \
-      return ci->COUNT;                                                 \
-    }                                                                   \
-                                                                        \
-    return 0;                                                           \
+#define TASK_CELL_OVERLAP(TYPE, ARRAY, COUNT)                    \
+  __attribute__((always_inline)) INLINE static size_t            \
+      task_cell_overlap_##TYPE(const struct cell *restrict ci,   \
+                               const struct cell *restrict cj) { \
+                                                                 \
+    if (ci == NULL || cj == NULL) return 0;                      \
+                                                                 \
+    if (ci->ARRAY <= cj->ARRAY &&                                \
+        ci->ARRAY + ci->COUNT >= cj->ARRAY + cj->COUNT) {        \
+      return cj->COUNT;                                          \
+    } else if (cj->ARRAY <= ci->ARRAY &&                         \
+               cj->ARRAY + cj->COUNT >= ci->ARRAY + ci->COUNT) { \
+      return ci->COUNT;                                          \
+    }                                                            \
+                                                                 \
+    return 0;                                                    \
   }
 
 TASK_CELL_OVERLAP(part, hydro.parts, hydro.count);
@@ -1746,13 +1746,15 @@ void task_dump_active(struct engine *e) {
       /* Get destination rank of MPI requests. */
       int paired = (t->cj != NULL);
       int otherrank = 0;
-      //A. N.: Mods requied to stop code crashing when debugging GPU tasks
-      if(t->subtype!= task_subtype_gpu_unpack && t->subtype!= task_subtype_gpu_unpack_f
-    		  && t->subtype!= task_subtype_gpu_unpack_g)
-    	  otherrank = t->ci->nodeID;
-      if (paired && t->subtype!= task_subtype_gpu_unpack && t->subtype!= task_subtype_gpu_unpack_f
-    		  && t->subtype!= task_subtype_gpu_unpack_g)
-    	  otherrank = t->cj->nodeID;
+      // A. N.: Mods requied to stop code crashing when debugging GPU tasks
+      if (t->subtype != task_subtype_gpu_unpack &&
+          t->subtype != task_subtype_gpu_unpack_f &&
+          t->subtype != task_subtype_gpu_unpack_g)
+        otherrank = t->ci->nodeID;
+      if (paired && t->subtype != task_subtype_gpu_unpack &&
+          t->subtype != task_subtype_gpu_unpack_f &&
+          t->subtype != task_subtype_gpu_unpack_g)
+        otherrank = t->cj->nodeID;
 
       fprintf(file_thread, "%i %i %s %s %i %i %lli %lli %i %i %i %i %lli\n",
               engine_rank, otherrank, taskID_names[t->type],

@@ -88,8 +88,10 @@ void runner_doself1_gpu_pack_neat_aos_f4(
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (local_pack_position + count >= count_max_parts_tmp) {
-    fprintf(stderr, "Exceeded count_max_parts_tmp. Make arrays bigger! count_max %i count %i\n"
-    		, count_max_parts_tmp, local_pack_position + count);
+    fprintf(stderr,
+            "Exceeded count_max_parts_tmp. Make arrays bigger! count_max %i "
+            "count %i\n",
+            count_max_parts_tmp, local_pack_position + count);
     error("0");
   }
 #endif
@@ -958,7 +960,7 @@ void unpack_neat_aos_f4(struct cell *c,
     p->density.rot_v[2] += rot_ux_div_v.z;
     p->viscosity.div_v += rot_ux_div_v.w;
     //	      fprintf(stderr, "rho %f div_v %f\n", p_tmp.rho_dh_wcount.x,
-    //p_tmp.rot_ux_div_v.w);
+    // p_tmp.rot_ux_div_v.w);
   }
 }
 
@@ -1009,7 +1011,7 @@ void unpack_neat_aos_f(struct cell *c, struct part_aos_f *parts_aos_buffer,
     p->u_dt += p_tmp.u_dt;
     p->force.h_dt += p_tmp.h_dt;
     //	      p->limiter_data.min_ngb_time_bin = min(p_tmp.min_ngb_time_bin,
-    //p->limiter_data.min_ngb_time_bin);
+    // p->limiter_data.min_ngb_time_bin);
     p->limiter_data.min_ngb_time_bin = p_tmp.min_ngb_time_bin;
     const float v_sig = p->viscosity.v_sig;
     p->viscosity.v_sig = max(p_tmp.v_sig, v_sig);
@@ -1215,11 +1217,11 @@ void unpack_neat_pair_aos_f4_g(
   //  (int i = 0; i < count; i++) {
   //	  int j = i + pp;
   //	  c->hydro.parts[i].viscosity.v_sig =
-  //parts_aos_buffer[j].vsig_lapu_aviscmax.x;
+  // parts_aos_buffer[j].vsig_lapu_aviscmax.x;
   //	  c->hydro.parts[i].diffusion.laplace_u +=
-  //parts_aos_buffer[j].vsig_lapu_aviscmax.y;
+  // parts_aos_buffer[j].vsig_lapu_aviscmax.y;
   //	  c->hydro.parts[i].force.alpha_visc_max_ngb =
-  //parts_aos_buffer[j].vsig_lapu_aviscmax.z;
+  // parts_aos_buffer[j].vsig_lapu_aviscmax.z;
   //  }
   if (cell_is_active_hydro(c, e)) {
 
@@ -1944,8 +1946,9 @@ void runner_doself1_gpu_pack(
   //    wcount_dh, rho_dh, rot_u, rot_v, 	  rot_w, div_v,
   //    div_v_previous_step, alpha_visc, v_sig, laplace_u, alpha_diff, f,
   //    soundspeed, 	  h_dt, balsara, pressure, alpha_visc_max_ngb, time_bin,
-  //    wakeup, min_ngb_time_bin, 	  to_be_synchronized, count_max_parts_tmp,
-  //    fgpuin); 	  fprintf(stderr,"working on a split cell\n");
+  //    wakeup, min_ngb_time_bin, 	  to_be_synchronized,
+  //    count_max_parts_tmp, fgpuin); 	  fprintf(stderr,"working on a split
+  //    cell\n");
   //      }
   //    }
   //  }
@@ -2069,8 +2072,9 @@ void runner_doself1_gpu_unpack(
   //    wcount_dh, rho_dh, rot_u, rot_v, 	  rot_w, div_v,
   //    div_v_previous_step, alpha_visc, v_sig, laplace_u, alpha_diff, f,
   //    soundspeed, 	  h_dt, balsara, pressure, alpha_visc_max_ngb, time_bin,
-  //    wakeup, min_ngb_time_bin, 	  to_be_synchronized, count_max_parts_tmp,
-  //    fgpuin); 	  fprintf(stderr,"working on a split cell\n");
+  //    wakeup, min_ngb_time_bin, 	  to_be_synchronized,
+  //    count_max_parts_tmp, fgpuin); 	  fprintf(stderr,"working on a split
+  //    cell\n");
   //      }
   //    }
   //  } else {

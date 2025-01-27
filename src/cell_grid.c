@@ -353,7 +353,7 @@ void cell_set_grid_completeness_mapper(void *map_data, int num_elements,
         }
       }
     } /* Now loop over all the neighbours of this cell */
-  }   /* Loop through the elements, which are just byte offsets from NULL. */
+  } /* Loop through the elements, which are just byte offsets from NULL. */
 }
 
 /**

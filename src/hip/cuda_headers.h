@@ -60,4 +60,4 @@ void mgd_mem_cuda_kernel_bundles(struct part_gpu **parts_gpu_list,
 }
 #endif
 
-#endif // CUDA_HEADER_H
+#endif  // CUDA_HEADER_H

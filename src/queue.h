@@ -76,17 +76,22 @@ struct queue {
   volatile unsigned int first_incoming, last_incoming, count_incoming;
 
   /*Number of pack tasks left in queue A. Nasar */
-  volatile int n_packs_self_left_d; /*Number of density pack tasks left in queue*/
+  volatile int
+      n_packs_self_left_d; /*Number of density pack tasks left in queue*/
   volatile int n_packs_self_left_f; /*Number of force pack tasks left in queue*/
-  volatile int n_packs_self_left_g; /*Number of gradient pack tasks left in queue*/
+  volatile int
+      n_packs_self_left_g; /*Number of gradient pack tasks left in queue*/
 
   volatile int n_packs_pair_left_d;
   volatile int n_packs_pair_left_f;
   volatile int n_packs_pair_left_g;
 
-  volatile int n_packs_self_stolen_d; /*Number of density pack tasks left in queue*/
-  volatile int n_packs_self_stolen_f; /*Number of force pack tasks left in queue*/
-  volatile int n_packs_self_stolen_g; /*Number of gradient pack tasks left in queue*/
+  volatile int
+      n_packs_self_stolen_d; /*Number of density pack tasks left in queue*/
+  volatile int
+      n_packs_self_stolen_f; /*Number of force pack tasks left in queue*/
+  volatile int
+      n_packs_self_stolen_g; /*Number of gradient pack tasks left in queue*/
 
   volatile int n_packs_pair_stolen_d;
   volatile int n_packs_pair_stolen_f;

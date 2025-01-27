@@ -1831,8 +1831,8 @@ __device__ void DOPAIR2NONSYMGPU(struct part_soa parts_soa, int pid,
           rot_uzi += faci * curlvrz;
         }
       } /*if (jj < cj_end && pid < ci_end && pid >= ci_start)*/
-    }   /*End of looping through particles in shared memory---Shared arrays
-           zero'ed for next step in outer loop*/
+    } /*End of looping through particles in shared memory---Shared arrays
+         zero'ed for next step in outer loop*/
     __syncthreads();
   } /*Loop through parts in cell j one BLOCK_SIZE at a time*/
   if (pid >= ci_start && pid < ci_end) {
@@ -1976,8 +1976,8 @@ __device__ void DOPAIR2NONSYMGPUAOS(struct part_aos *parts_aos, int pid,
           // 20)printf("incorrect timebin %i\n", timebin[j_block]);
         }
       } /*if (jj < cj_end && pid < ci_end && pid >= ci_start)*/
-    }   /*End of looping through particles in shared memory---Shared arrays
-           zero'ed for next step in outer loop*/
+    } /*End of looping through particles in shared memory---Shared arrays
+         zero'ed for next step in outer loop*/
     __syncthreads();
   } /*Loop through parts in cell j one BLOCK_SIZE at a time*/
   if (pid >= ci_start && pid < ci_end) {
@@ -2083,8 +2083,8 @@ __device__ void DOPAIR2NONSYMGPUAOSF4(
           res_rot.w -= faci * dvdr;
         }
       } /*if (jj < cj_end && pid < ci_end && pid >= ci_start)*/
-    }   /*End of looping through particles in shared memory---Shared arrays
-           zero'ed for next step in outer loop*/
+    } /*End of looping through particles in shared memory---Shared arrays
+         zero'ed for next step in outer loop*/
     __syncthreads();
   } /*Loop through parts in cell j one BLOCK_SIZE at a time*/
   if (pid >= ci_start && pid < ci_end) {
@@ -2320,8 +2320,8 @@ __device__ void DOPAIR2NONSYMGPUAOSG(struct part_aos_g *parts_aos, int pid,
           alpha_visc_max_ngb = max(alpha_visc_max_ngb, alpha_j);
         }
       } /*if (jj < cj_end && pid < ci_end && pid >= ci_start)*/
-    }   /*End of looping through particles in shared memory---Shared arrays
-           zero'ed for next step in outer loop*/
+    } /*End of looping through particles in shared memory---Shared arrays
+         zero'ed for next step in outer loop*/
     __syncthreads();
   } /*Loop through parts in cell j one BLOCK_SIZE at a time*/
   if (pid >= ci_start && pid < ci_end) {
@@ -3051,11 +3051,11 @@ __device__ void DOPAIR2GPU(struct part_soa parts_soa, int pid,
           atomicAdd(&parts_soa.rot_uz[j], facj * curlvrz);
           //		  printf("rho %f rho_dh %f wcount %f wcount_dh %f div_v
           //%f rotux %f rotuy %f rotuz %f\n" 				 ,rhoi,
-          //rho_dhi, wcounti, wcount_dhi, div_vi, rot_uxi, rot_uyi, rot_uzi);
+          // rho_dhi, wcounti, wcount_dhi, div_vi, rot_uxi, rot_uyi, rot_uzi);
         } /*if r2<hjg2 */
-      }   /*if (jj < cj_end && pid < ci_end && pid >= ci_start)*/
-    }     /*End of looping through particles in shared memory---Shared arrays
-             zero'ed for next step in outer loop*/
+      } /*if (jj < cj_end && pid < ci_end && pid >= ci_start)*/
+    } /*End of looping through particles in shared memory---Shared arrays
+         zero'ed for next step in outer loop*/
     __syncthreads();
     //	if(j < cj_end){
     //	  atomicAdd(&parts_soa.rho[j], rho_tmp[threadIdx.x]);

@@ -7,16 +7,16 @@
 
 /*ifdef WITH_CUDA prevents name mangling. C code sees exact names
  of functions rather than mangled template names produced by C++*/
-//#ifdef WITH_CUDA
+// #ifdef WITH_CUDA
 //	extern "C"{
-//#endif
+// #endif
 
-//#include "cuda/cuda_headers.h"
-//#include "device_functions.h"
-//#include "cuda/cell_gpu.h"
+// #include "cuda/cuda_headers.h"
+// #include "device_functions.h"
+// #include "cuda/cell_gpu.h"
 #include <cuda_profiler_api.h>
 #include <vector.h>
-//#include "../config.h"
+// #include "../config.h"
 
 void populate_parts_list(struct cell *ci, struct part_gpu *parts) {
   ////////////////////////////////////////////
@@ -143,7 +143,7 @@ void populate_parts_list_soa(
     SPH_sum[p_gid] = 0.f;
     //			fprintf(stderr,"tid is %i\n",tid_p[p]);
     //			fprintf(stderr,"Tester 222, count=%i, p=%i\n", count,
-    //id[p_gid]);
+    // id[p_gid]);
   }
 }
 
@@ -220,10 +220,10 @@ void pack_data_soa(int count_all_parts, struct cell *ci, int first_part_tmp,
     SPH_sum[p_gid] = 0.f;
     //			fprintf(stderr,"tid is %i\n",tid_p[p]);
     //			fprintf(stderr,"Tester 222, count=%i, p=%i\n", count,
-    //id[p_gid]);
+    // id[p_gid]);
   }
 }
 
-//#ifdef WITH_CUDA
+// #ifdef WITH_CUDA
 //	}
-//#endif
+// #endif
