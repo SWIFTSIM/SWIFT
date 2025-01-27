@@ -1934,6 +1934,147 @@ __attribute__((always_inline)) INLINE void cell_assign_cell_index(
 }
 
 /**
+ * @brief Set the depth_h field of a #part.
+ *
+ * @param p The #part.
+ * @param leaf_cell The leaf cell where the particle is located.
+ */
+__attribute__((always_inline)) static INLINE void cell_set_part_h_depth(
+    struct part *p, const struct cell *leaf_cell) {
+
+  const float h = p->h;
+  const struct cell *c = leaf_cell;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (leaf_cell->split) error("Running on an unsplit cell!");
+#endif
+
+  /* Case where h is much smaller than the leaf cell itself */
+  if (h < c->h_min_allowed) {
+    p->depth_h = c->depth;
+    return;
+  }
+
+  /* Climb the tree to find the correct level */
+  while (c != NULL) {
+    if (h >= c->h_min_allowed && h < c->h_max_allowed) {
+      p->depth_h = c->depth;
+      return;
+    }
+    c = c->parent;
+  }
+
+#ifdef SWIFT_DEBUG_CHECKS
+  error("Could not find an appropriate depth!");
+#endif
+}
+
+/**
+ * @brief Set the depth_h field of a #sink.
+ *
+ * @param sp The #sink.
+ * @param leaf_cell The leaf cell where the particle is located.
+ */
+__attribute__((always_inline)) static INLINE void cell_set_sink_h_depth(
+    struct sink *sp, const struct cell *leaf_cell) {
+
+  const float h = sp->h;
+  const struct cell *c = leaf_cell;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (leaf_cell->split) error("Running on an unsplit cell!");
+#endif
+
+  /* Case where h is much smaller than the leaf cell itself */
+  if (h < c->h_min_allowed) {
+    sp->depth_h = c->depth;
+    return;
+  }
+
+  /* Climb the tree to find the correct level */
+  while (c != NULL) {
+    if (h >= c->h_min_allowed && h < c->h_max_allowed) {
+      sp->depth_h = c->depth;
+      return;
+    }
+    c = c->parent;
+  }
+#ifdef SWIFT_DEBUG_CHECKS
+  error("Could not find an appropriate depth!");
+#endif
+}
+
+/**
+ * @brief Set the depth_h field of a #spart.
+ *
+ * @param sp The #spart.
+ * @param leaf_cell The leaf cell where the particle is located.
+ */
+__attribute__((always_inline)) static INLINE void cell_set_spart_h_depth(
+    struct spart *sp, const struct cell *leaf_cell) {
+
+  const float h = sp->h;
+  const struct cell *c = leaf_cell;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (leaf_cell->split) error("Running on an unsplit cell!");
+#endif
+
+  /* Case where h is much smaller than the leaf cell itself */
+  if (h < c->h_min_allowed) {
+    sp->depth_h = c->depth;
+    return;
+  }
+
+  /* Climb the tree to find the correct level */
+  while (c != NULL) {
+    if (h >= c->h_min_allowed && h < c->h_max_allowed) {
+      sp->depth_h = c->depth;
+      return;
+    }
+    c = c->parent;
+  }
+#ifdef SWIFT_DEBUG_CHECKS
+  error("Could not find an appropriate depth!");
+#endif
+}
+
+/**
+ * @brief Set the depth_h field of a #bpart.
+ *
+ * @param bp The #bpart.
+ * @param leaf_cell The leaf cell where the particle is located.
+ */
+__attribute__((always_inline)) static INLINE void cell_set_bpart_h_depth(
+    struct bpart *bp, const struct cell *leaf_cell) {
+
+  const float h = bp->h;
+  const struct cell *c = leaf_cell;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (leaf_cell->split) error("Running on an unsplit cell!");
+#endif
+
+  /* Case where h is much smaller than the leaf cell itself */
+  if (h < c->h_min_allowed) {
+    bp->depth_h = c->depth;
+    return;
+  }
+
+  /* Climb the tree to find the correct level */
+  while (c != NULL) {
+    if (h >= c->h_min_allowed && h < c->h_max_allowed) {
+      bp->depth_h = c->depth;
+      return;
+    }
+    c = c->parent;
+  }
+#ifdef SWIFT_DEBUG_CHECKS
+  error("Could not find an appropriate depth!");
+#endif
+}
+
+/**
  * @brief Does this cell overlap the zoom region?
  *
  * This will test if there is any overlap whatsoever between the zoom boundaries
@@ -1996,141 +2137,6 @@ __attribute__((always_inline)) INLINE static int zoom_cell_inside_zoom_region(
   return (cell_min[0] >= zoom_min[0] && cell_min[1] >= zoom_min[1] &&
           cell_min[2] >= zoom_min[2] && cell_max[0] <= zoom_max[0] &&
           cell_max[1] <= zoom_max[1] && cell_max[2] <= zoom_max[2]);
-  *@brief Set the depth_h field of a #part.**@param p The #part.*
-          @param leaf_cell The leaf cell where the particle is located.*
-      / __attribute__((always_inline)) static INLINE void cell_set_part_h_depth(
-            struct part * p, const struct cell *leaf_cell) {
-
-    const float h = p->h;
-    const struct cell *c = leaf_cell;
-
-#ifdef SWIFT_DEBUG_CHECKS
-    if (leaf_cell->split) error("Running on an unsplit cell!");
-#endif
-
-    /* Case where h is much smaller than the leaf cell itself */
-    if (h < c->h_min_allowed) {
-      p->depth_h = c->depth;
-      return;
-    }
-
-    /* Climb the tree to find the correct level */
-    while (c != NULL) {
-      if (h >= c->h_min_allowed && h < c->h_max_allowed) {
-        p->depth_h = c->depth;
-        return;
-      }
-      c = c->parent;
-    }
-
-#ifdef SWIFT_DEBUG_CHECKS
-    error("Could not find an appropriate depth!");
-#endif
-  }
-
-  /**
-   * @brief Set the depth_h field of a #sink.
-   *
-   * @param sp The #sink.
-   * @param leaf_cell The leaf cell where the particle is located.
-   */
-  __attribute__((always_inline)) static INLINE void cell_set_sink_h_depth(
-      struct sink * sp, const struct cell *leaf_cell) {
-
-    const float h = sp->h;
-    const struct cell *c = leaf_cell;
-
-#ifdef SWIFT_DEBUG_CHECKS
-    if (leaf_cell->split) error("Running on an unsplit cell!");
-#endif
-
-    /* Case where h is much smaller than the leaf cell itself */
-    if (h < c->h_min_allowed) {
-      sp->depth_h = c->depth;
-      return;
-    }
-
-    /* Climb the tree to find the correct level */
-    while (c != NULL) {
-      if (h >= c->h_min_allowed && h < c->h_max_allowed) {
-        sp->depth_h = c->depth;
-        return;
-      }
-      c = c->parent;
-    }
-#ifdef SWIFT_DEBUG_CHECKS
-    error("Could not find an appropriate depth!");
-#endif
-  }
-
-  /**
-   * @brief Set the depth_h field of a #spart.
-   *
-   * @param sp The #spart.
-   * @param leaf_cell The leaf cell where the particle is located.
-   */
-  __attribute__((always_inline)) static INLINE void cell_set_spart_h_depth(
-      struct spart * sp, const struct cell *leaf_cell) {
-
-    const float h = sp->h;
-    const struct cell *c = leaf_cell;
-
-#ifdef SWIFT_DEBUG_CHECKS
-    if (leaf_cell->split) error("Running on an unsplit cell!");
-#endif
-
-    /* Case where h is much smaller than the leaf cell itself */
-    if (h < c->h_min_allowed) {
-      sp->depth_h = c->depth;
-      return;
-    }
-
-    /* Climb the tree to find the correct level */
-    while (c != NULL) {
-      if (h >= c->h_min_allowed && h < c->h_max_allowed) {
-        sp->depth_h = c->depth;
-        return;
-      }
-      c = c->parent;
-    }
-#ifdef SWIFT_DEBUG_CHECKS
-    error("Could not find an appropriate depth!");
-#endif
-  }
-
-  /**
-   * @brief Set the depth_h field of a #bpart.
-   *
-   * @param bp The #bpart.
-   * @param leaf_cell The leaf cell where the particle is located.
-   */
-  __attribute__((always_inline)) static INLINE void cell_set_bpart_h_depth(
-      struct bpart * bp, const struct cell *leaf_cell) {
-
-    const float h = bp->h;
-    const struct cell *c = leaf_cell;
-
-#ifdef SWIFT_DEBUG_CHECKS
-    if (leaf_cell->split) error("Running on an unsplit cell!");
-#endif
-
-    /* Case where h is much smaller than the leaf cell itself */
-    if (h < c->h_min_allowed) {
-      bp->depth_h = c->depth;
-      return;
-    }
-
-    /* Climb the tree to find the correct level */
-    while (c != NULL) {
-      if (h >= c->h_min_allowed && h < c->h_max_allowed) {
-        bp->depth_h = c->depth;
-        return;
-      }
-      c = c->parent;
-    }
-#ifdef SWIFT_DEBUG_CHECKS
-    error("Could not find an appropriate depth!");
-#endif
-  }
+}
 
 #endif /* SWIFT_CELL_H */
