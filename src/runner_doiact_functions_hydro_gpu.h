@@ -214,7 +214,7 @@ double runner_doself1_pack_f4(struct runner *r, struct scheduler *s,
 
   lock_lock(&s->queues[qid].lock);
 
-  atomic_dec(&s->queues[qid].n_packs_self_left_d);
+  s->queues[qid].n_packs_self_left_d--;
 
   if (s->queues[qid].n_packs_self_left_d < 1) 
     pack_vars->launch_leftovers = 1;
@@ -353,7 +353,7 @@ double runner_doself1_pack_f4_g(struct runner *r, struct scheduler *s,
   
   lock_lock(&s->queues[qid].lock);
 
-  atomic_dec(&s->queues[qid].n_packs_self_left_g);
+  s->queues[qid].n_packs_self_left_g--;
 
   if (s->queues[qid].n_packs_self_left_g < 1) 
     pack_vars->launch_leftovers = 1;
@@ -492,7 +492,7 @@ double runner_doself1_pack_f4_f(struct runner *r, struct scheduler *s,
 
   lock_lock(&s->queues[qid].lock);
 
-  atomic_dec(&s->queues[qid].n_packs_self_left_f);
+  s->queues[qid].n_packs_self_left_f--;
 
   if (s->queues[qid].n_packs_self_left_f < 1) 
     pack_vars->launch_leftovers = 1;
@@ -705,7 +705,7 @@ double runner_dopair1_pack_f4(struct runner *r, struct scheduler *s,
 
   lock_lock(&s->queues[qid].lock);
 
-  atomic_dec(&s->queues[qid].n_packs_pair_left_d);
+  s->queues[qid].n_packs_pair_left_d--;
 
   if (s->queues[qid].n_packs_pair_left_d < 1) 
     pack_vars->launch_leftovers = 1;
@@ -923,7 +923,7 @@ double runner_dopair1_pack_f4_g(struct runner *r, struct scheduler *s,
 
   lock_lock(&s->queues[qid].lock);
 
-  atomic_dec(&s->queues[qid].n_packs_pair_left_g);
+  s->queues[qid].n_packs_pair_left_g--;
 
   if (s->queues[qid].n_packs_pair_left_g < 1) 
     pack_vars->launch_leftovers = 1;
@@ -1144,7 +1144,7 @@ double runner_dopair1_pack_f4_f(struct runner *r, struct scheduler *s,
 
   lock_lock(&s->queues[qid].lock);
 
-  atomic_dec(&s->queues[qid].n_packs_pair_left_f);
+  s->queues[qid].n_packs_pair_left_f--;
 
   if (s->queues[qid].n_packs_pair_left_f < 1) 
     pack_vars->launch_leftovers = 1;
