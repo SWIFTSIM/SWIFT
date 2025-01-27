@@ -2986,6 +2986,9 @@ void fof_seed_black_holes(const struct fof_props *props,
       /* Save the ID */
       bp->id = p->id;
 
+      /* Save the tree depth */
+      bp->depth_h = p->depth_h;
+
 #ifdef SWIFT_DEBUG_CHECKS
       bp->ti_kick = p->ti_kick;
       bp->ti_drift = p->ti_drift;

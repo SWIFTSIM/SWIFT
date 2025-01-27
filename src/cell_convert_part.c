@@ -266,6 +266,9 @@ struct spart *cell_add_spart(struct engine *e, struct cell *const c) {
   sp->ti_drift = e->ti_current;
 #endif
 
+  /* Give the new particle the correct depth */
+  cell_set_spart_h_depth(sp, c);
+
   /* Register that we used one of the free slots. */
   const size_t one = 1;
   atomic_sub(&e->s->nr_extra_sparts, one);
@@ -403,6 +406,9 @@ struct sink *cell_add_sink(struct engine *e, struct cell *const c) {
   /* Specify it was drifted to this point */
   sp->ti_drift = e->ti_current;
 #endif
+
+  /* Give the new particle the correct depth */
+  cell_set_sink_h_depth(sp, c);
 
   /* Register that we used one of the free slots. */
   const size_t one = 1;
@@ -1189,7 +1195,7 @@ struct spart *cell_spawn_new_spart_from_sink(struct engine *e, struct cell *c,
 #endif
 
   /* Set a smoothing length */
-  sp->h = s->r_cut;
+  sp->h = s->h;
 
   /* Here comes the Sun! */
   return sp;
