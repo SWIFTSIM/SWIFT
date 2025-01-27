@@ -3252,8 +3252,8 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
       res = queue_gettask(&s->queues[qid], prev, 1);
       if (res == NULL && s->waiting > 0) {
     	struct queue qq = s->queues[qid];
-    	message("s->waiting %i self_stolen %i, self_left %i, pair_stolen %i, pair_left %i", s->waiting,
-    			qq.n_packs_self_stolen_f, qq.n_packs_self_left_f, qq.n_packs_pair_stolen_f, qq.n_packs_pair_left_f);
+//    	message("s->waiting %i self_stolen %i, self_left %i, pair_stolen %i, pair_left %i", s->waiting,
+//    			qq.n_packs_self_stolen_f, qq.n_packs_self_left_f, qq.n_packs_pair_stolen_f, qq.n_packs_pair_left_f);
         pthread_cond_wait(&s->sleep_cond, &s->sleep_mutex);
       }
       pthread_mutex_unlock(&s->sleep_mutex);
