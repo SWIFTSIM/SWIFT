@@ -224,8 +224,8 @@ void space_construct_progeny(struct space *s, struct cell *c,
     cp->stars.h_max_active = 0.f;
     cp->stars.dx_max_part = 0.f;
     cp->stars.dx_max_sort = 0.f;
-    cp->sinks.r_cut_max = 0.f;
-    cp->sinks.r_cut_max_active = 0.f;
+    cp->sinks.h_max = 0.f;
+    cp->sinks.h_max_active = 0.f;
     cp->sinks.dx_max_part = 0.f;
     cp->black_holes.h_max = 0.f;
     cp->black_holes.h_max_active = 0.f;
@@ -818,8 +818,8 @@ void space_split_recursive(struct space *s, struct cell *c,
     c->stars.h_max_active = stars_h_max_active;
     c->sinks.ti_end_min = ti_sinks_end_min;
     c->sinks.ti_beg_max = ti_sinks_beg_max;
-    c->sinks.r_cut_max = sinks_h_max;
-    c->sinks.r_cut_max_active = sinks_h_max_active;
+    c->sinks.h_max = sinks_h_max;
+    c->sinks.h_max_active = sinks_h_max_active;
     c->black_holes.ti_end_min = ti_black_holes_end_min;
     c->black_holes.ti_beg_max = ti_black_holes_beg_max;
     c->black_holes.h_max = black_holes_h_max;
