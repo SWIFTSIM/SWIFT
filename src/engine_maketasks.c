@@ -5024,9 +5024,9 @@ void engine_maketasks(struct engine *e) {
     }
   }
 #ifdef SWIFT_DEBUG_CHECKS
-  if (count_current_self != sched->nr_self_pack_tasks)
+  if (count_current_self != sched->nr_self_pack_tasks_d)
     error("We did not find the correct number of self pack tasks!!");
-  if (count_current_pair != sched->nr_pair_pack_tasks)
+  if (count_current_pair != sched->nr_pair_pack_tasks_d)
     error("We did not find the correct number of pair pack tasks!!");
 #endif
 
