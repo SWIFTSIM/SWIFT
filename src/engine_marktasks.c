@@ -89,7 +89,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
     // Activate GPU unpack tasks (cell-less dummy tasks so need activating
     // separately)
     if (t_type == task_type_self &&
-        (t_subtype == task_subtype_gpu_unpack ||
+        (t_subtype == task_subtype_gpu_unpack_d ||
          t_subtype == task_subtype_gpu_unpack_g ||
          t_subtype == task_subtype_gpu_unpack_f)) {  // A. Nasar
       scheduler_activate(s, t);
@@ -97,7 +97,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
     }
 
     if (t_type == task_type_pair &&
-        (t_subtype == task_subtype_gpu_unpack ||
+        (t_subtype == task_subtype_gpu_unpack_d ||
          t_subtype == task_subtype_gpu_unpack_g ||
          t_subtype == task_subtype_gpu_unpack_f)) {  // A. Nasar
       scheduler_activate(s, t);
@@ -115,9 +115,9 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 #ifndef WITH_CUDA  // A. Nasar
       if (ci->nodeID != nodeID) error("Non-local self task found");
 #else
-      if (ci->nodeID != nodeID && t_subtype != task_subtype_gpu_unpack &&
-          t_subtype != task_subtype_gpu_unpack_f &&
-          t_subtype != task_subtype_gpu_unpack_g) {
+      if ((ci->nodeID != nodeID) && (t_subtype != task_subtype_gpu_unpack_d) &&
+          (t_subtype != task_subtype_gpu_unpack_f) &&
+          (t_subtype != task_subtype_gpu_unpack_g)) {
         fprintf(stderr, "task is %i\n", subtaskID_names[t->subtype]);
         error("Non-local self task found. Task is subtaskID_names[%s]",
               subtaskID_names[t->subtype]);
@@ -145,7 +145,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       }
 
       /* Activate packing for GPU A. Nasar */
-      else if (t_type == task_type_self && t_subtype == task_subtype_gpu_pack) {
+      else if (t_type == task_type_self &&
+               t_subtype == task_subtype_gpu_pack_d) {
         if (ci_active_hydro) {
           scheduler_activate(s, t);
           ci->pack_done = 0;
@@ -189,7 +190,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       /* Store current values of dx_max and h_max. A. Nasar: Unsure if we
          actually need this*/
       else if (t_type == task_type_sub_self &&
-               t_subtype == task_subtype_gpu_pack) {
+               t_subtype == task_subtype_gpu_pack_d) {
         if (ci_active_hydro) {
           scheduler_activate(s, t);
         }
@@ -482,7 +483,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       const int cj_active_rt = cell_is_rt_active(cj, e);
 
       /* Activate packing for GPU A. Nasar */
-      if (t_subtype == task_subtype_gpu_pack &&
+      if (t_subtype == task_subtype_gpu_pack_d &&
           ((ci_active_hydro && ci_nodeID == nodeID) ||
            (cj_active_hydro && cj_nodeID == nodeID))) {
         scheduler_activate(s, t);

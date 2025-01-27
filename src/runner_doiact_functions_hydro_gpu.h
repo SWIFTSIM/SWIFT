@@ -1243,7 +1243,8 @@ void runner_doself1_launch(struct runner *r, struct scheduler *s,
     //										//
     // Get error code 	  if (cu_error != cudaSuccess) { 		fprintf(
     // stderr, 			"CUDA error in density self host 2 device
-    // memcpy: %s cpuid id is: %i\n ", 			cudaGetErrorString(cu_error), r->cpuid);
+    // memcpy: %s cpuid id is: %i\n ",
+    // cudaGetErrorString(cu_error), r->cpuid);
     //		exit(0);
     //	  }
     // #endif
@@ -1284,8 +1285,9 @@ void runner_doself1_launch(struct runner *r, struct scheduler *s,
     //										//
     // Get error code 	  if (cu_error != cudaSuccess) {
     // fprintf(stderr, 				"CUDA error with self density
-    // D2H memcpy: %s cpuid id is: %i\n ", 				cudaGetErrorString(cu_error),
-    //r->cpuid); 		error("Something's up with your cuda code");
+    // D2H memcpy: %s cpuid id is: %i\n ",
+    // cudaGetErrorString(cu_error),
+    // r->cpuid); 		error("Something's up with your cuda code");
     //	  }
     // #endif
   } /*End of looping over bundles to launch in streams*/
@@ -1434,7 +1436,7 @@ void runner_doself1_launch_f4(
                     cudaMemcpyHostToDevice, stream[bid]);
     //	  cudaError_t cu_error = cudaPeekAtLastError(); // cudaGetLastError();
     //// 	  if (cu_error != cudaSuccess) { 		fprintf(
-    ///stderr, 			"CUDA error in density
+    /// stderr, 			"CUDA error in density
     // self host 2 device memcpy: %s cpuid id is: %i\n ",
     //			cudaGetErrorString(cu_error), r->cpuid);
     //		exit(0);
@@ -1453,7 +1455,8 @@ void runner_doself1_launch_f4(
     //										//
     // Get error code 	  if (cu_error != cudaSuccess) { 		fprintf(
     // stderr, 			"CUDA error in density self host 2 device
-    // memcpy: %s cpuid id is: %i\n ", 			cudaGetErrorString(cu_error), r->cpuid);
+    // memcpy: %s cpuid id is: %i\n ",
+    // cudaGetErrorString(cu_error), r->cpuid);
     //		exit(0);
     //	  }
     // #endif
@@ -1495,8 +1498,9 @@ void runner_doself1_launch_f4(
     //										//
     // Get error code 	  if (cu_error != cudaSuccess) {
     // fprintf(stderr, 				"CUDA error with self density
-    // D2H memcpy: %s cpuid id is: %i\n ", 				cudaGetErrorString(cu_error),
-    //r->cpuid); 		error("Something's up with your cuda code");
+    // D2H memcpy: %s cpuid id is: %i\n ",
+    // cudaGetErrorString(cu_error),
+    // r->cpuid); 		error("Something's up with your cuda code");
     //	  }
     // #endif
   } /*End of looping over bundles to launch in streams*/
@@ -2545,8 +2549,9 @@ void runner_dopair1_launch(struct runner *r, struct scheduler *s,
     //										//
     // Get error code 	  if (cu_error != cudaSuccess) {
     // fprintf(stderr, 				"CUDA error with self density
-    // D2H memcpy: %s cpuid id is: %i\n ", 				cudaGetErrorString(cu_error),
-    //r->cpuid); 		error("Something's up with your cuda code");
+    // D2H memcpy: %s cpuid id is: %i\n ",
+    // cudaGetErrorString(cu_error),
+    // r->cpuid); 		error("Something's up with your cuda code");
     //	  }
     // #endif
   } /*End of looping over bundles to launch in streams*/

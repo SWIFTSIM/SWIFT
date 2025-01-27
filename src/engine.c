@@ -2218,10 +2218,10 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   ////	  if(tmp_t->subtype == task_subtype_force){
   ////		if(tmp_t->skip == 1)error("inactive force task");
   ////	  }
-  //	  if(tmp_t->subtype == task_subtype_gpu_pack){
+  //	  if(tmp_t->subtype == task_subtype_gpu_pack_d){
   //		if(tmp_t->skip == 1)error("inactive pack task");
   //	  }
-  //	  if(tmp_t->subtype == task_subtype_gpu_unpack){
+  //	  if(tmp_t->subtype == task_subtype_gpu_unpack_d){
   //	    if(tmp_t->skip == 1)error("inactive unpack task");
   //	  }
   //  }
@@ -2320,10 +2320,10 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   //	  if(tmp_t->subtype == task_subtype_force){
   //		if(tmp_t->skip == 1)error("inactive force task");
   //	  }
-  //	  if(tmp_t->subtype == task_subtype_gpu_pack){
+  //	  if(tmp_t->subtype == task_subtype_gpu_pack_d){
   //		if(tmp_t->skip == 1)error("inactive pack task");
   //	  }
-  //	  if(tmp_t->subtype == task_subtype_gpu_unpack){
+  //	  if(tmp_t->subtype == task_subtype_gpu_unpack_d){
   //	    if(tmp_t->skip == 1)error("inactive unpack task");
   //	  }
   //  }
