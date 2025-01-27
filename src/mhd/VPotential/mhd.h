@@ -105,7 +105,10 @@ __attribute__((always_inline)) INLINE static float mhd_get_divB_error(
   const float b2 = p->mhd_data.BPred[0] * p->mhd_data.BPred[0] +
                    p->mhd_data.BPred[1] * p->mhd_data.BPred[1] +
                    p->mhd_data.BPred[2] * p->mhd_data.BPred[2];
-  return fabs(p->mhd_data.divB * p->h / sqrt(b2 + 1.e-18));
+  float error = b2 != 0.f ? sqrt(p->mhd_data.divB * p->mhd_data.divB / b2) *
+  			p->h : 0.0f;
+
+  return error;
 }
 
 /**
@@ -163,7 +166,7 @@ __attribute__((always_inline)) INLINE static float mhd_get_magnetosonic_speed(
                     p->mhd_data.BPred[1] * p->mhd_data.BPred[1] +
                     p->mhd_data.BPred[2] * p->mhd_data.BPred[2]);
 
-  const float permeability_inv = 1 / mu_0;
+  const float permeability_inv = 1.0f / mu_0;
 
   /* Compute effective sound speeds */
   const float cs = p->force.soundspeed;
@@ -196,7 +199,7 @@ mhd_get_fast_magnetosonic_wave_phase_velocity(const float dx[3],
 
   /* B dot r. */
   const float Br = B[0] * dx[0] + B[1] * dx[1] + B[2] * dx[2];
-  const float permeability_inv = 1 / mu_0;
+  const float permeability_inv = 1.0f / mu_0;
 
   /* Compute effective sound speeds */
   const float cs = p->force.soundspeed;
@@ -247,35 +250,6 @@ __attribute__((always_inline)) INLINE static float mhd_signal_velocity(
 }
 
 /**
- * @brief Returns the Gauge Scalar Phi evolution
- * time the particle. Gauge all variables in full step
- *
- * @param p The particle of interest
- * @param Gauge Gauge
- */
-__attribute__((always_inline)) INLINE static float hydro_get_dGau_dt(
-    const struct part *restrict p, const float Gauge, const struct cosmology *c)
-//  ,  const float mu0) 
-    {
-
-  //const float v_sig = mhd_get_magnetosonic_speed(p, c->a, mu0);
-  const float v_sig = p->viscosity.v_sig;
-  const float afac1 = pow(c->a_factor_sound_speed, 2.f) * c->a * c->a;
-  const float afac2 = c->a_factor_sound_speed * c->a;
-  // Everything is with a2 for the time integration
-  /* Hyperbolic term */
-  const float Source_Term = 2.f * afac1 * p->mhd_data.divA * (v_sig * v_sig);
-  /* Parabolic evolution term */
-  const float Damping_Term = 4.f * afac2 * v_sig * Gauge / p->h;
-  /* Density change term */
-  const float DivV_Term =  hydro_get_div_v(p) * Gauge * c->a * c->a ;
-  /* Cosmological term */
-  const float Hubble_Term = (2.f + mhd_comoving_factor + 3.f) * c->H * c->a * c->a * Gauge;
-
-  return (- Source_Term - Damping_Term - DivV_Term - Hubble_Term);
-}
-
-/**
  * @brief Prepares a particle for the density calculation.
  *
  * Zeroes all the relevant arrays in preparation for the sums taking place in
@@ -285,9 +259,7 @@ __attribute__((always_inline)) INLINE static float hydro_get_dGau_dt(
  * @param p The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void mhd_init_part(
-    struct part *p) {
-
-}
+    struct part *p) {}
 
 /**
  * @brief Finishes the density calculation.
@@ -409,6 +381,35 @@ __attribute__((always_inline)) INLINE static void mhd_part_has_no_neighbours(
 }
 
 /**
+ * @brief Returns the Gauge Scalar Phi evolution
+ * time the particle. Gauge all variables in full step
+ *
+ * @param p The particle of interest
+ * @param Gauge Gauge
+ */
+__attribute__((always_inline)) INLINE static float hydro_get_dGau_dt(
+    const struct part *restrict p, const float Gauge, const struct cosmology *c)
+//  ,  const float mu0) 
+    {
+
+  //const float v_sig = mhd_get_magnetosonic_speed(p, c->a, mu0);
+  const float v_sig = p->viscosity.v_sig;
+  const float afac1 = pow(c->a_factor_sound_speed, 2.f) * c->a * c->a;
+  const float afac2 = c->a_factor_sound_speed * c->a;
+  // Everything is with a2 for the time integration
+  /* Hyperbolic term */
+  const float Source_Term = 1.f * afac1 * p->mhd_data.divA * (v_sig * v_sig);
+  /* Parabolic evolution term */
+  const float Damping_Term = 4.f * afac2 * v_sig * Gauge / p->h;
+  /* Density change term */
+  const float DivV_Term =  hydro_get_div_v(p) * Gauge * c->a * c->a ;
+  /* Cosmological term */
+  const float Hubble_Term = (2.f + mhd_comoving_factor + 3.f) * c->H * c->a * c->a * Gauge;
+
+  return (- Source_Term - Damping_Term - DivV_Term + Hubble_Term);
+}
+
+/**
  * @brief Prepare a particle for the force calculation.
  *
  * This function is called in the ghost task to convert some quantities coming
@@ -430,25 +431,33 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_force(
     const struct hydro_props *hydro_props, const float dt_alpha,
     const float mu_0) {
 
-  const float mu_0_1 = 1.f / mu_0;
-  const float pressure = hydro_get_comoving_pressure(p);
-  const float b2 = (p->mhd_data.BPred[0] * p->mhd_data.BPred[0] +
-                    p->mhd_data.BPred[1] * p->mhd_data.BPred[1] +
-                    p->mhd_data.BPred[2] * p->mhd_data.BPred[2]);
+//  const float mu_0_1 = 1.f / mu_0;
+//  const float pressure = hydro_get_comoving_pressure(p);
+//  const float b2 = (p->mhd_data.BPred[0] * p->mhd_data.BPred[0] +
+//                    p->mhd_data.BPred[1] * p->mhd_data.BPred[1] +
+//                    p->mhd_data.BPred[2] * p->mhd_data.BPred[2]);
   /* Estimation of the tensile instability due divB */
-  p->mhd_data.Q0 = pressure / (b2 / 2.0f * mu_0_1);  // Plasma Beta
-  p->mhd_data.Q0 =
-      p->mhd_data.Q0 < 10.0f ? 1.0f : 0.0f;  // No correction if not magnetized
+//  p->mhd_data.Q0 = pressure / (b2 / 2.0f * mu_0_1);  // Plasma Beta
+//  p->mhd_data.Q0 =
+//      p->mhd_data.Q0 < 10.0f ? 1.0f : 0.0f;  // No correction if not magnetized
   /* divB contribution */
-  const float ACC_corr = fabs(p->mhd_data.divB * sqrt(b2) * mu_0_1);
+//  const float ACC_corr = fabs(p->mhd_data.divB * sqrt(b2) * mu_0_1);
   // this should go with a /p->h, but I
   // take simplify becasue of ACC_mhd also.
   /* isotropic magnetic presure */
   // add the correct hydro acceleration?
-  const float ACC_mhd = (b2 / p->h) * mu_0_1;
+//  const float ACC_mhd = (b2 / p->h) * mu_0_1;
   /* Re normalize the correction in the momentum from the DivB errors*/
-  p->mhd_data.Q0 =
-      ACC_corr > ACC_mhd ? p->mhd_data.Q0 * ACC_mhd / ACC_corr : p->mhd_data.Q0;
+//  p->mhd_data.Q0 =
+//      ACC_corr > ACC_mhd ? p->mhd_data.Q0 * ACC_mhd / ACC_corr : p->mhd_data.Q0;
+  float delim = 1.f;
+  float change_Gau =
+      hydro_get_dGau_dt(p, xp->mhd_data.Gau_full, cosmo) * dt_therm;
+  delim = fabs(change_Gau/xp->mhd_data.Gau_full) < 0.25f ?  1.f : 0.25f * fabs(xp->mhd_data.Gau_full / change_Gau);
+  
+  xp->mhd_data.Gau_full += change_Gau * delim;
+  
+  p->mhd_data.Gau = xp->mhd_data.Gau_full;
 }
 
 /**
@@ -650,6 +659,7 @@ __attribute__((always_inline)) INLINE static void mhd_convert_quantities(
 __attribute__((always_inline)) INLINE static void mhd_first_init_part(
     struct part *restrict p, struct xpart *restrict xp,
     const struct mhd_global_data *mhd_data, const double Lsize) {
+
   mhd_reset_acceleration(p);
   mhd_init_part(p);
 }
