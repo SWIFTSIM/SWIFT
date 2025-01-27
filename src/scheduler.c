@@ -1771,9 +1771,9 @@ struct task *scheduler_addtask(struct scheduler *s, enum task_types type,
   // #ifdef WITH_CUDA  A. Nasar
   if(t->subtype == task_subtype_gpu_pack){
 	  if(t->type == task_type_self || t->type == task_type_sub_self)
-		    atomic_inc(&s->nr_self_pack_tasks);
+		    atomic_inc(&s->nr_self_pack_tasks_d);
 	  if(t->type == task_type_pair || t->type == task_type_sub_pair)
-		    atomic_inc(&s->nr_pair_pack_tasks);
+		    atomic_inc(&s->nr_pair_pack_tasks_d);
   }
   if(t->subtype == task_subtype_gpu_pack_f){
 	  if(t->type == task_type_self || t->type == task_type_sub_self)
@@ -1987,8 +1987,8 @@ void scheduler_reset(struct scheduler *s, int size) {
   /* Reset the counters. */
   s->size = size;
   s->nr_tasks = 0;
-  s->nr_self_pack_tasks = 0;  // A. Nasar
-  s->nr_pair_pack_tasks = 0;
+  s->nr_self_pack_tasks_d = 0;  // A. Nasar
+  s->nr_pair_pack_tasks_d = 0;
   s->nr_self_pack_tasks_f = 0;
   s->nr_pair_pack_tasks_f = 0;
   s->nr_self_pack_tasks_g = 0;
@@ -2534,14 +2534,14 @@ void scheduler_enqueue_mapper(void *map_data, int num_elements,
  */
 void scheduler_start(struct scheduler *s) {
   for (int i = 0; i < s->nr_queues; i++) {  // A. Nasar
-    s->queues[i].n_packs_self_left = 0;
-    s->queues[i].n_packs_pair_left = 0;
+    s->queues[i].n_packs_self_left_d = 0;
+    s->queues[i].n_packs_pair_left_d = 0;
     s->queues[i].n_packs_self_left_f = 0;
     s->queues[i].n_packs_pair_left_f = 0;
     s->queues[i].n_packs_self_left_g = 0;
     s->queues[i].n_packs_pair_left_g = 0;
-    s->queues[i].n_packs_self_stolen = 0;
-    s->queues[i].n_packs_pair_stolen = 0;
+    s->queues[i].n_packs_self_stolen_d = 0;
+    s->queues[i].n_packs_pair_stolen_d = 0;
     s->queues[i].n_packs_self_stolen_f = 0;
     s->queues[i].n_packs_pair_stolen_f = 0;
     s->queues[i].n_packs_self_stolen_g = 0;
@@ -2899,15 +2899,21 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
     /* A. Nasar: Increment counters required for the pack tasks */
     if (t->type == task_type_self || t->type == task_type_sub_self) {
       if (t->subtype == task_subtype_gpu_pack){
-        atomic_inc(&s->queues[qid].n_packs_self_left);
+	lock_lock(&s->queues[qid].lock);
+        atomic_inc(&s->queues[qid].n_packs_self_left_d);
+	lock_unlock(&s->queues[qid].lock);
         atomic_inc(&s->s_d_left[qid]);
       }
       if (t->subtype == task_subtype_gpu_pack_f){
+	lock_lock(&s->queues[qid].lock);
         atomic_inc(&s->queues[qid].n_packs_self_left_f);
+	lock_unlock(&s->queues[qid].lock);
         atomic_inc(&s->s_f_left[qid]);
       }
       if (t->subtype == task_subtype_gpu_pack_g){
+	lock_lock(&s->queues[qid].lock);
         atomic_inc(&s->queues[qid].n_packs_self_left_g);
+	lock_unlock(&s->queues[qid].lock);
         atomic_inc(&s->s_g_left[qid]);
       }
     }
@@ -2915,15 +2921,21 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
      MPI where ci may not be on this node/rank */
     if (t->type == task_type_pair || t->type == task_type_sub_pair) {
       if (t->subtype == task_subtype_gpu_pack) {
-        atomic_inc(&s->queues[qid].n_packs_pair_left);
+	lock_lock(&s->queues[qid].lock);
+        atomic_inc(&s->queues[qid].n_packs_pair_left_d);
+	lock_unlock(&s->queues[qid].lock);
         atomic_inc(&s->p_d_left[qid]);
       }
       if (t->subtype == task_subtype_gpu_pack_f) {
+	lock_lock(&s->queues[qid].lock);
         atomic_inc(&s->queues[qid].n_packs_pair_left_f);
+	lock_unlock(&s->queues[qid].lock);
         atomic_inc(&s->p_f_left[qid]);
       }
       if (t->subtype == task_subtype_gpu_pack_g) {
+	lock_lock(&s->queues[qid].lock);
         atomic_inc(&s->queues[qid].n_packs_pair_left_g);
+	lock_unlock(&s->queues[qid].lock);
         atomic_inc(&s->p_g_left[qid]);
       }
     }
@@ -3172,26 +3184,54 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
           const int ind = rand_r(&seed) % count;
           /*Get a pointer to the queue we're stealing from*/
           int qstl_id = qids[ind];
+
+	  /* If we got the queue we already have, abort */
           if(qid == qstl_id){
         	  /* Reduce the size of the list of non-empty queues */
         	  qids[ind] = qids[--count];
         	  continue;
           }
+
+	  /* The queue we are stealing from */
       	  struct queue * q_stl = &s->queues[qstl_id];
-          /* Try to get a task from that random queue */
+
+	  /* Can we lock our own queue? */
+	  if (lock_trylock(&q->lock) != 0) {
+
+	    /* No --> continue and try a different queue */
+	    continue;
+	    
+	  } else {
+
+	    /* Yes --> Try locking the que we steal from */
+	    if (lock_trylock(&q_stl->lock) != 0) {
+
+	      /* Failed? --> Unlock the 1st queue  and
+		 try again */
+	      lock_unlock(&q->lock);
+	      continue;
+	    }
+	  }
+
+	  /* We now have locked q and q_stl */
+
+	  /* Try to get a task from that random queue */
           TIMER_TIC;
           res = queue_gettask(q_stl, prev, 0);
           TIMER_TOC(timer_qsteal);
-          /* Lucky? */
-		  if (res != NULL){
-        	/*A.Nasar: Get task type*/
-        	enum task_types type = res->type;
-        	enum task_subtypes subtype = res->subtype;
-        	/*Move counter from the robbed to the robber*/
+	  
+          /* Lucky? i.e. did we actually get a task? */
+	  if (res != NULL){
+
+	    /*A.Nasar: Get task type*/
+	    enum task_types type = res->type;
+	    enum task_subtypes subtype = res->subtype;
+
+	    /*Move counter from the robbed to the robber*/
             if ((type == task_type_self || type == task_type_sub_self)&&
                 subtype == task_subtype_gpu_pack) {
-              atomic_inc(&q->n_packs_self_left);
-              atomic_dec(&q_stl->n_packs_self_left);
+              atomic_inc(&q->n_packs_self_left_d);
+              atomic_dec(&q_stl->n_packs_self_left_d);
               atomic_inc(&s->s_d_left[qid]);
               atomic_dec(&s->s_d_left[qstl_id]);
             }
@@ -3211,8 +3251,8 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
             }
             if ((type == task_type_pair || type == task_type_sub_pair)&&
                 subtype == task_subtype_gpu_pack) {
-              atomic_inc(&q->n_packs_pair_left);
-              atomic_dec(&q_stl->n_packs_pair_left);
+              atomic_inc(&q->n_packs_pair_left_d);
+              atomic_dec(&q_stl->n_packs_pair_left_d);
               atomic_inc(&s->p_d_left[qid]);
               atomic_dec(&s->p_d_left[qstl_id]);
             }
@@ -3233,9 +3273,13 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
             /* Run with the task */
             break;
           } else {
+	    
             /* Reduce the size of the list of non-empty queues */
             qids[ind] = qids[--count];
           }
+
+	  lock_unlock(&q->lock);
+	  lock_unlock(&q_stl->lock);
         }
         if (res != NULL) break;
       }
@@ -3399,10 +3443,10 @@ void scheduler_free_tasks(struct scheduler *s) {
   s->size = 0;
   s->nr_tasks = 0;
   // reset GPU task counters too
-  s->nr_self_pack_tasks = 0;
+  s->nr_self_pack_tasks_d = 0;
   s->nr_self_pack_tasks_f = 0;
   s->nr_self_pack_tasks_g = 0;
-  s->nr_pair_pack_tasks = 0;
+  s->nr_pair_pack_tasks_d = 0;
   s->nr_pair_pack_tasks_f = 0;
   s->nr_pair_pack_tasks_g = 0;
 }

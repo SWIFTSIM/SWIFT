@@ -79,7 +79,7 @@ struct scheduler {
   /* Number of tasks we want*/
   int target_gpu_tasks;
   /* Actual number of density pack tasks. */
-  int nr_self_pack_tasks, nr_pair_pack_tasks;
+  int nr_self_pack_tasks_d, nr_pair_pack_tasks_d;
   /* Actual number of force pack tasks. */
   int nr_self_pack_tasks_f, nr_pair_pack_tasks_f;
   /* Actual number of gradient pack tasks. */
