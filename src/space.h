@@ -63,6 +63,14 @@ struct hydro_props;
 #define space_subsize_self_stars_default 32000
 #define space_subsize_pair_grav_default 256000000
 #define space_subsize_self_grav_default 32000
+#define space_recurse_size_self_hydro_default 100
+#define space_recurse_size_pair_hydro_default 100
+#define space_recurse_size_self_stars_default 100
+#define space_recurse_size_pair_stars_default 100
+#define space_recurse_size_self_black_holes_default 100
+#define space_recurse_size_pair_black_holes_default 100
+#define space_recurse_size_self_sinks_default 100
+#define space_recurse_size_pair_sinks_default 100
 #define space_subdepth_diff_grav_default 4
 #define space_max_top_level_cells_default 12
 #define space_stretch 1.10f
@@ -83,6 +91,14 @@ extern int space_subsize_self_stars;
 extern int space_subsize_pair_grav;
 extern int space_subsize_self_grav;
 extern int space_subdepth_diff_grav;
+extern int space_recurse_size_self_hydro;
+extern int space_recurse_size_pair_hydro;
+extern int space_recurse_size_self_stars;
+extern int space_recurse_size_pair_stars;
+extern int space_recurse_size_self_black_holes;
+extern int space_recurse_size_pair_black_holes;
+extern int space_recurse_size_self_sinks;
+extern int space_recurse_size_pair_sinks;
 extern int space_extra_parts;
 extern int space_extra_gparts;
 extern int space_extra_sparts;
@@ -338,6 +354,9 @@ struct space {
 
   /*! Structure that stores the zoom regions properties. */
   struct zoom_region_properties *zoom_props;
+
+  /*! Have the top-level cells' time-steps been updated? */
+  char *cells_top_updated;
 
 #ifdef WITH_MPI
 
@@ -663,6 +682,7 @@ void space_init_sparts(struct space *s, int verbose);
 void space_init_bparts(struct space *s, int verbose);
 void space_init_sinks(struct space *s, int verbose);
 void space_after_snap_tracer(struct space *s, int verbose);
+void space_mark_cell_as_updated(struct space *s, const struct cell *c);
 void space_convert_quantities(struct space *s, int verbose);
 void space_convert_rt_quantities(struct space *s, int verbose);
 void space_post_init_parts(struct space *s, int verbose);

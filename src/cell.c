@@ -676,6 +676,18 @@ void cell_check_part_drift_point(struct cell *c, void *data) {
         c->hydro.parts[i].time_bin != time_bin_inhibited)
       error("part in an incorrect time-zone! p->ti_drift=%lld ti_drift=%lld",
             c->hydro.parts[i].ti_drift, ti_drift);
+
+  for (int i = 0; i < c->hydro.count; ++i) {
+    const struct part *p = &c->hydro.parts[i];
+    if (p->depth_h == c->depth) {
+      if (!(p->h >= c->h_min_allowed && p->h < c->h_max_allowed) && c->split) {
+        error(
+            "depth_h set incorrectly! c->depth=%d p->depth_h=%d h=%e h_min=%e "
+            "h_max=%e",
+            c->depth, p->depth_h, p->h, c->h_min_allowed, c->h_max_allowed);
+      }
+    }
+  }
 #else
   error("Calling debugging code without debugging flag activated.");
 #endif
@@ -750,6 +762,20 @@ void cell_check_sink_drift_point(struct cell *c, void *data) {
           "sink-part in an incorrect time-zone! sink->ti_drift=%lld "
           "ti_drift=%lld",
           c->sinks.parts[i].ti_drift, ti_drift);
+
+  for (int i = 0; i < c->sinks.count; ++i) {
+    const struct sink *sp = &c->sinks.parts[i];
+    if (sp->depth_h == c->depth) {
+      if (!(sp->h >= c->h_min_allowed && sp->h < c->h_max_allowed) &&
+          c->split) {
+        error(
+            "depth_h set incorrectly! c->depth=%d sp->depth_h=%d h=%e h_min=%e "
+            "h_max=%e",
+            c->depth, sp->depth_h, sp->h, c->h_min_allowed, c->h_max_allowed);
+      }
+    }
+  }
+
 #else
   error("Calling debugging code without debugging flag activated.");
 #endif
@@ -784,8 +810,69 @@ void cell_check_spart_drift_point(struct cell *c, void *data) {
   for (int i = 0; i < c->stars.count; ++i)
     if (c->stars.parts[i].ti_drift != ti_drift &&
         c->stars.parts[i].time_bin != time_bin_inhibited)
-      error("g-part in an incorrect time-zone! gp->ti_drift=%lld ti_drift=%lld",
+      error("s-part in an incorrect time-zone! sp->ti_drift=%lld ti_drift=%lld",
             c->stars.parts[i].ti_drift, ti_drift);
+
+  for (int i = 0; i < c->stars.count; ++i) {
+    const struct spart *p = &c->stars.parts[i];
+    if (p->depth_h == c->depth) {
+      if (!(p->h >= c->h_min_allowed && p->h < c->h_max_allowed) && c->split) {
+        error(
+            "depth_h set incorrectly! c->depth=%d p->depth_h=%d h=%e h_min=%e "
+            "h_max=%e",
+            c->depth, p->depth_h, p->h, c->h_min_allowed, c->h_max_allowed);
+      }
+    }
+  }
+#else
+  error("Calling debugging code without debugging flag activated.");
+#endif
+}
+
+/**
+ * @brief Checks that the #bpart in a cell are at the
+ * current point in time
+ *
+ * Calls error() if the cell is not at the current time.
+ *
+ * @param c Cell to act upon
+ * @param data The current time on the integer time-line
+ */
+void cell_check_bpart_drift_point(struct cell *c, void *data) {
+#ifdef SWIFT_DEBUG_CHECKS
+
+  const integertime_t ti_drift = *(integertime_t *)data;
+
+  /* Only check local cells */
+  if (c->nodeID != engine_rank) return;
+
+  /* Only check cells with content */
+  if (c->black_holes.count == 0) return;
+
+  if (c->black_holes.ti_old_part != ti_drift)
+    error(
+        "Cell in an incorrect time-zone! c->black_holes.ti_old_part=%lld "
+        "ti_drift=%lld",
+        c->black_holes.ti_old_part, ti_drift);
+
+  for (int i = 0; i < c->black_holes.count; ++i)
+    if (c->black_holes.parts[i].ti_drift != ti_drift &&
+        c->black_holes.parts[i].time_bin != time_bin_inhibited)
+      error("s-part in an incorrect time-zone! sp->ti_drift=%lld ti_drift=%lld",
+            c->black_holes.parts[i].ti_drift, ti_drift);
+
+  for (int i = 0; i < c->black_holes.count; ++i) {
+    const struct bpart *bp = &c->black_holes.parts[i];
+    if (bp->depth_h == c->depth) {
+      if (!(bp->h >= c->h_min_allowed && bp->h < c->h_max_allowed) &&
+          c->split) {
+        error(
+            "depth_h set incorrectly! c->depth=%d p->depth_h=%d h=%e h_min=%e "
+            "h_max=%e",
+            c->depth, bp->depth_h, bp->h, c->h_min_allowed, c->h_max_allowed);
+      }
+    }
+  }
 #else
   error("Calling debugging code without debugging flag activated.");
 #endif

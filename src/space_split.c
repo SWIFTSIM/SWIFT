@@ -209,6 +209,8 @@ void space_construct_progeny(struct space *s, struct cell *c,
     cp->width[1] = c->width[1] / 2;
     cp->width[2] = c->width[2] / 2;
     cp->dmin = c->dmin / 2;
+    cp->h_min_allowed = cp->dmin * 0.5 * (1. / kernel_gamma);
+    cp->h_max_allowed = cp->dmin * (1. / kernel_gamma);
     if (k & 4) cp->loc[0] += cp->width[0];
     if (k & 2) cp->loc[1] += cp->width[1];
     if (k & 1) cp->loc[2] += cp->width[2];
@@ -222,8 +224,8 @@ void space_construct_progeny(struct space *s, struct cell *c,
     cp->stars.h_max_active = 0.f;
     cp->stars.dx_max_part = 0.f;
     cp->stars.dx_max_sort = 0.f;
-    cp->sinks.r_cut_max = 0.f;
-    cp->sinks.r_cut_max_active = 0.f;
+    cp->sinks.h_max = 0.f;
+    cp->sinks.h_max_active = 0.f;
     cp->sinks.dx_max_part = 0.f;
     cp->black_holes.h_max = 0.f;
     cp->black_holes.h_max_active = 0.f;
@@ -449,6 +451,8 @@ static void space_populate_leaf_props(struct cell *c, struct space *s,
     if (part_is_active(&parts[k], e))
       h_max_active = max(h_max_active, parts[k].h);
 
+    cell_set_part_h_depth(&parts[k], c);
+
     /* Collect SFR from the particles after rebuilt */
     star_formation_logger_log_inactive_part(&parts[k], &xparts[k],
                                             &c->stars.sfh);
@@ -501,6 +505,8 @@ static void space_populate_leaf_props(struct cell *c, struct space *s,
     if (spart_is_active(&sparts[k], e))
       stars_h_max_active = max(stars_h_max_active, sparts[k].h);
 
+    cell_set_spart_h_depth(&sparts[k], c);
+
     /* Reset x_diff */
     sparts[k].x_diff[0] = 0.f;
     sparts[k].x_diff[1] = 0.f;
@@ -524,10 +530,12 @@ static void space_populate_leaf_props(struct cell *c, struct space *s,
     ti_sinks_end_min = min(ti_sinks_end_min, ti_end);
     ti_sinks_beg_max = max(ti_sinks_beg_max, ti_beg);
 
-    sinks_h_max = max(sinks_h_max, sinks[k].r_cut);
+    sinks_h_max = max(sinks_h_max, sinks[k].h);
 
     if (sink_is_active(&sinks[k], e))
-      sinks_h_max_active = max(sinks_h_max_active, sinks[k].r_cut);
+      sinks_h_max_active = max(sinks_h_max_active, sinks[k].h);
+
+    cell_set_sink_h_depth(&sinks[k], c);
 
     /* Reset x_diff */
     sinks[k].x_diff[0] = 0.f;
@@ -556,6 +564,8 @@ static void space_populate_leaf_props(struct cell *c, struct space *s,
 
     if (bpart_is_active(&bparts[k], e))
       black_holes_h_max_active = max(black_holes_h_max_active, bparts[k].h);
+
+    cell_set_bpart_h_depth(&bparts[k], c);
 
     /* Reset x_diff */
     bparts[k].x_diff[0] = 0.f;
@@ -760,9 +770,8 @@ void space_split_recursive(struct space *s, struct cell *c,
         black_holes_h_max = max(black_holes_h_max, cp->black_holes.h_max);
         black_holes_h_max_active =
             max(black_holes_h_max_active, cp->black_holes.h_max_active);
-        sinks_h_max = max(sinks_h_max, cp->sinks.r_cut_max);
-        sinks_h_max_active =
-            max(sinks_h_max_active, cp->sinks.r_cut_max_active);
+        sinks_h_max = max(sinks_h_max, cp->sinks.h_max);
+        sinks_h_max_active = max(sinks_h_max_active, cp->sinks.h_max_active);
 
         ti_hydro_end_min = min(ti_hydro_end_min, cp->hydro.ti_end_min);
         ti_hydro_beg_max = max(ti_hydro_beg_max, cp->hydro.ti_beg_max);
