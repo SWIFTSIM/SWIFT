@@ -138,8 +138,8 @@ __attribute__((always_inline)) INLINE static void rt_finalise_gradient_part(
  * @param pj Particle j.
  */
 __attribute__((always_inline)) INLINE static void rt_gradients_collect(
-    float r2, const float dx[3], float hi, float hj, struct part *restrict pi,
-    struct part *restrict pj) {
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part *restrict pi, struct part *restrict pj) {
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
   rt_debug_sequence_check(pi, 2, __func__);
@@ -277,8 +277,8 @@ __attribute__((always_inline)) INLINE static void rt_gradients_collect(
  * @param pj Particle j.
  */
 __attribute__((always_inline)) INLINE static void rt_gradients_nonsym_collect(
-    float r2, const float dx[3], float hi, float hj, struct part *restrict pi,
-    struct part *restrict pj) {
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part *restrict pi, struct part *restrict pj) {
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
   rt_debug_sequence_check(pi, 2, __func__);
@@ -386,7 +386,7 @@ __attribute__((always_inline)) INLINE static float rt_gradients_extrapolate(
  */
 __attribute__((always_inline)) INLINE static void rt_gradients_predict(
     const struct part *restrict pi, const struct part *restrict pj, float Ui[4],
-    float Uj[4], int group, const float *dx, const float r,
+    float Uj[4], int group, const float dx[3], const float r,
     const float xij_i[3]) {
 
   rt_part_get_radiation_state_vector(pi, group, Ui);

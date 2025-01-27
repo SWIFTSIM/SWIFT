@@ -196,7 +196,7 @@ __attribute__((always_inline)) INLINE static int cell_is_active_hydro(
  * @return 1 if the #cell contains at least an active particle, 0 otherwise.
  */
 __attribute__((always_inline)) INLINE static int cell_is_rt_active(
-    struct cell *c, const struct engine *e) {
+    const struct cell *c, const struct engine *e) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->rt.ti_rt_end_min < e->ti_current_subcycle) {

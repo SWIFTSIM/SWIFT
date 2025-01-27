@@ -41,6 +41,30 @@
  */
 struct sink_props {
 
+  /* ----- Basic neighbour search properties ------ */
+
+  /*! Resolution parameter */
+  float eta_neighbours;
+
+  /*! Target weightd number of neighbours (for info only)*/
+  float target_neighbours;
+
+  /*! Smoothing length tolerance */
+  float h_tolerance;
+
+  /*! Tolerance on neighbour number  (for info only)*/
+  float delta_neighbours;
+
+  /*! Maximal number of iterations to converge h */
+  int max_smoothing_iterations;
+
+  /*! Maximal change of h over one time-step */
+  float log_max_h_change;
+
+  /*! Are we using a fixed cutoff radius? (all smoothing length calculations are
+   * disabled if so) */
+  char use_fixed_r_cut;
+
   /*! Cut off radius */
   float cut_off_radius;
 
@@ -166,18 +190,22 @@ INLINE static void sink_props_init_probabilities(
                   imf, imf->minimal_discrete_mass_Msun, mass_max) *
               Mtot;
 
-  message("Mass of the continuous part (in M_sun) : %g", Mc);
-  message("Mass of the discrete   part (in M_sun) : %g", Md);
-  message("Total IMF mass (in M_sun)              : %g", Mtot);
-  message("Number of stars in the continuous part : %g", Nc);
-  message("Number of stars in the discrete   part : %g", Nd);
+  if (engine_rank == 0) {
+    message("Mass of the continuous part (in M_sun) : %g", Mc);
+    message("Mass of the discrete   part (in M_sun) : %g", Md);
+    message("Total IMF mass (in M_sun)              : %g", Mtot);
+    message("Number of stars in the continuous part : %g", Nc);
+    message("Number of stars in the discrete   part : %g", Nd);
+  }
 
   /* if no continous part, return */
   if (Mc == 0) {
     imf->sink_Pc = 0;
     imf->stellar_particle_mass_Msun = 0;
-    message("probability of the continuous part    : %g", 0.);
-    message("probability of the discrete   part    : %g", 1.);
+    if (engine_rank == 0) {
+      message("probability of the continuous part    : %g", 0.);
+      message("probability of the discrete   part    : %g", 1.);
+    }
     return;
   }
 
@@ -186,8 +214,10 @@ INLINE static void sink_props_init_probabilities(
   double Pd = 1 - Pc;
   imf->sink_Pc = Pc;
 
-  message("probability of the continuous part     : %g", Pc);
-  message("probability of the discrete   part     : %g", Pd);
+  if (engine_rank == 0) {
+    message("probability of the continuous part     : %g", Pc);
+    message("probability of the discrete   part     : %g", Pd);
+  }
 }
 
 /**
@@ -200,13 +230,42 @@ INLINE static void sink_props_init_probabilities(
  * @param cosmo The cosmological model.
  * @param with_feedback Are we running with feedback?
  */
-INLINE static void sink_props_init(struct sink_props *sp,
-                                   struct feedback_props *fp,
-                                   const struct phys_const *phys_const,
-                                   const struct unit_system *us,
-                                   struct swift_params *params,
-                                   const struct cosmology *cosmo,
-                                   const int with_feedback) {
+INLINE static void sink_props_init(
+    struct sink_props *sp, struct feedback_props *fp,
+    const struct phys_const *phys_const, const struct unit_system *us,
+    struct swift_params *params, const struct hydro_props *hydro_props,
+    const struct cosmology *cosmo, const int with_feedback) {
+
+  /* Read in the basic neighbour search properties or default to the hydro
+     ones if the user did not provide any different values */
+
+  /* Kernel properties */
+  sp->eta_neighbours = parser_get_opt_param_float(
+      params, "Sinks:resolution_eta", hydro_props->eta_neighbours);
+
+  /* Tolerance for the smoothing length Newton-Raphson scheme */
+  sp->h_tolerance = parser_get_opt_param_float(params, "Sinks:h_tolerance",
+                                               hydro_props->h_tolerance);
+
+  /* Get derived properties */
+  sp->target_neighbours = pow_dimension(sp->eta_neighbours) * kernel_norm;
+  const float delta_eta = sp->eta_neighbours * (1.f + sp->h_tolerance);
+  sp->delta_neighbours =
+      (pow_dimension(delta_eta) - pow_dimension(sp->eta_neighbours)) *
+      kernel_norm;
+
+  /* Number of iterations to converge h */
+  sp->max_smoothing_iterations =
+      parser_get_opt_param_int(params, "Sinks:max_ghost_iterations",
+                               hydro_props->max_smoothing_iterations);
+
+  /* Time integration properties */
+  const float max_volume_change =
+      parser_get_opt_param_float(params, "Sinks:max_volume_change", -1);
+  if (max_volume_change == -1)
+    sp->log_max_h_change = hydro_props->log_max_h_change;
+  else
+    sp->log_max_h_change = logf(powf(max_volume_change, hydro_dimension_inv));
 
   /* If we do not run with feedback, abort and print an error */
   if (!with_feedback)
@@ -214,9 +273,20 @@ INLINE static void sink_props_init(struct sink_props *sp,
         "ERROR: Running with sink but without feedback. GEAR sink model needs "
         "to be run with --sink and --feedback");
 
-  /* Read the parameters from the parameter file */
-  sp->cut_off_radius =
-      parser_get_param_float(params, "GEARSink:cut_off_radius");
+  /* This property is used in all models to flag if we're using a fixed cutoff.
+   * If it is set to 1, we use a fixed r_cut (read in below) and don't
+   * (re)calculate h. If not, the code will use the variable h*kernel_gamma as a
+   * cutoff radius.
+   */
+  sp->use_fixed_r_cut =
+      parser_get_param_char(params, "GEARSink:use_fixed_cut_off_radius");
+
+  /* The property cut_off_radius is now only used in the GEAR model.
+   * It is ignored if use_fixed_r_cut is 0. */
+  if (sp->use_fixed_r_cut) {
+    sp->cut_off_radius =
+        parser_get_param_float(params, "GEARSink:cut_off_radius");
+  }
 
   sp->f_acc = parser_get_opt_param_float(params, "GEARSink:f_acc",
                                          sink_gear_f_acc_default);
@@ -353,53 +423,54 @@ INLINE static void sink_props_init(struct sink_props *sp,
     imf = &sm->imf;
     sink_props_init_probabilities(sp, imf, phys_const, 1);
   }
+  if (engine_rank == 0) {
+    message("temperature_threshold                        = %g",
+            sp->temperature_threshold);
+    message("density_threshold                            = %g",
+            sp->density_threshold);
+    message("maximal_density_threshold                    = %g",
+            sp->maximal_density_threshold);
+    message("sink_minimal_mass (in M_sun)                 = %g",
+            sp->sink_minimal_mass_Msun);
+    message("stellar_particle_mass (in M_sun)             = %g",
+            sp->stellar_particle_mass_Msun);
+    message("minimal_discrete_mass (in M_sun)             = %g",
+            sp->minimal_discrete_mass_Msun);
 
-  message("temperature_threshold                        = %g",
-          sp->temperature_threshold);
-  message("density_threshold                            = %g",
-          sp->density_threshold);
-  message("maximal_density_threshold                    = %g",
-          sp->maximal_density_threshold);
-  message("sink_minimal_mass (in M_sun)                 = %g",
-          sp->sink_minimal_mass_Msun);
-  message("stellar_particle_mass (in M_sun)             = %g",
-          sp->stellar_particle_mass_Msun);
-  message("minimal_discrete_mass (in M_sun)             = %g",
-          sp->minimal_discrete_mass_Msun);
+    message("stellar_particle_mass_first_stars (in M_sun) = %g",
+            sp->stellar_particle_mass_first_stars_Msun);
+    message("minimal_discrete_mass_first_stars (in M_sun) = %g",
+            sp->minimal_discrete_mass_first_stars_Msun);
 
-  message("stellar_particle_mass_first_stars (in M_sun) = %g",
-          sp->stellar_particle_mass_first_stars_Msun);
-  message("minimal_discrete_mass_first_stars (in M_sun) = %g",
-          sp->minimal_discrete_mass_first_stars_Msun);
+    /* Print information about the functionalities */
+    message("disable_sink_formation                       = %d",
+            sp->disable_sink_formation);
+    message("sink_formation_contracting_gas_criterion     = %d",
+            sp->sink_formation_contracting_gas_criterion);
+    message("sink_formation_smoothing_length_criterion    = %d",
+            sp->sink_formation_smoothing_length_criterion);
+    message("sink_formation_jeans_instability_criterion   = %d",
+            sp->sink_formation_jeans_instability_criterion);
+    message("sink_formation_bound_state_criterion         = %d",
+            sp->sink_formation_bound_state_criterion);
+    message("sink_formation_overlapping_sink_criterion    = %d",
+            sp->sink_formation_overlapping_sink_criterion);
 
-  /* Print information about the functionalities */
-  message("disable_sink_formation                       = %d",
-          sp->disable_sink_formation);
-  message("sink_formation_contracting_gas_criterion     = %d",
-          sp->sink_formation_contracting_gas_criterion);
-  message("sink_formation_smoothing_length_criterion    = %d",
-          sp->sink_formation_smoothing_length_criterion);
-  message("sink_formation_jeans_instability_criterion   = %d",
-          sp->sink_formation_jeans_instability_criterion);
-  message("sink_formation_bound_state_criterion         = %d",
-          sp->sink_formation_bound_state_criterion);
-  message("sink_formation_overlapping_sink_criterion    = %d",
-          sp->sink_formation_overlapping_sink_criterion);
-
-  /* Print timestep parameters information */
-  message("sink max_timestep_young                      = %e",
-          sp->max_time_step_young);
-  message("sink max_timestep_old                        = %e",
-          sp->max_time_step_old);
-  message("sink age_threshold from young to old         = %e",
-          sp->age_threshold);
-  message("sink age_threshold from old to unlimited     = %e",
-          sp->age_threshold_unlimited);
-  message("sink C_CFL                                   = %e",
-          sp->CFL_condition);
-  message("tolerance_SF_timestep                        = %e",
-          sp->tolerance_SF_timestep);
-  message("n_IMF                                        = %e", sp->n_IMF);
+    /* Print timestep parameters information */
+    message("sink max_timestep_young                      = %e",
+            sp->max_time_step_young);
+    message("sink max_timestep_old                        = %e",
+            sp->max_time_step_old);
+    message("sink age_threshold from young to old         = %e",
+            sp->age_threshold);
+    message("sink age_threshold from old to unlimited     = %e",
+            sp->age_threshold_unlimited);
+    message("sink C_CFL                                   = %e",
+            sp->CFL_condition);
+    message("tolerance_SF_timestep                        = %e",
+            sp->tolerance_SF_timestep);
+    message("n_IMF                                        = %e", sp->n_IMF);
+  }
 }
 
 /**

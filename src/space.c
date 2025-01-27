@@ -75,6 +75,18 @@ int space_subdepth_diff_grav = space_subdepth_diff_grav_default;
 int space_maxsize = space_maxsize_default;
 int space_grid_split_threshold = space_grid_split_threshold_default;
 
+/* Recursion sizes */
+int space_recurse_size_self_hydro = space_recurse_size_self_hydro_default;
+int space_recurse_size_pair_hydro = space_recurse_size_pair_hydro_default;
+int space_recurse_size_self_stars = space_recurse_size_self_stars_default;
+int space_recurse_size_pair_stars = space_recurse_size_pair_stars_default;
+int space_recurse_size_self_black_holes =
+    space_recurse_size_self_black_holes_default;
+int space_recurse_size_pair_black_holes =
+    space_recurse_size_pair_black_holes_default;
+int space_recurse_size_self_sinks = space_recurse_size_self_sinks_default;
+int space_recurse_size_pair_sinks = space_recurse_size_pair_sinks_default;
+
 /*! Number of extra #part we allocate memory for per top-level cell */
 int space_extra_parts = space_extra_parts_default;
 
@@ -513,6 +525,7 @@ void space_getcells(struct space *s, int nr_cells, struct cell **cells,
     cells[j]->nodeID = -1;
     cells[j]->tpid = tpid;
     if (lock_init(&cells[j]->hydro.lock) != 0 ||
+        lock_init(&cells[j]->hydro.extra_sort_lock) != 0 ||
         lock_init(&cells[j]->grav.plock) != 0 ||
         lock_init(&cells[j]->grav.mlock) != 0 ||
         lock_init(&cells[j]->stars.lock) != 0 ||
@@ -1259,6 +1272,32 @@ void space_init(struct space *s, struct swift_params *params,
   space_subdepth_diff_grav =
       parser_get_opt_param_int(params, "Scheduler:cell_subdepth_diff_grav",
                                space_subdepth_diff_grav_default);
+
+  space_recurse_size_self_hydro =
+      parser_get_opt_param_int(params, "Scheduler:cell_recurse_size_self_hydro",
+                               space_recurse_size_self_hydro_default);
+  space_recurse_size_pair_hydro =
+      parser_get_opt_param_int(params, "Scheduler:cell_recurse_size_pair_hydro",
+                               space_recurse_size_pair_hydro_default);
+  space_recurse_size_self_stars =
+      parser_get_opt_param_int(params, "Scheduler:cell_recurse_size_self_stars",
+                               space_recurse_size_self_stars_default);
+  space_recurse_size_pair_stars =
+      parser_get_opt_param_int(params, "Scheduler:cell_recurse_size_pair_stars",
+                               space_recurse_size_pair_stars_default);
+  space_recurse_size_self_black_holes = parser_get_opt_param_int(
+      params, "Scheduler:cell_recurse_size_self_black_holes",
+      space_recurse_size_self_black_holes_default);
+  space_recurse_size_pair_black_holes = parser_get_opt_param_int(
+      params, "Scheduler:cell_recurse_size_pair_black_holes",
+      space_recurse_size_pair_black_holes_default);
+  space_recurse_size_self_sinks =
+      parser_get_opt_param_int(params, "Scheduler:cell_recurse_size_self_sinks",
+                               space_recurse_size_self_sinks_default);
+  space_recurse_size_pair_sinks =
+      parser_get_opt_param_int(params, "Scheduler:cell_recurse_size_pair_sinks",
+                               space_recurse_size_pair_sinks_default);
+
   space_extra_parts = parser_get_opt_param_int(
       params, "Scheduler:cell_extra_parts", space_extra_parts_default);
   space_extra_sparts = parser_get_opt_param_int(
@@ -2189,6 +2228,7 @@ void space_check_drift_point(struct space *s, integertime_t ti_drift,
   space_map_cells_pre(s, 1, cell_check_part_drift_point, &ti_drift);
   space_map_cells_pre(s, 1, cell_check_gpart_drift_point, &ti_drift);
   space_map_cells_pre(s, 1, cell_check_spart_drift_point, &ti_drift);
+  space_map_cells_pre(s, 1, cell_check_bpart_drift_point, &ti_drift);
   space_map_cells_pre(s, 1, cell_check_sink_drift_point, &ti_drift);
   if (multipole)
     space_map_cells_pre(s, 1, cell_check_multipole_drift_point, &ti_drift);
@@ -2488,12 +2528,30 @@ void space_after_snap_tracer(struct space *s, int verbose) {
 }
 
 /**
+ * @brief Marks a top-level cell as having been updated by one of the
+ * time-step updating tasks.
+ */
+void space_mark_cell_as_updated(struct space *s, const struct cell *c) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c != c->top) error("Function can only be called at the top level!");
+#endif
+
+  /* Get the offest into the top-level cell array */
+  const size_t delta = c - s->cells_top;
+
+  /* Mark as updated */
+  atomic_inc(&s->cells_top_updated[delta]);
+}
+
+/**
  * @brief Frees up the memory allocated for this #space
  */
 void space_clean(struct space *s) {
 
   for (int i = 0; i < s->nr_cells; ++i) cell_clean(&s->cells_top[i]);
   swift_free("cells_top", s->cells_top);
+  swift_free("cells_top_updated", s->cells_top_updated);
   swift_free("multipoles_top", s->multipoles_top);
   swift_free("local_cells_top", s->local_cells_top);
   swift_free("local_cells_with_tasks_top", s->local_cells_with_tasks_top);
@@ -2578,6 +2636,30 @@ void space_struct_dump(struct space *s, FILE *stream) {
                        "space_extra_sparts", "space_extra_sparts");
   restart_write_blocks(&space_extra_bparts, sizeof(int), 1, stream,
                        "space_extra_bparts", "space_extra_bparts");
+  restart_write_blocks(&space_recurse_size_self_hydro, sizeof(int), 1, stream,
+                       "space_recurse_size_self_hydro",
+                       "space_recurse_size_self_hydro");
+  restart_write_blocks(&space_recurse_size_pair_hydro, sizeof(int), 1, stream,
+                       "space_recurse_size_pair_hydro",
+                       "space_recurse_size_pair_hydro");
+  restart_write_blocks(&space_recurse_size_self_stars, sizeof(int), 1, stream,
+                       "space_recurse_size_self_stars",
+                       "space_recurse_size_self_stars");
+  restart_write_blocks(&space_recurse_size_pair_stars, sizeof(int), 1, stream,
+                       "space_recurse_size_pair_stars",
+                       "space_recurse_size_pair_stars");
+  restart_write_blocks(&space_recurse_size_self_black_holes, sizeof(int), 1,
+                       stream, "space_recurse_size_self_black_holes",
+                       "space_recurse_size_self_black_holes");
+  restart_write_blocks(&space_recurse_size_pair_black_holes, sizeof(int), 1,
+                       stream, "space_recurse_size_pair_black_holes",
+                       "space_recurse_size_pair_black_holes");
+  restart_write_blocks(&space_recurse_size_self_sinks, sizeof(int), 1, stream,
+                       "space_recurse_size_self_sinks",
+                       "space_recurse_size_self_sinks");
+  restart_write_blocks(&space_recurse_size_pair_sinks, sizeof(int), 1, stream,
+                       "space_recurse_size_pair_sinks",
+                       "space_recurse_size_pair_sinks");
   restart_write_blocks(&space_expected_max_nr_strays, sizeof(int), 1, stream,
                        "space_expected_max_nr_strays",
                        "space_expected_max_nr_strays");
@@ -2675,6 +2757,22 @@ void space_struct_restore(struct space *s, FILE *stream) {
                       "space_extra_sparts");
   restart_read_blocks(&space_extra_bparts, sizeof(int), 1, stream, NULL,
                       "space_extra_bparts");
+  restart_read_blocks(&space_recurse_size_self_hydro, sizeof(int), 1, stream,
+                      NULL, "space_recurse_size_self_hydro");
+  restart_read_blocks(&space_recurse_size_pair_hydro, sizeof(int), 1, stream,
+                      NULL, "space_recurse_size_pair_hydro");
+  restart_read_blocks(&space_recurse_size_self_stars, sizeof(int), 1, stream,
+                      NULL, "space_recurse_size_self_stars");
+  restart_read_blocks(&space_recurse_size_pair_stars, sizeof(int), 1, stream,
+                      NULL, "space_recurse_size_pair_stars");
+  restart_read_blocks(&space_recurse_size_self_black_holes, sizeof(int), 1,
+                      stream, NULL, "space_recurse_size_self_black_holes");
+  restart_read_blocks(&space_recurse_size_pair_black_holes, sizeof(int), 1,
+                      stream, NULL, "space_recurse_size_pair_black_holes");
+  restart_read_blocks(&space_recurse_size_self_sinks, sizeof(int), 1, stream,
+                      NULL, "space_recurse_size_self_sinks");
+  restart_read_blocks(&space_recurse_size_pair_sinks, sizeof(int), 1, stream,
+                      NULL, "space_recurse_size_pair_sinks");
   restart_read_blocks(&space_expected_max_nr_strays, sizeof(int), 1, stream,
                       NULL, "space_expected_max_nr_strays");
   restart_read_blocks(&engine_max_parts_per_ghost, sizeof(int), 1, stream, NULL,
@@ -2696,6 +2794,7 @@ void space_struct_restore(struct space *s, FILE *stream) {
 
   /* Things that should be reconstructed in a rebuild. */
   s->cells_top = NULL;
+  s->cells_top_updated = NULL;
   s->cells_sub = NULL;
   s->multipoles_top = NULL;
   s->multipoles_sub = NULL;
