@@ -2900,19 +2900,19 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
     if (t->type == task_type_self || t->type == task_type_sub_self) {
       if (t->subtype == task_subtype_gpu_pack){
 	lock_lock(&s->queues[qid].lock);
-        atomic_inc(&s->queues[qid].n_packs_self_left_d);
+        s->queues[qid].n_packs_self_left_d++;
 	lock_unlock(&s->queues[qid].lock);
         atomic_inc(&s->s_d_left[qid]);
       }
       if (t->subtype == task_subtype_gpu_pack_f){
 	lock_lock(&s->queues[qid].lock);
-        atomic_inc(&s->queues[qid].n_packs_self_left_f);
+        s->queues[qid].n_packs_self_left_f++;
 	lock_unlock(&s->queues[qid].lock);
         atomic_inc(&s->s_f_left[qid]);
       }
       if (t->subtype == task_subtype_gpu_pack_g){
 	lock_lock(&s->queues[qid].lock);
-        atomic_inc(&s->queues[qid].n_packs_self_left_g);
+        s->queues[qid].n_packs_self_left_g++;
 	lock_unlock(&s->queues[qid].lock);
         atomic_inc(&s->s_g_left[qid]);
       }
@@ -2922,19 +2922,19 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
     if (t->type == task_type_pair || t->type == task_type_sub_pair) {
       if (t->subtype == task_subtype_gpu_pack) {
 	lock_lock(&s->queues[qid].lock);
-        atomic_inc(&s->queues[qid].n_packs_pair_left_d);
+        s->queues[qid].n_packs_pair_left_d++;
 	lock_unlock(&s->queues[qid].lock);
         atomic_inc(&s->p_d_left[qid]);
       }
       if (t->subtype == task_subtype_gpu_pack_f) {
 	lock_lock(&s->queues[qid].lock);
-        atomic_inc(&s->queues[qid].n_packs_pair_left_f);
+        s->queues[qid].n_packs_pair_left_f++;
 	lock_unlock(&s->queues[qid].lock);
         atomic_inc(&s->p_f_left[qid]);
       }
       if (t->subtype == task_subtype_gpu_pack_g) {
 	lock_lock(&s->queues[qid].lock);
-        atomic_inc(&s->queues[qid].n_packs_pair_left_g);
+        s->queues[qid].n_packs_pair_left_g++;
 	lock_unlock(&s->queues[qid].lock);
         atomic_inc(&s->p_g_left[qid]);
       }
