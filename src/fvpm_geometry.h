@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2024 Jonathan Davies (j.j.davies@ljmu.ac.uk)
+ * Copyright (c) 2024 Mladen Ivkovic (mladen.ivkovic@hotmail.com)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,14 +16,17 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_SINK_BASIC_DEBUG_H
-#define SWIFT_SINK_BASIC_DEBUG_H
+#ifndef SWIFT_FVPM_GEOMETRY_H
+#define SWIFT_FVPM_GEOMETRY_H
 
-__attribute__((always_inline)) INLINE static void sink_debug_particle(
-    const struct part* p, const struct xpart* xp) {
+/* Config parameters. */
+#include <config.h>
 
-  warning("[PID%lld] sink_part_data:", p->id);
-  warning("[PID%lld] swallow_id = %lld", p->id, p->sink_data.swallow_id);
-}
+/* Import the right FVPM geometry functions */
+#if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH) || defined(RT_GEAR)
+#include "./fvpm_geometry/Gizmo/fvpm_geometry.h"
+#else
+#include "./fvpm_geometry/None/fvpm_geometry.h"
+#endif
 
-#endif /* SWIFT_SINK_BASIC_DEBUG_H */
+#endif /* SWIFT_FVPM_GEOMETRY_H */
