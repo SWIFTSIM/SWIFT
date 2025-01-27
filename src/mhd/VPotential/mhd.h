@@ -388,12 +388,12 @@ __attribute__((always_inline)) INLINE static void mhd_part_has_no_neighbours(
  * @param Gauge Gauge
  */
 __attribute__((always_inline)) INLINE static float hydro_get_dGau_dt(
-    const struct part *restrict p, const float Gauge, const struct cosmology *c)
-//  ,  const float mu0) 
+    const struct part *restrict p, const float Gauge, const struct cosmology *c
+    ,  const float mu_0) 
     {
 
-  //const float v_sig = mhd_get_magnetosonic_speed(p, c->a, mu0);
-  const float v_sig = p->viscosity.v_sig;
+  const float v_sig = mhd_get_magnetosonic_speed(p, c->a, mu_0);
+  //const float v_sig = p->viscosity.v_sig;
   const float afac1 = pow(c->a_factor_sound_speed, 2.f) * c->a * c->a;
   const float afac2 = c->a_factor_sound_speed * c->a;
   // Everything is with a2 for the time integration
@@ -452,7 +452,7 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_force(
 //      ACC_corr > ACC_mhd ? p->mhd_data.Q0 * ACC_mhd / ACC_corr : p->mhd_data.Q0;
   float delim = 1.f;
   float change_Gau =
-      hydro_get_dGau_dt(p, xp->mhd_data.Gau_full, cosmo) * dt_therm;
+      hydro_get_dGau_dt(p, xp->mhd_data.Gau_full, cosmo, mu_0) * dt_alpha;
   delim = fabs(change_Gau/xp->mhd_data.Gau_full) < 0.25f ?  1.f : 0.25f * fabs(xp->mhd_data.Gau_full / change_Gau);
   
   xp->mhd_data.Gau_full += change_Gau * delim;
@@ -537,7 +537,7 @@ __attribute__((always_inline)) INLINE static void mhd_predict_extra(
   ///xp->mhd_data.Afull[2] += p->mhd_data.dAdt[2] * dt_therm;
   
   float change_Gau =
-      hydro_get_dGau_dt(p, p->mhd_data.Gau, cosmo) * dt_therm;
+      hydro_get_dGau_dt(p, p->mhd_data.Gau, cosmo, mu_0) * dt_therm;
   float delim = fabs(change_Gau/p->mhd_data.Gau) < 0.25f ?  1.f : 0.25f * fabs(p->mhd_data.Gau / change_Gau);
   p->mhd_data.Gau += change_Gau * delim;
 }
@@ -604,10 +604,10 @@ __attribute__((always_inline)) INLINE static void mhd_kick_extra(
   ///p->mhd_data.APred[1] += p->mhd_data.dAdt[1] * dt_therm * delim;
   ///p->mhd_data.APred[2] += p->mhd_data.dAdt[2] * dt_therm * delim;
 
-  float change_Gau =
-      hydro_get_dGau_dt(p, xp->mhd_data.Gau_full, cosmo) * dt_therm;
-  delim = fabs(change_Gau/xp->mhd_data.Gau_full) < 0.25f ?  1.f : 0.25f * fabs(xp->mhd_data.Gau_full / change_Gau);
-  xp->mhd_data.Gau_full += change_Gau * delim;
+  //float change_Gau =
+  //    hydro_get_dGau_dt(p, xp->mhd_data.Gau_full, cosmo) * dt_therm;
+  //delim = fabs(change_Gau/xp->mhd_data.Gau_full) < 0.25f ?  1.f : 0.25f * fabs(xp->mhd_data.Gau_full / change_Gau);
+  //xp->mhd_data.Gau_full += change_Gau * delim;
    
 }
 

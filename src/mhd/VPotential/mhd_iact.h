@@ -344,9 +344,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   const float rhoi = pi->rho;
   const float rhoj = pj->rho;
 
-  const float B2i = Bi[0] * Bi[0] + Bi[1] * Bi[1] + Bi[2] * Bi[2];
-  const float B2j = Bj[0] * Bj[0] + Bj[1] * Bj[1] + Bj[2] * Bj[2];
-
   /* Get the kernel for hi. */
   const float hi_inv = 1.0f / hi;
   const float hid_inv = pow_dimension_plus_one(hi_inv); /* 1/h^(d+1) */
@@ -380,6 +377,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
     Bi[i] = pi->mhd_data.BPred[i];
     Bj[i] = pj->mhd_data.BPred[i];
   }
+  const float B2i = Bi[0] * Bi[0] + Bi[1] * Bi[1] + Bi[2] * Bi[2];
+  const float B2j = Bj[0] * Bj[0] + Bj[1] * Bj[1] + Bj[2] * Bj[2];
+
 
   ///////////////////////////// FORCE MAXWELL TENSOR
   for (int i = 0; i < 3; i++)
@@ -397,8 +397,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   const float scale_i = 0.125f * (10.0f - plasma_beta_i);
   const float scale_j = 0.125f * (10.0f - plasma_beta_j);
 
-  pi->mhd_data.Q0 = fmaxf(0.0f, fminf(scale_i, 1.0f));
-  pj->mhd_data.Q0 = fmaxf(0.0f, fminf(scale_j, 1.0f));
+  pi->mhd_data.Q0 = 0.0f * fmaxf(0.0f, fminf(scale_i, 1.0f));
+  pj->mhd_data.Q0 = 0.0f * fmaxf(0.0f, fminf(scale_j, 1.0f));
   //////////////////////////// Apply to the Force and DIVB TERM SUBTRACTION
   for (int i = 0; i < 3; i++)
     for (int j = 0; j < 3; j++) {
@@ -519,8 +519,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   // const float pressurei = pi->force.pressure;
   // const float pressurej = pj->force.pressure;
 
-  const float B2i = Bi[0] * Bi[0] + Bi[1] * Bi[1] + Bi[2] * Bi[2];
-
 
   /* Get the kernel for hi. */
   const float hi_inv = 1.0f / hi;
@@ -555,6 +553,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
     Bi[i] = pi->mhd_data.BPred[i];
     Bj[i] = pj->mhd_data.BPred[i];
   }
+  const float B2i = Bi[0] * Bi[0] + Bi[1] * Bi[1] + Bi[2] * Bi[2];
+
 
   ///////////////////////////// FORCE MAXWELL TENSOR
   for (int i = 0; i < 3; i++)
@@ -568,7 +568,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   }
   const float plasma_beta_i = B2i != 0.0f ? 2.0f * mu_0 * Pi / B2i : FLT_MAX;
   const float scale_i = 0.125f * (10.0f - plasma_beta_i);
-  pi->mhd_datap.Q0 = fmaxf(0.0f, fminf(scale_i, 1.0f));
+  pi->mhd_data.Q0 = 0.0f * fmaxf(0.0f, fminf(scale_i, 1.0f));
   //////////////////////////// Apply to the Force and DIVB TERM SUBTRACTION
   for (int i = 0; i < 3; i++)
     for (int j = 0; j < 3; j++) {
