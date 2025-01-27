@@ -4353,7 +4353,7 @@ void engine_make_hydroloop_tasks_mapper(void *map_data, int num_elements,
       continue;
 
     /* If the cell is local build a self-interaction */
-    struct task *t_pack_self;  // A. Nasar
+    // struct task *t_pack_self;  // A. Nasar
     if (ci->nodeID == nodeID) {
       scheduler_addtask(sched, task_type_self, task_subtype_density, 0, 0, ci,
                         NULL);

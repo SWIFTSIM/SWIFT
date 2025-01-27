@@ -221,8 +221,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       }
 
       else if (t_type == task_type_sub_self &&
-                   t_subtype == task_subtype_gradient ||
-               t_subtype == task_subtype_gpu_pack_g) {
+               (t_subtype == task_subtype_gradient ||
+                t_subtype == task_subtype_gpu_pack_g)) {
         if (ci_active_hydro) scheduler_activate(s, t);
       }
 

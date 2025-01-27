@@ -2900,19 +2900,22 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
       if (t->subtype == task_subtype_gpu_pack_d) {
         lock_lock(&s->queues[qid].lock);
         s->queues[qid].n_packs_self_left_d++;
-        lock_unlock(&s->queues[qid].lock);
+        if (lock_unlock(&s->queues[qid].lock) != 0)
+          error("Error unlocking queue");
         atomic_inc(&s->s_d_left[qid]);
       }
       if (t->subtype == task_subtype_gpu_pack_f) {
         lock_lock(&s->queues[qid].lock);
         s->queues[qid].n_packs_self_left_f++;
-        lock_unlock(&s->queues[qid].lock);
+        if (lock_unlock(&s->queues[qid].lock) != 0)
+          error("Error unlocking queue");
         atomic_inc(&s->s_f_left[qid]);
       }
       if (t->subtype == task_subtype_gpu_pack_g) {
         lock_lock(&s->queues[qid].lock);
         s->queues[qid].n_packs_self_left_g++;
-        lock_unlock(&s->queues[qid].lock);
+        if (lock_unlock(&s->queues[qid].lock) != 0)
+          error("Error unlocking queue");
         atomic_inc(&s->s_g_left[qid]);
       }
     }
@@ -2922,19 +2925,22 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
       if (t->subtype == task_subtype_gpu_pack_d) {
         lock_lock(&s->queues[qid].lock);
         s->queues[qid].n_packs_pair_left_d++;
-        lock_unlock(&s->queues[qid].lock);
+        if (lock_unlock(&s->queues[qid].lock) != 0)
+          error("Error unlocking queue");
         atomic_inc(&s->p_d_left[qid]);
       }
       if (t->subtype == task_subtype_gpu_pack_f) {
         lock_lock(&s->queues[qid].lock);
         s->queues[qid].n_packs_pair_left_f++;
-        lock_unlock(&s->queues[qid].lock);
+        if (lock_unlock(&s->queues[qid].lock) != 0)
+          error("Error unlocking queue");
         atomic_inc(&s->p_f_left[qid]);
       }
       if (t->subtype == task_subtype_gpu_pack_g) {
         lock_lock(&s->queues[qid].lock);
         s->queues[qid].n_packs_pair_left_g++;
-        lock_unlock(&s->queues[qid].lock);
+        if (lock_unlock(&s->queues[qid].lock) != 0)
+          error("Error unlocking queue");
         atomic_inc(&s->p_g_left[qid]);
       }
     }
@@ -3208,7 +3214,8 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
 
               /* Failed? --> Unlock the 1st queue  and
                  try again */
-              lock_unlock(&q->lock);
+              if (lock_unlock(&q->lock) != 0)
+                error("Unlocking our queue failed");
               continue;
             }
           }
@@ -3278,8 +3285,9 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
             qids[ind] = qids[--count];
           }
 
-          lock_unlock(&q->lock);
-          lock_unlock(&q_stl->lock);
+          if (lock_unlock(&q->lock) != 0) error("Unlocking our queue failed");
+          if (lock_unlock(&q_stl->lock) != 0)
+            error("Unlocking the stealing queue failed");
         }
         if (res != NULL) break;
       }
@@ -3295,11 +3303,11 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
       pthread_mutex_lock(&s->sleep_mutex);
       res = queue_gettask(&s->queues[qid], prev, 1);
       if (res == NULL && s->waiting > 0) {
-        struct queue qq = s->queues[qid];
-        //    	message("s->waiting %i self_stolen %i, self_left %i, pair_stolen
-        //    %i, pair_left %i", s->waiting,
-        //    qq.n_packs_self_stolen_f, qq.n_packs_self_left_f,
-        //    qq.n_packs_pair_stolen_f, qq.n_packs_pair_left_f);
+        // struct queue qq = s->queues[qid];
+        //     	message("s->waiting %i self_stolen %i, self_left %i, pair_stolen
+        //     %i, pair_left %i", s->waiting,
+        //     qq.n_packs_self_stolen_f, qq.n_packs_self_left_f,
+        //     qq.n_packs_pair_stolen_f, qq.n_packs_pair_left_f);
         pthread_cond_wait(&s->sleep_cond, &s->sleep_mutex);
       }
       pthread_mutex_unlock(&s->sleep_mutex);
