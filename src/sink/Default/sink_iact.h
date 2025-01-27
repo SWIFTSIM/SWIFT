@@ -31,7 +31,6 @@
  * @param pj Second particle.
  * @param a Current scale factor.
  * @param H Current Hubble parameter.
- * @param cut_off_radius Sink cut off radius.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_sink(
     const float r2, const float dx[3], const float hi, const float hj,
@@ -50,9 +49,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_sink(
  * @param pj Second particle (not updated).
  * @param a Current scale factor.
  * @param H Current Hubble parameter.
- * @param cut_off_radius Sink cut off radius.
- * @param ti_current Current integer time value (for random numbers).
- * @param time current physical time in the simulation
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_sink(
     const float r2, const float dx[3], const float hi, const float hj,
@@ -102,39 +98,6 @@ runner_iact_nonsym_sinks_gas_density(
   si->n_check += wi;
   si->N_check_density++;
 #endif
-}
-
-/**
- * @brief Density interaction between two particles (non-symmetric).
- *
- * @param r2 Comoving square distance between the two particles.
- * @param dx Comoving vector separating both particles (pi - pj).
- * @param ri Comoving cut off radius of particle i.
- * @param hj Comoving smoothing-length of particle j.
- * @param si First particle (sink).
- * @param pj Second particle (gas, not updated).
- * @param with_cosmology Are we doing a cosmological run?
- * @param cosmo The cosmological model.
- * @param grav_props The properties of the gravity scheme (softening, G, ...).
- * @param sink_props the sink properties to use.
- * @param ti_current Current integer time value (for random numbers).
- * @param time current physical time in the simulation
- */
-__attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_sinks_gas_density(
-    const float r2, const float dx[3], const float ri, const float hj,
-    struct sink *si, const struct part *pj, const int with_cosmology,
-    const struct cosmology *cosmo, const struct gravity_props *grav_props,
-    const struct sink_props *sink_props, const integertime_t ti_current,
-    const double time) {
-
-  /* Get r. */
-  const float r = sqrtf(r2);
-
-  if (r < ri) {
-    /* Contribution to the number of neighbours in cutoff radius */
-    si->num_ngbs++;
-  }
 }
 
 /**
