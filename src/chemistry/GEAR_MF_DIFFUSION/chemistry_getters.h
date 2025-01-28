@@ -363,6 +363,56 @@ chemistry_get_physical_hyperbolic_soundspeed(
 }
 
 /**
+ * @brief Get the physical diffusion speed.
+ *
+ * @param p Particle.
+ */
+__attribute__((always_inline)) INLINE static double
+chemistry_get_physical_diffusion_speed(
+    const struct part* restrict p,
+    const struct chemistry_global_data* chem_data,
+    const struct cosmology* cosmo) {
+#if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
+  if (chem_data->diffusion_mode == isotropic_constant) {
+    return sqrt(chem_data->diffusion_coefficient) / chem_data->tau;
+  } else {
+    return hydro_get_physical_soundspeed(p, cosmo);
+  }
+#else
+  /* Compute diffusion matrix K */
+  double K[3][3];
+  chemistry_get_physical_matrix_K(p, cd, cosmo, K);
+  const double norm_matrix_K = chemistry_get_matrix_norm(K);
+
+  /* Note: The State vector is U = (rho*Z_1,rho*Z_2, ...). */
+  double norm_U = 0.0;
+  double norm_nabla_q = 0.0;
+
+  /* Compute the norms */
+  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
+    norm_U += chemistry_get_physical_metal_density(p, i, cosmo) *
+              chemistry_get_physical_metal_density(p, i, cosmo);
+
+    for (int j = 0; j < 3; j++) {
+      /* Compute the Frobenius norm of \nabla \otimes q */
+      norm_nabla_q += chd->gradients.Z[i][j] * chd->gradients.Z[i][j];
+    }
+  }
+
+  /* Take the sqrt and convert to physical units */
+  norm_U = sqrtf(norm_U);
+  norm_nabla_q = sqrtf(norm_nabla_q) * cosmo->a_inv;
+
+  /* Prevent pathological cases */
+  if (norm_U == 0.0) {
+    return FLT_MAX;
+  }
+
+  return norm_matrix_K * norm_grad_q / norm_U ;
+#endif
+}
+
+/**
  * @brief Get the physical hyperbolic diffusion relaxation time.
  *
  * @param p Particle.
