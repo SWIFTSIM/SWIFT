@@ -280,8 +280,11 @@ void runner_do_recv_spart(struct runner *r, struct cell *c, int clear_sorts,
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (ti_stars_end_min < ti_current && //Add a (XX || star_formation_sink)
-      !(r->e->policy & engine_policy_star_formation))
+  const int with_sinks = (r->e->policy & engine_policy_sinks);
+  const int with_stars = (r->e->policy & engine_policy_stars);
+  const int with_star_formation_sink = with_sinks && with_stars;
+  if (ti_stars_end_min < ti_current &&
+      (!(r->e->policy & engine_policy_star_formation) || !with_star_formation_sink))
     error(
         "Received a cell at an incorrect time c->ti_end_min=%lld, "
         "e->ti_current=%lld.",
