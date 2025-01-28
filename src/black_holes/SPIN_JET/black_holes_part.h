@@ -63,6 +63,9 @@ struct bpart {
   /*! Particle time bin */
   timebin_t time_bin;
 
+  /*! Tree-depth at which size / 2 <= h * gamma < size */
+  char depth_h;
+
   struct {
 
     /* Number of neighbours. */
