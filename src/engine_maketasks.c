@@ -2566,7 +2566,9 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
 
       /* Link self tasks to cells. */
     } else if (t_type == task_type_self) {
+#ifdef SWIFT_DEBUG_CHECKS
       atomic_inc(&ci->nr_tasks);
+#endif
 
       if (t_subtype == task_subtype_density) {
         engine_addlink(e, &ci->hydro.density, t);
@@ -2578,8 +2580,10 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
 
       /* Link pair tasks to cells. */
     } else if (t_type == task_type_pair) {
+#ifdef SWIFT_DEBUG_CHECKS
       atomic_inc(&ci->nr_tasks);
       atomic_inc(&cj->nr_tasks);
+#endif
 
       if (t_subtype == task_subtype_density) {
         engine_addlink(e, &ci->hydro.density, t);
@@ -2596,7 +2600,9 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
 
       /* Link sub-self tasks to cells. */
     } else if (t_type == task_type_sub_self) {
+#ifdef SWIFT_DEBUG_CHECKS
       atomic_inc(&ci->nr_tasks);
+#endif
 
       if (t_subtype == task_subtype_density) {
         engine_addlink(e, &ci->hydro.density, t);
@@ -2608,8 +2614,10 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
 
       /* Link sub-pair tasks to cells. */
     } else if (t_type == task_type_sub_pair) {
+#ifdef SWIFT_DEBUG_CHECKS
       atomic_inc(&ci->nr_tasks);
       atomic_inc(&cj->nr_tasks);
+#endif
 
       if (t_subtype == task_subtype_density) {
         engine_addlink(e, &ci->hydro.density, t);

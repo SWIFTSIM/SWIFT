@@ -62,6 +62,7 @@ enum random_number_type {
   random_number_BH_reposition = 59969537LL,
   random_number_BH_spin = 193877777LL,
   random_number_BH_kick = 303595777LL,
+  random_number_sink_swallow = 7337737777LL,
   random_number_snapshot_sampling = 6561001LL,
   random_number_stellar_winds = 5947309451LL,
   random_number_HII_regions = 8134165677LL,
