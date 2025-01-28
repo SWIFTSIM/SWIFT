@@ -1019,7 +1019,7 @@ void *runner_main2(void *data) {
         struct cell *ci_temp = ci;
         struct cell *cj_temp = cj;
         double shift[3];
-        if (t->subtype != task_subtype_gpu_unpack &&
+        if (t->subtype != task_subtype_gpu_unpack_d &&
             t->subtype != task_subtype_gpu_unpack_g &&
             t->subtype != task_subtype_gpu_unpack_f)
           t->sid = space_getsid_and_swap_cells(e->s, &ci_temp, &cj_temp, shift);
@@ -1039,7 +1039,7 @@ void *runner_main2(void *data) {
       /* Different types of tasks... */
       switch (t->type) {
         case task_type_self:
-          if (t->subtype == task_subtype_gpu_unpack) {
+          if (t->subtype == task_subtype_gpu_unpack_d) {
             unpacked++;
           } else if (t->subtype == task_subtype_gpu_unpack_g) {
             unpacked_g++;
@@ -1058,7 +1058,7 @@ void *runner_main2(void *data) {
             density++;
 #endif
             /* GPU WORK */
-          } else if (t->subtype == task_subtype_gpu_pack) {
+          } else if (t->subtype == task_subtype_gpu_pack_d) {
             packed_self++;
 #ifdef GPUOFFLOAD_DENSITY
             ticks tic_cpu_pack = getticks();
@@ -1252,7 +1252,7 @@ void *runner_main2(void *data) {
 #endif
           }
           /* GPU WORK */
-          else if (t->subtype == task_subtype_gpu_pack) {
+          else if (t->subtype == task_subtype_gpu_pack_d) {
             packed_pair++;
 #ifdef GPUOFFLOAD_DENSITY
 #ifdef DO_CORNERS
@@ -1506,7 +1506,7 @@ void *runner_main2(void *data) {
             }
 #endif  // DO_CORNERS
 #endif  // GPUOFFLOAD_FORCE
-          } else if (t->subtype == task_subtype_gpu_unpack) {
+          } else if (t->subtype == task_subtype_gpu_unpack_d) {
             unpacked_pair++;
           } else if (t->subtype == task_subtype_gpu_unpack_g) {
             unpacked_pair_g++;
@@ -1924,7 +1924,7 @@ void *runner_main2(void *data) {
       /* We're done with this task, see if we get a next one. */
       prev = t;
 
-      if (t->subtype == task_subtype_gpu_pack) {
+      if (t->subtype == task_subtype_gpu_pack_d) {
 #ifdef GPUOFFLOAD_DENSITY
         /* Don't enqueue unpacks yet. Just signal the runners */
         t->skip = 1;
@@ -1960,7 +1960,7 @@ void *runner_main2(void *data) {
 #endif
       }
 
-      else if (t->subtype != task_subtype_gpu_pack &&
+      else if (t->subtype != task_subtype_gpu_pack_d &&
                t->subtype != task_subtype_gpu_pack_g &&
                t->subtype != task_subtype_gpu_pack_f) {
         t = scheduler_done(sched, t);
