@@ -195,7 +195,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_gradient(
 **/
 
   float OW;
-  OW = 1.0f;
+  OW = 0.25f;
 
   const float ker_hdinv = pow_dimension(hi_inv); /* 1/h^d */
   const float ker_hdjnv = pow_dimension(hj_inv); /* 1/h^d */
@@ -353,7 +353,7 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
 **/
 
   float OW;
-  OW = 1.0f;
+  OW = 0.25f;
 
   const float ker_hdinv = pow_dimension(hi_inv); /* 1/h^d */
 
@@ -621,11 +621,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
 
   /* Physical resistivity with OWAR*/  
 
-  const float R0i = pi->mhd_data.divB*hi/(sqrtf(B2i)+FLT_MIN);
-  const float R0j = pj->mhd_data.divB*hj/(sqrtf(B2j)+FLT_MIN);
-
-  const float resistive_eta_i = pi->mhd_data.resistive_eta+pi->mhd_data.eta_OWAR*(1.0f+0.1f*R0i);
-  const float resistive_eta_j = pj->mhd_data.resistive_eta+pj->mhd_data.eta_OWAR*(1.0f+0.1f*R0j);
+  const float resistive_eta_i = pi->mhd_data.resistive_eta+pi->mhd_data.eta_OWAR;
+  const float resistive_eta_j = pj->mhd_data.resistive_eta+pj->mhd_data.eta_OWAR;
   const float dB_dt_pref_PR_i = 2.0f * resistive_eta_i * r_inv / (rhoi * rhoj);
   const float dB_dt_pref_PR_j = 2.0f * resistive_eta_j * r_inv / (rhoi * rhoj);
 
@@ -973,9 +970,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
 
   /* Physical resistivity */
 
-  const float R0i = pi->mhd_data.divB*hi/(sqrtf(B2i)+FLT_MIN);
-
-  const float resistive_eta = pi->mhd_data.resistive_eta+pi->mhd_data.eta_OWAR*(1.0f+0.1f*R0i);
+  const float resistive_eta = pi->mhd_data.resistive_eta+pi->mhd_data.eta_OWAR;
 
   const float dB_dt_pref_PR = 2.0f * resistive_eta * r_inv / (rhoi * rhoj);
 
