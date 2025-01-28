@@ -209,7 +209,6 @@ void *runner_main(void *data) {
             runner_doself_recursive_grav(r, ci, 1);
           else if (t->subtype == task_subtype_external_grav)
             runner_do_grav_external(r, ci, 1);
-#ifndef ONLY_SUBTASKS
           else if (t->subtype == task_subtype_density)
             runner_doself1_branch_density(r, ci, /*limit_h_min=*/0,
                                           /*limit_h_max=*/0);
@@ -254,13 +253,14 @@ void *runner_main(void *data) {
           else if (t->subtype == task_subtype_rt_transport)
             runner_doself2_branch_rt_transport(r, ci, /*limit_h_min=*/0,
                                                /*limit_h_max=*/0);
+          else if (t->subtype == task_subtype_sink_density)
+            runner_doself_branch_sinks_density(r, ci);
           else if (t->subtype == task_subtype_sink_swallow)
             runner_doself_branch_sinks_swallow(r, ci);
           else if (t->subtype == task_subtype_sink_do_gas_swallow)
             runner_do_sinks_gas_swallow_self(r, ci, 1);
           else if (t->subtype == task_subtype_sink_do_sink_swallow)
             runner_do_sinks_sink_swallow_self(r, ci, 1);
-#endif
           else
             error("Unknown/invalid task subtype (%s).",
                   subtaskID_names[t->subtype]);
@@ -269,7 +269,6 @@ void *runner_main(void *data) {
         case task_type_pair:
           if (t->subtype == task_subtype_grav)
             runner_dopair_recursive_grav(r, ci, cj, 1);
-#ifndef ONLY_SUBTASKS
           else if (t->subtype == task_subtype_density)
             runner_dopair1_branch_density(r, ci, cj, /*limit_h_min=*/0,
                                           /*limit_h_max=*/0);
@@ -314,13 +313,14 @@ void *runner_main(void *data) {
           else if (t->subtype == task_subtype_rt_transport)
             runner_dopair2_branch_rt_transport(r, ci, cj, /*limit_h_min=*/0,
                                                /*limit_h_max=*/0);
+	  else if (t->subtype == task_subtype_sink_density)
+            runner_dopair_branch_sinks_density(r, ci, cj);
           else if (t->subtype == task_subtype_sink_swallow)
             runner_dopair_branch_sinks_swallow(r, ci, cj);
           else if (t->subtype == task_subtype_sink_do_gas_swallow)
             runner_do_sinks_gas_swallow_pair(r, ci, cj, 1);
           else if (t->subtype == task_subtype_sink_do_sink_swallow)
             runner_do_sinks_sink_swallow_pair(r, ci, cj, 1);
-#endif
           else
             error("Unknown/invalid task subtype (%s/%s).",
                   taskID_names[t->type], subtaskID_names[t->subtype]);
@@ -361,6 +361,8 @@ void *runner_main(void *data) {
             runner_dosub_self1_rt_gradient(r, ci, /*below_h_max=*/0, 1);
           else if (t->subtype == task_subtype_rt_transport)
             runner_dosub_self2_rt_transport(r, ci, /*below_h_max=*/0, 1);
+          else if (t->subtype == task_subtype_sink_density)
+            runner_dosub_self_sinks_density(r, ci, 1);
           else if (t->subtype == task_subtype_sink_swallow)
             runner_dosub_self_sinks_swallow(r, ci, 1);
           else if (t->subtype == task_subtype_sink_do_gas_swallow)
@@ -407,6 +409,8 @@ void *runner_main(void *data) {
             runner_dosub_pair1_rt_gradient(r, ci, cj, /*below_h_max=*/0, 1);
           else if (t->subtype == task_subtype_rt_transport)
             runner_dosub_pair2_rt_transport(r, ci, cj, /*below_h_max=*/0, 1);
+          else if (t->subtype == task_subtype_sink_density)
+            runner_dosub_pair_sinks_density(r, ci, cj, 1);
           else if (t->subtype == task_subtype_sink_swallow)
             runner_dosub_pair_sinks_swallow(r, ci, cj, 1);
           else if (t->subtype == task_subtype_sink_do_gas_swallow)
