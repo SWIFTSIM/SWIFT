@@ -286,12 +286,16 @@ runner_iact_chemistry_fluxes_common(
   const float Vj = pj->geometry.volume;
 
 #if defined(CHEMISTRY_GEAR_MF_HYPERBOLIC_DIFFUSION)
-  /* Calculate the maximal soundspeed */
-  const float ci = chemistry_get_physical_hyperbolic_soundspeed(pi, chem_data, cosmo);
-  const float cj = chemistry_get_physical_hyperbolic_soundspeed(pj, chem_data, cosmo);
-  const float vmax = ci + cj;
+  /* Calculate the maximal diffusion speed */
+  const float ci = chemistry_get_physical_diffusion_speed(pi, chem_data, cosmo);
+  const float cj = chemistry_get_physical_diffusion_speed(pj, chem_data, cosmo);
+  float dvdr = (pi->v[0] - pj->v[0]) * dx[0] + (pi->v[1] - pj->v[1]) * dx[1] +
+               (pi->v[2] - pj->v[2]) * dx[2];
+  dvdr *= r_inv;
+  /* const float vmax = ci + cj + fabsf(dvdr); */
+  const float vmax = ci + cj - min(0.0, dvdr);
 
-  /* Store the soundspeed */
+  /* Store the signal velocity */
   chi->timestepvars.vmax = max(chi->timestepvars.vmax, vmax);
   if (mode == 1) {
     chj->timestepvars.vmax = max(chj->timestepvars.vmax, vmax);
