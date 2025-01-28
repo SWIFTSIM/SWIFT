@@ -18,7 +18,7 @@ swift_mpi
 fof
 fof_mpi
 swift_cuda
-swift_cudampi
+swift_mpicuda
 
 src/version_string.h
 swift*.tar.gz
