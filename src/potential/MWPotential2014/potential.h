@@ -381,6 +381,9 @@ __attribute__((always_inline)) INLINE static void external_gravity_acceleration(
     double sigma = 0;
     for (int i = 0; i < coeffs_len; i++)
       sigma = sigma + coeffs[coeffs_len - 1 - i] * pow(r, i);
+      
+    /* use a floor of 10 km/s */  
+    sigma = fmax(10,sigma);  
 
     /* Compute the chi parameter */
     double X = v / sqrt(2) / sigma;
