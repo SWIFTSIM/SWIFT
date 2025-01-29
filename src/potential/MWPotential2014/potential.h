@@ -111,13 +111,13 @@ struct external_potential {
 
   /*! Prefactor \f$ 2 \pi amplitude r_1^\alpha r_c^(2-\alpha) \f$ */
   double prefactor_psc_2;
-  
+
   /*! Are we using the dynamical friction ?*/
   int with_dynamical_friction;
 
   /*! Coulomb logarithm */
   double lnLambda;
-  
+
   /*! Gamma function evaluation \f$ \Gamma((3-\alpha)/2 \f$ */
   double gamma_psc;
 
@@ -129,7 +129,7 @@ struct external_potential {
   /*! Time-step condition pre_factor, this factor is used to constraints
    * the time-step so that the norm of v*dt is a fraction of the acceleration */
   double timestep_mult_df;
-  
+
   /*! Minimum time step based on the orbital time at the softening times
    * the timestep_mult */
   double mintime;
@@ -201,28 +201,24 @@ __attribute__((always_inline)) INLINE static float external_gravity_timestep(
   /* Time-step as a fraction of the circular period */
   float time_step = potential->timestep_mult * period;
 
-
   /* Add dynamical friction */
-  
-  if (potential->with_dynamical_friction){
+
+  if (potential->with_dynamical_friction) {
 
     const float vx = g->v_full[0];
     const float vy = g->v_full[1];
-    const float vz = g->v_full[2];  
-    
-    float v = sqrtf(vx*vx+vy*vy+vz*vz);
+    const float vz = g->v_full[2];
+
+    float v = sqrtf(vx * vx + vy * vy + vz * vz);
 
     const float ax = g->a_grav[0];
     const float ay = g->a_grav[1];
     const float az = g->a_grav[2];
-    
-    float a = sqrtf(ax*ax+ay*ay+az*az);  
-    
-    time_step = min(time_step,potential->timestep_mult_df*a/v);
 
+    float a = sqrtf(ax * ax + ay * ay + az * az);
+
+    time_step = min(time_step, potential->timestep_mult_df * v / a);
   }
-
-
 
   return max(time_step, potential->mintime);
 
@@ -231,7 +227,6 @@ __attribute__((always_inline)) INLINE static float external_gravity_timestep(
   return 0.0;
 #endif
 }
-
 
 /**
  * @brief Computes the mass density of the MW2014 model.
@@ -243,10 +238,9 @@ __attribute__((always_inline)) INLINE static float external_gravity_timestep(
  * @param potential The #external_potential used in the run.
  * @param phys_const Physical constants in internal units.
  */
-__attribute__((always_inline)) INLINE static float
-external_gravity_get_density(
-    float x, float y, float z,
-    double time, const struct external_potential* potential,
+__attribute__((always_inline)) INLINE static float external_gravity_get_density(
+    float x, float y, float z, double time,
+    const struct external_potential* potential,
     const struct phys_const* const phys_const) {
 
 #ifdef HAVE_LIBGSL
@@ -254,22 +248,28 @@ external_gravity_get_density(
   /* First for the NFW profile */
   const float R2 = x * x + y * y;
   const float r = sqrtf(R2 + z * z + potential->eps * potential->eps);
-  
 
   /* First for the NFW part */
-  const float rho_NFW = potential->rho_0/( (r/potential->r_s) * pow(1+r/potential->r_s,2) );
+  const float rho_NFW = potential->rho_0 /
+                        ((r / potential->r_s) * pow(1 + r / potential->r_s, 2));
 
   /* Second the MN disk */
-  const float zb   = sqrtf(potential->Zdisk * potential->Zdisk + z * z);
-  const float azb2 = pow(potential->Rdisk+zb,2);
-  const float cte  = (potential->Zdisk * potential->Zdisk * potential->Mdisk) / (4 * M_PI);
-  const float rho_MN = cte * (potential->Rdisk * R2 + (potential->Rdisk + 3 * zb) * azb2) / (pow(R2 + azb2,2.5) * zb*zb*zb);
+  const float zb = sqrtf(potential->Zdisk * potential->Zdisk + z * z);
+  const float azb2 = pow(potential->Rdisk + zb, 2);
+  const float cte =
+      (potential->Zdisk * potential->Zdisk * potential->Mdisk) / (4 * M_PI);
+  const float rho_MN =
+      cte * (potential->Rdisk * R2 + (potential->Rdisk + 3 * zb) * azb2) /
+      (pow(R2 + azb2, 2.5) * zb * zb * zb);
 
   /* Third the bulge */
-  const float rho_PSC = potential->amplitude*pow(potential->r_1/r,potential->alpha)*exp(-pow(r/potential->r_c,2));
+  const float rho_PSC = potential->amplitude *
+                        pow(potential->r_1 / r, potential->alpha) *
+                        exp(-pow(r / potential->r_c, 2));
 
   /* Total density */
-  const float density = potential->f[0]*rho_NFW + potential->f[1]*rho_MN + potential->f[2]*rho_PSC;
+  const float density = potential->f[0] * rho_NFW + potential->f[1] * rho_MN +
+                        potential->f[2] * rho_PSC;
 
   return density;
 
@@ -278,9 +278,6 @@ external_gravity_get_density(
   return 0.0;
 #endif
 }
-
-
-
 
 /**
  * @brief Computes the gravitational acceleration from an NFW Halo potential +
@@ -311,7 +308,7 @@ __attribute__((always_inline)) INLINE static void external_gravity_acceleration(
   const float dx = g->x[0] - potential->x[0];
   const float dy = g->x[1] - potential->x[1];
   const float dz = g->x[2] - potential->x[2];
-  
+
   /* First for the NFW part */
   const float R2 = dx * dx + dy * dy;
   const float r = sqrtf(R2 + dz * dz + potential->eps * potential->eps);
@@ -355,10 +352,10 @@ __attribute__((always_inline)) INLINE static void external_gravity_acceleration(
   g->a_grav[0] -= potential->f[2] * dpot_dr * dx * r_inv;
   g->a_grav[1] -= potential->f[2] * dpot_dr * dy * r_inv;
   g->a_grav[2] -= potential->f[2] * dpot_dr * dz * r_inv;
-  
-  
+  gravity_add_comoving_potential(g, potential->f[2] * pot_psc);
+
   /* Add dynamical friction */
-  
+
   if (potential->with_dynamical_friction) {
 
     const float sqrtpi = 1.7724538509055159;
@@ -366,51 +363,51 @@ __attribute__((always_inline)) INLINE static void external_gravity_acceleration(
     const float vx = g->v_full[0];
     const float vy = g->v_full[1];
     const float vz = g->v_full[2];
-      
-    const float v = sqrtf(vx*vx + vy*vy + vz*vz);
-    
-    const double coeffs[17] = {-2.96536595e-31,  8.88944631e-28, -1.18280578e-24,  9.29479457e-22,
-                               -4.82805265e-19,  1.75460211e-16, -4.59976540e-14,  8.83166045e-12,
-                               -1.24747700e-09,  1.29060404e-07, -9.65315026e-06,  5.10187806e-04,
-                               -1.83800281e-02,  4.26501444e-01, -5.78038064e+00,  3.57956721e+01,
-		                1.85478908e+02};
+
+    const float v = sqrtf(vx * vx + vy * vy + vz * vz);
+
+    const double coeffs[17] = {
+        -2.96536595e-31, 8.88944631e-28, -1.18280578e-24, 9.29479457e-22,
+        -4.82805265e-19, 1.75460211e-16, -4.59976540e-14, 8.83166045e-12,
+        -1.24747700e-09, 1.29060404e-07, -9.65315026e-06, 5.10187806e-04,
+        -1.83800281e-02, 4.26501444e-01, -5.78038064e+00, 3.57956721e+01,
+        1.85478908e+02};
 
     int coeffs_len = (int)(sizeof(coeffs) / sizeof(coeffs[0]));
 
     /* Compute the velocity dispertion as a function of the radius r, using
      * using a high order polynomial interpolation.
-    */
+     */
     double sigma = 0;
-    for (int i=0;i<coeffs_len;i++)
-      sigma = sigma + coeffs[coeffs_len-1-i]* pow(r,i);
+    for (int i = 0; i < coeffs_len; i++)
+      sigma = sigma + coeffs[coeffs_len - 1 - i] * pow(r, i);
 
     /* Compute the chi parameter */
-    double X = v/sqrt(2)/sigma;       
-    double amp1 = erf(X) - (2*X/sqrtpi*exp(-X*X));
-    
+    double X = v / sqrt(2) / sigma;
+    double amp1 = erf(X) - (2 * X / sqrtpi * exp(-X * X));
+
     /* Compute the density */
-    float density = external_gravity_get_density(dx,dy,dz,time,potential,phys_const);    
+    float density =
+        external_gravity_get_density(dx, dy, dz, time, potential, phys_const);
 
     /* Final factor */
-    float dyn_fric_fact = -4*M_PI*pow(phys_const->const_newton_G,2)/pow(v,3) *density* potential->lnLambda * amp1;
-        
-    if (dyn_fric_fact < -500)
-      dyn_fric_fact = -500;
-    
-    g->a_grav[0] += dyn_fric_fact * vx; 
+    float dyn_fric_fact = -4 * M_PI * pow(phys_const->const_newton_G, 2) /
+                          pow(v, 3) * density * potential->lnLambda * amp1;
+
+    if (dyn_fric_fact < -500) dyn_fric_fact = -500;
+
+    /* Acceleration is per unit of G */
+    dyn_fric_fact /= phys_const->const_newton_G;
+
+    g->a_grav[0] += dyn_fric_fact * vx;
     g->a_grav[1] += dyn_fric_fact * vy;
     g->a_grav[2] += dyn_fric_fact * vz;
   }
-  
-  gravity_add_comoving_potential(g, potential->f[2] * pot_psc);
 
 #else
   error("Code not compiled with GSL. Can't compute MWPotential2014.");
 #endif
 }
-
-
-
 
 /**
  * @brief Computes the gravitational potential energy of a particle in an
