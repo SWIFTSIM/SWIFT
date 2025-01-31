@@ -1151,13 +1151,13 @@ void cell_activate_subcell_sinks_tasks(struct cell *ci, struct cell *cj,
 
   /* Store the current dx_max and h_max values. */
   ci->sinks.dx_max_part_old = ci->sinks.dx_max_part;
-  ci->sinks.r_cut_max_old = ci->sinks.r_cut_max;
+  ci->sinks.h_max_old = ci->sinks.h_max;
   ci->hydro.dx_max_part_old = ci->hydro.dx_max_part;
   ci->hydro.h_max_old = ci->hydro.h_max;
 
   if (cj != NULL) {
     cj->sinks.dx_max_part_old = cj->sinks.dx_max_part;
-    cj->sinks.r_cut_max_old = cj->sinks.r_cut_max;
+    cj->sinks.h_max_old = cj->sinks.h_max;
     cj->hydro.dx_max_part_old = cj->hydro.dx_max_part;
     cj->hydro.h_max_old = cj->hydro.h_max;
   }
@@ -3001,7 +3001,7 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
       if (cell_need_rebuild_for_sinks_pair(ci, cj)) rebuild = 1;
       if (cell_need_rebuild_for_sinks_pair(cj, ci)) rebuild = 1;
 
-#ifdef WITH_MPI
+#if defined(WITH_MPI) && !defined(SWIFT_DEBUG_CHECKS)
       error("TODO");
 #endif
     }

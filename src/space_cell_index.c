@@ -695,8 +695,8 @@ void space_sinks_get_cell_index_mapper(void *map_data, int nr_sinks,
   if (count_extra_sink) atomic_add(&data->count_extra_sink, count_extra_sink);
 
   /* Write back the minimal part mass and velocity sum */
-  atomic_min_f(&s->min_spart_mass, min_mass);
-  atomic_add_f(&s->sum_spart_vel_norm, sum_vel_norm);
+  atomic_min_f(&s->min_sink_mass, min_mass);
+  atomic_add_f(&s->sum_sink_vel_norm, sum_vel_norm);
 }
 
 /**

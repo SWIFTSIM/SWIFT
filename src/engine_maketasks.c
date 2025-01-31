@@ -366,13 +366,12 @@ void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
                                 struct cell *cj, struct task *t_density,
                                 struct task *t_prep2, struct task *t_sf_counts,
                                 const int with_star_formation) {
-#ifdef SWIFT_DEBUG_CHECKS
+#ifdef WITH_MPI
+#if !defined(SWIFT_DEBUG_CHECKS)
   if (e->policy & engine_policy_sinks && e->policy & engine_policy_stars) {
-    error("TODO");
+    error("TODO: Star formation sink over MPI");
   }
 #endif
-
-#ifdef WITH_MPI
 
   struct link *l = NULL;
   struct scheduler *s = &e->sched;
@@ -1096,13 +1095,13 @@ void engine_addtasks_recv_stars(struct engine *e, struct cell *c,
                                 struct task *t_sf_counts,
                                 struct task *const tend,
                                 const int with_star_formation) {
-#ifdef SWIFT_DEBUG_CHECKS
+#ifdef WITH_MPI
+#if !defined(SWIFT_DEBUG_CHECKS)
   if (e->policy & engine_policy_sinks && e->policy & engine_policy_stars) {
-    error("TODO");
+    error("TODO: Star formation sink over MPI");
   }
 #endif
 
-#ifdef WITH_MPI
   struct scheduler *s = &e->sched;
 
   /* Early abort (are we below the level where tasks are)? */
@@ -1783,13 +1782,11 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
 
       scheduler_addunlock(s, c->grav.end_force, c->super->kick2);
 
-      if (with_grid_hydro) {
-        /* When using moving mesh hydro, we update the gpart mass and position
-         * after the flux exchange. We don't want this to be overwritten by the
-         * drift */
-        if (c->hydro.super != NULL) {
-          scheduler_addunlock(s, c->grav.drift, c->hydro.super->hydro.flux_ghost);
-        }
+      /* When using moving mesh hydro, we update the gpart mass and position
+       * after the flux exchange. We don't want this to be overwritten by the
+       * drift */
+      if (with_grid_hydro && c->hydro.super != NULL) {
+        scheduler_addunlock(s, c->grav.drift, c->hydro.super->hydro.flux_ghost);
       }
 
       if (is_self_gravity) {
@@ -5969,9 +5966,9 @@ void engine_addtasks_send_mapper(void *map_data, int num_elements,
   const int with_rt = (e->policy & engine_policy_rt);
   struct cell_type_pair *cell_type_pairs = (struct cell_type_pair *)map_data;
 
-#ifdef SWIFT_DEBUG_CHECKS
+#if defined(WITH_MPI) && !defined(SWIFT_DEBUG_CHECKS)
   if (e->policy & engine_policy_sinks) {
-    error("TODO");
+    error("TODO: Sink MPI tasks are not implemented yet!");
   }
 #endif
 
@@ -6049,9 +6046,9 @@ void engine_addtasks_recv_mapper(void *map_data, int num_elements,
   const int with_rt = (e->policy & engine_policy_rt);
   struct cell_type_pair *cell_type_pairs = (struct cell_type_pair *)map_data;
 
-#ifdef SWIFT_DEBUG_CHECKS
+#if defined(WITH_MPI) && !defined(SWIFT_DEBUG_CHECKS)
   if (e->policy & engine_policy_sinks) {
-    error("TODO");
+    error("TODO: Sink MPI tasks are not implemented yet!");
   }
 #endif
 

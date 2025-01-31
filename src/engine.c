@@ -781,13 +781,14 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
       e->policy & (engine_policy_hydro | engine_policy_grid_hydro);
   const int with_stars = e->policy & engine_policy_stars;
   const int with_black_holes = e->policy & engine_policy_black_holes;
+  const int with_sinks = e->policy & engine_policy_sinks;
   struct space *s = e->s;
   ticks tic = getticks();
 
   /* Count the number of particles we need to import and re-allocate
      the buffer if needed. */
   size_t count_parts_in = 0, count_gparts_in = 0, count_sparts_in = 0,
-         count_bparts_in = 0;
+         count_bparts_in = 0, count_sinks_in = 0;
   for (int k = 0; k < nr_proxies; k++) {
     for (int j = 0; j < e->proxies[k].nr_cells_in; j++) {
 
@@ -806,6 +807,11 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
 
       /* For black holes, we just use the numbers in the top-level cells */
       count_bparts_in += e->proxies[k].cells_in[j]->black_holes.count;
+
+      /* For sinks, we just use the numbers in the top-level cells + some
+         extra space */
+      count_sinks_in +=
+          e->proxies[k].cells_in[j]->sinks.count + space_extra_sinks;
     }
   }
 
@@ -871,28 +877,49 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
       error("Failed to allocate foreign bpart data.");
   }
 
+  /* Allocate space for the foreign particles we will receive */
+  size_t old_size_sinks_foreign = s->size_sinks_foreign;
+  if (!fof && count_sinks_in > s->size_sinks_foreign) {
+    if (s->sinks_foreign != NULL) swift_free("sinks_foreign", s->sinks_foreign);
+    s->size_sinks_foreign = engine_foreign_alloc_margin * count_sinks_in;
+    if (swift_memalign("sinks_foreign", (void **)&s->sinks_foreign, sink_align,
+                       sizeof(struct sink) * s->size_sinks_foreign) != 0)
+      error("Failed to allocate foreign sink data.");
+    bzero(s->sinks_foreign, s->size_sinks_foreign * sizeof(struct sink));
+
+    /* Note: If you ever see a sink particle with id = -666, the following
+       lines is the ones that sets the ID to this value. */
+    for (size_t i = 0; i < s->size_sinks_foreign; ++i) {
+      s->sinks_foreign[i].time_bin = time_bin_not_created;
+      s->sinks_foreign[i].id = -666;
+    }
+  }
+
   if (e->verbose) {
     message(
-        "Allocating %zd/%zd/%zd/%zd foreign part/gpart/spart/bpart "
-        "(%zd/%zd/%zd/%zd MB)",
+        "Allocating %zd/%zd/%zd/%zd/%zd foreign part/gpart/spart/bpart/sink "
+        "(%zd/%zd/%zd/%zd/%zd MB)",
         s->size_parts_foreign, s->size_gparts_foreign, s->size_sparts_foreign,
-        s->size_bparts_foreign,
+        s->size_bparts_foreign, s->size_sinks_foreign,
         s->size_parts_foreign * sizeof(struct part) / (1024 * 1024),
         s->size_gparts_foreign * sizeof(struct gpart) / (1024 * 1024),
         s->size_sparts_foreign * sizeof(struct spart) / (1024 * 1024),
-        s->size_bparts_foreign * sizeof(struct bpart) / (1024 * 1024));
+        s->size_bparts_foreign * sizeof(struct bpart) / (1024 * 1024),
+        s->size_sinks_foreign * sizeof(struct sink) / (1024 * 1024));
 
     if ((s->size_parts_foreign - old_size_parts_foreign) > 0 ||
         (s->size_gparts_foreign - old_size_gparts_foreign) > 0 ||
         (s->size_sparts_foreign - old_size_sparts_foreign) > 0 ||
-        (s->size_bparts_foreign - old_size_bparts_foreign) > 0) {
+        (s->size_bparts_foreign - old_size_bparts_foreign) > 0 ||
+        (s->size_sinks_foreign - old_size_sinks_foreign) > 0) {
       message(
-          "Re-allocations %zd/%zd/%zd/%zd part/gpart/spart/bpart "
-          "(%zd/%zd/%zd/%zd MB)",
+          "Re-allocations %zd/%zd/%zd/%zd/%zd part/gpart/spart/bpart/sink "
+          "(%zd/%zd/%zd/%zd/%zd MB)",
           (s->size_parts_foreign - old_size_parts_foreign),
           (s->size_gparts_foreign - old_size_gparts_foreign),
           (s->size_sparts_foreign - old_size_sparts_foreign),
           (s->size_bparts_foreign - old_size_bparts_foreign),
+          (s->size_sinks_foreign - old_size_sinks_foreign),
           (s->size_parts_foreign - old_size_parts_foreign) *
               sizeof(struct part) / (1024 * 1024),
           (s->size_gparts_foreign - old_size_gparts_foreign) *
@@ -900,7 +927,9 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
           (s->size_sparts_foreign - old_size_sparts_foreign) *
               sizeof(struct spart) / (1024 * 1024),
           (s->size_bparts_foreign - old_size_bparts_foreign) *
-              sizeof(struct bpart) / (1024 * 1024));
+              sizeof(struct bpart) / (1024 * 1024),
+          (s->size_sinks_foreign - old_size_sinks_foreign) *
+              sizeof(struct sink) / (1024 * 1024));
     }
   }
 
@@ -909,6 +938,7 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
   struct gpart *gparts = s->gparts_foreign;
   struct spart *sparts = s->sparts_foreign;
   struct bpart *bparts = s->bparts_foreign;
+  struct sink *sinks = s->sinks_foreign;
   for (int k = 0; k < nr_proxies; k++) {
     for (int j = 0; j < e->proxies[k].nr_cells_in; j++) {
 
@@ -940,6 +970,14 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
         cell_link_bparts(e->proxies[k].cells_in[j], bparts);
         bparts = &bparts[e->proxies[k].cells_in[j]->black_holes.count];
       }
+
+      if (!fof && with_sinks) {
+
+        /* For sinks, we just use the numbers in the top-level cells */
+        cell_link_sinks(e->proxies[k].cells_in[j], sinks);
+        sinks =
+            &sinks[e->proxies[k].cells_in[j]->sinks.count + space_extra_sinks];
+      }
     }
   }
 
@@ -948,6 +986,7 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
   s->nr_gparts_foreign = gparts - s->gparts_foreign;
   s->nr_sparts_foreign = sparts - s->sparts_foreign;
   s->nr_bparts_foreign = bparts - s->bparts_foreign;
+  s->nr_sinks_foreign = sinks - s->sinks_foreign;
 
   if (e->verbose)
     message("Recursively linking foreign arrays took %.3f %s.",
@@ -1047,6 +1086,19 @@ void engine_print_task_counts(const struct engine *e) {
   message("nr_sparts = %zu.", e->s->nr_sparts);
   message("nr_bparts = %zu.", e->s->nr_bparts);
 
+#if defined(SWIFT_DEBUG_CHECKS) && defined(WITH_MPI)
+  if (e->verbose == 2) {
+    /* check that the global number of sends matches the global number of
+       recvs */
+    int global_counts[2] = {counts[task_type_send], counts[task_type_recv]};
+    MPI_Allreduce(MPI_IN_PLACE, global_counts, 2, MPI_INT, MPI_SUM,
+                  MPI_COMM_WORLD);
+    if (global_counts[0] != global_counts[1])
+      error("Missing communications (%i sends, %i recvs)!", global_counts[0],
+            global_counts[1]);
+  }
+#endif
+
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
@@ -1135,8 +1187,15 @@ int engine_estimate_nr_tasks(const struct engine *e) {
 #endif
   }
   if (e->policy & engine_policy_sinks) {
-    /* 1 drift, 2 kicks, 1 time-step, 1 sink formation */
-    n1 += 5;
+    /* 1 drift, 2 kicks, 1 time-step, 1 sink formation     | 5
+       density: 1 self + 13 pairs                          | 14
+       swallow: 1 self + 13 pairs                          | 14
+       do_gas_swallow: 1 self + 13 pairs                   | 14
+       do_sink_swallow: 1 self + 13 pairs                  | 14
+       ghosts: density_ghost, sink_ghost_1, sink_ghost_2   | 3
+       implicit: sink_in,  sink_out                        | 2 */
+    n1 += 66;
+    n2 += 3;
     if (e->policy & engine_policy_stars) {
       /* 1 star formation */
       n1 += 1;
@@ -1205,7 +1264,8 @@ int engine_estimate_nr_tasks(const struct engine *e) {
     struct cell *c = &e->s->cells_top[k];
 
     /* Any cells with particles will have tasks (local & foreign). */
-    int nparts = c->hydro.count + c->grav.count + c->stars.count;
+    int nparts = c->hydro.count + c->grav.count + c->stars.count +
+                 c->black_holes.count + c->sinks.count;
     if (nparts > 0) {
       ntop++;
       ncells++;
@@ -1863,6 +1923,47 @@ void engine_get_max_ids(struct engine *e) {
 }
 
 /**
+ * @brief Gather the information about the top-level cells whose time-step has
+ * changed and activate the communications required to synchonize the
+ * time-steps.
+ *
+ * @param e The #engine.
+ */
+void engine_synchronize_times(struct engine *e) {
+
+#ifdef WITH_MPI
+
+  const ticks tic = getticks();
+
+  /* Collect which top-level cells have been updated */
+  MPI_Allreduce(MPI_IN_PLACE, e->s->cells_top_updated, e->s->nr_cells, MPI_CHAR,
+                MPI_SUM, MPI_COMM_WORLD);
+
+  /* Activate tend communications involving the cells that have changed. */
+  for (int i = 0; i < e->s->nr_cells; ++i) {
+
+    if (e->s->cells_top_updated[i]) {
+
+      struct cell *c = &e->s->cells_top[i];
+      scheduler_activate_all_subtype(&e->sched, c->mpi.send, task_subtype_tend);
+      scheduler_activate_all_subtype(&e->sched, c->mpi.recv, task_subtype_tend);
+    }
+  }
+
+  if (e->verbose)
+    message("Gathering and activating tend took %.3f %s.",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
+
+  TIMER_TIC;
+  engine_launch(e, "tend");
+  TIMER_TOC(timer_runners);
+
+#else
+  error("SWIFT was not compiled with MPI support.");
+#endif
+}
+
+/**
  * @brief Run the radiative transfer sub-cycles outside the
  * regular time-steps.
  *
@@ -2154,6 +2255,9 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   }
 #endif
 
+  /* Zero the list of cells that have had their time-step updated */
+  bzero(e->s->cells_top_updated, e->s->nr_cells * sizeof(char));
+
   /* Now, launch the calculation */
   TIMER_TIC;
   engine_launch(e, "tasks");
@@ -2242,10 +2346,18 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   scheduler_write_cell_dependencies(&e->sched, e->verbose, e->step);
   if (e->nodeID == 0) scheduler_write_task_level(&e->sched, e->step);
 
+  /* Zero the list of cells that have had their time-step updated */
+  bzero(e->s->cells_top_updated, e->s->nr_cells * sizeof(char));
+
   /* Run the 0th time-step */
   TIMER_TIC2;
   engine_launch(e, "tasks");
   TIMER_TOC2(timer_runners);
+
+  /* When running over MPI, synchronize top-level cells */
+#ifdef WITH_MPI
+  engine_synchronize_times(e);
+#endif
 
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
   /* Run the brute-force hydro calculation for some parts */
@@ -2264,6 +2376,15 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   /* Check the accuracy of the stars calculation */
   if (e->policy & engine_policy_stars)
     stars_exact_density_check(e->s, e, /*rel_tol=*/1e-3);
+#endif
+
+#ifdef SWIFT_SINK_DENSITY_CHECKS
+  /* Run the brute-force sink calculation for some sinks */
+  if (e->policy & engine_policy_sinks) sink_exact_density_compute(e->s, e);
+
+  /* Check the accuracy of the sink calculation */
+  if (e->policy & engine_policy_sinks)
+    sink_exact_density_check(e->s, e, /*rel_tol=*/1e-3);
 #endif
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
@@ -2378,12 +2499,12 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
     for (int i = 0; i < s->nr_cells; i++) {
       struct cell *c = &s->cells_top[i];
       if (c->nodeID == engine_rank && c->sinks.count > 0) {
-        float sink_h_max = c->sinks.parts[0].r_cut;
+        float sink_h_max = c->sinks.parts[0].h;
         for (int k = 1; k < c->sinks.count; k++) {
-          if (c->sinks.parts[k].r_cut > sink_h_max)
-            sink_h_max = c->sinks.parts[k].r_cut;
+          if (c->sinks.parts[k].h > sink_h_max)
+            sink_h_max = c->sinks.parts[k].h;
         }
-        c->sinks.r_cut_max = max(sink_h_max, c->sinks.r_cut_max);
+        c->sinks.h_max = max(sink_h_max, c->sinks.h_max);
       }
     }
   }
@@ -2771,10 +2892,18 @@ int engine_step(struct engine *e) {
      want to lose the data from the tasks) */
   space_reset_ghost_histograms(e->s);
 
+  /* Zero the list of cells that have had their time-step updated */
+  bzero(e->s->cells_top_updated, e->s->nr_cells * sizeof(char));
+
   /* Start all the tasks. */
   TIMER_TIC;
   engine_launch(e, "tasks");
   TIMER_TOC(timer_runners);
+
+  /* When running over MPI, synchronize top-level cells */
+#ifdef WITH_MPI
+  engine_synchronize_times(e);
+#endif
 
   /* Now record the CPU times used by the tasks. */
 #ifdef WITH_MPI
@@ -2802,6 +2931,15 @@ int engine_step(struct engine *e) {
   /* Check the accuracy of the stars calculation */
   if (e->policy & engine_policy_stars)
     stars_exact_density_check(e->s, e, /*rel_tol=*/1e-2);
+#endif
+
+#ifdef SWIFT_SINK_DENSITY_CHECKS
+  /* Run the brute-force sink calculation for some sinks */
+  if (e->policy & engine_policy_sinks) sink_exact_density_compute(e->s, e);
+
+  /* Check the accuracy of the sink calculation */
+  if (e->policy & engine_policy_sinks)
+    sink_exact_density_check(e->s, e, /*rel_tol=*/1e-2);
 #endif
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS

@@ -46,14 +46,27 @@ struct sink {
   /*! Particle velocity. */
   float v[3];
 
-  /*! Cut off radius. */
-  float r_cut;
+  /* Particle smoothing length, or r_cut/kernel_gamma if using a fixed cutoff*/
+  float h;
+
+  struct {
+
+    /* Number of neighbours. */
+    float wcount;
+
+    /* Number of neighbours spatial derivative. */
+    float wcount_dh;
+
+  } density;
 
   /*! Sink particle mass */
   float mass;
 
   /*! Sink target mass. In Msun. */
   float target_mass_Msun;
+
+  /* Mass of the IMF this sinks is currently affected to. In internal units. */
+  double mass_IMF;
 
   /*! Integer number of neighbours */
   int num_ngbs;
@@ -64,8 +77,49 @@ struct sink {
   /*! Sink target stellar type */
   enum stellar_type target_type;
 
+  /*! Union for the birth time and birth scale factor */
+  union {
+
+    /*! Birth time */
+    float birth_time;
+
+    /*! Birth scale factor */
+    float birth_scale_factor;
+  };
+
+  struct {
+
+    /*! Minimal gas smoothing length */
+    float minimal_h_gas;
+
+    /*! Density of the gas surrounding the sink. */
+    float rho_gas;
+
+    /*! Smoothed sound speed of the gas surrounding the sink. */
+    float sound_speed_gas;
+
+    /*! Smoothed velocity of the gas surrounding the sink, in the frame of the
+      sink (internal units) */
+    float velocity_gas[3];
+
+    /*! Minimal t_c between all sink neighbours */
+    float minimal_sink_t_c;
+
+    /*! Minimal dynamical time between all sink neighbours */
+    float minimal_sink_t_dyn;
+
+    /*! Total mass that passes all criteria before the accretion limit */
+    float mass_eligible_swallow;
+
+    /*! Swallowed mass during this timestep */
+    float mass_swallowed;
+  } to_collect;
+
   /*! Particle time bin */
   timebin_t time_bin;
+
+  /*! Tree-depth at which size / 2 <= h * gamma < size */
+  char depth_h;
 
   /*! Number of stars spawned by this sink */
   int n_stars;
@@ -128,6 +182,28 @@ struct sink {
 
   /*! List of interacting particles in compute formation SELF and PAIR */
   long long ids_ngbs_accretion[MAX_NUM_OF_NEIGHBOURS_SINKS];
+#endif
+
+#ifdef SWIFT_SINK_DENSITY_CHECKS
+
+  /* Integer number of neighbours in the density loop */
+  int N_check_density;
+
+  /* Exact integer number of neighbours in the density loop */
+  int N_check_density_exact;
+
+  /*! Has this particle interacted with any unhibited neighbour? */
+  char inhibited_check_exact;
+
+  float n_check;
+
+  float n_check_exact;
+
+  float rho_check;
+
+  /*! Exact value of the density field obtained via brute-force loop */
+  float rho_check_exact;
+
 #endif
 } SWIFT_STRUCT_ALIGN;
 

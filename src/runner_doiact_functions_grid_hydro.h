@@ -115,6 +115,7 @@ void DOPAIR(struct runner *restrict r, struct cell *ci, struct cell *cj,
 #endif
 
   struct engine *e = r->e;
+  const struct hydro_props *hydro = e->hydro_properties;
 
   /* Recurse? If the cells have been flipped in the branch function, ci might
    * be above its construction level. */
@@ -178,9 +179,12 @@ void DOPAIR(struct runner *restrict r, struct cell *ci, struct cell *cj,
     struct part *part_right = &cj->hydro.parts[pair->right_idx];
 
 #ifdef SHADOWSWIFT_FIX_PARTICLES
-    if (!part_is_active(part_left, e)) continue;
+    if (!part_is_active(part_left, e) &&
+        part_left->time_bin != time_bin_apoptosis)
+      continue;
 #elif defined(SWIFT_DEBUG_CHECKS)
-    if (!part_is_active(part_left, e))
+    if (!part_is_active(part_left, e) &&
+        part_left->time_bin != time_bin_apoptosis)
       error("Encountered face of Voronoi cell of inactive particle!");
 #endif
 
@@ -203,6 +207,37 @@ void DOPAIR(struct runner *restrict r, struct cell *ci, struct cell *cj,
       }
 
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FLUX_EXCHANGE)
+      if (hydro->particle_derefinement) {
+        /* We always perform the transfer for local particles that need to be
+         * de-refined, no matter what. */
+        if (part_left->time_bin == time_bin_apoptosis) {
+          /* perform apoptosis on part_left */
+          runner_iact_apoptosis(part_left, part_right, pair->midpoint,
+                                pair->surface_area, shift);
+          continue;
+        } else if (part_right->time_bin == time_bin_apoptosis) {
+          /* Only perform the transfer for particles of neighbouring cells if we
+           * are in mode 0. This is because only initially active particles can
+           * be derefined, and hence, they will always have their voronoi faces
+           * available in the local cell. This means that if mode == 1, the
+           * transfer will have already happened with the particles flipped
+           * around. We need to skip the normal flux exchange in any case
+           * though. */
+          if (mode == 0) {
+            /* The pair needs to be flipped around */
+            /* The midpoint from the reference frame of the right particle */
+            double midpoint[3] = {pair->midpoint[0] - shift[0],
+                                  pair->midpoint[1] - shift[1],
+                                  pair->midpoint[2] - shift[2]};
+            /* The reversed shift */
+            double r_shift[3] = {-shift[0], -shift[1], -shift[2]};
+            /* perform apoptosis on part_right */
+            runner_iact_apoptosis(part_right, part_left, midpoint,
+                                  pair->surface_area, r_shift);
+          }
+          continue;
+        }
+      }
       /* Flux exchange always symmetric */
       IACT(part_left, part_right, pair->midpoint, pair->surface_area, shift, 1);
 #else
@@ -332,6 +367,7 @@ void DOSELF(struct runner *restrict r, struct cell *restrict c) {
   TIMER_TIC;
 
   struct engine *e = r->e;
+  const struct hydro_props *hydro = e->hydro_properties;
 
 #ifdef SWIFT_DEBUG_CHECKS
   assert(c->grid.voronoi != NULL);
@@ -356,9 +392,12 @@ void DOSELF(struct runner *restrict r, struct cell *restrict c) {
     const int right_is_active = part_is_active(part_right, e);
 
 #ifdef SHADOWSWIFT_FIX_PARTICLES
-    if (!left_is_active && !right_is_active) continue;
+    if (!left_is_active && part_left->time_bin != time_bin_apoptosis &&
+        !right_is_active && part_right->time_bin != time_bin_apoptosis)
+      continue;
 #elif defined(SWIFT_DEBUG_CHECKS)
-    if (!left_is_active && !right_is_active)
+    if (!left_is_active && part_left->time_bin != time_bin_apoptosis &&
+        !right_is_active && part_right->time_bin != time_bin_apoptosis)
       error("Encountered voronoi face between two inactive particles!");
 #endif
 
@@ -370,6 +409,19 @@ void DOSELF(struct runner *restrict r, struct cell *restrict c) {
     }
 
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FLUX_EXCHANGE)
+    if (hydro->particle_derefinement) {
+      if (part_left->time_bin == time_bin_apoptosis) {
+        /* perform apoptosis on part_left */
+        runner_iact_apoptosis(part_left, part_right, pair->midpoint,
+                              pair->surface_area, shift);
+        continue;
+      } else if (part_right->time_bin == time_bin_apoptosis) {
+        /* perform apoptosis on part_right */
+        runner_iact_apoptosis(part_right, part_left, pair->midpoint,
+                              pair->surface_area, shift);
+        continue;
+      }
+    }
     /* Flux exchange always symmetric */
     IACT(part_left, part_right, pair->midpoint, pair->surface_area, shift, 1);
 #else

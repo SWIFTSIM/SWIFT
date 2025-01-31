@@ -29,9 +29,6 @@
 #define VORONOI_STORE_FACES
 #endif
 
-/*! @brief Whether to store cell-face connections. */
-// #define VORONOI_STORE_CELL_FACE_CONNECTIONS
-
 #ifdef SWIFT_DEBUG_CHECKS
 /*! @brief Activate runtime assertions. */
 #define VORONOI_DO_ASSERTIONS

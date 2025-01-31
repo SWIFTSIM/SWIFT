@@ -527,11 +527,17 @@ int main(int argc, char *argv[]) {
 #endif
 
 #ifdef WITH_MPI
+#ifdef SWIFT_DEBUG_CHECKS
+  if (with_sinks) {
+    pretime_message("Warning: sink particles are are WIP yet with MPI.");
+  }
+#else
   if (with_sinks) {
     pretime_message("Error: sink particles are not available yet with MPI.");
     return 1;
   }
-#endif
+#endif /* SWIFT_DEBUG_CHECKS */
+#endif /* WITH_MPI */
 
   if (with_sinks && with_star_formation) {
     pretime_message(
@@ -1167,7 +1173,7 @@ int main(int argc, char *argv[]) {
     /* Initialise the sink properties */
     if (with_sinks) {
       sink_props_init(&sink_properties, &feedback_properties, &prog_const, &us,
-                      params, &cosmo, with_feedback);
+                      params, &hydro_properties, &cosmo, with_feedback);
     } else
       bzero(&sink_properties, sizeof(struct sink_props));
 

@@ -286,6 +286,9 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force,
                           with_cosmology, e->cosmology, e->hydro_properties,
                           e->cooling_func, e->time);
 
+      /* Set the appropriate depth level for this particle */
+      cell_set_part_h_depth(p, c);
+
 #ifdef SWIFT_DEBUG_CHECKS
       /* Make sure the particle does not drift by more than a box length. */
       if (fabs(xp->v_full[0] * dt_drift) > e->s->dim[0] ||
@@ -307,11 +310,11 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force,
             (p->x[1] > dim[1]) || (p->x[1] < 0.) ||  // y
             (p->x[2] > dim[2]) || (p->x[2] < 0.)) {  // z
 
-#if SHADOWSWIFT_BC == REFLECTIVE_BC
+#if defined(MOVING_MESH) && SHADOWSWIFT_BC == REFLECTIVE_BC
           /* reflect the coordinates and velocity of the particle */
           for (int i = 0; i < 3; i++) {
             if (p->x[i] > dim[i]) {
-              p->x[i] = 2 * dim[0] - p->x[i];
+              p->x[i] = 2 * dim[i] - p->x[i];
               float delta_v = xp->v_full[i] - p->v[i];
               xp->v_full[i] = -xp->v_full[i];
               p->v[i] = xp->v_full[i] + delta_v;
@@ -716,6 +719,9 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force,
       drift_spart(sp, dt_drift, ti_old_spart, ti_current, e, replication_list,
                   c->loc);
 
+      /* Set the appropriate depth level for this particle */
+      cell_set_spart_h_depth(sp, c);
+
 #ifdef SWIFT_DEBUG_CHECKS
       /* Make sure the particle does not drift by more than a box length. */
       if (fabs(sp->v[0] * dt_drift) > e->s->dim[0] ||
@@ -922,6 +928,9 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force,
       drift_bpart(bp, dt_drift, ti_old_bpart, ti_current, e, replication_list,
                   c->loc);
 
+      /* Set the appropriate depth level for this particle */
+      cell_set_bpart_h_depth(bp, c);
+
 #ifdef SWIFT_DEBUG_CHECKS
       /* Make sure the particle does not drift by more than a box length. */
       if (fabs(bp->v[0] * dt_drift) > e->s->dim[0] ||
@@ -1028,8 +1037,8 @@ void cell_drift_sink(struct cell *c, const struct engine *e, int force) {
   struct sink *const sinks = c->sinks.parts;
 
   float dx_max = 0.f, dx2_max = 0.f;
-  float cell_r_max = 0.f;
-  float cell_r_max_active = 0.f;
+  float cell_h_max = 0.f;
+  float cell_h_max_active = 0.f;
 
   /* Drift irrespective of cell flags? */
   force = (force || cell_get_flag(c, cell_flag_do_sink_drift));
@@ -1069,14 +1078,14 @@ void cell_drift_sink(struct cell *c, const struct engine *e, int force) {
 
         /* Update */
         dx_max = max(dx_max, cp->sinks.dx_max_part);
-        cell_r_max = max(cell_r_max, cp->sinks.r_cut_max);
-        cell_r_max_active = max(cell_r_max_active, cp->sinks.r_cut_max_active);
+        cell_h_max = max(cell_h_max, cp->sinks.h_max);
+        cell_h_max_active = max(cell_h_max_active, cp->sinks.h_max_active);
       }
     }
 
     /* Store the values */
-    c->sinks.r_cut_max = cell_r_max;
-    c->sinks.r_cut_max_active = cell_r_max_active;
+    c->sinks.h_max = cell_h_max;
+    c->sinks.h_max_active = cell_h_max_active;
     c->sinks.dx_max_part = dx_max;
 
     /* Update the time of the last drift */
@@ -1105,6 +1114,9 @@ void cell_drift_sink(struct cell *c, const struct engine *e, int force) {
 
       /* Drift... */
       drift_sink(sink, dt_drift, ti_old_sink, ti_current);
+
+      /* Set the appropriate depth level for this particle */
+      cell_set_sink_h_depth(sink, c);
 
 #ifdef SWIFT_DEBUG_CHECKS
       /* Make sure the particle does not drift by more than a box length. */
@@ -1155,7 +1167,7 @@ void cell_drift_sink(struct cell *c, const struct engine *e, int force) {
       dx2_max = max(dx2_max, dx2);
 
       /* Maximal smoothing length */
-      cell_r_max = max(cell_r_max, sink->r_cut);
+      cell_h_max = max(cell_h_max, sink->h);
 
       /* Mark the particle has not being swallowed */
       sink_mark_sink_as_not_swallowed(&sink->merger_data);
@@ -1164,7 +1176,7 @@ void cell_drift_sink(struct cell *c, const struct engine *e, int force) {
       if (sink_is_active(sink, e)) {
         sink_init_sink(sink);
 
-        cell_r_max_active = max(cell_r_max_active, sink->r_cut);
+        cell_h_max_active = max(cell_h_max_active, sink->h);
       }
     }
 
@@ -1172,8 +1184,8 @@ void cell_drift_sink(struct cell *c, const struct engine *e, int force) {
     dx_max = sqrtf(dx2_max);
 
     /* Store the values */
-    c->sinks.r_cut_max = cell_r_max;
-    c->sinks.r_cut_max_active = cell_r_max_active;
+    c->sinks.h_max = cell_h_max;
+    c->sinks.h_max_active = cell_h_max_active;
     c->sinks.dx_max_part = dx_max;
 
     /* Update the time of the last drift */

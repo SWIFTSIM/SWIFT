@@ -262,12 +262,8 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
 /**
  * @brief Prepare a particle for the force calculation.
  *
- * This function is called in the ghost task to convert some quantities coming
- * from the density loop over neighbours into quantities ready to be used in the
- * force loop over neighbours. Quantities are typically read from the density
- * sub-structure and written to the force sub-structure.
- * Examples of calculations done here include the calculation of viscosity term
- * constants, thermal conduction terms, hydro conversions, etc.
+ * For ShadowSWIFT, this function is called before the flux exchange, and is
+ * mainly used to apply the pressure floor if needed.
  *
  * @param p The particle to act upon
  * @param xp The extended particle data to act upon
@@ -282,7 +278,23 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const struct pressure_floor_props *pressure_floor, const float dt_alpha,
     const float dt_therm) {
-  hydro_part_reset_fluxes(p);
+
+  /* Apply the pressure floor. */
+  /* Temporarily apply the time extrapolation to density as it is used in the
+   * pressure floor... */
+  const float rho = p->rho;
+  p->rho += p->dW_time[0];
+  const float pressure_with_floor =
+      pressure_floor_get_comoving_pressure(p, pressure_floor,
+                                           p->P + p->dW_time[4], cosmo) -
+      p->dW_time[4];
+  p->rho = rho;
+  if (p->P < pressure_with_floor) {
+    p->P = pressure_with_floor;
+    /* TODO: Should we update the internal energy and/or entropy as well to
+     * reflect this change? */
+    /* TODO: Should we update the total energy? */
+  }
 }
 
 /**
@@ -398,10 +410,9 @@ hydro_convert_conserved_to_primitive(
 
   /* Calculate the updated internal energy and entropic function A.
    * NOTE: This may violate energy conservation. */
-  double A, u;
+  double u;
 #ifdef EOS_ISOTHERMAL_GAS
   u = gas_internal_energy_from_pressure(0.f, 0.f);
-  A = gas_entropy_from_internal_energy(W[0], u);
 #else
   double Ekin = 0.5f * (Q[1] * Q[1] + Q[2] * Q[2] + Q[3] * Q[3]) * m_inv;
   double thermal_energy = Q[4] - Ekin;
@@ -414,20 +425,18 @@ hydro_convert_conserved_to_primitive(
       thermal_energy > 1e-2 * Egrav) {
     /* Recover thermal energy and entropy from total energy */
     u = thermal_energy * m_inv;
-    A = gas_entropy_from_internal_energy(W[0], u);
   } else {
     /* Keep entropy conserved and recover thermal and total energy. */
-    A = p->conserved.entropy * m_inv;
+    double A = p->conserved.entropy * m_inv;
     u = gas_internal_energy_from_entropy(W[0], A);
   }
 #elif SHADOWSWIFT_THERMAL_ENERGY_SWITCH == THERMAL_ENERGY_SWITCH_SPRINGEL_MACH
   if (p->timestepvars.mach_number > 1.1) {
     /* Recover thermal energy and entropy from total energy */
     u = thermal_energy * m_inv;
-    A = gas_entropy_from_internal_energy(W[0], u);
   } else {
     /* Keep entropy conserved and recover thermal and total energy. */
-    A = p->conserved.entropy * m_inv;
+    double A = p->conserved.entropy * m_inv;
     u = gas_internal_energy_from_entropy(W[0], A);
   }
 #elif SHADOWSWIFT_THERMAL_ENERGY_SWITCH == THERMAL_ENERGY_SWITCH_ASENSIO
@@ -437,43 +446,39 @@ hydro_convert_conserved_to_primitive(
   if (thermal_energy > 1e-2 * (Ekin + Egrav)) {
     /* Recover thermal energy and entropy from total energy */
     u = thermal_energy * m_inv;
-    A = gas_entropy_from_internal_energy(W[0], u);
   } else if (thermal_energy < 1e-3 * (p->timestepvars.Ekin + thermal_energy) ||
              thermal_energy < 1e-3 * Egrav) {
     /* Keep entropy conserved and recover thermal and total energy. */
-    A = p->conserved.entropy * m_inv;
+    double A = p->conserved.entropy * m_inv;
     u = gas_internal_energy_from_entropy(W[0], A);
   } else {
     /* Use evolved thermal energy to set total energy and entropy */
     u = p->thermal_energy * m_inv;
-    A = gas_entropy_from_internal_energy(W[0], u);
   }
 #else
   error("Unknown thermal energy switch!");
 #endif
 #else
   u = thermal_energy * m_inv;
-  A = gas_entropy_from_internal_energy(W[0], u);
 #endif
 
   /* Apply entropy floor.
-   * Note that this may also violate energy conservation. */
+   * Note that this may also violate energy conservation! */
+  /* Explicitly update density here already, since the entropy floor depends on
+   * it... */
+  p->rho = W[0];
   /* Check against entropy floor */
   const float floor_A = entropy_floor(p, cosmo, floor_props);
-  const double floor_u = gas_internal_energy_from_entropy(p->rho, floor_A);
+  u = fmax(u, gas_internal_energy_from_entropy(p->rho, floor_A));
   /* Check against absolute minimum */
-  const double min_u = fmax(floor_u, hydro_props->minimal_internal_energy /
-                                         cosmo->a_factor_internal_energy);
-  if (u < min_u) {
-    u = min_u;
-    A = gas_entropy_from_internal_energy(W[0], u);
-  }
+  u = fmax(u, hydro_props->minimal_internal_energy /
+                  cosmo->a_factor_internal_energy);
 #endif
 
   /* Finally update the pressure and update conserved quantities that are
    * affected by our choice of thermal energy. */
   W[4] = gas_pressure_from_internal_energy(W[0], u);
-  W[5] = A;
+  W[5] = gas_entropy_from_internal_energy(W[0], u);
   thermal_energy = Q[0] * u;
   p->conserved.energy = Ekin + thermal_energy;
   p->conserved.entropy = Q[0] * W[5];
@@ -812,6 +817,98 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
 
   /* undo the flux exchange and kick the particles towards their centroid */
   /* TODO Lloyd */
+}
+
+/**
+ * @brief Split additional hydrodynamic quantities when splitting particles.
+ *
+ * Note that the mass is already handled in
+ * @engine_split_gas_particle_split_mapper, so this will be a no-op for most
+ * hydro schemes.
+ *
+ * @param p The particle.
+ * @param xp The extended particle data.
+ * @param particle_split_factor Over how many particles are we splitting?
+ */
+__attribute__((always_inline)) INLINE static void hydro_split_part(
+    struct part *p, struct xpart *xp, const int particle_split_factor) {
+  const float fraction = 1.f / (float)particle_split_factor;
+  /* Conserved quantities (without mass) */
+  p->conserved.momentum[0] *= fraction;
+  p->conserved.momentum[2] *= fraction;
+  p->conserved.momentum[1] *= fraction;
+  p->conserved.energy *= fraction;
+  p->conserved.entropy *= fraction;
+  /* Any not applied fluxes */
+  p->flux.mass *= fraction;
+  p->flux.momentum[0] *= fraction;
+  p->flux.momentum[1] *= fraction;
+  p->flux.momentum[2] *= fraction;
+  p->flux.energy *= fraction;
+  p->flux.entropy *= fraction;
+  /* Volume */
+  p->geometry.volume *= fraction;
+  /* Temporarily set centroid to position.
+   * NOTE: This is incorrect, but at least ensures that the centroid will be in
+   * inside the particles new Voronoi cell.
+   * NOTE: In shadowswift, the centroid field stores an offset of the particle's
+   * position */
+  p->geometry.centroid[0] = 0.f;
+  p->geometry.centroid[1] = 0.f;
+  p->geometry.centroid[2] = 0.f;
+}
+
+/**
+ * @brief Update given random displacement vector if needed.
+ *
+ * Might be necessary for schemes with asymmetric cells.
+ *
+ * @param p The particle.
+ * @param xp The extended particle data.
+ * @param displacement (in-out) initial random displacement vector.
+ */
+__attribute__((always_inline)) INLINE static void hydro_split_part_displacement(
+    struct part *p, struct xpart *xp, double *displacement) {
+  /* Set some minimal distance */
+  double displacement_nrm = sqrt(displacement[0] * displacement[0] +
+                                 displacement[1] * displacement[1] +
+                                 displacement[2] * displacement[2]);
+#ifdef SWIFT_DEBUG_CHECKS
+  if (displacement_nrm == 0) {
+    error("Displacement vector cannot be 0!");
+  }
+#endif
+  /* Rescale to make displacement smaller */
+  double fac = fmax(1e-4, 1e-8 / displacement_nrm);
+  displacement[0] *= fac;
+  displacement[1] *= fac;
+  displacement[2] *= fac;
+
+  /* make perpendicular to cell axis */
+  const float *axis = p->geometry.centroid;
+  double axis_nrm2 = axis[0] * axis[0] + axis[1] * axis[1] + axis[2] * axis[2];
+  if (axis_nrm2 < 1e-16) {
+    /* Centroidal cell is symmetric */
+    return;
+  }
+  double delta_dot_axis = displacement[0] * axis[0] +
+                          displacement[1] * axis[1] + displacement[2] * axis[2];
+  double delta_x = displacement[0] - axis[0] * delta_dot_axis / axis_nrm2;
+  double delta_y = displacement[1] - axis[1] * delta_dot_axis / axis_nrm2;
+  double delta_z = displacement[2] - axis[2] * delta_dot_axis / axis_nrm2;
+
+  if (delta_x * delta_x + delta_y * delta_y + delta_z * delta_z < 1e-17) {
+    /* try again with cyclic permutation */
+    delta_dot_axis = displacement[1] * axis[0] + displacement[2] * axis[1] +
+                     displacement[0] * axis[2];
+    delta_x = displacement[0] - axis[0] * delta_dot_axis / axis_nrm2;
+    delta_y = displacement[1] - axis[1] * delta_dot_axis / axis_nrm2;
+    delta_z = displacement[2] - axis[2] * delta_dot_axis / axis_nrm2;
+  }
+
+  displacement[0] = delta_x;
+  displacement[1] = delta_y;
+  displacement[2] = delta_z;
 }
 
 /**

@@ -662,7 +662,7 @@ int main(int argc, char *argv[]) {
 
     /* First, sort stuff */
     for (int j = 0; j < 125; ++j)
-      runner_do_hydro_sort(&runner, cells[j], 0x1FFF, 0, 0, 0);
+      runner_do_hydro_sort(&runner, cells[j], 0x1FFF, 0, 0, 0, 0);
 
 #ifndef MOVING_MESH_HYDRO
       /* Do the density calculation */

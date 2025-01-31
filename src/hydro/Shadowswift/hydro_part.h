@@ -221,25 +221,41 @@ struct part {
   /* Flux counter, should be conserved */
   long flux_count;
 
-  /*! Fluxes. */
-  struct {
+  union {
+    /*! Fluxes. */
+    struct {
 
-    /* Mass flux. */
-    float mass;
+      /* Mass flux. */
+      float mass;
 
-    /* Momentum flux. */
-    float momentum[3];
+      /* Momentum flux. */
+      float momentum[3];
 
-    /* Energy flux. */
-    float energy;
+      /* Energy flux. */
+      float energy;
 
-    /* Entropy flux. */
-    float entropy;
+      /* Entropy flux. */
+      float entropy;
 
-    /* Timestep for flux calculation. */
-    float dt;
+      /* Timestep for flux calculation. */
+      float dt;
 
-  } flux;
+    } flux;
+
+    /*! Data used for derefining a particle (happens instead of flux exchange)*/
+    struct {
+      /* Inverse of the total sum of derefinement weights of the faces */
+      double total_weight_inv;
+
+#ifdef SWIFT_DEBUG_CHECKS
+      /* Fraction of conserved variables that has been transferred */
+      double transferred_fraction;
+
+      /* Number or transfers that occurred */
+      int transfer_count;
+#endif
+    } apoptosis_data;
+  };
 
   /*! Geometric information associated with this particle */
   struct {
@@ -348,6 +364,9 @@ struct part {
 
   /*! Time-step length */
   timebin_t time_bin;
+
+  /*! Tree-depth at which size / 2 <= h * gamma < size */
+  char depth_h;
 
   /*! Time-step limiter information */
   struct timestep_limiter_data limiter_data;

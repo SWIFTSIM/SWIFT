@@ -445,6 +445,20 @@ elif test "$stars_density_checks" != "no"; then
    AC_DEFINE_UNQUOTED([SWIFT_STARS_DENSITY_CHECKS], [$enableval] ,[Enable stars density brute-force checks])
 fi
 
+# Check if sink density checks are on for some particles.
+AC_ARG_ENABLE([sink-density-checks],
+   [AS_HELP_STRING([--enable-sink-density-checks],
+     [Activate expensive brute-force sink density checks for a fraction 1/N of all particles @<:@N@:>@]
+   )],
+   [sink_density_checks="$enableval"],
+   [sink_density_checks="no"]
+)
+if test "$sink_density_checks" = "yes"; then
+   AC_MSG_ERROR(Need to specify the fraction of particles to check when using --enable-sink-density-checks!)
+elif test "$sink_density_checks" != "no"; then
+   AC_DEFINE_UNQUOTED([SWIFT_SINK_DENSITY_CHECKS], [$enableval] ,[Enable sink density brute-force checks])
+fi
+
 # Check if ghost statistics are enabled
 AC_ARG_ENABLE([ghost-statistics],
    [AS_HELP_STRING([--enable-ghost-statistics],
@@ -1975,7 +1989,8 @@ AC_SUBST([SUNDIALS_INCS])
 # As an example for this, see the call to AC_ARG_WITH for cooling.
 AC_ARG_WITH([subgrid],
 	[AS_HELP_STRING([--with-subgrid=<subgrid>],
-		[Master switch for subgrid methods. Inexperienced user should start here. Options are: @<:@none, GEAR, AGORA, QLA, QLA-EAGLE, EAGLE, EAGLE-XL, SPIN_JET_EAGLE default: none@:>@]
+		[Master switch for subgrid methods. Inexperienced user should
+		start here. Options are: @<:@none, GEAR, GEAR-G3, AGORA, QLA, QLA-EAGLE, EAGLE, EAGLE-XL, SPIN_JET_EAGLE default: none@:>@]
 	)],
 	[with_subgrid="$withval"],
 	[with_subgrid=none]
@@ -2002,12 +2017,24 @@ case "$with_subgrid" in
    GEAR)
 	with_subgrid_cooling=grackle_0
 	with_subgrid_chemistry=GEAR_10
+	with_subgrid_pressure_floor=GEAR
+	with_subgrid_stars=GEAR
+	with_subgrid_star_formation=GEAR
+	with_subgrid_feedback=GEAR
+	with_subgrid_black_holes=none
+	with_subgrid_sink=GEAR
+	with_subgrid_extra_io=none
+	enable_fof=no
+   ;;
+   GEAR-G3)
+	with_subgrid_cooling=grackle_3
+	with_subgrid_chemistry=GEAR_10
 	with_subgrid_pressure_floor=none
 	with_subgrid_stars=GEAR
 	with_subgrid_star_formation=GEAR
 	with_subgrid_feedback=GEAR
 	with_subgrid_black_holes=none
-	with_subgrid_sink=none
+	with_subgrid_sink=GEAR
 	with_subgrid_extra_io=none
 	enable_fof=no
    ;;
@@ -2513,6 +2540,19 @@ if test "$enable_moving_mesh" = "yes"; then
     AC_DEFINE([MOVING_MESH], [1], [Unstructured Voronoi mesh])
 fi
 
+# Moving mesh: store cell-face connections (expensive)
+AC_ARG_ENABLE([moving-mesh-cell-face-connections],
+    [AS_HELP_STRING([--enable-moving-mesh-cell-face-connections],
+        [Moving mesh: store cell-face connections (expensive, needed for e.g. mesh de-refinement)]
+    )],
+    [enable_moving_mesh_cell_face_connections="${enableval}"],
+    [enable_moving_mesh_cell_face_connections="no"]
+)
+if test "$enable_moving_mesh_cell_face_connections" = "yes"; then
+    AC_DEFINE([MOVING_MESH_STORE_CELL_FACE_CONNECTIONS], [1],
+        [Moving mesh: store cell-face connections (expensive, needed for e.g. mesh de-refinement)])
+fi
+
 # Hydro does mass flux?
 if test "x$hydro_does_mass_flux" = "xyes"; then
     AC_DEFINE([HYDRO_DOES_MASS_FLUX], [1], [Hydro scheme with mass fluxes])
@@ -2867,6 +2907,9 @@ case "$with_sink" in
    none)
       AC_DEFINE([SINK_NONE], [1], [No sink particle model])
    ;;
+   Basic)
+    AC_DEFINE([SINK_BASIC], [1], [Simple, self-contained sink model with only Bondi-Hoyle accretion and no SF.])
+    ;;
    GEAR)
     AC_DEFINE([SINK_GEAR], [1], [GEAR sink particle model])
     ;;
@@ -3355,22 +3398,23 @@ AC_MSG_RESULT([
    Radiative transfer   : $with_rt
    Extra i/o            : $with_extra_io
 
-   Atomic operations in tasks  : $enable_atomics_within_tasks
-   Individual timers           : $enable_timers
-   Task debugging              : $enable_task_debugging
-   Threadpool debugging        : $enable_threadpool_debugging
-   Debugging checks            : $enable_debugging_checks
-   Interaction debugging       : $enable_debug_interactions
-   Stars interaction debugging : $enable_debug_interactions_stars
-   Naive interactions          : $enable_naive_interactions
-   Naive stars interactions    : $enable_naive_interactions_stars
-   Naive grid interactions     : $enable_naive_interactions_grid
-   Gravity checks              : $gravity_force_checks
-   Custom icbrtf               : $enable_custom_icbrtf
-   Boundary particles          : $boundary_particles
-   Fixed boundary particles    : $fixed_boundary_particles
-   Planetary fixed entropy     : $planetary_fixed_entropy
-   Ghost statistics            : $ghost_stats
+   Atomic operations in tasks     : $enable_atomics_within_tasks
+   Individual timers              : $enable_timers
+   Task debugging                 : $enable_task_debugging
+   Threadpool debugging           : $enable_threadpool_debugging
+   Debugging checks               : $enable_debugging_checks
+   Interaction debugging          : $enable_debug_interactions
+   Stars interaction debugging    : $enable_debug_interactions_stars
+   Naive interactions             : $enable_naive_interactions
+   Naive stars interactions       : $enable_naive_interactions_stars
+   Naive grid interactions        : $enable_naive_interactions_grid
+   Gravity checks                 : $gravity_force_checks
+   Custom icbrtf                  : $enable_custom_icbrtf
+   Boundary particles             : $boundary_particles
+   Fixed boundary particles       : $fixed_boundary_particles
+   Planetary fixed entropy        : $planetary_fixed_entropy
+   Ghost statistics               : $ghost_stats
+   Store particle-face connections: $enable_moving_mesh_cell_face_connections
 
    Continuous Sim. Data Stream : $with_csds
 

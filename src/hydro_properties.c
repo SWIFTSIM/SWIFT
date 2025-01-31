@@ -204,6 +204,15 @@ void hydro_props_init(struct hydro_props *p,
     p->log_extra_splits_in_file = parser_get_opt_param_int(
         params, "SPH:particle_splitting_log_extra_splits", 0);
   }
+
+  /* ------ Particle de-refinement parameters ------ */
+  p->particle_derefinement =
+      parser_get_opt_param_int(params, "SPH:particle_derefinement", 0);
+
+  if (p->particle_derefinement) {
+    p->particle_derefinement_volume_threshold = parser_get_param_float(
+        params, "SPH:particle_derefinement_volume_threshold");
+  }
 }
 
 /**

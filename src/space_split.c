@@ -227,6 +227,8 @@ void space_split_recursive(struct space *s, struct cell *c,
       cp->width[1] = c->width[1] / 2;
       cp->width[2] = c->width[2] / 2;
       cp->dmin = c->dmin / 2;
+      cp->h_min_allowed = cp->dmin * 0.5 * (1. / kernel_gamma);
+      cp->h_max_allowed = cp->dmin * (1. / kernel_gamma);
       if (k & 4) cp->loc[0] += cp->width[0];
       if (k & 2) cp->loc[1] += cp->width[1];
       if (k & 1) cp->loc[2] += cp->width[2];
@@ -240,8 +242,8 @@ void space_split_recursive(struct space *s, struct cell *c,
       cp->stars.h_max_active = 0.f;
       cp->stars.dx_max_part = 0.f;
       cp->stars.dx_max_sort = 0.f;
-      cp->sinks.r_cut_max = 0.f;
-      cp->sinks.r_cut_max_active = 0.f;
+      cp->sinks.h_max = 0.f;
+      cp->sinks.h_max_active = 0.f;
       cp->sinks.dx_max_part = 0.f;
       cp->black_holes.h_max = 0.f;
       cp->black_holes.h_max_active = 0.f;
@@ -305,9 +307,8 @@ void space_split_recursive(struct space *s, struct cell *c,
         black_holes_h_max = max(black_holes_h_max, cp->black_holes.h_max);
         black_holes_h_max_active =
             max(black_holes_h_max_active, cp->black_holes.h_max_active);
-        sinks_h_max = max(sinks_h_max, cp->sinks.r_cut_max);
-        sinks_h_max_active =
-            max(sinks_h_max_active, cp->sinks.r_cut_max_active);
+        sinks_h_max = max(sinks_h_max, cp->sinks.h_max);
+        sinks_h_max_active = max(sinks_h_max_active, cp->sinks.h_max_active);
 
         ti_hydro_end_min = min(ti_hydro_end_min, cp->hydro.ti_end_min);
         ti_hydro_beg_max = max(ti_hydro_beg_max, cp->hydro.ti_beg_max);
@@ -504,6 +505,8 @@ void space_split_recursive(struct space *s, struct cell *c,
       if (part_is_active(&parts[k], e))
         h_max_active = max(h_max_active, parts[k].h);
 
+      cell_set_part_h_depth(&parts[k], c);
+
       /* Collect SFR from the particles after rebuilt */
       star_formation_logger_log_inactive_part(&parts[k], &xparts[k],
                                               &c->stars.sfh);
@@ -556,6 +559,8 @@ void space_split_recursive(struct space *s, struct cell *c,
       if (spart_is_active(&sparts[k], e))
         stars_h_max_active = max(stars_h_max_active, sparts[k].h);
 
+      cell_set_spart_h_depth(&sparts[k], c);
+
       /* Reset x_diff */
       sparts[k].x_diff[0] = 0.f;
       sparts[k].x_diff[1] = 0.f;
@@ -579,10 +584,12 @@ void space_split_recursive(struct space *s, struct cell *c,
       ti_sinks_end_min = min(ti_sinks_end_min, ti_end);
       ti_sinks_beg_max = max(ti_sinks_beg_max, ti_beg);
 
-      sinks_h_max = max(sinks_h_max, sinks[k].r_cut);
+      sinks_h_max = max(sinks_h_max, sinks[k].h);
 
       if (sink_is_active(&sinks[k], e))
-        sinks_h_max_active = max(sinks_h_max_active, sinks[k].r_cut);
+        sinks_h_max_active = max(sinks_h_max_active, sinks[k].h);
+
+      cell_set_sink_h_depth(&sinks[k], c);
 
       /* Reset x_diff */
       sinks[k].x_diff[0] = 0.f;
@@ -611,6 +618,8 @@ void space_split_recursive(struct space *s, struct cell *c,
 
       if (bpart_is_active(&bparts[k], e))
         black_holes_h_max_active = max(black_holes_h_max_active, bparts[k].h);
+
+      cell_set_bpart_h_depth(&bparts[k], c);
 
       /* Reset x_diff */
       bparts[k].x_diff[0] = 0.f;
@@ -666,8 +675,8 @@ void space_split_recursive(struct space *s, struct cell *c,
   c->stars.h_max_active = stars_h_max_active;
   c->sinks.ti_end_min = ti_sinks_end_min;
   c->sinks.ti_beg_max = ti_sinks_beg_max;
-  c->sinks.r_cut_max = sinks_h_max;
-  c->sinks.r_cut_max_active = sinks_h_max_active;
+  c->sinks.h_max = sinks_h_max;
+  c->sinks.h_max_active = sinks_h_max_active;
   c->black_holes.ti_end_min = ti_black_holes_end_min;
   c->black_holes.ti_beg_max = ti_black_holes_beg_max;
   c->black_holes.h_max = black_holes_h_max;
@@ -716,6 +725,21 @@ void space_split_mapper(void *map_data, int num_cells, void *extra_data) {
   /* Loop over the non-empty cells */
   for (int ind = 0; ind < num_cells; ind++) {
     struct cell *c = &cells_top[local_cells_with_particles[ind]];
+    if (s->with_self_gravity) {
+#ifdef MOVING_MESH_HYDRO
+      /* Temporarily reset the gpart positions to the generator positions of
+       * their corresponding hydro particle. We need to do this in order to not
+       * mess up the splitting of this cell (gparts should go with their hydro
+       * parts). */
+      for (int i = 0; i < c->hydro.count; i++) {
+        struct part* part = &c->hydro.parts[i];
+        struct gpart* gpart = part->gpart;
+        gpart->x[0] = part->x[0];
+        gpart->x[1] = part->x[1];
+        gpart->x[2] = part->x[2];
+      }
+#endif
+    }
     space_split_recursive(s, c, NULL, NULL, NULL, NULL, NULL, tpid);
 
     if (s->with_self_gravity) {
@@ -727,6 +751,19 @@ void space_split_mapper(void *map_data, int num_cells, void *extra_data) {
       for (int n = 0; n < SELF_GRAVITY_MULTIPOLE_ORDER + 1; ++n)
         max_mpole_power[n] =
             max(max_mpole_power[n], c->grav.multipole->m_pole.power[n]);
+
+#ifdef MOVING_MESH_HYDRO
+      /* Now the cell is split and all particles are at the correct location,
+       * we can set the gpart position to the position of the *centroid* of the
+       * hydro parts again. */
+      for (int i = 0; i < c->hydro.count; i++) {
+        struct part* part = &c->hydro.parts[i];
+        struct gpart* gpart = part->gpart;
+        gpart->x[0] += part->geometry.centroid[0];
+        gpart->x[1] += part->geometry.centroid[1];
+        gpart->x[2] += part->geometry.centroid[2];
+      }
+#endif
     }
   }
 

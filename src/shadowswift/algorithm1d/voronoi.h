@@ -315,6 +315,15 @@ static inline int voronoi_add_pair(struct voronoi *v, const struct delaunay *d,
   return 1;
 }
 
+inline static int voronoi_get_cell_face(const struct voronoi *v, int offset,
+                                        int face_idx,
+                                        struct voronoi_pair **face) {
+
+  int2 connection = v->cell_pair_connections.values[offset + face_idx];
+  *face = &v->pairs[connection._1][connection._0];
+  return connection._1;
+}
+
 /**
  * @brief Write the Voronoi grid information to the given file.
  *
