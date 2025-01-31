@@ -90,7 +90,9 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
                          multipole_rec_end);
     c->hydro.sorts = NULL;
     c->stars.sorts = NULL;
+#ifdef SWIFT_DEBUG_CHECKS
     c->nr_tasks = 0;
+#endif
     c->grav.nr_mm_tasks = 0;
     c->hydro.density = NULL;
     c->hydro.gradient = NULL;
