@@ -313,7 +313,7 @@ void *runner_main(void *data) {
           else if (t->subtype == task_subtype_rt_transport)
             runner_dopair2_branch_rt_transport(r, ci, cj, /*limit_h_min=*/0,
                                                /*limit_h_max=*/0);
-	  else if (t->subtype == task_subtype_sink_density)
+          else if (t->subtype == task_subtype_sink_density)
             runner_dopair_branch_sinks_density(r, ci, cj);
           else if (t->subtype == task_subtype_sink_swallow)
             runner_dopair_branch_sinks_swallow(r, ci, cj);
