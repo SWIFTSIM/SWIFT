@@ -1907,7 +1907,10 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
   if (c->nodeID == nodeID && c_active && c->hydro.count > 0) {
     for (struct link *l = c->hydro.density_pack; l != NULL;
          l = l->next) { /* A. Nasar */
-      scheduler_activate(s, l->t);
+    	if(l->t->type == task_type_self && l->t->ci->hydro.count > 0)
+          scheduler_activate(s, l->t);
+    	else if(l->t->type == task_type_pair && l->t->ci->hydro.count > 0 && l->t->cj->hydro.count > 0)
+          scheduler_activate(s, l->t);
 #ifdef SWIFT_DEBUG_CHECKS
       if (l->t->ci != NULL) {
         l->t->ci->pack_done = 0;
@@ -1937,7 +1940,10 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
       scheduler_activate(s, l->t);
     // A. Nasar activate force and gradient packing tasks
     for (struct link *l = c->hydro.force_pack; l != NULL; l = l->next) {
-      scheduler_activate(s, l->t);
+    	if(l->t->type == task_type_self && l->t->ci->hydro.count > 0)
+          scheduler_activate(s, l->t);
+    	else if(l->t->type == task_type_pair && l->t->ci->hydro.count > 0 && l->t->cj->hydro.count > 0)
+          scheduler_activate(s, l->t);
 #ifdef SWIFT_DEBUG_CHECKS
       if (l->t->ci != NULL) {
         l->t->ci->pack_done_f = 0;
@@ -1960,7 +1966,10 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
 
 #ifdef EXTRA_HYDRO_LOOP
     for (struct link *l = c->hydro.gradient_pack; l != NULL; l = l->next) {
-      scheduler_activate(s, l->t);
+    	if(l->t->type == task_type_self && l->t->ci->hydro.count > 0)
+          scheduler_activate(s, l->t);
+    	else if(l->t->type == task_type_pair && l->t->ci->hydro.count > 0 && l->t->cj->hydro.count > 0)
+          scheduler_activate(s, l->t);
 #ifdef SWIFT_DEBUG_CHECKS
       if (l->t->ci != NULL) {
         l->t->ci->pack_done_g = 0;
