@@ -1781,10 +1781,11 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
                                             task_subtype_none, 0, 0, c, NULL);
 
       scheduler_addunlock(s, c->grav.end_force, c->super->kick2);
+
       /* When using moving mesh hydro, we update the gpart mass and position
        * after the flux exchange. We don't want this to be overwritten by the
        * drift */
-      if (c->hydro.super != NULL) {
+      if (with_grid_hydro && c->hydro.super != NULL) {
         scheduler_addunlock(s, c->grav.drift, c->hydro.super->hydro.flux_ghost);
       }
 
