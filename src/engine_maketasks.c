@@ -4931,41 +4931,35 @@ void engine_maketasks(struct engine *e) {
      *                sched->tasks, sched->nr_tasks, sizeof(struct task),
      *                threadpool_auto_chunk_size, e); */
   }
-  //  int unsplit = 0, split = 0;
-  //  /*These loops should really be threadmapped A. Nasar*/
-  //  for (int i = 0; i < sched->nr_tasks; i++) {
-  //	  struct task * t = &sched->tasks[i];
-  //	  if(t->type == task_type_sub_self && t->subtype ==
-  // task_subtype_gpu_pack_d){
-  //        t->type = task_type_self;
-  //        fprintf(stderr, "sub_self");
-  //	  }
-  //      if(t->type == task_type_sub_pair && t->subtype ==
-  //      task_subtype_gpu_pack_d){
-  //    	t->type = task_type_pair;
-  //        fprintf(stderr, "sub_pair");
-  //      }
-  //	  if(t->type == task_type_sub_self && t->subtype ==
-  // task_subtype_gpu_pack_g){
-  //        t->type = task_type_self;
-  //        fprintf(stderr, "sub_self");
-  //	  }
-  //      if(t->type == task_type_sub_pair && t->subtype ==
-  //      task_subtype_gpu_pack_g){
-  //    	t->type = task_type_pair;
-  //        fprintf(stderr, "sub_pair");
-  //      }
-  //	  if(t->type == task_type_sub_self && t->subtype ==
-  // task_subtype_gpu_pack_f){
-  //        t->type = task_type_self;
-  //        fprintf(stderr, "sub_self");
-  //	  }
-  //      if(t->type == task_type_sub_pair && t->subtype ==
-  //      task_subtype_gpu_pack_f){
-  //    	t->type = task_type_pair;
-  //        fprintf(stderr, "sub_pair");
-  //      }
-  //  }
+    int unsplit = 0, split = 0;
+    /*These loops should really be threadmapped A. Nasar*/
+    for (int i = 0; i < sched->nr_tasks; i++) {
+  	  struct task * t = &sched->tasks[i];
+  	  if(t->type == task_type_sub_self && t->subtype ==
+   task_subtype_gpu_pack_d){
+          t->type = task_type_self;
+  	  }
+        if(t->type == task_type_sub_pair && t->subtype ==
+        task_subtype_gpu_pack_d){
+      	t->type = task_type_pair;
+        }
+  	  if(t->type == task_type_sub_self && t->subtype ==
+   task_subtype_gpu_pack_g){
+          t->type = task_type_self;
+  	  }
+        if(t->type == task_type_sub_pair && t->subtype ==
+        task_subtype_gpu_pack_g){
+      	t->type = task_type_pair;
+        }
+  	  if(t->type == task_type_sub_self && t->subtype ==
+   task_subtype_gpu_pack_f){
+          t->type = task_type_self;
+  	  }
+        if(t->type == task_type_sub_pair && t->subtype ==
+        task_subtype_gpu_pack_f){
+      	t->type = task_type_pair;
+        }
+    }
 
   /* Now, create unpack tasks based on the existing packs and create
    * the dependencies pack->unpack->ghost_in A. Nasar */
