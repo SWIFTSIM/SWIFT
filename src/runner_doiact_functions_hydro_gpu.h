@@ -1477,7 +1477,7 @@ void runner_doself1_launch_f4(
     // %i tasks leftovers %i\n", 			  tasks_packed,
     // pack_vars->launch_leftovers);
     // Launch the kernel
-    launch_density_aos_f4(d_parts_send, d_parts_recv, d_a, d_H, stream[bid],
+    if(numBlocks_x > 0)launch_density_aos_f4(d_parts_send, d_parts_recv, d_a, d_H, stream[bid],
                           numBlocks_x, numBlocks_y, bundle_first_task,
                           d_task_first_part_f4);
     // #ifdef CUDA_DEBUG
@@ -1878,7 +1878,7 @@ void runner_doself1_launch_f4_g(
     int bundle_first_task = pack_vars->bundle_first_task_list[bid];
     //	  const char *loop_type = "density";
     // Launch the kernel
-    launch_gradient_aos_f4(d_parts_send, d_parts_recv, d_a, d_H, stream[bid],
+    if(numBlocks_x > 0)launch_gradient_aos_f4(d_parts_send, d_parts_recv, d_a, d_H, stream[bid],
                            numBlocks_x, numBlocks_y, bundle_first_task,
                            d_task_first_part_f4);
 #ifdef CUDA_DEBUG
@@ -2288,7 +2288,7 @@ void runner_doself1_launch_f4_f(
     int numBlocks_x = (max_parts + BLOCK_SIZE - 1) / BLOCK_SIZE;
     int bundle_first_task = pack_vars->bundle_first_task_list[bid];
     // Launch the kernel
-    launch_force_aos_f4(d_parts_send, d_parts_recv, d_a, d_H, stream[bid],
+    if(numBlocks_x > 0)launch_force_aos_f4(d_parts_send, d_parts_recv, d_a, d_H, stream[bid],
                         numBlocks_x, numBlocks_y, bundle_first_task,
                         d_task_first_part_f4_f);
 #ifdef CUDA_DEBUG
