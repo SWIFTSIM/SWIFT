@@ -259,8 +259,16 @@ __attribute__((always_inline)) INLINE static float mhd_signal_velocity(
  * @param p The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void mhd_init_part(
-    struct part *p) {}
+    struct part *p) 
+ 
+    {
 
+      p->mhd_data.divA = 0.f;
+      // XXX todo, really is not the predicted variable will be the full step
+      p->mhd_data.BPred[0] = 0.f;
+      p->mhd_data.BPred[1] = 0.f;
+      p->mhd_data.BPred[2] = 0.f;
+  }
 /**
  * @brief Finishes the density calculation.
  *
@@ -277,12 +285,12 @@ __attribute__((always_inline)) INLINE static void mhd_init_part(
 __attribute__((always_inline)) INLINE static void mhd_end_density(
     struct part *p, const struct cosmology *cosmo) {
 
-  //const float h_inv_dim_plus_one =
-  //    pow_dimension_plus_one(1.f / p->h); /*1/h^(d+1) */
-  //const float rho_inv = 1.f / p->rho;
+  const float h_inv_dim_plus_one =
+      pow_dimension_plus_one(1.f / p->h); /*1/h^(d+1) */
+  const float rho_inv = 1.f / p->rho;
   //p->mhd_data.divA *= h_inv_dim_plus_one * rho_inv;
-  //for (int i = 0; i < 3; i++)
-  //  p->mhd_data.BPred[i] *= h_inv_dim_plus_one * rho_inv
+  for (int i = 0; i < 3; i++)
+    p->mhd_data.BPred[i] *= h_inv_dim_plus_one * rho_inv;
 }
 
 /**
@@ -315,12 +323,11 @@ __attribute__((always_inline)) INLINE static void mhd_reset_gradient(
     struct part *p) {
   p->mhd_data.divA = 0.f;
   p->mhd_data.divB = 0.f;
-  //for (int i = 0; i < 3; i++) p->mhd_data.BPred[i] = 0.f;
 
   p->mhd_data.BSmooth[0] = 0.f;
   p->mhd_data.BSmooth[1] = 0.f;
   p->mhd_data.BSmooth[2] = 0.f;
-  //p->mhd_data.Q0 = 0.f;  // XXX make union for clarification
+  p->mhd_data.Q0 = 0.f;  // XXX make union for clarification
 
   /* Curl B*/
   for (int k = 0; k < 3; k++) {
@@ -345,14 +352,12 @@ __attribute__((always_inline)) INLINE static void mhd_end_gradient(
     struct part *p) {
 
   // Self Contribution
-  //for (int i = 0; i < 3; i++)
-  //  p->mhd_data.BSmooth[i] += p->mass * kernel_root * p->mhd_data.BPred[i];
-  //p->mhd_data.Q0 += p->mass * kernel_root;
-
-  //for (int i = 0; i < 3; i++)
-  //  p->mhd_data.BPred[i] = p->mhd_data.BSmooth[i] / p->mhd_data.Q0;
   for (int i = 0; i < 3; i++)
-    p->mhd_data.BPred[i] = p->mhd_data.BSmooth[i];
+    p->mhd_data.BSmooth[i] += p->mass * kernel_root * p->mhd_data.BPred[i];
+  p->mhd_data.Q0 += p->mass * kernel_root;
+
+  for (int i = 0; i < 3; i++)
+    p->mhd_data.BPred[i] = p->mhd_data.BSmooth[i] / p->mhd_data.Q0;
 
   /* Add self contribution */
   p->mhd_data.mean_SPH_err += p->mass * kernel_root;
@@ -375,6 +380,7 @@ __attribute__((always_inline)) INLINE static void mhd_part_has_no_neighbours(
     struct part *p, struct xpart *xp, const struct cosmology *cosmo) {
 
   p->mhd_data.divB = 0.0f;
+  p->mhd_data.divA = 0.0f;
   p->mhd_data.curlB[0] = 0.0f;
   p->mhd_data.curlB[1] = 0.0f;
   p->mhd_data.curlB[2] = 0.0f;
@@ -388,12 +394,13 @@ __attribute__((always_inline)) INLINE static void mhd_part_has_no_neighbours(
  * @param Gauge Gauge
  */
 __attribute__((always_inline)) INLINE static float hydro_get_dGau_dt(
-    const struct part *restrict p, const float Gauge, const struct cosmology *c
-    ,  const float mu_0) 
+    const struct part *restrict p, const float Gauge, const struct cosmology *c)
+    //,  const float mu_0) 
     {
 
-  const float v_sig = mhd_get_magnetosonic_speed(p, c->a, mu_0);
+  //const float v_sig = mhd_get_magnetosonic_speed(p, c->a, mu_0);
   //const float v_sig = p->viscosity.v_sig;
+  const float v_sig = hydro_get_signal_velocity(p);
   const float afac1 = pow(c->a_factor_sound_speed, 2.f) * c->a * c->a;
   const float afac2 = c->a_factor_sound_speed * c->a;
   // Everything is with a2 for the time integration
@@ -450,14 +457,14 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_force(
   /* Re normalize the correction in the momentum from the DivB errors*/
 //  p->mhd_data.Q0 =
 //      ACC_corr > ACC_mhd ? p->mhd_data.Q0 * ACC_mhd / ACC_corr : p->mhd_data.Q0;
-  float delim = 1.f;
-  float change_Gau =
-      hydro_get_dGau_dt(p, xp->mhd_data.Gau_full, cosmo, mu_0) * dt_alpha;
-  delim = fabs(change_Gau/xp->mhd_data.Gau_full) < 0.25f ?  1.f : 0.25f * fabs(xp->mhd_data.Gau_full / change_Gau);
+  //float delim = 1.f;
+  //float change_Gau =
+  //    hydro_get_dGau_dt(p, xp->mhd_data.Gau_full, cosmo) * dt_alpha;
+  //delim = fabs(change_Gau/xp->mhd_data.Gau_full) < 0.25f ?  1.f : 0.25f * fabs(xp->mhd_data.Gau_full / change_Gau);
   
-  xp->mhd_data.Gau_full += change_Gau * delim;
+  //xp->mhd_data.Gau_full += change_Gau * delim;
   
-  p->mhd_data.Gau = xp->mhd_data.Gau_full;
+  //p->mhd_data.Gau = xp->mhd_data.Gau_full;
 }
 
 /**
@@ -535,10 +542,10 @@ __attribute__((always_inline)) INLINE static void mhd_predict_extra(
   ///xp->mhd_data.Afull[0] += p->mhd_data.dAdt[0] * dt_therm;
   ///xp->mhd_data.Afull[1] += p->mhd_data.dAdt[1] * dt_therm;
   ///xp->mhd_data.Afull[2] += p->mhd_data.dAdt[2] * dt_therm;
-  
+  float delim = 1.f;
   float change_Gau =
-      hydro_get_dGau_dt(p, p->mhd_data.Gau, cosmo, mu_0) * dt_therm;
-  float delim = fabs(change_Gau/p->mhd_data.Gau) < 0.25f ?  1.f : 0.25f * fabs(p->mhd_data.Gau / change_Gau);
+      hydro_get_dGau_dt(p, xp->mhd_data.Gau_full, cosmo) * dt_therm;
+  //float delim = fabs(change_Gau/p->mhd_data.Gau) < 0.25f ?  1.f : 0.25f * fabs(p->mhd_data.Gau / change_Gau);
   p->mhd_data.Gau += change_Gau * delim;
 }
 
@@ -604,10 +611,10 @@ __attribute__((always_inline)) INLINE static void mhd_kick_extra(
   ///p->mhd_data.APred[1] += p->mhd_data.dAdt[1] * dt_therm * delim;
   ///p->mhd_data.APred[2] += p->mhd_data.dAdt[2] * dt_therm * delim;
 
-  //float change_Gau =
-  //    hydro_get_dGau_dt(p, xp->mhd_data.Gau_full, cosmo) * dt_therm;
+  float change_Gau =
+      hydro_get_dGau_dt(p, xp->mhd_data.Gau_full, cosmo) * dt_therm;
   //delim = fabs(change_Gau/xp->mhd_data.Gau_full) < 0.25f ?  1.f : 0.25f * fabs(xp->mhd_data.Gau_full / change_Gau);
-  //xp->mhd_data.Gau_full += change_Gau * delim;
+  xp->mhd_data.Gau_full += change_Gau * delim;
    
 }
 
