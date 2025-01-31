@@ -420,8 +420,8 @@ void runner_do_recv_sink(struct runner *r, struct cell *c, int clear_sorts,
   integertime_t ti_sinks_end_min = max_nr_timesteps;
   timebin_t time_bin_min = num_time_bins;
   timebin_t time_bin_max = 0;
-  float r_cut_max = 0.f;
-  float r_cut_max_active = 0.f;
+  float h_max = 0.f;
+  float h_max_active = 0.f;
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->nodeID == engine_rank) error("Updating a local cell!");
@@ -439,10 +439,10 @@ void runner_do_recv_sink(struct runner *r, struct cell *c, int clear_sorts,
       if (sinks[k].time_bin == time_bin_inhibited) continue;
       time_bin_min = min(time_bin_min, sinks[k].time_bin);
       time_bin_max = max(time_bin_max, sinks[k].time_bin);
-      r_cut_max = max(r_cut_max, sinks[k].r_cut);
+      h_max = max(h_max, sinks[k].h);
       sinks[k].gpart = NULL;
       if (sinks[k].time_bin <= max_active_bin)
-        r_cut_max_active = max(r_cut_max_active, sinks[k].r_cut);
+        h_max_active = max(h_max_active, sinks[k].h);
     }
 
     /* Convert into a time */
@@ -456,9 +456,9 @@ void runner_do_recv_sink(struct runner *r, struct cell *c, int clear_sorts,
         runner_do_recv_sink(r, c->progeny[k], clear_sorts, 0);
         ti_sinks_end_min =
             min(ti_sinks_end_min, c->progeny[k]->sinks.ti_end_min);
-        r_cut_max = max(r_cut_max, c->progeny[k]->sinks.r_cut_max);
-        r_cut_max_active =
-            max(r_cut_max_active, c->progeny[k]->sinks.r_cut_max_active);
+        h_max = max(h_max, c->progeny[k]->sinks.h_max);
+        h_max_active =
+            max(h_max_active, c->progeny[k]->sinks.h_max_active);
       }
     }
   }
@@ -474,8 +474,8 @@ void runner_do_recv_sink(struct runner *r, struct cell *c, int clear_sorts,
   /* ... and store. */
   // c->grav.ti_end_min = ti_gravity_end_min;
   c->sinks.ti_old_part = ti_current;
-  c->sinks.r_cut_max = r_cut_max;
-  c->sinks.r_cut_max_active = r_cut_max_active;
+  c->sinks.h_max = h_max;
+  c->sinks.h_max_active = h_max_active;
 
   if (timer) TIMER_TOC(timer_dorecv_sink);
 

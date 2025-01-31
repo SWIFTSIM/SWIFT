@@ -796,7 +796,7 @@ void proxy_parts_exchange_first(struct proxy *p) {
     /* for (int k = 0; k < p->nr_sinks_out; k++) */
       /* message("sending sinks %lli, x=[%.3e %.3e %.3e], h=%.3e, to node %i.", */
               /* p->sinks_out[k].id, p->sinks_out[k].x[0], p->sinks_out[k].x[1], */
-              /* p->sinks_out[k].x[2], p->sinks_out[k].r_cut, p->nodeID); */
+              /* p->sinks_out[k].x[2], p->sinks_out[k].h, p->nodeID); */
 /* #endif /\* SWIFT_DEBUG_CHECKS *\/ */
   }
 
@@ -953,7 +953,7 @@ void proxy_parts_exchange_second(struct proxy *p) {
 /*     for (int k = 0; k < p->nr_sinks_in; k++) */
 /*       message("receiving sinks %lli, x=[%.3e %.3e %.3e], h=%.3e, from node %i.", */
 /*               p->sinks_in[k].id, p->sinks_in[k].x[0], p->sinks_in[k].x[1], */
-/*               p->sinks_in[k].x[2], p->sinks_in[k].r_cut, p->nodeID); */
+/*               p->sinks_in[k].x[2], p->sinks_in[k].h, p->nodeID); */
 /* #endif /\* SWIFT_DEBUG_CHECKS *\/ */
   }
 
