@@ -450,7 +450,6 @@ MWPotential2014Potential:
   lnLambda         : 5.0                   # Coulomb logarithm
   sigma_floor_km_p_s : 10.0                # Minimum velocity dispersion for the velocity dispersion model
   satellite_mass_in_Msun : 1.0e10          # Satellite mass in solar mass
-  minimum_dynamical_time_in_Myr: 2.0       # Minimum dynamical time-scale for the dynamical friction in Myr
   df_core_radius_in_kpc: 10                # Radius below which the dynamical friction vanishes.
   timestep_mult_df : 0.1                   # Dimensionless pre-factor for the time-step condition for the dynamical friction force
 

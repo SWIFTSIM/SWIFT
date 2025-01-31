@@ -121,9 +121,6 @@ struct external_potential {
   /*! Satellite mass in code unit */
   double satellite_mass;
 
-  /*! Minimum dynamical time-scale for the dynamical friction */
-  double minimum_dynamical_time;
-
   /*! Minimum radius for the dynamical friction */
   double minimum_radius_df;
     
@@ -438,12 +435,6 @@ __attribute__((always_inline)) INLINE static void external_gravity_acceleration(
     float dyn_fric_timescale_inv = -4 * M_PI * pow(phys_const->const_newton_G, 2) /
                           pow(v, 3) * density * potential->lnLambda * amp1 * potential->satellite_mass;
     
-    /* Limit the dynamical friction timescale */
-    //if (dyn_fric_timescale_inv < -1/potential->minimum_dynamical_time) {
-    //  //message("dyn_fric_timescale_inv (%g) wants to be less than the minimal inverse timescale allowed //(%g).",dyn_fric_timescale_inv,-1/potential->minimum_dynamical_time);      
-    //  dyn_fric_timescale_inv = -1/potential->minimum_dynamical_time;
-    //}  
-    
     /* Sanity check */
     if (dyn_fric_timescale_inv>0)
       error("dyn_fric_timescale_inv is larger than zero (%g %g %g\n) !",dyn_fric_timescale_inv,erf((r-10)/20),r);
@@ -606,8 +597,6 @@ static INLINE void potential_init_backend(
       parameter_file, "MWPotential2014Potential:lnLambda", 5.0);
   potential->satellite_mass = parser_get_opt_param_double(
       parameter_file, "MWPotential2014Potential:satellite_mass_in_Msun", 1e10);
-  potential->minimum_dynamical_time = parser_get_opt_param_double(
-      parameter_file, "MWPotential2014Potential:minimum_dynamical_time_in_Myr", 2.0);
   potential->timestep_mult_df = parser_get_opt_param_double(
       parameter_file, "MWPotential2014Potential:timestep_mult_df", 0.1);
   potential->df_core_radius = parser_get_opt_param_double(
@@ -629,7 +618,6 @@ static INLINE void potential_init_backend(
   potential->sigma_floor *= 1e5;
   potential->sigma_floor /= units_cgs_conversion_factor(us, UNIT_CONV_SPEED);
   potential->satellite_mass*= phys_const->const_solar_mass;
-  potential->minimum_dynamical_time*= phys_const->const_year * 1e6;
   potential->df_core_radius*= kpc;
 
   /* Compute rho_c */
