@@ -934,7 +934,7 @@ inline static int voronoi_get_cell_face(const struct voronoi *v, int offset,
 #endif
   return face_sid_order[i];
 #else
-  error("Shouldn't call this function!")
+  error("Shouldn't call this function!");
 #endif
 }
 
