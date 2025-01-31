@@ -10,6 +10,13 @@ InternalUnitSystem:
   UnitCurrent_in_cgs:  1             # Amperes
   UnitTemp_in_cgs:     1             # Kelvin
 
+
+
+
+
+
+
+
 # Parameters for the self-gravity scheme
 Gravity:
   eta:          0.025                 # Constant dimensionless multiplier for time integration.
@@ -24,7 +31,7 @@ TimeIntegration:
   time_begin:        0.    # The starting time of the simulation (in internal units).
   time_end:          0.1   # The end time of the simulation (in internal units).
   dt_min:            1e-9  # The minimal time-step size of the simulation (in internal units).
-  dt_max:            1e-2  # The maximal time-step size of the simulation (in internal units).
+  dt_max:            1e-6  # The maximal time-step size of the simulation (in internal units).
 
 # Parameters governing the snapshots
 Snapshots:

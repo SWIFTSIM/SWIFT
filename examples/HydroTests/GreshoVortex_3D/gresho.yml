@@ -7,10 +7,10 @@ InternalUnitSystem:
   UnitTemp_in_cgs:     1   # Kelvin
 
 Scheduler:
-  max_top_level_cells: 8
+  max_top_level_cells: 16
   tasks_per_cell: 200
   deadlock_waiting_time_s:   10
-  cell_split_size: 80
+  cell_split_size: 200
   cell_sub_size_pair_hydro:  50 # (Optional) Maximal number of hydro-hydro interactions per sub-pair hydro/star task (this is the default value).
   cell_sub_size_self_hydro:  50     # (Optional) Maximal number of hydro-hydro interactions per sub-self hydro/star task. Set to how many cells are targeted for GPU tasks  
 # Parameters governing the time integration
@@ -25,7 +25,7 @@ Snapshots:
   basename:            gresho # Common part of the name of output files
   time_first:          0.     # Time of the first output (in internal units)
   delta_time:          1e-3   # Time difference between consecutive outputs (in internal units)
-  compression:         1
+  #  compression:         1
   
 # Parameters governing the conserved quantities statistics
 Statistics:
@@ -38,6 +38,6 @@ SPH:
   
 # Parameters related to the initial conditions
 InitialConditions:
-  file_name:  ./greshoVortex.hdf5     # The file to read
+  file_name:  greshoVortex_128.hdf5
   periodic:   1
   replicate:  2
