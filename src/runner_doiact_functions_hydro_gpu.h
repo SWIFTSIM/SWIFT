@@ -2930,7 +2930,7 @@ void runner_dopair1_launch_f4_one_memcpy(
           "nbx %i nby %i max_parts_i %i max_parts_j %i\n",
           cudaGetErrorString(cu_error), r->cpuid, numBlocks_x, numBlocks_y,
           max_parts_i, max_parts_j);
-      exit(0);
+      error("Something's up with kernel launch.");
     }
 #endif
 
