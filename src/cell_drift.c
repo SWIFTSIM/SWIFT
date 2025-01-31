@@ -279,9 +279,6 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force,
                           with_cosmology, e->cosmology, e->hydro_properties,
                           e->cooling_func, e->time);
 
-      /* Set the appropriate depth level for this particle */
-      cell_set_part_h_depth(p, c);
-
 #ifdef SWIFT_DEBUG_CHECKS
       /* Make sure the particle does not drift by more than a box length. */
       if (fabs(xp->v_full[0] * dt_drift) > e->s->dim[0] ||
@@ -334,6 +331,8 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force,
       /* Limit h to within the allowed range */
       p->h = min(p->h, hydro_h_max);
       p->h = max(p->h, hydro_h_min);
+      /* Set the appropriate depth level for this particle */
+      cell_set_part_h_depth(p, c);
 
       /* Compute (square of) motion since last cell construction */
       const float dx2 = xp->x_diff[0] * xp->x_diff[0] +
