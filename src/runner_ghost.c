@@ -1846,6 +1846,8 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
   const struct chemistry_global_data *chemistry = e->chemistry;
   const int with_ext_gravity = e->policy & engine_policy_external_gravity;
   const int with_self_gravity = e->policy & engine_policy_self_gravity;
+  const struct star_formation *star_formation = e->star_formation;
+
 
   /* Anything to do here? */
   if (c->hydro.count == 0) return;
@@ -1879,6 +1881,10 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
          * _part_has_no_neighours version instead of _end_denisty */
         chemistry_part_has_no_neighbours(p, &c->hydro.xparts[i], chemistry,
                                          cosmo);
+
+        /* Call star formation end density (useful for GEAR)*/
+        /* Might be moved to gradient ghost - only for Moving Mesh*/
+        star_formation_end_density(p, &c->hydro.xparts[i], star_formation, cosmo);
 
         /* Update position of #gparts for gravity calculation at the end of
          * timestep */

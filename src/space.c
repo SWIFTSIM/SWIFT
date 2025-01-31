@@ -2820,7 +2820,7 @@ void space_recurse_check_unskip_flag(const struct cell *c) {
 
   /* Recurse */
   for (int i = 0; i < 8; i++) {
-    if (c->progeny[i] != NULL) space_recurse_check_unskip_flag(c->progeny[i]);
+    if (c->progeny[i] != NULL && c->progeny[i]->grav.count > 1) space_recurse_check_unskip_flag(c->progeny[i]);
   }
 #endif
 }
