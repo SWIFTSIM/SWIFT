@@ -2266,6 +2266,8 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
   /* Flag particles for de-refinement if we are at the construction level */
   if (hydro->particle_derefinement && c->grid.construction_level == c) {
 
+    /* TODO: construct cell->face links here? */
+
     /* Get the neighbouring cells */
     struct cell *ngb_cells[27];
     bzero(ngb_cells, 27 * sizeof(ngb_cells[0]));
