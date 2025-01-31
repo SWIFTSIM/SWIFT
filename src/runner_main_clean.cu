@@ -1315,7 +1315,7 @@ void *runner_main2(void *data) {
 #endif  // DO_CORNERS
 
               ticks tic_cpu_pack = getticks();
-              if(ci->hydro.count == 0){
+              if(ci->hydro.count == 0 || cj->hydro.count == 0){
               	t = scheduler_done(sched, t);
               }
               else{
@@ -1403,7 +1403,7 @@ void *runner_main2(void *data) {
             } else {
 #endif  // DO_CORNERS
               ticks tic_cpu_pack = getticks();
-              if(ci->hydro.count == 0){
+              if(ci->hydro.count == 0 || cj->hydro.count == 0){
               	t = scheduler_done(sched, t);
               }
               else{
@@ -1492,7 +1492,7 @@ void *runner_main2(void *data) {
         //            ci, 		cj, t, parts_aos_pair_forc, e,
         //            &packing_time_f);
               ticks tic_cpu_pack = getticks();
-              if(ci->hydro.count == 0){
+              if(ci->hydro.count == 0 || cj->hydro.count == 0){
               	t = scheduler_done(sched, t);
               }
               else{

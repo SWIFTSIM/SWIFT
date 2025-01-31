@@ -2890,28 +2890,51 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
 
     /* Save qid as owner for next time a task accesses this cell. */
     if (owner != NULL) *owner = qid;
-
+//    if (t->type == task_type_self || t->type == task_type_sub_self) {
+//      if (t->subtype == task_subtype_gpu_pack_d && t->ci->hydro.count > 0) {
+//    	  return;
+//      }
+//      if (t->subtype == task_subtype_gpu_pack_f && t->ci->hydro.count > 0) {
+//    	  return;
+//      }
+//      if (t->subtype == task_subtype_gpu_pack_g && t->ci->hydro.count > 0) {
+//    	  return;
+//      }
+//    }
+//    /* A. Nasar NEED to think about how to do this with
+//     MPI where ci may not be on this node/rank */
+//    if (t->type == task_type_pair || t->type == task_type_sub_pair) {
+//      if (t->subtype == task_subtype_gpu_pack_d  && t->ci->hydro.count > 0  && t->cj->hydro.count > 0) {
+//    	  return;
+//      }
+//      if (t->subtype == task_subtype_gpu_pack_f  && t->ci->hydro.count > 0  && t->cj->hydro.count > 0) {
+//    	  return;
+//      }
+//      if (t->subtype == task_subtype_gpu_pack_g  && t->ci->hydro.count > 0  && t->cj->hydro.count > 0) {
+//    	  return;
+//      }
+//    }
     /* Increase the waiting counter. */
     atomic_inc(&s->waiting);
     /* Insert the task into that queue. */
     queue_insert(&s->queues[qid], t);
     /* A. Nasar: Increment counters required for the pack tasks */
     if (t->type == task_type_self || t->type == task_type_sub_self) {
-      if (t->subtype == task_subtype_gpu_pack_d) {
+      if (t->subtype == task_subtype_gpu_pack_d && t->ci->hydro.count > 0) {
         lock_lock(&s->queues[qid].lock);
         s->queues[qid].n_packs_self_left_d++;
         if (lock_unlock(&s->queues[qid].lock) != 0)
           error("Error unlocking queue");
         atomic_inc(&s->s_d_left[qid]);
       }
-      if (t->subtype == task_subtype_gpu_pack_f) {
+      if (t->subtype == task_subtype_gpu_pack_f && t->ci->hydro.count > 0) {
         lock_lock(&s->queues[qid].lock);
         s->queues[qid].n_packs_self_left_f++;
         if (lock_unlock(&s->queues[qid].lock) != 0)
           error("Error unlocking queue");
         atomic_inc(&s->s_f_left[qid]);
       }
-      if (t->subtype == task_subtype_gpu_pack_g) {
+      if (t->subtype == task_subtype_gpu_pack_g && t->ci->hydro.count > 0) {
         lock_lock(&s->queues[qid].lock);
         s->queues[qid].n_packs_self_left_g++;
         if (lock_unlock(&s->queues[qid].lock) != 0)
@@ -2922,21 +2945,21 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
     /* A. Nasar NEED to think about how to do this with
      MPI where ci may not be on this node/rank */
     if (t->type == task_type_pair || t->type == task_type_sub_pair) {
-      if (t->subtype == task_subtype_gpu_pack_d) {
+      if (t->subtype == task_subtype_gpu_pack_d  && t->ci->hydro.count > 0  && t->cj->hydro.count > 0) {
         lock_lock(&s->queues[qid].lock);
         s->queues[qid].n_packs_pair_left_d++;
         if (lock_unlock(&s->queues[qid].lock) != 0)
           error("Error unlocking queue");
         atomic_inc(&s->p_d_left[qid]);
       }
-      if (t->subtype == task_subtype_gpu_pack_f) {
+      if (t->subtype == task_subtype_gpu_pack_f  && t->ci->hydro.count > 0  && t->cj->hydro.count > 0) {
         lock_lock(&s->queues[qid].lock);
         s->queues[qid].n_packs_pair_left_f++;
         if (lock_unlock(&s->queues[qid].lock) != 0)
           error("Error unlocking queue");
         atomic_inc(&s->p_f_left[qid]);
       }
-      if (t->subtype == task_subtype_gpu_pack_g) {
+      if (t->subtype == task_subtype_gpu_pack_g  && t->ci->hydro.count > 0  && t->cj->hydro.count > 0) {
         lock_lock(&s->queues[qid].lock);
         s->queues[qid].n_packs_pair_left_g++;
         if (lock_unlock(&s->queues[qid].lock) != 0)
