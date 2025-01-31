@@ -1904,7 +1904,7 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
   }
   /* Unskip all the other task types. */
   int c_active = cell_is_active_hydro(c, e);
-  if (c->nodeID == nodeID && c_active) {
+  if (c->nodeID == nodeID && c_active && c->hydro.count > 0) {
     for (struct link *l = c->hydro.density_pack; l != NULL;
          l = l->next) { /* A. Nasar */
       scheduler_activate(s, l->t);

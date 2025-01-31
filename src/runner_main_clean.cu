@@ -1063,10 +1063,6 @@ void *runner_main2(void *data) {
 #ifdef GPUOFFLOAD_DENSITY
             ticks tic_cpu_pack = getticks();
 
-            if(ci->hydro.count == 0){
-            	t = scheduler_done(sched, t);
-            }
-            else{
             packing_time +=
                 runner_doself1_pack_f4(r, sched, pack_vars_self_dens, ci, t,
                                        parts_aos_f4_send, task_first_part_f4);
@@ -1103,7 +1099,6 @@ void *runner_main2(void *data) {
                   &unpack_time_self, task_first_part_self_dens_f4, devId,
                   task_first_part_f4, d_task_first_part_f4, self_end);
             } /*End of GPU work Self*/
-            }
 #endif
           } /* self / pack */
           else if (t->subtype == task_subtype_gpu_pack_g) {
@@ -1111,10 +1106,7 @@ void *runner_main2(void *data) {
 #ifdef GPUOFFLOAD_GRADIENT
 
             ticks tic_cpu_pack = getticks();
-            if(ci->hydro.count == 0){
-            	t = scheduler_done(sched, t);
-            }
-            else{
+
             packing_time_g += runner_doself1_pack_f4_g(
                 r, sched, pack_vars_self_grad, ci, t, parts_aos_grad_f4_send,
                 task_first_part_f4_g);
@@ -1142,16 +1134,12 @@ void *runner_main2(void *data) {
                   &packing_time_g, &time_for_gpu_g, task_first_part_f4_g,
                   d_task_first_part_f4_g, self_end_g, &unpack_time_self_g);
             } /*End of GPU work Self*/
-            }
 #endif  // GPUGRADSELF
           } else if (t->subtype == task_subtype_gpu_pack_f) {
             packed_self_f++;
 #ifdef GPUOFFLOAD_FORCE
             ticks tic_cpu_pack = getticks();
-            if(ci->hydro.count == 0){
-            	t = scheduler_done(sched, t);
-            }
-            else{
+
             packing_time_f += runner_doself1_pack_f4_f(
                 r, sched, pack_vars_self_forc, ci, t, parts_aos_forc_f4_send,
                 task_first_part_f4_f);
@@ -1179,7 +1167,6 @@ void *runner_main2(void *data) {
                   &packing_time_f, &time_for_gpu_f, task_first_part_f4_f,
                   d_task_first_part_f4_f, self_end_f, &unpack_time_self_f);
             } /*End of GPU work Self*/
-            }
 #endif
           }
 #ifdef EXTRA_HYDRO_LOOP
@@ -1315,10 +1302,7 @@ void *runner_main2(void *data) {
 #endif  // DO_CORNERS
 
               ticks tic_cpu_pack = getticks();
-              if(ci->hydro.count == 0 || cj->hydro.count == 0){
-              	t = scheduler_done(sched, t);
-              }
-              else{
+
               packing_time_pair += runner_dopair1_pack_f4(
                   r, sched, pack_vars_pair_dens, ci, cj, t,
                   parts_aos_pair_f4_send, e, fparti_fpartj_lparti_lpartj_dens);
@@ -1350,7 +1334,6 @@ void *runner_main2(void *data) {
                     pair_end);
               }
               pack_vars_pair_dens->launch_leftovers = 0;
-              }
 #ifdef DO_CORNERS
             } /* End of GPU work Pairs */
 #endif  // DO_CORNERS
@@ -1403,10 +1386,7 @@ void *runner_main2(void *data) {
             } else {
 #endif  // DO_CORNERS
               ticks tic_cpu_pack = getticks();
-              if(ci->hydro.count == 0 || cj->hydro.count == 0){
-              	t = scheduler_done(sched, t);
-              }
-              else{
+
               packing_time_pair_g +=
                   runner_dopair1_pack_f4_g(r, sched, pack_vars_pair_grad, ci,
                                            cj, t, parts_aos_pair_f4_g_send, e,
@@ -1437,7 +1417,6 @@ void *runner_main2(void *data) {
                     pair_end_g);
               }
               pack_vars_pair_grad->launch_leftovers = 0;
-              }
 #ifdef DO_CORNERS
             } /* End of GPU work Pairs */
 #endif  // DO_CORNERS
@@ -1492,10 +1471,7 @@ void *runner_main2(void *data) {
         //            ci, 		cj, t, parts_aos_pair_forc, e,
         //            &packing_time_f);
               ticks tic_cpu_pack = getticks();
-              if(ci->hydro.count == 0 || cj->hydro.count == 0){
-              	t = scheduler_done(sched, t);
-              }
-              else{
+
               packing_time_pair_f +=
                   runner_dopair1_pack_f4_f(r, sched, pack_vars_pair_forc, ci,
                                            cj, t, parts_aos_pair_f4_f_send, e,
@@ -1526,7 +1502,6 @@ void *runner_main2(void *data) {
 
                 pack_vars_pair_forc->launch_leftovers = 0;
               } /* End of GPU work Pairs */
-              }
 #ifdef DO_CORNERS
             }
 #endif  // DO_CORNERS
