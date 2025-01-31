@@ -12,6 +12,7 @@
 #include "scheduler.h"
 #include "space_getsid.h"
 #include "timers.h"
+#include "runner_doiact_hydro.h"
 
 // #ifdef WITHCUDA
 // extern "C" {
@@ -950,7 +951,7 @@ void unpack_neat_aos_f4(struct cell *c,
     float4 rho_dh_wcount = p_tmp.rho_dh_wcount;
     float4 rot_ux_div_v = p_tmp.rot_ux_div_v;
     struct part *p = &c->hydro.parts[i];
-
+    if(!PART_IS_ACTIVE(p, e))continue;
     p->rho += rho_dh_wcount.x;
     p->density.rho_dh += rho_dh_wcount.y;
     p->density.wcount += rho_dh_wcount.z;
@@ -989,6 +990,7 @@ void unpack_neat_aos_f4_g(struct cell *c,
   for (int i = 0; i < count; i++) {
     struct part_aos_f4_g_recv p_tmp = parts_tmp[i];
     struct part *p = &c->hydro.parts[i];
+    if(!PART_IS_ACTIVE(p, e))continue;
     const float v_sig = p->viscosity.v_sig;
     p->viscosity.v_sig = fmaxf(p_tmp.vsig_lapu_aviscmax.x, v_sig);
     p->diffusion.laplace_u += p_tmp.vsig_lapu_aviscmax.y;
@@ -1033,11 +1035,13 @@ void unpack_neat_aos_f4_f(struct cell *restrict c,
   for (int i = 0; i < count; i++) {
     //	      struct part_aos_f4_f_recv p_tmp = parts_tmp[i];
     //	      struct part *restrict p = &c->hydro.parts[i];
+	if(!PART_IS_ACTIVE(&c->hydro.parts[i], e))continue;
     c->hydro.parts[i].a_hydro[0] += parts_aos_buffer[i + pp].a_hydro.x;
     c->hydro.parts[i].a_hydro[1] += parts_aos_buffer[i + pp].a_hydro.y;
     c->hydro.parts[i].a_hydro[2] += parts_aos_buffer[i + pp].a_hydro.z;
   }
   for (int i = 0; i < count; i++) {
+	if(!PART_IS_ACTIVE(&c->hydro.parts[i], e))continue;
     c->hydro.parts[i].viscosity.v_sig =
         fmaxf(parts_aos_buffer[i + pp].udt_hdt_vsig_mintimebin_ngb.z,
               c->hydro.parts[i].viscosity.v_sig);
@@ -1045,6 +1049,7 @@ void unpack_neat_aos_f4_f(struct cell *restrict c,
         (int)(parts_aos_buffer[i + pp].udt_hdt_vsig_mintimebin_ngb.w + 0.5f);
   }
   for (int i = 0; i < count; i++) {
+    if(!PART_IS_ACTIVE(&c->hydro.parts[i], e))continue;
     c->hydro.parts[i].u_dt +=
         parts_aos_buffer[i + pp].udt_hdt_vsig_mintimebin_ngb.x;
     c->hydro.parts[i].force.h_dt +=
