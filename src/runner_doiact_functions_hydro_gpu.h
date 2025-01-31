@@ -1426,11 +1426,21 @@ void runner_doself1_launch_f4(
     const int first_part_tmp = pack_vars->bundle_first_part[bid];
     const int bundle_n_parts =
         pack_vars->bundle_last_part[bid] - first_part_tmp;
+    const int tasksperbundle = pack_vars->tasksperbundle;
+    int tasks_left = tasksperbundle;
+    if (bid == nBundles_temp - 1) {
+      tasks_left = tasks_packed - (nBundles_temp - 1) * tasksperbundle;
+    }
+    // Will launch a 2d grid of GPU thread blocks (number of tasks is
+    // the y dimension and max_parts is the x dimension
+    int numBlocks_y = tasks_left;
+    int numBlocks_x = (max_parts + BLOCK_SIZE - 1) / BLOCK_SIZE;
+    int bundle_first_task = pack_vars->bundle_first_task_list[bid];
     //	  clock_gettime(CLOCK_REALTIME, &t0hmemcpy);
     //      cudaMemPrefetchAsync(&d_task_first_part_self_dens_f4[first_task],
     //      (last_task - first_task) * sizeof(int2),
     //    		  devId, stream[bid]);
-    cudaMemcpyAsync(&d_task_first_part_f4[first_task],
+    if(numBlocks_x > 0)cudaMemcpyAsync(&d_task_first_part_f4[first_task],
                     &task_first_part_f4[first_task],
                     (last_task + 1 - first_task) * sizeof(int2),
                     cudaMemcpyHostToDevice, stream[bid]);
@@ -1445,7 +1455,7 @@ void runner_doself1_launch_f4(
     //       *hmemcpy_time += (t1hmemcpy.tv_sec - t0hmemcpy.tv_sec) +
     //   			(t1hmemcpy.tv_nsec - t0hmemcpy.tv_nsec) /
     //   1000000000.0;
-    cudaMemcpyAsync(&d_parts_send[first_part_tmp], &parts_send[first_part_tmp],
+    if(numBlocks_x > 0)cudaMemcpyAsync(&d_parts_send[first_part_tmp], &parts_send[first_part_tmp],
                     bundle_n_parts * sizeof(struct part_aos_f4_send),
                     cudaMemcpyHostToDevice, stream[bid]);
 
@@ -1460,16 +1470,7 @@ void runner_doself1_launch_f4(
     //		exit(0);
     //	  }
     // #endif
-    const int tasksperbundle = pack_vars->tasksperbundle;
-    int tasks_left = tasksperbundle;
-    if (bid == nBundles_temp - 1) {
-      tasks_left = tasks_packed - (nBundles_temp - 1) * tasksperbundle;
-    }
-    // Will launch a 2d grid of GPU thread blocks (number of tasks is
-    // the y dimension and max_parts is the x dimension
-    int numBlocks_y = tasks_left;
-    int numBlocks_x = (max_parts + BLOCK_SIZE - 1) / BLOCK_SIZE;
-    int bundle_first_task = pack_vars->bundle_first_task_list[bid];
+
     //	  const char *loop_type = "density";
     //	  struct first_part first_parts;
     //	  for(int i = 0; i < numBlocks_y; i++) first_parts.list[i] =
@@ -1489,10 +1490,10 @@ void runner_doself1_launch_f4(
     // cudaGetErrorString(cu_error), r->cpuid); 		exit(0);
     //	  }
     // #endif
-    cudaMemcpyAsync(&parts_recv[first_part_tmp], &d_parts_recv[first_part_tmp],
+    if(numBlocks_x > 0)cudaMemcpyAsync(&parts_recv[first_part_tmp], &d_parts_recv[first_part_tmp],
                     bundle_n_parts * sizeof(struct part_aos_f4_recv),
                     cudaMemcpyDeviceToHost, stream[bid]);
-    cudaEventRecord(self_end[bid], stream[bid]);
+    if(numBlocks_x > 0)cudaEventRecord(self_end[bid], stream[bid]);
     // #ifdef CUDA_DEBUG
     //	  cu_error = cudaPeekAtLastError(); // cudaGetLastError();        //
     //										//
@@ -1842,13 +1843,23 @@ void runner_doself1_launch_f4_g(
     const int first_part_tmp = pack_vars->bundle_first_part[bid];
     const int bundle_n_parts =
         pack_vars->bundle_last_part[bid] - first_part_tmp;
-
-    cudaMemcpyAsync(&d_task_first_part_f4[first_task],
+    const int tasksperbundle = pack_vars->tasksperbundle;
+    int tasks_left = tasksperbundle;
+    if (bid == nBundles_temp - 1) {
+      tasks_left = tasks_packed - (nBundles_temp - 1) * tasksperbundle;
+    }
+    // Will launch a 2d grid of GPU thread blocks (number of tasks is
+    // the y dimension and max_parts is the x dimension
+    int numBlocks_y = tasks_left;
+    int numBlocks_x = (max_parts + BLOCK_SIZE - 1) / BLOCK_SIZE;
+    int bundle_first_task = pack_vars->bundle_first_task_list[bid];
+    //	  const char *loop_type = "density";
+    if(numBlocks_x > 0)cudaMemcpyAsync(&d_task_first_part_f4[first_task],
                     &task_first_part_f4[first_task],
                     (last_task + 1 - first_task) * sizeof(int2),
                     cudaMemcpyHostToDevice, stream[bid]);
 
-    cudaMemcpyAsync(&d_parts_send[first_part_tmp], &parts_send[first_part_tmp],
+    if(numBlocks_x > 0)cudaMemcpyAsync(&d_parts_send[first_part_tmp], &parts_send[first_part_tmp],
                     bundle_n_parts * sizeof(struct part_aos_f4_g_send),
                     cudaMemcpyHostToDevice, stream[bid]);
     //	  fprintf(stderr, "bid %i first_part %i nparts %i\n", bid,
@@ -1866,17 +1877,6 @@ void runner_doself1_launch_f4_g(
       exit(0);
     }
 #endif
-    const int tasksperbundle = pack_vars->tasksperbundle;
-    int tasks_left = tasksperbundle;
-    if (bid == nBundles_temp - 1) {
-      tasks_left = tasks_packed - (nBundles_temp - 1) * tasksperbundle;
-    }
-    // Will launch a 2d grid of GPU thread blocks (number of tasks is
-    // the y dimension and max_parts is the x dimension
-    int numBlocks_y = tasks_left;
-    int numBlocks_x = (max_parts + BLOCK_SIZE - 1) / BLOCK_SIZE;
-    int bundle_first_task = pack_vars->bundle_first_task_list[bid];
-    //	  const char *loop_type = "density";
     // Launch the kernel
     if(numBlocks_x > 0)launch_gradient_aos_f4(d_parts_send, d_parts_recv, d_a, d_H, stream[bid],
                            numBlocks_x, numBlocks_y, bundle_first_task,
@@ -1891,10 +1891,10 @@ void runner_doself1_launch_f4_g(
       exit(0);
     }
 #endif
-    cudaMemcpyAsync(&parts_recv[first_part_tmp], &d_parts_recv[first_part_tmp],
+    if(numBlocks_x > 0)cudaMemcpyAsync(&parts_recv[first_part_tmp], &d_parts_recv[first_part_tmp],
                     bundle_n_parts * sizeof(struct part_aos_f4_g_recv),
                     cudaMemcpyDeviceToHost, stream[bid]);
-    cudaEventRecord(self_end[bid], stream[bid]);
+    if(numBlocks_x > 0)cudaEventRecord(self_end[bid], stream[bid]);
 
 #ifdef CUDA_DEBUG
     cu_error = cudaPeekAtLastError();  // cudaGetLastError();        //
@@ -2256,12 +2256,22 @@ void runner_doself1_launch_f4_f(
     const int first_part_tmp = pack_vars->bundle_first_part[bid];
     const int bundle_n_parts =
         pack_vars->bundle_last_part[bid] - first_part_tmp;
-    cudaMemcpyAsync(&d_task_first_part_f4_f[first_task],
+    const int tasksperbundle = pack_vars->tasksperbundle;
+    int tasks_left = tasksperbundle;
+    if (bid == nBundles_temp - 1) {
+      tasks_left = tasks_packed - (nBundles_temp - 1) * tasksperbundle;
+    }
+    // Will launch a 2d grid of GPU thread blocks (number of tasks is
+    // the y dimension and max_parts is the x dimension
+    int numBlocks_y = tasks_left;
+    int numBlocks_x = (max_parts + BLOCK_SIZE - 1) / BLOCK_SIZE;
+    int bundle_first_task = pack_vars->bundle_first_task_list[bid];
+    if(numBlocks_x > 0)cudaMemcpyAsync(&d_task_first_part_f4_f[first_task],
                     &task_first_part_f4_f[first_task],
                     (last_task + 1 - first_task) * sizeof(int2),
                     cudaMemcpyHostToDevice, stream[bid]);
 
-    cudaMemcpyAsync(&d_parts_send[first_part_tmp], &parts_send[first_part_tmp],
+    if(numBlocks_x > 0)cudaMemcpyAsync(&d_parts_send[first_part_tmp], &parts_send[first_part_tmp],
                     bundle_n_parts * sizeof(struct part_aos_f4_f_send),
                     cudaMemcpyHostToDevice, stream[bid]);
 
@@ -2277,16 +2287,6 @@ void runner_doself1_launch_f4_f(
       exit(0);
     }
 #endif
-    const int tasksperbundle = pack_vars->tasksperbundle;
-    int tasks_left = tasksperbundle;
-    if (bid == nBundles_temp - 1) {
-      tasks_left = tasks_packed - (nBundles_temp - 1) * tasksperbundle;
-    }
-    // Will launch a 2d grid of GPU thread blocks (number of tasks is
-    // the y dimension and max_parts is the x dimension
-    int numBlocks_y = tasks_left;
-    int numBlocks_x = (max_parts + BLOCK_SIZE - 1) / BLOCK_SIZE;
-    int bundle_first_task = pack_vars->bundle_first_task_list[bid];
     // Launch the kernel
     if(numBlocks_x > 0)launch_force_aos_f4(d_parts_send, d_parts_recv, d_a, d_H, stream[bid],
                         numBlocks_x, numBlocks_y, bundle_first_task,
@@ -2300,10 +2300,10 @@ void runner_doself1_launch_f4_f(
       exit(0);
     }
 #endif
-    cudaMemcpyAsync(&parts_recv[first_part_tmp], &d_parts_recv[first_part_tmp],
+    if(numBlocks_x > 0)cudaMemcpyAsync(&parts_recv[first_part_tmp], &d_parts_recv[first_part_tmp],
                     bundle_n_parts * sizeof(struct part_aos_f4_f_recv),
                     cudaMemcpyDeviceToHost, stream[bid]);
-    cudaEventRecord(self_end[bid], stream[bid]);
+    if(numBlocks_x > 0)cudaEventRecord(self_end[bid], stream[bid]);
 
 #ifdef CUDA_DEBUG
     cu_error = cudaPeekAtLastError();  // cudaGetLastError();        //
@@ -2891,8 +2891,13 @@ void runner_dopair1_launch_f4_one_memcpy(
     const int first_part_tmp_i = pack_vars->bundle_first_part[bid];
     const int bundle_n_parts =
         pack_vars->bundle_last_part[bid] - first_part_tmp_i;
+    // Setup 2d grid of GPU thread blocks for ci (number of tasks is
+    // the y dimension and max_parts is the x dimension
+    int numBlocks_y = 0;  // tasks_left;
+    int numBlocks_x = (bundle_n_parts + BLOCK_SIZE - 1) / BLOCK_SIZE;
+    int bundle_part_0 = pack_vars->bundle_first_part[bid];
 
-    cudaMemcpyAsync(&d_parts_send[first_part_tmp_i],
+    if(numBlocks_x > 0)cudaMemcpyAsync(&d_parts_send[first_part_tmp_i],
                     &parts_send[first_part_tmp_i],
                     bundle_n_parts * sizeof(struct part_aos_f4_send),
                     cudaMemcpyHostToDevice, stream[bid]);
@@ -2911,11 +2916,6 @@ void runner_dopair1_launch_f4_one_memcpy(
     }
 #endif
     /* LAUNCH THE GPU KERNELS for ci & cj */
-    // Setup 2d grid of GPU thread blocks for ci (number of tasks is
-    // the y dimension and max_parts is the x dimension
-    int numBlocks_y = 0;  // tasks_left;
-    int numBlocks_x = (bundle_n_parts + BLOCK_SIZE - 1) / BLOCK_SIZE;
-    int bundle_part_0 = pack_vars->bundle_first_part[bid];
     /* Launch the kernel for ci using data for ci and cj */
     if(numBlocks_x > 0)runner_dopair_branch_density_gpu_aos_f4(
         d_parts_send, d_parts_recv, d_a, d_H, stream[bid], numBlocks_x,
@@ -2935,11 +2935,11 @@ void runner_dopair1_launch_f4_one_memcpy(
 #endif
 
     // Copy results back to CPU BUFFERS
-    cudaMemcpyAsync(&parts_recv[first_part_tmp_i],
+    if(numBlocks_x > 0)cudaMemcpyAsync(&parts_recv[first_part_tmp_i],
                     &d_parts_recv[first_part_tmp_i],
                     bundle_n_parts * sizeof(struct part_aos_f4_recv),
                     cudaMemcpyDeviceToHost, stream[bid]);
-    cudaEventRecord(pair_end[bid], stream[bid]);
+    if(numBlocks_x > 0)cudaEventRecord(pair_end[bid], stream[bid]);
 
 #ifdef CUDA_DEBUG
     cu_error = cudaPeekAtLastError();  // cudaGetLastError();        //
@@ -3616,8 +3616,13 @@ void runner_dopair1_launch_f4_g_one_memcpy(
     const int first_part_tmp_i = pack_vars->bundle_first_part[bid];
     const int bundle_n_parts =
         pack_vars->bundle_last_part[bid] - first_part_tmp_i;
+    // Setup 2d grid of GPU thread blocks for ci (number of tasks is
+    // the y dimension and max_parts is the x dimension
+    int numBlocks_y = 0;  // tasks_left;
+    int numBlocks_x = (bundle_n_parts + BLOCK_SIZE - 1) / BLOCK_SIZE;
+    int bundle_part_0 = pack_vars->bundle_first_part[bid];
 
-    cudaMemcpyAsync(&d_parts_send[first_part_tmp_i],
+    if(numBlocks_x > 0)cudaMemcpyAsync(&d_parts_send[first_part_tmp_i],
                     &parts_send[first_part_tmp_i],
                     bundle_n_parts * sizeof(struct part_aos_f4_g_send),
                     cudaMemcpyHostToDevice, stream[bid]);
@@ -3637,11 +3642,6 @@ void runner_dopair1_launch_f4_g_one_memcpy(
 
     //	  const int tasksperbundle = pack_vars->tasksperbundle;
     /* LAUNCH THE GPU KERNELS for ci & cj */
-    // Setup 2d grid of GPU thread blocks for ci (number of tasks is
-    // the y dimension and max_parts is the x dimension
-    int numBlocks_y = 0;  // tasks_left;
-    int numBlocks_x = (bundle_n_parts + BLOCK_SIZE - 1) / BLOCK_SIZE;
-    int bundle_part_0 = pack_vars->bundle_first_part[bid];
     //              fprintf(stderr, "bundle_part_0 %i bundle_first_task %i\n",
     //              bundle_part_0, bundle_first_task);
 
@@ -3664,11 +3664,11 @@ void runner_dopair1_launch_f4_g_one_memcpy(
 #endif
 
     // Copy results back to CPU BUFFERS
-    cudaMemcpyAsync(&parts_recv[first_part_tmp_i],
+    if(numBlocks_x > 0)cudaMemcpyAsync(&parts_recv[first_part_tmp_i],
                     &d_parts_recv[first_part_tmp_i],
                     bundle_n_parts * sizeof(struct part_aos_f4_g_recv),
                     cudaMemcpyDeviceToHost, stream[bid]);
-    cudaEventRecord(pair_end[bid], stream[bid]);
+    if(numBlocks_x > 0)cudaEventRecord(pair_end[bid], stream[bid]);
 
 #ifdef CUDA_DEBUG
     cu_error = cudaPeekAtLastError();  // cudaGetLastError();        //
@@ -4363,8 +4363,13 @@ void runner_dopair1_launch_f4_f_one_memcpy(
     const int first_part_tmp_i = pack_vars->bundle_first_part[bid];
     const int bundle_n_parts =
         pack_vars->bundle_last_part[bid] - first_part_tmp_i;
+    // Setup 2d grid of GPU thread blocks for ci (number of tasks is
+    // the y dimension and max_parts is the x dimension
+    int numBlocks_y = 0;  // tasks_left;
+    int numBlocks_x = (bundle_n_parts + BLOCK_SIZE - 1) / BLOCK_SIZE;
+    int bundle_part_0 = pack_vars->bundle_first_part[bid];
 
-    cudaMemcpyAsync(&d_parts_send[first_part_tmp_i],
+    if(numBlocks_x > 0)cudaMemcpyAsync(&d_parts_send[first_part_tmp_i],
                     &parts_send[first_part_tmp_i],
                     bundle_n_parts * sizeof(struct part_aos_f4_f_send),
                     cudaMemcpyHostToDevice, stream[bid]);
@@ -4392,11 +4397,7 @@ void runner_dopair1_launch_f4_f_one_memcpy(
     //        		tasks_packed - (nBundles_temp - 1) * tasksperbundle;
     //      }
 
-    // Setup 2d grid of GPU thread blocks for ci (number of tasks is
-    // the y dimension and max_parts is the x dimension
-    int numBlocks_y = 0;  // tasks_left;
-    int numBlocks_x = (bundle_n_parts + BLOCK_SIZE - 1) / BLOCK_SIZE;
-    int bundle_part_0 = pack_vars->bundle_first_part[bid];
+
     //      int bundle_first_task = pack_vars->bundle_first_task_list[bid];
     //              fprintf(stderr, "bundle_part_0 %i bundle_first_task %i\n",
     //              bundle_part_0, bundle_first_task);
@@ -4420,11 +4421,11 @@ void runner_dopair1_launch_f4_f_one_memcpy(
 #endif
 
     // Copy results back to CPU BUFFERS
-    cudaMemcpyAsync(&parts_recv[first_part_tmp_i],
+    if(numBlocks_x > 0)cudaMemcpyAsync(&parts_recv[first_part_tmp_i],
                     &d_parts_recv[first_part_tmp_i],
                     bundle_n_parts * sizeof(struct part_aos_f4_f_recv),
                     cudaMemcpyDeviceToHost, stream[bid]);
-    cudaEventRecord(pair_end[bid], stream[bid]);
+    if(numBlocks_x > 0)cudaEventRecord(pair_end[bid], stream[bid]);
 
 #ifdef CUDA_DEBUG
     cu_error = cudaPeekAtLastError();  // cudaGetLastError();        //
