@@ -2917,7 +2917,7 @@ void runner_dopair1_launch_f4_one_memcpy(
     int numBlocks_x = (bundle_n_parts + BLOCK_SIZE - 1) / BLOCK_SIZE;
     int bundle_part_0 = pack_vars->bundle_first_part[bid];
     /* Launch the kernel for ci using data for ci and cj */
-    runner_dopair_branch_density_gpu_aos_f4(
+    if(numBlocks_x > 0)runner_dopair_branch_density_gpu_aos_f4(
         d_parts_send, d_parts_recv, d_a, d_H, stream[bid], numBlocks_x,
         numBlocks_y, bundle_part_0, bundle_n_parts);
 
@@ -3646,7 +3646,7 @@ void runner_dopair1_launch_f4_g_one_memcpy(
     //              bundle_part_0, bundle_first_task);
 
     /* Launch the kernel for ci using data for ci and cj */
-    runner_dopair_branch_gradient_gpu_aos_f4(
+    if(numBlocks_x > 0)runner_dopair_branch_gradient_gpu_aos_f4(
         d_parts_send, d_parts_recv, d_a, d_H, stream[bid], numBlocks_x,
         numBlocks_y, bundle_part_0, bundle_n_parts);
 
@@ -4402,7 +4402,7 @@ void runner_dopair1_launch_f4_f_one_memcpy(
     //              bundle_part_0, bundle_first_task);
 
     /* Launch the kernel for ci using data for ci and cj */
-    runner_dopair_branch_force_gpu_aos_f4(d_parts_send, d_parts_recv, d_a, d_H,
+    if(numBlocks_x > 0)runner_dopair_branch_force_gpu_aos_f4(d_parts_send, d_parts_recv, d_a, d_H,
                                           stream[bid], numBlocks_x, numBlocks_y,
                                           bundle_part_0, bundle_n_parts);
 
