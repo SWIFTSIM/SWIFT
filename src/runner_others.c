@@ -381,7 +381,7 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
 
     /* Loop over the gas particles in this cell. */
     for (int k = 0; k < count; k++) {
-
+      continue; //A. Nasar: Commented out to try without inhibited particles
       /* Get a handle on the part. */
       struct part *restrict p = &parts[k];
       struct xpart *restrict xp = &xparts[k];
