@@ -139,7 +139,7 @@
 #ifndef SHADOWSWIFT_FIX_PARTICLES
 #define SHADOWSWIFT_STEER_MOTION
 #ifdef SHADOWSWIFT_STEER_MOTION
-#define SHADOWSWIFT_STEERING_COLD_FLOWS
+//#define SHADOWSWIFT_STEERING_COLD_FLOWS
 #endif
 #endif
 /* Options controlling thermal energy evolution */
