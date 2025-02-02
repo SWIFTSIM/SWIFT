@@ -2605,14 +2605,15 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           type = sink_mpi_type;
           buff = t->ci->sinks.parts;
 
-	/* TODO: add task_subtype_sf_sink_counts and same for grav counts */
+	  /* TODO: sf_sinks and sf will use the same function and
+	     structs. Hence, add  || (t->subtype == task_subtype_sf_sinks_counts) */
 	} else if (t->subtype == task_subtype_sf_counts) {
 
           count = size = t->ci->mpi.pcell_size * sizeof(struct pcell_sf_stars);
           buff = t->buff = malloc(count);
 
         } else if (t->subtype == task_subtype_grav_counts) {
-
+	  /* Note: This is used for star and sink formation */
           count = size = t->ci->mpi.pcell_size * sizeof(struct pcell_sf_grav);
           buff = t->buff = malloc(count);
 
@@ -2734,7 +2735,8 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           type = sink_mpi_type;
           buff = t->ci->sinks.parts;
 
-	/* Add task_subtype_sf_sinks_counts + grav_counts */
+	  /* TODO: sf_sinks and sf will use the same function and
+	     structs. Hence, add  || (t->subtype == task_subtype_sf_sinks_counts) */
 	} else if (t->subtype == task_subtype_sf_counts) {
 
           size = count = t->ci->mpi.pcell_size * sizeof(struct pcell_sf_stars);
@@ -2742,7 +2744,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           cell_pack_sf_counts(t->ci, (struct pcell_sf_stars *)t->buff);
 
         } else if (t->subtype == task_subtype_grav_counts) {
-
+	  /* Note: This is used for star and sink formation */
           size = count = t->ci->mpi.pcell_size * sizeof(struct pcell_sf_grav);
           buff = t->buff = malloc(size);
           cell_pack_grav_counts(t->ci, (struct pcell_sf_grav *)t->buff);
