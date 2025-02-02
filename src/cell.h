@@ -303,6 +303,8 @@ struct pcell_step {
 /**
  * @brief Cell information to propagate the new counts of star particles (star
  * variables).
+ *
+ * Note: This struct is used for star_formation and star_formation_sink.
  */
 struct pcell_sf_stars {
 
@@ -319,6 +321,11 @@ struct pcell_sf_stars {
 /**
  * @brief Cell information to propagate the new counts of star particles (grav
  * variables).
+ *
+ * Note: This struct is used for sink_formation, star_formation and
+ * star_formation_sink.
+ *
+ * TODO: Maybe rename it. This struct is common to sink/star formation.
  */
 struct pcell_sf_grav {
 
@@ -331,7 +338,7 @@ struct pcell_sf_grav {
 
 
 /**
- * @brief Cell information to propagate the new counts of star particles (star
+ * @brief Cell information to propagate the new counts of sink particles (sink
  * variables).
  */
 struct pcell_sink_formation_sinks {

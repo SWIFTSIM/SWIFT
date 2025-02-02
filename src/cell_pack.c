@@ -764,15 +764,14 @@ int cell_unpack_sf_counts(struct cell *c, struct pcell_sf_stars *pcells) {
 }
 
 /**
- * @brief Pack the counts for star formation of the given cell and all it's
- * sub-cells.
+ * @brief Pack the counts for star and sink formation of the given cell and all
+ * it's sub-cells.
  *
  * @param c The #cell.
  * @param pcells (output) The multipole information we pack into
  *
  * @return The number of packed cells.
  */
-// TODO:Rename the struct : it will be common to SF, SF_sink and sink_formation
 int cell_pack_grav_counts(struct cell *c, struct pcell_sf_grav *pcells) {
 
 #ifdef WITH_MPI
@@ -810,7 +809,7 @@ int cell_pack_grav_counts(struct cell *c, struct pcell_sf_grav *pcells) {
 }
 
 /**
- * @brief Unpack the counts for star formation of a given cell and its
+ * @brief Unpack the counts for star and sink formation of a given cell and its
  * sub-cells.
  *
  * @param c The #cell
@@ -818,7 +817,6 @@ int cell_pack_grav_counts(struct cell *c, struct pcell_sf_grav *pcells) {
  *
  * @return The number of cells created.
  */
-// TODO:Rename the struct : it will be common to SF, SF_sink and sink_formation
 int cell_unpack_grav_counts(struct cell *c, struct pcell_sf_grav *pcells) {
 
 #ifdef WITH_MPI
