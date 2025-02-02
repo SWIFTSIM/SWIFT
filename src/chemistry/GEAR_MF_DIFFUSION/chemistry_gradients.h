@@ -583,40 +583,39 @@ chemistry_gradients_predict_hydro(struct part *restrict pi,
    * position) eqn. (8) */
   const float xij_j[3] = {xij_i[0] + dx[0], xij_i[1] + dx[1], xij_i[2] + dx[2]};
 
+  /* Get the gradients */
   float drho_i[3], drho_j[3];
   float dvx_i[3], dvy_i[3], dvz_i[3];
   float dvx_j[3], dvy_j[3], dvz_j[3];
   chemistry_get_hydro_gradients(pi, drho_i, dvx_i, dvy_i, dvz_i);
   chemistry_get_hydro_gradients(pj, drho_j, dvx_j, dvy_j, dvz_j);
 
-  float drhoi;
-  drhoi = chemistry_gradients_extrapolate_float(drho_i, xij_i);
+  /* Extrapolate the gradients on the face vector */
+  float drhoi_ext, dvi_ext[3];
+  drhoi_ext = chemistry_gradients_extrapolate_float(drho_i, xij_i);
+  dvi_ext[0] = chemistry_gradients_extrapolate_float(dvx_i, xij_i);
+  dvi_ext[1] = chemistry_gradients_extrapolate_float(dvy_i, xij_i);
+  dvi_ext[2] = chemistry_gradients_extrapolate_float(dvz_i, xij_i);
 
-  float dvi[3];
-  dvi[0] = chemistry_gradients_extrapolate_float(dvx_i, xij_i);
-  dvi[1] = chemistry_gradients_extrapolate_float(dvy_i, xij_i);
-  dvi[2] = chemistry_gradients_extrapolate_float(dvz_i, xij_i);
-
-  float drhoj;
-  drhoj = chemistry_gradients_extrapolate_float(drho_j, xij_j);
-
-  float dvj[3];
-  dvj[0] = chemistry_gradients_extrapolate_float(dvx_j, xij_j);
-  dvj[1] = chemistry_gradients_extrapolate_float(dvy_j, xij_j);
-  dvj[2] = chemistry_gradients_extrapolate_float(dvz_j, xij_j);
+  float drhoj_ext, dvj_ext[3];
+  drhoj_ext = chemistry_gradients_extrapolate_float(drho_j, xij_j);
+  dvj_ext[0] = chemistry_gradients_extrapolate_float(dvx_j, xij_j);
+  dvj_ext[1] = chemistry_gradients_extrapolate_float(dvy_j, xij_j);
+  dvj_ext[2] = chemistry_gradients_extrapolate_float(dvz_j, xij_j);
 
   /* Apply the slope limiter at this interface */
-  chemistry_slope_limit_face_hydro(Wi, Wj, dvi, dvj, xij_i, xij_j, r);
+  chemistry_slope_limit_face_hydro(Wi, Wj, drhoi_ext, drhoj_ext, dvi_ext, dvj_ext, xij_i, xij_j, r);
 
-  Wi[0] += drhoi;
-  Wi[1] += dvi[0];
-  Wi[2] += dvi[1];
-  Wi[3] += dvi[2];
+  /* Reconstruct the values at the interface */
+  Wi[0] += drhoi_ext;
+  Wi[1] += dvi_ext[0];
+  Wi[2] += dvi_ext[1];
+  Wi[3] += dvi_ext[2];
 
-  Wj[0] += drhoj;
-  Wj[1] += dvj[0];
-  Wj[2] += dvj[1];
-  Wj[3] += dvj[2];
+  Wj[0] += drhoj_ext;
+  Wj[1] += dvj_ext[0];
+  Wj[2] += dvj_ext[1];
+  Wj[3] += dvj_ext[2];
 
   /* Note: We do not reconstruct v_tilde at the interface since it is not used
      during the Riemann problem. */
