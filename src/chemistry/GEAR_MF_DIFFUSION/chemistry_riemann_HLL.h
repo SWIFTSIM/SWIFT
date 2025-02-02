@@ -233,7 +233,7 @@ __attribute__((always_inline)) INLINE static void
 chemistry_riemann_solver_hopkins2017_HLL(
     const float dx[3], const struct part *restrict pi,
     const struct part *restrict pj, const double UL, const double UR,
-    const double WL[5], const double WR[5], const double F_diff_L[3],
+    const float WL[5], const float WR[5], const double F_diff_L[3],
     const double F_diff_R[3], const float Anorm, const float n_unit[3],
     const int m, const struct chemistry_global_data *chem_data,
     const struct cosmology *cosmo, double *metal_flux) {
@@ -411,7 +411,7 @@ chemistry_riemann_solver_hopkins2017_HLL(
 __attribute__((always_inline)) INLINE static void chemistry_riemann_solver_HLL(
     const float dx[3], const struct part *restrict pi,
     const struct part *restrict pj, const double UL, const double UR,
-    const double WL[5], const double WR[5], const double F_diff_L[3],
+    const float WL[5], const float WR[5], const double F_diff_L[3],
     const double F_diff_R[3], const float Anorm, const float n_unit[3],
     const int m, const struct chemistry_global_data *chem_data,
     const struct cosmology *cosmo, double *metal_flux) {
@@ -550,7 +550,7 @@ __attribute__((always_inline)) INLINE static void chemistry_riemann_solver_HLL(
 __attribute__((always_inline)) INLINE static void chemistry_riemann_solver_HLLC(
     const float dx[3], const struct part *restrict pi,
     const struct part *restrict pj, const double UL, const double UR,
-    const double WL[5], const double WR[5], const double F_diff_L[3],
+    const float WL[5], const float WR[5], const double F_diff_L[3],
     const double F_diff_R[3], const float Anorm, const float n_unit[3],
     const int m, const struct chemistry_global_data *chem_data,
     const struct cosmology *cosmo, double *metal_flux) {
@@ -629,7 +629,7 @@ __attribute__((always_inline)) INLINE static void
 chemistry_riemann_solve_for_flux(
     const float dx[3], const struct part *restrict pi,
     const struct part *restrict pj, const double UL, const double UR,
-    const double WL[5], const double WR[5], const double F_diff_L[3],
+    const float WL[5], const float WR[5], const double F_diff_L[3],
     const double F_diff_R[3], const float Anorm, const float n_unit[3],
     const int m, const struct chemistry_global_data *chem_data,
     const struct cosmology *cosmo, double *metal_flux) {
