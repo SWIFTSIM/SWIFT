@@ -519,8 +519,6 @@ void *runner_main(void *data) {
             free(t->buff);
           } else if (t->subtype == task_subtype_sink_merger) {
             free(t->buff);
-	  } else if (t->subtype == task_subtype_limiter) {
-
           } else if (t->subtype == task_subtype_limiter) {
             free(t->buff);
           }
