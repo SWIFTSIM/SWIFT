@@ -504,7 +504,8 @@ void *runner_main(void *data) {
         case task_type_send:
           if (t->subtype == task_subtype_tend) {
             free(t->buff);
-	  /* TODO: We need to take care of sf_sinks_counts */
+	  /* TODO: sf_sinks and sf will use the same function and
+	     structs. Hence, add  || (t->subtype == task_subtype_sf_sinks_counts) */
           } else if (t->subtype == task_subtype_sf_counts) {
             free(t->buff);
           } else if (t->subtype == task_subtype_grav_counts) {
@@ -527,7 +528,8 @@ void *runner_main(void *data) {
           if (t->subtype == task_subtype_tend) {
             cell_unpack_end_step(ci, (struct pcell_step *)t->buff);
             free(t->buff);
-          /* TODO: We need to take care of sf_sinks_counts */
+	    /* TODO: sf_sinks and sf will use the same function and
+	       structs. Hence, add  || (t->subtype == task_subtype_sf_sinks_counts) */
           } else if (t->subtype == task_subtype_sf_counts) {
             cell_unpack_sf_counts(ci, (struct pcell_sf_stars *)t->buff);
             cell_clear_stars_sort_flags(ci, /*clear_unused_flags=*/0);
