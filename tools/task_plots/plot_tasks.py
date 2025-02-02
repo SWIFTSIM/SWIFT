@@ -41,6 +41,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 import matplotlib
+default_backend = matplotlib.get_backend()
+print(default_backend)
 
 matplotlib.use("Agg")
 import matplotlib.collections as collections
@@ -50,7 +52,8 @@ import sys
 import argparse
 
 # import hardcoded data
-from swift_hardcoded_data import TASKTYPES, SUBTYPES
+from swift_hardcoded_data import TASKTYPES, SUBTYPES, TASKCOLOURS, SUBCOLOURS
+from interactive_legend import interactive_legend
 
 #  Handle the command line.
 parser = argparse.ArgumentParser(description="Plot task graphs")
@@ -118,7 +121,14 @@ parser.add_argument(
     default=-1,
     type=int,
 )
-
+parser.add_argument(
+    "-i",
+    "--interactive",
+    dest="interactive",
+    help="Open interactive plot instead of saving figure",
+    default=False,
+    action="store_true"
+)
 args = parser.parse_args()
 infile = args.input
 outbase = args.outbase
@@ -129,6 +139,10 @@ if args.ranks != None:
     ranks = [int(item) for item in args.ranks.split(",")]
 else:
     ranks = None
+interactive = args.interactive
+if interactive:
+    # Agg doesn't permit interactive backends.
+    matplotlib.use(default_backend)
 
 #  Basic plot configuration.
 PLOT_PARAMS = {
@@ -150,144 +164,6 @@ PLOT_PARAMS = {
 }
 pl.rcParams.update(PLOT_PARAMS)
 
-#  Task/subtypes of interest.
-FULLTYPES = [
-    "self/limiter",
-    "self/force",
-    "self/gradient",
-    "self/density",
-    "self/grav",
-    "sub_self/limiter",
-    "sub_self/force",
-    "sub_self/gradient",
-    "sub_self/density",
-    "pair/limiter",
-    "pair/force",
-    "pair/gradient",
-    "pair/density",
-    "pair/grav",
-    "sub_pair/limiter",
-    "sub_pair/force",
-    "sub_pair/gradient",
-    "sub_pair/density",
-    "recv/xv",
-    "send/xv",
-    "recv/rho",
-    "send/rho",
-    "recv/tend_part",
-    "send/tend_part",
-    "recv/tend_gpart",
-    "send/tend_gpart",
-    "recv/tend_spart",
-    "send/tend_spart",
-    "recv/tend_bpart",
-    "send/tend_bpart",
-    "recv/gpart",
-    "send/gpart",
-    "recv/spart",
-    "send/spart",
-    "send/sf_counts",
-    "recv/sf_counts",
-    "recv/bpart",
-    "send/bpart",
-    "recv/limiter",
-    "send/limiter",
-    "pack/limiter",
-    "unpack/limiter",
-    "self/stars_density",
-    "pair/stars_density",
-    "sub_self/stars_density",
-    "sub_pair/stars_density",
-    "self/stars_prep1",
-    "pair/stars_prep1",
-    "sub_self/stars_prep1",
-    "sub_pair/stars_prep1",
-    "self/stars_prep2",
-    "pair/stars_prep2",
-    "sub_self/stars_prep2",
-    "sub_pair/stars_prep2",
-    "self/stars_feedback",
-    "pair/stars_feedback",
-    "sub_self/stars_feedback",
-    "sub_pair/stars_feedback",
-    "self/bh_density",
-    "pair/bh_density",
-    "sub_self/bh_density",
-    "sub_pair/bh_density",
-    "self/bh_swallow",
-    "pair/bh_swallow",
-    "sub_self/bh_swallow",
-    "sub_pair/bh_swallow",
-    "self/do_swallow",
-    "pair/do_swallow",
-    "sub_self/do_swallow",
-    "sub_pair/do_swallow",
-    "self/bh_feedback",
-    "pair/bh_feedback",
-    "sub_self/bh_feedback",
-    "sub_pair/bh_feedback",
-]
-
-#  A number of colours for the various types. Recycled when there are
-#  more task types than colours...
-colours = [
-    "cyan",
-    "lightgray",
-    "darkblue",
-    "yellow",
-    "tan",
-    "dodgerblue",
-    "sienna",
-    "aquamarine",
-    "bisque",
-    "blue",
-    "green",
-    "lightgreen",
-    "brown",
-    "purple",
-    "moccasin",
-    "olivedrab",
-    "chartreuse",
-    "olive",
-    "darkgreen",
-    "green",
-    "mediumseagreen",
-    "mediumaquamarine",
-    "darkslategrey",
-    "mediumturquoise",
-    "black",
-    "cadetblue",
-    "skyblue",
-    "red",
-    "slategray",
-    "gold",
-    "slateblue",
-    "blueviolet",
-    "mediumorchid",
-    "firebrick",
-    "magenta",
-    "hotpink",
-    "pink",
-    "orange",
-    "lightgreen",
-]
-maxcolours = len(colours)
-
-#  Set colours of task/subtype.
-TASKCOLOURS = {}
-ncolours = 0
-for task in TASKTYPES:
-    TASKCOLOURS[task] = colours[ncolours]
-    ncolours = (ncolours + 1) % maxcolours
-
-SUBCOLOURS = {}
-for task in FULLTYPES:
-    SUBCOLOURS[task] = colours[ncolours]
-    ncolours = (ncolours + 1) % maxcolours
-
-for task in SUBTYPES:
-    SUBCOLOURS[task] = colours[ncolours]
-    ncolours = (ncolours + 1) % maxcolours
 
 #  For fiddling with colours...
 if args.verbose:
@@ -488,6 +364,8 @@ for rank in ranks:
             mode="expand",
             ncol=8,
         )
+        if interactive:
+            interactive_legend(ax)
 
     # Start and end of time-step
     if mintic < 0:
@@ -509,13 +387,17 @@ for rank in ranks:
     ax.yaxis.set_major_locator(loc)
     ax.grid(True, which="major", axis="y", linestyle="-")
 
-    # pl.show()
-    if mpimode:
-        outpng = outbase + str(rank) + ".png"
+    if interactive:
+        pl.tight_layout()
+        pl.show()
     else:
-        outpng = outbase + ".png"
-    pl.savefig(outpng, bbox_inches="tight")
+        if mpimode:
+            outpng = outbase + str(rank) + ".png"
+        else:
+            outpng = outbase + ".png"
+        pl.savefig(outpng, bbox_inches="tight")
+        print("Graphics done, output written to", outpng)
+
     pl.close()
-    print("Graphics done, output written to", outpng)
 
 sys.exit(0)
