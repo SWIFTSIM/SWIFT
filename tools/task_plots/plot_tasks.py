@@ -41,8 +41,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 import matplotlib
-default_backend = matplotlib.get_backend()
-print(default_backend)
 
 matplotlib.use("Agg")
 import matplotlib.collections as collections
@@ -53,7 +51,6 @@ import argparse
 
 # import hardcoded data
 from swift_hardcoded_data import TASKTYPES, SUBTYPES, TASKCOLOURS, SUBCOLOURS
-from interactive_legend import interactive_legend
 
 #  Handle the command line.
 parser = argparse.ArgumentParser(description="Plot task graphs")
@@ -121,14 +118,7 @@ parser.add_argument(
     default=-1,
     type=int,
 )
-parser.add_argument(
-    "-i",
-    "--interactive",
-    dest="interactive",
-    help="Open interactive plot instead of saving figure",
-    default=False,
-    action="store_true"
-)
+
 args = parser.parse_args()
 infile = args.input
 outbase = args.outbase
@@ -139,10 +129,6 @@ if args.ranks != None:
     ranks = [int(item) for item in args.ranks.split(",")]
 else:
     ranks = None
-interactive = args.interactive
-if interactive:
-    # Agg doesn't permit interactive backends.
-    matplotlib.use(default_backend)
 
 #  Basic plot configuration.
 PLOT_PARAMS = {
@@ -364,8 +350,6 @@ for rank in ranks:
             mode="expand",
             ncol=8,
         )
-        if interactive:
-            interactive_legend(ax)
 
     # Start and end of time-step
     if mintic < 0:
@@ -387,17 +371,14 @@ for rank in ranks:
     ax.yaxis.set_major_locator(loc)
     ax.grid(True, which="major", axis="y", linestyle="-")
 
-    if interactive:
-        pl.tight_layout()
-        pl.show()
+    # pl.show()
+    if mpimode:
+        outpng = outbase + str(rank) + ".png"
     else:
-        if mpimode:
-            outpng = outbase + str(rank) + ".png"
-        else:
-            outpng = outbase + ".png"
-        pl.savefig(outpng, bbox_inches="tight")
-        print("Graphics done, output written to", outpng)
-
+        outpng = outbase + ".png"
+    pl.savefig(outpng, bbox_inches="tight")
     pl.close()
+    print("Graphics done, output written to", outpng)
+
 
 sys.exit(0)
