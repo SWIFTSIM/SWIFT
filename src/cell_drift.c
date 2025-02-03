@@ -382,6 +382,8 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force,
       /* Limit h to within the allowed range */
       p->h = min(p->h, hydro_h_max);
       p->h = max(p->h, hydro_h_min);
+      /* Set the appropriate depth level for this particle */
+      cell_set_part_h_depth(p, c);
 
       /* Is the particle isolated enough to reach hmax? If so we will
        * convert it to dark matter to avoid long running neighbour searches
