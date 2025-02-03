@@ -154,11 +154,6 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
   threadpool_map(&s->e->threadpool, proxy_tags_exchange_pack_mapper,
                  s->cells_top, s->nr_cells, sizeof(struct cell),
                  threadpool_auto_chunk_size, &extra_data);
-  // for (int k = 0; k < s->nr_cells; k++) {
-  //   if (s->cells_top[k].mpi.sendto) {
-  //     cell_pack_tags(&s->cells_top[k], &tags_out[offset_out[k]]);
-  //   }
-  // }
 
   if (s->e->verbose)
     message("Cell pack tags took %.3f %s.",
@@ -221,27 +216,13 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
 
   tic2 = getticks();
 
+  /* Unpack the tags we received */
   extra_data.tags_in = tags_in;
   extra_data.offset_in = offset_in;
   extra_data.space_cells = s->cells_top;
   threadpool_map(&s->e->threadpool, proxy_tags_exchange_unpack_mapper, cids_in,
                  num_reqs_in, sizeof(int), threadpool_auto_chunk_size,
                  &extra_data);
-  // for (int k = 0; k < num_reqs_in; k++) {
-  //   const int cid = cids_in[k];
-  //   cell_unpack_tags(&tags_in[offset_in[cid]], &s->cells_top[cid]);
-  // }
-
-  /* Wait for each recv and unpack the tags into the local cells. */
-  // for (int k = 0; k < num_reqs_in; k++) {
-  //   int pid = MPI_UNDEFINED;
-  //   MPI_Status status;
-  //   if (MPI_Waitany(num_reqs_in, reqs_in, &pid, &status) != MPI_SUCCESS ||
-  //       pid == MPI_UNDEFINED)
-  //     error("MPI_Waitany failed.");
-  //   const int cid = cids_in[pid];
-  //   cell_unpack_tags(&tags_in[offset_in[cid]], &s->cells_top[cid]);
-  // }
 
   if (s->e->verbose)
     message("Cell unpack tags took %.3f %s.",

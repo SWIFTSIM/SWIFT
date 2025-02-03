@@ -2238,7 +2238,9 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
 /**
  * @brief Creates all the task dependencies for the gravity
  *
- * @param e The #engine
+ * @param map_data The task array passed to this pool thread.
+ * @param num_elements The number of tasks in this pool thread.
+ * @param extra_data Pointer to the #engine.
  */
 void engine_link_gravity_tasks_mapper(void *map_data, int num_elements,
                                       void *extra_data) {
@@ -4824,7 +4826,6 @@ void engine_maketasks(struct engine *e) {
     threadpool_map(&e->threadpool, engine_link_gravity_tasks_mapper,
                    e->sched.tasks, e->sched.nr_tasks, sizeof(struct task),
                    threadpool_auto_chunk_size, e);
-    // engine_link_gravity_tasks(e);
   }
 
   if (e->verbose)

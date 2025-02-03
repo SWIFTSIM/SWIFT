@@ -1757,6 +1757,13 @@ struct unlock_extra_data {
   struct task **scheduler_unlocks;
 };
 
+/**
+ * @brief Cound the number of tasks unlocking each task
+ *
+ * @param map_data the index of unlocks in this pool thread.
+ * @param num_elements the number of indexes in this pool thread
+ * @param extra_data The scheduler and the count array.
+ */
 void scheduler_set_unlock_counts_mapper(void *map_data, int num_elements,
                                         void *extra_data) {
 
@@ -1765,7 +1772,7 @@ void scheduler_set_unlock_counts_mapper(void *map_data, int num_elements,
   struct scheduler *s = data->s;
   int *volatile unlock_ind = (int *)map_data;
 
-  for (int k = 0; k < num_elements; k++) { /* s->nr_unlocks */
+  for (int k = 0; k < num_elements; k++) {
     atomic_inc(&counts[unlock_ind[k]]);
 
     /* Check that we are not overflowing */
@@ -1782,6 +1789,13 @@ void scheduler_set_unlock_counts_mapper(void *map_data, int num_elements,
   }
 }
 
+/**
+ * @brief Cound the number of tasks unlocking each task
+ *
+ * @param map_data the index of unlocks in this pool thread.
+ * @param num_elements the number of indexes in this pool thread
+ * @param extra_data The scheduler and the list of offsets
+ */
 void scheduler_set_unlock_sorts_mapper(void *map_data, int num_elements,
                                        void *extra_data) {
 
@@ -1802,8 +1816,12 @@ void scheduler_set_unlock_sorts_mapper(void *map_data, int num_elements,
  * @brief Set the unlock pointers in each task.
  *
  * @param s The #scheduler.
+ * @param tp the #threadpool.
  */
 void scheduler_set_unlocks(struct scheduler *s, struct threadpool *tp) {
+
+  /* Temporary extra data for the threadpool */
+  struct unlock_extra_data extra_data;
 
   /* Store the counts for each task. */
   int *counts;
@@ -1812,7 +1830,6 @@ void scheduler_set_unlocks(struct scheduler *s, struct threadpool *tp) {
     error("Failed to allocate temporary counts array.");
   bzero(counts, sizeof(int) * s->nr_tasks);
 
-  struct unlock_extra_data extra_data;
   extra_data.s = s;
   extra_data.counts = counts;
   threadpool_map(tp, scheduler_set_unlock_counts_mapper, s->unlock_ind,

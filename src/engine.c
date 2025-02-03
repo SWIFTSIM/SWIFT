@@ -902,12 +902,6 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
 #endif
   }
 
-  if (e->verbose)
-    message("Allocating and zeroing arrays took %.3f %s.",
-            clocks_from_ticks(getticks() - tic), clocks_getunit());
-
-  tic = getticks();
-
   if (e->verbose) {
     message(
         "Allocating %zd/%zd/%zd/%zd/%zd foreign part/gpart/spart/bpart/sink "
