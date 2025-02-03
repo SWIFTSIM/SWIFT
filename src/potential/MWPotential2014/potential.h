@@ -124,6 +124,9 @@ struct external_potential {
   /*! Polynomial fit coefficients for the velocity dispersion model */
   double df_polyfit_coeffs[17];
 
+  /*! Degree of the polynomial fit the velocity dispersion model */
+  int df_coeffs_len;
+  
   /*! Minimum velocity dispersion for the velocity dispersion model */
   double df_sigma_floor;
 
@@ -378,42 +381,12 @@ __attribute__((always_inline)) INLINE static void external_gravity_acceleration(
 
     const float v = sqrtf(vx * vx + vy * vy + vz * vz);
 
-    /*
-     * a[16] : no units
-     * a[15] : km/s / kpc
-     * a[14] : km/s / kpc**2
-     *
-     * a[coeffs_len - 1 - i] : km/s / kpc**i
-     *
-     * */
-
-    double coeffs[17] = {-2.96536595e-31, 8.88944631e-28,  -1.18280578e-24,
-                         9.29479457e-22,  -4.82805265e-19, 1.75460211e-16,
-                         -4.59976540e-14, 8.83166045e-12,  -1.24747700e-09,
-                         1.29060404e-07,  -9.65315026e-06, 5.10187806e-04,
-                         -1.83800281e-02, 4.26501444e-01,  -5.78038064e+00,
-                         3.57956721e+01,  1.85478908e+02};
-
-    int coeffs_len = (int)(sizeof(coeffs) / sizeof(coeffs[0]));
-
-    const double kpc = 1000. * phys_const->const_parsec;
-    const double s_internal_units = phys_const->const_year / 31536000;
-    const double km_internal_units = phys_const->const_parsec / 3.08567758e+13;
-    const double kms = km_internal_units / s_internal_units;
-    // const double kms = 1e5/units_cgs_conversion_factor(us, UNIT_CONV_SPEED);
-
-    /* units conversion */
-
-    for (int i = 0; i < coeffs_len; i++)
-      coeffs[coeffs_len - 1 - i] =
-          coeffs[coeffs_len - 1 - i] / pow(kpc, i) * kms;
-
     /* Compute the velocity dispertion as a function of the radius r, using
      * using a high order polynomial interpolation.
      */
     double sigma = 0;
-    for (int i = 0; i < coeffs_len; i++)
-      sigma = sigma + coeffs[coeffs_len - 1 - i] * pow(r, i);
+    for (int i = 0; i < potential->df_coeffs_len; i++)
+      sigma = sigma + potential->df_polyfit_coeffs[potential->df_coeffs_len - 1 - i] * pow(r, i);
 
     /* Prevent the velocity dispersion to be zero */
     sigma = fmax(potential->df_sigma_floor, sigma);
@@ -558,6 +531,24 @@ static INLINE void potential_init_backend(
     potential->x[1] += s->dim[1] / 2.;
     potential->x[2] += s->dim[2] / 2.;
   }
+  
+  double df_polyfit_coeffs00 = -2.96536595e-31;
+  double df_polyfit_coeffs01 =  8.88944631e-28;
+  double df_polyfit_coeffs02 = -1.18280578e-24;
+  double df_polyfit_coeffs03 =  9.29479457e-22;
+  double df_polyfit_coeffs04 = -4.82805265e-19;
+  double df_polyfit_coeffs05 =  1.75460211e-16;
+  double df_polyfit_coeffs06 = -4.59976540e-14;
+  double df_polyfit_coeffs07 =  8.83166045e-12;
+  double df_polyfit_coeffs08 = -1.24747700e-09;
+  double df_polyfit_coeffs09 =  1.29060404e-07;
+  double df_polyfit_coeffs10 = -9.65315026e-06;
+  double df_polyfit_coeffs11 =  5.10187806e-04;
+  double df_polyfit_coeffs12 = -1.83800281e-02;
+  double df_polyfit_coeffs13 =  4.26501444e-01;
+  double df_polyfit_coeffs14 = -5.78038064e+00;
+  double df_polyfit_coeffs15 =  3.57956721e+01;
+  double df_polyfit_coeffs16 =  1.85478908e+02;
 
   /* Read the other parameters of the model */
   potential->timestep_mult = parser_get_param_double(
@@ -598,9 +589,6 @@ static INLINE void potential_init_backend(
       parameter_file, "MWPotential2014Potential:df_lnLambda", 5.0);
   potential->df_satellite_mass = parser_get_opt_param_double(
       parameter_file, "MWPotential2014Potential:df_satellite_mass_in_Msun", 1e10);
-  parser_get_opt_param_double_array(
-      parameter_file, "MWPotential2014Potential:df_polyfit_coeffs", 17,
-      potential->f);      
   potential->df_timestep_mult = parser_get_opt_param_double(
       parameter_file, "MWPotential2014Potential:df_timestep_mult", 0.1);
   potential->df_core_radius = parser_get_opt_param_double(
@@ -608,11 +596,31 @@ static INLINE void potential_init_backend(
   potential->df_sigma_floor = parser_get_opt_param_double(
       parameter_file, "MWPotential2014Potential:df_sigma_floor_km_p_s", 10.0);
 
+  df_polyfit_coeffs00 = parser_get_opt_param_double(parameter_file, "MWPotential2014Potential:df_polyfit_coeffs00", df_polyfit_coeffs00);
+  df_polyfit_coeffs01 = parser_get_opt_param_double(parameter_file, "MWPotential2014Potential:df_polyfit_coeffs01", df_polyfit_coeffs01);
+  df_polyfit_coeffs02 = parser_get_opt_param_double(parameter_file, "MWPotential2014Potential:df_polyfit_coeffs02", df_polyfit_coeffs02);
+  df_polyfit_coeffs03 = parser_get_opt_param_double(parameter_file, "MWPotential2014Potential:df_polyfit_coeffs03", df_polyfit_coeffs03);
+  df_polyfit_coeffs04 = parser_get_opt_param_double(parameter_file, "MWPotential2014Potential:df_polyfit_coeffs04", df_polyfit_coeffs04);
+  df_polyfit_coeffs05 = parser_get_opt_param_double(parameter_file, "MWPotential2014Potential:df_polyfit_coeffs05", df_polyfit_coeffs05);
+  df_polyfit_coeffs06 = parser_get_opt_param_double(parameter_file, "MWPotential2014Potential:df_polyfit_coeffs06", df_polyfit_coeffs06);
+  df_polyfit_coeffs07 = parser_get_opt_param_double(parameter_file, "MWPotential2014Potential:df_polyfit_coeffs07", df_polyfit_coeffs07);
+  df_polyfit_coeffs08 = parser_get_opt_param_double(parameter_file, "MWPotential2014Potential:df_polyfit_coeffs08", df_polyfit_coeffs08);
+  df_polyfit_coeffs09 = parser_get_opt_param_double(parameter_file, "MWPotential2014Potential:df_polyfit_coeffs09", df_polyfit_coeffs09);
+  df_polyfit_coeffs10 = parser_get_opt_param_double(parameter_file, "MWPotential2014Potential:df_polyfit_coeffs10", df_polyfit_coeffs10);
+  df_polyfit_coeffs11 = parser_get_opt_param_double(parameter_file, "MWPotential2014Potential:df_polyfit_coeffs11", df_polyfit_coeffs11);
+  df_polyfit_coeffs12 = parser_get_opt_param_double(parameter_file, "MWPotential2014Potential:df_polyfit_coeffs12", df_polyfit_coeffs12);
+  df_polyfit_coeffs13 = parser_get_opt_param_double(parameter_file, "MWPotential2014Potential:df_polyfit_coeffs13", df_polyfit_coeffs13);
+  df_polyfit_coeffs14 = parser_get_opt_param_double(parameter_file, "MWPotential2014Potential:df_polyfit_coeffs14", df_polyfit_coeffs14);
+  df_polyfit_coeffs15 = parser_get_opt_param_double(parameter_file, "MWPotential2014Potential:df_polyfit_coeffs15", df_polyfit_coeffs15);
+  df_polyfit_coeffs16 = parser_get_opt_param_double(parameter_file, "MWPotential2014Potential:df_polyfit_coeffs16", df_polyfit_coeffs16);
 
 
   /* Convert to internal system of units by using the
    * physical constants defined in this system */
   const double kpc = 1000. * phys_const->const_parsec;
+  const double s_internal_units = phys_const->const_year / 31536000;
+  const double km_internal_units = phys_const->const_parsec / 3.08567758e+13;
+  const double kms = km_internal_units / s_internal_units;  
   potential->M_200 *= phys_const->const_solar_mass;
   potential->H *= phys_const->const_reduced_hubble;
   potential->Mdisk *= phys_const->const_solar_mass;
@@ -625,6 +633,31 @@ static INLINE void potential_init_backend(
   potential->df_sigma_floor /= units_cgs_conversion_factor(us, UNIT_CONV_SPEED);
   potential->df_satellite_mass *= phys_const->const_solar_mass;
   potential->df_core_radius *= kpc;
+  
+  /* units conversion for polyfit coefficients */
+  potential->df_coeffs_len = (int)(sizeof(potential->df_polyfit_coeffs) / sizeof(potential->df_polyfit_coeffs[0]));
+
+  potential->df_polyfit_coeffs[0]  = df_polyfit_coeffs00;
+  potential->df_polyfit_coeffs[1]  = df_polyfit_coeffs01;
+  potential->df_polyfit_coeffs[2]  = df_polyfit_coeffs02;
+  potential->df_polyfit_coeffs[3]  = df_polyfit_coeffs03;
+  potential->df_polyfit_coeffs[4]  = df_polyfit_coeffs04;
+  potential->df_polyfit_coeffs[5]  = df_polyfit_coeffs05;
+  potential->df_polyfit_coeffs[6]  = df_polyfit_coeffs06;
+  potential->df_polyfit_coeffs[7]  = df_polyfit_coeffs07;
+  potential->df_polyfit_coeffs[8]  = df_polyfit_coeffs08;
+  potential->df_polyfit_coeffs[9]  = df_polyfit_coeffs09;
+  potential->df_polyfit_coeffs[10] = df_polyfit_coeffs10;
+  potential->df_polyfit_coeffs[11] = df_polyfit_coeffs11;
+  potential->df_polyfit_coeffs[12] = df_polyfit_coeffs12;
+  potential->df_polyfit_coeffs[13] = df_polyfit_coeffs13;
+  potential->df_polyfit_coeffs[14] = df_polyfit_coeffs14;
+  potential->df_polyfit_coeffs[15] = df_polyfit_coeffs15;
+  potential->df_polyfit_coeffs[16] = df_polyfit_coeffs16;
+    
+  for (int i = 0; i < potential->df_coeffs_len; i++)
+    potential->df_polyfit_coeffs[potential->df_coeffs_len - 1 - i] =
+        potential->df_polyfit_coeffs[potential->df_coeffs_len - 1 - i] / pow(kpc, i) * kms;
 
   /* Compute rho_c */
   const double rho_c = 3.0 * potential->H * potential->H /
