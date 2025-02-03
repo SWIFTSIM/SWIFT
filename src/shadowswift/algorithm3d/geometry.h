@@ -1035,20 +1035,24 @@ static inline double geometry3d_compute_circumradius2_adaptive(
                          circumcenter[2] * circumcenter[2];
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check validity */
+  double c_non_rel[3] = {v0->x_f64[0] + circumcenter[0],
+                         v0->x_f64[1] + circumcenter[1],
+                         v0->x_f64[2] + circumcenter[2]};
   const double r12 =
-      (circumcenter[0] - v1->x_f64[0]) * (circumcenter[0] - v1->x_f64[0]) +
-      (circumcenter[1] - v1->x_f64[1]) * (circumcenter[1] - v1->x_f64[1]) +
-      (circumcenter[2] - v1->x_f64[2]) * (circumcenter[2] - v1->x_f64[2]);
+      (c_non_rel[0] - v1->x_f64[0]) * (c_non_rel[0] - v1->x_f64[0]) +
+      (c_non_rel[1] - v1->x_f64[1]) * (c_non_rel[1] - v1->x_f64[1]) +
+      (c_non_rel[2] - v1->x_f64[2]) * (c_non_rel[2] - v1->x_f64[2]);
   const double r22 =
-      (circumcenter[0] - v2->x_f64[0]) * (circumcenter[0] - v2->x_f64[0]) +
-      (circumcenter[1] - v2->x_f64[1]) * (circumcenter[1] - v2->x_f64[1]) +
-      (circumcenter[2] - v2->x_f64[2]) * (circumcenter[2] - v2->x_f64[2]);
+      (c_non_rel[0] - v2->x_f64[0]) * (c_non_rel[0] - v2->x_f64[0]) +
+      (c_non_rel[1] - v2->x_f64[1]) * (c_non_rel[1] - v2->x_f64[1]) +
+      (c_non_rel[2] - v2->x_f64[2]) * (c_non_rel[2] - v2->x_f64[2]);
   const double r32 =
-      (circumcenter[0] - v3->x_f64[0]) * (circumcenter[0] - v3->x_f64[0]) +
-      (circumcenter[1] - v3->x_f64[1]) * (circumcenter[1] - v3->x_f64[1]) +
-      (circumcenter[2] - v3->x_f64[2]) * (circumcenter[2] - v3->x_f64[2]);
-  assert(double_cmp(radius2, r12, 1e3) && double_cmp(radius2, r22, 1e3) &&
-         double_cmp(radius2, r32, 1e3));
+      (c_non_rel[0] - v3->x_f64[0]) * (c_non_rel[0] - v3->x_f64[0]) +
+      (c_non_rel[1] - v3->x_f64[1]) * (c_non_rel[1] - v3->x_f64[1]) +
+      (c_non_rel[2] - v3->x_f64[2]) * (c_non_rel[2] - v3->x_f64[2]);
+  assert(approx_equals(radius2, r12, 1e-6) &&
+         approx_equals(radius2, r22, 1e-6) &&
+         approx_equals(radius2, r32, 1e-6));
 #endif
 
   return radius2 * box_side * box_side;
